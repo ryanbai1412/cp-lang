@@ -30,11 +30,16 @@ impl Lowerer<'_> {
             }
             (Some(GenArg::Ty(ty)), _) => ty.clone(),
             (Some(_), _) => return None,
-            (None, "Int" | "I64") => Ty::Int,
-            (None, "I128") => Ty::I128,
-            (None, "U64") => Ty::U64,
-            (None, "F64") => Ty::Float,
-            (None, "Char") => Ty::Char,
+            (None, _) if self.names_a_plain_type(tname) => self.resolve_ty(&ast::Type {
+                kind: ast::TypeKind::Named {
+                    name: ast::Name {
+                        text: tname.clone(),
+                        span: base.span,
+                    },
+                    args: Vec::new(),
+                },
+                span: base.span,
+            }),
             _ => return None,
         };
         let found = self
@@ -63,5 +68,17 @@ impl Lowerer<'_> {
             None => return Some(self.err_expr(span)),
         };
         Some(self.convert(to, value, span))
+    }
+
+    /// Whether `name` is a type written with no arguments, built-in or
+    /// declared: what the type table resolves a receiver `T.m(..)` through.
+    fn names_a_plain_type(&self, name: &str) -> bool {
+        cpl_check::BUILTIN_TYPES
+            .iter()
+            .any(|t| t.name == name && t.written == name)
+            || matches!(
+                self.get_sym(name),
+                Some(Sym::Struct(_) | Sym::Enum(_) | Sym::Domain(_) | Sym::Alias(_))
+            )
     }
 }

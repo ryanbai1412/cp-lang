@@ -593,3 +593,23 @@ fn a_range_check_codegen_proves_holds_is_not_written() {
     let open = field("2_000_000");
     assert!(open.contains("check_range"), "{open}");
 }
+
+#[test]
+fn float_intrinsics_emit_the_std_call() {
+    let body = cpp(
+        "let x: F64 = read()\nprint(sin(x) + cos(x) + tan(x) + asin(x) + acos(x) + atan2(x, x) + hypot(x, x) + exp(x) + ln(x))\n",
+    );
+    for call in [
+        "std::sin(x)",
+        "std::cos(x)",
+        "std::tan(x)",
+        "std::asin(",
+        "std::acos(",
+        "std::atan2(x, x)",
+        "std::hypot(x, x)",
+        "std::exp(x)",
+        "std::log(",
+    ] {
+        assert!(body.contains(call), "{call}:\n{body}");
+    }
+}

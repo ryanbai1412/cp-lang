@@ -56,7 +56,9 @@ pub struct Mat<T>:
         var d = List<T>()
         for r in R:
             for c in C: d.push(a[r, c])
-        Mat<T>.built(R.count, C.count, d, ring_of(over))
+        let ring: ?Ring<T> = ring_of(over)
+        if let raw = Mat<T>.sentinel_of(ring, d): return Mat(R.count, C.count, [], ring, raw)
+        Mat(R.count, C.count, d, ring)
 
     /// A matrix from a list of equal-length rows: `Mat<Z>.of(adj)` for an adjacency table read
     /// as nested lists. Row `i` is `rows[i]`.
@@ -82,14 +84,16 @@ pub struct Mat<T>:
     /// example: `Mat<?Int>.filled(2, 2, None, over: Semiring(min, +)).get(0, 1) == None`
     pub fn filled<S>(rows: Len, cols: Len, fill: T, over: S = Semiring(+, *)) -> Mat<T>:
         assert rows >= 0 and cols >= 0, "Mat.filled requires rows >= 0 and cols >= 0"
-        Mat<T>.built(rows, cols, List.filled(rows * cols, fill), ring_of(over))
-
-    // A matrix under `ring`, in its sentinel form when the ring has one.
-    fn built(rows: Len, cols: Len, cells: List<T>, ring: ?Ring<T>) -> Mat<T>:
-        if let g = ring:
-            if let form = g.form:
-                if let raw = form(cells): return Mat(rows, cols, [], ring, raw)
+        let cells = List.filled(rows * cols, fill)
+        let ring: ?Ring<T> = ring_of(over)
+        if let raw = Mat<T>.sentinel_of(ring, cells): return Mat(rows, cols, [], ring, raw)
         Mat(rows, cols, cells, ring)
+
+    // `cells` in `ring`'s sentinel form, when the ring has one and every entry converts.
+    fn sentinel_of(ring: ?Ring<T>, cells: List<T>) -> ?List<Int>:
+        if let g = ring:
+            if let form = g.form: return form(cells)
+        None
 
     /// A `rows x cols` matrix of `T.zero`.
     ///

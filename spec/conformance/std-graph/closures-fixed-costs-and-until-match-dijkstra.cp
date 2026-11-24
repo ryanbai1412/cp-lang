@@ -55,11 +55,11 @@ fn until_stops_at_the_target_with_its_exact_distance():
             dijkstra(h, from: [(s, 0)]),
         )
         for t in V:
-            assert closer_settled([V] v => fb[v], [V] v => bfs(plain, from: [s], until: t)[v], t)
-            assert closer_settled([V] v => f01[v], [V] v => bfs01(g, from: [s], until: t)[v], t)
+            assert closer_settled([V] v => fb[v], [V] v => bfs(plain, from: [s], until: x => x == t)[v], t)
+            assert closer_settled([V] v => f01[v], [V] v => bfs01(g, from: [s], until: x => x == t)[v], t)
             assert closer_settled(
                 [V] v => fd[v],
-                [V] v => dijkstra(h, from: [(s, 0)], until: t)[v],
+                [V] v => dijkstra(h, from: [(s, 0)], until: x => x == t)[v],
                 t,
             )
             let fc = fixed_cost_paths(
@@ -67,7 +67,7 @@ fn until_stops_at_the_target_with_its_exact_distance():
                 [e for e in E],
                 cost: e => ws[e].w,
                 step: (e, x) => if ws[e].u == x: Some(ws[e].v) else: None,
-                until: t,
+                until: x => x == t,
             )
             assert closer_settled([V] v => fd[v], [V] v => fc[v], t)
 fn random_edges<V, E>() -> [E](u: V, v: V):

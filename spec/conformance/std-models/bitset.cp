@@ -38,7 +38,7 @@ for k in 0..n:
     let sh = rng.int(-m - 5, m + 5)
     let lo = rng.int(0, m)
     let hi = rng.int(lo, m)
-    let r = D.cuts.nth(lo)..D.cuts.nth(hi)
+    let r: Range<D> = D.cuts.nth(lo)..D.cuts.nth(hi)
     if op == 0:
         if b.add(D(i)) != (not a[i]): bad = "op {k}: add {i}"
         a[i] = true

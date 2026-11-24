@@ -42,7 +42,11 @@ fn step(p: Arc, by: Int):
         relabel(u, by: v)
         relabel(v, by: u)
 
-let windows = [first_arc[x.l.l]..first_arc[x.r.r] for x in asks]
+// A stored cut range is no piece (R04.4.5): the annotated literal makes one.
+fn window(l: V, r: V) -> Range<Arc>:
+    let w: Range<Arc> = first_arc[l.l]..first_arc[r.r]
+    w
+let windows = [window(x.l, x.r) for x in asks]
 fn answer(qi: Int) -> Int:
     let x = asks[qi]
     values.kth(x.k - 1 + n - (x.l..=x.r).len)

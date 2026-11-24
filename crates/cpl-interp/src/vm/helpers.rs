@@ -656,16 +656,22 @@ pub(super) fn sort_by_keys(seq: Value, keys: &Value, desc: bool, span: Span) -> 
         let (a, b) = (keys.get_unchecked_val(a), keys.get_unchecked_val(b));
         Ok(if desc { a > b } else { a < b })
     })?;
+    permute_seq(seq, order, span)
+}
+
+/// A list or array with its elements moved in place so that `order[i]`
+/// comes `i`-th: the sort's only buffer is `order`.
+pub(super) fn permute_seq(seq: Value, mut order: Vec<u32>, span: Span) -> Res<Value> {
     match seq {
-        Value::List(items) => Ok(Value::List(Rc::new(
-            order.iter().map(|&k| items.get_unchecked_val(k)).collect(),
-        ))),
-        Value::Array(arr) => {
-            let values = order.iter().map(|&k| arr.get_unchecked_val(k)).collect();
-            Ok(Value::Array(Rc::new(Array::from_values(
-                arr.dims.clone(),
-                values,
-            ))))
+        Value::List(mut items) => {
+            let cells = Rc::make_mut(&mut items);
+            crate::sort::apply_order(&mut order, &mut |a, b| cells.swap(a, b));
+            Ok(Value::List(items))
+        }
+        Value::Array(mut arr) => {
+            let cells = &mut **Rc::make_mut(&mut arr);
+            crate::sort::apply_order(&mut order, &mut |a, b| cells.swap(a, b));
+            Ok(Value::Array(arr))
         }
         _ => trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
     }
@@ -949,12 +955,33 @@ pub(super) fn with_place_cell<R>(
     span: Span,
     f: impl FnOnce(&mut Value) -> Res<R>,
 ) -> Res<R> {
+    with_place_cell_by(
+        root,
+        steps,
+        regs_i,
+        keys,
+        span,
+        &mut crate::value::keys::tree_only(span),
+        f,
+    )
+}
+
+/// [`with_place_cell`], searching map entries with `less`.
+pub(super) fn with_place_cell_by<R>(
+    root: &mut Value,
+    steps: &[PlaceStep],
+    regs_i: &[i64],
+    keys: &[Value],
+    span: Span,
+    cmp: &mut crate::value::keys::Less<'_>,
+    f: impl FnOnce(&mut Value) -> Res<R>,
+) -> Res<R> {
     if let Some((
         &last @ (PlaceStep::Index1(_) | PlaceStep::Index2(..) | PlaceStep::IndexN(..)),
         prefix,
     )) = steps.split_last()
     {
-        let container = walk_place_mut(root, prefix, regs_i, keys, span)?;
+        let container = walk_place_mut_by(root, prefix, regs_i, keys, span, cmp)?;
         if let Value::Array(arr) = container {
             if !matches!(*arr.data, Cells::Values(_)) {
                 let flat = array_flat_index(arr, last, regs_i, span)?;
@@ -968,27 +995,67 @@ pub(super) fn with_place_cell<R>(
             }
         }
     }
-    f(walk_place_mut(root, steps, regs_i, keys, span)?)
+    f(walk_place_mut_by(root, steps, regs_i, keys, span, cmp)?)
+}
+
+/// Strips cached fields off `keys`, the keys of `place`'s map-entry steps
+/// (root first), as the map stores them.
+pub(super) fn strip_place_keys(
+    place: &cpl_ir::Place,
+    keys: &mut [Value],
+    program: &cpl_ir::Program,
+) {
+    use cpl_ir::{PlaceKind, Ty};
+    match &place.kind {
+        PlaceKind::Index(base, indices) => match (&base.ty, indices.len(), keys.split_last_mut()) {
+            (Ty::Map(k, _) | Ty::HashMap(k, _), 1, Some((key, rest))) => {
+                *key = crate::value::strip_cached(key, k, program);
+                strip_place_keys(base, rest, program)
+            }
+            _ => strip_place_keys(base, keys, program),
+        },
+        PlaceKind::Field(base, _) | PlaceKind::Some(base) => strip_place_keys(base, keys, program),
+        _ => {}
+    }
 }
 
 pub(super) fn walk_place_mut<'a>(
-    mut cur: &'a mut Value,
+    cur: &'a mut Value,
     steps: &[PlaceStep],
     regs_i: &[i64],
     keys: &[Value],
     span: Span,
 ) -> Res<&'a mut Value> {
+    walk_place_mut_by(
+        cur,
+        steps,
+        regs_i,
+        keys,
+        span,
+        &mut crate::value::keys::tree_only(span),
+    )
+}
+
+/// [`walk_place_mut`], searching map entries with `less`.
+pub(super) fn walk_place_mut_by<'a>(
+    mut cur: &'a mut Value,
+    steps: &[PlaceStep],
+    regs_i: &[i64],
+    keys: &[Value],
+    span: Span,
+    cmp: &mut crate::value::keys::Less<'_>,
+) -> Res<&'a mut Value> {
     for &step in steps {
         match step {
             PlaceStep::Key(n) => match cur {
-                Value::Map(entries) => match Rc::make_mut(entries)
-                    .get_mut(&keys[n as usize], &mut crate::value::keys::tree_only(span))?
-                {
-                    Some(value) => cur = value,
-                    None => {
-                        return trap(span, cpl_diag::msgs::interp::THIS_KEY_NOT_IN_MAP.at(&[]));
+                Value::Map(entries) => {
+                    match Rc::make_mut(entries).get_mut(&keys[n as usize], cmp)? {
+                        Some(value) => cur = value,
+                        None => {
+                            return trap(span, cpl_diag::msgs::interp::THIS_KEY_NOT_IN_MAP.at(&[]));
+                        }
                     }
-                },
+                }
                 _ => return bug(span, "expected map"),
             },
             PlaceStep::Some => cur = crate::assign::inside_mut(cur, span)?,

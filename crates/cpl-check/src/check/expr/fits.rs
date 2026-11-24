@@ -232,6 +232,35 @@ impl<'a> Checker<'a> {
         // `none` fills whatever is declared, and code that already has an
         // error is not reported again.
         let got = &self.read_narrowed(got, want, at);
+        // R04.4.24: cells never narrow unchecked; a literal, comprehension or
+        // fresh array checks each.
+        let fresh = matches!(at.kind, ExprKind::List(_) | ExprKind::Comprehension { .. })
+            || matches!(got, Ty::Array { .. }) && !crate::check::call::is_place(at);
+        // `List.filled(n, x)`'s cells are `x`, so `x`'s facts prove them.
+        let filled = match &at.kind {
+            ExprKind::Call { callee, args, .. } => self.list_fill(callee, args).map(|x| {
+                let lit = Self::literal(&x.value);
+                Ty::list(match lit {
+                    Some(n) => Ty::Range {
+                        lo: Some(n),
+                        hi: Some(n),
+                        text: String::new(),
+                    },
+                    None => self.quietly(|c| c.infer(&x.value)),
+                })
+            }),
+            _ => None,
+        };
+        if !fresh && narrows_cells(filled.as_ref().unwrap_or(got), want, false) {
+            if let Some(text) = message(self, got, want) {
+                let help = format!(
+                    "check each element into the range: `[x for x in {}]`",
+                    self.quote(at.span)
+                );
+                self.mismatch_with(at.span, text, help);
+            }
+            return false;
+        }
         // §124: `j..=i` over cuts never converts to `Range<D>`.
         if let ExprKind::Range {
             hi: Some(hi),
@@ -308,9 +337,8 @@ impl<'a> Checker<'a> {
                     let elem_ok = args.first().is_none_or(|g| self.fits(g, elem));
                     match &index[0] {
                         Ty::Named { name: ename, .. } => {
-                            if let Some(Def::Enum { variants, .. }) =
-                                self.type_def(ename).as_deref().cloned()
-                            {
+                            let found = self.type_def(ename);
+                            if let Some(Def::Enum { variants, .. }) = found.as_deref() {
                                 if variants.iter().all(|(_, fs)| fs.is_empty()) {
                                     if items.len() != variants.len() {
                                         self.report(
@@ -438,6 +466,27 @@ impl<'a> Checker<'a> {
             format!("a tuple is not a `{name}`: build one, `{built}`"),
             Some(fix),
         ))
+    }
+}
+
+/// Does `got` hold, in some cell, an integer its range type `want` can't prove
+/// it holds? Converting would check every cell, a hidden O(n) (R04.4.24).
+pub(crate) fn narrows_cells(got: &Ty, want: &Ty, inside: bool) -> bool {
+    match (got, want) {
+        (_, Ty::Range { lo, hi, text }) if inside && got.is_int() => !matches!(
+            got,
+            Ty::Range { lo: a, hi: b, text: t } if t == text
+                || a.zip(*b).zip(lo.zip(*hi)).is_some_and(|((a, b), (c, d))| a >= c && b <= d)
+        ),
+        (Ty::Array { elem: g, .. }, Ty::Array { elem: w, .. }) => narrows_cells(g, w, true),
+        (Ty::Named { name: a, args: g }, Ty::Named { name: b, args: w }) => {
+            match (&g[..], &w[..]) {
+                ([g], [w]) if a == "List" && b == "List" => narrows_cells(g, w, true),
+                _ => false,
+            }
+        }
+        (Ty::Optional(g), Ty::Optional(w)) => narrows_cells(g, w, inside),
+        _ => false,
     }
 }
 

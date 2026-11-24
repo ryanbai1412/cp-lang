@@ -170,6 +170,31 @@ impl Checker<'_> {
         }
     }
 
+    /// The trait in scope that declares member `name`, where `owner` does not
+    /// implement it: `.len` of a filtered view is `Sized`'s.
+    fn unmet_member_trait(&mut self, owner: &str, name: &str) -> Option<String> {
+        // A type with no trait impls takes no trait's members (R08.1.7).
+        if !self.env.impls(owner).iter().any(|(t, _)| t.is_some()) {
+            return None;
+        }
+        let prelude = crate::prelude::names().iter().map(|(_, n)| n.text.clone());
+        let names: Vec<String> = self.env.names().into_iter().chain(prelude).collect();
+        for trait_name in names {
+            let Some(Def::Trait {
+                methods,
+                alias: false,
+                ..
+            }) = self.type_def(&trait_name).as_deref().cloned()
+            else {
+                continue;
+            };
+            if methods.iter().any(|m| m.name == name) && !self.has_impl(owner, &trait_name) {
+                return Some(trait_name);
+            }
+        }
+        None
+    }
+
     /// E0203 for `name` on a value with these fields and methods: the closest
     /// member, or `len == 0` for an `is_empty` the type spells with `len`.
     pub(super) fn unknown_member(
@@ -183,6 +208,16 @@ impl Checker<'_> {
             Ty::Named { name, .. } | Ty::TypeName(name) => name.clone(),
             _ => String::new(),
         };
+        if matches!(base_ty, Ty::Named { .. }) {
+            if let Some(trait_name) = self.unmet_member_trait(&owner, &name.text) {
+                self.report(
+                    name.span,
+                    msgs::check::MISSING_IMPL_MEMBER_REQUIRES_WHICH,
+                    &[&name.text, &trait_name, base_ty],
+                );
+                return;
+            }
+        }
         let public =
             |c: &mut Self, m: &String| owner.is_empty() || !c.env.is_private_field(&owner, m);
         let field_names: Vec<String> = field_names
@@ -304,19 +339,21 @@ impl Checker<'_> {
     /// The public methods a value of struct `owner` calls: `self` methods
     /// and getters, not constructors.
     fn public_receivers(&mut self, owner: &str) -> Option<Vec<String>> {
+        let found = self.type_def(owner);
         let Some(Def::Struct {
             receivers,
             mutators,
             getters,
             ..
-        }) = self.type_def(owner).as_deref().cloned()
+        }) = found.as_deref()
         else {
             return None;
         };
-        let names = receivers.into_iter().chain(mutators).chain(getters);
+        let names = receivers.iter().chain(mutators).chain(getters);
         Some(
             names
                 .filter(|m| !self.env.is_private_field(owner, m))
+                .cloned()
                 .collect(),
         )
     }

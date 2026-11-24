@@ -967,82 +967,6 @@ print(merged(0).len, rows)
 }
 
 #[test]
-fn a_sorted_temporary_is_freed_right_after_its_last_read() {
-    let out = cpp(concat!(
-        "let n: 2..=1_000_000 = read()\n",
-        "let ups = [(gain: i * 7919 % 1_000_003, c: i) for i in 0..n]\n",
-        "let taken = ups.sorted(by: u => desc(u.gain)).take(n / 2).collect()\n",
-        "var cells: List<Int> = List.filled(4 * n, 0)\n",
-        "for i in 0..4 * n: cells[i] = taken[i % (n / 2)].gain + i\n",
-        "print(cells[4 * n - 1] + cells[0])\n",
-    ));
-    let take = out.find("_take_").expect("the take call");
-    let freed = out[take..]
-        .find("{ auto cpl_freed = std::move(t")
-        .expect("the free");
-    let filled = out[take..].find("cells = ").expect("the fill");
-    assert!(
-        freed < filled,
-        "the sorted list is freed before cells is built: {out}"
-    );
-}
-
-#[test]
-fn a_list_a_lent_let_points_into_is_not_freed_under_it() {
-    let out = cpp(concat!(
-        "fn first(xs: List<Int>) -> Int = xs[0]\n",
-        "let a = [4, read<Int>()]\n",
-        "let rows = [[7, 8], [9]]\n",
-        "let r = rows[1]\n",
-        "print(first(a), first(r))\n",
-    ));
-    assert!(!out.contains("std::move(rows); }"), "{out}");
-}
-
-#[test]
-fn a_list_a_closure_reads_later_is_not_freed_before_that_read() {
-    let out = cpp(concat!(
-        "let n: 1..=100 = read()\n",
-        "let xs = [i * i for i in 0..n]\n",
-        "let total = xs.sum()\n",
-        "let at = (i: Int) => xs[i % n]\n",
-        "var acc = 0\n",
-        "for i in 0..n: acc += at(i)\n",
-        "print(total, acc)\n",
-    ));
-    assert!(!out.contains("std::move(xs); }"), "{out}");
-}
-
-#[test]
-fn a_fn_frees_its_own_list_after_its_last_read_and_keeps_a_lent_one() {
-    let out = cpp(concat!(
-        "fn spread(n: Int) -> Int:\n",
-        "    let xs: List<Int> = List.filled(n, 3)\n",
-        "    let s = xs.sum()\n",
-        "    var ys: List<Int> = List.filled(n, 0)\n",
-        "    for i in 0..n: ys[i] = s + i\n",
-        "    ys.sum()\n",
-        "fn view(n: Int) -> Int:\n",
-        "    let xs = [i * 3 for i in 0..n]\n",
-        "    let head = xs.take(2)\n",
-        "    var ys: List<Int> = List.filled(n, 0)\n",
-        "    for i in 0..n: ys[i] = head.len + i\n",
-        "    ys.sum()\n",
-        "let n: 2..=100 = read()\n",
-        "print(spread(n), view(n))\n",
-    ));
-    let spread = &out[out.find("spread(ll n").expect("spread")..];
-    let spread = &spread[..spread.find("\n}").expect("its end")];
-    assert!(
-        spread.contains("{ auto cpl_freed = std::move(xs); }"),
-        "{out}"
-    );
-    let view = &out[out.find("view(ll n").expect("view")..];
-    let view = &view[..view.find("\n}").expect("its end")];
-    assert!(!view.contains("cpl_freed"), "{out}");
-}
-
-#[test]
 fn a_top_level_list_walked_once_for_the_last_time_is_emptied_after_that_loop() {
     let out = cpp(concat!(
         "let n: 1..=100 = read()\n",
@@ -1061,7 +985,55 @@ fn a_top_level_list_walked_once_for_the_last_time_is_emptied_after_that_loop() {
 }
 
 #[test]
-fn a_list_counted_in_each_cell_of_a_builder_is_kept() {
+fn a_top_level_list_last_named_by_a_call_or_a_loop_body_is_emptied_after_it() {
+    let out = cpp(concat!(
+        "let n: 1..=200_000 = read()\n",
+        "domain V = 0..n\n",
+        "let arcs = read<[n](V, V)>()\n",
+        "let w: [V]Int = read()\n",
+        "let g = Graph.directed(arcs)\n",
+        "var s = 0\n",
+        "for v in V:\n",
+        "    s += w[v] * g[v].len\n",
+        "for v in V:\n",
+        "    print(s + g[v].len)\n",
+    ));
+    let built = out.find("g = ").expect("the graph is built");
+    let arcs = out
+        .find("decltype(arcs)().swap(arcs);")
+        .unwrap_or_else(|| panic!("nothing names `arcs` after the graph:\n{out}"));
+    let w = out
+        .find("decltype(w)().swap(w);")
+        .unwrap_or_else(|| panic!("nothing names `w` after the first loop:\n{out}"));
+    assert!(built < arcs && arcs < w, "{out}");
+    assert!(!out.contains("swap(g)"), "{out}");
+}
+
+#[test]
+fn a_list_a_later_view_or_closure_holds_is_kept() {
+    for src in [
+        concat!(
+            "let n: 1..=100 = read()\n",
+            "let xs = read<[n]Int>()\n",
+            "let head = xs.take(2)\n",
+            "for i in 0..n:\n",
+            "    print(head.sum() + i)\n",
+        ),
+        concat!(
+            "let n: 1..=100 = read()\n",
+            "let xs = read<[n]Int>()\n",
+            "let at = (i: Int) => xs[i % n]\n",
+            "for i in 0..n:\n",
+            "    print(at(i))\n",
+        ),
+    ] {
+        let out = cpp(src);
+        assert!(!out.contains("swap(xs)"), "{out}");
+    }
+}
+
+#[test]
+fn a_list_counted_in_each_cell_of_a_builder_is_kept_until_the_builder_ends() {
     // `count` walks `xs` once per cell: emptying it after the first cell
     // would make every later count 0.
     let out = cpp(concat!(
@@ -1072,11 +1044,20 @@ fn a_list_counted_in_each_cell_of_a_builder_is_kept() {
         "for v in V:\n",
         "    print(deg[v])\n",
     ));
-    assert!(!out.contains("swap(xs)"), "{out}");
+    assert!(freed_after_its_last_read(&out, "xs"), "{out}");
+}
+
+/// Whether `name` is emptied at most once, and only where no later line reads it.
+fn freed_after_its_last_read(out: &str, name: &str) -> bool {
+    let freed = format!("decltype({name})().swap({name});");
+    match out.find(&freed) {
+        None => true,
+        Some(at) => !out[at + freed.len()..].contains(name),
+    }
 }
 
 #[test]
-fn a_list_walked_again_or_read_later_is_kept() {
+fn a_list_walked_again_or_read_later_is_kept_until_its_last_read() {
     for src in [
         concat!(
             "let n: 1..=100 = read()\n",
@@ -1096,7 +1077,7 @@ fn a_list_walked_again_or_read_later_is_kept() {
         ),
     ] {
         let out = cpp(src);
-        assert!(!out.contains(".swap(words)"), "{out}");
+        assert!(freed_after_its_last_read(&out, "words"), "{out}");
     }
 }
 
@@ -1110,6 +1091,40 @@ print(hi.cut(0), hi.cut(n - 1))
 "#);
     let main = &out[out.find("void solve()").unwrap()..];
     assert!(!main.contains("to_list("), "{main}");
+}
+
+#[test]
+fn a_list_a_later_view_still_reads_is_kept_after_its_last_named_use() {
+    let out = cpp(concat!(
+        "let n: 1..=200_000 = read()\n",
+        "let a: [n]Int = read()\n",
+        "let r = a.rev\n",
+        "print(List(a.rev.take(3)))\n",
+        "var s = 0\n",
+        "for x in r: s += x\n",
+        "print(s)\n",
+    ));
+    assert!(!out.contains("swap(a)"), "{out}");
+}
+
+#[test]
+fn a_list_a_later_struct_or_temporary_view_still_reads_is_kept() {
+    let rebased = cpp(concat!(
+        "let s: [200_000]Int = read()\n",
+        "let t = s[2..].rebase\n",
+        "var total = 0\n",
+        "for k in t.keys:\n",
+        "    total += t[k]\n",
+        "print(total)\n",
+    ));
+    assert!(!rebased.contains("swap(s)"), "{rebased}");
+    let piece = cpp(concat!(
+        "let a: [200_000]Int = read()\n",
+        "print(List(a.take(3).drop(1).map(x => x + 1)).len)\n",
+        "print(1)\n",
+    ));
+    let freed = piece.find("swap(a)").unwrap_or(piece.len());
+    assert!(piece[..freed].contains("put_int"), "{piece}");
 }
 
 #[test]

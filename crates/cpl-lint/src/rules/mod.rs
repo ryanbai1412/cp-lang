@@ -7,7 +7,6 @@ mod bounds;
 mod domain_first;
 mod empty_range;
 mod euclid;
-mod extreme;
 mod fields;
 mod floats;
 mod found_flag;
@@ -54,7 +53,6 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     let mut findings = Vec::new();
     findings.extend(bag::check(file));
     findings.extend(neg_heap::check(file));
-    findings.extend(extreme::check(file));
     findings.extend(letters::check(file));
     findings.extend(scopes::check(file));
     findings.extend(types::check(file));

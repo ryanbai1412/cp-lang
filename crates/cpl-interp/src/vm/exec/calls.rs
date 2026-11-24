@@ -610,17 +610,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     .collect();
                 let lent = chunk.lent_calls.get(usize::from(lends)).copied();
                 let index_regs = abv + argc as usize;
-                let caller = self.base;
-                sync_to_stack(
-                    &chunk.slot_map,
-                    regs_i,
-                    regs_v,
-                    &mut self.stack,
-                    caller,
-                    chunk.traced,
-                );
                 let outer = self.enter_fallback(chunk, cur_pc, regs_i, regs_v);
-                self.show_lent()?;
+                self.hand_to_user(chunk, regs_i, regs_v)?;
                 // Lent once the globals and lent values are back in place.
                 let resumed = match self.ckpt.waits() {
                     true => {
@@ -660,9 +651,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         },
                     },
                 };
-                self.hide_lent()?;
                 self.leave_fallback(outer);
-                sync_back(chunk, regs_i, regs_v, &mut self.stack, caller);
+                self.take_from_user(chunk, regs_i, regs_v)?;
                 let value = returned?;
                 if let Some(Flow::Return(v) | Flow::Give(v)) = self.fed_left.take() {
                     return Ok(Some(Stop::Exit(ExecExit::Return(v))));

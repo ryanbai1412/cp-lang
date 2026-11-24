@@ -397,9 +397,6 @@ impl<'a> Lowerer<'a> {
                 };
                 self.reduce(kind, exprs[0], span)
             }
-            "atan2" | "sin" | "cos" | "tan" | "asin" | "acos" | "exp" | "ln" | "hypot" => {
-                self.float_fn(name, args, span)
-            }
             // A program that flushes is read by someone who answers: it
             // reads as it goes.
             "flush" => match self.positional_any(name, args, 0, span) {
@@ -432,21 +429,7 @@ impl<'a> Lowerer<'a> {
                 self.do_expr(Some(&Ty::Unit), span, |lw, out| {
                     let pa = lw.settle_indexes(pa, out);
                     let pb = lw.settle_indexes(pb, out);
-                    let tmp = lw.temp(ty.clone());
-                    let held = Place {
-                        kind: PlaceKind::Local(tmp),
-                        ty: ty.clone(),
-                        span: lw.span(span),
-                    };
-                    let take = |lw: &mut Self, place: &Place| {
-                        lw.mk_mutate(Mutation::Take, place.clone(), Vec::new(), ty.clone(), span)
-                    };
-                    let from_a = take(lw, &pa);
-                    out.push_let(tmp, from_a);
-                    let from_b = take(lw, &pb);
-                    out.push(Stmt::Assign(pa, AssignOp::Set, from_b));
-                    let from_tmp = take(lw, &held);
-                    out.push(Stmt::Assign(pb, AssignOp::Set, from_tmp));
+                    lw.trade(pa, pb, span, out);
                     out.push_give(lw.mk(ExprKind::Unit, Ty::Unit, span));
                 })
             }
@@ -664,7 +647,7 @@ impl<'a> Lowerer<'a> {
                 self.convert(name, value, span)
             }
             _ => {
-                self.report(span, msgs::ir::UNRESOLVED_NAME_NO_FN_NAMED_HERE, &[&name]);
+                self.report_str(span, msgs::ir::UNRESOLVED_NAME_NO_FN_NAMED_HERE, name);
                 self.err_expr(span)
             }
         }
@@ -1445,6 +1428,41 @@ impl<'a> Lowerer<'a> {
         })
     }
 
+    /// `a` and `b` trade values in three moves through a temporary.
+    fn trade(&mut self, a: Place, b: Place, span: Span, out: &mut Vec<Stmt>) {
+        let tmp = self.temp(a.ty.clone());
+        let held = Place {
+            kind: PlaceKind::Local(tmp),
+            ty: a.ty.clone(),
+            span: self.span(span),
+        };
+        let from_a = self.move_out(&a, span);
+        out.push_let(tmp, from_a);
+        let from_b = self.move_out(&b, span);
+        out.push(Stmt::Assign(a, AssignOp::Set, from_b));
+        let from_tmp = self.move_out(&held, span);
+        out.push(Stmt::Assign(b, AssignOp::Set, from_tmp));
+    }
+
+    /// `place`'s value, moved out: taken when it owns storage, read when
+    /// it is plain data (scalars, structs of them), so taking a scalar is
+    /// never a shape an engine sees.
+    fn move_out(&self, place: &Place, span: Span) -> Expr {
+        let plain = |ty: &Ty| ty.is_scalar();
+        let copies = plain(&place.ty)
+            || matches!(&place.ty, Ty::Struct(sid) if self.structs[*sid].def.fields.iter().all(|(_, t)| plain(t)));
+        if copies {
+            return super::stmt::place_to_expr(place);
+        }
+        self.mk_mutate(
+            Mutation::Take,
+            place.clone(),
+            Vec::new(),
+            place.ty.clone(),
+            span,
+        )
+    }
+
     /// `swap(mut a[l..r], mut g.rows[q])`: two views own no cells to trade,
     /// so they trade the cells they see, one at a time.
     fn swap_views(&mut self, pa: Place, pb: Place, elem: Ty, span: Span) -> Expr {
@@ -1475,28 +1493,8 @@ impl<'a> Lowerer<'a> {
                 span: lw.span(span),
             };
             let (ca, cb) = (cell(lw, &pa), cell(lw, &pb));
-            let tmp = lw.temp(elem.clone());
-            let held = Place {
-                kind: PlaceKind::Local(tmp),
-                ty: elem.clone(),
-                span: lw.span(span),
-            };
-            let take = |lw: &mut Self, place: &Place| {
-                lw.mk_mutate(
-                    Mutation::Take,
-                    place.clone(),
-                    Vec::new(),
-                    elem.clone(),
-                    span,
-                )
-            };
             let mut body = Vec::new();
-            let from_a = take(lw, &ca);
-            body.push_let(tmp, from_a);
-            let from_b = take(lw, &cb);
-            body.push(Stmt::Assign(ca, AssignOp::Set, from_b));
-            let from_tmp = take(lw, &held);
-            body.push(Stmt::Assign(cb, AssignOp::Set, from_tmp));
+            lw.trade(ca, cb, span, &mut body);
             let iter = Iter::Range {
                 lo: lw.int_lit(0, span),
                 hi: len_a,

@@ -56,7 +56,8 @@ impl Checker<'_> {
     }
 
     /// R12.4.13: `s[k]` on a struct with an `at` method is `s.at(k)`; beside a `get`,
-    /// only as a place a `lends mut` `at` lends (R05.6.3), as in lowering.
+    /// a read is `s.get(k)` and only a place a `lends mut` `at` lends is `s.at(k)`
+    /// (R05.6.3), as in lowering.
     pub(super) fn index_by_at(&mut self, expr: &Expr, base: &Expr, index: &Expr) -> Option<Ty> {
         if matches!(index.kind, ExprKind::Range { .. }) {
             return None;
@@ -79,12 +80,15 @@ impl Checker<'_> {
         let lent = self.lent_places.contains(&expr.span)
             && (projections.iter()).any(|p| p.name == "at" && p.mutable);
         // A struct's own `get` is its `[]` when read, as in lowering (`Compressed`).
-        if !has("at") || has("get") && !lent {
-            return None;
-        }
+        let method = match (has("get"), has("at")) {
+            (true, true) if lent => "at",
+            (true, _) => "get",
+            (false, true) => "at",
+            (false, false) => return None,
+        };
         // A position given for a cut is its right cut (R07.1.6), as plain indexing reads it.
         let takes_cut = methods.iter().any(|(m, ty)| {
-            m == "at"
+            m == method
                 && matches!(ty, Ty::Fn { params, .. } if params.last().is_some_and(|p|
                     matches!(&p.ty, Ty::Named { name, .. } if name == "Cut")))
         });
@@ -95,7 +99,7 @@ impl Checker<'_> {
             kind: ExprKind::Field {
                 base: Box::new(base.clone()),
                 name: ast::Name {
-                    text: "at".to_string(),
+                    text: method.to_string(),
                     span: index.span,
                 },
             },
@@ -115,17 +119,17 @@ impl Checker<'_> {
         };
         let (hovers, resolved) = (self.hovers.len(), self.resolved.len());
         let ty = self.infer(&call);
-        // The `at` the call names is not written: the index in its place
+        // The method the call names is not written: the index in its place
         // keeps its own hover and refs.
         let mut i = 0;
         self.hovers.retain(|h| {
             i += 1;
-            i <= hovers || !(h.span == index.span && h.keyword == "field" && h.name == "at")
+            i <= hovers || !(h.span == index.span && h.keyword == "field" && h.name == method)
         });
         let mut i = 0;
         self.resolved.retain(|(span, r)| {
             i += 1;
-            i <= resolved || !(*span == index.span && r.name == "at" && r.owner.is_some())
+            i <= resolved || !(*span == index.span && r.name == method && r.owner.is_some())
         });
         Some(ty)
     }

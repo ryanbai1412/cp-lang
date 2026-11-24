@@ -30,7 +30,7 @@ An ordered multiset (bag) of `K` backed by an order-statistic B+tree over flat a
 - `fn contains(self, x: K) -> Bool` — \(O(\log n)\) expected; Whether at least one copy of `x` is in the bag.
 - `@get fn first(self) -> ?K` — \(O(1)\); The smallest element, or `None` when empty.
 - `@get fn last(self) -> ?K` — \(O(1)\); The largest element, or `None` when empty.
-- `fn pop_first(mut self) -> ?K` — \(O(\log n)\) expected; Remove and return one copy of the smallest element, or `None` when empty.
+- `fn pop_first(mut self) -> ?K`
 - `fn take_first(mut self, ok: K -> Bool) -> ?K` — \(O(\log n)\) expected; \(O(\log n)\).; traps: never; an `ok` that is not false-then-true gives an unspecified answer
 - `fn drain_range(mut self, r: Range<K>) -> yields K` — \(O(k \log n)\) expected for `k` removed elements; Removes the elements whose value lies in `r`, yielding them in order; each removal is a full \(O(\log n)\) `remove`.
 - `fn pop_last(mut self) -> ?K` — \(O(\log n)\) expected; Remove and return one copy of the largest element, or `None` when empty.
@@ -78,7 +78,7 @@ An ordered set of unique keys `K` with order statistics (`rank`, `nth`), \(O(1)\
 - `fn contains(self, x: K) -> Bool` — \(O(\log n)\) expected; Whether `x` is in the set.
 - `@get fn first(self) -> ?K` — \(O(1)\); Smallest key in the set, or `None`.
 - `@get fn last(self) -> ?K` — \(O(1)\); Largest key in the set, or `None`.
-- `fn pop_first(mut self) -> ?K` — \(O(\log n)\) expected; Remove and return the smallest key, or `None`.
+- `fn pop_first(mut self) -> ?K`
 - `fn pop_last(mut self) -> ?K` — \(O(\log n)\) expected; Remove and return the largest key, or `None`.
 - `fn rank(self, k: K) -> Int` — \(O(\log n)\) expected; Number of keys strictly less than `k`.
 - `fn nth(self, i: Int) -> ?K` — \(O(\log n)\) expected; 0-indexed `i`-th smallest key, or `None` if out of range.
@@ -202,7 +202,7 @@ Fields: `lo: Int`, `hi: Int`, `sh: Int`, `total: Int`, `cnt: List<Int>`, `blk: L
 
 The keys of a `SortedBag` or `SortedSet` inside a range, made by `range(r)`.
 
-Fields: `bag: SortedBag<K>`, `lo: ?K`, `lo_inc: Bool`, `hi: ?K`, `hi_inc: Bool`.
+Fields: `bag: SortedBag<K>`, `lo: ?K`, `hi: ?K`, `hi_inc: Bool`.
 
 - `@get fn first(self) -> ?K` — \(O(\log n)\) expected; The smallest key in the range.
 - `@get fn last(self) -> ?K` — \(O(\log n)\) expected; The largest key in the range.

@@ -17,7 +17,7 @@ use std.bag.{SortedMap, SortedSet}
 use std.seq.{collect, reversed, all, any}
 use std.hashmap.{Counter, push}
 use std.range.{Len, first_true, last_true}
-use std.math.{abs, sqrt}
+use std.math.{abs, atan2, cos, sin, sqrt}
 use std.rand.{shuffle}
 use std.strings.{min_rotation}
 

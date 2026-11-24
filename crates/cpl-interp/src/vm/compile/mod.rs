@@ -18,56 +18,59 @@ mod expr_opt_i;
 mod expr_v;
 mod fed_args;
 mod index_nd;
+mod jump;
 mod range_loop;
 mod seq_load;
 mod sort;
 mod stmt;
 mod traced_effects;
 
+use jump::{Jump, JumpOp};
+
 struct LoopTargets {
     id: LoopId,
-    breaks: Vec<usize>,
-    continues: Vec<usize>,
+    breaks: Vec<Jump>,
+    continues: Vec<Jump>,
     /// How a checkpoint reads this loop, when it can.
     resumable: Option<LoopReg>,
 }
 
-/// A `break` (`brk`) or `continue` jump at `pc` to loop `to` (`None`: the
+/// A `break` (`brk`) or `continue` `jump` to loop `to` (`None`: the
 /// innermost), which the loop it names claims when its body is compiled.
 struct LoopJump {
     to: Option<LoopId>,
     brk: bool,
-    pc: usize,
+    jump: Jump,
 }
 
 /// The jumps a loop body left: where its `break`s and `continue`s go.
 #[derive(Default)]
 struct LoopExits {
-    breaks: Vec<usize>,
-    continues: Vec<usize>,
+    breaks: Vec<Jump>,
+    continues: Vec<Jump>,
 }
 
 enum GiveTarget {
     I {
         dst: u16,
-        exits: Vec<usize>,
+        exits: Vec<Jump>,
     },
     OptI {
         dst_val: u16,
         dst_some: u16,
-        exits: Vec<usize>,
+        exits: Vec<Jump>,
     },
     V {
         dst: u16,
-        exits: Vec<usize>,
+        exits: Vec<Jump>,
     },
     Discard {
-        exits: Vec<usize>,
+        exits: Vec<Jump>,
     },
 }
 
 impl GiveTarget {
-    pub(super) fn exits_mut(&mut self) -> &mut Vec<usize> {
+    pub(super) fn exits_mut(&mut self) -> &mut Vec<Jump> {
         match self {
             GiveTarget::I { exits, .. }
             | GiveTarget::OptI { exits, .. }
@@ -131,7 +134,7 @@ pub(super) struct Compiler<'p, 'f> {
     pub(in crate::vm) tuple_ret: Option<(u8, [crate::value::SmallFieldKind; 5])>,
     pub(in crate::vm) allow_fed_loops: bool,
     inline_slots: Option<Vec<SlotLoc>>,
-    inline_ret: Option<(u16, Vec<usize>)>,
+    inline_ret: Option<(u16, Vec<Jump>)>,
     /// The first of the `INLINE_V_REGS` local registers an inlined body's
     /// boxed locals use.
     inline_v: u16,
@@ -754,28 +757,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
         self.ops.push(op);
         self.spans.push(span);
         pc
-    }
-
-    pub(super) fn patch(&mut self, pc: usize, target: u32) {
-        match &mut self.ops[pc] {
-            Op::Jmp { target: t }
-            | Op::JmpEscape { target: t, .. }
-            | Op::JmpIfZero { target: t, .. }
-            | Op::JmpIfNonZero { target: t, .. }
-            | Op::JmpLtI { target: t, .. }
-            | Op::JmpLeI { target: t, .. }
-            | Op::JmpGtI { target: t, .. }
-            | Op::JmpGeI { target: t, .. }
-            | Op::JmpEqI { target: t, .. }
-            | Op::JmpNeI { target: t, .. }
-            | Op::ForInc { target: t, .. }
-            | Op::ForIncClosed { target: t, .. }
-            | Op::ForStepEnter { skip: t, .. }
-            | Op::ForStepNext { target: t, .. }
-            | Op::JmpEager { target: t }
-            | Op::ForDec { target: t, .. } => *t = target,
-            _ => crate::invariant::broken_invariant("patch is handed the pc of a jump it emitted"),
-        }
     }
 
     pub(super) fn emit_const_i(&mut self, dst: u16, val: i64, span: Span) {
@@ -1448,13 +1429,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let is_2d = idx1.is_some();
         let is_max = *cmp_op == CmpOp::Gt;
         let (r_val, r_some) = self.compile_expr_opt_i(rhs);
-        let j_skip = self.emit(
-            Op::JmpIfZero {
-                reg: r_some,
-                target: 0,
-            },
-            place.span,
-        );
+        let j_skip = self.emit_jump(JumpOp::JmpIfZero { reg: r_some }, place.span);
         let r_i = self.compile_expr_i(idx0);
         let r_j = match idx1 {
             Some(e) => self.compile_expr_i(e),

@@ -9,7 +9,7 @@ m[2] = "b"
 m[1] = "a"
 m[3] = "c"
 m.reserve(1000)
-print(m.len, m[2])
+print(m.len, m[2]!)
 var e: SortedMap<Int, Int> = SortedMap()
 e.reserve(0)
 print(e.len)

@@ -424,3 +424,42 @@ fn a_counted_list_read_reaches_the_backend_as_its_loop() {
         "{out}"
     );
 }
+
+#[test]
+fn a_break_through_a_fused_filter_of_a_generator_has_its_label() {
+    let out = body(
+        "fn upto(n: Int) -> yields Int:\n    for i in 0..n: yield i\nvar seen = 0\nfor x in [y for y in upto(10) if y % 2 == 0]:\n    seen += 1\n    if x >= 4: break\nprint(seen)\n",
+    );
+    for jump in out.split("goto ").skip(1) {
+        let label = &jump[..jump.find(';').expect("a goto ends")];
+        assert!(
+            out.contains(&format!("{label}:;")),
+            "{label} is never placed:\n{out}"
+        );
+    }
+    assert!(
+        out.contains("goto "),
+        "the break stops the generator:\n{out}"
+    );
+}
+
+#[test]
+fn the_items_of_a_built_list_are_built_once() {
+    let solve = body("let a = [3, 1, 4, 1, 5]\nfor (k, e) in a.items.items: print(k, e.1)\n");
+    assert_eq!(
+        solve.matches("push_back").count(),
+        1,
+        "built once:\n{solve}"
+    );
+    assert!(
+        !solve.contains("[&]()"),
+        "held, not rebuilt per turn:\n{solve}"
+    );
+    assert!(
+        solve
+            .lines()
+            .filter(|l| l.ends_with(" = a;"))
+            .all(|l| l.contains("& ")),
+        "a is read in place:\n{solve}"
+    );
+}

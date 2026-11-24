@@ -700,10 +700,7 @@ impl<'a> Checker<'a> {
                 _ => None,
             };
             if let Some((at, elem)) = pair {
-                return Ty::Named {
-                    name: "List".into(),
-                    args: vec![Ty::Tuple(vec![at, elem])],
-                };
+                return Ty::list(Ty::Tuple(vec![at, elem]));
             }
         }
         if name.text == "inverse" {
@@ -724,10 +721,7 @@ impl<'a> Checker<'a> {
                     } else {
                         args[1].clone()
                     };
-                    return Ty::Named {
-                        name: "List".into(),
-                        args: vec![elem],
-                    };
+                    return Ty::list(elem);
                 }
                 // A range's keys are its own elements (R04.4.31).
                 if name.text == "keys" && matches!(map.as_str(), "List" | "Str" | "Range") {
@@ -755,10 +749,7 @@ impl<'a> Checker<'a> {
                     } else {
                         (**elem).clone()
                     };
-                    return Ty::Named {
-                        name: "List".into(),
-                        args: vec![item],
-                    };
+                    return Ty::list(item);
                 }
             }
         }
@@ -906,17 +897,11 @@ impl<'a> Checker<'a> {
                         self.planned(name.span, &cpl_syntax::planned::CUT_DOMAIN);
                         Ty::Error
                     }
-                    "ranges" => Ty::Named {
-                        name: "List".into(),
-                        args: vec![range_ty(Ty::Pos(domain.clone()))],
-                    },
-                    "pairs" => Ty::Named {
-                        name: "List".into(),
-                        args: vec![Ty::Tuple(vec![
-                            Ty::Pos(domain.clone()),
-                            Ty::Pos(domain.clone()),
-                        ])],
-                    },
+                    "ranges" => Ty::list(range_ty(Ty::Pos(domain.clone()))),
+                    "pairs" => Ty::list(Ty::Tuple(vec![
+                        Ty::Pos(domain.clone()),
+                        Ty::Pos(domain.clone()),
+                    ])),
                     "after" | "before" => Ty::Fn {
                         params: vec![crate::ty::Param {
                             name: "pos".into(),

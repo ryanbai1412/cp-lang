@@ -6,4 +6,4 @@ domain K = 0..2
 let w: [V]Int = [3, 1, 4, 1]
 fn step(v: V, k: K) -> List<(to: (V, K), w: Int)> = [(to: (v.next ?? v, k), w: w[v]), (to: (v, k.next ?? k), w: 0)]
 let d = dijkstra(from: [((V(0), K(0)), 0)], (v, k) => step(v, k))
-print(d[(V(3), K(1))], d[(V(2), K(0))])
+print(d[(V(3), K(1))]!, d[(V(2), K(0))]!)

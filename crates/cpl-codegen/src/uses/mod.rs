@@ -1266,7 +1266,7 @@ fn once_lets<'s>(stmt: &'s Stmt, out: &mut Vec<&'s Stmt>) {
 /// that could point into it (a view, a reference). `callee` is the fn
 /// statement `k` calls and the statement of its body that reads `src`: what
 /// that body runs before it reads it there, and may hold no view into it.
-pub(crate) fn dies_in(
+fn dies_in(
     program: &Program,
     block: &Block,
     k: usize,
@@ -1419,7 +1419,7 @@ pub(crate) fn dying_global_lets(program: &Program) -> BTreeSet<*const Stmt> {
             for (j, inner) in program.fns[f].body.stmts.iter().enumerate() {
                 let mut lets = Vec::new();
                 if let Stmt::Let(_, Some(init)) = inner {
-                    if matches!(in_place(init).kind, ExprKind::Global(_)) {
+                    if matches!(moved_source(init).kind, ExprKind::Global(_)) {
                         lets.push(inner);
                     }
                 }
@@ -1430,8 +1430,8 @@ pub(crate) fn dying_global_lets(program: &Program) -> BTreeSet<*const Stmt> {
                 let Stmt::Let(_, Some(init)) = inner else {
                     continue;
                 };
-                let src =
-                    walk::path_root(in_place(init)).filter(|_| walk::is_simple(in_place(init)));
+                let from = moved_source(init);
+                let src = walk::path_root(from).filter(|_| walk::is_simple(from));
                 if crate::lend::holds_heap(program, &init.ty)
                     && !matches!(init.ty, Ty::Fn(..))
                     && src.is_some_and(|src| src.0 && dies_in(program, block, k, src, Some((f, j))))

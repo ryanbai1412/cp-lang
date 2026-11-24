@@ -947,7 +947,7 @@ pub(crate) fn closest_lint(name: &str) -> Option<&'static str> {
 use cpl_diag::edit_distance;
 
 pub use fix::{
-    apply_lint_fixes, apply_lint_fixes_where, checked_fixes, fix_checked_removed_syntax_in, fix_in,
+    apply_lint_fixes, apply_lint_fixes_where, fix_checked_removed_syntax_in, fix_in,
     fix_removed_syntax, fix_rounds,
 };
 #[cfg(test)]

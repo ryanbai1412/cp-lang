@@ -1,13 +1,13 @@
-//! Freeing a list once the run has read it for the last time, so the
+//! Freeing a list of `main` once a loop has read it for the last time, so the
 //! memory it held is free for what the rest of the run builds.
 
 use std::collections::BTreeSet;
 
-use cpl_ir::{Block, Builtin, Expr, ExprKind, Iter, Stmt, Ty};
+use cpl_ir::{Block, Expr, ExprKind, Iter, PlaceKind, Stmt, Ty};
 
 use crate::emit::Emitter;
 use crate::names::global_ident;
-use crate::uses::walked::{read_last, walked_last};
+use crate::uses::walked::{closure_names, names_after, used_last, walked_last};
 
 impl Emitter<'_> {
     /// The lists `main` holds as its own locals that statement `k` walks
@@ -39,60 +39,57 @@ impl Emitter<'_> {
             && self.ty_fixed_len(&self.program.globals[g].ty).is_none()
     }
 
-    /// After statement `k` of `block`, frees each list or string it read for
-    /// the last time ([`read_last`]) that the C++ owns, unless what the
-    /// statement keeps could point into it: `let t = ups.sorted(by: f)`
-    /// then `taken = t.take(k).collect()` frees `t` before the rest runs.
-    pub(crate) fn release_read(&mut self, block: &Block, k: usize, out: &mut String) {
-        if self.closure_id.is_some() || self.in_setup {
-            return;
+    /// The lists `main` holds as its own locals that statement `k` names for
+    /// the last time, in a call's argument or a loop's body, say, other than
+    /// the walks [`Emitter::released_at`] frees: each is emptied right after
+    /// the statement. Nothing still live may point into them: no later
+    /// statement names a variable that may borrow ([`Ty::may_borrow`]),
+    /// and no closure names them; a view dropped inside the statement is gone.
+    pub(crate) fn dead_after(&self, block: &Block, k: usize) -> BTreeSet<usize> {
+        if self.fn_id.is_some()
+            || self.closure_id.is_some()
+            || self.in_setup
+            || !std::ptr::eq(block, &self.program.main)
+        {
+            return BTreeSet::new();
         }
-        // What the statement keeps must be a value of its own: a place it
-        // names (`let r = rows[1]`) or what a lending fn gives may point
-        // into what it read.
-        let kept = match &block.stmts[k] {
-            Stmt::Let(_, Some(e)) | Stmt::Assign(_, _, e) => Some(e),
-            _ => None,
-        };
-        let fresh = |e: &Expr| {
-            e.ty.is_scalar()
-                || (matches!(e.ty, Ty::List(_) | Ty::Str)
-                    && !e.ty.holds_view()
-                    && match &e.kind {
-                        ExprKind::Call(f, _) => !self.lent_roots.contains_key(f),
-                        ExprKind::Builtin(b, _) => {
-                            !matches!(b, Builtin::ArrayToList | Builtin::ListToArray)
-                        }
-                        _ => false,
-                    })
-        };
-        if kept.is_some_and(|e| !fresh(e)) {
-            return;
+        let lends = names_after(block, k, &|ty| {
+            ty.may_borrow(self.program)
+                || matches!(ty, &Ty::Struct(s) if self.lent_fields.fields.range((s, 0)..=(s, usize::MAX)).next().is_some())
+        });
+        if lends {
+            return BTreeSet::new();
         }
-        let main = std::ptr::eq(block, &self.program.main);
-        for (global, id) in read_last(self.program, block, k) {
-            let (name, ty) = match global {
-                true if main
-                    && self.main_only.contains(&id)
-                    && !self.released.contains(&id)
-                    && !self.lent_fields.held_globals.contains(&id)
-                    && matches!(self.program.globals[id].ty, Ty::List(_) | Ty::Str)
-                    && self.owns_heap_storage(id) =>
-                {
-                    (global_ident(self.program, id), &self.program.globals[id].ty)
-                }
-                false
-                    if !self.ref_bound.contains(&id)
-                        && !self.hoisted.contains(&id)
-                        && !self.reused.contains(&id)
-                        && matches!(self.locals()[id].ty, Ty::List(_) | Ty::Str) =>
-                {
-                    (self.names[id].clone(), &self.locals()[id].ty)
-                }
-                _ => continue,
-            };
-            let freed = self.move_of(ty, &name);
-            self.line(out, &format!("{{ auto cpl_freed = {freed}; }}"));
+        let walked = walked_last(block, k);
+        used_last(block, k)
+            .into_iter()
+            .filter(|g| {
+                !walked.contains(g)
+                    && self.main_only.contains(g)
+                    && !self.lent_fields.held_globals.contains(g)
+                    && !self.lent_main.contains(g)
+                    && !self.lent_main_roots(*g)
+                    && !closure_names(self.program, *g)
+                    && matches!(self.program.globals[*g].ty, Ty::List(_) | Ty::Array { .. })
+                    && self.owns_heap_storage(*g)
+            })
+            .collect()
+    }
+
+    /// Whether a `main` global kept as a view ([`Emitter::lends_main_let`]) points into `g`.
+    fn lent_main_roots(&self, g: usize) -> bool {
+        self.program.main.stmts.iter().any(|s| {
+            matches!(s, Stmt::Assign(p, _, init)
+                if matches!(p.kind, PlaceKind::Global(id) if self.lent_main.contains(&id))
+                    && crate::stmt::place_root(init).is_none_or(|(global, root)| !global || root == g))
+        })
+    }
+
+    /// After statement `k` of `main`: empty the lists [`Emitter::dead_after`] found.
+    pub(crate) fn release_dead(&self, dead: &BTreeSet<usize>, out: &mut String) {
+        for &g in dead {
+            let name = global_ident(self.program, g);
+            self.line(out, &format!("decltype({name})().swap({name});"));
         }
     }
 

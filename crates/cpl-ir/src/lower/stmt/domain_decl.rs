@@ -177,19 +177,11 @@ impl<'a> Lowerer<'a> {
                         let lo = self.mk(ExprKind::Int(0), Ty::Int, def.span);
                         out.push(Stmt::DefDomain { id, lo, len });
                     } else {
-                        self.unsupported(
-                            def.span,
-                            "a domain expression that does not produce a range, count, or index space",
-                        );
+                        self.not_a_domain_def(def.span, &Ty::Struct(sid));
                     }
                 }
                 Ty::Error => {}
-                _ => {
-                    self.unsupported(
-                        def.span,
-                        "a domain expression that does not produce a range, count, or index space",
-                    );
-                }
+                other => self.not_a_domain_def(def.span, other),
             }
             return;
         };
@@ -279,5 +271,13 @@ impl<'a> Lowerer<'a> {
         }
         let new_ty = remap_domain_ty(&expr.ty, from, to);
         Expr { ty: new_ty, ..expr }
+    }
+
+    /// `domain D = 2.5`: a domain is a count, a range, a sequence's
+    /// positions or another domain.
+    fn not_a_domain_def(&mut self, span: Span, ty: &Ty) {
+        let shown = self.show(ty);
+        self.report_str(span, cpl_diag::msgs::ir::TYPE_MISMATCH_A_DOMAIN_IS, &shown);
+        self.help("count its positions: `domain D = n` or `domain D = 0..n`");
     }
 }

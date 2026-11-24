@@ -72,7 +72,7 @@ for i in R.rev:
         cost.apply(.., (set: Some(x + SWITCH_COST), add: 0))
     cost.set(s, x)
 
-var out: List<Int> = []
+var out: List<0..n> = []
 esc = Sym(0)
 for i in R:
     let s = runs[i.ord].sym

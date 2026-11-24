@@ -566,7 +566,12 @@ impl Real for F64
 /// cost: \(O(1)\)
 /// traps: when `x < 0`
 /// example: `sqrt(16) == 4.0`
-@get pub fn sqrt<N: Real>(self: N) -> F64 = @intrinsic("sqrt")
+@get pub fn sqrt<N: Real>(self: N) -> F64:
+    let f = F64(self)
+    assert not (f < 0.0), "sqrt of a negative number"
+    sqrt_of(f)
+
+fn sqrt_of(x: F64) -> F64 = @intrinsic("sqrt")
 
 /// `x` rounded down to an `Int`; traps outside `Int`.
 ///
@@ -591,6 +596,78 @@ impl Real for F64
 /// cost: \(O(1)\)
 /// example: `(-2.5).trunc == -2`
 @get pub fn trunc(self: F64) -> Int = @intrinsic("trunc")
+
+/// The sine of `x` radians.
+///
+/// cost: \(O(1)\)
+/// example: `sin(0.0) == 0.0`
+pub fn sin<N: Real>(x: N) -> F64 = @intrinsic("sin")
+
+/// The cosine of `x` radians.
+///
+/// cost: \(O(1)\)
+/// example: `cos(0.0) == 1.0`
+pub fn cos<N: Real>(x: N) -> F64 = @intrinsic("cos")
+
+/// The tangent of `x` radians.
+///
+/// cost: \(O(1)\)
+/// example: `tan(0.0) == 0.0`
+pub fn tan<N: Real>(x: N) -> F64 = @intrinsic("tan")
+
+/// The angle in `-pi/2..=pi/2` radians whose sine is `x`.
+///
+/// cost: \(O(1)\)
+/// traps: when `x` is outside `-1..=1`
+/// example: `asin(0.0) == 0.0`
+pub fn asin<N: Real>(x: N) -> F64:
+    let f = F64(x)
+    assert abs(f) <= 1.0, "asin outside -1..=1"
+    asin_of(f)
+
+fn asin_of(x: F64) -> F64 = @intrinsic("asin")
+
+/// The angle in `0..=pi` radians whose cosine is `x`.
+///
+/// cost: \(O(1)\)
+/// traps: when `x` is outside `-1..=1`
+/// example: `acos(1.0) == 0.0`
+pub fn acos<N: Real>(x: N) -> F64:
+    let f = F64(x)
+    assert abs(f) <= 1.0, "acos outside -1..=1"
+    acos_of(f)
+
+fn acos_of(x: F64) -> F64 = @intrinsic("acos")
+
+/// The angle in `-pi..=pi` radians of the point `(x, y)`; `y` comes first.
+///
+/// cost: \(O(1)\)
+/// example: `atan2(0.0, 1.0) == 0.0`
+pub fn atan2<A: Real, B: Real>(y: A, x: B) -> F64 = @intrinsic("atan2")
+
+/// The length of `(x, y)`, with no overflow in the squares.
+///
+/// cost: \(O(1)\)
+/// example: `hypot(3, 4) == 5.0`
+pub fn hypot<A: Real, B: Real>(x: A, y: B) -> F64 = @intrinsic("hypot")
+
+/// `e` to the power `x`.
+///
+/// cost: \(O(1)\)
+/// example: `exp(0.0) == 1.0`
+pub fn exp<N: Real>(x: N) -> F64 = @intrinsic("exp")
+
+/// The natural logarithm of `x`.
+///
+/// cost: \(O(1)\)
+/// traps: when `x < 0`
+/// example: `ln(1.0) == 0.0`
+pub fn ln<N: Real>(x: N) -> F64:
+    let f = F64(x)
+    assert not (f < 0.0), "ln of a negative number"
+    ln_of(f)
+
+fn ln_of(x: F64) -> F64 = @intrinsic("ln")
 
 /// The number of bits needed to write `x >= 0`: `bit_len(0) == 0`, `bit_len(5) == 3`.
 ///

@@ -27,6 +27,6 @@ let dist = fixed_cost_paths(
     moves: [Create(t) for t in T] + [Double(j) for j in 1..=3],
     cost: cost,
     step: step,
-    until: (R(0), Subset<T>.full),
+    until: x => x == (R(0), Subset<T>.full),
 )
 print(dist[(R(0), Subset<T>.full)]! - x.sum())

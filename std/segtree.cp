@@ -83,6 +83,7 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
     /// example: `SegTree<0..4, Int>(max, fill: 5).fold(1..3) == 5`
     /// example: `SegTree<0..4, Int>(+).all == 0`
     /// example: `var s = SegTree<Int, Int>(+, over: 0..1_000_000_000); s.set(999_999_999, 4); s.all == 4`
+    /// trap: `SegTree<Int, Int>(fill: 0, over: 0..10)`
     pub fn new<M, A: Acts<T, F>, O>(
         op: M = NoOp(),
         a: ?[D]T = None,
@@ -823,6 +824,14 @@ fn pushed_tags_keep_their_order():
     assert st.all == a.sum()
 
 @test
+fn an_assign_tree_folds_an_empty_range_to_the_identity():
+    domain V = 1..=10
+    var st = SegTree(min, [V] v => 0, act: assign)
+    st.apply(V.nth(0)..=V.nth(9), Some(3))
+    assert st.fold(..V.nth(0)) == Int.MAX and st.fold(V.nth(4)..V.nth(4)) == Int.MAX
+    assert st.fold(V.nth(2)..V.nth(5)) == 3
+
+@test
 fn right_while_and_left_while_binary_search():
     for n in [1, 2, 3, 5, 8, 13]:
         domain P = 0..n
@@ -1112,6 +1121,7 @@ pub struct SegTree2D<R, C, T>(m: Monoid<T>):
     /// order: cells keep the domains `R` and `C` of `a`
     /// traps: when both `a` and `fill` are given
     /// example: `SegTree2D<0..3, 0..3, Int>(+, fill: 1).all == 9`
+    /// trap: `domain R = 0..2; let g: [R, R]Int = 1; SegTree2D<R, R, Int>(+, a: g, fill: 1)`
     pub fn new<M>(op: M, a: ?[R, C]T = None, fill: ?T = None) -> SegTree2D<R, C, T>:
         let m = Monoid<T>.of(op)
         let (h, w) = (R.count, C.count)
@@ -1402,13 +1412,13 @@ pub struct DynamicOrderTree<D, T>:
     val: List<T> = []
     // `bit[j]` for `j >= 1` holds the values at positions `j - (j & -j)..j`; `bit[0]` holds
     // every value, the candidates `kth` searches.
-    bit: List<SortedBag<T>> = []
+    var bit: List<SortedBag<T>> = []
     // With `values:`, the sorted distinct values `vs`, and `at[p]`, a segment tree of `sz` leaves
     // over their ranks whose node `p` holds the positions whose value's rank is under it.
-    ranked: Bool = false
+    var ranked: Bool = false
     vs: List<T> = []
-    sz: Int = 1
-    at: List<SortedBag<Int>> = []
+    var sz: Int = 1
+    var at: List<SortedBag<Int>> = []
 
     fn rank_of(self, x: T, le: Bool) -> Int = (0..vs.len).first_true(
         i => if le: vs[i] > x else: vs[i] >= x
@@ -1474,14 +1484,18 @@ pub struct DynamicOrderTree<D, T>:
     /// example: `DynamicOrderTree([3, 1, 4]).count_lt(0..3, 4) == 2`
     /// example: `DynamicOrderTree([3, 1, 4], values: [1, 3, 4, 9]).kth(0..3, 2) == Some(4)`
     pub fn new(a: [D]T, values: ?List<T> = None) -> DynamicOrderTree<D, T>:
-        var t = DynamicOrderTree<D, T>(D.count, [a[i] for i in D], [])
+        let val = [a[i] for i in D]
         if let given = values:
-            t.ranked = true
+            var vs = List<T>()
             for x in given.sorted():
-                if t.vs.is_empty or t.vs.last! != x: t.vs.push(x)
-            while t.sz < t.vs.len: t.sz *= 2
-            t.at = [SortedBag<Int>.new() for _ in 0..2 * t.sz]
-        else: t.bit = [SortedBag<T>.new() for _ in 0..D.count + 1]
+                if vs.is_empty or vs.last! != x: vs.push(x)
+            var sz = 1
+            while sz < vs.len: sz *= 2
+            let at = [SortedBag<Int>.new() for _ in 0..2 * sz]
+            var t = DynamicOrderTree<D, T>(n: D.count, val:, ranked: true, vs:, sz:, at:)
+            for i in 0..D.count: t.bump(i, t.val[i], true)
+            return t
+        var t = DynamicOrderTree<D, T>(n: D.count, val:, bit: [SortedBag<T>.new() for _ in 0..D.count + 1])
         for i in 0..D.count: t.bump(i, t.val[i], true)
         t
 

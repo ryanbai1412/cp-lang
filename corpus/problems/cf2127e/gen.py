@@ -2,10 +2,10 @@
 import sys, random
 
 if sys.argv[1:] == ["--max"]:
-    # One test with n = 2e5: a deep, bushy tree, k = n / 2 colors with half the vertices lost,
+    # One test with n = 2e5: a deep, bushy tree, k = n colors with half the vertices lost,
     # weights near 1e9.
     rng = random.Random(2127)
-    n, k = 200_000, 100_000
+    n, k = 200_000, 200_000
     print(1)
     print(n, k)
     print(*[rng.randint(10**9 - 1000, 10**9) for _ in range(n)])

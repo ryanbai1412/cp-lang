@@ -336,11 +336,37 @@ fn a_bound_reaches_its_supers_methods_typed() {
 }
 
 #[test]
+fn a_read_through_a_struct_get_has_its_type() {
+    let src = "struct Node:\n    var n: Int\nstruct Pool:\n    _xs: List<Node>\n    pub fn at(mut self, i: Int) -> lends mut Node:\n        lend mut _xs[i]\n    pub fn get(self, i: Int) -> Int = _xs[i].n\nstruct Sparse<T>:\n    _xs: List<T>\n    pub fn get(self, i: Int) -> ?T = _xs.get(i)\nvar p = Pool([Node(5)])\np[0].n += 1\nlet a: Int = p[0] + 1\nlet s = Sparse([3])\nprint(a, p[0].abs, s[0] ?? -1)\n";
+    assert_eq!(silent_unknowns_of(src), (vec![], 0));
+    let printed = "struct Sparse<T>:\n    _xs: List<T>\n    pub fn get(self, i: Int) -> ?T = _xs.get(i)\nprint(Sparse([3])[0])\n";
+    assert_eq!(silent_unknowns_of(printed), (vec![], 1));
+}
+
+#[test]
 fn a_place_under_a_lends_mut_index_beside_a_get_is_typed() {
     let src = "struct C:\n    var n: Int\n    fn bump(mut self, by: Int):\n        n += by\nstruct Node:\n    var c: C\n    var kids: List<Int>\nstruct Pool:\n    _xs: List<Node>\n    pub fn at(mut self, i: Int) -> lends mut Node:\n        lend mut _xs[i]\n    pub fn get(self, i: Int) -> Int = _xs[i].c.n\nvar p = Pool([Node(C(1), [2])])\np[0].c.bump(4)\np[0].c.n = 2\np[0].kids[0] += 1\np[0].kids.push(3)\n";
     assert_eq!(silent_unknowns_of(src), (vec![], 0));
-    let read = format!("{src}let n: Int = p[0].abs()\n");
+    let read = format!("{src}let n: Int = p[0].abs\n");
     assert_eq!(silent_unknowns_of(&read).1, 0);
+}
+
+#[test]
+fn an_impl_fn_param_written_bare_takes_the_traits_type() {
+    let ops = "struct R(v: Int)\nimpl Add for R:\n    fn add(x, y) = R(x.v + y.v)\nimpl Mul<Int> for R:\n    fn mul(x, k) = R(x.v * k)\nimpl Neg for R:\n    fn neg(x) = R(-x.v)\nprint((R(1) + R(2)).v, (R(3) * 2).v, (-R(4)).v)\n";
+    assert_eq!(silent_unknowns_of(ops), (vec![], 0));
+    let declared = "trait Scale:\n    fn scale(self, k: Int) -> Self\n    fn both(a: Self, b: Self) -> Self\nstruct P(v: Int)\nimpl Scale for P:\n    fn scale(self, k) = P(self.v * k)\n    fn both(a, b) = P(a.v + b.v)\nprint(P(2).scale(3).v, P.both(P(1), P(2)).v)\n";
+    assert_eq!(silent_unknowns_of(declared), (vec![], 0));
+    let generic = "struct Pair<T>(a: T, b: T)\nimpl Add for Pair<T>:\n    fn add(x, y) = Pair(x.a, y.b)\nlet m = Pair(2, 3) + Pair(4, 5)\nprint(m.a, m.b)\n";
+    assert_eq!(silent_unknowns_of(generic), (vec![], 0));
+}
+
+#[test]
+fn a_lambda_in_a_generic_body_takes_the_bodys_own_type_params() {
+    let src = "struct Joined<F>(id: F, join: (F, F) -> F)\nfn keep_left<T>(id: T) -> Joined<T> = Joined(id, (a, b) => a)\nprint(keep_left(1).id)\n";
+    assert_eq!(silent_unknowns_of(src), (vec![], 0));
+    let bound = "struct S<T>(id: T, op: (T, T) -> T)\nfn mk<T: Add>(z: T) -> S<T> = S(z, (a, b) => b)\nprint(mk(1).id)\n";
+    assert_eq!(silent_unknowns_of(bound), (vec![], 0));
 }
 
 #[test]
@@ -440,5 +466,27 @@ fn method_fits_imports_a_files_methods_once_per_analysis() {
         &db.memo_calling("main.cp", &edited, &names)
     ));
     db.remove_file("main.cp");
-    assert!(db.callings.is_empty());
+    assert!(db.callings.is_none());
+}
+
+#[test]
+fn a_static_fn_binds_its_structs_type_params_from_the_arguments() {
+    let pair = "struct Pair<T>(a: T, b: T):\n    pub fn twin(x: T) -> Pair<T> = Pair(x, x)\n    @get pub fn both(self) -> yields T:\n        yield self.a\n        yield self.b\nlet p = Pair.twin(4)\nlet xs = p.both.collect()\nvar s = 0\nfor x in p.both: s += x\nprint(xs.len, xs[0] + 1, s, p.a + 1)\n";
+    assert_eq!(silent_unknowns_of(pair), (vec![], 0));
+    let tree = "let n = read<1..=10>()\ndomain V = 0..n\nvar up: [V]?V = None\nlet f = Rooted.try_from_parents(up) else: return\nlet bs = f.roots.collect()\nfor c in bs: print(c)\nfor d in f.roots: print(f.depth(d))\n";
+    assert_eq!(silent_unknowns_of(tree), (vec![], 0));
+}
+
+#[test]
+fn a_generic_ranges_ends_are_its_domains_positions() {
+    let src = "fn span<D: Domain>(r: Range<D>) -> Int:\n    if r.is_empty: return 0\n    let (lo, hi) = (r.first!.ord, r.last!.ord + 1)\n    hi - lo\ndomain W = 0..4\nprint(span(W(1)..W(3)))\n";
+    assert_eq!(silent_unknowns_of(src), (vec![], 0));
+}
+
+#[test]
+fn a_bare_bound_gives_the_fn_its_free_trait_arg() {
+    let src = "domain W = 0..4\n\
+        let xs = [1, 2, 3]\n\
+        print(yes(xs.contains(W.cuts.nth(1).ord)), W.cuts.nth(0).ord + 1)\n";
+    assert_eq!(silent_unknowns_of(src), (vec![], 0));
 }

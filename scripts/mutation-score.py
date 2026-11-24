@@ -142,7 +142,11 @@ def std_main(args) -> int:
     if not mutants:
         return 0
     runner = sm.Runner(str(args.bin / "cpl-conform"), str(args.bin / "cpl"))
-    sm.run_all(mutants, runner, int(args.jobs), out)
+    try:
+        sm.run_all(mutants, runner, int(args.jobs), out)
+    except sm.BaselineRed as red:
+        print(f"mutation-score: ERROR: {red}; fix it, or run fewer --jobs if it only timed out")
+        return 2
     return report(out, args.min)
 
 

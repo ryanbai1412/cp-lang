@@ -140,6 +140,17 @@ fn side(ty: &Ty, info: Option<&RangeInfo>) -> Result<JudgeTy, Uncrossable> {
             let items = items.iter().enumerate().map(|(i, t)| side(t, at(i)));
             Ok(JudgeTy::Tuple(items.collect::<Result<_, _>>()?))
         }
+        // `[m]T` over an `Int` is a `std::vector`, `[r, c]T` one of rows.
+        (Ty::Array { dims, elem }, info)
+            if matches!(dims[..], [Dim::Int] | [Dim::Int, Dim::Int]) =>
+        {
+            let inner = match info {
+                Some(RangeInfo::Elem(e)) => Some(&**e),
+                _ => None,
+            };
+            let cell = side(elem, inner)?;
+            Ok((0..dims.len()).fold(cell, |t, _| JudgeTy::List(Box::new(t))))
+        }
         (ty, _) => Err(Uncrossable::Type(ty.clone())),
     }
 }
@@ -435,6 +446,9 @@ impl<'a> Lowerer<'a> {
         else {
             return None;
         };
+        if let Some(proved) = self.checked_range(ty) {
+            return Some(proved);
+        }
         let (lo_min, _) = self.range_bound_limits(lo)?;
         let (_, hi_raw) = self.range_bound_limits(hi)?;
         let hi_max = if *inclusive {
@@ -566,6 +580,9 @@ impl<'a> Lowerer<'a> {
                     .as_ref()
                     .and_then(|e| self.bound_limits(e))
                     .map(|l| l.1);
+                let proved = self.checked_range(ty);
+                let lo_min = lo_min.or(proved.map(|p| p.0));
+                let hi_max = hi_max.or(proved.map(|p| p.1));
                 Some(RangeInfo::Scalar(RangeBounds {
                     lo: lo_expr,
                     hi: hi_expr,
@@ -701,42 +718,48 @@ impl<'a> Lowerer<'a> {
         }
         let decl = self.structs.get(id)?.decl?;
         let field = decl.fields.get(idx)?;
-        let m = self.structs[id].mod_id;
-        let off = self.structs[id].offset;
+        let s = &self.structs[id];
+        self.range_info_in(s.mod_id, s.offset, s.env.clone(), &field.ty)
+    }
+
+    /// `ty`'s range read in module `m` at `offset` under `env`, as its
+    /// declaration wrote it; none if it doesn't resolve there.
+    fn range_info_in(
+        &mut self,
+        m: ModId,
+        offset: u32,
+        env: GenEnv,
+        ty: &ast::Type,
+    ) -> Option<RangeInfo> {
         let saved_m = std::mem::replace(&mut self.cur_mod, m);
-        let saved_off = std::mem::replace(&mut self.offset, off);
-        let saved_env = std::mem::replace(&mut self.gen_env, self.structs[id].env.clone());
+        let saved_off = std::mem::replace(&mut self.offset, offset);
+        let saved_env = std::mem::replace(&mut self.gen_env, env);
         let saved_diags = self.diags.len();
-        let info = self.range_info_from_ast(&field.ty);
+        let info = self.range_info_from_ast(ty);
         let had_err = self.diags.len() > saved_diags;
         self.diags.truncate(saved_diags);
         self.gen_env = saved_env;
         self.cur_mod = saved_m;
         self.offset = saved_off;
-        if had_err {
-            None
-        } else {
-            info
-        }
+        info.filter(|_| !had_err)
     }
 
     /// The range of fn `id`'s param declared `ty`, read in `id`'s own
     /// module, when its ends are constants and so mean the same at the call.
-    /// The range a parameter's declared cells hold (`xs: List<-5..=5>`),
-    /// when their bounds are constant.
-    pub(super) fn const_param_cells(&mut self, id: FnId, ty: &ast::Type) -> Option<RangeInfo> {
-        let ast::TypeKind::Named { name, args } = &ty.kind else {
-            return None;
-        };
-        if name.text != "List" || args.len() != 1 {
-            return None;
+    pub(super) fn const_param_range(&mut self, id: FnId, ty: &ast::Type) -> Option<RangeInfo> {
+        let sig = &self.sigs[id];
+        let info = self.range_info_in(sig.mod_id, sig.offset, sig.env.clone(), ty);
+        fn fixed(info: &RangeInfo) -> bool {
+            match info {
+                RangeInfo::Scalar(b) => {
+                    (b.lo.is_none() || b.lo_const.is_some())
+                        && (b.hi.is_none() || b.hi_const.is_some())
+                }
+                RangeInfo::Elem(cells) => fixed(cells),
+                _ => false,
+            }
         }
-        match self.const_param_cells(id, &args[0]) {
-            Some(inner) => Some(RangeInfo::Elem(Box::new(inner))),
-            None => self
-                .const_param_range(id, &args[0])
-                .map(|b| RangeInfo::Elem(Box::new(RangeInfo::Scalar(b)))),
-        }
+        info.filter(fixed)
     }
 
     /// Checks each cell of a list literal against the range its destination
@@ -762,10 +785,7 @@ impl<'a> Lowerer<'a> {
                 let items = items
                     .into_iter()
                     .zip(cells)
-                    .map(|(item, cell)| match inner.as_ref() {
-                        RangeInfo::Scalar(b) => self.check_range(item, b, cell.span),
-                        nested => self.check_fresh_cells(item, nested, cell),
-                    })
+                    .map(|(item, cell)| self.check_cell(item, inner, cell))
                     .collect();
                 Expr {
                     kind: ExprKind::Tuple(items),
@@ -776,21 +796,37 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    pub(super) fn const_param_range(&mut self, id: FnId, ty: &ast::Type) -> Option<RangeBounds> {
-        let saved_m = std::mem::replace(&mut self.cur_mod, self.sigs[id].mod_id);
-        let saved_off = std::mem::replace(&mut self.offset, self.sigs[id].offset);
-        let saved_env = std::mem::replace(&mut self.gen_env, self.sigs[id].env.clone());
-        let saved_diags = self.diags.len();
-        let info = self.range_info_from_ast(ty);
-        let had_err = self.diags.len() > saved_diags;
-        self.diags.truncate(saved_diags);
-        self.gen_env = saved_env;
-        self.cur_mod = saved_m;
-        self.offset = saved_off;
-        let b = info.filter(|_| !had_err)?.scalar()?.clone();
-        let fixed =
-            (b.lo.is_none() || b.lo_const.is_some()) && (b.hi.is_none() || b.hi_const.is_some());
-        fixed.then_some(b)
+    /// `written`, lowered by `lower`, stored where cells hold `cells`: a list
+    /// literal or comprehension checks each value it stores (R04.4.24).
+    pub(super) fn store_cells(
+        &mut self,
+        written: &ast::Expr,
+        cells: Option<RangeInfo>,
+        lower: &mut dyn FnMut(&mut Self) -> Expr,
+    ) -> Expr {
+        self.next_cells = cells.clone().filter(|c| {
+            matches!(c, RangeInfo::Elem(_))
+                && matches!(written.kind, ast::ExprKind::Comprehension { .. })
+        });
+        let value = lower(self);
+        self.next_cells = None;
+        match cells {
+            Some(cells) => self.check_cell(value, &cells, written),
+            None => value,
+        }
+    }
+
+    /// `value`, written as `written`, checked into a cell that holds `info`.
+    pub(super) fn check_cell(
+        &mut self,
+        value: Expr,
+        info: &RangeInfo,
+        written: &ast::Expr,
+    ) -> Expr {
+        match info {
+            RangeInfo::Scalar(b) => self.check_range(value, b, written.span),
+            cells => self.check_fresh_cells(value, cells, written),
+        }
     }
 
     /// Records `RangeInfo` for every binding introduced by `pat`.
@@ -1149,7 +1185,9 @@ impl<'a> Lowerer<'a> {
                     thi.zip(ehi).map(|(a, b)| a.max(b)),
                 )
             }
-            ExprKind::Builtin(Builtin::Min, args) if args.len() == 2 => {
+            ExprKind::Builtin(Builtin::Min, args)
+                if args.len() == 2 && !matches!(e.ty, Ty::Opt(_)) =>
+            {
                 let (alo, ahi) = self.expr_const_bounds(&args[0]);
                 let (blo, bhi) = self.expr_const_bounds(&args[1]);
                 (
@@ -1161,7 +1199,9 @@ impl<'a> Lowerer<'a> {
                     },
                 )
             }
-            ExprKind::Builtin(Builtin::Max, args) if args.len() == 2 => {
+            ExprKind::Builtin(Builtin::Max, args)
+                if args.len() == 2 && !matches!(e.ty, Ty::Opt(_)) =>
+            {
                 let (alo, ahi) = self.expr_const_bounds(&args[0]);
                 let (blo, bhi) = self.expr_const_bounds(&args[1]);
                 (
@@ -1697,11 +1737,7 @@ impl<'a> Lowerer<'a> {
             Ty::Error => return self.err_expr(span),
             other => {
                 let shown = self.show(other);
-                self.report(
-                    span,
-                    cpl_diag::msgs::ir::BAD_OPERANDS_CAN_T_SLICE_A,
-                    &[&shown],
-                );
+                self.report_str(span, cpl_diag::msgs::ir::BAD_OPERANDS_CAN_T_SLICE_A, &shown);
                 return self.err_expr(span);
             }
         };

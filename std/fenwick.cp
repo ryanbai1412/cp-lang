@@ -305,7 +305,7 @@ pub struct DualFenwick<D, T: Add + Sub>:
         let (lo, hi) = r.ends
         if lo == hi: return
         self.add_at(lo + 1, x)
-        if hi < D.count: self.add_at(hi + 1, T.zero - x)
+        self.add_at(hi + 1, T.zero - x)
 
     /// The current value at position `i`: its initial value plus every `x` added over a range
     /// containing `i`.
@@ -368,10 +368,9 @@ pub struct RangeFenwick<D>:
     /// example: `var f = RangeFenwick([1, 2, 3]); f.add(1..3, 5); f.fold(2..3) == 8`
     pub fn add(mut self, r: Range<D>, x: Int):
         let lo = r.l.ord
-        let hi = r.r.ord
-        if lo >= hi: return
+        let hi = max(lo, r.r.ord)
         self.bump(lo, x)
-        if hi < D.count: self.bump(hi, -x)
+        self.bump(hi, -x)
 
     /// The sum of every position left of the cut `b`, adds included.
     ///
@@ -752,3 +751,36 @@ impl Show for SparseFenwick2D<T>:
             if not out.is_empty: out += ", "
             out += if f.built: "{x} {y}: {f.fold(x..x + 1, y..y + 1)}" else: "{x} {y}"
         out
+
+@test
+fn a_power_of_two_domain_builds_its_last_node():
+    assert Fenwick([1, 2, 3, 4]).all == 10
+    assert DualFenwick([1, 2, 3, 4]).get(3) == 4
+    assert XorFenwick([1, 2, 4, 8]).xor(0..4) == 15
+
+@test
+fn first_gt_walks_a_zero_block_and_stops_at_the_end():
+    assert Fenwick([0, 0, 1]).first_gt(0) == Some((0..3).r)
+    assert Fenwick([1, 1, 1, 1]).first_gt(4) == None
+
+@test
+fn empty_and_reversed_range_adds_change_nothing():
+    domain V = 0..5
+    var r = RangeFenwick<V>()
+    r.add(V.cuts.nth(3)..V.cuts.nth(1), 4)
+    r.add(V.cuts.nth(2)..V.cuts.nth(2), 4)
+    r.add(V.cuts.nth(5)..V.cuts.nth(5), 4)
+    assert r.fold(V.cuts.nth(0)..V.cuts.nth(5)) == 0
+    r.add(V.cuts.nth(4)..V.cuts.nth(5), 2)
+    assert r.fold(V.cuts.nth(0)..V.cuts.nth(5)) == 2
+    var d = DualFenwick<V, Int>()
+    d.add(V.cuts.nth(4)..V.cuts.nth(5), 3)
+    assert d.get(V(4)) == 3 and d.get(V(3)) == 0
+
+@test
+fn an_empty_sparse_fold_is_zero_even_over_infinities():
+    var f = SparseFenwick2D<F64>()
+    f.add_point(1, 1)
+    f.build()
+    f.add(1, 1, 1.0 / 0.0)
+    assert abs(f.fold(5..5, 3..10)) < 1e-9 and abs(f.fold(3..5, 3..3)) < 1e-9

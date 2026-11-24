@@ -7,8 +7,11 @@ use cpl_ir::{
 };
 
 impl<'p> Compiler<'p, '_> {
-    pub(super) fn mut_fn_args_alias_free(&self, fn_id: FnId, args: &'p [Arg]) -> bool {
+    /// Whether a call must lend its args: a fn value passed may reach a place
+    /// the call takes out, its `mut` args or a slot this frame holds lent.
+    pub(super) fn call_must_lend(&self, fn_id: FnId, args: &'p [Arg]) -> bool {
         let f = &self.program.fns[fn_id];
+        let has_mut = f.params.iter().any(|p| p.mutable);
         let (mut globals, mut locals) = (Vec::new(), Vec::new());
         for arg in args {
             if let Arg::Mut(place) = arg {
@@ -23,29 +26,37 @@ impl<'p> Compiler<'p, '_> {
             globals: &globals,
             seen: Vec::new(),
         };
-        for (i, arg) in args.iter().enumerate() {
-            if !matches!(f.locals[i].ty, Ty::Fn(..)) {
-                continue;
-            }
-            let Arg::Value(Expr {
-                kind: ExprKind::Closure(cid),
-                ..
-            }) = arg
-            else {
+        // A fn value may read a by-ref capture of a slot this frame holds
+        // lent: one made before the call, or a closure the call makes.
+        let reaches_held = !self.held.is_empty()
+            && (self.ref_all || self.ref_slots.iter().any(|s| self.held.contains(s)));
+        (args.iter().enumerate()).any(|(i, arg)| {
+            let ty = &f.locals[i].ty;
+            let Arg::Value(e) = arg else {
                 return false;
             };
-            let lends_capture = (self.program.closures[*cid].captures.iter()).any(|c| {
-                c.by_ref
-                    && match c.is_global {
-                        true => globals.contains(&(c.outer as GlobalId)),
-                        false => locals.contains(&c.outer),
-                    }
-            });
-            if lends_capture || reach.closure(*cid) {
-                return false;
-            }
-        }
-        true
+            let (cid, caps) = match e.kind {
+                ExprKind::Closure(cid) => (Some(cid), &self.program.closures[cid].captures[..]),
+                _ => (None, &[][..]),
+            };
+            let held = caps
+                .iter()
+                .any(|c| c.by_ref && !c.is_global && self.held.contains(&(c.outer as u16)));
+            ty.has_fn(self.program) && (reaches_held || held)
+                // A fn arg may reach a `mut` arg: the callee would call it
+                // while that arg is taken out.
+                || has_mut
+                    && matches!(ty, Ty::Fn(..))
+                    && cid.is_none_or(|cid| {
+                        caps.iter().any(|c| {
+                            c.by_ref
+                                && match c.is_global {
+                                    true => globals.contains(&(c.outer as GlobalId)),
+                                    false => locals.contains(&c.outer),
+                                }
+                        }) || reach.closure(cid)
+                    })
+        })
     }
 }
 

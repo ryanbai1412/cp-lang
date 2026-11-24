@@ -130,14 +130,12 @@ impl<'a> Checker<'a> {
         // The core fn wins over a fold of its name, a module's or the
         // file's own `fn max(self: ..)`, never over a file's `fn max(a, b)`
         // or `let max` (R11.2.3).
-        let fold = |def: &Def| {
-            matches!(def, Def::Fn { ty: Ty::Fn { params, .. }, .. }
-                if params.first().is_some_and(|p| p.name == "self"))
-        };
         let position = Self::position_walk(callee, args);
         let core = (Self::binary_min_max(callee, args) || generator || position)
             && (self.env.origin(name).is_some()
-                || self.free_global(name).is_some_and(|d| fold(&d)));
+                || self
+                    .free_global(name)
+                    .is_some_and(|d| super::method_form::takes_self(&d)));
         let shadowed = name != "zip" && !core;
         if self.local(name).is_some() || (self.free_global(name).is_some() && shadowed) {
             return None;
@@ -182,15 +180,9 @@ impl<'a> Checker<'a> {
                         elem => elem,
                     },
                 };
-                Some(Ty::Named {
-                    name: "List".into(),
-                    args: vec![elem],
-                })
+                Some(Ty::list(elem))
             }
-            ("List", [first, ..]) => Some(Ty::Named {
-                name: "List".into(),
-                args: vec![first.clone()],
-            }),
+            ("List", [first, ..]) => Some(Ty::list(first.clone())),
             ("laws_hold", [_, _]) => Some(Ty::Bool),
             ("read_line", _) => Some(Ty::Str),
             ("print", _) => {
@@ -299,6 +291,9 @@ impl<'a> Checker<'a> {
                     Some(first.clone())
                 } else if tys.iter().all(Ty::is_int) {
                     Some(Ty::Int)
+                } else if tys.contains(&Ty::Unknown) {
+                    // Two plain values are the core fn while a type is still open, never a fold.
+                    Some(Ty::Unknown)
                 } else {
                     None
                 }
@@ -424,11 +419,12 @@ impl<'a> Checker<'a> {
                 }
                 Ty::Named { name, args } => {
                     todo.extend(args);
+                    let found = self.type_def(name);
                     let Some(Def::Enum {
                         variants,
                         tagged: false,
                         ..
-                    }) = self.type_def(name).as_deref().cloned()
+                    }) = found.as_deref()
                     else {
                         continue;
                     };
@@ -560,20 +556,12 @@ impl<'a> Checker<'a> {
         })
     }
 
-    /// `base.name(..)` calls a `mut self` method of `base`'s own type.
-    pub(crate) fn own_mutator(&mut self, base: &Ty, name: &str) -> bool {
-        let Ty::Named { name: owner, .. } = base else {
-            return false;
-        };
-        self.members_of(owner)
-            .is_some_and(|m| m.mutators.iter().any(|n| n == name))
-    }
-
-    /// `base.name(args)` calls a built-in row that changes its receiver. A
-    /// field `base`'s type declares is what a call of that name calls, and
-    /// a receiver not yet typed calls no row.
-    pub(crate) fn row_mutator(&mut self, base: &Ty, name: &str, args: &[Arg]) -> bool {
-        !base.is_vague() && !self.declares_field(base, name) && mutating_call(name, args)
+    /// `base.name(args)` changes its receiver: a built-in row does, or a fn
+    /// that takes `mut self`, std's or a program's.
+    pub(crate) fn call_mutator(&mut self, base: &Ty, name: &str, args: &[Arg]) -> bool {
+        !base.is_vague()
+            && !self.declares_field(base, name)
+            && (mutating_call(name, args) || self.changes_self(base, name))
     }
 
     /// `base`'s type declares a field `name`: `base.name(..)` calls it.
@@ -590,31 +578,8 @@ impl<'a> Checker<'a> {
 
 /// Methods that change their receiver.
 const MUTATORS: &[&str] = &[
-    "push",
-    "pop",
-    "sort",
-    "reverse",
-    "rotate_left",
-    "rotate_right",
-    "scan_in_place",
-    "suffix_scan_in_place",
-    "nth_element",
-    "next_permutation",
-    "prev_permutation",
-    "shuffle",
-    "clear",
-    "insert",
-    "remove",
-    "take",
-    "swap",
-    "swap_idx",
-    "set",
-    "set_at",
-    "add",
-    "resize",
-    "truncate",
-    "reserve",
-    "fill",
+    "push", "pop", "clear", "insert", "remove", "take", "swap", "swap_idx", "set_at", "add",
+    "resize", "truncate", "reserve", "fill",
 ];
 /// `List` methods that change length and therefore cannot run on a fixed-length slice view.
 pub(super) const LENGTH_CHANGING_MUTATORS: &[&str] = &[

@@ -163,9 +163,10 @@ def test_argv(cpl: Path | str, file: str) -> list[str]:
 
 
 def test_cases(out: str, code: int) -> dict:
-    """{fn: pass|fail} from `cpl test` on a std file; {"*": error} when it did not compile."""
-    cases = {m.group(2): "pass" if m.group(1) == "ok" else "fail"
-             for m in re.finditer(r"^\s*(ok|FAIL)\s+\S*?::(\w+)", out, re.M)}
+    """{fn: pass|fail|timeout} from `cpl test` on a std file; {"*": error} when it did not
+    compile. A fn cut by the time limit timed out: it did not fail an assertion."""
+    cases = {m.group(2): "pass" if m.group(1) == "ok" else "timeout" if m.group(3) else "fail"
+             for m in re.finditer(r"^\s*(ok|FAIL)\s+\S*?::(\w+)(: still running after)?", out, re.M)}
     if not cases and code:
         return {"*": "error" if "error[E" in out else "fail"}
     return cases
@@ -184,16 +185,27 @@ def test_fn_lines(lines: list[str]) -> set[int]:
     return out
 
 
+class BaselineRed(Exception):
+    """A suite slice fails on unmutated std, so it cannot judge a mutant."""
+
+
 class Runner:
     """Runs one suite slice against a std directory and returns {case: status}."""
 
     def __init__(self, conform: str, cpl: str, timeout: float = 120):
         self.conform, self.cpl, self.timeout = conform, cpl, timeout
         self.baseline: dict[tuple, dict | None] = {}
+        self.base = STD
+        self.texts: list[tuple[Path, str, set[str]]] = []
+        self.types: dict[str, set[str]] = {}
+        self.has_tests: dict[str, bool] = {}
+        self.found: dict[tuple, list[Path]] = {}
 
     def slices(self, m: dict) -> list[tuple]:
         stem = Path(m["file"]).stem
-        out = [("test", m["file"])]
+        if m["file"] not in self.has_tests:
+            self.has_tests[m["file"]] = "@test" in (STD / m["file"]).read_text(encoding="utf-8")
+        out = [("test", m["file"])] if self.has_tests[m["file"]] else []
         out += [("docs", f"{m['file']}#{m['item']}")] if m["item"] else []
         if (ROOT / f"spec/conformance/std-{stem}").is_dir():
             out.append(("conformance", f"std-{stem}/"))
@@ -202,15 +214,18 @@ class Runner:
         return out
 
     def models(self, m: dict) -> list[Path]:
-        types = set(TYPE.findall((STD / m["file"]).read_text(encoding="utf-8")))
-        names = types | ({m["item"]} if m["item"] else set())
-        found = []
-        for p in sorted(MODELS.glob("*.cp")):
-            text = p.read_text(encoding="utf-8")
-            named = set(re.findall(r"^// (?:model|brute): (\w+)", text, re.M))
-            if named & names or (m["item"] and re.search(rf"\b{re.escape(m['item'])}\b", text)):
-                found.append(p)
-        return found
+        key = (m["file"], m["item"])
+        if key not in self.found:
+            if not self.texts:
+                for p in sorted(MODELS.glob("*.cp")):
+                    text = p.read_text(encoding="utf-8")
+                    self.texts.append((p, text, set(re.findall(r"^// (?:model|brute): (\w+)", text, re.M))))
+            if m["file"] not in self.types:
+                self.types[m["file"]] = set(TYPE.findall((STD / m["file"]).read_text(encoding="utf-8")))
+            names = self.types[m["file"]] | ({m["item"]} if m["item"] else set())
+            self.found[key] = [p for p, text, named in self.texts if named & names or (
+                m["item"] and re.search(rf"\b{re.escape(m['item'])}\b", text))]
+        return self.found[key]
 
     def run(self, sl: tuple, std: Path, limit: float) -> dict | None:
         """{case: status} of one slice; None when the run crashed; "timeout" when over `limit`."""
@@ -242,44 +257,58 @@ class Runner:
             out[f"{path.name}@{seed}"] = "pass" if ok else ("error" if "error[E" in r.stderr else "fail")
         return out
 
-    def clean(self, sl: tuple) -> dict | None:
+    def clean(self, sl: tuple) -> dict:
+        """The slice's cases on unmutated std. A spec case std does not meet yet judges
+        nothing; a red std @test, or a slice that timed out or crashed, stops the run:
+        it would score its mutants for a reason that is not the mutant."""
         if sl not in self.baseline:
-            self.baseline[sl] = self.run(sl, STD, self.timeout)
+            base = self.run(sl, self.base, self.timeout)
+            bad = {k: v for k, v in ({"*": "crash"} if base is None else base).items()
+                   if v in ("timeout", "crash") or sl[0] == "test" and v != "pass"}
+            if bad:
+                raise BaselineRed(f"{' '.join(sl)} is red on unmutated std: {bad}")
+            self.baseline[sl] = base
         return self.baseline[sl]
 
     def outcome(self, m: dict, std: Path) -> str:
         """CaughtMutant, MissedMutant, Unviable or Timeout for mutant `m` written into `std`."""
-        unviable = False
+        seen: set[str] = set()
         for sl in self.slices(m):
-            base = self.clean(sl)
-            if not base or base.get("*") == "timeout":
-                continue
-            passed = {k for k, v in base.items() if v == "pass"}
+            passed = {k for k, v in self.clean(sl).items() if v == "pass"}
             got = self.run(sl, std, self.timeout)
             if got is None:
                 return "CaughtMutant"
-            if got.get("*") == "timeout":
-                return "Timeout"
             whole = got.get("*", "missing")
-            broke = {k: got.get(k, whole) for k in passed if got.get(k) != "pass"}
-            if broke and all(v == "error" for v in broke.values()):
-                unviable = True
-            elif broke:
+            broke = set(got.get(k, whole) for k in passed if got.get(k) != "pass")
+            if broke - {"error", "timeout"}:
                 return "CaughtMutant"
-        return "Unviable" if unviable else "MissedMutant"
+            seen |= broke
+        return "Timeout" if "timeout" in seen else "Unviable" if seen else "MissedMutant"
+
+
+# `cpl test`'s 2 s judge limit is for one run on an idle machine: a std @test near it times out
+# under the run's parallel load. A copy's cp.toml widens it; the run's own timeout still ends a hang.
+TEST_CP_TOML = "[judge.generic]\ntime_ms = 20000\n"
+
+
+def copy_std(root: Path) -> Path:
+    """A scratch std/ under `root`, beside the cp.toml its @tests are timed by."""
+    std = root / "std"
+    shutil.rmtree(std, ignore_errors=True)
+    shutil.copytree(STD, std)
+    (root / "cp.toml").write_text(TEST_CP_TOML, encoding="utf-8")
+    return std
 
 
 def run_all(mutants: list[dict], runner: Runner, jobs: int, out: Path) -> dict:
     """Score every mutant; writes and returns cargo-mutants-shaped outcomes."""
     out.mkdir(parents=True, exist_ok=True)
+    runner.base = copy_std(out / "std-base")
     with ThreadPoolExecutor(max_workers=max(jobs, 1)) as pool:
         list(pool.map(runner.clean, dict.fromkeys(sl for m in mutants for sl in runner.slices(m))))
     free: queue.Queue[Path] = queue.Queue()
     for k in range(max(jobs, 1)):
-        std = out / f"std-{k}" / "std"
-        shutil.rmtree(std, ignore_errors=True)
-        shutil.copytree(STD, std)
-        free.put(std)
+        free.put(copy_std(out / f"std-{k}"))
 
     def one(m: dict) -> tuple[dict, str]:
         std = free.get()

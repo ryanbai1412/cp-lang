@@ -36,13 +36,14 @@ impl<'a> Lowerer<'a> {
         if !self.sigs[id].is_generator {
             return None;
         }
+        let live = until_last_use(rest, name);
         let steady = args.iter().all(|a| match &a.value.kind {
             ast::ExprKind::Int(_) | ast::ExprKind::Bool(_) | ast::ExprKind::Char(_) => true,
-            ast::ExprKind::Name(n) => n != name && (a.mutable || !Self::stmts_mutate_name(rest, n)),
+            ast::ExprKind::Name(n) => n != name && (a.mutable || !self.stmts_mutate_name(live, n)),
             ast::ExprKind::Mut(inner) => matches!(&inner.kind, ast::ExprKind::Name(n) if n != name),
             _ => false,
         });
-        if !steady || Self::stmts_mutate_name(rest, name) || captured(rest, name) {
+        if !steady || self.stmts_mutate_name(rest, name) || captured(rest, name) {
             return None;
         }
         Some((name.clone(), init))
@@ -501,12 +502,10 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
-        let val = self.expr_as(init, &want);
-        if let Some(RangeInfo::Scalar(bounds)) = RangeInfo::from_spec(&spec) {
-            return Some(self.check_range(val, &bounds, init.span));
-        }
-        match self.range_info_from_ast(ty) {
-            Some(cells @ RangeInfo::Elem(_)) => Some(self.check_fresh_cells(val, &cells, init)),
+        let cells = (self.range_info_from_ast(ty)).filter(|c| matches!(c, RangeInfo::Elem(_)));
+        let val = self.store_cells(init, cells, &mut |l| l.expr_as(init, &want));
+        match RangeInfo::from_spec(&spec) {
+            Some(RangeInfo::Scalar(bounds)) => Some(self.check_range(val, &bounds, init.span)),
             _ => Some(val),
         }
     }

@@ -7,6 +7,7 @@ use crate::vm::ir::*;
 use crate::Interp;
 use crate::Part;
 use cpl_ir::{Place, PlaceKind};
+use std::ops::Range;
 use std::rc::Rc;
 
 impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
@@ -83,15 +84,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                 }
                 if !quiet {
-                    sync_to_stack(
-                        &chunk.slot_map,
-                        regs_i,
-                        regs_v,
-                        &mut self.stack,
-                        self.base,
-                        chunk.traced,
-                    );
-                    self.show_lent()?;
+                    self.hand_to_user(chunk, regs_i, regs_v)?;
                     self.trace_point(point);
                     self.hide_lent()?;
                     take_back_values(&chunk.slot_map, regs_v, &mut self.stack, self.base);
@@ -102,14 +95,55 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         Ok(())
     }
 
+    /// Hands the frame to user code: its registers on the stack, its lent
+    /// values shown.
+    #[inline(never)]
+    pub(super) fn hand_to_user(
+        &mut self,
+        chunk: &Chunk<'p>,
+        regs_i: &[i64],
+        regs_v: &mut [Value],
+    ) -> crate::Res<()> {
+        sync_to_stack(
+            &chunk.slot_map,
+            regs_i,
+            regs_v,
+            &mut self.stack,
+            self.base,
+            chunk.traced,
+        );
+        self.show_lent()
+    }
+
+    /// Takes the frame back from user code, undoing [`Self::hand_to_user`].
+    #[inline(never)]
+    pub(super) fn take_from_user(
+        &mut self,
+        chunk: &Chunk<'p>,
+        regs_i: &mut [i64],
+        regs_v: &mut [Value],
+    ) -> crate::Res<()> {
+        self.hide_lent()?;
+        sync_back(chunk, regs_i, regs_v, &mut self.stack, self.base);
+        Ok(())
+    }
+
     /// Before the tracer or the tree-walker sees a traced call's frame:
     /// each `mut` param holds an alias to the caller's place, which holds
     /// the value, as when the tree-walker runs the call.
     pub(super) fn show_lent(&mut self) -> crate::Res<()> {
+        self.show_lent_in(self.base..usize::MAX)
+    }
+
+    /// `show_lent` for the params held in the stack slots `frame`.
+    pub(super) fn show_lent_in(&mut self, frame: Range<usize>) -> crate::Res<()> {
         for k in (0..self.lent.len()).rev() {
             let (held, part) = (self.lent[k].0, Rc::clone(&self.lent[k].1));
-            if held < self.base {
+            if held < frame.start {
                 break;
+            }
+            if held >= frame.end {
+                continue;
             }
             let lent = match part.steps.is_empty() {
                 true => Value::Alias(part.global, part.at),
@@ -123,10 +157,18 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
 
     /// After: the value is back in the param, the caller's place lent.
     pub(super) fn hide_lent(&mut self) -> crate::Res<()> {
+        self.hide_lent_in(self.base..usize::MAX)
+    }
+
+    /// `hide_lent` for the params held in the stack slots `frame`.
+    pub(super) fn hide_lent_in(&mut self, frame: Range<usize>) -> crate::Res<()> {
         for k in (0..self.lent.len()).rev() {
             let (held, part) = (self.lent[k].0, Rc::clone(&self.lent[k].1));
-            if held < self.base {
+            if held < frame.start {
                 break;
+            }
+            if held >= frame.end {
+                continue;
             }
             let place = self.lender(&part)?;
             self.stack[held] = std::mem::replace(place, Value::Moved);

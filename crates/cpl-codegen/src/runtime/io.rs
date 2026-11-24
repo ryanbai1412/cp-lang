@@ -192,6 +192,11 @@ template <class T, class J> struct Judge<std::vector<T>, std::vector<J>> {
     static std::vector<J> to(const std::vector<T>& v) { std::vector<J> r; r.reserve(v.size()); for (const T& x : v) r.push_back(Judge<T, J>::to(x)); return r; }
     static std::vector<T> from(const std::vector<J>& v) { std::vector<T> r; r.reserve(v.size()); for (const J& x : v) r.push_back(Judge<T, J>::from(x)); return r; }
 };
+template <class T, int K> struct Grid;
+template <class T, class J> struct Judge<Grid<T, 2>, std::vector<std::vector<J>>> {
+    static std::vector<std::vector<J>> to(const Grid<T, 2>& g) { std::vector<std::vector<J>> r(g.n[0]); for (size_t i = 0; i < g.n[0]; i++) { r[i].reserve(g.n[1]); for (size_t j = 0; j < g.n[1]; j++) r[i].push_back(Judge<T, J>::to(g(i, j))); } return r; }
+    static Grid<T, 2> from(const std::vector<std::vector<J>>& v) { Grid<T, 2> g; g.n[0] = v.size(); g.n[1] = v.empty() ? 0 : v[0].size(); g.d.reserve(g.n[0] * g.n[1]); for (const auto& row : v) { if (row.size() != g.n[1]) fail(\"the judge's grader gave rows of different lengths\"); for (const J& x : row) g.d.push_back(Judge<T, J>::from(x)); } return g; }
+};
 template <class A, class B, class JA, class JB> struct Judge<std::tuple<A, B>, std::pair<JA, JB>> {
     static std::pair<JA, JB> to(const std::tuple<A, B>& v) { return {Judge<A, JA>::to(std::get<0>(v)), Judge<B, JB>::to(std::get<1>(v))}; }
     static std::tuple<A, B> from(const std::pair<JA, JB>& v) { return {Judge<A, JA>::from(v.first), Judge<B, JB>::from(v.second)}; }

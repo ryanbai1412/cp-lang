@@ -1445,12 +1445,6 @@ pub(crate) enum Op {
         key_v: u16,
         key_ty: u16,
     },
-    SetMapMutPlace {
-        dst: u16,
-        path: u16,
-        val_v: u16,
-        is_remove: bool,
-    },
     MapPlaceAssign {
         path: u16,
         key_v: u16,

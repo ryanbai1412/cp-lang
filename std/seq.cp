@@ -87,6 +87,10 @@ pub enum Ties = First | Last
 @lint(loop_argmax, from: "var j = self.first!\nfor i in self if a[i] < a[j]:\n    j = i", to: "var j = self.min(by: i => a[i])!", holes: "a")
 @lint(sentinel_scalar, from: "var x = v\nfor y in self:\n    x = min(x, y)", to: "let x = self.min()", holes: "v", when: "v >= 1000000000")
 @lint(sentinel_scalar, from: "var x = v\nfor y in self:\n    if y < x:\n        x = y", to: "let x = self.min()", holes: "v", when: "v >= 1000000000")
+@lint(sort_for_extreme, from: "self.sorted()[0]", to: "self.min()!")
+@lint(sort_for_extreme, from: "self.sorted().first!", to: "self.min()!")
+@lint(sort_for_extreme, from: "self.sorted(by: by)[0]", to: "self.min(by: by)!")
+@lint(sort_for_extreme, from: "self.sorted(by: by).first!", to: "self.min(by: by)!")
 pub fn min<S: Seq<T>, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T:
     let last = ties == Ties.Last
     var best: ?T = None
@@ -115,6 +119,8 @@ pub fn min<S: Seq<T>, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.Firs
 @lint(loop_argmax, from: "var j = self.first!\nfor i in self if a[i] > a[j]:\n    j = i", to: "var j = self.max(by: i => a[i])!", holes: "a")
 @lint(sentinel_scalar, from: "var x = v\nfor y in self:\n    x = max(x, y)", to: "let x = self.max()", holes: "v", when: "v <= -1000000000")
 @lint(sentinel_scalar, from: "var x = v\nfor y in self:\n    if y > x:\n        x = y", to: "let x = self.max()", holes: "v", when: "v <= -1000000000")
+@lint(sort_for_extreme, from: "self.sorted().last!", to: "self.max()!")
+@lint(sort_for_extreme, from: "self.sorted(by: by).last!", to: "self.max(by: by, ties: Ties.Last)!")
 pub fn max<S: Seq<T>, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T:
     let last = ties == Ties.Last
     var best: ?T = None
@@ -310,15 +316,39 @@ fn sort_cmp<S: IndexedMut, T>(mut self: S, before: (T, T) -> Bool):
 /// example: `var a = [2, 1]; a.sort(by: x => x, cmp: (x, y) => x < y); a == [1, 2]` (error E0309)
 pub fn sort<S: IndexedMut, T, K: Ord>(mut self: S; by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None):
     if let before = cmp: return sort_cmp(mut self, before)
+    // One buffer: each key with its position, heap-sorted in place (ties go by
+    // position, so the order is stable), then the elements moved by its cycles.
     let n = self.len
-    let ks = self.keys
-    var a: List<(K, T)> = [(by(self[k]), self[k]) for k in ks]
-    var b = a.clone()
-    let in_a = merge_passes(mut a, mut b, n, (p, q) => p.0 < q.0)
-    var t = 0
-    for k in ks:
-        self[k] = if in_a: a[t].1 else: b[t].1
-        t += 1
+    var a: List<(K, Int)> = []
+    for k in self.keys: a.push((by(self[k]), a.len))
+    var end = n
+    var i = n / 2
+    while end > 1:
+        if i > 0: i -= 1
+        else:
+            end -= 1
+            a.swap_idx(0, end)
+        sift_keyed(mut a, i, end)
+    for s in 0..n:
+        var cur = s
+        while a[cur].1 >= 0:
+            let next = a[cur].1
+            a[cur] = (a[cur].0, -1)
+            if next == s: break
+            self.swap_idx(cur, next)
+            cur = next
+
+/// Sifts `a[i]` down the max-heap `a[..end]` of keys with their positions.
+fn sift_keyed<K: Ord>(mut a: List<(K, Int)>, i: Int, end: Int):
+    var p = i
+    while 2 * p + 1 < end:
+        var c = 2 * p + 1
+        if c + 1 < end and keyed_before(a[c], a[c + 1]): c += 1
+        if not keyed_before(a[p], a[c]): return
+        a.swap_idx(p, c)
+        p = c
+
+fn keyed_before<K: Ord>(x: (K, Int), y: (K, Int)) -> Bool = x.0 < y.0 or (not (y.0 < x.0) and x.1 < y.1)
 
 /// The bottom-up passes of `sort` over `a`, using `b` as the other buffer; true when the
 /// sorted result ends in `a`.
@@ -977,7 +1007,7 @@ pub struct Compressed<D, T>(vals: [D]T):
     /// \(O(\mathit{len})\). Visit every compressed index with its value.
     ///
     /// cost: \(O(\mathit{len})\)
-    /// empty: `let e: List<Int> = []; compress(e).1.items.collect() == []`
+    /// empty: `let e: List<Int> = []; let (domain C, xs) = compress(e); xs.items.collect() == []`
     /// order: increasing index, so increasing value
     /// traps: never
     /// example: `let (domain C, xs) = compress([30, 10, 30]); [v for (_, v) in xs.items] == [10, 30]`
@@ -1387,6 +1417,8 @@ pub fn take_all<T>(mut self: List<T>) -> List<T> = self.take()
 /// (R07.3.1). Generators, adapters, collections and ranges implement it (decision 509).
 pub trait Seq<T>:
     /// Walks the sequence from its start.
+    @lint(index_only_loop, from: "for i in 0..self.len:\n    b", to: "for x in self:\n    b", reads: "self[i] -> x", each: "x in self", holes: "b")
+    @lint(index_only_loop, from: "for i in self.indices:\n    b", to: "for x in self:\n    b", reads: "self[i] -> x", each: "x in self", holes: "b")
     fn iter(self) -> yields T
 
 /// A `Seq` whose elements carry keys: `s.items` walks `(key, x)`, and keys survive `filter`
@@ -1416,6 +1448,13 @@ impl Bidir<T> for List<T>:
             yield self[i]
             i -= 1
 
+impl Sized for List<T>:
+    @get fn len(self) -> Int = self.len
+
+impl Keyed<Int, T> for List<T>:
+    fn items(self) -> yields (Int, T):
+        for (i, x) in self.items: yield (i, x)
+
 impl Seq<D> for Range<D>:
     fn iter(self) -> yields D:
         for x in self: yield x
@@ -1423,6 +1462,9 @@ impl Seq<D> for Range<D>:
 impl Bidir<D> for Range<D>:
     fn iter_rev(self) -> yields D:
         for x in self.rev: yield x
+
+impl Sized for Range<D>:
+    @get fn len(self) -> Int = self.len
 
 impl Seq<Char> for Str:
     fn iter(self) -> yields Char:
@@ -1435,6 +1477,13 @@ impl Bidir<Char> for Str:
             yield self[i]
             i -= 1
 
+impl Sized for Str:
+    @get fn len(self) -> Int = self.len
+
+impl Keyed<Int, Char> for Str:
+    fn items(self) -> yields (Int, Char):
+        for (i, c) in self.items: yield (i, c)
+
 impl Seq<T> for [D]T:
     fn iter(self) -> yields T:
         for x in self: yield x
@@ -1442,6 +1491,12 @@ impl Seq<T> for [D]T:
 impl Bidir<T> for [D]T:
     fn iter_rev(self) -> yields T:
         for x in self.rev: yield x
+
+impl Sized for [D]T:
+    @get fn len(self) -> Int = self.len
+
+impl<D: Domain> Sized for D:
+    @get fn len(self) -> Int = D.count
 
 /// A `Prefix` walks its running folds: the fold through each position (from the right for a
 /// suffix table), in key order, so
@@ -1642,17 +1697,6 @@ pub struct Rev<S>(base: S):
     /// example: `List([1, 2, 3].rev.drop_last(1)) == [3, 2]`
     pub fn drop_last(self, k: Len = 1) -> Rev<Slice<S>> = self.src.drop(k).rev
 
-impl Seq<T> for Rev<S: Bidir<T>>:
-    fn iter(self) -> yields T:
-        for x in self.src.iter_rev(): yield x
-
-impl Bidir<T> for Rev<S: Bidir<T>>:
-    fn iter_rev(self) -> yields T:
-        for x in self.src.iter(): yield x
-
-impl Sized for Rev<S: Sized>:
-    @get fn len(self) -> Int = self.src.len
-
 impl Positional<T> for Rev<S: Indexed<D, T>>:
     fn nth(self, k: Int) -> T = self.src.nth(self.src.len - 1 - k)
 
@@ -1739,17 +1783,6 @@ pub struct Slice<S>(
     /// example: `[1, 2][2..].is_empty == true`
     @get pub fn is_empty(self) -> Bool = hi <= lo
 
-    /// \(O(\mathit{len})\). Visit every element with its source key; `for x in s` walks the
-    /// same elements without the keys.
-    ///
-    /// cost: \(O(\mathit{len})\)
-    /// empty: `[1, 2][2..].items.collect() == []`
-    /// order: increasing key
-    /// traps: never
-    /// example: `[5, 6, 7][1..].items.collect() == [(1, 6), (2, 7)]`
-    @get pub fn items<K, T>(self) -> yields (K, T):
-        for k in self.keys: yield (k, self.at(k))
-
 /// \(O(1)\). The view without its first `k` elements, clamped (traps if `k < 0` or `k >= 2^31`). Consuming a view
 /// from the front is `w = w.drop(1)`.
 ///
@@ -1818,6 +1851,14 @@ impl<S: Indexed<K, T>, K, T> Sized for Slice<S>:
     @get fn len(self) -> Int = self.hi - self.lo
 
 impl<S: Indexed<K, T>, K, T> Keyed<K, T> for Slice<S>:
+    /// \(O(\mathit{len})\). Visit every element with its source key; `for x in s` walks the
+    /// same elements without the keys.
+    ///
+    /// cost: \(O(\mathit{len})\)
+    /// empty: `[1, 2][2..].items.collect() == []`
+    /// order: increasing key
+    /// traps: never
+    /// example: `[5, 6, 7][1..].items.collect() == [(1, 6), (2, 7)]`
     fn items(self) -> yields (K, T):
         for i in self.lo..self.hi: yield (self.src.keys.nth(i), self.src.nth(i))
 
@@ -1990,6 +2031,12 @@ pub struct StepKeys(first: Int, n: Int, k: Int, from: Int):
 /// order: same cells, keyed by `keys`
 /// traps: when `keys.len != self.len`
 /// example: `[4, 5].rekey(10..12)[11] == 5`
+@lint(query_index_shift, from: "let i: 1..=n = read()", advice: "domain I = 1..=n", holes: "n", also: "self[i - 1]")
+@lint(query_index_shift, from: "let (i, j): (1..=n, T) = read()", advice: "domain I = 1..=n", holes: "n, T", also: "self[i - 1]")
+@lint(query_index_shift, from: "let (j, i): (T, 1..=n) = read()", advice: "domain I = 1..=n", holes: "n, T", also: "self[i - 1]")
+@lint(query_index_shift, from: "let (i, j, k): (1..=n, T, U) = read()", advice: "domain I = 1..=n", holes: "n, T, U", also: "self[i - 1]")
+@lint(query_index_shift, from: "let (j, i, k): (T, 1..=n, U) = read()", advice: "domain I = 1..=n", holes: "n, T, U", also: "self[i - 1]")
+@lint(query_index_shift, from: "let (j, k, i): (T, U, 1..=n) = read()", advice: "domain I = 1..=n", holes: "n, T, U", also: "self[i - 1]")
 pub fn rekey<D, K, T>(self: [D]T, keys: Range<K>) -> [K]T:
     assert self.len == keys.len, "`rekey` needs one key per element"
     [K] k => self.nth(k.ord - keys.start.ord)
@@ -2431,7 +2478,7 @@ pub fn stable_partition_in_place<S: IndexedMut, T>(mut self: S, keep: T -> Bool)
 /// order: a new `List`, keyed from 0
 /// traps: never
 /// example: `[3, 5, 4].adjacent_diff() == [3, 2, -1]`
-pub fn adjacent_diff<S: Seq<T>, T>(self: S) -> List<T>:
+pub fn adjacent_diff<S: Seq<T>, T: Sub>(self: S) -> List<T>:
     var out: List<T> = []
     var prev: ?T = None
     for x in self:
@@ -2464,6 +2511,7 @@ pub fn span<D>(lo: Cut<D>, hi: Cut<D>) -> Range<D>:
 /// unspecified answer
 /// example: `[1, 3, 5].bsearch(x => x > 2).r == 1`
 /// ties: `[1, 3, 3, 5].bsearch(x => x >= 3).r == 1`
+@aka(partition_point)
 pub fn bsearch<D, T>(self: [D]T, ok: T -> Bool, last: Bool = false) -> Cut<D>:
     let at = m => ok(self[D.nth(m)])
     D.cuts.nth(if last: ((0..D.count).last_true(at) ?? -1) + 1 else: (0..D.count).first_true(at) ?? D.count)
@@ -3557,7 +3605,7 @@ fn first_gt_and_last_lt_match_linear_scan():
     assert va.first_gt(3) == V(4) and va.last_lt(3) == V(1)
     assert xs[1..4].first_gt(3) == Some(2) and xs[1..4].last_lt(3) == None
     assert xs[0..4].last_lt(3) == Some(0) and xs[0..4].first_gt(7) == None
-    assert pairs[1..4].first_gt(3, by: p => p.0) == Some(2)
+    assert pairs[1..4].first_gt(3, by: p => p.0) == Some(3)
     assert pairs[0..3].last_lt(3, by: p => p.0) == Some(0)
     let s = "abccd"
     assert s[1..4].first_gt('b') == Some(1) and s[1..4].last_lt('c') == Some(0)

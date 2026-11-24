@@ -1,3 +1,4 @@
+use super::jump::JumpOp;
 use super::seq_load::SeqKind;
 use super::{Compiler, GiveTarget, LoopExits, LoopJump, LoopTargets};
 use crate::vm::helpers::*;
@@ -34,17 +35,17 @@ impl<'p, 'f> Compiler<'p, 'f> {
         self.compile_stmts(stmts);
         let mut exits = LoopExits::default();
         let depth = depth.min(self.loops.len());
-        for lt in self.loops.drain(depth..) {
-            exits.breaks.extend(lt.breaks);
-            exits.continues.extend(lt.continues);
+        for mut lt in self.loops.drain(depth..) {
+            exits.breaks.append(&mut lt.breaks);
+            exits.continues.append(&mut lt.continues);
         }
         // A jump to a loop further out stays for that loop to claim.
         let jumps: Vec<LoopJump> = self.jumps.drain(first_jump..).collect();
         for j in jumps {
             match j.to {
                 Some(to) if to != id => self.jumps.push(j),
-                _ if j.brk => exits.breaks.push(j.pc),
-                _ => exits.continues.push(j.pc),
+                _ if j.brk => exits.breaks.push(j.jump),
+                _ => exits.continues.push(j.jump),
             }
         }
         exits
@@ -66,11 +67,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
         self.pinned_v = prev_pinned;
         let end_pc = self.ops.len() as u32;
         let depth = depth.min(self.give_targets.len());
-        let exits: Vec<usize> = (self.give_targets.drain(depth..))
-            .flat_map(|mut t| std::mem::take(t.exits_mut()))
-            .collect();
-        for j in exits {
-            self.patch(j, end_pc);
+        while self.give_targets.len() > depth {
+            let Some(mut t) = self.give_targets.pop() else {
+                break;
+            };
+            self.patch_all(std::mem::take(t.exits_mut()), end_pc);
         }
     }
 
@@ -237,7 +238,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
     pub(super) fn compile_traced_stmt(&mut self, stmt: &'p Stmt) -> bool {
         if let Stmt::For(id, slot, Iter::Seq(seq, false), body) = stmt {
             if let Some((fn_id, feed, args)) = self.traced_feed(*id, *slot, seq, body) {
-                let eager = self.emit(Op::JmpEager { target: 0 }, seq.span);
+                let eager = self.emit_jump(JumpOp::JmpEager, seq.span);
                 let dst = self.emit_traced_call(seq.span, Callee::Fn(fn_id), args, false);
                 // `emit_traced_call` ends with its `CallTraced`.
                 let call = self.ops.len() - 1;
@@ -246,18 +247,16 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 if dst >= self.num_local_v {
                     self.emit(Op::ClearV { reg: dst }, seq.span);
                 }
-                let j_end = self.emit(Op::Jmp { target: 0 }, seq.span);
+                let j_end = self.emit_jump(JumpOp::Jmp, seq.span);
                 self.patch(eager, self.ops.len() as u32);
-                self.compile_eager_for(stmt, *id, *slot, seq, body);
+                self.compile_eager_for(*id, *slot, seq, body);
                 self.patch(j_end, self.ops.len() as u32);
                 self.compile_fed_body(*id, body);
                 return true;
             }
         }
         match stmt {
-            Stmt::Let(slot, Some(init))
-                if self.feed_acc != Some(*slot) && self.traced_quiet(init) =>
-            {
+            Stmt::Let(slot, Some(init)) => {
                 self.compile_reporting_stmt(stmt, init);
                 if !self.fell_back(stmt) {
                     self.emit_trace(TracePoint::Let(*slot, init), init.span);
@@ -269,21 +268,26 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     self.emit_trace(TracePoint::Declared(*slot), stmt.span().unwrap_or_default());
                 }
             }
-            // A trap ends the run: the tracer takes it from the failure.
-            Stmt::Break(_) | Stmt::Continue(_) | Stmt::Return(None) | Stmt::Trap(..) => {
-                return false
-            }
-            // A domain's bounds are no value the trace shows.
-            Stmt::DefDomain { lo, len, .. } if self.traced_quiet(lo) && self.traced_quiet(len) => {
-                return false
-            }
-            Stmt::DefDomainFromVal { val, .. } if self.traced_quiet(val) => return false,
-            Stmt::Assign(place, _, value)
-                if quiet_place(place, cpl_ir::walk::root(place)) && self.traced_quiet(value) =>
-            {
+            // A trap ends the run: the tracer takes it from the failure. A
+            // domain's bounds are no value the trace shows. Each call, write
+            // and print in a value reports itself as it runs.
+            Stmt::Break(_)
+            | Stmt::Continue(_)
+            | Stmt::Return(_)
+            | Stmt::Give(_)
+            | Stmt::Trap(..)
+            | Stmt::Assert { .. }
+            | Stmt::DefDomain { .. }
+            | Stmt::DefDomainFromVal { .. } => return false,
+            Stmt::Assign(place, _, value) => {
                 self.compile_reporting_stmt(stmt, value);
                 if !self.fell_back(stmt) {
-                    let point = self.cell_point(place).unwrap_or(TracePoint::Assign(place));
+                    // Indices the write ran once are not run again for the
+                    // step: it shows the root changed.
+                    let point = match quiet_place(place, cpl_ir::walk::root(place)) {
+                        true => self.cell_point(place).unwrap_or(TracePoint::Assign(place)),
+                        false => TracePoint::Mutated(place, place.span),
+                    };
                     self.emit_trace(point, place.span);
                 }
             }
@@ -299,44 +303,34 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 for (place, span) in writes {
                     self.emit_trace(TracePoint::Mutated(place, span), span);
                 }
-                let j_else = self.emit(Op::JmpIfZero { reg, target: 0 }, cond.span);
+                let j_else = self.emit_jump(JumpOp::JmpIfZero { reg }, cond.span);
                 self.compile_stmts(&then_b.stmts);
-                let j_end = self.emit(Op::Jmp { target: 0 }, cond.span);
+                let j_end = self.emit_jump(JumpOp::Jmp, cond.span);
                 let else_pc = self.ops.len() as u32;
                 self.patch(j_else, else_pc);
                 self.compile_stmts(&else_b.stmts);
                 let end = self.ops.len() as u32;
                 self.patch(j_end, end);
             }
-            Stmt::Assert { cond, message, .. }
-                if self.traced_quiet(cond)
-                    && message.as_ref().is_none_or(|m| self.traced_quiet(m)) =>
-            {
-                return false
-            }
-            Stmt::Return(Some(value)) | Stmt::Give(value) if self.traced_quiet(value) => {
-                return false
-            }
+            Stmt::If(..) | Stmt::While(..) => return false,
             Stmt::Expr(e) if self.traced_call(e).is_some() => {
                 let dst = self.compile_expr_v(e);
                 if dst >= self.num_local_v {
                     self.emit(Op::ClearV { reg: dst }, e.span);
                 }
             }
-            Stmt::For(_, slot, iter, _) if self.feed_acc.is_none() => {
-                match self.traced_quiet_iter(iter) {
-                    Some(span) => {
-                        self.traced_loop_var = Some((*slot, span));
-                        self.compile_untraced_stmt(stmt);
-                        self.traced_loop_var = None;
-                        self.emit_trace(TracePoint::LoopEnd(*slot), span);
-                    }
-                    None => {
-                        self.emit_fallback_stmt(stmt);
-                        self.emit_escapes();
-                    }
+            Stmt::For(_, slot, iter, _) => match self.traced_quiet_iter(iter) {
+                Some(span) => {
+                    self.traced_loop_var = Some((*slot, span));
+                    self.compile_untraced_stmt(stmt);
+                    self.traced_loop_var = None;
+                    self.emit_trace(TracePoint::LoopEnd(*slot), span);
                 }
-            }
+                None => {
+                    self.emit_fallback_stmt(stmt);
+                    self.emit_escapes();
+                }
+            },
             Stmt::Expr(e) if self.traced_yield(e).is_some() => {
                 let Some((acc, list_v, place, arg, each)) = self.traced_yield(e) else {
                     return false;
@@ -382,20 +376,14 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     self.emit(Op::ClearV { reg: src }, e.span);
                 }
             }
-            Stmt::Expr(
-                e @ Expr {
-                    kind: ExprKind::Sort(place, ..),
-                    ..
-                },
-            ) if self.traced_quiet(e) => {
+            Stmt::Expr(Expr {
+                kind: ExprKind::Sort(place, ..),
+                ..
+            }) => {
                 self.compile_untraced_stmt(stmt);
                 self.trace_sorted(stmt, place);
             }
-            Stmt::Expr(e) if self.traced_quiet(e) => self.compile_reporting_stmt(stmt, e),
-            _ => {
-                self.emit_fallback_stmt(stmt);
-                self.emit_escapes();
-            }
+            Stmt::Expr(e) => self.compile_reporting_stmt(stmt, e),
         }
         true
     }
@@ -629,21 +617,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
         ))
     }
 
-    /// The fed loop `id` as the tree-walker runs it where it feeds no
-    /// loop: in a closure, or in a generator a loop is being fed from.
-    fn compile_eager_for(
-        &mut self,
-        stmt: &'p Stmt,
-        id: LoopId,
-        slot: Slot,
-        seq: &'p Expr,
-        body: &'p Block,
-    ) {
-        if !self.traced_quiet(seq) {
-            self.emit_fallback_stmt(stmt);
-            self.emit_escapes();
-            return;
-        }
+    /// The fed loop `id` run eagerly where it feeds no loop: in a
+    /// closure, or in a generator a loop is being fed from.
+    fn compile_eager_for(&mut self, id: LoopId, slot: Slot, seq: &'p Expr, body: &'p Block) {
         self.traced_loop_var = Some((slot, seq.span));
         self.in_dom.clear();
         self.compile_for_seq(id, slot, seq, None, false, body);
@@ -655,18 +631,14 @@ impl<'p, 'f> Compiler<'p, 'f> {
     /// a `break` ends at `FeedBodyBreak`, the end and `continue` at
     /// `FeedBodyNext`.
     fn compile_fed_body(&mut self, id: LoopId, body: &'p Block) {
-        let j_over = self.emit(Op::Jmp { target: 0 }, Span::default());
+        let j_over = self.emit_jump(JumpOp::Jmp, Span::default());
         self.fed_bodies.push((id, self.ops.len() as u32));
         let lt = self.loop_body(id, None, &body.stmts);
         let next_pc = self.ops.len() as u32;
-        for c in lt.continues {
-            self.patch(c, next_pc);
-        }
+        self.patch_all(lt.continues, next_pc);
         self.emit(Op::FeedBodyNext, Span::default());
         let break_pc = self.ops.len() as u32;
-        for b in lt.breaks {
-            self.patch(b, break_pc);
-        }
+        self.patch_all(lt.breaks, break_pc);
         self.emit(Op::FeedBodyBreak, Span::default());
         let after = self.ops.len() as u32;
         self.patch(j_over, after);
@@ -678,22 +650,20 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let last = self.loops.len().wrapping_sub(1);
         for pos in (0..self.loops.len()).rev() {
             let (id, innermost) = (self.loops[pos].id, pos == last);
-            let pc = self.emit(
-                Op::JmpEscape {
+            let pc = self.emit_jump(
+                JumpOp::JmpEscape {
                     brk: true,
                     id,
                     innermost,
-                    target: 0,
                 },
                 Span::default(),
             );
             self.loops[pos].breaks.push(pc);
-            let pc = self.emit(
-                Op::JmpEscape {
+            let pc = self.emit_jump(
+                JumpOp::JmpEscape {
                     brk: false,
                     id,
                     innermost,
-                    target: 0,
                 },
                 Span::default(),
             );
@@ -863,13 +833,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 ..
             } => {
                 let r_cond = self.compile_expr_i(cond);
-                let j_ok = self.emit(
-                    Op::JmpIfNonZero {
-                        reg: r_cond,
-                        target: 0,
-                    },
-                    *span,
-                );
+                let j_ok = self.emit_jump(JumpOp::JmpIfNonZero { reg: r_cond }, *span);
                 let msg_v = message
                     .as_ref()
                     .map_or(u16::MAX, |m| self.compile_expr_v(m));
@@ -907,7 +871,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     let end = self.ops.len() as u32;
                     self.patch(j_else, end);
                 } else {
-                    let j_end = self.emit(Op::Jmp { target: 0 }, cond.span);
+                    let j_end = self.emit_jump(JumpOp::Jmp, cond.span);
                     let else_pc = self.ops.len() as u32;
                     self.patch(j_else, else_pc);
                     for s in &else_b.stmts {
@@ -922,9 +886,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 let head = self.ops.len() as u32;
                 let j_exit = self.emit_branch_if_false(cond);
                 let lt = self.loop_body(*id, Some(LoopReg::While(*id)), &body.stmts);
-                for c in lt.continues {
-                    self.patch(c, head);
-                }
+                self.patch_all(lt.continues, head);
                 if self.traced {
                     self.emit_trace(TracePoint::Tick, cond.span);
                 }
@@ -933,9 +895,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.emit(Op::Jmp { target: head }, cond.span);
                 let end = self.ops.len() as u32;
                 self.patch(j_exit, end);
-                for b in lt.breaks {
-                    self.patch(b, end);
-                }
+                self.patch_all(lt.breaks, end);
             }
             Stmt::For(id, slot, iter, body) => {
                 self.in_dom.clear();
@@ -944,9 +904,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
             }
             Stmt::Break(to) | Stmt::Continue(to) => {
-                let pc = self.emit(Op::Jmp { target: 0 }, Span::default());
+                let jump = self.emit_jump(JumpOp::Jmp, Span::default());
                 let brk = matches!(stmt, Stmt::Break(_));
-                self.jumps.push(LoopJump { to: *to, brk, pc });
+                self.jumps.push(LoopJump { to: *to, brk, jump });
             }
             Stmt::Give(e) => {
                 if let Some(target) = self.give_targets.last() {
@@ -1001,7 +961,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                             }
                         }
                     }
-                    let pc = self.emit(Op::Jmp { target: 0 }, Span::default());
+                    let pc = self.emit_jump(JumpOp::Jmp, Span::default());
                     if let Some(t) = self.give_targets.last_mut() {
                         t.exits_mut().push(pc);
                     }
@@ -1016,7 +976,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                             e.span,
                         );
                     }
-                    let pc = self.emit(Op::Jmp { target: 0 }, Span::default());
+                    let pc = self.emit_jump(JumpOp::Jmp, Span::default());
                     if let Some((_, jumps)) = &mut self.inline_ret {
                         jumps.push(pc);
                     }
@@ -1051,7 +1011,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                             );
                         }
                     }
-                    let pc = self.emit(Op::Jmp { target: 0 }, Span::default());
+                    let pc = self.emit_jump(JumpOp::Jmp, Span::default());
                     if let Some((_, jumps)) = &mut self.inline_ret {
                         jumps.push(pc);
                     }
@@ -1180,20 +1140,16 @@ impl<'p, 'f> Compiler<'p, 'f> {
         });
         let call_pc = self.emit(Op::CallVmFeed { spec: spec_idx }, seq_expr.span);
         self.note_fed_site(call_pc, stmt, seq_expr);
-        let j_after = self.emit(Op::Jmp { target: 0 }, seq_expr.span);
+        let j_after = self.emit_jump(JumpOp::Jmp, seq_expr.span);
 
         let body_pc = self.ops.len();
         self.feed_calls[spec_idx as usize].body_pc = body_pc;
         let lt = self.loop_body(id, None, &body.stmts);
         let next_pc = self.ops.len() as u32;
-        for c in lt.continues {
-            self.patch(c, next_pc);
-        }
+        self.patch_all(lt.continues, next_pc);
         self.emit(Op::FeedBodyNext, Span::default());
         let break_pc = self.ops.len() as u32;
-        for b in lt.breaks {
-            self.patch(b, break_pc);
-        }
+        self.patch_all(lt.breaks, break_pc);
         self.emit(Op::FeedBodyBreak, Span::default());
         let after_pc = self.ops.len() as u32;
         self.patch(j_after, after_pc);
@@ -1370,14 +1326,13 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     self.emit(Op::MoveI { dst, src }, e.span);
                     dst
                 });
-                let enter = self.emit(
-                    Op::ForStepEnter {
+                let enter = self.emit_jump(
+                    JumpOp::ForStepEnter {
                         r_lo,
                         r_hi,
                         r_step,
                         closed: *closed,
                         rev: *rev,
-                        skip: 0,
                     },
                     step.span,
                 );
@@ -1395,9 +1350,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.emit_loop_tag(tag_v, r_var, lo.span);
                 let lt = self.loop_body(id, None, &body.stmts);
                 let step_pc = self.ops.len() as u32;
-                for c in lt.continues {
-                    self.patch(c, step_pc);
-                }
+                self.patch_all(lt.continues, step_pc);
                 self.emit(
                     Op::ForStepNext {
                         r_i: r_var,
@@ -1411,9 +1364,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 );
                 let end_pc = self.ops.len() as u32;
                 self.patch(enter, end_pc);
-                for b in lt.breaks {
-                    self.patch(b, end_pc);
-                }
+                self.patch_all(lt.breaks, end_pc);
                 true
             }
             _ => false,
@@ -1511,24 +1462,16 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 },
                 seq_expr.span,
             );
-            self.emit(
-                Op::JmpLtI {
+            self.emit_jump(
+                JumpOp::JmpLtI {
                     a: r_idx,
                     b: r_zero,
-                    target: 0,
                 },
                 seq_expr.span,
             )
         } else {
             self.emit(Op::ConstImmI { dst: r_idx, val: 0 }, seq_expr.span);
-            self.emit(
-                Op::JmpGeI {
-                    a: r_idx,
-                    b: r_len,
-                    target: 0,
-                },
-                seq_expr.span,
-            )
+            self.emit_jump(JumpOp::JmpGeI { a: r_idx, b: r_len }, seq_expr.span)
         };
         let body_pc = self.ops.len() as u32;
         match walk {
@@ -1559,9 +1502,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let lt = self.loop_body(id, Some(own), &body.stmts);
         self.pinned_v = saved_pinned;
         let step_pc = self.ops.len() as u32;
-        for c in lt.continues {
-            self.patch(c, step_pc);
-        }
+        self.patch_all(lt.continues, step_pc);
         self.note_back_edge(self.ops.len(), Some(own));
         if rev {
             self.emit(
@@ -1584,9 +1525,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
         let end_pc = self.ops.len() as u32;
         self.patch(j_skip, end_pc);
-        for b in lt.breaks {
-            self.patch(b, end_pc);
-        }
+        self.patch_all(lt.breaks, end_pc);
         if let Some(lv) = local_v {
             if lv >= self.num_local_v {
                 self.emit(Op::ClearV { reg: lv }, seq_expr.span);

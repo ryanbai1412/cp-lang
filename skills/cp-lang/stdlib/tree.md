@@ -12,7 +12,7 @@ A tree rooted at `root`, owning its own fresh heavy-first preorder domain `t.Pre
 
 Fields: `in_arc: [V]?A`.
 
-- `fn new(next: Next<V>, root: V) -> Rooted<V, _, _>` — \(O(n + m)\) for m listed arcs, without recursion; Roots the tree given by `next` at `root`: `Rooted(g, root: r)` for a `Graph`, `Rooted(lists, root: r)` for a table of neighbour lists `[V]List<V>`, and `Rooted(root: r, next: u => ...)` for anything else.; traps: when some vertex is not reachable from `root`
+- `fn new(next: Next<V>, root: V) -> Rooted<V, _, _>` — \(O(n + m)\) for m listed arcs, without recursion; memory one `[V]` row per field,; Roots the tree given by `next` at `root`: `Rooted(g, root: r)` for a `Graph`, `Rooted(lists, root: r)` for a table of neighbour lists `[V]List<V>`, and `Rooted(root: r, next: u => ...)` for anything else.; traps: when some vertex is not reachable from `root`
 - `fn from_parents(par: [V]?V) -> Rooted<V, _, _>` — \(O(n)\); Builds a rooted tree from parents keyed by vertex: `par: [V]?V` with `None` at the root, or the usual input shape "parents of 2..n" read as `read<[V.drop(1)]V>()`, whose one missing key is the root.; traps: when the parents have a cycle; `try_from_parents` is for input that may
 - `fn try_from_parents(par: [V]?V) -> ?Rooted<V, _, _>` — \(O(n)\); `from_parents` for parents that may not form a forest: `None` when they have a cycle.
 - `fn forest(next: Next<V>, from: List<V> = []) -> Rooted<V, _, _>` — \(O(n + m)\); A spanning forest: walks `from` as `dfs` does, skipping a root already reached, then roots each unreached vertex in `V` order, so `from: []` spans every component (decision 451).; traps: when `V` is empty
@@ -32,7 +32,7 @@ Fields: `in_arc: [V]?A`.
 - `fn subtree(self, v: V) -> yields V` — \(O(\mathit{size}(v))\); The vertices of `v`'s subtree in preorder, `v` first: `t.at[p] for p in t.sub(v)`.
 - `fn down<T>(self, init: T, f: (T, V) -> T) -> [V]T` — \(O(n)\) calls of `f`; A top-down pass: `out[v] = f(out[parent], v)`, and `f(init, r)` at a root `r`.
 - `fn up<T, U, M>(self, op: M, lift: (T, V, V) -> U = (x, c, p) => x, finish: (U, V) -> T) -> [V]T` — \(O(n)\) calls of `lift`, `op` and `finish`; A bottom-up tree DP: `out[v] = finish(fold with op of lift(out[c], c, v) over children c, v)`.
-- `fn reroot<T, U, M>(self, op: M, lift: (T, V, V) -> U = (x, c, p) => x, finish: (U, V) -> T) -> [V]T` — \(O(n)\) calls of `lift` and `finish`, \(O(n)\) calls of `op`; [`up`] for every root at once: `out[v] = finish(fold with op of lift(out[c], c, v) over neighbours c, v)`, where `out[c]` is `c`'s answer with the tree rooted at `v`.
+- `fn reroot<T, U, M>(self, op: M, lift: (T, V, V) -> U = (x, c, p) => x, finish: (U, V) -> T) -> [V]T` — \(O(n)\) calls of `lift` and `finish`, \(O(n)\) calls of `op`; memory one `[V]?T` row; [`up`] for every root at once: `out[v] = finish(fold with op of lift(out[c], c, v) over neighbours c, v)`, where `out[c]` is `c`'s answer with the tree rooted at `v`.
 - `fn shapes(self) -> (domain Shape, of: [V]Shape)` — \(O(n \log n)\); The isomorphism class of every subtree: `of[a] == of[b]` exactly when the subtrees of `a` and `b` are the same rooted tree up to reordering children.
 - `@get fn subtree_sizes(self) -> [V]1..` — \(O(1)\); lends the stored sizes; The size of every subtree, by vertex: `t.subtree_sizes[v] == t.size(v)`.
 - `fn centroid(self) -> V` — \(O(\mathit{depth})\); A centroid of the tree holding `t.root`: a vertex whose removal leaves no piece of more than half its vertices.

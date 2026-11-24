@@ -213,7 +213,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             }
         }
         let saved = (self.ops.len(), self.spans.len(), self.places.len());
-        let Some(path) = self.compile_place_path_to(place, true) else {
+        let Some(path) = self.place_path_rooted(place, true, None, true) else {
             self.ops.truncate(saved.0);
             self.spans.truncate(saved.1);
             self.places.truncate(saved.2);

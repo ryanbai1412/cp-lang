@@ -1,8 +1,10 @@
 import random, sys
 
 if "--max" in sys.argv[1:]:
+    # --max [K]: x = y = 5000 with k = x + y - 1, or k = K
+    k = int(sys.argv[2]) if len(sys.argv) > 2 else 9999
     print(1)
-    print(5000, 5000, 5000)
+    print(5000, 5000, k)
     print("0" * 10000)
     sys.exit(0)
 else:

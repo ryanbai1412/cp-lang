@@ -19,9 +19,23 @@ enum Pick {
     NoFit,
 }
 
-fn takes_self(def: &Def) -> bool {
+pub(super) fn takes_self(def: &Def) -> bool {
     matches!(def, Def::Fn { ty: Ty::Fn { params, .. }, .. }
         if params.first().is_some_and(|p| p.name == "self" && !p.named_only))
+}
+
+fn takes_mut_self(def: &Def) -> bool {
+    matches!(def, Def::Fn { ty: Ty::Fn { params, .. }, .. }
+        if params.first().is_some_and(|p| p.name == "self" && p.mutable))
+}
+
+/// Whether a fn `name` that `env` sees takes `mut self`: `x.name(..)` may
+/// change `x`.
+pub(crate) fn env_mut_self_name(env: &mut dyn super::Env, name: &str) -> bool {
+    let mut keys = env.method_keys(name);
+    keys.push(name.to_string());
+    keys.iter()
+        .any(|k| env.global(k).is_some_and(|d| takes_mut_self(&d)))
 }
 
 /// Whether `def` takes `n` positional arguments after `self`: one never
@@ -74,6 +88,11 @@ impl Checker<'_> {
             }
         }
         out.into_iter().map(|(k, d, _)| (k, d)).collect()
+    }
+
+    /// Whether `key` names a fn the calling module declares, not one it imports.
+    fn own_fn(&mut self, key: &str) -> bool {
+        self.local_defs.contains_key(key) || self.env.origin(key).is_none()
     }
 
     /// R08.1.4: a later `fn name(self: ..)` of this module whose `self` is
@@ -301,7 +320,9 @@ impl Checker<'_> {
             ty.or_else(|| c.exprs.last_type(expr.span).cloned())
         };
         let settled = self.quietly(|c| {
-            read(c).filter(|t| c.sink.is_empty() && !t.has_vague() && !names_param(t))
+            read(c).filter(|t| {
+                c.sink.is_empty() && !t.has_vague() && !names_free_param(t, &base_ty, &c.generics)
+            })
         });
         settled.as_ref()?;
         // The read's hover is the value it reads, not the fn it calls.
@@ -384,7 +405,9 @@ impl Checker<'_> {
         // R11.2.3: a name a `use` imports shadows the prelude's, so the
         // prelude's candidates drop out beside one. A fn the file declares
         // stands beside them, and specificity picks (decision 486).
-        let shadows: Vec<bool> = fit.iter().map(|f| self.env.chosen(&f.0)).collect();
+        let shadows: Vec<bool> = (fit.iter())
+            .map(|f| self.env.chosen(&f.0) || self.own_fn(&f.0))
+            .collect();
         if shadows.contains(&true) {
             let mut shadows = shadows.into_iter();
             fit.retain(|_| shadows.next().unwrap_or(false));
@@ -407,6 +430,10 @@ impl Checker<'_> {
             .collect();
         let mut beaten = beaten.into_iter();
         fit.retain(|_| !beaten.next().unwrap_or(false));
+        // R08.1.4: at equal specificity, the calling module's own fn beats an imported one.
+        if fit.len() > 1 && fit.iter().any(|f| self.own_fn(&f.0)) {
+            fit.retain(|f| self.own_fn(&f.0));
+        }
         // Of candidates the receiver fits alike, those the argument count fits.
         if let Some(args) = args.filter(|_| fit.len() > 1) {
             let given = args.iter().filter(|a| a.name.is_none()).count();
@@ -571,6 +598,7 @@ impl Checker<'_> {
             ty: Ty::Fn { params, ret },
             generics,
             bounds,
+            bound_args,
             ..
         } = &*def
         else {
@@ -584,7 +612,8 @@ impl Checker<'_> {
         if let Some(first) = params.first().filter(|_| !builtin) {
             first.ty.unify(base, &mut bindings);
         }
-        self.bind_bound_params(generics, bounds, &mut bindings);
+        let generics = Self::bound_bindable(generics, params, ret);
+        self.bind_bound_params(&generics, (bounds, bound_args), &mut bindings);
         let ty = Ty::Fn {
             params: params[1..].to_vec(),
             ret: ret.clone(),
@@ -595,10 +624,11 @@ impl Checker<'_> {
     /// Records which candidate `base.name` calls, when its receiver says.
     pub(super) fn note_method(&mut self, base: &Ty, name: &ast::Name) {
         // Beside a built-in member of the name, the call's arguments pick
-        // (`method_form_call`): `xs.fold(+)` is the built-in's.
+        // (`method_form_call`): `xs.fold(+)` is the built-in's. A member the
+        // type declares is found before any extension fn (R08.1.4).
         let builtin = super::call::catalog_owner(base)
             .is_some_and(|owner| crate::builtins::builtin_member(owner, &name.text).is_some());
-        if builtin {
+        if builtin || self.declares_member(base, &name.text) {
             return;
         }
         if let Pick::One(key, _) = self.pick_method(base, &name.text) {
@@ -615,13 +645,18 @@ impl Checker<'_> {
 
     /// The `Resolved` of the method `key` a call at `name` could call.
     fn method_resolved(&mut self, name: &ast::Name, key: &str) -> Resolved {
-        let module = if self.local_defs.contains_key(key) {
+        let mut module = if self.local_defs.contains_key(key) {
             None
         } else {
             self.env.origin(key)
-        };
+        }
+        .unwrap_or_default();
+        // The `#k` of an overload, as a free call to its key resolves.
+        if let Some((_, k)) = prelude::overload_part(key) {
+            module.push_str(k);
+        }
         Resolved {
-            module: module.unwrap_or_default(),
+            module,
             name: name.text.clone(),
             owner: None,
         }
@@ -1064,17 +1099,18 @@ impl Checker<'_> {
         if base_ty.has_vague() {
             return false;
         }
-        let own = self.declares_member(&base_ty, &name.text)
-            || self.catalog_row(base, &name.text).is_some();
-        if !own {
+        let declared = self.declares_member(&base_ty, &name.text);
+        if !declared && self.catalog_row(base, &name.text).is_none() {
             return false;
         }
         let Pick::One(key, def) = self.pick_method_for(&base_ty, &name.text, Some(args)) else {
             return false;
         };
-        let library = !self.local_defs.contains_key(&key)
-            && (self.env.origin(&key)).is_some_and(|m| m == "prelude" || m.starts_with("std."));
-        if library || self_ty(&def).is_none_or(|s| matches!(s, Ty::Param(_))) {
+        // An imported fn is its own module's to rename; a catalog row stands for the std fn of its
+        // name, so std's own fn of that name hides nothing.
+        let imported = self.env.origin(&key).is_some();
+        let same = !declared && self.env.is_std();
+        if imported || same || self_ty(&def).is_none_or(|s| matches!(s, Ty::Param(_))) {
             return false;
         }
         let shown = self.quote(base.span);
@@ -1120,18 +1156,9 @@ impl Checker<'_> {
 /// A catalog row's parameters, `r: Range<T>, by: T -> K`, as names and types.
 fn row_params(params: &str) -> Vec<(&str, &str)> {
     let mut out = Vec::new();
-    let (mut depth, mut start) = (0i32, 0);
-    for (i, c) in params.char_indices().chain([(params.len(), ',')]) {
-        match c {
-            '<' | '(' | '[' => depth += 1,
-            '>' | ')' | ']' => depth -= 1,
-            ',' if depth == 0 => {
-                if let Some((n, t)) = params[start..i].split_once(':') {
-                    out.push((n.trim(), t.trim()));
-                }
-                start = i + 1;
-            }
-            _ => {}
+    for p in super::call::split_top(params) {
+        if let Some((n, t)) = p.split_once(':') {
+            out.push((n.trim(), t.trim()));
         }
     }
     out
@@ -1218,14 +1245,17 @@ impl Members {
     }
 }
 
-/// True when a type parameter (`D`) is left in `ty`: it was not worked out.
-fn names_param(ty: &Ty) -> bool {
-    let mut found = false;
-    ty.map(&mut |t| {
-        found |= matches!(t, Ty::Param(_));
-        found.then(|| t.clone())
-    });
-    found
+/// True when a type parameter is left in `ty` that the read did not work
+/// out: one the receiver does not carry from the caller's own generics, as
+/// `D` of `r: Range<D>` gives `r.first` its `?D`.
+fn names_free_param(ty: &Ty, base: &Ty, generics: &[String]) -> bool {
+    let carried = |p: &str| {
+        generics.iter().any(|g| g == p)
+            && super::bound_args::params_named(base).contains(&p.to_string())
+    };
+    super::bound_args::params_named(ty)
+        .iter()
+        .any(|p| !carried(p))
 }
 
 /// Whether the method `def` takes `given` positional arguments after `self`.

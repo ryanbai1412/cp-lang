@@ -494,8 +494,10 @@ impl<'p> Emitter<'p> {
                 self.note_set_copy(value, &v);
                 self.line(out, &format!("{p} = {v};"))
             }
-            AssignOp::Max => twice(self, out, &|p, v| format!("std::max<{ty}>({p}, {v})")),
-            AssignOp::Min => twice(self, out, &|p, v| format!("std::min<{ty}>({p}, {v})")),
+            AssignOp::Max | AssignOp::Min => {
+                let f = self.min_max_fn(op == AssignOp::Max, &place.ty);
+                twice(self, out, &|p, v| format!("{f}({p}, {v})"))
+            }
             AssignOp::Binary(bop) => match (&place.ty, bop) {
                 (Ty::Int, BinOp::Div | BinOp::Rem) => {
                     if narrow.is_none() && self.pow2_assign(&p, bop == BinOp::Div, value, out) {

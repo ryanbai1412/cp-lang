@@ -11,8 +11,8 @@ help: `let lo = (..).first_true(mid => ..)`: the predicate must be monotone alon
 help: write `w /= 2`; `/=` names the place once, so the read and the write cannot drift apart
 52:5-56:5 L0520 a hand-rolled binary search: this is `first_true`
 help: `let left = (..).first_true(at => ..)`: the predicate must be monotone along the range
-60:9-60:22 L0505 `u` is only used as `g[u]`
-help: iterate the values: `for x in g:`; with no index there is nothing to get wrong
+60:5-62:25 L0505 write `for x in g: ...`
+help: `std.seq` declares this lint with `@lint` on `iter`
 101:5-104:5 L0504 a loop that only accumulates `best` is one `max`
 help: write `V.map(v => cells[v]).max()`, or `max(0, V.map(v => cells[v]).max() ?? 0)` if `0` can win or the loop can run zero times
 107:5-110:5 L0504 a loop that only accumulates `least` is one `min`

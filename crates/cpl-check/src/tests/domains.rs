@@ -601,7 +601,7 @@ fn range_lo_hi_are_rejected_with_start_end_fixes_and_user_fields_stay() {
 struct Seg(lo: Int, hi: Int)
 let s = Seg(1, 5)
 let r = 2..=4
-print(s.lo, s.hi, r.start, r.end, r.last, r.len)
+print(s.lo, s.hi, r.start, r.end, r.last!, r.len)
 ";
     assert!(
         check(ok).is_empty(),

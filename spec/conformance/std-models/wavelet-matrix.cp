@@ -21,7 +21,7 @@ for k in 0..n:
     let j = rng.int(0, hi - lo)
     var ys = [a[Q(i)] for i in lo..hi]
     ys.sort()
-    let r = Q.cuts.nth(lo)..Q.cuts.nth(hi)
+    let r: Range<Q> = Q.cuts.nth(lo)..Q.cuts.nth(hi)
     let lt = ys.count(t => t < x)
     let below = [t for t in ys if t < x]
     let above = [t for t in ys if t > x]

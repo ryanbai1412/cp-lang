@@ -125,6 +125,24 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// The ends the checker proved for the range type written at `ty`, from
+    /// the declared caps of its bounds: the one fact `cpl explain` sizes it by.
+    pub(in crate::lower) fn checked_range(&self, ty: &ast::Type) -> Option<(i64, i64)> {
+        let items = &self.mods[self.cur_mod].items;
+        let at = items
+            .binary_search_by_key(&self.offset, |i| i.offset)
+            .ok()?;
+        let written = &items[at].check.exprs.written;
+        match written.iter().rev().find(|(at, _)| *at == ty.span)?.1 {
+            cpl_check::Ty::Range {
+                lo: Some(lo),
+                hi: Some(hi),
+                ..
+            } => Some((i64::try_from(lo).ok()?, i64::try_from(hi).ok()?)),
+            _ => None,
+        }
+    }
+
     /// Conservative `(min, max)` bounds for an AST range bound expression,
     /// including compile-time constants and domain counts (`V.count` / `V.K` <= `i32::MAX`).
     pub(in crate::lower) fn range_bound_limits(&self, e: &ast::Expr) -> Option<(i64, i64)> {

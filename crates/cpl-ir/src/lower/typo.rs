@@ -40,9 +40,7 @@ impl<'a> Lowerer<'a> {
             "after", "all", "any", "at", "before", "count", "cuts", "first", "is_empty", "last",
             "len", "mask", "max", "min", "nth", "rev", "size", "sort", "sorted", "subsets", "sum",
         ];
-        const SEQ_EXTRA: [&str; 6] = [
-            "adjacent", "inverse", "items", "resized", "reverse", "reversed",
-        ];
+        const SEQ_EXTRA: [&str; 4] = ["adjacent", "items", "reverse", "reversed"];
         const STR_EXTRA: [&str; 6] = [
             "adjacent", "count", "items", "reverse", "reversed", "to_str",
         ];

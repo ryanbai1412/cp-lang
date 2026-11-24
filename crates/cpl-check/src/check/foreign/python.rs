@@ -25,17 +25,9 @@ pub(crate) fn index_of(src: &str, base: Span, name: &Name, ty: &Ty) -> Option<(S
         return None;
     }
     let rest = src.get(name.span.end as usize..)?.strip_prefix('(')?;
-    let mut depth = 0;
-    let close = rest.char_indices().find_map(|(i, c)| {
-        match c {
-            '(' | '[' | '{' => depth += 1,
-            ')' if depth == 0 => return Some(Some(i)),
-            ')' | ']' | '}' => depth -= 1,
-            ',' | '\n' if depth == 0 => return Some(None),
-            _ => {}
-        }
-        None
-    })??;
+    let Some((close, true)) = first_arg(rest) else {
+        return None;
+    };
     let x = rest[..close].trim();
     let b = src.get(base.start as usize..base.end as usize)?;
     if x.is_empty() {

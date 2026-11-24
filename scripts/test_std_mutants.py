@@ -1,4 +1,5 @@
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -52,6 +53,27 @@ class SitesTest(unittest.TestCase):
         self.assertEqual(sm.test_cases("error[E0101]: no such name", 1), {"*": "error"})
         self.assertEqual(sm.test_cases("", 0), {})
 
+    def test_a_fn_cut_by_the_time_limit_times_out(self) -> None:
+        out = "  FAIL std/bag.cp::big: still running after the 2000 ms time limit\n0 passed, 1 failed\n"
+        self.assertEqual(sm.test_cases(out, 1), {"big": "timeout"})
+
+
+class CopyTest(unittest.TestCase):
+    def test_a_copy_times_its_tests_by_a_wider_judge_limit(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            std = sm.copy_std(Path(tmp) / "c")
+            self.assertEqual(sorted(p.name for p in std.glob("*.cp")), sorted(p.name for p in sm.STD.glob("*.cp")))
+            self.assertIn("time_ms = 20000", (std.parent / "cp.toml").read_text())
+
+
+class SliceTest(unittest.TestCase):
+    def test_a_file_without_tests_has_no_test_slice(self) -> None:
+        r = sm.Runner("conform", "cpl")
+        bare = next(p.name for p in sorted(sm.STD.glob("*.cp")) if "@test" not in p.read_text())
+        tested = next(p.name for p in sorted(sm.STD.glob("*.cp")) if "@test" in p.read_text())
+        self.assertNotIn(("test", bare), r.slices({"file": bare, "item": None}))
+        self.assertIn(("test", tested), r.slices({"file": tested, "item": None}))
+
 
 class FakeRunner(sm.Runner):
     def __init__(self, clean: dict, mutant: dict) -> None:
@@ -59,10 +81,10 @@ class FakeRunner(sm.Runner):
         self.results = {"clean": clean, "mutant": mutant}
 
     def slices(self, m):
-        return [("a",), ("b",)]
+        return list(self.results["clean"])
 
     def run(self, sl, std, limit):
-        return self.results["clean" if std == sm.STD else "mutant"].get(sl)
+        return self.results["clean" if std == self.base else "mutant"].get(sl)
 
 
 class OutcomeTest(unittest.TestCase):
@@ -75,9 +97,21 @@ class OutcomeTest(unittest.TestCase):
         self.assertEqual(self.outcome(clean, {("a",): {"x": "pass"}, ("b",): {}}), "CaughtMutant")
         self.assertEqual(self.outcome(clean, {("a",): None, ("b",): {"y": "pass"}}), "CaughtMutant")
 
-    def test_a_case_red_on_clean_std_catches_nothing(self) -> None:
-        clean = {("a",): {"x": "fail"}, ("b",): None}
-        self.assertEqual(self.outcome(clean, {("a",): {"x": "fail"}, ("b",): None}), "MissedMutant")
+    def test_a_spec_case_red_on_clean_std_catches_nothing(self) -> None:
+        clean = {("a",): {"x": "fail"}, ("b",): {"y": "pass"}}
+        self.assertEqual(self.outcome(clean, {("a",): {"x": "fail"}, ("b",): {"y": "pass"}}), "MissedMutant")
+
+    def test_a_red_std_test_or_a_slow_or_crashed_slice_stops_the_run(self) -> None:
+        green = {"y": "pass"}
+        for sl, red in ((("test", "a.cp"), {"x": "fail"}), (("a",), {"x": "timeout"}),
+                        (("a",), {"*": "timeout"}), (("a",), None)):
+            with self.subTest(red=red), self.assertRaises(sm.BaselineRed):
+                self.outcome({sl: red, ("b",): green}, {sl: red, ("b",): green})
+
+    def test_an_empty_clean_suite_judges_nothing(self) -> None:
+        clean = {("a",): {}, ("b",): {"y": "pass"}}
+        self.assertEqual(self.outcome(clean, {("a",): {}, ("b",): {"y": "pass"}}), "MissedMutant")
+        self.assertEqual(self.outcome(clean, {("a",): {}, ("b",): {"y": "fail"}}), "CaughtMutant")
 
     def test_compile_errors_alone_are_unviable(self) -> None:
         clean = {("a",): {"x": "pass"}, ("b",): {"y": "pass"}}
@@ -86,7 +120,9 @@ class OutcomeTest(unittest.TestCase):
 
     def test_a_hang_times_out(self) -> None:
         clean = {("a",): {"x": "pass"}, ("b",): {"y": "pass"}}
-        self.assertEqual(self.outcome(clean, {("a",): {"*": "timeout"}}), "Timeout")
+        self.assertEqual(self.outcome(clean, {("a",): {"*": "timeout"}, ("b",): {"y": "pass"}}), "Timeout")
+        self.assertEqual(self.outcome(clean, {("a",): {"x": "timeout"}, ("b",): {"y": "pass"}}), "Timeout")
+        self.assertEqual(self.outcome(clean, {("a",): {"x": "timeout"}, ("b",): {"y": "fail"}}), "CaughtMutant")
 
 
 if __name__ == "__main__":

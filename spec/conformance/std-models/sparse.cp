@@ -47,7 +47,7 @@ for k in 0..n:
     let lx = LinearRmq(arr, before: (x, y) => x > y)
     let lo = rng.int(0, 150)
     let hi = rng.int(lo, 150)
-    let r = V.cuts.nth(lo)..V.cuts.nth(hi)
+    let r: Range<V> = V.cuts.nth(lo)..V.cuts.nth(hi)
     if lo == hi:
         if st.try_fold(r) != None or dst.try_fold(r) != None or lm.try_best(r) != None:
             bad = "op {k}: empty {lo}..{hi} not None"

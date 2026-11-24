@@ -78,3 +78,6 @@ size = 16
 [[case]]
 seed = 21
 size = 32
+
+[[case]]
+args = ["--max", "--lone", "600"]

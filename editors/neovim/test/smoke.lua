@@ -30,7 +30,9 @@ end
 local function server_runs(what, start)
     messages, ran = {}, {}
     start()
+    -- Neovim may hand a `window/showMessage` on after the command's answer.
     check(vim.wait(60000, function() return #ran > 0 end, 100), what .. ' did not finish')
+    vim.wait(5000, function() return #messages > 0 end, 50)
     return ran[1], table.concat(messages, '\n')
 end
 

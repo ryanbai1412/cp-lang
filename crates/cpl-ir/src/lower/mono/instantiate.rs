@@ -390,7 +390,7 @@ impl<'a> Lowerer<'a> {
                 self.structs[sid].index_domain = Some(dom_id);
             }
 
-            let imp_rhs_ty: Option<Ty> = imp_trait_args.first().map(|t| self.resolve_ty(t));
+            let imp_args: Vec<Ty> = imp_trait_args.iter().map(|t| self.resolve_ty(t)).collect();
             let imp_out_ty: Option<Ty> = imp_body.stmts.iter().find_map(|s| match &s.kind {
                 ast::StmtKind::TypeAlias { name, ty, .. } if name.text == "Out" => {
                     Some(self.resolve_ty(ty))
@@ -439,10 +439,10 @@ impl<'a> Lowerer<'a> {
                             self.resolve_fn_sig_with(
                                 fn_id,
                                 imp_trait.as_deref(),
-                                imp_rhs_ty.as_ref(),
+                                &imp_args,
                                 imp_out_ty.as_ref(),
                             );
-                            let (tr, rhs) = (imp_trait.as_deref(), imp_rhs_ty.clone());
+                            let (tr, rhs) = (imp_trait.as_deref(), imp_args.first().cloned());
                             if self.register_op_impl(sid, fn_id, tr, &f.name.text, rhs) {
                                 // Dispatched by its operand's type, not by name.
                             } else if let Some(tname) = imp_trait

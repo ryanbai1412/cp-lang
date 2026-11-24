@@ -337,6 +337,38 @@ fn a_domain_position_mapped_and_tested_builds_no_position_optional() {
 }
 
 #[test]
+fn an_if_chain_of_cells_tests_its_cell_once_after_the_chain() {
+    let src = "let h: 1..=9 = read()\nlet w: 1..=9 = read()\ndomain Row = 0..h\ndomain Col = 0..w\ntype Cell = (Row, Col)\n\
+         fn step(p: Cell, m: Int) -> ?Cell =\n    if 10 / m == 1: Col.at(p.1 - 1).map(c => (p.0, c))\n    elif m == 2: Col.at(p.1 + 1).map(c => (p.0, c))\n    else: Row.at(p.0 + 1).map(r => (r, p.1))\n\
+         fn mixed(p: Cell, m: Int) -> ?Cell =\n    if m == 0: Col.at(p.1 - 1).map(c => (p.0, c))\n    else: None\n\
+         var at: Cell = (Row(0), Col(w - 1))\nfor m in 1..4:\n    if let next = step(at, m): at = next\n\
+         print(at.0.idx, at.1.idx, yes(mixed(at, 1) == None))\n";
+    let cpp = cpp(src);
+    let p = prog(&cpp);
+    let body = |f: &str| {
+        (p.split(&format!("bool {f}(")).nth(1))
+            .and_then(|s| s.split("\n}\n").next())
+            .unwrap_or("")
+            .to_string()
+    };
+    let step = body("step");
+    assert_eq!(step.matches("cpl_out = ").count(), 1, "{step}");
+    assert_eq!(step.matches("_len").count(), 2, "{step}");
+    assert!(
+        step.contains("< (cpl::u64)Row_len) & ((cpl::u64)")
+            && step.contains("< (cpl::u64)Col_len)"),
+        "{step}"
+    );
+    // The arms' conditions still run first and in order, so a trap in one
+    // (here `10 / m`) comes before any cell is tested.
+    let (div, test) = (step.find("cpl::divn(10, m)"), step.find("_len"));
+    assert!(div.is_some() && div < test, "{step}");
+    // An arm that is not a cell keeps every arm's own test.
+    let mixed = body("mixed");
+    assert!(!mixed.contains("(cpl::u64)"), "{mixed}");
+}
+
+#[test]
 fn a_cell_fn_tested_by_its_caller_builds_no_opt_tuple() {
     let src = "let h: 1..=9 = read()\nlet w: 1..=9 = read()\ndomain Row = 0..h\ndomain Col = 0..w\ntype Cell = (Row, Col)\n\
          fn step(p: Cell, m: Int) -> ?Cell =\n    if m == 0: Col.at(p.1 - 1).map(c => (p.0, c))\n    else: Row.at(p.0 + 1).map(r => (r, p.1))\n\
@@ -347,10 +379,6 @@ fn a_cell_fn_tested_by_its_caller_builds_no_opt_tuple() {
     let p = prog(&cpp);
     assert!(
         p.contains("bool step(const std::tuple<int, int>& p, ll m, std::tuple<int, int>& cpl_out)"),
-        "{p}"
-    );
-    assert!(
-        p.contains("cpl_out = std::tuple<int, int>{std::get<0>(p), c};"),
         "{p}"
     );
     assert!(p.contains("if (::prog::step(at, "), "{p}");
@@ -409,4 +437,16 @@ fn a_profiled_build_counts_the_line_that_tests_an_into_fn() {
         spans.iter().any(|s| s.start <= at && at < s.end),
         "no site counts `if let h = half(i)`: {spans:?}\n{profiled}"
     );
+}
+
+#[test]
+fn the_max_of_optional_positions_is_one_std_max_and_their_min_one_unsigned_compare() {
+    let cpp = cpp(
+        "let n: 1..=9 = read()\ndomain I = 0..n\nlet a: [I]?I = [if i.ord % 3 == 0: None else: Some(i) for i in I]\n\
+         print(a.fold(max), a.fold(min))\nvar b: ?I = None\nfor x in a: b = max(b, x)\nprint(b)\n",
+    );
+    assert!(cpp.contains("std::max<cpl::OptPos>(a_2, b_2)"), "{cpp}");
+    assert!(cpp.contains("b = std::max<cpl::OptPos>(b, x)"), "{cpp}");
+    assert!(cpp.contains("cpl::opt_min("), "{cpp}");
+    assert!(!cpp.contains("has_value() ? ("), "{cpp}");
 }

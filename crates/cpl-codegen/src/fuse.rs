@@ -192,7 +192,12 @@ impl<'p> Emitter<'p> {
         }
         // A `break` of the consumer skips the rest of the producer: fine when
         // the rest can neither trap nor write anything but its own locals.
-        if stops && !(trap_free_block(inner_body, *vec_slot, traps) && writes_own(inner_body)) {
+        // A consumer fused onto this loop's pushes may break out of it, and
+        // fused, this loop's end is the producer's.
+        let fed = self.fed_breaks_to(outer_body, outer_id);
+        if (stops || fed)
+            && !(trap_free_block(inner_body, *vec_slot, traps) && writes_own(inner_body))
+        {
             return false;
         }
         if stops {
@@ -218,10 +223,36 @@ impl<'p> Emitter<'p> {
             inside.map(|(l, i)| crate::bounds::Inside::List((false, l, None), i, None, 0, 0)),
         );
         self.for_stmt(*inner_id, *inner_slot, inner_iter, inner_body, out);
+        if fed {
+            self.line(out, &format!("brk_{outer_id}:;"));
+        }
         self.inside
             .truncate(self.inside.len() - usize::from(inside.is_some()));
         self.fused_pushes.pop();
         true
+    }
+
+    /// Whether a consumer fused onto a list `body` pushes to breaks out of
+    /// the loop `id`, directly or through a consumer fused onto its own pushes.
+    fn fed_breaks_to(&self, body: &Block, id: LoopId) -> bool {
+        let mut consumers = Vec::new();
+        crate::uses::split::each_value(body, &mut |e| {
+            let ExprKind::Mutate(Mutation::Push, place, _) = &e.kind else {
+                return;
+            };
+            let PlaceKind::Local(v) = place.kind else {
+                return;
+            };
+            if let Some((_, c)) = self.fused_pushes.iter().rev().find(|(s, _)| *s == v) {
+                if c.sink.is_none() {
+                    consumers.push(c.body.clone());
+                }
+            }
+        });
+        consumers.iter().any(|b| {
+            retarget_breaks(&mut (**b).clone(), id, id, 1).unwrap_or(true)
+                || self.fed_breaks_to(b, id)
+        })
     }
 }
 

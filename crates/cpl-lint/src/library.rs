@@ -43,6 +43,13 @@ pub(crate) struct Declared {
     /// `reads:`: the read `from`'s name has later, and what the fix writes
     /// for each.
     reads: Option<(Vec<(K, String)>, String)>,
+    /// Whether `reads:`'s name is a loop variable `from` binds: its reads
+    /// are in the statement holes, rewritten in what those matched.
+    loop_read: bool,
+    /// Whether `to` drops `reads:`'s name: every use must then be a read.
+    drops_read: bool,
+    /// `each:`: the name `to` writes for an element, and its hole.
+    each: Option<(String, usize)>,
     /// Per name `to` declares, the holes its initializer uses.
     inits: Vec<(String, Vec<String>)>,
     /// The module's public names `to` uses, each as the linted file spells
@@ -124,6 +131,18 @@ fn declare(
         .collect();
     let reads = (decl.reads.split_once("->"))
         .and_then(|(r, w)| Some((library_lint::code(r.trim())?, w.trim().to_string())));
+    let each = (decl.each.split_once(" in ")).and_then(|(x, xs)| {
+        Some((
+            x.trim().to_string(),
+            decl.holes.iter().position(|h| h == xs.trim())?,
+        ))
+    });
+    let read_name = (reads.as_ref())
+        .and_then(|(pat, _)| pat.iter().find(|t| bound_names(&from).contains(&t.1)))
+        .map(|t| t.1.clone());
+    let loop_read = (read_name.as_ref())
+        .is_some_and(|n| from.windows(2).any(|w| w[0].0 == K::For && w[1].1 == *n));
+    let drops_read = (read_name.as_ref()).is_some_and(|n| !to_toks.iter().any(|t| t.1 == *n));
     let (to_run, to_ends) = library_lint::run(&decl.to).unwrap_or_default();
     let mut inits = Vec::new();
     let mut start = 0;
@@ -152,6 +171,9 @@ fn declare(
         receiver,
         rebinds,
         reads,
+        loop_read,
+        drops_read,
+        each,
         inits,
         decl,
         module: module.to_string(),
@@ -600,7 +622,12 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                 continue;
             };
             let span = Span::new(site[0].start, toks[stop - 1].span.end);
-            if (d.module.is_empty() && d.decl.item.contains(span))
+            // A `from` ending in a name (`t.order`) is not the callee of a
+            // call (`t.order(v)`), which names another thing.
+            let callee = d.from.last().is_some_and(|(k, _)| *k == K::Ident)
+                && toks.get(stop).is_some_and(|t| t.kind == K::LParen);
+            if callee
+                || (d.module.is_empty() && d.decl.item.contains(span))
                 || taken.iter().any(|t| t.contains(span))
                 || (fixes
                     && d.decl.receiver.is_none()
@@ -683,6 +710,16 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
             if reads_own {
                 continue;
             }
+            // Lines `from` writes differently never match one line twice
+            // (`g[u].push(v)` then `g[v].push(u)` is no self-loop's pair).
+            let code: Vec<&str> = (file.src[span.start as usize..span.end as usize].lines())
+                .map(str::trim)
+                .collect();
+            let pat: Vec<&str> = d.decl.from.lines().map(str::trim).collect();
+            let twice = |l: &[&str]| (1..l.len()).any(|i| l[..i].contains(&l[i]));
+            if code.len() == pat.len() && twice(&code) && !twice(&pat) {
+                continue;
+            }
             let got_of = |holes: &[Option<(usize, usize)>]| -> HashMap<&str, &str> {
                 (d.decl.holes.iter().zip(holes))
                     .filter_map(|(h, run)| {
@@ -694,7 +731,107 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                     })
                     .collect()
             };
-            let got = got_of(&holes);
+            // `reads:` rewrites every use of its name in the name's scope:
+            // the rest of the block, or a loop variable's statement holes. A
+            // use that is no such read (a write, `p.len`) leaves the code
+            // unfixed; where `to` drops the name, it is no such code.
+            // `each:` asks its hole to match a name, and spells its own as
+            // that name's singular (`vals` -> `val`), one the file does not
+            // use; with none such the finding has no fix.
+            let plural = d.each.as_ref().map(|(_, h)| match holes[*h] {
+                Some((a, b)) if b == a + 1 && kinds[a] == K::Ident => Some(text[a]),
+                _ => None,
+            });
+            if plural == Some(None) {
+                continue;
+            }
+            let named_each = d.each.as_ref().is_none_or(|(x, _)| {
+                let plural = plural.flatten().unwrap_or_default();
+                let used =
+                    |o: &str| (text.iter().zip(&kinds)).any(|(t, k)| *k == K::Ident && *t == o);
+                let one = (plural.strip_suffix('s')).filter(|o| o.len() > 1 && !used(o));
+                one.map(|o| names.push((x.clone(), o.to_string())))
+                    .is_some()
+            });
+            let hole_runs: Vec<(usize, usize)> = (d.from.iter().zip(&d.stmt_holes))
+                .filter(|(_, s)| **s)
+                .filter_map(|((_, h), _)| holes[d.decl.holes.iter().position(|x| x == h)?])
+                .collect();
+            let read_edits = d.reads.as_ref().map(|(pat, write)| {
+                let m = Matcher {
+                    repeated: vec![false; d.decl.holes.len()],
+                    ..matcher(pat, &plain[..pat.len()], &plain[..pat.len()])
+                };
+                let (_, user) = (pat.iter()).find_map(|(_, t)| names.iter().find(|n| n.0 == *t))?;
+                let last = site[site.len() - 1];
+                let end = block_end(&spans.blocks, last);
+                let in_scope = |j: usize| match d.loop_read {
+                    true => hole_runs.iter().any(|&(a, b)| (a..b).contains(&j)),
+                    false => toks[j].span.start >= last.end && toks[j].span.end <= end,
+                };
+                let mut edits: Vec<(Span, String)> = Vec::new();
+                for j in (0..toks.len()).filter(|&j| {
+                    in_scope(j)
+                        && kinds[j] == K::Ident
+                        && text[j] == user
+                        && (j == 0 || kinds[j - 1] != K::Dot)
+                }) {
+                    if edits.last().is_some_and(|e| e.0.end > toks[j].span.start) {
+                        return None;
+                    }
+                    let (mut h, mut n) = (holes.clone(), names.clone());
+                    let c = candidates.iter().find(|c| {
+                        (h, n) = (holes.clone(), names.clone());
+                        c.0 <= j && j < c.1 && m.go(0, c.0, c.1, &mut h, &mut n)
+                    })?;
+                    edits.push((
+                        c.2,
+                        fill(write, &got_of(&h), &n, &d.spell, "", &HashMap::new()),
+                    ));
+                }
+                // What the read's holes matched stays what it was: a name of
+                // it is used in the scope only in the reads (not assigned,
+                // declared again, or read whole).
+                let kept: Vec<&str> = (pat.iter())
+                    .filter_map(|(_, t)| holes[d.decl.holes.iter().position(|h| h == t)?])
+                    .filter(|(a, b)| b - a == 1)
+                    .map(|(a, _)| text[a])
+                    .collect();
+                let in_read = |j: usize| edits.iter().any(|e| e.0.contains(toks[j].span));
+                if (0..toks.len()).any(|j| in_scope(j) && kept.contains(&text[j]) && !in_read(j)) {
+                    return None;
+                }
+                (!d.drops_read || !edits.is_empty()).then_some(edits)
+            });
+            if d.drops_read && matches!(read_edits, Some(None)) {
+                continue;
+            }
+            // A loop variable's reads are rewritten in what its statement
+            // holes matched.
+            let subbed: Vec<(&str, String)> = match (d.loop_read, &read_edits) {
+                (true, Some(Some(edits))) => (d.from.iter().zip(&d.stmt_holes))
+                    .filter(|(_, s)| **s)
+                    .filter_map(|((_, h), _)| {
+                        let (a, b) = holes[d.decl.holes.iter().position(|x| x == h)?]?;
+                        let (start, stop) = (toks[a].span.start, toks[b - 1].span.end);
+                        let mut out = String::new();
+                        let mut at = start;
+                        for (span, w) in edits
+                            .iter()
+                            .filter(|e| e.0.start >= start && e.0.end <= stop)
+                        {
+                            out += &file.src[at as usize..span.start as usize];
+                            out += w;
+                            at = span.end;
+                        }
+                        out += &file.src[at as usize..stop as usize];
+                        Some((h.as_str(), out))
+                    })
+                    .collect(),
+                _ => Vec::new(),
+            };
+            let mut got = got_of(&holes);
+            got.extend(subbed.iter().map(|(h, s)| (*h, s.as_str())));
             let column = |at: u32| {
                 let line = file.src[..at as usize].rfind('\n').map_or(0, |i| i + 1);
                 (line, at as usize - line)
@@ -739,7 +876,7 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                 _ => span,
             };
             let mut diag = cpl_diag::msgs::lint_rules::LIBRARY_LINT_FIX
-                .warning_as(d.lint.code, shown, &[&fix])
+                .warning_as(d.lint.code, shown, &[&first_line(&fix)])
                 .with_help(format!(
                     "{from} declares this lint with `@lint` on `{}`",
                     d.decl.fn_name
@@ -755,43 +892,13 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                 format!("use `{}`", d.decl.suggests)
             };
             fixed.fix(fix_title, span, fix);
-            // `reads:` rewrites every later use of the name; one that is no
-            // such read (a write, `p.len`) leaves the code unfixed.
-            let reads = d.reads.as_ref().map(|(pat, write)| {
-                let m = Matcher {
-                    repeated: vec![false; d.decl.holes.len()],
-                    ..matcher(pat, &plain[..pat.len()], &plain[..pat.len()])
-                };
-                let (_, user) = (pat.iter()).find_map(|(_, t)| names.iter().find(|n| n.0 == *t))?;
-                let last = site[site.len() - 1];
-                let end = block_end(&spans.blocks, last);
-                let mut edits: Vec<(Span, String)> = Vec::new();
-                for j in (0..toks.len()).filter(|&j| {
-                    toks[j].span.start >= last.end
-                        && toks[j].span.end <= end
-                        && kinds[j] == K::Ident
-                        && text[j] == user
-                        && (j == 0 || kinds[j - 1] != K::Dot)
-                }) {
-                    if edits.last().is_some_and(|e| e.0.end > toks[j].span.start) {
-                        return None;
-                    }
-                    let (mut h, mut n) = (holes.clone(), names.clone());
-                    let c = candidates.iter().find(|c| {
-                        (h, n) = (holes.clone(), names.clone());
-                        c.0 == j && m.go(0, c.0, c.1, &mut h, &mut n)
-                    })?;
-                    edits.push((
-                        c.2,
-                        fill(write, &got_of(&h), &n, &d.spell, "", &HashMap::new()),
-                    ));
-                }
-                Some(edits)
-            });
-            match reads {
+            match read_edits {
                 Some(None) => fixed = diag.clone(),
-                Some(Some(edits)) => fixed.fixes[0].edits.extend(edits),
-                None => {}
+                Some(Some(edits)) if !d.loop_read => fixed.fixes[0].edits.extend(edits),
+                _ => {}
+            }
+            if !named_each {
+                fixed = diag.clone();
             }
             if !d.rebinds.is_empty()
                 && !rebinding_holds(
@@ -1141,6 +1248,15 @@ fn fill(
     }
     out.push_str(&lines(&to[last..]));
     out
+}
+
+/// A fix's first line, `...` standing for the rest: a message is one line,
+/// as every tool shows it.
+fn first_line(fix: &str) -> String {
+    match fix.split_once('\n') {
+        Some((first, _)) => format!("{} ...", first.trim_end()),
+        None => fix.to_string(),
+    }
 }
 
 fn balanced(s: &str) -> bool {

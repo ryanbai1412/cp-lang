@@ -6,7 +6,7 @@
 
 use std::collections::BTreeSet;
 
-use cpl_ir::{BinOp, Block, Expr, ExprKind, FnId, PlaceKind, Program, Stmt, Ty};
+use cpl_ir::{BinOp, Block, Cast, Expr, ExprKind, FnId, PlaceKind, Program, Stmt, Ty};
 
 use crate::devirt::Devirt;
 use crate::lend::{whole_reads, Tail};
@@ -136,6 +136,20 @@ fn cheap_key(program: Option<&Program>, e: &Expr, traps: bool, depth: usize) -> 
             safe && l.ty != Ty::Str && cheap(l) && cheap(r)
         }
         ExprKind::Cmp(_, l, r) => cheap(l) && cheap(r),
+        ExprKind::If(c, a, b) => cheap(c) && cheap(a) && cheap(b),
+        ExprKind::DomainLen(_) | ExprKind::DomainLo(_) => true,
+        ExprKind::Cast(
+            Cast::Trust
+            | Cast::Ord
+            | Cast::Label(_)
+            | Cast::EnumOrd(_)
+            | Cast::EnumVal(_)
+            | Cast::IntToI128
+            | Cast::IntToU64
+            | Cast::U64ToI128
+            | Cast::CharToInt,
+            inner,
+        ) => cheap(inner),
         ExprKind::Index(base, idxs) => {
             (!traps || cpl_ir::effects::in_domain(&base.ty, idxs))
                 && cheap(base)
@@ -145,17 +159,28 @@ fn cheap_key(program: Option<&Program>, e: &Expr, traps: bool, depth: usize) -> 
             let Some(f) = program.map(|p| &p.fns[*fid]) else {
                 return false;
             };
-            let [Stmt::Return(Some(made))] = &f.body.stmts[..] else {
-                return false;
-            };
             !f.params.iter().any(|p| p.mutable)
                 && args
                     .iter()
                     .all(|a| matches!(a, cpl_ir::Arg::Value(v) if cheap(v)))
-                && cheap_key(program, made, traps, depth + 1)
+                && cheap_body(program, &f.body, traps, depth + 1)
         }
         _ => false,
     }
+}
+
+/// A fn body of `return`s, `if`s and `let`s of [`cheap_key`] expressions
+/// (`Prefix.prefix`), with asserts only where nothing traps.
+fn cheap_body(program: Option<&Program>, body: &cpl_ir::Block, traps: bool, depth: usize) -> bool {
+    let cheap = |e: &Expr| cheap_key(program, e, traps, depth);
+    body.stmts.iter().all(|s| match s {
+        Stmt::Return(Some(e)) | Stmt::Let(_, Some(e)) => cheap(e),
+        Stmt::If(c, a, b) => {
+            cheap(c) && cheap_body(program, a, traps, depth) && cheap_body(program, b, traps, depth)
+        }
+        Stmt::Assert { cond, .. } => !traps && cheap(cond),
+        _ => false,
+    })
 }
 
 /// A variable, its fields, and cells of its domain-indexed arrays at

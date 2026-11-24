@@ -1,3 +1,4 @@
+use super::jump::{Jump, JumpOp};
 use super::Compiler;
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
@@ -1013,8 +1014,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
     }
 
-    fn keyed_map(&self, ty: &Ty) -> bool {
-        matches!(ty, Ty::Map(k, _) | Ty::HashMap(k, _) if !crate::value::ty_has_cached(k, self.program) && !crate::value::keys::user_ordered(k, self.program))
+    /// A map whose entries a path step walks to: with `any_keys`, also one
+    /// keyed by a user `Ord` or cached fields, for an op that searches with
+    /// `Interp::cmp_ty_val`.
+    fn keyed_map(&self, ty: &Ty, any_keys: bool) -> bool {
+        matches!(ty, Ty::Map(k, _) | Ty::HashMap(k, _) if any_keys || (!crate::value::ty_has_cached(k, self.program) && !crate::value::keys::user_ordered(k, self.program)))
     }
 
     /// A path to `place`, through map entries too. A path that ends at a
@@ -1026,18 +1030,20 @@ impl<'p, 'f> Compiler<'p, 'f> {
         place: &'p Place,
         key_leaf: bool,
     ) -> Option<u16> {
-        self.place_path_rooted(place, key_leaf, None)
+        self.place_path_rooted(place, key_leaf, None, false)
     }
 
-    /// The path to `place`, from `boxed_root` when its local is boxed there.
+    /// The path to `place`, from `boxed_root` when its local is boxed there;
+    /// with `any_keys`, through entries of any [`Self::keyed_map`].
     pub(super) fn place_path_rooted(
         &mut self,
         place: &'p Place,
         key_leaf: bool,
         boxed_root: Option<u16>,
+        any_keys: bool,
     ) -> Option<u16> {
         if let PlaceKind::Index(base, indices) = &place.kind {
-            if !key_leaf && indices.len() == 1 && self.keyed_map(&base.ty) {
+            if !key_leaf && indices.len() == 1 && self.keyed_map(&base.ty, any_keys) {
                 return None;
             }
         }
@@ -1055,7 +1061,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     cur = base;
                 }
                 PlaceKind::Index(base, indices)
-                    if indices.len() == 1 && self.keyed_map(&base.ty) =>
+                    if indices.len() == 1 && self.keyed_map(&base.ty, any_keys) =>
                 {
                     chain.push(cur);
                     cur = base;
@@ -1094,7 +1100,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let mut keys = Vec::new();
         for p in chain.into_iter().rev() {
             match &p.kind {
-                PlaceKind::Index(base, indices) if self.keyed_map(&base.ty) => {
+                PlaceKind::Index(base, indices) if self.keyed_map(&base.ty, any_keys) => {
                     steps.push(PlaceStep::Key(keys.len() as u16));
                     keys.push(self.compile_expr_v(&indices[0]));
                 }
@@ -1420,17 +1426,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
         true
     }
 
-    pub(super) fn emit_branch_if_false(&mut self, cond: &'p Expr) -> usize {
+    pub(super) fn emit_branch_if_false(&mut self, cond: &'p Expr) -> Jump {
         if let ExprKind::IsSome(inner) = &cond.kind {
             if ScalarKind::of_opt_ty(&inner.ty, self.program).is_some() {
                 let (_, r_some) = self.compile_expr_opt_i(inner);
-                return self.emit(
-                    Op::JmpIfZero {
-                        reg: r_some,
-                        target: 0,
-                    },
-                    cond.span,
-                );
+                return self.emit_jump(JumpOp::JmpIfZero { reg: r_some }, cond.span);
             } else {
                 let src_v = self.compile_expr_v(inner);
                 let r_some = self.alloc_i();
@@ -1442,13 +1442,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     },
                     cond.span,
                 );
-                return self.emit(
-                    Op::JmpIfZero {
-                        reg: r_some,
-                        target: 0,
-                    },
-                    cond.span,
-                );
+                return self.emit_jump(JumpOp::JmpIfZero { reg: r_some }, cond.span);
             }
         }
         if let ExprKind::Cmp(op, lhs, rhs) = &cond.kind {
@@ -1462,28 +1456,28 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge | CmpOp::Eq | CmpOp::Ne
                 )
             {
-                let inv: fn(u16, u16) -> Op = match op {
-                    CmpOp::Lt => |a, b| Op::JmpGeI { a, b, target: 0 },
-                    CmpOp::Le => |a, b| Op::JmpGtI { a, b, target: 0 },
-                    CmpOp::Gt => |a, b| Op::JmpLeI { a, b, target: 0 },
-                    CmpOp::Ge => |a, b| Op::JmpLtI { a, b, target: 0 },
-                    CmpOp::Eq => |a, b| Op::JmpNeI { a, b, target: 0 },
-                    CmpOp::Ne => |a, b| Op::JmpEqI { a, b, target: 0 },
+                let inv: fn(u16, u16) -> JumpOp = match op {
+                    CmpOp::Lt => |a, b| JumpOp::JmpGeI { a, b },
+                    CmpOp::Le => |a, b| JumpOp::JmpGtI { a, b },
+                    CmpOp::Gt => |a, b| JumpOp::JmpLeI { a, b },
+                    CmpOp::Ge => |a, b| JumpOp::JmpLtI { a, b },
+                    CmpOp::Eq => |a, b| JumpOp::JmpNeI { a, b },
+                    CmpOp::Ne => |a, b| JumpOp::JmpEqI { a, b },
                     _ => {
                         let r = self.compile_expr_i(cond);
-                        return self.emit(Op::JmpIfZero { reg: r, target: 0 }, cond.span);
+                        return self.emit_jump(JumpOp::JmpIfZero { reg: r }, cond.span);
                     }
                 };
                 let a = self.compile_expr_i(lhs);
                 let b = self.compile_expr_i(rhs);
-                return self.emit(inv(a, b), cond.span);
+                return self.emit_jump(inv(a, b), cond.span);
             }
         }
         if let ExprKind::Unary(UnOp::Not, inner) = &cond.kind {
             let r = self.compile_expr_i(inner);
-            return self.emit(Op::JmpIfNonZero { reg: r, target: 0 }, cond.span);
+            return self.emit_jump(JumpOp::JmpIfNonZero { reg: r }, cond.span);
         }
         let r = self.compile_expr_i(cond);
-        self.emit(Op::JmpIfZero { reg: r, target: 0 }, cond.span)
+        self.emit_jump(JumpOp::JmpIfZero { reg: r }, cond.span)
     }
 }

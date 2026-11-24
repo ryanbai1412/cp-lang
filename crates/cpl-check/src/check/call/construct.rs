@@ -166,7 +166,13 @@ impl Checker<'_> {
                     let new = (method_rows.iter()).find(|(m, ..)| m == "new" && !is_generated_ctor);
                     let through = new.map(|r| r.2.clone());
                     let outer = std::mem::replace(&mut self.call_bound_args, through);
-                    self.args(callee_text, verb, params, args, call, &mut bindings);
+                    let callee = Callee {
+                        name: callee_text,
+                        verb,
+                        params,
+                        own: generics,
+                    };
+                    self.args(callee, args, call, &mut bindings);
                     let through = std::mem::replace(&mut self.call_bound_args, outer);
                     if let Some((.., bounds)) = new {
                         self.method_bounds_hold(
@@ -256,13 +262,17 @@ impl Checker<'_> {
     /// the next `T` argument must be an `Int`.
     pub(super) fn args(
         &mut self,
-        callee: &str,
-        verb: &str,
-        params: &[Param],
+        callee: Callee<'_>,
         args: &[Arg],
         call: &Expr,
         bindings: &mut Bindings,
     ) {
+        let Callee {
+            name: callee,
+            verb,
+            params,
+            own,
+        } = callee;
         let positional: Vec<&Param> = params.iter().filter(|p| !p.named_only).collect();
         let variadic = positional.last().is_some_and(|p| p.variadic);
         let labeled = params.iter().all(|p| !p.name.is_empty());
@@ -347,7 +357,7 @@ impl Checker<'_> {
                 }
                 self.expected_piece = Self::expects_piece(&expected);
                 typed_lambda = self.lambda_defaults(arg, &expected, callee, params)
-                    || self.lambda_takes(arg, &expected);
+                    || self.lambda_takes(arg, &expected, own, bindings);
             }
             let want = param.map(|p| p.ty.subst(bindings));
             let arg_ty = self.infer_arg(&arg.value, want.as_ref());
@@ -599,7 +609,8 @@ impl Checker<'_> {
         if self.local(name).is_some() {
             return ty;
         }
-        let Some(Def::Fn { generics, .. }) = self.global(name).as_deref().cloned() else {
+        let found = self.global(name);
+        let Some(Def::Fn { generics, .. }) = found.as_deref() else {
             return ty;
         };
         let (Ty::Fn { params, .. }, Ty::Fn { params: wanted, .. }) = (&ty, want) else {
@@ -675,20 +686,43 @@ impl Checker<'_> {
     /// `sum(xs, of: x => x * x)`: a lambda whose parameters it leaves
     /// unwritten takes the ones the fn's earlier arguments fixed, so its
     /// body, and the generic its result binds, are checked with them.
-    fn lambda_takes(&mut self, arg: &Arg, expected: &Ty) -> bool {
+    ///
+    /// A type parameter left in them is fixed when it is the enclosing
+    /// body's (`T` inside `impl<T>`), not one of the callee's `own` the
+    /// call has yet to bind.
+    fn lambda_takes(
+        &mut self,
+        arg: &Arg,
+        expected: &Ty,
+        own: &[String],
+        bindings: &Bindings,
+    ) -> bool {
         let (ExprKind::Lambda { param_tys, .. }, Ty::Fn { params, .. }) =
             (&arg.value.kind, expected)
         else {
             return false;
         };
-        let fixed = |t: &Ty| !t.has_vague() && !t.mentions_param();
+        let generics = &self.generics;
+        let fixed = |t: &Ty| {
+            let mut open = false;
+            t.map(&mut |t| {
+                if let Ty::Param(n) = t {
+                    let rigid =
+                        bindings.contains_key(n) || (!own.contains(n) && generics.contains(n));
+                    open |= !rigid;
+                }
+                None
+            });
+            !t.has_vague() && !open
+        };
         if param_tys.iter().any(Option::is_some) || !params.iter().all(|p| fixed(&p.ty)) {
             return false;
         }
-        // A catalog row's guess that left a parameter unknown gives way.
+        // A catalog row's guess that left a parameter unknown gives way; one
+        // that fixed them all types the lambda, so its result binds as well.
         let at = arg.value.span;
         match self.lambda_params.iter().position(|(s, _)| *s == at) {
-            Some(i) if self.lambda_params[i].1.iter().all(fixed) => return false,
+            Some(i) if self.lambda_params[i].1.iter().all(fixed) => return true,
             Some(i) => {
                 self.lambda_params.swap_remove(i);
             }
@@ -698,4 +732,15 @@ impl Checker<'_> {
         self.lambda_params.push((arg.value.span, tys));
         true
     }
+}
+
+/// The fn a call's arguments are checked against: its name and the verb
+/// errors say it with, its parameters, and its `own` type parameters, the
+/// ones the call binds.
+#[derive(Clone, Copy)]
+pub(super) struct Callee<'s> {
+    pub name: &'s str,
+    pub verb: &'s str,
+    pub params: &'s [Param],
+    pub own: &'s [String],
 }

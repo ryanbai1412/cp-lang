@@ -10,7 +10,7 @@
 //! - linear (`cyclic: false`): length `a.len + b.len - 1` (or `[]` if either input is empty)
 //! - cyclic (`cyclic: true`): requires `a.len == b.len`, length `n = a.len`, index `(i + j) % n`.
 use std.algebra.{Monoid, Semiring}
-use std.math.{abs, is_pow2, primitive_root, bit, gcd, lcm, isqrt, popcount, trunc, bit_ceil, ctz}
+use std.math.{abs, acos, cos, sin, is_pow2, primitive_root, bit, gcd, lcm, isqrt, popcount, trunc, bit_ceil, ctz}
 use std.mod.{Mod}
 use std.seq.{collect, all}
 

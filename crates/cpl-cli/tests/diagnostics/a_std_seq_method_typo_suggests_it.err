@@ -1,0 +1,8 @@
+error[E0203]: a `List<Int>` has no method `resizedd`
+  --> a_std_seq_method_typo_suggests_it.cp:2:9
+  |
+2 | print(a.resizedd(5, 0))
+  |         ^^^^^^^^
+  = help: did you mean `resized`?
+
+a_std_seq_method_typo_suggests_it.cp: 1 error

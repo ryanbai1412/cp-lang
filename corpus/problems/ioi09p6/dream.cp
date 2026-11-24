@@ -14,7 +14,7 @@ fn safe(w: Int) -> Bool:
     let walk = bfs(
         p => p.adj4.filter(q => field[q] in "GD"),
         from: [start],
-        until: home,
+        until: x => x == home,
         enter: ahead,
     )
     ahead(start, 0) and walk.reached(home)

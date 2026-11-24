@@ -25,6 +25,7 @@ mod walk;
 pub(crate) use effects::{lambda_effects, own_effects, Effects};
 
 use super::known::{mutating_call, LENGTH_CHANGING_MUTATORS};
+use super::method_form::env_mut_self_name;
 use super::moves::{is_compound, nested_moves};
 use super::views::Keyed;
 use super::*;
@@ -396,12 +397,17 @@ pub(crate) fn flow_of(stmts: &[Stmt]) -> Flow {
 }
 
 /// The names an item mentions, and the ones it may assign.
-pub(crate) fn item_names(stmts: &[Stmt]) -> (Vec<String>, Vec<String>) {
+pub(crate) fn item_names(stmts: &[Stmt], mut_self: MutSelf) -> (Vec<String>, Vec<String>) {
+    (stmt_names(stmts), written_in_stmts(stmts, mut_self))
+}
+
+/// The names `stmts` mention.
+pub(crate) fn stmt_names(stmts: &[Stmt]) -> Vec<String> {
     let mut names = Names::default();
     for stmt in stmts {
         walk_stmt(stmt, &mut names);
     }
-    (names.0, written_in_stmts(stmts))
+    names.0
 }
 
 /// An earlier top-level statement whose effect reaches the item being
@@ -643,19 +649,33 @@ pub(super) fn root_name(mut e: &Expr) -> Option<&str> {
 /// Names a piece of code may assign: assignment targets, `mut` arguments,
 /// receivers of mutating methods, and the names its patterns bind.
 #[derive(Default)]
-struct Written(Vec<String>);
+pub(super) struct Written<'m>(pub(super) Vec<String>, pub(super) Option<MutSelf<'m>>);
 
-impl Written {
-    fn add(&mut self, name: Option<&str>) {
+/// What `x.name(..)` resolves against: a fn of that name taking `mut self`
+/// changes `x`.
+pub(crate) type MutSelf<'m> = &'m mut dyn super::Env;
+
+impl Written<'_> {
+    pub(super) fn add(&mut self, name: Option<&str>) {
         if let Some(name) = name {
             if !self.0.iter().any(|n| n == name) {
                 self.0.push(name.to_string());
             }
         }
     }
+
+    /// `x.name(args)` changes `x`.
+    #[inline]
+    pub(super) fn changes(&mut self, name: &str, args: &[ast::Arg]) -> bool {
+        mutating_call(name, args)
+            || self
+                .1
+                .as_mut()
+                .is_some_and(|env| env_mut_self_name(&mut **env, name))
+    }
 }
 
-impl Visitor for Written {
+impl Visitor for Written<'_> {
     fn stmt(&mut self, stmt: &Stmt) {
         if let StmtKind::Assign { target, .. } = &stmt.kind {
             self.add(root_name(target));
@@ -668,7 +688,7 @@ impl Visitor for Written {
                 self.add(root_name(&arg.value));
             }
             if let ExprKind::Field { base, name } = &callee.kind {
-                if mutating_call(&name.text, args) {
+                if self.changes(&name.text, args) {
                     self.add(root_name(base));
                 }
             }
@@ -686,14 +706,8 @@ impl Visitor for Written {
     }
 }
 
-fn written_in_block(block: &Block) -> Vec<String> {
-    let mut written = Written::default();
-    walk_block(block, &mut written);
-    written.0
-}
-
-fn written_in_stmts(stmts: &[Stmt]) -> Vec<String> {
-    let mut written = Written::default();
+fn written_in_stmts(stmts: &[Stmt], mut_self: MutSelf) -> Vec<String> {
+    let mut written = Written(Vec::new(), Some(mut_self));
     for stmt in stmts {
         walk_stmt(stmt, &mut written);
     }
@@ -865,11 +879,13 @@ impl<'a> Checker<'a> {
     /// A loop body runs again after its own assignments: what was known
     /// about a name it assigns holds only on the first trip.
     pub(crate) fn drop_facts_written(&mut self, body: &Block, pat: Option<&ast::Pattern>) {
-        let mut written = Written(written_in_block(body));
+        let mut written = Written(Vec::new(), Some(&mut *self.env));
+        walk_block(body, &mut written);
         if let Some(pat) = pat {
             written.pattern(pat);
         }
-        self.drop_facts(&written.0);
+        let written = written.0;
+        self.drop_facts(&written);
     }
 
     /// Marks where the facts and holds of a block begin.
@@ -906,7 +922,7 @@ impl<'a> Checker<'a> {
         })
     }
 
-    fn literal(e: &Expr) -> Option<i128> {
+    pub(crate) fn literal(e: &Expr) -> Option<i128> {
         match &unparen(e).kind {
             ExprKind::Int(v) => Some(*v),
             ExprKind::Char(c) => Some(*c as i128),
@@ -1830,7 +1846,9 @@ impl<'a> Checker<'a> {
         let Some(last) = rest.iter().rev().find(|s| mentions(s, name)) else {
             return;
         };
-        let mutable = written_in_stmts(rest).iter().any(|n| n == name);
+        let mutable = written_in_stmts(rest, &mut *self.env)
+            .iter()
+            .any(|n| n == name);
         if mutable && read_only {
             if let Some(diag) = self.report(
                 stmt.span,
@@ -1935,10 +1953,8 @@ impl<'a> Checker<'a> {
                 };
                 self.0
                     .extend(args.iter().filter(|a| a.mutable).map(|a| a.value.clone()));
-                if let ExprKind::Field { name, .. } = &callee.kind {
-                    if mutating_call(&name.text, args) {
-                        self.1.push(e.clone());
-                    }
+                if let ExprKind::Field { .. } = &callee.kind {
+                    self.1.push(e.clone());
                 }
             }
         }
@@ -1952,7 +1968,7 @@ impl<'a> Checker<'a> {
                 continue;
             };
             let base_ty = self.infer_quietly(base);
-            if self.row_mutator(&base_ty, &name.text, args) {
+            if self.call_mutator(&base_ty, &name.text, args) {
                 changed.0.push((**base).clone());
             }
         }

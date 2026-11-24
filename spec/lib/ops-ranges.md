@@ -257,7 +257,7 @@ fn dijkstra<V, W, G: WeightedNext<V, W>, M>(
     g: G,
     from: Seq<(V, W)>,
     step: M = (+),
-    until: ?V = None,
+    until: V -> Bool = v => false,
     hashed: Bool = false,
 ) -> Paths<V, W, G.Arc>
 ```

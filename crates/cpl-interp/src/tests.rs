@@ -51,6 +51,15 @@ fn what_was_printed_before_a_failure_is_kept() {
 }
 
 #[test]
+fn a_call_of_a_cpp_body_stops_the_program() {
+    assert!(failure(
+        "fn pc(a: Int) -> Int = @cpp(\"return __builtin_popcountll(a);\")\nprint(pc(7))\n",
+        ""
+    )
+    .starts_with("this fn's body is C++ (`@cpp`)"));
+}
+
+#[test]
 fn indices_outside_their_container_stop_the_program() {
     assert_eq!(
         failure("let xs: List<Int> = [1, 2]\nprint(xs[5])\n", ""),
@@ -1495,6 +1504,45 @@ print(x, a[0])
         traces >= 3,
         "the loop variable and both writes are reported: {traces}"
     );
+}
+
+#[test]
+fn traced_vm_runs_writes_through_calls_itself() {
+    let source = "\
+var hits: [0..4]Int = 0
+var rows: List<List<Int>> = [[], [], [], []]
+var stacks: List<List<Int>> = [[5, 3], [4]]
+fn pick(i: Int) -> Int: i % 4
+fn evens(k: Int) -> yields Int:
+    for x in 0..k:
+        if x % 2 == 0: yield x
+fn chained(n: Int) -> yields Int:
+    for x in evens(stacks[pick(n)].pop()!):
+        yield x + n
+for i in 0..6:
+    hits[pick(i)] += i
+    rows[pick(i)].push(i)
+for y in chained(0): print(y)
+print(hits, rows)
+";
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", source);
+    let analysis = db.analyze("t.cp").expect("the file was just set");
+    assert!(
+        analysis.diagnostics.is_empty(),
+        "{:?}",
+        analysis.diagnostics
+    );
+    let program = cpl_ir::lower(&analysis).expect("lowers");
+    let feeds = cpl_ir::pushed::Feeds::of(&program);
+    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, true, false);
+    let chunks = std::iter::once(&compiled.main).chain(compiled.fns.iter().flatten());
+    for chunk in chunks {
+        assert!(
+            !(chunk.ops.iter()).any(|op| matches!(op, crate::vm::Op::FallbackStmt { .. })),
+            "a traced statement fell back"
+        );
+    }
 }
 
 #[test]

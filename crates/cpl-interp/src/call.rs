@@ -6,12 +6,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     /// The fn and its list when the loop `id` runs its body as the fn
     /// yields, as the C++ does.
     pub(super) fn is_fed(&mut self, id: LoopId, seq: &Expr, body: &Block) -> Option<(FnId, usize)> {
-        if self.in_closure
-            || self
-                .fed_loops
-                .last()
-                .is_some_and(|fed| fed.callee == self.base)
-        {
+        if self.in_closure {
             return None;
         }
         if let Some(known) = self.fed.get(&id) {
@@ -26,11 +21,13 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     /// the loop it feeds. An `Err` with `left` set means the body left
     /// the loop, and the fn stops where it is.
     pub(super) fn feed(&mut self, value: Value, span: Span) -> Res<Value> {
-        let Some(fed) = self.fed_loops.last() else {
+        let Some(at) = self.fed_by_here() else {
             return Err(interp_failed(span));
         };
+        let fed = &self.fed_loops[at];
         let (callee, caller, slot, id, body) = (fed.callee, fed.caller, fed.slot, fed.id, fed.body);
         let locals = self.frame_locals.pop();
+        let pushed = self.leave_library_frames(fed.frames);
         self.base = caller;
         self.stack[caller + slot] = value;
         self.fed_bodies += 1;
@@ -46,6 +43,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             tracer.on(crate::observe::Event::LeaveFedBody);
         }
         self.fed_bodies -= 1;
+        self.call_frames.extend(pushed);
         let updated = self.stack[caller + slot].clone();
         self.base = callee;
         self.frame_locals.extend(locals);
@@ -56,7 +54,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             Flow::Break(Some(target)) if target == id => Flow::Next,
             other => other,
         };
-        match self.fed_loops.last_mut() {
+        match self.fed_loops.get_mut(at) {
             Some(fed) => fed.left = Some(left),
             None => return Err(interp_failed(span)),
         }
@@ -64,6 +62,35 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             span,
             cpl_diag::msgs::interp::WRITTEN.at(&[&""]),
         )))
+    }
+
+    /// The library calls on top of the callee's frame while a fed body
+    /// runs: the body is its caller's code, so a step in it is not shown
+    /// inside the `r.splits` the callee's own loop is fed by. Given back by
+    /// extending `call_frames` once the body is done.
+    fn leave_library_frames(&mut self, callee: usize) -> Vec<(&'p str, Span)> {
+        if !self.observed() {
+            return Vec::new();
+        }
+        let program = self.program;
+        let library = |name: &str| {
+            let id = program.fns.iter().position(|f| f.name == name);
+            id.is_some_and(|id| program.library_fns.get(id).copied().unwrap_or(false))
+        };
+        let mut cut = self.call_frames.len();
+        while cut > callee && library(self.call_frames[cut - 1].0) {
+            cut -= 1;
+        }
+        self.call_frames.split_off(cut)
+    }
+
+    /// The loop the running fn feeds, if it feeds one. A fn feeding a
+    /// loop may run a loop of its own fed by another fn, so its loop need
+    /// not be the innermost.
+    pub(crate) fn fed_by_here(&self) -> Option<usize> {
+        self.fed_loops
+            .iter()
+            .rposition(|fed| fed.callee == self.base)
     }
 
     pub(super) fn call(&mut self, id: FnId, args: &'p [Arg], span: Span) -> Res<Value> {
@@ -191,6 +218,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         if let Some(fed) = fed {
             self.fed_loops.push(Fed {
                 callee: base,
+                frames: self.call_frames.len(),
                 ..fed
             });
         }
@@ -200,12 +228,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         // A traced chunk leaves a `yield` to the tree-walker, which feeds the loop.
         let compiled = Rc::clone(&self.vm);
         let flow = if !feeding || compiled.main.traced {
-            if compiled.fns.get(id).is_some_and(Option::is_some) {
-                self.run_fn_vm_waited(&compiled, id, span, saved, dom_mark)
-            } else {
-                self.fell_back(|| format!("fn:{}(uncompiled)", f.name), false);
-                self.block(&f.body)
-            }
+            // Only a judge fn has no chunk, and it stopped above.
+            self.run_fn_vm_waited(&compiled, id, span, saved, dom_mark)
         } else {
             let why = if feeding { "feeding" } else { "part" };
             self.fell_back(|| format!("fn:{}({why})", f.name), false);

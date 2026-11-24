@@ -534,6 +534,34 @@ print(top.len, reach[0].len)
     assert!(!out.contains("HashMap<ll, ll"), "{out}");
 }
 
+/// cf2147g, ucup4s24f: a map shown, there or in a fn it is passed to, is
+/// printed by a helper that takes the map at the width it is stored at.
+#[test]
+fn a_narrow_map_shown_or_passed_on_is_shown_at_its_width() {
+    let out = cpp("let n: 1..=10 = read()
+var m: Map<1..=10 ** 6, Int> = Map()
+var s = Set<1..=10 ** 6>()
+fn show_all(m: Map<1..=10 ** 6, Int>, s: Set<1..=10 ** 6>):
+    print(m)
+    print(s)
+for i in 0..n:
+    m[i + 1] += i
+    s.add(i + 1)
+show_all(m, s)
+print(m)
+");
+    assert!(out.contains("std::map<uint32_t, ll> m;"), "{out}");
+    assert!(!out.contains("const std::map<ll, ll>&"), "{out}");
+    assert!(
+        out.contains("show_all(const std::map<uint32_t, ll>& m_2,"),
+        "{out}"
+    );
+    assert!(
+        out.contains("template <class CplSeq> void show_1(const CplSeq& v,"),
+        "{out}"
+    );
+}
+
 #[test]
 fn a_ranged_map_widens_when_it_meets_a_plain_one() {
     let out = cpp("type R = 0..=9
@@ -591,6 +619,30 @@ print(at[P(1)])
     assert!(!out.contains("OptInt"), "no table of optionals:\n{out}");
     assert!(out.contains("(missing image)"), "{out}");
     assert!(out.contains("(duplicate image)"), "{out}");
+}
+
+#[test]
+fn a_scan_of_a_narrow_table_reads_it_at_its_width() {
+    let out = cpp("let n: 1..=200_000 = read()
+let a: [0..n]0..n = read()
+let q = scan([0..n] i => a[i], max)
+print(q.prefix(1), a.scan(+).prefix(1))
+");
+    assert!(
+        out.contains("cpl::blank<uint32_t>(n)"),
+        "the table takes its body's 4 B range:\n{out}"
+    );
+    let scans: Vec<&str> = out
+        .lines()
+        .filter(|l| !l.starts_with(' ') && l.contains("_of_scan_Op_"))
+        .collect();
+    assert!(scans.len() >= 2, "{out}");
+    assert!(
+        scans
+            .iter()
+            .all(|l| l.contains("(const std::vector<uint32_t>& a")),
+        "the std scan is instantiated at its argument's width: {scans:?}"
+    );
 }
 
 #[test]
@@ -662,4 +714,25 @@ fn a_narrow_cell_holds_its_width_in_bytes() {
     ] {
         assert_eq!(IntWidth::cpp_bytes(cell), bytes, "{cell}");
     }
+}
+
+#[test]
+fn a_range_bounded_by_products_of_capped_lets_narrows_as_explain_sizes_it() {
+    let out = cpp("let n0: 1..=15_000 = read()
+let n = n0 + 1
+let m = n * (n + 1) / 2
+var t: [0..m]0..=2 * n = 0
+var h: [0..n]-(n / 2)..n - 1 = 0
+t[m - 1] = 2 * n
+h[0] = -(n / 2)
+print(t[m - 1], h[0])
+");
+    assert!(
+        out.contains("std::vector<uint16_t> t;"),
+        "`0..=2 * n` with `n <= 15001` fits 16 bits:\n{out}"
+    );
+    assert!(
+        out.contains("std::vector<int16_t> h;"),
+        "`-(n / 2)..n - 1` fits 16 signed bits:\n{out}"
+    );
 }

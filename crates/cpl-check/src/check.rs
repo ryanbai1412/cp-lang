@@ -8,7 +8,7 @@
 pub(crate) mod advice;
 mod foreign;
 pub(crate) use foreign::declare_on_first_assignment;
-mod alias;
+pub(crate) mod alias;
 mod arms;
 mod array_dims;
 mod assoc;
@@ -28,13 +28,14 @@ mod expect;
 mod expr;
 mod extension;
 mod fall_through;
+mod fn_sig;
 mod index_at;
 mod index_end;
 mod known;
 mod lambda;
 pub(crate) mod lends;
 mod library_domain;
-mod method_form;
+pub(crate) mod method_form;
 mod moves;
 mod mut_args;
 mod pattern;
@@ -150,6 +151,11 @@ pub(crate) trait Env {
     fn item_index(&mut self) -> Option<usize> {
         None
     }
+
+    /// True if this file is one of std's.
+    fn is_std(&mut self) -> bool {
+        false
+    }
     /// True if this file declares `name` as a struct or enum, even while its
     /// definition is being computed (`struct A: b: ?B` inside `B`'s fields).
     fn declares_type(&mut self, _name: &str) -> bool {
@@ -252,6 +258,8 @@ pub(crate) struct Checker<'a> {
     /// rest have no type to draw (E0501).
     bare_gens: Vec<Span>,
     gens_given_a_type: crate::fx::HashSet<Span>,
+    /// A bare `gen()` filling a declared array: both readings, for its help.
+    gen_fill_help: crate::fx::HashMap<Span, String>,
     /// The `type` aliases whose right side is being resolved, innermost last.
     defining_aliases: Vec<String>,
     /// Trait bounds in scope for the enclosing fn / struct / impl: `(param, traits)`.
@@ -306,6 +314,9 @@ pub(crate) struct Checker<'a> {
     self_ty: Option<Ty>,
     /// The associated types the impl being read chooses, for `Self.Found`.
     self_assoc: Vec<(String, Ty)>,
+    /// The trait the impl being read implements, with its arguments: an
+    /// impl fn's unwritten parameter types are the trait's.
+    impl_trait: Option<(String, Vec<Ty>)>,
     /// What is lent and what is known, for the exclusivity of lends.
     lends: lends::Lends,
     /// True when the enclosing context expects a `Range<D.cuts>` so ranges
@@ -381,6 +392,7 @@ impl<'a> Checker<'a> {
             generics: Vec::new(),
             bare_gens: Vec::new(),
             gens_given_a_type: Default::default(),
+            gen_fill_help: Default::default(),
             defining_aliases: Vec::new(),
             param_bounds: Vec::new(),
             param_bound_args: Vec::new(),
@@ -409,6 +421,7 @@ impl<'a> Checker<'a> {
             rhs_extent: None,
             self_ty: None,
             self_assoc: Vec::new(),
+            impl_trait: None,
             lends: lends::Lends::default(),
             expected_bounds_range: false,
             expected_piece: false,
@@ -577,7 +590,10 @@ impl<'a> Checker<'a> {
     pub(crate) fn finish(mut self) -> Checked {
         for span in std::mem::take(&mut self.bare_gens) {
             if !self.gens_given_a_type.contains(&span) {
-                self.report(span, cpl_diag::msgs::ir::GEN_TAKES, &[]);
+                let help = self.gen_fill_help.remove(&span);
+                if let Some(diag) = self.report(span, cpl_diag::msgs::ir::GEN_TAKES, &[]) {
+                    diag.help = help.or(diag.help.take());
+                }
             }
         }
         let resolved = self.with_chosen_methods();
@@ -627,6 +643,13 @@ impl<'a> Checker<'a> {
         args: &[&dyn std::fmt::Display],
     ) -> Option<&mut Diagnostic> {
         self.report_as(msg.code(), span, msg.at(args))
+    }
+
+    /// An E0302 `said` at `span` with `help`.
+    fn mismatch_with(&mut self, span: Span, said: cpl_diag::msgs::Said, help: String) {
+        if let Some(diag) = self.report_as(codes::TYPE_MISMATCH, span, said) {
+            diag.help = Some(help);
+        }
     }
 
     fn report_as(

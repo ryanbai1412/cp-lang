@@ -18,7 +18,11 @@ var kept: [V]List<(to: V, w: Int)> = []
 var total = 0
 for e in sorted(E, by: e => (roads[e].len, roads[e].cost)):
     let (u, v, len, cost) = roads[e]
-    let joined = if let d = dijkstra(kept, from: [(u, 0)], until: v)[v]: d <= len else: false
+    let joined = if let d = dijkstra(
+        kept,
+        from: [(u, 0)],
+        until: x => x == v,
+    )[v]: d <= len else: false
     if not joined:
         total += cost
         kept[u].push((to: v, w: len))

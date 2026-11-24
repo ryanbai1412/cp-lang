@@ -207,19 +207,31 @@ fn explain_reads_closures_copies_and_dropped_fields_off_one_write() {
 
 #[test]
 fn a_fn_run_once_moves_a_global_nothing_reads_after_it() {
-    let out = super::cpp(concat!(
+    let src = concat!(
         "let n: 1..=10 = read()\n",
         "let base = [i for i in 0..n]\n",
         "fn build() -> List<Int>:\n",
-        "    var xs = base\n",
+        "    var xs = base.clone()\n",
         "    xs.push(1)\n",
         "    xs\n",
         "let built = build()\n",
         "print(built)\n",
-    ));
+    );
+    let out = super::cpp(src);
     assert!(
         out.contains("= std::move(base)"),
         "`base` is not read after `build` takes it, so it moves:\n{out}"
+    );
+    let lowered = crate::explain_lowered(&lower(src));
+    assert!(lowered.copies.is_empty(), "{:?}", lowered.copies);
+    assert_eq!(
+        lowered
+            .moved
+            .iter()
+            .map(|s| &src[s.start as usize..s.end as usize])
+            .collect::<Vec<_>>(),
+        ["base.clone()"],
+        "`cpl explain` shows the written copy it moves"
     );
 }
 
@@ -257,20 +269,24 @@ fn a_fn_run_once_moves_a_global_it_walked_before_its_last_read() {
 
 #[test]
 fn a_global_read_after_the_fn_that_takes_it_is_copied() {
-    let out = super::cpp(concat!(
+    let src = concat!(
         "let n: 1..=10 = read()\n",
         "let base = [i for i in 0..n]\n",
         "fn build() -> List<Int>:\n",
-        "    var xs = base\n",
+        "    var xs = base.clone()\n",
         "    xs.push(1)\n",
         "    xs\n",
         "let built = build()\n",
         "print(built, base)\n",
-    ));
+    );
+    let out = super::cpp(src);
     assert!(
         !out.contains("std::move(base)"),
         "`base` is printed after `build`, so `build` copies it:\n{out}"
     );
+    let lowered = crate::explain_lowered(&lower(src));
+    assert!(lowered.moved.is_empty(), "{:?}", lowered.moved);
+    assert_eq!(copy_reasons(src), [crate::uses::CLONED]);
 }
 
 #[test]
@@ -444,11 +460,11 @@ fn a_set_from_a_tuple_part_that_still_holds_it_is_listed() {
 }
 
 #[test]
-fn a_hoisted_let_of_a_whole_list_is_listed() {
+fn a_hoisted_let_of_a_whole_list_lends_it_and_lists_no_copy() {
     let src = "let a = [3, 1, 4]\nfor (k, e) in a.items.items: print(k, e.1)\n";
     let out = super::cpp(src);
-    assert!(out.contains("t0 = a;"), "{out}");
-    assert!(!copy_reasons(src).is_empty());
+    assert!(out.contains("& t0 = a;"), "{out}");
+    assert!(copy_reasons(src).is_empty());
 }
 
 #[test]
@@ -464,6 +480,16 @@ print(f([[\"a\"]], \"b\"))
         copy_reasons(source),
         [crate::uses::KEPT_CHANGED, crate::uses::KEPT_CHANGED]
     );
+}
+
+#[test]
+fn a_some_moved_in_one_library_fn_keeps_another_fns_copy_at_the_call() {
+    let source = "use std.matrix.{sparse_solve}
+use std.mod.{Mod}
+print(sparse_solve(2, [(0, 0, Mod<7>(1)), (1, 1, Mod<7>(2))], [Mod<7>(1), Mod<7>(3)]) == None)
+";
+    let reasons = copy_reasons(source);
+    assert!(reasons.contains(&crate::lend::SOME_COPY), "{reasons:?}");
 }
 
 #[test]

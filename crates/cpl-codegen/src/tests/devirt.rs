@@ -399,7 +399,7 @@ fn a_dropped_field_at_a_product_position_drops_its_local_and_stores() {
         "domain T = 0..3\n",
         "let p = fixed_cost_paths([(R(0), Subset<T>.empty)], [1, 2], cost: m => m, ",
         "step: (m, s) => if Int(s.0) + m < 5: Some((R(Int(s.0) + m), s.1)) else: None)\n",
-        "print(p[(R(4), Subset<T>.empty)])\n",
+        "print(p[(R(4), Subset<T>.empty)]!)\n",
     ));
     assert!(
         !out.contains(" back(") && !out.contains("back["),

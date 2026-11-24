@@ -16,6 +16,7 @@ impl Tracer {
     /// a step inside one is shown at the call in the file that is running
     /// it: the call site of the outermost of the imported fns on top of
     /// the stack.
+    #[inline]
     pub(super) fn step_line(&self, call_frames: &[(&str, Span)], span: Span) -> u32 {
         let mut at = span;
         if !self.library.is_empty() {
@@ -31,6 +32,7 @@ impl Tracer {
 }
 
 /// The line of `span` in `lines`, the last one asked for kept in `last`.
+#[inline]
 fn line_at(lines: &LineIndex, last: &Cell<(u32, u32)>, span: Span) -> u32 {
     let (start, line) = last.get();
     if start == span.start {

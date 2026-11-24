@@ -336,106 +336,17 @@ Process costing more than 10% of a change is skipped with a trailer
 Process costing more than 10% of a change is skipped with a trailer
 (`handbook/process/handbook-and-rfcs.md`); this counts them.
 
-Process costing more than 10% of a change is skipped with a trailer
-(`handbook/process/handbook-and-rfcs.md`); this counts them.
-
-Process costing more than 10% of a change is skipped with a trailer
-(`handbook/process/handbook-and-rfcs.md`); this counts them.
-
-Process costing more than 10% of a change is skipped with a trailer
-(`handbook/process/handbook-and-rfcs.md`); this counts them.
-
-Process costing more than 10% of a change is skipped with a trailer
-(`handbook/process/handbook-and-rfcs.md`); this counts them.
-
-Process costing more than 10% of a change is skipped with a trailer
-(`handbook/process/handbook-and-rfcs.md`); this counts them.
-
-Process costing more than 10% of a change is skipped with a trailer
-(`handbook/process/handbook-and-rfcs.md`); this counts them.
-
-Process costing more than 10% of a change is skipped with a trailer
-(`handbook/process/handbook-and-rfcs.md`); this counts them.
-
-Process costing more than 10% of a change is skipped with a trailer
-(`handbook/process/handbook-and-rfcs.md`); this counts them.
-
-Process costing more than 10% of a change is skipped with a trailer
-(`handbook/process/handbook-and-rfcs.md`); this counts them.
-
-Process costing more than 10% of a change is skipped with a trailer
-(`handbook/process/handbook-and-rfcs.md`); this counts them.
-
-Process costing more than 10% of a change is skipped with a trailer
-(`handbook/process/handbook-and-rfcs.md`); this counts them.
-
-Process costing more than 10% of a change is skipped with a trailer
-(`handbook/process/handbook-and-rfcs.md`); this counts them.
-
-Process costing more than 10% of a change is skipped with a trailer
-(`handbook/process/handbook-and-rfcs.md`); this counts them.
-
-Process costing more than 10% of a change is skipped with a trailer
-(`handbook/process/handbook-and-rfcs.md`); this counts them.
-
-Process costing more than 10% of a change is skipped with a trailer
-(`handbook/process/handbook-and-rfcs.md`); this counts them.
-
-Process costing more than 10% of a change is skipped with a trailer
-(`handbook/process/handbook-and-rfcs.md`); this counts them.
-
-Process costing more than 10% of a change is skipped with a trailer
-(`handbook/process/handbook-and-rfcs.md`); this counts them.
-
-Process costing more than 10% of a change is skipped with a trailer
-(`handbook/process/handbook-and-rfcs.md`); this counts them.
-
-Process costing more than 10% of a change is skipped with a trailer
-(`handbook/process/handbook-and-rfcs.md`); this counts them.
-
-Process costing more than 10% of a change is skipped with a trailer
-(`handbook/process/handbook-and-rfcs.md`); this counts them.
-
-Process costing more than 10% of a change is skipped with a trailer
-(`handbook/process/handbook-and-rfcs.md`); this counts them.
-
-Process costing more than 10% of a change is skipped with a trailer
-(`handbook/process/handbook-and-rfcs.md`); this counts them.
-
-Process costing more than 10% of a change is skipped with a trailer
-(`handbook/process/handbook-and-rfcs.md`); this counts them.
-
-Process costing more than 10% of a change is skipped with a trailer
-(`handbook/process/handbook-and-rfcs.md`); this counts them.
-
-Process costing more than 10% of a change is skipped with a trailer
-(`handbook/process/handbook-and-rfcs.md`); this counts them.
-
-Process costing more than 10% of a change is skipped with a trailer
-(`handbook/process/handbook-and-rfcs.md`); this counts them.
-
-Process costing more than 10% of a change is skipped with a trailer
-(`handbook/process/handbook-and-rfcs.md`); this counts them.
-
-Process costing more than 10% of a change is skipped with a trailer
-(`handbook/process/handbook-and-rfcs.md`); this counts them.
-
-Process costing more than 10% of a change is skipped with a trailer
-(`handbook/process/handbook-and-rfcs.md`); this counts them.
-
-Process costing more than 10% of a change is skipped with a trailer
-(`handbook/process/handbook-and-rfcs.md`); this counts them.
-
 | Day | Lane | Skipped |
 |---|---|---|
-| 2026-11-24 | tools | 4 |
+| 2026-11-24 | tools | 7 |
 | 2026-11-24 | stress | 1 |
-| 2026-11-24 | stdlib | 11 |
-| 2026-11-24 | perf | 15 |
+| 2026-11-24 | stdlib | 12 |
+| 2026-11-24 | perf | 50 |
+| 2026-11-24 | none | 5 |
 | 2026-11-24 | infra | 4 |
 | 2026-11-24 | idioms | 7 |
 | 2026-11-24 | debugger | 2 |
-| 2026-11-24 | compiler | 12 |
+| 2026-11-24 | compiler | 22 |
 | 2026-11-23 | perf | 1 |
 | 2026-11-23 | debugger | 1 |
 

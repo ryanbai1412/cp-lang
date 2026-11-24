@@ -1,27 +1,21 @@
 //! What a place is rooted in.
 
-use crate::{GlobalId, Place, PlaceKind, Slot};
+use crate::{GlobalId, Place, Slot};
 
 impl Place {
     /// The local this place is in, when it is in one.
     pub fn root_local(&self) -> Option<Slot> {
-        match &self.kind {
-            PlaceKind::Local(slot) => Some(*slot),
-            PlaceKind::Global(_) => None,
-            PlaceKind::Index(base, _) | PlaceKind::Field(base, _) | PlaceKind::Some(base) => {
-                base.root_local()
-            }
+        match crate::walk::root(self) {
+            (false, slot) => Some(slot),
+            (true, _) => None,
         }
     }
 
     /// The global this place is in, when it is in one.
     pub fn root_global(&self) -> Option<GlobalId> {
-        match &self.kind {
-            PlaceKind::Global(id) => Some(*id),
-            PlaceKind::Local(_) => None,
-            PlaceKind::Index(base, _) | PlaceKind::Field(base, _) | PlaceKind::Some(base) => {
-                base.root_global()
-            }
+        match crate::walk::root(self) {
+            (true, id) => Some(id),
+            (false, _) => None,
         }
     }
 }

@@ -340,7 +340,7 @@ pub(crate) const PASSES: &[Pass] = &[
     pass(
         "release-walked",
         "release.rs",
-        Uses(&["walked_last", "read_last"]),
+        Uses(&["walked_last"]),
         "a_top_level_list_walked_once_for_the_last_time_is_emptied_after_that_loop",
     ),
     pass(
@@ -363,6 +363,12 @@ pub(crate) const PASSES: &[Pass] = &[
         "prune.rs",
         Reach,
         "a_branch_on_the_len_of_a_list_field_nothing_fills_is_left_out",
+    ),
+    pass(
+        "loop-bound-order",
+        "ranges/order.rs",
+        Uses(&["pushed_value"]),
+        "a_split_of_a_cut_walking_a_drop_has_no_empty_check",
     ),
     pass(
         "sign-ranges",
@@ -433,6 +439,19 @@ pub(crate) const PASSES: &[Pass] = &[
             "has_jump",
         ]),
         "a_sum_over_a_generator_builds_no_list",
+    ),
+    pass(
+        "table",
+        "table.rs",
+        Uses(&[
+            "pure_call",
+            "trap_free_with",
+            "each_call",
+            "each_local",
+            "each_closure",
+            "each_part",
+        ]),
+        "a_prefix_of_a_table_literal_builds_no_table",
     ),
     pass(
         "trap-site",

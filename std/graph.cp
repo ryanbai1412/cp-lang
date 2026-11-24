@@ -17,6 +17,7 @@
 //!
 //! Customizing a graph is a lambda over `g.out(u)`; nothing is rebuilt.
 //! Unreachable is `None`. Whole-graph algorithms need `V: Domain`.
+use std.range.{Len}
 use std.algebra.{Monoid, Semiring}
 use std.bitset.{Bitset}
 use std.deque.{Deque}
@@ -235,6 +236,8 @@ pub struct Graph<V: Domain, A: Target<V> = V>:
     /// example: `domain V = 0..1; domain E = 0..1; let es: [E](u: V, v: V) = [(u: 0, v: 0)]; Graph.undirected(es).deg(0) == 2`
     @lint(manual_adjacency_list, holes: "R, n, m", from: "var adj: List<List<Int>> = [[] for _ in 0..=n]\nfor _ in 0..m:\n    let (x, y): (R, R) = read()\n    adj[x].push(y)\n    adj[y].push(x)", to: "domain V = R\nlet es: [0..m](u: V, v: V) = read()\nlet adj = Graph.undirected(es, keep: arc => arc.to)")
     @lint(manual_adjacency_list, holes: "R, d, m", from: "var adj: [d]List<Int> = []\nfor _ in 0..m:\n    let (x, y): (R, R) = read()\n    adj[x].push(y)\n    adj[y].push(x)", to: "domain V = R\nlet es: [0..m](u: V, v: V) = read()\nlet adj = Graph.undirected(es, keep: arc => arc.to)")
+    @lint(symmetric_write, from: "g[u].push(v)\ng[v].push(u)", to: "Graph.undirected(es)", holes: "g, u, v")
+    @lint(symmetric_write, from: "g[u].push((v, w))\ng[v].push((u, w))", to: "Graph.undirected(es)", holes: "g, u, v, w")
     pub fn undirected<S: Indexed<E, R>, E, R: (u: V, v: V, ..), B: Target<V>>(
         edges: S,
         keep: EdgeArc<V,
@@ -1165,8 +1168,8 @@ fn a_plain_edge_list_needs_no_edge_domain():
 /// `back[v]` is `(from, via)`, the vertex before `v` on one shortest path and the
 /// arc or move that reached it (`None` at a source), and `order` the reached
 /// vertices in settling order, so every vertex comes after its `from` and
-/// distances never decrease. A search given `until: t` stops once `t` is settled:
-/// distances in `order` are exact, and any other vertex holds `None` or an upper
+/// distances never decrease. A search given `until: f` stops once it settles a vertex `v`
+/// with `f(v)`, the last of `order`: distances in `order` are exact, and any other vertex holds `None` or an upper
 /// bound. Cost: the witnesses take one slot per vertex and one write per improving
 /// relaxation, paid even when only `p[v]` is read.
 /// Storage is spelled like `@memo(array)` / `@memo(map)`: by default `dist` and `back`
@@ -1266,23 +1269,25 @@ pub struct Paths<V, W: Add, A>:
 /// The sources start at distance 0 in the order given (repeats ignored). A vertex is
 /// entered at distance `d` only when `enter(v, d)` holds, sources included, so "the cell
 /// must still be safe when you get there" is a filter, not a second search; a rejected
-/// vertex may still be entered later through another arc. `until: t` stops as soon as `t`
-/// gets its distance; vertices not reached by then read `None`. `hashed: true` keeps the
+/// vertex may still be entered later through another arc. `until: f` stops as soon as a vertex
+/// `v` with `f(v)` gets its distance (`until: v => v == t` for one target); vertices not
+/// reached by then read `None`. `hashed: true` keeps the
 /// tables in hash maps for unbounded `V`.
 ///
-/// cost: \(O(n + m)\) dense; \(O(\mathit{reached} + \text{arcs scanned})\) expected `hashed`
+/// cost: \(O(n + m)\) dense; \(O(\mathit{reached} + \text{arcs scanned})\) expected `hashed`; one `until` call per reached vertex
 /// empty: `domain V = 0..2; let g: [V]List<V> = [[1], []]; let p = bfs(g, from: List<V>()); p[0] == None and p[1] == None`
 /// ties: `domain V = 0..4; let g: [V]List<V> = [[2, 1], [3], [3], []]; let p = bfs(g, from: [V(0)]); p.iter().collect() == [(v: 0, d: 0), (v: 2, d: 1), (v: 1, d: 1), (v: 3, d: 2)] and p.path(3) == Some([0, 2, 3])`
 /// traps: never
 /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; bfs(g, from: [V(0)])[3] == Some(2)`
 /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; bfs(g, from: [V(0)], enter: (v, d) => v != 1).path(3) == Some([0, 2, 3])`
-/// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; let p = bfs(g, from: [V(0)], until: V(1)); p[1] == Some(1) and p[2] == None`
+/// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; let p = bfs(g, from: [V(0)], until: v => v == V(1)); p[1] == Some(1) and p[2] == None`
+/// example: `domain V = 0..5; let g: [V]List<V> = [[1], [2], [3], [4], []]; let p = bfs(g, from: [V(0)], until: v => v >= V(2)); p[2] == Some(2) and p[3] == None`
 @lint(queue_head_index, from: "while head < q.len:\n    let u = q[head]\n    head += 1\n    rest", to: "bfs(next, from: [s])", holes: "q, head, rest")
 @lint(queue_head_index, from: "while head < q.len:\n    let u = q[head]\n    let v = r[head]\n    head += 1\n    rest", to: "bfs(next, from: [s])", holes: "q, r, head, rest")
 pub fn bfs<V, G: Next<V>>(
     g: G,
     from: Seq<V>,
-    until: ?V = None,
+    until: V -> Bool = v => false,
     enter: (V, Int) -> Bool = (v, d) => true,
     hashed: Bool = false,
 ) -> Paths<V, Int, G.Arc>:
@@ -1296,7 +1301,7 @@ pub fn bfs<V, G: Next<V>>(
         if dist[s] == None and enter(s, 0):
             dist[s] = Some(0)
             q.push(s)
-            if until == Some(s):
+            if until(s):
                 order.push(s)
                 stopped = true
                 break
@@ -1311,15 +1316,15 @@ pub fn bfs<V, G: Next<V>>(
                 dist[v] = Some(nd)
                 back[v] = Some((from: u, via: a))
                 q.push(v)
-                if until == Some(v):
+                if until(v):
                     order.push(v)
                     stopped = true
                     break
     Paths(dist:, back:, order:)
 
 /// Shortest distances when every weight is 0 or 1, from every vertex of `from` at distance
-/// 0: a deque, with 0-arcs pushed to the front. `until: t` stops once `t` is settled
-/// (popped with its final distance).
+/// 0: a deque, with 0-arcs pushed to the front. `until: f` stops once a vertex `v` with `f(v)`
+/// is settled (popped with its final distance), one `until` call per settled vertex.
 ///
 /// cost: \(O(n + m)\)
 /// empty: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 0)]; let p = bfs01(Graph.directed(es), from: List<V>()); p[0] == None and p[1] == None`
@@ -1329,7 +1334,7 @@ pub fn bfs<V, G: Next<V>>(
 pub fn bfs01<V, G: WeightedNext<V, Int>>(
     g: G,
     from: Seq<V>,
-    until: ?V = None,
+    until: V -> Bool = v => false,
     hashed: Bool = false,
 ) -> Paths<V, Int, G.Arc>:
     var dist: [V]?Int = None
@@ -1345,7 +1350,7 @@ pub fn bfs01<V, G: WeightedNext<V, Int>>(
         if done[u]: continue
         done[u] = true
         order.push(u)
-        if until == Some(u): break
+        if until(u): break
         let du = dist[u]!
         for a in g.out(u):
             let w = a.w
@@ -1363,7 +1368,8 @@ pub fn bfs01<V, G: WeightedNext<V, Int>>(
 /// Shortest distances from `(vertex, starting distance)` pairs (a vertex given twice keeps the
 /// smaller start). `step` is how a path's cost grows by one arc, anything `Monoid.of` accepts:
 /// `+` (the sum of weights) by default, `max` for the bottleneck path. A binary heap with lazy
-/// deletion; `until: t` stops once `t` is settled.
+/// deletion; `until: f` stops once a vertex `v` with `f(v)` is settled, one `until` call per
+/// settled vertex.
 ///
 /// cost: \(O((n + m) \log m)\)
 /// empty: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 4)]; let p = dijkstra(Graph.directed(es), from: List<(V, Int)>()); p[0] == None and p[1] == None`
@@ -1384,7 +1390,7 @@ pub fn dijkstra<V, W, G: WeightedNext<V, W>, M>(
     g: G,
     from: Seq<(V, W)>,
     step: M = (+),
-    until: ?V = None,
+    until: V -> Bool = v => false,
     hashed: Bool = false,
 ) -> Paths<V, W, G.Arc>:
     var dist: [V]?W = None
@@ -1402,7 +1408,7 @@ pub fn dijkstra<V, W, G: WeightedNext<V, W>, M>(
         if done[u]: continue
         done[u] = true
         order.push(u)
-        if until == Some(u): break
+        if until(u): break
         for a in g.out(u):
             let v = a.to
             let nd = grow.op(du, a.w)
@@ -1420,20 +1426,20 @@ pub fn dijkstra<V, W, G: WeightedNext<V, W>, M>(
 ///
 /// A cursor per move into `order` replaces the heap: settled states come in non-decreasing
 /// distance, so each move's first settled state whose step is still unsettled is its
-/// cheapest candidate. `until: t` stops once `t` is settled, and only settled states get a
-/// distance. The back pointer is `(from: s, via: mv)`.
+/// cheapest candidate. `until: f` stops once a state `s` with `f(s)` is settled (one `until`
+/// call per settled state), and only settled states get a distance. The back pointer is `(from: s, via: mv)`.
 ///
 /// cost: \(O(\lvert S \rvert \lvert \mathit{moves} \rvert)\) time, \(O(\lvert S \rvert)\) memory
 /// empty: `domain S = 0..3; let none = fixed_cost_paths(List<S>(), [1], cost: m => m, step: (m, s) => if Int(s) + m < 3: Some(S(Int(s) + m)) else: None); let still = fixed_cost_paths([S(0)], List<Int>(), cost: m => m, step: (m, s) => Some(s)); none[0] == None and still[0] == Some(0) and still[1] == None`
 /// ties: `domain S = 0..3; let p = fixed_cost_paths([S(0)], [10, 20], cost: m => 1, step: (m, s) => if s == S(0): Some(S(2)) else: None); p.arcs(2) == Some([10])`
 /// traps: on a negative cost
 /// example: `domain S = 0..5; let p = fixed_cost_paths([S(0)], [1, 2], cost: m => if m == 1: 1 else: 3, step: (m, s) => if Int(s) + m < 5: Some(S(Int(s) + m)) else: None); p[4] == Some(4) and p[2] == Some(2)`
-pub fn fixed_cost_paths<S: Eq, M, W: Add + Ord>(
+pub fn fixed_cost_paths<S, M, W: Add + Ord>(
     from: List<S>,
     moves: List<M>,
     cost: M -> W,
     step: (M, S) -> ?S,
-    until: ?S = None,
+    until: S -> Bool = s => false,
 ) -> Paths<S, W, M>:
     let price = [cost(mv) for mv in moves]
     for p in price: assert p >= W.zero
@@ -1444,7 +1450,7 @@ pub fn fixed_cost_paths<S: Eq, M, W: Add + Ord>(
         if dist[s] == None:
             dist[s] = W.zero
             order.push(s)
-            if until == s: return Paths(dist, back, order)
+            if until(s): return Paths(dist, back, order)
     var at = List.filled(moves.len, 0)
     while true:
         var best: ?(d: W, j: Int, t: S) = None
@@ -1465,7 +1471,7 @@ pub fn fixed_cost_paths<S: Eq, M, W: Add + Ord>(
         back[t] = (from: order[at[j]], via: moves[j])
         order.push(t)
         at[j] += 1
-        if until == t: break
+        if until(t): break
     Paths(dist, back, order)
 
 /// Shortest distances with any weights, from `(vertex, starting distance)` pairs, or `None`
@@ -1935,11 +1941,11 @@ fn until_stops_at_the_target_with_its_exact_distance():
             dijkstra(h, from: [(s, 0)]),
         )
         for t in V:
-            assert closer_settled([V] v => fb[v], [V] v => bfs(plain, from: [s], until: t)[v], t)
-            assert closer_settled([V] v => f01[v], [V] v => bfs01(g, from: [s], until: t)[v], t)
+            assert closer_settled([V] v => fb[v], [V] v => bfs(plain, from: [s], until: x => x == t)[v], t)
+            assert closer_settled([V] v => f01[v], [V] v => bfs01(g, from: [s], until: x => x == t)[v], t)
             assert closer_settled(
                 [V] v => fd[v],
-                [V] v => dijkstra(h, from: [(s, 0)], until: t)[v],
+                [V] v => dijkstra(h, from: [(s, 0)], until: x => x == t)[v],
                 t,
             )
             let fc = fixed_cost_paths(
@@ -1947,7 +1953,7 @@ fn until_stops_at_the_target_with_its_exact_distance():
                 E.collect(),
                 cost: e => ws[e].w,
                 step: (e, x) => if ws[e].u == x: Some(ws[e].v) else: None,
-                until: t,
+                until: x => x == t,
             )
             assert closer_settled([V] v => fd[v], [V] v => fc[v], t)
 
@@ -2208,8 +2214,8 @@ pub fn reachable<V, G: Next<V>, S: Seq>(g: G, from: S) -> yields V:
 pub enum Visit<V, A>: Enter(v: V, via: ?A), Exit(v: V, via: ?A), Again(from: V, via: A)
 
 /// Shortest distances for integer weights in `0..=max_w` with a bucket queue (Dial), from
-/// every vertex of `from` at distance 0. Same result shape as `dijkstra`; `until: t` stops
-/// once `t` is settled.
+/// every vertex of `from` at distance 0. Same result shape as `dijkstra`; `until: f` stops
+/// once a vertex `v` with `f(v)` is settled, one `until` call per settled vertex.
 ///
 /// `max_w + 1` buckets are reused cyclically, so memory is \(O(n + \mathit{max\_w})\) and the scan over
 /// distances is \(O(\mathit{d\_max})\), the largest distance reached (at most `(n - 1) * max_w`).
@@ -2223,7 +2229,7 @@ pub fn dial<V, G: WeightedNext<V, Int>>(
     g: G,
     from: Seq<V>,
     max_w: Int,
-    until: ?V = None,
+    until: V -> Bool = v => false,
 ) -> Paths<V, Int, G.Arc>:
     assert max_w >= 0, "dial: max_w must be non-negative"
     let nb = max_w + 1
@@ -2246,7 +2252,7 @@ pub fn dial<V, G: WeightedNext<V, Int>>(
         if done[u]: continue
         done[u] = true
         order.push(u)
-        if until == Some(u): break
+        if until(u): break
         for a in g.out(u):
             let w = a.w
             assert 0 <= w <= max_w, "dial: edge weight outside 0..=max_w"
@@ -3572,13 +3578,13 @@ pub fn spanning_forest<V, E>(g: EdgedNext<V, E>) -> [E]Bool:
 /// \(O(n)\) build: the functional graph `v -> next[v]` (every vertex one out-arc).
 pub struct Functional<V>:
     pub next: [V]V
-    _nx: List<Int>
-    _root: List<Int>
-    _depth: List<Int>
-    _cyc: List<Int>
-    _pos: List<Int>
-    _cycles: List<List<Int>>
-    _jump: List<Int>
+    _root: List<Len>
+    _depth: List<Len>
+    _cyc: List<Len>
+    _pos: List<Len>
+    _ring: List<Len>
+    _cstart: List<Len>
+    _jump: List<Len>
 
     /// The functional graph `v -> next[v]` (every vertex has one out-arc), with its cycles,
     /// tails and one jump pointer per vertex (`O(n)` memory, `O(log n)` walks).
@@ -3589,47 +3595,46 @@ pub struct Functional<V>:
     /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; Functional(nx).cycle_len(4) == 3`
     pub fn new(next: [V]V) -> Functional<V>:
         let n = V.count
-        let nx = [next[V.nth(i)].ord for i in 0..n]
-        var root = List.filled(n, -1)
-        var depth = List.filled(n, 0)
-        var cyc = List.filled(n, -1)
-        var pos = List.filled(n, 0)
-        var cycles: List<List<Int>> = []
-        var jump = List(0..n)
-        var state = List.filled(n, 0)
+        var root: List<Len> = List.filled(n, 0)
+        var depth: List<Len> = List.filled(n, 0)
+        var cyc: List<Len> = List.filled(n, 0)
+        var pos: List<Len> = List.filled(n, 0)
+        var ring: List<Len> = []
+        var cstart: List<Len> = [0]
+        var jump: List<Len> = (0..n).collect()
+        var state: List<0..3> = List.filled(n, 0)
         for s in 0..n:
             if state[s] != 0: continue
-            var path: List<Int> = []
+            var path: List<Len> = []
             var x = s
             while state[x] == 0:
                 state[x] = 1
                 path.push(x)
-                x = nx[x]
+                x = next[V.nth(x)].ord
             if state[x] == 1:
-                var c: List<Int> = []
                 var y = x
                 while true:
-                    cyc[y] = cycles.len
-                    pos[y] = c.len
+                    cyc[y] = cstart.len - 1
+                    pos[y] = ring.len - cstart.last!
                     root[y] = y
                     state[y] = 2
-                    c.push(y)
-                    y = nx[y]
+                    ring.push(y)
+                    y = next[V.nth(y)].ord
                     if y == x: break
-                cycles.push(c)
+                cstart.push(ring.len)
             var k = path.len
             while k > 0:
                 k -= 1
                 let u = path[k]
                 if state[u] == 2 and root[u] == u: continue
-                root[u] = root[nx[u]]
-                depth[u] = depth[nx[u]] + 1
-                cyc[u] = cyc[nx[u]]
+                let p = next[V.nth(u)].ord
+                root[u] = root[p]
+                depth[u] = depth[p] + 1
+                cyc[u] = cyc[p]
                 state[u] = 2
-                let p = nx[u]
                 let j = jump[p]
                 jump[u] = if depth[p] - depth[j] == depth[j] - depth[jump[j]]: jump[j] else: p
-        Functional(next.clone(), nx, root, depth, cyc, pos, cycles, jump)
+        Functional(next.clone(), root, depth, cyc, pos, ring, cstart, jump)
 
     /// Does `v` lie on a cycle?
     ///
@@ -3658,7 +3663,7 @@ pub struct Functional<V>:
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; Functional(nx).cycle_len(4) == 3`
-    pub fn cycle_len(self, v: V) -> Int = _cycles[_cyc[v.ord]].len
+    pub fn cycle_len(self, v: V) -> Int = _cstart[_cyc[v.ord] + 1] - _cstart[_cyc[v.ord]]
 
     /// The vertex `k` steps after `v`, by jump pointers: `after(v, 0) == v`. Never `None`,
     /// unlike `Rooted.ancestor`, since every vertex has an out-arc.
@@ -3671,8 +3676,9 @@ pub struct Functional<V>:
         let x = v.ord
         if k < _depth[x]: return V.nth(self.lift(x, k))
         let r = _root[x]
-        let c = _cycles[_cyc[r]]
-        V.nth(c[(_pos[r] + (k - _depth[x]) % c.len) % c.len])
+        let base = _cstart[_cyc[r]]
+        let len = _cstart[_cyc[r] + 1] - base
+        V.nth(_ring[base + (_pos[r] + (k - _depth[x]) % len) % len])
 
     /// The first vertex `u` on the walk from `v`, `v` included, with `pred(u)`, or `None` if
     /// None appears. `pred` must be monotone along every walk (once true, true onward).
@@ -3686,9 +3692,9 @@ pub struct Functional<V>:
         var x = v.ord
         while _depth[x] > 0:
             if not pred(V.nth(_jump[x])): x = _jump[x]
-            elif not pred(V.nth(_nx[x])): x = _nx[x]
+            elif not pred(V.nth(next[V.nth(x)].ord)): x = next[V.nth(x)].ord
             else: break
-        let c = V.nth(_nx[x])
+        let c = V.nth(next[V.nth(x)].ord)
         if pred(c): Some(c) else: None
 
     /// The fewest steps from `a` to `b`, or `None` if the walk from `a` never reaches `b`;
@@ -3702,7 +3708,7 @@ pub struct Functional<V>:
         let y = b.ord
         if _cyc[x] != _cyc[y]: return None
         if _depth[y] == 0:
-            let len = _cycles[_cyc[y]].len
+            let len = _cstart[_cyc[y] + 1] - _cstart[_cyc[y]]
             return Some(_depth[x] + (_pos[y] - _pos[_root[x]]) % len)
         if _depth[x] < _depth[y]: return None
         let d = _depth[x] - _depth[y]
@@ -3712,7 +3718,7 @@ pub struct Functional<V>:
         let t = _depth[x] - k
         var y = x
         while _depth[y] > t:
-            y = if _depth[_jump[y]] >= t: _jump[y] else: _nx[y]
+            y = if _depth[_jump[y]] >= t: _jump[y] else: next[V.nth(y)].ord
         y
 
     /// Every cycle once, each in walk order from its smallest vertex.
@@ -3723,16 +3729,16 @@ pub struct Functional<V>:
     /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; Functional(nx).cycles() == [[0, 1, 2]]`
     /// example: `domain V = 0..3; let nx: [V]V = [0, 2, 1]; Functional(nx).cycles() == [[0], [1, 2]]`
     pub fn cycles(self) -> List<List<V>>:
-        var done = List.filled(_cycles.len, false)
+        var done = List.filled(_cstart.len - 1, false)
         var out: List<List<V>> = []
-        for i in 0.._nx.len:
+        for i in 0..V.count:
             if _depth[i] != 0 or done[_cyc[i]]: continue
             done[_cyc[i]] = true
-            var c: List<V> = [V.nth(i)]
-            var y = _nx[i]
-            while y != i:
-                c.push(V.nth(y))
-                y = _nx[y]
+            var c: List<V> = List.filled(self.cycle_len(V.nth(i)), V.nth(i))
+            var y = i
+            for t in 0..c.len:
+                c[t] = V.nth(y)
+                y = next[V.nth(y)].ord
             out.push(c)
         out
 

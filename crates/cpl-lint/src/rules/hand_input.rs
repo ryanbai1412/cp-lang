@@ -1,9 +1,8 @@
-//! Input read in a shape the program then works around: positions read
-//! 1-based and shifted back at each use (`query_index_shift`), and one list
-//! of points read as parallel coordinate arrays (`tuple_points`).
+//! Input read in a shape the program then works around: one list of points
+//! read as parallel coordinate arrays (`tuple_points`).
 
 use crate::walk::Visitor;
-use crate::{File, Finding, QUERY_INDEX_SHIFT, TUPLE_POINTS};
+use crate::{File, Finding, TUPLE_POINTS};
 use cpl_diag::Span;
 use cpl_syntax::ast::*;
 
@@ -21,7 +20,6 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     // A file's top-level statements come in several items, each with its own
     // offset, so they are also read as one run.
     let top: Vec<(u32, &Stmt)> = file.top_level().collect();
-    v.query_shift(&top);
     v.parallel_coords(&top);
     let order = crate::code_order(v.out.iter().map(|f| f.diag.code));
     cpl_diag::sort_by_key(&mut v.out, |f| crate::code_rank(&order, f.diag.code));
@@ -56,44 +54,6 @@ pub(super) fn parts(ty: &str) -> Vec<&str> {
     }
     out.push(&inner[start..]);
     out
-}
-
-/// Whether `[n - 1]` is read somewhere in `code`. A shift that is only
-/// written (`d[l - 1] += x` beside `d[r] -= x`) is a difference array, which
-/// `diff_by_hand` reports.
-fn reads_shifted(code: &str, n: &str) -> bool {
-    let shifted = format!("[{n}-1]");
-    code.match_indices(&shifted).any(|(i, _)| {
-        let after = &code[i + shifted.len()..];
-        let written = ["+=", "-=", "*=", "^=", "|=", "&="]
-            .iter()
-            .any(|op| after.starts_with(op))
-            || (after.starts_with('=') && !after.starts_with("=="));
-        !written
-    })
-}
-
-/// Whether `n` bounds a range (`0..n`, `domain V = 1..=n`) or sizes a type
-/// (`[n]`, `[n - 1](V, V)`) anywhere in `code`: then it is a count, and `a[n - 1]` is the last element.
-fn is_size(code: &str, n: &str) -> bool {
-    let bounds = [format!("..{n}"), format!("..={n}")].into_iter().any(|p| {
-        code.match_indices(&p).any(|(i, _)| {
-            !code[i + p.len()..]
-                .chars()
-                .next()
-                .is_some_and(|c| c.is_alphanumeric() || c == '_')
-        })
-    });
-    // `[n]Int`, `[n - 1](V, V)`: a type follows, where an index would not.
-    let sizes = [format!("[{n}]"), format!("[{n}-1]")].into_iter().any(|p| {
-        code.match_indices(&p).any(|(i, _)| {
-            code[i + p.len()..]
-                .chars()
-                .next()
-                .is_some_and(|c| c.is_ascii_digit() || c.is_uppercase() || c == '(' || c == '[')
-        })
-    });
-    bounds || sizes
 }
 
 /// `xs[i] * ys[j]` or `xs[i] - xs[j]`: one coordinate of two different
@@ -180,32 +140,6 @@ impl HandInput<'_> {
         Some((names, squash(self.text(base, ty.span))))
     }
 
-    /// `let (l, r): (1..=n, 1..=n) = read()`, then `a[l - 1]`.
-    fn query_shift(&mut self, stmts: &[(u32, &Stmt)]) {
-        for (k, &(base, stmt)) in stmts.iter().enumerate() {
-            let Some((names, ty)) = self.read_let((base, stmt)) else {
-                continue;
-            };
-            let tys = parts(&ty);
-            if tys.len() != names.len() {
-                continue;
-            }
-            let rest = self.squashed(&stmts[k + 1..]);
-            let Some((name, from)) = names.iter().zip(&tys).find(|(n, t)| {
-                t.starts_with("1..") && reads_shifted(&rest, n) && !is_size(&squash(self.src), n)
-            }) else {
-                continue;
-            };
-            let (name, from) = (name.to_string(), from.to_string());
-            self.warn_at(
-                &QUERY_INDEX_SHIFT,
-                stmt.span.shift(base),
-&lint_rules::QUERY_INDEX_SHIFT, &[&name, &from, &name],
-                format!("declare the array over the positions as they are read: `domain I = {from}`, `let a: [I]Int = read()`, and read `{name}` as `I`; then `a[{name}]` needs no `- 1`, and `a.scan(+).fold(l..=r)` sums a query `l..=r`"),
-            );
-        }
-    }
-
     /// `let xs: [D]Int = read()` next to `let ys: [D]Int = read()`, both
     /// indexed later.
     fn parallel_coords(&mut self, stmts: &[(u32, &Stmt)]) {
@@ -241,7 +175,6 @@ impl HandInput<'_> {
 impl Visitor for HandInput<'_> {
     fn stmts(&mut self, stmts: &[Stmt]) {
         let at: Vec<(u32, &Stmt)> = stmts.iter().map(|s| (self.base, s)).collect();
-        self.query_shift(&at);
         self.parallel_coords(&at);
     }
 }

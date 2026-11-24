@@ -94,8 +94,7 @@ fn checked(
         let fires = still_fires || t == text;
         (if fires { findings.to_vec() } else { Vec::new() }, errors)
     };
-    let before = report(text);
-    checked_fixes(text, &before, &mut report)
+    fix_rounds(text, &mut report)
 }
 
 fn finding(start: u32, end: u32, to: &str) -> Diagnostic {
@@ -143,4 +142,39 @@ fn a_fix_that_lowering_rejects_is_not_applied() {
     );
     let out = checked(text, &findings, &cpl_ir::check, false);
     assert_eq!(out, ("let x = 2\nprint(x)\n".to_string(), 1));
+}
+
+/// The fixes of a `text` of `n` `a`s, each to `b`, and an `x` to `y`; any
+/// `b` makes a second, unfixable `VAR_NEVER_REASSIGNED` fire, so the `x`
+/// fix stands only in a round of its own. How many times it was reported.
+fn reports_to_fix(n: usize) -> usize {
+    let text = format!("{}x", "a".repeat(n));
+    let mut calls = 0;
+    let mut report = |t: &str| {
+        calls += 1;
+        let mut found: Vec<_> = (t.match_indices('a'))
+            .map(|(i, _)| finding(i as u32, i as u32 + 1, "b"))
+            .collect();
+        let other = |at: u32| {
+            Diagnostic::warning(crate::VAR_NEVER_REASSIGNED.code, Span::new(at, at + 1), "x")
+        };
+        if let Some(at) = t.find('x') {
+            found.push(other(at as u32).with_fix("fix", Span::new(at as u32, at as u32 + 1), "y"));
+        }
+        if t.contains('b') {
+            found.push(other(0));
+        }
+        (found, Vec::new())
+    };
+    let out = fix_rounds(&text, &mut report);
+    assert_eq!(out, (format!("{}y", "b".repeat(n)), n + 1));
+    calls
+}
+
+#[test]
+fn a_round_reports_its_fixes_together_not_one_at_a_time() {
+    // flow-network.cp: 16 fixes, each reported alone once the 16 together
+    // failed, made `cpl fix` sixty times slower than `cpl check`.
+    assert_eq!(reports_to_fix(3), 4);
+    assert_eq!(reports_to_fix(200), 4);
 }

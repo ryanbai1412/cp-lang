@@ -26,7 +26,7 @@ pub(crate) fn path_of(e: &Expr) -> Option<((bool, usize), Vec<usize>)> {
     }
 }
 
-const PAYLOAD_STEP: usize = 1 << 62;
+const PAYLOAD_STEP: usize = 1 << (usize::BITS - 1);
 
 pub(crate) fn place_path(p: &Place) -> Option<((bool, usize), Vec<usize>)> {
     match &p.kind {

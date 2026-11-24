@@ -10,7 +10,7 @@ use binary::split_chain;
 use cpl_diag::msgs;
 use cpl_syntax::ast::{self, BinOp, Cond, Expr, ExprKind, StrPiece, UnOp};
 use fits::convert_to;
-pub(super) use fits::rename_fields;
+pub(super) use fits::{narrows_cells, rename_fields};
 
 fn range_of(elem: Ty) -> Ty {
     range_ty(elem)
@@ -75,6 +75,7 @@ impl<'a> Checker<'a> {
                     UnOp::Neg | UnOp::BitNot if ty.is_numeric() => ty.widen(),
                     UnOp::Neg if matches!(&ty, Ty::Optional(inner) if inner.is_numeric()) => ty,
                     UnOp::BitNot if matches!(&ty, Ty::Optional(inner) if inner.is_int()) => ty,
+                    UnOp::Neg if let Some(neg) = self.neg_impl(&ty) => neg,
                     UnOp::Neg | UnOp::BitNot => {
                         self.bad_operand(&ty, inner, if *op == UnOp::Neg { "-" } else { "~" })
                     }
@@ -729,7 +730,8 @@ impl<'a> Checker<'a> {
         let Ty::Named { name, .. } = scrutinee else {
             return;
         };
-        let Some(Def::Enum { variants, .. }) = self.type_def(name).as_deref().cloned() else {
+        let found = self.type_def(name);
+        let Some(Def::Enum { variants, .. }) = found.as_deref() else {
             return;
         };
         fn irrefutable(pat: &Pattern) -> bool {
@@ -771,7 +773,7 @@ impl<'a> Checker<'a> {
         }
         let mut seen = Vec::new();
         for arm in arms.iter().filter(|arm| arm.guard.is_none()) {
-            if named(&arm.pat, &variants, &mut seen).is_none() {
+            if named(&arm.pat, variants, &mut seen).is_none() {
                 return;
             }
         }

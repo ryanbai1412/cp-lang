@@ -1,11 +1,10 @@
+use super::jump::JumpOp;
 use super::stmt::Callee;
 use super::{Compiler, GiveTarget, ModSuperOp};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
 use cpl_ir::Prim;
-use cpl_ir::{
-    Arg, BinOp, Builtin, Cast, CmpOp, Expr, ExprKind, Mutation, PlaceKind, Stmt, Ty, UnOp,
-};
+use cpl_ir::{Arg, BinOp, Builtin, Cast, CmpOp, Expr, ExprKind, Stmt, Ty, UnOp};
 
 impl<'p, 'f> Compiler<'p, 'f> {
     fn is_small_tuple_local(&self, e: &Expr) -> bool {
@@ -132,13 +131,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 let (val, some) = self.compile_expr_opt_i(lhs);
                 let dst = self.alloc_i();
                 self.emit(Op::MoveI { dst, src: val }, lhs.span);
-                let j_done = self.emit(
-                    Op::JmpIfNonZero {
-                        reg: some,
-                        target: 0,
-                    },
-                    span,
-                );
+                let j_done = self.emit_jump(JumpOp::JmpIfNonZero { reg: some }, span);
                 let rv = self.compile_expr_i(rhs);
                 if rv != dst {
                     self.emit(Op::MoveI { dst, src: rv }, rhs.span);
@@ -264,38 +257,27 @@ impl<'p, 'f> Compiler<'p, 'f> {
             }
             ExprKind::Unary(UnOp::Pos, inner) => self.compile_expr_i(inner),
             ExprKind::Binary(op, lhs, rhs)
-                if expr.ty == Ty::U64 && lhs.ty == Ty::U64 && rhs.ty == Ty::U64 =>
+                if expr.ty == Ty::U64
+                    && lhs.ty == Ty::U64
+                    && (rhs.ty == Ty::U64 || matches!(op, BinOp::Shl | BinOp::Shr)) =>
             {
                 let a = self.compile_expr_i(lhs);
                 let b = self.compile_expr_i(rhs);
                 let dst = self.alloc_i();
                 let inst = match op {
-                    BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Rem | BinOp::Pow => {
-                        Op::BinU64 { dst, a, b, op: *op }
-                    }
                     BinOp::BitAnd => Op::BitAndU64 { dst, a, b },
                     BinOp::BitOr => Op::BitOrU64 { dst, a, b },
                     BinOp::BitXor => Op::BitXorU64 { dst, a, b },
-                    _ => return self.emit_fallback_expr_i(expr),
+                    _ => Op::BinU64 { dst, a, b, op: *op },
                 };
                 self.emit(inst, span);
                 dst
             }
             ExprKind::Binary(op, lhs, rhs)
-                if expr.ty == Ty::U64
-                    && lhs.ty == Ty::U64
-                    && matches!(op, BinOp::Shl | BinOp::Shr) =>
-            {
-                let a = self.compile_expr_i(lhs);
-                let b = self.compile_expr_i(rhs);
-                let dst = self.alloc_i();
-                self.emit(Op::BinU64 { dst, a, b, op: *op }, span);
-                dst
-            }
-            ExprKind::Binary(op, lhs, rhs)
                 if matches!(expr.ty, Ty::Int | Ty::Pos(_) | Ty::Bound(_))
                     && matches!(lhs.ty, Ty::Int | Ty::Pos(_) | Ty::Bound(_))
-                    && matches!(rhs.ty, Ty::Int | Ty::Pos(_) | Ty::Bound(_)) =>
+                    && matches!(rhs.ty, Ty::Int | Ty::Pos(_) | Ty::Bound(_))
+                    && !matches!(op, BinOp::Pow | BinOp::And | BinOp::Or | BinOp::Coalesce) =>
             {
                 let a = self.compile_expr_i(lhs);
                 if *op == BinOp::Add {
@@ -330,8 +312,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     BinOp::BitOr => Op::BitOrI { dst, a, b },
                     BinOp::BitXor => Op::BitXorI { dst, a, b },
                     BinOp::Shl => Op::ShlI { dst, a, b },
-                    BinOp::Shr => Op::ShrI { dst, a, b },
-                    _ => return self.emit_fallback_expr_i(expr),
+                    // The guard leaves only `>>`.
+                    _ => Op::ShrI { dst, a, b },
                 };
                 self.emit(inst, span);
                 dst
@@ -341,7 +323,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 let j_false = self.emit_branch_if_false(lhs);
                 let r = self.compile_expr_i(rhs);
                 self.emit(Op::MoveI { dst, src: r }, rhs.span);
-                let j_end = self.emit(Op::Jmp { target: 0 }, span);
+                let j_end = self.emit_jump(JumpOp::Jmp, span);
                 let false_pc = self.ops.len() as u32;
                 self.patch(j_false, false_pc);
                 self.emit(Op::ConstImmI { dst, val: 0 }, span);
@@ -352,10 +334,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
             ExprKind::Binary(BinOp::Or, lhs, rhs) => {
                 let dst = self.alloc_i();
                 let l = self.compile_expr_i(lhs);
-                let j_true = self.emit(Op::JmpIfNonZero { reg: l, target: 0 }, lhs.span);
+                let j_true = self.emit_jump(JumpOp::JmpIfNonZero { reg: l }, lhs.span);
                 let r = self.compile_expr_i(rhs);
                 self.emit(Op::MoveI { dst, src: r }, rhs.span);
-                let j_end = self.emit(Op::Jmp { target: 0 }, span);
+                let j_end = self.emit_jump(JumpOp::Jmp, span);
                 let true_pc = self.ops.len() as u32;
                 self.patch(j_true, true_pc);
                 self.emit(Op::ConstImmI { dst, val: 1 }, span);
@@ -463,10 +445,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         || self.is_small_tuple_local(rhs)
                         || self.small_tuple_is_cheap(lhs) && self.small_tuple_is_cheap(rhs)) =>
             {
-                let Some((len, _)) = crate::vm::scalar::small_tuple_shape(&lhs.ty, self.program)
-                else {
-                    return self.emit_fallback_expr_i(expr);
-                };
+                let len = crate::vm::scalar::small_tuple_shape(&lhs.ty, self.program)
+                    .map_or(0, |(len, _)| len);
                 let a_base = self.small_tuple_operand(lhs, len);
                 let b_base = self.small_tuple_operand(rhs, len);
                 let dst = self.alloc_i();
@@ -803,51 +783,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
                 dst
             }
-            ExprKind::Mutate(m @ (Mutation::Insert | Mutation::Remove), place, args)
-                if args.len() == 1
-                    && !crate::value::ty_has_cached(&args[0].ty, self.program)
-                    && !crate::value::keys::user_ordered(&args[0].ty, self.program)
-                    && ((matches!(m, Mutation::Insert)
-                        && matches!(place.ty, Ty::Set(_) | Ty::HashSet(_)))
-                        || (matches!(m, Mutation::Remove)
-                            && matches!(
-                                place.ty,
-                                Ty::Set(_) | Ty::HashSet(_) | Ty::Map(_, _) | Ty::HashMap(_, _)
-                            ))) =>
-            {
-                let saved_ops = self.ops.len();
-                let saved_spans = self.spans.len();
-                let saved_places = self.places.len();
-                if let Some(path) = self.compile_place_path(place) {
-                    let val_v = self.compile_expr_v(&args[0]);
-                    let dst = self.alloc_i();
-                    self.emit(
-                        Op::SetMapMutPlace {
-                            dst,
-                            path,
-                            val_v,
-                            is_remove: matches!(m, Mutation::Remove),
-                        },
-                        span,
-                    );
-                    if val_v >= self.num_local_v {
-                        self.emit(Op::ClearV { reg: val_v }, span);
-                    }
-                    dst
-                } else {
-                    self.ops.truncate(saved_ops);
-                    self.spans.truncate(saved_spans);
-                    self.places.truncate(saved_places);
-                    self.emit_fallback_expr_i(expr)
-                }
-            }
             ExprKind::Index(base, indices)
-                if matches!(&base.ty, Ty::Map(kty, _) | Ty::HashMap(kty, _) if !crate::value::ty_has_cached(kty, self.program) && !crate::value::keys::user_ordered(kty, self.program))
+                if let Ty::Map(kty, _) | Ty::HashMap(kty, _) = &base.ty
+                    && !crate::value::ty_has_cached(kty, self.program)
+                    && !crate::value::keys::user_ordered(kty, self.program)
                     && indices.len() == 1 =>
             {
-                let (Ty::Map(kty, _) | Ty::HashMap(kty, _)) = &base.ty else {
-                    return self.emit_fallback_expr_i(expr);
-                };
                 let map_v = self.compile_expr_v(base);
                 let key_v = self.compile_expr_v(&indices[0]);
                 let key_ty = self.fill_tys.len() as u16;
@@ -916,29 +857,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
                             );
                         }
                         dst
-                    }
-                    ExprKind::Local(slot) => {
-                        if let SlotLoc::V(arr_v) = self.slot_loc(*slot) {
-                            let r_i = self.compile_expr_i(&indices[0]);
-                            let dst = self.alloc_i();
-                            if indices.len() == 2 {
-                                let r_j = self.compile_expr_i(&indices[1]);
-                                self.emit(
-                                    Op::LoadLArr2I {
-                                        dst,
-                                        arr_v,
-                                        r_i,
-                                        r_j,
-                                    },
-                                    span,
-                                );
-                            } else {
-                                self.emit(Op::LoadLArr1I { dst, arr_v, r_i }, span);
-                            }
-                            dst
-                        } else {
-                            self.emit_fallback_expr_i(expr)
-                        }
                     }
                     ExprKind::Index(outer, outer_indices)
                         if indices.len() == 1
@@ -1020,16 +938,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         );
                         dst
                     }
-                    ExprKind::Local(slot) => {
-                        if let SlotLoc::V(list_v) = self.slot_loc(*slot) {
-                            let r_i = self.compile_expr_i(&indices[0]);
-                            let dst = self.alloc_i();
-                            self.emit(Op::LoadLList1I { dst, list_v, r_i }, span);
-                            dst
-                        } else {
-                            self.emit_fallback_expr_i(expr)
-                        }
-                    }
                     ExprKind::Field(obj, fidx) if matches!(base.ty, Ty::List(_)) => {
                         let obj_v = self.compile_expr_v(obj);
                         let r_i = self.compile_expr_i(&indices[0]);
@@ -1083,46 +991,13 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
                 dst
             }
-            ExprKind::Mutate(Mutation::Take, place, args) if args.is_empty() => {
-                match &place.kind {
-                    PlaceKind::Local(slot) => {
-                        if let SlotLoc::I(src, _) = self.slot_loc(*slot) {
-                            let dst = self.alloc_i();
-                            self.emit(Op::MoveI { dst, src }, span);
-                            return dst;
-                        }
-                    }
-                    PlaceKind::Global(gid) => {
-                        let dst = self.alloc_i();
-                        self.emit(
-                            Op::LoadGlobalI {
-                                dst,
-                                gid: *gid as u16,
-                            },
-                            span,
-                        );
-                        return dst;
-                    }
-                    _ => {}
-                }
-                // Taking a scalar leaves it in place: a read of the place.
-                if let Some(path) = self.compile_place_path(place) {
-                    let src_v = self.alloc_v();
-                    self.emit(Op::TakePlaceV { dst: src_v, path }, span);
-                    let dst_i = self.alloc_i();
-                    self.emit(Op::UnboxI { dst_i, src_v }, span);
-                    self.emit(Op::ClearV { reg: src_v }, span);
-                    return dst_i;
-                }
-                self.emit_fallback_expr_i(expr)
-            }
             ExprKind::Binary(BinOp::Coalesce, lhs, rhs)
                 if ScalarKind::of_opt_ty(&lhs.ty, self.program).is_some() =>
             {
                 let (lv, ls) = self.compile_expr_opt_i(lhs);
                 let dst = self.alloc_i();
                 self.emit(Op::MoveI { dst, src: lv }, span);
-                let j_done = self.emit(Op::JmpIfNonZero { reg: ls, target: 0 }, span);
+                let j_done = self.emit_jump(JumpOp::JmpIfNonZero { reg: ls }, span);
                 let rv = self.compile_expr_i(rhs);
                 if rv != dst {
                     self.emit(Op::MoveI { dst, src: rv }, span);
@@ -1145,7 +1020,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 if rt != dst {
                     self.emit(Op::MoveI { dst, src: rt }, then_e.span);
                 }
-                let j_end = self.emit(Op::Jmp { target: 0 }, span);
+                let j_end = self.emit_jump(JumpOp::Jmp, span);
                 let else_pc = self.ops.len() as u32;
                 self.patch(j_else, else_pc);
                 let re = self.compile_expr_i(else_e);
@@ -1299,9 +1174,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                             let end_pc = self.ops.len() as u32;
                             self.inline_ret = prev_ret;
                             self.inline_slots = prev_slots;
-                            for j in jumps {
-                                self.patch(j, end_pc);
-                            }
+                            self.patch_all(jumps, end_pc);
                             for reg in boxed {
                                 self.emit(Op::ClearV { reg }, span);
                             }

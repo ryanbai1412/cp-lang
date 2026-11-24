@@ -6,4 +6,4 @@ domain V = 0..3
 let es: [0..3](u: V, v: V, w: Int) = [(u: V(0), v: V(1), w: 5), (u: V(1), v: V(2), w: 2), (u: V(0), v: V(2), w: 9)]
 let d = dijkstra(Graph.directed(es), from: [(V(0), 0)])
 let h = dijkstra(Graph.undirected(es), from: [(V(2), 0)])
-print(d[V(0)], d[V(1)], d[V(2)], "|", h[V(1)], h[V(2)] + 2)
+print(d[V(0)]!, d[V(1)]!, d[V(2)]!, "|", h[V(1)]!, h[V(2)]! + 2)

@@ -27,4 +27,4 @@ fn create_map(n: 1..=40, m: Int, a: List<1..=n>, b: List<1..=n>) -> List<List<1.
     let map = [2 * n] x => [2 * n] y =>
         let d = diags[x + y]
         (d.get(x - max(0, x + y - (2 * n - 1))) ?? d.last!).ord + 1
-    return map.map(row => row.collect()).collect()
+    return [[c for c in row] for row in map]

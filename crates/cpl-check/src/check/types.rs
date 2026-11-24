@@ -525,86 +525,6 @@ impl<'a> Checker<'a> {
         Ty::Error
     }
 
-    /// The signature of a fn. `self_ty` is the receiver's type in a method;
-    /// the `self` parameter is not part of the signature callers see.
-    pub(crate) fn fn_sig(&mut self, f: &ast::FnDecl, self_ty: Option<&Ty>) -> Ty {
-        let outer = self.generics.len();
-        self.generics
-            .extend(f.generics.iter().map(|g| g.text.clone()));
-        self.in_fn += 1;
-        // A parameter's type can use the ones before it:
-        // `fn valid(n: Int, seq: [0..n]Int)`. So can the result's.
-        self.push_scope();
-        let mut params = Vec::new();
-        for p in f
-            .params
-            .iter()
-            .filter(|p| !(self_ty.is_some() && p.name.text == "self"))
-        {
-            let ty = match &p.ty {
-                Some(ty) => self.resolve_type(ty),
-                None => Ty::Unknown,
-            };
-            if p.variadic && !matches!(ty, Ty::Param(_) | Ty::Error) {
-                if let Some(diag) = self.report(
-                    p.span,
-                    msgs::check::VARIADIC_NOT_PARAM,
-                    &[&p.name.text, &ty],
-                ) {
-                    diag.help = Some(format!(
-                        "write `fn {}<Ts>(..{}: Ts)`, or take a `List<{ty}>` and pass `[a, b, c]`",
-                        f.name.text, p.name.text
-                    ));
-                }
-            }
-            if p.lazy
-                && !matches!(&ty, Ty::Fn { params, .. } if params.is_empty())
-                && ty != Ty::Error
-            {
-                if let Some(diag) = self.report(
-                    p.span,
-                    msgs::check::LAZY_NOT_FN,
-                    &[&p.name.text, &p.name.text, &ty],
-                ) {
-                    diag.help = Some(format!("write `lazy {}: () -> {ty}`", p.name.text));
-                }
-            }
-            let seen = Local {
-                ty: ty.clone(),
-                mutable: p.mutable,
-                span: p.name.span,
-                keyword: "param",
-            };
-            self.scopes.innermost().insert(p.name.text.clone(), seen);
-            if p.ty.as_ref().is_some_and(Self::names_range_keys) {
-                self.lends.range_keys.insert(p.name.span);
-            }
-            params.push(Param {
-                name: p.label_text().to_string(),
-                ty,
-                mutable: p.mutable || self.note_opt_mut(p),
-                has_default: p.default.is_some(),
-                named_only: p.named_only,
-                variadic: p.variadic,
-                lazy: p.lazy,
-            });
-        }
-        let ret = match (&f.ret, &f.lends, &f.body) {
-            (Some(ty), _, _) => self.resolve_type(ty),
-            // A projection's caller works with the value it lends.
-            (None, Some(lends), _) => self.resolve_type(&lends.ty),
-            (None, None, ast::FnBody::Expr(_)) => Ty::Unknown,
-            (None, None, _) => Ty::Unit,
-        };
-        self.scopes.pop();
-        self.in_fn -= 1;
-        self.generics.truncate(outer);
-        Ty::Fn {
-            params,
-            ret: Box::new(ret),
-        }
-    }
-
     /// A domain or constant that the struct `owner`, or an impl for it,
     /// declares in its body.
     pub(crate) fn owned_member(&mut self, owner: &str, member: &str) -> Option<Ty> {
@@ -1226,8 +1146,10 @@ impl<'a> Checker<'a> {
                 let assoc = self.with_assoc_defaults(trait_name.as_ref(), &self_ty, assoc);
                 let outer_assoc = std::mem::replace(&mut self.self_assoc, assoc.clone());
                 let owned = self.owned(&target_name, &body.stmts);
+                let outer_trait = self.enter_impl_trait(trait_name.as_ref());
                 let (methods, getters, mutators) = self.method_sigs(&body.stmts, &self_ty);
                 let method_rows = self.method_rows(&body.stmts, bounds);
+                self.impl_trait = outer_trait;
                 self.self_assoc = outer_assoc;
                 self.leave_body(scope);
                 let trait_head = trait_name.as_ref().and_then(trait_impl_key);
@@ -1281,7 +1203,8 @@ impl<'a> Checker<'a> {
             if !seen.insert(name.to_string()) {
                 return None;
             }
-            let Some(Def::Enum { variants, .. }) = env.type_def(name).as_deref().cloned() else {
+            let found = env.type_def(name);
+            let Some(Def::Enum { variants, .. }) = found.as_deref() else {
                 seen.remove(name);
                 return None;
             };
@@ -1290,7 +1213,7 @@ impl<'a> Checker<'a> {
                 return None;
             }
             let mut total: Option<i128> = Some(0);
-            for (_, fs) in &variants {
+            for (_, fs) in variants {
                 let mut prod: Option<i128> = Some(1);
                 for f in fs {
                     let fmax = match f {
@@ -1612,11 +1535,12 @@ impl<'a> Checker<'a> {
             }
             _ => {}
         }
+        let found = self.type_def(trait_name);
         if let Some(Def::Trait {
             supers,
             alias: true,
             ..
-        }) = self.type_def(trait_name).as_deref().cloned()
+        }) = found.as_deref()
         {
             return supers
                 .iter()
@@ -1631,7 +1555,6 @@ impl<'a> Checker<'a> {
             t if self.is_structural(t) => self.derives_structural(ty, trait_name, seen),
             "Show" => self.derives_print(ty, false, seen),
             "Seq" => ty.is_seq() || self.walks_by_each(ty),
-            "Sized" => ty.is_sized(),
             "Indexed" => ty.is_indexed(),
             "Positional" | super::views::INDEXED_BY_WALK => {
                 ty.rev_source().unwrap_or(ty).is_indexed()
@@ -1698,13 +1621,14 @@ impl<'a> Checker<'a> {
     /// The getters of a trait made only of `@get fn m(self) -> P = self`, each with the
     /// index of its `P` among the trait's generics: `Target<V>`'s `to` returns `V`.
     pub(crate) fn self_getters(&mut self, trait_name: &str) -> Option<Vec<(String, usize)>> {
+        let found = self.global(trait_name);
         let Some(Def::Trait {
             generics,
             methods,
             fields,
             supers,
             ..
-        }) = self.global(trait_name).as_deref().cloned()
+        }) = found.as_deref()
         else {
             return None;
         };
@@ -1712,10 +1636,10 @@ impl<'a> Checker<'a> {
             return None;
         }
         methods
-            .into_iter()
-            .map(|m| match m.ty {
-                Ty::Fn { ret, .. } if m.getter && m.default_self => match *ret {
-                    Ty::Param(p) => Some((m.name, generics.iter().position(|g| *g == p)?)),
+            .iter()
+            .map(|m| match &m.ty {
+                Ty::Fn { ret, .. } if m.getter && m.default_self => match &**ret {
+                    Ty::Param(p) => Some((m.name.clone(), generics.iter().position(|g| g == p)?)),
                     _ => None,
                 },
                 _ => None,
@@ -1724,26 +1648,24 @@ impl<'a> Checker<'a> {
     }
 
     pub(crate) fn meets_by_shape(&mut self, fields: &[(String, Ty)], trait_name: &str) -> bool {
+        let found = self.type_def(trait_name);
         let Some(Def::Trait {
             methods,
             fields: wanted,
             supers,
             ..
-        }) = self.type_def(trait_name).as_deref().cloned()
+        }) = found.as_deref()
         else {
             return true;
         };
         if !supers.iter().all(|s| self.meets_by_shape(fields, s)) {
             return false;
         }
-        let getters = methods
-            .into_iter()
-            .filter(|m| m.required)
-            .map(|m| match m.ty {
-                Ty::Fn { params, ret } if params.len() <= 1 => (m.name, *ret),
-                _ => (m.name, Ty::Unknown),
-            });
-        let wanted: Vec<(String, Ty)> = getters.chain(wanted).collect();
+        let getters = methods.iter().filter(|m| m.required).map(|m| match &m.ty {
+            Ty::Fn { params, ret } if params.len() <= 1 => (m.name.clone(), (**ret).clone()),
+            _ => (m.name.clone(), Ty::Unknown),
+        });
+        let wanted: Vec<(String, Ty)> = getters.chain(wanted.iter().cloned()).collect();
         wanted.iter().all(|(name, want)| {
             fields.iter().any(|(f, got)| {
                 f == name && (matches!(want, Ty::Param(_) | Ty::Unknown) || got.fits(want))
@@ -1796,7 +1718,8 @@ impl<'a> Checker<'a> {
                 if matches!(name.as_str(), "Cut" | "Range") {
                     return true;
                 }
-                match self.type_def(name).as_deref().cloned() {
+                let found = self.type_def(name);
+                match found.as_deref() {
                     Some(Def::Struct {
                         generics, fields, ..
                     }) => {
@@ -1847,9 +1770,7 @@ impl<'a> Checker<'a> {
                     "convert each cell: `{}.map(x => {we}(x))`",
                     self.quote(at.span)
                 );
-                if let Some(diag) = self.report_as(codes::TYPE_MISMATCH, at.span, msg) {
-                    diag.help = Some(help);
-                }
+                self.mismatch_with(at.span, msg, help);
                 return false;
             }
         }
@@ -1914,7 +1835,8 @@ impl<'a> Checker<'a> {
                 if name == "List" && args.len() == 1 {
                     return self.derives_print(&args[0], allow_none, seen);
                 }
-                match self.type_def(name).as_deref().cloned() {
+                let found = self.type_def(name);
+                match found.as_deref() {
                     Some(Def::Struct {
                         generics, fields, ..
                     }) => {
@@ -1933,7 +1855,7 @@ impl<'a> Checker<'a> {
                     Some(Def::Enum {
                         variants, tagged, ..
                     }) => {
-                        if tagged {
+                        if *tagged {
                             return true;
                         }
                         seen.push(name.clone());

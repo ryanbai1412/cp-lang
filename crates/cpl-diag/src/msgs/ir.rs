@@ -84,6 +84,7 @@ super::msgs! {
     TYPE_MISMATCH_A_FOR_CAN_T = TYPE_MISMATCH, "a `for` can't walk over a `{}`";
     TYPE_MISMATCH_A_FOR_CAN_WALK = TYPE_MISMATCH, "a `for` can walk the values of a domain's `?D`, and `{}` is not a domain";
     TYPE_MISMATCH_A_RANGE_RUNS_OVER = TYPE_MISMATCH, "a range runs over numbers or positions, not `{}`";
+    TYPE_MISMATCH_A_DOMAIN_IS = TYPE_MISMATCH, "a domain is a count, a range of `Int`s, a sequence's positions or another domain, not `{}`";
     TYPE_MISMATCH_A_FOR_OVER_LO = TYPE_MISMATCH, "a `for` over `lo..` counts from an `Int` or a domain value, found `{}`";
     TYPE_MISMATCH_BY_STEPS_A_RANGE = TYPE_MISMATCH, "`by` steps a range of Int, not of `{}`";
     UNKNOWN_FIELD_CUTS_BELONGS_TO_A = UNKNOWN_FIELD, "`.cuts` belongs to a domain: `V.cuts`";

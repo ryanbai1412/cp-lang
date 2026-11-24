@@ -282,7 +282,7 @@ impl<'a> Lowerer<'a> {
             let message = cpl_diag::msgs::ir::RANGE_S_ENDS_ARE.at(&[&shown]);
             return self.report_said(span, message);
         };
-        self.report(span, msgs::ir::TYPE_MISMATCH_A_RANGE_S_ENDS, &[&shown]);
+        self.report_str(span, msgs::ir::TYPE_MISMATCH_A_RANGE_S_ENDS, &shown);
         let (Some(lo), Some(hi)) = (lo, hi) else {
             return;
         };

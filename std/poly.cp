@@ -1062,7 +1062,7 @@ impl Div for Poly<T>:
         for i in (0..=da - db).rev:
             let f = r[i + db] / b.c[db]
             q[i] = f
-            for j in 0..=db: r[i + j] = r[i + j] - f * b.c[j]
+            for j in 0..=db: r[i + j] -= f * b.c[j]
         Poly(q)
 
 /// \(O(m \log^2 m)\) build. Prebuilt product tree over points `xs` for multipoint evaluation,

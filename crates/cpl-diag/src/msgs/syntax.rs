@@ -55,6 +55,7 @@ super::msgs! {
     LINT_TO_EXTRA = BAD_LIBRARY_LINT, "`to` of `@lint({})` uses `{}`, which `from` does not match";
     LINT_TO_NO_CALL = BAD_LIBRARY_LINT, "`to` of `@lint({})` does not call `{}`";
     LINT_HOLE_UNUSED = BAD_LIBRARY_LINT, "`holes:` of `@lint({})` names `{}`, which neither `from` nor `also:` uses";
+    LINT_EACH = BAD_LIBRARY_LINT, "`each:` of `@lint({})` is not a name `to` writes, `in`, and a hole";
     LINT_READS = BAD_LIBRARY_LINT, "`reads:` of `@lint({})` is not a read, `->`, and what the fix writes for it";
     LINT_WHEN = BAD_LIBRARY_LINT, "`when:` of `@lint({})` is not holes `from` uses compared with integers";
     STRESS_NOT_ON_TYPE = BAD_STRESS, "`@stress` decorates a type alias";

@@ -127,13 +127,16 @@ impl<'p> Emitter<'p> {
         self.slot_written_next = self.slot_written_next(&block.stmts, k);
         self.blank_next = self.filled_next(&block.stmts, k);
         let top = std::ptr::eq(block, &self.program.main);
-        if top {
+        let dead = if top {
             self.released = self.released_at(block, k);
-        }
+            self.dead_after(block, k)
+        } else {
+            std::collections::BTreeSet::new()
+        };
         self.stmt_owning(block, k, out);
-        self.release_read(block, k, out);
         if top {
             self.released.clear();
+            self.release_dead(&dead, out);
         }
         self.slot_written_next = false;
         self.blank_next = false;
@@ -1056,7 +1059,10 @@ impl<'p> Emitter<'p> {
                 let hold = if hoisted { Hold::Static } else { Hold::Block };
                 let pinned = self.pinned_view(init, hold, out);
                 let text = match crate::uses::copied(init) {
-                    Some(src) if self.moves_last && pinned.is_none() => self.expr(src).text,
+                    Some(src) if self.moves_last && pinned.is_none() => {
+                        self.moved_copies.push(init.span);
+                        self.expr(src).text
+                    }
                     _ => match &init.kind {
                         _ if pinned.is_some() => pinned.unwrap_or_default(),
                         ExprKind::Field(base, index) => match &base.kind {
@@ -1206,6 +1212,7 @@ impl<'p> Emitter<'p> {
             }
             Stmt::Assign(place, op, value) => self.assign(place, *op, value, out),
             Stmt::Expr(e) => self.expr_stmt(e, out),
+            Stmt::If(cond, then, otherwise) if self.if_into(cond, then, otherwise, out) => {}
             Stmt::If(cond, then, otherwise) => {
                 let lead = pad(self.indent);
                 self.if_stmt(cond, then, otherwise, out, &lead);

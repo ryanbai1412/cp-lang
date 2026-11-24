@@ -3292,12 +3292,17 @@ The area's design is `spec/lib/flows.md`; these are its calls.
     tables and the generated API page. Debt: the suffix stands in for a
     general hidden-from-docs marker on a `pub fn`, which does not exist yet.
     Reverse: list them again, or replace the suffix test with that marker.
-11. **Every search takes `until: ?V = none`** (`bfs`, `bfs01`, `dijkstra`,
-    `fixed_cost_paths`): stop once that vertex is settled, so `order` ends
-    there and its distances are exact. An option, not a `_to` twin, and
-    `?V` so one target costs one comparison per settled vertex. A set of
-    targets or a predicate waits for a port that needs one. Reverse: drop
-    the option; callers stopping at a target pay for the whole space.
+11. **Every search takes `until: V -> Bool = v => false`** (`bfs`, `bfs01`,
+    `dial`, `dijkstra`, `fixed_cost_paths`): stop once a vertex the
+    predicate holds for is settled, so `order` ends there and its
+    distances are exact. An option, not a `_to` twin. *Revised
+    2026-11-24:* it was `?V`, one target; dmopc19c4p2 stops at any state
+    with the marble on the goal, a set no single target names, so the
+    port searched every state. A predicate is one inlined call per
+    settled vertex, the same as the comparison it replaces, and reads
+    like `read_all(until:)`; one target is `until: v => v == t`.
+    Reverse: back to `?V`; callers with a set of goals pay for the whole
+    space.
 
 ## 47. DP and search in the stdlib (`research/design-history/stdlib-surveys/dp.md`, 2026-11-21)
 
@@ -7287,7 +7292,12 @@ Ryan rejected an O(1) special case for `(3..m).step(2).sum()`. The rule is gener
 
 Amended 2026-11-24 (Core, for decision 419 and Content's `Range<F64>.bsearch`): extension fns of one name choose by receiver specificity, one relation in R08.1.4 used within a module and across modules. A candidate's `self` fits the receiver and its parameters take the arguments; a built-in member that can't take them falls through (`a.contains(i, x)`). `A` is more specific than `B` when `B`'s `self` binds to `A`'s and not the other way (`Range<F64>` over `Range<D>`, `[V]List<V>` over `[D]T`). A bare `self: S` is never more specific, so `core-08/extension-concrete-and-generic-ambiguous.cp` stays E0701, and two equally specific candidates stay E0701 (E0702 in one module). A list never calls `self: Range<D>` (`core-08/list-bsearch-never-picks-range-bsearch.cp`). This drops the earlier rule that the file's own fn stands in front of the library's.
 
+Amended 2026-11-24 (Core, after std/seq.cp's false E0701s): member-hides E0701 fires only where the hidden fn is the call's different definition and only in the module that declares that fn, std or user alike. A file that imports the fn calls the member with no error (`core-08/importer-of-a-hidden-fn-calls-the-member.cp`); the declaring file gets E0701 (`core-08/member-hides-the-modules-own-fn.cp`); a catalog member backed by the very fn it would hide hides nothing. One precedence order for a method call: a member of the receiver's type (declared or catalog) beats any extension fn; at equal specificity the calling module's own fn beats an imported fn (B's amendment of the same day); ties within one level are E0701. Lost: a warning in the importing file, which can't rename the fn. Reverse: report E0701 at every use.
+
 Amended 2026-11-24 (Core, for std's `find`/`rfind` overloads): a concrete `self` that meets a bare `self: S`'s bounds is more specific than it (`self: Str` over `S: Indexed<D, T>`), so `core-08/extension-concrete-and-generic-ambiguous.cp` becomes `core-08/concrete-extension-beats-std-generic.cp` and prints 7. One module's fns of one name clash (E0702) only when their full signatures overlap: the same `self` with another arity, or `x: T` with `T: Eq` beside `p: T -> Bool`, overloads (`core-08/same-module-receivers-of-other-arity-overload.cp`, `core-08/concrete-self-beats-bounded-generic.cp`). An extension a member of the receiver's type always wins over is E0701 naming the member, never silently dead (`core-08/member-hides-extension-fn.cp`). Lowering calls the fn the checker resolved, not a name arm of its own. Reverse: put back "a bare `self: S` is never more specific" and the receiver-only E0702.
+
+Amended 2026-11-24 (compiler): decision 636 puts back the calling module's own fn ahead of an imported one of equal specificity, for any library.
+
 ## 334. Three hand-written graph and window algorithms teach their std names: L0565-L0567; `lint_std_names` 152 -> 159 (2026-11-22)
 
 `cycle_by_colors` (L0565): a fn that sets `c[u] = 1` first, `c[u] = 2` last and
@@ -9337,11 +9347,6 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
   deletion.
 
 ## 625. A fn's `var` bound to a top-level heap value is E0608, migrated by `cpl fix` (compiler, 2026-11-24)
-
-- **Call.** Inside a fn, `var b = g` where `g` is a top-level heap value (List, Map, Str, a struct holding one, ...) is E0608 with the fix `var b = g.clone()`; `let b = g` stays a lend. A fn reads top-level state lent, as it does a parameter (R05.2.2, R05.4.1), so the binding can neither move `g` out of the file body nor copy it silently. The frozen `tests/v02-snapshot` copies change only through `cpl fix` output, the codemod path every breaking rule uses. Core ruling of 2026-11-24.
-- **Why.** The binding used to compile to a silent deep copy, a cost the source never spelled. Making it E0608 keeps costs visible: `.clone()` is the one O(n) copy.
-- **Reverse.** Drop the rule; `var b = g` in a fn compiles to the copy again, and the migrated `.clone()`s stay valid.
-
 ## 626. `Subset` is plain std: GAPS:7 closes (stdlib, 2026-11-24)
 
 - **Call.** No compiler table names `Subset` any more: 9be132046 made `B.subsets` std's `@member(subsets)` and dropped the prelude rows, and both engines run `std/subset.cp`'s bodies (an edit to `Subset.len` in std changes `cpl run` and the C++ alike). So Q3 (a)'s move for `Subset` is done with no lowering moved and no C++ change, and GAPS:7, which said `cpl run` answers `Subset` calls itself, closes (std_gaps 5 -> 4, prelude_privilege tightened 24 -> 23 to what main measures). Stdlib's Q3 (a) ruling of 2026-11-24.
@@ -9379,13 +9384,35 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 - **Call.** A fn declares the names another language gives it, `@aka(upper, toUpperCase, uppercase)` above `pub fn to_upper(self: Str)`; the checker builds its foreign-name fixes for a receiver type from these decorators, and the `foreign_str_fn` name table in the compiler is deleted. `to_lower`, `to_upper`, `trim`, `trim_start` and `trim_end` move first. Compiler ruling of 2026-11-24.
 - **Why.** No privileged stdlib: a std name the compiler spells is one a user library cannot match; `@aka` is the sibling of `@was` (older std names) and any library may write it. Diagnostics are unchanged.
 - **`@was` on fns.** `@was(bsearch_last)` above `pub fn last_true` states a fn's older std name, as it already did for structs and enums; the checker's member migration (E0503 with its fix) reads it, and the `bsearch_first`/`bsearch_last` arms in `check/expr/member.rs` are deleted.
+- **Any receiver.** `prelude::aka_of(name)` reads the same decorators without a receiver type, so `@aka(partition_point)` on the generic `pub fn bsearch(self: [D]T, ..)` replaces the `partition_point` row of `foreign_own`.
 - **Reverse.** Restore the table in `builtins/foreign.rs` and drop the decorator.
-
-## 636. (reserved, compiler)
 
 ## 637. (reserved, compiler)
 
-## 638. (reserved, compiler)
+## 638. A container's cells don't narrow into range cells unchecked (compiler, 2026-11-24)
+
+- **Decision.** A `List<Int>` given where `List<0..100>` is expected, at
+  a `let`/`var` initializer, assignment, return, argument, or a std
+  method that copies its argument's cells into the receiver's
+  (`ys.extend(zs)`, its row's `List<T>` with `T` the receiver's cell), is
+  E0302, as decision 246 made `[V]1..=9` to `[V]Int` (R04.4.24). A source
+  whose cells are already proven in range (`List<0..50>`) moves free. The
+  help names the checked conversion, `[x for x in zs]`; a list literal or
+  comprehension written there checks each value it stores, as any range
+  store (R0201).
+- **Why.** Only `push` and index stores checked, so a wider list moved,
+  returned or extended into a ranged list held `500` in a `0..100` cell
+  (Perf's repros). Checking every cell on a move would hide an \(O(n)\)
+  cost ("costs are visible"), so the conversion is written.
+- **Lowering and cost.** None at run time: the check is static; the
+  written comprehension checks each cell once, free where facts prove it.
+- **Reverse.** Drop the sentence from R04.4.24 and the checker's cell
+  test; wider lists move unchecked again.
+- **Status.** Accepted (Core ruling).
+
+- **Call.** Inside a fn, `var b = g` where `g` is a top-level heap value (List, Map, Str, a struct holding one, ...) is E0608 with the fix `var b = g.clone()`; `let b = g` stays a lend. A fn reads top-level state lent, as it does a parameter (R05.2.2, R05.4.1), so the binding can neither move `g` out of the file body nor copy it silently. The frozen `tests/v02-snapshot` copies change only through `cpl fix` output, the codemod path every breaking rule uses. Core ruling of 2026-11-24.
+- **Why.** The binding used to compile to a silent deep copy, a cost the source never spelled. Making it E0608 keeps costs visible: `.clone()` is the one O(n) copy.
+- **Reverse.** Drop the rule; `var b = g` in a fn compiles to the copy again, and the migrated `.clone()`s stay valid.
 
 ## 632. A bare `gen()` takes its type from where it goes; `gen_fields` closes GAPS:12 (stdlib, 2026-11-24)
 
@@ -9415,8 +9442,6 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
   (`plan/QUESTIONS.md`) would make most transfers unnecessary.
 - **Status.** Accepted (Factory and Core); the instantiating-crate question stays open.
 
-## 640. (reserved, unknown)
-
 ## 641. (reserved, compiler)
 
 ## 642. (reserved, compiler)
@@ -9426,3 +9451,14 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 - **Call.** The name-ban counter skips the build-option tables a CLI flag parses, listed by path in `NAME_BAN_OUT_OF_SCOPE` in `scripts/debt-ratchet.py`: today only `crates/cpl-ir/src/checks.rs`, whose `"all"` is the `--checks all` value. A std name in any lowering, checker or codegen module still counts. Factory ruling of 2026-11-24.
 - **Why.** The counter measures compiler code that matches a std name. A flag value that happens to be spelled like a std fn is not such a match. A path scope keeps it structural, where a name allowlist would also hide real arms that use the same spelling.
 - **Reverse.** Empty `NAME_BAN_OUT_OF_SCOPE`. The counter then scans every module of the four crates again.
+## 640. A float fn's domain is std's own `assert`; the intrinsic row never traps (compiler, 2026-11-24)
+
+- **Call.** `sqrt`, `ln`, `asin` and `acos` in std/math.cp are ordinary bodies: `let f = F64(x); assert <domain>, "<what>"; <name>_of(f)`, where `<name>_of` is a private `@intrinsic` row. A checked build traps R0401 with std's message and `f`'s value on both engines; a release build skips the assert (R09.3.7) and gives the C++ result, NaN for `sqrt(-1.0)`. R09.3.6 says so. cpl_rt keeps only a bare `fn(f64) -> f64` table and a two-argument one for `atan2` and `hypot`: no bounds, no `Fault::Negative`, no domain branch; the C++ forms are `std::sqrt`, `std::log`, `std::asin`, `std::acos` with no runtime piece. Coordinator ruling for the compiler lane of 2026-11-24.
+- **Why.** One rule for one kind of fault: the check is code any library could write, `explain` shows it and its cost, and cpl_rt stays within its 500 B budget.
+- **Reverse.** Add a general precondition mechanism that lets any library name its own trap code (so std's float preconditions could say R0001 again), not a per-fn check in cpl_rt.
+
+## 636. At equal specificity a module's own fn beats an imported one (compiler, 2026-11-24)
+
+Amends decision 486. R08.1.4 picks among a call's candidates in one precedence order: a member of the receiver's type, declared or catalog, beats any extension fn; at equal specificity, a fn the calling module declares beats one it imports, from std or any other library; two candidates that tie at one level are E0701. The rule never names std: a user library's fn yields to the importer's own fn exactly as std's does (`core-08/own-module-fn-beats-equal-imported.cp`), and two imported fns that tie stay E0701 (`core-08/imported-fns-of-equal-specificity-ambiguous.cp`). This lets std declare closed-form `sum(self: Range<Int>)` while `core-08/concrete-extension-beats-std-generic.cp` still prints 7. The member level is 7a8dcef2's amendment to decision 486 (Core, after std/seq.cp's false E0701s). Reverse: drop the own-module level from R08.1.4 and `own_fn` from `pick_method_for`, so equal candidates across modules are E0701 again.
+
+## 643. (reserved, compiler)

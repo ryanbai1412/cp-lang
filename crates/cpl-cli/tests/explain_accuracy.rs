@@ -1227,3 +1227,53 @@ fn a_struct_built_from_a_place_or_read_from_a_lend_is_a_copy() {
         1
     );
 }
+
+/// An impl fn's bare parameter takes the type its trait declares, and
+/// explain reads that same type: `k` in `impl Mul<Int> for P`'s
+/// `fn mul(a, k)` is an `Int`, so `a.v * k` is an `Int` product with an
+/// overflow check, as hover shows `k: Int` (R08.1.5).
+#[test]
+fn explain_types_a_bare_impl_param_by_its_trait() {
+    let dir = std::env::temp_dir().join(format!("cpl-explain-impl-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let src = dir.join("p.cp");
+    std::fs::write(
+        &src,
+        "trait Scale:\n    fn scale(self, k: Int) -> Self\nstruct P(v: Int)\nimpl Scale for P:\n    fn scale(self, k) = P(self.v * k)\nimpl Mul<Int> for P:\n    fn mul(a, k) = P(a.v * k)\nprint(P(2).scale(3).v, (P(3) * 2).v)\n",
+    )
+    .unwrap();
+    let explained = cpl_cli::run(&["explain", src.to_str().unwrap()]);
+    assert_eq!(explained.code, 0, "{}", explained.stderr);
+    let text = String::from_utf8_lossy(&explained.stdout);
+    assert!(text.contains("5:27  self.v * k"), "{text}");
+    assert!(text.contains("7:22  a.v * k"), "{text}");
+}
+
+#[test]
+fn explain_types_a_user_trait_param_as_its_core_twin() {
+    let dir = std::env::temp_dir().join(format!("cpl-explain-twin-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let src = dir.join("p.cp");
+    std::fs::write(
+        &src,
+        "trait Plus<Rhs>:\n    fn plus(a: Self, b: Rhs) -> Self\nstruct P(v: Int)\n\
+impl Plus<Int> for P:\n    fn plus(a, k) = P(a.v + k)\n\
+impl Add<Int> for P:\n    fn add(a, k) = P(a.v + k)\n\
+print(P.plus(P(2), 3).v, (P(2) + 3).v)\n",
+    )
+    .unwrap();
+    let explained = cpl_cli::run(&["explain", src.to_str().unwrap()]);
+    assert_eq!(explained.code, 0, "{}", explained.stderr);
+    let text = String::from_utf8_lossy(&explained.stdout);
+    let site = |pos: &str| {
+        text.lines()
+            .find(|l| l.contains(pos))
+            .map(|l| l.replacen(pos, "", 1))
+    };
+    let user = site("5:23  ");
+    assert!(
+        user.as_deref().is_some_and(|l| l.contains("a.v + k")),
+        "{text}"
+    );
+    assert_eq!(user, site("7:22  "), "{text}");
+}

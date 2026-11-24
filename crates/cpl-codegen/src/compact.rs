@@ -319,9 +319,19 @@ pub(crate) fn short_names(cpp: &str) -> BTreeMap<String, String> {
     in_cpl.extend(own("cpl"));
     let mut owned = in_cpl.clone();
     owned.extend(own("prog"));
+    let prog: BTreeSet<&str> = own("prog").collect();
+    // Outside every namespace, a fn of the program's is the one the judge's
+    // grader links by its name.
+    let mut ns_depth = 0i32;
     for line in cpp.lines() {
         let code = line.trim_start();
         let inside = cpl_depth > 0;
+        let linked = ns_depth == 0;
+        if ns_depth > 0 {
+            ns_depth += code.matches('{').count() as i32 - code.matches('}').count() as i32;
+        } else if code.starts_with("namespace ") && code.trim_end().ends_with('{') {
+            ns_depth = 1;
+        }
         if inside {
             cpl_depth += code.matches('{').count() as i32 - code.matches('}').count() as i32;
         } else if matches!(code.trim_end(), "namespace cpl{" | "namespace cpl {") {
@@ -347,6 +357,13 @@ pub(crate) fn short_names(cpp: &str) -> BTreeMap<String, String> {
                 && tokens[i - 3].1 == "cpl";
             if !inside && !after_cpl {
                 bare_outside.insert(t);
+            }
+            let after_prog = i >= 3
+                && tokens[i - 1].1 == ":"
+                && tokens[i - 2].1 == ":"
+                && tokens[i - 3].1 == "prog";
+            if linked && !after_prog && prog.contains(t) {
+                keep.insert(t);
             }
             let after_std = i >= 3
                 && tokens[i - 1].1 == ":"
@@ -479,6 +496,14 @@ mod tests {
     fn a_line_it_cannot_read_is_only_trimmed() {
         assert_eq!(bare("  auto s = R\"(a  b)\";\n"), "auto s = R\"(a  b)\";\n");
         assert_eq!(bare("  int x = 1; /* a  b */\n"), "int x = 1; /* a  b */\n");
+    }
+
+    #[test]
+    fn a_fn_the_grader_links_keeps_its_name() {
+        let cpp = "namespace prog {\nint f_2(int a_1) { return a_1 + a_1 + a_1; }\nint create_map(int x) { return f_2(x) + f_2(x); }\n}\nint create_map(int x) { return prog::create_map(x) + prog::create_map(x); }\n";
+        let names = short_names(cpp);
+        assert!(names.contains_key("f_2"), "{names:?}");
+        assert!(!names.contains_key("create_map"), "{names:?}");
     }
 
     #[test]

@@ -17,10 +17,7 @@ enum Lent {
 impl<'p, 'f> Compiler<'p, 'f> {
     pub(super) fn compile_fed_args(&mut self, fn_id: FnId, args: &'p [Arg]) -> Option<FedArgs> {
         let f = &self.program.fns[fn_id];
-        let has_fn_param =
-            (f.locals.iter().take(f.params.len())).any(|l| matches!(l.ty, Ty::Fn(..)));
-        let has_mut = f.params.iter().any(|p| p.mutable);
-        if has_mut && has_fn_param && !self.mut_fn_args_alias_free(fn_id, args) {
+        if self.call_must_lend(fn_id, args) {
             return None;
         }
         let held = |c: &Self, arg: &Arg| match arg {

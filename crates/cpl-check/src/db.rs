@@ -22,7 +22,7 @@
 //! signature, has the same fingerprint, so no caller is touched. Editing
 //! the signature re-checks exactly the items that looked the fn up.
 
-use crate::check::lends::{flow_of, item_names, own_effects, Effects, Flow, Replay};
+use crate::check::lends::{flow_of, item_names, own_effects, Effects, Flow, MutSelf, Replay};
 use crate::check::{Checker, Env, GlobalRef, HoverEntry, Resolved, TypedIndex};
 use crate::def::{hash_str, impl_name, impl_parts, DeclKind, Def};
 use crate::fx::HashMap;
@@ -108,6 +108,8 @@ pub struct AnalyzedItem {
 
 #[derive(Debug, Default, Clone)]
 pub(crate) struct Scope {
+    /// The file is one of std's.
+    pub std: bool,
     /// Name to the index of the item that defines it.
     pub names: crate::names::NameMap<usize>,
     pub names_fp: u64,
@@ -290,9 +292,9 @@ pub struct Database {
     syntax: HashMap<u64, SyntaxMemo>,
     defs: HashMap<(u32, u64, String), DefMemo>,
     checks: HashMap<(u32, u64), CheckMemo>,
-    /// `calling`'s scope per file, for the analysis and names it was built
+    /// The last file's `calling` scope, for the analysis and names it was built
     /// from: every `.` completed in an unchanged file imports the methods once.
-    callings: crate::names::NameMap<Calling>,
+    callings: Option<(String, Calling)>,
     stats: Stats,
     loader: Box<dyn Loader>,
     /// Where the item whose `use` is being imported starts, so an import's fix can reach
@@ -327,7 +329,7 @@ impl Database {
             syntax: HashMap::default(),
             defs: HashMap::default(),
             checks: HashMap::default(),
-            callings: Default::default(),
+            callings: None,
             stats: Stats::default(),
             loader,
             import_base: None,
@@ -391,7 +393,9 @@ impl Database {
 
     pub fn remove_file(&mut self, path: &str) {
         self.edits += 1;
-        self.callings.remove(path);
+        if self.callings.as_ref().is_some_and(|(at, _)| at == path) {
+            self.callings = None;
+        }
         if let Some(file) = self.files.remove(path) {
             self.defs.retain(|key, _| key.0 != file.id);
             self.checks.retain(|key, _| key.0 != file.id);
@@ -525,7 +529,10 @@ impl Database {
 
         // The file's scope: the first declaration of a name wins, and later
         // ones are reported below.
-        let mut scope = Scope::default();
+        let mut scope = Scope {
+            std: is_std_path(path),
+            ..Scope::default()
+        };
         let mut import_diags: Vec<(usize, Diagnostic)> = Vec::new();
         let mut failed_names: crate::fx::HashSet<String> = crate::fx::HashSet::default();
         let mut prelude_off = false;
@@ -677,6 +684,7 @@ impl Database {
                             && uses(&name.text))
                 } else {
                     uses(&name.text)
+                        || crate::prelude::core_traits_name(&name.text, &uses)
                         || (!is_std_path(path)
                             && crate::prelude::built_on()
                                 .iter()
@@ -1499,8 +1507,9 @@ impl Database {
     /// `calling` for `analysis` of `path`, built once until the file's
     /// analysis or `names` change.
     fn memo_calling(&mut self, path: &str, analysis: &Arc<Analysis>, names: &[&str]) -> Arc<Scope> {
-        if let Some((of, named, scope)) = self.callings.get(path) {
-            if Arc::ptr_eq(of, analysis)
+        if let Some((at, (of, named, scope))) = &self.callings {
+            if at == path
+                && Arc::ptr_eq(of, analysis)
                 && named.iter().map(String::as_str).eq(names.iter().copied())
             {
                 return scope.clone();
@@ -1509,7 +1518,7 @@ impl Database {
         let scope = Arc::new(self.calling(path, &analysis.scope, names));
         let named = names.iter().map(|n| n.to_string()).collect();
         let memo = (analysis.clone(), named, scope.clone());
-        self.callings.insert(path.to_string(), memo);
+        self.callings = Some((path.to_string(), memo));
         scope
     }
 
@@ -1706,21 +1715,7 @@ fn decls_of(stmts: &[ast::Stmt]) -> Vec<Decl> {
 /// declaration says what it declares: the names stay bound, but what the
 /// rest of the file can know about them is unknown.
 fn head_is_poisoned(text: &str, stmt: &ast::Stmt, poisoned: &[Span]) -> bool {
-    let start = (stmt.span.start as usize).min(text.len());
-    let end = (stmt.span.end as usize).min(text.len()).max(start);
-    let mut depth = 0u32;
-    let mut head_end = end;
-    for (i, b) in text.as_bytes()[start..end].iter().enumerate() {
-        match b {
-            b'(' | b'[' | b'{' => depth += 1,
-            b')' | b']' | b'}' => depth = depth.saturating_sub(1),
-            b'\n' if depth == 0 => {
-                head_end = start + i;
-                break;
-            }
-            _ => {}
-        }
-    }
+    let (start, head_end, _) = head(text, stmt);
     poisoned
         .iter()
         .any(|p| (p.start as usize) < head_end && (p.end as usize) > start)
@@ -1729,18 +1724,29 @@ fn head_is_poisoned(text: &str, stmt: &ast::Stmt, poisoned: &[Span]) -> bool {
 /// True if the first line of `stmt` opens a bracket it never closes: the
 /// parser then guessed where the value ends, so its type is a guess too.
 pub(crate) fn head_leaves_open(text: &str, stmt: &ast::Stmt) -> bool {
+    head(text, stmt).2
+}
+
+/// Where `stmt` starts, where its head ends (the first newline outside
+/// brackets), and whether its first line leaves a bracket open.
+fn head(text: &str, stmt: &ast::Stmt) -> (usize, usize, bool) {
     let start = (stmt.span.start as usize).min(text.len());
     let end = (stmt.span.end as usize).min(text.len()).max(start);
-    let line = text[start..end].split('\n').next().unwrap_or("");
-    let mut depth = 0i32;
-    for b in line.bytes() {
+    let (mut depth, mut open) = (0i32, None);
+    for (i, b) in text.as_bytes()[start..end].iter().enumerate() {
         match b {
             b'(' | b'[' | b'{' => depth += 1,
             b')' | b']' | b'}' => depth -= 1,
+            b'\n' => {
+                let first = *open.get_or_insert(depth > 0);
+                if depth <= 0 {
+                    return (start, start + i, first);
+                }
+            }
             _ => {}
         }
     }
-    depth > 0
+    (start, end, open.unwrap_or(depth > 0))
 }
 
 fn stmt_decls(stmt: &ast::Stmt, out: &mut Vec<Decl>) {

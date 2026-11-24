@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -150,6 +151,22 @@ class LandTest(unittest.TestCase):
         self.assertIn("CPL_LAND_RECHECKED=${rechecked:-}", exec_env)
         self.assertIn("CPL_LAND_STEPS_RUNS=${steps_runs:-0}", exec_env)
 
+    def test_main_changing_only_lands_own_scripts_reruns_nothing(self):
+        theirs = self.clone("theirs")
+        self._hook(theirs, "echo gate: ran\n")
+        self.commit(theirs, "gate")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        ours = self.clone("ours")
+        (ours / "pkg.txt").write_text("x\n")
+        self.commit(ours, "ours")
+        (theirs / "scripts" / "test_new.py").write_text("pass\n")
+        self.commit(theirs, "a script test")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        r = self.land(ours)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("main changed only land's own scripts and tests (scripts/test_new.py); no rerun", r.stderr)
+        self.assertNotIn("gate: ran", r.stderr)
+
     def test_a_rebase_past_a_gate_change_reruns_the_commit_tier_on_the_rebased_tip(self):
         theirs, ours = self.clone("theirs"), self.clone("ours")
         # main's new gate: no staged file may be named bad.txt.
@@ -197,6 +214,74 @@ class LandTest(unittest.TestCase):
         self.assertEqual(r.returncode, 1)
         self.assertIn("NEW red: cpl-codegen tests::new_red", r.stderr)
         self.assertNotIn("new-reds: rerunning", r.stderr)
+
+    def test_an_aggregate_red_at_the_base_still_refuses_a_row_it_grows(self):
+        # b23f483bf grew ccc20s1/port.cp 0 -> 12 silent unknowns while
+        # silent_unknowns_only_go_down was red at the base on cause:branch, and new_reds
+        # passed it as main's red: one test id covers every row.
+        theirs, same, grows = self.clone("theirs"), self.clone("same"), self.clone("grows")
+        (theirs / "scripts" / "fake-tests.sh").write_text(
+            "#!/bin/sh\nrows=$(cat rows*.txt 2>/dev/null)\n[ -n \"$rows\" ] || exit 0\n"
+            "echo '        FAIL [   0.010s] cpl-conform::silent_unknowns silent_unknowns_only_go_down'\n"
+            "echo \"$rows\" | sed 's/^/cpl-finding: silent_unknowns_only_go_down /'\nexit 100\n")
+        (theirs / "rows.txt").write_text("cause:branch +6\n")
+        self.commit(theirs, "main is red on one row")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        cmd = [sys.executable, "scripts/new_reds.py", "--base", "origin/main", "--", "sh", "scripts/fake-tests.sh"]
+        for repo in (same, grows):
+            git(repo, "pull", "-q", "origin", "main")
+        (same / "x.txt").write_text("x\n")
+        r = subprocess.run(cmd, cwd=same, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("pre-existing red", r.stderr)
+        (grows / "rows-ours.txt").write_text("ccc20s1/port.cp +12\n")
+        r = subprocess.run(cmd, cwd=grows, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("NEW rows in cpl-conform::silent_unknowns silent_unknowns_only_go_down", r.stderr)
+        self.assertIn("ccc20s1/port.cp (+0 there, +12 here)", r.stderr)
+        self.assertNotIn("cause:branch (", r.stderr)
+        # The land that brings the rows: the base's test prints none, so its id decides.
+        (theirs / "scripts" / "fake-tests.sh").write_text(
+            "#!/bin/sh\n[ -f rows.txt ] || exit 0\n"
+            "echo '        FAIL [   0.010s] cpl-conform::silent_unknowns silent_unknowns_only_go_down'\nexit 100\n")
+        self.commit(theirs, "the test before it printed rows")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        first = self.clone("first")
+        (first / "scripts" / "fake-tests.sh").write_text((same / "scripts" / "fake-tests.sh").read_text())
+        r = subprocess.run(cmd, cwd=first, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("pre-existing red", r.stderr)
+
+    def test_a_base_that_doesnt_build_is_rebuilt_before_its_reds_count_as_new(self):
+        # perf's ord: the base worktree lacked a test file ("couldn't find file"), the
+        # base run failed to build, and two reds main had too refused the land.
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        (theirs / "scripts" / "fake-tests.sh").write_text(
+            "#!/bin/sh\n[ ! -f broken.txt ] || exit 101\n"
+            "echo '        FAIL [   0.010s] cpl-cli::trace_goldens red_on_main'\nexit 100\n")
+        self.commit(theirs, "main is red")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        git(ours, "pull", "-q", "origin", "main")
+        common = Path(git(ours, "rev-parse", "--path-format=absolute", "--git-common-dir").strip())
+        git(ours, "worktree", "add", "-q", "--detach", str(common / "cpl-base-wt"), "HEAD")
+        (common / "cpl-base-wt" / "broken.txt").write_text("stale\n")
+        cmd = [sys.executable, "scripts/new_reds.py", "--base", "origin/main", "--", "sh", "scripts/fake-tests.sh"]
+        r = subprocess.run(cmd, cwd=ours, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("didn't build; rebuilding its worktree", r.stderr)
+        self.assertIn("pre-existing red", r.stderr)
+
+    def test_every_aggregate_rust_test_reports_its_rows(self):
+        # An `*_only_go_down` test is one id over many rows; without cpl-finding lines a
+        # red at the base hides every row a land grows.
+        root = Path(__file__).resolve().parent.parent
+        silent = []
+        for f in (root / "crates").rglob("*.rs"):
+            src = f.read_text()
+            for name in re.findall(r"fn (\w+_only_go_down)\(", src):
+                if f"cpl-finding: {name} " not in src:
+                    silent.append(f"{f.relative_to(root)}: {name}")
+        self.assertEqual(silent, [], "print `cpl-finding: <test> <row> +<excess>` per grown row")
 
     def test_a_new_red_that_passes_alone_at_the_tip_is_flaky_not_refused(self):
         # cpl-wasm parity's transcript order raced under the full run only, and
@@ -725,9 +810,12 @@ class LandTest(unittest.TestCase):
         git(repo, "fetch", "-q", "origin", "refs/land/lock")
         self.assertEqual(git(repo, "log", "-1", "--format=%s", parked).strip(),
                          "land-lock retired-use-lock-v2 0 4102444800 factory")
-        # c457bd860's parent is the last copy without the heartbeat.
+        # c457bd860's parent is the last copy without the heartbeat; CI's shallow clone fetches it.
+        pre_beat = "524026262e6d18249bbdb447c2674f27d32fe0a9"
+        if subprocess.run(["git", "cat-file", "-e", f"{pre_beat}^{{commit}}"], cwd=HERE).returncode:
+            subprocess.run(["git", "fetch", "-q", "--depth=1", "origin", pre_beat], cwd=HERE, check=True)
         (old_lane / "scripts" / "land.sh").write_bytes(subprocess.run(
-            ["git", "show", "c457bd860^:scripts/land.sh"], cwd=HERE, capture_output=True, check=True).stdout)
+            ["git", "show", f"{pre_beat}:scripts/land.sh"], cwd=HERE, capture_output=True, check=True).stdout)
         (old_lane / "pkg2.txt").write_text("y\n")
         self.commit(old_lane, "old copy's land")
         main = git(repo, "ls-remote", "origin", "main").split()[0]
@@ -1415,13 +1503,13 @@ done
                       (self.tmp / "node.log").read_text())
         self.assertNotIn("ours", git(ours, "log", "--format=%s", "origin/main"))
 
-    def test_without_main_tips_wasm_sizes_land_warns_and_lands(self):
+    def test_without_main_tips_wasm_sizes_land_builds_them_or_refuses(self):
         ours = self._crate_change("cpl-y")
         self._built(ours, parent=False)
         r = self.land(ours, **self._wasm(ours, 1))
-        self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("land: no wasm sizes of main's tip to compare with; CI checks it", r.stderr)
-        self.assertFalse((self.tmp / "node.log").exists())
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("could not build", r.stderr)
+        self.assertNotIn("ours", git(ours, "log", "--format=%s", "origin/main"))
 
     def test_a_warm_build_within_budget_lands(self):
         ours = self._crate_change("cpl-y")
@@ -1594,20 +1682,29 @@ done
         self.assertEqual(r.returncode, 1, r.stderr)
         self.assertIn("could not build HEAD's wasm", r.stderr)
 
-    def test_land_never_waits_on_a_wasm_build_it_lacks(self):
+    def test_land_refuses_when_it_cant_build_the_wasm_it_lacks(self):
+        # wasm-cut: "no current wasm build; CI checks it" let six cpl_check growths land.
         ours = self._crate_change("cpl-y")
         r = self.land(ours, **self._wasm(ours, 1))
-        self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("land: no current wasm build; CI checks it", r.stderr)
-        self.assertFalse((self.tmp / "node.log").exists())
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("land: no cpl.wasm of the rebased tip", r.stderr)
+        self.assertNotIn("CI checks it", r.stderr)
+        self.assertNotIn("ours", git(ours, "log", "--format=%s", "origin/main"))
 
-    def test_a_warm_build_of_a_touched_crate_main_has_since_changed_is_not_current(self):
+    def test_a_stale_warm_build_is_rebuilt_at_the_rebased_tip_and_held_to_main(self):
         ours = self._crate_change("cpl-x")
         self._built(ours)
-        r = self.land(ours, **self._wasm(ours, 1))
+        build = ours / "scripts" / "build-wasm.sh"
+        build.write_text('#!/bin/sh\nmkdir -p "$2"\necho built > "$2/cpl.wasm"\n')
+        build.chmod(0o755)
+        self.commit(ours, "build")
+        env = self._wasm(ours, 0)
+        node = self.tmp / "bin" / "node"
+        node.write_text(node.read_text().replace("exit 0", '[ "$2" != --sizes ] || echo \'{"fns": {}}\' > "$4"\nexit 0'))
+        r = self.land(ours, **env)
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("land: no current wasm build; CI checks it", r.stderr)
-        self.assertFalse((self.tmp / "node.log").exists())
+        self.assertIn("land: building the rebased tip's cpl.wasm", r.stderr)
+        self.assertIn("--data", (self.tmp / "node.log").read_text())
 
     def test_wasm_warm_records_the_tree_it_built_and_only_a_committed_one(self):
         ours = self.clone("ours")

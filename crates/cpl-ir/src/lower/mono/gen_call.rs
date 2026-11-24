@@ -15,8 +15,9 @@ impl<'a> Lowerer<'a> {
         args: &[ast::Arg],
         span: Span,
     ) -> Expr {
+        self.emit_anon_product_defs(&explicit, span);
         let (hint, want) = std::mem::take(&mut self.call_hint);
-        let owner_ranges = std::mem::take(&mut self.owner_ranges);
+        let mut owner_ranges = std::mem::take(&mut self.owner_ranges);
         let tpl_mod = self.gen_fns[gfid].mod_id;
         let tpl_offset = self.gen_fns[gfid].offset;
         let owner_env = self.gen_fns[gfid].owner_env.clone();
@@ -42,6 +43,7 @@ impl<'a> Lowerer<'a> {
         let args = closed.as_deref().unwrap_or(args);
 
         let mut inferred = self.seed_gens(owner_env.clone(), &explicit, decl, want);
+        owner_ranges.extend(self.bind_return_only_param(decl, explicit.len(), span, &mut inferred));
 
         // Match call args to ast_params.
         let mut matched: Vec<Option<&ast::Arg>> = vec![None; ast_params.len()];
@@ -424,19 +426,6 @@ impl<'a> Lowerer<'a> {
         // unify from lambda arguments whose parameter types are now known.
         for _ in 0..4 {
             let before = inferred.len();
-            // If an unbound generic (e.g. `T` in `fold_path<S, T>(..., ds: S)`) is present in a bound
-            // struct argument's generic environment (e.g. `SegTree<Pre, Word>` has `T -> Word`), inherit it.
-            for g in &gen_names {
-                if !inferred.contains_key(g) {
-                    let from_struct = inferred.values().find_map(|ga| match ga {
-                        GenArg::Ty(Ty::Struct(sid)) => self.structs[*sid].env.get(g).cloned(),
-                        _ => None,
-                    });
-                    if let Some(ga) = from_struct {
-                        inferred.insert(g.clone(), ga);
-                    }
-                }
-            }
             for (param, arg) in ast_params.iter().zip(&matched) {
                 let Some(pty) = param.ty.as_ref().map(lambda_infer::unwrap_optional) else {
                     continue;
@@ -569,6 +558,20 @@ impl<'a> Lowerer<'a> {
             }
             self.unify_bounds(&decl.bounds, tpl_mod, &gen_names, &mut inferred);
             if inferred.len() == before {
+                // Last of all, once the call's own arguments and lambdas are done: a generic still
+                // unbound takes a struct argument's parameter of that name (`fold_path<S, T>` given
+                // a `SegTree<Pre, Word>`), so it never shadows what the call fixes (R08.2.2).
+                for g in &gen_names {
+                    if !inferred.contains_key(g) {
+                        let from_struct = inferred.values().find_map(|ga| match ga {
+                            GenArg::Ty(Ty::Struct(sid)) => self.structs[*sid].env.get(g).cloned(),
+                            _ => None,
+                        });
+                        if let Some(ga) = from_struct {
+                            inferred.insert(g.clone(), ga);
+                        }
+                    }
+                }
                 // Only after ready lambdas have had a chance to infer `T` (e.g. `init: V -> T`),
                 // fall back to deducing an unbound `T`/`E`/`X` from a bound container generic `S`.
                 // A generic a lambda argument is passed as is that lambda's fn, never an element.
@@ -723,7 +726,7 @@ impl<'a> Lowerer<'a> {
                     continue;
                 };
                 let ok = match tr_name.text.as_str() {
-                    "Seq" | "Keyed" | "Sized" => {
+                    "Seq" | "Keyed" => {
                         ty.is_seq()
                             || (matches!(ty, Ty::Struct(_))
                                 && self.implements(ty, tr_name.text.as_str()))
@@ -1086,5 +1089,60 @@ impl<'a> Lowerer<'a> {
         });
         self.gen_env = saved_env;
         res
+    }
+}
+
+impl Lowerer<'_> {
+    /// `let x: 1..=9 = mk()` for `fn mk<T>() -> T`: a type parameter only the
+    /// return type names takes the type written where the value goes, ranges
+    /// and all, as `mk<1..=9>()` would; what `gen<T>()` draws for it rides
+    /// beside, as an explicit argument's does.
+    fn bind_return_only_param(
+        &mut self,
+        decl: &ast::FnDecl,
+        explicit: usize,
+        span: Span,
+        inferred: &mut GenEnv,
+    ) -> Vec<(String, GenArg)> {
+        let Some((_, ty, m, off, env)) = self.want_written.take().filter(|w| w.0 == span) else {
+            return Vec::new();
+        };
+        let Some(ast::TypeKind::Named { name, args }) = decl.ret.as_ref().map(|r| &r.kind) else {
+            return Vec::new();
+        };
+        let bound_by_args = decl
+            .params
+            .iter()
+            .any(|p| p.ty.as_ref().is_none_or(|t| names(t, &name.text)));
+        let Some(at) = decl.generics.iter().position(|g| g.text == name.text) else {
+            return Vec::new();
+        };
+        if !args.is_empty() || at < explicit || bound_by_args {
+            return Vec::new();
+        }
+        let saved = (
+            std::mem::replace(&mut self.cur_mod, m),
+            std::mem::replace(&mut self.offset, off),
+            std::mem::replace(&mut self.gen_env, env),
+        );
+        let arg = self.resolve_gen_arg(&ty);
+        let drawn = self.drawn_args(std::slice::from_ref(name), std::slice::from_ref(&ty));
+        (self.cur_mod, self.offset, self.gen_env) = saved;
+        inferred.insert(name.text.clone(), arg);
+        drawn
+    }
+}
+
+/// Whether the written type `t` names `param` anywhere in it.
+fn names(t: &ast::Type, param: &str) -> bool {
+    use ast::TypeKind as K;
+    match &t.kind {
+        K::Named { name, args } => name.text == param || args.iter().any(|a| names(a, param)),
+        K::Tuple(items) => items.iter().any(|a| names(a, param)),
+        K::Optional(t) | K::Mut(t) => names(t, param),
+        K::Array { index, elem } => index.iter().any(|a| names(a, param)) || names(elem, param),
+        K::Record(fields) => fields.iter().any(|(_, a)| names(a, param)),
+        K::Range { .. } | K::Value(_) | K::LiteralUnion(_) | K::ConstrainedStr { .. } => false,
+        _ => true,
     }
 }

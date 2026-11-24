@@ -1031,8 +1031,8 @@ def corpus_max_short(root: Path) -> list[str]:
 
 
 def corpus_max_unread(root: Path) -> list[str]:
-    """v03 ports whose --max sizes the max-short check can't read (a multitest port, a size its
-    prefix can't compute), so nothing shows they reach their Bounds (owner: Idioms)."""
+    """v03 ports whose --max sizes the max-short check can't read (no cut of the port, nor the
+    port itself, reads them in time), so nothing shows they reach their Bounds (owner: Idioms)."""
     return _max_short_record(root, "max_unread")
 
 
@@ -1473,19 +1473,12 @@ def _corpus():
 
 
 def _built_cpl(root: Path) -> Path:
-    """$CPL, else the newer current one of target/debug/cpl and target/release/cpl, as
-    corpus.py's `cpl_stale` (cargo's dep-info) judges them: a stale cpl measures the code it
-    was built from, so with none current it raises, naming the build command, and never counts."""
-    stale = _corpus().cpl_stale
-    if env := os.environ.get("CPL"):
-        candidates = [Path(env)]
-    else:
-        built = [p for p in (root / "target/debug/cpl", root / "target/release/cpl") if p.is_file()]
-        candidates = sorted(built, key=lambda p: p.stat().st_mtime, reverse=True) or [root / "target/debug/cpl"]
-    for cpl in candidates:
-        if not stale(str(cpl), str(root)):
-            return cpl
-    raise MeasureError(f"cpl: {stale(str(candidates[0]), str(root))}")
+    """`corpus.current_cpl`: a stale cpl measures the code it was built from, so with none
+    current it raises, naming the build command, and never counts."""
+    cpl, why = _corpus().current_cpl(root)
+    if why:
+        raise MeasureError(f"cpl: {why}")
+    return cpl
 
 
 def corpus_fmt_dirty(root: Path) -> list[str]:
@@ -3148,7 +3141,7 @@ HARD_ZERO = frozenset({
     "stdlib_todo", "editor_logic_lines",
     "uncached_installs",
     "corpus_walkers", "ci_jobs_without_recipe", "poll_sleeps", "retry_calls", "site_spec_snippets",
-    "bench_lists", "hardcoded_codes", "scaling_mismatches", "std_fns_unscaled", "config_schemas", "corpus_test_files", "corpus_known", "corpus_no_max", "corpus_no_limits", "stale_arch_paths",
+    "bench_lists", "hardcoded_codes", "scaling_mismatches", "std_fns_unscaled", "config_schemas", "corpus_test_files", "corpus_known", "corpus_no_max", "corpus_max_unread", "corpus_no_limits", "stale_arch_paths",
     "own_databases", "string_keyed_maps", "module_loaders", "web_skip_only", "test_sleeps", "todo_fixme", "ci_retries", "cpp_std_functions", "or_true", "codemods_outside_fix",
     "pending_tests", "unchecked_fix_paths", "edition_refs", "uncited_rules", "decision_dup_numbers", "why_written_twice", "authority_drift",
     "continue_on_error", "unregistered_lists", "codegen_effect_guesses", "spec_std_refs", "opt_without_uses",
@@ -3549,6 +3542,8 @@ MEASURED_BY = {
     "spec_avoidable_copies": ("crates/cpl-codegen/src", "crates/cpl-cli/src/explain.rs"),
     "cpp_optional_copies": ("crates/cpl-codegen/src/cpp_counts.rs",),
     "cpp_std_functions": ("crates/cpl-codegen/src/cpp_counts.rs",),
+    "corpus_max_short": ("scripts/corpus.py",),
+    "corpus_max_unread": ("scripts/corpus.py",),
 }
 
 

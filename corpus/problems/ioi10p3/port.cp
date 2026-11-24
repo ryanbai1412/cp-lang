@@ -15,8 +15,6 @@ let rank: [Row, Col](1..=9e6) = read()
 
 // A window's median is at most x exactly when more than half of its cells are.
 fn some_median_at_most(x: Int) -> Bool:
-    var low = Prefix<Row, Col, Int>.filling()
-    for i in Row:
-        for j in Col: low.set(i, j, Int(rank[i, j] <= x))
+    let low = Prefix([Row, Col] (i, j) => Int(rank[i, j] <= x))
     any(2 * low.fold(rows, cols) > h * w for rows in Row.windows(h) for cols in Col.windows(w))
 print((1..=r * c).first_true(some_median_at_most)!)

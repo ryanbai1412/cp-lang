@@ -227,10 +227,7 @@ fn declared_holes_match_free_names_and_a_record_name_keeps_its_code() {
     let hit = "let a = [3, 1]\nlet m = a.len\nfor j in 0..m:\n    print(a[j])\n";
     assert_eq!(
         found("binom_by_hand", hit),
-        [(
-            "L0557".into(),
-            "write `for x in a.walk:\n    print(x)`".into()
-        )]
+        [("L0557".into(), "write `for x in a.walk: ...`".into())]
     );
     assert_eq!(found("walk_by_hand", hit).len(), 1);
     let calls = "let a = [3, 1]\nfn m() -> Int = 2\nfor j in 0..m():\n    print(a[j])\n";
@@ -457,6 +454,27 @@ fn a_compound_to_needs_pure_holes_and_a_comment_drops_the_fix() {
                 "best".into(),
                 None
             ),
+        ]
+    );
+}
+
+/// std's `sort_for_extreme` spellings: a `by:` key carries over, and
+/// `.last!` of a stable sort is the last greatest, so `max` takes
+/// `ties: Ties.Last`. Rule: R06.4.10.
+#[test]
+fn sort_for_extreme_keeps_the_key_and_the_tie() {
+    let src = "let p = [(1, 2), (1, 3)]\nprint(p.sorted(by: q => q.0).last!, p.sorted(by: q => q.0)[0], p.sorted().first!)\n";
+    let fixes: Vec<String> = crate::lint(src, &crate::Config::default())
+        .into_iter()
+        .filter(|d| d.code.0 == "L0572")
+        .map(|d| d.fixes[0].edits[0].1.clone())
+        .collect();
+    assert_eq!(
+        fixes,
+        [
+            "p.max(by: q => q.0, ties: Ties.Last)!",
+            "p.min(by: q => q.0)!",
+            "p.min()!"
         ]
     );
 }
@@ -835,4 +853,112 @@ fn an_if_from_matches_one_branch_of_an_if_chain() {
             "elif pos(y):\n        print(2)"
         ]
     );
+}
+
+/// `reads:` on a loop variable `from` binds rewrites its reads in what the
+/// statement holes matched; with any other use of it, or none, and `to`
+/// dropping it, the loop is no such loop. Rule: R06.4.9.
+#[test]
+fn reads_of_a_loop_variable_are_rewritten_in_its_body() {
+    let decl = "pub trait Walk<T>:\n    @lint(index_walk, from: \"for i in 0..self.len:\\n    b\", to: \"for x in self:\\n    b\", reads: \"self[i] -> x\", holes: \"b\")\n    fn iter(self) -> yields T\n";
+    let run = |body: &str| {
+        let src = format!("{decl}var xs = [1, 2]\nfor i in 0..xs.len:\n{body}\n");
+        let found: Vec<_> = (crate::lint(&src, &crate::Config::default()).into_iter())
+            .filter(|d| d.code.0 == "index_walk")
+            .collect();
+        let (text, _) = cpl_diag::splice_fixes(&src, &found);
+        (found.len(), text[decl.len()..].to_string())
+    };
+    assert_eq!(
+        run("    print(xs[i] * 2, xs[i])"),
+        (
+            1,
+            "var xs = [1, 2]\nfor x in xs:\n    print(x * 2, x)\n".to_string()
+        )
+    );
+    for body in [
+        "    print(i, xs[i])",
+        "    xs[i] = 0",
+        "    print(1)",
+        "    xs[0] = 5\n    print(xs[i])",
+    ] {
+        assert_eq!(run(body).0, 0, "{body}");
+    }
+}
+
+/// `each:` names `to`'s element after its hole's singular, `vals` -> `val`;
+/// with no such free name the finding has no fix. Rule: R06.4.9.
+#[test]
+fn each_spells_an_element_as_its_holes_singular() {
+    let decl = "pub trait Walk<T>:\n    @lint(index_walk, from: \"for i in 0..self.len:\\n    b\", to: \"for x in self:\\n    b\", reads: \"self[i] -> x\", each: \"x in self\", holes: \"b\")\n    fn iter(self) -> yields T\n";
+    let run = |list: &str, more: &str| {
+        let src = format!(
+            "{decl}let {list} = [1, 2]\n{more}for i in 0..{list}.len:\n    print({list}[i])\n"
+        );
+        let found: Vec<_> = (crate::lint(&src, &crate::Config::default()).into_iter())
+            .filter(|d| d.code.0 == "index_walk")
+            .collect();
+        let fixes = found.iter().map(|d| d.fixes.len()).sum::<usize>();
+        let (text, _) = cpl_diag::splice_fixes(&src, &found);
+        (found.len(), fixes, text[decl.len()..].to_string())
+    };
+    let (found, _, text) = run("vals", "");
+    assert_eq!(found, 1);
+    assert!(
+        text.ends_with("for val in vals:\n    print(val)\n"),
+        "{text}"
+    );
+    assert_eq!(run("g", "").0, 1);
+    assert_eq!(run("g", "").1, 0);
+    let taken = run("vals", "let val = 0\nprint(val)\n");
+    assert_eq!((taken.0, taken.1), (1, 0));
+}
+
+/// A finding's message is one line: a fix of several shows its first, `...`
+/// for the rest. Rule: R06.4.9.
+#[test]
+fn a_multi_line_fix_shows_its_first_line_in_the_message() {
+    let decl = "pub trait Walk<T>:\n    @lint(index_walk, from: \"for i in 0..self.len:\\n    b\", to: \"for x in self:\\n    b\", reads: \"self[i] -> x\", holes: \"b\")\n    fn iter(self) -> yields T\n";
+    let src = format!("{decl}let xs = [1, 2]\nfor i in 0..xs.len:\n    print(xs[i])\n");
+    let messages: Vec<String> = (crate::lint(&src, &crate::Config::default()).into_iter())
+        .filter(|d| d.code.0 == "index_walk")
+        .map(|d| d.message)
+        .collect();
+    assert_eq!(messages, ["write `for x in xs: ...`"]);
+}
+
+/// A `from` ending in a name does not match the callee of a call: `t.order`
+/// and `t.order(v)` name different things.
+/// Rule: R06.4.9, spec/core/06-control-functions.md.
+#[test]
+fn a_from_ending_in_a_name_skips_a_callee() {
+    let decl = "pub struct R:\n    pub at: List<Int>\n\n    @lint(by_at, from: \"self.order\", to: \"self.at\", builtin: \"at\")\n    pub fn pos(self, v: Int) -> Int = v\n";
+    let src = format!(
+        "{decl}let t = R(at: [1])\nfor v in t.order: print(v)\nprint(t.order(1), t.order[0])\n"
+    );
+    let fixes: Vec<String> = crate::lint(&src, &crate::Config::default())
+        .into_iter()
+        .filter(|d| d.code.0 == "by_at")
+        .map(|d| d.fixes[0].edits[0].1.clone())
+        .collect();
+    assert_eq!(fixes, ["t.at", "t.at"]);
+}
+
+/// Lines `from` writes differently match different code: a mirrored pair
+/// of pushes matches, a self-loop's same push twice does not.
+/// Rule: R06.4.9, spec/core/06-control-functions.md.
+#[test]
+fn lines_from_writes_differently_match_different_code() {
+    let decl = "@lint(mirror, from: \"g[u].push(v)\\ng[v].push(u)\", to: \"both(g, u, v)\", holes: \"g, u, v\")\npub fn both(x: Int) -> Int = x\n";
+    let found = |body: &str| {
+        crate::lint(
+            &format!("{decl}var g: [0..3]List<Int> = []\n{body}print(g[0].len)\n"),
+            &crate::Config::default(),
+        )
+        .into_iter()
+        .filter(|d| d.code.0 == "mirror")
+        .count()
+    };
+    assert_eq!(found("g[0].push(2)\ng[2].push(0)\n"), 1);
+    assert_eq!(found("g[1].push(1)\ng[1].push(1)\n"), 0);
 }

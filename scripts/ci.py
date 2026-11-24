@@ -1213,6 +1213,7 @@ def run_gate(mode: str, part: str = "", cpl: str = "target/debug/cpl", cache_dir
         if g["kind"] != "checks":
             return tail_cls(mode, part, cpl, cache_dir, manifest).part(since)
         sel: dict[str, str] = {}
+        also_fast = False
         if mode in ("land", "commit"):
             sel = selection(mode, run)
             if mode == "commit" and sel.get("audit") == "1" and (only is None or "audit" in only):
@@ -1231,8 +1232,14 @@ def run_gate(mode: str, part: str = "", cpl: str = "target/debug/cpl", cache_dir
                     print(f"\ncheck: {sel.get('reason', '')} is not mapped by scripts/affected.py; CI runs --fast on "
                           "the tip, and the skipped steps run here for the paths it maps")
                 else:
-                    print(f"\ncheck: {sel.get('reason', '')} is not mapped by scripts/affected.py; running --fast")
-                    mode, sel = "fast", {}
+                    # As well as, not instead of, the mapped paths' steps: fb214018's unmapped
+                    # dream.cp dropped its cpl-check change's rdeps nextest, and 2 tests went red.
+                    print(f"\ncheck: {sel.get('reason', '')} is not mapped by scripts/affected.py; running --fast"
+                          + (" after the steps for the paths it maps" if mode == "commit" else ""))
+                    if mode == "commit":
+                        also_fast = True
+                    else:
+                        mode, sel = "fast", {}
     except (Failed, ValueError) as e:
         print(f"check: {e}", file=sys.stderr)
         return 1
@@ -1243,6 +1250,10 @@ def run_gate(mode: str, part: str = "", cpl: str = "target/debug/cpl", cache_dir
             Path(progress).write_text("\n".join(COMMIT_STEPS) + "\n")
         tail = tail_cls("commit", cpl=cpl, run=run, **kw)
         code = tail.commit(sel)
+        if not code and also_fast:
+            fast = tail_cls("fast", part, cpl, cache_dir, manifest)
+            code = fast()
+            tail.times += fast.times
     else:
         tail = tail_cls(mode, part, cpl, cache_dir, manifest, sel.get("packages", ""), sel.get("filter", ""),
                         sel.get("site", ""), sel_slices=sel.get("slices", ""),

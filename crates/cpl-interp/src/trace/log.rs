@@ -300,6 +300,7 @@ impl Log {
     }
 
     /// `var` holds the `Int` `value` now.
+    #[inline]
     pub fn set_int(&mut self, var: usize, value: i64) {
         let Ok(small_var) = Var::try_from(var) else {
             return;
@@ -437,34 +438,40 @@ impl Log {
         }
     }
 
-    /// The locals are `Int`s: `names` as in [`Locals::Ints`], and their
-    /// values. `renamed` when `names` differs from the last call's.
-    pub fn locals_ints(&mut self, names: &str, renamed: bool, values: &[i64]) {
-        let named = match &self.int_names {
-            Some((_, text)) if !renamed => *text,
+    /// Where `names` is kept: where it was last when it is the same.
+    #[inline(never)]
+    fn int_names(&mut self, names: &str) -> Text {
+        match &self.int_names {
             Some((kept, text)) if kept == names => *text,
             _ => {
                 let text = self.keep(names);
                 self.int_names = Some((names.to_string(), text));
                 text
             }
+        }
+    }
+
+    /// The locals are `Int`s: `names` as in [`Locals::Ints`], and their
+    /// values. `renamed` when `names` differs from the last call's.
+    #[inline]
+    pub fn locals_ints(&mut self, names: &str, renamed: bool, values: &[i64]) {
+        let named = match &self.int_names {
+            Some((_, text)) if !renamed => *text,
+            _ => self.int_names(names),
         };
         if self.now.locals == Locals::Ints(named) && self.now.local_ints.len() == values.len() {
-            let changed = || {
-                self.now
-                    .local_ints
-                    .iter()
-                    .zip(values)
-                    .enumerate()
-                    .filter(|(_, (now, v))| now != v)
-            };
-            if changed().all(|(k, (_, &v))| u16::try_from(k).is_ok() && i32::try_from(v).is_ok())
-                && changed().count() <= 1 + values.len() / 2
-            {
-                for (k, &v) in values.iter().enumerate() {
-                    if self.now.local_ints[k] != v {
+            let (mut changed, mut small) = (0, true);
+            for (k, (now, &v)) in self.now.local_ints.iter().zip(values).enumerate() {
+                if *now != v {
+                    changed += 1;
+                    small &= u16::try_from(k).is_ok() && i32::try_from(v).is_ok();
+                }
+            }
+            if small && changed <= 1 + values.len() / 2 {
+                for (k, (now, &v)) in self.now.local_ints.iter_mut().zip(values).enumerate() {
+                    if *now != v {
                         // What `apply` does with an `IntLocal`.
-                        self.now.local_ints[k] = v;
+                        *now = v;
                         self.changes.push(Delta::IntLocal(k as u16, v as i32));
                     }
                 }
@@ -531,17 +538,23 @@ impl Log {
     /// The frame of a step whose stack is `stack`: `(fn, line it was
     /// called from)`, outermost first.
     pub fn frame<'a>(&mut self, stack: impl Iterator<Item = (&'a str, u32)> + Clone) -> u32 {
-        let kept = self
-            .stack
-            .iter()
-            .zip(stack.clone())
-            .take_while(|(&(at, _, line, _), (name, called))| {
-                at == name.as_ptr() as usize && line == *called
-            })
-            .count();
-        if kept == self.stack.len() && stack.clone().nth(kept).is_none() {
-            return self.stack.last().map_or(NONE, |top| top.3);
+        let mut kept = 0;
+        for (name, called) in stack.clone() {
+            match self.stack.get(kept) {
+                Some(&(at, _, line, _)) if at == name.as_ptr() as usize && line == called => {
+                    kept += 1
+                }
+                _ => return self.new_frame(stack, kept),
+            }
         }
+        if kept < self.stack.len() {
+            return self.new_frame(stack, kept);
+        }
+        self.stack.last().map_or(NONE, |top| top.3)
+    }
+
+    /// As [`Log::frame`], whose stack shares only its first `kept` calls with the last.
+    fn new_frame<'a>(&mut self, stack: impl Iterator<Item = (&'a str, u32)>, kept: usize) -> u32 {
         self.stack.truncate(kept);
         let mut parent = self.stack.last().map_or(NONE, |top| top.3);
         for (name, line) in stack.skip(kept) {
@@ -580,6 +593,7 @@ impl Log {
     }
 
     /// A step ends: its changes are the ones made since the last.
+    #[inline]
     pub fn step(
         &mut self,
         line: u32,
@@ -630,17 +644,18 @@ impl Log {
     /// A snapshot before the next step, when one is due: every
     /// [`SNAPSHOT_EVERY`] steps, and no sooner than the changes since the
     /// last one outweigh it four times, so snapshots hold a fifth of the log at most.
+    #[inline]
     pub fn snapshot_if_due(&mut self) {
-        let step = self.entries.len() as u32;
-        let (since, changes) = self
-            .snapshots
-            .last()
-            .map_or((step, self.changes.len()), |s| {
-                (step - s.step, self.changes.len() - s.change as usize)
-            });
-        if (since as usize) < SNAPSHOT_EVERY {
-            return;
+        let step = self.entries.len();
+        if step - self.snapshots.last().map_or(0, |s| s.step as usize) >= SNAPSHOT_EVERY {
+            self.snapshot_if_outweighed();
         }
+    }
+
+    #[inline(never)]
+    fn snapshot_if_outweighed(&mut self) {
+        let step = self.entries.len() as u32;
+        let changes = self.changes.len() - self.snapshots.last().map_or(0, |s| s.change as usize);
         let items: usize = self
             .now
             .values

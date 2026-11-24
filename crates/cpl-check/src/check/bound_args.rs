@@ -130,12 +130,38 @@ impl Checker<'_> {
         on
     }
 
+    /// The generics a bare bound may bind by name: not one only a `-> yields`
+    /// result names, which takes what the body yields (R07.2.10).
+    pub(crate) fn bound_bindable(
+        generics: &[String],
+        params: &[crate::ty::Param],
+        ret: &Ty,
+    ) -> Vec<String> {
+        let generator = matches!(ret, Ty::Named { name, .. } if name == "Gen");
+        let named = |g: &String| {
+            let mut hit = false;
+            for p in params {
+                p.ty.map(&mut |t| {
+                    hit |= matches!(t, Ty::Param(n) if n == g);
+                    None
+                });
+            }
+            hit
+        };
+        generics
+            .iter()
+            .filter(|g| !generator || named(g))
+            .cloned()
+            .collect()
+    }
+
     /// `last<S: Bidir, T>(w)`: a trait parameter the fn leaves free is the
-    /// one the argument's impl of the bound gives it, by name.
+    /// one the argument's impl of the bound gives it, by name; a bound written
+    /// with its arguments (`from: Seq<V>`) binds those instead.
     pub(crate) fn bind_bound_params(
         &mut self,
         generics: &[String],
-        bounds: &[(String, Vec<String>)],
+        (bounds, written): (&[(String, Vec<String>)], &BoundArgs),
         bindings: &mut crate::ty::Bindings,
     ) {
         for (param, traits) in bounds {
@@ -147,24 +173,35 @@ impl Checker<'_> {
                 args,
             };
             for trait_name in traits {
+                let found = self.type_def(trait_name);
                 let Some(Def::Trait {
                     generics: of_trait, ..
-                }) = self.type_def(trait_name).as_deref().cloned()
+                }) = found.as_deref()
                 else {
                     continue;
                 };
+                let pattern = written
+                    .iter()
+                    .find(|(p, t, args)| p == param && t == trait_name && !args.is_empty())
+                    .map(|(_, _, args)| args.clone())
+                    .unwrap_or_else(|| of_trait.iter().cloned().map(Ty::Param).collect());
                 let free = |g: &String, b: &crate::ty::Bindings| {
                     generics.contains(g) && !b.contains_key(g)
                 };
-                if !of_trait.iter().any(|g| free(g, bindings)) {
+                let named = pattern.iter().flat_map(params_named).collect::<Vec<_>>();
+                if !named.iter().any(|g| free(g, bindings)) {
                     continue;
                 }
-                let Some(args) = self.trait_args_of(&on_ty, trait_name, of_trait.len()) else {
+                let Some(args) = self.trait_args_of(&on_ty, trait_name, pattern.len()) else {
                     continue;
                 };
-                for (g, arg) in of_trait.iter().zip(args) {
-                    if free(g, bindings) {
-                        bindings.insert(g.clone(), arg);
+                let mut got = bindings.clone();
+                for (want, arg) in pattern.iter().zip(&args) {
+                    want.unify(arg, &mut got);
+                }
+                for g in named {
+                    if let Some(t) = got.get(&g).filter(|_| free(&g, bindings)).cloned() {
+                        bindings.insert(g, t);
                     }
                 }
             }
@@ -201,19 +238,20 @@ impl Checker<'_> {
             return None;
         }
         seen.push(trait_name.to_string());
+        let found = self.type_def(trait_name);
         let Some(Def::Trait {
             methods,
             supers,
             super_args,
             ..
-        }) = self.type_def(trait_name).as_deref().cloned()
+        }) = found.as_deref()
         else {
             return None;
         };
         if let Some(m) = methods.iter().find(|m| m.name == name) {
             return Some(m.ty.subst(&on));
         }
-        for (sup, args) in supers.iter().zip(&super_args) {
+        for (sup, args) in supers.iter().zip(super_args) {
             let mut theirs = crate::ty::Bindings::default();
             if let Some(this) = on.get("Self") {
                 theirs.insert("Self".into(), this.clone());
@@ -433,12 +471,12 @@ impl Checker<'_> {
                     seen.push((g, i, got.clone()));
                     continue;
                 };
-                if got.fits(first) || first.fits(got) {
+                if self.fits(got, first) || self.fits(first, got) {
                     continue;
                 }
                 let shown = |(p, t, a): &(String, String, Vec<Ty>)| {
-                    let a: Vec<String> = a.iter().map(|t| t.to_string()).collect();
-                    format!("{p}: {t}<{}>", a.join(", "))
+                    let (name, args) = (t.clone(), a.clone());
+                    format!("{p}: {}", Ty::Named { name, args })
                 };
                 let (fa, fb) = (&bound_args[j].0, param);
                 self.report(
@@ -611,5 +649,17 @@ pub(crate) fn identity_defaults(f: &ast::FnDecl, ty: &Ty) -> Vec<(String, Ty)> {
             }
         }
     }
+    out
+}
+
+/// The type parameters `ty` names.
+pub(crate) fn params_named(ty: &Ty) -> Vec<String> {
+    let mut out = Vec::new();
+    ty.map(&mut |t| {
+        if let Ty::Param(p) = t {
+            out.push(p.clone());
+        }
+        None
+    });
     out
 }

@@ -38,23 +38,13 @@ fn by_base(name: &str) -> Option<&str> {
 pub(crate) fn free_by_twin(src: &str, name: &str, span: Span) -> Option<(String, Fix)> {
     let base = by_base(name)?;
     let rest = src.get(span.end as usize..)?.strip_prefix('(')?;
-    let mut depth = 0;
-    let mut comma = None;
-    for (i, c) in rest.char_indices() {
-        match c {
-            '(' | '[' | '{' => depth += 1,
-            ')' | ']' | '}' if depth == 0 => break,
-            ')' | ']' | '}' => depth -= 1,
-            ',' if depth == 0 => {
-                comma = Some(i);
-                break;
-            }
-            '"' | '\'' => return None,
-            _ => {}
-        }
-    }
-    let comma = comma?;
+    let Some((comma, false)) = first_arg(rest) else {
+        return None;
+    };
     let recv = rest[..comma].trim();
+    if recv.contains('"') || recv.contains('\'') {
+        return None;
+    }
     let recv = recv.strip_prefix("mut ").unwrap_or(recv);
     if recv.is_empty() {
         return None;

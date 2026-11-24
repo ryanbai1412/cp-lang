@@ -66,12 +66,19 @@ impl Ord for Frac:
   when one call could take both: their full signatures unify, parameter
   by parameter after `self`, with every bound met (`x: T` with `T: Eq`
   takes no lambda, so it and `p: T -> Bool` don't overlap). The relation
-  is the same within a module and across modules. Members are found
+  is the same within a module and across modules. One precedence order
+  picks among the candidates: a member of the receiver's type, declared
+  or catalog, beats any extension fn; at equal specificity, a fn the
+  calling module declares beats an imported one, from std or any other
+  library; two candidates that tie at one level are E0701. Members are found
   before extension fns, so an extension fn with a `self` of its own
   shape that a member of the receiver's type always wins over is never
   called; that call is E0701, naming the member (`fn sum(self: List<Int>)`
   beside `List.sum`), with help to rename the fn or call it as a plain
-  fn. To give a type its own cost, override the trait method instead
+  fn. The error belongs to the module that declares the fn: a file that
+  imports it calls the member with no error, and a fn a catalog member
+  stands for (std's own `first_gt` behind `List.first_gt`) hides nothing.
+  To give a type its own cost, override the trait method instead
   (decision 486). (R08.1.4)
 - Operators are trait methods (`Add`, `Sub`, `Mul`, `Div`, `Rem` with
   `Rhs` and `Out`, `Neg`, `BitAnd`, ..., `Index`, `Ord`, `Eq`, `Hash`,

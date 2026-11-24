@@ -136,7 +136,7 @@ pub fn shared_method(name: &str) -> bool {
 /// the checker can't type and no module declares is a spec gap.
 pub fn spec_member_names() -> &'static crate::fx::HashSet<String> {
     static NAMES: OnceLock<crate::fx::HashSet<String>> = OnceLock::new();
-    NAMES.get_or_init(|| member_names(crate::modules::std_index()))
+    lazy(&NAMES, || member_names(crate::modules::std_index()))
 }
 
 fn member_names(std: Std) -> crate::fx::HashSet<String> {
@@ -175,7 +175,9 @@ fn member_names(std: Std) -> crate::fx::HashSet<String> {
 /// them, though the name is on `spec_member_names`.
 pub fn spec_struct_only_member_names() -> &'static crate::fx::HashSet<String> {
     static NAMES: OnceLock<crate::fx::HashSet<String>> = OnceLock::new();
-    NAMES.get_or_init(|| struct_only_member_names(crate::modules::std_index()))
+    lazy(&NAMES, || {
+        struct_only_member_names(crate::modules::std_index())
+    })
 }
 
 fn struct_only_member_names(std: Std) -> crate::fx::HashSet<String> {
@@ -217,7 +219,10 @@ fn struct_only_member_names(std: Std) -> crate::fx::HashSet<String> {
 /// of no declared struct, such as a generator, can be given.
 pub fn spec_receiver_method_names() -> &'static crate::fx::HashSet<String> {
     static NAMES: OnceLock<crate::fx::HashSet<String>> = OnceLock::new();
-    NAMES.get_or_init(|| receiver_method_names(crate::modules::std_index()))
+    lazy(
+        &NAMES,
+        || receiver_method_names(crate::modules::std_index()),
+    )
 }
 
 fn receiver_method_names(std: Std) -> crate::fx::HashSet<String> {
@@ -232,7 +237,7 @@ fn receiver_method_names(std: Std) -> crate::fx::HashSet<String> {
 /// `None` for one of the fn's own type parameters, which takes any receiver.
 pub fn std_self_heads() -> &'static crate::names::NameMap<Vec<Option<String>>> {
     static HEADS: OnceLock<crate::names::NameMap<Vec<Option<String>>>> = OnceLock::new();
-    HEADS.get_or_init(|| self_heads(crate::modules::std_index()))
+    lazy(&HEADS, || self_heads(crate::modules::std_index()))
 }
 
 fn self_heads(std: Std) -> crate::names::NameMap<Vec<Option<String>>> {
@@ -348,7 +353,7 @@ fn self_methods_in(text: &str) -> SelfMethods {
 /// E0304 as `xs.len()` is (R06.4.2).
 pub fn getter_methods() -> &'static crate::fx::HashSet<String> {
     static NAMES: OnceLock<crate::fx::HashSet<String>> = OnceLock::new();
-    NAMES.get_or_init(|| getter_methods_in(crate::modules::std_index()))
+    lazy(&NAMES, || getter_methods_in(crate::modules::std_index()))
 }
 
 fn getter_methods_in(std: Std) -> crate::fx::HashSet<String> {
@@ -515,7 +520,7 @@ pub const BUILT_ON: &[(&str, &str)] = &[];
 /// `pub struct Prefix`: `prefix(a)` is that type's constructor, `Prefix(a)`.
 pub fn built_on() -> &'static [(&'static str, &'static str)] {
     static ALL: OnceLock<Vec<(&'static str, &'static str)>> = OnceLock::new();
-    ALL.get_or_init(|| {
+    lazy(&ALL, || {
         let mut all = BUILT_ON.to_vec();
         all.extend(struct_decorations("word"));
         all
@@ -561,7 +566,7 @@ fn struct_decorations(decorator: &str) -> Vec<(&'static str, &'static str)> {
 /// domain `D`.
 pub fn domain_members() -> &'static [(&'static str, &'static str)] {
     static FOUND: OnceLock<Vec<(&'static str, &'static str)>> = OnceLock::new();
-    FOUND.get_or_init(|| struct_decorations("member"))
+    lazy(&FOUND, || struct_decorations("member"))
 }
 
 /// The struct whose domain `D.member` is, when std declares one.
@@ -572,14 +577,14 @@ pub fn domain_member(member: &str) -> Option<&'static str> {
         .map(|&(_, of)| of)
 }
 
-/// The std fn another language's `name` stands for on a receiver of type
-/// `on`, as `@aka(upper, toUpperCase)` above `pub fn to_upper(self: Str)`
-/// states.
-pub fn aka(on: &str, name: &str) -> Option<&'static str> {
-    type Aka = crate::names::NameMap<Vec<(&'static str, &'static str)>>;
-    static AKA: OnceLock<Aka> = OnceLock::new();
-    let aka = AKA.get_or_init(|| {
-        let mut aka = Aka::default();
+type AkaMap = crate::names::NameMap<Vec<(&'static str, &'static str)>>;
+
+/// Every std `@aka`: another language's name to the fns it stands for, each with its
+/// receiver type's head name (empty for a generic receiver like `self: [D]T`).
+fn aka_map() -> &'static AkaMap {
+    static AKA: OnceLock<AkaMap> = OnceLock::new();
+    AKA.get_or_init(|| {
+        let mut aka = AkaMap::default();
         let leak = |s: &str| &*Box::leak(s.to_string().into_boxed_str());
         for (_, text) in crate::modules::std_index() {
             if !text.contains("@aka(") {
@@ -591,15 +596,14 @@ pub fn aka(on: &str, name: &str) -> Option<&'static str> {
                         continue;
                     };
                     let recv = f.params.first().filter(|p| p.name.text == "self");
-                    let Some(ast::TypeKind::Named { name: ty, .. }) =
-                        recv.and_then(|p| p.ty.as_ref()).map(|t| &t.kind)
-                    else {
-                        continue;
+                    let ty = match recv.and_then(|p| p.ty.as_ref()).map(|t| &t.kind) {
+                        Some(ast::TypeKind::Named { name, .. }) => name.text.as_str(),
+                        _ => "",
                     };
                     let names = stmt.decorators.iter().filter(|d| d.name.text == "aka");
                     for arg in names.flat_map(|d| &d.args) {
                         if let ast::ExprKind::Name(other) = &arg.value.kind {
-                            let own = (leak(&ty.text), leak(&f.name.text));
+                            let own = (leak(ty), leak(&f.name.text));
                             aka.entry(other.clone()).or_default().push(own);
                         }
                     }
@@ -607,9 +611,25 @@ pub fn aka(on: &str, name: &str) -> Option<&'static str> {
             }
         }
         aka
-    });
-    let fns = aka.get(name)?;
+    })
+}
+
+/// The std fn another language's `name` stands for on a receiver of type
+/// `on`, as `@aka(upper, toUpperCase)` above `pub fn to_upper(self: Str)`
+/// states.
+pub fn aka(on: &str, name: &str) -> Option<&'static str> {
+    let fns = aka_map().get(name)?;
     fns.iter().find(|(ty, _)| *ty == on).map(|&(_, own)| own)
+}
+
+/// The std fns another language's `name` stands for on any receiver:
+/// `bsearch` for `partition_point`.
+pub fn aka_of(name: &str) -> impl Iterator<Item = &'static str> {
+    aka_map()
+        .get(name)
+        .into_iter()
+        .flatten()
+        .map(|&(_, own)| own)
 }
 
 /// The name a std item has now for one it was written with before, as
@@ -617,7 +637,7 @@ pub fn aka(on: &str, name: &str) -> Option<&'static str> {
 /// on that type was written in snake case: `prefix_n` for `PrefixN`.
 pub fn renamed(name: &str) -> Option<&'static str> {
     static WAS: OnceLock<crate::names::NameMap<&'static str>> = OnceLock::new();
-    let was = WAS.get_or_init(|| {
+    let was = lazy(&WAS, || {
         let mut was = crate::names::NameMap::default();
         let leak = |s: &str| &*Box::leak(s.to_string().into_boxed_str());
         for (_, text) in crate::modules::std_index() {
@@ -678,7 +698,7 @@ pub const INTERNAL_BUILT_ON: &[(&str, &str, &str)] = &[
 /// type gets these with it, so what its methods take and return can be named.
 pub fn companions(name: &str) -> &'static [&'static str] {
     static ALL: OnceLock<crate::names::NameMap<Vec<&'static str>>> = OnceLock::new();
-    let all = ALL.get_or_init(|| {
+    let all = lazy(&ALL, || {
         let mut all = crate::names::NameMap::default();
         for (module, ty) in names() {
             if !ty.text.starts_with(char::is_uppercase) || module.len() < 2 {
@@ -770,9 +790,7 @@ fn fn_of(arity: usize, param: Ty, ret: Ty) -> Ty {
 pub fn value(name: &str) -> Option<Ty> {
     Some(match name {
         "INF" => Ty::Int,
-        "cbrt" | "sin" | "cos" | "tan" | "asin" | "acos" | "atan" | "exp" | "ln" | "log2"
-        | "log10" => float_fn(1),
-        "atan2" | "hypot" => float_fn(2),
+        "cbrt" | "atan" | "log2" | "log10" => float_fn(1),
         // `ask("?", x)` prints a query, flushes, and reads the judge's
         // answer; `cpl-ir` lowers it.
         "ask" => Ty::Unknown,
@@ -829,6 +847,72 @@ pub fn ty(name: &str) -> Option<Ty> {
     })
 }
 
+/// The declaration in `core_traits.cp` of a core trait std has no source
+/// for: its type parameters and its body (R08.1.5).
+pub fn core_trait_decl(name: &str) -> Option<(&'static [ast::Name], &'static [ast::Stmt])> {
+    core_traits()
+        .find(|(n, ..)| n.text == name)
+        .map(|(_, generics, body)| (generics, body))
+}
+
+/// Every trait `core_traits.cp` declares: its name, type parameters and body.
+fn core_traits() -> impl Iterator<
+    Item = (
+        &'static ast::Name,
+        &'static [ast::Name],
+        &'static [ast::Stmt],
+    ),
+> {
+    static FILE: OnceLock<cpl_syntax::ParsedFile> = OnceLock::new();
+    let file = FILE.get_or_init(|| cpl_syntax::parse_file(include_str!("core_traits.cp")));
+    let stmts = file.items.iter().flat_map(|(_, item)| &item.stmts);
+    stmts.filter_map(|stmt| match &stmt.kind {
+        ast::StmtKind::Trait {
+            name,
+            generics,
+            body,
+            ..
+        } => Some((name, generics.as_slice(), body.stmts.as_slice())),
+        _ => None,
+    })
+}
+
+/// Whether a core trait the file `uses` declares a fn whose signature names
+/// `ty`: `impl Ord for P` with a bare `fn cmp(a, b)` returns the `Ordering`
+/// `core_traits.cp` declares, so the program gets `Ordering` as if it named it.
+pub fn core_traits_name(ty: &str, uses: &dyn Fn(&str) -> bool) -> bool {
+    let mut found = false;
+    for (_, _, body) in core_traits().filter(|(name, ..)| uses(&name.text)) {
+        for s in body {
+            if let ast::StmtKind::Fn(f) = &s.kind {
+                let tys = f.params.iter().filter_map(|p| p.ty.as_ref()).chain(&f.ret);
+                tys.for_each(|t| {
+                    crate::check::alias::type_names(t, &mut |n| found |= n.text == ty)
+                });
+            }
+        }
+    }
+    found
+}
+
+/// Core trait `name`'s fn `method` and the trait's generics.
+pub fn core_trait_fn(
+    name: &str,
+    method: &str,
+) -> Option<(&'static [ast::Name], &'static ast::FnDecl)> {
+    let (generics, body) = core_trait_decl(name)?;
+    body.iter().find_map(|s| match &s.kind {
+        ast::StmtKind::Fn(f) if f.name.text == method => Some((generics, f)),
+        _ => None,
+    })
+}
+
+/// `cell`'s value, built by `init` the first time. `init` is a fn, not a
+/// closure, so the cells of one type share one copy of the code that fills them.
+fn lazy<T>(cell: &'static OnceLock<T>, init: fn() -> T) -> &'static T {
+    cell.get_or_init(init)
+}
+
 /// A prelude trait: what `T: Ord` and `impl Add for V` may name.
 pub fn is_trait(name: &str) -> bool {
     TRAIT_NAMES.contains(&name)
@@ -864,7 +948,6 @@ pub const TRAIT_NAMES: &[&str] = &[
     "Indexed",
     "IndexedMut",
     "Keyed",
-    "Sized",
     "Bidir",
     "Contains",
     "Ord",
@@ -918,15 +1001,6 @@ pub const VALUE_NAMES: &[&str] = &[
     "rand",
     "some",
     "laws_hold",
-    "atan2",
-    "sin",
-    "cos",
-    "tan",
-    "asin",
-    "acos",
-    "exp",
-    "ln",
-    "hypot",
     "flush",
     "len",
     "counts",
@@ -1075,7 +1149,7 @@ pub fn import_edit(text: &str, module: &str, name: &str) -> (Span, String) {
 pub fn std_names() -> &'static [(&'static str, &'static str)] {
     static NAMES: std::sync::OnceLock<Vec<(&'static str, &'static str)>> =
         std::sync::OnceLock::new();
-    NAMES.get_or_init(|| {
+    lazy(&NAMES, || {
         let leak = |s: String| &*Box::leak(s.into_boxed_str());
         public_names(crate::modules::std_index().iter().copied())
             .into_iter()

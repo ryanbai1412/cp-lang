@@ -215,7 +215,9 @@ library or by this spec:
   `holes: "a, b"` names more holes than the fn's parameters (a domain or a
   bound the call no longer needs); `to` may drop one of those only when it
   matched an expression that calls nothing, or when the lint has no fix.
-  A hole after `.` matches a field or method name (`t[v].kid[c]`). `when: "b >= 1"` keeps a
+  A hole after `.` matches a field or method name (`t[v].kid[c]`). Lines `from` writes
+  differently do not match one line of code twice (a mirrored write's
+  `g[u].push(v)` then `g[v].push(u)`, not a self-loop's `g[u].push(u)` twice). `when: "b >= 1"` keeps a
   finding only where each listed hole (compared with `>=`, `>`, `<=` or `<`
   and an integer, comma-separated) is proven in bounds: it matched an
   integer literal, a constant expression (`10**18`) whose value does, or
@@ -236,9 +238,11 @@ library or by this spec:
   condition the fn's one-expression body writes, and writes no other that
   `from` does not (`self % d` on `divmod`, whose body is
   `(self / d, self % d)`; `while let w = e, w > y` on `is_some_and`, whose
-  body is `if let`). On a fn that documents a compiler built-in,
-  `builtin: "filled"` lets `to` call that built-in in its place
-  (`[n, m].filled(c)` on a grid fn), since std cannot declare it. Or `from` calls the fn and `to` does not:
+  body is `if let`), or, on a sequence's `iter`, walks `self` with `for`,
+  which runs `iter` (`for x in self`, R07.3.1). On a fn that documents a
+  compiler built-in or a field, `builtin: "filled"` lets `to` call that
+  built-in or name that field in its place (`[n, m].filled(c)` on a grid
+  fn, `t.at` on `Rooted.pos`), since std cannot decorate either. Or `from` calls the fn and `to` does not:
   the lint drops a needless call (`let x = s.last!` then `s.pop()` is
   `let x = s.pop()!`, declared on `last`), its fix titled "drop `f`". A hole
   that `from` evaluates once per item of a comprehension (anywhere in its
@@ -260,7 +264,8 @@ library or by this spec:
   library fn's lint with a fix does not match inside the program's own fn
   of its name (a hand-written `fn starts_with`), whose fix would call
   itself; a method's lint, or one with no fix, does (a hand-written `fn
-  find` is `Dsu.find`). The
+  find` is `Dsu.find`). A `from` ending in a name (`t.order`) does not
+  match the callee of a call (`t.order(v)`). The
   finding spans the matched
   tokens (with no fix, those before a statement hole: the statements it
   matched stay, so the findings in them stand) and labels what `to`'s first hole matched, or with none, the first
@@ -274,17 +279,27 @@ library or by this spec:
   `reads: "p[k] -> p.cut(k)"` makes the fix rewrite, too, every later
   use of a name `from` declares, in the rest of its block: each must
   match the read (`k` a hole), else the finding has no fix (a write
-  `p[0] = 5`, or `p.len`); `to` or the rewrite calls the fn.
+  `p[0] = 5`, or `p.len`); `to` or the rewrite calls the fn. For a loop
+  variable `from` binds (`for i in 0..self.len`), its uses are those in
+  the statement holes, rewritten in the code the holes matched (`reads:
+  "self[i] -> x"`). Where `to` drops the name, a use that is no such read,
+  or none at all, means the code does not match; nor does it where the
+  scope declares again or assigns a name the read's holes matched.
+  `each: "x in xs"` spells the name `x` that `to` writes as the singular
+  of the one name the hole `xs` matched (`vals` gives `val`); where that is
+  no name, or one the file already uses, the finding has no fix.
   A finding inside a wider one is shown with it when `from` still
   matches the wider fix's text, which keeps the code it is about.
   It applies in every file that uses the module, and in the module outside
   the fn; std's apply in every program, as std's names need no `use`. A
-  struct's or enum's method may declare one like a top-level fn. E0505
+  struct's, enum's or trait's method may declare one like a top-level fn;
+  a trait's holds for every type that implements it. E0505
   (`bad_library_lint`) when `@lint` is not on a fn, lacks a
   name, `from:` or `to:` (or has both `to:` and `advice:`), when `from`,
   `to` or an `also:` line is not one expression or
   statement or a run of statements, when `reads:` is not two expressions
-  around `->`, when `to` drops a parameter `from` matches or uses one it does
+  around `->`, when `each:` is not a name `to` writes (no hole), `in`,
+  and a hole, when `to` drops a parameter `from` matches or uses one it does
   not, when `holes:` names a name neither `from` nor `also:` uses, when `when:` is not
   holes `from` uses compared with integers, when neither `to` (not `advice:`) calls the
   fn (or its `builtin:`) or writes only its body's operators nor `from`

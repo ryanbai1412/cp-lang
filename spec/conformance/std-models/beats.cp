@@ -20,7 +20,7 @@ for k in 0..n:
     let op = rng.int(0, 6)
     let lo = rng.int(0, 17)
     let hi = rng.int(lo, 17)
-    let r = B.cuts.nth(lo)..B.cuts.nth(hi)
+    let r: Range<B> = B.cuts.nth(lo)..B.cuts.nth(hi)
     let x = rng.int(-40, 40)
     let i = B(rng.int(0, 16))
     if op == 0:
@@ -49,7 +49,7 @@ for k in 0..n:
         for j in lo..hi: a[B(j)] = a[B(j)] - d * fdiv(a[B(j)], d)
     let qlo = rng.int(0, 17)
     let qhi = rng.int(qlo, 17)
-    let q = B.cuts.nth(qlo)..B.cuts.nth(qhi)
+    let q: Range<B> = B.cuts.nth(qlo)..B.cuts.nth(qhi)
     let vs = [a[B(j)] for j in qlo..qhi]
     let all = [a[j] for j in B]
     if t.sum(q) != sum(vs): bad = "op {k}: sum {qlo}..{qhi}"

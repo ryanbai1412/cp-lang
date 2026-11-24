@@ -186,11 +186,11 @@ impl Read for Mod<P>:
                 r = r * ten + Mod((Int(c) - Int('0')) % P)
         return if s[0] == '-': -r else: r
 
-/// Factorials and inverse factorials for a modular type `M = Mod<P>` (prime `P`).
+/// Factorials and inverse factorials over any `Residue` type `M` with a prime modulus, such as `Mod<P>`.
 /// Its tables are `@cache` fields that grow on demand, so an immutable
 /// `let c = Comb<Z>()` (or `Comb<Z>(limit)` to pre-size) answers queries in \(O(1)\)
 /// with amortized \(O(1)\) growth per new factorial.
-pub struct Comb<M: Add + Sub + Mul>:
+pub struct Comb<M: Residue + Add + Sub + Mul>:
     @cache f: List<M>
     @cache g: List<M>
     @cache d: List<M>
@@ -206,35 +206,35 @@ pub struct Comb<M: Add + Sub + Mul>:
     /// example: `type Z = Mod<7>; let c = Comb<Z>(3); c.fact(3) == Z(6)`
     pub fn new(limit: Len = 0) -> Comb<M>:
         assert limit >= 0, "`Comb(limit)` needs `limit >= 0`"
-        let p = M.MOD
+        let p = M.modulus()
         for q in 2..=p.isqrt:
             assert p % q != 0, "`Comb` needs a prime modulus"
-        let c = Comb<M>([M(1)], [M(1)], [M(1), M(0)], [])
+        let c = Comb<M>([M.reduce(1)], [M.reduce(1)], [M.reduce(1), M.reduce(0)], [])
         c.grow(limit)
         c
 
     fn grow(self, want: Int):
         let have = f.len
-        let n = min(max(want + 1, 2 * have), M.MOD)
+        let n = min(max(want + 1, 2 * have), M.modulus())
         if n <= have: return
         f.reserve(n)
-        g.resize(n, M(1))
+        g.resize(n, M.reduce(1))
         // Each step carries the running product in a local, so the serial chain of
         // multiplies never waits on a store of the element just written.
         var acc = f[have - 1]
         for i in have..n:
-            acc *= M(i)
+            acc *= M.reduce(i)
             f.push(acc)
-        var inv = acc.inv
+        var inv = M.reduce(inv_mod(acc.residue(), M.modulus())!)
         g[n - 1] = inv
         for i in (have..n - 1).rev:
-            inv *= M(i + 1)
+            inv *= M.reduce(i + 1)
             g[i] = inv
 
     fn ensure(self, n: Int):
         if n >= f.len: self.grow(n)
 
-    /// `n!`, reduced; 0 when `n >= M.MOD` (the product contains `P`).
+    /// `n!`, reduced; 0 when `n >= M.modulus()` (the product contains `P`).
     ///
     /// cost: \(O(1)\) amortized
     /// traps: when `n < 0`
@@ -243,29 +243,29 @@ pub struct Comb<M: Add + Sub + Mul>:
     /// example: `type Z = Mod<7>; Comb<Z>().fact(7) == Z(0)`
     pub fn fact(self, n: 0..) -> M:
         assert n >= 0, "`fact(n)` needs `n >= 0`"
-        if n >= M.MOD: return M(0)
+        if n >= M.modulus(): return M.reduce(0)
         self.ensure(n)
         f[n]
 
-    /// `1 / n!`, for `0 <= n < M.MOD`.
+    /// `1 / n!`, for `0 <= n < M.modulus()`.
     ///
     /// cost: \(O(1)\) amortized
-    /// traps: when `n` is outside `0..M.MOD`
+    /// traps: when `n` is outside `0..M.modulus()`
     /// example: `type Z = Mod<7>; Comb<Z>().inv_fact(3) == Z(6)`
     /// example: `type Z = Mod<7>; Comb<Z>().inv_fact(0) == Z(1)`
     pub fn inv_fact(self, n: Int) -> M:
-        assert 0 <= n < M.MOD, "`inv_fact(n)` needs `n` in `0..M.MOD`"
+        assert 0 <= n < M.modulus(), "`inv_fact(n)` needs `n` in `0..M.modulus()`"
         self.ensure(n)
         g[n]
 
-    /// `1 / i`, for `1 <= i < M.MOD`: one load from a table of `(i - 1)! / i!`, built from the
+    /// `1 / i`, for `1 <= i < M.modulus()`: one load from a table of `(i - 1)! / i!`, built from the
     /// factorials on the first call and kept as long as they are.
     ///
     /// cost: \(O(1)\) amortized
-    /// traps: when `i` is outside `1..M.MOD`
+    /// traps: when `i` is outside `1..M.modulus()`
     /// example: `type Z = Mod<7>; Comb<Z>().inv(3) == Z(5)`
     pub fn inv(self, i: Int) -> M:
-        assert 1 <= i < M.MOD, "`inv(i)` needs `i` in `1..M.MOD`"
+        assert 1 <= i < M.modulus(), "`inv(i)` needs `i` in `1..M.modulus()`"
         if i >= iv.len: self.grow_inv(i)
         iv[i]
 
@@ -275,26 +275,26 @@ pub struct Comb<M: Add + Sub + Mul>:
         self.ensure(i)
         let have = iv.len
         iv.reserve(f.len)
-        for k in have..f.len: iv.push(if k == 0: M(0) else: g[k] * f[k - 1])
+        for k in have..f.len: iv.push(if k == 0: M.reduce(0) else: g[k] * f[k - 1])
 
     fn choose_lucas(self, n: Int, k: Int) -> M:
-        let p = M.MOD
+        let p = M.modulus()
         self.choose(n / p, k / p) * self.choose(n % p, k % p)
 
     /// The number of `k`-subsets of `n` things, `n! / (k! (n - k)!)`; 0 when `k` is outside `0..=n`.
     ///
-    /// For `n < M.MOD` it reads the tables. For `n >= M.MOD` it uses Lucas's theorem on the base-`P`
+    /// For `n < M.modulus()` it reads the tables. For `n >= M.modulus()` it uses Lucas's theorem on the base-`P`
     /// digits, so the answer is exact modulo `P` for every `n`. A negative `n` gives 0.
     ///
-    /// cost: \(O(1)\) amortized for `n < M.MOD`; \(O(\mathit{log\_P} n)\) otherwise
+    /// cost: \(O(1)\) amortized for `n < M.modulus()`; \(O(\mathit{log\_P} n)\) otherwise
     /// traps: never
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().choose(5, 2) == Z(10)`
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().choose(5, 6) == Z(0)`
     /// example: `type Z = Mod<7>; Comb<Z>().choose(10, 3) == Z(1)`
     /// example: `type Z = Mod<7>; Comb<Z>().choose(7, 1) == Z(0)`
     pub fn choose(self, n: Int, k: Int) -> M:
-        if n < 0 or k < 0 or k > n: return M(0)
-        if n >= M.MOD: return self.choose_lucas(n, k)
+        if n < 0 or k < 0 or k > n: return M.reduce(0)
+        if n >= M.modulus(): return self.choose_lucas(n, k)
         self.ensure(n)
         f[n] * g[k] * g[n - k]
 
@@ -303,7 +303,7 @@ pub struct Comb<M: Add + Sub + Mul>:
     ///
     /// The value is the falling factorial `n (n - 1) ... (n - k + 1)` reduced modulo `P`: 0 when
     /// those `k` numbers include a multiple of `P`, else `fact(n % P) / fact((n - k) % P)`, so it is
-    /// exact for `n >= M.MOD` too.
+    /// exact for `n >= M.modulus()` too.
     ///
     /// cost: \(O(1)\) amortized
     /// traps: never
@@ -311,9 +311,9 @@ pub struct Comb<M: Add + Sub + Mul>:
     /// example: `type Z = Mod<7>; Comb<Z>().arrange(9, 2) == Z(2)`
     /// example: `type Z = Mod<7>; Comb<Z>().arrange(8, 2) == Z(0)`
     pub fn arrange(self, n: Int, k: Int) -> M:
-        if n < 0 or k < 0 or k > n: return M(0)
-        let p = M.MOD
-        if n / p != (n - k) / p: return M(0)
+        if n < 0 or k < 0 or k > n: return M.reduce(0)
+        let p = M.modulus()
+        if n / p != (n - k) / p: return M.reduce(0)
         self.fact(n % p) * self.inv_fact((n - k) % p)
 
     /// The number of ways to put `n` equal balls into `k` boxes (stars and bars): `choose(n + k - 1, n)`.
@@ -327,8 +327,8 @@ pub struct Comb<M: Add + Sub + Mul>:
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().multichoose(2, 3) == Z(6)`
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().multichoose(0, 0) == Z(1)`
     pub fn multichoose(self, n: Int, k: Int) -> M:
-        if n == 0: return M(1)
-        if k <= 0 or n < 0: return M(0)
+        if n == 0: return M.reduce(1)
+        if k <= 0 or n < 0: return M.reduce(0)
         self.choose(n + k - 1, n)
 
     /// The `n`-th Catalan number, `choose(2n, n) - choose(2n, n + 1)`.
@@ -359,13 +359,13 @@ pub struct Comb<M: Add + Sub + Mul>:
         assert n >= 0, "`derange(n)` needs `n >= 0`"
         while d.len <= n:
             let i = d.len
-            d.push(M(i - 1) * (d[i - 1] + d[i - 2]))
+            d.push(M.reduce(i - 1) * (d[i - 1] + d[i - 2]))
         d[n]
 
     /// The multinomial coefficient `(sum ks)! / prod(k!)`; 0 if any `k < 0`.
     ///
     /// It is computed as the product of `choose(k_1 + ... + k_i, k_i)`, so Lucas applies and the
-    /// result is exact modulo `P` even when `sum ks >= M.MOD`.
+    /// result is exact modulo `P` even when `sum ks >= M.modulus()`.
     ///
     /// cost: \(O(\mathit{ks}.\mathit{len})\) amortized
     /// empty: `type Z = Mod<1_000_000_007>; Comb<Z>().multinomial([]) == Z(1)`
@@ -375,10 +375,10 @@ pub struct Comb<M: Add + Sub + Mul>:
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().multinomial([2, -1]) == Z(0)`
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().multinomial([]) == Z(1)`
     pub fn multinomial(self, ks: List<Int>) -> M:
-        var acc = M(1)
+        var acc = M.reduce(1)
         var total = 0
         for k in ks:
-            if k < 0: return M(0)
+            if k < 0: return M.reduce(0)
             total += k
             acc = acc * self.choose(total, k)
         acc

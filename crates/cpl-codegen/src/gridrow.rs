@@ -73,6 +73,7 @@ impl<'p> Emitter<'p> {
             .filter(|(root, _)| {
                 let local = !root.0;
                 !whole.contains(root)
+                    && !(local && self.tabling == Some(root.1))
                     && !(local && declared.contains(&root.1))
                     && !(local && root.1 < params && !calls.is_empty())
                     && call_ok(*root)

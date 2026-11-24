@@ -20,7 +20,7 @@ for k in 0..n:
     let x = rng.int(0, 9)
     let lo = rng.int(0, 21)
     let hi = rng.int(lo, 21)
-    let r = P.cuts.nth(lo)..P.cuts.nth(hi)
+    let r: Range<P> = P.cuts.nth(lo)..P.cuts.nth(hi)
     if op == 0:
         s.set(i, x)
         a[i] = x

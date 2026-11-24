@@ -283,6 +283,7 @@ pub struct Undoing<S: Undo, T>(pub state: S, add: (mut S, T) -> ()):
     /// cost: \(O(\log n)\) applications of `add` amortized
     /// traps: on an empty `Undoing`
     /// example: `domain V = 0..3; var u = undoing(Dsu<V>(rollback: true), (mut d, e: (V, V)) => d.unite(e.0, e.1)); u.push((V(0), V(1))); u.push((V(1), V(2))); u.pop((V(0), V(1))); u.state.same(V(1), V(2)) and not u.state.same(V(0), V(1))`
+    /// trap: `domain V = 0..3; var u = undoing(Dsu<V>(rollback: true), (mut d, e: (V, V)) => d.unite(e.0, e.1)); u.pop((V(0), V(1)))`
     pub fn pop(mut self, x: T):
         assert not items.is_empty, "pop on empty Undoing"
         if a_cnt == 0:

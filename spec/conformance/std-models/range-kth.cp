@@ -15,7 +15,7 @@ var bad = ""
 for k in 0..n:
     let lo = rng.int(0, 25)
     let hi = rng.int(lo, 25)
-    let r = K.cuts.nth(lo)..K.cuts.nth(hi)
+    let r: Range<K> = K.cuts.nth(lo)..K.cuts.nth(hi)
     var ys = [a[K(j)] for j in lo..hi]
     ys.sort()
     let x = rng.int(-10, 10)

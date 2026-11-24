@@ -708,7 +708,7 @@ fn grow_matching<L, R>(adj: [L]List<R>, mut mate: [L]?R, mut back: [R]?L) -> Int
                 let v = adj[u][next[u]]
                 next[u] += 1
                 if let w = back[v]:
-                    if level[w] != None and level[w]! == level[u]! + 1: path.push(w)
+                    if level[w] == Some(level[u]! + 1): path.push(w)
                 else:
                     flip_path(path, v, mut mate, mut back)
                     added += 1

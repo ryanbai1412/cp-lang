@@ -119,6 +119,8 @@ pub(crate) struct Emitter<'p> {
     pub capture_owns: std::collections::BTreeMap<(usize, usize), &'static str>,
     /// Each non-scalar value the C++ copies, for `cpl explain`.
     pub copies: Vec<crate::lend::Copied>,
+    /// Each copy the C++ leaves out because nothing reads its source after.
+    pub moved_copies: Vec<cpl_diag::Span>,
     /// Each index the file writes and whether its C++ checks it, for `cpl explain`.
     pub index_checks: Vec<(cpl_diag::Span, crate::explain::Index)>,
     /// Each check the order facts prove never fails, by span, with what it checks.
@@ -266,6 +268,9 @@ pub(crate) struct Emitter<'p> {
     /// The pure fns a closure handed to a sunk call may call.
     pub sink_pure: BTreeSet<usize>,
     pub sinking: Option<usize>,
+    /// Fns with a `cpl_tab_f` form (`crate::table`), and the slot it takes as a callback.
+    pub tables: BTreeMap<usize, usize>,
+    pub tabling: Option<usize>,
     /// Emitting what is above `@!multitest`, where a top-level `return`
     /// ends the program.
     pub in_setup: bool,
@@ -409,6 +414,7 @@ impl<'p> Emitter<'p> {
             call_scoped: BTreeSet::new(),
             capture_owns: Default::default(),
             copies: Vec::new(),
+            moved_copies: Vec::new(),
             index_checks: Vec::new(),
             proven_checks: Vec::new(),
             arith_checks: Vec::new(),
@@ -491,6 +497,8 @@ impl<'p> Emitter<'p> {
             sinks: BTreeMap::new(),
             sink_pure: BTreeSet::new(),
             sinking: None,
+            tables: BTreeMap::new(),
+            tabling: None,
             pushing: None,
             bodies: Vec::new(),
             fused_pushes: Vec::new(),
@@ -521,6 +529,10 @@ impl<'p> Emitter<'p> {
             &emitter.devirt,
             emitter.target.checks != crate::Checks::None,
         );
+        emitter.tables =
+            crate::table::tables(program, &emitter.devirt, &emitter.sink_pure, checks, &|f| {
+                emitter.uses.effects(f).clone()
+            });
         emitter.fn_refs = crate::uses::fn_refs::fn_refs(program, &emitter.devirt, &emitter.uses);
         emitter.messages = crate::uses::message::message_slots(program, &emitter.uses);
         emitter.pushers = feeds.pushers;
@@ -1427,6 +1439,24 @@ impl<'p> Emitter<'p> {
                 self.hoisted_decls(&mut fns, f.params.len());
                 self.block(&f.body, &mut fns);
                 self.sinking = None;
+                fns.push_str("}\n");
+            }
+            let tabled = self.tables.get(&id).copied();
+            if let Some(head) =
+                tabled.and_then(|s| crate::table::head(&signature, &f.name, &self.names[s]))
+            {
+                protos.push(Proto {
+                    name: format!("cpl_tab_{}", fn_name(&f.name)),
+                    line: format!("{head};\n"),
+                    at: fns.len(),
+                    always: false,
+                });
+                fns.push_str(&format!("\n{head} {{\n"));
+                self.reused.clear();
+                self.tabling = tabled;
+                self.hoisted_decls(&mut fns, f.params.len());
+                self.block(&f.body, &mut fns);
+                self.tabling = None;
                 fns.push_str("}\n");
             }
             self.chunks

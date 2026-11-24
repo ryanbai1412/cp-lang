@@ -10,7 +10,10 @@
 //   there, one hour per wall crossed. O((n + w) log n) for the sort and DSU.
 // limits: 1000 ms, 32 MB
 // original: corpus/submissions/5133897.cpp
-// Bounds: n: 2..=1e5; m: 1..=2e5; walls.u, walls.v: 1..=n
+// Bounds: n: 2..=1e5; m: 1..=199367; walls.u, walls.v: 1..=n
+// Walls: the statement allows w <= 2n, but a point has at most one wall each way and the
+//   first and last point of each of its r rows and c columns lack one, so w <= 2n - r - c,
+//   and r * c >= n gives r + c >= ceil(2 sqrt n): w <= 2e5 - 633 = 199367 at n = 1e5.
 
 let n: 2..=1e5 = read()
 domain P = 1..=n

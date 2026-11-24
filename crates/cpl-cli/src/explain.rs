@@ -178,6 +178,11 @@ pub(crate) fn explain_file(
                 &format!("{what}: {why}"),
             ));
         }
+        for span in &lowered.moved {
+            let (line, col) = cpl_codegen::explain::line_col(&compiled.text, *span);
+            let detail = cpl_codegen::explain::MOVED;
+            rows.push(row(&format!("{line}:{col}"), "copy_moved", detail));
+        }
         for span in &compiled.program.written_back {
             let (line, col) = cpl_codegen::explain::line_col(&compiled.text, *span);
             let detail = cpl_codegen::explain::WRITTEN_BACK;

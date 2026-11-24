@@ -1,36 +1,4 @@
-//! The `F64` intrinsics: `atan2`, `hypot`, `exp`, `ln` and the trigonometric fns.
-
-use super::*;
-
-impl Lowerer<'_> {
-    pub(super) fn float_fn(&mut self, name: &str, args: &[ast::Arg], span: Span) -> Expr {
-        if let Some(op) = match name {
-            "atan2" => Some(Builtin::Atan2),
-            "hypot" => Some(Builtin::Hypot),
-            _ => None,
-        } {
-            let Some(exprs) = self.positional_any(name, args, 2, span) else {
-                return self.err_expr(span);
-            };
-            let a = self.expr_as(exprs[0], &Ty::Float);
-            let b = self.expr_as(exprs[1], &Ty::Float);
-            return self.mk_builtin(op, [a, b], Ty::Float, span);
-        }
-        let op = match name {
-            "sin" => Builtin::Sin,
-            "cos" => Builtin::Cos,
-            "tan" => Builtin::Tan,
-            "asin" => Builtin::Asin,
-            "exp" => Builtin::Exp,
-            "ln" => Builtin::Ln,
-            _ => Builtin::Acos,
-        };
-        match self.one_arg(name, args, &Ty::Float, span) {
-            Some(value) => self.mk_builtin(op, [value], Ty::Float, span),
-            None => self.err_expr(span),
-        }
-    }
-}
+//! Reading `sqrt` out of a call's source text.
 
 /// `n` from the text `Int(sqrt(n))`, `Int(sqrt(F64(n)))` or `Int(n.sqrt)`,
 /// when the text is exactly one of those.

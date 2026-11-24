@@ -32,7 +32,7 @@ impl<'p> Compiler<'p, '_> {
             self.places.push(PlacePath { root, steps, keys });
             idx
         } else {
-            match self.place_path_rooted(place, false, held.map(|h| h.1)) {
+            match self.place_path_rooted(place, false, held.map(|h| h.1), false) {
                 Some(path) => path,
                 None => {
                     self.ops.truncate(ops);

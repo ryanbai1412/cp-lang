@@ -4,6 +4,28 @@ use super::*;
 use crate::names::dom_ident;
 
 impl<'p> Emitter<'p> {
+    /// The C++ fn for `max` (`is_max`) or `min` over `ty`: `std::max<T>` / `std::min<T>` where the
+    /// C++ order is the language's, and `cpl::opt_max` / `cpl::opt_min` for an optional, whose
+    /// `none` is the identity. The lifted `max` is `std::max` on an optional packed in one scalar
+    /// with `none` sorting first.
+    pub(crate) fn min_max_fn(&mut self, is_max: bool, ty: &Ty) -> String {
+        let name = if is_max { "max" } else { "min" };
+        let cpp = self.ty(ty);
+        let Ty::Opt(inner) = ty else {
+            return format!("std::{name}<{cpp}>");
+        };
+        let none_first = match **inner {
+            Ty::Pos(_) | Ty::Bound(_) | Ty::Int => true,
+            Ty::Char => self.niches.chars,
+            _ => false,
+        };
+        if is_max && none_first {
+            return format!("std::max<{cpp}>");
+        }
+        self.need("opt_min_max");
+        format!("cpl::opt_{name}")
+    }
+
     pub(super) fn builtin(
         &mut self,
         e: &Expr,
@@ -20,17 +42,22 @@ impl<'p> Emitter<'p> {
         };
         match op {
             Builtin::Min | Builtin::Max => {
-                let name = if op == Builtin::Min { "min" } else { "max" };
-                let ty = self.ty(&e.ty);
                 let all: Vec<String> = codes.iter().map(|c| c.text.clone()).collect();
                 if e.ty == Ty::Unit {
                     // Every `()` is the one `()`: only the arguments' effects remain.
                     let effects: Vec<String> = all.iter().map(|a| format!("(void)({a})")).collect();
-                    Code::primary(format!("({})", effects.join(", ")))
+                    return Code::primary(format!("({})", effects.join(", ")));
+                }
+                let f = self.min_max_fn(op == Builtin::Max, &e.ty);
+                if !f.starts_with("std::") {
+                    let folded = all[1..]
+                        .iter()
+                        .fold(all[0].clone(), |a, b| format!("{f}({a}, {b})"));
+                    Code::primary(folded)
                 } else if all.len() == 2 {
-                    Code::primary(format!("std::{name}<{ty}>({})", all.join(", ")))
+                    Code::primary(format!("{f}({})", all.join(", ")))
                 } else {
-                    Code::primary(format!("std::{name}<{ty}>({{{}}})", all.join(", ")))
+                    Code::primary(format!("{f}({{{}}})", all.join(", ")))
                 }
             }
             Builtin::WrapAdd | Builtin::WrapSub | Builtin::WrapMul => {
@@ -53,21 +80,6 @@ impl<'p> Emitter<'p> {
             Builtin::Flush => {
                 self.need("out");
                 Code::primary("(cpl::flush(), fflush(stdout))".to_string())
-            }
-            Builtin::Atan2 => Code::primary(format!("std::atan2({}, {})", text(0), text(1))),
-            Builtin::Hypot => Code::primary(format!("std::hypot({}, {})", text(0), text(1))),
-            Builtin::Exp => Code::primary(format!("std::exp({})", text(0))),
-            Builtin::Ln => {
-                self.need("fln");
-                Code::primary(format!("cpl::fln({})", text(0)))
-            }
-            Builtin::Sin => Code::primary(format!("std::sin({})", text(0))),
-            Builtin::Cos => Code::primary(format!("std::cos({})", text(0))),
-            Builtin::Tan => Code::primary(format!("std::tan({})", text(0))),
-            Builtin::Asin | Builtin::Acos => {
-                self.need("farc");
-                let f = if op == Builtin::Asin { "asin" } else { "acos" };
-                Code::primary(format!("cpl::f{f}({})", text(0)))
             }
             Builtin::CountQuery => {
                 self.need("count_query");

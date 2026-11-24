@@ -31,8 +31,7 @@ impl<'a> Checker<'a> {
             FnBody::Expr(e) => names.extend(super::lends::names_in(e)),
             FnBody::Block(b) => {
                 for s in &b.stmts {
-                    let (ns, _) = super::lends::item_names(std::slice::from_ref(s));
-                    names.extend(ns);
+                    names.extend(super::lends::stmt_names(std::slice::from_ref(s)));
                 }
             }
             FnBody::None => {}
@@ -211,14 +210,13 @@ impl<'a> Checker<'a> {
                         self.row_bounds.insert(b.name.text.clone(), resolved);
                     }
                     ast::TypeKind::Named { name: tname, .. } => {
-                        if let Some(Def::Trait { fields, .. }) =
-                            self.global(&tname.text).as_deref().cloned()
-                        {
+                        let found = self.global(&tname.text);
+                        if let Some(Def::Trait { fields, .. }) = found.as_deref() {
                             if !fields.is_empty() {
                                 self.row_bounds
                                     .entry(b.name.text.clone())
                                     .or_default()
-                                    .extend(fields);
+                                    .extend(fields.iter().cloned());
                             }
                         }
                     }
@@ -347,8 +345,8 @@ impl<'a> Checker<'a> {
             Some(ast::TypeKind::Yields(_))
         );
         if self.scopes.len() > 1 {
-            self.local_effects
-                .insert(f.name.text.clone(), super::lends::own_effects(f));
+            let eff = super::lends::own_effects(f, &mut *self.env);
+            self.local_effects.insert(f.name.text.clone(), eff);
         }
         self.note_ret_slot(f);
         let fn_depth = self.scopes.len().saturating_sub(1);

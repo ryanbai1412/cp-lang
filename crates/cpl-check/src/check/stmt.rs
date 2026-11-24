@@ -233,9 +233,8 @@ impl<'a> Checker<'a> {
                     if let (ExprKind::List(items), Ty::Named { name: ename, .. }) =
                         (&init.kind, &index[0])
                     {
-                        if let Some(Def::Enum { variants, .. }) =
-                            self.type_def(ename).as_deref().cloned()
-                        {
+                        let found = self.type_def(ename);
+                        if let Some(Def::Enum { variants, .. }) = found.as_deref() {
                             if variants.iter().all(|(_, fs)| fs.is_empty())
                                 && items.len() != variants.len()
                             {
@@ -328,7 +327,7 @@ impl<'a> Checker<'a> {
                 if let StmtKind::Fn(f) = &stmt.kind {
                     let sig = self.quietly(|c| c.fn_sig(f, None));
                     self.declare(&f.name.text, f.name.span, sig, false, "fn");
-                    let eff = super::lends::own_effects(f);
+                    let eff = super::lends::own_effects(f, &mut *self.env);
                     let caps: Vec<String> = eff
                         .reads
                         .into_iter()
@@ -787,6 +786,22 @@ impl<'a> Checker<'a> {
                     }
                     _ => false,
                 };
+                // `let v: [V]0..=9 = gen()` reads two ways; the help names both.
+                if let (true, Some(written), Some(init)) = (fills, ty, init) {
+                    let bare_gen = matches!(&init.kind, ExprKind::Call { callee, args }
+                        if args.is_empty() && matches!(&callee.kind, ExprKind::Name(n) if n == "gen"));
+                    if let (true, cpl_syntax::ast::TypeKind::Array { elem, .. }) =
+                        (bare_gen, &written.kind)
+                    {
+                        let text = |s: Span| &self.src[s.start as usize..s.end as usize];
+                        let help = format!(
+                            "write `gen<{}>()` for a random array, or `gen<{}>()` for one random value in every cell",
+                            text(written.span),
+                            text(elem.span)
+                        );
+                        self.gen_fill_help.insert(init.span, help);
+                    }
+                }
                 // `var adj: [V]List<V> = []`: the `[]` is one cell.
                 if let (true, Some(Ty::Array { elem, .. }), Some(init)) = (fills, &declared, init) {
                     if matches!(&init.kind, ExprKind::List(items) if items.is_empty()) {
@@ -966,8 +981,8 @@ impl<'a> Checker<'a> {
                     }),
                 ) = (&pat.kind, init)
                 {
-                    self.local_effects
-                        .insert(n.clone(), super::lends::lambda_effects(params, body));
+                    let eff = super::lends::lambda_effects(params, body, &mut *self.env);
+                    self.local_effects.insert(n.clone(), eff);
                 }
                 let is_mut = *mutable
                     || matches!(
@@ -1266,7 +1281,9 @@ impl<'a> Checker<'a> {
                     );
                 }
                 self.owned(&owner, &body.stmts);
+                let outer_trait = self.enter_impl_trait(trait_name.as_ref());
                 self.bounded_methods(&body.stmts, &self_ty, bounds);
+                self.impl_trait = outer_trait;
                 self.leave_body(scope);
             }
             StmtKind::Use { .. } | StmtKind::Break(_) | StmtKind::Continue(_) | StmtKind::Error => {

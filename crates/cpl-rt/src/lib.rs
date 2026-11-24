@@ -17,6 +17,15 @@ pub enum Prim {
     Clz,
     BitWidth,
     BitCeil,
+    Acos,
+    Asin,
+    Atan2,
+    Cos,
+    Sin,
+    Tan,
+    Hypot,
+    Exp,
+    Ln,
 }
 
 /// A scalar the interpreter hands to, and gets back from, a primitive.
@@ -60,8 +69,6 @@ pub enum Fault {
     WideOverflow,
     /// `bit_ceil` above 2^62: the result does not fit in an `Int`.
     CeilOverflow,
-    /// The argument below zero (`sqrt`).
-    Negative(f64),
     /// The rounded float, outside `Int`.
     NotInt(f64),
 }
@@ -87,7 +94,7 @@ const TO_INT: &str = "narrow";
 
 impl Prim {
     /// The table: each primitive, at its stable number.
-    pub const ALL: [Prim; 11] = [
+    pub const ALL: [Prim; 20] = [
         Prim::Popcount,
         Prim::Abs,
         Prim::Sqrt,
@@ -99,10 +106,19 @@ impl Prim {
         Prim::Clz,
         Prim::BitWidth,
         Prim::BitCeil,
+        Prim::Acos,
+        Prim::Asin,
+        Prim::Atan2,
+        Prim::Cos,
+        Prim::Sin,
+        Prim::Tan,
+        Prim::Hypot,
+        Prim::Exp,
+        Prim::Ln,
     ];
 
     /// Each primitive's name, as `@intrinsic("...")` writes it.
-    pub const IDS: [&'static str; 11] = [
+    pub const IDS: [&'static str; 20] = [
         "popcount",
         "abs",
         "sqrt",
@@ -114,6 +130,15 @@ impl Prim {
         "clz",
         "bit_width",
         "bit_ceil",
+        "acos",
+        "asin",
+        "atan2",
+        "cos",
+        "sin",
+        "tan",
+        "hypot",
+        "exp",
+        "ln",
     ];
 
     /// The primitive `@intrinsic(id)` names.
@@ -129,7 +154,9 @@ impl Prim {
 
     /// The parameter types, `|` between the types one accepts.
     pub fn params(self) -> &'static [&'static str] {
-        const PARAMS: [&[&str]; 11] = [
+        const REAL: &[&str] = &["Int|F64"];
+        const REALS: &[&str] = &["Int|F64", "Int|F64"];
+        const PARAMS: [&[&str]; 20] = [
             &["Int|U64"],
             &["Int|I128|F64"],
             &["Int|F64"],
@@ -141,13 +168,22 @@ impl Prim {
             &["Int|U64"],
             &["Int|U64"],
             &["Int"],
+            REAL,
+            REAL,
+            REALS,
+            REAL,
+            REAL,
+            REAL,
+            REALS,
+            REAL,
+            REAL,
         ];
         PARAMS[self as usize]
     }
 
     /// The result type, `|` between the types it may be.
     pub fn result(self) -> &'static str {
-        const RESULTS: [&str; 11] = [
+        const RESULTS: [&str; 20] = [
             "Int",
             "Int|I128|F64",
             "F64",
@@ -159,6 +195,15 @@ impl Prim {
             "Int",
             "Int",
             "Int",
+            "F64",
+            "F64",
+            "F64",
+            "F64",
+            "F64",
+            "F64",
+            "F64",
+            "F64",
+            "F64",
         ];
         RESULTS[self as usize]
     }
@@ -173,7 +218,7 @@ impl Prim {
         match self {
             Prim::Popcount => "the number of 1 bits, one `popcnt`",
             Prim::Abs => "the absolute value; an integer traps where it has none",
-            Prim::Sqrt => "the square root as an `F64`; traps below zero",
+            Prim::Sqrt => "the square root as an `F64`",
             Prim::Floor => "rounds down to an `Int`; traps outside `Int`",
             Prim::Ceil => "rounds up to an `Int`; traps outside `Int`",
             Prim::Round => {
@@ -184,6 +229,15 @@ impl Prim {
             Prim::Clz => "the 0 bits above the highest 1 bit, 64 for 0; one `lzcnt` with lzcnt",
             Prim::BitWidth => "the bits needed to write the word, 0 for 0",
             Prim::BitCeil => "the smallest power of two at least the value; traps above 2^62",
+            Prim::Acos => "the angle in `0..=pi` whose cosine it is",
+            Prim::Asin => "the angle in `-pi/2..=pi/2` whose sine it is",
+            Prim::Atan2 => "the angle of the point `(x, y)` in `-pi..=pi`, from `y` and `x`",
+            Prim::Cos => "the cosine of an angle in radians",
+            Prim::Sin => "the sine of an angle in radians",
+            Prim::Tan => "the tangent of an angle in radians",
+            Prim::Hypot => "the length of `(x, y)`, without overflow in the squares",
+            Prim::Exp => "`e` to the power of the value",
+            Prim::Ln => "the natural logarithm",
         }
     }
 
@@ -204,8 +258,8 @@ impl Prim {
             }
             Prim::Sqrt => {
                 const F: &[Cpp] = &[
-                    cpp("F64", "cpl::fsqrt($0)", Some("fsqrt")),
-                    cpp("*", "cpl::fsqrt((double)($0))", Some("fsqrt")),
+                    cpp("F64", "std::sqrt($0)", None),
+                    cpp("*", "std::sqrt((double)($0))", None),
                 ];
                 F
             }
@@ -241,10 +295,49 @@ impl Prim {
                 const F: &[Cpp] = &[cpp("*", "cpl::bit_ceil($0)", Some("bits"))];
                 F
             }
+            Prim::Acos => {
+                const F: &[Cpp] = &[cpp("*", "std::acos($0)", None)];
+                F
+            }
+            Prim::Asin => {
+                const F: &[Cpp] = &[cpp("*", "std::asin($0)", None)];
+                F
+            }
+            Prim::Atan2 => {
+                const F: &[Cpp] = &[cpp("*", "std::atan2($0, $1)", None)];
+                F
+            }
+            Prim::Cos => {
+                const F: &[Cpp] = &[cpp("*", "std::cos($0)", None)];
+                F
+            }
+            Prim::Sin => {
+                const F: &[Cpp] = &[cpp("*", "std::sin($0)", None)];
+                F
+            }
+            Prim::Tan => {
+                const F: &[Cpp] = &[cpp("*", "std::tan($0)", None)];
+                F
+            }
+            Prim::Hypot => {
+                const F: &[Cpp] = &[cpp("*", "std::hypot($0, $1)", None)];
+                F
+            }
+            Prim::Exp => {
+                const F: &[Cpp] = &[cpp("*", "std::exp($0)", None)];
+                F
+            }
+            Prim::Ln => {
+                const F: &[Cpp] = &[cpp("*", "std::log($0)", None)];
+                F
+            }
         }
     }
 
-    /// Runs a primitive of one scalar, as the interpreter does.
+    /// Runs a primitive on its first argument, as the interpreter does. A
+    /// float row (`sqrt`, `sin`, `atan2`, ..) gives its argument as the `F64`
+    /// it reads as: the interpreter applies the fn, C++ calls `std::` itself,
+    /// and the row's domain is its library's to check.
     pub fn run(self, a: Scalar) -> Ran {
         let w = a.bits();
         let x = a.f64();
@@ -265,8 +358,6 @@ impl Prim {
                 }
                 y as i64
             }
-            Prim::Sqrt if x < 0.0 => return Err(Fault::Negative(x)),
-            Prim::Sqrt => return Ok(Scalar::F64(x.sqrt())),
             Prim::BitCeil => match w as i64 {
                 v if v > 1 << 62 => return Err(Fault::CeilOverflow),
                 v if v <= 1 => 1,
@@ -280,6 +371,7 @@ impl Prim {
                 Scalar::F64(v) => return Ok(Scalar::F64(v.abs())),
                 other => return Ok(other),
             },
+            _ => return Ok(Scalar::F64(x)),
         };
         Ok(Scalar::Int(n))
     }
@@ -319,7 +411,7 @@ mod tests {
     /// count in the commit that adds it.
     #[test]
     fn table_count() {
-        assert_eq!(Prim::ALL.len(), 11);
+        assert_eq!(Prim::ALL.len(), 20);
     }
 
     #[test]
@@ -373,6 +465,14 @@ mod tests {
     }
 
     #[test]
+    fn a_float_row_gives_its_argument_as_an_f64() {
+        for p in [Prim::Sqrt, Prim::Ln, Prim::Acos, Prim::Atan2] {
+            assert_eq!(p.run(Scalar::Int(-3)), Ok(Scalar::F64(-3.0)), "{p:?}");
+        }
+        assert_eq!(Prim::Exp.run(Scalar::F64(0.5)), Ok(Scalar::F64(0.5)));
+    }
+
+    #[test]
     fn math_traps_where_cpp_fails() {
         assert_eq!(Prim::Abs.run(Scalar::Int(i64::MIN)), Err(Fault::Overflow));
         let edge = 9223372036854775808.0;
@@ -393,8 +493,6 @@ mod tests {
         assert_eq!(Prim::Abs.run(Scalar::I128(-5)), Ok(Scalar::I128(5)));
         assert_eq!(Prim::Abs.cpp("F64", &["x".into()]), "std::fabs(x)");
         assert_eq!(Prim::Abs.cpp("Int", &["x".into()]), "std::abs((ll)(x))");
-        assert_eq!(Prim::Sqrt.run(Scalar::Int(-1)), Err(Fault::Negative(-1.0)));
-        assert_eq!(Prim::Sqrt.run(Scalar::Int(9)), Ok(Scalar::F64(3.0)));
         assert_eq!(Prim::Round.run(Scalar::F64(-2.5)), Ok(Scalar::Int(-3)));
         assert_eq!(Prim::Trunc.run(Scalar::F64(-2.5)), Ok(Scalar::Int(-2)));
         assert!(matches!(

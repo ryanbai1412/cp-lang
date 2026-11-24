@@ -948,7 +948,7 @@ impl<'a> Lowerer<'a> {
                 self.err_expr(span)
             }
             None => {
-                self.report(span, msgs::ir::UNSUPPORTED_IS_NOT_IN_SCOPE, &[&name]);
+                self.report_str(span, msgs::ir::UNSUPPORTED_IS_NOT_IN_SCOPE, name);
                 self.err_expr(span)
             }
             Some(sym) => {
@@ -1017,175 +1017,194 @@ impl<'a> Lowerer<'a> {
             .iter()
             .take_while(|d| d.is_none())
             .count();
-        if !explicit.is_empty()
+        let final_args = if !explicit.is_empty()
             && explicit.len() >= min_explicit
             && explicit.len() <= gen_names.len()
         {
-            self.emit_anon_product_defs(&explicit, span);
-            let sid = self.instantiate_struct(gid, explicit);
-            return self.construct_or_new(sid, args, span);
-        }
-        // A hint says which instantiation is meant, even in the struct's own body
-        // (`fn swap(self) -> Pair<B, A> = Pair(second, first)`).
-        if let Some(Ty::Struct(hsid)) = hint {
-            if let Some((hgid, _)) = &self.structs[*hsid].origin_gen {
-                if *hgid == gid {
-                    return self.construct_or_new(*hsid, args, span);
-                }
-            }
-        }
-        // Inside the struct's own body (`Mod(x % P)`, `Dsu(...)`, `Order(...)`), reuse `self_struct`!
-        if explicit.is_empty() {
-            if let Some(sid) = self.self_struct {
-                if self.structs[sid]
-                    .origin_gen
-                    .as_ref()
-                    .is_some_and(|(g, _)| *g == gid)
-                {
-                    return self.construct_or_new(sid, args, span);
-                }
-            }
-        }
-        // Otherwise infer generic params from `fn new(...)` (if present) or constructor fields (`Lit(Road(a), true)`).
-        let tpl_offset = self.gen_structs[gid].offset;
-        let mut ops: Vec<(&ast::Type, &ast::Expr)> = Vec::new();
-        let mut inferred: GenEnv = HashMap::new();
-        for (n, a) in gen_names.iter().zip(&explicit) {
-            inferred.insert(n.clone(), a.clone());
-        }
-        let new_fn = decl.methods.iter().find_map(|s| match &s.kind {
-            ast::StmtKind::Fn(f) if f.name.text == "new" => Some(f),
-            _ => None,
-        });
-        if let Some(new_fn) = new_fn {
-            let params = new_fn.params.as_slice();
-            // `fn new<S: Indexed<K, T>, K>(s: S)`: the method's own generics bind
-            // through its arguments too, and its bounds then bind the struct's `T`.
-            let mut all_names = gen_names.clone();
-            all_names.extend(new_fn.generics.iter().map(|g| g.text.clone()));
-            let mut pos_idx = 0usize;
-            for arg in args {
-                let param = if let Some(aname) = &arg.name {
-                    params.iter().find(|p| p.label_text() == aname.text)
-                } else {
-                    let p = params.get(pos_idx);
-                    pos_idx += 1;
-                    p
-                };
-                if let Some(p) = param {
-                    if let Some(pat_ty) = &p.ty {
-                        if self.defer_bare_op(pat_ty, &arg.value, &gen_names, &inferred) {
-                            ops.push((pat_ty, &arg.value));
-                        }
-                        self.unify_lambda_params(
-                            pat_ty,
-                            &arg.value,
-                            tpl_mod,
-                            &gen_names,
-                            &mut inferred,
-                        );
-                        self.bind_range_domain(
-                            pat_ty,
-                            &arg.value,
-                            &gen_names,
-                            &mut inferred,
-                            span,
-                            None,
-                        );
+            explicit
+        } else {
+            // A hint says which instantiation is meant, even in the struct's own body
+            // (`fn swap(self) -> Pair<B, A> = Pair(second, first)`).
+            if let Some(Ty::Struct(hsid)) = hint {
+                if let Some((hgid, _)) = &self.structs[*hsid].origin_gen {
+                    if *hgid == gid {
+                        return self.construct_or_new(*hsid, args, span);
                     }
+                }
+            }
+            // Inside the struct's own body (`Mod(x % P)`, `Dsu(...)`, `Order(...)`), reuse `self_struct`!
+            if explicit.is_empty() {
+                if let Some(sid) = self.self_struct {
+                    if self.structs[sid]
+                        .origin_gen
+                        .as_ref()
+                        .is_some_and(|(g, _)| *g == gid)
+                    {
+                        return self.construct_or_new(sid, args, span);
+                    }
+                }
+            }
+            // Otherwise infer generic params from `fn new(...)` (if present) or constructor fields (`Lit(Road(a), true)`).
+            let tpl_offset = self.gen_structs[gid].offset;
+            let mut ops: Vec<(&ast::Type, &ast::Expr)> = Vec::new();
+            let mut inferred: GenEnv = HashMap::new();
+            for (n, a) in gen_names.iter().zip(&explicit) {
+                inferred.insert(n.clone(), a.clone());
+            }
+            let new_fn = decl.methods.iter().find_map(|s| match &s.kind {
+                ast::StmtKind::Fn(f) if f.name.text == "new" => Some(f),
+                _ => None,
+            });
+            if let Some(new_fn) = new_fn {
+                let params = new_fn.params.as_slice();
+                // `fn new<S: Indexed<K, T>, K>(s: S)`: the method's own generics bind
+                // through its arguments too, and its bounds then bind the struct's `T`.
+                let mut all_names = gen_names.clone();
+                all_names.extend(new_fn.generics.iter().map(|g| g.text.clone()));
+                let mut pos_idx = 0usize;
+                for arg in args {
+                    let param = if let Some(aname) = &arg.name {
+                        params.iter().find(|p| p.label_text() == aname.text)
+                    } else {
+                        let p = params.get(pos_idx);
+                        pos_idx += 1;
+                        p
+                    };
+                    if let Some(p) = param {
+                        if let Some(pat_ty) = &p.ty {
+                            if self.defer_bare_op(pat_ty, &arg.value, &gen_names, &inferred) {
+                                ops.push((pat_ty, &arg.value));
+                            }
+                            self.unify_lambda_params(
+                                pat_ty,
+                                &arg.value,
+                                tpl_mod,
+                                &gen_names,
+                                &mut inferred,
+                            );
+                            self.bind_range_domain(
+                                pat_ty,
+                                &arg.value,
+                                &gen_names,
+                                &mut inferred,
+                                span,
+                                None,
+                            );
+                        }
+                        if !matches!(arg.value.kind, ast::ExprKind::Lambda { .. })
+                            && !matches!(&arg.value.kind, ast::ExprKind::Name(n) if matches!(n.as_str(), "min" | "max"))
+                        {
+                            if let Some(pty) = self.probe_ty_silent(&arg.value) {
+                                if let Some(pat_ty) = &p.ty {
+                                    self.unify_ast_ty(
+                                        pat_ty,
+                                        &pty,
+                                        tpl_mod,
+                                        &all_names,
+                                        &mut inferred,
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+                let bounds: Vec<ast::Bound> =
+                    new_fn.bounds.iter().chain(&decl.bounds).cloned().collect();
+                self.bind_bare_ops(&ops, &bounds, (tpl_mod, tpl_offset), &mut inferred);
+                self.bind_struct_from_new_ret(
+                    new_fn,
+                    args,
+                    decl,
+                    (tpl_mod, tpl_offset),
+                    &mut inferred,
+                );
+                self.bind_impl_bounds(&new_fn.bounds, tpl_mod, &mut inferred);
+                for g in &gen_names {
+                    if !inferred.contains_key(g) {
+                        let dom_from_arg = args.iter().find_map(|arg| {
+                            if matches!(arg.value.kind, ast::ExprKind::Lambda { .. }) {
+                                return None;
+                            }
+                            match self.probe_ty_silent(&arg.value)? {
+                                Ty::Array { dims, elem } if matches!(*elem, Ty::List(_)) => {
+                                    match dims.as_slice() {
+                                        [Dim::Pos(d)] => Some(*d),
+                                        _ => None,
+                                    }
+                                }
+                                Ty::Struct(sid) => {
+                                    let info = &self.structs[sid];
+                                    info.env
+                                        .get(g)
+                                        .and_then(|a| match a {
+                                            GenArg::Domain(d) | GenArg::Ty(Ty::Pos(d)) => Some(*d),
+                                            _ => None,
+                                        })
+                                        .or_else(|| {
+                                            info.origin_gen.as_ref().and_then(|(_, gargs)| {
+                                                gargs.iter().find_map(|a| match a {
+                                                    GenArg::Domain(d) | GenArg::Ty(Ty::Pos(d)) => {
+                                                        Some(*d)
+                                                    }
+                                                    _ => None,
+                                                })
+                                            })
+                                        })
+                                }
+                                _ => None,
+                            }
+                        });
+                        if let Some(d) = dom_from_arg {
+                            inferred.insert(g.clone(), GenArg::Domain(d));
+                        }
+                    }
+                }
+            } else {
+                for (f, arg) in decl.fields.iter().zip(args) {
+                    if self.defer_bare_op(&f.ty, &arg.value, &gen_names, &inferred) {
+                        ops.push((&f.ty, &arg.value));
+                    }
+                    self.unify_lambda_params(&f.ty, &arg.value, tpl_mod, &gen_names, &mut inferred);
+                    self.bind_range_domain(
+                        &f.ty,
+                        &arg.value,
+                        &gen_names,
+                        &mut inferred,
+                        span,
+                        None,
+                    );
                     if !matches!(arg.value.kind, ast::ExprKind::Lambda { .. })
                         && !matches!(&arg.value.kind, ast::ExprKind::Name(n) if matches!(n.as_str(), "min" | "max"))
                     {
                         if let Some(pty) = self.probe_ty_silent(&arg.value) {
-                            if let Some(pat_ty) = &p.ty {
-                                self.unify_ast_ty(pat_ty, &pty, tpl_mod, &all_names, &mut inferred);
-                            }
+                            self.unify_ast_ty(&f.ty, &pty, tpl_mod, &gen_names, &mut inferred);
                         }
                     }
                 }
             }
-            let bounds: Vec<ast::Bound> =
-                new_fn.bounds.iter().chain(&decl.bounds).cloned().collect();
-            self.bind_bare_ops(&ops, &bounds, (tpl_mod, tpl_offset), &mut inferred);
-            self.bind_struct_from_new_ret(new_fn, args, decl, (tpl_mod, tpl_offset), &mut inferred);
-            self.bind_impl_bounds(&new_fn.bounds, tpl_mod, &mut inferred);
-            for g in &gen_names {
-                if !inferred.contains_key(g) {
-                    let dom_from_arg = args.iter().find_map(|arg| {
-                        if matches!(arg.value.kind, ast::ExprKind::Lambda { .. }) {
-                            return None;
+            self.bind_bare_ops(&ops, &decl.bounds, (tpl_mod, tpl_offset), &mut inferred);
+            // `Within<S: Versioned<D, T>, D, T>(store: S)`: `D` and `T` come from `S`'s impl.
+            self.bind_impl_bounds(&decl.bounds, tpl_mod, &mut inferred);
+            let mut final_args = Vec::with_capacity(gen_names.len());
+            for (i, g) in gen_names.iter().enumerate() {
+                match inferred.get(g) {
+                    Some(a) => final_args.push(a.clone()),
+                    None => {
+                        if let Some(Some(def_ty)) = decl.generic_defaults.get(i) {
+                            let saved_mod = std::mem::replace(&mut self.cur_mod, tpl_mod);
+                            let saved_env = std::mem::replace(&mut self.gen_env, inferred.clone());
+                            let resolved = self.resolve_ty(def_ty);
+                            self.gen_env = saved_env;
+                            self.cur_mod = saved_mod;
+                            final_args.push(GenArg::Ty(resolved));
+                        } else {
+                            final_args.push(GenArg::Ty(Ty::Int));
                         }
-                        match self.probe_ty_silent(&arg.value)? {
-                            Ty::Array { dims, elem } if matches!(*elem, Ty::List(_)) => {
-                                match dims.as_slice() {
-                                    [Dim::Pos(d)] => Some(*d),
-                                    _ => None,
-                                }
-                            }
-                            Ty::Struct(sid) => {
-                                let info = &self.structs[sid];
-                                info.env
-                                    .get(g)
-                                    .and_then(|a| match a {
-                                        GenArg::Domain(d) | GenArg::Ty(Ty::Pos(d)) => Some(*d),
-                                        _ => None,
-                                    })
-                                    .or_else(|| {
-                                        info.origin_gen.as_ref().and_then(|(_, gargs)| {
-                                            gargs.iter().find_map(|a| match a {
-                                                GenArg::Domain(d) | GenArg::Ty(Ty::Pos(d)) => {
-                                                    Some(*d)
-                                                }
-                                                _ => None,
-                                            })
-                                        })
-                                    })
-                            }
-                            _ => None,
-                        }
-                    });
-                    if let Some(d) = dom_from_arg {
-                        inferred.insert(g.clone(), GenArg::Domain(d));
                     }
                 }
             }
-        } else {
-            for (f, arg) in decl.fields.iter().zip(args) {
-                if self.defer_bare_op(&f.ty, &arg.value, &gen_names, &inferred) {
-                    ops.push((&f.ty, &arg.value));
-                }
-                self.unify_lambda_params(&f.ty, &arg.value, tpl_mod, &gen_names, &mut inferred);
-                self.bind_range_domain(&f.ty, &arg.value, &gen_names, &mut inferred, span, None);
-                if !matches!(arg.value.kind, ast::ExprKind::Lambda { .. })
-                    && !matches!(&arg.value.kind, ast::ExprKind::Name(n) if matches!(n.as_str(), "min" | "max"))
-                {
-                    if let Some(pty) = self.probe_ty_silent(&arg.value) {
-                        self.unify_ast_ty(&f.ty, &pty, tpl_mod, &gen_names, &mut inferred);
-                    }
-                }
-            }
-        }
-        self.bind_bare_ops(&ops, &decl.bounds, (tpl_mod, tpl_offset), &mut inferred);
-        // `Within<S: Versioned<D, T>, D, T>(store: S)`: `D` and `T` come from `S`'s impl.
-        self.bind_impl_bounds(&decl.bounds, tpl_mod, &mut inferred);
-        let mut final_args = Vec::with_capacity(gen_names.len());
-        for (i, g) in gen_names.iter().enumerate() {
-            match inferred.get(g) {
-                Some(a) => final_args.push(a.clone()),
-                None => {
-                    if let Some(Some(def_ty)) = decl.generic_defaults.get(i) {
-                        let saved_mod = std::mem::replace(&mut self.cur_mod, tpl_mod);
-                        let saved_env = std::mem::replace(&mut self.gen_env, inferred.clone());
-                        let resolved = self.resolve_ty(def_ty);
-                        self.gen_env = saved_env;
-                        self.cur_mod = saved_mod;
-                        final_args.push(GenArg::Ty(resolved));
-                    } else {
-                        final_args.push(GenArg::Ty(Ty::Int));
-                    }
-                }
-            }
-        }
+            final_args
+        };
         self.emit_anon_product_defs(&final_args, span);
         let sid = self.instantiate_struct(gid, final_args);
         self.construct_or_new(sid, args, span)
@@ -1519,14 +1538,14 @@ impl<'a> Lowerer<'a> {
                             .filter(|p| !has_receiver || p.name.text != "self")
                             .nth(at)
                             .and_then(|p| p.ty.as_ref());
-                        let value = self.expect_declared(&arg.value, &param.ty, declared);
                         let value = match declared.and_then(|t| self.const_param_range(id, t)) {
-                            Some(b) => self.check_arg(value, &b, arg.value.span),
-                            None => value,
-                        };
-                        let value = match declared.and_then(|t| self.const_param_cells(id, t)) {
-                            Some(cells) => self.check_fresh_cells(value, &cells, &arg.value),
-                            None => value,
+                            Some(RangeInfo::Scalar(b)) => {
+                                let value = self.expect_declared(&arg.value, &param.ty, declared);
+                                self.check_arg(value, &b, arg.value.span)
+                            }
+                            info => self.store_cells(&arg.value, info, &mut |l| {
+                                l.expect_declared(&arg.value, &param.ty, declared)
+                            }),
                         };
                         lowered.push(Arg::Value(value));
                     }
@@ -1792,8 +1811,7 @@ impl<'a> Lowerer<'a> {
                     };
                     let v = self.field_keys(id, &decl.fields[i].ty, v, &arg.value);
                     let v = match self.struct_field_range(id, i) {
-                        Some(RangeInfo::Scalar(b)) => self.check_range(v, &b, arg.value.span),
-                        Some(cells) => self.check_fresh_cells(v, &cells, &arg.value),
+                        Some(info) => self.check_cell(v, &info, &arg.value),
                         None => v,
                     };
                     values.push(v);

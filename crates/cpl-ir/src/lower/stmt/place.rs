@@ -313,12 +313,9 @@ impl<'a> Lowerer<'a> {
 }
 
 pub(in crate::lower) fn root_place(place: &Place) -> PlaceKind {
-    match &place.kind {
-        PlaceKind::Local(s) => PlaceKind::Local(*s),
-        PlaceKind::Global(g) => PlaceKind::Global(*g),
-        PlaceKind::Index(base, _) | PlaceKind::Field(base, _) | PlaceKind::Some(base) => {
-            root_place(base)
-        }
+    match crate::walk::root(place) {
+        (false, slot) => PlaceKind::Local(slot),
+        (true, id) => PlaceKind::Global(id),
     }
 }
 

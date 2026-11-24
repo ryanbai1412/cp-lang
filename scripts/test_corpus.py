@@ -556,9 +556,54 @@ class MaxShortTest(unittest.TestCase):
         self.assertEqual(corpus.bounds_findings("p", port.replace("m * n", "m * k")), ["bounds-unread p m * k"])
         self.assertEqual(corpus.short_of("p", port, {"m": 20, "n": 2}), [])
 
+    MULTI = ("// Bounds: n: 1..=2e5; sum(n): 1..=2e5; k: 1..=n; a: 1..=k\n@!multitest\nlet n: 1..=2e5 = read()\n"
+             "let k: 1..=n = read()\nlet a: [n](1..=k) = read()\n")
+
+    def test_a_multitest_size_reaches_its_bound_in_one_case_or_by_its_stated_sum(self):
+        self.assertEqual(corpus.bounds_findings("p", self.MULTI), [])
+        self.assertEqual(corpus.short_of("p", self.MULTI, [{"n": 200000, "k": 200000}]), [])
+        self.assertEqual(corpus.short_of("p", self.MULTI, [{"n": 100000, "k": 100000}] * 2), [])
+        self.assertEqual(corpus.short_of("p", self.MULTI, [{"n": 100000, "k": 3}, {"n": 100000, "k": 100000}]), [])
+
+    def test_a_multitest_under_its_sum_and_every_case_bound_is_short(self):
+        self.assertEqual(corpus.short_of("p", self.MULTI, [{"n": 1000, "k": 1000}] * 3),
+                         ["max-short p n: --max reads 1000, the statement allows 2e5"])
+        self.assertEqual(corpus.short_of("p", self.MULTI.replace("sum(n): 1..=2e5; ", ""),
+                                         [{"n": 100000, "k": 100000}] * 2),
+                         ["max-short p n: --max reads 100000, the statement allows 2e5"])
+        self.assertEqual(corpus.short_of("p", self.MULTI, [{"n": 100000, "k": 5}] * 2), [])
+
+    def test_the_read_prefix_keeps_the_lets_a_kept_line_names(self):
+        port = ("let top = 100\ndomain Half = 0..=top / 2\nvar sieve = Bitset<Half>.single(Half(0))\n"
+                "for p in 3..10 by 2:\n    sieve.add(Half(p))\n@multitest\nlet n: 1..=1e4 = read()\n")
+        self.assertEqual(corpus.read_prefix(port, 6), "let top = 100\ndomain Half = 0..=top / 2\n@multitest\n"
+                         "let n: 1..=1e4 = read()\n")
+        self.assertEqual(corpus.case_prefix(port + "for i in 0..n:\n    let x: Int = read()\nprint(n)\n"),
+                         port + "for i in 0..n:\n    let x: Int = read()\n")
+
+    def test_the_read_slice_keeps_reads_their_blocks_and_what_they_name(self):
+        port = ("type Run = (l: Int, v: Int)\n@!multitest\nlet n: 1..=1e5 = read()\ndomain V = 1..=n\n"
+                "fn gen() -> [V]Int:\n    [V] e => 1\n\nlet w: [V]Int = read(gen: gen)\nvar tree = Tree(w)\n"
+                "var last = 0\nfor _ in 0..n:\n    let kind: 1..=2 = read()\n    if kind == 1:\n"
+                "        let l = tree.top\n        last = l\n    elif kind == 2:\n        tree.add(1)\n"
+                "    else:\n        let v: V = read()\n        print(v)\nprint(last)\n")
+        self.assertEqual(corpus.read_slice(port),
+                         "type Run = (l: Int, v: Int)\n@!multitest\nlet n: 1..=1e5 = read()\ndomain V = 1..=n\nfn gen() -> [V]Int:\n"
+                         "    [V] e => 1\n\nlet w: [V]Int = read(gen: gen)\nfor _ in 0..n:\n"
+                         "    let kind: 1..=2 = read()\n    if kind == 1:\n        let l = tree.top\n"
+                         "        last = l\n    elif kind == 2:\n        tree.add(1)\n    else:\n"
+                         "        let v: V = read()\n")
+
     def test_a_port_it_cant_read_is_max_unread_not_passed(self):
         pkg = types.SimpleNamespace(id="p", port=mock.Mock(read_text=lambda **_: "@!multitest\n" + self.REL))
-        self.assertEqual(corpus.max_short(pkg, "cpl", "1\n"), ["max-unread p multitest"])
+        with mock.patch.object(corpus, "case_values", return_value=None):
+            self.assertEqual(corpus.max_short(pkg, "cpl", "1\n"), ["max-unread p -"])
+        with mock.patch.object(corpus, "case_values", return_value=corpus.TIMED_OUT):
+            self.assertEqual(corpus.max_short(pkg, "cpl", "1\n"), ["max-unread p timeout"])
+        with mock.patch.object(corpus, "case_values", return_value=[{"n": 9, "m": 2}, {"n": 100000, "m": 99999}]):
+            self.assertEqual(corpus.max_short(pkg, "cpl", "2\n"), [])
+            # a cut that ends on other than T cases misread its input
+            self.assertEqual(corpus.max_short(pkg, "cpl", "3\n"), ["max-unread p -"])
         pkg.port.read_text = lambda **_: self.REL
         with mock.patch.object(corpus, "read_values", return_value=None):
             self.assertEqual(corpus.max_short(pkg, "cpl", "1\n"), ["max-unread p -"])
@@ -942,7 +987,7 @@ class NativeTest(Corpus):
 class AtMax(unittest.TestCase):
     """`at_max` on scripted runs: the checked C++, then three judge runs taking turns with three accepted runs."""
 
-    def findings(self, safe, mine, theirs=(0, b"1\n", 0.05, 10), limits=(2000, 256)):
+    def findings(self, safe, mine, theirs=(0, b"1\n", 0.05, 10), limits=(2000, 256), later=None):
         self.order = []
         result = {"safe": safe, "exe": mine, "orig": theirs}
         def measure(exe, data, t):
@@ -956,7 +1001,7 @@ class AtMax(unittest.TestCase):
             self.addCleanup(setattr, corpus, name, getattr(corpus, name))
             setattr(corpus, name, fake)
         pkg = types.SimpleNamespace(id="p", port="port.cp", checker=None)
-        return corpus.at_max(pkg, "cpl", "exe", "orig", b"")
+        return corpus.at_max(pkg, "cpl", "exe", "orig", b"7\n", later)
 
     def test_a_fast_matching_run_is_no_finding(self):
         self.assertEqual(self.findings((0, b"1\n", 0.1, 10), (0, b"1\n", 0.05, 10)), [])
@@ -990,6 +1035,19 @@ class AtMax(unittest.TestCase):
     def test_the_port_and_the_accepted_cpp_take_turns(self):
         self.findings((0, b"1\n", 0.1, 10), (0, b"1\n", 0.05, 10))
         self.assertEqual(self.order, ["safe", "exe", "orig", "orig", "exe", "exe", "orig"])
+
+    def test_given_a_later_list_the_timed_runs_wait_for_it(self):
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp)
+        self.addCleanup(setattr, corpus, "MAX_INPUTS", corpus.MAX_INPUTS)
+        corpus.MAX_INPUTS = tmp
+        later = []
+        self.assertEqual(self.findings((0, b"1\n", 1, 10), (0, b"1\n", 0.5, 10), (0, b"1\n", 0.2, 10), later=later), [])
+        self.assertEqual(self.order, ["safe"])
+        self.assertEqual([job() for job in later],
+                         [["slow p --max: 0.500 s of CPU, 2.50x the accepted C++'s 0.200 s, over 1.5x"]])
+        self.assertEqual(self.order, ["safe", "exe", "orig", "orig", "exe", "exe", "orig"])
+        self.assertEqual(os.listdir(tmp), [])
 
     def test_the_timed_runs_hold_the_lock_and_let_it_go(self):
         self.findings((0, b"1\n", 0.1, 10), (0, b"1\n", 0.05, 10))
@@ -1486,6 +1544,50 @@ class AtBaseTest(unittest.TestCase):
         # Idioms' btoi06p5: the base build failed inside land.sh and every finding read as new, silently.
         self.assertIn("no verdict at the base", self._base("interp-timeout yac6p6 08.in\n", build=101)[1])
         self.assertIn("verify exited 2", self._base("interp-timeout yac6p6 08.in\n", code=2)[1])
+
+
+class CurrentCplTest(unittest.TestCase):
+    """Every script runs the newest current `cpl`, so a release build left from before a
+    rebase never scores or measures the old code (newcomer score.py scored 0% on one)."""
+
+    def _tree(self, root):
+        for f, t in (("crates/x/src/lib.rs", 1), ("crates/x/src/new.rs", 3000)):
+            (root / f).parent.mkdir(parents=True, exist_ok=True)
+            (root / f).write_text("\n")
+            os.utime(root / f, (t, t))
+        for build, dep, t in (("debug", "lib.rs", 1000), ("release", "new.rs", 2000)):
+            cpl = root / "target" / build / "cpl"
+            cpl.parent.mkdir(parents=True, exist_ok=True)
+            cpl.write_text("#!/bin/sh\n")
+            (root / "target" / build / "cpl.d").write_text(f"{cpl}: crates/x/src/{dep}\n")
+            os.utime(cpl, (t, t))
+
+    def test_a_stale_newer_release_gives_way_to_a_current_debug(self):
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("CPL", None)
+            root = Path(tmp)
+            self._tree(root)
+            self.assertEqual(corpus.current_cpl(root), (root / "target/debug/cpl", None))
+            os.utime(root / "target/debug/cpl", (2, 2))
+            os.utime(root / "crates/x/src/lib.rs", (5, 5))
+            cpl, why = corpus.current_cpl(root)
+            self.assertEqual(cpl, root / "target/release/cpl")
+            self.assertIn("target/release/cpl is stale: run cargo build --release -p cpl-cli", why)
+
+    def test_newcomer_score_refuses_a_stale_cpl(self):
+        spec = importlib.util.spec_from_file_location("score", Path(__file__).resolve().parents[1] / "corpus/newcomer/score.py")
+        score = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(score)
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("CPL", None)
+            root = Path(tmp)
+            self._tree(root)
+            os.utime(root / "crates/x/src/lib.rs", (5000, 5000))
+            with mock.patch.object(score, "ROOT", root), self.assertRaisesRegex(SystemExit, "score: target/release/cpl is stale"):
+                score.cpl()
+            os.utime(root / "crates/x/src/lib.rs", (1, 1))
+            with mock.patch.object(score, "ROOT", root):
+                self.assertEqual(score.cpl(), str(root / "target/debug/cpl"))
 
 
 if __name__ == "__main__":

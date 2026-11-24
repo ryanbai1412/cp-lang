@@ -813,11 +813,8 @@ fn symmetric_writes_from_noip18p4_and_noi07p1() {
     let cells = "var ways: [0..3, 0..3]Int = 0\nlet (u, v) = (0, 2)\nways[u, v] = 1\nways[v, u] = 1\nprint(ways[0, 2])\n";
     assert_eq!(taste_codes(cells), ["L0503"]);
     // A matrix is built by `symmetric`, so std's own `symmetric` may mirror.
-    let help = lint(cells, &Config::default())
-        .into_iter()
-        .find_map(|d| (d.code == SYMMETRIC_WRITE.code).then_some(d.help?))
-        .unwrap();
-    assert!(help.contains(".symmetric(diag: ..)"), "{help}");
+    assert!(only(cells).message.contains(".symmetric(diag:"));
+    assert!(only(pushes).message.contains("Graph.undirected("));
     let weighted = "var adj: [0..3]List<(Int, Int)> = []\nlet (u, v) = (0, 2)\nadj[u].push((v, 5))\nadj[v].push((u, 5))\nprint(adj[0].len)\n";
     assert_eq!(taste_codes(weighted), ["L0503"]);
     // Different facts, or a self-loop, are not one fact twice.
@@ -958,9 +955,12 @@ fn none_check_unwrap_from_cco16p3() {
     let src = "fn f(p: ?Int, v: Int) -> Bool = p != None and v == p!\nprint(f(None, 1))\n";
     let found = only(src);
     assert_eq!(found.code, NONE_CHECK_UNWRAP.code);
+    assert_eq!(found.message, "write `p.is_some_and(it => v == it)`");
+    assert!(found.fixes.is_empty(), "{:?}", found.fixes);
+    let flipped = "fn f(p: ?Int, v: Int) -> Bool = p != None and p! == v\nprint(f(None, 1))\n";
     assert_eq!(
-        found.message,
-        "`p != None` and then `p!`: the check is said twice"
+        only(flipped).message,
+        "write `p.is_some_and(it => it == v)`"
     );
     let other = "fn f(p: ?Int, q: ?Int) -> Bool = p != None and q! == 1\nprint(f(None, 1))\n";
     assert_eq!(taste_codes(other), Vec::<&str>::new());
@@ -1019,11 +1019,14 @@ fn free_fold_becomes_a_method() {
 
 #[test]
 fn tree_order_becomes_preorder_array() {
-    let src = "for v in t.preorder.rev: print(v)\nfor v in t.postorder: print(v)\nlet top = t.preorder[0]\n";
-    assert_eq!(taste_codes(src), ["L0511"; 3]);
+    let tree = "domain V = 0..2\nlet t = Rooted(Graph.undirected([(V(0), V(1))]), V(0))\n";
+    let src = format!("{tree}for v in t.preorder.rev: print(v)\nfor v in t.postorder: print(v)\nlet top = t.preorder[0]\n");
+    assert_eq!(taste_codes(&src), ["L0511"; 3]);
     assert_eq!(
-        fixed(src),
-        "for v in t.at.rev: print(v)\nfor v in t.at.rev: print(v)\nlet top = t.at[0]\n"
+        fixed(&src),
+        format!(
+            "{tree}for v in t.at.rev: print(v)\nfor v in t.at.rev: print(v)\nlet top = t.at[0]\n"
+        )
     );
 }
 #[test]

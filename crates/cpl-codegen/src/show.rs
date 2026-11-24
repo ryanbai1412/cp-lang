@@ -101,11 +101,17 @@ impl<'p> Emitter<'p> {
         } else {
             "int"
         };
-        // A sequence may be stored narrower than its element type, so its
-        // helper takes whatever holds it and widens each element it writes.
+        // A collection's cells may be stored narrower than its element type
+        // (the width a value's range facts give), so its helper takes
+        // whatever holds it and widens each element it writes.
         let seq = matches!(
             ty,
-            Ty::List(_) | Ty::Array { .. } | Ty::ListView(..) | Ty::Keyed(..)
+            Ty::List(_)
+                | Ty::Array { .. }
+                | Ty::ListView(..)
+                | Ty::Keyed(..)
+                | Ty::Set(_)
+                | Ty::Map(..)
         );
         let param = if seq {
             "CplSeq".to_string()

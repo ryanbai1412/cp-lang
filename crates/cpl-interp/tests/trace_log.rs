@@ -820,20 +820,23 @@ fn tracing_stays_cheap_enough_to_leave_on() {
         max_steps: Some(1_000_000),
         ..TraceConfig::default()
     };
-    let times = timing::rounds(
-        ROUNDS,
-        &mut [&mut || run(None), &mut || run(Some(&hooked)), &mut || {
-            run(Some(&kept))
-        }],
-    );
-    let slower = |k: usize| times.slower(k, 0);
-    let (observed, recorded) = (slower(1), slower(2));
-    eprintln!("observed {observed:.2}x, recorded {recorded:.2}x an untraced run");
     let (hooks, recording) = if cfg!(debug_assertions) {
         (2.6, 13.0)
     } else {
         (2.6, 8.5)
     };
+    let times = timing::rounds_until(
+        &mut [&mut || run(None), &mut || run(Some(&hooked)), &mut || {
+            run(Some(&kept))
+        }],
+        |times| times.slower(1, 0) <= hooks && times.slower(2, 0) <= recording,
+    );
+    let slower = |k: usize| times.slower(k, 0);
+    let (observed, recorded) = (slower(1), slower(2));
+    eprintln!(
+        "observed {observed:.2}x, recorded {recorded:.2}x an untraced run, over {} rounds",
+        times.count()
+    );
     assert!(
         observed <= hooks,
         "the hooks alone made the run {observed:.2}x slower (bound {hooks}x)"

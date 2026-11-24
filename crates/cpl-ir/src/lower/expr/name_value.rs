@@ -214,13 +214,13 @@ impl<'a> Lowerer<'a> {
                         return self.mk(ExprKind::Tuple(doms), ty, span);
                     }
                 }
-                self.report(span, msgs::ir::TYPE_MISMATCH_IS_A_TYPE_AND, &[&name]);
+                self.report_str(span, msgs::ir::TYPE_MISMATCH_IS_A_TYPE_AND, name);
                 if m == 0 && matches!(ty_ast.kind, ast::TypeKind::Range { .. }) {
                     self.range_alias_as_domain(name, ty_ast.span.shift(offset));
                 }
             }
             Some(Sym::GenStruct(_) | Sym::Enum(_) | Sym::GenEnum(_) | Sym::GenAlias(_)) => {
-                self.report(span, msgs::ir::TYPE_MISMATCH_IS_A_TYPE_AND, &[&name]);
+                self.report_str(span, msgs::ir::TYPE_MISMATCH_IS_A_TYPE_AND, name);
             }
             _ if name == "INF" => return self.mk(ExprKind::Int(INF), Ty::Int, span),
             _ if matches!(name, "min" | "max" | "some" | "Some") => {
@@ -254,18 +254,10 @@ impl<'a> Lowerer<'a> {
                         "it sees every top-level line down to the last `read()`; compute the rest inside the fn"
                     });
                 } else if self.judge {
-                    self.report(
-                        span,
-                        msgs::ir::UNRESOLVED_NAME_AN_INTERACTOR_CAN_T,
-                        &[&name],
-                    );
+                    self.report_str(span, msgs::ir::UNRESOLVED_NAME_AN_INTERACTOR_CAN_T, name);
                     self.help("the judge is a program of its own: it reads the hidden test with `read()` and shares only `const`s with the solution");
                 } else if !self.reported_an_error() {
-                    self.report(
-                        span,
-                        msgs::ir::UNRESOLVED_NAME_NO_VALUE_NAMED_HERE,
-                        &[&name],
-                    );
+                    self.report_str(span, msgs::ir::UNRESOLVED_NAME_NO_VALUE_NAMED_HERE, name);
                     self.help("a top-level `let` is visible only after the line that sets it");
                 }
             }

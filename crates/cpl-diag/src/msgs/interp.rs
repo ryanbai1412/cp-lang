@@ -46,7 +46,6 @@ super::msgs! {
     KEY_NOT_ONE_VIEW_KEYS_2 = INDEX_OUT_OF_RANGE, "key {} is not one of the view's keys {}..{}: `.nth(k)` reads by position";
     LENT = RUNTIME, "this variable is being changed by a call that has not returned yet";
     LIST_FILLED_WITH_NEGATIVE_LENGTH = RUNTIME, "List.filled with negative length {}";
-    LN_NEGATIVE_NUMBER = RUNTIME, "ln({}) of a negative number";
     NEEDS_POWER_THAT_NOT_NEGATIVE = RUNTIME, "`**` needs a power that is not negative, and this is {}";
     NEGATIVE_NUMBER = RUNTIME, "`<<` of the negative number {}";
     NOT_BOOL_WHICH_READ_AS = RUNTIME, "{} is not a `Bool`, which is read as 0 or 1";
@@ -55,7 +54,6 @@ super::msgs! {
     ON_NONE_THERE_NO_VALUE = UNWRAP_NONE, "`!` on `None`: there is no value here";
     OUTSIDE = RANGE_STORE, "{} is outside `{}`";
     OUTSIDE_0_127 = RANGE_STORE, "{} is outside `0..=127`";
-    OUTSIDE_1_1 = RUNTIME, "{}({}) is outside -1..=1";
     OVERFLOWS_INT_BINOP = RUNTIME, "`{} {} {}` overflows `Int`";
     POP_FROM_EMPTY_LIST = RUNTIME, "pop from an empty list";
     QUERY_LIMIT_EXCEEDED_THIS_QUERY = RUNTIME, "query limit exceeded: this is query {}, and the limit is {}";
@@ -80,7 +78,6 @@ super::msgs! {
     SORT_CMP_COMPARATOR_NOT_STRICT = RUNTIME, "sort `cmp:` comparator is not a strict weak order: cmp(x, x) is true";
     SORT_CMP_COMPARATOR_NOT_STRICT_2 = RUNTIME, "sort `cmp:` comparator is not a strict weak order: result is not ordered";
     SORT_CMP_COMPARATOR_NOT_STRICT_3 = RUNTIME, "sort `cmp:` comparator is not a strict weak order: both cmp(a, b) and cmp(b, a) are true";
-    SQRT_NEGATIVE_NUMBER = RUNTIME, "sqrt({}) of a negative number";
     STACK_RAN_OUT_NEVER_STOPS = STACK_EXHAUSTED, "the stack ran out: {} never stops calling itself?";
     STOPPED = RUNTIME, "the call to replay returned";
     SWAP_OUTSIDE_ARRAY_LENGTH = INDEX_OUT_OF_RANGE, "swap({}, {}) is outside an array of length {}";

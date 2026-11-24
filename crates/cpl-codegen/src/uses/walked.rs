@@ -1,9 +1,8 @@
-//! Which lists of `main` a statement walks for the last time, and which
-//! variables any statement reads for the last time.
+//! Which lists of `main` a statement walks for the last time.
 
 use std::collections::BTreeSet;
 
-use cpl_ir::{Arg, Block, Expr, ExprKind, Iter, Program, Stmt};
+use cpl_ir::{Arg, Block, Expr, ExprKind, Iter, Program, Stmt, Ty};
 
 use crate::walk;
 
@@ -54,8 +53,78 @@ pub(crate) fn walked_last(block: &Block, k: usize) -> BTreeSet<usize> {
     last
 }
 
-/// Whether `rest` still loops or calls: memory freed before it can go to
-/// what it builds.
+/// The globals statement `k` of `block` reads or writes, in any position,
+/// and nothing after it names, while later statements still loop or call.
+pub(crate) fn used_last(block: &Block, k: usize) -> BTreeSet<usize> {
+    let rest = Block {
+        stmts: block.stmts[k + 1..].to_vec(),
+    };
+    if !works(&rest) {
+        return BTreeSet::new();
+    }
+    let here = Block {
+        stmts: vec![block.stmts[k].clone()],
+    };
+    let mut named = BTreeSet::new();
+    walk::deep_exprs(&here, &mut |e| {
+        if let ExprKind::Global(g) = e.kind {
+            named.insert(g);
+        }
+    });
+    walk::deep_stmts(&here, &mut |s| {
+        if let Stmt::Assign(place, _, _) = s {
+            if let (true, g) = walk::root(place) {
+                named.insert(g);
+            }
+        }
+    });
+    named
+        .into_iter()
+        .filter(|&g| {
+            let mut later = BTreeSet::new();
+            mentions(&rest, g, &mut later);
+            later.is_empty()
+        })
+        .collect()
+}
+
+/// Whether a statement of `block` after `k` names a variable that was
+/// live before it, a global or a local declared up to `k`, whose type
+/// `pred` accepts. A local the later statements declare starts after `k`.
+pub(crate) fn names_after(block: &Block, k: usize, pred: &dyn Fn(&Ty) -> bool) -> bool {
+    let rest = Block {
+        stmts: block.stmts[k + 1..].to_vec(),
+    };
+    let mut fresh = BTreeSet::new();
+    walk::deep_stmts(&rest, &mut |s| {
+        if let Stmt::Let(slot, _) | Stmt::For(_, slot, _, _) = s {
+            fresh.insert(*slot);
+        }
+    });
+    let mut hit = false;
+    walk::deep_exprs(&rest, &mut |e| {
+        let live = match e.kind {
+            ExprKind::Global(_) => true,
+            ExprKind::Local(slot) => !fresh.contains(&slot),
+            _ => false,
+        };
+        hit |= live && pred(&e.ty)
+    });
+    hit
+}
+
+/// Whether some closure's body names global `g`.
+pub(crate) fn closure_names(program: &Program, g: usize) -> bool {
+    program.closures.iter().any(|c| {
+        let mut hit = false;
+        walk::deep_exprs(&c.body, &mut |e| {
+            hit |= matches!(e.kind, ExprKind::Global(id) if id == g)
+        });
+        hit
+    })
+}
+
+/// Whether `rest` still loops or calls: work whose memory a freed list helps.
 fn works(rest: &Block) -> bool {
     let mut works = false;
     walk::deep_stmts(rest, &mut |s| {
@@ -63,37 +132,6 @@ fn works(rest: &Block) -> bool {
     });
     walk::deep_exprs(rest, &mut |e| works |= matches!(e.kind, ExprKind::Call(..)));
     works
-}
-
-/// The variables, `(is_global, slot)`, statement `k` of `block` reads for
-/// the last time ([`super::dies_in`]: a local the block declared or a
-/// global `main` set, that nothing after it reads, no closure or other fn
-/// reaches, and no earlier `let` holds a part of), while the statements
-/// after it still loop or call.
-pub(crate) fn read_last(program: &Program, block: &Block, k: usize) -> Vec<(bool, usize)> {
-    if !matches!(
-        block.stmts[k],
-        Stmt::Let(..) | Stmt::Assign(..) | Stmt::Expr(_)
-    ) {
-        return Vec::new();
-    }
-    let rest = Block {
-        stmts: block.stmts[k + 1..].to_vec(),
-    };
-    if !works(&rest) {
-        return Vec::new();
-    }
-    let mut read = BTreeSet::new();
-    walk::stmt_exprs(&block.stmts[k], &mut |e| {
-        walk::deep_expr(e, &mut |e| match e.kind {
-            ExprKind::Local(s) => _ = read.insert((false, s)),
-            ExprKind::Global(g) => _ = read.insert((true, g)),
-            _ => {}
-        })
-    });
-    read.into_iter()
-        .filter(|&src| super::dies_in(program, block, k, src, None))
-        .collect()
 }
 
 /// Calls `f` on each statement of `block` that runs at most once each time

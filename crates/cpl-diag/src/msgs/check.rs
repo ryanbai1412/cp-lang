@@ -63,6 +63,7 @@ super::msgs! {
     REMOVED_SYNTAX_D_BOUNDS_WAS_RENAMED = REMOVED_SYNTAX, "`D.bounds` was renamed to `D.cuts`";
     UNKNOWN_FIELD_A_TUPLE_HAS_NO = UNKNOWN_FIELD, "a tuple has no `.{}`: its parts have numbers";
     MISSING_IMPL_LEN_REQUIRES_SIZED_WHICH = MISSING_IMPL, "`.len` requires `Sized`, which `{}` does not implement";
+    MISSING_IMPL_MEMBER_REQUIRES_WHICH = MISSING_IMPL, "`.{}` requires `{}`, which `{}` does not implement";
     TYPE_MISMATCH_RETURNS_A_VALUE_BUT = TYPE_MISMATCH, "`{}` returns a value, but its signature has no return type";
     UNKNOWN_FIELD_C_S_FIND_END = UNKNOWN_FIELD, "C++'s `find(..) != end()`: whether an item is in it is `in`";
     DUPLICATE_VARIANT_TAG_ENUM_ALREADY_HAS_A = DUPLICATE_VARIANT_TAG, "enum `{}` already has a variant with `@tag({})`";

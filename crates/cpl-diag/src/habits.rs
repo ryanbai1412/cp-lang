@@ -54,9 +54,61 @@ pub fn help(kind: Kind, name: &str) -> Option<&'static str> {
     find(kind, name).map(|h| h.help)
 }
 
+/// A shape the front end recognises, `for (int i = 0; i < n; i++)`: a [`Habit`] with no
+/// names, language or one-word fix, kept apart so each of the many shape rows holds only
+/// what it uses. Its mistake program is `crates/cpl-cli/tests/habits/<key>.cp`.
+#[derive(Debug)]
+pub struct Shape {
+    pub key: &'static str,
+    pub code: Code,
+    /// The help or fix title, with `{}` holes.
+    pub help: &'static str,
+    /// Why `cpl fix` can't mend the mistake, or empty when it does.
+    pub no_fix: &'static str,
+}
+
+impl Shape {
+    /// The help with its `{}` holes filled by `args` in order; `{{` and `}}` are braces.
+    pub fn say(&self, args: &[&dyn Display]) -> String {
+        crate::msgs::fill(self.help, args)
+    }
+}
+
+/// One row as the tests walk it, named or shape alike.
+#[derive(Debug, Clone, Copy)]
+pub struct Row {
+    pub key: &'static str,
+    pub kind: Kind,
+    pub names: &'static [&'static str],
+    pub lang: &'static str,
+    pub code: Code,
+    pub help: &'static str,
+    pub fix: &'static str,
+    pub no_fix: &'static str,
+}
+
 /// Every row: the named ones, then the shapes.
-pub fn all() -> impl Iterator<Item = &'static Habit> {
-    HABITS.iter().chain(SHAPES.iter().copied())
+pub fn all() -> impl Iterator<Item = Row> {
+    let named = HABITS.iter().map(|h| Row {
+        key: h.key,
+        kind: h.kind,
+        names: h.names,
+        lang: h.lang,
+        code: h.code,
+        help: h.help,
+        fix: h.fix,
+        no_fix: h.no_fix,
+    });
+    named.chain(SHAPES.iter().map(|s| Row {
+        key: s.key,
+        kind: Kind::Shape,
+        names: &[],
+        lang: "",
+        code: s.code,
+        help: s.help,
+        fix: "",
+        no_fix: s.no_fix,
+    }))
 }
 
 const fn call(
@@ -92,15 +144,11 @@ const fn value(
     }
 }
 
-const fn shape(key: &'static str, code: Code, help: &'static str, no_fix: &'static str) -> Habit {
-    Habit {
+const fn shape(key: &'static str, code: Code, help: &'static str, no_fix: &'static str) -> Shape {
+    Shape {
         key,
-        kind: Kind::Shape,
-        names: &[],
-        lang: "",
         code,
         help,
-        fix: "",
         no_fix,
     }
 }
@@ -234,668 +282,668 @@ pub const HABITS: &[Habit] = &[
     value("int_min", &["INT_MIN", "LLONG_MIN", "LONG_MIN"], "C/C++", "CP Lang spells it `-inf`", "-inf"),
 ];
 
-pub static ARROW_LAMBDA: Habit = shape(
+pub static ARROW_LAMBDA: Shape = shape(
     "arrow_lambda",
     codes::EXPECTED_TOKEN,
     "`->` names a fn's return type; a lambda's body follows `=>`",
     "",
 );
-pub static WRITE: Habit = shape("write", codes::PARENS_MEAN_WORK, "write `{}`", "");
-pub static BAD_OPERANDS_2: Habit = shape(
+pub static WRITE: Shape = shape("write", codes::PARENS_MEAN_WORK, "write `{}`", "");
+pub static BAD_OPERANDS_2: Shape = shape(
     "bad_operands_2",
     codes::BAD_OPERANDS,
     "put the value in the string: `\"{{x}}\"`",
     "which value goes where in the string is the writer's call",
 );
-pub static BAD_OPERANDS_3: Habit = shape(
+pub static BAD_OPERANDS_3: Shape = shape(
     "bad_operands_3",
     codes::BAD_OPERANDS,
     "two Bools differ by `!=`",
     "",
 );
-pub static BARE_TUPLE_PATTERN: Habit = shape(
+pub static BARE_TUPLE_PATTERN: Shape = shape(
     "bare_tuple_pattern",
     codes::UNKNOWN_FIELD,
     "write `({})`",
     "",
 );
-pub static CHANGES: Habit = shape(
+pub static CHANGES: Shape = shape(
     "changes",
     codes::REMOVED_SYNTAX,
     "write `mut {}`: the fn gets the variable itself",
     "",
 );
-pub static CHAR_LITERAL_FIX: Habit = shape(
+pub static CHAR_LITERAL_FIX: Shape = shape(
     "char_literal_fix",
     codes::TYPE_MISMATCH,
     "a character is written in single quotes: `{}`",
     "",
 );
-pub static CMP_TOKEN: Habit = shape(
+pub static CMP_TOKEN: Shape = shape(
     "cmp_token",
     codes::UNEXPECTED_TOKEN,
     "write `not in` instead of `!in`",
     "",
 );
-pub static CMP_TOKEN_2: Habit = shape(
+pub static CMP_TOKEN_2: Shape = shape(
     "cmp_token_2",
     codes::UNEXPECTED_TOKEN,
     "replace with `not `",
     "",
 );
-pub static CMP_TOKEN_3: Habit = shape(
+pub static CMP_TOKEN_3: Shape = shape(
     "cmp_token_3",
     codes::UNEXPECTED_TOKEN,
     "write `x {} None`; values are compared, there is no identity",
     "",
 );
-pub static COLON_RETURN_TYPE: Habit = shape(
+pub static COLON_RETURN_TYPE: Shape = shape(
     "colon_return_type",
     codes::EXPECTED_TOKEN,
     "the `:` becomes `->`: `-> {}`",
     "",
 );
-pub static CPP_NPOS: Habit = shape(
+pub static CPP_NPOS: Shape = shape(
     "cpp_npos",
     codes::REMOVED_SYNTAX,
     "compare with `None`: `s.find(t) != None`, or write `t in s`",
     "",
 );
-pub static C_ADDRESS: Habit = shape(
+pub static C_ADDRESS: Shape = shape(
     "c_address",
     codes::REMOVED_SYNTAX,
     "drop the `&`; a fn that changes an argument takes it as `mut x`",
     "",
 );
-pub static C_AUTO: Habit = shape("c_auto", codes::REMOVED_SYNTAX, "`let x = 0` for a value that stays, `var x = 0` for one that changes; the type comes from the value", "");
-pub static C_CASE: Habit = shape(
+pub static C_AUTO: Shape = shape("c_auto", codes::REMOVED_SYNTAX, "`let x = 0` for a value that stays, `var x = 0` for one that changes; the type comes from the value", "");
+pub static C_CASE: Shape = shape(
     "c_case",
     codes::REMOVED_SYNTAX,
     "write the pattern itself: `{}`",
     "",
 );
-pub static C_CASE_2: Habit = shape("c_case_2", codes::UNKNOWN_CHAR, "remove `{}`", "");
-pub static C_COUNTDOWN_REPORT: Habit = shape(
+pub static C_CASE_2: Shape = shape("c_case_2", codes::UNKNOWN_CHAR, "remove `{}`", "");
+pub static C_COUNTDOWN_REPORT: Shape = shape(
     "c_countdown_report",
     codes::REMOVED_SYNTAX,
     "loop over a range: `for _ in 0..{}:`",
     "",
 );
-pub static C_COUNTDOWN_REPORT_2: Habit = shape(
+pub static C_COUNTDOWN_REPORT_2: Shape = shape(
     "c_countdown_report_2",
     codes::REMOVED_SYNTAX,
     "the body reads `{}`: write `while {} > 0:` and start the body with `{} -= 1`",
     "the body reads the counter, so how it counts down is the writer's call",
 );
-pub static C_DECL_ERROR: Habit = shape(
+pub static C_DECL_ERROR: Shape = shape(
     "c_decl_error",
     codes::REMOVED_SYNTAX,
     "`let x: Int = 0` for a value that stays, `var x: Int = 0` for one that changes",
     "",
 );
-pub static C_DEREF: Habit = shape("c_deref", codes::REMOVED_SYNTAX, "drop the `*`", "");
-pub static C_FOR: Habit = shape(
+pub static C_DEREF: Shape = shape("c_deref", codes::REMOVED_SYNTAX, "drop the `*`", "");
+pub static C_FOR: Shape = shape(
     "c_for",
     codes::REMOVED_SYNTAX,
     "loop over a range: `for i in 0..n:`",
     "",
 );
-pub static C_FOR_2: Habit = shape("c_for_2", codes::REMOVED_SYNTAX, "loop over the range", "");
-pub static C_RANGE_FOR: Habit = shape(
+pub static C_FOR_2: Shape = shape("c_for_2", codes::REMOVED_SYNTAX, "loop over the range", "");
+pub static C_RANGE_FOR: Shape = shape(
     "c_range_for",
     codes::REMOVED_SYNTAX,
     "write `for {} in {}:`",
     "",
 );
-pub static C_RANGE_FOR_2: Habit = shape("c_range_for_2", codes::REMOVED_SYNTAX, "loop over it", "");
-pub static C_RANGE_FOR_3: Habit = shape("c_range_for_3", codes::REMOVED_SYNTAX, "the loop variable is a copy, so change the list through its indexes: `for i in 0..{}.len: {}[i] += 1`", "");
-pub static C_TERNARY: Habit = shape(
+pub static C_RANGE_FOR_2: Shape = shape("c_range_for_2", codes::REMOVED_SYNTAX, "loop over it", "");
+pub static C_RANGE_FOR_3: Shape = shape("c_range_for_3", codes::REMOVED_SYNTAX, "the loop variable is a copy, so change the list through its indexes: `for i in 0..{}.len: {}[i] += 1`", "");
+pub static C_TERNARY: Shape = shape(
     "c_ternary",
     codes::REMOVED_SYNTAX,
     "write `if c: a else: b`",
     "",
 );
-pub static C_TERNARY_2: Habit = shape(
+pub static C_TERNARY_2: Shape = shape(
     "c_ternary_2",
     codes::REMOVED_SYNTAX,
     "write it as an inline `if`",
     "",
 );
-pub static DUPLICATE_TAG: Habit = shape(
+pub static DUPLICATE_TAG: Shape = shape(
     "duplicate_tag",
     codes::DUPLICATE_VARIANT_TAG,
     "input names one variant per tag: give one of them another `@tag`",
     "which variant gets another tag is the writer's call",
 );
-pub static EMPTY_BRACES: Habit = shape(
+pub static EMPTY_BRACES: Shape = shape(
     "empty_braces",
     codes::TYPE_MISMATCH,
     "an empty {} is `{}`",
     "",
 );
-pub static EMPTY_TYPE_ARGS: Habit = shape(
+pub static EMPTY_TYPE_ARGS: Shape = shape(
     "empty_type_args",
     codes::REMOVED_SYNTAX,
     "leave the `<>` off: CP Lang infers type arguments",
     "",
 );
-pub static EMPTY_TYPE_ARGS_2: Habit = shape(
+pub static EMPTY_TYPE_ARGS_2: Shape = shape(
     "empty_type_args_2",
     codes::REMOVED_SYNTAX,
     "remove `<>`",
     "",
 );
-pub static ENUM_TAGS: Habit = shape(
+pub static ENUM_TAGS: Shape = shape(
     "enum_tags",
     codes::REMOVED_SYNTAX,
     "write `enum {} = {}`",
     "each tag moves onto its own variant, a rewrite of the whole declaration",
 );
-pub static FOREIGN_NEW: Habit = shape(
+pub static FOREIGN_NEW: Shape = shape(
     "foreign_new",
     codes::REMOVED_SYNTAX,
     "drop `new`: `{}(...)`",
     "",
 );
-pub static FOREIGN_NEW_2: Habit = shape("foreign_new_2", codes::REMOVED_SYNTAX, "drop `new`", "");
-pub static FOREIGN_STEP: Habit = shape(
+pub static FOREIGN_NEW_2: Shape = shape("foreign_new_2", codes::REMOVED_SYNTAX, "drop `new`", "");
+pub static FOREIGN_STEP: Shape = shape(
     "foreign_step",
     codes::EXPECTED_TOKEN,
     "write `0..10 by 2`",
     "",
 );
-pub static FOREIGN_THEN: Habit = shape(
+pub static FOREIGN_THEN: Shape = shape(
     "foreign_then",
     codes::EXPECTED_TOKEN,
     "the condition stays; `{}` becomes `:`",
     "",
 );
-pub static FOR_OF: Habit = shape(
+pub static FOR_OF: Shape = shape(
     "for_of",
     codes::EXPECTED_TOKEN,
     "replace `of` with `in`",
     "",
 );
-pub static F_STRING_PREFIX: Habit = shape(
+pub static F_STRING_PREFIX: Shape = shape(
     "f_string_prefix",
     codes::EXPECTED_TOKEN,
     "write `\"n = {{n}}\"`",
     "",
 );
-pub static F_STRING_PREFIX_2: Habit = shape(
+pub static F_STRING_PREFIX_2: Shape = shape(
     "f_string_prefix_2",
     codes::EXPECTED_TOKEN,
     "remove the `f`",
     "",
 );
-pub static GETS: Habit = shape("gets", codes::REMOVED_SYNTAX, "write `mut`", "");
-pub static INDEX_ITEM: Habit = shape(
+pub static GETS: Shape = shape("gets", codes::REMOVED_SYNTAX, "write `mut`", "");
+pub static INDEX_ITEM: Shape = shape(
     "index_item",
     codes::EXPECTED_TOKEN,
     "write `xs[a..b]`; `xs[a..]` and `xs[..b]` leave out an end",
     "",
 );
-pub static INDEX_ITEM_2: Habit = shape(
+pub static INDEX_ITEM_2: Shape = shape(
     "index_item_2",
     codes::EXPECTED_TOKEN,
     "replace `:` with `..`",
     "",
 );
-pub static ITER_CALL_HELP: Habit = shape(
+pub static ITER_CALL_HELP: Shape = shape(
     "iter_call_help",
     codes::UNKNOWN_FIELD,
     "a list or string is iterated as it is: `for x in xs`",
     "",
 );
-pub static ITER_CALL_HELP_2: Habit = shape(
+pub static ITER_CALL_HELP_2: Shape = shape(
     "iter_call_help_2",
     codes::UNKNOWN_FIELD,
     "remove `.{}()`",
     "",
 );
-pub static KEYED_FIND: Habit = shape(
+pub static KEYED_FIND: Shape = shape(
     "keyed_find",
     codes::UNKNOWN_FIELD,
     "CP Lang has no iterators: write `{}`",
     "",
 );
-pub static KEYWORD_ARG: Habit = shape(
+pub static KEYWORD_ARG: Shape = shape(
     "keyword_arg",
     codes::EXPECTED_TOKEN,
     "write `name: value`, as in `print(xs, sep: \", \")`",
     "",
 );
-pub static LAZY_LEN: Habit = shape(
+pub static LAZY_LEN: Shape = shape(
     "lazy_len",
     codes::MISSING_IMPL,
     "a lazy sequence has no stored length: `.count()` walks it once",
     "",
 );
-pub static LIST_IN: Habit = shape("list_in", codes::MISSING_IMPL, "`in` is for sets, maps and ranges, where it is fast; a list or other sequence is scanned in O(n) with `xs.contains(x)` or `xs.any(y => y == x)`", "");
-pub static LIST_IN_2: Habit = shape(
+pub static LIST_IN: Shape = shape("list_in", codes::MISSING_IMPL, "`in` is for sets, maps and ranges, where it is fast; a list or other sequence is scanned in O(n) with `xs.contains(x)` or `xs.any(y => y == x)`", "");
+pub static LIST_IN_2: Shape = shape(
     "list_in_2",
     codes::MISSING_IMPL,
     "scan the sequence: `{}`",
     "",
 );
-pub static LIST_PATTERN: Habit = shape(
+pub static LIST_PATTERN: Shape = shape(
     "list_pattern",
     codes::EXPECTED_PATTERN,
     "index it, `let a = xs[0]`, or unpack a tuple: `let (a, b) = (xs[0], xs[1])`",
     "indexing and a tuple are both right; the writer picks",
 );
-pub static LOOP_ADVICE: Habit = shape(
+pub static LOOP_ADVICE: Shape = shape(
     "loop_advice",
     codes::TYPE_MISMATCH,
     "for each value and its count, walk `runs(..){}`",
     "",
 );
-pub static MEMBER_ADVICE: Habit = shape("member_advice", codes::REMOVED_SYNTAX, "a domain reads `D.count`, `x.ord` and `D.nth(k)`, which traps outside `0..D.count`; `D.try_at(k)` gives an optional (R04.2.26)", "");
-pub static MEMBER_ADVICE_3: Habit = shape(
+pub static MEMBER_ADVICE: Shape = shape("member_advice", codes::REMOVED_SYNTAX, "a domain reads `D.count`, `x.ord` and `D.nth(k)`, which traps outside `0..D.count`; `D.try_at(k)` gives an optional (R04.2.26)", "");
+pub static MEMBER_ADVICE_3: Shape = shape(
     "member_advice_3",
     codes::UNKNOWN_FIELD,
     "the parts of this tuple are `.0` to `.{}`",
     "",
 );
-pub static MEMBER_ADVICE_4: Habit = shape(
+pub static MEMBER_ADVICE_4: Shape = shape(
     "member_advice_4",
     codes::UNKNOWN_FIELD,
     "change to `.{}`",
     "",
 );
-pub static MEMBER_FOR_CALL: Habit = shape(
+pub static MEMBER_FOR_CALL: Shape = shape(
     "member_for_call",
     codes::UNRESOLVED_NAME,
     "math functions are members or operators here: `{}`",
     "",
 );
-pub static MEMBER_FOR_CALL_2: Habit = shape("member_for_call_2", codes::UNRESOLVED_NAME, "CP Lang reads numbers by token, not by line: `let (n, m): (Int, Int) = read()` reads two, `read<[n]Int>()` reads n of them", "a line read becomes token reads whose types the call doesn't say");
-pub static MEMBER_FOR_CALL_3: Habit = shape(
+pub static MEMBER_FOR_CALL_2: Shape = shape("member_for_call_2", codes::UNRESOLVED_NAME, "CP Lang reads numbers by token, not by line: `let (n, m): (Int, Int) = read()` reads two, `read<[n]Int>()` reads n of them", "a line read becomes token reads whose types the call doesn't say");
+pub static MEMBER_FOR_CALL_3: Shape = shape(
     "member_for_call_3",
     codes::UNRESOLVED_NAME,
     "{} in CP Lang: `{}`",
     "",
 );
-pub static NO_OPERATOR_IMPL: Habit = shape(
+pub static NO_OPERATOR_IMPL: Shape = shape(
     "no_operator_impl",
     codes::TYPE_MISMATCH,
     "call it to get the {}: `{}()`",
     "",
 );
-pub static NO_OPERATOR_IMPL_2: Habit = shape(
+pub static NO_OPERATOR_IMPL_2: Shape = shape(
     "no_operator_impl_2",
     codes::TYPE_MISMATCH,
     "call the method with `()` where `{}` is made",
     "the `()` goes where the method is made, another line than the error",
 );
-pub static NO_OPERATOR_IMPL_3: Habit = shape(
+pub static NO_OPERATOR_IMPL_3: Shape = shape(
     "no_operator_impl_3",
     codes::MISSING_IMPL,
     "write `impl {}<{}> for {}` to define `{} {} {}`",
     "the impl's body is the writer's to write",
 );
-pub static OLD_OPTIONAL_SPELLING: Habit = shape(
+pub static OLD_OPTIONAL_SPELLING: Shape = shape(
     "old_optional_spelling",
     codes::REMOVED_SYNTAX,
     "optionals are `Some(x)` and `None`; `cpl migrate` rewrites every `{}` in a folder",
     "",
 );
-pub static PAREN_FOR: Habit = shape(
+pub static PAREN_FOR: Shape = shape(
     "paren_for",
     codes::REMOVED_SYNTAX,
     "write `for x in xs:`",
     "",
 );
-pub static PYTHON_SPLAT: Habit = shape(
+pub static PYTHON_SPLAT: Shape = shape(
     "python_splat",
     codes::REMOVED_SYNTAX,
     "`print(a)` prints a list's items separated by spaces",
     "",
 );
-pub static PYTHON_SPLAT_2: Habit = shape(
+pub static PYTHON_SPLAT_2: Shape = shape(
     "python_splat_2",
     codes::REMOVED_SYNTAX,
     "pass the list itself, or its items one by one",
     "",
 );
-pub static PYTHON_TERNARY: Habit = shape(
+pub static PYTHON_TERNARY: Shape = shape(
     "python_ternary",
     codes::REMOVED_SYNTAX,
     "an inline `if` takes `:` after the condition and after `else`",
     "",
 );
-pub static REVERSED_SLICE: Habit = shape(
+pub static REVERSED_SLICE: Shape = shape(
     "reversed_slice",
     codes::EXPECTED_TOKEN,
     "`xs.rev` is the reversed view; `List(xs.rev)` copies it",
     "",
 );
-pub static REVERSE_VIEW_HELP: Habit = shape(
+pub static REVERSE_VIEW_HELP: Shape = shape(
     "reverse_view_help",
     codes::LITERAL_SLICE_INDEX,
     "{}, or {}",
     "",
 );
-pub static RUST_CLOSURE: Habit = shape(
+pub static RUST_CLOSURE: Shape = shape(
     "rust_closure",
     codes::EXPECTED_TOKEN,
     "write `x => x * 2`, or `(a, b) => a + b`",
     "",
 );
-pub static RUST_PRINT: Habit = shape(
+pub static RUST_PRINT: Shape = shape(
     "rust_print",
     codes::EXPECTED_TOKEN,
     "`print(a, b)` writes its values with spaces between, then a newline; `\"{{x}}\"` interpolates",
     "",
 );
-pub static RUST_REPEAT: Habit = shape(
+pub static RUST_REPEAT: Shape = shape(
     "rust_repeat",
     codes::REMOVED_SYNTAX,
     "write `[n].filled(x)`, a list of `n` copies of `x`",
     "",
 );
-pub static STATEMENT_END_HELP: Habit = shape(
+pub static STATEMENT_END_HELP: Shape = shape(
     "statement_end_help",
     codes::UNEXPECTED_TOKEN,
     "statements end at the end of the line; `;` is only used inside `{{ ... }}`",
     "",
 );
-pub static STATEMENT_END_HELP_2: Habit = shape(
+pub static STATEMENT_END_HELP_2: Shape = shape(
     "statement_end_help_2",
     codes::UNEXPECTED_TOKEN,
     "remove `;`",
     "",
 );
-pub static STRUCT_LITERAL: Habit =
+pub static STRUCT_LITERAL: Shape =
     shape("struct_literal", codes::UNKNOWN_FIELD, "write `{}({})`", "");
-pub static SUM: Habit = shape(
+pub static SUM: Shape = shape(
     "sum",
     codes::PARENS_MEAN_WORK,
     "write `{}()`: `()` marks a call that does work",
     "",
 );
-pub static SUM_2: Habit = shape("sum_2", codes::PARENS_MEAN_WORK, "write `{}()`", "");
-pub static C_ADDRESS_2: Habit = shape(
+pub static SUM_2: Shape = shape("sum_2", codes::PARENS_MEAN_WORK, "write `{}()`", "");
+pub static C_ADDRESS_2: Shape = shape(
     "c_address_2",
     codes::MISSING_MUT_AT_CALL,
     "drop the `&`",
     "",
 );
-pub static UNDECLARED_RETURN: Habit = shape(
+pub static UNDECLARED_RETURN: Shape = shape(
     "undeclared_return",
     codes::TYPE_MISMATCH,
     "a fn without `-> T` gives nothing: add `-> {}`",
     "",
 );
-pub static UNKNOWN_MEMBER: Habit = shape(
+pub static UNKNOWN_MEMBER: Shape = shape(
     "unknown_member",
     codes::UNKNOWN_FIELD,
     "a library domain's `{}` is `{}` since 0.3",
     "",
 );
-pub static UNKNOWN_MEMBER_10: Habit = shape(
+pub static UNKNOWN_MEMBER_10: Shape = shape(
     "unknown_member_10",
     codes::UNKNOWN_FIELD,
     "its methods are {}",
     "the methods listed are choices, not one edit",
 );
-pub static UNKNOWN_MEMBER_2: Habit = shape("unknown_member_2", codes::UNKNOWN_FIELD, "{} is a library domain (`impl Index`): it walks in `ord` order, but neighbours, cuts, `at` and `wrap` belong to the ordered core domains; use `x.ord` and `{}.nth(k)`", "a library domain has no neighbours, so the walk is rewritten around `ord`");
-pub static UNKNOWN_MEMBER_3: Habit = shape(
+pub static UNKNOWN_MEMBER_2: Shape = shape("unknown_member_2", codes::UNKNOWN_FIELD, "{} is a library domain (`impl Index`): it walks in `ord` order, but neighbours, cuts, `at` and `wrap` belong to the ordered core domains; use `x.ord` and `{}.nth(k)`", "a library domain has no neighbours, so the walk is rewritten around `ord`");
+pub static UNKNOWN_MEMBER_3: Shape = shape(
     "unknown_member_3",
     codes::UNKNOWN_FIELD,
     "`{}` is spelled `{}` in CP Lang",
     "",
 );
-pub static UNKNOWN_MEMBER_4: Habit = shape(
+pub static UNKNOWN_MEMBER_4: Shape = shape(
     "unknown_member_4",
     codes::UNKNOWN_FIELD,
     "a {} is empty when its `len` is 0",
     "",
 );
-pub static UNKNOWN_MEMBER_5: Habit = shape(
+pub static UNKNOWN_MEMBER_5: Shape = shape(
     "unknown_member_5",
     codes::UNKNOWN_FIELD,
     "write `len == 0`",
     "",
 );
-pub static UNKNOWN_MEMBER_6: Habit = shape(
+pub static UNKNOWN_MEMBER_6: Shape = shape(
     "unknown_member_6",
     codes::UNKNOWN_FIELD,
     "`{}` shows its top with `peek`, `None` when empty",
     "",
 );
-pub static UNKNOWN_MEMBER_7: Habit = shape(
+pub static UNKNOWN_MEMBER_7: Shape = shape(
     "unknown_member_7",
     codes::UNKNOWN_FIELD,
     "a {} combines a range with `fold`",
     "",
 );
-pub static UNKNOWN_MEMBER_9: Habit = shape(
+pub static UNKNOWN_MEMBER_9: Shape = shape(
     "unknown_member_9",
     codes::UNKNOWN_FIELD,
     "its fields are {}",
     "the fields listed are choices, not one edit",
 );
-pub static TUPLE_PARTS: Habit = shape(
+pub static TUPLE_PARTS: Shape = shape(
     "tuple_parts",
     codes::UNKNOWN_FIELD,
     "the parts of a tuple have numbers, not names: `.0` to `.{}`",
     "which part was meant is the writer's choice",
 );
-pub static WITHOUT: Habit = shape("without", codes::TYPE_MISMATCH, "add `-> {}`", "");
-pub static LITERAL: Habit = shape("literal", codes::VALUE_NAME_CASE, "make it a `const`", "");
-pub static INDEX_OF: Habit = shape(
+pub static WITHOUT: Shape = shape("without", codes::TYPE_MISMATCH, "add `-> {}`", "");
+pub static LITERAL: Shape = shape("literal", codes::VALUE_NAME_CASE, "make it a `const`", "");
+pub static INDEX_OF: Shape = shape(
     "index_of",
     codes::UNKNOWN_FIELD,
     "a value's first position is `find`, `None` when it isn't there: `{}`",
     "",
 );
-pub static PARTITION_POINT: Habit = shape("partition_point", codes::UNKNOWN_FIELD, "`partition_point` is where its test turns false; `bsearch` takes the test that turns true there: `{}`", "");
-pub static STR_TEST: Habit = shape(
+pub static PARTITION_POINT: Shape = shape("partition_point", codes::UNKNOWN_FIELD, "`partition_point` is where its test turns false; `bsearch` takes the test that turns true there: `{}`", "");
+pub static STR_TEST: Shape = shape(
     "str_test",
     codes::UNKNOWN_FIELD,
     "`{}` tests a `Char`; a string tests every character with `all`: `{}`",
     "",
 );
-pub static BY_TWIN: Habit = shape("by_twin", codes::UNRESOLVED_NAME, "write `{}(by: ..)`", "");
-pub static RENAME_VALUES: Habit = shape(
+pub static BY_TWIN: Shape = shape("by_twin", codes::UNRESOLVED_NAME, "write `{}(by: ..)`", "");
+pub static RENAME_VALUES: Shape = shape(
     "rename_values",
     codes::VALUE_NAME_CASE,
     "rename `{}` to `{}` everywhere",
     "",
 );
-pub static SAME_PLACE: Habit = shape(
+pub static SAME_PLACE: Shape = shape(
     "same_place",
     codes::SAME_PLACE_READ_WRITE,
     "compute the right side {}: otherwise the order the two sides run in decides the result",
     "",
 );
-pub static TUPLE_ASSIGN: Habit = shape(
+pub static TUPLE_ASSIGN: Shape = shape(
     "tuple_assign",
     codes::UNEXPECTED_TOKEN,
     "CP Lang reads numbers by token, so the names are declared as a tuple read",
     "",
 );
-pub static TUPLE_ASSIGN_2: Habit = shape(
+pub static TUPLE_ASSIGN_2: Shape = shape(
     "tuple_assign_2",
     codes::UNEXPECTED_TOKEN,
     "several names are assigned at once in parentheses: `(a, b) = (b, a)`",
     "",
 );
-pub static RUST_REPEAT_2: Habit = shape(
+pub static RUST_REPEAT_2: Shape = shape(
     "rust_repeat_2",
     codes::REMOVED_SYNTAX,
     "write `[{}].filled({})`",
     "",
 );
-pub static C_CAST: Habit = shape("c_cast", codes::REMOVED_SYNTAX, "write `{}(...)`", "");
-pub static THREE_WAY: Habit = shape(
+pub static C_CAST: Shape = shape("c_cast", codes::REMOVED_SYNTAX, "write `{}(...)`", "");
+pub static THREE_WAY: Shape = shape(
     "three_way",
     codes::REMOVED_SYNTAX,
     "`cmp(a, b)` gives `Ordering.Less`, `Equal` or `Greater`; `cmp((a, c), (b, d))` breaks a tie on `c`",
     "",
 );
-pub static THREE_WAY_2: Habit = shape(
+pub static THREE_WAY_2: Shape = shape(
     "three_way_2",
     codes::REMOVED_SYNTAX,
     "write `cmp({}, {})`",
     "",
 );
-pub static STRUCT_LITERAL_2: Habit = shape(
+pub static STRUCT_LITERAL_2: Shape = shape(
     "struct_literal_2",
     codes::EXPECTED_TOKEN,
     "use parentheses",
     "",
 );
-pub static PYTHON_FORMAT: Habit = shape(
+pub static PYTHON_FORMAT: Shape = shape(
     "python_format",
     codes::EXPECTED_TOKEN,
     "write each value in its hole: `\"{{x}} {{y:.2}}\"`",
     "the holes and the values don't pair up, so which value goes where is the writer's call",
 );
-pub static BARE_TUPLE_PATTERN_2: Habit = shape(
+pub static BARE_TUPLE_PATTERN_2: Shape = shape(
     "bare_tuple_pattern_2",
     codes::EXPECTED_TOKEN,
     "add the parentheses",
     "",
 );
-pub static PAREN_FOR_2: Habit = shape(
+pub static PAREN_FOR_2: Shape = shape(
     "paren_for_2",
     codes::REMOVED_SYNTAX,
     "remove the parentheses",
     "",
 );
-pub static EMPTY_DICT: Habit = shape(
+pub static EMPTY_DICT: Shape = shape(
     "empty_dict",
     codes::TYPE_MISMATCH,
     "an empty {} is `{}`; its key and value types come from how it is used",
     "",
 );
-pub static ITERATOR_INDEX: Habit = shape(
+pub static ITERATOR_INDEX: Shape = shape(
     "iterator_index",
     codes::UNKNOWN_FIELD,
     "write the index",
     "",
 );
-pub static HEAP_METHODS: Habit = shape(
+pub static HEAP_METHODS: Shape = shape(
     "heap_methods",
     codes::UNRESOLVED_NAME,
     "a heap is std's `Heap`, with methods: `{}`",
     "",
 );
-pub static HEAP: Habit = shape("heap", codes::UNRESOLVED_NAME, "a heap is std's `Heap`, not a list: `var h: Heap<Int> = Heap()` (`use std.heap.{{Heap}}`), then `h.push(x)` and `h.pop()!`", "a list becomes a `Heap` where it is declared, another line than the call");
-pub static C_CAST_FLOAT: Habit = shape(
+pub static HEAP: Shape = shape("heap", codes::UNRESOLVED_NAME, "a heap is std's `Heap`, not a list: `var h: Heap<Int> = Heap()` (`use std.heap.{{Heap}}`), then `h.push(x)` and `h.pop()!`", "a list becomes a `Heap` where it is declared, another line than the call");
+pub static C_CAST_FLOAT: Shape = shape(
     "c_cast_float",
     codes::REMOVED_SYNTAX,
     "a float is made with `F64(x)`",
     "",
 );
-pub static C_CAST_INT: Habit = shape(
+pub static C_CAST_INT: Shape = shape(
     "c_cast_int",
     codes::REMOVED_SYNTAX,
     "an integer is made with `Int(x)`, and an `Int` is already 64 bits",
     "",
 );
 
-pub static FLOOR_DIVISION: Habit = shape(
+pub static FLOOR_DIVISION: Shape = shape(
     "floor_division",
     codes::UNEXPECTED_TOKEN,
     "`/` on two `Int`s already rounds down: `7 / 2` is 3, `-7 / 2` is -4",
     "",
 );
-pub static C_MAIN: Habit = shape(
+pub static C_MAIN: Shape = shape(
     "c_main",
     codes::REMOVED_SYNTAX,
     "remove `int main() {{` and its `}}`, and move the body out one level",
     "",
 );
-pub static C_MAIN_2: Habit = shape("c_main_2", codes::REMOVED_SYNTAX, "unwrap `main`", "");
-pub static INCREMENT: Habit = shape(
+pub static C_MAIN_2: Shape = shape("c_main_2", codes::REMOVED_SYNTAX, "unwrap `main`", "");
+pub static INCREMENT: Shape = shape(
     "increment",
     codes::UNKNOWN_CHAR,
     "replace `{}` with ` {} 1`",
     "",
 );
-pub static REPLACE_WITH: Habit = shape(
+pub static REPLACE_WITH: Shape = shape(
     "replace_with",
     codes::UNEXPECTED_TOKEN,
     "replace with `{}`",
     "",
 );
-pub static POSTFIX_OPTIONAL: Habit = shape(
+pub static POSTFIX_OPTIONAL: Shape = shape(
     "postfix_optional",
     codes::EXPECTED_TYPE,
     "write `?T`, as in `?Int`, for a `T` or `None`",
     "",
 );
-pub static POSTFIX_OPTIONAL_2: Habit = shape(
+pub static POSTFIX_OPTIONAL_2: Shape = shape(
     "postfix_optional_2",
     codes::EXPECTED_TYPE,
     "move the `?` to the front",
     "",
 );
-pub static BRACKET_TYPE_ARGS: Habit = shape(
+pub static BRACKET_TYPE_ARGS: Shape = shape(
     "bracket_type_args",
     codes::EXPECTED_TYPE,
     "`[...]` is a list or an index; a type's arguments go in `<>`",
     "",
 );
 
-pub static KEYED_COUNT: Habit = shape(
+pub static KEYED_COUNT: Shape = shape(
     "keyed_count",
     codes::UNKNOWN_FIELD,
     "test a key with `in`: `{}`",
     "",
 );
-pub static MAP_INSERT: Habit = shape(
+pub static MAP_INSERT: Shape = shape(
     "map_insert",
     codes::UNKNOWN_FIELD,
     "`{}[{}] = {}` replaces a key already there, which C++'s `{}` keeps: `{}`",
     "",
 );
-pub static FLOAT_TEXT: Habit = shape(
+pub static FLOAT_TEXT: Shape = shape(
     "float_text",
     codes::UNKNOWN_FIELD,
     "a float's text is an interpolation: `{}`",
     "",
 );
-pub static SLICE_CALL: Habit = shape(
+pub static SLICE_CALL: Shape = shape(
     "slice_call",
     codes::UNKNOWN_FIELD,
     "a slice indexes a range of positions: `{}`",
     "",
 );
-pub static JOIN_RECEIVER: Habit = shape(
+pub static JOIN_RECEIVER: Shape = shape(
     "join_receiver",
     codes::UNKNOWN_FIELD,
     "`join` is called on the separator: `{}`",
     "",
 );
-pub static LIST_POP_INDEX: Habit = shape(
+pub static LIST_POP_INDEX: Shape = shape(
     "list_pop_index",
     codes::WRONG_ARG_COUNT,
     "removing at an index is `remove`: `{}`",
     "",
 );
-pub static LIST_RESIZE: Habit = shape(
+pub static LIST_RESIZE: Shape = shape(
     "list_resize",
     codes::WRONG_ARG_COUNT,
     "`resize` takes the value for new places: `{}`",
     "",
 );
-pub static MAP_GET_DEFAULT: Habit = shape(
+pub static MAP_GET_DEFAULT: Shape = shape(
     "map_get_default",
     codes::WRONG_ARG_COUNT,
     "a default for a missing key is given with `??`: `{}`",
     "",
 );
-pub static ARG_NAME: Habit = shape(
+pub static ARG_NAME: Shape = shape(
     "arg_name",
     codes::UNKNOWN_ARG_NAME,
     "CP Lang names this argument `{}`",
     "",
 );
-pub static SPLIT_ON_SPACE: Habit = shape(
+pub static SPLIT_ON_SPACE: Shape = shape(
     "split_on_space",
     codes::WRONG_ARG_COUNT,
     "a string splits on one `Char`: `split(' ')`",
@@ -903,7 +951,7 @@ pub static SPLIT_ON_SPACE: Habit = shape(
 );
 
 /// Every shape row; `all` walks them after the named rows.
-pub static SHAPES: &[&Habit] = &[
+pub static SHAPES: &[&Shape] = &[
     &ARROW_LAMBDA,
     &WRITE,
     &BAD_OPERANDS_2,

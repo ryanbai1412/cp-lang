@@ -37,6 +37,6 @@ let dist = fixed_cost_paths::<State, Move, 0..=2_000_000_000>(
     moves:,
     cost:,
     step:,
-    until: goal,
+    until: x => x == goal,
 )
 print(dist[goal]! - x.sum())

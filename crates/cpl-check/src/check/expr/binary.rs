@@ -4,6 +4,58 @@ use super::*;
 use cpl_diag::msgs;
 
 impl<'a> Checker<'a> {
+    /// What `-x` is on a struct with an `impl Neg`: its `neg`'s result,
+    /// or the struct when that is written bare.
+    pub(super) fn neg_impl(&mut self, ty: &Ty) -> Option<Ty> {
+        let Ty::Named { name, .. } = ty else {
+            return None;
+        };
+        let impls = self.op_impls(ty, name, "Neg", "neg");
+        let (_, out, ret) = impls.first()?;
+        Some(out.as_ref().or(ret.as_ref()).unwrap_or(ty).clone())
+    }
+
+    /// The impls of operator trait `trait_name` for `left`'s struct `owner`,
+    /// each as its right operand's type, its `Out` and its `method`'s result,
+    /// with the impl's type parameters read from `left`: `impl Mul for Mat<T>`
+    /// at a `Mat<Int>` has `T` = `Int`.
+    fn op_impls(
+        &mut self,
+        left: &Ty,
+        owner: &str,
+        trait_name: &str,
+        method: &str,
+    ) -> Vec<(Option<Ty>, Option<Ty>, Option<Ty>)> {
+        (self.env.impls(owner).iter())
+            .filter(|(implemented, _)| {
+                implemented.as_deref().and_then(|t| t.split('<').next()) == Some(trait_name)
+            })
+            .map(|(_, def)| match &**def {
+                Def::Impl {
+                    trait_args,
+                    out_ty,
+                    methods,
+                    target,
+                    ..
+                } => {
+                    let mut on = crate::ty::Bindings::default();
+                    target.unify(left, &mut on);
+                    let rhs_ty = trait_args.first().map(|t| t.subst(&on));
+                    let ret = methods.iter().find_map(|(m, ty)| match ty {
+                        Ty::Fn { ret, .. }
+                            if m == method && !matches!(**ret, Ty::Unknown | Ty::Unit) =>
+                        {
+                            Some(ret.subst(&on))
+                        }
+                        _ => None,
+                    });
+                    (rhs_ty, out_ty.as_ref().map(|t| t.subst(&on)), ret)
+                }
+                _ => (None, None, None),
+            })
+            .collect()
+    }
+
     pub(super) fn bad_operand(&mut self, ty: &Ty, expr: &Expr, op: &str) -> Ty {
         if ty.is_vague() {
             return ty.clone();
@@ -26,15 +78,7 @@ impl<'a> Checker<'a> {
             self.infer(lhs)
         };
         if let Ty::Param(param) = &left {
-            let trait_name = match op {
-                BinOp::Add => Some("Add"),
-                BinOp::Sub => Some("Sub"),
-                BinOp::Mul => Some("Mul"),
-                BinOp::Div => Some("Div"),
-                BinOp::Rem => Some("Rem"),
-                BinOp::Pow => Some("Pow"),
-                _ => None,
-            };
+            let trait_name = op_trait(op).map(|(t, _)| t);
             // `P - 1` reads the value of a value parameter (`Mod<P>`), and a step from a
             // `D: Domain` position is an `Int` (R04.8.2): neither needs an operator bound.
             let value = matches!(&lhs.kind, ExprKind::Name(n) if n == param);
@@ -103,49 +147,8 @@ impl<'a> Checker<'a> {
             // `total + ` mid-edit: the half that is there gives the whole.
             _ if matches!(rhs.kind, ExprKind::Missing) && left.is_numeric() => left.widen(),
             _ if let Some((trait_name, owner)) = self.operator_trait(op, &left) => {
-                let op_method = match op {
-                    BinOp::Add => "add",
-                    BinOp::Sub => "sub",
-                    BinOp::Mul => "mul",
-                    BinOp::Div => "div",
-                    BinOp::Rem => "rem",
-                    BinOp::Pow => "pow",
-                    _ => "",
-                };
-                let matching: Vec<(Option<Ty>, Option<Ty>, Option<Ty>)> = self
-                    .env
-                    .impls(&owner)
-                    .iter()
-                    .filter(|(implemented, _)| {
-                        implemented.as_deref().and_then(|t| t.split('<').next()) == Some(trait_name)
-                    })
-                    .map(|(_, def)| match &**def {
-                        Def::Impl {
-                            trait_args,
-                            out_ty,
-                            methods,
-                            target,
-                            ..
-                        } => {
-                            // `impl Mul for Mat<T>` at a `Mat<Int>`: the impl's `T` is `Int`.
-                            let mut on = crate::ty::Bindings::default();
-                            target.unify(&left, &mut on);
-                            let rhs_ty = trait_args.first().map(|t| t.subst(&on));
-                            let method_ret = methods.iter().find_map(|(m, ty)| {
-                                if m == op_method {
-                                    if let Ty::Fn { ret, .. } = ty {
-                                        if !matches!(**ret, Ty::Unknown | Ty::Unit) {
-                                            return Some(ret.subst(&on));
-                                        }
-                                    }
-                                }
-                                None
-                            });
-                            (rhs_ty, out_ty.as_ref().map(|t| t.subst(&on)), method_ret)
-                        }
-                        _ => (None, None, None),
-                    })
-                    .collect();
+                let op_method = op_trait(op).map_or("", |(_, m)| m);
+                let matching = self.op_impls(&left, &owner, trait_name, op_method);
                 if matching.is_empty() {
                     if let Some(diag) = self.report(
                         op_span,
@@ -242,15 +245,9 @@ impl<'a> Checker<'a> {
                 if let (Some(le), Some(re)) = (seq_concat_elem(&left), seq_concat_elem(&right)) =>
             {
                 if le == re || re.is_vague() {
-                    Ty::Named {
-                        name: "List".into(),
-                        args: vec![le.clone()],
-                    }
+                    Ty::list(le.clone())
                 } else if le.is_vague() {
-                    Ty::Named {
-                        name: "List".into(),
-                        args: vec![re.clone()],
-                    }
+                    Ty::list(re.clone())
                 } else {
                     Ty::Unknown
                 }
@@ -394,15 +391,7 @@ impl<'a> Checker<'a> {
         op: BinOp,
         left: &Ty,
     ) -> Option<(&'static str, String)> {
-        let trait_name = match op {
-            BinOp::Add => "Add",
-            BinOp::Sub => "Sub",
-            BinOp::Mul => "Mul",
-            BinOp::Div => "Div",
-            BinOp::Rem => "Rem",
-            BinOp::Pow => "Pow",
-            _ => return None,
-        };
+        let (trait_name, _) = op_trait(op)?;
         let Ty::Named { name, .. } = left else {
             return None;
         };
@@ -480,6 +469,20 @@ impl<'a> Checker<'a> {
 
 /// Whether `ty` can stand on one side of a `none`-absorbing `+` or `-`: a
 /// number or an optional number. `Some(true)` for the integers.
+/// The trait an arithmetic operator is the fn of, and that fn's name:
+/// `a * b` is `Mul`'s `mul`.
+fn op_trait(op: BinOp) -> Option<(&'static str, &'static str)> {
+    Some(match op {
+        BinOp::Add => ("Add", "add"),
+        BinOp::Sub => ("Sub", "sub"),
+        BinOp::Mul => ("Mul", "mul"),
+        BinOp::Div => ("Div", "div"),
+        BinOp::Rem => ("Rem", "rem"),
+        BinOp::Pow => ("Pow", "pow"),
+        _ => return None,
+    })
+}
+
 pub(super) fn tropical_side(ty: &Ty) -> Option<bool> {
     let inner = match ty {
         Ty::Optional(inner) => inner,

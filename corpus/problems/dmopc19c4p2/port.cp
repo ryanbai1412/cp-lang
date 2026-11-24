@@ -5,7 +5,7 @@
 //   magnet slides into it. Print the fewest seconds to get the marble to the goal cell.
 // Solution: the state is (marble cell, hole cell), the 15 puzzle with one tile that matters.
 //   A move slides the hole one step, swapping with the marble when it is the neighbour. BFS
-//   over the n^4 states; the answer is the nearest state with the marble on the goal.
+//   over the n^4 states, stopping at the nearest state with the marble on the goal.
 // original: corpus/submissions/5323330.cpp
 // Bounds: n: 2..=15; marble.0, marble.1, goal.0, goal.1, empty.0, empty.1: 1..=n
 let n: 2..=15 = read()
@@ -20,5 +20,5 @@ let hole = if marble == empty[0]: empty[1] else: empty[0]
 fn moves(s: State) -> yields State:
     for h in s.hole.adj4:
         yield if h == s.marble: State((s.hole, s.marble)) else: State((s.marble, h))
-let dist = bfs(moves, from: [State((marble, hole))])
+let dist = bfs(moves, from: [State((marble, hole))], until: s => s.marble == goal)
 print(min(dist[State((goal, h))] for h in Cell)!)

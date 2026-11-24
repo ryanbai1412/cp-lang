@@ -2,7 +2,7 @@
 //! captures and the `mut` arguments it borrows.
 
 use crate::observe::Observer;
-use crate::value::{CaptureVal, Value};
+use crate::value::{CaptureVal, OptVal, Value};
 use crate::*;
 
 impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
@@ -33,6 +33,14 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     return match fast {
                         FastClosure::MinMax { is_max, a, b, ty } => {
                             let (va, vb) = (arg(a), arg(b));
+                            if matches!(ty, Ty::Opt(_)) {
+                                if matches!(vb, Value::Opt(OptVal::None)) {
+                                    return Ok(va);
+                                }
+                                if matches!(va, Value::Opt(OptVal::None)) {
+                                    return Ok(vb);
+                                }
+                            }
                             let ord = self.cmp_ty_val(&ty, &vb, &va, span)?;
                             let take_b = if is_max { ord.is_gt() } else { ord.is_lt() };
                             Ok(if take_b { vb } else { va })

@@ -21,17 +21,19 @@ impl Tracer {
         true
     }
 
+    #[inline]
     pub(super) fn raw_locals(&mut self, raw: &[(&str, i64)]) {
         let (names, ints) = (&mut self.local_names, &mut self.local_ints);
+        let at = |(name, _): &(&str, i64)| (name.as_ptr() as usize, name.len());
+        let mut renamed = raw.len() != self.local_name_at.len();
         ints.clear();
-        ints.extend(raw.iter().map(|&(_, v)| v));
-        let at = raw
-            .iter()
-            .map(|(name, _)| (name.as_ptr() as usize, name.len()));
-        let renamed = !at.clone().eq(self.local_name_at.iter().copied());
+        for (k, local) in raw.iter().enumerate() {
+            ints.push(local.1);
+            renamed |= self.local_name_at.get(k) != Some(&at(local));
+        }
         if renamed {
             self.local_name_at.clear();
-            self.local_name_at.extend(at);
+            self.local_name_at.extend(raw.iter().map(at));
             names.clear();
             for (name, _) in raw {
                 names.push('\n');

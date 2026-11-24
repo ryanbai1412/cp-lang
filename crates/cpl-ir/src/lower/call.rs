@@ -1316,7 +1316,6 @@ impl<'a> Lowerer<'a> {
         let args = vec![
             Arg::Value(super::stmt::place_to_expr(&view.base)),
             Arg::Value(view.lo.clone()),
-            Arg::Value(view.lo_inc.clone()),
             Arg::Value(view.hi.clone()),
             Arg::Value(view.hi_inc.clone()),
         ];
