@@ -1033,7 +1033,7 @@ pub fn covering<P, D>(self: [P]Range<D>, r: Range<D>) -> Range<P>:
 /// The first `f(x)` that is not `None`, stopping there; `None` if every one is.
 /// \(O(1)\) per element walked.
 ///
-/// cost: \(O(1)\) per element walked, stopping at the first `Some`
+/// cost: \(O(n)\), \(O(1)\) per element walked, stopping at the first `Some`
 /// empty: `let a: List<Int> = []; a.first_some(x => Some(x)) == None`
 /// ties: `[1, 2].first_some(x => Some(x * 10)) == Some(10)`
 /// traps: never
@@ -1045,9 +1045,9 @@ pub fn first_some<S: Seq, T, U>(self: S, f: T -> ?U) -> ?U:
     None
 
 /// The first element satisfying `p`, `None` if None does; stops there. `(1..=m).find(ok)` is the
-/// least `ok` integer. \(O(\text{position found})\).
+/// least `ok` integer. \(O(k)\) for a first match at position \(k\).
 ///
-/// cost: \(O(\text{position found})\) calls of `p`
+/// cost: \(O(k)\) calls of `p` for a first match at position \(k\)
 /// empty: `let a: List<Int> = []; a.find(x => x > 0) == None`
 /// ties: `[(1, 'a'), (1, 'b')].find(p => p.0 == 1) == Some((1, 'a'))`
 /// traps: never
