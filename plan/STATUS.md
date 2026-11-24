@@ -216,7 +216,7 @@ Authority: handbook leads design; spec/ is its downstream exhaustive form.
 | untagged code blocks in spec/core and spec/lib (spec-blocks skips them) | 27 | 0 (tag each block cp, or mark it spec-only) |
 | matrix empty cells | exit 0 (0 empty cells) | 0 |
 | trait methods without a case | 3 gaps of 118 (std and core claimers; the 3 wait on a range's keys in QUESTIONS.md) | 0, over std and core claimers |
-| named args in spec/core and spec/lib that no std fn takes | 5 (sig-gaps.txt: convolve(concave:), dijkstra(step:), each(sum:, hi:), pow(op:)) | 0 |
+| named args in spec/core and spec/lib that no std fn takes | 0 | 0 |
 | rebuild holes (probe P1, cold agent, spec/ only) | 26 (round 6, round 5's ten problems at 136ca9833: 22 silent, 3 contradiction, 1 missing-stdlib; round 5: 31 with 18 contradiction) | < 5 |
 | reverted compiler fixes caught (probe P2) | 23/25 measurable fixes (92%), 3 of 28 fix commits do not build | >= 90% |
 | banned spellings in spec | 0 | 0 |
@@ -332,6 +332,7 @@ Process costing more than 10% of a change is skipped with a trailer
 
 | Day | Lane | Skipped |
 |---|---|---|
+| 2026-11-24 | compiler | 1 |
 | 2026-11-23 | perf | 1 |
 | 2026-11-23 | debugger | 1 |
 

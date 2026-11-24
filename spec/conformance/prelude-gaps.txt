@@ -75,7 +75,6 @@ spec/lib/math.md: mod_log
 spec/lib/math.md: mod_sqrt
 spec/lib/math.md: mul_mod
 spec/lib/math.md: ntt
-spec/lib/math.md: pow
 spec/lib/math.md: primitive_root
 spec/lib/math.md: rank_real
 spec/lib/math.md: sieve_multiplicative
@@ -83,7 +82,6 @@ spec/lib/math.md: solve_real
 spec/lib/math.md: sos
 spec/lib/math.md: splitmix64
 spec/lib/math.md: sqrt
-spec/lib/ops-ranges.md: pow
 spec/lib/search-dp.md: backtrack
 spec/lib/search-dp.md: dinkelbach
 spec/lib/search-dp.md: knuth
