@@ -109,15 +109,13 @@ def prelude_names():
 
 
 def solution_sets():
-    def first(*paths):
-        return next((p for p in paths if os.path.isfile(p)), None)
-
-    probs = f"{ROOT}/corpus/problems"
-    stems = [l.strip() for l in open(f"{ROOT}/corpus/sets/ecnerwala.txt") if l.strip() and not l.startswith("#")]
-    ports = [first(f"{probs}/{s}/spec.cp", f"{probs}/{s}/port.cp") for s in stems]
-    climb = [f"{probs}/{s}/spec.cp" for s in json.load(open(f"{ROOT}/corpus/hillclimb.json"))["problems"]]
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    from corpus import problems
+    ports = [str(p.spec or p.port) for p in problems(sets=["ecnerwala"]) if p.spec or p.port]
+    climb = json.load(open(f"{ROOT}/corpus/hillclimb.json"))["problems"]
+    climb = [str(p.spec) for p in problems(ids=climb) if p.spec]
     gold = sorted(glob.glob(f"{ROOT}/corpus/gold/*.cp"))
-    return {"ports": [p for p in ports if p], "hill-climb": [p for p in climb if os.path.isfile(p)], "gold": gold}
+    return {"ports": ports, "hill-climb": climb, "gold": gold}
 
 
 def code(path):
