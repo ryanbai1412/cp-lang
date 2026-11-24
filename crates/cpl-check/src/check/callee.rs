@@ -17,7 +17,7 @@ impl Checker<'_> {
         if !matches!(name.text.as_str(), "contains" | "has")
             || u.name.is_some()
             || v.name.is_some()
-            || self.global(&name.text).is_some()
+            || self.global(&name.text).is_some_and(|d| takes_an_arc(&d))
         {
             return None;
         }
@@ -120,4 +120,11 @@ impl Checker<'_> {
             _ => None,
         }
     }
+}
+
+/// A global `contains`/`has` that `g.contains(u, v)` could call as written:
+/// anything but a fn whose parameters can't hold the list, `u` and `v`
+/// (std's `contains(self: S, x: T)` is one element's test).
+fn takes_an_arc(def: &Def) -> bool {
+    !matches!(def, Def::Fn { ty: Ty::Fn { params, .. }, .. } if params.len() < 3)
 }
