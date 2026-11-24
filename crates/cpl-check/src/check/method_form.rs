@@ -1032,7 +1032,9 @@ impl Checker<'_> {
         (args.iter())
             .any(|a| (a.name.as_ref()).is_some_and(|n| !params.iter().any(|(p, _)| *p == n.text)))
             || (args.iter().zip(&params)).any(|(a, (_, ty))| {
-                matches!(a.value.kind, ExprKind::Lambda { .. }) && !takes_fn(ty)
+                let lambda = matches!(a.value.kind, ExprKind::Lambda { .. });
+                // `xs.sum(f)`: what a fn value gives is std's fn's to type.
+                (lambda && !takes_fn(ty)) || (!lambda && a.name.is_none() && ty.contains("->"))
             })
     }
 
@@ -1169,11 +1171,11 @@ impl Checker<'_> {
     }
 }
 
-/// A catalog row's parameters, `r: Range<T>, by: T -> K`, as names and types.
-fn row_params(params: &str) -> Vec<(&str, &str)> {
+/// A catalog row's parameters, `r: Range<T>; by: T -> K`, as names and types.
+pub(super) fn row_params(params: &str) -> Vec<(&str, &str)> {
     let mut out = Vec::new();
     for p in super::call::split_top(params) {
-        if let Some((n, t)) = p.split_once(':') {
+        if let Some((n, t)) = p.trim_start_matches(';').split_once(':') {
             out.push((n.trim(), t.trim()));
         }
     }

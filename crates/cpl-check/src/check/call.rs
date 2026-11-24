@@ -1677,19 +1677,16 @@ impl Checker<'_> {
         let Some((member, elem)) = self.catalog_row(base, &name.text) else {
             return Vec::new();
         };
-        let params = split_top(member.params);
+        let params = super::method_form::row_params(member.params);
         let slot = match &arg.name {
-            Some(given) => params.iter().find(|p| {
-                p.split_once(':')
-                    .is_some_and(|(n, _)| n.trim() == given.text)
-            }),
+            Some(given) => params.iter().find(|(n, _)| *n == given.text),
             None => args
                 .iter()
                 .filter(|a| a.name.is_none())
                 .position(|a| std::ptr::eq(a, arg))
                 .and_then(|i| params.get(i)),
         };
-        let Some((_, ty)) = slot.and_then(|p| p.split_once(':')) else {
+        let Some(&(_, ty)) = slot else {
             return Vec::new();
         };
         // `cmp: ?((T, T) -> Bool) = None` takes a `(T, T) -> Bool`.
@@ -1759,16 +1756,15 @@ impl Checker<'_> {
         };
         let (member, elem) = self.catalog_row(base, &name.text)?;
         // `m.get(k, 0)` is not the row `get(k)`: its arity error says so.
-        let arity = split_top(member.params)
-            .into_iter()
-            .filter(|p| !p.trim().is_empty());
-        if args.len() > arity.count() {
+        if args.len() > split_top(member.params).len() {
             return None;
         }
-        // `xs.find(x => x > 1)` is the element, not the row's index.
-        if args
-            .iter()
-            .any(|a| matches!(a.value.kind, ExprKind::Lambda { .. }))
+        // `xs.find(x => x > 1)` is the element, not the row's index; a
+        // lambda never changes what `xs.sort(by: ..)` returns.
+        if !member.ret.is_empty()
+            && args
+                .iter()
+                .any(|a| matches!(a.value.kind, ExprKind::Lambda { .. }))
         {
             return None;
         }
