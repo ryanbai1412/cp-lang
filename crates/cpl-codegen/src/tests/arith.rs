@@ -527,7 +527,7 @@ fn a_field_typed_by_an_imported_range_alias_is_bounded_by_it() {
             analysis.diagnostics
         );
         crate::emit(
-            &cpl_ir::lower(&analysis).expect("lowers"),
+            &cpl_ir::lower(&analysis, &cpl_check::OwnFacts).expect("lowers"),
             "t.cp",
             Some(&src),
         )

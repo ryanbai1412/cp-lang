@@ -235,6 +235,7 @@ pub fn apply(text: &str, probes: &[Probe], keep: &[bool]) -> (String, Vec<Option
 /// Zero-based lines of the error diagnostics `text` gets from the checker and lowering.
 fn error_lines(db: &mut Session, path: &str, text: &str) -> Option<Vec<usize>> {
     let analysis = db.analyze_text(path, text);
+    let facts = db.imported_facts(&analysis);
     db.remove_file(path);
     let errors: Vec<_> = analysis
         .diagnostics
@@ -243,7 +244,7 @@ fn error_lines(db: &mut Session, path: &str, text: &str) -> Option<Vec<usize>> {
         .cloned()
         .collect();
     let errors = if errors.is_empty() {
-        match cpl_ir::lower(&analysis) {
+        match cpl_ir::lower(&analysis, &facts) {
             Ok(_) => return None,
             Err(diags) => diags,
         }

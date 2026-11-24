@@ -15,8 +15,11 @@ pub(in crate::lower) enum Stress {
 
 /// Lowers a file for `cpl stress`: a call handing a sequence an operation
 /// value first checks the laws its type and its traits declare on the sequence's values.
-pub fn lower_sampling_laws(analysis: &Analysis) -> Result<Program, Vec<Diagnostic>> {
-    super::super::lower_entry_with_cold(analysis, None, false, Stress::Laws)
+pub fn lower_sampling_laws(
+    analysis: &Analysis,
+    facts: &dyn cpl_check::FactsSource,
+) -> Result<Program, Vec<Diagnostic>> {
+    super::super::lower_entry_with_cold(analysis, facts, None, false, Stress::Laws)
 }
 
 impl<'a> Lowerer<'a> {

@@ -345,7 +345,7 @@ impl<'a> Checker<'a> {
                 for item in items {
                     self.no_escape(item, "storing it in a list or tuple");
                 }
-                self.inline_product(items, &tys).unwrap_or(Ty::Tuple(tys))
+                self.inline_product(&tys).unwrap_or(Ty::Tuple(tys))
             }
             ExprKind::Record(fields) => {
                 let mut seen: Vec<&str> = Vec::new();
@@ -1129,21 +1129,30 @@ fn leaves(body: &ast::Block) -> bool {
 impl Checker<'_> {
     /// `(R, C)` naming domains is the inline product domain over them, the
     /// one a `[R, C]T` is indexed by (decision 159).
-    fn inline_product(&mut self, items: &[Expr], tys: &[Ty]) -> Option<Ty> {
-        let names = (tys.iter())
+    fn inline_product(&mut self, tys: &[Ty]) -> Option<Ty> {
+        let factors = (tys.iter())
             .map(|t| match t {
                 Ty::Domain(d) => Some(d.as_str()),
                 _ => None,
             })
-            .collect::<Option<Vec<_>>>()
-            .filter(|n| n.len() >= 2)?;
-        let name = format!("({})", names.join(", "));
+            .collect::<Option<Vec<_>>>()?;
+        self.product_named(&factors).map(Ty::Domain)
+    }
+
+    /// The name of the inline product domain over `factors`, known from here
+    /// on as a `domain P = (R, C)` is.
+    pub(crate) fn product_named(&mut self, factors: &[&str]) -> Option<String> {
+        if factors.len() < 2 {
+            return None;
+        }
+        let name = format!("({})", factors.join(", "));
         if self.local_product_domains.get(&name).is_none() {
-            let factors = (items.iter())
-                .map(|i| self.product_factor_info(i).map(|(ty, _)| (None, ty)))
-                .collect::<Option<Vec<_>>>()?;
+            let factors = factors
+                .iter()
+                .map(|d| (None, Ty::Pos(d.to_string())))
+                .collect();
             self.local_product_domains.insert(name.clone(), factors);
         }
-        Some(Ty::Domain(name))
+        Some(name)
     }
 }

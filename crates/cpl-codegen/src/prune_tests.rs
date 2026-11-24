@@ -65,7 +65,8 @@ fn a_fn_only_an_assert_calls_is_left_out_of_a_build_without_checks() {
     );
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source);
-    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let program =
+        cpl_ir::lower(&db.analyze("t.cp").expect("set"), &cpl_check::OwnFacts).expect("lowers");
     let build = |checks| {
         let target = crate::Target {
             checks,
@@ -242,7 +243,8 @@ print(hop[0, 2] ?? -1)
 ";
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source);
-    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let program =
+        cpl_ir::lower(&db.analyze("t.cp").expect("set"), &cpl_check::OwnFacts).expect("lowers");
     let target = crate::Target {
         checks: crate::Checks::None,
         ..crate::Target::default()

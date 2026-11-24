@@ -12,7 +12,8 @@ fn static_struct_and_param_ops_eliminate_std_function() {
     );
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", src);
-    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let program =
+        cpl_ir::lower(&db.analyze("t.cp").expect("set"), &cpl_check::OwnFacts).expect("lowers");
     let out = crate::emit(&program, "t.cp", None);
     assert!(!out.contains("std::function"), "{out}");
     assert!(out.contains("cpl_fn0("), "{out}");
@@ -40,7 +41,8 @@ fn multi_closure_fn_param_lowers_to_template_functor() {
     );
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", src);
-    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let program =
+        cpl_ir::lower(&db.analyze("t.cp").expect("set"), &cpl_check::OwnFacts).expect("lowers");
     let out = crate::emit(&program, "t.cp", None);
     assert!(out.contains("template <class F0>"), "{out}");
     assert!(!out.contains("std::function"), "{out}");
@@ -94,7 +96,8 @@ fn unread_fn_fields_are_dropped_instead_of_std_function() {
     );
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", src);
-    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let program =
+        cpl_ir::lower(&db.analyze("t.cp").expect("set"), &cpl_check::OwnFacts).expect("lowers");
     let explained = crate::explain_closures(&program);
     let mode = |site: &str| &explained.iter().find(|e| e.site == site).expect(site).mode;
     assert_eq!(
@@ -140,7 +143,8 @@ fn recursive_fn_threads_its_closure_param_as_a_template() {
     );
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", src);
-    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let program =
+        cpl_ir::lower(&db.analyze("t.cp").expect("set"), &cpl_check::OwnFacts).expect("lowers");
     let explained = crate::explain_closures(&program);
     let dynamic: Vec<_> = explained
         .iter()
@@ -178,7 +182,8 @@ fn recursive_local_closure_takes_itself_instead_of_std_function() {
     assert!(out.contains("](auto& go_2, ll u)"), "{out}");
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", src);
-    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let program =
+        cpl_ir::lower(&db.analyze("t.cp").expect("set"), &cpl_check::OwnFacts).expect("lowers");
     let explained = crate::explain_closures(&program);
     assert!(
         explained
@@ -233,7 +238,8 @@ fn local_closure_lowers_to_auto_and_a_field_of_like_closures_is_a_bound_fn() {
     );
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", src);
-    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let program =
+        cpl_ir::lower(&db.analyze("t.cp").expect("set"), &cpl_check::OwnFacts).expect("lowers");
     let out = crate::emit(&program, "t.cp", None);
     assert!(out.contains("auto loc ="), "{out}");
     assert!(
@@ -369,7 +375,8 @@ fn a_local_memo_fn_and_its_body_pass_each_other_instead_of_a_std_function() {
     assert!(!out.contains("std::function"), "{out}");
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", src);
-    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let program =
+        cpl_ir::lower(&db.analyze("t.cp").expect("set"), &cpl_check::OwnFacts).expect("lowers");
     let explained = crate::explain_closures(&program);
     let wrapper = explained
         .iter()
@@ -407,7 +414,8 @@ fn explain_names_closure_params_and_top_level_fn_vars() {
     );
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", src);
-    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let program =
+        cpl_ir::lower(&db.analyze("t.cp").expect("set"), &cpl_check::OwnFacts).expect("lowers");
     let reasons: Vec<String> = crate::explain_closures(&program)
         .into_iter()
         .filter_map(|e| match e.mode {
@@ -649,7 +657,8 @@ fn a_struct_field_built_from_one_capturing_closure_is_that_closures_type() {
     assert!(out.contains("cpl_cl0 op;"), "{out}");
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", src);
-    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let program =
+        cpl_ir::lower(&db.analyze("t.cp").expect("set"), &cpl_check::OwnFacts).expect("lowers");
     let explained = crate::explain_closures(&program);
     assert!(
         explained
@@ -701,7 +710,8 @@ fn a_struct_field_two_closures_with_like_captures_reach_is_a_bound_fn() {
     assert!(!out.contains("cpl_cl"), "{out}");
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", src);
-    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let program =
+        cpl_ir::lower(&db.analyze("t.cp").expect("set"), &cpl_check::OwnFacts).expect("lowers");
     let explained = crate::explain_closures(&program);
     assert!(
         explained
@@ -822,7 +832,8 @@ fn explain_lists_a_fn_inside_a_record_that_stays_std_function() {
     assert!(out.contains("std::function<ll(ll)>"), "{out}");
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", src);
-    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let program =
+        cpl_ir::lower(&db.analyze("t.cp").expect("set"), &cpl_check::OwnFacts).expect("lowers");
     let explained = crate::explain_closures(&program);
     assert!(
         explained
@@ -857,7 +868,8 @@ fn a_top_level_fn_let_only_main_uses_is_its_closures_own_type() {
     assert!(out.contains("auto f = adder("), "{out}");
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", src);
-    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let program =
+        cpl_ir::lower(&db.analyze("t.cp").expect("set"), &cpl_check::OwnFacts).expect("lowers");
     let explained = crate::explain_closures(&program);
     let f = explained
         .iter()
@@ -937,7 +949,8 @@ fn a_value_if_or_match_of_different_closures_keeps_each_own_type() {
     assert!(out.contains("auto f = cpl::pick("), "{out}");
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", src);
-    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let program =
+        cpl_ir::lower(&db.analyze("t.cp").expect("set"), &cpl_check::OwnFacts).expect("lowers");
     let explained = crate::explain_closures(&program);
     for e in explained
         .iter()
@@ -1007,7 +1020,8 @@ fn a_yielded_tuple_keeps_its_closures_own_type() {
     assert!(out.contains("auto cut = std::get<1>("), "{out}");
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", src);
-    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let program =
+        cpl_ir::lower(&db.analyze("t.cp").expect("set"), &cpl_check::OwnFacts).expect("lowers");
     let explained = crate::explain_closures(&program);
     assert!(
         !explained

@@ -69,8 +69,13 @@ pub fn trap_report_in(
     let (name, analysis) = analyzed(path, text)?;
     let text = text.to_string();
     let program = match brute {
-        false => cpl_ir::lower(&analysis).ok()?,
-        true => cpl_ir::lower_brute(&analysis, &cpl_ir::brute(&analysis)?.0).ok()?,
+        false => cpl_ir::lower(&analysis, &cpl_check::OwnFacts).ok()?,
+        true => cpl_ir::lower_brute(
+            &analysis,
+            &cpl_check::OwnFacts,
+            &cpl_ir::brute(&analysis)?.0,
+        )
+        .ok()?,
     };
     // Alone, an interactive solution only ever sees its input end.
     if program.interactive {
@@ -131,7 +136,7 @@ pub fn checker_trap_in(
 ) -> Option<Trapped> {
     let (name, analysis) = analyzed(path, text)?;
     let (checker, _) = cpl_ir::checker(&analysis)?;
-    let program = cpl_ir::lower_checker(&analysis, &checker).ok()?;
+    let program = cpl_ir::lower_checker(&analysis, &cpl_check::OwnFacts, &checker).ok()?;
     let mut printed = Some(got.as_bytes().to_vec());
     let io = cpl_interp::Io::judge(input.as_bytes(), Box::new(move || printed.take()))
         .until(cpl_interp::Stop::after(LIMIT));
@@ -159,7 +164,7 @@ pub fn checker_trap_in(
 pub fn interpreted_output(path: &Path, input: &str) -> Option<String> {
     let text = std::fs::read_to_string(path).ok()?;
     let (_, analysis) = analyzed(path, &text)?;
-    let program = cpl_ir::lower(&analysis).ok()?;
+    let program = cpl_ir::lower(&analysis, &cpl_check::OwnFacts).ok()?;
     if program.interactive {
         return None;
     }

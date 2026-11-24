@@ -12,9 +12,9 @@ mod alias_impl;
 mod anon_domain;
 mod cache;
 mod call;
-mod checked;
 mod calls;
 mod capture;
+mod checked;
 mod coerce;
 mod collect;
 mod comprehension;
@@ -116,14 +116,20 @@ pub fn list_tests(analysis: &Analysis) -> Vec<String> {
 }
 
 /// Lowers a file that the front end reported no errors for.
-pub fn lower(analysis: &Analysis) -> Result<Program, Vec<Diagnostic>> {
-    lower_impl(analysis, None)
+pub fn lower(
+    analysis: &Analysis,
+    facts: &dyn cpl_check::FactsSource,
+) -> Result<Program, Vec<Diagnostic>> {
+    lower_impl(analysis, facts, None)
 }
 
 /// Lowers a file in `@cache` cold mode: read-`self` methods on structs with
 /// `@cache` fields receive a copy of `self`, undoing cache writes at exit.
-pub fn lower_cold_cache(analysis: &Analysis) -> Result<Program, Vec<Diagnostic>> {
-    lower_entry_with_cold(analysis, None, false, call::Stress::ColdCache)
+pub fn lower_cold_cache(
+    analysis: &Analysis,
+    facts: &dyn cpl_check::FactsSource,
+) -> Result<Program, Vec<Diagnostic>> {
+    lower_entry_with_cold(analysis, facts, None, false, call::Stress::ColdCache)
 }
 
 /// True when any struct in `analysis` (the file itself) declares a `@cache` field.
@@ -143,8 +149,12 @@ pub fn has_cached_fields(analysis: &Analysis) -> bool {
 }
 
 /// Lowers a single `@test` function of `analysis` as the program's entrypoint.
-pub fn lower_test(analysis: &Analysis, test_name: &str) -> Result<Program, Vec<Diagnostic>> {
-    lower_impl(analysis, Some(test_name))
+pub fn lower_test(
+    analysis: &Analysis,
+    facts: &dyn cpl_check::FactsSource,
+    test_name: &str,
+) -> Result<Program, Vec<Diagnostic>> {
+    lower_impl(analysis, facts, Some(test_name))
 }
 
 /// The `@interactor` fn a file declares at its top level, if any.
@@ -237,15 +247,23 @@ enum Aside {
 /// Lowers the `@alt(program)` fn `name` as a program: the file's input
 /// header, then the fn. A brute that calls `read()` itself reads the
 /// whole input, and none of the header runs.
-pub fn lower_brute(analysis: &Analysis, name: &str) -> Result<Program, Vec<Diagnostic>> {
-    lower_aside(analysis, name, Aside::Brute)
+pub fn lower_brute(
+    analysis: &Analysis,
+    facts: &dyn cpl_check::FactsSource,
+    name: &str,
+) -> Result<Program, Vec<Diagnostic>> {
+    lower_aside(analysis, facts, name, Aside::Brute)
 }
 
 /// Lowers the `@check` fn `name` as a program: the file's input
 /// header, then the fn, whose `read_output()` reads what the solution
 /// printed.
-pub fn lower_checker(analysis: &Analysis, name: &str) -> Result<Program, Vec<Diagnostic>> {
-    lower_aside(analysis, name, Aside::Checker)
+pub fn lower_checker(
+    analysis: &Analysis,
+    facts: &dyn cpl_check::FactsSource,
+    name: &str,
+) -> Result<Program, Vec<Diagnostic>> {
+    lower_aside(analysis, facts, name, Aside::Checker)
 }
 
 /// The `@gen` fn a file declares, and the line it is on.
@@ -255,8 +273,13 @@ pub fn generator(analysis: &Analysis) -> Option<(String, u32)> {
 
 /// Lowers the `@gen` fn `name` as a program that prints one input:
 /// the file's constants and fns, then `name(size)`. Nothing is read.
-pub fn lower_gen(analysis: &Analysis, name: &str, size: i64) -> Result<Program, Vec<Diagnostic>> {
-    lower_aside(analysis, name, Aside::Gen(size))
+pub fn lower_gen(
+    analysis: &Analysis,
+    facts: &dyn cpl_check::FactsSource,
+    name: &str,
+    size: i64,
+) -> Result<Program, Vec<Diagnostic>> {
+    lower_aside(analysis, facts, name, Aside::Gen(size))
 }
 
 /// Lowers the `gen:` fn `name` of the `read(gen: name)` on `line` as a
@@ -264,14 +287,20 @@ pub fn lower_gen(analysis: &Analysis, name: &str, size: i64) -> Result<Program, 
 /// `name()` makes, written as `read()` reads it.
 pub fn lower_gen_read(
     analysis: &Analysis,
+    facts: &dyn cpl_check::FactsSource,
     name: &str,
     line: u32,
 ) -> Result<Program, Vec<Diagnostic>> {
-    lower_aside(analysis, name, Aside::Read(line))
+    lower_aside(analysis, facts, name, Aside::Read(line))
 }
 
-fn lower_aside(analysis: &Analysis, name: &str, aside: Aside) -> Result<Program, Vec<Diagnostic>> {
-    let mut lw = Lowerer::new(analysis);
+fn lower_aside(
+    analysis: &Analysis,
+    facts: &dyn cpl_check::FactsSource,
+    name: &str,
+    aside: Aside,
+) -> Result<Program, Vec<Diagnostic>> {
+    let mut lw = Lowerer::new(analysis, facts);
     lw.aside = Some(aside);
     lw.load_modules(analysis);
     lw.file_contexts();
@@ -287,29 +316,39 @@ fn lower_aside(analysis: &Analysis, name: &str, aside: Aside) -> Result<Program,
 /// runs the `@interactor` fn `name`. Its `read()` reads the hidden test,
 /// `sol.recv()` reads what the solution prints, and `sol.send(..)` prints
 /// what the solution reads.
-pub fn lower_judge(analysis: &Analysis, name: &str) -> Result<Program, Vec<Diagnostic>> {
-    lower_entry(analysis, Some(name), true)
+pub fn lower_judge(
+    analysis: &Analysis,
+    facts: &dyn cpl_check::FactsSource,
+    name: &str,
+) -> Result<Program, Vec<Diagnostic>> {
+    lower_entry(analysis, facts, Some(name), true)
 }
 
-fn lower_impl(analysis: &Analysis, test_name: Option<&str>) -> Result<Program, Vec<Diagnostic>> {
-    lower_entry(analysis, test_name, false)
+fn lower_impl(
+    analysis: &Analysis,
+    facts: &dyn cpl_check::FactsSource,
+    test_name: Option<&str>,
+) -> Result<Program, Vec<Diagnostic>> {
+    lower_entry(analysis, facts, test_name, false)
 }
 
 fn lower_entry(
     analysis: &Analysis,
+    facts: &dyn cpl_check::FactsSource,
     test_name: Option<&str>,
     judge: bool,
 ) -> Result<Program, Vec<Diagnostic>> {
-    lower_entry_with_cold(analysis, test_name, judge, call::Stress::Off)
+    lower_entry_with_cold(analysis, facts, test_name, judge, call::Stress::Off)
 }
 
 pub(in crate::lower) fn lower_entry_with_cold(
     analysis: &Analysis,
+    facts: &dyn cpl_check::FactsSource,
     test_name: Option<&str>,
     judge: bool,
     stress: call::Stress,
 ) -> Result<Program, Vec<Diagnostic>> {
-    let mut lw = Lowerer::new(analysis);
+    let mut lw = Lowerer::new(analysis, facts);
     lw.judge = judge;
     lw.stress = stress;
     // Whatever the judge sends goes out at once. A solution with a judge in its
@@ -631,6 +670,9 @@ enum SizeInput {
 
 struct Lowerer<'a> {
     mods: Vec<&'a Analysis>,
+    /// Where the checker's findings in each module's bodies are read.
+    facts: &'a dyn cpl_check::FactsSource,
+    mod_facts: Vec<Option<std::sync::Arc<cpl_check::Facts>>>,
     path_to_mod: HashMap<String, ModId>,
     /// The module `std.mod`, when the program uses it.
     std_mod: Option<ModId>,
@@ -840,8 +882,10 @@ struct Lowerer<'a> {
 }
 
 impl<'a> Lowerer<'a> {
-    fn new(_analysis: &'a Analysis) -> Lowerer<'a> {
+    fn new(_analysis: &'a Analysis, facts: &'a dyn cpl_check::FactsSource) -> Lowerer<'a> {
         Lowerer {
+            facts,
+            mod_facts: Vec::new(),
             mods: Vec::new(),
             path_to_mod: HashMap::new(),
             std_mod: None,

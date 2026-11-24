@@ -64,7 +64,8 @@ fn explain_names_each_table_stored_as_a_hash_table() {
     );
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source);
-    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let program =
+        cpl_ir::lower(&db.analyze("t.cp").expect("set"), &cpl_check::OwnFacts).expect("lowers");
     let report = crate::explain::report("t.cp", source, &program);
     assert!(report.contains("[hashed] Map<Int, _>"), "{report}");
 }

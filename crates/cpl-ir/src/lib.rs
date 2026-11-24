@@ -38,18 +38,18 @@ pub fn check(analysis: &cpl_check::Analysis) -> Vec<cpl_diag::Diagnostic> {
     if !analysis.has_errors() {
         // The judge's side and the brute are programs of their own, and
         // an error in one is an error in the file.
-        let mut results = vec![lower(analysis).map(|p| p.warnings)];
+        let mut results = vec![lower(analysis, &cpl_check::OwnFacts).map(|p| p.warnings)];
         if let Some(name) = interactor(analysis) {
-            results.push(lower_judge(analysis, &name).map(|p| p.warnings));
+            results.push(lower_judge(analysis, &cpl_check::OwnFacts, &name).map(|p| p.warnings));
         }
         if let Some((name, _)) = brute(analysis) {
-            results.push(lower_brute(analysis, &name).map(|p| p.warnings));
+            results.push(lower_brute(analysis, &cpl_check::OwnFacts, &name).map(|p| p.warnings));
         }
         if let Some((name, _)) = generator(analysis) {
-            results.push(lower_gen(analysis, &name, 1).map(|p| p.warnings));
+            results.push(lower_gen(analysis, &cpl_check::OwnFacts, &name, 1).map(|p| p.warnings));
         }
         if let Some((name, _)) = checker(analysis) {
-            results.push(lower_checker(analysis, &name).map(|p| p.warnings));
+            results.push(lower_checker(analysis, &cpl_check::OwnFacts, &name).map(|p| p.warnings));
         }
         for more in results
             .into_iter()

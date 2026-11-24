@@ -200,6 +200,30 @@ fn an_imported_body_is_checked_when_its_facts_are_asked_for() {
     assert_eq!(facts.type_of(body), Some(&Ty::Int));
 }
 
+#[test]
+fn module_facts_are_checked_once_per_revision() {
+    let lib = "pub fn f(x: Int) -> Int:\n    x * 2\n";
+    let mut db = Database::with_loader(Box::new(MapLoader(vec![(
+        "lib.a".into(),
+        "lib/a.cp".into(),
+        lib.into(),
+    )])));
+    db.set_file("main.cp", "use lib.a.{f}\nprint(f(3))\n");
+    db.analyze("main.cp").expect("analyzes");
+    let first = db.module_facts("lib/a.cp").expect("main imports lib.a");
+    let at = lib.find("x * 2").unwrap() as u32;
+    assert_eq!(first.type_of(Span::new(at, at + 5)), Some(&Ty::Int));
+    let again = db.module_facts("lib/a.cp").unwrap();
+    assert!(Arc::ptr_eq(&first, &again), "asked again, checked once");
+    let edited = "pub fn f(x: Int) -> Bool:\n    x == 2\n";
+    db.set_file("lib/a.cp", edited);
+    db.analyze("main.cp");
+    let after = db.module_facts("lib/a.cp").expect("still imported");
+    assert!(!Arc::ptr_eq(&first, &after), "an edit checks again");
+    let at = edited.find("x == 2").unwrap() as u32;
+    assert_eq!(after.type_of(Span::new(at, at + 6)), Some(&Ty::Bool));
+}
+
 /// A getter whose struct's methods read it again is cut short while it is
 /// worked out; the cut-short def must not be the one kept.
 #[test]

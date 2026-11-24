@@ -53,6 +53,7 @@ pub fn compile_program(
     text: &str,
 ) -> Result<CompiledProgram, CompileError> {
     let analysis = db.analyze_text(path, text);
+    let facts = db.imported_facts(&analysis);
     db.remove_file(path);
     if !analysis.diagnostics.is_empty()
         && analysis
@@ -66,7 +67,7 @@ pub fn compile_program(
             text,
         )));
     }
-    match cpl_ir::lower(&analysis) {
+    match cpl_ir::lower(&analysis, &facts) {
         Ok(program) => {
             let warnings = if program.warnings.is_empty() {
                 String::new()

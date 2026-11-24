@@ -15,7 +15,7 @@ fn vm_runs_alone(source: &str, input: &str) -> String {
         "{:?}",
         analysis.diagnostics
     );
-    let program = cpl_ir::lower(&analysis).expect("lowers");
+    let program = cpl_ir::lower(&analysis, &cpl_check::OwnFacts).expect("lowers");
     let feeds = cpl_ir::pushed::Feeds::of(&program);
     let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false, false);
     let own = |id: &usize| {
@@ -243,7 +243,7 @@ fn traced_vm_swaps_grid_cells_itself() {
         "{:?}",
         analysis.diagnostics
     );
-    let program = cpl_ir::lower(&analysis).expect("lowers");
+    let program = cpl_ir::lower(&analysis, &cpl_check::OwnFacts).expect("lowers");
     let feeds = cpl_ir::pushed::Feeds::of(&program);
     let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, true, false);
     let writes = (compiled.main.fallback_stmts.iter())

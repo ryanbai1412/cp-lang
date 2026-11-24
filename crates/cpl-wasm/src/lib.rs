@@ -264,7 +264,8 @@ impl Playground {
                 // The brute's side, when the file has one that builds.
                 let slow = self.db.analyze(name).and_then(|analysis| {
                     let (brute_fn, _) = cpl_ir::brute(&analysis)?;
-                    let program = cpl_ir::lower_brute(&analysis, &brute_fn).ok()?;
+                    let facts = self.db.imported_facts(&analysis);
+                    let program = cpl_ir::lower_brute(&analysis, &facts, &brute_fn).ok()?;
                     let mut sink = Vec::new();
                     let recording =
                         observe(&program, input, &mut sink, stack, config()).recording?;
@@ -624,7 +625,8 @@ impl Playground {
         if analysis.has_errors() {
             return Err(outcome(EXIT_ERRORS, &diagnostics, source, stderr, []));
         }
-        match cpl_ir::lower(&analysis) {
+        let facts = self.db.imported_facts(&analysis);
+        match cpl_ir::lower(&analysis, &facts) {
             Ok(program) => Ok(Compiled {
                 program,
                 diagnostics,

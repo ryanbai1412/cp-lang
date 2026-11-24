@@ -12,7 +12,7 @@ fn runs(source: &str, input: &str) -> String {
         "{:?}",
         analysis.diagnostics
     );
-    let program = match cpl_ir::lower(&analysis) {
+    let program = match cpl_ir::lower(&analysis, &cpl_check::OwnFacts) {
         Ok(program) => program,
         Err(diags) => return format!("{diags:?}"),
     };

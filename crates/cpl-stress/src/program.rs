@@ -378,11 +378,11 @@ fn emit_cpp(
     }
     let missing = |kind: &str| BuildError(format!("{name} declares no `{kind}` fn"));
     let lowered = match part {
-        Part::Solution => cpl_ir::lower_sampling_laws(&analysis),
-        Part::ColdCache => cpl_ir::lower_cold_cache(&analysis),
+        Part::Solution => cpl_ir::lower_sampling_laws(&analysis, &cpl_check::OwnFacts),
+        Part::ColdCache => cpl_ir::lower_cold_cache(&analysis, &cpl_check::OwnFacts),
         Part::Brute => {
             let (brute_fn, _) = cpl_ir::brute(&analysis).ok_or_else(|| missing("@alt(program)"))?;
-            cpl_ir::lower_brute(&analysis, &brute_fn)
+            cpl_ir::lower_brute(&analysis, &cpl_check::OwnFacts, &brute_fn)
         }
     };
     let program = lowered.map_err(|diagnostics| errors(&diagnostics))?;
@@ -850,7 +850,8 @@ impl Program {
         }
         let (gen_fn, _) = cpl_ir::generator(&analysis)
             .ok_or_else(|| BuildError(format!("{name} declares no `@gen` fn")))?;
-        cpl_ir::lower_gen(&analysis, &gen_fn, size).map_err(|diagnostics| failed(&diagnostics))
+        cpl_ir::lower_gen(&analysis, &cpl_check::OwnFacts, &gen_fn, size)
+            .map_err(|diagnostics| failed(&diagnostics))
     }
 
     /// The command with `extra` arguments added.

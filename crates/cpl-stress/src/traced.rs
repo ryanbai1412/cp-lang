@@ -164,10 +164,11 @@ pub fn trace(
     let first = |diagnostics: Vec<cpl_diag::Diagnostic>| {
         (diagnostics.first()).map_or("the file does not build".to_string(), |d| d.message.clone())
     };
-    let fast = cpl_ir::lower_sampling_laws(&analysis).map_err(first)?;
+    let fast = cpl_ir::lower_sampling_laws(&analysis, &cpl_check::OwnFacts).map_err(first)?;
     let (brute_fn, brute) = match cpl_ir::brute(&analysis) {
         Some((brute_fn, _)) => {
-            let brute = cpl_ir::lower_brute(&analysis, &brute_fn).map_err(first)?;
+            let brute =
+                cpl_ir::lower_brute(&analysis, &cpl_check::OwnFacts, &brute_fn).map_err(first)?;
             (brute_fn, Some(brute))
         }
         None => match crate::cli::swap_in_part_brutes(source) {
@@ -178,7 +179,7 @@ pub fn trace(
                     .ok_or("the file with its `@alt` fns swapped in can't be checked")?;
                 (
                     "its @alt fns".to_string(),
-                    Some(cpl_ir::lower(&swapped).map_err(first)?),
+                    Some(cpl_ir::lower(&swapped, &cpl_check::OwnFacts).map_err(first)?),
                 )
             }
             None => (String::new(), None),
@@ -186,7 +187,9 @@ pub fn trace(
     };
     let interactor = match (fast.interactive, cpl_ir::interactor(&analysis)) {
         (false, _) => None,
-        (true, Some(judge)) => Some(cpl_ir::lower_judge(&analysis, &judge).map_err(first)?),
+        (true, Some(judge)) => {
+            Some(cpl_ir::lower_judge(&analysis, &cpl_check::OwnFacts, &judge).map_err(first)?)
+        }
         (true, None) => return Err(
             "an interactive solution judged by another program is traced with `cpl run --trace`"
                 .to_string(),
