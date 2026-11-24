@@ -1645,3 +1645,18 @@ print(total, rest)
         );
     }
 }
+
+#[test]
+fn a_read_from_a_string_reads_no_input() {
+    let src = "let n: 1..=5 = read()
+var sum = 0
+for i in 0..n:
+    sum += read<Int>(from: \"{i}\")! + read(from: \"1\")!
+print(sum)
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    for seed in 0..10 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(5)).unwrap();
+        assert_eq!(case.render().split_whitespace().count(), 1);
+    }
+}

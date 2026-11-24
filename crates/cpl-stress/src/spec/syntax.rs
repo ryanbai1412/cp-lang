@@ -528,7 +528,8 @@ pub(super) fn reads_with_options(code: &str) -> bool {
     read_calls(code).any(|options| options)
 }
 
-/// Each call of the built-in `read` in `code`: whether it has options.
+/// Each call of the built-in `read` in `code` that reads the input:
+/// whether it has options. `read(from: s)` reads `s`, not the input.
 pub(super) fn read_calls(code: &str) -> impl Iterator<Item = bool> + '_ {
     code.lines().flat_map(|line| {
         let line = line.split("//").next().unwrap_or("");
@@ -537,21 +538,47 @@ pub(super) fn read_calls(code: &str) -> impl Iterator<Item = bool> + '_ {
             if before.is_some_and(|c| c.is_alphanumeric() || c == '_' || c == '.') {
                 return None;
             }
-            let rest = &line[at + "read".len()..];
+            let mut rest = &line[at + "read".len()..];
             // `read<T>()` and `read::<T>()` read too, never with options.
-            if rest.starts_with('<') || rest.starts_with("::<") {
-                return Some(false);
+            let typed = rest.starts_with('<') || rest.starts_with("::<");
+            if typed {
+                let Some(close) = generics_end(rest) else {
+                    return Some(false);
+                };
+                rest = &rest[close..];
             }
-            let rest = rest.strip_prefix('(')?.trim_start();
+            let Some(rest) = rest.strip_prefix('(').map(str::trim_start) else {
+                return typed.then_some(false);
+            };
             if rest.starts_with(')') {
                 return Some(false);
             }
             let name = rest
                 .find(|c: char| !(c.is_alphanumeric() || c == '_'))
                 .map_or(rest, |end| &rest[..end]);
-            (!name.is_empty() && rest[name.len()..].trim_start().starts_with(':')).then_some(true)
+            let named = !name.is_empty() && rest[name.len()..].trim_start().starts_with(':');
+            match (named && name == "from", typed) {
+                (true, _) => None,
+                (false, true) => Some(false),
+                (false, false) => named.then_some(true),
+            }
         })
     })
+}
+
+/// Where the type arguments `<..>` at the start of `code` end: just past
+/// their closing `>`.
+fn generics_end(code: &str) -> Option<usize> {
+    let mut depth = 0usize;
+    for (at, c) in code.char_indices() {
+        match c {
+            '<' => depth += 1,
+            '>' if depth == 1 => return Some(at + 1),
+            '>' => depth = depth.checked_sub(1)?,
+            _ => {}
+        }
+    }
+    None
 }
 
 /// `[read() for _ in lo..hi]`: the count `hi - lo` of values it reads.
