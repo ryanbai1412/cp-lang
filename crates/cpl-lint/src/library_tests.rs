@@ -199,7 +199,9 @@ fn reads_rewrites_the_later_reads_of_a_name_from_declares() {
 fn a_declared_name_s_initializer_does_not_read_the_name() {
     let decl = "@lint(table_by_hand, from: \"for i in 0..n:\\n    p[i + 1] = p[i] + e\", advice: \"let p = table([e for i in 0..n])\", holes: \"n, p, e\")\npub fn table(xs: List<Int>) -> List<Int> = xs\n";
     let found = |step: &str| {
-        let src = format!("{decl}let a = [1, 2]\nvar q = List.filled(3, 0)\nfor i in 0..2:\n    q[i + 1] = q[i] + {step}\nprint(q)\n");
+        let src = format!(
+            "{decl}let a = [1, 2]\nvar q = List.filled(3, 0)\nfor i in 0..2:\n    q[i + 1] = q[i] + {step}\nprint(q)\n"
+        );
         (crate::lint(&src, &crate::Config::default()).into_iter())
             .filter(|d| d.code.0 == "table_by_hand")
             .count()
@@ -795,7 +797,9 @@ fn a_no_fix_lint_reports_in_the_program_s_fn_of_its_name() {
 fn a_comprehension_item_hole_takes_its_code_bare() {
     let decl = "@lint(table_by_hand, from: \"for i in 0..n:\\n    p[i + 1] = p[i] + e\", to: \"p = table([e for i in 0..n])\", holes: \"n, p, e\")\npub fn table(xs: List<Int>) -> List<Int> = xs\n";
     let fixed = |e: &str| {
-        let src = format!("{decl}let a = [1, 2]\nvar p = [0, 0, 0]\nfor i in 0..2:\n    p[i + 1] = p[i] + {e}\nprint(p)\n");
+        let src = format!(
+            "{decl}let a = [1, 2]\nvar p = [0, 0, 0]\nfor i in 0..2:\n    p[i + 1] = p[i] + {e}\nprint(p)\n"
+        );
         let found: Vec<_> = (crate::lint(&src, &crate::Config::default()).into_iter())
             .filter(|d| d.code.0 == "table_by_hand")
             .collect();
@@ -818,7 +822,9 @@ fn a_comprehension_item_hole_takes_its_code_bare() {
 #[test]
 fn a_hole_written_as_a_whole_condition_keeps_no_parens() {
     let decl = "@lint(elif_unwrap, from: \"if a:\\n    first\\nelif (self ?? c) > y:\\n    let w = self!\\n    body\", to: \"if a:\\n    first\\nelif let w = self, w > y:\\n    body\", holes: \"a, first, c, y, body\")\npub fn some_and(self: ?Int, p: Int -> Bool) -> Bool = if let Some(v) = self: p(v) else: false\n";
-    let src = format!("{decl}let n = 2\nlet best: ?Int = Some(7)\nif n == 0:\n    print(0)\nelif (best ?? 0) > 4:\n    let b = best!\n    print(b)\n");
+    let src = format!(
+        "{decl}let n = 2\nlet best: ?Int = Some(7)\nif n == 0:\n    print(0)\nelif (best ?? 0) > 4:\n    let b = best!\n    print(b)\n"
+    );
     let fixes: Vec<String> = crate::lint(&src, &crate::Config::default())
         .into_iter()
         .filter(|d| d.code.0 == "elif_unwrap")
@@ -987,5 +993,42 @@ fn not_before_a_hole_negates_it_and_an_iterable_keeps_no_brackets() {
             "print(pick(sum(x for x in (a..) if x > 0) > 0))",
             "pick([1].all(z => a > 2))"
         ]
+    );
+}
+
+/// An advice spelling whose `from` is a loop says the loop is one call, so
+/// its statement holes match only statements that assign no name they do
+/// not declare themselves. Rule: R06.4.9.
+#[test]
+fn an_advice_loops_statement_hole_moves_no_outside_name() {
+    let decl = "@lint(any_by_hand, from: \"var x = \\\"no\\\"\\nfor p in it:\\n    s\\n    if c:\\n        x = \\\"yes\\\"\\n        break\", advice: \"let x = it.any(p => c)\", holes: \"it, s, c\")\npub fn any_of(b: Bool) = ()\n";
+    let found = |body: &str| -> usize {
+        crate::lint(&format!("{decl}{body}"), &crate::Config::default())
+            .into_iter()
+            .filter(|d| d.code.0 == "any_by_hand")
+            .inspect(|d| assert!(d.fixes.is_empty(), "{:?}", d.fixes))
+            .count()
+    };
+    let search = |s: &str| {
+        format!(
+            "var f = \"no\"\nfor y in [1, 2]:\n{s}    if y > 1:\n        f = \"yes\"\n        break\nprint(f)\n"
+        )
+    };
+    for quiet in [
+        "    print(y)\n",
+        "    var t = y\n    t += 1\n    print(t)\n",
+    ] {
+        assert_eq!(found(&search(quiet)), 1, "{quiet}");
+    }
+    let outer = "var n = 0\nvar tbl = [0, 0, 0]\n";
+    for moves in ["    n += y\n", "    tbl[y] = 1\n", "    if y > 0: n = y\n"] {
+        assert_eq!(found(&format!("{outer}{}", search(moves))), 0, "{moves}");
+    }
+    // Advice that keeps the loop takes a body that moves outside names.
+    let walk = "@lint(walk_by_hand, from: \"while k > 0:\\n    s\\n    k -= 1\", advice: \"walk(k)\", holes: \"s\")\npub fn walk(k: Int) = ()\nvar n = 0\nvar k = 3\nwhile k > 0:\n    n += k\n    k -= 1\nprint(n)\n";
+    let walks = crate::lint(walk, &crate::Config::default());
+    assert!(
+        walks.iter().any(|d| d.code.0 == "walk_by_hand"),
+        "{walks:?}"
     );
 }

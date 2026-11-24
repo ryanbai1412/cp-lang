@@ -230,7 +230,12 @@ library or by this spec:
   expressions (one per line) matches somewhere in the file, the holes and
   names `from` bound standing for what they matched; its other holes are
   free. `advice:` in place of `to` names code the finding suggests; it
-  need not call the fn nor use every parameter, and is never a fix.
+  need not call the fn nor use every parameter, and is never a fix; its
+  holes may match any code. When an `advice:` spelling declares a name in
+  place of a loop `from` (`let found = xs.any(..)`), the loop is one call, so
+  a statement hole in it matches only statements that assign no name they
+  do not declare (`print(x)` and `let t = x`, not `psum += x` or
+  `t[r] = m`); advice that keeps the loop (`submasks(m)`) takes any.
   When `from` declares
   a name with a written type (`var m: Map<K, Int> = Map()`) and `to`
   declares it again with no written type, the fix may change its type, so
