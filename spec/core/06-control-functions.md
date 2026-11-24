@@ -221,7 +221,9 @@ library or by this spec:
   one-expression body writes (`self % d` on `divmod`, whose body is
   `(self / d, self % d)`). On a fn that documents a compiler built-in,
   `builtin: "filled"` lets `to` call that built-in in its place
-  (`[n, m].filled(c)` on a grid fn), since std cannot declare it. A hole
+  (`[n, m].filled(c)` on a grid fn), since std cannot declare it. Or `from` calls the fn and `to` does not:
+  the lint drops a needless call (`let x = s.last!` then `s.pop()` is
+  `let x = s.pop()!`, declared on `last`), its fix titled "drop `f`". A hole
   `from` evaluates once per item of a comprehension (anywhere in its
   brackets but its first `for`'s iterable) and `to` does not matches only
   code that calls nothing. A compound `to` runs its right side before the
@@ -252,8 +254,9 @@ library or by this spec:
   `to` or an `also:` line is not one expression or
   statement or a run of statements, when `to` drops a parameter `from` matches or uses one it does
   not, when `holes:` names a name neither `from` nor `also:` uses, when `when:` is not
-  holes `from` uses compared with integers, when `to` (not `advice:`) neither calls the
-  fn (or its `builtin:`) nor writes only its body's operators, or when one module declares a
+  holes `from` uses compared with integers, when neither `to` (not `advice:`) calls the
+  fn (or its `builtin:`) or writes only its body's operators nor `from`
+  calls the fn, or when one module declares a
   name twice with the same `from` (a name is declared once per spelling,
   on several fns when its fix calls one of them: `min=` or `max=`). (R06.4.9)
 - An idiom whose fix is one library call is declared this way beside the

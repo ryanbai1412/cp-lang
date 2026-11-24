@@ -574,7 +574,12 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                 diag = diag.with_label(at, format!("what `{}` takes", d.decl.fn_name));
             }
             let mut fixed = diag.clone();
-            fixed.fix(format!("use `{}`", d.decl.suggests), span, fix);
+            let fix_title = if d.decl.drops {
+                format!("drop `{}`", d.decl.fn_name)
+            } else {
+                format!("use `{}`", d.decl.suggests)
+            };
+            fixed.fix(fix_title, span, fix);
             if !d.rebinds.is_empty()
                 && !rebinding_holds(
                     file.src,

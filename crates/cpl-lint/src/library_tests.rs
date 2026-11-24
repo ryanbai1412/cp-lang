@@ -256,7 +256,9 @@ fn when_keeps_a_finding_only_where_the_hole_is_proven_in_bounds() {
 #[test]
 fn a_run_ending_in_a_block_is_replaced_up_to_its_last_token() {
     let decl = "@lint(totals, from: \"var p = [0]\\nfor x in xs:\\n    p.push(p.last! + x)\", to: \"let p = totals(xs)\")\npub fn totals(xs: List<Int>) -> Int:\n    xs.len\n";
-    let src = format!("{decl}fn f(a: List<Int>):\n    var s = [0]\n    for v in a:\n        s.push(s.last! + v)\n    print(s.len)\nf([1])\n");
+    let src = format!(
+        "{decl}fn f(a: List<Int>):\n    var s = [0]\n    for v in a:\n        s.push(s.last! + v)\n    print(s.len)\nf([1])\n"
+    );
     let spans: Vec<&str> = crate::lint(&src, &crate::Config::default())
         .into_iter()
         .filter(|d| d.code.0 == "totals")
@@ -282,6 +284,21 @@ fn a_method_declares_a_lint() {
     .map(|d| d.fixes[0].edits[0].1.clone())
     .collect();
     assert_eq!(fixes, ["W(y).inc()"]);
+}
+
+/// A lint whose `from` calls the fn and whose `to` does not drops a needless
+/// call of it, titled "drop `f`" (both leaving it uncalled is E0505,
+/// `lint-to-does-not-call-the-fn.cp`). Rule: R06.4.9.
+#[test]
+fn a_lint_may_drop_a_needless_call_of_its_fn() {
+    let decl = "@lint(peek, from: \"let x = self.top!\\nself.pop()\", to: \"let x = self.pop()!\")\n@get pub fn top(self: List<Int>) -> ?Int = self.last\n";
+    let src = format!("{decl}var s = [1, 2]\nlet u = s.top!\ns.pop()\nprint(u)\n");
+    let fixes: Vec<(String, String)> = crate::lint(&src, &crate::Config::default())
+        .into_iter()
+        .filter(|d| d.code.0 == "peek")
+        .map(|d| (d.fixes[0].title.clone(), d.fixes[0].edits[0].1.clone()))
+        .collect();
+    assert_eq!(fixes, [("drop `top`".into(), "let u = s.pop()!".into())]);
 }
 
 /// A hole standing as a statement matches the rest of its block, a tuple

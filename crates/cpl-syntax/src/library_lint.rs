@@ -18,6 +18,9 @@ pub struct LibraryLint {
     /// What `to` calls: the fn, or the compiler built-in `builtin:` names
     /// when the fn documents one (`[R, C].filled(x)` on a grid fn).
     pub suggests: String,
+    /// `from` calls the fn and `to` does not: the lint drops a needless
+    /// call of it (`s.last!` before `s.pop()`).
+    pub drops: bool,
     /// The fn's parameter names, then the names `holes:` adds.
     pub holes: Vec<String>,
     /// How many of `holes` are the fn's parameters; `to` may drop the rest.
@@ -245,16 +248,21 @@ fn declared_on(stmt: &Stmt, offset: u32) -> (Vec<LibraryLint>, Vec<Diagnostic>) 
             continue;
         }
         let suggests = text("builtin").unwrap_or_else(|| f.name.text.clone());
-        let calls = to_toks.windows(2).any(|w| {
-            (w[0].0 == TokenKind::Ident && w[0].1 == suggests && w[1].0 == TokenKind::LParen)
-                || (w[0].0 == TokenKind::Dot && w[1].0 == TokenKind::Ident && w[1].1 == suggests)
-        }) || writes_body_ops(f, &to, &to_toks)
+        let calls = |toks: &[(TokenKind, String)], name: &str| {
+            toks.windows(2).any(|w| {
+                (w[0].0 == TokenKind::Ident && w[0].1 == name && w[1].0 == TokenKind::LParen)
+                    || (w[0].0 == TokenKind::Dot && w[1].0 == TokenKind::Ident && w[1].1 == name)
+            })
+        };
+        let uses = calls(&to_toks, &suggests)
+            || writes_body_ops(f, &to, &to_toks)
             || compound(&to_toks, &f.name.text);
-        if !calls && !advice {
+        let drops = !uses && !advice && calls(&from_toks, &f.name.text);
+        if !uses && !drops && !advice {
             error(
                 &msgs::syntax::LINT_TO_NO_CALL,
                 &[&name, &suggests],
-                "a library lint suggests the fn it decorates",
+                "a library lint suggests the fn it decorates, or drops a needless call of it",
                 &mut label,
             );
             continue;
@@ -263,6 +271,7 @@ fn declared_on(stmt: &Stmt, offset: u32) -> (Vec<LibraryLint>, Vec<Diagnostic>) 
             name,
             fn_name: f.name.text.clone(),
             suggests,
+            drops,
             holes,
             params,
             when,
