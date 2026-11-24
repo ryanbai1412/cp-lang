@@ -1,4 +1,4 @@
-// expect: E0303 at 5
+// expect: E0303 at 3
 // rule: 04.2.12
 domain V = 0..4
 var d: [Pair<V>]Int = 0
