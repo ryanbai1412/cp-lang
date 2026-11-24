@@ -1360,7 +1360,6 @@ std/prefix.cp: Prefix.first_ge(self, target: T) -> ?Cut<D>
 std/prefix.cp: Prefix.first_gt(self, target: T) -> ?Cut<D>
 std/prefix.cp: Prefix.fold(self, r: Range<D>) -> T
 std/prefix.cp: Prefix.new(a: [D]T) -> Prefix<D, T>
-std/prefix.cp: Prefix.of_rev_scan<M>(a: [D]T, f: M, from: ?T) -> Prefix<D, T>
 std/prefix.cp: Prefix.prefix(self, b: Cut<D>) -> T
 std/prefix.cp: Prefix.suffix(self, b: Cut<D>) -> T
 std/prefix.cp: SweepAdd.add(mut self, r: Range<D>, x: T)

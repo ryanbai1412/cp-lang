@@ -646,6 +646,13 @@ step "std docs follow the std-docs checklist (scripts/std-docs-lint.py)"
 uv run --quiet python scripts/std-docs-lint.py --max 0 \
     || fail "a std doc breaks a std-docs rule; see above"
 
+step "every public std fn has its required doc labels (scripts/spec-stub.py --audit)"
+uv run --quiet scripts/spec-stub.py --audit > /dev/null \
+    || { uv run --quiet scripts/spec-stub.py --audit; fail "a public std fn lacks a required doc label; see above"; }
+
+step "std, spec and lints use only GLOSSARY spellings (scripts/spec-gate.py vocab)"
+uv run --quiet python scripts/spec-gate.py vocab || fail "a spelling spec/GLOSSARY.md bans; see above"
+
 step "std signatures follow the std-api checklist (scripts/std-api-lint.py)"
 uv run --quiet python scripts/std-api-lint.py --max 0 \
     || fail "a std signature breaks a std-api rule; see above"

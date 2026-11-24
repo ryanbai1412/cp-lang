@@ -54,7 +54,7 @@ def unannounced(old, new, codemods, changelog):
     """Public names in `old` and not `new` that no codemod or changelog line names."""
     gone = {name_of(e) for e in old} - {name_of(e) for e in new}
     return sorted(n for n in gone if f'"{n.split(".")[-1]}"' not in codemods
-                  and f"`{n.split('.')[-1]}" not in changelog)
+                  and f"`{n.split('.')[-1]}" not in changelog and f"`{n}`" not in changelog)
 
 
 def live():

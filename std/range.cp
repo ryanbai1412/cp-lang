@@ -133,6 +133,7 @@ fn flip_at(n: Int, ok: Int -> Bool, wrong_way: Str) -> Int:
 ///
 /// cost: \(O(\log n)\) calls of `ok`, plus one when the cut is an end of `r`
 /// empty: `r.l`
+/// ties: none: a monotone `ok` has one flip
 /// traps: when `ok` flips the other way (true then false by default, false then true with
 /// `last: true`)
 /// example: `(0..100).bsearch(x => x * x >= 50).r == 8`

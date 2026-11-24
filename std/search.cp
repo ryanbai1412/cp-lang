@@ -13,6 +13,7 @@
 /// `[lo, m]` when `ok(m)`, else `[m, hi]`. The result is the final `hi`, so `ok` holds there.
 ///
 /// cost: `steps + 1` calls of `ok`
+/// ties: none: a monotone `ok` has one flip
 /// traps: when `lo > hi` or `steps < 0`
 /// example: `abs(bsearch_real(0.0, 2.0, x => x * x >= 2.0)! - 1.4142135623730951) <= 1e-9`
 /// example: `bsearch_real(0.0, 8.0, x => x >= 3.0, steps: 3) == Some(3.0)`
@@ -133,6 +134,7 @@ pub fn ternary_min<I, K>(r: Range<I>, f: I -> K) -> ?I:
 /// larger probe and adds one probe. The result is the midpoint of the final bracket.
 ///
 /// cost: `steps + 2` calls of `f`
+/// empty: `lo` when `lo == hi`
 /// ties: on a plateau at the maximum, whichever plateau point the bracket closes on
 /// traps: when `lo > hi` or `steps < 0`
 /// example: `abs(ternary_max_real(0.0, 4.0, x => -(x - 1.0) * (x - 1.0)) - 1.0) <= 1e-6`
@@ -147,6 +149,7 @@ pub fn ternary_max_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int = 100) -> F6
 /// smaller probe and adds one probe. The result is the midpoint of the final bracket.
 ///
 /// cost: `steps + 2` calls of `f`
+/// empty: `lo` when `lo == hi`
 /// ties: on a plateau at the minimum, whichever plateau point the bracket closes on
 /// traps: when `lo > hi` or `steps < 0`
 /// example: `abs(ternary_min_real(-3.0, 3.0, x => (x - 2.0) * (x - 2.0)) - 2.0) <= 1e-6`
@@ -363,6 +366,7 @@ pub fn split_best<G, D, T: Ord>(
 /// element type (decision 419).
 ///
 /// cost: `steps + 2` calls of `by`
+/// empty: `self.start` when `self.start == self.end`
 /// ties: on a plateau at the maximum, whichever plateau point the bracket closes on
 /// traps: when the range is written backwards or `steps < 0`
 /// example: `abs((0.0..4.0).peak(by: x => -(x - 1.0) * (x - 1.0)) - 1.0) <= 1e-6`
@@ -373,6 +377,7 @@ pub fn peak(self: Range<F64>, by: F64 -> F64, steps: Int = 100) -> F64 =
 /// within `(hi - lo) * 0.618^steps` of the minimizer.
 ///
 /// cost: `steps + 2` calls of `by`
+/// empty: `self.start` when `self.start == self.end`
 /// ties: on a plateau at the minimum, whichever plateau point the bracket closes on
 /// traps: when the range is written backwards or `steps < 0`
 /// example: `abs((-3.0..3.0).valley(by: x => (x - 2.0) * (x - 2.0)) - 2.0) <= 1e-6`

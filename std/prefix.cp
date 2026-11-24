@@ -181,11 +181,7 @@ pub struct Prefix<D, T: Add + Sub>:
             p[c] = acc
         Prefix(p, forward and same(f, +), forward and rises, not forward)
 
-    /// The suffix table of `a` under `f`, `of_scan`'s mirror: the fold right of each cut.
-    ///
-    /// cost: \(O(n)\) calls of `f`
-    /// traps: never (beyond what `f` traps on)
-    pub fn of_rev_scan<M>(a: [D]T, f: M, from: ?T) -> Prefix<D, T>:
+    fn of_rev_scan<M>(a: [D]T, f: M, from: ?T) -> Prefix<D, T>:
         let m = Monoid<T>.of(f)
         var p: [D.cuts]T = from ?? m.id
         var acc = from ?? m.id

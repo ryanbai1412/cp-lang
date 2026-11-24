@@ -30,6 +30,8 @@ def doc_gaps(lines):
         if not m:
             continue
         doc, j = [], i - 1
+        while j >= 0 and lines[j].strip().startswith("@"):
+            j -= 1
         while j >= 0 and lines[j].strip().startswith("///"):
             doc.insert(0, lines[j].strip()[3:].strip())
             j -= 1
@@ -222,7 +224,7 @@ def audit(files):
         for line, name, missing in gaps:
             print(f"{os.path.relpath(f)}:{line}: `{name}` lacks {', '.join(missing)}")
     print(f"spec-stub audit: {total} of {fns} pub fns lack a required doc label")
-    return 0
+    return 1 if total else 0
 
 
 def label_gaps(files):

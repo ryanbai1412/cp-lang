@@ -1263,6 +1263,7 @@ pub struct MergeSegs<D>:
     /// Whether `s` holds a position in `r`. Read-only, as `first_ge` is.
     ///
     /// cost: \(O(\log \lvert D \rvert)\)
+    /// empty: false for an empty `s` or `r`
     /// traps: never
     /// example: `var p = MergeSegs<0..10>(); let m = p.merge(p.singleton(3), p.singleton(7)); p.any_in(m, 4..8) and not p.any_in(m, 4..7)`
     pub fn any_in(self, s: MergeSeg<D>, r: Range<D>) -> Bool:
