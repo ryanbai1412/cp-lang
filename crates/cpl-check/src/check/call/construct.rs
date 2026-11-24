@@ -127,6 +127,7 @@ impl Checker<'_> {
                     defaults,
                     fields,
                     ctor,
+                    ctor_defaults,
                     methods,
                     receivers,
                     method_rows,
@@ -179,11 +180,9 @@ impl Checker<'_> {
                     });
                     self.bare_ops_take_monoid(&bound_args, params, args, &mut bindings);
                     // `new<M: Folds<T>, A: Acts<M.Fold, F>>(op: M = NoOp(), ..)` without `op`.
-                    for p in params {
-                        if let (Ty::Param(g), Some(d)) = (&p.ty, &p.default_ty) {
-                            if !bindings.contains_key(g) {
-                                bindings.insert(g.clone(), d.clone());
-                            }
+                    for (g, d) in ctor_defaults.iter().filter(|_| !is_generated_ctor) {
+                        if !bindings.contains_key(g) {
+                            bindings.insert(g.clone(), d.clone());
                         }
                     }
                     let outer = std::mem::replace(&mut self.call_bound_args, Some(bound_args));
