@@ -801,8 +801,10 @@ impl<'a> Checker<'a> {
             },
             span: call.span,
         };
-        let (ty, hover, resolved, errors) = self.quietly(|c| {
+        let (ty, hover, resolved, errors, item_misses) = self.quietly(|c| {
+            let misses = c.item_misses.len();
             let ty = c.infer(&free);
+            let item_misses = c.item_misses.split_off(misses);
             let errors: Vec<_> = (c.sink.diagnostics().iter())
                 .filter(|d| d.severity == cpl_diag::Severity::Error)
                 .cloned()
@@ -810,8 +812,18 @@ impl<'a> Checker<'a> {
             let ty = if errors.is_empty() { ty } else { Ty::Unknown };
             let hover = c.hovers.iter().rev().find(|h| h.span == name.span).cloned();
             let resolved = c.resolved.iter().rev().find(|r| r.0 == name.span).cloned();
-            (ty, hover, resolved, errors)
+            (ty, hover, resolved, errors, item_misses)
         });
+        // `ps.fold(*)`: an item argument whose impl's bounds fail is the call's error even
+        // where the receiver has a member of its own.
+        if !item_misses.is_empty() {
+            for mut diag in item_misses {
+                diag.message =
+                    (diag.message).replace(&format!("`{key}`"), &format!("`{}`", name.text));
+                self.sink.push(diag);
+            }
+            return Some(Ty::Error);
+        }
         // No candidate takes the receiver for want of a bound: the free
         // form's E0606 is the method's, `?List<Int>` lacking the `Seq` that
         // `sum` requires. A receiver of another shape has a member of its

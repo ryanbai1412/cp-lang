@@ -187,3 +187,12 @@ fn an_item_meets_its_impls_bounds_at_the_bounds_trait_args() {
     assert!(check(&fits).is_empty(), "{:?}", check(&fits));
     assert_eq!(codes(&format!("{head}print(q(*, (1, 2)))\n")), ["E0606"]);
 }
+
+#[test]
+fn a_method_calls_item_arg_meets_its_impls_bounds() {
+    let head = "trait Twice<T>:\n    fn twice(self, x: T) -> T\nimpl<T: Mul> Twice<T> for type_of(*):\n    fn twice(self, x: T) -> T = x * x\nfn fold<S: Seq<T>, T, M: Twice<T>>(self: S, m: M) -> Int = 0\n";
+    let fits = format!("{head}print([1, 2].fold(*))\n");
+    assert!(check(&fits).is_empty(), "{:?}", check(&fits));
+    let pairs = format!("{head}let ps = [(1, 2)]\nprint(ps.fold(*))\nprint(ps.fold(*))\n");
+    assert_eq!(codes(&pairs), ["E0606", "E0606"]);
+}

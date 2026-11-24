@@ -489,6 +489,8 @@ impl Checker<'_> {
                 msgs::check::MISSING_IMPL_DOES_NOT_IMPLEMENT_REQUIRED,
                 &[&item, &format!("{trait_name}<{want}>"), &fn_name],
             );
+            let miss = self.sink.diagnostics().last().cloned();
+            self.item_misses.extend(miss);
         }
     }
 
