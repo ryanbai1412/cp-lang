@@ -421,6 +421,17 @@ impl Lowerer<'_> {
                 }
             }
         }
+        // `[P] p => …` with `P` a product domain: `p` is a `P`, as the checker
+        // binds it, so it has `P`'s members (`p.ord`) as well as its parts.
+        if let ([d], [_]) = (domains, params) {
+            if let Some(p) = self.named_domain(d) {
+                if let Some(axes) = self.product_grid(p).as_deref().and_then(pos_axes) {
+                    let grid = axes.iter().map(|&d| DimSpec::Pos(d)).collect();
+                    let whole = Whole::Product(p, axes);
+                    return self.build_table(grid, params, body, elem.as_ref(), None, span, whole);
+                }
+            }
+        }
         if groups.len() < dims.len() {
             let whole = Whole::Tuples(groups);
             return self.build_table(dims, params, body, elem.as_ref(), None, span, whole);
@@ -724,6 +735,26 @@ fn fresh_constant(e: &ast::Expr) -> bool {
 }
 
 /// The domains of a grid whose every dimension is a position, else `None`.
+impl Lowerer<'_> {
+    /// The domain a type names, directly or as a generic's argument.
+    fn named_domain(&self, ty: &ast::Type) -> Option<DomainId> {
+        let ast::TypeKind::Named { name, args } = &ty.kind else {
+            return None;
+        };
+        if !args.is_empty() {
+            return None;
+        }
+        match self.gen_env.get(&name.text) {
+            Some(GenArg::Domain(id)) => Some(*id),
+            Some(_) => None,
+            None => match self.get_sym(&name.text) {
+                Some(Sym::Domain(id)) => Some(id),
+                _ => None,
+            },
+        }
+    }
+}
+
 pub(super) fn pos_axes(dims: &[Dim]) -> Option<Vec<DomainId>> {
     dims.iter()
         .map(|d| match d {
