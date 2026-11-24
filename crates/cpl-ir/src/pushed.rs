@@ -304,8 +304,17 @@ impl Feeds {
                 }
             });
         }
-        self.pushers.retain(|id, _| fed.contains(id));
-        self.eager.retain(|id| fed.contains(id));
+        // Rebuilt by insertion: `retain` brings in a BTree's own removal code.
+        for (id, n) in std::mem::take(&mut self.pushers) {
+            if fed.contains(&id) {
+                self.pushers.insert(id, n);
+            }
+        }
+        for id in std::mem::take(&mut self.eager) {
+            if fed.contains(&id) {
+                self.eager.insert(id);
+            }
+        }
     }
 
     /// The pushers whose values a `.len` only counts: the count is taken
