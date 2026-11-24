@@ -63,9 +63,11 @@ inline ll modn(ll a, ll b) {
         name: "divp",
         needs: &[],
         code: "\
-// The same for a divisor known to be positive.
+// The same for a divisor known to be positive, on modp's unsigned path so
+// a quotient and remainder of the same operands share one division.
 inline ll divp(ll a, ll b) {
     if (__builtin_expect(b == 0, 0)) { cpl::flush(); fputs(\"division by zero\\n\", stderr); exit(3); }
+    if (__builtin_expect(a >= 0, 1)) return ll(uint64_t(a) / uint64_t(b));
     return a / b + ((a % b) >> 63);
 }
 ",

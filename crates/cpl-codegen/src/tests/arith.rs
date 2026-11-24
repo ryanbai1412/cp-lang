@@ -98,6 +98,11 @@ fn a_dividend_that_may_be_negative_gets_the_branchless_fix() {
         cpp.contains("if (__builtin_expect(a >= 0, 1)) return ll(uint64_t(a) % uint64_t(b));"),
         "{cpp}"
     );
+    // The quotient takes the same unsigned path, so g++ computes the pair with one division.
+    assert!(
+        cpp.contains("if (__builtin_expect(a >= 0, 1)) return ll(uint64_t(a) / uint64_t(b));"),
+        "{cpp}"
+    );
     // The helpers it does not call are not in the file.
     assert!(!cpp.contains("inline ll emod"), "{cpp}");
 }
