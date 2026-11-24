@@ -1782,11 +1782,15 @@ def _names_corpus_set(line: str) -> bool:
     return bool(re.search(r"[\"']problems[\"']", line)) or "corpus/problems" in ONE_PROBLEM_RE.sub("", line)
 
 
+# The walker, its test's fixture corpus, and this detector and its test.
+CORPUS_OWN = {"scripts/corpus.py", "scripts/test_corpus.py", "scripts/debt-ratchet.py", "scripts/test_debt_ratchet.py"}
+
+
 def corpus_walkers(root: Path) -> list[str]:
     """Files besides scripts/corpus.py that list corpus/problems themselves: a second corpus walker."""
     found = []
     for rel in _git(root, "ls-files", "*.py", "*.sh", "*.rs", "*.js", "*.mjs", "*.ts", "justfile"):
-        if rel == "scripts/corpus.py" or rel.startswith(("research/", "corpus/problems/")) \
+        if rel in CORPUS_OWN or rel.startswith(("research/", "corpus/problems/")) \
                 or "node_modules/" in rel or not (root / rel).is_file():
             continue
         lines = _lines(root / rel)

@@ -24,6 +24,9 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ci  # noqa: E402
+import corpus  # noqa: E402
+
+PACKAGES = corpus.rel(corpus.PROBLEMS)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -36,11 +39,11 @@ EVERY_CRATE = ["Cargo.toml", "Cargo.lock", "rust-toolchain*", ".cargo/*",
                ".config/nextest.toml", "std/*", "clippy.toml", "rustfmt.toml"]
 SITE = ["web/*", "docs/*"]
 # Data files and the nextest filter of the tests that read them.
-DATA_TESTS = [(f"corpus/problems/*/{leaf}", "package(cpl-lint) & test(/corpus_warnings/)")
+DATA_TESTS = [(f"{PACKAGES}/*/{leaf}", "package(cpl-lint) & test(/corpus_warnings/)")
               for leaf in ("spec.cp", "port.cp")]
 # Editor files a crate embeds or its tests read; the rest are CI's editor jobs'.
 # Programs no test reads but that must still pass `cpl check`.
-CHECK_ONLY = ["research/acceptance/solutions/*.cp", "corpus/problems/*/perf.cp"]
+CHECK_ONLY = ["research/acceptance/solutions/*.cp", f"{PACKAGES}/*/perf.cp"]
 # Owner-named tests a touched path runs ahead of the rest of the commit tier,
 # each under SLICE_LIMIT_S warm (ci/R39): name, owner, paths, nextest
 # `binary_id[ test]` entries.
@@ -153,7 +156,7 @@ def select(paths, dirs):
     packages, tests, data, steps = set(), set(), [], set()
     step_scripts = ci.step_scripts()
     for path in paths:
-        if path.startswith("corpus/problems/"):
+        if path.startswith(PACKAGES + "/"):
             sel["audit"] = True
         if path.startswith(("spec/idioms/", "std/", "crates/cpl-check/src/")):
             sel["idioms_catalog"] = True
