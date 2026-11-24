@@ -1,8 +1,9 @@
 //! The runtime pays only for what the program reaches of each piece: a
 //! definition in `namespace cpl` that nothing reached names is left out,
 //! whole fns and structs as well as one-liners, with the comment above it.
-//! Anything without a name to look for stays: an operator (called without
-//! its name), a global, a `using`. Each side of a `#if` is read alike.
+//! In a struct that stays, so does each member fn something calls. Anything
+//! without a name to look for stays: an operator (called without its name),
+//! a constructor, a global, a `using`. Each side of a `#if` is read alike.
 
 use std::collections::BTreeSet;
 use std::ops::Range;
@@ -16,7 +17,8 @@ struct Item<'a> {
 }
 
 /// The byte ranges of `file`, in order, holding runtime definitions that
-/// nothing outside them reaches.
+/// nothing outside them reaches: top-level ones, and the member fns of a
+/// struct that stays that nothing calls.
 pub(crate) fn unused(file: &str) -> Vec<Range<usize>> {
     const OPEN: &str = "namespace cpl {\n";
     let Some(start) = file.find(OPEN).map(|at| at + OPEN.len()) else {
@@ -25,34 +27,155 @@ pub(crate) fn unused(file: &str) -> Vec<Range<usize>> {
     let end = file[start..]
         .find("}  // namespace cpl\n")
         .map_or(file.len(), |at| start + at);
-    let items = items(file, start..end);
-    let defined: BTreeSet<&str> = items.iter().filter(|i| i.primary).map(|i| i.name).collect();
-    let mut needed = BTreeSet::new();
+    let tops = items(file, start..end);
+    let defined: BTreeSet<&str> = tops.iter().filter(|i| i.primary).map(|i| i.name).collect();
+    // Each top-level item, then the members of each struct, with its parent.
+    let mut all: Vec<(Item, Option<usize>)> = Vec::new();
+    for top in tops {
+        let body = body(file, &top.at);
+        let k = all.len();
+        all.push((top, None));
+        if let Some(body) = body {
+            let members = items(file, body);
+            all.extend(members.into_iter().map(|m| (m, Some(k))));
+        }
+    }
+    // `names` are what a top-level item answers to; `calls` also count members.
+    let (mut names, mut calls) = (BTreeSet::new(), BTreeSet::new());
     let mut last = 0;
-    for item in &items {
-        words(&file[last..item.at.start], &mut needed);
+    for (item, _) in all.iter().filter(|(_, parent)| parent.is_none()) {
+        words(&file[last..item.at.start], &mut names, &mut calls);
         last = item.at.end;
     }
-    words(&file[last..], &mut needed);
-    let mut kept = vec![false; items.len()];
+    words(&file[last..], &mut names, &mut calls);
+    let mut kept = vec![false; all.len()];
     loop {
         let mut grew = false;
-        for (keep, item) in kept.iter_mut().zip(&items) {
-            if !*keep && (needed.contains(item.name) || !defined.contains(item.name)) {
-                *keep = true;
-                grew = true;
-                words(&file[item.at.clone()], &mut needed);
+        for k in 0..all.len() {
+            let (item, parent) = &all[k];
+            let keep = match parent {
+                None => names.contains(item.name) || !defined.contains(item.name),
+                Some(p) => {
+                    kept[*p]
+                        && (calls.contains(item.name)
+                            || item.name == all[*p].0.name
+                            || FOUND_BY_NAME.contains(&item.name))
+                }
+            };
+            if kept[k] || !keep {
+                continue;
             }
+            kept[k] = true;
+            grew = true;
+            // A struct's own words leave out its members', which count once kept.
+            let mut from = item.at.start;
+            for (member, _) in all.iter().filter(|(_, p)| *p == Some(k)) {
+                words(&file[from..member.at.start], &mut names, &mut calls);
+                from = member.at.end;
+            }
+            words(&file[from..item.at.end], &mut names, &mut calls);
         }
         if !grew {
             break;
         }
     }
-    items
+    let mut out: Vec<Range<usize>> = (0..all.len())
+        .filter(|&k| !kept[k] && all[k].1.is_none_or(|p| kept[p]))
+        .map(|k| all[k].0.at.clone())
+        .collect();
+    out.sort_by_key(|at| at.start);
+    out
+}
+
+/// Member names the language or the library calls on its own: a range
+/// `for`, `std::size`, a structured binding, `std::back_inserter`.
+const FOUND_BY_NAME: &[&str] = &[
+    "begin",
+    "end",
+    "rbegin",
+    "rend",
+    "cbegin",
+    "cend",
+    "size",
+    "empty",
+    "data",
+    "get",
+    "swap",
+    "push_back",
+    "insert",
+    "emplace_back",
+    "front",
+    "back",
+];
+
+/// The lines inside the braces of a struct written over several lines.
+fn body(file: &str, at: &Range<usize>) -> Option<Range<usize>> {
+    let text = &file[at.clone()];
+    let mut head = 0;
+    let mut depth = 0;
+    for line in text.split_inclusive('\n') {
+        let code = line.trim_start();
+        if depth == 0 && !code.starts_with("//") {
+            let opens = braces(line);
+            if opens == 1 && line.trim_end().ends_with('{') {
+                let starts = code.starts_with("struct ")
+                    || code.starts_with("class ")
+                    || code.starts_with("template")
+                        && (code.contains(" struct ") || code.contains(" class "));
+                if !starts {
+                    return None;
+                }
+                let last = text.trim_end_matches('\n').rfind('\n')? + 1;
+                return (head + line.len() <= last)
+                    .then(|| at.start + head + line.len()..at.start + last);
+            }
+            depth += opens;
+        }
+        head += line.len();
+    }
+    None
+}
+
+/// The names the top-level definitions in namespace `ns` of `file` define,
+/// compacted or not.
+pub(crate) fn defined_in<'a>(file: &'a str, ns: &str) -> Vec<&'a str> {
+    let mut at = 0;
+    let mut start = None;
+    let mut depth = 0;
+    for line in file.split_inclusive('\n') {
+        let begin = at;
+        at += line.len();
+        match start {
+            None => {
+                let t = line.trim();
+                if t.strip_prefix("namespace ")
+                    .and_then(|r| r.strip_suffix('{'))
+                    .map(str::trim)
+                    == Some(ns)
+                {
+                    start = Some(at);
+                    depth = 1;
+                }
+            }
+            Some(from) => {
+                depth += braces(line);
+                if depth <= 0 {
+                    return items(file, from..begin)
+                        .into_iter()
+                        .map(|i| i.name)
+                        .collect();
+                }
+            }
+        }
+    }
+    Vec::new()
+}
+
+/// The names the top-level definitions in `code` define.
+pub(crate) fn defined(code: &str) -> Vec<&str> {
+    items(code, 0..code.len())
         .into_iter()
-        .zip(kept)
-        .filter(|(_, k)| !k)
-        .map(|(i, _)| i.at)
+        .map(|i| i.name)
         .collect()
 }
 
@@ -86,7 +209,7 @@ fn items(file: &str, region: Range<usize>) -> Vec<Item<'_>> {
             }
             continue;
         }
-        if t.starts_with('#') || t.is_empty() {
+        if t.starts_with('#') || t.is_empty() || t.ends_with(':') && !t.ends_with("::") {
             comment = None;
             continue;
         }
@@ -145,7 +268,13 @@ fn name(head: &str) -> Option<(&str, bool)> {
     }
     let at = before.bytes().rposition(|c| !word(c))? + 1;
     let name = &before[at..];
-    (!name.is_empty() && !before[..at].ends_with("::")).then_some((name, true))
+    let named = !name.is_empty()
+        && !before[..at].ends_with("::")
+        && !matches!(
+            name,
+            "decltype" | "sizeof" | "alignof" | "alignas" | "static_assert" | "noexcept"
+        );
+    named.then_some((name, true))
 }
 
 fn word(c: u8) -> bool {
@@ -172,9 +301,10 @@ fn braces(line: &str) -> i32 {
     depth
 }
 
-/// Adds the names `text` mentions to `out`: not in a comment, and not a
-/// member (`x.first`, `p->first`), which no runtime definition is.
-fn words<'a>(text: &'a str, out: &mut BTreeSet<&'a str>) {
+/// Adds the names `text` mentions, not in a comment, to `calls`, and to
+/// `names` unless written as a member (`x.first`, `p->first`), which no
+/// top-level runtime definition is.
+fn words<'a>(text: &'a str, names: &mut BTreeSet<&'a str>, calls: &mut BTreeSet<&'a str>) {
     for line in text.lines() {
         let code = line.find("//").map_or(line, |at| &line[..at]);
         let b = code.as_bytes();
@@ -188,9 +318,10 @@ fn words<'a>(text: &'a str, out: &mut BTreeSet<&'a str>) {
             while i < b.len() && word(b[i]) {
                 i += 1;
             }
+            calls.insert(&code[start..i]);
             let member = code[..start].ends_with('.') || code[..start].ends_with("->");
             if !member {
-                out.insert(&code[start..i]);
+                names.insert(&code[start..i]);
             }
         }
     }

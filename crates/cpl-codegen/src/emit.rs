@@ -657,14 +657,24 @@ impl<'p> Emitter<'p> {
     fn write(&mut self, name: &str, source: Option<&str>) -> String {
         let out = self.write_all(name, source);
         let unused = crate::runtime::shake::unused(&out);
+        // The runtime chunks are written into the file in order, so each
+        // loses the unused ranges that fall inside it.
+        let mut cursor = out.find("namespace cpl {\n").unwrap_or(0);
         for (part, _, text) in &mut self.chunks {
-            if *part == crate::Part::Runtime {
-                let here: Vec<_> = unused
-                    .iter()
-                    .filter_map(|at| text.find(&out[at.clone()]).map(|i| i..i + at.len()))
-                    .collect();
-                *text = crate::runtime::shake::without(text, &here);
+            if *part != crate::Part::Runtime || text.is_empty() {
+                continue;
             }
+            let Some(found) = out[cursor..].find(text.as_str()) else {
+                continue;
+            };
+            let start = cursor + found;
+            cursor = start + text.len();
+            let here: Vec<_> = unused
+                .iter()
+                .filter(|at| at.start >= start && at.end <= cursor)
+                .map(|at| at.start - start..at.end - start)
+                .collect();
+            *text = crate::runtime::shake::without(text, &here);
         }
         crate::runtime::shake::without(&out, &unused)
     }
