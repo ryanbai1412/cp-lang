@@ -176,12 +176,18 @@ impl Checker<'_> {
     /// type the bound's parameter is bound to, so `sum(xs)` over
     /// `S: Seq<T>` given a `List<Int>` has `T = Int`.
     pub(crate) fn bind_bound_args(&mut self, bindings: &mut crate::ty::Bindings) {
-        for (param, trait_name, args) in self.call_bound_args.clone() {
-            let Some(actual) = bindings.get(&param).cloned() else {
+        let Some(def) = self.call_bound_args.clone() else {
+            return;
+        };
+        let Def::Fn { bound_args, .. } = &*def else {
+            return;
+        };
+        for (param, trait_name, args) in bound_args {
+            let Some(actual) = bindings.get(param).cloned() else {
                 continue;
             };
             let actual = self.settle(&actual);
-            if let Some(given) = self.trait_args_of(&actual, &trait_name, args.len()) {
+            if let Some(given) = self.trait_args_of(&actual, trait_name, args.len()) {
                 for (want, got) in args.iter().zip(&given) {
                     want.unify(got, bindings);
                 }
@@ -199,17 +205,11 @@ impl Checker<'_> {
                 .map(|(_, _, args)| args.clone());
         }
         if let Ty::Named { name, .. } = ty {
-            let mut impls: Vec<_> = (self.global(&crate::def::impl_name(Some(trait_name), name)))
-                .into_iter()
-                .collect();
-            impls.extend(
-                (self.env.impls(name).into_iter())
-                    .filter(|(t, _)| {
-                        t.as_deref().and_then(|t| t.split('<').next()) == Some(trait_name)
-                    })
-                    .map(|(_, d)| d),
-            );
-            for def in impls {
+            let written = self.global(&crate::def::impl_name(Some(trait_name), name));
+            let listed = (self.env.impls(name).into_iter())
+                .filter(|(t, _)| t.as_deref().and_then(|t| t.split('<').next()) == Some(trait_name))
+                .map(|(_, d)| d);
+            for def in written.into_iter().chain(listed) {
                 if let Def::Impl {
                     trait_args, target, ..
                 } = &*def

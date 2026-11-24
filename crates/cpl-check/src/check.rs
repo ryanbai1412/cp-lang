@@ -283,7 +283,7 @@ pub(crate) struct Checker<'a> {
     lambda_params: Vec<(Span, Vec<Ty>)>,
     /// The bounds with trait arguments of the fn whose arguments are being
     /// checked: binding `S` binds what `S: Seq<T>` says of `T`.
-    call_bound_args: Vec<(String, String, Vec<Ty>)>,
+    call_bound_args: Option<std::sync::Arc<Def>>,
     /// Locals whose heap value has been moved out (`let b = a` / `b = a`),
     /// mapped to the span of the move (§128).
     pub(crate) moved: HashMap<String, Span>,
@@ -363,7 +363,7 @@ impl<'a> Checker<'a> {
             walk_only: Default::default(),
             local_defs: HashMap::default(),
             lambda_params: Vec::new(),
-            call_bound_args: Vec::new(),
+            call_bound_args: None,
             moved: HashMap::default(),
             assigning_name: None,
             memo_captured: Vec::new(),

@@ -1312,22 +1312,16 @@ impl<'a> Checker<'a> {
                     },
                     _ => None,
                 };
-                let (bound_args, default_binds) =
-                    match callee_name.and_then(|n| self.global(n)).as_deref() {
-                        Some(Def::Fn {
-                            bound_args,
-                            default_binds,
-                            ..
-                        }) => (bound_args.clone(), default_binds.clone()),
-                        _ => Default::default(),
-                    };
-                let outer = std::mem::replace(&mut self.call_bound_args, bound_args);
+                let callee_def = callee_name.and_then(|n| self.global(n));
+                let outer = std::mem::replace(&mut self.call_bound_args, callee_def.clone());
                 self.args(&callee_text, "takes", &params, args, call, &mut bindings);
                 self.call_bound_args = outer;
-                for (generic, ty) in default_binds {
-                    if !bindings.contains_key(&generic) {
-                        let ty = ty.subst(&bindings);
-                        bindings.insert(generic, ty);
+                if let Some(Def::Fn { default_binds, .. }) = callee_def.as_deref() {
+                    for (generic, ty) in default_binds {
+                        if !bindings.contains_key(generic) {
+                            let ty = ty.subst(&bindings);
+                            bindings.insert(generic.clone(), ty);
+                        }
                     }
                 }
                 if let Some(fn_name) = callee_name {
