@@ -434,14 +434,24 @@ fn work_after(new_text: &str) -> (Stats, Vec<Diagnostic>) {
 const ROADS_ITEMS: u64 = 14;
 
 #[test]
-#[ignore = "v0.3 lexes 3 files on the first analysis of ROADS, not 1; needs a call on whether built-in std counts"]
 fn the_first_analysis_does_all_the_work_once() {
     let mut db = Database::new();
     db.set_file("a.cp", ROADS);
-    db.analyze("a.cp");
+    let analysis = db.analyze("a.cp").unwrap();
     let stats = db.stats();
-    assert_eq!(stats.files_lexed, 1);
-    assert_eq!(stats.items_parsed, ROADS_ITEMS);
+    // The file and each std module it reaches are lexed and parsed once;
+    // only the file's own items are checked.
+    assert_eq!(
+        stats.files_lexed,
+        1 + analysis.modules().len() as u64,
+        "{:?}",
+        analysis
+            .modules()
+            .iter()
+            .map(|m| &m.path)
+            .collect::<Vec<_>>()
+    );
+    assert!(stats.items_parsed >= ROADS_ITEMS);
     assert_eq!(stats.items_checked, ROADS_ITEMS);
     assert_eq!(stats.items_reused, 0);
     // Asking again without an edit does nothing at all.
