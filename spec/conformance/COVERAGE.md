@@ -7,12 +7,12 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3202 (1093 passing). Rules: 607.
+Cases: 3204 (1093 passing). Rules: 608.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 57 rules, 180 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R02 (02-values-types.md): 52 rules, 155 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R02 (02-values-types.md): 53 rules, 157 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 116 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 73 rules, 188 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -47,7 +47,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Chapter | Rules | Accept | Forbidding | Reject | Complete |
 |---|---|---|---|---|---|
 | R01 | 57 | 57 (100%) | 32 | 32 (100%) | 57 (100%) |
-| R02 | 52 | 52 (100%) | 30 | 30 (100%) | 52 (100%) |
+| R02 | 53 | 53 (100%) | 30 | 30 (100%) | 53 (100%) |
 | R03 | 24 | 24 (100%) | 13 | 13 (100%) | 24 (100%) |
 | R04 | 73 | 73 (100%) | 18 | 18 (100%) | 73 (100%) |
 | R04a | 39 | 39 (100%) | 3 | 3 (100%) | 39 (100%) |
@@ -69,7 +69,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlsp | 9 | 8 (88%) | 1 | 1 (100%) | 8 (88%) |
 | Rstress | 2 | 1 (50%) | 1 | 0 (0%) | 1 (50%) |
 | Rtrace | 6 | 4 (66%) | 4 | 1 (25%) | 2 (33%) |
-| all | 607 | 603 (99%) | 246 | 238 (96%) | 597 (98%) |
+| all | 608 | 604 (99%) | 246 | 238 (96%) | 598 (98%) |
 
 ## Rules
 
@@ -155,6 +155,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.4.6 [3+ 0-]: `min`, `max`, `min=` and `max=` treat `None` as the identity: a `None` target takes the ri...
 - R02.4.7 [2+ 4-]: **Postfix `x?`** propagates where operators don't reach: `a[x?]`, `f(x?)`, `x?.len`, `(dp[...
 - R02.4.8 [2+ 1-]: . `.all_some()` is the non-trapping form.
+- R02.4.9 [1+ 1-]: , so an optional walked as zero or one element would print a value or nothing. To use one ...
 - R02.5.1 [2+ 0-]: Tuples `(Int, V)` are positional; `.0`, `.1` and destructuring read them.
 - R02.5.2 [1+ 1-]: Records `(lo: Int, hi: V)` are anonymous structs with named fields. Two record types are e...
 - R02.5.3 [1+ 0-]: Record update copies with replacements: `a with to: u` or `(..a, to: u)`.
@@ -607,6 +608,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 ### R10: 10-io.md
 
+- R10.3.7 [1+ 1-]: `?T` is not a `Seq`: `for v in x` on a `?Int` is E0302 naming `if let`. A sequence prints ...
 - R10.1.1 [14+ 3-]: Functions hoist within their block; every capture must be initialized before the first cal...
 - R10.1.2 [4+ 0-]: Top-level `return` ends the program, or the current case under `@!multitest`.
 - R10.1.3 [1+ 0-]: IOI-style tasks mark entry points with `@grader`, `@grader(interactive)` or `@grader(two_p...
@@ -625,7 +627,6 @@ Each rule: positive / negative case counts, then the gap if any.
 - R10.3.4 [3+ 0-]: `F64` uses `io.precision` or `print(x, precision: k)`; with neither it prints 10 decimals,...
 - R10.3.5 [8+ 0-]: Derived structurally (see R08.1.6), with nothing to write: records, tuples and structs pri...
 - R10.3.6 [2+ 0-]: Output mirrors input, shape for shape, except that counts are never written for you. `[R, ...
-- R10.3.7 [1+ 1-]: `?T` is not `Show`, like `Bool`: `print(x)` on a `?Int` is a compile error (E0606); write ...
 - R10.3.8 [1+ 1-]: `HashMap` and `HashSet` are not `Show`, like `?T`: walking one has no defined order (lib/c...
 
 ### R11: 11-modules-prelude.md
@@ -785,7 +786,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0208 Uppercase value name: 2 case(s)
 - E0209 Definition cycle: 1 case(s)
 - E0301 Wrong index domain: 17 case(s)
-- E0302 Type mismatch: 50 case(s)
+- E0302 Type mismatch: 51 case(s)
 - E0303 Wrong number of arguments: 11 case(s)
 - E0304 Value is not callable: 3 case(s)
 - E0305 Value is not indexable: 10 case(s)

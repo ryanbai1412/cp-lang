@@ -242,6 +242,14 @@ often doubling an array); a user-declared niche trait (rejected: the
 compiler can find spare values itself). Why: `?V` is the right type for
 "parent or none", and if it cost memory contestants would go back to `-1`.
 
+An optional is not a sequence of zero or one element, either
+(decision 464). Rust and Scala let you loop over one; here `for v in x` is an error
+naming `if let`. Everything that walks also prints and folds, and an
+optional deliberately doesn't print (R10.3.7): if it walked, `print(x)` on
+a forgotten `None` would print nothing, the same silent bug as a stray
+`-1`. When you really want "the parent, if any, then the children", say
+so: `chain([t.parent(v)].present(), t.children(v))`.
+
 ### Checked builds trap; release builds don't pay
 
 **Chose:** in a checked build (`cpl run`, stress runs, local `-DLOCAL`

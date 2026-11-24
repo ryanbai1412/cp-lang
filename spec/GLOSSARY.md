@@ -15,7 +15,7 @@ spellings in the right column.
 | owned / lent | the two modes of every value; parameters are lent by default | borrowed, reference (as a mode) |
 | `mut` | a lent parameter or binding that may be written or drained | `&mut`, `inout` |
 | `-> lends T` | a return that lends from a parameter | `lends T` without the arrow |
-| operation value | a value that is a binary operation with laws (`+`, `max`, `Affine.compose`) | functor, op object |
+| operation value | a value that is a binary operation with laws (`+`, `max`, `Affine.compose`) | functor, op object (for an operation value) |
 | `law` | a property an operation value promises; stress samples it | axiom, contract (for a law) |
 | `Ordering` | the result of `cmp`: `Less`, `Equal`, `Greater` | `Order` |
 | `Mod<P>` | the modular integer type | `Mint`, `ModInt` |

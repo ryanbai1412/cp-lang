@@ -24,9 +24,9 @@ rows naming no existing check, from `scripts/debt-ratchet.json`; they only go do
 
 | Metric | Today | Target |
 |---|---|---|
-| conformance pass | 2604/2777 (fbdca4be1) | 100% of the full suite |
-| interpreter == C++ | 2053/2192 pass, 138 skip, 1 error (fbdca4be1) | all pass, 0 skip, 0 fail |
-| distinct conformance failure causes | 97 (fbdca4be1) | 0 |
+| conformance pass | 3155/3202 (da2962ade) | 100% of the full suite |
+| interpreter == C++ | 2624/2657 pass, 29 skip, 3 error, 1 cxx_err, 0 mismatch (da2962ade) | all pass, 0 skip, 0 fail |
+| distinct conformance failure causes | 33 (da2962ade) | 0 |
 | VM fallback to tree-walker, corpus | 3,835 / 15.65M / 2.02M dynamic fallbacks over programs / corpus / conformance (tech-debt, 2026-11-23) | 0 programs, 0 executions; tree-walker deleted |
 | std type names as string literals in check/ir/interp | 146 occurrences of 35 names | 0 outside one intrinsics table |
 | edition branches | 120 | 0 |

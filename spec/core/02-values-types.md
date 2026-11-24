@@ -119,6 +119,11 @@ keep source positions, as for every sequence (`04b-keys.md`). (R02.3.1)
   first gap ("depth[17] is None"). This ends a fill phase:
   `let depth = depth!`, in any body, the per-test region below
   `@!multitest` included (R01.9.1). `.all_some()` is the non-trapping form. (R02.4.8)
+- `?T` is not a `Seq`: `for v in x` on a `?Int` is E0302 naming `if let`.
+  A sequence prints and folds, and `?T` is not `Show` (R10.3.7), so an
+  optional walked as zero or one element would print a value or nothing.
+  To use one as a sequence, wrap it: `chain([t.parent(v)].present(),
+  t.children(v))` (decision 464). (R02.4.9)
 
 ## 2.5 Tuples and records
 
