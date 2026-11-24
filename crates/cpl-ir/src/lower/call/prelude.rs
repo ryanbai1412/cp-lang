@@ -140,6 +140,10 @@ impl<'a> Lowerer<'a> {
                         ahead.push(Stmt::Let(slot, Some(std::mem::replace(value, held))));
                     }
                 }
+                values = values
+                    .into_iter()
+                    .map(|(value, at)| (self.in_base(value, at), at))
+                    .collect();
                 // A range is a `Seq`: it prints its elements (R10.3.1).
                 let ranged = values.iter().any(|(v, _)| matches!(v.ty, Ty::Range(_)));
                 if sep.is_some() || none_text.is_some() || ranged {
@@ -155,17 +159,7 @@ impl<'a> Lowerer<'a> {
                 }
                 let mut values: Vec<FmtArg> = values
                     .into_iter()
-                    .filter_map(|(mut value, at)| {
-                        if let Some(b) = self.io_base.filter(|&b| b != 0) {
-                            if let Ty::Pos(d) = value.ty {
-                                if self.counted_domains.contains(&d) {
-                                    let ord = self.cast(Cast::Ord, value, Ty::Int);
-                                    value = self.int_add(ord, b);
-                                }
-                            }
-                        }
-                        self.fmt_arg(value, digits, at)
-                    })
+                    .filter_map(|(value, at)| self.fmt_arg(value, digits, at))
                     .collect();
                 if let Some(sep) = sep {
                     // One text, so the separator is the only thing between.
@@ -1762,16 +1756,8 @@ impl<'a> Lowerer<'a> {
             self.no_value_to_print(span);
             return None;
         }
-        // `with io(base: 1)`: a counted domain's first position prints as `1`.
+        let value = self.in_base(value, span);
         let value = match value.ty {
-            Ty::Pos(d) if self.base_one() && self.counted.contains(&d) => {
-                let label = self.mk(
-                    ExprKind::Cast(Cast::Label(d), Box::new(value)),
-                    Ty::Int,
-                    span,
-                );
-                self.int_add(label, 1)
-            }
             Ty::Pos(d) if self.product_domains.contains_key(&d) => {
                 self.product_parts(d, value, span)
             }

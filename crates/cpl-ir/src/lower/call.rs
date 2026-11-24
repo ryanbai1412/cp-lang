@@ -7,6 +7,7 @@ mod collect;
 mod field;
 mod fold;
 mod gen;
+mod io_base;
 mod laws;
 pub(super) use gen::fixed_domain;
 pub use laws::lower_sampling_laws;
