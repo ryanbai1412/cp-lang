@@ -274,6 +274,7 @@ impl Def {
                         ty: ty.clone(),
                         mutable: false,
                         has_default: false,
+                        default_ty: None,
                         named_only: false,
                         variadic: false,
                         lazy: false,

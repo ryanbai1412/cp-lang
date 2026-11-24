@@ -391,17 +391,53 @@ impl Checker<'_> {
                 // bound's, where the call already fixed it.
                 let mut open = crate::ty::Bindings::default();
                 for (want, got) in args.iter().zip(&given) {
-                    let known = want.subst(bindings);
-                    if !known.mentions_param() {
+                    let known = self.bound_assoc(want, &bound_args, bindings);
+                    let known = self.resolve_assoc(&known);
+                    if !known.mentions_param() && !known.has_assoc() {
                         got.unify(&known, &mut open);
                     }
                 }
+                // `A: Acts<M.Fold, F>` before `M` is known leaves the impl's `T` open.
                 for (want, got) in args.iter().zip(&given) {
-                    want.unify(&got.subst(&open), bindings);
+                    let got = got.subst(&open);
+                    if !got.mentions_param() {
+                        want.unify(&got, bindings);
+                    }
                 }
             }
         }
         self.call_bound_args = Some(bound_args);
+    }
+
+    /// `M.Fold` for `M: Folds<T>` bound to `NoOp`: the impl's choice, with the
+    /// impl's own `T` taken from the bound's.
+    fn bound_assoc(
+        &mut self,
+        want: &Ty,
+        bound_args: &BoundArgs,
+        bindings: &crate::ty::Bindings,
+    ) -> Ty {
+        want.map(&mut |t| {
+            let Ty::Assoc { of, name } = t else {
+                return None;
+            };
+            let Ty::Param(p) = of.as_ref() else {
+                return None;
+            };
+            let actual = self.settle(bindings.get(p)?);
+            let chosen = self.project(&actual, name)?;
+            let mut open = crate::ty::Bindings::default();
+            for (_, tr, args) in bound_args.iter().filter(|(q, ..)| q == p) {
+                for (w, g) in args
+                    .iter()
+                    .zip(self.trait_args_of(&actual, tr, args.len())?)
+                {
+                    g.unify(&w.subst(bindings), &mut open);
+                }
+            }
+            Some(chosen.subst(&open))
+        })
+        .subst(bindings)
     }
 
     /// `fn f<A: Keyed<K, _>, B: Keyed<K, _>, K>`: a type parameter named in several bounds is
