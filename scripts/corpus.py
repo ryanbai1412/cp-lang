@@ -1331,7 +1331,7 @@ def seed(args):
 
 def verify(args):
     import concurrent.futures
-    cpl = args.cpl or os.path.join(ROOT, "target", "release", "cpl")
+    cpl = args.cpl or default_cpl()
     opt = lambda name, default=None: getattr(args, name, default) or default
     ids = list(args.ids)
     if opt("changed"):
