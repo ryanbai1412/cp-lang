@@ -88,7 +88,7 @@ impl<S: Versioned<D, T>, D: Domain, T> Version<S>:
     ///
     /// cost: \(O(1)\); it lends `store` and copies nothing
     /// traps: never; reading it traps when `store` did not make this version
-    /// example: `domain P = 0..3; var p = PersistentArray<P, Int>(a: [P] i => i.ord + 1); let v = p.set(p.base, P(0), 9); v.within(p).each().collect() == [9, 2, 3]`
+    /// example: `var p = PersistentArray(a: [1, 2, 3]); let v = p.set(p.base, 0, 9); v.within(p).each().collect() == [9, 2, 3]`
     pub fn within(self, store: S) -> lends VersionWithin<S, D, T> = VersionWithin(store, self)
 
 /// One version of a `Versioned` store read through it, from `v.within(store)`. It lends the store,
@@ -98,7 +98,7 @@ pub struct VersionWithin<S: Versioned<D, T>, D: Domain, T>(store: S, v: Version<
     ///
     /// cost: \(O(1)\)
     /// traps: never
-    /// example: `domain P = 0..3; var t = PersistentSegTree<P, Int>(+, fill: 0); t.base.within(t).len == 3`
+    /// example: `var t = PersistentSegTree(+, a: [0, 0, 0]); t.base.within(t).len == 3`
     @get pub fn len(self) -> Int = D.count
 
     /// Whether `D` has no position.
@@ -114,7 +114,7 @@ pub struct VersionWithin<S: Versioned<D, T>, D: Domain, T>(store: S, v: Version<
     /// empty: `var p = PersistentArray<0..0, Int>(fill: 0); p.base.within(p).each().collect() == []`
     /// order: ascending `D` order
     /// traps: when `store` did not make this version
-    /// example: `domain P = 0..3; var t = PersistentSegTree<P, Int>(+, a: [P] i => i.ord + 1); let v = t.set(t.base, P(1), 7); v.within(t).each().collect() == [1, 7, 3]`
+    /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); let v = t.set(t.base, 1, 7); v.within(t).each().collect() == [1, 7, 3]`
     pub fn each(self) -> yields T:
         for i in D: yield store.get(v, i)
 
@@ -124,7 +124,7 @@ pub struct VersionWithin<S: Versioned<D, T>, D: Domain, T>(store: S, v: Version<
     /// empty: `var p = PersistentArray<0..0, Int>(fill: 0); p.base.within(p).items.collect() == []`
     /// order: ascending `D` order
     /// traps: when `store` did not make this version
-    /// example: `domain P = 0..2; var p = PersistentArray<P, Int>(a: [P] i => i.ord + 4); [(i.ord, x) for (i, x) in p.base.within(p).items] == [(0, 4), (1, 5)]`
+    /// example: `var p = PersistentArray(a: [4, 5]); [(i, x) for (i, x) in p.base.within(p).items] == [(0, 4), (1, 5)]`
     @get pub fn items(self) -> yields (D, T):
         for i in D: yield (i, store.get(v, i))
 
