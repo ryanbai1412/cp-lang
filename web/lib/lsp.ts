@@ -57,6 +57,14 @@ export class LspDoc {
     return (replies.find((r) => r.id === id)?.result ?? null) as T | null;
   }
 
+  /** A request about no document, such as `completionItem/resolve`. */
+  async call<T>(method: string, params: object): Promise<T | null> {
+    await ready();
+    const id = ids++;
+    const replies = (await cpl.lsp({ jsonrpc: '2.0', id, method, params })) as Reply[];
+    return (replies.find((r) => r.id === id)?.result ?? null) as T | null;
+  }
+
   close() {
     if (open.delete(this.uri) && session) notify('textDocument/didClose', { textDocument: { uri: this.uri } }).catch(() => {});
   }
