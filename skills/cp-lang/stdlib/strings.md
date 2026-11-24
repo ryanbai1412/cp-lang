@@ -4,7 +4,7 @@
 
 String algorithms. They only compare elements, so they work on a `Str` (ASCII bytes) and on any `List<T>` alike. Positions are 0-based.
 
-In prelude (no `use` needed): `Palindromes`, `RollingHash`, `SuffixArray`, `common_prefix_len`, `common_suffix_len`, `digit`, `ends_with`, `find_all`, `lower`, `lyndon_factorization`, `manacher`, `min_rotation`, `period`, `prefix_function`, `repeat`, `starts_with`, `upper`, `z_function`.
+In prelude (no `use` needed): `Palindromes`, `RollingHash`, `SuffixArray`, `borders`, `common_prefix_len`, `common_suffix_len`, `digit`, `ends_with`, `find_all`, `lower`, `lyndon_factorization`, `manacher`, `min_rotation`, `overlap`, `period`, `prefix_function`, `repeat`, `starts_with`, `upper`, `z_function`.
 
 ## `struct KmpAutomaton<A>`
 
