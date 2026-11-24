@@ -33,6 +33,12 @@ class TestTimesTest(unittest.TestCase):
         self.assertIn("-p cpl-stress", rec["command"])
         self.assertEqual(rec["over_limit"], {"cpl-cli::judges slow": 30.0})
 
+    def test_merge_re_times_only_the_binaries_the_report_ran(self) -> None:
+        old = {"cpl-cli::judges gone": 90.0, "cpl-cli::judges slow": 50.0, "cpl-cli::budget all": 140.0}
+        self.assertEqual(list(tt.merged(old, JUNIT).items()),
+                         [("cpl-cli::budget all", 140.0), ("cpl-lsp tests::slower", 61.2),
+                          ("cpl-cli::judges slow", 30.0)])
+
 
 if __name__ == "__main__":
     unittest.main()

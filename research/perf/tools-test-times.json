@@ -6,8 +6,6 @@
     "cpl-cli::interp_memory the_interpreter_runs_the_largest_corpus_inputs_in_the_judges_memory_0": 172.5,
     "cpl-cli::newcomer newcomer_scoreboard": 166.4,
     "cpl-cli::judges every_passing_corpus_port_compiles_with_every_judges_flags_2": 140.8,
-    "cpl-cli::budget build_takes_under_a_second_and_fits_64_kb": 140.6,
-    "cpl-cli::budget run_answers_within_200_ms": 138.0,
     "cpl-cli::differential aliasing_and_sort_keys_agree_between_interp_and_sanitized_cpp": 133.1,
     "cpl-cli::recovery recovery_scoreboard": 111.6,
     "cpl-cli::rename_replay renaming_every_name_keeps_each_port_checking_clean_and_printing_the_same": 108.1,

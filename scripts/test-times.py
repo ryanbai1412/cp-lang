@@ -3,6 +3,8 @@
 
     test-times.py --write          run the tools crates' tests and record the slow ones
     test-times.py --junit PATH     record them from a nextest JUnit report instead
+    test-times.py --junit PATH --merge
+                                   re-time only the test binaries in the report
     test-times.py --show           print the record
 
 `--write` runs `cargo nextest run` over TOOLS_CRATES with the `times` profile
@@ -36,6 +38,20 @@ def slow_tests(junit: str, limit: float = LIMIT_S) -> dict[str, float]:
     return dict(sorted(out.items(), key=lambda kv: (-kv[1], kv[0])))
 
 
+def binaries(junit: str) -> set[str]:
+    """The test binaries (`crate::binary`) a nextest JUnit report ran."""
+    return {case.get("classname") for case in ET.fromstring(junit).iter("testcase")}
+
+
+def merged(old: dict[str, float], junit: str) -> dict[str, float]:
+    """`old` with every test of the report's binaries re-timed from it, so a test the
+    report ran under the limit, or that its binary no longer has, leaves the record."""
+    ran = binaries(junit)
+    kept = {t: s for t, s in old.items() if t.split(" ", 1)[0] not in ran}
+    both = kept | slow_tests(junit)
+    return dict(sorted(both.items(), key=lambda kv: (-kv[1], kv[0])))
+
+
 def record(slow: dict[str, float]) -> str:
     command = "cargo nextest run --profile times " + " ".join(f"-p {c}" for c in TOOLS_CRATES)
     return json.dumps({"command": command, "limit_s": LIMIT_S, "over_limit": slow}, indent=2) + "\n"
@@ -45,6 +61,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--write", action="store_true")
     ap.add_argument("--junit")
+    ap.add_argument("--merge", action="store_true")
     ap.add_argument("--show", action="store_true")
     args = ap.parse_args()
     if args.show:
@@ -58,7 +75,13 @@ def main() -> int:
         subprocess.run(argv, cwd=ROOT, check=False)
     elif not args.junit:
         ap.error("pass --write, --junit PATH or --show")
-    slow = slow_tests(junit.read_text())
+    if args.merge and not args.junit:
+        ap.error("--merge needs --junit PATH")
+    if args.merge:
+        old = json.loads((ROOT / RECORD).read_text())["over_limit"]
+        slow = merged(old, junit.read_text())
+    else:
+        slow = slow_tests(junit.read_text())
     (ROOT / RECORD).write_text(record(slow))
     print(f"test-times: {len(slow)} test(s) over {LIMIT_S:.0f} s in {RECORD}")
     return 0

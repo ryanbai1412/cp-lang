@@ -7,6 +7,9 @@ use std::process::{Command, Stdio};
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
+#[path = "support/shards.rs"]
+mod shards;
+
 fn programs() -> Vec<PathBuf> {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs");
     let mut found: Vec<PathBuf> = std::fs::read_dir(dir)
@@ -28,8 +31,12 @@ fn cpl() -> &'static Path {
         let target = std::env::var_os("CARGO_TARGET_DIR")
             .map_or_else(|| root.join("target"), |dir| root.join(dir));
         let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
+        // Cargo hands this test the `CPL_CHANNEL` cpl-cli's build script
+        // sets; passed back to cargo, it changes the build's inputs, and
+        // each build undoes the one before.
         let status = Command::new(cargo)
             .args(["build", "--release", "-p", "cpl-cli", "--bin", "cpl"])
+            .env_remove("CPL_CHANNEL")
             .current_dir(&root)
             .status()
             .expect("cargo runs");
@@ -78,9 +85,25 @@ fn best(args: &[&str], program: &Path, budget: Duration) -> (Duration, Vec<u8>) 
     fastest
 }
 
-#[test]
-fn run_answers_within_200_ms() {
-    for program in programs() {
+const SHARDS: usize = 8;
+
+/// The name a program shards by.
+fn key(program: &Path) -> String {
+    program
+        .file_name()
+        .map_or_else(String::new, |n| n.to_string_lossy().into_owned())
+}
+
+fn shard(k: usize) -> Vec<PathBuf> {
+    shards::mine(programs(), |p| key(p), k, SHARDS)
+}
+
+fn keys() -> Vec<String> {
+    programs().iter().map(|p| key(p)).collect()
+}
+
+fn run_answers_within_200_ms(k: usize) {
+    for program in shard(k) {
         let (took, _) = best(&["run"], &program, Duration::from_millis(200));
         assert!(
             took < Duration::from_millis(200),
@@ -90,9 +113,8 @@ fn run_answers_within_200_ms() {
     }
 }
 
-#[test]
-fn build_takes_under_a_second_and_fits_64_kb() {
-    for program in programs() {
+fn build_takes_under_a_second_and_fits_64_kb(k: usize) {
+    for program in shard(k) {
         let (took, cpp) = best(&["build", "-o", "-"], &program, Duration::from_secs(1));
         assert!(
             took < Duration::from_secs(1),
@@ -112,3 +134,35 @@ fn build_takes_under_a_second_and_fits_64_kb() {
         );
     }
 }
+
+shards::shard_tests!(
+    run_answers_within_200_ms,
+    keys(),
+    the_run_shards_cover_every_program,
+    [
+        run_answers_within_200_ms_0 = 0,
+        run_answers_within_200_ms_1 = 1,
+        run_answers_within_200_ms_2 = 2,
+        run_answers_within_200_ms_3 = 3,
+        run_answers_within_200_ms_4 = 4,
+        run_answers_within_200_ms_5 = 5,
+        run_answers_within_200_ms_6 = 6,
+        run_answers_within_200_ms_7 = 7,
+    ]
+);
+
+shards::shard_tests!(
+    build_takes_under_a_second_and_fits_64_kb,
+    keys(),
+    the_build_shards_cover_every_program,
+    [
+        build_takes_under_a_second_and_fits_64_kb_0 = 0,
+        build_takes_under_a_second_and_fits_64_kb_1 = 1,
+        build_takes_under_a_second_and_fits_64_kb_2 = 2,
+        build_takes_under_a_second_and_fits_64_kb_3 = 3,
+        build_takes_under_a_second_and_fits_64_kb_4 = 4,
+        build_takes_under_a_second_and_fits_64_kb_5 = 5,
+        build_takes_under_a_second_and_fits_64_kb_6 = 6,
+        build_takes_under_a_second_and_fits_64_kb_7 = 7,
+    ]
+);
