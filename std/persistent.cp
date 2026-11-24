@@ -936,6 +936,13 @@ impl Show for PMultisetWithin<D>:
             out += "{x}"
         out
 
+impl Show for PMultiset<D>:
+    /// The size the handle knows, as `multiset of len`; its elements live in the arena, so
+    /// `s.within(ar)` prints them.
+    ///
+    /// example: `var ar = PArena<PMultiset<0..10>>(); let s = PMultiset<0..10>.empty().with(mut ar, 3).with(mut ar, 3); "{s}" == "multiset of 2"`
+    fn show(s) = "multiset of {s.len}"
+
 impl Show for PArena<T>:
     /// The allocated values in allocation order, space-separated.
     ///
