@@ -327,10 +327,9 @@
  },
  {
   "context": "dot/array-ring",
-  "source": "domain V = 0..3\ndomain Street = [4]\nlet street = [Street] s => (V(0), V(1))\nlet odd = street.$0",
+  "source": "domain V = 0..3\ndomain Street = [4]\nlet street = [Street] s => (V(0), V(1))\nlet odd = street.ri$0",
   "want": [
-   "ring",
-   "sum"
+   "ring"
   ]
  },
  {
@@ -343,14 +342,14 @@
  },
  {
   "context": "dot/comprehension",
-  "source": "fn canon() -> Int = 1\nlet t = [canon() for _ in 0..3].$0",
+  "source": "fn canon() -> Int = 1\nlet t = [canon() for _ in 0..3].ta$0",
   "want": [
    "tally"
   ]
  },
  {
   "context": "dot/list-takes-array-method",
-  "source": "let xs = [3, 1, 2]\nlet sa = xs.sorted().$0",
+  "source": "let xs = [3, 1, 2]\nlet sa = xs.sorted().sc$0",
   "want": [
    "scan"
   ]

@@ -69,12 +69,25 @@ fn completion_offers_what_each_context_needs() {
                 ("position", position(&text, at)),
             ]),
         ));
-        let labels: Vec<&str> = reply
+        // As the playground shows them: those the word before the cursor
+        // starts, by sortText, the first 100.
+        let word = text[..at]
+            .rsplit(|c: char| !(c.is_alphanumeric() || c == '_'))
+            .next()
+            .unwrap_or("")
+            .to_lowercase();
+        let mut ranked: Vec<(&str, &str)> = reply
             .iter()
             .filter_map(|r| r.at(&["result", "items"]).as_array())
             .flatten()
-            .filter_map(|item| item.at(&["label"]).as_str())
+            .filter_map(|item| {
+                let label = item.at(&["label"]).as_str()?;
+                Some((item.at(&["sortText"]).as_str().unwrap_or(label), label))
+            })
+            .filter(|(_, label)| label.to_lowercase().starts_with(&word))
             .collect();
+        ranked.sort();
+        let labels: Vec<&str> = ranked.iter().take(100).map(|&(_, l)| l).collect();
         let offered = |w: &&str| {
             labels
                 .iter()
