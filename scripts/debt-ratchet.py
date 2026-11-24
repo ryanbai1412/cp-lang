@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import collections
 import difflib
 import fnmatch
 import functools
@@ -1211,10 +1212,35 @@ def cpp_deep_copies(root: Path) -> list[str]:
     return _header_counts(root, "copies", ("corpus/problems",))
 
 
-def spec_required_copies(root: Path) -> list[str]:
-    """Deep copies a spec/conformance case exists to require (decision 458): shrink-only, so a
-    header raised to hide a regression, or a new required copy, is a visible baseline bump."""
-    return _header_counts(root, "copies", ("spec/conformance",))
+def _kept_copies(root: Path, rels: list[str]) -> dict[str, int]:
+    """Each case's copies codegen's own copy fact marks kept (`cpl explain --json`'s `kept`):
+    the copies a move or a borrow in their place would show. A case explain can't read keeps none."""
+    cpl = str(_built_cpl(root).resolve())
+
+    def kept(rel: str) -> int:
+        out = subprocess.run([cpl, "explain", "--json", rel], cwd=root, capture_output=True, text=True)
+        try:
+            rows = json.loads(out.stdout)
+        except ValueError:
+            return 0
+        return sum(1 for r in rows if r.get("lowering") == "copy" and r.get("kept"))
+
+    import concurrent.futures
+    with concurrent.futures.ThreadPoolExecutor(os.cpu_count() or 4) as pool:
+        return dict(zip(rels, pool.map(kept, rels)))
+
+
+def spec_avoidable_copies(root: Path) -> list[str]:
+    """Deep copies spec/conformance cases make that a move or a borrow could leave out
+    (decision 631): each case's `// copies:` header, which read_only_copies holds to its C++,
+    less the copies codegen's copy fact marks kept. read_only_copies proves the fact by
+    rewriting each copy to a move and a borrow, so explain, codegen and this count agree."""
+    heads = _header_counts(root, "copies", ("spec/conformance",))
+    if not heads:
+        return []
+    total = collections.Counter(h.rsplit(" ", 1)[0] for h in heads)
+    kept = _kept_copies(root, sorted(total))
+    return [f"{rel} {i}" for rel, n in sorted(total.items()) for i in range(kept[rel], n)]
 
 
 def cpp_optional_copies(root: Path) -> list[str]:
@@ -3096,7 +3122,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
 
 HARD_ZERO = frozenset({
     "unreferenced_scripts",
-    "cpp_deep_copies", "conformance_wrong_output",
+    "cpp_deep_copies", "conformance_wrong_output", "spec_avoidable_copies",
     "habit_matchers", "corpus_fmt_dirty", "judge_tables", "v02_port_files", "reviews_uncapped", "lint_std_names", "cpl_env_reads", "dead_code_allows",
     "lint_name_matchers", "lint_type_syntax",
     "corpus_no_statement", "dup_fn_bodies", "near_dup_fns", "layer_violations", "event_models",
@@ -3214,8 +3240,8 @@ COUNTERS = {
     "stress_hand_json": ("hand-built JSON in cpl-stress and cpl-wasm", stress_hand_json, True),
     "helper_env_vars": ("CPL_* helper side channels beyond CPL_SEED", helper_env_vars, True),
     "cpp_deep_copies": ("`// copies:` header sum over corpus programs (read_only_copies)", cpp_deep_copies, True),
-    "spec_required_copies": ("`// copies:` header sum over spec/conformance cases (read_only_copies)",
-                             spec_required_copies, True),
+    "spec_avoidable_copies": ("spec/conformance copies codegen's copy fact doesn't mark kept (read_only_copies)",
+                              spec_avoidable_copies, True),
     "cpp_optional_copies": ("`// optional_copies:` header sum over the corpus (read_only_copies)",
                             cpp_optional_copies, True),
     "cpp_std_functions": ("`// std_functions:` header sum over the corpus (read_only_copies)", cpp_std_functions, True),
@@ -3501,7 +3527,7 @@ def evaluate(actual: dict, baseline: dict) -> tuple[list[str], list[str], list[s
 MEASURED_BY = {
     "corpus_fmt_dirty": ("crates/cpl-fmt/src",),
     "cpp_deep_copies": ("crates/cpl-codegen/src/cpp_counts.rs",),
-    "spec_required_copies": ("crates/cpl-codegen/src/cpp_counts.rs",),
+    "spec_avoidable_copies": ("crates/cpl-codegen/src", "crates/cpl-cli/src/explain.rs"),
     "cpp_optional_copies": ("crates/cpl-codegen/src/cpp_counts.rs",),
     "cpp_std_functions": ("crates/cpl-codegen/src/cpp_counts.rs",),
 }

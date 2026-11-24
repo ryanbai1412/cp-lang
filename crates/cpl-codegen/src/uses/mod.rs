@@ -413,6 +413,15 @@ pub(crate) const SORTED: &str = "`.sorted()` sorts a copy; `.sort()` sorts in pl
 pub(crate) const SHARED_ARG: &str =
     "the call also changes it through a `mut` argument, so it passes a copy";
 pub(crate) const WHOLE: &str = "a `let` of a whole variable is a second value, not a second name";
+/// Why a copy is one a move or a borrow in its place would show: the name
+/// changes, or is given away, while what it copies is still read.
+pub(crate) const KEPT_CHANGED: &str =
+    "the name is changed while what it copies is still read, so it owns its value";
+pub(crate) const KEPT_GIVEN: &str =
+    "the name is given away while what it copies is still read, so it is a second value";
+/// The reasons of the copies a move or a borrow would show; every other
+/// copy is one codegen could not prove it may leave out.
+pub const KEPT: [&str; 2] = [KEPT_CHANGED, KEPT_GIVEN];
 
 impl crate::emit::Emitter<'_> {
     /// Where the code being written binds its locals.
@@ -523,6 +532,9 @@ impl crate::emit::Emitter<'_> {
         tail: Option<&Tail>,
         whole: bool,
     ) -> &'static str {
+        if let Some(why) = self.kept_copy(slot, init, tail) {
+            return why;
+        }
         if let Some(why) = self.source_change(slot, init, tail) {
             return why;
         }
@@ -531,6 +543,27 @@ impl crate::emit::Emitter<'_> {
             (false, true) => WHOLE,
             (false, false) => SOURCE_MAY_CHANGE,
         }
+    }
+
+    /// Why the copy the `let` of `slot` makes of `init` is one a move or a
+    /// borrow would show ([`KEPT`]): the name is changed or given away,
+    /// and what it copies is read again. A global a fn or closure reads
+    /// may be read by its next run, and a parameter or a name bound by
+    /// reference is a place the caller or an enclosing value still holds.
+    fn kept_copy(&self, slot: usize, init: &Expr, tail: Option<&Tail>) -> Option<&'static str> {
+        let (global, root) = crate::stmt::place_root(in_place(init))?;
+        let used = self.uses.of_binding(self.home(), slot);
+        let changed = used.mutated || self.facts.stores(self.facts_local(slot)) > 1;
+        if !changed && !used.moved {
+            return None;
+        }
+        let read_after = tail.is_some_and(|t| t.read_after.contains(&(global, root)));
+        let kept = read_after
+            || match global {
+                true => self.fn_id.is_some() || self.closure_id.is_some(),
+                false => self.is_param(root) || self.ref_bound.contains(&root),
+            };
+        kept.then_some(if changed { KEPT_CHANGED } else { KEPT_GIVEN })
     }
 
     /// The root of a place whose indices call fns (`at[p.cut(r)]`) when
@@ -659,6 +692,29 @@ impl crate::emit::Emitter<'_> {
         }
     }
 
+    /// The variables `stmts` read, `(is_global, slot)`, with those a
+    /// closure they make captures.
+    fn read_in(&self, stmts: &[Stmt]) -> BTreeSet<(bool, usize)> {
+        let mut read = BTreeSet::new();
+        let block = Block {
+            stmts: stmts.to_vec(),
+        };
+        walk::deep_exprs(&block, &mut |e| match e.kind {
+            ExprKind::Local(slot) => {
+                read.insert((false, slot));
+            }
+            ExprKind::Global(g) => {
+                read.insert((true, g));
+            }
+            ExprKind::Closure(cid) => {
+                let caps = self.program.closures[cid].captures.iter();
+                read.extend(caps.map(|c| (c.is_global, c.outer)));
+            }
+            _ => {}
+        });
+        read
+    }
+
     /// What the statements after `stmts[k]` do while the `let` there lives,
     /// when that `let` binds a heap value.
     pub(crate) fn tail_at(&self, stmts: &[Stmt], k: usize) -> Option<Tail> {
@@ -673,6 +729,7 @@ impl crate::emit::Emitter<'_> {
         Some(Tail {
             tested: copied_at_test(*slot, rest),
             lendable: self.lendable_reads(*slot, rest),
+            read_after: self.read_in(rest),
             ..self.tail(&live)
         })
     }

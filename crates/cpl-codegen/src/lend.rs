@@ -38,6 +38,9 @@ pub(crate) struct Tail {
     /// Locals read whole, not only through an index, field or length: the
     /// C++ may move them, so nothing may hold a reference into them.
     pub(crate) whole: std::collections::BTreeSet<usize>,
+    /// The variables, `(is_global, slot)`, any statement after the `let`
+    /// reads, a closure it makes counting as read.
+    pub(crate) read_after: std::collections::BTreeSet<(bool, usize)>,
 }
 
 /// The map and key of `m.get(k)`: the one read whose found value is an

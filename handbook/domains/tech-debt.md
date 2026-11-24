@@ -128,7 +128,7 @@ means no real check exists yet. Targets and current numbers are in
 | Layering holds | Crate edges not in the allowed list, layer violations | Gate on new edges | `scripts/debt-ratchet.py` (`crate_edges`, `dev_crate_edges`, `layer_violations`) |
 | Files stay readable | Rust files over the size cap or within 5% of it | Ratchet | `scripts/debt-ratchet.py` (`rs_near_cap`) |
 | One entry point per job, same result everywhere | CLI, editor and playground disagreeing on check, fix, run or trace | Differential tests | `crates/cpl-wasm/tests/parity.rs`, `crates/cpl-cli/tests/lsp_parity.rs` |
-| Generated C++ copies only when a reason requires it | Deep copies and `std::function` in emitted C++ | Ratchet | `scripts/debt-ratchet.py` (`cpp_deep_copies`, `spec_required_copies`, `cpp_std_functions`), `crates/cpl-cli/tests/read_only_copies.rs` |
+| Generated C++ copies only when a reason requires it | Deep copies and `std::function` in emitted C++ | Ratchet | `scripts/debt-ratchet.py` (`cpp_deep_copies`, `spec_avoidable_copies`, `cpp_std_functions`), `crates/cpl-cli/tests/read_only_copies.rs` |
 | Side effects behave the same in both engines | Corpus variants whose interpreter and C++ output differ | Generated differential variants | `scripts/debt-ratchet.py` (`diff variant/*` run) |
 | The ratchet measures what it claims | Ratchet unit tests | Hand-written suite | `scripts/test_debt_ratchet.py` |
 | Script tests run somewhere | Python test files no gate runs | Ratchet | `scripts/debt-ratchet.py` (`unrun_script_tests`, `direct_python`) |
