@@ -109,6 +109,8 @@ pub fn declared(stmt: &Stmt, offset: u32) -> (Vec<LibraryLint>, Vec<Diagnostic>)
     let (ty, methods) = match &stmt.kind {
         StmtKind::Struct(s) => (Some(&s.name.text), s.methods.as_slice()),
         StmtKind::Enum(e) => (Some(&e.name.text), e.methods.as_slice()),
+        // A trait's method is every implementing type's: no one receiver.
+        StmtKind::Trait { body, .. } => (None, body.stmts.as_slice()),
         _ => (None, &[][..]),
     };
     for m in methods {
@@ -699,6 +701,17 @@ mod tests {
         assert_eq!(
             errors(unused),
             ["`holes:` of `@lint(walk_by_hand)` names `n`, which neither `from` nor `also:` uses"]
+        );
+    }
+
+    #[test]
+    fn a_traits_method_declares_a_lint_for_every_type() {
+        let src = "pub trait Walk<T>:\n    @lint(walk_by_hand, from: \"self.walk_all()\", to: \"self.walk()\")\n    fn walk(self) -> yields T\n";
+        let lints = parse_lints(src);
+        assert_eq!(lints.len(), 1, "{:?}", errors(src));
+        assert_eq!(
+            (lints[0].fn_name.as_str(), &lints[0].receiver),
+            ("walk", &None)
         );
     }
 

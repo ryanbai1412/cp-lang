@@ -279,7 +279,8 @@ library or by this spec:
   matches the wider fix's text, which keeps the code it is about.
   It applies in every file that uses the module, and in the module outside
   the fn; std's apply in every program, as std's names need no `use`. A
-  struct's or enum's method may declare one like a top-level fn. E0505
+  struct's, enum's or trait's method may declare one like a top-level fn;
+  a trait's holds for every type that implements it. E0505
   (`bad_library_lint`) when `@lint` is not on a fn, lacks a
   name, `from:` or `to:` (or has both `to:` and `advice:`), when `from`,
   `to` or an `also:` line is not one expression or
