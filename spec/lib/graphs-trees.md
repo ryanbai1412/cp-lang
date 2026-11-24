@@ -258,7 +258,7 @@ let t = Rooted(g, root: V.first!)          // or Rooted.from_parents(par), Roote
 | `t.children(v)` | `Indexed` view of `v`'s children (stored contiguously) | \(O(1)\) |
 | `t.depth(v)`, `t.size(v)` | edges from the root; vertices in the subtree | \(O(1)\) |
 | `t.order` | every vertex, parents before children (BFS order); `.rev` is children first | \(O(1)\) |
-| `t.lca(a, b)`, `t.dist(a, b)`, `t.is_anc(a, b)`, `t.median(a, b, c)` | `median`: the vertex on all three paths | \(O(\log n)\) |
+| `t.lca(a, b)`, `t.dist(a, b)`, `t.is_anc(a, b)`, `t.meet(a, b, c)` | `meet`: the vertex on all three paths | \(O(\log n)\) |
 | `t.ancestor(v, k)`, `t.jump(a, b, k)` | `?V`: k steps up; k steps along the path a → b | \(O(\log n)\) |
 | `t.path(a, b)` | `List<V>` | \(O(\mathit{length})\) |
 | `t.diameter()`, `t.centroid()` | `(len, u, v)`; a centroid | \(O(n)\) |
