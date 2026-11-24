@@ -20,7 +20,7 @@ for _ in 0..128:
     acc += primes_in(0, n).len // timed: math.primes_in
     acc += sum_phi(n) // timed: math.sum_phi
     acc += sum_mobius(n) // timed: math.sum_mobius
-for _ in 0..512:
+for _ in 0..1024:
     acc += prime_count(n) // timed: math.prime_count
     acc += sum_multiplicative(n, (q, e, qe) => 1, ps) // timed: math.sum_multiplicative
 print(acc)
