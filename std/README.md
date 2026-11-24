@@ -303,7 +303,7 @@ fn pairs<T>(self: List<T>) -> yields (T, T)
 fn with_prev<T>(self: List<T>) -> yields (?T, T)
 fn cyclic_pairs<T>(self: List<T>) -> yields (T, T)
 fn zip<A, B>(a: List<A>, b: List<B>) -> List<(A, B)>
-fn get_or_insert<K, V>(mut self: Map<K, V>, k: K, v: V) -> V  // O(log n)
+fn get_or_insert<K, V>(mut self: Map<K, V>, k: K, v: V) -> V        // O(log n)
 fn update<K, V>(mut self: Map<K, V>, k: K, init: V, f: fn(V) -> V)  // O(log n)
 fn rotate_left<T>(mut a: List<T>, k: Int)
 fn next_permutation<T>(mut a: List<T>) -> Bool  // O(n), O(1)
