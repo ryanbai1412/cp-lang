@@ -13,44 +13,50 @@ impl<'a> Lowerer<'a> {
         let tpl_mod = self.gen_structs[gid].mod_id;
         let tpl_offset = self.gen_structs[gid].offset;
         let decl = self.gen_structs[gid].decl;
-        if args.len() < decl.generics.len() {
-            let saved_mod = std::mem::replace(&mut self.cur_mod, tpl_mod);
-            let saved_offset = std::mem::replace(&mut self.offset, tpl_offset);
-            let saved_env = self.gen_env.clone();
-            let mut env: GenEnv = HashMap::new();
-            for (p, a) in decl.generics.iter().zip(&args) {
-                env.insert(p.text.clone(), a.clone());
-            }
-            for i in args.len()..decl.generics.len() {
-                if let Some(Some(default_ty)) = decl.generic_defaults.get(i) {
+        // Unwritten params take their defaults. A trailing run of params
+        // given their defaults is left out of the name, as `S<T>` is
+        // written; the instance id keeps names apart.
+        let saved_mod = std::mem::replace(&mut self.cur_mod, tpl_mod);
+        let saved_offset = std::mem::replace(&mut self.offset, tpl_offset);
+        let saved_env = self.gen_env.clone();
+        let mut env: GenEnv = HashMap::new();
+        let mut named = 0;
+        for (i, p) in decl.generics.iter().enumerate() {
+            let default = match decl.generic_defaults.get(i) {
+                Some(Some(default_ty)) => {
                     self.gen_env = env.clone();
-                    let arg = self.resolve_gen_arg(default_ty);
-                    env.insert(decl.generics[i].text.clone(), arg.clone());
-                    args.push(arg);
-                } else {
-                    break;
+                    Some(self.resolve_gen_arg(default_ty))
                 }
-            }
-            self.gen_env = saved_env;
-            self.cur_mod = saved_mod;
-            self.offset = saved_offset;
+                _ => None,
+            };
+            let arg = match (args.get(i), default) {
+                (Some(a), Some(d)) if *a == d => d,
+                (Some(a), _) => {
+                    named = i + 1;
+                    a.clone()
+                }
+                (None, Some(d)) => {
+                    args.push(d.clone());
+                    d
+                }
+                (None, None) => break,
+            };
+            env.insert(p.text.clone(), arg);
         }
+        self.gen_env = saved_env;
+        self.cur_mod = saved_mod;
+        self.offset = saved_offset;
         let key = InstKey::Struct(gid, args.clone());
         if let Some(&id) = self.insts.get(&key) {
             return id;
         }
         let id = self.structs.len();
-        let suffix: Vec<String> = args.iter().map(|a| self.mangle_arg(a)).collect();
+        let suffix: Vec<String> = args[..named].iter().map(|a| self.mangle_arg(a)).collect();
         let mangled = format!(
             "{}_{}_{id}",
             decl.name.text.replace('\'', "_a"),
             suffix.join("_")
         );
-
-        let mut env: GenEnv = HashMap::new();
-        for (p, a) in decl.generics.iter().zip(&args) {
-            env.insert(p.text.clone(), a.clone());
-        }
 
         self.structs.push(StructInfo {
             def: StructDef {
