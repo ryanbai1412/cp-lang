@@ -31,9 +31,9 @@ pub const EMBEDDED: &[&str] = &["mod", "prelude"];
 /// each top-level line of code, each line that declares a `fn` (a `///`
 /// doc aside) or a method's `@lint`, and the rest of a header still open on its next line. A fn
 /// whose body is on the lines below gets `todo` for it; the other lines
-/// are blank, so a line number in the outline is the file's. A one-line
-/// fn with its return type written, its `=` body on that line or the
-/// next, keeps `= todo` for its body.
+/// are blank, so a line number in the outline is the file's. A fn with
+/// its return type written keeps `= todo` for a one-line body, and `todo`
+/// for an `=` body on the next line.
 pub fn outline(text: &str) -> String {
     let mut out = String::with_capacity(text.len() / 4);
     let mut open = 0i32;
@@ -52,6 +52,13 @@ pub fn outline(text: &str) -> String {
         }
         if open == 0 && declares && nesting(code) == 0 {
             if let Some(head) = typed_head(code) {
+                // `-> T =` with its body below: the body's line gets `todo`, so a
+                // scan reads the head as the file's.
+                if code[head.len()..].trim() == "=" {
+                    out.push_str(line);
+                    body = Some(code.len() - trimmed.len());
+                    continue;
+                }
                 out.push_str(head);
                 out.push_str(" = todo");
                 out.push_str(&line[code.len()..]);
@@ -175,6 +182,9 @@ mod tests {
     #[test]
     fn a_typed_fn_whose_body_is_on_the_next_line_keeps_its_signature() {
         let text = "pub fn f(x: Int) -> Int =\n    x + 1\n";
-        assert_eq!(super::outline(text), "pub fn f(x: Int) -> Int = todo\n\n");
+        assert_eq!(
+            super::outline(text),
+            "pub fn f(x: Int) -> Int =\n    todo\n"
+        );
     }
 }
