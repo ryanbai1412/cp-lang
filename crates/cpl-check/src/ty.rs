@@ -443,6 +443,12 @@ impl Ty {
             // What a type parameter can do is its bounds' business; the
             // code is checked again with real types at each use.
             (Ty::Param(_), _) | (_, Ty::Param(_)) => true,
+            // A fn item's own type is a value of its fn type (R08.1.9).
+            (Ty::Named { name, args }, Ty::Fn { .. })
+                if args.is_empty() && name.starts_with("type_of(") =>
+            {
+                true
+            }
             (a, b) if a.is_int() && b.is_int() => true,
             (a, Ty::Float) if a.is_int() => false,
             (a, Ty::Named { name, .. }) if a.is_int() && number(name) => true,

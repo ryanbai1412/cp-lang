@@ -1,8 +1,9 @@
-//! `NameMap`: the checker's map keyed by a name. Its entries sit in one
-//! `Vec`, scanned while short; past `SCAN` entries one `HashMap<String, u32>`
+//! `NameMap`: the checker's map keyed by a name. Its names sit in one
+//! `Vec` beside their values, scanned while short; past `SCAN` entries one `HashMap<String, u32>`
 //! indexes them. Every `NameMap<V>` shares that one index type, so the hash
 //! table's code is built once however many value types the checker keys by
-//! name, where a `HashMap<String, V>` is built again for every `V`.
+//! name, where a `HashMap<String, V>` is built again for every `V`. Finding
+//! a name reads only the names, so it too is built once.
 
 use crate::fx::HashMap;
 
@@ -10,7 +11,14 @@ const SCAN: usize = 8;
 
 #[derive(Clone)]
 pub struct NameMap<V> {
-    entries: Vec<(String, V)>,
+    names: Names,
+    values: Vec<V>,
+}
+
+/// The names, and where each is once there are more than `SCAN`.
+#[derive(Clone, Default)]
+struct Names {
+    list: Vec<String>,
     index: Index,
 }
 
@@ -51,11 +59,66 @@ impl Index {
     }
 }
 
+impl Names {
+    #[inline(never)]
+    fn find(&self, name: &str) -> Option<usize> {
+        if self.list.len() > SCAN {
+            self.index.get(name)
+        } else {
+            self.list.iter().position(|n| n == name)
+        }
+    }
+
+    #[inline(never)]
+    fn reindex(&mut self) {
+        let len = self.list.len();
+        self.index
+            .rebuild(&mut self.list.iter().map(String::as_str), len);
+    }
+
+    #[inline(never)]
+    fn push(&mut self, name: String) -> usize {
+        let at = self.list.len();
+        self.list.push(name);
+        if at == SCAN {
+            self.reindex();
+        } else if at > SCAN {
+            self.index.put(&self.list[at], at);
+        }
+        at
+    }
+
+    #[inline(never)]
+    fn swap_remove(&mut self, at: usize) {
+        let name = self.list.swap_remove(at);
+        if self.list.len() <= SCAN {
+            self.index = Index::default();
+        } else {
+            self.index.take(&name);
+            if at < self.list.len() {
+                self.index.put(&self.list[at], at);
+            }
+        }
+    }
+
+    #[inline(never)]
+    fn retain(&mut self, kept: &[bool]) {
+        let mut at = kept.iter();
+        self.list.retain(|_| *at.next().unwrap_or(&true));
+        self.reindex();
+    }
+
+    fn clear(&mut self) {
+        self.list.clear();
+        self.index = Index::default();
+    }
+}
+
 impl<V> Default for NameMap<V> {
     fn default() -> Self {
         NameMap {
-            entries: Vec::new(),
-            index: Index::default(),
+            names: Names::default(),
+            values: Vec::new(),
         }
     }
 }
@@ -65,64 +128,45 @@ impl<V> NameMap<V> {
         Self::default()
     }
 
-    fn find(&self, name: &str) -> Option<usize> {
-        if self.entries.len() > SCAN {
-            self.index.get(name)
-        } else {
-            self.entries.iter().position(|(n, _)| n == name)
-        }
-    }
-
-    fn reindex(&mut self) {
-        let len = self.entries.len();
-        self.index
-            .rebuild(&mut self.entries.iter().map(|(n, _)| n.as_str()), len);
-    }
-
     pub fn len(&self) -> usize {
-        self.entries.len()
+        self.values.len()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.entries.is_empty()
+        self.values.is_empty()
     }
 
     pub fn clear(&mut self) {
-        self.entries.clear();
-        self.index = Index::default();
+        self.names.clear();
+        self.values.clear();
     }
 
     pub fn contains_key(&self, name: &str) -> bool {
-        self.find(name).is_some()
+        self.names.find(name).is_some()
     }
 
     pub fn get(&self, name: &str) -> Option<&V> {
-        self.find(name).map(|i| &self.entries[i].1)
+        self.names.find(name).map(|i| &self.values[i])
     }
 
     pub fn get_key_value(&self, name: &str) -> Option<(&String, &V)> {
-        self.find(name)
-            .map(|i| (&self.entries[i].0, &self.entries[i].1))
+        self.names
+            .find(name)
+            .map(|i| (&self.names.list[i], &self.values[i]))
     }
 
     pub fn get_mut(&mut self, name: &str) -> Option<&mut V> {
-        self.find(name).map(|i| &mut self.entries[i].1)
+        self.names.find(name).map(|i| &mut self.values[i])
     }
 
     fn push(&mut self, name: String, value: V) -> usize {
-        let at = self.entries.len();
-        self.entries.push((name, value));
-        if at == SCAN {
-            self.reindex();
-        } else if at > SCAN {
-            self.index.put(&self.entries[at].0, at);
-        }
-        at
+        self.values.push(value);
+        self.names.push(name)
     }
 
     pub fn insert(&mut self, name: String, value: V) -> Option<V> {
-        match self.find(&name) {
-            Some(i) => Some(std::mem::replace(&mut self.entries[i].1, value)),
+        match self.names.find(&name) {
+            Some(i) => Some(std::mem::replace(&mut self.values[i], value)),
             None => {
                 self.push(name, value);
                 None
@@ -131,59 +175,59 @@ impl<V> NameMap<V> {
     }
 
     pub fn remove(&mut self, name: &str) -> Option<V> {
-        let at = self.find(name)?;
-        let (_, value) = self.entries.swap_remove(at);
-        if self.entries.len() <= SCAN {
-            self.index = Index::default();
-        } else {
-            self.index.take(name);
-            if at < self.entries.len() {
-                self.index.put(&self.entries[at].0, at);
-            }
-        }
-        Some(value)
+        let at = self.names.find(name)?;
+        self.names.swap_remove(at);
+        Some(self.values.swap_remove(at))
     }
 
     pub fn retain(&mut self, mut keep: impl FnMut(&String, &mut V) -> bool) {
-        self.entries.retain_mut(|(n, v)| keep(n, v));
-        self.reindex();
+        let mut kept = Vec::with_capacity(self.values.len());
+        for (name, value) in self.names.list.iter().zip(&mut self.values) {
+            kept.push(keep(name, value));
+        }
+        let mut at = kept.iter();
+        self.values.retain(|_| *at.next().unwrap_or(&true));
+        self.names.retain(&kept);
     }
 
     pub fn entry(&mut self, name: String) -> Entry<'_, V> {
         Entry { map: self, name }
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (&String, &V)> + Clone {
-        self.entries.iter().map(|(n, v)| (n, v))
+    pub fn iter(&self) -> Iter<'_, V> {
+        Iter {
+            names: self.names.list.iter(),
+            values: self.values.iter(),
+        }
     }
 
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (&String, &mut V)> {
-        self.entries.iter_mut().map(|(n, v)| (&*n, v))
+        self.names.list.iter().zip(&mut self.values)
     }
 
     pub fn keys(&self) -> impl Iterator<Item = &String> + Clone {
-        self.entries.iter().map(|(n, _)| n)
+        self.names.list.iter()
     }
 
     pub fn values(&self) -> impl Iterator<Item = &V> + Clone {
-        self.entries.iter().map(|(_, v)| v)
+        self.values.iter()
     }
 
     pub fn values_mut(&mut self) -> impl Iterator<Item = &mut V> {
-        self.entries.iter_mut().map(|(_, v)| v)
+        self.values.iter_mut()
     }
 
     pub fn into_values(self) -> impl Iterator<Item = V> {
-        self.entries.into_iter().map(|(_, v)| v)
+        self.values.into_iter()
     }
 
     pub fn into_keys(self) -> impl Iterator<Item = String> {
-        self.entries.into_iter().map(|(n, _)| n)
+        self.names.list.into_iter()
     }
 
     pub fn drain(&mut self) -> impl Iterator<Item = (String, V)> + '_ {
-        self.index = Index::default();
-        self.entries.drain(..)
+        self.names.index = Index::default();
+        self.names.list.drain(..).zip(self.values.drain(..))
     }
 }
 
@@ -194,11 +238,11 @@ pub struct Entry<'a, V> {
 
 impl<'a, V> Entry<'a, V> {
     pub fn or_insert_with(self, make: impl FnOnce() -> V) -> &'a mut V {
-        let at = match self.map.find(&self.name) {
+        let at = match self.map.names.find(&self.name) {
             Some(i) => i,
             None => self.map.push(self.name, make()),
         };
-        &mut self.map.entries[at].1
+        &mut self.map.values[at]
     }
 
     pub fn or_insert(self, value: V) -> &'a mut V {
@@ -252,20 +296,40 @@ impl<V> FromIterator<(String, V)> for NameMap<V> {
 
 impl<V> IntoIterator for NameMap<V> {
     type Item = (String, V);
-    type IntoIter = std::vec::IntoIter<(String, V)>;
+    type IntoIter = std::iter::Zip<std::vec::IntoIter<String>, std::vec::IntoIter<V>>;
     fn into_iter(self) -> Self::IntoIter {
-        self.entries.into_iter()
+        self.names.list.into_iter().zip(self.values)
     }
 }
 
 impl<'a, V> IntoIterator for &'a NameMap<V> {
     type Item = (&'a String, &'a V);
-    type IntoIter = std::iter::Map<
-        std::slice::Iter<'a, (String, V)>,
-        fn(&'a (String, V)) -> (&'a String, &'a V),
-    >;
+    type IntoIter = Iter<'a, V>;
     fn into_iter(self) -> Self::IntoIter {
-        self.entries.iter().map(|(n, v)| (n, v))
+        self.iter()
+    }
+}
+
+/// A map's names with their values, in insertion order.
+pub struct Iter<'a, V> {
+    names: std::slice::Iter<'a, String>,
+    values: std::slice::Iter<'a, V>,
+}
+
+impl<V> Clone for Iter<'_, V> {
+    fn clone(&self) -> Self {
+        Iter {
+            names: self.names.clone(),
+            values: self.values.clone(),
+        }
+    }
+}
+
+impl<'a, V> Iterator for Iter<'a, V> {
+    type Item = (&'a String, &'a V);
+    #[inline(never)]
+    fn next(&mut self) -> Option<Self::Item> {
+        Some((self.names.next()?, self.values.next()?))
     }
 }
 
