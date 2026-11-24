@@ -4015,6 +4015,18 @@ fn dynamic_aho_corasick_matches_brute_after_adds_and_removes():
 pub fn _gen_str(alphabet: Str, lo: Int, hi: Int) -> Str =
     Str([alphabet[rand(0, alphabet.len - 1)] for _ in 0..rand(lo, hi)])
 
+/// Where `pat` first occurs in `s`, or last with `rev`; what `s.find(pat)` and `s.rfind(pat)`
+/// are for a `Str` pattern.
+///
+/// cost: \(O(nm)\)
+/// empty: `_find_str("ab", "", true) == Some(2)`
+/// traps: never
+/// example: `_find_str("banana", "an", true) == Some(3)`
+pub fn _find_str(s: Str, pat: Str, rev: Bool) -> ?Int:
+    let n = s.len - pat.len + 1
+    let starts = (0..n).map(k => if rev: n - 1 - k else: k)
+    starts.find(i => (0..pat.len).all(j => s[i + j] == pat[j]))
+
 @test
 fn palindromes_and_suffix_array_walk_and_show():
     let p = manacher("abba")

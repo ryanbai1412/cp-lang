@@ -625,7 +625,11 @@ pub fn renamed(name: &str) -> Option<&'static str> {
 /// Internal shape specializations brought in from a stdlib module when a
 /// file uses a word, without spending prelude slots or exposing internal
 /// names to users.
-pub const INTERNAL_BUILT_ON: &[(&str, &str, &str)] = &[("gen", "strings", "_gen_str")];
+pub const INTERNAL_BUILT_ON: &[(&str, &str, &str)] = &[
+    ("gen", "strings", "_gen_str"),
+    ("find", "strings", "_find_str"),
+    ("rfind", "strings", "_find_str"),
+];
 
 /// The types a prelude type's public signatures name from its own std
 /// module, followed through theirs: `Prefix.filling(order: FillOrder) ->
