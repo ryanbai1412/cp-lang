@@ -983,9 +983,6 @@ impl<'a> Lowerer<'a> {
                 );
                 self.member_typo(&ty, &name.text, name.span);
                 self.position_member_hint(&ty, &name.text);
-                match (&ty, name.text.as_str()) {
-                    _ => {}
-                }
                 self.err_expr(span)
             }
         }
