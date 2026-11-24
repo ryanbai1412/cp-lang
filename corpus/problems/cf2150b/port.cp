@@ -16,7 +16,7 @@ let comb = Comb<Z>()
 @!multitest
 let n: 1..=200_000 = read()
 let a: [0..n]0..=200_000 = read()
-var freq: [0..n]Int = 0
+var freq: [0..n]0..=2 = 0  // i and n - 1 - i
 for i in 0..n: freq[min(i, n - 1 - i)] += 1
 
 var cur = 0
