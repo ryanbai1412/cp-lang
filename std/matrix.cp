@@ -180,14 +180,15 @@ pub struct Mat<T>:
     pub fn mul_vec(self, v: List<T>) -> List<T>:
         assert v.len == cols, "vector length must match matrix columns"
         if T: Add:
-            if ring == None:
-                var out = List.filled(rows, T.zero)
-                for i in 0..rows:
-                    var acc = T.zero
-                    let off = i * cols
-                    for j in 0..cols: acc = acc + data[off + j] * v[j]
-                    out[i] = acc
-                return out
+            if T: Mul:
+                if ring == None:
+                    var out = List.filled(rows, T.zero)
+                    for i in 0..rows:
+                        var acc = T.zero
+                        let off = i * cols
+                        for j in 0..cols: acc = acc + data[off + j] * v[j]
+                        out[i] = acc
+                    return out
         let g = ring!
         var out = List.filled(rows, g.zero)
         for i in 0..rows:
@@ -521,7 +522,7 @@ pub struct Mat<T>:
     /// traps: when the matrix is not square
     /// example: `let a = Mat<Mod<7>>.from_rows([[1, 2], [3, 4]]).adjugate(); a.get(0, 0) == Mod<7>(4) and a.get(0, 1) == Mod<7>(5)`
     /// example: `Mat<Mod<7>>.from_rows([[5]]).adjugate().get(0, 0) == Mod<7>(1)`
-    pub fn adjugate(self) -> Mat<T>:
+    pub fn adjugate(self) -> Mat<T> where T: Mul + Div:
         assert rows == cols, "adjugate requires a square matrix"
         let n = rows
         if n == 0: return Mat(0, 0, List<T>())
@@ -570,24 +571,26 @@ impl Mul for Mat<T>:
         assert a.cols == b.rows, "matrix dimensions do not match for multiplication"
         let (r, m, c) = (a.rows, a.cols, b.cols)
         if T: Add:
-            if a.ring == None:
-                var out = List.filled(r * c, T.zero)
-                unchecked:
-                    for i in 0..r:
-                        let ai = i * m
-                        let oi = i * c
-                        for k in 0..m:
-                            let f = a.data[ai + k]
-                            let bk = k * c
-                            for j in 0..c: out[oi + j] = out[oi + j] + f * b.data[bk + j]
-                return Mat(r, c, out)
+            if T: Mul:
+                if a.ring == None:
+                    var out = List.filled(r * c, T.zero)
+                    unchecked:
+                        for i in 0..r:
+                            let ai = i * m
+                            let oi = i * c
+                            for k in 0..m:
+                                let f = a.data[ai + k]
+                                let bk = k * c
+                                for j in 0..c: out[oi + j] = out[oi + j] + f * b.data[bk + j]
+                    return Mat(r, c, out)
         let g = a.ring!
+        let (add, mul) = (g.add, g.mul)
         var acc = List.filled(r * c, g.zero)
         for i in 0..r:
             for k in 0..m:
                 let f = a.data[i * m + k]
                 if f == g.zero: continue
-                for j in 0..c: acc[i * c + j] = g.add(acc[i * c + j], g.mul(f, b.data[k * c + j]))
+                for j in 0..c: acc[i * c + j] = add(acc[i * c + j], mul(f, b.data[k * c + j]))
         Mat(r, c, acc, a.ring)
 
 impl Pow for Mat<T>:

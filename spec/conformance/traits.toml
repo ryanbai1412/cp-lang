@@ -619,6 +619,14 @@ print(s.get(0, 0), s.get(1, 1), i.get(0, 0), i.get(0, 1))
 """
 out = "37 118 1 0"
 
+[case."Eq/Mat/eq"]
+code = """
+use std.matrix.{Mat}
+let a = Mat<Int>.from_rows([[1, 2], [3, 4]])
+print(yes(a == Mat<Int>.from_rows([[1, 2], [3, 4]])), yes(a == a.transpose()), yes(a == Mat<Int>.from_rows([[1, 2]])))
+"""
+out = "YES NO NO"
+
 [case."Add/Poly/add"]
 code = """
 use std.poly.{Poly}
