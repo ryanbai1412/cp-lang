@@ -163,7 +163,7 @@ pub fn report_with(
         );
     }
     if !view_ops.is_empty() {
-        let _ = writeln!(stdout, "Views & copies:");
+        let _ = writeln!(stdout, "Views & concatenations:");
         for (line, col, desc) in view_ops {
             let _ = writeln!(stdout, "  {line}:{col}  {desc}");
         }
@@ -283,16 +283,6 @@ fn explain_views(text: &str, program: &cpl_ir::Program) -> Vec<(usize, usize, St
                         }
                     ))
                 }
-                cpl_ir::Builtin::ToStr => {
-                    Some("explicit copy -> std::string, O(n), owned".to_string())
-                }
-                cpl_ir::Builtin::ToList => Some(format!(
-                    "explicit copy -> std::vector<{}>, O(n), owned",
-                    match &e.ty {
-                        cpl_ir::Ty::List(t) => program.show_ty(t),
-                        _ => "T".to_string(),
-                    }
-                )),
                 cpl_ir::Builtin::StrConcat => {
                     Some("concat -> std::string, O(n + m), owned".to_string())
                 }

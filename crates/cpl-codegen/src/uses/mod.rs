@@ -296,6 +296,9 @@ pub(crate) const SOURCE_READ_WHOLE: &str =
 pub(crate) const NAME_MOVED: &str = "the name is moved later, so it owns its value";
 /// Why a `.clone()` of a place copies: it asks for a second value.
 pub(crate) const CLONED: &str = "written `.clone()`, so it is a second value";
+/// Why `.to_str()` / `.to_list()` of a view copies: what it shows becomes
+/// a value of its own.
+pub(crate) const OWNED_VIEW: &str = "a view made owned copies what it shows";
 /// Why `.sorted()` of a place copies: it sorts a copy, where `.sort()`
 /// sorts in place.
 pub(crate) const SORTED: &str = "`.sorted()` sorts a copy; `.sort()` sorts in place";

@@ -1963,8 +1963,9 @@ mod tests {
             "{text}"
         );
         assert!(text.contains("O(1), read-only"), "{text}");
-        assert!(text.contains("explicit copy -> std::string"), "{text}");
-        assert!(text.contains("explicit copy -> std::vector"), "{text}");
+        assert!(!text.contains("explicit copy"), "{text}");
+        let owned = "-> a view made owned copies what it shows";
+        assert_eq!(text.matches(owned).count(), 2, "{text}");
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -1977,7 +1978,7 @@ mod tests {
         let out = run(&["explain", &file.to_string_lossy()]);
         assert_eq!(out.code, 0, "{}", out.stderr);
         let text = String::from_utf8(out.stdout).unwrap();
-        assert!(!text.contains("Views & copies"), "{text}");
+        assert!(!text.contains("Views & concatenations"), "{text}");
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

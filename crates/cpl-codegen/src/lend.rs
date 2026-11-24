@@ -1112,6 +1112,12 @@ impl Emitter<'_> {
         Some(format!("{}(std::move({}))", self.ty(ty), self.names[slot]))
     }
 
+    /// Records the copy `.to_str()` / `.to_list()` makes of the view `e`
+    /// converts.
+    pub(crate) fn note_owned_view(&mut self, e: &Expr) {
+        self.note_copy(e.span, crate::uses::OWNED_VIEW, None);
+    }
+
     /// Records the copy `Some(xs)` makes when `xs` is a place holding a
     /// heap value: the `std::optional` holds a value of its own.
     pub(crate) fn note_some_copy(&mut self, inner: &Expr, text: &str) {

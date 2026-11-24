@@ -430,10 +430,12 @@ impl<'p> Emitter<'p> {
             }
             Builtin::ToStr => {
                 self.need("str_view");
+                self.note_owned_view(e);
                 Code::primary(format!("cpl::to_str({})", text(0)))
             }
             Builtin::ToList => {
                 self.need("list_view");
+                self.note_owned_view(e);
                 Code::primary(format!("cpl::to_list({})", text(0)))
             }
             Builtin::StrConcat => {

@@ -91,7 +91,7 @@ fn place_arg(rest: &str) -> bool {
 
 /// A second heap value spelled as a call: a container constructed from a
 /// place (`std::array<ll, 4>(a)`, `std::set<ll>(a)`), `cpl::sorted(xs)`
-/// (which takes its list by value) and `cpl::to_list(..)`. Mirrors `COPY`
+/// (which takes its list by value), `cpl::to_list(..)` and `cpl::to_str(..)`. Mirrors `COPY`
 /// in scripts/specgate/explain_copies.py. Counted here on top of
 /// [`deep_copies`], not under the `// copies:` headers.
 fn constructed_copies(cpp: &str) -> usize {
@@ -128,7 +128,10 @@ fn constructed_copies(cpp: &str) -> usize {
                         .is_some_and(|end| place_arg(&rest[end + 1..]))
                 })
                 .count();
-            line.matches("cpl::to_list(").count() + sorted + built
+            line.matches("cpl::to_list(").count()
+                + line.matches("cpl::to_str(").count()
+                + sorted
+                + built
         })
         .sum()
 }
@@ -311,6 +314,7 @@ const CASES: &[&str] = &[
     "std-models/historic-beats.cp",
     "std-models/euler-tour-tree.cp",
     "std-seq/set-union-intersect-subtract.cp",
+    "core-04/grid-cols-of-one-row.cp",
 ];
 
 #[test]
@@ -325,6 +329,7 @@ fn a_container_built_from_a_place_or_sorted_is_a_copy() {
         "a = cpl::sorted(a);",
         "show_1(cpl::sorted(self.xs), 10);",
         "auto v = cpl::to_list(it);",
+        "return cpl::to_str(cpl::str_slice(s, 0, q));",
     ];
     for line in copies {
         assert_eq!(constructed_copies(line), 1, "{line}");

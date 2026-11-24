@@ -1,7 +1,7 @@
 """Check that every copy `cpl explain` lists is a copy in the generated C++.
 
 For each `ok` conformance case, runs `cpl explain`; where it lists copies
-(`[copy]` lines and `explicit copy` views), builds the judge C++ and counts
+(its `[copy]` lines, which codegen records), builds the judge C++ and counts
 the deep copies in it with the counter explain_accuracy.rs uses (a
 container initialised from a place, a by-value capture), plus a container
 constructed from another (`= std::vector<T>(x);`) and `cpl::to_list(...)`. A
@@ -22,7 +22,7 @@ from specgate import Problem
 
 HELP = "every copy `cpl explain` lists is a deep copy in the judge C++ (--max false claims allowed, shrink-only)"
 
-COPY = re.compile(r"(?:(?:std::(?:vector|array|map|set|unordered_map|deque)|cpl::Grid)<[^;()]*?>|std::string)\((?:cpl::at\([^()]*\)|[A-Za-z_]\w*(?:\[[^\[\]]+\])*(?:\.\w+)*)\)|cpl::to_list\(|cpl::sorted\([A-Za-z_]\w*(?:\.\w+)*\)")
+COPY = re.compile(r"(?:(?:std::(?:vector|array|map|set|unordered_map|deque)|cpl::Grid)<[^;()]*?>|std::string)\((?:cpl::at\([^()]*\)|[A-Za-z_]\w*(?:\[[^\[\]]+\])*(?:\.\w+)*)\)|cpl::to_list\(|cpl::to_str\(|cpl::sorted\([A-Za-z_]\w*(?:\.\w+)*\)")
 CONTAINERS = ("std::vector<", "std::map<", "std::set<", "std::unordered_map<", "std::deque<", "std::string")
 NAME = re.compile(r"[A-Za-z_]\w*(?:\[[^\[\]]+\])*(?:\.[A-Za-z_]\w*)*")
 PARAM = re.compile(r"(?:std::vector<|std::map<|std::set<|std::unordered_map<|std::deque<|std::string)[^();{}=]*?[&\s](\w+)\s*[,)]")
@@ -172,7 +172,7 @@ def one(cpl, case, tmp):
     if not text.startswith("// expect: ok") or "\n// tool:" in text:
         return None
     ex = subprocess.run([cpl, "explain", str(case)], capture_output=True, text=True, timeout=120).stdout
-    claimed = ex.count("[copy]") + ex.count("explicit copy")
+    claimed = ex.count("[copy]")
     if not claimed:
         return None
     out = Path(tmp) / (case.stem + ".cpp")

@@ -1033,8 +1033,9 @@ impl<'p> Emitter<'p> {
         let mut protos: Vec<Proto> = Vec::new();
         let mut fns = String::new();
         // The list form of each `yields` fn that also has a `cpl_each_f`
-        // form: its name, where it sits in `fns`, and its chunk.
-        let mut list_forms: Vec<(String, std::ops::Range<usize>, usize)> = Vec::new();
+        // form: its name, where it sits in `fns`, its chunk,
+        // and the copies its body records.
+        let mut list_forms: Vec<text::ListForm> = Vec::new();
         let mut judge_decls = String::new();
         let mut entries = String::new();
         for id in crate::order::callee_first(program, &reachable) {
@@ -1142,8 +1143,10 @@ impl<'p> Emitter<'p> {
                 let g = self.temp();
                 fns.push_str(&format!("    cpl::DomGuard {g}({dn}_lo, {dn}_len);\n"));
             }
+            let copied_from = self.copies.len();
             self.hoisted_decls(&mut fns, f.params.len());
             self.block(&f.body, &mut fns);
+            let copied = copied_from..self.copies.len();
             text::close_def(&mut fns, def_at, &self.names[..f.params.len()]);
             if inline_hint(
                 &fns[def_at..],
@@ -1154,7 +1157,7 @@ impl<'p> Emitter<'p> {
             }
             let list_form =
                 (self.pushers.contains_key(&id) && !hook && !program.entry_fns.contains(&id))
-                    .then(|| (fn_name(&f.name), def_at..fns.len()));
+                    .then(|| (fn_name(&f.name), def_at..fns.len(), copied));
             if let Some(acc) = self.pushers.get(&id).copied() {
                 // The same fn handing each value to `cpl_f` as it is made,
                 // with no list. It may be running twice (a loop body can
@@ -1207,8 +1210,8 @@ impl<'p> Emitter<'p> {
             }
             self.chunks
                 .push((part, f.name.clone(), fns[start..].to_string()));
-            if let Some((name, range)) = list_form {
-                list_forms.push((name, range, self.chunks.len() - 1));
+            if let Some((name, range, copied)) = list_form {
+                list_forms.push((name, range, self.chunks.len() - 1, copied));
             }
         }
         let start = fns.len();
@@ -1462,13 +1465,17 @@ impl<'p> Emitter<'p> {
             .into_iter()
             .chain(self.shows.iter().map(String::as_str))
             .collect();
-        text::drop_unread_list_forms(
+        let unwritten = text::drop_unread_list_forms(
             &mut fns,
             &mut protos,
             &mut self.chunks,
             list_forms,
             &elsewhere,
         );
+        // A dropped form's copies are not in the file.
+        for copied in unwritten {
+            self.copies.drain(copied);
+        }
         // A fn is declared ahead only when something written above it
         // names it: a closure called by name, a `show`, or a fn that
         // comes first. The rest are defined before they are used.

@@ -84,18 +84,23 @@ pub(super) fn names(text: &str, name: &str) -> bool {
     })
 }
 
+/// A list form's name, its range in `fns`, its chunk and its copies.
+pub(super) type ListForm = (String, Range<usize>, usize, Range<usize>);
+
 /// A `yields` fn every loop walks through its `cpl_each_f` form is called
 /// by nothing in its list form, so that form is taken back out of `fns`,
 /// its declaration and its chunk. `forms` holds each list form's name, its
-/// range in `fns` and its chunk; `elsewhere` is the rest of the file.
+/// range in `fns`, its chunk and its copies; `elsewhere` is the rest of the
+/// file. Returns the copies of the forms taken out.
 pub(super) fn drop_unread_list_forms(
     fns: &mut String,
     protos: &mut Vec<Proto>,
     chunks: &mut [(crate::Part, String, String)],
-    forms: Vec<(String, Range<usize>, usize)>,
+    forms: Vec<ListForm>,
     elsewhere: &[&str],
-) {
-    for (name, range, chunk) in forms.into_iter().rev() {
+) -> Vec<Range<usize>> {
+    let mut dropped = Vec::new();
+    for (name, range, chunk, copied) in forms.into_iter().rev() {
         let called = [&fns[..range.start], &fns[range.end..]]
             .into_iter()
             .chain(elsewhere.iter().copied())
@@ -111,7 +116,9 @@ pub(super) fn drop_unread_list_forms(
             }
         }
         chunks[chunk].2 = chunks[chunk].2.replacen(&text, "", 1);
+        dropped.push(copied);
     }
+    dropped
 }
 
 /// An `@cpp` fn: its body as written, after it names each param as the
