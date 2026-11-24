@@ -6,6 +6,10 @@
                                    hand-written fields
   scripts/corpus.py check          fail when a meta.json is stale or names a
                                    missing file
+  scripts/corpus.py delete <id>... remove packages whose statement can't be
+                                   found: the dir, their submissions and
+                                   info.json entries, and their lines in
+                                   corpus/sets and silent_unknowns.txt
   scripts/corpus.py verify <id>... [--cpl PATH] [--check]
                                    verify packages; records `dream_stress` in
                                    each meta.json (--check writes nothing and
@@ -815,7 +819,6 @@ def has_max(pkg):
     return bool(pkg.gen) and "--max" in pkg.gen.read_text(errors="replace")
 
 
-CHECKED_SLOWER, MAX_GEN_TIMEOUT = 10, 120
 LIMITS = re.compile(r"^//\s*limits:\s*(\d+)\s*ms,\s*(\d+)\s*MB", re.M)
 MAX_GEN_TIMEOUT = 120
 CHECKED_SLOWER = 10
@@ -1247,6 +1250,8 @@ def verify(args):
     bad = [m for m in modes if m not in CHECKS]
     if bad:
         sys.exit(f"corpus: no mode {', '.join(bad)}; modes: {', '.join(MODES)}")
+    if not opt("no_run") and set(modes) - {"header", "package"} and not os.path.exists(cpl):
+        sys.exit(f"corpus: no cpl at {os.path.relpath(cpl, ROOT)}; build it with `cargo build --release -p cpl-cli`")
     ctx = Context(cpl, run=not opt("no_run"), check=bool(opt("check")), named=() if opt("changed") else ids)
     try:
         with concurrent.futures.ThreadPoolExecutor(opt("j", os.cpu_count() or 4)) as pool:
@@ -1400,6 +1405,8 @@ def cli(argv):
     sub = ap.add_subparsers(dest="mode", required=True)
     sub.add_parser("build")
     sub.add_parser("check")
+    d = sub.add_parser("delete")
+    d.add_argument("ids", nargs="+")
     v = sub.add_parser("verify")
     v.add_argument("ids", nargs="*", help="package ids (default: every package)")
     v.add_argument("--set", action="append", help="only the packages in corpus/sets/<SET>.txt")
@@ -1439,7 +1446,51 @@ def cli(argv):
         return gaps(args)
     if args.mode == "ls":
         return ls_mode(args)
+    if args.mode == "delete":
+        return delete(args.ids)
     return main(args.mode)
+
+
+UNKNOWNS = os.path.join(ROOT, "crates", "cpl-conform", "silent_unknowns.txt")
+
+
+def named_by(name, pid):
+    """Tracked files outside package `pid` that mention `name`."""
+    return subprocess.run(["git", "grep", "-l", "-F", name, "--", ".", ":!corpus/problems/" + pid],
+                          cwd=ROOT, capture_output=True, text=True).stdout.split()
+
+
+def delete(ids):
+    """Remove packages and everything that names them, then rebuild the index,
+    so a later `build` can't recreate one from info.json. A submission file
+    another tracked file still names stays, without its info.json entry."""
+    known = {p.id for p in problems()}
+    ipath = os.path.join(SUBS, "info.json")
+    info = json.load(open(ipath))
+    for pid in ids:
+        subs = [sid for sid, e in info.items() if canonical_id(e["problem"]) == pid]
+        if pid not in known and not subs:
+            sys.exit(f"corpus: no package {pid}")
+        for sid in subs:
+            del info[sid]
+            for f in Path(SUBS).glob(sid + ".*"):
+                users = named_by(f.name, pid)
+                if users:
+                    print(f"{pid}: kept {rel(str(f))}, named by {', '.join(users)}")
+                else:
+                    f.unlink()
+        for listing in [*Path(SETS).glob("*.txt"), Path(UNKNOWNS)]:
+            if listing.exists():
+                lines = listing.read_text().splitlines(keepends=True)
+                kept = [l for l in lines if l.strip() != pid and f"corpus/problems/{pid}/" not in l]
+                if kept != lines:
+                    listing.write_text("".join(kept))
+        for d in (Path(PROBLEMS) / pid, Path(ROOT, "target", "corpus-tests", pid)):
+            shutil.rmtree(d, ignore_errors=True)
+        print(f"{pid}: deleted with {len(subs)} submission(s)")
+    with open(ipath, "w") as f:
+        f.write(json.dumps(info, indent=4))
+    return main("build")
 
 
 def ls_mode(args):

@@ -662,5 +662,62 @@ class Measure(unittest.TestCase):
         self.assertIsNone(corpus.measure(shutil.which("yes"), b"", 0.2))
 
 
+class DeleteTest(Corpus):
+    def test_removes_the_package_its_submissions_and_every_line_naming_it(self):
+        subs, unknowns = self.root / "subs", self.root / "silent_unknowns.txt"
+        subs.mkdir()
+        for name, value in (("SUBS", subs), ("UNKNOWNS", unknowns)):
+            self.addCleanup(setattr, corpus, name, getattr(corpus, name))
+            setattr(corpus, name, str(value))
+        self.package("p2", port_cp="")
+        self.package("p3", port_cp="")
+        info = {"910000001": {"problem": "p2"}, "910000002": {"problem": "p3"}}
+        (subs / "info.json").write_text(json.dumps(info, indent=4))
+        (subs / "910000001.cpp").write_text("")
+        (subs / "910000002.cpp").write_text("")
+        unknowns.write_text("1 corpus/problems/p2/port.cp\n1 corpus/problems/p3/port.cp\n")
+        build = mock.Mock(return_value=0)
+        with mock.patch.object(corpus, "main", build), mock.patch.object(corpus, "named_by", lambda *_: []), \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(corpus.delete(["p2"]), 0)
+        build.assert_called_once_with("build")
+        self.assertEqual([p.id for p in corpus.problems()], ["p3"])
+        self.assertEqual(json.loads((subs / "info.json").read_text()), {"910000002": {"problem": "p3"}})
+        self.assertEqual(sorted(f.name for f in subs.iterdir()), ["910000002.cpp", "info.json"])
+        self.assertEqual((self.root / "sets" / "small.txt").read_text(), "# comment\n")
+        self.assertEqual(unknowns.read_text(), "1 corpus/problems/p3/port.cp\n")
+
+    def test_a_submission_another_file_names_is_kept_without_its_entry(self):
+        subs = self.root / "subs"
+        subs.mkdir()
+        self.addCleanup(setattr, corpus, "SUBS", corpus.SUBS)
+        corpus.SUBS = str(subs)
+        self.package("p2")
+        (subs / "info.json").write_text(json.dumps({"910000001": {"problem": "p2"}}, indent=4))
+        (subs / "910000001.cpp").write_text("")
+        out = io.StringIO()
+        with mock.patch.object(corpus, "main", mock.Mock(return_value=0)), \
+                mock.patch.object(corpus, "named_by", lambda *_: ["bench/audit.py"]), contextlib.redirect_stdout(out):
+            corpus.delete(["p2"])
+        self.assertTrue((subs / "910000001.cpp").exists())
+        self.assertEqual(json.loads((subs / "info.json").read_text()), {})
+        self.assertIn("named by bench/audit.py", out.getvalue())
+
+    def test_an_unknown_id_stops_before_anything_is_removed(self):
+        with self.assertRaises(SystemExit) as e:
+            corpus.delete(["nope"])
+        self.assertIn("no package nope", str(e.exception))
+
+
+class VerifyCplTest(Corpus):
+    def test_a_missing_cpl_says_to_build_it(self):
+        d = self.package("p1", gen_py=GEN)
+        args = argparse.Namespace(ids=["p1"], cpl=str(self.root / "no-cpl"), only="tests")
+        with mock.patch.object(corpus, "problems", lambda sets=None, ids=None: iter([corpus.Package.at(d)])), \
+                self.assertRaises(SystemExit) as e:
+            corpus.verify(args)
+        self.assertIn("cargo build --release -p cpl-cli", str(e.exception))
+
+
 if __name__ == "__main__":
     unittest.main()
