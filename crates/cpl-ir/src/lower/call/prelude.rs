@@ -1055,6 +1055,11 @@ impl<'a> Lowerer<'a> {
                 let ty = Ty::List(elem.clone());
                 self.mk(ExprKind::Builtin(Builtin::Sorted, vec![value]), ty, span)
             }
+            // A range goes up already: its list is what it goes over.
+            Ty::Range(elem) => {
+                let elem = (**elem).clone();
+                self.walked_list(Iter::RangeVal(value, false), elem, span)
+            }
             ty if ty.is_seq() => {
                 let elem = ty.seq_elem().unwrap();
                 if !self.ordered(&elem) {
@@ -1189,6 +1194,11 @@ impl<'a> Lowerer<'a> {
             // written out is the list of what it goes over.
             (ExprKind::Range { lo, hi }, Ty::Range(of)) => {
                 self.range_list(*lo, *hi, (**of).clone(), span)
+            }
+            (kind, Ty::Range(of)) => {
+                let of = (**of).clone();
+                let range = Expr { kind, ..value };
+                self.walked_list(Iter::RangeVal(range, false), of, span)
             }
             (kind, _) => Expr { kind, ..value },
         };
