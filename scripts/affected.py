@@ -141,6 +141,8 @@ def script_test(path):
         return "scripts/test_check_cache.py"
     if path.startswith("scripts/release/"):
         return "scripts/test_release.py"
+    if name == "new_reds.py":
+        return "scripts/test_land.py"
     stem = os.path.splitext(name)[0].replace("-", "_")
     test = f"scripts/test_{stem.removeprefix('test_')}.py"
     return test if os.path.exists(os.path.join(ROOT, test)) else None
