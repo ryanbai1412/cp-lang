@@ -193,7 +193,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 (Step::Index(indices), Value::List(items)) => {
                     items.stored(usize::try_from(indices.first()?.int()).ok()?)?
                 }
-                (Step::Index(indices), Value::Map(entries)) => entries.get(indices.first()?)?,
+                // A sorted map's search runs user code, which a read-only peek can't.
+                (Step::Index(indices), Value::Map(entries)) if !entries.is_sorted_by_user() => {
+                    entries
+                        .get(indices.first()?, &mut |_, a, b| Ok(a.cmp(b)))
+                        .ok()??
+                }
                 _ => return None,
             };
         }

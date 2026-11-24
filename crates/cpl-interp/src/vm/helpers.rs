@@ -739,8 +739,8 @@ pub(super) fn take_value(cell: &mut Value, span: Span) -> Res<Value> {
     let empty = match &*cell {
         Value::List(_) => Value::List(Rc::default()),
         Value::Str(_) => Value::Str(Rc::default()),
-        Value::Map(_) => Value::Map(Rc::default()),
-        Value::Set(_) => Value::Set(Rc::default()),
+        Value::Map(m) => Value::Map(Rc::new(m.empty_like())),
+        Value::Set(s) => Value::Set(Rc::new(s.empty_like())),
         Value::Tuple(TupleVal::Boxed(_)) => Value::Moved,
         other => other.clone(),
     };
@@ -916,7 +916,9 @@ pub(super) fn walk_place_mut<'a>(
     for &step in steps {
         match step {
             PlaceStep::Key(n) => match cur {
-                Value::Map(entries) => match Rc::make_mut(entries).get_mut(&keys[n as usize]) {
+                Value::Map(entries) => match Rc::make_mut(entries)
+                    .get_mut(&keys[n as usize], &mut crate::value::keys::tree_only(span))?
+                {
                     Some(value) => cur = value,
                     None => {
                         return trap(span, cpl_diag::msgs::interp::THIS_KEY_NOT_IN_MAP.at(&[]));

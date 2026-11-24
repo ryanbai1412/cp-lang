@@ -1064,7 +1064,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
     }
 
     fn keyed_map(&self, ty: &Ty) -> bool {
-        matches!(ty, Ty::Map(k, _) | Ty::HashMap(k, _) if !crate::value::ty_has_cached(k, self.program))
+        matches!(ty, Ty::Map(k, _) | Ty::HashMap(k, _) if !crate::value::ty_has_cached(k, self.program) && !crate::value::keys::user_ordered(k, self.program))
     }
 
     /// A path to `place`, through map entries too. A path that ends at a
@@ -1166,7 +1166,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         value: &'p Expr,
     ) -> bool {
         if let PlaceKind::Index(map_place, indices) = &place.kind {
-            if matches!(&map_place.ty, Ty::Map(kty, _) | Ty::HashMap(kty, _) if !crate::value::ty_has_cached(kty, self.program))
+            if matches!(&map_place.ty, Ty::Map(kty, _) | Ty::HashMap(kty, _) if !crate::value::ty_has_cached(kty, self.program) && !crate::value::keys::user_ordered(kty, self.program))
                 && indices.len() == 1
             {
                 let saved_ops = self.ops.len();

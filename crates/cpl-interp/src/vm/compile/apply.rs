@@ -103,6 +103,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
         if !owned(&place.ty, program) || !args.iter().all(|a| owned(&a.ty, program)) {
             return None;
         }
+        if matches!(&place.ty, cpl_ir::Ty::Set(k) | cpl_ir::Ty::Map(k, _) if crate::value::keys::user_ordered(k, program))
+        {
+            return None;
+        }
         let saved = (self.ops.len(), self.spans.len(), self.places.len());
         let Some(path) = self.compile_place_path_to(place, true) else {
             self.ops.truncate(saved.0);

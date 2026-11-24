@@ -1,6 +1,7 @@
 //! The builtins on the values of their arguments, which both engines share.
 
 use crate::observe::Observer;
+use crate::value::keys::Edge;
 use crate::value::*;
 use crate::*;
 
@@ -348,8 +349,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Value::ListView(view) => view.contains(&needle),
                     Value::MutView(mv) => self.mut_view_to_vec(mv, span)?.contains(&needle),
                     Value::Array(array) => array.contains(&needle),
-                    Value::Set(items) => items.contains(&key_needle),
-                    Value::Map(entries) => entries.contains_key(&key_needle),
+                    Value::Set(items) => items
+                        .contains(&key_needle, &mut |t, a, b| self.cmp_ty_val(t, a, b, span))?,
+                    Value::Map(entries) => entries
+                        .contains_key(&key_needle, &mut |t, a, b| self.cmp_ty_val(t, a, b, span))?,
                     Value::Str(bytes) => match &needle {
                         Value::Char(c) => bytes.contains(c),
                         Value::Str(part) => {
@@ -393,47 +396,35 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     .map(|a| value::strip_cached(&key, &a.ty, self.program))
                     .unwrap_or(key);
                 match &first {
-                    Value::Map(entries) => optional(entries.get(&key).cloned()),
+                    Value::Map(entries) => optional(
+                        entries
+                            .get(&key, &mut |t, a, b| self.cmp_ty_val(t, a, b, span))?
+                            .cloned(),
+                    ),
                     _ => Value::Opt(OptVal::None),
                 }
             }
             Builtin::FirstGe | Builtin::FirstGt | Builtin::LastLe | Builtin::LastLt => {
-                use std::ops::Bound::{Excluded, Included, Unbounded};
                 let key = values.next().unwrap_or_default();
                 let key = args
                     .get(1)
                     .map(|a| value::strip_cached(&key, &a.ty, self.program))
                     .unwrap_or(key);
-                let range = match op {
-                    Builtin::FirstGe => (Included(key), Unbounded),
-                    Builtin::FirstGt => (Excluded(key), Unbounded),
-                    Builtin::LastLe => (Unbounded, Included(key)),
-                    _ => (Unbounded, Excluded(key)),
+                let edge = match op {
+                    Builtin::FirstGe => Edge::FirstGe,
+                    Builtin::FirstGt => Edge::FirstGt,
+                    Builtin::LastLe => Edge::LastLe,
+                    _ => Edge::LastLt,
                 };
-                let first_in = matches!(op, Builtin::FirstGe | Builtin::FirstGt);
+                let cmp =
+                    &mut |t: &cpl_ir::Ty, a: &Value, b: &Value| self.cmp_ty_val(t, a, b, span);
                 match &first {
-                    Value::Set(items) => {
-                        let mut found = items.range(range);
-                        optional(
-                            if first_in {
-                                found.next()
-                            } else {
-                                found.next_back()
-                            }
-                            .cloned(),
-                        )
-                    }
-                    Value::Map(entries) => {
-                        let mut found = entries.range(range);
-                        let entry = if first_in {
-                            found.next()
-                        } else {
-                            found.next_back()
-                        };
-                        optional(
-                            entry.map(|(key, val)| Value::tuple(vec![key.clone(), val.clone()])),
-                        )
-                    }
+                    Value::Set(items) => optional(items.edge(key, edge, cmp)?.cloned()),
+                    Value::Map(entries) => optional(
+                        entries
+                            .edge(key, edge, cmp)?
+                            .map(|(key, val)| Value::tuple(vec![key.clone(), val.clone()])),
+                    ),
                     _ => Value::Opt(OptVal::None),
                 }
             }

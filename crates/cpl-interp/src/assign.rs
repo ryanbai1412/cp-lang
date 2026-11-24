@@ -1,6 +1,8 @@
 //! Assignment: storing into places, compound assignment, and mutating calls.
 
 use super::*;
+use crate::value::keys::{self, Cmp};
+use crate::value::KeyMap;
 
 pub(super) fn field_mut(holder: &mut Value, index: usize, span: Span) -> Res<&mut Value> {
     match holder {
@@ -55,7 +57,7 @@ pub(super) fn cell_mut<'s>(
         }
         Value::Map(entries) => {
             let key = indices.next().cloned().unwrap_or_default();
-            match Rc::make_mut(entries).get_mut(&key) {
+            match Rc::make_mut(entries).get_mut(&key, &mut keys::tree_only(span))? {
                 Some(value) => Ok(value),
                 None => trap(span, cpl_diag::msgs::interp::THIS_KEY_NOT_IN_MAP.at(&[])),
             }
@@ -284,16 +286,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         }
                         return Ok(indices);
                     }
-                    Value::Map(entries) if op == AssignOp::Set => {
-                        let k = match &base.ty {
-                            Ty::Map(kt, _) | Ty::HashMap(kt, _) => {
-                                value::strip_cached(key, kt, program)
-                            }
-                            _ => key.clone(),
-                        };
-                        Rc::make_mut(entries).insert(k, value);
-                        return Ok(indices);
-                    }
                     Value::Map(entries) => {
                         let k = match &base.ty {
                             Ty::Map(kt, _) | Ty::HashMap(kt, _) => {
@@ -301,32 +293,29 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                             }
                             _ => key.clone(),
                         };
-                        let map = Rc::make_mut(entries);
-                        let next = if let Some(old) = map.get(&k).cloned() {
-                            combine(op, old, value, place.span)?
-                        } else {
-                            match op {
-                                AssignOp::Max
-                                | AssignOp::Min
-                                | AssignOp::Binary(
-                                    BinOp::Add
-                                    | BinOp::Mul
-                                    | BinOp::BitOr
-                                    | BinOp::BitXor
-                                    | BinOp::BitAnd,
-                                ) => value,
-                                AssignOp::Binary(BinOp::Sub) => {
-                                    combine(op, zero(&place.ty, program), value, place.span)?
-                                }
-                                _ => {
-                                    return trap(
-                                        place.span,
-                                        cpl_diag::msgs::interp::THIS_KEY_NOT_IN_MAP.at(&[]),
-                                    )
-                                }
-                            }
+                        let span = place.span;
+                        let start = || zero(&place.ty, program);
+                        if !entries.is_sorted_by_user() {
+                            let cmp = &mut keys::tree_only(span);
+                            assign_entry(Rc::make_mut(entries), k, op, value, start, span, cmp)?;
+                            return Ok(indices);
+                        }
+                        // The key's `Ord` runs user code, so the map is out of its place meanwhile.
+                        let mut held = std::mem::replace(holder, Value::Moved);
+                        let Value::Map(entries) = &mut held else {
+                            unreachable!("matched a map")
                         };
-                        map.insert(k, next);
+                        let done = assign_entry(
+                            Rc::make_mut(entries),
+                            k,
+                            op,
+                            value,
+                            start,
+                            span,
+                            &mut |t, a, b| self.cmp_ty_val(t, a, b, span),
+                        );
+                        *self.resolve(base, &mut rest.iter())? = held;
+                        done?;
                         return Ok(indices);
                     }
                     Value::Moved => return trap(place.span, cpl_diag::msgs::interp::LENT.at(&[])),
@@ -485,6 +474,56 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         }
         let program = self.program;
         let cell = self.resolve(place, &mut indices.iter())?;
-        mutation::mutate_cell(op, cell, &place.ty, arg, arg2, program, span)
+        if !matches!(cell, Value::Set(s) if s.is_sorted_by_user())
+            && !matches!(cell, Value::Map(m) if m.is_sorted_by_user())
+        {
+            let cmp = &mut keys::tree_only(span);
+            return mutation::mutate_cell(op, cell, &place.ty, (arg, arg2), program, span, cmp);
+        }
+        // The key's `Ord` runs user code, so the container is out of its place meanwhile.
+        let mut held = std::mem::replace(cell, Value::Moved);
+        let done = mutation::mutate_cell(
+            op,
+            &mut held,
+            &place.ty,
+            (arg, arg2),
+            program,
+            span,
+            &mut |t, a, b| self.cmp_ty_val(t, a, b, span),
+        );
+        *self.resolve(place, &mut indices.iter())? = held;
+        done
     }
+}
+
+/// Stores `value` under `k` in `map` by `op`; a compound op on a missing key starts from
+/// `start()` or from the op's own identity.
+fn assign_entry(
+    map: &mut KeyMap,
+    k: Value,
+    op: AssignOp,
+    value: Value,
+    start: impl FnOnce() -> Value,
+    span: Span,
+    cmp: &mut Cmp,
+) -> Res<()> {
+    if op == AssignOp::Set {
+        map.insert(k, value, cmp)?;
+        return Ok(());
+    }
+    let next = if let Some(old) = map.get(&k, cmp)?.cloned() {
+        combine(op, old, value, span)?
+    } else {
+        match op {
+            AssignOp::Max
+            | AssignOp::Min
+            | AssignOp::Binary(
+                BinOp::Add | BinOp::Mul | BinOp::BitOr | BinOp::BitXor | BinOp::BitAnd,
+            ) => value,
+            AssignOp::Binary(BinOp::Sub) => combine(op, start(), value, span)?,
+            _ => return trap(span, cpl_diag::msgs::interp::THIS_KEY_NOT_IN_MAP.at(&[])),
+        }
+    };
+    map.insert(k, next, cmp)?;
+    Ok(())
 }

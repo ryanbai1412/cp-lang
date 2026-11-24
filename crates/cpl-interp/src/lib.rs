@@ -1570,7 +1570,36 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             &held
         };
         let values: &[Value] = if n <= 2 { &stack_vals[..n] } else { &heap_vals };
+        if let Value::Map(map) = holder {
+            if map.is_sorted_by_user() {
+                let map = map.clone();
+                return self.sorted_map_index(&map, &values[0], &base.ty, span);
+            }
+        }
         self.index_value(holder, values, &base.ty, span)
+    }
+
+    /// `map[key]` where the key type orders by a user `Ord`, which runs user code.
+    pub(crate) fn sorted_map_index(
+        &mut self,
+        map: &value::KeyMap,
+        key: &Value,
+        base_ty: &Ty,
+        span: Span,
+    ) -> Res<Value> {
+        let lookup_key = match base_ty {
+            Ty::Map(kt, _) | Ty::HashMap(kt, _) => value::strip_cached(key, kt, self.program),
+            _ => key.clone(),
+        };
+        if let Some(found) = map.get(&lookup_key, &mut |t, a, b| self.cmp_ty_val(t, a, b, span))? {
+            return Ok(found.clone());
+        }
+        let mut shown = Vec::new();
+        if let Ty::Map(key_ty, _) | Ty::HashMap(key_ty, _) = base_ty {
+            show(&mut shown, key, key_ty, 6, self.program, &self.domains);
+        }
+        let shown: String = shown.iter().map(|b| *b as char).collect();
+        trap(span, cpl_diag::msgs::interp::KEY_NOT_IN_MAP_M.at(&[&shown]))
     }
 
     /// The element of `holder`, a value of `base_ty`, at `values`.
@@ -1691,7 +1720,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     }
                     _ => values[0].clone(),
                 };
-                match entries.get(&lookup_key) {
+                match entries.get(&lookup_key, &mut value::keys::tree_only(span))? {
                     Some(value) => Ok(value.clone()),
                     None => {
                         let mut key = Vec::new();
@@ -1849,13 +1878,24 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 };
                 match (op, held) {
                     (Builtin::Contains, Value::Map(entries)) => {
-                        return Ok(Value::Bool(entries.contains_key(&key)));
+                        let entries = entries.clone();
+                        let cmp =
+                            &mut |t: &Ty, a: &Value, b: &Value| self.cmp_ty_val(t, a, b, e.span);
+                        return Ok(Value::Bool(entries.contains_key(&key, cmp)?));
                     }
                     (Builtin::Contains, Value::Set(items)) => {
-                        return Ok(Value::Bool(items.contains(&key)));
+                        let items = items.clone();
+                        let cmp =
+                            &mut |t: &Ty, a: &Value, b: &Value| self.cmp_ty_val(t, a, b, e.span);
+                        return Ok(Value::Bool(items.contains(&key, cmp)?));
                     }
                     (Builtin::MapGet, Value::Map(entries)) => {
-                        return Ok(Value::Opt(OptVal::from_option(entries.get(&key).cloned())));
+                        let entries = entries.clone();
+                        let cmp =
+                            &mut |t: &Ty, a: &Value, b: &Value| self.cmp_ty_val(t, a, b, e.span);
+                        return Ok(Value::Opt(OptVal::from_option(
+                            entries.get(&key, cmp)?.cloned(),
+                        )));
                     }
                     _ => {}
                 }

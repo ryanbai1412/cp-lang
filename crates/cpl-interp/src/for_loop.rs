@@ -204,10 +204,15 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     | (Bound::Excluded(a), Bound::Excluded(b)) => a >= b,
                     _ => false,
                 };
+                // Only a B-tree's bounds can be ordered structurally; a sorted set finds its own.
+                let empty = empty
+                    && !matches!(&held, Value::Set(s) if s.is_sorted_by_user())
+                    && !matches!(&held, Value::Map(m) if m.is_sorted_by_user());
                 if !empty {
                     match &held {
                         Value::Set(items) => {
-                            let range = items.range((lo_b, hi_b));
+                            let range = items
+                                .range(lo_b, hi_b, &mut |t, a, b| self.cmp_ty_val(t, a, b, span))?;
                             if *rev {
                                 for item in range.rev() {
                                     round!(item.clone());
@@ -219,7 +224,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                             }
                         }
                         Value::Map(entries) => {
-                            let range = entries.range((lo_b, hi_b));
+                            let range = entries
+                                .range(lo_b, hi_b, &mut |t, a, b| self.cmp_ty_val(t, a, b, span))?;
                             if *rev {
                                 for (k, v) in range.rev() {
                                     round!(Value::tuple(vec![k.clone(), v.clone()]));

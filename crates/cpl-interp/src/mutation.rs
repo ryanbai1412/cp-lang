@@ -1,6 +1,7 @@
 //! What a mutation does to the value it changes: shared by the tree-walker
 //! and the VM, which find the value each their own way.
 
+use crate::value::keys::Cmp;
 use crate::value::{self, OptVal, Value};
 use crate::{trap, Res};
 use cpl_diag::Span;
@@ -13,10 +14,10 @@ pub(crate) fn mutate_cell(
     op: Mutation,
     cell: &mut Value,
     ty: &Ty,
-    arg: Value,
-    arg2: Value,
+    (arg, arg2): (Value, Value),
     program: &Program,
     span: Span,
+    cmp: &mut Cmp,
 ) -> Res<Value> {
     Ok(match (op, cell) {
         (_, Value::Moved) => return trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
@@ -28,8 +29,8 @@ pub(crate) fn mutate_cell(
             let empty = match &*cell {
                 Value::List(_) => Value::List(Rc::default()),
                 Value::Str(_) => Value::Str(Rc::default()),
-                Value::Map(_) => Value::Map(Rc::default()),
-                Value::Set(_) => Value::Set(Rc::default()),
+                Value::Map(m) => Value::Map(Rc::new(m.empty_like())),
+                Value::Set(s) => Value::Set(Rc::new(s.empty_like())),
                 // What is left behind in `swap` is written over.
                 other => other.clone(),
             };
@@ -73,21 +74,21 @@ pub(crate) fn mutate_cell(
                 Ty::Set(kt) | Ty::HashSet(kt) => value::strip_cached(&arg, kt, program),
                 _ => arg,
             };
-            Value::Bool(Rc::make_mut(items).insert(k))
+            Value::Bool(Rc::make_mut(items).insert(k, cmp)?)
         }
         (Mutation::Remove, Value::Set(items)) => {
             let k = match ty {
                 Ty::Set(kt) | Ty::HashSet(kt) => value::strip_cached(&arg, kt, program),
                 _ => arg,
             };
-            Value::Bool(Rc::make_mut(items).remove(&k))
+            Value::Bool(Rc::make_mut(items).remove(&k, cmp)?)
         }
         (Mutation::Remove, Value::Map(entries)) => {
             let k = match ty {
                 Ty::Map(kt, _) | Ty::HashMap(kt, _) => value::strip_cached(&arg, kt, program),
                 _ => arg,
             };
-            Value::Bool(Rc::make_mut(entries).remove(&k).is_some())
+            Value::Bool(Rc::make_mut(entries).remove(&k, cmp)?.is_some())
         }
         (Mutation::Clear, Value::List(items)) => {
             Rc::make_mut(items).clear();

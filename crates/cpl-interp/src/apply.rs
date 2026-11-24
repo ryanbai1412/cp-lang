@@ -196,13 +196,17 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Ty::Set(_) | Ty::HashSet(_) => {
                         // Inserted one by one: `collect` would sort first, a second
                         // sort of `Value` in cpl.wasm.
-                        let mut set = std::collections::BTreeSet::new();
+                        let Value::Set(mut set) = crate::value::zero(&e.ty, self.program) else {
+                            unreachable!("a set type starts as a set")
+                        };
+                        let span = e.span;
+                        let keys = Rc::make_mut(&mut set);
                         for v in values {
-                            set.insert(v);
+                            keys.insert(v, &mut |t, a, b| self.cmp_ty_val(t, a, b, span))?;
                         }
-                        Value::Set(Rc::new(set))
+                        Value::Set(set)
                     }
-                    Ty::Map(..) | Ty::HashMap(..) => Value::Map(Rc::default()),
+                    Ty::Map(..) | Ty::HashMap(..) => crate::value::zero(&e.ty, self.program),
                     _ => Value::tuple(values),
                 }
             }
@@ -254,7 +258,13 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             }
             ExprKind::Builtin(op, args) => self.builtin_values(*op, args, e, vals)?,
             ExprKind::Intrinsic(p, _) => crate::intrinsic(*p, &vals, span)?,
-            ExprKind::Index(base, _) => self.index_value(&vals[0], &vals[1..], &base.ty, span)?,
+            ExprKind::Index(base, _) => match &vals[0] {
+                Value::Map(map) if map.is_sorted_by_user() => {
+                    let map = map.clone();
+                    self.sorted_map_index(&map, &vals[1], &base.ty, span)?
+                }
+                holder => self.index_value(holder, &vals[1..], &base.ty, span)?,
+            },
             ExprKind::Binary(op, ..) => {
                 let mut vals = vals.into_iter();
                 let (l, r) = (vals.next().unwrap(), vals.next().unwrap());

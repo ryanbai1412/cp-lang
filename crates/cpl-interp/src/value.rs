@@ -6,10 +6,11 @@
 
 use cpl_ir::{sep_of, ClosureId, Dim, Program, Sep, Ty};
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 mod cells;
+pub(crate) mod keys;
+pub use keys::{KeyMap, KeySet};
 mod recycle;
 mod shape;
 pub(crate) use cells::{Cells, SmallFieldKind};
@@ -255,8 +256,8 @@ pub(crate) enum Value {
     ListView(Shared<ListViewVal>),
     /// O(1) fixed-length mutable slice view into a `List<T>` or 1D `[D]T`.
     MutView(Rc<MutViewVal>),
-    Map(Rc<BTreeMap<Value, Value>>),
-    Set(Rc<BTreeSet<Value>>),
+    Map(Rc<KeyMap>),
+    Set(Rc<KeySet>),
     /// Lent to a call as a `mut` argument until the call returns.
     Moved,
 }
@@ -693,8 +694,10 @@ pub(crate) fn zero(ty: &Ty, program: &Program) -> Value {
             ListViewVal::whole(Rc::new(crate::value::Cells::from(Vec::new())), false),
         )),
         Ty::MutView(..) => Value::Unit,
-        Ty::Map(..) | Ty::HashMap(..) => Value::Map(Rc::new(BTreeMap::new())),
-        Ty::Set(_) | Ty::HashSet(_) => Value::Set(Rc::new(BTreeSet::new())),
+        Ty::Map(k, _) => Value::Map(Rc::new(KeyMap::of(k, program))),
+        Ty::HashMap(..) => Value::Map(Rc::default()),
+        Ty::Set(k) => Value::Set(Rc::new(KeySet::of(k, program))),
+        Ty::HashSet(_) => Value::Set(Rc::default()),
     }
 }
 

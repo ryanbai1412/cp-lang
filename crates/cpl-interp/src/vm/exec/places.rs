@@ -1,5 +1,6 @@
 use crate::checkpoint::Body;
 use crate::observe::Observer;
+use crate::value::keys::{tree_only, Edge};
 use crate::value::{CaptureVal, Cells, OptVal, TupleVal, Value};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
@@ -447,8 +448,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             Op::ContainsV { dst, src_v, key_v } => {
                 let needle = &regs_v[key_v as usize];
                 let found = match &regs_v[src_v as usize] {
-                    Value::Set(items) => items.contains(needle),
-                    Value::Map(entries) => entries.contains_key(needle),
+                    Value::Set(items) => items.contains(needle, &mut tree_only(spans[cur_pc]))?,
+                    Value::Map(entries) => {
+                        entries.contains_key(needle, &mut tree_only(spans[cur_pc]))?
+                    }
                     Value::List(items) => items.contains(needle),
                     Value::ListView(view) => view.contains(needle),
                     Value::Array(arr) => arr.contains(needle),
@@ -458,7 +461,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             }
             Op::MapGetV { dst, map_v, key_v } => {
                 let found = match &regs_v[map_v as usize] {
-                    Value::Map(entries) => entries.get(&regs_v[key_v as usize]).cloned(),
+                    Value::Map(entries) => entries
+                        .get(&regs_v[key_v as usize], &mut tree_only(spans[cur_pc]))?
+                        .cloned(),
                     _ => None,
                 };
                 regs_v[dst as usize] = Value::Opt(OptVal::from_option(found));
@@ -470,7 +475,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 key_ty,
             } => {
                 let found = match &regs_v[map_v as usize] {
-                    Value::Map(entries) => entries.get(&regs_v[key_v as usize]).cloned(),
+                    Value::Map(entries) => entries
+                        .get(&regs_v[key_v as usize], &mut tree_only(spans[cur_pc]))?
+                        .cloned(),
                     _ => None,
                 };
                 if let Some(v) = found {
@@ -504,9 +511,15 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let root = place_root_mut(pp.root, regs_v, &mut self.globals);
                 let target = walk_place_mut(root, &pp.steps, regs_i, &keys, spans[cur_pc])?;
                 let ok = match (is_remove, target) {
-                    (false, Value::Set(items)) => Rc::make_mut(items).insert(arg),
-                    (true, Value::Set(items)) => Rc::make_mut(items).remove(&arg),
-                    (true, Value::Map(entries)) => Rc::make_mut(entries).remove(&arg).is_some(),
+                    (false, Value::Set(items)) => {
+                        Rc::make_mut(items).insert(arg, &mut tree_only(spans[cur_pc]))?
+                    }
+                    (true, Value::Set(items)) => {
+                        Rc::make_mut(items).remove(&arg, &mut tree_only(spans[cur_pc]))?
+                    }
+                    (true, Value::Map(entries)) => Rc::make_mut(entries)
+                        .remove(&arg, &mut tree_only(spans[cur_pc]))?
+                        .is_some(),
                     _ => {
                         return trap(
                             spans[cur_pc],
@@ -532,9 +545,11 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 if let Value::Map(entries) = target {
                     let map = Rc::make_mut(entries);
                     if op == AssignOp::Set {
-                        map.insert(key, value);
+                        map.insert(key, value, &mut tree_only(spans[cur_pc]))?;
                     } else {
-                        let next = if let Some(old) = map.get(&key).cloned() {
+                        let next = if let Some(old) =
+                            map.get(&key, &mut tree_only(spans[cur_pc]))?.cloned()
+                        {
                             crate::combine(op, old, value, spans[cur_pc])?
                         } else {
                             match op {
@@ -561,7 +576,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 }
                             }
                         };
-                        map.insert(key, next);
+                        map.insert(key, next, &mut tree_only(spans[cur_pc]))?;
                     }
                 } else {
                     return trap(
@@ -576,36 +591,18 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 key_v,
                 mode,
             } => {
-                use std::ops::Bound::{Excluded, Included, Unbounded};
                 let key = regs_v[key_v as usize].clone();
-                let range = match mode {
-                    0 => (Included(key), Unbounded),
-                    1 => (Excluded(key), Unbounded),
-                    2 => (Unbounded, Included(key)),
-                    _ => (Unbounded, Excluded(key)),
-                };
-                let first_in = mode <= 1;
+                let edge = Edge::of_mode(mode);
+                let cmp = &mut tree_only(spans[cur_pc]);
                 regs_v[dst as usize] = match &regs_v[src_v as usize] {
                     Value::Set(items) => {
-                        let mut found = items.range(range);
-                        let item = if first_in {
-                            found.next()
-                        } else {
-                            found.next_back()
-                        };
-                        Value::Opt(OptVal::from_option(item.cloned()))
+                        Value::Opt(OptVal::from_option(items.edge(key, edge, cmp)?.cloned()))
                     }
-                    Value::Map(entries) => {
-                        let mut found = entries.range(range);
-                        let entry = if first_in {
-                            found.next()
-                        } else {
-                            found.next_back()
-                        };
-                        Value::Opt(OptVal::from_option(
-                            entry.map(|(k, v)| Value::tuple(vec![k.clone(), v.clone()])),
-                        ))
-                    }
+                    Value::Map(entries) => Value::Opt(OptVal::from_option(
+                        entries
+                            .edge(key, edge, cmp)?
+                            .map(|(k, v)| Value::tuple(vec![k.clone(), v.clone()])),
+                    )),
                     _ => Value::Opt(OptVal::None),
                 };
             }
@@ -1584,7 +1581,16 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let span = spans[cur_pc];
                 regs_v[dst as usize] =
                     with_place_cell(root, &pp.steps, regs_i, &keys, span, |cell| {
-                        crate::mutation::mutate_cell(*op, cell, &place.ty, arg, arg2, program, span)
+                        let cmp = &mut tree_only(span);
+                        crate::mutation::mutate_cell(
+                            *op,
+                            cell,
+                            &place.ty,
+                            (arg, arg2),
+                            program,
+                            span,
+                            cmp,
+                        )
                     })?;
             }
             Op::Step { idx } => {

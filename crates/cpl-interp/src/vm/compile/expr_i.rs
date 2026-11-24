@@ -686,7 +686,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                             | Ty::List(_)
                             | Ty::Array { .. }
                     )
-                    && !crate::value::ty_has_cached(&args[1].ty, self.program) =>
+                    && !crate::value::ty_has_cached(&args[1].ty, self.program)
+                    && !crate::value::keys::user_ordered(&args[1].ty, self.program) =>
             {
                 let src_v = self.compile_expr_v(&args[0]);
                 let key_v = self.compile_expr_v(&args[1]);
@@ -703,6 +704,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             ExprKind::Mutate(m @ (Mutation::Insert | Mutation::Remove), place, args)
                 if args.len() == 1
                     && !crate::value::ty_has_cached(&args[0].ty, self.program)
+                    && !crate::value::keys::user_ordered(&args[0].ty, self.program)
                     && ((matches!(m, Mutation::Insert)
                         && matches!(place.ty, Ty::Set(_) | Ty::HashSet(_)))
                         || (matches!(m, Mutation::Remove)
@@ -738,7 +740,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
             }
             ExprKind::Index(base, indices)
-                if matches!(&base.ty, Ty::Map(kty, _) | Ty::HashMap(kty, _) if !crate::value::ty_has_cached(kty, self.program))
+                if matches!(&base.ty, Ty::Map(kty, _) | Ty::HashMap(kty, _) if !crate::value::ty_has_cached(kty, self.program) && !crate::value::keys::user_ordered(kty, self.program))
                     && indices.len() == 1 =>
             {
                 let (Ty::Map(kty, _) | Ty::HashMap(kty, _)) = &base.ty else {

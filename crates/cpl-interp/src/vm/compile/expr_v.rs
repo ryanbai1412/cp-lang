@@ -812,7 +812,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             }
             ExprKind::Builtin(Builtin::MapGet, args)
                 if args.len() == 2
-                    && matches!(&args[0].ty, Ty::Map(kty, _) | Ty::HashMap(kty, _) if !crate::value::ty_has_cached(kty, self.program)) =>
+                    && matches!(&args[0].ty, Ty::Map(kty, _) | Ty::HashMap(kty, _) if !crate::value::ty_has_cached(kty, self.program) && !crate::value::keys::user_ordered(kty, self.program)) =>
             {
                 let map_v = self.compile_expr_v(&args[0]);
                 let key_v = self.compile_expr_v(&args[1]);
@@ -834,7 +834,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     args[0].ty,
                     Ty::Set(_) | Ty::HashSet(_) | Ty::Map(_, _) | Ty::HashMap(_, _)
                 )
-                && !crate::value::ty_has_cached(&args[1].ty, self.program) =>
+                && !crate::value::ty_has_cached(&args[1].ty, self.program)
+                && !crate::value::keys::user_ordered(&args[1].ty, self.program) =>
             {
                 let mode = match b {
                     Builtin::FirstGe => 0,
@@ -892,7 +893,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
             }
             ExprKind::Index(base, indices)
-                if matches!(&base.ty, Ty::Map(kty, _) | Ty::HashMap(kty, _) if !crate::value::ty_has_cached(kty, self.program))
+                if matches!(&base.ty, Ty::Map(kty, _) | Ty::HashMap(kty, _) if !crate::value::ty_has_cached(kty, self.program) && !crate::value::keys::user_ordered(kty, self.program))
                     && indices.len() == 1 =>
             {
                 let (Ty::Map(kty, _) | Ty::HashMap(kty, _)) = &base.ty else {
