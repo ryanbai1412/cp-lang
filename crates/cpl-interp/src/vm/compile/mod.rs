@@ -691,7 +691,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             | Op::ForStepNext { target: t, .. }
             | Op::JmpEager { target: t }
             | Op::ForDec { target: t, .. } => *t = target,
-            _ => unreachable!("patch on non-jump op"),
+            _ => crate::invariant::broken_invariant("patch is handed the pc of a jump it emitted"),
         }
     }
 

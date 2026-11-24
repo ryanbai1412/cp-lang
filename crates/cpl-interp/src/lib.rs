@@ -23,6 +23,7 @@ mod float_fn;
 mod fn_value;
 mod for_loop;
 mod input;
+mod invariant;
 mod io;
 mod mutation;
 mod place;
