@@ -3,6 +3,26 @@
 use super::*;
 
 impl<'a> Lowerer<'a> {
+    /// Every position of `d`, as a range: `hi` is one past the last key and
+    /// `lo` is no key at all when the domain is empty.
+    pub(super) fn domain_keys(&mut self, d: DomainId, span: Span) -> Expr {
+        let lo = self.mk(
+            ExprKind::Cast(Cast::Trust, Box::new(self.int_lit(0, span))),
+            Ty::Pos(d),
+            span,
+        );
+        let len = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
+        let hi = self.mk(ExprKind::Cast(Cast::Trust, Box::new(len)), Ty::Pos(d), span);
+        self.mk(
+            ExprKind::Range {
+                lo: Box::new(lo),
+                hi: Box::new(hi),
+            },
+            Ty::Range(Box::new(Ty::Pos(d))),
+            span,
+        )
+    }
+
     /// `(R, C)` naming factor domains: the factors of that inline product.
     fn inline_product_factors(
         &self,

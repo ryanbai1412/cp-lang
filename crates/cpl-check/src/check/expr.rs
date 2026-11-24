@@ -4,10 +4,7 @@ use super::*;
 use cpl_syntax::ast::{self, BinOp, Cond, Expr, ExprKind, StrPiece, UnOp};
 
 fn range_of(elem: Ty) -> Ty {
-    Ty::Named {
-        name: "Range".into(),
-        args: vec![elem],
-    }
+    range_ty(elem)
 }
 
 impl<'a> Checker<'a> {
@@ -413,9 +410,11 @@ impl<'a> Checker<'a> {
             } => {
                 let index: Vec<Ty> = domains.iter().map(|d| self.resolve_type(d)).collect();
                 self.push_scope();
+                // One parameter over a product is the cell tuple (R04.2.11).
+                let cell = (params.len() == 1 && index.len() > 1).then(|| Ty::Tuple(index.clone()));
                 for (i, param) in params.iter().enumerate() {
-                    let ty = index.get(i).cloned().unwrap_or(Ty::Unknown);
-                    self.bind(param, &ty, false, "param");
+                    let ty = cell.clone().or_else(|| index.get(i).cloned());
+                    self.bind(param, &ty.unwrap_or(Ty::Unknown), false, "param");
                 }
                 let elem = self.infer(body).widen();
                 self.pop_scope();
@@ -2366,19 +2365,19 @@ impl<'a> Checker<'a> {
                 if name.text == "keys" && matches!(map.as_str(), "List" | "Slice" | "Str" | "Range")
                 {
                     let key = args.first().filter(|_| map == "Range").cloned();
-                    return Ty::Named {
-                        name: "Range".into(),
-                        args: vec![key.unwrap_or(Ty::Int)],
-                    };
+                    return range_ty(key.unwrap_or(Ty::Int));
                 }
             }
             if name.text == "keys" {
+                // A grid's keys are its cells (R04.2.10).
                 if let Ty::Array { index, .. } = &base_ty {
-                    if let Some(first) = index.first() {
-                        return Ty::Named {
-                            name: "Range".into(),
-                            args: vec![first.clone()],
-                        };
+                    let key = match &index[..] {
+                        [one] => Some(one.clone()),
+                        [] => None,
+                        _ => Some(Ty::Tuple(index.clone())),
+                    };
+                    if let Some(key) = key {
+                        return range_ty(key);
                     }
                 }
             }
@@ -2570,20 +2569,14 @@ impl<'a> Checker<'a> {
                         }],
                         ret: Box::new(Ty::Pos(domain.clone())),
                     },
-                    "bounds" | "cuts" => Ty::Named {
-                        name: "Range".into(),
-                        args: vec![Ty::Pos(format!("{domain}.cuts"))],
-                    },
+                    "bounds" | "cuts" => range_ty(Ty::Pos(format!("{domain}.cuts"))),
                     "Cut" => {
                         self.planned(name.span, &cpl_syntax::planned::CUT_DOMAIN);
                         Ty::Error
                     }
                     "ranges" => Ty::Named {
                         name: "List".into(),
-                        args: vec![Ty::Named {
-                            name: "Range".into(),
-                            args: vec![Ty::Pos(domain.clone())],
-                        }],
+                        args: vec![range_ty(Ty::Pos(domain.clone()))],
                     },
                     "pairs" => Ty::Named {
                         name: "List".into(),
@@ -2602,10 +2595,7 @@ impl<'a> Checker<'a> {
                             variadic: false,
                             lazy: false,
                         }],
-                        ret: Box::new(Ty::Named {
-                            name: "Range".into(),
-                            args: vec![Ty::Pos(domain.clone())],
-                        }),
+                        ret: Box::new(range_ty(Ty::Pos(domain.clone()))),
                     },
                     "partition" => Ty::Fn {
                         params: vec![crate::ty::Param {
@@ -2742,16 +2732,10 @@ impl<'a> Checker<'a> {
                         }
                         "first" | "last" => return Ty::Optional(Box::new(elem)),
                         "all" | "rev" => {
-                            return Ty::Named {
-                                name: "Range".into(),
-                                args: vec![elem],
-                            };
+                            return range_ty(elem);
                         }
                         "bounds" | "cuts" => {
-                            return Ty::Named {
-                                name: "Range".into(),
-                                args: vec![Ty::Pos(format!("{type_name}.cuts"))],
-                            };
+                            return range_ty(Ty::Pos(format!("{type_name}.cuts")));
                         }
                         // R04.2.20: a domain is the `Seq` of its positions.
                         _ if matches!(
@@ -4132,5 +4116,12 @@ impl Checker<'_> {
             index: vec![Ty::Pos(format!("{name}.Idx"))],
             elem: Box::new(elem),
         })
+    }
+}
+
+fn range_ty(of: Ty) -> Ty {
+    Ty::Named {
+        name: "Range".into(),
+        args: vec![of],
     }
 }

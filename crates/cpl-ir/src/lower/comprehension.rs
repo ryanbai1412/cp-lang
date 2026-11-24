@@ -363,6 +363,11 @@ impl Lowerer<'_> {
             let whole = Whole::Tuples(groups);
             return self.build_table(dims, params, body, None, None, span, whole);
         }
+        // `[A, B] p => …`: one name over a product is the cell tuple (R04.2.11).
+        if params.len() == 1 && dims.len() > 1 {
+            let whole = Whole::Tuples(vec![dims.len()]);
+            return self.build_table(dims, params, body, None, None, span, whole);
+        }
         let elem = match hint {
             Some(Ty::Array { elem, .. }) => Some((**elem).clone()),
             _ => None,

@@ -663,32 +663,33 @@ impl<'a> Lowerer<'a> {
             (Ty::List(_) | Ty::ListView(..) | Ty::MutView(..) | Ty::Str | Ty::StrView, "keys") => {
                 self.seq_keys(value, span)
             }
+            // A grid's keys are its cells, positions of the product of its axes (R04.2.10).
+            (Ty::Array { dims, .. }, "keys") if dims.len() > 1 => {
+                let factors: Option<Vec<_>> = dims
+                    .iter()
+                    .map(|d| match d {
+                        Dim::Pos(d) => Some((None, ProductFactor::Domain(*d))),
+                        _ => None,
+                    })
+                    .collect();
+                let Some(factors) = factors else {
+                    self.error(
+                        codes::UNSUPPORTED,
+                        span,
+                        "the keys of a grid with an integer axis aren't supported yet",
+                    );
+                    return self.err_expr(span);
+                };
+                let p = self.intern_anon_product_domain(factors);
+                let mut defs = Vec::new();
+                self.def_anon_product_domain(p, span, &mut defs);
+                self.cx.pending.extend(defs);
+                self.domain_keys(p, span)
+            }
             (Ty::Array { dims, .. }, "keys") if dims.len() == 1 => match dims[0] {
                 // The bounds are ends, not positions: `hi` is one past the last key
                 // and `lo` is no key at all when the domain is empty.
-                Dim::Pos(d) => {
-                    let lo = self.mk(
-                        ExprKind::Cast(Cast::Trust, Box::new(self.int_lit(0, span))),
-                        Ty::Pos(d),
-                        span,
-                    );
-                    let hi = self.mk(
-                        ExprKind::Cast(
-                            Cast::Trust,
-                            Box::new(self.mk(ExprKind::DomainLen(d), Ty::Int, span)),
-                        ),
-                        Ty::Pos(d),
-                        span,
-                    );
-                    self.mk(
-                        ExprKind::Range {
-                            lo: Box::new(lo),
-                            hi: Box::new(hi),
-                        },
-                        Ty::Range(Box::new(Ty::Pos(d))),
-                        span,
-                    )
-                }
+                Dim::Pos(d) => self.domain_keys(d, span),
                 _ => {
                     let lo = self.int_lit(0, span);
                     let hi = self.len_of(value, span);
