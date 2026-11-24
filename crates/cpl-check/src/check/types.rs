@@ -63,6 +63,14 @@ impl<'a> Checker<'a> {
     pub(crate) fn resolve_type(&mut self, ty: &ast::Type) -> Ty {
         let resolved = self.resolve_written(ty);
         self.exprs.written.push((ty.span, resolved.clone()));
+        if let TypeKind::Named { name, .. } = &ty.kind {
+            let own = self.generics.contains(&name.text)
+                || self.local(&name.text).is_some()
+                || self.local_defs.contains_key(&name.text);
+            if let Some(decl) = self.env.import_of(&name.text).filter(|_| !own) {
+                self.exprs.imported_types.push((ty.span, decl));
+            }
+        }
         resolved
     }
 

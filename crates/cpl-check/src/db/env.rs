@@ -15,6 +15,20 @@ impl Env for FileCtx<'_> {
         Some(self.scope.modules[module].name.clone())
     }
 
+    fn import_of(&mut self, name: &str) -> Option<Resolved> {
+        self.record(DEP_IMPORTS, self.scope.imports_fp);
+        self.record(DEP_NAMES, self.scope.names_fp);
+        if self.scope.names.contains_key(name) {
+            return None;
+        }
+        let import = self.scope.imports.get(name)?;
+        Some(Resolved {
+            module: self.scope.modules[import.module].name.clone(),
+            name: import.name.clone(),
+            owner: None,
+        })
+    }
+
     fn chosen(&mut self, name: &str) -> bool {
         self.record(DEP_IMPORTS, self.scope.imports_fp);
         self.scope.chosen.contains(name)

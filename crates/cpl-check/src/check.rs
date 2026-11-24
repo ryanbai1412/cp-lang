@@ -74,6 +74,11 @@ pub(crate) trait Env {
     fn origin(&mut self, _name: &str) -> Option<String> {
         None
     }
+    /// What a name this file does not declare stands for in the module it
+    /// comes from: `std.seq` `Perm` after `use std.seq.{Perm}`.
+    fn import_of(&mut self, _name: &str) -> Option<Resolved> {
+        None
+    }
     /// True if a `use` line imports the top-level `name` by name.
     fn chosen(&mut self, _name: &str) -> bool {
         false

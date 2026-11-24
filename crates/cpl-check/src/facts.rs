@@ -67,6 +67,9 @@ pub struct ExprFacts {
     pub unresolved: Vec<(Span, Vec<String>)>,
     /// The type each written type resolved to: `Map<V, Int>` in `m: Map<V, Int>`.
     pub written: Vec<(Span, Ty)>,
+    /// The declaration another module makes that each written type names,
+    /// as `use` brought it in: `std.seq` `Perm` for `x: Perm<V>`.
+    pub imported_types: Vec<(Span, crate::Resolved)>,
     /// The ends of each range type written with both: `x + 1..=n`.
     pub ranges: Vec<(Span, RangeEnds)>,
 }
@@ -132,6 +135,8 @@ pub struct Facts {
     unresolved: BySpan<Vec<String>>,
     /// The type each written type resolved to, by file span.
     written: BySpan<Ty>,
+    /// The declaration of another module each written type names, by file span.
+    imported_types: BySpan<crate::Resolved>,
     /// The ends of each range type written with both, by file span.
     ranges: BySpan<RangeEnds>,
 }
@@ -152,6 +157,7 @@ impl Facts {
         };
         let (mut exprs, mut owners, mut unresolved) = (Vec::new(), Vec::new(), Vec::new());
         let (mut written, mut named, mut ranges) = (Vec::new(), Vec::new(), Vec::new());
+        let mut imported_types = Vec::new();
         for &(offset, check) in items {
             let shift = |s: Span| s.shift(offset);
             for (span, path) in &check.exprs.unresolved {
@@ -162,6 +168,9 @@ impl Facts {
             }
             for (span, ty) in &check.exprs.written {
                 written.push((shift(*span), ty.clone()));
+            }
+            for (span, decl) in &check.exprs.imported_types {
+                imported_types.push((shift(*span), decl.clone()));
             }
             for entry in check.hovers.iter().filter(|e| !e.ty.is_vague()) {
                 named.push((shift(entry.span), entry.ty.clone()));
@@ -206,6 +215,7 @@ impl Facts {
         facts.owners = BySpan::new(owners);
         facts.unresolved = BySpan::new(unresolved);
         facts.written = BySpan::new(written);
+        facts.imported_types = BySpan::new(imported_types);
         facts.ranges = BySpan::new(ranges);
         facts.callees = BySpan::new(callees);
         facts.instantiations = BySpan::new(instantiations);
@@ -237,6 +247,14 @@ impl Facts {
     /// The type the type written at exactly `ty` resolved to.
     pub fn written_type(&self, ty: Span) -> Option<&Ty> {
         self.written.get(ty)
+    }
+
+    /// The declaration of another module the type written at exactly `ty`
+    /// names, as the checker resolved it: `std.seq` `Perm` for `Perm<V>` after
+    /// `use std.seq.{Perm}`. `None` for a type this file
+    /// declares, even one named `Perm`, for a generic and for a built-in.
+    pub fn imported_type(&self, ty: Span) -> Option<&crate::Resolved> {
+        self.imported_types.get(ty)
     }
 
     /// The ends of the range type written at exactly `range`.
@@ -382,6 +400,43 @@ mod tests {
             facts.written_type(at("Set<K>")),
             Some(Ty::Named { args, .. }) if matches!(args[..], [Ty::Pos(_)])
         ));
+    }
+
+    #[test]
+    fn a_written_type_names_the_std_declaration_it_resolves_to() {
+        let src = "use std.seq.{Perm}\nlet n: 1..=9 = read()\ndomain V = 1..=n\ntype Q<V> = Perm<V>\nstruct Tree(x: Int)\nlet a: Perm<V> = read()\nlet b: Q<V> = read()\nlet t: Tree = Tree(n)\nprint(a, b, t.x)\n";
+        let mut db = Database::new();
+        db.set_file("a.cp", src);
+        let analysis = db.analyze("a.cp").unwrap();
+        assert_eq!(db.diagnostics("a.cp"), Vec::new());
+        let at = |text: &str, nth: usize| {
+            let start = src.match_indices(text).nth(nth).unwrap().0 as u32;
+            Span::new(start, start + text.len() as u32)
+        };
+        let facts = analysis.facts();
+        let decl = |span| {
+            let r = facts.imported_type(span)?;
+            Some((r.module.as_str(), r.name.as_str()))
+        };
+        // The alias's right side and a use: `Q<V>` is stress's to expand.
+        assert_eq!(decl(at("Perm<V>", 0)), Some(("std.seq", "Perm")));
+        assert_eq!(decl(at("Perm<V>", 1)), Some(("std.seq", "Perm")));
+        // The file's own, even one named as std's `Tree` is.
+        assert_eq!(decl(at("Q<V>", 1)), None);
+        assert_eq!(decl(at("Tree", 1)), None);
+        assert_eq!(decl(at("V", 2)), None);
+        let bare = "let n: 1..=9 = read()\ndomain V = 1..=n\nlet p: Perm<V> = read()\nprint(p)\n";
+        db.set_file("b.cp", bare);
+        let analysis = db.analyze("b.cp").unwrap();
+        let start = bare.find("Perm<V>").unwrap() as u32;
+        let found = analysis
+            .facts()
+            .imported_type(Span::new(start, start + 7))
+            .cloned();
+        assert_eq!(
+            found.map(|r| (r.module, r.name)),
+            Some(("std.seq".into(), "Perm".into()))
+        );
     }
 
     #[test]
