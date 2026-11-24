@@ -1,4 +1,5 @@
 // expect: ok, output "YES YES YES"
+// std_functions: 2
 // A `Semiring(max, +)` or `Semiring(min, +)` product of `?Int` matrices, `None` the zero, is the one the loop over `?Int` gives, `**` too.
 domain R = 0..4
 domain K = 0..5
