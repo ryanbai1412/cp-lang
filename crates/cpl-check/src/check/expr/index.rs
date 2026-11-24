@@ -46,6 +46,12 @@ impl<'a> Checker<'a> {
             {
                 args[0].clone()
             }
+            // `for (k, v) in m` walks a map's entries (R05.3.5).
+            Ty::Named { name, args }
+                if matches!(name.as_str(), "Map" | "HashMap") && args.len() == 2 =>
+            {
+                Ty::Tuple(args.clone())
+            }
             Ty::Named { name, args } => {
                 if let Some(members) = self.members_of(name) {
                     let bindings = members.bindings(args);
@@ -625,7 +631,11 @@ impl<'a> Checker<'a> {
                 Ty::Error
             }
             Ty::Named { name, args } if name == "Range" && args.len() == 1 => args[0].clone(),
-            Ty::Named { name, args } if name == "Map" && args.len() == 2 => args[1].clone(),
+            Ty::Named { name, args }
+                if matches!(name.as_str(), "Map" | "HashMap") && args.len() == 2 =>
+            {
+                args[1].clone()
+            }
             Ty::Str => Ty::Char,
             ty if ty.is_numeric() || matches!(ty, Ty::Bool | Ty::Char | Ty::Fn { .. }) => {
                 let help = match ty {
