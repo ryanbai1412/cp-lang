@@ -2,8 +2,8 @@
 // Problem: a garage has n <= 100 spaces with rates R_s; m <= 2000 cars with weights W_k arrive
 //   and leave in a given order of 2m events. An arriving car takes the lowest free space, or
 //   waits in a FIFO queue until one frees up, and pays R_s * W_k. Print the total revenue.
-// Solution: simulate with a MinHeap of free spaces and a list of waiting cars with a head
-//   index; after each event, park cars from the queue front while spaces are free. O(m log n).
+// Solution: simulate with a MinHeap of free spaces and a Deque of waiting cars; after each
+//   event, park cars from the queue front while spaces are free. O(m log n).
 // original: corpus/submissions/5106592.cpp
 let n: 1..=100 = read()
 let m: 1..=2000 = read()
@@ -14,22 +14,16 @@ let weight: [Car]1..=10_000 = read()
 
 var free = MinHeap<Spot>()
 for s in Spot: free.push(s)
-var spots = n
-var waiting: List<Car> = []
-var head = 0
-var parked: [Car]Spot = Spot.first!
+var waiting = Deque<Car>()
+var parked: [Car]?Spot = None
 var revenue = 0
 for _ in 0..2 * m:
     let event: -m..=m = read()
     if event > 0: waiting.push(Car(event))
-    else:
-        free.push(parked[Car(-event)])
-        spots += 1
+    else: free.push(parked[Car(-event)]!)
     // the car at the front of the queue takes the lowest free spot
-    while head < waiting.len and spots > 0:
-        let car = waiting[head]
-        head += 1
-        spots -= 1
-        parked[car] = free.pop()!
-        revenue += rate[parked[car]] * weight[car]
+    while waiting.len > 0 and free.len > 0:
+        let (car, spot) = (waiting.pop_front()!, free.pop()!)
+        parked[car] = Some(spot)
+        revenue += rate[spot] * weight[car]
 print(revenue)
