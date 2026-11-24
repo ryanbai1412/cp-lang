@@ -19,6 +19,14 @@ impl<'a> Lowerer<'a> {
                 .insert(decl.name.text.clone(), decl.clone());
             return;
         }
+        if Self::liftable_gen(decl)
+            && !memo
+            && into.is_none()
+            && !self.cx.predeclared.contains_key(&decl.name.text)
+        {
+            self.lift_local_gen(decl);
+            return;
+        }
         let (param_tys, ret_ty, fn_ty) = self.local_fn_ty(decl);
         let predeclared = self.cx.predeclared.remove(&decl.name.text);
         let fn_slot = match predeclared {
@@ -123,19 +131,28 @@ impl<'a> Lowerer<'a> {
             param_slots.push(slot);
         }
 
-        let tail = if ret_ty == Ty::Unit {
-            Tail::Discard
+        let generator = matches!(
+            decl.ret.as_ref().map(|t| &t.kind),
+            Some(ast::TypeKind::Yields(_))
+        );
+        let body = if generator {
+            // One the calls of another local fn reach first runs to its end.
+            let elem_ty = match &ret_ty {
+                Ty::List(e) => (**e).clone(),
+                _ => Ty::Error,
+            };
+            let acc = self.new_slot("__yields", ret_ty.clone());
+            self.cx.mut_slots.insert(acc);
+            let mut stmts = vec![Stmt::Let(
+                acc,
+                Some(self.mk(ExprKind::Tuple(Vec::new()), ret_ty.clone(), decl.name.span)),
+            )];
+            self.cx.yield_slot = Some((acc, elem_ty));
+            self.gen_body(&decl.body, &mut stmts);
+            stmts.push(Stmt::Return(Some(self.local(acc, decl.name.span))));
+            Block { stmts }
         } else {
-            Tail::Return
-        };
-        let body = match &decl.body {
-            ast::FnBody::Block(block) => self.block(block, tail),
-            ast::FnBody::Expr(e) => {
-                let mut stmts = Vec::new();
-                self.tail(e, tail, &mut stmts);
-                Block { stmts }
-            }
-            ast::FnBody::None => Block::default(),
+            self.local_fn_block(decl, &ret_ty)
         };
 
         let inner_cx = std::mem::replace(&mut self.cx, self.outer_cxs.pop().unwrap());
@@ -240,6 +257,23 @@ impl<'a> Lowerer<'a> {
             span: self.span(span),
         };
         out.push(Stmt::Assign(place, AssignOp::Set, init));
+    }
+
+    fn local_fn_block(&mut self, decl: &ast::FnDecl, ret_ty: &Ty) -> Block {
+        let tail = if *ret_ty == Ty::Unit {
+            Tail::Discard
+        } else {
+            Tail::Return
+        };
+        match &decl.body {
+            ast::FnBody::Block(block) => self.block(block, tail),
+            ast::FnBody::Expr(e) => {
+                let mut stmts = Vec::new();
+                self.tail(e, tail, &mut stmts);
+                Block { stmts }
+            }
+            ast::FnBody::None => Block::default(),
+        }
     }
 
     /// The domain a one-name lambda parameter indexes an array with, in

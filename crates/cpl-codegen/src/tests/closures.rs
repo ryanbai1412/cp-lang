@@ -576,6 +576,21 @@ fn a_yields_fn_that_walks_another_feeds_its_callback_on() {
 }
 
 #[test]
+fn a_block_local_generator_feeds_its_loop_like_a_top_level_one() {
+    let cpp = cpp(concat!(
+        "fn first(n: Int) -> Int:\n    var seen = 0\n",
+        "    fn nat() -> yields Int:\n        var i = 0\n",
+        "        while true:\n            seen += 1\n            yield i\n            i += 1\n",
+        "    for x in nat():\n        if x == n: break\n    seen\n",
+        "let n: Int = read()\nprint(first(n))\n",
+    ));
+    let caller = cpp.rsplit("ll first(").next().unwrap();
+    let caller = &caller[..caller.find("\n}\n").unwrap()];
+    assert!(caller.contains("cpl_each_nat_local"), "{caller}");
+    assert!(!caller.contains("std::vector"), "{caller}");
+}
+
+#[test]
 fn a_struct_field_built_from_one_capturing_closure_is_that_closures_type() {
     let src = concat!(
         "struct Plus(z: Int):\n",

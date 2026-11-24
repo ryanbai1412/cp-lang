@@ -176,4 +176,5 @@ super::msgs! {
     WRONG_ARG_COUNT_A_SORT_PUTS_THE = WRONG_ARG_COUNT, "a sort puts the largest first with a descending key, not `{}:`";
     TYPE_MISMATCH_TAKES_A_SEQUENCE_S = TYPE_MISMATCH, "`.{}` takes a sequence's {}, and `{}` is one number";
     UNSUPPORTED_YIELD_OUTSIDE_A_GENERATOR = UNSUPPORTED, "`yield` outside a generator";
+    UNSUPPORTED_A_BLOCK_LOCAL_GENERATOR = UNSUPPORTED, "a block-local generator can't capture `{}` here";
 }

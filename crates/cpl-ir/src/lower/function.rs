@@ -147,9 +147,11 @@ impl<'a> Lowerer<'a> {
             }
         }
 
-        // If this fn is a block-bodied generator (`-> yields T`), allocate the output `List<T>` accumulator.
-        // Expression-bodied `-> yields T = expr` returns the sequence expression directly.
-        let is_gen = is_gen && matches!(decl.body, ast::FnBody::Block(_));
+        // A generator (`-> yields T`) whose body yields, a block or an
+        // expression such as a `match`, pushes onto a `List<T>` accumulator.
+        // `-> yields T = expr` with no `yield` returns the sequence directly.
+        let is_gen = is_gen
+            && (matches!(decl.body, ast::FnBody::Block(_)) || local_gen::body_yields(&decl.body));
         if is_gen {
             let list_ty = self.cx.ret.clone().unwrap_or_else(|| Ty::list(Ty::Error));
             let elem_ty = match &list_ty {
@@ -184,19 +186,8 @@ impl<'a> Lowerer<'a> {
                 let body = self.block(block, tail);
                 out.extend(body.stmts);
             }
-            // `-> yields T = e` yields each element of `e`.
-            ast::FnBody::Expr(expr) if is_gen => {
-                let each = ast::Stmt {
-                    kind: ast::StmtKind::Yield {
-                        value: expr.clone(),
-                        from: true,
-                    },
-                    span: expr.span,
-                    decorators: Vec::new(),
-                    public: false,
-                };
-                self.stmt(&each, &mut out);
-            }
+            // `-> yields T = match ..:` with a `yield` in its arms.
+            ast::FnBody::Expr(expr) if is_gen => self.tail(expr, Tail::Discard, &mut out),
             ast::FnBody::Expr(ast::Expr {
                 kind: ast::ExprKind::Intrinsic(name),
                 span,

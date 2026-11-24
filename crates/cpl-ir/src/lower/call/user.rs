@@ -1235,6 +1235,9 @@ impl<'a> Lowerer<'a> {
         args: &[ast::Arg],
         span: Span,
     ) -> Expr {
+        if let Some(call) = self.lifted_call(id, args, span) {
+            return call;
+        }
         if self.sigs[id].returns_fresh_domain && self.sigs[id].used_fresh_call {
             id = self.clone_fresh_domain_fn(id);
         }

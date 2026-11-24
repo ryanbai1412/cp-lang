@@ -38,6 +38,7 @@ mod lambda_infer;
 mod later_calls;
 mod lexical_ctx;
 mod library_domain;
+mod local_gen;
 mod memo;
 mod mono;
 mod names;
@@ -720,6 +721,8 @@ struct Lowerer<'a> {
     sigs: Vec<FnSig<'a>>,
     bodies: Vec<Option<Function>>,
     gen_fns: Vec<GenFnTemplate<'a>>,
+    /// Block-local generators lifted to fns of their own.
+    lifted: HashMap<FnId, local_gen::Lifted>,
     fn_insts: HashMap<(GenFnId, Vec<GenArg>, Vec<String>), FnId>,
     growth: instance::Growth,
 
@@ -862,6 +865,7 @@ impl<'a> Lowerer<'a> {
             sigs: Vec::new(),
             bodies: Vec::new(),
             gen_fns: Vec::new(),
+            lifted: HashMap::new(),
             fn_insts: HashMap::new(),
             growth: instance::Growth::default(),
             closures: Vec::new(),
