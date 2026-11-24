@@ -1,4 +1,5 @@
 // Source: SDOI 2017 Round 1, Sequence Counting (Luogu P3702), https://dmoj.ca/problem/sdoi17r1p3
+// limits: 3000 ms, 128 MB
 // Problem: count length-n sequences of integers in 1..=m whose sum is a multiple of p and that
 //   contain at least one prime, modulo 20170408 (n <= 1e9, m <= 2e7, p <= 100).
 // Solution: all sequences with sum 0 mod p, minus those with no prime. Each count is entry 0 of

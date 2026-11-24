@@ -1,4 +1,5 @@
 // Source: SHOI 2016 (Random Sequence), https://dmoj.ca/problem/shoi16p5
+// limits: 2000 ms, 256 MB
 // Problem: n <= 1e5 numbers a_i <= 1e4 in a row; putting +, - or * between each neighbouring
 //   pair gives 3^(n-1) expressions. After each of q <= 1e5 point updates a_t = v, print the
 //   sum of the values of all expressions, mod 1e9+7.

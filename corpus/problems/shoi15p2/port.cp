@@ -1,4 +1,5 @@
 // Source: SHOI 2015 Brain Hole Therapy Device, https://dmoj.ca/problem/shoi15p2
+// limits: 1000 ms, 256 MB
 // Problem: n <= 2e5 cells (1-based), all tissue at first, and m <= 2e5 operations: "0 l r" digs out
 //   l..=r; "1 l0 r0 l1 r1" digs out l0..=r0 and fills the holes of l1..=r1 left to right with the
 //   tissue taken (the rest is thrown away); "2 l r" prints the longest run of holes in l..=r.
@@ -7,7 +8,7 @@
 //   right_while finds the cell where the holes from l1 on reach that count, and tissue is
 //   assigned up to it, or to r1 if it is past r1. O(m log n).
 // original: corpus/submissions/5450923.cpp
-// Bounds: n, m: 1..=2e5; l, r, l0, r0, l1, r1: 1..=n
+// Bounds: n, m: 1..=2e5; kind: 0..=2; l, r, to_l, to_r: 1..=n
 let (n, m): (1..=2e5, 1..=2e5) = read()
 domain Cell = 1..=n
 

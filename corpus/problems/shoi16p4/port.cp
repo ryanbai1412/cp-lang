@@ -1,4 +1,5 @@
 // Source: SHOI 2016 P4 (Darkness Before Fantasyland), https://dmoj.ca/problem/shoi16p4
+// limits: 2000 ms, 250 MB
 // Problem: 2 <= n <= 17 cities and n - 1 companies, each able to build its own list of roads
 //   (no loops, no repeats).
 //   Count, mod 1e9+7, the spanning trees whose n - 1 edges come from distinct companies (each

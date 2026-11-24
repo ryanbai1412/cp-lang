@@ -1,12 +1,14 @@
 // Source: SHOI 2016 / JLOI 2016, Square, https://dmoj.ca/problem/shoi16p2
+// limits: 1000 ms, 125 MB
 // Problem: an (N+1) x (M+1) lattice of points (N, M <= 1e6) with K <= 2000 points deleted.
 //   Count the squares, axis-parallel or tilted, whose four corners are all kept points, mod
 //   100000007.
 // Solution: inclusion-exclusion. Each square sits in exactly one i x i axis box, which holds i
 //   squares: sum (N-i+1)(M-i+1) i. Subtract the squares through each deleted point, a closed
-//   form per side of the point. For each pair of deleted points list the squares having both
-//   as corners (as a side, both ways, or as a diagonal), sort them, and add back 1, 2 or 3 for
-//   squares with 2, 3 or 4 deleted corners (1, 3 or 6 pairs). O(min(N, M) + K^2 log K).
+//   form per side of the point. A square with c >= 2 deleted corners was taken away c times:
+//   walk each pair of deleted points (as a side, both ways, or as a diagonal) to the squares
+//   having both as corners, and add back c - 1 at the pair of its two least deleted corners,
+//   looked up in a hash of the deleted points. O(min(N, M) + K^2).
 // original: corpus/submissions/5445692.cpp
 // Bounds: n, m: 1..=1e6; k: 0..=2000
 const MOD = 100000007
@@ -45,25 +47,19 @@ for i in 0..k:
         xr,
     )
 
-// plus what that double-counted: collect each square once per pair of deleted corners
-var hit: List<(Int, Int, Int, Int)> = []
-fn square(x: Int, y: Int, dx: Int, dy: Int):
-    var xs: List<Int> = []
-    var ys: List<Int> = []
-    xs.push(x)
-    ys.push(y)
-    xs.push(x + dx)
-    ys.push(y + dy)
-    xs.push(x + dx - dy)
-    ys.push(y + dx + dy)
-    xs.push(x - dy)
-    ys.push(y + dx)
-    var codes: List<Int> = []
-    for c in 0..4:
-        if xs[c] < 0 or xs[c] > n or ys[c] < 0 or ys[c] > m: return
-        codes.push(xs[c] * (m + 1) + ys[c])
-    codes.sort()
-    hit.push((codes[0], codes[1], codes[2], codes[3]))
+// plus what that double-counted, once per square, at its first pair of deleted corners
+var deleted = HashMap<Int, Int>()
+for i in 0..k: deleted[pts[i].x * (m + 1) + pts[i].y] = i
+fn square(i: Int, j: Int, dx: Int, dy: Int):
+    let (x, y) = (pts[i].x, pts[i].y)
+    var (first, second, count) = (k, k, 0)
+    for (cx, cy) in [(x, y), (x + dx, y + dy), (x + dx - dy, y + dx + dy), (x - dy, y + dx)]:
+        if cx < 0 or cx > n or cy < 0 or cy > m: return
+        if let d = deleted.get(cx * (m + 1) + cy):
+            count += 1
+            if d < first: (first, second) = (d, first)
+            elif d < second: second = d
+    if (first, second) == (min(i, j), max(i, j)): total += count - 1
 
 for i in 0..k:
     for j in 0..k:
@@ -71,16 +67,6 @@ for i in 0..k:
             if i < j:
                 let ex = pts[j].x + pts[j].y - pts[i].x - pts[i].y
                 let ey = pts[j].y - pts[j].x + pts[i].x - pts[i].y
-                if ex % 2 == 0: square(pts[i].x, pts[i].y, ex / 2, ey / 2)
-            square(pts[i].x, pts[i].y, pts[j].x - pts[i].x, pts[j].y - pts[i].y)
-
-hit.sort()
-var i = 0
-while i < hit.len:
-    var j = i
-    while j < hit.len and hit[j] == hit[i]: j += 1
-    // 1, 3 or 6 pairs of deleted corners: 2, 3 or 4 corners deleted
-    let pairs = j - i
-    total += if pairs == 1: 1 elif pairs == 3: 2 else: 3
-    i = j
-print(total % MOD)
+                if ex % 2 == 0: square(i, j, ex / 2, ey / 2)
+            square(i, j, pts[j].x - pts[i].x, pts[j].y - pts[i].y)
+print((total % MOD + MOD) % MOD)

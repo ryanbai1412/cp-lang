@@ -1,4 +1,5 @@
 // Source: SDOI 2017 Round 1 P6 (Correlation Analysis, Luogu P3707), https://dmoj.ca/problem/sdoi17r1p6
+// limits: 1000 ms, 125 MB
 // Problem: arrays x, y of length n and m ops on l..=r: 1 l r prints the least-squares slope
 //   sum (x - mx)(y - my) / sum (x - mx)^2 (mx, my the means; error <= 1e-5); 2 l r S T adds S to
 //   every x and T to every y; 3 l r S T sets x[i] = S + i, y[i] = T + i. n, m <= 1e5;
