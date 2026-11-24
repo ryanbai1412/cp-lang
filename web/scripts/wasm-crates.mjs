@@ -208,8 +208,14 @@ export function grewOverBudget(rows, budgets, map, touched, parent) {
     errors: errors.filter((e) => !isHeld(e)),
     warnings,
     held: errors.filter(isHeld).map((e) => `${e}, but no more than its parent's ${was(e)} B`),
+    grew: rows
+      .filter(([c, , gz]) => touched.includes(c) && parent[c] !== undefined && gz - parent[c] >= GREW_WARN)
+      .map(([c, , gz]) => `${c} grew ${(gz - parent[c]).toLocaleString('en-US')} B gzipped against its parent's ${parent[c].toLocaleString('en-US')} B`),
   };
 }
+
+/** A touched crate growing at least this many B gz against its parent warns at land. */
+export const GREW_WARN = 200;
 
 /** A new budget for a crate measured at `gz`: 2% and 512 B of room, to the next 100. */
 export const budgetFor = (gz) => Math.ceil((gz * 1.02 + 512) / 100) * 100;
@@ -248,7 +254,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href &
   const map = owners(readCharters(join(here, '../../handbook/domains')));
   const flag = (name) => (process.argv.indexOf(name) < 0 ? null : process.argv[process.argv.indexOf(name) + 1]);
   const parent = flag('--parent') && JSON.parse(readFileSync(flag('--parent'), 'utf8'));
-  const { errors, warnings, held = [] } = parent
+  const { errors, warnings, held = [], grew = [] } = parent
     ? grewOverBudget(rows, budgets, map, touched, parent.crates)
     : touchedOverBudget(rows, budgets, map, touched);
   const copies = sortCopies(functionNames(wasm));
@@ -258,6 +264,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href &
   if (sorts.lower) console.error(`wasm-crates: ${sorts.lower}`);
   for (const w of warnings) console.error(`wasm-crates: warning: ${w} (not touched here)`);
   for (const h of held) console.error(`wasm-crates: warning: ${h}`);
+  for (const g of grew) console.error(`wasm-crates: warning: ${g}; cut it at its source`);
   for (const e of errors) console.error(`wasm-crates: ${e}`);
   if (errors.length) process.exit(1);
   const gz = rows.find(([crate]) => crate === DATA)?.[2] ?? 0;

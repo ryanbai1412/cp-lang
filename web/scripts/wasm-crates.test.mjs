@@ -83,6 +83,9 @@ describe('wasm crate budgets', () => {
     const crossed = gate({ cpl_check: 300, cpl_lsp: 90, [DATA]: 50 });
     expect(crossed.errors).toEqual([expect.stringMatching(/^cpl_lsp is 200 B gzipped, over its budget of 100/)]);
     expect(gate({ cpl_lsp: 210, [DATA]: 50 }).errors).toEqual([expect.stringMatching(/^cpl_check is 300 B/)]);
+    expect(held.grew).toEqual([]);
+    expect(gate({ cpl_check: 100, cpl_lsp: 210, [DATA]: 50 }).grew).toEqual(['cpl_check grew 200 B gzipped against its parent\'s 100 B']);
+    expect(gate({ cpl_check: 101, cpl_lsp: 0, [DATA]: 0 }).grew).toEqual(['cpl_lsp grew 200 B gzipped against its parent\'s 0 B']);
   });
 
   test('each element type and crate a sort is compiled for is one copy of core\'s sort', () => {
