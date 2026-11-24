@@ -1,4 +1,5 @@
 // Source: An Animal Contest 5 P4 (Number Game), https://dmoj.ca/problem/aac5p4
+// limits: 2000 ms, 256 MB
 // Problem: a board 1..n (n <= 1e6) with a piece at x (1 <= x <= n); each number 1..n - 1 may
 //   be used once to move the piece that far forward or backward, staying on the board. Print
 //   the least number of moves M after which no move is possible, then such a sequence as

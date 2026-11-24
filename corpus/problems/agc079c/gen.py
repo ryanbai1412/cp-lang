@@ -1,4 +1,14 @@
 import sys, random
+if sys.argv[1] == "--max":
+    # one test with N = sum N = 2.5e5, always solvable (built backwards, each value at a random
+    # end) so both passes run to the end with many side changes
+    from collections import deque
+    r = random.Random(1)
+    n, d = 250_000, deque()
+    for v in range(n, 0, -1):
+        (d.appendleft if r.random() < 0.5 else d.append)(v)
+    print(1); print(n); print(" ".join(map(str, d)))
+    sys.exit()
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 
 

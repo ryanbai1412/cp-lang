@@ -1,4 +1,5 @@
 // Source: AtCoder AGC 077 A, Reverse A…B, https://atcoder.jp/contests/agc077/tasks/agc077_a
+// limits: 2000 ms, 1024 MB
 // Problem: strings X, Y over {A, B} of length N <= 5e5 (multitest, sum N <= 5e5). A move picks
 //   l < r with X_l = A, X_r = B and reverses X[l..=r]. Turn X into Y in at most floor(N/2)
 //   moves: print No, or Yes and the moves.

@@ -1,4 +1,10 @@
 import sys, random
+if sys.argv[1] == "--max":
+    # one test with n = sum n = 80, a path (the deepest tree: every retirement lifts the whole
+    # root path); labels are its DFS order 1..80
+    print(1); print(80)
+    print("\n".join(f"{v} {v + 1}" if v % 2 else f"{v + 1} {v}" for v in range(1, 80)))
+    sys.exit()
 # usage: gen.py seed size; 3 <= n <= 80, t <= 10, sum n <= 80; size >= 80 gives n = 80
 rng = random.Random(int(sys.argv[1]))
 size = int(sys.argv[2])

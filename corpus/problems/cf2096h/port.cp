@@ -1,4 +1,5 @@
 // Source: Codeforces 2096H (Wonderful XOR Problem), https://codeforces.com/contest/2096/problem/H
+// limits: 2000 ms, 256 MB
 // Problem: n intervals [l_i, r_i] in 0..2^m (n <= 2e5, m <= 18); f_x counts sequences with
 //   l_i <= a_i <= r_i and XOR x, mod 998244353. Print the XOR over x of (f_x * 2^x mod p).
 //   Multitest, sum n <= 2e5, sum 2^m <= 2^18.

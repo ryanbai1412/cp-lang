@@ -1,4 +1,7 @@
 import sys, random
+if sys.argv[1] == "--max":
+    print(10**6, 1)  # N = 1e6 from the edge: the longest walk to the middle, ~5e5 moves printed
+    sys.exit()
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 # statement: 1 <= N <= 1e6, 1 <= X <= N
 MAX_N = 10**6

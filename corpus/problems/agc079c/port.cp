@@ -1,4 +1,5 @@
 // Source: AtCoder AGC 079 C, https://atcoder.jp/contests/agc079/tasks/agc079_c
+// limits: 2000 ms, 1024 MB
 // Problem: multitest; a permutation P of 1..N (sum N <= 2.5e5) is fed in order into a queue
 //   with three operations: append the next element of P at the back, output the front, reverse
 //   the queue. Print the min number of reversals to output 1..N in order, or -1.

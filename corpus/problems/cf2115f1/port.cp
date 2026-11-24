@@ -1,6 +1,7 @@
 // Source: Codeforces 2115F1 (Gellyfish and Lycoris Radiata, Easy Version),
 //   https://codeforces.com/contest/2115/problem/F1
-// Problem: n sets, all empty, and q ops (n, q <= 3e5), decoded online with the last answer. Op i
+// limits: 3000 ms, 1024 MB
+// Problem: n sets, all empty, and q ops (n, q <= 1e5), decoded online with the last answer. Op i
 //   first inserts i into sets 1..r, reverses the order of sets 1..r, or deletes x from every set;
 //   then print the smallest element of set p (0 if empty).
 // Solution: keep the sets' order in an implicit treap with lazy reversal; each node carries the
@@ -15,7 +16,7 @@ use std.rand.Rng
 
 struct SegNode(l: Id<SegNode>, r: Id<SegNode>)
 
-let (n, q_cnt): (1..=300_000, 1..=300_000) = read()
+let (n, q_cnt): (1..=100_000, 1..=100_000) = read()
 domain Pos = 1..=n
 domain Query = 1..=q_cnt
 

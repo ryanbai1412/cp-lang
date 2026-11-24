@@ -1,4 +1,5 @@
 // Source: Codeforces 2089E, Black Cat Collapse, https://codeforces.com/contest/2089/problem/E
+// limits: 3000 ms, 1024 MB
 // Problem: tree rooted at 1 whose labels 1..=n form a DFS order, 3 <= n <= 80 (t <= 10
 //   tests, sum n <= 80). Each day explore an uncollapsed node u, which collapses u's
 //   subtree; at the end of day i node n - i + 1 also collapses. For each i <= n count the

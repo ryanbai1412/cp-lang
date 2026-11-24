@@ -1,4 +1,5 @@
 // Source: BOI 2020 P3 (Joker), https://dmoj.ca/problem/btoi20p3
+// limits: 1000 ms, 256 MB
 // Problem: a graph with n, m, q <= 2e5; each query l r removes edges l..=r. Print YES if the
 //   remaining edges contain an odd cycle, else NO.
 // Solution: limit[l] = the least R such that edges [1, l) and (R, m] are bipartite; it is

@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
 import random, sys
+if sys.argv[1] == "--max":
+    # one test with N = sum N = 5e5, equal B counts so the full reconciliation runs
+    rng = random.Random(1)
+    n = 500_000
+    x = ["A", "B"] * (n // 2)
+    y = x[:]
+    rng.shuffle(x); rng.shuffle(y)
+    print(1); print(n); print("".join(x)); print("".join(y))
+    sys.exit()
 rng = random.Random(int(sys.argv[1]))
 T = rng.randint(1, 6)
 print(T)
