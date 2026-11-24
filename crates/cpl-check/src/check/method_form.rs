@@ -616,13 +616,18 @@ impl Checker<'_> {
 
     /// The `Resolved` of the method `key` a call at `name` could call.
     fn method_resolved(&mut self, name: &ast::Name, key: &str) -> Resolved {
-        let module = if self.local_defs.contains_key(key) {
+        let mut module = if self.local_defs.contains_key(key) {
             None
         } else {
             self.env.origin(key)
-        };
+        }
+        .unwrap_or_default();
+        // The `#k` of an overload, as a free call to its key resolves.
+        if let Some((_, k)) = prelude::overload_part(key) {
+            module.push_str(k);
+        }
         Resolved {
-            module: module.unwrap_or_default(),
+            module,
             name: name.text.clone(),
             owner: None,
         }
