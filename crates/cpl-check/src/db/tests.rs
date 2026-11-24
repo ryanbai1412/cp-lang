@@ -442,3 +442,16 @@ fn method_fits_imports_a_files_methods_once_per_analysis() {
     db.remove_file("main.cp");
     assert!(db.callings.is_empty());
 }
+
+#[test]
+fn a_for_over_windows_or_chunks_types_each_view() {
+    for walk in [
+        "xs.windows(2): print(q.sum())",
+        "xs.chunks(2): print(q.len)",
+        "List(xs).rekey(xs.keys).windows(2): print(List(q))",
+        "xs.sorted().rekey(1..=3).windows(2): print(q.sum())",
+    ] {
+        let src = format!("let xs = [3, 1, 4]\nfor q in {walk}\n");
+        assert_eq!(silent_unknowns_of(&src), (vec![], 0), "{src}");
+    }
+}

@@ -838,8 +838,8 @@ impl<'a> Checker<'a> {
         // A built-in container's own member, `xs.sorted(..)` on a `List`, is
         // the catalog's to check; a library fn's container result is modelled.
         // A held `xs.windows(k)` is indexed by lowering's pieces (R07.7.9),
-        // more than the stream its fn yields.
-        let pieces = self.pieces_source(call).is_some();
+        // more than the stream its fn yields; a `for` only walks the stream.
+        let pieces = self.walked != call.span.start && self.pieces_source(call).is_some();
         if plain_value(&ty)
             || self.declared_value(&ty)
             || (!own_member && !pieces && self.modelled(&ty))
