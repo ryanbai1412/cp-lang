@@ -18,11 +18,8 @@ var trie = Trie<Letter>.new()
 let n: 1..=25_000 = read()
 domain Word = 1..=n
 let words: [Word]Str = read()
-var longest = ""
-for w in Word:
-    let word = words[w]
-    trie.add([Letter(c) for c in word])
-    if word.len > longest.len: longest = word
+for w in words: trie.add([Letter(c) for c in w])
+let longest = words.max(by: w => w.len)!
 
 var on_longest: Set<Int> = Set()
 var at = trie.root
