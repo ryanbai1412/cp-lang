@@ -29,7 +29,13 @@ impl Checker<'_> {
             Ty::Named { name, args } if matches!(name.as_str(), "Map" | "HashMap") => args.clone(),
             _ => Vec::new(),
         };
-        self.row_ty(member.ret, &elem, &key_value, span)
+        // The row's text is no use in the source: hover and references at
+        // `span` stay the call's.
+        let (hovers, refs) = (self.hovers.len(), self.refs.len());
+        let ret = self.row_ty(member.ret, &elem, &key_value, span);
+        self.hovers.truncate(hovers);
+        self.refs.truncate(refs);
+        ret
     }
 
     /// A catalog row's type `text` (`?T`, `(K, V)`, `SortedRange<(K, V)>`),
