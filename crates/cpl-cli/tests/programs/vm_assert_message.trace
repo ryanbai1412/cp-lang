@@ -1,0 +1,25 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"n":{"name":"n","type":"Int","kind":"scalar"},"total":{"name":"total","type":"Int","kind":"scalar"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":7,"label":"let n: Int = read()","stage":"main","values":{"stdout":[],"n":9},"locals":{},"frames":[{"fn":"main","line":7}]},
+{"id":1,"line":8,"label":"var total = 0","stage":"main","values":{"stdout":[],"n":9,"total":0},"locals":{},"frames":[{"fn":"main","line":8}]},
+{"id":2,"line":10,"label":"total += check(k, 50)","stage":"main","values":{"stdout":[],"n":9,"total":1},"locals":{"k":1},"frames":[{"fn":"main","line":10}]},
+{"id":3,"line":11,"label":"print → 1 1","stage":"main","values":{"stdout":["1 1"],"n":9,"total":1},"locals":{"k":1},"checkpoint":"print 1","frames":[{"fn":"main","line":11}]},
+{"id":4,"line":10,"label":"total += check(k, 50)","stage":"main","values":{"stdout":["1 1"],"n":9,"total":5},"locals":{"k":2},"frames":[{"fn":"main","line":10}]},
+{"id":5,"line":11,"label":"print → 2 5","stage":"main","values":{"stdout":["1 1","2 5"],"n":9,"total":5},"locals":{"k":2},"checkpoint":"print 2","frames":[{"fn":"main","line":11}]},
+{"id":6,"line":10,"label":"total += check(k, 50)","stage":"main","values":{"stdout":["1 1","2 5"],"n":9,"total":14},"locals":{"k":3},"frames":[{"fn":"main","line":10}]},
+{"id":7,"line":11,"label":"print → 3 14","stage":"main","values":{"stdout":["1 1","2 5","3 14"],"n":9,"total":14},"locals":{"k":3},"checkpoint":"print 3","frames":[{"fn":"main","line":11}]},
+{"id":8,"line":10,"label":"total += check(k, 50)","stage":"main","values":{"stdout":["1 1","2 5","3 14"],"n":9,"total":30},"locals":{"k":4},"frames":[{"fn":"main","line":10}]},
+{"id":9,"line":11,"label":"print → 4 30","stage":"main","values":{"stdout":["1 1","2 5","3 14","4 30"],"n":9,"total":30},"locals":{"k":4},"checkpoint":"print 4","frames":[{"fn":"main","line":11}]},
+{"id":10,"line":10,"label":"total += check(k, 50)","stage":"main","values":{"stdout":["1 1","2 5","3 14","4 30"],"n":9,"total":55},"locals":{"k":5},"frames":[{"fn":"main","line":10}]},
+{"id":11,"line":11,"label":"print → 5 55","stage":"main","values":{"stdout":["1 1","2 5","3 14","4 30","5 55"],"n":9,"total":55},"locals":{"k":5},"checkpoint":"print 5","frames":[{"fn":"main","line":11}]},
+{"id":12,"line":10,"label":"total += check(k, 50)","stage":"main","values":{"stdout":["1 1","2 5","3 14","4 30","5 55"],"n":9,"total":91},"locals":{"k":6},"frames":[{"fn":"main","line":10}]},
+{"id":13,"line":11,"label":"print → 6 91","stage":"main","values":{"stdout":["1 1","2 5","3 14","4 30","5 55","6 91"],"n":9,"total":91},"locals":{"k":6},"checkpoint":"print 6","frames":[{"fn":"main","line":11}]},
+{"id":14,"line":10,"label":"total += check(k, 50)","stage":"main","values":{"stdout":["1 1","2 5","3 14","4 30","5 55","6 91"],"n":9,"total":140},"locals":{"k":7},"frames":[{"fn":"main","line":10}]},
+{"id":15,"line":11,"label":"print → 7 140","stage":"main","values":{"stdout":["1 1","2 5","3 14","4 30","5 55","6 91","7 140"],"n":9,"total":140},"locals":{"k":7},"checkpoint":"print 7","frames":[{"fn":"main","line":11}]},
+{"id":16,"line":4,"label":"failed: assertion failed: k * k \u003c limit: 8 squared is 64, not under 50","stage":"main","values":{"stdout":["1 1","2 5","3 14","4 30","5 55","6 91","7 140"],"n":9,"total":140},"locals":{"k":8,"limit":50},"frames":[{"fn":"check","line":4},{"fn":"main","line":10}]}]}}}
+stderr:
+error[R0401]: assertion failed: k * k < limit: 8 squared is 64, not under 50
+  --> vm_assert_message.cp:4:5
+  |
+4 |     assert k * k < limit, "{k} squared is {k * k}, not under {limit}"
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  = note: call stack: check (vm_assert_message.cp:4) <- top level (vm_assert_message.cp:10)
+  = help: the condition was false for the values below: fix the code that computed them, or the assertion if it is wrong

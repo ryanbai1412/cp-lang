@@ -26,7 +26,6 @@ traced stmt:Let(Unwrap)
 traced stmt:Trap
 traced stmt:While
 untraced fn:SortedSet_Int.each(feeding)
-untraced stmt:Assert
 untraced stmt:DefDomain
 untraced stmt:Expr(Call)
 untraced stmt:Expr(CallExpr)

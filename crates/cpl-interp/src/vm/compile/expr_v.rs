@@ -1198,6 +1198,13 @@ impl<'p, 'f> Compiler<'p, 'f> {
         );
     }
 
+    /// Stops the run with `stmt`'s report: a failed `assert` or a `Trap`.
+    pub(super) fn emit_fail(&mut self, stmt: &'p Stmt, msg_v: u16, span: Span) {
+        let idx = self.fails.len() as u32;
+        self.fails.push(stmt);
+        self.emit(Op::Fail { idx, msg_v }, span);
+    }
+
     pub(super) fn emit_fallback_expr_i(&mut self, expr: &'p Expr) -> u16 {
         if let Some(dst) = self.try_compile_apply_i(expr) {
             return dst;

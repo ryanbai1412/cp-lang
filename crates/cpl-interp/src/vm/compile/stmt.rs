@@ -705,7 +705,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     self.emit_fallback_stmt(stmt);
                 }
             }
-            Stmt::Assert { cond, span, .. } => {
+            Stmt::Assert {
+                cond,
+                message,
+                span,
+                ..
+            } => {
                 let r_cond = self.compile_expr_i(cond);
                 let j_ok = self.emit(
                     Op::JmpIfNonZero {
@@ -714,7 +719,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     },
                     *span,
                 );
-                self.emit_fallback_stmt(stmt);
+                let msg_v = message
+                    .as_ref()
+                    .map_or(u16::MAX, |m| self.compile_expr_v(m));
+                self.emit_fail(stmt, msg_v, *span);
                 let end_pc = self.ops.len() as u32;
                 self.patch(j_ok, end_pc);
             }
@@ -927,6 +935,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     self.emit(Op::RetUnit, Span::default());
                 }
             }
+            Stmt::Trap(_, span) => self.emit_fail(stmt, u16::MAX, *span),
             Stmt::DefDomain { id, lo, len } => {
                 let (lo_r, len_r) = (self.compile_expr_i(lo), self.compile_expr_i(len));
                 let dom = *id as u16;
@@ -952,7 +961,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     self.emit(Op::ClearV { reg: src }, val.span);
                 }
             }
-            _ => self.emit_fallback_stmt(stmt),
         }
     }
 

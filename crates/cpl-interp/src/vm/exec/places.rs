@@ -129,6 +129,11 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let container = walk_place_mut(root, prefix, regs_i, &keys, spans[cur_pc])?;
                 assign_place_leaf_scalar(container, last, rhs, op, kind, regs_i, spans[cur_pc])?;
             }
+            Op::Fail { idx, msg_v } => {
+                let message = (msg_v != u16::MAX)
+                    .then(|| std::mem::replace(&mut regs_v[msg_v as usize], Value::Unit));
+                return Err(crate::stmt_failure(chunk.fails[idx as usize], message));
+            }
             Op::AssignPlaceV { path, r_val, op } => {
                 let pp = &chunk.places[path as usize];
                 let val = regs_v[r_val as usize].clone();

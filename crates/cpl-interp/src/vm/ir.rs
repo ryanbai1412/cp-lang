@@ -1206,6 +1206,13 @@ pub(crate) enum Op {
         op: AssignOp,
         kind: ScalarKind,
     },
+    /// Stops the run with the report of `fails[idx]`: an `assert` whose
+    /// condition failed, its message in `msg_v` unless that is `u16::MAX`,
+    /// or a `Trap`.
+    Fail {
+        idx: u32,
+        msg_v: u16,
+    },
     /// `place op= r_val` for a boxed value, combined as the tree-walker does.
     AssignPlaceV {
         path: u16,
@@ -1615,6 +1622,8 @@ pub(crate) struct Chunk<'p> {
     pub formats: Vec<FormatSpec<'p>>,
     pub applies: Vec<ApplySpec<'p>>,
     pub fallback_stmts: Vec<&'p Stmt>,
+    /// The `assert`s and `Trap`s each `Fail` reports.
+    pub fails: Vec<&'p Stmt>,
     pub fallback_exprs: Vec<&'p Expr>,
     /// The arguments of each `CallTraced` that has `mut` ones.
     pub lent_calls: Vec<&'p [Arg]>,

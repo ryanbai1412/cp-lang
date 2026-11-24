@@ -473,6 +473,26 @@ fn float_int(v: f64, span: Span) -> Res<Value> {
     Ok(Value::Int(v as i64))
 }
 
+/// What a failed `assert`, its `message` evaluated, or a `Trap` reports.
+fn stmt_failure(stmt: &Stmt, message: Option<Value>) -> Box<Trap> {
+    match stmt {
+        Stmt::Assert {
+            text, note, span, ..
+        } => {
+            let mut report = cpl_ir::assert_head(text);
+            if let Some(Value::Str(bytes)) = &message {
+                report.push_str(if text.is_empty() { "" } else { ": " });
+                report.extend(bytes.iter().map(|b| *b as char));
+            }
+            let mut failed = trap::<()>(*span, report).unwrap_err();
+            failed.notes.extend(note.clone());
+            failed
+        }
+        Stmt::Trap(message, span) => trap::<()>(*span, message.clone()).unwrap_err(),
+        _ => unreachable!("only an assert or a trap fails"),
+    }
+}
+
 fn trap<T>(span: Span, message: impl Into<String>) -> Res<T> {
     Err(Box::new(Trap {
         message: message.into(),
@@ -998,25 +1018,13 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             Stmt::Break(target) => return Ok(Flow::Break(*target)),
             Stmt::Continue(target) => return Ok(Flow::Continue(*target)),
             Stmt::Give(value) => return Ok(Flow::Give(self.eval(value)?)),
-            Stmt::Assert {
-                cond,
-                message,
-                text,
-                note,
-                span,
-                ..
-            } => {
+            Stmt::Assert { cond, message, .. } => {
                 if !self.eval(cond)?.bool() {
-                    let mut report = cpl_ir::assert_head(text);
-                    if let Some(message) = message {
-                        if let Value::Str(bytes) = self.eval(message)? {
-                            report.push_str(if text.is_empty() { "" } else { ": " });
-                            report.extend(bytes.iter().map(|b| *b as char));
-                        }
-                    }
-                    let mut failed = trap::<()>(*span, report).unwrap_err();
-                    failed.notes.extend(note.clone());
-                    return Err(failed);
+                    let message = match message {
+                        Some(message) => Some(self.eval(message)?),
+                        None => None,
+                    };
+                    return Err(stmt_failure(stmt, message));
                 }
             }
             Stmt::DefDomain { id, lo, len } => {
@@ -1029,7 +1037,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     self.domains[*id] = (lo, len.max(0));
                 }
             }
-            Stmt::Trap(message, span) => return trap(*span, message.clone()),
+            Stmt::Trap(..) => return Err(stmt_failure(stmt, None)),
         }
         Ok(Flow::Next)
     }
