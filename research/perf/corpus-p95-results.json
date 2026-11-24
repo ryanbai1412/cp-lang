@@ -1,8 +1,7 @@
 {
   "meta": {"commit":"715cee7d","cpl_version":"0.2.2","gxx":"g++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0","runs":3,"problems":1160,"cpu":"x86_64","cores":8},
-  "summary": {"measured":365,"above_floor":105,"floor_ms":10.0,"max_emitted_bytes":53002,"emitted_files":778,"emitted_over_64kb":[],"largest_emitted_port":"corpus/problems/ucup5s05f/port.cp","time_all":{"n":365,"median":0.999,"p90":1.016,"p95":1.372,"p99":2.230,"worst":5.209},"rss_all":{"n":365,"median":1.000,"p90":1.000,"p95":1.000,"p99":1.000,"worst":1.000},"time_above_floor":{"n":105,"median":0.785,"p90":1.917,"p95":1.980,"p99":4.736,"worst":5.209},"rss_above_floor":{"n":105,"median":1.000,"p90":1.000,"p95":1.000,"p99":1.000,"worst":1.000},"target_met":false},
+  "summary": {"measured":365,"above_floor":105,"floor_ms":10.0,"max_emitted_bytes":53002,"emitted_files":777,"emitted_over_64kb":[],"largest_emitted_port":"corpus/problems/ucup5s05f/port.cp","time_all":{"n":365,"median":0.999,"p90":1.016,"p95":1.372,"p99":2.230,"worst":5.209},"rss_all":{"n":365,"median":1.000,"p90":1.000,"p95":1.000,"p99":1.000,"worst":1.000},"time_above_floor":{"n":105,"median":0.785,"p90":1.917,"p95":1.980,"p99":4.736,"worst":5.209},"rss_above_floor":{"n":105,"median":1.000,"p90":1.000,"p95":1.000,"p99":1.000,"worst":1.000},"target_met":false},
   "ports": [
-    {"problem":"996warmup8p3","port":"corpus/problems/996warmup8p3/port.cp","emitted_bytes":13802,"skip":"orig run: exit signal: 6 (SIGABRT) (core dumped)"},
     {"problem":"aac2p6","port":"","emitted_bytes":0,"skip":"no port.cp/spec.cp"},
     {"problem":"aac4p1","port":"","emitted_bytes":0,"skip":"no port.cp/spec.cp"},
     {"problem":"aac4p2","port":"corpus/problems/aac4p2/port.cp","emitted_bytes":11488,"input":"derived/random","orig_s":0.040901,"port_s":0.040936,"orig_rss_kb":0,"port_rss_kb":0,"time_ratio":1.0009,"above_floor":true,"rss_ratio":1.0000},

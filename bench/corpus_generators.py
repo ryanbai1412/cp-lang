@@ -495,13 +495,6 @@ SPECS = [
 # Group 2: Ports previously skipped under `no maximum-size input`
 # =============================================================================
 
-def g_996warmup8p3(p, big, _):
-    rng = random.Random(2001)
-    n = 100_000 if big else 200
-    kl, kr = (n // 2, n // 2)
-    pos = sorted(rng.sample(range(1, 10**9), n))
-    dirs = [rng.choice([-1, 1]) for _ in range(n)]
-    W(p, [f"{n} {kl} {kr}", J(pos), J(dirs)])
 
 
 def g_btoi15p2(p, big, _):
@@ -1088,7 +1081,6 @@ def g_noip22p4(p, big, _):
 
 
 SPECS += [
-    ("scout_batch_32/today/996warmup8p3", O(5324670), "bsearch+sim", "n=1e5", g_996warmup8p3, "exact"),
     ("scout_batch_33/btoi15p2", O(5640898), "binlift", "n=3e5", g_btoi15p2, "exact"),
     ("scout_batch_18/today/btoi17p2", O(4456186), "segtree+mat", "k=5, n=5e4, m=1e5, o=5e4", g_btoi17p2, "exact"),
     ("scout_batch_18/today/btoi20p3", O(4656866), "DnC+DSU", "n=m=q=2e5", g_btoi20p3, "exact"),

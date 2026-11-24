@@ -1383,10 +1383,6 @@
     "proto/ports/scout_batch_32/check.py": {
       "exit_code": 0,
       "ports": {
-        "996warmup8p3": {
-          "line": "[PASS] 996warmup8p3 OK (40/40 cases match 5324670.cpp)",
-          "verdict": "pass"
-        },
         "aac5p3": {
           "line": "[PASS] aac5p3       OK (40/40 cases match 4239862.cpp)",
           "verdict": "pass"
@@ -1427,8 +1423,7 @@
       "seconds": 66,
       "tail": [
         "[PASS] noip10p1     OK (40/40 cases match 5445654.cpp)",
-        "[PASS] dmopc20c4p4  OK (40/40 cases match 3485716.cpp)",
-        "[PASS] 996warmup8p3 OK (40/40 cases match 5324670.cpp)"
+        "[PASS] dmopc20c4p4  OK (40/40 cases match 3485716.cpp)"
       ],
       "timed_out": false
     },

@@ -75,8 +75,8 @@ class CollectItems(unittest.TestCase):
         self.assertEqual(self.cp_of(live=True), "corpus/problems/mccc6s3/port.cp")
 
     def test_a_package_without_orig_cpp_is_timed_against_its_ac_submission(self):
-        [item] = bench.collect_items({"corpus"}, {"996warmup8p3"}, "/nonexistent", live=True)
-        self.assertEqual(os.path.relpath(item[3], bench.ROOT), "corpus/submissions/5324670.cpp")
+        [item] = bench.collect_items({"corpus"}, {"aac4p2"}, "/nonexistent", live=True)
+        self.assertEqual(os.path.relpath(item[3], bench.ROOT), "corpus/submissions/4140241.cpp")
 
     def test_the_reference_is_the_ac_submission_the_port_names_as_its_original(self):
         [item] = bench.collect_items({"corpus"}, {"noi02p2"}, "/nonexistent", live=True)

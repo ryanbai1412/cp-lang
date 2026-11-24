@@ -1,8 +1,8 @@
 {
- "problems": 1111,
- "with_cpp_ac": 1111,
+ "problems": 1110,
+ "with_cpp_ac": 1110,
  "dream": {
-  "draft": 127,
+  "draft": 126,
   "gold": 0,
   "none": 984,
   "reviewed": 0
@@ -10,11 +10,10 @@
  "spec": {
   "draft": 100,
   "gold": 0,
-  "none": 1011,
+  "none": 1010,
   "reviewed": 0
  },
  "by_source": {
-  "996warmup8p3": 1,
   "aac": 13,
   "abc": 6,
   "acc": 5,
