@@ -10,6 +10,9 @@
 @!multitest
 let n: 1..=200_000 = read()
 let a: [0..n]1..=10 ** 9 = read()
-let b: [0..n]1..=10 ** 9 = read()
-let pairs = [(min(x, y), max(x, y)) for (x, y) in zip(a, b)]
-print(sum(hi for (_, hi) in pairs) + pairs.map((lo, _) => lo).max()!)
+var (total, low) = (0, 0)
+for x in a:
+    let b: 1..=10 ** 9 = read()
+    total += max(x, b)
+    low max= min(x, b)
+print(total + low)
