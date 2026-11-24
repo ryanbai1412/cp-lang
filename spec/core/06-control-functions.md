@@ -180,6 +180,9 @@ library or by this spec:
   not `Hash`).
 - `@word(name)` on a std struct: `name(args)` is a call of its
   constructor (std's `@word(prefix)` on `Prefix`).
+- `@member(name)` on a std struct `S<B>`: `D.name` is a domain whose
+  positions are the values of `S<D>` (std's `@member(subsets)` on `Subset`,
+  so `V.subsets` is the domain of `V`'s subsets).
 - Documented where they act: `@bits` on a field and `@law` (chapter 5),
   `@on_unimplemented`, `@was(..)`, `@aka(..)` and `@stress(kind)` (chapter 12). Any
   other `@name` is E0107, naming the nearest decorator, so no later pass
