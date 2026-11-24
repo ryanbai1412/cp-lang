@@ -14,7 +14,7 @@ error[E0606]: `s` has type `HashSet<Int>`, which does not implement `Show`
   |     - `s` is declared here
 7 | print(s)
   |       ^
-  = help: a `HashSet` has no defined order: print the order you want, `print(s.keys.sorted())`
+  = help: a `HashSet` has no defined order: print the order you want, `print(s.sorted())`
 
 error[E0606]: `h` has type `HashMap<Int, Int>`, which does not implement `Show`
   --> a_hash_table_or_bool_is_not_show_even_interpolated.cp:8:9

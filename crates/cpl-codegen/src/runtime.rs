@@ -1179,6 +1179,7 @@ template <class K, class H = CpHash> struct HashSet {
     }
     bool operator!=(const HashSet& o) const { return !(*this == o); }
 };
+template <class K, class H> std::vector<K> sorted(const HashSet<K, H>& s) { std::vector<K> v; v.reserve(s.size()); for (const K& k : s) v.push_back(k); sort_seq(v.begin(), v.end()); return v; }
 ",
     },
     Piece {

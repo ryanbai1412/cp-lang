@@ -498,9 +498,12 @@ fn optional_print_help(ty: &Ty, snippet: &str) -> Option<String> {
             "`None` has no text: write `{operand}!` to unwrap it, or `{operand} ?? d` with a default `d`"
         )),
         // R10.3.8: a hash table has no order to print in.
-        Ty::Named { name, .. } if matches!(name.as_str(), "HashMap" | "HashSet") => Some(format!(
-            "a `{name}` has no defined order: print the order you want, `print({operand}.keys.sorted())`"
-        )),
+        Ty::Named { name, .. } if matches!(name.as_str(), "HashMap" | "HashSet") => {
+            let keys = if name == "HashMap" { ".keys" } else { "" };
+            Some(format!(
+                "a `{name}` has no defined order: print the order you want, `print({operand}{keys}.sorted())`"
+            ))
+        }
         Ty::Named { name, args } if name == "List" && matches!(args.as_slice(), [Ty::Optional(_)]) => {
             Some(format!(
                 "`None` has no text: write `print({snippet}, none: d)` to print each `None` as `d`"
