@@ -3101,14 +3101,13 @@ impl<'a> Lowerer<'a> {
         let hoisted = self.hoist_constant_domains(&items, &mut out);
         for (idx, &(offset, stmt)) in items.iter().enumerate() {
             self.offset = offset;
+            // `@!multitest` divides the file whatever item it sits on.
+            if let Some(d) = stmt.decorators.iter().find(|d| d.name.text == "multitest") {
+                self.divide(d, &mut out);
+            }
             // Skip `@test` functions in normal `cpl run`/`cpl build`.
             if hoisted.contains(&idx) || stmt.decorators.iter().any(|d| d.name.text == "test") {
                 continue;
-            }
-            for decorator in &stmt.decorators {
-                if decorator.name.text == "multitest" {
-                    self.divide(decorator, &mut out);
-                }
             }
             if matches!(stmt.kind, ast::StmtKind::Let { ty: None, .. }) {
                 let rest: Vec<ast::Stmt> = items[idx + 1..]
