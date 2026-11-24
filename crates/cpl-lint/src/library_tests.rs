@@ -162,6 +162,36 @@ fn a_library_lint_matches_a_run_of_statements() {
     }
 }
 
+/// `reads: "p[k] -> p.at(k)"` rewrites, with the fix, every later read of
+/// a name `from` declares; a later use that is no such read (a write,
+/// `p.len`) leaves the finding without a fix.
+/// Rule: R06.4.9, spec/core/06-control-functions.md.
+#[test]
+fn reads_rewrites_the_later_reads_of_a_name_from_declares() {
+    let decl = "@lint(table_by_hand, from: \"var p = List.filled(xs.len + 1, 0)\\nfor i in 0..xs.len:\\n    p[i + 1] = p[i] + xs[i]\", to: \"let p = table(xs)\", reads: \"p[k] -> p.at(k)\", holes: \"k\")\npub fn table(xs: List<Int>) -> List<Int> = xs\n";
+    let fixed = |body: &str| -> (usize, String) {
+        let src = format!("{decl}{body}");
+        let found: Vec<_> = (crate::lint(&src, &crate::Config::default()).into_iter())
+            .filter(|d| d.code.0 == "table_by_hand")
+            .collect();
+        let (text, _) = cpl_diag::splice_fixes(&src, &found);
+        (found.len(), text[decl.len()..].to_string())
+    };
+    let head = "let a = [1, 2]\nvar p = List.filled(a.len + 1, 0)\nfor i in 0..a.len:\n    p[i + 1] = p[i] + a[i]\n";
+    assert_eq!(
+        fixed(&format!("{head}print(p[2] - p[a[0]])\nprint(p[1])\n")),
+        (
+            1,
+            "let a = [1, 2]\nlet p = table(a)\nprint(p.at(2) - p.at(a[0]))\nprint(p.at(1))\n"
+                .into()
+        )
+    );
+    for unread in ["p[0] = 5\nprint(p[1])\n", "print(p.len)\n", "print(p)\n"] {
+        let body = format!("{head}{unread}");
+        assert_eq!(fixed(&body), (1, body.clone()), "{unread}");
+    }
+}
+
 /// `holes:` names more holes than the fn's parameters; `to` may drop one
 /// when it matched code that calls nothing, `to` may use the fn as a getter
 /// (`xs.walk`), and a lint named like a `spec/lints` record reports as it.
@@ -169,7 +199,9 @@ fn a_library_lint_matches_a_run_of_statements() {
 #[test]
 fn declared_holes_match_free_names_and_a_record_name_keeps_its_code() {
     let found = |name: &str, body: &str| -> Vec<(String, String)> {
-        let decl = format!("@lint({name}, from: \"for i in 0..n:\\n    print(xs[i])\", to: \"for x in xs.walk:\\n    print(x)\", holes: \"n\")\npub fn walk(xs: List<Int>) -> List<Int> = [x for x in xs]\n");
+        let decl = format!(
+            "@lint({name}, from: \"for i in 0..n:\\n    print(xs[i])\", to: \"for x in xs.walk:\\n    print(x)\", holes: \"n\")\npub fn walk(xs: List<Int>) -> List<Int> = [x for x in xs]\n"
+        );
         crate::lint(&format!("{decl}{body}"), &crate::Config::default())
             .into_iter()
             .filter(|d| d.code.0 == "L0557" || d.code.0 == name)
@@ -458,10 +490,14 @@ fn a_hole_matches_a_binding_pattern() {
 #[test]
 fn a_no_fix_lint_drops_a_statement_hole_and_keeps_its_on_types() {
     let lint = |name: &str| {
-        format!("@lint({name}, from: \"while let (d, u) = pq.pop():\\n    if d > dist[u]:\\n        continue\\n    rest\", to: \"settle(pq, from: 0)\", holes: \"dist, rest\")\npub fn settle(pq: MinHeap<(Int, Int)>, from: Int) = ()\n")
+        format!(
+            "@lint({name}, from: \"while let (d, u) = pq.pop():\\n    if d > dist[u]:\\n        continue\\n    rest\", to: \"settle(pq, from: 0)\", holes: \"dist, rest\")\npub fn settle(pq: MinHeap<(Int, Int)>, from: Int) = ()\n"
+        )
     };
     let body = |q: &str| {
-        format!("var pq = {q}\npq.push((0, 1))\nlet best = [0, 0]\nwhile let (c, v) = pq.pop():\n    if c > best[v]:\n        continue\n    print(v)\n")
+        format!(
+            "var pq = {q}\npq.push((0, 1))\nlet best = [0, 0]\nwhile let (c, v) = pq.pop():\n    if c > best[v]:\n        continue\n    print(v)\n"
+        )
     };
     let found = |name: &str, q: &str| -> Vec<(String, usize)> {
         crate::lint(
@@ -484,7 +520,9 @@ fn a_no_fix_lint_drops_a_statement_hole_and_keeps_its_on_types() {
 #[test]
 fn a_no_fix_finding_ends_before_its_statement_hole() {
     let decl = "@lint(manual_mex, from: \"while i < q.len:\\n    let v = q[i]\\n    i += 1\\n    rest\", to: \"walk(q)\", holes: \"i, rest\")\npub fn walk(q: List<Int>) -> Int = 0\n";
-    let src = format!("{decl}var q = [1]\nvar i = 0\nwhile i < q.len:\n    let v = q[i]\n    i += 1\n    print(v)\n");
+    let src = format!(
+        "{decl}var q = [1]\nvar i = 0\nwhile i < q.len:\n    let v = q[i]\n    i += 1\n    print(v)\n"
+    );
     let spans: Vec<String> = crate::lint(&src, &crate::Config::default())
         .into_iter()
         .filter(|d| d.message == "write `walk(q)`")

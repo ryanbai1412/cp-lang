@@ -260,6 +260,10 @@ library or by this spec:
   and a named argument's label (`from:`) is never a hole; where a comment
   falls inside the match it
   has no fix, since `to` would drop the comment.
+  `reads: "p[k] -> p.cut(k)"` makes the fix rewrite, too, every later
+  use of a name `from` declares, in the rest of its block: each must
+  match the read (`k` a hole), else the finding has no fix (a write
+  `p[0] = 5`, or `p.len`); `to` or the rewrite calls the fn.
   A finding inside a wider one is shown with it when `from` still
   matches the wider fix's text, which keeps the code it is about.
   It applies in every file that uses the module, and in the module outside
@@ -268,7 +272,8 @@ library or by this spec:
   (`bad_library_lint`) when `@lint` is not on a fn, lacks a
   name, `from:` or `to:` (or has both `to:` and `advice:`), when `from`,
   `to` or an `also:` line is not one expression or
-  statement or a run of statements, when `to` drops a parameter `from` matches or uses one it does
+  statement or a run of statements, when `reads:` is not two expressions
+  around `->`, when `to` drops a parameter `from` matches or uses one it does
   not, when `holes:` names a name neither `from` nor `also:` uses, when `when:` is not
   holes `from` uses compared with integers, when neither `to` (not `advice:`) calls the
   fn (or its `builtin:`) or writes only its body's operators nor `from`

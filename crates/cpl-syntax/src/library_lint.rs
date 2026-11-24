@@ -44,6 +44,9 @@ pub struct LibraryLint {
     /// of them matches somewhere in the file, the holes and names `from`
     /// bound standing for what they matched.
     pub also: String,
+    /// `reads:`, `p[k] -> p.cut(k)`: how the fix rewrites each later read
+    /// of a name `from` declares; empty when it rewrites none.
+    pub reads: String,
     /// The decorator, in file positions.
     pub decorator: Span,
     /// The decorated fn, in file positions: the pattern does not apply
@@ -177,10 +180,26 @@ fn declared_on(
             }
         }
         let also = text("also").unwrap_or_default();
+        let reads = text("reads").unwrap_or_default();
+        let read = (reads.split_once("->")).map(|(r, w)| (code(r.trim()), code(w.trim())));
+        let read_toks = match read {
+            None if reads.is_empty() => Vec::new(),
+            Some((Some(r), Some(w))) => [r, w].concat(),
+            _ => {
+                error(
+                    &msgs::syntax::LINT_READS,
+                    &[&name],
+                    "write `reads: \"p[k] -> p.cut(k)\"`: a read of a name `from` declares, `->`, what the fix writes for it",
+                    &mut label,
+                );
+                continue;
+            }
+        };
         let (from_run, to_run) = (run(&from), run(&to));
         let bad_to = from_run.is_some() && to_run.is_none();
+        let read_of = reads.split_once("->").map_or("", |r| r.0.trim());
         let (Some((from_toks, _)), Some((to_toks, _)), Some((used_toks, _))) =
-            (from_run, to_run, run(&format!("{from}\n{also}")))
+            (from_run, to_run, run(&format!("{from}\n{also}\n{read_of}")))
         else {
             let msg = if bad_to {
                 &msgs::syntax::LINT_TO_NOT_CODE
@@ -248,6 +267,7 @@ fn declared_on(
             })
         };
         let uses = calls(&to_toks, &suggests)
+            || calls(&read_toks, &suggests)
             || writes_body_ops(f, &to, &to_toks)
             || compound(&to_toks, &f.name.text);
         let drops = !uses && !advice && calls(&from_toks, &f.name.text);
@@ -276,6 +296,7 @@ fn declared_on(
             to,
             advice,
             also,
+            reads,
             decorator: span,
             item: stmt.span.shift(offset),
         });
@@ -570,7 +591,9 @@ mod tests {
     #[test]
     fn when_bounds_a_hole_from_uses_by_an_integer() {
         let decl = |when: &str| {
-            format!("@lint(up, from: \"(self + b - 1) / b\", to: \"up(self, b)\", when: \"{when}\")\npub fn up(self: Int, b: Int) -> Int = self\n")
+            format!(
+                "@lint(up, from: \"(self + b - 1) / b\", to: \"up(self, b)\", when: \"{when}\")\npub fn up(self: Int, b: Int) -> Int = self\n"
+            )
         };
         assert!(errors(&decl("b >= 1, self < -2")).is_empty());
         let want = super::Bound {
@@ -637,6 +660,20 @@ mod tests {
         assert_eq!(
             errors(unused),
             ["`holes:` of `@lint(walk_by_hand)` names `n`, which neither `from` nor `also:` uses"]
+        );
+    }
+
+    #[test]
+    fn reads_is_a_read_and_its_rewrite_and_may_call_the_fn() {
+        let ok = "@lint(table_by_hand, from: \"var p = [0]\", to: \"let p = [1]\", reads: \"p[k] -> p.cut(k)\", holes: \"k\")\npub fn cut(t: Int, k: Int) -> Int = k\n";
+        assert!(errors(ok).is_empty(), "{:?}", errors(ok));
+        assert_eq!(parse_lints(ok)[0].reads, "p[k] -> p.cut(k)");
+        let bad = "@lint(table_by_hand, from: \"var p = [0]\", to: \"let p = [1]\", reads: \"p[k]\", holes: \"k\")\npub fn cut(t: Int, k: Int) -> Int = k\n";
+        assert_eq!(
+            errors(bad),
+            [
+                "`reads:` of `@lint(table_by_hand)` is not a read, `->`, and what the fix writes for it"
+            ]
         );
     }
 

@@ -40,6 +40,9 @@ pub(crate) struct Declared {
     /// Names `from` declares with a written type and `to` declares again
     /// without one: the fix may change their type.
     rebinds: Vec<String>,
+    /// `reads:`: the read `from`'s name has later, and what the fix writes
+    /// for each.
+    reads: Option<(Vec<(K, String)>, String)>,
     /// The module's public names `to` uses, each as the linted file spells
     /// it (`sq` -> `geo.sq` under `use mylib.geo`).
     spell: Vec<(String, String)>,
@@ -117,6 +120,8 @@ fn declare(
     let rebinds = (declared_in(&from, true).into_iter())
         .filter(|n| to_names.contains(n))
         .collect();
+    let reads = (decl.reads.split_once("->"))
+        .and_then(|(r, w)| Some((library_lint::code(r.trim())?, w.trim().to_string())));
     let mut also = Vec::new();
     for line in decl.also.lines().filter(|l| !l.trim().is_empty()) {
         also.push(library_lint::code(line)?);
@@ -130,6 +135,7 @@ fn declare(
         labels,
         receiver,
         rebinds,
+        reads,
         decl,
         module: module.to_string(),
         from,
@@ -514,7 +520,8 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                 runs
             }
         };
-        let plain = vec![false; d.also.iter().fold(0, |n, p| n.max(p.len()))];
+        let reads = d.reads.iter().map(|r| &r.0);
+        let plain = vec![false; d.also.iter().chain(reads).fold(0, |n, p| n.max(p.len()))];
         let taken = taken.entry((&d.decl.name, d.decl.item)).or_default();
         // A hole whose parameter is written as a scalar type matches only
         // code of that type, where the checker's types are at hand.
@@ -596,15 +603,18 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
             let commented = (first..stop - 1).any(|i| {
                 file.src[toks[i].span.end as usize..toks[i + 1].span.start as usize].contains("//")
             });
-            let got: HashMap<&str, &str> = (d.decl.holes.iter().zip(&holes))
-                .filter_map(|(h, run)| {
-                    let (a, b) = (*run)?;
-                    Some((
-                        h.as_str(),
-                        &file.src[toks[a].span.start as usize..toks[b - 1].span.end as usize],
-                    ))
-                })
-                .collect();
+            let got_of = |holes: &[Option<(usize, usize)>]| -> HashMap<&str, &str> {
+                (d.decl.holes.iter().zip(holes))
+                    .filter_map(|(h, run)| {
+                        let (a, b) = (*run)?;
+                        Some((
+                            h.as_str(),
+                            &file.src[toks[a].span.start as usize..toks[b - 1].span.end as usize],
+                        ))
+                    })
+                    .collect()
+            };
+            let got = got_of(&holes);
             let column = |at: u32| {
                 let line = file.src[..at as usize].rfind('\n').map_or(0, |i| i + 1);
                 (line, at as usize - line)
@@ -661,6 +671,44 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                 format!("use `{}`", d.decl.suggests)
             };
             fixed.fix(fix_title, span, fix);
+            // `reads:` rewrites every later use of the name; one that is no
+            // such read (a write, `p.len`) leaves the code unfixed.
+            let reads = d.reads.as_ref().map(|(pat, write)| {
+                let m = Matcher {
+                    repeated: vec![false; d.decl.holes.len()],
+                    ..matcher(pat, &plain[..pat.len()], &plain[..pat.len()])
+                };
+                let (_, user) = (pat.iter()).find_map(|(_, t)| names.iter().find(|n| n.0 == *t))?;
+                let last = site[site.len() - 1];
+                let end = block_end(&spans.blocks, last);
+                let mut edits: Vec<(Span, String)> = Vec::new();
+                for j in (0..toks.len()).filter(|&j| {
+                    toks[j].span.start >= last.end
+                        && toks[j].span.end <= end
+                        && kinds[j] == K::Ident
+                        && text[j] == user
+                        && (j == 0 || kinds[j - 1] != K::Dot)
+                }) {
+                    if edits.last().is_some_and(|e| e.0.end > toks[j].span.start) {
+                        return None;
+                    }
+                    let (mut h, mut n) = (holes.clone(), names.clone());
+                    let c = candidates.iter().find(|c| {
+                        (h, n) = (holes.clone(), names.clone());
+                        c.0 == j && m.go(0, c.0, c.1, &mut h, &mut n)
+                    })?;
+                    edits.push((
+                        c.2,
+                        fill(write, &got_of(&h), &n, &d.spell, "", &HashMap::new()),
+                    ));
+                }
+                Some(edits)
+            });
+            match reads {
+                Some(None) => fixed = diag.clone(),
+                Some(Some(edits)) => fixed.fixes[0].edits.extend(edits),
+                None => {}
+            }
             if !d.rebinds.is_empty()
                 && !rebinding_holds(
                     file.src,
@@ -699,11 +747,7 @@ fn rebinding_holds(
     diag: &cpl_diag::Diagnostic,
 ) -> bool {
     let last = site[site.len() - 1];
-    let end = (blocks.iter())
-        .filter(|b| b.contains(&last))
-        .filter_map(|b| b.last().map(|s| s.end))
-        .max()
-        .unwrap_or(last.end);
+    let end = block_end(blocks, last);
     let text = |t: &Token| &src[t.span.start as usize..t.span.end as usize];
     let rest: Vec<&Token> = (toks.iter())
         .filter(|t| t.span.start >= last.end && t.span.end <= end)
@@ -721,6 +765,15 @@ fn rebinding_holds(
             })
         });
     !whole && crate::recheck::fix_keeps_verdict(src, diag)
+}
+
+/// Where the block holding `stmt` ends.
+fn block_end(blocks: &[Vec<Span>], stmt: Span) -> u32 {
+    (blocks.iter())
+        .filter(|b| b.contains(&stmt))
+        .filter_map(|b| b.last().map(|s| s.end))
+        .max()
+        .unwrap_or(stmt.end)
 }
 
 struct Matcher<'a> {
