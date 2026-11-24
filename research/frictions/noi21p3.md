@@ -7,14 +7,8 @@ backward BFS, with their queues, `head` cursors and visited arrays over every co
 for each query, are two std `reachable` calls on adjacency lists over the virtual tree's own
 domain `vt.K`. The extra edges are a typed `[k](u: V, v: V)` read, and all bounds are typed.
 
-Remaining gap: the virtual-tree node of a component is `vt.at.items.find(p => p.1 == c)!.0`.
-`vt.K.find(x => vt.at[x] == c)!` does not check on a member domain (E0203, sent to Core).
-
-## Dream
-
-```cp
-fn node(u: V) -> vt.K = vt.K.find(x => vt.at[x] == comp[u])!
-```
+The virtual-tree node of a component is `vt.K.find(x => vt.at[x] == comp[u])!`: a domain
+reached through a value has a named domain's members.
 
 Evidence: stress agrees on 30/30 cases against the v0.2 port and 30/30 against the accepted
-C++. On the max case the port takes 0.90 s and the C++ 0.78 s, with the same output.
+C++. On the max case the port takes 0.80 s and the C++ 0.70 s, with the same output.
