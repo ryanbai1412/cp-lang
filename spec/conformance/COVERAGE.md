@@ -7,14 +7,14 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3481 (3427 passing). Rules: 616.
+Cases: 3482 (3427 passing). Rules: 616.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 57 rules, 188 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 53 rules, 164 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 25 rules, 119 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 73 rules, 196 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 73 rules, 197 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 55 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 78 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 50 rules, 256 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -263,7 +263,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.4.11 [1+ 1-]: | `..` | all of the indexed dimension | only inside `[...]`: `grid[r, ..]`
 - R04.4.22 [2+ 1-]: The language's implicit conversions are this closed list, none user-extensible. Each appli...
 - R04.4.23 [1+ 0-]: **`T` to `?T`.** `u != from` with `from: ?V` compares `Some(u)` with `from`. Free.
-- R04.4.24 [2+ 1-]: .
+- R04.4.24 [2+ 2-]: .
 - R04.4.25 [1+ 2-]: . For a domain with a runtime count (`domain V = 1..=n`, `n: 1..=2e5`), a literal outside ...
 - R04.4.26 [2+ 0-]: **Cut range to piece:** a literal `j..i` whose ends are cuts, where a `Range<V>` is expect...
 - R04.4.27 [3+ 1-]: **Value to array fill:** a value `x: T` where `[D]T` is expected is the array over `D` wit...
@@ -986,7 +986,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0001 Runtime trap: 12 case(s)
 - R0101 Index out of range: 36 case(s)
 - R0102 Value outside a domain: 6 case(s)
-- R0201 Range store out of range: 10 case(s)
+- R0201 Range store out of range: 11 case(s)
 - R0202 Integer overflow: 48 case(s)
 - R0203 Division by zero: 4 case(s)
 - R0301 Unwrap of None: 7 case(s)
