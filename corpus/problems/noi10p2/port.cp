@@ -4,7 +4,7 @@
 //   (segments of L to R consecutive notes; enough exist) to maximise their total beauty, the
 //   sum of their notes; print it.
 // Solution: a chord from cut s is pre[e] - pre[s] for e in a window of cuts; a SparseTable of
-//   (prefix sum, cut) gives the best end of any window. A max-heap holds, per start, a window
+//   cuts, keeping the one of larger prefix sum, gives the best end of any window. A max-heap holds, per start, a window
 //   and its best chord; taking the top k times splits its window around the end used into
 //   two candidates. O((n + k) log n).
 // original: corpus/submissions/5670502.cpp
@@ -14,7 +14,7 @@ let (n, k) = read<(1..=5e5, 1..=5e5)>()
 let len = read<Range<1..=n>>()
 domain Note = 1..=n
 let pre = read<[Note]-1_000..=1_000>().scan(+)
-let peak = SparseTable(max, [Note.cuts] c => (pre[c], Int(c)))
+let peak = SparseTable((x, y) => if pre[y] > pre[x]: y else: x, [Note.cuts] c => c)
 
 // the best chord from cut `from` ending at a cut in `ends`
 struct Chord(val: Int, from: Int, ends: Range<Int>, at: Int)
@@ -22,8 +22,8 @@ impl Ord for Chord:
     fn lt(a, b) = a.val < b.val
 
 fn chord(from: Int, ends: Range<Int>) -> Chord:
-    let (p, at) = peak.fold(Note.cuts(ends.start)..=Note.cuts(ends.end - 1))
-    Chord(p - pre[Note.cuts(from)], from, ends, at)
+    let at = peak.fold(Note.cuts(ends.start)..=Note.cuts(ends.end - 1))
+    Chord(pre[at] - pre[Note.cuts(from)], from, ends, Int(at))
 
 var top = MaxHeap<Chord>()
 for s in 0..=n - len.start: top.push(chord(s, (s + len.start)..min(s + len.end, n + 1)))
