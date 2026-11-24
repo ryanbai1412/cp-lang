@@ -4019,7 +4019,7 @@ pub fn next_same<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]?D:
 /// traps: never
 /// example: `[0..5, 1..3, 4..8].outermost() == [0..5, 4..8]`
 pub fn outermost<D, S: Seq<Range<D>>>(self: S) -> List<Range<D>>:
-    var rs: List<Range<D>> = [r for r in self]
+    var rs: List<Range<D>> = List(self)
     rs.sort(by: r => r.start)
     // kept in place: a range stays when it reaches past the last kept one; one with the
     // same left end replaces that one when it is longer
@@ -4028,7 +4028,7 @@ pub fn outermost<D, S: Seq<Range<D>>>(self: S) -> List<Range<D>>:
         let r = rs[i]
         if w > 0 and rs[w - 1].start == r.start:
             if rs[w - 1].r < r.r: rs[w - 1] = r
-        else if w == 0 or rs[w - 1].r < r.r:
+        elif w == 0 or rs[w - 1].r < r.r:
             rs[w] = r
             w += 1
     while rs.len > w: rs.pop()

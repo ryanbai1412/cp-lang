@@ -57,8 +57,8 @@ pub struct Window<T, M>(op: M):
     pub fn push(mut self, x: T, at: ?Int = None):
         if let k = at:
             assert keys.len == q.len and oldkeys.len == olds.len, "`push(x, at:)` on a window with unkeyed elements"
-            if keys.len > 0: assert k >= keys[keys.len - 1], "`push(x, at:)` places never decrease"
-            else if head < oldkeys.len: assert k >= oldkeys[oldkeys.len - 1], "`push(x, at:)` places never decrease"
+            if keys.len > 0: assert k >= keys.last!, "`push(x, at:)` places never decrease"
+            elif head < oldkeys.len: assert k >= oldkeys.last!, "`push(x, at:)` places never decrease"
             keys.push(k)
         else:
             assert keys.len == 0 and oldkeys.len == 0, "`push(x)` on a keyed window needs `at:`"
