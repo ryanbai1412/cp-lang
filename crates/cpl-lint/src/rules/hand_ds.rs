@@ -1,17 +1,16 @@
 //! Data-structure algorithms written out by hand: merging the smaller set
-//! into the larger (`small_to_large_by_hand`), counting inversions with a
-//! Fenwick tree (`inversions_by_fenwick`) and an interval DP stepped by
+//! into the larger (`small_to_large_by_hand`) and an interval DP stepped by
 //! length (`interval_dp_by_length`).
 
 use crate::facts::Facts;
 use crate::std_fn;
 use crate::walk::{unparen, Visitor};
 use crate::Calls;
-use crate::{File, Finding, INTERVAL_DP_BY_LENGTH, INVERSIONS_BY_FENWICK, SMALL_TO_LARGE_BY_HAND};
+use crate::{File, Finding, INTERVAL_DP_BY_LENGTH, SMALL_TO_LARGE_BY_HAND};
 use cpl_diag::Span;
 use cpl_syntax::ast::*;
 
-use super::shapes::{compare, int, name, single, squash};
+use super::shapes::{compare, name, single, squash};
 use super::Warn;
 use cpl_diag::msgs::lint_rules;
 
@@ -155,54 +154,6 @@ impl HandDs<'_> {
         }
     }
 
-    /// `for i ..: inv += i - bit.prefix(x); bit.add(x, 1)`.
-    fn inversions(&mut self, stmt: &Stmt) {
-        let StmtKind::For { body, .. } = &stmt.kind else {
-            return;
-        };
-        let counted = body.stmts.iter().find_map(|s| {
-            let StmtKind::Assign {
-                op: AssignOp::Binary(BinOp::Add),
-                value,
-                ..
-            } = &s.kind
-            else {
-                return None;
-            };
-            let ExprKind::Binary {
-                op: BinOp::Sub,
-                rhs,
-                ..
-            } = &unparen(value).kind
-            else {
-                return None;
-            };
-            name(call(rhs, std_fn::PREFIX, self.calls())?.0)
-        });
-        let Some(bit) = counted else {
-            return;
-        };
-        let adds_one = body.stmts.iter().any(|s| {
-            call_stmt(s, &[std_fn::ADD], self.calls()).is_some_and(|(r, args)| {
-                name(r) == Some(bit)
-                    && match args {
-                        [_] => true,
-                        [_, one] => int(&one.value) == Some(1),
-                        _ => false,
-                    }
-            })
-        });
-        if !adds_one {
-            return;
-        }
-        self.warn_at(
-            &INVERSIONS_BY_FENWICK,
-            stmt.span,
-&lint_rules::INVERSIONS_BY_FENWICK, &[&bit],
-            "`inversions(xs)` is the number of pairs `i < j` with `xs[i] > xs[j]`, in \\(O(n \\log n)\\), with no compression or Fenwick tree".to_string(),
-        );
-    }
-
     /// `for len in ..: for l in ..: let r = l + len - 1`.
     fn interval_by_length(&mut self, stmt: &Stmt) {
         let StmtKind::For { pat, body, .. } = &stmt.kind else {
@@ -251,7 +202,6 @@ impl HandDs<'_> {
 
 impl Visitor for HandDs<'_> {
     fn stmt(&mut self, stmt: &Stmt) {
-        self.inversions(stmt);
         self.interval_by_length(stmt);
     }
 

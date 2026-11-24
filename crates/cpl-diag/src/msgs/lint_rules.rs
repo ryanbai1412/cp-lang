@@ -54,7 +54,6 @@ super::msgs! {
     INT_OVERFLOW_AT_BOUNDS = "L0306", "`{}` can leave `Int` (64 bits) at the declared bounds: with `{}` it does, and that traps";
     INT_SHIFT_OVERFLOW_AT_BOUNDS = "L0302", "this shift leaves `Int` when `{}` is above {}, and its bounds allow {}";
     INT_VERTEX_IDS = "L0533", "`{}` spans `0..={}`, but the ids that index it are read as `1..={}`: slot 0 is never an id";
-    INVERSIONS_BY_FENWICK = "L0569", "`{}` counts, for each item, the earlier ones above it: an inversion count by hand";
     IS_IN_COND_HEADER = "L0207", "`{}` headers bind with `let`, not `is`";
     LAST_VIA_LEN = "L0542", "`{}` reads the last element by its index";
     LCA_BY_HAND = "L0555", "climbing `{}` by `{}` until `{}` matches is the LCA, by hand";

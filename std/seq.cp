@@ -1227,6 +1227,7 @@ pub fn perm_pow<V>(p: [V]V, k: 0..) -> [V]V:
 /// traps: never
 /// example: `[3, 1, 2].inversions() == 2`
 /// example: `inversions([3, 1, 2]) == 2`
+@lint(inversions_by_fenwick, from: "var bit = Fenwick<C, Int>()\nvar inv = 0\nfor i in I:\n    let id = comp.index_of(self[i])\n    inv += i.ord - bit.prefix(id.r)\n    bit.add(id, 1)", to: "let inv = self.inversions()", holes: "C, I, comp")
 pub fn inversions<S: Seq<T>, T>(self: S) -> Int:
     var cur: List<T> = self.collect()
     let n = cur.len
