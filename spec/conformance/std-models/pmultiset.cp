@@ -2,9 +2,10 @@
 // input: "1 300\n"
 // model: PMultiset
 // model: PArena
+// model: PMultisetWithin
 // PMultisets sharing one PArena against sorted lists: seeded random with and without on a
 // random old multiset, with len, is_empty, count, == and cmp (both orders) checked against a
-// random other one; and a PArena<Int> against a plain list (alloc, get, len, is_empty,
+// random other one, plus the `within(ar)` view's walk, len, is_empty and Show; and a PArena<Int> against a plain list (alloc, get, len, is_empty,
 // reserve). Reads `seed n`; prints the first op that differs.
 use std.rand.{Rng}
 use std.persistent.{PArena, PMultiset}
@@ -48,6 +49,9 @@ for k in 0..n:
     let w = rng.int(0, ids.len - 1)
     if s.len != bs[i].len or s.is_empty != (bs[i].len == 0): bad = "op {k}: len {i}"
     elif s.count(ar, M(x)) != bs[i].count(z => z == x): bad = "op {k}: count {i} {x}"
+    elif [z.ord for z in s.within(ar).each()] != bs[i]: bad = "op {k}: within each {i}"
+    elif s.within(ar).len != bs[i].len or s.within(ar).is_empty != (bs[i].len == 0): bad = "op {k}: within len {i}"
+    elif "{s.within(ar)}" != " ".join(["{z}" for z in bs[i]]): bad = "op {k}: within show {i}"
     elif (s == t) != (bs[i] == bs[j]): bad = "op {k}: == {i} {j}"
     elif s.cmp(ar, t) != lex(bs[i], bs[j]): bad = "op {k}: cmp {i} {j}"
     elif s.cmp(ar, t, desc: true) != lex(bs[i].rev.collect(), bs[j].rev.collect()): bad = "op {k}: cmp desc {i} {j}"
