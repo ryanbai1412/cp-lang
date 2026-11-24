@@ -741,7 +741,7 @@ impl<'a> Lowerer<'a> {
             .filter_map(|g| {
                 let key = mono::range_ends_marker(g);
                 let ends = inferred.get(&key)?.clone();
-                Some((key, ends)).filter(|_| inferred.get(g) == Some(&GenArg::Ty(Ty::Int)))
+                (inferred.get(g) == Some(&GenArg::Ty(Ty::Int))).then_some((key, ends))
             })
             .collect();
         let fn_id = self.instantiate_fn(
