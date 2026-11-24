@@ -7,6 +7,7 @@
 //! projections and generators, and emits one concrete [`Program`] shared by
 //! `cpl-interp` and `cpl-codegen`.
 
+mod alias;
 mod anon_domain;
 mod cache;
 mod call;
@@ -850,10 +851,7 @@ struct Lowerer<'a> {
     pub(super) anon_product_domain_set: HashSet<DomainId>,
     anon_range_domains: HashMap<(ModId, String), DomainId>,
     aliases: Vec<(ModId, &'a ast::Type, u32)>,
-    /// The aliases whose right side is being resolved: inside one, its own
-    /// name means what the alias shadows (`type Mod = Mod<P>`).
     alias_stack: Vec<usize>,
-    /// What each alias's name shadows among its module's imports.
     alias_shadows: HashMap<usize, Sym>,
     gen_aliases: Vec<GenAliasTemplate<'a>>,
 
@@ -1272,11 +1270,7 @@ impl<'a> Lowerer<'a> {
                         self.path_to_mod.get(&mods_list[imp.module].path).copied()
                     {
                         if let Some(&sym) = self.mod_syms[target_mod].get(&imp.name) {
-                            if let Some(&Sym::Alias(aid)) = self.mod_syms[m].get(local_name) {
-                                if !matches!(sym, Sym::Alias(other) if other == aid) {
-                                    self.alias_shadows.insert(aid, sym);
-                                }
-                            }
+                            self.note_alias_shadow(m, local_name, sym);
                             self.mod_syms[m].entry(local_name.clone()).or_insert(sym);
                         }
                     }
@@ -2679,17 +2673,7 @@ impl<'a> Lowerer<'a> {
                     Ty::Enum(self.instantiate_enum(gid, gargs))
                 }
                 Some(Sym::Domain(id)) => Ty::Pos(id),
-                Some(Sym::Alias(id)) => {
-                    let (m, ty, offset) = self.aliases[id];
-                    let saved_mod = std::mem::replace(&mut self.cur_mod, m);
-                    let saved_offset = std::mem::replace(&mut self.offset, offset);
-                    self.alias_stack.push(id);
-                    let spec = self.resolve(ty, values);
-                    self.alias_stack.pop();
-                    self.cur_mod = saved_mod;
-                    self.offset = saved_offset;
-                    return spec;
-                }
+                Some(Sym::Alias(id)) => return self.in_alias(id, |lw, ty| lw.resolve(ty, values)),
                 Some(Sym::GenAlias(gaid)) => {
                     return self.gen_alias_spec(gaid, args, name.span, values)
                 }
@@ -4171,20 +4155,10 @@ impl<'a> Lowerer<'a> {
         }
         match self.get_sym(name) {
             Some(Sym::Domain(id)) => Some(id),
-            Some(Sym::Alias(aid)) => {
-                let (m, ty_ast, offset) = self.aliases[aid];
-                let sm = std::mem::replace(&mut self.cur_mod, m);
-                let so = std::mem::replace(&mut self.offset, offset);
-                self.alias_stack.push(aid);
-                let resolved = self.resolve_ty(ty_ast);
-                self.alias_stack.pop();
-                self.cur_mod = sm;
-                self.offset = so;
-                match resolved {
-                    Ty::Pos(id) => Some(id),
-                    _ => None,
-                }
-            }
+            Some(Sym::Alias(aid)) => match self.in_alias(aid, |lw, ty| lw.resolve_ty(ty)) {
+                Ty::Pos(id) => Some(id),
+                _ => None,
+            },
             _ => None,
         }
     }

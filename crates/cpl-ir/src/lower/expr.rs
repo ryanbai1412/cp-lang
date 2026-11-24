@@ -1196,13 +1196,7 @@ impl<'a> Lowerer<'a> {
             }
             Some(Sym::Alias(aid)) => {
                 let (m, ty_ast, offset) = self.aliases[aid];
-                let sm = std::mem::replace(&mut self.cur_mod, m);
-                let so = std::mem::replace(&mut self.offset, offset);
-                self.alias_stack.push(aid);
-                let resolved = self.resolve_ty(ty_ast);
-                self.alias_stack.pop();
-                self.cur_mod = sm;
-                self.offset = so;
+                let resolved = self.in_alias(aid, |lw, ty| lw.resolve_ty(ty));
                 if let Ty::Pos(d) = resolved {
                     return self.mk(ExprKind::DomainVal(d), Ty::DomainVal, span);
                 }

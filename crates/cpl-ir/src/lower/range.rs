@@ -314,15 +314,7 @@ impl<'a> Lowerer<'a> {
                         }));
                     }
                     if let Some(Sym::Alias(aid)) = self.get_sym(&name.text) {
-                        let (m, target, off) = self.aliases[aid];
-                        let saved_m = std::mem::replace(&mut self.cur_mod, m);
-                        let saved_off = std::mem::replace(&mut self.offset, off);
-                        self.alias_stack.push(aid);
-                        let res = self.range_info_from_ast(target);
-                        self.alias_stack.pop();
-                        self.cur_mod = saved_m;
-                        self.offset = saved_off;
-                        return res;
+                        return self.in_alias(aid, |lw, ty| lw.range_info_from_ast(ty));
                     }
                 }
                 None

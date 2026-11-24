@@ -6,6 +6,7 @@
 //! poisoned.
 
 pub(crate) mod advice;
+mod alias;
 mod arms;
 mod assoc;
 mod bounded_str;
