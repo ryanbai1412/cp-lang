@@ -47,6 +47,8 @@ Maximum non-empty subarray summary (Kadane monoid).
 
 \(O(1)\) construction.
 
+- `fn opt(self) -> Monoid<?T>` — \(O(1)\)
+
 ## `struct Group<T>(pub id: T, pub op: (T, T) -> T, pub inv: T -> T)`
 
 \(O(1)\) construction.
@@ -140,6 +142,7 @@ Marker type for the stock `flip` action.
 - `fn cmp<T: Ord>(self: T, other: T) -> Ordering` — \(O(1)\) plus one or two comparisons of `T`; The three-way comparison of `self` and `other` under `Ord`: `cmp(a, b)` or `a.cmp(b)`.
 - `fn minmax<T: Ord>(a: T, b: T) -> (T, T)` — \(O(1)\) plus one comparison of `T`; The pair `(min(a, b), max(a, b))` in the operands' own type: two `Cut`s give two `Cut`s.
 - `fn each<Ms>(..ms: Ms) -> Each<Ms>` — \(O(1)\) to build; each call costs the sum of its components; One operation per component of a tuple (positional) or record (named): `op((a0, a1), (b0, b1)) == (m0(a0, b0), m1(a1, b1))`.
+- `fn opt<T>(self: (T, T) -> T) -> Monoid<?T>` — \(O(1)\) to make; each call is one `op` call or none; \(O(1)\).
 
 ## Example
 
