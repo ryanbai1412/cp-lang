@@ -17,7 +17,7 @@ let pre = prefix(raisins)
 @memo
 fn pay(r1: Row, r2: Row, c1: Col, c2: Col) -> Int:
     if r1 == r2 and c1 == c2: return 0
-    let row_cuts = [pay(r1, r, c1, c2) + pay(r.next!, r2, c1, c2) for r in r1..r2]
-    let col_cuts = [pay(r1, r2, c1, c) + pay(r1, r2, c.next!, c2) for c in c1..c2]
-    (row_cuts + col_cuts).min()! + pre.fold(r1..=r2, c1..=c2)
+    let by_row = min(pay(r1, r, c1, c2) + pay(r.next!, r2, c1, c2) for r in r1..r2)
+    let by_col = min(pay(r1, r2, c1, c) + pay(r1, r2, c.next!, c2) for c in c1..c2)
+    min(by_row ?? by_col!, by_col ?? by_row!) + pre.fold(r1..=r2, c1..=c2)
 print(pay(Row.first!, Row.last!, Col.first!, Col.last!))
