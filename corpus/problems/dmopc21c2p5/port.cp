@@ -5,69 +5,44 @@
 //   result from exactly k < n operations, mod 998244352.
 // Solution: a set S of k used edges gives prod over nodes of deg_S(v)! permutations (only the
 //   order of the used edges at each node matters), so sum that over all |S| = k. Tree knapsack:
-//   memo0/memo1[v][i] (edge to the parent unused/used) over i used edges in v's subtree, with the
-//   used degree d of v as an extra dimension weighted by d!. Since 998244352 = 2^23 * 7 * 17
-//   divides 26!, d stops at 25: O(26 n^2).
+//   ways[d][i] counts the edge sets of v's subtree with i edges, d of them at v; weighting by
+//   d! (parent edge unused) or (d + 1)! (used) gives v's two answers for its parent. Since
+//   998244352 = 2^23 * 7 * 17 divides 26!, d stops at 26: O(26 n^2).
 // original: corpus/submissions/3968384.cpp
 
 const MOD = 998_244_352
-const MAX_DEG = 26
 type Z = Mod<MOD>
+// 26! is 0 mod 998244352 = 2^23 * 7 * 17, so a node using 26 or more edges adds nothing
+domain Deg = 0..=26
 
-let (n, k): (Int, Int) = read()
-domain V = 1..=n
-domain E = 0..(n - 1)
-domain Deg = 0..MAX_DEG
-
-let edges: [E](u: V, v: V) = read()
-let g = Graph<V, E>.undirected(edges)
-let tree = Rooted(u => g.out(u), V.first!)
+let n: 1..=3000 = read()
+let k: 0..n = read()
+domain Node = 1..=n
+let edges: [n - 1](u: Node, v: Node) = read()
+let tree = Rooted(Graph.undirected(edges), Node.first!)
 
 var fact: [Deg]Z = 1
 for d in Deg:
-    if d.ord > 0:
-        fact[d] = fact[Deg(d.ord - 1)] * Z(d.ord)
+    if let up = d.next: fact[up] = fact[d] * Z(up.ord)
 
-var memo0: [V]List<Z> = [V] _ => []
-var memo1: [V]List<Z> = [V] _ => []
-
+// by edges used in the subtree: the parent edge unused (`free`) or used and counted (`tied`)
+var free: [Node]List<Z> = []
+var tied: [Node]List<Z> = []
 for u in tree.at.rev:
-    let sz_u = tree.size(u)
+    let size = tree.size(u)
+    var ways: [Deg]List<Z> = [Deg] _ => [Z(0) for _ in 0..size]
+    ways[Deg.first!][0] = 1
+    var seen = 0
+    for c in tree.children(u):
+        var next: [Deg]List<Z> = [Deg] _ => [Z(0) for _ in 0..size]
+        for d in Deg:
+            for i in 0..=seen if ways[d][i] != 0:
+                for j in 0..free[c].len: next[d][i + j] += ways[d][i] * free[c][j]
+                if let up = d.next:
+                    for j in 1..tied[c].len: next[up][i + j] += ways[d][i] * tied[c][j]
+        seen += tree.size(c)
+        swap(mut ways, mut next)
+    free[u] = [sum(ways[d][i] * fact[d] for d in Deg) for i in 0..size]
+    tied[u] = [Z(0)] + [sum(ways[d][i] * fact[d] * Z(d.ord + 1) for d in Deg) for i in 0..size]
 
-    for par_used in 0..=1:
-        var cur: [Deg]List<Z> = [Deg] _ => [Z.zero for _ in 0..=sz_u]
-        cur[Deg(par_used)][par_used] = 1
-        var csum = par_used
-
-        for v in tree.children(u):
-            let sz_v = tree.size(v)
-            let c0 = memo0[v]
-            let c1 = memo1[v]
-            var nxt: [Deg]List<Z> = [Deg] _ => [Z.zero for _ in 0..=sz_u]
-            for d in Deg:
-                let di = d.ord
-                for i in 0..=csum:
-                    let stay = cur[d][i]
-                    let prev_d = if di > 0: cur[Deg(di - 1)][i] else: Z.zero
-                    if stay != 0 or prev_d != 0:
-                        let jmax = min(sz_v, sz_u - i)
-                        for j in 0..=jmax:
-                            nxt[d][i + j] += stay * c0[j]
-                            if j > 0:
-                                nxt[d][i + j] += prev_d * c1[j]
-            csum += sz_v
-            cur = nxt
-
-        var res: List<Z> = []
-        for i in 0..=sz_u:
-            let acc: Z = sum(cur[d][i] * fact[d] for d in Deg)
-            res.push(acc)
-        if par_used == 0:
-            memo0[u] = res
-        else:
-            memo1[u] = res
-
-if k <= n:
-    print(memo0[V.first!][k].v)
-else:
-    print(0)
+print(free[tree.root][k])

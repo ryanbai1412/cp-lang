@@ -8,57 +8,32 @@
 //   cells free), or the higher next run's water spills left into this one (covering its
 //   last K + 1 cells). O(N).
 // original: corpus/submissions/3949962.cpp
-
-let (n, k): (Int, Int) = read()
-domain I = 0..n
-let a: [I]Int = read()
-
 // Group equal adjacent elements into (val, cnt) runs.
-var run_val: List<Int> = []
-var run_cnt: List<Int> = []
-var idx = 0
-while idx < n:
-    let v = a[I(idx)]
-    let start = idx
-    while idx < n and a[I(idx)] == v:
-        idx += 1
-    run_val.push(v)
-    run_cnt.push(idx - start)
+// States: 0 = Neutral, 1 = Push, 2 = Pull.
+
+let n: 1..=1e6 = read()
+let k: 1..=n = read()
+let height: [n]0..=1e9 = read()
 
 let stride = 2 * k + 1
-fn blocks(x: Int) -> Int:
-    if x <= 0: 0 else: ceil_div(x, stride)
+fn pours(cells: Int) -> Int = if cells <= 0: 0 else: ceil_div(cells, stride)
 
-// States: 0 = Neutral, 1 = Push, 2 = Pull.
-domain Carry = 0..3
-var dp: [Carry]?Int = [Carry] _ => None
-dp[Carry(0)] = 0
-var prev_val = 0
-
-for ri in 0..run_val.len:
-    let x = run_val[ri]
-    let cnt = run_cnt[ri]
-    var ndp: [Carry]?Int = [Carry] _ => None
-
-    fn upd(st: Carry, val: Int):
-        if let cur = ndp[st]:
-            if val < cur: ndp[st] = val
-        else:
-            ndp[st] = val
-
-    fn relax(base: ?Int, rem: Int):
-        if let d = base:
-            upd(Carry(0), d + blocks(rem))
-            upd(Carry(1), d + blocks(rem + 1))
-            upd(Carry(2), d + blocks(rem - k - 1))
-
-    relax(dp[Carry(0)], cnt)
-    if prev_val > x:
-        relax(dp[Carry(1)], cnt - k - 1)
-    else:
-        relax(dp[Carry(2)], cnt + 1)
-
-    prev_val = x
-    dp = [Carry] s => ndp[s]
-
-print(dp[Carry(0)]!)
+// the fewest pours for the runs so far, by how the last run meets the next one
+var alone: ?Int = 0      // on its own
+var spills: ?Int = None  // its water also flows down into the next run
+var pulled: ?Int = None  // the next run's water also flows down over its last K + 1 cells
+var last: ?Int = None
+for run in height.runs():
+    let h = run[run.keys.first!]
+    // this run's cells left to cover, after its left neighbour's choice
+    var ways: List<(done: Int, cells: Int)> = []
+    if let d = alone: ways.push((d, run.len))
+    if let up = last and up > h:
+        if let d = spills: ways.push((d, run.len - k - 1))
+    elif let d = pulled:
+        ways.push((d, run.len + 1))
+    alone = min(w.done + pours(w.cells) for w in ways)
+    spills = min(w.done + pours(w.cells + 1) for w in ways)
+    pulled = min(w.done + pours(w.cells - k - 1) for w in ways)
+    last = h
+print(alone!)
