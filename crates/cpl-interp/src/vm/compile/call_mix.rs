@@ -370,18 +370,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     kind,
                     arg_off,
                 } => {
-                    let r_val = self.alloc_v();
-                    let src_i = arg_base_i + arg_off;
-                    self.emit(
-                        Op::BoxI {
-                            dst_v: r_val,
-                            src_i,
-                            kind,
-                        },
-                        span,
-                    );
-                    self.emit(Op::StorePlaceV { path, r_val }, span);
-                    self.emit(Op::ClearV { reg: r_val }, span);
+                    let r_val = arg_base_i + arg_off;
+                    self.emit(Op::StorePlaceI { path, r_val, kind }, span);
                 }
                 WriteBack::LocalI { dst, arg_off } => {
                     let src = arg_base_i + arg_off;

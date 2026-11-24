@@ -1049,10 +1049,22 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     PlaceRoot::LocalV(v) => &mut regs_v[v as usize],
                     PlaceRoot::Global(gid) => &mut self.globals[gid as usize],
                 };
-                regs_v[dst as usize] =
-                    with_place_cell(root, &pp.steps, regs_i, &keys, spans[cur_pc], |cell| {
-                        take_value(cell, spans[cur_pc])
-                    })?;
+                let span = spans[cur_pc];
+                regs_v[dst as usize] = match pp.steps.split_last() {
+                    // A one-`Int` struct packs its field: copy it out.
+                    Some((&PlaceStep::Field(0), prefix)) => {
+                        with_place_cell(root, prefix, regs_i, &keys, span, |cell| match cell {
+                            Value::Tuple(TupleVal::OneInt(x)) => Ok(Value::Int(*x)),
+                            _ => take_value(
+                                walk_place_mut(cell, &[PlaceStep::Field(0)], regs_i, &keys, span)?,
+                                span,
+                            ),
+                        })?
+                    }
+                    _ => with_place_cell(root, &pp.steps, regs_i, &keys, span, |cell| {
+                        take_value(cell, span)
+                    })?,
+                };
             }
             Op::CallVmFeed { spec } => {
                 let fc = &chunk.feed_calls[spec as usize];
