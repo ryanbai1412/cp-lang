@@ -498,34 +498,34 @@ fn sift_down<S: IndexedMut, T>(mut self: S, lo: Int, from: Int, m: Int, less: (T
         self.swap_idx(lo + i, lo + c)
         i = c
 
-/// \(O(\lvert a \rvert + \lvert b \rvert)\), \(O(\lvert a \rvert + \lvert b \rvert)\) memory. Stable merge of two sorted sequences (keyed by `by:`),
-/// taking from `a` before `b` on ties. Works on any `Indexed` sequences.
+/// \(O(1)\) per step, \(O(1)\) memory. Stable merge of two sorted sequences (keyed by `by:`),
+/// yielded lazily, taking from `self` before `b` on ties. Works on any `Positional` inputs
+/// (lists, slices, ranges, `.rev` and `.map` views); a generator input is `List(g)` first,
+/// since two generators can't be walked in step (R07.6.4).
 ///
 /// Within each input, input order is kept (stable).
 ///
-/// cost: \(O(\lvert a \rvert + \lvert b \rvert)\), \(O(\lvert a \rvert + \lvert b \rvert)\) memory
+/// cost: \(O(1)\) per step and \(O(1)\) memory, so a whole walk is \(O(\lvert a \rvert + \lvert b \rvert)\); `.collect()` keeps it as a `List`
 /// empty: `let e: List<Int> = []; merge_sorted([1, 2], e) == [1, 2] and merge_sorted(e, [3]) == [3]`
 /// ties: `merge_sorted([(1, 'a')], [(1, 'b')], by: .0) == [(1, 'a'), (1, 'b')]`
-/// order: non-decreasing by `by`; a new `List`, keyed from 0
+/// order: non-decreasing by `by`; a generator, rerun on every walk
 /// traps: never; unsorted inputs give an unspecified interleaving
 /// example: `merge_sorted([1, 3], [2, 3]) == [1, 2, 3, 3]`
-pub fn merge_sorted<A: Indexed, B: Indexed, T, K>(self: A, b: B, by: T -> K = x => x) -> List<T>:
-    var out: List<T> = []
+pub fn merge_sorted<A: Positional<T>, B: Positional<T>, T, K>(self: A, b: B, by: T -> K = x => x) -> yields T:
     var (i, j) = (0, 0)
     while i < self.len and j < b.len:
         if by(b.nth(j)) < by(self.nth(i)):
-            out.push(b.nth(j))
+            yield b.nth(j)
             j += 1
         else:
-            out.push(self.nth(i))
+            yield self.nth(i)
             i += 1
     while i < self.len:
-        out.push(self.nth(i))
+        yield self.nth(i)
         i += 1
     while j < b.len:
-        out.push(b.nth(j))
+        yield b.nth(j)
         j += 1
-    out
 
 /// \(O(1)\) per window. Borrowed length-`k` sliding slice views, left to right. Nothing when `k > self.len`.
 ///
@@ -2423,7 +2423,7 @@ pub fn kway_merge<S: Indexed, T>(lists: List<S>) -> List<T>:
         var next: List<List<T>> = []
         var i = 0
         while i + 1 < parts.len:
-            next.push(merge_sorted(parts[i], parts[i + 1]))
+            next.push(merge_sorted(parts[i], parts[i + 1]).collect())
             i += 2
         if i < parts.len: next.push(parts[i].clone())
         parts = next

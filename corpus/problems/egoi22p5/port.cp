@@ -23,6 +23,6 @@ for _ in 0..s:
     if cut > 0:
         let lo = (0..cut).first_true(i => free[i] > free[cut]) ?? cut
         let hi = (cut..n).first_true(i => free[i] >= free[cut - 1]) ?? n
-        let merged = free[lo..cut].merge_sorted(free[cut..hi])
+        let merged = free[lo..cut].merge_sorted(free[cut..hi]).collect()
         for k in 0..merged.len: free[lo + k] = merged[k]
 print(free.rev)

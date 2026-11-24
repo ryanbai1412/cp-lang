@@ -18,6 +18,6 @@ let a: [0..n]Int = read()
 let (top, half) = (a[n - 1], n / 2)
 let ds = [top - a[n - 2], a[n - 2] / (half - 1)].sorted().deduped()
 let ok = ds.count(d =>
-    [d * i for i in 0..half].merge_sorted([top - d * i for i in (0..n - half).rev]) == a
+    (0..half).map(i => d * i).merge_sorted((0..n - half).rev.map(i => top - d * i)) == a
 )
 print(comb.fact(n - half - 2) * comb.fact(half) * ok)

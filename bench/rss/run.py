@@ -53,6 +53,7 @@ CASES = {
     "sieve": lambda: "10000000\n",  # primality only: no smallest-factor table
     "enum_grid": lambda: "4000\n",  # 16e6 cells: 16 MB at a byte, 64 MB at four
     "max_k": lambda: ints(500_000),  # the 30 largest of 5e5: O(k) beside the array (cf2165c)
+    "merge_sorted": lambda: f"1000000\n{' '.join(str(3 * i) for i in range(10**6))}\n{' '.join(str(3 * i + 1) for i in range(10**6))}\n",  # two sorted 1e6 arrays walked merged: no third list (cf2262c)
 }
 
 

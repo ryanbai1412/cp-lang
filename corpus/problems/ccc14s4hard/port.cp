@@ -57,7 +57,7 @@ fn add(lo: Int, hi: Int, t: Int):
         else:
             for s in from..to: tint[Strip.nth(s)] += t
             let (hit, rest) = order[b].partition(s => from <= s.ord and s.ord < to)
-            order[b] = hit.merge_sorted(rest, by: s => -tint[s])
+            order[b] = hit.merge_sorted(rest, by: s => -tint[s]).collect()
             heights(b)
         measure(b)
 
