@@ -52,8 +52,10 @@ has_target() { rustc --print target-libdir --target "$target" 2>/dev/null | xarg
 # RUSTUP_TOOLCHAIN overrides rust-toolchain.toml, and then rustup never adds its targets.
 if ! has_target; then
     echo "build-wasm: adding the $target target" >&2
-    rustup target add "$target" >&2 && has_target || {
-        echo "build-wasm: the $target target is not installed; run: rustup target add $target" >&2
+    # Into the toolchain that builds: a plain add can go to rustup's default instead.
+    toolchain=$(basename "$(rustc --print sysroot)")
+    rustup target add --toolchain "$toolchain" "$target" >&2 && has_target || {
+        echo "build-wasm: the $target target is not installed; run: rustup target add --toolchain $toolchain $target" >&2
         exit 1
     }
 fi

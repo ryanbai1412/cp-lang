@@ -611,7 +611,11 @@ class Tail:
         # RUSTUP_TOOLCHAIN overrides rust-toolchain.toml, and then rustup never adds its targets.
         if not libdir():
             try:
-                self.run(["rustup", "target", "add", "wasm32-unknown-unknown"], cwd=ROOT, capture_output=True)
+                # Into the toolchain that builds: a plain add can go to rustup's default instead.
+                sysroot = self.run(["rustc", "--print", "sysroot"], cwd=ROOT, capture_output=True, text=True)
+                toolchain = Path(sysroot.stdout.strip()).name if sysroot.returncode == 0 else ""
+                self.run(["rustup", "target", "add", *(["--toolchain", toolchain] if toolchain else []),
+                          "wasm32-unknown-unknown"], cwd=ROOT, capture_output=True)
             except OSError:
                 pass
         if not libdir():
