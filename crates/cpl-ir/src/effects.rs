@@ -6,7 +6,7 @@ use crate::pushed::{closure_has_type, summarize, FnSummary};
 use crate::walk::{self, Effects as Stores};
 use crate::{
     Arg, BinOp, Block, Builtin, Cast, ClosureId, CmpOp, Dim, Expr, ExprKind, FnId, Iter, Mutation,
-    PlaceKind, Program, Stmt, Ty, UnOp,
+    Place, PlaceKind, Program, Stmt, Ty, UnOp,
 };
 use std::collections::BTreeSet;
 
@@ -212,7 +212,7 @@ pub fn trap_free_stmts(
     let block_free = |b: &Block| trap_free_stmts(&b.stmts, vec, traps, call_ok);
     stmts.iter().all(|stmt| match stmt {
         Stmt::Let(_, init) => init.as_ref().is_none_or(free),
-        Stmt::Assign(place, _, val) => matches!(place.kind, PlaceKind::Local(_)) && free(val),
+        Stmt::Assign(place, _, val) => written_without_trap(place, &free) && free(val),
         Stmt::Expr(e) => match &e.kind {
             ExprKind::Mutate(Mutation::Push, place, args) if matches!(place.kind, PlaceKind::Local(s) if s == vec) => {
                 args.iter().all(free)
@@ -234,6 +234,19 @@ pub fn trap_free_stmts(
         Stmt::Continue(None) => true,
         _ => false,
     })
+}
+
+/// A local, or a key's slot in a local map, which a write inserts: neither can trap.
+fn written_without_trap(place: &Place, free: &dyn Fn(&Expr) -> bool) -> bool {
+    match &place.kind {
+        PlaceKind::Local(_) => true,
+        PlaceKind::Index(base, keys) => {
+            matches!(base.kind, PlaceKind::Local(_))
+                && matches!(base.ty, Ty::HashMap(..) | Ty::Map(..))
+                && keys.iter().all(free)
+        }
+        _ => false,
+    }
 }
 
 /// True when `e` cannot trap: no checked index, call, unwrap or division by

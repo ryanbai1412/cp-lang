@@ -44,6 +44,19 @@ fn a_mod_sum_over_a_generator_builds_no_list() {
 }
 
 #[test]
+fn a_fn_counting_into_a_local_map_builds_no_list() {
+    let cpp = cpp(concat!(
+        "fn distinct(xs: List<Int>) -> Int:\n",
+        "    var m = HashMap<Int, Int>()\n",
+        "    for x in xs: m[x] += 1\n",
+        "    m.len\n",
+        "let n: 1..=1000 = read()\n",
+        "print(distinct(i % 7 for i in 0..n))\n",
+    ));
+    assert!(cpp.contains("cpl_sink_distinct"), "{cpp}");
+}
+
+#[test]
 fn a_consumer_calling_a_fn_that_may_trap_keeps_the_list() {
     let consumer = |body: &str| {
         cpp(&format!(
