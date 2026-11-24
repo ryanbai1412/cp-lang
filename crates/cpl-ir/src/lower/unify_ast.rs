@@ -53,6 +53,13 @@ impl<'a> Lowerer<'a> {
                         other => GenArg::Ty(other.clone()),
                     });
             }
+            ast::TypeKind::Named { name, args }
+                if self.alias_trait(&name.text, tpl_mod).is_some() =>
+            {
+                if let Some(tid) = self.alias_trait(&name.text, tpl_mod) {
+                    self.unify_alias(tid, args, concrete, gen_names, env);
+                }
+            }
             ast::TypeKind::Named { name, args } => match (name.text.as_str(), concrete) {
                 (
                     "List" | "Iter",
@@ -116,91 +123,57 @@ impl<'a> Lowerer<'a> {
                             }
                         }
                     } else if let Some((_, actual_args)) = &self.structs[*sid].origin_gen {
-                        if args.len() == 2
-                            && matches!(name.text.as_str(), "EdgedNext" | "WeightedNext")
-                            && actual_args.len() >= 2
-                        {
-                            match &actual_args[0] {
-                                GenArg::Ty(t) => {
-                                    self.unify_ast_ty(&args[0], t, tpl_mod, gen_names, env)
+                        // Also allow structural subtype `Group<T>` -> `Monoid<T>` -> `Semigroup<T>`:
+                        // their first generic arg is `T`!
+                        for (pa, actual) in args.iter().zip(actual_args) {
+                            match actual {
+                                GenArg::Ty(t) | GenArg::Sized(t, _) => {
+                                    self.unify_ast_ty(pa, t, tpl_mod, gen_names, env)
                                 }
-                                GenArg::Domain(d) => self.unify_ast_ty(
-                                    &args[0],
-                                    &Ty::Pos(*d),
-                                    tpl_mod,
-                                    gen_names,
-                                    env,
-                                ),
-                                _ => {}
-                            }
-                            let field_name = if name.text == "EdgedNext" { "e" } else { "w" };
-                            if let GenArg::Ty(Ty::Record(rfields)) = &actual_args[1] {
-                                if let Some((_, fty)) =
-                                    rfields.iter().find(|(fnm, _)| fnm == field_name)
-                                {
-                                    self.unify_ast_ty(&args[1], fty, tpl_mod, gen_names, env);
+                                GenArg::Domain(d) => {
+                                    self.unify_ast_ty(pa, &Ty::Pos(*d), tpl_mod, gen_names, env)
                                 }
-                            }
-                        } else {
-                            // Also allow structural subtype `Group<T>` -> `Monoid<T>` -> `Semigroup<T>`:
-                            // their first generic arg is `T`!
-                            for (pa, actual) in args.iter().zip(actual_args) {
-                                match actual {
-                                    GenArg::Ty(t) | GenArg::Sized(t, _) => {
-                                        self.unify_ast_ty(pa, t, tpl_mod, gen_names, env)
-                                    }
-                                    GenArg::Domain(d) => {
-                                        self.unify_ast_ty(pa, &Ty::Pos(*d), tpl_mod, gen_names, env)
-                                    }
-                                    GenArg::Int(v) => {
-                                        if let ast::TypeKind::Named { name: n, args: a } = &pa.kind
-                                        {
-                                            if a.is_empty() && gen_names.contains(&n.text) {
-                                                env.entry(n.text.clone())
-                                                    .or_insert(GenArg::Int(*v));
-                                            }
-                                        } else if let ast::TypeKind::Value(e) = &pa.kind {
-                                            if let ast::ExprKind::Name(n) = &e.kind {
-                                                if gen_names.contains(n) {
-                                                    env.entry(n.clone()).or_insert(GenArg::Int(*v));
-                                                }
+                                GenArg::Int(v) => {
+                                    if let ast::TypeKind::Named { name: n, args: a } = &pa.kind {
+                                        if a.is_empty() && gen_names.contains(&n.text) {
+                                            env.entry(n.text.clone()).or_insert(GenArg::Int(*v));
+                                        }
+                                    } else if let ast::TypeKind::Value(e) = &pa.kind {
+                                        if let ast::ExprKind::Name(n) = &e.kind {
+                                            if gen_names.contains(n) {
+                                                env.entry(n.clone()).or_insert(GenArg::Int(*v));
                                             }
                                         }
                                     }
-                                    GenArg::RuntimeInt(gid) => {
-                                        if let ast::TypeKind::Named { name: n, args: a } = &pa.kind
-                                        {
-                                            if a.is_empty() && gen_names.contains(&n.text) {
-                                                env.entry(n.text.clone())
-                                                    .or_insert(GenArg::RuntimeInt(*gid));
-                                            }
+                                }
+                                GenArg::RuntimeInt(gid) => {
+                                    if let ast::TypeKind::Named { name: n, args: a } = &pa.kind {
+                                        if a.is_empty() && gen_names.contains(&n.text) {
+                                            env.entry(n.text.clone())
+                                                .or_insert(GenArg::RuntimeInt(*gid));
                                         }
                                     }
-                                    GenArg::Op(op) => {
-                                        if let ast::TypeKind::Named { name: n, args: a } = &pa.kind
-                                        {
-                                            if a.is_empty() && gen_names.contains(&n.text) {
-                                                env.entry(n.text.clone())
-                                                    .or_insert(GenArg::Op(*op));
-                                            }
+                                }
+                                GenArg::Op(op) => {
+                                    if let ast::TypeKind::Named { name: n, args: a } = &pa.kind {
+                                        if a.is_empty() && gen_names.contains(&n.text) {
+                                            env.entry(n.text.clone()).or_insert(GenArg::Op(*op));
                                         }
                                     }
-                                    GenArg::Range(lo, hi) => {
-                                        if let ast::TypeKind::Named { name: n, args: a } = &pa.kind
-                                        {
-                                            if a.is_empty() && gen_names.contains(&n.text) {
-                                                env.entry(n.text.clone())
-                                                    .or_insert(GenArg::Range(*lo, *hi));
-                                            }
+                                }
+                                GenArg::Range(lo, hi) => {
+                                    if let ast::TypeKind::Named { name: n, args: a } = &pa.kind {
+                                        if a.is_empty() && gen_names.contains(&n.text) {
+                                            env.entry(n.text.clone())
+                                                .or_insert(GenArg::Range(*lo, *hi));
                                         }
                                     }
-                                    GenArg::OptRange(lo, hi) => {
-                                        if let ast::TypeKind::Named { name: n, args: a } = &pa.kind
-                                        {
-                                            if a.is_empty() && gen_names.contains(&n.text) {
-                                                env.entry(n.text.clone())
-                                                    .or_insert(GenArg::OptRange(*lo, *hi));
-                                            }
+                                }
+                                GenArg::OptRange(lo, hi) => {
+                                    if let ast::TypeKind::Named { name: n, args: a } = &pa.kind {
+                                        if a.is_empty() && gen_names.contains(&n.text) {
+                                            env.entry(n.text.clone())
+                                                .or_insert(GenArg::OptRange(*lo, *hi));
                                         }
                                     }
                                 }
@@ -229,18 +202,6 @@ impl<'a> Lowerer<'a> {
                     if is_domain_indexed && trait_takes_pos {
                         if let [Dim::Pos(d) | Dim::Sym(d)] = dims.as_slice() {
                             self.unify_ast_ty(&args[0], &Ty::Pos(*d), tpl_mod, gen_names, env);
-                        }
-                        if args.len() == 2
-                            && matches!(name.text.as_str(), "EdgedNext" | "WeightedNext")
-                        {
-                            let field_name = if name.text == "EdgedNext" { "e" } else { "w" };
-                            if let Some(Ty::Record(rfields)) = elem.seq_elem() {
-                                if let Some((_, fty)) =
-                                    rfields.iter().find(|(fnm, _)| fnm == field_name)
-                                {
-                                    self.unify_ast_ty(&args[1], fty, tpl_mod, gen_names, env);
-                                }
-                            }
                         }
                     } else if args.len() == 1 {
                         self.unify_ast_ty(&args[0], elem, tpl_mod, gen_names, env);
@@ -422,7 +383,7 @@ impl<'a> Lowerer<'a> {
     }
 }
 
-fn bare_name(t: &ast::Type) -> Option<&str> {
+pub(super) fn bare_name(t: &ast::Type) -> Option<&str> {
     match &t.kind {
         ast::TypeKind::Named { name, args } if args.is_empty() => Some(&name.text),
         _ => None,

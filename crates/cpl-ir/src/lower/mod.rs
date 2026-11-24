@@ -61,6 +61,7 @@ mod stmt;
 mod sum_product;
 mod type_call;
 mod typo;
+mod unify_alias;
 mod unify_ast;
 mod views;
 mod yields;

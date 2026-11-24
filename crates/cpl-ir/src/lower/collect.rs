@@ -354,7 +354,7 @@ impl<'a> Lowerer<'a> {
                 body,
                 supers,
                 alias,
-                ..
+                bounds,
             } => {
                 let tid = self.traits.len();
                 let alias_of = alias.then(|| {
@@ -410,6 +410,15 @@ impl<'a> Lowerer<'a> {
                         .collect(),
                     unimplemented,
                     alias_of,
+                    alias_tys: if *alias {
+                        supers.iter().collect()
+                    } else {
+                        Vec::new()
+                    },
+                    alias_where: (bounds.iter())
+                        .filter_map(|b| Some((b.name.text.strip_prefix("Self.")?, &b.traits)))
+                        .flat_map(|(assoc, traits)| traits.iter().map(move |t| (assoc, t)))
+                        .collect(),
                 });
                 self.mod_syms[m].insert(name.text.clone(), Sym::Trait(tid));
             }

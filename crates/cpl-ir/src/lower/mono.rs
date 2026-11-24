@@ -135,6 +135,11 @@ pub(super) struct TraitInfo<'a> {
     pub unimplemented: Option<String>,
     /// `trait Both = Sh + Nm`: implemented exactly when each of these is.
     pub alias_of: Option<Vec<String>>,
+    /// An alias's traits with their args: `Next<V>` of `trait WNext<V, W> = Next<V>`.
+    pub alias_tys: Vec<&'a ast::Type>,
+    /// An alias's bounds on associated types, each the associated type's name and one bound:
+    /// `where Self.Arc: Weighted<W>`.
+    pub alias_where: Vec<(&'a str, &'a ast::Type)>,
 }
 
 pub(super) struct ImplInfo<'a> {
