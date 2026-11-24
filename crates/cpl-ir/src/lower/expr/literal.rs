@@ -204,32 +204,9 @@ impl<'a> Lowerer<'a> {
             // which is checked when the domain's size is known: at run time
             // (or statically for a plain enum domain `[Side]T`).
             Some(ty @ Ty::Array { dims, elem })
-                if matches!(
-                    dims[..],
-                    [Dim::Pos(_) | Dim::Bound(_) | Dim::Enum(_) | Dim::Int]
-                ) =>
+                if let [axis] = dims[..]
+                    && let Some((dim, len)) = self.literal_axis(axis, items.len(), span) =>
             {
-                let (dim, len) = match dims[0] {
-                    Dim::Pos(d) => (
-                        DimSpec::Pos(d),
-                        self.mk(ExprKind::DomainLen(d), Ty::Int, span),
-                    ),
-                    Dim::Bound(d) => {
-                        let len = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
-                        let one = self.mk(ExprKind::Int(1), Ty::Int, span);
-                        let gaps = ExprKind::Binary(BinOp::Add, Box::new(len), Box::new(one));
-                        (DimSpec::Bound(d), self.mk(gaps, Ty::Int, span))
-                    }
-                    Dim::Enum(e) => {
-                        let n = self.enums[e].variants.len() as i64;
-                        (DimSpec::Enum(e), self.mk(ExprKind::Int(n), Ty::Int, span))
-                    }
-                    Dim::Int => {
-                        let n = self.mk(ExprKind::Int(items.len() as i64), Ty::Int, span);
-                        (DimSpec::Int(Box::new(n.clone())), n)
-                    }
-                    Dim::Sym(_) | Dim::IntFrom(_) => unreachable!("matched above"),
-                };
                 // `domain V = 0..3` writes its count, so `[V]Int = [0, 2]` is
                 // as wrong as `[0..3]Int = [0, 2]` (R04.8.10).
                 let cells = match dims[0] {
@@ -332,5 +309,31 @@ impl<'a> Lowerer<'a> {
                 self.mk(ExprKind::Tuple(values), Ty::list(elem), span)
             }
         }
+    }
+
+    /// One literal array axis as a dimension and its length, for the axes a
+    /// literal can fill.
+    fn literal_axis(&mut self, axis: Dim, items: usize, span: Span) -> Option<(DimSpec, Expr)> {
+        Some(match axis {
+            Dim::Pos(d) => (
+                DimSpec::Pos(d),
+                self.mk(ExprKind::DomainLen(d), Ty::Int, span),
+            ),
+            Dim::Bound(d) => {
+                let len = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
+                let one = self.mk(ExprKind::Int(1), Ty::Int, span);
+                let gaps = ExprKind::Binary(BinOp::Add, Box::new(len), Box::new(one));
+                (DimSpec::Bound(d), self.mk(gaps, Ty::Int, span))
+            }
+            Dim::Enum(e) => {
+                let n = self.enums[e].variants.len() as i64;
+                (DimSpec::Enum(e), self.mk(ExprKind::Int(n), Ty::Int, span))
+            }
+            Dim::Int => {
+                let n = self.mk(ExprKind::Int(items as i64), Ty::Int, span);
+                (DimSpec::Int(Box::new(n.clone())), n)
+            }
+            Dim::Sym(_) | Dim::IntFrom(_) => return None,
+        })
     }
 }
