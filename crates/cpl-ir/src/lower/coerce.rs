@@ -78,10 +78,10 @@ impl<'a> Lowerer<'a> {
             }
             // §124: tuple and record element-wise coercion (`(Int, Range<D.bounds>)` -> `(Int, Range<D>)`).
             (Ty::Tuple(_), Ty::Tuple(_)) | (Ty::Record(_), Ty::Record(_))
-                if want.same_shape(&e.ty) =>
+                if want.same_shape(&e.ty)
+                    && let (Some(want_items), Some(got_items)) = (want.fields(), e.ty.fields()) =>
             {
-                let (want_ty, want_items) = (want.clone(), want.fields().expect("tuple"));
-                let got_items = e.ty.fields().expect("tuple");
+                let want_ty = want.clone();
                 if let ExprKind::Tuple(elems) = e.kind {
                     let mut out_elems = Vec::with_capacity(elems.len());
                     for (el, w) in elems.into_iter().zip(&want_items) {
@@ -315,10 +315,12 @@ impl<'a> Lowerer<'a> {
             (Ty::List(elem), Ty::Range(of))
                 if elem == of && matches!(e.kind, ExprKind::Range { .. }) =>
             {
-                let ExprKind::Range { lo, hi } = e.kind else {
-                    unreachable!()
-                };
-                Ok(self.range_list(*lo, *hi, (**elem).clone(), span))
+                match e.kind {
+                    ExprKind::Range { lo, hi } => {
+                        Ok(self.range_list(*lo, *hi, (**elem).clone(), span))
+                    }
+                    kind => Err(Expr { kind, ..e }),
+                }
             }
             // A struct that walks (a std view such as `Mapped`) where a `List`/`Seq` is
             // wanted is the walk of its `Seq` impl (R07.1.2).
