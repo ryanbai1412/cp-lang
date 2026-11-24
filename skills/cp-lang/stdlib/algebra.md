@@ -43,6 +43,12 @@ Maximum non-empty subarray summary (Kadane monoid).
 - `@get fn try_best(self) -> ?Int` — \(O(1)\); The largest sum of a non-empty contiguous run of the summarized elements, or `None` for the empty summary.
 - `fn monoid() -> Monoid<MaxSub>` — \(O(1)\); `Monoid(MaxSub.zero, MaxSub.join)`, for `SegTree` and `fold`.
 
+## `struct MaxSubAt<D>(has: Bool, pub best: Int, pub at: Range<D>, total: Int, pre: Int, pre_end: Cut<D>, suf: Int, suf_start: Cut<D>)`
+
+`MaxSub` that also knows where its best subarray is: build one per element with `MaxSubAt.of(i, a[i])` and join with `+` (or `MaxSubAt.join`), associative with identity `MaxSubAt<D>.zero` in \(O(1)\).
+
+Fields: `has: Bool,`, `total: Int,`, `pre: Int,`, `pre_end: Cut<D>,`, `suf: Int,`, `suf_start: Cut<D>,`.
+
 ## `struct Semigroup<T>(pub op: (T, T) -> T)`
 
 \(O(1)\) construction.

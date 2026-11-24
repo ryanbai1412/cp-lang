@@ -245,6 +245,94 @@ impl Mul<Int> for MaxSub:
 impl Reversible for MaxSub:
     fn rev(self) -> MaxSub = MaxSub(has, best, total, suf, pre)
 
+/// `MaxSub` that also knows where its best subarray is: build one per element with
+/// `MaxSubAt.of(i, a[i])` and join with `+` (or `MaxSubAt.join`), associative with identity
+/// `MaxSubAt<D>.zero` in \(O(1)\). The same summary answers range queries in a `SegTree`.
+///
+/// ties: the widest best subarray, then the leftmost; `join` resolves ties itself, so every
+/// grouping of the same elements gives the same `at`
+pub struct MaxSubAt<D>(
+    has: Bool,
+    pub best: Int,
+    pub at: Range<D>,
+    total: Int,
+    pre: Int,
+    pre_end: Cut<D>,
+    suf: Int,
+    suf_start: Cut<D>,
+):
+    /// The summary of no elements: the identity of `join`. It has no best subarray.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain D = 0..3; MaxSubAt<D>.zero.try_at == None`
+    @get pub fn zero() -> MaxSubAt<D>:
+        let c = D.cuts.nth(0)
+        MaxSubAt(false, 0, c..c, 0, 0, c, 0, c)
+
+    /// The summary of the single element `v` at key `i`: its best subarray is `i` alone.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain D = 0..3; MaxSubAt.of(D(1), -3).try_best == Some(-3)`
+    pub fn of(i: D, v: Int) -> MaxSubAt<D> = MaxSubAt(true, v, i.l..i.r, v, v, i.r, v, i.l)
+
+    /// The summary of `a`'s elements followed by `b`'s (the same as `a + b`); the best
+    /// subarray may cross the seam.
+    ///
+    /// cost: \(O(1)\)
+    /// ties: widest, then leftmost
+    /// traps: never (overflow wraps in release, traps in debug)
+    /// example: `domain D = 0..3; MaxSubAt.join(MaxSubAt.of(D(0), 1), MaxSubAt.of(D(1), 0)).at == D(0).l..D(1).r`
+    pub fn join(a: MaxSubAt<D>, b: MaxSubAt<D>) -> MaxSubAt<D>:
+        if not a.has: return b
+        if not b.has: return a
+        var (best, at) = (a.best, a.at)
+        if wider_best(b.best, b.at, best, at): (best, at) = (b.best, b.at)
+        let cross = a.suf_start..b.pre_end
+        if wider_best(a.suf + b.pre, cross, best, at): (best, at) = (a.suf + b.pre, cross)
+        let longer_pre = a.total + b.pre >= a.pre
+        let longer_suf = a.suf + b.total >= b.suf
+        MaxSubAt(
+            true,
+            best,
+            at,
+            a.total + b.total,
+            if longer_pre: a.total + b.pre else: a.pre,
+            if longer_pre: b.pre_end else: a.pre_end,
+            if longer_suf: a.suf + b.total else: b.suf,
+            if longer_suf: a.suf_start else: b.suf_start,
+        )
+
+    /// The largest sum of a non-empty contiguous run, or `None` for the empty summary.
+    ///
+    /// cost: \(O(1)\)
+    /// empty: `None`
+    /// traps: never
+    /// example: `domain D = 0..3; MaxSubAt<D>.zero.try_best == None`
+    @get pub fn try_best(self) -> ?Int = if has: Some(best) else: None
+
+    /// Where the best subarray is (widest, then leftmost), or `None` for the empty summary.
+    ///
+    /// cost: \(O(1)\)
+    /// empty: `None`
+    /// traps: never
+    /// example: `domain D = 0..3; MaxSubAt.of(D(2), 5).try_at == Some(D(2).l..D(2).r)`
+    @get pub fn try_at(self) -> ?Range<D> = if has: Some(at) else: None
+
+    /// `Monoid(MaxSubAt<D>.zero, MaxSubAt.join)`, for `SegTree` and `fold`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain D = 0..3; MaxSubAt<D>.monoid().id.try_best == None`
+    pub fn monoid() -> Monoid<MaxSubAt<D>> = Monoid(MaxSubAt<D>.zero, (a, b) => MaxSubAt.join(a, b))
+
+impl<D> Add for MaxSubAt<D>:
+    fn add(a, b) = MaxSubAt.join(a, b)
+
+fn wider_best<D>(s: Int, r: Range<D>, t: Int, q: Range<D>) -> Bool =
+    (s, r.r.ord - r.l.ord, q.l.ord) > (t, q.r.ord - q.l.ord, r.l.ord)
+
 /// \(O(1)\) construction. Associative operation without an identity, for non-empty folds
 /// (`SparseTable`, `DisjointSparseTable`, `SegTree.try_fold`).
 pub struct Semigroup<T>(pub op: (T, T) -> T):

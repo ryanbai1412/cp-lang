@@ -127,8 +127,8 @@ Evidence: program `spec/conformance/std-seq/seq-u35-majority.cp`.
 ### seq/U69: the maximum-sum segment and where it is
 Need: Codeforces 2066F: the widest maximum-sum subarray, as a range.
 Design: a `MaxSub` fold that returns its range; belongs to range structures, listed here because contestants look for it here.
-Milestone: M1-differentiating. Status: gap
-Evidence: the 2066F port hand-writes `widest_max`; `MaxSub` folds the sum only.
+Milestone: M1-differentiating. Status: supported
+Evidence: program `spec/conformance/std-algebra/max-sub-at-widest-then-leftmost.cp`: `a.items.map((i, v) => MaxSubAt.of(i, v)).fold(+)` gives `.best` and `.at`, ties widest then leftmost, whole or split.
 
 ## Folds and scans
 
