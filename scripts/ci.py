@@ -105,10 +105,18 @@ def time_priorities(mine: list[tuple[str, str]], times: dict, floor: float = 10.
                    f"priority = {min(100, round(s))}\n" for s, b, t in long)
 
 
-def test_times(logs: list[str], floor: float = 2.0) -> str:
+def test_times(logs: list[str], floor: float = 1.0) -> str:
     """The record time_shard deals by, from nextest's result lines in CI test parts' logs:
-    each test at or over `floor` s, and the mean of the rest as `default_s`."""
-    secs = {f"{m[2]} {m[3]}": float(m[1]) for log in logs for m in NEXTEST_LINE.finditer(log)}
+    each test's mean over the logs that ran it (a test's time swings with what runs beside
+    it), kept at or over `floor` s, and the mean of the rest as `default_s`."""
+    runs: dict[str, list[float]] = {}
+    for log in logs:
+        once: dict[str, float] = {}
+        for m in NEXTEST_LINE.finditer(log):  # a failure's line repeats in the summary
+            once.setdefault(f"{m[2]} {m[3]}", float(m[1]))
+        for t, sec in once.items():
+            runs.setdefault(t, []).append(sec)
+    secs = {t: sum(v) / len(v) for t, v in runs.items()}
     short = [s for s in secs.values() if s < floor]
     long = sorted(((t, round(s, 1)) for t, s in secs.items() if s >= floor), key=lambda ts: (-ts[1], ts[0]))
     return json.dumps({"default_s": round(sum(short) / len(short), 2) if short else 1.0,

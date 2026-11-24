@@ -419,6 +419,11 @@ class TailTest(unittest.TestCase):
                          '[[profile.gate.overrides]]\nfilter = "binary_id(b) & test(=t2)"\npriority = 30\n')
         self.assertEqual(ci.time_priorities([("b", "short")], times), "")
 
+    def test_test_times_averages_a_test_over_the_runs_and_counts_a_failure_once(self) -> None:
+        a = "    FAIL [  10.000s] (1/2) b slow\n    PASS [   0.100s] (2/2) b t\n    FAIL [  10.000s] (1/2) b slow\n"
+        b = "    PASS [  30.000s] (1/2) b slow\n    PASS [   0.300s] (2/2) b t\n"
+        self.assertEqual(json.loads(ci.test_times([a, b])), {"default_s": 0.2, "tests": {"b slow": 20.0}})
+
     def test_test_times_reads_nextests_result_lines(self) -> None:
         log = ("2026-11-24T17:40:00.1Z         PASS [ 145.827s] (165/241) cpl-cli::judges every_x_3\n"
                "2026-11-24T17:40:01.1Z         PASS [   0.300s] (166/241) b t\n"
