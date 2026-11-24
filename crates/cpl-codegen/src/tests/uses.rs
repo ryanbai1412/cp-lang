@@ -204,3 +204,28 @@ fn binding_a_lent_optional_copies_nothing() {
     assert!(crate::tests::cpp(source).contains("cpl::Lent<"));
     assert_eq!(copy_reasons(source), [] as [&str; 0]);
 }
+
+#[test]
+fn each_copy_a_library_call_makes_is_listed_at_its_fn() {
+    let src = concat!(
+        "use std.bag.{AugSortedBag}\n",
+        "var s: AugSortedBag<Int, Str> = AugSortedBag((x, y) => x + y, \"\", k => Str(k))\n",
+        "s.add(3)\n",
+        "let lo: Int = read()\n",
+        "print(s.fold_between(lo, 9))\n",
+    );
+    let whats: Vec<String> = crate::explain_copies(&lower(src))
+        .into_iter()
+        .map(|(_, what, _)| what)
+        .collect();
+    assert_eq!(
+        whats,
+        [
+            "a read in AugSortedBag.fold_between",
+            "a read in AugSortedBag.fold_between",
+            "a read in AugSortedBag.fold_from",
+            "a read in AugSortedBag.fold_upto",
+            "a read in AugSortedBag.sub"
+        ]
+    );
+}

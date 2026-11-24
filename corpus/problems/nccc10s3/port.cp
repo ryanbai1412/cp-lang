@@ -1,6 +1,7 @@
 // Source: Mock CCC '22 2 S3 (Kaguya Wants to Analyze the Academy Anthem),
 //   https://dmoj.ca/problem/nccc10s3
 // limits: 5000 ms, 1024 MB
+// copies: 1
 // Problem: a lowercase string s (|s| <= 2e5) and q <= 2e5 queries (t, k), total |t| <= 2e5:
 //   print the 1-based start of the k-th occurrence of t in s, left to right, or -1 if there
 //   are fewer than k.

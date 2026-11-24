@@ -28,6 +28,9 @@ CRATE_RULES = """
 
 
 class DebtRatchetTest(unittest.TestCase):
+    def test_every_measured_by_key_names_a_counter(self) -> None:
+        self.assertEqual(sorted(set(dr.MEASURED_BY) - set(dr.COUNTERS)), [])
+
     def _make_repo(self, root: Path) -> None:
         (root / "crates/demo/src").mkdir(parents=True)
         (root / "crates/cpl-cli/tests/pending").mkdir(parents=True)

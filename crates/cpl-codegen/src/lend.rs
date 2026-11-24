@@ -943,8 +943,20 @@ pub(crate) fn entry_binding(ty: &Ty, cpp: &str, var: &str, e: &str) -> String {
 /// what it reads) or a closure's by-value capture (closure id, name).
 pub(crate) enum Copied {
     Let(cpl_diag::Span, &'static str),
+    /// A copy in a library fn, at the span of the call that runs it, with
+    /// the fn and the name it binds: two in one call are two copies.
+    Library(cpl_diag::Span, String, &'static str),
     Capture(usize, String, &'static str),
 }
+
+/// C++ that names a place as is, `self.rows` or `sa.sa`.
+fn is_place_text(text: &str) -> bool {
+    text.chars()
+        .all(|c| c.is_alphanumeric() || c == '_' || c == '.')
+}
+
+/// Why `return self.f` copies.
+const GIVEN: &str = "a part of a value that still holds it, given by value";
 
 /// Why `Some(xs)` of a place copies.
 const SOME_COPY: &str = "an optional holds its own value";
@@ -1013,9 +1025,10 @@ impl Emitter<'_> {
         if self.ref_bound.contains(&slot) || !holds_heap(self.program, &inner.ty) {
             return None;
         }
-        self.copies.retain(
-            |c| !matches!(c, Copied::Let(span, why) if *span == inner.span && *why == SOME_COPY),
-        );
+        self.copies.retain(|c| {
+            !matches!(c, Copied::Let(span, why) | Copied::Library(span, _, why)
+                if *span == inner.span && *why == SOME_COPY)
+        });
         Some(format!("{}(std::move({}))", self.ty(ty), self.names[slot]))
     }
 
@@ -1028,7 +1041,7 @@ impl Emitter<'_> {
                 ExprKind::Field(..) | ExprKind::Payload(..) | ExprKind::Index(..)
             ) && rooted_in_a_name(inner));
         if place && holds_heap(self.program, &inner.ty) && !moved(text) {
-            self.copies.push(Copied::Let(inner.span, SOME_COPY));
+            self.note_copy(inner.span, SOME_COPY, None);
         }
     }
 
@@ -1046,10 +1059,11 @@ impl Emitter<'_> {
                 | ExprKind::Unwrap(..)
         );
         if place && holds_heap(self.program, &e.ty) {
-            self.copies.push(Copied::Let(
+            self.note_copy(
                 e.span,
                 "a later operand may change it, and operands are read left to right",
-            ));
+                None,
+            );
         }
     }
 
@@ -1070,7 +1084,7 @@ impl Emitter<'_> {
         );
         let written = arg.span.start >= e.span.start && arg.span.end < e.span.end;
         if place && written && holds_heap(self.program, &arg.ty) {
-            self.copies.push(Copied::Let(e.span, why));
+            self.note_copy(e.span, why, None);
         }
     }
 
@@ -1115,7 +1129,43 @@ impl Emitter<'_> {
             return;
         }
         let why = self.copy_reason(slot, init, tail, whole);
-        self.copies.push(Copied::Let(init.span, why));
+        self.note_copy(init.span, why, Some(slot));
+    }
+
+    /// Records the copy `return place;` makes when the fn or block gives a
+    /// part of a named value it does not own by value: `return self.id;`.
+    pub(crate) fn note_given_copy(&mut self, value: &Expr, text: &str, is_return: bool) {
+        let by_ref = self.give_ref || (is_return && self.closure_id.is_none() && self.lends_result);
+        let mut value = value;
+        while let (ExprKind::Builtin(_, args), true) = (&value.kind, is_place_text(text)) {
+            match args.as_slice() {
+                [arg] => value = arg,
+                _ => break,
+            }
+        }
+        let part = matches!(
+            value.kind,
+            ExprKind::Field(..) | ExprKind::Payload(..) | ExprKind::Index(..)
+        ) && rooted_in_a_name(value);
+        let named = is_place_text(text) || text.starts_with("cpl::at(");
+        if part && named && !by_ref && holds_heap(self.program, &value.ty) && !moved(text) {
+            self.note_copy(value.span, GIVEN, None);
+        }
+    }
+
+    /// Records a copy at `span`; one in a library fn also names the fn and
+    /// the local `slot` it binds, so `cpl explain` lists each copy once.
+    fn note_copy(&mut self, span: cpl_diag::Span, why: &'static str, slot: Option<usize>) {
+        let Some(id) = self.fn_id.filter(|_| self.in_library()) else {
+            return self.copies.push(Copied::Let(span, why));
+        };
+        let name = slot.map(|s| self.locals()[s].name.clone());
+        let fun = &self.program.fn_display[id];
+        let what = match name.filter(|n| !n.is_empty()) {
+            Some(name) => format!("`{name}` in {fun}"),
+            None => format!("a read in {fun}"),
+        };
+        self.copies.push(Copied::Library(span, what, why));
     }
 
     /// Whether local `slot` of the fn being emitted is a `cpl::Lent`
@@ -1204,6 +1254,7 @@ pub(crate) fn copy_sites(
         .iter()
         .filter_map(|c| match c {
             Copied::Let(span, why) => Some((*span, String::new(), *why)),
+            Copied::Library(..) => None,
             Copied::Capture(cid, name, why) => {
                 Some((*at.get(cid)?, format!("`{name}` captured by value"), *why))
             }
@@ -1211,6 +1262,13 @@ pub(crate) fn copy_sites(
         .collect();
     sites.sort_by_key(|(span, what, why)| (span.start, what.clone(), *why));
     sites.dedup_by(|a, b| a == b);
+    // Each library copy is its own site in the C++, though several share
+    // the call that runs them: `return id` twice in one fn is two copies.
+    sites.extend(copies.iter().filter_map(|c| match c {
+        Copied::Library(span, what, why) => Some((*span, what.clone(), *why)),
+        _ => None,
+    }));
+    sites.sort_by_key(|(span, what, why)| (span.start, what.clone(), *why));
     sites
 }
 

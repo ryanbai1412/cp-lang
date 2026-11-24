@@ -352,6 +352,33 @@ fn every_program_makes_the_copies_its_header_says() {
 }
 
 #[test]
+fn explain_gives_one_reason_per_copy_a_library_call_makes() {
+    let src = repo().join("spec/conformance/std-bag/aug-sorted-bag-set-match-brute.cp");
+    let out = std::env::temp_dir().join(format!("cpl-explain-bag-{}.cpp", std::process::id()));
+    let built = cpl_cli::run(&["build", src.to_str().unwrap(), "-o", out.to_str().unwrap()]);
+    assert_eq!(built.code, 0);
+    let cpp = std::fs::read_to_string(&out).unwrap();
+    let _ = std::fs::remove_file(&out);
+    let copies = deep_copies(&cpp) + optional_copies(&cpp);
+    assert!(copies > 0);
+    assert_eq!(explained_copies(&src), copies);
+}
+
+#[test]
+fn a_part_returned_by_value_is_a_copy_and_by_reference_is_not() {
+    let by_value = "std::vector<ll> f(const S& self) {\n    return self.xs;\n}\n";
+    let lent = "const std::vector<ll>& f(const S& self) {\n    return self.xs;\n}\n";
+    let local = "std::vector<ll> f() {\n    std::vector<ll> xs;\n    return xs;\n}\n";
+    assert_eq!(deep_copies(by_value), 1);
+    assert_eq!(deep_copies(lent), 0);
+    assert_eq!(deep_copies(local), 0);
+    let element = "std::string f(const S& self, ll t) {\n    return self.agg[t];\n}\n";
+    assert_eq!(deep_copies(element), 1);
+    let after_lambda = "ll f(ll u) {\n  auto t = [&]() -> std::vector<ll> {\n    return v;\n  }();\n  return need[u];\n}\n";
+    assert_eq!(deep_copies(after_lambda), 0);
+}
+
+#[test]
 fn a_place_passed_to_a_fn_that_moves_it_into_a_struct_is_a_sunk_copy() {
     let cpp = "inline H wrap(std::vector<ll> xs) {\n  return H{std::move(xs)};\n}\nvoid solve() {\n  s = (*wrap(a).xs).size() + wrap(f(a)).xs.size() + wrap(std::move(a)).xs.size();\n}\n";
     assert_eq!(sunk_copies(cpp), 1);

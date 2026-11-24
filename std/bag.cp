@@ -1742,7 +1742,11 @@ pub struct AugSortedBag<K, T>:
         n
 
     fn fold_from(self, start: Int, lo: K, strict: Bool) -> T:
-        var (t, res) = (start, id)
+        var t = start
+        while t >= 0 and not (keys[t] > lo or (not strict and keys[t] == lo)): t = rs[t]
+        if t < 0: return id
+        var res = op(leaf(keys[t]), self.sub(rs[t]))
+        t = ls[t]
         while t >= 0:
             if keys[t] > lo or (not strict and keys[t] == lo):
                 res = op(op(leaf(keys[t]), self.sub(rs[t])), res)
@@ -1751,7 +1755,11 @@ pub struct AugSortedBag<K, T>:
         res
 
     fn fold_upto(self, start: Int, hi: K, strict: Bool) -> T:
-        var (t, res) = (start, id)
+        var t = start
+        while t >= 0 and not (keys[t] < hi or (not strict and keys[t] == hi)): t = ls[t]
+        if t < 0: return id
+        var res = op(self.sub(ls[t]), leaf(keys[t]))
+        t = rs[t]
         while t >= 0:
             if keys[t] < hi or (not strict and keys[t] == hi):
                 res = op(res, op(self.sub(ls[t]), leaf(keys[t])))

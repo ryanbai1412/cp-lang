@@ -2512,7 +2512,7 @@ def evaluate(actual: dict, baseline: dict) -> tuple[list[str], list[str], list[s
 # Files besides this script that define what a counter counts. The bound a
 # counter reads (read_only_copies.rs) is not one: raising it is the bump.
 MEASURED_BY = {
-    "cpp_copies": ("crates/cpl-cli/tests/support/cpp_counts.rs",),
+    "cpp_deep_copies": ("crates/cpl-cli/tests/support/cpp_counts.rs",),
     "cpp_optional_copies": ("crates/cpl-cli/tests/support/cpp_counts.rs",),
     "cpp_std_functions": ("crates/cpl-cli/tests/support/cpp_counts.rs",),
 }

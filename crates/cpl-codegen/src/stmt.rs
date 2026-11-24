@@ -791,6 +791,7 @@ impl<'p> Emitter<'p> {
                         }
                     }
                     self.last_use_call = false;
+                    self.note_given_copy(value, &text, is_return);
                     if self.give_ref && matches!(stmt, Stmt::Give(_)) {
                         text = format!("({text})");
                     }

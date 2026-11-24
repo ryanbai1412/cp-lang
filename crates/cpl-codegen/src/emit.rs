@@ -165,6 +165,8 @@ pub(crate) struct Emitter<'p> {
     /// The `Do` block being written gives a place it does not own: its
     /// lambda returns `decltype(auto)`, so each `give` is written `return (x);`.
     pub give_ref: bool,
+    /// The fn being written returns `const T&`: its `return` of a place lends it.
+    pub lends_result: bool,
     /// `m.get(k) ?? d` expressions read only within their full expression,
     /// written as `cpl::map_or` (see [`Emitter::mark_read_in_place`]).
     pub read_in_place: BTreeSet<usize>,
@@ -307,6 +309,7 @@ impl<'p> Emitter<'p> {
             lent_fields,
             last_use_call: false,
             give_ref: false,
+            lends_result: false,
             read_in_place: BTreeSet::new(),
             moved_entry: BTreeSet::new(),
             moves_last: false,
@@ -574,7 +577,8 @@ impl<'p> Emitter<'p> {
     }
 
     /// `ll gcd(ll a, ll b)`. Call after [`Emitter::enter`].
-    fn signature(&self, f: &Function) -> String {
+    /// The fn's C++ signature, and whether it returns `const T&`.
+    fn signature(&self, f: &Function) -> (String, bool) {
         let id = self.fn_id.expect("a fn");
         let mut named = crate::scope::named_params(&f.body, f.params.len());
         named.retain(|slot| !self.devirt.dead_local(Some(id), *slot));
@@ -646,10 +650,13 @@ impl<'p> Emitter<'p> {
             .collect();
         if self.devirt.returns_lambda(id) {
             ret = "auto".into();
-        } else if self.lends_its_result(id, f, &by_ref) {
+        }
+        let lends = !self.devirt.returns_lambda(id) && self.lends_its_result(id, f, &by_ref);
+        if lends {
             ret = format!("const {ret}&");
         }
-        format!("{prefix}{ret} {}({})", fn_name(&f.name), params.join(", "))
+        let signature = format!("{prefix}{ret} {}({})", fn_name(&f.name), params.join(", "));
+        (signature, lends)
     }
 
     /// A fn that gives a field of a parameter it takes by `const&` (or an element of one) as
@@ -934,7 +941,8 @@ impl<'p> Emitter<'p> {
                 crate::Part::Yours
             };
             self.enter(Some(id), &f.body, f.params.len());
-            let signature = self.signature(f);
+            let (signature, lends) = self.signature(f);
+            self.lends_result = lends;
             let hook = program.is_hook(id);
             protos.push(Proto {
                 name: fn_name(&f.name),
