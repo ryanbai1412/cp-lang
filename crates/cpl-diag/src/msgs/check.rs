@@ -300,7 +300,6 @@ super::msgs! {
     HAS_TYPE_BOOL_WHICH_2 = MISSING_IMPL, "`{}` has type `Bool`, which does not implement `Show`; use `print(yes({}))`";
     HAS_TYPE_WHICH_DOES = MISSING_IMPL, "`{}` has type `{}`, which does not implement `Show`";
     NOT_EXACTLY_F64_WRITE = TYPE_MISMATCH, "`{}` is not exactly an F64; write `F64({})` to round it";
-    OUT_V_READS_TABLE = UNKNOWN_FIELD, "`.out(v)` reads a table of neighbour lists, not a `{}`";
     CAN_T_MODIFIED_WHILE = BAD_MEMO, "`{}` can't be modified while `@memo` fn `{}` captures it";
     CODE_AFTER_LEND_CHANGES = BAD_PROJECTION, "code after the `lend` changes `self`, so `{}` takes `mut self`";
     DECLARED_LENDS_WITHOUT_MUT = BAD_PROJECTION, "`{}` is declared `lends` without `mut`, so it can't `lend mut`";
