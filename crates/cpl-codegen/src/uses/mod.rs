@@ -386,6 +386,26 @@ impl crate::emit::Emitter<'_> {
             && self.source_change(slot, init, tail).is_none()
     }
 
+    /// The call a `let` of `slot` holds in place when `init` calls a fn that returns
+    /// `cpl::Held<T>` and [`Emitter::lends`] would let it read a lent result: `text` untaken.
+    pub(crate) fn held_call(
+        &mut self,
+        slot: usize,
+        init: &Expr,
+        tail: Option<&Tail>,
+        text: &str,
+    ) -> Option<String> {
+        let ExprKind::Call(callee, _) = init.kind else {
+            return None;
+        };
+        let root = *self.held_roots.get(&callee)?;
+        let call = text.strip_suffix(".take()")?.to_string();
+        self.lent_roots.insert(callee, root);
+        let lends = self.lends(slot, init, tail);
+        self.lent_roots.remove(&callee);
+        lends.then_some(call)
+    }
+
     /// Whether the `let` of `slot` from an entry of `map` (`m.get(k)`, or
     /// `m.get(k) ?? d`), a `value` once found, can point into `map` instead
     /// of copying the entry: the general rule of [`Emitter::lends`], asked

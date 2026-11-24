@@ -191,7 +191,10 @@ impl<'p> Emitter<'p> {
             } else {
                 "::prog::"
             };
-            let call = format!("{home}{name}({})", texts.join(", "));
+            let mut call = format!("{home}{name}({})", texts.join(", "));
+            if this.held_roots.contains_key(&id) {
+                call.push_str(".take()");
+            }
             ran.extend(site);
             if ran.is_empty() {
                 Code::primary(call)

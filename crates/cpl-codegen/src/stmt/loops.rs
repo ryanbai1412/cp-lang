@@ -611,6 +611,15 @@ impl<'p> Emitter<'p> {
                     None => false,
                 };
                 let untouched = untouched_by_body(seq);
+                // A fn that returns `cpl::Held<T>` may lend a part of its argument: the walk
+                // reads it in place while the body leaves that argument be.
+                let held_from = match &seq.kind {
+                    ExprKind::Call(f, args) => match self.held_roots.get(f).map(|&r| &args[r]) {
+                        Some(cpl_ir::Arg::Value(arg)) => untouched_by_body(arg),
+                        _ => false,
+                    },
+                    _ => false,
+                };
                 let lent = self.lent_coalesce(seq).filter(|(from, _)| match from {
                     crate::lend::Lender::Get(m, _) => untouched_by_body(m),
                     crate::lend::Lender::Named(_) => true,
@@ -700,6 +709,14 @@ impl<'p> Emitter<'p> {
                     };
                     if untouched {
                         self.line(out, &format!("const {holder_ty}& {held} = {seq_text};"));
+                    } else if let Some(call) =
+                        seq_text.strip_suffix(".take()").filter(|_| held_from)
+                    {
+                        self.line(
+                            out,
+                            &format!("const cpl::Held<{holder_ty}> {held}_h = {call};"),
+                        );
+                        self.line(out, &format!("const {holder_ty}& {held} = *{held}_h;"));
                     } else {
                         self.line(out, &format!("{holder_ty} {held} = {seq_text};"));
                         if held_root(crate::uses::in_place(seq)).is_some()

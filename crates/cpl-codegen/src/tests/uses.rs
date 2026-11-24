@@ -265,7 +265,7 @@ fn binding_a_lent_optional_copies_nothing() {
 }
 
 #[test]
-fn each_copy_a_library_call_makes_is_listed_at_its_fn() {
+fn a_library_fold_that_gives_its_identity_on_an_empty_range_lists_no_copy() {
     let src = concat!(
         "use std.bag.{AugSortedBag}\n",
         "var s: AugSortedBag<Int, Str> = AugSortedBag((x, y) => x + y, \"\", k => Str(k))\n",
@@ -273,17 +273,12 @@ fn each_copy_a_library_call_makes_is_listed_at_its_fn() {
         "let lo: Int = read()\n",
         "print(s.fold_between(lo, 9))\n",
     );
+    assert!(super::cpp(src).contains("return cpl::held_ref(self.id);"));
     let whats: Vec<String> = crate::explain_copies(&lower(src))
         .into_iter()
         .map(|(_, what, _)| what)
         .collect();
-    assert_eq!(
-        whats,
-        [
-            "a read in AugSortedBag.fold_between",
-            "a read in AugSortedBag.fold_of"
-        ]
-    );
+    assert_eq!(whats, [] as [&str; 0]);
 }
 
 #[test]

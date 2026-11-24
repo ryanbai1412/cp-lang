@@ -11,6 +11,9 @@ mod layout;
 pub mod lowered;
 pub(crate) mod reach;
 
+/// The parameter a `cpl::Held<T>` result may lend from, and the fn's by-reference parameters.
+type HeldRoot = (usize, Vec<usize>);
+
 /// The closures no code that runs makes (see [`reach::Reach`]).
 pub(crate) fn unreached_closures(program: &Program) -> std::collections::BTreeSet<usize> {
     let same: Vec<usize> = (0..program.closures.len()).collect();
@@ -175,6 +178,11 @@ pub(crate) struct Emitter<'p> {
     pub lends_result: bool,
     /// The fns that return `const T&`, each with the parameter whose place it lends.
     pub lent_roots: BTreeMap<cpl_ir::FnId, usize>,
+    /// The fns that return `cpl::Held<T>` (see [`Emitter::holds_its_result`]), each with the
+    /// parameter the place it may lend is on.
+    pub held_roots: BTreeMap<cpl_ir::FnId, usize>,
+    /// The current fn's held root and its by-reference parameters, when it returns `cpl::Held<T>`.
+    pub holds_result: Option<(usize, Vec<usize>)>,
     /// The current fn's cold tail branches (see [`crate::frame`]), and its
     /// C++ return type for the lambda each is emitted as.
     pub cold: BTreeMap<crate::frame::At, crate::frame::Inputs>,
@@ -360,6 +368,8 @@ impl<'p> Emitter<'p> {
             give_ref: false,
             lends_result: false,
             lent_roots: BTreeMap::new(),
+            held_roots: BTreeMap::new(),
+            holds_result: None,
             cold: BTreeMap::new(),
             cold_ret: String::new(),
             give_owned: None,
@@ -709,9 +719,10 @@ impl<'p> Emitter<'p> {
         crate::frame::cold_suffixes(&fns[0], &fns[1..])
     }
 
-    /// The fn's C++ signature, and the parameter whose place it lends
-    /// when it returns `const T&`.
-    fn signature(&self, f: &Function) -> (String, Option<usize>) {
+    /// The fn's C++ signature, the parameter whose place it lends when it
+    /// returns `const T&`, and the held root and by-reference parameters when
+    /// it returns `cpl::Held<T>`.
+    fn signature(&self, f: &Function) -> (String, Option<usize>, Option<HeldRoot>) {
         let id = self.fn_id.expect("a fn");
         let mut named = crate::scope::named_params(&f.body, f.params.len());
         named.retain(|slot| !self.devirt.dead_local(Some(id), *slot));
@@ -791,8 +802,46 @@ impl<'p> Emitter<'p> {
         if lends.is_some() {
             ret = format!("const {ret}&");
         }
+        let holds = match (lends, self.devirt.returns_lambda(id)) {
+            (None, false) => self.holds_its_result(id, f, &by_ref),
+            _ => None,
+        };
+        if holds.is_some() {
+            ret = format!("cpl::Held<{ret}>");
+        }
         let signature = format!("{prefix}{ret} {}({})", fn_name(&f.name), params.join(", "));
-        (signature, lends)
+        (signature, lends, holds.map(|root| (root, by_ref)))
+    }
+
+    /// A fn some of whose returns give a part of one parameter it takes by reference, as rule 4
+    /// lends, while the others build a value (`if lo >= hi: return m.id` before a fold that
+    /// computes) returns `cpl::Held<T>`: the part by pointer, a built value by value. The caller
+    /// reads it in place where it only reads it, and otherwise takes it, moving a built value
+    /// and copying a part, so no reference outlives a temporary. The answer is the parameter.
+    fn holds_its_result(&self, id: cpl_ir::FnId, f: &Function, by_ref: &[usize]) -> Option<usize> {
+        if !matches!(f.ret, Ty::List(_) | Ty::Str) || self.caches_on_read(&f.ret) {
+            return None;
+        }
+        let ret_layout = self.elem_layout(cpl_ir::ElemLoc::FnRet(id));
+        let (mut root, mut built) = (None, false);
+        for e in crate::lend::returned_places(&f.body)? {
+            let slot = (e.ty == f.ret && self.expr_elem_layout(e) == ret_layout)
+                .then(|| self.lent_place_root(e, by_ref))
+                .flatten();
+            match slot {
+                Some(slot) if root.is_some_and(|r| r != slot) => return None,
+                Some(slot) => root = Some(slot),
+                None => built = true,
+            }
+        }
+        // A part only a conditional's arm gives is copied into its value either way.
+        let mut alone = false;
+        walk::deep_stmts(&f.body, &mut |s| {
+            if let Stmt::Return(Some(e)) = s {
+                alone |= root.is_some() && self.lent_place_root(e, by_ref) == root;
+            }
+        });
+        root.filter(|_| built && alone)
     }
 
     /// A fn each of whose returns gives a part of one parameter it takes by reference, a
@@ -823,7 +872,7 @@ impl<'p> Emitter<'p> {
 
     /// The by-reference parameter `e` is a part of: a field or element path on it, or what a
     /// fn in `lent_roots` lends from one; never the parameter itself.
-    fn lent_place_root(&self, e: &Expr, by_ref: &[usize]) -> Option<usize> {
+    pub(crate) fn lent_place_root(&self, e: &Expr, by_ref: &[usize]) -> Option<usize> {
         use cpl_ir::{ExprKind, NarrowLayout};
         let mut at = e;
         loop {
@@ -1110,11 +1159,16 @@ impl<'p> Emitter<'p> {
                 crate::Part::Yours
             };
             self.enter(Some(id), &f.body, f.params.len());
-            let (signature, root) = self.signature(f);
+            let (signature, root, held) = self.signature(f);
             self.lends_result = root.is_some();
             if let Some(slot) = root {
                 self.lent_roots.insert(id, slot);
             }
+            if let Some((slot, _)) = &held {
+                self.held_roots.insert(id, *slot);
+                self.need("held");
+            }
+            self.holds_result = held;
             self.cold = self.cold_branches(id, f, root.is_some());
             let hook = program.is_hook(id);
             protos.push(Proto {

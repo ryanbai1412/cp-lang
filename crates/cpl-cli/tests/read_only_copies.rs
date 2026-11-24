@@ -400,7 +400,9 @@ fn explain_gives_one_reason_per_copy_a_library_call_makes() {
     let copies = deep_copies(&cpp) + optional_copies(&cpp);
     let explained = explained_copies(&src);
     let _ = std::fs::remove_dir_all(&dir);
-    assert!(copies > 0);
+    // fold_between and fold_of give the identity on an empty range by pointer
+    // (`cpl::Held`), so the copies they made are gone, and explain lists none.
+    assert!(cpp.contains("cpl::held_ref(self.id)"));
     assert_eq!(explained, copies);
 }
 

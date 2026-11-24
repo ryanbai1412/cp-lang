@@ -879,6 +879,14 @@ impl<'p> Emitter<'p> {
                     // `_t` is a name for a value the program may not use.
                     let cpp = if auto { "auto" } else { &cpp };
                     self.line(out, &format!("[[maybe_unused]] {cpp} {name} = {text};"));
+                } else if let Some(call) = (!taken)
+                    .then(|| self.held_call(*slot, init, tail.as_ref(), &text))
+                    .flatten()
+                {
+                    // `let s = t.fold(r)` of a fn that returns `cpl::Held<T>`: read in place.
+                    self.line(out, &format!("const cpl::Held<{cpp}> {name}_h = {call};"));
+                    self.line(out, &format!("const {cpp}& {name} = *{name}_h;"));
+                    self.ref_bound.insert(*slot);
                 } else if !taken && self.lends(*slot, init, tail.as_ref()) {
                     // `let sp = sorted[b]`: a name for what is already
                     // there. A copy would cost the whole list. One a return
@@ -978,7 +986,20 @@ impl<'p> Emitter<'p> {
                         }
                     }
                     self.last_use_call = false;
-                    self.note_given_copy(value, &text, is_return);
+                    let held = (is_return && self.closure_id.is_none())
+                        .then(|| self.holds_result.clone())
+                        .flatten();
+                    if let Some((root, by_ref)) = held {
+                        let place = !text.starts_with("std::move(")
+                            && self.lent_place_root(value, &by_ref) == Some(root);
+                        if !place {
+                            self.note_given_copy(value, &text, is_return);
+                        }
+                        let how = if place { "ref" } else { "own" };
+                        text = format!("cpl::held_{how}({text})");
+                    } else {
+                        self.note_given_copy(value, &text, is_return);
+                    }
                     if self.give_ref && matches!(stmt, Stmt::Give(_)) {
                         text = format!("({text})");
                     }

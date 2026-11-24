@@ -933,7 +933,7 @@ fn a_getter_on_a_struct_with_a_cache_lends_its_field_and_its_filled_cache() {
         "print(t.first[0])\n",
     ));
     assert!(
-        early.contains("std::vector<ll> T_first(") && !early.contains("& T_first("),
+        early.contains("cpl::Held<std::vector<ll>> T_first(") && !early.contains("& T_first("),
         "{early}"
     );
 }
@@ -1199,12 +1199,56 @@ fn a_fn_whose_every_return_is_a_part_of_self_lends_it() {
     }
     for f in ["S_mixed", "S_tern"] {
         assert!(
-            out.contains(&format!("std::vector<ll> {f}(")) && !out.contains(&format!("& {f}(")),
-            "a return of a temporary keeps {f} by value:\n{out}"
+            out.contains(&format!("cpl::Held<std::vector<ll>> {f}(")),
+            "a part one return gives and a temporary another builds hold {f}'s result:\n{out}"
         );
     }
     assert!(
         out.contains("return a == 0 ? S_blank(self, a) : cpl::at(self.agg, 0);"),
         "the conditional of two places returns a reference to one:\n{out}"
+    );
+}
+
+#[test]
+fn a_fn_that_gives_a_part_on_one_return_and_builds_on_another_lends_the_part() {
+    let src = concat!(
+        "struct Bag:\n",
+        "    id: List<Int>\n",
+        "    xs: List<Int>\n",
+        "    fn pick(self, k: Int) -> List<Int>:\n",
+        "        if k == 0: return self.id\n",
+        "        self.xs + [k]\n",
+        "let b = Bag(id: [7, 8], xs: [1])\n",
+        "var s = 0\n",
+        "for k in 0..3:\n",
+        "    for x in b.pick(k): s += x\n",
+        "print(s)\n",
+    );
+    let lent = cpp(src);
+    assert!(
+        lent.contains("return cpl::held_ref(self.id);"),
+        "the part is lent, not copied: {lent}"
+    );
+    assert!(
+        lent.contains("return cpl::held_own("),
+        "the built value is returned by value: {lent}"
+    );
+    assert!(
+        lent.contains("= *t") && !lent.contains(".take()"),
+        "a walk reads the held result in place: {lent}"
+    );
+    let kept = cpp(concat!(
+        "struct Bag:\n",
+        "    id: List<Int>\n",
+        "    fn pick(self, k: Int) -> List<Int>:\n",
+        "        if k == 0: return self.id\n",
+        "        [k]\n",
+        "var b = Bag(id: [7, 8])\n",
+        "for x in b.pick(0): b = Bag(id: [x])\n",
+        "print(b.id.len)\n",
+    ));
+    assert!(
+        kept.contains(".take()"),
+        "a walk whose body changes the argument takes its own copy: {kept}"
     );
 }

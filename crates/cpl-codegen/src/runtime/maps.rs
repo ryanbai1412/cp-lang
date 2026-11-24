@@ -358,6 +358,20 @@ template <class V> Lent<V> lend_opt(Lent<V> l) { return l; }
 ",
     },
     Piece {
+        name: "held",
+        needs: &[],
+        code: "\
+template <class T> struct Held {
+    T own;
+    const T* p;
+    const T& operator*() const { return p ? *p : own; }
+    T take() && { return p ? T(*p) : std::move(own); }
+};
+template <class T> Held<T> held_ref(const T& v) { return {T(), &v}; }
+template <class T> Held<T> held_own(T v) { return {std::move(v), nullptr}; }
+",
+    },
+    Piece {
         name: "map_lend",
         needs: &["lent"],
         code: "\
