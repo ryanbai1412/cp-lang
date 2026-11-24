@@ -22,7 +22,6 @@ mod prelude;
 mod range_room;
 mod rev;
 mod seq;
-mod shape;
 mod struct_ops;
 mod user;
 mod value_method;

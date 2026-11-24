@@ -851,7 +851,7 @@ impl<'a> Lowerer<'a> {
                 }
             }
             (Ty::Map(..) | Ty::HashMap(..), m)
-                if super::super::typo::foreign_insert(m) && matches!(args.len(), 1 | 2) =>
+                if super::super::foreign::foreign_insert(m) && matches!(args.len(), 1 | 2) =>
             {
                 self.map_insert(whole, base, name, args, &ty)
             }

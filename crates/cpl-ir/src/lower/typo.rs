@@ -221,41 +221,6 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    /// `xs.join(" ")`, Python's order: `join` is the separator's, `" ".join(xs)`.
-    pub(super) fn join_receiver(
-        &mut self,
-        base: &ast::Expr,
-        name: &ast::Name,
-        args: &[ast::Arg],
-        span: Span,
-    ) {
-        let ([sep], "join") = (args, name.text.as_str()) else {
-            return;
-        };
-        let at = self.span(base.span);
-        let edit = self.span(span);
-        let new = format!(
-            "{}.join({})",
-            self.source(sep.value.span),
-            self.source(base.span)
-        );
-        let member = self.span(name.span);
-        let last = self.diags.last_mut().filter(|d| {
-            (d.code == codes::TYPE_MISMATCH
-                && d.span == at
-                && (d.message.starts_with("expected `Str`")
-                    || d.message.starts_with("this method is called on a `Str`")))
-                || (d.code == codes::UNKNOWN_FIELD
-                    && d.span == member
-                    && d.message.starts_with("a `List<"))
-        });
-        if let Some(d) = last {
-            d.fixes.clear();
-            d.help = Some(format!("`join` is called on the separator: `{new}`"));
-            d.fix(format!("write `{new}`"), edit, new);
-        }
-    }
-
     /// `['R', 'W'].join("")`: a `List<Char>` receiver is not made a `Str` for a `self: Str` fn
     /// (R04.4.22 converts arguments, not receivers), or it would join `""` with `"RW"` between.
     pub(super) fn char_list_as_str(&mut self, sym: Sym, base: &ast::Expr) -> bool {
@@ -446,66 +411,9 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    /// Python's `a.pop(i)` and `m.get(k, d)`, C++'s `a.resize(n)`: `a.remove(i)`,
-    /// `m.get(k) ?? d`, `a.resize(n, 0)`.
-    pub(super) fn foreign_method_args(
-        &mut self,
-        whole: &ast::Expr,
-        base: &ast::Expr,
-        name: &ast::Name,
-        args: &[ast::Arg],
-        ty: &Ty,
-    ) -> Expr {
-        let span = whole.span;
-        if args.iter().any(|a| a.name.is_some()) {
-            return self.err_expr(span);
-        }
-        let b = self.source(base.span);
-        let a: Vec<String> = args.iter().map(|a| self.source(a.value.span)).collect();
-        let (new, help) = match (name.text.as_str(), a.as_slice()) {
-            ("pop", [i]) if matches!(ty, Ty::List(_)) => (
-                format!("{b}.remove({i})"),
-                "removing at an index is `remove`",
-            ),
-            // C++'s `a.resize(n)` fills with the element's zero.
-            ("resize", [n]) => {
-                let Ty::List(elem) = ty else {
-                    return self.err_expr(span);
-                };
-                let zero = match &**elem {
-                    Ty::Int | Ty::I128 | Ty::U64 => "0",
-                    Ty::Float => "0.0",
-                    Ty::Bool => "false",
-                    Ty::Str => "\"\"",
-                    _ => return self.err_expr(span),
-                };
-                (
-                    format!("{b}.resize({n}, {zero})"),
-                    "`resize` takes the value for new places",
-                )
-            }
-            ("get", [k, d]) => {
-                let new = self.parenthesized(whole.span, format!("{b}.get({k}) ?? {d}"));
-                (new, "a default for a missing key is given with `??`")
-            }
-            _ => return self.err_expr(span),
-        };
-        let at = self.span(whole.span);
-        if let Some(last) = self
-            .diags
-            .last_mut()
-            .filter(|d| d.code == codes::WRONG_ARG_COUNT)
-        {
-            last.help = Some(format!("{help}: `{new}`"));
-            last.fixes.clear();
-            last.fix(format!("write `{new}`"), at, new);
-        }
-        self.err_expr(span)
-    }
-
     /// Whether the code at `span` starts an operand (after `(`, `,`, `=`,
     /// `[`, `:`, `if` or `while`) and ends one (before `)`, `,`, `]`, `:` or the line's end).
-    fn stands_alone(&self, span: Span) -> (bool, bool) {
+    pub(in crate::lower) fn stands_alone(&self, span: Span) -> (bool, bool) {
         let text = &self.mods[self.cur_mod].text;
         let abs = self.span(span);
         let before = text[..abs.start as usize].trim_end();
@@ -531,79 +439,6 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    /// C++'s `m.count(k)`: a key is in a map or a set or not, `k in m`.
-    pub(super) fn keyed_count(
-        &mut self,
-        whole: &ast::Expr,
-        base: &ast::Expr,
-        key: &ast::Arg,
-        ty: &Ty,
-    ) -> Expr {
-        let new = format!(
-            "{} in {}",
-            self.source(key.value.span),
-            self.source(base.span)
-        );
-        let new = self.parenthesized(whole.span, new);
-        self.report(
-            whole.span,
-            msgs::ir::UNKNOWN_FIELD_A_HAS_NO_METHOD,
-            &[&self.show(ty)],
-        );
-        let at = self.span(whole.span);
-        let ends = self.stands_alone(whole.span).1;
-        if let Some(last) = self.diags.last_mut() {
-            last.help = Some(format!("test a key with `in`: `{new}`"));
-            if ends {
-                last.fix(format!("write `{new}`"), at, new);
-            }
-        }
-        self.err_expr(whole.span)
-    }
-
-    /// C++'s `m.insert({k, v})` or `m.emplace(k, v)`: a map sets a key by
-    /// index. `insert` keeps a key already there, so the fix tests it first.
-    pub(super) fn map_insert(
-        &mut self,
-        whole: &ast::Expr,
-        base: &ast::Expr,
-        name: &ast::Name,
-        args: &[ast::Arg],
-        ty: &Ty,
-    ) -> Expr {
-        let a: Vec<String> = args.iter().map(|a| self.source(a.value.span)).collect();
-        let pair = match a.as_slice() {
-            [k, v] => Some((k.clone(), v.clone())),
-            [p] => p
-                .strip_prefix(['(', '{'])
-                .and_then(|p| p.strip_suffix([')', '}']))
-                .and_then(split_pair),
-            _ => None,
-        };
-        let m = self.source(base.span);
-        self.report(
-            whole.span,
-            msgs::ir::UNKNOWN_FIELD_A_HAS_NO_METHOD_2,
-            &[&self.show(ty), &name.text, &m],
-        );
-        let at = self.span(whole.span);
-        let text = &self.mods[self.cur_mod].text;
-        let line = text[..at.start as usize].rsplit('\n').next().unwrap_or("");
-        let rest = text[at.end as usize..].split('\n').next().unwrap_or("");
-        let statement = line.trim().is_empty() && rest.trim().is_empty();
-        if let (Some(last), Some((k, v))) = (self.diags.last_mut(), pair) {
-            let new = format!("if {k} not in {m}: {m}[{k}] = {v}");
-            last.help = Some(format!(
-                "`{m}[{k}] = {v}` replaces a key already there, which C++'s `{}` keeps: `{new}`",
-                name.text
-            ));
-            if statement {
-                last.fix(format!("write `{new}`"), at, new);
-            }
-        }
-        self.err_expr(whole.span)
-    }
-
     /// `x.m<T>()` where `x`'s type has no generic method `m`.
     pub(super) fn no_generic_method(&mut self, ty: &Ty, name: &ast::Name, span: Span) -> Expr {
         if !matches!(ty, Ty::Error) {
@@ -627,35 +462,6 @@ impl<'a> Lowerer<'a> {
         if let Some(last) = self.diags.last_mut() {
             last.help = Some(format!("`n` values read as `[n]T`: `{new}`"));
             last.fix(format!("write `{new}`"), at, new);
-        }
-    }
-
-    /// JavaScript's `x.toFixed(2)` and `x.to_string()` on a float: its
-    /// text is an interpolation, `"{x:.2}"` or `"{x}"` (R10).
-    pub(super) fn float_text_fix(
-        &mut self,
-        ty: &Ty,
-        base: &ast::Expr,
-        method: &str,
-        args: &[ast::Arg],
-        span: Span,
-    ) {
-        if !matches!(base.kind, ast::ExprKind::Name(_)) {
-            return;
-        }
-        let x = self.source(base.span);
-        let new = match (ty, method, args) {
-            (Ty::Float, "toFixed", [d]) if matches!(d.value.kind, ast::ExprKind::Int(_)) => {
-                format!("\"{{{x}:.{}}}\"", self.source(d.value.span))
-            }
-            (Ty::Float, "to_string" | "toString", []) => format!("\"{{{x}}}\""),
-            _ => return,
-        };
-        let edit = self.span(span);
-        if let Some(last) = self.diags.last_mut() {
-            last.help = Some(format!("a float's text is an interpolation: `{new}`"));
-            last.fixes.clear();
-            last.fix(format!("write `{new}`"), edit, new);
         }
     }
 
@@ -761,38 +567,6 @@ impl<'a> Lowerer<'a> {
         true
     }
 
-    /// A named argument the callee lacks; suggests the label meant, including
-    /// Python's names for the same option (`key=` and `cmp=` are `by:`).
-    pub(super) fn unknown_arg_name(&mut self, said: msgs::Said, name: &ast::Name, labels: &[&str]) {
-        self.report_said(name.span, said);
-        let foreign = match name.text.as_str() {
-            "key" | "cmp" => Some("by"),
-            _ => None,
-        };
-        if let Some(label) = foreign.filter(|l| labels.contains(l)) {
-            let at = self.span(name.span);
-            if let Some(last) = self.diags.last_mut() {
-                last.help = Some(format!("CP Lang names this argument `{label}`"));
-                last.fix(format!("write `{label}`"), at, label);
-            }
-        } else if let Some(label) = cpl_check::closest(&name.text, labels.iter().copied()) {
-            self.suggest_last(name.span, label);
-        }
-    }
-
-    /// Python's `line.split()`: CP Lang splits on one `Char`, and a line's
-    /// tokens are split on `' '`.
-    pub(super) fn split_on_space(&mut self, name: &str, param: &str, call: Span) {
-        if (name, param) != ("split", "sep") || !self.source(call).ends_with("()") {
-            return;
-        }
-        let at = self.span(call);
-        if let Some(last) = self.diags.last_mut() {
-            last.help = Some("a string splits on one `Char`: `split(' ')`".to_string());
-            last.fix("write `split(' ')`", Span::point(at.end - 1), "' '");
-        }
-    }
-
     pub(super) fn suggest_last(&mut self, span: Span, s: String) {
         let span = self.span(span);
         if let Some(last) = self.diags.last_mut() {
@@ -885,39 +659,6 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    /// JavaScript's `xs.slice(a, b)` or `s.substring(a, b)`: a slice indexes a range, `xs[a..b]`.
-    pub(super) fn slice_call_fix(
-        &mut self,
-        ty: &Ty,
-        base: &ast::Expr,
-        method: &str,
-        args: &[ast::Arg],
-        span: Span,
-    ) {
-        self.float_text_fix(ty, base, method, args, span);
-        let (Ty::Str | Ty::List(_), "slice" | "substring", [a, b]) = (ty, method, args) else {
-            return;
-        };
-        if !matches!(
-            base.kind,
-            ast::ExprKind::Name(_) | ast::ExprKind::Field { .. } | ast::ExprKind::Call { .. }
-        ) {
-            return;
-        }
-        let new = format!(
-            "{}[{}..{}]",
-            self.source(base.span),
-            self.source(a.value.span),
-            self.source(b.value.span)
-        );
-        let edit = self.span(span);
-        if let Some(last) = self.diags.last_mut() {
-            last.help = Some(format!("a slice indexes a range of positions: `{new}`"));
-            last.fixes.clear();
-            last.fix(format!("write `{new}`"), edit, new);
-        }
-    }
-
     /// `s.parse()` with no type: `parse<T>` reads a `T`, so it has to be
     /// named (R10.2.4). The fix names the type the result is used as, else
     /// `Int`.
@@ -948,28 +689,6 @@ impl<'a> Lowerer<'a> {
 }
 
 /// The error for `Name<..>` written with `given` type arguments too few.
-/// C++'s names for putting a key in a map.
-pub(super) fn foreign_insert(method: &str) -> bool {
-    matches!(method, "insert" | "emplace")
-}
-
-/// `k, v` split at its one top-level comma.
-fn split_pair(inner: &str) -> Option<(String, String)> {
-    let mut depth = 0i32;
-    let mut cuts = Vec::new();
-    for (i, c) in inner.char_indices() {
-        match c {
-            '(' | '[' | '{' => depth += 1,
-            ')' | ']' | '}' => depth -= 1,
-            ',' if depth == 0 => cuts.push(i),
-            _ => {}
-        }
-    }
-    let [cut] = cuts[..] else { return None };
-    let (k, v) = (inner[..cut].trim(), inner[cut + 1..].trim());
-    (!k.is_empty() && !v.is_empty()).then(|| (k.to_string(), v.to_string()))
-}
-
 pub(super) fn missing_type_args(name: &str, given: usize) -> msgs::Said {
     if given == 0 {
         return msgs::ir::NEEDS_ELEMENT_TYPE.at(&[&name, &name]);
