@@ -16,8 +16,8 @@ enum Side: Left | Right
 @!multitest
 let (n, q): (1..=200_000, 1..=200_000) = read()
 domain Row = 1..=n
-var row: [Side, Row]0..=200_000 = 0
-var freq: [Side, 0..q]0..=200_000 = 0
+var row: [Side, Row]0..=q = 0
+var freq: [Side, 0..q]0..=n = 0
 var h: [Side]U64 = 0
 
 fn add(s: Side, r: Row):
