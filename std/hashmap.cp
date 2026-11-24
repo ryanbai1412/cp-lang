@@ -194,7 +194,7 @@ pub struct FlatMap<V>:
     /// depend on it. Sort when the order matters.
     ///
     /// cost: \(O(1)\) to make, \(O(\mathit{capacity})\) to walk
-    /// empty: yields nothing
+    /// empty: `var m: FlatMap<Int> = FlatMap(0); m.items.collect() == []`
     /// order: unspecified slot order, the same as `keys` and `values` while unchanged
     /// traps: never
     /// example: `var m = FlatMap(0); m.set(2, 20); m.set(1, 10); m.items.sorted() == [(1, 10), (2, 20)]`
@@ -205,7 +205,7 @@ pub struct FlatMap<V>:
     /// The keys, one per entry.
     ///
     /// cost: \(O(1)\) to make, \(O(\mathit{capacity})\) to walk
-    /// empty: yields nothing
+    /// empty: `var m: FlatMap<Int> = FlatMap(0); m.keys.collect() == []`
     /// order: unspecified slot order, the same as `items`
     /// traps: never
     /// example: `var m = FlatMap(0); m.set(2, 20); m.set(1, 10); m.keys.sorted() == [1, 2]`
@@ -216,7 +216,7 @@ pub struct FlatMap<V>:
     /// The values, one per entry.
     ///
     /// cost: \(O(1)\) to make, \(O(\mathit{capacity})\) to walk
-    /// empty: yields nothing
+    /// empty: `var m: FlatMap<Int> = FlatMap(0); m.values.collect() == []`
     /// order: unspecified slot order, the same as `items`
     /// traps: never
     /// example: `var m = FlatMap(0); m.set(2, 20); m.set(1, 10); m.values.sorted() == [10, 20]`
@@ -231,7 +231,7 @@ pub struct FlatMap<V>:
     /// argument order of `join` and the overwrite rule hold whichever side is moved.
     ///
     /// cost: \(O(\min(\lvert \mathit{self} \rvert, \lvert \mathit{other} \rvert))\) expected
-    /// empty: an empty `other` leaves `self` unchanged
+    /// empty: `var a = FlatMap(0); a.set(1, 10); var b: FlatMap<Int> = FlatMap(0); a.absorb(mut b); a.len == 1 and a.get(1) == Some(10)`
     /// traps: never
     /// example: `var a = FlatMap(0); a.set(1, 10); var b = FlatMap(0); b.set(1, 5); b.set(2, 7); a.absorb(mut b, join: (x, y) => x + y); a.get(1) == Some(15) and a.get(2) == Some(7) and b.is_empty`
     /// example: `var a = FlatMap(0); a.set(1, 10); var b = FlatMap(0); b.set(1, 5); a.absorb(mut b); a.get(1) == Some(5)`
@@ -264,7 +264,7 @@ pub struct Counter<K, V: Add = Int>:
     /// `Counter<Int, Int>(init: -1)`.
     ///
     /// cost: \(O(n)\) expected
-    /// empty: `Counter()` is an empty counter
+    /// empty: `var c: Counter<Char, Int> = Counter(); c.len == 0`
     /// traps: never
     /// example: `let c = Counter(['a', 'b', 'a']); c['a'] == 2 and c['z'] == 0 and c.len == 2`
     /// example: `var c: Counter<Char, Int> = Counter(); c.get('z') == 0 and c.len == 0`
@@ -278,7 +278,7 @@ pub struct Counter<K, V: Add = Int>:
     /// The result has `init` `0`, so a key that never occurs reads `0`.
     ///
     /// cost: \(O(n)\) expected
-    /// empty: an empty counter
+    /// empty: `let c: Counter<Int, Int> = Counter.of([]); c.len == 0`
     /// traps: never
     /// example: `let c = Counter.of(['a', 'b', 'a']); c.get('a') == 2 and c.get('c') == 0`
     pub fn of(xs: List<K>) -> Counter<K, Int>:
@@ -391,7 +391,7 @@ pub struct Counter<K, V: Add = Int>:
     /// nothing (not `init`), which keeps the result the same whichever side is drained.
     ///
     /// cost: \(O(\min(\lvert \mathit{self} \rvert, \lvert \mathit{other} \rvert))\) expected
-    /// empty: an empty `other` leaves `self` unchanged
+    /// empty: `var a = Counter.of(['x']); var b: Counter<Char, Int> = Counter(); a.absorb(mut b); a['x'] == 1 and a.len == 1`
     /// traps: never (overflow wraps in release, traps in debug)
     /// example: `var a = Counter.of(['x', 'y']); var b = Counter.of(['y', 'z']); a.absorb(mut b); a['y'] == 2 and a.len == 3 and b.len == 0`
     pub fn absorb(mut self, mut other: Counter<K, V>):
@@ -405,7 +405,7 @@ pub struct Counter<K, V: Add = Int>:
     /// Only stored entries count; `init` is not added for absent keys.
     ///
     /// cost: \(O(n)\)
-    /// empty: `V.zero`
+    /// empty: `var c: Counter<Char, Int> = Counter(); c.total() == 0`
     /// traps: never (overflow wraps in release, traps in debug)
     /// example: `Counter.of([1, 1, 2]).total() == 3`
     pub fn total(self) -> V:
@@ -417,8 +417,8 @@ pub struct Counter<K, V: Add = Int>:
     /// A `k` at least `len` returns every entry.
     ///
     /// cost: \(O(n \log n)\)
-    /// empty: `[]`
-    /// ties: equal values in ascending key order
+    /// empty: `var c: Counter<Char, Int> = Counter(); c.most_common(3) == []`
+    /// ties: `Counter.of(['c', 'a', 'b', 'a']).most_common(3) == [('a', 2), ('b', 1), ('c', 1)]`
     /// order: descending value; a new `List`, keyed from 0
     /// traps: when `k < 0`
     /// example: `Counter.of([3, 1, 3, 2, 1, 3]).most_common(2) == [(3, 3), (1, 2)]`
@@ -433,7 +433,7 @@ pub struct Counter<K, V: Add = Int>:
     /// \(O(1)\) to make. Yields every stored `(key, val)` pair.
     ///
     /// cost: \(O(1)\) to make, \(O(1)\) per step
-    /// empty: yields nothing
+    /// empty: `var c: Counter<Char, Int> = Counter(); c.items.collect() == []`
     /// order: unspecified hash order, the same as `keys` and `values` while unchanged
     /// traps: never
     /// example: `Counter.of([2, 1, 2]).items.sorted() == [(1, 1), (2, 2)]`
@@ -443,7 +443,7 @@ pub struct Counter<K, V: Add = Int>:
     /// The keys, one per distinct element.
     ///
     /// cost: \(O(1)\) to make, \(O(1)\) per step
-    /// empty: yields nothing
+    /// empty: `var c: Counter<Char, Int> = Counter(); c.keys.collect() == []`
     /// order: unspecified hash order, the same as `items`
     /// traps: never
     /// example: `Counter.of([2, 1, 2]).keys.sorted() == [1, 2]`
@@ -453,7 +453,7 @@ pub struct Counter<K, V: Add = Int>:
     /// The counts, one per key.
     ///
     /// cost: \(O(1)\) to make, \(O(1)\) per step
-    /// empty: yields nothing
+    /// empty: `var c: Counter<Char, Int> = Counter(); c.values.collect() == []`
     /// order: unspecified hash order, the same as `items`
     /// traps: never
     /// example: `Counter.of([2, 1, 2]).values.sorted() == [1, 2]`

@@ -15,7 +15,7 @@ pub struct IntervalMap<D, T>:
     /// A map that gives every position of `D` the value `init`: one run, or None when `D` is empty.
     ///
     /// cost: \(O(1)\)
-    /// empty: an empty `D` gives zero runs
+    /// empty: `IntervalMap<0..0, Int>(0).runs == 0`
     /// traps: never
     /// example: `IntervalMap<0..5, Int>(0).runs == 1`
     pub fn new(init: T) -> IntervalMap<D, T>:
@@ -26,7 +26,7 @@ pub struct IntervalMap<D, T>:
     /// The map holding `a[i]` at every position `i`, stored as maximal runs of equal values.
     ///
     /// cost: \(O(\lvert D \rvert)\)
-    /// empty: an empty `a` gives zero runs
+    /// empty: `IntervalMap.from([0] i => i).runs == 0`
     /// order: positions keep the domain `D` of `a`
     /// traps: never
     /// example: `IntervalMap.from([1, 1, 2]).runs == 2`
@@ -79,7 +79,7 @@ pub struct IntervalMap<D, T>:
     /// and its old value; the map is fully repainted when `assign` returns.
     ///
     /// cost: \(O((1 + \mathit{overwritten}) \log \mathit{runs})\) amortized
-    /// empty: changes nothing and calls `on_old` never
+    /// empty: `var m = IntervalMap.from([1, 2]); var old: List<Int> = []; m.assign(1..1, 9, on_old: (_, v) => old.push(v)); old == [] and m.runs == 2`
     /// order: `on_old` sees pieces in ascending positions
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var m = IntervalMap<0..5, Int>(0); m.assign(1..3, 7); m.runs == 3`
@@ -156,7 +156,7 @@ pub struct IntervalMap<D, T>:
     /// Every maximal run with its value.
     ///
     /// cost: \(O(1)\) per run
-    /// empty: yields nothing for an empty `D`
+    /// empty: `IntervalMap<0..0, Int>(0).each().map(p => p.val).collect() == []`
     /// order: ascending positions
     /// traps: never
     /// example: `IntervalMap.from([1, 1, 2]).each().map(p => p.val).collect() == [1, 2]`
@@ -177,7 +177,7 @@ pub struct IntervalMap<D, T>:
     /// last pieces shorter than their runs; they are not merged with anything.
     ///
     /// cost: \(O(\log \mathit{runs} + k)\) for `k` pieces
-    /// empty: yields nothing
+    /// empty: `IntervalMap.from([1, 2]).range(1..1).map(p => p.val).collect() == []`
     /// order: ascending positions
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `IntervalMap.from([1, 1, 2]).range(1..3).map(p => p.range).collect() == [1..2, 2..3]`
@@ -193,7 +193,7 @@ pub struct IntervalMap<D, T>:
     /// Every maximal run with its value, last first.
     ///
     /// cost: \(O(1)\) per run
-    /// empty: yields nothing for an empty `D`
+    /// empty: `IntervalMap<0..0, Int>(0).each_rev().map(p => p.val).collect() == []`
     /// order: descending positions
     /// traps: never
     /// example: `IntervalMap.from([1, 1, 2]).each_rev().map(p => p.val).collect() == [2, 1]`
@@ -208,7 +208,7 @@ pub struct IntervalMap<D, T>:
     /// `ok` once per run, not per position.
     ///
     /// cost: \(O(\log \mathit{runs} + \mathit{skipped})\) for `skipped` runs that fail `ok`
-    /// ties: the first position in key order
+    /// ties: `IntervalMap.from([1, 2, 1, 2]).first_where((0..0).r, v => v == 2) == Some(1)`
     /// traps: never
     /// example: `IntervalMap.from([1, 1, 2]).first_where((0..0).r, v => v == 2) == Some(2)`
     /// example: `IntervalMap.from([1, 1, 2]).first_where((0..1).r, v => v == 1) == Some(1)`
@@ -238,7 +238,7 @@ pub struct IntervalSet<D>:
     /// Add every position of `r`, merging runs that overlap or touch it into one maximal run.
     ///
     /// cost: \(O((1 + \mathit{merged}) \log \mathit{runs})\) amortized
-    /// empty: changes nothing
+    /// empty: `var s = IntervalSet<0..10>(); s.add(2..4); s.add(5..5); s.runs == 1 and s.covered == 2`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var s = IntervalSet<0..10>(); s.add(1..3); s.add(3..5); s.runs == 1 and s.covered == 4`
     pub fn add(mut self, r: Range<D>):
@@ -261,7 +261,7 @@ pub struct IntervalSet<D>:
     /// Remove every position of `r`; a run straddling an end of `r` is cut there.
     ///
     /// cost: \(O((1 + \mathit{split}) \log \mathit{runs})\) amortized
-    /// empty: changes nothing
+    /// empty: `var s = IntervalSet<0..10>(); s.add(2..4); s.remove(3..3); s.runs == 1 and s.covered == 2`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var s = IntervalSet<0..10>(); s.add(0..5); s.remove(1..2); s.runs == 2 and s.covered == 4`
     pub fn remove(mut self, r: Range<D>):
@@ -295,7 +295,7 @@ pub struct IntervalSet<D>:
     /// Whether every position of `r` is in the set, i.e. one run covers `r`.
     ///
     /// cost: \(O(\log \mathit{runs})\)
-    /// empty: `true`
+    /// empty: `IntervalSet<0..10>().contains_range(3..3) == true`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var s = IntervalSet<0..10>(); s.add(2..4); s.add(4..6); s.contains_range(3..6) == true`
     /// example: `var s = IntervalSet<0..10>(); s.add(2..4); s.contains_range(3..5) == false`
@@ -363,7 +363,7 @@ pub struct IntervalSet<D>:
     /// Every maximal run.
     ///
     /// cost: \(O(1)\) per run
-    /// empty: yields nothing for an empty set
+    /// empty: `IntervalSet<0..10>().each().collect() == []`
     /// order: ascending positions
     /// traps: never
     /// example: `var s = IntervalSet<0..10>(); s.add(6..7); s.add(1..3); s.each().collect() == [1..3, 6..7]`
@@ -386,7 +386,7 @@ pub struct SparseIntervalSet:
     /// Add every coordinate of the half-open `r`, merging runs that overlap or touch it.
     ///
     /// cost: \(O((1 + \mathit{merged}) \log \mathit{runs})\) amortized
-    /// empty: changes nothing
+    /// empty: `var s = SparseIntervalSet(); s.add(2..4); s.add(5..5); s.runs == 1 and s.covered == 2`
     /// traps: never
     /// example: `var s = SparseIntervalSet(); s.add(-5..0); s.add(0..5); s.runs == 1 and s.covered == 10`
     pub fn add(mut self, r: Range<Int>):
@@ -410,7 +410,7 @@ pub struct SparseIntervalSet:
     /// Remove every coordinate of the half-open `r`; a run straddling an end of `r` is cut there.
     ///
     /// cost: \(O((1 + \mathit{split}) \log \mathit{runs})\) amortized
-    /// empty: changes nothing
+    /// empty: `var s = SparseIntervalSet(); s.add(2..4); s.remove(3..3); s.runs == 1 and s.covered == 2`
     /// traps: never
     /// example: `var s = SparseIntervalSet(); s.add(0..10); s.remove(3..4); s.runs == 2 and s.covered == 9`
     pub fn remove(mut self, r: Range<Int>):
@@ -471,7 +471,7 @@ pub struct SparseIntervalSet:
     /// Every maximal interval.
     ///
     /// cost: \(O(1)\) per interval
-    /// empty: yields nothing for an empty set
+    /// empty: `SparseIntervalSet().each().collect() == []`
     /// order: ascending coordinates
     /// traps: never
     /// example: `var s = SparseIntervalSet(); s.add(10..12); s.add(0..3); s.each().collect() == [0..3, 10..12]`
@@ -607,7 +607,7 @@ pub struct SparseIntervalMap<T>:
     /// map is fully repainted when `assign` returns.
     ///
     /// cost: \(O((1 + \mathit{removed}) \log \mathit{runs})\) amortized
-    /// empty: changes nothing and calls `on_old` never
+    /// empty: `var m = SparseIntervalMap(0, 10, 0); var old: List<Int> = []; m.assign(4..4, 2, on_old: (_, v) => old.push(v)); old == [] and m.runs == 1`
     /// order: `on_old` sees pieces in ascending coordinates
     /// traps: when a non-empty `r` reaches outside `lo..hi`
     /// example: `var m = SparseIntervalMap(0, 10, 0); m.assign(3..5, 1); m.assign(5..7, 1); m.runs == 3`
@@ -630,8 +630,10 @@ pub struct SparseIntervalMap<T>:
     /// Replace the value `v` of every run overlapping `r`, clipped to `r`, with `f(v)`, then merge
     /// equal neighbours. `f` is called once per piece, in ascending order.
     ///
+    /// An empty `r` never calls `f`.
+    ///
     /// cost: \(O((1 + \mathit{touched}) \log \mathit{runs})\)
-    /// empty: changes nothing and calls `f` never
+    /// empty: `var m = SparseIntervalMap(0, 10, 0); m.update(4..4, v => v + 1); m.runs == 1 and m.get(4) == 0`
     /// traps: when a non-empty `r` reaches outside `lo..hi`
     /// example: `var m = SparseIntervalMap(0, 10, 0); m.assign(3..5, 1); m.update(0..4, v => v + 1); m.get(0) == 1 and m.get(3) == 2 and m.get(4) == 1`
     pub fn update(mut self, r: Range<Int>, f: T -> T):
@@ -653,7 +655,7 @@ pub struct SparseIntervalMap<T>:
     /// Every run overlapping `r`, clipped to `r`, with its value.
     ///
     /// cost: \(O(\log \mathit{runs} + k)\) for `k` pieces
-    /// empty: yields nothing
+    /// empty: `SparseIntervalMap(0, 10, 0).range(4..4).map(p => p.val).collect() == []`
     /// order: ascending coordinates
     /// traps: when a non-empty `r` reaches outside `lo..hi`
     /// example: `var m = SparseIntervalMap(0, 10, 0); m.assign(3..5, 1); m.range(4..6).map(p => p.range).collect() == [4..5, 5..6]`
@@ -671,7 +673,7 @@ pub struct SparseIntervalMap<T>:
     /// Every maximal run with its value.
     ///
     /// cost: \(O(1)\) per run
-    /// empty: yields nothing when `lo == hi`
+    /// empty: `SparseIntervalMap(3, 3, 0).each().map(p => p.val).collect() == []`
     /// order: ascending coordinates
     /// traps: never
     /// example: `var m = SparseIntervalMap(0, 10, 0); m.assign(3..5, 1); m.each().map(p => p.val).collect() == [0, 1, 0]`
@@ -681,7 +683,7 @@ pub struct SparseIntervalMap<T>:
     /// Every maximal run with its value, last first.
     ///
     /// cost: \(O(1)\) per run
-    /// empty: yields nothing when `lo == hi`
+    /// empty: `SparseIntervalMap(3, 3, 0).each_rev().map(p => p.val).collect() == []`
     /// order: descending coordinates
     /// traps: never
     /// example: `var m = SparseIntervalMap(0, 10, 0); m.assign(3..5, 1); m.each_rev().map(p => p.range).collect() == [5..10, 3..5, 0..3]`
