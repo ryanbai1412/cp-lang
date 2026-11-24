@@ -550,7 +550,10 @@ fn interval(op: BinOp, a: (i64, i64), b: (i64, i64)) -> Option<(i64, i64)> {
 pub(super) fn ty_mentions(t: &ast::Type, name: &str) -> bool {
     match &t.kind {
         ast::TypeKind::Named { name: n, args } => {
-            n.text == name || args.iter().any(|a| ty_mentions(a, name))
+            // `M.Fold` mentions `M`.
+            n.text == name
+                || n.text.split_once('.').is_some_and(|(head, _)| head == name)
+                || args.iter().any(|a| ty_mentions(a, name))
         }
         ast::TypeKind::Array { index, elem } => {
             index.iter().any(|i| ty_mentions(i, name)) || ty_mentions(elem, name)

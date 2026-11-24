@@ -112,6 +112,22 @@ impl<'a> Lowerer<'a> {
                     .flatten()
                 {
                     inferred.entry(name.text.clone()).or_insert(GenArg::Op(op));
+                } else if args.is_empty()
+                    && gen_names.contains(&name.text)
+                    && !inferred.contains_key(&name.text)
+                    && !matches!(default.kind, ast::ExprKind::Lambda { .. })
+                {
+                    // An omitted `op: M = NoOp()` binds `M` before the bounds, so `M.Fold` resolves.
+                    let saved = (
+                        std::mem::replace(&mut self.cur_mod, tpl_mod),
+                        std::mem::replace(&mut self.offset, tpl_offset),
+                        std::mem::replace(&mut self.gen_env, inferred.clone()),
+                    );
+                    let probed = self.probe_ty_silent(default);
+                    (self.cur_mod, self.offset, self.gen_env) = saved;
+                    if let Some(dty) = probed.filter(|t| *t != Ty::Error) {
+                        inferred.insert(name.text.clone(), GenArg::Ty(dty));
+                    }
                 }
             }
             let (Some(pty), Some(arg)) = (&param.ty, arg) else {

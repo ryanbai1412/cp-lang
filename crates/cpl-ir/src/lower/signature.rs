@@ -65,6 +65,40 @@ impl<'a> Lowerer<'a> {
         Box::leak(Box::new(implicit))
     }
 
+    /// `type Fold = T` in the trait of impl `idx`, for an impl that leaves `item` out (decision 469).
+    fn assoc_default(&self, idx: usize, item: &str) -> Option<AssocSrc<'a>> {
+        let name = self.impls[idx].trait_name.as_deref()?;
+        let tid = self.traits.iter().position(|t| t.name == name)?;
+        let (_, ty) = self.traits[tid]
+            .assoc_defaults
+            .iter()
+            .find(|(n, _)| *n == item)?;
+        Some(AssocSrc::Default(tid, ty))
+    }
+
+    /// The type an impl's associated type names, in the impl's env; a trait default sees the
+    /// trait's generics as the impl's trait arguments.
+    fn resolve_assoc_src(&mut self, idx: usize, src: AssocSrc<'a>) -> Ty {
+        let (tid, default) = match src {
+            AssocSrc::Impl(ty) => return self.resolve_ty(ty),
+            AssocSrc::Default(tid, ty) => (tid, ty),
+        };
+        let trait_args = self.impls[idx].trait_args.clone();
+        let args: Vec<Ty> = trait_args.iter().map(|a| self.resolve_ty(a)).collect();
+        let tr = &self.traits[tid];
+        let env: GenEnv = (tr.generics.iter().zip(args))
+            .map(|(g, ty)| (g.to_string(), GenArg::Ty(ty)))
+            .collect();
+        let saved = (
+            std::mem::replace(&mut self.cur_mod, tr.mod_id),
+            std::mem::replace(&mut self.offset, tr.offset),
+            std::mem::replace(&mut self.gen_env, env),
+        );
+        let found = self.resolve_ty(default);
+        (self.cur_mod, self.offset, self.gen_env) = saved;
+        found
+    }
+
     /// `B.Item` for `B` bound to `t`: the `type Item = ..` of an impl for `t`.
     pub(in crate::lower) fn assoc_type(&mut self, t: &Ty, item: &str) -> Option<Ty> {
         if item == "Arc" {
@@ -98,14 +132,20 @@ impl<'a> Lowerer<'a> {
                 } if name.text == item && generics.is_empty() => Some(ty),
                 _ => None,
             });
-            let Some(alias) = alias else { continue };
+            let alias = match alias {
+                Some(ty) => AssocSrc::Impl(ty),
+                None => match self.assoc_default(idx, item) {
+                    Some(found) => found,
+                    None => continue,
+                },
+            };
             if let Some(env) = head_env {
                 let saved = (
                     std::mem::replace(&mut self.cur_mod, m),
                     std::mem::replace(&mut self.offset, offset),
                     std::mem::replace(&mut self.gen_env, env),
                 );
-                let found = self.resolve_ty(alias);
+                let found = self.resolve_assoc_src(idx, alias);
                 (self.cur_mod, self.offset, self.gen_env) = saved;
                 return Some(found);
             }
@@ -115,7 +155,7 @@ impl<'a> Lowerer<'a> {
             let saved_mod = std::mem::replace(&mut self.cur_mod, m);
             let saved_offset = std::mem::replace(&mut self.offset, offset);
             let saved_env = env.map(|env| std::mem::replace(&mut self.gen_env, env));
-            let found = (self.resolve_ty(target) == *t).then(|| self.resolve_ty(alias));
+            let found = (self.resolve_ty(target) == *t).then(|| self.resolve_assoc_src(idx, alias));
             if let Some(env) = saved_env {
                 self.gen_env = env;
             }
@@ -656,4 +696,11 @@ impl<'a> Lowerer<'a> {
         self.self_struct = saved_self;
         self.sigs[id].sig = SigState::Resolved;
     }
+}
+
+/// Where an impl's associated type comes from: its own `type X = ..`, or its trait's default.
+#[derive(Clone, Copy)]
+enum AssocSrc<'a> {
+    Impl(&'a ast::Type),
+    Default(usize, &'a ast::Type),
 }
