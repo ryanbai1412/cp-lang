@@ -8840,4 +8840,8 @@ Reserved for call 5, which landed as decision 519.
 - **Why.** A gap line was a second record of what the board already measures: it had to be added, aged and deleted by hand, and its count could only say "marked", not "failing". With the board as the only record there is nothing to rename and nothing to keep in sync.
 - **Reverse.** Put `// gap:` lines back, make `conform_staged.py` require one on a failing case, and drop `xfail_markers` from `HARD_ZERO`.
 
-## 528. (reserved, infra)
+## 528. A `#[cfg(test)]` hides only the item it gates from the debt counters (infra, 2026-11-24)
+
+- **Call.** `debt-ratchet.py`'s crate counters skip just the item a `#[cfg(test)]` gates (its attributes through the closing brace or `;`). They used to stop reading the file at the first one, so a test helper mid-file hid every line below it. The debt that exposed is re-measured, not new: `unwrap_input` 717 -> 721, `lsp_string_types` 11 -> 16, `unchecked_fix_paths` 4 -> 7, `config_schemas` 6 -> 7, `edit_engines` 3 -> 4 (4b631fd24).
+- **Why.** A counter must count raw totals; one that a test attribute can silence lets debt hide by moving a helper up the file.
+- **Reverse.** Stop `_ungated_lines` at the first `#[cfg(test)]` again and lower those five baselines.
