@@ -36,7 +36,6 @@ A folded value that can be read from the other end.
 
 Maximum non-empty subarray summary (Kadane monoid).
 
-- `@get fn zero() -> MaxSub` — \(O(1)\); The summary of no elements: the identity of `join`.
 - `fn of(v: Int) -> MaxSub` — \(O(1)\); The summary of the single element `v`: best, total, best prefix and best suffix are all `v`.
 - `fn join(a: MaxSub, b: MaxSub) -> MaxSub` — \(O(1)\); The summary of `a`'s elements followed by `b`'s (the same as `a + b`).; traps: never (overflow wraps in release, traps in debug)
 - `fn scale(self, k: Int) -> MaxSub` — \(O(1)\); The summary of the same elements each multiplied by `k` (the same as `self * k`).; traps: when `k < 0`
