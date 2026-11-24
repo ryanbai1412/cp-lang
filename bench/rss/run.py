@@ -50,6 +50,7 @@ CASES = {
     "filter_comp": lambda: ints(4_000_000),  # [.. for x in a if ..] keeping half, then 1 in 1000
     "sort_field": lambda: "",  # sort(by: e => es[e].w) 250k edges, as std kruskal does
     "hash_counter_narrow": lambda: "3375000\n",
+    "sieve": lambda: "10000000\n",  # primality only: no smallest-factor table
 }
 
 
