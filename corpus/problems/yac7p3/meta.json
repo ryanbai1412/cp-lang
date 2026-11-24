@@ -24,5 +24,10 @@
  "difficulty": "medium",
  "dream": "draft",
  "spec": "draft",
- "notes": "Functional.new(par): on_cycle, root_of, depth, cycles"
+ "notes": "Functional.new(par): on_cycle, root_of, depth, cycles",
+ "dream_stress": {
+  "ok": true,
+  "cases": 9,
+  "sha": "a7c1b4ef0ab260f1e17cc0cb4ab6b4a57af1226b"
+ }
 }

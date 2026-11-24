@@ -23,5 +23,10 @@
  "difficulty": "hard",
  "dream": "draft",
  "spec": "draft",
- "notes": "@memo(array) over (V, -k..=k); Rooted.children yields, walked several times."
+ "notes": "@memo(array) over (V, -k..=k); Rooted.children yields, walked several times.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 13,
+  "sha": "1557042aa57e6ab492349945a19a285324befd2c"
+ }
 }

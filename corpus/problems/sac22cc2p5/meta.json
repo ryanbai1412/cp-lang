@@ -22,5 +22,10 @@
  "difficulty": "easy",
  "dream": "draft",
  "spec": "draft",
- "notes": "a table of two Fenwicks indexed by parity; Fenwick.set."
+ "notes": "a table of two Fenwicks indexed by parity; Fenwick.set.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 9,
+  "sha": "ae744e3c4fb52af368789109bd36e0fa4a561b63"
+ }
 }
