@@ -695,6 +695,24 @@ fn a_param_a_literal_stores_at_its_last_read_is_sunk_and_moved_in() {
 }
 
 #[test]
+fn a_param_passed_on_to_a_sink_in_a_return_is_sunk_too() {
+    let out = cpp(concat!(
+        "struct Bag<T>:\n",
+        "    x: T\n",
+        "    pub fn new(x: T) -> Bag<T> = Bag<T>(x)\n",
+        "struct Wrap<T>:\n",
+        "    n: Int\n",
+        "    bag: Bag<T>\n",
+        "    pub fn new(x: T) -> Wrap<T> = Wrap<T>(0, Bag<T>.new(x))\n",
+        "let s = Wrap<List<Int>>.new([read<Int>()])\n",
+        "print(s.n + s.bag.x.len)\n",
+    ));
+    assert_eq!(out.matches("_new(std::vector<ll> x)").count(), 2, "{out}");
+    assert!(out.contains("_new(std::move(x))"), "{out}");
+    assert_eq!(crate::cpp_counts::sunk_copies(&out), 0, "{out}");
+}
+
+#[test]
 fn a_let_of_a_lent_node_is_a_reference_unless_its_slot_is_written_while_it_lives() {
     let cpp = cpp(concat!(
         "use std.marks.{Arena, Id}\n",

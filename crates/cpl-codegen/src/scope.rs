@@ -430,7 +430,7 @@ pub(crate) fn rows(
 /// builds, with nothing else in that return naming them. They are taken by
 /// value so the return moves them, and a caller at its last use moves in.
 pub(crate) fn sunk_params(program: &Program) -> Vec<BTreeSet<usize>> {
-    program
+    let mut sunk: Vec<BTreeSet<usize>> = program
         .fns
         .iter()
         .map(|f| {
@@ -477,7 +477,58 @@ pub(crate) fn sunk_params(program: &Program) -> Vec<BTreeSet<usize>> {
             sunk.extend(crate::uses::stored_last(program, f));
             sunk
         })
-        .collect()
+        .collect();
+    while pass_on_sinks(program, &mut sunk) {}
+    sunk
+}
+
+/// A value parameter that a fn's returned struct or tuple hands straight to
+/// another fn's sunk parameter, as `bag: Bag(op, id)` hands `id`, is sunk
+/// too: it moves through both calls instead of being copied at the inner one.
+fn pass_on_sinks(program: &Program, sunk: &mut [BTreeSet<usize>]) -> bool {
+    let mut found = Vec::new();
+    for (fi, f) in program.fns.iter().enumerate() {
+        each_sink(&f.body, &mut |sink| {
+            let Sink::Return(value) = sink else {
+                return;
+            };
+            let items: Vec<&Expr> = match &value.kind {
+                ExprKind::Tuple(items) => items.iter().collect(),
+                _ => vec![value],
+            };
+            for item in items {
+                let ExprKind::Call(g, args) = &item.kind else {
+                    continue;
+                };
+                for &k in &sunk[*g] {
+                    let Some(Arg::Value(arg)) = args.get(k) else {
+                        continue;
+                    };
+                    let ExprKind::Local(p) = arg.kind else {
+                        continue;
+                    };
+                    let mut reads = 0;
+                    each_part(value, &mut |e| {
+                        reads += usize::from(matches!(e.kind, ExprKind::Local(s) if s == p));
+                    });
+                    if p < f.params.len()
+                        && !f.params[p].mutable
+                        && !arg.ty.is_scalar()
+                        && !matches!(arg.ty, Ty::Fn(..))
+                        && reads == 1
+                        && !sunk[fi].contains(&p)
+                    {
+                        found.push((fi, p));
+                    }
+                }
+            }
+        });
+    }
+    let changed = !found.is_empty();
+    for (fi, p) in found {
+        sunk[fi].insert(p);
+    }
+    changed
 }
 
 /// 1D fixed-size arrays in locals and globals whose length is a compile-time
