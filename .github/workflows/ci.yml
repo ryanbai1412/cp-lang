@@ -119,11 +119,12 @@ jobs:
         # vmstat samples memory, swap and CPU every 20 s for the step below.
         run: |
           stdbuf -oL vmstat -t -S M 20 > "$RUNNER_TEMP/vmstat.log" 2>&1 &
+          while sleep 60; do date -u +%T; ps -eo pcpu,etimes,args --sort=-pcpu | head -6 | cut -c1-200; done > "$RUNNER_TEMP/top.log" 2>&1 &
           timeout 680 just check || { s=$?; [ "$s" != 124 ] \
             || echo "::error::the gate passed 11 min; the last ==> step above is the slow one"; exit "$s"; }
-      - name: Memory, swap and CPU during the gate (MB; si/so swapping, wa I/O wait)
+      - name: Memory, swap and CPU during the gate (MB; si/so swapping, wa I/O wait), and its busiest processes
         if: ${{ !cancelled() }}
-        run: "[ ! -f \"$RUNNER_TEMP/vmstat.log\" ] || cat \"$RUNNER_TEMP/vmstat.log\""
+        run: "[ ! -f \"$RUNNER_TEMP/vmstat.log\" ] || cat \"$RUNNER_TEMP/vmstat.log\" \"$RUNNER_TEMP/top.log\""
       # The rule coverage report (scripts/spec-gate.py coverage), kept per run, not committed.
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() && matrix.part == 'checks' }}
