@@ -32,7 +32,7 @@ while [ $# -gt 0 ]; do
         --version) [ $# -ge 2 ] || die "--version needs a value"; version="$2"; shift ;;
         --version=*) version="${1#--version=}" ;;
         --no-modify-path) modify_path=0 ;;
-        -h | --help) sed -n '2,10s/^# \{0,1\}//p' "$0" 2>/dev/null || true; exit 0 ;;
+        -h | --help) [ ! -f "$0" ] || sed -n '2,10s/^# \{0,1\}//p' "$0"; exit 0 ;;
         *) die "unknown option: $1" ;;
     esac
     shift

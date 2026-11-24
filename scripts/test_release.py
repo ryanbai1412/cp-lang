@@ -242,7 +242,7 @@ case "$1 $2" in
   "release view") cat "$FAKE_CI/shipped" ;;
   "run list") cat "$FAKE_CI/runs" 2>/dev/null ;;
   "run view") printf 'success site build\\nsuccess site browser tests\\n' ;;
-  "issue list") cat "$FAKE_CI/open" 2>/dev/null || true ;;
+  "issue list") [ ! -f "$FAKE_CI/open" ] || cat "$FAKE_CI/open" ;;
   "issue "*) ;;
   *) exit 2 ;;
 esac
