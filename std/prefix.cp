@@ -740,6 +740,18 @@ pub struct ArithDiff<D, T: Add + Sub + Mul>:
 impl Show for Prefix<D, T>:
     fn show(q): "{q.p}"
 
+impl Show for Diff<D, T>:
+    /// The values `finish` would return now, in key order, space-separated.
+    ///
+    /// example: `domain D = 0..4; var d = Diff<D, Int>(); d.add(D(1)..D(3), 5); "{d}" == "0 5 5 0"`
+    fn show(x): "{x.finish()}"
+
+impl Show for ArithDiff<D, T>:
+    /// The values `finish` would return now, in key order, space-separated.
+    ///
+    /// example: `domain D = 0..4; var d = ArithDiff<D, Int>(); d.add_arith(D(1)..=D(3), 1, 2); "{d}" == "0 1 3 5"`
+    fn show(x): "{x.finish()}"
+
 @test
 fn one_d_sums_match_brute():
     domain V = 1..=9

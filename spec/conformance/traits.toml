@@ -2434,3 +2434,25 @@ let v = t.set(t.base, 1, 9)
 print(t.base, v)
 """
 out = "version @5 version @8"
+
+[case."Show/ArithDiff/show"]
+code = """
+use std.prefix.{ArithDiff}
+domain D = 0..5
+var d = ArithDiff<D, Int>()
+d.add_arith(D(1)..=D(3), 10, -3)
+d.add(D(4)..=D(4), 2)
+print(d)
+"""
+out = "0 10 7 4 2"
+
+[case."Show/Diff/show"]
+code = """
+use std.prefix.{Diff}
+domain D = 0..5
+var d = Diff<D, Int>()
+d.add(D(0)..D(2), 3)
+d.add(D(1)..=D(4), 1)
+print(d)
+"""
+out = "3 4 1 1 1"
