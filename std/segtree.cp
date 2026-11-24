@@ -15,7 +15,9 @@ fn same<A, B>(a: A, b: B) -> Bool = a == b
 /// `SegTree<V, Int>(+)`, `SegTree<V, Run>(Monoid(Run.empty, Run.join), a)`.
 /// `set` and `fold` are \(O(\log n)\), and so are `right_while` and `left_while`; memory is
 /// 2 * bit_ceil(n) values. The fold keeps the order of the positions, so
-/// non-commutative operations work.
+/// non-commutative operations work. `SegTree<Int, T>(op, over: lo..hi)` covers a huge range
+/// instead, making nodes on first touch: every call is \(O(\log(hi - lo))\) and makes at most
+/// \(2 \log_2(hi - lo)\) nodes, so memory grows with the positions touched, not with `hi - lo`.
 pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     t: List<T>
     lz: List<F>
@@ -27,6 +29,14 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// What each position holds, for a tree built with `of`.
     pub var source: ?(D -> T)
     var dual: Bool = false
+    // The `over:` layout: node 0 stands for every untouched node, node 1 is the root over
+    // `0..size`, and `lc`/`rc` hold each node's children, made on first touch.
+    lc: List<Int> = []
+    rc: List<Int> = []
+    blank: List<T> = []
+    part: List<T> = []
+    base: Int = 0
+    n: Int = 0
 
     /// A tree over `D` folding with `op`: built from `a`, filled with `fill`, or holding the identity
     /// everywhere when neither is given. `op` is a bare operator (`+`, `*`, `^`, `&`, `|`, `min`,
@@ -37,11 +47,13 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// skips push-down, which changes speed, never answers. `over: lo..hi` covers a huge `Int` range instead, making nodes
     /// on first touch; positions outside the touched ones hold `fill` or the identity.
     ///
-    /// cost: \(O(\lvert D \rvert)\); \(O(1)\) with `over:`
+    /// cost: \(O(\lvert D \rvert)\); \(O(\log(hi - lo))\) with `over: lo..hi`, which then makes at
+    /// most \(2 \log_2(hi - lo)\) nodes per call
     /// empty: an empty `D` gives a tree whose every fold is the identity; for an op with no
     /// identity, build over `op.opt()` and `Some` cells, and each fold is `None` when empty
     /// order: positions keep the domain `D` of `a`
-    /// traps: when both `a` and `fill` are given, or `over:` is given together with `a`
+    /// traps: when both `a` and `fill` are given, or `over:` is given together with `a`; a tree
+    /// built `over: lo..hi` traps on any position outside `lo..hi`
     /// example: `SegTree(+, [1, 2, 3]).all == 6`
     /// example: `SegTree<0..4, Int>(max, fill: 5).fold(1..3) == 5`
     /// example: `SegTree<0..4, Int>(+).all == 0`
@@ -53,22 +65,114 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
         act: A = NoAction(),
         over: ?Range<Int> = None,
     ) -> SegTree<D, T, F>:
-        if over != None: todo
+        if over != None: assert a == None, "pass either `a` or `over:`, not both"
         if same(op, NoOp()):
             // Dual tree: tags only, read one point at a time. Internal nodes hold tags and never
             // values, so `apply` runs on leaves only.
             assert not same(act, NoAction()), "a tree with no fold op needs `act:`"
             let seed = if let init = a: init[D.first!] else: fill!
             let left = Monoid<T>(seed, (x, _) => x)
-            var st = SegTree<D, T, F>.build_lazy(left, a, fill, Action<T, F>.of(act, left))
+            let tags = Action<T, F>.of(act, left)
+            var st = if let r = over: SegTree<D, T, F>.sparse(left, r, fill, Some(tags)) else: SegTree<D, T, F>.build_lazy(left, a, fill, tags)
             st.dual = true
             return st
         let m = Monoid<T>.of(op)
         if same(act, NoAction()):
+            if let r = over: return SegTree<D, T, F>.sparse(m, r, fill, None)
             return SegTree<D, T, F>.build(m, a, fill)
-        else:
-            let resolved = Action<T, F>.of(act, op)
-            return SegTree<D, T, F>.build_lazy(m, a, fill, resolved)
+        let resolved = Action<T, F>.of(act, op)
+        if let r = over: return SegTree<D, T, F>.sparse(m, r, fill, Some(resolved))
+        SegTree<D, T, F>.build_lazy(m, a, fill, resolved)
+
+    fn sparse(m: Monoid<T>, over: Range<Int>, fill: ?T, act: ?Action<T, F>) -> SegTree<D, T, F>:
+        let (lo, hi) = over.ends
+        let size = bit_ceil(max(hi - lo, 1))
+        var st = SegTree<D, T, F>(m, [], [], [], [], size, ctz(size), act, None) with base: lo, n: hi - lo
+        st.seed(fill)
+        st
+
+    // Reset the `over:` layout to one untouched root. `blank[k]` is the fold of `2^k` fill values
+    // and `part[k]` the fold of the `n mod 2^k` fill values under the node of width `2^k` that
+    // straddles `n`, so an untouched node's value is known without making it.
+    fn seed(mut self, fill: ?T):
+        let v = fill ?? m.id
+        blank = [v]
+        part = [m.id]
+        for k in 0..log:
+            blank.push(m.op(blank[k], blank[k]))
+            part.push(if n.bit(k): m.op(blank[k], part[k]) else: part[k])
+        t = [m.id]
+        lc = [0]
+        rc = [0]
+        if let f = act:
+            lz = [f.id]
+            has_lz = [false]
+        let _ = self.grow(0, size)
+
+    fn blank_at(self, nl: Int, nr: Int) -> T:
+        if nr <= n: return blank[ctz(nr - nl)]
+        if nl >= n: return m.id
+        part[ctz(nr - nl)]
+
+    fn grow(mut self, nl: Int, nr: Int) -> Int:
+        t.push(self.blank_at(nl, nr))
+        lc.push(0)
+        rc.push(0)
+        if let f = act:
+            lz.push(f.id)
+            has_lz.push(false)
+        t.len - 1
+
+    // The positions of `D` under node `p`, which covers `nl..nr`.
+    fn width(self, p: Int, nl: Int, nr: Int) -> Int:
+        if lc.len == 0: return span[p]
+        max(0, min(nr, n) - nl)
+
+    fn kid(self, p: Int, right: Bool) -> Int:
+        if lc.len == 0: return if right: 2 * p + 1 else: 2 * p
+        if right: rc[p] else: lc[p]
+
+    @get fn count(self) -> Int = if lc.len > 0: n else: D.count
+
+    fn slot(self, x: Int) -> Int:
+        let y = x - base
+        assert y in 0..n, "the position is outside the tree's `over:` range"
+        y
+
+    // Make node `p`'s children if they are untouched, then hand them its pending tag.
+    fn open_node(mut self, p: Int, nl: Int, nr: Int):
+        let mid = (nl + nr) / 2
+        if lc[p] == 0:
+            let c = self.grow(nl, mid)
+            lc[p] = c
+        if rc[p] == 0:
+            let c = self.grow(mid, nr)
+            rc[p] = c
+        if act != None: self.push(p, lc[p], rc[p], self.width(0, nl, mid), self.width(0, mid, nr), nr - nl == 2)
+
+    fn apply_at(mut self, p: Int, nl: Int, nr: Int, lo: Int, hi: Int, f: F):
+        if hi <= nl or nr <= lo: return
+        if lo <= nl and nr <= hi:
+            self.put(p, f, self.width(p, nl, nr), nr - nl == 1)
+            return
+        self.open_node(p, nl, nr)
+        let mid = (nl + nr) / 2
+        self.apply_at(lc[p], nl, mid, lo, hi, f)
+        self.apply_at(rc[p], mid, nr, lo, hi, f)
+        self.pull_node(p, lc[p], rc[p], self.width(p, nl, nr))
+
+    fn fold_at(self, p: Int, nl: Int, nr: Int, lo: Int, hi: Int, pend: ?F) -> T:
+        if hi <= nl or nr <= lo: return m.id
+        if lo <= nl and nr <= hi: return self.seen(pend, p, nl, nr)
+        let down = self.below(pend, p)
+        let mid = (nl + nr) / 2
+        m.op(self.fold_at(self.kid(p, false), nl, mid, lo, hi, down), self.fold_at(self.kid(p, true), mid, nr, lo, hi, down))
+
+    fn pull_path(mut self, p: Int, nl: Int, nr: Int, x: Int):
+        if nr - nl == 1: return
+        let mid = (nl + nr) / 2
+        if x < mid: self.pull_path(lc[p], nl, mid, x) else: self.pull_path(rc[p], mid, nr, x)
+        self.pull_node(p, lc[p], rc[p], self.width(p, nl, nr))
 
     fn build(m: Monoid<T>, a: ?[D]T, fill: ?T) -> SegTree<D, T, F>:
         let size = bit_ceil(D.count)
@@ -106,32 +210,38 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
             None,
         )
 
-    fn put(mut self, p: Int, f: F):
+    fn put(mut self, p: Int, f: F, w: Int, leaf: Bool):
         unchecked:
-            if span[p] == 0: return
-            if p >= size or not dual: t[p] = act!.apply(f, t[p], span[p])
-            if p < size:
+            if w == 0: return
+            if leaf or not dual: t[p] = act!.apply(f, t[p], w)
+            if not leaf:
                 lz[p] = act!.compose(f, lz[p])
                 has_lz[p] = true
 
-    fn push(mut self, p: Int):
+    // Hand node `p`'s pending tag to its children `l` and `r`, holding `wl` and `wr` positions.
+    fn push(mut self, p: Int, l: Int, r: Int, wl: Int, wr: Int, leaf: Bool):
         unchecked:
             if not has_lz[p]: return
-            self.put(2 * p, lz[p])
-            self.put(2 * p + 1, lz[p])
+            self.put(l, lz[p], wl, leaf)
+            self.put(r, lz[p], wr, leaf)
             lz[p] = act!.id
             has_lz[p] = false
 
+    fn push_at(mut self, p: Int):
+        self.push(p, 2 * p, 2 * p + 1, span[2 * p], span[2 * p + 1], 2 * p >= size)
+
     fn open(mut self, l: Int, h: Int):
         for i in (1..=log).rev:
-            if ((l >> i) << i) != l: self.push(l >> i)
-            if ((h >> i) << i) != h: self.push((h - 1) >> i)
+            if ((l >> i) << i) != l: self.push_at(l >> i)
+            if ((h >> i) << i) != h: self.push_at((h - 1) >> i)
 
     // Node `p`'s value with `pend`, the tags its ancestors hold, applied.
-    fn seen(self, pend: ?F, p: Int) -> T:
+    fn seen(self, pend: ?F, p: Int, nl: Int, nr: Int) -> T:
+        let v = if p == 0: self.blank_at(nl, nr) else: t[p]
         if let f = pend:
-            if span[p] > 0: return act!.apply(f, t[p], span[p])
-        t[p]
+            let w = self.width(p, nl, nr)
+            if w > 0: return act!.apply(f, v, w)
+        v
 
     // The tags pending above `p`'s children: `pend`, after `p`'s own.
     fn below(self, pend: ?F, p: Int) -> ?F:
@@ -144,26 +254,26 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     fn right_from(self, p: Int, nl: Int, nr: Int, from: Int, pend: ?F, acc: T, ok: T -> Bool) -> (Int, T):
         if nr <= from: return (-1, acc)
         if from <= nl:
-            let w = m.op(acc, self.seen(pend, p))
+            let w = m.op(acc, self.seen(pend, p, nl, nr))
             if ok(w): return (-1, w)
-            if p >= size: return (nl, acc)
+            if nr - nl == 1: return (nl, acc)
         let down = self.below(pend, p)
         let mid = (nl + nr) / 2
-        let (at, x) = self.right_from(2 * p, nl, mid, from, down, acc, ok)
+        let (at, x) = self.right_from(self.kid(p, false), nl, mid, from, down, acc, ok)
         if at >= 0: return (at, x)
-        self.right_from(2 * p + 1, mid, nr, from, down, x, ok)
+        self.right_from(self.kid(p, true), mid, nr, from, down, x, ok)
 
     fn left_from(self, p: Int, nl: Int, nr: Int, to: Int, pend: ?F, acc: T, ok: T -> Bool) -> (Int, T):
         if nl >= to: return (-1, acc)
         if nr <= to:
-            let w = m.op(self.seen(pend, p), acc)
+            let w = m.op(self.seen(pend, p, nl, nr), acc)
             if ok(w): return (-1, w)
-            if p >= size: return (nr, acc)
+            if nr - nl == 1: return (nr, acc)
         let down = self.below(pend, p)
         let mid = (nl + nr) / 2
-        let (at, x) = self.left_from(2 * p + 1, mid, nr, to, down, acc, ok)
+        let (at, x) = self.left_from(self.kid(p, true), mid, nr, to, down, acc, ok)
         if at >= 0: return (at, x)
-        self.left_from(2 * p, nl, mid, to, down, x, ok)
+        self.left_from(self.kid(p, false), nl, mid, to, down, x, ok)
 
     // `x`, folded over `n` leaves under node `p`, with the tags of `p`'s ancestors applied.
     fn lift(self, x: T, n: Int, p: Int) -> T:
@@ -175,10 +285,10 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
                 if has_lz[q]: v = act!.apply(lz[q], v, n)
         v
 
-    fn pull_node(mut self, p: Int):
+    fn pull_node(mut self, p: Int, l: Int, r: Int, w: Int):
         unchecked:
-            t[p] = m.op(t[2 * p], t[2 * p + 1])
-            if has_lz[p]: t[p] = act!.apply(lz[p], t[p], span[p])
+            t[p] = m.op(t[l], t[r])
+            if act != None and has_lz[p]: t[p] = act!.apply(lz[p], t[p], w)
 
     /// Apply tag `f` to every position of `r`: each fold over `r` then sees the values with `f`
     /// applied, through the action given to `act:`.
@@ -193,23 +303,27 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
         assert act != None, "apply requires `act:` on SegTree"
         let (lo, hi) = r.ends
         if lo >= hi: return
+        if lc.len > 0:
+            self.apply_at(1, 0, size, self.slot(lo), self.slot(hi - 1) + 1, f)
+            return
         let (l0, h0) = (lo + size, hi + size)
         if dual or not act!.commutes: self.open(l0, h0)
         var (l, h) = (l0, h0)
         unchecked:
             while l < h:
                 if l % 2 == 1:
-                    self.put(l, f)
+                    self.put(l, f, span[l], l >= size)
                     l += 1
                 if h % 2 == 1:
                     h -= 1
-                    self.put(h, f)
+                    self.put(h, f, span[h], h >= size)
                 l /= 2
                 h /= 2
         if dual: return
         for i in 1..=log:
-            if ((l0 >> i) << i) != l0: self.pull_node(l0 >> i)
-            if ((h0 >> i) << i) != h0: self.pull_node((h0 - 1) >> i)
+            let (a, b) = (l0 >> i, (h0 - 1) >> i)
+            if ((l0 >> i) << i) != l0: self.pull_node(a, 2 * a, 2 * a + 1, span[a])
+            if ((h0 >> i) << i) != h0: self.pull_node(b, 2 * b, 2 * b + 1, span[b])
 
     /// Apply tag `f` to every position; `apply(D.all, f)`.
     ///
@@ -219,7 +333,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// example: `var s = SegTree(+, [1, 2, 3], act: add); s.apply_all(1); s.all == 9`
     pub fn apply_all(mut self, f: F):
         assert act != None, "apply_all requires `act:` on SegTree"
-        if D.count > 0: self.put(1, f)
+        if self.count > 0: self.put(1, f, self.width(1, 0, size), size == 1)
 
     /// The fold of the values in `r`, left to right: `op(op(a[l], a[l + 1]), ...)`.
     ///
@@ -230,6 +344,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     pub fn fold(self, r: Range<D>) -> T:
         let (lo, hi) = r.ends
         if lo >= hi: return m.id
+        if lc.len > 0: return self.fold_at(1, 0, size, self.slot(lo), self.slot(hi - 1) + 1, None)
         var (l, h) = (lo + size, hi + size)
         var (a, b) = (m.id, m.id)
         if act == None:
@@ -276,10 +391,11 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// example: `SegTree(+, [1, 2, 3, 4]).right_while((0..0).r, s => s <= 100) == (0..4).r`
     pub fn right_while(self, from: Cut<D>, ok: T -> Bool) -> Cut<D>:
         assert ok(m.id), "`ok` must hold on the identity"
-        let n = D.count
-        if from.ord == n: return from
-        let (at, _) = self.right_from(1, 0, size, from.ord, None, m.id, ok)
-        D.cuts.nth(if at < 0: n else: at)
+        let k = self.count
+        let x = from.ord - base
+        if x == k: return from
+        let (at, _) = self.right_from(1, 0, size, x, None, m.id, ok)
+        D.cuts.nth(base + (if at < 0: k else: at))
 
     /// The first cut `d` at or left of `to` such that `ok(fold(d..to))` holds. `ok` must be
     /// monotone (once false it stays false as `d` moves left) and true on the identity, so `to`
@@ -292,9 +408,10 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// example: `SegTree(+, [1, 2, 3, 4]).left_while((0..4).r, s => s <= 3) == (0..4).r`
     pub fn left_while(self, to: Cut<D>, ok: T -> Bool) -> Cut<D>:
         assert ok(m.id), "`ok` must hold on the identity"
-        if to.ord == 0: return to
-        let (at, _) = self.left_from(1, 0, size, to.ord, None, m.id, ok)
-        D.cuts.nth(if at < 0: 0 else: at)
+        let x = to.ord - base
+        if x == 0: return to
+        let (at, _) = self.left_from(1, 0, size, x, None, m.id, ok)
+        D.cuts.nth(base + (if at < 0: 0 else: at))
 
     /// A tree whose position `i` holds `f(i)`. `f` is kept: when something it reads changes,
     /// `refresh(i)` recomputes position `i`, so the formula is written once instead of at every
@@ -341,6 +458,20 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// example: `SegTree(+, [4, 5, 6]).get(1) == 5`
     /// example: `var s = SegTree(act: assign, a: [1, 2, 3]); s.apply(0..2, Some(9)); s.get(1) == 9`
     pub fn get(self, i: D) -> T:
+        if lc.len > 0:
+            let x = self.slot(i.ord)
+            var (p, nl, nr) = (1, 0, size)
+            var pend: ?F = None
+            while nr - nl > 1:
+                pend = self.below(pend, p)
+                let mid = (nl + nr) / 2
+                if x < mid:
+                    p = self.kid(p, false)
+                    nr = mid
+                else:
+                    p = self.kid(p, true)
+                    nl = mid
+            return self.seen(pend, p, nl, nr)
         let p = size + i.ord
         if act == None: return t[p]
         var v = t[p]
@@ -355,9 +486,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// traps: when `i` is outside `D`
     /// example: `var s = SegTree(+, [1, 2, 3]); s.set(0, 10); s.all == 15`
     pub fn set(mut self, i: D, x: T):
-        let p = size + i.ord
-        if act != None:
-            for k in (1..=log).rev: self.push(p >> k)
+        let p = self.place(i)
         t[p] = x
         self.pull(i)
 
@@ -368,13 +497,34 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// traps: when `i` is outside `D`
     /// example: `var s = SegTree(+, [1, 2, 3]); s.at(0) += 5; s.all == 11`
     pub fn at(mut self, i: D) -> lends mut T:
-        let p = size + i.ord
-        if act != None:
-            for k in (1..=log).rev: self.push(p >> k)
+        let p = self.place(i)
         lend mut t[p]
         self.pull(i)
 
+    // The leaf for `i`, with every tag above it pushed down (and, with `over:`, its path made).
+    fn place(mut self, i: D) -> Int:
+        if lc.len == 0:
+            let p = size + i.ord
+            if act != None:
+                for k in (1..=log).rev: self.push_at(p >> k)
+            return p
+        let x = self.slot(i.ord)
+        var (p, nl, nr) = (1, 0, size)
+        while nr - nl > 1:
+            self.open_node(p, nl, nr)
+            let mid = (nl + nr) / 2
+            if x < mid:
+                p = lc[p]
+                nr = mid
+            else:
+                p = rc[p]
+                nl = mid
+        p
+
     fn pull(mut self, i: D):
+        if lc.len > 0:
+            self.pull_path(1, 0, size, self.slot(i.ord))
+            return
         var p = i.ord + size
         unchecked:
             while p > 1:
@@ -426,6 +576,9 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// example: `var s = SegTree(+, [1, 2, 3]); s.clear(); s.all == 0`
     /// example: `var s = SegTree(+, [1, 2, 3]); s.clear(fill: 2); s.all == 6`
     pub fn clear(mut self, fill: ?T = None):
+        if lc.len > 0:
+            self.seed(fill)
+            return
         let v = fill ?? m.id
         for i in 0..size: t[size + i] = if i < D.count: v else: m.id
         for p in (1..size).rev: t[p] = m.op(t[2 * p], t[2 * p + 1])
@@ -441,6 +594,20 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// example: `SegTree(+, [1, 2, 3, 4]).walk(1..4).collect() == [2, 7]`
     pub fn walk(self, r: Range<D>) -> yields T:
         let (lo, hi) = r.ends
+        if lc.len > 0:
+            if lo >= hi: return
+            let (l, h) = (self.slot(lo), self.slot(hi - 1) + 1)
+            var stack: List<(Int, Int, Int, ?F)> = [(1, 0, size, None)]
+            while let (p, nl, nr, pend) = stack.pop():
+                if h <= nl or nr <= l: continue
+                if l <= nl and nr <= h:
+                    yield self.seen(pend, p, nl, nr)
+                    continue
+                let down = self.below(pend, p)
+                let mid = (nl + nr) / 2
+                stack.push((self.kid(p, true), mid, nr, down))
+                stack.push((self.kid(p, false), nl, mid, down))
+            return
         var (l, h) = (lo + size, hi + size)
         var right: List<T> = []
         while l < h:
@@ -572,6 +739,32 @@ fn fill_option_initializes_leaves_without_array():
     assert st.fold(V(2)..=V(2)) == -4 and st.all == 0
     let summed = SegTree<V, Int>(+, fill: 7)
     assert summed.all == 35 and summed.fold(V(2)..=V(4)) == 21
+
+@test
+fn over_matches_a_plain_array():
+    domain P = 0..=100
+    for (lo, hi) in [(0, 1), (3, 10), (7, 40), (0, 33), (50, 100)]:
+        let k = hi - lo
+        let v = rand(-3, 3)
+        var a = List.filled(k, v)
+        var s = SegTree<P, Int>(+, fill: v, act: add, over: lo..hi)
+        var top = SegTree<P, Int>(max, fill: v, over: lo..hi)
+        for _ in 0..80:
+            let l = rand(0, k - 1)
+            let h = rand(l + 1, k)
+            let x = rand(-9, 9)
+            if rand(0, 1) == 0:
+                a[l] = x
+                s.set(P(lo + l), x)
+                top.set(P(lo + l), x)
+            else:
+                for j in l..h: a[j] += x
+                s.apply(P(lo + l)..P(lo + h), x)
+                for j in l..h: top.set(P(lo + j), a[j])
+            assert s.fold(P(lo + l)..P(lo + h)) == sum(a[j] for j in l..h)
+            assert top.fold(P(lo + l)..P(lo + h)) == [a[j] for j in l..h].max()!
+            assert s.get(P(lo + l)) == a[l] and top.get(P(lo + h - 1)) == a[h - 1]
+            assert s.all == a.sum() and top.all == a.max()!
 
 /// Static merge-sort tree for orthogonal 2D range counting over `[D]T`.
 /// Build in \(O(n \log n)\) time and memory; answer value-range counts over any `Range<D>` in \(O(\log^2 n)\).
