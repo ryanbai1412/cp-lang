@@ -156,6 +156,12 @@ def shard(mutants: list, spec: str | None) -> list:
     return mutants[k::n] if k < n else []
 
 
+def test_argv(cpl: Path | str, file: str) -> list[str]:
+    """`cpl test std/<file>`, run from the folder holding the std copy: only a path that
+    reads `std/<file>` checks as std's own module; any other path re-imports it and clashes."""
+    return [str(cpl), "test", f"std/{file}"]
+
+
 def test_cases(out: str, code: int) -> dict:
     """{fn: pass|fail} from `cpl test` on a std file; {"*": error} when it did not compile."""
     cases = {m.group(2): "pass" if m.group(1) == "ok" else "fail"
@@ -214,7 +220,7 @@ class Runner:
             if kind == "model":
                 return self.model(MODELS / what, env, limit)
             if kind == "test":
-                r = subprocess.run([self.cpl, "test", str(std / what)], cwd=ROOT, env=env,
+                r = subprocess.run(test_argv(self.cpl, what), cwd=std.parent, env=env,
                                    capture_output=True, text=True, timeout=limit)
                 return test_cases(r.stdout + r.stderr, r.returncode)
             with tempfile.TemporaryDirectory() as tmp:
@@ -270,7 +276,7 @@ def run_all(mutants: list[dict], runner: Runner, jobs: int, out: Path) -> dict:
         list(pool.map(runner.clean, dict.fromkeys(sl for m in mutants for sl in runner.slices(m))))
     free: queue.Queue[Path] = queue.Queue()
     for k in range(max(jobs, 1)):
-        std = out / f"std-{k}"
+        std = out / f"std-{k}" / "std"
         shutil.rmtree(std, ignore_errors=True)
         shutil.copytree(STD, std)
         free.put(std)

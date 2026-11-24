@@ -43,6 +43,9 @@ class SitesTest(unittest.TestCase):
         self.assertEqual(sorted(x for k in range(3) for x in sm.shard(ms, f"{k}/3")), ms)
         self.assertEqual(sm.shard(ms, None), ms)
 
+    def test_cpl_test_names_the_file_as_std_reads_it(self) -> None:
+        self.assertEqual(sm.test_argv("cpl", "algebra.cp"), ["cpl", "test", "std/algebra.cp"])
+
     def test_cpl_test_output(self) -> None:
         out = "  ok   std/a.cp::one\n  FAIL /t/a.cp::two: assertion failed\n1 passed, 1 failed\n"
         self.assertEqual(sm.test_cases(out, 1), {"one": "pass", "two": "fail"})
