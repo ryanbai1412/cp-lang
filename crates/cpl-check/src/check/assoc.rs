@@ -232,7 +232,7 @@ impl Checker<'_> {
         else {
             return methods
                 .iter()
-                .map(|m| (m.name.clone(), m.ty.clone()))
+                .map(|m| (m.name.clone(), read_as(m, m.ty.clone())))
                 .collect();
         };
         let mut on = crate::ty::Bindings::default();
@@ -243,7 +243,18 @@ impl Checker<'_> {
         methods
             .iter()
             .filter(|m| !own.iter().any(|(name, _)| *name == m.name))
-            .map(|m| (m.name.clone(), self.resolve_assoc(&m.ty.subst(&on))))
+            .map(|m| {
+                let ty = self.resolve_assoc(&m.ty.subst(&on));
+                (m.name.clone(), read_as(m, ty))
+            })
             .collect()
+    }
+}
+
+/// What reading the trait fn `m` as a member gives: a `@get` fn's value, else the fn.
+fn read_as(m: &crate::def::TraitMethod, ty: Ty) -> Ty {
+    match ty {
+        Ty::Fn { ret, .. } if m.getter => *ret,
+        ty => ty,
     }
 }

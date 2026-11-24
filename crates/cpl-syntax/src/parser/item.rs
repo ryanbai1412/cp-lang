@@ -961,6 +961,8 @@ impl<'a> Parser<'a> {
         } else {
             self.optional_body(&format!("`trait {}`", name.text))
         };
+        let mut body = body;
+        laws::derive_laws(&mut body.stmts);
         self.in_trait = was_in_trait;
         StmtKind::Trait {
             name,

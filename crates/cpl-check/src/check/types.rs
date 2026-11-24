@@ -1113,6 +1113,7 @@ impl<'a> Checker<'a> {
                             name: f.name.text.clone(),
                             ty: self.fn_sig(f, Some(&Ty::Param("Self".into()))),
                             required: matches!(f.body, ast::FnBody::None),
+                            getter: m.decorators.iter().any(|d| d.name.text == "get"),
                         }),
                         _ => None,
                     })

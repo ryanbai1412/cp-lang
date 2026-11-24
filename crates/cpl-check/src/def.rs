@@ -152,6 +152,8 @@ pub struct TraitMethod {
     pub ty: Ty,
     /// Declared without a body, so every impl must write it.
     pub required: bool,
+    /// `@get`: a read of it is its value.
+    pub getter: bool,
 }
 
 /// The name an impl is filed under, next to the fns and types of its file:

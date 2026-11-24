@@ -195,8 +195,11 @@ trait Commutative<T>: Op<T>:
   one type `T`, else a record of one list per parameter type, named by the
   type, `(T: List<T>, F: List<F>)`. `sizes(s)` is the length of each
   parameter's list, and `holds(s, picks)` is the law with parameter `k` bound
-  to element `picks[k]` of its list. A struct that writes its own `laws` keeps
-  it. (R08.3.5)
+  to element `picks[k]` of its list. A trait that declares laws derives the
+  same member as a default, so each impl's copy binds the trait's parameters to
+  the impl's args and calls the impl's fns: `impl Op<Int> for S` gives
+  `S(0).laws` over `List<Int>`. A struct or impl that writes its own `laws`
+  keeps it. (R08.3.5)
 
 ## 8.4 Record row types (trial)
 
