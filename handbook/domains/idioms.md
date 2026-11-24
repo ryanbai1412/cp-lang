@@ -214,7 +214,7 @@ GCC and LLVM's differential testing against a reference.
 | Multi-answer problems are judged by a checker | problems with several valid answers and no checker | `handbook/guidelines/problem-packages-checklist.md#r3`; differential: two accepted submissions that differ on a test | `corpus/audit.py` (`needs-checker`); `cpl-conform corpus` judges by `checker.py` |
 | Interactive problems run with an interactor | interactive ports with an interactor and generator | `handbook/guidelines/problem-packages-checklist.md#r4`; hand-written per problem | `corpus/problems/<id>/interactor.py`; `corpus/audit.py` (`interactor-no-gen`) |
 | Generators produce valid inputs | generated inputs accepted by a validator | `handbook/guidelines/problem-packages-checklist.md#r5`; generated: the port's read types validate `gen.py` output | `corpus/generators.py` (ratchet `corpus/generators-known.txt`) |
-| The interpreter and the C++ agree on every port | ports where `cpl run` and the built C++ differ on any test | differential | `corpus/differential.py` over `corpus/sets/v03.txt` (`cpl run` against the Codeforces C++ on every test; ratchet `corpus/differential-known.txt`) |
+| The interpreter and the C++ agree on every port | ports where `cpl run` and the built C++ differ on any test | differential | `corpus/differential.py` over `corpus/sets/v03.txt` (`cpl run` against the Codeforces C++ on every test; hard gate, no list) |
 | Corpus edits keep working ports working | ports whose verdicts change in a commit that edits them | differential before and after | commit-tier `cpl check` and lint ratchet on staged ports; `corpus/generators.py --changed staged` (a changed port's answers against the accepted C++) and `corpus/differential.py --changed staged` (interpreter against C++) |
 
 ### Performance and size (J8, J9)
@@ -223,7 +223,7 @@ GCC and LLVM's differential testing against a reference.
 |---|---|---|---|
 | Idiomatic ports run as fast as matched C++ | p50, p95 and max runtime ratio on max inputs | `handbook/guidelines/idiomatic-code-checklist.md#r10`; `handbook/guidelines/performance.md`; generated benchmark | perf's corpus bench; `corpus/generators.py` (`slow`: over 1.5x on the `--max` input, best of three) |
 | Every port can be tuned to 1.1x in the language | tuned ports at or under 1.1x | process | `missing` |
-| Every built solution is under 32 KB | Codeforces builds over 32 KB; none over 64 KB | generated over every port | `crates/cpl-cli/tests/judges.rs` (64 KB hard limit); `corpus/differential.py` (`over-32kb`, ratchet `corpus/differential-known.txt`) |
+| Every built solution is under 32 KB | Codeforces builds over 32 KB; none over 64 KB | generated over every port | `crates/cpl-cli/tests/judges.rs` (64 KB hard limit); `corpus/differential.py` (`over-32kb`, hard gate, no list); `bench/sizes.py --check` over every port, spec and dream |
 | A built solution compiles under each judge's flags | ports failing any judge's compiler and flags | generated matrix | `crates/cpl-cli/tests/judges.rs` (`every_port_compiles_with_every_judges_flags`) |
 | What passed locally passes on the judge | ports whose local verdict differs from the judge's | process: a sample of real submissions, by Ryan only | `missing` |
 
@@ -313,6 +313,7 @@ the chunks touched (4); find a planted off-by-one with stress and trace
 - 2026-11-23: the generator and max-bound rows name `corpus/generators.py`.
 - 2026-11-23: the spelling and 32 KB rows name `corpus/differential.py`.
 - 2026-11-23: the accepted-C++ agreement row names `corpus/generators.py`.
+- 2026-11-24: `corpus/differential.py` is a hard gate; `corpus/differential-known.txt` is gone.
 - 2026-11-23: the verdict and privacy rows name their checks.
 - 2026-11-23: the dream-and-spec row names `corpus/audit.py`.
 - 2026-11-23: the deep-recursion and catalog rows name their checks.

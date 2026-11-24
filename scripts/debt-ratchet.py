@@ -1320,7 +1320,7 @@ def _registered_entries(root: Path, counter: str) -> list[str]:
 
 
 def corpus_known(root: Path) -> list[str]:
-    """Entries of corpus/audit-, differential- and generators-known.txt: ports a corpus check skips."""
+    """Entries of corpus/audit- and generators-known.txt: ports a corpus check skips."""
     return _registered_entries(root, "corpus_known")
 
 
@@ -1717,7 +1717,6 @@ def module_loaders(root: Path) -> list[str]:
 # goes away. A new list without a row here fails `unregistered_lists`.
 LISTS: dict[str, tuple[str | None, str, str]] = {
     "corpus/audit-known.txt": ("corpus_known", "idioms", "fix each audited port"),
-    "corpus/differential-known.txt": ("corpus_known", "idioms", "fix each differing port"),
     "corpus/generators-known.txt": ("corpus_known", "idioms", "write each generator"),
     "corpus/port-check-failing.txt": ("skip_lists", "idioms", "fix each port"),
     "corpus/gold/GOLD.txt": (None, "idioms", "data: the gold set"),

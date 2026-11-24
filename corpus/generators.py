@@ -36,7 +36,7 @@ Interactive problems are skipped: gen.py prints the interactor's hidden
 data, not the port's input.
 
 Known findings live in corpus/generators-known.txt, which only shrinks.
-Same flags as corpus/differential.py: --check, --update, --cpl, -j.
+Same flags as corpus/differential.py (--check, --cpl, -j), plus --update for its list.
 """
 import argparse, concurrent.futures, hashlib, json, os, re, signal, subprocess, sys, tempfile, threading, time
 

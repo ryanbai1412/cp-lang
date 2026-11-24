@@ -23,17 +23,15 @@ would rewrite (idiomatic-code/R8).
 when it finds no cases there, `cpl-test-fails <id> <case>` when it rejects a
 case, `cpl-test-unjudged` when an interactive package's cases go unjudged.
 
-Known findings live in corpus/differential-known.txt, which only shrinks.
+Every finding is a failure: there is no known list.
 
   python3 corpus/differential.py [ids...]   print findings
-  --check                                   fail on a finding not in the list
-  --update                                  rewrite the list
+  --check                                   fail on any finding
   --cpl PATH                                default: target/release/cpl
 """
 import argparse, concurrent.futures, glob, hashlib, json, os, subprocess, sys, threading
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-KNOWN = os.path.join(ROOT, "corpus", "differential-known.txt")
 CACHE = os.path.join(ROOT, "target", "corpus-differential")
 TIMEOUT = 20
 SKIPPED = []
@@ -112,15 +110,16 @@ def changed(base):
 
 def select(a):
     """The ports a run covers: the ids given, the ones changed since --changed, or all of v03."""
-    if a.update and (a.changed or a.ids):
+    if getattr(a, "update", False) and (a.changed or a.ids):
         sys.exit("--update rewrites the whole known list, so it runs over all of v03")
     return changed(a.changed) if a.changed else a.ids or v03()
 
 
 def ratchet(name, path, found, a, what):
-    """Print, check or update `found` against the shrink-only list at `path`."""
-    known = {l.strip() for l in open(path) if l.strip() and not l.startswith("#")} if os.path.exists(path) else set()
-    if a.update:
+    """Print, check or update `found` against the shrink-only list at `path`; with no
+    `path`, every finding is new."""
+    known = {l.strip() for l in open(path) if l.strip() and not l.startswith("#")} if path and os.path.exists(path) else set()
+    if path and a.update:
         with open(path, "w") as f:
             f.write(f"# corpus/{name}.py findings not yet fixed; this list only shrinks.\n")
             f.writelines(x + "\n" for x in found)
@@ -268,7 +267,6 @@ def cpl_test(pid, port, cpl, cases=None):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--check", action="store_true")
-    ap.add_argument("--update", action="store_true")
     ap.add_argument("--cpl", default=os.path.join(ROOT, "target", "release", "cpl"))
     ap.add_argument("-j", type=int, default=os.cpu_count() or 4)
     ap.add_argument("--changed", metavar="BASE", help="only the v03 ports changed since BASE (a commit, or `staged`)")
@@ -278,7 +276,7 @@ def main(argv=None):
     with concurrent.futures.ThreadPoolExecutor(a.j) as pool:
         found = sorted(f for fs in pool.map(lambda p: check(p, a.cpl), ids) for f in fs)
     found += removed_spellings(ids, a.cpl)
-    return ratchet("differential", KNOWN, found, a, f"{len(ids)} ports, {len(COMPARED)} cases compared, {len(SKIPPED)} slow cases skipped")
+    return ratchet("differential", None, found, a, f"{len(ids)} ports, {len(COMPARED)} cases compared, {len(SKIPPED)} slow cases skipped")
 
 if __name__ == "__main__":
     sys.exit(main())
