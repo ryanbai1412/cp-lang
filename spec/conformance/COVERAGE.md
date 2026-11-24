@@ -1093,7 +1093,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Desc`, `Reversible`, `HasId`, `HasInv`, `Idempotent`, `AddAction`, `AssignAction`, `AffineAction`, `FlipAction`
 - **bag** (166/166 named by a case)
 - **beats** (25/25 named by a case)
-- **bitset** (104/104 named by a case)
+- **bitset** (106/107 named by a case)
+  - uncovered: `BitTrieArena.node_count`
 - **deque** (42/42 named by a case)
 - **derive** (6/6 named by a case)
 - **dp** (45/45 named by a case)
@@ -1140,7 +1141,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Rooted.reroot`, `Rooted.chains`, `VirtualTree`, `PermNode`
 - **window** (24/24 named by a case)
 
-2438 of 2473 std items are named by a case.
+2440 of 2476 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

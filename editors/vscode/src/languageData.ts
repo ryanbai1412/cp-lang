@@ -40,8 +40,8 @@ export const PRELUDE_TYPES: readonly string[] = [
 export const STDLIB_TYPES: readonly string[] = [
     'Action', 'AddAction', 'Affine', 'AffineAction', 'AhoCorasick', 'Anchor', 'Arc', 'Arena',
     'ArithDiff', 'AssignAction', 'AugSortedBag', 'AugSortedSet', 'BagCursor', 'Barrett',
-    'BeatsSegTree', 'Bidir', 'BigInt', 'BitMat', 'BitTrie', 'Bitset', 'BucketCount', 'ByAngle',
-    'ByAngleFrom', 'Centroids', 'Circle', 'ColorMatroid', 'Comb', 'Comm', 'Commutative',
+    'BeatsSegTree', 'Bidir', 'BigInt', 'BitMat', 'BitTrie', 'BitTrieArena', 'Bitset', 'BucketCount',
+    'ByAngle', 'ByAngleFrom', 'Centroids', 'Circle', 'ColorMatroid', 'Comb', 'Comm', 'Commutative',
     'Complement', 'Compressed', 'Concave', 'ConnectedGraph', 'Convex', 'CostFlow', 'Counter',
     'Curved', 'Dag', 'Deque', 'Desc', 'Diff', 'Digraph', 'Dir4', 'Dir8', 'DirichletSum', 'Disjoint',
     'DisjointSparseTable', 'Dsu', 'DsuNode', 'DsuOf', 'DualFenwick', 'DynBitset',
