@@ -85,41 +85,6 @@ impl<'a> Lowerer<'a> {
                 fills_cache: false,
             });
         }
-        for ast_p in &decl.params {
-            let bare = ast_p.ty.as_ref().map(|t| match &t.kind {
-                ast::TypeKind::Optional(inner) => &**inner,
-                _ => t,
-            });
-            if let Some(ast::Type {
-                kind: ast::TypeKind::Named { name, args },
-                ..
-            }) = bare
-            {
-                if args.is_empty() {
-                    if let Some(GenArg::Op(op)) = self.gen_env.get(&name.text) {
-                        cx.op_locals.insert(ast_p.name.text.clone(), *op);
-                    }
-                }
-            }
-            let op_key = mono::op_param_key(&ast_p.name.text);
-            if let Some(GenArg::Op(op)) = self.gen_env.get(&op_key) {
-                cx.op_locals.insert(ast_p.name.text.clone(), *op);
-            }
-        }
-        if let Some(gid) = self.sigs[id]
-            .owner
-            .and_then(|sid| self.structs[sid].origin_gen.as_ref().map(|(g, _)| *g))
-        {
-            for f in &self.gen_structs[gid].decl.fields {
-                if let ast::TypeKind::Named { name, args } = &f.ty.kind {
-                    if let (true, Some(GenArg::Op(op))) =
-                        (args.is_empty(), self.gen_env.get(&name.text))
-                    {
-                        cx.op_locals.entry(f.name.text.clone()).or_insert(*op);
-                    }
-                }
-            }
-        }
         let saved_cx = std::mem::replace(&mut self.cx, cx);
         self.bind_param_facts(decl, &mut params);
         if let Some(range::RangeInfo::Scalar(mut bounds)) =

@@ -189,42 +189,18 @@ impl<'a> Lowerer<'a> {
         if args.len() != 2 || args.iter().any(|a| a.name.is_some() || a.mutable) {
             return None;
         }
-        let (lhs, rhs) = (args[0].value.clone(), args[1].value.clone());
-        let bin = |op| ast::ExprKind::Binary {
-            op,
-            op_span,
-            lhs: Box::new(lhs.clone()),
-            rhs: Box::new(rhs.clone()),
-        };
-        let named = |f: &str| ast::ExprKind::Call {
-            callee: Box::new(ast::Expr {
-                kind: ast::ExprKind::Name(f.into()),
-                span: op_span,
-            }),
-            args: args.to_vec(),
-        };
-        let kind = match op {
-            BareOp::Add => bin(ast::BinOp::Add),
-            BareOp::Mul => bin(ast::BinOp::Mul),
-            BareOp::BitXor => bin(ast::BinOp::BitXor),
-            BareOp::BitOr => bin(ast::BinOp::BitOr),
-            BareOp::BitAnd => bin(ast::BinOp::BitAnd),
-            BareOp::Max => named("max"),
-            BareOp::Min => named("min"),
-            BareOp::Gcd | BareOp::Lcm => {
-                let f = if op == BareOp::Gcd { "gcd" } else { "lcm" };
-                // Named where the prelude is in scope, walked in a std body
-                // (`fold`) that need not import std.math.
+        let kind = super::op_value::op_ast(op, op_span, args);
+        // A fn op named where the prelude is out of scope, walked in a std
+        // body (`fold`) that need not import std.math.
+        if let ast::ExprKind::Call { callee, .. } = &kind {
+            if let ast::ExprKind::Name(f) = &callee.kind {
                 if self.get_sym(f).is_none() {
                     if let Some(Sym::Fn(id)) = self.sym_in_module("std.math", f) {
                         return Some(self.user_call(id, None, args, span));
                     }
                 }
-                named(f)
             }
-            BareOp::And => bin(ast::BinOp::And),
-            BareOp::Or => bin(ast::BinOp::Or),
-        };
+        }
         let e = ast::Expr { kind, span };
         Some(self.expr(&e, hint))
     }
@@ -1206,7 +1182,7 @@ impl<'a> Lowerer<'a> {
     }
 
     /// Binds each deferred bare op's param as a generic call does: `W(max, xs)`
-    /// with `M: Op<T>` takes `max`'s `Monoid<T>` impl, and a closure stays a fn.
+    /// with `M: Op<T>` takes `max`'s own type and its impl, and a closure stays a fn.
     fn bind_bare_ops(
         &mut self,
         ops: &[(&ast::Type, &ast::Expr)],
@@ -1221,7 +1197,8 @@ impl<'a> Lowerer<'a> {
             if inferred.contains_key(&name.text) {
                 continue;
             }
-            if let Some(g) = self.bare_op_for(bounds, &name.text, arg, (m, offset, inferred)) {
+            let at = (m, offset, &*inferred);
+            if let Some(g) = self.op_arg_for(bounds, &name.text, arg, at) {
                 inferred.insert(name.text.clone(), g);
             }
         }

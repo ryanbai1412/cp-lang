@@ -476,8 +476,6 @@ struct FnCx {
     in_body: bool,
     /// Block-scoped generic local functions (`fn id<T>(x: T) -> T = x`).
     local_gen_fns: HashMap<String, ast::FnDecl>,
-    /// Parameters bound to compile-time `BareOp` values (`+`, `min`, `max`, `gcd`, etc.).
-    op_locals: HashMap<String, BareOp>,
     /// Named mutable aliases (`let st = mut a[i]`): resolved to their underlying `Place`.
     mut_aliases: HashMap<String, Place>,
     /// `let g = gen(n)` with `gen` a generator: `g` is the recipe, and each

@@ -176,8 +176,8 @@ impl Checker<'_> {
                             (args, call),
                         );
                     }
-                    // `W<T, M: Op<T>>(op: M, xs: List<T>)`: a bare op for `M` is the
-                    // monoid, as at a generic fn's bound.
+                    // `W<T, M: Op<T>>(op: M, xs: List<T>)`: a fn item for `M` takes
+                    // its own type, as at a generic fn's bound.
                     let bound_args = through.unwrap_or_else(|| {
                         (generic_bounds.iter())
                             .filter_map(|(p, tr, targs)| {
@@ -188,7 +188,14 @@ impl Checker<'_> {
                             })
                             .collect()
                     });
-                    self.bare_ops_take_monoid(&bound_args, params, args, &mut bindings);
+                    let mut bounds: Vec<(String, Vec<String>)> = Vec::new();
+                    for (p, tr, _) in &bound_args {
+                        match bounds.iter_mut().find(|(q, _)| q == p) {
+                            Some((_, traits)) => traits.push(tr.clone()),
+                            None => bounds.push((p.clone(), vec![tr.clone()])),
+                        }
+                    }
+                    self.fn_items_take_bound_types(&bounds, params, args, &mut bindings);
                     if !is_generated_ctor && self.sink.len() > before {
                         self.ctor_arg_fix(callee_text, params, (methods, receivers), args, call);
                     }

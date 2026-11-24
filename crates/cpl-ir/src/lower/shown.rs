@@ -42,10 +42,12 @@ impl<'a> Lowerer<'a> {
                     GenArg::OptRange(_, _) => "?Int".to_string(),
                     GenArg::Domain(d) => domains[*d].clone(),
                     GenArg::Ty(ty) | GenArg::Sized(ty, _) | GenArg::Drawn(ty, _) => {
-                        crate::show::ty_name(ty, domains, &structs, &self.enums)
+                        match (arg, self.op_of_type(ty)) {
+                            (GenArg::Ty(_), Some(op)) => format!("{op:?}"),
+                            _ => crate::show::ty_name(ty, domains, &structs, &self.enums),
+                        }
                     }
                     GenArg::RuntimeInt(_) => "_".to_string(),
-                    GenArg::Op(op) => format!("{op:?}"),
                 })
                 .collect();
             let written = cpl_check::written_name(&decl.name.text);

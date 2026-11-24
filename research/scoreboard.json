@@ -1440,10 +1440,11 @@
         "core-08/assoc-type-bound-and-alias-where.cp": "pass",
         "core-08/associated-type-default-and-override.cp": "pass",
         "core-08/associated-type.cp": "pass",
-        "core-08/bare-op-at-a-bound-takes-the-monoid-impl.cp": "pass",
+        "core-08/bare-op-at-a-bound-takes-its-own-types-impl.cp": "pass",
         "core-08/bare-op-at-a-generic-bound-waits-for-its-arg.cp": "pass",
-        "core-08/bare-op-binds-its-monoid-after-later-args.cp": "pass",
-        "core-08/bare-op-takes-any-from-op-struct-impl.cp": "pass",
+        "core-08/bare-op-becomes-any-from-op-struct.cp": "pass",
+        "core-08/bare-op-binds-its-own-types-impl-after-later-args.cp": "pass",
+        "core-08/bare-op-keeps-its-identity-under-an-op-bound.cp": "pass",
         "core-08/blanket-impl.cp": "pass",
         "core-08/bodyless-domain-impl-takes-the-trait-default.cp": "pass",
         "core-08/bound-element-pattern-binds-its-param.cp": "pass",
@@ -1566,7 +1567,7 @@
         "core-08/seq-supertraits-come-from-std.cp": "pass",
         "core-08/shared-bound-param-agrees.cp": "pass",
         "core-08/shared-bound-param-conflict-rejected.cp": "pass",
-        "core-08/static-ctor-at-a-generic-bound-takes-the-monoid-impl.cp": "pass",
+        "core-08/static-ctor-at-a-generic-bound-takes-its-own-types-impl.cp": "pass",
         "core-08/static-fn-default-param-mismatch.cp": "pass",
         "core-08/static-fn-default-param.cp": "pass",
         "core-08/static-fn-explicit-args.cp": "pass",
@@ -2296,6 +2297,7 @@
         "std-algebra/each-positional-components.cp": "pass",
         "std-algebra/group-of-and-point-action.cp": "pass",
         "std-algebra/max-count-folds-with-plus.cp": "pass",
+        "std-algebra/max-min-are-selective-gcd-is-not-idempotent.cp": "pass",
         "std-algebra/max-sub-at-widest-then-leftmost.cp": "pass",
         "std-algebra/max-sub-of-is-a-fn-value.cp": "pass",
         "std-algebra/maxsub-plus-takes-zero-as-identity.cp": "pass",
@@ -4313,10 +4315,10 @@
       ],
       "counts": {
         "fail": 2,
-        "pass": 4295
+        "pass": 4297
       },
-      "passed": 4295,
-      "total": 4297
+      "passed": 4297,
+      "total": 4299
     },
     "corpus": {
       "cases": {

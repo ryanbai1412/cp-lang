@@ -95,7 +95,6 @@ impl<'a> Lowerer<'a> {
                 GenArg::Ty(_)
                 | GenArg::Sized(..)
                 | GenArg::Drawn(..)
-                | GenArg::Op(_)
                 | GenArg::Range(_, _)
                 | GenArg::OptRange(_, _) => {}
             }
