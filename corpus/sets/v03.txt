@@ -697,6 +697,7 @@ sdoi17r2p1
 sdoi17r2p4
 shoi15p2
 shoi16p1
+shoi16p2
 shoi16p3
 shoi16p4
 shoi16p5
@@ -723,6 +724,9 @@ ucup5s05e
 ucup5s05f
 ucup5s06a
 ucup5s06g
+utso15p5
+wac6p6
+wossoly21s3
 wtf26a
 wtf26b
 wtf26c
