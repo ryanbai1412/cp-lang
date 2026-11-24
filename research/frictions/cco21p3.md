@@ -17,7 +17,12 @@ let order = doors.after(back).map(c => (c, pass.next!)) + doors.before(back).map
 - **Where:** `walk` needs the position of the parent's corridor in the room's list.
   `Seq.index_of` exists only on a compressed domain, and `first_true` on a range is a
   binary search (it traps on a non-monotone predicate, which is right but was the first
-  thing tried), so the port writes `(0..doors.len).find(i => around[u][i] == p)!` (indexing `around[u]` rather than the local `doors`, so the closure captures two scalars instead of copying the list).
+  thing tried), so the port writes `(0..around[u].len).find(i => around[u][i] == p)!` and walks
+  the corridors by index from `back + 1`, wrapping, instead of building `order`.
+- **Why by index:** binding `let doors = around[u]` in the recursive `walk` copied the list in
+  every frame (`cpl explain`: "a call while the name lives may change what it reads", though
+  `around` is a `let`), and the per-frame `order` lists were alive down the whole recursion: the
+  `--max` case peaked at 306 MB. By index it peaks at 226 MB (accepted C++ 235 MB), 0.54 s.
 - **General fix:** a linear `position(x) -> ?Int` (or `find_index`) on every `Seq`.
 - **Status:** open.
 

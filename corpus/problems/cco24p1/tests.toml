@@ -31,3 +31,7 @@ size = 256
 [[case]]
 seed = 10
 size = 256
+
+[[case]]
+seed = 21
+size = 1000000

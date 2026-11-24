@@ -18,15 +18,14 @@ domain Pass = 0..=n
 
 var tour: List<(pass: Pass, to: Room)> = []
 fn walk(u: Room, from: ?Room, pass: Pass):
-    let doors = around[u]
-    let order = if let p = from:
-        let back = (0..doors.len).find(i => around[u][i] == p)!
-        [(c, pass.next!) for c in doors[back + 1..]] + [(c, pass) for c in doors[..back]]
-    else:
-        [(c, pass) for c in doors]
-    for (v, t) in order:
-        tour.push((t, v))
-        walk(v, Some(u), t)
+    let back = from.map(p => (0..around[u].len).find(i => around[u][i] == p)!)
+    let start = back.map(b => b + 1) ?? 0
+    for i in 0..around[u].len:
+        let j = (start + i) % around[u].len
+        if back == Some(j): continue
+        let t = if back.is_some_and(b => j > b): pass.next! else: pass
+        tour.push((t, around[u][j]))
+        walk(around[u][j], Some(u), t)
         tour.push((t, u))
 walk(Room.first!, None, Pass.first!)
 
