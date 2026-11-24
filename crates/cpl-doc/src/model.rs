@@ -6,6 +6,8 @@ use cpl_syntax::ast::{Decorator, ExprKind, FnDecl, Stmt, StmtKind, StrPiece};
 /// What kind of declaration an [`Item`] is.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub enum Kind {
+    /// A type the language declares: `Int`, `List<T>`, `HashMap<K, V>`.
+    Builtin,
     Domain,
     Type,
     Struct,
@@ -23,6 +25,7 @@ impl Kind {
     /// The heading its items are listed under.
     pub const fn plural(self) -> &'static str {
         match self {
+            Kind::Builtin => "Built-in types",
             Kind::Domain => "Domains",
             Kind::Type => "Type aliases",
             Kind::Struct => "Structs",
@@ -39,6 +42,7 @@ impl Kind {
 
     pub const fn as_str(self) -> &'static str {
         match self {
+            Kind::Builtin => "builtin",
             Kind::Domain => "domain",
             Kind::Type => "type",
             Kind::Struct => "struct",
@@ -517,6 +521,61 @@ pub fn extract(src: &str, path: &str) -> Module {
         path: path.to_string(),
         doc,
         examples: module_examples,
+        items,
+    }
+}
+
+/// The types the language itself declares, as one module: the rest of
+/// what every program has without a `use`, beside std's `prelude.cp`.
+/// Read from the compiler's catalog (`cpl_check::BUILTIN_TYPES`), so the
+/// docs list the members the checker accepts.
+pub fn builtins() -> Module {
+    let item = |kind: Kind, name: &str, signature: String, doc: &str, members: Vec<Item>| {
+        let text = DocText::parse(doc);
+        Item {
+            kind,
+            name: name.to_string(),
+            signature,
+            doc: doc.to_string(),
+            cost: text.facts.cost.clone(),
+            facts: text.facts,
+            prose: text.prose,
+            line: 0,
+            examples: Vec::new(),
+            members,
+        }
+    };
+    let items = cpl_check::BUILTIN_TYPES
+        .iter()
+        .map(|t| {
+            let members = t
+                .members
+                .into_iter()
+                .flat_map(cpl_check::builtin_members)
+                .map(|m| {
+                    let (kind, signature) = match m.kind {
+                        cpl_check::MemberKind::Get => (Kind::Field, m.signature()),
+                        cpl_check::MemberKind::Method => {
+                            (Kind::Fn, format!("fn {}", m.signature()))
+                        }
+                    };
+                    item(kind, m.name, signature, m.doc, Vec::new())
+                })
+                .collect();
+            item(
+                Kind::Builtin,
+                t.name,
+                format!("type {}", t.written),
+                t.doc,
+                members,
+            )
+        })
+        .collect();
+    Module {
+        name: "builtin".to_string(),
+        path: "crates/cpl-check/src/builtins.rs".to_string(),
+        doc: "The types the language itself declares: its scalars, `Str`, `List`, arrays, and the maps and sets.".to_string(),
+        examples: Vec::new(),
         items,
     }
 }

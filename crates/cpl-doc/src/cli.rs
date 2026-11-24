@@ -89,6 +89,14 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         }
     }
 
+    // std's prelude is what every program has without a `use`; the types
+    // the language declares are the rest of it.
+    if files
+        .iter()
+        .any(|f| f.file_name() == Some("prelude.cp".as_ref()))
+    {
+        modules.insert(0, crate::builtins());
+    }
     let broken = links::unresolved(&modules);
     for link in &broken {
         let _ = writeln!(

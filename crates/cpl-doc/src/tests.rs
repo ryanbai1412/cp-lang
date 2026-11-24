@@ -522,6 +522,28 @@ mod cli {
     }
 
     #[test]
+    fn documenting_the_prelude_documents_the_built_in_types() {
+        let dir = scratch("builtins");
+        let lib = dir.join("lib");
+        let (_, alone, _) = doc(&["--format", "json", lib.to_str().unwrap()]);
+        assert!(!alone.contains("\"builtin\""), "{alone}");
+        std::fs::write(lib.join("prelude.cp"), "use std.prefix.{Prefix}\n").unwrap();
+        let (code, json, stderr) = doc(&["--format", "json", lib.to_str().unwrap()]);
+        assert_eq!(code, 0, "{stderr}");
+        let builtin = json.split("{\"name\":\"prefix\"").next().unwrap();
+        for want in [
+            "\"name\":\"builtin\"",
+            "\"name\":\"HashMap\",\"signature\":\"type HashMap<K, V>\"",
+            "unordered_map",
+            "\"name\":\"HashSet\"",
+            "\"name\":\"push\",\"signature\":\"fn push(x: T)\"",
+        ] {
+            assert!(builtin.contains(want), "{want} in {builtin}");
+        }
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
     fn json_goes_to_stdout_and_writes_nothing() {
         let dir = scratch("json");
         let (code, stdout, _) = doc(&[

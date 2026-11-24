@@ -92,6 +92,37 @@ impl BuiltinMember {
     }
 }
 
+/// A type the language itself declares: what `cpl doc` shows for it.
+#[derive(Clone, Copy, Debug)]
+pub struct BuiltinType {
+    pub name: &'static str,
+    /// How it is written in a type, `HashMap<K, V>`.
+    pub written: &'static str,
+    /// What it is, as Markdown, with its C++, Python and Rust names so a
+    /// search for `unordered_map` finds `HashMap`.
+    pub doc: &'static str,
+    /// Whose catalog rows it has; `None` for a scalar.
+    pub members: Option<Receiver>,
+}
+
+/// Every built-in type `cpl doc` documents, in the order a reader meets
+/// them (spec/core/02-values-types.md).
+pub const BUILTIN_TYPES: &[BuiltinType] = &[
+    BuiltinType { name: "Int", written: "Int", members: None, doc: "The default integer, `-(2^63 - 1) ..= 2^63 - 1`: C++ `long long`, Python `int`, Rust `i64`. `Int.MIN` is one above `-2^63`, which is `?Int`'s `None`; narrow storage is a range type such as `0..=255`, never another integer type." },
+    BuiltinType { name: "I128", written: "I128", members: None, doc: "A signed 128-bit integer for products past `Int`: C++ `__int128`, Rust `i128`." },
+    BuiltinType { name: "U64", written: "U64", members: None, doc: "An unsigned 64-bit integer that wraps, for hashes, masks and bit tricks: C++ `unsigned long long`, Rust `u64`." },
+    BuiltinType { name: "F64", written: "F64", members: None, doc: "An IEEE double: C++ `double`, Python `float`, Rust `f64`. `==` is exact; `close(a, b, eps:)` is the tolerant compare." },
+    BuiltinType { name: "Bool", written: "Bool", members: None, doc: "`true` or `false`, one byte: C++ `bool`. `Int(b)` is 1 or 0." },
+    BuiltinType { name: "Char", written: "Char", members: None, doc: "An ASCII character `0..=127`, one byte, ordered by code: C++ `char`. `Int(c)` and `Char(i)` convert; `Char(i)` traps outside `0..=127`." },
+    BuiltinType { name: "Str", written: "Str", members: Some(Receiver::Str), doc: "A flat sequence of `Char` indexed by `0..len`: C++ `string`, Python `str`, Rust `String`. `+` makes a new string; `s.push(c)` and `s[i] = c` change a `var` one in place." },
+    BuiltinType { name: "List", written: "List<T>", members: Some(Receiver::List), doc: "A growable sequence indexed by `0..len`: C++ `vector`, Python `list`, Rust `Vec`. A counted array `[n]T` passes where a `List<T>` is read." },
+    BuiltinType { name: "Array", written: "[D]T", members: Some(Receiver::Array), doc: "A fixed-size array indexed by the positions of domain `D`, never a raw `Int`: C++ `array` or a sized `vector`. `[n]T` is `[0..n]T`; `[R, C]T` is a dense row-major 2-D array indexed `g[r, c]`. Large arrays never live on the C++ stack." },
+    BuiltinType { name: "Map", written: "Map<K, V>", members: Some(Receiver::Map), doc: "The lookup table: C++ `map`, Python `dict`, Rust `BTreeMap`. `for (k, v) in m` walks it in key order; when nothing observes the order, the C++ is a salted hash table." },
+    BuiltinType { name: "HashMap", written: "HashMap<K, V>", members: Some(Receiver::Map), doc: "A hash table whatever the program observes: C++ `unordered_map`, Python `dict`, Rust `HashMap`. Salted with `splitmix64` against anti-hash tests. Walking one has no defined order, so it is not `Show`; `Map<K, V>` is the usual spelling." },
+    BuiltinType { name: "Set", written: "Set<T>", members: Some(Receiver::Set), doc: "A set of distinct values: C++ `set`, Python `set`, Rust `BTreeSet`. It walks in order; when nothing observes the order, the C++ is a salted hash set." },
+    BuiltinType { name: "HashSet", written: "HashSet<T>", members: Some(Receiver::Set), doc: "A hash set whatever the program observes: C++ `unordered_set`, Python `set`, Rust `HashSet`. Salted with `splitmix64`. Walking one has no defined order, so it is not `Show`; `Set<T>` is the usual spelling." },
+];
+
 /// The members of one built-in type.
 pub fn builtin_members(receiver: Receiver) -> impl Iterator<Item = &'static BuiltinMember> {
     BUILTIN_MEMBERS
@@ -481,6 +512,28 @@ mod tests {
                 let found: Vec<_> = check(&src).iter().map(|d| d.code.0).collect();
                 assert!(!found.contains(&"E0203"), "{owner}.{m}: {found:?}");
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod builtin_type_tests {
+    use super::{prelude, Receiver, BUILTIN_TYPES};
+
+    #[test]
+    fn every_receiver_and_container_name_is_a_documented_type() {
+        for receiver in Receiver::ALL {
+            assert!(
+                BUILTIN_TYPES.iter().any(|t| t.members == Some(receiver)),
+                "{receiver:?}"
+            );
+        }
+        for t in BUILTIN_TYPES {
+            assert!(
+                t.members == Some(Receiver::Array) || prelude::TYPE_NAMES.contains(&t.name),
+                "{}",
+                t.name
+            );
         }
     }
 }

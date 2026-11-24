@@ -9,13 +9,14 @@ use crate::{links, Item, Kind, Module};
 /// The stylesheet every page links.
 pub const STYLE: &str = include_str!("style.css");
 
-/// Filters the page's items as the reader types. `/` focuses the box.
+/// Filters the page's items as the reader types, by name or by what the
+/// row says (a search for `unordered_map` finds `HashMap`). `/` focuses the box.
 const FILTER: &str = "\
 const box = document.querySelector('.top input');
 const rows = [...document.querySelectorAll('[data-name]')];
 box.addEventListener('input', () => {
   const want = box.value.trim().toLowerCase();
-  for (const row of rows) row.hidden = want !== '' && !row.dataset.name.includes(want);
+  for (const row of rows) row.hidden = want !== '' && !(row.dataset.name + ' ' + row.textContent.toLowerCase()).includes(want);
 });
 document.addEventListener('keydown', (e) => {
   if (e.key === '/' && document.activeElement !== box) { e.preventDefault(); box.focus(); }
@@ -41,7 +42,8 @@ impl Default for Options {
 }
 
 /// The order item kinds are listed in on a module's page.
-const GROUPS: [Kind; 9] = [
+const GROUPS: [Kind; 10] = [
+    Kind::Builtin,
     Kind::Domain,
     Kind::Type,
     Kind::Struct,
@@ -188,7 +190,7 @@ fn item_html(
             escape(cost)
         ));
     }
-    if let Some(base) = &options.source_url {
+    if let (Some(base), true) = (&options.source_url, item.line > 0) {
         out.push_str(&format!(
             "<a class=\"src\" href=\"{}/{}#L{}\">source</a>",
             escape(base.trim_end_matches('/')),

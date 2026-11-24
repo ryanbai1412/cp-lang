@@ -128,7 +128,7 @@ pub mod json {
     }
 }
 
-pub use model::{extract, DocText, Example, Facts, Item, Kind, Module};
+pub use model::{builtins, extract, DocText, Example, Facts, Item, Kind, Module};
 
 /// Name of this crate.
 pub const NAME: &str = env!("CARGO_PKG_NAME");

@@ -7,6 +7,7 @@ publish.workspace = true
 license.workspace = true
 
 [dependencies]
+cpl-check.workspace = true
 cpl-diag.workspace = true
 cpl-json.workspace = true
 cpl-syntax.workspace = true
