@@ -5812,7 +5812,7 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
 ## 225. Wall-clock assertions never block a landing or turn main red (2026-11-22)
 
 - **Decision.** A test that asserts elapsed time is listed in
-  `wall_clock_tests` in `scripts/check.sh` (or, when it mixes a budget into
+  `WALL_CLOCK_TESTS` in `scripts/ci.py` (or, when it mixes a budget into
   a correctness check, skips the budget while `CPL_NO_WALL_CLOCK` is set).
   `--commit`, `--land` and `--fast` skip them; `scripts/check.sh --timing`
   runs them in a CI job marked `continue-on-error`, and `--full` runs them.
@@ -5821,8 +5821,8 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
   against a 1 s budget on a loaded 4-core runner (run 45082394843); the
   same code passes alone. A gate that fails without a code change stalls
   every lane and trains people to rerun red.
-- **Reverse.** Empty `wall_clock_tests` and drop the `CPL_NO_WALL_CLOCK`
-  export in `scripts/check.sh`.
+- **Reverse.** Empty `WALL_CLOCK_TESTS` in `scripts/ci.py` and drop the
+  `CPL_NO_WALL_CLOCK` export in `scripts/check.sh`.
 
 ## 226. CI on main keeps one running and one waiting run (2026-11-22)
 

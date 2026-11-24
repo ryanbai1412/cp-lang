@@ -244,34 +244,11 @@ fi
 need cargo "see https://rustup.rs"
 cpl="$target/debug/cpl"
 
-# Which --fast leaves to --full (the reasons are above the nextest step).
-slow_tests=(
-    products_and_variable_divisors_are_never_decided_wrongly
-    front_end_check_is_under_50_ms
-    recovery_scoreboard
-    fix_it_scoreboard
-    committed_scoreboard_ratchet
-)
-slow_filter='binary(budget)'
-for t in "${slow_tests[@]}"; do slow_filter+=" or test(/(^|::)$t\$/)"; done
-
-# Wall-clock assertions (decision 225): a timing budget can fail on a loaded
-# machine with no code change, so no blocking tier runs one. CI reports them
-# in a job that never fails the workflow (--timing); --full runs them too.
-wall_clock_tests=(
-    lsp_requests_are_under_100_ms
-    keystrokes_on_the_largest_ports_and_a_broken_file_are_within_budget_at_p95
-    largest_corpus_file_diagnostics_hover_and_completion_p95_under_100ms
-    the_checks_of_a_typical_function_fit_the_budget
-    a_segment_tree_monoid_is_checked_within_the_budget
-    ten_million_steps_fit_the_debugging_budgets
-    every_command_starts_cold_in_under_100_ms
-)
-wall_filter='binary(budget) or test(/(^|::)front_end_check_is_under_50_ms$/)'
-for t in "${wall_clock_tests[@]}"; do
-    wall_filter+=" or test(/(^|::)$t\$/)"
-    slow_filter+=" or test(/(^|::)$t\$/)"
-done
+# The tiers' test filters (slow_filter, wall_filter) and CPL_GATE_PART's parse
+# (gate_kind, conform_suites, conform_shard, part) live in scripts/ci.py, tested.
+gate_part="${CPL_GATE_PART:-}"
+ci_plan="$(uv run --quiet python scripts/ci.py plan --mode "$mode" --gate-part "$gate_part")" || exit 1
+eval "$ci_plan"
 # Tests that mix a timing budget into a correctness check skip the budget.
 [ "$mode" = full ] || [ "$mode" = timing ] || export CPL_NO_WALL_CLOCK=1
 if [ "$mode" = timing ]; then
@@ -281,27 +258,12 @@ if [ "$mode" = timing ]; then
     exit
 fi
 
-# CI splits --fast across parallel jobs (.github/workflows/ci.yml):
-# CPL_GATE_PART=checks runs everything but the workspace tests, the
-# conformance ratchet and fmt_check (CPL_GATE_PART=fmt), CPL_GATE_PART=conform runs the ratchet and the script
-# unit tests (CPL_GATE_PART=conform:<suite+...> runs only those suites, the
-# script tests with the conformance suite; a trailing @N/M passes --shard N/M), and CPL_GATE_PART=tests:<nextest partition> (e.g. tests:hash:1/12)
-# runs only that share of the tests, CPL_GATE_PART=tests:doc the doctests. Unset runs
-# all of --fast.
+# CPL_GATE_PART's parts are listed in scripts/ci.py.
 # Every tracked script test; unrun_script_tests fails on one outside these globs.
 mapfile -t script_tests < <(git ls-files 'scripts/test_*.py' 'bench/test_*.py' 'tools/*/test_*.py')
-gate_part="${CPL_GATE_PART:-}"
-case "$gate_part" in
-    "" | checks) ;;
-    conform | conform:*)
-        [ "$mode" = fast ] || fail "CPL_GATE_PART=$gate_part needs --fast"
-        conform_suites=all
-        [ "$gate_part" = conform ] || conform_suites="${gate_part#conform:}"
-        conform_shard=
-        case "$conform_suites" in
-            *@*) conform_shard="--shard ${conform_suites#*@}"; conform_suites="${conform_suites%@*}" ;;
-        esac
-        conform_suites="${conform_suites//[+,]/ }"
+case "$gate_kind" in
+    checks) ;;
+    conform)
         case " $conform_suites " in
             *" all "* | *" conformance "*)
                 step "script unit tests"
@@ -324,17 +286,14 @@ case "$gate_part" in
         printf '\ncheck: conformance part passed in %ss\n' "$(( $(date +%s) - gate_t0 ))"
         exit 0
         ;;
-    tests:doc)
-        [ "$mode" = fast ] || fail "CPL_GATE_PART=$gate_part needs --fast"
+    doc)
         step "cargo test --workspace --doc"
         cargo test -q --workspace --doc
         step_end
         printf '\ncheck: doctests passed in %ss\n' "$(( $(date +%s) - gate_t0 ))"
         exit 0
         ;;
-    tests:*)
-        [ "$mode" = fast ] || fail "CPL_GATE_PART=$gate_part needs --fast"
-        part="${gate_part#tests:}"
+    tests)
         # CI compiles the test binaries once (cargo nextest archive) and every
         # partition runs them from CPL_NEXTEST_ARCHIVE; unset, nextest builds.
         from=(--workspace)
@@ -353,7 +312,6 @@ case "$gate_part" in
         exit 0
         ;;
     fmt)
-        [ "$mode" = fast ] || fail "CPL_GATE_PART=$gate_part needs --fast"
         step "cpl fmt is idempotent and keeps meaning on every .cp file"
         if cache_hit fmt_corpus; then
             echo "cached (tree unchanged outside its excludes)"
@@ -367,7 +325,6 @@ case "$gate_part" in
         printf '\ncheck: fmt part passed in %ss\n' "$(( $(date +%s) - gate_t0 ))"
         exit 0
         ;;
-    *) fail "unknown CPL_GATE_PART \`$gate_part\` (checks, fmt, conform or tests:<partition>)" ;;
 esac
 
 if [ "$mode" = land ]; then

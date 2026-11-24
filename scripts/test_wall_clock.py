@@ -1,19 +1,21 @@
-"""A test that asserts a timing budget under 5 s is listed in check.sh's
-wall_clock_tests, so no blocking tier runs it (ci/R34, decision 225): a loaded
+"""A test that asserts a timing budget under 5 s is listed in scripts/ci.py's
+WALL_CLOCK_TESTS (or SLOW_TESTS), so no blocking tier runs it (ci/R34, decision 225): a loaded
 CI runner must not fail a commit a local run passes. Longer bounds guard hangs."""
 import glob
 import os
 import re
+import sys
 import unittest
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import ci  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BOUND = re.compile(r"(?:from_(millis|secs)\((\d+)\)|as_(millis|secs)\(\)\s*<=?\s*(\d+))")
 
 
-def listed(check_sh):
-    names = set(re.findall(r"\(\^\|::\)(\w+)\$", check_sh))
-    m = re.search(r"wall_clock_tests=\((.*?)\)", check_sh, re.S)
-    return names | set(m.group(1).split() if m else ())
+def listed():
+    return set(ci.WALL_CLOCK_TESTS) | set(ci.SLOW_TESTS)
 
 
 def unlisted_budgets(path, text, allowed):
@@ -32,23 +34,21 @@ def unlisted_budgets(path, text, allowed):
 
 class WallClock(unittest.TestCase):
     def test_every_short_timing_budget_is_kept_out_of_the_blocking_tiers(self):
-        with open(os.path.join(ROOT, "scripts", "check.sh"), encoding="utf-8") as f:
-            allowed = listed(f.read())
+        allowed = listed()
         found = []
         for path in sorted(glob.glob(os.path.join(ROOT, "crates", "*", "tests", "*.rs"))):
             if os.path.basename(path) == "budget.rs":
                 continue
             with open(path, encoding="utf-8") as f:
                 found += unlisted_budgets(os.path.relpath(path, ROOT), f.read(), allowed)
-        self.assertEqual(found, [], "add these tests to wall_clock_tests in scripts/check.sh")
+        self.assertEqual(found, [], "add these tests to WALL_CLOCK_TESTS in scripts/ci.py")
 
     def test_finds_an_unlisted_budget(self):
         text = ("fn quick() {\n    assert!(t.elapsed() < Duration::from_millis(50));\n}\n"
                 "fn hang_guard() {\n    assert!(t.elapsed().as_secs() < 10);\n}\n"
                 "fn listed_one() {\n    assert!(t.elapsed() < Duration::from_secs(1));\n}\n")
         self.assertEqual(unlisted_budgets("x.rs", text, {"listed_one"}), ["x.rs:2 quick"])
-        self.assertIn("ten_million_steps_fit_the_debugging_budgets",
-                      listed("wall_clock_tests=(\n    ten_million_steps_fit_the_debugging_budgets\n)"))
+        self.assertIn("ten_million_steps_fit_the_debugging_budgets", listed())
 
 
 if __name__ == "__main__":

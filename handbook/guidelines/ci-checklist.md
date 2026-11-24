@@ -293,7 +293,7 @@ fails.
 ### ci/R34
 
 A test that asserts a wall-clock bound under 5 s is listed in
-`wall_clock_tests` in `scripts/check.sh`, so it runs only in the
+`WALL_CLOCK_TESTS` in `scripts/ci.py`, so it runs only in the
 non-blocking timing job and `--full` (decision 225).
 *Why:* a busy hosted runner can be several times slower than a laptop, so a
 50 ms budget in a blocking tier fails main with no code change and the red
