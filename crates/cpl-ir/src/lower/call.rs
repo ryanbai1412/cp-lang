@@ -1211,19 +1211,11 @@ impl<'a> Lowerer<'a> {
                         }
                     };
 
-                    let lo_s = self.temp(opt_k.clone());
-                    out.push_let(lo_s, lo_expr);
-                    let lo_inc_s = self.temp(Ty::Bool);
-                    out.push_let(lo_inc_s, lo_inc_expr);
-                    let hi_s = self.temp(opt_k);
-                    out.push_let(hi_s, hi_expr);
-                    let hi_inc_s = self.temp(Ty::Bool);
-                    out.push_let(hi_inc_s, hi_inc_expr);
-                    let empty_s = empty_expr.map(|ee| {
-                        let s = self.temp(Ty::Bool);
-                        out.push_let(s, ee);
-                        s
-                    });
+                    let lo_s = self.view_bound(lo_expr, out);
+                    let lo_inc_s = self.view_bound(lo_inc_expr, out);
+                    let hi_s = self.view_bound(hi_expr, out);
+                    let hi_inc_s = self.view_bound(hi_inc_expr, out);
+                    let empty_s = empty_expr.map(|ee| self.view_bound(ee, out));
                     return Some(SortedView {
                         base: place,
                         kind,
@@ -1242,6 +1234,27 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// A bound of a view as each of its uses reads it: a constant as it is,
+    /// so `b.range(2..)` passes `Some(2), true, None, false` straight to the
+    /// one shared walk, and any other value once, in a local.
+    fn view_bound(&mut self, e: Expr, out: &mut Vec<Stmt>) -> Expr {
+        fn constant(e: &Expr) -> bool {
+            match &e.kind {
+                ExprKind::Int(_) | ExprKind::Bool(_) | ExprKind::Char(_) | ExprKind::None => true,
+                ExprKind::Some(inner) | ExprKind::Cast(_, inner) => constant(inner),
+                ExprKind::Unary(UnOp::Neg, inner) => constant(inner),
+                _ => false,
+            }
+        }
+        if constant(&e) || matches!(e.kind, ExprKind::Local(_)) && e.ty == Ty::Bool {
+            return e;
+        }
+        let span = e.span;
+        let slot = self.temp(e.ty.clone());
+        out.push_let(slot, e);
+        self.local(slot, span)
+    }
+
     pub(super) fn call_sorted_view(
         &mut self,
         view: &SortedView,
@@ -1256,14 +1269,14 @@ impl<'a> Lowerer<'a> {
         };
         let args = vec![
             Arg::Value(super::stmt::place_to_expr(&view.base)),
-            Arg::Value(self.local(view.lo, span)),
-            Arg::Value(self.local(view.lo_inc, span)),
-            Arg::Value(self.local(view.hi, span)),
-            Arg::Value(self.local(view.hi_inc, span)),
+            Arg::Value(view.lo.clone()),
+            Arg::Value(view.lo_inc.clone()),
+            Arg::Value(view.hi.clone()),
+            Arg::Value(view.hi_inc.clone()),
         ];
         let call = self.mk(ExprKind::Call(fn_id, args), ret_ty.clone(), span);
-        if let Some(emp) = view.empty {
-            let cond = self.local(emp, span);
+        if let Some(emp) = &view.empty {
+            let cond = emp.clone();
             self.mk_if(cond, empty_default, call, ret_ty, span)
         } else {
             call
@@ -1287,14 +1300,14 @@ impl<'a> Lowerer<'a> {
         span: Span,
     ) -> Expr {
         let opt_e = Ty::opt(view.elem_ty.clone());
-        let bound_slot = if check_hi { view.hi } else { view.lo };
-        let inc_slot = if check_hi { view.hi_inc } else { view.lo_inc };
+        let bound = if check_hi { &view.hi } else { &view.lo }.clone();
+        let inc = if check_hi { &view.hi_inc } else { &view.lo_inc }.clone();
         self.do_expr(Some(&opt_e), span, |lw, out| {
             let cs = lw.temp(opt_e.clone());
             out.push_let(cs, cand);
             let c_ref = lw.local(cs, span);
             let c_some = lw.mk_is_some(c_ref.clone(), Ty::Bool, span);
-            let b_ref = lw.local(bound_slot, span);
+            let b_ref = bound;
             let b_some = lw.mk_is_some(b_ref.clone(), Ty::Bool, span);
             let both = lw.mk_binary(BinOp::And, c_some, b_some, Ty::Bool, span);
             let elem_val = lw.mk_unwrap(c_ref.clone(), false, view.elem_ty.clone(), span);
@@ -1307,13 +1320,7 @@ impl<'a> Lowerer<'a> {
             };
             let inc_cmp = lw.mk_cmp(inc_op, k_val.clone(), b_val.clone(), Ty::Bool, span);
             let strict_cmp = lw.mk_cmp(strict_op, k_val, b_val, Ty::Bool, span);
-            let in_bounds = lw.mk_if(
-                lw.local(inc_slot, span),
-                inc_cmp,
-                strict_cmp,
-                Ty::Bool,
-                span,
-            );
+            let in_bounds = lw.mk_if(inc, inc_cmp, strict_cmp, Ty::Bool, span);
             let keep = lw.mk_if(
                 in_bounds,
                 c_ref.clone(),
@@ -1333,8 +1340,8 @@ impl<'a> Lowerer<'a> {
             let base_e = super::stmt::place_to_expr(&view.base);
             let (start_slot, start_inc, end_op, ge_op, gt_op, check_hi) = if want_last {
                 (
-                    view.hi,
-                    view.hi_inc,
+                    view.hi.clone(),
+                    view.hi_inc.clone(),
                     Builtin::SetMax,
                     Builtin::LastLe,
                     Builtin::LastLt,
@@ -1342,34 +1349,28 @@ impl<'a> Lowerer<'a> {
                 )
             } else {
                 (
-                    view.lo,
-                    view.lo_inc,
+                    view.lo.clone(),
+                    view.lo_inc.clone(),
                     Builtin::SetMin,
                     Builtin::FirstGe,
                     Builtin::FirstGt,
                     true,
                 )
             };
-            let s_ref = lw.local(start_slot, span);
+            let s_ref = start_slot;
             let s_some = lw.mk_is_some(s_ref.clone(), Ty::Bool, span);
             let s_val = lw.mk_unwrap(s_ref, false, view.key_ty.clone(), span);
             let call_ge =
                 lw.mk_builtin(ge_op, [base_e.clone(), s_val.clone()], opt_e.clone(), span);
             let call_gt = lw.mk_builtin(gt_op, [base_e.clone(), s_val], opt_e.clone(), span);
-            let bounded = lw.mk_if(
-                lw.local(start_inc, span),
-                call_ge,
-                call_gt,
-                opt_e.clone(),
-                span,
-            );
+            let bounded = lw.mk_if(start_inc, call_ge, call_gt, opt_e.clone(), span);
             let open = lw.mk_builtin(end_op, [base_e], opt_e.clone(), span);
             let cand = lw.mk_if(s_some, bounded, open, opt_e.clone(), span);
             let clipped = lw.tree_view_clip(view, cand, check_hi, span);
             out.push_give(clipped);
         });
-        if let Some(emp) = view.empty {
-            self.mk_if(self.local(emp, span), none_e, body, opt_e, span)
+        if let Some(emp) = &view.empty {
+            self.mk_if(emp.clone(), none_e, body, opt_e, span)
         } else {
             body
         }
@@ -1493,7 +1494,20 @@ impl<'a> Lowerer<'a> {
             out.push_give(res);
         });
         e.ty = res_ty;
-        e
+        match e.kind {
+            ExprKind::Do(Block { stmts }) => match <[Stmt; 1]>::try_from(stmts) {
+                Ok([Stmt::Give(res)]) => res,
+                Ok([stmt]) => Expr {
+                    kind: ExprKind::Do(Block { stmts: vec![stmt] }),
+                    ..e
+                },
+                Err(stmts) => Expr {
+                    kind: ExprKind::Do(Block { stmts }),
+                    ..e
+                },
+            },
+            _ => e,
+        }
     }
 
     pub(super) fn sorted_view_iter(&mut self, e: &ast::Expr, span: Span) -> Option<(Iter, Ty)> {

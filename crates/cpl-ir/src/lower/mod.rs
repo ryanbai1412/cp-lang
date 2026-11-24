@@ -561,11 +561,12 @@ pub(super) struct SortedView {
     pub kind: SortedViewKind,
     pub key_ty: Ty,
     pub elem_ty: Ty,
-    pub lo: Slot,
-    pub lo_inc: Slot,
-    pub hi: Slot,
-    pub hi_inc: Slot,
-    pub empty: Option<Slot>,
+    /// Each bound is a constant or a local holding it.
+    pub lo: Expr,
+    pub lo_inc: Expr,
+    pub hi: Expr,
+    pub hi_inc: Expr,
+    pub empty: Option<Expr>,
     pub rev: bool,
 }
 

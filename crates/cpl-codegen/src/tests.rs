@@ -1419,3 +1419,30 @@ fn an_assert_builds_its_message_out_of_line() {
         "the message is not counted against inlining: {cpp}"
     );
 }
+
+#[test]
+fn a_range_of_a_sorted_bag_passes_its_constant_bounds_to_one_call() {
+    let out = cpp(concat!(
+        "var b = SortedBag<Int>()\n",
+        "for x in [5, 2, 5, 1]:\n",
+        "    let _ = b.add(x)\n",
+        "let lo = 2\n",
+        "print(b.range(2..).first ?? -1, b.range(..=5).last ?? -1, b.range(lo..6).len)\n",
+    ));
+    for call in [
+        "_range_first(b, cpl::OptInt(2), true, cpl::OptInt(), false)",
+        "_range_last(b, cpl::OptInt(), true, cpl::OptInt(5), true)",
+    ] {
+        assert!(out.contains(call), "no `{call}` in\n{out}");
+    }
+    // A bound that is not a constant is read once, into a local.
+    assert!(out.contains("cpl::OptInt(6), false)"), "{out}");
+    assert!(
+        !out.contains("bool t"),
+        "a constant bound bound to a local:\n{out}"
+    );
+    assert!(
+        !out.contains("[&]() -> cpl::OptInt"),
+        "a view's read in a lambda:\n{out}"
+    );
+}

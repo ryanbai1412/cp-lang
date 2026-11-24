@@ -110,23 +110,37 @@ impl Lowerer<'_> {
             PlaceKind::Global(_) => None,
             _ => return,
         };
-        let part = |lw: &mut Self, slot: Slot, what: &str| {
-            lw.thread_capture(found_level, slot, &format!("{name}#{what}"), false)
+        // A local bound is captured; a constant one is the same constant.
+        let part = |lw: &mut Self, e: &Expr, what: &str| match e.kind {
+            ExprKind::Local(slot) => lw
+                .thread_capture(found_level, slot, &format!("{name}#{what}"), false)
                 .0
+                .into_iter()
+                .map(|s| Expr {
+                    kind: ExprKind::Local(s),
+                    ..e.clone()
+                })
+                .collect(),
+            _ => vec![e.clone(); slots.len()],
         };
-        let lo = part(self, view.lo, "lo");
-        let lo_inc = part(self, view.lo_inc, "lo_inc");
-        let hi = part(self, view.hi, "hi");
-        let hi_inc = part(self, view.hi_inc, "hi_inc");
-        let empty = view.empty.map(|e| part(self, e, "empty"));
+        let lo: Vec<Expr> = part(self, &view.lo, "lo");
+        let lo_inc: Vec<Expr> = part(self, &view.lo_inc, "lo_inc");
+        let hi: Vec<Expr> = part(self, &view.hi, "hi");
+        let hi_inc: Vec<Expr> = part(self, &view.hi_inc, "hi_inc");
+        let empty: Option<Vec<Expr>> = view.empty.as_ref().map(|e| part(self, e, "empty"));
         let depth = self.outer_cxs.len();
         for (k, &slot) in slots.iter().enumerate() {
             let mut v = view.clone();
             if let Some(base) = &base {
                 v.base.kind = PlaceKind::Local(base[k]);
             }
-            (v.lo, v.lo_inc, v.hi, v.hi_inc) = (lo[k], lo_inc[k], hi[k], hi_inc[k]);
-            v.empty = empty.as_ref().map(|e| e[k]);
+            (v.lo, v.lo_inc, v.hi, v.hi_inc) = (
+                lo[k].clone(),
+                lo_inc[k].clone(),
+                hi[k].clone(),
+                hi_inc[k].clone(),
+            );
+            v.empty = empty.as_ref().map(|e| e[k].clone());
             let level = found_level + 1 + k;
             let cx = if level == depth {
                 &mut self.cx
