@@ -3347,18 +3347,18 @@ pub fn maximal<D, T, St>(
         Anchor.End:
             var l = 0
             for r in 0..n:
-                st.push(self[r])
+                st.push(self[D.nth(r)])
                 while l <= r and not ok(st):
-                    st.pop(self[l])
+                    st.pop(self[D.nth(l)])
                     l += 1
                 out[D.nth(r)] = D.cuts.nth(l)..D.cuts.nth(r + 1)
         Anchor.Start:
             var l = 0
             for r in 0..n:
-                st.push(self[r])
+                st.push(self[D.nth(r)])
                 while l <= r and not ok(st):
                     out[D.nth(l)] = D.cuts.nth(l)..D.cuts.nth(r)
-                    st.pop(self[l])
+                    st.pop(self[D.nth(l)])
                     l += 1
             while l < n:
                 out[D.nth(l)] = D.cuts.nth(l)..D.cuts.nth(n)
@@ -3395,19 +3395,19 @@ pub fn minimal<D, T, St>(
             var l = 0
             var best_l = -1
             for r in 0..n:
-                st.push(self[r])
+                st.push(self[D.nth(r)])
                 while l <= r and ok(st):
                     best_l = l
-                    st.pop(self[l])
+                    st.pop(self[D.nth(l)])
                     l += 1
                 if best_l >= 0: out[D.nth(r)] = Some(D.cuts.nth(best_l)..D.cuts.nth(r + 1))
         Anchor.Start:
             var l = 0
             for r in 0..n:
-                st.push(self[r])
+                st.push(self[D.nth(r)])
                 while l <= r and ok(st):
                     out[D.nth(l)] = Some(D.cuts.nth(l)..D.cuts.nth(r + 1))
-                    st.pop(self[l])
+                    st.pop(self[D.nth(l)])
                     l += 1
     out
 

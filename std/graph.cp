@@ -2004,8 +2004,8 @@ fn at_most_one_forbids_every_pair_and_allows_each_single():
 /// Arcs are taken in arc order and the walk descends at once (recursive order, run
 /// without recursion). Discovered vertices are shared across sources, so a source already
 /// discovered is skipped; pass `seen:` to share them with other walks (it is read and
-/// updated in place). `step.prune()` right after `Enter(v)` skips `v`'s arcs (its `Exit`
-/// still comes); `break` and `return` end the walk. `Again` events give custom low-link.
+/// updated in place). `prune: f` skips the arcs of each vertex `v` with `f(v)`, asked right
+/// after `Enter(v)` (its `Exit` still comes); `break` and `return` end the walk. `Again` events give custom low-link.
 ///
 /// cost: \(O(n + m)\) total, \(O(1)\) per step
 /// empty: an empty `from` yields nothing
@@ -2013,14 +2013,30 @@ fn at_most_one_forbids_every_pair_and_allows_each_single():
 /// traps: never
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [], []]; dfs(g, from: [V(0)]).collect() == [Visit.Enter(0, None), Visit.Enter(1, Some(1)), Visit.Exit(1, Some(1)), Visit.Enter(2, Some(2)), Visit.Exit(2, Some(2)), Visit.Exit(0, None)]`
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; dfs(g, from: [V(0)]).collect() == [Visit.Enter(0, None), Visit.Enter(1, Some(1)), Visit.Enter(2, Some(2)), Visit.Exit(2, Some(2)), Visit.Exit(1, Some(1)), Visit.Again(0, 2), Visit.Exit(0, None)]`
-pub fn dfs<V, G: Next<V>>(g: G, from: Seq<V>, seen: ?mut [V]Bool = None) -> yields Visit<V, G.Arc>:
+/// example: `domain V = 0..3; let g: [V]List<V> = [[1], [2], []]; dfs(g, from: [V(0)], prune: v => v == V(1)).collect() == [Visit.Enter(0, None), Visit.Enter(1, Some(1)), Visit.Exit(1, Some(1)), Visit.Exit(0, None)]`
+pub fn dfs<V, G: Next<V>>(
+    g: G,
+    from: Seq<V>,
+    seen: ?mut [V]Bool = None,
+    prune: ?(V -> Bool) = None,
+) -> yields Visit<V, G.Arc>:
     if let sn = seen:
-        for e in dfs_walk(g, from, mut sn): yield e
+        for e in dfs_walk(g, from, mut sn, prune): yield e
     else:
         var vis: [V]Bool = false
-        for e in dfs_walk(g, from, mut vis): yield e
+        for e in dfs_walk(g, from, mut vis, prune): yield e
 
-fn dfs_walk<V, G: Next<V>>(g: G, from: Seq<V>, mut vis: [V]Bool) -> yields Visit<V, G.Arc>:
+fn dfs_arcs<V, G: Next<V>>(g: G, v: V, prune: ?(V -> Bool)) -> List<G.Arc>:
+    if let p = prune:
+        if p(v): return List<G.Arc>()
+    g.out(v).collect()
+
+fn dfs_walk<V, G: Next<V>>(
+    g: G,
+    from: Seq<V>,
+    mut vis: [V]Bool,
+    prune: ?(V -> Bool),
+) -> yields Visit<V, G.Arc>:
     let no_via: ?G.Arc = None
     for s in from:
         if vis[s]: continue
@@ -2028,7 +2044,7 @@ fn dfs_walk<V, G: Next<V>>(g: G, from: Seq<V>, mut vis: [V]Bool) -> yields Visit
         yield Visit.Enter(s, no_via)
         var stk_v = [s]
         var stk_via: List<?G.Arc> = [no_via]
-        var stk_arcs: List<List<G.Arc>> = [g.out(s).collect()]
+        var stk_arcs: List<List<G.Arc>> = [dfs_arcs(g, s, prune)]
         var stk_i = [0]
         while stk_v.len > 0:
             let top = stk_v.len - 1
@@ -2045,7 +2061,7 @@ fn dfs_walk<V, G: Next<V>>(g: G, from: Seq<V>, mut vis: [V]Bool) -> yields Visit
                     yield Visit.Enter(v, Some(a))
                     stk_v.push(v)
                     stk_via.push(Some(a))
-                    stk_arcs.push(g.out(v).collect())
+                    stk_arcs.push(dfs_arcs(g, v, prune))
                     stk_i.push(0)
             else:
                 let via = stk_via[top]

@@ -48,6 +48,33 @@ pub struct Monoid<T>(pub id: T, pub op: (T, T) -> T):
     /// example: `Monoid<Int>(0, (a, b) => a + b).monoid().op(2, 3) == 5`
     pub fn monoid(self) -> Monoid<T> = self
 
+    /// `self` with the law `op(a, b) == op(b, a)` stated, so folds may reorder and lazy tags
+    /// skip push-down; `cpl stress` samples the law like any other.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `Monoid<Int>(0, (a, b) => a + b).commutative().op(2, 3) == 5`
+    pub fn commutative(self) -> Comm<T> = Comm(self)
+
+/// A monoid whose `op(a, b) == op(b, a)` is stated; [`Monoid.commutative`] makes one.
+pub struct Comm<T>(pub m: Monoid<T>):
+    law comm(a: T, b: T) = m.op(a, b) == m.op(b, a)
+
+    /// The monoid underneath, for [`Monoid.of`].
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `Monoid<Int>(0, (a, b) => a + b).commutative().monoid().id == 0`
+    pub fn monoid(self) -> Monoid<T> = m
+
+impl<T> Op<T> for Comm<T>:
+    fn op(self, a, b) = m.op(a, b)
+
+impl<T> HasId<T> for Comm<T>:
+    @get fn id(self) = m.id
+
+impl<T> Commutative<T> for Comm<T>
+
 fn same<A, B>(a: A, b: B) -> Bool = a == b
 
 /// A lazy update `F` on values `T` folded with `over`. Name every argument, in any order, so
@@ -598,7 +625,7 @@ impl Reversible for Word:
 
 @test
 fn plain_values_are_their_own_reverse():
-    assert 5.rev() == 5 and (3, 4).rev() == (3, 4)
+    assert 5.rev == 5 and (3, 4).rev == (3, 4)
     assert Word("abc").rev() == Word("cba")
 
 @test
