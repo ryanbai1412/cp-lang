@@ -26,8 +26,7 @@ print(List(Plane).sorted(by: p => due[p]))
 // due allows; u takes the latest slot no other plane is forced into
 fn earliest(u: Plane) -> ?Int:
     var first: [Plane]Bool = false
-    for step in dfs(back, [u]):
-        if let Visit.Enter(p, _) = step: first[p] = true
+    for p in reachable(back, [u]): first[p] = true
     var due_at: [1..=n]Int = 0
     for p in Plane:
         if not first[p]: due_at[due[p]] += 1

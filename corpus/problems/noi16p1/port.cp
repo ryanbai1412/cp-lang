@@ -11,17 +11,13 @@ use std.strings.{lyndon_runs}
 
 @!multitest
 let s: Str = read()
-let n = s.len
-var starts = List.filled(n + 1, 0)
-var ends = List.filled(n + 1, 0)
+domain Pos = 0..s.len
+// starts[i] / ends[i]: the squares AA starting / ending at i
+var starts = Diff<Pos, Int>()
+var ends = Diff<Pos, Int>()
 for run in lyndon_runs(s):
-    var w = run.period
-    while 2 * w <= run.r - run.l:
-        let last = run.r - 2 * w
-        starts[run.l] += 1
-        starts[last + 1] -= 1
-        ends[run.l + 2 * w - 1] += 1
-        ends[last + 2 * w] -= 1
-        w += run.period
-let (begun, ended) = (scan(starts, +), scan(ends, +))
-print(sum(ended.cut(i) * begun.cut(i + 1) for i in 0..n - 1))
+    for w in (run.period..=(run.r - run.l) / 2).step(run.period):
+        starts.add(Pos(run.l)..=Pos(run.r - 2 * w), 1)
+        ends.add(Pos(run.l + 2 * w - 1)..=Pos(run.r - 1), 1)
+let (begun, ended) = (starts.finish(), ends.finish())
+print(sum(ended[Pos(i)] * begun[Pos(i + 1)] for i in 0..s.len - 1))

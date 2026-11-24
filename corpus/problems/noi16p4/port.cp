@@ -6,26 +6,17 @@
 //   end, extend the window until some point is covered m times, kept by a max/add lazy SegTree
 //   over the compressed endpoints; take the length gap, then drop the left interval.
 //   O(n log n).
-let n: 1..=500000 = read()
-let m: 1..=200000 = read()
-type Span = (l: 0..=1e9, r: 0..=1e9)
-domain I = 0..n
-fn short() -> Span:  // few coordinates, so intervals pile up
-    let l = rand(0, 8)
-    (l, l + rand(0, 5))
-fn tangle() -> [I]Span: [I] _ => short()
-let given: [I]Span = read(gen: tangle)
-assert all(s.l <= s.r for s in given)
-fn length(s: Span) -> Int: s.r - s.l
-let spans = given.sorted(by: s => length(s))
+// original: corpus/submissions/4791678.cpp
 
-var ends: List<Int> = []
-for s in spans:
-    ends.push(s.l)
-    ends.push(s.r)
-let (X, coord) = compress(ends)
+let (n, m): (1..=5e5, 1..=2e5) = read()
+domain I = 0..n
+let given: [I](l: 0..=1e9, r: 0..=1e9) = read()
+fn length(s: (l: Int, r: Int)) -> Int = s.r - s.l
+let spans = given.sorted(by: length)
+
+let (X, coord) = compress([e for s in spans for e in [s.l, s.r]])
 var depth = SegTree<X, Int, Int>(max, fill: 0, act: add)
-fn cover(s: Span, times: Int):
+fn cover(s: (l: Int, r: Int), times: Int):
     depth.apply(coord.first_ge(s.l)!..=coord.first_ge(s.r)!, times)
 
 var best: ?Int = None

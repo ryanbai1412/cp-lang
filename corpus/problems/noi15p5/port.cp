@@ -6,29 +6,27 @@
 //   a_p * a_q over them (0 0 if none).
 // Solution: Build the suffix array and LCP array. Cups are r-similar iff every adjacent pair of
 //   suffixes between them in sorted order has LCP >= r, so for r from n-1 down to 0 unite
-//   adjacent suffixes (sorted by LCP descending) in a DSU. Each group keeps its size, lowest
+//   adjacent suffixes whose LCP is r in a DSU. Each group keeps its size, lowest
 //   and highest score; a merge adds size(a) * size(b) pairs and the best of the four corner
 //   products. O(n log n).
 // original: corpus/submissions/3927929.cpp
 
-let n: Int = read()
+let n: 1..=3e5 = read()
 let s: Str = read()
 domain Glass = 0..n
-let score: [Glass]Int = read()
+domain Rank = 0..n  // places in suffix order
+let score: [Glass]-1e9..=1e9 = read()
+let suffixes = SuffixArray(s)
+let ranked = [Rank] k => score[Glass(suffixes.sa[k.ord])]
 
-let letters = s
-let suffixes = SuffixArray(letters)
-let (sa, lcp) = (suffixes.sa, suffixes.lcp)
-
-// Glass is reused for places in sorted order; group data lives at the root.
-var groups = Dsu<Glass>.new()
-var lo: [Glass]Int = [Glass] j => score[Glass.nth(sa[j.ord])]
-var hi: [Glass]Int = [Glass] j => score[Glass.nth(sa[j.ord])]
+// each group of adjacent ranks keeps its lowest and highest score at its root
+var groups = Dsu<Rank>.new()
+var (lo, hi) = (ranked, ranked)
 var pairs = 0
 var best: ?Int = None
 
-fn join(j: Int):
-    let (a, b) = (groups.find(Glass.nth(j)), groups.find(Glass.nth(j + 1)))
+fn join(a0: Rank, b0: Rank):
+    let (a, b) = (groups.find(a0), groups.find(b0))
     pairs += groups.size(a) * groups.size(b)
     let corner = max(lo[a] * lo[b], lo[a] * hi[b], hi[a] * lo[b], hi[a] * hi[b])
     best = max(best ?? corner, corner)
@@ -36,12 +34,11 @@ fn join(j: Int):
     let root = groups.find(a)
     (lo[root], hi[root]) = (min(lo[a], lo[b]), max(hi[a], hi[b]))
 
-let by_lcp = (0..n - 1).sorted(by: j => -lcp[j])
-var joined = 0
+// lcp[j] is the common prefix of ranks j and j + 1
+var meet_at: [0..n]List<Int> = []
+for j in 0..n - 1: meet_at[suffixes.lcp[j]].push(j)
 var answer: List<(Int, Int)> = []
 for r in (0..n).rev:
-    while joined < by_lcp.len and lcp[by_lcp[joined]] >= r:
-        join(by_lcp[joined])
-        joined += 1
+    for j in meet_at[r]: join(Rank(j), Rank(j + 1))
     answer.push((pairs, best ?? 0))
 for (count, product) in answer.rev: print(count, product)
