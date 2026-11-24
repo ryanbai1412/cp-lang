@@ -235,6 +235,23 @@ class GatesTest(unittest.TestCase):
 
     def test_explain_copies(self):
         from specgate import explain_copies as ec
+        for cpp in ("const std::vector<ll>& a = std::get<1>(t0);", "std::vector<ll> t14 = std::vector<ll>();",
+                    "std::vector<ll> best((size_t)(12), big);", "std::vector<ll> t1 = std::get<1>(l)(s);",
+                    "const std::vector<ll>* src = nullptr;",
+                    "struct N {\n  std::vector<ll> big;\n};\ninline const N& get(const A& a, ll i) {\n  return a.xs[i];\n}\nvoid f(const A& a) {\n  const N& n = get(a, 0);\n}",
+                    "struct N {\n  std::vector<ll> big;\n};\nN make(ll i) {\n  return N{};\n}\nvoid f() {\n  N n = make(0);\n}",
+                    "void f() {\n  std::vector<ll> t14 = g();\n}\nvoid h() {\n  bool t14 = false;\n  t14 = true;\n}",
+                    "struct V {\n  ll mn1;\n};\nstruct B {\n  std::vector<ll> mn1;\n};\nvoid f(V& v, const V& p) {\n  v.mn1 = p.mn1;\n}",
+                    "static auto cpl_fn0 = [](const std::tuple<int, int>& _p0) mutable -> std::vector<std::tuple<int, ll>> {"):
+            self.assertEqual(ec.deep_copies(cpp + "\n"), 0, cpp)
+        for cpp in ("std::vector<cpl::u8> w = std::get<1>(top);", "self.ys[i] = f(cpl::sorted<true>(self.ys[i]));", "std::string x = f(r) ? bag[g(r)] : w;", "return std::optional<std::vector<ll>>(std::get<0>(cpl::have(res)));",
+                    "struct M {\n  std::vector<ll> xs;\n};\nM f(const M& a) {\n  return g(n == 0 ? M(a) : h(a));\n}",
+                    "struct N {\n  std::vector<ll> big;\n};\ninline const N& get(const A& a, ll i) {\n  return a.xs[i];\n}\nvoid f(const A& a) {\n  N n = get(a, 0);\n}",
+                    "struct N {\n  std::vector<ll> big;\n};\ninline const N& get(const A& a, ll i) {\n  return a.xs[i];\n}\nvoid f(const A& a) {\n  N n;\n  n = get(a, 0);\n}", "t16[v] = cpl::sorted<true>(sadj[(ll)v]);",
+                    "void f(const std::vector<ll>& xs) {\n  std::vector<ll> ys = g();\n  ys = xs;\n}",
+                    "struct H {\n  std::vector<ll> xs;\n};\nH f(const std::vector<ll>& xs) {\n  H h_2 = H_new();\n  h_2.xs = xs;\n}",
+                    "void f(const std::vector<std::vector<int>>& adj) {\n  auto g = [&adj](int u) mutable -> std::vector<int> {\n    return adj[u];\n  };\n}"):
+            self.assertEqual(ec.deep_copies(cpp + "\n"), 1, cpp)
         self.assertEqual(ec.deep_copies("auto b = std::vector<int64_t>(a);\n"), 1)
         for line in ("a2 = std::array<ll, 4>(a);", "u = std::set<ll>(a);", "a = cpl::sorted(a);",
                      "g = std::vector<std::vector<ll>>(rows[i]);", "m = std::map<ll, ll>(cpl::at(ms, i));"):

@@ -23,9 +23,12 @@ from specgate import Problem
 
 HELP = "`cpl explain` lists exactly the deep copies the judge C++ makes (--max mismatched cases allowed, shrink-only)"
 
-COPY = re.compile(r"(?:(?:std::(?:vector|array|map|set|unordered_map|deque)|cpl::Grid)<[^;()]*?>|std::string)\((?:cpl::at\([^()]*\)|[A-Za-z_]\w*(?:\[[^\[\]]+\])*(?:\.\w+)*)\)(?!>)|cpl::to_list\(|cpl::to_str\(|cpl::sorted(?:<[^<>()]*>)?\([A-Za-z_]\w*(?:\.\w+)*\)")
+COPY = re.compile(r"(?:(?:std::(?:vector|array|map|set|unordered_map|deque)|cpl::Grid)<[^;()=]*?>|std::string)\((?:cpl::at\([^()]*\)|[A-Za-z_]\w*(?:\[[^\[\]]+\]|\.[A-Za-z_]\w*)*)\)(?!>)|cpl::to_list\(|cpl::to_str\(|cpl::sorted(?:<[^<>()]*>)?\((?:cpl::at\([^()]*\)|[A-Za-z_]\w*(?:\[[^\[\]]+\]|\.[A-Za-z_]\w*)*)\)")
 CONTAINERS = ("std::vector<", "std::map<", "std::set<", "std::unordered_map<", "std::deque<", "std::string")
-NAME = re.compile(r"[A-Za-z_]\w*(?:\[[^\[\]]+\])*(?:\.[A-Za-z_]\w*)*")
+NAME = re.compile(r"[A-Za-z_]\w*(?:\[[^\[\]]+\]|\.[A-Za-z_]\w*)*")
+BUILT = re.compile(r"(?<![\w:.])(\w+)\((cpl::at\([^()]*\)|[A-Za-z_]\w*(?:\[[^\[\]]+\]|\.[A-Za-z_]\w*)*)\)(?!>)")
+REF_FN = re.compile(r"^(?:template <[^>]*> )?(?:inline |static )*const [^=(]*& (\w+)\(.*\{$")
+CALL = re.compile(r"(\w+)\(.*\)")
 PARAM = re.compile(r"(?:std::vector<|std::map<|std::set<|std::unordered_map<|std::deque<|std::string)[^();{}=]*?[&\s](\w+)\s*[,)]")
 ARRAY = re.compile(r"std::array<[^;()]*?>&? (\w+)\s*[=;,)]")
 CAPTURES = re.compile(r"\[([^\[\]]*)\]\(")
@@ -67,9 +70,20 @@ def scalar_decl(line):
     return name if name and re.fullmatch(r"\w+", name) else None
 
 
+KEYWORDS = ("nullptr", "true", "false", "this")
+GET = re.compile(r"std::get<\d+>\((.+)\)")
+
+
+def is_copied(init):
+    """Whether initialising a by-value local from `init` copies a place:
+    a name, a part of one, or a tuple field of one, `std::get<1>(top)`."""
+    init = init.strip()
+    return is_place(init) or bool((m := GET.fullmatch(init)) and is_place(m.group(1)))
+
+
 def is_place(text):
     text = text.strip()
-    return bool(NAME.fullmatch(text)) or (text.startswith("cpl::at(") and text.endswith(")") and "::" not in text[8:])
+    return (bool(NAME.fullmatch(text)) and text not in KEYWORDS) or (text.startswith("cpl::at(") and text.endswith(")") and "::" not in text[8:])
 
 
 def split_top(text):
@@ -140,7 +154,7 @@ def template_arg(rest):
 
 
 DOTTED = re.compile(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*")
-OPTIONAL_GET = re.compile(r"\(std::get<\d+>\(([^()]*)\)\)")
+OPTIONAL_GET = re.compile(r"\(std::get<\d+>\((?:cpl::have\(([^()]*)\)|([^()]*))\)\)")
 
 
 def optional_copies(cpp, holders):
@@ -169,13 +183,14 @@ def optional_copies(cpp, holders):
             arg = rest[1:].split(")", 1)[0] if rest.startswith("(") else None
             if arg is not None and ty in holders and place(arg):
                 count += 1
-            elif heap(ty) and (m := OPTIONAL_GET.match(rest)) and place(m.group(1)):
+            elif heap(ty) and (m := OPTIONAL_GET.match(rest)) and place(m.group(1) or m.group(2)):
                 count += 1
     return count
 
 
-HEADER = re.compile(r"^(?:template <[^>]*> )?(?:inline |static )*(.+?) \w+\(.*\{$")
+HEADER = re.compile(r"^(?=\S)(?!.*\]\()(?:template <[^>]*> )?(?:inline |static )*(.+?) \w+\(.*\{$")
 PART = re.compile(r"[A-Za-z_]\w*(?:\.\w+|\[[^\[\]]+\])*")
+LAMBDA_RET = re.compile(r"\)(?: mutable)? -> (.+?) \{$")
 BRANCH = re.compile(r"(?:const )?(\S+) \w+ = .+ \? .+ : (.+);$")
 
 
@@ -195,14 +210,76 @@ def returned_parts(cpp, holders):
         if m := HEADER.match(line):
             scopes.append((depth, m.group(1).removeprefix("const ")))
         elif s.endswith("{") and "](" in s:
-            scopes.append((depth, s.rpartition(") -> ")[2][:-1].strip() if ") -> " in s else None))
+            scopes.append((depth, (m.group(1) if (m := LAMBDA_RET.search(s)) else None)))
         depth += s.count("{") - s.count("}") + lead
         ret = scopes[-1][1] if scopes else None
         if ret and heap(ret) and not ret.endswith(("&", "*")) and s.startswith("return ") and s.endswith(";") and part(s[7:-1]):
             count += 1
-        if (m := BRANCH.match(s)) and heap(m.group(1)) and part(m.group(2)):
+        if (m := BRANCH.match(s)) and heap(m.group(1)) and (part(m.group(2)) or is_place(m.group(2))):
             count += 1
     return count
+
+
+def declared(decl):
+    """`decl` split at the end of what it declares (the first `=`, `(`, `;`,
+    `,`, `)` or `{` outside `<>`), and the name it declares there."""
+    depth, end = 0, len(decl)
+    for i, c in enumerate(decl):
+        if c == "<":
+            depth += 1
+        elif c == ">":
+            depth -= 1
+        elif c in "=(;,){" and depth == 0:
+            end = i
+            break
+    head = decl[:end].rstrip()
+    return head, re.split(r"[ &*>]", head)[-1], decl[end:]
+
+
+def typed(decl):
+    """The name `decl` declares and its type, without `const` and `&`."""
+    head, name, _ = declared(decl.removeprefix("const "))
+    if not re.fullmatch(r"\w+", name) or len(name) == len(head):
+        return None
+    return name, head[: len(head) - len(name)].strip().rstrip("&*").strip()
+
+
+def struct_fields(cpp):
+    """Each struct's fields and their types."""
+    fields, name = {}, None
+    for line in cpp.splitlines():
+        s = line.strip()
+        if m := STRUCT.match(s):
+            name = m.group(1)
+            fields[name] = {}
+        elif name and line.startswith("}"):
+            name = None
+        elif name and s.endswith(";") and "(" not in s.split(" = ")[0] and (t := typed(s)):
+            fields[name][t[0]] = t[1]
+    return fields
+
+
+def params(header):
+    """The names and types of a fn header's parameters."""
+    if "(" not in header:
+        return {}
+    inner = header[header.index("(") + 1 :].rsplit(")", 1)[0]
+    return dict(t for p in split_top(inner) if p and (t := typed(p)))
+
+
+def part_type(place, types, fields):
+    """The type of a field place, `w.s.xs`, through its root's type."""
+    root, *path = place.split(".")
+    ty = types.get(root)
+    for f in path:
+        ty = fields.get(ty, {}).get(f)
+    return ty
+
+
+def opens_fn(line):
+    """A top-level line opening a fn or lambda body, where the names
+    in scope start over."""
+    return line[:1] not in ("", " ", "}", "#") and line.rstrip().endswith("{") and "(" in line and not line.startswith(("struct ", "namespace "))
 
 
 def deep_copies(cpp):
@@ -210,52 +287,49 @@ def deep_copies(cpp):
     copies spelled as a constructor call or `cpl::to_list`, tuples holding a
     container copied from places, a container assigned from a place, and
     optionals of heap values copied from places, parts returned by value;
-    the runtime's own lines
-    are skipped."""
-    held, count = set(PARAM.findall(cpp)), len(COPY.findall(program(cpp)))
+    the runtime's own lines are skipped. The names a fn holds as containers
+    are its own: a scalar of the same name in another fn is not one."""
+    count = len(COPY.findall(program(cpp)))
     holders = container_structs(cpp)
+    count += sum(m.group(1) in holders for line in program(cpp).splitlines() if not line.lstrip().startswith("//") for m in BUILT.finditer(line))
+    refs = {m.group(1) for line in program(cpp).splitlines() if (m := REF_FN.match(line))}
+    copied = lambda init: is_copied(init) or bool((m := CALL.fullmatch(init.strip())) and m.group(1) in refs)
+    fields = struct_fields(cpp)
+    heap = lambda ty: bool(ty) and (ty.startswith(CONTAINERS) or ty in holders)
     count += optional_copies(program(cpp), holders) + returned_parts(program(cpp), holders)
-    for line in cpp.splitlines():
-        line = line.strip()
+    arrays = set(ARRAY.findall(program(cpp)))
+    held, types = set(), {}
+    for raw in program(cpp).splitlines():
+        if opens_fn(raw):
+            held, types = set(PARAM.findall(raw)), params(raw)
+        line = raw.strip()
         decl = line.removeprefix("const ")
+        if t := typed(decl):
+            types[t[0]] = t[1]
         ty, _, rest = decl.partition(" ")
         if ty in holders:
             name, eq, init = rest.partition("=")
             name = name.strip()
             if re.fullmatch(r"\w+", name):
                 held.add(name)
-                if eq and init.strip().endswith(";") and is_place(init.strip()[:-1]):
+                if eq and init.strip().endswith(";") and copied(init.strip()[:-1]):
                     count += 1
         if (scalar := scalar_decl(decl)) is not None:
             held.discard(scalar)
         if decl.startswith(CONTAINERS):
-            depth, end = 0, len(decl)
-            for i, c in enumerate(decl):
-                if c == "<":
-                    depth += 1
-                elif c == ">":
-                    depth -= 1
-                elif c in "=(;,){" and depth == 0:
-                    end = i
-                    break
-            head = decl[:end].rstrip()
-            name = re.split(r"[ &>]", head)[-1]
+            head, name, rest = declared(decl)
             if name and len(name) < len(head):
                 held.add(name)
-                by_value = not head[: len(head) - len(name)].rstrip().endswith("&")
-                rest = decl[end:]
-                if by_value and rest.startswith("=") and rest.endswith(";") and is_place(rest[1:-1]):
+                by_value = not head[: len(head) - len(name)].rstrip().endswith(("&", "*"))
+                if by_value and rest.startswith("=") and rest.endswith(";") and copied(rest[1:-1]):
                     count += 1
         if line.startswith("std::tuple<") and any(c in line for c in CONTAINERS) and ".first, " in line and ".second)" in line:
             count += 1
         elif decl.startswith("std::tuple<"):
             count += tuple_copies(decl)
-    for line in cpp.splitlines():
-        lhs, eq, rhs = line.strip().partition(" = ")
-        if eq and rhs.endswith(";") and NAME.fullmatch(lhs) and lhs.rsplit(".", 1)[-1] in held and is_place(rhs[:-1]):
+        lhs, eq, rhs = line.partition(" = ")
+        if eq and rhs.endswith(";") and NAME.fullmatch(lhs) and heap(part_type(lhs, types, fields)) and (is_place(rhs[:-1]) or copied(rhs[:-1])):
             count += 1
-    arrays = set(ARRAY.findall(program(cpp)))
-    for line in cpp.splitlines():
         for caps in CAPTURES.findall(line):
             for cap in re.split(r"\s*,\s*", caps):
                 name, eq, src = cap.partition("=")

@@ -6,7 +6,7 @@
 //! counters the copy ratchet uses, so explain can't call a guess proven.
 //! Enforces performance/R17 in handbook/guidelines/performance-checklist.md.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 #[path = "support/cpp_counts.rs"]
@@ -166,7 +166,10 @@ fn optional_place_copies(cpp: &str) -> usize {
                         && rest
                             .strip_prefix("(std::get<")
                             .and_then(|r| r.split_once(">("))
-                            .and_then(|(n, r)| Some((n, r.split_once("))")?.0)))
+                            .and_then(|(n, r)| match r.strip_prefix("cpl::have(") {
+                                Some(h) => Some((n, h.split_once(")))")?.0)),
+                                None => Some((n, r.split_once("))")?.0)),
+                            })
                             .is_some_and(|(n, place)| {
                                 n.chars().all(|c| c.is_ascii_digit()) && is_place(place)
                             })
@@ -230,15 +233,19 @@ fn returned_part_copies(cpp: &str) -> usize {
             || ty.starts_with("std::array<")
             || holders.contains(ty)
     };
-    let (mut count, mut depth, mut scopes) = (0, 0i64, Vec::<(i64, Option<&str>)>::new());
+    let (mut count, mut depth, mut scopes) = (0, 0i64, Vec::<(i64, Option<&str>, bool)>::new());
     for line in program_lines(cpp) {
         let trimmed = line.trim();
         let lead = (trimmed.len() - trimmed.trim_start_matches('}').len()) as i64;
         depth -= lead;
-        while scopes.last().is_some_and(|&(d, _)| d >= depth) {
+        while scopes.last().is_some_and(|&(d, _, _)| d >= depth) {
             scopes.pop();
         }
-        if !line.starts_with([' ', '}', '#', '/']) && line.ends_with('{') && line.contains('(') {
+        if !line.starts_with([' ', '}', '#', '/'])
+            && line.ends_with('{')
+            && line.contains('(')
+            && !line.contains("](")
+        {
             let head = line.split_once('(').map_or("", |(h, _)| h);
             let head = match head.strip_prefix("template <") {
                 Some(t) => t.split_once("> ").map_or("", |(_, h)| h),
@@ -250,23 +257,26 @@ fn returned_part_copies(cpp: &str) -> usize {
             let ret = head
                 .rsplit_once(' ')
                 .map(|(ty, _)| ty.strip_prefix("const ").unwrap_or(ty));
-            scopes.push((depth, ret));
+            scopes.push((depth, ret, false));
         } else if trimmed.ends_with('{') && trimmed.contains("](") {
-            let ret = trimmed
-                .rsplit_once(") -> ")
-                .map(|(_, r)| r.trim_end_matches('{').trim());
-            scopes.push((depth, ret));
+            let (ret, mutable) = match trimmed.rsplit_once(") mutable -> ") {
+                Some((_, r)) => (Some(r), true),
+                None => (trimmed.rsplit_once(") -> ").map(|(_, r)| r), false),
+            };
+            let ret = ret.map(|r| r.trim_end_matches('{').trim());
+            scopes.push((depth, ret, mutable));
         }
         depth +=
             (trimmed.matches('{').count() as i64) - (trimmed.matches('}').count() as i64) + lead;
-        let ret = scopes.last().and_then(|&(_, r)| r);
+        let (ret, mutable) = scopes.last().map_or((None, false), |&(_, r, m)| (r, m));
         let line = line.trim();
         let returned = line
             .strip_prefix("return ")
             .and_then(|r| r.strip_suffix(';'))
             .is_some_and(|e| {
-                ret.is_some_and(|r| heap(r) && !is_container(r) && !r.ends_with(['&', '*']))
-                    && is_part(e)
+                ret.is_some_and(|r| {
+                    heap(r) && (mutable || !is_container(r)) && !r.ends_with(['&', '*'])
+                }) && is_part(e)
             });
         let decl = line.strip_prefix("const ").unwrap_or(line);
         let branch = decl.split_once(' ').is_some_and(|(ty, rest)| {
@@ -277,10 +287,13 @@ fn returned_part_copies(cpp: &str) -> usize {
                 && rest
                     .strip_suffix(';')
                     .and_then(|r| r.rsplit_once(" : "))
-                    .is_some_and(|(_, part)| is_part(part))
+                    .is_some_and(|(_, part)| is_part_or_name(part))
         });
         let field = decl.split_once(" = std::get<").is_some_and(|(head, rest)| {
             CONSTRUCTED.iter().any(|c| head.starts_with(c))
+                && head
+                    .rsplit_once(' ')
+                    .is_some_and(|(ty, _)| !ty.ends_with(['&', '*']))
                 && rest
                     .split_once(">(")
                     .and_then(|(n, r)| Some((n, r.strip_suffix(");")?)))
@@ -341,6 +354,153 @@ fn array_capture_copies(cpp: &str) -> usize {
         .count()
 }
 
+/// `decl` cut where its declaration ends (the first `=`, `(`, `;`, `,`,
+/// `)` or `{` outside `<>`), and the name it declares there. Mirrors
+/// `declared` in scripts/specgate/explain_copies.py.
+fn declared(decl: &str) -> (&str, &str) {
+    let mut depth = 0i32;
+    let end = decl
+        .char_indices()
+        .find(|&(_, c)| {
+            match c {
+                '<' => depth += 1,
+                '>' => depth -= 1,
+                _ => return depth == 0 && "=(;,){".contains(c),
+            }
+            false
+        })
+        .map_or(decl.len(), |(i, _)| i);
+    let head = decl[..end].trim_end();
+    (head, head.rsplit([' ', '&', '*', '>']).next().unwrap_or(""))
+}
+
+/// The name `decl` declares and its type, without `const`, `&` and `*`.
+fn typed(decl: &str) -> Option<(&str, &str)> {
+    let (head, name) = declared(decl.strip_prefix("const ").unwrap_or(decl));
+    let word = !name.is_empty() && name.chars().all(|c| c.is_alphanumeric() || c == '_');
+    (word && name.len() < head.len()).then(|| {
+        let ty = head[..head.len() - name.len()].trim();
+        (name, ty.trim_end_matches(['&', '*']).trim())
+    })
+}
+
+/// Each emitted struct's fields and their types.
+fn struct_fields(cpp: &str) -> HashMap<&str, HashMap<&str, &str>> {
+    let (mut fields, mut name) = (HashMap::new(), None);
+    for line in cpp.lines() {
+        let s = line.trim();
+        if let Some(n) = s
+            .strip_prefix("struct ")
+            .and_then(|r| r.split_once(['{', ' ']))
+            .map(|(n, _)| n)
+            .filter(|_| !line.starts_with(' ') && s.ends_with('{'))
+        {
+            name = Some(n);
+            fields.insert(n, HashMap::new());
+        } else if line.starts_with('}') {
+            name = None;
+        } else if let Some(n) = name.filter(|_| s.ends_with(';')) {
+            let head = s.split(" = ").next().unwrap_or(s);
+            if let Some((f, ty)) = typed(s).filter(|_| !head.contains('(')) {
+                fields
+                    .get_mut(n)
+                    .map(|m: &mut HashMap<_, _>| m.insert(f, ty));
+            }
+        }
+    }
+    fields
+}
+
+/// The names and types of the parameters in a fn or lambda header.
+fn params(header: &str) -> HashMap<&str, &str> {
+    let Some((_, inner)) = header.split_once('(') else {
+        return HashMap::new();
+    };
+    let inner = inner.rsplit_once(')').map_or(inner, |(i, _)| i);
+    let (mut out, mut depth, mut start) = (HashMap::new(), 0i32, 0);
+    for (i, c) in inner.char_indices().chain([(inner.len(), ',')]) {
+        match c {
+            '<' | '(' | '{' => depth += 1,
+            '>' | ')' | '}' => depth -= 1,
+            ',' if depth == 0 => {
+                out.extend(typed(inner[start..i].trim()));
+                start = i + 1;
+            }
+            _ => {}
+        }
+    }
+    out
+}
+
+/// A container or a struct holding one assigned from a place, `ys = xs;`
+/// or into a field of that type, `h_2.xs = xs;`, by the types the fn
+/// declares (a scalar `v.mn1 = p.mx1;` is no copy), or from a fn that
+/// lends it, `N n = get(a, i);` with `const N& get(..)`. Mirrors the
+/// assignment in `deep_copies` in scripts/specgate/explain_copies.py.
+fn assigned_copies(cpp: &str) -> usize {
+    let holders = container_structs(cpp);
+    let fields = struct_fields(cpp);
+    let heap = |ty: &str| is_container(ty) || holders.contains(ty);
+    let refs: HashSet<&str> = program_lines(cpp)
+        .filter(|l| !l.starts_with([' ', '}', '#']) && l.ends_with('{'))
+        .filter_map(|l| {
+            let head = l.split_once('(')?.0;
+            let (ty, name) = head.rsplit_once(' ')?;
+            (ty.contains("const ") && ty.ends_with('&') && !ty.contains('=')).then_some(name)
+        })
+        .collect();
+    let ref_call = |init: &str| {
+        init.split_once('(')
+            .is_some_and(|(f, _)| refs.contains(f) && init.ends_with(')'))
+    };
+    let mut types = HashMap::new();
+    let mut count = 0;
+    for raw in program_lines(cpp) {
+        let opens = !raw.starts_with([' ', '}', '#'])
+            && raw.trim_end().ends_with('{')
+            && raw.contains('(')
+            && !raw.starts_with("struct ")
+            && !raw.starts_with("namespace ");
+        if opens {
+            types = params(raw);
+        }
+        let line = raw.trim();
+        if let Some((name, ty)) = typed(line) {
+            types.insert(name, ty);
+        }
+        let Some((lhs, rhs)) = line.split_once(" = ") else {
+            continue;
+        };
+        let Some(rhs) = rhs.strip_suffix(';') else {
+            continue;
+        };
+        let by_value = !lhs.contains(['&', '*']);
+        let decl = typed(lhs).filter(|_| by_value);
+        let got = rhs
+            .strip_prefix("std::get<")
+            .and_then(|r| r.split_once(">("))
+            .and_then(|(n, r)| Some((n, r.strip_suffix(')')?)))
+            .is_some_and(|(n, p)| n.chars().all(|c| c.is_ascii_digit()) && is_indexed_place(p));
+        let held = decl.is_some_and(|(_, ty)| holders.contains(ty));
+        let place = is_indexed_place(rhs) && !["nullptr", "true", "false", "this"].contains(&rhs)
+            || rhs.starts_with("cpl::at(") && is_place(rhs);
+        if decl.is_some_and(|(_, ty)| heap(ty)) && ref_call(rhs)
+            || held && (place && !is_part(rhs) || got)
+        {
+            count += 1;
+        }
+        let mut path = lhs.split('.');
+        let root = path.next().unwrap_or("");
+        let ty = path.try_fold(types.get(root).copied(), |ty, f| {
+            Some(ty.and_then(|t| fields.get(t)?.get(f).copied()))
+        });
+        if is_indexed_place(lhs) && ty.flatten().is_some_and(heap) && (place || ref_call(rhs)) {
+            count += 1;
+        }
+    }
+    count
+}
+
 /// The containers [`constructed_copies`] sees built from another value.
 const CONSTRUCTED: [&str; 8] = [
     "std::vector<",
@@ -353,20 +513,12 @@ const CONSTRUCTED: [&str; 8] = [
     "std::string",
 ];
 
-/// `xs`, `w[i]`, `self.rows`: a name, then indexes, then fields.
+/// `xs`, `w[i]`, `self.head[s].rows`: a name, then fields and indexes.
 fn is_indexed_place(text: &str) -> bool {
-    let word = |t: &str| {
-        t.starts_with(|c: char| c.is_alphabetic() || c == '_')
-            && t.chars().all(|c| c.is_alphanumeric() || c == '_')
-    };
-    let (head, fields) = text.split_once('.').unwrap_or((text, ""));
-    let (base, index) = head.split_once('[').unwrap_or((head, ""));
-    let index_ok = index.is_empty()
-        || index.ends_with(']')
-            && index[..index.len() - 1]
-                .split("][")
-                .all(|i| !i.is_empty() && !i.contains(['[', ']']));
-    word(base) && index_ok && (fields.is_empty() || fields.split('.').all(word))
+    let word = !text.is_empty()
+        && text.starts_with(|c: char| c.is_alphabetic() || c == '_')
+        && text.chars().all(|c| c.is_alphanumeric() || c == '_');
+    word || is_part(text)
 }
 
 /// The argument of the call whose `(` opens `rest`, when it is a place.
@@ -379,8 +531,16 @@ fn place_arg(rest: &str) -> bool {
             .split_once(')')
             .is_some_and(|(inner, after)| !inner.contains('(') && after.starts_with(')'));
     }
-    arg.split_once(')')
-        .is_some_and(|(a, after)| is_indexed_place(a) && !after.starts_with('>'))
+    let mut depth = 0;
+    let close = arg.char_indices().find_map(|(i, c)| {
+        depth += match c {
+            '(' => 1,
+            ')' => -1,
+            _ => 0,
+        };
+        (depth < 0).then_some(i)
+    });
+    close.is_some_and(|i| is_indexed_place(&arg[..i]) && !arg[i + 1..].starts_with('>'))
 }
 
 /// A second heap value spelled as a call: a container constructed from a
@@ -389,20 +549,28 @@ fn place_arg(rest: &str) -> bool {
 /// in scripts/specgate/explain_copies.py. Counted here on top of
 /// [`deep_copies`], not under the `// copies:` headers.
 fn constructed_copies(cpp: &str) -> usize {
+    let holders = container_structs(cpp);
     program_lines(cpp)
+        .filter(|line| !line.trim_start().starts_with("//"))
         .map(|line| {
+            let held = holders
+                .iter()
+                .flat_map(|h| line.match_indices(h.as_str()))
+                .filter(|&(at, h)| {
+                    !line[..at].ends_with(|c: char| c.is_alphanumeric() || "_:.".contains(c))
+                        && place_arg(&line[at + h.len()..])
+                })
+                .count();
             let sorted = line
                 .match_indices("cpl::sorted")
-                .filter_map(|(at, _)| {
+                .filter(|(at, _)| {
                     let rest = &line[at + "cpl::sorted".len()..];
-                    // `cpl::sorted<true>(xs)` sorts the same copy.
                     let rest = match rest.strip_prefix('<') {
-                        Some(args) => args.split_once('>')?.1,
+                        Some(t) => t.split_once('>').map_or("", |(_, r)| r),
                         None => rest,
                     };
-                    rest.strip_prefix('(')?.split_once(')')
+                    place_arg(rest)
                 })
-                .filter(|(a, _)| is_place(a) && !a.starts_with("cpl::"))
                 .count();
             let built = CONSTRUCTED
                 .iter()
@@ -427,7 +595,7 @@ fn constructed_copies(cpp: &str) -> usize {
                         .is_some_and(|end| place_arg(&rest[end + 1..]))
                 })
                 .count();
-            line.matches("cpl::to_list(").count()
+            held + line.matches("cpl::to_list(").count()
                 + line.matches("cpl::to_str(").count()
                 + sorted
                 + built
@@ -588,7 +756,8 @@ fn listed_and_made(src: &Path, out: &Path) -> (usize, usize) {
             + constructed_copies(&cpp)
             + optional_place_copies(&cpp)
             + array_capture_copies(&cpp)
-            + returned_part_copies(&cpp),
+            + returned_part_copies(&cpp)
+            + assigned_copies(&cpp),
     )
 }
 
@@ -621,7 +790,6 @@ const CASES: &[&str] = &[
     "std-graph/functional-call-builds-and-matches-brute.cp",
     "std-seq/inversions-combinations-cycle.cp",
     "core-05/exercise-34-loop-writes-separate-clone.cp",
-    "std-models/dp-small.cp",
     "std-models/link-cut.cp",
     "std-models/historic-beats.cp",
     "std-models/euler-tour-tree.cp",
@@ -633,11 +801,16 @@ const CASES: &[&str] = &[
     "std-flow/circulation-infeasible-none.cp",
     "std-flow/circulation-zero-lower-bounds.cp",
     "std-flow/matroid-intersection-and-min-cost-circulation-match-brute.cp",
-    "std-matrix/min-plus-gaps-fold-in-a-segtree.cp",
     "traits/Show/Trie--show.cp",
     "core-01/if-is-branch-view-meets-owned-else.cp",
     "core-04/spec-block-split-by-search.cp",
     "core-05/file-body-var-holds-lent.cp",
+    "core-06/dijkstra-from-unpacks-tuple-vertex.cp",
+    "core-02/existential-return.cp",
+    "std-models/math-prime.cp",
+    "std-beats/beats-bodies-examples.cp",
+    "core-07/step-on-list.cp",
+    "std-models/graph-cuts.cp",
 ];
 
 #[test]
@@ -681,6 +854,7 @@ fn a_part_given_out_by_value_is_a_copy() {
         "inline H all(const B& self) {\n  return self.agg[self.bag.root];\n}",
         "inline H blank(const T& self) {\n  return self.m.id;\n}",
         "  H v = p == 0 ? f(self) : self.t[p];",
+        "  std::string x = f(r) ? bag[g(r)] : w;",
         "  H a = self.m.id;",
         "  std::vector<cpl::u8> w = std::get<1>(top);",
     ];
@@ -750,4 +924,83 @@ fn a_container_built_from_a_place_or_sorted_is_a_copy() {
     for line in not_copies {
         assert_eq!(constructed_copies(line), 0, "{line}");
     }
+}
+
+#[test]
+fn a_heap_value_assigned_from_a_place_is_a_copy() {
+    let copies = [
+        "void f(const std::vector<ll>& xs) {\n  std::vector<ll> ys = g();\n  ys = xs;\n}",
+        "struct H {\n  std::vector<ll> xs;\n};\nH f(const std::vector<ll>& xs) {\n  H h_2 = H_new();\n  h_2.xs = xs;\n}",
+    ];
+    for cpp in copies {
+        assert_eq!(assigned_copies(cpp), 1, "{cpp}");
+    }
+    let not_copies = [
+        "void f() {\n  std::vector<ll> t14 = g();\n}\nvoid h() {\n  bool t14 = false;\n  t14 = true;\n}",
+        "struct V {\n  ll mn1;\n};\nvoid f(V& v, const V& p) {\n  v.mn1 = p.mn1;\n}",
+        "void f(std::vector<ll> xs) {\n  xs = std::vector<ll>();\n}",
+    ];
+    for cpp in not_copies {
+        assert_eq!(assigned_copies(cpp), 0, "{cpp}");
+    }
+}
+
+#[test]
+fn a_bind_a_call_or_a_fresh_value_is_no_copy() {
+    let not_copies = [
+        "const std::vector<ll>& a = std::get<1>(t0);",
+        "std::vector<ll> t14 = std::vector<ll>();",
+        "std::vector<ll> best((size_t)(12), big);",
+        "std::vector<ll> t1 = std::get<1>(l)(s);",
+        "const std::vector<ll>* src = nullptr;",
+        "static auto cpl_fn0 = [](const std::tuple<int, int>& _p0) mutable -> std::vector<std::tuple<int, ll>> {",
+    ];
+    for cpp in not_copies {
+        let made = deep_copies(cpp)
+            + constructed_copies(cpp)
+            + optional_place_copies(cpp)
+            + array_capture_copies(cpp)
+            + returned_part_copies(cpp)
+            + assigned_copies(cpp);
+        assert_eq!(made, 0, "{cpp}");
+    }
+}
+
+#[test]
+fn a_part_a_mutable_lambda_returns_or_sorts_is_a_copy() {
+    let lambda = "void f(const std::vector<std::vector<int>>& adj) {\n  auto g = [&adj](int u) mutable -> std::vector<int> {\n    return adj[u];\n  };\n}";
+    assert_eq!(returned_part_copies(lambda), 1);
+    assert_eq!(
+        constructed_copies("t16[v] = cpl::sorted<true>(sadj[(ll)v]);"),
+        1
+    );
+}
+
+#[test]
+fn a_struct_built_from_a_place_or_read_from_a_lend_is_a_copy() {
+    let holder = "struct N {\n  std::vector<ll> big;\n};\n";
+    let lend = "inline const N& get(const A& a, ll i) {\n  return a.xs[i];\n}\n";
+    for body in [
+        "N n = get(a, 0);",
+        "N n;\n  n = get(a, 0);",
+        "N n = a;",
+        "N n = std::get<1>(t);",
+    ] {
+        let cpp = format!("{holder}{lend}void f(const A& a) {{\n  {body}\n}}");
+        assert_eq!(assigned_copies(&cpp), 1, "{cpp}");
+    }
+    for body in ["const N& n = get(a, 0);", "N n = make(0);"] {
+        let cpp = format!("{holder}{lend}void f(const A& a) {{\n  {body}\n}}");
+        assert_eq!(assigned_copies(&cpp), 0, "{cpp}");
+    }
+    let built = format!("{holder}N f(const N& a) {{\n  return g(c ? N(a) : h(a));\n}}");
+    assert_eq!(constructed_copies(&built), 1);
+    let comment = format!("{holder}//   N(xs)\n");
+    assert_eq!(constructed_copies(&comment), 0);
+    let unwrapped = "return std::optional<std::vector<ll>>(std::get<0>(cpl::have(res)));";
+    assert_eq!(optional_place_copies(unwrapped), 1);
+    assert_eq!(
+        constructed_copies("self.ys[i] = f(cpl::sorted<true>(self.ys[i]));"),
+        1
+    );
 }
