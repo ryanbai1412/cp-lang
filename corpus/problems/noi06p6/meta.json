@@ -4,11 +4,15 @@
  "submissions": [
   {"id": "3754590", "language": "PYPY3", "result": "AC", "time": 0.851625158, "memory_kb": 63248.0, "file": "corpus/submissions/3754590.py"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/noi06p6/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "The only accepted submission is Python, so orig.cpp is the reference: by exchangeability the probability is a product of k-th draw factors, cancelled as prime exponents and multiplied out exactly. It matches the statement samples and the accepted Python (Fraction products) on 200 gen.py inputs and --max. The DMOJ statement is behind a challenge page; bounds and samples are from the Luogu mirror (P4204)."
 }

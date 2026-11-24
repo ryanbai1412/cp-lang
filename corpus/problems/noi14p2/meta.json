@@ -7,11 +7,15 @@
   {"id": "3595797", "language": "CPP17", "result": "WA", "time": 3.042020285, "memory_kb": 10984.0, "file": "corpus/submissions/3595797.cpp"},
   {"id": "3595798", "language": "CPP17", "result": "WA", "time": 4.176153903, "memory_kb": 10988.0, "file": "corpus/submissions/3595798.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/noi14p2/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No C++ submission was accepted, so orig.cpp is the reference: edges by increasing a, a link-cut tree keeping the minimum spanning forest on b. It matches the statement samples and an O(m^2) brute (per distinct a, Kruskal on b until 1 and n join) on 400 gen.py inputs of sizes 1-30."
 }
