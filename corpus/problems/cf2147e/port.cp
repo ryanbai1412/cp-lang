@@ -9,8 +9,6 @@
 //   (cost, popcount) after each b, O(31^2 n) per test; a query binary-searches the costs.
 // Bounds: n, q: 1..=100_000; budget: 0..=10 ** 9
 
-use std.seq.{argmax}
-
 @!multitest
 let (n, q): (1..=100_000, 1..=100_000) = read()
 var a: [0..n]Int = read()

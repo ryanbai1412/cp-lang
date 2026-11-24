@@ -31,7 +31,7 @@ let fact_q = comb.fact(q)
 var out: [I]Z = 0
 for i in I:
     var num_left = 0
-    var num_right = [1 for (_, pos) in ops if pos <= i].sum()
+    var num_right = count(pos <= i for (_, pos) in ops)
     var ans: Z = 0
     var lo = 0
     for (hi, pos) in ops:
