@@ -9,6 +9,8 @@ scores min(average, 100) as partial credit. This judge accepts iff the average i
 purpose: 100 sits at the best play, the best greedy reference averages about 100.1-100.3 over
 uniform answers, and the average of 1,000 games moves by about +-0.6, so a bar of 100 would
 reject a strong reference about half the time. Do not tighten it without new numbers.
+The bar is for the statement's T = 1000; a smaller T (the statement's 7-game sample) is too few
+games to average, so there every game must be solved within its five guesses.
 
 The case file is T and the T answers' dictionary indices."""
 import os
@@ -504,7 +506,7 @@ def drive(case_text, io):
     io.send(str(len(WORDS)))
     io.send(SCRAMBLE)
     io.send(str(t))
-    total = 0
+    total = solved = 0
     for answer in answers:
         io.send(answer[0])
         for tries in range(5):
@@ -516,8 +518,11 @@ def drive(case_text, io):
             io.send(m)
             if m == "ggggg":
                 total += POINTS[tries]
+                solved += 1
                 break
-    if total < 98 * t:
+    if t < 1000 and solved < t:
+        raise RuntimeError(f"{t - solved} of {t} games unsolved")
+    if t >= 1000 and total < 98 * t:
         raise RuntimeError(f"average score {total / t:.3f} < 98")
 
 
