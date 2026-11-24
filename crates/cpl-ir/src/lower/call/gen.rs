@@ -1,7 +1,7 @@
 //! `gen(lo..=hi)` and `gen<T>(...)`: a random value of a type the input
 //! could hold (R06.4.3, lib/random-stress.md). Ranges draw with `rand`,
-//! arrays draw each element, and `Str of`, `Perm`, `Rooted` and `Graph`
-//! call the std fns beside each type.
+//! arrays draw each element, `Str of`, `Rooted` and `Graph` call the std
+//! fns beside each type, and a named type's `impl Random` draws the rest.
 
 use super::*;
 
@@ -113,7 +113,6 @@ impl<'a> Lowerer<'a> {
             }
             ast::TypeKind::Named { name, args: tys } => {
                 match (name.text.as_str(), tys.as_slice()) {
-                    ("Perm", [_]) => self.std_call("seq", "gen_perm", tys, &[], span),
                     ("Rooted", [v, ..]) => {
                         let shape = match named("shape").map(|a| &a.value.kind) {
                             None => 4,

@@ -628,6 +628,9 @@ impl<'a> Lowerer<'a> {
                 self.call_generic(base, types, args, hint, span)
             }
             ast::ExprKind::Field { base, name } => {
+                if let Some(call) = self.alias_impl_call(base, name, args, span) {
+                    return call;
+                }
                 let call = self.method(whole, base, name, args, hint);
                 self.char_fn_on_str(base, name);
                 self.join_receiver(base, name, args, whole.span);

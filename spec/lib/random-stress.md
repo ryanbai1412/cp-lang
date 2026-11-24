@@ -32,7 +32,8 @@ are the input spec:
     print(n)
 ```
 
-- `gen<Perm<V>>()` draws a uniformly random permutation: a `Perm<V>` is a `[V]V`.
+- `gen<Perm<V>>()` draws a uniformly random permutation: a `Perm<V>` is a `[V]V`, drawn
+  by the `Random` impl over the alias.
 - `gen<T>(args)` for any other named type is `T.gen(args)`: a type is drawn by its
   `std.rand.Random` impl, a user type like a std one, and its `gen` may take named
   options (`fn gen(far: Bool = false) -> Pt`). A type without one has no `gen` to call.

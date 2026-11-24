@@ -4115,10 +4115,11 @@ fn ring_steps_wrap_both_ways():
     assert r.from(V(1)).collect() == [V(1), V(2), V(0)]
 
 /// `gen<Perm<V>>()`: every permutation of `V` equally likely.
-fn gen_perm<V>() -> Perm<V>:
-    var p: [V]V = [V] v => v
-    shuffle(mut p)
-    p
+impl<V> Random for Perm<V>:
+    fn gen() -> Perm<V>:
+        var p: [V]V = [V] v => v
+        shuffle(mut p)
+        p
 
 @test
 fn views_and_trackers_walk_and_show():

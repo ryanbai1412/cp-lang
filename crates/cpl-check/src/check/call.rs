@@ -185,7 +185,7 @@ impl<'a> Checker<'a> {
             {
                 // `gen<T>(args)` on a type that draws itself is `T.gen(args)`.
                 let own = match tys.as_slice() {
-                    [t] if !matches!(&t.kind, cpl_syntax::ast::TypeKind::Named { name, .. } if matches!(name.text.as_str(), "Perm" | "Rooted" | "Graph")) => {
+                    [t] if !matches!(&t.kind, cpl_syntax::ast::TypeKind::Named { name, .. } if matches!(name.text.as_str(), "Rooted" | "Graph")) => {
                         t.gen_call(args, call.span)
                     }
                     _ => None,
