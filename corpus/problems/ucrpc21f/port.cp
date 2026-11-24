@@ -1,28 +1,15 @@
 // Source: UCRPC F21 F (Trip Navigator), https://dmoj.ca/problem/ucrpc21f
+// limits: 1000 ms, 256 MB
 // Problem: an n x n grid (n <= 1000) of empty '-' and banana 'b' cells; walk in 4 directions
 //   from the top-left to the bottom-right cell, each move taking 1 second plus t <= 1000 more
 //   when it enters a banana cell. Print the shortest time.
-// Solution: Dijkstra over the n^2 cells, a move costing 1 or 1 + t by the cell it enters,
-//   with lazy deletion in a min-heap. O(n^2 log n).
-// Runnable on proto/cpc today.
+// Solution: Dijkstra over the n^2 cells, a move costing 1 or 1 + t by the cell it enters;
+//   the cell's moves are its adj4 neighbours, so no graph is built. O(n^2 log n).
 // original: corpus/submissions/3944579.cpp
-let n: 1..=1000 = read()
-let t: 0..=1e9 = read()
-domain Row = 0..n
-domain Col = 0..n
-type Cell = (Row, Col)
-let g: [Row, Col]Char = read()
+let (n, t) = read<(1..=1000, 0..=1000)>()
+domain Row = [n]
+domain Col = [n]
+let g = read<[Row, Col]Char>()
 
-let src: Cell = (Row.first!, Col.first!)
-var dist: [Row, Col]?Int = None
-var pq = MinHeap<(Int, Cell)>()
-dist[src] = 0
-pq.push((0, src))
-while let (d, p) = pq.pop():
-    if dist[p] != d: continue
-    for q in p.adj4:
-        let nd = d + (if g[q] == 'b': 1 + t else: 1)
-        if dist[q] == None or nd < dist[q]!:
-            dist[q] = nd
-            pq.push((nd, q))
-print(dist[(Row.last!, Col.last!)]!)
+let moves = (p: (Row, Col)) => [(to: q, w: if g[q] == 'b': 1 + t else: 1) for q in p.adj4]
+print(dijkstra(moves, from: [((Row.first!, Col.first!), 0)])[(Row.last!, Col.last!)]!)

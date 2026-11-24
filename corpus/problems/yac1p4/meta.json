@@ -9,6 +9,9 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "original": [
+   "corpus/problems/yac1p4/orig.cpp"
+  ],
   "port": [
    "corpus/problems/yac1p4/port.cp"
   ]
