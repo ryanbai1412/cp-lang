@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3659 (3599 passing). Rules: 617.
+Cases: 3661 (3599 passing). Rules: 617.
 
 ## Summary per chapter
 
@@ -1103,8 +1103,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `max_bounded_flow`, `min_bounded_flow`, `global_min_cut`, `Matroid`
 - **geometry** (161/166 named by a case)
   - uncovered: `ByAngle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`
-- **graph** (115/127 named by a case)
-  - uncovered: `Edged`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Walk`, `Lit.neg`, `TwoSat.add_or`, `Complement`
+- **graph** (117/127 named by a case)
+  - uncovered: `Edged`, `EdgedNext`, `EdgeArc`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Walk`, `Lit.neg`, `TwoSat.add_or`
 - **grid** (39/39 named by a case)
 - **hashmap** (37/37 named by a case)
 - **heap** (108/108 named by a case)
@@ -1140,7 +1140,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Rooted.reroot`, `Rooted.chains`, `VirtualTree`, `PermNode`
 - **window** (24/24 named by a case)
 
-2395 of 2462 std items are named by a case.
+2397 of 2462 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
