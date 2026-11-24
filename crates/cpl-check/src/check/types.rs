@@ -1575,6 +1575,27 @@ impl<'a> Checker<'a> {
         self.implements_trait_inner(ty, trait_name, &mut seen)
     }
 
+    /// `Zero`, `One` and `Bounded` are met by the constants they name: every number has `zero`
+    /// and `one`, numbers, `Char` and `Bool` have `MIN` and `MAX` (decision 580), and a struct
+    /// meets each with its own (`Mod<P>`'s `zero` and `one`).
+    fn has_named_constants(&mut self, ty: &Ty, trait_name: &str) -> bool {
+        let names: &[&str] = match trait_name {
+            "Zero" => &["zero"],
+            "One" => &["one"],
+            _ => &["MIN", "MAX"],
+        };
+        match ty {
+            Ty::Bool | Ty::Char => trait_name == "Bounded",
+            Ty::Named { name, .. } => match self.type_def(name).as_deref() {
+                Some(Def::Struct { owned, .. }) => {
+                    (names.iter()).all(|c| owned.iter().any(|(n, _)| n == c))
+                }
+                _ => false,
+            },
+            _ => ty.is_numeric(),
+        }
+    }
+
     pub(super) fn implements_trait_inner(
         &mut self,
         ty: &Ty,
@@ -1631,6 +1652,8 @@ impl<'a> Checker<'a> {
             },
             "Add" => ty.is_numeric() || matches!(ty, Ty::Str),
             "Sub" | "Mul" | "Div" | "Rem" | "Pow" | "Neg" | "Num" => ty.is_numeric(),
+            "Zero" | "One" | "Bounded" => self.has_named_constants(ty, trait_name),
+            "BitAnd" | "BitOr" | "BitXor" => ty.is_int(),
             "Index" => ty.is_int() || matches!(ty, Ty::Pos(_) | Ty::Char),
             "Domain" => match ty {
                 Ty::Pos(_) | Ty::Domain(_) => true,
