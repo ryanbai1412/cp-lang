@@ -270,7 +270,7 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 | Quality | Metric | Mechanism |
 |---|---|---|
 | std uses only powers user libraries have | std names special-cased in the compiler | rule `std-api/R19`; `plan/domains/stdlib/measure.py privilege`, ratcheted with tech-debt |
-| A std module copied into a user library runs the same | modules that fail when copied | `missing` (copy-a-module test) |
+| A std module copied into a user library runs the same | modules that fail when copied | `crates/cpl-cli/tests/std_checks.rs` (`std_errors_never_grow` checks every std file as a user library against an empty `std-check-errors.txt`; `std_own_tests_pass` runs its `@test` fns); counter `std_shadowed` |
 | std passes the rules a user library meets | `cpl check std/<m>.cp` errors per file | `crates/cpl-cli/tests/std_checks.rs`, each count only drops |
 | No unimplemented bodies | `todo` stubs | `scripts/debt-ratchet.py` (`stdlib_todo`) |
 | Modules import without cycles | explicit import cycles | `crates/cpl-check/tests/std_acyclic.rs`; `measure.py cycles` for the graph |
