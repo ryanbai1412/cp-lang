@@ -108,6 +108,14 @@ fn a_method_no_candidate_takes_says_what_the_free_form_says() {
 }
 
 #[test]
+fn a_set_or_map_walked_by_rev_is_left_to_lowering() {
+    let diags = check(
+        "var s: Set<Int> = []\nfor x in s.rev(): print(x)\nvar m: Map<Int, Int> = []\nfor (k, v) in m.rev(): print(k, v)\n",
+    );
+    assert_eq!(messages(&diags), Vec::<String>::new());
+}
+
+#[test]
 fn inside_if_t_bound_every_t_has_the_bound() {
     let src = "fn plus<T: Add>(a: T, b: T) -> T = a + b\nfn f<T>(o: ?T, d: T) -> ?T:\n    if T: Add:\n        if let x = o: return Some(plus(x, d) + d)\n    o\nprint(f(Some(2), 3)!)\n";
     assert!(check(src).is_empty(), "{:?}", check(src));

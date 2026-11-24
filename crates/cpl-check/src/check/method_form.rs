@@ -657,11 +657,13 @@ impl<'a> Checker<'a> {
         // Only where the checker knows every trait the receiver has: an
         // optional, a type the program or library declares, or a built-in
         // container of the catalog, so an error later in the file, which
-        // stops lowering, never hides this one.
+        // stops lowering, never hides this one. Its `.rev()` is lowering's
+        // backward walk, `for x in s.rev()`, not std's `Bidir` view.
+        let lowering_walk = name.text == "rev" && args.is_empty();
         let known = match &base_ty {
             Ty::Optional(_) => true,
             Ty::Named { name, .. } => {
-                crate::builtins::is_catalog_type(name)
+                (crate::builtins::is_catalog_type(name) && !lowering_walk)
                     || (self.type_def(name))
                         .is_some_and(|d| matches!(&*d, Def::Struct { .. } | Def::Enum { .. }))
             }
