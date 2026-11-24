@@ -1121,8 +1121,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **pair** (5/5 named by a case)
 - **persistent** (47/47 named by a case)
 - **poly** (60/60 named by a case)
-- **prefix** (46/58 named by a case)
-  - uncovered: `FillPrefix`, `Prefix.of_rev_scan`, `_FillPrefix2`, `_Prefix2`, `_Prefix2.new`, `_FillPrefixList`, `_PrefixList`, `_PrefixList.new`, `Diff`, `Diff.new`, `_Diff2`, `_Diff2.new`
+- **prefix** (50/58 named by a case)
+  - uncovered: `_FillPrefix2`, `_Prefix2`, `_Prefix2.new`, `_FillPrefixList`, `_PrefixList`, `_PrefixList.new`, `_Diff2`, `_Diff2.new`
 - **rand** (10/10 named by a case)
 - **range** (19/19 named by a case)
 - **search** (11/11 named by a case)
@@ -1140,7 +1140,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Rooted.reroot`, `Rooted.chains`, `VirtualTree`, `PermNode`
 - **window** (24/24 named by a case)
 
-2400 of 2463 std items are named by a case.
+2404 of 2463 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
