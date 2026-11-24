@@ -12,7 +12,7 @@ print(window ?? [])
 
 ## Two pointers over a list are spelled with `Int` indices
 
-- **Where:** `var (lo, total) = (0, 0)`, `total -= w[order[lo]]`, `order.take(hi + 1).drop(lo)`.
+- **Where:** `var (lo, total) = (0, 0)`, `total -= w[order[lo]]`, `var picked = 0..0` set to `lo..hi + 1`, then `order[picked]`.
 - **What happened:** the window is two `Int`s into `order` plus a running sum kept by hand; the
   sum and the window can drift apart. Nothing in std grows and shrinks a window.
 - **General fix:** a std sliding window over a sequence (grow, shrink while a predicate holds,

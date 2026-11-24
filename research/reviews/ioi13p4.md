@@ -24,10 +24,6 @@ a predicate with side effects, and the friction report's evidence is stale.
 
 - Build each trial inside `opens` as a fresh array, as the dream's `opens` does, and keep the
   settled positions in their own `open: [Switch]0..=1`.
-- research/frictions/ioi13p4.md describes the old port ("port lines 15-25: the hidden state is
-  read from input and `try_combination` is a local fn with its own `tries` counter"); the port
-  now talks to `interactor.py` through `ask("try", s)` and prints `answer`. The protocol gap
-  stands; its Where line needs the current lines.
 
 ## Language gaps
 

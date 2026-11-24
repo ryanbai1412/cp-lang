@@ -1,19 +1,20 @@
 # ioi13p4: Cave
 
 The task is a grader function: the judge answers `tryCombination` and
-receives `answer`. The port cannot state that protocol, so it plays the
-sample grader itself (reads the hidden wiring, counts tries, prints
-`Accepted: q`), and the switch positions are bare `0..=1`.
+receives `answer`. The port cannot state that protocol, so it speaks it
+as text over stdio to `interactor.py` (`try S`, `answer S D`), and the
+switch positions are bare `0..=1`.
 
 ## No way to declare a function-call interactive protocol
-- **Where:** port lines 15-25: the hidden state is read from input and
-  `try_combination` is a local fn with its own `tries` counter and
-  `assert tries <= 70_000`. The dream's `protocol Cave:` block is E0107
+- **Where:** port lines 20-22 and 43: `try_combination` is
+  `ask("try", s)` and the result is `print("answer", ...)`, a text protocol
+  with `interactor.py` holding the wiring and the 70 000-try limit; N is
+  `read()`, not given by the grader. The dream's `protocol Cave:` block is E0107
   "expected the end of the statement, found a name", and `param()` (N
   given by the grader, not read) is E0201 "no `param` in scope, and not in
   the stdlib (yet)".
-- **What felt wrong:** half the port is the judge; the solution can see the
-  hidden answer, and nothing ties the stress harness to the real protocol.
+- **What felt wrong:** the call interface becomes stringly `ask` messages;
+  nothing in the program states the protocol or its try limit.
 - **Goal it hurts:** express, correct (the judge stand-in can drift from the
   statement).
 - **Ideal code:** the dream below: `protocol` with `limit`, an
@@ -24,7 +25,7 @@ sample grader itself (reads the hidden wiring, counts tries, prints
 - **Severity:** high for function-interface tasks (every IOI grader task).
 
 ## Switch positions as `0..=1`
-- **Where:** port lines 18, 22, 28: `[Switch]0..=1` and `1 - to`.
+- **Where:** port lines 20, 27, 33: `[Switch]0..=1` and `1 - to`.
 - **What felt wrong:** the dream's `enum Pos: Up | Down` with `other(p)`
   needs the grader's 0/1 encoding; with input read directly, the port keeps
   the encoding.

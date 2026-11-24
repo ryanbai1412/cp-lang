@@ -15,6 +15,7 @@ dream reads it off `perm_cycles` of the same row, already in use on line 34.
 - `var end = row(after(rounds))` and the selection-sort loop (lines 37-43) sort a copy of the
   row to list its swaps (R3); the dream's
   `after(rounds).perm_cycles().flat_map(c => c.adjacent())` says the plan is the row's cycles.
+  Covered by the friction's `Perm<D>` fix (`cycles`, `sorting_swaps`), so 3, not 2.
 - `Row` with `w.at[w.val[x]] = x` (lines 27-32) keeps a permutation and its inverse in sync by
   hand; reported.
 

@@ -1,6 +1,6 @@
 # ioi19p1 review
 
-Score: 3/5
+Score: 2/5
 Dream: 4/5
 
 Scored cold against the checklist, the port and `corpus/problems/ioi19p1/dream.cp`.
@@ -12,7 +12,7 @@ names the wrong structure.
 ## Checklist failures
 
 - `var paired: [P]Bool` and `standing.add(j, -1)` (lines 20, 25-26) record the same fact in
-  two places (R4); the dream keeps it once in `matched`. Not reported.
+  two places (R4); the dream keeps it once in `matched`. Not reported: 2/5.
 - The header says "A SegTree of standing shoes" (line 9); the port uses a `Fenwick` (R1).
 - `domain Shoe = -n..=n` with `Shoe(-Int(x))` stands in for a signed anonymous range;
   reported with its E0501 repro.

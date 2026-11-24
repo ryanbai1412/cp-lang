@@ -19,18 +19,20 @@ for p in P:
 - **Where:** `var points = [...] + [...]` then `points.sort()`.
 - **What happened:** std has no linear merge of two sorted sequences; the port concatenates and
   sorts, O((n + m) log(n + m)) for an O(n + m) step, and re-indexes the result into `P` by hand
-  (`[P] p => points[Int(p)]`).
+  (`fn pt(p: P) = points[Int(p)]`).
 - **General fix:** `merge(a, b, by:)` in std, and `[P]T` construction straight from a list of
   length `|P|`.
 - **Severity:** low.
 
 ## Nearest other-colour point needs two hand scans
 
-- **Where:** the `left` / `right` scans with `seen_red` / `seen_blue`, and
-  `min(gaps[p].0 ?? gaps[p].1!, gaps[p].1 ?? gaps[p].0!)`.
+- **Where:** the forward and backward `for p in P` scans with `seen_red` / `seen_blue`, each
+  doing `near[p] min= ...`, over `const FAR = 1_000_000_000` and `var near: [P]0..=FAR = FAR`
+  (`FAR` stands for "no other colour seen yet").
 - **What happened:** "the closest earlier and later point satisfying a predicate" is the
   previous/next-match scan written twice, and the min of two optionals where at least one is
-  present has no spelling (`min` over `?Int` values).
+  present has no spelling (`min` over `?Int` values), so the port starts from the `FAR`
+  sentinel instead.
 - **General fix:** `prev_match` / `next_match` (nearest index to each side with a predicate)
   and `min_some(a, b)` for optionals.
 - **Goal it hurts:** express. **Severity:** low.

@@ -1,6 +1,6 @@
 # ioi13p3 review
 
-Score: 3/5
+Score: 2/5
 Dream: 4/5
 
 Scored cold against the checklist, the port and `corpus/problems/ioi13p3/dream.cp`.
@@ -15,7 +15,7 @@ sentinel is unexplained here.
 
 - `const NONE = 1 << 30` and `type Matrix = [Col, Col]0..=NONE` (lines 29-30) encode absence
   as a number (R5). ioi13p3io fits the memory limit with `?Cost` and 20-row blocks, so this is
-  owed, not a language gap.
+  owed, not a language gap, and unreported: 2/5.
 - `type Cost = 0..=1e7` (line 17) is declared and never used (R13).
 - The header says blocks are built "in O(10 C^2)" (line 8) while `BLOCK = 20` (line 15); the
   cost is O(BLOCK C^2) per block (R1).

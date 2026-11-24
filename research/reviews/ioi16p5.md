@@ -1,6 +1,6 @@
 # ioi16p5 review
 
-Score: 3/5
+Score: 2/5
 Dream: 3/5
 
 Scored cold against the checklist, the port and the dream (the `## Dream` section of research/frictions/ioi16p5.md).
@@ -14,7 +14,7 @@ by hand.
 
 - Lines 33-40 and 44-52 both walk `for d in Level`, split each group with `partition`, and
   rebuild `groups` through `next += [high, low]` (R4); one `fn refine(split)` over the levels
-  would say it once. Not reported.
+  would say it once. Not reported (the friction describes the rewrite, not the repeat): 2/5.
 - `g.partition(a => member(shape(g, a)))` asks the judge inside a partition predicate
   (line 49); fine for one call per element, but the query count is the protocol's budget.
 
