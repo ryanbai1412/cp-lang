@@ -2947,14 +2947,17 @@ pub struct PermTree<I, V, Node>:
             assert not seen[p[i]], "`PermTree` needs a bijection"
             seen[p[i]] = true
         let val = [p[i].ord for i in I]
-        var b = PermBuild(
-            [PermKind.Leaf for _ in 0..2 * n - 1],
-            [0 for _ in 0..2 * n - 1],
-            [0 for _ in 0..2 * n - 1],
-            [k / 2 for k in 0..2 * n - 1],
-            [k / 2 for k in 0..2 * n - 1],
-            [val[k / 2] for k in 0..2 * n - 1],
-            [val[k / 2] for k in 0..2 * n - 1],
+        domain N = 0..2 * n - 1
+        // leaf `i` is node `2 i`; the inner node splitting before position `i` is node `2 i - 1`
+        var tree = PermTree<I, V, N>(
+            N(0),
+            [N] _ => PermKind.Leaf,
+            [N] x => x,
+            [N] x => x,
+            [N] x => I.nth(x.ord / 2),
+            [N] x => I.nth(x.ord / 2),
+            [N] x => p[I.nth(x.ord / 2)],
+            [N] x => p[I.nth(x.ord / 2)],
         )
         // `prv[v]` and `nxt[v]` are the nearest values below and above `v` at earlier positions
         var prv = [v - 1 for v in 0..n]
@@ -2964,7 +2967,7 @@ pub struct PermTree<I, V, Node>:
             if prv[v] >= 0: nxt[prv[v]] = nxt[v]
             if nxt[v] < n: prv[nxt[v]] = prv[v]
         // runs not yet closed, left to right; a value outside `gap` of the last can't extend it
-        var st: List<(first: Int, lo: Int, hi: Int, gap: Range<Int>, node: Int)> = []
+        var st: List<(first: Int, lo: Int, hi: Int, gap: Range<Int>, node: N)> = []
         for i in 0..n:
             let v = val[i]
             while let t = st.last:
@@ -2974,14 +2977,14 @@ pub struct PermTree<I, V, Node>:
                 // hang `t` under the last run as the bottom of its left spine, so a `Partial`
                 // never has a `Partial` right child
                 var bottom = t.node
-                var spine: List<Int> = []
-                while b.kind[bottom] == Partial:
+                var spine: List<N> = []
+                while tree.kind[bottom] == Partial:
                     spine.push(bottom)
-                    bottom = b.l[bottom]
-                var x = b.join(2 * t.first - 1, st[u].node, bottom, Partial)
-                for y in spine.rev: x = b.join(y, x, b.r[y], Partial)
+                    bottom = tree.l[bottom]
+                var x = tree.join(N(2 * t.first - 1), st[u].node, bottom, Partial)
+                for y in spine.rev: x = tree.join(y, x, tree.r[y], Partial)
                 st[u] = (..st[u], lo: min(st[u].lo, t.lo), hi: max(st[u].hi, t.hi), node: x)
-            st.push((first: i, lo: v, hi: v, gap: prv[v] + 1..nxt[v], node: 2 * i))
+            st.push((first: i, lo: v, hi: v, gap: prv[v] + 1..nxt[v], node: N(2 * i)))
             while st.len >= 2:
                 let (u, t) = (st[st.len - 2], st.last!)
                 let (lo, hi) = (min(u.lo, t.lo), max(u.hi, t.hi))
@@ -2992,20 +2995,29 @@ pub struct PermTree<I, V, Node>:
                     ..u,
                     lo: lo,
                     hi: hi,
-                    node: b.join(2 * t.first - 1, u.node, t.node, k),
+                    node: tree.join(N(2 * t.first - 1), u.node, t.node, k),
                 )
         assert st.len == 1
-        domain N = 0..2 * I.count - 1
         PermTree<I, V, N>(
-            N(st[0].node),
-            [N] x => b.kind[x.ord],
-            [N] x => N(b.l[x.ord]),
-            [N] x => N(b.r[x.ord]),
-            [N] x => I.nth(b.first[x.ord]),
-            [N] x => I.nth(b.last[x.ord]),
-            [N] x => V.nth(b.lo[x.ord]),
-            [N] x => V.nth(b.hi[x.ord]),
+            st[0].node,
+            tree.kind,
+            tree.l,
+            tree.r,
+            tree.first,
+            tree.last,
+            tree.lo,
+            tree.hi,
         )
+
+    fn join(mut self, x: Node, a: Node, b: Node, k: PermKind) -> Node:
+        kind[x] = k
+        l[x] = a
+        r[x] = b
+        first[x] = first[a]
+        last[x] = last[b]
+        lo[x] = min(lo[a], lo[b])
+        hi[x] = max(hi[a], hi[b])
+        x
 
     /// The view of `v` to match on (decision 132): `Leaf(i)` or `Inner(l, r, kind)`.
     ///
@@ -3059,25 +3071,6 @@ pub struct PermTree<I, V, Node>:
     pub fn vals(self, v: Node) -> Range<V> = lo[v].l..hi[v].r
 
 /// `PermTree.new`'s nodes by ordinal while it builds: leaves at even ordinals, inner nodes at odd.
-struct PermBuild:
-    var kind: List<PermKind>
-    var l: List<Int>
-    var r: List<Int>
-    var first: List<Int>
-    var last: List<Int>
-    var lo: List<Int>
-    var hi: List<Int>
-
-    fn join(mut self, x: Int, a: Int, b: Int, k: PermKind) -> Int:
-        kind[x] = k
-        l[x] = a
-        r[x] = b
-        first[x] = first[a]
-        last[x] = last[b]
-        lo[x] = min(lo[a], lo[b])
-        hi[x] = max(hi[a], hi[b])
-        x
-
 @test
 fn perm_tree_nodes_cover_intervals_of_values():
     for n in 1..=16:
