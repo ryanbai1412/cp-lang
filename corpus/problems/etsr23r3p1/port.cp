@@ -1,99 +1,52 @@
-// Source: ETSR 2023 Round 3 P1, https://dmoj.ca/problem/etsr23r3p1
-// Problem: n operations, each adding x, subtracting x, multiplying by x, or adding x
-//   times the starting value, apply in turn to a value, which is clamped into ql..=qr
-//   after each one. For each of q starting values, print the final value.
-// Solution: the operations keep the starting values in order, so sort and dedupe them
-//   and keep the current values in a lazy SegTree whose tag is an affine map in
-//   (current, starting value) plus an optional assignment. After each operation, the
-//   cells below ql and above qr are a prefix and a suffix: find them with
-//   right_while/left_while and assign the bound, O((n + q) log q).
+// Source: ETSR '23 R3 P1, https://dmoj.ca/problem/etsr23r3p1
+// Problem: n operations act on a number v that starts at a: add x, subtract x, multiply by x,
+//   or add x * a; after each one v is clamped to lo..=hi. Print the final v for each of q
+//   starting values a.
+// Solution: every operation and the clamp are non-decreasing in a, so over the distinct starts
+//   in increasing order the values stay sorted. A range-tag tree over the starts holds each one's
+//   composed map v -> mul * v + m * a + b (a clamp to c is mul = m = 0, b = c). After each
+//   operation the clamp sets a prefix to lo and a suffix to hi, both found by binary search on
+//   point reads: O(n log^2 q). The maps' coefficients wrap mod 2^64 as U64: a start that is
+//   never clamped can multiply past Int while its value stays in lo..=hi, and the value comes
+//   out right mod 2^64.
 // original: corpus/submissions/5527625.cpp
+// The statement is not public: the bounds are the reference's ints, and it is right only on
+// non-negative values (a negative start can leave lo..=hi in it).
+type Value = 0..=2147483647
 
-struct Cell:
-    lo_orig: Int
-    lo_val: Int
-    hi_orig: Int
-    hi_val: Int
+struct Step(mul: U64, m: U64, b: U64):
+    fn then(self, next: Step) -> Step =
+        Step(next.mul * mul, next.mul * m + next.m, next.mul * b + next.b)
 
-struct Op:
-    has_set: Bool
-    set_val: Int
-    mul: Int
-    m: Int
-    b: Int
+fn set(c: Int) -> Step = Step(U64(0), U64(0), U64(c))
 
-fn eval_op(op: Op, orig: Int, val: Int) -> Int:
-    let base = if op.has_set: op.set_val else: val
-    base * op.mul + op.m * orig + op.b
+let (n, lo): (1..=1e6, Value) = read()
+let hi: lo..=2147483647 = read()
+let ops: [0..n](kind: 1..=4, x: Value) = read()
+let q: 1..=1e6 = read()
+let starts: [0..q]Value = read()
 
-fn compose_op(newer: Op, older: Op) -> Op:
-    if newer.has_set: newer
-    else: Op(
-        older.has_set,
-        older.set_val,
-        older.mul * newer.mul,
-        older.m * newer.mul + newer.m,
-        older.b * newer.mul + newer.b,
-    )
-
-fn apply_op(op: Op, c: ?Cell, _len: Int) -> ?Cell:
-    if c == None: return None
-    let x = c!
-    Cell(x.lo_orig, eval_op(op, x.lo_orig, x.lo_val), x.hi_orig, eval_op(op, x.hi_orig, x.hi_val))
-
-fn merge_cell(a: ?Cell, b: ?Cell) -> ?Cell:
-    if a == None: return b
-    if b == None: return a
-    Cell(a!.lo_orig, a!.lo_val, b!.hi_orig, b!.hi_val)
-
-let (n, ql, qr): (Int, Int, Int) = read()
-var op_t: List<Int> = []
-var op_x: List<Int> = []
-for _ in 0..n:
-    let (t, x): (Int, Int) = read()
-    op_t.push(t)
-    op_x.push(x)
-
-let q: Int = read()
-var arr: List<Int> = []
-for _ in 0..q:
-    let a: Int = read()
-    arr.push(a)
-
-let sraw = arr.sorted()
-var uniq: List<Int> = []
-for v in sraw:
-    if uniq.len == 0 or uniq.last! != v:
-        uniq.push(v)
-
-let ulen = uniq.len
-domain U = 0..ulen
-let m_cell = Monoid<?Cell>(None, merge_cell)
-let act_cell = Action<?Cell, Op>(Op(false, 0, 1, 0, 0), compose_op, apply_op, over: m_cell)
-var st = SegTree(
-    act_cell.over,
-    [U] u => Some(Cell(uniq[u.ord], uniq[u.ord], uniq[u.ord], uniq[u.ord])),
-    act: act_cell,
+let (domain Start, start) = compress(starts)
+type Held = (a: U64, v: U64)  // a start and its value, mod 2^64
+let onto = Action<Held, Step>(
+    id: Step(U64(1), U64(0), U64(0)),
+    compose: (newer, older) => older.then(newer),
+    apply: (f, h, _) => (a: h.a, v: f.mul * h.v + f.m * h.a + f.b),
+    over: Monoid((a: U64(0), v: U64(0)), (x, _) => x),
 )
+var held = SegTree(act: onto, a: [Start] s => (a: U64(start[s]), v: U64(start[s])))
 
-for k in 0..n:
-    let t = op_t[k]
-    let x = op_x[k]
-    var tag = Op(false, 0, 1, x, 0)
-    if t == 1: tag = Op(false, 0, 1, 0, x)
-    elif t == 2: tag = Op(false, 0, 1, 0, -x)
-    elif t == 3: tag = Op(false, 0, x, 0, 0)
-    st.apply(U.all, tag)
+// Before its clamp a value lies in -2^31..2^62, so the 2^31 shift reads it back from U64.
+fn value(s: Start) -> Int = Int(held.get(s).v + U64(1 << 31)) - (1 << 31)
 
-    let left_end = st.right_while(U.first!.l, c => if c == None: true else: c!.hi_val < ql)
-    st.apply(U.first!.l..left_end, Op(true, ql, 1, 0, 0))
+for op in ops:
+    let x = U64(op.x)
+    held.apply_all(match op.kind:
+        1 => Step(U64(1), U64(0), x)
+        2 => Step(U64(1), U64(0), U64(0) - x)
+        3 => Step(x, U64(0), U64(0))
+        _ => Step(U64(1), x, U64(0)))
+    held.apply(span(Start.all.l, Start.all.bsearch(s => value(s) >= lo)), set(lo))
+    held.apply(span(Start.all.bsearch(s => value(s) > hi), Start.all.r), set(hi))
 
-    let right_start = st.left_while(U.last!.r, c => if c == None: true else: c!.lo_val > qr)
-    st.apply(right_start..U.last!.r, Op(true, qr, 1, 0, 0))
-
-var idx_of = Map<Int, Int>()
-for i in 0..ulen:
-    idx_of[uniq[i]] = i
-
-for a in arr:
-    print(st.get(U(idx_of[a]))!.lo_val)
+for a in starts: print(value(start.index_of(a)))
