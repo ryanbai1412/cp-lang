@@ -187,7 +187,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
       - name: Install cargo-zigbuild
         if: contains(matrix.target, 'linux-musl')
-        run: python3 -m pip install cargo-zigbuild==0.24.1
+        run: uv tool install cargo-zigbuild==0.24.1
       - name: Build and pack
         env:
           CPL_CHANNEL: ${{ needs.plan.outputs.channel }}
@@ -224,6 +224,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ needs.plan.outputs.commit }}
+      - uses: astral-sh/setup-uv@v6
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
@@ -263,13 +264,13 @@ jobs:
           v=${VERSION//+/.}
           cp dist/cp-lang.vsix "dist/cp-lang-$v.vsix"
           cp dist/cp-lang-jetbrains.zip "dist/cp-lang-jetbrains-$v.zip"
-          python3 scripts/release/editors.py dist
+          uv run --quiet python scripts/release/editors.py dist
           # A green commit older than the script gets it from this workflow's commit.
           if [ ! -f scripts/release/jetbrains_repo.py ]; then
             git fetch -q --depth 1 origin "$GITHUB_SHA"
             git show "$GITHUB_SHA:scripts/release/jetbrains_repo.py" > scripts/release/jetbrains_repo.py
           fi
-          python3 scripts/release/jetbrains_repo.py dist "$CHANNEL"
+          uv run --quiet python scripts/release/jetbrains_repo.py dist "$CHANNEL"
       - uses: actions/upload-artifact@v4
         with:
           name: editors

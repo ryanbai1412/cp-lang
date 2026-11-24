@@ -28,8 +28,9 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
       - name: Debt counters at 0
-        run: python3 scripts/debt-ratchet.py --zero
+        run: uv run --quiet python scripts/debt-ratchet.py --zero
 
   # Timing budgets report here and never turn main red (decision 225).
   timing:
@@ -54,6 +55,7 @@ jobs:
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
       - uses: ./.github/actions/setup-rust
         with:
           add: component add llvm-tools-preview
@@ -62,7 +64,7 @@ jobs:
         with:
           tool: cargo-nextest,cargo-llvm-cov
       - name: Coverage matrix
-        run: python3 scripts/coverage-matrix.py -o target/coverage | tee -a "$GITHUB_STEP_SUMMARY"
+        run: uv run --quiet python scripts/coverage-matrix.py -o target/coverage | tee -a "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:
           name: coverage-matrix
@@ -76,11 +78,12 @@ jobs:
     timeout-minutes: 240
     steps:
       - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
       - uses: ./.github/actions/setup-rust
         with:
           shared-key: mutants
       - name: Mutation score
-        run: python3 scripts/conformance-mutants.py --n 12 --seed ${{ github.run_number }} --work target/mutants --out target/mutants.md && tee -a "$GITHUB_STEP_SUMMARY" < target/mutants.md
+        run: uv run --quiet python scripts/conformance-mutants.py --n 12 --seed ${{ github.run_number }} --work target/mutants --out target/mutants.md && tee -a "$GITHUB_STEP_SUMMARY" < target/mutants.md
       - uses: actions/upload-artifact@v4
         with:
           name: mutation-score

@@ -14,6 +14,7 @@ jobs:
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -22,7 +23,7 @@ jobs:
 
       - name: Fetch unseen benchmark statements
         run: |
-          python3 - << 'PY'
+          uv run --quiet python - << 'PY'
           import json, subprocess
           from pathlib import Path
           ids = json.loads(Path("research/writable-from-docs-set.json").read_text())["problems"]
@@ -35,7 +36,7 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           MODEL="${{ github.event.inputs.model || 'gpt-5.4' }}"
-          python3 scripts/writable-from-docs.py \
+          uv run --quiet python scripts/writable-from-docs.py \
             --manifest research/writable-from-docs-set.json \
             --workers 12 \
             --model "$MODEL" \

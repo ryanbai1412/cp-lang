@@ -605,10 +605,10 @@ def spec_std_refs(root: Path) -> list[str]:
 
 
 def direct_python(root: Path) -> list[str]:
-    """`python3 ...` calls in the justfile and the scripts' shell (target: `uv run`, the one
-    interpreter with the locked dependencies)."""
+    """`python3 ...` calls in the justfile, the scripts' shell and the workflows (target:
+    `uv run`, the one interpreter with the locked dependencies)."""
     out = []
-    for f in ["justfile", *_git(root, "ls-files", "scripts/*.sh", "scripts/**/*.sh")]:
+    for f in ["justfile", *_git(root, "ls-files", "scripts/*.sh", "scripts/**/*.sh", ".github/*.yml", ".github/**/*.yml")]:
         p = root / f
         for i, line in enumerate(_lines(p) if p.is_file() else [], 1):
             if re.search(r"(^|[\s(])python3 ", line) and not line.lstrip().startswith("#"):

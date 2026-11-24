@@ -30,6 +30,7 @@ jobs:
         with:
           fetch-depth: 0
           filter: blob:none
+      - uses: astral-sh/setup-uv@v6
       - name: Does this change touch the plugin?
         id: plugin
         shell: bash
@@ -86,4 +87,4 @@ jobs:
         shell: bash
         run: ./gradlew --no-daemon --init-script ../../scripts/gradle-mirror.init.gradle verifyPlugin
       - name: The server handshake the plugin starts
-        run: python3 editors/lsp-smoke.py jetbrains target/debug/cpl lsp
+        run: uv run --quiet python editors/lsp-smoke.py jetbrains target/debug/cpl lsp

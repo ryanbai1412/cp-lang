@@ -220,8 +220,10 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "justfile", "a:\n    python3 scripts/a.py\n    uv run python scripts/b.py\n")
             self._write(root, "scripts/release/b.sh", "# python3 x.py\nx=$(cat f | python3 -c 1)\n")
             self._write(root, "web/c.sh", "python3 c.py\n")
+            self._write(root, ".github/workflows/w.yml", "    steps:\n      - run: python3 d.py\n")
             subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
-            self.assertEqual(dr.direct_python(root), ["justfile:2", "scripts/release/b.sh:2"])
+            self.assertEqual(dr.direct_python(root), ["justfile:2", ".github/workflows/w.yml:2",
+                                                      "scripts/release/b.sh:2"])
 
     def test_architecture_counters(self) -> None:
         with tempfile.TemporaryDirectory() as d:

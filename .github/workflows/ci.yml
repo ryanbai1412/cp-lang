@@ -313,6 +313,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
       - uses: ./.github/actions/setup-rust
         with:
           add: target add wasm32-wasip1
@@ -333,7 +334,7 @@ jobs:
       - name: Emacs smoke
         run: |
           CPL="$PWD/target/debug/cpl" emacs --batch -Q -l editors/emacs/smoke.el
-          python3 editors/lsp-smoke.py emacs "$PWD/target/debug/cpl" lsp
+          uv run --quiet python editors/lsp-smoke.py emacs "$PWD/target/debug/cpl" lsp
       - name: Helix smoke
         run: editors/helix/smoke.sh "$PWD/target/debug/cpl"
       - name: Zed smoke
@@ -414,13 +415,14 @@ jobs:
         shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
       - uses: ./.github/actions/setup-rust
         with:
           target: release
       - name: Build cpl
         run: cargo build --profile ci --bin cpl
       - name: Rejudge the acceptance solutions
-        run: python3 research/acceptance/regress.py target/ci/cpl -j "$(nproc)" --shard ${{ matrix.shard }}/3
+        run: uv run --quiet python research/acceptance/regress.py target/ci/cpl -j "$(nproc)" --shard ${{ matrix.shard }}/3
       # Seeded problems (problem-packages/R9) keep their cases in target/corpus-tests/.
       - uses: actions/cache/restore@v4
         if: ${{ !cancelled() }}
@@ -434,8 +436,8 @@ jobs:
         timeout-minutes: 6
         run: |
           mapfile -t ids < <(awk -v s=${{ matrix.shard }} '!/^#/ && NF && (++n - 1) % 3 == s - 1 {print $1}' corpus/sets/v03.txt)
-          python3 scripts/corpus-tests.py make --seeded "${ids[@]}" >/dev/null
-          python3 corpus/differential.py --check --cpl target/ci/cpl -j "$(nproc)" "${ids[@]}"
+          uv run --quiet python scripts/corpus-tests.py make --seeded "${ids[@]}" >/dev/null
+          uv run --quiet python corpus/differential.py --check --cpl target/ci/cpl -j "$(nproc)" "${ids[@]}"
 
   corpus-audit:
     # handbook/guidelines/problem-packages-checklist.md R1-R4, compiling and
@@ -445,6 +447,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
       - uses: actions/cache@v4
         with:
           path: target/corpus-audit
@@ -452,7 +455,7 @@ jobs:
           restore-keys: corpus-audit-
       - name: Audit every problem package
         timeout-minutes: 12
-        run: python3 corpus/audit.py --check -j "$(nproc)"
+        run: uv run --quiet python corpus/audit.py --check -j "$(nproc)"
 
   site:
     name: site build

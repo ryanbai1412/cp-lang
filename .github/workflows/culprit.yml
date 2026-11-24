@@ -35,6 +35,7 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
+      - uses: astral-sh/setup-uv@v6
       - name: Failing tests and the last green main commit
         id: range
         run: |
@@ -60,7 +61,7 @@ jobs:
           git config user.name "cpl culprit"
           git config user.email "culprit@users.noreply.github.com"
           mv failed.log "$RUNNER_TEMP/failed.log"
-          python3 scripts/culprit.py --in-place --push-reverts --good "${{ steps.range.outputs.good }}" \
+          uv run --quiet python scripts/culprit.py --in-place --push-reverts --good "${{ steps.range.outputs.good }}" \
               --bad "$BAD" --from-log "$RUNNER_TEMP/failed.log" --json "$RUNNER_TEMP/culprit.json" \
               | tee "$RUNNER_TEMP/culprit.txt"
           { echo '```'; cat "$RUNNER_TEMP/culprit.txt"; echo '```'; } >>"$GITHUB_STEP_SUMMARY"
@@ -68,7 +69,7 @@ jobs:
         if: ${{ !cancelled() && steps.range.outputs.fails != '0' }}
         run: |
           [ -s "$RUNNER_TEMP/culprit.json" ] || exit 0
-          python3 scripts/commit_status.py --run "$RUN_ID" --culprits "$RUNNER_TEMP/culprit.json" \
+          uv run --quiet python scripts/commit_status.py --run "$RUN_ID" --culprits "$RUNNER_TEMP/culprit.json" \
               --url "${{ github.event.workflow_run.html_url }}"
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() && steps.range.outputs.fails != '0' }}
