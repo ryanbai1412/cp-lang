@@ -14,6 +14,9 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "original": [
+   "corpus/problems/cco16p2/orig.cpp"
+  ],
   "port": [
    "corpus/problems/cco16p2/port.cp"
   ]
@@ -22,5 +25,5 @@
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "5566900, the only AC, passed the judge's data but answers wrongly when points are collinear, which the statement allows (only some subtasks exclude it): on 3 points of one line weighing 0, -2 and 3 it prints 4, which no set of them sums to, so it is no reference; its record has no file; the .cpp stays since an archived design doc cites it. orig.cpp is written for the corpus: for each pivot, turn the line through it half a circle and take either open side plus any prefix or suffix of the points on the line. It matches an exhaustive brute over every pair-defined line on 600 generated small cases and the port on 10 large ones; --max runs in about 1.2 s."
 }
