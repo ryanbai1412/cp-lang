@@ -26,9 +26,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         vm_regs_i.resize(base_i + chunk.num_i, 0);
         for (i, &v) in args_i.iter().enumerate() {
             if let Some(SlotLoc::I(r, _)) = chunk.slot_map.get(i) {
-                unsafe {
-                    *vm_regs_i.get_unchecked_mut(base_i + *r as usize) = v;
-                }
+                vm_regs_i[base_i + *r as usize] = v;
             }
         }
         let mut regs_v = self.take_regs_v(chunk.num_v);
@@ -63,16 +61,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         for loc in chunk.slot_map.iter().take(chunk.param_count) {
             match *loc {
                 SlotLoc::I(r, _) => {
-                    unsafe {
-                        *vm_regs_i.get_unchecked_mut(base_i + r as usize) = args_i[ii];
-                    }
+                    vm_regs_i[base_i + r as usize] = args_i[ii];
                     ii += 1;
                 }
                 SlotLoc::OptI { val, some, .. } => {
-                    unsafe {
-                        *vm_regs_i.get_unchecked_mut(base_i + val as usize) = args_i[ii];
-                        *vm_regs_i.get_unchecked_mut(base_i + some as usize) = args_i[ii + 1];
-                    }
+                    vm_regs_i[base_i + val as usize] = args_i[ii];
+                    vm_regs_i[base_i + some as usize] = args_i[ii + 1];
                     ii += 2;
                 }
                 SlotLoc::V(r) => {
