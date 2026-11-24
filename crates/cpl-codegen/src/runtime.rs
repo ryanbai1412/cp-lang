@@ -1013,16 +1013,14 @@ struct CpHash {
         return (size_t)h;
     }
     // An optional, packed or not.
-    template <class O> auto operator()(const O& o) const -> decltype(o.has_value(), size_t()) {
-        return o ? (*this)(*o) : (size_t)splitmix64(salt());
-    }
+    template <class O> auto operator()(const O& o) const -> decltype(o.has_value(), size_t()) { return o ? (*this)(*o) : (size_t)splitmix64(salt()); }
+    // A hash set: the same for any order of its elements, so equal sets hash equal.
+    template <class S> auto operator()(const S& s) const -> decltype(s.count(*s.begin()), size_t()) { uint64_t h = salt() ^ s.size(); for (const auto& x : s) h += splitmix64((uint64_t)(*this)(x)); return (size_t)splitmix64(h); }
     template <class T, size_t I = 0> uint64_t hash_tuple(const T& t) const {
         if constexpr (I == std::tuple_size<T>::value) return salt();
         else return splitmix64(hash_tuple<T, I + 1>(t) ^ (uint64_t)(*this)(std::get<I>(t)));
     }
-    template <class... Ts> size_t operator()(const std::tuple<Ts...>& t) const {
-        return (size_t)hash_tuple(t);
-    }
+    template <class... Ts> size_t operator()(const std::tuple<Ts...>& t) const { return (size_t)hash_tuple(t); }
     template <class T> auto operator()(const T& x) const -> decltype((*this)(x.cpl_tie())) {
         return (*this)(x.cpl_tie());
     }
