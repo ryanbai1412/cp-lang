@@ -138,6 +138,22 @@ class LandTest(unittest.TestCase):
         self.assertIn("bad.txt", git(ours, "show", "--name-only", "--format=", "HEAD"))
         self.assertNotIn("bad.txt", git(ours, "show", "--name-only", "--format=", "origin/main"))
 
+    def test_the_rerun_checks_packages_with_the_cpl_the_hook_used(self):
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        self._hook(theirs, 'echo "rerun cpl=$CPL"; [ -x "$CPL" ]\n')
+        self.commit(theirs, "gate")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        (ours / "target" / "release").mkdir(parents=True)
+        (ours / "target" / "release" / "cpl").write_text("#!/bin/sh\n")
+        (ours / "target" / "release" / "cpl").chmod(0o755)
+        (ours / ".gitignore").write_text("target/\n")
+        (ours / "pkg.txt").write_text("x\n")
+        self.commit(ours, "ours")
+        r = self.land(ours)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("rerun cpl=", r.stderr)
+        self.assertIn("cpl-land-cpl", r.stderr)
+
     def test_a_rebase_past_no_gate_change_lands_without_rerunning_it(self):
         theirs, ours = self.clone("theirs"), self.clone("ours")
         self._hook(theirs, "echo gate ran; exit 1\n")
@@ -168,6 +184,20 @@ class LandTest(unittest.TestCase):
         r = subprocess.run([str(ours / ".githooks" / "pre-commit")], cwd=ours, capture_output=True, text=True)
         self.assertEqual(r.returncode, 1)
         self.assertIn("behind origin/main in crates/cpl-x", r.stderr)
+
+    def test_a_ratchet_failure_on_a_branch_behind_main_says_to_rebase(self):
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        (theirs / "later.txt").write_text("x\n")
+        self.commit(theirs, "later")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        git(ours, "fetch", "-q", "origin")
+        (ours / ".githooks").mkdir()
+        shutil.copy(HERE.parent / ".githooks" / "pre-commit", ours / ".githooks" / "pre-commit")
+        (ours / "scripts" / "check.sh").write_text("#!/bin/sh\necho 'debt-ratchet: ERROR a: increased from 5 to 6'\nexit 1\n")
+        (ours / "scripts" / "check.sh").chmod(0o755)
+        r = subprocess.run([str(ours / ".githooks" / "pre-commit")], cwd=ours, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("1 commits behind origin/main", r.stderr)
 
     def test_a_ratchet_conflict_keeps_both_sides_tightening(self):
         theirs, ours = self.clone("theirs"), self.clone("ours")

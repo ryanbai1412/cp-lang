@@ -22,6 +22,9 @@ if [ "$status" -ne 124 ]; then
             git diff --quiet HEAD...origin/main -- "$c" 2>/dev/null ||
                 echo "pre-commit: your base is behind origin/main in ${c%/}; if this failure isn't yours, it may be fixed there: git pull --rebase, then commit again" >&2
         done
+        behind=$(git rev-list --count HEAD..origin/main 2>/dev/null || echo 0)
+        [ "$behind" -eq 0 ] || ! grep -q '^debt-ratchet: ERROR' "$out" ||
+            echo "pre-commit: your branch is $behind commits behind origin/main, whose ratchet baseline this tree is measured against; git pull --rebase first, then commit again" >&2
     fi
     exit "$status"
 fi

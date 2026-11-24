@@ -114,6 +114,10 @@ recheck() {
     tip=$(git rev-parse HEAD)
     trap 'git reset -q --soft "$tip"' EXIT
     git reset -q --soft FETCH_HEAD
+    # The rebase rewrote main's crate files, so target/'s cpl reads as stale to
+    # corpus.py; the rerun checks this change's packages with the cpl the hook used.
+    cpl="$(git rev-parse --git-dir)/cpl-land-cpl"
+    [ -z "${CPL:-}" ] && [ -x target/release/cpl ] && cp target/release/cpl "$cpl" && export CPL="$cpl"
     set +e
     .githooks/pre-commit >&2
     rc=$?
