@@ -74,8 +74,10 @@ inline ll divp(ll a, ll b) {
         name: "modp",
         needs: &[],
         code: "\
+// A dividend that is non-negative at run time divides unsigned, with no sign fix-up.
 inline ll modp(ll a, ll b) {
     if (__builtin_expect(b == 0, 0)) { cpl::flush(); fputs(\"division by zero\\n\", stderr); exit(3); }
+    if (__builtin_expect(a >= 0, 1)) return ll(uint64_t(a) % uint64_t(b));
     ll r = a % b; return r + ((r >> 63) & b);
 }
 ",

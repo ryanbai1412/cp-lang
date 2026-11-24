@@ -93,6 +93,11 @@ fn a_dividend_that_may_be_negative_gets_the_branchless_fix() {
         cpp.contains("inline ll modp(ll a, ll b)") && cpp.contains("return r + ((r >> 63) & b);"),
         "{cpp}"
     );
+    // A dividend that is non-negative at run time skips the signed remainder and its fix-up.
+    assert!(
+        cpp.contains("if (__builtin_expect(a >= 0, 1)) return ll(uint64_t(a) % uint64_t(b));"),
+        "{cpp}"
+    );
     // The helpers it does not call are not in the file.
     assert!(!cpp.contains("inline ll emod"), "{cpp}");
 }
