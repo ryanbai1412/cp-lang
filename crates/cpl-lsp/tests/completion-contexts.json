@@ -318,11 +318,11 @@
  },
  {
   "context": "dot/pub-field",
-  "source": "use std.geometry.{cross}\nlet h = Pt(1, 2)\nprint(h.$0)",
+  "source": "let h = Pt(1, 2)\nprint(h.$0)",
   "want": [
    "x",
    "y",
-   "cross"
+   "perp"
   ]
  },
  {
