@@ -267,3 +267,24 @@ fn each_copy_a_library_call_makes_is_listed_at_its_fn() {
         ]
     );
 }
+
+#[test]
+fn a_last_read_assigned_inside_an_if_moves() {
+    let out = super::cpp(concat!(
+        "let n: 1..=10 = read()\n",
+        "var best: ?List<Int> = None\n",
+        "for i in 0..n:\n",
+        "    let w = [j * i for j in 0..n]\n",
+        "    if best == None or w < best!: best = w\n",
+        "var dp = [0 for _ in 0..n]\n",
+        "for i in 0..n:\n",
+        "    let next = [dp[j] + i for j in 0..n]\n",
+        "    if i % 2 == 0:\n",
+        "        dp = next\n",
+        "print(best!, dp)\n",
+    ));
+    assert!(
+        out.contains("(std::move(w))") && out.contains("dp = std::move(next)"),
+        "`w` and `next` are last read where they are assigned, so they move:\n{out}"
+    );
+}

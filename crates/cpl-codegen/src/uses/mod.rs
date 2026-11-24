@@ -48,6 +48,9 @@ pub(crate) struct Uses {
     /// ([`dying_lets`]), and those of fns that read a global for the last
     /// time ([`dying_global_lets`]).
     pub(crate) dying: BTreeSet<*const Stmt>,
+    /// The `x = y` (or `Some(y)`) statements inside `if`s that read `y`
+    /// for the last time ([`dying_nested_assigns`]).
+    pub(crate) dying_assigns: BTreeSet<*const Stmt>,
 }
 
 impl Uses {
@@ -58,12 +61,14 @@ impl Uses {
             bindings: BTreeMap::new(),
             table,
             dying: dying_global_lets(program),
+            dying_assigns: BTreeSet::new(),
         };
         let bodies = [&program.setup, &program.main]
             .into_iter()
             .chain(program.fns.iter().map(|f| &f.body))
             .chain(program.closures.iter().map(|c| &c.body));
         for body in bodies {
+            dying_nested_assigns(program, body, &mut Vec::new(), &mut uses.dying_assigns);
             walk::blocks(body, &mut |block| {
                 for k in 0..block.stmts.len() {
                     uses.dying.extend(dying_lets(program, block, k));
@@ -496,6 +501,61 @@ pub(crate) fn last_read(program: &Program, block: &Block, k: usize) -> bool {
         return false;
     };
     walk::root(place) != (false, *slot) && dead_after(program, block, k, *slot)
+}
+
+/// The `x = y` and `x = Some(y)` statements nested in `if`s that read the
+/// local `y` for the last time: `y` is declared in an enclosing block with
+/// no loop between, and nothing after the statement, in its block or any
+/// out to that declaration, reads it
+/// (`for e in E: let w = walk(e); if ..: best = w`).
+fn dying_nested_assigns<'a>(
+    program: &Program,
+    block: &'a Block,
+    outer: &mut Vec<(&'a Block, usize)>,
+    out: &mut BTreeSet<*const Stmt>,
+) {
+    for (k, stmt) in block.stmts.iter().enumerate() {
+        match stmt {
+            Stmt::If(_, a, b) => {
+                outer.push((block, k));
+                dying_nested_assigns(program, a, outer, out);
+                dying_nested_assigns(program, b, outer, out);
+                outer.pop();
+            }
+            Stmt::While(.., body) | Stmt::For(.., body) => {
+                dying_nested_assigns(program, body, &mut Vec::new(), out);
+            }
+            Stmt::Assign(place, AssignOp::Set, value) if !outer.is_empty() => {
+                let src = match &value.kind {
+                    ExprKind::Local(slot)
+                        if matches!(place.kind, PlaceKind::Local(_) | PlaceKind::Global(_)) =>
+                    {
+                        *slot
+                    }
+                    _ => match some_local(value) {
+                        Some(slot) => slot,
+                        None => continue,
+                    },
+                };
+                if walk::root(place) == (false, src) || !unread_after(program, block, k, src) {
+                    continue;
+                }
+                for &(b, j) in outer.iter().rev() {
+                    if !unread_after(program, b, j, src) {
+                        break;
+                    }
+                    if b.stmts[..j]
+                        .iter()
+                        .any(|s| matches!(s, Stmt::Let(slot, _) if *slot == src))
+                    {
+                        out.insert(stmt as *const Stmt);
+                        break;
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
 }
 
 /// The local `y` of `Some(y)`.

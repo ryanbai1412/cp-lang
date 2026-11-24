@@ -1281,7 +1281,11 @@ impl Emitter<'_> {
     pub(crate) fn stmt_owning(&mut self, block: &Block, k: usize, out: &mut String) {
         self.moves_last = crate::uses::last_read(self.program, block, k)
             || self.takes_sunk_param(block, k)
-            || self.dies_here(&block.stmts[k]);
+            || self.dies_here(&block.stmts[k])
+            || self
+                .uses
+                .dying_assigns
+                .contains(&(&block.stmts[k] as *const Stmt));
         self.taken_items = self.taken_items(&block.stmts[k], &block.stmts[k + 1..]);
         if self.reads_held(&block.stmts[k]) {
             self.moves_last = false;
