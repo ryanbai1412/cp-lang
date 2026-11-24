@@ -9167,3 +9167,5 @@ devirtualized, so `SegTree(+, ..)`'s path fold compiles the identity away. A str
 field's default now resolves names in the struct's module, as a fn param's default
 already did. Next, a known missing `rev` becomes a compile error through a general
 mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
+
+## 603. (reserved, unknown)
