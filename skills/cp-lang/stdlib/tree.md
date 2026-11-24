@@ -231,8 +231,6 @@ A forest that changes, with folds over whole trees and subtrees, by an Euler tou
 
 Fields: `val: [V]T`, `lc: List<?Int>`, `rc: List<?Int>`, `pa: List<?Int>`, `agg: List<T>`, `cnt: List<Int>`, `arc: Map<(Int, Int), Int>`, `free: List<Int>`, `stk: List<Int>`.
 
-- `fn first(mut self, x: Int) -> Int` — The first node of `x`'s sequence, splayed to the root: one name per tree.
-- `fn reroot(mut self, x: Int)` — Rotates `x`'s tour so that it starts at `x`.
 - `fn new<M>(op: M, a: ?[V]T = None) -> EulerTourTree<V, T>` — \(O(n)\); Lone vertices with values `a`, or the identity of `op` everywhere when `a` is `None`.
 - `fn link(mut self, u: V, v: V)` — expected \(O(\log n)\); Joins the trees of `u` and `v` by the edge `u`-`v`.; traps: when `u` and `v` are already in one tree
 - `fn cut(mut self, u: V, v: V)` — expected \(O(\log n)\); Removes the edge `u`-`v`.; traps: when there is no edge `u`-`v`
@@ -249,8 +247,6 @@ Fields: `val: [V]T`, `lc: List<?Int>`, `rc: List<?Int>`, `pa: List<?Int>`, `agg:
 
 Fields: `val: [V]T`, `lc: List<?Int>`, `rc: List<?Int>`, `pa: List<?Int>`, `agg: List<T>`, `cnt: List<Int>`, `lz: List<F>`, `arc: Map<(Int, Int), Int>`, `free: List<Int>`, `stk: List<Int>`.
 
-- `fn first(mut self, x: Int) -> Int` — The first node of `x`'s sequence, splayed to the root: one name per tree.
-- `fn reroot(mut self, x: Int)` — Rotates `x`'s tour so that it starts at `x`.
 - `fn new<A, M>(act: A, a: ?[V]T = None, over: M = (+)) -> LazyEulerTourTree<V, T, F>` — \(O(n)\); Lone vertices with values `a`, or the identity of `act.over` everywhere when `a` is `None`.
 - `fn link(mut self, u: V, v: V)` — expected \(O(\log n)\); Joins the trees of `u` and `v` by the edge `u`-`v`.; traps: when `u` and `v` are already in one tree
 - `fn cut(mut self, u: V, v: V)` — expected \(O(\log n)\); Removes the edge `u`-`v`.; traps: when there is no edge `u`-`v`

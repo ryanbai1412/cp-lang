@@ -1056,8 +1056,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **dp** (39/39 named by a case)
 - **dsu** (63/63 named by a case)
 - **fenwick** (42/42 named by a case)
-- **flow** (58/67 named by a case)
-  - uncovered: `CostFlow.potentials`, `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `max_bounded_flow`, `min_bounded_flow`, `global_min_cut`, `Matroid`
+- **flow** (57/65 named by a case)
+  - uncovered: `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `max_bounded_flow`, `min_bounded_flow`, `global_min_cut`, `Matroid`
 - **geometry** (155/160 named by a case)
   - uncovered: `ByAngle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`
 - **graph** (117/128 named by a case)
@@ -1078,8 +1078,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `SosOver`
 - **opt** (3/3 named by a case)
 - **pair** (5/5 named by a case)
-- **persistent** (35/39 named by a case)
-  - uncovered: `RangeKth`, `RangeKth.new`, `PersistentLazySegTree.fold_rec`, `PMultiset`
+- **persistent** (35/38 named by a case)
+  - uncovered: `RangeKth`, `RangeKth.new`, `PMultiset`
 - **poly** (56/57 named by a case)
   - uncovered: `prod_linear`
 - **prefix** (48/60 named by a case)
@@ -1097,12 +1097,12 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Palindromes`, `Hashable`, `Hash2D`, `Hash2D.new`, `Hash2D.rect`, `Hash61`, `DynamicHash`, `DynamicHash.new`, `DynamicHash.rev_get`, `PalindromicTree.series_link`, `DynamicAhoCorasick`, `DynamicAhoCorasick.new`, `DynamicAhoCorasick.count_matches`, `_gen_str`
 - **subset** (17/17 named by a case)
 - **timetree** (11/11 named by a case)
-- **tree** (160/180 named by a case)
-  - uncovered: `Rooted.up_arc`, `Rooted.child_arcs`, `Rooted.reroot`, `Rooted.chains`, `Rooted.virtual`, `VirtualTree`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.vals`, `Layers`, `Events`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `EulerTourTree.reroot`, `LazyEulerTourTree.reroot`, `KruskalTree`
+- **tree** (158/176 named by a case)
+  - uncovered: `Rooted.up_arc`, `Rooted.child_arcs`, `Rooted.reroot`, `Rooted.chains`, `Rooted.virtual`, `VirtualTree`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.vals`, `Layers`, `Events`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `KruskalTree`
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2263 of 2381 std items are named by a case.
+2260 of 2374 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

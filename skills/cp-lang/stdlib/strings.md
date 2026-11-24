@@ -164,7 +164,7 @@ Fields: `chars: List<A>`, `front: List<A>`, `barrier: Int`.
 - `fn new() -> PalindromicTree<A>` — \(O(\lvert A \rvert)\); An empty palindromic tree over the alphabet domain `A`: just the odd root `0` and the even root `1`.
 - `fn of<S: Seq>(s: S) -> PalindromicTree<A>` — \(O(\lvert s \rvert \cdot \lvert A \rvert)\) memory, \(O(\lvert s \rvert)\) amortized time; The palindromic tree of `s`: `PalindromicTree<A>()` followed by `push` of each element.; traps: when an element of `s` is not in `A`
 - `fn push(mut self, a: A) -> Int` — \(O(1)\) amortized; Appends the letter `a` and returns the state of the longest palindromic suffix of the new string, creating it if it is new.; traps: never (`a` is an `A`)
-- `fn at(self, i: Int) -> A` — \(O(1)\); The character at position `i` of the current string, counting from the front.
+- `fn at(self, i: Int) -> A` — \(O(1)\); The character at position `i` of the current string, counting from the front.; traps: unless `0 <= i` and `i` is less than the current string's length
 - `@get fn len(self) -> Int` — \(O(1)\); The number of states, both roots included: `distinct + 2`.
 - `@get fn distinct(self) -> Int` — \(O(1)\); The number of distinct non-empty palindromic substrings, `len - 2`; at most `n`.
 - `fn pal_len(self, state: Int) -> Int` — \(O(1)\); The length of the palindrome of `state`: `-1` at the odd root, `0` at the even root.; traps: when `state` is outside `0..self.len`
@@ -277,7 +277,7 @@ Fields: `stored: Trie<A>`, `added: AcBuckets<A>`, `removed: AcBuckets<A>`.
 - `fn suffix_tree_edges<S: Indexed>(s: S) -> List<SuffixTreeEdge>` — \(O(n)\); Every edge of the compressed suffix tree of `s` (built from the suffix array and LCP array), one `SuffixTreeEdge` per edge of non-zero length.
 - `fn lyndon_runs<S: Indexed>(s: S) -> List<(l: Int, r: Int, period: Int)>` — \(O(n \log n)\) time and memory; Every run (maximal repetition) of `s`, by the Lyndon-runs theorem: each `(l, r, period)` is a half-open range `s[l..r]` with smallest period `period`, `r - l >= 2 * period`, that cannot be extended left or right with the same period.
 - `fn lcs_all<A, S: Seq>(words: List<S>) -> Int` — \(O(\mathit{sum} \lvert w \rvert \cdot \lvert A \rvert)\); The length of the longest sequence that is a substring of every word in `words`.
-- `fn _gen_str(alphabet: Str, lo: Int, hi: Int) -> Str` — `gen<Str of alphabet>(len: lo..=hi)`.
+- `fn _gen_str(alphabet: Str, lo: Int, hi: Int) -> Str` — \(O(\mathit{hi})\); `gen<Str of alphabet>(len: lo..=hi)`.; traps: when `lo > hi` or `alphabet` is empty
 
 ## Example
 

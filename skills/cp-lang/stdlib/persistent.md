@@ -46,7 +46,6 @@ Fields: `vals: List<T>`.
 
 Fields: `val: List<T>`, `tag: List<F>`.
 
-- `fn fold_rec(self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int, acc: F) -> T` — `acc` holds the tags of the ancestors of `u`, which are newer than every tag below them.
 - `fn new(act: Action<T, F>, a: ?[D]T = None, fill: ?T = None) -> PersistentLazySegTree<D, T, F>` — \(O(n)\) time and memory with `a:` or `fill:`, \(O(1)\) otherwise, for n = `|D|`; Build version 0 over `D` from `a:`, a uniform `fill:`, or the identity of `act`'s monoid, and keep it as `base`.; traps: when both `a:` and `fill:` are given
 - `@get fn base(self) -> Version` — \(O(1)\); The version built by `new`.
 - `fn apply(mut self, v: Version, r: Range<D>, f: F) -> Version` — \(O(\log n)\) time and memory; A new version equal to `v` with the tag `f` applied to every position of `r`.; traps: when a non-empty `r` reaches outside `D`, or `v` did not come from this tree
