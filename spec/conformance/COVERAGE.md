@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3118 (1092 passing). Rules: 589.
+Cases: 3118 (1092 passing). Rules: 590.
 
 ## Summary per chapter
 
@@ -32,7 +32,7 @@ Cases: 3118 (1092 passing). Rules: 589.
 - Rjudge (judge-profiles.md): 2 rules, 4 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rlint (fmt-lint.md): 2 rules, 3 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rlsp (lsp.md): 5 rules, 6 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- Rstress (stress.md): 1 rules, 2 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- Rstress (stress.md): 2 rules, 2 cases; 1 uncovered, 0 happy-path only, 0 negative only
 - Rtrace (trace-debug.md): 6 rules, 4 cases; 3 uncovered, 1 happy-path only, 0 negative only
 
 27 rules match a forbidding word but only permit or define something;
@@ -67,9 +67,9 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rjudge | 2 | 2 (100%) | 1 | 1 (100%) | 2 (100%) |
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
 | Rlsp | 5 | 5 (100%) | 1 | 1 (100%) | 5 (100%) |
-| Rstress | 1 | 1 (100%) | 0 | 0 (0%) | 1 (100%) |
+| Rstress | 2 | 1 (50%) | 1 | 0 (0%) | 1 (50%) |
 | Rtrace | 6 | 3 (50%) | 4 | 1 (25%) | 2 (33%) |
-| all | 589 | 586 (99%) | 238 | 235 (98%) | 585 (99%) |
+| all | 590 | 586 (99%) | 239 | 235 (98%) | 585 (99%) |
 
 ## Rules
 
@@ -722,6 +722,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 ### Rstress: stress.md
 
+- Rstress.2 [0+ 0-] **uncovered**: `cpl stress d` builds the checked program, finds every `@alt`, `@gen`, `@check` and `@inte...
 - Rstress.1 [2+ 1-]: On failure, shrink the recorded `gen` choices to a minimal input that still fails, then re...
 
 ### Rtrace: trace-debug.md

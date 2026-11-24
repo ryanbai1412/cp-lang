@@ -3,7 +3,11 @@
 Status: draft for 0.3.0. The library side is `lib/random-stress.md`.
 
 `cpl stress d` builds the checked program, finds every `@alt`, `@gen`,
-`@check` and `@interactor`, and runs rounds:
+`@check` and `@interactor`, and first reruns every saved
+`d.tests/stress-<seed>.in` by seed through the same alts and checkers: one
+that still fails is reported as `FAIL on the saved case <path>`, unshrunk
+and not saved again, and a clean run's report starts `the saved case
+passes;` (decision 441) (Rstress.2). Then it runs rounds:
 
 1. Generate an input from `@gen` or from the program's reads.
 2. Run the program and each applicable alt (whole-program alts compare
