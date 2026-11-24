@@ -643,7 +643,16 @@ impl<'p> Emitter<'p> {
             .unwrap_or_else(|| elem_ty(self.program, self.niches, &elem_ty_ir));
         let lens: Vec<String> = dims.iter().map(|d| self.dim(d)).collect();
         let lead = pad(self.indent);
-        let items = if dims.len() == 1 {
+        let fixed = match dims {
+            [DimSpec::Pos(d)] => crate::names::fixed_len(self.program, &cpl_ir::Dim::Pos(*d)),
+            _ => None,
+        };
+        let items = if let Some(k) = fixed {
+            if declare {
+                out.push_str(&format!("{lead}std::array<{cell}, {k}> {name}{{}};\n"));
+            }
+            name.to_string()
+        } else if dims.len() == 1 {
             if declare {
                 out.push_str(&format!("{lead}std::vector<{cell}> {name}({});\n", lens[0]));
             } else {

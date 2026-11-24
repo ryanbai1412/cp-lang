@@ -247,5 +247,9 @@ fn a_loop_over_a_read_array_that_reads_more_reads_the_array_first() {
         "    print(x * 10 + y)\n",
     ));
     let solve = &cpp[cpp.find("void solve()").unwrap()..];
-    assert!(solve.contains("std::vector"), "{solve}");
+    assert!(solve.contains("std::array<ll, 5> "), "{solve}");
+    assert!(
+        !solve.contains("std::vector"),
+        "a fixed-size read array is read into the std::array its type is held in:\n{solve}"
+    );
 }
