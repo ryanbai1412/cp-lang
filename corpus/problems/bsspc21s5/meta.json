@@ -9,11 +9,15 @@
   {"id": "4153026", "language": "CPP17", "result": "WA", "time": 0.005584849, "memory_kb": 3376.0, "file": "corpus/submissions/4153026.cpp"},
   {"id": "4153033", "language": "CPP17", "result": "WA", "time": 0.007575463, "memory_kb": 3296.0, "file": "corpus/submissions/4153033.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/bsspc21s5/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "The C++ submissions are RTE or WA, so there is no accepted reference. orig.cpp is corpus-written (reverse construction counting the leaves each L must grow); any minimum tree is accepted (checker.py checks N against the reference and simulates the operations). It matches an exhaustive search over every labelled tree with N <= 9 on 1800 generated cases, and checker.py accepts its tree on all of them and on --max (about 10^6 vertices). On 800 more cases up to Q = 2000 checker.py accepts every tree, and on the 629 unperturbed ones N never exceeds gen.py's hidden tree. A port of EgorKulikov/rust_algo's archived solution was tried first and rejected: it misses the minimum both ways (e.g. `5 / D 1 4 / L / L / D 3 2 / D 5 2` gives 7, whose tree fails, the minimum is 8)."
 }
