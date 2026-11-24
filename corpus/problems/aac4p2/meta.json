@@ -6,13 +6,21 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/aac4p2/dream.cp"
+  ],
   "port": [
    "corpus/problems/aac4p2/port.cp"
   ]
  },
  "tags": [],
  "difficulty": null,
- "dream": "none",
+ "dream": "draft",
  "spec": "none",
- "notes": ""
+ "notes": "",
+ "dream_stress": {
+  "ok": true,
+  "cases": 5,
+  "sha": "bcaf44244450e60fb10dea647a6f4d36deace959"
+ }
 }

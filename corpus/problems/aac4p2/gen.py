@@ -1,4 +1,9 @@
 import sys, random
+if sys.argv[1] == "--max":
+    r = random.Random(0); n, q = 200000, 10**6; print(n, q)
+    print(*[r.choice([1, 2, 3, 1]) for _ in range(n)])
+    print(*[r.randint(0, 10**9) for _ in range(q)])
+    sys.exit()
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 n = r.randint(1, S); q = r.randint(1, 2 * S); print(n, q)
 big = r.randint(0, 3) == 0

@@ -5,8 +5,7 @@
 //   cap a makes next[g] = sum of ways[g - a ..= g], a sliding window over the previous row.
 //   O(N K).
 // original: corpus/submissions/4131778.cpp
-const P = 1000000007
-type Z = Mod<P>
+type Z = Mod<1_000_000_007>
 let n: 1..=100 = read()
 let k: 0..=1e5 = read()
 domain Given = 0..=k

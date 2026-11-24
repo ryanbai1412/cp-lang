@@ -4,32 +4,29 @@
 // Solution: ask the N - 1 neighbour products a_g a_(g+1). Then try each first value dividing the
 //   first product: dividing along the chain fixes every value, and the first try that stays
 //   a permutation is printed. O(N) per try.
-let n: 2..=1e5 = read()
+let n: 3..=1e5 = read()
 domain I = 1..=n
 domain Gap = 1..n  // between positions g and g + 1
 
 // the products of neighbours pin everything down once one value is known
-var product: [Gap]Int = 0
-for g in Gap:
-    let p: 1..=n * n = ask("?", g, g.label + 1)
-    product[g] = p
+let product: [Gap]1..=n * n = [Gap] g => ask("?", g, g.label + 1)
 
 // the permutation that starts with `first`, if there is one
-fn unfold(first: Int) -> ?[I]Int:
-    var a: [I]Int = first
+fn unfold(first: I) -> ?[I]I:
+    var a: [I]I = first
     var used: [I]Bool = false
-    used[I(first)] = true
+    used[first] = true
     for g in Gap:
         let here = a[I(g.label)]
-        if product[g] % here != 0: return None
-        let next = product[g] / here
-        if next not in I or used[I(next)]: return None
-        used[I(next)] = true
-        a[I(g.label + 1)] = next
+        if product[g] % here.label != 0: return None
+        if let next = I.at(product[g] / here.label) and not used[next]:
+            used[next] = true
+            a[I(g.label + 1)] = next
+        else:
+            return None
     a
 
-for first in 1..=n:
-    if product[Gap.first!] % first == 0:
-        if let a = unfold(first):
-            print("!", a)
-            break
+for first in I if product[Gap.first!] % first.label == 0:
+    if let a = unfold(first):
+        print("!", a)
+        break
