@@ -134,8 +134,8 @@ impl<'a> Checker<'a> {
                     let right = side(self, right_expr);
                     any_vague |= right.is_vague();
                     if matches!(op, ast::CmpOp::In | ast::CmpOp::NotIn) {
-                        if self.lacks_contains(&right) {
-                            self.list_in(*op, left_expr, right_expr, &right, rest.len() == 1);
+                        if rest.len() == 1 && self.lacks_contains(&right) {
+                            self.list_in(*op, left_expr, right_expr, &right, true);
                         }
                     } else {
                         self.comparable(*op, tests_none, &left, left_expr, &right, right_expr);
@@ -143,7 +143,7 @@ impl<'a> Checker<'a> {
                     left = right;
                     left_expr = right_expr;
                 }
-                // §130: chained comparisons must point in one direction and cannot contain `==` or `!=`.
+                // §130: chained comparisons must point in one direction and cannot contain `==`, `!=` or `in`.
                 let is_module_generic_call = matches!(
                     &first.kind,
                     ExprKind::Field { base, .. }
@@ -165,7 +165,19 @@ impl<'a> Checker<'a> {
                         title: format!("write `{text}`"),
                         edits: vec![(expr.span, text)],
                     });
-                    if has_eq {
+                    let has_in = rest
+                        .iter()
+                        .any(|(op, _)| matches!(op, ast::CmpOp::In | ast::CmpOp::NotIn));
+                    if has_in {
+                        if let Some(diag) = self.report(
+                            expr.span,
+                            msgs::check::MIXED_COMPARISON_CHAIN_CHAINED_COMPARISONS_CANNOT_CONTAIN_IN,
+                            &[],
+                        ) {
+                            diag.help = Some("join the comparisons with `and` instead".to_string());
+                            diag.fixes.extend(split);
+                        }
+                    } else if has_eq {
                         if let Some(diag) = self.report(
                             expr.span,
                             msgs::check::MIXED_COMPARISON_CHAIN_CHAINED_COMPARISONS_CANNOT_CONTAIN,

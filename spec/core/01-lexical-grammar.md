@@ -212,7 +212,8 @@ So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and
   positive divisor `/` is floor division (decision 347). (R01.5.2)
 - Chained comparisons keep Python's meaning, each operand evaluated
   once, but only when every link points the same way: `0 <= i < j <= n`
-  is legal; `a < b > c` and any chain containing `==` or `!=` is an error
+  is legal; `a < b > c` and any chain containing `==`, `!=`, `in` or
+  `not in` is an error
   suggesting `and` (decision 130). (R01.5.3)
 - Operands and arguments evaluate left to right. Assignment evaluates
   the right side first, then the place (chapter 5). (R01.5.4)

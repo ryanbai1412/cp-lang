@@ -168,12 +168,10 @@ impl<'a> Lowerer<'a> {
         if l.ty == Ty::Error || r.ty == Ty::Error {
             return self.err_expr(span);
         }
-        match op {
-            CmpOp::In | CmpOp::NotIn => {
-                self.unsupported(span, "`in` inside a chain of comparisons");
-                return self.err_expr(span);
-            }
-            _ => {}
+        // A lone `x in c` lowers as `contains`; the checker rejects `in`
+        // inside a longer chain (R01.5.3).
+        if matches!(op, CmpOp::In | CmpOp::NotIn) {
+            return self.err_expr(span);
         }
         // Bring both sides to one type.
         let (l, r) = if l.ty == r.ty
