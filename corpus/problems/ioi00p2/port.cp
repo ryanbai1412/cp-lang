@@ -11,16 +11,15 @@
 // original: corpus/submissions/4682555.cpp
 // stdin: n m w, then the n car types. stdout: the number of rounds, then
 // per round the number of drivers and their (from, to) slots.
-// Bounds: n: 1..=20000; m: 1..=50; w: 2..=50
+// Bounds: n: 1..=20000; m: 1..=50; w: 2..=50; park: 1..=m
 let n: 1..=20000 = read()
 let m: 1..=50 = read()
 let w: 2..=50 = read()
-var park: [0..n]Int = read()
-var want: List<Int> = [park[i] for i in 0..n]
-want.sort()
+var park: [0..n]1..=m = read()
+let want = park.sorted()
 
 // cursor[t]: first slot of type t's block not yet known to hold a type-t car
-var cursor: [0..=m]Int = n
+var cursor: [1..=m]Int = 0
 for i in (0..n).rev: cursor[want[i]] = i
 
 var rounds: List<List<Int>> = []
@@ -45,8 +44,4 @@ while i < n:
         park[i] = car
     if moves.len > 0: rounds.push(moves)
 print(rounds.len)
-for moves in rounds:
-    var line: List<Int> = []
-    line.push(moves.len / 2)
-    for x in moves: line.push(x)
-    print(line)
+for moves in rounds: print(moves.len / 2, moves)
