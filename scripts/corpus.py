@@ -1038,16 +1038,22 @@ def check_size(pkg, ctx):
 
 
 def check_lint(pkg, ctx):
-    """No removed spelling `cpl migrate --check` would rewrite (idiomatic-code/R8)."""
+    """No removed spelling `cpl migrate --check` would rewrite (idiomatic-code/R8), and
+    every file already in `cpl fmt`'s canonical style."""
     files = [str(f) for f in (pkg.port, pkg.dream, pkg.spec) if f]
     if not files:
         return []
-    r = subprocess.run([ctx.cpl, "migrate", "--check", "--json", *files], capture_output=True, text=True)
-    try:
-        out = json.loads(r.stdout)["files"]
-    except (ValueError, KeyError):
-        return [f"migrate-error {pkg.id} -"]
-    return sorted(f"removed-spelling {pkg.id} {Path(f['path']).name}" for f in out if f["changed"] or f["diagnostics"])
+    found = []
+    for tool, finding in (("migrate", "removed-spelling"), ("fmt", "fmt-dirty")):
+        r = subprocess.run([ctx.cpl, tool, "--check", "--json", *files], capture_output=True, text=True)
+        try:
+            out = json.loads(r.stdout)["files"]
+        except (ValueError, KeyError):
+            found.append(f"{tool}-error {pkg.id} -")
+            continue
+        found += [f"{finding} {pkg.id} {Path(f['path']).name}" for f in out
+                  if f["changed"] or f.get("diagnostics") or f.get("error")]
+    return sorted(found)
 
 
 def check_dream(pkg, ctx):

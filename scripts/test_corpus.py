@@ -582,6 +582,32 @@ class StaticModesTest(Corpus):
             outs["c"] = lambda: None
             self.assertEqual(corpus.check_package(pkg, ctx), ["reference-fails p1 1"])
 
+class LintModeTest(Corpus):
+    def ctx(self, migrate, fmt):
+        cpl = self.root / "cpl"
+        cpl.write_text("#!/bin/sh\ncase $1 in migrate) echo '%s';; fmt) echo '%s';; esac\n" % (migrate, fmt))
+        cpl.chmod(0o755)
+        return corpus.Context(str(cpl), run=False)
+
+    def files(self, *changed):
+        return json.dumps({"files": [{"path": f"x/{name}", "changed": c, "diagnostics": []} for name, c in changed]})
+
+    def test_a_file_fmt_would_change_is_a_finding(self):
+        pkg = corpus.Package.at(self.package("p1", port_cp="", dream_cp=""))
+        ctx = self.ctx(self.files(("port.cp", False), ("dream.cp", False)),
+                       self.files(("port.cp", False), ("dream.cp", True)))
+        self.assertEqual(corpus.check_lint(pkg, ctx), ["fmt-dirty p1 dream.cp"])
+
+    def test_formatted_files_with_current_spellings_pass(self):
+        pkg = corpus.Package.at(self.package("p1", port_cp=""))
+        ctx = self.ctx(self.files(("port.cp", False)), self.files(("port.cp", False)))
+        self.assertEqual(corpus.check_lint(pkg, ctx), [])
+
+    def test_unreadable_fmt_output_is_a_finding(self):
+        pkg = corpus.Package.at(self.package("p1", port_cp=""))
+        self.assertEqual(corpus.check_lint(pkg, self.ctx(self.files(("port.cp", False)), "oops")), ["fmt-error p1 -"])
+
+
 class SeedTest(Corpus):
     def setUp(self):
         super().setUp()

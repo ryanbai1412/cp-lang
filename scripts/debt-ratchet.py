@@ -1178,6 +1178,32 @@ def corpus_no_tests(root: Path) -> list[str]:
         if problems.is_dir() else []
 
 
+def corpus_fmt_dirty(root: Path) -> list[str]:
+    """Corpus port.cp, dream.cp and spec.cp files `cpl fmt --check` would change (owner: Content, idioms).
+
+    Rule: idiomatic-code/R9 (handbook/guidelines/idiomatic-code-checklist.md#r9): published code
+    is in the canonical style; `scripts/corpus.py verify` (`lint`) reports each as `fmt-dirty`.
+    Runs $CPL, else the newer of target/debug/cpl and target/release/cpl; with none built it
+    counts a line naming the missing binary, so the gate can't pass blind.
+    """
+    problems = root / "corpus" / "problems"
+    files = [f"corpus/problems/{d.name}/{n}" for d in (sorted(problems.iterdir()) if problems.is_dir() else ())
+             for n in ("port.cp", "dream.cp", "spec.cp") if (d / n).is_file()]
+    if not files:
+        return []
+    env = os.environ.get("CPL")
+    built = [p for p in (root / "target/debug/cpl", root / "target/release/cpl") if p.is_file()]
+    cpl = Path(env) if env and Path(env).is_file() else max(built, key=lambda p: p.stat().st_mtime, default=None)
+    if cpl is None:
+        return ["target/debug/cpl: not built; run `cargo build -p cpl-cli`"]
+    r = subprocess.run([str(cpl.resolve()), "fmt", "--check", "--json", *files], cwd=root, capture_output=True, text=True)
+    try:
+        out = json.loads(r.stdout)["files"]
+    except (ValueError, KeyError):
+        return [f"{cpl}: `cpl fmt --check --json` printed no report"]
+    return sorted(f["path"] for f in out if f["changed"] or f.get("diagnostics") or f.get("error"))
+
+
 def corpus_no_statement(root: Path) -> list[str]:
     """Problem packages whose tests.toml has no statement sample inline (owner: Content, idioms).
 
@@ -2526,6 +2552,8 @@ COUNTERS = {
     "corpus_no_tests": ("problem packages without a tests.toml (Content)", corpus_no_tests, True),
     "corpus_no_statement": ("problem packages without an inline statement sample (Content)",
                             corpus_no_statement, True),
+    "corpus_fmt_dirty": ("corpus port, dream and spec files cpl fmt would change (Content)",
+                         corpus_fmt_dirty, True),
     "interp_max_over_20s": ("corpus packages the interpreter runs a --max case past 20 s on (Core)", interp_max_over_20s, True),
     "edition_refs": ("dead 0.2 edition references", edition_refs, True),
     "ir_builtin_names": ("names string-matched in lower/call.rs and lower/call/", ir_builtin_names, True),
@@ -2830,6 +2858,7 @@ def evaluate(actual: dict, baseline: dict) -> tuple[list[str], list[str], list[s
 # Files besides this script that define what a counter counts. The bound a
 # counter reads (read_only_copies.rs) is not one: raising it is the bump.
 MEASURED_BY = {
+    "corpus_fmt_dirty": ("crates/cpl-fmt/src",),
     "cpp_deep_copies": ("crates/cpl-cli/tests/support/cpp_counts.rs",),
     "cpp_optional_copies": ("crates/cpl-cli/tests/support/cpp_counts.rs",),
     "cpp_std_functions": ("crates/cpl-cli/tests/support/cpp_counts.rs",),

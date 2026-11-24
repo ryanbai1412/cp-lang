@@ -98,6 +98,24 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.corpus_no_statement(root),
                              [f"corpus/problems/{n}" for n in sorted(variants) if n != "ok"])
 
+    def test_corpus_fmt_dirty_lists_the_files_cpl_fmt_would_change(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            for f in ("a/port.cp", "a/dream.cp", "b/spec.cp", "b/gen.py"):
+                (root / "corpus/problems" / f).parent.mkdir(parents=True, exist_ok=True)
+                (root / "corpus/problems" / f).write_text("")
+            cpl = root / "cpl"
+            cpl.write_text("#!/bin/sh\nshift 3\nprintf '{\"files\": ['\nsep=''\nfor f; do\n"
+                           "  c=false; case $f in *dream.cp|*spec.cp) c=true;; esac\n"
+                           "  printf '%s{\"path\": \"%s\", \"changed\": %s}' \"$sep\" \"$f\" $c; sep=,\n"
+                           "done\nprintf ']}'\n")
+            cpl.chmod(0o755)
+            with mock.patch.dict(os.environ, {"CPL": str(cpl)}):
+                self.assertEqual(dr.corpus_fmt_dirty(root),
+                                 ["corpus/problems/a/dream.cp", "corpus/problems/b/spec.cp"])
+            with mock.patch.dict(os.environ, {"CPL": str(root / "missing")}):
+                self.assertEqual(dr.corpus_fmt_dirty(root), ["target/debug/cpl: not built; run `cargo build -p cpl-cli`"])
+
     def test_corpus_no_max_counts_packages_without_a_max_mode(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
