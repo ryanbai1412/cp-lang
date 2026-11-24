@@ -685,25 +685,21 @@ impl<'p> Emitter<'p> {
         (cpp, self.chunks)
     }
 
-    /// The file, without the one-line runtime fns nothing in it calls:
+    /// The file, without the runtime definitions nothing in it reaches:
     /// a piece pays only for what the program uses of it.
     fn write(&mut self, name: &str, source: Option<&str>) -> String {
         let out = self.write_all(name, source);
-        let unused = crate::runtime::unused_lines(&out);
-        if unused.is_empty() {
-            return out;
-        }
-        let keep = |text: &str| -> String {
-            text.split_inclusive('\n')
-                .filter(|line| !unused.contains(&line.trim_end_matches('\n')))
-                .collect()
-        };
+        let unused = crate::runtime::shake::unused(&out);
         for (part, _, text) in &mut self.chunks {
             if *part == crate::Part::Runtime {
-                *text = keep(text);
+                let here: Vec<_> = unused
+                    .iter()
+                    .filter_map(|at| text.find(&out[at.clone()]).map(|i| i..i + at.len()))
+                    .collect();
+                *text = crate::runtime::shake::without(text, &here);
             }
         }
-        keep(&out)
+        crate::runtime::shake::without(&out, &unused)
     }
 
     fn write_all(&mut self, name: &str, source: Option<&str>) -> String {

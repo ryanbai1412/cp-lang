@@ -2,6 +2,8 @@
 //! operations C++ spells differently. Each piece is emitted only when the
 //! program uses it, so a small program is a small file.
 
+pub(crate) mod shake;
+
 /// One piece of the runtime: its name, the pieces it needs, and its code.
 pub(crate) struct Piece {
     pub name: &'static str,
@@ -1915,87 +1917,3 @@ template <class F> Lazy<F> lazy(F f) { return {f}; }
 ",
     },
 ];
-
-/// The one-line fns of the runtime in `file` whose name nothing else in
-/// the file mentions, after the unused ones are gone. Operators, which
-/// are called without their name, always stay.
-pub(crate) fn unused_lines(file: &str) -> Vec<&str> {
-    let Some(start) = file.find("namespace cpl {\n") else {
-        return Vec::new();
-    };
-    let end = file[start..]
-        .find("}  // namespace cpl\n")
-        .map_or(file.len(), |at| start + at);
-    let mut defs: Vec<(&str, &str)> = file[start..end]
-        .lines()
-        .filter_map(|line| Some((one_line_fn(line)?, line)))
-        .collect();
-    let mut unused = Vec::new();
-    loop {
-        let dead: Vec<&str> = defs
-            .iter()
-            .map(|&(name, _)| name)
-            .filter(|&name| {
-                !file.lines().any(|line| {
-                    !unused.contains(&line)
-                        && one_line_fn(line) != Some(name)
-                        && mentions(line, name)
-                })
-            })
-            .collect();
-        if dead.is_empty() {
-            return unused;
-        }
-        defs.retain(|&(name, line)| {
-            !dead.contains(&name) || {
-                unused.push(line);
-                false
-            }
-        });
-    }
-}
-
-fn word(c: u8) -> bool {
-    c.is_ascii_alphanumeric() || c == b'_'
-}
-
-/// The name a whole fn written on one line defines, as in
-/// `template <class T> T last_val(ListView<T> v) { ... }`.
-fn one_line_fn(line: &str) -> Option<&str> {
-    let mut head = line.strip_prefix("inline ").unwrap_or(line).as_bytes();
-    if !line.ends_with('}') || head.len() == line.len() && !line.starts_with("template <") {
-        return None;
-    }
-    if head.len() == line.len() {
-        let mut depth = 0;
-        let close = head.iter().position(|&c| {
-            depth += (c == b'<') as i32 - (c == b'>') as i32;
-            c == b'>' && depth == 0
-        })?;
-        head = head[close + 1..].trim_ascii_start();
-    }
-    let paren = head.iter().position(|&c| c == b'(')?;
-    let before = &head[..paren];
-    let at = before.iter().rposition(|&c| !word(c))? + 1;
-    let kind = before.starts_with(b"struct ")
-        || before.starts_with(b"class ")
-        || before.starts_with(b"using ");
-    let name = std::str::from_utf8(&before[at..]).ok()?;
-    (!kind && !name.is_empty() && !before.windows(8).any(|w| w == b"operator")).then_some(name)
-}
-
-/// Whether `line` names the free fn `name`: a comment line does not call
-/// it, and `x.first` and `p->first` are members, which it never is.
-fn mentions(line: &str, name: &str) -> bool {
-    if line.trim_start().starts_with("//") {
-        return false;
-    }
-    let (l, n) = (line.as_bytes(), name.as_bytes());
-    (0..=l.len().saturating_sub(n.len())).any(|at| {
-        let member = l[..at].ends_with(b".") || l[..at].ends_with(b"->");
-        l[at..].starts_with(n)
-            && (at == 0 || !word(l[at - 1]))
-            && !member
-            && l.get(at + n.len()).is_none_or(|&c| !word(c))
-    })
-}

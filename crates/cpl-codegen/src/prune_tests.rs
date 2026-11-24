@@ -78,6 +78,13 @@ fn a_fn_only_an_assert_calls_is_left_out_of_a_build_without_checks() {
     assert!(!none.contains("is_even("), "{none}");
 }
 
+fn unused_runtime(file: &str) -> Vec<&str> {
+    crate::runtime::shake::unused(file)
+        .into_iter()
+        .map(|at| &file[at])
+        .collect()
+}
+
 #[test]
 fn a_runtime_fn_named_only_by_a_comment_or_a_member_is_unused() {
     let file = concat!(
@@ -88,9 +95,53 @@ fn a_runtime_fn_named_only_by_a_comment_or_a_member_is_unused() {
         "int main() { auto p = std::pair<int, int>(); return p.first; }\n",
     );
     assert_eq!(
-        crate::runtime::unused_lines(file),
-        ["template <class T> T first(T v) { return v; }"]
+        unused_runtime(file),
+        ["// `first` of a view: its first element\ntemplate <class T> T first(T v) { return v; }\n"]
     );
+}
+
+#[test]
+fn a_runtime_struct_and_the_fns_only_it_reaches_go_together() {
+    let file = concat!(
+        "namespace cpl {\n",
+        "inline int helper(int x) { return x; }\n",
+        "template <class T> struct Box {\n",
+        "    T v;\n",
+        "    int get() const { return helper(1); }\n",
+        "};\n",
+        "template <> struct Box<bool> {\n",
+        "    bool v;\n",
+        "};\n",
+        "inline int used(int x) {\n",
+        "    return x + 1;\n",
+        "}\n",
+        "}  // namespace cpl\n",
+        "int main() { return cpl::used(0); }\n",
+    );
+    let unused = unused_runtime(file);
+    assert_eq!(unused.len(), 3, "{unused:?}");
+    assert!(unused[0].starts_with("inline int helper"));
+    assert!(unused[1].starts_with("template <class T> struct Box"));
+    assert!(unused[2].starts_with("template <> struct Box<bool>"));
+}
+
+#[test]
+fn a_reached_struct_keeps_what_its_members_call_and_a_global_stays() {
+    let file = concat!(
+        "namespace cpl {\n",
+        "inline int helper(int x) { return x; }\n",
+        "struct Box {\n",
+        "    int get() const { return helper(1); }\n",
+        "};\n",
+        "inline bool operator<(Box, Box) { return false; }\n",
+        "inline int counter = 0;\n",
+        "#ifdef LOCAL\n",
+        "inline void trace() {}\n",
+        "#endif\n",
+        "}  // namespace cpl\n",
+        "int main() { cpl::Box b; return b.get(); }\n",
+    );
+    assert_eq!(unused_runtime(file), ["inline void trace() {}\n"]);
 }
 
 #[test]
