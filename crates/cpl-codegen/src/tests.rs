@@ -801,3 +801,16 @@ fn char_array_reads_fill_in_one_pass() {
         "a [D]Char read should fill the array in one pass:\n{body}"
     );
 }
+
+#[test]
+fn a_local_fn_guards_the_runtime_domains_it_declares() {
+    let out = cpp("for t in 0..2:
+    fn depth(n: Int) -> Int:
+        if n == 0: return 0
+        domain D = 0..n
+        let inner = [D] d => if d.ord == 0: depth(n - 1) else: 0
+        D.count * 10 + inner[D(0)]
+    print(depth(3 + t))
+");
+    assert!(out.contains("cpl::DomGuard"), "{out}");
+}

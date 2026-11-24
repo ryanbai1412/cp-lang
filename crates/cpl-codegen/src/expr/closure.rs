@@ -156,6 +156,17 @@ impl<'p> Emitter<'p> {
                 self.zero_init(ty)
             ));
         }
+        // A local fn can re-enter (recursion, or through a callee), so a
+        // runtime domain it declares is saved and restored per frame.
+        for d in self.program.fn_guarded_domains(&def.ret, &def.body) {
+            self.need("dom_guard");
+            let dn = crate::names::dom_ident(self.program, d);
+            let g = self.temp();
+            text.push_str(&format!(
+                "{}cpl::DomGuard {g}({dn}_lo, {dn}_len);\n",
+                pad(self.indent)
+            ));
+        }
         self.block(&def.body, &mut text);
         self.indent -= 1;
         text.push_str(&pad(self.indent));
