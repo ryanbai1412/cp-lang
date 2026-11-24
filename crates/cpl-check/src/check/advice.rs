@@ -1091,11 +1091,56 @@ pub(super) fn stream_fix(src: &str, name: &str, span: Span) -> Option<(Span, Str
     let rest = src.get(span.end as usize..)?.split('\n').next()?.trim_end();
     match name {
         "cin" => {
-            let v = rest.strip_prefix(" >> ")?;
-            let ident = v.chars().all(|c| c.is_alphanumeric() || c == '_');
-            (ident && !v.is_empty()).then(|| {
-                let end = span.end + rest.len() as u32;
-                (Span::new(span.start, end), format!("{v} = read()"))
+            let vs: Vec<&str> = rest.strip_prefix(" >> ")?.split(" >> ").collect();
+            let ident =
+                |v: &&str| !v.is_empty() && v.chars().all(|c| c.is_alphanumeric() || c == '_');
+            let end = span.end + rest.len() as u32;
+            let place = match vs.as_slice() {
+                [v] => v.to_string(),
+                _ => format!("({})", vs.join(", ")),
+            };
+            vs.iter()
+                .all(ident)
+                .then(|| (Span::new(span.start, end), format!("{place} = read()")))
+        }
+        // `cout << a << " " << b << "\n"`: values a space apart, then the
+        // line's end, is `print(a, b)`.
+        "cout" => {
+            let ops: Vec<&str> = rest.strip_prefix(" << ")?.split(" << ").collect();
+            let (end, vals) = ops.split_last()?;
+            let space = |o: &str| matches!(o, "\" \"" | "' '");
+            let lit = |o: &str| o.starts_with(['"', '\'']);
+            let ok = matches!(*end, "\"\\n\"" | "'\\n'" | "endl")
+                && vals.len() % 2 == 1
+                && vals.iter().enumerate().all(|(i, o)| {
+                    if i % 2 == 1 {
+                        space(o)
+                    } else {
+                        !lit(o) && !o.is_empty()
+                    }
+                });
+            let args: Vec<&str> = vals.iter().step_by(2).copied().collect();
+            ok.then(|| {
+                (
+                    Span::new(span.start, span.end + rest.len() as u32),
+                    format!("print({})", args.join(", ")),
+                )
+            })
+        }
+        // `printf("%d %d\n", a, b)`: plain specs a space apart, then the
+        // line's end.
+        "printf" => {
+            let call = rest.strip_prefix("(\"")?.strip_suffix(')')?;
+            let (format, args) = call.split_once('"')?;
+            let specs: Vec<&str> = format.strip_suffix("\\n")?.split(' ').collect();
+            let plain = ["%d", "%i", "%ld", "%lld", "%u", "%lu", "%llu", "%s", "%c"];
+            let args: Vec<&str> = args.strip_prefix(", ")?.split(", ").collect();
+            let ok = specs.iter().all(|s| plain.contains(s)) && specs.len() == args.len();
+            ok.then(|| {
+                (
+                    Span::new(span.start, span.end + rest.len() as u32),
+                    format!("print({})", args.join(", ")),
+                )
             })
         }
         "endl" => src
