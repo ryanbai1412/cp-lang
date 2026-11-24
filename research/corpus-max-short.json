@@ -1,6 +1,5 @@
 {
   "max_short": [
-    "max-short ccc01s5 n: --max reads 2, the statement allows 40",
     "max-short ccc21s2 cols: --max reads 2236, the statement allows 5e6",
     "max-short ccc21s2 rows: --max reads 2236, the statement allows 5e6",
     "max-short egoi23p7 m1: --max reads 299399, the statement allows 3e5",
