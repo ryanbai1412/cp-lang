@@ -1638,7 +1638,7 @@ pub(crate) fn declare_on_first_assignment(
             .then(|| name.to_string())
     };
     drop_fix_declared(&mut diags);
-    let mut first: HashMap<String, Span> = HashMap::default();
+    let mut first: crate::names::NameMap<Span> = Default::default();
     for d in &diags {
         if let Some(name) = assigned(d) {
             let at = first.entry(name).or_insert(d.span);

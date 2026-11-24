@@ -202,13 +202,13 @@ fn receiver_method_names(std: Std) -> crate::fx::HashSet<String> {
 /// The `self` each top-level std `fn name(self: T, ..)` takes, by name:
 /// `Some(head)` for a named type (`Range`, `List`, `[` for an array) and
 /// `None` for one of the fn's own type parameters, which takes any receiver.
-pub fn std_self_heads() -> &'static crate::fx::HashMap<String, Vec<Option<String>>> {
-    static HEADS: OnceLock<crate::fx::HashMap<String, Vec<Option<String>>>> = OnceLock::new();
+pub fn std_self_heads() -> &'static crate::names::NameMap<Vec<Option<String>>> {
+    static HEADS: OnceLock<crate::names::NameMap<Vec<Option<String>>>> = OnceLock::new();
     HEADS.get_or_init(|| self_heads(crate::modules::std_index()))
 }
 
-fn self_heads(std: Std) -> crate::fx::HashMap<String, Vec<Option<String>>> {
-    let mut heads: crate::fx::HashMap<String, Vec<Option<String>>> = Default::default();
+fn self_heads(std: Std) -> crate::names::NameMap<Vec<Option<String>>> {
+    let mut heads: crate::names::NameMap<Vec<Option<String>>> = Default::default();
     for (_, text) in std {
         for line in text.lines() {
             let line = line.strip_prefix("@get ").unwrap_or(line);
@@ -487,9 +487,9 @@ pub const BUILT_ON: &[(&str, &str)] = &[("prefix", "Prefix"), ("subsets", "Subse
 /// `@was(Prefix1, PrefixN)` above `pub struct Prefix` states. A word built
 /// on that type was written in snake case: `prefix_n` for `PrefixN`.
 pub fn renamed(name: &str) -> Option<&'static str> {
-    static WAS: OnceLock<crate::fx::HashMap<String, &'static str>> = OnceLock::new();
+    static WAS: OnceLock<crate::names::NameMap<&'static str>> = OnceLock::new();
     let was = WAS.get_or_init(|| {
-        let mut was = crate::fx::HashMap::default();
+        let mut was = crate::names::NameMap::default();
         let leak = |s: &str| &*Box::leak(s.to_string().into_boxed_str());
         for (_, text) in crate::modules::std_index() {
             if !text.contains("@was(") {
@@ -543,9 +543,9 @@ pub const INTERNAL_BUILT_ON: &[(&str, &str, &str)] = &[("gen", "strings", "_gen_
 /// FillPrefix` gives `FillPrefix` and `FillOrder`. A program that gets the
 /// type gets these with it, so what its methods take and return can be named.
 pub fn companions(name: &str) -> &'static [&'static str] {
-    static ALL: OnceLock<crate::fx::HashMap<&'static str, Vec<&'static str>>> = OnceLock::new();
+    static ALL: OnceLock<crate::names::NameMap<Vec<&'static str>>> = OnceLock::new();
     let all = ALL.get_or_init(|| {
-        let mut all = crate::fx::HashMap::default();
+        let mut all = crate::names::NameMap::default();
         for (module, ty) in names() {
             if !ty.text.starts_with(char::is_uppercase) || module.len() < 2 {
                 continue;
@@ -558,7 +558,7 @@ pub fn companions(name: &str) -> &'static [&'static str] {
                 continue;
             };
             let found = signature_types(text, &ty.text);
-            all.insert(&*Box::leak(ty.text.clone().into_boxed_str()), found);
+            all.insert(ty.text.clone(), found);
         }
         all
     });

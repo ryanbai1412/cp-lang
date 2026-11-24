@@ -2,11 +2,10 @@
 
 use super::Scope;
 use crate::def::impl_parts;
-use crate::fx::HashMap;
 
 /// Each impl's name and trait (`None` for an inherent impl), by the type it
 /// is for, sorted and without duplicates.
-pub(super) type ImplNames = HashMap<String, Vec<(String, Option<String>)>>;
+pub(super) type ImplNames = crate::names::NameMap<Vec<(String, Option<String>)>>;
 
 pub(super) fn impls_by_target(scope: &Scope) -> ImplNames {
     let reached = scope

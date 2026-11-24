@@ -109,7 +109,7 @@ pub struct AnalyzedItem {
 #[derive(Debug, Default, Clone)]
 pub(crate) struct Scope {
     /// Name to the index of the item that defines it.
-    pub names: HashMap<String, usize>,
+    pub names: crate::names::NameMap<usize>,
     pub names_fp: u64,
     /// True if a `use` names a module that could not be loaded: a name
     /// that is not found may have come from it, so it is not reported.
@@ -117,10 +117,10 @@ pub(crate) struct Scope {
     /// Changes when anything this file's imports can reach changes shape.
     pub imports_fp: u64,
     /// Names brought in by `use`, by the name this file calls them.
-    pub imports: HashMap<String, Import>,
+    pub imports: crate::names::NameMap<Import>,
     /// Modules imported whole (`use lib.treap`, `use lib.flow as fl`), by
     /// the name this file calls them: their public names are `treap.X`.
-    pub aliases: HashMap<String, usize>,
+    pub aliases: crate::names::NameMap<usize>,
     /// Every module this file reaches through `use`, its own imports first and theirs after. A
     /// type returned by an imported fn is looked up here even when this file never names it.
     pub modules: Vec<Module>,
@@ -213,12 +213,12 @@ impl Analysis {
     }
 
     /// Names brought in directly by `use`, keyed by their local name.
-    pub fn imports(&self) -> &HashMap<String, Import> {
+    pub fn imports(&self) -> &crate::names::NameMap<Import> {
         &self.scope.imports
     }
 
     /// Modules imported as namespaces (`use lib.treap`, `use lib.flow as fl`).
-    pub fn aliases(&self) -> &HashMap<String, usize> {
+    pub fn aliases(&self) -> &crate::names::NameMap<usize> {
         &self.scope.aliases
     }
 }
@@ -279,7 +279,7 @@ const DEP_TYPE: &str = "\0type:";
 const KEEP_REVISIONS: u64 = 32;
 
 pub struct Database {
-    files: HashMap<String, FileState>,
+    files: crate::names::NameMap<FileState>,
     /// Bumped by every edit through `set_file`, `restore_file` or `remove_file`.
     pub(crate) edits: u64,
     next_file: u32,
@@ -314,7 +314,7 @@ impl Database {
     /// A database that asks `loader` for the modules its files import.
     pub(crate) fn with_loader(loader: Box<dyn Loader>) -> Database {
         Database {
-            files: HashMap::default(),
+            files: Default::default(),
             edits: 0,
             next_file: 0,
             revision: 0,
@@ -837,8 +837,8 @@ impl Database {
                 current: None,
                 offsets: ranges.iter().map(|r| r.span.start).collect(),
                 names: None,
-                effects: HashMap::default(),
-                own_effects: HashMap::default(),
+                effects: Default::default(),
+                own_effects: Default::default(),
                 effects_of: Vec::new(),
                 vars: None,
                 impl_names: None,
@@ -1513,8 +1513,8 @@ impl Database {
             current: None,
             offsets: Vec::new(),
             names: None,
-            effects: HashMap::default(),
-            own_effects: HashMap::default(),
+            effects: Default::default(),
+            own_effects: Default::default(),
             effects_of: Vec::new(),
             vars: None,
             impl_names: None,
@@ -1804,9 +1804,9 @@ struct FileCtx<'d> {
     /// What each item mentions and assigns, once a statement needs it.
     names: Option<Vec<(Vec<String>, Vec<String>)>>,
     /// What calling each fn touches, once a call needs it.
-    effects: HashMap<String, (Arc<Effects>, u64)>,
+    effects: crate::names::NameMap<(Arc<Effects>, u64)>,
     /// What each fn's own body touches.
-    own_effects: HashMap<String, Option<Arc<Effects>>>,
+    own_effects: crate::names::NameMap<Option<Arc<Effects>>>,
     /// The fns whose effects are being worked out, innermost last.
     effects_of: Vec<String>,
     /// The top-level `var`s.

@@ -10,7 +10,7 @@ const VERSION: char = '\u{1}';
 /// declared twice.
 pub(super) fn top_level_names(
     items: &[Arc<ItemSyntax>],
-    names: &mut HashMap<String, usize>,
+    names: &mut crate::names::NameMap<usize>,
 ) -> Vec<(usize, Decl)> {
     let mut duplicates: Vec<(usize, Decl)> = Vec::new();
     for (index, item) in items.iter().enumerate() {
@@ -75,7 +75,7 @@ pub(super) fn rebinds_itself(item: &ItemSyntax, name: &str) -> bool {
 }
 
 /// Records the item at `index` as the next rebinding of `name`.
-pub(super) fn add(names: &mut HashMap<String, usize>, name: &str, index: usize) {
+pub(super) fn add(names: &mut crate::names::NameMap<usize>, name: &str, index: usize) {
     let next = (1..).find(|&k| !names.contains_key(&versioned(name, k)));
     names.insert(versioned(name, next.unwrap_or(1)), index);
 }

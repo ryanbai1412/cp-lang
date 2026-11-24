@@ -3,12 +3,11 @@
 //! file's for it.
 
 use super::{decls_of, ItemSyntax};
-use crate::fx::HashMap;
 use cpl_syntax::ast::{StmtKind, TypeKind};
 use std::sync::Arc;
 
 pub(super) fn key_overloads(items: Vec<Arc<ItemSyntax>>) -> Vec<Arc<ItemSyntax>> {
-    let mut first: HashMap<&str, usize> = HashMap::default();
+    let mut first: crate::names::NameMap<usize> = Default::default();
     let mut keyed: Vec<(String, usize)> = Vec::new();
     for item in &items {
         for stmt in &item.parsed.stmts {
@@ -16,7 +15,7 @@ pub(super) fn key_overloads(items: Vec<Arc<ItemSyntax>>) -> Vec<Arc<ItemSyntax>>
                 let n = s.generics.len();
                 match first.get(s.name.text.as_str()) {
                     None => {
-                        first.insert(&s.name.text, n);
+                        first.insert(s.name.text.clone(), n);
                     }
                     Some(&m) if m != n && !keyed.contains(&(s.name.text.clone(), n)) => {
                         keyed.push((s.name.text.clone(), n));

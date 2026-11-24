@@ -25,6 +25,7 @@ mod labels;
 mod modules;
 mod multitest;
 mod names;
+pub use names::NameMap;
 mod nav;
 mod overflow;
 mod prelude;
