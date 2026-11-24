@@ -515,10 +515,9 @@ impl<'p> Emitter<'p> {
             Len,
             IsEmpty,
         }
-        enum BitsetTree<'a> {
+        enum BitsetTree {
             Leaf(usize),
-            Bin(&'static str, Box<BitsetTree<'a>>, Box<BitsetTree<'a>>),
-            _Phantom(std::marker::PhantomData<&'a ()>),
+            Bin(&'static str, Box<BitsetTree>, Box<BitsetTree>),
         }
 
         if args.len() != 1 {
@@ -543,7 +542,7 @@ impl<'p> Emitter<'p> {
             program: &cpl_ir::Program,
             leaves: &mut Vec<&'a Expr>,
             has_op: &mut bool,
-        ) -> BitsetTree<'a> {
+        ) -> BitsetTree {
             if let ExprKind::Call(cid, cargs) = &expr.kind {
                 if cargs.len() == 2 {
                     if let (Arg::Value(a), Arg::Value(b)) = (&cargs[0], &cargs[1]) {
@@ -573,7 +572,7 @@ impl<'p> Emitter<'p> {
             BitsetTree::Leaf(idx)
         }
 
-        fn emit_word_expr(tree: &BitsetTree<'_>, vars: &[String], words: &str, wi: &str) -> String {
+        fn emit_word_expr(tree: &BitsetTree, vars: &[String], words: &str, wi: &str) -> String {
             match tree {
                 BitsetTree::Leaf(i) => format!("{}.{words}[{wi}]", vars[*i]),
                 BitsetTree::Bin(op, l, r) => format!(
@@ -581,7 +580,6 @@ impl<'p> Emitter<'p> {
                     emit_word_expr(l, vars, words, wi),
                     emit_word_expr(r, vars, words, wi)
                 ),
-                BitsetTree::_Phantom(_) => unreachable!(),
             }
         }
 
