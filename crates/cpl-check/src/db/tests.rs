@@ -414,3 +414,31 @@ fn a_struct_view_walks_its_own_seq_element_at_a_bound_and_a_join() {
     let nested = "struct Both<A, B, T, U>(a: A, b: B)\nimpl Seq<(T, U)> for Both<A: Seq<T>, B: Positional<U>, T, U>:\n    fn iter(self) -> yields (T, U):\n        var i = 0\n        for x in a:\n            if i == b.len: return\n            yield (x, b.nth(i))\n            i += 1\nimpl Sized for Both<A: Sized, B: Sized, T, U>:\n    @get fn len(self) -> Int = min(a.len, b.len)\nimpl Positional<(T, U)> for Both<A: Positional<T>, B: Positional<U>, T, U>:\n    fn nth(self, k: Int) -> (T, U) = (a.nth(k), b.nth(k))\nfn both<A: Seq<T>, B: Positional<U>, T, U>(a: A, b: B) -> Both<A, B, T, U> = Both(a, b)\nfor ((u, v), (l, r)) in both([(1, 2), (3, 4)], both([10, 20], [\"a\", \"b\"])):\n    print(u + v + l, r)\n";
     assert_eq!(silent_unknowns_of(nested), (vec![], 0));
 }
+
+#[test]
+fn method_fits_imports_a_files_methods_once_per_analysis() {
+    let mut db = Database::new();
+    db.set_file("main.cp", "let xs = [3, 1]\nprint(xs)\n");
+    let names = ["sorted", "sum", "no_such_method"];
+    let first = db.method_fits("main.cp", &Ty::Int, &names);
+    let analysis = db.analyze("main.cp").unwrap();
+    let scope = db.memo_calling("main.cp", &analysis, &names);
+    assert!(Arc::ptr_eq(
+        &scope,
+        &db.memo_calling("main.cp", &analysis, &names)
+    ));
+    assert_eq!(db.method_fits("main.cp", &Ty::Int, &names), first);
+    assert!(!Arc::ptr_eq(
+        &scope,
+        &db.memo_calling("main.cp", &analysis, &names[..2])
+    ));
+
+    db.set_file("main.cp", "let xs = [3, 2, 1]\nprint(xs)\n");
+    let edited = db.analyze("main.cp").unwrap();
+    assert!(!Arc::ptr_eq(
+        &scope,
+        &db.memo_calling("main.cp", &edited, &names)
+    ));
+    db.remove_file("main.cp");
+    assert!(db.callings.is_empty());
+}
