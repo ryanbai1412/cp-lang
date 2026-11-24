@@ -157,6 +157,7 @@
   "prelude_gaps": 92,
   "permits": 0,
   "trait_gaps": 0,
+  "generate_gaps": 0,
   "rule_gaps": 0,
   "sig_gaps": 0,
   "idiom_lint_gaps": 0,

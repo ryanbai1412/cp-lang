@@ -1,2 +1,0 @@
-# Programs whose input `cpl stress` can't generate yet, and why.
-# Checked by readable_shapes.rs; a fix deletes its line.

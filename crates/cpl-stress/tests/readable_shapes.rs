@@ -1,9 +1,8 @@
 //! Every input a program reads is one `cpl stress` can generate
 //! (`debugging/R11` in `handbook/guidelines/debugging-checklist.md`): each
 //! corpus problem's spec, each saved-trace program and each conformance
-//! program that builds gets an input spec, or is listed with the reason in
-//! `generate-gaps.txt`. A fix deletes its line; the list only shrinks. After
-//! a change that is meant to change it, run with `CPL_BLESS=1`.
+//! program that builds gets an input spec. There is no list of exceptions: a
+//! program stress can't generate fails here until the generator learns it.
 
 use std::path::{Path, PathBuf};
 
@@ -51,39 +50,12 @@ fn gaps(root: &Path) -> Vec<String> {
 }
 
 #[test]
-fn every_readable_input_can_be_generated_or_is_listed() {
+fn every_readable_input_can_be_generated() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let list = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/generate-gaps.txt");
     let found = gaps(&root);
-    let header = "# Programs whose input `cpl stress` can't generate yet, and why.\n\
-                  # Checked by readable_shapes.rs; a fix deletes its line.\n";
-    if std::env::var_os("CPL_BLESS").is_some() {
-        std::fs::write(&list, format!("{header}{}\n", found.join("\n"))).unwrap();
-        return;
-    }
-    let listed: Vec<String> = std::fs::read_to_string(&list)
-        .unwrap()
-        .lines()
-        .filter(|l| !l.is_empty() && !l.starts_with('#'))
-        .map(String::from)
-        .collect();
-    let new: Vec<&String> = found.iter().filter(|g| !listed.contains(g)).collect();
-    let fixed: Vec<&String> = listed.iter().filter(|g| !found.contains(g)).collect();
     assert!(
-        new.is_empty(),
+        found.is_empty(),
         "stress can't generate these inputs; teach the generator the shape:\n{}",
-        new.iter()
-            .map(|g| g.as_str())
-            .collect::<Vec<_>>()
-            .join("\n")
-    );
-    assert!(
-        fixed.is_empty(),
-        "these now generate; delete their lines from tests/generate-gaps.txt:\n{}",
-        fixed
-            .iter()
-            .map(|g| g.as_str())
-            .collect::<Vec<_>>()
-            .join("\n")
+        found.join("\n")
     );
 }

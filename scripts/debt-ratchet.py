@@ -1358,6 +1358,11 @@ def rule_gaps(root: Path) -> list[str]:
     return _registered_entries(root, "rule_gaps")
 
 
+def generate_gaps(root: Path) -> list[str]:
+    """Entries of crates/cpl-stress/tests/generate-gaps.txt, deleted: stress generates every readable input."""
+    return _registered_entries(root, "generate_gaps")
+
+
 def sig_gaps(root: Path) -> list[str]:
     """Entries of spec/conformance/sig-gaps.txt, deleted: every named arg the chapters use is in std."""
     return _registered_entries(root, "sig_gaps")
@@ -1823,7 +1828,7 @@ LISTS: dict[str, tuple[str | None, str, str]] = {
     "crates/cpl-cli/tests/tool-gaps.txt": ("skip_lists", "tools", "close each gap"),
     "crates/cpl-cli/tests/vm_fallbacks.txt": ("vm_fallbacks", "tech-debt", "VM runs every program"),
     "crates/cpl-lint/corpus_warnings.txt": ("corpus_lint_warnings", "lint-fmt", "deleted: corpus_tests.rs fails on any std or spec.cp warning"),
-    "crates/cpl-stress/tests/generate-gaps.txt": ("skip_lists", "stress", "generate each shape"),
+    "crates/cpl-stress/tests/generate-gaps.txt": ("generate_gaps", "stress", "deleted: readable_shapes.rs fails on any shape stress can't generate"),
     "scripts/public-hosts.txt": (None, "infra", "data: hosts the public-history scan allows"),
     "scripts/std-lint-baseline.txt": ("std_lint_findings", "stdlib", "deleted: std-lint-ratchet.py fails on any hit"),
     "spec/conformance/permits.txt": ("permits", "spec", "a case per permit"),
@@ -1927,6 +1932,7 @@ HARD_ZERO = frozenset({
     "std_lint_findings",
     "corpus_lint_warnings",
     "std_lint_allows",
+    "generate_gaps",
     "xfail_markers",
     "std_doc_parsers",
 })
@@ -1995,6 +2001,7 @@ COUNTERS = {
     "trait_gaps": ("entries of spec/conformance/trait-gaps.txt", trait_gaps, True),
     "rule_gaps": ("entries of spec/conformance/rule-gaps.txt", rule_gaps, True),
     "sig_gaps": ("entries of spec/conformance/sig-gaps.txt", sig_gaps, True),
+    "generate_gaps": ("entries of crates/cpl-stress/tests/generate-gaps.txt", generate_gaps, True),
     "idiom_lint_gaps": ("entries of spec/idioms/lints-known.txt", idiom_lint_gaps, True),
     "std_lint_findings": ("entries of scripts/std-lint-baseline.txt", std_lint_findings, True),
     "corpus_lint_warnings": ("entries of crates/cpl-lint/corpus_warnings.txt", corpus_lint_warnings, True),
