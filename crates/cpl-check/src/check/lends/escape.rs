@@ -67,27 +67,17 @@ impl<'a> Checker<'a> {
         let mut moves_in = false;
         let what = match (&callee.kind, callee_ty) {
             (ExprKind::Field { base, name }, _) if STORES.contains(&name.text.as_str()) => {
-                // Only collection types store their `.push`/`.insert`/`.set`/`.add`
-                // argument; user/stdlib structs such as `Trie<A>.add(word)` only read
-                // the sequence without retaining the view.
+                // A container stores its `.push`/`.insert`/`.set`/`.add` argument when
+                // the method takes one of the type's own parameters, `push(x: T)`;
+                // `Trie<A>.add(word: Seq<A>)` only reads the sequence it is given.
                 let base_ty = self.quietly(|c| c.infer(base));
                 let stores_elem = match &base_ty {
-                    Ty::Named { name: ty_name, .. } => matches!(
-                        ty_name.as_str(),
-                        "List"
-                            | "Set"
-                            | "HashSet"
-                            | "Map"
-                            | "HashMap"
-                            | "Deque"
-                            | "Heap"
-                            | "Stack"
-                            | "Queue"
-                            | "Bag"
-                            | "SortedSet"
-                            | "SortedBag"
-                            | "SortedMap"
-                    ),
+                    Ty::Named { name: ty_name, .. } => {
+                        matches!(
+                            ty_name.as_str(),
+                            "List" | "Set" | "HashSet" | "Map" | "HashMap"
+                        ) || self.method_takes_type_param(ty_name, &name.text)
+                    }
                     _ => true,
                 };
                 if !stores_elem {

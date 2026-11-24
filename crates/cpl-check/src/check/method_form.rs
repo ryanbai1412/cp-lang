@@ -320,6 +320,35 @@ impl Checker<'_> {
         }
     }
 
+    /// The signature struct `ty_name` declares for its method `method`,
+    /// `self` left out, with the struct's type parameters.
+    pub(crate) fn struct_method(
+        &mut self,
+        ty_name: &str,
+        method: &str,
+    ) -> Option<(Vec<String>, Ty)> {
+        match self.type_def(ty_name).as_deref() {
+            Some(Def::Struct {
+                generics, methods, ..
+            }) => {
+                let (_, sig) = methods.iter().find(|(n, _)| n == method)?;
+                Some((generics.clone(), sig.clone()))
+            }
+            _ => None,
+        }
+    }
+
+    /// True when `ty_name.method` takes a value of one of the struct's own
+    /// type parameters, as `Deque<T>.push(x: T)` does: the container keeps it.
+    pub(crate) fn method_takes_type_param(&mut self, ty_name: &str, method: &str) -> bool {
+        let Some((generics, Ty::Fn { params, .. })) = self.struct_method(ty_name, method) else {
+            return false;
+        };
+        params
+            .iter()
+            .any(|p| matches!(&p.ty, Ty::Param(g) if generics.contains(g)))
+    }
+
     /// The fn `base.name` calls: the candidate it fits, else the only one.
     pub(super) fn method_def(&mut self, base: &Ty, name: &str) -> Option<Arc<Def>> {
         match self.pick_method(base, name) {
