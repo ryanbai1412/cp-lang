@@ -11,6 +11,9 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
+#[path = "support/trace_diff.rs"]
+mod trace_diff;
+
 const KEPT: usize = 8 << 10;
 
 /// The trace `program` records, as saved, on the tree-walker if `tree`.
@@ -119,25 +122,10 @@ fn every_program_records_its_saved_trace() {
                                     golden.file_name().unwrap().to_string_lossy()
                                 ));
                             } else if got != want {
-                                let at = got
-                                    .lines()
-                                    .zip(want.lines())
-                                    .position(|(g, w)| g != w)
-                                    .unwrap_or(got.lines().count().min(want.lines().count()));
-                                let line = |text: &str| {
-                                    text.lines()
-                                        .nth(at)
-                                        .unwrap_or("")
-                                        .chars()
-                                        .take(300)
-                                        .collect::<String>()
-                                };
                                 differ.push(format!(
-                                    "{} on the {engine}, line {}:\n  got  {}\n  want {}",
+                                    "{} on the {engine}:\n  {}",
                                     golden.file_name().unwrap().to_string_lossy(),
-                                    at + 1,
-                                    line(&got),
-                                    line(&want)
+                                    trace_diff::classify(&got, &want).join("\n  ")
                                 ));
                             }
                         }
@@ -153,7 +141,9 @@ fn every_program_records_its_saved_trace() {
     });
     assert!(
         differ.is_empty(),
-        "{} traces differ from the saved ones (CPL_BLESS=1 records them):\n{}",
+        "{} traces differ from the saved ones:\n{}\n\nIf the change is meant to move them, bisect any lost step first, then re-record \
+         with `CPL_BLESS=1 cargo nextest run -p cpl-cli --test trace_goldens` and commit the \
+         .trace files with the change.",
         differ.len(),
         differ.join("\n")
     );
