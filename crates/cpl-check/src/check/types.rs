@@ -1649,7 +1649,7 @@ impl<'a> Checker<'a> {
             supers,
             alias: true,
             ..
-        }) = self.global(trait_name).as_deref().cloned()
+        }) = self.type_def(trait_name).as_deref().cloned()
         {
             return supers
                 .iter()

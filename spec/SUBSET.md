@@ -201,7 +201,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-11/prelude-has-components.cp: compiler
 - core-11/strings-table-in-prelude.cp: compiler
 - diagnostics/graph-edge-field-names.cp: diagnostics
-- std-graph/user-impl-next-weighted-arc-runs-dijkstra.cp: compiler (a std fn's trait-alias bound resolves only when the caller imports the alias)
 - std-search/real-bsearch-is-a-range-method.cp: stdlib `Range<F64>.bsearch/peak/valley(steps:)` replace `bsearch_real`/`ternary_*_real` (decision 419)
 - std-segtree/closure-op-picks-index.cp: stdlib `all` of an identity-less op is `?T`; needs identity-less fold typing (plan/QUESTIONS.md)
 - std-window/track-infers-element-from-sequence.cp: compiler
