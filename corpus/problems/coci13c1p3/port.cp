@@ -1,4 +1,5 @@
 // Source: COCI 2013/2014 Contest 1 (Ratar), https://dmoj.ca/problem/coci13c1p3
+// limits: 600 ms, 32 MB
 // Problem: an n x n grid (n <= 50) of values in [-1000, 1000]. Count the pairs of rectangles
 //   that have exactly one corner point in common (touching diagonally) and equal sums.
 // Solution: such a pair meets at one grid point, in opposite quadrants. For every grid point,
