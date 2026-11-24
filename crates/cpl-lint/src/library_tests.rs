@@ -56,6 +56,26 @@ fn a_library_lint_fires_and_fixes_in_a_program_using_the_library() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// A hole matches a type as it does an expression: the domain of a
+/// `Fenwick<C, Int>()` the call no longer needs. Rule: R06.4.9.
+#[test]
+fn a_hole_matches_a_type() {
+    let decl = "@lint(tree_by_hand, from: \"var t = Fenwick<C, Int>()\\nt.add(x, 1)\", to: \"let t = once(x)\", holes: \"C\")\npub fn once<K>(x: K) -> Int = 0\n";
+    let found = |body: &str| -> Vec<String> {
+        crate::lint(&format!("{decl}{body}"), &crate::Config::default())
+            .into_iter()
+            .filter(|d| d.code.0 == "tree_by_hand")
+            .map(|d| d.fixes[0].edits[0].1.clone())
+            .collect()
+    };
+    let hit =
+        "domain D = 0..3\nlet k = D.first!\nvar f = Fenwick<D, Int>()\nf.add(k, 1)\nprint(f)\n";
+    assert_eq!(found(hit), ["let f = once(k)"]);
+    let other =
+        "domain D = 0..3\nlet k = D.first!\nvar f = Fenwick<D, Bool>()\nf.add(k, 1)\nprint(f)\n";
+    assert!(found(other).is_empty());
+}
+
 /// `cp.toml`'s `[lints]` sets a library lint's level like a built-in one's,
 /// without calling it unknown; a name no library declares still is.
 /// Rule: lints/R19.

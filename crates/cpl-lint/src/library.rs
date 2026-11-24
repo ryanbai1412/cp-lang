@@ -7,7 +7,7 @@ use crate::walk::Visitor;
 use crate::{File, Finding, Group, Level, Lint};
 use cpl_check::Analysis;
 use cpl_diag::{Code, Span};
-use cpl_syntax::ast::{Expr, ExprKind, Stmt, StmtKind};
+use cpl_syntax::ast::{Expr, ExprKind, Stmt, StmtKind, Type};
 use cpl_syntax::library_lint::{self, is_name, Bound, LibraryLint};
 use cpl_syntax::{Token, TokenKind as K};
 use std::collections::HashMap;
@@ -200,6 +200,9 @@ struct Spans {
     base: u32,
     exprs: Vec<Span>,
     stmts: Vec<Span>,
+    /// Every type written, `C` in `Fenwick<C, Int>()`: a hole matches one
+    /// as it matches an expression.
+    types: Vec<Span>,
     blocks: Vec<Vec<Span>>,
     /// Where each assigned place starts: `from` cannot match a place, nor
     /// the base it indexes, since `to` is a call.
@@ -217,6 +220,9 @@ impl Visitor for Spans {
         if let ExprKind::Keep { target, .. } = &expr.kind {
             self.places.push(target.span.shift(self.base).start);
         }
+    }
+    fn ty(&mut self, ty: &Type) {
+        self.types.push(ty.span.shift(self.base));
     }
     fn stmt(&mut self, stmt: &Stmt) {
         self.stmts.push(stmt.span.shift(self.base));
@@ -250,7 +256,7 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
     file.walk(&mut spans, |s, base| s.base = base);
     (spans.blocks).push(file.top_level().map(|(b, s)| s.span.shift(b)).collect());
     let mut ends: HashMap<u32, Vec<u32>> = HashMap::new();
-    for e in &spans.exprs {
+    for e in spans.exprs.iter().chain(&spans.types) {
         ends.entry(e.start).or_default().push(e.end);
     }
     let mut candidates: Vec<(usize, usize, Span)> = spans
@@ -516,8 +522,8 @@ impl Matcher<'_> {
         self.kinds[j] == *kind && self.text[j] == text && self.go(p + 1, j + 1, stop, holes, names)
     }
 
-    /// The ends of the expressions starting at token `j` and ending by
-    /// `stop`, a bracketed one with its brackets.
+    /// The ends of the expressions and types starting at token `j` and
+    /// ending by `stop`, a bracketed one with its brackets.
     fn runs(&self, j: usize, stop: usize) -> Vec<usize> {
         let start = self.toks[j].span.start;
         let mut out: Vec<usize> = (self.ends.get(&start).into_iter().flatten())
