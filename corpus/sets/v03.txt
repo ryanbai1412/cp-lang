@@ -545,6 +545,7 @@ ioi06p4
 ioi07p3
 ioi08p1
 ioi08p2
+ioi08p3
 ioi09p3
 ioi09p4
 ioi09p5
