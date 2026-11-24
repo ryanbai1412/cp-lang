@@ -3,43 +3,53 @@
 //   0 <= T_i <= 1000 and tolerance 0 <= B_i <= 7: at most the B_i people right behind i may be
 //   served before i. Cooking a dish after one of taste a costs a xor b (the first is free).
 //   Print the least total time.
-// Solution: everyone before the first unserved student ci is served, and nobody beyond ci + 7
-//   can be, so a state is (ci, last served student, bitmask of served students in the window
-//   after ci). The next student is any unserved pos up to the least pos + B_pos over unserved
-//   pos in the window; memoised recursion over a Map: O(n * 2^8 * 16 * 8) per test.
+// Solution: everyone before the first unserved student i is served, and nobody past i + 7 can
+//   be, so a state is (i, the served set within the window i..=i+7, the last served student as
+//   an offset from i in -8..8). From i unserved, student i + j may go next while j stays within
+//   k + B_{i+k} for every unserved k < j; once i is served the window slides to i + 1. Sweep i
+//   upward keeping two layers: O(n * 2^8 * 16 * 8) per test.
 // original: corpus/submissions/5494510.cpp
-
 @!multitest
 let n: 1..=1000 = read()
 struct Student:
     taste: 0..=1000
     patience: 0..=7
-let queue: [n]Student = read()
+domain Pos = 0..n
+let queue: [Pos]Student = read()
+domain Offset = 0..8        // the window i, i + 1, ..., i + 7
+domain Rel = -8..8          // the last served student, as an offset from i
+type Window = Subset<Offset>
 
-var memo = Map<(Int, Int, Int), Int>()
+fn at(i: Pos, j: Int) -> Pos = Pos(i.ord + j)
 
-fn dp(ind: Int, prv: Int, mask: Int) -> Int:
-    var ci = ind
-    var cm = mask
-    while ci < n and (cm & 1) == 1:
-        ci += 1
-        cm >>= 1
-    if ci >= n: return 0
+// The students of the window who may be served next.
+fn choices(i: Pos, served: Window) -> List<Offset>:
+    var out = List<Offset>()
+    var reach = Int(Offset.last!)
+    for j in Offset:
+        if Int(j) > reach or i.ord + Int(j) >= n: break
+        if served.contains(j): continue
+        out.push(j)
+        reach = min(reach, Int(j) + queue[at(i, Int(j))].patience)
+    out
 
-    var last_pos = n - 1
-    for pos in ci..min(n, ci + 15):
-        if not cm.bit(pos - ci): last_pos min= pos + queue[pos].patience
-
-    let key = (ci, prv, cm)
-    if let v = memo.get(key): return v
-
-    var best: ?Int = None
-    for pos in ci..=last_pos:
-        let bit = pos - ci
-        if cm.bit(bit): continue
-        let cost = if prv == -1: 0 else: queue[prv].taste ^ queue[pos].taste
-        best min= cost + dp(ci, pos, cm | (1 << bit))
-    memo[key] = best!
-    best!
-
-print(dp(0, -1, 0))
+// cur[served][last]: the least time for a state at the current i.
+var cur: [Window][Rel]?Int = None
+for j in choices(Pos.first!, Window.empty):
+    cur[Window.single(j)][Rel(Int(j))] = 0      // the first dish is free
+for i in Pos:
+    var next: [Window][Rel]?Int = None
+    for served in Window:                      // ascending: serving someone makes a larger set
+        for last in Rel:
+            if let time = cur[served][last]:
+                if served.contains(Offset.first!):
+                    let slid = last.prev!
+                    next[served.shifted(-1)][slid] = min(next[served.shifted(-1)][slid] ?? time, time)
+                else:
+                    let before = queue[at(i, Int(last))].taste
+                    for j in choices(i, served):
+                        let cand = time + (before ^ queue[at(i, Int(j))].taste)
+                        let to = served.with(j)
+                        cur[to][Rel(Int(j))] = min(cur[to][Rel(Int(j))] ?? cand, cand)
+    cur = next
+print(cur[Window.empty].min()!)
