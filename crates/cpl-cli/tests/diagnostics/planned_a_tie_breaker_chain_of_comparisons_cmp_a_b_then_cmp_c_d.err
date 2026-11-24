@@ -1,0 +1,8 @@
+error[E0504]: not implemented yet: a tie-breaker chain of comparisons, `cmp(a, b) then cmp(c, d)` (not in the design)
+  --> planned_a_tie_breaker_chain_of_comparisons_cmp_a_b_then_cmp_c_d.cp:2:41
+  |
+2 | print(a.sorted(cmp: (u, v) => cmp(u, v) then cmp(v, u)))
+  |                                         ^^^^^^^^^^^^^^
+  = help: compare tuples, `cmp((a, c), (b, d))`, or sort by a key tuple
+
+planned_a_tie_breaker_chain_of_comparisons_cmp_a_b_then_cmp_c_d.cp: 1 error

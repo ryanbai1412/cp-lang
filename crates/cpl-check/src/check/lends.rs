@@ -527,7 +527,6 @@ fn cmp_text(op: CmpOp) -> &'static str {
         CmpOp::Ge => ">=",
         CmpOp::In => "in",
         CmpOp::NotIn => "not in",
-        CmpOp::Order => "<=>",
     }
 }
 

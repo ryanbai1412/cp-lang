@@ -173,10 +173,6 @@ impl<'a> Lowerer<'a> {
                 self.unsupported(span, "`in` inside a chain of comparisons");
                 return self.err_expr(span);
             }
-            CmpOp::Order => {
-                self.unsupported(span, "`<=>`");
-                return self.err_expr(span);
-            }
             _ => {}
         }
         // Bring both sides to one type.

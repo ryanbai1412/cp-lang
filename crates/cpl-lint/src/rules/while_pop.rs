@@ -176,7 +176,7 @@ pub(crate) fn coalesce(file: &File) -> Vec<Finding> {
             let [(op, rhs)] = rest.as_slice() else {
                 return;
             };
-            if matches!(op, CmpOp::In | CmpOp::NotIn | CmpOp::Order) {
+            if matches!(op, CmpOp::In | CmpOp::NotIn) {
                 return;
             }
             let ExprKind::Paren(inner) = &first.kind else {

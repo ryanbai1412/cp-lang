@@ -163,6 +163,43 @@ impl<'a> Parser<'a> {
         (callee.kind == T::Ident).then(|| callee.span.text(self.src))
     }
 
+    /// `a <=> b`: C++'s three-way comparison. One error with the `cmp(a, b)`
+    /// fix, read as that call.
+    pub(super) fn three_way(&mut self, left: Expr) -> Expr {
+        let op = self.span();
+        self.bump();
+        let right = self.range();
+        let span = Span::new(left.span.start, right.span.end.max(op.end));
+        let text = |s: Span| {
+            let at = |p: u32| (p as i64 - self.delta) as usize;
+            &self.src[at(s.start)..at(s.end)]
+        };
+        let (l, r) = (text(left.span), text(right.span));
+        let ours = format!("cmp({l}, {r})");
+        self.recovered(
+            cpl_diag::msgs::foreign::THREE_WAY
+                .error(op, &[])
+                .with_help(habits::THREE_WAY.say(&[]))
+                .with_fix(habits::THREE_WAY_2.say(&[&l, &r]), span, &ours),
+        );
+        let arg = |value: Expr| Arg {
+            name: None,
+            mutable: false,
+            value,
+        };
+        let callee = Expr {
+            kind: ExprKind::Name("cmp".to_string()),
+            span: op,
+        };
+        Expr {
+            kind: ExprKind::Call {
+                callee: Box::new(callee),
+                args: vec![arg(left), arg(right)],
+            },
+            span,
+        }
+    }
+
     /// Steps over a comparison operator, reading `!in` as `not in` and
     /// Python's `x is None` and `x is not None` as `==` and `!=`, each one
     /// error with a fix.

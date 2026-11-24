@@ -179,10 +179,10 @@ pub const ANY_LENGTH: Planned = Planned {
 };
 
 pub const THEN_CHAIN: Planned = Planned {
-    feature: "a tie-breaker chain of comparisons, `a <=> b then c <=> d`",
+    feature: "a tie-breaker chain of comparisons, `cmp(a, b) then cmp(c, d)`",
     see: None,
-    now: "compare tuples, `(a, c) <=> (b, d)`, or sort by a key tuple",
-    example: "let a = [3, 1]\nprint(a.sort(cmp: (u, v) => u <=> v then v <=> u))\n",
+    now: "compare tuples, `cmp((a, c), (b, d))`, or sort by a key tuple",
+    example: "let a = [3, 1]\nprint(a.sorted(cmp: (u, v) => cmp(u, v) then cmp(v, u)))\n",
 };
 
 pub const IMPLICIT_MEMBER: Planned = Planned {

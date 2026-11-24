@@ -22,6 +22,7 @@ super::msgs! {
     REVERSED_SLICE = EXPECTED_TOKEN, "CP Lang reverses with `.rev`, not `[::-1]`";
     BANG_NOT = UNEXPECTED_TOKEN, "`!` doesn't negate in CP Lang";
     CMP_TOKEN = UNEXPECTED_TOKEN, "CP Lang compares with `{}`, not `{}`";
+    THREE_WAY = REMOVED_SYNTAX, "CP Lang has no `<=>`: `cmp(a, b)` is the three-way comparison";
     PYTHON_TERNARY = REMOVED_SYNTAX, "CP Lang writes `a if c else b` as `if c: a else: b`";
     ARROW_LAMBDA = EXPECTED_TOKEN, "CP Lang writes a lambda with `=>`, not `->`";
     RUST_CLOSURE = EXPECTED_TOKEN, "CP Lang writes a lambda with `=>`, not `|x|`";

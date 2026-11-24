@@ -729,6 +729,18 @@ pub static RUST_REPEAT_2: Habit = shape(
     "",
 );
 pub static C_CAST: Habit = shape("c_cast", codes::REMOVED_SYNTAX, "write `{}(...)`", "");
+pub static THREE_WAY: Habit = shape(
+    "three_way",
+    codes::REMOVED_SYNTAX,
+    "`cmp(a, b)` gives `Ordering.Less`, `Equal` or `Greater`; `cmp((a, c), (b, d))` breaks a tie on `c`",
+    "",
+);
+pub static THREE_WAY_2: Habit = shape(
+    "three_way_2",
+    codes::REMOVED_SYNTAX,
+    "write `cmp({}, {})`",
+    "",
+);
 pub static STRUCT_LITERAL_2: Habit = shape(
     "struct_literal_2",
     codes::EXPECTED_TOKEN,
@@ -992,6 +1004,8 @@ pub static SHAPES: &[&Habit] = &[
     &RUST_REPEAT_2,
     &C_CAST,
     &STRUCT_LITERAL_2,
+    &THREE_WAY,
+    &THREE_WAY_2,
     &PYTHON_FORMAT,
     &BARE_TUPLE_PATTERN_2,
     &PAREN_FOR_2,

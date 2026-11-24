@@ -825,8 +825,6 @@ pub enum CmpOp {
     Ge,
     In,
     NotIn,
-    /// `a <=> b`: an `Ordering`.
-    Order,
 }
 
 #[derive(PartialEq, Debug)]

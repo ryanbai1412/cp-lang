@@ -186,9 +186,6 @@ impl<'a> Checker<'a> {
                         }
                     }
                 }
-                if rest.iter().any(|(op, _)| *op == ast::CmpOp::Order) {
-                    return Ty::Unknown;
-                }
                 Ty::Bool
             }
             ExprKind::Range {

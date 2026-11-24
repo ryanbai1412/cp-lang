@@ -340,7 +340,6 @@ impl<'a> Parser<'a> {
             T::LtEq => CmpOp::Le,
             T::Gt => CmpOp::Gt,
             T::GtEq => CmpOp::Ge,
-            T::Spaceship => CmpOp::Order,
             T::Ident if self.at_python_is() => CmpOp::Ne,
             T::In => CmpOp::In,
             T::Not if self.peek_n(1) == T::In => CmpOp::NotIn,
@@ -408,8 +407,24 @@ impl<'a> Parser<'a> {
                 span: self.span_from(start),
             };
         }
-        let mut rest = Vec::new();
-        while let Some(op) = self.cmp_op() {
+        let mut first = first;
+        let mut rest: Vec<(CmpOp, Expr)> = Vec::new();
+        loop {
+            if self.at(T::Spaceship) {
+                let lhs = rest.last_mut().map_or(&mut first, |(_, e)| e);
+                let left = std::mem::replace(
+                    lhs,
+                    Expr {
+                        kind: ExprKind::Error,
+                        span: lhs.span,
+                    },
+                );
+                *lhs = self.three_way(left);
+                continue;
+            }
+            let Some(op) = self.cmp_op() else {
+                break;
+            };
             self.cmp_token();
             if op == CmpOp::NotIn {
                 self.bump();
@@ -443,7 +458,7 @@ impl<'a> Parser<'a> {
     }
 
     /// `lo..hi`, `lo..=hi`, open ends, and `by step`.
-    fn range(&mut self) -> Expr {
+    pub(super) fn range(&mut self) -> Expr {
         let start = self.start();
         let lo = if matches!(self.peek(), T::DotDot | T::DotDotEq) {
             None
