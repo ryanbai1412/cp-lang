@@ -12,10 +12,11 @@ use std.rand.{Rng}
 use std.seq.{collect}
 
 /// A dense `rows x cols` matrix stored flat in row-major order.
-pub struct Mat<T: Add + Sub + Mul + Div>:
+pub struct Mat<T>:
     pub rows: Int
     pub cols: Int
     pub data: List<T>
+    ring: ?Ring<T> = None
 
     /// A matrix from a 2-D table, multiplied under `over` (default `Semiring(+, *)`):
     /// `Mat(over: Semiring(min, +), d)`. `m * m2`, `pow(m, k)` and a `SegTree(*, ...)` of
@@ -27,13 +28,16 @@ pub struct Mat<T: Add + Sub + Mul + Div>:
     /// cost: \(O(\mathit{rows} \cdot \mathit{cols})\) time and space
     /// empty: a matrix with zero rows or columns
     /// traps: never
+    /// Under any other `over:` the entries are `?W`, `None` being the semiring's zero (no path):
+    /// `Mat(over: Semiring(min, +), d)` with `d: [V, V]?Int` multiplies shortest walks.
+    ///
     /// example: `domain R = 0..2; domain C = 0..3; Mat([R, C] (r, c) => 10 * Int(r) + Int(c)).get(1, 2) == 12`
-    pub fn new<R, C, S>(a: [R, C]T, over: ?S = None) -> Mat<T>:
-        assert over == None, "Mat over a non-default semiring is not supported yet"
+    /// example: `domain V = 0..2; let m = Mat([V, V] (i, j) => if i == j: None else: Some(Int(i) + 1), over: Semiring(min, +)); (m * m).get(0, 0) == Some(3)`
+    pub fn new<R, C, S>(a: [R, C]T, over: S = Semiring(+, *)) -> Mat<T>:
         var d = List<T>()
         for r in R:
             for c in C: d.push(a[r, c])
-        Mat(R.count, C.count, d)
+        Mat(R.count, C.count, d, ring_of(over))
 
     /// A matrix from a list of equal-length rows: `Mat<Z>.of(adj)` for an adjacency table read
     /// as nested lists. Row `i` is `rows[i]`.
@@ -56,10 +60,10 @@ pub struct Mat<T: Add + Sub + Mul + Div>:
     /// cost: \(O(\mathit{rows} \cdot \mathit{cols})\) time and space
     /// traps: when `rows < 0` or `cols < 0`
     /// example: `Mat<Int>.filled(2, 3, 7).get(1, 2) == 7`
-    pub fn filled<S>(rows: Int, cols: Int, fill: T, over: ?S = None) -> Mat<T>:
+    /// example: `Mat<?Int>.filled(2, 2, None, over: Semiring(min, +)).get(0, 1) == None`
+    pub fn filled<S>(rows: Int, cols: Int, fill: T, over: S = Semiring(+, *)) -> Mat<T>:
         assert rows >= 0 and cols >= 0, "Mat.filled requires rows >= 0 and cols >= 0"
-        assert over == None, "Mat over a non-default semiring is not supported yet"
-        Mat(rows, cols, List.filled(rows * cols, fill))
+        Mat(rows, cols, List.filled(rows * cols, fill), ring_of(over))
 
     /// A `rows x cols` matrix of `T.zero`.
     ///
@@ -88,6 +92,18 @@ pub struct Mat<T: Add + Sub + Mul + Div>:
     /// empty: a matrix with zero rows or columns when `data` is empty
     /// traps: when `rows < 0`, `cols < 0` or `data.len != rows * cols`
     /// example: `Mat<Int>.from_flat(2, 3, [1, 2, 3, 4, 5, 6]).get(1, 0) == 4`
+    fn unit(n: Int, r: ?Ring<T>) -> Mat<T>:
+        if T: Add:
+            if let g = r: return Mat<T>.eye_in(n, g)
+            Mat<T>.identity(n)
+        else:
+            Mat<T>.eye_in(n, r!)
+
+    fn eye_in(n: Int, g: Ring<T>) -> Mat<T>:
+        var d = List.filled(n * n, g.zero)
+        for i in 0..n: d[i * n + i] = g.one
+        Mat(n, n, d, Some(g))
+
     pub fn from_flat(rows: Int, cols: Int, data: List<T>) -> Mat<T>:
         assert rows >= 0 and cols >= 0 and data.len == rows * cols
         Mat(rows, cols, data.clone())
@@ -163,21 +179,32 @@ pub struct Mat<T: Add + Sub + Mul + Div>:
     /// example: `Mat<Int>.from_rows([[1, 2], [3, 4]]).mul_vec([1, 1]) == [3, 7]`
     pub fn mul_vec(self, v: List<T>) -> List<T>:
         assert v.len == cols, "vector length must match matrix columns"
-        var out = List.filled(rows, T.zero)
+        if T: Add:
+            if ring == None:
+                var out = List.filled(rows, T.zero)
+                for i in 0..rows:
+                    var acc = T.zero
+                    let off = i * cols
+                    for j in 0..cols: acc = acc + data[off + j] * v[j]
+                    out[i] = acc
+                return out
+        let g = ring!
+        var out = List.filled(rows, g.zero)
         for i in 0..rows:
-            var acc = T.zero
-            let off = i * cols
-            for j in 0..cols: acc = acc + data[off + j] * v[j]
-            out[i] = acc
+            for j in 0..cols: out[i] = g.add(out[i], g.mul(data[i * cols + j], v[j]))
         out
 
-    /// The matrix-multiplication monoid for `n x n` matrices (usable in `SegTree`): identity
-    /// `Mat.identity(n)`, op `*`, which is associative but not commutative.
+    /// The matrix-multiplication monoid for `n x n` matrices under `over` (usable in `SegTree`):
+    /// identity the semiring's identity matrix, op `*`, which is associative but not commutative.
     ///
     /// cost: \(O(n^2)\) time and space (for the identity)
     /// traps: when `n < 0`
     /// example: `let m = Mat<Int>.product(2); m.op(m.id, Mat<Int>.from_rows([[1, 2], [3, 4]])).get(1, 1) == 4`
-    pub fn product(n: Int) -> Monoid<Mat<T>> = Monoid(Mat<T>.identity(n), (x, y) => x * y)
+    /// example: `let m = Mat<?Int>.product(2, over: Semiring(min, +)); m.id.get(0, 0) == Some(0) and m.id.get(0, 1) == None`
+    pub fn product<S>(n: Int, over: S = Semiring(+, *)) -> Monoid<Mat<T>>:
+        assert n >= 0
+        let r: ?Ring<T> = ring_of(over)
+        Monoid(Mat<T>.unit(n, r), (x, y) => x * y)
 
     /// The determinant over an exact field (such as `Mod<P>` for prime `P`), by Gaussian elimination.
     /// The `0 x 0` determinant is `T.one`.
@@ -524,6 +551,10 @@ pub struct Mat<T: Add + Sub + Mul + Div>:
             for j in 0..n: out[i * n + j] = lam * x[i] * y[j]
         Mat(n, n, out)
 
+/// Two matrices are equal when their shapes and entries are; the semiring is not compared.
+impl Eq for Mat<T>:
+    fn eq(a, b) = a.rows == b.rows and a.cols == b.cols and a.data == b.data
+
 impl Add for Mat<T>:
     fn add(a, b):
         assert a.rows == b.rows and a.cols == b.cols
@@ -538,28 +569,63 @@ impl Mul for Mat<T>:
     fn mul(a, b):
         assert a.cols == b.rows, "matrix dimensions do not match for multiplication"
         let (r, m, c) = (a.rows, a.cols, b.cols)
-        var out = List.filled(r * c, T.zero)
-        unchecked:
-            for i in 0..r:
-                let ai = i * m
-                let oi = i * c
-                for k in 0..m:
-                    let f = a.data[ai + k]
-                    let bk = k * c
-                    for j in 0..c: out[oi + j] = out[oi + j] + f * b.data[bk + j]
-        Mat(r, c, out)
+        if T: Add:
+            if a.ring == None:
+                var out = List.filled(r * c, T.zero)
+                unchecked:
+                    for i in 0..r:
+                        let ai = i * m
+                        let oi = i * c
+                        for k in 0..m:
+                            let f = a.data[ai + k]
+                            let bk = k * c
+                            for j in 0..c: out[oi + j] = out[oi + j] + f * b.data[bk + j]
+                return Mat(r, c, out)
+        let g = a.ring!
+        var acc = List.filled(r * c, g.zero)
+        for i in 0..r:
+            for k in 0..m:
+                let f = a.data[i * m + k]
+                if f == g.zero: continue
+                for j in 0..c: acc[i * c + j] = g.add(acc[i * c + j], g.mul(f, b.data[k * c + j]))
+        Mat(r, c, acc, a.ring)
 
 impl Pow for Mat<T>:
     fn pow(a, e: Int) -> Mat<T>:
         assert a.rows == a.cols and e >= 0
         var base = a
-        var acc = Mat<T>.identity(a.rows)
+        var acc = Mat<T>.unit(a.rows, a.ring)
         var k = e
         while k > 0:
             if (k & 1) == 1: acc *= base
             k >>= 1
             if k > 0: base = base * base
         acc
+
+/// The `(zero, one, add, mul)` a non-default `Mat(over:)` multiplies under. On `?W` entries the
+/// semiring over `W` is lifted so `None` is the zero, absorbing under `mul`.
+struct Ring<T>(zero: T, one: T, add: (T, T) -> T, mul: (T, T) -> T)
+
+fn same<A, B>(a: A, b: B) -> Bool = a == b
+
+fn ring_of<T, S>(over: S) -> ?Ring<T>:
+    if same(over.add, +) and same(over.mul, *): return None
+    if T: Add:
+        let add = Monoid<T>.of(over.add)
+        let mul = Monoid<T>.of(over.mul)
+        Some(Ring(add.id, mul.id, add.op, mul.op))
+    else:
+        Some(lift_ring(over))
+
+fn lift_ring<W, S>(over: S) -> Ring<?W>:
+    let add = Monoid<W>.of(over.add)
+    let mul = Monoid<W>.of(over.mul)
+    Ring(
+        None,
+        Some(mul.id),
+        (a: ?W, b: ?W) => if let x = a: (if let y = b: Some(add.op(x, y)) else: a) else: b,
+        (a: ?W, b: ?W) => if let x = a: (if let y = b: Some(mul.op(x, y)) else: None) else: None,
+    )
 
 /// The determinant of a floating-point square matrix via partial pivoting with tolerance `eps`.
 /// At each column the row with the largest `abs` entry becomes the pivot; if that entry is at most

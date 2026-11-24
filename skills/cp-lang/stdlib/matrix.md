@@ -6,23 +6,23 @@ Dense matrices, exact and floating-point Gaussian elimination, and GF(2) XOR bas
 
 In prelude (no `use` needed): `Mat`.
 
-## `struct Mat<T: Add + Sub + Mul + Div>`
+## `struct Mat<T>`
 
 A dense `rows x cols` matrix stored flat in row-major order.
 
-- `fn new<R, C, S>(a: [R, C]T, over: ?S = None) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; A matrix from a 2-D table, multiplied under `over` (default `Semiring(+, *)`): `Mat(over: Semiring(min, +), d)`.
+- `fn new<R, C, S>(a: [R, C]T, over: S = Semiring(+, *)) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; A matrix from a 2-D table, multiplied under `over` (default `Semiring(+, *)`): `Mat(over: Semiring(min, +), d)`.
 - `fn of(rows: List<List<T>>) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; A matrix from a list of equal-length rows: `Mat<Z>.of(adj)` for an adjacency table read as nested lists.; traps: when the rows differ in length
-- `fn filled<S>(rows: Int, cols: Int, fill: T, over: ?S = None) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; A `rows x cols` matrix with every entry `fill`, multiplied under `over` (default `Semiring(+, *)`).; traps: when `rows < 0` or `cols < 0`
+- `fn filled<S>(rows: Int, cols: Int, fill: T, over: S = Semiring(+, *)) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; A `rows x cols` matrix with every entry `fill`, multiplied under `over` (default `Semiring(+, *)`).; traps: when `rows < 0` or `cols < 0`
 - `fn zeros(rows: Int, cols: Int) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; A `rows x cols` matrix of `T.zero`.; traps: when `rows < 0` or `cols < 0`
 - `fn identity(n: Int) -> Mat<T>` — \(O(n^2)\) time and space; The `n x n` identity matrix: `T.one` on the diagonal, `T.zero` elsewhere.; traps: when `n < 0`
-- `fn from_flat(rows: Int, cols: Int, data: List<T>) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; Build a `rows x cols` matrix from a flat row-major list of length `rows * cols`: entry `(r, c)` is `data[r * cols + c]`.; traps: when `rows < 0`, `cols < 0` or `data.len != rows * cols`
+- `fn from_flat(rows: Int, cols: Int, data: List<T>) -> Mat<T>`
 - `fn from_rows(grid: List<List<T>>) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; Build a matrix from a list of equal-length rows: `grid[r][c]` is entry `(r, c)`.; traps: when the rows differ in length
 - `fn get(self, r: Int, c: Int) -> T` — \(O(1)\); The entry at `(r, c)`, 0-based.; traps: when `r` is not in `0..rows` or `c` is not in `0..cols`
 - `fn set(mut self, r: Int, c: Int, val: T)` — \(O(1)\); Set the entry at `(r, c)` to `val`.; traps: when `r` is not in `0..rows` or `c` is not in `0..cols`
 - `fn at(self, r: Int, c: Int) -> lends mut T` — \(O(1)\); The entry at `(r, c)`, lent in place: `m.at(i, j) += x`.; traps: when `r` is not in `0..rows` or `c` is not in `0..cols`
 - `fn transpose(self) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; The transpose, a new `cols x rows` matrix with entry `(c, r)` equal to `self`'s `(r, c)`.
 - `fn mul_vec(self, v: List<T>) -> List<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time, \(O(\mathit{rows})\) space; The matrix-vector product `self * v` under the matrix's semiring: entry `r` folds `get(r, c) * v[c]` over `c` with the semiring's addition.; traps: when `v.len != cols`
-- `fn product(n: Int) -> Monoid<Mat<T>>` — \(O(n^2)\) time and space (for the identity); The matrix-multiplication monoid for `n x n` matrices (usable in `SegTree`): identity `Mat.identity(n)`, op `*`, which is associative but not commutative.; traps: when `n < 0`
+- `fn product<S>(n: Int, over: S = Semiring(+, *)) -> Monoid<Mat<T>>` — \(O(n^2)\) time and space (for the identity); The matrix-multiplication monoid for `n x n` matrices under `over` (usable in `SegTree`): identity the semiring's identity matrix, op `*`, which is associative but not commutative.; traps: when `n < 0`
 - `fn det(self) -> T` — \(O(n^3)\) time, \(O(n^2)\) space; The determinant over an exact field (such as `Mod<P>` for prime `P`), by Gaussian elimination.; traps: when the matrix is not square, or an inverse it needs does not exist (a non-field `T`)
 - `fn rank(self) -> Int` — \(O(\mathit{rows} \cdot \mathit{cols} \cdot \min(\mathit{rows}, \mathit{cols}))\) time, \(O(\mathit{rows} \cdot \mathit{cols})\) space; The rank over an exact field: the number of pivots elimination finds.; traps: never for a field `T`
 - `fn solve_space(self, b: List<T>) -> ?(List<T>, List<List<T>>)` — \(O(\mathit{rows} \cdot \mathit{cols} \cdot \min(\mathit{rows}, \mathit{cols}))\) time, \(O(\mathit{rows} \cdot \mathit{cols})\) space; Solve `self * x = b` over an exact field.; traps: when `b.len != rows`
