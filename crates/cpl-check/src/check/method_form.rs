@@ -91,12 +91,19 @@ impl Checker<'_> {
     /// The candidate `base` fits; of several, one whose `self` is a type of
     /// its own wins over one whose `self` is any type a bound allows.
     fn pick_method(&mut self, base: &Ty, name: &str) -> Pick {
+        self.pick_method_for(base, name, None)
+    }
+
+    /// As `pick_method`, also dropping a candidate whose parameters can't
+    /// take `args`' shapes: `s.split(sep: c => c == ' ')` on a `Str` is the
+    /// predicate split, not `split(self: Str, sep: Char)`.
+    fn pick_method_for(&mut self, base: &Ty, name: &str, args: Option<&[Arg]>) -> Pick {
         if base.is_vague() || matches!(base, Ty::Param(_) | Ty::Error) {
             return Pick::Unsettled;
         }
         let mut fit: Vec<(String, Arc<Def>, bool)> = Vec::new();
         for (key, def) in self.method_candidates(name) {
-            if self.self_fits(base, &def) {
+            if self.self_fits(base, &def) && args.is_none_or(|args| takes_shapes(&def, args)) {
                 let own_type = !matches!(&*def, Def::Fn { ty: Ty::Fn { params, .. }, .. }
                     if matches!(params[0].ty, Ty::Param(_)));
                 fit.push((key, def, own_type));
@@ -251,7 +258,10 @@ impl<'a> Checker<'a> {
         if self.declares_member(&base_ty, &name.text) {
             return None;
         }
-        let pick = self.pick_method(&base_ty, &name.text);
+        let pick = match self.pick_method_for(&base_ty, &name.text, Some(args)) {
+            Pick::NoFit => self.pick_method(&base_ty, &name.text),
+            pick => pick,
+        };
         let key = match &pick {
             Pick::One(key, _) => key.clone(),
             Pick::Ambiguous(keys) => {
@@ -523,4 +533,41 @@ fn row_params(params: &str) -> Vec<(&str, &str)> {
         }
     }
     out
+}
+
+/// Whether each argument has the shape its parameter takes: a lambda goes
+/// where a fn is taken, and a literal where a value is.
+fn takes_shapes(def: &Def, args: &[Arg]) -> bool {
+    let Def::Fn {
+        ty: Ty::Fn { params, .. },
+        ..
+    } = def
+    else {
+        return true;
+    };
+    let after_self = params.get(1..).unwrap_or_default();
+    let mut positional = after_self.iter().filter(|p| !p.named_only);
+    args.iter().all(|arg| {
+        let param = match &arg.name {
+            Some(n) => after_self.iter().find(|p| p.name == n.text),
+            None => positional.next(),
+        };
+        let Some(param) = param else {
+            return true;
+        };
+        let lambda = matches!(arg.value.kind, ExprKind::Lambda { .. });
+        let literal = matches!(
+            arg.value.kind,
+            ExprKind::Int(_)
+                | ExprKind::Float(_)
+                | ExprKind::Str(_)
+                | ExprKind::Char(_)
+                | ExprKind::Bool(_)
+        );
+        match &param.ty {
+            Ty::Fn { .. } => !literal,
+            Ty::Param(_) | Ty::Unknown => true,
+            _ => !lambda,
+        }
+    })
 }
