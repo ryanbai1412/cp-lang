@@ -356,7 +356,14 @@ pub struct Counter<K, V: Add = Int>:
     /// example: `var c: Counter<Char, Int> = Counter(); c.add('x', 2); c['x'] == 2`
     /// example: `var c: Counter<Char, Int> = Counter(); c.add('x', 2); c.add('x', -2); c.len == 0`
     pub fn add(mut self, k: K, delta: V):
-        self.set(k, self.get(k) + delta)
+        if init != V(0):
+            self.set(k, self.get(k) + delta)
+            return
+        // `+=` starts an absent key at `V(0)`, which is `init` here: one lookup.
+        let p = mut m[k]
+        p += delta
+        let gone = p == init
+        if gone: m.remove(k)
 
     /// Remove `k` and return its previous value, or `None` if absent.
     ///
