@@ -166,7 +166,15 @@ impl Checker<'_> {
                     let new = (method_rows.iter()).find(|(m, ..)| m == "new" && !is_generated_ctor);
                     let through = new.map(|r| r.2.clone());
                     let outer = std::mem::replace(&mut self.call_bound_args, through);
-                    self.args(callee_text, verb, params, args, call, &mut bindings);
+                    self.args(
+                        callee_text,
+                        verb,
+                        params,
+                        args,
+                        call,
+                        &mut bindings,
+                        generics,
+                    );
                     let through = std::mem::replace(&mut self.call_bound_args, outer);
                     if let Some((.., bounds)) = new {
                         self.method_bounds_hold(
@@ -262,6 +270,7 @@ impl Checker<'_> {
         args: &[Arg],
         call: &Expr,
         bindings: &mut Bindings,
+        own: &[String],
     ) {
         let positional: Vec<&Param> = params.iter().filter(|p| !p.named_only).collect();
         let variadic = positional.last().is_some_and(|p| p.variadic);
@@ -347,7 +356,7 @@ impl Checker<'_> {
                 }
                 self.expected_piece = Self::expects_piece(&expected);
                 typed_lambda = self.lambda_defaults(arg, &expected, callee, params)
-                    || self.lambda_takes(arg, &expected);
+                    || self.lambda_takes(arg, &expected, own, bindings);
             }
             let want = param.map(|p| p.ty.subst(bindings));
             let arg_ty = self.infer_arg(&arg.value, want.as_ref());
@@ -675,13 +684,35 @@ impl Checker<'_> {
     /// `sum(xs, of: x => x * x)`: a lambda whose parameters it leaves
     /// unwritten takes the ones the fn's earlier arguments fixed, so its
     /// body, and the generic its result binds, are checked with them.
-    fn lambda_takes(&mut self, arg: &Arg, expected: &Ty) -> bool {
+    ///
+    /// A type parameter left in them is fixed when it is the enclosing
+    /// body's (`T` inside `impl<T>`), not one of the callee's `own` the
+    /// call has yet to bind.
+    fn lambda_takes(
+        &mut self,
+        arg: &Arg,
+        expected: &Ty,
+        own: &[String],
+        bindings: &Bindings,
+    ) -> bool {
         let (ExprKind::Lambda { param_tys, .. }, Ty::Fn { params, .. }) =
             (&arg.value.kind, expected)
         else {
             return false;
         };
-        let fixed = |t: &Ty| !t.has_vague() && !t.mentions_param();
+        let generics = &self.generics;
+        let fixed = |t: &Ty| {
+            let mut open = false;
+            t.map(&mut |t| {
+                if let Ty::Param(n) = t {
+                    let rigid =
+                        bindings.contains_key(n) || (!own.contains(n) && generics.contains(n));
+                    open |= !rigid;
+                }
+                None
+            });
+            !t.has_vague() && !open
+        };
         if param_tys.iter().any(Option::is_some) || !params.iter().all(|p| fixed(&p.ty)) {
             return false;
         }

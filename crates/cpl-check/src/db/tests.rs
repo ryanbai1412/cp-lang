@@ -352,6 +352,14 @@ fn a_place_under_a_lends_mut_index_beside_a_get_is_typed() {
 }
 
 #[test]
+fn a_lambda_in_a_generic_body_takes_the_bodys_own_type_params() {
+    let src = "struct Joined<F>(id: F, join: (F, F) -> F)\nfn keep_left<T>(id: T) -> Joined<T> = Joined(id, (a, b) => a)\nprint(keep_left(1).id)\n";
+    assert_eq!(silent_unknowns_of(src), (vec![], 0));
+    let bound = "struct S<T>(id: T, op: (T, T) -> T)\nfn mk<T: Add>(z: T) -> S<T> = S(z, (a, b) => b)\nprint(mk(1).id)\n";
+    assert_eq!(silent_unknowns_of(bound), (vec![], 0));
+}
+
+#[test]
 fn a_silent_unknown_names_its_cause() {
     let mut db = Database::new();
     db.set_file("main.cp", "print([])\n");

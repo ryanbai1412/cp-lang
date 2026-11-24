@@ -1436,8 +1436,20 @@ impl<'a> Checker<'a> {
                     Some(Def::Fn { bound_args, .. }) => Some(bound_args.clone()),
                     _ => None,
                 };
+                let own = match callee_def.as_deref() {
+                    Some(Def::Fn { generics, .. }) => generics.clone(),
+                    _ => Vec::new(),
+                };
                 let outer = std::mem::replace(&mut self.call_bound_args, through);
-                self.args(&callee_text, "takes", &params, args, call, &mut bindings);
+                self.args(
+                    &callee_text,
+                    "takes",
+                    &params,
+                    args,
+                    call,
+                    &mut bindings,
+                    &own,
+                );
                 self.call_bound_args = outer;
                 if let Some(Def::Fn { default_binds, .. }) = callee_def.as_deref() {
                     for (generic, ty) in default_binds {
