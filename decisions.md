@@ -9246,3 +9246,5 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 ## 622. (reserved, unknown)
 
 ## 623. (reserved, compiler)
+
+## 624. (reserved, content)
