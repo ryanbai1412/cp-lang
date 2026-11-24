@@ -214,7 +214,7 @@ impl Lowerer<'_> {
             cell_ranges: lw.cell_ranges,
             written_back: {
                 let mut spans = lw.written_back;
-                spans.sort_by_key(|s| (s.start, s.end));
+                cpl_diag::sort_by_key(&mut spans, |s| s.order());
                 spans.dedup();
                 spans
             },
