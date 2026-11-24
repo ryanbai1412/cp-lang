@@ -13,41 +13,44 @@
 // Bounds: n: 2..=2000
 let n: 2..=2000 = read()
 domain City = 0..n
-var red: [City, City]Bool = false
-for i in City:
-    if i == City.first: continue
+enum Colour:
+    Red
+    Blue
+
+var road: [City, City]Colour = Red
+for i in City if i != City.first:
     let row: Str = read()
     for j in ..i:
-        red[i, j] = row[j.ord] == 'R'
-        red[j, i] = red[i, j]
+        road[i, j] = if row[j.ord] == 'R': Red else: Blue
+        road[j, i] = road[i, j]
 
 for s in City:
-    var x = false  // colour of the first part's roads: red when true
+    var x = Red  // the first part's colour
     var first: List<City> = []  // in path order; its last city is a, at the junction
     var second: List<City> = [s]  // back to front: s stays first, the last city is b
-    for u in City:
-        if u == s: continue
-        if first.len > 0 and second.len == 1 and red[u, first.last!] != x and red[u, s] == x and red[first.last!, s] == x:
-            // the whole path is colour x: it all becomes the second part
-            while let c = first.pop(): second.push(c)
-            x = not x
-        if first.len == 0:
-            if red[u, second.last!] != x: second.push(u) else: first.push(u)
-            continue
-        let (a, b) = (first.last!, second.last!)
-        if red[u, a] == x: first.push(u)
-        elif red[u, b] != x:  // a, u, b in the second part
-            first.pop()
-            second.push(u)
-            second.push(a)
-        elif red[a, b] != x:  // u, a, b in the second part
-            first.pop()
-            second.push(a)
-            second.push(u)
-        else:  // a, b, u in the first part
-            second.pop()
-            first.push(b)
-            first.push(u)
+    for u in City if u != s:
+        if let a = first.last:
+            if second.len == 1 and road[u, a] != x and road[u, s] == x and road[a, s] == x:
+                // the whole path is colour x: it all becomes the second part
+                while let c = first.pop(): second.push(c)
+                x = if x == Red: Blue else: Red
+        let b = second.last!
+        if let a = first.last:
+            if road[u, a] == x: first.push(u)
+            elif road[u, b] != x:  // a, u, b in the second part
+                first.pop()
+                second.push(u)
+                second.push(a)
+            elif road[a, b] != x:  // u, a, b in the second part
+                first.pop()
+                second.push(a)
+                second.push(u)
+            else:  // a, b, u in the first part
+                second.pop()
+                first.push(b)
+                first.push(u)
+        elif road[u, b] != x: second.push(u)
+        else: first.push(u)
     print(n)
     for c in second: print(c.ord + 1)
-    while let c = first.pop(): print(c.ord + 1)
+    for c in first.rev: print(c.ord + 1)
