@@ -13,6 +13,7 @@ use explain::explain_code;
 pub use front_end::one_command_per_process;
 use front_end::with_db;
 mod interact;
+pub mod invariant;
 mod json_out;
 mod kept_input;
 mod laws;
@@ -1640,6 +1641,12 @@ pub fn lsp() -> u8 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    #[should_panic(expected = "broken invariant: the pipes are open")]
+    fn a_broken_invariant_names_what_should_have_held() {
+        crate::invariant::broken_invariant("the pipes are open");
+    }
 
     #[test]
     fn run_with_no_input_runs_the_samples_and_a_sample_name_runs_one() {

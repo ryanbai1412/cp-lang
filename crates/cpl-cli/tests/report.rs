@@ -180,7 +180,10 @@ fn ice_hook_saves_crash_bundle_and_report_last_includes_backtrace() {
     let report_path = find_report_file(&dir);
     let md = std::fs::read_to_string(&report_path).unwrap();
     assert!(md.contains("## ICE backtrace"), "{md}");
-    assert!(md.contains("forced ICE for testing"), "{md}");
+    assert!(
+        md.contains("no ICE is forced: CPL_FORCE_ICE is unset"),
+        "{md}"
+    );
     assert!(md.contains("## Source (`repro.cp`)"), "{md}");
     assert!(
         !md.contains(dir.to_str().unwrap()),
