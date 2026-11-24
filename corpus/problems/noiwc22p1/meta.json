@@ -5,11 +5,15 @@
   {"id": "4261560", "language": "CPP17", "result": "RTE", "time": 0.640996487, "memory_kb": 28848.0, "file": "corpus/submissions/4261560.cpp"},
   {"id": "4261601", "language": "CPP17", "result": "RTE", "time": 0.418340415, "memory_kb": 22636.0, "file": "corpus/submissions/4261601.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/noiwc22p1/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted C++, so orig.cpp is a corpus-written reference after the official solution: (A)B is a binary-tree node with left A and right B, s1 reaches a right chain by operations 1-3 from the chain's foot, and s2 reaches one by inverse operation 4 from the root, so at most 3n operations (2.5n on --max). Operation sequences are not unique, so checker.py replays them on a treap (its C++ built like a reference) and compares the result with s2. The output passes on both samples, on 300 generated cases under a naive string replay, and the checker agrees with that replay on 400 mutated outputs."
 }
