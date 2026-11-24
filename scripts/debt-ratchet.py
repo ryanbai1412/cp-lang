@@ -354,22 +354,29 @@ def _walk_fn_bodies(root: Path):
 
 
 CP_PUB_FN = re.compile(r"^(\s*)pub fn (\w+)")
+CP_FN = re.compile(r"^(\s*)(?:pub )?fn (\w+)")
 CP_DUP_MIN_CHARS = 25
+# Renamed copies: a std fn of at least this many tokens whose body, its lowercase
+# identifiers renamed in order of first use, is NEAR_DUP_MIN alike another module's.
+CP_SHAPE_MIN_TOKENS = 50
+CP_KEYWORDS = frozenset("let var if elif else for in while return yield and or not fn match "
+                        "unchecked assert break continue true false self mut".split())
 
 
-def _cp_fn_bodies(root: Path):
-    """(rel, line, name, body lines) for every `pub fn` in std/*.cp: the signature ends at
-    its depth-0 `:` (a block of deeper lines follows) or `=` (the expression after it);
-    `//` lines are dropped."""
+def _cp_fn_bodies(root: Path, private: bool = False):
+    """(rel, line, name, body lines) for every `pub fn` in std/*.cp (every `fn` when
+    `private`): the signature ends at its depth-0 `:` (a block of deeper lines follows) or
+    `=` (the expression after it); `//` lines are dropped."""
+    fn_re = CP_FN if private else CP_PUB_FN
     for rel in _git(root, "ls-files", "std/**.cp", "std/*.cp"):
         src = _lines(root / rel)
         i = 0
         while i < len(src):
-            m = CP_PUB_FN.match(src[i])
+            m = fn_re.match(src[i])
             if not m:
                 i += 1
                 continue
-            indent, depth, j, k, body = len(m.group(1)), 0, i, src[i].index("pub fn") + 6, None
+            indent, depth, j, k, body = len(m.group(1)), 0, i, m.end(2) - len(m.group(2)) - 1, None
             while j < len(src) and body is None:
                 code = src[j].split("//")[0]
                 while k < len(code):
@@ -419,6 +426,38 @@ def _cp_near_dups(root: Path) -> list[str]:
             for s in ("_real", "_excl") if n + s in where]
 
 
+def _cp_shape(body: list[str]) -> tuple[int, set[int]]:
+    """A body's token count and its 4-token shingles once numbers fold to `0` and each
+    lowercase identifier becomes `v<n>` by first use, so a copy with its names changed
+    has the same shape."""
+    names: dict[str, str] = {}
+    toks = []
+    for t in TOKEN_RE.findall(" ".join(body)):
+        if t[0].isdigit():
+            t = "0"
+        elif (t[0].isalpha() and t[0].islower() or t[0] == "_") and t not in CP_KEYWORDS:
+            t = names.setdefault(t, f"v{len(names)}")
+        toks.append(t)
+    return len(toks), {zlib.crc32(" ".join(toks[i : i + 4]).encode()) for i in range(len(toks) - 3)}
+
+
+def _cp_renamed_dups(root: Path) -> list[str]:
+    """Each pair of std fns (private ones too) in different modules with the same body shape
+    whatever their names (`_cp_shape`, similarity >= NEAR_DUP_MIN): one algorithm written
+    twice, where one module should call the other's."""
+    fns = [(rel, ln, name, shape) for rel, ln, name, body in _cp_fn_bodies(root, private=True)
+           for n, shape in [_cp_shape(body)] if n >= CP_SHAPE_MIN_TOKENS]
+    out = []
+    for k, (ra, la, na, sa) in enumerate(fns):
+        for rb, lb, nb, sb in fns[k + 1 :]:
+            if ra == rb or min(len(sa), len(sb)) < NEAR_DUP_MIN * max(len(sa), len(sb)):
+                continue
+            sim = len(sa & sb) / len(sa | sb)
+            if sim >= NEAR_DUP_MIN:
+                out.append((-sim, f"{rb}:{lb} {nb} ~ {ra}:{la} {na} ({sim:.2f})"))
+    return [x for _, x in sorted(out)]
+
+
 def dup_fn_bodies(root: Path) -> list[str]:
     """Each extra copy of an identical fn body (>= DUP_MIN_LINES) in another file, and of a
     std `pub fn` body under another name (Content)."""
@@ -437,7 +476,8 @@ def dup_fn_bodies(root: Path) -> list[str]:
 
 def near_dup_fns(root: Path) -> list[str]:
     """Each pair of near-identical fns (>= DUP_MIN_LINES, similarity >= NEAR_DUP_MIN) in different
-    crates, and each std `name`/`name_real`/`name_excl` pair (Content)."""
+    crates, each std `name`/`name_real`/`name_excl` pair, and each pair of std fns in different
+    modules with one body shape under any names (Content)."""
     fns = []
     for p, ln, name, body in _fn_bodies(root):
         if len(body) < DUP_MIN_LINES:
@@ -465,7 +505,7 @@ def near_dup_fns(root: Path) -> list[str]:
         sim = len(sa & sb) / len(sa | sb)
         if sim >= NEAR_DUP_MIN:
             out.append((-sim, f"{pb}:{lb} {nb} ~ {pa}:{la} {na} ({sim:.2f})"))
-    return [x for _, x in sorted(out)] + _cp_near_dups(root)
+    return [x for _, x in sorted(out)] + _cp_near_dups(root) + _cp_renamed_dups(root)
 
 
 def consumer_rederived(root: Path) -> list[str]:
