@@ -121,6 +121,13 @@ let t = w.rebase                         // O(1) view keyed by a fresh 0..w.len 
 - **Materializing counts from 0:** `.collect()`, `.sorted()`, `List(w)`
   and `Str(w)` build a new sequence keyed from 0. To keep `w`'s keys, build
   a table over them: `[w.keys] k => w[k]` (see R04b.1.6). (R07.4.4)
+- **Cuts in walk order.** On any keyed view with cuts (`[D]T`, `List`,
+  `Str`, slices, `.rev`), `s.cut_after(i)` and `s.cut_before(i)` are the cuts
+  on either side of key `i` in walk order: `i.r` and `i.l` walking forward,
+  `i.l` and `i.r` on `.rev`. Both are \(O(1)\) and trap R0101 when `i` is not
+  a key of `s`. Generic code over cuts uses them instead of `.l`/`.r`, since
+  a view's direction is not part of its type: a scan writes each fold at
+  `s.cut_after(i)`. (R07.4.14)
 - **When `w[x]` is legal.** One rule covers every keyed view (slices,
   runs, windows, chunks, `rev`, `filter`, cut-keyed scans): a view keeps
   its parent's keys, and `w.nth(k)`, `w.first`, `w.last` are the positional
