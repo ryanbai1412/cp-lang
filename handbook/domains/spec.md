@@ -68,7 +68,7 @@ rows marked `missing` in the register below.
 |---|---|
 | `spec/core/` chapters and their rule ids `(Rnn.n.n)` | `std/*.cp` signatures and bodies (stdlib) |
 | `spec/lib/` library design chapters, `spec/tools/` tool contracts | `spec/diagnostics.md`, the error catalogue (diagnostics) |
-| `spec/conformance/`: the cases, `README.md` (the case format), the generators' data, `COVERAGE.md`, the gap lists (`rule-gaps.txt`, `sig-gaps.txt`, `prelude-gaps.txt`, `permits.txt`) | Making failing cases pass (compiler, perf, stdlib, tools) |
+| `spec/conformance/`: the cases, `README.md` (the case format), the generators' data, `COVERAGE.md`, the gap lists (`rule-gaps.txt`, `sig-gaps.txt`, `prelude-gaps.txt`) | Making failing cases pass (compiler, perf, stdlib, tools) |
 | `spec/SUBSET.md`: which sections are supported, documented or a known gap, with an owner per failing case | `handbook/language/std.md` (stdlib) |
 | `handbook/language/` design docs, except `std.md` | The gate script and CI (infra) |
 | `crates/cpl-conform` (the runner: `conformance`, `spec-blocks`, `corpus`, `docs`, `diff`) | The corpus programs and scoreboard (idioms) |

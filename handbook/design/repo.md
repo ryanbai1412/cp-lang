@@ -101,6 +101,12 @@ Each crate has a `README.md`: job, invariants, where its tests are. No `.rs` fil
 | `corpus/index.json` | Generated index of all problems. |
 | `corpus/VALIDATION.md` | How a port is validated. |
 
+## `tests/`: frozen regression snapshots
+
+| Path | Job |
+|---|---|
+| `tests/v02-snapshot/<id>/port.cp` | Each corpus port as it stood before the v0.3 re-port, frozen so re-porting in place keeps its regression coverage; the corpus suites walk it. |
+
 ## `bench/`: performance harnesses (code only)
 
 | Path | Job |

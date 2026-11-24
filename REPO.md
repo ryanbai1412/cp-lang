@@ -26,9 +26,9 @@ Where everything lives: one line per top-level path.
 | `std/` | The standard library. |
 | `crates/` | The toolchain (Rust). |
 | `corpus/` | Real contest problems. |
+| `tests/` | Frozen regression snapshots. |
 | `bench/` | Performance harnesses (code only). |
 | `examples/` | Runnable example programs. |
-| `tests/` | Frozen regression inputs: `v02-snapshot/<id>/port.cp`, the v0.2 ports before their v0.3 re-port. |
 | `skills/` | The AI skill. |
 | `web/` | Site, docs, playground. |
 | `editors/` | Editor integrations. |
