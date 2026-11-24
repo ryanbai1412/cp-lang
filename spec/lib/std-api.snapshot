@@ -770,8 +770,8 @@ std/graph.cp: adjacency<S: Seq<R>, R: (u: V, v: V, ..)
 std/graph.cp: arborescence<V, E, W: Add + Sub, R: (u: V, v: V, w: W, ..)
 std/graph.cp: arc_len<A>(a: A) -> Int
 std/graph.cp: bellman_ford<V, W: Add + Ord, G: WeightedNext<V, W>>(g: G, from: Seq<(V, W)>) -> ?Paths<V, W, G.Arc>
-std/graph.cp: bfs01<V, G: WeightedNext<V, Int>>(g: G, from: Seq<V>, until: ?V = None, hashed: Bool = false) -> Paths<V, Int, G.Arc>
-std/graph.cp: bfs<V, G: Next<V>>(g: G, from: Seq<V>, until: ?V = None, enter: (V, Int) -> Bool = (v, d) => true, hashed: Bool = false) -> Paths<V, Int, G.Arc>
+std/graph.cp: bfs01<V, G: WeightedNext<V, Int>>(g: G, from: Seq<V>, until: V -> Bool = v => false, hashed: Bool = false) -> Paths<V, Int, G.Arc>
+std/graph.cp: bfs<V, G: Next<V>>(g: G, from: Seq<V>, until: V -> Bool = v => false, enter: (V, Int) -> Bool = (v, d) => true, hashed: Bool = false) -> Paths<V, Int, G.Arc>
 std/graph.cp: block_cut_tree<V>(g: Next<V>) -> (domain B, links: List<(b: B, v: V)>)
 std/graph.cp: blocks<V, E>(g: EdgedNext<V, E>) -> (domain B, block: [E]B)
 std/graph.cp: boruvka<V, C, W>(cheapest: ([V]Int) -> List<?(u: V, v: V, w: W)> ) -> (total: W, edges: List<(u: V, v: V)>)
@@ -787,13 +787,13 @@ std/graph.cp: dag_fold<V, T, M, G: Next<V>>(g: G, init: V -> T, step: (T, G.Arc)
 std/graph.cp: de_bruijn(k: 1.., n: Int) -> List<Int>
 std/graph.cp: deg<V, A>(self: [V]List<A>, u: V) -> Int
 std/graph.cp: dfs<V, G: Next<V>>(g: G, from: Seq<V>, seen: ?mut [V]Bool = None, prune: ?(V -> Bool) = None) -> yields Visit<V, G.Arc>
-std/graph.cp: dial<V, G: WeightedNext<V, Int>>(g: G, from: Seq<V>, max_w: Int, until: ?V = None) -> Paths<V, Int, G.Arc>
-std/graph.cp: dijkstra<V, W, G: WeightedNext<V, W>, M>(g: G, from: Seq<(V, W)>, step: M = (+), until: ?V = None, hashed: Bool = false) -> Paths<V, W, G.Arc>
-std/graph.cp: directed_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>
+std/graph.cp: dial<V, G: WeightedNext<V, Int>>(g: G, from: Seq<V>, max_w: Int, until: V -> Bool = v => false) -> Paths<V, Int, G.Arc>
+std/graph.cp: dijkstra<V, W, G: WeightedNext<V, W>, M>(g: G, from: Seq<(V, W)>, step: M = (+), until: V -> Bool = v => false, hashed: Bool = false) -> Paths<V, W, G.Arc>
+std/graph.cp: directed_of_pairs<V: Domain>(edges: List<(V, V)>) -> Graph<V, V>
 std/graph.cp: dominators<V>(g: Next<V>, root: V) -> [V]?V
 std/graph.cp: euler_walk<V, E>(edges: [E](u: V, v: V), directed: Bool) -> ?Walk<V, E>
 std/graph.cp: find_cycle<V>(g: Next<V>) -> ?List<V>
-std/graph.cp: fixed_cost_paths<S: Eq, M, W: Add + Ord>(from: List<S>, moves: List<M>, cost: M -> W, step: (M, S) -> ?S, until: ?S = None) -> Paths<S, W, M>
+std/graph.cp: fixed_cost_paths<S, M, W: Add + Ord>(from: List<S>, moves: List<M>, cost: M -> W, step: (M, S) -> ?S, until: S -> Bool = s => false) -> Paths<S, W, M>
 std/graph.cp: floyd_warshall<V, W, R>(mut d: [V, V]?W, over: R = Semiring(min, +)) -> Bool
 std/graph.cp: girth<V>(g: Next<V>, directed: Bool) -> ?Int
 std/graph.cp: johnson<V, W: Add + Sub>(g: WeightedNext<V, W>) -> ?[V, V]?W
@@ -818,7 +818,7 @@ std/graph.cp: transpose<V>(self: [V]List<V>) -> [V]List<V>
 std/graph.cp: triangles<V: Ord>(g: Next<V>) -> yields (V, V, V)
 std/graph.cp: two_color<V>(g: Next<V>) -> ?[V]Bool
 std/graph.cp: two_edge_components<V, E>(g: EdgedNext<V, E>) -> (domain C, comp: [V]C)
-std/graph.cp: undirected_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>
+std/graph.cp: undirected_of_pairs<V: Domain>(edges: List<(V, V)>) -> Graph<V, V>
 std/grid.cp: Dir4.all() -> List<Dir4>
 std/grid.cp: Dir4.back(self) -> Dir4
 std/grid.cp: Dir4.ccw(self) -> Dir4

@@ -39,4 +39,4 @@ fn arc(a: Arc) -> (u: Face, v: Face, w: 0..=1e6):
         let (i, j) = ((k - rows) / (2 * (n + 1)) + 1, (k - rows) / 2 % (n + 1))
         if k % 2 == 0: (u: left(i, j), v: right(i, j), w: south[i, j])
         else: (u: right(i, j), v: left(i, j), w: north[i, j])
-print(dijkstra(Graph.directed([Arc] a => arc(a)), from: [(low, 0)], until: high)[high]!)
+print(dijkstra(Graph.directed([Arc] a => arc(a)), from: [(low, 0)], until: x => x == high)[high]!)

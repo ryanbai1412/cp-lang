@@ -89,7 +89,7 @@ for k in 0..n:
             let ids = [a.e.ord for a in p.arcs(v)!]
             if not walk_ok(path, ids, eu, ev, ones, [(s, 0), (s2, 0)], v.ord, unit[v.ord], false): bad = "op {k}: bfs path {v}"
         elif p.arcs(v) != None: bad = "op {k}: bfs arcs {v}"
-    let pu = bfs(g, from: [V(s)], until: V(t))
+    let pu = bfs(g, from: [V(s)], until: x => x == V(t))
     let full = relax(eu, ev, ones, [(s, 0)], false, 6)!
     if pu[V(t)] != opt(full[t]): bad = "op {k}: bfs until {t}"
     // the all-pairs answers, and whether any negative cycle exists

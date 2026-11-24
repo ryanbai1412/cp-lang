@@ -27,7 +27,7 @@ fn land(q: Cell) -> ?Cell:
 fn walk(from: Char, to: Char) -> ?Int = bfs(
     p => p.adj4.filter_map(land),
     from: [place[from]],
-    until: place[to],
+    until: x => x == place[to],
 )[place[to]]
 
 let legs = [walk('0' + k, '0' + k + 1) for k in 0..4].all_some()

@@ -30,5 +30,5 @@ fn step(mv: Move, st: State) -> ?State:
 
 let moves = [Create(t) for t in T] + [Double(j) for j in 1..=3]
 let goal: State = (R(0), Subset<T>.full)
-let dist = fixed_cost_paths(from: [(R(0), Subset<T>.empty)], moves:, cost:, step:, until: goal)
+let dist = fixed_cost_paths(from: [(R(0), Subset<T>.empty)], moves:, cost:, step:, until: x => x == goal)
 print(dist[goal]! - x.sum())

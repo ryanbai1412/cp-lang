@@ -11,6 +11,11 @@ let (honey, home) = (cell('M'), cell('D'))
 let bees = bfs(p => p.adj4.filter(q => g[q] in "GM"), from: Cell.filter(p => g[p] == 'H'))
 fn escapes(w: Int) -> Bool:
     let safe = (p: Cell, k: Int) => (bees[p] ?? inf) > w + k / s
-    let walk = bfs(p => p.adj4.filter(q => g[q] in "GD"), from: [honey], until: home, enter: safe)
+    let walk = bfs(
+        p => p.adj4.filter(q => g[q] in "GD"),
+        from: [honey],
+        until: x => x == home,
+        enter: safe,
+    )
     walk.reached(home)
 print((0..n * n).last_true(escapes) ?? -1)

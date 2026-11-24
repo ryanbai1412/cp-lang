@@ -17,7 +17,7 @@ fn bfs_over_a_filtered_adj4_builds_no_list_per_cell() {
         "domain Row = 0..n\n",
         "domain Col = 0..m\n",
         "let g = read<[Row, Col]Char>()\n",
-        "let p = bfs(c => c.adj4.filter(q => g[q] != '#'), from: [(Row(0), Col(0))], until: (Row(n - 1), Col(m - 1)))\n",
+        "let p = bfs(c => c.adj4.filter(q => g[q] != '#'), from: [(Row(0), Col(0))], until: c => c == (Row(n - 1), Col(m - 1)))\n",
         "print(p.path((Row(n - 1), Col(m - 1)))?.len ?? -1)\n",
     ));
     let bfs = fn_text(&cpp, "_bfs_");

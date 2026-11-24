@@ -125,7 +125,7 @@ they use:
 
 <!-- signatures: std/graph.cp -->
 ```python
-fn dijkstra<V, W, G: WeightedNext<V, W>, M>(g: G, from: Seq<(V, W)>, step: M = (+), until: ?V = None, hashed: Bool = false, ) -> Paths<V, W, G.Arc>
+fn dijkstra<V, W, G: WeightedNext<V, W>, M>(g: G, from: Seq<(V, W)>, step: M = (+), until: V -> Bool = v => false, hashed: Bool = false, ) -> Paths<V, W, G.Arc>
 ```
 
 | Takes | Algorithms |
@@ -199,7 +199,8 @@ All return `Paths<V, W, A>`:
 | `bellman_ford(g, from:)` | any; `None` on a negative cycle | \(O(n m)\) |
 | `floyd_warshall(mut d, over: Semiring(min, +)) -> Bool` | dense, in place; `false` on a negative cycle; `over: Semiring(max, min)` gives widest paths | \(O(n^3)\) |
 
-`until: t` stops once `t` is settled. `from:` is any `Seq`; multi-source is
+`until: f` stops once a vertex `v` with `f(v)` is settled (`until: v => v == t` for
+one target, any predicate for a set of goals). `from:` is any `Seq`; multi-source is
 a longer one. `p.tight(g)` is the shortest-path DAG.
 
 All-pairs on a dense graph starts from the weight matrix:
