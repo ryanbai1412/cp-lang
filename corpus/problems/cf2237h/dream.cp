@@ -25,7 +25,7 @@ var paint = IntervalMap<tree.Pre, Time>.new(never)
 for v in init: paint.assign(tree.pos(v)..=tree.pos(v), start)
 
 // Slime waiting to move, keyed by the time it was last moved; only non-empty buckets.
-var supply = Map<Time, Int>()
+var supply = Map<Time, 1..=m>()
 supply[start] = m
 
 // Matches up to `need` units from the newest buckets at or before `t`.

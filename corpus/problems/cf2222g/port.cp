@@ -24,7 +24,7 @@ let t = Rooted(g, root: rt)
 let sz = t.subtree_sizes
 
 fn size_counts(v: V, excl: V) -> List<(Int, Int)>:
-    var mp: Map<Int, Int> = Map()
+    var mp: Map<1..=n, 0..=n> = Map()
     for c in t.children(v) if not (v == rt and c == excl):
         mp[sz[c]] += 1
     [(k, c) for (k, c) in mp]

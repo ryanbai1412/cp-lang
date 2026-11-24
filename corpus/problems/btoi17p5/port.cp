@@ -17,7 +17,7 @@ let cells: [0..k](sign: Char, row: 1..=n, col: 1..=m) = read()
 // Ways when every line alternates; each pin is (line, is its line's first
 // cell a plus?), and `lines` is how many lines the grid has.
 fn alternating(lines: Int, pins: List<(Int, Bool)>) -> Z:
-    var seen = Map<Int, Bool>()
+    var seen = Map<1..=1e9, Bool>()
     for (line, starts_plus) in pins:
         if let was = seen.get(line):
             if was != starts_plus: return Z.zero

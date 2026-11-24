@@ -14,8 +14,8 @@ fn call(op: 0..3):
     assert calls[op] <= 40000, "too many machine calls"
 
 var in_machine: [Insect]Bool = false
-var held: Counter<Int, Int> = Counter()  // insects inside, per type
-var with_count: [0..=n]Int = 0           // types inside, per group size
+var held: Counter<0..=1e9, 0..=n> = Counter()  // insects inside, per type
+var with_count: [0..=n]Int = 0                 // types inside, per group size
 with_count[0] = n
 var top = 0
 

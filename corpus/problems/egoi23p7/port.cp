@@ -71,7 +71,7 @@ fn solve():
     domain Comp = 0..ccnt
     var cc_adj: [Comp]List<Comp> = []
     for c in Comp:
-        var cnt = Map<Int, Int>()
+        var cnt = Map<Int, 0..=3e5>()
         for u in forb_in[rep[c.idx]]:
             cnt[comp_of[u]] += 1
         for (k, v) in cnt:

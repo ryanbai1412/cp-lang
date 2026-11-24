@@ -17,7 +17,7 @@ let a: [0..n]Int = read()
 let c: [0..n]Int = read()
 let pref = prefix(a)
 
-var last_occ: Map<Int, Int> = Map()
+var last_occ: Map<0..r, 1..=n> = Map()
 var occ_heap = MaxHeap<(Int, Int)>()
 var dp: [0..=n + 1]Int = 0
 var window = Window<Int>(min)

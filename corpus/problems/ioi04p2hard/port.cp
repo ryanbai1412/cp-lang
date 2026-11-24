@@ -22,19 +22,21 @@ for i in 1..=n:
 
 // A staircase keeps only keys whose value beats every smaller key, so the
 // minimum over keys <= x is the value at the last key <= x.
-fn insert(mut stairs: Map<Int, Int>, k: Int, v: Int):
+type Key = -1e9..=1e9
+
+fn insert(mut stairs: Map<Key, Int>, k: Key, v: Int):
     if let (_, w) = stairs.last_le(k), w <= v: return
     while let (key, w) = stairs.first_gt(k), w > v: stairs.remove(key)
     stairs[k] = v
 
-fn upto(stairs: Map<Int, Int>, x: Int) -> ?Int:
+fn upto(stairs: Map<Key, Int>, x: Key) -> ?Int:
     let (_, v) = stairs.last_le(x) ?? return None
     v
 
-var x_below = Map<Int, Int>()
-var x_above = Map<Int, Int>()
-var y_below = Map<Int, Int>()
-var y_above = Map<Int, Int>()
+var x_below = Map<Key, Int>()
+var x_above = Map<Key, Int>()
+var y_below = Map<Key, Int>()
+var y_above = Map<Key, Int>()
 
 fn offer_x(i: Int, cost: Int):
     if i == 0: return

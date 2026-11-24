@@ -17,7 +17,7 @@ for x in xs:
         pset.insert(p)
 
 var tot: Z = 1
-var tot_qs: Map<Int, Int> = Map()
+var tot_qs: Map<1..=10 ** 6, Int> = Map()
 for p in pset:
     tot *= p - 1
     for (q, eq) in factor(p - 1):

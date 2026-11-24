@@ -12,7 +12,7 @@ let xs: [0..3]1..=10 ** 6 = read()
 let pset = [p for x in xs for (p, _) in sieve.factor(x)].sorted().deduped()
 
 var tot: Z = 1
-var tot_qs: Map<Int, Int> = Map()
+var tot_qs: Map<1..=10 ** 6, Int> = Map()
 for p in pset:
     tot *= p - 1
     var rest = p - 1

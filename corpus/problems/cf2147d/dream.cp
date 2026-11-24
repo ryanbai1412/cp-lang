@@ -14,7 +14,7 @@
 let n: 1..=200_000 = read()
 let a: [0..n]1..=10 ** 9 = read()
 
-var freq: Map<Int, Int> = Map()
+var freq: Map<1..=10 ** 9, 0..=200_000> = Map()
 for x in a: freq[x] += 1
 
 let base = sum(x / 2 for x in a)

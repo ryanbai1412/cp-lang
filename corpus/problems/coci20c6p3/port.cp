@@ -14,7 +14,7 @@ domain Pairs = 0..=k
 let words: [n]Str = read()
 
 // words that are anagrams of each other form a class; only class sizes matter
-var class_size: Map<Str, Int> = []
+var class_size: Map<Str, 0..=2000> = []
 for w in words: class_size[w.sorted()] += 1
 
 let comb = Comb<Z>(n)

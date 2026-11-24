@@ -14,7 +14,7 @@ domain Col = 0..n
 
 fn red(ch: Char) -> Int = Int(ch == 'R')
 
-var seen: Counter<(List<Int>, List<Int>), Int> = Counter()
+var seen: Counter<(List<Int>, List<Int>), 0..=10_000> = Counter()
 var pairs = 0
 for _ in 0..g:
     let grid: [Row, Col]Char = read()

@@ -17,7 +17,7 @@ domain V = 1..=k
 let a: [R][0..m]Int = read()
 
 let blank = [R] i => a[i].count(x => x == -1)
-var cnt: [R]HashMap<V, Int> = []
+var cnt: [R]HashMap<V, 1..=m> = []
 for i in R:
     for x in a[i]:
         if x != -1: cnt[i][V(x)] = (cnt[i].get(V(x)) ?? 0) + 1
