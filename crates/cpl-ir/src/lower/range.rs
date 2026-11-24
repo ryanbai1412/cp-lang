@@ -805,7 +805,7 @@ impl<'a> Lowerer<'a> {
 
     /// The least and greatest a range bound can be: a constant, or a
     /// local or global of proven range, through `+`, `-` and negation.
-    fn bound_limits(&self, e: &Expr) -> Option<(i64, i64)> {
+    pub(super) fn bound_limits(&self, e: &Expr) -> Option<(i64, i64)> {
         match &e.kind {
             ExprKind::Local(slot) => match self.expr_range(e) {
                 Some(r) => r.scalar()?.limits(),

@@ -575,3 +575,20 @@ fn a_comprehension_list_takes_its_elements_inferred_ranges() {
         "{wide_sum}"
     );
 }
+
+#[test]
+fn a_bijection_inverse_is_written_straight_into_a_narrow_result() {
+    let out = cpp("let n: 1..=200_000 = read()
+domain P = 1..=n
+let a: [0..n]P = read()
+let at = a.inverse()
+print(at[P(1)])
+");
+    assert!(
+        out.contains("std::vector<int32_t> t") && out.contains("int32_t(-1)"),
+        "the result takes 4 B a cell and -1 marks an unseen image:\n{out}"
+    );
+    assert!(!out.contains("OptInt"), "no table of optionals:\n{out}");
+    assert!(out.contains("(missing image)"), "{out}");
+    assert!(out.contains("(duplicate image)"), "{out}");
+}

@@ -795,16 +795,66 @@ impl<'a> Lowerer<'a> {
                 elem: Box::new(src_idx_ty.clone()),
             }
         };
+        // A bijection onto an index type is written straight into its result:
+        // one below the first index marks a value not yet seen.
+        let direct = !is_partial && matches!(src_idx_ty, Ty::Int | Ty::Pos(_) | Ty::Bound(_));
+        let src_first = match src_dim {
+            Dim::IntFrom(c) => c,
+            _ => 0,
+        };
+        let (table_ty, table_elem) = if direct {
+            (ret_ty.clone(), src_idx_ty.clone())
+        } else {
+            (inv_ty.clone(), Ty::opt(src_idx_ty.clone()))
+        };
         self.do_expr(Some(&ret_ty), span, |lw, out| {
             let arr_ty = arr.ty.clone();
             let arr_slot = lw.temp(arr_ty.clone());
             out.push_let(arr_slot, arr);
-            let inv_slot = lw.temp(inv_ty.clone());
+            let inv_slot = lw.temp(table_ty.clone());
+            let unseen = match src_first.checked_sub(1) {
+                Some(below) if direct => {
+                    let below = lw.int_lit(below, span);
+                    Some(match src_idx_ty {
+                        Ty::Int => below,
+                        _ => lw.cast(Cast::Trust, below, src_idx_ty.clone()),
+                    })
+                }
+                _ => None,
+            };
+            if direct && src_idx_ty == Ty::Int {
+                // Each index stored is below `src_first` plus the target's
+                // length: past that, two of them would share an image.
+                let target_first = match target_lo.kind {
+                    ExprKind::Int(c) => Some(c),
+                    _ => None,
+                };
+                if let Some(shift) =
+                    target_first.and_then(|t| src_first.checked_sub(t)?.checked_sub(1))
+                {
+                    let hi = lw.int_add(target_hi.clone(), shift);
+                    let bounds = super::super::range::RangeBounds {
+                        lo: None,
+                        lo_const: src_first.checked_sub(1),
+                        hi_const: const_int_expr(&hi),
+                        lo_min: src_first.checked_sub(1),
+                        hi_max: lw.bound_limits(&hi).map(|l| l.1),
+                        hi: Some(hi),
+                        text: "an index".to_string(),
+                    };
+                    lw.cx.local_ranges.insert(
+                        inv_slot,
+                        super::super::range::RangeInfo::Elem(Box::new(
+                            super::super::range::RangeInfo::Scalar(bounds),
+                        )),
+                    );
+                }
+            }
             out.push_let(
                 inv_slot,
                 lw.mk(
-                    ExprKind::Fill(vec![target_dim.clone()], None),
-                    inv_ty.clone(),
+                    ExprKind::Fill(vec![target_dim.clone()], unseen.clone().map(Box::new)),
+                    table_ty.clone(),
                     span,
                 ),
             );
@@ -882,10 +932,13 @@ impl<'a> Lowerer<'a> {
                 let existing = lw.mk_index(
                     lw.local(inv_slot, span),
                     vec![v_idx.clone()],
-                    Ty::opt(src_idx_ty.clone()),
+                    table_elem.clone(),
                     span,
                 );
-                let is_dup = lw.mk_is_some(existing, Ty::Bool, span);
+                let is_dup = match &unseen {
+                    Some(unseen) => lw.mk_cmp(CmpOp::Ne, existing, unseen.clone(), Ty::Bool, span),
+                    None => lw.mk_is_some(existing, Ty::Bool, span),
+                };
                 let msg = if is_partial {
                     "inverse requires unique values (duplicate image)"
                 } else {
@@ -902,16 +955,21 @@ impl<'a> Lowerer<'a> {
                     kind: PlaceKind::Index(
                         Box::new(Place {
                             kind: PlaceKind::Local(inv_slot),
-                            ty: inv_ty.clone(),
+                            ty: table_ty.clone(),
                             span: lw.span(span),
                         }),
                         vec![v_idx],
                     ),
-                    ty: Ty::opt(src_idx_ty.clone()),
+                    ty: table_elem.clone(),
                     span: lw.span(span),
                 };
-                let some_i = lw.mk_some(lw.local(i_slot, span), Ty::opt(src_idx_ty.clone()), span);
-                stmts.push(Stmt::Assign(inv_place, AssignOp::Set, some_i));
+                let i = lw.local(i_slot, span);
+                let stored = if unseen.is_some() {
+                    i
+                } else {
+                    lw.mk_some(i, Ty::opt(src_idx_ty.clone()), span)
+                };
+                stmts.push(Stmt::Assign(inv_place, AssignOp::Set, stored));
             };
             if is_partial {
                 let cell_slot = lw.temp(cell_ty);
@@ -934,6 +992,7 @@ impl<'a> Lowerer<'a> {
                 record_value(lw, v_slot, &mut body);
             }
             lw.cx.loops.pop();
+            let src_len = lw.mk_binary(BinOp::Sub, src_hi.clone(), src_lo.clone(), Ty::Int, span);
             out.push(Stmt::For(
                 lid,
                 i_slot,
@@ -946,7 +1005,23 @@ impl<'a> Lowerer<'a> {
                 },
                 Block { stmts: body },
             ));
-            if is_partial {
+            if unseen.is_some() {
+                // No index repeats an image, so the images are all of the
+                // target exactly when there are as many indices as targets.
+                let target_len = lw.mk_binary(BinOp::Sub, target_hi, target_lo, Ty::Int, span);
+                let short = lw.mk_cmp(CmpOp::Ne, src_len, target_len, Ty::Bool, span);
+                out.push(Stmt::If(
+                    short,
+                    Block {
+                        stmts: vec![Stmt::Trap(
+                            "inverse requires a bijection (missing image)".to_string(),
+                            lw.span(span),
+                        )],
+                    },
+                    Block::default(),
+                ));
+                out.push_give(lw.local(inv_slot, span));
+            } else if is_partial {
                 out.push_give(lw.local(inv_slot, span));
             } else {
                 let out_slot = lw.temp(ret_ty.clone());
