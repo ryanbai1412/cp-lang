@@ -305,6 +305,26 @@ fn keeps_the_rows_of_a_table() {
 ]
 ";
     assert_eq!(fmt(src), want, "a list written on one line has no rows");
+
+    let src = "fn mul(a: M2, b: M2) -> M2 = (
+    dot(a.0, b.0, a.1, b.2, first_extra_argument), dot(a.0, b.1, a.1, b.3, second_extra_argument),
+    dot(a.2, b.0, a.3, b.2), dot(a.2, b.1, a.3, b.3),
+)
+";
+    assert_eq!(fmt(src), src, "a tuple keeps its rows");
+
+    let src =
+        "let made = make_table(first_argument_of_the_call, second_argument_of_the_call, third,
+    fourth_argument_of_the_call)
+";
+    let want = "let made = make_table(
+    first_argument_of_the_call,
+    second_argument_of_the_call,
+    third,
+    fourth_argument_of_the_call,
+)
+";
+    assert_eq!(fmt(src), want, "a call's arguments are not a table");
 }
 
 #[test]

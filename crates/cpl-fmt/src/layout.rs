@@ -678,7 +678,7 @@ impl<'a, 'b> Emitter<'a, 'b> {
             })
             .collect();
         let wants_comma = takes_trailing_comma(self.toks, items);
-        let table = self.toks[open].kind == K::LBracket && self.is_table(items, &elements, inner);
+        let table = self.lists_rows(open) && self.is_table(items, &elements, inner);
         for (n, element) in elements.iter().enumerate() {
             let ends_with_comma =
                 matches!(element.last(), Some(Node::Tok(i)) if self.toks[*i].kind == K::Comma);
@@ -728,6 +728,20 @@ impl<'a, 'b> Emitter<'a, 'b> {
             && elements
                 .iter()
                 .all(|e| inner + self.flat_width(e, &mut None) < self.width)
+    }
+
+    /// A list or a tuple, but not a call's arguments.
+    fn lists_rows(&self, open: usize) -> bool {
+        let tok = &self.toks[open];
+        tok.kind == K::LBracket
+            || tok.kind == K::LParen
+                && open > 0
+                && spacing::space_between(
+                    &self.toks[open - 1],
+                    self.roles[open - 1],
+                    tok,
+                    self.roles[open],
+                )
     }
 
     fn starts_row(&self, element: &[Node]) -> bool {

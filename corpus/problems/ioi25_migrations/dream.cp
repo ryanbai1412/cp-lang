@@ -49,30 +49,11 @@ fn block(xs: List<Site>, x: Int, size: Int) -> List<Site> = xs.drop(x * size).ta
 fn padded(xs: List<Site>) -> List<?Site> = [Some(x) for x in xs].resized(4, fill: None)
 
 fn last3(p: List<?Site>, q: List<?Site>, me: ?Site) -> List<(?Site, ?Site)> = [
-    (p[0], q[0]),
-    (p[0], q[1]),
-    (p[0], q[2]),
-    (p[1], q[0]),
-    (p[1], q[1]),
-    (p[0], q[3]),
-    (p[0], me),
-    (p[1], q[2]),
-    (p[1], q[3]),
-    (p[1], me),
-    (p[2], q[0]),
-    (p[2], q[1]),
-    (p[3], q[0]),
-    (p[3], q[1]),
-    (me, q[0]),
-    (p[2], q[2]),
-    (p[2], q[3]),
-    (p[2], me),
-    (p[3], q[3]),
-    (p[3], me),
-    (p[3], q[2]),
-    (me, q[1]),
-    (me, q[2]),
-    (me, q[3]),
+    (p[0], q[0]), (p[0], q[1]), (p[0], q[2]), (p[1], q[0]), (p[1], q[1]),
+    (p[0], q[3]), (p[0], me), (p[1], q[2]), (p[1], q[3]), (p[1], me),
+    (p[2], q[0]), (p[2], q[1]), (p[3], q[0]), (p[3], q[1]), (me, q[0]),
+    (p[2], q[2]), (p[2], q[3]), (p[2], me), (p[3], q[3]), (p[3], me),
+    (p[3], q[2]), (me, q[1]), (me, q[2]), (me, q[3]),
 ]
 
 fn after3(
@@ -88,16 +69,8 @@ fn after3(
     _ => ([prev, p[3]], [q[1], q[2], q[3]])
 
 fn last2(p: List<?Site>, q: List<?Site>, me: ?Site) -> List<(?Site, ?Site)> = [
-    (p[0], q[0]),
-    (p[1], q[0]),
-    (p[0], q[1]),
-    (p[1], q[1]),
-    (p[0], q[2]),
-    (me, q[2]),
-    (me, q[0]),
-    (me, q[1]),
-    (p[0], me),
-    (p[1], me),
+    (p[0], q[0]), (p[1], q[0]), (p[0], q[1]), (p[1], q[1]), (p[0], q[2]),
+    (me, q[2]), (me, q[0]), (me, q[1]), (p[0], me), (p[1], me),
 ]
 
 fn after2(
