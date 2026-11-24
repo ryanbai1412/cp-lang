@@ -9356,3 +9356,25 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 - **Status.** Accepted (Factory and Core); the instantiating-crate question stays open.
 
 ## 640. (reserved, unknown)
+
+## 632. `SegTree` carries its op type `M` and folds `M.Fold` (stdlib, 2026-11-24)
+
+- **Call.** Under decision 456, `SegTree<D, T, F = Int, M: Op<T> = Monoid<T>>`
+  and `SegTree2D<R, C, T, M: Op<T> = Monoid<T>>` build their cells with
+  `op.lift`, fold through `op.folds()`, and return `M.Fold` from `all`, `fold`
+  and `get`. That is `T` for a monoid and `?T` for a closure op
+  (`std-segtree/closure-folds-optional-monoid-folds-plain.cp`). Dense, lazy,
+  `over:` and 2D trees all share this one path, which replaces the private
+  `Folds<T>`. A tree built with `act:` alone has `M = NoOp` (public in
+  `std.algebra`), so its type is `SegTree<D, T, F, NoOp>` and it has no `fold`.
+  Writing `SegTree<D, T, F>` for it is E0302, with help that spells the full
+  type (`std-segtree/dual-tree-default-op-help-names-noop.cp`). A struct type
+  param given its default is left out of the C++ name, so `SegTree<D, Int>`
+  emits as before and the `SegTree<V, Int>` programs are unchanged.
+- **Why.** One op abstraction from `std.algebra` through the trees, not a
+  second private one. `NoOp` and not a fake `Monoid`: a fake monoid claims a
+  fold the tree doesn't have, so `.fold` on a dual tree would answer wrongly
+  where it should be a type error (Core, option B, 2026-11-24).
+- **Reverse.** Give `Op` an associated `Monoid` type so an act-only tree's `M`
+  is `Monoid<T>` again and `SegTree<D, T, F>` names it, or drop `M` and
+  return to `Folds<T>` with `SegTree<D, M.Fold, F>`.

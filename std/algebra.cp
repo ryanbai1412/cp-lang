@@ -800,6 +800,12 @@ impl<T> Op<T> for (T, T) -> T:
     fn folds(self) -> Monoid<?T> = self.opt()
     fn lift(self, x: T) -> ?T = Some(x)
 
+impl<T, Ms> Op<T> for Each<Ms>:
+    type Fold = T
+    fn op(self, a: T, b: T) -> T = self.monoid<T>().op(a, b)
+    fn folds(self) -> Monoid<T> = self.monoid()
+    fn lift(self, x: T) -> T = x
+
 /// The identity of an operation. Law: `op(id, a) == a == op(a, id)`.
 pub trait HasId<T>:
     @get fn id(self) -> T
@@ -829,6 +835,19 @@ pub trait Selective<T>: Idempotent<T>:
 /// example: `[(1, 5), (2, 3)].fold(each(+, max)) == (3, 5)`
 /// example: `[(n: 1, hi: 5), (n: 2, hi: 3)].fold(each(n: +, hi: max)).hi == 5`
 pub fn each<Ms>(..ms: Ms) -> Each<Ms> = Each(ms)
+
+/// No fold: the op of a `SegTree` built with `act:` alone, which reads one point at a time.
+/// Its type is spelled `SegTree<D, T, F, NoOp>`.
+pub struct NoOp
+
+impl<T> Op<T> for NoOp:
+    type Fold = T
+    fn op(self, a: T, b: T) -> T = a
+    // Never called: a tree with no op folds nothing.
+    fn folds(self) -> Monoid<T>:
+        let none: ?T = None
+        Monoid(none!, (a, _) => a)
+    fn lift(self, x: T) -> T = x
 
 /// The ops of [`each`], one per component; a structure takes it through [`Monoid.of`].
 pub struct Each<Ms>(ms: Ms):

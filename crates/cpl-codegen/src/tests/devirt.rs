@@ -371,7 +371,8 @@ print(first_le(mut st, 1))
 
 #[test]
 fn an_optional_fn_field_of_tuple_t_only_none_fills_is_no_std_function() {
-    let out = cpp("domain D = 0..4
+    let out = cpp("use std.algebra.NoOp
+domain D = 0..4
 type P = (a: Int, b: Int)
 let onto = Action<P, Int>(
     id: 0,
@@ -381,7 +382,7 @@ let onto = Action<P, Int>(
 )
 let init = [D] _ => (a: 0, b: 0)
 var st = SegTree<D, P, Int>(act: onto, a: init)
-fn first_le(mut st: SegTree<D, P, Int>, t: Int) -> Int = (0..4).first_true(m => st.get(D(m)).a <= t) ?? 4
+fn first_le(mut st: SegTree<D, P, Int, NoOp>, t: Int) -> Int = (0..4).first_true(m => st.get(D(m)).a <= t) ?? 4
 st.apply(0..2, 1)
 print(first_le(mut st, 1))
 ");
