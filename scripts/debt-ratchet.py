@@ -1047,6 +1047,19 @@ def corpus_no_max(root: Path) -> list[str]:
     return found
 
 
+def corpus_no_tests(root: Path) -> list[str]:
+    """Problem packages with no tests.toml (owner: Content, idioms).
+
+    Rule: problem-packages/R9 (handbook/guidelines/problem-packages-checklist.md#r9):
+    every package's cases are statement samples inline plus gen.py seeds and `--max`,
+    made by `scripts/corpus.py make` with answers from the accepted C++.
+    """
+    problems = root / "corpus" / "problems"
+    return [d.relative_to(root).as_posix() for d in sorted(problems.iterdir()) if problems.is_dir()
+            and d.is_dir() and (d / "meta.json").is_file() and not (d / "tests.toml").is_file()] \
+        if problems.is_dir() else []
+
+
 def corpus_test_files(root: Path) -> list[str]:
     """Literal test data committed under corpus/problems/*/tests/, samples included.
 
@@ -2148,6 +2161,7 @@ COUNTERS = {
     "skip_lists": ("entries in skip, xfail, known-failure and gap lists", skip_lists, True),
     "corpus_test_files": ("files committed under corpus/problems/*/tests/", corpus_test_files, True),
     "corpus_no_max": ("non-interactive problem packages without a gen.py --max", corpus_no_max, True),
+    "corpus_no_tests": ("problem packages without a tests.toml (Content)", corpus_no_tests, True),
     "interp_max_over_20s": ("corpus packages the interpreter runs a --max case past 20 s on (Core)", interp_max_over_20s, True),
     "edition_refs": ("dead 0.2 edition references", edition_refs, True),
     "ir_builtin_names": ("names string-matched in lower/call.rs and lower/call/", ir_builtin_names, True),
