@@ -17,6 +17,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
+import { sizeDelta } from './wasm-delta.mjs';
 
 // A shrink-only ratchet: after each cut, lower the cap to the new size plus
 // about 2% in the same commit. It went up once, from 1,720,000, when the VM
@@ -136,11 +137,10 @@ if (history) {
   })();
   const [was, wasGz] = existsSync(history) ? readFileSync(history, 'utf8').trim().split(/\s+/) : [];
   if (was && Number.isFinite(+wasGz) && was !== head) {
-    const d = gz - +wasGz;
-    const delta = `wasm-size: ${d >= 0 ? '+' : ''}${n(d)} bytes gzipped since ${was.slice(0, 9)} (git log ${was.slice(0, 9)}..${head.slice(0, 9)})`;
+    const { delta, grew } = sizeDelta(was, +wasGz, head, gz);
     console.log(delta);
     // A warning, not a failure: the cap is the only gate (decision 446).
-    if (d > 1000 && process.env.GITHUB_ACTIONS) console.log(`::warning title=cpl.wasm grew::${delta}`);
+    if (grew && process.env.GITHUB_ACTIONS) console.log(`::warning title=cpl.wasm grew::${delta}`);
     if (process.env.GITHUB_STEP_SUMMARY) writeFileSync(process.env.GITHUB_STEP_SUMMARY, `${delta}\n`, { flag: 'a' });
   }
   mkdirSync(dirname(history), { recursive: true });
