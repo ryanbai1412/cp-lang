@@ -860,7 +860,15 @@ impl<'a> Checker<'a> {
                     {
                         Ty::Int
                     }
-                    other => other.unwrap_or(Ty::Unknown),
+                    // `D.subsets` over a generic domain, as in a type: every `Subset<D>`, the
+                    // struct std declares `@member(subsets)`.
+                    None => crate::prelude::domain_member(&name.text).map_or(Ty::Unknown, |of| {
+                        Ty::list(Ty::Named {
+                            name: of.into(),
+                            args: vec![base_ty],
+                        })
+                    }),
+                    Some(other) => other,
                 };
             }
             // The members of a domain that give positions or ranges back.
@@ -868,23 +876,15 @@ impl<'a> Checker<'a> {
                 return match name.text.as_str() {
                     "first" | "last" => Ty::Optional(Box::new(Ty::Pos(domain.clone()))),
                     "count" if !self.in_call_callee => Ty::Int,
-                    "all" => Ty::Unknown,
                     "rev" => Ty::Domain(domain.clone()),
-                    "mask" => Ty::Fn {
-                        params: vec![crate::ty::Param {
-                            name: "vs".into(),
-                            ty: Ty::Unknown,
-                            mutable: false,
-                            has_default: false,
-                            named_only: false,
-                            variadic: false,
-                            lazy: false,
-                        }],
-                        ret: Box::new(Ty::Array {
+                    "mask" => fn1(
+                        "vs",
+                        Ty::Unknown,
+                        Ty::Array {
                             index: vec![Ty::Pos(domain.clone())],
                             elem: Box::new(Ty::Bool),
-                        }),
-                    },
+                        },
+                    ),
                     "wrap" | "nth" => int_fn(Ty::Pos(domain.clone())),
                     "bounds" | "cuts" => range_ty(Ty::Pos(format!("{domain}.cuts"))),
                     "Cut" => {
@@ -896,68 +896,19 @@ impl<'a> Checker<'a> {
                         Ty::Pos(domain.clone()),
                         Ty::Pos(domain.clone()),
                     ])),
-                    "after" | "before" => Ty::Fn {
-                        params: vec![crate::ty::Param {
-                            name: "pos".into(),
-                            ty: Ty::Pos(domain.clone()),
-                            mutable: false,
-                            has_default: false,
-                            named_only: false,
-                            variadic: false,
-                            lazy: false,
-                        }],
-                        ret: Box::new(range_ty(Ty::Pos(domain.clone()))),
-                    },
-                    "partition" => Ty::Fn {
-                        params: vec![crate::ty::Param {
-                            name: "keep".into(),
-                            ty: Ty::Fn {
-                                params: vec![crate::ty::Param {
-                                    name: "".into(),
-                                    ty: Ty::Pos(domain.clone()),
-                                    mutable: false,
-                                    has_default: false,
-                                    named_only: false,
-                                    variadic: false,
-                                    lazy: false,
-                                }],
-                                ret: Box::new(Ty::Bool),
-                            },
-                            mutable: false,
-                            has_default: false,
-                            named_only: false,
-                            variadic: false,
-                            lazy: false,
-                        }],
-                        ret: Box::new(Ty::Tuple(vec![
-                            Ty::list(Ty::Pos(domain.clone())),
-                            Ty::list(Ty::Pos(domain.clone())),
-                        ])),
-                    },
-                    "filter" => Ty::Fn {
-                        params: vec![crate::ty::Param {
-                            name: "pred".into(),
-                            ty: Ty::Fn {
-                                params: vec![crate::ty::Param {
-                                    name: "".into(),
-                                    ty: Ty::Pos(domain.clone()),
-                                    mutable: false,
-                                    has_default: false,
-                                    named_only: false,
-                                    variadic: false,
-                                    lazy: false,
-                                }],
-                                ret: Box::new(Ty::Bool),
-                            },
-                            mutable: false,
-                            has_default: false,
-                            named_only: false,
-                            variadic: false,
-                            lazy: false,
-                        }],
-                        ret: Box::new(Ty::list(Ty::Pos(domain.clone()))),
-                    },
-                    "sort" => Ty::Unknown,
+                    "after" | "before" => fn1(
+                        "pos",
+                        Ty::Pos(domain.clone()),
+                        range_ty(Ty::Pos(domain.clone())),
+                    ),
+                    "partition" | "filter" => {
+                        let pos = || Ty::list(Ty::Pos(domain.clone()));
+                        let (label, ret) = match name.text.as_str() {
+                            "partition" => ("keep", Ty::Tuple(vec![pos(), pos()])),
+                            _ => ("pred", pos()),
+                        };
+                        fn1(label, fn1("", Ty::Pos(domain.clone()), Ty::Bool), ret)
+                    }
                     m if crate::prelude::domain_member(m).is_some() => {
                         Ty::Domain(format!("{domain}.{m}"))
                     }

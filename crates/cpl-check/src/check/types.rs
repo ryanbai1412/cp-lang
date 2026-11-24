@@ -361,9 +361,15 @@ impl<'a> Checker<'a> {
                     return chosen;
                 }
             }
+            let member_of = crate::prelude::domain_member(member);
             return match head_ty {
                 // `D.cuts` over a generic domain: lowering knows which one.
-                Ty::Param(_) if matches!(member, "cuts" | "subsets" | "ranges") => Ty::Unknown,
+                Ty::Param(_) if matches!(member, "cuts" | "ranges") => Ty::Unknown,
+                // `D.subsets`, like `Letter.subsets` below: the struct std declares
+                // `@member(subsets)`, over `D`.
+                Ty::Param(_) if member_of.is_some() => {
+                    self.named_type(member_of.unwrap_or(member), span, vec![head_ty])
+                }
                 Ty::Param(p) => Ty::Assoc {
                     of: Box::new(Ty::Param(p)),
                     name: member.to_string(),
@@ -379,15 +385,15 @@ impl<'a> Checker<'a> {
                     args: vec![Ty::Pos(domain)],
                 },
                 Ty::Pos(domain) => Ty::Pos(format!("{domain}.{member}")),
-                Ty::Named { name: owner, .. } => match self.owned_member(&owner, member) {
+                Ty::Named {
+                    name: ref owner, ..
+                } => match self.owned_member(owner, member) {
                     Some(Ty::Domain(domain)) => Ty::Pos(domain),
                     Some(_) => Ty::Unknown,
                     // `Letter.subsets` for a type that is its own domain is `Subset<Letter>`,
                     // the struct std declares `@member(subsets)`.
-                    None if crate::prelude::domain_member(member).is_some() => {
-                        let of = crate::prelude::domain_member(member).unwrap_or_default();
-                        let owner_ty = self.named_type(&owner, head_span, Vec::new());
-                        self.named_type(of, span, vec![owner_ty])
+                    None if member_of.is_some() => {
+                        self.named_type(member_of.unwrap_or(member), span, vec![head_ty])
                     }
                     None => {
                         let member_span = Span::new(head_span.end + 1, span.end);

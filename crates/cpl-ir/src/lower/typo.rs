@@ -28,24 +28,24 @@ impl<'a> Lowerer<'a> {
     /// range has a list's too), the record's fields and every fn in reach that takes `self`.
     pub(super) fn member_typo(&mut self, ty: &Ty, name: &str, span: Span) {
         use cpl_check::Receiver;
-        const POS_MEMBERS: [&str; 14] = [
+        const POS_MEMBERS: &[&str] = &[
             "after", "before", "count", "first", "idx", "is_empty", "label", "len", "next", "ord",
             "prev", "rank", "with", "without",
         ];
-        const BOUND_EXTRA: [&str; 4] = ["l", "left", "r", "right"];
-        const RANGE_MEMBERS: [&str; 10] = [
+        const BOUND_EXTRA: &[&str] = &["l", "left", "r", "right"];
+        const RANGE_MEMBERS: &[&str] = &[
             "end", "first", "halves", "is_empty", "last", "mid", "rev", "sorted", "start", "step",
         ];
-        const DOMAIN_MEMBERS: [&str; 21] = [
+        const DOMAIN_MEMBERS: &[&str] = &[
             "after", "all", "any", "at", "before", "count", "cuts", "first", "is_empty", "last",
-            "len", "mask", "max", "min", "nth", "rev", "size", "sort", "sorted", "subsets", "sum",
+            "len", "mask", "max", "min", "nth", "rev", "size", "sort", "sorted", "sum",
         ];
-        const SEQ_EXTRA: [&str; 4] = ["adjacent", "items", "reverse", "reversed"];
-        const STR_EXTRA: [&str; 6] = [
+        const SEQ_EXTRA: &[&str] = &["adjacent", "items", "reverse", "reversed"];
+        const STR_EXTRA: &[&str] = &[
             "adjacent", "count", "items", "reverse", "reversed", "to_str",
         ];
-        const INT_MEMBERS: [&str; 5] = ["abs", "idx", "isqrt", "ord", "sqrt"];
-        const FLOAT_MEMBERS: [&str; 6] = ["abs", "ceil", "floor", "round", "sqrt", "trunc"];
+        const INT_MEMBERS: &[&str] = &["abs", "idx", "isqrt", "ord", "sqrt"];
+        const FLOAT_MEMBERS: &[&str] = &["abs", "ceil", "floor", "round", "sqrt", "trunc"];
         let receiver = receiver_of(ty);
         if let Some(own) = receiver.and_then(|r| cpl_check::foreign_member(r, name)) {
             return self.suggest_last(span, own.into());
@@ -73,37 +73,44 @@ impl<'a> Lowerer<'a> {
                 names.extend(info.def.fields.iter().map(|(f, _)| f.as_str()));
                 names.extend(info.methods.keys().map(String::as_str));
                 names.extend(info.gen_methods.keys().map(String::as_str));
-                names.extend(info.projections.keys().map(String::as_str));
-                names.extend(info.consts.keys().map(String::as_str));
+                for k in info.projections.keys() {
+                    names.push(k);
+                }
+                for k in info.consts.keys() {
+                    names.push(k);
+                }
                 names.extend(info.owned_domains.keys().map(String::as_str));
                 if info.methods.contains_key("range_first") {
                     names.push("range");
                 }
             }
-            Ty::Pos(_) => names.extend(POS_MEMBERS),
+            Ty::Pos(_) => names.extend_from_slice(POS_MEMBERS),
             Ty::Bound(_) => {
-                names.extend(POS_MEMBERS);
-                names.extend(BOUND_EXTRA);
+                names.extend_from_slice(POS_MEMBERS);
+                names.extend_from_slice(BOUND_EXTRA);
             }
             Ty::Range(_) => {
-                names.extend(RANGE_MEMBERS);
+                names.extend_from_slice(RANGE_MEMBERS);
                 names.extend(cpl_check::builtin_members(Receiver::List).map(|m| m.name));
-                names.extend(SEQ_EXTRA);
+                names.extend_from_slice(SEQ_EXTRA);
             }
             Ty::DomainVal => {
-                names.extend(DOMAIN_MEMBERS);
+                names.extend_from_slice(DOMAIN_MEMBERS);
+                for &(member, _) in cpl_check::domain_members() {
+                    names.push(member);
+                }
             }
             Ty::List(_) | Ty::Array { .. } | Ty::MutView(..) | Ty::ListView(..) | Ty::Keyed(..) => {
-                names.extend(SEQ_EXTRA);
+                names.extend_from_slice(SEQ_EXTRA);
             }
             Ty::Str | Ty::StrView => {
-                names.extend(STR_EXTRA);
+                names.extend_from_slice(STR_EXTRA);
             }
             Ty::Int | Ty::I128 | Ty::U64 => {
-                names.extend(INT_MEMBERS);
+                names.extend_from_slice(INT_MEMBERS);
             }
             Ty::Float => {
-                names.extend(FLOAT_MEMBERS);
+                names.extend_from_slice(FLOAT_MEMBERS);
             }
             _ => {}
         }

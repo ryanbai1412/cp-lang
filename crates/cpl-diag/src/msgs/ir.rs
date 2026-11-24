@@ -121,7 +121,7 @@ super::msgs! {
     UNSUPPORTED_A_CAN_T_CROSS = UNSUPPORTED, "a `{}` can't cross to the judge's grader in `{}`";
     UNSUPPORTED_CAN_T_CROSS_TO = UNSUPPORTED, "`{}` can't cross to the judge's grader in `{}`: no C++ integer holds a range with an open end";
     UNSUPPORTED_CAN_T_BE_BUILT = UNSUPPORTED, "`{}` can't be built for the judge's grader";
-    UNKNOWN_TYPE_SUBSET_IS_NOT_IN = UNKNOWN_TYPE, "`Subset` is not in scope";
+    UNKNOWN_TYPE_MEMBER_DOMAIN_NOT_IN_SCOPE = UNKNOWN_TYPE, "`{}` is not in scope";
     UNSUPPORTED_CPL_RUN_AND_CPL = UNSUPPORTED, "`cpl run` and `cpl build` can't handle {} yet";
     TYPE_MISMATCH_LAMBDA_PARAMETER_HAS_TYPE = TYPE_MISMATCH, "lambda parameter has type `{}`, but `{}` is expected";
     BAD_NUMBER_EXPECTED_A_COMPILE_TIME = BAD_NUMBER, "expected a compile-time constant integer";

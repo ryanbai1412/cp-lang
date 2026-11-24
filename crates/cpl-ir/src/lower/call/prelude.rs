@@ -531,14 +531,16 @@ impl<'a> Lowerer<'a> {
                     let items: Vec<ast::Expr> = args.iter().map(|a| a.value.clone()).collect();
                     return self.list(&items, hint.filter(|t| matches!(t, Ty::List(_))), span);
                 }
-                let src = &args[0].value;
+                // `B.subsets` collects as the struct std declares it to be.
+                let alias = self.subsets_alias(&args[0].value);
+                let src = alias.as_ref().unwrap_or(&args[0].value);
                 let collect_directly = matches!(
                     &src.kind,
                     ast::ExprKind::Range { .. } | ast::ExprKind::Generic { .. }
                 ) || matches!(
                     &src.kind,
                     ast::ExprKind::Field { name, .. }
-                        if matches!(name.text.as_str(), "bounds" | "cuts" | "subsets")
+                        if matches!(name.text.as_str(), "bounds" | "cuts")
                 ) || matches!(
                     &src.kind,
                     ast::ExprKind::Name(n)

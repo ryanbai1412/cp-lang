@@ -1138,10 +1138,16 @@ fn range_ty(of: Ty) -> Ty {
 
 /// `fn(i: Int) -> ret`: a domain's member from an ordinal or label.
 fn int_fn(ret: Ty) -> Ty {
+    fn1("i", Ty::Int, ret)
+}
+
+/// `(name: ty) -> ret`, a function of one plain parameter.
+#[inline(never)]
+fn fn1(name: &str, ty: Ty, ret: Ty) -> Ty {
     Ty::Fn {
         params: vec![crate::ty::Param {
-            name: "i".into(),
-            ty: Ty::Int,
+            name: name.into(),
+            ty,
             mutable: false,
             has_default: false,
             named_only: false,

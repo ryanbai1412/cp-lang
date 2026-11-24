@@ -570,6 +570,7 @@ pub fn domain_members() -> &'static [(&'static str, &'static str)] {
 }
 
 /// The struct whose domain `D.member` is, when std declares one.
+#[inline(never)]
 pub fn domain_member(member: &str) -> Option<&'static str> {
     domain_members()
         .iter()
