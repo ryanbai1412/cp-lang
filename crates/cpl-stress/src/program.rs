@@ -634,6 +634,27 @@ fn raised_stack() -> Option<&'static str> {
         .map(|(_, hard)| hard.as_str())
 }
 
+/// The `setpriv` that makes a program get SIGKILL when the thread that
+/// started it ends; `None` where there is none, as on macOS and Windows.
+fn dies_with_parent() -> Option<&'static str> {
+    static SETPRIV: std::sync::OnceLock<Option<&'static str>> = std::sync::OnceLock::new();
+    *SETPRIV.get_or_init(|| {
+        if cfg!(not(target_os = "linux")) || !Path::new(SHELL).is_file() {
+            return None;
+        }
+        ["/usr/bin/setpriv", "/bin/setpriv"]
+            .into_iter()
+            .find(|setpriv| {
+                Command::new(setpriv)
+                    .args(["--pdeathsig", "KILL", "--", "true"])
+                    .stdout(Stdio::null())
+                    .stderr(Stdio::null())
+                    .status()
+                    .is_ok_and(|status| status.success())
+            })
+    })
+}
+
 /// The interpreter and its arguments a script's first line names:
 /// `#!/bin/sh` is `["/bin/sh"]`, `#!/usr/bin/env python3 -u` is
 /// `["python3", "-u"]`. `None` without a `#!`.
@@ -886,19 +907,33 @@ impl Program {
     /// generator, checker and interactor alike. It gets the stack judges
     /// give, the hard cap (`unlimited` where allowed), not this shell's
     /// 8 MB, so an accepted C++ keeping big arrays on the stack runs.
+    /// On Linux it also dies with this process: in its own process group
+    /// it misses the Ctrl-C or kill that ends `cpl`, and would run on.
     pub(crate) fn to_command(&self) -> Command {
-        let mut command = match raised_stack() {
-            Some(stack) => {
-                // By its path: a program may run with no `PATH` at all.
-                let mut command = Command::new(SHELL);
-                command
-                    .args(["-c", "ulimit -s \"$0\" 2>/dev/null; exec \"$@\"", stack])
-                    .args(&self.argv);
-                command
-            }
-            None => {
+        let stack = raised_stack();
+        let orphan_kill = dies_with_parent();
+        let mut command = match (stack, orphan_kill) {
+            (None, None) => {
                 let mut command = Command::new(&self.argv[0]);
                 command.args(&self.argv[1..]);
+                command
+            }
+            _ => {
+                // By its path: a program may run with no `PATH` at all.
+                let mut command = Command::new(SHELL);
+                let raise = match stack {
+                    Some(_) => "ulimit -s \"$0\" 2>/dev/null; ",
+                    None => "",
+                };
+                let exec = match orphan_kill {
+                    Some(setpriv) => format!("exec {setpriv} --pdeathsig KILL -- \"$@\""),
+                    None => "exec \"$@\"".to_string(),
+                };
+                command
+                    .arg("-c")
+                    .arg(format!("{raise}{exec}"))
+                    .arg(stack.unwrap_or("sh"))
+                    .args(&self.argv);
                 command
             }
         };
