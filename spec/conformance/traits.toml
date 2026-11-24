@@ -1861,3 +1861,42 @@ use std.sparse.{LinearRmq}
 print(LinearRmq([5, 2, 7], before: (x, y) => x > y))
 """
 out = "5 2 7"
+
+[case."Show/Mark/show"]
+code = """
+use std.dsu.{RollbackArray}
+var a = RollbackArray<0..2, Int>(init: _ => 0)
+a.set(0, 5)
+a.set(1, 6)
+print(a.mark())
+"""
+out = "mark 2"
+
+[case."Show/RollbackArray/show"]
+code = """
+use std.dsu.{RollbackArray}
+var a = RollbackArray<0..3, Int>(init: i => Int(i))
+let m = a.mark()
+a.set(2, 9)
+print(a)
+a.undo_to(m)
+print(a)
+"""
+out = "0 1 9\\n0 1 2"
+
+[case."Show/DsuNode/show"]
+code = """
+use std.dsu.{DsuNode}
+print(DsuNode<0..3>(_parent: 2, _size: 3))
+"""
+out = "parent 2, size 3"
+
+[case."Show/PersistentDsu/show"]
+code = """
+use std.dsu.{DsuNode, PersistentDsu}
+use std.persistent.{PArena}
+domain V = 0..2
+var ar = PArena<DsuNode<V>>()
+print(PersistentDsu<V>.new(mut ar))
+"""
+out = "version at node 2"

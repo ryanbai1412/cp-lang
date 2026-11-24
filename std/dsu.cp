@@ -1102,3 +1102,33 @@ fn parity_dsu_components_and_groups_track_merges_and_undo():
     assert d.components == 2
     d.undo_to(m)
     assert d.components == 3 and d.groups().len == 3
+
+impl Show for Mark:
+    /// The number of logged writes it remembers, as `mark k`.
+    ///
+    /// example: `var a = RollbackArray<0..2, Int>(init: _ => 0); a.set(0, 5); "{a.mark()}" == "mark 1"`
+    fn show(m) = "mark {m.at}"
+
+impl Show for RollbackArray<D, T>:
+    /// The current values in key order, space-separated.
+    ///
+    /// example: `var a = RollbackArray<0..3, Int>(init: i => Int(i)); a.set(1, 7); "{a}" == "0 7 2"`
+    fn show(a):
+        var out = ""
+        for i in D:
+            if not out.is_empty: out += " "
+            out += "{a.data[i]}"
+        out
+
+impl Show for DsuNode<V>:
+    /// Its parent position and set size, as `parent p, size s`.
+    ///
+    /// example: `"{DsuNode<0..2>()}" == "parent 0, size 0"`
+    fn show(n) = "parent {n._parent}, size {n._size}"
+
+impl Show for PersistentDsu<V>:
+    /// The arena node this version's tree is rooted at, as `version at node i`; read a version's
+    /// sets with `find(ar, v)`, which needs the arena.
+    ///
+    /// example: `use std.persistent.{PArena}; domain V = 0..3; var ar = PArena<DsuNode<V>>(); "{PersistentDsu<V>.new(mut ar)}" == "version at node 4"`
+    fn show(d) = "version at node {d._root.raw}"
