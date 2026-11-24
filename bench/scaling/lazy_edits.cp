@@ -1,4 +1,6 @@
-// sizes stay at n: each insert is paired with an erase
+// sizes stay at n: each insert is paired with an erase; at n = 4096 the treap's nodes stay in L2 at 4n
+// too, so the walks' cache misses don't grow with n
+// n: 4096
 use std.lazy.{LazyTreap}
 let n: Int = read()
 let reps = 1 << 17
@@ -20,14 +22,14 @@ for i in 0..reps:
 // heap and neither pays fresh-page faults that the other doesn't.
 var tl = treap()
 for i in 0..n / 8: tl.push(i * 7919 % n)
-for _ in 0..1600:
+for _ in 0..6400:
     s += tl.to_list().len // timed: lazy.LazyTreap.to_list
-// Storage grows by moving the nodes already there. At n / 128 nodes the doubled block stays
+// Storage grows by moving the nodes already there. At n / 16 nodes the doubled block stays
 // under 128 KB at 4n too, so malloc serves both sizes from the heap and neither pays fresh-page
 // faults that the other doesn't.
-for _ in 0..30000:
+for _ in 0..4000:
     var r = treap()
-    for i in 0..n / 128: r.push(i)
-    r.reserve(n / 64) // timed: lazy.LazyTreap.reserve
+    for i in 0..n / 16: r.push(i)
+    r.reserve(n / 8) // timed: lazy.LazyTreap.reserve
     s += r.len
 print(s)

@@ -1,4 +1,6 @@
-// sizes stay at n: each split is paired with an append
+// sizes stay at n: each split is paired with an append; at n = 4096 the forest's nodes stay in L2
+// at 4n too, so the walks' cache misses don't grow with n
+// n: 4096
 use std.lazy.{LazyForest}
 let n: Int = read()
 let reps = 1 << 17
@@ -26,7 +28,7 @@ for i in 0..reps:
 // at n / 8 elements, as for LazyTreap.to_list
 let fl = fo.seq()
 for i in 0..n / 8: fo.push(fl, i * 7919 % n)
-for _ in 0..1600:
+for _ in 0..6400:
     s += fo.to_list(fl).len // timed: lazy.LazyForest.to_list
 
 print(s)

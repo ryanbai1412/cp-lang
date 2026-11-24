@@ -50,6 +50,6 @@ for i in 0..8 * n:
     acc += c.try_best ?? 0 // timed: algebra.MaxSubAt.try_best
     if c.try_at != None: acc += 1 // timed: algebra.MaxSubAt.try_at
     acc += MaxSubAt<D>.monoid().op(a, c).try_best ?? 0 // timed: algebra.MaxSubAt.monoid
-for i in 0..4 * n:
+for i in 0..16 * n:
     acc ^= pow(3, n + i, op: +) // timed: algebra.pow
 print(acc)

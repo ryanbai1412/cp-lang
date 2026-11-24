@@ -4,7 +4,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Action.new",
-   "measured": 1.06,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -12,7 +12,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Action.of",
-   "measured": 1.0,
+   "measured": 0.98,
    "n": 16384,
    "ok": true
   },
@@ -20,7 +20,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Affine.eval",
-   "measured": 1.05,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -28,7 +28,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Affine.id",
-   "measured": 1.03,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -36,7 +36,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Affine.monoid",
-   "measured": 1.04,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -52,7 +52,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Comm.monoid",
-   "measured": 1.0,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -60,7 +60,7 @@
    "cost": "\\mathit{components}",
    "documented": 1.0,
    "fn": "algebra.Each.monoid",
-   "measured": 1.03,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -68,7 +68,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Group.of",
-   "measured": 1.08,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -76,7 +76,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxCount.join",
-   "measured": 0.99,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -84,7 +84,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxCount.monoid",
-   "measured": 0.97,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -92,7 +92,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxCount.of",
-   "measured": 1.04,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -100,7 +100,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxCount.zero",
-   "measured": 0.99,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -108,7 +108,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSub.join",
-   "measured": 1.08,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -116,7 +116,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSub.monoid",
-   "measured": 0.97,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -124,7 +124,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSub.of",
-   "measured": 1.04,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -132,7 +132,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSub.repeat",
-   "measured": 0.98,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -140,7 +140,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSub.reversed",
-   "measured": 1.06,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -148,7 +148,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSub.scale",
-   "measured": 0.99,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -156,7 +156,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSub.try_best",
-   "measured": 0.98,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -164,7 +164,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSub.zero",
-   "measured": 1.03,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -180,7 +180,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSubAt.monoid",
-   "measured": 1.05,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -188,7 +188,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSubAt.of",
-   "measured": 1.04,
+   "measured": 1.07,
    "n": 16384,
    "ok": true
   },
@@ -196,7 +196,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSubAt.try_at",
-   "measured": 1.13,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -212,7 +212,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSubAt.zero",
-   "measured": 1.05,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -220,7 +220,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MinCount.join",
-   "measured": 1.01,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -228,7 +228,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MinCount.monoid",
-   "measured": 1.02,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -236,7 +236,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MinCount.of",
-   "measured": 0.99,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -244,7 +244,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MinCount.zero",
-   "measured": 1.09,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -252,7 +252,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Monoid.commutative",
-   "measured": 1.01,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -260,7 +260,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Monoid.monoid",
-   "measured": 0.99,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -268,7 +268,15 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Monoid.of",
-   "measured": 1.04,
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/algebra.cp::algebra.Monoid.reversed": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "algebra.Monoid.reversed",
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -276,7 +284,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Semigroup.opt",
-   "measured": 1.13,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -284,7 +292,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.cmp",
-   "measured": 0.99,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -292,7 +300,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.desc",
-   "measured": 1.11,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -300,7 +308,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.each",
-   "measured": 1.0,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -308,7 +316,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.minmax",
-   "measured": 0.97,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -316,7 +324,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.opt",
-   "measured": 0.98,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -324,7 +332,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.point_action",
-   "measured": 0.97,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -332,7 +340,7 @@
    "cost": "\\log k",
    "documented": 1.14,
    "fn": "algebra.pow",
-   "measured": 1.07,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -9076,7 +9084,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.LazyTreap.apply",
-   "measured": 1.23,
+   "measured": 1.27,
    "n": 16384,
    "ok": true
   },
@@ -9084,7 +9092,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "lazy.LazyTreap.apply_all",
-   "measured": 1.04,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -9092,7 +9100,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.LazyTreap.apply_range",
-   "measured": 1.4,
+   "measured": 1.6,
    "n": 16384,
    "ok": true
   },
@@ -9100,7 +9108,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.LazyTreap.get",
-   "measured": 1.47,
+   "measured": 1.66,
    "n": 16384,
    "ok": true
   },
@@ -9108,7 +9116,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "lazy.LazyTreap.is_empty",
-   "measured": 1.04,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -9116,7 +9124,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "lazy.LazyTreap.len",
-   "measured": 1.04,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -9132,7 +9140,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.LazyTreap.reverse",
-   "measured": 1.42,
+   "measured": 1.59,
    "n": 16384,
    "ok": true
   },
@@ -9140,7 +9148,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.LazyTreap.erase_at",
-   "measured": 1.13,
+   "measured": 1.52,
    "n": 16384,
    "ok": true
   },
@@ -9148,7 +9156,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.LazyTreap.erase_range",
-   "measured": 1.12,
+   "measured": 1.3,
    "n": 16384,
    "ok": true
   },
@@ -9156,7 +9164,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.LazyTreap.insert_at",
-   "measured": 1.33,
+   "measured": 1.82,
    "n": 16384,
    "ok": true
   },
@@ -9164,7 +9172,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.LazyTreap.push",
-   "measured": 1.06,
+   "measured": 1.25,
    "n": 16384,
    "ok": true
   },
@@ -9172,7 +9180,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "lazy.LazyTreap.reserve",
-   "measured": 6.72,
+   "measured": 4.88,
    "n": 16384,
    "ok": true
   },
@@ -9180,7 +9188,7 @@
    "cost": "\\min(n, m) + \\log(n + m)",
    "documented": 1.13,
    "fn": "lazy.LazyTreap.splice_back",
-   "measured": 1.21,
+   "measured": 1.52,
    "n": 16384,
    "ok": true
   },
@@ -9188,7 +9196,7 @@
    "cost": "\\min(k, n - k) + \\log n",
    "documented": 1.11,
    "fn": "lazy.LazyTreap.split_at",
-   "measured": 1.05,
+   "measured": 1.26,
    "n": 16384,
    "ok": true
   },
@@ -9196,7 +9204,7 @@
    "cost": "k + \\log n",
    "documented": 1.13,
    "fn": "lazy.LazyTreap.take",
-   "measured": 1.2,
+   "measured": 1.27,
    "n": 16384,
    "ok": true
   },
@@ -9204,7 +9212,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "lazy.LazyTreap.to_list",
-   "measured": 5.2,
+   "measured": 5.81,
    "n": 16384,
    "ok": true
   },
@@ -9236,7 +9244,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.LazyForest.append",
-   "measured": 1.15,
+   "measured": 1.35,
    "n": 16384,
    "ok": true
   },
@@ -9244,7 +9252,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.LazyForest.apply",
-   "measured": 1.4,
+   "measured": 1.97,
    "n": 16384,
    "ok": true
   },
@@ -9252,7 +9260,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.LazyForest.get",
-   "measured": 1.38,
+   "measured": 2.27,
    "n": 16384,
    "ok": true
   },
@@ -9260,7 +9268,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "lazy.LazyForest.len",
-   "measured": 0.99,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -9268,7 +9276,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "lazy.LazyForest.new",
-   "measured": 1.02,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -9276,7 +9284,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.LazyForest.push",
-   "measured": 1.1,
+   "measured": 1.24,
    "n": 16384,
    "ok": true
   },
@@ -9284,7 +9292,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.LazyForest.reverse",
-   "measured": 1.63,
+   "measured": 2.04,
    "n": 16384,
    "ok": true
   },
@@ -9292,7 +9300,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "lazy.LazyForest.seq",
-   "measured": 0.89,
+   "measured": 0.96,
    "n": 16384,
    "ok": true
   },
@@ -9300,7 +9308,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.LazyForest.split_at",
-   "measured": 1.2,
+   "measured": 1.27,
    "n": 16384,
    "ok": true
   },
@@ -9308,7 +9316,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "lazy.LazyForest.to_list",
-   "measured": 5.68,
+   "measured": 6.14,
    "n": 16384,
    "ok": true
   },
@@ -9316,7 +9324,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.LazyTreap.insert",
-   "measured": 1.47,
+   "measured": 1.29,
    "n": 16384,
    "ok": true
   },
@@ -9493,6 +9501,22 @@
    "documented": 4.0,
    "fn": "lazy.SeqFold.split_at",
    "measured": 4.15,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_summary.cp::lazy.LazyTreap.count_while": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.LazyTreap.count_while",
+   "measured": 1.04,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_summary.cp::lazy.LazyTreap.prefix": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.LazyTreap.prefix",
+   "measured": 1.21,
    "n": 16384,
    "ok": true
   },
@@ -16052,7 +16076,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "slope.Concave.add_abs",
-   "measured": 1.18,
+   "measured": 1.25,
    "n": 16384,
    "ok": true
   },
@@ -16060,7 +16084,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "slope.Concave.add_const",
-   "measured": 0.96,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -16068,7 +16092,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "slope.Concave.add_left",
-   "measured": 1.59,
+   "measured": 1.6,
    "n": 16384,
    "ok": true
   },
@@ -16084,7 +16108,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "slope.Concave.add_quadratic",
-   "measured": 0.97,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -16092,23 +16116,23 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "slope.Concave.add_right",
-   "measured": 1.22,
+   "measured": 1.32,
    "n": 16384,
    "ok": true
   },
   "bench/scaling/slope.cp::slope.Concave.argmax": {
-   "cost": "\\log^2 n",
-   "documented": 1.31,
+   "cost": "\\log n",
+   "documented": 1.14,
    "fn": "slope.Concave.argmax",
-   "measured": 1.22,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
   "bench/scaling/slope.cp::slope.Concave.at": {
-   "cost": "c - \\mathit{lo} + \\log n",
-   "documented": 4.0,
+   "cost": "\\log n",
+   "documented": 1.14,
    "fn": "slope.Concave.at",
-   "measured": 4.94,
+   "measured": 1.59,
    "n": 16384,
    "ok": true
   },
@@ -16116,7 +16140,7 @@
    "cost": "\\lvert r \\rvert \\log \\lvert r \\rvert",
    "documented": 4.57,
    "fn": "slope.Concave.flat",
-   "measured": 4.61,
+   "measured": 5.35,
    "n": 16384,
    "ok": true
   },
@@ -16124,7 +16148,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "slope.Concave.hi",
-   "measured": 0.99,
+   "measured": 0.97,
    "n": 16384,
    "ok": true
   },
@@ -16132,15 +16156,15 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "slope.Concave.lo",
-   "measured": 1.21,
+   "measured": 0.97,
    "n": 16384,
    "ok": true
   },
   "bench/scaling/slope.cp::slope.Concave.max": {
-   "cost": "n",
-   "documented": 4.0,
+   "cost": "\\log n",
+   "documented": 1.14,
    "fn": "slope.Concave.max",
-   "measured": 5.05,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -16148,7 +16172,7 @@
    "cost": "\\lvert g \\rvert \\log n",
    "documented": 1.14,
    "fn": "slope.Concave.max_convolve",
-   "measured": 1.19,
+   "measured": 1.1,
    "n": 16384,
    "ok": true
   },
@@ -16156,15 +16180,15 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "slope.Concave.point",
-   "measured": 1.0,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
   "bench/scaling/slope.cp::slope.Concave.prefix_max": {
-   "cost": "(m + \\log n) \\log n",
-   "documented": 1.3,
+   "cost": "\\log n",
+   "documented": 1.14,
    "fn": "slope.Concave.prefix_max",
-   "measured": 1.49,
+   "measured": 1.75,
    "n": 16384,
    "ok": true
   },
@@ -16172,7 +16196,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "slope.Concave.reserve",
-   "measured": 6.16,
+   "measured": 4.34,
    "n": 16384,
    "ok": true
   },
@@ -16180,7 +16204,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "slope.Concave.shift",
-   "measured": 0.97,
+   "measured": 0.98,
    "n": 16384,
    "ok": true
   },
@@ -16188,15 +16212,15 @@
    "cost": "b - a + \\log n",
    "documented": 1.14,
    "fn": "slope.Concave.slide_max",
-   "measured": 1.07,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
   "bench/scaling/slope.cp::slope.Concave.suffix_max": {
-   "cost": "n + k \\log n",
-   "documented": 4.0,
+   "cost": "\\log n",
+   "documented": 1.14,
    "fn": "slope.Concave.suffix_max",
-   "measured": 4.93,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -16204,7 +16228,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "slope.Convex.add_abs",
-   "measured": 1.23,
+   "measured": 1.26,
    "n": 16384,
    "ok": true
   },
@@ -16212,7 +16236,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "slope.Convex.add_const",
-   "measured": 0.94,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -16220,7 +16244,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "slope.Convex.add_left",
-   "measured": 1.76,
+   "measured": 1.65,
    "n": 16384,
    "ok": true
   },
@@ -16228,7 +16252,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "slope.Convex.add_linear",
-   "measured": 0.95,
+   "measured": 1.05,
    "n": 16384,
    "ok": true
   },
@@ -16236,7 +16260,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "slope.Convex.add_quadratic",
-   "measured": 0.93,
+   "measured": 0.98,
    "n": 16384,
    "ok": true
   },
@@ -16244,23 +16268,23 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "slope.Convex.add_right",
-   "measured": 1.15,
+   "measured": 1.4,
    "n": 16384,
    "ok": true
   },
   "bench/scaling/slope.cp::slope.Convex.argmin": {
-   "cost": "\\log^2 n",
-   "documented": 1.31,
+   "cost": "\\log n",
+   "documented": 1.14,
    "fn": "slope.Convex.argmin",
-   "measured": 1.25,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
   "bench/scaling/slope.cp::slope.Convex.at": {
-   "cost": "c - \\mathit{lo} + \\log n",
-   "documented": 4.0,
+   "cost": "\\log n",
+   "documented": 1.14,
    "fn": "slope.Convex.at",
-   "measured": 4.98,
+   "measured": 1.82,
    "n": 16384,
    "ok": true
   },
@@ -16268,7 +16292,7 @@
    "cost": "\\lvert r \\rvert \\log \\lvert r \\rvert",
    "documented": 4.57,
    "fn": "slope.Convex.flat",
-   "measured": 4.73,
+   "measured": 5.41,
    "n": 16384,
    "ok": true
   },
@@ -16276,7 +16300,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "slope.Convex.hi",
-   "measured": 0.96,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -16284,15 +16308,15 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "slope.Convex.lo",
-   "measured": 0.98,
+   "measured": 1.08,
    "n": 16384,
    "ok": true
   },
   "bench/scaling/slope.cp::slope.Convex.min": {
-   "cost": "n",
-   "documented": 4.0,
+   "cost": "\\log n",
+   "documented": 1.14,
    "fn": "slope.Convex.min",
-   "measured": 5.12,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -16300,7 +16324,7 @@
    "cost": "\\lvert g \\rvert \\log n",
    "documented": 1.14,
    "fn": "slope.Convex.min_convolve",
-   "measured": 1.04,
+   "measured": 1.12,
    "n": 16384,
    "ok": true
   },
@@ -16308,15 +16332,15 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "slope.Convex.point",
-   "measured": 0.99,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
   "bench/scaling/slope.cp::slope.Convex.prefix_min": {
-   "cost": "(m + \\log n) \\log n",
-   "documented": 1.3,
+   "cost": "\\log n",
+   "documented": 1.14,
    "fn": "slope.Convex.prefix_min",
-   "measured": 1.38,
+   "measured": 1.75,
    "n": 16384,
    "ok": true
   },
@@ -16324,7 +16348,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "slope.Convex.shift",
-   "measured": 0.96,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -16332,15 +16356,15 @@
    "cost": "b - a + \\log n",
    "documented": 1.14,
    "fn": "slope.Convex.slide_min",
-   "measured": 1.1,
+   "measured": 0.98,
    "n": 16384,
    "ok": true
   },
   "bench/scaling/slope.cp::slope.Convex.suffix_min": {
-   "cost": "n + k \\log n",
-   "documented": 4.0,
+   "cost": "\\log n",
+   "documented": 1.14,
    "fn": "slope.Convex.suffix_min",
-   "measured": 5.2,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -19377,5 +19401,7 @@
    "ok": true
   }
  },
- "unscaled": []
+ "unscaled": [
+  "hashmap.tally"
+ ]
 }
