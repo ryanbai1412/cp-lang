@@ -279,7 +279,7 @@ jobs:
         run: cargo build -p cpl-cli
       - name: Neovim smoke
         shell: bash
-        run: nvim --headless --clean -l editors/neovim/test/smoke.lua "$PWD/target/debug/cpl" "$PWD"
+        run: just neovim-smoke
       - name: Neovim 0.12 smoke (no deprecated API)
         if: matrix.os == 'ubuntu-latest'
         uses: rhysd/action-setup-vim@v1
@@ -288,7 +288,7 @@ jobs:
           version: v0.12.6
       - if: matrix.os == 'ubuntu-latest'
         shell: bash
-        run: nvim --version | head -1 && nvim --headless --clean -l editors/neovim/test/smoke.lua "$PWD/target/debug/cpl" "$PWD"
+        run: nvim --version | head -1 && just neovim-smoke
       # Vim from a clean home (an empty vimrc): `cpl setup vim`, then ^X^O completes.
       - uses: rhysd/action-setup-vim@v1
         id: vim
@@ -296,7 +296,7 @@ jobs:
           version: stable
       - name: Vim smoke
         shell: bash
-        run: VIM_BIN="${{ steps.vim.outputs.executable }}" bash editors/neovim/test/smoke_vim.sh "$PWD/target/debug/cpl"
+        run: VIM_BIN="${{ steps.vim.outputs.executable }}" just vim-smoke
 
   # VS Code: the unit tests, then the extension host against the real `cpl lsp`
   # (diagnostics, definition, completion, formatting); editors/vscode/test/integration.
@@ -349,9 +349,7 @@ jobs:
         # Windows took 191 s; a hang here held main's only run slot for 35 min.
         timeout-minutes: 10
         shell: bash
-        run: |
-          cargo test -p cpl-cli --lib --test golden --test cli
-          cargo test -p cpl-contest
+        run: just test-cli
 
   # JetBrains: the plugin builds, and its tests run in a headless IDE against
   # the real `cpl` (file type, highlighting, the LSP server, run configurations).
@@ -390,15 +388,13 @@ jobs:
           retry timeout 180 npm install --prefix "$RUNNER_TEMP/ts" --no-audit --no-fund tree-sitter-cli@0.25.10 >/dev/null
           echo "TREE_SITTER=$RUNNER_TEMP/ts/node_modules/.bin/tree-sitter" >> "$GITHUB_ENV"
       - name: Emacs smoke
-        run: |
-          CPL="$PWD/target/debug/cpl" emacs --batch -Q -l editors/emacs/smoke.el
-          uv run --quiet python editors/lsp-smoke.py emacs "$PWD/target/debug/cpl" lsp
+        run: just emacs-smoke
       - name: Helix smoke
-        run: editors/helix/smoke.sh "$PWD/target/debug/cpl"
+        run: just helix-smoke
       - name: Zed smoke
-        run: editors/zed/smoke.sh "$PWD/target/debug/cpl"
+        run: just zed-smoke
       - name: Tree-sitter grammar
-        run: editors/tree-sitter-cp/smoke.sh
+        run: just tree-sitter-smoke
 
   # A main push with stale generated files (skill pages, gap lists, fixed
   # prelude gaps) or a machine-fixable clippy lint gets them regenerated and committed here, under the pushed
@@ -484,7 +480,7 @@ jobs:
       - name: Build cpl
         run: cargo build --profile ci --bin cpl
       - name: Rejudge the acceptance solutions
-        run: uv run --quiet python research/acceptance/regress.py target/ci/cpl -j "$(nproc)" --shard ${{ matrix.shard }}/3
+        run: just acceptance target/ci/cpl -j "$(nproc)" --shard ${{ matrix.shard }}/3
       - name: Cache hour
         id: hour
         if: ${{ !cancelled() }}
@@ -502,8 +498,8 @@ jobs:
         timeout-minutes: 6
         run: |
           mapfile -t ids < <(awk -v s=${{ matrix.shard }} '!/^#/ && NF && (++n - 1) % 3 == s - 1 {print $1}' corpus/sets/v03.txt)
-          uv run --quiet python scripts/corpus.py make --cpl target/ci/cpl "${ids[@]}" >/dev/null
-          uv run --quiet python scripts/corpus.py verify --only tests,stress,size,lint --cpl target/ci/cpl -j "$(nproc)" "${ids[@]}"
+          just corpus-tests-make --cpl target/ci/cpl "${ids[@]}" >/dev/null
+          just corpus-verify --only tests,stress,size,lint --cpl target/ci/cpl -j "$(nproc)" "${ids[@]}"
 
   corpus-audit:
     # handbook/guidelines/problem-packages-checklist.md R1-R4, compiling and
@@ -514,6 +510,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
       - name: Cache hour
         id: hour
         run: echo "hour=$(date -u +%Y%m%d%H)" >> "$GITHUB_OUTPUT"
@@ -529,7 +528,7 @@ jobs:
         # The step's own timeout leaves g++ running into the save below, whose
         # tar then fails ("file changed as we read it") and the cache never
         # warms; `timeout` ends the whole process group first.
-        run: timeout 660 uv run --quiet python scripts/corpus.py verify --only package -j "$(nproc)"
+        run: timeout 660 just corpus-verify --only package -j "$(nproc)"
       - uses: actions/cache/save@v4
         if: always()
         with:

@@ -558,7 +558,7 @@ class DebtRatchetTest(unittest.TestCase):
                 "on: push", "jobs:", "  good:", "    steps:", "      - run: just check", "      - run: cargo build -p cpl-cli",
                 "  raw:", "    name: scripts/x.sh in a name is fine", "    steps:", "      - name: a", "        run: |",
                 "          echo hi", "          scripts/check.sh --fast", "      - run: cargo test -p a",
-                "  block:", "    steps:", "      - run: |", "          # scripts/commented.sh", "          just site",
+                "  block:", "    steps:", "      - run: |", "          # scripts/commented.sh", "          . scripts/retry.sh", "          just site",
                 "      - uses: x", "        with:", "          path: scripts/y",
             ]) + "\n")
             self._write(root, ".github/workflows/release.yml", "jobs:\n  b:\n    steps:\n      - run: scripts/release/build.sh\n")

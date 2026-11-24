@@ -1855,7 +1855,7 @@ def ci_jobs_without_recipe(root: Path) -> list[str]:
             else:
                 block = None
                 continue
-            if cmd and not cmd.startswith("#") and not cmd.startswith("just ") and CI_CHECK.search(cmd):
+            if cmd and not cmd.startswith(("#", "just ", ". scripts/retry.sh")) and CI_CHECK.search(cmd):
                 flagged.add(job)
                 out.append(f"{rel}:{i} ({job})")
     return out

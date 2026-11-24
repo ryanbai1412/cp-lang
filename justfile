@@ -40,6 +40,35 @@ lsp-latency:
 cold-start:
     cargo test --release -p cpl-cli --test cold_start -- --nocapture
 
+# The CLI's golden and contest tests (CI: ci.yml `cli`).
+test-cli:
+    cargo test -p cpl-cli --lib --test golden --test cli
+    cargo test -p cpl-contest
+
+# Each editor's smoke test against the built `cpl` (CI: ci.yml `neovim`, `editors`).
+neovim-smoke cpl="target/debug/cpl":
+    nvim --headless --clean -l editors/neovim/test/smoke.lua "$(realpath {{cpl}})" "$PWD"
+
+vim-smoke cpl="target/debug/cpl":
+    bash editors/neovim/test/smoke_vim.sh "$(realpath {{cpl}})"
+
+emacs-smoke cpl="target/debug/cpl":
+    CPL="$(realpath {{cpl}})" emacs --batch -Q -l editors/emacs/smoke.el
+    uv run --quiet python editors/lsp-smoke.py emacs "$(realpath {{cpl}})" lsp
+
+helix-smoke cpl="target/debug/cpl":
+    editors/helix/smoke.sh "$(realpath {{cpl}})"
+
+zed-smoke cpl="target/debug/cpl":
+    editors/zed/smoke.sh "$(realpath {{cpl}})"
+
+tree-sitter-smoke:
+    editors/tree-sitter-cp/smoke.sh
+
+# The acceptance regression suite, e.g. `just acceptance target/ci/cpl --shard 1/3`.
+acceptance *args:
+    uv run --quiet python research/acceptance/regress.py {{args}}
+
 # Run the Rust workspace test suite via cargo-nextest (or cargo test).
 test *args:
     cargo nextest run --workspace {{args}}
