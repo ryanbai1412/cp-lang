@@ -12,20 +12,24 @@
   {"id": "3745965", "language": "TEXT", "result": "WA", "time": 0.023823805, "memory_kb": 1744.0, "file": null},
   {"id": "3745970", "language": "CPP17", "result": "WA", "time": 8.02558534, "memory_kb": 3372.0, "file": "corpus/submissions/3745970.cpp"},
   {"id": "3745981", "language": "TEXT", "result": "WA", "time": 0.022944783, "memory_kb": 1704.0, "file": null},
-  {"id": "3746090", "language": "CPP17", "result": "AC", "time": 8.025233158, "memory_kb": 3436.0, "file": "corpus/submissions/3746090.cpp"},
+  {"id": "3746090", "language": "CPP17", "result": "AC", "time": 8.025233158, "memory_kb": 3436.0, "file": null},
   {"id": "3746156", "language": "TEXT", "result": "WA", "time": 0.022899642, "memory_kb": 1692.0, "file": null},
   {"id": "3746164", "language": "TEXT", "result": "WA", "time": 0.022723301, "memory_kb": 1704.0, "file": null},
   {"id": "3746193", "language": "TEXT", "result": "WA", "time": 0.022586048, "memory_kb": 1692.0, "file": null},
   {"id": "3746197", "language": "TEXT", "result": "WA", "time": 0.022788717, "memory_kb": 1704.0, "file": null},
-  {"id": "3746199", "language": "CPP17", "result": "AC", "time": 6.025048563, "memory_kb": 3384.0, "file": "corpus/submissions/3746199.cpp"},
-  {"id": "3746210", "language": "CPP17", "result": "AC", "time": 4.025080133, "memory_kb": 3440.0, "file": "corpus/submissions/3746210.cpp"},
-  {"id": "5032793", "language": "CPP17", "result": "AC", "time": 4.036187001, "memory_kb": 3436.0, "file": "corpus/submissions/5032793.cpp"}
+  {"id": "3746199", "language": "CPP17", "result": "AC", "time": 6.025048563, "memory_kb": 3384.0, "file": null},
+  {"id": "3746210", "language": "CPP17", "result": "AC", "time": 4.025080133, "memory_kb": 3440.0, "file": null},
+  {"id": "5032793", "language": "CPP17", "result": "AC", "time": 4.036187001, "memory_kb": 3436.0, "file": null}
  ],
- "cpp_ac": 4,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/noi05p5/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "Output-only task. The four accepted C++ (3746090, 3746199, 3746210, 5032793; 3746210 and 5032793 are byte-identical) print stored networks for official files 4-8 and otherwise run a degree-checked greedy Kruskal that asserts it spans, so they abort on valid networks with tight bounds (4 of 40 generated inputs) and answer nothing else; they are no reference and their files are gone. orig.cpp: greedy Kruskal under the bounds on noisy weights with exchange repairs and single-swap local search, restarted, then simulated annealing with over-full people penalised; it matches the statement sample (24) and comes within 2% of the stored official networks. checker.py accepts any valid network at least as comfortable. Bounds on N, M and c come from the official party1-10.in (N <= 1000, M <= 20000), since the statement bounds only k."
 }
