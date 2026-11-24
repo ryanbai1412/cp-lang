@@ -9,6 +9,9 @@ for i in 0..8 * n:
     acc += cm.monoid().op(i, 1) // timed: algebra.Comm.monoid
     acc += m.reversed(i) // timed: algebra.Monoid.reversed
     let act = Action<Int, Int>(apply: (d, x, span) => x + d * span) // timed: algebra.Action.new
+    var f = i
+    act.compose_onto(mut f, 1) // timed: algebra.Action.compose_onto
+    acc += f
     acc += act.apply(1, i, 2)
     acc += Action<Int, Int>.of(add, +).apply(2, i, 3) // timed: algebra.Action.of
     if desc(i) < desc(acc): acc += 1 // timed: algebra.desc

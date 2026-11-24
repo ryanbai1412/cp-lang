@@ -11,6 +11,8 @@ for i in 0..64 * n:
     xs.swap(k, (k + 1) % n) // timed: builtin.List.swap
     s += xs.cut_after(k) // timed: builtin.List.cut_after
     s += xs.cut_before(k) // timed: builtin.List.cut_before
+    s += xs.first ?? 0 // timed: builtin.List.first
+    s += xs.last ?? 0 // timed: builtin.List.last
     s += xs.push_id(k) // timed: builtin.List.push_id
     xs.pop()
 for i in 0..4 * n:
@@ -28,7 +30,7 @@ for r in 0..4096:
     xs.insert(0, r) // timed: builtin.List.insert
     s += xs.remove(0) // timed: builtin.List.remove
 for r in 0..1024:
-    var c = xs.clone() // timed: builtin.List.clone
+    var c = xs.clone()
     c.fill(r) // timed: builtin.List.fill
     s += c.to_list().len // timed: builtin.List.to_list
     c.reverse() // timed: builtin.List.reverse

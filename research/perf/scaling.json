@@ -1,10 +1,18 @@
 {
  "cases": {
+  "bench/scaling/algebra.cp::algebra.Action.compose_onto": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "algebra.Action.compose_onto",
+   "measured": 0.86,
+   "n": 16384,
+   "ok": true
+  },
   "bench/scaling/algebra.cp::algebra.Action.new": {
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Action.new",
-   "measured": 0.98,
+   "measured": 0.81,
    "n": 16384,
    "ok": true
   },
@@ -12,7 +20,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Action.of",
-   "measured": 0.99,
+   "measured": 0.96,
    "n": 16384,
    "ok": true
   },
@@ -20,7 +28,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Affine.eval",
-   "measured": 0.98,
+   "measured": 0.8,
    "n": 16384,
    "ok": true
   },
@@ -28,7 +36,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Affine.id",
-   "measured": 0.99,
+   "measured": 0.8,
    "n": 16384,
    "ok": true
   },
@@ -36,7 +44,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Affine.monoid",
-   "measured": 0.99,
+   "measured": 0.8,
    "n": 16384,
    "ok": true
   },
@@ -44,7 +52,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Affine.then",
-   "measured": 0.99,
+   "measured": 0.81,
    "n": 16384,
    "ok": true
   },
@@ -52,7 +60,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Comm.monoid",
-   "measured": 0.98,
+   "measured": 0.8,
    "n": 16384,
    "ok": true
   },
@@ -60,7 +68,7 @@
    "cost": "\\mathit{components}",
    "documented": 1.0,
    "fn": "algebra.Each.monoid",
-   "measured": 0.98,
+   "measured": 0.96,
    "n": 16384,
    "ok": true
   },
@@ -68,7 +76,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Group.of",
-   "measured": 1.0,
+   "measured": 0.8,
    "n": 16384,
    "ok": true
   },
@@ -76,7 +84,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxCount.join",
-   "measured": 0.98,
+   "measured": 0.88,
    "n": 16384,
    "ok": true
   },
@@ -84,7 +92,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxCount.monoid",
-   "measured": 0.98,
+   "measured": 0.78,
    "n": 16384,
    "ok": true
   },
@@ -92,7 +100,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxCount.of",
-   "measured": 0.98,
+   "measured": 0.81,
    "n": 16384,
    "ok": true
   },
@@ -100,7 +108,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxCount.zero",
-   "measured": 0.98,
+   "measured": 0.81,
    "n": 16384,
    "ok": true
   },
@@ -108,7 +116,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSub.join",
-   "measured": 0.99,
+   "measured": 0.8,
    "n": 16384,
    "ok": true
   },
@@ -116,7 +124,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSub.monoid",
-   "measured": 0.98,
+   "measured": 0.81,
    "n": 16384,
    "ok": true
   },
@@ -124,7 +132,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSub.of",
-   "measured": 0.98,
+   "measured": 0.81,
    "n": 16384,
    "ok": true
   },
@@ -132,7 +140,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSub.repeat",
-   "measured": 0.99,
+   "measured": 0.81,
    "n": 16384,
    "ok": true
   },
@@ -140,7 +148,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSub.reversed",
-   "measured": 0.99,
+   "measured": 0.8,
    "n": 16384,
    "ok": true
   },
@@ -148,7 +156,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSub.scale",
-   "measured": 0.99,
+   "measured": 0.82,
    "n": 16384,
    "ok": true
   },
@@ -156,7 +164,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSub.try_best",
-   "measured": 0.97,
+   "measured": 0.81,
    "n": 16384,
    "ok": true
   },
@@ -164,7 +172,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSub.zero",
-   "measured": 0.98,
+   "measured": 0.81,
    "n": 16384,
    "ok": true
   },
@@ -172,7 +180,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSubAt.join",
-   "measured": 1.01,
+   "measured": 0.77,
    "n": 16384,
    "ok": true
   },
@@ -180,7 +188,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSubAt.monoid",
-   "measured": 1.0,
+   "measured": 0.8,
    "n": 16384,
    "ok": true
   },
@@ -188,7 +196,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSubAt.of",
-   "measured": 0.96,
+   "measured": 0.79,
    "n": 16384,
    "ok": true
   },
@@ -196,7 +204,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSubAt.try_at",
-   "measured": 1.0,
+   "measured": 0.79,
    "n": 16384,
    "ok": true
   },
@@ -204,7 +212,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSubAt.try_best",
-   "measured": 1.01,
+   "measured": 0.8,
    "n": 16384,
    "ok": true
   },
@@ -212,7 +220,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MaxSubAt.zero",
-   "measured": 1.0,
+   "measured": 0.98,
    "n": 16384,
    "ok": true
   },
@@ -220,7 +228,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MinCount.join",
-   "measured": 0.99,
+   "measured": 0.87,
    "n": 16384,
    "ok": true
   },
@@ -228,7 +236,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MinCount.monoid",
-   "measured": 1.0,
+   "measured": 0.82,
    "n": 16384,
    "ok": true
   },
@@ -236,7 +244,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MinCount.of",
-   "measured": 0.99,
+   "measured": 0.81,
    "n": 16384,
    "ok": true
   },
@@ -244,7 +252,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.MinCount.zero",
-   "measured": 0.99,
+   "measured": 0.82,
    "n": 16384,
    "ok": true
   },
@@ -252,7 +260,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Monoid.commutative",
-   "measured": 0.98,
+   "measured": 0.78,
    "n": 16384,
    "ok": true
   },
@@ -260,7 +268,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Monoid.monoid",
-   "measured": 0.98,
+   "measured": 0.81,
    "n": 16384,
    "ok": true
   },
@@ -268,7 +276,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Monoid.of",
-   "measured": 0.99,
+   "measured": 0.8,
    "n": 16384,
    "ok": true
   },
@@ -276,7 +284,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Monoid.reversed",
-   "measured": 0.99,
+   "measured": 0.79,
    "n": 16384,
    "ok": true
   },
@@ -284,7 +292,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.Semigroup.opt",
-   "measured": 0.99,
+   "measured": 0.88,
    "n": 16384,
    "ok": true
   },
@@ -292,7 +300,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.cmp",
-   "measured": 0.99,
+   "measured": 0.81,
    "n": 16384,
    "ok": true
   },
@@ -300,7 +308,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.desc",
-   "measured": 0.98,
+   "measured": 0.81,
    "n": 16384,
    "ok": true
   },
@@ -308,7 +316,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.each",
-   "measured": 0.99,
+   "measured": 0.75,
    "n": 16384,
    "ok": true
   },
@@ -316,7 +324,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.minmax",
-   "measured": 0.98,
+   "measured": 0.81,
    "n": 16384,
    "ok": true
   },
@@ -324,7 +332,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.opt",
-   "measured": 0.99,
+   "measured": 0.79,
    "n": 16384,
    "ok": true
   },
@@ -332,7 +340,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "algebra.point_action",
-   "measured": 0.99,
+   "measured": 0.8,
    "n": 16384,
    "ok": true
   },
@@ -340,7 +348,7 @@
    "cost": "\\log k",
    "documented": 1.14,
    "fn": "algebra.pow",
-   "measured": 1.05,
+   "measured": 0.78,
    "n": 16384,
    "ok": true
   },
@@ -1780,7 +1788,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Array.all",
-   "measured": 4.21,
+   "measured": 4.01,
    "n": 16384,
    "ok": true
   },
@@ -1788,7 +1796,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Array.any",
-   "measured": 4.05,
+   "measured": 3.93,
    "n": 16384,
    "ok": true
   },
@@ -1796,7 +1804,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Array.clone",
-   "measured": 6.74,
+   "measured": 6.83,
    "n": 16384,
    "ok": true
   },
@@ -1804,7 +1812,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Array.contains",
-   "measured": 4.16,
+   "measured": 4.17,
    "n": 16384,
    "ok": true
   },
@@ -1812,7 +1820,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Array.count",
-   "measured": 3.66,
+   "measured": 3.9,
    "n": 16384,
    "ok": true
   },
@@ -1820,7 +1828,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.Array.cut_after",
-   "measured": 0.98,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -1828,7 +1836,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.Array.cut_before",
-   "measured": 0.97,
+   "measured": 0.98,
    "n": 16384,
    "ok": true
   },
@@ -1836,7 +1844,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Array.fill",
-   "measured": 4.08,
+   "measured": 3.94,
    "n": 16384,
    "ok": true
   },
@@ -1848,11 +1856,19 @@
    "n": 16384,
    "ok": true
   },
+  "bench/scaling/builtin_array.cp::builtin.Array.first": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.Array.first",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
   "bench/scaling/builtin_array.cp::builtin.Array.first_ge": {
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Array.first_ge",
-   "measured": 0.98,
+   "measured": 0.97,
    "n": 16384,
    "ok": true
   },
@@ -1860,7 +1876,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Array.first_gt",
-   "measured": 1.03,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -1868,7 +1884,15 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.Array.get",
-   "measured": 0.98,
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_array.cp::builtin.Array.last": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.Array.last",
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -1876,7 +1900,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Array.last_le",
-   "measured": 1.01,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -1900,7 +1924,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Array.max",
-   "measured": 4.03,
+   "measured": 3.93,
    "n": 16384,
    "ok": true
   },
@@ -1908,7 +1932,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Array.min",
-   "measured": 4.02,
+   "measured": 3.94,
    "n": 16384,
    "ok": true
   },
@@ -1916,7 +1940,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Array.reach",
-   "measured": 4.11,
+   "measured": 4.03,
    "n": 16384,
    "ok": true
   },
@@ -1924,7 +1948,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Array.reverse",
-   "measured": 4.03,
+   "measured": 4.06,
    "n": 16384,
    "ok": true
   },
@@ -1932,7 +1956,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Array.reversed",
-   "measured": 4.02,
+   "measured": 3.68,
    "n": 16384,
    "ok": true
   },
@@ -1940,7 +1964,7 @@
    "cost": "n \\log n",
    "documented": 4.57,
    "fn": "builtin.Array.sort",
-   "measured": 4.8,
+   "measured": 4.51,
    "n": 16384,
    "ok": true
   },
@@ -1948,7 +1972,7 @@
    "cost": "n \\log n",
    "documented": 4.57,
    "fn": "builtin.Array.sorted",
-   "measured": 4.83,
+   "measured": 4.58,
    "n": 16384,
    "ok": true
   },
@@ -1956,7 +1980,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Array.sum",
-   "measured": 3.97,
+   "measured": 4.07,
    "n": 16384,
    "ok": true
   },
@@ -2180,7 +2204,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.all",
-   "measured": 4.2,
+   "measured": 4.07,
    "n": 16384,
    "ok": true
   },
@@ -2188,15 +2212,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.any",
-   "measured": 4.17,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/builtin_list.cp::builtin.List.clone": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "builtin.List.clone",
-   "measured": 6.83,
+   "measured": 3.92,
    "n": 16384,
    "ok": true
   },
@@ -2204,7 +2220,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.contains",
-   "measured": 4.18,
+   "measured": 4.7,
    "n": 16384,
    "ok": true
   },
@@ -2212,7 +2228,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.count",
-   "measured": 3.79,
+   "measured": 4.92,
    "n": 16384,
    "ok": true
   },
@@ -2220,7 +2236,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.List.cut_after",
-   "measured": 1.02,
+   "measured": 1.2,
    "n": 16384,
    "ok": true
   },
@@ -2228,7 +2244,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.List.cut_before",
-   "measured": 1.03,
+   "measured": 1.19,
    "n": 16384,
    "ok": true
   },
@@ -2236,7 +2252,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.fill",
-   "measured": 4.19,
+   "measured": 5.33,
    "n": 16384,
    "ok": true
   },
@@ -2252,7 +2268,15 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.find",
-   "measured": 4.32,
+   "measured": 5.42,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.first": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.List.first",
+   "measured": 1.19,
    "n": 16384,
    "ok": true
   },
@@ -2260,7 +2284,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.List.first_ge",
-   "measured": 0.99,
+   "measured": 1.23,
    "n": 16384,
    "ok": true
   },
@@ -2268,7 +2292,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.List.first_gt",
-   "measured": 1.03,
+   "measured": 1.22,
    "n": 16384,
    "ok": true
   },
@@ -2276,7 +2300,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.List.get",
-   "measured": 1.02,
+   "measured": 1.25,
    "n": 16384,
    "ok": true
   },
@@ -2284,7 +2308,15 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.insert",
-   "measured": 4.78,
+   "measured": 4.94,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list.cp::builtin.List.last": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.List.last",
+   "measured": 1.23,
    "n": 16384,
    "ok": true
   },
@@ -2292,7 +2324,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.List.last_le",
-   "measured": 1.04,
+   "measured": 1.17,
    "n": 16384,
    "ok": true
   },
@@ -2300,7 +2332,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.List.last_lt",
-   "measured": 1.03,
+   "measured": 1.14,
    "n": 16384,
    "ok": true
   },
@@ -2316,7 +2348,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.max",
-   "measured": 4.08,
+   "measured": 4.04,
    "n": 16384,
    "ok": true
   },
@@ -2324,7 +2356,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.min",
-   "measured": 4.1,
+   "measured": 4.04,
    "n": 16384,
    "ok": true
   },
@@ -2332,7 +2364,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.List.pop",
-   "measured": 1.02,
+   "measured": 1.26,
    "n": 16384,
    "ok": true
   },
@@ -2340,7 +2372,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.List.push",
-   "measured": 1.02,
+   "measured": 1.2,
    "n": 16384,
    "ok": true
   },
@@ -2348,7 +2380,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.List.push_id",
-   "measured": 1.02,
+   "measured": 1.2,
    "n": 16384,
    "ok": true
   },
@@ -2356,7 +2388,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.reach",
-   "measured": 4.2,
+   "measured": 3.95,
    "n": 16384,
    "ok": true
   },
@@ -2364,7 +2396,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.remove",
-   "measured": 3.99,
+   "measured": 4.14,
    "n": 16384,
    "ok": true
   },
@@ -2372,7 +2404,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.reverse",
-   "measured": 4.2,
+   "measured": 5.49,
    "n": 16384,
    "ok": true
   },
@@ -2380,7 +2412,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.reversed",
-   "measured": 4.15,
+   "measured": 4.29,
    "n": 16384,
    "ok": true
   },
@@ -2388,7 +2420,7 @@
    "cost": "n \\log n",
    "documented": 4.57,
    "fn": "builtin.List.sort",
-   "measured": 4.68,
+   "measured": 4.27,
    "n": 16384,
    "ok": true
   },
@@ -2396,7 +2428,7 @@
    "cost": "n \\log n",
    "documented": 4.57,
    "fn": "builtin.List.sorted",
-   "measured": 4.76,
+   "measured": 4.3,
    "n": 16384,
    "ok": true
   },
@@ -2404,7 +2436,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.sum",
-   "measured": 4.14,
+   "measured": 4.5,
    "n": 16384,
    "ok": true
   },
@@ -2412,7 +2444,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.List.swap",
-   "measured": 1.02,
+   "measured": 1.25,
    "n": 16384,
    "ok": true
   },
@@ -2420,15 +2452,23 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.to_list",
-   "measured": 4.26,
+   "measured": 4.61,
    "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_list_reserve.cp::builtin.List.clone": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.List.clone",
+   "measured": 3.43,
+   "n": 512,
    "ok": true
   },
   "bench/scaling/builtin_list_reserve.cp::builtin.List.reserve": {
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.reserve",
-   "measured": 2.23,
+   "measured": 3.0,
    "n": 512,
    "ok": true
   },
@@ -2708,7 +2748,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Str.all",
-   "measured": 3.94,
+   "measured": 4.16,
    "n": 16384,
    "ok": true
   },
@@ -2716,7 +2756,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Str.any",
-   "measured": 3.93,
+   "measured": 4.12,
    "n": 16384,
    "ok": true
   },
@@ -2724,7 +2764,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Str.count",
-   "measured": 3.76,
+   "measured": 3.9,
    "n": 16384,
    "ok": true
   },
@@ -2732,7 +2772,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.Str.cut_after",
-   "measured": 0.95,
+   "measured": 1.2,
    "n": 16384,
    "ok": true
   },
@@ -2740,7 +2780,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.Str.cut_before",
-   "measured": 0.93,
+   "measured": 1.21,
    "n": 16384,
    "ok": true
   },
@@ -2752,11 +2792,19 @@
    "n": 16384,
    "ok": true
   },
+  "bench/scaling/builtin_str.cp::builtin.Str.first": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.Str.first",
+   "measured": 1.21,
+   "n": 16384,
+   "ok": true
+  },
   "bench/scaling/builtin_str.cp::builtin.Str.first_ge": {
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Str.first_ge",
-   "measured": 1.05,
+   "measured": 1.32,
    "n": 16384,
    "ok": true
   },
@@ -2764,7 +2812,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Str.first_gt",
-   "measured": 1.03,
+   "measured": 1.3,
    "n": 16384,
    "ok": true
   },
@@ -2772,7 +2820,15 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.Str.get",
-   "measured": 0.94,
+   "measured": 1.21,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_str.cp::builtin.Str.last": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.Str.last",
+   "measured": 1.2,
    "n": 16384,
    "ok": true
   },
@@ -2780,7 +2836,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Str.last_le",
-   "measured": 1.0,
+   "measured": 1.29,
    "n": 16384,
    "ok": true
   },
@@ -2788,7 +2844,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Str.last_lt",
-   "measured": 1.03,
+   "measured": 1.29,
    "n": 16384,
    "ok": true
   },
@@ -2804,7 +2860,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Str.max",
-   "measured": 4.03,
+   "measured": 4.08,
    "n": 16384,
    "ok": true
   },
@@ -2812,7 +2868,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Str.min",
-   "measured": 3.77,
+   "measured": 4.07,
    "n": 16384,
    "ok": true
   },
@@ -2820,7 +2876,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.Str.pop",
-   "measured": 0.95,
+   "measured": 1.2,
    "n": 16384,
    "ok": true
   },
@@ -2828,7 +2884,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.Str.push",
-   "measured": 0.95,
+   "measured": 1.19,
    "n": 16384,
    "ok": true
   },
@@ -2836,7 +2892,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Str.reach",
-   "measured": 3.95,
+   "measured": 4.16,
    "n": 16384,
    "ok": true
   },
@@ -2844,7 +2900,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Str.reverse",
-   "measured": 3.9,
+   "measured": 4.11,
    "n": 16384,
    "ok": true
   },
@@ -2852,7 +2908,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Str.reversed",
-   "measured": 3.93,
+   "measured": 4.0,
    "n": 16384,
    "ok": true
   },
@@ -2860,7 +2916,7 @@
    "cost": "n \\log n",
    "documented": 4.57,
    "fn": "builtin.Str.sort",
-   "measured": 3.97,
+   "measured": 4.13,
    "n": 16384,
    "ok": true
   },
@@ -2868,7 +2924,7 @@
    "cost": "n \\log n",
    "documented": 4.57,
    "fn": "builtin.Str.sorted",
-   "measured": 4.06,
+   "measured": 4.11,
    "n": 16384,
    "ok": true
   },
@@ -2876,7 +2932,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.Str.swap",
-   "measured": 0.94,
+   "measured": 1.16,
    "n": 16384,
    "ok": true
   },
@@ -2910,6 +2966,22 @@
    "fn": "builtin.Str.to_str",
    "measured": 4.02,
    "n": 4194304,
+   "ok": true
+  },
+  "bench/scaling/builtin_str_join.cp::builtin.Str.find_all": {
+   "cost": "\\lvert \\mathit{self} \\rvert + \\lvert \\mathit{pat} \\rvert",
+   "documented": 4.0,
+   "fn": "builtin.Str.find_all",
+   "measured": 3.87,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_str_join.cp::builtin.Str.join": {
+   "cost": "\\lvert \\mathit{output} \\rvert",
+   "documented": 4.0,
+   "fn": "builtin.Str.join",
+   "measured": 4.1,
+   "n": 16384,
    "ok": true
   },
   "bench/scaling/deque.cp::deque.Deque.clear": {
@@ -16016,6 +16088,22 @@
    "n": 16384,
    "ok": true
   },
+  "bench/scaling/seq_zipped.cp::seq.Zipped.first": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.Zipped.first",
+   "measured": 0.59,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_zipped.cp::seq.Zipped.second": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.Zipped.second",
+   "measured": 0.51,
+   "n": 16384,
+   "ok": true
+  },
   "bench/scaling/shift_and.cp::strings.find_all": {
    "cost": "\\lvert \\mathit{self} \\rvert + \\lvert \\mathit{pat} \\rvert",
    "documented": 4.0,
@@ -19457,17 +19545,5 @@
    "ok": true
   }
  },
- "unscaled": [
-  "algebra.Action.compose_onto",
-  "builtin.Array.first",
-  "builtin.Array.last",
-  "builtin.List.first",
-  "builtin.List.last",
-  "builtin.Str.find_all",
-  "builtin.Str.first",
-  "builtin.Str.join",
-  "builtin.Str.last",
-  "seq.Zipped.first",
-  "seq.Zipped.second"
- ]
+ "unscaled": []
 }

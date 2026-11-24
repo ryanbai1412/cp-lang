@@ -164,7 +164,7 @@ pub struct Action<T, F>(
 
     /// Set `old` to `compose(new, old)`: in place through `compose_in` when given.
     ///
-    /// cost: one `compose_in` or `compose` call
+    /// cost: \(O(1)\) plus one `compose_in` or `compose` call
     /// traps: never
     /// example: `var f = 2; Action<Int, Int>(apply: (d, x, span) => x + d * span).compose_onto(mut f, 5); f == 7`
     pub fn compose_onto(self, mut old: F, new: F):
