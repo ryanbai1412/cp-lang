@@ -1283,6 +1283,21 @@ for t in pre.iter_rev(): print(t)
 """
 out = "6\n4\n3"
 
+[case."Seq/Stepped/iter"]
+code = """
+let s = [3, 1, 4, 1, 5].step(2)
+for x in s.iter(): print(x)
+"""
+out = "3\n4\n5"
+
+[case."Bidir/Stepped/iter_rev"]
+code = """
+let s = [3, 1, 4, 1, 5].step(2)
+for x in s.iter_rev(): print(x)
+print([x for x in s.rev])
+"""
+out = "5\n4\n3\n5 4 3"
+
 [case."Show/SortedBag/show"]
 code = """
 use std.bag.{SortedBag}
