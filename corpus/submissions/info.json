@@ -22010,61 +22010,6 @@
         "status": "D",
         "time": 8.182126733
     },
-    "4835861": {
-        "case_points": 70.0,
-        "case_total": 100.0,
-        "date": "2022-09-13T03:03:49+00:00",
-        "language": "TEXT",
-        "memory": 1912.0,
-        "problem": "eoi22math2",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003317175
-    },
-    "4835904": {
-        "case_points": 90.0,
-        "case_total": 100.0,
-        "date": "2022-09-13T03:19:08+00:00",
-        "language": "TEXT",
-        "memory": 1912.0,
-        "problem": "eoi22math2",
-        "result": "WA",
-        "status": "D",
-        "time": 0.003389065
-    },
-    "4835936": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2022-09-13T03:32:54+00:00",
-        "language": "TEXT",
-        "memory": 1868.0,
-        "problem": "eoi22math2",
-        "result": "AC",
-        "status": "D",
-        "time": 0.003480398
-    },
-    "4838787": {
-        "case_points": 60.0,
-        "case_total": 100.0,
-        "date": "2022-09-14T04:42:18+00:00",
-        "language": "TEXT",
-        "memory": 1900.0,
-        "problem": "eoi22math3",
-        "result": "WA",
-        "status": "D",
-        "time": 0.004169947
-    },
-    "4838788": {
-        "case_points": 80.0,
-        "case_total": 100.0,
-        "date": "2022-09-14T04:45:05+00:00",
-        "language": "TEXT",
-        "memory": 1872.0,
-        "problem": "eoi22math3",
-        "result": "WA",
-        "status": "D",
-        "time": 0.00370445
-    },
     "4843159": {
         "case_points": 0.0,
         "case_total": 100.0,
