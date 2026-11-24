@@ -1,4 +1,5 @@
 // Source: CCO 2023 P4 (Flip it and Stick it), https://dmoj.ca/problem/cco23p4
+// limits: 1000 ms, 1024 MB
 // Problem: binary strings S (|S| <= 2e5) and T (|T| <= 3). One move reverses a substring of S;
 //   print the fewest moves until S has no occurrence of T, or -1 if impossible.
 // Solution: complement so T starts with 0, then a formula per pattern: "0" is 0 or -1; "00"

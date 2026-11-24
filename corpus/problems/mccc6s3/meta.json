@@ -9,6 +9,9 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "original": [
+   "corpus/problems/mccc6s3/orig.cpp"
+  ],
   "port": [
    "corpus/problems/mccc6s3/port.cp"
   ]

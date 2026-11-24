@@ -1,4 +1,5 @@
 // Source: NOI 2022 P1 (Major), https://dmoj.ca/problem/noi22p1
+// limits: 1500 ms, 1024 MB
 // Problem: n sequences, then q ops: 1 x y appends y to sequence x; 2 x pops its last number;
 //   3 m x_1..x_m asks the strict majority (> half) of their concatenation, or -1; 4 x1 x2 x3 makes
 //   x3 = x1 + x2 and deletes x1, x2. n, q, total length, sum of m <= 5e5; values <= n + q.

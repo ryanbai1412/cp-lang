@@ -1,4 +1,5 @@
 // Source: NOI 2007 Necklace Factory, https://dmoj.ca/problem/noi07p4
+// limits: 1000 ms, 256 MB
 // Problem: a necklace of n <= 5e5 beads with colours <= 1000 at fixed positions 1..=n clockwise,
 //   and q <= 5e5 commands: R k rotates the beads k places clockwise, F reflects them in the axis
 //   through position 1, S i j swaps two beads, P i j x paints positions i..=j clockwise colour x,

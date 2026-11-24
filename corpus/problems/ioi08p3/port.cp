@@ -1,4 +1,5 @@
 // Source: IOI 2008 Day 1 (Fish), https://dmoj.ca/problem/ioi08p3
+// limits: 1400 ms, 64 MB
 // Problem: F <= 5e5 fish, each with a length <= 1e9 and one gem of kind 1..=K; a fish can eat
 //   any fish at most half its length (keeping its gems, its length unchanged). Count the distinct
 //   per-kind gem counts that can end up in one fish, mod M (2 <= M <= 30000).
