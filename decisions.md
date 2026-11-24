@@ -8812,3 +8812,5 @@ Reserved for call 5, which landed as decision 519.
 - **Call.** `std.geometry` drops the `Pt.dot` and `Pt.cross` methods; `dot(a, b)` and `cross(a, b)` stay and join the prelude. `scripts/std-api-lint.py` fails any operation that is both a free fn and a method of its first parameter's type.
 - **Why.** std-api/R11: math on two values is a free fn, like `gcd` and `max`; two spellings double what a reader must recognise.
 - **Reverse.** Restore the two methods and drop the R11 rule from the lint.
+
+## 523. (reserved, content)
