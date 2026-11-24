@@ -8,5 +8,5 @@
 // Bounds: n: 1..=2e5; pts.x, pts.y: -1e9..=1e9
 let n: 1..=2e5 = read()
 let pts: [n](x: -1e9..=1e9, y: -1e9..=1e9) = read()
-let order = [(u: p.x + p.y, v: p.x - p.y) for p in pts].sorted(by: p => (-p.u, -p.v))
+let order = [(u: p.x + p.y, v: p.x - p.y) for p in pts].sorted(by: p => (desc(p.u), desc(p.v)))
 print(order.lis(by: p => p.v).len)

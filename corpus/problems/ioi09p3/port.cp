@@ -18,5 +18,5 @@ let worth = [Task] t => n - sum(solved[c, t] for c in C)
 let score = [C] c => sum(solved[c, t] * worth[t] for t in Task)
 let done = [C] c => sum(solved[c, t] for t in Task)
 // ranking order: higher score, then more tasks, then lower id
-let key = (c: C) => (-score[c], -done[c], c)
+let key = (c: C) => (desc(score[c]), desc(done[c]), c)
 print(score[philip], 1 + count(key(c) < key(philip) for c in C))

@@ -19,4 +19,4 @@ let key = c => (desc(score[c]), desc(solved[c].sum()), c)
 print(score[philip], 1 + C.count(c => key(c) < key(philip)))
 ```
 
-The port writes `(c: C)` on `key` and spells the descending keys with `-`.
+The port writes `(c: C)` on `key`.
