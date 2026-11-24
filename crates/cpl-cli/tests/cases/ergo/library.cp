@@ -1,3 +1,4 @@
+use std.algebra.{Op}
 use std.dsu.{Dsu}
 use std.graph.{bfs}
 let n: 2..=8 = read()
@@ -28,7 +29,7 @@ for (lo, hi, by) in [(2, 5, 1), (4, 9, 2), (-3, -1, 7)]:
         if lo <= x.ord and x.ord <= hi: cover[x] += by
 for r in cover.runs(): print(r.keys.first!, r.len, r[r.keys.first!])
 // a scan's table holds the running value before each cut; `prefix(k)` is the fold of the first k
-fn running<M>(xs: List<Int>, f: M) -> List<Int>:
+fn running<M: Op<Int>>(xs: List<Int>, f: M) -> List<Int>:
     let p = xs.scan(f)
     [p.prefix(k) for k in 1..=xs.len]
 print(running([3, 1, 4, 1, 5], +), running([1, 2, 3], +), running([3, 1, 4, 1, 5], max), running([4, 6, 9], gcd))
