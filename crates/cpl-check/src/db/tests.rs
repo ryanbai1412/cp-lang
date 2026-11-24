@@ -508,6 +508,18 @@ fn a_generic_params_bounds_type_its_operators_and_statics() {
 }
 
 #[test]
+fn a_type_params_bound_answers_its_assoc_fns_and_domain_members() {
+    let head = "trait Positions:\n    fn count() -> Int\n    fn at(k: Int) -> Self\nimpl<D: Domain> Positions for D:\n    fn count() -> Int = D.count\n    fn at(k: Int) -> D = D.nth(k)\ndomain E = 0..3\n";
+    for tail in [
+        "fn last<P: Positions>() -> P = P.at(P.count() - 1)\nprint(last<E>())\n",
+        "fn all<P: Positions>() -> List<P> = [P.at(k) for k in 0..P.count()]\nprint(all<E>())\n",
+    ] {
+        let src = format!("{head}{tail}");
+        assert_eq!(silent_unknowns_of(&src), (vec![], 0), "{tail}");
+    }
+}
+
+#[test]
 fn a_fn_items_own_type_folds_by_the_trait_args_its_bound_gave() {
     let head = "trait Op3<T>:\n    type Fold\n    fn lift(self, x: T) -> Self.Fold\nimpl<T> Op3<T> for type_of(+):\n    type Fold = T\n    fn lift(self, x: T) -> T = x\nimpl<T: Ord> Op3<T> for type_of(max):\n    type Fold = T\n    fn lift(self, x: T) -> T = x\n";
     for tail in [
