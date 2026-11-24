@@ -6,6 +6,8 @@
 //! user's call as it did from its own frame. `cpl explain` lists each.
 
 use super::forward;
+#[path = "inline_view.rs"]
+mod view;
 use crate::walk::{children_mut, deep_exprs, deep_stmts, stmt_blocks_mut, stmt_exprs_mut, Effects};
 use crate::{Arg, Block, ClosureDef, Expr, ExprKind, Function, Local, LoopId, Place, PlaceKind};
 use crate::{Slot, SortBy, Span, Stmt, Ty};
@@ -37,6 +39,14 @@ pub(super) fn run(
     if std::env::var_os("CPL_NO_INLINE").is_some() {
         return Vec::new();
     }
+    let mut folded = view::fold(
+        h.fns,
+        [&mut *h.main, &mut *h.setup],
+        h.closures,
+        library,
+        shown,
+        next_loop,
+    );
     let recursive = recursion(h.fns, h.closures);
     let mut sites = vec![0usize; h.fns.len()];
     let mut count = |b: &Block| {
@@ -73,7 +83,8 @@ pub(super) fn run(
     }
     inl.host(h.main_locals, h.main, false, None);
     inl.host(h.main_locals, h.setup, false, None);
-    inl.inlined
+    folded.append(&mut inl.inlined);
+    folded
 }
 
 struct Inliner<'a> {

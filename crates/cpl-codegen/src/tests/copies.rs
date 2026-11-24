@@ -1049,3 +1049,19 @@ fn a_held_windows_view_is_no_vector_of_windows() {
     ));
     assert!(!cpp.contains("std::vector<cpl::ListView"), "{cpp}");
 }
+
+#[test]
+fn a_view_that_is_only_walked_emits_no_struct() {
+    let cpp = cpp(concat!(
+        "let n: Int = read()\n",
+        "let xs = [i * i for i in 0..n]\n",
+        "var t = 0\n",
+        "for w in xs.windows(3): t += w.sum()\n",
+        "for c in xs.chunks(4): t += c.len\n",
+        "print(t)\n",
+    ));
+    assert!(
+        !cpp.contains("struct Windows") && !cpp.contains("struct Chunks"),
+        "{cpp}"
+    );
+}
