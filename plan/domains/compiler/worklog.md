@@ -1043,3 +1043,12 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
 - A call's value registers are made in place, not cloned from a `Value::Unit` one by one
   (vm/exec/mod.rs `take_regs_v`): that clone was 37% of corpus ccc18s4 04.in (30M memo
   calls), now gone from the profile; the run takes 5.9 s, from 7.3 s.
+
+### VM-traced lane (2026-11-24): recording a step stops allocating
+
+- trace_log `tracing_stays_cheap_enough_to_leave_on` was red in debug (recording 14-17x an
+  untraced run, bound 13x). Each recorded step built a fresh `HashMap` (`mem::take` of the
+  fn display names, a `RandomState` per step) and a `Vec` of its call stack in `frame_of`;
+  `Log::frame` now walks the stack as an iterator and returns the top frame when nothing
+  changed, and the per-step path and int buffers are filled without generic `extend`.
+  Recording is about 10x an untraced run in debug (from 14x), 6.5x in release.

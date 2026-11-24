@@ -167,7 +167,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
     fn trace_cell_unseen(&mut self, place: &Place, regs_i: &[i64], indices: &[u16]) -> bool {
         let mut path = std::mem::take(&mut self.trace_path);
         path.clear();
-        path.extend(indices.iter().map(|&r| regs_i[r as usize].max(0) as usize));
+        for &r in indices {
+            path.push(regs_i[r as usize].max(0) as usize);
+        }
         let done = self.trace_global_unseen(place, &path);
         self.trace_path = path;
         done
@@ -192,7 +194,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         let base = self.base;
         let locals = self.locals();
         let all_raw = locals.iter().enumerate().all(|(slot, local)| {
-            if local.name.is_empty() || local.name.starts_with('_') {
+            if matches!(local.name.as_bytes().first(), None | Some(b'_')) {
                 return true;
             }
             let Some(held) = self.stack.get(base + slot) else {
@@ -223,7 +225,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         if all_raw {
             let mut path = std::mem::take(&mut self.trace_path);
             path.clear();
-            path.extend(indices.iter().map(|&r| regs_i[r as usize].max(0) as usize));
+            for &r in indices {
+                path.push(regs_i[r as usize].max(0) as usize);
+            }
             let depth = self.call_frames.len();
             if (self.tracer.as_ref()).is_some_and(|t| t.keeps_step(depth)) {
                 self.fill_shown();
