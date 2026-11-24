@@ -191,16 +191,18 @@ Fields: `alpha: Count`, `next: List<Slot>`, `ends: List<Count>`, `pass: List<Cou
 
 - `fn new() -> Trie<A>` — \(O(\lvert A \rvert)\); An empty trie over the alphabet domain `A`: one root node `0`, no words.
 - `@get fn root(self) -> Int` — \(O(1)\); The root node, for the empty word: always `0`.
-- `@get fn len(self) -> Int` — \(O(1)\); The number of nodes, the root included.
+- `@get fn nodes(self) -> Int` — \(O(1)\); The number of nodes, the root included: node ids are `0..nodes`, so a per-node table has this length.
+- `@get fn len(self) -> Int` — \(O(1)\); The number of stored words, counting copies.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); True when no words are stored (every count is zero), whatever nodes remain.
-- `fn step(self, node: Int, a: A) -> ?Int` — \(O(1)\); The child of `node` along `a`, or `None` when it was never created.; traps: when `node` is outside `0..self.len`
+- `fn each(self) -> yields List<A>` — \(O(\mathit{nodes} \cdot \lvert A \rvert)\) plus the letters yielded; \(O(\mathit{nodes} \cdot \lvert A \rvert + \mathit{letters})\).
+- `fn step(self, node: Int, a: A) -> ?Int` — \(O(1)\); The child of `node` along `a`, or `None` when it was never created.; traps: when `node` is outside `0..self.nodes`
 - `fn find<S: Seq>(self, word: S) -> ?Int` — \(O(\lvert \mathit{word} \rvert)\); The node of `word`, or `None` when no stored word starts with `word` (`count_prefix(word) == 0`).
 - `fn add<S: Seq>(mut self, word: S) -> Int` — \(O(\lvert \mathit{word} \rvert \cdot \lvert A \rvert)\) (a new node takes \(\lvert A \rvert\) slots); Inserts one copy of `word` and returns its terminal node; `count(word)` and `count_prefix(p)` for every prefix `p` of `word` grow by one.
 - `fn remove<S: Seq>(mut self, word: S) -> Bool` — \(O(\lvert \mathit{word} \rvert)\); Removes one copy of `word`, reversing one `add`, and returns `true`; returns `false` and changes nothing when `count(word) == 0`.
 - `fn count<S: Seq>(self, word: S) -> Int` — \(O(\lvert \mathit{word} \rvert)\); The number of copies of exactly `word` stored.
 - `fn count_prefix<S: Seq>(self, prefix: S) -> Int` — \(O(\lvert \mathit{prefix} \rvert)\); The number of stored words (with multiplicity) that start with `prefix`.
-- `fn ends_at(self, node: Int) -> Int` — \(O(1)\); The number of stored words that end at `node`.; traps: when `node` is outside `0..self.len`
-- `fn pass_at(self, node: Int) -> Int` — \(O(1)\); The number of stored words that pass through or end at `node`; at the root, all of them.; traps: when `node` is outside `0..self.len`
+- `fn ends_at(self, node: Int) -> Int` — \(O(1)\); The number of stored words that end at `node`.; traps: when `node` is outside `0..self.nodes`
+- `fn pass_at(self, node: Int) -> Int` — \(O(1)\); The number of stored words that pass through or end at `node`; at the root, all of them.; traps: when `node` is outside `0..self.nodes`
 - `fn contains<S: Seq>(self, word: S) -> Bool` — \(O(\lvert \mathit{word} \rvert)\); True when at least one copy of exactly `word` is stored: `count(word) > 0`.
 - `fn clear(mut self)` — \(O(\lvert A \rvert)\); Removes every word and node, leaving just the root.
 - `fn kth(self, k: Int) -> ?List<A>` — \(O(\mathit{depth} \cdot \lvert A \rvert)\); The `k`-th (0-based) stored word in lexicographic order, copies counted, as its letters; `None` when fewer than `k + 1` words are stored.; traps: when `k < 0`

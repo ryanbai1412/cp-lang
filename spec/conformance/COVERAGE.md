@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3696 (3597 passing). Rules: 617.
+Cases: 3699 (3597 passing). Rules: 617.
 
 ## Summary per chapter
 
@@ -1119,7 +1119,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **ntt** (20/20 named by a case)
 - **opt** (3/3 named by a case)
 - **pair** (5/5 named by a case)
-- **persistent** (47/47 named by a case)
+- **persistent** (52/52 named by a case)
 - **poly** (60/60 named by a case)
 - **prefix** (50/58 named by a case)
   - uncovered: `_FillPrefix2`, `_Prefix2`, `_Prefix2.new`, `_FillPrefixList`, `_PrefixList`, `_PrefixList.new`, `_Diff2`, `_Diff2.new`
@@ -1132,7 +1132,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **slope** (39/39 named by a case)
 - **sparse** (23/23 named by a case)
 - **spec** (16/16 named by a case)
-- **strings** (193/195 named by a case)
+- **strings** (195/197 named by a case)
   - uncovered: `Hashable`, `_gen_str`
 - **subset** (17/17 named by a case)
 - **timetree** (11/11 named by a case)
@@ -1140,7 +1140,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Rooted.reroot`, `Rooted.chains`, `VirtualTree`, `PermNode`
 - **window** (24/24 named by a case)
 
-2422 of 2461 std items are named by a case.
+2429 of 2468 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

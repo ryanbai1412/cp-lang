@@ -83,10 +83,19 @@ A hashed persistent multiset over domain `D`, an immutable value whose nodes liv
 - `fn empty() -> PMultiset<D>` — \(O(1)\); The empty multiset over `D`; it needs no arena node.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of elements, counting copies.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the multiset has no element.
+- `fn within(self, ar: PArena<PMultiset<D>>) -> lends PMultisetWithin<D>` — \(O(1)\)
 - `fn with(self, mut ar: PArena<PMultiset<D>>, x: D) -> PMultiset<D>` — \(O(\log \lvert D \rvert)\) time and arena nodes; A new multiset with one more copy of `x`; `self` is unchanged.; traps: when `x` is not in `D`
 - `fn without(self, mut ar: PArena<PMultiset<D>>, x: D) -> PMultiset<D>` — \(O(\log \lvert D \rvert)\) time and arena nodes; A new multiset with one copy of `x` removed, or `self` when `x` is absent; `self` is unchanged.; traps: when `x` is not in `D`
 - `fn count(self, ar: PArena<PMultiset<D>>, x: D) -> Int` — \(O(\log \lvert D \rvert)\); The number of copies of `x`.; traps: when `x` is not in `D`
 - `fn cmp(self, ar: PArena<PMultiset<D>>, other: PMultiset<D>, desc: Bool = false) -> Int` — \(O(\log \lvert D \rvert)\); Compare the elements of `self` and `other` as sorted sequences, lexicographically: ascending, or largest first with `desc: true`.
+
+## `struct PMultisetWithin<D>(ar: PArena<PMultiset<D>>, set: PMultiset<D>)`
+
+A `PMultiset` read through its `PArena`, from `s.within(ar)`.
+
+- `@get fn len(self) -> Int` — \(O(1)\); The number of elements, counting copies.
+- `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the multiset has no element.
+- `fn each(self) -> yields D` — \(O(\min(\mathit{len}, \lvert D \rvert) \log \lvert D \rvert + \mathit{len})\); Visit every element, one per copy, skipping empty subtrees.
 
 ## Example
 
