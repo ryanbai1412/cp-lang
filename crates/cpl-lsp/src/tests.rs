@@ -1949,3 +1949,41 @@ fn a_code_lens_shows_the_memory_the_arrays_take_against_the_judge_limit() {
     assert_eq!(lenses(Value::Null), memory, "VS Code draws only the others");
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+/// Each member completion offers on an optional, a std struct's view and a
+/// generator is one the checker accepts once inserted (no E0203).
+#[test]
+fn every_member_completion_type_checks_when_inserted() {
+    for (prefix, receiver, must) in [
+        ("let x: ?Int = Some(3)\n", "x", &["map", "filter"][..]),
+        (
+            "use std.bag.{SortedBag}\nlet b = SortedBag<Int>.new()\n",
+            "b.range(0..5)",
+            &[][..],
+        ),
+        ("", "chain([1, 2], [3])", &[][..]),
+    ] {
+        let offered = completions(&format!("{prefix}let probe = {receiver}.|\n"));
+        let names = labels(&offered);
+        assert!(!names.is_empty(), "nothing offered on `{receiver}`");
+        for want in must {
+            assert!(
+                names.contains(want),
+                "`{receiver}.{want}` not offered: {names:?}"
+            );
+        }
+        for name in names {
+            let src = format!("{prefix}let probe = {receiver}.{name}\n");
+            let mut db = cpl_check::Session::new();
+            db.set_file("a.cp", src.as_str());
+            let unknown: Vec<_> = (db.diagnostics("a.cp").into_iter())
+                .filter(|d| d.code.0 == "E0203")
+                .map(|d| d.message)
+                .collect();
+            assert!(
+                unknown.is_empty(),
+                "`{receiver}.{name}` was offered: {unknown:?}"
+            );
+        }
+    }
+}

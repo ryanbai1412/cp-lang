@@ -1316,6 +1316,14 @@ fn own_members_of_ty(cursor: &Cursor, std: &mut StdLib, ty: &Ty) -> Vec<(Entry, 
                 .map(|member| (builtin_entry(member, &bindings), 0))
                 .collect()
         }
+        // The checker's own members of an optional, beside std's `self: ?T` fns.
+        Ty::Optional(inner) => cpl_check::OPTIONAL_MEMBERS
+            .iter()
+            .map(|(name, sig, doc)| {
+                let detail = format!("fn {}", sig.replace('T', &inner.to_string()));
+                (plain(name, Kind::Method, detail, doc), 0)
+            })
+            .collect(),
         Ty::Domain(domain) => builtin(DOMAIN_MEMBERS, format!("domain {domain}")),
         Ty::Pos(domain) => builtin(POS_MEMBERS, format!("position in {domain}")),
         Ty::Int | Ty::Range { .. } => scalar_members(cursor, std, "Int"),

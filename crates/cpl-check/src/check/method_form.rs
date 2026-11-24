@@ -19,9 +19,6 @@ enum Pick {
     NoFit,
 }
 
-/// The members an optional has of its own, whatever std declares.
-pub(super) const OPTIONAL_MEMBERS: &[&str] = &["map", "filter"];
-
 fn takes_self(def: &Def) -> bool {
     matches!(def, Def::Fn { ty: Ty::Fn { params, .. }, .. }
         if params.first().is_some_and(|p| p.name == "self" && !p.named_only))
@@ -491,7 +488,7 @@ impl<'a> Checker<'a> {
             }
         };
         let own_member = match &base_ty {
-            Ty::Optional(_) => OPTIONAL_MEMBERS.contains(&name.text.as_str()),
+            Ty::Optional(_) => crate::builtins::optional_member(&name.text),
             Ty::Domain(_) => crate::builtins::DOMAIN_MEMBERS.contains(&name.text.as_str()),
             Ty::Pos(_) => crate::builtins::POS_MEMBERS.contains(&name.text.as_str()),
             _ => self.catalog_row(base, &name.text).is_some(),

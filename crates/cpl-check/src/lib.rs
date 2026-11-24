@@ -34,9 +34,9 @@ mod ty;
 
 pub use builtins::{
     builtin_member, builtin_members, char_literal, foreign_iter_call, foreign_member,
-    foreign_str_fn, list_end_help, needs_order, prelude_names,
+    foreign_str_fn, list_end_help, needs_order, optional_member, prelude_names,
     split_params as split_builtin_params, BuiltinMember, BuiltinType, MemberKind, PreludeKind,
-    Receiver, BUILTIN_MEMBERS, BUILTIN_TYPES, ITERATOR_POSITION_HELP,
+    Receiver, BUILTIN_MEMBERS, BUILTIN_TYPES, ITERATOR_POSITION_HELP, OPTIONAL_MEMBERS,
 };
 pub use check::{closest, GlobalRef, HoverEntry, Resolved, TypedIndex};
 pub use db::{

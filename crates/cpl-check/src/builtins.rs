@@ -486,6 +486,27 @@ pub const BUILTIN_MEMBERS: &[BuiltinMember] = &[
     row!(Array, "reach", Method, "while: (T, T) -> Bool, cyclic: Bool = false", "List<Int>", false, "For each `i`, the largest `k` with `while(a[i], a[i + j])` for all `1 <= j <= k` (mod `len` and `k < len` when `cyclic`). O(n) calls when reach drops by at most 1 per step; checked builds trap when `while` is not monotone.\n\ncost: \\(O(n)\\)", "a.reach(while: (x, y) => x + y <= 10)", "List<Int>"),
 ];
 
+/// The members an optional has of its own, whatever std declares: each
+/// name, its signature over the payload `T`, and what it gives. The
+/// checker types these calls; completion offers them.
+pub const OPTIONAL_MEMBERS: &[(&str, &str, &str)] = &[
+    (
+        "map",
+        "map<U>(f: T -> U) -> ?U",
+        "`f` of the value, or `None` when there is none",
+    ),
+    (
+        "filter",
+        "filter(f: T -> Bool) -> ?T",
+        "the value when `f` holds on it, else `None`",
+    ),
+];
+
+/// Whether `name` is one of an optional's own members.
+pub fn optional_member(name: &str) -> bool {
+    OPTIONAL_MEMBERS.iter().any(|(member, ..)| *member == name)
+}
+
 /// The members `member_ty` gives a domain (`V.first`) and a position
 /// (`v.next`), for "did you mean" on a misspelled one.
 pub(crate) const DOMAIN_MEMBERS: &[&str] = &[

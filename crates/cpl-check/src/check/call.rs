@@ -1120,9 +1120,7 @@ impl<'a> Checker<'a> {
             }
         }
         match base_ty {
-            Ty::Optional(ref inner)
-                if super::method_form::OPTIONAL_MEMBERS.contains(&name.text.as_str()) =>
-            {
+            Ty::Optional(ref inner) if crate::builtins::optional_member(&name.text) => {
                 if let ExprKind::Call { args, .. } = &call.kind {
                     if args.len() == 1 && args[0].name.is_none() {
                         let f = &args[0].value;
