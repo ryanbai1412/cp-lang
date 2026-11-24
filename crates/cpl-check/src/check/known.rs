@@ -134,43 +134,8 @@ impl<'a> Checker<'a> {
                     .iter()
                     .any(|a| a.name.as_ref().is_some_and(|n| n.text == "none"));
                 for (arg, ty) in args.iter().zip(&tys) {
-                    if arg.name.is_none() && !self.implements_print(ty, allow_none) {
-                        let snippet = self.quote(arg.value.span);
-                        let message = if matches!(ty, Ty::Bool) {
-                            format!(
-                                "`{snippet}` has type `Bool`, which does not implement `Show`; use `print(yes({snippet}))`"
-                            )
-                        } else {
-                            format!("`{snippet}` has type `{ty}`, which does not implement `Show`")
-                        };
-                        let help = optional_print_help(ty, &snippet);
-                        let span = arg.value.span;
-                        let text = self.src[span.start as usize..span.end as usize].to_string();
-                        if let Some(diag) = self.error(codes::MISSING_IMPL, span, message) {
-                            diag.help = help;
-                            if matches!(ty, Ty::Bool) {
-                                diag.fix(
-                                    format!("write `yes({text})`"),
-                                    span,
-                                    format!("yes({text})"),
-                                );
-                            }
-                            // `print(xs.pop())`: unwrap it, as the help says first.
-                            if matches!(ty, Ty::Optional(_)) {
-                                let (open, close) = if snippet.contains(' ') {
-                                    ("(", ")!")
-                                } else {
-                                    ("", "!")
-                                };
-                                diag.fixes.push(cpl_diag::Fix {
-                                    title: "unwrap with `!`".into(),
-                                    edits: vec![
-                                        (Span::point(span.start), open.into()),
-                                        (Span::point(span.end), close.into()),
-                                    ],
-                                });
-                            }
-                        }
+                    if arg.name.is_none() {
+                        self.require_show(&arg.value, ty, allow_none, false);
                     }
                 }
                 None
@@ -532,6 +497,10 @@ fn optional_print_help(ty: &Ty, snippet: &str) -> Option<String> {
         Ty::Optional(_) => Some(format!(
             "`None` has no text: write `{operand}!` to unwrap it, or `{operand} ?? d` with a default `d`"
         )),
+        // R10.3.8: a hash table has no order to print in.
+        Ty::Named { name, .. } if matches!(name.as_str(), "HashMap" | "HashSet") => Some(format!(
+            "a `{name}` has no defined order: print the order you want, `print({operand}.keys.sorted())`"
+        )),
         Ty::Named { name, args } if name == "List" && matches!(args.as_slice(), [Ty::Optional(_)]) => {
             Some(format!(
                 "`None` has no text: write `print({snippet}, none: d)` to print each `None` as `d`"
@@ -542,6 +511,54 @@ fn optional_print_help(ty: &Ty, snippet: &str) -> Option<String> {
 }
 
 impl Checker<'_> {
+    pub(crate) fn implements_print(&mut self, ty: &Ty, allow_none: bool) -> bool {
+        let mut seen = Vec::new();
+        self.derives_print(ty, allow_none, &mut seen)
+    }
+
+    /// R10.3.2: what `print` shows, and each piece of an interpolation, is
+    /// `Show`; a `Bool`, an optional or a hash table is not.
+    pub(crate) fn require_show(&mut self, expr: &Expr, ty: &Ty, allow_none: bool, piece: bool) {
+        // A piece of an unbounded `T` is shown per instance, as before.
+        if self.implements_print(ty, allow_none) || (piece && matches!(ty, Ty::Param(_))) {
+            return;
+        }
+        let snippet = self.quote(expr.span);
+        let message = match ty {
+            Ty::Bool if piece => format!(
+                "`{snippet}` has type `Bool`, which does not implement `Show`; write `{{yes({snippet})}}`"
+            ),
+            Ty::Bool => format!(
+                "`{snippet}` has type `Bool`, which does not implement `Show`; use `print(yes({snippet}))`"
+            ),
+            _ => format!("`{snippet}` has type `{ty}`, which does not implement `Show`"),
+        };
+        let help = optional_print_help(ty, &snippet);
+        let span = expr.span;
+        let text = self.src[span.start as usize..span.end as usize].to_string();
+        if let Some(diag) = self.error(codes::MISSING_IMPL, span, message) {
+            diag.help = help;
+            if matches!(ty, Ty::Bool) {
+                diag.fix(format!("write `yes({text})`"), span, format!("yes({text})"));
+            }
+            // `print(xs.pop())`: unwrap it, as the help says first.
+            if matches!(ty, Ty::Optional(_)) {
+                let (open, close) = if snippet.contains(' ') {
+                    ("(", ")!")
+                } else {
+                    ("", "!")
+                };
+                diag.fixes.push(cpl_diag::Fix {
+                    title: "unwrap with `!`".into(),
+                    edits: vec![
+                        (Span::point(span.start), open.into()),
+                        (Span::point(span.end), close.into()),
+                    ],
+                });
+            }
+        }
+    }
+
     /// R01.4.2: an integer literal takes `F64` where one is wanted, when the
     /// float holds it exactly. `None` leaves an `Int` literal to the domain rules.
     pub(super) fn literal_float(&mut self, at: &Expr, want: &Ty) -> Option<bool> {

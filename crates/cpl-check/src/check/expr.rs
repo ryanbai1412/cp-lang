@@ -37,7 +37,8 @@ impl<'a> Checker<'a> {
             ExprKind::Str(pieces) => {
                 for piece in pieces {
                     if let StrPiece::Expr(inner) | StrPiece::Spec(inner, _) = piece {
-                        self.infer(inner);
+                        let ty = self.infer(inner);
+                        self.require_show(inner, &ty, false, true);
                     }
                 }
                 Ty::Str

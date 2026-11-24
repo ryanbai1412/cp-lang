@@ -1877,12 +1877,8 @@ impl<'a> Checker<'a> {
     /// True when `ty` can be passed to `print(...)`: a written `impl Show`
     /// is its print hook, else it prints field by field.
     /// When `allow_none` is true (`print(x, none: "...")`), `?T` is printable if `T` is.
-    pub(crate) fn implements_print(&mut self, ty: &Ty, allow_none: bool) -> bool {
-        let mut seen = Vec::new();
-        self.derives_print(ty, allow_none, &mut seen)
-    }
-
-    fn derives_print(&mut self, ty: &Ty, allow_none: bool, seen: &mut Vec<String>) -> bool {
+    pub(super) fn derives_print(&mut self, ty: &Ty, none: bool, seen: &mut Vec<String>) -> bool {
+        let allow_none = none;
         match ty {
             Ty::Error | Ty::Unknown | Ty::Const(_) => true,
             Ty::Param(p) => self.param_has_bound(p, "Show"),
@@ -1915,6 +1911,9 @@ impl<'a> Checker<'a> {
             Ty::Named { name, args } => {
                 if seen.iter().any(|s| s == name) || self.has_impl(name, "Show") {
                     return true;
+                }
+                if matches!(name.as_str(), "HashMap" | "HashSet") {
+                    return false;
                 }
                 if name == "List" && args.len() == 1 {
                     return self.derives_print(&args[0], allow_none, seen);

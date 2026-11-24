@@ -242,7 +242,7 @@ impl<'p> Emitter<'p> {
             }
             Ty::Set(elem) | Ty::HashSet(elem) => {
                 let shown = self.show_stmt(&Code::primary("x"), elem, "digits");
-                b.push_str(&walk_in_key_order(matches!(ty, Ty::HashSet(_)), "*a < *b"));
+                b.push_str("    bool first = true;\n    for (const auto& x : v) {\n");
                 b.push_str(&format!(
                     "        if (!first) cpl::put_char({});\n        first = false;\n",
                     sep_char(sep_of(elem, &self.program.structs))
@@ -252,8 +252,7 @@ impl<'p> Emitter<'p> {
             Ty::Map(key, value) | Ty::HashMap(key, value) => {
                 let shown_key = self.show_stmt(&Code::primary("x.first"), key, "digits");
                 let shown_value = self.show_stmt(&Code::primary("x.second"), value, "digits");
-                let hashed = matches!(ty, Ty::HashMap(..));
-                b.push_str(&walk_in_key_order(hashed, "a->first < b->first"));
+                b.push_str("    bool first = true;\n    for (const auto& x : v) {\n");
                 b.push_str("        if (!first) cpl::put_char('\\n');\n        first = false;\n");
                 b.push_str(&format!("        {shown_key}\n        cpl::put_char(' ');\n        {shown_value}\n    }}\n"));
             }
@@ -579,18 +578,6 @@ impl<'p> Emitter<'p> {
             }
         }
     }
-}
-
-/// The head of a loop binding `x` to each entry of the container `v`. A hash
-/// table prints in key order, as the interpreter's does, so a printed
-/// `HashMap` or `HashSet` reads the same on every build and run (decision 459).
-fn walk_in_key_order(hashed: bool, less: &str) -> String {
-    if !hashed {
-        return "    bool first = true;\n    for (const auto& x : v) {\n".into();
-    }
-    format!(
-        "    std::vector<const std::decay_t<decltype(*v.begin())>*> es;\n    for (const auto& e : v) es.push_back(&e);\n    std::sort(es.begin(), es.end(), [](auto a, auto b) {{ return {less}; }});\n    bool first = true;\n    for (auto p : es) {{\n        const auto& x = *p;\n"
-    )
 }
 
 /// The types a value of the compound type `ty` is made of: what printing

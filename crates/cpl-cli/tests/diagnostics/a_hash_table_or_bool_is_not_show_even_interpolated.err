@@ -1,0 +1,46 @@
+error[E0606]: `h` has type `HashMap<Int, Int>`, which does not implement `Show`
+  --> a_hash_table_or_bool_is_not_show_even_interpolated.cp:6:7
+  |
+3 | var h: HashMap<Int, Int> = []
+  |     - `h` is declared here
+6 | print(h)
+  |       ^
+  = help: a `HashMap` has no defined order: print the order you want, `print(h.keys.sorted())`
+
+error[E0606]: `s` has type `HashSet<Int>`, which does not implement `Show`
+  --> a_hash_table_or_bool_is_not_show_even_interpolated.cp:7:7
+  |
+5 | var s: HashSet<Int> = []
+  |     - `s` is declared here
+7 | print(s)
+  |       ^
+  = help: a `HashSet` has no defined order: print the order you want, `print(s.keys.sorted())`
+
+error[E0606]: `h` has type `HashMap<Int, Int>`, which does not implement `Show`
+  --> a_hash_table_or_bool_is_not_show_even_interpolated.cp:8:9
+  |
+3 | var h: HashMap<Int, Int> = []
+  |     - `h` is declared here
+8 | print("{h} {flag} {x}")
+  |         ^
+  = help: a `HashMap` has no defined order: print the order you want, `print(h.keys.sorted())`
+
+error[E0606]: `flag` has type `Bool`, which does not implement `Show`; write `{yes(flag)}`
+  --> a_hash_table_or_bool_is_not_show_even_interpolated.cp:8:13
+  |
+1 | let flag = 3 > 2
+  |     ---- `flag` is declared here
+8 | print("{h} {flag} {x}")
+  |             ^^^^
+  = help: write `yes(flag)`
+
+error[E0606]: `x` has type `?Int`, which does not implement `Show`
+  --> a_hash_table_or_bool_is_not_show_even_interpolated.cp:8:20
+  |
+2 | let x: ?Int = None
+  |     - `x` is declared here
+8 | print("{h} {flag} {x}")
+  |                    ^
+  = help: `None` has no text: write `x!` to unwrap it, or `x ?? d` with a default `d`
+
+a_hash_table_or_bool_is_not_show_even_interpolated.cp: 5 errors
