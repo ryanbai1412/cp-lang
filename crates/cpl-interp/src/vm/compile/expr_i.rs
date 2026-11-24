@@ -146,7 +146,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             ExprKind::Field(base, 0)
                 if matches!(
                     ScalarKind::of_ty(&base.ty, self.program),
-                    Some(ScalarKind::OneIntStruct)
+                    Some(ScalarKind::OneIntStruct | ScalarKind::OneU64Struct)
                 ) =>
             {
                 self.compile_expr_i(base)
@@ -384,8 +384,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 dst
             }
             ExprKind::Cmp(op, lhs, rhs)
-                if lhs.ty == Ty::U64
-                    && rhs.ty == Ty::U64
+                if self.is_u64_scalar(&lhs.ty)
+                    && self.is_u64_scalar(&rhs.ty)
                     && matches!(
                         op,
                         CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge | CmpOp::Eq | CmpOp::Ne
@@ -400,8 +400,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
             ExprKind::Cmp(op, lhs, rhs)
                 if ScalarKind::of_ty(&lhs.ty, self.program).is_some()
                     && ScalarKind::of_ty(&rhs.ty, self.program).is_some()
-                    && lhs.ty != Ty::U64
-                    && rhs.ty != Ty::U64
+                    && !self.is_u64_scalar(&lhs.ty)
+                    && !self.is_u64_scalar(&rhs.ty)
                     && ty_uses_structural_cmp(&lhs.ty, self.program)
                     && matches!(
                         op,
@@ -417,10 +417,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
             ExprKind::Cmp(op, lhs, rhs)
                 if matches!(
                     ScalarKind::of_opt_ty(&lhs.ty, self.program),
-                    Some(k) if k != ScalarKind::U64
+                    Some(k) if !matches!(k, ScalarKind::U64 | ScalarKind::OneU64Struct)
                 ) && matches!(
                     ScalarKind::of_opt_ty(&rhs.ty, self.program),
-                    Some(k) if k != ScalarKind::U64
+                    Some(k) if !matches!(k, ScalarKind::U64 | ScalarKind::OneU64Struct)
                 ) && ty_uses_structural_cmp(&lhs.ty, self.program)
                     && matches!(
                         op,
@@ -1448,5 +1448,15 @@ impl<'p, 'f> Compiler<'p, 'f> {
             }
         }
         Some((map, boxed))
+    }
+}
+
+impl Compiler<'_, '_> {
+    /// Whether `ty` is held as unsigned bits: a `U64`, or a struct of one.
+    fn is_u64_scalar(&self, ty: &Ty) -> bool {
+        matches!(
+            ScalarKind::of_ty(ty, self.program),
+            Some(ScalarKind::U64 | ScalarKind::OneU64Struct)
+        )
     }
 }

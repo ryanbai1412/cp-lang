@@ -9,6 +9,8 @@ pub(crate) enum ScalarKind {
     Bool,
     Char,
     OneIntStruct,
+    /// A struct of one `U64` field (`Subset<B>`), held as its bits.
+    OneU64Struct,
 }
 
 impl ScalarKind {
@@ -24,6 +26,8 @@ impl ScalarKind {
                     && matches!(s.fields[0].1, Ty::Int | Ty::Pos(_) | Ty::Bound(_))
                 {
                     Some(ScalarKind::OneIntStruct)
+                } else if s.fields.len() == 1 && s.fields[0].1 == Ty::U64 {
+                    Some(ScalarKind::OneU64Struct)
                 } else {
                     None
                 }
@@ -47,6 +51,11 @@ impl ScalarKind {
             ScalarKind::Bool => Value::Bool(raw != 0),
             ScalarKind::Char => Value::Char(raw as u8),
             ScalarKind::OneIntStruct => Value::Tuple(TupleVal::OneInt(raw)),
+            ScalarKind::OneU64Struct => {
+                Value::Tuple(TupleVal::Boxed(crate::value::Shared::new(vec![
+                    Value::U64(raw as u64),
+                ])))
+            }
         }
     }
 
@@ -103,7 +112,7 @@ pub(super) fn small_tuple_shape(ty: &Ty, program: &Program) -> Option<(u8, [Smal
             ScalarKind::OneIntStruct => SmallFieldKind::OneIntStruct,
             ScalarKind::Bool => SmallFieldKind::Bool,
             ScalarKind::Char => SmallFieldKind::Char,
-            ScalarKind::U64 => return None,
+            ScalarKind::U64 | ScalarKind::OneU64Struct => return None,
         };
     }
     Some((len as u8, kinds))

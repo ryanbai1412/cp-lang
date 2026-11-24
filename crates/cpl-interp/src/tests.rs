@@ -745,6 +745,37 @@ print(big.a)
 }
 
 #[test]
+fn vm_holds_a_one_u64_struct_as_its_bits() {
+    // atcoder_dp_u's `Subset<R>`: a struct of one `U64` is a scalar, passed
+    // and returned in an Int register, its high bit kept.
+    let source = "
+struct W(b: U64)
+fn sub(x: W, y: W) -> W = W(x.b & (y.b ^ (U64(0) - U64(1))))
+let all = W(U64(0) - U64(1))
+let r = sub(all, W(U64(6)))
+print(r.b, yes(r == all), yes(sub(r, r) == W(U64(0))))
+";
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", source);
+    let analysis = db.analyze("t.cp").expect("the file was just set");
+    assert!(
+        analysis.diagnostics.is_empty(),
+        "{:?}",
+        analysis.diagnostics
+    );
+    let program = cpl_ir::lower(&analysis).expect("lowers");
+    let feeds = cpl_ir::pushed::Feeds::of(&program);
+    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false, false);
+    let sub = program.fns.iter().position(|f| f.name == "sub").unwrap();
+    let chunk = compiled.fns[sub].as_ref().expect("sub is on the VM");
+    let held = format!("{:?}", &chunk.slot_map[..2]);
+    assert_eq!(held.matches("OneU64Struct").count(), 2, "{held}");
+    let (out, trap) = outcome(source, "");
+    assert!(trap.is_none(), "{trap:?}");
+    assert_eq!(out, "18446744073709551609 NO YES\n");
+}
+
+#[test]
 fn vm_passes_a_mut_opt_element_to_a_fn() {
     // SegTree's `act.compose_onto(mut lz[p], f)` over `?Bool` tags: a `mut`
     // arg at an indexed `?T` place stays on the VM.
