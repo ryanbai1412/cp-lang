@@ -428,6 +428,7 @@
         "core-03/read-rejects-spare.cp": "pass",
         "core-03/runtime-mod-per-case.cp": "pass",
         "core-03/runtime-modulus-read.cp": "pass",
+        "core-03/separately-bounded-table-is-not-over.cp": "pass",
         "core-03/spare-value-overflow.cp": "pass",
         "core-03/spec-block-niche-layout.cp": "pass",
         "core-03/spec-block-widths.cp": "pass",
@@ -2538,6 +2539,7 @@
         "std-lazy/lazy-treap-insert-at-ends.cp": "pass",
         "std-lazy/lazy-treap-insert-sorted-dups.cp": "pass",
         "std-lazy/lazy-treap-reverse-matches-brute.cp": "pass",
+        "std-lazy/lazy-treap-reverse-mirrors-rank-dependent-tags.cp": "pass",
         "std-lazy/lazy-treap-splice-back-empty.cp": "pass",
         "std-lazy/lazytreap-bodies.cp": "pass",
         "std-lazy/rope-matches-brute.cp": "pass",
@@ -2667,8 +2669,20 @@
         "std-mod/prime-power-comb.cp": "pass",
         "std-mod/try-inv-zero-and-noncoprime.cp": "pass",
         "std-models/deque.cp": "pass",
+        "std-models/dynamic-order-tree.cp": "pass",
         "std-models/fenwick.cp": "pass",
+        "std-models/io.cp": "pass",
+        "std-models/marks.cp": "pass",
+        "std-models/merge-segs.cp": "pass",
+        "std-models/merge-sort-tree.cp": "pass",
+        "std-models/merge-trees.cp": "pass",
+        "std-models/opt.cp": "pass",
+        "std-models/pair.cp": "pass",
+        "std-models/range.cp": "pass",
+        "std-models/segtree.cp": "pass",
+        "std-models/segtree2d.cp": "pass",
         "std-models/seq-fold.cp": "pass",
+        "std-models/wavelet-matrix.cp": "pass",
         "std-ntt/convolve-2d-matches-the-loop.cp": "pass",
         "std-ntt/convolve-cyclic-length-mismatch-traps.cp": "pass",
         "std-ntt/convolve-fast-product.cp": "pass",
@@ -3623,10 +3637,10 @@
       ],
       "counts": {
         "fail": 12,
-        "pass": 3525
+        "pass": 3539
       },
-      "passed": 3525,
-      "total": 3537
+      "passed": 3539,
+      "total": 3551
     },
     "corpus": {
       "cases": {
