@@ -304,10 +304,11 @@ fn setup_finds_a_jetbrains_ide_that_has_never_started() {
 }
 
 /// The one step on a fresh machine: an empty home where the installer put
-/// `cpl` at `~/.cpl/bin` and no `cpl` is on the PATH. `cpl setup neovim` and
-/// `vim`, with no `--dir`, write where each editor loads a start package, and
-/// the client there (`cplang#path()`, which Neovim's `vim.lsp.start` and
-/// vim-lsp both run) finds that `cpl`, which then answers as `cpl lsp`. Vim's
+/// `cpl` at `~/.cpl/bin` and no `cpl` is on the PATH. `cpl setup neovim`,
+/// `vim` and `emacs`, with no `--dir`, write where each editor loads a
+/// package, with the path of the `cpl` setup ran as in its settings
+/// (`g:cpl_path`, which Neovim's `vim.lsp.start` and vim-lsp both run, and
+/// `cp-cpl-program`, eglot's), and that `cpl` answers as `cpl lsp`. Vim's
 /// folder is whichever the Vim on the PATH reads (on Windows, `vimfiles` for
 /// native Vim, `.vim` for Git Bash's). Vim already has yegappan/lsp, so setup
 /// downloads nothing (smoke_vim.sh covers the vim-lsp download).
@@ -354,8 +355,8 @@ fn setup_on_a_fresh_home_installs_where_the_editor_finds_cpl_lsp() {
     };
     let runtime = [
         "plugin/cplang.vim",
+        "plugin/cpl_path.vim",
         "ftdetect/cp.vim",
-        "autoload/cplang.vim",
         "syntax/cp.vim",
     ];
     let mut packages = vec![];
@@ -392,8 +393,8 @@ fn setup_on_a_fresh_home_installs_where_the_editor_finds_cpl_lsp() {
     \ '{"jsonrpc":"2.0","id":2,"method":"shutdown","params":null}',
     \ '{"jsonrpc":"2.0","method":"exit","params":null}']
 let s:input = join(map(s:said, {_, m -> 'Content-Length: ' . len(m) . "\r\n\r\n" . m}), '')
-let s:out = system(shellescape(cplang#path()) . ' lsp', s:input)
-call writefile([&filetype, cplang#path(), s:out =~# '"capabilities"' ? 'answers' : s:out], 'found')
+let s:out = system(shellescape(g:cpl_path) . ' lsp', s:input)
+call writefile([&filetype, g:cpl_path, s:out =~# '"capabilities"' ? 'answers' : s:out], 'found')
 "#,
     )
     .unwrap();
@@ -406,7 +407,14 @@ call writefile([&filetype, cplang#path(), s:out =~# '"capabilities"' ? 'answers'
         let pre: &[&str] = if *editor == "vim" {
             &["-Nu", "NORC"]
         } else {
-            &["-Nu", "NONE", "-c", &rtp]
+            &[
+                "-Nu",
+                "NONE",
+                "-c",
+                &rtp,
+                "-c",
+                "runtime! plugin/cpl_path.vim",
+            ]
         };
         let args = [
             pre,
@@ -428,9 +436,49 @@ call writefile([&filetype, cplang#path(), s:out =~# '"capabilities"' ? 'answers'
         assert!(
             found.len() == 3
                 && found[0] == "cp"
-                && found[1].trim_end_matches(".exe").ends_with(".cpl/bin/cpl")
+                && found[1] == installed.display().to_string().replace('\\', "/")
                 && found[2] == "answers",
             "{editor}: {found:?} {}",
+            text(&out.stderr)
+        );
+    }
+
+    // Emacs, where CI installs it: `package-activate-all`, which its startup
+    // runs, loads the package, and a .cp file's eglot command answers.
+    if cfg!(target_os = "linux") {
+        let out = fresh(&installed, &["setup", "emacs"]);
+        assert_eq!(out.status.code(), Some(0), "emacs: {}", text(&out.stderr));
+        let said = [
+            r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#,
+            r#"{"jsonrpc":"2.0","id":2,"method":"shutdown","params":null}"#,
+            r#"{"jsonrpc":"2.0","method":"exit","params":null}"#,
+        ];
+        let input: String = said
+            .iter()
+            .map(|m| format!("Content-Length: {}\r\n\r\n{m}", m.len()))
+            .collect();
+        std::fs::write(dir.join("lsp.in"), input).unwrap();
+        let _ = std::fs::remove_file(dir.join("found"));
+        let probe = r#"(progn
+  (package-activate-all)
+  (find-file "a.cp")
+  (let ((mode major-mode) (command (cp--server-command)))
+    (with-temp-file "found"
+      (insert (format "%s\n%s\n" mode (car command)))
+      (insert (if (with-temp-buffer
+                    (apply #'call-process (car command) "lsp.in" t nil (cdr command))
+                    (goto-char (point-min))
+                    (search-forward "\"capabilities\"" nil t))
+                  "answers" "silent")))))"#;
+        let out = fresh(Path::new("emacs"), &["--batch", "--eval", probe]);
+        let found = std::fs::read_to_string(dir.join("found")).unwrap_or_default();
+        let found: Vec<_> = found.lines().collect();
+        assert!(
+            found.len() == 3
+                && found[0] == "cp-mode"
+                && found[1] == installed.display().to_string()
+                && found[2] == "answers",
+            "emacs: {found:?} {}",
             text(&out.stderr)
         );
     }

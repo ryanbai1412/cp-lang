@@ -253,6 +253,12 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: nextest-archive
+      # golden.rs's fresh-home setup test starts Emacs without cpl on the PATH.
+      - name: Install Emacs
+        run: |
+          . scripts/retry.sh
+          sudo rm -f /var/lib/man-db/auto-update
+          retry timeout 180 sudo apt-get install -y -q --no-install-recommends -o DPkg::Lock::Timeout=60 emacs-nox >/dev/null
       - name: Tests
         timeout-minutes: 12
         env:

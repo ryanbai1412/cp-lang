@@ -1,11 +1,10 @@
 ;;; cp-mode.el --- Major mode for CP Lang -*- lexical-binding: t -*-
 
 ;;; Commentary:
-;; Highlighting and comments for .cp files, and `cpl lsp' for eglot and lsp-mode:
-;;   (add-to-list 'load-path "/path/to/cp-lang/editors/emacs")
-;;   (require 'cp-mode)
+;; Highlighting and comments for .cp files, and `cpl lsp' for eglot and lsp-mode.
+;; `cpl setup emacs' installs it as a package that runs the cpl setup ran as; then
 ;;   (add-hook 'cp-mode-hook #'eglot-ensure)   ; or #'lsp
-;; Set `cp-cpl-program' when cpl is not on the PATH.
+;; Set `cp-cpl-program' to run another cpl.
 
 ;;; Code:
 

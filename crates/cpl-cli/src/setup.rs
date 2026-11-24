@@ -6,7 +6,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 pub(crate) const USAGE: &str = "\
-usage: cpl setup <neovim | vim | vscode | jetbrains> [OPTIONS]
+usage: cpl setup <neovim | vim | emacs | vscode | jetbrains> [OPTIONS]
        cpl setup <vim | emacs | jetbrains> --grammar
 
 Writes CP Lang's editor files where the editor loads them at startup, then
@@ -14,7 +14,11 @@ says where. Neovim gets the filetype, highlighting and `cpl lsp`:
 diagnostics, completion, `gd` to the definition and formatting on save.
 Vim gets the filetype and highlighting, and `cpl lsp` through vim-lsp,
 which it installs beside CP Lang unless vim-lsp or yegappan/lsp is already
-there. VS Code gets the extension from the
+there. Emacs gets `cp-mode` as a package in its `elpa` folder, with `cpl
+lsp` for eglot and lsp-mode. Neovim, Vim, Emacs and JetBrains get the
+absolute path of this `cpl` (the installer's launcher when it ran through
+it) in their settings, so an editor started without the shell's PATH runs
+it. VS Code gets the extension from the
 edge release, installed with `code --install-extension` (`$CPL_CODE` names
 another editor command, such as `codium` or `cursor`). Run it again after
 `cpl self update`. JetBrains IDEs get the edge release's plugin unpacked
@@ -56,10 +60,6 @@ const COMMON: &[(&str, &str)] = &[
     (
         "plugin/cplang.vim",
         include_str!("../../../editors/neovim/plugin/cplang.vim"),
-    ),
-    (
-        "autoload/cplang.vim",
-        include_str!("../../../editors/neovim/autoload/cplang.vim"),
     ),
 ];
 const QUERIES: (&str, &str) = (
@@ -158,7 +158,7 @@ pub(crate) fn setup(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut
     let Some(editor) = editor else {
         return usage(
             stderr,
-            "name the editor: `cpl setup neovim`, `vim`, `vscode` or `jetbrains`",
+            "name the editor: `cpl setup neovim`, `vim`, `emacs`, `vscode` or `jetbrains`",
         );
     };
     let editor = match editor {
@@ -186,11 +186,14 @@ pub(crate) fn setup(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut
         "vscode" => install_vscode(vsix),
         "jetbrains" if check => check_jetbrains(),
         "jetbrains" => install_jetbrains(zip, dir.take()),
+        "emacs" => install_emacs(dir.take()),
         _ => {
             let Some(files) = files(editor) else {
                 return usage(
                     stderr,
-                    &format!("no setup for `{editor}`: `neovim`, `vim`, `vscode` or `jetbrains`"),
+                    &format!(
+                        "no setup for `{editor}`: `neovim`, `vim`, `emacs`, `vscode` or `jetbrains`"
+                    ),
                 );
             };
             let dir = dir.or_else(|| package_dir(editor));
@@ -242,9 +245,15 @@ fn write_files(
     let dir = dir
         .or_else(|| package_dir(editor))
         .ok_or("no home folder to install into; pass --dir")?;
+    let cpl = recorded()?;
     let syntax = cpl_syntax::grammar::vim();
+    let path = format!(
+        "\" Written by `cpl setup`: the cpl it ran as. Set g:cpl_path first to run another.\nif !exists('g:cpl_path')\n    let g:cpl_path = '{}'\nendif\n",
+        cpl.display().to_string().replace('\'', "''")
+    );
     let mut files = files.to_vec();
     files.push(("syntax/cp.vim", &syntax));
+    files.push(("plugin/cpl_path.vim", &path));
     write_all(&dir, &files).map_err(|e| {
         format!(
             "can't write {}: {e}\nhelp: pass `--dir DIR` to install into a folder you can write",
@@ -252,8 +261,88 @@ fn write_files(
         )
     })?;
     Ok(format!(
-        "installed CP Lang for {editor} in {}\nopen a .cp file to start; it runs the `cpl` on the PATH, else the installer's ~/.cpl/bin/cpl (set g:cpl_path for another)",
-        dir.shown()
+        "installed CP Lang for {editor} in {}\nopen a .cp file to start; it runs {} (set g:cpl_path for another)",
+        dir.shown(),
+        cpl.display()
+    ))
+}
+
+/// The `cpl` setup writes into an editor's settings.
+fn recorded() -> Result<PathBuf, String> {
+    crate::toolchain::recorded_exe()
+        .ok_or_else(|| "can't tell where this cpl is to record it".to_string())
+}
+
+const EMACS_MODE: &str = include_str!("../../../editors/emacs/cp-mode.el");
+
+/// The `elpa` folder Emacs activates packages from: in `~/.emacs.d`, or the
+/// XDG `emacs` folder when only that one exists, as Emacs picks.
+fn emacs_elpa() -> Option<PathBuf> {
+    let var = |name: &str| {
+        std::env::var_os(name)
+            .filter(|v| !v.is_empty())
+            .map(PathBuf::from)
+    };
+    let home = match var("HOME") {
+        None if cfg!(windows) => var("APPDATA")?,
+        _ => cpl_check::home_dir()?,
+    };
+    let dot = home.join(".emacs.d");
+    let xdg = var("XDG_CONFIG_HOME")
+        .unwrap_or_else(|| home.join(".config"))
+        .join("emacs");
+    let dir = if !dot.exists() && xdg.exists() {
+        xdg
+    } else {
+        dot
+    };
+    Some(dir.join("elpa"))
+}
+
+/// `cp-mode` as a package in `elpa` (or `--dir`), replacing an older one, with
+/// autoloads that set `cp-cpl-program` to this `cpl` unless the init file
+/// sets it.
+fn install_emacs(elpa: Option<PathBuf>) -> Result<String, String> {
+    let elpa = elpa
+        .or_else(emacs_elpa)
+        .ok_or("no home folder to install into; pass --dir")?;
+    let cpl = recorded()?;
+    if let Ok(entries) = std::fs::read_dir(&elpa) {
+        for entry in entries.flatten() {
+            if entry.file_name().to_string_lossy().starts_with("cp-mode-") {
+                let _ = std::fs::remove_dir_all(entry.path());
+            }
+        }
+    }
+    let version = env!("CARGO_PKG_VERSION").split('-').next().unwrap_or("0");
+    let dir = elpa.join(format!("cp-mode-{version}"));
+    let quoted = |s: &str| format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\""));
+    let pkg = format!("(define-package \"cp-mode\" \"{version}\" \"Major mode for CP Lang\")\n");
+    let autoloads = format!(
+        ";;; cp-mode-autoloads.el --- written by `cpl setup emacs' -*- lexical-binding: t -*-\n\
+         (add-to-list 'load-path (directory-file-name (file-name-directory load-file-name)))\n\
+         ;; The cpl setup ran as; set `cp-cpl-program' in your init file to run another.\n\
+         (defvar cp-cpl-program {})\n\
+         (autoload 'cp-mode \"cp-mode\" \"Major mode for CP Lang.\" t)\n\
+         (add-to-list 'auto-mode-alist '(\"\\\\.cp\\\\'\" . cp-mode))\n\
+         (provide 'cp-mode-autoloads)\n",
+        quoted(&cpl.display().to_string())
+    );
+    let files = [
+        ("cp-mode.el", EMACS_MODE),
+        ("cp-mode-pkg.el", pkg.as_str()),
+        ("cp-mode-autoloads.el", autoloads.as_str()),
+    ];
+    write_all(&dir, &files).map_err(|e| {
+        format!(
+            "can't write {}: {e}\nhelp: pass `--dir DIR` to install into a folder you can write",
+            dir.shown()
+        )
+    })?;
+    Ok(format!(
+        "installed CP Lang for Emacs in {}\nopen a .cp file to start; it runs {} (set cp-cpl-program for another)\nadd (add-hook 'cp-mode-hook #'eglot-ensure) to your init file for `cpl lsp`",
+        dir.shown(),
+        cpl.display()
     ))
 }
 
@@ -608,6 +697,7 @@ fn install_jetbrains(zip: Option<PathBuf>, dir: Option<PathBuf>) -> Result<Strin
     if ides.is_empty() {
         return Err("no JetBrains IDE found: none has started yet, has its launcher (`idea`, `idea.sh`) on the PATH, or is in a usual install folder; pass --dir PLUGINS, or start the IDE once".into());
     }
+    let cpl = recorded()?;
     let (old, ides): (Vec<Ide>, Vec<Ide>) = ides.into_iter().partition(Ide::too_old);
     let old: Vec<&str> = old.iter().map(|ide| ide.name.as_str()).collect();
     if ides.is_empty() {
@@ -681,6 +771,10 @@ fn install_jetbrains(zip: Option<PathBuf>, dir: Option<PathBuf>) -> Result<Strin
                 report +=
                     &format!("  (can't tell {name} where CP Lang's updates come from: {e})\n");
             }
+            match record_jetbrains_cpl(config, &cpl) {
+                Ok(path) => report += &format!("  it runs {}\n", path),
+                Err(e) => report += &format!("  (can't tell {name} where cpl is: {e})\n"),
+            }
         }
     }
     if !old.is_empty() {
@@ -691,6 +785,35 @@ fn install_jetbrains(zip: Option<PathBuf>, dir: Option<PathBuf>) -> Result<Strin
     }
     report += "restart the IDE, then `cpl setup jetbrains --check` says whether CP Lang loaded";
     Ok(report)
+}
+
+/// Sets the plugin's `path` (Settings, Tools, CP Lang, in `options/cp-lang.xml`)
+/// to `cpl` unless it names one already; says the path the IDE runs.
+fn record_jetbrains_cpl(config: &Path, cpl: &Path) -> std::io::Result<String> {
+    let file = config.join("options/cp-lang.xml");
+    let old = std::fs::read_to_string(&file).unwrap_or_default();
+    let set = old
+        .split("<option name=\"path\" value=\"")
+        .nth(1)
+        .and_then(|v| v.split('"').next())
+        .filter(|v| !v.is_empty());
+    if let Some(set) = set {
+        return Ok(set
+            .replace("&quot;", "\"")
+            .replace("&lt;", "<")
+            .replace("&amp;", "&"));
+    }
+    let path = cpl.display().to_string();
+    let value = path
+        .replace('&', "&amp;")
+        .replace('"', "&quot;")
+        .replace('<', "&lt;");
+    std::fs::create_dir_all(file.parent().unwrap_or(config))?;
+    std::fs::write(
+        file,
+        format!("<application>\n  <component name=\"CpLangSettings\">\n    <option name=\"path\" value=\"{value}\" />\n  </component>\n</application>\n"),
+    )?;
+    Ok(path)
 }
 
 /// The custom plugin repository the release publishes for CP Lang. An IDE

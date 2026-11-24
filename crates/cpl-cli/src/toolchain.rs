@@ -212,6 +212,17 @@ pub fn home() -> Option<PathBuf> {
     Some(cpl_check::home_dir()?.join(".cpl"))
 }
 
+/// The `cpl` an editor's settings name, as `cpl setup` records it: the
+/// installed launcher when this toolchain runs under it, so the path stays
+/// right after `cpl self update`, else this binary.
+pub fn recorded_exe() -> Option<PathBuf> {
+    let launcher = home().map(|h| h.join("bin").join(format!("cpl{EXE}")));
+    match launcher {
+        Some(l) if cpl_env::TOOLCHAIN.is_set() && l.is_file() => Some(l),
+        _ => std::env::current_exe().ok(),
+    }
+}
+
 fn toolchain_dir(home: &Path, id: &str) -> PathBuf {
     home.join("toolchains").join(id)
 }

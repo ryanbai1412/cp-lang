@@ -92,7 +92,7 @@ setup: breakpoints, stepping, and time travel back with `require('dap').step_bac
 and `require('dap').reverse_continue()`. Settings, all optional:
 
 ```lua
-vim.g.cpl_path = 'cpl'             -- when cpl is not on the PATH
+vim.g.cpl_path = 'cpl'             -- another cpl than the one `cpl setup` ran as
 vim.g.cpl_format_on_save = false   -- keep your own formatting
 vim.g.cpl_autocomplete = false     -- keep your completion plugin's menu
 ```
@@ -147,14 +147,21 @@ case after the fix.
 
 ## Emacs
 
+```sh
+cpl setup emacs
+```
+
+installs `cp-mode` as a package in `~/.emacs.d/elpa` (`--dir DIR` names
+another `elpa` folder), then add to your init file:
+
 ```elisp
-(add-to-list 'load-path "/path/to/cp-lang/editors/emacs")
-(require 'cp-mode)
 (add-hook 'cp-mode-hook #'eglot-ensure)   ; Emacs 29+, or #'lsp with lsp-mode
 ```
 
-`cp-mode` registers `cpl lsp` with both eglot and lsp-mode; set
-`cp-cpl-program` when `cpl` is not on the `PATH`. It claims `.cp` ahead of
+`cp-mode` registers `cpl lsp` with both eglot and lsp-mode. It runs the `cpl`
+setup ran as, so Emacs started without the shell's `PATH` finds it; set
+`cp-cpl-program` to run another. From a checkout, add
+`editors/emacs` to `load-path` and `(require 'cp-mode)` instead. It claims `.cp` ahead of
 Emacs's own entry, which calls `.cp` C++.
 
 ## JetBrains IDEs (2024.3 or later)

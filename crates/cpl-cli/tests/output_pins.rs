@@ -134,7 +134,7 @@ fn cpl(dir: &Path, home: &Path, args: &[&str], stdin: &str) -> std::process::Out
     child.wait_with_output().unwrap()
 }
 
-/// What a run printed, the same on every machine: CRLF as LF, the fixture
+/// What a run printed, the same on every machine: CRLF as LF, this `cpl` as `$CPL`, the fixture
 /// folder as `$DIR` and its home inside as `~`, and each measured quantity as `<n>`: times in µs or
 /// ns, times under a second in ms (limits are whole seconds), the JSON
 /// `time_ms`, `time_ns` and `peak_kb`, a share or peak "of" a limit, and a
@@ -142,6 +142,10 @@ fn cpl(dir: &Path, home: &Path, args: &[&str], stdin: &str) -> std::process::Out
 /// peak).
 fn normalized(bytes: &[u8], dir: &Path) -> String {
     let text = String::from_utf8_lossy(bytes).replace("\r\n", "\n");
+    let cpl = env!("CARGO_BIN_EXE_cpl");
+    let text = text
+        .replace(&cpl.replace('\\', "\\\\"), "$CPL")
+        .replace(cpl, "$CPL");
     let text = text.replace(&dir.join("home").display().to_string(), "~");
     let text = text.replace(&dir.display().to_string(), "$DIR");
     let mut out = String::with_capacity(text.len());

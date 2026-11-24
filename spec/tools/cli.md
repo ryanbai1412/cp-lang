@@ -33,7 +33,7 @@ platform and `\` on Windows too; `d.tests/` sits beside `d.cp`.
 | `cpl lsp` | the language server |
 | `cpl watch d` | rebuild and test on save |
 | `cpl report d` | writes a paste-ready bug report (`--last` after an internal compiler error) |
-| `cpl setup neovim` | installs the editor support built into `cpl` (`neovim`, `vim`) where the editor loads it at startup; `vscode` installs the release extension through `code --install-extension`; `jetbrains` unpacks the release plugin into each installed IDE |
+| `cpl setup neovim` | installs the editor support built into `cpl` (`neovim`, `vim`, `emacs`) where the editor loads it at startup, with the absolute path of the `cpl` it ran as in the editor's settings; `vscode` installs the release extension through `code --install-extension`; `jetbrains` unpacks the release plugin into each installed IDE |
 | `cpl self <command>` | updates, switches or rolls back the installed toolchain; `cpl +<toolchain> <command>` runs one command with another |
 
 Output is plain text for people and `--json` (the same as `--format json`, on every command that has

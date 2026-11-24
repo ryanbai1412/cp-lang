@@ -2,12 +2,12 @@ $ cpl setup neovim --check
 exit 0
 -- stdout
 installed CP Lang for neovim in ~/.local/share/nvim/site/pack/cpl/start/cplang
-open a .cp file to start; it runs the `cpl` on the PATH, else the installer's ~/.cpl/bin/cpl (set g:cpl_path for another)
+open a .cp file to start; it runs $CPL (set g:cpl_path for another)
 -- stderr
 
 $ cpl setup neovim --check --json
 exit 0
 -- stdout
-{"editor":"neovim","ok":true,"message":"installed CP Lang for neovim in ~/.local/share/nvim/site/pack/cpl/start/cplang\nopen a .cp file to start; it runs the `cpl` on the PATH, else the installer's ~/.cpl/bin/cpl (set g:cpl_path for another)"}
+{"editor":"neovim","ok":true,"message":"installed CP Lang for neovim in ~/.local/share/nvim/site/pack/cpl/start/cplang\nopen a .cp file to start; it runs $CPL (set g:cpl_path for another)"}
 -- stderr
 

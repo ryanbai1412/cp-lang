@@ -89,8 +89,12 @@ fn neovim() -> Settings {
                         .trim_start_matches([',', ' ']);
                     Some(norm(&rest[..rest.find(')').unwrap_or(rest.len())]))
                 } else if before.ends_with("vim.g.") {
-                    (after.starts_with("== false") || after.starts_with("~= false"))
-                        .then(|| "true".to_string())
+                    if let Some(rest) = after.strip_prefix("or ") {
+                        Some(norm(rest.split([' ', ')']).next().unwrap_or(rest)))
+                    } else {
+                        (after.starts_with("== false") || after.starts_with("~= false"))
+                            .then(|| "true".to_string())
+                    }
                 } else if before.ends_with("g:") {
                     None
                 } else {

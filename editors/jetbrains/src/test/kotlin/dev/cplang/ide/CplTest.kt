@@ -7,14 +7,6 @@ import org.junit.Test
 
 class CplTest {
     @Test
-    fun `the installed cpl is found without PATH`() {
-        val unix = Cpl.installed("/home/u", null, windows = false).map { it.path.replace('\\', '/') }
-        assertEquals(listOf("/home/u/.cpl/bin/cpl", "/home/u/.cargo/bin/cpl"), unix)
-        val moved = Cpl.installed("/home/u", "/opt/cpl", windows = true).map { it.path.replace('\\', '/') }
-        assertEquals(listOf("/opt/cpl/bin/cpl.exe", "/home/u/.cpl/bin/cpl.exe", "/home/u/.cargo/bin/cpl.exe"), moved)
-    }
-
-    @Test
     fun `commands are the cpl subcommands`() {
         assertEquals(listOf("lsp"), Cpl.lspArgs())
     }

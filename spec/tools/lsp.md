@@ -64,11 +64,11 @@ plugin). Helix has none: its `languages.toml` is the user's own config.
 | VS Code | `cp.stress.args` | `[]` | Extra `cpl stress` flags. |
 | VS Code | `cp.run.timeoutMs` | `10000` | Kill a run or stress run after this long. |
 | VS Code | `cp.companion.port` | `10043` | The port Import a Problem waits on. |
-| Neovim and Vim | `g:cpl_path` | `""` | The `cpl` binary; empty is the PATH, then `~/.cpl/bin`, then `~/.cargo/bin`. |
+| Neovim and Vim | `g:cpl_path` | `"cpl"` | The `cpl` binary; `cpl setup` sets it to the one it ran as. |
 | Neovim and Vim | `g:cpl_format_on_save` | `true` | Format through `cpl fmt` on every write. |
 | Neovim and Vim | `g:cpl_autocomplete` | `true` | Complete as you type. |
-| Emacs | `cp-cpl-program` | `"cpl"` | The `cpl` binary. |
-| JetBrains | `path` | `""` | The `cpl` binary (Settings, Tools, CP Lang); empty is `$CPL`, the PATH, then `~/.cpl/bin`. |
+| Emacs | `cp-cpl-program` | `"cpl"` | The `cpl` binary; `cpl setup emacs` sets it to the one it ran as. |
+| JetBrains | `path` | `""` | The `cpl` binary (Settings, Tools, CP Lang); `cpl setup jetbrains` sets it to the one it ran as, and empty is `cpl` on the PATH. |
 | Zed | `lsp.cpl.binary.path` | `"cpl"` | The `cpl` binary; unset is `cpl` on the PATH. |
 | Zed | `lsp.cpl.binary.arguments` | `["lsp"]` | Arguments that start the language server. |
 
