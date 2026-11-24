@@ -8729,3 +8729,5 @@ from `just next-decision`.
 - **Call.** `// expect: E0601` names the code only; the line the diagnostic or trap points at ends with `// <- here`, and exactly one line carries it. `// expect: E0601 at 4` is rejected by the runner with the fix, `scripts/spec-gate.py markers --fix` rewrites one, and a marker in a case that expects no code is rejected too.
 - **Why.** `at N` counted from the first line after the header directives, so every header line added or removed (a `// gap:`, a `// has:`) moved the target, and a plain comment after the directives counted as program line 1, a rule each new case author relearned. The other fix, counting from the file's first line, still drifts whenever a header line comes or goes; the marker sits on the line itself, so nothing can drift.
 - **Reverse.** Count from the file's first line: replace each marker with `at <its line>` in the header.
+
+## 507. (reserved, content)
