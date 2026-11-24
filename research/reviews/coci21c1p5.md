@@ -1,7 +1,12 @@
 # coci21c1p5
 
-Score: 4/5
-Dream: 4/5
+Score: pending
+Dream: pending
+
+## Earlier review (the previous port)
+
+Earlier score: 4/5
+Earlier dream: 4/5
 
 Baseline review, cold, on main 96359635. The header (lines 1-7) states the plan. The body hand-rolls two binary searches, packs per-layer lists into a flat index space with `off[]` offsets, and runs the DFS through a global `cur` with `(INF, -1)` sentinels. No dream exists, so the score is capped at 3.
 
