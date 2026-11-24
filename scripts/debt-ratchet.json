@@ -230,7 +230,7 @@
   "corpus_no_tests": 0,
   "silent_unknowns": 26267,
   "corpus_no_statement": 1,
-  "ci_jobs_without_recipe": 24,
+  "ci_jobs_without_recipe": 17,
   "web_hand_copied": 0,
   "diag_text_outside_registry": 157,
   "event_models": 14,

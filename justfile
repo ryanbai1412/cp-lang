@@ -16,6 +16,30 @@ check-commit:
 check-full:
     scripts/check.sh --full
 
+# The wall-clock budgets (CI: ci-slow `timing`; they report, never block).
+check-timing:
+    scripts/check.sh --timing
+
+# Run one normative spec gate, e.g. `just spec-gate mutants --n 12`.
+spec-gate *args:
+    uv run --quiet python scripts/spec-gate.py {{args}}
+
+# Which tests cover which rule (CI: ci-slow `coverage`).
+coverage-matrix *args:
+    uv run --quiet python scripts/coverage-matrix.py {{args}}
+
+# The mutation score of one file against its tests (CI: ci-slow `dap-mutants`).
+mutation-score *args:
+    uv run --quiet python scripts/mutation-score.py {{args}}
+
+# LSP request latency, in release (CI: ci-slow `lsp-latency`).
+lsp-latency:
+    cargo test --release -p cpl-lsp --test latency -- --nocapture
+
+# `cpl` cold-start time, in release (CI: ci-slow `lsp-latency`).
+cold-start:
+    cargo test --release -p cpl-cli --test cold_start -- --nocapture
+
 # Run the Rust workspace test suite via cargo-nextest (or cargo test).
 test *args:
     cargo nextest run --workspace {{args}}
