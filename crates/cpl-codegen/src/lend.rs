@@ -1397,7 +1397,8 @@ impl Emitter<'_> {
     ) {
         self.moves_last = crate::uses::last_read(self.program, block, k, outer)
             || self.takes_sunk_param(block, k)
-            || self.dies_here(&block.stmts[k]);
+            || self.dies_here(&block.stmts[k])
+            || self.unwraps_into_spent(block, k, outer);
         self.taken_items = self.taken_items(block, k, outer);
         if self.reads_held(&block.stmts[k]) {
             self.moves_last = false;
@@ -1408,6 +1409,16 @@ impl Emitter<'_> {
         self.moves_last = false;
         self.taken_items.clear();
         self.pushed_moves.clear();
+    }
+
+    /// `let t = o!` of an optional read for the last time into a tuple
+    /// whose fields are moved out (`while let (k, s) = xs.pop()`): the
+    /// payload moves, as a copy would only be moved from.
+    fn unwraps_into_spent(&self, block: &Block, k: usize, outer: &BTreeSet<usize>) -> bool {
+        matches!(&block.stmts[k], Stmt::Let(bound, Some(init))
+            if matches!(init.kind, ExprKind::Unwrap(..))
+                && self.spent.contains(bound)
+                && crate::uses::place_dies(self.program, block, k, init, outer))
     }
 
     /// Whether `stmt` reads a variable a lent struct field may point to,

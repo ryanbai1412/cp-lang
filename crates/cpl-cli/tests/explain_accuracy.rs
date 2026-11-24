@@ -218,4 +218,5 @@ const CASES: &[&str] = &[
     "std-lazy/rope-lazy-treap-to-array-matches-brute.cp",
     "std-hashmap/reserve-keeps-entries.cp",
     "std-poly/advanced-free-fns-match-brute.cp",
+    "core-01/while-let-tuple-pattern.cp",
 ];

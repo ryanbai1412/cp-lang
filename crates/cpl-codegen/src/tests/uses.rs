@@ -132,6 +132,12 @@ fn a_name_destructured_from_a_fresh_tuple_is_moved_not_copied() {
 }
 
 #[test]
+fn a_while_let_tuple_payload_is_moved_not_copied() {
+    let source = "var xs = [(2, \"bb\")]\nwhile let (k, s) = xs.pop():\n    print(k, s)\n";
+    assert_eq!(copy_reasons(source), [] as [&str; 0]);
+}
+
+#[test]
 fn part_of_a_call_result_is_moved_not_copied() {
     let source = "let (n, s) = \"4 x\".parse<(Int, Str)>()!\nprint(n, s)\n";
     assert_eq!(copy_reasons(source), [] as [&str; 0]);
