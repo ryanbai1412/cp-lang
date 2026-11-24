@@ -292,7 +292,7 @@ impl<'a> Lowerer<'a> {
             for (tag, (_, payload)) in variants.iter().enumerate() {
                 let mut stmts = Vec::new();
                 for (i, fty) in payload.iter().enumerate() {
-                    let mut items: Vec<Expr> = temps
+                    let items: Vec<Expr> = temps
                         .iter()
                         .map(|(slot, _, span)| {
                             let base = self.local(*slot, *span);
@@ -303,11 +303,12 @@ impl<'a> Lowerer<'a> {
                             )
                         })
                         .collect();
-                    let value = if items.len() == 1 {
-                        items.pop().unwrap()
-                    } else {
-                        let ty = Ty::Tuple(vec![fty.clone(); items.len()]);
-                        self.mk(ExprKind::Tuple(items), ty, temps[0].2)
+                    let value = match <[Expr; 1]>::try_from(items) {
+                        Ok([one]) => one,
+                        Err(items) => {
+                            let ty = Ty::Tuple(vec![fty.clone(); items.len()]);
+                            self.mk(ExprKind::Tuple(items), ty, temps[0].2)
+                        }
                     };
                     self.cx.scopes.push(HashMap::new());
                     self.cx.local_syms.push(HashMap::new());
@@ -371,7 +372,7 @@ impl<'a> Lowerer<'a> {
             }
         }
         for i in 0..field_tys.len() {
-            let mut items: Vec<Expr> = temps
+            let items: Vec<Expr> = temps
                 .iter()
                 .zip(&shapes)
                 .map(|((slot, _, span), tys)| {
@@ -379,12 +380,13 @@ impl<'a> Lowerer<'a> {
                     self.mk_field(base, i, tys[i].clone(), *span)
                 })
                 .collect();
-            let value = if items.len() == 1 {
-                items.pop().unwrap()
-            } else {
-                let ty = Ty::Tuple(items.iter().map(|e| e.ty.clone()).collect());
-                let span = temps[0].2;
-                self.mk(ExprKind::Tuple(items), ty, span)
+            let value = match <[Expr; 1]>::try_from(items) {
+                Ok([one]) => one,
+                Err(items) => {
+                    let ty = Ty::Tuple(items.iter().map(|e| e.ty.clone()).collect());
+                    let span = temps[0].2;
+                    self.mk(ExprKind::Tuple(items), ty, span)
+                }
             };
             self.cx.scopes.push(HashMap::new());
             self.cx.local_syms.push(HashMap::new());
