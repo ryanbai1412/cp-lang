@@ -61,8 +61,15 @@ impl Show for Pair<V>:
 /// traps: never
 /// example: `domain V = 0..3; let d: [Pair<V>]Int = [5, 6, 7]; let m = d.symmetric(diag: 0); m[2, 1] == 7 and m[0, 2] == 6 and m[1, 1] == 0`
 pub fn symmetric<V, T>(self: [Pair<V>]T, diag: T) -> [V, V]T:
+    // In 64 x 64 tiles: the mirrored write `m[l, h]` walks a column, which
+    // misses the cache on every row once the matrix outgrows it.
+    let n = V.count
     var m: [V, V]T = diag
-    for u in V:
-        for v in V:
-            if u != v: m[u, v] = self[Pair<V>.new(u, v)]
+    for th in 0..(n + 63) / 64:
+        for tl in 0..th + 1:
+            for h in th * 64..min(th * 64 + 64, n):
+                for l in tl * 64..min(tl * 64 + 64, h):
+                    let x = self[Pair(V.nth(l), V.nth(h))]
+                    m[V.nth(h), V.nth(l)] = x
+                    m[V.nth(l), V.nth(h)] = x
     m
