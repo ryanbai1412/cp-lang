@@ -2862,6 +2862,10 @@ pub struct SubseqStep<T>(pub items: List<T>, pruned: Bool = false):
 /// order: lexicographic by position, the empty one first; `prune` skips every extension of the current one
 /// traps: never
 /// example: `[1, 2].subsequences().map(s => s.items).collect() == [[], [1], [1, 2], [2]]`
+@lint(subset_masks_by_hand, from: "for mask in 0..(1 << n):\n    let s = sum(self[i] for i in 0..n if mask.bit(i))\n    body", advice: "self.subsequences()", holes: "n, body")
+@lint(subset_masks_by_hand, from: "for mask in 0..(1 << n):\n    let s = sum(self[i] for i in 0..n if (mask >> i) & 1 == 1)\n    body", advice: "self.subsequences()", holes: "n, body")
+@lint(subset_masks_by_hand, from: "for mask in 0..(1 << n):\n    var s = 0\n    for i in 0..n:\n        if mask.bit(i):\n            s += self[i]\n    body", advice: "self.subsequences()", holes: "n, body")
+@lint(subset_masks_by_hand, from: "for mask in 0..(1 << n):\n    var s = 0\n    for i in 0..n:\n        if (mask >> i) & 1 == 1:\n            s += self[i]\n    body", advice: "self.subsequences()", holes: "n, body")
 pub fn subsequences<S: Indexed, T>(self: S) -> yields SubseqStep<T>:
     let n = self.len
     var pick: List<Int> = []

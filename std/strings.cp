@@ -477,6 +477,8 @@ pub fn period<S: Indexed>(s: S) -> Int = if s.is_empty: 0 else: s.len - failure_
 /// traps: never
 /// example: `is_palindrome("abba") == true`
 /// example: `is_palindrome([1, 2]) == false`
+@lint(palindrome_by_hand, from: "var ok = true\nfor i in 0..n / 2:\n    if s[i] != s[n - 1 - i]:\n        ok = false\n        break", advice: "is_palindrome(s)", holes: "n")
+@lint(palindrome_by_hand, from: "for i in 0..n / 2:\n    if s[i] != s[n - 1 - i]:\n        body", advice: "is_palindrome(s)", holes: "n, body")
 pub fn is_palindrome<S: Indexed>(s: S) -> Bool:
     let n = s.len
     for i in 0..n / 2:

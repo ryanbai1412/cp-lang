@@ -44,7 +44,6 @@ super::msgs! {
     NEG_MOD_FIXUP = "L0527", "`+ {}` guards against a negative remainder, which `%` never gives";
     NEVER_TRUE_BOUNDS_CHECK = "L0307", "`{}` never holds: the declared bounds here rule it out, so what it guards never runs";
     NOOP_MOD_REDUCE = "L0308", "`{}` is `{}`: the declared bounds already put `{}` below the modulus and at least 0";
-    PALINDROME_BY_HAND = "L0583", "`{}[{}]` against `{}[{} - 1 - {}]` tests whether `{}` is a palindrome";
     POSITION_ARITHMETIC = "L0101", "`{}` builds a `{}` from a 0-based count";
     POSITION_ARITHMETIC_2 = "L0101", "`{}` builds a `{}` from a position";
     QUERY_INDEX_SHIFT = "L0577", "`{}` is read as `{}` and shifted back with `{} - 1` to index";
@@ -56,15 +55,11 @@ super::msgs! {
     SENTINEL_TABLE = "L0530", "`{}` is filled with `{}` to mean \"not set\"";
     SHADOWS_TOP_LEVEL = "L0203", "this {} hides the top-level `{}`";
     SLIDING_MIN_BY_HAND = "L0566", "`{}` is a monotone deque kept by hand for the {} of each window";
-    SLIDING_SUM_BY_HAND = "L0590", "`{}` kept as the sum of the last `{}` elements of `{}` by hand";
     SMALL_TO_LARGE_BY_HAND = "L0568", "`{}` is merged into `{}` smaller-into-larger by hand";
     SORT_FOR_EXTREME = "L0572", "this sorts a copy of the list to read one element: it is `{}`";
     SPLIT_RANGE_CHECK = "L0551", "a range check written as {} comparisons";
     STALE_ENTRY_SKIP = "L0553", "`{}` is checked against the best distance of `{}` to skip a stale heap entry";
     STATE_ABOVE_MULTITEST = "L0211", "`{}` is declared above `@!multitest`, so each test starts from the value the last one left";
-    SUBMASK_LOOP = "L0580", "`{} = ({} - 1) & {}` walks the submasks of `{}` by hand";
-    SUBSET_MASKS_BY_HAND = "L0585", "every subset of `{}` walked as a mask, its elements picked bit by bit";
-    TERNARY_SEARCH_BY_HAND = "L0581", "a ternary search over integers written by hand";
     TEST_COUNT_LOOP = "L0593", "`for _ in {}:` runs the test cases by hand";
     TRIAL_DIVISION = "L0561", "trial division by `{}` factors `{}` by hand";
     TRIAL_DIVISION_DIVISORS = "L0561", "trial division by `{}` walks the divisors of `{}` by hand";

@@ -1237,6 +1237,8 @@ fn divisors_in_radix_order(fs: List<(Int, Int)>) -> yields Int:
 /// traps: when `mask < 0`
 /// example: `submasks(5).collect() == [5, 4, 1, 0]`
 /// example: `submasks(0).collect() == [0]`
+@lint(submask_loop, from: "while s > 0:\n    body\n    s = (s - 1) & m", advice: "submasks(m)", holes: "s, m, body")
+@lint(submask_loop, from: "while s != 0:\n    body\n    s = (s - 1) & m", advice: "submasks(m)", holes: "s, m, body")
 pub fn submasks(mask: 0..) -> yields Int:
     var s = mask
     while true:

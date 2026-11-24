@@ -210,6 +210,7 @@ pub struct Prefix<D, T: Add + Sub>:
     /// traps: on a table from `scan(f)` with `f` other than `+`
     /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.fold(1..=2) == 5`
     /// trap: `[3, 1, 4].scan(min).fold(1..3)`
+    @lint(sliding_sum_by_hand, from: "cur += a[i] - a[i - k]", advice: "Prefix(a).fold(i + 1 - k..i + 1)", holes: "cur, a, i, k")
     pub fn fold(self, r: Range<D>) -> T:
         assert sums, "a range read subtracts prefix folds, which is only right for a `scan(+)` table"
         if r.is_empty: return T.zero

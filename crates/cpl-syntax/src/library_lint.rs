@@ -177,15 +177,15 @@ fn declared_on(
             }
         }
         let also = text("also").unwrap_or_default();
-        let (Some((from_toks, _)), Some(to_toks), Some((used_toks, _))) = (
-            run(&from),
-            run(&to).map(|r| r.0),
-            run(&format!("{from}\n{also}")),
-        ) else {
-            let msg = if run(&from).is_none() || run(&to).is_some() {
-                &msgs::syntax::LINT_FROM_NOT_CODE
-            } else {
+        let (from_run, to_run) = (run(&from), run(&to));
+        let bad_to = from_run.is_some() && to_run.is_none();
+        let (Some((from_toks, _)), Some((to_toks, _)), Some((used_toks, _))) =
+            (from_run, to_run, run(&format!("{from}\n{also}")))
+        else {
+            let msg = if bad_to {
                 &msgs::syntax::LINT_TO_NOT_CODE
+            } else {
+                &msgs::syntax::LINT_FROM_NOT_CODE
             };
             error(
                 msg,
@@ -203,18 +203,18 @@ fn declared_on(
                 .collect()
         };
         let (in_from, in_to) = (names(&from_toks), names(&to_toks));
-        if let Some(p) = f.params.iter().find(|p| {
+        let wrong = f.params.iter().find_map(|p| {
             let h = &p.name.text;
-            !advice && in_from.contains(h) && !in_to.contains(h)
-        }) {
+            match (in_from.contains(h), in_to.contains(h)) {
+                (true, false) if !advice => Some((p, &msgs::syntax::LINT_TO_DROPS, "use every parameter `from` matches in `to`, so the fix keeps what the code computes")),
+                (false, true) => Some((p, &msgs::syntax::LINT_TO_EXTRA, "`to` can use only the parameters that `from` matches")),
+                _ => None,
+            }
+        });
+        if let Some((p, msg, help)) = wrong {
             let h = &p.name.text;
             label = Some((p.name.span.shift(offset), format!("`{h}` is declared here")));
-            error(
-                &msgs::syntax::LINT_TO_DROPS,
-                &[&name, &h],
-                "use every parameter `from` matches in `to`, so the fix keeps what the code computes",
-                &mut label,
-            );
+            error(msg, &[&name, &h], help, &mut label);
             continue;
         }
         let used = names(&used_toks);
@@ -240,20 +240,6 @@ fn declared_on(
             );
             continue;
         };
-        if let Some(p) = f.params.iter().find(|p| {
-            let h = &p.name.text;
-            in_to.contains(h) && !in_from.contains(h)
-        }) {
-            let h = &p.name.text;
-            label = Some((p.name.span.shift(offset), format!("`{h}` is declared here")));
-            error(
-                &msgs::syntax::LINT_TO_EXTRA,
-                &[&name, &h],
-                "`to` can use only the parameters that `from` matches",
-                &mut label,
-            );
-            continue;
-        }
         let suggests = text("builtin").unwrap_or_else(|| f.name.text.clone());
         let calls = |toks: &[(TokenKind, String)], name: &str| {
             toks.windows(2).any(|w| {

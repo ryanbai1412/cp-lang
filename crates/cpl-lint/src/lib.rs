@@ -698,7 +698,11 @@ fn lint_file(file: &File, config: &Config, declared: &[library::Declared]) -> Ve
 /// in a search loop that becomes `first(..) ?? -1`).
 fn supersedes(src: &str, wider: &Diagnostic, inner: &Diagnostic) -> bool {
     let whole = |d: &Diagnostic| LINTS.iter().any(|l| l.code == d.code && l.replaces_whole);
-    let len = |s: Span| s.end - s.start;
+    // Trailing whitespace a statement's span runs on into does not widen it.
+    let len = |s: Span| {
+        let text = src.get(s.start as usize..s.end as usize).unwrap_or("");
+        text.trim_end().len() as u32
+    };
     let shorter = len(inner.span) < len(wider.span)
         || (len(inner.span) == len(wider.span)
             && whole(wider)
@@ -707,7 +711,8 @@ fn supersedes(src: &str, wider: &Diagnostic, inner: &Diagnostic) -> bool {
     if wider.code == inner.code || !shorter {
         return false;
     }
-    let about: Vec<Span> = std::iter::once(inner.span)
+    let trim = |s: Span| Span::new(s.start, s.start + len(s));
+    let about: Vec<Span> = std::iter::once(trim(inner.span))
         .chain(inner.labels.iter().map(|l| l.span))
         .collect();
     if let Some(fix) = wider.fixes.first() {
@@ -721,7 +726,7 @@ fn supersedes(src: &str, wider: &Diagnostic, inner: &Diagnostic) -> bool {
                 && !fix.edits.iter().any(|(_, to)| to.contains(text(*a)))
         });
     }
-    let evidence: Vec<Span> = std::iter::once(wider.span)
+    let evidence: Vec<Span> = std::iter::once(trim(wider.span))
         .chain(wider.labels.iter().map(|l| l.span))
         .collect();
     whole(wider)

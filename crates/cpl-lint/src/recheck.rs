@@ -29,7 +29,13 @@ fn errors(diags: Vec<Diagnostic>) -> Vec<(String, String)> {
 
 /// `diags` less the [`RECHECKED`] findings whose fix changes how `src` checks.
 pub(crate) fn recheck(diags: &mut Vec<Diagnostic>, src: &str) {
-    CHECKER.with_borrow_mut(|db| keep_if_unchanged(diags, src, |text| verdict(db, text)));
+    with_checker(&mut |db| keep_if_unchanged(diags, src, |text| verdict(db, text)));
+}
+
+/// Runs `f` on this thread's [`CHECKER`]; one non-generic entry, so its
+/// borrow is compiled once for every caller.
+fn with_checker(f: &mut dyn FnMut(&mut cpl_check::Session)) {
+    CHECKER.with_borrow_mut(|db| f(db));
 }
 
 thread_local! {
@@ -41,11 +47,14 @@ thread_local! {
 
 /// Whether `diag`'s fix leaves how `src` checks as it was.
 pub(crate) fn fix_keeps_verdict(src: &str, diag: &Diagnostic) -> bool {
-    CHECKER.with_borrow_mut(|db| {
+    let mut keeps = false;
+    with_checker(&mut |db| {
         let before = verdict(db, src);
         let found = std::slice::from_ref(diag);
-        !crate::fix::accepted(src, found, &mut |text, _| verdict(db, text) == before).is_empty()
-    })
+        keeps = !crate::fix::accepted(src, found, &mut |text, _| verdict(db, text) == before)
+            .is_empty();
+    });
+    keeps
 }
 
 pub(crate) fn keep_if_unchanged(
