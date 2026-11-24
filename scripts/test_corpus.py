@@ -339,6 +339,14 @@ class GeneratedTest(Corpus):
         with mock.patch.object(corpus, "make_cases", fails), self.assertRaises(corpus.InfraError):
             corpus.generated(pkg, "cpl")
 
+    def test_no_run_judges_the_cases_already_made_and_makes_none(self):
+        pkg = corpus.Package.at(self.package("p", tests_toml="", port_cp=""))
+        made = mock.Mock()
+        with mock.patch.object(corpus, "make_cases", made):
+            self.assertEqual(corpus.generated(pkg, "cpl", make=False), [])
+            corpus.check_package(pkg, corpus.Context("cpl", run=False))
+        made.assert_not_called()
+
 
 class InterpTimeoutTest(Corpus):
     def test_a_case_past_the_interpreter_is_a_finding(self):

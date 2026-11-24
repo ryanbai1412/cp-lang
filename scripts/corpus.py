@@ -740,7 +740,7 @@ def check_package(pkg, ctx):
                 and not re.search(rf"\b{re.escape(pkg.id)}\b", ctx.hillclimb()):
             found.append(f"dream-unlogged {pkg.id} -")
     found += [f"stale-tests-path {pkg.id} {path}" for path in ctx.tests_paths().get(pkg.id, ())]
-    for inp in generated(pkg, ctx.cpl) if pkg.tests else ():
+    for inp in generated(pkg, ctx.cpl, make=ctx.run) if pkg.tests else ():
         ans = inp.with_suffix(".ans")
         t = tokens(inp.read_bytes())
         if ans.exists() and len(t) > 2 and t == tokens(ans.read_bytes()):
@@ -773,10 +773,12 @@ def check_package(pkg, ctx):
     return found
 
 
-def generated(pkg, cpl=None):
+def generated(pkg, cpl=None, make=True):
     """The package's cases in target/corpus-tests/<id>/*.in, made again first when an
-    older tests.toml, gen.py or reference made them, so a stale case is never judged."""
-    if pkg.tests:
+    older tests.toml, gen.py or reference made them, so a stale case is never judged.
+    Without `make` (`verify --no-run`, which compiles nothing), the cases already there:
+    making them builds the reference, 55 s for ioi19p4, and timed the static gate out."""
+    if pkg.tests and make:
         try:
             make_cases(pkg, cpl=cpl)
         except (RuntimeError, subprocess.SubprocessError, OSError) as e:
