@@ -1,21 +1,24 @@
-//! Struct fn fields that only ever hold one capturing closure: the field is
-//! that closure's own type (`cpl_clN`, a struct of its captures with a call
-//! operator), so no `std::function` erases it.
+//! Struct fn fields that only ever hold closures from a known, closed set:
+//! the field is that closure's own type (`cpl_clN`, a struct of its captures
+//! with a call operator) or, for several, a variant over their types that
+//! calls through a switch on its tag (`cpl_clN_M`), so no `std::function`
+//! erases it. One closure is the set of size one.
 
 use super::*;
 use crate::uses::places::{each_built, each_written};
 
 impl<'p> Devirt<'p> {
     pub(super) fn compute_functors(&mut self) {
-        let mut held: BTreeMap<(usize, usize), Option<ClosureId>> = BTreeMap::new();
+        // `None`: a closure the program can't list reaches the field.
+        let mut held: BTreeMap<(usize, usize), Option<BTreeSet<ClosureId>>> = BTreeMap::new();
         let mut note = |key: (usize, usize), cid: Option<ClosureId>| {
-            held.entry(key)
-                .and_modify(|known| {
-                    if *known != cid {
-                        *known = None;
-                    }
-                })
-                .or_insert(cid);
+            let known = held.entry(key).or_insert_with(|| Some(BTreeSet::new()));
+            match (known.as_mut(), cid) {
+                (Some(set), Some(cid)) => {
+                    set.insert(cid);
+                }
+                _ => *known = None,
+            }
         };
         let mut scan = |block: &Block| {
             each_written(block, &mut |place| {
@@ -49,13 +52,15 @@ impl<'p> Devirt<'p> {
         for closure in &self.program.closures {
             scan(&closure.body);
         }
-        for (key, cid) in held {
-            let Some(cid) = cid else { continue };
+        for (key, set) in held {
+            let Some(set) = set.filter(|set| !set.is_empty()) else {
+                continue;
+            };
             if self.elidable.contains(&Home::Field(key.0, key.1)) {
                 continue;
             }
-            self.functor_fields.insert(key, cid);
-            self.functors.insert(cid);
+            self.functors.extend(&set);
+            self.functor_fields.insert(key, set.into_iter().collect());
         }
     }
 
@@ -71,9 +76,10 @@ impl<'p> Devirt<'p> {
             })
     }
 
-    /// The one closure struct `s`'s field `index` holds, stored as its own type.
-    pub fn field_functor(&self, s: usize, index: usize) -> Option<ClosureId> {
-        self.functor_fields.get(&(s, index)).copied()
+    /// The closures struct `s`'s field `index` holds, in id order: the field
+    /// is the one's own type, or a variant over theirs.
+    pub fn field_functor(&self, s: usize, index: usize) -> Option<&[ClosureId]> {
+        self.functor_fields.get(&(s, index)).map(Vec::as_slice)
     }
 
     /// Whether closure `cid` is built as a `cpl_clN` value rather than a lambda.
@@ -82,6 +88,8 @@ impl<'p> Devirt<'p> {
     }
 }
 
-pub(crate) fn functor_name(cid: ClosureId) -> String {
-    format!("cpl_cl{cid}")
+/// `cpl_cl3` for one closure's own type, `cpl_cl3_4` for the variant over two.
+pub(crate) fn functor_name(cids: &[ClosureId]) -> String {
+    let ids: Vec<String> = cids.iter().map(ToString::to_string).collect();
+    format!("cpl_cl{}", ids.join("_"))
 }

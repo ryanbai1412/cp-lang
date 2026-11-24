@@ -126,10 +126,23 @@ pub(crate) fn explain_file(
                 cpl_codegen::ClosureMode::StaticLocalAuto => {
                     ("static_local_auto", "local auto lambda".to_string())
                 }
-                cpl_codegen::ClosureMode::StaticFunctor { closure } => (
-                    "static_closure_type",
-                    format!("cpl_cl{closure}, its one closure's own type"),
-                ),
+                cpl_codegen::ClosureMode::StaticFunctor { closures } => match closures.as_slice() {
+                    [closure] => (
+                        "static_closure_type",
+                        format!("cpl_cl{closure}, its one closure's own type"),
+                    ),
+                    _ => {
+                        let ids: Vec<String> = closures.iter().map(ToString::to_string).collect();
+                        (
+                            "static_closure_variant",
+                            format!(
+                                "cpl_cl{}, a variant over its {} closures' own types",
+                                ids.join("_"),
+                                ids.len()
+                            ),
+                        )
+                    }
+                },
                 cpl_codegen::ClosureMode::Unread => ("unread", "never read, dropped".to_string()),
                 cpl_codegen::ClosureMode::Unbuilt => (
                     "unbuilt",

@@ -112,7 +112,7 @@ impl<'p> Emitter<'p> {
         }
         Code::primary(format!(
             "{}{{{}}}",
-            crate::devirt::functor_name(cid),
+            crate::devirt::functor_name(&[cid]),
             parts.join(", ")
         ))
     }
@@ -122,7 +122,7 @@ impl<'p> Emitter<'p> {
     /// call operator defined later.
     pub(crate) fn functor_decl(&self, cid: usize) -> String {
         let def = &self.program.closures[cid];
-        let mut out = format!("struct {} {{\n", crate::devirt::functor_name(cid));
+        let mut out = format!("struct {} {{\n", crate::devirt::functor_name(&[cid]));
         for (k, cap) in def.captures.iter().enumerate() {
             let ty = &def.locals[cap.inner].ty;
             if cap.by_ref {
@@ -148,6 +148,37 @@ impl<'p> Emitter<'p> {
         out
     }
 
+    /// `struct cpl_clN_M { std::variant<cpl_clN, cpl_clM> v; .. }`: a field
+    /// that closures `cids` reach, built from any one of them, and a call
+    /// that switches on which one it holds.
+    pub(crate) fn functor_variant_decl(&self, cids: &[usize]) -> String {
+        let name = crate::devirt::functor_name(cids);
+        let alts: Vec<String> = cids
+            .iter()
+            .map(|&cid| crate::devirt::functor_name(&[cid]))
+            .collect();
+        let mut out = format!(
+            "struct {name} {{\n    std::variant<{}> v;\n    {name}() = default;\n",
+            alts.join(", ")
+        );
+        let mut cases = String::new();
+        for (k, alt) in alts.iter().enumerate() {
+            out.push_str(&format!("    {name}({alt} f) : v(std::move(f)) {{}}\n"));
+            let case = match k + 1 == alts.len() {
+                true => "default".to_string(),
+                false => format!("case {k}"),
+            };
+            cases.push_str(&format!(
+                "            {case}: return (*std::get_if<{k}>(&v))(static_cast<A&&>(a)...);\n"
+            ));
+        }
+        out.push_str(&format!(
+            "    template <class... A> {} operator()(A&&... a) const {{\n        switch (v.index()) {{\n{cases}        }}\n    }}\n}};\n",
+            self.ty(&self.program.closures[cids[0]].ret)
+        ));
+        out
+    }
+
     /// The call operator of `cpl_clN`: the lambda's body, each capture
     /// named by a reference to its member.
     pub(crate) fn functor_body(&mut self, cid: usize) -> String {
@@ -168,7 +199,7 @@ impl<'p> Emitter<'p> {
         format!(
             "inline {} {}::operator()({}) const {{\n{aliases}{}\n",
             t.ret,
-            crate::devirt::functor_name(cid),
+            crate::devirt::functor_name(&[cid]),
             t.params.join(", "),
             t.body
         )

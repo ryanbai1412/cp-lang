@@ -155,13 +155,17 @@ pub fn report_with(
                         entry.site
                     );
                 }
-                ClosureMode::StaticFunctor { closure } => {
+                ClosureMode::StaticFunctor { closures } => {
                     static_count += 1;
+                    let (kind, what) = match closures.len() {
+                        1 => ("type", "its one closure's own type".to_string()),
+                        n => ("variant", format!("a variant over its {n} closures' own types, called through a switch")),
+                    };
                     let _ = writeln!(
                         stdout,
-                        "  [static: closure type] {} -> {} (its one closure's own type, no std::function)",
+                        "  [static: closure {kind}] {} -> {} ({what}, no std::function)",
                         entry.site,
-                        crate::devirt::functor_name(*closure)
+                        crate::devirt::functor_name(closures)
                     );
                 }
                 ClosureMode::FnPointer => {

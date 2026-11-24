@@ -99,6 +99,8 @@ pub(crate) struct Emitter<'p> {
     pub direct: BTreeSet<usize>,
     /// Closures built as their own `cpl_clN` type, declared with the types.
     pub functors: BTreeSet<usize>,
+    /// The variants over several of those closures' types, declared with the types.
+    pub functor_variants: BTreeSet<Vec<usize>>,
     /// The structs and fns the written file defines.
     pub(crate) written: lowered::Written,
     /// Some compared, sorted or keyed value holds a struct or enum: only
@@ -357,6 +359,7 @@ impl<'p> Emitter<'p> {
             devirt: crate::devirt::Devirt::collect(program),
             direct: BTreeSet::new(),
             functors: BTreeSet::new(),
+            functor_variants: BTreeSet::new(),
             written: Default::default(),
             ties: true,
             borrow_closures: BTreeSet::new(),
@@ -1517,6 +1520,9 @@ impl<'p> Emitter<'p> {
             || direct.contains("std::function")
         {
             out.push_str("#include <functional>\n");
+        }
+        if !self.functor_variants.is_empty() {
+            out.push_str("#include <variant>\n");
         }
         if self.used.contains("str_view") {
             out.push_str("#include <string_view>\n");

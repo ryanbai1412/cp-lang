@@ -654,7 +654,7 @@ fn a_struct_field_built_from_one_capturing_closure_is_that_closures_type() {
     assert!(
         explained
             .iter()
-            .any(|e| matches!(e.mode, crate::ClosureMode::StaticFunctor { closure: 0 })),
+            .any(|e| matches!(&e.mode, crate::ClosureMode::StaticFunctor { closures } if closures == &[0])),
         "{explained:?}"
     );
 }
@@ -704,36 +704,7 @@ fn a_struct_field_a_template_param_brings_one_closure_to_is_that_closures_type()
     let explained = crate::explain_closures(&program);
     assert!(
         explained.iter().any(|e| e.site == "struct Path.f"
-            && matches!(e.mode, crate::ClosureMode::StaticFunctor { closure: 0 })),
-        "{explained:?}"
-    );
-}
-
-#[test]
-fn a_struct_field_two_closures_with_like_captures_reach_is_a_bound_fn() {
-    let src = concat!(
-        "struct Op2(f: (Int, Int) -> Int)\n",
-        "fn run(k: Int):\n",
-        "    let ops = [Op2((a, b) => a + b + k), Op2((a, b) => a * b * k)]\n",
-        "    for o in ops: print(o.f(2, 3))\n",
-        "let k: 1..=8 = read()\n",
-        "run(k)\n",
-    );
-    let out = cpp(src);
-    assert!(
-        out.contains("cpl::Bound<cpl::Env<ll>, ll(ll, ll)> f;"),
-        "{out}"
-    );
-    assert!(!out.contains("std::function<"), "{out}");
-    assert!(!out.contains("cpl_cl"), "{out}");
-    let mut db = cpl_check::Session::new();
-    db.set_file("t.cp", src);
-    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
-    let explained = crate::explain_closures(&program);
-    assert!(
-        explained
-            .iter()
-            .any(|e| e.site == "struct Op2.f" && e.mode == crate::ClosureMode::Bound),
+            && matches!(&e.mode, crate::ClosureMode::StaticFunctor { closures } if closures == &[0])),
         "{explained:?}"
     );
 }
@@ -1161,4 +1132,64 @@ fn an_if_with_a_match_branch_of_closures_picks_through_both() {
         out.contains("return 0;\n    } else if (k == K::A) {\n      return 1;"),
         "{out}"
     );
+}
+
+#[test]
+fn a_struct_field_a_closed_set_of_closures_reaches_is_a_variant_over_their_types() {
+    let src = concat!(
+        "struct Op2(f: (Int, Int) -> Int)\n",
+        "fn run(k: Int):\n",
+        "    let ops = [Op2((a, b) => a + b + k), Op2((a, b) => a * b * k)]\n",
+        "    for o in ops: print(o.f(2, 3))\n",
+        "let k: 1..=8 = read()\n",
+        "run(k)\n",
+    );
+    let out = cpp(src);
+    assert!(!out.contains("std::function"), "{out}");
+    assert!(out.contains("std::variant<cpl_cl0, cpl_cl1> v;"), "{out}");
+    assert!(out.contains("switch (v.index())"), "{out}");
+    assert!(out.contains("cpl_cl0_1 f;"), "{out}");
+    assert!(
+        out.contains("Op2{cpl_cl0{") && out.contains("Op2{cpl_cl1{"),
+        "{out}"
+    );
+    let explained = explained(src);
+    assert!(
+        explained.iter().any(|e| e.site == "struct Op2.f"
+            && matches!(&e.mode, crate::ClosureMode::StaticFunctor { closures } if closures == &[0, 1])),
+        "{explained:?}"
+    );
+}
+
+#[test]
+fn a_struct_field_an_open_set_of_closures_reaches_stays_erased() {
+    let src = concat!(
+        "struct Op2(f: (Int, Int) -> Int)\n",
+        "fn run(k: Int, g: (Int, Int) -> Int):\n",
+        "    let ops = [Op2((a, b) => a + b + k), Op2(g)]\n",
+        "    for o in ops: print(o.f(2, 3))\n",
+        "let k: 1..=8 = read()\n",
+        "run(k, (a, b) => a * k)\n",
+        "run(k, (a, b) => b * k)\n",
+    );
+    let out = cpp(src);
+    assert!(
+        out.contains("cpl::Bound<cpl::Env<ll>, ll(ll, ll)> f;"),
+        "{out}"
+    );
+    assert!(!out.contains("std::variant"), "{out}");
+    let explained = explained(src);
+    assert!(
+        explained
+            .iter()
+            .any(|e| e.site == "struct Op2.f" && e.mode == crate::ClosureMode::Bound),
+        "{explained:?}"
+    );
+}
+
+fn explained(src: &str) -> Vec<crate::ClosureLowering> {
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", src);
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    crate::explain_closures(&program)
 }

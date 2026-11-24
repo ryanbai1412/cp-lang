@@ -51,9 +51,11 @@ pub enum ClosureMode {
     /// Local `auto` closure binding: no `std::function` wrapper or heap
     /// allocation.
     StaticLocalAuto,
-    /// A struct fn field holding one capturing closure: the field is that
-    /// closure's own type, a struct of its captures with a call operator.
-    StaticFunctor { closure: ClosureId },
+    /// A struct fn field only capturing closures from a known set reach:
+    /// the field is the one closure's own type, a struct of its captures
+    /// with a call operator, or a variant over the closures' types that
+    /// calls through a switch on its tag.
+    StaticFunctor { closures: Vec<ClosureId> },
     /// A fn field nothing reads: dropped, whatever was stored in it.
     Unread,
     /// A fn field of a struct the program never builds: no value holds
@@ -178,8 +180,9 @@ pub(crate) struct Devirt<'p> {
     lambda_returns: BTreeSet<FnId>,
     /// See [`Devirt::main_auto_global`].
     main_auto_globals: BTreeSet<usize>,
-    /// Struct fn fields holding one capturing closure, stored as its own type.
-    functor_fields: BTreeMap<(usize, usize), ClosureId>,
+    /// Struct fn fields only a known set of capturing closures reach, each
+    /// stored as the one's own type or a variant over theirs.
+    functor_fields: BTreeMap<(usize, usize), Vec<ClosureId>>,
     /// The closures those fields hold, each built as a `cpl_clN` value.
     functors: BTreeSet<ClosureId>,
     changed: bool,

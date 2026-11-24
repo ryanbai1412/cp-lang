@@ -1,9 +1,9 @@
 // expect: ok, output "8\n5\n15\n13"
 // rule: 13.3.2
 // input: "3"
-// std_functions: 1
 // A struct fn field only ever built from one capturing closure holds that closure as its own
-// type; a field two closures reach holds either. Both call through the field the same way.
+// type; a field two closures reach holds a variant over their types, called through a switch.
+// Both call through the field the same way.
 struct Plus(z: Int):
     fn monoid(self) -> Monoid<Int> = Monoid(z, (a, b) => self.op(a, b) + self.z)
 impl Op<Int> for Plus:
