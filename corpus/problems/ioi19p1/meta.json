@@ -26,5 +26,10 @@
  "difficulty": "medium",
  "dream": "draft",
  "spec": "draft",
- "notes": "Per-value Deque of positions plus a Fenwick of standing shoes. orig.cpp is the AC submission corpus/submissions/5661847.cpp (a grader function) with a sample grader main that reads the port's input."
+ "notes": "Per-value Deque of positions plus a Fenwick of standing shoes. orig.cpp is the AC submission corpus/submissions/5661847.cpp (a grader function) with a sample grader main that reads the port's input.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 14,
+  "sha": "4665a0eb10273837d4f6a6978d666c4e295e0eb9"
+ }
 }
