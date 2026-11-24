@@ -1536,7 +1536,9 @@ impl<'a> Lowerer<'a> {
                         let declared = self.sigs[id]
                             .decl
                             .params
-                            .get(at)
+                            .iter()
+                            .filter(|p| p.name.text != "self")
+                            .nth(at)
                             .and_then(|p| p.ty.as_ref());
                         let value = self.expect_declared(&arg.value, &param.ty, declared);
                         let value = match declared.and_then(|t| self.const_param_range(id, t)) {
