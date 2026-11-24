@@ -566,7 +566,15 @@ fn interp_failed(span: Span) -> Box<Trap> {
 }
 
 fn trap<T>(span: Span, said: cpl_diag::msgs::Said) -> Res<T> {
-    Err(Box::new(Trap::said(span, said)))
+    Err(trapped(span, said))
+}
+
+/// [`trap`]'s box, made out of line: a trap is rare, and each of the many
+/// places that can trap then takes a call, not the boxing.
+#[cold]
+#[inline(never)]
+fn trapped(span: Span, said: cpl_diag::msgs::Said) -> Box<Trap> {
+    Box::new(Trap::said(span, said))
 }
 
 /// An interpreter bug at `site`, a value lowering should have ruled out:
