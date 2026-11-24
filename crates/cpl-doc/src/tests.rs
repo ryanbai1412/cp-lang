@@ -851,3 +851,12 @@ fn every_std_doc_states_each_fact_once_outside_its_prose() {
         wrong.join("\n")
     );
 }
+
+#[test]
+fn an_indented_line_continues_a_list_item_and_only_a_list_item() {
+    assert_eq!(
+        markdown::render("- one\n  two\n- three\n"),
+        "<ul>\n<li>one two</li>\n<li>three</li>\n</ul>\n"
+    );
+    assert_eq!(markdown::render("one\n  two\n"), "<p>one two</p>\n");
+}

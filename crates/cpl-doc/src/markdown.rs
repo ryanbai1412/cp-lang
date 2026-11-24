@@ -119,9 +119,8 @@ pub(crate) fn render(doc: &str) -> String {
                 flush(&mut out, &mut paragraph, &mut list);
             }
             list.push(item.to_string());
-        } else if !list.is_empty() && line.starts_with(' ') {
+        } else if let Some(last) = list.last_mut().filter(|_| line.starts_with(' ')) {
             // A list item continued on the next line.
-            let last = list.last_mut().unwrap();
             last.push(' ');
             last.push_str(trimmed);
         } else {
