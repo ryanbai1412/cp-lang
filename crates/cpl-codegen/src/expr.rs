@@ -1124,7 +1124,11 @@ impl<'p> Emitter<'p> {
                     let index = self.join_index(&join.pick, &join.leaves);
                     return self.pick(&join, index);
                 }
-                let ret = if let Some(k) = self.expr_fixed_len(e) {
+                let ret = if e.ty == Ty::Error && crate::stmt::never_ends(block) {
+                    // A value of any type, as it never makes one.
+                    self.need("fail");
+                    "cpl::Never".to_string()
+                } else if let Some(k) = self.expr_fixed_len(e) {
                     self.fixed_array_cpp(&e.ty, k)
                 } else if gives_one_closure(block) {
                     // `plan.sorted(by: tree.pos)`: the lambda's own type, not a std::function.

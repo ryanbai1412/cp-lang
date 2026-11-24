@@ -321,6 +321,15 @@ impl<'p> Emitter<'p> {
     fn flat_expr_stmt(&mut self, e: &Expr, out: &mut String) {
         match &e.kind {
             ExprKind::Unit | ExprKind::Error => {}
+            // A block that never ends, `todo`, runs in place: g++ sees its
+            // last call never returns, so nothing falls off the fn's end.
+            ExprKind::Do(block) if e.ty == Ty::Error && never_ends(block) => {
+                self.line(out, "{");
+                self.indent += 1;
+                self.block(block, out);
+                self.indent -= 1;
+                self.line(out, "}");
+            }
             // Nothing of a `debug(...)` runs. A variable it alone reads
             // is still named, unevaluated, so g++ does not call it unused.
             ExprKind::Debug(_, args) => {
@@ -1759,5 +1768,18 @@ pub(crate) fn spread_parts(ty: &Ty) -> Option<&[Ty]> {
             Some(ts)
         }
         _ => None,
+    }
+}
+
+/// A block whose last step traps, so control never leaves it: `todo`, a
+/// trap, or a block or `if` made only of such steps.
+pub(crate) fn never_ends(b: &Block) -> bool {
+    let gives_none =
+        |e: &Expr| matches!(&e.kind, ExprKind::Do(b) if e.ty == Ty::Error && never_ends(b));
+    match b.stmts.last() {
+        Some(Stmt::Trap(..)) => true,
+        Some(Stmt::Expr(e) | Stmt::Give(e) | Stmt::Return(Some(e))) => gives_none(e),
+        Some(Stmt::If(_, yes, no)) => never_ends(yes) && never_ends(no),
+        _ => false,
     }
 }

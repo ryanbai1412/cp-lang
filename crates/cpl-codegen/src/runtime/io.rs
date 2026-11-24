@@ -138,6 +138,8 @@ template <class F> std::string captured(F&& print_into) { Capture c; print_into(
 inline ll site = 0;
 inline std::string site_line() { return site ? \" (line \" + std::to_string(site) + \")\" : std::string(); }
 [[noreturn]] inline void fail(const char* why) { flush(); fputs(why, stderr); fputc('\\n', stderr); exit(3); }
+// What a block that never ends gives: it converts to any type, never run.
+struct Never { template <class T> [[noreturn]] operator T() const { __builtin_unreachable(); } };
 // A key outside a view's keys never reads the parent around it (R07.4.5).
 [[noreturn]] inline void key_fail(ll k, ll lo, ll n) { char why[96]; snprintf(why, sizeof why, \"key %lld is not one of the view's keys %lld..%lld\", k, lo, lo + n); fail(why); }
 ",

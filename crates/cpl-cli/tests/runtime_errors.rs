@@ -385,6 +385,10 @@ print(ping(0))
 }
 
 fn build_and_run_cpp(source: &str) -> (i32, String) {
+    build_and_run_cpp_with(source, &["-std=c++17", "-O2"])
+}
+
+fn build_and_run_cpp_with(source: &str, flags: &[&str]) -> (i32, String) {
     let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
     let dir = Path::new(env!("CARGO_TARGET_TMPDIR"))
         .join(format!("runtime_errors_cpp_{}_{id}", std::process::id()));
@@ -409,7 +413,7 @@ fn build_and_run_cpp(source: &str) -> (i32, String) {
         "cpl build failed:\n{}",
         String::from_utf8_lossy(&build.stderr)
     );
-    let exe = cxx::build(&fs::read(&cpp).unwrap(), &["-std=c++17", "-O2"])
+    let exe = cxx::build(&fs::read(&cpp).unwrap(), flags)
         .unwrap_or_else(|e| panic!("{e}"))
         .0;
     let out = Command::new(&exe).output().expect("run binary");
@@ -417,6 +421,30 @@ fn build_and_run_cpp(source: &str) -> (i32, String) {
     let err = String::from_utf8_lossy(&out.stderr).into_owned();
     let _ = fs::remove_dir_all(&dir);
     (code, err)
+}
+
+#[test]
+fn a_block_that_never_ends_compiles_wherever_it_stands() {
+    // `todo` is one: a fn body, an `if` arm, a `match` arm and a value
+    // arm of `if` must not fall off a fn's end or give `void`.
+    let source = "\
+fn body() -> Int = todo
+fn arm(x: Int) -> Int:
+    if x > 0: x else: todo
+fn case(x: Int) -> Int:
+    match x:
+        0 => 1
+        _ => todo
+fn value(x: Int) -> Int:
+    let y = if x > 0: x else: todo
+    y + 1
+print(arm(1) + case(0) + value(1))
+print(body())
+";
+    let flags = ["-std=c++17", "-O2", "-Wall", "-Werror=return-type"];
+    let (code, err) = build_and_run_cpp_with(source, &flags);
+    assert_eq!(code, 3, "got:\n{err}");
+    assert!(err.contains("`todo` reached"), "got:\n{err}");
 }
 
 #[test]
