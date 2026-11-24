@@ -561,7 +561,7 @@ Promised by the author:
 
 - **P2. The words are the set.** `count`/`len` is the words' popcount,
   `is_empty` is every word zero, and `bitand`/`bitor`/`bitxor` combine the
-  words of both operands one by one. (R05.10.16, permits)
+  words of both operands one by one. (R05.10.16)
 
 P2 lets the build keep the words inline when the domain has a small static
 bound and compute a chain like `(a & b & c).len` in one popcount loop over

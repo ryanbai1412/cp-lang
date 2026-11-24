@@ -77,7 +77,7 @@ the heap. Locals of plain types live in registers or the stack.
   level. A tail branch that holds locals and cannot call back into the
   recursion is emitted out of line, so its locals sit in one frame at the
   leaf instead of every frame on the path. The instances of one generic
-  fn move out the same branches, so they stay one template. (R13.3.6)
+  fn move out the same branches, so they stay one template. (R13.3.6, permits)
 
 ## 13.4 Ownership
 
