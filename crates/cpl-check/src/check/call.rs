@@ -639,16 +639,16 @@ impl<'a> Checker<'a> {
             Ty::Str => crate::builtins::builtin_members(crate::builtins::Receiver::Str)
                 .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name),
             Ty::Named { name: n, args }
-                if matches!(n.as_str(), "Map" | "HashMap") && args.len() == 2 =>
+                if matches!(n.as_str(), "Map" | "HashMap") && args.len() == 2
+                    || matches!(n.as_str(), "Set" | "HashSet") && args.len() == 1 =>
             {
-                crate::builtins::builtin_members(crate::builtins::Receiver::Map)
-                    .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name)
-            }
-            Ty::Named { name: n, args }
-                if matches!(n.as_str(), "Set" | "HashSet") && args.len() == 1 =>
-            {
-                crate::builtins::builtin_members(crate::builtins::Receiver::Set)
-                    .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name)
+                let receiver = crate::builtins::Receiver::ALL
+                    .into_iter()
+                    .find(|r| r.name() == n);
+                receiver.is_some_and(|r| {
+                    crate::builtins::builtin_members(r)
+                        .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name)
+                })
             }
             Ty::Array { .. } => crate::builtins::builtin_members(crate::builtins::Receiver::Array)
                 .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name),

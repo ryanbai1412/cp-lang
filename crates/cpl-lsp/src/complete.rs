@@ -1367,7 +1367,7 @@ fn builtin_receiver(ty: &Ty) -> Option<(Receiver, Vec<(String, String)>)> {
         Ty::Named { name, args } => {
             let receiver = *Receiver::ALL.iter().find(|r| r.name() == name)?;
             let args: Vec<&Ty> = args.iter().collect();
-            let names: &[&str] = if receiver == Receiver::Map {
+            let names: &[&str] = if matches!(receiver, Receiver::Map | Receiver::HashMap) {
                 &["K", "V"]
             } else {
                 &["T"]

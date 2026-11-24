@@ -974,8 +974,10 @@ fn receiver_of(ty: &Ty) -> Option<cpl_check::Receiver> {
     match ty {
         Ty::Str | Ty::StrView => Some(Receiver::Str),
         Ty::List(_) | Ty::MutView(..) | Ty::ListView(..) | Ty::Keyed(..) => Some(Receiver::List),
-        Ty::Map(..) | Ty::HashMap(..) => Some(Receiver::Map),
-        Ty::Set(_) | Ty::HashSet(_) => Some(Receiver::Set),
+        Ty::Map(..) => Some(Receiver::Map),
+        Ty::HashMap(..) => Some(Receiver::HashMap),
+        Ty::Set(_) => Some(Receiver::Set),
+        Ty::HashSet(_) => Some(Receiver::HashSet),
         Ty::Array { .. } => Some(Receiver::Array),
         _ => None,
     }

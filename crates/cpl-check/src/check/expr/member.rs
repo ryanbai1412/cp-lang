@@ -297,6 +297,12 @@ impl<'a> Checker<'a> {
         if let Some(ty) = self.member_through_view(expr, name, &base_ty) {
             return ty;
         }
+        if let Ty::Named { name: hash, .. } = &base_ty {
+            if let Some(message) = crate::builtins::needs_order(hash, &name.text) {
+                self.error(codes::UNKNOWN_FIELD, name.span, message);
+                return Ty::Error;
+            }
+        }
         if let Ty::Param(p) = &base_ty {
             if let Some(req) = self.row_bounds.get(p).cloned() {
                 if let Some((_, fty)) = req.iter().find(|(fnm, _)| fnm == &name.text) {

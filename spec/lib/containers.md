@@ -540,7 +540,8 @@ struct Compressed<D, T>(vals: [D]T)
 `Map<K, V>` and `Set<T>` are the default lookup tables: they already lower to
 the salted hash table when order is never observed (§1). Spell `HashMap<K, V>`
 or `HashSet<T>` only to require hashing whatever the program observes, and
-then walking one has no defined order. `std.hashmap` adds an explicit open-addressing table for `Int`
+then walking one has no defined order. A member that needs order (`first`, `last`, `pop_first`,
+`first_ge`, `range`, `drain`, ...) is an error on one: "a HashMap has no order; use Map". `std.hashmap` adds an explicit open-addressing table for `Int`
 keys when constant factor and memory matter:
 
 <!-- signatures: std/hashmap.cp -->

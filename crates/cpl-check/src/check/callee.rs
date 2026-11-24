@@ -102,8 +102,10 @@ impl Checker<'_> {
         let receiver = match ty.map(|t| &t.1) {
             Some(Ty::Named { name, args }) => match (name.as_str(), args.len()) {
                 ("List", 1) => Receiver::List,
-                ("Map" | "HashMap", 2) => Receiver::Map,
-                ("Set" | "HashSet", 1) => Receiver::Set,
+                ("Map", 2) => Receiver::Map,
+                ("HashMap", 2) => Receiver::HashMap,
+                ("Set", 1) => Receiver::Set,
+                ("HashSet", 1) => Receiver::HashSet,
                 _ => return false,
             },
             Some(Ty::Str) => Receiver::Str,

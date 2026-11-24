@@ -9,7 +9,8 @@ use cpl_check::{prelude_names, MemberKind, PreludeKind, Receiver, BUILTIN_MEMBER
 
 /// The values every row's `example` is written against.
 const FIXTURE: &str = "var xs = [3, 1, 2]\nvar s = \"hello\"\nvar m = Map<Int, Int>()\nm[1] = 10\nm[5] = 50\n\
-                       var st = Set<Int>()\nst.insert(4)\nst.insert(9)\nvar a: [0..3]Int = 0\na[1] = 7\n";
+                       var st = Set<Int>()\nst.insert(4)\nst.insert(9)\nvar a: [0..3]Int = 0\na[1] = 7\n\
+                       var hm = HashMap<Int, Int>()\nhm[1] = 10\nhm[5] = 50\nvar hs = HashSet<Int>()\nhs.insert(4)\nhs.insert(9)\n";
 
 /// Runs `body` after the fixture; the error output when it fails.
 fn run(name: &str, body: &str) -> Result<(), String> {
@@ -420,4 +421,66 @@ fn every_option_a_row_documents_is_one_of_its_params() {
         "add these to the row's params:\n{}",
         missing.join("\n")
     );
+}
+
+/// A member only `Map`/`Set` has, asked of a `HashMap`/`HashSet`, says it needs order,
+/// and every member the hash catalog lists is one the checker takes there.
+#[test]
+fn hash_rows_are_what_a_hash_receiver_takes() {
+    let mut wrong = Vec::new();
+    for hash in [Receiver::HashMap, Receiver::HashSet] {
+        let ordered = hash.ordered().unwrap();
+        let (from, to) = if hash == Receiver::HashMap {
+            ("m.", "hm.")
+        } else {
+            ("st.", "hs.")
+        };
+        for row in cpl_check::builtin_members(ordered) {
+            let listed = cpl_check::builtin_members(hash).any(|m| m.name == row.name);
+            let want = format!("a {} has no order; use {}", hash.name(), ordered.name());
+            let said = cpl_check::needs_order(hash.name(), row.name);
+            if listed != said.is_none() || !listed && said.as_deref() != Some(want.as_str()) {
+                wrong.push(format!(
+                    "{}.{}: needs_order gave {said:?}",
+                    hash.name(),
+                    row.name
+                ));
+            }
+            if listed {
+                continue;
+            }
+            let body = format!("let _ = {}", row.example.replacen(from, to, 1));
+            match run(&format!("{}_{}", hash.name(), row.name), &body) {
+                Err(why) if why.contains(&want) => {}
+                got => wrong.push(format!(
+                    "{}.{}: wanted `{want}`, got {got:?}",
+                    hash.name(),
+                    row.name
+                )),
+            }
+        }
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// Every builtin row writes its `cost:` the way std does, `\(O(..)\)` with `\log n`, so the
+/// cost readers std's docs go through (hover, `bench/scaling.py`) read a builtin's too.
+#[test]
+fn every_builtin_cost_is_written_as_std_writes_one() {
+    let mut wrong = Vec::new();
+    for r in Receiver::ALL {
+        for m in cpl_check::builtin_members(r) {
+            let Some(cost) = cpl_syntax::doc::Facts::parse(m.doc).cost else {
+                continue;
+            };
+            let plain = cpl_diag::plain::text(&cost);
+            if !cost.starts_with("\\(O(")
+                || cost.contains("log n") && !cost.contains("\\log n")
+                || cpl_syntax::doc::big_o(&plain).is_none()
+            {
+                wrong.push(format!("{}.{}: cost: {cost}", r.name(), m.name));
+            }
+        }
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
 }

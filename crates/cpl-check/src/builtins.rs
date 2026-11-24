@@ -18,15 +18,21 @@ pub enum Receiver {
     Set,
     /// `[D]T` and `[0..n]T`.
     Array,
+    /// A `Map` with no order: the members that need none.
+    HashMap,
+    /// A `Set` with no order.
+    HashSet,
 }
 
 impl Receiver {
-    pub const ALL: [Receiver; 5] = [
+    pub const ALL: [Receiver; 7] = [
         Receiver::List,
         Receiver::Str,
         Receiver::Map,
         Receiver::Set,
         Receiver::Array,
+        Receiver::HashMap,
+        Receiver::HashSet,
     ];
 
     /// The name as written in a type: `List`, and `[D]T` for an array.
@@ -37,8 +43,28 @@ impl Receiver {
             Receiver::Map => "Map",
             Receiver::Set => "Set",
             Receiver::Array => "[D]T",
+            Receiver::HashMap => "HashMap",
+            Receiver::HashSet => "HashSet",
         }
     }
+
+    /// The ordered type a hash receiver is the unordered form of: `Map` for `HashMap`.
+    pub fn ordered(self) -> Option<Receiver> {
+        match self {
+            Receiver::HashMap => Some(Receiver::Map),
+            Receiver::HashSet => Some(Receiver::Set),
+            _ => None,
+        }
+    }
+}
+
+/// `h.first_ge(k)` on a `HashMap`: a member only the ordered form has, and what to write.
+pub fn needs_order(type_name: &str, member: &str) -> Option<String> {
+    let hash = *Receiver::ALL.iter().find(|r| r.name() == type_name)?;
+    let ordered = hash.ordered()?;
+    let on = |r: Receiver| builtin_members(r).any(|m| m.name == member);
+    (on(ordered) && !on(hash))
+        .then(|| format!("a {} has no order; use {}", hash.name(), ordered.name()))
 }
 
 /// How a member is written.
@@ -118,9 +144,9 @@ pub const BUILTIN_TYPES: &[BuiltinType] = &[
     BuiltinType { name: "List", written: "List<T>", members: Some(Receiver::List), doc: "A growable sequence indexed by `0..len`: C++ `vector`, Python `list`, Rust `Vec`. A counted array `[n]T` passes where a `List<T>` is read." },
     BuiltinType { name: "Array", written: "[D]T", members: Some(Receiver::Array), doc: "A fixed-size array indexed by the positions of domain `D`, never a raw `Int`: C++ `array` or a sized `vector`. `[n]T` is `[0..n]T`; `[R, C]T` is a dense row-major 2-D array indexed `g[r, c]`. Large arrays never live on the C++ stack." },
     BuiltinType { name: "Map", written: "Map<K, V>", members: Some(Receiver::Map), doc: "The lookup table: C++ `map`, Python `dict`, Rust `BTreeMap`. `for (k, v) in m` walks it in key order; when nothing observes the order, the C++ is a salted hash table." },
-    BuiltinType { name: "HashMap", written: "HashMap<K, V>", members: Some(Receiver::Map), doc: "A hash table whatever the program observes: C++ `unordered_map`, Python `dict`, Rust `HashMap`. Salted with `splitmix64` against anti-hash tests. Walking one has no defined order, so it is not `Show`; `Map<K, V>` is the usual spelling." },
+    BuiltinType { name: "HashMap", written: "HashMap<K, V>", members: Some(Receiver::HashMap), doc: "A hash table whatever the program observes: C++ `unordered_map`, Python `dict`, Rust `HashMap`. Salted with `splitmix64` against anti-hash tests. Walking one has no defined order, so it is not `Show`; `Map<K, V>` is the usual spelling." },
     BuiltinType { name: "Set", written: "Set<T>", members: Some(Receiver::Set), doc: "A set of distinct values: C++ `set`, Python `set`, Rust `BTreeSet`. It walks in order; when nothing observes the order, the C++ is a salted hash set." },
-    BuiltinType { name: "HashSet", written: "HashSet<T>", members: Some(Receiver::Set), doc: "A hash set whatever the program observes: C++ `unordered_set`, Python `set`, Rust `HashSet`. Salted with `splitmix64`. Walking one has no defined order, so it is not `Show`; `Set<T>` is the usual spelling." },
+    BuiltinType { name: "HashSet", written: "HashSet<T>", members: Some(Receiver::HashSet), doc: "A hash set whatever the program observes: C++ `unordered_set`, Python `set`, Rust `HashSet`. Salted with `splitmix64`. Walking one has no defined order, so it is not `Show`; `Set<T>` is the usual spelling." },
 ];
 
 /// The members of one built-in type.
@@ -258,7 +284,7 @@ pub fn prelude_names() -> Vec<(&'static str, PreludeKind)> {
 }
 
 use MemberKind::{Get, Method};
-use Receiver::{Array, List, Map, Set, Str};
+use Receiver::{Array, HashMap, HashSet, List, Map, Set, Str};
 
 macro_rules! row {
     ($receiver:expr, $name:expr, $kind:expr, $params:expr, $ret:expr, $mutates:expr, $doc:expr, $example:expr, $example_ty:expr) => {
@@ -401,6 +427,31 @@ pub const BUILTIN_MEMBERS: &[BuiltinMember] = &[
     row!(Set, "last_lt", Method, "x: T", "?T", false, "The largest element `< x`. O(log n).\n\ncost: \\(O(\\log n)\\)", "st.last_lt(9)", "?Int"),
     row!(Set, "range", Method, "r: Range<T>", "SortedRange<T>", false, "O(1) key-range view; `.first`, `.last`, `.is_empty` are O(log n) and iteration is O(log n + k). Use `SortedSet`/`SortedBag` for O(log n) `.len`.\n\ncost: \\(O(1)\\)", "st.range(4..9).first", "?Int"),
     row!(Set, "drain", Method, "; after: ?T = none, before: ?T = none, while ok: (T) -> Bool", "List<T>", true, "Removes and returns the maximal run strictly after `after` (ascending), strictly before `before` (descending), or from the smallest element (ascending) while `ok(k)` holds. O(k log n).\n\ncost: \\(O(k \\log n)\\)", "st.drain(after: 4, while: x => x < 9)", "List<Int>"),
+
+    row!(HashMap, "len", Get, "", "Int", false, "How many keys.\n\ncost: \\(O(1)\\)", "hm.len", "Int"),
+    row!(HashMap, "items", Get, "", "List<(K, V)>", false, "Each key with its value, in no defined order: `for (k, v) in hm.items`.\n\ncost: \\(O(n)\\)", "hm.items", "List<(Int, Int)>"),
+    row!(HashMap, "keys", Get, "", "List<K>", false, "Each key, in no defined order (O(1) view in loops and folds): `for k in hm.keys`.\n\ncost: \\(O(1)\\)", "hm.keys", "List<Int>"),
+    row!(HashMap, "values", Get, "", "List<V>", false, "Each value, in no defined order (O(1) view in loops and folds): `for v in hm.values`.\n\ncost: \\(O(1)\\)", "hm.values", "List<Int>"),
+    row!(HashMap, "is_empty", Get, "", "Bool", false, "True when there is no key.\n\ncost: \\(O(1)\\)", "hm.is_empty", "Bool"),
+    row!(HashMap, "get", Method, "k: K", "?V", false, "The value at `k`, or `None` when `k` is not a key, in expected O(1) time by hashing.\n\ncost: \\(O(1)\\)", "hm.get(1)", "?Int"),
+    row!(HashMap, "contains", Method, "k: K", "Bool", false, "True when `k` is a key; `k in hm` reads the same, in expected O(1) time by hashing.\n\ncost: \\(O(1)\\)", "hm.contains(1)", "Bool"),
+    row!(HashMap, "remove", Method, "k: K", "?V", true, "Takes `k` out and gives the value it had, in expected O(1) time by hashing.\n\ncost: \\(O(1)\\)", "hm.remove(1)", "?Int"),
+    row!(HashMap, "clear", Method, "", "", true, "Removes every key.\n\ncost: \\(O(n)\\)", "hm.clear()", ""),
+    row!(HashMap, "reserve", Method, "n: Int", "", true, "Makes room for at least `n` keys, so the map fills without rehashing.\n\ncost: \\(O(n)\\)", "hm.reserve(5)", ""),
+    row!(HashMap, "clone", Method, "", "HashMap<K, V>", false, "A separate map with the same entries.\n\ncost: \\(O(n)\\)", "hm.clone().len", "Int"),
+
+    row!(HashSet, "len", Get, "", "Int", false, "How many elements.\n\ncost: \\(O(1)\\)", "hs.len", "Int"),
+    row!(HashSet, "is_empty", Get, "", "Bool", false, "True when there is no element.\n\ncost: \\(O(1)\\)", "hs.is_empty", "Bool"),
+    row!(HashSet, "insert", Method, "x: T", "Bool", true, "Adds `x`; true when it was not there before, in expected O(1) time by hashing.\n\ncost: \\(O(1)\\)", "hs.insert(5)", "Bool"),
+    row!(HashSet, "add", Method, "x: T", "Bool", true, "The same as `insert`, in expected O(1) time by hashing.\n\ncost: \\(O(1)\\)", "hs.add(5)", "Bool"),
+    row!(HashSet, "remove", Method, "x: T", "Bool", true, "Takes `x` out; true when it was there, in expected O(1) time by hashing.\n\ncost: \\(O(1)\\)", "hs.remove(4)", "Bool"),
+    row!(HashSet, "set", Method, "x: T, on: Bool", "", true, "Adds `x` when `on` is true, or removes it otherwise, in expected O(1) time by hashing.\n\ncost: \\(O(1)\\)", "hs.set(5, on: true)", ""),
+    row!(HashSet, "contains", Method, "x: T", "Bool", false, "True when `x` is in the set; `x in hs` reads the same, in expected O(1) time by hashing.\n\ncost: \\(O(1)\\)", "hs.contains(4)", "Bool"),
+    row!(HashSet, "clear", Method, "", "", true, "Removes every element.\n\ncost: \\(O(n)\\)", "hs.clear()", ""),
+    row!(HashSet, "clone", Method, "", "HashSet<T>", false, "A separate set with the same elements.\n\ncost: \\(O(n)\\)", "hs.clone().len", "Int"),
+    row!(HashSet, "sorted", Method, "", "List<T>", false, "The elements as a sorted list.\n\ncost: \\(O(n \\log n)\\)", "hs.sorted()", "List<Int>"),
+    row!(HashSet, "min", Method, "", "?T", false, "The smallest element, by a scan of the table.\n\ncost: \\(O(n)\\)", "hs.min()", "?Int"),
+    row!(HashSet, "max", Method, "", "?T", false, "The largest element, by a scan of the table.\n\ncost: \\(O(n)\\)", "hs.max()", "?Int"),
 
     row!(Array, "len", Get, "", "Int", false, "How many cells.", "a.len", "Int"),
     row!(Array, "is_empty", Get, "", "Bool", false, "True when the array has no cells.", "a.is_empty", "Bool"),
