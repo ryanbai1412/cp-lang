@@ -290,7 +290,15 @@ pub(crate) const PASSES: &[Pass] = &[
     pass(
         "prune",
         "prune.rs",
-        Uses(&["Touch::of_block", "Touch::of_expr"]),
+        Uses(&[
+            "Touch::of_block",
+            "Touch::of_expr",
+            "each_value",
+            "each_closure",
+            "each_call",
+            "each_part",
+            "each_put",
+        ]),
         "a_branch_on_an_op_value_keeps_only_the_one_taken",
     ),
     // A list or optional field nothing reached fills is empty, so the branches on it fold.

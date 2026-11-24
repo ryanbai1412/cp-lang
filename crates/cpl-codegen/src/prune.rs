@@ -14,7 +14,9 @@
 //! are left out, so a store only those branches make does not keep them.
 
 use crate::uses::effects::{known_with, Touch};
-use crate::walk::{deep_exprs, deep_stmts, path_root};
+use crate::uses::places::{each_call, each_closure, each_part, each_put, Put};
+use crate::uses::split::each_value;
+use crate::walk::path_root;
 use cpl_ir::{Arg, Block, Builtin, ClosureId, Expr, ExprKind, FnId, Place, PlaceKind};
 use cpl_ir::{Program, Slot, Stmt, Ty};
 use std::collections::{BTreeMap, BTreeSet};
@@ -181,7 +183,7 @@ fn drop_unread(body: &mut Block, lets: &BTreeSet<Slot>, captured: &BTreeSet<Slot
         return;
     }
     let mut read = captured.clone();
-    deep_exprs(body, &mut |e| {
+    each_value(body, &mut |e| {
         if let ExprKind::Local(s) = e.kind {
             read.insert(s);
         }
@@ -218,11 +220,9 @@ fn drop_unread(body: &mut Block, lets: &BTreeSet<Slot>, captured: &BTreeSet<Slot
 /// The slots of `body` a closure built in it captures.
 fn captured(program: &Program, body: &Block) -> BTreeSet<Slot> {
     let mut out = BTreeSet::new();
-    deep_exprs(body, &mut |e| {
-        if let ExprKind::Closure(cid) = e.kind {
-            let caps = &program.closures[cid].captures;
-            out.extend(caps.iter().filter(|c| !c.is_global).map(|c| c.outer));
-        }
+    each_closure(body, &mut |cid| {
+        let caps = &program.closures[cid].captures;
+        out.extend(caps.iter().filter(|c| !c.is_global).map(|c| c.outer));
     });
     out
 }
@@ -230,15 +230,13 @@ fn captured(program: &Program, body: &Block) -> BTreeSet<Slot> {
 /// The slots `body` stores to, or lends to a closure by reference.
 fn written(program: &Program, body: &Block) -> BTreeSet<Slot> {
     let mut out = Touch::of_block(body).stored_locals();
-    deep_exprs(body, &mut |e| {
-        if let ExprKind::Closure(cid) = e.kind {
-            let caps = &program.closures[cid].captures;
-            out.extend(
-                caps.iter()
-                    .filter(|c| c.by_ref && !c.is_global)
-                    .map(|c| c.outer),
-            );
-        }
+    each_closure(body, &mut |cid| {
+        let caps = &program.closures[cid].captures;
+        out.extend(
+            caps.iter()
+                .filter(|c| c.by_ref && !c.is_global)
+                .map(|c| c.outer),
+        );
     });
     out
 }
@@ -260,12 +258,10 @@ fn bodies(program: &Program) -> impl Iterator<Item = (Option<FnId>, &Block)> {
 fn none_params(program: &Program) -> BTreeSet<(FnId, Slot)> {
     let mut seen: BTreeMap<(FnId, Slot), bool> = BTreeMap::new();
     for (_, body) in bodies(program) {
-        deep_exprs(body, &mut |e| {
-            if let ExprKind::Call(id, args) = &e.kind {
-                for (slot, arg) in args.iter().enumerate() {
-                    let none = matches!(arg, Arg::Value(v) if v.kind == ExprKind::None);
-                    *seen.entry((*id, slot)).or_insert(true) &= none;
-                }
+        each_call(body, &mut |id, args| {
+            for (slot, arg) in args.iter().enumerate() {
+                let none = matches!(arg, Arg::Value(v) if v.kind == ExprKind::None);
+                *seen.entry((id, slot)).or_insert(true) &= none;
             }
         });
     }
@@ -360,11 +356,11 @@ fn reached<'p>(program: &'p Program, nones: &Nones) -> Vec<&'p Block> {
     }
 }
 
-/// [`deep_exprs`], skipping the branch of an `if` that `cx` knows is not taken
+/// Every expression of `b` at any depth, skipping the branch of an `if` that `cx` knows is not taken
 /// and what follows a statement known to leave the block; whether `b` leaves.
 fn taken_exprs<'p>(b: &'p Block, cx: &Cx, f: &mut dyn FnMut(&'p Expr)) -> bool {
     for stmt in &b.stmts {
-        cpl_ir::walk::stmt_exprs(stmt, &mut |e| cpl_ir::walk::deep_expr(e, f));
+        cpl_ir::walk::stmt_exprs(stmt, &mut |e| each_part(e, f));
         let left = match stmt {
             Stmt::Return(_) | Stmt::Break(_) | Stmt::Continue(_) | Stmt::Give(_) => true,
             Stmt::If(cond, then, otherwise) => match known_in(cond, Some(cx)) {
@@ -390,7 +386,7 @@ fn taken_exprs<'p>(b: &'p Block, cx: &Cx, f: &mut dyn FnMut(&'p Expr)) -> bool {
 fn stored_in(program: &Program, bodies: &[&Block]) -> BTreeSet<(usize, usize)> {
     let mut bad = BTreeSet::new();
     for body in bodies {
-        deep_exprs(body, &mut |e| match (&e.kind, &e.ty) {
+        each_value(body, &mut |e| match (&e.kind, &e.ty) {
             (ExprKind::Tuple(items), Ty::Struct(id)) => {
                 for (i, item) in items.iter().enumerate() {
                     let kept = match &item.kind {
@@ -429,8 +425,8 @@ fn stored_in(program: &Program, bodies: &[&Block]) -> BTreeSet<(usize, usize)> {
             ) => stored_fields(place, &mut bad),
             _ => {}
         });
-        deep_stmts(body, &mut |stmt| {
-            if let Stmt::Assign(place, ..) = stmt {
+        each_put(body, &mut |put, _| {
+            if let Put::Store(place, _) = put {
                 stored_fields(place, &mut bad);
             }
         });
