@@ -3,44 +3,35 @@
 // Problem: n distinct binary codewords (n <= 50), each 1..m bits long (m <= 50). Print the
 //   length of the shortest bit string that splits into codewords in two different ways,
 //   or -1 if every bit string decodes uniquely.
-// Solution: Write the two readings side by side, adding a codeword to whichever is behind;
-//   only the part by which one side is ahead matters, a tail of some codeword, so there are
-//   at most n * m states. A codeword placed against the tail costs the bits now shared by
-//   both. Dijkstra (map of distances, min-heap) starts from every pair of codewords where
-//   one is a prefix of the other and stops at the empty tail: O(n^2 m^2 log(nm)).
+// Solution: write the two readings side by side, adding a codeword to whichever is behind.
+//   Only the part by which one side is ahead matters, and it is a tail of some codeword: a
+//   `Tail` (word, cut), at most n * (m + 1) of them. A codeword laid against the tail costs
+//   the bits now shared by both. Std `dijkstra` from every pair of codewords where one is a
+//   prefix of the other; the answer is the nearest empty tail. O(n^2 m^2 log(nm)).
 // original: corpus/submissions/3617414.cpp
-
-fn starts_with(s: Str, head: Str) -> Bool = head.len <= s.len and s[0..head.len] == head
-
-/// Put `b` beside `a`, both starting at the same place: what sticks out, and how much is shared.
-fn overhang(a: Str, b: Str) -> ?(Str, Int):
-    if starts_with(a, b): Some((a[b.len..a.len].to_str(), b.len))
-    elif starts_with(b, a): Some((b[a.len..b.len].to_str(), a.len))
-    else: None
-
-let (n, m): (Int, Int) = read()
+// Bounds: n: 1..=50; m: 1..=50
+let (n, m): (1..=50, 1..=50) = read()
 domain Word = 1..=n
+domain Cut = 0..=m
+domain Tail = (Word, Cut)  // words[w] from bit `cut` on
 let words: [Word]Str = read()
 
-var dist = Map<Str, Int>()
-var queue = MinHeap<(Int, Str)>()
-fn reach(tail: Str, d: Int):
-    if d < (dist.get(tail) ?? Int.MAX):
-        dist[tail] = d
-        queue.push((d, tail))
+fn rest(t: Tail) -> Str = words[t.0][Int(t.1)..words[t.0].len].to_str()
+fn ended(t: Tail) -> Bool = Int(t.1) == words[t.0].len
 
-for i in Word:
-    for j in Word:
-        if i < j:
-            if let (tail, shared) = overhang(words[i], words[j]): reach(tail, shared)
+// Lay word `x` against the tail `t`: the new tail and the bits both readings now share.
+fn lay(t: Tail, x: Word) -> ?(to: Tail, w: Int):
+    let (s, word) = (rest(t), words[x])
+    if word.starts_with(s): Some((to: (x, Cut(s.len)), w: s.len))
+    elif s.starts_with(word): Some((to: (t.0, Cut(Int(t.1) + word.len)), w: word.len))
+    else: None
 
-var answer = -1
-while not queue.is_empty:
-    let (d, tail) = queue.pop()!
-    if d != dist[tail]: continue
-    if tail.is_empty:
-        answer = d
-        break
-    for w in Word:
-        if let (next, shared) = overhang(tail, words[w]): reach(next, d + shared)
-print(answer)
+var arcs: List<(from: Tail, arc: (to: Tail, w: Int))> = []
+for t in Tail if Int(t.1) < words[t.0].len:
+    for x in Word:
+        if let a = lay(t, x): arcs.push((from: t, arc: a))
+var starts: List<(Tail, Int)> = []
+for (i, j) in Word.pairs():
+    if let a = lay((i, Cut(0)), j): starts.push((a.to, a.w))
+let dist = dijkstra(Graph.of(arcs), from: starts)
+print(Tail.filter_map(t => if ended(t): dist[t] else: None).min() ?? -1)
