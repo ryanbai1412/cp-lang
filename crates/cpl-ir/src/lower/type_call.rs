@@ -21,7 +21,11 @@ impl Lowerer<'_> {
         }
         let ty = match (self.gen_env.get(tname), tname.as_str()) {
             (Some(GenArg::Domain(d) | GenArg::Ty(Ty::Pos(d))), _) => {
-                let fn_id = self.domain_impl_method(*d, &name.text)?;
+                let fn_id = self.domain_impl_method(Ty::Pos(*d), &name.text)?;
+                return Some(self.user_call(fn_id, None, args, span));
+            }
+            (Some(GenArg::Ty(cuts @ Ty::Bound(_))), _) => {
+                let fn_id = self.domain_impl_method(cuts.clone(), &name.text)?;
                 return Some(self.user_call(fn_id, None, args, span));
             }
             (Some(GenArg::Ty(ty)), _) => ty.clone(),
