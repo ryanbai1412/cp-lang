@@ -400,6 +400,64 @@ fn run(lsp: &mut Lsp, case: &Case, tally: &mut Tally) {
             &case.who,
             || format!("{gone:?} missing from {label:?}"),
         );
+        // Each named option, written as the first argument, is the one the
+        // signature highlights.
+        let options = label.find(';').map_or(0, |i| label[..i].chars().count());
+        let names: Vec<String> = case
+            .params
+            .iter()
+            .filter(|p| {
+                let at = label
+                    .find(&format!("{p}:"))
+                    .map(|i| label[..i].chars().count());
+                options > 0 && at.is_some_and(|at| at > options)
+            })
+            .cloned()
+            .collect();
+        for name in names {
+            let written = format!("{}{name}: {}", &text[..end + 1], &text[end + 1..]);
+            let cursor = end + 1 + name.len() + 2;
+            lsp.close(uri);
+            lsp.open(uri, &written);
+            let sig = lsp.ask("textDocument/signatureHelp", uri, &written, cursor);
+            lsp.close(uri);
+            lsp.open(uri, text);
+            let first = &sig
+                .at(&["signatures"])
+                .as_array()
+                .unwrap_or(&[])
+                .first()
+                .cloned();
+            let shown = first.as_ref().and_then(|s| {
+                let chars: Vec<char> = s.at(&["label"]).as_str()?.chars().collect();
+                let active = sig.at(&["activeParameter"]).as_u32()? as usize;
+                let range = s
+                    .at(&["parameters"])
+                    .as_array()?
+                    .get(active)?
+                    .at(&["label"]);
+                let range = range.as_array()?;
+                let (a, b) = (
+                    range.first()?.as_u32()? as usize,
+                    range.get(1)?.as_u32()? as usize,
+                );
+                Some(chars.get(a..b.min(chars.len()))?.iter().collect::<String>())
+            });
+            let shown = shown.unwrap_or_default();
+            tally.check(
+                "signature help shows the active named option",
+                shown.starts_with(&format!("{name}:")),
+                &case.who,
+                || {
+                    format!(
+                        "`{name}:` written, {shown:?} highlighted in {:?}",
+                        first
+                            .as_ref()
+                            .map(|s| s.at(&["label"]).as_str().unwrap_or("").to_string())
+                    )
+                },
+            );
+        }
     }
     lsp.close(uri);
     // Completion mid-edit: the line typed up to just after the `.`, or up to
@@ -490,6 +548,7 @@ fn every_public_std_item_hovers_signs_and_completes_with_its_parameters() {
             ("hover names every parameter", 1916),
             ("hover shows the documented cost", 1786),
             ("signature help names every parameter", 1568),
+            ("signature help shows the active named option", 6),
             ("completion offers it", 1785),
             ("completion detail names every parameter", 1710),
         ],
@@ -507,6 +566,7 @@ fn every_builtin_member_hovers_signs_and_completes_with_its_parameters() {
             ("hover names every parameter", 147),
             ("hover shows the documented cost", 105),
             ("signature help names every parameter", 121),
+            ("signature help shows the active named option", 5),
             ("completion offers it", 149),
             ("completion detail names every parameter", 146),
         ],

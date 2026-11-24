@@ -84,7 +84,7 @@ pub fn signature_help(cursor: &Cursor, std: &mut StdLib) -> Option<Value> {
     for (i, param) in sig.params.iter().enumerate() {
         let first_named = param.named_only && (i == 0 || !sig.params[i - 1].named_only);
         if first_named {
-            label.push_str(if i > 0 { "; " } else { ";" });
+            label.push_str("; ");
         } else if i > 0 {
             label.push_str(", ");
         }

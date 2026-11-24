@@ -1214,16 +1214,26 @@ fn builtin_receiver(ty: &Ty) -> Option<(Receiver, Vec<(String, String)>)> {
 
 /// A catalog row as a completion entry, its types written for this value.
 fn builtin_entry(member: &BuiltinMember, bindings: &[(String, String)]) -> Entry {
+    // `; after: ?T = none, while ok: ..`: from the `;` on, options passed
+    // by name, each by its label (`while`), not its inner name (`ok`).
+    let mut named_only = false;
     let params = cpl_check::split_builtin_params(member.params)
         .into_iter()
         .map(|param| {
+            if let Some(rest) = param.strip_prefix(';') {
+                named_only = true;
+                return (rest.trim_start(), named_only);
+            }
+            (param, named_only)
+        })
+        .map(|(param, named_only)| {
             let (name, ty) = param.split_once(':').unwrap_or((param, ""));
             let (ty, default) = ty.split_once(" = ").unwrap_or((ty, ""));
             Param {
-                name: name.trim().to_string(),
+                name: name.split_whitespace().next().unwrap_or("").to_string(),
                 ty: substitute(ty.trim(), bindings),
                 default: default.trim().to_string(),
-                named_only: false,
+                named_only,
             }
         })
         .collect();

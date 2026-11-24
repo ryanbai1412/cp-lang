@@ -747,3 +747,20 @@ fn completion_ranks_what_the_context_starts_with_first() {
     first_of("fn f(a: Int) -> Int = a\n@test\nfn t():\n    |", "assert");
     first_of("@test fn t():\n    let x = 1\n    |", "assert");
 }
+
+#[test]
+fn signature_help_highlights_a_named_option_written_first() {
+    let (label, active, params) =
+        signature("fn f(; after: Int = 0) -> Int = after\nprint(f(after: |))\n");
+    assert_eq!(label, "f(; after: Int = 0) -> Int");
+    assert_eq!((active, params), (0, vec!["after: Int = 0".to_string()]));
+    // A built-in method's options, by their labels.
+    let (label, active, params) = signature("var s = Set<Int>()\nprint(s.drain(before: |))\n");
+    assert!(
+        label.starts_with("drain(; after: ?Int = none, before:"),
+        "{label}"
+    );
+    assert_eq!(params[active as usize], "before: ?Int = none");
+    let (_, active, params) = signature("var s = Set<Int>()\nprint(s.drain(while: |))\n");
+    assert_eq!(params[active as usize], "while: (Int) -> Bool");
+}
