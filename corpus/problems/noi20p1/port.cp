@@ -19,52 +19,32 @@ domain State = 0..5 * n  // (city, days still to travel)
 let joy: [City]1..=52501 = read()
 let roads: [m](u: City, v: City, w: 1..=5) = read()
 let fests: [k](day: 1..=t, city: City, bonus: 1..=1e9) = read()
-type Row = [State]?Int
-type Mat = [State]Row
+domain One = 0..1  // the best-joy row, a 1 x |State| matrix
 
 fn at(c: City, wait: Int) -> State = State.nth(c.ord * 5 + wait)
 
-fn mul(a: Mat, b: Mat) -> Mat:
-    [State] i =>
-        var c: Row = None
-        for j in State:
-            if let via = a[i][j]:
-                let bj = b[j]
-                for l in State:
-                    if let w = bj[l]: c[l] max= Some(via + w)
-        c
-
-fn apply(x: Row, a: Mat) -> Row:
-    var y: Row = None
-    for i in State:
-        if let have = x[i]:
-            let ai = a[i]
-            for j in State:
-                if let w = ai[j]: y[j] max= Some(have + w)
-    y
-
-var day: Mat = [State] _ => [State] _ => None
-for r in roads: day[at(r.u, 0)][at(r.v, r.w - 1)] = Some(joy[r.v])
+var day: [State, State]?Int = [State, State] (_, _) => None
+for r in roads: day[at(r.u, 0), at(r.v, r.w - 1)] = Some(joy[r.v])
 for c in City:
-    for wait in 1..5: day[at(c, wait)][at(c, wait - 1)] = Some(0)
+    for wait in 1..5: day[at(c, wait), at(c, wait - 1)] = Some(0)
 
 // pows[b] is 2^b days
-var pows = [day]
-while 2 ** pows.len <= t: pows.push(mul(pows.last!, pows.last!))
+var pows = [Mat(day, over: Semiring(max, +))]
+while 2 ** pows.len <= t: pows.push(pows.last! * pows.last!)
 
 let home = at(City.first!, 0)
-var best: Row = None
-best[home] = Some(joy[City.first!])
+let start = Some(joy[City.first!])
+var best = Mat([One, State] (_, s) => if s == home: start else: None, over: Semiring(max, +))
 var now = 0
 
 fn advance(to: Int):
     for b in 0..pows.len:
-        if (to - now) / 2 ** b % 2 == 1: best = apply(best, pows[b])
+        if (to - now) / 2 ** b % 2 == 1: best = best * pows[b]
     now = to
 
 for f in fests.collect().sorted():
     advance(f.day)
-    let s = at(f.city, 0)
-    if let v = best[s]: best[s] = Some(v + f.bonus)
+    let s = at(f.city, 0).ord
+    if let v = best.get(0, s): best.set(0, s, Some(v + f.bonus))
 advance(t)
-print(best[home] ?? -1)
+print(best.get(0, home.ord) ?? -1)
