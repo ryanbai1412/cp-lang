@@ -932,6 +932,23 @@ mod tests {
         assert_eq!(read, built);
     }
 
+    /// A module `build.rs` borrows by `#[path]` reruns it when edited, or the outlines go stale.
+    #[test]
+    fn the_build_script_reruns_on_every_module_it_borrows() {
+        let build = include_str!("../build.rs");
+        for line in build.lines() {
+            let Some(path) = line.trim().strip_prefix("#[path = \"") else {
+                continue;
+            };
+            let path = path.trim_end_matches("\"]");
+            let rerun = format!("cargo:rerun-if-changed={path}");
+            assert!(
+                build.contains(&rerun),
+                "build.rs borrows {path} without `{rerun}`"
+            );
+        }
+    }
+
     #[test]
     fn fast_method_scan_matches_full_parse_on_bundled_stdlib() {
         for (module, text) in crate::modules::std_modules() {

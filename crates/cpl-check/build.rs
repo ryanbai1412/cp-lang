@@ -12,6 +12,8 @@ use std_files::{collect, outline, public_names, without_tests, EMBEDDED};
 fn main() {
     let manifest = PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR").expect("set by cargo"));
     println!("cargo:rerun-if-changed=build.rs");
+    // `outline` and the rest of the modules `#[path]` puts in: their edits change what is written.
+    println!("cargo:rerun-if-changed=src/std_files.rs");
     let out = PathBuf::from(std::env::var_os("OUT_DIR").expect("set by cargo"));
     let std = manifest.join("../../std");
     // A dev build reads std/ from here at run time (`modules.rs`), so a std
