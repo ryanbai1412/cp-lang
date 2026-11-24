@@ -348,6 +348,24 @@ impl<'a> Checker<'a> {
                 }
             }
         }
+        // Ahead of the lazy-sequence `.len`: a tree range's `.rev` is a lazy sequence too, and
+        // still a range whose count wants `SortedSet` or `SortedBag`.
+        if name.text == "len" {
+            if let ExprKind::Field { base: recv, .. } = &expr.kind {
+                if let Some(owner) = self.uncounted_sorted_range_owner(recv) {
+                    if let Some(diag) = self.report(
+                        name.span,
+                        msgs::check::TYPE_MISMATCH_RANGE_LEN_IS_NOT,
+                        &[&owner],
+                    ) {
+                        diag.help = Some(format!(
+                            "use `SortedSet` or `SortedBag` for O(log n) `range(r).len`, or count by iterating `{owner}.range(...)`"
+                        ));
+                    }
+                    return Ty::Int;
+                }
+            }
+        }
         if let Some(elem) = base_ty.seq_elem() {
             match name.text.as_str() {
                 "len" => {
@@ -695,22 +713,6 @@ impl<'a> Checker<'a> {
                     name: "List".into(),
                     args: vec![Ty::Tuple(vec![at, elem])],
                 };
-            }
-        }
-        if name.text == "len" {
-            if let ExprKind::Field { base: recv, .. } = &expr.kind {
-                if let Some(owner) = self.uncounted_sorted_range_owner(recv) {
-                    if let Some(diag) = self.report(
-                        name.span,
-                        msgs::check::TYPE_MISMATCH_RANGE_LEN_IS_NOT,
-                        &[&owner],
-                    ) {
-                        diag.help = Some(format!(
-                            "use `SortedSet` or `SortedBag` for O(log n) `range(r).len`, or count by iterating `{owner}.range(...)`"
-                        ));
-                    }
-                    return Ty::Int;
-                }
             }
         }
         if name.text == "inverse" {
