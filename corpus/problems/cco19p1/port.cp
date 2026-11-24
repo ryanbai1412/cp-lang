@@ -1,4 +1,5 @@
 // Source: CCO 2019 P1 (Human Error), https://dmoj.ca/problem/cco19p1
+// limits: 600 ms, 1024 MB
 // Problem: an R x C board (R * C <= 13) with a piece on every cell, each J (Justin) or D
 //   (Donald). Justin moves first; a move takes one of your pieces onto an orthogonally
 //   adjacent piece (either colour) and captures it; a player who cannot move loses. Each
