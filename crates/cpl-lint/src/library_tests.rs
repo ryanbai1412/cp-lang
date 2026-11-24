@@ -566,3 +566,17 @@ fn also_needs_a_use_and_advice_offers_no_fix() {
     )
     .is_empty());
 }
+
+/// std's `advice:` lints apply to a program that loads no name of their
+/// module: sentinel_table is std.opt's, and this file names nothing of it.
+/// Rule: R06.4.9.
+#[test]
+fn std_advice_applies_without_its_module() {
+    let src = "var memo: [0..=9]Int = -1\nmemo[1] = 2\nprint(memo[3] == -1)\n";
+    let found: Vec<String> = crate::lint(src, &crate::Config::default())
+        .into_iter()
+        .filter(|d| d.code.0 == "L0530")
+        .map(|d| d.message)
+        .collect();
+    assert_eq!(found, ["write `var memo: [0..=9]?Int = None`"]);
+}

@@ -10,6 +10,18 @@
 /// traps: only where `p` traps
 /// example: `Some(4).is_some_and(v => v > 3) == true`
 /// example: `let n: ?Int = None; n.is_some_and(v => v > 3) == false`
+@lint(sentinel_table, from: "var t: [D]Int = -1", advice: "var t: [D]?Int = None", holes: "D, k", also: "t[k] == -1\nt[k] != -1\n-1 == t[k]\n-1 != t[k]")
+@lint(sentinel_table, from: "var t: [D, E]Int = -1", advice: "var t: [D, E]?Int = None", holes: "D, E, k, j", also: "t[k, j] == -1\nt[k, j] != -1\n-1 == t[k, j]\n-1 != t[k, j]")
+@lint(sentinel_table, from: "var t: List<Int> = [-1 for i in r]", advice: "var t: List<?Int> = [None for i in r]", holes: "r, k", also: "t[k] == -1\nt[k] != -1\n-1 == t[k]\n-1 != t[k]")
+@lint(sentinel_table, from: "var t = [-1 for i in r]", advice: "var t: List<?Int> = [None for i in r]", holes: "r, k", also: "t[k] == -1\nt[k] != -1\n-1 == t[k]\n-1 != t[k]")
+@lint(sentinel_table, from: "var t: [D]Int = v", advice: "var t: [D]?Int = None", holes: "D, v, k, x", when: "v >= 1000000000", also: "t[k] == v\nt[k] != v\nv == t[k]\nv != t[k]\nt[k] < x\nt[k] <= x\nt[k] > x\nt[k] >= x\nx < t[k]\nx <= t[k]\nx > t[k]\nx >= t[k]")
+@lint(sentinel_table, from: "var t: [D, E]Int = v", advice: "var t: [D, E]?Int = None", holes: "D, E, v, k, j, x", when: "v >= 1000000000", also: "t[k, j] == v\nt[k, j] != v\nv == t[k, j]\nv != t[k, j]\nt[k, j] < x\nt[k, j] <= x\nt[k, j] > x\nt[k, j] >= x\nx < t[k, j]\nx <= t[k, j]\nx > t[k, j]\nx >= t[k, j]")
+@lint(sentinel_table, from: "var t: List<Int> = [v for i in r]", advice: "var t: List<?Int> = [None for i in r]", holes: "r, v, k, x", when: "v >= 1000000000", also: "t[k] == v\nt[k] != v\nv == t[k]\nv != t[k]\nt[k] < x\nt[k] <= x\nt[k] > x\nt[k] >= x\nx < t[k]\nx <= t[k]\nx > t[k]\nx >= t[k]")
+@lint(sentinel_table, from: "var t = [v for i in r]", advice: "var t: List<?Int> = [None for i in r]", holes: "r, v, k, x", when: "v >= 1000000000", also: "t[k] == v\nt[k] != v\nv == t[k]\nv != t[k]\nt[k] < x\nt[k] <= x\nt[k] > x\nt[k] >= x\nx < t[k]\nx <= t[k]\nx > t[k]\nx >= t[k]")
+@lint(sentinel_table, from: "var t: [D]Int = -v", advice: "var t: [D]?Int = None", holes: "D, v, k, x", when: "v >= 1000000000", also: "t[k] == -v\nt[k] != -v\n-v == t[k]\n-v != t[k]\nt[k] < x\nt[k] <= x\nt[k] > x\nt[k] >= x\nx < t[k]\nx <= t[k]\nx > t[k]\nx >= t[k]")
+@lint(sentinel_table, from: "var t: [D, E]Int = -v", advice: "var t: [D, E]?Int = None", holes: "D, E, v, k, j, x", when: "v >= 1000000000", also: "t[k, j] == -v\nt[k, j] != -v\n-v == t[k, j]\n-v != t[k, j]\nt[k, j] < x\nt[k, j] <= x\nt[k, j] > x\nt[k, j] >= x\nx < t[k, j]\nx <= t[k, j]\nx > t[k, j]\nx >= t[k, j]")
+@lint(sentinel_table, from: "var t: List<Int> = [-v for i in r]", advice: "var t: List<?Int> = [None for i in r]", holes: "r, v, k, x", when: "v >= 1000000000", also: "t[k] == -v\nt[k] != -v\n-v == t[k]\n-v != t[k]\nt[k] < x\nt[k] <= x\nt[k] > x\nt[k] >= x\nx < t[k]\nx <= t[k]\nx > t[k]\nx >= t[k]")
+@lint(sentinel_table, from: "var t = [-v for i in r]", advice: "var t: List<?Int> = [None for i in r]", holes: "r, v, k, x", when: "v >= 1000000000", also: "t[k] == -v\nt[k] != -v\n-v == t[k]\n-v != t[k]\nt[k] < x\nt[k] <= x\nt[k] > x\nt[k] >= x\nx < t[k]\nx <= t[k]\nx > t[k]\nx >= t[k]")
 pub fn is_some_and<T>(self: ?T, p: T -> Bool) -> Bool:
     if let Some(v) = self: return p(v)
     false

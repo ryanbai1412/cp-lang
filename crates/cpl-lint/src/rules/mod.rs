@@ -40,7 +40,6 @@ mod proven;
 mod read_loop;
 mod reverse;
 mod scopes;
-mod sentinel;
 mod sentinel_scalar;
 mod settled;
 mod shapes;
@@ -84,7 +83,6 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(euclid::check(file));
     findings.extend(reverse::check(file));
     findings.extend(isqrt::check(file));
-    findings.extend(sentinel::check(file));
     findings.extend(sentinel_scalar::check(file));
     findings.extend(found_flag::check(file));
     findings.extend(mod_reduce::check(file));
@@ -146,6 +144,9 @@ trait Warn {
         out.push(Finding { lint, diag });
     }
 }
+
+/// Where a value stops being an ordinary number and reads as a sentinel.
+pub(crate) const LARGE: i128 = 1_000_000_000;
 
 /// `-1`, `10**18`, `10**9 + 7`, `1000000000000000000` and their negations.
 pub(crate) fn constant(e: &Expr) -> Option<i128> {
