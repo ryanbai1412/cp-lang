@@ -142,7 +142,7 @@
   "near_dup_fns": 0,
   "consumer_rederived": 14,
   "rs_near_cap": [],
-  "skip_lists": 30,
+  "skip_lists": 28,
   "dead_code_allows": 0,
   "external_crates": 5,
   "corpus_test_files": 0,

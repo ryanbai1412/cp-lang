@@ -14,8 +14,8 @@ pub fn report(path: &str, text: &str, program: &cpl_ir::Program) -> String {
 }
 
 /// [`report`] opening with `storage`, the types and memory section the
-/// checker's representation query fills, which then isn't listed as not
-/// shown yet.
+/// checker's representation query fills (`cpl explain` and the playground
+/// always pass it).
 pub fn report_with(
     path: &str,
     text: &str,
@@ -23,7 +23,6 @@ pub fn report_with(
     storage: Option<&str>,
 ) -> String {
     let mut out = storage.unwrap_or_default().to_string();
-    let shown = usize::from(storage.is_some()) * 2;
     let stdout = &mut out;
     let crate::Lowered {
         closures: entries,
@@ -81,7 +80,7 @@ pub fn report_with(
         if dropped.is_empty() && sunk.is_empty() && hashed.is_empty() && copies.is_empty() {
             let _ = writeln!(stdout, "{path}: no closure or fn-typed sites");
         }
-        not_shown_yet(stdout, shown);
+        not_shown_yet(stdout);
         return out;
     }
     if !entries.is_empty() {
@@ -176,23 +175,18 @@ pub fn report_with(
             let _ = writeln!(stdout, "  {line}:{col}  {desc}");
         }
     }
-    not_shown_yet(stdout, shown);
+    not_shown_yet(stdout);
     out
 }
 
 /// The sections `spec/tools/explain.md` promises that no query fills yet
 /// (plan/QUESTIONS.md tools-3), named so nobody mistakes their absence for
-/// "nothing to report"; the first two are the storage section's.
-const NOT_SHOWN_YET: &[&str] = &[
-    "types: bytes and niches",
-    "arrays and peak memory",
-    "specializations chosen",
-    "checks left per build",
-];
+/// "nothing to report".
+const NOT_SHOWN_YET: &[&str] = &["specializations chosen", "checks left per build"];
 
-fn not_shown_yet(stdout: &mut String, shown: usize) {
+fn not_shown_yet(stdout: &mut String) {
     let _ = writeln!(stdout, "Not shown yet:");
-    for section in &NOT_SHOWN_YET[shown..] {
+    for section in NOT_SHOWN_YET {
         let _ = writeln!(stdout, "  {section}");
     }
 }
