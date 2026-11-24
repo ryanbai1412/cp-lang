@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3411 (3312 passing). Rules: 615.
+Cases: 3413 (3312 passing). Rules: 615.
 
 ## Summary per chapter
 
@@ -775,7 +775,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0102 Expected expression: 4 case(s)
 - E0103 Expected token: 7 case(s)
 - E0104 Expected indented block: 2 case(s)
-- E0105 Expected type: 2 case(s)
+- E0105 Expected type: 3 case(s)
 - E0106 Expected pattern: 1 case(s)
 - E0107 Unexpected token: 11 case(s)
 - E0108 Expected identifier: 1 case(s)
@@ -783,7 +783,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0110 Unparenthesized `??` with arithmetic: 1 case(s)
 - E0111 Mixed comparison chain: 2 case(s)
 - E0112 `let ... else` block falls through: 1 case(s)
-- E0201 Unresolved name: 13 case(s)
+- E0201 Unresolved name: 14 case(s)
 - E0202 Duplicate definition: 4 case(s)
 - E0203 Unknown field or method: 18 case(s)
 - E0204 Unknown type: 4 case(s)
@@ -1115,6 +1115,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 
 ## Core cases without a `// rule:` line
 
+- core-01/comprehension-is-binding-not-seen-later.cp
 - core-01/for-filter-on-inner-clause.cp
 - core-01/inline-if-binds-loosest.cp
 - core-01/while-let-tuple-pattern.cp
@@ -1170,5 +1171,6 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - core-09/exp-ln-hypot.cp
 - core-09/ln-of-negative-trap.cp
 - core-09/trig-intrinsics.cp
+- core-10/ragged-read-names-pair-domain.cp
 - core-10/tuple-dependent-bound-in-block.cp
 - core-12/builtin-number-from-int.cp
