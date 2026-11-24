@@ -647,3 +647,140 @@ fn a_message_without_a_content_length_ends_the_session_with_exit_1() {
         "{stderr}"
     );
 }
+
+/// Random DAP requests against a straight run: the run stepped in from
+/// its first step to its last is the oracle, and every `next`, `stepOut`,
+/// `stepBack`, `continue` and `reverseContinue` must stop at the step the
+/// protocol names, with that step's stack and values.
+#[test]
+fn random_dap_requests_stop_where_a_straight_run_says() {
+    let path = write_temp(
+        "random_dap",
+        "\
+fn sq(x: Int) -> Int:
+    let y = x * x
+    y
+var t = 0
+var acc = 0
+while t < 6:
+    t += 1
+    acc += sq(t)
+print(acc)
+",
+    );
+    let p = path.to_str().unwrap().replace('\\', "\\\\");
+    let breakpoints = [2u32, 8];
+    let launch = |dap: &mut DapClient, with_breakpoints: bool| {
+        dap.send("initialize", Some("{\"adapterID\":\"cp\"}"));
+        let _ = dap.recv_until("\"event\":\"initialized\"");
+        dap.send(
+            "launch",
+            Some(&format!("{{\"program\":\"{p}\",\"stopOnEntry\":true}}")),
+        );
+        let _ = dap.recv_until("\"command\":\"launch\"");
+        if with_breakpoints {
+            let lines = breakpoints.map(|l| format!("{{\"line\":{l}}}")).join(",");
+            dap.send(
+                "setBreakpoints",
+                Some(&format!(
+                    "{{\"source\":{{\"path\":\"{p}\"}},\"breakpoints\":[{lines}]}}"
+                )),
+            );
+            let _ = dap.recv_until("\"command\":\"setBreakpoints\"");
+        }
+        dap.send("configurationDone", None);
+        let _ = dap.recv_until("\"event\":\"stopped\"");
+    };
+    // (frames, line, what `t` and `acc` evaluate to) where the session stands.
+    let state = |dap: &mut DapClient| {
+        dap.send("stackTrace", Some("{\"threadId\":1}"));
+        let stack = dap.recv_until("\"command\":\"stackTrace\"");
+        let after = |key: &str| {
+            let at = stack
+                .find(key)
+                .unwrap_or_else(|| panic!("{key} in {stack}"))
+                + key.len();
+            let digits: String = stack[at..]
+                .chars()
+                .take_while(char::is_ascii_digit)
+                .collect();
+            digits.parse::<u32>().unwrap()
+        };
+        let (frames, line) = (after("\"totalFrames\":"), after("\"line\":"));
+        let mut values = Vec::new();
+        for name in ["t", "acc"] {
+            dap.send("evaluate", Some(&format!("{{\"expression\":\"{name}\"}}")));
+            let reply = dap.recv_until("\"command\":\"evaluate\"");
+            let body = reply.find("\"body\"").map_or("", |at| &reply[at..]);
+            values.push(body.to_string());
+        }
+        (frames, line, values)
+    };
+    // The straight run.
+    let mut dap = DapClient::spawn();
+    launch(&mut dap, false);
+    let mut straight = vec![state(&mut dap)];
+    loop {
+        dap.send("stepIn", Some("{\"threadId\":1}"));
+        let stop = loop {
+            let msg = dap.recv();
+            if msg.contains("\"event\":\"stopped\"") || msg.contains("\"event\":\"terminated\"") {
+                break msg;
+            }
+        };
+        if stop.contains("\"event\":\"terminated\"") {
+            break;
+        }
+        straight.push(state(&mut dap));
+    }
+    dap.finish();
+    assert!(straight.len() > 20, "{} steps", straight.len());
+    let last = straight.len() - 1;
+    let at_break = |i: usize| breakpoints.contains(&straight[i].1);
+    // Where each request stops by the protocol, or None past the run's end.
+    let target = |op: &str, k: usize| -> Option<usize> {
+        let (depth, line) = (straight[k].0, straight[k].1);
+        let mut later = k + 1..=last;
+        match op {
+            "stepIn" => (k < last).then_some(k + 1),
+            "stepBack" => Some(k.saturating_sub(1)),
+            "next" => later.find(|&i| {
+                at_break(i) || straight[i].0 <= depth && (straight[i].1 != line || i == last)
+            }),
+            "stepOut" => later.find(|&i| at_break(i) || straight[i].0 < depth),
+            "continue" => later.find(|&i| at_break(i)),
+            "reverseContinue" => Some((0..k).rev().find(|&i| at_break(i)).unwrap_or(0)),
+            _ => unreachable!(),
+        }
+    };
+    let ops = [
+        "stepIn",
+        "stepBack",
+        "next",
+        "stepOut",
+        "continue",
+        "reverseContinue",
+    ];
+    for seed in 1..=4u64 {
+        let mut dap = DapClient::spawn();
+        launch(&mut dap, true);
+        let (mut k, mut rng, mut done) = (0, seed, Vec::new());
+        for _ in 0..40 {
+            rng ^= rng << 13;
+            rng ^= rng >> 7;
+            rng ^= rng << 17;
+            let op = ops[(rng % ops.len() as u64) as usize];
+            let Some(next) = target(op, k) else { continue };
+            dap.send(op, Some("{\"threadId\":1}"));
+            let _ = dap.recv_until("\"event\":\"stopped\"");
+            done.push(op);
+            assert_eq!(
+                state(&mut dap),
+                straight[next],
+                "seed {seed}: after {done:?} the session should stand at step {next}"
+            );
+            k = next;
+        }
+        dap.finish();
+    }
+}

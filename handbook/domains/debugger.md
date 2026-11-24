@@ -186,7 +186,7 @@ tests for wording.
 | Quality | Metric | Mechanism | Where |
 |---|---|---|---|
 | Every step of any run is reachable forwards and backwards | steps unreachable in DAP, viewer or CLI windows | hand-written suite including runs past the recording cap | `crates/cpl-cli/tests/dap.rs` `dap_reaches_every_step_of_a_run_longer_than_a_recording`, `crates/cpl-cli/tests/trace_filters.rs` |
-| Step back, breakpoints, watches and stack follow DAP | DAP requests answered wrongly | hand-written protocol suite; `missing`: a generated sequence of random DAP requests checked against a straight run | `crates/cpl-cli/tests/dap.rs`; `missing` |
+| Step back, breakpoints, watches and stack follow DAP | DAP requests answered wrongly | hand-written protocol suite; random request sequences checked against the run stepped in from first step to last | `crates/cpl-cli/tests/dap.rs`, `random_dap_requests_stop_where_a_straight_run_says` |
 | Restart after an edit keeps your place | restarts landing on another step | hand-written suite | `crates/cpl-cli/tests/dap.rs` `dap_restart_rerecords_the_edit_on_the_pinned_input_and_keeps_place` |
 | Replaying one call with an edited fn equals rerunning it | differing results | hand-written suite | `crates/cpl-cli/tests/replay.rs`, `crates/cpl-cli/tests/dap.rs` `dap_replays_one_call_with_the_edited_fn` |
 | The loop works in Neovim, Vim, VS Code and JetBrains on Linux, macOS and Windows | editor x OS cells green | CI matrix | `.github/workflows/debugger-loop.yml` |
