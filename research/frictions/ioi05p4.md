@@ -10,7 +10,8 @@ fn worst(order: [Seat]Seat) -> Int:
 ```
 
 ## Circular gaps are a window plus a wrap term
-- **Where:** `wrap` beside `shifts.windows(2)`; a ring of sorted points
+- **Where:** `wrap` beside `max(shifts[j] - shifts[j - 1] for j in 1..n)` (port
+  lines 27-28); a ring of sorted points
   modulo n has one gap per point, which a `circular_gaps(period)` would say.
 - **Severity:** low.
 
@@ -20,7 +21,16 @@ fn worst(order: [Seat]Seat) -> Int:
 - **Severity:** low.
 
 ## Window slices keep the list's keys
-- **Where:** `w.last! - w.first!`: `w[0]`, `w[1]` index by the source list's
-  keys, so a window from offset 1 has no key 0. Position-relative access on a
-  window would read as written.
+- **Where:** port line 28 takes the gaps by index, `shifts[j] - shifts[j - 1] for j in 1..n`,
+  rather than over `shifts.windows(2)`, because a window keeps the source list's
+  keys, so a window from offset 1 has no key 0. Fresh `cpl run`:
+  ```
+  let xs = [1, 4, 9, 16]
+  print(xs.windows(2).map(w => w[1] - w[0]).collect())
+  ```
+  ```
+  error[R0101]: key 0 is not one of the view's keys 1..3: `.nth(k)` reads by position
+  ```
+- **General fix:** position-relative indexing on window views (`w[0]` = first),
+  or a `pairs()`/`gaps()` adapter; owner: stdlib.
 - **Severity:** low.

@@ -12,8 +12,11 @@ fn pay(r1: Row, r2: Row, c1: Col, c2: Col) -> Int:
     )!
 ```
 
-## Two optional minima can't be combined
-- **Where:** `pay` builds both cut lists and concatenates them to take one
-  `min()!`; a `min` over optionals that skips `None` would avoid the lists.
-- **General fix:** `min(?a, ?b) -> ?T` (shared with ioi04p4).
+## Two optional minima can't be combined (fixed)
+- **Status:** fixed. `min(?a, ?b)` skips `None` today: a fresh `cpl run` of
+  `let a: ?Int = None; let b: ?Int = Some(3)` then `print(min(a, b) ?? -1)` and
+  `print(min(b, a) ?? -1)` prints `3` twice. The port still combines them by hand,
+  `min(by_row ?? by_col!, by_col ?? by_row!)` (port lines 27-29). Rewritten as
+  `min(by_row, by_col)!`, it gives the same output on tests.toml, so this is an
+  owed port rewrite.
 - **Severity:** low.

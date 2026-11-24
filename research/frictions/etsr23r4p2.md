@@ -1,13 +1,19 @@
 # etsr23r4p2: Encounters Are Greetings (power towers under range raises)
 
-The dream builds the totient chain with `iterate(...).take_while(...)`, keys it
-by its own domain `Step`, and leaves the generalized Euler theorem to an `Exp`
-type; the port keeps a `List` of moduli, an `Int` depth and a hand-written
-`power`.
+The dream builds the totient chain with a `while ... push(phi(...))` loop
+(dream lines 10-11), keys it by its own domain `Step`, and leaves the
+generalized Euler theorem to std `Exp`/`pow_exp`; the port keeps a `List` of
+moduli, an `Int` depth and a hand-written `power` over baby-step/giant-step
+tables.
 
-## No exponent type for the generalized Euler theorem
-- **Where:** port `fn power(e, big, m)`: the `(big, val)` pair and the 64-step
-  loop that decides whether `base^exp` reached `m`.
+## No exponent type for the generalized Euler theorem (fixed in std)
+- **Status:** fixed. std/math now has `Exp` and `pow_exp` (generalized Euler).
+  Fresh `cpl check corpus/problems/etsr23r4p2/dream.cp` gives `no errors`, and
+  `cpl run` of dream.cp matches port.cp on all 8 tests.toml cases. The port has not
+  moved to it yet: rewriting the port is owed; no std or compiler work is left.
+- **Where:** port `fn power(e, big, depth)`, `reach_of` and the `low`/`high`
+  power tables (port lines 28-56): the `(big, val)` pair, plus the precomputed
+  "least k with base^k >= m" that decides whether `base^exp` reached `m`.
 - **What felt wrong:** "is the true value at least m" travels by hand next to
   every residue; one wrong `big` silently gives a wrong residue.
 - **Goal it hurts:** hard-to-get-wrong, express.
@@ -19,14 +25,18 @@ type; the port keeps a `List` of moduli, an `Int` depth and a hand-written
 ## A chain's keys are not a domain
 - **Where:** `var moduli = [p]; while ...: moduli.push(phi(...))`, then
   `domain Slot = 0..=moduli.len` and `tower(s, x, depth: Int)` clamping
-  `min(depth, moduli.len - 1)`.
+  `min(depth, moduli.len - 1)` (port lines 18-23 and 54; dream.cp keeps the same
+  loop and clamp, dream lines 10-13).
 - **Ideal code:** `let chain = iterate(p, phi).take_while(m => m > 1).chain([1]).list()`,
   `domain Step = chain.keys`, `depth.next ?? depth`.
 - **General fix:** `iterate`/`take_while` producing a list, and `domain D = xs.keys`.
 - **Severity:** low.
 
-## A saturating shift action is spelled by hand
-- **Where:** `Action(..., apply: (k, x, _) => [Slot] s => x[Slot.at(Int(s) + k) ?? Slot.last!])`.
+## A saturating shift action is spelled by hand (fixed)
+- **Status:** fixed. Port line 67 reads `apply: (k, x, _) => [Slot] s => x[s.shift_saturating(k)]`;
+  a fresh `cpl run` of port.cp matches dream.cp on all 8 tests.toml cases. A preset
+  `act: shift_saturating` would still save the `Action(...)` wrapper (low).
+- **Was:** `Action(..., apply: (k, x, _) => [Slot] s => x[Slot.at(Int(s) + k) ?? Slot.last!])`.
 - **Ideal code:** `act: shift_saturating`.
 - **General fix:** a `shift_saturating` preset action over `[D]T` values.
 - **Severity:** low.

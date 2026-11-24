@@ -16,7 +16,11 @@ for (x, y) in lights:
   values of one domain isn't spelled directly (shared with ioi14p1).
 - **Severity:** low.
 
-## Shifting every present entry of an optional array is a loop
-- **Where:** the `for v in Coord: if let w = on_x[v]: ...` pair; an
-  elementwise map over present entries would be one line each.
+## Shifting every present entry of an optional array is a loop (fixed)
+- **Status:** fixed. The port now keeps plain `[Coord]Int` arrays seeded with
+  `abs(v.label)` (port lines 20-21), so no entry is absent. It updates them with a
+  `for v in Coord:` loop (lines 26-28), but rebinding with the builder,
+  `on_x = [Coord] v => min(on_x[v] + dx, ay + abs(v.ord - py.ord))`, runs today:
+  a fresh `cpl run` of the port with both lines rewritten gives the same output on
+  tests.toml. That leaves a port rewrite, not a language gap.
 - **Severity:** low.
