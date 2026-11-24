@@ -1,27 +1,29 @@
-// EGOI 2022 "Social Engineering": Maria (vertex 1) and an adversary walk a
-// graph without reusing edges; whoever cannot move loses. Win if possible.
-@grader fn get_move() -> Int
-@grader fn make_move(v: Int)
+// EGOI 2022 "Social Engineering": Maria (vertex 1) and an adversary walk a graph without reusing
+// edges; whoever cannot move loses. Away from home the friends (home's neighbours) must pair up
+// along disjoint paths of a DFS forest; then Maria answers every move with the rest of its path.
+let wire = Wire()
+let (n, m) = read<(2..=2e5, 1..=4e5)>()
+domain V = 1..=n
+let g = Graph.undirected(read<[m](u: V, v: V)>())
+let home = V.first!
+var friend: [V]Bool = false
+for v in g.next(home): friend[v] = true
+let forest = Rooted.forest(g.only(keep: v => v != home, from: v => v != home))
+var route: [V]List<V> = []
 
-pub fn social_engineering(n: Int, edges: List<(Int, Int)>):
-    domain V = 1..=n
-    let g = Graph.undirected(edges.map(e => (u: V(e.0), v: V(e.1))))
-    let home = V.first!
-    let friend = V.mask(g.next(home))
-    let forest = dfs(g.only(v => v != home), from: g.next(home)).forest()
-    var route = Map<V, List<V>>()
+fn pair_up(u: V) -> ?V:  // the friend under u left open, if any
+    let open = chain(if friend[u]: [u] else: [], forest.children(u).filter_map(pair_up)).collect()
+    for pair in open.chunks(2):
+        let (a, b) = (pair.first!, pair.last!)
+        if a != b:
+            route[a] = forest.path(a, b)
+            route[b] = forest.path(b, a)
+    if open.len % 2 == 1: open.last else: None
 
-    fn pair_up(u: V) -> ?List<V>:
-        let open = chain(if friend[u]: [List<V>()] else: [], forest.children(u).filter_map(pair_up)).collect()
-        for (x, y) in open.chunks_exact(2):
-            let path = x + [u] + y.rev
-            route[path.first!] = path
-            route[path.last!] = path.rev
-        open.len.is_odd().then(open.last! + [u])
-
-    if forest.roots.any(r => pair_up(r).is_some()):
-        return
-    while let u = V.at(get_move()):
-        for v in route[u].skip(1):
-            make_move(Int(v))
-        make_move(Int(home))
+if forest.roots.all(r => r == home or pair_up(r) == None):
+    while true:
+        let move: 0..=n = wire.ask("?")
+        if move == 0: break
+        for v in route[V(move)].drop(1): print(v)
+        print(home)
+print("!")

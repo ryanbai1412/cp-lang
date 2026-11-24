@@ -25,5 +25,10 @@
  "difficulty": null,
  "dream": "draft",
  "spec": "draft",
- "notes": "Grader task played over stdin with a Wire (no local @grader stub). tests/NN.in/.ans are transcripts of spec.cp against interactor.py on tests/NN.case."
+ "notes": "Grader task played over stdin with a Wire (no local @grader stub). tests/NN.in/.ans are transcripts of spec.cp against interactor.py on tests/NN.case.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 14,
+  "sha": "3dee8ac829d1873aa659c50f36c8cc21bf5abdd8"
+ }
 }
