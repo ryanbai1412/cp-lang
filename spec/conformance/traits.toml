@@ -2139,6 +2139,26 @@ print([1, 2, 3, 4].ring.windows(2).len)
 """
 out = "4"
 
+[case."Show/Reweighted/show"]
+code = """
+use std.graph.{Graph}
+domain V = 0..3
+domain E = 0..2
+let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 1, v: 2)]
+print(Graph.directed(es).weighted(a => 3 + a.e.ord))
+"""
+out = "0->2:3 1->2:4"
+
+[case."Show/Complement/show"]
+code = """
+use std.graph.{complement}
+domain V = 0..3
+let g: [V]List<V> = [[1], [0, 2], [1]]
+print(complement(g))
+"""
+out = "0->2 2->0"
+
+
 [case."Next/Reweighted/out"]
 code = """
 use std.graph.{Graph}

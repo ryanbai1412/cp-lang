@@ -3941,6 +3941,35 @@ fn gen_graph<V, A>(
         if not directed: pairs.push((from: v, arc: mirror(a, u)))
     Graph.of(pairs)
 
+impl Show for Reweighted<V, E, A, W>:
+    /// Every arc as `u->v:w`, space-separated in vertex then arc order; `no arcs` for none.
+    ///
+    /// example: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V) = [(u: 0, v: 1)]; "{Graph.directed(es).weighted(a => 5)}" == "0->1:5"`
+    fn show(r):
+        var out = ""
+        for i in 0..V.count:
+            let u = V(i)
+            for a in r.out(u):
+                if not out.is_empty: out += " "
+                out += "{u}->{a.to}:{a.w}"
+        if out.is_empty: return "no arcs"
+        out
+
+impl Show for Complement<V, G>:
+    /// Every arc of the complement as `u->v`, space-separated in vertex then arc order; `no arcs`
+    /// for none.
+    ///
+    /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [0, 2], [0]]; "{complement(g)}" == "2->1"`
+    fn show(c):
+        var out = ""
+        for i in 0..V.count:
+            let u = V(i)
+            for v in c.out(u):
+                if not out.is_empty: out += " "
+                out += "{u}->{v}"
+        if out.is_empty: return "no arcs"
+        out
+
 impl Show for Paths<V, W, A>:
     fn show(p):
         var out = ""
