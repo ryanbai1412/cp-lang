@@ -23,4 +23,5 @@ let hits = w.windows(p.len).count(p)
 
 ## Measurements
 
-Max case (|S| = 2e5, T = "000"): port 0.01 s, accepted C++ 0.01 s, same output.
+Max case (|S| = 2e5, T = "000", zeros at the feasible limit): port 0.01 s, accepted C++ 0.01 s,
+same output.
