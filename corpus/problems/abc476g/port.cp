@@ -45,9 +45,10 @@ while lo < hi:
 var dp: [0..=MAXB]Int = 0
 for (o, k) in blocks:
     var next = dp.clone()
-    for b in 0..=min(MAXB, o + k):
-        for a in max(b, o)..=min(MAXB, o + k):
-            next[b] max= dp[a] + f[k, a - o, max(0, b - o)]
+    // an end below o reads the same f as o itself, so the suffix max below carries it there
+    for b in o..=min(MAXB, o + k):
+        for a in b..=min(MAXB, o + k):
+            next[b] max= dp[a] + f[k, a - o, b - o]
     for b in (0..MAXB).rev:
         next[b] max= next[b + 1]
     dp = next

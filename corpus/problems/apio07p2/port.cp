@@ -7,7 +7,7 @@
 //   problem: with a price λ on each cable, a linear DP over the gaps (take a gap after skipping
 //   the one before it) gives the least priced cost and its fewest cables. O(n log C).
 // original: corpus/submissions/5532752.cpp
-// Bounds: n: 2..=1e5; k: 1..=n / 2
+// Bounds: n: 2..=1e5; k: 1..=n / 2; at: 0..=1e9
 let n: 2..=1e5 = read()
 let k: 1..=n / 2 = read()
 let at: [n]0..=1e9 = read()

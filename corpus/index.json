@@ -1,16 +1,16 @@
 {
- "problems": 1160,
- "with_cpp_ac": 1023,
+ "problems": 1159,
+ "with_cpp_ac": 1025,
  "dream": {
   "draft": 125,
   "gold": 0,
-  "none": 1035,
+  "none": 1034,
   "reviewed": 0
  },
  "spec": {
   "draft": 100,
   "gold": 0,
-  "none": 1060,
+  "none": 1059,
   "reviewed": 0
  },
  "by_source": {
@@ -18,7 +18,7 @@
   "aac": 13,
   "abc": 6,
   "acc": 5,
-  "agc": 5,
+  "agc": 4,
   "apio": 9,
   "aplusb": 1,
   "atcoder_dp": 26,
