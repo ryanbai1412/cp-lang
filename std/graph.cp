@@ -1320,6 +1320,14 @@ pub fn bfs01<V, G: WeightedNext<V, Int>>(
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 0, v: 2, w: 1), (u: 2, v: 1, w: 2)]; let p = dijkstra(Graph.directed(es), from: [(V(0), 0)]); p[1] == Some(3) and p.path(1) == Some([0, 2, 1])`
 /// example: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 4)]; dijkstra(Graph.directed(es), from: [(V(0), 10)])[1] == Some(14)`
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 0, v: 2, w: 1), (u: 2, v: 1, w: 2)]; dijkstra(Graph.directed(es), from: [(V(0), 0)], step: max)[1] == Some(2)`
+@lint(stale_entry_skip, from: "while let (d, u) = pq.pop():\n    if d > dist[u]:\n        continue\n    rest", to: "dijkstra(Graph.directed(es), from: [(s, 0)])", holes: "pq, dist, rest")
+@lint(stale_entry_skip, from: "while let (d, u) = pq.pop():\n    if d > dist[u]!:\n        continue\n    rest", to: "dijkstra(Graph.directed(es), from: [(s, 0)])", holes: "pq, dist, rest")
+@lint(stale_entry_skip, from: "while let (d, u) = pq.pop():\n    if d != dist[u]:\n        continue\n    rest", to: "dijkstra(Graph.directed(es), from: [(s, 0)])", holes: "pq, dist, rest")
+@lint(stale_entry_skip, from: "while let (d, u) = pq.pop():\n    if d != dist[u]!:\n        continue\n    rest", to: "dijkstra(Graph.directed(es), from: [(s, 0)])", holes: "pq, dist, rest")
+@lint(stale_entry_skip, from: "let (d, u) = pq.pop()!\nif d > dist[u]:\n    continue", to: "dijkstra(Graph.directed(es), from: [(s, 0)])", holes: "pq, dist")
+@lint(stale_entry_skip, from: "let (d, u) = pq.pop()!\nif d > dist[u]!:\n    continue", to: "dijkstra(Graph.directed(es), from: [(s, 0)])", holes: "pq, dist")
+@lint(stale_entry_skip, from: "let (d, u) = pq.pop()!\nif d != dist[u]:\n    continue", to: "dijkstra(Graph.directed(es), from: [(s, 0)])", holes: "pq, dist")
+@lint(stale_entry_skip, from: "let (d, u) = pq.pop()!\nif d != dist[u]!:\n    continue", to: "dijkstra(Graph.directed(es), from: [(s, 0)])", holes: "pq, dist")
 pub fn dijkstra<V, W, G: WeightedNext<V, W>, M>(
     g: G,
     from: Seq<(V, W)>,

@@ -25,7 +25,6 @@ mod hand_input;
 mod hand_loops;
 mod hand_math;
 mod hand_search;
-mod heap_skip;
 mod imports;
 mod isqrt;
 mod letters;
@@ -69,7 +68,6 @@ pub(crate) use proven::*;
 pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     let mut findings = Vec::new();
     findings.extend(adjacency::check(file));
-    findings.extend(heap_skip::check(file));
     findings.extend(bag::check(file));
     findings.extend(neg_heap::check(file));
     findings.extend(extreme::check(file));
