@@ -12,9 +12,6 @@
  ],
  "cpp_ac": 2,
  "artifacts": {
-  "dream": [
-   "corpus/problems/btoi06p5/dream.cp"
-  ],
   "port": [
    "corpus/problems/btoi06p5/port.cp"
   ]

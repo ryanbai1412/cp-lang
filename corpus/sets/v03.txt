@@ -48,6 +48,7 @@ atcoder_dp_x
 atcoder_dp_y
 atcoder_dp_z
 btoi04p3
+btoi06p5
 btoi08p6
 btoi15p2
 btoi17p2

@@ -7,24 +7,27 @@
 // Solution: decode into maximal runs, then DP backwards: cost[e] = shortest code of the rest
 //   with escape e. A run of s costs the same under every escape but s; escape s pays
 //   3 ceil(k / n); then s may switch (+3) to the best other escape, or all others adopt s (+3).
-//   So updates are add-all, assign-all and set-one: an offset, an epoch-stamped default and
-//   an ordered set of touched (cost, symbol) for the minimum. O(m + runs log n), then a
+//   So updates are add-all, assign-all, set-one and a global argmin: one LazySegTree with an
+//   assign-then-add tag and `None` for the forbidden escape. O(m + runs log n), then a
 //   forward pass replays the recorded switches to emit the code.
 // original: corpus/submissions/4156310.cpp
 // Bounds: n: 2..=100_000; m: 1..=2_000_000; code: 0..=n - 1
-let n: 2..=100_000 = read()
-let m: 1..=2_000_000 = read()
+const SWITCH_COST = 3
+
+let (n, m): (2..=100_000, 1..=2_000_000) = read()
 domain Sym = 0..n
 let code: [0..m]Sym = read()
 
-// decode into maximal runs (symbol, length)
-var sym: List<Sym> = []
-var len: List<Int> = []
+fn escaped_cost(k: Int) -> Int = 3 * ceil_div(k, n)
+
+fn plain_cost(k: Int) -> Int = 3 * (k / (n + 2)) + min(3, k % (n + 2))
+
+// Decode the input stream into maximal (symbol, length) runs.
+var runs: List<(sym: Sym, len: Int)> = []
 fn add_run(s: Sym, k: Int):
-    if sym.len > 0 and sym.last! == s: len.last! += k
-    else:
-        sym.push(s)
-        len.push(k)
+    if let last = runs.last and last.sym == s: runs.last!.len += k
+    else: runs.push((s, k))
+
 var esc = Sym(0)
 var at = 0
 while at < m:
@@ -34,84 +37,75 @@ while at < m:
         at += 1
     else:
         let b = code[at + 1]
-        let k = code[at + 2].idx
+        let k = code[at + 2].ord
         if b == esc: add_run(esc, k + 1)
         elif k == 0: esc = b
         else: add_run(b, k + 3)
         at += 3
 
-let runs = sym.len
-domain R = 0..runs
-var offset = 0
-var dflt = 0
-var epoch = 0
-var stamp: [Sym]Int = -1
-var cost: [Sym]Int = 0
-var touched = Set<(Int, Int)>()
-var free = 0
-fn get(s: Sym) -> Int:
-    return offset + (if stamp[s] == epoch: cost[s] else: dflt)
+domain R = 0..runs.len
+type Entry = (cost: ?Int, sym: Sym)
+enum SetOp: Keep | Forbid | Set(Int)
+// Tag `(set, add)`: optionally overwrite (`Forbid` / `Set`), then add `add`.
+type Tag = (set: SetOp, add: Int)
 
-// switch_to[i]: escape to switch to before run i when the escape is the
-// run's own symbol; adopt[i]: switch to the run's symbol from anything else
+fn pick_min(a: Entry, b: Entry) -> Entry:
+    let ca = a.cost ?? return b
+    let cb = b.cost ?? return a
+    if ca <= cb: a else: b
+
+fn compose_tag(new: Tag, old: Tag) -> Tag = match new.set:
+    SetOp.Keep => (set: old.set, add: old.add + new.add)
+    _ => new
+
+fn apply_tag(t: Tag, v: Entry, _span: Int) -> Entry = match t.set:
+    SetOp.Forbid => (cost: None, sym: v.sym)
+    SetOp.Set(c) => (cost: Some(c + t.add), sym: v.sym)
+    SetOp.Keep => if let cur = v.cost: (cost: Some(cur + t.add), sym: v.sym) else: v
+
+let cheapest = Monoid<Entry>((cost: None, sym: Sym.last!), pick_min)
+let assign_add = Action<Entry, Tag>(id: (SetOp.Keep, 0), compose: compose_tag, apply: apply_tag, over: cheapest)
+var cost = SegTree<Sym, Entry, Tag>(cheapest, a: [Sym] s => (cost: Some(0), sym: s), act: assign_add)
+
+// switch_to[i]: escape to switch to before run i when esc == runs[i].sym;
+// adopt[i]: switch to runs[i].sym from any other escape before run i.
 var switch_to: [R]?Sym = None
 var adopt: [R]Bool = false
-for i in (0..runs).rev:
-    let s = sym[i]
-    let k = len[i]
-    var x = get(s)
-    offset += 3 * (k / (n + 2)) + min(3, k % (n + 2))
-    if stamp[s] == epoch: touched.remove((cost[s], s.idx))
-    stamp[s] = epoch
-    // cheapest other escape: an untouched symbol at the default, or a touched one
-    while free < n and stamp[Sym(free)] == epoch: free += 1
-    var opt = offset + dflt
-    var opt_sym = Sym(min(free, n - 1))
-    if let (c, e) = touched.min():
-        if free == n or c < dflt or (c == dflt and e < free):
-            opt = offset + c
-            opt_sym = Sym(e)
-    x += 3 * (ceil_div(k, n))
-    if x > opt + 3:
-        switch_to[R(i)] = opt_sym
-        x = opt + 3
-    if opt > x + 3:
-        adopt[R(i)] = true
-        touched.clear()
-        epoch += 1
-        dflt = x + 3 - offset
-        free = 0
-    stamp[s] = epoch
-    cost[s] = x - offset
-    touched.insert((cost[s], s.idx))
+for i in R.rev:
+    let (s, k) = runs[i.ord]
+    var x = cost.fold(s..=s).cost!
+    cost.apply(.., (SetOp.Keep, plain_cost(k)))
+    cost.apply(s..=s, (SetOp.Forbid, 0))
+    let best = cost.fold(..)
+    let opt = best.cost!
+    x += escaped_cost(k)
+    if x > opt + SWITCH_COST:
+        switch_to[i] = Some(best.sym)
+        x = opt + SWITCH_COST
+    if opt > x + SWITCH_COST:
+        adopt[i] = true
+        cost.apply(.., (SetOp.Set(x + SWITCH_COST), 0))
+    cost.apply(s..=s, (SetOp.Set(x), 0))
 
 var out: List<Int> = []
 esc = Sym(0)
-for i in 0..runs:
-    let s = sym[i]
-    var k = len[i]
-    var next: ?Sym = None
-    if esc == s: next = switch_to[R(i)]
-    elif adopt[R(i)]: next = s
+for i in R:
+    let s = runs[i.ord].sym
+    var k = runs[i.ord].len
+    let next = if esc == s: switch_to[i] elif adopt[i]: Some(s) else: None
     if let e = next:
-        out.push(esc.idx)
-        out.push(e.idx)
-        out.push(0)
+        out += [esc.ord, e.ord, 0]
         esc = e
     if esc == s:
         while k > 0:
             let take = min(k, n)
             k -= take
-            out.push(esc.idx)
-            out.push(esc.idx)
-            out.push(take - 1)
+            out += [esc.ord, esc.ord, take - 1]
     else:
         while k > 3:
             let take = min(k, n + 2)
             k -= take
-            out.push(esc.idx)
-            out.push(s.idx)
-            out.push(take - 3)
-        for _ in 0..k: out.push(s.idx)
+            out += [esc.ord, s.ord, take - 3]
+        for _ in 0..k: out.push(s.ord)
 print(out.len)
 print(out)
