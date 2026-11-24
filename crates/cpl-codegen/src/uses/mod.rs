@@ -944,6 +944,21 @@ pub(crate) fn repeats(block: &Block) -> bool {
 }
 
 /// How many times `block` reads each of the locals below `n`, at any depth.
+/// The param `f` returns when its whole body is `return <param>`: it reads
+/// that param once and no other.
+pub(crate) fn returned_param(f: &cpl_ir::Function) -> Option<usize> {
+    let [Stmt::Return(Some(Expr {
+        kind: ExprKind::Local(k),
+        ..
+    }))] = f.body.stmts.as_slice()
+    else {
+        return None;
+    };
+    let reads = read_counts(&f.body, f.locals.len());
+    let own = (0..f.params.len()).all(|p| reads[p] == usize::from(p == *k));
+    (own && *k < f.params.len() && !f.params[*k].mutable && f.locals[*k].ty == f.ret).then_some(*k)
+}
+
 pub(crate) fn read_counts(block: &Block, n: usize) -> Vec<usize> {
     let mut reads = vec![0usize; n];
     walk::deep_exprs(block, &mut |e| {
