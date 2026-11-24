@@ -13,10 +13,12 @@ pub(crate) fn uri_of_path(path: &str) -> String {
 
 /// `path` spelled the way the OS prints paths (`\` on Windows), for the
 /// paths the server hands back to the editor as command arguments.
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn native_path(path: &str) -> String {
     native(path, cfg!(windows))
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn native(path: &str, windows: bool) -> String {
     if windows {
         path.replace('/', "\\")
