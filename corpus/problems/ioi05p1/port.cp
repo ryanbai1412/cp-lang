@@ -31,27 +31,27 @@ fn above<R, C>(garden: [R, C]Int) -> [R]?Int:
         var strip: [C]Int = 0  // roses per column in rows top..=bottom
         for top in (..=bottom).rev:
             for c in C: strip[c] += garden[top, c]
-            var right = 0  // WISH L8: for w in C.stretches(w => sum(strip[w]) >= k)
+            var right = 0  // columns left..right - 1 hold `inside` roses
             var inside = 0
-            for left in 0..C.len:
+            for left in C:
                 while right < C.len and inside < k:
-                    inside += strip[C.try_at(right)!]
+                    inside += strip[C.nth(right)]
                     right += 1
-                if inside == k: least min= 2 * (bottom - top + 1 + right - left)
-                inside -= strip[C.try_at(left)!]
+                if inside == k: least min= 2 * (bottom - top + 1 + right - left.ord)
+                inside -= strip[left]
         best[bottom] = least
     best
 
 // The two rectangles are split by a line between two rows.
 fn split<R, C>(garden: [R, C]Int) -> ?Int:
     let up = above(garden)
-    let down = above([R, C] (r, c) => garden[R.try_at(R.len - 1 - r.idx)!, c])  // WISH G2: garden.flipped
+    let down = above([R, C] (r, c) => garden[R.nth(R.len - 1 - r.ord), c])
     var least: ?Int = None
     for cut in 1..R.len:
-        if let a = up[R.try_at(cut - 1)!] and let b = down[R.try_at(R.len - 1 - cut)!]: least min= a + b
+        if let a = up[R.nth(cut - 1)] and let b = down[R.nth(R.len - 1 - cut)]: least min= a + b
     least
 
 let across = split(count)
-let along = split([Col, Row] (c, r) => count[r, c])  // WISH L22: count.transposed
+let along = split(count.transposed())
 if let fence = min(across, along): print(fence)
 else: print("NO")
