@@ -362,6 +362,10 @@ pub(crate) const WALKED_COPY: &str = "the loop body may change what it walks, so
 /// Why `.sorted()` of a place copies: it sorts a copy, where `.sort()`
 /// sorts in place.
 pub(crate) const SORTED: &str = "`.sorted()` sorts a copy; `.sort()` sorts in place";
+/// Why an argument the same call also changes through a `mut` one is
+/// passed as a copy: the callee must see the value from before the call.
+pub(crate) const SHARED_ARG: &str =
+    "the call also changes it through a `mut` argument, so it passes a copy";
 pub(crate) const WHOLE: &str = "a `let` of a whole variable is a second value, not a second name";
 
 impl crate::emit::Emitter<'_> {

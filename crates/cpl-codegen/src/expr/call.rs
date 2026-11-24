@@ -69,9 +69,15 @@ impl<'p> Emitter<'p> {
                 let ty = &self.program.fns[id].locals[slot].ty;
                 format!("{}{{nullptr}}", self.ty_for_loc(ty, loc))
             }
-            ExprKind::Some(inner) if shared => format!("cpl::lend({}({text}))", self.ty(&inner.ty)),
+            ExprKind::Some(inner) if shared => {
+                self.note_shared_arg_copy(inner);
+                format!("cpl::lend({}({text}))", self.ty(&inner.ty))
+            }
             ExprKind::Some(_) => format!("cpl::lend({text})"),
-            _ if shared => format!("cpl::lend_opt({}({text}))", self.ty(&value.ty)),
+            _ if shared => {
+                self.note_shared_arg_copy(value);
+                format!("cpl::lend_opt({}({text}))", self.ty(&value.ty))
+            }
             _ => format!("cpl::lend_opt({text})"),
         }
     }

@@ -1299,6 +1299,14 @@ impl Emitter<'_> {
         self.note_copy(e.span, crate::uses::OWNED_VIEW, None);
     }
 
+    /// Records the copy a call passes of argument `e` it also changes
+    /// through a `mut` argument.
+    pub(crate) fn note_shared_arg_copy(&mut self, e: &Expr) {
+        if holds_heap(self.program, &e.ty) {
+            self.note_copy(e.span, crate::uses::SHARED_ARG, None);
+        }
+    }
+
     pub(crate) fn note_walked_copy(&mut self, e: &Expr) {
         self.note_copy(e.span, crate::uses::WALKED_COPY, None);
     }
@@ -1407,19 +1415,32 @@ impl Emitter<'_> {
             ) && (rooted_in_a_name(e) || given_root(part_base(e), &self.lent_roots).is_some())
                 || matches!(e.kind, ExprKind::Call(f, _) if self.lent_roots.contains_key(&f))
         };
+        // A temporary bound by reference names the place it was bound to.
+        let is_whole = |e: &Expr| {
+            matches!(e.kind, ExprKind::Local(s)
+                if !self.locals()[s].name.is_empty() || self.ref_bound.contains(&s))
+                || matches!(e.kind, ExprKind::Global(_))
+        };
+        // `T v = c ? f(a) : a;` copies the arm the C++ names as is.
+        let named_arm = |e: &Expr| match e.kind {
+            ExprKind::Local(s) => {
+                let name = &self.names[s];
+                text.ends_with(&format!(" : {name}")) || text.contains(&format!(" ? {name} : "))
+            }
+            _ => false,
+        };
         // `T v = c ? f(a) : self.t[p];` and `T v = o ?? self.d;` copy the arm that is a place.
         let arms = match &init.kind {
             ExprKind::Binary(BinOp::Coalesce, a, b) => Some([&**a, &**b]),
             _ => lending_if(init),
         };
-        if let Some(arm) = arms.and_then(|arms| arms.into_iter().find(|a| is_part(a))) {
+        if let Some(arm) = arms.and_then(|arms| {
+            (arms.into_iter()).find(|a| is_part(a) || (is_whole(a) && named_arm(a)))
+        }) {
             init = arm;
         }
         let place = is_part(init);
-        // A temporary bound by reference names the place it was bound to.
-        let whole = matches!(init.kind, ExprKind::Local(s)
-                if !self.locals()[s].name.is_empty() || self.ref_bound.contains(&s))
-            || matches!(init.kind, ExprKind::Global(_));
+        let whole = is_whole(init);
         if !holds_heap(self.program, &init.ty)
             || !(place || whole)
             || moved(text)
@@ -1446,7 +1467,7 @@ impl Emitter<'_> {
             value.kind,
             ExprKind::Field(..) | ExprKind::Payload(..) | ExprKind::Index(..)
         ) && rooted_in_a_name(value);
-        let named = is_place_text(text) || text.starts_with("cpl::at(");
+        let named = names_a_place(text);
         if part && named && !by_ref && holds_heap(self.program, &value.ty) && !moved(text) {
             self.note_copy(value.span, GIVEN, None);
         }
