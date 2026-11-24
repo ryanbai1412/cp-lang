@@ -1,7 +1,7 @@
 $ cpl submit a.cp
 exit 0
 -- stdout
-wrote a.cpp (7089 bytes, 11% of the limit of judge `generic`)
+wrote a.cpp (7021 bytes, 11% of the limit of judge `generic`)
   1  ok <time>
   1/1 passed
 ready to send: a.cpp
@@ -10,6 +10,6 @@ ready to send: a.cpp
 $ cpl submit a.cp --json
 exit 0
 -- stdout
-{"ready":true,"build":{"bytes":7089,"checks":"none","judge":"generic","limit":65536,"path":"a.cpp","sizes":[{"bytes":91,"name":"top-level code","part":"your code"},{"bytes":196,"name":"the source","part":"header"},{"bytes":539,"name":"#include","part":"includes"},{"bytes":730,"name":"out","part":"runtime"},{"bytes":488,"name":"put_int","part":"runtime"},{"bytes":205,"name":"fail","part":"runtime"},{"bytes":2359,"name":"in","part":"runtime"},{"bytes":603,"name":"read_int","part":"runtime"},{"bytes":688,"name":"iarith","part":"runtime"},{"bytes":914,"name":"thread stack","part":"runtime"},{"bytes":276,"name":"namespaces and main","part":"glue"}]},"test":{"case_count":1,"cases":[{"expected":"6\n","explained":null,"message":null,"name":"1","outcome":"passed","output":"6\n","peak_kb":<n>,"time_ms":<n>,"verdict":"ok","why":null}],"passed_count":1,"view":{"panel":"  1  ok <time>\n  1/1 passed\n","status":{"label":"1/1 passed","line":0,"ok":true},"tests":[{"name":"1","outcome":"passed","output":"6\n","time_ms":<n>}]}},"view":{"panel":"ready to send: a.cpp (6.9 KB, 11% of generic's limit), 1/1 samples\n","status":{"line":0,"ok":true,"label":"ready to send: a.cpp (6.9 KB, 11% of generic's limit), 1/1 samples"}}}
+{"ready":true,"build":{"bytes":7021,"checks":"none","judge":"generic","limit":65536,"path":"a.cpp","sizes":[{"bytes":91,"name":"top-level code","part":"your code"},{"bytes":196,"name":"the source","part":"header"},{"bytes":539,"name":"#include","part":"includes"},{"bytes":730,"name":"out","part":"runtime"},{"bytes":488,"name":"put_int","part":"runtime"},{"bytes":205,"name":"fail","part":"runtime"},{"bytes":2359,"name":"in","part":"runtime"},{"bytes":603,"name":"read_int","part":"runtime"},{"bytes":688,"name":"iarith","part":"runtime"},{"bytes":846,"name":"thread stack","part":"runtime"},{"bytes":276,"name":"namespaces and main","part":"glue"}]},"test":{"case_count":1,"cases":[{"expected":"6\n","explained":null,"message":null,"name":"1","outcome":"passed","output":"6\n","peak_kb":<n>,"time_ms":<n>,"verdict":"ok","why":null}],"passed_count":1,"view":{"panel":"  1  ok <time>\n  1/1 passed\n","status":{"label":"1/1 passed","line":0,"ok":true},"tests":[{"name":"1","outcome":"passed","output":"6\n","time_ms":<n>}]}},"view":{"panel":"ready to send: a.cpp (6.9 KB, 11% of generic's limit), 1/1 samples\n","status":{"line":0,"ok":true,"label":"ready to send: a.cpp (6.9 KB, 11% of generic's limit), 1/1 samples"}}}
 -- stderr
 
