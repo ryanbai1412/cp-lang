@@ -840,14 +840,6 @@ impl Array {
         }
     }
 
-    pub fn first(&self) -> Option<Value> {
-        self.get(0)
-    }
-
-    pub fn last(&self) -> Option<Value> {
-        self.len().checked_sub(1).and_then(|i| self.get(i))
-    }
-
     pub fn contains(&self, needle: &Value) -> bool {
         match (&self.data, needle) {
             (ArrayData::Int(v), Value::Int(x)) => v.contains(x),
