@@ -211,3 +211,48 @@ fn a_trapped_run_says_where_it_trapped() {
     let locals = text_at(&dom, "locals");
     assert!(locals.starts_with("i 3 "), "{locals}");
 }
+
+/// What an editor follows: the page posts each step's line, less one, and
+/// every step names a line of the source, so the editor shows it as is.
+#[test]
+fn every_step_of_a_trace_page_is_a_source_line_an_editor_can_show() {
+    let dir = scratch("editor_lines");
+    copy_demo(&dir, "knapsack");
+    std::fs::write(dir.join("case.in"), "3 5\n2 3\n3 4\n4 5\n").unwrap();
+    let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .args([
+            "run",
+            "knapsack.cp",
+            "case.in",
+            "--trace",
+            "--format",
+            "html",
+        ])
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    let page = String::from_utf8(out.stdout).unwrap();
+    assert!(
+        page.contains("post({type:\"step\", line:line - 1})"),
+        "the page posts no 0-based step line"
+    );
+    let open = "<script id=\"trace-data\" type=\"application/json\">";
+    let start = page.find(open).expect("no trace-data") + open.len();
+    let end = start + page[start..].find("</script>").unwrap();
+    let trace = cpl_json::parse(&page[start..end]).unwrap();
+    let lines = trace
+        .at(&["source", "code"])
+        .as_str()
+        .unwrap()
+        .lines()
+        .count() as i64;
+    let steps = trace.at(&["runs", "fast", "steps"]).as_array().unwrap();
+    assert!(!steps.is_empty());
+    for step in steps {
+        let line = step.at(&["line"]).as_i64().unwrap_or(0);
+        assert!(
+            (1..=lines).contains(&line),
+            "step {step:?} is on no line of the {lines}-line source"
+        );
+    }
+}

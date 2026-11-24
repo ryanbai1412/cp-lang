@@ -18,6 +18,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<CpApi>
     const overlays = new Overlays();
     const config = () => vscode.workspace.getConfiguration('cp');
     let tracePanel: vscode.WebviewPanel | undefined;
+    let traceEditor: vscode.TextEditor | undefined;
+    const traceLine = vscode.window.createTextEditorDecorationType({ isWholeLine: true, backgroundColor: new vscode.ThemeColor('editor.rangeHighlightBackground') });
     const liveRuns = new Map<string, number>();
     /** `cpl <args>` on the file `args[1]`, saved first: what it printed, or undefined without a `cpl`. */
     const cpl = async (args: string[], stdin?: string, signal?: AbortSignal) => {
@@ -55,8 +57,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<CpApi>
             if (!tracePanel) {
                 const column = { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true };
                 tracePanel = vscode.window.createWebviewPanel('cp.trace', 'Trace', column, { enableScripts: true });
-                tracePanel.onDidDispose(() => (tracePanel = undefined));
+                // The page posts each step's and each clicked line, 0-based and checked; the editor shows it as is.
+                tracePanel.webview.onDidReceiveMessage(({ line }: { line: number }) => {
+                    traceEditor?.setDecorations(traceLine, [new vscode.Range(line, 0, line, 0)]);
+                    traceEditor?.revealRange(new vscode.Range(line, 0, line, 0), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+                });
+                tracePanel.onDidDispose(() => {
+                    tracePanel = undefined;
+                    traceEditor?.setDecorations(traceLine, []);
+                });
             }
+            traceEditor = vscode.window.activeTextEditor;
             tracePanel.title = `Trace: ${path.basename(args[1])}`;
             tracePanel.reveal(vscode.ViewColumn.Beside, true);
             tracePanel.webview.html = result.stdout;
