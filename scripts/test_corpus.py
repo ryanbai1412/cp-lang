@@ -531,6 +531,8 @@ class StaticModesTest(Corpus):
             self.assertEqual(corpus.check_package(pkg, ctx), [])
             outs["c"] = lambda: b"no"
             self.assertEqual(corpus.check_package(pkg, ctx), ["needs-checker p1 1"])
+            outs["c"] = lambda: None
+            self.assertEqual(corpus.check_package(pkg, ctx), ["reference-fails p1 1"])
 
 class SeedTest(Corpus):
     def setUp(self):

@@ -626,9 +626,12 @@ def check_package(pkg, ctx):
             for i, case in enumerate(pkg.cases(), 1) if len(exes) > 1 else ():
                 data = pkg.case_input(case).encode()
                 outs = {e: run_out(e, data) for e in exes}
-                if len({tuple(tokens(o)) for o in outs.values() if o is not None}) > 1:
+                if None in outs.values():
+                    found.append(f"reference-fails {pkg.id} {i}")
+                    break
+                if len({tuple(tokens(o)) for o in outs.values()}) > 1:
                     # A reference whose output changes on a rerun (seeded from the clock) can't say.
-                    outs = {e: o for e, o in outs.items() if o is not None and tokens(run_out(e, data) or b"") == tokens(o)}
+                    outs = {e: o for e, o in outs.items() if tokens(run_out(e, data) or b"") == tokens(o)}
                 if len({tuple(tokens(o)) for o in outs.values()}) > 1:
                     found.append(f"needs-checker {pkg.id} {i}")
                     break
