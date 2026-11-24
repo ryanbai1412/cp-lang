@@ -172,10 +172,10 @@ pub struct Prefix<D, T: Add + Sub>:
         var rises = true
         var forward = true
         for (i, x) in a.items:
-            let before = acc
-            acc = m.op(acc, x)
+            let next = m.op(acc, x)
             if T: Ord:
-                if acc < before: rises = false
+                if next < acc: rises = false
+            acc = next
             let c = a.cut_after(i)
             if c != i.r: forward = false
             p[c] = acc
