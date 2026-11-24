@@ -235,9 +235,9 @@ fn deep_recursion_runs_on_the_stack_each_judge_gives() {
 }
 
 /// Every port's C++ for every judge, compiled with that judge's flags.
-/// About a minute on eight cores: `scripts/check.sh --full` runs it.
+/// About a minute on eight cores: a slow test (scripts/ci.py SLOW_TESTS)
+/// that `scripts/check.sh --full` and `--timing` (ci-slow.yml) run.
 #[test]
-#[ignore = "slow: scripts/check.sh --full runs it"]
 fn every_port_compiles_with_every_judges_flags() {
     let ports = ports();
     let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join("judges-matrix");

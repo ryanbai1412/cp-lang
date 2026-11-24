@@ -36,6 +36,7 @@ SLOW_TESTS = (
     "recovery_scoreboard",
     "fix_it_scoreboard",
     "committed_scoreboard_ratchet",
+    "every_port_compiles_with_every_judges_flags",
 )
 
 # Wall-clock assertions (decision 225): a timing budget can fail on a loaded
@@ -228,9 +229,9 @@ STEPS = {
         gate("tool-vocab", fail="help, explain or hover uses a spelling spec/GLOSSARY.md bans; see above"),
         gate("flakes", "--runs", "2", fail="a conformance case changed verdict between runs; see above"),
         Step("cargo test: every port compiled with every judge profile's flags",
-             ("cargo", "test", "-p", "cpl-cli", "--test", "judges", "--", "--ignored", "--exact",
+             ("cargo", "test", "-p", "cpl-cli", "--test", "judges", "--", "--exact",
               "every_port_compiles_with_every_judges_flags"),
-             "a port fails to compile under a judge profile; rerun: cargo test -p cpl-cli --test judges -- --ignored",
+             "a port fails to compile under a judge profile; rerun: cargo test -p cpl-cli --test judges",
              needs=("g++",)),
         Step("cargo test: the budget tests, alone", ("cargo", "test", "-p", "cpl-cli", "--test", "budget", "--",
                                                      "--test-threads=1"),

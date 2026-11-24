@@ -255,7 +255,7 @@ eval "$ci_plan"
 if [ "$mode" = timing ]; then
     step "wall-clock budgets (reported, never blocking)"
     cargo nextest run --workspace --no-fail-fast \
-        -E "$wall_filter or test(=every_corpus_program_and_conformance_case_is_served)"
+        -E "$wall_filter or test(=every_corpus_program_and_conformance_case_is_served) or test(=every_port_compiles_with_every_judges_flags)"
     exit
 fi
 
