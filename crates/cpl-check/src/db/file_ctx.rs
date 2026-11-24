@@ -213,7 +213,7 @@ impl FileCtx<'_> {
             };
             match &item.flow {
                 Flow::None => {}
-                Flow::View(name) | Flow::Capture(name) => {
+                Flow::View(name) | Flow::Capture(name) | Flow::LentVar(name) => {
                     let mentioned = |k: usize| names[k].0.contains(name);
                     let live_after =
                         carried.contains(name) || (current + 1..items.len()).any(mentioned);
@@ -223,6 +223,12 @@ impl FileCtx<'_> {
                     // A later `let` of the same name is another value.
                     if (index + 1..current).any(|k| items[k].decls.iter().any(|d| d.name == *name))
                     {
+                        continue;
+                    }
+                    // A later store into the same `var` replaces the value, and its loan.
+                    let restored =
+                        |k: usize| matches!(&items[k].flow, Flow::LentVar(n) if n == name);
+                    if matches!(item.flow, Flow::LentVar(_)) && (index + 1..current).any(restored) {
                         continue;
                     }
                     let written = (current..items.len()).any(|k| names[k].1.contains(name));

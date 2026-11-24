@@ -136,6 +136,22 @@ pub enum Flow {
     /// `let k = 7 + 2`, `let f = a.filter(p)`: a fact about `k` that later
     /// items need (its range, R02.10.2; that it is walk-only, R07.1.2).
     Known(String),
+    /// `var c = b.cur(0)` / `c = b.next(c)`: a `var` holding a lent value keeps
+    /// the loan of the value last stored in it while `c` is in use.
+    LentVar(String),
+}
+
+/// A call that may return a lent value: any method may be a projection
+/// (`b.cur(i)`), and a lowercase fn may be `lends`; the replay asks the types.
+fn call_may_lend(e: &Expr) -> bool {
+    match &unparen(e).kind {
+        ExprKind::Call { callee, .. } => match &unparen(callee).kind {
+            ExprKind::Field { .. } => true,
+            ExprKind::Name(n) => n.chars().next().is_some_and(|c| c.is_ascii_lowercase()),
+            _ => false,
+        },
+        _ => false,
+    }
 }
 
 /// Constant arithmetic, or a `filter` call: what `Flow::Known` records.
@@ -251,6 +267,7 @@ pub(crate) fn flow_of(stmts: &[Stmt]) -> Flow {
         }
         StmtKind::Let {
             mutable: true,
+            pat,
             init: Some(init),
             otherwise: None,
             ..
@@ -262,10 +279,12 @@ pub(crate) fn flow_of(stmts: &[Stmt]) -> Flow {
             },
             _ => {
                 let moves = ctor_move_args(init);
-                if !moves.is_empty() {
-                    Flow::Move(moves)
-                } else {
-                    Flow::None
+                match &pat.kind {
+                    _ if !moves.is_empty() => Flow::Move(moves),
+                    ast::PatternKind::Name(name) if call_may_lend(init) => {
+                        Flow::LentVar(name.clone())
+                    }
+                    _ => Flow::None,
                 }
             }
         },
@@ -283,10 +302,10 @@ pub(crate) fn flow_of(stmts: &[Stmt]) -> Flow {
                 }
             } else {
                 let moves = ctor_move_args(value);
-                if !moves.is_empty() {
-                    Flow::Move(moves)
-                } else {
-                    Flow::None
+                match &target.kind {
+                    _ if !moves.is_empty() => Flow::Move(moves),
+                    ExprKind::Name(name) if call_may_lend(value) => Flow::LentVar(name.clone()),
+                    _ => Flow::None,
                 }
             }
         }
@@ -1224,6 +1243,39 @@ impl<'a> Checker<'a> {
                 }
             }
             (
+                Flow::LentVar(name),
+                StmtKind::Let {
+                    init: Some(value), ..
+                }
+                | StmtKind::Assign { value, .. },
+            ) => {
+                let found: Vec<_> = self.quietly(|c| {
+                    c.infer(value);
+                    c.extra_holds(value)
+                });
+                self.lends.view_exprs.clear();
+                self.lends.view_readonly.clear();
+                self.lends.proj_calls.clear();
+                self.lends.covered.clear();
+                let until = match current.iter().rev().find(|s| mentions(s, name)) {
+                    _ if replay.live_after => ELSEWHERE,
+                    Some(last) => last.span,
+                    None => return,
+                };
+                for (_, place, _, force_mut) in found.into_iter().filter(|h| h.0 == "lent view") {
+                    self.lends.holds.push(Hold {
+                        name: name.clone(),
+                        root: place.root,
+                        steps: place.steps,
+                        mutable: force_mut,
+                        at: ELSEWHERE,
+                        until,
+                        in_loop: false,
+                        is_capture: false,
+                    });
+                }
+            }
+            (
                 Flow::View(name),
                 StmtKind::Let {
                     init: Some(init), ..
@@ -1540,6 +1592,35 @@ impl<'a> Checker<'a> {
                 Vec::new()
             }
             _ => Vec::new(),
+        }
+    }
+
+    /// `var c = b.cur(0)` or `c = b.next(c)`: a var holding a lent value holds that
+    /// value's source until the var's last use, as a `let` does; each assignment
+    /// takes the loan of the value it stores.
+    pub(crate) fn begin_var_hold(&mut self, stmt: &Stmt, name: &str, value: &Expr, rest: &[Stmt]) {
+        let lent: Vec<_> = self
+            .extra_holds(value)
+            .into_iter()
+            .filter(|hold| hold.0 == "lent view")
+            .collect();
+        if lent.is_empty() {
+            return;
+        }
+        let Some(last) = rest.iter().rev().find(|s| mentions(s, name)) else {
+            return;
+        };
+        for (_, place, _, force_mut) in lent {
+            self.lends.holds.push(Hold {
+                name: name.to_string(),
+                root: place.root,
+                steps: place.steps,
+                mutable: force_mut,
+                at: stmt.span,
+                until: last.span,
+                in_loop: false,
+                is_capture: false,
+            });
         }
     }
 
