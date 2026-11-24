@@ -8773,3 +8773,5 @@ from `just next-decision`.
 - **Call.** A generic fn that calls itself, directly or through other generic fns, at a type that grows on every call (`wrap([x], n - 1)` or `wrap(Box(v: x), n - 1)` inside `wrap<T>`) is E0319 at the call. Recursion at the same type is unaffected (R08.2.10). Ryan's call.
 - **Why.** Everything monomorphizes (R08.2.3): `wrap<Int>` needs `wrap<List<Int>>`, which needs `wrap<List<List<Int>>>`, without end, so `cpl check`, `run` and `build` all hung. Lowering stops once a fn's instance chain reaches 24 copies of itself, each at a new type, and names the first two. A contest program never needs this; boxing at runtime (`dyn`) would add the hidden cost R08.2.3 rules out.
 - **Reverse.** Give generic fns a boxed fallback (one shared copy behind a vtable) for a growing instantiation, and drop E0319.
+
+## 518. (reserved, content)
