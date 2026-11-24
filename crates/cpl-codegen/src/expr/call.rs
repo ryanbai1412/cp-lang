@@ -63,6 +63,10 @@ impl<'p> Emitter<'p> {
         let shared = crate::lend::given_root(value, &self.lent_roots).is_some_and(|root| {
             lent.contains(&root) || (root.0 && self.uses.effects(id).writes.contains(&root.1))
         });
+        let held = self.ty(&value.ty);
+        if !held.starts_with("std::optional") && !held.starts_with("cpl::Lent") {
+            self.need("lend_niche");
+        }
         match &value.kind {
             ExprKind::None => {
                 let loc = cpl_ir::ElemLoc::Local(cpl_ir::ScopeId::Fn(id), slot);

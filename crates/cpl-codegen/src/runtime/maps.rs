@@ -355,8 +355,6 @@ template <class V> struct Lent {
 template <class V> Lent<V> lend(const V& v) { return {&v}; }
 template <class V> Lent<V> lend_opt(const std::optional<V>& o) { return {o ? &*o : nullptr}; }
 template <class V> Lent<V> lend_opt(Lent<V> l) { return l; }
-// Any other optional layout, such as a niche `OptField`.
-template <class O> auto lend_opt(const O& o) -> Lent<std::decay_t<decltype(*o)>> { return {o ? &*o : nullptr}; }
 ",
     },
     Piece {
@@ -371,6 +369,14 @@ template <class T> struct Held {
 };
 template <class T> Held<T> held_ref(const T& v) { return {T(), &v}; }
 template <class T> Held<T> held_own(T v) { return {std::move(v), nullptr}; }
+",
+    },
+    Piece {
+        name: "lend_niche",
+        needs: &["lent"],
+        code: "\
+// Any other optional layout, such as a niche `OptField`.
+template <class O> auto lend_opt(const O& o) -> Lent<std::decay_t<decltype(*o)>> { return {o ? &*o : nullptr}; }
 ",
     },
     Piece {
