@@ -12,6 +12,6 @@
 
 @!multitest
 let (n, l, r): (1..=200_000, 1..=10 ** 9, 1..=10 ** 9) = read()
-let raw: [0..n]1..=10 ** 9 = read()
-let a = raw.sorted()
-print(sum(max(0, max(l, a[n - 1 - i]) - min(r, a[i])) for i in 0..n))
+var raw: [0..n]1..=10 ** 9 = read()
+raw.sort()
+print(sum(max(0, max(l, raw[n - 1 - i]) - min(r, raw[i])) for i in 0..n))
