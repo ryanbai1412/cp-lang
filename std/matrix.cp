@@ -173,7 +173,7 @@ pub struct Mat<T>:
         if T: Add:
             if ring == None:
                 var s = T.zero
-                for x in cells: s = s + x
+                for x in cells: s += x
                 return s
         let r = ring!
         var s = r.zero
@@ -257,7 +257,7 @@ pub struct Mat<T>:
                     for i in 0..rows:
                         var acc = T.zero
                         let off = i * cols
-                        for j in 0..cols: acc = acc + cells[off + j] * v[j]
+                        for j in 0..cols: acc += cells[off + j] * v[j]
                         out[i] = acc
                     return out
         let g = ring!
@@ -324,7 +324,7 @@ pub struct Mat<T>:
                 for c in col..n: m.swap(col * n + c, piv * n + c)
                 ans = T.zero - ans
             let lead = m[col * n + col]
-            ans = ans * lead
+            ans *= lead
             let inv_l = T.one / lead
             for r in col + 1..n:
                 let f = m[r * n + col]
@@ -392,13 +392,12 @@ pub struct Mat<T>:
             if piv != r:
                 for c in col..=k: aug.swap(r * stride + c, piv * stride + c)
             let inv_l = T.one / aug[r * stride + col]
-            for c in col..=k: aug[r * stride + c] = aug[r * stride + c] * inv_l
+            for c in col..=k: aug[r * stride + c] *= inv_l
             for i in 0..rows:
                 if i == r: continue
                 let f = aug[i * stride + col]
                 if Mat<T>.negligible(f, e): continue
-                for c in col..=k: aug[i * stride + c] = aug[i * stride + c] -
-                    f * aug[r * stride + c]
+                for c in col..=k: aug[i * stride + c] -= f * aug[r * stride + c]
             pivot_row[col] = r
             r += 1
         for i in r..rows:
@@ -459,13 +458,12 @@ pub struct Mat<T>:
             if piv != col:
                 for c in col..stride: aug.swap(col * stride + c, piv * stride + c)
             let inv_l = T.one / aug[col * stride + col]
-            for c in col..stride: aug[col * stride + c] = aug[col * stride + c] * inv_l
+            for c in col..stride: aug[col * stride + c] *= inv_l
             for i in 0..n:
                 if i == col: continue
                 let f = aug[i * stride + col]
                 if Mat<T>.negligible(f, e): continue
-                for c in col..stride: aug[i * stride + c] = aug[i * stride + c] -
-                    f * aug[col * stride + c]
+                for c in col..stride: aug[i * stride + c] -= f * aug[col * stride + c]
         var out = List.filled(n * n, T.zero)
         for i in 0..n:
             for j in 0..n: out[i * n + j] = aug[i * stride + n + j]
@@ -564,15 +562,15 @@ pub struct Mat<T>:
             var next = List.filled(k + 2, T.zero)
             let pk = ps[k]
             for i in 0..k + 1:
-                next[i + 1] = next[i + 1] + pk[i]
-                next[i] = next[i] - h[k * n + k] * pk[i]
+                next[i + 1] += pk[i]
+                next[i] -= h[k * n + k] * pk[i]
             var t = T.one
             for i in (0..k).rev:
-                t = t * h[(i + 1) * n + i]
+                t *= h[(i + 1) * n + i]
                 let coef = h[i * n + k] * t
                 if coef == T.zero: continue
                 let pi = ps[i]
-                for j in 0..i + 1: next[j] = next[j] - coef * pi[j]
+                for j in 0..i + 1: next[j] -= coef * pi[j]
             ps.push(next)
         ps[n]
 
@@ -604,17 +602,17 @@ pub struct Mat<T>:
                 for r in 0..n: a.swap(r * n + piv, r * n + k + 1)
                 res = T.zero - res
             let lead = a[k * n + k + 1]
-            res = res * lead
+            res *= lead
             let inv_l = T.one / lead
             for i in k + 2..n:
                 let f = a[k * n + i] * inv_l
                 if f != T.zero:
-                    for r in 0..n: a[r * n + i] = a[r * n + i] - f * a[r * n + k + 1]
-                    for c in 0..n: a[i * n + c] = a[i * n + c] - f * a[(k + 1) * n + c]
+                    for r in 0..n: a[r * n + i] -= f * a[r * n + k + 1]
+                    for c in 0..n: a[i * n + c] -= f * a[(k + 1) * n + c]
                 let g = T.zero - a[(k + 1) * n + i] * inv_l
                 if g != T.zero:
-                    for r in 0..n: a[r * n + i] = a[r * n + i] - g * a[r * n + k]
-                    for c in 0..n: a[i * n + c] = a[i * n + c] - g * a[k * n + c]
+                    for r in 0..n: a[r * n + i] -= g * a[r * n + k]
+                    for c in 0..n: a[i * n + c] -= g * a[k * n + c]
             k += 2
         res
 
@@ -697,7 +695,7 @@ impl Mul for Mat<T>:
                             for k in 0..m:
                                 let f = a.cells[ai + k]
                                 let bk = k * c
-                                for j in 0..c: out[oi + j] = out[oi + j] + f * b.cells[bk + j]
+                                for j in 0..c: out[oi + j] += f * b.cells[bk + j]
                     return Mat(r, c, out)
         let g = a.ring!
         if let flat = g.flat:

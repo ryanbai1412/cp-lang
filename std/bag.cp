@@ -761,7 +761,7 @@ pub struct SortedBag<K>:
     pub fn sum(self) -> K:
         var t = K.zero
         for (k, c) in self.entries():
-            for _ in 0..c: t = t + k
+            for _ in 0..c: t += k
         t
 
     fn kid(self, n: Int, i: Int) -> Int:
