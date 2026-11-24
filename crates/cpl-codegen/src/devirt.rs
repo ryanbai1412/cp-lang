@@ -794,7 +794,7 @@ impl<'p> Devirt<'p> {
                 self.find_escapes_expr(home, base, false, out);
             }
             ExprKind::CallExpr(callee, args) => {
-                let direct = self.target(home, callee).is_some() && skippable(callee);
+                let direct = self.target(home, callee).is_some() && direct_callee(callee);
                 self.find_escapes_expr(home, callee, direct, out);
                 for arg in args {
                     match arg {
@@ -950,8 +950,8 @@ impl<'p> Devirt<'p> {
             ExprKind::Field(base, index) if self.made(home, base, *index).is_some() => {
                 self.made(home, base, *index)
             }
-            ExprKind::Field(base, index) => match (&base.ty, pure_path(base)) {
-                (Ty::Struct(s), true) => self.held.get(&Home::Field(*s, *index)).copied(),
+            ExprKind::Field(base, index) => match &base.ty {
+                Ty::Struct(s) => self.held.get(&Home::Field(*s, *index)).copied(),
                 _ => Some(Held::Many),
             },
             _ => Some(Held::Many),
@@ -1534,6 +1534,13 @@ fn is_fn_or_opt_fn(ty: &Ty) -> bool {
 /// Whether evaluating `callee` can be skipped when its value is known.
 pub(crate) fn skippable(callee: &Expr) -> bool {
     pure_path(callee)
+}
+
+/// A known callee called directly: a path, or a field of any base, which is
+/// still evaluated (`act!.apply(..)` keeps the `act!` check) before the
+/// arguments.
+pub(crate) fn direct_callee(callee: &Expr) -> bool {
+    pure_path(callee) || matches!(callee.kind, ExprKind::Field(..))
 }
 
 /// The name of closure `cid` as a fn of the emitted program.

@@ -1210,12 +1210,24 @@ impl<'p> Emitter<'p> {
                     None => self.fn_id,
                 };
                 let known = self.devirt.target(home, callee);
-                if let Some(cid) = known.filter(|_| crate::devirt::skippable(callee)) {
+                if let Some(cid) = known.filter(|_| crate::devirt::direct_callee(callee)) {
                     self.direct.insert(cid);
-                    let operands: Vec<&Expr> = values.collect();
-                    return self.sequence(&operands, &e.ty, |this, codes| {
+                    let base = match &callee.kind {
+                        ExprKind::Field(base, _) if !crate::devirt::skippable(callee) => {
+                            Some(&**base)
+                        }
+                        _ => None,
+                    };
+                    let mut operands: Vec<&Expr> = base.into_iter().collect();
+                    operands.extend(values);
+                    return self.sequence(&operands, &e.ty, |this, mut codes| {
+                        let base = base.map(|_| codes.remove(0).at(PRIMARY));
                         let ps = this.fn_value_args(args, codes);
-                        Code::primary(format!("{}({})", crate::devirt::name(cid), ps.join(", ")))
+                        let call = format!("{}({})", crate::devirt::name(cid), ps.join(", "));
+                        Code::primary(match base {
+                            Some(b) => format!("(static_cast<void>({b}), {call})"),
+                            None => call,
+                        })
                     });
                 }
                 let mut operands: Vec<&Expr> = vec![callee];

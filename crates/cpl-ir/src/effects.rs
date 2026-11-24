@@ -179,10 +179,12 @@ pub fn pure_call(
     let (known, args) = match &e.kind {
         ExprKind::Call(fid, args) => (pure.contains(fid), args),
         ExprKind::CallExpr(callee, args) => {
-            let known = target(home, callee).is_some_and(|cid| {
-                let c = &program.closures[cid];
-                c.muts.is_empty() && c.captures.is_empty() && pure_body(&c.body, traps, &inner)
-            });
+            let here = |x: &Expr| pure_call(program, target, pure, home, traps, x);
+            let known = trap_free_with(callee, traps, &here)
+                && target(home, callee).is_some_and(|cid| {
+                    let c = &program.closures[cid];
+                    c.muts.is_empty() && c.captures.is_empty() && pure_body(&c.body, traps, &inner)
+                });
             (known, args)
         }
         _ => return false,

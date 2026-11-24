@@ -185,12 +185,20 @@ fn prepared(program: &cpl_ir::Program, target: &Target) -> cpl_ir::Program {
     program
 }
 
+/// What a judge build emits unless `--checks` says: no traps (decisions.md 299).
+fn judge_target() -> Target {
+    Target {
+        checks: Checks::None,
+        ..Target::default()
+    }
+}
+
 /// How each fn-typed site of the judge build's C++ for `program` is
 /// called, read off the program the emitter writes (after pruning).
 /// A closure the file never calls is dropped, whatever holds it, and a
 /// struct the file does not define has no sites.
 pub fn explain_closures(program: &cpl_ir::Program) -> Vec<ClosureLowering> {
-    let target = Target::default();
+    let target = judge_target();
     let program = prepared(program, &target);
     let (called, written) = emit::Emitter::new(&program, &target).called_and_written();
     let mut lowerings = devirt::explain_closures(&program, &written);
@@ -234,7 +242,7 @@ pub fn explain_lowered(program: &cpl_ir::Program) -> Lowered {
 /// Each heap value the judge build's C++ for `program` copies: the span
 /// of the source that is copied, what it is and why the copy must own it.
 pub fn explain_copies(program: &cpl_ir::Program) -> Vec<(cpl_diag::Span, String, &'static str)> {
-    let target = Target::default();
+    let target = judge_target();
     let program = prepared(program, &target);
     emit::Emitter::new(&program, &target).copies()
 }

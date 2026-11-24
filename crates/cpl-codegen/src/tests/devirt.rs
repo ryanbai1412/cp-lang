@@ -170,3 +170,39 @@ fn each_clone_of_a_split_fn_gets_its_own_name() {
     let unique: std::collections::BTreeSet<&&str> = heads.iter().collect();
     assert_eq!(heads.len(), unique.len(), "{out}");
 }
+
+#[test]
+fn a_fn_field_behind_an_optional_struct_field_is_called_directly() {
+    let out = cpp(concat!(
+        "struct Act(f: Int -> Int)\n",
+        "struct T(act: ?Act)\n",
+        "fn go(t: T, x: Int) -> Int: t.act!.f(x)\n",
+        "let k = read::<Int>()\n",
+        "let a = T(Some(Act(x => x + 1)))\n",
+        "let b = T(Some(Act(x => x * 2)))\n",
+        "print(go(a, k), go(b, k))\n",
+    ));
+    assert!(!out.contains("std::function<"), "{out}");
+    assert!(
+        out.contains("static_cast<void>(cpl::have("),
+        "the `!` still runs: {out}"
+    );
+}
+
+#[test]
+fn a_none_compared_with_a_split_optional_field_leaves_no_unsplit_struct() {
+    let out = cpp(concat!(
+        "struct Act(f: Int -> Int)\n",
+        "struct T(act: ?Act)\n",
+        "fn go(t: T, x: Int) -> Int: if t.act == None: x else: t.act!.f(x)\n",
+        "let k = read::<Int>()\n",
+        "let a = T(Some(Act(x => x + 1)))\n",
+        "let b = T(Some(Act(x => x * 2)))\n",
+        "print(go(a, k), go(b, k))\n",
+    ));
+    assert!(!out.contains("std::function<"), "{out}");
+    assert!(
+        !out.contains("struct Act {"),
+        "only the split structs are defined: {out}"
+    );
+}

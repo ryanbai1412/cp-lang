@@ -21,13 +21,15 @@ enum Key {
     Fn(ClosureId),
     /// The struct, and per field what it holds (`None`: not a fn or split struct).
     S(StructId, Vec<Option<Key>>),
+    /// An optional split struct that is always `none`.
+    Nil,
     Top,
 }
 
 impl Key {
     fn known(&self) -> bool {
         match self {
-            Key::Fn(_) => true,
+            Key::Fn(_) | Key::Nil => true,
             Key::S(_, fields) => fields.iter().flatten().all(Key::known),
             Key::Top => false,
         }
@@ -80,7 +82,7 @@ fn candidates(program: &Program) -> BTreeSet<StructId> {
             if def
                 .fields
                 .iter()
-                .any(|(_, t)| matches!(t, Ty::Struct(i) if out.contains(i)))
+                .any(|(_, t)| matches!(payload(t), Ty::Struct(i) if out.contains(i)))
             {
                 out.insert(s);
             }
@@ -91,7 +93,7 @@ fn candidates(program: &Program) -> BTreeSet<StructId> {
     }
     let mut bad = BTreeSet::new();
     let nested = |ty: &Ty, bad: &mut BTreeSet<StructId>| {
-        if !matches!(ty, Ty::Struct(_)) {
+        if !matches!(payload(ty), Ty::Struct(_)) {
             ty_structs(ty, bad);
         }
     };
@@ -157,12 +159,20 @@ fn candidates(program: &Program) -> BTreeSet<StructId> {
 
 /// Drops a struct whose values some struct left whole holds, and one with
 /// nothing left to split.
+/// What an optional of a struct holds; any other type as is.
+fn payload(ty: &Ty) -> &Ty {
+    match ty {
+        Ty::Opt(inner) if matches!(**inner, Ty::Struct(_)) => inner,
+        _ => ty,
+    }
+}
+
 fn settle(program: &Program, mut set: BTreeSet<StructId>) -> BTreeSet<StructId> {
     loop {
         let before = set.len();
         for (s, def) in program.structs.iter().enumerate() {
             for (_, ty) in &def.fields {
-                if let Ty::Struct(i) = ty {
+                if let Ty::Struct(i) = payload(ty) {
                     if !set.contains(&s) && set.contains(i) {
                         set.remove(i);
                     }
@@ -173,10 +183,9 @@ fn settle(program: &Program, mut set: BTreeSet<StructId>) -> BTreeSet<StructId> 
             .iter()
             .copied()
             .filter(|&s| {
-                program.structs[s]
-                    .fields
-                    .iter()
-                    .any(|(_, t)| is_fn(t) || matches!(t, Ty::Struct(i) if set.contains(i)))
+                program.structs[s].fields.iter().any(|(_, t)| {
+                    is_fn(t) || matches!(payload(t), Ty::Struct(i) if set.contains(i))
+                })
             })
             .collect();
         set = keep.into_iter().collect();
@@ -193,7 +202,7 @@ fn components(program: &Program, set: &BTreeSet<StructId>) -> BTreeMap<StructId,
         let mut changed = false;
         for &s in set {
             for (_, ty) in &program.structs[s].fields {
-                if let Ty::Struct(i) = ty {
+                if let Ty::Struct(i) = payload(ty) {
                     if let (Some(&a), Some(&b)) = (part.get(&s), part.get(i)) {
                         if a != b {
                             let low = a.min(b);
@@ -255,7 +264,7 @@ struct Flow<'p> {
 
 impl<'p> Flow<'p> {
     fn run(program: &'p Program, tracked: &'p BTreeSet<StructId>) -> Option<Flow<'p>> {
-        let is_struct = |t: &Ty| matches!(t, Ty::Struct(s) if tracked.contains(s));
+        let is_struct = |t: &Ty| matches!(payload(t), Ty::Struct(s) if tracked.contains(s));
         let mut keyed = Vec::new();
         let mut ctxs = BTreeSet::from([Ctx::Main]);
         for (id, f) in program.fns.iter().enumerate() {
@@ -302,8 +311,9 @@ impl<'p> Flow<'p> {
         Some(flow)
     }
 
+    /// A split struct, or an optional one (which carries its payload's key).
     fn is_struct(&self, ty: &Ty) -> bool {
-        matches!(ty, Ty::Struct(s) if self.tracked.contains(s))
+        matches!(payload(ty), Ty::Struct(s) if self.tracked.contains(s))
     }
 
     fn is_tracked(&self, ty: &Ty) -> bool {
@@ -340,8 +350,8 @@ impl<'p> Flow<'p> {
 
     fn join(old: Option<&Key>, new: Key) -> Key {
         match old {
-            None => new,
-            Some(old) if *old == new => new,
+            None | Some(Key::Nil) => new,
+            Some(old) if *old == new || new == Key::Nil => old.clone(),
             Some(_) => Key::Top,
         }
     }
@@ -408,7 +418,9 @@ impl<'p> Flow<'p> {
                 Key::S(_, fields) => fields.get(*i).cloned().flatten().unwrap_or(Key::Top),
                 _ => Key::Top,
             }),
-            ExprKind::Tuple(items) if self.is_struct(&e.ty) => {
+            ExprKind::None => Some(Key::Nil),
+            ExprKind::Some(x) | ExprKind::Unwrap(x, _) => self.eval(ctx, x),
+            ExprKind::Tuple(items) if matches!(e.ty, Ty::Struct(_)) => {
                 let Ty::Struct(s) = e.ty else { unreachable!() };
                 let mut fields = Vec::new();
                 for ((_, ty), item) in self.program.structs[s].fields.iter().zip(items) {
@@ -431,7 +443,7 @@ impl<'p> Flow<'p> {
             }
             ExprKind::If(_, a, b) => {
                 let (a, b) = (self.eval(ctx, a)?, self.eval(ctx, b)?);
-                Some(if a == b { a } else { Key::Top })
+                Some(Self::join(Some(&a), b))
             }
             ExprKind::Do(block) => {
                 let mut gives = Vec::new();
@@ -589,7 +601,7 @@ impl<'p> Flow<'p> {
     fn failures(&self) -> BTreeSet<StructId> {
         let mut out = BTreeSet::new();
         let check = |ty: &Ty, key: Option<&Key>, out: &mut BTreeSet<StructId>| {
-            if let Ty::Struct(s) = ty {
+            if let Ty::Struct(s) = payload(ty) {
                 if self.tracked.contains(s) && !key.is_some_and(Key::known) {
                     out.insert(*s);
                 }
@@ -731,7 +743,7 @@ enum Root {
 }
 
 /// The variable a place is in and the fields down to it; `None` when the
-/// path goes through an index or an optional.
+/// path goes through an index. An optional has its payload's key.
 fn place_path(place: &Place) -> (Option<Root>, Vec<usize>) {
     match &place.kind {
         PlaceKind::Local(s) => (Some(Root::Local(*s)), Vec::new()),
@@ -741,7 +753,8 @@ fn place_path(place: &Place) -> (Option<Root>, Vec<usize>) {
             path.push(*i);
             (root, path)
         }
-        PlaceKind::Index(..) | PlaceKind::Some(_) => (None, Vec::new()),
+        PlaceKind::Some(base) => place_path(base),
+        PlaceKind::Index(..) => (None, Vec::new()),
     }
 }
 
@@ -813,9 +826,17 @@ fn apply(program: &mut Program, tracked: &BTreeSet<StructId>, plan: Plan) {
     for key in keys {
         struct_for(program, key, &mut ids, &mut count);
     }
-    let ty_of = |key: &Key| Ty::Struct(ids[key]);
+    let ty_of = |old: &Ty, key: &Key| -> Option<Ty> {
+        let new = Ty::Struct(*ids.get(key)?);
+        Some(match old {
+            Ty::Opt(_) => Ty::Opt(Box::new(new)),
+            _ => new,
+        })
+    };
     for (g, key) in &plan.global_keys {
-        program.globals[*g].ty = ty_of(key);
+        if let Some(ty) = ty_of(&program.globals[*g].ty, key) {
+            program.globals[*g].ty = ty;
+        }
     }
     let mut clones: BTreeMap<FnId, usize> = BTreeMap::new();
     for &(old, _) in &plan.new_fns {
@@ -862,13 +883,17 @@ fn apply(program: &mut Program, tracked: &BTreeSet<StructId>, plan: Plan) {
                 }
             };
         for (slot, key) in &body.locals {
-            if key.known() {
-                locals[*slot].ty = ty_of(key);
+            if let Some(ty) = ty_of(&locals[*slot].ty, key) {
+                locals[*slot].ty = ty;
             }
         }
-        if let (Some(ret), Some(key)) = (ret, &body.ret) {
-            *ret = ty_of(key);
+        let mut ret = ret;
+        if let (Some(ret), Some(key)) = (ret.as_deref_mut(), &body.ret) {
+            if let Some(ty) = ty_of(ret, key) {
+                *ret = ty;
+            }
         }
+        let ret_ty = ret.map(|r| r.clone());
         let local_tys: Vec<Ty> = locals.iter().map(|l| l.ty.clone()).collect();
         let retype = |p: &mut Place| retype_place(p, tracked, &local_tys, &global_tys, &structs);
         for (block, steps) in blocks.into_iter().zip(body.blocks) {
@@ -877,8 +902,8 @@ fn apply(program: &mut Program, tracked: &BTreeSet<StructId>, plan: Plan) {
                 let Some((key, callee)) = steps.next() else {
                     return;
                 };
-                if let Some(key) = key {
-                    e.ty = ty_of(&key);
+                if let Some(ty) = key.and_then(|key| ty_of(&e.ty, &key)) {
+                    e.ty = ty;
                 }
                 if let (Some(new), ExprKind::Call(f, _)) = (callee, &mut e.kind) {
                     *f = new;
@@ -904,8 +929,45 @@ fn apply(program: &mut Program, tracked: &BTreeSet<StructId>, plan: Plan) {
                     }
                 }
             });
+            fit_nones(block, &local_tys, ret_ty.as_ref());
         }
     }
+}
+
+/// A `none` has no key of its own, so it keeps the old struct type; give
+/// it the type of what it meets, or the old struct stays in the C++.
+fn fit_nones(block: &mut Block, locals: &[Ty], ret: Option<&Ty>) {
+    fn fit(e: &mut Expr, ty: &Ty) {
+        if matches!(e.kind, ExprKind::None) && matches!(ty, Ty::Opt(_)) {
+            e.ty = ty.clone();
+        }
+    }
+    exprs_mut(block, &mut |e| match &mut e.kind {
+        ExprKind::Cmp(_, a, b) => {
+            let (ta, tb) = (a.ty.clone(), b.ty.clone());
+            fit(a, &tb);
+            fit(b, &ta);
+        }
+        ExprKind::If(_, t, f) => {
+            fit(t, &e.ty);
+            fit(f, &e.ty);
+        }
+        _ => {}
+    });
+    walk::blocks_mut(block, &mut |b| {
+        for stmt in &mut b.stmts {
+            match stmt {
+                Stmt::Let(slot, Some(e)) => fit(e, &locals[*slot]),
+                Stmt::Assign(p, _, e) => fit(e, &p.ty),
+                Stmt::Return(Some(e)) => {
+                    if let Some(ret) = ret {
+                        fit(e, ret);
+                    }
+                }
+                _ => {}
+            }
+        }
+    });
 }
 
 fn struct_for(
@@ -929,7 +991,11 @@ fn struct_for(
     *n += 1;
     for (field, (_, ty)) in fields.iter().zip(&mut def.fields) {
         if let Some(sub @ Key::S(..)) = field {
-            *ty = Ty::Struct(ids[sub]);
+            let new = Ty::Struct(ids[sub]);
+            *ty = match ty {
+                Ty::Opt(_) => Ty::Opt(Box::new(new)),
+                _ => new,
+            };
         }
     }
     let new = program.structs.len();
@@ -956,7 +1022,7 @@ fn retype_place(
     globals: &[Ty],
     structs: &[cpl_ir::StructDef],
 ) {
-    let old = matches!(place.ty, Ty::Struct(s) if tracked.contains(&s));
+    let old = matches!(payload(&place.ty), Ty::Struct(s) if tracked.contains(s));
     match &mut place.kind {
         PlaceKind::Local(s) if old => place.ty = locals[*s].clone(),
         PlaceKind::Global(g) if old => place.ty = globals[*g].clone(),
@@ -966,9 +1032,13 @@ fn retype_place(
                 place.ty = structs[*sid].fields[*i].1.clone();
             }
         }
-        PlaceKind::Index(base, _) | PlaceKind::Some(base) => {
-            retype_place(base, tracked, locals, globals, structs)
+        PlaceKind::Some(base) => {
+            retype_place(base, tracked, locals, globals, structs);
+            if let (true, Ty::Opt(inner)) = (old, &base.ty) {
+                place.ty = (**inner).clone();
+            }
         }
+        PlaceKind::Index(base, _) => retype_place(base, tracked, locals, globals, structs),
         _ => {}
     }
 }
