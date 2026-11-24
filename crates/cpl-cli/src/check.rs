@@ -26,7 +26,8 @@ pub(crate) fn check(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut
         db.set_file(path, text.as_str());
         // What `cpl run` and `cpl build` would reject, `cpl check` rejects.
         let analysis = db.analyze(path).expect("the file was just set");
-        let diagnostics = cpl_ir::reported(&analysis);
+        let (config, _) = cpl_lint::Config::discover(std::path::Path::new(path));
+        let diagnostics = cpl_lint::at_levels(&analysis, &cpl_ir::reported(&analysis), &config);
         let failed = diagnostics
             .iter()
             .any(|d| d.severity == cpl_diag::Severity::Error);

@@ -386,3 +386,57 @@ fn a_library_lint_is_published_with_its_quick_fix() {
     assert!(title.contains("sq"), "{title}");
     assert!(fixed.contains("let d2 = sq(xa - xb)\n"), "{fixed}");
 }
+
+/// A lint the checker finds (L0605) follows `with lint(...)` and
+/// `cp.toml [lints]` in the editor, as in `cpl lint` and `cpl check`.
+#[test]
+fn checker_lints_follow_their_levels() {
+    let src = "let s = [10, 11, 12, 13]\nlet w = s[1..3]\nprint(w[1])\n";
+    let codes = |ds: &[Value]| -> Vec<String> {
+        ds.iter()
+            .filter_map(|d| d.at(&["code"]).as_str().map(str::to_string))
+            .collect()
+    };
+    let (_, shown) = open(src);
+    assert!(codes(&shown).contains(&"L0605".to_string()), "{shown:?}");
+    let allowed = src.replace(
+        "print(w[1])",
+        "with lint(literal_slice_index: allow):\n    print(w[1])",
+    );
+    let (_, quiet) = open(&allowed);
+    assert!(!codes(&quiet).contains(&"L0605".to_string()), "{quiet:?}");
+
+    let dir = std::env::temp_dir().join(format!("cpl-checker-levels-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("cp.toml"),
+        "[lints]\nliteral_slice_index = \"deny\"\n",
+    )
+    .unwrap();
+    let uri = format!("file://{}", dir.join("a.cp").display());
+    let mut server = Server::new();
+    server.handle(&request(1, "initialize", obj([])));
+    let published = server.handle(&notification(
+        "textDocument/didOpen",
+        obj([(
+            "textDocument",
+            obj([
+                ("uri", uri.as_str().into()),
+                ("languageId", "cp".into()),
+                ("version", 1.into()),
+                ("text", src.into()),
+            ]),
+        )]),
+    ));
+    let denied = published[0]
+        .at(&["params", "diagnostics"])
+        .as_array()
+        .unwrap_or(&[])
+        .to_vec();
+    let l0605 = denied
+        .iter()
+        .find(|d| d.at(&["code"]).as_str() == Some("L0605"))
+        .unwrap_or_else(|| panic!("{denied:?}"));
+    assert_eq!(l0605.at(&["severity"]).as_u32(), Some(1));
+    std::fs::remove_dir_all(&dir).unwrap();
+}

@@ -84,6 +84,42 @@ pub fn checked_analysis(
     if analysis.has_syntax_errors {
         return Checked::default();
     }
+    let regions = allowed_regions(analysis);
+    let mut out = Vec::new();
+    let mut problems = Vec::new();
+    for diag in reported {
+        match level_in(&regions, diag, config) {
+            None if diag.severity == Severity::Error => problems.push(diag.clone()),
+            Some(Some(diag)) => out.push(diag),
+            _ => {}
+        }
+    }
+    Checked {
+        lints: out,
+        errors: problems.len(),
+        problems,
+    }
+}
+
+/// `reported` as `cpl check` and the editor show it: the checker's lints at
+/// the levels `config` and the file's `with lint(...)` set, the rest as is.
+pub fn at_levels(
+    analysis: &cpl_check::Analysis,
+    reported: &[Diagnostic],
+    config: &Config,
+) -> Vec<Diagnostic> {
+    let regions = allowed_regions(analysis);
+    reported
+        .iter()
+        .filter_map(|diag| level_in(&regions, diag, config).unwrap_or(Some(diag.clone())))
+        .collect()
+}
+
+/// The spans `with lint(name: allow)` covers in `analysis`'s file.
+fn allowed_regions(analysis: &cpl_check::Analysis) -> Vec<(cpl_diag::Span, &'static str)> {
+    if analysis.has_syntax_errors {
+        return Vec::new();
+    }
     let items: Vec<_> = (analysis.items.iter())
         .map(|i| (i.offset, &i.syntax.parsed))
         .collect();
@@ -92,32 +128,33 @@ pub fn checked_analysis(
         items: &items,
         facts: None,
     };
-    let regions = Allows::collect(&file, &[]).regions;
-    let mut out = Vec::new();
-    let mut problems = Vec::new();
-    for diag in reported {
-        if diag.severity == Severity::Error && !CHECKER_LINTS.iter().any(|l| l.code == diag.code) {
-            problems.push(diag.clone());
-        }
-        let mut names = CHECKER_LINTS.iter().filter(|lint| lint.code == diag.code);
-        let allowed = names.any(|lint| {
-            regions
-                .iter()
-                .any(|(span, name)| *name == lint.name && span.contains(diag.span))
-        });
-        let level = config.checker_level(diag.code);
-        if allowed || level == Level::Allow || !CHECKER_LINTS.iter().any(|l| l.code == diag.code) {
-            continue;
-        }
-        let mut diag = diag.clone();
-        if level == Level::Deny {
-            diag.severity = Severity::Error;
-        }
-        out.push(diag);
+    Allows::collect(&file, &[]).regions
+}
+
+/// `None` when `diag` is no checker lint; else the lint at its level, or
+/// `Some(None)` when it is allowed.
+fn level_in(
+    regions: &[(cpl_diag::Span, &'static str)],
+    diag: &Diagnostic,
+    config: &Config,
+) -> Option<Option<Diagnostic>> {
+    let mut names = CHECKER_LINTS
+        .iter()
+        .filter(|lint| lint.code == diag.code)
+        .peekable();
+    names.peek()?;
+    let allowed = names.any(|lint| {
+        regions
+            .iter()
+            .any(|(span, name)| *name == lint.name && span.contains(diag.span))
+    });
+    let level = config.checker_level(diag.code);
+    if allowed || level == Level::Allow {
+        return Some(None);
     }
-    Checked {
-        lints: out,
-        errors: problems.len(),
-        problems,
+    let mut diag = diag.clone();
+    if level == Level::Deny {
+        diag.severity = Severity::Error;
     }
+    Some(Some(diag))
 }

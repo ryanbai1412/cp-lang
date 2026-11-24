@@ -63,7 +63,7 @@ impl Server {
         // A lint on the same span (L0306) already says it, with a fix.
         let mut notes = overflows(&facts);
         notes.retain(|n| !lints.iter().any(|l| l.span == n.span));
-        let items = cpl_ir::reported(&analysis)
+        let items = at_levels(uri, &analysis, cpl_ir::reported(&analysis))
             .iter()
             .chain(&lints)
             .chain(&notes)
@@ -94,6 +94,26 @@ fn overflows(facts: &Proven) -> Vec<Diagnostic> {
             Some(diag)
         })
         .collect()
+}
+
+#[cfg(target_arch = "wasm32")]
+fn at_levels(
+    _uri: &str,
+    _analysis: &cpl_check::Analysis,
+    reported: Vec<Diagnostic>,
+) -> Vec<Diagnostic> {
+    reported
+}
+
+/// What the checker reports, its lints at the levels `cp.toml` and
+/// `with lint(...)` set, as `cpl check` shows them.
+#[cfg(not(target_arch = "wasm32"))]
+fn at_levels(
+    uri: &str,
+    analysis: &cpl_check::Analysis,
+    reported: Vec<Diagnostic>,
+) -> Vec<Diagnostic> {
+    cpl_lint::at_levels(analysis, &reported, &lint_config(uri))
 }
 
 #[cfg(target_arch = "wasm32")]

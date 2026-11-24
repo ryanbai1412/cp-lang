@@ -1722,3 +1722,26 @@ fn explain_names_a_library_lint() {
         "{text}"
     );
 }
+
+/// `cpl check` shows a lint the checker finds (L0605) at the level
+/// `cp.toml [lints]` sets, as `cpl lint` and the editor do.
+#[test]
+fn check_shows_checker_lints_at_their_cp_toml_level() {
+    let src = b"let s = [10, 11, 12, 13]\nlet w = s[1..3]\nprint(w[1])\n";
+    let file = scratch("check-checker-lint-level", "a.cp", src);
+    let toml = file.with_file_name("cp.toml");
+    std::fs::write(&toml, "[lints]\nliteral_slice_index = \"allow\"\n").unwrap();
+    let allowed = cpl(&["check".as_ref(), file.as_os_str()], b"");
+    let err = String::from_utf8_lossy(&allowed.stderr);
+    assert!(
+        allowed.status.success() && !err.contains("L0605"),
+        "{allowed:?}"
+    );
+    std::fs::write(&toml, "[lints]\nliteral_slice_index = \"deny\"\n").unwrap();
+    let denied = cpl(&["check".as_ref(), file.as_os_str()], b"");
+    let err = String::from_utf8_lossy(&denied.stderr);
+    assert!(
+        !denied.status.success() && err.contains("error[L0605]"),
+        "{denied:?}"
+    );
+}

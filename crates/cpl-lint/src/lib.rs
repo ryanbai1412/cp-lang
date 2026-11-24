@@ -39,9 +39,9 @@ mod walk;
 
 pub mod cli;
 
+pub use checker::{at_levels, checked_analysis, Checked, CheckerLint, CHECKER_LINTS};
 #[cfg(test)]
 pub(crate) use checker::{checked, checker_lints};
-pub use checker::{checked_analysis, Checked, CheckerLint, CHECKER_LINTS};
 pub use config::{Config, ConfigError};
 pub use facts::Facts;
 pub use typed::{apply_lint_fixes, lint_analysis, refine_with_analysis};
