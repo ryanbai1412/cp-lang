@@ -3797,7 +3797,7 @@ fn indexed_views_and_common_prefix_suffix():
     assert common_suffix_len([1, 2, 3], [9, 2, 3]) == 2
     assert period("xxabababyy"[2..8]) == 2
     assert ("ababa".find_all("aba")).collect() == [0, 2]
-    assert [i for i in "xxababaxx"[2..7].find_all("aba")] == [2, 4]
+    assert "xxababaxx"[2..7].find_all("aba").collect() == [2, 4]
     assert "ababa".prefix_matches("aba") == [1, 2, 3, 2, 3]
     assert overlap("abcab", "abxyz") == 2
     assert lyndon_factorization("bbab") == [0, 1, 2]
@@ -3853,13 +3853,13 @@ fn sequence_generality_parity_across_list_array_and_views():
     let pview = padded[1..4]
 
     // KMP / Z / structural helpers over List<Int>, [D]Int, ListView<Int>, Str, StrView
-    assert [x for x in prefix_function(arr)] == prefix_function(xs)
+    assert prefix_function(arr).collect() == prefix_function(xs)
     assert prefix_function(view) == prefix_function(xs)
-    assert [x for x in z_function(arr)] == z_function(xs)
+    assert z_function(arr).collect() == z_function(xs)
     assert z_function(view) == z_function(xs)
     assert find_all(arr, parr).collect() == [P(1), P(5)]
     assert find_all(view, pview).collect() == [1, 5]
-    assert [x for x in prefix_matches(arr, parr)] == prefix_matches(xs, pat)
+    assert prefix_matches(arr, parr).collect() == prefix_matches(xs, pat)
     assert prefix_matches(view, pview) == prefix_matches(xs, pat)
     assert period(arr) == period(xs)
     assert period(view) == period(xs)
