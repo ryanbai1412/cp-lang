@@ -305,7 +305,7 @@ impl Ren {
                         self.expr(lo) && self.expr(hi) && step.as_mut().is_none_or(|s| self.expr(s))
                     }
                     Iter::RangeVal(e, _) | Iter::Seq(e, _) => self.expr(e),
-                    Iter::TreeRange { .. } | Iter::Walk { .. } => false,
+                    Iter::TreeRange { .. } => false,
                 };
                 ok && self.block(body)
             }

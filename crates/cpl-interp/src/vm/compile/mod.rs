@@ -1135,7 +1135,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
 
     pub(super) fn iter_mentions_slot(iter: &Iter, target: Slot) -> bool {
         match iter {
-            Iter::Walk { .. } => true,
             Iter::Range { lo, hi, .. } => {
                 Self::expr_mentions_slot(lo, target) || Self::expr_mentions_slot(hi, target)
             }

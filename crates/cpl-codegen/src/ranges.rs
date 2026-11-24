@@ -545,9 +545,6 @@ impl<'p> Facts<'p> {
                     self.taint(v);
                     self.kill(v);
                     match iter {
-                        Iter::Walk { .. } => {
-                            crate::fuse::iter_exprs(iter, &mut |e| self.expr(fn_id, e))
-                        }
                         Iter::Range {
                             lo,
                             hi,

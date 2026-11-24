@@ -285,12 +285,6 @@ pub(crate) fn stmts_producer(stmts: &[Stmt]) -> Option<Producer<'_>> {
 
 pub(crate) fn iter_exprs<'p>(iter: &'p Iter, f: &mut dyn FnMut(&'p Expr)) {
     match iter {
-        Iter::Walk { len, recv, .. } => {
-            f(len);
-            if let Some(r) = recv {
-                f(r);
-            }
-        }
         Iter::Range { lo, hi, step, .. } => {
             f(lo);
             f(hi);

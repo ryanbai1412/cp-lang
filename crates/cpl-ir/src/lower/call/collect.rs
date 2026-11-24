@@ -53,7 +53,7 @@ impl<'a> Lowerer<'a> {
                     Block::default(),
                 )],
             };
-            out.push(Stmt::For(lid, item, iter, body));
+            lw.push_for(out, lid, item, iter, body);
             out.push_give(lw.local(found, span));
         })
     }
@@ -137,7 +137,7 @@ impl<'a> Lowerer<'a> {
             let body = Block {
                 stmts: vec![push(lw, value)],
             };
-            out.push(Stmt::For(lid, item, iter, body));
+            lw.push_for(out, lid, item, iter, body);
         })
     }
 
@@ -201,14 +201,15 @@ impl<'a> Lowerer<'a> {
                 span: lw.span(span),
             };
             let one = lw.int_lit(1, span);
-            out.push(Stmt::For(
+            lw.push_for(
+                out,
                 lid,
                 item,
                 iter,
                 Block {
                     stmts: vec![Stmt::Assign(place, AssignOp::Binary(BinOp::Add), one)],
                 },
-            ));
+            );
             let res = lw.mk(
                 ExprKind::Tuple(vec![lw.local(m_slot, span)]),
                 struct_ty.clone(),

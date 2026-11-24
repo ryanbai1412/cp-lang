@@ -1046,9 +1046,6 @@ pub(crate) fn narrow_elems(
                 }
                 Stmt::For(_, slot, iter, body) => {
                     match iter {
-                        Iter::Walk { .. } => crate::fuse::iter_exprs(iter, &mut |e| {
-                            check_val(program, scope, e, narrow, changed)
-                        }),
                         Iter::Seq(e, _) if is_narrowable_seq(&e.ty) => {
                             if let Some((src_loc, depth)) = expr_root(scope, e) {
                                 let inner = peel_layout(narrow.get(&src_loc), depth + 1);

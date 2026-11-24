@@ -19,7 +19,6 @@ mod globals;
 mod gridrow;
 mod inline;
 mod into;
-mod invariant;
 mod lap;
 mod lend;
 mod lent_fields;

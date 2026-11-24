@@ -885,8 +885,8 @@ impl<'a> Lowerer<'a> {
     }
 
     /// The values an `Int` loop over `lo..hi` gives its variable.
-    pub(super) fn loop_var_range(&self, iter: &Iter) -> Option<RangeInfo> {
-        let Iter::Range { lo, hi, closed, .. } = iter else {
+    pub(super) fn loop_var_range(&self, head: &Head) -> Option<RangeInfo> {
+        let Head::Iter(Iter::Range { lo, hi, closed, .. }) = head else {
             return None;
         };
         let (lo_min, _) = self.bound_limits(lo)?;
@@ -1625,13 +1625,13 @@ impl<'a> Lowerer<'a> {
                     )
                 {
                     let (
-                        Iter::Range {
+                        Head::Iter(Iter::Range {
                             lo,
                             hi,
                             step: None,
                             rev: false,
                             closed,
-                        },
+                        }),
                         ty,
                     ) = self.iter(range)
                     else {

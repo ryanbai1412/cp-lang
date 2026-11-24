@@ -12,7 +12,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     ) -> Res<Flow> {
         let base = self.base;
         let span = match iter {
-            Iter::Walk { .. } => return Err(interp_failed(Span::default())),
             Iter::Range { lo: e, .. }
             | Iter::RangeVal(e, _)
             | Iter::Seq(e, _)
@@ -42,7 +41,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             }
         };
         match iter {
-            Iter::Walk { .. } => return Err(interp_failed(span)),
             Iter::Range {
                 lo,
                 hi,

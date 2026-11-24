@@ -205,10 +205,6 @@ macro_rules! walkers {
                         step.$iter().for_each(f);
                     }
                     Iter::RangeVal(e, _) | Iter::Seq(e, _) => f(e),
-                    Iter::Walk { len, recv, .. } => {
-                        f(len);
-                        recv.$iter().for_each(f);
-                    }
                     Iter::TreeRange {
                         container, lo, hi, ..
                     } => {

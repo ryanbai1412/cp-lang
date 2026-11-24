@@ -272,13 +272,13 @@ impl<'a> Lowerer<'a> {
         let dim = match &seq.ty {
             Ty::ListView(_, dim) | Ty::Keyed(_, dim) => *dim,
             Ty::StrView => Dim::Int,
-            _ => return self.lower_map_iter(Iter::Seq(seq, false), elem_ty, func_ast, span),
+            _ => return self.lower_map_iter(Iter::Seq(seq, false).into(), elem_ty, func_ast, span),
         };
         let seq = self.hold_view(seq, span);
         let lo = self.key_lo(&seq, span);
         let len = self.len_of(seq.clone(), span);
         let hi = self.int_sum(lo.clone(), len);
-        let mapped = self.lower_map_iter(Iter::Seq(seq, false), elem_ty, func_ast, span);
+        let mapped = self.lower_map_iter(Iter::Seq(seq, false).into(), elem_ty, func_ast, span);
         let Ty::List(out_elem) = mapped.ty.clone() else {
             return mapped;
         };
@@ -534,7 +534,7 @@ impl<'a> Lowerer<'a> {
             };
             let stmts = vec![push(lw, kept)];
             let body = vec![Stmt::If(keep, Block { stmts }, Block::default())];
-            out.push(Stmt::For(lid, item, iter, Block { stmts: body }));
+            lw.push_for(out, lid, item, iter, Block { stmts: body });
         }))
     }
 }

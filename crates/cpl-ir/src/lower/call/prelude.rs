@@ -625,14 +625,15 @@ impl<'a> Lowerer<'a> {
                         span,
                     );
                     lw.cx.loops.pop();
-                    out.push(Stmt::For(
+                    lw.push_for(
+                        out,
                         lid,
                         slot,
                         iter,
                         Block {
                             stmts: vec![Stmt::Expr(ins)],
                         },
-                    ));
+                    );
                     let res = lw.local(acc, span);
                     out.push_give(res);
                 })
@@ -942,7 +943,7 @@ impl<'a> Lowerer<'a> {
             // A range goes up already: its list is what it goes over.
             Ty::Range(elem) => {
                 let elem = (**elem).clone();
-                self.walked_list(Iter::RangeVal(value, false), elem, span)
+                self.walked_list(Iter::RangeVal(value, false).into(), elem, span)
             }
             ty if let Some(elem) = ty.seq_elem() => {
                 if !self.ordered(&elem) {
@@ -953,7 +954,7 @@ impl<'a> Lowerer<'a> {
                     );
                     return self.err_expr(span);
                 }
-                let list = self.walked_list(Iter::Seq(value, false), elem.clone(), span);
+                let list = self.walked_list(Iter::Seq(value, false).into(), elem.clone(), span);
                 self.mk_builtin(Builtin::Sorted, [list], Ty::list(elem), span)
             }
             Ty::Error => value,
@@ -1024,14 +1025,15 @@ impl<'a> Lowerer<'a> {
                 step: None,
                 rev: false,
                 closed: false,
-            },
+            }
+            .into(),
             elem,
             span,
         )
     }
 
     /// The list of what `iter` goes over, in the order it goes.
-    pub(in crate::lower) fn walked_list(&mut self, iter: Iter, elem: Ty, span: Span) -> Expr {
+    pub(in crate::lower) fn walked_list(&mut self, iter: Head, elem: Ty, span: Span) -> Expr {
         self.collected(elem.clone(), span, |lw, out, push| {
             let item = lw.temp(elem);
             let lid = lw.fresh_loop();
@@ -1039,7 +1041,7 @@ impl<'a> Lowerer<'a> {
             let body = Block {
                 stmts: vec![push(lw, at)],
             };
-            out.push(Stmt::For(lid, item, iter, body));
+            lw.push_for(out, lid, item, iter, body);
         })
     }
 
@@ -1056,7 +1058,7 @@ impl<'a> Lowerer<'a> {
             },
             _ => Iter::RangeVal(range, true),
         };
-        self.walked_list(iter, elem, span)
+        self.walked_list(iter.into(), elem, span)
     }
 
     /// `sorted(xs, by: ...)`
@@ -1077,7 +1079,7 @@ impl<'a> Lowerer<'a> {
             (kind, Ty::Range(of)) => {
                 let of = (**of).clone();
                 let range = Expr { kind, ..value };
-                self.walked_list(Iter::RangeVal(range, false), of, span)
+                self.walked_list(Iter::RangeVal(range, false).into(), of, span)
             }
             (kind, _) => Expr { kind, ..value },
         };
@@ -1109,7 +1111,7 @@ impl<'a> Lowerer<'a> {
                 Ty::Set(_) | Ty::HashSet(_) => {
                     lw.mk_builtin(Builtin::Sorted, [value], list_ty.clone(), span)
                 }
-                _ => lw.walked_list(Iter::Seq(value, false), elem.clone(), span),
+                _ => lw.walked_list(Iter::Seq(value, false).into(), elem.clone(), span),
             };
             let slot = lw.temp(list_ty.clone());
             out.push_let(slot, init);

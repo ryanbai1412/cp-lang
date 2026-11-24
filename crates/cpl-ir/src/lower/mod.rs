@@ -40,6 +40,7 @@ mod lambda_infer;
 mod later_calls;
 mod lexical_ctx;
 mod library_domain;
+use library_domain::{Head, Walk};
 mod local_gen;
 mod memo;
 mod mono;

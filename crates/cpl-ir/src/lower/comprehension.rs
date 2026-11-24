@@ -8,7 +8,7 @@ use cpl_diag::msgs;
 pub(super) struct LoopFrame {
     id: LoopId,
     slot: Slot,
-    iter: Iter,
+    iter: Head,
     /// What working out `iter` hoisted, run just before the loop.
     head: Vec<Stmt>,
     /// Statements that take the loop variable's pattern apart.
@@ -55,8 +55,8 @@ impl Lowerer<'_> {
                 self.map_proj_head(&clause.iter)
             };
             let (iter, elem) = match (&items, &map_proj) {
-                (Some(items), _) => (items.range(), Ty::Unit),
-                (None, Some(proj)) => (proj.iter(), Ty::Unit),
+                (Some(items), _) => (items.range().into(), Ty::Unit),
+                (None, Some(proj)) => (proj.iter().into(), Ty::Unit),
                 (None, None) => self.iter(&clause.iter),
             };
             let head = std::mem::take(&mut self.cx.pending);
@@ -149,7 +149,8 @@ impl Lowerer<'_> {
             Iter::RangeVal(seq, false)
         } else {
             Iter::Seq(seq, false)
-        };
+        }
+        .into();
         let frame = LoopFrame {
             id,
             slot,
@@ -182,12 +183,13 @@ impl Lowerer<'_> {
             }
             body.extend(stmts);
             stmts = frame.head;
-            stmts.push(Stmt::For(
+            self.push_for(
+                &mut stmts,
                 frame.id,
                 frame.slot,
                 frame.iter,
                 Block { stmts: body },
-            ));
+            );
             self.cx.pending.extend(frame.outside);
         }
         (stmts, outer)

@@ -1,4 +1,4 @@
-//! A library-domain `Iter::Walk` is expanded in lowering, before any backend.
+//! A library-domain walk is spelled out in lowering: no `Iter` can hold one.
 
 use crate::tests::lower;
 
@@ -32,22 +32,21 @@ fn no_library_domain_walk_survives_lowering() {
 }
 
 #[test]
-fn a_pass_reading_a_loop_head_sees_a_walks_length_and_receiver() {
-    use cpl_ir::{Expr, ExprKind, Iter, Ty};
-    let local = |slot| Expr {
-        kind: ExprKind::Local(slot),
-        ty: Ty::Int,
-        span: Default::default(),
-    };
-    let walk = Iter::Walk {
-        k: 0,
-        n: 1,
-        len: local(2),
-        nth: 0,
-        recv: Some(local(3)),
-        rev: false,
-    };
-    let mut seen = Vec::new();
-    crate::fuse::iter_exprs(&walk, &mut |e| seen.push(e.kind.clone()));
-    assert_eq!(seen, [ExprKind::Local(2), ExprKind::Local(3)]);
+fn print_works_out_a_walk_ahead_of_a_later_call() {
+    // The walk calls `nth`, so its count is worked out before the line is
+    // written, as any argument that calls a fn is (R10.3).
+    let out = crate::tests::cpp(concat!(
+        "struct Sub<B>(bits: Int)\n",
+        "impl Index for Sub<B>:\n",
+        "    let count = 1 << B.count\n",
+        "    @get fn ord(self) -> Int = bits\n",
+        "    fn nth(k: Int) -> Sub<B> = Sub(k)\n",
+        "domain V = 0..3\n",
+        "print(Sub<V>.count(s => s.bits > 1), 7)\n",
+    ));
+    assert!(!out.contains("put_int([&]"), "{out}");
+    assert!(
+        out.contains("t3 += 1;\n    }\n  }\n  ll t4 = t3;\n  cpl::put_int(t4, ' ');"),
+        "{out}"
+    );
 }

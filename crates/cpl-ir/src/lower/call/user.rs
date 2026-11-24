@@ -78,7 +78,7 @@ impl<'a> Lowerer<'a> {
             };
             lw.cx.loops.pop();
             let set = Stmt::Assign(place, AssignOp::Set, value);
-            out.push(Stmt::For(lid, slot, iter, Block { stmts: vec![set] }));
+            lw.push_for(out, lid, slot, iter, Block { stmts: vec![set] });
             let res = lw.local(acc, span);
             out.push_give(res);
         })
@@ -901,14 +901,15 @@ impl<'a> Lowerer<'a> {
                         span,
                     );
                     lw.cx.loops.pop();
-                    out.push(Stmt::For(
+                    lw.push_for(
+                        out,
                         lid,
                         slot,
                         iter,
                         Block {
                             stmts: vec![Stmt::Expr(m)],
                         },
-                    ));
+                    );
                     let res = lw.local(acc, span);
                     out.push_give(res);
                 });

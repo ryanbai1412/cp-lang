@@ -388,9 +388,6 @@ impl<'p> Emitter<'p> {
         }
         let cpp = if enum_range { "ll".to_string() } else { cpp };
         match iter {
-            Iter::Walk { .. } => {
-                crate::invariant::broken_invariant("lowering expands every Iter::Walk")
-            }
             Iter::Range {
                 lo,
                 hi,

@@ -453,7 +453,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
     /// in it traces its own lets as a `let` initializer's would.
     fn traced_quiet_iter(&self, iter: &'p Iter) -> Option<Span> {
         match iter {
-            Iter::Walk { .. } => None,
             Iter::Range { lo, hi, step, .. } => (self.traced_quiet(lo)
                 && self.traced_quiet(hi)
                 && step.as_ref().is_none_or(|s| self.traced_quiet(s)))

@@ -1170,10 +1170,9 @@ impl Stmt {
             Stmt::If(cond, ..) | Stmt::While(_, cond, _) => cond.span,
             Stmt::For(_, _, iter, _) => match iter {
                 Iter::Range { lo, hi, .. } => join(lo.span, hi.span),
-                Iter::Walk { len: e, .. }
-                | Iter::RangeVal(e, _)
-                | Iter::Seq(e, _)
-                | Iter::TreeRange { container: e, .. } => e.span,
+                Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::TreeRange { container: e, .. } => {
+                    e.span
+                }
             },
             Stmt::Assert { span, .. } | Stmt::Trap(_, span) => *span,
             Stmt::DefDomain { len, .. } => len.span,
@@ -1209,19 +1208,6 @@ pub enum Iter {
     /// The elements of an array, list, set or string, or the `(key,
     /// value)` pairs of a map. `rev` walks backward.
     Seq(Expr, bool),
-    /// The values of a library domain in ordinal order, or backward when
-    /// `rev`: `nth(k)` for each `k` in `0..len`, with `k` in slot `k` and
-    /// `len` read once into slot `n`. Lowering expands it into an `Int`
-    /// range loop before any backend sees it. With `recv` (a read of the
-    /// walked value), `nth` is its method: `nth(recv, k)`.
-    Walk {
-        k: Slot,
-        n: Slot,
-        len: Expr,
-        nth: FnId,
-        recv: Option<Expr>,
-        rev: bool,
-    },
     /// Keys (for `Set`) or `(key, value)` pairs (for `Map`) in a bounded range,
     /// walking the underlying ordered tree directly in O(log n + k).
     TreeRange {
@@ -1824,7 +1810,7 @@ impl Program {
                                 self.collect_defined_domains_expr(s, escaping, seen, out);
                             }
                         }
-                        Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::Walk { len: e, .. } => {
+                        Iter::RangeVal(e, _) | Iter::Seq(e, _) => {
                             self.collect_defined_domains_expr(e, escaping, seen, out);
                         }
                         Iter::TreeRange {
