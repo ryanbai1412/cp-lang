@@ -1226,7 +1226,14 @@ fn sqrt_negative_traps_in_interp_and_checked_cpp_not_release() {
         "checked: {chk_err}"
     );
 
-    // Release C++ (no -DLOCAL) stays raw and does not trap.
+    // A release build skips std's domain assert and gives the C++ result,
+    // NaN (decision 640, R09.3.6).
+    let release = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .arg("build")
+        .arg(&file)
+        .output()
+        .expect("cpl build runs");
+    assert!(release.status.success(), "{release:?}");
     let rel_bin = dir.join("s.release");
     let gpp = Command::new("g++")
         .args(["-std=c++17", "-O2", "-o"])
@@ -1238,6 +1245,10 @@ fn sqrt_negative_traps_in_interp_and_checked_cpp_not_release() {
     let mut rel_cmd = Command::new(&rel_bin);
     let rel = run_bin(&mut rel_cmd, "-1.0\n");
     assert!(rel.status.success(), "release should stay raw: {rel:?}");
+    assert!(
+        String::from_utf8_lossy(&rel.stdout).contains("nan"),
+        "release gives NaN: {rel:?}"
+    );
 
     std::fs::remove_dir_all(&dir).ok();
 }
