@@ -396,10 +396,8 @@ impl<'a> Lowerer<'a> {
                 if matches!(&base.kind, ast::ExprKind::Name(n) if n == var_name)
                     && indices.len() == 1
                 {
-                    let kt = self.probe_expr(&indices[0], None).ty;
-                    let vt = self.probe_expr(value, None).ty;
-                    let kt = if kt == Ty::Error { Ty::Int } else { kt };
-                    let vt = if vt == Ty::Error { Ty::Int } else { vt };
+                    let kt = self.checked_ty(&indices[0]).unwrap_or(Ty::Int);
+                    let vt = self.checked_ty(value).unwrap_or(Ty::Int);
                     return (kt, vt);
                 }
             }
