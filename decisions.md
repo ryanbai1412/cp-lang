@@ -8927,7 +8927,3 @@ Reserved for call 5, which landed as decision 519.
 - **Reverse.** Emit `std::optional<T>` params again and fold `optional_copies` into `deep_copies`.
 
 ## 551. (reserved, content)
-
-## 552. (reserved, content)
-
-## 553. (reserved, content)
