@@ -46,6 +46,7 @@ mod views;
 pub(crate) use stmt::runs;
 use views::{binding_kw, Keep};
 mod types;
+mod value_domain;
 
 pub(crate) use impl_head::impl_target_head;
 pub(crate) use pattern::domain_binding;

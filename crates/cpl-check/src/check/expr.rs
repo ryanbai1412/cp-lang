@@ -1675,22 +1675,9 @@ impl<'a> Checker<'a> {
     }
 
     fn field(&mut self, expr: &Expr, base: &Expr, name: &ast::Name) -> Ty {
-        // R04b.1.7: `let t = w.rebase` names its fresh domain `t.Idx`.
         if let ExprKind::Name(view) = &base.kind {
-            if name.text == "Idx" {
-                let own = format!("{view}.Idx");
-                if let Some(Ty::Array { index, .. }) = self.local(view).map(|l| l.ty.clone()) {
-                    if matches!(index.as_slice(), [Ty::Pos(d)] if *d == own) {
-                        return Ty::Domain(own);
-                    }
-                }
-                if let Some(def) = self.global(view) {
-                    if let Ty::Array { index, .. } = def.value_ty(view) {
-                        if matches!(index.as_slice(), [Ty::Pos(d)] if *d == own) {
-                            return Ty::Domain(own);
-                        }
-                    }
-                }
+            if let Some(domain) = self.value_domain(view, &name.text) {
+                return Ty::Domain(domain);
             }
         }
         // `treap.merge` after `use lib.treap`: a public name of a module.
@@ -1739,6 +1726,7 @@ impl<'a> Checker<'a> {
             return Ty::Error;
         }
         let ty = self.member_ty(expr, name, base_ty.clone());
+        let ty = self.through_value(base, &base_ty, ty);
         let base_ty = base_ty.rev_source().cloned().unwrap_or(base_ty);
         let built_in = matches!(
             &base_ty,

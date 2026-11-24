@@ -46,6 +46,27 @@ impl<'a> Lowerer<'a> {
                         laws: Vec::new(),
                         index_domain: None,
                     });
+                    // The domains first, so every method's signature sees them.
+                    let fields: Vec<&str> =
+                        decl.fields.iter().map(|f| f.name.text.as_str()).collect();
+                    for item in &decl.methods {
+                        if let ast::StmtKind::Domain { name, def } = &item.kind {
+                            let dom = self.domains.len();
+                            let owned = format!("{}_{}", self.structs[id].def.name, name.text);
+                            self.domains.push(owned);
+                            let info = &mut self.structs[id];
+                            info.owned_domains.insert(name.text.clone(), dom);
+                            info.owned_domain_inits.push(OwnedDomainInit {
+                                id: dom,
+                                def,
+                                offset,
+                                mod_id: m,
+                                per_value: cpl_syntax::visit::mentions_any(def, &fields),
+                            });
+                            info.env.insert(name.text.clone(), GenArg::Domain(dom));
+                        }
+                    }
+                    let env = self.structs[id].env.clone();
                     for item in &decl.methods {
                         let is_get = item.decorators.iter().any(|d| d.name.text == "get");
                         match &item.kind {
@@ -60,7 +81,7 @@ impl<'a> Lowerer<'a> {
                                             mod_id: m,
                                             offset,
                                             owner: id,
-                                            env: HashMap::new(),
+                                            env: env.clone(),
                                             decl: f,
                                         },
                                     );
@@ -70,7 +91,7 @@ impl<'a> Lowerer<'a> {
                                         mod_id: m,
                                         offset,
                                         owner: Some(id),
-                                        owner_env: HashMap::new(),
+                                        owner_env: env.clone(),
                                         decl: f,
                                     });
                                     self.structs[id]
@@ -78,7 +99,7 @@ impl<'a> Lowerer<'a> {
                                         .insert(f.name.text.clone(), gfid);
                                 } else {
                                     let fn_id =
-                                        self.declare_fn_in(f, m, offset, Some(id), HashMap::new());
+                                        self.declare_fn_in(f, m, offset, Some(id), env.clone());
                                     self.structs[id].methods.insert(f.name.text.clone(), fn_id);
                                 }
                             }

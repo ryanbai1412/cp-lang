@@ -56,6 +56,9 @@ pub enum Def {
         method_rows: Vec<(String, RowBounds)>,
         /// Domains and constants declared in the body: `Rooted<V>.Pre`.
         owned: Vec<(String, Ty)>,
+        /// The owned domains sized from fields (`domain Idx = 0..src.len`):
+        /// each value has its own, `t.Idx` (R04b.1.7).
+        value_domains: Vec<String>,
         projections: Vec<Projection>,
         cached_fields: Vec<String>,
     },

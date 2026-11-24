@@ -507,6 +507,12 @@ impl<'a> Lowerer<'a> {
                     _ => hi,
                 }
             }
+            (Ty::Struct(id), field_name) if self.per_value_domain(*id, field_name) => {
+                match self.value_domain(value.clone(), field_name, span) {
+                    Some(d) => self.mk(ExprKind::DomainVal(d), Ty::DomainVal, span),
+                    None => self.err_expr(span),
+                }
+            }
             (Ty::Struct(id), field_name)
                 if matches!(
                     self.structs[*id].env.get(field_name),

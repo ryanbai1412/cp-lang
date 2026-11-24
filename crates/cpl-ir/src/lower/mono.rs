@@ -136,13 +136,7 @@ pub(super) struct LawInfo<'a> {
     pub body: &'a ast::Expr,
 }
 
-#[derive(Clone)]
-pub(super) struct OwnedDomainInit<'a> {
-    pub id: DomainId,
-    pub def: &'a ast::Expr,
-    pub offset: u32,
-    pub mod_id: ModId,
-}
+pub(super) use super::keyed::OwnedDomainInit;
 
 #[derive(Clone)]
 pub(super) struct StructConst<'a> {
@@ -803,6 +797,7 @@ impl<'a> Lowerer<'a> {
         let saved_self = self.self_struct.replace(id);
 
         // 1. Collect struct-owned domains (e.g. `domain Pre = 0..V.K` in `Rooted<V>`).
+        let field_names: Vec<&str> = decl.fields.iter().map(|f| f.name.text.as_str()).collect();
         for item in &decl.methods {
             if let ast::StmtKind::Domain { name, def } = &item.kind {
                 let dom_id = self.domains.len();
@@ -816,6 +811,7 @@ impl<'a> Lowerer<'a> {
                     def,
                     offset: tpl_offset,
                     mod_id: tpl_mod,
+                    per_value: cpl_syntax::visit::mentions_any(def, &field_names),
                 });
                 self.gen_env
                     .insert(name.text.clone(), GenArg::Domain(dom_id));

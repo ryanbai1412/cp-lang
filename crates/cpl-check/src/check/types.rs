@@ -311,7 +311,10 @@ impl<'a> Checker<'a> {
             // `xs.D`: the domain a value brought with it, as `compress`
             // does. Lowering knows which one it is.
             if head.starts_with(|c: char| c.is_ascii_lowercase()) {
-                return Ty::Unknown;
+                return match self.value_domain(head, member) {
+                    Some(domain) => Ty::Pos(domain),
+                    None => Ty::Unknown,
+                };
             }
             let head_ty = self.named_type(head, head_span, Vec::new());
             if !matches!(head_ty, Ty::Pos(_) | Ty::Param(_) | Ty::Error | Ty::Unknown) {
@@ -1101,6 +1104,13 @@ impl<'a> Checker<'a> {
                         selves,
                         method_rows,
                         owned,
+                        value_domains: value_domains(
+                            &s.fields
+                                .iter()
+                                .map(|f| f.name.text.as_str())
+                                .collect::<Vec<_>>(),
+                            &s.methods,
+                        ),
                         projections: self.projections(&s.methods),
                         cached_fields: s
                             .fields
@@ -2004,4 +2014,17 @@ impl<'a> Checker<'a> {
             }
         }
     }
+}
+
+/// The domains a struct body declares from its `fields`
+/// (`domain Idx = 0..src.len`): each value of the struct has its own.
+fn value_domains(fields: &[&str], body: &[ast::Stmt]) -> Vec<String> {
+    body.iter()
+        .filter_map(|stmt| match &stmt.kind {
+            ast::StmtKind::Domain { name, def } if cpl_syntax::visit::mentions_any(def, fields) => {
+                Some(name.text.clone())
+            }
+            _ => None,
+        })
+        .collect()
 }

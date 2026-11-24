@@ -1939,27 +1939,19 @@ impl<'a> Checker<'a> {
             match &method.kind {
                 StmtKind::Fn(f) => self.fn_decl(f, Some(self_ty), false, memo_of(method)),
                 StmtKind::Law { name, .. } => {
-                    self.push_scope();
-                    for field in &fields {
-                        self.scopes.last_mut().unwrap().insert(
-                            field.name.clone(),
-                            Local {
-                                ty: field.ty.clone(),
-                                mutable: false,
-                                span: name.span,
-                                keyword: "self",
-                            },
-                        );
-                    }
+                    self.field_scope(&fields, name.span);
                     self.stmt(method, false);
                     self.pop_scope();
                 }
                 // Owned domains and constants were declared on entry; this
                 // checks their values.
+                // A domain may size itself from the fields: `domain Idx = 0..src.len`.
                 StmtKind::Domain { def, .. } => {
+                    self.field_scope(&fields, def.span);
                     if !self.domain_sum(def) {
                         self.infer(def);
                     }
+                    self.pop_scope();
                 }
                 StmtKind::Const {
                     init: Some(init), ..

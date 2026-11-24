@@ -163,6 +163,126 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// The domain `rest` that `prefix` holds: `D` of `let xs = compress(all)`, `t.Idx` of a rebase.
+    pub(super) fn domain_of_value(&mut self, prefix: &str, rest: &str) -> Option<DomainId> {
+        let owner = ast::Expr {
+            kind: ast::ExprKind::Name(prefix.to_string()),
+            span: Span::point(0),
+        };
+        let ty = self.probe_ty_silent(&owner)?;
+        let Ty::Struct(sid) = ty else {
+            return self.rebased_domain(&ty, rest);
+        };
+        if self.per_value_domain(sid, rest) {
+            let value = self.expr(&owner, None);
+            return self.value_domain(value, rest, owner.span);
+        }
+        match self.structs[sid].env.get(rest) {
+            Some(GenArg::Domain(id)) | Some(GenArg::Ty(Ty::Pos(id))) => Some(*id),
+            _ => self.structs[sid].owned_domains.get(rest).copied(),
+        }
+    }
+
+    /// `owner.member` for a named struct value whose domain `member` is
+    /// sized from its fields.
+    pub(super) fn value_domain_named(
+        &mut self,
+        owner: &ast::Expr,
+        member: &str,
+    ) -> Option<DomainId> {
+        if !matches!(owner.kind, ast::ExprKind::Name(_)) {
+            return None;
+        }
+        let Ty::Struct(sid) = self.probe_ty_silent(owner)? else {
+            return None;
+        };
+        if !self.per_value_domain(sid, member) {
+            return None;
+        }
+        let value = self.expr(owner, None);
+        self.value_domain(value, member, owner.span)
+    }
+
+    /// A position of `w.Idx` where the struct's own `Idx` is wanted, or back:
+    /// the checker already kept two values' domains apart (E0301).
+    pub(super) fn same_value_domain(&self, want: &Ty, got: &Ty) -> bool {
+        let shared = |d: DomainId| {
+            self.value_domain_ids
+                .iter()
+                .find(|(_, &copy)| copy == d)
+                .map_or(d, |((_, owned), _)| *owned)
+        };
+        matches!((want, got), (Ty::Pos(w), Ty::Pos(g)) if shared(*w) == shared(*g))
+    }
+
+    /// Whether the domain `member` of struct `sid` is sized from its fields.
+    pub(super) fn per_value_domain(&self, sid: StructId, member: &str) -> bool {
+        let Some(&shared) = self.structs[sid].owned_domains.get(member) else {
+            return false;
+        };
+        self.structs[sid]
+            .owned_domain_inits
+            .iter()
+            .any(|i| i.id == shared && i.per_value)
+    }
+
+    /// `w.Idx` for a struct value `w` whose domain `Idx` is sized from its
+    /// fields: a domain of `w`'s own, set from `w` each time it is named
+    /// (R04b.1.7).
+    pub(super) fn value_domain(
+        &mut self,
+        owner: Expr,
+        member: &str,
+        span: Span,
+    ) -> Option<DomainId> {
+        let Ty::Struct(sid) = owner.ty else {
+            return None;
+        };
+        let shared = *self.structs[sid].owned_domains.get(member)?;
+        let init = self.structs[sid]
+            .owned_domain_inits
+            .iter()
+            .find(|i| i.id == shared && i.per_value)?
+            .clone();
+        let (key, kind) = match owner.kind {
+            ExprKind::Local(slot) => ((false, slot), PlaceKind::Local(slot)),
+            ExprKind::Global(id) => ((true, id), PlaceKind::Global(id)),
+            _ => {
+                let slot = self.temp(owner.ty.clone());
+                self.cx.pending.push(Stmt::Let(slot, Some(owner.clone())));
+                ((false, slot), PlaceKind::Local(slot))
+            }
+        };
+        let id = match self.value_domain_ids.get(&(key, shared)) {
+            Some(&id) => id,
+            None => {
+                let id = self.domains.len();
+                let name = format!("{}_v{id}", self.domains[shared]);
+                self.domains.push(name);
+                self.value_domain_ids.insert((key, shared), id);
+                id
+            }
+        };
+        let place = Place {
+            kind,
+            ty: owner.ty.clone(),
+            span,
+        };
+        // The fields are the only names the definition sees besides globals.
+        let scopes = std::mem::replace(&mut self.cx.scopes, vec![HashMap::new()]);
+        let inline = self.cx.inline_self.replace((place, sid));
+        let module = std::mem::replace(&mut self.cur_mod, init.mod_id);
+        let offset = std::mem::replace(&mut self.offset, init.offset);
+        let mut out = Vec::new();
+        self.init_domain_id(id, init.def, &mut out);
+        self.cur_mod = module;
+        self.offset = offset;
+        self.cx.inline_self = inline;
+        self.cx.scopes = scopes;
+        self.cx.pending.extend(out);
+        Some(id)
+    }
+
     /// `seq.map(f)` as a list, keyed like `seq` when `seq` is a view:
     /// `a[1..3].map(f)[2]` is `f(a[2])` (R04a.9.4).
     pub(super) fn map_seq(
@@ -380,4 +500,15 @@ impl<'a> Lowerer<'a> {
             out.push(Stmt::For(lid, item, iter, Block { stmts: body }));
         }))
     }
+}
+
+/// A domain a struct body declares, with where its definition is read.
+#[derive(Clone)]
+pub(super) struct OwnedDomainInit<'a> {
+    pub id: DomainId,
+    pub def: &'a ast::Expr,
+    pub offset: u32,
+    pub mod_id: ModId,
+    /// Sized from the fields (`domain Idx = 0..src.len`): each value has its own.
+    pub per_value: bool,
 }

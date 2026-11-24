@@ -311,6 +311,12 @@ impl<'a> Lowerer<'a> {
         if let Some(piece) = self.map_view_piece(whole, None) {
             return piece;
         }
+        // `w.Idx(2)`: a position of the domain the value `w` sized from its fields.
+        if let ast::ExprKind::Field { base: owner, name } = &callee.kind {
+            if let Some(id) = self.value_domain_named(owner, &name.text) {
+                return self.domain_call(id, &name.text, args, span);
+            }
+        }
         match &callee.kind {
             ast::ExprKind::Paren(inner) => self.call(whole, inner, args, hint),
             ast::ExprKind::Field { name, .. }

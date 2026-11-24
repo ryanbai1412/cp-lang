@@ -822,6 +822,8 @@ struct Lowerer<'a> {
     /// The empty struct each bare operator value has as its type (`op_value`).
     op_types: Vec<(BareOp, StructId)>,
     struct_insts: HashMap<(GenStructId, Vec<GenArg>), StructId>,
+    /// `w.Idx` by the place of `w` and the struct's own `Idx`.
+    value_domain_ids: HashMap<((bool, usize), DomainId), DomainId>,
     /// The domains made for arrays indexed by a plain range (`[0..n]T`,
     /// `[1..=n]T`) where a fn asks for a `[D]T`, with their first index.
     /// One per call and generic name; its size is set where the array is
@@ -985,6 +987,7 @@ impl<'a> Lowerer<'a> {
             gen_structs: Vec::new(),
             op_types: Vec::new(),
             struct_insts: HashMap::new(),
+            value_domain_ids: HashMap::new(),
             range_domains: HashMap::new(),
             range_domain_sites: HashMap::new(),
             range_domains_shared: HashSet::new(),
@@ -2720,22 +2723,6 @@ impl<'a> Lowerer<'a> {
         self.mk(ExprKind::Do(Block { stmts }), list_ty, span)
     }
 
-    /// The domain `rest` that `prefix` holds: `D` of `let xs = compress(all)`, `t.Idx` of a rebase.
-    fn domain_of_value(&mut self, prefix: &str, rest: &str) -> Option<DomainId> {
-        let owner = ast::Expr {
-            kind: ast::ExprKind::Name(prefix.to_string()),
-            span: Span::point(0),
-        };
-        let ty = self.probe_ty_silent(&owner)?;
-        let Ty::Struct(sid) = ty else {
-            return self.rebased_domain(&ty, rest);
-        };
-        match self.structs[sid].env.get(rest) {
-            Some(GenArg::Domain(id)) | Some(GenArg::Ty(Ty::Pos(id))) => Some(*id),
-            _ => self.structs[sid].owned_domains.get(rest).copied(),
-        }
-    }
-
     /// A struct's fields as they are read from input: with their ranges.
     fn struct_spec(&mut self, id: StructId) -> Spec {
         if let Some(&fn_id) = self.structs[id].methods.get("read") {
@@ -3596,16 +3583,16 @@ impl<'a> Lowerer<'a> {
 
         // If this is a constructor/static method of a struct with owned domains (e.g. `Rooted<V>.Pre`),
         // initialize those owned domains at the start of the method.
+        // A method on a value sets the domains sized from its fields.
         if let Some(owner) = self.sigs[id].owner {
-            if self.sigs[id].receiver.is_none() {
-                let inits = self.structs[owner].owned_domain_inits.clone();
-                for init in inits {
-                    let sm = std::mem::replace(&mut self.cur_mod, init.mod_id);
-                    let so = std::mem::replace(&mut self.offset, init.offset);
-                    self.init_domain_id(init.id, init.def, &mut out);
-                    self.cur_mod = sm;
-                    self.offset = so;
-                }
+            let receiver = self.sigs[id].receiver.is_some();
+            let inits = self.structs[owner].owned_domain_inits.clone();
+            for init in inits.into_iter().filter(|i| i.per_value == receiver) {
+                let sm = std::mem::replace(&mut self.cur_mod, init.mod_id);
+                let so = std::mem::replace(&mut self.offset, init.offset);
+                self.init_domain_id(init.id, init.def, &mut out);
+                self.cur_mod = sm;
+                self.offset = so;
             }
         }
 
@@ -4663,7 +4650,7 @@ impl<'a> Lowerer<'a> {
             Ok(done) => return Ok(done),
             Err(e) => e,
         };
-        if same_cells(want, &e.ty) {
+        if same_cells(want, &e.ty) || self.same_value_domain(want, &e.ty) {
             return Ok(Expr {
                 ty: want.clone(),
                 ..e
