@@ -113,6 +113,29 @@ impl<'a> Lowerer<'a> {
                 return self.int_lit(128, span);
             }
         }
+        // `Char` and `Bool` are bounded and ordered, so they have ends as `MIN` and `MAX` (R02.2.1).
+        if let ast::ExprKind::Name(n) = &base.kind {
+            if self.lookup(n).is_none() {
+                let ty = match self.gen_env.get(n) {
+                    Some(GenArg::Ty(t @ (Ty::Char | Ty::Bool))) => Some(t.clone()),
+                    _ if n == "Char" => Some(Ty::Char),
+                    _ if n == "Bool" => Some(Ty::Bool),
+                    _ => None,
+                };
+                let max = match name.text.as_str() {
+                    "MIN" => Some(false),
+                    "MAX" => Some(true),
+                    _ => None,
+                };
+                if let (Some(ty), Some(max)) = (ty, max) {
+                    let kind = match ty {
+                        Ty::Char => ExprKind::Char(if max { 127 } else { 0 }),
+                        _ => ExprKind::Bool(max),
+                    };
+                    return self.mk(kind, ty, span);
+                }
+            }
+        }
         // Generic parameter bound to a `.cuts` domain (`D = V.cuts`):
         // `D.K` / `D.len` / `D.count` is `V.K + 1`, `D.first` is `0`, `D.last` is `V.K`.
         if let ast::ExprKind::Name(n) = &base.kind {

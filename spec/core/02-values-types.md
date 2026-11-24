@@ -49,8 +49,8 @@ Whether a value is owned or lent is not part of its type (chapter 5). (R02.1.4)
 | `U64` | `0 ..= 2^64 - 1`, wrapping | hashes, masks, bit tricks |
 | `I128` | signed 128-bit | products past `Int` |
 | `F64` | IEEE double | `==` is exact; `close(a, b, eps:)` is the tolerant compare |
-| `Bool` | `true`, `false` | 1 byte; packed in `Bits`; `Int(b)` is 1 or 0 |
-| `Char` | ASCII `0..=127` | 1 byte; `Int(c)`, `Char(i)` (traps outside `0..=127`), `c.is_digit`, ...; ordered by code, so `'b' < 'c'` and `max` work |
+| `Bool` | `true`, `false` | 1 byte; packed in `Bits`; `Int(b)` is 1 or 0; `Bool.MIN` is `false` and `Bool.MAX` is `true` |
+| `Char` | ASCII `0..=127` | 1 byte; `Int(c)`, `Char(i)` (traps outside `0..=127`), `c.is_digit`, ...; ordered by code, so `'b' < 'c'` and `max` work; `Char.MIN` is `Char(0)` and `Char.MAX` is `Char(127)`, so `s.fold(max)` and `s.fold(min)` have an identity |
 | `()` | the unit value | what statements and `print` return |
 | `Never` | no values | the type of `return`, `break`, traps, `todo` |
 
