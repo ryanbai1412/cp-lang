@@ -312,18 +312,17 @@ pub fn replace(self: Str, from: Str, to: Str) -> Str:
 /// example: `"12a".parse_int() == None`
 pub fn parse_int(self: Str, base: Int = 10) -> ?Int:
     assert 2 <= base <= 36
-    var i = 0
     let neg = self.len > 0 and self[0] == '-'
-    if self.len > 0 and (self[0] == '-' or self[0] == '+'): i = 1
+    var i = if neg: 1 else: 0
     if i == self.len: return None
     var x = 0
     while i < self.len:
         let c = self[i].lower
         let d = if c.is_digit: c.digit elif c.is_lower: Int(c) - Int('a') + 10 else: base
-        if d >= base: return None
-        x = x * base + (if neg: -d else: d)
+        if d >= base or x > (Int.MAX - d) / base: return None
+        x = x * base + d
         i += 1
-    Some(x)
+    Some(if neg: -x else: x)
 
 /// `self` read as a `T` by the same rules as `read<T>()` (core 10.2), or `None` if a token is
 /// malformed, out of `T`'s range, missing, or left over.
