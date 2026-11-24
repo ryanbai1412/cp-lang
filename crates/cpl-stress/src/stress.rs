@@ -53,18 +53,12 @@ pub enum Inputs {
 /// draw that fails traps.
 pub struct Drawing {
     pub gen: Runner,
-    pub traps: Option<Runner>,
     pub limit: Duration,
 }
 
 impl ChoiceSource for Drawing {
     fn draw(&self, seed: u64) -> Result<Drawn, StressError> {
-        self.gen
-            .draw(seed, self.limit)
-            .map_err(|built| match &self.traps {
-                Some(vm) => vm.draw(seed, self.limit).err().unwrap_or(built),
-                None => built,
-            })
+        self.gen.draw(seed, self.limit)
     }
 
     fn replay(&self, choices: &[u64]) -> Option<Drawn> {
@@ -306,31 +300,20 @@ impl Stress {
                 let program = lowered(cpl_ir::lower_gen(analysis, gen_fn, size), name, source)?;
                 Inputs::Gen(Drawing {
                     gen: vm(program),
-                    traps: None,
                     limit: options.limit,
                 })
             }
-            (None, Some((fn_name, _)), Some(_)) => match Program::interpreted_gen(path, size)
-                .map_err(said)?
-            {
-                Some(program) => Inputs::Gen(Drawing {
-                    gen: vm(program),
-                    traps: None,
-                    limit: options.limit,
-                }),
-                None => Inputs::Gen(Drawing {
-                    gen: Runner::Process(Program::resolve_gen(path, fn_name, size).map_err(said)?),
-                    traps: Program::lowered_gen(path, size).ok().map(|program| {
-                        Runner::InProcess(Box::new(Vm::new(
-                            program,
-                            &format!("{name} (`{fn_name}`)"),
-                            source,
-                            None,
-                        )))
-                    }),
-                    limit: options.limit,
-                }),
-            },
+            // Its choices are recorded and replayed in the VM, so a native
+            // stress draws there too.
+            (None, Some((fn_name, _)), Some(_)) => Inputs::Gen(Drawing {
+                gen: Runner::InProcess(Box::new(Vm::new(
+                    Program::lowered_gen(path, size).map_err(said)?,
+                    &format!("{name} (`{fn_name}`)"),
+                    source,
+                    stack_limit,
+                ))),
+                limit: options.limit,
+            }),
             (None, None, _) => typed()?,
         };
         let file_solves = is_cp && native.is_none_or(|n| n.fast.is_none());

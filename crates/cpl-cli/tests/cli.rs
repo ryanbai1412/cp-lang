@@ -796,7 +796,7 @@ fn stress_makes_inputs_with_the_gen_fn_in_the_file_and_shrinks_them() {
     assert_eq!(out.status.code(), Some(1), "{stdout}");
     // The smallest such tree: a star of four, one value just above 50.
     assert!(
-        stdout.contains(" numbers to 11:\n    4\n    1 2\n    1 3\n    1 4\n    51 1 1 1\n"),
+        stdout.contains(" numbers to 11:\n    4\n    1 2\n    2 3\n    2 4\n    1 51 1 1\n"),
         "{stdout}"
     );
 }

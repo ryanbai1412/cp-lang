@@ -6,12 +6,8 @@
 //! of them, so a tree or a sorted list stays a tree or a sorted list
 //! while it shrinks. A choice past the end of a list is 0, the low end.
 
-use crate::program::Program;
 use crate::run::StressError;
 use std::collections::HashMap;
-use std::path::PathBuf;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::Duration;
 
 /// One case a generator printed, and the choices that made it.
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -27,83 +23,6 @@ impl Drawn {
     fn rank(&self) -> (usize, &[u64]) {
         (self.choices.len(), &self.choices)
     }
-}
-
-const LIMIT: Duration = Duration::from_secs(10);
-
-/// A file no other run is using.
-fn scratch() -> PathBuf {
-    static NEXT: AtomicUsize = AtomicUsize::new(0);
-    let id = NEXT.fetch_add(1, Ordering::Relaxed);
-    std::env::temp_dir().join(format!("cpl-choices-{}-{id}", std::process::id()))
-}
-
-/// The case the generator draws, or what it wrote to stderr when it failed.
-fn run(generator: &Program, env: &[(&str, String)]) -> std::io::Result<Result<Drawn, String>> {
-    let log = scratch();
-    let mut program = generator.clone();
-    program.env.extend(
-        env.iter()
-            .map(|(key, value)| (key.to_string(), value.clone())),
-    );
-    program
-        .env
-        .push(("CPL_CHOICES_OUT".to_string(), log.display().to_string()));
-    let outcome = program.run("", LIMIT);
-    let choices = std::fs::read_to_string(&log).unwrap_or_default();
-    let _ = std::fs::remove_file(&log);
-    let outcome = outcome?;
-    let ok = outcome.ok();
-    let (sites, choices) = choices
-        .lines()
-        .filter_map(|line| {
-            let (site, choice) = line.split_once(' ')?;
-            Some((site.parse::<u32>().ok()?, choice.parse::<u64>().ok()?))
-        })
-        .unzip();
-    if !ok {
-        return Ok(Err(outcome.stderr));
-    }
-    Ok(Ok(Drawn {
-        choices,
-        sites,
-        input: outcome.stdout,
-    }))
-}
-
-/// The case `seed` gives.
-pub fn draw(generator: &Program, seed: u64) -> Result<Drawn, StressError> {
-    let failed = |why: String| StressError(format!("the `@gen` fn of {} {why}", generator.name));
-    match run(generator, &[("CPL_SEED", seed.to_string())]) {
-        Ok(Ok(drawn)) => Ok(drawn),
-        Ok(Err(stderr)) => Err(failed(
-            match stderr.find("error[").or_else(|| {
-                let at = stderr.len() - stderr.trim_start().len();
-                (at < stderr.len()).then_some(at)
-            }) {
-                Some(at) => format!(
-                    "failed on seed {seed}:\n{}",
-                    (stderr[at..].trim_end().lines())
-                        .map(|line| format!("  {line}"))
-                        .collect::<Vec<_>>()
-                        .join("\n")
-                ),
-                None => format!("failed on seed {seed}"),
-            },
-        )),
-        Err(e) => Err(failed(format!("can't run: {e}"))),
-    }
-}
-
-/// The case `choices` give, or `None` when the generator rejects them.
-/// The choices it comes back with are the ones the generator used.
-pub fn replay(generator: &Program, choices: &[u64]) -> Option<Drawn> {
-    let list = scratch();
-    let text: String = choices.iter().map(|choice| format!("{choice}\n")).collect();
-    std::fs::write(&list, text).ok()?;
-    let drawn = run(generator, &[("CPL_CHOICES", list.display().to_string())]);
-    let _ = std::fs::remove_file(&list);
-    drawn.ok()?.ok()
 }
 
 /// Runs an in-file `@gen` fn by seed or by replaying a recorded choice list.

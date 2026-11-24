@@ -190,7 +190,7 @@
   "codemods_outside_fix": 0,
   "module_loaders": 0,
   "stress_hand_json": 0,
-  "helper_env_vars": 4,
+  "helper_env_vars": 2,
   "trace_engine_refs": 0,
   "corpus_known": 0,
   "site_rederived": 0,
