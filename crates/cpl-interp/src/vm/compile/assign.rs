@@ -755,7 +755,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     && (indices.len() == 1 || indices.len() == 2)
                     && small_tuple_shape(&place.ty, self.program).is_some() =>
             {
-                let Some((len, kinds)) = small_tuple_shape(&place.ty, self.program) else {
+                let Some((len, shape)) = small_tuple_shape(&place.ty, self.program) else {
                     return false;
                 };
                 let src_base = self.next_i;
@@ -773,7 +773,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                                     r_j,
                                     src_base,
                                     len,
-                                    kinds,
+                                    shape,
                                 },
                                 place.span,
                             );
@@ -784,7 +784,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                                     r_i,
                                     src_base,
                                     len,
-                                    kinds,
+                                    shape,
                                 },
                                 place.span,
                             );
@@ -806,7 +806,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                                     r_j,
                                     src_base,
                                     len,
-                                    kinds,
+                                    shape,
                                 },
                                 place.span,
                             );
@@ -817,7 +817,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                                     r_i,
                                     src_base,
                                     len,
-                                    kinds,
+                                    shape,
                                 },
                                 place.span,
                             );
@@ -937,7 +937,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                             return false;
                         };
                         let r_i = self.compile_expr_i(&indices[0]);
-                        if let Some((len, kinds)) =
+                        if let Some((len, shape)) =
                             crate::vm::scalar::small_tuple_shape(&value.ty, self.program)
                                 .filter(|_| self.small_tuple_is_cheap(value))
                         {
@@ -948,7 +948,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                                 r_i,
                                 src_base,
                                 len,
-                                kinds,
+                                shape,
                             };
                             self.emit(store, place.span);
                             return true;
@@ -1009,7 +1009,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
         };
         match self.slot_loc(slot) {
             SlotLoc::I(r, ScalarKind::OneIntStruct | ScalarKind::OneU64Struct) if f == 0 => Some(r),
-            SlotLoc::SmallTuple { base, len, .. } if f < usize::from(len) => Some(base + f as u16),
+            SlotLoc::SmallTuple { base, shape, .. } => {
+                match crate::value::shape::field(shape, f)? {
+                    (d, None) => Some(base + d as u16),
+                    _ => None,
+                }
+            }
             _ => None,
         }
     }

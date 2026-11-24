@@ -156,13 +156,64 @@ fn take(shape: u64, s: &mut usize, row: &[i64], d: &mut usize) -> Value {
     SmallFieldKind::of_bits(node as i64).box_val(row[*d - 1])
 }
 
-/// The shape of a tuple of `kinds[..len]`.
-pub(crate) fn flat(kinds: &[SmallFieldKind; 5], len: usize) -> u64 {
-    let mut shape = TUP | (len as u64) << 4;
-    for (i, kind) in kinds[..len].iter().enumerate() {
-        shape |= (*kind as u64) << (8 + 4 * i);
+/// A tuple shape made of `fields`, each a scalar's [`SmallFieldKind`] or a
+/// tuple's shape with its node count; `None` past [`NODES`].
+pub(crate) fn tuple(fields: &[(u64, usize)]) -> Option<(u64, usize)> {
+    let mut b = Build {
+        shape: TUP | (fields.len() as u64) << 4,
+        nodes: 2,
+        words: 0,
+    };
+    for &(shape, nodes) in fields {
+        (b.nodes + nodes <= NODES && fields.len() < 16).then_some(())?;
+        b.shape |= shape << (4 * b.nodes);
+        b.nodes += nodes;
     }
-    shape
+    Some((b.shape, b.nodes))
+}
+
+/// Where field `f` of the scalar tuple `shape` starts in its words, and its
+/// shape when it is a tuple too; `None` past the last field.
+pub(crate) fn field(shape: u64, f: usize) -> Option<(usize, Option<u64>)> {
+    (f < nib(shape, 1) as usize).then_some(())?;
+    let (mut s, mut d) = (2, 0);
+    for _ in 0..f {
+        d += skip(shape, &mut s);
+    }
+    let start = s;
+    skip(shape, &mut s);
+    let sub = (shape >> (4 * start)) & ((1u64 << (4 * (s - start))) - 1);
+    Some((d, (nib(sub, 0) == TUP).then_some(sub)))
+}
+
+/// Steps `s` past the node there and what it holds: the words it takes.
+fn skip(shape: u64, s: &mut usize) -> usize {
+    let node = nib(shape, *s);
+    *s += 1;
+    if node != TUP {
+        return 1;
+    }
+    let n = nib(shape, *s);
+    *s += 1;
+    (0..n).map(|_| skip(shape, s)).sum()
+}
+
+/// Whether `shape` is a tuple of scalars, nested or not, a word each.
+pub(crate) fn is_scalar_tuple(shape: u64) -> bool {
+    nib(shape, 0) == TUP && shape & UNORDERED == 0
+}
+
+/// Writes the scalars of `v`, a tuple of tuples over scalars, into `out`.
+pub(crate) fn leaves(v: &Value, out: &mut [i64], d: &mut usize) {
+    match v {
+        Value::Tuple(TupleVal::Boxed(fs)) => fs.iter().for_each(|f| leaves(f, out, d)),
+        _ => {
+            if let Some(o) = out.get_mut(*d) {
+                *o = SmallFieldKind::try_unbox(v).map_or(0, |(_, x)| x);
+            }
+            *d += 1;
+        }
+    }
 }
 
 /// The field count of a tuple shape whose fields are a scalar word each.

@@ -239,15 +239,13 @@ impl Cells {
                 stride,
                 shape,
                 data,
-            } if *stride as usize == len && shape::flat_len(*shape) == Some(len) => {
+            } if *stride as usize == len && shape::is_scalar_tuple(*shape) => {
                 let off = idx * len;
                 out[..len].copy_from_slice(&data[off..off + len]);
             }
             _ => {
-                if let Some(Value::Tuple(TupleVal::Boxed(fs))) = self.get(idx) {
-                    for (i, f) in fs.iter().take(len).enumerate() {
-                        out[i] = SmallFieldKind::try_unbox(f).map_or(0, |(_, x)| x);
-                    }
+                if let Some(v) = self.get(idx) {
+                    shape::leaves(&v, &mut out[..len], &mut 0);
                 }
             }
         }
@@ -255,8 +253,7 @@ impl Cells {
 
     /// Pushes the small tuple in `vals`, boxing only when the cells hold
     /// something else.
-    pub fn push_small_tuple(&mut self, len: usize, vals: &[i64], kinds: &[SmallFieldKind; 5]) {
-        let flat = shape::flat(kinds, len);
+    pub fn push_small_tuple(&mut self, len: usize, vals: &[i64], flat: u64) {
         if let Cells::Rows {
             stride,
             shape,
@@ -272,20 +269,14 @@ impl Cells {
     }
 
     #[inline]
-    pub fn set_small_tuple(
-        &mut self,
-        idx: usize,
-        len: usize,
-        vals: &[i64],
-        kinds: &[SmallFieldKind; 5],
-    ) {
+    pub fn set_small_tuple(&mut self, idx: usize, len: usize, vals: &[i64], flat: u64) {
         match &mut *self {
-            Cells::Rows { shape, data, .. } if *shape == shape::flat(kinds, len) => {
+            Cells::Rows { shape, data, .. } if *shape == flat => {
                 let off = idx * len;
                 data[off..off + len].copy_from_slice(&vals[..len]);
             }
             _ => {
-                let v = shape::unpack(shape::flat(kinds, len), &vals[..len]);
+                let v = shape::unpack(flat, &vals[..len]);
                 self.set(idx, v);
             }
         }

@@ -1120,11 +1120,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         let tuple = (muts & 1 << k == 0)
                             .then(|| crate::vm::scalar::small_tuple_shape(ty, self.program))
                             .flatten();
-                        if let Some((len, kinds)) = tuple {
-                            let fs = crate::value::Shared::collect(len as usize, |f| {
-                                kinds[f].box_val(regs_i[ii + f])
-                            });
-                            boxed.push(Value::Tuple(TupleVal::Boxed(fs)));
+                        if let Some((len, shape)) = tuple {
+                            let row = &regs_i[ii..ii + len as usize];
+                            boxed.push(crate::value::shape::unpack(shape, row));
                             ii += len as usize;
                         } else if let Some(kind) = ScalarKind::of_ty(ty, self.program) {
                             boxed.push(kind.box_val(regs_i[ii]));
@@ -1205,11 +1203,11 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     Value::Unit,
                 ))));
             }
-            Op::RetSmallTuple { base, len, kinds } => {
+            Op::RetSmallTuple { base, len, shape } => {
                 let (b, n) = (base as usize, len as usize);
                 self.ret_tuple[..n].copy_from_slice(&regs_i[b..b + n]);
                 self.ret_tuple_len = len;
-                self.ret_tuple_kinds = kinds;
+                self.ret_tuple_shape = shape;
                 return Ok(Some(ExecExit::ReturnTuple));
             }
             Op::RetUnit => return Ok(Some(ExecExit::Return(Value::Unit))),

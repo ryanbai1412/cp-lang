@@ -103,9 +103,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     SlotLoc::I(r, _) => MutTake::LocalI(r),
                     SlotLoc::OptI { val, some, .. } => MutTake::LocalOptI { val, some },
                     SlotLoc::V(r) => MutTake::LocalV(r),
-                    SlotLoc::SmallTuple { base, len, kinds } => {
-                        MutTake::LocalTuple { base, len, kinds }
-                    }
+                    SlotLoc::SmallTuple { base, len, .. } => MutTake::LocalTuple { base, len },
                 },
                 PlaceKind::Global(gid) => MutTake::Global(*gid as u16),
                 PlaceKind::Index(base, indices)
@@ -282,14 +280,15 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         arg_off: off as u16,
                     });
                 }
-                MutTake::LocalTuple { base, len, kinds } => {
+                MutTake::LocalTuple { base, len } => {
+                    let shape = small_tuple_shape(&place.ty, self.program).map_or(0, |(_, s)| s);
                     let dst_v = self.alloc_v();
                     let src_base = base;
                     let op = Op::BoxSmallTuple {
                         dst_v,
                         src_base,
                         len,
-                        kinds,
+                        shape,
                     };
                     self.emit(op, place.span);
                     v_args[off] = (dst_v, true);
@@ -698,7 +697,6 @@ pub(super) enum MutTake<'p> {
     LocalTuple {
         base: u16,
         len: u8,
-        kinds: [crate::value::SmallFieldKind; 5],
     },
     Global(u16),
     /// One scalar-indexed element of a 1D array (`is_arr`) or list of values.
@@ -721,10 +719,11 @@ pub(super) enum ElemRoot {
 impl Compiler<'_, '_> {
     /// The shape `RetSmallTuple` returns `e` in, when this body returns small tuples of `e`'s
     /// and `e` is not a field of a boxed value, which `RetV` hands back as it is.
-    pub(super) fn tuple_ret_of(&self, e: &Expr) -> Option<(u8, [crate::value::SmallFieldKind; 5])> {
-        let (len, kinds) = self.tuple_ret?;
+    pub(super) fn tuple_ret_of(&self, e: &Expr) -> Option<(u8, u64)> {
+        let (len, shape) = self.tuple_ret?;
         let (l, k) = small_tuple_shape(&e.ty, self.program)?;
-        (l == len && k == kinds && !matches!(e.kind, ExprKind::Field(..))).then_some((len, kinds))
+        let boxed_field = matches!(e.kind, ExprKind::Field(..)) && self.tuple_leaves(e).is_none();
+        (l == len && k == shape && !boxed_field).then_some((len, shape))
     }
 
     /// Whether the call `e` returns a small tuple of `len` fields.

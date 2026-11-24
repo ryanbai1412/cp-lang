@@ -1,4 +1,3 @@
-use crate::value::SmallFieldKind;
 use cpl_diag::Span;
 use cpl_ir::{AssignOp, BinOp, CmpOp, Expr, FmtPiece, FnId, LoopId, Mutation, Place, Slot};
 
@@ -18,7 +17,7 @@ pub(crate) enum SlotLoc {
     SmallTuple {
         base: u16,
         len: u8,
-        kinds: [SmallFieldKind; 5],
+        shape: u64,
     },
     V(u16),
 }
@@ -362,14 +361,14 @@ pub(crate) enum Op {
         r_i: u16,
         src_base: u16,
         len: u8,
-        kinds: [SmallFieldKind; 5],
+        shape: u64,
     },
     StoreLArr1SmallTuple {
         arr_v: u16,
         r_i: u16,
         src_base: u16,
         len: u8,
-        kinds: [SmallFieldKind; 5],
+        shape: u64,
     },
     LoadGArr2SmallTuple {
         dst_base: u16,
@@ -391,7 +390,7 @@ pub(crate) enum Op {
         r_j: u16,
         src_base: u16,
         len: u8,
-        kinds: [SmallFieldKind; 5],
+        shape: u64,
     },
     StoreLArr2SmallTuple {
         arr_v: u16,
@@ -399,13 +398,13 @@ pub(crate) enum Op {
         r_j: u16,
         src_base: u16,
         len: u8,
-        kinds: [SmallFieldKind; 5],
+        shape: u64,
     },
     BoxSmallTuple {
         dst_v: u16,
         src_base: u16,
         len: u8,
-        kinds: [SmallFieldKind; 5],
+        shape: u64,
     },
     UnboxSmallTuple {
         dst_base: u16,
@@ -785,7 +784,7 @@ pub(crate) enum Op {
     RetSmallTuple {
         base: u16,
         len: u8,
-        kinds: [SmallFieldKind; 5],
+        shape: u64,
     },
     RetUnit,
 
@@ -974,7 +973,7 @@ pub(crate) enum Op {
         r_i: u16,
         src_base: u16,
         len: u8,
-        kinds: [SmallFieldKind; 5],
+        shape: u64,
     },
     StoreLFieldIdx1OptI {
         obj_v: u16,
@@ -996,7 +995,7 @@ pub(crate) enum Op {
         field: u16,
         src_base: u16,
         len: u8,
-        kinds: [SmallFieldKind; 5],
+        shape: u64,
     },
     ListPushFieldLV {
         obj_v: u16,
@@ -1611,7 +1610,7 @@ pub(crate) enum CapSrc {
     LocalSmallTuple {
         base: u16,
         len: u8,
-        kinds: [SmallFieldKind; 5],
+        shape: u64,
     },
     LocalV(u16),
     /// A local captured by reference: its stack slot, and the register that

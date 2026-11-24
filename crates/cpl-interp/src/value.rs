@@ -12,7 +12,7 @@ mod cells;
 pub(crate) mod keys;
 pub use keys::{KeyMap, KeySet};
 mod recycle;
-mod shape;
+pub(crate) mod shape;
 pub(crate) use cells::{Cells, SmallFieldKind};
 pub(crate) use recycle::Shared;
 

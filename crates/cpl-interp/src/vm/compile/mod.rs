@@ -131,7 +131,7 @@ pub(super) struct Compiler<'p, 'f> {
     cur_fn: Option<FnId>,
     pub(in crate::vm) feed_acc: Option<usize>,
     /// The small tuple shape this body returns in registers (`RetSmallTuple`).
-    pub(in crate::vm) tuple_ret: Option<(u8, [crate::value::SmallFieldKind; 5])>,
+    pub(in crate::vm) tuple_ret: Option<(u8, u64)>,
     pub(in crate::vm) allow_fed_loops: bool,
     inline_slots: Option<Vec<SlotLoc>>,
     inline_ret: Option<(u16, Vec<Jump>)>,
@@ -206,10 +206,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 || tuple_params.is_some_and(|f| tuple_param_len(program, f, idx).is_some())
                 || cur_fn.is_none()
             {
-                if let Some((len, kinds)) = small_tuple_shape(&local.ty, program) {
+                if let Some((len, shape)) = small_tuple_shape(&local.ty, program) {
                     let base = next_i;
                     next_i += len as u16;
-                    slot_map.push(SlotLoc::SmallTuple { base, len, kinds });
+                    slot_map.push(SlotLoc::SmallTuple { base, len, shape });
                 } else {
                     slot_map.push(SlotLoc::V(next_v));
                     next_v += 1;
@@ -559,7 +559,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 CallRet::Tuple(len) => Some(SlotLoc::SmallTuple {
                     base: dst_i,
                     len,
-                    kinds: small_tuple_shape(ret(fn_id), self.program)?.1,
+                    shape: small_tuple_shape(ret(fn_id), self.program)?.1,
                 }),
             },
             Op::CallClosure {

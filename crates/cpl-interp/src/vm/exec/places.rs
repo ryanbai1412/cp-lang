@@ -594,11 +594,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                     _ => return bug(spans[cur_pc], "expected list"),
                 };
-                if let Value::Tuple(TupleVal::Boxed(fs)) = elem {
-                    for (k, f) in fs.iter().take(n).enumerate() {
-                        regs_i[b + k] = ScalarKind::unbox_val(f);
-                    }
-                }
+                crate::value::shape::leaves(&elem, &mut regs_i[b..b + n], &mut 0);
             }
             Op::MinMaxArrOptI {
                 root,
@@ -939,14 +935,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 kind.box_opt(regs_i[val as usize], regs_i[some as usize]),
                             ));
                         }
-                        CapSrc::LocalSmallTuple { base, len, kinds } => {
-                            let mut fs = Vec::with_capacity(len as usize);
-                            for k in 0..len as usize {
-                                fs.push(kinds[k].box_val(regs_i[base as usize + k]));
-                            }
-                            caps.push(CaptureVal::Val(Value::Tuple(TupleVal::Boxed(
-                                crate::value::Shared::new(fs),
-                            ))));
+                        CapSrc::LocalSmallTuple { base, len, shape } => {
+                            let row = &regs_i[base as usize..(base + u16::from(len)) as usize];
+                            caps.push(CaptureVal::Val(crate::value::shape::unpack(shape, row)));
                         }
                         CapSrc::LocalV(r) => {
                             caps.push(CaptureVal::Val(regs_v[r as usize].clone()));

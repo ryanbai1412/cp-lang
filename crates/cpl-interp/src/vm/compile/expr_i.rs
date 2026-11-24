@@ -150,12 +150,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.compile_expr_i(base)
             }
             ExprKind::Field(base, idx) | ExprKind::Payload(base, _, idx) => {
-                if let ExprKind::Local(slot) = &base.kind {
-                    if let SlotLoc::SmallTuple { base: b, len, .. } = self.slot_loc(*slot) {
-                        if *idx < len as usize {
-                            return b + *idx as u16;
-                        }
-                    }
+                if let Some((r, None)) = self.tuple_leaves(expr) {
+                    return r;
                 }
                 if let ExprKind::Tuple(fs) = &base.kind {
                     if *idx < fs.len() {
@@ -1263,7 +1259,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     self.emit(Op::MoveI { dst: reg, src }, span);
                     map.push(SlotLoc::I(reg, kind));
                 }
-            } else if let Some((len, kinds)) = small_tuple_shape(&f.locals.get(i)?.ty, self.program)
+            } else if let Some((len, shape)) = small_tuple_shape(&f.locals.get(i)?.ty, self.program)
                 .filter(|_| self.small_tuple_is_cheap(ae))
             {
                 let fresh = self.next_i;
@@ -1272,7 +1268,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     map.push(SlotLoc::SmallTuple {
                         base: src,
                         len,
-                        kinds,
+                        shape,
                     });
                 } else {
                     let base = self.next_i;
@@ -1286,7 +1282,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                             span,
                         );
                     }
-                    map.push(SlotLoc::SmallTuple { base, len, kinds });
+                    map.push(SlotLoc::SmallTuple { base, len, shape });
                 }
             } else if let ExprKind::Local(slot) = &ae.kind {
                 let SlotLoc::V(r) = self.slot_loc(*slot) else {

@@ -94,26 +94,40 @@ impl ScalarKind {
     }
 }
 
-pub(super) fn small_tuple_shape(ty: &Ty, program: &Program) -> Option<(u8, [SmallFieldKind; 5])> {
+/// The words and [`crate::value::shape`] of a tuple of 2-5 Int-register
+/// scalars, nested tuples of them flattened in order.
+pub(super) fn small_tuple_shape(ty: &Ty, program: &Program) -> Option<(u8, u64)> {
+    let (shape, _, words) = scalar_tuple(ty, program)?;
+    (2..=5).contains(&words).then_some((words as u8, shape))
+}
+
+/// The shape, nodes and words of the tuple `ty` of scalars or such tuples.
+fn scalar_tuple(ty: &Ty, program: &Program) -> Option<(u64, usize, usize)> {
     let field_tys: Vec<&Ty> = match ty {
         Ty::Tuple(fs) => fs.iter().collect(),
+        Ty::Record(fs) => fs.iter().map(|(_, t)| t).collect(),
         Ty::Struct(id) => program.structs[*id].fields.iter().map(|(_, t)| t).collect(),
         _ => return None,
     };
-    let len = field_tys.len();
-    if !(2..=5).contains(&len) {
-        return None;
-    }
-    let mut kinds = [SmallFieldKind::Int; 5];
-    for (i, t) in field_tys.iter().enumerate() {
-        let sk = ScalarKind::of_ty(t, program)?;
-        kinds[i] = match sk {
-            ScalarKind::Int => SmallFieldKind::Int,
-            ScalarKind::OneIntStruct => SmallFieldKind::OneIntStruct,
-            ScalarKind::Bool => SmallFieldKind::Bool,
-            ScalarKind::Char => SmallFieldKind::Char,
-            ScalarKind::U64 | ScalarKind::OneU64Struct => return None,
+    let mut fields = Vec::with_capacity(field_tys.len());
+    let mut words = 0;
+    for t in field_tys {
+        let kind = match ScalarKind::of_ty(t, program) {
+            Some(ScalarKind::Int) => SmallFieldKind::Int,
+            Some(ScalarKind::OneIntStruct) => SmallFieldKind::OneIntStruct,
+            Some(ScalarKind::Bool) => SmallFieldKind::Bool,
+            Some(ScalarKind::Char) => SmallFieldKind::Char,
+            Some(ScalarKind::U64 | ScalarKind::OneU64Struct) => return None,
+            None => {
+                let (shape, nodes, w) = scalar_tuple(t, program).filter(|t| t.2 >= 2)?;
+                fields.push((shape, nodes));
+                words += w;
+                continue;
+            }
         };
+        fields.push((kind as u64, 1));
+        words += 1;
     }
-    Some((len as u8, kinds))
+    let (shape, nodes) = crate::value::shape::tuple(&fields)?;
+    (words <= 5).then_some((shape, nodes, words))
 }

@@ -143,9 +143,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
 
     /// What the last `RetSmallTuple` returned, boxed.
     pub(super) fn boxed_ret_tuple(&self) -> Value {
-        let (n, kinds) = (self.ret_tuple_len as usize, self.ret_tuple_kinds);
-        let fs = crate::value::Shared::collect(n, |k| kinds[k].box_val(self.ret_tuple[k]));
-        Value::Tuple(TupleVal::Boxed(fs))
+        crate::value::shape::unpack(
+            self.ret_tuple_shape,
+            &self.ret_tuple[..self.ret_tuple_len as usize],
+        )
     }
 
     fn exec_chunk_exit(
@@ -609,7 +610,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     r_i,
                     src_base,
                     len,
-                    kinds,
+                    shape,
                 } => {
                     let i = regs_i[r_i as usize];
                     let b = src_base as usize;
@@ -622,7 +623,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 rows::INDEX_OUTSIDE_ARRAY_LENGTH.at(&[&i, &d0]),
                             );
                         }
-                        Rc::make_mut(arr).set_small_tuple(i as usize, n, &regs_i[b..b + n], &kinds);
+                        Rc::make_mut(arr).set_small_tuple(i as usize, n, &regs_i[b..b + n], shape);
                     } else {
                         return bug(spans[cur_pc], "expected array");
                     }
@@ -632,7 +633,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     r_i,
                     src_base,
                     len,
-                    kinds,
+                    shape,
                 } => {
                     let i = regs_i[r_i as usize];
                     let b = src_base as usize;
@@ -645,7 +646,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 rows::INDEX_OUTSIDE_ARRAY_LENGTH.at(&[&i, &d0]),
                             );
                         }
-                        Rc::make_mut(arr).set_small_tuple(i as usize, n, &regs_i[b..b + n], &kinds);
+                        Rc::make_mut(arr).set_small_tuple(i as usize, n, &regs_i[b..b + n], shape);
                     } else {
                         return bug(spans[cur_pc], "expected array");
                     }
@@ -706,7 +707,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     r_j,
                     src_base,
                     len,
-                    kinds,
+                    shape,
                 } => {
                     let i = regs_i[r_i as usize];
                     let j = regs_i[r_j as usize];
@@ -725,7 +726,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             (i * d1 + j) as usize,
                             n,
                             &regs_i[b..b + n],
-                            &kinds,
+                            shape,
                         );
                     } else {
                         return bug(spans[cur_pc], "expected array");
@@ -737,7 +738,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     r_j,
                     src_base,
                     len,
-                    kinds,
+                    shape,
                 } => {
                     let i = regs_i[r_i as usize];
                     let j = regs_i[r_j as usize];
@@ -756,7 +757,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             (i * d1 + j) as usize,
                             n,
                             &regs_i[b..b + n],
-                            &kinds,
+                            shape,
                         );
                     } else {
                         return bug(spans[cur_pc], "expected array");
@@ -766,16 +767,11 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     dst_v,
                     src_base,
                     len,
-                    kinds,
+                    shape,
                 } => {
                     let b = src_base as usize;
-                    let n = len as usize;
-                    let mut fs = Vec::with_capacity(n);
-                    for k in 0..n {
-                        fs.push(kinds[k].box_val(regs_i[b + k]));
-                    }
-                    regs_v[dst_v as usize] =
-                        Value::Tuple(TupleVal::Boxed(crate::value::Shared::new(fs)));
+                    let row = &regs_i[b..b + len as usize];
+                    regs_v[dst_v as usize] = crate::value::shape::unpack(shape, row);
                 }
                 Op::UnboxSmallTuple {
                     dst_base,
@@ -783,12 +779,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     src_v,
                 } => {
                     let b = dst_base as usize;
-                    let n = len as usize;
-                    if let Value::Tuple(TupleVal::Boxed(fs)) = &regs_v[src_v as usize] {
-                        for (k, f) in fs.iter().take(n).enumerate() {
-                            regs_i[b + k] = ScalarKind::unbox_val(f);
-                        }
-                    }
+                    let row = &mut regs_i[b..b + len as usize];
+                    crate::value::shape::leaves(&regs_v[src_v as usize], row, &mut 0);
                     if src_v as usize >= chunk.num_local_v {
                         regs_v[src_v as usize] = Value::Unit;
                     }

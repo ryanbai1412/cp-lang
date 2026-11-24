@@ -667,9 +667,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
 
     /// Returns `e` from this body: in registers when it is a small tuple or a scalar, else boxed.
     fn emit_ret(&mut self, e: &'p Expr) {
-        if let Some((len, kinds)) = self.tuple_ret_of(e) {
+        if let Some((len, shape)) = self.tuple_ret_of(e) {
             let base = self.small_tuple_operand(e, len);
-            self.emit(Op::RetSmallTuple { base, len, kinds }, e.span);
+            self.emit(Op::RetSmallTuple { base, len, shape }, e.span);
         } else if ScalarKind::of_ty(&e.ty, self.program).is_some() {
             let r = self.compile_expr_i(e);
             self.emit(Op::RetI { src: r }, e.span);

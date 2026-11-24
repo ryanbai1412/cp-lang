@@ -537,7 +537,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 r_i,
                 src_base,
                 len,
-                kinds,
+                shape,
             } => {
                 let idx = regs_i[r_i as usize];
                 let (b, n) = (src_base as usize, len as usize);
@@ -555,7 +555,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &n_len]),
                     );
                 }
-                Rc::make_mut(list).set_small_tuple(idx as usize, n, &regs_i[b..b + n], &kinds);
+                Rc::make_mut(list).set_small_tuple(idx as usize, n, &regs_i[b..b + n], shape);
             }
             Op::StoreLFieldIdx1V {
                 obj_v,
@@ -662,7 +662,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 field,
                 src_base,
                 len,
-                kinds,
+                shape,
             } => {
                 let (b, n) = (src_base as usize, len as usize);
                 let Value::Tuple(TupleVal::Boxed(fs)) = &mut regs_v[obj_v as usize] else {
@@ -672,7 +672,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 else {
                     return bug(spans[cur_pc], "expected list or string");
                 };
-                Rc::make_mut(items).push_small_tuple(n, &regs_i[b..b + n], &kinds);
+                Rc::make_mut(items).push_small_tuple(n, &regs_i[b..b + n], shape);
             }
             Op::ListPushFieldLV {
                 obj_v,

@@ -175,11 +175,8 @@ pub(super) fn put_ret(
         }
         CallRet::V => regs_v[dst_v as usize] = val,
         CallRet::Tuple(len) => {
-            if let Value::Tuple(crate::value::TupleVal::Boxed(fs)) = &val {
-                for (k, f) in fs.iter().take(len as usize).enumerate() {
-                    regs_i[dst_i as usize + k] = ScalarKind::unbox_val(f);
-                }
-            }
+            let row = &mut regs_i[dst_i as usize..dst_i as usize + len as usize];
+            crate::value::shape::leaves(&val, row, &mut 0);
         }
     }
 }

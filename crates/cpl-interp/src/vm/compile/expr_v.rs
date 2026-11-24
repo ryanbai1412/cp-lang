@@ -69,14 +69,14 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 );
                 dst_v
             }
-            SlotLoc::SmallTuple { base, len, kinds } => {
+            SlotLoc::SmallTuple { base, len, shape } => {
                 let dst_v = self.alloc_v();
                 self.emit(
                     Op::BoxSmallTuple {
                         dst_v,
                         src_base: base,
                         len,
-                        kinds,
+                        shape,
                     },
                     span,
                 );
@@ -699,8 +699,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                                 SlotLoc::OptI { val, some, kind } => {
                                     caps.push(CapSrc::LocalOptI { val, some, kind });
                                 }
-                                SlotLoc::SmallTuple { base, len, kinds } => {
-                                    caps.push(CapSrc::LocalSmallTuple { base, len, kinds });
+                                SlotLoc::SmallTuple { base, len, shape } => {
+                                    caps.push(CapSrc::LocalSmallTuple { base, len, shape });
                                 }
                                 SlotLoc::V(r) => caps.push(CapSrc::LocalV(r)),
                             }
@@ -1037,7 +1037,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         },
                         span,
                     );
-                } else if let Some((len, kinds)) = small_tuple_shape(&args[0].ty, self.program)
+                } else if let Some((len, shape)) = small_tuple_shape(&args[0].ty, self.program)
                     .filter(|_| self.small_tuple_is_cheap(&args[0]))
                 {
                     let src_base = self.small_tuple_operand(&args[0], len);
@@ -1046,7 +1046,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         field: *field as u16,
                         src_base,
                         len,
-                        kinds,
+                        shape,
                     };
                     self.emit(push, span);
                 } else {
@@ -1227,11 +1227,28 @@ impl<'p, 'f> Compiler<'p, 'f> {
         dst
     }
 
+    /// The first Int register of `expr`, a small tuple local or a field of
+    /// one, and its shape when it is a tuple.
+    pub(super) fn tuple_leaves(&self, expr: &Expr) -> Option<(u16, Option<u64>)> {
+        match &expr.kind {
+            ExprKind::Local(slot) => match self.slot_loc(*slot) {
+                SlotLoc::SmallTuple { base, shape, .. } => Some((base, Some(shape))),
+                _ => None,
+            },
+            ExprKind::Field(obj, f) => {
+                let (base, shape) = self.tuple_leaves(obj)?;
+                let (d, sub) = crate::value::shape::field(shape?, *f)?;
+                Some((base + d as u16, sub))
+            }
+            _ => None,
+        }
+    }
+
     /// Whether `expr` reaches Int registers without boxing: a small tuple
     /// local, a tuple of its fields, or an element of a list.
     pub(super) fn small_tuple_is_cheap(&self, expr: &Expr) -> bool {
         match &expr.kind {
-            ExprKind::Local(slot) => matches!(self.slot_loc(*slot), SlotLoc::SmallTuple { .. }),
+            ExprKind::Local(_) | ExprKind::Field(..) => self.tuple_leaves(expr).is_some(),
             ExprKind::Tuple(_) => true,
             ExprKind::Index(base, indices) => {
                 matches!(base.ty, Ty::List(_)) && indices.len() == 1 && indices[0].ty == Ty::Int
@@ -1243,12 +1260,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
     /// The first of `len` Int registers holding the small tuple `expr`: its
     /// local's own when it is one, else fresh ones it is loaded into.
     pub(super) fn small_tuple_operand(&mut self, expr: &'p Expr, len: u8) -> u16 {
-        if let ExprKind::Local(slot) = &expr.kind {
-            if let SlotLoc::SmallTuple { base, len: l, .. } = self.slot_loc(*slot) {
-                if l == len {
-                    return base;
-                }
-            }
+        if let Some((base, Some(_))) = self.tuple_leaves(expr) {
+            return base;
         }
         let base = self.next_i;
         for _ in 0..len {
@@ -1271,10 +1284,20 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
         let span = expr.span;
         match &expr.kind {
-            ExprKind::Tuple(fs) if fs.len() == len as usize => {
+            ExprKind::Tuple(fs) => {
                 let mut regs = [0u16; 5];
-                for (k, f) in fs.iter().enumerate() {
-                    regs[k] = self.compile_expr_i(f);
+                let mut d = 0;
+                for f in fs {
+                    if let Some((w, _)) = small_tuple_shape(&f.ty, self.program) {
+                        let r = self.small_tuple_operand(f, w);
+                        for k in 0..u16::from(w) {
+                            regs[d] = r + k;
+                            d += 1;
+                        }
+                    } else {
+                        regs[d] = self.compile_expr_i(f);
+                        d += 1;
+                    }
                 }
                 for (k, &r) in regs.iter().enumerate().take(len as usize) {
                     let d = dst_base + k as u16;
@@ -1293,10 +1316,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 let end_pc = self.ops.len() as u32;
                 self.patch(j_end, end_pc);
             }
-            ExprKind::Local(slot) => match self.slot_loc(*slot) {
-                SlotLoc::SmallTuple {
-                    base, len: slen, ..
-                } if slen == len => {
+            ExprKind::Local(_) | ExprKind::Field(..) => match self.tuple_leaves(expr) {
+                Some((base, Some(_))) => {
                     for k in 0..len as u16 {
                         if dst_base + k != base + k {
                             self.emit(

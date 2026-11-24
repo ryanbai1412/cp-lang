@@ -72,13 +72,8 @@ pub(crate) fn read_slot(loc: &SlotLoc, regs_i: &[i64], regs_v: &[Value]) -> Valu
         SlotLoc::SmallTuple {
             base: b,
             len,
-            kinds,
-        } => {
-            let fs = crate::value::Shared::collect(len as usize, |k| {
-                kinds[k].box_val(regs_i[b as usize + k])
-            });
-            Value::Tuple(TupleVal::Boxed(fs))
-        }
+            shape,
+        } => crate::value::shape::unpack(shape, &regs_i[b as usize..(b + u16::from(len)) as usize]),
     }
 }
 
@@ -378,13 +373,9 @@ pub(super) fn read_array_i(arr: &Array, at: usize) -> i64 {
     }
 }
 
-/// The fields of small tuple `held` into `regs`, one register each.
+/// The scalar leaves of small tuple `held` into `regs`, one register each.
 pub(crate) fn unbox_small_tuple(held: &Value, regs: &mut [i64], len: u8) {
-    if let Value::Tuple(TupleVal::Boxed(fs)) = held {
-        for (k, f) in fs.iter().take(len as usize).enumerate() {
-            regs[k] = ScalarKind::unbox_val(f);
-        }
-    }
+    crate::value::shape::leaves(held, &mut regs[..len as usize], &mut 0);
 }
 
 #[inline(always)]
@@ -793,15 +784,10 @@ pub(super) fn write_slot(loc: &SlotLoc, regs_i: &mut [i64], regs_v: &mut [Value]
             regs_i[r_v as usize] = v;
             regs_i[r_s as usize] = s;
         }
-        SlotLoc::SmallTuple { base, len, .. } => match &val {
-            Value::Tuple(TupleVal::Boxed(fs)) => {
-                for k in 0..len as usize {
-                    regs_i[base as usize + k] = ScalarKind::unbox_val(&fs[k]);
-                }
-            }
-            Value::Tuple(TupleVal::OneInt(v)) => regs_i[base as usize] = *v,
-            _ => {}
-        },
+        SlotLoc::SmallTuple { base, len, .. } => {
+            let row = &mut regs_i[base as usize..(base + u16::from(len)) as usize];
+            crate::value::shape::leaves(&val, row, &mut 0);
+        }
         SlotLoc::V(r) => regs_v[r as usize] = val,
     }
 }

@@ -515,7 +515,7 @@ print(from_of(edges[3]).x, from_of(edges[3]).y, twin(from_of(edges[5])).x)
     };
     let from_of = fn_ops("from_of");
     assert_eq!(count(&from_of, "UnboxSmallTuple"), 0, "{from_of:?}");
-    assert_eq!(count(&from_of, "RetSmallTuple"), 0, "{from_of:?}");
+    assert_eq!(count(&from_of, "FieldV"), 0, "{from_of:?}");
     let twin = fn_ops("twin");
     assert_eq!(count(&twin, "RetSmallTuple"), 1, "{twin:?}");
     let key = compiled
@@ -526,6 +526,56 @@ print(from_of(edges[3]).x, from_of(edges[3]).y, twin(from_of(edges[5])).x)
         .collect::<Vec<_>>();
     assert!(!key.is_empty());
     for ops in &key {
-        assert_eq!(count(ops, "RetSmallTuple"), 0, "{ops:?}");
+        assert_eq!(count(ops, "UnboxSmallTuple"), 0, "{ops:?}");
+    }
+}
+
+#[test]
+fn vm_keeps_a_tuple_of_small_structs_in_registers_leaf_by_leaf() {
+    // dmopc20c7p2's `(from: Pt, to: Pt, tile)` edges: a tuple of small structs
+    // is its scalars in Int registers, read field by field without a box.
+    let source = "\
+struct Pt(x: Int, y: Int)
+var edges: List<(from: Pt, to: Pt, w: Int)> = []
+for i in 0..6:
+    edges.push((from: Pt(i / 2, i % 2), to: Pt(i, 7 - i), w: i * 10))
+fn span(e: (from: Pt, to: Pt, w: Int)) -> Int = e.to.x - e.from.y + e.w
+fn flip(e: (from: Pt, to: Pt, w: Int)) -> (from: Pt, to: Pt, w: Int) = (from: e.to, to: e.from, w: e.w + 1)
+var total = 0
+for i in 0..6:
+    let f = flip(edges[i])
+    total += span(f) * 100 + f.from.y
+    edges[i] = f
+print(total, edges[2], edges.equal_range(Pt(3, 4), by: e => e.from))
+print(flip(edges[5]).to, [span(e) for e in edges])
+";
+    assert_eq!(
+        vm_runs_alone(source, ""),
+        "13527 2 5 1 0 21 3\n5 2 -6 5 17 28 40 51\n"
+    );
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", source);
+    let analysis = db.analyze("t.cp").expect("the file was just set");
+    let program = cpl_ir::lower(&analysis).expect("lowers");
+    let feeds = cpl_ir::pushed::Feeds::of(&program);
+    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false, false);
+    let fn_ops = |name: &str| -> Vec<String> {
+        let id = (0..program.fns.len()).find(|&id| program.fns[id].name.ends_with(name));
+        let chunk = compiled.fns[id.expect(name)].as_ref().expect("on the VM");
+        chunk.ops.iter().map(|op| format!("{op:?}")).collect()
+    };
+    for name in ["span", "flip"] {
+        let ops = fn_ops(name);
+        let boxed = [
+            "FieldV",
+            "FieldI",
+            "BoxSmallTuple",
+            "UnboxSmallTuple",
+            "RetV",
+        ];
+        assert!(
+            !ops.iter().any(|op| boxed.iter().any(|b| op.starts_with(b))),
+            "{name}: {ops:?}"
+        );
     }
 }
