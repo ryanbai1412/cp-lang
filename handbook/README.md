@@ -183,6 +183,7 @@ reasoning spread through `decisions.md`.
 | `design/overview.md` | Text to C++: the pipeline, the crates, which layer may depend on which | tech-debt | `plan/ARCHITECTURE.md` Part A |
 | `design/architecture.md` | The target architecture in full: what shapes it, each layer, the crate map the gate checks, testing, the repository | tech-debt | `plan/ARCHITECTURE.md` Part A |
 | `design/sources-of-truth.md` | One owner per fact and one entry point per job in the code: what's generated from what, what must never be written twice, and the detector for each | tech-debt | `plan/rearchitecture.md` B2 |
+| `design/architecture-invariants.md` | One mechanism per surface: each surface's mechanism, owner and the gate that rejects a second one, plus what's designed later | Content (coordinator's rules) | New |
 | `design/compiler.md` | Syntax, names, types, IR, facts, VM, codegen: each part's job, data, invariants, and what it must never do | compiler | `plan/domains/compiler/ARCHITECTURE.md` |
 | `design/codegen.md` | The C++ emitter: what each part decides, the one copy and effect analysis, its invariants and modules | perf | `plan/domains/perf/ARCHITECTURE.md` |
 | `design/tools.md` | The `cpl` commands: crates, modules, dependencies and the invariants every command keeps | tools | `plan/domains/tools/ARCHITECTURE.md` |

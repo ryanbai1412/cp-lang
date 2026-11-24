@@ -91,6 +91,25 @@ Scope is set by whether friends can realistically use CPL, not by whether every 
 
 A domain moves onto milestone 2 as soon as its milestone 1 exit criteria pass. Its plan (`plan/domains/<domain>/PLAN.md`) has a "Milestone 2" section with that domain's most ambitious complete version, its checkable exit criteria and its next steps.
 
+### Design first
+
+These surfaces are designed, with an owner and a gate, before milestone 2
+builds on them, so the first tool that needs one doesn't decide it by
+accident. Each is a row in [architecture invariants](../design/architecture-invariants.md).
+
+- the `cpl_check::Session` query API, per revision, before any consumer adds a query;
+- the `cpl-json` schema, before a new `--format json` output, LSP message or trace field;
+- the diagnostic registry, before a new diagnostic;
+- the config schema, before a new `cp.toml` key, judge profile or editor setting;
+- the std doc model, before hover, completion or the site read std docs;
+- the edit engine, before a new codemod or `cpl fix` rewrite;
+- the execution-event model, before the profiler, debugger or replay;
+- the problem package and `scripts/corpus.py` walker, before a new corpus consumer.
+
+After milestone 2, and designed only when triggered: incremental analysis
+(the first per-keystroke editor feature) and package versions and editions
+(the first published library or edition-breaking change).
+
 ### Done means
 
 - **Every journey, J1–J10, is complete and polished** for strangers, not just friends: discovery, learning (beginner through in-depth), install, contests, writing and revising, testing, debugging, performance, submission, and managing libraries and old solutions.

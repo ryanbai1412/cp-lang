@@ -20,6 +20,12 @@ Two domains never own the same path.
 | `plan/domains/<name>/metrics.toml` | Each metric's command, target and current value, run hourly into `plan/STATUS.md` | Every run |
 | `plan/domains/<name>/worklog.md` | Newest first: what landed, evidence, next, blocked, requests from other lanes | Every report |
 
+Every charter also carries a standing slice of about 5% of the lane's time
+for hunting debt that no counter sees: a second mechanism, a list with no
+counter, a workaround someone routed around. A find gets a ratchet counter
+the day it is found, under the rules in
+[architecture invariants](../design/architecture-invariants.md).
+
 The **quality register** is the heart of a charter. It lists every quality
 attribute a user could feel in the domain, each with a metric and the
 mechanism that enforces it, or the process used where no mechanism can
