@@ -21,6 +21,10 @@ fn uniq(xs: List<Str>) -> List<Str>:
     let ys = xs.sorted()
     [ys[i] for i in 0..ys.len if i == 0 or ys[i] != ys[i - 1]]
 fn word(mut rng: Rng, hi: Int) -> Str = Str(["ab"[rng.int(0, 1)] for _ in 0..rng.int(0, hi)])
+fn walk(ac: AhoCorasick<Char>, x: Str) -> Int:
+    var st = ac.root
+    for c in x: st = ac.step(st, c)
+    st
 fn lpps(p: Str) -> Str = [cut(p, i, p.len) for i in 1..=p.len if pal(cut(p, i, p.len))][0]
 fn bdiff(p: Str) -> Int = p.len - lpps(p).len
 fn series(p: Str) -> ?Str:
@@ -90,7 +94,7 @@ for k in 0..n:
     let ps = [word(mut rng, 3) for _ in 0..rng.int(1, 4)]
     let ac = AhoCorasick<Char>(ps)
     let pre = uniq([cut(p, 0, j) for p in ps for j in 0..=p.len])
-    let sof = (x: Str) => (0..x.len).fold((st, j) => ac.step(st, x[j]), 0)
+    let sof = (x: Str) => walk(ac, x)
     let best = (x: Str) => [cut(x, i, x.len) for i in 0..=x.len if pre.contains(cut(x, i, x.len))][0]
     let byend = (x: Str) => (0..ps.len).filter(p => suf(x, ps[p])).sorted(by: p => (-ps[p].len, p))
     var hits = List<(at: Int, pattern: Int)>()
