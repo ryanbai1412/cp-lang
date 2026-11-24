@@ -835,23 +835,15 @@ impl<'p> Emitter<'p> {
                 })
             }
             ExprKind::Unwrap(value, true)
-                if matches!(&value.kind, ExprKind::Builtin(Builtin::PosNext, args)
-                    if self.facts.next_exists(self.facts_home(), &args[0])) =>
+                if let Some(pos) = self.proven_step(value, Builtin::PosNext) =>
             {
-                let ExprKind::Builtin(_, args) = &value.kind else {
-                    unreachable!()
-                };
-                let pos = self.expr(&args[0]);
+                let pos = self.expr(pos);
                 Code::new(format!("{} + 1", pos.at(ADD)), ADD)
             }
             ExprKind::Unwrap(value, true)
-                if matches!(&value.kind, ExprKind::Builtin(Builtin::PosPrev, args)
-                    if self.facts.prev_exists(self.facts_home(), &args[0])) =>
+                if let Some(pos) = self.proven_step(value, Builtin::PosPrev) =>
             {
-                let ExprKind::Builtin(_, args) = &value.kind else {
-                    unreachable!()
-                };
-                let pos = self.expr(&args[0]);
+                let pos = self.expr(pos);
                 Code::new(format!("{} - 1", pos.at(ADD)), ADD)
             }
             ExprKind::Unwrap(value, true) => {
@@ -1443,6 +1435,22 @@ pub(crate) fn map_remove_do(e: &Expr) -> Option<(&[Stmt], &Place, &Expr)> {
 }
 
 impl Emitter<'_> {
+    /// The position a `next` (`PosNext`) or `prev` (`PosPrev`) in `value` steps
+    /// from, when the facts prove the step lands on a position.
+    fn proven_step<'e>(&self, value: &'e Expr, step: Builtin) -> Option<&'e Expr> {
+        let ExprKind::Builtin(builtin, args) = &value.kind else {
+            return None;
+        };
+        let pos = args.first().filter(|_| *builtin == step)?;
+        let home = self.facts_home();
+        let proven = match step {
+            Builtin::PosNext => self.facts.next_exists(home, pos),
+            Builtin::PosPrev => self.facts.prev_exists(home, pos),
+            _ => false,
+        };
+        proven.then_some(pos)
+    }
+
     /// `cpl::pick(index, leaf0, leaf1, ..)`: a value `if` or `match` of
     /// closures (see [`crate::devirt::Devirt::join_leaves`]) keeps each in
     /// its own type and calls the one `index` names. For an `if`, `c` is
