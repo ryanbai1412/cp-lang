@@ -642,6 +642,8 @@ impl<'a> Checker<'a> {
             ),
             _ => false,
         };
+        // `xs.rev`: every `Bidir` sequence's reverse view, a std `@get`.
+        let is_builtin_get = is_builtin_get || (name.text == "rev" && base_ty.is_bidir());
         if !is_builtin_get {
             return None;
         }

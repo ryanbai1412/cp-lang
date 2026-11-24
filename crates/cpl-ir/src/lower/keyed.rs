@@ -268,7 +268,8 @@ impl<'a> Lowerer<'a> {
     /// `a.rev` over a list or view, whose `.keys` are `a`'s walked backwards (R07.4.7).
     pub(super) fn reversed_list(value: &Expr) -> bool {
         matches!(&value.kind, ExprKind::Builtin(Builtin::Reversed, args)
-            if matches!(args[0].ty, Ty::List(_) | Ty::ListView(..) | Ty::MutView(..)))
+            if matches!(&args[0].ty, Ty::List(_) | Ty::ListView(..) | Ty::MutView(..))
+                || matches!(&args[0].ty, Ty::Array { dims, .. } if dims.len() == 1))
     }
 
     /// `value` walks backwards: `a.rev` over a list or view that walks
