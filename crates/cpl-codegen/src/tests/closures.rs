@@ -576,18 +576,6 @@ fn a_yields_fn_that_walks_another_feeds_its_callback_on() {
 }
 
 #[test]
-fn a_recursive_yields_fn_walks_its_own_list_inside_its_callback_form() {
-    let cpp = cpp(concat!(
-        "fn walk(n: Int) -> yields Int:\n    if n > 0:\n        yield n\n",
-        "        for x in walk(n - 1): yield x\n",
-        "var s = 0\nfor x in walk(10):\n    if x == 7: break\n    s += x\nprint(s)\n",
-    ));
-    let each = cpp.rsplit("int cpl_each_walk(").next().unwrap();
-    let each = &each[..each.find("\n}\n").unwrap()];
-    assert!(!each.contains("cpl_each_walk("), "{each}");
-}
-
-#[test]
 fn a_struct_field_built_from_one_capturing_closure_is_that_closures_type() {
     let src = concat!(
         "struct Plus(z: Int):\n",

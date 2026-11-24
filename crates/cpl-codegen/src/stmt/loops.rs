@@ -66,13 +66,6 @@ impl<'p> Emitter<'p> {
         if (nested && escapes) || (self.closure_id.is_some() && returns) {
             return false;
         }
-        // Each nested form wraps the callback in a new lambda type, so a
-        // recursive one instantiates without end (g++ ran out at its template
-        // depth after 115 s): a recursive form walks the list instead.
-        let recursive = |f: usize| self.devirt.recursive_fns.contains(&f);
-        if nested && recursive(*callee) && self.fn_id.is_some_and(recursive) {
-            return false;
-        }
         let feeds = cpl_ir::pushed::Feeds {
             summaries: std::mem::take(&mut self.summaries),
             pushers: std::mem::take(&mut self.pushers),
