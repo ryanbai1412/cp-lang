@@ -21,13 +21,16 @@ impl Ord for Dir:
 impl Eq for Dir:
     fn eq(a, b) = cross(a.d, b.d) == 0
 
+// A segment from point a to point b, by the direction it runs.
+struct Seg(d: Pt, a: 0..2500, b: 0..2500)
+
 let n: 5..=2500 = read()
 let p = read<[0..n]Pt>().sorted(by: q => (q.x, q.y))
-var segs = [(d: p[j] - p[i], a: i, b: j) for i in 0..n for j in i + 1..n]
+var segs = [Seg(p[j] - p[i], i, j) for i in 0..n for j in i + 1..n]
 segs.sort(by: s => Dir(s.d))
 var at = (0..n).collect()  // the position of each point along the rotating line
 var crossings = 0
-for (_, a, b) in segs:
-    crossings += at[a] * (n - 1 - at[b])
-    at.swap_idx(a, b)
+for s in segs:
+    crossings += at[s.a] * (n - 1 - at[s.b])
+    at.swap_idx(s.a, s.b)
 print((crossings - 2 * choose(n, 4)) * (n - 4) / 2)
