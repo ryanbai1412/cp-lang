@@ -155,6 +155,13 @@ fn same_tokens(expected: &[&str], got: &[&str]) -> bool {
 }
 
 /// Where two outputs first differ, counting tokens.
+/// Whether a wrong answer is the toolchain's: the debug interpreter, on the
+/// same file and input, prints what the brute expects and the built C++
+/// does not (use case stress/U29).
+pub fn toolchain_differs(interpreted: &str, expected: &str, got: &str) -> bool {
+    first_difference(expected, interpreted).is_none() && first_difference(expected, got).is_some()
+}
+
 pub fn first_difference(expected: &str, got: &str) -> Option<String> {
     let mut expected_lines = expected.lines();
     let mut got_lines = got.lines();
@@ -412,4 +419,19 @@ fn interact(
         })
     };
     Ok(Judged { verdict, outcome })
+}
+
+#[cfg(test)]
+mod toolchain_tests {
+    use super::toolchain_differs;
+
+    #[test]
+    fn only_an_interpreter_that_agrees_with_the_brute_blames_the_toolchain() {
+        assert!(toolchain_differs("3\n", "3", "4\n"));
+        assert!(
+            !toolchain_differs("4\n", "3", "4\n"),
+            "both builds are wrong: a WA"
+        );
+        assert!(!toolchain_differs("3", "3", "3\n"), "no difference at all");
+    }
 }

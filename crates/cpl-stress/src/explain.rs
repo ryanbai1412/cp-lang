@@ -40,21 +40,8 @@ pub fn trap_report_in(
     json: bool,
     stack_limit: Option<u32>,
 ) -> Option<String> {
-    if path.extension().is_none_or(|ext| ext != "cp") {
-        return None;
-    }
-    let name = path.shown();
+    let (name, analysis) = analyzed(path, text)?;
     let text = text.to_string();
-    let mut db = cpl_check::Database::new();
-    db.set_file(&name, text.as_str());
-    let analysis = db.analyze(&name)?;
-    if analysis
-        .diagnostics
-        .iter()
-        .any(|d| d.severity == cpl_diag::Severity::Error)
-    {
-        return None;
-    }
     let program = match brute {
         false => cpl_ir::lower(&analysis).ok()?,
         true => cpl_ir::lower_brute(&analysis, &cpl_ir::brute(&analysis)?.0).ok()?,
@@ -117,4 +104,34 @@ fn render(
         true => cpl_diag::json::diagnostic(diagnostic, lines).to_string(),
         false => cpl_diag::render(diagnostic, name, text, lines),
     }
+}
+
+/// What the debug interpreter prints running the `.cp` file at `path` on
+/// `input`. `None` when the file is not CP Lang, does not build, is
+/// interactive, traps or is still running after [`LIMIT`].
+pub fn interpreted_output(path: &Path, input: &str) -> Option<String> {
+    let text = std::fs::read_to_string(path).ok()?;
+    let (_, analysis) = analyzed(path, &text)?;
+    let program = cpl_ir::lower(&analysis).ok()?;
+    if program.interactive {
+        return None;
+    }
+    let mut sink = Vec::new();
+    let io = cpl_interp::Io::fixed(input.as_bytes()).until(cpl_interp::Stop::after(LIMIT));
+    cpl_interp::run_with(&program, io, &mut sink).ok()?;
+    String::from_utf8(sink).ok()
+}
+
+/// The `.cp` file at `path`, read as `text`, analyzed under its shown name;
+/// `None` when it is not CP Lang or has an error.
+fn analyzed(path: &Path, text: &str) -> Option<(String, std::sync::Arc<cpl_check::Analysis>)> {
+    if path.extension().is_none_or(|ext| ext != "cp") {
+        return None;
+    }
+    let name = path.shown();
+    let mut db = cpl_check::Database::new();
+    db.set_file(&name, text);
+    let analysis = db.analyze(&name)?;
+    let failed = (analysis.diagnostics.iter()).any(|d| d.severity == cpl_diag::Severity::Error);
+    (!failed).then_some((name, analysis))
 }

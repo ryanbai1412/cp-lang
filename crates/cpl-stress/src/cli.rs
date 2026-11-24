@@ -848,6 +848,17 @@ pub fn run_with(
         "  brute: {}      {judged_by}",
         brute.as_ref().map_or("none", |b| b.name.as_str())
     );
+    // The build the cases ran, so a judge's verdict can be laid beside it
+    // (use case stress/U29).
+    if args.fast.is_none() {
+        if let Ok(profile) = cpl_judge::resolve(&args.file, &src, None) {
+            let _ = writeln!(
+                stdout,
+                "  build: {}; checked, as `cpl run`",
+                profile.stamp()
+            );
+        }
+    }
     let Some(failure) = &report.failure else {
         let skipped = match report.skipped {
             0 => String::new(),
@@ -968,6 +979,18 @@ pub fn run_with(
                     stdout,
                     "  a debug run of the solution stops:\n{}",
                     indent(explained.trim_end())
+                );
+            } else if (args.fast.is_none())
+                .then(|| crate::explain::interpreted_output(&args.file, &failure.input))
+                .flatten()
+                .is_some_and(|out| {
+                    crate::judge::toolchain_differs(&out, &failure.expected, &failure.got)
+                })
+            {
+                let _ = writeln!(
+                    stdout,
+                    "  toolchain bug: the debug interpreter prints the expected answer on this case\n  and the built C++ prints something else, so this is no WA of yours\n  `cpl report {}` writes the bug report",
+                    args.file.shown()
                 );
             }
         }

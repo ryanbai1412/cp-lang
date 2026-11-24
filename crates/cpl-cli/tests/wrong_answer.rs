@@ -502,3 +502,25 @@ fn helper_warnings_stay_out_of_the_stress_report() {
     assert_eq!(code, Some(0), "{out}");
     assert!(!out.contains("warning") && !out.contains("[L0"), "{out}");
 }
+
+/// The header names the build the cases ran, so a judge's verdict can be
+/// laid beside it (`stress/U29`).
+#[test]
+fn stress_names_the_build_its_cases_ran() {
+    let path = scratch("build-named");
+    std::fs::write(
+        &path,
+        "// judge: codeforces\nlet n: 1..=5 = read()\nprint(n * 2)\n\n@alt(program)\nfn slow():\n    let n: 1..=5 = read()\n    print(n + n)\n",
+    )
+    .unwrap();
+    let (code, out) = cpl(&[
+        "stress".as_ref(),
+        path.as_os_str(),
+        "--cases".as_ref(),
+        "5".as_ref(),
+    ]);
+    assert_eq!(code, Some(0), "{out}");
+    let build = out.lines().nth(1).unwrap_or("");
+    assert!(build.starts_with("  build: judge `codeforces`: "), "{out}");
+    assert!(build.ends_with("; checked, as `cpl run`"), "{out}");
+}
