@@ -423,7 +423,8 @@ def parse_module(path: Path, prelude_names: list[str]) -> ModuleDoc:
     for line in lines:
         s = line.strip()
         if s.startswith("//!"):
-            mod_docs.append(s[3:].strip())
+            if not s[3:].strip().startswith(("start:", "example:")):
+                mod_docs.append(s[3:].strip())
         elif s and not s.startswith("use "):
             break
     summary = " ".join(mod_docs).strip()

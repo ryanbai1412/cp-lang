@@ -2,7 +2,7 @@
 
 # std.flow
 
-Flows, cuts and matchings: Dinic's max flow and min cut, min-cost flow, maximum closure, bipartite and general matching (weighted too), assignment, bounded flows, Gomory-Hu and global min cut.  Two networks, `FlowGraph` and `CostFlow`, share `Arc` and the accessors `flow`, `cap`, `source`, `target`. Everything whose input is a table or an edge list is a function over the caller's domains: a matching is `[L]?R`, a bounded flow is `[E]Int`.
+Flows, cuts and matchings: Dinic's max flow and min cut, min-cost flow, maximum closure, bipartite and general matching (weighted too), assignment, bounded flows, Gomory-Hu and global min cut.   Two networks, `FlowGraph` and `CostFlow`, share `Arc` and the accessors `flow`, `cap`, `source`, `target`. Everything whose input is a table or an edge list is a function over the caller's domains: a matching is `[L]?R`, a bounded flow is `[E]Int`.
 
 In prelude (no `use` needed): `Arc`, `FlowGraph`, `circulation`, `general_matching`, `global_min_cut`, `gomory_hu`, `max_bounded_flow`, `max_closure`, `max_matching`, `max_weight_general_matching`, `max_weight_matching`, `min_bounded_flow`, `min_vertex_cover`, `min_weight_matching`.
 

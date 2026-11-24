@@ -1,5 +1,8 @@
 //! Integer-indexed concave and convex functions as sorted slopes (slope trick).
 //!
+//! start: `Convex`, `Concave`, `Convex.min`, `Convex.add_abs`
+//! example: `var t = Convex.point(3); t.at(3) == 0`
+//!
 //! `Concave` keeps `f` on `lo..=hi` as `f(lo)` plus the multiset of slopes
 //! `f(c + 1) - f(c)`, largest first, in a lazy treap; `Convex` is its mirror.
 use std.lazy.{LazyTreap}
@@ -15,9 +18,9 @@ fn falling() -> LazyTreap<Int, Slide> = LazyTreap<Int, Slide>(
     mirror: (f, n) => Slide(f.base + (n - 1) * f.step, -f.step),
 )
 
-/// \(O(\log n)\) expected per slope update, for n slopes; reading a value walks the slopes.
-/// A concave function on the integers `lo..=hi`: its value at `lo` and its
-/// slopes in falling order. Law: every operation keeps it concave.
+/// A concave function on the integers `lo..=hi`: its value at `lo` and its slopes in falling order.
+/// Law: every operation keeps it concave. \(O(\log n)\) expected per slope update, for n slopes;
+/// reading a value walks the slopes.
 pub struct Concave(start: Int, base: Int):
     slopes: LazyTreap<Int, Slide>
 
@@ -218,9 +221,9 @@ pub struct Concave(start: Int, base: Int):
     fn count_at_least(mut self, v: Int) -> Int =
         (0..slopes.len).first_true(i => slopes.get(i) < v) ?? slopes.len
 
-/// \(O(\log n)\) expected per slope update, for n slopes; reading a value walks the slopes.
-/// A convex function on the integers `lo..=hi`, the negation of a `Concave`:
-/// the same operations with `min` for `max`.
+/// A convex function on the integers `lo..=hi`, the negation of a `Concave`: the same operations
+/// with `min` for `max`. \(O(\log n)\) expected per slope update, for n slopes; reading a value
+/// walks the slopes.
 pub struct Convex(neg: Concave):
     /// The function defined on the single point `d`, with `f(d) = 0`.
     ///

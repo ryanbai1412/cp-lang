@@ -5,6 +5,9 @@
 //! `r.first_true(ok)`, `r.last_true(ok)`, `r.bsearch(ok, last:)`. Sorted lookup in a container is the four-name family
 //! `first_ge`/`first_gt`/`last_le`/`last_lt`; a search inside a range
 //! structure is its `right_while`/`left_while`.
+//!
+//! start: `ternary_max`, `parallel_bsearch`, `bsearch`, `peak`, `dinkelbach`
+//! example: `ternary_max(0..6, i => -(i - 3) * (i - 3)) == Some(3)`
 
 fn golden_pick<I, K>(r: Range<I>, f: I -> K, larger: Bool) -> ?I:
     let n = r.len

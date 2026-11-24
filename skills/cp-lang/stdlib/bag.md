@@ -183,7 +183,7 @@ Fields: `bag: AugSortedBag<K, T>`.
 
 ## `struct BucketCount`
 
-\(O(1)\) point add, \(O(\sqrt{N})\) k-th order statistic over an integer value range `r`.
+Counts over an integer value range `r`, with \(O(1)\) point add and \(O(\sqrt{N})\) k-th order statistic: the value-range frequency table for Mo's algorithm.
 
 Fields: `lo: Int`, `hi: Int`, `bs: Int`, `total: Int`, `cnt: List<Int>`, `blk: List<Int>`.
 

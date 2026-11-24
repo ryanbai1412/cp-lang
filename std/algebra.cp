@@ -1,5 +1,8 @@
 //! Operations as values: what a range structure folds with.
 //!
+//! start: `desc`, `pow`, `Monoid`, `Action`, `MaxSub`
+//! example: `[3, 1, 2].max(by: x => desc(x)) == Some(1)`
+//!
 //! A structure never asks "what is the sum of two `T`s"; it is handed the
 //! operation. Most of the time that is a bare operator: `SegTree<V, Int>(max, a)`
 //! and `SegTree<V, Int>(+, a)` are the same tree with two operations. An operation

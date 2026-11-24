@@ -139,8 +139,33 @@ pub struct Module {
     /// The `///` block at the top of the file, when a blank line separates
     /// it from the first declaration.
     pub doc: String,
+    /// The doc without its `start:` and `example:` lines.
+    pub prose: String,
+    /// The entry points its `start:` line names, `SegTree` or `SegTree.fold`, in its order:
+    /// where a reader of the module begins.
+    pub start: Vec<String>,
     pub examples: Vec<Example>,
     pub items: Vec<Item>,
+}
+
+/// `(prose, start)` of a module doc: its `start:` line split into the backticked names it
+/// lists, and every other line not an `example:`.
+pub(crate) fn module_outline(doc: &str) -> (String, Vec<String>) {
+    let mut start = Vec::new();
+    let mut kept = Vec::new();
+    let text = DocText::parse(doc);
+    for line in text.prose.lines() {
+        match line.trim().strip_prefix("start:") {
+            Some(names) => start.extend(
+                names
+                    .split(',')
+                    .map(|n| n.trim().trim_matches('`').to_string())
+                    .filter(|n| !n.is_empty()),
+            ),
+            None => kept.push(line),
+        }
+    }
+    (kept.join("\n").trim().to_string(), start)
 }
 
 impl Module {
@@ -539,14 +564,23 @@ pub fn extract(src: &str, path: &str) -> Module {
     }
 
     let file = path.rsplit(['/', '\\']).next().unwrap_or(path);
+    let (prose, start) = module_outline(&doc);
     Module {
         name: file.strip_suffix(".cp").unwrap_or(file).to_string(),
         path: path.to_string(),
         doc,
+        prose,
+        start,
         examples: module_examples,
         items,
     }
 }
+
+/// The builtin module's doc, written as a std file's `//!` block is.
+const BUILTIN_DOC: &str = "The types the language itself declares: its scalars, `Str`, `List`, arrays, and the maps and sets.
+
+start: `List`, `Str`, `Map`, `Set`, `HashMap`
+example: `var m: Map<Str, Int> = Map(); m[\"b\"] = 2; m[\"a\"] = 1; m[\"b\"] += 1; m.items == [(\"a\", 1), (\"b\", 3)]`";
 
 /// The types the language itself declares, as one module: the rest of
 /// what every program has without a `use`, beside std's `prelude.cp`.
@@ -595,11 +629,16 @@ pub fn builtins() -> Module {
             )
         })
         .collect();
+    let doc = BUILTIN_DOC.to_string();
+    let (prose, start) = module_outline(&doc);
+    let module_examples = examples(DocText::parse(&doc), 0);
     Module {
         name: "builtin".to_string(),
         path: "crates/cpl-check/src/builtins.rs".to_string(),
-        doc: "The types the language itself declares: its scalars, `Str`, `List`, arrays, and the maps and sets.".to_string(),
-        examples: Vec::new(),
+        prose,
+        start,
+        examples: module_examples,
+        doc,
         items,
     }
 }

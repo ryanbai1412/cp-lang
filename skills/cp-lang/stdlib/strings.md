@@ -33,7 +33,7 @@ Fields: `alpha: Count`, `goto: List<Count>`, `pi: List<Count>`.
 
 ## `struct SuffixArray<T: Ord>`
 
-\(O(n)\) SA-IS + Kasai LCP + block RMQ.
+Suffix array, inverse rank, adjacent LCP, and \(O(1)\) LCP/comparison queries.
 
 Fields: `rank: List<Int>`, `rmq: LinearRmq<Int, Int>`, `dcum: List<Int>`, `src: List<T>`.
 

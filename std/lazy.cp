@@ -1,4 +1,7 @@
 //! Range-update helpers that are not segment trees: `Flip`, `LazyTreap`, `SeqFold`, `Rope`. Range apply on a segment tree is `SegTree(op, a, act:)` (`segtree.cp`).
+//!
+//! start: `flip_action`, `LazyTreap`, `Rope`, `SeqFold`
+//! example: `flip_action(+).apply(true, Flip(3, 1), 4).now == 1`
 use std.algebra.{Action, MaxCount, MinCount, Monoid, add, affine, assign}
 use std.rand.Rng
 use std.segtree.{SegTree}
@@ -837,8 +840,8 @@ pub struct LazyTreap<T, F>(
     /// example: `LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f).to_list() == []`
     pub fn to_list(self) -> List<T> = self.take(self.len)
 
-/// \(O(n)\) space. Implicit-key rope over a domain `D` supporting \(O(\log n)\) expected cut, paste,
-/// reverse, range tag `apply`, path queries, and point `get`.
+/// Implicit-key rope over a domain `D` supporting \(O(\log n)\) expected cut, paste, reverse, range
+/// tag `apply`, path queries, and point `get`. \(O(n)\) space.
 pub struct Rope<D, T>:
     var n: Int
     mg: ?((T, T) -> T) = None

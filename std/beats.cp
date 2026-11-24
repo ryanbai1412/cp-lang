@@ -1,5 +1,8 @@
 //! Segment Tree Beats (Ji Driver) for range chmin, chmax, add, sum, min, and max.
 //!
+//! start: `BeatsSegTree`, `BeatsSegTree.chmin`, `BeatsSegTree.chmax`, `HistoricBeatsSegTree`
+//! example: `BeatsSegTree([5, 1, 4]).all_sum == 10`
+//!
 //! Maintains exact `min`, second `min`, `max`, second `max`, and `sum` on every node.
 //! Range `chmin`, `chmax`, `add`, and `sum`/`min`/`max` queries run in \(O(\log n)\) amortized
 //! (\(O(\log^2 n)\) amortized when mixing `chmin`/`chmax` with `add`).
@@ -390,8 +393,8 @@ pub struct BeatsSegTree<D>:
     @get pub fn all_max(self) -> ?Int:
         if n == 0: None else: Some(mx1[1])
 
-/// \(O(\lvert D \rvert)\) space. Segment Tree Beats with historic maximum and historic sum tracking under
-/// range `chmin`, `chmax`, and `add` (Ji Driver with historic tags).
+/// Segment Tree Beats with historic maximum and historic sum tracking under range `chmin`, `chmax`,
+/// and `add` (Ji Driver with historic tags). \(O(\lvert D \rvert)\) space.
 pub struct HistoricBeatsSegTree<D>:
     n: Int
     s: List<Int> = []

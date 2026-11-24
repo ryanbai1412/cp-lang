@@ -1,5 +1,8 @@
 //! Methods of optionals (`?T`, core 2.4). The operators (`??`, `!`,
 //! `if let`, `match`) are core; these are ordinary fns over them.
+//!
+//! start: `is_some_and`, `and_then`, `is_none_or`
+//! example: `Some(4).is_some_and(v => v > 3) == true`
 
 /// Whether there is a value and `p` holds for it; `false` on `None`.
 ///

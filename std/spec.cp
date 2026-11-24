@@ -3,6 +3,9 @@
 //! does a sequence follow. Each checker returns the first witness that breaks the law (`None`
 //! when it holds), so a brute force over small inputs can print it; the recurrence tools then
 //! extend a pinned sequence to any index.
+//!
+//! start: `convexity_break`, `monge_break`, `berlekamp_massey`, `guess_at`, `argmins`
+//! example: `convexity_break([4, 1, 0, 1, 4]) == None`
 
 use std.mod.{Mod}
 

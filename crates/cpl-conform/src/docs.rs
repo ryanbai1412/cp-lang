@@ -51,7 +51,13 @@ pub fn doc_examples(rel: &str, text: &str) -> Vec<(String, String, bool)> {
             }
         }
     };
+    // The `//!` block's examples show the module at work at the top of its page.
+    let mut module: Vec<&str> = Vec::new();
     for line in text.lines() {
+        if let Some(doc) = line.trim().strip_prefix("//!") {
+            module.push(doc.strip_prefix(' ').unwrap_or(doc));
+            continue;
+        }
         if let Some(doc) = doc::doc_line(line) {
             block.push(doc);
             continue;
@@ -83,6 +89,7 @@ pub fn doc_examples(rel: &str, text: &str) -> Vec<(String, String, bool)> {
         push(&|k| format!("{rel}#{item}:{k}"), &mut block);
     }
     push(&|k| format!("{rel}#eof:{k}"), &mut block);
+    push(&|k| format!("{rel}#module:{k}"), &mut module);
     out
 }
 
@@ -291,7 +298,7 @@ fn run_unchecked(db: &mut Session, root: &Path, ex: &DocExample, code: &str) -> 
             return CaseOutcome {
                 status: "error".into(),
                 detail,
-            }
+            };
         }
     };
     if run.trap.is_some() {

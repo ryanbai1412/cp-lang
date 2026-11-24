@@ -2,6 +2,9 @@
 //! floating-point vectors (`Vec`). Exact predicates compute cross and dot signs
 //! in `I128` so integer geometry is the default overflow-free path:
 //!
+//! start: `convex_hull`, `Pt`, `segments_meet`, `angle_less`, `OnlineHull`
+//! example: `convex_hull([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2), Pt(1, 1)]) == [Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]`
+//!
 //! - `|x|, |y| <= 1e9` (coordinates read as `-1e9..=1e9`): differences in `[-2e9, 2e9]`;
 //!   single-vector `dot`/`cross` <= `2e18` fit `Int`, `turn`/`cross128`/`dot128`
 //!   <= `8e18` fit `I128` with 19 orders of magnitude to spare, and `any_segments_meet`
@@ -29,7 +32,7 @@ fn igcd(a0: Int, b0: Int) -> Int:
 
 // ---- exact integer points
 
-/// \(O(1)\) value type. A 2D point or vector with exact integer coordinates.
+/// A 2D point or vector with exact integer coordinates. \(O(1)\) value type.
 pub struct Pt(pub x: Int, pub y: Int):
     /// The squared length `x*x + y*y`, in `Int`.
     ///
@@ -489,8 +492,8 @@ pub fn upper_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D>:
         h.push(i)
     h
 
-/// \(O(n)\) memory. Incremental 2D convex hull of integer points, kept as its upper and lower
-/// chains in sorted maps keyed by `x`.
+/// Incremental 2D convex hull of integer points, kept as its upper and lower chains in sorted maps
+/// keyed by `x`. \(O(n)\) memory.
 pub struct OnlineHull:
     up: HullChain
     lo: HullChain

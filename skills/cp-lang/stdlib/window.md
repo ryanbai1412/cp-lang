@@ -2,7 +2,7 @@
 
 # std.window
 
-Sliding-window folds and stateful windows (round 7, `lib/sequence-patterns.md`).  `a.window_fold(k, op)` and `Window(op)` keep two stacks for every op today; the law-picked strategies of `lib/sequence-patterns.md` (a `Group` adds and subtracts, a `Selective` op keeps a monotone deque) wait on law-bound dispatch over op values. State that is not a fold implements `Track` (`push`/`pop`); two pointers, Mo and divide-and-conquer DP all accept a `Track`.
+Sliding-window folds and stateful windows (round 7, `lib/sequence-patterns.md`).   `a.window_fold(k, op)` and `Window(op)` keep two stacks for every op today; the law-picked strategies of `lib/sequence-patterns.md` (a `Group` adds and subtracts, a `Selective` op keeps a monotone deque) wait on law-bound dispatch over op values. State that is not a fold implements `Track` (`push`/`pop`); two pointers, Mo and divide-and-conquer DP all accept a `Track`.
 
 In prelude (no `use` needed): `Sweep`, `Undo`, `Undoing`, `Window`, `track`, `undoing`, `window_fold`.
 

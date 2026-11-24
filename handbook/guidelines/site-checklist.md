@@ -108,6 +108,7 @@ A reader's edit to any editor on the site, in the playground, an example or a pr
 
 - 2026-11-23: first version, from the site guideline.
 - 2026-11-23: site/R9 to R11 from the invariants in the former `plan/domains/site/ARCHITECTURE.md`.
+- 2026-11-24: site/R22, module pages open with an outline.
 
 ## site/R13: A shared link previews its page
 
@@ -180,3 +181,11 @@ Every `example:` on a std reference page type-checks and runs as shown (site/R1)
 - **Why:** a learner copies an example and asks what each name is; a type stated in prose, or shown by a hover the docs compute separately, can drift from what the compiler says.
 - **Example:** on `std/sparse`, hovering in `SparseTable(min, [3, 1, 4]).fold(0..3)` on `SparseTable` shows its type from the language server.
 - **Enforced by:** `web/scripts/gen-ref.mjs` (every example type-checks and runs) and `web/tests/intelligence.mjs` (hover in a reference example).
+
+## site/R22: A module page opens with an outline
+
+Every std module page starts with what the module is for, the 3 to 5 entry points to begin with (each with its summary), and one example that runs; the per-item reference comes after.
+
+- **Why:** a reader new to a module wants the shape of it first, not every entry's table; Ryan: "i want smth progressive and some outline that's more high level".
+- **Example:** `std/segtree` opens with its purpose sentence, a "Start here" list (`SegTree`, `MergeSortTree`, `WaveletMatrix`, `SegTree2D`), then `SegTree(+, [1, 2, 3]).all == 6` as a runnable editor, then "Reference".
+- **Enforced by:** `crates/cpl-doc/src/tests.rs` (`every_std_module_opens_with_an_outline`) in the commit tier of any `std/` change; `web/scripts/gen-ref.mjs` again in the site build; `cpl-conform docs` runs each module example. The `//!` format is in `std/README.md`.

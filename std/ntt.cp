@@ -1,5 +1,8 @@
 //! Number-theoretic transform, exact and modular convolution, SOS, and bitwise transforms.
 //!
+//! start: `convolve`, `ntt`, `sos`, `fwht`, `convolve_all`
+//! example: `convolve([1, 2], [3, 4]) == [3, 10, 8]`
+//!
 //! Polynomials are coefficient lists, lowest degree first (`p[k]` is the coefficient of `x^k`).
 //! There is one `convolve`: `on:` says how indices combine and `over:` which semiring the values
 //! live in; the value type picks the algorithm (NTT for an NTT-prime `Mod<P>`, three primes and CRT

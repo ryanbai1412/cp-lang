@@ -51,7 +51,7 @@ Fields: `data: List<T>`, `size: Int`.
 
 ## `struct SegTree2D<R, C, T>(m: Monoid<T>)`
 
-\(O(\lvert R \rvert \cdot \lvert C \rvert)\) space.
+Iterative 2D segment tree: point update and rectangle fold in \(O(\log \lvert R \rvert \cdot \log \lvert C \rvert)\).
 
 Fields: `t: List<T>`.
 
@@ -64,7 +64,7 @@ Fields: `t: List<T>`.
 
 ## `struct WaveletMatrix<D>`
 
-\(O(\lvert D \rvert \log V)\) build and memory.
+Wavelet matrix over non-negative integer values: \(O(\log V)\) range k-th smallest, frequency, value-range count, predecessor/successor, and quantile sum.
 
 Fields: `bits: Int`, `n: Int`, `zs: List<Int>`, `words: List<U64>`, `before: List<Int>`, `zsum: List<Int>`.
 

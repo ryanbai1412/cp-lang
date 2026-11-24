@@ -2,7 +2,7 @@
 
 # std.mod
 
-Modular arithmetic and counting.  `Mod<P>` is a number modulo a constant `P`: the modulus is part of the type, takes no memory, and two moduli cannot be mixed by accident. The modulus may be a constant (`type Z = Mod<998244353>`) or a value read from the input (`let p: Int = read()`, then `type Z = Mod(p)`): one type serves both. `P` may be anything below 2^62 (so `a + b` fits): above 3.03e9, where `P * P` no longer fits an `Int`, `*` multiplies in 128 bits.
+Modular arithmetic and counting.   `Mod<P>` is a number modulo a constant `P`: the modulus is part of the type, takes no memory, and two moduli cannot be mixed by accident. The modulus may be a constant (`type Z = Mod<998244353>`) or a value read from the input (`let p: Int = read()`, then `type Z = Mod(p)`): one type serves both. `P` may be anything below 2^62 (so `a + b` fits): above 3.03e9, where `P * P` no longer fits an `Int`, `*` multiplies in 128 bits.
 
 In prelude (no `use` needed): `Comb`, `Mod`.
 
@@ -35,7 +35,7 @@ Factorials and inverse factorials for a modular type `M = Mod<P>` (prime `P`).
 
 ## `struct Barrett(pub m: Int, im: U64)`
 
-\(O(1)\) reduction.
+Fast Barrett modular multiplier for a runtime modulus `1 <= m < 2^31`.
 
 - `fn new(m: Int) -> Barrett` — \(O(1)\); A Barrett multiplier for the runtime modulus `m`, `1 <= m < 2^31`: precomputes `im = floor((2^64 - 1) / m) + 1` (wrapping, so 0 for `m == 1`).; traps: when `m` is outside `1..2^31`
 - `fn mul(self, a: Int, b: Int) -> Int` — \(O(1)\); `(a * b) % m` without a hardware division, for `a, b` in `0..m`.; traps: when `a` or `b` is outside `0..m`

@@ -2,7 +2,7 @@
 
 # std.persistent
 
-Persistent segment tree and static range k-th smallest queries.  Each update copies only the \(O(\log n)\) nodes on the root-to-leaf path and returns a new `Version` handle. All earlier versions remain readable in \(O(\log n)\).
+Persistent segment tree and static range k-th smallest queries.   Each update copies only the \(O(\log n)\) nodes on the root-to-leaf path and returns a new `Version` handle. All earlier versions remain readable in \(O(\log n)\).
 
 Import: `use std.persistent.{...}`.
 
@@ -80,7 +80,7 @@ Fields: `val: List<T>`, `tag: List<F>`.
 
 ## `struct PersistentArray<D, T>`
 
-\(O(q \log \lvert D \rvert)\) space.
+Persistent array over domain `D`: \(O(\log \lvert D \rvert)\) `get` and path-copying `set`.
 
 Fields: `val: List<T>`.
 

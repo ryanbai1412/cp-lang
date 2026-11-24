@@ -1,5 +1,8 @@
 //! Persistent segment tree and static range k-th smallest queries.
 //!
+//! start: `PersistentSegTree`, `RangeKth`, `PersistentArray`, `PArena`
+//! example: `var t = PersistentSegTree(+, a: [1, 2, 3]); t.all(t.base) == 6`
+//!
 //! Each update copies only the \(O(\log n)\) nodes on the root-to-leaf path and returns a
 //! new `Version` handle. All earlier versions remain readable in \(O(\log n)\).
 use std.algebra.{Action, Monoid}
@@ -669,7 +672,8 @@ pub struct PersistentLazySegTree<D, T, F>(act: Action<T, F>):
     pub fn all(self, v: Version<PersistentLazySegTree<D, T, F>>) -> T:
         val[v.root]
 
-/// \(O(q \log \lvert D \rvert)\) space. Persistent array over domain `D`: \(O(\log \lvert D \rvert)\) `get` and path-copying `set`.
+/// Persistent array over domain `D`: \(O(\log \lvert D \rvert)\) `get` and path-copying `set`.
+/// \(O(q \log \lvert D \rvert)\) space.
 pub struct PersistentArray<D, T>:
     left: List<0..=2_000_000_000>
     right: List<0..=2_000_000_000>

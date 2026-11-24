@@ -1,5 +1,8 @@
 //! Modular arithmetic and counting.
 //!
+//! start: `Mod`, `Comb`, `Mod.inv`, `Barrett`
+//! example: `Mod<7>(3) * Mod<7>(5) == Mod<7>(1) and Mod<7>(3).inv() == Mod<7>(5)`
+//!
 //! `Mod<P>` is a number modulo a constant `P`: the modulus is part of the
 //! type, takes no memory, and two moduli cannot be mixed by accident.
 //! The modulus may be a constant (`type Z = Mod<998244353>`) or a value read from
@@ -360,7 +363,7 @@ pub struct Comb<M: Add + Sub + Mul>:
             acc = acc * self.choose(total, k)
         acc
 
-/// \(O(1)\) reduction. Fast Barrett modular multiplier for a runtime modulus `1 <= m < 2^31`.
+/// Fast Barrett modular multiplier for a runtime modulus `1 <= m < 2^31`. \(O(1)\) reduction.
 pub struct Barrett(pub m: Int, im: U64):
     /// A Barrett multiplier for the runtime modulus `m`, `1 <= m < 2^31`: precomputes
     /// `im = floor((2^64 - 1) / m) + 1` (wrapping, so 0 for `m == 1`).

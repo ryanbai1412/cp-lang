@@ -1,4 +1,7 @@
 //! Number theory on plain `Int`s.
+//!
+//! start: `gcd`, `Sieve`, `isqrt`, `ext_gcd`, `popcount`
+//! example: `gcd(12, 18) == 6`
 use std.range.{last_true}
 
 /// The greatest common divisor of `a` and `b`, never negative; `gcd(0, 0) == 0`.

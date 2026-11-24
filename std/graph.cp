@@ -1,5 +1,8 @@
 //! Graphs: one stored representation and the algorithms over "what comes after v".
 //!
+//! start: `Graph`, `bfs`, `dijkstra`, `peel`, `bridges`
+//! example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; Graph.directed(es).out(0).collect() == [(to: 2, e: 0), (to: 1, e: 1)]`
+//!
 //! Vertices and edges are domains, so per-vertex data is `[V]T`, per-edge
 //! data is `[E]T`, and mixing the two does not type-check. An algorithm
 //! takes any `Next<V>`: a stored `Graph`, a `[V]List` of arcs, or any fn
@@ -142,10 +145,9 @@ pub type Dag<V, E> = [E](u: V, v: V)
 /// twice; `u v` and `v u` are two arcs. `cpl stress` makes and shrinks it so.
 pub type Digraph<V, E> = [E](u: V, v: V)
 
-/// \(O(n + m)\) memory and build.
-/// A fixed graph in compressed sparse row form: n + 1 offsets and one arcs
-/// list, the arcs of each vertex contiguous and in input order. Immutable; a
-/// graph that grows is a `[V]List` of arcs, which is already a `Next`.
+/// A fixed graph in compressed sparse row form: n + 1 offsets and one arcs list, the arcs of each
+/// vertex contiguous and in input order. Immutable; a graph that grows is a `[V]List` of arcs,
+/// which is already a `Next`. \(O(n + m)\) memory and build.
 pub struct Graph<V: Domain, A: Target<V> = V>:
     pub start: [V.cuts]Int
     pub arcs: List<A>

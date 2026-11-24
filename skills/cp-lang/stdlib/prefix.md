@@ -2,7 +2,7 @@
 
 # std.prefix
 
-Prefix sums, prefix/suffix monoid folds, and offline difference arrays.  Call `Prefix(a)` on a `[D]T`, `[R, C]T`, or `List<T>` to build static prefix sums in \(O(n)\) or \(O(r \cdot c)\), then answer any `.fold(...)`, `.cut(k)` or `.prefix(...)` query in \(O(1)\). Use `Diff<D, T>()` or `Diff<R, C, T>()` for \(O(1)\) offline range/rectangle adds and \(O(n)\) / \(O(r \cdot c)\) `finish()`.
+Prefix sums, prefix/suffix monoid folds, and offline difference arrays.   Call `Prefix(a)` on a `[D]T`, `[R, C]T`, or `List<T>` to build static prefix sums in \(O(n)\) or \(O(r \cdot c)\), then answer any `.fold(...)`, `.cut(k)` or `.prefix(...)` query in \(O(1)\). Use `Diff<D, T>()` or `Diff<R, C, T>()` for \(O(1)\) offline range/rectangle adds and \(O(n)\) / \(O(r \cdot c)\) `finish()`.
 
 In prelude (no `use` needed): `Diff`, `Prefix`, `scan`.
 
@@ -106,7 +106,7 @@ Fields: `d: [R.cuts, C.cuts]T`.
 
 ## `struct SweepAdd<D, T: Add + Sub>`
 
-\(O(\lvert D \rvert)\) space.
+Online sweep-line difference accumulator: schedule future range adds in \(O(1)\) and advance a cursor through `D` in `order` in \(O(1)\) per position.
 
 Fields: `d: [D.cuts]T`, `cur: T`.
 
@@ -128,7 +128,7 @@ Fields: `d: [D.cuts]T`, `e: [D.cuts]T`.
 
 ## Functions
 
-- `fn scan<D, T, M>(self: [D]T, f: M, from: ?T = None) -> Prefix<D, T>` — \(O(n)\) calls of `f`; \(O(n)\) space; \(O(n)\) calls of `f`.; traps: never (beyond what `f` traps on); see `fold` for range reads
+- `fn scan<D, T, M>(self: [D]T, f: M, from: ?T = None) -> Prefix<D, T>` — \(O(n)\) calls of `f`; \(O(n)\) space; The n + 1 exclusive prefix folds, indexed by `D`'s cuts: `pre[c]` folds everything left of cut `c` (`from`, or `f`'s identity, at the first cut), and `pre[v]` for a position folds through `v`.; traps: never (beyond what `f` traps on); see `fold` for range reads
 - `fn prefix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T` — \(O(n)\) calls of `op`; \(O(n)\) space; Prefix monoid folds of `a`, indexed by `Cut<D>`: `p[b]` is the fold of `..b`, with `p[D.cuts.nth(0)] == m.id`.; traps: never (beyond what `op` traps on)
 
 ## Example

@@ -128,7 +128,7 @@ const factOrder = ['cost', 'traps', 'empty', 'ties', 'order'];
 // Only a program that runs is shown runnable; the rest are listed.
 function programs(e, module, shared) {
   const ownsShared = shared.length && shared.every((st, i) => e.setup[i] === st);
-  const setup = [`use std.${module}.*`, ...(ownsShared ? shared : [])].join('\n');
+  const setup = [...(module === 'builtin' ? [] : [`use std.${module}.*`]), ...(ownsShared ? shared : [])].join('\n');
   const own = e.setup.slice(ownsShared ? shared.length : 0);
   // An `example:` that is prose, not code, runs nothing and is listed.
   const bodies = e.code === null ? [] : [[...own, `print(${e.expr})`]];
@@ -153,7 +153,7 @@ function renderExample(example, module, shared, ran, failing, at) {
 }
 
 // The first sentence of a module's `//!` comment.
-const moduleSummary = (m) => (m.doc ?? '').split(/\n\s*\n/)[0].replace(/\s+/g, ' ').trim();
+const moduleSummary = (m) => (m.prose ?? m.doc ?? '').split(/\n\s*\n/)[0].replace(/\s+/g, ' ').trim();
 
 // The heading id fumadocs gives `### \`Rooted.up\``.
 const slug = (anchor) => anchor.toLowerCase().replace(/[^\p{L}\p{N}_\- ]/gu, '').replace(/ /g, '-');
@@ -170,7 +170,7 @@ function linked(text, links) {
 
 // The parameters after `self` of a `fn` signature, as `[name, type, default]`.
 function sigParams(sig) {
-  if (!/^(pub )?fn\b/.test(sig)) return [];
+  if (!/^(pub )?(fn|law)\b/.test(sig)) return [];
   const open = sig.indexOf('(');
   let depth = 0;
   let close = -1;
@@ -310,6 +310,37 @@ async function runInTurn(tries) {
 const index = [];
 // What a program can name: std's `pub` items, and the types the language
 // itself declares (the `builtin` module, from the compiler's catalog).
+// site/R22: a module page opens with what the module is for, the 3 to 5 entry points its
+// `start:` names (each with its summary and cost), one example that runs, then the rest of
+// its prose; the per-item reference follows.
+function outline(m, ctx) {
+  const [purpose, ...rest] = (m.prose ?? '').split(/\n\s*\n/);
+  const entries = (m.start ?? []).map((name) => {
+    const [owner, member] = name.split('.');
+    const tops = m.items.filter((i) => i.name === owner && (isPublic(i) || i.kind === 'impl'));
+    const top = tops.find((i) => i.kind !== 'impl');
+    return [name, member ? tops.flatMap((i) => i.members ?? []).find((x) => x.name === member) : top];
+  });
+  const missing = entries.filter(([, item]) => !item).map(([name]) => name);
+  for (const [name, item] of entries)
+    if (item && (!item.summary?.trim() || /^\\\(O\(/.test(item.summary)))
+      ctx.unstructured.push(`${m.name}.${name}: its summary doesn't say what it is (site/R22): ${item.summary || 'none'}`);
+  if (!purpose?.trim() || entries.length < 3 || entries.length > 5 || missing.length || !m.examples?.length)
+    ctx.unstructured.push(`${m.name}: no outline (site/R22): purpose, \`start:\` with 3 to 5 items${missing.length ? ` (no item ${missing.join(', ')})` : ''}, and an \`example:\``);
+  const lines = [linked(ctx.math(purpose ?? '', m.name), m.links ?? []), '', '## Start here', ''];
+  for (const [name, item] of entries) {
+    if (!item) continue;
+    const text = (t) => linked(ctx.math(t.replace(/\s+/g, ' '), `${m.name}.${name}`), item.links ?? []);
+    const cost = item.facts?.cost ? ` Cost: ${text(item.facts.cost)}.` : '';
+    lines.push(`- [\`${name}\`](#${slug(name)}): ${text(item.summary ?? '')}${cost}`);
+  }
+  lines.push('', '## Example', '');
+  if (m.examples?.length) lines.push(...renderExample(m.examples[0], m.name, [], ctx.ran, ctx.failing, `${m.name}#module`));
+  const more = rest.join('\n\n').trim();
+  if (more) lines.push('## Overview', '', linked(ctx.math(more, m.name), m.links ?? []), '');
+  return lines;
+}
+
 const isPublic = (i) => i.kind === 'builtin' || /^pub\b/.test(i.signature);
 const modules = std.modules.filter((m) => m.items.some(isPublic)).sort((a, b) => a.name.localeCompare(b.name));
 // Each example's programs, in the order renderExample tries them.
@@ -322,7 +353,13 @@ const collect = (item, module, parentDoc, shared) => {
   const memberShared = item.members?.length ? commonSetup(memberExamples(item)) : [];
   for (const m of item.members ?? []) collect(m, module, item.doc, memberShared);
 };
-for (const m of modules) for (const i of m.items) collect(i, m.name, '', []);
+for (const m of modules) {
+  for (const e of m.examples ?? []) {
+    const { e: ex, setup, bodies } = programs(e, m.name, []);
+    tries.push(bodies.map((b) => runKey(setup, b, ex.stdin)));
+  }
+  for (const i of m.items) collect(i, m.name, '', []);
+}
 const ctx = {
   ran: await runInTurn(tries),
   failing: [],
@@ -336,11 +373,12 @@ const ctx = {
 for (const m of modules) {
   const fields = m.items.filter((i) => i.kind === 'field' || (i.kind !== 'impl' && !isPublic(i)));
   const body = [
+    ...outline(m, ctx),
+    '## Reference',
+    '',
     `Generated from [${m.path}](${blob}/${m.path}) by \`cpl doc --format json\`.`,
     '',
-    linked(m.doc, m.links ?? []),
-    '',
-    ...m.items.filter((i) => !fields.includes(i)).map((i) => renderItem(i, 2, '', '', index, m.name, ctx)),
+    ...m.items.filter((i) => !fields.includes(i)).map((i) => renderItem(i, 3, '', '', index, m.name, ctx)),
   ].join('\n');
   write(`std/${m.name}.md`, page(m.name, moduleSummary(m) || `The ${m.name} module.`, body));
 }

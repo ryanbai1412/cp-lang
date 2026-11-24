@@ -1,5 +1,8 @@
 //! Open-addressing hash map for `Int` keys with splitmix64 salting.
 //!
+//! start: `Counter`, `FlatMap`, `push`, `pop`
+//! example: `let c = Counter(['a', 'b', 'a']); c['a'] == 2 and c['z'] == 0 and c.len == 2`
+//!
 //! `FlatMap<V>` stores keys, values, and occupancy states in flat parallel arrays with
 //! linear probing and power-of-two capacity, avoiding per-node heap allocations when
 //! built-in `HashMap<Int, V>` overhead matters.

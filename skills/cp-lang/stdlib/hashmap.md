@@ -2,7 +2,7 @@
 
 # std.hashmap
 
-Open-addressing hash map for `Int` keys with splitmix64 salting.  `FlatMap<V>` stores keys, values, and occupancy states in flat parallel arrays with linear probing and power-of-two capacity, avoiding per-node heap allocations when built-in `HashMap<Int, V>` overhead matters.
+Open-addressing hash map for `Int` keys with splitmix64 salting.   `FlatMap<V>` stores keys, values, and occupancy states in flat parallel arrays with linear probing and power-of-two capacity, avoiding per-node heap allocations when built-in `HashMap<Int, V>` overhead matters.
 
 In prelude (no `use` needed): `Counter`.
 

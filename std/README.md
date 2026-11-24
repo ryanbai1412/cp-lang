@@ -36,6 +36,27 @@ Struct methods document the same way; a struct's own doc says its invariant and 
 `scripts/spec-gate.py std-docs --audit` lists every entry missing a required label; `--check` fails on
 any, so a new `pub fn` lands with its labels.
 
+## What every module documents
+
+A module's page opens with an outline, so a reader learns what the module is for before any
+entry. Its `//!` block starts with one paragraph saying what the module is for, then a blank
+`//!` line, then:
+
+```
+//! Segment tree over a domain, for any associative operation: point or range update, range query.
+//!
+//! start: `SegTree`, `MergeSortTree`, `WaveletMatrix`, `SegTree2D`
+//! example: `SegTree(+, [1, 2, 3]).all == 6`
+```
+
+| Label | Says |
+|---|---|
+| `start:` | the 3 to 5 public items (or `Type.member`s) a reader begins with, most used first |
+| `example:` | one or more, run like a fn's: the module at work, shown under the entry points |
+
+More prose may follow. `cpl-doc`'s `every_std_module_opens_with_an_outline` fails on a module
+without them, and `cpl-conform docs` runs each example as `file#module:k`.
+
 ## Where the surface is
 
 The modules and every public item are the `std/*.cp` files themselves. Their

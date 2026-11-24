@@ -2,7 +2,7 @@
 
 # std.timetree
 
-Offline segment tree over time (divide-and-conquer on life intervals).  Turn any rollback-capable data structure (e.g. `Dsu` with `.mark()` / `.undo_to(snap)`) into a dynamic structure with insertions and deletions over `[0, q)` in \(O(q \log q)\) apply/undo steps.
+Offline segment tree over time (divide-and-conquer on life intervals).   Turn any rollback-capable data structure (e.g. `Dsu` with `.mark()` / `.undo_to(snap)`) into a dynamic structure with insertions and deletions over `[0, q)` in \(O(q \log q)\) apply/undo steps.
 
 Import: `use std.timetree.{...}`.
 

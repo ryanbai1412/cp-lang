@@ -2,7 +2,7 @@
 
 # std.matrix
 
-Dense matrices, exact and floating-point Gaussian elimination, and GF(2) XOR bases.  `Mat<T>` stores an `rows x cols` matrix in flat row-major order (`data[r * cols + c]`). Exact elimination (`det`, `rank`, `solve`, `solve_space`, `inverse`) works over any field type with `T.zero`, `T.one`, exact `==`, and `/` (such as `Mod<P>` for prime `P`). Over an ordered `T` such as `F64` elimination pivots on the largest `abs` entry and treats an entry within the `eps:` argument of zero as zero.
+Dense matrices, exact and floating-point Gaussian elimination, and GF(2) XOR bases.   `Mat<T>` stores an `rows x cols` matrix in flat row-major order (`data[r * cols + c]`). Exact elimination (`det`, `rank`, `solve`, `solve_space`, `inverse`) works over any field type with `T.zero`, `T.one`, exact `==`, and `/` (such as `Mod<P>` for prime `P`). Over an ordered `T` such as `F64` elimination pivots on the largest `abs` entry and treats an entry within the `eps:` argument of zero as zero.
 
 In prelude (no `use` needed): `Mat`.
 
@@ -63,14 +63,14 @@ Fields: `basis: List<Int>`, `size: Int`.
 
 ## `struct MatPow<T>`
 
-\(O(n^3 \log \mathit{max\_exp})\) build, \(O(n^2 \log e)\) query.
+Precomputed binary powers of a square matrix for fast multi-query `A^e * v`.
 
 - `fn new(a: Mat<T>, max_exp: Int) -> MatPow<T>` — \(O(n^3 \log \mathit{max\_exp})\) time, \(O(n^2 \log \mathit{max\_exp})\) space; Precompute `a^(2^k)` for every `k` with `2^k <= max_exp`, multiplied under `a`'s semiring.; traps: when `a` is not square or `max_exp < 0`
 - `fn apply_pow(self, e: Int, v: List<T>) -> List<T>` — \(O(n^2 \log e)\) time, \(O(n)\) space; Compute `a^e * v` for `0 <= e <= max_exp`, as matrix-vector products with the stored powers for the set bits of `e`.; traps: when `e` is not in `0..=max_exp` or `v.len != n`
 
 ## `struct BitMat(pub rows: Int, pub cols: Int)`
 
-\(O(n \cdot m / 64)\) storage.
+Bit-packed dense matrix over GF(2) with word-parallel elimination.
 
 Fields: `bits: List<Int>`.
 

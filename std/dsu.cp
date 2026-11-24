@@ -1,4 +1,7 @@
 //! Disjoint sets over a domain, with optional values per set, parities, and rollback.
+//!
+//! start: `Dsu`, `ParityDsu`, `PotentialDsu`, `PersistentDsu`
+//! example: `var d = Dsu<0..4>(); d.unite(0, 1); d.unite(2, 3); d.components == 2`
 use std.algebra.{Group}
 use std.marks.{Id}
 use std.persistent.{PArena}

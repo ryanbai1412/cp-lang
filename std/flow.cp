@@ -2,6 +2,9 @@
 //! closure, bipartite and general matching (weighted too), assignment, bounded flows,
 //! Gomory-Hu and global min cut.
 //!
+//! start: `FlowGraph`, `CostFlow`, `max_matching`, `min_vertex_cover`, `gomory_hu`
+//! example: `let g = FlowGraph<0..3>(); g.arcs.collect() == []`
+//!
 //! Two networks, `FlowGraph` and `CostFlow`, share `Arc` and the accessors `flow`, `cap`,
 //! `source`, `target`. Everything whose input is a table or an edge list is a function
 //! over the caller's domains: a matching is `[L]?R`, a bounded flow is `[E]Int`.

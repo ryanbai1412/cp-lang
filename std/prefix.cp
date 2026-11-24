@@ -1,5 +1,8 @@
 //! Prefix sums, prefix/suffix monoid folds, and offline difference arrays.
 //!
+//! start: `Prefix`, `scan`, `Diff`, `prefix_fold`, `SweepAdd`
+//! example: `Prefix<Int>([3, 1, 4]).cut(3) == 8`
+//!
 //! Call `Prefix(a)` on a `[D]T`, `[R, C]T`, or `List<T>` to build static prefix sums in \(O(n)\) or
 //! \(O(r \cdot c)\), then answer any `.fold(...)`, `.cut(k)` or `.prefix(...)` query in \(O(1)\).
 //! Use `Diff<D, T>()` or `Diff<R, C, T>()` for \(O(1)\) offline range/rectangle adds and \(O(n)\) /
@@ -7,8 +10,6 @@
 use std.algebra.{Monoid}
 use std.range.{ends, RingRange, first_true}
 
-/// \(O(n)\) calls of `f`.
-///
 /// The n + 1 exclusive prefix folds, indexed by `D`'s cuts: `pre[c]` folds everything left of cut
 /// `c` (`from`, or `f`'s identity, at the first cut), and `pre[v]` for a position folds through
 /// `v`. Suffix folds are `self.rev.scan(f)`, on the same cuts.
@@ -635,8 +636,8 @@ pub struct Diff<R, C, T: Add + Sub>:
                 out[r, c] = v
         out
 
-/// \(O(\lvert D \rvert)\) space. Online sweep-line difference accumulator: schedule future range adds in \(O(1)\)
-/// and advance a cursor through `D` in `order` in \(O(1)\) per position.
+/// Online sweep-line difference accumulator: schedule future range adds in \(O(1)\) and advance a
+/// cursor through `D` in `order` in \(O(1)\) per position. \(O(\lvert D \rvert)\) space.
 pub struct SweepAdd<D, T: Add + Sub>:
     d: [D.cuts]T
     cur: T

@@ -1,5 +1,8 @@
 //! Formal power series operations over NTT-friendly `Mod<P>`.
 //!
+//! start: `inv`, `exp`, `log`, `sqrt`, `eval_all`
+//! example: `type Z = Mod<998244353>; let a: List<Z> = [1, -1]; inv(a, 4) == [Z(1), Z(1), Z(1), Z(1)]`
+//!
 //! Series are plain `List<Mod<P>>` (lowest degree first: `a[k]` is `[x^k] a(x)`),
 //! matching `std.ntt.convolve`. Every truncated operation takes an explicit output
 //! length `n >= 0` (computing modulo `x^n`, returning length `n`; `n == 0` returns `[]`).

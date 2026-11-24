@@ -1,5 +1,8 @@
 //! The DP toolkit: the structures and optimizations a DP calls by name (CHT, SOS; a 0/1 knapsack over sums is `Bitset.shift_or`).
 //!
+//! start: `LiChao`, `dnc_layer`, `knuth`, `aliens`, `subset_sums`
+//! example: `LiChao(min, over: 0..=10).at(5) == None`
+//!
 //! A minimum or maximum of lines (the convex hull trick) is a `LiChao`; a
 //! layer whose optimal split moves right is `dnc_layer` (over `monotone_minima`); an interval DP with
 //! monotone splits is `knuth`; "exactly `k` pieces" over a convex cost is
@@ -24,14 +27,13 @@ pub struct Line(pub k: Int, pub m: Int):
     /// example: `Line(2, 3).at(4) == 11`
     pub fn at(self, x: Int) -> Int = k * x + m
 
-/// \(O(\log n)\) per `at`, \(O(\log n)\) per whole-line `add`, \(O(\log^2 n)\) on a segment.
-/// The lower (`LiChao(min, over: 0..=1e9)`) or upper (`max`) envelope
-/// of lines over the integer coordinates `over`. A line is anything with
-/// `at(self, x: Int) -> K`, so a struct whose `at` returns `(cost, used)`
-/// breaks ties by its second field with the same tree. Law: two lines cross
-/// at most once on `xs`. `add` is \(O(\log n)\) for a whole line and \(O(\log^2 n)\)
-/// on a segment (`on: lo..=hi`), `at` and `line_at` \(O(\log n)\), for n =
-/// `xs.len`; memory is \(O(\mathit{lines})\) cells, allocated as lines arrive.
+/// The lower (`LiChao(min, over: 0..=1e9)`) or upper (`max`) envelope of lines over the integer
+/// coordinates `over`. A line is anything with `at(self, x: Int) -> K`, so a struct whose `at`
+/// returns `(cost, used)` breaks ties by its second field with the same tree. Law: two lines cross
+/// at most once on `xs`. `add` is \(O(\log n)\) for a whole line and \(O(\log^2 n)\) on a segment
+/// (`on: lo..=hi`), `at` and `line_at` \(O(\log n)\), for n = `xs.len`; memory is
+/// \(O(\mathit{lines})\) cells, allocated as lines arrive. \(O(\log n)\) per `at`, \(O(\log n)\)
+/// per whole-line `add`, \(O(\log^2 n)\) on a segment.
 pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
     lines: List<?L>
     // a cell's children; 0 means no cell, since the root is no cell's child

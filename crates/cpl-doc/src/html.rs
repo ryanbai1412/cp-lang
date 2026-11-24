@@ -219,6 +219,37 @@ fn item_html(
     out
 }
 
+/// The top of a module's page, as Markdown: its purpose, the entry points its `start:` names
+/// with their summaries, an example, then the rest of its prose (site/R22).
+fn outline(module: &Module) -> String {
+    let (purpose, rest) = module
+        .prose
+        .split_once("\n\n")
+        .unwrap_or((&module.prose, ""));
+    let mut out = format!("{purpose}\n\n");
+    if !module.start.is_empty() {
+        out.push_str("**Start here**\n\n");
+        for name in &module.start {
+            let summary = module
+                .all_items()
+                .find(|(owner, item)| item.anchor(*owner) == *name)
+                .map_or(String::new(), |(_, item)| {
+                    item.summary()
+                        .split_whitespace()
+                        .collect::<Vec<_>>()
+                        .join(" ")
+                });
+            out.push_str(&format!("- [`{name}`]: {summary}\n"));
+        }
+        out.push('\n');
+    }
+    if let Some(code) = module.examples.iter().find_map(|e| e.code.as_deref()) {
+        out.push_str(&format!("```cp\n{code}\n```\n\n"));
+    }
+    out.push_str(rest);
+    out
+}
+
 fn module_page(modules: &[Module], files: &[String], index: usize, options: &Options) -> String {
     let module = &modules[index];
     let mut main = format!(
@@ -231,7 +262,7 @@ fn module_page(modules: &[Module], files: &[String], index: usize, options: &Opt
         files,
         index,
     };
-    main.push_str(&site.doc(None, &module.doc));
+    main.push_str(&site.doc(None, &outline(module)));
     if module.items.is_empty() {
         main.push_str("<p class=\"empty\">This file declares nothing.</p>\n");
     }

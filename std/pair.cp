@@ -1,4 +1,7 @@
 //! Unordered pairs of distinct positions: the domain of data given once per pair.
+//!
+//! start: `symmetric`, `Pair`, `Pair.other`
+//! example: `domain V = 0..3; let d: [Pair<V>]Int = [5, 6, 7]; let m = d.symmetric(diag: 0); m[2, 1] == 7 and m[0, 2] == 6 and m[1, 1] == 0`
 
 use std.math.{isqrt}
 

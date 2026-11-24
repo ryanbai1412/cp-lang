@@ -1,4 +1,7 @@
 //! Fenwick tree (binary indexed tree) over a domain: point add, range sum.
+//!
+//! start: `Fenwick`, `RangeFenwick`, `DualFenwick`, `Fenwick2D`
+//! example: `Fenwick([1, 2, 3]).all == 6`
 use std.algebra.{Group}
 use std.seq.{deduped}
 use std.range.{ends}

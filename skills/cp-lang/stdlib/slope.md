@@ -2,13 +2,13 @@
 
 # std.slope
 
-Integer-indexed concave and convex functions as sorted slopes (slope trick).  `Concave` keeps `f` on `lo..=hi` as `f(lo)` plus the multiset of slopes `f(c + 1) - f(c)`, largest first, in a lazy treap; `Convex` is its mirror.
+Integer-indexed concave and convex functions as sorted slopes (slope trick).   `Concave` keeps `f` on `lo..=hi` as `f(lo)` plus the multiset of slopes `f(c + 1) - f(c)`, largest first, in a lazy treap; `Convex` is its mirror.
 
 Import: `use std.slope.{...}`.
 
 ## `struct Concave(start: Int, base: Int)`
 
-\(O(\log n)\) expected per slope update, for n slopes; reading a value walks the slopes.
+A concave function on the integers `lo..=hi`: its value at `lo` and its slopes in falling order.
 
 Fields: `slopes: LazyTreap<Int, Slide>`.
 
@@ -34,7 +34,7 @@ Fields: `slopes: LazyTreap<Int, Slide>`.
 
 ## `struct Convex(neg: Concave)`
 
-\(O(\log n)\) expected per slope update, for n slopes; reading a value walks the slopes.
+A convex function on the integers `lo..=hi`, the negation of a `Concave`: the same operations with `min` for `max`.
 
 - `fn point(d: Int) -> Convex` — \(O(1)\); The function defined on the single point `d`, with `f(d) = 0`.
 - `fn flat(r: Range<Int>) -> Convex` — \(O(\lvert r \rvert \log \lvert r \rvert)\) expected; The function that is 0 on every point of `r`; its domain is `r`.; traps: when `r` is empty

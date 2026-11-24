@@ -1,5 +1,8 @@
 //! Offline segment tree over time (divide-and-conquer on life intervals).
 //!
+//! start: `cdq`, `TimeTree`, `offline_over`
+//! example: `var pairs = 0; cdq([1, 2, 3], on_cross: (l, r) => pairs += l.len * r.len); pairs == 3`
+//!
 //! Turn any rollback-capable data structure (e.g. `Dsu` with `.mark()` / `.undo_to(snap)`)
 //! into a dynamic structure with insertions and deletions over `[0, q)` in \(O(q \log q)\)
 //! apply/undo steps.

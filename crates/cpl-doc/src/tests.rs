@@ -411,7 +411,7 @@ fn json_carries_every_field_and_escapes_strings() {
     )]);
     assert_eq!(
         text,
-        "{\"modules\":[{\"name\":\"m\",\"path\":\"m.cp\",\"doc\":\"\",\"examples\":[],\"links\":[],\"items\":[\
+        "{\"modules\":[{\"name\":\"m\",\"path\":\"m.cp\",\"doc\":\"\",\"prose\":\"\",\"start\":[],\"examples\":[],\"links\":[],\"items\":[\
          {\"kind\":\"fn\",\"indexed\":true,\"name\":\"hi\",\"signature\":\"fn hi()\",\"doc\":\"Says \\\"hi\\\"\\\\n.\",\
          \"summary\":\"Says \\\"hi\\\"\\\\n.\",\"cost\":\"O(1)\",\
          \"facts\":{\"cost\":null,\"empty\":null,\"order\":null,\"ties\":null,\"traps\":null},\
@@ -859,4 +859,60 @@ fn an_indented_line_continues_a_list_item_and_only_a_list_item() {
         "<ul>\n<li>one two</li>\n<li>three</li>\n</ul>\n"
     );
     assert_eq!(markdown::render("one\n  two\n"), "<p>one two</p>\n");
+}
+
+/// site/R22 at commit time: every std module page opens with an outline, from its `//!`
+/// block: a purpose paragraph, a `start:` line naming 3 to 5 of its public items or their
+/// members, and an `example:` that shows the module at work.
+#[test]
+fn every_std_module_opens_with_an_outline() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut modules = crate::cli::load(&[root.join("std")]).unwrap();
+    modules.push(crate::model::builtins());
+    let public = |item: &Item| item.kind == Kind::Builtin || item.signature.starts_with("pub");
+    let mut wrong = Vec::new();
+    for module in modules.iter().filter(|m| m.items.iter().any(public)) {
+        let at = &module.name;
+        if crate::model::summary(&module.prose).is_empty() {
+            wrong.push(format!("{at}: no purpose paragraph"));
+        }
+        if !(3..=5).contains(&module.start.len()) {
+            wrong.push(format!(
+                "{at}: `start:` names {} entry points, not 3 to 5",
+                module.start.len()
+            ));
+        }
+        for name in &module.start {
+            let found = module.all_items().find(|(owner, item)| {
+                item.anchor(*owner) == *name
+                    && item.kind != Kind::Impl
+                    && owner.map_or(public(item), |o| {
+                        module.items.iter().any(|i| i.name == o && public(i))
+                    })
+            });
+            match found {
+                None => wrong.push(format!(
+                    "{at}: `start:` names `{name}`, which is no public item of it"
+                )),
+                Some((_, item))
+                    if item.summary().is_empty() || item.summary().starts_with("\\(O(") =>
+                {
+                    wrong.push(format!(
+                        "{at}: `{name}`'s summary doesn't say what it is: `{}`",
+                        item.summary()
+                    ))
+                }
+                Some(_) => {}
+            }
+        }
+        if !module.examples.iter().any(|e| e.code.is_some()) {
+            wrong.push(format!("{at}: no `example:` in its `//!` block"));
+        }
+    }
+    assert!(
+        wrong.is_empty(),
+        "{}\nA module's `//!` block opens its page: say what it is for, then `start:` with 3 to \
+         5 of its items, then an `example:` (std/README.md, site/R22).",
+        wrong.join("\n")
+    );
 }

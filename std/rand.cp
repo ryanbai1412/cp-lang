@@ -1,5 +1,8 @@
 //! Random numbers from a seed: the same seed gives the same numbers in `cpl run`
 //! and in the built C++. `Rng(seed)` is a splitmix64 stream: \(O(1)\) per draw.
+//!
+//! start: `shuffle`, `Rng`, `Rng.next`
+//! example: `var a = [3, 1, 2]; shuffle(mut a); a.sorted() == [1, 2, 3]`
 
 /// A type `gen<T>(..)` draws: `gen<T>(args)` is `T.gen(args)`, so a user type with `impl Random`
 /// is drawn like a std one, and an impl may take named options (R06.4.3).
@@ -21,6 +24,8 @@ pub trait Random:
 pub fn shuffle<S: IndexedMut>(mut a: S):
     for i in (1..a.len).rev: a.swap_idx(i, rand(0, i))
 
+/// A seeded random source, for a run you can replay: `Rng.new(seed)` gives the same stream each
+/// time, and `int`, `float`, `chance`, `pick`, `shuffle`, `perm` and `sample` draw from it.
 pub struct Rng(s: U64):
     /// A deterministic stream of random bits seeded by `seed`.
     ///

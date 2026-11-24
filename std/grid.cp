@@ -2,6 +2,9 @@
 //! and this module adds what a cell can do: `p.up` (and `down`, `left`, `right`), `p.adj4`,
 //! `p.adj8`, `p.step(d)` and `p.ray(d)`. A
 //! grid is a graph by writing its moves: `bfs(p => p.adj4.filter(q => g[q] != '#'), from: [s])`.
+//!
+//! start: `adj4`, `Dir4`, `step`, `ray`, `transposed`
+//! example: `domain R = 0..3; domain C = 0..3; (R(1), C(1)).adj4.collect() == [(R(0), C(1)), (R(1), C(2)), (R(2), C(1)), (R(1), C(0))]`
 
 const DR = [-1, -1, 0, 1, 1, 1, 0, -1]
 const DC = [0, 1, 1, 1, 0, -1, -1, -1]

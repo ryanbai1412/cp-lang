@@ -1,4 +1,7 @@
 //! Sparse table: \(O(1)\) range folds of a fixed array (range minimum query, RMQ).
+//!
+//! start: `SparseTable`, `DisjointSparseTable`, `LinearRmq`, `SparseTable.fold`
+//! example: `SparseTable(min, [3, 1, 4]).fold(0..3) == 1`
 use std.math.{gcd, bit_width}
 use std.range.{ends}
 
@@ -299,8 +302,9 @@ pub struct SparseTable2D<R, C, T>(op: (T, T) -> T):
     pub fn get(self, r: R, c: C) -> T:
         table[r.ord * w + c.ord]
 
-/// \(O(\lvert D \rvert)\) build and memory; \(O(1)\) range min/max query via block-of-64 bitmask RMQ (Four Russians).
-/// Useful for \(O(1)\) LCA and memory-tight static RMQ where \(O(n \log n)\) space is too large.
+/// A static range min or max in \(O(1)\) per query after \(O(\lvert D \rvert)\) build and memory,
+/// by block-of-64 bitmask RMQ (Four Russians): for \(O(1)\) LCA, or a static RMQ where
+/// \(O(n \log n)\) space is too large.
 pub struct LinearRmq<D, T>(before: (T, T) -> Bool):
     n: Int
     /// The values it was built over: `a` itself, kept rather than copied.

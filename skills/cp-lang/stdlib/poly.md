@@ -2,7 +2,7 @@
 
 # std.poly
 
-Formal power series operations over NTT-friendly `Mod<P>`.  Series are plain `List<Mod<P>>` (lowest degree first: `a[k]` is `[x^k] a(x)`), matching `std.ntt.convolve`. Every truncated operation takes an explicit output length `n >= 0` (computing modulo `x^n`, returning length `n`; `n == 0` returns `[]`).
+Formal power series operations over NTT-friendly `Mod<P>`.   Series are plain `List<Mod<P>>` (lowest degree first: `a[k]` is `[x^k] a(x)`), matching `std.ntt.convolve`. Every truncated operation takes an explicit output length `n >= 0` (computing modulo `x^n`, returning length `n`; `n == 0` returns `[]`).
 
 In prelude (no `use` needed): `binomial_transform`, `eval`.
 

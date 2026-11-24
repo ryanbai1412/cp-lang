@@ -1,5 +1,8 @@
 //! Rooted trees: parents, subtree ranges, LCA, and path folds over one range structure.
 //!
+//! start: `Rooted`, `Lift`, `LinkCut`, `Centroids`
+//! example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.children(0).collect() == [1, 2] and t.children(1).collect() == [3, 4] and t.depth(4) == 2`
+//!
 //! Each `Rooted` tree value `t` owns a fresh domain, `t.Pre`: the positions of an
 //! Euler order in which every subtree and every heavy chain is one contiguous range.
 //! `t.pos(v)` is a `t.Pre`, not a `V` (and never mixes with another tree `t2.Pre`), so

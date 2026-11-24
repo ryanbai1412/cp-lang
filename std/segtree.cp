@@ -1,4 +1,7 @@
 //! Segment tree over a domain, for any associative operation: point or range update, range query.
+//!
+//! start: `SegTree`, `MergeSortTree`, `WaveletMatrix`, `SegTree2D`
+//! example: `SegTree(+, [1, 2, 3]).all == 6`
 use std.algebra.{Action, Acts, Monoid}
 use std.bag.{SortedBag}
 use std.math.{gcd, bit, popcount, bit_ceil, bit_width, ctz}
@@ -1023,7 +1026,8 @@ pub struct MergeSortTree<D, T>:
                 h /= 2
         best
 
-/// \(O(\lvert R \rvert \cdot \lvert C \rvert)\) space. Iterative 2D segment tree: point update and rectangle fold in \(O(\log \lvert R \rvert \cdot \log \lvert C \rvert)\).
+/// Iterative 2D segment tree: point update and rectangle fold in \(O(\log \lvert R \rvert \cdot
+/// \log \lvert C \rvert)\). \(O(\lvert R \rvert \cdot \lvert C \rvert)\) space.
 pub struct SegTree2D<R, C, T>(m: Monoid<T>):
     t: List<T>
 
@@ -1144,8 +1148,9 @@ pub struct SegTree2D<R, C, T>(m: Monoid<T>):
     @get pub fn all(self) -> T:
         if R.count == 0 or C.count == 0: m.id else: t[2 * C.count + 1]
 
-/// \(O(\lvert D \rvert \log V)\) build and memory. Wavelet matrix over non-negative integer values:
-/// \(O(\log V)\) range k-th smallest, frequency, value-range count, predecessor/successor, and quantile sum.
+/// Wavelet matrix over non-negative integer values: \(O(\log V)\) range k-th smallest, frequency,
+/// value-range count, predecessor/successor, and quantile sum. \(O(\lvert D \rvert \log V)\) build
+/// and memory.
 pub struct WaveletMatrix<D>:
     bits: Int
     n: Int

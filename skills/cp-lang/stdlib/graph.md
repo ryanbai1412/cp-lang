@@ -2,7 +2,7 @@
 
 # std.graph
 
-Graphs: one stored representation and the algorithms over "what comes after v".  Vertices and edges are domains, so per-vertex data is `[V]T`, per-edge data is `[E]T`, and mixing the two does not type-check. An algorithm takes any `Next<V>`: a stored `Graph`, a `[V]List` of arcs, or any fn from a vertex to a `Seq` of arcs. An arc is anything with `.to`; what else it carries (`.w`, `.e`) decides which algorithms accept it:  bfs(g, from: [s]) dijkstra(g, from: [(s, 0)])                          # arcs carry w dijkstra(g.weighted(a => 2 * a.w), from: [(s, 0)])   # weights from a fn bfs(p => p.adj4.filter(q => grid[q] != '#'), from: [start]) bridges(g)                                           # arcs carry e  Customizing a graph is a lambda over `g.out(u)`; nothing is rebuilt. Unreachable is `None`. Whole-graph algorithms need `V: Domain`.
+Graphs: one stored representation and the algorithms over "what comes after v".   Vertices and edges are domains, so per-vertex data is `[V]T`, per-edge data is `[E]T`, and mixing the two does not type-check. An algorithm takes any `Next<V>`: a stored `Graph`, a `[V]List` of arcs, or any fn from a vertex to a `Seq` of arcs. An arc is anything with `.to`; what else it carries (`.w`, `.e`) decides which algorithms accept it:  bfs(g, from: [s]) dijkstra(g, from: [(s, 0)])                          # arcs carry w dijkstra(g.weighted(a => 2 * a.w), from: [(s, 0)])   # weights from a fn bfs(p => p.adj4.filter(q => grid[q] != '#'), from: [start]) bridges(g)                                           # arcs carry e  Customizing a graph is a lambda over `g.out(u)`; nothing is rebuilt. Unreachable is `None`. Whole-graph algorithms need `V: Domain`.
 
 In prelude (no `use` needed): `Complement`, `Functional`, `Graph`, `Lit`, `Target`, `Tree`, `TwoSat`, `Visit`, `Walk`, `adjacency`, `bellman_ford`, `bfs`, `bfs01`, `blocks`, `bridges`, `complement`, `components`, `condense`, `dfs`, `dial`, `dijkstra`, `euler_walk`, `find_cycle`, `floyd_warshall`, `kruskal`, `peel`, `reachable`, `scc`, `topo`, `two_color`, `two_edge_components`.
 
@@ -45,7 +45,7 @@ A graph whose arcs carry edge ids: bridges, two-edge components, edge blocks.
 
 ## `struct Graph<V: Domain, A: Target<V> = V>`
 
-\(O(n + m)\) memory and build.
+A fixed graph in compressed sparse row form: n + 1 offsets and one arcs list, the arcs of each vertex contiguous and in input order.
 
 - `fn directed<S: Indexed<E, R>, E, R: (u: V, v: V, ..), B: Target<V>>(edges: S, keep: EdgeArc<V, E, R> -> B = a => a) -> Graph<V, B>` — \(O(n + m)\) time and memory, plus `m` calls of `keep`; A graph with one arc `u -> v` per edge of `edges`, in compressed sparse rows.
 - `fn undirected<S: Indexed<E, R>, E, R: (u: V, v: V, ..), B: Target<V>>(edges: S, keep: EdgeArc<V, E, R> -> B = a => a) -> Graph<V, B>` — \(O(n + m)\) time and memory, plus `2m` calls of `keep`; A graph with two arcs per edge of `edges`, `u -> v` and `v -> u`, both carrying the same `e`.

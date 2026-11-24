@@ -21,7 +21,7 @@ Fields: `apply_fn: (T, Int, F) -> T,`, `split_fn: (F, Int) -> (F, F),`, `compose
 
 ## `struct Rope<D, T>`
 
-\(O(n)\) space.
+Implicit-key rope over a domain `D` supporting \(O(\log n)\) expected cut, paste, reverse, range tag `apply`, path queries, and point `get`.
 
 - `fn new(a: ?[D]T = None, fill: ?T = None, merge: ?((T, T) -> T) = None) -> Rope<D, T>` — \(O(\lvert D \rvert)\); A rope over `D` holding the values of `a`, or `fill` at every position.; traps: when neither or both of `a` and `fill` are given
 - `fn apply(mut self, r: Range<D>, tag: T)` — \(O(\log n)\) expected; Apply `tag` to every value at positions `r`: each becomes `merge(tag, x)`, or `tag` when no `merge` was given.; traps: when a non-empty `r` reaches outside `D`

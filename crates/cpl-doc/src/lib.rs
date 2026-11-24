@@ -123,6 +123,11 @@ pub mod json {
                 w.object().key("name").str(&module.name);
                 w.key("path").str(&module.path);
                 w.key("doc").str(&module.doc);
+                w.key("prose").str(&module.prose);
+                w.key("start");
+                list(w, &module.start, |w, name| {
+                    w.str(name);
+                });
                 w.key("examples");
                 list(w, &module.examples, example);
                 w.key("links");

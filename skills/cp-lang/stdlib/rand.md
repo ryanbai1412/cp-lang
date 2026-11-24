@@ -12,6 +12,8 @@ A type `gen<T>(..)` draws: `gen<T>(args)` is `T.gen(args)`, so a user type with 
 
 ## `struct Rng(s: U64)`
 
+A seeded random source, for a run you can replay: `Rng.new(seed)` gives the same stream each time, and `int`, `float`, `chance`, `pick`, `shuffle`, `perm` and `sample` draw from it.
+
 - `fn new(seed: Int) -> Rng` — \(O(1)\); A deterministic stream of random bits seeded by `seed`.
 - `fn next(mut self) -> U64` — \(O(1)\); The next 64 random bits: one splitmix64 step.
 - `fn int(mut self, lo: Int, hi: Int) -> Int` — \(O(1)\); A uniformly random integer in `lo..=hi`, both ends inclusive, from one `next()`.; traps: when `lo > hi`

@@ -2,7 +2,7 @@
 
 # std.marks
 
-Opt-in generation-stamped mark table: `add`, `in`, `remove`, and `clear` are all \(O(1)\).  For sparse resets prefer `[D]Bool` with a touched list; import `std.marks.Marks<D>` when repeated full clears inside a loop would otherwise cost \(O(T \cdot N)\). Each `clear()` bumps a 32-bit generation counter instead of touching the underlying array, resetting the table only if the counter reaches its 32-bit ceiling.
+Opt-in generation-stamped mark table: `add`, `in`, `remove`, and `clear` are all \(O(1)\).   For sparse resets prefer `[D]Bool` with a touched list; import `std.marks.Marks<D>` when repeated full clears inside a loop would otherwise cost \(O(T \cdot N)\). Each `clear()` bumps a 32-bit generation counter instead of touching the underlying array, resetting the table only if the counter reaches its 32-bit ceiling.
 
 In prelude (no `use` needed): `Marks`.
 

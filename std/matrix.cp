@@ -1,5 +1,8 @@
 //! Dense matrices, exact and floating-point Gaussian elimination, and GF(2) XOR bases.
 //!
+//! start: `Mat`, `XorBasis`, `BitMat`, `MatPow`, `simplex`
+//! example: `domain R = 0..2; domain C = 0..3; Mat([R, C] (r, c) => 10 * Int(r) + Int(c)).get(1, 2) == 12`
+//!
 //! `Mat<T>` stores an `rows x cols` matrix in flat row-major order (`data[r * cols + c]`).
 //! Exact elimination (`det`, `rank`, `solve`, `solve_space`, `inverse`) works over any field
 //! type with `T.zero`, `T.one`, exact `==`, and `/` (such as `Mod<P>` for prime `P`).
@@ -1051,8 +1054,8 @@ fn merge_xor(a: XorBasis, b: XorBasis) -> XorBasis:
     out.merge(b)
     out
 
-/// \(O(n^3 \log \mathit{max\_exp})\) build, \(O(n^2 \log e)\) query. Precomputed binary powers of a square matrix
-/// for fast multi-query `A^e * v`.
+/// Precomputed binary powers of a square matrix for fast multi-query `A^e * v`. \(O(n^3 \log
+/// \mathit{max\_exp})\) build, \(O(n^2 \log e)\) query.
 pub struct MatPow<T>:
     pub n: Int
     _pw: List<Mat<T>>
@@ -1086,7 +1089,8 @@ pub struct MatPow<T>:
             if e.bit(k): out = _pw[k].mul_vec(out)
         out
 
-/// \(O(n \cdot m / 64)\) storage. Bit-packed dense matrix over GF(2) with word-parallel elimination.
+/// Bit-packed dense matrix over GF(2) with word-parallel elimination. \(O(n \cdot m / 64)\)
+/// storage.
 pub struct BitMat(pub rows: Int, pub cols: Int):
     bits: List<Int>
 

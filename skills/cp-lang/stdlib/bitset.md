@@ -96,7 +96,7 @@ Runtime-sized 64-bit word bitset over `0..cap` when the width is computed dynami
 
 ## `struct XorTrie`
 
-\(O(\mathit{bits})\) per op.
+Dynamic binary bitwise XOR trie multiset over non-negative `bits`-bit integers (default 60 bits).
 
 - `fn new(bits: Int = 60) -> XorTrie` — \(O(1)\); Create an empty `XorTrie` over `bits`-bit non-negative integers (default 60): values in `0..2^bits`.; traps: when `bits` is not in `1..=62`
 - `fn reserve(mut self, nodes: Int)` — \(O(\mathit{nodes})\) when the pool grows, \(O(1)\) otherwise; Reserve pool capacity for at least `nodes` trie nodes, so later adds do not reallocate; the contents are unchanged.; traps: when `nodes < 0`
@@ -126,7 +126,7 @@ Fields: `nodes: List<BitTrieNode>`.
 
 ## `struct BitTrie<W>`
 
-\(O(W)\) per op.
+A multiset of `W`-bit integers (values in `0..2^W`) as a binary trie with a count per node, read from the top bit down.
 
 - `fn new() -> BitTrie<W>` — \(O(1)\); An empty `BitTrie<W>`; it holds no node until the first `add`.
 - `fn of(mut ar: BitTrieArena<W>, x: Int) -> BitTrie<W>` — \(O(W)\); The trie holding `x` once: one path of `W + 1` new nodes in `ar`.; traps: when `x` is not in `0..2^W`

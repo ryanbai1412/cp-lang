@@ -1,4 +1,7 @@
 //! Interval partition map (ODT / Chtholly tree): `IntervalMap<D, T>`; merge overlapping intervals.
+//!
+//! start: `IntervalMap`, `IntervalSet`, `SparseIntervalMap`, `SparseIntervalSet`
+//! example: `var m = IntervalMap<0..10, Int>(0); m.assign(2..5, 1); m.runs == 3`
 
 use std.rand.{Rng}
 use std.range.{ends}
@@ -221,8 +224,8 @@ pub struct IntervalMap<D, T>:
             pos = seg.hi
         None
 
-/// \(O(\mathit{runs})\) space. Dynamic union of disjoint maximal half-open intervals over domain `D`
-/// (KACTL `IntervalContainer`). Maintains total `covered` length in \(O(1)\).
+/// Dynamic union of disjoint maximal half-open intervals over domain `D` (KACTL
+/// `IntervalContainer`). Maintains total `covered` length in \(O(1)\). \(O(\mathit{runs})\) space.
 pub struct IntervalSet<D>:
     segs: Map<Int, Int>
     total: Int
@@ -370,7 +373,8 @@ pub struct IntervalSet<D>:
     pub fn each(self) -> yields Range<D>:
         for (l, h) in segs.items: yield D.nth(l).l..D.nth(h - 1).r
 
-/// \(O(\mathit{runs})\) space. Dynamic union of disjoint half-open integer intervals `[lo, hi)` over unbounded `Int` coordinates.
+/// Dynamic union of disjoint half-open integer intervals `[lo, hi)` over unbounded `Int`
+/// coordinates. \(O(\mathit{runs})\) space.
 pub struct SparseIntervalSet:
     segs: Map<Int, Int>
     total: Int

@@ -1,5 +1,8 @@
 //! String algorithms. They only compare elements, so they work on a `Str`
 //! (ASCII bytes) and on any `List<T>` alike. Positions are 0-based.
+//!
+//! start: `search`, `rsearch`, `starts_with`, `SuffixArray`
+//! example: `"banana".search("nan") == Some(2)`
 
 use std.math.{pow_mod, inv_mod}
 use std.seq.{collect, nth, find}
@@ -1076,7 +1079,8 @@ fn sa_rank_lcp<S: Indexed>(s: S) -> (List<Int>, List<Int>, List<Int>):
             if k > 0: k -= 1
     (sa, rank, lcp)
 
-/// \(O(n)\) SA-IS + Kasai LCP + block RMQ. Suffix array, inverse rank, adjacent LCP, and \(O(1)\) LCP/comparison queries.
+/// Suffix array, inverse rank, adjacent LCP, and \(O(1)\) LCP/comparison queries. \(O(n)\) SA-IS +
+/// Kasai LCP + block RMQ.
 pub struct SuffixArray<T: Ord>:
     pub sa: List<Int>
     rank: List<Int>

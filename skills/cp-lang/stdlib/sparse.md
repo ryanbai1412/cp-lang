@@ -43,7 +43,7 @@ Fields: `table: List<T>`, `h: Int`, `w: Int`, `lr: Int`, `lc: Int`.
 
 ## `struct LinearRmq<D, T>(before: (T, T) -> Bool)`
 
-\(O(\lvert D \rvert)\) build and memory; \(O(1)\) range min/max query via block-of-64 bitmask RMQ (Four Russians).
+A static range min or max in \(O(1)\) per query after \(O(\lvert D \rvert)\) build and memory, by block-of-64 bitmask RMQ (Four Russians): for \(O(1)\) LCA, or a static RMQ where \(O(n \log n)\) space is too large.
 
 Fields: `n: Int`, `mask: List<U64>`, `nb: Int`, `top: List<Int>`, `keys: Range<D>`.
 

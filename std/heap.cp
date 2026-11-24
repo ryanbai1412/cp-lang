@@ -2,6 +2,9 @@
 //! largest. One type per shape: `Heap`, `ErasableHeap`, `IndexedHeap`, `MeldHeap` (or many in one
 //! `MeldHeaps` pool), `MinMaxHeap`.
 //!
+//! start: `Heap`, `IndexedHeap`, `MinMaxHeap`, `MeldHeap`, `Settle`
+//! example: `var h: Heap<Int> = Heap(); h.push(3); h.push(1); h.pop() == Some(1)`
+//!
 //! Ties: no heap here is stable. Among elements with equal keys under `by:`, which one `peek`
 //! shows and `pop` returns is unspecified (but `peek` always shows the one `pop` returns next).
 //! Without `by:`, equal elements are indistinguishable, so this never shows. For a fixed order
@@ -538,11 +541,11 @@ pub struct IndexedHeap<D, K>:
         self.remove(v)
         Some((v, k))
 
-/// Double-ended priority queue (min-max heap).
-/// `first` and `last` are \(O(1)\); `push`, `pop_first`, and `pop_last` are \(O(\log n)\).
 fn on_min_level(i: Int) -> Bool:
     bit_width(i + 1) % 2 == 1
 
+/// Double-ended priority queue (min-max heap).
+/// `first` and `last` are \(O(1)\); `push`, `pop_first`, and `pop_last` are \(O(\log n)\).
 pub struct MinMaxHeap<T>:
     _xs: List<T>
     lt: ?((T, T) -> Bool)

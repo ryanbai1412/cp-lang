@@ -2,7 +2,7 @@
 
 # std.heap
 
-Binary heaps (round 5): `Heap<T>(by:)` pops the smallest key first and `Heap(by: desc)` the largest. One type per shape: `Heap`, `ErasableHeap`, `IndexedHeap`, `MeldHeap` (or many in one `MeldHeaps` pool), `MinMaxHeap`.  Ties: no heap here is stable. Among elements with equal keys under `by:`, which one `peek` shows and `pop` returns is unspecified (but `peek` always shows the one `pop` returns next). Without `by:`, equal elements are indistinguishable, so this never shows. For a fixed order among equals, put the tie-breaker in the entry: `(d, v)`, or `(d, desc(v))`.
+Binary heaps (round 5): `Heap<T>(by:)` pops the smallest key first and `Heap(by: desc)` the largest. One type per shape: `Heap`, `ErasableHeap`, `IndexedHeap`, `MeldHeap` (or many in one `MeldHeaps` pool), `MinMaxHeap`.   Ties: no heap here is stable. Among elements with equal keys under `by:`, which one `peek` shows and `pop` returns is unspecified (but `peek` always shows the one `pop` returns next). Without `by:`, equal elements are indistinguishable, so this never shows. For a fixed order among equals, put the tie-breaker in the entry: `(d, v)`, or `(d, desc(v))`.
 
 In prelude (no `use` needed): `Heap`, `MaxHeap`, `MinHeap`, `Settle`.
 
@@ -70,6 +70,8 @@ Fields: `heap: List<D>`, `pos: [D]Int`, `keys: [D]?K`.
 - `fn pop(mut self) -> ?(D, K)` — \(O(\log n)\); Remove and return `(v, key)` with the smallest key, or `None` if empty.
 
 ## `struct MinMaxHeap<T>`
+
+Double-ended priority queue (min-max heap).
 
 Fields: `lt: ?((T, T) -> Bool)`.
 

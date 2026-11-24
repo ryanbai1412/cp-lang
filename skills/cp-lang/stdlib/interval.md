@@ -27,7 +27,7 @@ Fields: `segs: Map<Int, (hi: Int, val: T)>`.
 
 ## `struct IntervalSet<D>`
 
-\(O(\mathit{runs})\) space.
+Dynamic union of disjoint maximal half-open intervals over domain `D` (KACTL `IntervalContainer`).
 
 Fields: `segs: Map<Int, Int>`, `total: Int`.
 
@@ -45,7 +45,7 @@ Fields: `segs: Map<Int, Int>`, `total: Int`.
 
 ## `struct SparseIntervalSet`
 
-\(O(\mathit{runs})\) space.
+Dynamic union of disjoint half-open integer intervals `[lo, hi)` over unbounded `Int` coordinates.
 
 Fields: `segs: Map<Int, Int>`, `total: Int`.
 

@@ -2,7 +2,7 @@
 
 # std.tree
 
-Rooted trees: parents, subtree ranges, LCA, and path folds over one range structure.  Each `Rooted` tree value `t` owns a fresh domain, `t.Pre`: the positions of an Euler order in which every subtree and every heavy chain is one contiguous range. `t.pos(v)` is a `t.Pre`, not a `V` (and never mixes with another tree `t2.Pre`), so indexing a per-position structure with a vertex or another tree's position does not type-check.  `Rooted` is the one tree abstraction. A value per vertex lives in any structure indexed by `t.Pre` (a `SegTree`, with or without `act:`, a `Fenwick`), and `fold_path` / `apply_path` walk a path over it, so there is no second "tree with values" type and no second copy of the data.
+Rooted trees: parents, subtree ranges, LCA, and path folds over one range structure.   Each `Rooted` tree value `t` owns a fresh domain, `t.Pre`: the positions of an Euler order in which every subtree and every heavy chain is one contiguous range. `t.pos(v)` is a `t.Pre`, not a `V` (and never mixes with another tree `t2.Pre`), so indexing a per-position structure with a vertex or another tree's position does not type-check.  `Rooted` is the one tree abstraction. A value per vertex lives in any structure indexed by `t.Pre` (a `SegTree`, with or without `act:`, a `Fenwick`), and `fold_path` / `apply_path` walk a path over it, so there is no second "tree with values" type and no second copy of the data.
 
 In prelude (no `use` needed): `JumpTree`, `KruskalTree`, `LcaTable`, `Lift`, `PreferredPaths`, `Rooted`, `kruskal_tree`.
 

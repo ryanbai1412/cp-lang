@@ -2,7 +2,7 @@
 
 # std.beats
 
-Segment Tree Beats (Ji Driver) for range chmin, chmax, add, sum, min, and max.  Maintains exact `min`, second `min`, `max`, second `max`, and `sum` on every node. Range `chmin`, `chmax`, `add`, and `sum`/`min`/`max` queries run in \(O(\log n)\) amortized (\(O(\log^2 n)\) amortized when mixing `chmin`/`chmax` with `add`).
+Segment Tree Beats (Ji Driver) for range chmin, chmax, add, sum, min, and max.   Maintains exact `min`, second `min`, `max`, second `max`, and `sum` on every node. Range `chmin`, `chmax`, `add`, and `sum`/`min`/`max` queries run in \(O(\log n)\) amortized (\(O(\log^2 n)\) amortized when mixing `chmin`/`chmax` with `add`).
 
 In prelude (no `use` needed): `BeatsSegTree`.
 
@@ -30,7 +30,7 @@ Fields: `s: List<Int>`, `mx1: List<Int>`, `mx2: List<Int>`, `mx_c: List<Int>`, `
 
 ## `struct HistoricBeatsSegTree<D>`
 
-\(O(\lvert D \rvert)\) space.
+Segment Tree Beats with historic maximum and historic sum tracking under range `chmin`, `chmax`, and `add` (Ji Driver with historic tags).
 
 Fields: `n: Int`.
 

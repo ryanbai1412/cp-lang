@@ -1,4 +1,7 @@
 //! Double-ended queue: `Deque<T>`.
+//!
+//! start: `Deque`, `LinkedList`, `Deque.push_front`, `Deque.pop_front`
+//! example: `var q: Deque<Int> = Deque(); q.push(2); q.push_front(1); q.pop_front() == Some(1) and q.len == 1`
 
 use std.seq.{Bidir, Seq}
 

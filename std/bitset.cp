@@ -1,4 +1,7 @@
 //! A dense set of positions of a domain, 64 per word.
+//!
+//! start: `Bitset`, `DynBitset`, `XorTrie`, `BitTrie`
+//! example: `domain D = 0..10; var b = Bitset<D>(); b.add(3); b.add(7); b.len == 2 and b.contains(7)`
 use std.seq.{take_all}
 use std.math.{bit, popcount, bit_width, ctz}
 
@@ -1006,7 +1009,8 @@ pub struct DynBitset:
             for _ in 0..cnt[w]: reach.shift_or(w)
         reach
 
-/// \(O(\mathit{bits})\) per op. Dynamic binary bitwise XOR trie multiset over non-negative `bits`-bit integers (default 60 bits).
+/// Dynamic binary bitwise XOR trie multiset over non-negative `bits`-bit integers (default 60
+/// bits). \(O(\mathit{bits})\) per op.
 pub struct XorTrie:
     _bits: Int
     _mask: Int
@@ -1303,11 +1307,11 @@ pub struct BitTrieArena<W>:
 impl Show for BitTrieArena<W>:
     fn show(v): "{v.node_count} nodes"
 
-/// \(O(W)\) per op. A multiset of `W`-bit integers (values in `0..2^W`) as a binary trie with
-/// a count per node, read from the top bit down. Unlike `XorTrie`, two tries of one width merge:
-/// `absorb` adds another trie's counts into this one, so tries kept per group of indices (DSU,
-/// small-to-large over a tree, runs of equal keys) combine as the groups do.
-/// Layout: a root handle into a `BitTrieArena<W>`, which every call that reads or adds nodes takes.
+/// A multiset of `W`-bit integers (values in `0..2^W`) as a binary trie with a count per node, read
+/// from the top bit down. Unlike `XorTrie`, two tries of one width merge: `absorb` adds another
+/// trie's counts into this one, so tries kept per group of indices (DSU, small-to-large over a
+/// tree, runs of equal keys) combine as the groups do. Layout: a root handle into a
+/// `BitTrieArena<W>`, which every call that reads or adds nodes takes. \(O(W)\) per op.
 pub struct BitTrie<W>:
     var root: ?Int
 

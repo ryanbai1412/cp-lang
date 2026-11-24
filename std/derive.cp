@@ -3,6 +3,9 @@
 //! lt_fields(b, a)` orders the other way, and `impl Hash for P: fn hash(self) =
 //! hash_fields(self)` is a struct's whole `Hash`. Each costs \(O(\mathit{fields})\) plus what its fields'
 //! own operations cost.
+//!
+//! start: `eq_fields`, `lt_fields`, `show_fields`, `read_fields`, `hash_fields`
+//! example: `struct P(a: Int, b: Int); eq_fields(P(1, 2), P(1, 2)) == true`
 
 /// `a == b` field by field, in declaration order, stopping at the first field that differs.
 ///

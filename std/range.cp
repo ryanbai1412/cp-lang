@@ -1,5 +1,8 @@
 //! Ranges of positions: boundary cuts, halving, binary search and the cyclic `RingRange`.
 //! Nothing here imports another std module, so `seq`, `prefix` and every other module can use it.
+//!
+//! start: `first_true`, `last_true`, `bsearch`, `ends`, `RingRange`
+//! example: `(0..100).first_true(x => x * x >= 50) == Some(8)`
 
 /// Left boundary cut of a range (valid even when empty).
 ///
@@ -72,8 +75,8 @@ pub fn clip<D>(self: Range<D>, other: Range<D>) -> Range<D>:
     let hi = min(self.r, other.r)
     if hi < lo: lo..lo else: lo..hi
 
-/// \(O(\log n)\) calls to `ok`. The first element where `ok`, false then true along `r`, holds;
-/// `None` when it never does. A monotone `ok` has one first true position.
+/// The first element where `ok`, false then true along `r`, holds; `None` when it never does. A
+/// monotone `ok` has one first true position. \(O(\log n)\) calls to `ok`.
 ///
 /// An `ok` that is true at the start and false at the end (C++'s `lower_bound` habit) stops a
 /// checked build; it costs one more call of `ok` when the answer is an end of `r`.
@@ -88,8 +91,8 @@ pub fn first_true<D>(self: Range<D>, ok: D -> Bool) -> ?D:
     let lo = flip_at(self.len, m => ok(self.nth(m)), "`ok` is true at the start and false at the end, but this search wants false then true; for true then false use `last_true`")
     if lo < self.len: Some(self.nth(lo)) else: None
 
-/// \(O(\log n)\) calls to `ok`. The last element where `ok`, true then false along `r`, holds;
-/// `None` when it never does. A monotone `ok` has one last true position.
+/// The last element where `ok`, true then false along `r`, holds; `None` when it never does. A
+/// monotone `ok` has one last true position. \(O(\log n)\) calls to `ok`.
 ///
 /// An `ok` that is false at the start and true at the end stops a checked build; it costs one
 /// more call of `ok` when the answer is an end of `r`.

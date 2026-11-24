@@ -1,5 +1,8 @@
 //! Sliding-window folds and stateful windows (round 7, `lib/sequence-patterns.md`).
 //!
+//! start: `window_fold`, `Window`, `track`, `undoing`, `Sweep`
+//! example: `[3, 1, 4, 1, 5].window_fold(2, max).collect() == [3, 4, 4, 5]`
+//!
 //! `a.window_fold(k, op)` and `Window(op)` keep two stacks for every op today; the law-picked
 //! strategies of `lib/sequence-patterns.md` (a `Group` adds and subtracts, a `Selective` op keeps
 //! a monotone deque) wait on law-bound dispatch over op values. State that is not a fold implements `Track` (`push`/`pop`); two pointers, Mo
