@@ -19,5 +19,10 @@
  "difficulty": "easy",
  "dream": "draft",
  "spec": "draft",
- "notes": "tagged enum read (parser gap); [D]?Shape compared to Shape."
+ "notes": "tagged enum read (parser gap); [D]?Shape compared to Shape.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 10,
+  "sha": "5c6bae6b192aa58b1e6db7243ad705aefd82b64d"
+ }
 }

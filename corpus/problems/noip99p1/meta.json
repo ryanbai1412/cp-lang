@@ -20,5 +20,10 @@
  "difficulty": "medium",
  "dream": "draft",
  "spec": "draft",
- "notes": "read_all for count-less input; one lis with by:."
+ "notes": "read_all for count-less input; one lis with by:.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 10,
+  "sha": "65e372bd5b2863735cca123df38c57c20f3b70b1"
+ }
 }
