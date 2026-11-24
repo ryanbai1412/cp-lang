@@ -572,6 +572,12 @@ class SeedTest(Corpus):
         out = self.root / "out" / "p3"
         self.assertEqual([(out / f"0{i}.ans").read_text() for i in (1, 2)], ["5\n", "7\n"])
 
+    def test_make_marks_the_max_cases(self):
+        gen = "import sys\nprint(9 if sys.argv[1] == '--max' else sys.argv[1])\n"
+        d = self.package("p4", gen_py=gen, orig_cpp=ECHO_CPP, tests_toml='[[case]]\nseed = 7\nsize = 1\n\n[[case]]\nargs = ["--max"]\n')
+        corpus.make_cases(corpus.Package.at(d), str(self.root / "out"))
+        self.assertEqual(sorted(p.name for p in (self.root / "out" / "p4").glob("*.max")), ["02.max"])
+
 
 class AtMax(unittest.TestCase):
     """`at_max` on scripted runs: the checked C++ first, then three judge runs, then three accepted runs."""

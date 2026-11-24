@@ -19,4 +19,5 @@ cpl-interp.workspace = true
 cpl-ir.workspace = true
 cpl-json.workspace = true
 cpl-lint.workspace = true
+cpl-stress.workspace = true
 cpl-syntax.workspace = true

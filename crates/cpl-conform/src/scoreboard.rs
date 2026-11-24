@@ -27,6 +27,9 @@ pub struct SuiteReport {
     pub cases: BTreeMap<String, String>,
     pub details: BTreeMap<String, String>,
     pub causes: Vec<CauseEntry>,
+    /// The corpus suite's packages whose interpreter runs a `--max` case past
+    /// the case timeout (decision 556).
+    pub interp_max_over_20s: Option<Vec<String>>,
 }
 
 /// Extracts the first `error[CODE]: msg` / `warning[CODE]: msg` / `lint[CODE]: msg`
@@ -236,6 +239,7 @@ impl SuiteReport {
             cases,
             details,
             causes,
+            interp_max_over_20s: None,
         }
     }
 
@@ -275,6 +279,12 @@ impl SuiteReport {
             .map(|(k, v)| (k.clone(), Value::String(v.clone())))
             .collect();
         obj.insert("cases".into(), Value::Object(cases));
+        if let Some(slow) = &self.interp_max_over_20s {
+            obj.insert(
+                "interp_max_over_20s".into(),
+                Value::Array(slow.iter().cloned().map(Value::String).collect()),
+            );
+        }
         Value::Object(obj)
     }
 
@@ -349,6 +359,15 @@ impl SuiteReport {
             cases,
             details: BTreeMap::new(),
             causes,
+            interp_max_over_20s: obj
+                .get("interp_max_over_20s")
+                .and_then(Value::as_array)
+                .map(|a| {
+                    a.iter()
+                        .filter_map(Value::as_str)
+                        .map(str::to_string)
+                        .collect()
+                }),
         })
     }
 }

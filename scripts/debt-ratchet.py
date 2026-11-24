@@ -762,6 +762,19 @@ def conformance_failing(root: Path) -> list[str]:
     return [f"{c}: {v}" for c, v in sorted(board.get("cases", {}).items()) if v != "pass"]
 
 
+def interp_max_over_20s(root: Path) -> list[str]:
+    """Corpus packages whose interpreter runs a tests.toml `--max` case past 20 s (owner: Core).
+
+    `cpl-conform corpus --write` times each max case and records the slow packages in
+    research/scoreboard.json (decision 556); a board without the list counts, so the gate
+    can't pass blind."""
+    p = root / SCOREBOARD
+    board = json.loads(p.read_text()).get("suites", {}).get("corpus") if p.is_file() else None
+    if board is None or "interp_max_over_20s" not in board:
+        return [f"{SCOREBOARD}: no corpus max-case times; run `cpl-conform corpus --write`"]
+    return list(board["interp_max_over_20s"])
+
+
 def conformance_wrong_output(root: Path) -> list[str]:
     """Conformance cases research/scoreboard.json records as printing the wrong output.
 
@@ -2056,6 +2069,7 @@ COUNTERS = {
     "skip_lists": ("entries in skip, xfail, known-failure and gap lists", skip_lists, True),
     "corpus_test_files": ("files committed under corpus/problems/*/tests/", corpus_test_files, True),
     "corpus_no_max": ("non-interactive problem packages without a gen.py --max", corpus_no_max, True),
+    "interp_max_over_20s": ("corpus packages the interpreter runs a --max case past 20 s on (Core)", interp_max_over_20s, True),
     "edition_refs": ("dead 0.2 edition references", edition_refs, True),
     "ir_builtin_names": ("names string-matched in lower/call.rs and lower/call/", ir_builtin_names, True),
     "ir_builtin_derived": ("string-matched names off the decision-266 floor table", ir_builtin_derived, True),

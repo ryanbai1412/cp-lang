@@ -128,7 +128,7 @@ fn hold_cli(cpl: Option<PathBuf>) {
 }
 
 /// The `cpl` a case execs: `CPL_CONFORM_CLI`, else the one beside cpl-conform.
-fn cli_binary() -> Result<PathBuf, String> {
+pub(crate) fn cli_binary() -> Result<PathBuf, String> {
     if let Some(held) = held_cli() {
         return Ok(held);
     }

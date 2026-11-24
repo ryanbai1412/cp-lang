@@ -54,6 +54,7 @@
     "cpl-conform -> cpl-ir",
     "cpl-conform -> cpl-json",
     "cpl-conform -> cpl-lint",
+    "cpl-conform -> cpl-stress",
     "cpl-conform -> cpl-syntax",
     "cpl-contest -> cpl-check",
     "cpl-contest -> cpl-codegen",
@@ -134,6 +135,7 @@
   "external_crates": 5,
   "corpus_test_files": 0,
   "corpus_no_max": 2,
+  "interp_max_over_20s": 3,
   "uncited_rules": 0,
   "register_rows_by_domain": {
     "compiler": 0,

@@ -21,7 +21,7 @@ Generated fields: problem, source, submissions, artifacts. Hand-written fields
 (tags, difficulty, dream, spec, notes) and recorded ones (dream_stress)
 survive a rebuild.
 """
-import argparse, functools, hashlib, importlib.util, json, os, re, shutil, signal, subprocess, sys, tempfile, threading, time, tomllib
+import argparse, functools, hashlib, importlib.util, inspect, json, os, re, shutil, signal, subprocess, sys, tempfile, threading, time, tomllib
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -1054,8 +1054,9 @@ INLINE = 200
 
 
 def stamp(pkg, ref):
-    """What a package's generated cases depend on; `make` skips one whose stamp is unchanged."""
-    h = hashlib.sha256()
+    """What a package's generated cases depend on, `made` itself included; `make` skips one
+    whose stamp is unchanged."""
+    h = hashlib.sha256(inspect.getsource(made).encode())
     for f in (pkg.tests, pkg.gen, ref):
         if f:
             h.update(Path(f).read_bytes())
@@ -1071,7 +1072,8 @@ class ReferenceFails(RuntimeError):
 
 def make_cases(pkg, out=OUT):
     """Write <out>/<id>/NN.in from tests.toml and NN.ans from the accepted C++
-    (an interactive package's NN.in is the interactor's hidden data, with no answer)."""
+    (an interactive package's NN.in is the interactor's hidden data, with no answer),
+    and an empty NN.max beside each `args = ["--max"]` case."""
     ref = None if pkg.interactor else pkg.reference()
     if not pkg.interactor and ref is None:
         raise RuntimeError("no accepted C++ to make answers")
@@ -1096,6 +1098,8 @@ def made(pkg, ref, tests, out):
         for i, case in enumerate(pkg.cases(), 1):
             text = pkg.case_input(case)
             Path(aside, f"{i:02}.in").write_text(text)
+            if "--max" in case.get("args", []):
+                Path(aside, f"{i:02}.max").touch()
             if exe:
                 r = subprocess.run([exe], input=text, capture_output=True, text=True, timeout=TIMEOUT, preexec_fn=judge_stack)
                 if r.returncode:

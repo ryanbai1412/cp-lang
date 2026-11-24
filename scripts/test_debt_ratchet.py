@@ -725,6 +725,16 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.conformance_failing(root), [])
             self.assertEqual(dr.conformance_wrong_output(root), [])
 
+    def test_interp_max_over_20s_reads_the_corpus_board(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.assertEqual(len(dr.interp_max_over_20s(root)), 1)
+            self._write(root, dr.SCOREBOARD, json.dumps({"suites": {"corpus": {"cases": {}}}}))
+            self.assertEqual(len(dr.interp_max_over_20s(root)), 1)
+            board = {"suites": {"corpus": {"cases": {}, "interp_max_over_20s": ["a", "b"]}}}
+            self._write(root, dr.SCOREBOARD, json.dumps(board))
+            self.assertEqual(dr.interp_max_over_20s(root), ["a", "b"])
+
     def test_why_written_twice_counts_copied_reasoning_and_spec_rationale(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

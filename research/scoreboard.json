@@ -3818,6 +3818,11 @@
         "error": 1,
         "pass": 99
       },
+      "interp_max_over_20s": [
+        "cco19p5",
+        "cco24p1",
+        "noi10p2"
+      ],
       "passed": 99,
       "total": 100
     },

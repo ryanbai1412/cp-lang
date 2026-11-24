@@ -65,6 +65,7 @@ dependencies = [
  "cpl-ir",
  "cpl-json",
  "cpl-lint",
+ "cpl-stress",
  "cpl-syntax",
 ]
 
