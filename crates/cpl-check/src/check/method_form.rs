@@ -19,7 +19,7 @@ enum Pick {
     NoFit,
 }
 
-fn takes_self(def: &Def) -> bool {
+pub(super) fn takes_self(def: &Def) -> bool {
     matches!(def, Def::Fn { ty: Ty::Fn { params, .. }, .. }
         if params.first().is_some_and(|p| p.name == "self" && !p.named_only))
 }

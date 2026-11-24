@@ -130,14 +130,12 @@ impl<'a> Checker<'a> {
         // The core fn wins over a fold of its name, a module's or the
         // file's own `fn max(self: ..)`, never over a file's `fn max(a, b)`
         // or `let max` (R11.2.3).
-        let fold = |def: &Def| {
-            matches!(def, Def::Fn { ty: Ty::Fn { params, .. }, .. }
-                if params.first().is_some_and(|p| p.name == "self"))
-        };
         let position = Self::position_walk(callee, args);
         let core = (Self::binary_min_max(callee, args) || generator || position)
             && (self.env.origin(name).is_some()
-                || self.free_global(name).is_some_and(|d| fold(&d)));
+                || self
+                    .free_global(name)
+                    .is_some_and(|d| super::method_form::takes_self(&d)));
         let shadowed = name != "zip" && !core;
         if self.local(name).is_some() || (self.free_global(name).is_some() && shadowed) {
             return None;
@@ -299,6 +297,9 @@ impl<'a> Checker<'a> {
                     Some(first.clone())
                 } else if tys.iter().all(Ty::is_int) {
                     Some(Ty::Int)
+                } else if tys.contains(&Ty::Unknown) {
+                    // Two plain values are the core fn while a type is still open, never a fold.
+                    Some(Ty::Unknown)
                 } else {
                     None
                 }
