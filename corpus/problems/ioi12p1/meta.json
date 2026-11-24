@@ -4,11 +4,15 @@
  "submissions": [
   {"id": "4730691", "language": "TEXT", "result": "AC", "time": 0.29580549, "memory_kb": 1904.0, "file": null}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/ioi12p1/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "Output-only: the accepted submissions are odometer programs, not C++. Packaged as a judged program: the input is a subtask (1-5) and the output its odometer program, which checker.py (the statement's simulator) runs on that subtask's edge and random grids within its program size and execution length (for subtasks 4 and 5, the limits where the score reaches 0). orig.cpp was written for the corpus and prints a program that passes for each subtask."
 }
