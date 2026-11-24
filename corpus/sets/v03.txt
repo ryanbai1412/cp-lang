@@ -44,7 +44,10 @@ ccc18s3
 ccc18s4
 ccc18s5
 ccc19s2
+ccc19s5
+ccc20s1
 ccc20s2
+ccc20s3
 ccc20s4
 ccc21s2
 ccc21s3

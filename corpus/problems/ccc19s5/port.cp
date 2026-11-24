@@ -5,9 +5,10 @@
 //   at (i, j), (i + d, j) and (i + d, j + d), d = s' - s, cover the side-s' one for any
 //   s' <= (3s + 1) / 2, so s grows by half each round, updated in place: O(n^2 log k).
 //   Then sum best over the apexes of the side-k triangles.
+// original: corpus/submissions/4327508.cpp
 let n: 1..=3000 = read()
 let k: 1..=n = read()
-
+// best[i, j] (j <= i): the largest entry of the current-side triangle with apex (i, j)
 var best: [0..n, 0..n]Int = 0
 for i in 0..n:
     for j in 0..=i: best[i, j] = read()
@@ -15,8 +16,8 @@ for i in 0..n:
 var side = 1
 while side < k:
     let grown = min(k, (side * 3 + 1) / 2)
-    let step = grown - side
+    let d = grown - side
     for i in 0..=n - grown:
-        for j in 0..=i: best[i, j] = max(best[i, j], best[i + step, j], best[i + step, j + step])
+        for j in 0..=i: best[i, j] max= max(best[i + d, j], best[i + d, j + d])
     side = grown
 print(sum(best[i, j] for i in 0..=n - k for j in 0..=i))

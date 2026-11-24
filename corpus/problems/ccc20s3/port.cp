@@ -4,35 +4,27 @@
 // Solution: slide a window of length |N| over H keeping letter-count differences and how many are
 //   nonzero; when all match, the window is a permutation, and its rolling hash goes into a set.
 //   The answer is the set's size: O(|H|) expected, up to hash collisions.
+// original: corpus/submissions/4323643.cpp
 use std.strings.{HashVal}
 
 domain Letter = 'a'..='z'
 let needle: Str = read()
 let hay: Str = read()
+let k = needle.len
 
-if needle.len > hay.len:
-    print(0)
-    return
+// surplus[c]: the window's count of c minus the needle's; off: how many letters disagree.
+var surplus: [Letter]Int = 0
+var off = 0
+fn shift(c: Char, by: Int):
+    off -= Int(surplus[Letter(c)] != 0)
+    surplus[Letter(c)] += by
+    off += Int(surplus[Letter(c)] != 0)
+for c in needle: shift(c, -1)
 
-var missing: [Letter]Int = 0
-var nonzero = 0
-for c in needle:
-    let k = Letter(c)
-    if missing[k] == 0: nonzero += 1
-    missing[k] += 1
-
-let rh = RollingHash.new(hay)
+let h = RollingHash(hay)
 var found = Set<HashVal>()
 for i in 0..hay.len:
-    let add = Letter(hay[i])
-    if missing[add] == 0: nonzero += 1
-    missing[add] -= 1
-    if missing[add] == 0: nonzero -= 1
-    if i >= needle.len:
-        let drop = Letter(hay[i - needle.len])
-        if missing[drop] == 0: nonzero += 1
-        missing[drop] += 1
-        if missing[drop] == 0: nonzero -= 1
-    if i + 1 >= needle.len and nonzero == 0:
-        found.insert(rh.slice(i + 1 - needle.len, i + 1))
+    shift(hay[i], 1)
+    if i >= k: shift(hay[i - k], -1)
+    if i + 1 >= k and off == 0: found.insert(h.get(i + 1 - k..i + 1))
 print(found.len)
