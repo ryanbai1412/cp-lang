@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3173 (1093 passing). Rules: 605.
+Cases: 3174 (1093 passing). Rules: 605.
 
 ## Summary per chapter
 
@@ -18,7 +18,7 @@ Cases: 3173 (1093 passing). Rules: 605.
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 50 rules, 231 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R06 (06-control-functions.md): 25 rules, 116 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R06 (06-control-functions.md): 25 rules, 117 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 91 rules, 220 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 93 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 65 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -441,7 +441,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R06.3.5 [2+ 2-]: Generators are push-only; there is no cursor. Lockstep over two generators is `List(g)` fi...
 - R06.4.1 [2+ 2-]: `@memo(array)` / `@memo(map)`: cache a function. The storage is spelled, never picked (rou...
 - R06.4.2 [1+ 1-]: `@get`: an \(O(1)\) read-only method called without parentheses.
-- R06.4.3 [15+ 5-]: `@test`, `@alt(f, caps)`, `@gen`, `@check`, `@interactor`: tool roles (`tools/stress.md`);...
+- R06.4.3 [15+ 6-]: `@test`, `@alt(f, caps)`, `@gen`, `@check`, `@interactor`: tool roles (`tools/stress.md`);...
 - R06.4.4 [1+ 0-]: `@cache` on a struct field: compiler-safe interior mutability with an author promise of lo...
 - R06.4.8 [1+ 1-]: `@droppable`: the result may be dropped without the unused-result lint. Dropping a non-uni...
 - R06.4.9 [1+ 6-]: `@lint(name, from: "<code>", to: "<code>")` on a `pub fn`: a lint the library declares, so...
@@ -811,7 +811,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0409 Fn can end without a value: 2 case(s)
 - E0501 Unsupported construct in backend: 10 case(s)
 - E0502 Non-ASCII character in source or string: 1 case(s)
-- E0503 Removed syntax from an older version: 11 case(s)
+- E0503 Removed syntax from an older version: 12 case(s)
 - E0504 Planned syntax, not implemented yet: 1 case(s)
 - E0505 Library lint that cannot be used: 6 case(s)
 - E0601 Aliased mutable lend: 14 case(s)
