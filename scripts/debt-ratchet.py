@@ -1194,29 +1194,53 @@ def corpus_no_tests(root: Path) -> list[str]:
         if problems.is_dir() else []
 
 
+class MeasureError(RuntimeError):
+    """A counter that can't measure, say because the tool it runs isn't built: never a count."""
+
+
+def _built_cpl(root: Path) -> Path:
+    """$CPL, else the newer of target/debug/cpl and target/release/cpl if it is newer than every
+    tracked file under crates/ (a stale cpl measures the code it was built from), else a fresh
+    `cargo build -p cpl-cli`; a failed build raises, so the count is never a guess."""
+    env = os.environ.get("CPL")
+    if env:
+        if not Path(env).is_file():
+            raise MeasureError(f"$CPL={env} is not a file")
+        return Path(env)
+    built = [p for p in (root / "target/debug/cpl", root / "target/release/cpl") if p.is_file()]
+    why = "not built"
+    if built:
+        cpl = max(built, key=lambda p: p.stat().st_mtime)
+        sources = subprocess.run(["git", "ls-files", "-z", "crates", "Cargo.lock"], cwd=root, capture_output=True,
+                                 text=True, env=_git_env()).stdout.split("\0")
+        newer = [f for f in sources if f and (root / f).is_file() and (root / f).stat().st_mtime > cpl.stat().st_mtime]
+        if not newer:
+            return cpl
+        why = f"older than {newer[0]}"
+    r = subprocess.run(["cargo", "build", "-q", "-p", "cpl-cli"], cwd=root, capture_output=True, text=True)
+    if r.returncode != 0 or not (root / "target/debug/cpl").is_file():
+        raise MeasureError(f"target/debug/cpl is {why} and `cargo build -p cpl-cli` failed: {r.stderr.strip()[-300:]}")
+    return root / "target/debug/cpl"
+
+
 def corpus_fmt_dirty(root: Path) -> list[str]:
     """Corpus port.cp, dream.cp and spec.cp files `cpl fmt --check` would change (owner: Content, idioms).
 
     Rule: idiomatic-code/R9 (handbook/guidelines/idiomatic-code-checklist.md#r9): published code
     is in the canonical style; `scripts/corpus.py verify` (`lint`) reports each as `fmt-dirty`.
-    Runs $CPL, else the newer of target/debug/cpl and target/release/cpl; with none built it
-    counts a line naming the missing binary, so the gate can't pass blind.
+    Runs $CPL, else the newer of target/debug/cpl and target/release/cpl (`_built_cpl`).
     """
     problems = root / "corpus" / "problems"
     files = [f"corpus/problems/{d.name}/{n}" for d in (sorted(problems.iterdir()) if problems.is_dir() else ())
              for n in ("port.cp", "dream.cp", "spec.cp") if (d / n).is_file()]
     if not files:
         return []
-    env = os.environ.get("CPL")
-    built = [p for p in (root / "target/debug/cpl", root / "target/release/cpl") if p.is_file()]
-    cpl = Path(env) if env and Path(env).is_file() else max(built, key=lambda p: p.stat().st_mtime, default=None)
-    if cpl is None:
-        return ["target/debug/cpl: not built; run `cargo build -p cpl-cli`"]
+    cpl = _built_cpl(root)
     r = subprocess.run([str(cpl.resolve()), "fmt", "--check", "--json", *files], cwd=root, capture_output=True, text=True)
     try:
         out = json.loads(r.stdout)["files"]
     except (ValueError, KeyError):
-        return [f"{cpl}: `cpl fmt --check --json` printed no report"]
+        raise MeasureError(f"{cpl}: `cpl fmt --check --json` printed no report: {r.stderr.strip()[-300:]}")
     return sorted(f["path"] for f in out if f["changed"] or f.get("diagnostics") or f.get("error"))
 
 
@@ -3110,9 +3134,16 @@ def _measure_at(root: Path, rev: str, max_rs_lines: int) -> dict:
                              capture_output=True, text=True, env=_git_env())
         if add.returncode != 0:
             raise UpstreamUnknown(add.stderr.strip() or f"git worktree add exited {add.returncode}")
+        saved = os.environ.get("CPL")
         try:
+            # The worktree has no target/: it is measured with this checkout's cpl.
+            os.environ["CPL"] = str(_built_cpl(root).resolve())
             return measure(wt, max_rs_lines)
         finally:
+            if saved is None:
+                os.environ.pop("CPL", None)
+            else:
+                os.environ["CPL"] = saved
             subprocess.run(["git", "-C", str(root), "worktree", "remove", "--force", str(wt)],
                            capture_output=True, env=_git_env())
 

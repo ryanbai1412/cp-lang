@@ -115,7 +115,8 @@ class DebtRatchetTest(unittest.TestCase):
                 self.assertEqual(dr.corpus_fmt_dirty(root),
                                  [f"{PKGS}/a/dream.cp", f"{PKGS}/b/spec.cp"])
             with mock.patch.dict(os.environ, {"CPL": str(root / "missing")}):
-                self.assertEqual(dr.corpus_fmt_dirty(root), ["target/debug/cpl: not built; run `cargo build -p cpl-cli`"])
+                with self.assertRaisesRegex(dr.MeasureError, "is not a file"):
+                    dr.corpus_fmt_dirty(root)
 
     def test_a_package_without_a_statement_sample_fails_the_ratchet(self) -> None:
         self.assertIn("corpus_no_statement", dr.HARD_ZERO)
@@ -393,6 +394,37 @@ class DebtRatchetTest(unittest.TestCase):
                         "  ok:\n    steps:\n      - run: just jetbrains-gradle test\n")
             subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
             self.assertEqual(dr.ci_jobs_without_recipe(root), [".github/workflows/ci.yml:4 (smoke)"])
+
+    def test_upstream_is_measured_with_this_checkouts_cpl(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            env = dr._git_env()
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True, env=env)
+            self._write(root, "target/debug/cpl", "#!/bin/sh\n")
+            subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q",
+                            "--allow-empty", "-m", "x"], cwd=root, check=True, env=env)
+            seen = []
+            with mock.patch.object(dr, "measure", lambda wt, _: seen.append(os.environ.get("CPL")) or {}):
+                dr._measure_at(root, "HEAD", 0)
+            self.assertEqual(seen, [str((root / "target/debug/cpl").resolve())])
+
+    def test_a_counter_without_its_tool_raises(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("CPL", None)
+            root = Path(tmp)
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True, env=dr._git_env())
+            self._write(root, "corpus/problems/p/port.cp", "print(1)\n")
+            self._write(root, "crates/x/src/lib.rs", "\n")
+            subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
+            with self.assertRaisesRegex(dr.MeasureError, "not built and `cargo build -p cpl-cli` failed"):
+                dr.corpus_fmt_dirty(root)
+            self._write(root, "target/debug/cpl", "#!/bin/sh\n")
+            os.utime(root / "target/debug/cpl", (1, 1))
+            with self.assertRaisesRegex(dr.MeasureError, "older than crates/x/src/lib.rs and `cargo build"):
+                dr.corpus_fmt_dirty(root)
+            os.environ["CPL"] = str(root / "missing")
+            with self.assertRaisesRegex(dr.MeasureError, "is not a file"):
+                dr.corpus_fmt_dirty(root)
 
     def test_web_skip_only_reads_only_js_and_ts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1028,6 +1060,8 @@ class DebtRatchetTest(unittest.TestCase):
             root = Path(tmp)
             env = dr._git_env()
             subprocess.run(["git", "init", "-q", str(root)], check=True, env=env)
+            (cpl := root.parent / "cpl").write_text("")
+            self.enterContext(mock.patch.dict(os.environ, {"CPL": str(cpl)}))
             self._write(root, "crates/demo/src/a.rs", "fn a() {}\n")
             for args in (["add", "-A"], ["-c", "user.name=t", "-c", "user.email=t@t",
                                          "commit", "-qm", "x"]):
