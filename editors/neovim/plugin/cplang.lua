@@ -1,137 +1,60 @@
--- CP Lang for Neovim 0.10+: the filetype, tree-sitter highlighting when the parser is
--- built, and `cpl lsp` on every .cp buffer with diagnostics, completion, `gd` to the
--- definition and formatting on save. `cpl setup neovim` installs this folder.
--- It runs vim.g.cpl_path, which `cpl setup` sets, else `cpl` on the PATH; vim.g.cpl_format_on_save = false
--- and vim.g.cpl_autocomplete = false turn those off.
+-- CP Lang for Neovim 0.12 or later: the filetype, tree-sitter highlighting when the parser is
+-- built, and `cpl lsp` on every .cp buffer, which does the rest: diagnostics, completion,
+-- the lenses, `:Cpl` runs and what they show, and formatting on save (willSaveWaitUntil).
+-- `cpl setup neovim` installs this folder and sets vim.g.cpl_path, else `cpl` on the PATH runs;
+-- vim.g.cpl_format_on_save = false and vim.g.cpl_autocomplete = false turn those off.
 vim.filetype.add({ extension = { cp = 'cp' } })
-local function cpl() return vim.g.cpl_path or 'cpl' end
 
--- What this buffer's `cpl lsp` answers to `method`, or nil when it isn't attached.
-local function ask(method, params)
-    for _, reply in pairs(vim.lsp.buf_request_sync(0, method, params, 2000) or {}) do
-        if reply.result ~= nil then return reply.result end
-    end
-end
+local function client() return vim.lsp.get_clients({ bufnr = 0, name = 'cpl' })[1] end
 
--- `cpl <args>` as the server's `cpl/command` spells it, in a terminal split; when it says
--- `view` (`cpl stress`, `cpl locate`) the JSON report's `view` is drawn as is: its panel in
--- the split, its diagnostic (the first wrong call) on that line of the file until the next
--- run, and the panel's b:cpl_exit its exit code.
-local wrong_call = vim.api.nvim_create_namespace('cpl_divergence')
-local function run_in_terminal(arguments, file)
-    local source = vim.api.nvim_get_current_buf()
-    local run = ask('cpl/command', { arguments = arguments, file = file }) or { argv = arguments }
-    vim.diagnostic.reset(wrong_call, source)
-    vim.cmd('botright new')
-    local cmd = vim.list_extend({ cpl() }, run.argv)
-    if not run.view then return vim.fn.termopen(cmd) end
-    local panel = vim.api.nvim_get_current_buf()
-    vim.bo[panel].buftype = 'nofile'
-    vim.api.nvim_buf_set_lines(panel, 0, -1, false, { table.concat(cmd, ' ') .. ' ...' })
-    vim.system(cmd, { text = true }, vim.schedule_wrap(function(r)
-        local ok, report = pcall(vim.json.decode, r.stdout or '')
-        local view = ok and type(report) == 'table' and report.view or { panel = (r.stdout or '') .. (r.stderr or '') }
-        if vim.api.nvim_buf_is_valid(panel) then
-            vim.b[panel].cpl_exit = r.code
-            vim.api.nvim_buf_set_lines(panel, 0, -1, false, vim.split(view.panel .. (r.stderr or ''), '\n', { trimempty = true }))
-        end
-        local d = view.diagnostic
-        if d and vim.api.nvim_buf_is_valid(source) then
-            vim.diagnostic.set(wrong_call, source, { {
-                lnum = d.line, col = d.col or 0, source = d.source or 'cpl',
-                severity = vim.diagnostic.severity.WARN, message = d.message,
-            } })
-        end
-    end))
-end
-
--- The server's Run, Trace and Stress lenses name `cpl` arguments; run them in a terminal split.
-vim.lsp.commands['cpl.exec'] = function(command)
-    run_in_terminal(command.arguments or {})
-end
-
--- `:Cpl test`, `:Cpl stress`, `:Cpl submit`...: `cpl <command> <this file> [args]`; bare `:Cpl`
--- runs `test`. Tab completes the command names the server's `cpl/commands` gives.
-vim.api.nvim_create_user_command('Cpl', function(opts)
-    run_in_terminal(opts.fargs, vim.api.nvim_buf_get_name(0))
-end, {
-    nargs = '*',
-    desc = 'run cpl on this file',
-    complete = function(_, line) return ask('cpl/commands', { line = line }) or {} end,
+-- The server shows each run's panel as a message, its status, and its first wrong call
+-- as a diagnostic on that line.
+vim.lsp.config('cpl', {
+    cmd = { vim.F.if_nil(vim.g.cpl_path, 'cpl'), 'lsp' },
+    filetypes = { 'cp' },
+    root_markers = { '.git' },
+    init_options = { codeLens = true, panel = 'message', formatOnSave = vim.g.cpl_format_on_save ~= false },
+    -- The completion menu as you type `.` (Ctrl-X Ctrl-O any time), and `gd` to the definition.
+    on_attach = function(c, buf)
+        vim.lsp.completion.enable(vim.g.cpl_autocomplete ~= false, c.id, buf, { autotrigger = true })
+        vim.keymap.set('n', 'gd', vim.lsp.buf.definition, { buffer = buf, desc = 'cpl: go to definition' })
+    end,
 })
+vim.lsp.enable('cpl')
+vim.lsp.codelens.enable(true)
 
 vim.api.nvim_create_autocmd('FileType', {
     pattern = 'cp',
     group = vim.api.nvim_create_augroup('cplang', {}),
-    callback = function(args)
-        -- Tree-sitter highlighting once parser/cp.so is on the runtime path (see
-        -- editors/README.md); the Vim syntax otherwise.
-        pcall(vim.treesitter.start, args.buf, 'cp')
-        local file = vim.api.nvim_buf_get_name(args.buf)
-        vim.lsp.start({
-            name = 'cpl',
-            cmd = { cpl(), 'lsp' },
-            init_options = { codeLens = true },
-            root_dir = vim.fs.root(args.buf, { '.git' }) or vim.fs.dirname(file),
-        }, { bufnr = args.buf })
-        -- `cpl fmt` on write, in the style of the nearest cp.toml.
-        -- Set vim.g.cpl_format_on_save = false to turn it off.
-        vim.api.nvim_create_autocmd('BufWritePre', {
-            buffer = args.buf,
-            group = vim.api.nvim_create_augroup('cplang_fmt_' .. args.buf, {}),
-            callback = function()
-                if vim.g.cpl_format_on_save == false then return end
-                if #vim.lsp.get_clients({ bufnr = args.buf, name = 'cpl' }) == 0 then return end
-                vim.lsp.buf.format({ bufnr = args.buf, name = 'cpl', timeout_ms = 2000 })
-            end,
-        })
-        if vim.lsp.codelens.enable then
-            -- Neovim 0.12+ keeps the lenses current itself.
-            vim.lsp.codelens.enable(true, { bufnr = args.buf })
-        else
-            vim.api.nvim_create_autocmd({ 'BufEnter', 'BufWritePost', 'InsertLeave' }, {
-                buffer = args.buf,
-                group = vim.api.nvim_create_augroup('cplang_lens_' .. args.buf, {}),
-                callback = function() vim.lsp.codelens.refresh({ bufnr = args.buf }) end,
-            })
-        end
-    end,
+    callback = function(args) pcall(vim.treesitter.start, args.buf, 'cp') end,
 })
 
--- Once `cpl lsp` attaches: the completion menu as you type `.` (Neovim 0.11+; Ctrl-X Ctrl-O
--- any time) and `gd` unless you mapped it. Formatting on write is set up above.
-vim.api.nvim_create_autocmd('LspAttach', {
-    group = vim.api.nvim_create_augroup('cplang_attach', {}),
-    callback = function(args)
-        local client = vim.lsp.get_client_by_id(args.data.client_id)
-        if client == nil or client.name ~= 'cpl' then return end
-        local buf = args.buf
-        if vim.lsp.completion and vim.g.cpl_autocomplete ~= false then
-            vim.lsp.completion.enable(true, client.id, buf, { autotrigger = true })
-            -- Nothing is inserted until you pick it, unless you set your own completeopt.
-            if vim.o.completeopt == 'menu,popup' then pcall(function() vim.bo[buf].completeopt = 'menuone,noselect,popup' end) end
-        end
-        if vim.fn.maparg('gd', 'n') == '' then
-            vim.keymap.set('n', 'gd', vim.lsp.buf.definition, { buffer = buf, desc = 'cpl: go to definition' })
-        end
-    end,
+-- `:Cpl <command>` runs `cpl <command>` on this file through the server; bare `:Cpl` is `cpl test`.
+vim.api.nvim_create_user_command('Cpl', function(opts)
+    client():exec_cmd({ title = 'cpl', command = 'cpl.command', arguments = { vim.api.nvim_buf_get_name(0), unpack(opts.fargs) } })
+end, {
+    nargs = '*',
+    desc = 'run cpl on this file',
+    complete = function(_, line) return client():request_sync('cpl/commands', { line = line }, 2000, 0).result end,
 })
 
 -- Time travel through `cpl dap` when nvim-dap is installed: `:DapContinue` on a `.cp` file
 -- records the run and stops at its first step; step back with `require('dap').step_back()`.
+-- An adapter or configurations of your own for `cp` stay.
 vim.api.nvim_create_autocmd('FileType', {
     pattern = 'cp',
     group = vim.api.nvim_create_augroup('cplang_dap', {}),
     callback = function()
-        local ok, dap = pcall(require, 'dap')
-        if not ok or dap.adapters.cp ~= nil then return end
-        dap.adapters.cp = { type = 'executable', command = cpl(), args = { 'dap' } }
-        dap.configurations.cp = dap.configurations.cp or {
-            { type = 'cp', request = 'launch', name = 'Debug this file', program = '${file}', stopOnEntry = true },
-            {
-                type = 'cp', request = 'launch', name = 'Debug on an input file', program = '${file}',
-                input = function() return vim.fn.input('Input file: ', vim.fn.expand('%:p:h') .. '/', 'file') end,
-            },
-        }
+        pcall(function()
+            local dap = require('dap')
+            dap.adapters.cp = vim.F.if_nil(dap.adapters.cp, { type = 'executable', command = vim.F.if_nil(vim.g.cpl_path, 'cpl'), args = { 'dap' } })
+            dap.configurations.cp = vim.F.if_nil(dap.configurations.cp, {
+                { type = 'cp', request = 'launch', name = 'Debug this file', program = '${file}', stopOnEntry = true },
+                {
+                    type = 'cp', request = 'launch', name = 'Debug on an input file', program = '${file}',
+                    input = function() return vim.fn.input('Input file: ', vim.fn.expand('%:p:h') .. '/', 'file') end,
+                },
+            })
+        end)
     end,
 })

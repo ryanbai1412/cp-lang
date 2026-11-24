@@ -11,6 +11,18 @@ const VIEWS: &[&str] = &["stress", "locate"];
 /// `test`), with `file` after the command when there is one, and `view`
 /// when they ask for JSON whose `view` the editor draws.
 pub(super) fn command(params: &Value) -> Value {
+    let mut argv = argv(params);
+    let view = VIEWS.contains(&argv[0].as_str());
+    if view {
+        argv.push("--json".into());
+    }
+    let argv = argv.into_iter().map(Value::from).collect::<Vec<_>>();
+    obj([("argv", argv.into()), ("view", view.into())])
+}
+
+/// `cpl`'s arguments for `arguments` on `file`: `test` when none are given,
+/// and the file after the command's name.
+pub(super) fn argv(params: &Value) -> Vec<String> {
     let given = params.get("arguments").and_then(Value::as_array);
     let mut argv: Vec<String> = (given.unwrap_or(&[]).iter())
         .filter_map(Value::as_str)
@@ -23,12 +35,7 @@ pub(super) fn command(params: &Value) -> Value {
     if let Some(file) = file.filter(|f| !f.is_empty()) {
         argv.insert(1, file.to_string());
     }
-    let view = VIEWS.contains(&argv[0].as_str());
-    if view {
-        argv.push("--json".into());
-    }
-    let argv = argv.into_iter().map(Value::from).collect::<Vec<_>>();
-    obj([("argv", argv.into()), ("view", view.into())])
+    argv
 }
 
 /// `cpl/commands`: the command names that complete the word after the

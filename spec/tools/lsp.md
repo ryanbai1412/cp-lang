@@ -38,7 +38,7 @@ Status: draft for 0.3.0. Sources: `plan/60-editor.md`, decisions 29,
   plugin uses and listed in that editor's README. (Rlsp.9)
 - **Formatting**: `textDocument/formatting` returns exactly what `cpl fmt`
   writes, so an editor's format-on-save and the CLI agree. (Rlsp.4)
-- **Neovim and Vim** (the Milestone 1 editors): Neovim 0.10 or later gets
+- **Neovim and Vim** (the Milestone 1 editors): Neovim 0.12 or later gets
   diagnostics, completion, formatting and definition from one step,
   `cpl setup neovim`, with no checkout, plugin manager or lspconfig
   needed. Vim 8.2 or later gets highlighting, filetype, indent and `gq`

@@ -17,7 +17,13 @@ use std::thread::JoinHandle;
 use std::time::Duration;
 
 /// The commands `workspace/executeCommand` runs.
-pub(super) const COMMANDS: [&str; 4] = ["cpl.exec", "cpl.show", "cpl.clear", "cpl.import"];
+pub(super) const COMMANDS: [&str; 5] = [
+    "cpl.exec",
+    "cpl.command",
+    "cpl.show",
+    "cpl.clear",
+    "cpl.import",
+];
 
 /// Hands a finished run back to the transport's loop.
 pub type OnFinish = Arc<dyn Fn(Finished) + Send + Sync>;
@@ -39,6 +45,9 @@ pub(super) struct Runs {
     pub(super) lens_refresh: bool,
     /// The folder is trusted to run `cpl` (`initializationOptions.trusted`).
     pub(super) trusted: bool,
+    /// A view's panel is shown as a message (`window/showMessage`), for a
+    /// client with no panel of its own (`initializationOptions.panel`).
+    pub(super) panel_messages: bool,
     requests: u64,
     /// The request being answered.
     pub(super) request: Value,
@@ -55,6 +64,7 @@ impl Runs {
             refresh: false,
             lens_refresh: false,
             trusted: true,
+            panel_messages: false,
             requests: 0,
             request: Value::Null,
         }
@@ -164,6 +174,20 @@ impl Server {
             ..Reply::default()
         };
         match params.get("command").and_then(Value::as_str) {
+            // `:Cpl <args>` on a file: `cpl/command`'s arguments, then run.
+            Some("cpl.command") => {
+                let given = obj([
+                    ("file", args.first().cloned().unwrap_or_default()),
+                    ("arguments", args.get(1..).unwrap_or(&[]).to_vec().into()),
+                ]);
+                let argv = super::command::argv(&given).into_iter().map(Value::from);
+                let mut run = params.clone();
+                if let Some(run) = run.as_object_mut() {
+                    run.insert("command".into(), "cpl.exec".into());
+                    run.insert("arguments".into(), argv.collect::<Vec<_>>().into());
+                }
+                self.execute(&run)
+            }
             Some("cpl.exec" | "cpl.import") if !self.runs.trusted => Err((
                 INVALID_PARAMS,
                 "This folder is in Restricted Mode, so CP Lang runs nothing: trust the folder to run `cpl`.".into(),
@@ -404,7 +428,11 @@ impl Server {
         let mut out = Vec::new();
         let panel = view.at(&["panel"]).as_str().unwrap_or("").trim_end();
         if !quiet && !panel.is_empty() {
-            out.push(message("window/logMessage", 3, panel));
+            let method = match self.runs.panel_messages {
+                true => "window/showMessage",
+                false => "window/logMessage",
+            };
+            out.push(message(method, 3, panel));
         }
         let status = view.at(&["status"]);
         if let (false, Some(label)) = (quiet, status.at(&["label"]).as_str()) {

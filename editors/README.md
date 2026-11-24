@@ -72,7 +72,7 @@ code --extensionDevelopmentPath="$PWD" /path/to/your/workspace
 and checks the live `cpl lsp` handshake. See `editors/vscode/README.md` for
 settings, snippets, and extension-host integration tests.
 
-## Neovim (0.10 or later)
+## Neovim (0.12 or later)
 
 One step, once `cpl` is installed:
 
@@ -80,11 +80,17 @@ One step, once `cpl` is installed:
 cpl setup neovim
 ```
 
-Open a `.cp` file: highlighting, diagnostics, completion (as you type `.`, and
-Ctrl-X Ctrl-O any time; Neovim 0.11 or later for as-you-type), `gd` to the
+Neovim 0.12 is the oldest the plugin runs on: it uses `vim.lsp.config`, the
+code lenses of `vim.lsp.codelens.enable` and the server's format on save
+(`willSaveWaitUntil`). Open a `.cp` file: highlighting, diagnostics,
+completion (as you type `.`, and Ctrl-X Ctrl-O any time), `gd` to the
 definition, `K` for hover, formatting on every write, the Run, Trace, Test and
 Stress lenses (`<cmd>lua vim.lsp.codelens.run()<cr>` runs the one under the
-cursor) and `:Cpl <command>` (bare `:Cpl` runs `cpl test` on the file). It
+cursor) and `:Cpl <command>` (bare `:Cpl` runs `cpl test` on the file). The
+server runs them and shows what they report: the panel and the status as
+messages, and the first wrong call of `cpl stress` or `cpl locate` as a
+diagnostic on its line. For a menu that inserts nothing until you pick, set
+`completeopt=menuone,noselect,popup`. It
 writes the plugin to `stdpath('data')/site/pack/cpl/start/cplang`; run it again
 after `cpl self update`. With [nvim-dap](https://github.com/mfussenegger/nvim-dap)
 installed, `:DapContinue` on a `.cp` file debugs it through `cpl dap` with no

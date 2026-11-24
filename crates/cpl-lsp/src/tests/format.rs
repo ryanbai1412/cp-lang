@@ -124,3 +124,30 @@ fn hunks_are_the_changed_runs_of_lines() {
         .collect();
     assert_eq!(shown, [("b\n", "B\n"), ("e\n", "E\nf\n")]);
 }
+
+#[test]
+fn saving_formats_the_file_when_the_client_asked_for_it() {
+    for (asked, edits) in [(true, 1), (false, 0)] {
+        let mut server = Server::new();
+        let options = obj([("formatOnSave", asked.into())]);
+        let reply = server.handle(&request(
+            1,
+            "initialize",
+            obj([("initializationOptions", options)]),
+        ));
+        let sync = reply[0].at(&["result", "capabilities", "textDocumentSync"]);
+        assert_eq!(sync.at(&["willSaveWaitUntil"]), &Value::Bool(true));
+        server.handle(&notification("initialized", obj([])));
+        server.handle(&did_open("let  x=1\nprint( x )\n"));
+        let params = obj([("textDocument", doc()), ("reason", 1.into())]);
+        let reply = server.handle(&request(9, "textDocument/willSaveWaitUntil", params));
+        let got = reply[0].at(&["result"]).as_array().unwrap_or(&[]).to_vec();
+        assert_eq!(got.len(), edits, "{got:?}");
+        if asked {
+            assert_eq!(
+                got[0].at(&["newText"]).as_str(),
+                Some("let x = 1\nprint(x)\n")
+            );
+        }
+    }
+}

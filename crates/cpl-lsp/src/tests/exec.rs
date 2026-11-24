@@ -430,3 +430,41 @@ fn import_lands_in_the_workspace_folder_when_given_no_path() {
     let message = reply[0].at(&["error", "message"]).as_str().unwrap();
     assert!(message.contains("open a folder first"), "{message}");
 }
+
+#[test]
+fn a_typed_command_runs_on_the_file_and_its_panel_can_be_a_message() {
+    let stub = Stub::new("command");
+    stub.prints(&report());
+    let mut server = stub.server();
+    let options = obj([("panel", "message".into())]);
+    server.handle(&request(
+        1,
+        "initialize",
+        obj([("initializationOptions", options)]),
+    ));
+    let typed = |args: &[&str]| {
+        let mut arguments = vec![Value::from(stub.path.as_str())];
+        arguments.extend(args.iter().map(|a| Value::from(*a)));
+        let params = obj([
+            ("command", "cpl.command".into()),
+            ("arguments", arguments.into()),
+        ]);
+        request(7, "workspace/executeCommand", params)
+    };
+    let replies = server.handle(&typed(&["stress", "--seed", "4"]));
+    assert!(
+        stub.argv()
+            .starts_with(&format!("stress {} --seed 4 ", stub.path)),
+        "{}",
+        stub.argv()
+    );
+    assert!(of(&replies, "window/logMessage").is_empty());
+    let shown = of(&replies, "window/showMessage");
+    assert_eq!(
+        shown[0].at(&["params", "message"]).as_str(),
+        Some("i1: index out of range")
+    );
+    // Nothing typed is `cpl test` on the file.
+    server.handle(&typed(&[]));
+    assert!(stub.argv().starts_with(&format!("test {} ", stub.path)));
+}

@@ -433,7 +433,7 @@ fn vim_lsp_client(vim: &Path) -> Option<&'static str> {
     })
 }
 
-/// A warning when `nvim --version` printed a Neovim older than the 0.10 the
+/// A warning when `nvim --version` printed a Neovim older than the 0.12 the
 /// plugin needs (Ubuntu 22.04's apt has 0.6), with where to get a new one.
 fn old_neovim(version: &str) -> Option<String> {
     let number = version.lines().next()?.strip_prefix("NVIM v")?;
@@ -441,9 +441,9 @@ fn old_neovim(version: &str) -> Option<String> {
         .split(|c: char| !c.is_ascii_digit())
         .map(|p| p.parse::<u32>().ok());
     let (major, minor) = (parts.next()??, parts.next()??);
-    ((major, minor) < (0, 10)).then(|| {
+    ((major, minor) < (0, 12)).then(|| {
         format!(
-            "cpl: warning: this is Neovim {major}.{minor}, but CP Lang needs 0.10 or later; get it from \
+            "cpl: warning: this is Neovim {major}.{minor}, but CP Lang needs 0.12 or later; get it from \
              https://github.com/neovim/neovim/releases (Linux: the .appimage or tarball; macOS: \
              `brew install neovim`; Windows: `winget install Neovim.Neovim`)\n"
         )
@@ -1194,15 +1194,16 @@ mod tests {
         let apt = "NVIM v0.6.1\nBuild type: Release\nLuaJIT 2.1.0-beta3\n";
         let warning = old_neovim(apt).expect("0.6 is too old");
         assert!(
-            warning.contains("Neovim 0.6") && warning.contains("0.10 or later"),
+            warning.contains("Neovim 0.6") && warning.contains("0.12 or later"),
             "{warning}"
         );
         assert!(
             warning.contains("github.com/neovim/neovim/releases"),
             "{warning}"
         );
-        assert_eq!(old_neovim("NVIM v0.10.0\n"), None);
-        assert_eq!(old_neovim("NVIM v0.11.0-dev-1234+g5678\n"), None);
+        assert_eq!(old_neovim("NVIM v0.12.0\n"), None);
+        assert_eq!(old_neovim("NVIM v0.13.0-dev-1234+g5678\n"), None);
+        assert!(old_neovim("NVIM v0.11.5\n").is_some());
         assert_eq!(old_neovim("NVIM v1.0.0\n"), None);
         assert_eq!(old_neovim("not neovim\n"), None);
     }

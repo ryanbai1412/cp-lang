@@ -55,6 +55,9 @@ pub struct Server {
     /// What the declared bounds prove about each open document's text.
     proven: HashMap<String, Arc<Proven>>,
     initialized: bool,
+    /// The client asked for its documents formatted as they are saved
+    /// (`initializationOptions.formatOnSave`), through `willSaveWaitUntil`.
+    format_on_save: bool,
     /// The document whose lints and proofs are still to be published.
     owed: Option<String>,
     /// The client asked for run, stress and trace lenses
@@ -107,6 +110,7 @@ impl Server {
             std: StdLib::default(),
             proven: HashMap::new(),
             initialized: false,
+            format_on_save: false,
             owed: None,
             #[cfg(not(target_arch = "wasm32"))]
             lenses: false,
@@ -260,6 +264,8 @@ impl Server {
         match method {
             "initialize" => {
                 self.initialized = true;
+                self.format_on_save =
+                    params.at(&["initializationOptions", "formatOnSave"]) == &Value::Bool(true);
                 #[cfg(not(target_arch = "wasm32"))]
                 {
                     self.lenses =
@@ -269,6 +275,8 @@ impl Server {
                     self.replay = replay == &Value::Bool(true) || self.replay_debugging;
                     self.runs.trusted =
                         params.at(&["initializationOptions", "trusted"]) != &Value::Bool(false);
+                    self.runs.panel_messages =
+                        params.at(&["initializationOptions", "panel"]).as_str() == Some("message");
                     self.runs.lens_refresh =
                         params.at(&["capabilities", "workspace", "codeLens", "refreshSupport"])
                             == &Value::Bool(true);
@@ -902,21 +910,14 @@ impl Server {
             // already formatted or can't be.
             "textDocument/formatting" => {
                 let uri = uri_of(params)?;
-                let Some(analysis) = self.db.analyze(uri) else {
-                    return Ok(Reply::result(Value::Array(Vec::new())));
-                };
-                let style = path_of_uri(uri)
-                    .map(|path| cpl_fmt::Style::discover(std::path::Path::new(&path)).0)
-                    .unwrap_or_default();
-                let edits = match cpl_fmt::format_with(&analysis.text, &style) {
-                    Ok(formatted) if formatted != *analysis.text => {
-                        let whole = Span::new(0, analysis.text.len() as u32);
-                        vec![obj([
-                            ("range", range_json(whole, &analysis.text, &analysis.lines)),
-                            ("newText", formatted.into()),
-                        ])]
-                    }
-                    _ => Vec::new(),
+                Ok(Reply::result(Value::Array(self.format_edits(uri))))
+            }
+            // Format on save, when the client asked for it.
+            "textDocument/willSaveWaitUntil" => {
+                let uri = uri_of(params)?;
+                let edits = match self.format_on_save {
+                    true => self.format_edits(uri),
+                    false => Vec::new(),
                 };
                 Ok(Reply::result(Value::Array(edits)))
             }
@@ -928,6 +929,26 @@ impl Server {
                 .or_else(|| self.format_part(method, params))
                 .or_else(|| self.tokens(method, params))
                 .unwrap_or_else(|| Err((METHOD_NOT_FOUND, format!("`{method}` is not supported")))),
+        }
+    }
+
+    /// The edit that formats `uri` as `cpl fmt` would, if it changes anything.
+    fn format_edits(&mut self, uri: &str) -> Vec<Value> {
+        let Some(analysis) = self.db.analyze(uri) else {
+            return Vec::new();
+        };
+        let style = path_of_uri(uri)
+            .map(|path| cpl_fmt::Style::discover(std::path::Path::new(&path)).0)
+            .unwrap_or_default();
+        match cpl_fmt::format_with(&analysis.text, &style) {
+            Ok(formatted) if formatted != *analysis.text => {
+                let whole = Span::new(0, analysis.text.len() as u32);
+                vec![obj([
+                    ("range", range_json(whole, &analysis.text, &analysis.lines)),
+                    ("newText", formatted.into()),
+                ])]
+            }
+            _ => Vec::new(),
         }
     }
 
@@ -1210,6 +1231,7 @@ fn capabilities() -> Value {
                         ("openClose", true.into()),
                         ("change", 2.into()),
                         ("save", true.into()),
+                        ("willSaveWaitUntil", true.into()),
                     ]),
                 ),
                 ("hoverProvider", true.into()),

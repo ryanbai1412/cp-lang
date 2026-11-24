@@ -1,7 +1,7 @@
 -- nvim --headless --clean -l editors/neovim/test/smoke.lua CPL REPO
 -- Installs the plugin with `cpl setup neovim`, opens a .cp file with a type error and checks the
 -- filetype, the highlighting, the server's diagnostic, its hover and the run lens beside
--- the sample `i1`, run through `cpl.exec`; completion, `gd` and format on write; a lint's page link and quick fix; `:Cpl check` and its completion; then, with the
+-- the sample `i1`, run by the server; completion, `gd` and format on write; a lint's page link and quick fix; `:Cpl check` and its completion; then, with the
 -- tree-sitter parser built, the highlighting the shared queries give.
 local cpl, repo = arg[1], arg[2]
 vim.g.cpl_path = cpl
@@ -13,15 +13,25 @@ local function check(ok, what)
     end
 end
 
---- The current buffer's code lenses, through each Neovim's own API (0.12 deprecated `refresh`).
+--- The current buffer's code lenses.
 local function code_lenses()
-    if vim.lsp.codelens.enable then
-        vim.lsp.codelens.enable(true, { bufnr = 0 })
-        return vim.tbl_map(function(found) return found.lens end, vim.lsp.codelens.get({ bufnr = 0 }))
-    end
-    local lenses = vim.lsp.codelens.get(0)
-    if #lenses == 0 then vim.lsp.codelens.refresh({ bufnr = 0 }) end
-    return lenses
+    return vim.tbl_map(function(found) return found.lens end, vim.lsp.codelens.get({ bufnr = 0 }))
+end
+
+-- What the server shows (`window/showMessage`), and its answer to each run it was asked for.
+local messages, ran = {}, {}
+vim.notify = function(message) table.insert(messages, message) end
+vim.lsp.handlers['workspace/executeCommand'] = function(err, result)
+    table.insert(ran, result or { err = err })
+end
+
+--- Runs `start`, waits for the server's answer to the run it asks for, and returns
+--- that answer and what the server showed meanwhile.
+local function server_runs(what, start)
+    messages, ran = {}, {}
+    start()
+    check(vim.wait(60000, function() return #ran > 0 end, 100), what .. ' did not finish')
+    return ran[1], table.concat(messages, '\n')
 end
 
 -- A deprecation warning is the plugin speaking an API the next Neovim drops.
@@ -47,26 +57,6 @@ vim.cmd('syntax on')
 
 local file = dir .. '/a.cp'
 vim.fn.writefile({ '5' }, dir .. '/i1')
---- Whether the terminal buffer `term` shows `want`. Headless Neovim on Windows draws nothing in a
---- terminal buffer (the job runs: CI shows `[Process exited 1]`), so there the check runs
---- `cpl <args>` itself and looks at what it prints.
-local function terminal_shows(term, want, args)
-    local shown = ''
-    -- Windows's pseudo-console can draw the output after the job has exited.
-    vim.wait(10000, function()
-        shown = table.concat(vim.api.nvim_buf_get_lines(term, 0, -1, false), '\n')
-        return shown:find(want, 1, true) ~= nil
-    end, 100)
-    if shown:find(want, 1, true) or vim.fn.has('win32') == 0 then
-        if not shown:find(want, 1, true) then io.stderr:write('terminal: ' .. vim.inspect(shown) .. '\n') end
-        return shown:find(want, 1, true) ~= nil
-    end
-    local direct = vim.system(vim.list_extend({ cpl }, vim.deepcopy(args))):wait()
-    local printed = (direct.stdout or '') .. (direct.stderr or '')
-    io.stderr:write(('`cpl %s` gives %d: %s\n'):format(table.concat(args, ' '), direct.code, printed))
-    return printed:find(want, 1, true) ~= nil
-end
-
 vim.fn.writefile({ 'fn main():', '    let n: Int = read()', '    let s: Str = n', '    print(n + 1)' }, file)
 vim.cmd.edit(file)
 check(vim.bo.filetype == 'cp', 'filetype is ' .. vim.bo.filetype)
@@ -173,23 +163,17 @@ check(vim.wait(10000, function()
 end, 200), 'no code lenses')
 local run = lenses[1].command
 check(run.title == 'Run on i1' and run.command == 'cpl.exec', 'the first lens is ' .. vim.inspect(run))
-check(vim.lsp.commands['cpl.exec'] ~= nil, 'cpl.exec is not a client command')
-vim.lsp.commands['cpl.exec'](run, {})
-local term = vim.api.nvim_get_current_buf()
-check(vim.bo[term].buftype == 'terminal', 'cpl.exec did not open a terminal')
-check(vim.wait(10000, function() return vim.v.shell_error ~= nil and vim.b[term].terminal_job_id ~= nil and vim.fn.jobwait({ vim.b[term].terminal_job_id }, 0)[1] ~= -1 end), 'cpl run did not finish')
-check(terminal_shows(term, 'Str', run.arguments or {}), 'the run lens showed no `Str` error')
+-- The plugin leaves the lens to the server, which runs it and shows what it reports.
+check(vim.lsp.commands['cpl.exec'] == nil, 'the plugin runs cpl.exec itself')
+local cpl_client = vim.lsp.get_clients({ bufnr = 0, name = 'cpl' })[1]
+local answer, said = server_runs('the run lens', function() cpl_client:exec_cmd(run, { bufnr = 0 }) end)
+check(said:find('Str', 1, true) ~= nil, 'the run lens showed no `Str` error: ' .. said .. vim.inspect(answer))
 
--- `:Cpl check` runs on the file in a terminal split and completes command names.
-vim.cmd('wincmd k')
-check(vim.api.nvim_buf_get_name(0) == file, 'back in ' .. vim.api.nvim_buf_get_name(0))
+-- `:Cpl check` runs on the file through the server and completes command names.
 local names = vim.fn.getcompletion('Cpl sub', 'cmdline')
 check(vim.tbl_contains(names, 'submit'), ':Cpl completes sub to ' .. vim.inspect(names))
-vim.cmd('Cpl check')
-term = vim.api.nvim_get_current_buf()
-check(vim.bo[term].buftype == 'terminal', ':Cpl did not open a terminal')
-check(vim.wait(10000, function() return vim.fn.jobwait({ vim.b[term].terminal_job_id }, 0)[1] ~= -1 end), 'cpl check did not finish')
-check(terminal_shows(term, 'a.cp:3', { 'check', file }), ':Cpl check showed no `a.cp:3` error')
+answer, said = server_runs(':Cpl check', function() vim.cmd('Cpl check') end)
+check(said:find('a.cp:3', 1, true) ~= nil, ':Cpl check showed no `a.cp:3` error: ' .. said .. vim.inspect(answer))
 
 -- Writing a .cp buffer formats it through the server.
 local fmt_file = dir .. '/b.cp'
