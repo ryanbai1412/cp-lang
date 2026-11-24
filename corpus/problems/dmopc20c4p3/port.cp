@@ -1,4 +1,5 @@
 // Source: DMOPC '20 Contest 4 P3 (Roving Roombas), https://dmoj.ca/problem/dmopc20c4p3
+// limits: 2000 ms, 256 MB
 // Problem: n <= 2e5 Roombas clean (0, Y_i) to (X_i, Y_i) and m <= 2e5 cords run (X_j, 0) to
 //   (X_j, Y_j), coordinates 1..=1e9 (Roomba Y distinct, cord X distinct). Count the
 //   (Roomba, cord) pairs that touch, ends included.

@@ -1,4 +1,5 @@
 // Source: NOIP 2020 P1 (Drainage System), https://dmoj.ca/problem/noip20p1
+// limits: 1000 ms, 512 MB
 // Problem: a DAG of n <= 1e5 junctions; junctions 1..m (m <= 10) each receive one ton of water,
 //   and a junction splits all it holds evenly over its 1 to 5 outgoing pipes. Any path has at
 //   most 10 inner junctions. For each junction with no outgoing pipe, in order, print the water

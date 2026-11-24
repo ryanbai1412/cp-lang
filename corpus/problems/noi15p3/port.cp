@@ -1,4 +1,5 @@
 // Source: NOI 2015 P3 (Sushi Dinner), https://dmoj.ca/problem/noi15p3
+// limits: 1000 ms, 512 MB
 // Problem: count pairs of subsets X, Y of {2..n} with every x in X coprime to every y in Y,
 //   n <= 500, modulo a runtime p <= 1e9.
 // Solution: every number has at most one prime > 19. Give each of the 8 small primes a side

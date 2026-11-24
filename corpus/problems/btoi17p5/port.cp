@@ -1,4 +1,5 @@
 // Source: Baltic OI 2017 Day 2 P2 (Plus Minus), https://dmoj.ca/problem/btoi17p5
+// limits: 1000 ms, 1024 MB
 // Problem: an N x M grid (N, M <= 1e9) of + and - where every 2 x 2 square holds two of each; K
 //   <= 1e5 distinct cells are measured. Count the consistent grids mod 1e9 + 7.
 // Solution: such a grid has every row alternating or every column alternating (both: the two

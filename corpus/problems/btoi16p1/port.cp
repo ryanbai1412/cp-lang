@@ -1,4 +1,5 @@
 // Source: BOI 2016 Day 1 P1 (Bosses), https://dmoj.ca/problem/btoi16p1
+// limits: 1500 ms, 256 MB
 // Problem: n <= 5000 employees, each listing the bosses they accept (sum of lists <= 1e4). Build
 //   a rooted tree where every boss is acceptable, pay each a positive salary larger than the sum
 //   of their direct reports' salaries, and print the least total pay (a solution exists).

@@ -1,4 +1,5 @@
 // Source: CCO 2019 P3 (Winter Driving), https://dmoj.ca/problem/cco19p3
+// limits: 600 ms, 1024 MB
 // Problem: a tree of N <= 2e5 cities given by parents, city i holding a_i <= 1e4 people; every
 //   city has at most 36 roads. Make each road one-way to maximise the ordered pairs of distinct
 //   people (x, y) such that x can drive to y (same city always counts). Print the maximum.

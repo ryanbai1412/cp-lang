@@ -1,4 +1,5 @@
 // Source: COCI 2021/2022 Contest 1 #2 (Kamencici), https://dmoj.ca/problem/coci21c1p2
+// limits: 1000 ms, 512 MB
 // Problem: n <= 350 pebbles in a row, red (C) or blue (P), at least 2k - 1 red. Two players
 //   alternately take a pebble from either end; whoever first holds k red loses. Print DA if the
 //   first player can force a win, else NE.

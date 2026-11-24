@@ -1,4 +1,5 @@
 // Source: DMOPC '21 Contest 8 P5 (Tree Building), https://dmoj.ca/problem/dmopc21c8p5
+// limits: 2000 ms, 256 MB
 // Problem: a node with i connectors costs a[i] (1 <= i <= K, unlimited supply). Buy N nodes
 //   and join connectors pairwise into a tree with none left over: the cheapest total, i.e.
 //   min sum a[deg] over degree sequences of an N-node tree. 3 <= N <= 1e9, 2 <= K <= 3000.

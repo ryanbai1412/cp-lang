@@ -1,4 +1,5 @@
 // Source: CCO 2016 P3 (Legends), https://dmoj.ca/problem/cco16p3
+// limits: 1000 ms, 1024 MB
 // Problem: subtask S in 1..=5 fixes a pattern: Flask (two vertices joined by three disjoint
 //   paths), Moon (a cycle), Sun (a cycle of length >= 4), Talon (a claw), Fox (a triangle with
 //   pendants on two corners). For each connected simple graph, print YES if it can grow from the

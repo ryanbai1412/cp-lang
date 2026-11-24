@@ -1,4 +1,5 @@
 // Source: NOI 2016 P1 (Good Partitions), https://dmoj.ca/problem/noi16p1
+// limits: 1500 ms, 512 MB
 // Problem: for each of T <= 10 lowercase strings S (n <= 30000), sum over all substrings the
 //   number of ways to write the substring as AABB with A, B nonempty.
 // Solution: with ends[i] the squares AA ending at i and starts[i] those starting at i, the

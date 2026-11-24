@@ -1,4 +1,5 @@
 // Source: DMOPC 2018 Contest 1 P6 (Sorting), https://dmoj.ca/problem/dmopc18c1p6
+// limits: 1800 ms, 256 MB
 // Problem: n <= 1000 binary numbers of exactly m <= 50 bits each, in a list. Flip the fewest
 //   bits so that the list is sorted in non-decreasing order; print that count.
 // Solution: sorted rows that agree before column c form a block whose bit c is 0s then 1s.

@@ -1,4 +1,5 @@
 // Source: COCI 2021/2022 Round 6 P1 (Med), https://dmoj.ca/problem/coci21c6p1
+// limits: 1000 ms, 512 MB
 // Problem: n <= 500 beekeepers with distinct names and five round scores in 0..=500; the sixth
 //   round adds 0..=500 more. Ranking is by total, ties to the smaller name. For each, print the
 //   best and the worst possible final place.

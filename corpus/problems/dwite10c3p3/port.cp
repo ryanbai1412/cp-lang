@@ -1,4 +1,5 @@
 // Source: DWITE '10 R3 #3 (Dominos Tiling), https://dmoj.ca/problem/dwite10c3p3
+// limits: 1000 ms, 64 MB
 // Problem: five lines, each a width 0 <= N <= 30; for each print the number of domino tilings
 //   of a 3 x N board, modulo 10^6.
 // Solution: DP column by column over the set of the column's cells already covered by dominoes

@@ -1,4 +1,5 @@
 // Source: IOI 2012 P3 (Crayfish Scrivener), https://dmoj.ca/problem/ioi12p3
+// limits: 1000 ms, 256 MB
 // Problem: a text starts empty. "T c" appends letter c, "U x" undoes the last x commands (an undo
 //   is a command and can be undone too), "P i" prints the letter at 0-based position i (not a
 //   command). Up to 1e6 operations; here stdin gives their count and then the lines.

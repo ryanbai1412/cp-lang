@@ -1,4 +1,5 @@
 // Source: CEOI '19 Practice P1 (Count Squares), https://dmoj.ca/problem/ceoi19pp1
+// limits: 1800 ms, 512 MB
 // Problem: h, v <= 1500 horizontal and vertical lines at strictly increasing coordinates in
 //   0..=2^30: count the squares whose whole boundary is drawn.
 // Solution: a square is a pair of horizontal lines and a pair of vertical lines with equal gaps.

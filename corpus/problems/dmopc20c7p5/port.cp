@@ -1,4 +1,5 @@
 // Source: DMOPC '20 Contest 7 P5 (Mayors and Tolls), https://dmoj.ca/problem/dmopc20c7p5
+// limits: 2000 ms, 256 MB
 // Problem: N <= 500 cities with mayor fees b_i and M <= 500 roads (u, v, p): a road earns p if
 //   both its cities' mayors are paid (values <= 1e9). Print the best total profit minus fees.
 // Solution: project selection: each city has profit -b_i, each road profit p and requires both

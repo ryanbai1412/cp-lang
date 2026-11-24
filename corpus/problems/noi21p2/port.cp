@@ -1,4 +1,5 @@
 // Source: NOI 2021 P2 (Intersecting Paths), https://dmoj.ca/problem/noi21p2
+// limits: 2000 ms, 1024 MB
 // Problem: T <= 5 tests; a layered DAG with k <= 100 layers, n_1 = n_k <= 100 and
 //   n_1 <= n_i <= 2 n_1, edges only from layer j to j + 1. Over all sets of n_1 vertex-disjoint
 //   paths from layer 1 to layer k, print (#sets with an even number of crossings) - (#odd),

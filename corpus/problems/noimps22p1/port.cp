@@ -1,4 +1,5 @@
 // Source: NOI 2022 Provincial Selection, Preprocessor, https://dmoj.ca/problem/noimps22p1
+// limits: 1000 ms, 512 MB
 // Problem: n <= 100 lines of at most 100 printable chars. "#define name content" and
 //   "#undef name" print an empty line; other lines print with each maximal [A-Za-z0-9_] run
 //   naming a defined macro replaced by its content, expanded again, except names already being

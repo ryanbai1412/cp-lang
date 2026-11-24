@@ -1,4 +1,5 @@
 // Source: NOI 2020 P5 (Surreal), https://dmoj.ca/problem/noi20p5
+// limits: 1000 ms, 512 MB
 // Problem: T <= 100 instances, each a set of m binary trees (left and right children differ),
 //   sum n, sum m and max height <= 2e6. grow(S) is every tree obtained from one in S by
 //   replacing leaves with trees, repeatedly. Print "Almost Complete" if only finitely many trees

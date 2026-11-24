@@ -1,4 +1,5 @@
 // Source: NOI 2021 P4 (Quantum Communication), https://dmoj.ca/problem/noi21p4
+// limits: 3000 ms, 384 MB
 // Problem: a dictionary of n <= 4e5 random 256-bit words comes from the statement's generator,
 //   seeded with a1, a2. Then m <= 1.2e5 queries, each 64 hex digits and k <= 15: print 1 if a
 //   dictionary word differs from the query in at most k bits, else 0. Online: after an answer

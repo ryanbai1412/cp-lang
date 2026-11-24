@@ -1,4 +1,5 @@
 // Source: CCC 2000 S5 (Sheep and Coyotes), https://dmoj.ca/problem/ccc00s5
+// limits: 1000 ms, 256 MB
 // Problem: up to 1000 sheep in a 1000 x 1000 field, coordinates with two decimals. A coyote
 //   enters anywhere on the south side (y = 0, 0 <= x <= 1000) and eats the nearest sheep (any of
 //   tied ones). Print "The sheep at (x, y) might be eaten." for each sheep that can be eaten.

@@ -1,4 +1,5 @@
 // Source: IOI 2020 Day 2 P3 (Stations), https://dmoj.ca/problem/ioi20p6
+// limits: 1000 ms, 512 MB
 // Problem: a tree of n <= 1000 stations. label gives them distinct labels in 0..k (k >= n - 1;
 //   full score needs k = n - 1); find_next_station then gets only the label s of the current
 //   station, the target label t and the sorted labels c of s's neighbours, and must return the

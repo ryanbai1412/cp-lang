@@ -1,4 +1,5 @@
 // Source: IOI 2012 P6 (Jousting Tournament), https://dmoj.ca/problem/ioi12p6
+// limits: 1000 ms, 256 MB
 // Problem: n knights in a line, n - 1 of them with known distinct ranks in order; the late
 //   knight of rank r takes any position. Each of c rounds (s, e) keeps only the strongest of
 //   the knights now at positions s..=e. Print the position (smallest on ties) from which the

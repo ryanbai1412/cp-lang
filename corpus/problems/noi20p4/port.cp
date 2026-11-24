@@ -1,4 +1,5 @@
 // Source: NOI 2020 P4 (Dish), https://dmoj.ca/problem/noi20p4
+// limits: 2000 ms, 512 MB
 // Problem: n ingredients of d_i grams (sum = m * k); make m dishes of exactly k grams, each from
 //   at most 2 ingredients in positive whole grams, using everything up; print the dishes, or -1.
 //   Multitest (T <= 10), n <= 500, n - 2 <= m <= 5000, k <= 5000; any valid plan.

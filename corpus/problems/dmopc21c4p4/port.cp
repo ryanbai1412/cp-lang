@@ -1,4 +1,5 @@
 // Source: DMOPC '21 Contest 4 P4 (Christmas Graph), https://dmoj.ca/problem/dmopc21c4p4
+// limits: 2000 ms, 256 MB
 // Problem: each of N nodes (2 <= N <= 1e6) joins an edge to another node chosen uniformly at
 //   random (multi-edges allowed). Print the expected number of connected components modulo
 //   1e9 + 7.

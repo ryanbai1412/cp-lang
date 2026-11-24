@@ -1,4 +1,5 @@
 // Source: EGOI 2023 P3 (Find the Box), https://dmoj.ca/problem/egoi23p3
+// limits: 1000 ms, 1024 MB
 // Problem: interactive. An H x W grid (H, W <= 50) hides a solid box at some cell other than
 //   (0, 0). Each query sends a move string (<= 20000 of <>^v) to a robot starting at (0, 0)
 //   that stops at walls and the box, and reads where it ends. Find the box; full score needs

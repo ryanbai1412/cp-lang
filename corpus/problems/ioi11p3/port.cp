@@ -1,4 +1,5 @@
 // Source: IOI 2011 Day 1 (Rice Hub), https://dmoj.ca/problem/ioi11p3
+// limits: 600 ms, 256 MB
 // Problem: n <= 1e5 rice fields at sorted integer coordinates in 1..=L (L <= 1e9, equal
 //   coordinates allowed) and a budget B <= 2e15. Put a hub at an integer coordinate; bringing
 //   a field's rice costs its distance. Print the most fields whose total cost is <= B.

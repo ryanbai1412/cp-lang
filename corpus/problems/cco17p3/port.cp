@@ -1,4 +1,5 @@
 // Source: CCO 2017 Day 1 P3 (Vera and Modern Art), https://dmoj.ca/problem/cco17p3
+// limits: 4000 ms, 1024 MB
 // Problem: N <= 2e5 strokes x y v (x, y <= 1e18, v <= 1e4): with a, b the largest powers of
 //   two not above x and y, add v to every point (x + a p, y + b q), p, q >= 0. Then answer
 //   Q <= 2e5 queries: the total colour at point (r, c), r, c <= 1e18.

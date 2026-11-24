@@ -1,4 +1,5 @@
 // Source: NOI 2004 P5 (Little H's Little Hut), https://dmoj.ca/problem/noi04p5
+// limits: 600 ms, 64 MB
 // Problem: a 100-wide hut whose north and south walls have slopes k1, k2 (one decimal, <= 50).
 //   Split [0, 100] at integer points into m north and n south patches (2 <= m <= n <= 100),
 //   every north split point also a south one; a patch of width w along a wall of slope k has

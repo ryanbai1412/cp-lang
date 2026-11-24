@@ -1,4 +1,5 @@
 // Source: CCC 2019 S5 (Triangle: The Data Structure), https://dmoj.ca/problem/ccc19s5
+// limits: 1000 ms, 512 MB
 // Problem: a triangle of n <= 3000 rows, row i holding i numbers in 0..=1e9, and 1 <= k <= n.
 //   Print the sum over every sub-triangle of size k of its largest element.
 // Solution: with m[i][j] the max of the size-s sub-triangle topped at (i, j), size s + d for d <=

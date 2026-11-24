@@ -1,4 +1,5 @@
 // Source: CCO 2001 P4 (Breaking Level, Standard I/O), https://dmoj.ca/problem/cco01p4io
+// limits: 2000 ms, 64 MB
 // Problem: interactive. A tower of N <= 100 levels has a breaking level H: an object breaks
 //   when dropped from H or higher. With two samples and at most D drops (GetN, GetD, Drop t
 //   answering 1 if it breaks), find H and print Decide H.

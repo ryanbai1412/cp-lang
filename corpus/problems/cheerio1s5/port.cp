@@ -1,4 +1,5 @@
 // Source: Cheerio Contest 1 S5 (Coin Game), https://dmoj.ca/problem/cheerio1s5
+// limits: 1000 ms, 512 MB
 // Problem: a row of N <= 400 coins, each H or T; make K moves (1 <= K <= number of H's), each
 //   flipping an H to T and scoring the length of the run of tails holding that coin after
 //   the flip. Print the maximum total score.

@@ -1,4 +1,5 @@
 // Source: NOI 2003 P1 (Stick Game), https://dmoj.ca/problem/noi03p1
+// limits: 600 ms, 64 MB
 // Problem: one line (<= 1000 chars) holds a false equation ending in '#': numbers below 1e7
 //   in seven-segment matchsticks, joined by + and -, with one '='. Move exactly one stick of
 //   a digit (signs stay) so it becomes true, and print the new equation with its '#' (the

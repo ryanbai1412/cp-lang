@@ -1,4 +1,5 @@
 // Source: DMOPC 2020 Contest 6 P6 Buckets, https://dmoj.ca/problem/dmopc20c6p6
+// limits: 3000 ms, 256 MB
 // Problem: interactive: 2 <= N <= 4e4 full buckets of unknown capacities in 1..=M, M <= 1e4. Within
 //   1e5 operations (empty i, fill i, dump i into j, answered with how much j rose) find every
 //   capacity.

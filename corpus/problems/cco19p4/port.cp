@@ -1,4 +1,5 @@
 // Source: CCO 2019 P4 (Card Scoring), https://dmoj.ca/problem/cco19p4
+// limits: 2750 ms, 1024 MB
 // Problem: n <= 1e6 cards with values in 1..=n, drawn in order; keep or discard each, the
 //   hand holds one value only, and scoring a hand of x cards gives x^(k/2), 2 <= k <= 4.
 //   Print the maximum total score (relative error 1e-6).

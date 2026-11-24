@@ -1,4 +1,5 @@
 // Source: AtCoder Educational DP Contest F (LCS), https://atcoder.jp/contests/dp/tasks/dp_f
+// limits: 2000 ms, 1024 MB
 // Problem: two lowercase strings s, t of length 1..=3000. Print one longest common
 //   subsequence (any one is accepted; the empty line when there is none).
 // Solution: common[i, j] is the LCS length of the suffixes from i and j. Equal heads are

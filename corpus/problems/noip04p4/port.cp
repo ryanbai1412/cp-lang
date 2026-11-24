@@ -1,4 +1,5 @@
 // Source: NOIP 2004 P4, Alphametic Puzzle, https://dmoj.ca/problem/noip04p4
+// limits: 1000 ms, 256 MB
 // Problem: base n <= 26; three words of n letters over the first n capital letters, a + b = c,
 //   each letter a distinct digit 0..n-1. The solution is unique; print the digit of each letter
 //   A, B, C, ... in order.

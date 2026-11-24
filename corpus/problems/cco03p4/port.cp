@@ -1,4 +1,5 @@
 // Source: CCO 2003 P4 (Constrained Permutations), https://dmoj.ca/problem/cco03p4
+// limits: 1000 ms, 16 MB
 // Problem: n <= 9 and k constraints "x comes before y". Print how many permutations of 1..=n
 //   satisfy them all.
 // Solution: place the numbers front to back; need[y] is the mask of numbers that must come

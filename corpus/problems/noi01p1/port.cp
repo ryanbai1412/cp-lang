@@ -1,4 +1,5 @@
 // Source: NOI 2001 (Food Chain), https://dmoj.ca/problem/noi01p1
+// limits: 600 ms, 64 MB
 // Problem: n <= 5e4 animals, each of kind A, B or C (A eats B, B eats C, C eats A). Of k <= 1e5
 //   statements "1 x y" (same kind) and "2 x y" (x eats y), one is false if x or y > n or it
 //   contradicts the true ones before it (so x eats x is false). Count the false ones.

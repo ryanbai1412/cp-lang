@@ -1,4 +1,5 @@
 // Source: IOI '00 P2 (Car Parking), https://dmoj.ca/problem/ioi00p2
+// limits: 1000 ms, 16 MB
 // Problem: a row of n <= 20000 parked cars of types 1..m (m <= 50) and w workers,
 //   2 <= w <= m. In a round each worker drives one car out and parks it in a slot freed in
 //   the same round. Sort the row by type in at most ceil(n / (w - 1)) rounds; print the rounds.

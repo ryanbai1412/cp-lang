@@ -1,4 +1,5 @@
 // Source: IOI 2005 (Rivers), https://dmoj.ca/problem/ioi05p6
+// limits: 600 ms, 32 MB
 // Problem: n <= 100 villages on a river tree draining to Bytetown (0), which has a sawmill;
 //   village i cuts w_i trees and flows to v_i, d_i km away. Build k <= 50 more mills in
 //   villages; trees float to the first mill downriver at 1 cent per tree-km. Print the least cost.

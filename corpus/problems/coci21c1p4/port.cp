@@ -1,4 +1,5 @@
 // Source: COCI 2021/2022 Contest 1 #4, Set, https://dmoj.ca/problem/coci21c1p4
+// limits: 1000 ms, 512 MB
 // Problem: n distinct cards, each a string of k characters from {1,2,3} (k <= 12, n <= 3^k).
 //   Count unordered triples of cards that form a set: at every position the three characters
 //   are all equal or all different.

@@ -1,4 +1,5 @@
 // Source: IOI 2008 Teleporters, https://dmoj.ca/problem/ioi08p4
+// limits: 2000 ms, 256 MB
 // Problem: a track from 0 to 2,000,001 has n <= 1e6 teleporters with distinct endpoints
 //   1 <= w < e <= 2e6. Riding east, reaching an endpoint jumps you to the other one, 1 point
 //   per jump. Add up to m <= 1e6 new teleporters (any free endpoints); print the most points.

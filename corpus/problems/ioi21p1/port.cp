@@ -1,4 +1,5 @@
 // Source: IOI 2021 Day 1 Distributing Candies, https://dmoj.ca/problem/ioi21p1
+// limits: 2000 ms, 512 MB
 // Problem: n <= 2e5 boxes with capacities c <= 1e9, all empty, and q <= 2e5 days l r v
 //   (|v| <= 1e9, v != 0): every box in l..=r gets p -> min(c, p + v) or max(0, p + v). Print the
 //   final counts.

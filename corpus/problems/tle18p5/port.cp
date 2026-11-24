@@ -1,4 +1,5 @@
 // Source: TLE 2018-19 P5 (Pure Functional Programming), https://dmoj.ca/problem/tle18p5
+// limits: 1000 ms, 256 MB
 // Problem: a sequence of N <= 1000 integers in [0, 1e9] (the judge exposes N and get_item,
 //   and C++ code may not mutate). Print the length of a longest strictly increasing
 //   subsequence, then its elements one per line.

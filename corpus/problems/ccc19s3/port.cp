@@ -1,4 +1,5 @@
 // Source: CCC 2019 S3 (Arithmetic Square), https://dmoj.ca/problem/ccc19s3
+// limits: 600 ms, 512 MB
 // Problem: a 3 x 3 grid of integers in [-1e6, 1e6], some cells unknown (X). Fill the unknowns
 //   so every row and column is an arithmetic sequence, all values in [-1e9, 1e9]; a solution
 //   exists and any one is accepted.

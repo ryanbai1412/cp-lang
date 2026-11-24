@@ -1,4 +1,5 @@
 // Source: CCO 2017 P4 (Rainfall Storage), https://dmoj.ca/problem/cco17p4
+// limits: 1000 ms, 1024 MB
 // Problem: n <= 500 pillars of heights 1..50 can be arranged in any order and rain fills
 //   every dip. Print, increasing, every total volume of water some arrangement holds.
 // Solution: place pillars from tallest to shortest. A new pillar is no taller than anything

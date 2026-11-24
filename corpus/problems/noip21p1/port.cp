@@ -1,4 +1,5 @@
 // Source: NOIP 2021 P1 (Saying Numbers), https://dmoj.ca/problem/noip21p1
+// limits: 1000 ms, 512 MB
 // Problem: x is skipped when it is a multiple of a number with a decimal digit 7. For each of
 //   T <= 2e5 queries x <= 1e7, print -1 if x is skipped, else the next number not skipped.
 // Solution: a sieve up to 10000100 (past the survivor after 1e7): each number with a 7 that is

@@ -1,4 +1,5 @@
 // Source: COCI 2012/2013 Contest 1 #4 (Ljubomora), https://dmoj.ca/problem/coci12c1p4
+// limits: 1000 ms, 32 MB
 // Problem: m <= 3e5 colours with 1..=1e9 marbles each go to n <= 1e9 children (m <= n); a
 //   child gets marbles of one colour only, or none. Print the least possible maximum number
 //   of marbles one child gets.

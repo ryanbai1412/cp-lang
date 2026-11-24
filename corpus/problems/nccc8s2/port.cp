@@ -1,4 +1,5 @@
 // Source: Mock CCC '21 S2 (Colorful Strings), https://dmoj.ca/problem/nccc8s2
+// limits: 250 ms, 1024 MB
 // Problem: a lowercase string of length <= 1e5. Count, with multiplicity, its subsequences in
 //   which every letter appears at most once (the empty one included), mod 1e9 + 7.
 // Solution: each letter is either left out or taken from one of its cnt occurrences, so the

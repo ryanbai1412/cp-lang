@@ -1,4 +1,5 @@
 // Source: CCC 2019 Senior S4 (Tourism), https://dmoj.ca/problem/ccc19s4
+// limits: 1000 ms, 512 MB
 // Problem: N attractions visited in order, at most K per day (1 <= K <= N <= 1e6), in the
 //   fewest days, ceil(N / K). A day scores the largest a_i (<= 1e9) it visits; print the
 //   largest possible total score.

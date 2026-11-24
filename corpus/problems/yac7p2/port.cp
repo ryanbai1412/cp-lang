@@ -1,4 +1,5 @@
 // Source: Yet Another Contest 7 P2 (Coprime Grid), https://dmoj.ca/problem/yac7p2
+// limits: 2000 ms, 256 MB
 // Problem: fill an n x m grid with 1..=n*m, each once, so that every cell is coprime with at
 //   least two side-adjacent cells; print the grid, or -1 if impossible. T, n, m <= 100.
 // Solution: consecutive integers are coprime, so number the cells along a Hamiltonian path whose

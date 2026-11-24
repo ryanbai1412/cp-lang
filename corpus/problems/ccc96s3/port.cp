@@ -1,4 +1,5 @@
 // Source: CCC 1996 S3 (Pattern Generator), https://dmoj.ca/problem/ccc96s3
+// limits: 2000 ms, 256 MB
 // Problem: for each of several pairs n, k (n <= 30, k < 8), print "The bit patterns are" and then
 //   all length-n bit patterns with k ones in descending binary order; blank line between cases.
 // Solution: a pattern is the set of positions of its ones; `combinations` yields those sets in

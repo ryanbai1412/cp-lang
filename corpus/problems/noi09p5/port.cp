@@ -1,4 +1,5 @@
 // Source: NOI 2009 P5, Pipe Marbles, https://dmoj.ca/problem/noi09p5
+// limits: 1000 ms, 512 MB
 // Problem: two pipes of n and m A/B marbles (n, m <= 500); a move shoots the rightmost marble of
 //   either into the output. If output sequence i arises from a_i move orders, print sum a_i^2
 //   mod 1024523.

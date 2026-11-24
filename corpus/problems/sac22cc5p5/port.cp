@@ -1,4 +1,5 @@
 // Source: SAC '22 Code Challenge 5 P5 (Querying Rectangles), https://dmoj.ca/problem/sac22cc5p5
+// limits: 10000 ms, 1024 MB
 // Problem: an N x M grid of lowercase letters (N, M <= 5000) and 1 <= K <= min(N, M). Print the
 //   number of distinct K x K subgrids.
 // Solution: a 2D double polynomial hash (`Hash2D`, prefix sums) gives each K x K square's hash in

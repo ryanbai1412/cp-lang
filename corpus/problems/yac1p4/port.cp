@@ -1,4 +1,5 @@
 // Source: Yet Another Contest 1 P4 (No More Searching), https://dmoj.ca/problem/yac1p4
+// limits: 1000 ms, 128 MB
 // Problem: a string of n <= 250 letters A..Z (worth 1..26) is split into subsequences; one with
 //   first value u and last value v scores u^2 - v^2. Print how many total scores are possible,
 //   then each of them in ascending order.

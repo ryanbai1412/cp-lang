@@ -1,4 +1,5 @@
 // Source: DMOPC '21 Contest 8 P1 (Peanut Planning), https://dmoj.ca/problem/dmopc21c8p1
+// limits: 2000 ms, 256 MB
 // Problem: n <= 5e5 numbers a_i <= 1e9 and m <= 1e9. Arrange them in a line so that every two
 //   neighbours sum to at least m; print the lexicographically smallest such line, or -1.
 // Solution: greedy: the line alternates the smallest unused number x and the smallest unused

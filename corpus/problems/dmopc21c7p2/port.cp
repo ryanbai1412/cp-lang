@@ -1,4 +1,5 @@
 // Source: DMOPC '21 Contest 7 P2, Knitting Scarves, https://dmoj.ca/problem/dmopc21c7p2
+// limits: 2000 ms, 256 MB
 // Problem: the scarf starts as colours 1..N (N <= 1e6). Q <= 5e5 steps each cut the segment from
 //   colour L to colour R and paste it right after colour K (K = 0: at the front; K is outside the
 //   segment). Print the final order.

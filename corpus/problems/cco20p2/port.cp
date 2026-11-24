@@ -1,4 +1,5 @@
 // Source: CCO 2020 Day 1 P2 (Exercise Deadlines), https://dmoj.ca/problem/cco20p2
+// limits: 1000 ms, 1024 MB
 // Problem: n <= 2e5 exercises in the order 1..=n, exercise i due by day d_i <= n; they are
 //   done one a day in order, and swapping two neighbours costs one move. Print the fewest
 //   moves after which every exercise meets its deadline, or -1.

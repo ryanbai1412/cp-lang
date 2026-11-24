@@ -1,4 +1,5 @@
 // Source: CCC 2014 Senior S4 (Tinted Glass Window), https://dmoj.ca/problem/ccc14s4
+// limits: 1000 ms, 256 MB
 // Problem: n <= 1000 axis-parallel rectangles, corners x_l y_t x_r y_b in 0..=K with K <= 1e9,
 //   each adding tint t_i; overlaps add up. Print the total area whose tint is at least
 //   T <= 1e9 (the answer can exceed 2^32 but fits 64 bits).

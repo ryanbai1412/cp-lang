@@ -1,4 +1,5 @@
 // Source: COCI '20 Contest 6 #1 (Bold), https://dmoj.ca/problem/coci20c6p1
+// limits: 1000 ms, 512 MB
 // Problem: an n x m picture of '.' and '#' (2 <= n, m <= 100; no '#' in the last row or
 //   column). Bolding replaces every '#' by a 2 x 2 square of '#' reaching right and down;
 //   print the bolded picture.

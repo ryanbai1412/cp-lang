@@ -1,4 +1,5 @@
 // Source: NOI 2018 Your Name, https://dmoj.ca/problem/noi18p3
+// limits: 4000 ms, 1024 MB
 // Problem: a lowercase string s, |s| <= 5e5, and q <= 1e5 queries (t, l, r) with total |t| <= 1e6.
 //   For each, print how many distinct substrings of t are not substrings of s[l..=r].
 // Solution: a suffix automaton of s whose states keep their end positions in s as persistent

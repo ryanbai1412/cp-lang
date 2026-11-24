@@ -1,4 +1,5 @@
 // Source: EGOI 2022 P4 (Tourists), https://oj.uz/problem/view/EGOI22_tourists
+// limits: 4000 ms, 256 MB
 // Problem: a tree of n <= 2e5 cities; m <= 2e5 tourists start in cities a_i with opinion 0.
 //   q <= 2e5 queries: "t f g c" moves tourists f..g to city c, each losing its path length;
 //   "e c d" adds d <= 1e9 to everyone now in city c; "q v" prints tourist v's opinion.

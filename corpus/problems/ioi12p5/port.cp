@@ -1,4 +1,5 @@
 // Source: IOI 2012 Day 2 (Last Supper), https://dmoj.ca/problem/ioi12p5
+// limits: 2000 ms, 256 MB
 // Problem: N <= 1e5 colours, a scaffold holding K < N of them (initially 0..K-1) and N
 //   colour requests. Program 1 sees all requests and writes at most N + K advice bits;
 //   program 2 gets the bits and the requests one at a time, and on each miss must choose

@@ -1,4 +1,5 @@
 // Source: NOI 2014 P1 (Getting-Up Syndrome), https://dmoj.ca/problem/noi14p1
+// limits: 600 ms, 512 MB
 // Problem: n <= 1e5 gates, each AND t, OR t or XOR t (t <= 1e9). Choose a start 0 <= x <= m
 //   (m <= 1e9), pass it through all gates in order, and print the largest result.
 // Solution: the gates act on each bit alone, so send all-zeros and all-ones through once to

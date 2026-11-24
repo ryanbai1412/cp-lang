@@ -1,4 +1,5 @@
 // Source: Baltic OI 2017 Day 2 (Friends), https://dmoj.ca/problem/btoi17p4
+// limits: 1000 ms, 1024 MB
 // Problem: n <= 2500 students and their claimed friend lists (total <= 30000), p + q <= 15.
 //   Print "detention" unless friendship is symmetric and the students split into groups of
 //   1..p students, each with at most q friend pairs leaving the group; then print "home", the

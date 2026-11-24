@@ -1,4 +1,5 @@
 // Source: NOIP 2014 Senior D2T3, Solve the Equation (not on DMOJ; Luogu P2312)
+// limits: 1000 ms, 128 MB
 // Problem: given n <= 100, m < 1e6 and integers a_0..a_n with |a_i| <= 10^10000, a_n != 0,
 //   print the number of integer roots of a_0 + a_1 x + ... + a_n x^n = 0 in 1..=m, then
 //   the roots in increasing order, one per line.

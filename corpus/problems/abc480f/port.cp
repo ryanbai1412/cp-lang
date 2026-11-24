@@ -1,4 +1,5 @@
 // Source: AtCoder ABC 480 F (Cake Cutting), https://atcoder.jp/contests/abc480/tasks/abc480_f
+// limits: 2000 ms, 1024 MB
 // Problem: N <= 20 cakes of sizes A_i <= 1e9, M <= 100 people, sum S divisible by M. A cut splits
 //   one piece in two (any real sizes). Print the fewest cuts after which every person can get
 //   exactly S / M.

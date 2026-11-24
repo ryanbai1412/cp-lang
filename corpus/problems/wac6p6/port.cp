@@ -1,5 +1,6 @@
 // Source: Wesley's Anger Contest 6 P6 (Santa's Candy Factory, Easy Version),
 //   https://dmoj.ca/problem/wac6p6
+// limits: 3000 ms, 256 MB
 // Problem: interactive, T = 100 factories. Given counts A + B + C = 100 of three colours (not
 //   which is which), 100 candy canes arrive one by one (R, G or B); place each in one of two
 //   single-colour bowls or discard it, emptying bowls at will. Full score needs at least 43

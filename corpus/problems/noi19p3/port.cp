@@ -1,4 +1,5 @@
 // Source: NOI 2019 P3 (Sequence), https://dmoj.ca/problem/noi19p3
+// limits: 1000 ms, 511 MB
 // Problem: multitest (T <= 10). Given a, b of length n <= 2e5 (sum n <= 1e6, values <= 1e9) and
 //   1 <= L <= K <= n, pick K indices c and K indices d sharing at least L indices; print the max
 //   of the a-sum over c plus the b-sum over d.

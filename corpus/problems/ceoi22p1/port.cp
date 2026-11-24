@@ -1,4 +1,5 @@
 // Source: CEOI 2022 Day 1, Abracadabra, https://dmoj.ca/problem/ceoi22p1
+// limits: 3000 ms, 512 MB
 // Problem: a permutation deck of even N <= 2e5 cards. A shuffle merges the bottom and top
 //   halves, always dropping the smaller bottom card and then the rest of the other hand.
 //   Answer Q <= 1e6 queries (t <= 1e9, i): the i-th card from the bottom after t shuffles.

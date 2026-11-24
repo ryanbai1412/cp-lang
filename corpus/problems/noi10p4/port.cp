@@ -1,4 +1,5 @@
 // Source: NOI 2010 P4 (Flight Control), https://dmoj.ca/problem/noi10p4
+// limits: 600 ms, 512 MB
 // Problem: n <= 2000 flights take off one per slot 1..n; flight i must be in a slot <= k_i, and
 //   m <= 1e4 rules say a takes off before b. A valid schedule exists. Print one, then for each
 //   flight the earliest slot it can have in any valid schedule.

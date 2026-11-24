@@ -1,4 +1,5 @@
 // Source: DMOPC 2021 Contest 2 P5 (Permutations), https://dmoj.ca/problem/dmopc21c2p5
+// limits: 2000 ms, 256 MB
 // Problem: a tree on n <= 3000 nodes, node i holding value i. An operation swaps the values at
 //   the ends of an edge and deletes the edge. Print how many permutations of the values can
 //   result from exactly k < n operations, mod 998244352.

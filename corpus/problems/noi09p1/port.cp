@@ -1,4 +1,5 @@
 // Source: NOI 2009 (Transformed Sequence), https://dmoj.ca/problem/noi09p1
+// limits: 600 ms, 256 MB
 // Problem: given D[i] for i in 0..n (n <= 1e4), find a permutation T of 0..n with circular
 //   distance min(|i - T[i]|, n - |i - T[i]|) = D[i] for every i; print the lexicographically
 //   smallest one, or "No Answer".

@@ -1,4 +1,5 @@
 // Source: DMOPC '21 Contest 8 P2 (Kanna Market), https://dmoj.ca/problem/dmopc21c8p2
+// limits: 2000 ms, 256 MB
 // Problem: a 2 x N grid, some cells known, the rest 0 (unknown); fill each unknown with 1..M so
 //   that every 2 x 2 square has the same sum. Count the fillings mod 1e9 + 7. N, M <= 1e6.
 // Solution: equal 2 x 2 sums means columns two apart have the same sum, so each parity class

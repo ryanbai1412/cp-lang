@@ -1,4 +1,5 @@
 // Source: NOI 2002 P6 (Robot No. M), https://dmoj.ca/problem/noi02p6
+// limits: 1000 ms, 16 MB
 // Problem: m = prod p_i^e_i is given factored (k <= 1000 primes < 1e4, e_i <= 1e6). Robot m's
 //   teachers are its divisors other than 1 and m; robot d's independence number counts the
 //   smaller robots sharing no teacher with it. Over m and its teachers, sum that number for d

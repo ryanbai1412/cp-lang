@@ -1,4 +1,5 @@
 // Source: IOI 2018 P3 (Werewolf), https://dmoj.ca/problem/ioi18p3
+// limits: 1800 ms, 512 MB
 // Problem: a connected graph, n <= 2e5 cities and m <= 4e5 roads. For each of q <= 2e5 trips
 //   (s, e, l, r) print 1 if one can walk from s to e visiting only cities >= l in human form,
 //   then turn into a wolf once and visit only cities <= r, else 0.

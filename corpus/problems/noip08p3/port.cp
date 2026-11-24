@@ -1,4 +1,5 @@
 // Source: NOIP 2008 P3 (Message Passing), https://dmoj.ca/problem/noip08p3
+// limits: 1000 ms, 255 MB
 // Problem: an m x n class (m, n <= 50), each pupil with kindness 0..=100 (the two corners 0).
 //   A note goes from the top-left to the bottom-right moving down or right, and a reply comes
 //   back moving up or left, with no pupil used by both. Print the largest total kindness.

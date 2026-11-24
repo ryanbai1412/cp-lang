@@ -1,4 +1,5 @@
 // Source: ETSR '23 R1 P4 (LOJ 6029, Market), https://dmoj.ca/problem/etsr23r1p4
+// limits: 2000 ms, 256 MB
 // Problem: 1 <= n, q <= 2e5 and an array a_1..a_n of 32-bit ints. Queries "1 l r c" add
 //   -1e4 <= c <= 1e4 to a_l..=a_r, "2 l r d" replaces each by floor(a_i / d) for 1 <= d <= 1e9,
 //   "3 l r" prints the minimum and "4 l r" the sum of a_l..=a_r.

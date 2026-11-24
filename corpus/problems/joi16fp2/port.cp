@@ -1,4 +1,5 @@
 // Source: JOI 2017 Final P2 (Semiexpress), https://dmoj.ca/problem/joi16fp2
+// limits: 1000 ms, 512 MB
 // Problem: stations 1..=N (N <= 1e9). The local takes A per station and stops everywhere, the
 //   express takes B and stops at the M given stations, the semiexpress takes C (B < C < A) and
 //   stops at exactly K stations including the express ones (M <= K <= 3000). Choose its other

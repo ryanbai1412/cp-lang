@@ -1,6 +1,9 @@
 """gen.py seed size: DMOPC '20 C7 P5. 1 <= N <= 500, 0 <= M <= 500, values 0..=1e9.
 size >= 500 gives N = M = 500 with fees and tolls of similar size, so the cut is not trivial."""
 import random, sys
+if sys.argv[1:] == ["--max"]:
+    # N = M = 500 with fees and tolls up to 1e9 of similar size, so the cut is not trivial
+    sys.argv[1:] = ['0', '500']
 seed, size = int(sys.argv[1]), int(sys.argv[2])
 rng = random.Random(seed)
 big = size >= 500

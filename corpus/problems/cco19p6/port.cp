@@ -1,4 +1,5 @@
 // Source: CCO 2019 Day 2 P3 (CCO '19 P6), Bad Codes, https://dmoj.ca/problem/cco19p6
+// limits: 600 ms, 1024 MB
 // Problem: n distinct binary codewords (n <= 50), each 1..m bits long (m <= 50). Print the
 //   length of the shortest bit string that splits into codewords in two different ways,
 //   or -1 if every bit string decodes uniquely.

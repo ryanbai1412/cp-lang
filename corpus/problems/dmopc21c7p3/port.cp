@@ -1,4 +1,5 @@
 // Source: DMOPC '21 Contest 7 P3 (Whack-an-Ishigami), https://dmoj.ca/problem/dmopc21c7p3
+// limits: 2000 ms, 256 MB
 // Problem: N <= 1e6 figures, some up (k_i = 1), and M <= 1e6 distinct links a -> b (a != b):
 //   flipping a also flips b, in a chain reaction; an endless reaction resets the game. A whack
 //   flips one figure. Print the fewest whacks that leave every figure down, or -1.

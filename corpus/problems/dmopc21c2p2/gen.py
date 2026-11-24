@@ -1,6 +1,9 @@
 """gen.py seed size: DMOPC '21 C2 P2. 1 <= n <= 300, 1 <= q <= 3e5, at most 3000 Q queries.
 size >= 3e5 gives n = 300, q = 3e5 with 3000 Q queries spread through the swaps."""
 import random, sys
+if sys.argv[1:] == ["--max"]:
+    # n = 300, q = 3e5 with the full 3000 Q queries, each walking the whole permutation
+    sys.argv[1:] = ['0', '300000']
 seed, size = int(sys.argv[1]), int(sys.argv[2])
 rng = random.Random(seed)
 big = size >= 3 * 10 ** 5

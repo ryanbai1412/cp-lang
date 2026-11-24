@@ -1,4 +1,5 @@
 // Source: COCI 2021/2022 Contest 6 P5 (Superpozicija), https://dmoj.ca/problem/coci21c6p5
+// limits: 1000 ms, 512 MB
 // Problem: a string of 2n brackets split into n pairs of positions (a, b). Keep exactly one
 //   bracket of each pair so the kept ones form a balanced sequence; print the choice (0 for a,
 //   1 for b) or -1. Multitest, t, n <= 1e5, sum of n <= 1e5.

@@ -1,4 +1,5 @@
 // Source: IOI 2011 Day 1 (Race), https://dmoj.ca/problem/ioi11p2
+// limits: 1400 ms, 256 MB
 // Problem: a tree of n <= 2e5 cities whose n - 1 roads have lengths 0..=1e6. Find a path of total
 //   length exactly k <= 1e6 that uses the fewest roads; print that count, or -1 if none exists.
 // Solution: root the tree at city 0; a path turns at its top city v and joins two cities under

@@ -1,4 +1,5 @@
 // Source: APIO 2007 P3 (Zoo), https://dmoj.ca/problem/apio07p3
+// limits: 2000 ms, 16 MB
 // Problem: n <= 1e4 enclosures in a circle, c <= 5e4 children; each sees five consecutive ones
 //   E..E+4 (wrapping) and names some there it fears and some it loves. A child is happy if a
 //   feared animal is removed or a loved one stays. Choose animals to remove; print the most

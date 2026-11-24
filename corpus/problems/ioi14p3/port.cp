@@ -1,4 +1,5 @@
 // Source: IOI 2014 Day 1 P3, Game, https://dmoj.ca/problem/ioi14p3
+// limits: 2500 ms, 256 MB
 // Problem: interactive: n cities (4 <= n <= 1500); every pair (u, v) is asked once, in an
 //   order you do not know, and hasEdge(u, v) must answer 1 or 0 at once. Answer so that
 //   whether the graph is connected stays undetermined until the last of the n(n-1)/2 pairs.

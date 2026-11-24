@@ -1,4 +1,5 @@
 // Source: IOI 2014 Day 1 (Wall), https://dmoj.ca/problem/ioi14p2
+// limits: 1000 ms, 256 MB
 // Problem: n <= 2e6 columns start at height 0. Apply k <= 5e5 operations `t l r h` (h <= 1e5)
 //   in order: add (t = 1) raises every column of [l, r] below h to h, remove (t = 2) lowers
 //   every column of [l, r] above h to h. Print the final heights.

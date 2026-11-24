@@ -1,4 +1,5 @@
 // Source: DMOPC '21 Contest 2 P2 (Scrambling Swaps), https://dmoj.ca/problem/dmopc21c2p2
+// limits: 2000 ms, 256 MB
 // Problem: a list of swaps (x, y) of positions of an array of length n <= 300 starts empty; q <=
 //   3e5 queries: "B x y" adds a swap at the front, "E x y" at the end, "Q p" asks for any starting
 //   permutation that the list, applied in order, turns into p (at most 3000 such queries).

@@ -1,4 +1,5 @@
 // Source: COCI 2021/2022 Contest 2 #1 (Kaučuk), https://dmoj.ca/problem/coci21c2p1
+// limits: 1000 ms, 512 MB
 // Problem: n <= 100 lines, each `section`, `subsection` or `subsubsection` and a title (<= 20
 //   lowercase letters). Print each title after its number ("1", "1.2" or "1.2.1"): each level
 //   counts from 1 and restarts under every new parent.

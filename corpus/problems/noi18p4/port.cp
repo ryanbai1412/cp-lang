@@ -1,4 +1,5 @@
 // Source: NOI 2018 Day 2 P1 (Dragon Slayer), Luogu P4774 (not on DMOJ)
+// limits: 2000 ms, 512 MB
 // Problem: kill dragons 1..n in order (n, m <= 1e5, T <= 5). Dragon i (life a <= 1e12, regrows
 //   p) dies iff a - x atk is <= 0 and a multiple of p, where atk is the strongest held sword
 //   not above a (else the weakest), then swapped for the dragon's reward (atk <= 1e6). Print

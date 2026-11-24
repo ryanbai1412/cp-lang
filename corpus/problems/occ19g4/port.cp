@@ -1,4 +1,5 @@
 // Source: OCC '19 G4 (Willson and Fighting), https://dmoj.ca/problem/occ19g4
+// limits: 1000 ms, 256 MB
 // Problem: N <= 60000; 2N geese at distinct points with coordinates in 1..=60000, geese 2k-1
 //   and 2k are mates. Goose p honks at goose r if the Manhattan dist(p, r) < dist(p, mate of p);
 //   two geese that honk at each other fight once. Print each goose's number of fights.
