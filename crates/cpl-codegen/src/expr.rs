@@ -245,9 +245,9 @@ impl<'p> Emitter<'p> {
         }
         match &e.kind {
             ExprKind::Binary(BinOp::Coalesce, ..)
-                if self.moved_entry.remove(&(e as *const _ as usize)) =>
+                if let Some(code) = self.moved_entry_code(e, e) =>
             {
-                self.moved_entry_code(e)
+                code
             }
             // `debug(...)` is for local runs: the judge's C++ has none of it.
             ExprKind::Unit | ExprKind::Error | ExprKind::Debug(..) => Code::primary("(void)0"),
@@ -975,9 +975,9 @@ impl<'p> Emitter<'p> {
                 Code::primary(format!("cpl::DomainVal{{{d}_lo, {d}_len}}"))
             }
             ExprKind::Builtin(Builtin::Copy, args)
-                if self.moved_entry.remove(&(e as *const _ as usize)) =>
+                if let Some(code) = args.first().and_then(|of| self.moved_entry_code(e, of)) =>
             {
-                self.moved_entry_code(&args[0])
+                code
             }
             ExprKind::Builtin(Builtin::Len, args) if matches!(&args[0].kind, ExprKind::Call(f, _) if self.pushers.contains_key(f)) => {
                 self.count_pushed(&args[0])

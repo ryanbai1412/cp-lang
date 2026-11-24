@@ -873,20 +873,24 @@ impl Emitter<'_> {
         self.facts.stable(v) && self.facts.init(v).is_some_and(|init| same_path(init, got))
     }
 
-    pub(crate) fn moved_entry_code(&mut self, of: &Expr) -> Code {
+    /// `m[k] ?? d` at `at`, marked by [`Self::mark_moved_entry`], as a move
+    /// of the entry out of the map.
+    pub(crate) fn moved_entry_code(&mut self, at: &Expr, of: &Expr) -> Option<Code> {
         let ExprKind::Binary(_, got, d) = &of.kind else {
-            unreachable!("marked by mark_moved_entry")
+            return None;
         };
         let ExprKind::Builtin(_, args) = &got.kind else {
-            unreachable!("marked by mark_moved_entry")
+            return None;
         };
+        let [m, k, ..] = args.as_slice() else {
+            return None;
+        };
+        if !self.moved_entry.remove(&(at as *const Expr as usize)) {
+            return None;
+        }
         self.need("map_move_or");
-        let (m, k, d) = (
-            self.expr(&args[0]).text,
-            self.expr(&args[1]).text,
-            self.expr(d).text,
-        );
-        Code::primary(format!("cpl::map_move_or({m}, {k}, {d})"))
+        let (m, k, d) = (self.expr(m).text, self.expr(k).text, self.expr(d).text);
+        Some(Code::primary(format!("cpl::map_move_or({m}, {k}, {d})")))
     }
 }
 

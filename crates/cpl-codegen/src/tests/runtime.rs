@@ -249,3 +249,12 @@ fn each_value_of_a_format_and_a_fn_value_call_is_written_once_in_order() {
     assert!(cpp.contains(pieces), "{cpp}");
     assert!(cpp.contains("= h(n);"), "{cpp}");
 }
+
+#[test]
+fn a_string_entry_grown_from_its_old_value_is_moved_out_of_the_map() {
+    let cpp = cpp(concat!(
+        "var h = Map<Int, Str>()\nfor v in 0..3:\n",
+        "    h[v] = (h.get(v) ?? \"\") + \"a\"\nprint(h.len)\n",
+    ));
+    assert!(cpp.contains("cpl::map_move_or(h, v, "), "{cpp}");
+}
