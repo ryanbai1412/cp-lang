@@ -100,7 +100,6 @@
 6 corpus/problems/btoi20p3/dream.cp
 1 corpus/problems/btoi20p3/port.cp
 4 corpus/problems/btoi20p3/spec.cp
-2 corpus/problems/canada21p5/perf.cp
 1 corpus/problems/canada21p5/port.cp
 14 corpus/problems/ccc02s4/spec.cp
 4 corpus/problems/ccc02s4hard/port.cp

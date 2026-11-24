@@ -5,7 +5,7 @@
 //   seconds, modulo 1e9+7. (Here x is m and K is k.)
 // Solution: only the number of differing places matters: a Markov chain on 0..=n where from
 //   i, c of the m flips hit differing places with probability C(i, c) C(n - i, m - c) / C(n, m).
-//   Raise the (n + 1)^2 matrix to the k with std `pow` over the matrix-product monoid, O(n^3 log k). By symmetry the answer is
+//   Raise the (n + 1)^2 matrix to the k with std `pow` over `Mat`'s product, O(n^3 log k). By symmetry the answer is
 //   P(0 -> d) / C(n, d) for the starting distance d.
 // original: corpus/submissions/3718293.cpp
 // Bounds: n: 1..=128; m: 0..=n; k: 0..=1e9
@@ -29,9 +29,5 @@ for i in Off:
 
 // Walk back from "equal": every string at distance d is equally likely.
 let d = (0..n).count(i => s[i] != t[i])
-fn mul(a: [Off, Off]Z, b: [Off, Off]Z) -> [Off, Off]Z = [Off, Off] (i, l) => sum(
-    a[i, j] * b[j, l] for j in Off
-)
-let one: [Off, Off]Z = [Off, Off] (i, j) => Z(Int(i == j))
-let walk = pow(step, k, op: Monoid(one, mul))
-print(walk[Off.first!, Off(d)] / comb.choose(n, d))
+let walk = Mat(step) ** k
+print(walk.get(0, d) / comb.choose(n, d))
