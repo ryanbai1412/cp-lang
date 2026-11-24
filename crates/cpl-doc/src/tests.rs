@@ -417,7 +417,7 @@ fn json_carries_every_field_and_escapes_strings() {
          \"facts\":{\"cost\":null,\"empty\":null,\"order\":null,\"ties\":null,\"traps\":null},\
          \"prose\":\"Says \\\"hi\\\"\\\\n.\",\"line\":3,\"examples\":[],\"links\":[],\"members\":[]}]}]}\n"
     );
-    assert_eq!(json::string("a\tb\u{1}"), "\"a\\tb\\u0001\"");
+    assert_eq!(cpl_json::escape_string("a\tb\u{1}"), "\"a\\tb\\u0001\"");
     assert_eq!(json::render(&[]), "{\"modules\":[]}\n");
 }
 
@@ -533,7 +533,7 @@ mod cli {
         let builtin = json.split("{\"name\":\"prefix\"").next().unwrap();
         for want in [
             "\"name\":\"builtin\"",
-            "\"name\":\"HashMap\",\"signature\":\"type HashMap<K, V>\"",
+            "\"name\":\"HashMap\",\"signature\":\"type HashMap\\u003cK, V>\"",
             "unordered_map",
             "\"name\":\"HashSet\"",
             "\"name\":\"push\",\"signature\":\"fn push(x: T)\"",

@@ -1967,6 +1967,7 @@ HARD_ZERO = frozenset({
     "xfail_markers",
     "std_doc_parsers",
     "prelude_gaps",
+    "json_outside_cpl_json",
 })
 
 # name -> (label, measure, ratcheted). Informational counts are shown, never gated.

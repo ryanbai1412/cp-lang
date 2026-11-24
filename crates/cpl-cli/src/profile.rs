@@ -221,10 +221,6 @@ fn read_input(path: Option<&str>) -> Result<Vec<u8>, String> {
     }
 }
 
-fn json_string(text: &str) -> String {
-    cpl_json::escape_string(text)
-}
-
 fn millis(nanos: u64) -> String {
     match nanos {
         0..1_000 => format!("{nanos} ns"),
@@ -276,22 +272,32 @@ pub fn profile(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) -> u8
         "interpreter"
     };
     if options.json {
-        let rows: Vec<String> = lines
-            .iter()
-            .map(|(line, tally)| {
-                format!(
-                    "{{\"line\":{line},\"hit_count\":{},\"time_ns\":{},\"start_count\":{}}}",
-                    tally.hits, tally.nanos, tally.starts
-                )
-            })
-            .collect();
-        let failure = run.failure.as_deref().map_or("null".into(), json_string);
-        let _ = writeln!(
-            stdout,
-            "{{\"path\":{},\"engine\":\"{engine}\",\"time_ns\":{total},\"failure\":{failure},\"lines\":[{}]}}",
-            json_string(options.file),
-            rows.join(",")
-        );
+        let json = cpl_json::write_with(|w| {
+            w.object()
+                .key("path")
+                .str(options.file)
+                .key("engine")
+                .str(engine);
+            w.key("time_ns")
+                .int(total)
+                .key("failure")
+                .opt_str(run.failure.as_deref());
+            w.key("lines").array();
+            for (line, tally) in &lines {
+                w.object()
+                    .key("line")
+                    .int(*line)
+                    .key("hit_count")
+                    .int(tally.hits);
+                w.key("time_ns")
+                    .int(tally.nanos)
+                    .key("start_count")
+                    .int(tally.starts)
+                    .end();
+            }
+            w.end().end();
+        });
+        let _ = writeln!(stdout, "{json}");
     } else {
         let _ = writeln!(
             stdout,
@@ -478,26 +484,28 @@ pub fn cover(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) -> u8 {
     let text: Vec<&str> = compiled.text.lines().collect();
     let source = |line: u32| text.get(line as usize - 1).map_or("", |text| text.trim());
     if options.json {
-        let list = |lines: &[u32]| {
-            lines
-                .iter()
-                .map(u32::to_string)
-                .collect::<Vec<_>>()
-                .join(",")
-        };
-        let branches: Vec<String> = branches
-            .iter()
-            .map(|b| format!("{{\"line\":{},\"always\":{}}}", b.line, b.taken))
-            .collect();
-        let _ = writeln!(
-            stdout,
-            "{{\"path\":{},\"input_count\":{},\"line_count\":{},\"covered_count\":{covered},\"uncovered\":[{}],\"one_way\":[{}]}}",
-            json_string(options.file),
-            inputs.len(),
-            lines.len(),
-            list(&uncovered),
-            branches.join(",")
-        );
+        let json = cpl_json::write_with(|w| {
+            w.object().key("path").str(options.file);
+            w.key("input_count")
+                .int(inputs.len())
+                .key("line_count")
+                .int(lines.len());
+            w.key("covered_count").int(covered).key("uncovered").array();
+            for line in &uncovered {
+                w.int(*line);
+            }
+            w.end().key("one_way").array();
+            for branch in &branches {
+                w.object()
+                    .key("line")
+                    .int(branch.line)
+                    .key("always")
+                    .bool(branch.taken)
+                    .end();
+            }
+            w.end().end();
+        });
+        let _ = writeln!(stdout, "{json}");
     } else {
         let percent = if lines.is_empty() {
             100

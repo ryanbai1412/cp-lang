@@ -29,102 +29,106 @@ pub use cpl_diag::plain;
 
 pub mod json {
     use crate::{links, Example, Facts, Item, Module};
-    use cpl_json::{escape_string, obj, Value};
+    use cpl_json::{obj, Value, Writer};
 
-    pub(crate) fn string(text: &str) -> String {
-        escape_string(text)
-    }
-
-    fn list<T>(items: &[T], one: impl Fn(&T) -> String) -> String {
-        format!("[{}]", items.iter().map(one).collect::<Vec<_>>().join(","))
+    fn list<T>(w: &mut Writer, items: &[T], mut one: impl FnMut(&mut Writer, &T)) {
+        w.array();
+        for item in items {
+            one(w, item);
+        }
+        w.end();
     }
 
     fn opt(text: &Option<String>) -> Value {
         text.as_deref().map_or(Value::Null, Value::from)
     }
 
-    fn example(example: &Example) -> String {
+    fn example(w: &mut Writer, example: &Example) {
         let (setup, expr, value) = example.claim();
-        let line = obj([
+        let rest = [
             ("block", Value::Bool(example.block)),
-            ("text", example.text.as_str().into()),
-            ("stdin", opt(&example.stdin)),
             ("expect", opt(&example.expect)),
+            ("expr", expr.into()),
             (
                 "setup",
                 Value::Array(setup.into_iter().map(Value::from).collect()),
             ),
-            ("expr", expr.into()),
+            ("stdin", opt(&example.stdin)),
+            ("text", example.text.as_str().into()),
             ("value", opt(&value)),
-        ]);
-        let rest = cpl_json::to_string(&line);
-        format!(
-            "{{\"code\":{},\"line\":{},{}",
-            opt(&example.code),
-            example.line,
-            &rest[1..]
-        )
+        ];
+        w.object().key("code").opt_str(example.code.as_deref());
+        w.key("line").int(example.line);
+        for (key, value) in &rest {
+            w.key(key).value(value);
+        }
+        w.end();
     }
 
-    fn facts(facts: &Facts) -> String {
+    fn facts(facts: &Facts) -> Value {
         let [cost, traps, empty, ties, order] = Facts::LABELS;
-        cpl_json::to_string(&obj([
+        obj([
             (cost, opt(&facts.cost)),
             (traps, opt(&facts.traps)),
             (empty, opt(&facts.empty)),
             (ties, opt(&facts.ties)),
             (order, opt(&facts.order)),
-        ]))
+        ])
     }
 
-    fn link(target: &links::Target) -> String {
-        format!(
-            "{{\"text\":{},\"path\":{},\"module\":{},\"anchor\":{}}}",
-            string(&target.text),
-            string(&target.path),
-            string(&target.module),
-            string(&target.anchor)
-        )
+    fn link(w: &mut Writer, target: &links::Target) {
+        w.object().key("text").str(&target.text);
+        w.key("path").str(&target.path);
+        w.key("module").str(&target.module);
+        w.key("anchor").str(&target.anchor).end();
     }
 
     /// `owner` scopes its intra-doc links: the type it is a member of.
-    fn item(modules: &[Module], m: usize, owner: Option<&str>, item: &Item) -> String {
+    fn item(w: &mut Writer, modules: &[Module], m: usize, owner: Option<&str>, item: &Item) {
         let scope = owner.or((!item.members.is_empty()).then_some(item.name.as_str()));
         let links = links::targets(modules, m, scope, &item.doc);
-        format!(
-            "{{\"kind\":{},\"name\":{},\"signature\":{},\"doc\":{},\"summary\":{},\"cost\":{},\"facts\":{},\"prose\":{},\"line\":{},\"examples\":{},\"links\":{},\"members\":{}}}",
-            string(item.kind.as_str()),
-            string(&item.name),
-            string(&item.signature),
-            string(&item.doc),
-            string(item.summary()),
-            item.cost.as_deref().map_or("null".to_string(), string),
-            facts(&item.facts),
-            string(&item.prose),
-            item.line,
-            list(&item.examples, example),
-            list(&links, link),
-            list(&item.members, |member| self::item(modules, m, Some(&item.name), member)),
-        )
+        w.object().key("kind").str(item.kind.as_str());
+        w.key("name").str(&item.name);
+        w.key("signature").str(&item.signature);
+        w.key("doc").str(&item.doc);
+        w.key("summary").str(item.summary());
+        w.key("cost").opt_str(item.cost.as_deref());
+        w.key("facts").value(&facts(&item.facts));
+        w.key("prose").str(&item.prose);
+        w.key("line").int(item.line);
+        w.key("examples");
+        list(w, &item.examples, example);
+        w.key("links");
+        list(w, &links, link);
+        w.key("members");
+        list(w, &item.members, |w, member| {
+            self::item(w, modules, m, Some(&item.name), member)
+        });
+        w.end();
     }
 
     /// Every module as one JSON document.
     pub fn render(modules: &[Module]) -> String {
-        let all = modules;
         let indexed: Vec<usize> = (0..modules.len()).collect();
-        let modules = list(&indexed, |&m| {
-            let module = &all[m];
-            format!(
-                "{{\"name\":{},\"path\":{},\"doc\":{},\"examples\":{},\"links\":{},\"items\":{}}}",
-                string(&module.name),
-                string(&module.path),
-                string(&module.doc),
-                list(&module.examples, example),
-                list(&links::targets(all, m, None, &module.doc), link),
-                list(&module.items, |i| item(all, m, None, i)),
-            )
+        let mut out = cpl_json::write_with(|w| {
+            w.object().key("modules");
+            list(w, &indexed, |w, &m| {
+                let module = &modules[m];
+                w.object().key("name").str(&module.name);
+                w.key("path").str(&module.path);
+                w.key("doc").str(&module.doc);
+                w.key("examples");
+                list(w, &module.examples, example);
+                w.key("links");
+                list(w, &links::targets(modules, m, None, &module.doc), link);
+                w.key("items");
+                list(w, &module.items, |w, i| item(w, modules, m, None, i));
+                w.end();
+            });
+            w.end();
         });
-        format!("{{\"modules\":{modules}}}\n")
+        out.push('\n');
+        out
     }
 }
 

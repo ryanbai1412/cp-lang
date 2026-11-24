@@ -680,11 +680,11 @@ pub fn self_command(args: &[&str], stdout: &mut dyn Write, stderr: &mut String) 
             let default = settings.default_selector();
             default.map(|default| {
                 let id = find_installed(&home, &settings, &default);
-                out += &format!(
-                    "{{\"default\":{},\"toolchain\":{}}}\n",
-                    cpl_json::escape_string(&default.to_string()),
-                    id.map_or("null".into(), |id| cpl_json::escape_string(&id))
-                );
+                out += &cpl_json::write_with(|w| {
+                    w.object().key("default").str(&default.to_string());
+                    w.key("toolchain").opt_str(id.as_deref()).end();
+                });
+                out.push('\n');
             })
         }
         ["channel"] => show_default(&home, &settings, &mut out),
@@ -694,19 +694,18 @@ pub fn self_command(args: &[&str], stdout: &mut dyn Write, stderr: &mut String) 
             .and_then(|selector| ensure(&home, &mut settings, &selector, stderr))
             .map(|id| out += &format!("{id} is installed\n")),
         ["list"] if json => {
-            let rows: Vec<String> = listing(&home, &settings)
-                .into_iter()
-                .map(|(id, marks)| {
-                    let marks: Vec<String> =
-                        marks.iter().map(|m| cpl_json::escape_string(m)).collect();
-                    format!(
-                        "{{\"id\":{},\"marks\":[{}]}}",
-                        cpl_json::escape_string(&id),
-                        marks.join(",")
-                    )
-                })
-                .collect();
-            out += &format!("{{\"toolchains\":[{}]}}\n", rows.join(","));
+            out += &cpl_json::write_with(|w| {
+                w.object().key("toolchains").array();
+                for (id, marks) in listing(&home, &settings) {
+                    w.object().key("id").str(&id).key("marks").array();
+                    for mark in &marks {
+                        w.str(mark);
+                    }
+                    w.end().end();
+                }
+                w.end().end();
+            });
+            out.push('\n');
             Ok(())
         }
         ["list"] => {
