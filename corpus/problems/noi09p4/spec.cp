@@ -7,7 +7,10 @@ domain Row = [rows]
 domain Col = [cols]
 domain Cell = (Row, Col)
 let plant = read<[Cell](score: -1e4..=1e4, protects: List<Cell>)>()
-fn protects(p: Cell) = chain(plant[p].protects, p.step(Dir4.left))
+fn protects(p: Cell) -> List<Cell>:
+    var out = plant[p].protects
+    if let q = p.step(Dir4.left): out.push(q)
+    out
 let edible = Cell.mask(peel(protects))
 let eaten = max_closure(
     before: (p: Cell) => protects(p).filter(q => edible[q]),
