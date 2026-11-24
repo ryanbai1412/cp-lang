@@ -364,3 +364,36 @@ fn a_residue_sum_of_products_reduces_once() {
     assert!(!line.contains("_add(") && !line.contains("_mul("), "{line}");
     assert_eq!(line.matches("% 1000000007").count(), 1, "{line}");
 }
+
+#[test]
+fn a_residue_matrix_product_sums_unreduced_and_reduces_per_run() {
+    let out = cpp("use std.mod.{Mod}
+use std.matrix.{Mat}
+type Z = Mod<1_000_000_007>
+let n: 1..=50 = read()
+let a = Mat<Z>.from_flat(n, n, [Z(read()) for _ in 0..n * n])
+print((a * a).get(0, 0))
+");
+    let product = out
+        .split("\nstd::optional<")
+        .find(|s| s.contains("residue_product") && s.contains("{\n"))
+        .expect("residue_product emitted");
+    let accumulate = product
+        .lines()
+        .find(|l| l.contains("row[") && l.contains(" * "))
+        .expect("the accumulate line");
+    assert!(
+        !accumulate.contains("cpl::") && !accumulate.contains('%'),
+        "{accumulate}"
+    );
+    assert_eq!(
+        product.matches("cpl::emod").count(),
+        1,
+        "one reduction per run:\n{product}"
+    );
+    let mul = out
+        .split("\nMat_")
+        .find(|s| s.contains("_mul("))
+        .expect("Mat.mul emitted");
+    assert!(mul.contains("residue_product"), "{mul}");
+}

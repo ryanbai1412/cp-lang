@@ -147,6 +147,24 @@ impl Pow for Mod<P>:
         if e < 0: return a.inv ** (-e)
         Mod(pow_mod(a.v, e, P))
 
+/// A number held as its residue in `0..modulus()`, so a sum of many residue products can stay
+/// unreduced and be reduced once: `Mat` products use it. `Mod` has one; a user modular type joins
+/// by implementing it the same way.
+pub trait Residue:
+    /// The modulus: every residue is in `0..modulus()`.
+    fn modulus() -> Int
+
+    /// This value's residue, in `0..modulus()`.
+    fn residue(self) -> Int
+
+    /// The value congruent to `x`, for `x >= 0`.
+    fn reduce(x: Int) -> Self
+
+impl Residue for Mod<P>:
+    fn modulus() -> Int = P
+    fn residue(self) -> Int = self.v
+    fn reduce(x: Int) -> Mod<P> = Mod(x % P)
+
 impl Show for Mod<P>:
     fn show(a) = "{a.v}"
 

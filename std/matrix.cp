@@ -10,7 +10,7 @@
 //! entry within the `eps:` argument of zero as zero.
 use std.algebra.{Monoid, Semiring}
 use std.math.{abs, mul_mod, bit, ceil_div}
-use std.mod.{Mod}
+use std.mod.{Mod, Residue}
 use std.rand.{Rng}
 use std.seq.{collect}
 use std.spec.{berlekamp_massey}
@@ -673,6 +673,8 @@ impl Mul for Mat<T>:
         if T: Add:
             if T: Mul:
                 if a.ring == None:
+                    if T: Residue:
+                        if let out = residue_product(a.cells, b.cells, r, m, c): return Mat(r, c, out)
                     var out = List.filled(r * c, T.zero)
                     unchecked:
                         for i in 0..r:
@@ -719,6 +721,32 @@ impl Pow for Mat<T>:
             k >>= 1
             if k > 0: base = base * base
         acc
+
+/// The `r x c` product of the residue matrices `a` (`r x m`) and `b` (`m x c`), row by row, or
+/// `None` when the modulus is past 2^31. Each output row sums residue products unreduced in a row
+/// of `Int`s for as many steps as stay under `Int.MAX`, then reduces, so an entry costs one
+/// reduction per run of steps rather than two per product.
+fn residue_product<T: Residue>(a: List<T>, b: List<T>, r: Int, m: Int, c: Int) -> ?List<T>:
+    let n = T.modulus()
+    if n > 1 << 31: return None
+    let top = (n - 1) * (n - 1)
+    let steps = if top == 0: m + 1 else: (Int.MAX - n) / top
+    var out: List<T> = []
+    var row = List.filled(c, 0)
+    unchecked:
+        for i in 0..r:
+            for j in 0..c: row[j] = 0
+            var left = steps
+            for k in 0..m:
+                if left == 0:
+                    for j in 0..c: row[j] %= n
+                    left = steps
+                left -= 1
+                let f = a[i * m + k].residue()
+                let bk = k * c
+                for j in 0..c: row[j] += f * b[bk + j].residue()
+            for j in 0..c: out.push(T.reduce(row[j]))
+    Some(out)
 
 /// The `(zero, one, add, mul)` a non-default `Mat(over:)` multiplies under. On `?W` entries the
 /// semiring over `W` is lifted so `None` is the zero, absorbing under `mul`.
