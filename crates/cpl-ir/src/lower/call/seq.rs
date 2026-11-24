@@ -125,7 +125,7 @@ impl<'a> Lowerer<'a> {
             .iter()
             .any(|a| a.name.as_ref().is_some_and(|n| n.text == "cmp"));
         if has_by && has_cmp {
-            self.report(span, msgs::ir::BAD_OPERANDS_SORT_TAKES_EITHER_BY.at(&[]));
+            self.report(span, msgs::ir::BAD_OPERANDS_SORT_TAKES_EITHER_BY, &[]);
             return self.err_expr(span);
         }
         let key = match args {
@@ -133,7 +133,8 @@ impl<'a> Lowerer<'a> {
                 if !self.ordered(elem) {
                     self.report(
                         span,
-                        msgs::ir::BAD_OPERANDS_A_HAS_NO_ORDER_4.at(&[&self.show(elem)]),
+                        msgs::ir::BAD_OPERANDS_A_HAS_NO_ORDER_4,
+                        &[&self.show(elem)],
                     );
                     self.help("sort by a key (`xs.sort(by: x => x.w)`) or comparator (`xs.sort(cmp: (a, b) => a < b)`)");
                     return self.err_expr(span);
@@ -158,7 +159,8 @@ impl<'a> Lowerer<'a> {
                     _ => {
                         self.report(
                             value.span,
-                            msgs::ir::BAD_OPERANDS_CMP_EXPECTS_A_COMPARATOR.at(&[]),
+                            msgs::ir::BAD_OPERANDS_CMP_EXPECTS_A_COMPARATOR,
+                            &[],
                         );
                         return self.err_expr(span);
                     }
@@ -185,7 +187,8 @@ impl<'a> Lowerer<'a> {
                 if key.ty != Ty::Error && (matches!(key.ty, Ty::Opt(_)) || !self.ordered(&key.ty)) {
                     self.report(
                         body.span,
-                        msgs::ir::BAD_OPERANDS_A_HAS_NO_ORDER_4.at(&[&self.show(&key.ty)]),
+                        msgs::ir::BAD_OPERANDS_A_HAS_NO_ORDER_4,
+                        &[&self.show(&key.ty)],
                     );
                     return self.err_expr(span);
                 }
@@ -209,7 +212,8 @@ impl<'a> Lowerer<'a> {
                 let (first, last) = (&params[0], &params[params.len() - 1]);
                 self.report(
                     first.span.to(last.span),
-                    msgs::ir::WRONG_ARG_COUNT_SORT_BY_TAKES_A.at(&[&params.len()]),
+                    msgs::ir::WRONG_ARG_COUNT_SORT_BY_TAKES_A,
+                    &[&params.len()],
                 );
                 let key = match &elem {
                     Ty::Record(fields) => format!(
@@ -253,15 +257,12 @@ impl<'a> Lowerer<'a> {
                                 is_order: true,
                             }
                         } else {
-                            self.report(
-                                value.span,
-                                msgs::ir::BAD_OPERANDS_BY_EXPECTS_A_KEY.at(&[]),
-                            );
+                            self.report(value.span, msgs::ir::BAD_OPERANDS_BY_EXPECTS_A_KEY, &[]);
                             return self.err_expr(span);
                         }
                     }
                     _ => {
-                        self.report(value.span, msgs::ir::BAD_OPERANDS_BY_EXPECTS_A_KEY.at(&[]));
+                        self.report(value.span, msgs::ir::BAD_OPERANDS_BY_EXPECTS_A_KEY, &[]);
                         return self.err_expr(span);
                     }
                 }
@@ -269,10 +270,7 @@ impl<'a> Lowerer<'a> {
             _ if self.sort_reverse_arg(args) => return self.err_expr(span),
             _ if self.sort_unknown_arg(args) => return self.err_expr(span),
             _ => {
-                self.report(
-                    span,
-                    msgs::ir::WRONG_ARG_COUNT_SORT_TAKES_NOTHING_OR.at(&[]),
-                );
+                self.report(span, msgs::ir::WRONG_ARG_COUNT_SORT_TAKES_NOTHING_OR, &[]);
                 return self.err_expr(span);
             }
         };
@@ -421,8 +419,8 @@ impl<'a> Lowerer<'a> {
                 }
                 self.report(
                     span,
-                    msgs::ir::WRONG_ARG_COUNT_THE_VARIANT_HOLDS_VALUES
-                        .at(&[&name.text, &name.text]),
+                    msgs::ir::WRONG_ARG_COUNT_THE_VARIANT_HOLDS_VALUES,
+                    &[&name.text, &name.text],
                 );
                 return self.err_expr(span);
             }
@@ -530,7 +528,8 @@ impl<'a> Lowerer<'a> {
                     Some(s) => {
                         self.report(
                             name.span,
-                            msgs::ir::UNKNOWN_FIELD_A_DOMAIN_HAS_NO.at(&[&other]),
+                            msgs::ir::UNKNOWN_FIELD_A_DOMAIN_HAS_NO,
+                            &[&other],
                         );
                         self.suggest_last(name.span, s);
                     }
@@ -629,11 +628,8 @@ impl<'a> Lowerer<'a> {
                 _ => {
                     self.report(
                         fn_ast.span,
-                        msgs::ir::TYPE_MISMATCH_EXPECTS_A_FUNCTION_LAMBDA.at(&[&if is_map {
-                            "map"
-                        } else {
-                            "filter"
-                        }]),
+                        msgs::ir::TYPE_MISMATCH_EXPECTS_A_FUNCTION_LAMBDA,
+                        &[&if is_map { "map" } else { "filter" }],
                     );
                     self.err_expr(span)
                 }
@@ -1009,7 +1005,8 @@ impl<'a> Lowerer<'a> {
             if arg.mutable {
                 self.report(
                     arg.value.span,
-                    msgs::ir::WRONG_ARG_COUNT_REACH_TAKES_NO_MUT.at(&[]),
+                    msgs::ir::WRONG_ARG_COUNT_REACH_TAKES_NO_MUT,
+                    &[],
                 );
                 return self.err_expr(span);
             }
@@ -1019,24 +1016,23 @@ impl<'a> Lowerer<'a> {
                 Some(other) => {
                     self.report(
                         arg.value.span,
-                        msgs::ir::UNKNOWN_ARG_NAME_REACH_HAS_NO_OPTION.at(&[&other]),
+                        msgs::ir::UNKNOWN_ARG_NAME_REACH_HAS_NO_OPTION,
+                        &[&other],
                     );
                     return self.err_expr(span);
                 }
                 None => {
                     self.report(
                         arg.value.span,
-                        msgs::ir::WRONG_ARG_COUNT_REACH_TAKES_ONE_WHILE.at(&[]),
+                        msgs::ir::WRONG_ARG_COUNT_REACH_TAKES_ONE_WHILE,
+                        &[],
                     );
                     return self.err_expr(span);
                 }
             }
         }
         let Some(pred_ast) = pred_ast else {
-            self.report(
-                span,
-                msgs::ir::WRONG_ARG_COUNT_REACH_REQUIRES_A_WHILE.at(&[]),
-            );
+            self.report(span, msgs::ir::WRONG_ARG_COUNT_REACH_REQUIRES_A_WHILE, &[]);
             return self.err_expr(span);
         };
         let (seq_val, elem_ty) = if let Some(Sym::Domain(d)) = self.sym(base) {
@@ -1070,7 +1066,8 @@ impl<'a> Lowerer<'a> {
                 other => {
                     self.report(
                         base.span,
-                        msgs::ir::TYPE_MISMATCH_REACH_EXPECTS_A_SEQUENCE.at(&[&self.show(other)]),
+                        msgs::ir::TYPE_MISMATCH_REACH_EXPECTS_A_SEQUENCE,
+                        &[&self.show(other)],
                     );
                     return self.err_expr(span);
                 }
@@ -1186,7 +1183,8 @@ impl<'a> Lowerer<'a> {
                     other => {
                         self.report(
                             func_ast.span,
-                            msgs::ir::TYPE_MISMATCH_MAP_EXPECTS_A_FUNCTION.at(&[&self.show(other)]),
+                            msgs::ir::TYPE_MISMATCH_MAP_EXPECTS_A_FUNCTION,
+                            &[&self.show(other)],
                         );
                         return self.err_expr(span);
                     }
@@ -1302,7 +1300,8 @@ impl<'a> Lowerer<'a> {
             other => {
                 self.report(
                     func_ast.span,
-                    msgs::ir::TYPE_MISMATCH_MAP_EXPECTS_A_FUNCTION.at(&[&self.show(other)]),
+                    msgs::ir::TYPE_MISMATCH_MAP_EXPECTS_A_FUNCTION,
+                    &[&self.show(other)],
                 );
                 return self.err_expr(span);
             }

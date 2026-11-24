@@ -473,7 +473,8 @@ impl Lowerer<'_> {
         if params.len() != named {
             self.report(
                 span,
-                msgs::ir::WRONG_ARG_COUNT_THIS_TABLE_RUNS_OVER.at(&[&dims.len(), &params.len()]),
+                msgs::ir::WRONG_ARG_COUNT_THIS_TABLE_RUNS_OVER,
+                &[&dims.len(), &params.len()],
             );
             return self.err_expr(span);
         }

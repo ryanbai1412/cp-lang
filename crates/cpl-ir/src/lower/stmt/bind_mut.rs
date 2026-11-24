@@ -81,11 +81,8 @@ impl<'a> Lowerer<'a> {
                         if factors.len() != pats.len() {
                             self.report(
                                 pat.span,
-                                msgs::ir::TYPE_MISMATCH_THIS_PATTERN_HAS_NAMES.at(&[
-                                    &pats.len(),
-                                    &self.show(&value.ty),
-                                    &factors.len(),
-                                ]),
+                                msgs::ir::TYPE_MISMATCH_THIS_PATTERN_HAS_NAMES,
+                                &[&pats.len(), &self.show(&value.ty), &factors.len()],
                             );
                             return;
                         }
@@ -100,8 +97,8 @@ impl<'a> Lowerer<'a> {
                     if value.ty != Ty::Error {
                         self.report(
                             pat.span,
-                            msgs::ir::TYPE_MISMATCH_A_CAN_T_BE_2
-                                .at(&[&self.show(&value.ty), &pats.len()]),
+                            msgs::ir::TYPE_MISMATCH_A_CAN_T_BE_2,
+                            &[&self.show(&value.ty), &pats.len()],
                         );
                     }
                     return;
@@ -109,8 +106,8 @@ impl<'a> Lowerer<'a> {
                 if fields.len() != pats.len() {
                     self.report(
                         pat.span,
-                        msgs::ir::TYPE_MISMATCH_THIS_PATTERN_HAS_NAMES_2
-                            .at(&[&pats.len(), &fields.len()]),
+                        msgs::ir::TYPE_MISMATCH_THIS_PATTERN_HAS_NAMES_2,
+                        &[&pats.len(), &fields.len()],
                     );
                     return;
                 }

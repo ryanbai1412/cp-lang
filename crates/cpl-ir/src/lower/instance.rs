@@ -137,8 +137,8 @@ impl<'a> Lowerer<'a> {
         let (outer, inner) = self.growing_instance(gfid)?;
         self.report(
             span,
-            msgs::ir::GROWING_INSTANTIATION_CALLS_ITSELF_AT_A
-                .at(&[&name, &name, &outer, &name, &inner]),
+            msgs::ir::GROWING_INSTANTIATION_CALLS_ITSELF_AT_A,
+            &[&name, &name, &outer, &name, &inner],
         );
         self.help(
             "a generic fn is compiled once per type: recurse at the same type, \

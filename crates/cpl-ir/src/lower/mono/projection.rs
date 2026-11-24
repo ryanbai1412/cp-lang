@@ -21,7 +21,7 @@ impl<'a> Lowerer<'a> {
         };
         let (pre_stmts, lend_place_ast, post_stmts) = split_projection_body(proj.decl);
         let Some(lend_place_ast) = lend_place_ast else {
-            self.report(span, msgs::ir::UNSUPPORTED_PROJECTION_HAS_NO_LEND.at(&[]));
+            self.report(span, msgs::ir::UNSUPPORTED_PROJECTION_HAS_NO_LEND, &[]);
             return self.err_expr(span);
         };
 
@@ -80,7 +80,7 @@ impl<'a> Lowerer<'a> {
         let recv_place = self.place(base);
         let (pre_stmts, lend_place_ast, post_stmts) = split_projection_body(proj.decl);
         let Some(lend_place_ast) = lend_place_ast else {
-            self.report(span, msgs::ir::UNSUPPORTED_PROJECTION_HAS_NO_LEND.at(&[]));
+            self.report(span, msgs::ir::UNSUPPORTED_PROJECTION_HAS_NO_LEND, &[]);
             return;
         };
 
@@ -112,7 +112,7 @@ impl<'a> Lowerer<'a> {
         let recv_place = self.place(base);
         let (pre_stmts, lend_place_ast, post_stmts) = split_projection_body(proj.decl);
         let Some(lend_place_ast) = lend_place_ast else {
-            self.report(span, msgs::ir::UNSUPPORTED_PROJECTION_HAS_NO_LEND.at(&[]));
+            self.report(span, msgs::ir::UNSUPPORTED_PROJECTION_HAS_NO_LEND, &[]);
             return Place {
                 kind: PlaceKind::Local(0),
                 ty: Ty::Error,

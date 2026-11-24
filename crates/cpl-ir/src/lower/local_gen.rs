@@ -146,7 +146,8 @@ impl<'a> Lowerer<'a> {
                 // can't be one parameter.
                 self.report(
                     decl.name.span,
-                    cpl_diag::msgs::ir::UNSUPPORTED_A_BLOCK_LOCAL_GENERATOR.at(&[&n]),
+                    cpl_diag::msgs::ir::UNSUPPORTED_A_BLOCK_LOCAL_GENERATOR,
+                    &[&n],
                 );
                 continue;
             }

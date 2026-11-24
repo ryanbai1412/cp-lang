@@ -67,7 +67,7 @@ impl Checker<'_> {
         let rev = self.keyed_view(base).is_some_and(|keyed| keyed.rev);
         if rev || self.view_kind(base) == Some("reverse view") {
             let message = cpl_diag::msgs::check::WALKS_BACKWARDS_OUT_KEY.at(&[&w]);
-            if let Some(diag) = self.report(base.span, message) {
+            if let Some(diag) = self.report_said(base.span, message) {
                 diag.help = Some(format!(
                     "write `{w}.nth(k)` for the `k`th element it walks, or index the source by its key"
                 ));
@@ -84,7 +84,8 @@ impl Checker<'_> {
             if let [Ty::Domain(d) | Ty::Pos(d)] = index.as_slice() {
                 if let Some(diag) = self.report(
                     indices[0].span,
-                    msgs::check::WRONG_DOMAIN_IS_A_SLICE_OF.at(&[&w, &d, &d, &v]),
+                    msgs::check::WRONG_DOMAIN_IS_A_SLICE_OF,
+                    &[&w, &d, &d, &v],
                 ) {
                     diag.help = Some(format!(
                         "index it with a `{d}`: `{w}[{d}({v})]`, or use `{w}.nth({v})!`"
@@ -105,7 +106,8 @@ impl Checker<'_> {
         }
         if let Some(diag) = self.report(
             index.span,
-            msgs::check::NOT_INDEXABLE_READS_KEY_WHICH_ISN.at(&[&w, &v, &v, &w, &keyed.source]),
+            msgs::check::NOT_INDEXABLE_READS_KEY_WHICH_ISN,
+            &[&w, &v, &v, &w, &keyed.source],
         ) {
             let (by_position, by_key) = (format!("{w}.nth({v})"), format!("{}[{v}]", keyed.source));
             diag.help = Some(format!(
@@ -314,7 +316,8 @@ impl Checker<'_> {
         }
         if let Some(diag) = self.report(
             name.span,
-            msgs::check::MISSING_IMPL_HAS_NO_IT_TAKES.at(&[&base_ty, &name.text, &this.ty]),
+            msgs::check::MISSING_IMPL_HAS_NO_IT_TAKES,
+            &[&base_ty, &name.text, &this.ty],
         ) {
             diag.help = Some("copy the reversed view first: `List(a.rev)`".into());
         }
@@ -346,7 +349,8 @@ impl Checker<'_> {
         if indexed {
             if let Some(diag) = self.report(
                 name.span,
-                msgs::check::MISSING_IMPL_DOES_NOT_IMPLEMENT_INDEXED.at(&[&base_ty, &name.text]),
+                msgs::check::MISSING_IMPL_DOES_NOT_IMPLEMENT_INDEXED,
+                &[&base_ty, &name.text],
             ) {
                 diag.help =
                     Some("a reversed view isn't Indexed; copy it with `List(a.rev)`".into());
@@ -425,7 +429,8 @@ impl Checker<'_> {
             let (src, temp) = (self.quote(e.span), self.quote(temp.span));
             if let Some(diag) = self.report(
                 e.span,
-                msgs::check::LENT_ESCAPES_WOULD_KEEP_A_VIEW.at(&[&what, &src, &temp]),
+                msgs::check::LENT_ESCAPES_WOULD_KEEP_A_VIEW,
+                &[&what, &src, &temp],
             ) {
                 diag.help = Some(format!(
                     "name the source first (`let s = {temp}`), or keep a copy: `List({src})`"
@@ -590,11 +595,8 @@ impl Checker<'_> {
             }
             if let Some(diag) = self.report(
                 args[k].value.span,
-                msgs::check::USED_WHILE_LENT_CAN_T_BE_PASSED.at(&[
-                    &root,
-                    &name,
-                    &self.quote(other.value.span),
-                ]),
+                msgs::check::USED_WHILE_LENT_CAN_T_BE_PASSED,
+                &[&root, &name, &self.quote(other.value.span)],
             ) {
                 diag.help = Some(format!(
                     "pass `{root}` to the closure as a parameter instead of capturing it"

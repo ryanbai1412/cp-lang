@@ -206,7 +206,8 @@ impl<'a> Lowerer<'a> {
                     // Never an empty body: a std newer than this compiler fails here.
                     self.report(
                         *span,
-                        msgs::ir::UNKNOWN_INTRINSIC_NO_INTRINSIC_IN_THIS.at(&[&name]),
+                        msgs::ir::UNKNOWN_INTRINSIC_NO_INTRINSIC_IN_THIS,
+                        &[&name],
                     );
                 }
             }
@@ -241,7 +242,8 @@ impl<'a> Lowerer<'a> {
             let name = decl.name.text.clone();
             self.report(
                 decl.name.span,
-                msgs::ir::UNKNOWN_TYPE_CALLS_ITSELF_SO_IT.at(&[&name]),
+                msgs::ir::UNKNOWN_TYPE_CALLS_ITSELF_SO_IT,
+                &[&name],
             );
             let shown = self.show(&ret);
             self.help(format!("add `-> {shown}` to `fn {name}`"));
@@ -433,7 +435,7 @@ impl<'a> Lowerer<'a> {
                 return Ty::Unit;
             }
             let name = self.sigs[id].decl.name.text.clone();
-            self.report(span, msgs::ir::UNKNOWN_TYPE_CALLS_ITSELF_SO_IT.at(&[&name]));
+            self.report(span, msgs::ir::UNKNOWN_TYPE_CALLS_ITSELF_SO_IT, &[&name]);
             self.help(format!(
                 "add `-> Int`, or the type it returns, to `fn {name}`"
             ));

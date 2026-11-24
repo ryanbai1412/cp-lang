@@ -43,7 +43,7 @@ impl<'a> Checker<'a> {
         }
         let at = arg.value.span;
         let title = format!("write `by: {}`", self.quote(at));
-        if let Some(diag) = self.report(at, msgs::check::WRONG_ARG_COUNT_A_SORT_TAKES_ITS.at(&[])) {
+        if let Some(diag) = self.report(at, msgs::check::WRONG_ARG_COUNT_A_SORT_TAKES_ITS, &[]) {
             diag.fix(title, Span::new(at.start, at.start), "by: ");
         }
     }
@@ -61,7 +61,8 @@ impl<'a> Checker<'a> {
         }
         if let Some(diag) = self.report(
             call.span,
-            msgs::check::WRONG_ARG_COUNT_COUNT_WITH_NO_TEST.at(&[]),
+            msgs::check::WRONG_ARG_COUNT_COUNT_WITH_NO_TEST,
+            &[],
         ) {
             diag.help = Some("the trues are `count(x => x)`; every element is `len`".into());
         }
@@ -170,8 +171,8 @@ impl<'a> Checker<'a> {
                                     if prev != d {
                                         self.report(
                                             arg.value.span,
-                                            msgs::check::WRONG_DOMAIN_ZIP_EXPECTS_MATCHING_DOMAINS
-                                                .at(&[&self.quote(arg.value.span), &d, &prev]),
+                                            msgs::check::WRONG_DOMAIN_ZIP_EXPECTS_MATCHING_DOMAINS,
+                                            &[&self.quote(arg.value.span), &d, &prev],
                                         );
                                     }
                                 } else {
@@ -209,7 +210,8 @@ impl<'a> Checker<'a> {
                 if matches!(elem, Ty::Optional(_)) {
                     if let Some(diag) = self.report(
                         args[0].value.span,
-                        msgs::check::BAD_OPERANDS_SUM_ADDS_NUMBERS_NOT.at(&[&elem.with_article()]),
+                        msgs::check::BAD_OPERANDS_SUM_ADDS_NUMBERS_NOT,
+                        &[&elem.with_article()],
                     ) {
                         diag.help = Some(
                             "`sum` does not skip or absorb `None`: add `x ?? 0`, or filter with `if let`".into(),
@@ -234,7 +236,8 @@ impl<'a> Checker<'a> {
                 let ours = format!("{xs}.{name}()!");
                 if let Some(diag) = self.report(
                     call.span,
-                    msgs::check::WRONG_ARG_COUNT_TAKES_2_ARGUMENTS_BUT.at(&[&name, &name]),
+                    msgs::check::WRONG_ARG_COUNT_TAKES_2_ARGUMENTS_BUT,
+                    &[&name, &name],
                 ) {
                     diag.fix(format!("write `{ours}`"), call.span, ours);
                 }
@@ -379,7 +382,8 @@ impl<'a> Checker<'a> {
                         .collect();
                     if let Some(diag) = self.report(
                         init.span,
-                        msgs::check::TYPE_MISMATCH_READING_A_NEEDS_TO.at(&[&name]),
+                        msgs::check::TYPE_MISMATCH_READING_A_NEEDS_TO,
+                        &[&name],
                     ) {
                         diag.help = Some(format!(
                             "write each variant's token: `{}`",
@@ -395,8 +399,7 @@ impl<'a> Checker<'a> {
     /// `Bool` is not an input token: a judge spells yes and no its own way
     /// (R10.2.3).
     pub(crate) fn not_a_token_type(&mut self, span: Span) {
-        if let Some(diag) = self.report(span, msgs::check::NOT_A_TOKEN_TYPE_READ_CAN_T_READ.at(&[]))
-        {
+        if let Some(diag) = self.report(span, msgs::check::NOT_A_TOKEN_TYPE_READ_CAN_T_READ, &[]) {
             diag.help = Some("read a `Str` and compare it: `read<Str>() == \"YES\"`".to_string());
         }
     }
@@ -419,13 +422,8 @@ impl<'a> Checker<'a> {
         let noun = if given == 1 { "argument" } else { "arguments" };
         if let Some(diag) = self.report(
             arg.span,
-            msgs::check::TYPE_MISMATCH_CALLS_WITH_BUT_ITS.at(&[
-                &method,
-                &self.quote(arg.span),
-                &given,
-                &noun,
-                &missing.name,
-            ]),
+            msgs::check::TYPE_MISMATCH_CALLS_WITH_BUT_ITS,
+            &[&method, &self.quote(arg.span), &given, &noun, &missing.name],
         ) {
             diag.help = Some(format!(
                 "give `{}` a default, or pass a lambda that supplies it",
@@ -442,8 +440,8 @@ impl<'a> Checker<'a> {
         if params != fields {
             self.report(
                 span,
-                msgs::check::WRONG_ARG_COUNT_LAMBDA_TAKES_PARAMETERS_BUT
-                    .at(&[&params, &elem, &fields]),
+                msgs::check::WRONG_ARG_COUNT_LAMBDA_TAKES_PARAMETERS_BUT,
+                &[&params, &elem, &fields],
             );
         }
         Ty::Unknown
@@ -473,12 +471,8 @@ impl<'a> Checker<'a> {
         };
         if let Some(diag) = self.report(
             first.span.to(last.span),
-            msgs::check::WRONG_ARG_COUNT_THIS_LAMBDA_TAKES_PARAMETERS.at(&[
-                &params.len(),
-                &passed,
-                &noun,
-                &what,
-            ]),
+            msgs::check::WRONG_ARG_COUNT_THIS_LAMBDA_TAKES_PARAMETERS,
+            &[&params.len(), &passed, &noun, &what],
         ) {
             diag.help = Some(help);
         }
@@ -624,7 +618,7 @@ impl Checker<'_> {
         let help = optional_print_help(ty, &snippet);
         let span = expr.span;
         let text = self.src[span.start as usize..span.end as usize].to_string();
-        if let Some(diag) = self.report(span, message) {
+        if let Some(diag) = self.report_said(span, message) {
             diag.help = help;
             if matches!(ty, Ty::Bool) {
                 diag.fix(format!("write `yes({text})`"), span, format!("yes({text})"));
@@ -669,7 +663,7 @@ impl Checker<'_> {
         if v.unsigned_abs() > 1 << 53 && (v as f64) as i128 != v {
             let text = self.quote(at.span);
             let message = cpl_diag::msgs::check::NOT_EXACTLY_F64_WRITE.at(&[&text, &text]);
-            if let Some(diag) = self.report(at.span, message) {
+            if let Some(diag) = self.report_said(at.span, message) {
                 diag.fix(
                     format!("write `F64({text})`"),
                     at.span,

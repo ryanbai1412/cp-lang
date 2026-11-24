@@ -419,8 +419,8 @@ impl<'a> Lowerer<'a> {
                 {
                     self.report(
                         ann_ty.span,
-                        msgs::ir::TYPE_MISMATCH_LAMBDA_PARAMETER_HAS_TYPE
-                            .at(&[&self.show(&resolved), &self.show(slot_base)]),
+                        msgs::ir::TYPE_MISMATCH_LAMBDA_PARAMETER_HAS_TYPE,
+                        &[&self.show(&resolved), &self.show(slot_base)],
                     );
                 }
                 *slot = if is_mut_slot {

@@ -531,15 +531,13 @@ impl<'a> Lowerer<'a> {
             (Some(_), None) => {
                 self.report(
                     span,
-                    msgs::ir::WRONG_ARG_COUNT_IS_CALLED_ON_A.at(&[&name, &name]),
+                    msgs::ir::WRONG_ARG_COUNT_IS_CALLED_ON_A,
+                    &[&name, &name],
                 );
                 return self.err_expr(span);
             }
             (None, Some(_)) => {
-                self.report(
-                    span,
-                    msgs::ir::WRONG_ARG_COUNT_TAKES_NO_SELF_CALL.at(&[&name]),
-                );
+                self.report(span, msgs::ir::WRONG_ARG_COUNT_TAKES_NO_SELF_CALL, &[&name]);
                 return self.err_expr(span);
             }
         };
@@ -567,21 +565,19 @@ impl<'a> Lowerer<'a> {
             return self.mk(ExprKind::Print(values, None), Ty::Unit, span);
         }
         if !args.is_empty() {
-            self.report(
-                span,
-                msgs::ir::WRONG_ARG_COUNT_RECV_TAKES_NO_ARGUMENTS.at(&[]),
-            );
+            self.report(span, msgs::ir::WRONG_ARG_COUNT_RECV_TAKES_NO_ARGUMENTS, &[]);
             return self.err_expr(span);
         }
         let Some(want) = hint.filter(|want| **want != Ty::Unit) else {
-            self.report(span, msgs::ir::TYPE_MISMATCH_RECV_CAN_T_TELL.at(&[]));
+            self.report(span, msgs::ir::TYPE_MISMATCH_RECV_CAN_T_TELL, &[]);
             self.help("say what the solution printed: `let x: Int = sol.recv()`");
             return self.err_expr(span);
         };
         let Some(spec) = self.spec_of(want) else {
             self.report(
                 span,
-                msgs::ir::TYPE_MISMATCH_RECV_CAN_T_TELL_2.at(&[&self.show(want)]),
+                msgs::ir::TYPE_MISMATCH_RECV_CAN_T_TELL_2,
+                &[&self.show(want)],
             );
             return self.err_expr(span);
         };

@@ -227,7 +227,8 @@ impl<'a> Checker<'a> {
                             if !req.iter().any(|(fnm, _)| fnm == &r.text) {
                                 self.report(
                                     r.span,
-                                    msgs::check::UNKNOWN_FIELD_ROW_HAS_NO_NAMED.at(&[&p, &r.text]),
+                                    msgs::check::UNKNOWN_FIELD_ROW_HAS_NO_NAMED,
+                                    &[&p, &r.text],
                                 );
                             }
                         }
@@ -309,7 +310,7 @@ impl<'a> Checker<'a> {
                 return match self.global(name) {
                     Some(def) => self.def_type(&def, member, span, args),
                     None => {
-                        self.report(span, msgs::check::NO_PUBLIC_TYPE.at(&[&head, &member]));
+                        self.report(span, msgs::check::NO_PUBLIC_TYPE, &[&head, &member]);
                         Ty::Error
                     }
                 };
@@ -358,7 +359,8 @@ impl<'a> Checker<'a> {
                         let member_span = Span::new(head_span.end + 1, span.end);
                         self.report(
                             member_span,
-                            msgs::check::NO_DOMAIN_MEMBER.at(&[&owner, &member]),
+                            msgs::check::NO_DOMAIN_MEMBER,
+                            &[&owner, &member],
                         );
                         Ty::Error
                     }
@@ -437,7 +439,7 @@ impl<'a> Checker<'a> {
         }
         if let Some(replacement) = renamed_prefix_name(name) {
             if let Some(diag) =
-                self.report(span, msgs::check::TYPE_REPLACED.at(&[&name, &replacement]))
+                self.report(span, msgs::check::TYPE_REPLACED, &[&name, &replacement])
             {
                 diag.help = Some(format!(
                     "write `{replacement}` (or run `cpl fix` to migrate)"
@@ -462,7 +464,8 @@ impl<'a> Checker<'a> {
                     let plural = if want == 1 { "" } else { "s" };
                     self.report(
                         span,
-                        msgs::check::BUILTIN_NEEDS_ARGS.at(&[&name, &want, &plural]),
+                        msgs::check::BUILTIN_NEEDS_ARGS,
+                        &[&name, &want, &plural],
                     );
                     return Ty::Error;
                 }
@@ -513,7 +516,8 @@ impl<'a> Checker<'a> {
             if p.variadic && !matches!(ty, Ty::Param(_) | Ty::Error) {
                 if let Some(diag) = self.report(
                     p.span,
-                    msgs::check::VARIADIC_NOT_PARAM.at(&[&p.name.text, &ty]),
+                    msgs::check::VARIADIC_NOT_PARAM,
+                    &[&p.name.text, &ty],
                 ) {
                     diag.help = Some(format!(
                         "write `fn {}<Ts>(..{}: Ts)`, or take a `List<{ty}>` and pass `[a, b, c]`",
@@ -527,7 +531,8 @@ impl<'a> Checker<'a> {
             {
                 if let Some(diag) = self.report(
                     p.span,
-                    msgs::check::LAZY_NOT_FN.at(&[&p.name.text, &p.name.text, &ty]),
+                    msgs::check::LAZY_NOT_FN,
+                    &[&p.name.text, &p.name.text, &ty],
                 ) {
                     diag.help = Some(format!("write `lazy {}: () -> {ty}`", p.name.text));
                 }
@@ -1875,7 +1880,8 @@ impl<'a> Checker<'a> {
             if !matches!(op, ast::BinOp::And | ast::BinOp::Or | ast::BinOp::Coalesce));
         if let Some(diag) = self.report(
             expr.span,
-            msgs::check::NEEDS_A_BOOL.at(&[&what, &quoted, &ty.widen().with_article()]),
+            msgs::check::NEEDS_A_BOOL,
+            &[&what, &quoted, &ty.widen().with_article()],
         ) {
             let Some(zero) = zero else {
                 diag.help = Some("write a comparison".to_string());

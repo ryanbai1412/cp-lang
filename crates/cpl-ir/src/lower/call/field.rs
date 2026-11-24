@@ -172,7 +172,8 @@ impl<'a> Lowerer<'a> {
                     _ => {
                         self.report(
                             name.span,
-                            msgs::ir::UNKNOWN_FIELD_MODULE_HAS_NO_MEMBER.at(&[&name.text]),
+                            msgs::ir::UNKNOWN_FIELD_MODULE_HAS_NO_MEMBER,
+                            &[&name.text],
                         );
                         return self.err_expr(span);
                     }
@@ -266,8 +267,8 @@ impl<'a> Lowerer<'a> {
                     Some(_) => {
                         self.report(
                             span,
-                            msgs::ir::WRONG_ARG_COUNT_THE_VARIANT_HOLDS_VALUES
-                                .at(&[&name.text, &name.text]),
+                            msgs::ir::WRONG_ARG_COUNT_THE_VARIANT_HOLDS_VALUES,
+                            &[&name.text, &name.text],
                         );
                         self.err_expr(span)
                     }
@@ -275,7 +276,7 @@ impl<'a> Lowerer<'a> {
                     None => {
                         let message = cpl_diag::msgs::ir::HAS_NO_VARIANT
                             .at(&[&self.enums[id].name, &name.text]);
-                        self.report(name.span, message);
+                        self.report_said(name.span, message);
                         self.err_expr(span)
                     }
                 };
@@ -364,7 +365,8 @@ impl<'a> Lowerer<'a> {
                     {
                         self.report(
                             span,
-                            msgs::ir::MISSING_IMPL_HAS_NO.at(&[&self.a_ty(&ty), &name.text]),
+                            msgs::ir::MISSING_IMPL_HAS_NO,
+                            &[&self.a_ty(&ty), &name.text],
                         );
                         return self.err_expr(span);
                     }
@@ -479,7 +481,8 @@ impl<'a> Lowerer<'a> {
                 } else {
                     self.report(
                         name.span,
-                        msgs::ir::UNKNOWN_FIELD_HAS_NO_FIELD.at(&[&self.show(&ty), &field]),
+                        msgs::ir::UNKNOWN_FIELD_HAS_NO_FIELD,
+                        &[&self.show(&ty), &field],
                     );
                     self.err_expr(span)
                 }
@@ -715,7 +718,7 @@ impl<'a> Lowerer<'a> {
                     })
                     .collect();
                 let Some(factors) = factors else {
-                    self.report(span, msgs::ir::UNSUPPORTED_THE_KEYS_OF_A.at(&[]));
+                    self.report(span, msgs::ir::UNSUPPORTED_THE_KEYS_OF_A, &[]);
                     return self.err_expr(span);
                 };
                 let p = self.intern_anon_product_domain(factors);
@@ -956,7 +959,8 @@ impl<'a> Lowerer<'a> {
                 }
                 self.report(
                     name.span,
-                    msgs::check::UNKNOWN_FIELD_HAS_NO_MEMBER.at(&[&self.a_ty(&ty), &name.text]),
+                    msgs::check::UNKNOWN_FIELD_HAS_NO_MEMBER,
+                    &[&self.a_ty(&ty), &name.text],
                 );
                 self.member_typo(&ty, &name.text, name.span);
                 match (&ty, name.text.as_str()) {

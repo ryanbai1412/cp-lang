@@ -55,7 +55,8 @@ impl Checker<'_> {
             let param = generics.get(*i).map_or("", String::as_str);
             if let Some(diag) = self.report(
                 span,
-                msgs::check::MISSING_IMPL_IS_NOT_WHICH_NEEDS.at(&[&ty, &wants, &name, &param]),
+                msgs::check::MISSING_IMPL_IS_NOT_WHICH_NEEDS,
+                &[&ty, &wants, &name, &param],
             ) {
                 diag.help = Some(format!(
                     "drop the type arguments and let `{name}` infer them, or pass {wants} for `{param}`"
@@ -85,7 +86,8 @@ impl Checker<'_> {
                 if args.len() > generics.len() {
                     self.report(
                         span,
-                        msgs::check::WRONG_ARG_COUNT_TAKES_BUT_GIVEN.at(&[
+                        msgs::check::WRONG_ARG_COUNT_TAKES_BUT_GIVEN,
+                        &[
                             &name,
                             &match generics.len() {
                                 0 => "no type arguments".to_string(),
@@ -96,7 +98,7 @@ impl Checker<'_> {
                             } else {
                                 format!("{} were", args.len())
                             },
-                        ]),
+                        ],
                     );
                     return Ty::Error;
                 }
@@ -133,7 +135,7 @@ impl Checker<'_> {
             // Declared by a broken statement: its error is already reported.
             Def::Value { ty: Ty::Error, .. } | Def::Fn { ty: Ty::Error, .. } => Ty::Error,
             Def::Value { .. } | Def::Fn { .. } | Def::Variant { .. } | Def::Impl { .. } => {
-                self.report(span, msgs::check::UNKNOWN_TYPE_IS_A_VALUE_NOT.at(&[&name]));
+                self.report(span, msgs::check::UNKNOWN_TYPE_IS_A_VALUE_NOT, &[&name]);
                 Ty::Error
             }
         }

@@ -87,7 +87,8 @@ impl<'a> Lowerer<'a> {
             }
             self.report(
                 span,
-                msgs::ir::TYPE_MISMATCH_PREFIX_TAKES_A_D.at(&[&self.show(&src.ty)]),
+                msgs::ir::TYPE_MISMATCH_PREFIX_TAKES_A_D,
+                &[&self.show(&src.ty)],
             );
             return self.err_expr(span);
         };
@@ -118,10 +119,7 @@ impl<'a> Lowerer<'a> {
             return self.err_expr(span);
         };
         let (Dim::Pos(r), Dim::Pos(c)) = (&dims[0], &dims[1]) else {
-            self.report(
-                span,
-                msgs::ir::TYPE_MISMATCH_TAKES_AN_ARRAY_OVER.at(&[&shape]),
-            );
+            self.report(span, msgs::ir::TYPE_MISMATCH_TAKES_AN_ARRAY_OVER, &[&shape]);
             return self.err_expr(span);
         };
         let gargs = vec![

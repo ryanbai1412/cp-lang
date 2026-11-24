@@ -175,7 +175,7 @@ impl<'a> Checker<'a> {
             }
             _ => return,
         };
-        if let Some(diag) = self.report(target.span, message) {
+        if let Some(diag) = self.report_said(target.span, message) {
             diag.help = Some(format!(
                 "move the methods into the type's module, or declare a trait and `impl` it for `{shown}`"
             ));
@@ -212,12 +212,8 @@ impl Checker<'_> {
                 let (tr_text, target_text) = (self.quote(tr.span), self.quote(target.span));
                 self.report(
                     tr.span,
-                    msgs::check::MISSING_IMPL_IMPL_FOR_REQUIRES_IMPL.at(&[
-                        &tr_text,
-                        &target_text,
-                        &sup,
-                        &target_text,
-                    ]),
+                    msgs::check::MISSING_IMPL_IMPL_FOR_REQUIRES_IMPL,
+                    &[&tr_text, &target_text, &sup, &target_text],
                 );
             }
         }

@@ -290,7 +290,8 @@ impl<'a> Lowerer<'a> {
             if let Some((_, ty, span)) = temps.iter().find(|(_, ty, _)| *ty != temps[0].1) {
                 self.report(
                     *span,
-                    msgs::ir::TYPE_MISMATCH_FIELDS_WALKS_VALUES_OF.at(&[&self.show(ty)]),
+                    msgs::ir::TYPE_MISMATCH_FIELDS_WALKS_VALUES_OF,
+                    &[&self.show(ty)],
                 );
                 return;
             }
@@ -345,15 +346,16 @@ impl<'a> Lowerer<'a> {
             let Some(tys) = self.field_tys(ty) else {
                 self.report(
                     *span,
-                    msgs::check::TYPE_MISMATCH_FIELDS_WALKS_THE_FIELDS.at(&[&self.show(ty)]),
+                    msgs::check::TYPE_MISMATCH_FIELDS_WALKS_THE_FIELDS,
+                    &[&self.show(ty)],
                 );
                 return;
             };
             if let Some(first) = shapes.first().filter(|f| f.len() != tys.len()) {
                 self.report(
                     *span,
-                    msgs::ir::TYPE_MISMATCH_FIELDS_WALKS_VALUES_WITH
-                        .at(&[&tys.len(), &first.len()]),
+                    msgs::ir::TYPE_MISMATCH_FIELDS_WALKS_VALUES_WITH,
+                    &[&tys.len(), &first.len()],
                 );
                 return;
             }

@@ -173,7 +173,8 @@ impl<'a> Lowerer<'a> {
     pub(super) fn list_static_typo(&mut self, name: &ast::Name, span: Span) -> Expr {
         self.report(
             name.span,
-            msgs::ir::UNKNOWN_FIELD_A_LIST_HAS_NO.at(&[&name.text]),
+            msgs::ir::UNKNOWN_FIELD_A_LIST_HAS_NO,
+            &[&name.text],
         );
         if let Some(s) = cpl_check::closest(&name.text, ["filled"].into_iter()) {
             self.suggest_last(name.span, s);
@@ -538,7 +539,8 @@ impl<'a> Lowerer<'a> {
         let new = self.parenthesized(whole.span, new);
         self.report(
             whole.span,
-            msgs::ir::UNKNOWN_FIELD_A_HAS_NO_METHOD.at(&[&self.show(ty)]),
+            msgs::ir::UNKNOWN_FIELD_A_HAS_NO_METHOD,
+            &[&self.show(ty)],
         );
         let at = self.span(whole.span);
         let ends = self.stands_alone(whole.span).1;
@@ -573,7 +575,8 @@ impl<'a> Lowerer<'a> {
         let m = self.source(base.span);
         self.report(
             whole.span,
-            msgs::ir::UNKNOWN_FIELD_A_HAS_NO_METHOD_2.at(&[&self.show(ty), &name.text, &m]),
+            msgs::ir::UNKNOWN_FIELD_A_HAS_NO_METHOD_2,
+            &[&self.show(ty), &name.text, &m],
         );
         let at = self.span(whole.span);
         let text = &self.mods[self.cur_mod].text;
@@ -598,7 +601,8 @@ impl<'a> Lowerer<'a> {
         if !matches!(ty, Ty::Error) {
             self.report(
                 span,
-                msgs::ir::UNKNOWN_FIELD_NO_METHOD_ON.at(&[&name.text, &self.show(ty)]),
+                msgs::ir::UNKNOWN_FIELD_NO_METHOD_ON,
+                &[&name.text, &self.show(ty)],
             );
             if let (Some(last), "parse") = (self.diags.last_mut(), name.text.as_str()) {
                 last.help = Some("`parse` reads a value from a `Str`".to_string());
@@ -610,7 +614,7 @@ impl<'a> Lowerer<'a> {
     /// `read<List<Int>>(n)`: the type says how many, `read<[n]Int>()`.
     pub(super) fn read_count_arg(&mut self, count: &ast::Expr, elem: &Ty, span: Span) {
         let new = format!("read<[{}]{}>()", self.source(count.span), self.show(elem));
-        self.report(span, msgs::ir::WRONG_ARG_COUNT_READ_TAKES_NO_COUNT.at(&[]));
+        self.report(span, msgs::ir::WRONG_ARG_COUNT_READ_TAKES_NO_COUNT, &[]);
         let at = self.span(span);
         if let Some(last) = self.diags.last_mut() {
             last.help = Some(format!("`n` values read as `[n]T`: `{new}`"));
@@ -650,7 +654,7 @@ impl<'a> Lowerer<'a> {
     /// `print(xs.sort())`: an in-place change gives nothing to print; its
     /// copying form does.
     pub(super) fn no_value_to_print(&mut self, span: Span) {
-        self.report(span, msgs::ir::TYPE_MISMATCH_THIS_HAS_NO_VALUE_2.at(&[]));
+        self.report(span, msgs::ir::TYPE_MISMATCH_THIS_HAS_NO_VALUE_2, &[]);
         let text = self.source(span);
         let copy = [(".sort()", ".sorted()"), (".reverse()", ".rev")]
             .into_iter()
@@ -696,7 +700,8 @@ impl<'a> Lowerer<'a> {
         };
         self.report(
             name.span,
-            msgs::ir::WRONG_ARG_COUNT_A_SORT_PUTS_THE.at(&[&name.text]),
+            msgs::ir::WRONG_ARG_COUNT_A_SORT_PUTS_THE,
+            &[&name.text],
         );
         let by = (args.iter()).find(|a| {
             a.name
@@ -807,7 +812,8 @@ impl<'a> Lowerer<'a> {
         );
         self.report(
             span,
-            msgs::ir::TYPE_MISMATCH_TAKES_A_SEQUENCE_S.at(&[&method, &method, &self.show(ty)]),
+            msgs::ir::TYPE_MISMATCH_TAKES_A_SEQUENCE_S,
+            &[&method, &method, &self.show(ty)],
         );
         let edit = self.span(span);
         if let Some(last) = self.diags.last_mut() {

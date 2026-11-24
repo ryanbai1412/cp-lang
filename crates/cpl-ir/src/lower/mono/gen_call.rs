@@ -646,11 +646,8 @@ impl<'a> Lowerer<'a> {
                 if !ok {
                     self.report(
                         span,
-                        msgs::check::MISSING_IMPL_DOES_NOT_IMPLEMENT_REQUIRED.at(&[
-                            &self.show(ty),
-                            &tr_name.text,
-                            &decl.name.text,
-                        ]),
+                        msgs::check::MISSING_IMPL_DOES_NOT_IMPLEMENT_REQUIRED,
+                        &[&self.show(ty), &tr_name.text, &decl.name.text],
                     );
                     let own = match self.get_sym(&tr_name.text) {
                         Some(Sym::Trait(tid)) => self.traits[tid].unimplemented.clone(),

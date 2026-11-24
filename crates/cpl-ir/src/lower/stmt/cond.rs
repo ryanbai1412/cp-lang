@@ -431,8 +431,8 @@ impl<'a> Lowerer<'a> {
                         if value.ty != Ty::Error {
                             self.report(
                                 pat.span,
-                                msgs::ir::TYPE_MISMATCH_SOME_MATCHES_AN_OPTIONAL
-                                    .at(&[&self.show(&value.ty)]),
+                                msgs::ir::TYPE_MISMATCH_SOME_MATCHES_AN_OPTIONAL,
+                                &[&self.show(&value.ty)],
                             );
                         }
                         return None;
@@ -440,7 +440,8 @@ impl<'a> Lowerer<'a> {
                     if args.len() != 1 {
                         self.report(
                             pat.span,
-                            msgs::ir::WRONG_ARG_COUNT_SOME_HOLDS_1_VALUE.at(&[&args.len()]),
+                            msgs::ir::WRONG_ARG_COUNT_SOME_HOLDS_1_VALUE,
+                            &[&args.len()],
                         );
                         return None;
                     }
@@ -454,18 +455,15 @@ impl<'a> Lowerer<'a> {
                         else {
                             let message = cpl_diag::msgs::ir::HAS_NO_VARIANT
                                 .at(&[&self.domains[d], &name.text]);
-                            self.report(name.span, message);
+                            self.report_said(name.span, message);
                             return None;
                         };
                         let factors = &info.variants[tag].1;
                         if !args.is_empty() && factors.len() != args.len() {
                             self.report(
                                 pat.span,
-                                msgs::ir::WRONG_ARG_COUNT_HOLDS_VALUES_BUT_THIS.at(&[
-                                    &name.text,
-                                    &factors.len(),
-                                    &args.len(),
-                                ]),
+                                msgs::ir::WRONG_ARG_COUNT_HOLDS_VALUES_BUT_THIS,
+                                &[&name.text, &factors.len(), &args.len()],
                             );
                             return None;
                         }
@@ -482,8 +480,8 @@ impl<'a> Lowerer<'a> {
                     if value.ty != Ty::Error {
                         self.report(
                             pat.span,
-                            msgs::check::TYPE_MISMATCH_IS_A_VARIANT_BUT
-                                .at(&[&name.text, &self.show(&value.ty)]),
+                            msgs::check::TYPE_MISMATCH_IS_A_VARIANT_BUT,
+                            &[&name.text, &self.show(&value.ty)],
                         );
                     }
                     return None;
@@ -492,18 +490,15 @@ impl<'a> Lowerer<'a> {
                 let Some(tag) = variants.iter().position(|(v, _)| *v == name.text) else {
                     let message =
                         cpl_diag::msgs::ir::HAS_NO_VARIANT.at(&[&self.enums[id].name, &name.text]);
-                    self.report(name.span, message);
+                    self.report_said(name.span, message);
                     return None;
                 };
                 let fields = variants[tag].1.clone();
                 if !args.is_empty() && fields.len() != args.len() {
                     self.report(
                         pat.span,
-                        msgs::ir::WRONG_ARG_COUNT_HOLDS_VALUES_BUT_THIS.at(&[
-                            &name.text,
-                            &fields.len(),
-                            &args.len(),
-                        ]),
+                        msgs::ir::WRONG_ARG_COUNT_HOLDS_VALUES_BUT_THIS,
+                        &[&name.text, &fields.len(), &args.len()],
                     );
                     return None;
                 }
@@ -531,8 +526,8 @@ impl<'a> Lowerer<'a> {
                     if value.ty != Ty::Error {
                         self.report(
                             pat.span,
-                            msgs::ir::TYPE_MISMATCH_A_PATTERN_OF_PARTS
-                                .at(&[&pats.len(), &self.show(&value.ty)]),
+                            msgs::ir::TYPE_MISMATCH_A_PATTERN_OF_PARTS,
+                            &[&pats.len(), &self.show(&value.ty)],
                         );
                     }
                     return None;

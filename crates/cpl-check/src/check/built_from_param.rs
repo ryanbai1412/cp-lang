@@ -22,7 +22,8 @@ impl Checker<'_> {
         );
         if let Some(diag) = self.report(
             e.span,
-            msgs::check::LENT_ESCAPES_WOULD_RETURN_A_HOLDING.at(&[&what, &ty, &name]),
+            msgs::check::LENT_ESCAPES_WOULD_RETURN_A_HOLDING,
+            &[&what, &ty, &name],
         ) {
             diag.help = Some(format!(
                 "build it from a copy, `{copied}`, or declare `lends {ty}`"

@@ -129,14 +129,16 @@ impl<'a> Checker<'a> {
             Some(_) => {
                 self.report(
                     name.span,
-                    msgs::check::UNKNOWN_TYPE_IS_NOT_A_TRAIT.at(&[&name.text]),
+                    msgs::check::UNKNOWN_TYPE_IS_NOT_A_TRAIT,
+                    &[&name.text],
                 );
             }
             None if self.env.has_imports() => {}
             None => {
                 self.report(
                     name.span,
-                    msgs::check::UNKNOWN_TYPE_NO_TRAIT_NAMED.at(&[&name.text]),
+                    msgs::check::UNKNOWN_TYPE_NO_TRAIT_NAMED,
+                    &[&name.text],
                 );
             }
         }
@@ -168,7 +170,8 @@ impl<'a> Checker<'a> {
                 .join(" and ");
             if let Some(diag) = self.report(
                 trait_ty.span,
-                msgs::check::UNSUPPORTED_IS_A_TRAIT_ALIAS.at(&[&trait_text]),
+                msgs::check::UNSUPPORTED_IS_A_TRAIT_ALIAS,
+                &[&trait_text],
             ) {
                 diag.help = Some(format!("write {impls} instead"));
             }
@@ -187,7 +190,8 @@ impl<'a> Checker<'a> {
                 let suggestion = closest(&name.text, known.iter().map(String::as_str));
                 if let Some(diag) = self.report(
                     name.span,
-                    msgs::check::UNKNOWN_FIELD_HAS_NO_FN.at(&[&trait_text, &name.text]),
+                    msgs::check::UNKNOWN_FIELD_HAS_NO_FN,
+                    &[&trait_text, &name.text],
                 ) {
                     match suggestion {
                         Some(s) => diag.suggest(name.span, s),
@@ -213,11 +217,12 @@ impl<'a> Checker<'a> {
             let span = trait_ty.span.to(target.span);
             if let Some(diag) = self.report(
                 span,
-                msgs::check::WRONG_ARG_COUNT_IMPL_FOR_IS_MISSING.at(&[
+                msgs::check::WRONG_ARG_COUNT_IMPL_FOR_IS_MISSING,
+                &[
                     &trait_text,
                     &self.quote(target.span),
                     &super::expr::list_names(&missing),
-                ]),
+                ],
             ) {
                 diag.help = Some(format!(
                     "`{trait_text}` declares {} without a body, so each impl writes {}",
@@ -258,7 +263,8 @@ impl<'a> Checker<'a> {
             let args: [&dyn std::fmt::Display; 4] = [&tr, &tg, &assoc.text, &names];
             if let Some(diag) = self.report(
                 assoc.span,
-                cpl_diag::msgs::check::ASSOC_CHOICE_NEEDS_FNS.at(&args),
+                cpl_diag::msgs::check::ASSOC_CHOICE_NEEDS_FNS,
+                &args,
             ) {
                 diag.help = Some(format!(
                     "the trait's default {} written for its own `Self.{}`; write {} in this impl too",

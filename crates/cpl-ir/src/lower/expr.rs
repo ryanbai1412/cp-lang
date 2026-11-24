@@ -95,7 +95,7 @@ impl<'a> Lowerer<'a> {
                     self.cast(Cast::IntToU64, bits, Ty::U64)
                 }
                 Err(_) => {
-                    self.report(span, msgs::ir::BAD_NUMBER_THIS_NUMBER_DOES_NOT.at(&[]));
+                    self.report(span, msgs::ir::BAD_NUMBER_THIS_NUMBER_DOES_NOT, &[]);
                     self.err_expr(span)
                 }
             },
@@ -104,7 +104,7 @@ impl<'a> Lowerer<'a> {
                 match clean.parse::<f64>() {
                     Ok(value) => self.mk(ExprKind::Float(value), Ty::Float, span),
                     Err(_) => {
-                        self.report(span, msgs::ir::BAD_NUMBER_THIS_IS_NOT_A.at(&[]));
+                        self.report(span, msgs::ir::BAD_NUMBER_THIS_IS_NOT_A, &[]);
                         self.err_expr(span)
                     }
                 }
@@ -119,7 +119,7 @@ impl<'a> Lowerer<'a> {
                 Some(ty @ Ty::Opt(_)) => self.mk(ExprKind::None, ty.clone(), span),
                 Some(Ty::Error) => self.err_expr(span),
                 _ => {
-                    self.report(span, msgs::ir::TYPE_MISMATCH_CAN_T_TELL_WHICH.at(&[]));
+                    self.report(span, msgs::ir::TYPE_MISMATCH_CAN_T_TELL_WHICH, &[]);
                     self.help("say the type where it is stored: `let best: ?Int = None`");
                     self.err_expr(span)
                 }
@@ -151,10 +151,7 @@ impl<'a> Lowerer<'a> {
                         return self.local(slot, span);
                     }
                 }
-                self.report(
-                    span,
-                    msgs::ir::UNRESOLVED_NAME_SELF_OUTSIDE_A_METHOD.at(&[]),
-                );
+                self.report(span, msgs::ir::UNRESOLVED_NAME_SELF_OUTSIDE_A_METHOD, &[]);
                 self.err_expr(span)
             }
             ast::ExprKind::Cpp(_) | ast::ExprKind::Intrinsic(_) => self.err_expr(span),
@@ -236,7 +233,8 @@ impl<'a> Lowerer<'a> {
                         if indices.len() != 1 {
                             self.report(
                                 span,
-                                msgs::ir::WRONG_ARG_COUNT_A_COUNTER_TAKES_1.at(&[&indices.len()]),
+                                msgs::ir::WRONG_ARG_COUNT_A_COUNTER_TAKES_1,
+                                &[&indices.len()],
                             );
                             return self.err_expr(span);
                         }
@@ -678,7 +676,7 @@ impl<'a> Lowerer<'a> {
                     other => {
                         let msg =
                             cpl_diag::msgs::ir::WITH_UPDATES_FIELDS_STRUCT.at(&[&lw.show(other)]);
-                        lw.report(span, msg);
+                        lw.report_said(span, msg);
                         out.push_give(lw.err_expr(span));
                         return;
                     }
@@ -687,8 +685,8 @@ impl<'a> Lowerer<'a> {
                     if !fields.iter().any(|(f, _)| f == &name.text) {
                         lw.report(
                             name.span,
-                            cpl_diag::msgs::ir::UNKNOWN_FIELD_HAS_NO_FIELD
-                                .at(&[&lw.show(&ty), &name.text]),
+                            cpl_diag::msgs::ir::UNKNOWN_FIELD_HAS_NO_FIELD,
+                            &[&lw.show(&ty), &name.text],
                         );
                     }
                 }
@@ -735,7 +733,8 @@ impl<'a> Lowerer<'a> {
                     other => {
                         self.report(
                             span,
-                            msgs::ir::TYPE_MISMATCH_TAKES_THE_VALUE_OUT.at(&[&self.show(&other)]),
+                            msgs::ir::TYPE_MISMATCH_TAKES_THE_VALUE_OUT,
+                            &[&self.show(&other)],
                         );
                         self.err_expr(span)
                     }

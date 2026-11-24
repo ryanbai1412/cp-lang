@@ -157,7 +157,7 @@ impl<'a> Lowerer<'a> {
     }
 
     fn needs_value(&mut self, span: Span) {
-        self.report(span, msgs::ir::TYPE_MISMATCH_THIS_BLOCK_IS_USED.at(&[]));
+        self.report(span, msgs::ir::TYPE_MISMATCH_THIS_BLOCK_IS_USED, &[]);
     }
 
     /// Lowers `e` where its value goes to `tail`. `if`, `match` and inline
@@ -180,7 +180,7 @@ impl<'a> Lowerer<'a> {
                 otherwise,
             } => match (otherwise, tail) {
                 (None, Tail::Give) => {
-                    self.report(e.span, msgs::ir::TYPE_MISMATCH_AN_IF_USED_AS.at(&[]));
+                    self.report(e.span, msgs::ir::TYPE_MISMATCH_AN_IF_USED_AS, &[]);
                 }
                 // Without an `else` there is no value on one path: a
                 // statement, and the fn's value comes later.
@@ -1235,7 +1235,7 @@ impl<'a> Lowerer<'a> {
                         }
                         None => cpl_diag::msgs::ir::OUTSIDE_LOOP.at(&[&word]),
                     };
-                    self.report(stmt.span, message);
+                    self.report_said(stmt.span, message);
                     return;
                 };
                 if self.cx.dos.last().is_some_and(|frame| index < frame.loops) {

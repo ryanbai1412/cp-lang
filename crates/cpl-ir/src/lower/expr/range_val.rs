@@ -154,7 +154,7 @@ impl<'a> Lowerer<'a> {
                 ),
                 (Ty::Float, Ty::Float) => {
                     let message = cpl_diag::msgs::ir::INTERVAL_F64_S_WRITTEN.at(&[]);
-                    self.report(span, message);
+                    self.report_said(span, message);
                     self.help("a real interval has no last element, so `..` and `..=` are the same set to a search");
                     self.err_expr(span)
                 }
@@ -311,7 +311,8 @@ impl<'a> Lowerer<'a> {
             if opt.ty != Ty::Error {
                 self.report(
                     span,
-                    msgs::ir::TYPE_MISMATCH_NEEDS_AN_OPTIONAL_FOUND.at(&[&self.show(&opt.ty)]),
+                    msgs::ir::TYPE_MISMATCH_NEEDS_AN_OPTIONAL_FOUND,
+                    &[&self.show(&opt.ty)],
                 );
             }
             return self.err_expr(span);

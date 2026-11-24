@@ -85,10 +85,7 @@ impl<'a> Lowerer<'a> {
                 ast::ExprKind::Unary { op: UnOp::Neg, expr } if matches!(expr.kind, ast::ExprKind::Int(n) if n > 0)
             );
             if negative {
-                self.report(
-                    bound.span,
-                    msgs::ir::BAD_OPERANDS_A_SLICE_BOUND_COUNTS.at(&[]),
-                );
+                self.report(bound.span, msgs::ir::BAD_OPERANDS_A_SLICE_BOUND_COUNTS, &[]);
                 self.help("count from the end with the length: `a[..a.len - 1]`");
                 return None;
             }
@@ -526,10 +523,7 @@ impl<'a> Lowerer<'a> {
                 ast::ExprKind::Unary { op: UnOp::Neg, expr } if matches!(expr.kind, ast::ExprKind::Int(n) if n > 0)
             );
             if negative {
-                self.report(
-                    bound.span,
-                    msgs::ir::BAD_OPERANDS_A_SLICE_BOUND_COUNTS.at(&[]),
-                );
+                self.report(bound.span, msgs::ir::BAD_OPERANDS_A_SLICE_BOUND_COUNTS, &[]);
                 self.help("count from the end with the length: `a[..a.len - 1]`");
                 return self.err_expr(span);
             }
@@ -650,7 +644,8 @@ impl<'a> Lowerer<'a> {
             other => {
                 self.report(
                     span,
-                    msgs::ir::BAD_OPERANDS_CAN_T_SLICE_A.at(&[&self.show(other)]),
+                    msgs::ir::BAD_OPERANDS_CAN_T_SLICE_A,
+                    &[&self.show(other)],
                 );
                 return self.err_expr(span);
             }

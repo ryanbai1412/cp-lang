@@ -133,8 +133,8 @@ impl<'a> Lowerer<'a> {
                 if value.ty != Ty::Error {
                     self.report(
                         target.span,
-                        msgs::ir::TYPE_MISMATCH_VARIABLES_CAN_T_TAKE
-                            .at(&[&targets.len(), &self.show(&value.ty)]),
+                        msgs::ir::TYPE_MISMATCH_VARIABLES_CAN_T_TAKE,
+                        &[&targets.len(), &self.show(&value.ty)],
                     );
                 }
                 return;
@@ -378,7 +378,8 @@ impl<'a> Lowerer<'a> {
                     if !matches!(*inner, Ty::Error) && !self.ordered(&inner) {
                         self.report(
                             span,
-                            msgs::ir::BAD_OPERANDS_MAX_AND_MIN_NEED.at(&[&self.show(&place.ty)]),
+                            msgs::ir::BAD_OPERANDS_MAX_AND_MIN_NEED,
+                            &[&self.show(&place.ty)],
                         );
                         return;
                     }
@@ -468,7 +469,7 @@ impl<'a> Lowerer<'a> {
                         _ => cpl_diag::msgs::ir::BAD_OPERANDS_MAX_AND_MIN_NEED
                             .at(&[&self.show(&place.ty)]),
                     };
-                    self.report(span, message);
+                    self.report_said(span, message);
                 }
                 let op = if op == ast::AssignOp::Max {
                     AssignOp::Max
@@ -561,8 +562,8 @@ impl<'a> Lowerer<'a> {
                         if place.ty != Ty::Error {
                             self.report(
                                 span,
-                                msgs::ir::BAD_OPERANDS_FILLS_IN_AN_OPTIONAL
-                                    .at(&[&self.show(&place.ty)]),
+                                msgs::ir::BAD_OPERANDS_FILLS_IN_AN_OPTIONAL,
+                                &[&self.show(&place.ty)],
                             );
                         }
                         return;
@@ -597,8 +598,8 @@ impl<'a> Lowerer<'a> {
                         );
                         self.report(
                             span,
-                            msgs::ir::BAD_OPERANDS_CAN_T_BE_APPLIED_2
-                                .at(&[&bin.text(), &self.show(&place.ty)]),
+                            msgs::ir::BAD_OPERANDS_CAN_T_BE_APPLIED_2,
+                            &[&bin.text(), &self.show(&place.ty)],
                         );
                         self.help(help);
                         return;
@@ -627,8 +628,8 @@ impl<'a> Lowerer<'a> {
                     _ => {
                         self.report(
                             span,
-                            msgs::ir::BAD_OPERANDS_CAN_T_BE_APPLIED_2
-                                .at(&[&bin.text(), &self.show(&place.ty)]),
+                            msgs::ir::BAD_OPERANDS_CAN_T_BE_APPLIED_2,
+                            &[&bin.text(), &self.show(&place.ty)],
                         );
                         value
                     }

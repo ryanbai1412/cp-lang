@@ -402,7 +402,7 @@ impl<'a> Lowerer<'a> {
                 Ty::Struct(self.instantiate_struct(gid, vec![GenArg::Domain(d)]))
             }
             _ => {
-                self.report(span, msgs::ir::UNKNOWN_TYPE_SUBSET_IS_NOT_IN.at(&[]));
+                self.report(span, msgs::ir::UNKNOWN_TYPE_SUBSET_IS_NOT_IN, &[]);
                 Ty::Error
             }
         }

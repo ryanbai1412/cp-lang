@@ -240,14 +240,15 @@ impl<'a> Lowerer<'a> {
         let _ = (l_span, r_span);
         if !matches!(op, CmpOp::Eq | CmpOp::Ne) {
             if matches!(l.ty, Ty::Opt(_)) {
-                self.report(span, msgs::ir::OPTIONAL_COMPARE_AN_OPTIONAL_HAS_NO.at(&[]));
+                self.report(span, msgs::ir::OPTIONAL_COMPARE_AN_OPTIONAL_HAS_NO, &[]);
                 self.help("give it a value first: `(x ?? INF) < y`");
                 return self.err_expr(span);
             }
             if !self.ordered(&l.ty) {
                 self.report(
                     span,
-                    msgs::ir::BAD_OPERANDS_A_HAS_NO_ORDER_3.at(&[&self.show(&l.ty)]),
+                    msgs::ir::BAD_OPERANDS_A_HAS_NO_ORDER_3,
+                    &[&self.show(&l.ty)],
                 );
                 return self.err_expr(span);
             }

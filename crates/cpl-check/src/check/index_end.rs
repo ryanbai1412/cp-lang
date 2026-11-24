@@ -23,11 +23,12 @@ impl Checker<'_> {
         );
         if let Some(diag) = self.report(
             index.span,
-            msgs::check::WRONG_DOMAIN_IS_INDEXED_BY_INT.at(&[
+            msgs::check::WRONG_DOMAIN_IS_INDEXED_BY_INT,
+            &[
                 &self.quote(base.span),
                 &self.quote(index.span),
                 &index_tys[0].with_article(),
-            ]),
+            ],
         ) {
             diag.help = Some(help);
         }
@@ -97,7 +98,8 @@ impl Checker<'_> {
         };
         if let Some(diag) = self.report(
             index.span,
-            msgs::check::NEGATIVE_LITERAL_INDEX_KEYS_NEVER_WRAP_SO.at(&[&a, &k]),
+            msgs::check::NEGATIVE_LITERAL_INDEX_KEYS_NEVER_WRAP_SO,
+            &[&a, &k],
         ) {
             diag.help = Some(format!("{help} (R07.2.17)"));
             diag.fix(format!("write `{fix}`"), expr.span, fix);
@@ -128,7 +130,7 @@ impl Checker<'_> {
         }
         let (pre, k) = (self.quote(base.span), self.quote(index.span));
         let message = cpl_diag::msgs::check::INT_INDEX_INTO_CUT.at(&[&pre, &k]);
-        if let Some(diag) = self.report(index.span, message) {
+        if let Some(diag) = self.report_said(index.span, message) {
             let next = match index.kind {
                 ExprKind::Int(n) => (n + 1).to_string(),
                 _ => format!("{k} + 1"),

@@ -163,7 +163,8 @@ impl<'a> Lowerer<'a> {
                 let value = self.expr(e, None);
                 self.report(
                     span,
-                    msgs::ir::TYPE_MISMATCH_A_FOR_CAN_T.at(&[&self.show(&value.ty)]),
+                    msgs::ir::TYPE_MISMATCH_A_FOR_CAN_T,
+                    &[&self.show(&value.ty)],
                 );
                 error(self)
             }
@@ -181,7 +182,8 @@ impl<'a> Lowerer<'a> {
                 let value = self.expr(e, None);
                 self.report(
                     span,
-                    msgs::ir::TYPE_MISMATCH_A_FOR_CAN_T.at(&[&self.show(&value.ty)]),
+                    msgs::ir::TYPE_MISMATCH_A_FOR_CAN_T,
+                    &[&self.show(&value.ty)],
                 );
                 error(self)
             }
@@ -196,7 +198,8 @@ impl<'a> Lowerer<'a> {
                     other => {
                         self.report(
                             span,
-                            msgs::ir::TYPE_MISMATCH_A_FOR_CAN_WALK.at(&[&self.show(&other)]),
+                            msgs::ir::TYPE_MISMATCH_A_FOR_CAN_WALK,
+                            &[&self.show(&other)],
                         );
                         return error(self);
                     }
@@ -221,7 +224,8 @@ impl<'a> Lowerer<'a> {
                 if !matches!(ty, Ty::Int | Ty::Pos(_) | Ty::Bound(_) | Ty::Error) {
                     self.report(
                         span,
-                        msgs::ir::TYPE_MISMATCH_A_RANGE_RUNS_OVER.at(&[&self.show(&ty)]),
+                        msgs::ir::TYPE_MISMATCH_A_RANGE_RUNS_OVER,
+                        &[&self.show(&ty)],
                     );
                     return error(self);
                 }
@@ -294,7 +298,8 @@ impl<'a> Lowerer<'a> {
                     _ => {
                         self.report(
                             span,
-                            msgs::ir::TYPE_MISMATCH_A_FOR_OVER_LO.at(&[&self.show(&lo.ty)]),
+                            msgs::ir::TYPE_MISMATCH_A_FOR_OVER_LO,
+                            &[&self.show(&lo.ty)],
                         );
                         error(self)
                     }
@@ -435,17 +440,15 @@ impl<'a> Lowerer<'a> {
                     closed,
                 } = iter
                 else {
-                    self.report(
-                        span,
-                        cpl_diag::msgs::ir::STEPS_RANGE_NUMBERS_WRITTEN.at(&[]),
-                    );
+                    self.report(span, cpl_diag::msgs::ir::STEPS_RANGE_NUMBERS_WRITTEN, &[]);
                     return (iter, ty);
                 };
                 // `for v in V by 2` steps along the positions of `V`.
                 if !matches!(ty, Ty::Int | Ty::Pos(_)) {
                     self.report(
                         span,
-                        msgs::ir::TYPE_MISMATCH_BY_STEPS_A_RANGE.at(&[&self.show(&ty)]),
+                        msgs::ir::TYPE_MISMATCH_BY_STEPS_A_RANGE,
+                        &[&self.show(&ty)],
                     );
                     return (
                         Iter::Range {
@@ -573,7 +576,7 @@ impl<'a> Lowerer<'a> {
                     _ => None,
                 };
                 let Some(id) = domain else {
-                    self.report(name.span, msgs::ir::UNKNOWN_FIELD_CUTS_BELONGS_TO_A.at(&[]));
+                    self.report(name.span, msgs::ir::UNKNOWN_FIELD_CUTS_BELONGS_TO_A, &[]);
                     return error(self);
                 };
                 let lo = self.int_lit(0, span);
@@ -709,14 +712,15 @@ impl<'a> Lowerer<'a> {
                     }
                     Ty::Error => return error(self),
                     Ty::Int => {
-                        self.report(span, msgs::ir::TYPE_MISMATCH_A_FOR_CAN_T_2.at(&[]));
+                        self.report(span, msgs::ir::TYPE_MISMATCH_A_FOR_CAN_T_2, &[]);
                         self.help("count with a range: `for i in 0..n`");
                         return error(self);
                     }
                     other => {
                         self.report(
                             span,
-                            msgs::ir::TYPE_MISMATCH_A_FOR_CAN_T.at(&[&self.show(other)]),
+                            msgs::ir::TYPE_MISMATCH_A_FOR_CAN_T,
+                            &[&self.show(other)],
                         );
                         return error(self);
                     }

@@ -17,7 +17,7 @@ impl Checker<'_> {
         if matches!(iter_ty, Ty::Named { name, args } if name == "Range" && args.as_slice() == [Ty::Float])
         {
             if let Some(diag) =
-                self.report(iter.span, msgs::check::TYPE_MISMATCH_A_RANGE_OF_F64.at(&[]))
+                self.report(iter.span, msgs::check::TYPE_MISMATCH_A_RANGE_OF_F64, &[])
             {
                 diag.help = Some(
                     "search it with `.bsearch(ok, steps:)`, `.peak` or `.valley`, or walk an `Int` range and scale".into(),
@@ -93,7 +93,8 @@ impl Checker<'_> {
         if let Some(new) = index_rename(&name.text) {
             if let Some(diag) = self.report(
                 name.span,
-                msgs::check::UNKNOWN_FIELD_HAS_NO_MEMBER.at(&[&type_name, &name.text]),
+                msgs::check::UNKNOWN_FIELD_HAS_NO_MEMBER,
+                &[&type_name, &name.text],
             ) {
                 diag.help = Some(format!(
                     "a library domain's `{}` is `{new}` since 0.3",
@@ -132,7 +133,8 @@ impl Checker<'_> {
                         let value = self.quote(init.span);
                         if let Some(diag) = self.report(
                             stmt.span,
-                            msgs::check::BAD_INDEX_IMPL_CONST_COUNT_CONST_IS.at(&[&value, &value]),
+                            msgs::check::BAD_INDEX_IMPL_CONST_COUNT_CONST_IS,
+                            &[&value, &value],
                         ) {
                             diag.help = Some(format!(
                                 "write `let count = {value}`; an associated `let` is evaluated once, where the impl is declared, and is frozen from then on"
@@ -156,7 +158,8 @@ impl Checker<'_> {
                         if mutable {
                             if let Some(diag) = self.report(
                                 init.span,
-                                msgs::check::BAD_INDEX_IMPL_COUNT_CAN_T_BE.at(&[&name]),
+                                msgs::check::BAD_INDEX_IMPL_COUNT_CAN_T_BE,
+                                &[&name],
                             ) {
                                 diag.help = Some(format!("freeze it first: `let n = {name}`"));
                             }
@@ -193,7 +196,8 @@ impl Checker<'_> {
         };
         if let Some(diag) = self.report(
             span,
-            msgs::check::BAD_INDEX_IMPL_IMPL_INDEX_NAMES_THIS.at(&[&new, &old]),
+            msgs::check::BAD_INDEX_IMPL_IMPL_INDEX_NAMES_THIS,
+            &[&new, &old],
         ) {
             diag.help = Some(format!(
                 "rename `{old}` to `{new}`; user code reads it as `T.count`, `x.ord` or `T.nth(k)`"

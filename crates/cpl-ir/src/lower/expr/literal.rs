@@ -77,7 +77,7 @@ impl<'a> Lowerer<'a> {
             None => Some(text.as_bytes().to_vec()),
             Some(c) => {
                 let message = cpl_diag::msgs::ir::NOT_ASCII_CHAR_ONE.at(&[&c]);
-                self.report(span, message);
+                self.report_said(span, message);
                 self.help("only ASCII can be written in a literal; other bytes come from input");
                 None
             }
@@ -133,15 +133,15 @@ impl<'a> Lowerer<'a> {
                         (Ty::Int, None, _) => (value, NumKind::Dec),
                         (Ty::Float, None, _) => {
                             let message = cpl_diag::msgs::ir::DOES_NOT_SAY_HOW.at(&[&written]);
-                            self.report(e.span, message);
+                            self.report_said(e.span, message);
                             self.help(help);
                             continue;
                         }
                         (ty, _, _) => {
                             self.report(
                                 e.span,
-                                msgs::ir::TYPE_MISMATCH_IS_NOT_A_NUMBER
-                                    .at(&[&written, &self.show(ty)]),
+                                msgs::ir::TYPE_MISMATCH_IS_NOT_A_NUMBER,
+                                &[&written, &self.show(ty)],
                             );
                             self.help(help);
                             continue;
@@ -248,10 +248,11 @@ impl<'a> Lowerer<'a> {
                 if let Some(cells) = cells.filter(|&c| c != items.len() as i64) {
                     self.report(
                         span,
-                        msgs::ir::TYPE_MISMATCH_THIS_ARRAY_HAS_BUT.at(&[
+                        msgs::ir::TYPE_MISMATCH_THIS_ARRAY_HAS_BUT,
+                        &[
                             &crate::lower::stmt::plural(cells, "cell"),
                             &crate::lower::stmt::plural(items.len() as i64, "value"),
-                        ]),
+                        ],
                     );
                     return self.err_expr(span);
                 }
@@ -301,7 +302,7 @@ impl<'a> Lowerer<'a> {
             }
             _ => {
                 let Some((first, rest)) = items.split_first() else {
-                    self.report(span, msgs::ir::TYPE_MISMATCH_CAN_T_TELL_WHAT_2.at(&[]));
+                    self.report(span, msgs::ir::TYPE_MISMATCH_CAN_T_TELL_WHAT_2, &[]);
                     self.help("say the type where it is stored: `var xs: List<Int> = []`");
                     return self.err_expr(span);
                 };

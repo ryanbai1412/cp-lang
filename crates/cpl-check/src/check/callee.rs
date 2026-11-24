@@ -37,7 +37,8 @@ impl Checker<'_> {
         );
         if let Some(diag) = self.report(
             whole.span,
-            msgs::check::REMOVED_SYNTAX_A_LIST_OF_LISTS.at(&[&name.text]),
+            msgs::check::REMOVED_SYNTAX_A_LIST_OF_LISTS,
+            &[&name.text],
         ) {
             diag.help = Some(format!("write `{new}`"));
             diag.fix(format!("write `{new}`"), whole.span, new);

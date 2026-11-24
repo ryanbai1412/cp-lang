@@ -51,12 +51,8 @@ impl Checker<'_> {
         }
         if let Some(diag) = self.report(
             span,
-            msgs::check::RECURSIVE_FIELD_STORES_INSIDE_ITSELF_SO.at(&[
-                &field,
-                &self.quote(span),
-                &owner,
-                &owner,
-            ]),
+            msgs::check::RECURSIVE_FIELD_STORES_INSIDE_ITSELF_SO,
+            &[&field, &self.quote(span), &owner, &owner],
         ) {
             diag.help = Some(format!(
                 "keep the nodes in a `var nodes = PArena<{owner}>()` from `std.persistent` and link them by handle, `?Id<{owner}>`, or hold them in a `List<{owner}>` (R03.2.9)"
@@ -107,11 +103,8 @@ impl Checker<'_> {
         };
         if let Some(diag) = self.report(
             field.ty.span,
-            msgs::check::FIELD_BOUND_FROM_INPUT_A_FIELD_S_BOUNDS.at(&[
-                &field.name.text,
-                &self.quote(field.ty.span),
-                &name,
-            ]),
+            msgs::check::FIELD_BOUND_FROM_INPUT_A_FIELD_S_BOUNDS,
+            &[&field.name.text, &self.quote(field.ty.span), &name],
         ) {
             diag.help = Some(
                 "bound it by a constant, or keep the value outside the struct (R03.1.3)".into(),
@@ -155,8 +148,8 @@ impl Checker<'_> {
             }
             if let Some(diag) = self.report(
                 p.span,
-                msgs::check::GETTER_NEEDS_DEFAULTS_GET_FN_A_GETTER
-                    .at(&[&f.name.text, &p.name.text]),
+                msgs::check::GETTER_NEEDS_DEFAULTS_GET_FN_A_GETTER,
+                &[&f.name.text, &p.name.text],
             ) {
                 diag.help = Some(format!(
                     "give `{}` a default, or drop `@get` and call it with `()` (R02.6.6)",

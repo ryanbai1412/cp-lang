@@ -124,7 +124,7 @@ impl Checker<'_> {
                 } else {
                     cpl_diag::msgs::check::TAKES_BUT_HOLDS_METHOD.at(&[&o, &ret, &name])
                 };
-                if let Some(diag) = self.report(op_span, message) {
+                if let Some(diag) = self.report_said(op_span, message) {
                     if inline {
                         diag.help = Some(habits::NO_OPERATOR_IMPL.say(&[&ret, &name]));
                         let end = Span::new(rhs.span.end, rhs.span.end);
@@ -138,7 +138,7 @@ impl Checker<'_> {
         }
         let message =
             cpl_diag::msgs::check::NEEDS_IMPL_THERE_NONE.at(&[&o, &trait_name, &right, &owner]);
-        if let Some(diag) = self.report(op_span, message) {
+        if let Some(diag) = self.report_said(op_span, message) {
             diag.help = Some(habits::NO_OPERATOR_IMPL_3.say(&[
                 &trait_name,
                 &right,
@@ -169,8 +169,7 @@ impl Checker<'_> {
         if !runs || names.len() != 2 || args.iter().any(|a| a.name.is_some()) {
             return;
         }
-        if let Some(diag) = self.report(pat.span, msgs::check::TYPE_MISMATCH_EACH_RUN_IS_A.at(&[]))
-        {
+        if let Some(diag) = self.report(pat.span, msgs::check::TYPE_MISMATCH_EACH_RUN_IS_A, &[]) {
             let pair = ".map(r => (r.first!, r.len))";
             diag.help = Some(habits::LOOP_ADVICE.say(&[&pair]));
             let end = Span::new(iter.span.end, iter.span.end);
@@ -243,7 +242,8 @@ impl Checker<'_> {
             library_domain && super::library_domain::CORE_DOMAIN_ONLY.contains(&name.text.as_str());
         let Some(diag) = self.report(
             name.span,
-            msgs::check::UNKNOWN_FIELD_HAS_NO_FIELD_OR.at(&[&base_ty, &name.text]),
+            msgs::check::UNKNOWN_FIELD_HAS_NO_FIELD_OR,
+            &[&base_ty, &name.text],
         ) else {
             return;
         };
@@ -376,7 +376,8 @@ impl Checker<'_> {
         }
         if let Some(diag) = self.report(
             span,
-            msgs::check::REMOVED_SYNTAX_IS_SPELLED_SINCE_0.at(&[&old, &new]),
+            msgs::check::REMOVED_SYNTAX_IS_SPELLED_SINCE_0,
+            &[&old, &new],
         ) {
             diag.help = Some(habits::OLD_OPTIONAL_SPELLING.say(&[&old]));
             diag.fix(habits::WRITE.say(&[&new]), span, new);
@@ -851,7 +852,8 @@ impl Checker<'_> {
         let whole = Span::new(x.span.start, xs.span.end);
         if let Some(diag) = self.report(
             xs.span,
-            msgs::check::MISSING_IMPL_IN_REQUIRES_CONTAINS_WHICH.at(&[&ty]),
+            msgs::check::MISSING_IMPL_IN_REQUIRES_CONTAINS_WHICH,
+            &[&ty],
         ) {
             diag.help = Some(habits::LIST_IN.say(&[]));
             if alone {
@@ -906,7 +908,8 @@ impl Checker<'_> {
                 let fix = if new == "nth" { "try_at" } else { new };
                 if let Some(diag) = self.report(
                     name.span,
-                    msgs::check::REMOVED_SYNTAX_WAS_RENAMED_TO_IN.at(&[&name.text, &new]),
+                    msgs::check::REMOVED_SYNTAX_WAS_RENAMED_TO_IN,
+                    &[&name.text, &new],
                 ) {
                     diag.help = Some(habits::MEMBER_ADVICE.say(&[]));
                     diag.fix(habits::WRITE.say(&[&fix]), name.span, fix);
@@ -917,7 +920,8 @@ impl Checker<'_> {
         if name.text == "bounds" && matches!(base_ty, Ty::Domain(_)) {
             if let Some(diag) = self.report(
                 name.span,
-                msgs::check::REMOVED_SYNTAX_D_BOUNDS_WAS_RENAMED.at(&[]),
+                msgs::check::REMOVED_SYNTAX_D_BOUNDS_WAS_RENAMED,
+                &[],
             ) {
                 diag.fix(habits::MEMBER_ADVICE_2.say(&[]), name.span, "cuts");
             }
@@ -925,7 +929,7 @@ impl Checker<'_> {
         }
         if name.text == "bsearch_first" {
             let message = cpl_diag::msgs::check::BSEARCH_FIRST_WAS_REMOVED.at(&[]);
-            self.report(name.span, message);
+            self.report_said(name.span, message);
             return true;
         }
         // `p.first`, `p.second`: C++'s pair, where a tuple numbers its parts.
@@ -941,7 +945,8 @@ impl Checker<'_> {
         let last = parts.len() - 1;
         if let Some(diag) = self.report(
             name.span,
-            msgs::check::UNKNOWN_FIELD_A_TUPLE_HAS_NO.at(&[&name.text]),
+            msgs::check::UNKNOWN_FIELD_A_TUPLE_HAS_NO,
+            &[&name.text],
         ) {
             diag.help = Some(habits::MEMBER_ADVICE_3.say(&[&last]));
             diag.fix(habits::MEMBER_ADVICE_4.say(&[&i]), name.span, i.to_string());
@@ -970,7 +975,8 @@ impl Checker<'_> {
     pub(super) fn lazy_len(&mut self, base_ty: &Ty, name: &Name) {
         if let Some(diag) = self.report(
             name.span,
-            msgs::check::MISSING_IMPL_LEN_REQUIRES_SIZED_WHICH.at(&[&base_ty]),
+            msgs::check::MISSING_IMPL_LEN_REQUIRES_SIZED_WHICH,
+            &[&base_ty],
         ) {
             diag.help = Some(habits::LAZY_LEN.say(&[]));
             diag.fix(habits::LAZY_LEN_2.say(&[]), name.span, "count()");
@@ -1057,7 +1063,8 @@ impl Checker<'_> {
         };
         if let Some(diag) = self.report(
             value.span,
-            msgs::check::TYPE_MISMATCH_RETURNS_A_VALUE_BUT.at(&[&name]),
+            msgs::check::TYPE_MISMATCH_RETURNS_A_VALUE_BUT,
+            &[&name],
         ) {
             diag.help = Some(habits::UNDECLARED_RETURN.say(&[&ty]));
             if let Some(slot) = slot {
@@ -1791,8 +1798,7 @@ impl Checker<'_> {
         }
         self.infer(&key.value);
         let new = format!("{} {op} {}", text(key.value.span), text(base.span));
-        if let Some(diag) = self.report(whole.span, msgs::check::UNKNOWN_FIELD_C_S_FIND_END.at(&[]))
-        {
+        if let Some(diag) = self.report(whole.span, msgs::check::UNKNOWN_FIELD_C_S_FIND_END, &[]) {
             diag.help = Some(habits::KEYED_FIND.say(&[&new]));
             diag.fix(habits::WRITE.say(&[&new]), whole.span, new);
         }
@@ -1816,7 +1822,8 @@ impl Checker<'_> {
             let prev = *prev;
             if let Some(diag) = self.report(
                 tag.span,
-                msgs::check::DUPLICATE_VARIANT_TAG_ENUM_ALREADY_HAS_A.at(&[&e.name.text, &text]),
+                msgs::check::DUPLICATE_VARIANT_TAG_ENUM_ALREADY_HAS_A,
+                &[&e.name.text, &text],
             ) {
                 duplicate_tag(diag, prev);
             }
@@ -1828,7 +1835,7 @@ impl Checker<'_> {
             .map(|(v, tag)| format!("@tag({}) {}", self.quote(tag.value.span), v.name.text))
             .collect();
         let message = cpl_diag::msgs::check::ENUM_LEVEL_TAGS_WAS.at(&[]);
-        let Some(diag) = self.report(tags.span, message) else {
+        let Some(diag) = self.report_said(tags.span, message) else {
             return;
         };
         if each.len() == e.variants.len() && tags.args.len() == each.len() {

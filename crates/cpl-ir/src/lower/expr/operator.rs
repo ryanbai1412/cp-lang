@@ -20,7 +20,7 @@ impl<'a> Lowerer<'a> {
                     _ => {
                         let message =
                             cpl_diag::msgs::ir::CAN_T_APPLIED.at(&[&self.show(&value.ty)]);
-                        self.report(span, message);
+                        self.report_said(span, message);
                         self.err_expr(span)
                     }
                 }
@@ -46,7 +46,7 @@ impl<'a> Lowerer<'a> {
                         }
                         let message =
                             cpl_diag::msgs::ir::CAN_T_APPLIED_2.at(&[&self.show(&value.ty)]);
-                        self.report(span, message);
+                        self.report_said(span, message);
                         self.err_expr(span)
                     }
                     (_, Ty::Error) => value,
@@ -62,7 +62,7 @@ impl<'a> Lowerer<'a> {
                     _ => {
                         let message =
                             cpl_diag::msgs::ir::CAN_T_APPLIED_2.at(&[&self.show(&value.ty)]);
-                        self.report(span, message);
+                        self.report_said(span, message);
                         self.err_expr(span)
                     }
                 }
@@ -130,7 +130,8 @@ impl<'a> Lowerer<'a> {
                     if l.ty != Ty::Error {
                         self.report(
                             span,
-                            msgs::ir::BAD_OPERANDS_GIVES_A_DEFAULT_FOR.at(&[&self.show(&l.ty)]),
+                            msgs::ir::BAD_OPERANDS_GIVES_A_DEFAULT_FOR,
+                            &[&self.show(&l.ty)],
                         );
                         self.expr(rhs, None);
                     }
@@ -148,7 +149,8 @@ impl<'a> Lowerer<'a> {
                         if self.cx.way_out.take() != Some(span) {
                             self.report(
                                 rhs.span,
-                                msgs::ir::UNSUPPORTED_RETURN_BREAK_AND_CONTINUE.at(&[]),
+                                msgs::ir::UNSUPPORTED_RETURN_BREAK_AND_CONTINUE,
+                                &[],
                             );
                             self.help("give the value a name first: `let u = o ?? return`");
                             return self.err_expr(span);
@@ -423,11 +425,8 @@ impl<'a> Lowerer<'a> {
             _ => {
                 self.report(
                     span,
-                    msgs::ir::BAD_OPERANDS_CAN_T_BE_APPLIED.at(&[
-                        &op.text(),
-                        &self.show(&l.ty),
-                        &self.show(&r.ty),
-                    ]),
+                    msgs::ir::BAD_OPERANDS_CAN_T_BE_APPLIED,
+                    &[&op.text(), &self.show(&l.ty), &self.show(&r.ty)],
                 );
                 return self.err_expr(span);
             }

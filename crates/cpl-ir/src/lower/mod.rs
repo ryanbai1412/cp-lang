@@ -964,7 +964,7 @@ impl<'a> Lowerer<'a> {
 
     /// Reports something the language has but the back ends don't yet.
     fn unsupported(&mut self, span: Span, what: &str) {
-        self.report(span, msgs::ir::UNSUPPORTED_CPL_RUN_AND_CPL.at(&[&what]));
+        self.report(span, msgs::ir::UNSUPPORTED_CPL_RUN_AND_CPL, &[&what]);
     }
 
     fn mismatch(&mut self, span: Span, want: &Ty, found: &Ty) {

@@ -26,7 +26,8 @@ impl Checker<'_> {
         let base = show(base);
         if let Some(diag) = self.report(
             target.span,
-            msgs::check::ASSIGN_INTO_RANGE_IS_A_RANGE_WHICH.at(&[&base]),
+            msgs::check::ASSIGN_INTO_RANGE_IS_A_RANGE_WHICH,
+            &[&base],
         ) {
             diag.help = Some(format!("copy it with `List({base})` first"));
         }

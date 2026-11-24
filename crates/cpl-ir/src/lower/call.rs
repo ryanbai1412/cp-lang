@@ -139,7 +139,8 @@ impl<'a> Lowerer<'a> {
         }
         self.report(
             name.span,
-            msgs::check::UNKNOWN_FIELD_HAS_NO_FN.at(&[&decl.name.text, &name.text]),
+            msgs::check::UNKNOWN_FIELD_HAS_NO_FN,
+            &[&decl.name.text, &name.text],
         );
         self.err_expr(span)
     }
@@ -492,7 +493,7 @@ impl<'a> Lowerer<'a> {
                     if self.structs[sid].index_domain.is_some() {
                         return self.library_domain_seq(base, sid, name, Some(args), span);
                     }
-                    self.report(
+                    self.report_said(
                         name.span,
                         msgs::check::UNKNOWN_FIELD_HAS_NO_FN
                             .at(&[&self.structs[sid].def.name, &name.text]),
@@ -538,7 +539,8 @@ impl<'a> Lowerer<'a> {
                     _ => {
                         self.report(
                             name.span,
-                            msgs::ir::UNKNOWN_FIELD_MODULE_HAS_NO_FN.at(&[&name.text]),
+                            msgs::ir::UNKNOWN_FIELD_MODULE_HAS_NO_FN,
+                            &[&name.text],
                         );
                         self.err_expr(span)
                     }
@@ -558,7 +560,7 @@ impl<'a> Lowerer<'a> {
                 if self.structs[id].index_domain.is_some() {
                     return self.library_domain_seq(base, id, name, Some(args), span);
                 }
-                self.report(
+                self.report_said(
                     name.span,
                     msgs::check::UNKNOWN_FIELD_HAS_NO_FN
                         .at(&[&self.structs[id].def.name, &name.text]),
@@ -604,7 +606,7 @@ impl<'a> Lowerer<'a> {
                     None => {
                         let message = cpl_diag::msgs::ir::HAS_NO_VARIANT
                             .at(&[&self.enums[id].name, &name.text]);
-                        self.report(name.span, message);
+                        self.report_said(name.span, message);
                         self.err_expr(span)
                     }
                 };
@@ -653,7 +655,7 @@ impl<'a> Lowerer<'a> {
                         None => {
                             let message = cpl_diag::msgs::ir::HAS_NO_VARIANT
                                 .at(&[&self.enums[id].name, &name.text]);
-                            self.report(name.span, message);
+                            self.report_said(name.span, message);
                             self.err_expr(span)
                         }
                     };

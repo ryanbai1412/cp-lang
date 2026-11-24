@@ -130,7 +130,7 @@ impl<'a> Checker<'a> {
             cpl_diag::msgs::check::OUTSIDE_RANGE_TYPE_2.at(&[&shown, &is, &text])
         };
         let text = text.clone();
-        if let Some(diag) = self.report(value.span, message) {
+        if let Some(diag) = self.report_said(value.span, message) {
             diag.help = Some(format!(
                 "store a value in `{text}`, or widen the declared type"
             ));
@@ -153,7 +153,8 @@ impl<'a> Checker<'a> {
             let names: Vec<&str> = variants.iter().map(|v| v.name.text.as_str()).collect();
             if let Some(diag) = self.report(
                 a.span.to(b.span),
-                msgs::check::EXPECTED_TOKEN_AN_ENUM_S_VARIANTS.at(&[]),
+                msgs::check::EXPECTED_TOKEN_AN_ENUM_S_VARIANTS,
+                &[],
             ) {
                 diag.help = Some(format!("write `= {}`", names.join(" | ")));
             }
@@ -211,7 +212,7 @@ impl<'a> Checker<'a> {
         let message =
             cpl_diag::msgs::check::VALUES_ARE_LOWERCASE_WOULD.at(&[&keyword, &name, &name]);
         let fix = self.const_fix(keyword, pat.span, init);
-        if let Some(diag) = self.report(pat.span, message) {
+        if let Some(diag) = self.report_said(pat.span, message) {
             diag.help = Some(format!("rename it `{lower}`, or write `const {name}`"));
             diag.fixes.extend(fix);
         }
@@ -498,8 +499,8 @@ impl<'a> Checker<'a> {
                     out.push(inside(ty).unwrap_or_else(|ty| {
                         self.report(
                             item.span,
-                            msgs::check::TYPE_MISMATCH_LET_ELSE_NEEDS_A
-                                .at(&[&self.quote(item.span), &ty.with_article()]),
+                            msgs::check::TYPE_MISMATCH_LET_ELSE_NEEDS_A,
+                            &[&self.quote(item.span), &ty.with_article()],
                         );
                         Ty::Error
                     }));
@@ -510,8 +511,8 @@ impl<'a> Checker<'a> {
                 .unwrap_or_else(|ty| {
                     self.report(
                         init.span,
-                        msgs::check::TYPE_MISMATCH_LET_ELSE_NEEDS_A_2
-                            .at(&[&self.quote(init.span), &ty.with_article()]),
+                        msgs::check::TYPE_MISMATCH_LET_ELSE_NEEDS_A_2,
+                        &[&self.quote(init.span), &ty.with_article()],
                     );
                     Ty::Error
                 }),
@@ -557,8 +558,8 @@ impl<'a> Checker<'a> {
                                     {
                                         self.report(
                                             init_expr.span,
-                                            msgs::check::RANGE_STORE_CONST_IS_NOT_IN_STR
-                                                .at(&[&bad, &alphabet]),
+                                            msgs::check::RANGE_STORE_CONST_IS_NOT_IN_STR,
+                                            &[&bad, &alphabet],
                                         );
                                         break;
                                     }
@@ -648,7 +649,8 @@ impl<'a> Checker<'a> {
                                 });
                             if let Some(diag) = self.report(
                                 at,
-                                msgs::check::VAR_LAMBDA_RECURSION_VAR_CANNOT_REFER_TO.at(&[&vname]),
+                                msgs::check::VAR_LAMBDA_RECURSION_VAR_CANNOT_REFER_TO,
+                                &[&vname],
                             ) {
                                 if let Some(keyword) = keyword {
                                     diag.fixes.push(cpl_diag::Fix {
@@ -747,7 +749,8 @@ impl<'a> Checker<'a> {
                     if !otherwise.leaves() {
                         if let Some(diag) = self.report(
                             pat.span,
-                            msgs::check::ELSE_FALLS_THROUGH_THE_ELSE_BLOCK_OF.at(&[]),
+                            msgs::check::ELSE_FALLS_THROUGH_THE_ELSE_BLOCK_OF,
+                            &[],
                         ) {
                             diag.help = Some("end it with `return`, `break`, `continue` or a trap such as `todo`".to_string());
                         }
@@ -778,12 +781,13 @@ impl<'a> Checker<'a> {
                     let init_text = self.quote(init.span);
                     if let Some(diag) = self.report(
                         init.span,
-                        msgs::check::TYPE_MISMATCH_IS_DECLARED_BUT_IS.at(&[
+                        msgs::check::TYPE_MISMATCH_IS_DECLARED_BUT_IS,
+                        &[
                             &self.quote(pat.span),
                             &declared.with_article(),
                             &init_text,
                             &kind,
-                        ]),
+                        ],
                     ) {
                         diag.help = Some(format!(
                             "a view borrows its source; copy it with `List({init_text})` (R07.2.11)"
@@ -842,15 +846,15 @@ impl<'a> Checker<'a> {
                         let name = self.quote(pat.span);
                         if let Some(diag) = self.report(
                             pat.span,
-                            msgs::check::INFERENCE_NEEDS_ANNOTATION_NEEDS_A_TYPE_ANNOTATION
-                                .at(&[&name]),
+                            msgs::check::INFERENCE_NEEDS_ANNOTATION_NEEDS_A_TYPE_ANNOTATION,
+                            &[&name],
                         ) {
                             diag.help = Some(format!("write `{keyword} {name}: ?Int = None`"));
                         }
                     } else if is_bare_read {
                         let name = self.quote(pat.span);
                         let message = cpl_diag::msgs::check::READ_NEEDS_TYPE_ANNOTATION.at(&[]);
-                        if let Some(diag) = self.report(pat.span, message) {
+                        if let Some(diag) = self.report_said(pat.span, message) {
                             diag.help = Some(format!("write `{keyword} {name}: Int = read()`"));
                         }
                     }
@@ -934,7 +938,8 @@ impl<'a> Checker<'a> {
                     {
                         self.report(
                             pat.span,
-                            msgs::check::VALUE_NAME_CASE_VALUE_STARTS_WITH_AN.at(&[&name, &name]),
+                            msgs::check::VALUE_NAME_CASE_VALUE_STARTS_WITH_AN,
+                            &[&name, &name],
                         );
 
                         self.declare(name, pat.span, ty.clone(), is_mut, keyword);
@@ -1171,8 +1176,8 @@ impl<'a> Checker<'a> {
                     {
                         self.report(
                             tr.span,
-                            msgs::check::UNSUPPORTED_ORPHAN_IMPL_NEITHER_NOR
-                                .at(&[&self.quote(tr.span), &self.quote(target.span)]),
+                            msgs::check::UNSUPPORTED_ORPHAN_IMPL_NEITHER_NOR,
+                            &[&self.quote(tr.span), &self.quote(target.span)],
                         );
                     }
                 }
@@ -1298,8 +1303,8 @@ impl<'a> Checker<'a> {
                             let base_text = self.quote(base.span);
                             if let Some(diag) = self.report(
                                 target.span,
-                                msgs::check::ASSIGN_FIXED_FIELD_FIELD_IS_FIXED_NOT
-                                    .at(&[&sname, &name.text]),
+                                msgs::check::ASSIGN_FIXED_FIELD_FIELD_IS_FIXED_NOT,
+                                &[&sname, &name.text],
                             ) {
                                 diag.help = Some(match var_at {
                                     Some(_) => format!(
@@ -1384,12 +1389,13 @@ impl<'a> Checker<'a> {
                     if !cells.is_vague() && !self.fits(&cells, &want) {
                         self.report(
                             value.span,
-                            msgs::check::TYPE_MISMATCH_IS_A_ROW_OF_2.at(&[
+                            msgs::check::TYPE_MISMATCH_IS_A_ROW_OF_2,
+                            &[
                                 &self.quote(target.span),
                                 &want,
                                 &self.quote(value.span),
                                 &value_ty.with_article(),
-                            ]),
+                            ],
                         );
                     }
                 } else if *op == AssignOp::Set && !not_assignable {
@@ -1477,7 +1483,8 @@ impl<'a> Checker<'a> {
                 ) {
                     if let Some(diag) = self.report(
                         iter.span,
-                        cpl_diag::msgs::check::BARE_MEANS_ALL_DIMENSION.at(&[]),
+                        cpl_diag::msgs::check::BARE_MEANS_ALL_DIMENSION,
+                        &[],
                     ) {
                         diag.help =
                             Some("name what to walk: `for x in D` or `for i in 0..n`".into());
@@ -1525,7 +1532,8 @@ impl<'a> Checker<'a> {
                             .map(|b| Span::new(b.len() as u32, value.span.end));
                         let diag = self.report(
                             value.span,
-                            msgs::check::UNEXPECTED_TOKEN_A_TOP_LEVEL_RETURN.at(&[]),
+                            msgs::check::UNEXPECTED_TOKEN_A_TOP_LEVEL_RETURN,
+                            &[],
                         );
                         if let Some(diag) = diag {
                             diag.help = Some(

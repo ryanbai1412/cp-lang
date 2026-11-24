@@ -206,7 +206,7 @@ impl<'a> Lowerer<'a> {
         }
         let got = self.eval_const_bool(e);
         if got.is_none() {
-            self.report(e.span, msgs::ir::BAD_NUMBER_THE_TEST_OF_AN.at(&[]));
+            self.report(e.span, msgs::ir::BAD_NUMBER_THE_TEST_OF_AN, &[]);
             self.help(
                 "it can compare literals, `const`s and `<const N>` parameters; \
                  use a plain `if` for a value read at run time",

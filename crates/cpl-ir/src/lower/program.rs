@@ -263,7 +263,8 @@ impl<'a> Lowerer<'a> {
         if self.multitest {
             self.report(
                 decorator.span,
-                msgs::ir::UNEXPECTED_TOKEN_A_SECOND_MULTITEST.at(&[]),
+                msgs::ir::UNEXPECTED_TOKEN_A_SECOND_MULTITEST,
+                &[],
             );
             return;
         }
@@ -276,7 +277,8 @@ impl<'a> Lowerer<'a> {
                 }
                 _ => self.report(
                     arg.value.span,
-                    msgs::ir::UNEXPECTED_TOKEN_MULTITEST_TAKES_NOTHING_OR.at(&[]),
+                    msgs::ir::UNEXPECTED_TOKEN_MULTITEST_TAKES_NOTHING_OR,
+                    &[],
                 ),
             }
         }
@@ -352,7 +354,8 @@ impl<'a> Lowerer<'a> {
         } else {
             self.report(
                 Span::default(),
-                msgs::ir::UNRESOLVED_NAME_NO_TEST_FN_NAMED.at(&[&test_name]),
+                msgs::ir::UNRESOLVED_NAME_NO_TEST_FN_NAMED,
+                &[&test_name],
             );
         }
         let cx = std::mem::take(&mut self.cx);
@@ -465,7 +468,7 @@ impl<'a> Lowerer<'a> {
                 })],
                 (Some(_), _) => {
                     let message = cpl_diag::msgs::ir::GEN_FN_TAKES_NOTHING.at(&[]);
-                    self.report(at, message);
+                    self.report_said(at, message);
                     Vec::new()
                 }
                 (None, _) => {
@@ -474,7 +477,7 @@ impl<'a> Lowerer<'a> {
                     } else {
                         "@check"
                     };
-                    self.report(at, msgs::ir::WRONG_ARG_COUNT_A_FN_TAKES_NO.at(&[&kind]));
+                    self.report(at, msgs::ir::WRONG_ARG_COUNT_A_FN_TAKES_NO, &[&kind]);
                     Vec::new()
                 }
             };

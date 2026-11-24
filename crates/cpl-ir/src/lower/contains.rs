@@ -114,7 +114,8 @@ impl Lowerer<'_> {
                     other => {
                         self.report(
                             span,
-                            msgs::ir::BAD_OPERANDS_IN_CAN_T_LOOK.at(&[&self.show(other)]),
+                            msgs::ir::BAD_OPERANDS_IN_CAN_T_LOOK,
+                            &[&self.show(other)],
                         );
                         return self.err_expr(span);
                     }

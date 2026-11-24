@@ -182,10 +182,9 @@ impl Checker<'_> {
             if reported || !self.declared_before(&src, body.span.start) {
                 continue;
             }
-            if let Some(diag) = self.report(
-                at,
-                msgs::check::USE_AFTER_MOVE_MOVES_HERE_IN_ONE.at(&[&src]),
-            ) {
+            if let Some(diag) =
+                self.report(at, msgs::check::USE_AFTER_MOVE_MOVES_HERE_IN_ONE, &[&src])
+            {
                 diag.help = Some(format!(
                     "move a copy each round: `{src}.clone()`, or declare `{src}` inside the loop"
                 ));

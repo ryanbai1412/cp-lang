@@ -534,8 +534,8 @@ impl<'a> Lowerer<'a> {
                             } else {
                                 self.report(
                                     param.span,
-                                    msgs::ir::UNKNOWN_TYPE_PARAMETER_NEEDS_A_TYPE
-                                        .at(&[&param.name.text]),
+                                    msgs::ir::UNKNOWN_TYPE_PARAMETER_NEEDS_A_TYPE,
+                                    &[&param.name.text],
                                 );
                                 self.help(format!(
                                     "write `{}: Int`, or the type it has",
@@ -556,8 +556,8 @@ impl<'a> Lowerer<'a> {
                                 _ => {
                                     self.report(
                                         param.span,
-                                        msgs::ir::UNKNOWN_TYPE_PARAMETER_NEEDS_A_TYPE
-                                            .at(&[&param.name.text]),
+                                        msgs::ir::UNKNOWN_TYPE_PARAMETER_NEEDS_A_TYPE,
+                                        &[&param.name.text],
                                     );
                                     self.help(format!(
                                         "write `{}: Int`, or the type it has",

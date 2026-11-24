@@ -221,10 +221,9 @@ impl<'a> Checker<'a> {
             let Some((at, what)) = self.change_in(&arg.value) else {
                 continue;
             };
-            if let Some(diag) = self.report(
-                at,
-                msgs::check::DEBUG_CHANGES_DEBUG_IS_LEFT_OUT.at(&[&what]),
-            ) {
+            if let Some(diag) =
+                self.report(at, msgs::check::DEBUG_CHANGES_DEBUG_IS_LEFT_OUT, &[&what])
+            {
                 diag.help = Some("do it in a statement before, and show the result: `let x = ..` then `debug(x)`".to_string());
             }
         }
@@ -341,7 +340,7 @@ impl<'a> Checker<'a> {
         let role = if opt == "cmp" { "comparator" } else { "key" };
         let message =
             cpl_diag::msgs::check::SORT_WHILE_BEING_SORTED.at(&[&role, &root, &opt, &what, &root]);
-        if let Some(diag) = self.report(key.value.span, message) {
+        if let Some(diag) = self.report_said(key.value.span, message) {
             diag.help = Some(format!(
                 "sort a copy, whose key may use the list: `{root} = {root}.sorted(by: ..)`"
             ));
@@ -410,7 +409,8 @@ impl<'a> Checker<'a> {
             if in_loop {
                 if let Some(diag) = self.report(
                     call.span,
-                    msgs::check::USED_WHILE_LENT_CAN_T_BE_CALLED.at(&[&name, &what, &root, &root]),
+                    msgs::check::USED_WHILE_LENT_CAN_T_BE_CALLED,
+                    &[&name, &what, &root, &root],
                 ) {
                     diag.labels.push(cpl_diag::Label {
                         span: at,
@@ -424,14 +424,15 @@ impl<'a> Checker<'a> {
             }
             if let Some(diag) = self.report(
                 call.span,
-                msgs::check::USED_WHILE_LENT_CAN_T_BE_CALLED_2.at(&[
+                msgs::check::USED_WHILE_LENT_CAN_T_BE_CALLED_2,
+                &[
                     &name,
                     &what,
                     &root,
                     &root,
                     &if mutable { "mutably " } else { "" },
                     &lent_to,
-                ]),
+                ],
             ) {
                 if at != ELSEWHERE {
                     diag.labels.push(cpl_diag::Label {
@@ -468,13 +469,8 @@ impl<'a> Checker<'a> {
                 if arg.mutable {
                     if let Some(diag) = self.report(
                         arg.value.span,
-                        msgs::check::LENT_TWICE_CAN_T_BE_PASSED.at(&[
-                            &show(&arg.value),
-                            &name,
-                            &name,
-                            &what,
-                            &root,
-                        ]),
+                        msgs::check::LENT_TWICE_CAN_T_BE_PASSED,
+                        &[&show(&arg.value), &name, &name, &what, &root],
                     ) {
                         diag.help = Some(format!(
                             "pass everything `{name}` needs from `{root}` as parameters, or copy the value out first"
@@ -491,11 +487,8 @@ impl<'a> Checker<'a> {
                 }
                 if let Some(diag) = self.report(
                     other.value.span,
-                    msgs::check::LENT_TWICE_CHANGES_WHILE_IS_LENT.at(&[
-                        &show(&other.value),
-                        &root,
-                        &show(&arg.value),
-                    ]),
+                    msgs::check::LENT_TWICE_CHANGES_WHILE_IS_LENT,
+                    &[&show(&other.value), &root, &show(&arg.value)],
                 ) {
                     diag.help = Some("do it in a statement before the call".into());
                 }

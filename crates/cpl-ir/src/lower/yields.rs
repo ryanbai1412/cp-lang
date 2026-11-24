@@ -26,10 +26,7 @@ impl<'a> Lowerer<'a> {
             return;
         }
         let Some((acc, elem_ty)) = self.cx.yield_slot.clone() else {
-            self.report(
-                span,
-                msgs::ir::UNSUPPORTED_YIELD_OUTSIDE_A_GENERATOR.at(&[]),
-            );
+            self.report(span, msgs::ir::UNSUPPORTED_YIELD_OUTSIDE_A_GENERATOR, &[]);
             return;
         };
         let acc_place = Place {

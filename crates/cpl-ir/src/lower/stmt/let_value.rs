@@ -212,7 +212,7 @@ impl<'a> Lowerer<'a> {
     ) -> Option<Expr> {
         let Some(ty) = ty else {
             let Some(init) = init else {
-                self.report(span, msgs::ir::UNKNOWN_TYPE_A_VARIABLE_NEEDS_A.at(&[]));
+                self.report(span, msgs::ir::UNKNOWN_TYPE_A_VARIABLE_NEEDS_A, &[]);
                 return None;
             };
             return Some(self.expr(init, None));
@@ -237,7 +237,8 @@ impl<'a> Lowerer<'a> {
                     if !crate::lower::call::reads_none_as(&mut spec, &absent) {
                         self.report(
                             init.span,
-                            msgs::ir::UNKNOWN_ARG_NAME_NONE_IS_FOR_READING.at(&[&self.show(&want)]),
+                            msgs::ir::UNKNOWN_ARG_NAME_NONE_IS_FOR_READING,
+                            &[&self.show(&want)],
                         );
                     }
                 }
@@ -250,7 +251,8 @@ impl<'a> Lowerer<'a> {
             if !crate::lower::call::reads_none_as(&mut spec, &absent) {
                 self.report(
                     init.span,
-                    msgs::ir::UNKNOWN_ARG_NAME_NONE_IS_FOR_READING.at(&[&self.show(&want)]),
+                    msgs::ir::UNKNOWN_ARG_NAME_NONE_IS_FOR_READING,
+                    &[&self.show(&want)],
                 );
             }
             return Some(self.read(spec, init.span));
@@ -353,7 +355,8 @@ impl<'a> Lowerer<'a> {
                 if let (true, Some(Err(at))) = (lens.len() > 1, &shape) {
                     self.report(
                         *at,
-                        msgs::ir::TYPE_MISMATCH_A_LIST_FOR_A.at(&[&self.show(&want)]),
+                        msgs::ir::TYPE_MISMATCH_A_LIST_FOR_A,
+                        &[&self.show(&want)],
                     );
                     return Some(self.err_expr(init.span));
                 }
@@ -368,7 +371,7 @@ impl<'a> Lowerer<'a> {
                                 cpl_diag::msgs::ir::INDEX_HAS_BUT_LIST
                                     .at(&[&plural(cells, "cell"), &plural(count as i64, "value")])
                             };
-                            self.report(init.span, message);
+                            self.report_said(init.span, message);
                             return Some(self.err_expr(init.span));
                         }
                     }
@@ -580,7 +583,8 @@ impl<'a> Lowerer<'a> {
                 _ => {
                     self.report(
                         span,
-                        msgs::ir::UNKNOWN_TYPE_A_HAS_NO_STARTING.at(&[&self.show(&ty)]),
+                        msgs::ir::UNKNOWN_TYPE_A_HAS_NO_STARTING,
+                        &[&self.show(&ty)],
                     );
                     ExprKind::Error
                 }

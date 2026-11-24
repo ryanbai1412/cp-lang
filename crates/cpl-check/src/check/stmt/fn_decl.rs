@@ -58,7 +58,7 @@ impl<'a> Checker<'a> {
             .cloned()
         {
             let message = cpl_diag::msgs::check::CAN_T_MODIFIED_WHILE.at(&[&root, &fn_name]);
-            if let Some(diag) = self.report(span, message) {
+            if let Some(diag) = self.report_said(span, message) {
                 diag.labels.push(cpl_diag::Label {
                     span: memo_span,
                     message: format!("`{fn_name}` is memoized here and reads `{root}`"),
@@ -90,7 +90,8 @@ impl<'a> Checker<'a> {
                     let pty = &ty_p.ty;
                     if let Some(diag) = self.report(
                         ast_p.name.span,
-                        msgs::check::BAD_MEMO_MEMO_ARRAY_ON_REQUIRES.at(&[&name, &pname, &pty]),
+                        msgs::check::BAD_MEMO_MEMO_ARRAY_ON_REQUIRES,
+                        &[&name, &pname, &pty],
                     ) {
                         diag.help = Some(
                             "give the parameter a bounded type (a domain, range, `Bool`, or enum), or use `@memo(map)`".into(),
@@ -163,12 +164,13 @@ impl<'a> Checker<'a> {
                     if !ok {
                         self.report(
                             e.span,
-                            msgs::check::LENT_ESCAPES_LENT_VALUE_MUST_COME.at(&[&lends
+                            msgs::check::LENT_ESCAPES_LENT_VALUE_MUST_COME,
+                            &[&lends
                                 .sources
                                 .iter()
                                 .map(|s| s.text.as_str())
                                 .collect::<Vec<_>>()
-                                .join(", ")]),
+                                .join(", ")],
                         );
                     }
                 }
@@ -184,8 +186,8 @@ impl<'a> Checker<'a> {
                             if cached.iter().any(|c| c == cf) {
                                 self.report(
                                     e.span,
-                                    msgs::check::BAD_PROJECTION_CANNOT_LEND_CACHE_FIELD
-                                        .at(&[&cf, &sname]),
+                                    msgs::check::BAD_PROJECTION_CANNOT_LEND_CACHE_FIELD,
+                                    &[&cf, &sname],
                                 );
                             }
                         }
@@ -247,7 +249,8 @@ impl<'a> Checker<'a> {
             {
                 self.report(
                     ctx.span,
-                    msgs::check::UNRESOLVED_NAME_UNKNOWN_CONTEXT_IN_USES.at(&[&ctx.text]),
+                    msgs::check::UNRESOLVED_NAME_UNKNOWN_CONTEXT_IN_USES,
+                    &[&ctx.text],
                 );
             }
         }
@@ -283,10 +286,9 @@ impl<'a> Checker<'a> {
         if let Some(lends) = &f.lends {
             self.resolve_type(&lends.ty);
             if let Some(at) = lends.bare {
-                if let Some(diag) = self.report(
-                    at,
-                    msgs::check::EXPECTED_TOKEN_EXPECTED_BEFORE_LENDS_A.at(&[]),
-                ) {
+                if let Some(diag) =
+                    self.report(at, msgs::check::EXPECTED_TOKEN_EXPECTED_BEFORE_LENDS_A, &[])
+                {
                     diag.help = Some("write `-> lends T`".to_string());
                     diag.fixes.push(cpl_diag::Fix {
                         title: "insert `->`".to_string(),
@@ -553,8 +555,8 @@ impl<'a> Checker<'a> {
                 if bad_self_method || bad_fn_param {
                     self.report(
                         expr.span,
-                        msgs::check::USED_WHILE_LENT_CANNOT_CALL_WHILE_CACHE
-                            .at(&[&self.quote(callee.span), &cache_field]),
+                        msgs::check::USED_WHILE_LENT_CANNOT_CALL_WHILE_CACHE,
+                        &[&self.quote(callee.span), &cache_field],
                     );
                 }
                 self.check_cache_lend_expr(callee, cache_field);

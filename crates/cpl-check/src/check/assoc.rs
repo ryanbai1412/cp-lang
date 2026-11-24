@@ -150,8 +150,8 @@ impl Checker<'_> {
             if !assoc.contains(&name.text) {
                 if let Some(diag) = self.report(
                     name.span,
-                    msgs::check::UNKNOWN_FIELD_DECLARES_NO_ASSOCIATED_TYPE
-                        .at(&[&trait_text, &name.text]),
+                    msgs::check::UNKNOWN_FIELD_DECLARES_NO_ASSOCIATED_TYPE,
+                    &[&trait_text, &name.text],
                 ) {
                     diag.help = Some(match assoc.is_empty() {
                         true => format!("`{trait_text}` declares no associated types"),
@@ -180,12 +180,8 @@ impl Checker<'_> {
                 }
                 if let Some(diag) = self.report(
                     ty.span,
-                    msgs::check::MISSING_IMPL_DOES_NOT_IMPLEMENT_WHICH.at(&[
-                        &chosen,
-                        &b,
-                        &trait_text,
-                        &name.text,
-                    ]),
+                    msgs::check::MISSING_IMPL_DOES_NOT_IMPLEMENT_WHICH,
+                    &[&chosen, &b, &trait_text, &name.text],
                 ) {
                     diag.help = Some(format!(
                         "choose a type that implements `{b}`: the trait declares `type {}: {b}`",
@@ -204,11 +200,12 @@ impl Checker<'_> {
             let span = trait_ty.span.to(target.span);
             if let Some(diag) = self.report(
                 span,
-                msgs::check::MISSING_IMPL_IMPL_FOR_DOES_NOT.at(&[
+                msgs::check::MISSING_IMPL_IMPL_FOR_DOES_NOT,
+                &[
                     &trait_text,
                     &self.quote(target.span),
                     &super::expr::list_names(&missing),
-                ]),
+                ],
             ) {
                 diag.help = Some(format!(
                     "write `type {} = ...` in the impl: each impl chooses its trait's associated types",

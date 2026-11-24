@@ -55,7 +55,8 @@ impl<'a> Lowerer<'a> {
                 let param = decl.params[at].name.text.clone();
                 self.report(
                     decl.params[at].name.span,
-                    msgs::ir::UNSUPPORTED_THE_JUDGE_S_GRADER.at(&[&param, &name]),
+                    msgs::ir::UNSUPPORTED_THE_JUDGE_S_GRADER,
+                    &[&param, &name],
                 );
                 self.help(format!("take `{param}` by value and return what changed"));
             } else {
@@ -70,14 +71,16 @@ impl<'a> Lowerer<'a> {
                         let shown = self.show(&ty);
                         self.report(
                             decl.name.span,
-                            msgs::ir::UNSUPPORTED_A_CAN_T_CROSS.at(&[&shown, &name]),
+                            msgs::ir::UNSUPPORTED_A_CAN_T_CROSS,
+                            &[&shown, &name],
                         );
                         self.help("a `@grader fn` takes and gives `Int`, `F64`, `Bool`, `Char`, `Str`, and lists and tuples of them");
                     }
                     Err(Uncrossable::Open(open)) => {
                         self.report(
                             decl.name.span,
-                            msgs::ir::UNSUPPORTED_CAN_T_CROSS_TO.at(&[&open, &name]),
+                            msgs::ir::UNSUPPORTED_CAN_T_CROSS_TO,
+                            &[&open, &name],
                         );
                         self.help("close the range, as in `0..=1e18`, or write `Int` for the grader's `int`");
                     }
@@ -101,7 +104,8 @@ impl<'a> Lowerer<'a> {
             let name = &decl.name.text;
             self.report(
                 decl.name.span,
-                msgs::ir::UNSUPPORTED_CAN_T_BE_BUILT.at(&[&name]),
+                msgs::ir::UNSUPPORTED_CAN_T_BE_BUILT,
+                &[&name],
             );
             self.help("a `@grader fn` is a top-level fn of the program's own file");
         }

@@ -153,8 +153,8 @@ impl<'a> Checker<'a> {
                     if self.local(&cap).is_none() {
                         self.report(
                             callee.span,
-                            msgs::check::USED_BEFORE_SET_CAPTURES_WHICH_IS_NOT
-                                .at(&[&fn_name, &cap]),
+                            msgs::check::USED_BEFORE_SET_CAPTURES_WHICH_IS_NOT,
+                            &[&fn_name, &cap],
                         );
                         break;
                     }
@@ -464,7 +464,8 @@ impl<'a> Checker<'a> {
             }
             self.report(
                 call.span,
-                msgs::check::WRONG_ARG_COUNT_RANGE_TAKES_1_RANGE.at(&[&cname, &args.len()]),
+                msgs::check::WRONG_ARG_COUNT_RANGE_TAKES_1_RANGE,
+                &[&cname, &args.len()],
             );
             return Some(Ty::Named {
                 name: "SortedRange".into(),
@@ -478,7 +479,8 @@ impl<'a> Checker<'a> {
                     self.infer(st);
                     self.report(
                         st.span,
-                        msgs::check::TYPE_MISMATCH_RANGE_DOES_NOT_TAKE.at(&[&cname]),
+                        msgs::check::TYPE_MISMATCH_RANGE_DOES_NOT_TAKE,
+                        &[&cname],
                     );
                 }
                 let check_end = |this: &mut Self, e: &Expr| {
@@ -597,7 +599,8 @@ impl<'a> Checker<'a> {
         let replace_span = Span::new(name.span.start, call.span.end);
         if let Some(diag) = self.report(
             call.span,
-            msgs::check::UNKNOWN_FIELD_WAS_REPLACED_BY.at(&[&cname, &name.text, &replacement]),
+            msgs::check::UNKNOWN_FIELD_WAS_REPLACED_BY,
+            &[&cname, &name.text, &replacement],
         ) {
             diag.help = Some(format!(
                 "write `{replacement}` (or run `cpl fix` to migrate)"
@@ -704,7 +707,8 @@ impl<'a> Checker<'a> {
         let callee_text = self.quote(callee.span);
         if let Some(diag) = self.report(
             call.span,
-            msgs::check::NOT_CALLABLE_IS_READ_WITHOUT_PARENTHESES.at(&[&name.text, &callee_text]),
+            msgs::check::NOT_CALLABLE_IS_READ_WITHOUT_PARENTHESES,
+            &[&name.text, &callee_text],
         ) {
             diag.help = Some(format!(
                 "write `{callee_text}` (or run `cpl fix` to drop `()`)"
@@ -851,7 +855,8 @@ impl<'a> Checker<'a> {
         }
         self.report(
             call.span,
-            msgs::check::WRONG_ARG_COUNT_T_TAKES_NO_ARGUMENTS.at(&[&name]),
+            msgs::check::WRONG_ARG_COUNT_T_TAKES_NO_ARGUMENTS,
+            &[&name],
         );
     }
 
@@ -901,8 +906,8 @@ impl<'a> Checker<'a> {
         let method = &name.text;
         if let Some(diag) = self.report(
             name.span,
-            msgs::check::AMBIGUOUS_METHOD_IS_AMBIGUOUS_BOTH_AND
-                .at(&[&shown, &method, &first, &second, &owner, &method]),
+            msgs::check::AMBIGUOUS_METHOD_IS_AMBIGUOUS_BOTH_AND,
+            &[&shown, &method, &first, &second, &owner, &method],
         ) {
             diag.help = Some(format!("name the trait: `{first}.{method}({shown})`"));
         }
@@ -1067,11 +1072,8 @@ impl<'a> Checker<'a> {
                 "argmax" | "argmin" if !base_ty.is_keyed() => {
                     self.report(
                         name.span,
-                        msgs::check::MISSING_IMPL_REQUIRES_KEYED_BUT_HAS.at(&[
-                            &name.text,
-                            &self.quote(base.span),
-                            &base_ty,
-                        ]),
+                        msgs::check::MISSING_IMPL_REQUIRES_KEYED_BUT_HAS,
+                        &[&name.text, &self.quote(base.span), &base_ty],
                     );
                     return Some(Ty::Error);
                 }
@@ -1080,11 +1082,8 @@ impl<'a> Checker<'a> {
                     if !base_ty.is_indexed_mut() && !self.is_readonly_view(base) {
                         self.report(
                             name.span,
-                            msgs::check::MISSING_IMPL_REQUIRES_INDEXEDMUT_BUT_HAS.at(&[
-                                &name.text,
-                                &self.quote(base.span),
-                                &base_ty,
-                            ]),
+                            msgs::check::MISSING_IMPL_REQUIRES_INDEXEDMUT_BUT_HAS,
+                            &[&name.text, &self.quote(base.span), &base_ty],
                         );
                         return Some(Ty::Error);
                     }
@@ -1175,7 +1174,8 @@ impl<'a> Checker<'a> {
                 } else if !elem.is_vague() {
                     self.report(
                         name.span,
-                        msgs::check::TYPE_MISMATCH_INVERSE_REQUIRES_ELEMENTS_OF.at(&[&elem]),
+                        msgs::check::TYPE_MISMATCH_INVERSE_REQUIRES_ELEMENTS_OF,
+                        &[&elem],
                     );
                     Some(Ty::Error)
                 } else {
@@ -1197,7 +1197,7 @@ impl<'a> Checker<'a> {
             {
                 let shown = Ty::Array { index, elem }.to_string();
                 let message = cpl_diag::msgs::check::OUT_V_READS_TABLE.at(&[&shown]);
-                if let Some(diag) = self.report(name.span, message) {
+                if let Some(diag) = self.report_said(name.span, message) {
                     diag.help = Some("index it: `a[v]`".to_string());
                 }
                 Some(Ty::Error)
@@ -1244,7 +1244,8 @@ impl<'a> Checker<'a> {
                                 );
                                 let diag = self.report(
                                     call.span,
-                                    msgs::check::ROW_MISSING_FIELD_NEEDS_A_RECORD_WITH.at(&[
+                                    msgs::check::ROW_MISSING_FIELD_NEEDS_A_RECORD_WITH,
+                                    &[
                                         &callee_text,
                                         &req_name,
                                         &req_ty,
@@ -1252,7 +1253,7 @@ impl<'a> Checker<'a> {
                                         &found.map_or(format!("has no `{req_name}`"), |(_, t)| {
                                             format!("has `{req_name}: {t}`")
                                         }),
-                                    ]),
+                                    ],
                                 );
                                 if let Some(diag) = diag {
                                     if help.is_some() {
@@ -1269,11 +1270,8 @@ impl<'a> Checker<'a> {
                 other => {
                     self.report(
                         call.span,
-                        msgs::check::ROW_MISSING_FIELD_NEEDS_A_RECORD_FOR.at(&[
-                            &callee_text,
-                            &param,
-                            &other,
-                        ]),
+                        msgs::check::ROW_MISSING_FIELD_NEEDS_A_RECORD_FOR,
+                        &[&callee_text, &param, &other],
                     );
                 }
             }
@@ -1381,8 +1379,8 @@ impl<'a> Checker<'a> {
                                         let help = self.unmet_bound_help(&bound_ty);
                                         if let Some(diag) = self.report(
                                             call.span,
-                                            msgs::check::MISSING_IMPL_DOES_NOT_IMPLEMENT_REQUIRED
-                                                .at(&[&bound_ty, &trait_name, &fn_name]),
+                                            msgs::check::MISSING_IMPL_DOES_NOT_IMPLEMENT_REQUIRED,
+                                            &[&bound_ty, &trait_name, &fn_name],
                                         ) {
                                             diag.help = help;
                                         }
@@ -1420,8 +1418,8 @@ impl<'a> Checker<'a> {
                                         {
                                             self.report(
                                                 call.span,
-                                                msgs::check::MISSING_IMPL_RECORD_DOES_NOT_SATISFY
-                                                    .at(&[&actual, &tname, &req_name, &req_ty]),
+                                                msgs::check::MISSING_IMPL_RECORD_DOES_NOT_SATISFY,
+                                                &[&actual, &tname, &req_name, &req_ty],
                                             );
                                         }
                                     }
@@ -1434,8 +1432,8 @@ impl<'a> Checker<'a> {
                                     if !has_impl {
                                         self.report(
                                             call.span,
-                                            msgs::check::MISSING_IMPL_DOES_NOT_IMPLEMENT_STRUCTS
-                                                .at(&[&sname, &tname, &tname, &sname]),
+                                            msgs::check::MISSING_IMPL_DOES_NOT_IMPLEMENT_STRUCTS,
+                                            &[&sname, &tname, &tname, &sname],
                                         );
                                     }
                                 }
@@ -1545,8 +1543,8 @@ impl<'a> Checker<'a> {
                     (ty.is_numeric() && args.len() == 1).then(|| self.quote(args[0].value.span));
                 if let Some(diag) = self.report(
                     callee.span,
-                    msgs::check::NOT_CALLABLE_IS_NOT_A_FN
-                        .at(&[&callee_text, &ty.widen().with_article()]),
+                    msgs::check::NOT_CALLABLE_IS_NOT_A_FN,
+                    &[&callee_text, &ty.widen().with_article()],
                 ) {
                     if let Some(arg) = product {
                         diag.help = Some(format!("to multiply, write `{callee_text} * ({arg})`"));

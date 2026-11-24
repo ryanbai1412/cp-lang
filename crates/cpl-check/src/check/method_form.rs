@@ -121,7 +121,8 @@ impl Checker<'_> {
             if !more_specific(&this, &that) && !more_specific(&that, &this) {
                 self.report(
                     f.name.span,
-                    msgs::check::OVERLOAD_BY_TYPE_A_SECOND_FN_WHOSE.at(&[&name]),
+                    msgs::check::OVERLOAD_BY_TYPE_A_SECOND_FN_WHOSE,
+                    &[&name],
                 );
                 return;
             }
@@ -684,7 +685,8 @@ impl Checker<'_> {
         };
         if let Some(diag) = self.report(
             value.span,
-            msgs::check::TYPE_MISMATCH_SPLIT_TAKES_A_CHAR.at(&[&self.quote(value.span)]),
+            msgs::check::TYPE_MISMATCH_SPLIT_TAKES_A_CHAR,
+            &[&self.quote(value.span)],
         ) {
             diag.help = Some(format!(
                 "a `Str` splits on one `Char` or a `Char -> Bool`: `{lit}`"
@@ -797,12 +799,8 @@ impl Checker<'_> {
         let method = &name.text;
         if let Some(diag) = self.report(
             name.span,
-            msgs::check::AMBIGUOUS_METHOD_IS_AMBIGUOUS_EACH_GIVE.at(&[
-                &shown,
-                &method,
-                &modules.join(" and "),
-                &method,
-            ]),
+            msgs::check::AMBIGUOUS_METHOD_IS_AMBIGUOUS_EACH_GIVE,
+            &[&shown, &method, &modules.join(" and "), &method],
         ) {
             diag.help = Some(format!(
                 "import the one you mean and call it as `{method}({shown}, ..)`"

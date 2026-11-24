@@ -211,7 +211,7 @@ impl<'a> Checker<'a> {
                 if other != base_name {
                     let message = cpl_diag::msgs::check::INDEXED_IDX_NOT_IDX
                         .at(&[&base_name, &base_name, &other]);
-                    self.report(idx_expr.span, message);
+                    self.report_said(idx_expr.span, message);
                 }
             }
         }
@@ -249,13 +249,14 @@ impl<'a> Checker<'a> {
                 if indices.len() != 2 {
                     if let Some(diag) = self.report(
                         expr.span,
-                        msgs::check::WRONG_ARG_COUNT_TAKES_2_INDICES_BUT.at(&[
+                        msgs::check::WRONG_ARG_COUNT_TAKES_2_INDICES_BUT,
+                        &[
                             &self.quote(base.span),
                             &dom_ty,
                             &dom_ty,
                             &indices.len(),
                             &if indices.len() == 1 { "was" } else { "were" },
-                        ]),
+                        ],
                     ) {
                         diag.help =
                             Some("index a symmetric table with two positions: `adj[u, v]`".into());
@@ -266,12 +267,13 @@ impl<'a> Checker<'a> {
                     if !self.fits(got, dom_ty) && !self.literal_position(index_expr, dom_ty) {
                         self.report(
                             index_expr.span,
-                            msgs::check::TYPE_MISMATCH_IS_INDEXED_BY_BUT.at(&[
+                            msgs::check::TYPE_MISMATCH_IS_INDEXED_BY_BUT,
+                            &[
                                 &self.quote(base.span),
                                 &dom_ty,
                                 &self.quote(index_expr.span),
                                 &got.with_article(),
-                            ]),
+                            ],
                         );
                     }
                 }
@@ -381,7 +383,8 @@ impl<'a> Checker<'a> {
                     let wanted: Vec<String> = index.iter().map(Ty::to_string).collect();
                     if let Some(diag) = self.report(
                         expr.span,
-                        msgs::check::NOT_INDEXABLE_TAKES_BUT_GIVEN.at(&[
+                        msgs::check::NOT_INDEXABLE_TAKES_BUT_GIVEN,
+                        &[
                             &self.quote(base.span),
                             &plural(index.len(), "index", "indices"),
                             &wanted.join(", "),
@@ -390,7 +393,7 @@ impl<'a> Checker<'a> {
                             } else {
                                 format!("{} were", indices.len())
                             },
-                        ]),
+                        ],
                     ) {
                         diag.help = Some(
                             "all indices go in one pair of brackets: `g[r, c]`, never `g[r][c]`"
@@ -419,8 +422,8 @@ impl<'a> Checker<'a> {
                                 if self.bounds_base_domain(cut).as_deref() == Some(dom.as_str()) {
                                     if let Some(diag) = self.report(
                                         index_expr.span,
-                                        msgs::check::WRONG_DOMAIN_ENDS_AT_A_POSITION
-                                            .at(&[&self.quote(hi.span)]),
+                                        msgs::check::WRONG_DOMAIN_ENDS_AT_A_POSITION,
+                                        &[&self.quote(hi.span)],
                                     ) {
                                         diag.help = Some(
                                             "use half-open `..` for the positions between two cuts"
@@ -441,11 +444,8 @@ impl<'a> Checker<'a> {
                             {
                                 self.report(
                                     index_expr.span,
-                                    msgs::check::TYPE_MISMATCH_IS_A_CUT_RANGE.at(&[
-                                        &self.quote(index_expr.span),
-                                        &got,
-                                        &self.quote(base.span),
-                                    ]),
+                                    msgs::check::TYPE_MISMATCH_IS_A_CUT_RANGE,
+                                    &[&self.quote(index_expr.span), &got, &self.quote(base.span)],
                                 );
                             }
                             slice = true;
@@ -475,8 +475,8 @@ impl<'a> Checker<'a> {
                             if out_of_bounds {
                                 self.report(
                                     index_expr.span,
-                                    msgs::check::RANGE_STORE_CONST_LITERAL_IS_OUTSIDE_DOMAIN
-                                        .at(&[&v, &d]),
+                                    msgs::check::RANGE_STORE_CONST_LITERAL_IS_OUTSIDE_DOMAIN,
+                                    &[&v, &d],
                                 );
                             }
                         }
@@ -509,7 +509,7 @@ impl<'a> Checker<'a> {
                         let help = self.step_help(index_expr);
                         let origin =
                             self.origin(index_expr, &format!("declared as {}", got.with_article()));
-                        if let Some(diag) = self.report(index_expr.span, message) {
+                        if let Some(diag) = self.report_said(index_expr.span, message) {
                             diag.help = Some(help);
                             diag.labels.extend(origin);
                         }
@@ -576,16 +576,16 @@ impl<'a> Checker<'a> {
             Ty::Named { name, .. } if matches!(name.as_str(), "Filter" | "Rev") => {
                 self.report(
                     expr.span,
-                    msgs::check::NOT_INDEXABLE_HAS_TYPE_WHICH_IS
-                        .at(&[&self.quote(base.span), &base_ty]),
+                    msgs::check::NOT_INDEXABLE_HAS_TYPE_WHICH_IS,
+                    &[&self.quote(base.span), &base_ty],
                 );
                 Ty::Error
             }
             Ty::Named { name, .. } if matches!(name.as_str(), "Gen" | "Iter") => {
                 self.report(
                     expr.span,
-                    msgs::check::MISSING_IMPL_HAS_TYPE_WHICH_DOES
-                        .at(&[&self.quote(base.span), &base_ty]),
+                    msgs::check::MISSING_IMPL_HAS_TYPE_WHICH_DOES,
+                    &[&self.quote(base.span), &base_ty],
                 );
                 Ty::Error
             }
@@ -599,8 +599,8 @@ impl<'a> Checker<'a> {
                 };
                 if let Some(diag) = self.report(
                     base.span,
-                    msgs::check::NOT_INDEXABLE_IS_AND_CAN_T
-                        .at(&[&self.quote(base.span), &ty.widen().with_article()]),
+                    msgs::check::NOT_INDEXABLE_IS_AND_CAN_T,
+                    &[&self.quote(base.span), &ty.widen().with_article()],
                 ) {
                     diag.help = Some(help.into());
                 }
@@ -625,7 +625,7 @@ impl Checker<'_> {
         }
         let shown = self.quote(base.span);
         let message = cpl_diag::msgs::check::FILTERED_SEQUENCE_CAN_WALKED.at(&[&shown]);
-        if let Some(diag) = self.report(base.span, message) {
+        if let Some(diag) = self.report_said(base.span, message) {
             diag.help = Some(format!("collect it first: `{shown}.collect()[i]`"));
         }
         true
@@ -682,14 +682,15 @@ impl Checker<'_> {
         let span = base.span.to(indices.last().map_or(base.span, |e| e.span));
         if let Some(diag) = self.report(
             span,
-            msgs::check::REMOVED_SYNTAX_INDEXES_TWICE_0_3.at(&[
+            msgs::check::REMOVED_SYNTAX_INDEXES_TWICE_0_3,
+            &[
                 &self.quote(base.span),
                 &indices
                     .iter()
                     .map(|e| self.quote(e.span))
                     .collect::<Vec<_>>()
                     .join(", "),
-            ]),
+            ],
         ) {
             diag.help = Some(format!("write `{fixed}`"));
         }

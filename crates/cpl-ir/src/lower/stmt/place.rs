@@ -153,7 +153,7 @@ impl<'a> Lowerer<'a> {
                     },
                     ExprKind::Error => error,
                     _ => {
-                        self.report(e.span, msgs::ir::ASSIGN_TO_LET_THIS_NAME_CAN_T.at(&[]));
+                        self.report(e.span, msgs::ir::ASSIGN_TO_LET_THIS_NAME_CAN_T, &[]);
                         error
                     }
                 }
@@ -181,8 +181,8 @@ impl<'a> Lowerer<'a> {
                     other => {
                         self.report(
                             name.span,
-                            msgs::ir::UNKNOWN_FIELD_IS_A_CELL_OF
-                                .at(&[&name.text, &self.show(other)]),
+                            msgs::ir::UNKNOWN_FIELD_IS_A_CELL_OF,
+                            &[&name.text, &self.show(other)],
                         );
                         return error;
                     }
@@ -227,7 +227,8 @@ impl<'a> Lowerer<'a> {
                     other => {
                         self.report(
                             e.span,
-                            msgs::ir::TYPE_MISMATCH_TAKES_THE_VALUE_OUT.at(&[&self.show(&other)]),
+                            msgs::ir::TYPE_MISMATCH_TAKES_THE_VALUE_OUT,
+                            &[&self.show(&other)],
                         );
                         error
                     }
@@ -272,8 +273,8 @@ impl<'a> Lowerer<'a> {
                         if base.ty != Ty::Error {
                             self.report(
                                 name.span,
-                                msgs::ir::UNKNOWN_FIELD_HAS_NO_FIELD_TO
-                                    .at(&[&self.show(&base.ty), &name.text]),
+                                msgs::ir::UNKNOWN_FIELD_HAS_NO_FIELD_TO,
+                                &[&self.show(&base.ty), &name.text],
                             );
                             self.last_place_fix(&base.ty, written.span, name);
                         }
@@ -285,7 +286,7 @@ impl<'a> Lowerer<'a> {
                 if let Some(index) = self.builtin_at(e) {
                     return self.place(&index);
                 }
-                self.report(e.span, msgs::ir::ASSIGN_TO_LET_ONLY_A_VARIABLE_A.at(&[]));
+                self.report(e.span, msgs::ir::ASSIGN_TO_LET_ONLY_A_VARIABLE_A, &[]);
                 error
             }
         }

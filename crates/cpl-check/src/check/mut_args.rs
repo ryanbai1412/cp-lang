@@ -37,8 +37,8 @@ impl Checker<'_> {
             let at = arg.value.span;
             if let Some(diag) = self.report(
                 at,
-                msgs::check::MISSING_MUT_AT_CALL_CHANGES_SO_THE_ARGUMENT
-                    .at(&[&name, &quoted, &quoted]),
+                msgs::check::MISSING_MUT_AT_CALL_CHANGES_SO_THE_ARGUMENT,
+                &[&name, &quoted, &quoted],
             ) {
                 diag.fix("add `mut`", Span::point(at.start), "mut ");
             }

@@ -100,7 +100,7 @@ impl<'a> Checker<'a> {
         };
         let message = cpl_diag::msgs::check::VARIANT_BOTH_NOTHING_HERE.at(&[&name, &a, &b]);
         let help = format!("write `{a}.{name}`, or give the `let` a type: `let x: {a} = {name}`");
-        if let Some(diag) = self.report(span, message) {
+        if let Some(diag) = self.report_said(span, message) {
             diag.help = Some(help);
         }
     }

@@ -555,7 +555,23 @@ impl<'a> Checker<'a> {
         }
     }
 
-    fn report(&mut self, span: Span, said: cpl_diag::msgs::Said) -> Option<&mut Diagnostic> {
+    fn report(
+        &mut self,
+        span: Span,
+        msg: cpl_diag::msgs::Msg,
+        args: &[&dyn std::fmt::Display],
+    ) -> Option<&mut Diagnostic> {
+        if self.sink.encloses_poison(span) {
+            return None;
+        }
+        let before = self.sink.len();
+        self.sink.push(msg.error(span, args));
+        (self.sink.len() > before)
+            .then(|| self.sink.last_mut())
+            .flatten()
+    }
+
+    fn report_said(&mut self, span: Span, said: cpl_diag::msgs::Said) -> Option<&mut Diagnostic> {
         self.error(said.code(), span, said.text())
     }
 
@@ -635,7 +651,7 @@ impl<'a> Checker<'a> {
     /// `@cpp("...")` anywhere but as a fn's whole body.
     fn cpp_outside_body(&mut self, at: Span) -> Ty {
         let message = cpl_diag::msgs::check::CPP_FN_S_WHOLE.at(&[]);
-        self.report(at, message);
+        self.report_said(at, message);
         Ty::Error
     }
 
@@ -653,8 +669,8 @@ impl<'a> Checker<'a> {
             let known: Vec<&str> = cpl_rt::TABLE.iter().map(|e| e.id).collect();
             self.report(
                 at,
-                msgs::check::UNKNOWN_INTRINSIC_NO_INTRINSIC_THE_TABLE
-                    .at(&[&name, &known.join(", ")]),
+                msgs::check::UNKNOWN_INTRINSIC_NO_INTRINSIC_THE_TABLE,
+                &[&name, &known.join(", ")],
             );
             return;
         };
@@ -675,12 +691,8 @@ impl<'a> Checker<'a> {
         if !params_fit || !fits(ret, entry.result) {
             self.report(
                 at,
-                msgs::check::UNKNOWN_INTRINSIC_IS_MUST_HAVE_THAT.at(&[
-                    &name,
-                    &entry.params.join(", "),
-                    &entry.result,
-                    &f.name.text,
-                ]),
+                msgs::check::UNKNOWN_INTRINSIC_IS_MUST_HAVE_THAT,
+                &[&name, &entry.params.join(", "), &entry.result, &f.name.text],
             );
         }
     }
@@ -750,7 +762,8 @@ impl<'a> Checker<'a> {
                 if decl_depth > max_depth {
                     if let Some(diag) = self.report(
                         at,
-                        msgs::check::DOMAIN_ESCAPES_A_VALUE_OF_FRESH.at(&[&d, &how]),
+                        msgs::check::DOMAIN_ESCAPES_A_VALUE_OF_FRESH,
+                        &[&d, &how],
                     ) {
                         diag.labels.push(cpl_diag::Label {
                             span: decl_span,
@@ -905,7 +918,8 @@ impl<'a> Checker<'a> {
         if let (true, Some(at)) = (self.assigning_name != Some(span), moved_at) {
             if let Some(diag) = self.report(
                 span,
-                msgs::check::USE_AFTER_MOVE_WAS_ALREADY_MOVED.at(&[&name]),
+                msgs::check::USE_AFTER_MOVE_WAS_ALREADY_MOVED,
+                &[&name],
             ) {
                 diag.help = Some(format!(
                     "use `{name}.clone()` where it was moved if you still need `{name}`"
@@ -1037,7 +1051,8 @@ impl<'a> Checker<'a> {
         if let Some(replacement) = renamed_prefix_name(name) {
             if let Some(diag) = self.report(
                 span,
-                msgs::check::UNRESOLVED_NAME_WAS_REPLACED_BY.at(&[&name, &replacement]),
+                msgs::check::UNRESOLVED_NAME_WAS_REPLACED_BY,
+                &[&name, &replacement],
             ) {
                 diag.help = Some(format!(
                     "write `{replacement}` (or run `cpl fix` to migrate)"
@@ -1375,7 +1390,8 @@ impl<'a> Checker<'a> {
                 let param = self.param_span(&root);
                 if let Some(diag) = self.report(
                     expr.span,
-                    msgs::check::ASSIGN_TO_LET_IS_NOT_A_VAR.at(&[&root, &action]),
+                    msgs::check::ASSIGN_TO_LET_IS_NOT_A_VAR,
+                    &[&root, &action],
                 ) {
                     diag.help = Some(format!("declare it with `var {root}` to change it"));
                     mut_param_help(diag, &root, param);

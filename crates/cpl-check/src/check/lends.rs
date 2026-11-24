@@ -1455,7 +1455,8 @@ impl<'a> Checker<'a> {
             if is_capture {
                 if let Some(diag) = self.report(
                     span,
-                    msgs::check::MOVED_WHILE_CAPTURED_CAN_T_BE_MOVED.at(&[&src, &lent_to]),
+                    msgs::check::MOVED_WHILE_CAPTURED_CAN_T_BE_MOVED,
+                    &[&src, &lent_to],
                 ) {
                     if at != ELSEWHERE {
                         diag.labels.push(cpl_diag::Label {
@@ -1477,7 +1478,8 @@ impl<'a> Checker<'a> {
             } else {
                 if let Some(diag) = self.report(
                     span,
-                    msgs::check::USED_WHILE_LENT_CAN_T_BE_MOVED.at(&[&src, &lent_to]),
+                    msgs::check::USED_WHILE_LENT_CAN_T_BE_MOVED,
+                    &[&src, &lent_to],
                 ) {
                     if at != ELSEWHERE {
                         diag.labels.push(cpl_diag::Label {
@@ -1833,7 +1835,8 @@ impl<'a> Checker<'a> {
         if mutable && read_only {
             if let Some(diag) = self.report(
                 stmt.span,
-                msgs::check::ASSIGN_TO_LET_IS_A_READ_ONLY_3.at(&[&name, &kind, &place.root]),
+                msgs::check::ASSIGN_TO_LET_IS_A_READ_ONLY_3,
+                &[&name, &kind, &place.root],
             ) {
                 diag.help = Some(
                     "copy it into an owned value first with `.to_str()` or `.to_list()`".into(),
@@ -1842,7 +1845,8 @@ impl<'a> Checker<'a> {
         } else if mutable && !place.root_mutable {
             if let Some(diag) = self.report(
                 stmt.span,
-                msgs::check::ASSIGN_TO_LET_IS_CHANGED_BELOW_BUT.at(&[&name, &place.root]),
+                msgs::check::ASSIGN_TO_LET_IS_CHANGED_BELOW_BUT,
+                &[&name, &place.root],
             ) {
                 diag.help = Some(format!("declare it with `var {}`", place.root));
             }
@@ -2025,11 +2029,8 @@ impl<'a> Checker<'a> {
                 let root = place.root;
                 if let Some(diag) = self.report(
                     e.span,
-                    msgs::check::USED_WHILE_LENT_CAN_T_BE_HERE.at(&[
-                        &show(e),
-                        &if write { "changed" } else { "used" },
-                        &root,
-                    ]),
+                    msgs::check::USED_WHILE_LENT_CAN_T_BE_HERE,
+                    &[&show(e), &if write { "changed" } else { "used" }, &root],
                 ) {
                     diag.labels.push(cpl_diag::Label {
                         span: at,
@@ -2043,14 +2044,15 @@ impl<'a> Checker<'a> {
             }
             if let Some(diag) = self.report(
                 e.span,
-                msgs::check::USED_WHILE_LENT_CAN_T_BE_HERE_2.at(&[
+                msgs::check::USED_WHILE_LENT_CAN_T_BE_HERE_2,
+                &[
                     &show(e),
                     &if write { "changed" } else { "used" },
                     &place.root,
                     &if mutable { "mutably " } else { "" },
                     &name,
                     &why,
-                ]),
+                ],
             ) {
                 if at != ELSEWHERE {
                     diag.labels.push(cpl_diag::Label {

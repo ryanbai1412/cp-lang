@@ -30,8 +30,8 @@ impl Checker<'_> {
         }
         if let Some(diag) = self.report(
             next.pat.span,
-            msgs::check::UNREACHABLE_ARM_UNREACHABLE_ARM_ABOVE_ALREADY
-                .at(&[&self.quote(catch_all.span)]),
+            msgs::check::UNREACHABLE_ARM_UNREACHABLE_ARM_ABOVE_ALREADY,
+            &[&self.quote(catch_all.span)],
         ) {
             match variant {
                 Some(v) => {

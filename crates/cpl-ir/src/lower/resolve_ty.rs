@@ -376,7 +376,8 @@ impl<'a> Lowerer<'a> {
                 _ => {
                     self.report(
                         name.span,
-                        msgs::ir::UNKNOWN_TYPE_IS_NOT_A_TYPE.at(&[&name.text]),
+                        msgs::ir::UNKNOWN_TYPE_IS_NOT_A_TYPE,
+                        &[&name.text],
                     );
                     Ty::Error
                 }
@@ -809,7 +810,7 @@ impl<'a> Lowerer<'a> {
                 Some(DimSpec::Int(Box::new(self.coerce(v, &Ty::Int, expr.span))))
             }
             _ => {
-                self.report(ty.span, msgs::ir::UNKNOWN_TYPE_AN_ARRAY_IS_INDEXED.at(&[]));
+                self.report(ty.span, msgs::ir::UNKNOWN_TYPE_AN_ARRAY_IS_INDEXED, &[]);
                 None
             }
         }

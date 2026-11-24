@@ -251,7 +251,8 @@ impl<'a> Lowerer<'a> {
             other => {
                 self.report(
                     func_ast.span,
-                    msgs::ir::TYPE_MISMATCH_MAP_EXPECTS_A_FUNCTION.at(&[&self.show(other)]),
+                    msgs::ir::TYPE_MISMATCH_MAP_EXPECTS_A_FUNCTION,
+                    &[&self.show(other)],
                 );
                 return self.err_expr(span);
             }

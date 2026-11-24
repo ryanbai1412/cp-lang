@@ -32,7 +32,7 @@ impl Checker<'_> {
                     if let Some((name, _)) = own.filter(|(name, _)| n != name) {
                         let message =
                             cpl_diag::msgs::check::FIELDS_HERE_NAMES_TYPE.at(&[&n, &name]);
-                        self.report(v.value.span, message);
+                        self.report_said(v.value.span, message);
                     }
                     continue;
                 }
@@ -44,7 +44,8 @@ impl Checker<'_> {
                 if got != name && !same_arity(&reflected) {
                     self.report(
                         v.value.span,
-                        msgs::check::TYPE_MISMATCH_FIELDS_HERE_WALKS_VALUES.at(&[&name, &ty]),
+                        msgs::check::TYPE_MISMATCH_FIELDS_HERE_WALKS_VALUES,
+                        &[&name, &ty],
                     );
                 }
             }
@@ -52,12 +53,13 @@ impl Checker<'_> {
         }
         if !clause.conds.is_empty() {
             let message = cpl_diag::msgs::check::FIELDS_CONSTRUCTOR_GIVES_EVERY.at(&[]);
-            self.report(clause.iter.span, message);
+            self.report_said(clause.iter.span, message);
         }
         if shapes.is_empty() && !matches!(clause.pat.kind, PatternKind::Wildcard) {
             if let Some(d) = self.report(
                 clause.pat.span,
-                msgs::check::TYPE_MISMATCH_FIELDS_OF_A_TYPE.at(&[]),
+                msgs::check::TYPE_MISMATCH_FIELDS_OF_A_TYPE,
+                &[],
             ) {
                 d.help = Some("write `_`, as in `P(read() for _ in fields(P))`".to_string());
             }
@@ -397,12 +399,8 @@ impl Checker<'_> {
                 let arg_text = self.quote(arg.value.span);
                 if let Some(diag) = self.report(
                     arg.value.span,
-                    msgs::check::TYPE_MISMATCH_BUT_IS_A_SLICE.at(&[
-                        &callee,
-                        &verb,
-                        &want.with_article(),
-                        &arg_text,
-                    ]),
+                    msgs::check::TYPE_MISMATCH_BUT_IS_A_SLICE,
+                    &[&callee, &verb, &want.with_article(), &arg_text],
                 ) {
                     diag.help = Some(format!(
                         "copy it with `List({arg_text})` or accept `Seq` / `Indexed`"
@@ -433,8 +431,8 @@ impl Checker<'_> {
                 let at = arg.value.span;
                 if let Some(diag) = self.report(
                     at,
-                    msgs::check::MISSING_MUT_AT_CALL_CHANGES_SO_THE_ARGUMENT
-                        .at(&[&callee, &changed, &quoted]),
+                    msgs::check::MISSING_MUT_AT_CALL_CHANGES_SO_THE_ARGUMENT,
+                    &[&callee, &changed, &quoted],
                 ) {
                     diag.fix("add `mut`", Span::point(at.start), "mut ");
                 }
@@ -443,8 +441,8 @@ impl Checker<'_> {
                 if self.text(amp) == "&" {
                     if let Some(diag) = self.report(
                         arg.value.span,
-                        msgs::check::MISSING_MUT_AT_CALL_DOESN_T_CHANGE_SO
-                            .at(&[&callee, &param.name]),
+                        msgs::check::MISSING_MUT_AT_CALL_DOESN_T_CHANGE_SO,
+                        &[&callee, &param.name],
                     ) {
                         diag.fix("drop the `&`", amp, String::new());
                     }
@@ -455,8 +453,8 @@ impl Checker<'_> {
                     .then_some(at);
                 if let Some(diag) = self.report(
                     arg.value.span,
-                    msgs::check::MISSING_MUT_AT_CALL_DOESN_T_CHANGE_SO_2
-                        .at(&[&callee, &param.name]),
+                    msgs::check::MISSING_MUT_AT_CALL_DOESN_T_CHANGE_SO_2,
+                    &[&callee, &param.name],
                 ) {
                     diag.help = Some(format!(
                         "remove `mut`, or declare the parameter `mut {}`",
@@ -479,7 +477,8 @@ impl Checker<'_> {
             } else {
                 self.report(
                     call.span,
-                    msgs::check::TYPE_MISMATCH_TAKES_POSITIONAL_OR_NAMED.at(&[&last.name]),
+                    msgs::check::TYPE_MISMATCH_TAKES_POSITIONAL_OR_NAMED,
+                    &[&last.name],
                 );
             }
         }
@@ -501,7 +500,8 @@ impl Checker<'_> {
         if extra > 0 {
             self.report(
                 call.span,
-                msgs::check::WRONG_ARG_COUNT_BUT_GIVEN.at(&[
+                msgs::check::WRONG_ARG_COUNT_BUT_GIVEN,
+                &[
                     &callee,
                     &verb,
                     &plural(positional.len(), noun.0, noun.1),
@@ -511,7 +511,7 @@ impl Checker<'_> {
                     } else {
                         format!("{given} were")
                     },
-                ]),
+                ],
             );
             return;
         }

@@ -551,7 +551,8 @@ impl<'a> Lowerer<'a> {
                         Some(other) => {
                             self.report(
                                 a.name.as_ref().unwrap().span,
-                                msgs::ir::UNKNOWN_ARG_NAME_DRAIN_HAS_NO_PARAMETER.at(&[&other]),
+                                msgs::ir::UNKNOWN_ARG_NAME_DRAIN_HAS_NO_PARAMETER,
+                                &[&other],
                             );
                             ok = false;
                         }
@@ -1384,7 +1385,8 @@ impl<'a> Lowerer<'a> {
             ) if args.is_empty() => {
                 self.report(
                     name.span,
-                    msgs::ir::UNSUPPORTED_A_REVERSED_IS_SOMETHING.at(&[&self.show(&ty)]),
+                    msgs::ir::UNSUPPORTED_A_REVERSED_IS_SOMETHING,
+                    &[&self.show(&ty)],
                 );
                 self.err_expr(span)
             }
@@ -1502,7 +1504,8 @@ impl<'a> Lowerer<'a> {
                 }
                 self.report(
                     name.span,
-                    msgs::ir::UNKNOWN_FIELD_HAS_NO_METHOD.at(&[&self.a_ty(&ty), &method]),
+                    msgs::ir::UNKNOWN_FIELD_HAS_NO_METHOD,
+                    &[&self.a_ty(&ty), &method],
                 );
                 self.member_typo(&ty, method, name.span);
                 self.foreign_call_fix(&ty, base, method, span);

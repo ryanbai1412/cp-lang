@@ -89,14 +89,15 @@ impl<'a> Lowerer<'a> {
                                 ast::ExprKind::Int(d) if (0..=18).contains(&d) => digits = d as u32,
                                 _ => self.report(
                                     arg.value.span,
-                                    msgs::ir::TYPE_MISMATCH_PRECISION_IS_A_WHOLE.at(&[]),
+                                    msgs::ir::TYPE_MISMATCH_PRECISION_IS_A_WHOLE,
+                                    &[],
                                 ),
                             }
                         }
                         Some(arg_name) => {
                             let message =
                                 cpl_diag::msgs::ir::PRINT_HAS_NO_ARGUMENT.at(&[&arg_name.text]);
-                            self.report(arg_name.span, message);
+                            self.report_said(arg_name.span, message);
                         }
                         None => values.push((self.expr(&arg.value, None), arg.value.span)),
                     }
@@ -195,7 +196,8 @@ impl<'a> Lowerer<'a> {
                     if let Some(arg_name) = &arg.name {
                         self.report(
                             arg_name.span,
-                            msgs::ir::UNKNOWN_ARG_NAME_DEBUG_HAS_NO_ARGUMENT.at(&[&arg_name.text]),
+                            msgs::ir::UNKNOWN_ARG_NAME_DEBUG_HAS_NO_ARGUMENT,
+                            &[&arg_name.text],
                         );
                         continue;
                     }
@@ -205,7 +207,8 @@ impl<'a> Lowerer<'a> {
                     if value.ty == Ty::Unit {
                         self.report(
                             arg.value.span,
-                            msgs::ir::TYPE_MISMATCH_THIS_HAS_NO_VALUE.at(&[]),
+                            msgs::ir::TYPE_MISMATCH_THIS_HAS_NO_VALUE,
+                            &[],
                         );
                         continue;
                     }
@@ -218,25 +221,23 @@ impl<'a> Lowerer<'a> {
             // thing the solution printed.
             "read_output" => {
                 if self.aside != Some(Aside::Checker) {
-                    self.report(
-                        span,
-                        msgs::ir::UNRESOLVED_NAME_READ_OUTPUT_READS_WHAT.at(&[]),
-                    );
+                    self.report(span, msgs::ir::UNRESOLVED_NAME_READ_OUTPUT_READS_WHAT, &[]);
                     return self.err_expr(span);
                 }
                 if !args.is_empty() {
-                    self.report(span, msgs::ir::WRONG_ARG_COUNT_READ_OUTPUT_TAKES_NO.at(&[]));
+                    self.report(span, msgs::ir::WRONG_ARG_COUNT_READ_OUTPUT_TAKES_NO, &[]);
                     return self.err_expr(span);
                 }
                 let Some(want) = hint.filter(|want| **want != Ty::Unit) else {
-                    self.report(span, msgs::ir::TYPE_MISMATCH_READ_OUTPUT_CAN_T.at(&[]));
+                    self.report(span, msgs::ir::TYPE_MISMATCH_READ_OUTPUT_CAN_T, &[]);
                     self.help("say what the solution printed: `let k: Int = read_output()`");
                     return self.err_expr(span);
                 };
                 let Some(spec) = self.spec_of(want) else {
                     self.report(
                         span,
-                        msgs::ir::TYPE_MISMATCH_READ_OUTPUT_CAN_T_2.at(&[&self.show(want)]),
+                        msgs::ir::TYPE_MISMATCH_READ_OUTPUT_CAN_T_2,
+                        &[&self.show(want)],
                     );
                     return self.err_expr(span);
                 };
@@ -258,7 +259,8 @@ impl<'a> Lowerer<'a> {
                         Some(name) => {
                             self.report(
                                 name.span,
-                                msgs::ir::UNKNOWN_ARG_NAME_ASK_HAS_NO_ARGUMENT.at(&[&name.text]),
+                                msgs::ir::UNKNOWN_ARG_NAME_ASK_HAS_NO_ARGUMENT,
+                                &[&name.text],
                             );
                         }
                         None => values.push((self.expr(&arg.value, None), arg.value.span)),
@@ -284,7 +286,8 @@ impl<'a> Lowerer<'a> {
                 let Some(spec) = self.spec_of(want) else {
                     self.report(
                         span,
-                        msgs::ir::TYPE_MISMATCH_ASK_CAN_T_TELL.at(&[&self.show(want)]),
+                        msgs::ir::TYPE_MISMATCH_ASK_CAN_T_TELL,
+                        &[&self.show(want)],
                     );
                     self.help("give the answer its full type: `let r: Int = ask(\"?\", x)`");
                     return self.err_expr(span);
@@ -347,7 +350,7 @@ impl<'a> Lowerer<'a> {
                     hint => hint,
                 };
                 let Some(want) = hint else {
-                    self.report(span, msgs::ir::TYPE_MISMATCH_CAN_T_TELL_WHAT.at(&[]));
+                    self.report(span, msgs::ir::TYPE_MISMATCH_CAN_T_TELL_WHAT, &[]);
                     self.help("`read()` reads what the type says: `let n: Int = read()`");
                     return self.err_expr(span);
                 };
@@ -355,7 +358,7 @@ impl<'a> Lowerer<'a> {
                     Some(spec) => self.read_with_args(spec, args, span),
                     None => {
                         let message = cpl_diag::msgs::ir::READ_CAN_T_TELL.at(&[&self.show(want)]);
-                        self.report(span, message);
+                        self.report_said(span, message);
                         self.help(
                             "declare the variable with its full type: `let a: [n]Int = read()`",
                         );
@@ -433,10 +436,7 @@ impl<'a> Lowerer<'a> {
             }
             "swap" => {
                 if args.len() != 2 {
-                    self.report(
-                        span,
-                        msgs::ir::WRONG_ARG_COUNT_SWAP_TAKES_2_ARGUMENTS.at(&[]),
-                    );
+                    self.report(span, msgs::ir::WRONG_ARG_COUNT_SWAP_TAKES_2_ARGUMENTS, &[]);
                     return self.err_expr(span);
                 }
                 let pa = self.place(&args[0].value);
@@ -492,7 +492,7 @@ impl<'a> Lowerer<'a> {
             "laws_hold" => self.lower_laws_hold(args, span),
             "sort" => {
                 if args.is_empty() {
-                    self.report(span, msgs::ir::WRONG_ARG_COUNT_SORT_TAKES_A_LIST.at(&[]));
+                    self.report(span, msgs::ir::WRONG_ARG_COUNT_SORT_TAKES_A_LIST, &[]);
                     return self.err_expr(span);
                 }
                 let target = &args[0].value;
@@ -503,7 +503,8 @@ impl<'a> Lowerer<'a> {
                     other => {
                         self.report(
                             target.span,
-                            msgs::ir::BAD_OPERANDS_SORT_ORDERS_A_LIST.at(&[&self.show(other)]),
+                            msgs::ir::BAD_OPERANDS_SORT_ORDERS_A_LIST,
+                            &[&self.show(other)],
                         );
                         if matches!(other, Ty::Range(_)) {
                             self.help("a range has no cells to move; `sorted(r, by: ..)` gives the list in order, and `[x for x in r]` the list");
@@ -523,10 +524,7 @@ impl<'a> Lowerer<'a> {
             "adjacency" => self.lower_adjacency(args, span),
             "sorted" => {
                 if args.is_empty() {
-                    self.report(
-                        span,
-                        msgs::ir::WRONG_ARG_COUNT_SORTED_TAKES_A_SEQUENCE.at(&[]),
-                    );
+                    self.report(span, msgs::ir::WRONG_ARG_COUNT_SORTED_TAKES_A_SEQUENCE, &[]);
                     return self.err_expr(span);
                 }
                 let value = match self.walked(&args[0].value) {
@@ -670,10 +668,7 @@ impl<'a> Lowerer<'a> {
                 self.convert(name, value, span)
             }
             _ => {
-                self.report(
-                    span,
-                    msgs::ir::UNRESOLVED_NAME_NO_FN_NAMED_HERE.at(&[&name]),
-                );
+                self.report(span, msgs::ir::UNRESOLVED_NAME_NO_FN_NAMED_HERE, &[&name]);
                 self.err_expr(span)
             }
         }
@@ -714,7 +709,8 @@ impl<'a> Lowerer<'a> {
         if !flat {
             self.report(
                 span,
-                msgs::ir::TYPE_MISMATCH_JOIN_TAKES_A_LIST.at(&[&self.show(&items.ty)]),
+                msgs::ir::TYPE_MISMATCH_JOIN_TAKES_A_LIST,
+                &[&self.show(&items.ty)],
             );
             let (new, at) = (format!("List({})", self.source(span)), self.span(span));
             let text = self.show(&items.ty) == "Str";
@@ -777,7 +773,7 @@ impl<'a> Lowerer<'a> {
             | ("Str", Ty::Str)
             | ("Bool", Ty::Bool) => return value,
             ("Int", Ty::Float) => {
-                self.report(span, msgs::ir::TYPE_MISMATCH_INT_OF_AN_F64.at(&[]));
+                self.report(span, msgs::ir::TYPE_MISMATCH_INT_OF_AN_F64, &[]);
                 // `Int(sqrt(n))`, C++'s `(int)sqrt(n)`: the exact root is `n.isqrt`.
                 let root = match &value.kind {
                     ExprKind::Intrinsic(Prim::Sqrt, args)
@@ -915,7 +911,8 @@ impl<'a> Lowerer<'a> {
             _ => {
                 self.report(
                     span,
-                    msgs::ir::UNKNOWN_FIELD_A_HAS_NO_LENGTH.at(&[&self.show(&value.ty)]),
+                    msgs::ir::UNKNOWN_FIELD_A_HAS_NO_LENGTH,
+                    &[&self.show(&value.ty)],
                 );
                 self.err_expr(span)
             }
@@ -928,7 +925,8 @@ impl<'a> Lowerer<'a> {
                 if !self.ordered(elem) {
                     self.report(
                         span,
-                        msgs::ir::BAD_OPERANDS_A_HAS_NO_ORDER_4.at(&[&self.show(elem)]),
+                        msgs::ir::BAD_OPERANDS_A_HAS_NO_ORDER_4,
+                        &[&self.show(elem)],
                     );
                     return self.err_expr(span);
                 }
@@ -956,7 +954,8 @@ impl<'a> Lowerer<'a> {
                 if !self.ordered(&elem) {
                     self.report(
                         span,
-                        msgs::ir::BAD_OPERANDS_A_HAS_NO_ORDER_4.at(&[&self.show(&elem)]),
+                        msgs::ir::BAD_OPERANDS_A_HAS_NO_ORDER_4,
+                        &[&self.show(&elem)],
                     );
                     return self.err_expr(span);
                 }
@@ -967,7 +966,8 @@ impl<'a> Lowerer<'a> {
             other => {
                 self.report(
                     span,
-                    msgs::ir::TYPE_MISMATCH_SORTED_TAKES_A_LIST.at(&[&self.show(other)]),
+                    msgs::ir::TYPE_MISMATCH_SORTED_TAKES_A_LIST,
+                    &[&self.show(other)],
                 );
                 self.err_expr(span)
             }
@@ -1100,7 +1100,8 @@ impl<'a> Lowerer<'a> {
             other => {
                 self.report(
                     span,
-                    msgs::ir::TYPE_MISMATCH_SORTED_TAKES_A_SEQUENCE.at(&[&self.show(&other)]),
+                    msgs::ir::TYPE_MISMATCH_SORTED_TAKES_A_SEQUENCE,
+                    &[&self.show(&other)],
                 );
                 return self.err_expr(span);
             }
@@ -1381,7 +1382,8 @@ impl<'a> Lowerer<'a> {
             if !reads_none_as(&mut spec, &absent) {
                 self.report(
                     span,
-                    msgs::ir::UNKNOWN_ARG_NAME_NONE_IS_FOR_READING.at(&[&self.show(&want)]),
+                    msgs::ir::UNKNOWN_ARG_NAME_NONE_IS_FOR_READING,
+                    &[&self.show(&want)],
                 );
             }
         }

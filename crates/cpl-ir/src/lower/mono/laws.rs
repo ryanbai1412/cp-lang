@@ -7,7 +7,7 @@ impl<'a> Lowerer<'a> {
     /// Lowers `laws_hold(obj, samples_or_kw...)` into nested assertion loops checking every `law`.
     pub(in crate::lower) fn lower_laws_hold(&mut self, args: &[ast::Arg], span: Span) -> Expr {
         if args.is_empty() {
-            self.report(span, msgs::ir::WRONG_ARG_COUNT_LAWS_HOLD_TAKES_AN.at(&[]));
+            self.report(span, msgs::ir::WRONG_ARG_COUNT_LAWS_HOLD_TAKES_AN, &[]);
             return self.err_expr(span);
         }
         let obj = self.expr(&args[0].value, None);
@@ -92,7 +92,8 @@ impl<'a> Lowerer<'a> {
         let Ty::Struct(sid) = obj.ty else {
             self.report(
                 args[0].value.span,
-                msgs::ir::TYPE_MISMATCH_LAWS_HOLD_EXPECTS_A.at(&[]),
+                msgs::ir::TYPE_MISMATCH_LAWS_HOLD_EXPECTS_A,
+                &[],
             );
             return self.err_expr(span);
         };

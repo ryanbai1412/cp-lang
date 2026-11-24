@@ -11,7 +11,8 @@ impl<'a> Lowerer<'a> {
             let span = self.span(recv.span);
             self.report(
                 recv.span,
-                msgs::ir::ASSIGN_TO_LET_CHANGES_ITS_RECEIVER_IN.at(&[&method]),
+                msgs::ir::ASSIGN_TO_LET_CHANGES_ITS_RECEIVER_IN,
+                &[&method],
             );
             return Place {
                 kind: PlaceKind::Local(0),

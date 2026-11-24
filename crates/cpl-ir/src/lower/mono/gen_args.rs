@@ -102,10 +102,7 @@ impl<'a> Lowerer<'a> {
                         }
                     }
                 }
-                self.report(
-                    expr.span,
-                    msgs::ir::BAD_NUMBER_EXPECTED_A_COMPILE_TIME.at(&[]),
-                );
+                self.report(expr.span, msgs::ir::BAD_NUMBER_EXPECTED_A_COMPILE_TIME, &[]);
                 GenArg::Int(1)
             }
             ast::TypeKind::Named { name, args } if args.is_empty() => {

@@ -57,7 +57,7 @@ impl<'a> Lowerer<'a> {
         let one = |lw: &mut Self, want: &Ty| -> Vec<Expr> {
             if indices.len() != 1 {
                 let message = cpl_diag::msgs::ir::TAKES_1_INDEX_BUT.at(&[&indices.len()]);
-                lw.report(span, message);
+                lw.report_said(span, message);
                 return vec![lw.err_expr(span)];
             }
             vec![lw.expect(&indices[0], want)]
@@ -101,7 +101,8 @@ impl<'a> Lowerer<'a> {
                             _ => {
                                 self.report(
                                     span,
-                                    msgs::ir::WRONG_ARG_COUNT_A_SYMMETRIC_TABLE_TAKES.at(&[]),
+                                    msgs::ir::WRONG_ARG_COUNT_A_SYMMETRIC_TABLE_TAKES,
+                                    &[],
                                 );
                                 return (vec![self.err_expr(span)], (**elem).clone());
                             }
@@ -115,7 +116,8 @@ impl<'a> Lowerer<'a> {
                     } else {
                         self.report(
                             span,
-                            msgs::ir::WRONG_ARG_COUNT_THIS_TAKES_2_INDICES.at(&[&indices.len()]),
+                            msgs::ir::WRONG_ARG_COUNT_THIS_TAKES_2_INDICES,
+                            &[&indices.len()],
                         );
                         return (vec![self.err_expr(span)], (**elem).clone());
                     };
@@ -137,11 +139,8 @@ impl<'a> Lowerer<'a> {
                 if dims.len() != indices.len() {
                     self.report(
                         span,
-                        msgs::ir::WRONG_ARG_COUNT_A_TAKES_INDICES_BUT.at(&[
-                            &self.show(base),
-                            &dims.len(),
-                            &indices.len(),
-                        ]),
+                        msgs::ir::WRONG_ARG_COUNT_A_TAKES_INDICES_BUT,
+                        &[&self.show(base), &dims.len(), &indices.len()],
                     );
                     if dims.len() > 1 && indices.len() == 1 {
                         self.help("a grid is indexed `g[r, c]`, never `g[r][c]`");
@@ -266,8 +265,8 @@ impl<'a> Lowerer<'a> {
                         }
                         self.report(
                             index.span,
-                            msgs::ir::WRONG_DOMAIN_THIS_IS_INDEXED_BY
-                                .at(&[&self.show(&want), &self.show(&value.ty)]),
+                            msgs::ir::WRONG_DOMAIN_THIS_IS_INDEXED_BY,
+                            &[&self.show(&want), &self.show(&value.ty)],
                         );
                     }
                     out.push(value);
@@ -301,7 +300,8 @@ impl<'a> Lowerer<'a> {
             other => {
                 self.report(
                     span,
-                    msgs::ir::NOT_INDEXABLE_A_CAN_T_BE.at(&[&self.show(other)]),
+                    msgs::ir::NOT_INDEXABLE_A_CAN_T_BE,
+                    &[&self.show(other)],
                 );
                 self.tuple_index_fix(other, &indices[0], span);
                 (vec![self.err_expr(span)], Ty::Error)

@@ -17,7 +17,8 @@ impl<'a> Checker<'a> {
         let ro = self.is_readonly_view(e);
         if let Some(diag) = self.report(
             e.span,
-            msgs::check::LENT_ESCAPES_WOULD_KEEP_THE_LENT.at(&[&what, &kind, &src]),
+            msgs::check::LENT_ESCAPES_WOULD_KEEP_THE_LENT,
+            &[&what, &kind, &src],
         ) {
             diag.help = Some(if ro {
                 format!(
@@ -51,14 +52,12 @@ impl<'a> Checker<'a> {
         {
             self.report(
                 e.span,
-                msgs::check::LENT_ESCAPES_LENT_PARAMETER_CANNOT_BE.at(&[&src]),
+                msgs::check::LENT_ESCAPES_LENT_PARAMETER_CANNOT_BE,
+                &[&src],
             );
         } else if local.keyword == "for" && self.is_heap_type(&local.ty) && target_depth < src_depth
         {
-            self.report(
-                e.span,
-                msgs::check::LENT_ESCAPES_LOOP_ITEM_IS_LENT.at(&[&src]),
-            );
+            self.report(e.span, msgs::check::LENT_ESCAPES_LOOP_ITEM_IS_LENT, &[&src]);
         }
     }
 
@@ -118,8 +117,8 @@ impl<'a> Checker<'a> {
                         if local.keyword == "param" && self.is_lent_param_ty(&local.ty) {
                             self.report(
                                 arg.value.span,
-                                msgs::check::LENT_ESCAPES_CANNOT_STORE_LENT_PARAMETER
-                                    .at(&[&what, &src]),
+                                msgs::check::LENT_ESCAPES_CANNOT_STORE_LENT_PARAMETER,
+                                &[&what, &src],
                             );
                         }
                     }
@@ -158,7 +157,8 @@ impl<'a> Checker<'a> {
                 let kind = self.view_kind(e).unwrap_or("view");
                 if let Some(diag) = self.report(
                     target.span,
-                    msgs::check::ASSIGN_TO_LET_IS_A_READ_ONLY.at(&[&show(e), &kind]),
+                    msgs::check::ASSIGN_TO_LET_IS_A_READ_ONLY,
+                    &[&show(e), &kind],
                 ) {
                     diag.help = Some(
                         "copy it into an owned value first with `.to_str()` or `.to_list()`".into(),
@@ -178,11 +178,8 @@ impl<'a> Checker<'a> {
                         if !call.mutable {
                             if let Some(diag) = self.report(
                                 e.span,
-                                msgs::check::ASSIGN_TO_LET_IS_LENT_READ_ONLY.at(&[
-                                    &show(e),
-                                    &call.who,
-                                    &call.lent,
-                                ]),
+                                msgs::check::ASSIGN_TO_LET_IS_LENT_READ_ONLY,
+                                &[&show(e), &call.who, &call.lent],
                             ) {
                                 diag.help = Some(format!(
                                     "declare it `lends mut {}` to allow writes through it",
@@ -233,11 +230,8 @@ impl<'a> Checker<'a> {
             if self.is_readonly_view(base) {
                 if let Some(diag) = self.report(
                     base.span,
-                    msgs::check::ASSIGN_TO_LET_IS_A_READ_ONLY_2.at(&[
-                        &show(base),
-                        &kind,
-                        &show(call),
-                    ]),
+                    msgs::check::ASSIGN_TO_LET_IS_A_READ_ONLY_2,
+                    &[&show(base), &kind, &show(call)],
                 ) {
                     diag.help = Some(
                         "copy it into an owned value first with `.to_str()` or `.to_list()`".into(),
@@ -248,7 +242,8 @@ impl<'a> Checker<'a> {
             if kind == "slice" && LENGTH_CHANGING_MUTATORS.contains(&name.text.as_str()) {
                 if let Some(diag) = self.report(
                     base.span,
-                    msgs::check::ASSIGN_TO_LET_IS_A_FIXED_LENGTH.at(&[&show(base), &show(call)]),
+                    msgs::check::ASSIGN_TO_LET_IS_A_FIXED_LENGTH,
+                    &[&show(base), &show(call)],
                 ) {
                     diag.help = Some("copy it into an owned list first with `.to_list()`".into());
                 }
@@ -314,7 +309,8 @@ impl<'a> Checker<'a> {
         let Some((after, lend_at, mutable, place)) = single else {
             if let Some(diag) = self.report(
                 f.name.span,
-                msgs::check::BAD_PROJECTION_IS_DECLARED_LENDS_SO.at(&[&name]),
+                msgs::check::BAD_PROJECTION_IS_DECLARED_LENDS_SO,
+                &[&name],
             ) {
                 diag.help = Some(
                     "give the body one `lend <place>`, the part of `self` it lends, as a statement of its own"
@@ -327,20 +323,21 @@ impl<'a> Checker<'a> {
         if let Some(after) = after {
             if receiver.is_some_and(|p| !p.mutable) {
                 let message = cpl_diag::msgs::check::CODE_AFTER_LEND_CHANGES.at(&[&name]);
-                self.report(after.span, message);
+                self.report_said(after.span, message);
             }
         }
         self.lends.lend_at = lend_at;
         let span = lend_at.unwrap_or(place.span);
         if mutable && !lends.mutable {
             let message = cpl_diag::msgs::check::DECLARED_LENDS_WITHOUT_MUT.at(&[&name]);
-            if let Some(diag) = self.report(span, message) {
+            if let Some(diag) = self.report_said(span, message) {
                 diag.help = Some("declare it `lends mut`".into());
             }
         } else if !mutable && lends.mutable {
             self.report(
                 span,
-                msgs::check::BAD_PROJECTION_IS_DECLARED_LENDS_MUT.at(&[&name, &show(place)]),
+                msgs::check::BAD_PROJECTION_IS_DECLARED_LENDS_MUT,
+                &[&name, &show(place)],
             );
         }
         let reaches = |e: &Expr| {
@@ -357,7 +354,8 @@ impl<'a> Checker<'a> {
         for place in foreign {
             self.report(
                 place.span,
-                msgs::check::BAD_PROJECTION_A_PROJECTION_MAY_ONLY.at(&[&show(place)]),
+                msgs::check::BAD_PROJECTION_A_PROJECTION_MAY_ONLY,
+                &[&show(place)],
             );
         }
     }
@@ -368,7 +366,8 @@ impl<'a> Checker<'a> {
         if self.lends.lend_at != Some(stmt.span) && !self.lends.lend_reported {
             self.report(
                 stmt.span,
-                cpl_diag::msgs::check::LEND_STATEMENT_PROJECTION_S.at(&[]),
+                cpl_diag::msgs::check::LEND_STATEMENT_PROJECTION_S,
+                &[],
             );
         }
     }

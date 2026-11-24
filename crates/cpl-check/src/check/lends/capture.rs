@@ -78,8 +78,8 @@ impl Checker<'_> {
                     if local.keyword == "param" && self.is_lent_param_ty(&local.ty) {
                         self.report(
                             e.span,
-                            msgs::check::LENT_ESCAPES_WOULD_RETURN_LENT_PARAMETER
-                                .at(&[&what, &name]),
+                            msgs::check::LENT_ESCAPES_WOULD_RETURN_LENT_PARAMETER,
+                            &[&what, &name],
                         );
                     }
                 }
@@ -103,7 +103,8 @@ impl Checker<'_> {
                 if let Some(cap) = escaped {
                     self.report(
                         e.span,
-                        msgs::check::LENT_ESCAPES_RETURNS_A_CLOSURE_THAT.at(&[&what, &cap]),
+                        msgs::check::LENT_ESCAPES_RETURNS_A_CLOSURE_THAT,
+                        &[&what, &cap],
                     );
                 }
             }

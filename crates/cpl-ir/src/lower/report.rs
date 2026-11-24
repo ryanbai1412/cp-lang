@@ -66,7 +66,16 @@ impl<'a> Lowerer<'a> {
         (text, line, note)
     }
 
-    pub(super) fn report(&mut self, span: Span, said: cpl_diag::msgs::Said) {
+    pub(super) fn report(
+        &mut self,
+        span: Span,
+        msg: cpl_diag::msgs::Msg,
+        args: &[&dyn std::fmt::Display],
+    ) {
+        self.error_text(msg.code(), span, msg.say(args));
+    }
+
+    pub(super) fn report_said(&mut self, span: Span, said: cpl_diag::msgs::Said) {
         self.error(said.code(), span, said.text())
     }
 
@@ -166,7 +175,8 @@ impl<'a> Lowerer<'a> {
     pub(super) fn bad_conversion(&mut self, to: &str, from: &Ty, span: Span) {
         self.report(
             span,
-            msgs::ir::TYPE_MISMATCH_A_CAN_T_BE.at(&[&self.show(from), &to]),
+            msgs::ir::TYPE_MISMATCH_A_CAN_T_BE,
+            &[&self.show(from), &to],
         );
         let Ty::Struct(s) = from else { return };
         let into = matches!(to, "Int" | "F64").then(|| {
@@ -216,7 +226,8 @@ impl<'a> Lowerer<'a> {
     pub(super) fn not_optional(&mut self, what: &str, value: &Expr, span: Span) {
         self.report(
             span,
-            msgs::ir::TYPE_MISMATCH_TAKES_THE_VALUE_OUT_2.at(&[&what, &self.show(&value.ty)]),
+            msgs::ir::TYPE_MISMATCH_TAKES_THE_VALUE_OUT_2,
+            &[&what, &self.show(&value.ty)],
         );
         let ExprKind::Binary(_, lhs, _) = &value.kind else {
             return;
@@ -263,9 +274,9 @@ impl<'a> Lowerer<'a> {
         let shown = self.show(l);
         let Ty::Opt(inner) = l else {
             let message = cpl_diag::msgs::ir::RANGE_S_ENDS_ARE.at(&[&shown]);
-            return self.report(span, message);
+            return self.report_said(span, message);
         };
-        self.report(span, msgs::ir::TYPE_MISMATCH_A_RANGE_S_ENDS.at(&[&shown]));
+        self.report(span, msgs::ir::TYPE_MISMATCH_A_RANGE_S_ENDS, &[&shown]);
         let (Some(lo), Some(hi)) = (lo, hi) else {
             return;
         };

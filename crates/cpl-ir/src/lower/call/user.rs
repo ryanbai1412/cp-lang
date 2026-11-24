@@ -253,7 +253,8 @@ impl<'a> Lowerer<'a> {
             if callee.ty != Ty::Error {
                 self.report(
                     span,
-                    msgs::ir::NOT_CALLABLE_A_CAN_T_BE.at(&[&self.show(&callee.ty)]),
+                    msgs::ir::NOT_CALLABLE_A_CAN_T_BE,
+                    &[&self.show(&callee.ty)],
                 );
             }
             return self.err_expr(span);
@@ -277,14 +278,15 @@ impl<'a> Lowerer<'a> {
                 }
                 (Some(Ty::Mut(_)), false) => {
                     let message = cpl_diag::msgs::ir::PARAMETER_MUT_FN_CHANGES.at(&[]);
-                    self.report(arg.value.span, message);
+                    self.report_said(arg.value.span, message);
                     self.help("write `mut` before it, as for a top-level fn");
                     Arg::Value(self.err_expr(arg.value.span))
                 }
                 (Some(_), true) => {
                     self.report(
                         arg.value.span,
-                        msgs::ir::ASSIGN_TO_LET_THIS_PARAMETER_IS_NOT.at(&[]),
+                        msgs::ir::ASSIGN_TO_LET_THIS_PARAMETER_IS_NOT,
+                        &[],
                     );
                     self.help("drop the `mut`, or declare the parameter `mut`");
                     Arg::Value(self.err_expr(arg.value.span))
@@ -550,7 +552,8 @@ impl<'a> Lowerer<'a> {
                             _ => {
                                 self.report(
                                     callee.span,
-                                    msgs::ir::NOT_CALLABLE_IS_A_TYPE_AND.at(&[&name]),
+                                    msgs::ir::NOT_CALLABLE_IS_A_TYPE_AND,
+                                    &[&name],
                                 );
                                 self.err_expr(span)
                             }
@@ -598,10 +601,7 @@ impl<'a> Lowerer<'a> {
                                 return self.call_gen_struct(gsid, Vec::new(), args, hint, span);
                             }
                         }
-                        self.report(
-                            callee.span,
-                            msgs::ir::NOT_CALLABLE_IS_A_TYPE_AND.at(&[&name]),
-                        );
+                        self.report(callee.span, msgs::ir::NOT_CALLABLE_IS_A_TYPE_AND, &[&name]);
                         self.err_expr(span)
                     }
                     Some(
@@ -611,10 +611,7 @@ impl<'a> Lowerer<'a> {
                         | Sym::Mod(_)
                         | Sym::GenConst(_),
                     ) => {
-                        self.report(
-                            callee.span,
-                            msgs::ir::NOT_CALLABLE_IS_A_TYPE_AND.at(&[&name]),
-                        );
+                        self.report(callee.span, msgs::ir::NOT_CALLABLE_IS_A_TYPE_AND, &[&name]);
                         self.err_expr(span)
                     }
                     None => match self
@@ -845,7 +842,7 @@ impl<'a> Lowerer<'a> {
                 self.err_expr(span)
             }
             None => {
-                self.report(span, msgs::ir::UNSUPPORTED_IS_NOT_IN_SCOPE.at(&[&name]));
+                self.report(span, msgs::ir::UNSUPPORTED_IS_NOT_IN_SCOPE, &[&name]);
                 self.err_expr(span)
             }
             Some(sym) => {
@@ -862,10 +859,7 @@ impl<'a> Lowerer<'a> {
                     Sym::Mod(_) => "module",
                     Sym::GenFn(_) | Sym::GenStruct(_) | Sym::GenAlias(_) => unreachable!(),
                 };
-                self.report(
-                    span,
-                    msgs::ir::UNSUPPORTED_IS_A_AND_CANNOT.at(&[&name, &kind]),
-                );
+                self.report(span, msgs::ir::UNSUPPORTED_IS_A_AND_CANNOT, &[&name, &kind]);
                 self.err_expr(span)
             }
         }
@@ -1120,20 +1114,22 @@ impl<'a> Lowerer<'a> {
         if let Some(named) = args.iter().find_map(|a| a.name.as_ref()) {
             self.report(
                 named.span,
-                msgs::ir::UNKNOWN_ARG_NAME_HAS_NO_ARGUMENT_NAMED.at(&[&what, &named.text]),
+                msgs::ir::UNKNOWN_ARG_NAME_HAS_NO_ARGUMENT_NAMED,
+                &[&what, &named.text],
             );
             return None;
         }
         if args.len() != n {
             self.report(
                 span,
-                msgs::ir::WRONG_ARG_COUNT_TAKES_ARGUMENT_BUT_GIVEN.at(&[
+                msgs::ir::WRONG_ARG_COUNT_TAKES_ARGUMENT_BUT_GIVEN,
+                &[
                     &what,
                     &n,
                     &if n == 1 { "" } else { "s" },
                     &args.len(),
                     &if args.len() == 1 { "was" } else { "were" },
-                ]),
+                ],
             );
             return None;
         }
@@ -1213,12 +1209,13 @@ impl<'a> Lowerer<'a> {
             if index >= params.len() {
                 self.report(
                     span,
-                    msgs::ir::WRONG_ARG_COUNT_TAKES_ARGUMENT_BUT_WERE.at(&[
+                    msgs::ir::WRONG_ARG_COUNT_TAKES_ARGUMENT_BUT_WERE,
+                    &[
                         &name,
                         &params.len(),
                         &if params.len() == 1 { "" } else { "s" },
                         &args.len(),
-                    ]),
+                    ],
                 );
                 ok = false;
                 break;
@@ -1277,7 +1274,7 @@ impl<'a> Lowerer<'a> {
                     if !arg.mutable {
                         let message =
                             cpl_diag::msgs::ir::CHANGES_PASS_WITH_MUT.at(&[&name, &param.name]);
-                        self.report(arg.value.span, message);
+                        self.report_said(arg.value.span, message);
                         self.temporary_mut_help(&arg.value);
                         ok = false;
                     }
@@ -1379,13 +1376,8 @@ impl<'a> Lowerer<'a> {
                     {
                         self.report(
                             arg.value.span,
-                            msgs::ir::TYPE_MISMATCH_TAKES_INDEXED_BY_THE.at(&[
-                                &name,
-                                &param.name,
-                                &self.domain_said(d),
-                                &first,
-                                &other,
-                            ]),
+                            msgs::ir::TYPE_MISMATCH_TAKES_INDEXED_BY_THE,
+                            &[&name, &param.name, &self.domain_said(d), &first, &other],
                         );
                         ok = false;
                     } else {
@@ -1428,8 +1420,8 @@ impl<'a> Lowerer<'a> {
                         if ok {
                             self.report(
                                 span,
-                                msgs::ir::WRONG_ARG_COUNT_NEEDS_THE_ARGUMENT
-                                    .at(&[&name, &param.name]),
+                                msgs::ir::WRONG_ARG_COUNT_NEEDS_THE_ARGUMENT,
+                                &[&name, &param.name],
                             );
                             self.split_on_space(&name, &param.name, span);
                         }
@@ -1510,7 +1502,7 @@ impl<'a> Lowerer<'a> {
                     if !is_own {
                         let message =
                             cpl_diag::msgs::check::FIELDS_HERE_NAMES_TYPE.at(&[&n, &own_name]);
-                        self.report(a.value.span, message);
+                        self.report_said(a.value.span, message);
                         return Some(self.err_expr(span));
                     }
                     continue;
@@ -1526,8 +1518,8 @@ impl<'a> Lowerer<'a> {
                 _ => {
                     self.report(
                         a.value.span,
-                        msgs::ir::TYPE_MISMATCH_FIELDS_HERE_WALKS_VALUES
-                            .at(&[&own_name, &self.show(&v.ty)]),
+                        msgs::ir::TYPE_MISMATCH_FIELDS_HERE_WALKS_VALUES,
+                        &[&own_name, &self.show(&v.ty)],
                     );
                     return Some(self.err_expr(span));
                 }
@@ -1622,14 +1614,15 @@ impl<'a> Lowerer<'a> {
                     } else {
                         self.report(
                             span,
-                            msgs::ir::WRONG_ARG_COUNT_NEEDS_A_VALUE_FOR.at(&[&name, &field]),
+                            msgs::ir::WRONG_ARG_COUNT_NEEDS_A_VALUE_FOR,
+                            &[&name, &field],
                         );
                         return self.err_expr(span);
                     }
                 }
                 return self.mk(ExprKind::Tuple(values), Ty::Struct(id), span);
             }
-            self.report(
+            self.report_said(
                 span,
                 msgs::ir::NOT_CALLABLE_CANNOT_BE_CONSTRUCTED_DIRECTLY
                     .at(&[&self.structs[id].def.name]),
@@ -1697,7 +1690,8 @@ impl<'a> Lowerer<'a> {
                 (None, None) => {
                     self.report(
                         span,
-                        msgs::ir::WRONG_ARG_COUNT_NEEDS_A_VALUE_FOR_2.at(&[&name, &field]),
+                        msgs::ir::WRONG_ARG_COUNT_NEEDS_A_VALUE_FOR_2,
+                        &[&name, &field],
                     );
                     return self.err_expr(span);
                 }

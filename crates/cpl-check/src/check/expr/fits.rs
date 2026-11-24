@@ -260,8 +260,8 @@ impl<'a> Checker<'a> {
                         if self.bounds_base_domain(cut).as_deref() == Some(dom.as_str()) {
                             if let Some(diag) = self.report(
                                 at.span,
-                                msgs::check::WRONG_DOMAIN_ENDS_AT_A_POSITION
-                                    .at(&[&self.quote(hi.span)]),
+                                msgs::check::WRONG_DOMAIN_ENDS_AT_A_POSITION,
+                                &[&self.quote(hi.span)],
                             ) {
                                 diag.help = Some(
                                     "use half-open `..` for the positions between two cuts"
@@ -286,8 +286,8 @@ impl<'a> Checker<'a> {
             if out_low || out_high {
                 self.report(
                     at.span,
-                    msgs::check::RANGE_STORE_CONST_IS_OUT_OF_RANGE
-                        .at(&[&self.quote(at.span), &want]),
+                    msgs::check::RANGE_STORE_CONST_IS_OUT_OF_RANGE,
+                    &[&self.quote(at.span), &want],
                 );
                 return false;
             }
@@ -320,14 +320,8 @@ impl<'a> Checker<'a> {
                                     if items.len() != variants.len() {
                                         self.report(
                                             at.span,
-                                            msgs::check::TYPE_MISMATCH_HOLDS_ELEMENTS_ONE_PER.at(
-                                                &[
-                                                    &inner_want,
-                                                    &variants.len(),
-                                                    &ename,
-                                                    &items.len(),
-                                                ],
-                                            ),
+                                            msgs::check::TYPE_MISMATCH_HOLDS_ELEMENTS_ONE_PER,
+                                            &[&inner_want, &variants.len(), &ename, &items.len()],
                                         );
                                         return false;
                                     }
@@ -583,7 +577,8 @@ impl Checker<'_> {
         };
         if let Some(diag) = self.report(
             at.span,
-            msgs::check::RANGE_STORE_CONST_IS_OUTSIDE_WHICH_IS.at(&[&v, &what, &lo, &hi]),
+            msgs::check::RANGE_STORE_CONST_IS_OUTSIDE_WHICH_IS,
+            &[&v, &what, &lo, &hi],
         ) {
             diag.help = Some(format!("use a literal in {lo}..={hi}"));
         }

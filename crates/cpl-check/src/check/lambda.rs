@@ -76,7 +76,8 @@ impl Checker<'_> {
             if !matches!(ret, Ty::Unknown | Ty::Error) && !self.fits(&ret, &dret) {
                 self.report(
                     body.span,
-                    msgs::check::TYPE_MISMATCH_EXPECTED_FOUND.at(&[&dret, &ret]),
+                    msgs::check::TYPE_MISMATCH_EXPECTED_FOUND,
+                    &[&dret, &ret],
                 );
             }
             dret

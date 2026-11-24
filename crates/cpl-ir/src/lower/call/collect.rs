@@ -61,10 +61,7 @@ impl<'a> Lowerer<'a> {
     /// `adjacency(edges)` -> `[V]List<V>`.
     pub(in crate::lower) fn lower_adjacency(&mut self, args: &[ast::Arg], span: Span) -> Expr {
         if args.len() != 1 {
-            self.report(
-                span,
-                msgs::ir::WRONG_ARG_COUNT_ADJACENCY_TAKES_EDGES.at(&[]),
-            );
+            self.report(span, msgs::ir::WRONG_ARG_COUNT_ADJACENCY_TAKES_EDGES, &[]);
             return self.err_expr(span);
         }
         // Fuse `edges.filter(e => cond)` to avoid materializing a temporary edge list.
@@ -102,7 +99,8 @@ impl<'a> Lowerer<'a> {
                         _ => {
                             self.report(
                                 args[0].value.span,
-                                msgs::ir::TYPE_MISMATCH_ADJACENCY_EDGES_MUST_HAVE.at(&[]),
+                                msgs::ir::TYPE_MISMATCH_ADJACENCY_EDGES_MUST_HAVE,
+                                &[],
                             );
                             return self.err_expr(span);
                         }
@@ -110,7 +108,8 @@ impl<'a> Lowerer<'a> {
                     _ => {
                         self.report(
                             args[0].value.span,
-                            msgs::ir::TYPE_MISMATCH_ADJACENCY_EDGES_MUST_BE.at(&[]),
+                            msgs::ir::TYPE_MISMATCH_ADJACENCY_EDGES_MUST_BE,
+                            &[],
                         );
                         return self.err_expr(span);
                     }
@@ -121,7 +120,8 @@ impl<'a> Lowerer<'a> {
                 _ => {
                     self.report(
                         args[0].value.span,
-                        msgs::ir::TYPE_MISMATCH_ADJACENCY_EDGES_MUST_HAVE_2.at(&[]),
+                        msgs::ir::TYPE_MISMATCH_ADJACENCY_EDGES_MUST_HAVE_2,
+                        &[],
                     );
                     return self.err_expr(span);
                 }
@@ -130,7 +130,8 @@ impl<'a> Lowerer<'a> {
             _ => {
                 self.report(
                     args[0].value.span,
-                    msgs::ir::TYPE_MISMATCH_ADJACENCY_EXPECTS_A_SEQUENCE.at(&[]),
+                    msgs::ir::TYPE_MISMATCH_ADJACENCY_EXPECTS_A_SEQUENCE,
+                    &[],
                 );
                 return self.err_expr(span);
             }
@@ -298,7 +299,8 @@ impl<'a> Lowerer<'a> {
         if !hashable && !self.ordered(&elem) {
             self.report(
                 span,
-                msgs::ir::BAD_OPERANDS_A_HAS_NO_ORDER.at(&[&self.show(&elem)]),
+                msgs::ir::BAD_OPERANDS_A_HAS_NO_ORDER,
+                &[&self.show(&elem)],
             );
             return self.err_expr(span);
         }

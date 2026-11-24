@@ -66,12 +66,13 @@ impl<'a> Checker<'a> {
         {
             if let Some(diag) = self.report(
                 value.span,
-                msgs::check::BAD_OPERANDS_WORKS_EACH_CELL_OF.at(&[
+                msgs::check::BAD_OPERANDS_WORKS_EACH_CELL_OF,
+                &[
                     &self.quote(value.span),
                     &self.quote(part.span),
                     &self.quote(one.span),
                     &one_ty.with_article(),
-                ]),
+                ],
             ) {
                 diag.help = Some(
                     "the cells and the value are one kind of number: `a[l..r] = b[l2..r2] + x`"
@@ -127,7 +128,8 @@ impl<'a> Checker<'a> {
             }
             self.report(
                 value.span,
-                msgs::check::TYPE_MISMATCH_IS_A_ROW_OF.at(&[
+                msgs::check::TYPE_MISMATCH_IS_A_ROW_OF,
+                &[
                     &self.quote(target.span),
                     &want,
                     &self.quote(value.span),
@@ -135,7 +137,7 @@ impl<'a> Checker<'a> {
                         Some(got) => format!("a row of {got}"),
                         None => value_ty.with_article(),
                     },
-                ]),
+                ],
             );
             return;
         }
@@ -213,7 +215,8 @@ impl<'a> Checker<'a> {
         };
         if let Some(diag) = self.report(
             target.span,
-            msgs::check::BAD_OPERANDS_X_MAY_MEET_A.at(&[&target_text, &fold, &fold]),
+            msgs::check::BAD_OPERANDS_X_MAY_MEET_A,
+            &[&target_text, &fold, &fold],
         ) {
             diag.help = Some(help);
         }
@@ -256,7 +259,8 @@ impl<'a> Checker<'a> {
         if len > i128::from(i32::MAX) {
             self.report(
                 def.span,
-                msgs::check::TYPE_MISMATCH_A_DOMAIN_HOLDS_AT.at(&[&len]),
+                msgs::check::TYPE_MISMATCH_A_DOMAIN_HOLDS_AT,
+                &[&len],
             );
         }
     }

@@ -59,10 +59,8 @@ impl<'a> Checker<'a> {
     }
 
     pub(super) fn alias_cycle(&mut self, name: &str, span: Span) -> Ty {
-        if let Some(diag) = self.report(
-            span,
-            msgs::check::ALIAS_CYCLE_TYPE_IS_DEFINED_BY.at(&[&name]),
-        ) {
+        if let Some(diag) = self.report(span, msgs::check::ALIAS_CYCLE_TYPE_IS_DEFINED_BY, &[&name])
+        {
             diag.help = Some(format!(
                 "write the type `{name}` stands for, or give the alias a name of its own (R02.6.2)"
             ));

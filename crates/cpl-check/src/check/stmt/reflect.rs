@@ -100,7 +100,8 @@ impl Checker<'_> {
                 let first = first.as_ref().unwrap();
                 self.report(
                     v.value.span,
-                    msgs::check::TYPE_MISMATCH_FIELDS_WALKS_VALUES_OF.at(&[&ty, &first]),
+                    msgs::check::TYPE_MISMATCH_FIELDS_WALKS_VALUES_OF,
+                    &[&ty, &first],
                 );
             }
             if first.is_none() {
@@ -122,8 +123,8 @@ impl Checker<'_> {
                 {
                     self.report(
                         v.value.span,
-                        msgs::check::TYPE_MISMATCH_FIELDS_WALKS_VALUES_WITH
-                            .at(&[&ty, &fields.len()]),
+                        msgs::check::TYPE_MISMATCH_FIELDS_WALKS_VALUES_WITH,
+                        &[&ty, &fields.len()],
                     );
                     shapes.push(None);
                 }
@@ -131,7 +132,8 @@ impl Checker<'_> {
                 Err(()) => {
                     if let Some(d) = self.report(
                         v.value.span,
-                        msgs::check::TYPE_MISMATCH_FIELDS_WALKS_THE_FIELDS.at(&[&ty]),
+                        msgs::check::TYPE_MISMATCH_FIELDS_WALKS_THE_FIELDS,
+                        &[&ty],
                     ) {
                         d.help =
                             Some("pass a struct or tuple value: `for f in fields(p):`".to_string());
@@ -141,7 +143,7 @@ impl Checker<'_> {
             }
         }
         if let Some(stmt) = loop_exit(&body.stmts) {
-            self.report(stmt, msgs::check::UNSUPPORTED_A_FIELDS_LOOP_RUNS.at(&[]));
+            self.report(stmt, msgs::check::UNSUPPORTED_A_FIELDS_LOOP_RUNS, &[]);
         }
         let elem = |i: Option<usize>, shapes: &[Option<Vec<(String, Ty)>>]| -> Ty {
             let one = |s: &Option<Vec<(String, Ty)>>| match (i, s) {
@@ -226,21 +228,24 @@ impl Checker<'_> {
                 let Some(name) = &arg.name else {
                     self.report(
                         arg.value.span,
-                        msgs::check::TYPE_MISMATCH_ARGUMENTS_TO_WITH_CHECKS.at(&[]),
+                        msgs::check::TYPE_MISMATCH_ARGUMENTS_TO_WITH_CHECKS,
+                        &[],
                     );
                     continue;
                 };
                 if !CHECK_FIELDS.contains(&name.text.as_str()) {
                     self.report(
                         name.span,
-                        msgs::check::UNKNOWN_FIELD_CONTEXT_CHECKS_HAS_NO.at(&[&name.text]),
+                        msgs::check::UNKNOWN_FIELD_CONTEXT_CHECKS_HAS_NO,
+                        &[&name.text],
                     );
                 }
                 if !matches!(&arg.value.kind, ExprKind::Name(v) if matches!(v.as_str(), "on" | "off"))
                 {
                     self.report(
                         arg.value.span,
-                        msgs::check::TYPE_MISMATCH_EXPECTED_ON_OR_OFF.at(&[]),
+                        msgs::check::TYPE_MISMATCH_EXPECTED_ON_OR_OFF,
+                        &[],
                     );
                 }
             }
@@ -251,7 +256,8 @@ impl Checker<'_> {
                 if arg.name.is_none() {
                     self.report(
                         arg.value.span,
-                        msgs::check::TYPE_MISMATCH_ARGUMENTS_TO_WITH_LINT.at(&[]),
+                        msgs::check::TYPE_MISMATCH_ARGUMENTS_TO_WITH_LINT,
+                        &[],
                     );
                     continue;
                 }
@@ -261,7 +267,8 @@ impl Checker<'_> {
                 ) {
                     self.report(
                         arg.value.span,
-                        msgs::check::TYPE_MISMATCH_EXPECTED_ALLOW_WARN_OR.at(&[]),
+                        msgs::check::TYPE_MISMATCH_EXPECTED_ALLOW_WARN_OR,
+                        &[],
                     );
                 }
             }
@@ -270,7 +277,8 @@ impl Checker<'_> {
         let Some(fields) = self.context_record_fields(&ctx.text) else {
             self.report(
                 ctx.span,
-                msgs::check::UNRESOLVED_NAME_UNKNOWN_CONTEXT.at(&[&ctx.text]),
+                msgs::check::UNRESOLVED_NAME_UNKNOWN_CONTEXT,
+                &[&ctx.text],
             );
             for arg in args {
                 self.infer(&arg.value);
@@ -281,7 +289,8 @@ impl Checker<'_> {
             if !context_constant(&arg.value) {
                 if let Some(diag) = self.report(
                     arg.value.span,
-                    msgs::check::CONTEXT_NOT_CONSTANT_A_CONTEXT_VALUE_IS.at(&[]),
+                    msgs::check::CONTEXT_NOT_CONSTANT_A_CONTEXT_VALUE_IS,
+                    &[],
                 ) {
                     diag.help = Some(
                         "write the value itself here: a number, character, string or `None`".into(),
@@ -291,7 +300,8 @@ impl Checker<'_> {
             let Some(name) = &arg.name else {
                 self.report(
                     arg.value.span,
-                    msgs::check::TYPE_MISMATCH_ARGUMENTS_TO_WITH_MUST.at(&[&ctx.text]),
+                    msgs::check::TYPE_MISMATCH_ARGUMENTS_TO_WITH_MUST,
+                    &[&ctx.text],
                 );
                 self.infer(&arg.value);
                 continue;
@@ -299,7 +309,8 @@ impl Checker<'_> {
             let Some((_, expected)) = fields.iter().find(|(n, _)| n == &name.text) else {
                 self.report(
                     name.span,
-                    msgs::check::UNKNOWN_FIELD_CONTEXT_HAS_NO_FIELD.at(&[&ctx.text, &name.text]),
+                    msgs::check::UNKNOWN_FIELD_CONTEXT_HAS_NO_FIELD,
+                    &[&ctx.text, &name.text],
                 );
                 self.infer(&arg.value);
                 continue;
@@ -324,7 +335,8 @@ impl Checker<'_> {
                         if !in_lo || !in_hi {
                             self.report(
                                 arg.value.span,
-                                msgs::check::TYPE_MISMATCH_EXPECTED_GOT.at(&[&expected, &n]),
+                                msgs::check::TYPE_MISMATCH_EXPECTED_GOT,
+                                &[&expected, &n],
                             );
                         }
                         continue;

@@ -203,7 +203,7 @@ impl<'a> Lowerer<'a> {
     ) {
         let (pre, lent, post) = super::mono::split_projection_body(decl);
         let Some(lent) = lent else {
-            self.report(span, msgs::ir::UNSUPPORTED_PROJECTION_HAS_NO_LEND.at(&[]));
+            self.report(span, msgs::ir::UNSUPPORTED_PROJECTION_HAS_NO_LEND, &[]);
             return;
         };
         let rhs_val = self.expr(rhs, None);

@@ -26,7 +26,8 @@ impl Checker<'_> {
             };
             if let Some(diag) = self.report(
                 at,
-                msgs::check::FN_FALLS_THROUGH_AND_THEN_ENDS_WITHOUT.at(&[&how, &name]),
+                msgs::check::FN_FALLS_THROUGH_AND_THEN_ENDS_WITHOUT,
+                &[&how, &name],
             ) {
                 diag.help = Some(format!("{help}; `todo` stands for a value not written yet"));
             }

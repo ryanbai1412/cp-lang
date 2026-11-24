@@ -67,8 +67,8 @@ impl<'a> Checker<'a> {
                         }
                         self.report(
                             inner.span,
-                            msgs::check::TYPE_MISMATCH_UNARY_NEEDS_A_NUMBER
-                                .at(&[&self.quote(inner.span), &ty.with_article()]),
+                            msgs::check::TYPE_MISMATCH_UNARY_NEEDS_A_NUMBER,
+                            &[&self.quote(inner.span), &ty.with_article()],
                         );
                         Ty::Error
                     }
@@ -109,7 +109,8 @@ impl<'a> Checker<'a> {
                     if generic {
                         if let Some(diag) = self.report(
                             expr.span,
-                            msgs::check::BAD_OPERANDS_IS_A_GENERIC_FN.at(&[&name, &name]),
+                            msgs::check::BAD_OPERANDS_IS_A_GENERIC_FN,
+                            &[&name, &name],
                         ) {
                             diag.help = Some(format!(
                                 "to name one that no argument gives, write `{name}<T>(...)`"
@@ -167,8 +168,8 @@ impl<'a> Checker<'a> {
                     if has_eq {
                         if let Some(diag) = self.report(
                             expr.span,
-                            msgs::check::MIXED_COMPARISON_CHAIN_CHAINED_COMPARISONS_CANNOT_CONTAIN
-                                .at(&[]),
+                            msgs::check::MIXED_COMPARISON_CHAIN_CHAINED_COMPARISONS_CANNOT_CONTAIN,
+                            &[],
                         ) {
                             diag.help = Some("join the comparisons with `and` instead".to_string());
                             diag.fixes.extend(split);
@@ -176,8 +177,8 @@ impl<'a> Checker<'a> {
                     } else if has_lt && has_gt {
                         if let Some(diag) = self.report(
                             expr.span,
-                            msgs::check::MIXED_COMPARISON_CHAIN_CHAINED_COMPARISONS_MUST_POINT
-                                .at(&[]),
+                            msgs::check::MIXED_COMPARISON_CHAIN_CHAINED_COMPARISONS_MUST_POINT,
+                            &[],
                         ) {
                             diag.help =
                                 Some("split mixed `<` and `>` comparisons with `and`".to_string());
@@ -316,7 +317,8 @@ impl<'a> Checker<'a> {
                         if args.len() > generics.len() {
                             self.report(
                                 expr.span,
-                                msgs::check::WRONG_ARG_COUNT_TAKES_BUT_GIVEN.at(&[
+                                msgs::check::WRONG_ARG_COUNT_TAKES_BUT_GIVEN,
+                                &[
                                     &self.quote(base.span),
                                     &plural(generics.len(), "type argument", "type arguments"),
                                     &if args.len() == 1 {
@@ -324,7 +326,7 @@ impl<'a> Checker<'a> {
                                     } else {
                                         format!("{} were", args.len())
                                     },
-                                ]),
+                                ],
                             );
                             return Ty::Error;
                         }
@@ -356,8 +358,8 @@ impl<'a> Checker<'a> {
                     if seen.contains(&name.text.as_str()) {
                         self.report(
                             name.span,
-                            msgs::check::DUPLICATE_DEFINITION_DUPLICATE_FIELD_IN_RECORD
-                                .at(&[&name.text]),
+                            msgs::check::DUPLICATE_DEFINITION_DUPLICATE_FIELD_IN_RECORD,
+                            &[&name.text],
                         );
                     } else {
                         seen.push(&name.text);
@@ -681,8 +683,8 @@ impl<'a> Checker<'a> {
                                 if !req.iter().any(|(fnm, _)| fnm == &r.text) {
                                     self.report(
                                         r.span,
-                                        msgs::check::UNKNOWN_FIELD_ROW_HAS_NO_NAMED
-                                            .at(&[&p, &r.text]),
+                                        msgs::check::UNKNOWN_FIELD_ROW_HAS_NO_NAMED,
+                                        &[&p, &r.text],
                                     );
                                 }
                             }
@@ -702,7 +704,8 @@ impl<'a> Checker<'a> {
                 let inner_text = self.quote(inner.span);
                 if let Some(diag) = self.report(
                     expr.span,
-                    msgs::check::BAD_OPERANDS_IS_INSIDE_A_BRANCH.at(&[&inner_text]),
+                    msgs::check::BAD_OPERANDS_IS_INSIDE_A_BRANCH,
+                    &[&inner_text],
                 ) {
                     diag.help = Some(format!("bind it first: `let x = {inner_text}?`"));
                 }
@@ -788,7 +791,8 @@ impl<'a> Checker<'a> {
         }
         if let Some(diag) = self.report(
             span,
-            msgs::check::NON_EXHAUSTIVE_MATCH_THIS_MATCH_HAS_NO.at(&[&missing.join(", ")]),
+            msgs::check::NON_EXHAUSTIVE_MATCH_THIS_MATCH_HAS_NO,
+            &[&missing.join(", ")],
         ) {
             diag.help = Some("add an arm for each, or `_:` for whatever is left".to_string());
         }
@@ -815,7 +819,8 @@ impl<'a> Checker<'a> {
         }
         if let Some(diag) = self.report(
             pat.span,
-            msgs::check::TYPE_MISMATCH_IS_A_VARIANT_BUT.at(&[&name, &ty.widen()]),
+            msgs::check::TYPE_MISMATCH_IS_A_VARIANT_BUT,
+            &[&name, &ty.widen()],
         ) {
             diag.help = Some(
                 "a capitalized name in a pattern is a variant or constant; bind with a lowercase name, or write `_`"
@@ -866,7 +871,8 @@ impl<'a> Checker<'a> {
         }
         if let Some(diag) = self.report(
             span,
-            msgs::check::NON_EXHAUSTIVE_MATCH_THIS_MATCH_HAS_NO.at(&[&missing.join(", ")]),
+            msgs::check::NON_EXHAUSTIVE_MATCH_THIS_MATCH_HAS_NO,
+            &[&missing.join(", ")],
         ) {
             diag.help = Some("add an arm for each, or `_:` for whatever is left".to_string());
         }
@@ -975,7 +981,8 @@ impl<'a> Checker<'a> {
         let replacement = format!("({}) ?? false", self.quote(expr.span));
         if let Some(diag) = self.report(
             at,
-            msgs::check::QUESTION_IN_CONDITION_IS_A_IN_A.at(&[&self.quote(at)]),
+            msgs::check::QUESTION_IN_CONDITION_IS_A_IN_A,
+            &[&self.quote(at)],
         ) {
             diag.help = Some(help);
             diag.fixes.push(cpl_diag::Fix {
@@ -999,7 +1006,7 @@ impl<'a> Checker<'a> {
                     if let Some(try_span) = expr.bare_try() {
                         let message = cpl_diag::msgs::check::CANNOT_USED_DIRECTLY_CONDITION.at(&[]);
                         let replacement = format!("({}) ?? false", self.quote(expr.span));
-                        if let Some(diag) = self.report(try_span, message) {
+                        if let Some(diag) = self.report_said(try_span, message) {
                             diag.fixes.push(cpl_diag::Fix {
                                 title: "treat `None` as false".to_string(),
                                 edits: vec![(expr.span, replacement)],
@@ -1020,7 +1027,7 @@ impl<'a> Checker<'a> {
                     if let Some(try_span) = test.bare_try() {
                         let message = cpl_diag::msgs::check::CANNOT_USED_DIRECTLY_CONDITION.at(&[]);
                         let replacement = format!("({}) ?? false", self.quote(test.span));
-                        if let Some(diag) = self.report(try_span, message) {
+                        if let Some(diag) = self.report_said(try_span, message) {
                             diag.fixes.push(cpl_diag::Fix {
                                 title: "treat `None` as false".to_string(),
                                 edits: vec![(test.span, replacement)],

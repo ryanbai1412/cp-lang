@@ -109,7 +109,8 @@ impl<'a> Lowerer<'a> {
         if max.is_some() && !self.ordered(&elem) {
             self.report(
                 span,
-                msgs::ir::TYPE_MISMATCH_NEEDS_CELLS_THAT_HAVE.at(&[&word, &self.show(&elem)]),
+                msgs::ir::TYPE_MISMATCH_NEEDS_CELLS_THAT_HAVE,
+                &[&word, &self.show(&elem)],
             );
             return None;
         }
@@ -162,11 +163,8 @@ impl<'a> Lowerer<'a> {
                 if their_elem != elem {
                     self.report(
                         value.span,
-                        msgs::ir::TYPE_MISMATCH_GOES_CELL_BY_CELL.at(&[
-                            &word,
-                            &self.show(&elem),
-                            &self.show(&their_elem),
-                        ]),
+                        msgs::ir::TYPE_MISMATCH_GOES_CELL_BY_CELL,
+                        &[&word, &self.show(&elem), &self.show(&their_elem)],
                     );
                     return changed;
                 }
@@ -216,11 +214,8 @@ impl<'a> Lowerer<'a> {
                     _ => {
                         self.report(
                             value.span,
-                            msgs::ir::TYPE_MISMATCH_GOES_CELL_BY_CELL_2.at(&[
-                                &word,
-                                &self.show(&elem),
-                                &self.show(&other.ty),
-                            ]),
+                            msgs::ir::TYPE_MISMATCH_GOES_CELL_BY_CELL_2,
+                            &[&word, &self.show(&elem), &self.show(&other.ty)],
                         );
                         return changed;
                     }

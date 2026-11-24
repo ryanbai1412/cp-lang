@@ -11,11 +11,8 @@ impl<'a> Checker<'a> {
         if matches!(ty, Ty::Bool | Ty::Str) {
             self.report(
                 expr.span,
-                msgs::check::BAD_OPERANDS_NEEDS_A_NUMBER_BUT.at(&[
-                    &op,
-                    &self.quote(expr.span),
-                    &ty.with_article(),
-                ]),
+                msgs::check::BAD_OPERANDS_NEEDS_A_NUMBER_BUT,
+                &[&op, &self.quote(expr.span), &ty.with_article()],
             );
             return Ty::Error;
         }
@@ -53,11 +50,8 @@ impl<'a> Checker<'a> {
                 if !self.param_has_bound(param, trait_name) {
                     self.report(
                         op_span,
-                        msgs::check::MISSING_IMPL_REQUIRES_WHICH_IS_NOT.at(&[
-                            &op.text(),
-                            &param,
-                            &trait_name,
-                        ]),
+                        msgs::check::MISSING_IMPL_REQUIRES_WHICH_IS_NOT,
+                        &[&op.text(), &param, &trait_name],
                     );
                     self.infer(rhs);
                     return Ty::Error;
@@ -96,8 +90,7 @@ impl<'a> Checker<'a> {
                     );
                     let step = matches!(self.infer(first), Ty::Pos(_)) || left.is_vague();
                     if arithmetic && !step && !matches!(rhs.kind, ExprKind::Block(_)) {
-                        if let Some(diag) =
-                            self.report(lhs.span, msgs::syntax::COALESCE_MIXED.at(&[]))
+                        if let Some(diag) = self.report(lhs.span, msgs::syntax::COALESCE_MIXED, &[])
                         {
                             diag.help = Some(
                                 "write `(a ?? 0) + b` for a default on `a` alone, or `(a + b) ?? 0` for a default on the sum".into(),
@@ -153,11 +146,8 @@ impl<'a> Checker<'a> {
                 if matching.is_empty() {
                     if let Some(diag) = self.report(
                         op_span,
-                        msgs::check::MISSING_IMPL_NEEDS_IMPL_FOR_AND.at(&[
-                            &op.text(),
-                            &trait_name,
-                            &owner,
-                        ]),
+                        msgs::check::MISSING_IMPL_NEEDS_IMPL_FOR_AND,
+                        &[&op.text(), &trait_name, &owner],
                     ) {
                         diag.help = Some(format!(
                             "an operator on a struct is the trait's fn: write `impl {trait_name} for {owner}`"
@@ -180,11 +170,8 @@ impl<'a> Checker<'a> {
                     {
                         self.report(
                             op_span,
-                            msgs::check::TYPE_MISMATCH_MIXES_A_AND_A.at(&[
-                                &op.text(),
-                                &left,
-                                &right,
-                            ]),
+                            msgs::check::TYPE_MISMATCH_MIXES_A_AND_A,
+                            &[&op.text(), &left, &right],
                         );
                         Ty::Error
                     }
@@ -227,7 +214,8 @@ impl<'a> Checker<'a> {
             _ if matches!((&left, &right), (Ty::I128, Ty::U64) | (Ty::U64, Ty::I128)) => {
                 if let Some(diag) = self.report(
                     op_span,
-                    msgs::check::BAD_OPERANDS_CAN_T_COMBINE_AN.at(&[&op.text()]),
+                    msgs::check::BAD_OPERANDS_CAN_T_COMBINE_AN,
+                    &[&op.text()],
                 ) {
                     diag.help = Some("say which one the result is: `I128(x)` or `U64(x)`".into());
                 }
@@ -280,11 +268,12 @@ impl<'a> Checker<'a> {
                     };
                     if let Some(diag) = self.report(
                         op_span,
-                        msgs::check::BAD_OPERANDS_CAN_T_COMBINE_AND.at(&[
+                        msgs::check::BAD_OPERANDS_CAN_T_COMBINE_AND,
+                        &[
                             &op.text(),
                             &left.widen().with_article(),
                             &right.widen().with_article(),
-                        ]),
+                        ],
                     ) {
                         advice::bad_operands(diag, (op, op_span), (&left, &right), into_string);
                     }
@@ -317,7 +306,8 @@ impl<'a> Checker<'a> {
             if a != b {
                 if let Some(diag) = self.report(
                     range.span,
-                    msgs::check::WRONG_DOMAIN_RANGE_BETWEEN_AND.at(&[&a, &b]),
+                    msgs::check::WRONG_DOMAIN_RANGE_BETWEEN_AND,
+                    &[&a, &b],
                 ) {
                     diag.help = Some("both ends of a range are in one domain".into());
                 }
@@ -414,7 +404,8 @@ impl<'a> Checker<'a> {
                 if !self.implements_trait(left, trait_name) {
                     self.report(
                         left_expr.span,
-                        msgs::check::MISSING_IMPL_DOES_NOT_IMPLEMENT.at(&[&left, &trait_name]),
+                        msgs::check::MISSING_IMPL_DOES_NOT_IMPLEMENT,
+                        &[&left, &trait_name],
                     );
                     return;
                 }
@@ -428,12 +419,13 @@ impl<'a> Checker<'a> {
         }
         self.report(
             left_expr.span.to(right_expr.span),
-            msgs::check::WRONG_DOMAIN_IS_AND_IS_POSITIONS.at(&[
+            msgs::check::WRONG_DOMAIN_IS_AND_IS_POSITIONS,
+            &[
                 &self.quote(left_expr.span),
                 &left.with_article(),
                 &self.quote(right_expr.span),
                 &right.with_article(),
-            ]),
+            ],
         );
     }
 }
@@ -475,7 +467,8 @@ impl Checker<'_> {
         let sign = if bin == BinOp::Add { "+" } else { "-" };
         if let Some(diag) = self.report(
             target.span,
-            msgs::check::BAD_OPERANDS_CAN_T_BE_APPLIED.at(&[&sign, &target_ty.with_article()]),
+            msgs::check::BAD_OPERANDS_CAN_T_BE_APPLIED,
+            &[&sign, &target_ty.with_article()],
         ) {
             diag.help = Some(format!(
                 "write `x = x {sign} y` when `None` should stay `None`, or `x min= y + w` for a transition"

@@ -17,7 +17,8 @@ impl Checker<'_> {
         let public = self.public_foreign_twin(owner, &name.text);
         if let Some(diag) = self.report(
             name.span,
-            msgs::check::PRIVATE_NAME_IS_PRIVATE_TO_THE.at(&[&name.text, &owner]),
+            msgs::check::PRIVATE_NAME_IS_PRIVATE_TO_THE,
+            &[&name.text, &owner],
         ) {
             if let Some(own) = public {
                 diag.help = Some(format!("`{owner}`'s public member is `{own}`"));
@@ -150,8 +151,7 @@ impl Checker<'_> {
         {
             return false;
         }
-        if let Some(diag) = self.report(op.span, msgs::check::TYPE_MISMATCH_IS_A_TYPE_NOT.at(&[&n]))
-        {
+        if let Some(diag) = self.report(op.span, msgs::check::TYPE_MISMATCH_IS_A_TYPE_NOT, &[&n]) {
             diag.help = Some(format!(
                 "fold one summary per element: `.map({n}.of).fold(+)` (decision 472)"
             ));
@@ -177,7 +177,8 @@ impl Checker<'_> {
         let acc = self.infer(&init.value);
         self.report(
             name.span,
-            msgs::check::WRONG_ARG_COUNT_FOLD_TAKES_ONE_OP.at(&[]),
+            msgs::check::WRONG_ARG_COUNT_FOLD_TAKES_ONE_OP,
+            &[],
         );
         Some(acc)
     }
@@ -186,7 +187,8 @@ impl Checker<'_> {
     pub(super) fn fold_is_reduce(&mut self, name: &Name) {
         if let Some(diag) = self.report(
             name.span,
-            msgs::check::EMPTY_FOLD_NO_IDENTITY_FOLD_TAKES_AN_OP.at(&[]),
+            msgs::check::EMPTY_FOLD_NO_IDENTITY_FOLD_TAKES_AN_OP,
+            &[],
         ) {
             diag.help =
                 Some("`reduce(f)` folds without an identity and gives `None` when empty".into());
@@ -218,10 +220,11 @@ impl Checker<'_> {
         let shown = self.quote(init.span);
         if let Some(diag) = self.report(
             init.span,
-            msgs::check::EMPTY_FOLD_NO_IDENTITY_IS_A_FOLD_BY.at(&[
+            msgs::check::EMPTY_FOLD_NO_IDENTITY_IS_A_FOLD_BY,
+            &[
                 &shown,
                 &Ty::Optional(Box::new(declared.clone())).with_article(),
-            ]),
+            ],
         ) {
             diag.help = Some(format!("unwrap: `{shown}!`, or `?? d` for a default"));
             diag.fix("unwrap it with `!`", Span::point(init.span.end), "!");
@@ -237,7 +240,8 @@ impl Checker<'_> {
         }
         if let Some(diag) = self.report(
             name.span,
-            msgs::check::REMOVED_SYNTAX_COPY_IS_SPELLED_CLONE.at(&[]),
+            msgs::check::REMOVED_SYNTAX_COPY_IS_SPELLED_CLONE,
+            &[],
         ) {
             diag.help = Some(
                 "an owned copy is `.clone()`; `cpl migrate` rewrites every `.copy()` in a folder"
@@ -269,11 +273,8 @@ impl Checker<'_> {
         );
         if let Some(diag) = self.report(
             at.span,
-            msgs::check::OPTIONAL_COMPARE_IS_OPTIONAL_VALUES_CAN.at(&[
-                &self.quote(at.span),
-                &ty.with_article(),
-                &op_str,
-            ]),
+            msgs::check::OPTIONAL_COMPARE_IS_OPTIONAL_VALUES_CAN,
+            &[&self.quote(at.span), &ty.with_article(), &op_str],
         ) {
             diag.help = Some(format!(
                 "`None` has no order: unwrap first, `{l} {op_str} {r}`, or give a default with `??`"
@@ -283,7 +284,7 @@ impl Checker<'_> {
 
     pub(super) fn with_not_first(&mut self, span: Span) {
         let message = cpl_diag::msgs::check::WITH_NOT_FIRST.at(&[]);
-        if let Some(diag) = self.report(span, message) {
+        if let Some(diag) = self.report_said(span, message) {
             diag.help = Some(super::advice::WITH_FIRST_HELP.into());
         }
     }

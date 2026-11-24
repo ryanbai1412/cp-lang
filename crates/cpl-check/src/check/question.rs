@@ -19,7 +19,8 @@ impl Checker<'_> {
                 );
                 if let Some(diag) = self.report(
                     expr.span,
-                    msgs::check::DROPPED_QUESTION_THE_RESULT_OF_IS.at(&[&self.quote(expr.span)]),
+                    msgs::check::DROPPED_QUESTION_THE_RESULT_OF_IS,
+                    &[&self.quote(expr.span)],
                 ) {
                     diag.help = Some(help);
                 }
