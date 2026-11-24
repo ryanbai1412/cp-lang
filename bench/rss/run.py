@@ -109,7 +109,7 @@ def peak(exe, inp, out, tmp):
     with open(out, "rb") as f:
         digest = hashlib.file_digest(f, "sha256").hexdigest()
     with open(rss) as f:
-        return int(f.read()), digest
+        return int(f.read().split()[0]), digest  # the launcher writes `kb us`
 
 
 def verdict(rows):
