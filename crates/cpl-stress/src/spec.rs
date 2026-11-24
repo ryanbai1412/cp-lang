@@ -815,9 +815,9 @@ impl InputSpec {
                     init: Some(init),
                     ..
                 } if compressed(pat, init, &builder.spec.consts).is_some() => {
-                    let (name, count) =
-                        compressed(pat, init, &builder.spec.consts).expect("tested above");
-                    builder.domains.insert(name, (int(0), int(count - 1)));
+                    if let Some((name, count)) = compressed(pat, init, &builder.spec.consts) {
+                        builder.domains.insert(name, (int(0), int(count - 1)));
+                    }
                 }
                 StmtKind::Impl { .. } if builder.reads(stmt) => {
                     let Some((name, parts)) = builder.read_impl(stmt)? else {

@@ -1612,17 +1612,19 @@ impl Builder<'_> {
         };
         let mut parts = Vec::new();
         for line in &block.stmts {
-            match &line.kind {
-                StmtKind::Let {
-                    ty,
-                    init: Some(init),
-                    ..
-                } if typed_read(ty.as_ref(), init).is_some() => {
-                    let (ty, none) = typed_read(ty.as_ref(), init).expect("tested above");
+            if let StmtKind::Let {
+                ty,
+                init: Some(init),
+                ..
+            } = &line.kind
+            {
+                if let Some((ty, none)) = typed_read(ty.as_ref(), init) {
                     parts.push(self.shape_read(&ty, none, init)?);
+                    continue;
                 }
-                _ if self.reads(line) => return Ok(None),
-                _ => {}
+            }
+            if self.reads(line) {
+                return Ok(None);
             }
         }
         Ok(Some((target.text.clone(), parts)))
