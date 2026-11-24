@@ -1279,6 +1279,31 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "scripts/ci.py", '"""Runner."""\nSTEP = "scripts/ci.py steps checks"\n')
             self.assertEqual(dr.uncited_rules(root), ["lint bad", "lint noid", "lint none", "gate scripts/b.py"])
 
+    def test_unreferenced_scripts_are_the_files_nothing_else_names(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            env = dr._git_env()
+            subprocess.run(["git", "init", "-q", str(root)], check=True, env=env)
+            for rel, text in {
+                "justfile": "run:\n    scripts/run.py\n    scripts/used.sh\n",
+                "scripts/run.py": 'import gates.gate_one\nGATES = ["two-words"]\n',
+                "scripts/used.sh": "",
+                "scripts/dead.sh": "",
+                "scripts/test_dead.py": "# runs scripts/dead.sh\n",
+                "scripts/old_used.sh": "",
+                "scripts/gates/__init__.py": "",
+                "scripts/gates/gate_one.py": "",
+                "scripts/gates/two_words.py": "",
+                "scripts/gates/gone.py": "",
+                "scripts/orphans/__init__.py": "",
+                "scripts/orphans/lost.py": "",
+            }.items():
+                self._write(root, rel, text)
+            subprocess.run(["git", "-C", str(root), "add", "-A"], check=True, env=env)
+            self.assertEqual(dr.unreferenced_scripts(root), [
+                "scripts/dead.sh", "scripts/gates/gone.py", "scripts/old_used.sh",
+                "scripts/orphans/__init__.py", "scripts/orphans/lost.py"])
+
     def test_upstream_skips_a_counter_its_baseline_does_not_have_yet(self) -> None:
         def needs_a_record(_root):
             raise dr.MeasureError("research/new.txt is missing")

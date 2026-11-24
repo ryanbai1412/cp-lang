@@ -787,6 +787,35 @@ def unrun_script_tests(root: Path) -> list[str]:
                   and not any(fnmatch.fnmatchcase(rel, g) for g in globs))
 
 
+def unreferenced_scripts(root: Path) -> list[str]:
+    """Tracked files under scripts/ that nothing else names, so no recipe, workflow, script,
+    doc or import reaches them: dead code to delete. A script named only by its own test is
+    dead too. A package module is named by `<pkg>.<module>` or, as a spec gate is, by its
+    dashed name in quotes; a package's `__init__.py` lives while any of its modules does."""
+    files = [f for f in _git(root, "ls-files", "scripts") if not Path(f).name.startswith("test_")]
+    pats: dict[str, set[str]] = {}
+    for f in files:
+        p = Path(f)
+        names = {p.name}
+        if (root / p.parent / "__init__.py").is_file() and p.parent.name != "scripts":
+            dash = p.stem.replace("_", "-")
+            names |= {f"{p.parent.name}.{p.stem}", f'"{dash}"', f"'{dash}'"}
+        pats[f] = names
+    args = [a for n in sorted(set().union(*pats.values())) for a in ("-e", n)] if pats else []
+    hits: dict[str, set[str]] = {}
+    for line in _git(root, "grep", "-o", "-w", "-F", *args, "--", ".", ":!corpus") if args else []:
+        src, _, m = line.partition(":")
+        hits.setdefault(m, set()).add(src)
+
+    def named(f: str) -> bool:
+        own_test = f"{Path(f).parent}/test_{Path(f).stem.replace('-', '_')}.py"
+        return any(src not in (f, own_test) for n in pats[f] for src in hits.get(n, ()))
+
+    live = {f for f in files if Path(f).name != "__init__.py" and named(f)}
+    return sorted(f for f in files if f not in live and not (
+        Path(f).name == "__init__.py" and any(Path(g).parent == Path(f).parent for g in live)))
+
+
 _RUST_TEST = re.compile(r"#\[test\]\s*((?:#\[[^\]]*\]\s*)*)(?:pub\s+)?(?:async\s+)?fn\s+(\w+)")
 
 
@@ -2961,6 +2990,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
 
 
 HARD_ZERO = frozenset({
+    "unreferenced_scripts",
     "cpp_deep_copies",
     "habit_matchers", "corpus_fmt_dirty", "judge_tables", "v02_port_files", "reviews_uncapped", "lint_std_names", "cpl_env_reads", "dead_code_allows",
     "lint_name_matchers", "lint_type_syntax",
@@ -3057,6 +3087,7 @@ COUNTERS = {
     "reviews_uncapped": ("reviews scoring a port with no dream above 3 (idioms)", reviews_uncapped, True),
     "direct_python": ("direct python3 calls in gate/justfile", direct_python, True),
     "unrun_script_tests": ("script tests the gate never runs", unrun_script_tests, True),
+    "unreferenced_scripts": ("files under scripts/ nothing else names (Infra)", unreferenced_scripts, True),
     "tests_unrun": ("workspace Rust tests no CI tier runs", tests_unrun, True),
     "decision_dup_numbers": ("decision numbers headed twice in decisions.md", decision_dup_numbers, True),
     "lint_dup_helpers": ("helper fns copied across lint rule files", lint_dup_helpers, True),
