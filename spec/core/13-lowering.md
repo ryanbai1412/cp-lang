@@ -179,9 +179,9 @@ Rules every row follows:
 | labelled `break`/`continue`, loop `else` (§125) | `goto` / flag-free branch | \(O(1)\) | none | none | none |
 | non-recursive generator in `for` | inlined; each `yield` runs the body in place | as written | none | none | none |
 | recursive generator in `for` with `break`/`return` (§126) | recursive function, body inlined at the `yield`; one stop branch per frame only when the body can exit | as written + 1 branch/frame | none | none | none |
-| closure argument | template functor parameter, inlined (`cpl explain`: static) | \(O(1)\) call | none | none | none |
+| closure argument | C++ template parameter of the closure type, inlined (`cpl explain`: static) | \(O(1)\) call | none | none | none |
 | recursive lambda / nested `fn` (§127) | self-passing generic lambda | direct call | none | none | none |
-| operator value (`by: <`, `+`) | functor, inlined | \(O(1)\) | none | none | none |
+| operator value (`by: <`, `+`) | C++ function object, inlined | \(O(1)\) | none | none | none |
 | `@memo` on provably small bounds | flat table | \(O(1)\) lookup | heap, once | none | none |
 
 ## Mutation and places

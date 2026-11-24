@@ -400,7 +400,7 @@ instead of returning a `List` or being a `yields` generator? A `yields`
 generator borrowing `mut self` cannot guarantee the partition is left valid if
 the caller `break`s out early (and `cpl_ir::pushed::Feeds` does not push `mut
 self` yields), while returning a `List` allocates per call. An optional callback
-enforces partition completion, devirtualizes to an inlined template functor in
+enforces partition completion, devirtualizes to an inlined template parameter in
 C++ with zero heap allocation, and defaults to a no-op when overwritten runs are
 not needed.
 

@@ -206,7 +206,7 @@ force on random small inputs.
   -max_weight_matching((l, r) => -w(l, r)).total`.
 - **Min-cost flow.** `min_cost_flow` returns the largest flow up to
   `limit` and, among flows of that value, the cheapest, provided the
-  network has no negative-cost cycle (asserted only in debug builds by the
+  network has no negative-cost cycle (asserted only in checked builds by the
   initial Bellman–Ford). `slope` lists the breakpoints of the convex
   piecewise-linear cost-of-flow function, from `(0, 0)` to the final
   `(flow, cost)`; slopes are nondecreasing.

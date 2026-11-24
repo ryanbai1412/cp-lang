@@ -650,7 +650,7 @@ A law is a promise; the tools make it cheap to check:
   so a law that fails only on real data is found too.
 - `--laws=off` disables every law-driven strategy, so a wrong answer that
   disappears with it is a broken promise, not a broken algorithm.
-- Debug builds check the laws that are cheap per operation: Dijkstra's
+- Checked builds check the laws that are cheap per operation: Dijkstra's
   `step(d, w) >= d`, `Ord`'s antisymmetry on the compared pair.
 ## 16. Examples from the dreams
 

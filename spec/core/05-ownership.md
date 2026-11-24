@@ -50,7 +50,7 @@ anyone hold a live view this write would break?
 | Tier | Spellings | If broken | Surfaced by |
 |---|---|---|---|
 | Proved | moves, lends, R1 to R12 | can't be | the compiler |
-| Trap | `!`, indexing, `assert`, preconditions such as sortedness | stops with a message | debug builds check every one |
+| Trap | `!`, indexing, `assert`, preconditions such as sortedness | stops with a message | checked builds check every one |
 | Promise | `@cache`, `@law` | wrong answers, never undefined behaviour | `cpl explain` lists each; stress runs check them |
 | Unsafe | `@trusted:` blocks, `@cpp("...")` bodies | anything | `cpl explain` lists each; debug shadow checks where possible |
 

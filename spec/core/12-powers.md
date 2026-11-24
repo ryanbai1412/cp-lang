@@ -86,7 +86,7 @@ Generators are `Seq` only: a yield number is not an identity, so
 `s.keyed(keys)` makes any `Seq` `Keyed`, pairing by walk order (`keys`
 defaults to `0..`, a counter); `s.keyed(by: f)` takes each key from its
 value. There is no `enumerate`: `for (i, x) in g.keyed().items` (decision 60). Sortedness is a
-precondition checked in debug builds, not a trait. `Map` is `Keyed`,
+precondition the checked build tests, not a trait. `Map` is `Keyed`,
 `Sized` and `Contains` with its own `[]`; there is no `Lookup` trait.
 
 Every value is owned or lent (read or `mut`); the mode is not part of the
