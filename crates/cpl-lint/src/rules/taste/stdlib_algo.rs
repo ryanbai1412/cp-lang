@@ -1311,18 +1311,13 @@ impl Taste<'_> {
         if !mentions(added, var) || has_try(stmt) {
             return;
         }
-        // A `Prefix` answers element and range reads but can't be walked,
-        // printed or passed on as a list, so a table used whole keeps its loop.
-        if !only_indexed_after(self.src, (base + stmt.span.end) as usize, table) {
-            return;
-        }
         let diag = Diagnostic::warning(
             HAND_ROLLED_PREFIX_SUM.code,
             stmt.span,
             format!("`{table}` is a running total built by hand: use `Prefix(...)`"),
         )
         .with_help(
-            "`Prefix(a)` (or `a.scan(+)`) builds every prefix sum in O(n); `.prefix(cut)` reads one and `.fold(range)` sums a range in O(1)",
+            "`a.scan(+)` builds every running total in O(n) and walks like the list (`.min()`, `.any(..)`, `inversions`); `.prefix(cut)` reads one and `.fold(range)` sums a range in O(1)",
         );
         self.push(&HAND_ROLLED_PREFIX_SUM, diag);
     }
