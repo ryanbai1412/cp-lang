@@ -73,6 +73,7 @@
         "core-01/hash-comment.cp": "pass",
         "core-01/header-binders.cp": "pass",
         "core-01/if-elif-inline-expression.cp": "pass",
+        "core-01/if-is-else-empty-takes-branch-type.cp": "pass",
         "core-01/if-let-chain-repeats-let-for-a-tuple.cp": "pass",
         "core-01/if-let-else-on-failed-condition.cp": "pass",
         "core-01/if-let-tuple-of-optionals.cp": "pass",
@@ -308,6 +309,8 @@
         "core-02/question-in-condition.cp": "pass",
         "core-02/question-not-early-return.cp": "pass",
         "core-02/question-result-dropped.cp": "pass",
+        "core-02/range-alias-ends-are-its-min-and-max.cp": "pass",
+        "core-02/range-alias-has-its-ranges-ends.cp": "pass",
         "core-02/range-storage-type.cp": "pass",
         "core-02/range-type-argument-is-anonymous-domain.cp": "pass",
         "core-02/range-type-arguments-index-a-2d-segtree.cp": "pass",
@@ -667,6 +670,7 @@
         "core-04/product-position-is-its-tuple.cp": "pass",
         "core-04/product-position-tuple-method.cp": "pass",
         "core-04/product-result-indexed-by-parts.cp": "pass",
+        "core-04/product-table-empty-list-takes-expected-element.cp": "pass",
         "core-04/product-tuple-part-outside-factor-traps.cp": "pass",
         "core-04/product-type-array-is-the-parts-array.cp": "pass",
         "core-04/range-arg-is-domain-when-nth-used.cp": "pass",
@@ -683,6 +687,7 @@
         "core-04/range-literal-with-exponent-is-a-value.cp": "pass",
         "core-04/range-mid-small.cp": "pass",
         "core-04/range-nth-positional.cp": "pass",
+        "core-04/range-param-argument-traps.cp": "pass",
         "core-04/range-param-narrowing.cp": "pass",
         "core-04/range-type-binds-generic-domain.cp": "pass",
         "core-04/range-type-widens.cp": "pass",
@@ -811,7 +816,7 @@
         "core-05/exercise-32-view-walked-twice-then-write.cp": "pass",
         "core-05/exercise-33-lends-result-loop-writes-source.cp": "pass",
         "core-05/exercise-34-loop-writes-separate-clone.cp": "pass",
-        "core-05/exercise-35-lent-optional-kept.cp": "fail",
+        "core-05/exercise-35-lent-optional-kept.cp": "pass",
         "core-05/field-let-after-closure-captures-struct.cp": "pass",
         "core-05/field-let-then-whole-struct-passed.cp": "pass",
         "core-05/field-read-in-a-loop-is-not-moved.cp": "pass",
@@ -841,7 +846,7 @@
         "core-05/lends-named-source-only.cp": "pass",
         "core-05/lends-rest-of-block-returns.cp": "pass",
         "core-05/lends-result-freezes-source.cp": "pass",
-        "core-05/lent-generator-blocks-overlapping-write.cp": "fail",
+        "core-05/lent-generator-blocks-overlapping-write.cp": "pass",
         "core-05/lent-source-not-moved.cp": "pass",
         "core-05/lent-var-reassigned-from-itself.cp": "pass",
         "core-05/let-binds-once.cp": "pass",
@@ -1110,6 +1115,7 @@
         "core-07/generator-expression-body.cp": "pass",
         "core-07/generator-has-no-next.cp": "pass",
         "core-07/generator-is-not-indexed.cp": "pass",
+        "core-07/generic-slice-generator-receiver-binds-source.cp": "pass",
         "core-07/get-or-insert.cp": "pass",
         "core-07/grid-row-and-block.cp": "pass",
         "core-07/grid-row-index-and-block-order.cp": "pass",
@@ -1255,6 +1261,7 @@
         "core-07/with-prev.cp": "pass",
         "core-07/yielded-closure-collected-escapes.cp": "pass",
         "core-07/yielded-closure-in-struct-collected-escapes.cp": "pass",
+        "core-07/yielded-closure-in-struct-field-writes-generator-local.cp": "pass",
         "core-07/yielded-closure-in-struct-writes-generator-local.cp": "pass",
         "core-07/yielded-closure-writes-generator-local.cp": "pass",
         "core-07/zip-domain-mismatch.cp": "pass",
@@ -1354,7 +1361,7 @@
         "core-08/trait-default-method.cp": "pass",
         "core-08/trait-default-overridden-through-generic.cp": "pass",
         "core-08/trait-impl-for-f64-is-found-by-a-bound.cp": "pass",
-        "core-08/trait-message-bound-holds.cp": "fail",
+        "core-08/trait-message-bound-holds.cp": "pass",
         "core-08/trait-message.cp": "pass",
         "core-08/trait-qualified-call.cp": "pass",
         "core-08/trait-typed-param-in-method.cp": "pass",
@@ -1449,6 +1456,7 @@
         "core-10/interpolation-width.cp": "pass",
         "core-10/interpolation.cp": "pass",
         "core-10/io-base-shifts-positions-in-nested-lists-and-views.cp": "pass",
+        "core-10/map-reserve-keeps-entries.cp": "pass",
         "core-10/multitest-count-past-input-traps.cp": "pass",
         "core-10/multitest-domain-from-domain-count.cp": "pass",
         "core-10/multitest-missing-count.cp": "pass",
@@ -2138,6 +2146,7 @@
         "std-dsu/mark-undo.cp": "pass",
         "std-dsu/merge.cp": "pass",
         "std-dsu/new.cp": "pass",
+        "std-dsu/parity-components-and-groups.cp": "pass",
         "std-dsu/parity.cp": "pass",
         "std-dsu/persistent-dsu-branches.cp": "pass",
         "std-dsu/persistent-dsu-fresh-per-test-case.cp": "pass",
@@ -2182,6 +2191,7 @@
         "std-flow/min-cost-flow-negative-cost.cp": "pass",
         "std-flow/min-cut-source-side.cp": "pass",
         "std-flow/new-flow-graph-has-no-arcs.cp": "pass",
+        "std-flow/new-flow-graph-over-product-has-no-arcs.cp": "pass",
         "std-flow/push-relabel-matches-dinic.cp": "pass",
         "std-flow/stable-matching-and-edge-coloring-match-brute-force.cp": "pass",
         "std-geometry/angle.cp": "pass",
@@ -2286,6 +2296,7 @@
         "std-graph/find-cycle-self-loop.cp": "pass",
         "std-graph/floyd-warshall-diagonal.cp": "pass",
         "std-graph/floyd-warshall-range-weights-sum-past-range.cp": "pass",
+        "std-graph/floyd-warshall-total-matrix.cp": "pass",
         "std-graph/functional-call-builds-and-matches-brute.cp": "pass",
         "std-graph/functional-walks-match-brute-with-jump-pointers.cp": "pass",
         "std-graph/functional.cp": "pass",
@@ -2405,6 +2416,7 @@
         "std-hashmap/hashset-of-a-list-holds-its-elements.cp": "pass",
         "std-hashmap/list-of-an-int-is-rejected.cp": "pass",
         "std-hashmap/nested-in-two-maps-same-key.cp": "pass",
+        "std-hashmap/reserve-keeps-entries.cp": "pass",
         "std-heap/drain-break-keeps-the-rest.cp": "pass",
         "std-heap/erasableheap-clear-1.cp": "pass",
         "std-heap/erasableheap-is_empty-1.cp": "pass",
@@ -2495,6 +2507,14 @@
         "std-io/read-all-until-sentinel.cp": "pass",
         "std-io/wire-ask-reads-reply.cp": "pass",
         "std-io/yes-and-gallop-first.cp": "pass",
+        "std-journeys/dsu.cp": "pass",
+        "std-journeys/fenwick.cp": "pass",
+        "std-journeys/hash-map.cp": "pass",
+        "std-journeys/seg-tree.cp": "pass",
+        "std-journeys/sorted-bag.cp": "pass",
+        "std-journeys/sorted-set.cp": "pass",
+        "std-journeys/subset.cp": "pass",
+        "std-journeys/window.cp": "pass",
         "std-lazy/flip-action-on-a-segtree.cp": "pass",
         "std-lazy/flip-op-folds-both-halves.cp": "pass",
         "std-lazy/flip-op-identity.cp": "pass",
@@ -2628,6 +2648,9 @@
         "std-mod/prime-power-comb-k-past-n.cp": "pass",
         "std-mod/prime-power-comb.cp": "pass",
         "std-mod/try-inv-zero-and-noncoprime.cp": "pass",
+        "std-models/deque.cp": "pass",
+        "std-models/fenwick.cp": "pass",
+        "std-ntt/convolve-2d-matches-the-loop.cp": "pass",
         "std-ntt/convolve-cyclic-length-mismatch-traps.cp": "pass",
         "std-ntt/convolve-fast-product.cp": "pass",
         "std-ntt/convolve-index-ops-and-semirings.cp": "pass",
@@ -2667,6 +2690,7 @@
         "std-poly/bell-table-zero-is-one.cp": "pass",
         "std-poly/bernoulli-table-zero-is-one.cp": "pass",
         "std-poly/big.cp": "pass",
+        "std-poly/binomial-transform-and-inverse.cp": "pass",
         "std-poly/combinatorial-tables.cp": "pass",
         "std-poly/generic-shift-div-match-brute.cp": "pass",
         "std-poly/partition-table-zero-is-one.cp": "pass",
@@ -2747,11 +2771,13 @@
         "std-segtree/lazy-add-replaces-range-fenwick.cp": "pass",
         "std-segtree/lazy-affine-and-add.cp": "pass",
         "std-segtree/lazy-reads-do-not-push.cp": "pass",
+        "std-segtree/max-identity-is-range-alias-low-end.cp": "pass",
         "std-segtree/merge-seg-merge-and-prune.cp": "pass",
         "std-segtree/merge-seg-singleton-dead.cp": "pass",
         "std-segtree/merge-segs-first-ge-is-read-only.cp": "pass",
         "std-segtree/merge-segs-share-nodes.cp": "pass",
         "std-segtree/merge-sort-tree-count-le-edges.cp": "pass",
+        "std-segtree/merge-trees-match-brute.cp": "pass",
         "std-segtree/mergesorttree-bodies.cp": "pass",
         "std-segtree/new-bare-op-positional.cp": "pass",
         "std-segtree/new-from-array-literal.cp": "pass",
@@ -2808,6 +2834,7 @@
         "std-seq/first-last-across-containers.cp": "pass",
         "std-seq/first-of-seq-and-empty.cp": "pass",
         "std-seq/first_true-1.cp": "pass",
+        "std-seq/flat-map-keeps-closure-element.cp": "pass",
         "std-seq/flat_map-1.cp": "pass",
         "std-seq/flatten-and-fold-methods.cp": "pass",
         "std-seq/get-on-domain-array-takes-position.cp": "pass",
@@ -3013,6 +3040,7 @@
         "std-strings/automata.cp": "pass",
         "std-strings/case-trim.cp": "pass",
         "std-strings/char-alphabet-domain.cp": "pass",
+        "std-strings/char-tests-run-std-bodies.cp": "pass",
         "std-strings/chars.cp": "pass",
         "std-strings/common-prefix-len-of-rev.cp": "pass",
         "std-strings/common-prefix-suffix-empty.cp": "pass",
@@ -3072,6 +3100,7 @@
         "std-strings/str-find-rfind.cp": "pass",
         "std-strings/string-algorithms-over-domain-array.cp": "pass",
         "std-strings/suffix-array-brute.cp": "pass",
+        "std-strings/suffix-array-keeps-elements.cp": "pass",
         "std-strings/suffix-array-rank-range-find-count.cp": "pass",
         "std-strings/suffix-array.cp": "pass",
         "std-strings/suffix-automaton-kth-negative-traps.cp": "pass",
@@ -3191,8 +3220,10 @@
         "std-window/track-push-pop-back-to-init.cp": "pass",
         "std-window/track-push-pop-restores.cp": "pass",
         "std-window/undoing-infers-from-annotated-lambda.cp": "pass",
+        "std-window/undoing-infers-from-later-push.cp": "pass",
         "std-window/undoing-no-push-keeps-state.cp": "pass",
         "std-window/undoing-push-pop-dsu.cp": "pass",
+        "std-window/window-fold-picks-op-strategy.cp": "pass",
         "std-window/window-min-after-pop.cp": "pass",
         "std-window/window-pop-checks-front.cp": "pass",
         "std-window/window-pop-empty-traps.cp": "pass",
@@ -3363,6 +3394,10 @@
         "traits/Show/Heap--show.cp": "pass",
         "traits/Show/Interner--show.cp": "pass",
         "traits/Show/LinkedList--show.cp": "pass",
+        "traits/Show/MergeSeg--show.cp": "pass",
+        "traits/Show/MergeSegs--show.cp": "pass",
+        "traits/Show/MergeTree--show.cp": "pass",
+        "traits/Show/MergeTrees--show.cp": "pass",
         "traits/Show/Mod--show.cp": "pass",
         "traits/Show/Pair--show.cp": "pass",
         "traits/Show/Paths--show.cp": "pass",
@@ -3394,6 +3429,12 @@
         "traits/Sub/Vec3--sub.cp": "pass",
         "traits/Track/Counter--pop.cp": "pass",
         "traits/Track/Counter--push.cp": "pass",
+        "traits/Track/SortedBag--pop.cp": "pass",
+        "traits/Track/SortedBag--push.cp": "pass",
+        "traits/Track/Tracked--pop.cp": "pass",
+        "traits/Track/Tracked--push.cp": "pass",
+        "traits/Track/Undoing--pop.cp": "pass",
+        "traits/Track/Undoing--push.cp": "pass",
         "traits/Track/Window--pop.cp": "pass",
         "traits/Track/Window--push.cp": "pass",
         "traits/Undo/Dsu--mark.cp": "pass",
@@ -3470,13 +3511,6 @@
           ]
         },
         {
-          "cause": "E0004: `<id>` isn't used in CP Lang",
-          "count": 1,
-          "examples": [
-            "core-08/trait-message-bound-holds.cp"
-          ]
-        },
-        {
           "cause": "E0201: no `<id>` in scope",
           "count": 1,
           "examples": [
@@ -3495,13 +3529,6 @@
           "count": 1,
           "examples": [
             "std-graph/undirected-takes-list-of-records.cp"
-          ]
-        },
-        {
-          "cause": "E0302: a `<id>` can't walk over a `<id>`",
-          "count": 1,
-          "examples": [
-            "core-05/exercise-35-lent-optional-kept.cp"
           ]
         },
         {
@@ -3533,20 +3560,6 @@
           ]
         },
         {
-          "cause": "wanted E0203; got E0201: `<id>` (`<id>`) does not work on the types it was given here: no value named `<id>` here",
-          "count": 1,
-          "examples": [
-            "diagnostics/graph-edge-field-names.cp"
-          ]
-        },
-        {
-          "cause": "wanted E0608; got E0602: `<id>` can't be changed here: the `<id>` loop is going over `<id>`, and that lends it for reading until the loop ends",
-          "count": 1,
-          "examples": [
-            "core-05/lent-generator-blocks-overlapping-write.cp"
-          ]
-        },
-        {
           "cause": "wanted E0608; got no diagnostic",
           "count": 1,
           "examples": [
@@ -3558,6 +3571,13 @@
           "count": 1,
           "examples": [
             "core-08/extension-concrete-and-generic-ambiguous.cp"
+          ]
+        },
+        {
+          "cause": "wanted E0704; got E0201: `<id>` (`<id>`) does not work on the types it was given here: no value named `<id>` here",
+          "count": 1,
+          "examples": [
+            "diagnostics/graph-edge-field-names.cp"
           ]
         },
         {
@@ -3590,11 +3610,11 @@
         }
       ],
       "counts": {
-        "fail": 21,
-        "pass": 3427
+        "fail": 18,
+        "pass": 3471
       },
-      "passed": 3427,
-      "total": 3448
+      "passed": 3471,
+      "total": 3489
     },
     "corpus": {
       "cases": {
