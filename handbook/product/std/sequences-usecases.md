@@ -295,8 +295,8 @@ Evidence: program `spec/conformance/std-seq/seq-u49-permutation-tools.cp`.
 ### seq/U50: combinations, subsequences and products
 Need: try every pair, every k-subset, every pair of options.
 Design: `a.combinations(k)`, `a.subsequences()`, `a.pairs()`, `product(a, b)`.
-Milestone: M1-critical. Status: partial
-Evidence: program `spec/conformance/std-seq/seq-u50-combinations-subsets.cp`; `product(a, b)` is E0201: not in the prelude.
+Milestone: M1-critical. Status: supported
+Evidence: program `spec/conformance/std-seq/seq-u50-combinations-subsets.cp`; `product` joined the prelude with R07.7.12.
 
 ### seq/U51: linear-time sorts
 Need: sort a million small keys.
