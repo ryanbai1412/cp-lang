@@ -1,6 +1,6 @@
 # Friction report: yac1p3
 
-There is no dream.cp; the ideal is the port. The strategy is point symmetry: move first on the centre when N is odd, otherwise move second, and mirror every judge move. `their_move` returns `?(1..=n, 1..=n)`, with `0 0` as `None`, and `while let` drives each game.
+`dream.cp` is now a copy of the port (added with its scored review; `corpus.py verify` checks it): the port is the ideal. The strategy is point symmetry: move first on the centre when N is odd, otherwise move second, and mirror every judge move. `their_move` returns `?(1..=n, 1..=n)`, with `0 0` as `None`, and `while let` drives each game.
 
 ## Dream
 

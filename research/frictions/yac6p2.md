@@ -1,6 +1,6 @@
 # Friction report: yac6p2
 
-There is no dream.cp. The port is the ideal:
+`dream.cp` is now a copy of the port (added with its scored review; `corpus.py verify` checks it): the port is the ideal:
 - both trees are read as `[V]?V` with `read(none: -1)`;
 - the roots are compared with `V.find`;
 - the workers whose boss differs are moved in `Rooted.from_parents(want)` preorder.

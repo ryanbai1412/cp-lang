@@ -37,3 +37,4 @@ if let out = (if path.hi < Some(cost): path.hi else: path.lo): best min= base + 
 - **Runtime and memory on gen.py --max:** port 0.05 s / 12 MB, accepted C++ 0.04 s / 18 MB, with the same output.
 - **Emitted C++:** 30470 bytes.
 - **Agreement:** `cpl stress` against the accepted C++ agrees on 30 gen.py cases at size 30.
+- **Speed gap:** 0.05 s vs 0.04 s at `gen.py --max` is over 1.1x. The repro (this package's `--max` case) is sent to perf via Factory 7bd146f2. Owner: Perf B (33c55557).

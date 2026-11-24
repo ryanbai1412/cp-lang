@@ -24,3 +24,4 @@ for msg in read<[m]Str>(): print(ac.find_all(Letter.list(msg.to_lower)).distinct
 - **Runtime and memory on gen.py --max:** port 0.12 s / 17 MB, accepted C++ 0.54 s / 6 MB, with the same output.
 - **Emitted C++:** 28358 bytes.
 - **Agreement:** `cpl stress` against the accepted C++ agrees on 30 gen.py cases at size 30.
+- **Memory gap:** the port's RSS at `--max` is over 2x the accepted C++'s (above). The repro (this package's `--max` case) is sent to perf via Factory 7bd146f2. Owner: Perf B (33c55557).

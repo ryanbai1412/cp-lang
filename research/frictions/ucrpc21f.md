@@ -14,3 +14,4 @@ There are no dream/port gaps.
 - **Runtime and memory on gen.py --max:** port 0.18 s / 20 MB, accepted C++ 0.47 s / 12 MB, with the same output.
 - **Emitted C++:** 24516 bytes.
 - **Agreement:** `cpl stress` against the accepted C++ agrees on 30 gen.py cases at size 30.
+- **Memory gap:** the port's RSS at `--max` is over 2x the accepted C++'s (above). The repro (this package's `--max` case) is sent to perf via Factory 7bd146f2. Owner: Perf B (33c55557).

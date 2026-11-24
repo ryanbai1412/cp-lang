@@ -14,3 +14,4 @@
 - **Runtime and memory on gen.py --max:** port 0.05 s / 15 MB, accepted C++ 0.06 s / 7 MB, with the same output.
 - **Emitted C++:** 16906 bytes.
 - **Agreement:** `cpl stress` against the accepted C++ agrees on 30 gen.py cases at size 30.
+- **Memory gap:** the port's RSS at `--max` is over 2x the accepted C++'s (above). The repro (this package's `--max` case) is sent to perf via Factory 7bd146f2. Owner: Perf B (33c55557).

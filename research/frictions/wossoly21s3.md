@@ -1,6 +1,6 @@
 # Friction report: wossoly21s3
 
-There is no dream.cp; the ideal is the port. It adds four std `bfs` legs, where a step onto `q` lands at `land(q)`, with portal letters looked up in a `Map<Char, Cell>`, and joins the legs with `all_some()`.
+`dream.cp` is now a copy of the port (added with its scored review; `corpus.py verify` checks it): the port is the ideal. It adds four std `bfs` legs, where a step onto `q` lands at `land(q)`, with portal letters looked up in a `Map<Char, Cell>`, and joins the legs with `all_some()`.
 
 ## Dream
 
