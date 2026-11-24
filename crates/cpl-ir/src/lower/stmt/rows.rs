@@ -563,7 +563,7 @@ impl<'a> Lowerer<'a> {
         let (dim, elem) = match &place.ty {
             Ty::Array { dims, elem } => (dims[0], (**elem).clone()),
             Ty::List(elem) => (Dim::Int, (**elem).clone()),
-            _ => unreachable!("the caller asked `is_row`"),
+            _ => return changed,
         };
         // A variable is read where it is; anything else is worked out once.
         let other = match value.kind {
