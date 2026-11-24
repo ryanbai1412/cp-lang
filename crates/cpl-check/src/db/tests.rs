@@ -490,3 +490,33 @@ fn a_bare_bound_gives_the_fn_its_free_trait_arg() {
         print(yes(xs.contains(W.cuts.nth(1).ord)), W.cuts.nth(0).ord + 1)\n";
     assert_eq!(silent_unknowns_of(src), (vec![], 0));
 }
+
+#[test]
+fn a_generic_params_bounds_type_its_operators_and_statics() {
+    for src in [
+        "fn f<T: Add>(a: T, b: T) -> T = a + b\nprint(f(1, 2))\n",
+        "fn f<T>(a: T, b: T) -> T = a ^ b\nprint(f(1, 2))\n",
+        "fn f<T: Zero + One>() -> (T, T) = (T.zero, T.one)\nprint(f<Int>())\n",
+        "fn f<T: Bounded>() -> T = T.MIN\nprint(f<Int>(), Int.MAX - 3)\n",
+        "fn f<D: Domain>() -> Int:\n    var n = D.count\n    for c in D.cuts: n += 1\n    n\ndomain E = 0..3\nprint(f<E>())\n",
+        "struct W<P>(v: Int):\n    fn red(x: Int) -> W<P> = W(x % P)\nprint(W<7>.red(9).v)\n",
+        "use std.mod.{Mod}\nfn f<M: Residue>() -> M = M(1)\nprint(f<Mod<7>>())\n",
+        "let xs = [3, 1, 4]\nprint([1].nth(0), xs.nth(0), xs[0..2].nth(1), xs[0..2].at(1))\n",
+    ] {
+        assert_eq!(silent_unknowns_of(src).0, Vec::<String>::new(), "{src}");
+    }
+}
+
+#[test]
+fn a_fn_items_own_type_folds_by_the_trait_args_its_bound_gave() {
+    let head = "trait Op3<T>:\n    type Fold\n    fn lift(self, x: T) -> Self.Fold\nimpl<T> Op3<T> for type_of(+):\n    type Fold = T\n    fn lift(self, x: T) -> T = x\nimpl<T: Ord> Op3<T> for type_of(max):\n    type Fold = T\n    fn lift(self, x: T) -> T = x\n";
+    for tail in [
+        "fn go<M: Op3<Int>>(m: M) -> M.Fold = m.lift(2)\nlet x: Int = go(+) + go(max)\n",
+        "fn go<M: Op3<E>, E>(m: M, a: List<E>) -> M.Fold = m.lift(a[0])\nlet x: Int = go(+, [2]) + go(max, [4])\n",
+        "struct Tree<F>(xs: List<F>):\n    pub fn new<M: Op3<E>, E>(op: M, a: List<E>) -> Tree<M.Fold> = Tree(a.map(x => op.lift(x)))\nlet t = Tree.new(+, [4, 5])\nlet s: Int = t.xs[0] + t.xs[1]\n",
+        "struct W<T, M: Op3<T>>(op: M, x: T):\n    fn all(self) -> M.Fold = self.op.lift(self.x)\nlet x: Int = W(max, 3).all() + W(+, 1).all()\n",
+    ] {
+        let src = format!("{head}{tail}print(1)\n");
+        assert_eq!(silent_unknowns_of(&src), (vec![], 0), "{tail}");
+    }
+}

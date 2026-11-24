@@ -1418,6 +1418,25 @@ impl<'a> Checker<'a> {
         self.rows_hold(call, callee_text, args, rows, &bindings);
     }
 
+    /// `Tree.new(+, xs)`: a static fn's bounds with their trait arguments.
+    fn static_bound_args(&mut self, callee: &Expr) -> Option<crate::def::BoundArgs> {
+        let ExprKind::Field { base, name } = &callee.kind else {
+            return None;
+        };
+        let ExprKind::Name(ty_name) = &base.kind else {
+            return None;
+        };
+        if self.local(ty_name).is_some() {
+            return None;
+        }
+        match self.type_def(ty_name).as_deref() {
+            Some(Def::Struct { method_rows, .. }) => (method_rows.iter())
+                .find(|(m, ..)| *m == name.text)
+                .map(|(_, _, through, _)| through.clone()),
+            _ => None,
+        }
+    }
+
     fn call_kind(&mut self, call: &Expr, callee: &Expr, callee_ty: Ty, args: &[Arg]) -> Ty {
         let callee_text = self.quote(callee.span);
         match callee_ty {
@@ -1434,7 +1453,7 @@ impl<'a> Checker<'a> {
                 let callee_def = callee_name.and_then(|n| self.global(n));
                 let through = match callee_def.as_deref() {
                     Some(Def::Fn { bound_args, .. }) => Some(bound_args.clone()),
-                    _ => None,
+                    _ => self.static_bound_args(callee),
                 };
                 let own = match callee_def.as_deref() {
                     Some(Def::Fn { generics, .. }) => generics.clone(),
@@ -1448,7 +1467,7 @@ impl<'a> Checker<'a> {
                     own: &own,
                 };
                 self.args(takes, args, call, &mut bindings);
-                self.call_bound_args = outer;
+                let through = std::mem::replace(&mut self.call_bound_args, outer);
                 if let Some(Def::Fn { default_binds, .. }) = callee_def.as_deref() {
                     for (generic, ty) in default_binds {
                         if !bindings.contains_key(generic) {
@@ -1469,6 +1488,8 @@ impl<'a> Checker<'a> {
                 }
                 if let Some(def) = callee_def.as_deref() {
                     self.fn_items_take_their_type(def, &params, args, &mut bindings);
+                } else if let Some(through) = &through {
+                    self.fn_items_take_bound_types(through, &params, args, &mut bindings);
                 }
                 if let (
                     Some(fn_name),
@@ -1556,6 +1577,11 @@ impl<'a> Checker<'a> {
                 self.construct(&name, type_args, &callee_text, args, call)
             }
             Ty::TypeName(name) => self.construct(&name, Vec::new(), &callee_text, args, call),
+            // `M(1)` makes a value of a type parameter `M`.
+            Ty::Param(p) if matches!(&callee.kind, ExprKind::Name(n) if *n == p) => {
+                self.plain_args(args);
+                Ty::Param(p)
+            }
             // `V(i)`: a number checked into the domain, or `State(v, k)` for a product domain.
             Ty::Domain(name) => {
                 if let Some(factors) = self.product_factors(&name) {
