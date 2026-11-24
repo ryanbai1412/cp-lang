@@ -869,13 +869,19 @@ def run_result(cmd, data):
 
 # A case the interpreter can't finish in TIMEOUT has no interpreter verdict.
 # Its content key lands here, so later runs skip it instead of spending the
-# TIMEOUT again; a changed port or case is a new key, run again.
+# TIMEOUT again; a changed port, case or cpl build is a new key, run again.
 INTERP_SLOW = os.path.join(ROOT, "target", "interp-slow")
 SLOW = "interp-slow"
 
 
-def slow_key(port, data):
-    return hashlib.sha256(Path(port).read_bytes() + b"\0" + data).hexdigest()[:20]
+@functools.lru_cache(maxsize=None)
+def build_id(cpl):
+    """The hash of the `cpl` binary: a new interpreter is a new verdict."""
+    return hashlib.sha256(Path(cpl).read_bytes()).digest()
+
+
+def slow_key(port, data, cpl):
+    return hashlib.sha256(build_id(cpl) + Path(port).read_bytes() + b"\0" + data).hexdigest()[:20]
 
 
 def compare(run, interp, cxx, data):
@@ -913,7 +919,7 @@ def check_stress(pkg, ctx):
     found = []
     for inp in generated(pkg):
         data = inp.read_bytes()
-        memo = os.path.join(INTERP_SLOW, slow_key(pkg.port, data))
+        memo = os.path.join(INTERP_SLOW, slow_key(pkg.port, data, ctx.cpl))
         if os.path.exists(memo):
             ctx.slow.append(f"{pkg.id} {inp.name}")
             continue
