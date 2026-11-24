@@ -443,6 +443,7 @@ coci21c2p2
 coci21c3p1
 coci21c3p2
 coci21c6p1
+coci21c6p2
 coi06p2
 csps21p2
 ctsc04p4
@@ -475,6 +476,7 @@ dmopc21c6p4
 dmopc21c7p1
 dmopc21c7p2
 dmopc21c7p3
+dmopc21c7p4
 dmopc21c8p1
 dmopc21c8p2
 dmopc21c8p3

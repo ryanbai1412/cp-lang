@@ -6,29 +6,27 @@
 //   positive prices, for each left end only two sums matter: the smallest >= min(a, b) and
 //   the largest below it. Fix the top and bottom rows, collapse to column sums and sweep
 //   with two pointers: O(r^2 s).
-// Note: written in the forms proto/cpc builds today.
 // original: corpus/submissions/4529998.cpp
-let n: Int = read()
-let m: Int = read()
-let a: Int = read()
-let b: Int = read()
-let grid: [n, m]Int = read()
-let lo = min(a, b)
+// Bounds: r, s: 1..=500; a, b: 1..=1e9; price: 1..=1e9
+
+let (r, s): (1..=500, 1..=500) = read()
+let (a, b): (1..=1e9, 1..=1e9) = read()
+let price: [r, s]1..=1e9 = read()
+
+fn cost(m: Int) -> Int = abs(m - a) + abs(m - b)
 
 var best: ?Int = None
-fn offer(s: Int): best min= abs(s - a) + abs(s - b)
-
-for top in 0..n:
-    var col: [m]Int = 0
-    for bot in top..n:
-        for c in 0..m: col[c] += grid[bot, c]
-        var r = 0
-        var s = 0
-        for l in 0..m:
-            while r < m and s < lo:
-                s += col[r]
-                r += 1
-            offer(s)
-            if r - l >= 2: offer(s - col[r - 1])
-            s -= col[l]
+for top in 0..r:
+    var column: [s]Int = 0
+    for bottom in top..r:
+        for c in 0..s: column[c] += price[bottom, c]
+        // for each left end: the shortest window reaching min(a, b), and that window less its last column
+        var (right, sum) = (0, 0)
+        for left in 0..s:
+            while right < s and sum < min(a, b):
+                sum += column[right]
+                right += 1
+            best min= cost(sum)
+            if right - left >= 2: best min= cost(sum - column[right - 1])
+            sum -= column[left]
 print(best!)
