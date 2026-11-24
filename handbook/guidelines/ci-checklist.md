@@ -231,8 +231,10 @@ main for 18 min before it had a cap. *Example:* a new `lint` job without
 
 ### ci/R29
 
-The blocking `vscode` job runs on Linux, macOS and Windows, and `cli` on
-macOS and Windows next to the Linux gate, none marked `continue-on-error`.
+The blocking `vscode` and `neovim` jobs run on Linux, macOS and Windows,
+and `cli` on macOS and Windows next to the Linux gate. No ci.yml job is
+marked `continue-on-error`: an outage check (edge installable) reports from
+the watchdog instead.
 *Why:* contestants install on all three, and a path, CRLF or clipboard bug
 on one OS ships silently when only Linux blocks. *Example:* dropping
 `windows-latest` from `cli`, or making it informational, fails

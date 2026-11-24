@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Opens one "main CI stalled" issue when no main CI run has finished (success
-# or failure) in 30 min, edge is over 2 h old, or cp-lang.org has lacked a
+# or failure) in 30 min, edge is over 2 h old or an archive of it won't download, or cp-lang.org has lacked a
 # deployable commit for over 2 h, and closes it once all are fresh again
 # (handbook/guidelines/ci-checklist.md#cir23).
 set -euo pipefail
@@ -17,6 +17,15 @@ ci_age=$(age "$ran"); edge_age=$(age "$shipped")
 problems=()
 [ "$ci_age" -le 1800 ] || problems+=("no main CI run has finished for $((ci_age / 60)) min (last: ${ran:-none})")
 [ "$edge_age" -le 7200 ] || problems+=("edge was last published $((edge_age / 60)) min ago (${shipped:-never})")
+# Every archive edge's SHA256SUMS lists must download, so `install.sh` works.
+base="https://github.com/$repo/releases/download/edge"
+if sums=$(curl -fsSL --retry 3 "$base/SHA256SUMS" 2>/dev/null); then
+    for a in $(awk '{print $2}' <<<"$sums"); do
+        curl -fsIL --retry 3 -o /dev/null "$base/$a" 2>/dev/null || problems+=("edge is missing $a")
+    done
+else
+    problems+=("edge has no SHA256SUMS")
+fi
 # The site is behind when a commit whose site jobs passed isn't live and the
 # live commit is over 2 h old.
 here=$(dirname "$0")

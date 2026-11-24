@@ -176,6 +176,11 @@ class WorkflowTest(unittest.TestCase):
         with open(os.path.join(ROOT, "scripts", "check.sh"), encoding="utf-8") as f:
             self.assertIn('--archive-file "$CPL_NEXTEST_ARCHIVE"', f.read())
 
+    def test_no_ci_job_fails_without_turning_main_red(self):
+        with open(os.path.join(ROOT, ".github", "workflows", "ci.yml"), encoding="utf-8") as f:
+            self.assertNotIn("continue-on-error", f.read(),
+                             "a red nobody sees is not a check: block, or report from the watchdog (ci/R29)")
+
     def test_finds_an_uncapped_job(self):
         text = "on: push\njobs:\n  a:\n    timeout-minutes: 5\n    steps: []\n  b:\n    runs-on: x\n    steps:\n      - timeout-minutes: 3\n"
         self.assertEqual(uncapped_jobs(text), ["b"])
