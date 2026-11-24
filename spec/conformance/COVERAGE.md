@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3415 (3312 passing). Rules: 615.
+Cases: 3417 (3312 passing). Rules: 615.
 
 ## Summary per chapter
 
@@ -19,7 +19,7 @@ Cases: 3415 (3312 passing). Rules: 615.
 - R04b (04b-keys.md): 28 rules, 78 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 50 rules, 256 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 26 rules, 125 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 95 rules, 247 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 95 rules, 249 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 31 rules, 104 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 20 rules, 119 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -477,7 +477,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.2.14 [1+ 0-]: **Slices are the views that narrow keys.** Every other indexed view keeps its source's key...
 - R07.2.15 [1+ 1-]: **Ranges are indexed sequences but not views:** they have no source. Slicing *with* a rang...
 - R07.2.16 [1+ 1-]: **Lazy means a view or generator.** Its work happens at each walk or read, never up front....
-- R07.2.17 [1+ 1-]: **Keys never wrap.** An `Int` key counts from the first element, so `a[-1]` with a negativ...
+- R07.2.17 [1+ 3-]: **Keys never wrap.** An `Int` key counts from the first element, so `a[-1]` with a negativ...
 - R07.2.18 [1+ 1-]: **No built-in sequence names.** `Seq`, `Indexed`, `Bidir`, a generator call's value `Gen<T...
 - R07.3.1 [5+ 0-]: | `Seq<T>` | `for x in s` walks it in order; each `for` runs it from the start | generator...
 - R07.3.2 [3+ 0-]: | `Keyed<D, T>` | `Seq` + `s.items` walks `(key, x)`; keys survive `filter` | everything `...
@@ -812,7 +812,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0318 Unreachable match arm: 1 case(s)
 - E0319 Generic fn recursion at a growing type: 1 case(s)
 - E0320 Int index into a cut table: 4 case(s)
-- E0321 negative_literal_index *(0.3)*: **no case**
+- E0321 Negative literal key: 2 case(s)
 - E0322 Field that stores its own type: 2 case(s)
 - E0401 Assignment to immutable `let` binding: 5 case(s)
 - E0402 Missing `mut` at call site: 4 case(s)
@@ -996,7 +996,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - W0101 Unused expression value: 1 case(s)
 - W0201 Submission near the size limit: 1 case(s)
 
-87 of 227 testable codes have no negative case.
+86 of 227 testable codes have no negative case.
 
 ## Spec code blocks
 
