@@ -82,14 +82,24 @@ impl<'a> Parser<'a> {
             }
             None => c_declaration(whole)?,
         };
+        // `long long a, b;` then `cin >> a >> b;` on the next line: one read.
+        let mut end = begin + line.len();
+        let next = self
+            .src
+            .get(end + 1..)
+            .map(|r| r.split('\n').next().unwrap_or(r));
+        let (decl, end) = match next.and_then(|n| Some((n, c_declared_read(&decl, n)?))) {
+            Some((n, read))
+                if n.len() - n.trim_start().len() == begin - line_start(self.src, begin) =>
+            {
+                end += 1 + n.trim_end().len();
+                (read, end)
+            }
+            _ => (decl, end),
+        };
         let at = |from: usize, to: usize| self.rel(Span::new(from as u32, to as u32));
         let written = &line[..ty_len];
-        Some((
-            at(begin, begin + line.len()),
-            at(begin, begin + ty_len),
-            written,
-            decl,
-        ))
+        Some((at(begin, end), at(begin, begin + ty_len), written, decl))
     }
 
     /// `auto x = 0`, `int x = 0` or `auto (a, b) = ..`: a C++ keyword
@@ -115,6 +125,30 @@ impl<'a> Parser<'a> {
             .with_fix("write `let`", kw, "let"),
         );
         self.let_stmt()
+    }
+
+    /// `cin >> a >> b;` under `long long a, b;`, which the declaration's
+    /// fix already reads: the line's span, so it gets no error of its own.
+    pub(super) fn skip_read_after_c_decl(&mut self) -> bool {
+        let Some(line) = self.read_after_c_decl() else {
+            return false;
+        };
+        self.sink.poison(line);
+        self.skip_line();
+        self.eat(T::Newline);
+        true
+    }
+
+    fn read_after_c_decl(&self) -> Option<Span> {
+        let (begin, line) = self.this_line()?;
+        let start = line_start(self.src, begin);
+        let prev_start = line_start(self.src, start.checked_sub(1)?);
+        let prev = &self.src[prev_start..start - 1];
+        let indent = prev.len() - prev.trim_start().len();
+        let prev = prev.trim();
+        let (_, decl) = c_declaration(prev.strip_suffix(';').unwrap_or(prev).trim_end())?;
+        (indent == begin - start && c_declared_read(&decl, line).is_some())
+            .then(|| self.rel(Span::new(begin as u32, (begin + line.len()) as u32)))
     }
 
     /// The one error for a C++ declaration line, its fix the whole line.
@@ -704,6 +738,57 @@ impl<'a> Parser<'a> {
             kind: ExprKind::Name("None".into()),
             span: at,
         })
+    }
+
+    /// Whether the next token continues a line that `target` is on,
+    /// rather than starting a line of its own. A target that ends with a
+    /// block (`if c:` and its body) is followed by the next statement
+    /// with no line break token between them.
+    /// `c ? a : b` from C, after the condition: inline `if` here.
+    pub(super) fn c_ternary_ahead(&self, cond: &Expr) -> bool {
+        let rest = self.tokens.get(self.pos + 1..).unwrap_or_default();
+        let mut line = rest.iter().take_while(|t| t.kind != T::Newline);
+        self.at(T::Question)
+            && self.span().start > cond.span.end
+            && !matches!(self.peek_n(1), T::RParen | T::RBracket | T::Comma | T::Dot)
+            && line.any(|t| t.kind == T::Colon)
+    }
+
+    /// Reads `c ? a : b` as `if c: a else: b`, with one error that says so
+    /// and rewrites it, so the rest of the program sees an inline `if`.
+    pub(super) fn c_ternary(&mut self, start: u32, first: usize, cond: Expr) -> Expr {
+        let question = self.pos;
+        let q = self.span();
+        self.bump();
+        let yes = self.coalesce();
+        let colon = self.pos;
+        let complete = self.eat(T::Colon);
+        let no = self.coalesce();
+        let span = self.span_from(start);
+        let text = |p: &Self, a: usize, b: usize| {
+            let (a, b) = (p.tokens[a].span.start, p.tokens[b - 1].span.end);
+            p.src[a as usize..b as usize].to_string()
+        };
+        let mut diag = Diagnostic::error(codes::REMOVED_SYNTAX, q, "CP Lang has no `c ? a : b`")
+            .with_help("write `if c: a else: b`");
+        if complete && self.pos > colon + 1 && colon > question + 1 {
+            let (c, a, b) = (
+                text(self, first, question),
+                text(self, question + 1, colon),
+                text(self, colon + 1, self.pos),
+            );
+            let whole = self.rel(Span::new(
+                self.tokens[first].span.start,
+                self.tokens[self.pos - 1].span.end,
+            ));
+            diag = diag.with_fix(
+                "write it as an inline `if`",
+                whole,
+                format!("if {c}: {a} else: {b}"),
+            );
+        }
+        self.error(diag);
+        Self::inline_if(cond, yes, no, span)
     }
 
     /// C++'s `vector<int>(n)` as a value: one error, fixed to `List.filled(n, 0)`.
@@ -1731,4 +1816,9 @@ fn python_read(lhs: &str, rhs: &str) -> Option<String> {
     }
     let tys = vec![ty; names.len()].join(", ");
     Some(format!("let ({}): ({tys}) = read()", names.join(", ")))
+}
+
+/// Where the line holding `at` starts.
+fn line_start(src: &str, at: usize) -> usize {
+    src[..at].rfind('\n').map_or(0, |i| i + 1)
 }

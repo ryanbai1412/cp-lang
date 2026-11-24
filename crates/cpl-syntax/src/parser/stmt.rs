@@ -400,6 +400,9 @@ impl<'a> Parser<'a> {
                 self.eat(T::Newline);
                 return self.end_recovery(start);
             }
+            if self.skip_read_after_c_decl() {
+                return self.end_recovery(start);
+            }
             let mut diag = Diagnostic::error(
                 if found.is_closer() {
                     codes::UNMATCHED_CLOSER
@@ -1450,57 +1453,6 @@ impl<'a> Parser<'a> {
         self.bump();
         let value = self.expr();
         StmtKind::Assign { target, op, value }
-    }
-
-    /// Whether the next token continues a line that `target` is on,
-    /// rather than starting a line of its own. A target that ends with a
-    /// block (`if c:` and its body) is followed by the next statement
-    /// with no line break token between them.
-    /// `c ? a : b` from C, after the condition: inline `if` here.
-    pub(super) fn c_ternary_ahead(&self, cond: &Expr) -> bool {
-        let rest = self.tokens.get(self.pos + 1..).unwrap_or_default();
-        let mut line = rest.iter().take_while(|t| t.kind != T::Newline);
-        self.at(T::Question)
-            && self.span().start > cond.span.end
-            && !matches!(self.peek_n(1), T::RParen | T::RBracket | T::Comma | T::Dot)
-            && line.any(|t| t.kind == T::Colon)
-    }
-
-    /// Reads `c ? a : b` as `if c: a else: b`, with one error that says so
-    /// and rewrites it, so the rest of the program sees an inline `if`.
-    pub(super) fn c_ternary(&mut self, start: u32, first: usize, cond: Expr) -> Expr {
-        let question = self.pos;
-        let q = self.span();
-        self.bump();
-        let yes = self.coalesce();
-        let colon = self.pos;
-        let complete = self.eat(T::Colon);
-        let no = self.coalesce();
-        let span = self.span_from(start);
-        let text = |p: &Self, a: usize, b: usize| {
-            let (a, b) = (p.tokens[a].span.start, p.tokens[b - 1].span.end);
-            p.src[a as usize..b as usize].to_string()
-        };
-        let mut diag = Diagnostic::error(codes::REMOVED_SYNTAX, q, "CP Lang has no `c ? a : b`")
-            .with_help("write `if c: a else: b`");
-        if complete && self.pos > colon + 1 && colon > question + 1 {
-            let (c, a, b) = (
-                text(self, first, question),
-                text(self, question + 1, colon),
-                text(self, colon + 1, self.pos),
-            );
-            let whole = self.rel(Span::new(
-                self.tokens[first].span.start,
-                self.tokens[self.pos - 1].span.end,
-            ));
-            diag = diag.with_fix(
-                "write it as an inline `if`",
-                whole,
-                format!("if {c}: {a} else: {b}"),
-            );
-        }
-        self.error(diag);
-        Self::inline_if(cond, yes, no, span)
     }
 
     pub(super) fn same_line(&self) -> bool {
