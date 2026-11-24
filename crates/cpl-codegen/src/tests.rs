@@ -151,6 +151,15 @@ fn hash_map_uses_salted_splitmix64_cphash() {
 }
 
 #[test]
+fn a_float_key_hashes_as_std_hash_does_with_zero_and_minus_zero_alike() {
+    let cpp = cpp("var hm: HashMap<F64, Int> = []\nhm[1.5] = 7\nprint(hm.get(-0.0) ?? 0)\n");
+    assert!(
+        cpp.contains("operator()(double x) const { return (*this)((ll)std::hash<double>()(x)); }"),
+        "{cpp}"
+    );
+}
+
+#[test]
 fn generics_and_lends_emit_compact_readable_cpp() {
     let source = "\
 struct Box<T>:

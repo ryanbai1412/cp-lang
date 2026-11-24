@@ -71,6 +71,7 @@ struct CpHash {
     size_t operator()(int x) const { return (*this)((ll)x); }
     size_t operator()(u8 x) const { return (*this)((ll)x); }
     size_t operator()(bool x) const { return (*this)((ll)x); }
+    size_t operator()(double x) const { return (*this)((ll)std::hash<double>()(x)); }
     size_t operator()(const std::string& s) const {
         uint64_t h = salt();
         for (unsigned char c : s) h = splitmix64(h ^ c);
