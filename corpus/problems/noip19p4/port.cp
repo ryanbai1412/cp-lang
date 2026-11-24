@@ -9,26 +9,21 @@
 // original: corpus/submissions/5147491.cpp
 type Z = Mod<998244353>
 
-let (n, m): (Int, Int) = read()
-domain Method = 0..n
-domain Food = 0..m
-let a: [Method, Food]Int = read()
-let total = [Method] i => sum(a[i, j] for j in Food) % 998244353
+let (n, m) = read<(1..=100, 1..=2000)>()
+domain Method = 1..=n
+domain Food = 1..=m
+let a = read<[Method, Food]Z>()
+let row = [Method] i => sum(a[i, j] for j in Food)
 
-domain Lead = -n..=n
-var bad: Z = 0
+domain Lead = -n..=n  // dishes using the fixed ingredient minus the other dishes
+var bad = Z(0)
 for j in Food:
-    var ways: [Lead]Z = [Lead] d => Z.zero
-    ways[Lead(0)] = 1
+    var ways = [Lead] d => Z(if d.label == 0: 1 else: 0)
     for i in Method:
-        var next = [Lead] d => ways[d]
+        var next = ways.clone()
         for d in Lead:
-            if let up = d.next: next[up] += ways[d] * Z(a[i, j])
-            if let down = d.prev: next[down] += ways[d] * Z(total[i] - a[i, j])
+            if let up = d.next: next[up] += ways[d] * a[i, j]
+            if let down = d.prev: next[down] += ways[d] * (row[i] - a[i, j])
         ways = next
-    for d in Lead:
-        if d.label > 0: bad += ways[d]
-
-var all: Z = 1
-for i in Method: all *= Z(total[i] + 1)
-print(all - Z.one - bad)
+    bad += sum(ways[d] for d in Lead if d.label > 0)
+print(([Method] i => row[i] + 1).prod() - 1 - bad)

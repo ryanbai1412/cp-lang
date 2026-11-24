@@ -9,31 +9,30 @@
 // original: corpus/submissions/5445673.cpp
 
 domain Letter = 'a'..='z'
+domain Odd = 0..=Letter.len
+
+/// F of every prefix of `xs`: element c counts the letters odd in xs[..c].
+fn odd_prefixes(xs: List<Letter>) -> List<Odd>:
+    var odd = Bitset<Letter>.new()
+    var f = [Odd(0)]
+    for c in xs:
+        odd.toggle(c)
+        f.push(Odd(odd.len))
+    f
 
 @multitest
-let s: Str = read()
+let s = read<Str>()
 let n = s.len
+let letters = [Letter(c) for c in s]
+let before = odd_prefixes(letters)          // before[c] = F(s[..c])
+let after = List(odd_prefixes(letters.rev).rev)  // after[c] = F(s[c..])
 let z = z_function(s)
 
-var odd_from: [0..=n]Int = 0
-var odd_to: [0..=n]Int = 0
-var odd = Marks<Letter>()
-for i in (0..n).rev:
-    let c = Letter(s[i])
-    if c in odd: odd.remove(c) else: odd.add(c)
-    odd_from[i] = odd.len
-odd.clear()
-for i in 0..n:
-    let c = Letter(s[i])
-    if c in odd: odd.remove(c) else: odd.add(c)
-    odd_to[i + 1] = odd.len
-
-var at_most: [0..=26]Int = 0
+var at_most: [Odd]Int = 0  // prefixes A shorter than w with F(A) <= d
 var ways = 0
 for w in 2..n:
-    for d in odd_to[w - 1]..=26: at_most[d] += 1
+    for d in before[w - 1]..=Odd.last!: at_most[d] += 1
     let copies = min(1 + z[w] / w, (n - 1) / w)
-    let (odd_k, even_k) = ((copies + 1) / 2, copies / 2)
-    ways += odd_k * at_most[odd_from[w]]
-    if even_k > 0: ways += even_k * at_most[odd_from[2 * w]]
+    ways += (copies + 1) / 2 * at_most[after[w]]
+    if copies >= 2: ways += copies / 2 * at_most[after[2 * w]]
 print(ways)
