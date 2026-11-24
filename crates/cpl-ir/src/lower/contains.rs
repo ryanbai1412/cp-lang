@@ -41,16 +41,14 @@ impl Lowerer<'_> {
             }
             ast::ExprKind::Name(name)
                 if self.lookup(name).is_none()
-                    && (matches!(self.gen_env.get(name), Some(GenArg::Domain(_)))
-                        || matches!(self.get_sym(name), Some(Sym::Domain(_)))) =>
+                    && let Some(id) = match self.gen_env.get(name) {
+                        Some(GenArg::Domain(id)) => Some(*id),
+                        _ => match self.get_sym(name) {
+                            Some(Sym::Domain(id)) => Some(id),
+                            _ => None,
+                        },
+                    } =>
             {
-                let id = match self.gen_env.get(name) {
-                    Some(GenArg::Domain(id)) => *id,
-                    _ => match self.get_sym(name) {
-                        Some(Sym::Domain(id)) => id,
-                        _ => unreachable!(),
-                    },
-                };
                 let value = self.expr_as(item, &Ty::Int);
                 let lo = self.mk(ExprKind::DomainLo(id), Ty::Int, span);
                 let len = self.mk(ExprKind::DomainLen(id), Ty::Int, span);
