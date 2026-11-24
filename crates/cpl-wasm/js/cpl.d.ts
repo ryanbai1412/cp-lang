@@ -79,6 +79,8 @@ export interface SampleOptions extends Options {
   seed?: number;
   /** Maximum size (`n`, `q`, ...) generated. Default 8. */
   size?: number;
+  /** Milliseconds each run may take, as `cpl stress --time-limit`. Default 5000. */
+  timeLimit?: number;
 }
 
 export interface StressOptions extends Options {
@@ -88,6 +90,8 @@ export interface StressOptions extends Options {
   seed?: number;
   /** Maximum size (`n`, `q`, ...) generated. Default 8. */
   size?: number;
+  /** Milliseconds each run may take, as `cpl stress --time-limit`. Default 5000. */
+  timeLimit?: number;
 }
 
 export interface StressStage {

@@ -156,7 +156,7 @@ export class Cpl {
    * `@check` in-process, and shrinks the first failing case.
    */
   stress(source, options = {}) {
-    const { cases = 200, seed = 1, size = 8 } = options;
+    const { cases = 200, seed = 1, size = 8, timeLimit = 0 } = options;
     const seedLo = seed >>> 0;
     const seedHi = Math.floor(seed / 0x100000000) >>> 0;
     for (let maxStack = this.#maxStack; ; maxStack >>= 1) {
@@ -169,6 +169,7 @@ export class Cpl {
           seedHi,
           size,
           maxStack,
+          timeLimit,
         );
       } catch (error) {
         if (error.kind !== "stack" || maxStack < MIN_STACK) throw error;

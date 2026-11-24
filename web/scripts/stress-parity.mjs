@@ -20,7 +20,7 @@ if (!wasmDir) {
   process.exit(process.env.CI ? 1 : 0);
 }
 
-const opts = { cases: 30, seed: 1, size: 8 };
+const opts = { cases: 30, seed: 1, size: 8, timeLimit: 1000 };
 // A browser run longer than this is a Stress tab a contestant gives up on.
 const BROWSER_LIMIT_MS = 20000;
 const files = execFileSync('git', ['grep', '-l', '@alt(program)', '--', '*.cp', ':!spec/conformance'], { cwd: repo, encoding: 'utf8' })
@@ -39,7 +39,7 @@ for (const [i, f] of files.entries()) {
   const t0 = Date.now();
   let cliOut;
   try {
-    cliOut = execFileSync(cli, ['stress', copy, '--format', 'json', '--explain', '--cases', `${opts.cases}`, '--seed', `${opts.seed}`, '--size', `${opts.size}`, '--time-limit', '1000', '--jobs', '1'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 120000 });
+    cliOut = execFileSync(cli, ['stress', copy, '--format', 'json', '--explain', '--cases', `${opts.cases}`, '--seed', `${opts.seed}`, '--size', `${opts.size}`, '--time-limit', `${opts.timeLimit}`, '--jobs', '1'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 120000 });
   } catch (e) {
     cliOut = e.stdout;
   }

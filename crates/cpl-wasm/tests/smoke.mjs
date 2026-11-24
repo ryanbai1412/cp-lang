@@ -100,9 +100,16 @@ test("a run that never ends stops as out of time, and the module goes on", () =>
   assert.match(cpl.run(forever).diagnostics[0].message, late);
   assert.match(cpl.trace(forever).diagnostics[0].message, late);
   const stress = `let n: 1..=5 = read()\n${forever.replace("print(i)", "print(n)")}\n@alt(program)\nfn brute():\n    let n: 1..=5 = read()\n    print(n)\n`;
+  let at = performance.now();
   const stressed = cpl.stress(stress, { cases: 3 });
+  const full = performance.now() - at;
   assert.equal(stressed.status, "fail");
   assert.equal(stressed.counterexample.verdict, "TLE");
+  // `timeLimit` is `cpl stress --time-limit`: a 50 ms budget is a hundredth of the default.
+  at = performance.now();
+  const quick = cpl.stress(stress, { cases: 3, timeLimit: 50 });
+  assert.equal(quick.counterexample.verdict, "TLE");
+  assert.ok(performance.now() - at < full / 4, `${performance.now() - at} ms against ${full} ms`);
   const source = "var total = 0\nfn add(i: Int) -> Int:\n    total += i\n    return total\nfor i in 1..=3:\n    print(add(i))\n";
   const entry = cpl.trace(source, "").trace.runs.fast.steps.findIndex((step) => step.frames?.[0]?.fn === "add");
   const edited = source.replace("return total", "while total >= 0:\n        total = (total + 1) % 2\n    return total");
