@@ -1,4 +1,12 @@
 import sys, random
+
+if sys.argv[1] == "--max":
+    # n = 4e5, x = 1, y = 0 (the two-lightest branch), all n brackets side by side at depth 1, so
+    # every level below keeps all but one of them: n levels of shrinking bags
+    rng = random.Random(1)
+    n = 400_000
+    print(n, 1, 0); print("()" * n); print(*[rng.randint(1, 10**7) for _ in range(n)])
+    sys.exit()
 # usage: gen.py seed size; prints "n x y", the 2n brackets, then the n weights
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 n = 400000 if S >= 400000 else r.randint(2, max(2, S))

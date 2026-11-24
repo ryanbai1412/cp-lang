@@ -11,6 +11,9 @@
  ],
  "cpp_ac": 2,
  "artifacts": {
+  "original": [
+   "corpus/problems/noimps22p5/orig.cpp"
+  ],
   "port": [
    "corpus/problems/noimps22p5/port.cp"
   ]

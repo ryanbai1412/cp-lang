@@ -1,16 +1,16 @@
 // Source: NOI 2022 Multi-Provincial Team Selection P5 (Bracket),
 //   https://dmoj.ca/problem/noimps22p5
+// limits: 1000 ms, 512 MB
 // Problem: a balanced bracket string of length 2n (2 <= n <= 4e5), weights 1 <= w_i <= 1e7 on the opening
 //   brackets, and x, y in {0, 1}. Turning p(A)(B)q into p(A()B)q costs x w_A + y w_B; pABq -> pBAq
 //   is free (weights move along). Print the least cost to leave no substring (A)(B).
 // Solution: the end is a chain, one bracket per depth, and free swaps let any bracket of a level
-//   host another. Sweep depths down with a bag (Set of (weight, serial)) of the level's brackets:
+//   host another. Sweep depths down with a heap of the level's brackets:
 //   one stays, the rest sink one level at x * host + y * itself. (0, 1): the heaviest stays, pay
 //   the rest; (1, 1): the lightest hosts all, the heaviest stays; (1, 0): the lightest hosts all
 //   but the second lightest, which stays and hosts it, and at size 2 one sweep keeps the heavier,
 //   one the lighter, the cheaper wins; (0, 0): every move is free, 0. O(n log n).
 // original: corpus/submissions/5448138.cpp
-// The sorted bag is a Set of (value, serial) pairs: the prototype has no SortedBag.
 let n: 2..=4e5 = read()
 let x: 0..=1 = read()
 let y: 0..=1 = read()
@@ -29,48 +29,41 @@ for i in S:
     else:
         depth -= 1
 
-// One sweep down the levels: each level's weights join the bag, then one
-// leaves. Which one, and what the level costs, depends on the cost mode.
-fn sweep(mode: Int, prefer_min: Bool) -> Int:
-    var bag = Set<(Int, Int)>()
-    var serial = 0
+// One sweep down the levels: each level's weights join the bag, then one leaves.
+// x = 0, y = 1 pays for everything that stays; x = 1, y = 1 also pays the lightest once per
+// sunk bracket. Only the heaviest ever leaves and the bag never empties before the last level,
+// so the lightest in the bag is the lightest seen.
+fn sweep_heavy(escort: Bool) -> Int:
+    var bag = MaxHeap<Int>()
+    var least = w.max()!
     var sum = 0
     var cost = 0
     for d in 0..n:
         for v in level[d]:
-            bag.insert((v, serial))
-            serial += 1
+            bag.push(v)
+            least min= v
             sum += v
-        let size = bag.len
-        let least = bag.min()!
-        let most = bag.max()!
-        if mode == 1:
-            // x = 0, y = 1: pay everything that stays
-            bag.remove(most)
-            sum -= most.0
-            cost += sum
-        elif mode == 3:
-            // x = 1, y = 1: the smallest escorts every swap
-            cost += sum + (size - 2) * least.0
-            bag.remove(most)
-            sum -= most.0
-        else:
-            // x = 1, y = 0
-            if size == 1:
-                bag.remove(least)
-            elif size == 2:
-                let gone = if prefer_min or d == n - 2: least else: most
-                cost += gone.0
-                bag.remove(gone)
-            else:
-                bag.remove(least)
-                let second = bag.min()!
-                bag.remove(second)
-                bag.insert(least)
-                cost += (size - 2) * least.0 + second.0
+        if escort: cost += sum + (bag.len - 2) * least
+        sum -= bag.pop()!
+        if not escort: cost += sum
     cost
 
-if x == 0 and y == 1: print(sweep(1, false))
-elif x == 1 and y == 1: print(sweep(3, false))
-elif x == 1 and y == 0: print(min(sweep(2, false), sweep(2, true)))
+// x = 1, y = 0: the lightest hosts all but the second lightest, which stays and hosts it; at
+// size 2 the sweep keeps the heavier (prefer_min) or the lighter one.
+fn sweep_light(prefer_min: Bool) -> Int:
+    var bag = MinHeap<Int>()
+    var cost = 0
+    for d in 0..n:
+        for v in level[d]: bag.push(v)
+        let least = bag.pop()!
+        if bag.len == 1 and (prefer_min or d == n - 2):
+            cost += least
+        elif not bag.is_empty:
+            cost += (bag.len - 1) * least + bag.pop()!
+            bag.push(least)
+    cost
+
+if x == 0 and y == 1: print(sweep_heavy(false))
+elif x == 1 and y == 1: print(sweep_heavy(true))
+elif x == 1 and y == 0: print(min(sweep_light(false), sweep_light(true)))
 else: print(0)
