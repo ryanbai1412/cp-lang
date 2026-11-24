@@ -139,7 +139,7 @@
   "codegen_effect_guesses": 0,
   "opt_without_uses": 16,
   "near_dup_fns": 0,
-  "consumer_rederived": 16,
+  "consumer_rederived": 14,
   "rs_near_cap": [],
   "skip_lists": 33,
   "dead_code_allows": 0,
@@ -164,7 +164,7 @@
     "tools": 10
   },
   "written_twice": 0,
-  "lint_type_syntax": 16,
+  "lint_type_syntax": 9,
   "idioms_evidenced_unlinted": 0,
   "bench_lists": 0,
   "unwrap_input": 692,

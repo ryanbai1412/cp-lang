@@ -7,6 +7,7 @@
 
 use crate::std_fn;
 use crate::File;
+use cpl_check::Ty;
 use cpl_syntax::ast::{BinOp, Expr, ExprKind, PatternKind, StmtKind, Type, TypeKind, UnOp};
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
@@ -41,7 +42,6 @@ impl Interval {
 struct FileFacts {
     /// The number of values of each domain, at most.
     domains: HashMap<String, u128>,
-    aliases: HashMap<String, Type>,
     /// How many places in the file bind each value name.
     bindings: HashMap<String, u32>,
     /// Names a fn or lambda body assigns, which a call anywhere can change.
@@ -212,13 +212,6 @@ impl<'f> Bounds<'f> {
                         bounds.declare_fn(&name.text);
                     }
                 }
-                StmtKind::TypeAlias {
-                    name, generics, ty, ..
-                } if generics.is_empty() => {
-                    Rc::make_mut(&mut bounds.file)
-                        .aliases
-                        .insert(name.text.clone(), ty.clone());
-                }
                 _ => {}
             }
         }
@@ -229,10 +222,11 @@ impl<'f> Bounds<'f> {
     fn declare(&mut self, base: u32, pat: &cpl_syntax::ast::Pattern, ty: &Type) {
         match (&pat.kind, &ty.kind) {
             (PatternKind::Name(name), _) => {
-                if let Some(range) = self.range(ty) {
+                let declared = self.declared(base, pat.span);
+                if let Some(range) = declared.and_then(|t| self.range(t)) {
                     super::proven::hazards::declared(name, range, ty, self);
                 }
-                if let Some(size) = super::proven::array_size(base, ty, self) {
+                if let Some(size) = super::proven::array_size(base, ty, declared, self) {
                     self.set_size(name, size);
                 }
             }
@@ -898,13 +892,18 @@ impl<'f> Bounds<'f> {
         })
     }
 
-    pub(crate) fn range(&self, ty: &Type) -> Option<Interval> {
-        match &ty.kind {
-            TypeKind::Range {
+    /// The type the checker gave the name bound at `at`, a span of the item at `base`.
+    pub(crate) fn declared(&self, base: u32, at: cpl_diag::Span) -> Option<&'f Ty> {
+        self.facts?.place_type(at.shift(base))
+    }
+
+    pub(crate) fn range(&self, ty: &Ty) -> Option<Interval> {
+        match *ty {
+            Ty::Range {
                 lo: Some(lo),
                 hi: Some(hi),
-                inclusive,
-            } => self.span(lo, hi, *inclusive),
+                ..
+            } => Some(Interval { lo, hi }),
             _ => None,
         }
     }
@@ -1070,24 +1069,17 @@ impl<'f> Bounds<'f> {
     }
 
     /// How many values a type has, at most.
-    pub(crate) fn type_size(&self, ty: &Type) -> Option<u128> {
-        match &ty.kind {
-            TypeKind::Range { .. } => self.range(ty).map(Interval::count),
-            TypeKind::Named { name, args } if args.is_empty() => match name.text.as_str() {
-                "Bool" => Some(2),
-                "Char" | "U8" => Some(256),
-                other => self
-                    .file
-                    .domains
-                    .get(other)
-                    .copied()
-                    .or_else(|| self.type_size(self.file.aliases.get(other)?)),
-            },
-            TypeKind::Optional(inner) => self.type_size(inner)?.checked_add(1),
-            TypeKind::Tuple(parts) => parts.iter().try_fold(1u128, |total, part| {
+    pub(crate) fn type_size(&self, ty: &Ty) -> Option<u128> {
+        match ty {
+            Ty::Range { .. } => self.range(ty).map(Interval::count),
+            Ty::Bool => Some(2),
+            Ty::Char => Some(256),
+            Ty::Pos(domain) => self.domain_size(domain),
+            Ty::Optional(inner) => self.type_size(inner)?.checked_add(1),
+            Ty::Tuple(parts) => parts.iter().try_fold(1u128, |total, part| {
                 total.checked_mul(self.type_size(part)?)
             }),
-            TypeKind::Record(fields) => fields.iter().try_fold(1u128, |total, (_, ty)| {
+            Ty::Record(fields) => fields.iter().try_fold(1u128, |total, (_, ty)| {
                 total.checked_mul(self.type_size(ty)?)
             }),
             _ => None,

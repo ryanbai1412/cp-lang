@@ -705,8 +705,10 @@ fn parsed_entry_points_match_source_entry_points_and_isolate_local_fn_shadowing(
     assert!(parsed.diagnostics.is_empty());
     let items: Vec<(u32, &cpl_syntax::ParsedItem)> =
         parsed.items.iter().map(|(o, p)| (*o, p)).collect();
+    let analysis = crate::analyze_alone(src).expect("the source analyzes");
+    let facts = analysis.facts();
     assert_eq!(
-        crate::lint_parsed(src, &items, None, &crate::Config::default()),
+        crate::lint_parsed(src, &items, facts, &crate::Config::default()),
         crate::lint(src, &crate::Config::default()),
     );
     assert_eq!(

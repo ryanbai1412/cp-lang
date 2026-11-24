@@ -612,14 +612,14 @@ pub(crate) fn drop_repeats(diags: &mut Vec<Diagnostic>, errors: &[Diagnostic]) {
 pub fn lint_parsed(
     src: &str,
     items: &[(u32, &ParsedItem)],
-    facts: Option<&Facts>,
+    facts: &Facts,
     config: &Config,
 ) -> Vec<Diagnostic> {
     lint_file(
         &File {
             src,
             items,
-            facts,
+            facts: Some(facts),
             proven: &Default::default(),
         },
         config,

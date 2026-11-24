@@ -56,7 +56,11 @@ impl Visitor for Memo<'_> {
         // One parameter of unknown size and nothing can be said.
         let sizes: Option<Vec<u128>> = params
             .iter()
-            .map(|p| self.bounds.type_size(p.ty.as_ref()?))
+            .map(|p| {
+                p.ty.as_ref()?;
+                self.bounds
+                    .type_size(self.bounds.declared(self.base, p.name.span)?)
+            })
             .collect();
         let Some(sizes) = sizes.filter(|sizes| !sizes.is_empty()) else {
             return;

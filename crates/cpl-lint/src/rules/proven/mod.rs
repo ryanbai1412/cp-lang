@@ -108,28 +108,35 @@ pub(crate) fn proven_sizes(file: &File) -> Vec<crate::ProvenSize> {
 pub(super) fn array_size(
     base: u32,
     ty: &cpl_syntax::ast::Type,
+    declared: Option<&cpl_check::Ty>,
     bounds: &bounds::Bounds,
 ) -> Option<(u128, Vec<Factor>)> {
+    use cpl_check::Ty;
     use cpl_syntax::ast::TypeKind;
-    let TypeKind::Array { index, .. } = &ty.kind else {
+    let (TypeKind::Array { index, .. }, Some(Ty::Array { index: sets, .. })) = (&ty.kind, declared)
+    else {
         return None;
     };
+    if index.len() != sets.len() {
+        return None;
+    }
     let mut total = 1u128;
     let mut factors = Vec::new();
-    for t in index {
-        let size = bounds.type_size(t)?;
+    for (t, set) in index.iter().zip(sets) {
+        let size = bounds.type_size(set)?;
         total = total.checked_mul(size)?;
-        factors.push(match &t.kind {
-            TypeKind::Named { name, args }
-                if args.is_empty() && bounds.domain_size(&name.text).is_some() =>
-            {
-                Factor::Domain(name.text.clone(), size)
+        factors.push(match (&t.kind, set) {
+            (_, Ty::Pos(domain)) if bounds.domain_size(domain).is_some() => {
+                Factor::Domain(domain.clone(), size)
             }
-            TypeKind::Range {
-                lo: Some(lo),
-                hi: Some(hi),
-                inclusive,
-            } if counts_from_start(lo, *inclusive) => {
+            (
+                TypeKind::Range {
+                    lo: Some(lo),
+                    hi: Some(hi),
+                    inclusive,
+                },
+                _,
+            ) if counts_from_start(lo, *inclusive) => {
                 Factor::Text(base + hi.span.start, base + hi.span.end)
             }
             _ => Factor::Number(size),
@@ -562,9 +569,10 @@ fn ranges_in(
             pat, ty: Some(ty), ..
         } = &stmt.kind
         {
-            if let (cpl_syntax::ast::PatternKind::Name(name), Some(size)) =
-                (&pat.kind, array_size(base, ty, bounds))
-            {
+            if let (cpl_syntax::ast::PatternKind::Name(name), Some(size)) = (
+                &pat.kind,
+                array_size(base, ty, bounds.declared(base, pat.span), bounds),
+            ) {
                 bounds.set_size(name, size);
             }
         }
@@ -800,7 +808,9 @@ fn ranges_of_stmt(
                     .collect();
                 for (pat, init, ty) in parts {
                     let value = match (&pat.kind, ty) {
-                        (PatternKind::Name(_), Some(ty)) => bounds.range(ty),
+                        (PatternKind::Name(_), Some(_)) => bounds
+                            .declared(base, pat.span)
+                            .and_then(|t| bounds.range(t)),
                         (PatternKind::Name(_), None) if !mutable => {
                             init.and_then(|e| bounds.expr(e))
                         }
@@ -1064,11 +1074,15 @@ fn ranges_of_stmt(
                 bounds.declare_fn(&decl.name.text);
                 let mut inner = bounds.clone();
                 for param in &decl.params {
-                    match param.ty.as_ref().and_then(|t| inner.range(t)) {
+                    let declared = param.ty.as_ref().and(inner.declared(base, param.name.span));
+                    match declared.and_then(|t| inner.range(t)) {
                         Some(range) => inner.input(&param.name.text, range),
                         None => inner.bind(&param.name.text, None),
                     }
-                    if let Some(size) = param.ty.as_ref().and_then(|t| array_size(base, t, &inner))
+                    if let Some(size) = param
+                        .ty
+                        .as_ref()
+                        .and_then(|t| array_size(base, t, declared, &inner))
                     {
                         inner.set_size(&param.name.text, size);
                     }
