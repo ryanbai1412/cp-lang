@@ -644,7 +644,7 @@ impl<'p> Emitter<'p> {
             .filter(|(_, p)| p.contains("const ") && p.contains("& "))
             .map(|(slot, _)| slot)
             .collect();
-        if self.lends_its_result(f, &by_ref) {
+        if self.lends_its_result(id, f, &by_ref) {
             ret = format!("const {ret}&");
         }
         format!("{prefix}{ret} {}({})", fn_name(&f.name), params.join(", "))
@@ -653,9 +653,8 @@ impl<'p> Emitter<'p> {
     /// A fn that gives a field of a parameter it takes by `const&` (or an element of one) as
     /// is, like a `@get` of a stored list, lends it: the caller reads it in place and copies
     /// it only where it keeps it.
-    fn lends_its_result(&self, f: &Function, by_ref: &[usize]) -> bool {
+    fn lends_its_result(&self, id: cpl_ir::FnId, f: &Function, by_ref: &[usize]) -> bool {
         use cpl_ir::{ElemLoc, ExprKind, NarrowLayout};
-        let id = self.fn_id.expect("a fn");
         let [Stmt::Return(Some(e))] = f.body.stmts.as_slice() else {
             return false;
         };
