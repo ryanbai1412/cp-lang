@@ -336,10 +336,12 @@ class DebtRatchetTest(unittest.TestCase):
         leaves_block = ("for x in a:\n    h.push(-x)\nprint(-h.pop())\n", "for x in a:\n    h.push(x)\nprint(h.pop())\n")
         shared_binding = ("let a: Int = 1\nprint(1)\nlet b: Int = 2\n",
                           "type Z = Mod\nlet a: Z = 1\nprint(1)\nlet b: Z = 2\n")
+        shared_const = ("print(1)\nprint(x % 7_000)\n", "const P = 7_000\nprint(1)\nprint(x % P)\n")
         self.assertTrue(dr.idiom_edit_stateable(*one_span))
         self.assertTrue(dr.idiom_edit_stateable(*two_findings))
         self.assertFalse(dr.idiom_edit_stateable(*leaves_block))
         self.assertFalse(dr.idiom_edit_stateable(*shared_binding))
+        self.assertFalse(dr.idiom_edit_stateable(*shared_const))
         self.assertTrue(dr.idiom_edit_stateable(*two_places))
         self.assertFalse(dr.idiom_edit_stateable("x\n", "x\n"))
         with tempfile.TemporaryDirectory() as d:

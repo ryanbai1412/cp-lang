@@ -2764,7 +2764,7 @@ def unregistered_lists(root: Path) -> list[str]:
 # Counters that are paid off: any instance fails, and no baseline, `--update` or
 # main's own measurement can raise them above 0. Every gated counter whose
 # committed baseline is 0 is listed here (scripts/test_debt_ratchet.py checks).
-CP_BINDING = re.compile(r"\b(?:let|var|fn|type|struct|enum|for)\s+(?:mut\s+)?\(?([A-Za-z_]\w*)")
+CP_BINDING = re.compile(r"\b(?:let|var|const|fn|type|struct|enum|for)\s+(?:mut\s+)?\(?([A-Za-z_]\w*)")
 
 
 def idiom_edit_stateable(before: str, after: str) -> bool:
