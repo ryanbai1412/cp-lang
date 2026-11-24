@@ -145,6 +145,17 @@ fn shadowing_a_top_level_let_is_reported_once_per_binding() {
 }
 
 #[test]
+fn domain_keyed_map_reads_the_key_type_from_the_checker() {
+    let head = "let n: 1..=9 = read()\ndomain V = 1..=n\ntype Key = V\n";
+    let aliased = format!(
+        "{head}var seen: Set<Key> = Set<Key>()\nseen.insert(V.first)\nprint(V.first in seen)\n"
+    );
+    assert_eq!(codes(&aliased), ["L0412"]);
+    let held = format!("{head}var adj: [V]Set<Key> = Set<Key>()\nadj[V.first].insert(V.last)\nprint(adj[V.first].len)\n");
+    assert_eq!(codes(&held), Vec::<&str>::new());
+}
+
+#[test]
 fn domain_keyed_set_is_left_alone_when_sparse_or_ordered() {
     let head = "let n: 1..=9 = read()\ndomain V = 1..=n\n";
     // Plain membership: the array of `Bool` is the better shape.

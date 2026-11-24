@@ -7,9 +7,10 @@ use crate::{
     File, Finding, DOMAIN_KEYED_MAP, IS_IN_COND_HEADER, POSITION_ARITHMETIC, REDUNDANT_ARG_NAME,
     TURBOFISH_TYPE_ARGS,
 };
+use cpl_check::Ty;
 use cpl_diag::msgs::lint_rules;
 use cpl_diag::Span;
-use cpl_syntax::ast::{BinOp, Cond, Expr, ExprKind, PatternKind, Stmt, StmtKind, Type, TypeKind};
+use cpl_syntax::ast::{BinOp, Cond, Expr, ExprKind, PatternKind, Stmt, StmtKind, Type};
 use std::collections::{HashMap, HashSet};
 
 /// The names of the domains declared outside every fn: a domain a fn
@@ -61,6 +62,10 @@ fn first_labels(file: &File) -> HashMap<String, i128> {
 
 struct Types<'a> {
     src: &'a str,
+    facts: Option<&'a crate::Facts>,
+    /// Written types that hold others, by file span: `[V]Set<V>` holds few
+    /// of each `V`, and `[V][V]Bool` would hold all.
+    containers: Vec<Span>,
     base: u32,
     domains: HashSet<String>,
     /// For each fn being walked, innermost last: its type params, which hide
@@ -99,36 +104,41 @@ impl Types<'_> {
     }
 
     /// Reports `Map<K, V>` or `Set<K>` when `K` is a domain.
-    fn keyed(&mut self, name: &str, args: &[Type], span: Span) {
-        let texts: Vec<&str> = args
-            .iter()
-            .map(|arg| arg.span.shift(self.base).text(self.src))
-            .collect();
-        let key = match args.first().map(|arg| &arg.kind) {
-            Some(TypeKind::Named { name, args }) if args.is_empty() => name.text.as_str(),
+    /// `span` is the written type's file span.
+    fn keyed(&mut self, ty: Option<&Ty>, span: Span) {
+        let Some(ty @ Ty::Named { name, args }) = ty else {
+            return;
+        };
+        let (key, value) = match &args[..] {
+            [Ty::Pos(key)] => (key, None),
+            [Ty::Pos(key), value] => (key, Some(value)),
             _ => return,
         };
-        if !self.is_domain(key) {
+        if !ty.is_one_of(&["Map", "Set"]) {
             return;
         }
-        let start = span.shift(self.base).start;
-        if self.walked.contains(&start) || name == "Set" && self.inner.contains(&start) {
+        let held = self
+            .containers
+            .iter()
+            .any(|c| c.contains(span) && *c != span);
+        let start = span.start;
+        if self.walked.contains(&start) || value.is_none() && (held || self.inner.contains(&start))
+        {
             // The `Set<V>()` such a declaration starts from goes with it.
-            self.last_keyed_line = Some(self.lines.line_of(span.shift(self.base).start));
+            self.last_keyed_line = Some(self.lines.line_of(span.start));
             return;
         }
-        let (written, instead) = match (name, texts.as_slice()) {
-            ("Map", [k, v]) => (format!("Map<{k}, {v}>"), format!("[{k}]?{v}")),
-            ("Set", [k]) => (format!("Set<{k}>"), format!("[{k}]Bool")),
-            _ => return,
+        let (written, instead) = match value {
+            Some(v) => (format!("{name}<{key}, {v}>"), format!("[{key}]?{v}")),
+            None => (format!("{name}<{key}>"), format!("[{key}]Bool")),
         };
         // `var m: Map<V, Int> = Map<V, Int>()` is one finding, not two.
-        let line = self.lines.line_of(span.shift(self.base).start);
+        let line = self.lines.line_of(span.start);
         if self.last_keyed_line.replace(line) == Some(line) {
             return;
         }
         let diag = lint_rules::DOMAIN_KEYED_MAP
-            .warning(span.shift(self.base), &[&written, &key])
+            .warning(span, &[&written, &key])
             .with_help(format!(
                 "`{instead}` uses one slot per `{key}` and has no lookup cost"
             ));
@@ -375,17 +385,17 @@ impl Visitor for Types<'_> {
     }
 
     fn ty(&mut self, ty: &Type) {
-        let held: Vec<&Type> = match &ty.kind {
-            TypeKind::Named { args, .. } => args.iter().collect(),
-            TypeKind::Array { elem, .. } | TypeKind::OwnDomain { elem, .. } => vec![&**elem],
-            _ => Vec::new(),
+        let span = ty.span.shift(self.base);
+        let written = self.facts.and_then(|f| f.written_type(span));
+        let holds = match written {
+            Some(Ty::Array { .. }) => true,
+            Some(Ty::Named { args, .. }) => !args.is_empty(),
+            _ => false,
         };
-        for held in held {
-            self.inner.insert(held.span.shift(self.base).start);
+        if holds {
+            self.containers.push(span);
         }
-        if let TypeKind::Named { name, args } = &ty.kind {
-            self.keyed(&name.text, args, ty.span);
-        }
+        self.keyed(written, span);
     }
 
     fn expr(&mut self, expr: &Expr) {
@@ -405,11 +415,18 @@ impl Visitor for Types<'_> {
             }
             // `Map<V, Int>()` in an expression, and `f::<T>(...)` turbofish.
             ExprKind::Generic { base, args } => {
-                if let ExprKind::Name(name) = &base.kind {
-                    self.keyed(name, args, expr.span);
+                if let ExprKind::Name(_) = &base.kind {
+                    let at = expr.span.shift(self.base);
+                    self.keyed(self.facts.and_then(|f| f.type_of(at)), at);
                     // Const-integer type arguments on lowercase calls (`f::<998244353>(x)`)
                     // still need `::` so `<` is not parsed as less-than.
-                    let has_const_arg = args.iter().any(|t| matches!(t.kind, TypeKind::Value(_)));
+                    let has_const_arg = args.iter().any(|t| {
+                        let at = t.span.shift(self.base);
+                        matches!(
+                            self.facts.and_then(|f| f.written_type(at)),
+                            Some(Ty::Const(_))
+                        )
+                    });
                     let start = (self.base + base.span.end) as usize;
                     let end = (self.base + expr.span.end) as usize;
                     if !has_const_arg {
@@ -507,6 +524,8 @@ impl Visitor for Types<'_> {
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut types = Types {
         src: file.src,
+        facts: file.facts,
+        containers: Vec::new(),
         base: 0,
         domains: domains(file),
         fns: Vec::new(),

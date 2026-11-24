@@ -65,6 +65,8 @@ pub struct ExprFacts {
     /// Each member access the checker could not resolve, with its path as
     /// written: `t.postorder` on an unknown `t`, `V.sorted` on a domain.
     pub unresolved: Vec<(Span, Vec<String>)>,
+    /// The type each written type resolved to: `Map<V, Int>` in `m: Map<V, Int>`.
+    pub written: Vec<(Span, Ty)>,
 }
 
 impl ExprFacts {
@@ -110,6 +112,8 @@ pub struct Facts {
     instantiations: BySpan<Vec<(String, Ty)>>,
     /// The written path of each member access the checker could not resolve.
     unresolved: BySpan<Vec<String>>,
+    /// The type each written type resolved to, by file span.
+    written: BySpan<Ty>,
 }
 
 impl Facts {
@@ -127,6 +131,7 @@ impl Facts {
             ..Facts::default()
         };
         let (mut exprs, mut owners, mut unresolved) = (Vec::new(), Vec::new(), Vec::new());
+        let mut written = Vec::new();
         for &(offset, check) in items {
             let shift = |s: Span| s.shift(offset);
             for (span, path) in &check.exprs.unresolved {
@@ -134,6 +139,9 @@ impl Facts {
             }
             for (span, ty) in &check.exprs.types {
                 exprs.push((shift(*span), ty.clone()));
+            }
+            for (span, ty) in &check.exprs.written {
+                written.push((shift(*span), ty.clone()));
             }
             for entry in &check.hovers {
                 facts.types.push((shift(entry.span), entry.ty.clone()));
@@ -176,6 +184,7 @@ impl Facts {
         });
         facts.owners = BySpan::new(owners);
         facts.unresolved = BySpan::new(unresolved);
+        facts.written = BySpan::new(written);
         facts.callees = BySpan::new(callees);
         facts.instantiations = BySpan::new(instantiations);
         facts
@@ -201,6 +210,11 @@ impl Facts {
     /// The type the checker gave the expression at exactly `expr`.
     pub fn type_of(&self, expr: Span) -> Option<&Ty> {
         self.exprs.get(expr)
+    }
+
+    /// The type the type written at exactly `ty` resolved to.
+    pub fn written_type(&self, ty: Span) -> Option<&Ty> {
+        self.written.get(ty)
     }
 
     /// Every typed expression inside `span`, in source order: by start, then end.
@@ -305,6 +319,29 @@ mod tests {
             analysis.facts().place_type(Span::new(x, x + 1)),
             Some(&Ty::Int)
         );
+    }
+
+    #[test]
+    fn a_written_type_keeps_the_type_it_resolved_to() {
+        let src = "domain V = 1..=5\nfn f<K>(m: Map<V, Int>, k: Set<K>) -> Int = m.len\n";
+        let mut db = Database::new();
+        db.set_file("a.cp", src);
+        let analysis = db.analyze("a.cp").unwrap();
+        let at = |text: &str| {
+            let start = src.find(text).unwrap() as u32;
+            Span::new(start, start + text.len() as u32)
+        };
+        let facts = analysis.facts();
+        let map = Ty::Named {
+            name: "Map".into(),
+            args: vec![Ty::Pos("V".into()), Ty::Int],
+        };
+        assert_eq!(facts.written_type(at("Map<V, Int>")), Some(&map));
+        assert_eq!(facts.written_type(at("V, Int")), None);
+        assert!(!matches!(
+            facts.written_type(at("Set<K>")),
+            Some(Ty::Named { args, .. }) if matches!(args[..], [Ty::Pos(_)])
+        ));
     }
 
     #[test]

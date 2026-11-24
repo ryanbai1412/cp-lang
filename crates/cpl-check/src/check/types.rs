@@ -61,6 +61,12 @@ impl<'a> Checker<'a> {
     }
 
     pub(crate) fn resolve_type(&mut self, ty: &ast::Type) -> Ty {
+        let resolved = self.resolve_written(ty);
+        self.exprs.written.push((ty.span, resolved.clone()));
+        resolved
+    }
+
+    fn resolve_written(&mut self, ty: &ast::Type) -> Ty {
         match &ty.kind {
             TypeKind::Named { name, args } => {
                 let args: Vec<Ty> = args.iter().map(|a| self.type_arg(a)).collect();
