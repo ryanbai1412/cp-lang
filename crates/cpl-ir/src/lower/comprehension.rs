@@ -419,15 +419,11 @@ impl Lowerer<'_> {
             (hint, dims.as_slice(), params)
         {
             let p = *p;
-            if self.product_grid(p).as_ref() == Some(want) {
-                let grid = want
-                    .iter()
-                    .map(|d| match d {
-                        Dim::Pos(d) => DimSpec::Pos(*d),
-                        _ => unreachable!("a product grid has position dimensions"),
-                    })
-                    .collect();
-                let whole = Whole::Product(p);
+            if let Some(axes) =
+                pos_axes(want).filter(|_| self.product_grid(p).as_ref() == Some(want))
+            {
+                let grid = axes.iter().map(|&d| DimSpec::Pos(d)).collect();
+                let whole = Whole::Product(p, axes);
                 return self.build_table(grid, params, body, elem.as_ref(), None, span, whole);
             }
         }
@@ -467,7 +463,7 @@ impl Lowerer<'_> {
     ) -> Expr {
         let named = match &whole {
             Whole::No => dims.len(),
-            Whole::Product(_) => 1,
+            Whole::Product(..) => 1,
             Whole::Tuples(groups) => groups.len(),
         };
         if params.len() != named {
@@ -621,16 +617,11 @@ impl Lowerer<'_> {
                 inner.extend(binds);
             }
         }
-        if let Whole::Product(p) = whole {
+        if let Whole::Product(p, axes) = whole {
             let parts = loops
                 .iter()
-                .zip(&dims)
-                .map(|((_, slot, _, _), dim)| {
-                    let DimSpec::Pos(d) = dim else {
-                        unreachable!("a product grid has position dimensions")
-                    };
-                    self.mk(ExprKind::Local(*slot), Ty::Pos(*d), span)
-                })
+                .zip(&axes)
+                .map(|((_, slot, _, _), &d)| self.mk(ExprKind::Local(*slot), Ty::Pos(d), span))
                 .collect();
             let encoded = self.encode_product(p, parts, span);
             let mut pre = Vec::new();
@@ -716,12 +707,23 @@ fn fresh_constant(e: &ast::Expr) -> bool {
     }
 }
 
+/// The domains of a grid whose every dimension is a position, else `None`.
+pub(super) fn pos_axes(dims: &[Dim]) -> Option<Vec<DomainId>> {
+    dims.iter()
+        .map(|d| match d {
+            Dim::Pos(d) => Some(*d),
+            _ => None,
+        })
+        .collect()
+}
+
 /// How a table's names cover its loops (`build_table`).
 pub(super) enum Whole {
     /// One name per loop.
     No,
-    /// One name for the whole product position, `[P] p => …`.
-    Product(DomainId),
+    /// One name for the whole product position, `[P] p => …`, over P's
+    /// factor domains, one loop each.
+    Product(DomainId, Vec<DomainId>),
     /// Each name covers that many loops, as a tuple when more than one.
     Tuples(Vec<usize>),
 }

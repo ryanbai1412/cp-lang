@@ -518,6 +518,12 @@ impl<'a> Lowerer<'a> {
         Spec::Fields(Ty::Struct(id), fields)
     }
 
+    /// A product domain's grid as array dimensions, one position axis per factor.
+    fn product_grid_dims(&self, id: DomainId) -> Option<Vec<DimSpec>> {
+        let axes = super::comprehension::pos_axes(&self.product_grid(id)?)?;
+        Some(axes.into_iter().map(DimSpec::Pos).collect())
+    }
+
     /// One dimension of an array type: a domain, its bounds, a custom `Index` struct, or a count.
     /// The dimensions of an index type that stands for a tuple or record of
     /// domains, `(R, C)` or `(r: R, c: C)`, named directly, by an alias or by
@@ -529,15 +535,7 @@ impl<'a> Lowerer<'a> {
                     Some(GenArg::Ty(ty)) => ty.clone(),
                     // `[V]T` with `V` a product domain is its grid.
                     Some(GenArg::Domain(id)) => {
-                        let grid = self.product_grid(*id)?;
-                        return Some(
-                            grid.into_iter()
-                                .map(|d| match d {
-                                    Dim::Pos(d) => DimSpec::Pos(d),
-                                    _ => unreachable!("a product grid has position dimensions"),
-                                })
-                                .collect(),
-                        );
+                        return self.product_grid_dims(*id);
                     }
                     Some(_) => return None,
                     None if matches!(self.get_sym(&name.text), Some(Sym::Alias(_)))
@@ -548,14 +546,7 @@ impl<'a> Lowerer<'a> {
                     // `domain P = (A, B)` names its grid too.
                     None => {
                         return match self.get_sym(&name.text) {
-                            Some(Sym::Domain(id)) => self.product_grid(id).map(|g| {
-                                g.into_iter()
-                                    .map(|d| match d {
-                                        Dim::Pos(d) => DimSpec::Pos(d),
-                                        _ => unreachable!("a product grid has position dimensions"),
-                                    })
-                                    .collect()
-                            }),
+                            Some(Sym::Domain(id)) => self.product_grid_dims(id),
                             _ => None,
                         }
                     }
@@ -769,11 +760,10 @@ impl<'a> Lowerer<'a> {
             // `[Sign]T` for a fieldless enum `Sign`: one cell per variant.
             ast::TypeKind::Named { name, args }
                 if args.is_empty()
-                    && matches!(self.get_sym(&name.text), Some(Sym::Enum(eid)) if !self.enums[eid].variants.is_empty() && self.enums[eid].variants.iter().all(|(_, fs)| fs.is_empty())) =>
+                    && let Some(Sym::Enum(eid)) = self.get_sym(&name.text)
+                    && !self.enums[eid].variants.is_empty()
+                    && self.enums[eid].variants.iter().all(|(_, fs)| fs.is_empty()) =>
             {
-                let Some(Sym::Enum(eid)) = self.get_sym(&name.text) else {
-                    unreachable!()
-                };
                 let n = self.enums[eid].variants.len() as i64;
                 Some(DimSpec::Int(Box::new(self.int_lit(n, ty.span))))
             }
