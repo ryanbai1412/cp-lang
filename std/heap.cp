@@ -235,6 +235,12 @@ pub struct Heap<T>:
     /// order: ascending key order, the order `pop` would return them
     /// traps: never
     /// example: `var h = Heap.of([3, 1, 2]); h.drain().collect() == [1, 2, 3] and h.is_empty`
+    @lint(manual_heap_drain, from: "for _ in 0..k:\n    print(self.pop()!, end: e)", to: "for x in self.drain().take(k):\n    print(x, end: e)", holes: "k, e")
+    @lint(manual_heap_drain, from: "for _ in 0..k:\n    print(self.pop()!)", to: "for x in self.drain().take(k):\n    print(x)", holes: "k")
+    @lint(manual_heap_drain, from: "for _ in 0..k:\n    s += self.pop()!", to: "for x in self.drain().take(k):\n    s += x", holes: "k, s")
+    @lint(manual_heap_drain, from: "for _ in 0..k:\n    s += -(self.pop()!)", to: "for x in self.drain().take(k):\n    s += -x", holes: "k, s")
+    @lint(manual_heap_drain, from: "sum(self.pop()! for _ in 0..k)", to: "sum(self.drain().take(k))", holes: "k")
+    @lint(manual_heap_drain, from: "sum(-(self.pop()!) for _ in 0..k)", to: "sum(-x for x in self.drain().take(k))", holes: "k")
     pub fn drain(mut self) -> yields T:
         while let x = self.pop(): yield x
 

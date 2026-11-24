@@ -1,19 +1,14 @@
 //! Walks newcomers spell by hand where std names them: the submasks of a
 //! mask (`submask_loop`), a ternary search over integers
 //! (`ternary_search_by_hand`), a palindrome test (`palindrome_by_hand`),
-//! nearest smaller or greater positions (`monotone_stack_by_hand`), every
-//! subset by its mask (`subset_masks_by_hand`), neighbouring pairs by index
-//! (`adjacent_by_index`), the sort order of positions by value
-//! (`argsort_loop`), a factorial table (`fact_tables_by_hand`), the top
-//! `k` of a heap (`manual_heap_drain`), lists grouped by key
-//! (`group_into_map`) and a sliding window sum (`sliding_sum_by_hand`).
+//! every subset by its mask (`subset_masks_by_hand`), a factorial table
+//! (`fact_tables_by_hand`) and a sliding window sum (`sliding_sum_by_hand`).
 
 use super::shapes::is_ident;
 use crate::walk::Visitor;
 use crate::{
-    File, Finding, ADJACENT_BY_INDEX, ARGSORT_LOOP, FACT_TABLES_BY_HAND, GROUP_INTO_MAP,
-    MANUAL_HEAP_DRAIN, MONOTONE_STACK_BY_HAND, PALINDROME_BY_HAND, SLIDING_SUM_BY_HAND,
-    SUBMASK_LOOP, SUBSET_MASKS_BY_HAND, TERNARY_SEARCH_BY_HAND,
+    File, Finding, FACT_TABLES_BY_HAND, PALINDROME_BY_HAND, SLIDING_SUM_BY_HAND, SUBMASK_LOOP,
+    SUBSET_MASKS_BY_HAND, TERNARY_SEARCH_BY_HAND,
 };
 use cpl_diag::msgs::lint_rules;
 use cpl_syntax::ast::*;
@@ -23,7 +18,6 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         src: file.src,
         base: 0,
         out: Vec::new(),
-        squashed: std::cell::OnceCell::new(),
     };
     file.walk(&mut v, |v, base| v.base = base);
     v.out
@@ -33,8 +27,6 @@ struct HandSearch<'a> {
     src: &'a str,
     base: u32,
     out: Vec<Finding>,
-    /// `squash_code` of the whole file, made once on first use.
-    squashed: std::cell::OnceCell<String>,
 }
 
 /// `text` without comments and without spaces, except one between two words
@@ -58,120 +50,6 @@ fn squash_code(text: &str) -> String {
         }
     }
     out.trim_end().to_string()
-}
-
-/// The std call for `st.len > 0 and a[st.last!] < a[i]` (squashed), the pop
-/// condition of a monotone stack of positions into `a`, with what it finds,
-/// the stack and the current position.
-fn monotone_pop(c: &str) -> Option<(String, &'static str, &str, &str)> {
-    let (nonempty, cmp) = c.split_once(" and ")?;
-    let st = nonempty
-        .strip_suffix(".len>0")
-        .or_else(|| nonempty.strip_suffix(".len!=0"))
-        .or_else(|| nonempty.strip_prefix("not ")?.strip_suffix(".is_empty"))?;
-    let (a, rest) = cmp.split_once(&format!("[{st}.last!]"))?;
-    let (op, rhs) = ["<=", ">=", "<", ">"]
-        .iter()
-        .find_map(|op| Some((*op, rest.strip_prefix(op)?)))?;
-    let i = rhs.strip_prefix(&format!("{a}["))?.strip_suffix(']')?;
-    if !(is_ident(st) && is_ident(a) && is_ident(i)) {
-        return None;
-    }
-    let (call, what) = match op {
-        "<" => ("next_smaller(by: x => -x)", "greater"),
-        "<=" => (
-            "next_smaller(by: x => -x, strict: false)",
-            "greater or equal",
-        ),
-        ">" => ("next_smaller()", "smaller"),
-        _ => ("next_smaller(strict: false)", "smaller or equal"),
-    };
-    Some((format!("{a}.{call}"), what, st, i))
-}
-
-/// Whether a `fn` in `src` pushes into `h`: a loop that calls it refills the
-/// heap it pops.
-fn pushed_in_fn(src: &str, h: &str) -> bool {
-    let lines: Vec<&str> = src.lines().collect();
-    let indent = |l: &str| l.len() - l.trim_start().len();
-    lines.iter().enumerate().any(|(n, line)| {
-        if !line.contains(&format!("{h}.push(")) {
-            return false;
-        }
-        let mut depth = indent(line);
-        lines[..n].iter().rev().any(|above| {
-            if above.trim().is_empty() || indent(above) >= depth || depth == 0 {
-                return false;
-            }
-            depth = indent(above);
-            let head = above.trim_start();
-            head.starts_with("fn ") || head.starts_with("pub fn ")
-        })
-    })
-}
-
-/// Whether squashed `body` assigns an element of `xs` (`xs[..] = ..`,
-/// `xs[..] += ..`, `xs[..] min= ..`): a loop that does is a DP over neighbours,
-/// not a walk over pairs.
-fn writes(body: &str, xs: &str) -> bool {
-    body.match_indices(&format!("{xs}[")).any(|(at, _)| {
-        let rest = &body[at + xs.len() + 1..];
-        let mut depth = 1;
-        let Some(close) = rest.find(|c| {
-            depth += match c {
-                '[' => 1,
-                ']' => -1,
-                _ => 0,
-            };
-            depth == 0
-        }) else {
-            return false;
-        };
-        let after = rest[close + 1..].trim_start();
-        let op = after.trim_start_matches(|c: char| c.is_alphabetic() || "+-*/%&|^<>".contains(c));
-        op.starts_with('=') && !op.starts_with("==")
-    })
-}
-
-/// `(x[i],i)` at the start of `s`, squashed: `(x, i)`.
-fn value_index(s: &str) -> Option<(&str, &str)> {
-    let (x, rest) = s.strip_prefix('(')?.split_once('[')?;
-    let (i, rest) = rest.split_once(']')?;
-    let ok = is_ident(x) && is_ident(i) && rest.starts_with(&format!(",{i})"));
-    ok.then_some((x, i))
-}
-
-impl HandSearch<'_> {
-    fn squashed_file(&self) -> &str {
-        self.squashed.get_or_init(|| squash_code(self.src))
-    }
-
-    /// The pairs sorted by `sorted`: `(x, i, range)` when `recv` is a list of
-    /// `(x[i], i)` built by a comprehension or a push loop over `range`.
-    fn argsort(&self, recv: &str) -> Option<(String, String, String)> {
-        let src = self.squashed_file();
-        let comp = |c: &str| {
-            let (x, i) = value_index(c.strip_prefix('[')?)?;
-            let rest = c.split_once(&format!("for {i} in "))?.1;
-            let range = rest.split([']', ':']).next()?;
-            Some((x.to_string(), i.to_string(), range.to_string()))
-        };
-        if recv.starts_with("[(") {
-            return comp(recv);
-        }
-        if !is_ident(recv) {
-            return None;
-        }
-        if let Some(at) = src.find(&format!("{recv}=[(")) {
-            return comp(&src[at + recv.len() + 1..]);
-        }
-        let at = src.find(&format!("{recv}.push(("))?;
-        let (x, i) = value_index(&src[at + recv.len() + 6..])?;
-        let head = &src[..at];
-        let start = head.rfind(&format!("for {i} in "))? + i.len() + 8;
-        let range = head[start..].split(':').next()?;
-        Some((x.to_string(), i.to_string(), range.to_string()))
-    }
 }
 
 impl HandSearch<'_> {
@@ -315,64 +193,6 @@ impl HandSearch<'_> {
         });
     }
 
-    /// `for x in xs: (m[k] ??= []).push(v)` as the whole body.
-    fn group_into_map(&mut self, pat: &Pattern, iter: &Expr, body: &Block) {
-        // `(m[k] ??= []).push(v)` desugars to several statements; read the source.
-        let span = body.span.shift(self.base);
-        let raw = span.text(self.src);
-        let lines: Vec<_> = raw
-            .lines()
-            .map(|l| l.split("//").next().unwrap_or("").trim())
-            .filter(|l| !l.is_empty())
-            .collect();
-        let [raw] = lines.as_slice() else {
-            return;
-        };
-        let Some((m, rest)) = raw.strip_prefix('(').and_then(|r| r.split_once('[')) else {
-            return;
-        };
-        let Some((key, rest)) = rest.rsplit_once("??=") else {
-            return;
-        };
-        let Some(key) = key.trim_end().strip_suffix(']') else {
-            return;
-        };
-        let Some(v) = squash_code(rest)
-            .strip_prefix("[]).push(")
-            .and_then(|v| v.strip_suffix(')'))
-            .map(|_| {
-                let at = rest.find(".push(").map_or(0, |i| i + 6);
-                rest[at..rest.len() - 1].trim().to_string()
-            })
-        else {
-            return;
-        };
-        let x = pat.span.shift(self.base).text(self.src).trim();
-        let xs = iter.span.shift(self.base).text(self.src).trim();
-        if !is_ident(m) || !is_ident(x) {
-            return;
-        }
-        let xs = if xs.contains("..") {
-            format!("({xs})")
-        } else {
-            xs.to_string()
-        };
-        let of = if v == x {
-            String::new()
-        } else {
-            format!(", of: {x} => {v}")
-        };
-        let diag = lint_rules::GROUP_INTO_MAP.warning(span, &[&m])
-        .with_help(format!(
-            "write `let {m} = {xs}.group(by: {x} => {}{of})` (`std.seq`): the same lists, in input order, with no empty-list default; it is a `HashMap`",
-            key.trim()
-        ));
-        self.out.push(Finding {
-            lint: &GROUP_INTO_MAP,
-            diag,
-        });
-    }
-
     /// `cur += a[i] - a[i - k]` in a loop over `k..n`.
     fn sliding_sum(&mut self, pat: &Pattern, iter: &Expr, body: &Block) {
         let text = |s: cpl_diag::Span| squash_code(s.shift(self.base).text(self.src));
@@ -406,111 +226,6 @@ impl HandSearch<'_> {
                 lint: &SLIDING_SUM_BY_HAND,
                 diag,
             });
-        }
-    }
-
-    /// `for _ in 0..k:`, or a comprehension's `for _ in 0..k`, popping a heap
-    /// with `h.pop()!` and never pushing it; `head` runs from the `for` to the
-    /// end of `iter`, `body` is what runs each time.
-    fn heap_drain(&mut self, head: cpl_diag::Span, iter: &Expr, body: cpl_diag::Span) {
-        let raw = iter.span.shift(self.base).text(self.src).trim();
-        let Some(k) = raw.strip_prefix("0..").map(str::trim) else {
-            return;
-        };
-        let whole = squash_code(body.shift(self.base).text(self.src));
-        let file = self.squashed_file();
-        let pops: Vec<_> = whole.match_indices(".pop()").collect();
-        let [(at, _)] = pops.as_slice() else {
-            return;
-        };
-        if !whole[*at..].starts_with(".pop()!") {
-            return;
-        }
-        let Some(h) = whole[..*at]
-            .rsplit(|c: char| !(c.is_alphanumeric() || c == '_'))
-            .next()
-            .filter(|h| is_ident(h))
-        else {
-            return;
-        };
-        let heap = ["=", ":"].iter().any(|sep| {
-            ["MinHeap<", "MaxHeap<", "Heap<"]
-                .iter()
-                .any(|ty| file.contains(&format!("var {h}{sep}{ty}")))
-        });
-        if !heap || whole.contains(&format!("{h}.push(")) || pushed_in_fn(self.src, h) {
-            return;
-        }
-        let head = cpl_diag::Span::new(head.start, iter.span.end).shift(self.base);
-        let diag = lint_rules::MANUAL_HEAP_DRAIN.warning(head, &[&k, &h])
-        .with_help(format!(
-            "write `for x in {h}.drain().take({k})` (`std.heap`): the same elements in the same order, each named, stopping early when `{h}` runs out instead of trapping on `pop()!`"
-        ));
-        self.out.push(Finding {
-            lint: &MANUAL_HEAP_DRAIN,
-            diag,
-        });
-    }
-
-    /// `if v != V.last!:` or `if i + 1 < n and ..` guarding a read of the next
-    /// position, in a loop over positions.
-    fn adjacent(&mut self, stmt: &Stmt, pat: &Pattern, iter: &Expr, body: &Block) {
-        let text = |s: cpl_diag::Span| squash_code(s.shift(self.base).text(self.src));
-        let v = text(pat.span);
-        if !is_ident(&v) {
-            return;
-        }
-        for (k, b) in body.stmts.iter().enumerate() {
-            let t = text(b.span);
-            let Some(cond) = t.strip_prefix("if ") else {
-                continue;
-            };
-            let last = cond
-                .strip_prefix(&format!("{v}!="))
-                .and_then(|r| r.split_once(".last!:"))
-                .is_some_and(|(d, _)| is_ident(d));
-            let end = text(iter.span);
-            let bound = cond
-                .strip_prefix(&format!("{v}+1<"))
-                .and_then(|r| r.split(':').next()?.split(" and ").next())
-                .is_some_and(|n| end == format!("0..{n}"));
-            let at = if bound {
-                format!("[{v}+1]")
-            } else {
-                format!("[{v}]")
-            };
-            let Some(xs) = t.match_indices(&at).find_map(|(at, _)| {
-                let xs = t[..at]
-                    .rsplit(|c: char| !(c.is_alphanumeric() || c == '_'))
-                    .next()?;
-                is_ident(xs).then_some(xs)
-            }) else {
-                continue;
-            };
-            let pair =
-                t.contains(&format!("{xs}[{v}]")) && (last || t.contains(&format!("{xs}[{v}+1]")));
-            if !(last || bound) || !pair || writes(&text(body.span), xs) {
-                continue;
-            }
-            let span = if body.stmts.len() == 1 && k == 0 {
-                stmt.span
-            } else {
-                b.span
-            };
-            let diag = lint_rules::ADJACENT_BY_INDEX.warning(span.shift(self.base), &[&v])
-            .with_help(format!(
-                "write `for (x, y) in {xs}.adjacent` (`std.seq`): every neighbouring pair of `{xs}`, with no last-position guard or `+ 1` index to get wrong{}",
-                if last {
-                    format!("; `{v}.next` is the position after `{v}` where the position itself is needed")
-                } else {
-                    String::new()
-                }
-            ));
-            self.out.push(Finding {
-                lint: &ADJACENT_BY_INDEX,
-                diag,
-            });
-            return;
         }
     }
 
@@ -555,30 +270,6 @@ impl HandSearch<'_> {
 }
 
 impl Visitor for HandSearch<'_> {
-    fn expr(&mut self, expr: &Expr) {
-        if let ExprKind::Comprehension { body, clauses } = &expr.kind {
-            if let [c] = clauses.as_slice() {
-                self.heap_drain(c.pat.span, &c.iter, body.span);
-            }
-        }
-        let span = expr.span.shift(self.base);
-        let text = squash_code(span.text(self.src));
-        let Some(recv) = text.strip_suffix(".sorted()") else {
-            return;
-        };
-        let Some((x, i, range)) = self.argsort(recv) else {
-            return;
-        };
-        let diag = lint_rules::ARGSORT_LOOP.warning(span, &[&x, &i, &i, &x])
-        .with_help(format!(
-            "sort the positions by value: `({range}).sorted(by: {i} => {x}[{i}])`; the sort is stable, so equal values keep their position order as the pairs did, and `{x}[{i}]` is read where it is needed"
-        ));
-        self.out.push(Finding {
-            lint: &ARGSORT_LOOP,
-            diag,
-        });
-    }
-
     fn stmt(&mut self, stmt: &Stmt) {
         if let StmtKind::For {
             pat, iter, body, ..
@@ -586,10 +277,7 @@ impl Visitor for HandSearch<'_> {
         {
             self.palindrome(stmt, pat, iter, body);
             self.subset_masks(stmt, pat, iter, body);
-            self.adjacent(stmt, pat, iter, body);
             self.fact_table(pat, iter, body);
-            self.heap_drain(stmt.span, iter, body.span);
-            self.group_into_map(pat, iter, body);
             self.sliding_sum(pat, iter, body);
         }
         let StmtKind::While {
@@ -606,37 +294,6 @@ impl Visitor for HandSearch<'_> {
         let Some(last) = body.stmts.last() else {
             return;
         };
-        let records = |st: &str, i: &str| {
-            let mut wrote = false;
-            let all = body.stmts.iter().all(|b| {
-                let t = text(b.span);
-                let popped = t.strip_prefix("let ").and_then(|t| {
-                    let (j, rhs) = t.split_once('=')?;
-                    (is_ident(j) && (rhs == format!("{st}.last!") || rhs == format!("{st}.pop()!")))
-                        .then_some(())
-                });
-                let answer = t.strip_suffix(&format!("={i}")).is_some_and(|lhs| {
-                    lhs.ends_with(']') && lhs.split_once('[').is_some_and(|(ans, _)| is_ident(ans))
-                });
-                wrote |= answer;
-                popped.is_some() || answer || t == format!("{st}.pop()")
-            });
-            all && wrote
-        };
-        if let Some((call, what)) = monotone_pop(&c)
-            .filter(|(_, _, st, i)| records(st, i))
-            .map(|(c, w, _, _)| (c, w))
-        {
-            let diag = lint_rules::MONOTONE_STACK_BY_HAND.warning(span, &[])
-            .with_help(format!(
-                "write `{call}` (`std.seq`): each position's nearest later position with a {what} value, as a `[D]?D` with `None` where there is none; `prev_smaller` gives the nearest earlier one"
-            ));
-            self.out.push(Finding {
-                lint: &MONOTONE_STACK_BY_HAND,
-                diag,
-            });
-            return;
-        }
         if let Some(s) = c.strip_suffix(">0").or_else(|| c.strip_suffix("!=0")) {
             let step = text(last.span);
             let mask = step.strip_prefix(&format!("{s}=({s}-1)&"));

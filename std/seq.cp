@@ -358,6 +358,8 @@ fn merge_runs<E>(src: List<E>, mut dst: List<E>, w: Int, before: (E, E) -> Bool)
 /// example: `[3, 1, 2].sorted() == [1, 2, 3]`
 /// example: `[3, 1, 2].sorted(by: x => desc(x)) == [3, 2, 1]`
 /// example: `[(3, 1), (1, 2), (2, 2)].sorted(cmp: (p, q) => p.0 * q.1 < q.0 * p.1) == [(1, 2), (2, 2), (3, 1)]`
+@lint(argsort_loop, from: "[(xs[i], i) for i in self].sorted()", to: "self.sorted(by: i => xs[i])", holes: "xs")
+@lint(argsort_loop, from: "for i in self:\n    p.push((xs[i], i))\nlet s = p.sorted()", to: "let s = self.sorted(by: i => xs[i])", holes: "xs, p")
 pub fn sorted<S: Seq<T>, T, K: Ord>(self: S; by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None) -> List<T>:
     var out: List<T> = self.collect()
     if let before = cmp: sort_cmp(mut out, before)
@@ -606,6 +608,24 @@ pub fn chunks<S: Indexed>(self: S, k: 1..) -> yields Slice<S>:
 /// order: left to right
 /// traps: never
 /// example: `[10, 20, 30].adjacent.collect() == [(10, 20), (20, 30)]`
+@lint(adjacent_by_index, from: "self[v] < self[v.next!]", to: "self.adjacent", holes: "v")
+@lint(adjacent_by_index, from: "self[v] <= self[v.next!]", to: "self.adjacent", holes: "v")
+@lint(adjacent_by_index, from: "self[v] > self[v.next!]", to: "self.adjacent", holes: "v")
+@lint(adjacent_by_index, from: "self[v] >= self[v.next!]", to: "self.adjacent", holes: "v")
+@lint(adjacent_by_index, from: "self[v] == self[v.next!]", to: "self.adjacent", holes: "v")
+@lint(adjacent_by_index, from: "self[v] != self[v.next!]", to: "self.adjacent", holes: "v")
+@lint(adjacent_by_index, from: "i + 1 < n and self[i] < self[i + 1]", to: "self.adjacent", holes: "i, n")
+@lint(adjacent_by_index, from: "i + 1 < n and self[i] <= self[i + 1]", to: "self.adjacent", holes: "i, n")
+@lint(adjacent_by_index, from: "i + 1 < n and self[i] > self[i + 1]", to: "self.adjacent", holes: "i, n")
+@lint(adjacent_by_index, from: "i + 1 < n and self[i] >= self[i + 1]", to: "self.adjacent", holes: "i, n")
+@lint(adjacent_by_index, from: "i + 1 < n and self[i] == self[i + 1]", to: "self.adjacent", holes: "i, n")
+@lint(adjacent_by_index, from: "i + 1 < n and self[i] != self[i + 1]", to: "self.adjacent", holes: "i, n")
+@lint(adjacent_by_index, from: "let w = D(v.ord + 1)\nif self[v] < self[w]:\n    body", to: "self.adjacent", holes: "D, v, body")
+@lint(adjacent_by_index, from: "let w = D(v.ord + 1)\nif self[v] <= self[w]:\n    body", to: "self.adjacent", holes: "D, v, body")
+@lint(adjacent_by_index, from: "let w = D(v.ord + 1)\nif self[v] > self[w]:\n    body", to: "self.adjacent", holes: "D, v, body")
+@lint(adjacent_by_index, from: "let w = D(v.ord + 1)\nif self[v] >= self[w]:\n    body", to: "self.adjacent", holes: "D, v, body")
+@lint(adjacent_by_index, from: "let w = D(v.ord + 1)\nif self[v] == self[w]:\n    body", to: "self.adjacent", holes: "D, v, body")
+@lint(adjacent_by_index, from: "let w = D(v.ord + 1)\nif self[v] != self[w]:\n    body", to: "self.adjacent", holes: "D, v, body")
 @get pub fn adjacent<S: Seq<T>, T>(self: S) -> yields (T, T):
     var prev: ?T = None
     for x in self:
@@ -2250,6 +2270,7 @@ pub fn majority<S: Seq<T>, T>(self: S, eq: (T, T) -> Bool = (a, b) => a == b) ->
 /// order: keys ascending; each group keeps input order
 /// traps: never
 /// example: `[(1, 'a'), (2, 'b'), (1, 'c')].group(by: p => p.0, of: p => p.1)[1] == ['a', 'c']`
+@lint(group_into_map, from: "for x in self:\n    (m[k] ??= []).push(v)", to: "let m = self.group(by: x => k, of: x => v)", holes: "m, k, v")
 pub fn group<S: Seq<T>, T, K, U>(self: S, by: T -> K, of: T -> U = x => x) -> Map<K, List<U>>:
     var out = Map<K, List<U>>()
     for x in self:
@@ -4050,6 +4071,14 @@ pub fn prev_smaller<D, T, K>(self: [D]T, by: T -> K = x => x, strict: Bool = tru
 /// order: keyed by `D`
 /// traps: never
 /// example: `[2, 1, 3].next_smaller() == [Some(1), None, None]`
+@lint(monotone_stack_by_hand, from: "while st.len > 0 and self[st.last!] < self[i]:\n    ans[st.pop()!] = i", to: "self.next_smaller(by: x => -x)", holes: "st, i, ans")
+@lint(monotone_stack_by_hand, from: "while st.len > 0 and self[st.last!] < self[i]:\n    let j = st.last!\n    st.pop()\n    ans[j] = i", to: "self.next_smaller(by: x => -x)", holes: "st, i, ans")
+@lint(monotone_stack_by_hand, from: "while st.len > 0 and self[st.last!] <= self[i]:\n    ans[st.pop()!] = i", to: "self.next_smaller(by: x => -x, strict: false)", holes: "st, i, ans")
+@lint(monotone_stack_by_hand, from: "while st.len > 0 and self[st.last!] <= self[i]:\n    let j = st.last!\n    st.pop()\n    ans[j] = i", to: "self.next_smaller(by: x => -x, strict: false)", holes: "st, i, ans")
+@lint(monotone_stack_by_hand, from: "while st.len > 0 and self[st.last!] > self[i]:\n    ans[st.pop()!] = i", to: "self.next_smaller()", holes: "st, i, ans")
+@lint(monotone_stack_by_hand, from: "while st.len > 0 and self[st.last!] > self[i]:\n    let j = st.last!\n    st.pop()\n    ans[j] = i", to: "self.next_smaller()", holes: "st, i, ans")
+@lint(monotone_stack_by_hand, from: "while st.len > 0 and self[st.last!] >= self[i]:\n    ans[st.pop()!] = i", to: "self.next_smaller(strict: false)", holes: "st, i, ans")
+@lint(monotone_stack_by_hand, from: "while st.len > 0 and self[st.last!] >= self[i]:\n    let j = st.last!\n    st.pop()\n    ans[j] = i", to: "self.next_smaller(strict: false)", holes: "st, i, ans")
 pub fn next_smaller<D, T, K>(self: [D]T, by: T -> K = x => x, strict: Bool = true) -> [D]?D:
     var out: [D]?D = None
     var st: List<D> = []
