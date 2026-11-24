@@ -22,6 +22,10 @@ exhaustive form, and `plan/STATUS.md` lists what is still open.
 
 ### Library
 
+- `hash_token` comes from the `Hashable` trait: `Int`, `Char`, `Bool`, domain positions and
+  `HashVal` implement it, so `HashVal.hash_token` reads the same.
+- `adjacency(arcs)` takes any walk of arcs with `u` and `v` fields (more fields allowed) and stays
+  directed: an arc lands only in its `u`'s list.
 - `Filtered.src`, `Mapped.src` and `Items.src` are now `pub` fields rather
   getter fns; `v.src` reads the same.
 - The library is respecified in `std/`: about 1,700 documented

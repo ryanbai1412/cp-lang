@@ -14,6 +14,7 @@ std/algebra.cp: MaxCount.zero() -> MaxCount<T>
 std/algebra.cp: MaxSub.join(a: MaxSub, b: MaxSub) -> MaxSub
 std/algebra.cp: MaxSub.monoid() -> Monoid<MaxSub>
 std/algebra.cp: MaxSub.of(v: Int) -> MaxSub
+std/algebra.cp: MaxSub.reversed(self) -> MaxSub
 std/algebra.cp: MaxSub.scale(self, k: Int) -> MaxSub
 std/algebra.cp: MaxSub.try_best(self) -> ?Int
 std/algebra.cp: MaxSubAt.join(a: MaxSubAt<D>, b: MaxSubAt<D>) -> MaxSubAt<D>
@@ -218,6 +219,7 @@ std/beats.cp: HistoricBeatsSegTree.hist_sum(mut self, r: Range<D>) -> Int
 std/beats.cp: HistoricBeatsSegTree.max_val(mut self, r: Range<D>) -> ?Int
 std/beats.cp: HistoricBeatsSegTree.new(a: ?[D]Int = None, fill: ?Int = None) -> HistoricBeatsSegTree<D>
 std/beats.cp: HistoricBeatsSegTree.sum(mut self, r: Range<D>) -> Int
+std/beats.cp: HistoricBeatsSegTree.to_array(self) -> [D]Int
 std/bitset.cp: BitTrie.absorb(mut self, mut ar: BitTrieArena<W>, mut other: BitTrie<W>)
 std/bitset.cp: BitTrie.add(mut self, mut ar: BitTrieArena<W>, x: Int)
 std/bitset.cp: BitTrie.count(self, ar: BitTrieArena<W>, x: Int) -> Int
@@ -270,6 +272,7 @@ std/bitset.cp: Bitset.subset_sums(weights: List<Int>) -> Bitset<D>
 std/bitset.cp: Bitset.subtract(mut self, o: Bitset<D>)
 std/bitset.cp: Bitset.symmetric(mut self, o: Bitset<D>)
 std/bitset.cp: Bitset.toggle(mut self, i: D)
+std/bitset.cp: Bitset.undirected<S: Seq<R>, R: (u: D, v: D, ..)
 std/bitset.cp: Bitset.union(mut self, o: Bitset<D>)
 std/bitset.cp: Bitset.union_shifted(mut self, o: Bitset<D>, k: Int)
 std/bitset.cp: Bitset.with(self, i: D) -> Bitset<D>
@@ -761,7 +764,7 @@ std/graph.cp: TwoSat.must(mut self, a: Lit<X>)
 std/graph.cp: TwoSat.new() -> TwoSat<X>
 std/graph.cp: TwoSat.solve(self) -> ?[X]Bool
 std/graph.cp: Walk.vertices(self) -> yields V
-std/graph.cp: adjacency<V>(arcs: List<(u: V, v: V)>) -> [V]List<V>
+std/graph.cp: adjacency<S: Seq<R>, R: (u: V, v: V, ..)
 std/graph.cp: arborescence<V, E, W: Add + Sub, R: (u: V, v: V, w: W, ..)
 std/graph.cp: arc_len<A>(a: A) -> Int
 std/graph.cp: bellman_ford<V, W: Add + Ord, G: WeightedNext<V, W>>(g: G, from: Seq<(V, W)>) -> ?Paths<V, W, G.Arc>
@@ -1048,17 +1051,21 @@ std/lazy.cp: Rope.new(a: ?[D]T = None, fill: ?T = None, merge: ?((T, T) -> T) = 
 std/lazy.cp: Rope.query_path<R>(mut self, i: D, f: (mut T) -> ?R) -> ?R
 std/lazy.cp: Rope.reverse(mut self, r: Range<D>)
 std/lazy.cp: Rope.set(mut self, i: D, x: T)
-std/lazy.cp: Rope.to_array(mut self) -> [D]T
+std/lazy.cp: Rope.to_array(self) -> [D]T
 std/lazy.cp: SeqFold.apply(mut self, r: Range<Int>, f: F)
+std/lazy.cp: SeqFold.erase_range(mut self, r: Range<Int>)
 std/lazy.cp: SeqFold.fold(mut self, r: Range<Int>) -> T
 std/lazy.cp: SeqFold.get(mut self, pos: Int) -> T
 std/lazy.cp: SeqFold.insert_at(mut self, pos: Int, x: T)
+std/lazy.cp: SeqFold.insert_many(mut self, pos: Int, xs: List<T>)
 std/lazy.cp: SeqFold.is_empty(self) -> Bool
 std/lazy.cp: SeqFold.items(self) -> yields T
 std/lazy.cp: SeqFold.len(self) -> Int
-std/lazy.cp: SeqFold.new<M>(op: M, xs: List<T> = [], act: ?Action<T, F> = None) -> SeqFold<T, F>
+std/lazy.cp: SeqFold.new<M>(op: M, xs: List<T> = [], act: ?Action<T, F> = None, mirror: ?(T -> T) = None) -> SeqFold<T, F>
 std/lazy.cp: SeqFold.push(mut self, x: T)
 std/lazy.cp: SeqFold.reverse(mut self, r: Range<Int>)
+std/lazy.cp: SeqFold.splice(mut self, pos: Int, mut other: SeqFold<T, F>)
+std/lazy.cp: SeqFold.split_at(mut self, k: Int) -> SeqFold<T, F>
 std/lazy.cp: SeqFold.total(self) -> T
 std/lazy.cp: flip_action<T, M>(m: M) -> Action<Flip<T>, Bool>
 std/marks.cp: Arena.alloc(mut self, x: T) -> Id<T>
@@ -1412,6 +1419,7 @@ std/prefix.cp: Prefix.new(a: [D]T) -> Prefix<D, T>
 std/prefix.cp: Prefix.of_rev_scan<M>(a: [D]T, f: M, from: ?T) -> Prefix<D, T>
 std/prefix.cp: Prefix.prefix(self, b: Cut<D>) -> T
 std/prefix.cp: Prefix.suffix(self, b: Cut<D>) -> T
+std/prefix.cp: Prefix.through(self, v: D) -> T
 std/prefix.cp: SweepAdd.add(mut self, r: Range<D>, x: T)
 std/prefix.cp: SweepAdd.advance(mut self, i: D) -> T
 std/prefix.cp: SweepAdd.current(self) -> T
@@ -1693,7 +1701,7 @@ std/seq.cp: prev_smaller<D, T, K>(self: [D]T, by: T -> K = x => x, strict: Bool 
 std/seq.cp: prod<S: Seq<T>, T>(self: S) -> T
 std/seq.cp: product<A: Seq<T>, B: Indexed<L, U>, L, T, U>(a: A, b: B) -> yields (T, U)
 std/seq.cp: radix_sort<S: IndexedMut, T>(mut self: S, by: T -> Int = x => x)
-std/seq.cp: rebase<S: Indexed<K, T>, K, T>(self: S) -> Rebased<S, _>
+std/seq.cp: rebase<S: Indexed<K, T>, K, T>(self: S) -> Rebased<S>
 std/seq.cp: record_highs<D, T, K>(self: [D]T, by: T -> K = x => x) -> yields D
 std/seq.cp: reduce<S: Seq<T>, T>(self: S, f: (T, T) -> T) -> ?T
 std/seq.cp: rekey<D, K, T>(self: [D]T, keys: Range<K>) -> [K]T
@@ -1840,7 +1848,6 @@ std/strings.cp: DynamicHash.rev_get(self, r: Range<D>) -> HashVal
 std/strings.cp: DynamicHash.set<T: Hashable>(mut self, i: D, x: T)
 std/strings.cp: Hash2D.new(code: (R, C) -> Int, bases: ?(Int, Int) = None) -> Hash2D<R, C>
 std/strings.cp: Hash2D.rect(self, rows: Range<R>, cols: Range<C>) -> HashVal
-std/strings.cp: HashVal.hash_token(self) -> Int
 std/strings.cp: KmpAutomaton.find_all<S: Seq>(self, text: S) -> yields Int
 std/strings.cp: KmpAutomaton.len(self) -> Int
 std/strings.cp: KmpAutomaton.link(self, state: Int) -> Int
@@ -1978,8 +1985,8 @@ std/strings.cp: prefix_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int
 std/strings.cp: prefix_matches<S: Indexed<K, T>, P: Indexed<J, T>, K, J, T: Eq>(self: S, pat: P) -> [K]Int
 std/strings.cp: repeat(self: Str, n: Int) -> Str
 std/strings.cp: replace(self: Str, from: Str, to: Str) -> Str
-std/strings.cp: rsearch<S: Indexed<K, T>, K, T, P>(self: S, p: P) -> ?K
-std/strings.cp: search<S: Indexed<K, T>, K, T, P>(self: S, p: P) -> ?K
+std/strings.cp: rsearch<S: Indexed<K, T>, K, T: Eq, P>(self: S, p: P) -> ?K
+std/strings.cp: search<S: Indexed<K, T>, K, T: Eq, P>(self: S, p: P) -> ?K
 std/strings.cp: shift_and<S: Indexed<K, T>, P: Indexed<L, T>, K, L, T: Eq>(self: S, pat: P) -> yields K
 std/strings.cp: split_once(self: Str, sep: Char) -> ?(Str, Str)
 std/strings.cp: split_whitespace(self: Str) -> List<Str>
@@ -2065,6 +2072,7 @@ std/tree.cp: LazyEulerTourTree.len(mut self, v: V) -> Int
 std/tree.cp: LazyEulerTourTree.link(mut self, u: V, v: V)
 std/tree.cp: LazyEulerTourTree.new<A, M>(act: A, a: ?[V]T = None, over: M = (+)) -> LazyEulerTourTree<V, T, F>
 std/tree.cp: LazyEulerTourTree.set(mut self, v: V, x: T)
+std/tree.cp: LazyEulerTourTree.to_array(self) -> [V]T
 std/tree.cp: LazyLinkCut.access(mut self, x: V) -> V
 std/tree.cp: LazyLinkCut.apply_path(mut self, u: V, v: V, f: F)
 std/tree.cp: LazyLinkCut.connected(mut self, u: V, v: V) -> Bool

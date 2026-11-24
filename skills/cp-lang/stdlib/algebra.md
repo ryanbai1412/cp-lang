@@ -4,7 +4,7 @@
 
 Operations as values: what a range structure folds with.  A structure never asks "what is the sum of two `T`s"; it is handed the operation. Most of the time that is a bare operator: `SegTree<V, Int>(max, a)` and `SegTree<V, Int>(+, a)` are the same tree with two operations. An operation of your own is the pair `Monoid(id, op)`; a lazy update is an `Action`. `desc(x)` reverses an order inside a sort key or a heap entry, and a non-commutative value says how it reads backwards with `Reversible`.
 
-In prelude (no `use` needed): `Action`, `Commutative`, `Desc`, `Each`, `Group`, `Idempotent`, `Monoid`, `Op`, `Ordering`, `Selective`, `Semiring`, `add`, `affine`, `assign`, `cmp`, `desc`, `each`, `flip`, `fold`, `minmax`, `pow`.
+In prelude (no `use` needed): `Action`, `Commutative`, `Desc`, `Each`, `Group`, `Idempotent`, `Monoid`, `Op`, `Ordering`, `Selective`, `Semiring`, `add`, `affine`, `assign`, `cmp`, `desc`, `each`, `flip`, `minmax`, `pow`.
 
 ## Types & Constants
 
@@ -45,7 +45,8 @@ Maximum non-empty subarray summary (Kadane monoid).
 
 - `fn of(v: Int) -> MaxSub` — \(O(1)\); The summary of the single element `v`: best, total, best prefix and best suffix are all `v`.
 - `fn join(a: MaxSub, b: MaxSub) -> MaxSub` — \(O(1)\); The summary of `a`'s elements followed by `b`'s (the same as `a + b`).; traps: never (overflow wraps in release, traps in debug)
-- `fn scale(self, k: Int) -> MaxSub` — \(O(1)\); The summary of the same elements each multiplied by `k` (the same as `self * k`).; traps: when `k < 0`
+- `fn reversed(self) -> MaxSub` — \(O(1)\); The summary of the same elements each multiplied by `k` (the same as `self * k`).
+- `fn scale(self, k: Int) -> MaxSub`
 - `@get fn try_best(self) -> ?Int` — \(O(1)\); The largest sum of a non-empty contiguous run of the summarized elements, or `None` for the empty summary.
 - `fn monoid() -> Monoid<MaxSub>` — \(O(1)\); `Monoid(MaxSub.zero, MaxSub.join)`, for `SegTree` and `fold`.
 
@@ -151,7 +152,6 @@ Marker type for the stock `flip` action.
 ## Functions
 
 - `fn desc<T>(x: T) -> Desc<T>` — \(O(1)\); `x` wrapped so that it compares the other way round: `desc(a) < desc(b)` exactly when `b < a`.
-- `fn fold<T, M, S: Seq<T>>(m: M, xs: S) -> T` — \(O(n)\) calls of `op`; `xs` folded left to right with `m`: `op(op(op(id, x0), x1), x2)`, so a non-commutative `m` sees elements in sequence order.; traps: never (an `m` without a known identity is a compile-time error)
 - `fn pow<T, M>(x: T, k: Int; op: M) -> T` — \(O(\log k)\) calls of `op`; `x` folded with itself `k` times by squaring: `op(x, op(x, ...))`; a plain power is `x ** k`.; traps: when `k < 0`
 - `fn point_action<T, F, M>(id: F, compose: (F, F) -> F, apply: (F, T) -> T, over: M) -> Action<T, F>` — \(O(1)\); An `Action` whose `apply` ignores the span: `apply(f, val, span) == apply(f, val)`.
 - `fn cmp<T: Ord>(self: T, other: T) -> Ordering` — \(O(1)\) plus one or two comparisons of `T`; The three-way comparison of `self` and `other` under `Ord`: `cmp(a, b)` or `a.cmp(b)`.

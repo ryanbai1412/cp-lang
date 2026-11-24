@@ -198,7 +198,7 @@ The complement of `missing` over a domain `V`: an arc `u -> v` for every `v != u
 - `fn boruvka<V, C, W>(cheapest: ([V]Int) -> List<?(u: V, v: V, w: W)>) -> (total: W, edges: List<(u: V, v: V)>)` — \(O(n \log n)\) plus the calls of `cheapest`: \(O(\log n)\) rounds, each \(O(n)\); A minimum spanning forest by Boruvka rounds, for implicit complete graphs (xor MST, Manhattan MST).; traps: when `cheapest` returns a list whose length is not the number of components
 - `fn arborescence<V, E, W: Add + Sub, R: (u: V, v: V, w: W, ..)>(edges: [E]R, root: V) -> ?(total: W, parent: [V]?E)` — \(O(m \log n)\); A minimum spanning arborescence rooted at `root` (Chu-Liu / Edmonds with leftist heaps): `parent[v]` is the edge entering `v`, `None` at `root`.
 - `fn spanning_forest<V, E>(g: EdgedNext<V, E>) -> [E]Bool` — \(O(n + m)\); A spanning forest of an undirected graph as chosen edges: vertices in vertex order, each vertex's arcs in arc order, taking every arc that joins two trees (Kruskal order without weights, by a `Dsu`).
-- `fn adjacency<V>(arcs: List<(u: V, v: V)>) -> [V]List<V>` — \(O(n + m)\); `directed_of_pairs` on named `(u, v)` arcs: neighbour lists indexed by vertex.
+- `fn adjacency<S: Seq<R>, R: (u: V, v: V, ..), V>(arcs: S) -> [V]List<V>` — \(O(n + m)\); `directed_of_pairs` on named `(u, v)` arcs: neighbour lists indexed by vertex.
 - `fn only<V, G: Next<V>>(self: G, keep: V -> Bool = v => true, from: V -> Bool = v => true) -> Only<V, G>` — \(O(1)\) to make; `keep` and `from` run per arc walked; The graph restricted to the vertices `keep` accepts: arcs from or to a dropped vertex are skipped as `out` walks.
 
 ## Example

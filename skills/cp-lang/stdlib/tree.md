@@ -254,8 +254,8 @@ Fields: `val: [V]T`, `lc: List<?Int>`, `rc: List<?Int>`, `pa: List<?Int>`, `agg:
 - `fn cut(mut self, u: V, v: V)` — expected \(O(\log n)\); Removes the edge `u`-`v`.; traps: when there is no edge `u`-`v`
 - `fn connected(mut self, a: V, b: V) -> Bool` — expected \(O(\log n)\); Whether `a` and `b` are in one tree.
 - `fn len(mut self, v: V) -> Int` — expected \(O(\log n)\); The number of vertices in `v`'s tree.
-- `fn to_array(self) -> [V]T` — \(O(\lvert V \rvert + \text{links})\); The value at `v`, with every update to a tree or side holding it applied.
-- `fn get(mut self, v: V) -> T`
+- `fn to_array(self) -> [V]T` — \(O(\lvert V \rvert + \text{links})\); Every vertex's value with every pending tag applied as it walks the splay trees; it reads the trees and writes nothing back, so no splay moves.
+- `fn get(mut self, v: V) -> T` — expected \(O(\log n)\); The value at `v`, with every update to a tree or side holding it applied.
 - `fn set(mut self, v: V, x: T)` — expected \(O(\log n)\); Replaces the value at `v`, discarding earlier updates there.
 - `fn fold_tree(mut self, v: V) -> T` — expected \(O(\log n)\); The fold of every value in `v`'s tree.
 - `fn fold_sub(mut self, v: V, away: V) -> T` — expected \(O(\log n)\); The fold over `v`'s side of the edge `v`-`away`.; traps: when there is no edge `v`-`away`

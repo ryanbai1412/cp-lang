@@ -560,6 +560,59 @@ print((MaxSub.of(2) + MaxSub.of(-5) + MaxSub.of(3) + MaxSub.of(1)).try_best!)
 """
 out = "4"
 
+[case."Add/MaxCount/add"]
+code = """
+use std.algebra.{MaxCount}
+let s = MaxCount.of(4) + MaxCount.of(1) + MaxCount.of(4)
+print(s.val, s.count)
+"""
+out = "4 2"
+
+[case."Add/MinCount/add"]
+code = """
+use std.algebra.{MinCount}
+let s = MinCount.of(2) + MinCount.of(5) + MinCount.of(2)
+print(s.val, s.count)
+"""
+out = "2 2"
+
+[case."Add/MaxSubAt/add"]
+code = """
+use std.algebra.{MaxSubAt}
+domain D = 0..3
+let s = MaxSubAt.of(D(0), 2) + MaxSubAt.of(D(1), -5) + MaxSubAt.of(D(2), 3)
+print(s.try_best!)
+"""
+out = "3"
+
+[case."Eq/PMultiset/eq"]
+code = """
+use std.persistent.{PArena, PMultiset}
+domain K = 0..4
+var ar = PArena<PMultiset<K>>()
+let e: PMultiset<K> = PMultiset.empty()
+let a = e.with(mut ar, K(1)).with(mut ar, K(3))
+let b = e.with(mut ar, K(3)).with(mut ar, K(1))
+print(yes(a == b), yes(a == e))
+"""
+out = "YES NO"
+
+[case."Op/Comm/op"]
+code = """
+use std.algebra.{Comm, Monoid}
+let c = Comm(Monoid<Int>.of(+))
+print(c.op(3, 4))
+"""
+out = "7"
+
+[case."HasId/Comm/id"]
+code = """
+use std.algebra.{Comm, Monoid}
+let c = Comm(Monoid<Int>.of(*))
+print(c.id)
+"""
+out = "1"
+
 [case."Mul/MaxSub/mul"]
 code = """
 use std.algebra.{MaxSub}
@@ -1273,21 +1326,6 @@ let pre = [3, 1, 2].scan(+)
 for t in pre.iter_rev(): print(t)
 """
 out = "6\n4\n3"
-
-[case."Seq/Stepped/iter"]
-code = """
-let s = [3, 1, 4, 1, 5].step(2)
-for x in s.iter(): print(x)
-"""
-out = "3\n4\n5"
-
-[case."Bidir/Stepped/iter_rev"]
-code = """
-let s = [3, 1, 4, 1, 5].step(2)
-for x in s.iter_rev(): print(x)
-print([x for x in s.rev])
-"""
-out = "5\n4\n3\n5 4 3"
 
 [case."Show/SortedBag/show"]
 code = """

@@ -28,7 +28,6 @@ use std.algebra.{
     desc,
     each,
     flip,
-    fold,
     minmax,
     pow,
 }

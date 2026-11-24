@@ -35,6 +35,7 @@ Fields: `p: [D.cuts]T`, `sums: Bool`, `rises: Bool`, `back: Bool`.
 - `fn fold(self, r: Range<D>) -> T` — \(O(1)\); The sum of `a[i]` for `i` in `r`, or `0` when `r` is empty: `prefix(r.r) - prefix(r.l)`.; traps: on a table from `scan(f)` with `f` other than `+`
 - `fn cyclic_sum(self, r: RingRange<D>) -> T` — \(O(1)\); The sum over a wrapping run of positions, e.g.; traps: on a table from `scan(f)` with `f` other than `+`
 - `fn at(self, c: Cut<D>) -> T` — \(O(1)\); `p[c]`: the sum of everything left of cut `c`, the same as `prefix(c)`.
+- `fn through(self, v: D) -> T` — \(O(1)\); The running fold at position `v`: through `v` from the start, or from `v` to the end on a suffix table (`a.rev.scan(f)`).
 - `fn cut(self, k: Int) -> T` — \(O(1)\); The fold of the first `k` positions, whatever `D`'s base: the value at the cut `k` positions in, the identity at `0` and `all` at `D.count`.; traps: when `k` is not in `0..=D.count`
 - `fn suffix(self, b: Cut<D>) -> T` — \(O(1)\); The sum of everything right of boundary `b`: `all - prefix(b)`, zero at the last cut.; traps: on a table from `scan(f)` with `f` other than `+`
 - `@get fn all(self) -> T` — \(O(1)\); The sum of the entire domain: `prefix` at the last cut (a suffix table's first), zero for an empty domain.

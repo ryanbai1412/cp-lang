@@ -3819,14 +3819,15 @@ pub struct IncrementalBridges<V>:
 /// `V` order for an undirected one).
 pub struct Edge<V, E>(pub e: E, pub u: V, pub v: V)
 
-/// `directed_of_pairs` on named `(u, v)` arcs: neighbour lists indexed by vertex.
+/// `directed_of_pairs` on named `(u, v)` arcs: neighbour lists indexed by vertex. Each arc goes
+/// `u -> v` only; an arc may carry more fields, and `arcs` may be any walk (a filter view too).
 ///
 /// cost: \(O(n + m)\)
 /// empty: `domain V = 0..2; adjacency(List<(u: V, v: V)>()) == [[], []]`
 /// order: each vertex's arcs in input order
 /// traps: never
 /// example: `domain V = 0..3; adjacency([(u: V(0), v: V(2)), (u: V(0), v: V(1))])[0] == [2, 1]`
-pub fn adjacency<V>(arcs: List<(u: V, v: V)>) -> [V]List<V>:
+pub fn adjacency<S: Seq<R>, R: (u: V, v: V, ..), V>(arcs: S) -> [V]List<V>:
     var adj: [V]List<V> = []
     for a in arcs: adj[a.u].push(a.v)
     adj

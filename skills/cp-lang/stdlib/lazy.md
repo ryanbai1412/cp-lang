@@ -31,13 +31,13 @@ Fields: `apply_fn: (T, Int, F) -> T,`, `split_fn: (F, Int) -> (F, F),`, `compose
 - `fn set(mut self, i: D, x: T)` — \(O(\log n)\) expected; Overwrite the value currently at position `i` with `x`, replacing any pending tags on it.; traps: when `i` is outside `D`
 - `fn to_array(self) -> [D]T` — \(O(\lvert D \rvert)\); The current values in position order, with every pending tag and reversal merged in as it walks; it reads the tree and writes nothing back.
 
-## `struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>)`
+## `struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>, mirror: ?(T -> T))`
 
 A sequence of `T` that folds any run with a monoid, under lazy range tags and range reversal: an implicit treap whose nodes keep each subtree's fold in both directions, so `reverse` is a swap of the two even when `op` does not commute.
 
 Fields: `val: List<T>`, `fwd: List<T>`, `bwd: List<T>`, `tag: List<?F>`, `rev: List<Bool>`, `rng: Rng`, `free: List<Int>`.
 
-- `fn new<M>(op: M, xs: List<T> = [], act: ?Action<T, F> = None) -> SeqFold<T, F>` — \(O(n)\) expected; The sequence `xs` folded with `op`, a bare operator (`+`, `*`, `min`, `max`, ...) or a `Monoid(id, op)`, which need not commute.
+- `fn new<M>(op: M, xs: List<T> = [], act: ?Action<T, F> = None, mirror: ?(T -> T) = None) -> SeqFold<T, F>` — \(O(n)\) expected; The sequence `xs` folded with `op`, a bare operator (`+`, `*`, `min`, `max`, ...) or a `Monoid(id, op)`, which need not commute.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of elements.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the sequence has no elements.
 - `@get fn items(self) -> yields T` — \(O(n)\) to make, \(O(1)\) per step; Each element in position order, with every tag and reversal applied; the treap is unchanged.
