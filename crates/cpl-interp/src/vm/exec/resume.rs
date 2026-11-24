@@ -64,6 +64,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 dst_v,
                 dst_some,
                 ret_mode,
+                ..
             } => {
                 let args = (arg_base_i as usize, arg_base_v as usize);
                 (ret_mode, (dst_i, dst_some, dst_v), args, Some(fn_id))

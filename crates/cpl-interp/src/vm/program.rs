@@ -166,7 +166,7 @@ pub(super) fn recognize_fast_closure(
 }
 
 /// The fn `def`'s body calls with its params in order, when that is all it
-/// does and the fn takes them as the closure's caller lays them out.
+/// does. Its small tuple args come boxed, as the closure's caller lays them out.
 fn forward_of(def: &cpl_ir::ClosureDef, fns: &[Option<Chunk<'_>>]) -> Option<u16> {
     if !def.captures.is_empty() || !def.muts.is_empty() || def.body.stmts.len() != 1 {
         return None;
@@ -181,10 +181,8 @@ fn forward_of(def: &cpl_ir::ClosureDef, fns: &[Option<Chunk<'_>>]) -> Option<u16
         && args.iter().zip(&def.params).all(|(a, &p)| {
             matches!(a, cpl_ir::Arg::Value(x) if matches!(x.kind, ExprKind::Local(s) if s == p))
         });
-    let callee = fns.get(*fid)?.as_ref()?;
-    let plain = (callee.slot_map.iter().take(callee.param_count))
-        .all(|l| !matches!(l, SlotLoc::SmallTuple { .. }));
-    (in_order && plain).then_some(*fid as u16)
+    fns.get(*fid)?.as_ref()?;
+    in_order.then_some(*fid as u16)
 }
 
 pub(crate) struct CompiledProgram<'p> {

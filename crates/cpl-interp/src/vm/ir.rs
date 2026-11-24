@@ -754,6 +754,8 @@ pub(crate) enum Op {
         dst_v: u16,
         dst_some: u16,
         ret_mode: CallRet,
+        /// The small tuple args are boxed in the V args, as a closure call lays them out.
+        tuples_boxed: bool,
     },
     /// A traced chunk's call: the tracer sees it enter and leave, as when
     /// the tree-walker calls. `dst_i` is `u16::MAX` unless it returns a scalar.

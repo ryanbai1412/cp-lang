@@ -749,6 +749,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 dst_v,
                 dst_some,
                 ret_mode,
+                tuples_boxed,
             } => {
                 let f = &self.program.fns[fn_id as usize];
                 self.tick(spans[cur_pc])?;
@@ -766,6 +767,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         SlotLoc::I(..) => ni += 1,
                         SlotLoc::OptI { .. } => ni += 2,
                         SlotLoc::V(_) => nv += 1,
+                        SlotLoc::SmallTuple { .. } if tuples_boxed => nv += 1,
                         SlotLoc::SmallTuple { len, .. } => ni += *len as usize,
                     }
                 }
@@ -803,6 +805,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     &mut regs_v[abv..abv + nv],
                     &f.params,
                     vm_regs_i,
+                    tuples_boxed,
                 );
                 self.unsuspend();
                 self.frameless_base = frameless;
@@ -859,6 +862,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         dst_v,
                         dst_some,
                         ret_mode,
+                        tuples_boxed: true,
                     };
                     let (bi, rv) = (base_i, regs_v);
                     return self

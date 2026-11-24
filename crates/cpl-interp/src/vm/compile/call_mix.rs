@@ -55,6 +55,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 dst_v,
                 dst_some,
                 ret_mode,
+                tuples_boxed: false,
             },
             span,
         );
