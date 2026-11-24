@@ -1,7 +1,7 @@
 // expect: ok, output "1 2\n2"
 // rule: 05.3.5
-// A field pushed to before it is set again still has its old value under `old`; a move would see the push.
-// copies: 1
+// A field pushed to and then set whole still has its old value under `old`: the pushes land
+// in a list nothing reads before the store replaces it, so `old` takes the old list, no copy.
 struct S:
     var ks: List<Int>
 fn grow(mut s: S):
