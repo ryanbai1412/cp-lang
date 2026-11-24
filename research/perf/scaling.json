@@ -1844,7 +1844,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Array.filter",
-   "measured": 4.05,
+   "measured": 3.99,
    "n": 16384,
    "ok": true
   },
@@ -1892,7 +1892,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Array.map",
-   "measured": 4.11,
+   "measured": 4.0,
    "n": 16384,
    "ok": true
   },
@@ -2152,6 +2152,30 @@
    "n": 16384,
    "ok": true
   },
+  "bench/scaling/builtin_items.cp::builtin.Array.items": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Array.items",
+   "measured": 4.02,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/builtin_items.cp::builtin.List.items": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.List.items",
+   "measured": 4.0,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/builtin_items.cp::builtin.Str.items": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.Str.items",
+   "measured": 3.95,
+   "n": 2048,
+   "ok": true
+  },
   "bench/scaling/builtin_list.cp::builtin.List.all": {
    "cost": "n",
    "documented": 4.0,
@@ -2220,7 +2244,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.filter",
-   "measured": 4.17,
+   "measured": 3.94,
    "n": 16384,
    "ok": true
   },
@@ -2284,7 +2308,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.map",
-   "measured": 4.18,
+   "measured": 3.9,
    "n": 16384,
    "ok": true
   },
@@ -2724,7 +2748,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Str.filter",
-   "measured": 3.91,
+   "measured": 4.15,
    "n": 16384,
    "ok": true
   },
@@ -2772,7 +2796,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Str.map",
-   "measured": 3.94,
+   "measured": 4.13,
    "n": 16384,
    "ok": true
   },
@@ -19436,14 +19460,11 @@
  "unscaled": [
   "algebra.Action.compose_onto",
   "builtin.Array.first",
-  "builtin.Array.items",
   "builtin.Array.last",
   "builtin.List.first",
-  "builtin.List.items",
   "builtin.List.last",
   "builtin.Str.find_all",
   "builtin.Str.first",
-  "builtin.Str.items",
   "builtin.Str.join",
   "builtin.Str.last",
   "seq.Zipped.first",
