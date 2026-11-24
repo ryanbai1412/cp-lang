@@ -603,6 +603,26 @@ fn dap_replays_one_call_with_the_edited_fn() {
             replay.contains("`order` = [2, 1, 3] (before the edit: [1, 2, 3])"),
             "the edit's new order: {replay}"
         );
+        let body = cpl_json::parse(&replay).unwrap();
+        let view = body.at(&["body", "view"]);
+        assert!(
+            view.at(&["panel"])
+                .as_str()
+                .unwrap_or_default()
+                .starts_with("replayed call 2 of `most_watched()`"),
+            "{replay}"
+        );
+        let label = view.at(&["status", "label"]).as_str().unwrap_or_default();
+        assert!(
+            label.starts_with("replayed call 2 of `most_watched()`")
+                && label.ends_with(" of the recording: returns 2 (before the edit: 1)"),
+            "{replay}"
+        );
+        assert_eq!(
+            view.at(&["status", "line"]).as_i64(),
+            Some(sorted as i64 - 1),
+            "{replay}"
+        );
     }
 
     let wider = source.replace(

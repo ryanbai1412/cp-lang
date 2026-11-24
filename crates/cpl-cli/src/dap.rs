@@ -706,6 +706,7 @@ impl Session {
                         self.send_output(writer, "console", &report)?;
                         let call =
                             crate::replay::call_text(&replay.recorded.name, &replay.recorded.args);
+                        let view = crate::replay::view(&replay, &report);
                         let mut body = obj([
                             ("report", report.into()),
                             ("call", call.into()),
@@ -719,6 +720,7 @@ impl Session {
                         ] {
                             with(&mut body, key, value.as_deref().map(Json::from));
                         }
+                        with(&mut body, "view", Some(view.to_value()));
                         with(
                             &mut body,
                             "changeLine",

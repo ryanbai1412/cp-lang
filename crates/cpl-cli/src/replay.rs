@@ -176,6 +176,27 @@ pub(crate) fn report(replay: &Replay) -> String {
 
 /// [`report`] as one JSON object, for an editor: steps count from 1, and
 /// every value is the trace's JSON.
+/// What an editor shows of a replay: the report, with its first two lines
+/// (the call and what it returns now) as the status, on the edit's line.
+pub(crate) fn view(replay: &Replay, report: &str) -> cpl_diag::view::View {
+    let mut lines = report.lines();
+    let (call, returns) = (lines.next().unwrap_or(""), lines.next().unwrap_or(""));
+    let line = replay
+        .change
+        .as_ref()
+        .map_or(0, |c| c.line.saturating_sub(1));
+    cpl_diag::view::View {
+        panel: report.to_string(),
+        status: Some(cpl_diag::view::Status {
+            line,
+            ok: true,
+            label: format!("{call}: {returns}"),
+            detail: None,
+        }),
+        ..Default::default()
+    }
+}
+
 pub(crate) fn report_json(replay: &Replay) -> String {
     use cpl_json::Value;
     let raw = |json: &Option<String>| {
