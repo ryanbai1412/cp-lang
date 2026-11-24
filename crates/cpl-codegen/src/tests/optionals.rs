@@ -274,7 +274,8 @@ fn a_local_moved_into_a_narrowed_field_is_packed_on_the_way_in() {
          let b = Box<?Small>.of(Some(read<Small>()))\nprint(b.o ?? 0)\n",
     );
     assert_eq!(decl(&code, "o"), "cpl::OptI32", "{code}");
-    assert!(code.contains("cpl::OptI32(std::move(o))"), "{code}");
+    // An `OptI32` holds no heap: it is packed from `o`, not moved.
+    assert!(code.contains("cpl::OptI32(o)"), "{code}");
 }
 
 #[test]

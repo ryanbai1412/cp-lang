@@ -193,7 +193,10 @@ impl<'p> Emitter<'p> {
         let close = match (returns, outermost, &result) {
             (false, ..) => "});".to_string(),
             (true, false, _) => "}) == 2) return 2;".to_string(),
-            (true, true, Some(held)) => format!("}}) == 2) return std::move(*{held});"),
+            (true, true, Some(held)) => {
+                let ret = self.fn_id.map_or(Ty::Error, |f| self.program.fns[f].ret.clone());
+                format!("}}) == 2) return {};", self.move_of(&ret, &format!("*{held}")))
+            }
             (true, true, None) if self.in_setup => "}) == 2) return false;".to_string(),
             (true, true, None) => "}) == 2) return;".to_string(),
         };
