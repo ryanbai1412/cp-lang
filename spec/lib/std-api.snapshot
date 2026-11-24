@@ -1026,6 +1026,15 @@ std/lazy.cp: Rope.query_path<R>(mut self, i: D, f: (mut T) -> ?R) -> ?R
 std/lazy.cp: Rope.reverse(mut self, r: Range<D>)
 std/lazy.cp: Rope.set(mut self, i: D, x: T)
 std/lazy.cp: Rope.to_array(mut self) -> [D]T
+std/lazy.cp: SeqFold.apply(mut self, r: Range<Int>, f: F)
+std/lazy.cp: SeqFold.fold(mut self, r: Range<Int>) -> T
+std/lazy.cp: SeqFold.get(mut self, pos: Int) -> T
+std/lazy.cp: SeqFold.insert_at(mut self, pos: Int, x: T)
+std/lazy.cp: SeqFold.len(self) -> Int
+std/lazy.cp: SeqFold.new<M>(op: M, xs: List<T> = [], act: ?Action<T, F> = None) -> SeqFold<T, F>
+std/lazy.cp: SeqFold.push(mut self, x: T)
+std/lazy.cp: SeqFold.reverse(mut self, r: Range<Int>)
+std/lazy.cp: SeqFold.total(self) -> T
 std/lazy.cp: flip_action<T, M>(m: M) -> Action<Flip<T>, Bool>
 std/marks.cp: Arena.alloc(mut self, x: T) -> Id<T>
 std/marks.cp: Arena.clear(mut self)
@@ -1445,6 +1454,13 @@ std/segtree.cp: MergeSortTree.count_lt(self, r: Range<D>, x: T) -> Int
 std/segtree.cp: MergeSortTree.first_ge(self, r: Range<D>, x: T) -> ?T
 std/segtree.cp: MergeSortTree.last_le(self, r: Range<D>, x: T) -> ?T
 std/segtree.cp: MergeSortTree.new(a: [D]T) -> MergeSortTree<D, T>
+std/segtree.cp: MergeTrees.get(self, t: MergeTree<D>, x: D) -> Z
+std/segtree.cp: MergeTrees.merge(mut self, a: MergeTree<D>, b: MergeTree<D>, leaf: (Z, Z, Z, Z) -> Z, pre_a: Z = Z.zero, pre_b: Z = Z.zero) -> MergeTree<D>
+std/segtree.cp: MergeTrees.new() -> MergeTrees<D, Z>
+std/segtree.cp: MergeTrees.scale(mut self, t: MergeTree<D>, k: Z)
+std/segtree.cp: MergeTrees.set(mut self, mut t: MergeTree<D>, x: D, v: Z)
+std/segtree.cp: MergeTrees.sum(self, t: MergeTree<D>, r: Range<D>) -> Z
+std/segtree.cp: MergeTrees.total(self, t: MergeTree<D>) -> Z
 std/segtree.cp: SegTree.all(self) -> T
 std/segtree.cp: SegTree.apply(mut self, r: Range<D>, f: F)
 std/segtree.cp: SegTree.apply_all(mut self, f: F)
@@ -1533,7 +1549,7 @@ std/seq.cp: SubseqStep.prune(mut self)
 std/seq.cp: adjacent<S: Seq, T>(self: S) -> yields (T, T)
 std/seq.cp: adjacent_diff<S: Seq, T>(self: S) -> List<T>
 std/seq.cp: all<S: Seq, T>(self: S, p: T -> Bool) -> Bool
-std/seq.cp: all_some<S: Seq, T>(self: S) -> ?List<T>
+std/seq.cp: all_some<S: Seq<?U>, U>(self: S) -> ?List<U>
 std/seq.cp: any<S: Seq, T>(self: S, p: T -> Bool) -> Bool
 std/seq.cp: argmax<S: Keyed, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D
 std/seq.cp: argmin<S: Keyed, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D
@@ -1568,8 +1584,8 @@ std/seq.cp: find<S: Seq, T>(self: S, p: T -> Bool) -> ?T
 std/seq.cp: first<S: Seq, T>(self: S) -> ?T
 std/seq.cp: first_gt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D
 std/seq.cp: first_some<S: Seq, T, U>(self: S, f: T -> ?U) -> ?U
-std/seq.cp: flat_map<S: Seq, T, U: Seq, V>(self: S, f: T -> U) -> yields V
-std/seq.cp: flatten<S: Seq, U: Seq, T>(self: S) -> yields T
+std/seq.cp: flat_map<S: Seq<T>, T, U: Seq<V>, V>(self: S, f: T -> U) -> yields V
+std/seq.cp: flatten<S: Seq<U>, U: Seq<T>, T>(self: S) -> yields T
 std/seq.cp: fold<S: Seq, T, Acc>(self: S, f: (Acc, T) -> Acc, init: Acc) -> Acc
 std/seq.cp: get_or_insert<K, V>(mut self: Map<K, V>, k: K, v: V) -> V
 std/seq.cp: group<S: Seq, T, K, U>(self: S, by: T -> K, of: T -> U = x => x) -> Map<K, List<U>>
@@ -1623,7 +1639,7 @@ std/seq.cp: permutations<S: Indexed, T>(self: S, k: ?Int = None) -> yields List<
 std/seq.cp: pieces<D: Ord, S: Seq>(self: Range<D>, cuts: S) -> (domain P, [P]Range<D>)
 std/seq.cp: pop_if<T>(mut self: List<T>, ok: T -> Bool) -> ?T
 std/seq.cp: pop_while<T>(mut self: List<T>, ok: T -> Bool) -> List<T>
-std/seq.cp: present<S: Seq, T>(self: S) -> yields T
+std/seq.cp: present<S: Seq<?U>, U>(self: S) -> yields U
 std/seq.cp: prev_permutation<S: IndexedMut>(mut self: S) -> Bool
 std/seq.cp: prev_same<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]?D
 std/seq.cp: prev_smaller<D, T, K>(self: [D]T, by: T -> K = x => x, strict: Bool = true) -> [D]?D
