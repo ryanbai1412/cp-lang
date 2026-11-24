@@ -32,8 +32,8 @@ dp.reserve(n)
 for k in 0..n:
     dp.add_quadratic(c => gain(k, c))
     if let is_even = fixed_even[k + 1]:
-        dp.max_convolve(Concave.point(Int(is_even)))
+        dp.shift(Int(is_even))
     else:
-        dp.max_convolve(Concave.flat(0..=1))
+        dp.slide_max(0, 1)
 
 print((dp.at(half) + n * (n + 1) * (n + 1) / 2) / 2)
