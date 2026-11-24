@@ -1,3 +1,9 @@
+// Source: CCO 2018 P1 (Geese vs. Hawks), https://dmoj.ca/problem/cco18p1
+// Problem: each team played n <= 1000 games, given in order as W/L and points (<= 1e6). Pick
+//   rivalry games: pairs (geese game i, hawks game j), in order in both lists, where one team
+//   won and scored more than the other. Print the largest total points of both teams in them.
+// Solution: an LCS-style DP: best[g, h] over the first g geese and h hawks games is the best of
+//   skipping either last game or pairing the two when they can be rivals. O(n^2).
 // Bounds: n: 1..=1000; geese, hawks: 1..=1e6
 
 let n: 1..=1000 = read()
