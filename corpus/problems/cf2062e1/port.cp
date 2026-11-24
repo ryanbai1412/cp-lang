@@ -1,5 +1,6 @@
 // Source: Codeforces 2062E1 (The Game, Easy Version),
 //   https://codeforces.com/contest/2062/problem/E1
+// limits: 4000 ms, 500 MB
 // Problem: a tree of n <= 4e5 nodes rooted at 1, values w_i <= n. Players alternately delete the
 //   subtree of a remaining node heavier than the last one chosen (first move: any node); the
 //   first who cannot move wins. Print a node Cirno can pick first to win, or 0. Multitest.

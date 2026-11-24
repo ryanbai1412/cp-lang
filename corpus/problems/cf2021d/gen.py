@@ -2,6 +2,15 @@
 import random
 import sys
 
+if sys.argv[1] == "--max":
+    # one test at sum n m = 2e5: n = 5e4 days of m = 4 drinks, profits near 1e9 (totals near 2e14)
+    rng = random.Random(1)
+    n, m = 50_000, 4
+    print(1)
+    print(n, m)
+    print("\n".join(" ".join(str(rng.randint(-10**8, 10**9)) for _ in range(m)) for _ in range(n)))
+    sys.exit()
+
 
 def main():
     seed = int(sys.argv[1])

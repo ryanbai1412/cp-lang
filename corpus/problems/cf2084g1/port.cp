@@ -1,5 +1,6 @@
 // Source: Codeforces 2084G1 (Wish Upon a Satellite, Easy Version),
 //   https://codeforces.com/contest/2084/problem/G1
+// limits: 4000 ms, 500 MB
 // Problem: f(c) is the final c_1 when Turtle (maximiser, first) and Piggy alternately merge an
 //   adjacent pair into its min (Turtle) or max (Piggy). Fill the zeros of a partial
 //   permutation of length n <= 5000 to maximise the sum of f over all subarrays; print that

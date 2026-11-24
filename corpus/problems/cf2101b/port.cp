@@ -1,4 +1,5 @@
 // Source: Codeforces 2101B (Quartet Swapping), https://codeforces.com/contest/2101/problem/B
+// limits: 2000 ms, 250 MB
 // Problem: a permutation of n <= 2e5 (sum of n <= 2e5, multitest). An operation swaps a[i], a[i+1]
 //   with a[i+2], a[i+3]. Print the lexicographically smallest reachable permutation.
 // Solution: an operation is one transposition among even positions and one among odd ones, so the

@@ -1,4 +1,5 @@
 // Source: CEOI 2018 Day 1 (Cloud Computing), https://dmoj.ca/problem/ceoi18p1
+// limits: 1400 ms, 256 MB
 // Problem: n <= 2000 machines (cores <= 50, clock rate, price) and m <= 2000 orders (cores
 //   <= 50, minimum rate, payment), rates and prices <= 1e9. An order's cores must all come
 //   from machines bought with rate >= its minimum. Print the most payments minus costs.

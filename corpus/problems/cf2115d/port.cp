@@ -1,5 +1,6 @@
 // Source: Codeforces 2115D (Gellyfish and Forget-Me-Not),
 //   https://codeforces.com/contest/2115/problem/D
+// limits: 2000 ms, 1000 MB
 // Problem: x = 0; in round i = 1..n player c_i (0 minimises, 1 maximises the final x) sets
 //   x ^= a_i or x ^= b_i, with a_i, b_i < 2^60. Print the final x under optimal play.
 //   Multitest, sum n <= 1e5.
@@ -10,8 +11,8 @@
 
 @!multitest
 let n: 1..=100_000 = read()
-let a: [0..n]0..=10 ** 18 = read()
-let b: [0..n]0..=10 ** 18 = read()
+let a: [0..n]0..1 << 60 = read()
+let b: [0..n]0..1 << 60 = read()
 let c: Str = read()
 
 var x = fold(^, a)

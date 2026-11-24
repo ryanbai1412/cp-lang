@@ -1,5 +1,6 @@
 // Source: Codeforces 2089C1 (Key of Like, easy version),
 //   https://codeforces.com/contest/2089/problem/C1
+// limits: 3000 ms, 500 MB
 // Problem: n <= 100 players in turn try one key on one lock, among l <= 5000 locks and their l
 //   keys (k = 0 fakes), always a pair most likely to match given all past tries, ties at
 //   random. Print each player's expected number of opened locks mod 1e9+7. t <= 100

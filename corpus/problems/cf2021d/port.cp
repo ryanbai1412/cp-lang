@@ -1,4 +1,5 @@
 // Source: Codeforces 2021D (Boss, Thirsty), https://codeforces.com/contest/2021/problem/D
+// limits: 2000 ms, 250 MB
 // Problem: n days, m >= 3 drinks, profit A[i][j] (|A| <= 1e9, sum n * m <= 2e5). Each day
 //   sells a subarray of drinks; from day 2 on it must share a drink with the day before and
 //   also have one that day lacked. Print the max total profit. Multitest.

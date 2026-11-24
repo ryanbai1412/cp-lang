@@ -1,4 +1,5 @@
 // Source: Codeforces 2101C, 23 Kingdom, https://codeforces.com/contest/2101/problem/C
+// limits: 4000 ms, 250 MB
 // Problem: multitest, sum n <= 2e5, a_i in 1..=n. Choose b_i in 1..=a_i to maximize the
 //   beauty: the sum over distinct values v in b of (last index of v - first index of v).
 // Solution: give the earliest indices the largest still-free value <= a[i] (a SortedSet of

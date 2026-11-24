@@ -1,6 +1,17 @@
 import random
 import sys
 
+if sys.argv[1] == "--max":
+    # one test at sum n = 5000 with 70% of the entries blank
+    rng = random.Random(1)
+    n = 5000
+    a = list(range(1, n + 1))
+    rng.shuffle(a)
+    print(1)
+    print(n)
+    print(*(0 if rng.random() < 0.7 else x for x in a))
+    sys.exit()
+
 seed, size = int(sys.argv[1]), int(sys.argv[2])
 rng = random.Random(seed)
 if size == 8:

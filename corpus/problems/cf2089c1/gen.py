@@ -2,6 +2,12 @@
 sum l <= 5000. size >= 5000 gives max shapes by seed: one test n = 100, l = 5000;
 100 tests splitting l; n = 1 with l = 5000."""
 import random, sys
+
+if sys.argv[1] == "--max":
+    # one test at sum l = 5000 with n = 100 players
+    print(1)
+    print(100, 5000, 0)
+    sys.exit()
 seed, size = int(sys.argv[1]), int(sys.argv[2])
 rng = random.Random(seed)
 if size >= 5000:
