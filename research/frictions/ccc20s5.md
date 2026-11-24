@@ -28,3 +28,6 @@ print(if fav.first! == fav.last!: 1.0 else: chance.sum / F64(n), precision: 8)
 - Tokens: port 205, original 562
 - Max input (`gen.py --max`): port 0.02 s, 17616 KB, original 0.07 s, 27136 KB
 - Emitted C++: 9881 bytes
+
+Note: for n = 1 the statement's answer is 1 (Josh is first and takes the only burger); the
+port prints 1, but the accepted C++ prints 0, so `gen.py` starts at n = 2.

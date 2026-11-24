@@ -23,3 +23,6 @@ input = "1\n11\n"
 
 [[case]]
 input = "5\n1395\n5\n6\n20\n2743\n"
+
+[[case]]
+args = ["--max"]

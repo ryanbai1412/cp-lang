@@ -14,72 +14,28 @@ let c: 0..=m = read()
 domain Row = 0..n
 domain Col = 0..m
 
-var grid: [Row, Col]Char = 'a'
-
-fn put(mut g: [Row, Col]Char, flip: Bool, i: Int, j: Int, ch: Char):
-    if flip:
-        g[Row(j), Col(i)] = ch
-    else:
-        g[Row(i), Col(j)] = ch
-
-fn fill_zero_rows(mut g: [Row, Col]Char, flip: Bool, nn: Int, mm: Int, cc: Int):
-    if cc == 0:
-        put(mut g, flip, 0, 0, 'a')
-        put(mut g, flip, 0, mm - 1, 'b')
-        put(mut g, flip, nn - 1, 0, 'c')
-        put(mut g, flip, nn - 1, mm - 1, 'd')
-        for i in 1..(nn - 1):
-            put(mut g, flip, i, 0, 'a')
-            put(mut g, flip, i, mm - 1, 'b')
-        for j in 1..(mm - 1):
-            put(mut g, flip, 0, j, 'a')
-            put(mut g, flip, nn - 1, j, 'b')
-    else:
-        for i in 0..nn:
-            put(mut g, flip, i, mm - 1, 'b')
-        if cc < mm:
-            for j in cc..mm:
-                put(mut g, flip, nn - 1, j, 'c')
-
-fn fill_all_rows(mut g: [Row, Col]Char, flip: Bool, nn: Int, mm: Int, cc: Int) -> Bool:
-    if cc == mm:
-        return true
-    if mm % 2 == 0 and cc % 2 == 1:
-        return false
-    for j in 0..mm:
-        put(mut g, flip, nn - 1, j, 'b')
-    var rem = cc
-    if rem % 2 == 1:
-        put(mut g, flip, nn - 1, mm / 2, 'a')
-        rem -= 1
-    var cl = 0
-    var cr = mm - 1
-    while rem > 0:
-        put(mut g, flip, nn - 1, cl, 'a')
-        put(mut g, flip, nn - 1, cr, 'a')
-        cl += 1
-        cr -= 1
-        rem -= 2
-    true
-
-fn solve():
-    var ok = true
-    if r > 0 and r < n and c > 0 and c < m:
-        for i in Row:
-            for j in Col:
-                if i.label >= r and j.label >= c:
-                    grid[i, j] = 'b'
-    elif r == 0:
-        fill_zero_rows(mut grid, false, n, m, c)
-    elif c == 0:
-        fill_zero_rows(mut grid, true, m, n, r)
-    elif r == n:
-        ok = fill_all_rows(mut grid, false, n, m, c)
-    else:
-        ok = fill_all_rows(mut grid, true, m, n, r)
-    if not ok:
-        print("IMPOSSIBLE")
-    else:
-        print(grid)
-
-solve()
+if r > 0 and r < n and c > 0 and c < m:
+    print([Row, Col] (i, j) => if i.ord >= r and j.ord >= c: 'b' else: 'a')
+else:
+    // Every case left has all rows or none palindromic, or else all or no columns: transpose the
+    // second kind so the rows are the extreme side. lines x len poster, `pal` palindromic lines
+    // across (0 or `lines`), `cross` palindromic lines the other way.
+    let flip = r != 0 and (c == 0 or r != n)
+    let (lines, len, pal, cross) = if flip: (m, n, c, r) else: (n, m, r, c)
+    // The letter at line i, position j.
+    fn letter(i: Int, j: Int) -> Char:
+        let bottom = i == lines - 1
+        if pal == 0:
+            // The last position of every line is 'b' and the bottom line is 'c' from `cross` on,
+            // so no line reads the same both ways; with cross = 0 the corner a/b/c/d frame does it.
+            if cross == 0 and bottom: return if j == len - 1: 'd' elif j == 0: 'c' else: 'b'
+            if bottom and j >= cross: return 'c'
+            if j == len - 1: 'b' else: 'a'
+        else:
+            // All 'a', and the bottom line is a palindrome of 'b' with `cross` 'a's from both ends
+            // and the middle, so exactly `cross` of the crossing lines stay palindromes.
+            let ends = cross / 2
+            let keep = j < ends or j >= len - ends or (cross % 2 == 1 and j == len / 2)
+            if cross < len and bottom and not keep: 'b' else: 'a'
+    if pal == lines and len % 2 == 0 and cross % 2 == 1: print("IMPOSSIBLE")
+    else: print([Row, Col] (i, j) => if flip: letter(j.ord, i.ord) else: letter(i.ord, j.ord))

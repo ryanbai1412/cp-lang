@@ -5,50 +5,51 @@
 //   exists and any one is accepted.
 // Solution: a line with exactly one unknown forces it (a middle is the mean of the ends), so
 //   settle fills forced cells until none is left. When nothing is forced, set a random open cell
-//   to a value in -500..499 and settle again. A forced middle that is not whole throws the
+//   to a value in -500..=499 (a seeded `Rng`) and settle again. A forced middle that is not whole throws the
 //   attempt away and the fill restarts from the input, as in the original.
 // original: corpus/submissions/4325116.cpp
-type Square = List<List<?Int>>
-const ROWS = [[(i, j) for j in 0..3] for i in 0..3]
-const LINES = ROWS + [[(i, j) for i in 0..3] for j in 0..3]
+use std.rand.{Rng}
+
+domain Ax = 0..3
+type Cell = (Ax, Ax)
+// The rows and columns, each as its three cells in order.
+let lines: List<(Cell, Cell, Cell)> = [((i, Ax(0)), (i, Ax(1)), (i, Ax(2))) for i in Ax] +
+                                      [((Ax(0), j), (Ax(1), j), (Ax(2), j)) for j in Ax]
 
 fn read_cell() -> ?Int:
     let w: Str = read()
-    if w == "X": None else: Int(w)
+    if w == "X": None else: Some(Int(w))
+var given: [Ax, Ax]?Int = None
+for i in Ax:
+    for j in Ax: given[i, j] = read_cell()
 
-// Fill every forced cell. False when a middle would not be whole.
-fn settle(mut sq: Square) -> Bool:
+// Fill every forced cell; false when a forced middle is not whole.
+fn settle(mut sq: [Ax, Ax]?Int) -> Bool:
     var changed = true
     while changed:
         changed = false
-        for line in LINES:
-            let v = [sq[i][j] for (i, j) in line]
-            if sum(1 for x in v if x == None) != 1: continue
-            let (a, b, c) = (v[0] ?? 0, v[1] ?? 0, v[2] ?? 0)
-            var x = 2 * b - a  // the third term
-            var (i, j) = line[2]
-            if v[0] == None:
-                x = 2 * b - c
-                (i, j) = line[0]
-            elif v[1] == None:
-                if (a + c) % 2 != 0: return false
-                x = (a + c) / 2
-                (i, j) = line[1]
-            sq[i][j] = x
+        for (a, b, c) in lines:
+            let (forced, value) = match (sq[a.0, a.1], sq[b.0, b.1], sq[c.0, c.1]):
+                (None, Some(y), Some(z)) => (a, 2 * y - z)
+                (Some(x), None, Some(z)) =>
+                    if (x + z) % 2 != 0: return false
+                    (b, (x + z) / 2)
+                (Some(x), Some(y), None) => (c, 2 * y - x)
+                _ => continue
+            sq[forced.0, forced.1] = Some(value)
             changed = true
     true
 
-fn attempt(given: Square) -> ?Square:
+var rng = Rng.new(2019)
+fn attempt() -> ?[Ax, Ax]Int:
     var sq = given.clone()
-    while true:
-        if not settle(mut sq): return None
-        let open = [(i, j) for i in 0..3 for j in 0..3 if sq[i][j] == None]
-        if open.len == 0: return sq
-        let (i, j) = open[rand(0, open.len - 1)]
-        sq[i][j] = rand(-500, 499)
+    while settle(mut sq):
+        let open = [(i, j) for i in Ax for j in Ax if sq[i, j].is_none]
+        if open.is_empty: return Some([Ax, Ax] (i, j) => sq[i, j]!)
+        let (i, j) = rng.pick(open)!
+        sq[i, j] = Some(rng.int(-500, 499))
+    None
 
-let given: Square = [[read_cell() for _ in 0..3] for _ in 0..3]
-while true:
-    let sq = attempt(given) else: continue
-    for row in sq: print("{row[0]!} {row[1]!} {row[2]!}")
-    break
+var found = attempt()
+while found.is_none: found = attempt()
+print(found!)
