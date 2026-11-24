@@ -28,21 +28,32 @@ let suff_max = [Pos] p => sm[p.l]
 let suffix_max_pos = [p for p in Pos.rev if p == Pos.last or a[p] > suff_max[p.next!]]
 let top_val = a[suffix_max_pos.last!]
 
+// A block runs from a prefix minimum to the next. Lifting its head to the cap leaves the block's
+// prefix minima `lift` (the cap, then running minima), and `lift_suff` sums them to the block end.
+// Uncapped at Pos.first: use a + top_val so no candidate exceeds the cap.
+let starts = [Pos] p => pref_min[p] == a[p]
+var lift: [Pos]Int = 0
+for p in Pos:
+    lift[p] = if starts[p]: p.prev.map(q => pref_min[q]) ?? (a[p] + top_val) else: min(
+        lift[p.prev!],
+        a[p],
+    )
+var lift_suff: [Pos]Int = 0
+for p in Pos.rev:
+    lift_suff[p] = lift[p] + (if let q = p.next and not starts[q]: lift_suff[q] else: 0)
+
 var ans: [0..n]Int = base_ans
 var next_min: ?Pos = None
 
-for i in Pos.rev if pref_min[i] == a[i]:
+for i in Pos.rev if starts[i]:
     let ai = a[i]
-    // Uncapped at Pos.first: use ai + top_val so no candidate exceeds cap.
-    let cap = (i.prev.map(p => pref_min[p])) ?? (ai + top_val)
+    let cap = lift[i]
     let blk_end = next_min.map(j => j.ord) ?? n
     let blk_len = blk_end - i.ord
     let tail_loss = next_min.map(j => orig_suff[j]) ?? 0
     domain Blk = 0..blk_len
-    let lm = ([Blk] t => if t == Blk.first: cap else: a[i.offset(t.ord)!]).scan(min)
-    let lifted = [Blk] t => lm.cut(t.ord + 1)
-    let ls = lifted.rev.scan(+)
-    let lifted_suff = [Blk] t => ls[t.l]
+    let lifted = [Blk] t => lift[i.offset(t.ord)!]
+    let lifted_suff = [Blk] t => lift_suff[i.offset(t.ord)!]
 
     for pos in suffix_max_pos if pos > i:
         let cur_cap = min(cap, ai + a[pos])
