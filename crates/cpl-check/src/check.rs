@@ -6,6 +6,7 @@
 //! poisoned.
 
 pub(crate) mod advice;
+mod arms;
 mod bounded_str;
 mod built_from_param;
 pub(crate) use advice::rename_values;

@@ -689,6 +689,7 @@ impl<'a> Checker<'a> {
                 }
                 self.moved = post_moved;
                 let result = result.unwrap_or(Ty::Unit);
+                self.require_reachable_arms(&scrutinee_ty, arms);
                 self.require_every_variant(&scrutinee_ty, arms, expr.span);
                 self.require_every_lit_union(scrutinee, arms, expr.span);
                 result

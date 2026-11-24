@@ -742,6 +742,16 @@ pub const REGISTRY: &[CodeInfo] = &[
         input: "",
     },
     CodeInfo {
+        code: Code("E0318"),
+        title: "Unreachable match arm",
+        summary: "A `match` arm comes after an arm that matches every value.",
+        explanation: "Arms are tried in order, and `_` or a lowercase name matches everything, so no arm after it can run. A lowercase name binds even when it spells a variant: `less` is not `Less`. Name the variant, or move the arm that matches everything last.",
+        trigger: "let x = match cmp(2, 1):\n    less => \"less\"\n    greater => \"greater\"\n    equal => \"equal\"\nprint(x)\n",
+        fix: "let x = match cmp(2, 1):\n    Less => \"less\"\n    Greater => \"greater\"\n    Equal => \"equal\"\nprint(x)\n",
+        mode: "check",
+        input: "",
+    },
+    CodeInfo {
         code: Code("L0601"),
         title: "Right side changes the place it assigns",
         summary: "The right side of an assignment mutates storage that may be the place being written, as in `xs[0] = xs.pop()!`.",

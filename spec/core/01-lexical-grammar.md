@@ -295,7 +295,10 @@ match d: L => -1, R => 1            // one-line match
   `else` (decision 125). Labels are `'name:` before the loop. (R01.7.2)
 - `match` is exhaustive over enums, literal unions, `Bool` and `?T`.
   Arms may have guards `pat if cond =>`; a guarded arm never counts
-  toward exhaustiveness. There are no custom patterns:
+  toward exhaustiveness. An arm after an unguarded arm that matches every
+  value (`_`, a lowercase binding) never runs and is an error, so a
+  miscased variant (`less =>` for `Less`) cannot swallow the arms after it.
+  There are no custom patterns:
   a view is a method returning an enum (decision 132). An arm names a
   variant bare (`Enter(v, p) =>`) since the matched enum is known, std
   enums included; `()` is the arm that does nothing. (R01.7.3)

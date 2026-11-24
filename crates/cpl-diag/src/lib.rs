@@ -160,6 +160,8 @@ pub mod codes {
     pub const FIELD_BOUND_FROM_INPUT: Code = Code("E0316");
     /// `@get fn f(self, k: Int)`: a getter's parameters all need defaults (R02.6.6).
     pub const GETTER_NEEDS_DEFAULTS: Code = Code("E0317");
+    /// A `match` arm after one that matches everything (R01.7.3).
+    pub const UNREACHABLE_ARM: Code = Code("E0318");
 
     pub const ASSIGN_TO_LET: Code = Code("E0401");
     pub const MISSING_MUT_AT_CALL: Code = Code("E0402");

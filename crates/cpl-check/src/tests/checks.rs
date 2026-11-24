@@ -910,3 +910,18 @@ fn an_unwritten_body_does_not_flag_its_mut_params() {
     let read = format!("fn f(mut xs: List<Int>) -> Int = xs.len\n{call}");
     assert!(codes(&read).contains(&"L0610"), "{:?}", codes(&read));
 }
+
+#[test]
+fn an_arm_after_a_lowercase_binding_is_unreachable_and_names_the_variant() {
+    let d = crate::tests::one(
+        "let x = match cmp(2, 1):\n    less => 1\n    greater => 2\n    equal => 3\nprint(x)\n",
+    );
+    assert_eq!(d.code.0, "E0318");
+    assert!(
+        d.help.as_deref().unwrap().contains("did you mean `Less`?"),
+        "{d:?}"
+    );
+    assert_eq!(d.fixes[0].edits[0].1, "Less");
+    let ok = "let x = match 3:\n    3 => 1\n    n if n > 5 => 2\n    _ => 0\nprint(x)\n";
+    assert!(crate::tests::check(ok).is_empty());
+}
