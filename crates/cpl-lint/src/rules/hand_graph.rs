@@ -24,9 +24,22 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 _ => None,
             })
             .collect(),
+        compared: Vec::new(),
+        depths: Vec::new(),
         out: Vec::new(),
     };
     file.walk(&mut v, |v, base| v.base = base);
+    v.base = 0;
+    for (t, at) in std::mem::take(&mut v.depths) {
+        if v.compared.contains(&t) {
+            v.warn(
+                &DEPTH_BY_HAND,
+                at,
+                format!("`{t}` steps each depth from the parent's by hand"),
+                "`Rooted.from_parents(par)` (`par: [V]?V`, `None` at the root) or `Rooted.new(adj, root)` knows `t.depth(v)`, `t.parent(v)` and `t.lca(u, v)`".to_string(),
+            );
+        }
+    }
     v.out
 }
 
@@ -36,6 +49,13 @@ struct HandGraph<'a> {
     /// Each struct and its fields: a depth table that is a struct's own
     /// field (std's `Rooted`, `JumpTree`) is how that type answers depths.
     structs: Vec<(Span, Vec<String>)>,
+    /// Tables read at two places in one comparison or difference,
+    /// `depth[u] > depth[v]`, `depth[u] - depth[a]`: the depths feed a walk
+    /// up the tree or a distance, which `Rooted` answers. Depths read only
+    /// as values are one pass by hand, cheaper than building the tree.
+    compared: Vec<String>,
+    /// Each table stepped from the parent's, and where.
+    depths: Vec<(String, Span)>,
     out: Vec<Finding>,
 }
 
@@ -276,12 +296,7 @@ impl HandGraph<'_> {
         }) {
             return;
         }
-        self.warn(
-            &DEPTH_BY_HAND,
-            stmt.span,
-            format!("`{t}` steps each depth from the parent's by hand"),
-            "`Rooted.from_parents(par)` (`par: [V]?V`, `None` at the root) or `Rooted.new(adj, root)` knows `t.depth(v)`, `t.parent(v)` and `t.lca(u, v)`".to_string(),
-        );
+        self.depths.push((t.to_string(), at));
     }
 }
 
@@ -292,5 +307,23 @@ impl Visitor for HandGraph<'_> {
         }
         self.deque(stmt);
         self.depth(stmt);
+    }
+    fn expr(&mut self, expr: &Expr) {
+        let pair = match &unparen(expr).kind {
+            ExprKind::Binary {
+                op: BinOp::Sub,
+                lhs,
+                rhs,
+                ..
+            } => Some((&**lhs, &**rhs)),
+            _ => compare(expr).map(|(a, _, b)| (a, b)),
+        };
+        if let Some((a, b)) = pair {
+            if let (Some((x, _)), Some((y, _))) = (index1(a), index1(b)) {
+                if x == y {
+                    self.compared.push(x.to_string());
+                }
+            }
+        }
     }
 }

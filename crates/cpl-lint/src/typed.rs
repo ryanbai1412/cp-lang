@@ -311,7 +311,14 @@ mod own_state_tests {
     #[test]
     fn a_struct_steps_the_depths_it_keeps() {
         let code = crate::DEPTH_BY_HAND.code.0;
-        let by_hand = "domain V = 0..4\nvar dep: [V]Int = 0\nfor v in V:\n    if v.ord > 0:\n        dep[v] = dep[V(v.ord - 1)] + 1\nprint(dep[V(3)])\n";
+        let values = "domain V = 0..4\nvar dep: [V]Int = 0\nfor v in V:\n    if v.ord > 0:\n        dep[v] = dep[V(v.ord - 1)] + 1\nprint(dep[V(3)])\n";
+        assert!(
+            !crate::lint(values, &all_on())
+                .iter()
+                .any(|d| d.code.0 == code),
+            "{values}"
+        );
+        let by_hand = "domain V = 0..4\nvar dep: [V]Int = 0\nfor v in V:\n    if v.ord > 0:\n        dep[v] = dep[V(v.ord - 1)] + 1\nprint(dep[V(3)] > dep[V(1)])\n";
         assert!(crate::lint(by_hand, &all_on())
             .iter()
             .any(|d| d.code.0 == code));
