@@ -146,7 +146,7 @@ pub struct PersistentSegTree<D, T: Sub>(m: Monoid<T>):
     /// empty: `var t = PersistentSegTree<0..0, Int>(min); t.all(t.base) == Int.MAX`
     /// traps: when both `a:` and `fill:` are given
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); t.all(t.base) == 6`
-    pub fn new<M>(op: M, a: ?[D]T = None, fill: ?T = None) -> PersistentSegTree<D, T>:
+    pub fn new<M: Op<T>>(op: M, a: ?[D]T = None, fill: ?T = None) -> PersistentSegTree<D, T>:
         let m = Monoid<T>.of(op)
         var pst = PersistentSegTree(m, [0], [0], [m.id], 0)
         if let init = a:

@@ -561,7 +561,7 @@ pub struct PotentialDsu<V, W = Int>:
     /// traps: never
     /// example: `let d = PotentialDsu<0..3>(); d.components == 3 and d.consistent`
     /// example: `var d = PotentialDsu<0..3, Int>(op: ^); d.unite(0, 1, 6); d.unite(1, 2, 3); d.diff(0, 2) == Some(5)`
-    pub fn new<G>(op: G = (+)) -> PotentialDsu<V, W>:
+    pub fn new<G: Op<W>>(op: G = (+)) -> PotentialDsu<V, W>:
         let g = Group<W>.of(op)
         PotentialDsu(g, [V] v => v, [V] _ => 1, [V] _ => g.id, V.count, 0, [])
 

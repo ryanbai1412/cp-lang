@@ -38,7 +38,7 @@ use std.range.{Len, RingRange, ends, first_true}
 @lint(hand_rolled_prefix_sum, from: "for i in r:\n    acc += xs[i]\n    out.push(acc)", advice: "let out = xs.scan(+)", holes: "r, xs, acc, out")
 @lint(hand_rolled_prefix_sum, from: "for x in xs:\n    out.push(out.last! + x)", advice: "let out = xs.scan(+)", holes: "xs, out")
 @lint(hand_rolled_prefix_sum, from: "for x in xs:\n    out.push(out[out.len - 1] + x)", advice: "let out = xs.scan(+)", holes: "xs, out")
-pub fn scan<D, T, M>(self: [D]T, f: M, from: ?T = None) -> Prefix<D, T> =
+pub fn scan<D, T, M: Op<T>>(self: [D]T, f: M, from: ?T = None) -> Prefix<D, T> =
     Prefix<D, T>.of_scan(self, f, from)
 
 
@@ -177,7 +177,7 @@ pub struct Prefix<D, T: Add + Sub>:
         self.p[b]
 
     // Builds the table in place, so scan returns it without a copy.
-    fn of_scan<M>(a: [D]T, f: M, from: ?T) -> Prefix<D, T>:
+    fn of_scan<M: Op<T>>(a: [D]T, f: M, from: ?T) -> Prefix<D, T>:
         let m = Monoid<T>.of(f)
         var p: [D.cuts]T = from ?? m.id
         var acc = from ?? m.id
@@ -199,7 +199,7 @@ pub struct Prefix<D, T: Add + Sub>:
     /// empty: `domain D = 0..0; let a: [D]Int = [D] v => 1; Prefix<D, Int>.of_rev_scan(a, +, None).all == 0 and Prefix<D, Int>.of_rev_scan(a, +, Some(10)).all == 10`
     /// traps: never (beyond what `f` traps on)
     /// example: `domain D = 0..3; let a: [D]Int = [3, 1, 4]; Prefix<D, Int>.of_rev_scan(a, +, None).all == 8`
-    pub fn of_rev_scan<M>(a: [D]T, f: M, from: ?T) -> Prefix<D, T>:
+    pub fn of_rev_scan<M: Op<T>>(a: [D]T, f: M, from: ?T) -> Prefix<D, T>:
         let m = Monoid<T>.of(f)
         var p: [D.cuts]T = from ?? m.id
         var acc = from ?? m.id
@@ -562,7 +562,7 @@ pub struct Prefix<T: Sub>:
 /// traps: never (beyond what `op` traps on)
 /// example: `prefix_fold(*, [2, 3, 4])[2] == 6`
 /// example: `prefix_fold(*, [2, 3, 4])[0] == 1`
-pub fn prefix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T:
+pub fn prefix_fold<D, T, M: Op<T>>(op: M, a: [D]T) -> [D.cuts]T:
     let m = Monoid<T>.of(op)
     var p: [D.cuts]T = m.id
     var acc = m.id
