@@ -23,7 +23,9 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     let top: Vec<(u32, &Stmt)> = file.top_level().collect();
     v.query_shift(&top);
     v.parallel_coords(&top);
-    v.out.sort_by_key(|f| (f.diag.span.start, f.diag.code));
+    let order = crate::code_order(v.out.iter().map(|f| f.diag.code));
+    cpl_diag::sort_by_key(&mut v.out, |f| crate::code_rank(&order, f.diag.code));
+    cpl_diag::sort_by_key(&mut v.out, |f| f.diag.span.start as u64);
     v.out
         .dedup_by_key(|f| (f.diag.span.start, f.diag.span.end, f.diag.code));
     v.out

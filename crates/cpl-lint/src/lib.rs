@@ -237,6 +237,32 @@ pub(crate) fn is_std(facts: Option<&Facts>, at: Span, name: &str) -> bool {
 
 /// The checker's facts and the offset of the item a rule is in: asks
 /// [`is_std`] of an item-relative expression.
+/// `(start, end)` as one key that orders as the pair does.
+pub(crate) fn span_key((start, end): (u32, u32)) -> u64 {
+    (start as u64) << 32 | end as u64
+}
+
+/// The codes of `codes` in text order, once each, for [`code_rank`].
+pub(crate) fn code_order(codes: impl Iterator<Item = cpl_diag::Code>) -> Vec<&'static str> {
+    let mut all: Vec<&'static str> = codes.map(|c| c.0).collect();
+    all.sort_unstable();
+    all.dedup();
+    all
+}
+
+/// `code`'s place in `order`, a key that orders as the code's text does.
+pub(crate) fn code_rank(order: &[&'static str], code: cpl_diag::Code) -> u64 {
+    order.binary_search(&code.0).map_or(0, |i| i as u64)
+}
+
+/// `diags` by span, then code, through cpl_diag's one sort rather than a
+/// sort instantiated for each element type.
+pub(crate) fn by_place(diags: &mut [Diagnostic]) {
+    let order = code_order(diags.iter().map(|d| d.code));
+    cpl_diag::sort_by_key(diags, |d| code_rank(&order, d.code));
+    cpl_diag::sort_by_key(diags, |d| span_key((d.span.start, d.span.end)));
+}
+
 #[derive(Clone, Copy)]
 pub(crate) struct Calls<'a> {
     facts: Option<&'a Facts>,
@@ -650,7 +676,7 @@ fn lint_file(file: &File, config: &Config, declared: &[library::Declared]) -> Ve
         diag.match_line_endings(file.src);
         out.push(diag);
     }
-    out.sort_by_key(|d| (d.span.start, d.span.end, d.code));
+    by_place(&mut out);
     out.dedup();
     let all = out.clone();
     out.retain(|d| !all.iter().any(|wider| supersedes(file.src, wider, d)));

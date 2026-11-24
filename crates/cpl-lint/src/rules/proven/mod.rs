@@ -283,7 +283,7 @@ fn proven_in(file: &File, only: Option<usize>) -> Proven {
     let mut lists: std::collections::HashMap<&str, Option<(u128, Terms)>> =
         std::collections::HashMap::new();
     let mut sites: Vec<_> = out.pushes.iter().collect();
-    sites.sort_by_key(|(at, _)| **at);
+    cpl_diag::sort_by_key(&mut sites, |(at, _)| crate::span_key(**at));
     for (_, (name, around, factors)) in sites {
         let entry = lists.entry(name).or_insert(Some((0, Vec::new())));
         *entry = entry.take().and_then(|(sum, mut terms)| {
@@ -322,11 +322,11 @@ fn proven_in(file: &File, only: Option<usize>) -> Proven {
     out.lists.sort();
     out.names.sort();
     out.names.dedup();
-    out.exprs.sort_by_key(|e| e.op);
+    cpl_diag::sort_by_key(&mut out.exprs, |e| crate::span_key(e.op));
     out.exprs.dedup_by_key(|e| e.op);
-    out.indexes.sort_by_key(|i| i.index);
+    cpl_diag::sort_by_key(&mut out.indexes, |i| crate::span_key(i.index));
     out.indexes.dedup_by_key(|i| i.index);
-    out.loops.sort_by_key(|l| l.head);
+    cpl_diag::sort_by_key(&mut out.loops, |l| crate::span_key(l.head));
     out.loops.dedup_by_key(|l| l.head);
     out
 }

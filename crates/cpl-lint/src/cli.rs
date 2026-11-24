@@ -249,7 +249,7 @@ pub fn run_with(
         diagnostics.extend(found.lints);
         diagnostics.retain(keep);
         crate::drop_repeats(&mut diagnostics, &problems);
-        diagnostics.sort_by_key(|d| (d.span.start, d.span.end, d.code));
+        crate::by_place(&mut diagnostics);
         errors += diagnostics
             .iter()
             .filter(|d| d.severity == Severity::Error)
@@ -292,7 +292,7 @@ pub fn run_with(
             // `:make`) shows everything wrong with the file.
             let mut shown = problems;
             shown.extend(diagnostics);
-            shown.sort_by_key(|d| (d.span.start, d.span.end, d.code));
+            crate::by_place(&mut shown);
             show(stdout, &shown, &name, &src);
         }
     }
