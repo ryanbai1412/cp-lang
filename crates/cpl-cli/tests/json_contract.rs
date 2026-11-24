@@ -229,6 +229,10 @@ fn every_json_output_has_the_published_keys() {
             &["run", "a.cp", "--samples", "--format", "json"],
         ),
         (
+            "run --samples --list",
+            &["run", "a.cp", "--samples", "--list", "--format", "json"],
+        ),
+        (
             "run --samples",
             &["run", "bad_index.cp", "--samples", "--format", "json"],
         ),

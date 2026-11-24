@@ -424,6 +424,8 @@ struct RunArgs<'a> {
     case: Option<&'a str>,
     /// `--live NAME` with `--samples`: the sample whose values are shown.
     live_sample: Option<&'a str>,
+    /// `--list` with `--samples`: name the samples instead of running them.
+    list: bool,
 }
 
 fn parse_test_cases(spec: &str) -> Result<Vec<(u64, u64)>, String> {
@@ -489,6 +491,7 @@ impl<'a> RunArgs<'a> {
             samples: false,
             case: None,
             live_sample: None,
+            list: false,
         };
         let mut paths = Vec::new();
         let mut iter = rest.iter().copied().peekable();
@@ -590,6 +593,7 @@ impl<'a> RunArgs<'a> {
                 }
                 "--live" => args.live = true,
                 "--samples" => args.samples = true,
+                "--list" => args.list = true,
                 "--case" => {
                     args.case = Some(
                         iter.next()
@@ -658,9 +662,10 @@ impl<'a> RunArgs<'a> {
                 "`--test`, `--watch`, `--last`, `--from`, `--depth` and `--full` shape a trace: add `--trace`".into(),
             );
         }
-        if (args.case.is_some() || args.live_sample.is_some()) && !args.samples {
+        if (args.case.is_some() || args.live_sample.is_some() || args.list) && !args.samples {
             return Err(
-                "`--case` and `--values-of` pick among the samples: add `--samples`".into(),
+                "`--case`, `--values-of` and `--list` pick among the samples: add `--samples`"
+                    .into(),
             );
         }
         if args.samples

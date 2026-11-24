@@ -9,7 +9,6 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { serverBinary } from './client';
 import { CplResult, EXIT_FAILED, EXIT_NOT_BUILT, missingCpl, runCpl } from './cpl';
-import { samplesOf } from './lenses';
 import { Overlays } from './overlays';
 import {
     parseRunReport,
@@ -29,11 +28,35 @@ export class Runner {
         private readonly traces: TraceView,
     ) {}
 
-    async runSample(uri?: vscode.Uri, sample?: Sample): Promise<void> {
+    /** Runs one sample, by the name `cpl run --samples --list` gives it; asks when not given. */
+    async runSample(uri?: vscode.Uri, name?: string): Promise<void> {
         const document = await this.document(uri);
-        const chosen = document && (sample ?? (await this.pickSample(document)));
+        const chosen = document && (name ?? (await this.pickSample(document))?.label);
         if (document && chosen !== undefined) {
-            await this.runSamples(document, chosen ? ['--case', chosen.label] : []);
+            await this.runSamples(document, chosen ? ['--case', chosen] : []);
+        }
+    }
+
+    /** Runs a server lens's `cpl` arguments: runs, traces and stresses draw here, the rest go to a terminal. */
+    async exec(args: string[]): Promise<void> {
+        const [verb, file, ...rest] = args;
+        const uri = file ? vscode.Uri.file(file) : undefined;
+        const input = rest[0]?.startsWith('--') ? undefined : rest[0];
+        const at = rest.indexOf('--trace');
+        if (verb === 'run' && at >= 0) {
+            const part = rest[at + 1];
+            return this.trace(uri, input ?? null, part?.startsWith('--') ? undefined : part);
+        } else if (verb === 'run' && rest.includes('--samples')) {
+            return this.runAllSamples(uri);
+        } else if (verb === 'run') {
+            const name = input && (await this.samples(await this.document(uri))).find(s => s.input === input)?.label;
+            return this.runSample(uri, name ?? '');
+        } else if (verb === 'stress') {
+            return this.stress(uri);
+        }
+        const binary = serverBinary();
+        if (binary) {
+            vscode.window.createTerminal({ name: 'cpl', shellPath: binary, shellArgs: args }).show();
         }
     }
 
@@ -181,17 +204,15 @@ export class Runner {
         }
     }
 
-    async trace(uri?: vscode.Uri, sample?: Sample, part?: string): Promise<void> {
+    /** `input`: the sample's input file, null for none, undefined to ask. */
+    async trace(uri?: vscode.Uri, input?: string | null, part?: string): Promise<void> {
         const document = await this.document(uri);
         if (!document) {
             return;
         }
-        const chosen = sample ?? (await this.pickSample(document));
-        if (chosen === undefined) {
-            return;
-        }
+        const chosen = input !== undefined ? input : (await this.pickSample(document))?.input ?? null;
         const args = ['run', document.uri.fsPath, '--trace', ...(part ? [part] : []), '--format', 'html'];
-        const stdin = chosen ? await this.read(document, chosen.input) : '';
+        const stdin = chosen ? await fs.promises.readFile(chosen, 'utf8') : '';
         const result = await this.cpl(document, args, 'cpl run --trace', stdin);
         if (!result) {
             return;
@@ -211,7 +232,7 @@ export class Runner {
         if (!binary || document.uri.scheme !== 'file') {
             return;
         }
-        const sample = this.liveSample(await samplesOf(document));
+        const sample = this.liveSample(await this.samples(document));
         if (!sample) {
             return;
         }
@@ -221,7 +242,7 @@ export class Runner {
         const version = document.version;
         const result = await runCpl(binary, ['run', document.uri.fsPath, '--format', 'json', '--sample', sample.label], {
             cwd: path.dirname(document.uri.fsPath),
-            stdin: await this.read(document, sample.input),
+            stdin: await fs.promises.readFile(sample.input, 'utf8'),
             timeoutMs: config.get<number>('run.timeoutMs', 10000),
         });
         // A newer save or an edit since the run started makes this result stale.
@@ -316,7 +337,7 @@ export class Runner {
 
     /** The sample to use: null to run without input, undefined when the user backed out. */
     private async pickSample(document: vscode.TextDocument): Promise<Sample | null | undefined> {
-        const samples = await samplesOf(document);
+        const samples = await this.samples(document);
         if (samples.length <= 1) {
             return samples[0] ?? null;
         }
@@ -327,11 +348,19 @@ export class Runner {
         return picked?.sample;
     }
 
-    private async read(document: vscode.TextDocument, source: { text: string } | { file: string }): Promise<string> {
-        if ('text' in source) {
-            return source.text;
+    /** The document's samples in run order, as `cpl run --samples --list` names them. */
+    private async samples(document: vscode.TextDocument | undefined): Promise<Sample[]> {
+        const binary = serverBinary();
+        if (!binary || document?.uri.scheme !== 'file') {
+            return [];
         }
-        const file = vscode.Uri.file(path.join(path.dirname(document.uri.fsPath), source.file));
-        return Buffer.from(await vscode.workspace.fs.readFile(file)).toString('utf8');
+        const file = document.uri.fsPath;
+        const result = await runCpl(binary, ['run', file, '--samples', '--list', '--format', 'json'], { cwd: path.dirname(file) });
+        try {
+            const listed: { name: string; input: string }[] = JSON.parse(result.stdout).samples;
+            return listed.map(s => ({ label: s.name, input: s.input }));
+        } catch {
+            return [];
+        }
     }
 }

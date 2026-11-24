@@ -393,13 +393,13 @@ const tests: [string, () => Promise<void>][] = [
             assert.deepEqual(
                 lenses.map(lens => [lens.range.start.line, lens.command?.title, lens.command?.command]),
                 [
+                    [0, 'Run on i1', 'cpl.exec'],
+                    [0, 'Run on all 2 samples', 'cpl.exec'],
+                    [0, 'Trace on i1', 'cpl.exec'],
+                    [0, 'Stress', 'cpl.exec'],
+                    [8, 'Stress against count_brute', 'cpl.exec'],
+                    [8, 'Trace', 'cpl.exec'],
                     [0, 'Memory: bounds allow 3.2 MB of 256 MB on generic', 'cpl.exec'],
-                    [0, '$(play) Run on i1', 'cp.runSample'],
-                    [0, 'Run on all 2 samples', 'cp.runAllSamples'],
-                    [0, 'Stress', 'cp.stress'],
-                    [0, 'Trace', 'cp.trace'],
-                    [8, 'Stress against count_brute', 'cp.stress'],
-                    [8, 'Trace', 'cp.trace'],
                 ],
             );
         },
@@ -413,9 +413,9 @@ const tests: [string, () => Promise<void>][] = [
                     'vscode.executeCodeLensProvider',
                     document.uri,
                 );
-                return all.some(lens => lens.command?.command === 'cpl.exec') ? all : undefined;
+                return all.some(lens => lens.command?.title.startsWith('Memory')) ? all : undefined;
             });
-            const memory = lenses.find(lens => lens.command?.command === 'cpl.exec')!.command!;
+            const memory = lenses.find(lens => lens.command?.title.startsWith('Memory'))!.command!;
             assert.equal(memory.title, 'Memory: bounds allow 1.6 MB of 256 MB on codeforces');
             // The server may spell a Windows path `c:/...`.
             const [command, file] = memory.arguments ?? [];
@@ -457,7 +457,7 @@ const tests: [string, () => Promise<void>][] = [
                     : undefined,
             );
             // A second trace of the same file reuses its panel.
-            const trace = lenses.find(lens => lens.command?.command === 'cp.trace')!.command!;
+            const trace = lenses.find(lens => lens.command?.title === 'Trace on i1')!.command!;
             await vscode.commands.executeCommand(trace.command, ...(trace.arguments ?? []));
             const panels = vscode.window.tabGroups.all
                 .flatMap(group => group.tabs)

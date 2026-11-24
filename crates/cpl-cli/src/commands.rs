@@ -543,6 +543,8 @@ options:
   --case NAME       with --samples: only the sample NAME
   --values-of NAME  with --samples --format json: the sample whose values
                     the view shows (default the first)
+  --list            with --samples --format json: name the samples, each
+                    with its input and answer files, without running them
   --brute           run the file's `@alt(program)` fn in place of the solution
   --release         run what a judge runs: the C++ of `cpl build`, built with
                     the judge's flags (those g++ here accepts) on the judge's

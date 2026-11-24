@@ -151,6 +151,10 @@ sample has no answer, and `why` the first difference or the runtime error.
 Its `view` shows the summary as `status`, the values of the sample
 `--values-of` names (default the first) as `live` lines, and the first runtime
 error as an `error` line and the `diagnostic`, its `source` naming the sample.
+`cpl run --samples --list --format json` prints `{"samples": [{"name",
+"input", "expected"?}]}`: the same samples in the same order, each with its
+input file and its answer file when it has one, without running them; an
+editor lists and picks samples from it.
 `cpl vendor --json` prints `{"vendored": [{"module", "path"}]}`, one
 row per std module it copied.
 `cpl judges --json` prints `{"judges": [{"name", "title", "chosen",

@@ -70,6 +70,8 @@ export class CpClient implements vscode.Disposable {
         };
         const clientOptions: LanguageClientOptions = {
             documentSelector: SELECTOR,
+            // The server's Run, Trace, Test and Stress lenses; `cpl.exec` runs them.
+            initializationOptions: { codeLens: vscode.workspace.getConfiguration('cp').get('codeLens.enabled', true) },
             outputChannel: this.output,
             revealOutputChannelOn: RevealOutputChannelOn.Never,
             middleware: {

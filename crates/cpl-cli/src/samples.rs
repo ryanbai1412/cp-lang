@@ -47,6 +47,10 @@ impl Ran {
 pub(crate) fn run(args: &RunArgs, stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
     let source = cpl_contest::problem::source_path(args.file);
     let mut samples = cpl_contest::problem::samples(&source);
+    if args.list {
+        let _ = writeln!(stdout, "{}", listing(&samples));
+        return 0;
+    }
     if let Some(name) = args.case {
         samples.retain(|s| s.name == name);
         if samples.is_empty() {
@@ -94,6 +98,22 @@ pub(crate) fn run(args: &RunArgs, stdout: &mut (dyn Write + Send), stderr: &mut 
     }
     let _ = writeln!(stdout, "{}", report(&ran, &view));
     code
+}
+
+/// `{"samples": [{"name", "input", "expected"?}]}`, the files as paths.
+fn listing(samples: &[cpl_contest::problem::TestCase]) -> String {
+    cpl_json::write_with(|w| {
+        w.object().key("samples").array();
+        for s in samples {
+            w.object().key("name").str(&s.name);
+            w.key("input").str(&s.input.display().to_string());
+            if let Some(expected) = &s.expected {
+                w.key("expected").str(&expected.display().to_string());
+            }
+            w.end();
+        }
+        w.end().end();
+    })
 }
 
 fn run_one(compiled: &Compiled, name: &str, input: &[u8], expected: Option<String>) -> Ran {
@@ -397,6 +417,32 @@ mod tests {
         assert!(lines.iter().any(|l| text(l, &["label"]) == "i2: 5"));
         assert!(text(&json, &["view", "panel"]).contains("\ni2: runtime error ("));
         assert!(text(&json, &["view", "panel"]).contains("\n  error[R0101]"));
+    }
+
+    #[test]
+    fn list_names_the_samples_in_run_order_with_their_files() {
+        let (code, json) = samples(
+            "list",
+            &[
+                ("a.cp", DOUBLE),
+                ("i2", "2\n"),
+                ("i1", "1\n"),
+                ("o1", "2\n"),
+                ("a.samples/3.in", "3\n"),
+            ],
+            &["--list"],
+        );
+        assert_eq!(code, 0);
+        let names: Vec<&str> = (0..3)
+            .map(|i| text(&json, &["samples", &i.to_string(), "name"]))
+            .collect();
+        assert_eq!(names, ["i1", "i2", "3"]);
+        assert!(text(&json, &["samples", "0", "expected"]).ends_with("o1"));
+        assert!(text(&json, &["samples", "2", "input"]).ends_with("3.in"));
+        let Value::Object(second) = at(&json, &["samples", "1"]) else {
+            panic!()
+        };
+        assert!(!second.contains_key("expected"));
     }
 
     #[test]

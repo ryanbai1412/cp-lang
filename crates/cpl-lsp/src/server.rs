@@ -648,22 +648,19 @@ impl Server {
                         } else {
                             Vec::new()
                         };
-                        all.extend(memory_lens(&mut self.db, uri, &path, text));
+                        all.extend(
+                            memory_lens(&mut self.db, uri, &path, text).map(|(t, a)| (0, t, a)),
+                        );
                         all
                     }
                     _ => Vec::new(),
                 };
                 let items = lenses
                     .into_iter()
-                    .map(|(title, args)| {
+                    .map(|(line, title, args)| {
+                        let at = position_json(LineCol { line, col: 0 });
                         obj([
-                            (
-                                "range",
-                                obj([
-                                    ("start", position_json(LineCol { line: 0, col: 0 })),
-                                    ("end", position_json(LineCol { line: 0, col: 0 })),
-                                ]),
-                            ),
+                            ("range", obj([("start", at.clone()), ("end", at)])),
                             (
                                 "command",
                                 obj([
@@ -1497,7 +1494,10 @@ pub(crate) fn path_of_uri(uri: &str) -> Option<String> {
 /// the `cpl` arguments it runs: the same samples VS Code finds (`i1` beside
 /// the file, `<stem>.tests/*.in`, `<stem>.samples/*.in`), the first of them
 /// run and traced, and stress when the file has a brute, checker or interactor.
-fn code_lenses(path: &str, text: &str) -> Vec<(String, Vec<String>)> {
+/// Each lens's 0-based line, title and `cpl` arguments: Run, Run on all,
+/// Trace, Test and Stress above the file, and a Stress lens above each fn
+/// `cpl stress` judges by.
+fn code_lenses(path: &str, text: &str) -> Vec<(u32, String, Vec<String>)> {
     let file = std::path::Path::new(path);
     let (Some(folder), Some(stem)) = (file.parent(), file.file_stem().and_then(|s| s.to_str()))
     else {
@@ -1534,20 +1534,68 @@ fn code_lenses(path: &str, text: &str) -> Vec<(String, Vec<String>)> {
         .iter()
         .any(|n| n.ends_with(".in"));
     let mut lenses = Vec::new();
-    let mut with_input = |title: &str, mut args: Vec<String>| match samples.first() {
+    let with_input = |title: &str, mut args: Vec<String>| match samples.first() {
         Some((label, input)) => {
             args.insert(2, input.clone());
-            lenses.push((format!("{title} on {label}"), args));
+            (0, format!("{title} on {label}"), args)
         }
-        None => lenses.push((title.to_string(), args)),
+        None => (0, title.to_string(), args),
     };
-    with_input("Run", vec!["run".into(), path.into()]);
-    with_input("Trace", vec!["run".into(), path.into(), "--trace".into()]);
+    lenses.push(with_input("Run", vec!["run".into(), path.into()]));
+    let count = samples.len();
+    if count > 1 {
+        let args = vec!["run".into(), path.into(), "--samples".into()];
+        lenses.push((0, format!("Run on all {count} samples"), args));
+    }
+    lenses.push(with_input(
+        "Trace",
+        vec!["run".into(), path.into(), "--trace".into()],
+    ));
     if has_tests {
-        lenses.push(("Test".into(), vec!["test".into(), path.into()]));
+        lenses.push((0, "Test".into(), vec!["test".into(), path.into()]));
     }
     if cpl_ir::has_stress_target(text) {
-        lenses.push(("Stress".into(), vec!["stress".into(), path.into()]));
+        lenses.push((0, "Stress".into(), vec!["stress".into(), path.into()]));
+    }
+    let parsed = cpl_syntax::parse_file(text);
+    for (base, stmt) in (parsed.items.iter())
+        .flat_map(|(base, item)| item.stmts.iter().map(move |s| (*base as usize, s)))
+    {
+        let cpl_syntax::ast::StmtKind::Fn(f) = &stmt.kind else {
+            continue;
+        };
+        let judge = stmt
+            .decorators
+            .iter()
+            .find(|d| cpl_ir::STRESS_DECORATORS.contains(&d.name.text.as_str()));
+        let Some(judge) = judge else {
+            continue;
+        };
+        let target = judge.args.first().map(|a| {
+            let span = a.value.span;
+            text.get(base + span.start as usize..base + span.end as usize)
+                .unwrap_or("")
+                .trim()
+        });
+        let name = &f.name.text;
+        let alt = matches!(judge.name.text.as_str(), "alt" | "brute");
+        let title = match (judge.name.text.as_str(), target) {
+            (_, Some("program") | None) if alt => format!("Stress the program against {name}"),
+            (_, Some(target)) if alt => format!("Stress against {target}"),
+            ("interactor", _) => format!("Stress with interactor {name}"),
+            _ => format!("Stress with checker {name}"),
+        };
+        let start = base + stmt.decorators[0].span.start.min(stmt.span.start) as usize;
+        let line = text.get(..start).unwrap_or(text).matches('\n').count() as u32;
+        lenses.push((line, title, vec!["stress".into(), path.into()]));
+        if alt {
+            let mut trace = vec!["run".into(), path.into(), "--trace".into()];
+            if !matches!(target, Some("program") | None) {
+                trace.push(name.clone());
+            }
+            let (_, _, args) = with_input("Trace", trace);
+            lenses.push((line, "Trace".into(), args));
+        }
     }
     lenses
 }
