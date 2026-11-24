@@ -8875,4 +8875,8 @@ Reserved for call 5, which landed as decision 519.
 - **Call.** The `cpp_deep_copies` bound (read_only_copies and `scripts/debt-ratchet.json`) is 34, not 31. 6525aa9fc lowered it from 35 to 31, but that tree and its parent 4698e6f19 both measure 34 in clean worktrees (`cargo nextest run -p cpl-cli --test read_only_copies`), so main was red from the commit that set it. A correction, not a weakening; the 3 copies go to perf, and a bound only drops to what a clean worktree of main measures.
 - **Reverse.** Set the bound back to 31 once those 3 copies are gone.
 
-## 538. (reserved, stdlib)
+## 538. A range alias has its range's `.MIN`, `.MAX` and `.count` (spec, 2026-11-24)
+
+- **Call.** After `type M = -10..=10`, `M.MIN == -10`, `M.MAX == 10` and `M.count == 21` (R02.6.2), the same values a generic `T` bound to `M` already reads since cdde42a75.
+- **Why.** An alias is the type it names everywhere (R02.6.2), and the range's ends were visible through a generic but not through the alias's own name, which was E0302. One type should answer `.MIN` the same way in both places.
+- **Reverse.** Drop the sentence from R02.6.2; `M.MIN` goes back to E0302, and generic code keeps the range's ends.

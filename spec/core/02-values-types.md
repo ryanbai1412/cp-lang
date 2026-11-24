@@ -176,7 +176,10 @@ struct Tally:
   Subset<R>`, then `for s in G` walks the subsets. On its right side the
   alias's own name means what it means outside it, so `type Mod =
   Mod<998244353>` names std's `Mod`; an alias defined by itself (`type A =
-  List<A>`, or `type A = B` with `type B = A`) is E0323. There are no
+  List<A>`, or `type A = B` with `type B = A`) is E0323. An alias of a
+  range type has that range's `.MIN`, `.MAX` and `.count`: after `type M =
+  -10..=10`, `M.MIN == -10`, `M.MAX == 10` and `M.count == 21`, as a generic
+  `T` bound to `M` sees (decision 538). There are no
   constructor side effects and no destructors. (R02.6.2)
 - **Two kinds of constructor, one rule each.** A generated constructor
   (`Edge(a, b, 5)`, a struct literal) stores its arguments, so it takes
