@@ -17,8 +17,11 @@ impl<'a> Checker<'a> {
     /// The type an impl is for, with the type parameters its header names:
     /// `impl Add for Mod<P>` is generic over `P`, and `impl<T: Add> Add for ?T`
     /// is generic over `T`.
+    /// Names left open by the trait's arguments or a bound count too: `T` in
+    /// `impl Seq<T> for Wrap<S: Seq<T>>`.
     pub(crate) fn impl_generics(
         &mut self,
+        trait_name: Option<&ast::Type>,
         target: &ast::Type,
         bounds: &[ast::Bound],
     ) -> Vec<String> {
@@ -29,6 +32,13 @@ impl<'a> Checker<'a> {
             }
         }
         self.collect_impl_generics(target, &mut out);
+        let traits = bounds.iter().flat_map(|b| &b.traits).chain(trait_name);
+        for arg in traits.flat_map(|t| match &t.kind {
+            TypeKind::Named { args, .. } => &args[..],
+            _ => &[],
+        }) {
+            self.collect_impl_generics(arg, &mut out);
+        }
         out
     }
 

@@ -23,6 +23,7 @@ mod fn_impl;
 mod fn_value;
 mod fresh;
 mod hoist;
+mod impl_bounds;
 mod index_set;
 mod instance;
 mod keyed;

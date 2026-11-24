@@ -1226,7 +1226,7 @@ impl<'a> Checker<'a> {
                 let Some(target_name) = impl_target_head(target) else {
                     return Vec::new();
                 };
-                let generics = self.impl_generics(target, bounds);
+                let generics = self.impl_generics(trait_name.as_ref(), target, bounds);
                 let scope = self.enter_body(&generics, Ty::Unknown);
                 let self_ty = self.quietly(|c| c.resolve_type(target));
                 self.self_ty = Some(self_ty.clone());

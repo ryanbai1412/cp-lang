@@ -1351,7 +1351,7 @@ impl<'a> Checker<'a> {
                 bounds,
                 body,
             } => {
-                let mut generics = self.impl_generics(target, bounds);
+                let mut generics = self.impl_generics(trait_name.as_ref(), target, bounds);
                 for stmt in &body.stmts {
                     if let StmtKind::TypeAlias { name, .. } = &stmt.kind {
                         generics.push(name.text.clone());

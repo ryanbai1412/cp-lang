@@ -372,8 +372,8 @@ impl<'a> Lowerer<'a> {
             ast::StmtKind::Impl {
                 trait_name,
                 target,
+                bounds,
                 body,
-                ..
             } => {
                 let (tname, targs) = match trait_name.as_ref().map(|t| &t.kind) {
                     Some(ast::TypeKind::Named { name, args }) => {
@@ -387,6 +387,7 @@ impl<'a> Lowerer<'a> {
                     trait_name: tname,
                     trait_args: targs,
                     target,
+                    bounds,
                     body,
                 });
             }

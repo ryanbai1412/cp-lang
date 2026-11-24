@@ -113,6 +113,7 @@ pub(super) struct ImplInfo<'a> {
     pub trait_name: Option<String>,
     pub trait_args: Vec<&'a ast::Type>,
     pub target: &'a ast::Type,
+    pub bounds: &'a [ast::Bound],
     pub body: &'a ast::Block,
 }
 
@@ -1180,7 +1181,7 @@ impl<'a> Lowerer<'a> {
                     _ => {}
                 }
             }
-            if !ok {
+            if !ok || !self.bind_impl_bounds(self.impls[idx].bounds, imp_mod, &mut env) {
                 continue;
             }
 
