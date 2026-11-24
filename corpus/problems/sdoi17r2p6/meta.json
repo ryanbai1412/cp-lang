@@ -12,11 +12,15 @@
   {"id": "5514400", "language": "CPP17", "result": "TLE", "time": 47.767810295, "memory_kb": 8788.0, "file": "corpus/submissions/5514400.cpp"},
   {"id": "5519264", "language": "CPP17", "result": "TLE", "time": 44.177059481, "memory_kb": 13660.0, "file": "corpus/submissions/5519264.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/sdoi17r2p6/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No submission is recorded. orig.cpp is a written reference covering the six orders of the three pieces (CBA via splitting the interleaved S and reversed T into three even palindromes); it matches a brute force over every cut and order on 1500 random small inputs, and checker.py validates every printed cut. Statement: LOJ 2272."
 }
