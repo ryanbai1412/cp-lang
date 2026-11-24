@@ -78,7 +78,7 @@ while prev_permutation(mut perm):
 //          ^^^^^^^^ support.function.stdlib.cp
 //                           ^^^^ support.function.builtin.cp
     shuffle(mut perm)
-//  ^^^^^^^ support.function.builtin.cp
+//  ^^^^^^^ support.function.stdlib.cp
 
 fn slice(self, s: Range<D>) lends mut [D]Int:
 //                          ^^^^^ storage.modifier.lends.cp
