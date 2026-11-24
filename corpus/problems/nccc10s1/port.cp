@@ -12,6 +12,6 @@ domain Student = 0..n
 domain Question = 0..k
 let answers: [Student, Question]Char = read()
 
-fn score(key: Subset<Question>, s: Student) -> Int =
-    Question.count(j => (j in key) == (answers[s, j] == 'T'))
+let truths = [Student] s => Subset<Question>.of(j for j in Question if answers[s, j] == 'T')
+fn score(key: Subset<Question>, s: Student) -> Int = k - (key ^ truths[s]).len
 print(max(min(score(key, s) for s in Student)! for key in Subset<Question>)!)
