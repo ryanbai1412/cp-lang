@@ -1,5 +1,6 @@
 // Source: Codeforces 2201F2 (Monotone Monochrome Matrices, Hard Version),
 //   https://codeforces.com/contest/2201/problem/F2
+// limits: 4000 ms, 512 MB
 // Problem: an n x n white matrix; q queries each blacken a white cell (r, c), then ask whether
 //   it is monotone: no rows i < j and columns k < l with C[i,k] = C[j,l] != C[j,k] = C[i,l].
 //   Print YES/NO each time. n, q <= 2e6 (summed over tests). Multitest.

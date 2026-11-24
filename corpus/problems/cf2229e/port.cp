@@ -1,4 +1,5 @@
 // Source: Codeforces 2229 E, Deconstruction Tree, https://codeforces.com/contest/2229/problem/E
+// limits: 2000 ms, 256 MB
 // Problem: multitest (sum n <= 2e5): a tree on n vertices. n-1 times: add the largest-index
 //   leaf x to a set S, then delete any leaf other than x. Count the distinct sets S you can
 //   end with, modulo 998244353.

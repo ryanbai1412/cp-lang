@@ -1,6 +1,19 @@
 #!/usr/bin/env python3
 """CF 2219C: trees, n and sum n <= 2e5, at least one red node."""
 import random, sys
+if sys.argv[1] == "--max":
+    # one test at sum n: a 1e5 path from the only red node into a 1e5 star (depth plus a wide sort)
+    r = random.Random(1)
+    n, half = 200000, 100000
+    es = [(i, i + 1) for i in range(1, half)] + [(half, i) for i in range(half + 1, n + 1)]
+    perm = list(range(1, n + 1))
+    r.shuffle(perm)
+    s = ["0"] * n
+    s[perm[0] - 1] = "1"
+    out = ["1", str(n), "".join(s)] + [f"{perm[u - 1]} {perm[v - 1]}" for u, v in es]
+    print("\n".join(out))
+    sys.exit()
+
 r = random.Random(int(sys.argv[1]))
 size = int(sys.argv[2])
 

@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 """CF 2229F: 1 <= k <= n <= 18, 1 <= a_i <= 1e9, sum of 2^n <= 2^18."""
 import random, sys
+if sys.argv[1] == "--max":
+    # sum 2^n saturated by one n = 18 test; distinct large values give 2^17 distinct subset sums
+    r = random.Random(1)
+    print(1)
+    print(18, 9)
+    print(*[r.randint(5 * 10**8, 10**9) for _ in range(18)])
+    sys.exit()
+
 r = random.Random(int(sys.argv[1]))
 size = int(sys.argv[2])
 M = 10 ** 9

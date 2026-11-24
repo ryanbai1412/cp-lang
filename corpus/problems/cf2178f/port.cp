@@ -1,4 +1,5 @@
 // Source: Codeforces 2178 F (Conquer or of Forest), https://codeforces.com/contest/2178/problem/F
+// limits: 2000 ms, 512 MB
 // Problem: a tree rooted at 1, vertex white iff its subtree size is even. It is conquered if all
 //   white vertices lie on one path from the root. An operation cuts the edge above a white
 //   non-root vertex, adds any edge keeping a tree, and recolours. Count the distinct conquered

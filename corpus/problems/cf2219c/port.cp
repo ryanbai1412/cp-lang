@@ -1,4 +1,5 @@
 // Source: Codeforces 2219C, https://codeforces.com/contest/2219/problem/C
+// limits: 2000 ms, 256 MB
 // Problem: multitest; a tree on n <= 2e5 nodes (sum n <= 2e5), each red or black, at least one
 //   red. An operation picks a node and gives it the colour of a uniformly random neighbour.
 //   Print the minimum expected number of operations to make all red (error 1e-6).

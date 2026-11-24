@@ -1,5 +1,6 @@
 // Source: Codeforces 2207 E2 (N-MEX, counting version),
 //   https://codeforces.com/contest/2207/problem/E2
+// limits: 2000 ms, 256 MB
 // Problem: given a_1..a_n (n <= 2e5, a_i <= 1e9), count arrays b with 0 <= b_i <= n where the
 //   (n - i + 1)-th smallest missing value of b_1..b_i is a_i for every i, modulo 1e9 + 7.
 //   Multitest, sum of n <= 2e5.

@@ -1,4 +1,5 @@
 // Source: Codeforces 2229F (Load Unbalancing), https://codeforces.com/contest/2229/problem/F
+// limits: 1500 ms, 256 MB
 // Problem: n <= 18 numbers a_i <= 1e9 and k <= n. Reorder them, then add each in turn to a
 //   minimum of k bins (initially 0); print the largest possible final maximum bin.
 //   Multitest, sum of 2^n <= 2^18.

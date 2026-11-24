@@ -1,5 +1,18 @@
 import sys, random
 
+if sys.argv[1] == "--max":
+    # sum n^2 saturated by one n = 5000 test; a = b reads back as one decreasing chain of
+    # single-vertex children, the O(n^2) prefix-sum walk
+    g = random.Random(1)
+    n = 5000
+    a = list(range(1, n + 1))
+    g.shuffle(a)
+    print(1)
+    print(n)
+    print(*a)
+    print(*a)
+    sys.exit()
+
 r = random.Random(int(sys.argv[1]))
 S = int(sys.argv[2])
 
