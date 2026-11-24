@@ -161,8 +161,9 @@ export const STDLIB_VALUES: readonly string[] = [
     'suffix_tree_edges', 'sum_mobius', 'sum_multiplicative', 'sum_phi', 'supermasks', 'swap_at',
     'symmetric', 'take', 'take_all', 'take_last', 'taylor_shift', 'to_lower', 'to_upper',
     'transpose', 'transposed', 'transposed_mul', 'triangles', 'trim', 'trim_end', 'trim_start',
-    'turn_eps', 'two_color', 'two_edge_components', 'unimodality_break', 'update', 'upper_hull',
-    'upper_hull_idx', 'valleys', 'voronoi_cells', 'with_domain', 'with_next', 'zip_exact',
+    'turn_eps', 'two_color', 'two_edge_components', 'unimodality_break', 'unzip', 'update',
+    'upper_hull', 'upper_hull_idx', 'valleys', 'voronoi_cells', 'with_domain', 'with_next',
+    'zip_exact',
 ];
 
 /** Public `std/*.cp` constants the prelude imports (no INF sentinel; use ?Int / none). */
