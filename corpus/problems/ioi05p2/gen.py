@@ -1,11 +1,12 @@
-# ioi05p2 Mountain generator: python3 gen.py SEED [LINES]. Keeps every elevation in [0, 1e9] after
+# ioi05p2 Mountain generator: python3 gen.py SEED [LINES] | --max. Keeps every elevation in [0, 1e9] after
 # each reconfiguration (statement), n in 1..=1e9, at most 100000 lines.
 import bisect, random, sys
 
-r = random.Random(int(sys.argv[1]))
-lines = int(sys.argv[2]) if len(sys.argv) > 2 else r.choice([5, 20, 60, 200, 600])
+MAX = sys.argv[1] == "--max"
+r = random.Random(1 if MAX else int(sys.argv[1]))
+lines = 100000 if MAX else int(sys.argv[2]) if len(sys.argv) > 2 else r.choice([5, 20, 60, 200, 600])
 H = 10**9
-n = r.choice([1, 2, 3, r.randint(1, 10), r.randint(1, 1000), r.randint(1, 20000), r.randint(1, H), H])
+n = H if MAX else r.choice([1, 2, 3, r.randint(1, 10), r.randint(1, 1000), r.randint(1, 20000), r.randint(1, H), H])
 
 # The track as sorted piece starts (0-based rail cuts) with one slope each.
 starts, slopes = [0], [0]

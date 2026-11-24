@@ -1,26 +1,25 @@
 # ioi05p2 — Mountain
 
-`spec.cp` read the command stream as a tagged enum, cut the rails into pieces with
-`Rail.pieces(cuts:)` and kept (rise, peak, len) in a lazy `SegTree`. It failed `cpl check` on
-two library gaps and, once those were worked around, gave wrong answers from a flipped
-`compose`.
+The port now follows the dream: `Rail.range.pieces(cuts:)` over rail cuts, `piece.covering(a..=b)`, a lazy `SegTree` of `Rise` under an assign-slope `Action`, and `right_while` for the ride. The remaining gaps are below.
 
-## `pieces` on a domain range rejects cuts
-- **Where:** the dream line `Rail.pieces(cuts: [a.l, b.r, ...])`; today's spec.cp:
-  ```cp
-  let (domain P, piece) = (0..Rail.count).pieces(
-      cuts: [Int(x) for c in cmds if let Cmd.Set(a, b, _) = c for x in [a.l, b.r]],
-  )
-  ```
-- **What felt wrong:** `domain V = 0..10; V.pieces(cuts: [V(3).l])` is E0302 "expected `V`,
-  found `V.cuts`" inside `std/seq.cp`, and `[V(3)]` is E0302 "can't compare a `V.cuts` with a
-  `V`". So the pieces are over the rails' cut ordinals, as plain `Int`s, and `piece[p]` is a
-  `Range<Int>`, not a `Range<Rail>`.
-- **Goal it hurts:** express, hard-to-get-wrong (decision 162 promised no raw ints here).
-- **Ideal code:** `Rail.pieces(cuts: ...)` with `piece[p]: Range<Rail>`, `piece.covering(a..=b)`.
-- **General fix:** `pieces` takes `S: Seq` of `D.cuts` on a domain range (spec R04.2 pieces).
-  Already routed: stdlib worklog, `covering` entry follow-up.
-- **Severity:** blocker for the dream form; medium with the workaround.
+## Enum variants with io tags
+- **Where:** port lines 16-24: a `while true` loop reads a `Char` tag and pushes `Cmd.Set` or
+  `Cmd.Ask` by hand, where the dream reads `read stream Cmd until End`. `@tag("I")` (spec.cp)
+  and `Set(...) = 'I'` (dream) both fail to parse today.
+- **What felt wrong:** the enum already names the variants; the reader repeats them.
+- **Goal it hurts:** express.
+- **Ideal code:** `let cmds = read stream Cmd until End`.
+- **General fix:** io tags on enum variants so `read<Cmd>()` dispatches on the tag (ioi01p1 too).
+- **Severity:** medium.
+
+## The emitted C++ is over the 32 KB judge target
+- **Where:** `cpl build` warns W0201: 37304 bytes for the generic judge; `cpl lint` is silent.
+- **What felt wrong:** a 50-line port with one lazy tree cannot be submitted where a 32 KB source
+  cap applies, and nothing in the port says which std piece costs the bytes.
+- **Goal it hurts:** predictable path onto the judge.
+- **General fix:** emit only the reached methods of `SegTree`/`Action`, and name the largest
+  contributors in W0201.
+- **Severity:** medium.
 
 ## `flat_map` loses the element type of the closure's list
 - **Where:** `cmds.flat_map(c => match c: Set(a, b, _) => [a.l, b.r] _ => [])`.
