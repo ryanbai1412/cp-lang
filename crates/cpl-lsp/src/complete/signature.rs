@@ -217,6 +217,18 @@ pub(super) fn signature_of(
         return None;
     }
     let doc = declared.as_ref().map_or(String::new(), |e| e.doc.clone());
+    // A struct with its own `new` is called by its name with `new`'s parameters.
+    let new = (declared.as_ref())
+        .filter(|e| !method && e.kind == Kind::Struct)
+        .and_then(|e| (e.members.iter()).find(|m| m.name == "new" && !m.instance && m.public));
+    if let Some(new) = new {
+        return Some(Signature {
+            name: name.to_string(),
+            params: new.params.iter().map(written_param).collect(),
+            ret: new.ret().unwrap_or("").to_string(),
+            doc,
+        });
+    }
     match checked {
         // A library fn called as a method is checked as its free form, whose
         // instantiated types lose the bounds and `yields`: the declaration, when
@@ -255,17 +267,7 @@ pub(super) fn signature_of(
             let entry = declared?;
             let (params, ret) = match entry.kind {
                 Kind::Fn | Kind::Method => (
-                    entry
-                        .params
-                        .iter()
-                        .map(|p| SigParam {
-                            name: p.name.clone(),
-                            ty: p.ty.clone(),
-                            variadic: false,
-                            default: p.default.clone(),
-                            named_only: p.named_only,
-                        })
-                        .collect(),
+                    entry.params.iter().map(written_param).collect(),
                     entry.ret().unwrap_or("").to_string(),
                 ),
                 // A struct called as its constructor takes its fields.
@@ -293,6 +295,17 @@ pub(super) fn signature_of(
                 doc: entry.doc,
             })
         }
+    }
+}
+
+/// A parameter as its declaration writes it.
+fn written_param(p: &Param) -> SigParam {
+    SigParam {
+        name: p.name.clone(),
+        ty: p.ty.clone(),
+        variadic: false,
+        default: p.default.clone(),
+        named_only: p.named_only,
     }
 }
 

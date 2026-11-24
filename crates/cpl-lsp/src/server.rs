@@ -259,10 +259,20 @@ impl Server {
                     ])));
                 }
                 let checked = self.db.hover(&uri, offset);
+                // `j.jump(a, b, k)` beside a field `jump`: the call names the fn.
+                let called_field = checked.as_ref().is_some_and(|h| {
+                    !matches!(h.ty, None | Some(cpl_check::Ty::Fn { .. }))
+                        && (self.db.analyze(&uri)).is_some_and(|a| {
+                            let name = &a.text[h.span.start as usize..h.span.end as usize];
+                            a.text[..h.span.start as usize].ends_with('.')
+                                && a.text[h.span.end as usize..].starts_with('(')
+                                && h.text.starts_with(&format!("{name}: "))
+                        })
+                });
                 // `s.runs` names a library `fn runs(self: S, ..)`: the checker's
                 // fact is the free form, so show the declaration as written,
                 // as completion and signature help do.
-                let hover = if checked.as_ref().is_none_or(|h| h.signature) {
+                let hover = if called_field || checked.as_ref().is_none_or(|h| h.signature) {
                     let analysis = self.db.analyze(&uri).expect("hover implies an analysis");
                     let cursor = Cursor {
                         uri: &uri,
@@ -271,6 +281,7 @@ impl Server {
                     };
                     let member = complete::member_hover(&cursor, &mut self.std);
                     match checked {
+                        Some(_) if called_field && member.is_some() => member,
                         // The checker's cost lines stay when the doc writes none.
                         Some(checked) => Some(match member {
                             Some(mut member) if member.cost.is_none() => {

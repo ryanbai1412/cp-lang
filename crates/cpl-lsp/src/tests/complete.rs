@@ -816,3 +816,32 @@ fn inlay_hints_name_the_domain_a_loop_runs_over() {
     assert_eq!(loop_hint.at(&["position", "character"]).as_u32(), Some(5));
     assert_eq!(loop_hint.at(&["label"]).as_str(), Some(": V"));
 }
+
+#[test]
+fn new_is_the_constructor_and_a_member_fn_shadows_its_field() {
+    let decl = "\
+pub struct Hop:
+    pub jump: [0..4]Int
+    pub fn new(n: Int) -> Hop = Hop([0..4] _ => n)
+    pub fn jump(self, a: Int, k: Int) -> Int = a + k
+var h = Hop(2)
+";
+    let (label, _, params) = signature(&format!("{decl}print(Hop(|))\n"));
+    assert_eq!(params, ["n: Int"], "{label}");
+    let (label, _, params) = signature(&format!("{decl}print(h.jump(|))\n"));
+    assert_eq!(params, ["a: Int", "k: Int"], "{label}");
+    let items = completions(&format!("{decl}h.|\n"));
+    let jump = items.iter().find(|(l, ..)| l == "jump");
+    assert!(
+        jump.is_some_and(|(_, _, d)| d.contains("fn jump(")),
+        "{items:?}"
+    );
+    let (mut server, _) = open(&format!("{decl}print(h.jump(1, 2))\n"));
+    let hover = hover_at(&mut server, 5, 9);
+    let text = hover.at(&["contents", "value"]).as_str().unwrap_or("");
+    assert!(text.contains("fn jump(self, a: Int, k: Int)"), "{text}");
+    // A std type reads the same way.
+    let tree = "use std.tree.{JumpTree}\ndomain V = 0..4\nvar j = JumpTree<V>()\n";
+    let (label, _, params) = signature(&format!("{tree}print(j.jump(|))\n"));
+    assert_eq!(params, ["a: V", "b: V", "k: Int"], "{label}");
+}

@@ -1487,7 +1487,15 @@ fn type_members(
         } else {
             Vec::new()
         };
+        // `pub jump: [V]V` beside `pub fn jump(self, ..)`: the call is what's offered.
+        let methods: HashSet<&str> = (outline.members_of(name))
+            .filter(|m| m.instance && m.kind != Kind::Field)
+            .map(|m| m.name.as_str())
+            .collect();
         for member in outline.members_of(name) {
+            if member.kind == Kind::Field && methods.contains(member.name.as_str()) {
+                continue;
+            }
             let wanted = match member.kind {
                 Kind::Variant | Kind::Domain | Kind::Const => !instance,
                 _ => member.instance == instance,
