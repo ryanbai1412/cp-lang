@@ -2262,5 +2262,6 @@ mod env;
 mod fields;
 mod rebind;
 mod scoping;
+mod silent;
 #[cfg(test)]
 mod tests;

@@ -174,12 +174,14 @@ def external_crates(root: Path) -> list[str]:
 WRITTEN_TWICE_SKIP = ("plan/", "research/", "corpus/", "spec/conformance/", "decisions.md", "Cargo.",
                       "scripts/debt-ratchet.json", "scripts/test_debt_ratchet.py", "crates/cpl-cli/tests/")
 # Copies a gate already compares with the source: the crate map (`crate_edges`), the std
-# lint baseline (scripts/std-lint-ratchet.py) and search's expected answers (the test fails
-# on an answer page the site no longer has).
+# lint baseline (scripts/std-lint-ratchet.py), search's expected answers (the test fails
+# on an answer page the site no longer has) and the per-file silent unknowns (the test
+# fails unless each count equals the checker's facts).
 # The ratchet names crates only in the paths its gates read (stale_arch_paths
 # fails on a missing one) and in those gates' descriptions; crate rules are architecture.md's.
 WRITTEN_TWICE_CHECKED = {"handbook/design/architecture.md", "scripts/std-lint-baseline.txt",
-                         "web/tests/search-tasks.mjs", "scripts/debt-ratchet.py"}
+                         "web/tests/search-tasks.mjs", "scripts/debt-ratchet.py",
+                         "crates/cpl-conform/silent_unknowns.txt"}
 
 
 def written_twice(root: Path) -> list[str]:
@@ -1430,6 +1432,15 @@ def _registered_entries(root: Path, counter: str) -> list[str]:
     return [rel for rel, (c, _, _) in LISTS.items() if c == counter for _ in range(_list_entries(root, rel))]
 
 
+def silent_unknowns(root: Path) -> list[str]:
+    """Expressions in std, the corpus and spec/conformance the checker typed `Unknown`
+    with no diagnostic there, per file in crates/cpl-conform/silent_unknowns.txt
+    (`<count> <file>`), which tests/silent_unknowns.rs keeps equal to the checker's facts."""
+    p = root / "crates/cpl-conform/silent_unknowns.txt"
+    rows = [line.split(" ", 1) for line in _lines(p)] if p.is_file() else []
+    return [file for n, file in rows for _ in range(int(n))]
+
+
 def corpus_known(root: Path) -> list[str]:
     """Entries of any corpus/*-known.txt: ports a corpus check skips."""
     lists = sorted(p.relative_to(root).as_posix() for p in (root / "corpus").rglob("*-known.txt"))
@@ -2057,6 +2068,7 @@ LISTS: dict[str, tuple[str | None, str, str]] = {
     "crates/cpl-cli/tests/std-check-errors.txt": ("known_lists", "stdlib", "kept empty"),
     "crates/cpl-cli/tests/tool-gaps.txt": ("skip_lists", "tools", "close each gap"),
     "crates/cpl-cli/tests/vm_fallbacks.txt": ("vm_fallbacks", "tech-debt", "VM runs every program"),
+    "crates/cpl-conform/silent_unknowns.txt": ("silent_unknowns", "core", "deleted: the checker types every expression or reports why not"),
     "crates/cpl-lint/corpus_warnings.txt": ("corpus_lint_warnings", "lint-fmt", "deleted: corpus_tests.rs fails on any std or spec.cp warning"),
     "crates/cpl-stress/tests/generate-gaps.txt": ("generate_gaps", "stress", "deleted: readable_shapes.rs fails on any shape stress can't generate"),
     "scripts/public-hosts.txt": (None, "infra", "data: hosts the public-history scan allows"),
@@ -2269,6 +2281,7 @@ COUNTERS = {
     "test_sleeps": ("sleeps in tests (Factory)", test_sleeps, True),
     "ci_retries": ("--retry/--retries in CI and scripts (Factory)", ci_retries, True),
     "retry_calls": ("retry calls in CI and scripts wrapping no named network fetch or push race (Factory)", retry_calls, True),
+    "silent_unknowns": ("expressions typed Unknown with no diagnostic there, in std, corpus and conformance (Core)", silent_unknowns, True),
     "poll_sleeps": ("thread::sleep in shipped Rust (Factory)", poll_sleeps, True),
     "hardcoded_codes": ("E0xxx literals outside cpl-check and cpl-diag (Consumers)", hardcoded_codes, True),
     "xfail_markers": ("xfail/known-fail markers and lists (Content)", xfail_markers, True),
