@@ -1071,6 +1071,12 @@ pub fn hull_tangents(hull: List<Pt>, p: Pt) -> (left: Int, right: Int):
 
 // ---- closest pair
 
+// Whether the pair `{x, y}` at squared distance `d` beats the best so far: nearer, then first
+// in key order with the smaller id first.
+fn cp_beats(d: Int, x: Int, y: Int, best: Int, ba: Int, bb: Int) -> Bool:
+    let (a, b) = (min(x, y), max(x, y))
+    d < best or (d == best and (a < ba or (a == ba and b < bb)))
+
 fn cp_solve(
     mut ord: List<(x: Int, y: Int, id: Int)>,
     mut buf: List<(x: Int, y: Int, id: Int)>,
@@ -1088,10 +1094,10 @@ fn cp_solve(
                 let dx = xi - ord[j].x
                 let dy = yi - ord[j].y
                 let d = dx * dx + dy * dy
-                if d < best:
+                if cp_beats(d, ord[i].id, ord[j].id, best, ba, bb):
                     best = d
-                    ba = ord[i].id
-                    bb = ord[j].id
+                    ba = min(ord[i].id, ord[j].id)
+                    bb = max(ord[i].id, ord[j].id)
         // sort ord[l..r] by y
         for i in l + 1..r:
             var k = i
@@ -1108,7 +1114,7 @@ fn cp_solve(
     var best = left.dist2
     var ba = left.a
     var bb = left.b
-    if right.dist2 < best:
+    if cp_beats(right.dist2, right.a, right.b, best, ba, bb):
         best = right.dist2
         ba = right.a
         bb = right.b
@@ -1138,7 +1144,7 @@ fn cp_solve(
     let best128 = I128(best)
     for t in l..r:
         let dx = I128(ord[t].x) - I128(mid_x)
-        if dx * dx < best128:
+        if dx * dx <= best128:
             buf[s_end] = ord[t]
             s_end += 1
     for si in l..s_end:
@@ -1147,14 +1153,14 @@ fn cp_solve(
         var sj = si + 1
         while sj < s_end:
             let dy = I128(buf[sj].y) - I128(ysi)
-            if dy * dy >= I128(best): break
+            if dy * dy > I128(best): break
             let dx = xsi - buf[sj].x
             let dy_i = ysi - buf[sj].y
             let d = dx * dx + dy_i * dy_i
-            if d < best:
+            if cp_beats(d, buf[si].id, buf[sj].id, best, ba, bb):
                 best = d
-                ba = buf[si].id
-                bb = buf[sj].id
+                ba = min(buf[si].id, buf[sj].id)
+                bb = max(buf[si].id, buf[sj].id)
             sj += 1
     (ba, bb, best)
 
@@ -1197,9 +1203,12 @@ pub fn closest_pair<D>(pts: [D]Pt) -> (a: D, b: D, dist2: Int):
         k += 1
     assert ids.len >= 2, "closest_pair requires at least 2 points"
     ord.sort()
+    var dup: ?(Int, Int) = None
     for i in 1..ord.len:
         if ord[i].x == ord[i - 1].x and ord[i].y == ord[i - 1].y:
-            return (ids[ord[i - 1].id], ids[ord[i].id], 0)
+            let pair = (ord[i - 1].id, ord[i].id)
+            if dup == None or pair < dup!: dup = pair
+    if let (a, b) = dup: return (ids[a], ids[b], 0)
     var buf = copy(ord)
     let res = cp_solve(mut ord, mut buf, 0, ord.len)
     (ids[res.a], ids[res.b], res.dist2)
