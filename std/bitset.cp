@@ -1675,19 +1675,21 @@ fn the_kept_count_follows_every_update():
     u.toggle(P(9))
     assert u.len == 3 and u.count_below(P(9)) == 2 and u.count_below(P(10)) == 3
 
-fn bit_at<D>(a: [D]Bool, i: Int) -> Bool = 0 <= i < D.count and a[D.nth(min(max(i, 0), D.count - 1))]
+fn bit_at(xs: List<Bool>, i: Int) -> Bool = 0 <= i < xs.len and xs[min(max(i, 0), xs.len - 1)]
 
-fn every_shift_moves_each_position<D>(x: [D]Bool, y: [D]Bool):
-    let n = D.count
+fn every_shift_moves_each_position<D>(x: [D]Bool, y: [D]Bool, n: Int):
+    let xs = [x[p] for p in D]
     for k in [-2 * n, -n - 1, -n, -n + 1, -129, -128, -65, -64, -63, -1, 0, 1, 63, 64, 65, 127, 128, 129, n - 1, n, n + 1, 2 * n]:
         let s = Bitset<D>.from(x).shifted(k)
         var u = Bitset<D>.from(y)
         u.union_shifted(Bitset<D>.from(x), k)
         var want = 0
+        var i = 0
         for p in D:
-            let moved = bit_at(x, p.ord - k)
+            let moved = bit_at(xs, i - k)
             if moved: want += 1
             assert s.contains(p) == moved and u.contains(p) == (y[p] or moved)
+            i += 1
         assert s.len == want
         if k >= 0:
             var up = Bitset<D>.from(x)
@@ -1696,19 +1698,21 @@ fn every_shift_moves_each_position<D>(x: [D]Bool, y: [D]Bool):
             down.shift_down(k)
             var both = Bitset<D>.from(x)
             both.shift_or(k)
+            var j = 0
             for p in D:
-                assert up.contains(p) == bit_at(x, p.ord - k)
-                assert down.contains(p) == bit_at(x, p.ord + k)
-                assert both.contains(p) == (x[p] or bit_at(x, p.ord - k))
+                assert up.contains(p) == bit_at(xs, j - k)
+                assert down.contains(p) == bit_at(xs, j + k)
+                assert both.contains(p) == (x[p] or bit_at(xs, j - k))
+                j += 1
 
 @test
 fn every_shift_matches_moving_each_position_across_full_and_partial_words():
     domain F = 0..192
     domain G = 0..190
     domain T = 0..10
-    every_shift_moves_each_position([F] p => rand(0, 3) == 0 or p.ord % 64 == 0 or p.ord == 191, [F] p => rand(0, 4) == 0)
-    every_shift_moves_each_position([G] p => rand(0, 3) == 0 or p.ord % 64 == 63 or p.ord == 189, [G] p => rand(0, 4) == 0)
-    every_shift_moves_each_position([T] p => p.ord % 3 == 1, [T] p => p.ord == 9)
+    every_shift_moves_each_position([F] p => rand(0, 3) == 0 or p.ord % 64 == 0 or p.ord == 191, [F] p => rand(0, 4) == 0, 192)
+    every_shift_moves_each_position([G] p => rand(0, 3) == 0 or p.ord % 64 == 63 or p.ord == 189, [G] p => rand(0, 4) == 0, 190)
+    every_shift_moves_each_position([T] p => p.ord % 3 == 1, [T] p => p.ord == 9, 10)
 
 fn dyn_shifts_move_each_position(cap: Int):
     var x = List.filled(cap, false)
