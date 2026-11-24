@@ -217,6 +217,12 @@ impl<'a> Checker<'a> {
     }
 
     fn array_fills(&mut self, declared: &Ty, init_ty: &Ty, init: &Expr) -> bool {
+        // `read()` reads the whole array, not one cell.
+        if let ExprKind::Call { callee, args } = &init.kind {
+            if args.is_empty() && matches!(&callee.kind, ExprKind::Name(n) if n == "read") {
+                return false;
+            }
+        }
         match (declared, init_ty) {
             (Ty::Array { index, elem }, Ty::Named { name, args })
                 if name == "List" && args.len() == 1 =>
@@ -746,6 +752,12 @@ impl<'a> Checker<'a> {
                     }
                     _ => false,
                 };
+                // `var adj: [V]List<V> = []`: the `[]` is one cell.
+                if let (true, Some(Ty::Array { elem, .. }), Some(init)) = (fills, &declared, init) {
+                    if matches!(&init.kind, ExprKind::List(items) if items.is_empty()) {
+                        self.note_read(init, elem);
+                    }
+                }
                 let view = match (&declared, init) {
                     (Some(Ty::Named { name, .. }), Some(init)) if name == "List" => {
                         self.view_kind(init)

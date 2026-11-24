@@ -49,7 +49,14 @@ impl Checker<'_> {
         if let Some(ty) = self.adjacency_contains(call, callee, args) {
             return ty;
         }
-        let ty = self.call_unrecorded(call, callee, args);
+        let mut ty = self.call_unrecorded(call, callee, args);
+        // `rand()` and `rand(lo, hi)` are an `Int`.
+        if ty == Ty::Unknown
+            && matches!(args.len(), 0 | 2)
+            && matches!(&callee.kind, ExprKind::Name(n) if n == "rand" && self.local(n).is_none())
+        {
+            ty = Ty::Int;
+        }
         if !self.exprs.calls.iter().any(|c| c.call == call.span) {
             if let Some((name, kind)) = self.callee_form(callee) {
                 let builtin = kind == CalleeKind::Method && self.builtin_method(callee, &name.0);

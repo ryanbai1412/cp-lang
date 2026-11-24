@@ -37,10 +37,17 @@ impl<'a> Checker<'a> {
         self.io_fixed(&ty)
     }
 
-    /// A bare `read()` or an `ask(..)` takes its type from where its value
-    /// goes (R10.2.1): record that type as the call's, so its facts say
-    /// what it reads.
+    /// A bare `read()` or `[]`, or an `ask(..)`, takes its type
+    /// from where its value goes (R10.2.1): record that type as its own, so
+    /// its facts say what it is.
     pub(crate) fn note_read(&mut self, value: &Expr, want: &Ty) {
+        if matches!(&value.kind, ExprKind::List(items) if items.is_empty())
+            && !want.is_vague()
+            && *want != Ty::Error
+        {
+            self.exprs.types.push((value.span, want.clone()));
+            return;
+        }
         let ExprKind::Call { callee, args } = &value.kind else {
             return;
         };
@@ -1677,6 +1684,7 @@ fn catalog_ty(text: &str, elem: &Option<Ty>, key_value: &[Ty]) -> Option<Ty> {
         "Int" => Some(Ty::Int),
         "Bool" => Some(Ty::Bool),
         "Str" => Some(Ty::Str),
+        "" => Some(Ty::Unit),
         _ => None,
     })
 }
