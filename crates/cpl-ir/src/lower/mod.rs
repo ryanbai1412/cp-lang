@@ -686,9 +686,17 @@ pub(super) enum SortedViewKind {
 
 #[derive(Clone, Debug)]
 pub(super) struct MapView {
-    pub base_slot: Slot,
+    pub base: ViewBase,
     pub func: ast::Expr,
     pub span: Span,
+}
+
+/// Where a map view keeps the sequence it maps: a local, or a global when the
+/// view is a top-level `let` the file's fns read too.
+#[derive(Clone, Copy, Debug)]
+pub(super) enum ViewBase {
+    Local(Slot),
+    Global(GlobalId),
 }
 
 #[derive(Clone, Debug)]
@@ -788,6 +796,8 @@ struct Lowerer<'a> {
     io_global: Option<GlobalId>,
     lexical_call_at: Option<Span>,
     context_defs: HashMap<String, (GlobalId, Vec<(String, Ty)>)>,
+    /// Top-level `let m = xs.map(f)` views, by module and name.
+    global_map_views: HashMap<(ModId, String), MapView>,
     /// Inside `g[r, ..]`: the loop variable that stands where the `..` is.
     whole_axes: Vec<Slot>,
 
@@ -1021,6 +1031,7 @@ impl<'a> Lowerer<'a> {
             io_global: None,
             lexical_call_at: None,
             context_defs: HashMap::new(),
+            global_map_views: HashMap::new(),
             whole_axes: Vec::new(),
             own_domains: HashSet::new(),
             memo_resets: Vec::new(),

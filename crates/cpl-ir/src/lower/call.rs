@@ -14,6 +14,7 @@ pub use laws::lower_sampling_laws;
 pub(in crate::lower) use laws::Stress;
 mod cuts;
 mod items;
+mod map_view;
 mod mut_receiver;
 mod prelude;
 mod range_room;

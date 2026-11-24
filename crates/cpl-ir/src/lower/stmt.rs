@@ -885,6 +885,12 @@ impl<'a> Lowerer<'a> {
                 if !*mutable && ty.is_none() {
                     if let (Some(init_expr), ast::PatternKind::Name(vname)) = (init, &pat.kind) {
                         if let Some(view) = self.map_view_if_indexed(init_expr, vname, rest, out) {
+                            if let ViewBase::Global(_) = view.base {
+                                self.mod_syms[self.cur_mod].remove(vname);
+                                self.global_map_views
+                                    .insert((self.cur_mod, vname.clone()), view);
+                                return;
+                            }
                             let slot = self.temp(Ty::Unit);
                             if let Some(scope) = self.cx.scopes.last_mut() {
                                 scope.insert(vname.clone(), slot);

@@ -66,6 +66,8 @@ impl<'a> Lowerer<'a> {
         let reversed = !mutable && self.is_reversed(&init);
         if self.cx.is_main && self.cx.scopes.len() == 1 {
             self.cx.recipes.remove(name);
+            self.global_map_views
+                .remove(&(self.cur_mod, name.to_string()));
             let id = self.globals.len();
             self.globals.push(Global {
                 name: name.to_string(),

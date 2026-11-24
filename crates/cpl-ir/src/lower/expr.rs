@@ -1083,10 +1083,10 @@ impl<'a> Lowerer<'a> {
     }
 
     fn name_as_written(&mut self, name: &str, hint: Option<&Ty>, span: Span) -> Expr {
+        if let Some(view) = self.map_view_named(name) {
+            return self.lower_map_view_materialize(&view, span);
+        }
         if let Some(slot) = self.lookup(name) {
-            if let Some(view) = self.cx.map_views.get(&slot).cloned() {
-                return self.lower_map_view_materialize(&view, span);
-            }
             return self.local(slot, span);
         }
         if let Some((ref recv_place, owner)) = self.cx.inline_self.clone() {
