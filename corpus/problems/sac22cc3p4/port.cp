@@ -6,11 +6,12 @@
 // Solution: answer the queries backwards, where deletions become unions in a Dsu that tells
 //   whether u and v are still connected. If they are, their path is the original tree path,
 //   so the answer is its length in the tree rooted at 1. O((N + Q) log N).
+// Bounds: n: 2..=1e5; q: 1..=2e5; queries.kind: 1..=2; queries.u, queries.v: 1..=n
 // original: corpus/submissions/4331646.cpp
-let (n, q) = read<(2..=1e5, 1..=2e5)>()
+let (n, q): (2..=1e5, 1..=2e5) = read()
 domain V = 1..=n
 let tree = Rooted(Graph.undirected(read<Tree<V>>()), root: V.first!)
-let queries = read<[q](kind: 1..=2, u: V, v: V)>()
+let queries: [q](kind: 1..=2, u: V, v: V) = read()
 
 // Backwards in time a cut is a join, so one Dsu answers "still connected?".
 var joined = Dsu<V>()

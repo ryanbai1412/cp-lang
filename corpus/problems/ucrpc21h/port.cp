@@ -7,11 +7,12 @@
 //   the one-way distances into four loads of at most 300 each, minimizing the largest: a
 //   subset-sum over three loads, the third kept as a bitset per (a, b) cell, the fourth
 //   taking the rest. An edge over 300 is already too long. O(n 301^3 / 64).
+// Bounds: n: 1..=100; m: 0..=10_000; roads.w: 1..=1_000_000_000
 // original: corpus/submissions/3950286.cpp
 const limit = 300
-let (n, m) = read<(1..=100, 0..=10_000)>()
+let (n, m): (1..=100, 0..=10_000) = read()
 domain V = [n]
-let roads = read<[m](u: V, v: V, w: 1..=1_000_000_000)>()
+let roads: [m](u: V, v: V, w: 1..=1_000_000_000) = read()
 let paths = dijkstra(Graph.undirected(roads), from: [(V.first!, 0)])
 fn busiest() -> ?Int:
     if roads.any(r => r.w > limit) or V.any(v => paths.dist[v] == None):

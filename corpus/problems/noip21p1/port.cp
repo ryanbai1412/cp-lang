@@ -6,11 +6,12 @@
 //   with a 7 that is still alive kills all its multiples (a dead one's multiples are dead
 //   already). A query is a Bitset lookup, and the next survivor is the Bitset's `next`.
 //   O(L log L) once, then a short scan per query.
+// Bounds: t: 1..=2e5; asks: 1..=1e7
 // original: corpus/submissions/5445676.cpp
 const LIMIT = 10000100  // past the next survivor above 1e7
 
-let t = read<1..=2e5>()
-let asks = read<[t]1..=1e7>()
+let t: 1..=2e5 = read()
+let asks: [t]1..=1e7 = read()
 
 domain X = 1..=LIMIT
 var alive = Bitset<X>.full()

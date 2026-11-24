@@ -6,8 +6,9 @@
 // Solution: each time unit independently takes the better of the two mouths, so the answer
 //   is the sum over time of max(upper rate, lower rate). One event per interval endpoint
 //   (+worth at a, -worth at b + 1), sorted; the sweep adds gap * max rate. O((n + m) log).
+// Bounds: len: 1..=1e9; n, m: 0..=1e5
 // original: corpus/submissions/3944571.cpp
-let (len, n, m) = read<(1..=1e9, 0..=1e5, 0..=1e5)>()
+let (len, n, m): (1..=1e9, 0..=1e5, 0..=1e5) = read()
 domain Mouth = [2]
 type Window = (a: 1..=len, b: 1..=len, rainbow: Bool)
 let windows: [Mouth]List<Window> = [List(read<[n]Window>()), List(read<[m]Window>())]

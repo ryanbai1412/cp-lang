@@ -7,8 +7,9 @@
 //   max SegTree over preorder; each switch of a preferred child adds 1 to the subtree it
 //   leaves and takes 1 from the one it joins (amortised O(log n) switches, each O(log n)).
 //   Query 2 is f[x] + f[y] - 2 f[lca] + 1, query 3 the max of f over sub(x).
+// Bounds: n, q: 1..=1e5
 // original: corpus/submissions/5463990.cpp
-let (n, q) = read<(1..=1e5, 1..=1e5)>()
+let (n, q): (1..=1e5, 1..=1e5) = read()
 domain V = 1..=n
 enum Op = @tag(1) Paint(x: 1..=n) | @tag(2) Path(x: 1..=n, y: 1..=n) | @tag(3) Deepest(x: 1..=n)
 let t = Rooted(Graph.undirected(read<[n - 1](u: V, v: V)>()), root: V.first!)

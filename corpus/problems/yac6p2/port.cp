@@ -6,8 +6,9 @@
 // Solution: the root manages everyone, so it never moves: different roots give -1. Otherwise
 //   each worker whose boss differs moves exactly once, to its t-boss, in a preorder of t: the
 //   new boss's chain to the root is already final, so it cannot pass through the worker. O(N).
+// Bounds: n: 1..=1e6
 // original: corpus/submissions/5149548.cpp
-let n = read<1..=1e6>()
+let n: 1..=1e6 = read()
 domain V = 1..=n
 let have = read<[V]?V>(none: -1)
 let want = read<[V]?V>(none: -1)

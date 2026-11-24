@@ -6,11 +6,12 @@
 // Solution: simulate on the digit list. A number plus its reversal is symmetric in the digit
 //   order, so the digits can be added from either end; at most 31 palindrome tests and sums of
 //   O(len) each.
+// Bounds: base: 2..=16
 // original: corpus/submissions/5044551.cpp
 use std.strings.{is_palindrome}
 
-let base = read<2..=16>()
-let number = read<Str>()
+let base: 2..=16 = read()
+let number: Str = read()
 
 fn mirror_sum(d: List<Int>) -> List<Int>:
     var sum: List<Int> = []

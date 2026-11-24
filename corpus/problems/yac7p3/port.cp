@@ -7,10 +7,11 @@
 //   that vertex: the cycle gains its whole tail. Recompute the cycles with Functional and
 //   label each vertex by (cycle position + depth) mod L plus the component's offset.
 //   O(n log n).
+// Bounds: n: 1..=1_000_000; par: 1..=n
 // original: corpus/submissions/5705218.cpp
-let n = read<1..=1_000_000>()
+let n: 1..=1_000_000 = read()
 domain V = 1..=n
-var par = read<[V]V>()
+var par: [V]V = read()
 let f = Functional.new(par)
 let deep = V.filter(v => not f.on_cycle(v)).max(by: v => (f.depth(v), v)) ?? V.first!
 let moved = V.find(v => f.on_cycle(v) and par[v] == f.root_of(deep))!

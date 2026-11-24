@@ -9,10 +9,11 @@
 //   shifts up, so each total is stored lifted by the worth of the letters seen: skipping a
 //   letter shifts by w, adding it as a left end by 2w, as a right end by 0. O(n^2 W / 64),
 //   W = 2 * total worth.
+// Bounds: n: 1..=250
 // original: corpus/submissions/4376742.cpp
 
-let n = read<1..=250>()
-let word = read<Str>()
+let n: 1..=250 = read()
+let word: Str = read()
 let worth = [(c - 'A' + 1) * (c - 'A' + 1) for c in word]
 let whole = worth.sum()
 
