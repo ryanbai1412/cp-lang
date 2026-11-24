@@ -27,6 +27,16 @@ def ints(n, per=1):
     return f"{n}\n{body}\n"
 
 
+def aho_words(n, m):
+    """`n` distinct words of 8-10 letters from "abc", then `m` 500-letter texts."""
+    import random
+    r, seen = random.Random(1), set()
+    while len(seen) < n:
+        seen.add("".join(r.choice("abc") for _ in range(r.randint(8, 10))))
+    texts = ["".join(r.choice("abc") for _ in range(500)) for _ in range(m)]
+    return f"{n} {m}\n" + "\n".join(sorted(seen)) + "\n" + "\n".join(texts) + "\n"
+
+
 def gen(problem):
     """corpus/problems/`problem`/gen.py --max's input."""
     script = os.path.join(ROOT, "corpus", "problems", problem, "gen.py")
@@ -58,6 +68,7 @@ CASES = {
     "sort_tuples": lambda: "200000\n" + "".join(f"{i * 7919 % 1001} {i * 104729 % 1001}\n" for i in range(200_000)),
     "sort_boxes": lambda: "20\n",  # sort() 2^20 (l: Int, r: Int) records, btoi08p6's boxes
     "cf2124c": lambda: gen("cf2124c"),  # b.adjacent over 6e5 [0..n]1..=1e9: 4 B cells, not 8
+    "aho_corasick": lambda: aho_words(50_000, 1000),  # 56k states over 3 used letters of 26
 }
 
 

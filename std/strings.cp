@@ -2979,14 +2979,18 @@ pub struct Trie<A>:
         total
 
 /// \(O(\mathit{total} \cdot \lvert A \rvert)\) build, \(O(1)\) step. Aho-Corasick multi-pattern automaton over alphabet domain `A`.
-/// Built in \(O(\mathit{sum} \lvert p \rvert \cdot \lvert A \rvert)\) flat memory and time; `step`, `link`, and `hit` are \(O(1)\).
+/// One flat 32-bit transition row per state with a column per letter the patterns use (the
+/// letters no pattern uses share one column that leads to the root), so a 26-letter domain
+/// over 3 used letters takes 3 or 4 cells per state; `step`, `link`, and `hit` are \(O(1)\).
 ///
 /// not a container: an automaton; `len` counts states, which are walked by `step`.
 pub struct AhoCorasick<A>:
-    alpha: Count
+    width: Count
+    column: List<Count>
     goto: List<Slot>
     fail: List<Count>
-    ends: List<List<Count>>
+    first: List<Slot>
+    next: List<Slot>
     exit: List<Slot>
     order: List<Count>
     lens: List<Count>
@@ -3002,26 +3006,50 @@ pub struct AhoCorasick<A>:
     /// example: `AhoCorasick<Char>(["a", "ab", "b"]).len == 4`
     pub fn new<S: Seq>(patterns: List<S>) -> AhoCorasick<A>:
         let k = A.count
-        var goto: List<Slot> = List.filled(k, -1)
-        var ends: List<List<Count>> = [[]]
+        var used: List<Bool> = List.filled(k, false)
+        for pat in patterns:
+            for a in pat: used[a.ord] = true
+        var column: List<Count> = List.filled(k, 0)
+        var width = 0
+        for c in 0..k:
+            if used[c]:
+                column[c] = width
+                width += 1
+        if width < k:
+            for c in 0..k:
+                if not used[c]: column[c] = width
+            width += 1
+        // The trie as child and sibling lists, so the transition table is allocated once at its
+        // final size instead of growing a row per new state.
+        var child: List<Slot> = [-1]
+        var sib: List<Slot> = [-1]
+        var via: List<Count> = [0]
         var lens: List<Count> = List.filled(patterns.len, 0)
         var pat_state: List<Count> = List.filled(patterns.len, 0)
         for i in 0..patterns.len:
             var at = 0
             var plen = 0
             for a in patterns[i]:
-                let idx = at * k + a.ord
-                if goto[idx] == -1:
-                    let nw = ends.len
-                    for _ in 0..k: goto.push(-1)
-                    ends.push([])
-                    goto[idx] = nw
-                at = goto[idx]
+                let c = column[a.ord]
+                var t = child[at]
+                while t != -1 and via[t] != c: t = sib[t]
+                if t == -1:
+                    t = via.len
+                    child.push(-1)
+                    sib.push(child[at])
+                    via.push(c)
+                    child[at] = t
+                at = t
                 plen += 1
             lens[i] = plen
             pat_state[i] = at
-            ends[at].push(i)
-        let n = ends.len
+        let n = via.len
+        var first: List<Slot> = List.filled(n, -1)
+        var next: List<Slot> = List.filled(patterns.len, -1)
+        for i in (0..patterns.len).rev:
+            next[i] = first[pat_state[i]]
+            first[pat_state[i]] = i
+        var goto: List<Slot> = List.filled(n * width, -1)
         var fail: List<Count> = List.filled(n, 0)
         var exit: List<Slot> = List.filled(n, -1)
         var order: List<Count> = List.filled(n, 0)
@@ -3030,19 +3058,23 @@ pub struct AhoCorasick<A>:
         while head < tail:
             let s = order[head]
             head += 1
-            let base = s * k
-            let fbase = fail[s] * k
-            for c in 0..k:
+            let base = s * width
+            let fbase = fail[s] * width
+            var kid = child[s]
+            while kid != -1:
+                goto[base + via[kid]] = kid
+                kid = sib[kid]
+            for c in 0..width:
                 let past = if s == 0: 0 else: goto[fbase + c]
                 let t = goto[base + c]
                 if t != -1:
                     fail[t] = past
-                    exit[t] = if ends[past].is_empty: exit[past] else: past
+                    exit[t] = if first[past] == -1: exit[past] else: past
                     order[tail] = t
                     tail += 1
                 else:
                     goto[base + c] = past
-        AhoCorasick(k, goto, fail, ends, exit, order, lens, pat_state)
+        AhoCorasick(width, column, goto, fail, first, next, exit, order, lens, pat_state)
 
     /// The root state, before any letter is read: always `0`.
     ///
@@ -3065,7 +3097,7 @@ pub struct AhoCorasick<A>:
     /// traps: when `state` is outside `0..self.len`
     /// example: `let ac = AhoCorasick<Char>(["a", "ab", "b"]); ac.step(2, 'b') == 3 and ac.step(1, 'a') == 1`
     pub fn step(self, state: Int, a: A) -> Int:
-        return goto[state * alpha + a.ord]
+        return goto[state * width + column[a.ord]]
 
     /// The failure link of `state`: the state of its longest proper suffix that is a pattern
     /// prefix; `0` at the root.
@@ -3083,7 +3115,7 @@ pub struct AhoCorasick<A>:
     /// traps: when `state` is outside `0..self.len`
     /// example: `let ac = AhoCorasick<Char>(["ab", "b"]); ac.hit(2) and not ac.hit(1)`
     pub fn hit(self, state: Int) -> Bool:
-        return not ends[state].is_empty or exit[state] != -1
+        return first[state] != -1 or exit[state] != -1
 
     /// Every pattern that ends at `state` or up its failure links, by index.
     ///
@@ -3095,7 +3127,10 @@ pub struct AhoCorasick<A>:
         var found: List<Int> = []
         var at = state
         while at != -1:
-            for w in ends[at]: found.push(w)
+            var w = first[at]
+            while w != -1:
+                found.push(w)
+                w = next[w]
             at = exit[at]
         found
 
@@ -3109,15 +3144,21 @@ pub struct AhoCorasick<A>:
     /// traps: when an element of `text` is not in `A`
     /// example: `AhoCorasick<Char>(["a", "ab", "b"]).find_all("ab").collect() == [(0, 0), (0, 1), (1, 2)]`
     pub fn find_all<S: Seq>(self, text: S) -> yields (at: Int, pattern: Int):
-        for w in ends[0]: yield (at: 0, pattern: w)
+        var root = first[0]
+        while root != -1:
+            yield (at: 0, pattern: root)
+            root = next[root]
         var state = 0
         var i = 0
         for a in text:
-            state = goto[state * alpha + a.ord]
+            state = goto[state * width + column[a.ord]]
             i += 1
             var at = state
             while at != -1:
-                for w in ends[at]: yield (at: i - lens[w], pattern: w)
+                var w = first[at]
+                while w != -1:
+                    yield (at: i - lens[w], pattern: w)
+                    w = next[w]
                 at = exit[at]
 
     /// For each pattern, how many times it occurs in `text`, overlaps included: the number of
@@ -3133,13 +3174,10 @@ pub struct AhoCorasick<A>:
         visits[0] = 1
         var state = 0
         for a in text:
-            state = goto[state * alpha + a.ord]
+            state = goto[state * width + column[a.ord]]
             visits[state] += 1
         for i in (1..order.len).rev: visits[fail[order[i]]] += visits[order[i]]
-        var total = List.filled(lens.len, 0)
-        for s in 0..fail.len:
-            for w in ends[s]: total[w] = visits[s]
-        total
+        [visits[pat_state[w]] for w in 0..lens.len]
 
     /// Every state in BFS order of the trie (root first, then by depth, equal depths by their
     /// parents' places in the order, then by letter), so each state comes after its failure
@@ -3258,7 +3296,11 @@ struct AcBuckets<A>:
         let ac = AhoCorasick<A>(group)
         var hit = List.filled(ac.len, 0)
         for v in ac.fail_order():
-            hit[v] = ac.ends[v].len + (if v == 0: 0 else: hit[ac.fail[v]])
+            var w = ac.first[v]
+            while w != -1:
+                hit[v] += 1
+                w = ac.next[w]
+            if v != 0: hit[v] += hit[ac.fail[v]]
         pats.push(group)
         acs.push(ac)
         hits.push(hit)
@@ -3713,6 +3755,14 @@ fn trie_add_remove_and_prefix_counts():
             assert t.count_prefix(q) == sum(
                 Int(w.len >= q.len and (0..q.len).all(i => w[i] == q[i])) for w in words
             )
+
+@test
+fn aho_corasick_steps_letters_no_pattern_uses_to_the_root():
+    domain L = 'a'..='z'
+    let ac = AhoCorasick<L>(["ab", "b", "b"].map(w => [L(c) for c in w]))
+    assert ac.len == 4 and ac.step(1, L('z')) == 0 and ac.step(1, L('b')) == 2
+    assert ac.words_at(2) == [0, 1, 2] and ac.counts([L(c) for c in "abzb"]) == [1, 2, 2]
+    assert [m.at for m in ac.find_all([L(c) for c in "zabz"])] == [1, 2, 2]
 
 @test
 fn aho_corasick_matches_counts_and_avoidance_dp():
