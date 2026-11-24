@@ -156,6 +156,56 @@ fn a_max_plus_row_is_one_branch_free_pass_on_an_avx2_judge_only() {
 }
 
 #[test]
+fn every_grid_row_sweep_takes_two_cells_a_round_off_an_avx2_judge() {
+    let program = crate::tests::lower(concat!(
+        "let n: 1..=8 = read()\n",
+        "domain S = 0..n\n",
+        "type Mat = [S, S]Int\n",
+        "type Cube = [S, S, S]Int\n",
+        "fn add(a: Mat, b: Mat) -> Mat:\n",
+        "    var c = a\n",
+        "    for i in S:\n",
+        "        for j in S:\n",
+        "            c[i, j] += b[i, j]\n",
+        "    c\n",
+        "fn row_sum(g: Cube, x: S, y: S) -> Int:\n",
+        "    var s = 0\n",
+        "    for z in S: s += g[x, y, z]\n",
+        "    s\n",
+        "fn column(a: Mat, j: S) -> Int:\n",
+        "    var s = 0\n",
+        "    for i in S: s += a[i, j]\n",
+        "    s\n",
+        "let a: Mat = [S, S] (i, j) => i.ord + j.ord\n",
+        "let g: Cube = [S, S, S] (i, j, k) => i.ord * j.ord + k.ord\n",
+        "let f = S.first!\n",
+        "print(add(a, a)[f, f] + row_sum(g, f, f) + column(a, f))\n",
+    ));
+    let plain = crate::emit_for(&program, "t.cp", None, &crate::Target::default());
+    let loop_of = |at: &str| {
+        let head = &plain[..plain.find(at).expect(&plain)];
+        head[head.rfind("for (").expect(&plain) - 24..].to_string()
+    };
+    // A loop over a row's last index takes the rule; a column walk doesn't.
+    for at in ["c_row[(size_t)(j)] = ", "g_2(x, y, z)"] {
+        assert!(
+            loop_of(at).contains("_Pragma(\"GCC unroll 2\") for ("),
+            "{at}\n{plain}"
+        );
+    }
+    assert!(
+        !loop_of("a_2_row[(size_t)(j)]").contains("GCC unroll 2"),
+        "{plain}"
+    );
+    let avx2 = crate::Target {
+        cpu: vec!["avx2".into()],
+        ..crate::Target::default()
+    };
+    let fast = crate::emit_for(&program, "t.cp", None, &avx2);
+    assert!(!fast.contains("GCC unroll 2"), "{fast}");
+}
+
+#[test]
 fn a_grids_keys_walk_one_loop_per_axis_and_divide_nothing() {
     let source = concat!(
         "let n: 1..=1500 = read()\n",

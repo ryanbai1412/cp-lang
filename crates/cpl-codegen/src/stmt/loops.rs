@@ -460,6 +460,11 @@ impl<'p> Emitter<'p> {
                                     (Some(lo), Some(hi)) if (1..=16).contains(&(hi - lo)) => {
                                         format!("_Pragma(\"GCC unroll {}\") ", hi - lo)
                                     }
+                                    _ if !self.target.has("avx2")
+                                        && crate::uses::loops::sweeps_grid_row(slot, body) =>
+                                    {
+                                        "_Pragma(\"GCC unroll 2\") ".to_string()
+                                    }
                                     _ => String::new(),
                                 };
                                 let steps = match self.grid_steps.take() {

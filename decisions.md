@@ -9190,7 +9190,43 @@ field's default now resolves names in the struct's module, as a fn param's defau
 already did. Next, a known missing `rev` becomes a compile error through a general
 mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 
-## 603. (reserved, unknown)
+## 603. A flat grid's row sweep is unrolled by two below AVX2 (perf, 2026-11-24)
+
+- **Decision.** A `for` over a domain whose body indexes a grid of two or
+  more dims by the loop's slot in the last position, with no loop nested
+  in it, is emitted with `_Pragma("GCC unroll 2")`. A column walk (the slot
+  in an earlier position) is not. A profile with `isa = "avx2"`, whose
+  `GCC optimize` asks for O3 and vectorises the sweep, gets no pragma.
+- **Why.** g++ -O2 steps two induction pointers on the row sweep
+  (`mul`'s inner loop in `bench/zero-cost/grids`) instead of one shared
+  index, and runs it 1.4x slower than hand C++. Hoisted per-row pointers
+  and one linear index stay slow; unrolling by two brings it back to hand
+  C++ speed. `grids` abstract, ms, pinned median of 9:
+
+  | g++ and flags | unroll 2 | none | hand C++ |
+  |---|---|---|---|
+  | 11 -O2 | 160 | 241 | 169 |
+  | 11 -O2 -march=x86-64-v3 | 160 | 242 | 180 |
+  | 13.2 -O2 (Codeforces, CSES 13.3) | 148 | 162 | 175 |
+  | 13.2 -O2 -march=x86-64-v3 | 234 | 290 | |
+  | 15.2 -O2 (Kattis) | 156 | 229 | 169 |
+  | 15.2 -O2 -march=x86-64-v3 (AtCoder's `-march=native`) | 190 | 257 | |
+  | 11, `isa = "avx2"` (O3) | 83 | 79 | 159 |
+  | 13.2, `isa = "avx2"` (O3) | 87 | 92 | 175 |
+  | 15.2, `isa = "avx2"` (O3) | 94 | 88 | 179 |
+
+  With 42f4eb47e's row pointer stepped by the row counter, g++ 11 -O2
+  still runs `grids` at 135 ms with unroll 2, 174 ms without and 146 ms
+  for hand C++ (pinned median of 15).
+
+  The 74 corpus ports whose C++ the pragma changes run their `--max`
+  input at a median 1.00x of without. Each one past 2% at one layout,
+  retimed as a three-layout pinned median, reads 0.94x-1.01x, inside the
+  1.03x that two builds of identical C++ read.
+- **Reverse.** Drop the `sweeps_grid_row` arm in
+  `crates/cpl-codegen/src/stmt/loops.rs`, its query in
+  `crates/cpl-codegen/src/uses/loops.rs` and its test in
+  `crates/cpl-codegen/src/tests/loops.rs`.
 
 ## 604. (reserved, perf)
 
