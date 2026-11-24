@@ -979,6 +979,22 @@ def interp_max_over_20s(root: Path) -> list[str]:
     return list(board["interp_max_over_20s"])
 
 
+TOOLS_TEST_TIMES = "research/perf/tools-test-times.json"
+
+
+def tools_tests_over_30s(root: Path) -> list[str]:
+    """Tests of the tools crates (cpl-cli, cpl-lsp, cpl-contest, cpl-stress, cpl-corpus)
+    over 30 s (owner: Tools).
+
+    `scripts/test-times.py --write` times them and records the slow ones in
+    research/perf/tools-test-times.json; a missing record counts, so the gate can't
+    pass blind."""
+    p = root / TOOLS_TEST_TIMES
+    if not p.is_file():
+        return [f"{TOOLS_TEST_TIMES}: no test times; run `uv run scripts/test-times.py --write`"]
+    return [f"{t}: {s} s" for t, s in json.loads(p.read_text())["over_limit"].items()]
+
+
 def conformance_wrong_output(root: Path) -> list[str]:
     """Conformance cases research/scoreboard.json records as printing the wrong output.
 
@@ -2981,6 +2997,7 @@ COUNTERS = {
     "corpus_fmt_dirty": ("corpus port, dream and spec files cpl fmt would change (Content)",
                          corpus_fmt_dirty, True),
     "interp_max_over_20s": ("corpus packages the interpreter runs a --max case past 20 s on (Core)", interp_max_over_20s, True),
+    "tools_tests_over_30s": ("tools crates' tests over 30 s (Tools)", tools_tests_over_30s, True),
     "edition_refs": ("dead 0.2 edition references", edition_refs, True),
     "ir_builtin_names": ("names string-matched in lower/call.rs and lower/call/", ir_builtin_names, True),
     "ir_builtin_derived": ("string-matched names off the decision-266 floor table", ir_builtin_derived, True),

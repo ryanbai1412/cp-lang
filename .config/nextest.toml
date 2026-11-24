@@ -44,3 +44,8 @@ default-filter = 'not (kind(test) & (package(cpl-cli) | package(cpl-lsp) | packa
 # with it every newer main commit queued behind the run.
 [profile.gate]
 slow-timeout = { period = "60s", terminate-after = 5 }
+
+# scripts/test-times.py --write: every test's time, for the tools lane's
+# tests-over-30-s record (research/perf/tools-test-times.json).
+[profile.times]
+junit = { path = "junit.xml" }

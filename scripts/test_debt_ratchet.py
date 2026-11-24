@@ -1211,6 +1211,13 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.conformance_failing(root), [])
             self.assertEqual(dr.conformance_wrong_output(root), [])
 
+    def test_tools_tests_over_30s_reads_the_test_times_record(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.assertEqual(len(dr.tools_tests_over_30s(root)), 1)
+            self._write(root, dr.TOOLS_TEST_TIMES, json.dumps({"over_limit": {"cpl-cli::a slow": 31.0}}))
+            self.assertEqual(dr.tools_tests_over_30s(root), ["cpl-cli::a slow: 31.0 s"])
+
     def test_interp_max_over_20s_reads_the_corpus_board(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
