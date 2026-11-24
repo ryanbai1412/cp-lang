@@ -14,16 +14,16 @@
 // weakest on x" for increasing x. A charge no weaker than the newest and
 // farther away never wins, so charges strictly decrease, and the weakest one
 // only moves right as x does.
-use std.math.{Frac}
+use std.math.{Ratio}
 
 struct Charge(x: Int, q: Int, pin: ?Side)
 enum Side: A | B
 
 // d^2 / (q * q'): larger is weaker.
-fn gap(a: Charge, b: Charge) -> Frac = Frac((a.x - b.x) ** 2, a.q * b.q)
+fn gap(a: Charge, b: Charge) -> Ratio = Ratio.new((a.x - b.x) ** 2, a.q * b.q)
 
 // Pull of `c` on a unit charge at `x`: q / (x - c.x)^2.
-fn pull(c: Charge, x: Int) -> Frac = Frac(c.q, (x - c.x) ** 2)
+fn pull(c: Charge, x: Int) -> Ratio = Ratio.new(c.q, (x - c.x) ** 2)
 
 // True iff `b` is never weaker than both `a` and `c` for any `x > c.x`.
 // Equating `pull(a, x) = pull(b, x)` and `pull(b, x) = pull(c, x)` gives
@@ -75,7 +75,7 @@ if colour.size(Pin) == 1: colour.unite(C.first, Pin, differ: false)
 
 while colour.components > 1:
     let comp = colour.component_ids()
-    var best: [comp.groups]?(gap: Frac, i: C, j: C) = None
+    var best: [comp.groups]?(gap: Ratio, i: C, j: C) = None
     for sweep in [C.ascending, C.descending.mirrored(x: 0)]:
         var hulls = GroupTree<Hull<C>>(comp.groups)
         for c in sweep:
@@ -88,5 +88,5 @@ while colour.components > 1:
 let weakest = min(
     gap(prev, c)
     for side in Side for (prev, c) in hull_pairs([ch[c] for c in C if colour.side(c, of: Pin) == side])
-) ?? Frac(1, 226_000_000)
+) ?? Ratio.new(1, 226_000_000)
 print(weakest.inv)

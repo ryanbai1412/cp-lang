@@ -13,6 +13,7 @@
 //
 // Output: replace the segments with sum >= x in decreasing sum order, the free one
 // by [x], then replace [x] by its piece. Each step replaces a maximum-sum segment.
+use std.algebra.{MaxSub, MaxSubAt}
 @!multitest
 domain PosA = read(1..=500)
 domain PosB = read(1..=500)
@@ -21,12 +22,12 @@ let b: [PosB]-1e6..=1e6 = read()
 
 fn cool(r: Range<PosA>) -> List<Range<PosA>>:
     if r.is_empty: return []
-    let m = a[r].max_subarray(widest: true)
+    let m = a[r].items.map((i, v) => MaxSubAt.of(i, v)).fold(+)!.at
     cool(r.start..m.start) + [m] + cool(m.end..r.end)
 
 let (domain Seg, span) = cool(PosA.first..=PosA.last).indexed()
 let total = [Seg] s => a[span[s]].sum()
-let mss = [PosB.cuts, PosB.cuts] (l, r) => b[l..r].max_subarray_sum()
+let mss = [PosB.cuts, PosB.cuts] (l, r) => b[l..r].map(MaxSub.of).fold(+)!.best
 
 struct Back(from: PosB.cuts, spent: Bool)
 struct Plan(piece: [Seg]Range<PosB>, free: Seg)

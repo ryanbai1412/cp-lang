@@ -7,6 +7,7 @@
 // maximum is the largest gap maximum between them, so folding the class's
 // gaps from the smallest maximum up (a Cartesian tree of the gaps) meets
 // every pair exactly once, at the gap that is its maximum.
+use std.prefix.{prefix_fold}
 @!multitest
 domain I = read(1..=2e5)
 
@@ -24,7 +25,7 @@ let a: [I]Int = read()
 let peak = SparseTable<I, Int>(max, a)
 
 fn feasible(v: Int) -> Bool:
-    let pre = (a & v).prefix_fold(xor)
+    let pre = prefix_fold(^, a & v)
     let class = [I.bounds] c => min(pre[c], pre[c] ^ v)
     let at = c => if pre[c] != class[c]: Ends(None, Span(c, c)) else: Ends(Span(c, c), None)
     I.cuts.sorted(by: c => (class[c], c)).chunk_by(c => class[c]).any(cuts =>

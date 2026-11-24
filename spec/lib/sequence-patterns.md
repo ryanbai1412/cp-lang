@@ -214,7 +214,7 @@ No helper is added for these; each is one or two lines.
 | count adjacent pairs with a property | `a.adjacent.count((x, y) => x > y)` |
 | every pair `i < j` (brute force) | `a.pairs()`, \(O(n^2)\) to walk |
 | best subarray sum (Kadane) | `a.map(MaxSub.of).fold(+)` (round 5's summary; the same op answers range queries in a `SegTree`) |
-| widest best subarray as a range | `a.items.map(MaxSubAt.of).fold(+)`: `.best` and `.at`, ties widest then leftmost |
+| widest best subarray as a range | `a.items.map((i, v) => MaxSubAt.of(i, v)).fold(+)`: `.best` and `.at`, ties widest then leftmost |
 | maximum and how often | `a.map(MaxCount.of).fold(+)` |
 | prefix records | `a.keys.filter(i => a[i] > pre[i.l])` with `pre = a.scan(max)` |
 | count subarrays with sum `K` | `var seen = Counter<Int>()`; `for c in pre.keys: ans += seen[pre[c] - K]; seen.push(pre[c])` |
