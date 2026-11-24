@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3380 (3318 passing). Rules: 615.
+Cases: 3382 (3318 passing). Rules: 615.
 
 ## Summary per chapter
 
@@ -19,7 +19,7 @@ Cases: 3380 (3318 passing). Rules: 615.
 - R04b (04b-keys.md): 28 rules, 78 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 50 rules, 255 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 26 rules, 124 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 95 rules, 239 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 95 rules, 241 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 31 rules, 104 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 20 rules, 119 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -459,7 +459,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.1.3 [3+ 1-]: **Laziness is explicit.** A chain reruns on every walk. Allocation happens only at `.colle...
 - R07.1.4 [1+ 1-]: **Identity everywhere.** Every slice keeps its source's keys (`a[l..=r][i] == a[i]`, `s[2....
 - R07.1.5 [1+ 2-]: **Views are lent values with the rules of `mut a[i]`.** A value built from a lent part is ...
-- R07.1.6 [8+ 3-]: **Prefix scans are indexed by cuts.** `pre[c]` folds left of `c`; `pre[v]` folds through `...
+- R07.1.6 [8+ 5-]: **Prefix scans are indexed by cuts.** `pre[c]` folds left of `c`; `pre[v]` folds through `...
 - R07.1.7 [1+ 1-]: **Costs show.** \(O(1)\) things are getters or views, allocation is named, options are nam...
 - R07.2.1 [2+ 0-]: | **sequence** (`Seq<T>`) | anything a `for` can walk, in order | either | everything in t...
 - R07.2.2 [3+ 0-]: | **indexed sequence** (`Indexed<K, T>`) | a sequence that also has \(O(1)\) `s[k]`, `.key...
@@ -811,7 +811,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0317 Getter needs defaults: 1 case(s)
 - E0318 Unreachable match arm: 1 case(s)
 - E0319 Generic fn recursion at a growing type: 1 case(s)
-- E0320 Int index into a cut table: 2 case(s)
+- E0320 Int index into a cut table: 4 case(s)
 - E0321 negative_literal_index *(0.3)*: **no case**
 - E0322 Field that stores its own type: 2 case(s)
 - E0401 Assignment to immutable `let` binding: 5 case(s)
