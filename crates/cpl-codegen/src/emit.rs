@@ -146,6 +146,10 @@ pub(crate) struct Emitter<'p> {
     pub hoisted: BTreeSet<usize>,
     /// Top-level `let`s of `main` bound by reference ([`Emitter::lends_main_let`]).
     pub lent_main: BTreeSet<usize>,
+    /// Top-level `let`s `solve` holds as its own locals: no fn or closure touches them.
+    pub main_only: BTreeSet<usize>,
+    /// Of those, the lists the statement being written walks for the last time: [`Emitter::walked_last`].
+    pub released: BTreeSet<usize>,
     /// The slot the next emitted closure is bound to when it names itself.
     pub rec_slot: Option<usize>,
     /// The current fn's local `@memo` fns ([`crate::devirt::Devirt::memo_pairs`]).
@@ -365,6 +369,8 @@ impl<'p> Emitter<'p> {
             pinned: Vec::new(),
             hoisted: BTreeSet::new(),
             lent_main: BTreeSet::new(),
+            main_only: BTreeSet::new(),
+            released: BTreeSet::new(),
             rec_slot: None,
             memo_pairs: BTreeMap::new(),
             const_globals: BTreeSet::new(),
@@ -1189,6 +1195,7 @@ impl<'p> Emitter<'p> {
                     self.lent_main.insert(id);
                     continue;
                 }
+                self.main_only.insert(id);
                 solve_locals.push_str(&format!(
                     "  {} {}{};\n",
                     cpp,

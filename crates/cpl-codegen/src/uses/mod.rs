@@ -14,6 +14,7 @@ pub(crate) mod message;
 pub(crate) mod places;
 pub(crate) mod sinks;
 pub(crate) mod split;
+pub(crate) mod walked;
 
 use crate::lend::{copied_at_test, Tail};
 use crate::walk;

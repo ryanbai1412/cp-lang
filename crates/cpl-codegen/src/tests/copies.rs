@@ -887,3 +887,46 @@ print(merged(0).len, rows)
     assert!(!out.contains("std::exchange(all"), "{out}");
     assert!(out.contains("std::exchange(cpl::at(rows, 0), {})"), "{out}");
 }
+
+#[test]
+fn a_top_level_list_walked_once_for_the_last_time_is_emptied_after_that_loop() {
+    let out = cpp(concat!(
+        "let n: 1..=100 = read()\n",
+        "let words = read<[n]Str>()\n",
+        "let lens = [w.len for w in words]\n",
+        "for i in 0..n:\n",
+        "    print(lens[i])\n",
+    ));
+    let freed = out
+        .find("decltype(words)().swap(words);")
+        .unwrap_or_else(|| panic!("nothing reads `words` after its comprehension:\n{out}"));
+    let walk = out
+        .find(": words)")
+        .expect("the comprehension walks `words`");
+    assert!(walk < freed, "{out}");
+}
+
+#[test]
+fn a_list_walked_again_or_read_later_is_kept() {
+    for src in [
+        concat!(
+            "let n: 1..=100 = read()\n",
+            "let words = read<[n]Str>()\n",
+            "var t = 0\n",
+            "for k in 0..3:\n",
+            "    t += [w.len for w in words].sum()\n",
+            "for i in 0..n:\n",
+            "    print(t + i)\n",
+        ),
+        concat!(
+            "let n: 1..=100 = read()\n",
+            "let words = read<[n]Str>()\n",
+            "let lens = [w.len for w in words]\n",
+            "for i in 0..n:\n",
+            "    print(lens[i], words[i])\n",
+        ),
+    ] {
+        let out = cpp(src);
+        assert!(!out.contains(".swap(words)"), "{out}");
+    }
+}
