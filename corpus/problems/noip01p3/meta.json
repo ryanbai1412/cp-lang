@@ -2,13 +2,17 @@
  "problem": "noip01p3",
  "source": "noip",
  "submissions": [
-  {"id": "5086701", "language": "CPP17", "result": "AC", "time": 0.01679555, "memory_kb": 3560.0, "file": "corpus/submissions/5086701.cpp"}
+  {"id": "5086701", "language": "CPP17", "result": "AC", "time": 0.01679555, "memory_kb": 3560.0, "file": null}
  ],
  "cpp_ac": 1,
- "artifacts": {},
+ "artifacts": {
+  "original": [
+   "corpus/problems/noip01p3/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "5086701 passed the judge's data but never counts a word that starts at a part's last letter (20 a's, k = 19, dictionary {a}: it prints 1, the answer is 20), so it is no reference; its file is gone and this record stays. orig.cpp is the interval-count DP written for the corpus, checked against the sample and a brute over every cut set."
 }

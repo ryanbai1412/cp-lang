@@ -11,10 +11,14 @@
   {"id": "5096361", "language": "CPP17", "result": "AC", "time": 0.171576555, "memory_kb": 5028.0, "file": "corpus/submissions/5096361.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {},
+ "artifacts": {
+  "original": [
+   "corpus/problems/noip02p2/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "5096361 is correct but searches without deduplication and takes about 24 s on the --max case, so orig.cpp (a bidirectional breadth-first search to depth 5 each way, deduplicating strings) is the reference; it agrees with 5096361 and a plain breadth-first brute on random inputs."
 }
