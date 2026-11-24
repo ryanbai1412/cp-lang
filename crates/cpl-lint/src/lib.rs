@@ -253,6 +253,13 @@ impl<'a> Calls<'a> {
         is_std(self.facts, e.span.shift(self.base), name)
     }
 
+    /// The member `e`, a member access or a call of one, is written as when
+    /// the checker could not resolve it: `first` of `xs.first(x => ..)`.
+    pub fn unresolved(self, e: &cpl_syntax::ast::Expr) -> Option<&'a str> {
+        let path = self.facts?.unresolved(e.span.shift(self.base))?;
+        path.last().map(String::as_str)
+    }
+
     /// The name of the std fn `e`, a call or getter, calls: `None` for a
     /// program's own fn or where the checker has no answer.
     pub fn name(self, e: &cpl_syntax::ast::Expr) -> Option<&'a str> {

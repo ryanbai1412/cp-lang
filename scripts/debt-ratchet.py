@@ -281,9 +281,11 @@ def lint_name_matchers(root: Path) -> list[str]:
     instead of asking the checker which fn it calls (`Facts::callee`): a
     user's own `push` fires them. Names a lint writes into its help or fix
     don't count, nor a line that asks the checker (`is_std`, `Calls::is`,
-    `Calls::name`), nor an arm of a `match` on the checker's callee name.
+    `Calls::name`, or `Calls::unresolved` for the written path of a member
+    it could not resolve), nor an arm of a `match` on the checker's callee
+    name.
     `lint_std_names` keeps every such name on `std_fn`."""
-    facts = re.compile(r"\bis_std\(|\.is\(|\.name\(")
+    facts = re.compile(r"\bis_std\(|\.is\(|\.name\(|\.unresolved\(")
     compare = re.compile(r"(==|!=)\s*std_fn::|std_fn::\w+\s*(==|!=)|contains\(std_fn::")
     arm = re.compile(r"std_fn::\w+\s*(=>|\|)|\|\s*std_fn::|matches!\(.*std_fn::")
     written = re.compile(r"\.text\b|as_str\(\)")
@@ -2503,6 +2505,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
 
 HARD_ZERO = frozenset({
     "habit_matchers", "corpus_fmt_dirty", "judge_tables", "v02_port_files", "lint_std_names", "cpl_env_reads", "dead_code_allows",
+    "lint_name_matchers",
     "corpus_walkers", "poll_sleeps", "retry_calls", "site_spec_snippets",
     "bench_lists", "hardcoded_codes", "scaling_mismatches", "corpus_test_files", "corpus_known", "corpus_no_max", "stale_arch_paths",
     "own_databases", "module_loaders", "web_skip_only", "test_sleeps", "todo_fixme", "ci_retries", "or_true", "codemods_outside_fix",

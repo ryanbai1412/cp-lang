@@ -98,6 +98,16 @@ impl<'a> Checker<'a> {
     }
 
     pub(super) fn field(&mut self, expr: &Expr, base: &Expr, name: &ast::Name) -> Ty {
+        let ty = self.field_ty(expr, base, name);
+        if ty == Ty::Error {
+            if let Some(path) = written_path(expr) {
+                self.exprs.unresolved.push((expr.span, path));
+            }
+        }
+        ty
+    }
+
+    fn field_ty(&mut self, expr: &Expr, base: &Expr, name: &ast::Name) -> Ty {
         if let ExprKind::Name(view) = &base.kind {
             if let Some(domain) = self.value_domain(view, &name.text) {
                 return Ty::Domain(domain);
@@ -1118,5 +1128,19 @@ impl<'a> Checker<'a> {
             },
         });
         ty
+    }
+}
+
+/// `t.pre.order` as `["t", "pre", "order"]`: a member path of plain names.
+fn written_path(expr: &Expr) -> Option<Vec<String>> {
+    match &expr.kind {
+        ExprKind::Name(n) => Some(vec![n.clone()]),
+        ExprKind::Field { base, name } => {
+            let mut path = written_path(base)?;
+            path.push(name.text.clone());
+            Some(path)
+        }
+        ExprKind::Paren(inner) => written_path(inner),
+        _ => None,
     }
 }

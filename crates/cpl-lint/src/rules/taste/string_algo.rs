@@ -1,7 +1,6 @@
 //! L0516 `hand_rolled_string_algo`: KMP, Z-function, polynomial hash, trie.
 
 use super::*;
-use crate::std_fn;
 
 /// Flags hand-rolled KMP prefix-function, Z-function, polynomial rolling-hash,
 /// and trie insertion loops that duplicate `std.strings`.
@@ -83,19 +82,12 @@ pub(super) fn hand_rolled_string_algos(file: &File) -> Vec<Finding> {
     scan.findings
 }
 
-/// Extracts `(base_name, index_expr)` from `arr[idx]` or `arr.at(idx)`.
+/// Extracts `(base_name, index_expr)` from `arr[idx]`: a list or string
+/// has no `at`, so indexing is the only way to read one element.
 pub(super) fn seq_index_parts(e: &Expr) -> Option<(&str, &Expr)> {
     match &walk::unparen(e).kind {
         ExprKind::Index { base, indices } if indices.len() == 1 => {
             Some((shapes::name(base)?, &indices[0]))
-        }
-        ExprKind::Call { callee, args } if args.len() == 1 => {
-            if let ExprKind::Field { base, name } = &walk::unparen(callee).kind {
-                if name.text == std_fn::AT {
-                    return Some((shapes::name(base)?, &args[0].value));
-                }
-            }
-            None
         }
         _ => None,
     }

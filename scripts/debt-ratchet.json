@@ -10,7 +10,7 @@
   "prelude_privilege": 27,
   "backend_std_names": 18,
   "lint_std_names": 0,
-  "lint_name_matchers": 7,
+  "lint_name_matchers": 0,
   "dup_fn_bodies": 2,
   "layer_violations": 1,
   "tree_walker": 1,

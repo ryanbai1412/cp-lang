@@ -6,7 +6,6 @@
 //! array (`diff_by_hand`) and counting components by DFS
 //! (`components_by_dfs`).
 
-use crate::std_fn;
 use crate::walk::{unparen, Visitor};
 use crate::{
     File, Finding, Lint, BINOM_BY_HAND, COMPONENTS_BY_DFS, CROSS_BY_HAND, DIFF_BY_HAND,
@@ -14,6 +13,7 @@ use crate::{
 };
 use cpl_diag::{Diagnostic, Span};
 use cpl_syntax::ast::*;
+use std::collections::HashSet;
 
 use super::shapes::{compare, index1, int, is_step, name, single};
 
@@ -21,6 +21,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut v = HandMath {
         src: file.src,
         base: 0,
+        inverse: inverse_tables(file),
         products: Vec::new(),
         memos: Vec::new(),
         out: Vec::new(),
@@ -63,6 +64,8 @@ struct HandMath<'a> {
     base: u32,
     /// Products already read whole, so their inner parts are skipped.
     products: Vec<Span>,
+    /// Tables the file writes std's `inv` of a value into.
+    inverse: HashSet<String>,
     /// (map, fn, lookup) for each `if k in map: return map[k]` at the top of
     /// a fn.
     memos: Vec<(String, String, Span)>,
@@ -317,7 +320,7 @@ impl HandMath<'_> {
         };
         for &(f, a) in hits {
             for (i, &(g, b)) in hits.iter().enumerate() {
-                let inverse = g.contains(std_fn::INV) || g == format!("i{f}");
+                let inverse = self.inverse.contains(g) || g == format!("i{f}");
                 if g == f || !inverse {
                     continue;
                 }
@@ -501,4 +504,60 @@ impl Visitor for HandMath<'_> {
         self.cross(expr);
         self.binom(expr);
     }
+}
+
+/// The tables a value holding std's `inv` is pushed or written into:
+/// `inv_fact.push(f.inv())`, `inv[i] = x.inv()`.
+fn inverse_tables(file: &File) -> HashSet<String> {
+    struct Scan<'a> {
+        facts: Option<&'a crate::Facts>,
+        base: u32,
+        out: HashSet<String>,
+    }
+    impl Scan<'_> {
+        fn inverts(&self, e: &Expr) -> bool {
+            struct Inv<'a>(crate::Calls<'a>, bool);
+            impl cpl_syntax::visit::Visitor for Inv<'_> {
+                fn expr(&mut self, e: &Expr) {
+                    self.1 |=
+                        matches!(e.kind, ExprKind::Call { .. }) && self.0.is(e, crate::std_fn::INV);
+                }
+            }
+            let mut inv = Inv(crate::Calls::new(self.facts, self.base), false);
+            cpl_syntax::visit::walk_expr(e, &mut inv);
+            inv.1
+        }
+    }
+    impl Visitor for Scan<'_> {
+        fn expr(&mut self, e: &Expr) {
+            let ExprKind::Call { callee, args } = &e.kind else {
+                return;
+            };
+            let (ExprKind::Field { base, .. }, [v]) = (&callee.kind, &args[..]) else {
+                return;
+            };
+            let pushes = crate::Calls::new(self.facts, self.base).is(e, crate::std_fn::PUSH);
+            if let Some(g) = name(base).filter(|_| pushes && self.inverts(&v.value)) {
+                self.out.insert(g.to_string());
+            }
+        }
+        fn stmt(&mut self, stmt: &Stmt) {
+            if let StmtKind::Assign { target, value, .. } = &stmt.kind {
+                let table = match &unparen(target).kind {
+                    ExprKind::Index { base, .. } => name(base),
+                    _ => None,
+                };
+                if let Some(g) = table.filter(|_| self.inverts(value)) {
+                    self.out.insert(g.to_string());
+                }
+            }
+        }
+    }
+    let mut v = Scan {
+        facts: file.facts,
+        base: 0,
+        out: HashSet::new(),
+    };
+    file.walk(&mut v, |v, base| v.base = base);
+    v.out
 }

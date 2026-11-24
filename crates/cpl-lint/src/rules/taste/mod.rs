@@ -42,6 +42,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         valued_fns: HashSet::new(),
         declared: HashSet::new(),
         idents: idents(file.src),
+        asks: asks(file),
         unchecked: unchecked_spans(file),
         findings: Vec::new(),
         fn_spans: Vec::new(),
@@ -150,6 +151,8 @@ struct Taste<'a> {
     declared: HashSet<String>,
     /// Every identifier-like word in the file, for picking fresh names.
     idents: HashSet<&'a str>,
+    /// Whether the file calls std's `ask`: an interactive program.
+    asks: bool,
     findings: Vec<Finding>,
     /// Every fn's name and absolute span: a reduction's own body is the
     /// loop it names.
@@ -269,7 +272,7 @@ impl<'a> Taste<'a> {
         // An interactive search's queries are counted: `first_true` asks at
         // the ends too.
         if self.unchecked.iter().any(|&(a, b)| a <= start && start < b)
-            || self.idents.contains(std_fn::ASK)
+            || self.asks
             || self.idents.contains("flush")
         {
             return;
@@ -1068,7 +1071,7 @@ impl<'a> Taste<'a> {
         // `xs.first` is the first element; the element a test holds for is
         // `xs.find(x => ..)` (decisions.md §182).
         if let (ExprKind::Field { name: method, .. }, [test]) = (&callee.kind, &args[..]) {
-            if method.text == std_fn::FIRST
+            if Calls::new(self.facts, self.base).unresolved(expr) == Some(std_fn::FIRST)
                 && test.name.is_none()
                 && matches!(test.value.kind, ExprKind::Lambda { .. })
             {
@@ -1180,9 +1183,12 @@ impl<'a> Taste<'a> {
         {
             return;
         }
-        let to = match name.text.as_str() {
-            std_fn::PREORDER => std_fn::AT,
-            "postorder" | "post_order" => "at.rev",
+        let written = (self.facts)
+            .and_then(|f| f.unresolved(expr.span.shift(self.base)))
+            .and_then(|path| path.last());
+        let to = match written.map(String::as_str) {
+            Some(std_fn::PREORDER) => std_fn::AT,
+            Some("postorder" | "post_order") => "at.rev",
             _ => return,
         };
         let mut diag = Diagnostic::warning(
@@ -1208,9 +1214,14 @@ impl<'a> Taste<'a> {
         let ExprKind::Field { base, name: method } = &callee.kind else {
             return;
         };
-        if method.text == std_fn::SORTED {
+        let calls = Calls::new(self.facts, self.base);
+        if calls.is(expr, std_fn::SORTED) {
             if let ExprKind::Name(n) = &base.kind {
-                if n.chars().next().is_some_and(char::is_uppercase) {
+                let domain = (self.facts).and_then(|f| f.type_of(base.span.shift(self.base)));
+                if matches!(
+                    domain,
+                    Some(cpl_check::Ty::Domain(_) | cpl_check::Ty::TypeName(_))
+                ) {
                     let mut diag = Diagnostic::warning(
                         DOMAIN_SPELLING.code,
                         method.span,
@@ -1226,7 +1237,7 @@ impl<'a> Taste<'a> {
                 }
             }
         }
-        if method.text == std_fn::FIRST && args.len() == 1 {
+        if calls.unresolved(expr) == Some(std_fn::FIRST) && args.len() == 1 {
             if let Some(arg_name) = &args[0].name {
                 if arg_name.text == "where" {
                     let label_span = Span {
@@ -1653,4 +1664,27 @@ fn in_place_twin(name: &str) -> Option<String> {
         .flatten()
         .map(|w| rest.map_or_else(|| w.to_string(), |r| format!("{w}_{r}")))
         .find(|stem| heads.contains_key(stem))
+}
+
+/// Whether `file` calls std's `ask`, by the checker's callees.
+fn asks(file: &File) -> bool {
+    struct Asks<'a> {
+        facts: Option<&'a crate::Facts>,
+        base: u32,
+        found: bool,
+    }
+    impl crate::walk::Visitor for Asks<'_> {
+        fn expr(&mut self, e: &Expr) {
+            if matches!(e.kind, ExprKind::Call { .. }) {
+                self.found |= Calls::new(self.facts, self.base).is(e, std_fn::ASK);
+            }
+        }
+    }
+    let mut v = Asks {
+        facts: file.facts,
+        base: 0,
+        found: false,
+    };
+    file.walk(&mut v, |v, base| v.base = base);
+    v.found
 }
