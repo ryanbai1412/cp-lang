@@ -690,12 +690,7 @@ pub fn cyclic_pairs<S: Seq<T>, T>(self: S) -> yields (T, T):
 /// order: position by position, stopping at the shorter
 /// traps: never
 /// example: `zip([1, 2, 3], "ab").collect() == [(1, 'a'), (2, 'b')]`
-pub fn zip<A: Seq<T>, B: Positional<U>, T, U>(a: A, b: B) -> yields (T, U):
-    var i = 0
-    for x in a:
-        if i == b.len: return
-        yield (x, b.nth(i))
-        i += 1
+pub fn zip<A: Seq<T>, B: Positional<U>, T, U>(a: A, b: B) -> Zipped<A, B, T, U> = Zipped(a, b)
 
 /// The first and second halves of each pair, as two lists: the inverse of `zip`.
 ///
@@ -1526,6 +1521,53 @@ impl Positional<U> for Mapped<S: Indexed<D, T>, T, U>:
 impl Indexed<D, U> for Mapped<S: Indexed<D, T>, T, U>:
     fn at(self, i: D) -> U = f(src.at(i))
     @get fn keys(self) -> Range<D> = src.keys
+
+/// \(O(1)\) to make. The view `zip(a, b)`: `a`'s elements paired with `b`'s by walk order, as many
+/// as the shorter has, keyed by `a`'s keys (R04b.1.3).
+pub struct Zipped<A, B, T, U>(
+    /// \(O(1)\). The sequence whose walk and keys the pairs follow.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `let a = [1, 2]; zip(a, "ab").first == a`
+    pub first: A,
+    /// \(O(1)\). The sequence read by position for each pair's second half.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `zip([1, 2], "ab").second == "ab"`
+    pub second: B,
+)
+
+impl Seq<(T, U)> for Zipped<A: Seq<T>, B: Positional<U>, T, U>:
+    fn iter(self) -> yields (T, U):
+        var i = 0
+        for x in first:
+            if i == second.len: return
+            yield (x, second.nth(i))
+            i += 1
+
+impl Keyed<D, (T, U)> for Zipped<A: Keyed<D, T>, B: Positional<U>, T, U>:
+    fn items(self) -> yields (D, (T, U)):
+        var i = 0
+        for (k, x) in first.items:
+            if i == second.len: return
+            yield (k, (x, second.nth(i)))
+            i += 1
+
+impl Sized for Zipped<A: Sized, B: Positional<U>, T, U>:
+    @get fn len(self) -> Int = min(first.len, second.len)
+
+impl Positional<(T, U)> for Zipped<A: Positional<T>, B: Positional<U>, T, U>:
+    fn nth(self, k: Int) -> (T, U) = (first.nth(k), second.nth(k))
+
+impl Bidir<(T, U)> for Zipped<A: Positional<T>, B: Positional<U>, T, U>:
+    fn iter_rev(self) -> yields (T, U):
+        for k in (0..min(first.len, second.len)).rev: yield (first.nth(k), second.nth(k))
+
+impl Indexed<D, (T, U)> for Zipped<A: Indexed<D, T>, B: Positional<U>, T, U>:
+    fn at(self, i: D) -> (T, U) = (first.at(i), second.nth(i.ord - first.keys.start.ord))
+    @get fn keys(self) -> Range<D> = first.keys.take(min(first.len, second.len))
 
 /// \(O(1)\) to make. The view `s.rev`: `s` walked backwards, keys unchanged.
 pub struct Rev<S>(base: S):

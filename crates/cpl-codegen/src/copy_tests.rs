@@ -433,3 +433,27 @@ fn an_opt_int_max_is_one_max_with_no_branch() {
         "{cpp}"
     );
 }
+
+#[test]
+fn a_zip_points_to_its_sequences_even_when_one_is_a_temporary() {
+    // R07.2.13: a zip copies neither side; a temporary side is pinned or dies
+    // with the statement that walks it.
+    for src in [
+        "let posts = [1, 2, 3]\nlet costs = [10, 20, 30, 40]\nfor ((a, b), c) in zip(posts.cyclic_pairs(), costs): print(a, b, c)\nprint(zip(costs, [7, 8]).count())\n",
+        "use std.seq.{zip}\nlet xs = [1, 3, 5, 2, 4, 6]\nlet z = zip(xs[0..3], xs[3..6])\nlet w = zip(xs, [9, 8])\nprint(z.len, z[1], w.len)\n",
+        "let a = [1, 2, 3]\nlet b = [10, 20]\nprint(zip(a, b).map((x, y) => x + y).sum(), zip(a, b).len)\n",
+        "fn sq(n: Int) -> yields Int:\n    for i in 1..=n: yield i * i\nlet a = List(sq(3))\nprint(zip(a, [1, 2, 3]).map((x, y) => x - y).sum())\n",
+        "for _ in 0..2:\n    let m: 3..=8 = read()\n    let posts: [m]1..=1000 = read()\n    let costs: [m]1..=5000 = read()\n    for ((a, b), cost) in zip(posts.cyclic_pairs(), costs): print(a, b, cost)\n",
+    ] {
+        let out = cpp(src);
+        let mut zips = out.split("\nstruct Zipped_").skip(1).peekable();
+        assert!(zips.peek().is_some(), "{src}\n{out}");
+        for def in zips {
+            let body = def.split("\n};").next().unwrap_or_default();
+            assert!(
+                !body.contains("  std::vector<") && !body.contains("  std::array<"),
+                "a zip holds no copy of a side:\n{src}\n{body}"
+            );
+        }
+    }
+}
