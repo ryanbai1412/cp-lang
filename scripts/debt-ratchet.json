@@ -198,7 +198,7 @@
   "site_spec_snippets": 0,
   "allow_attrs": 37,
   "std_lint_allows": 0,
-  "unsafe_blocks": 25,
+  "unsafe_blocks": 18,
   "cpl_env_reads": 0,
   "test_sleeps": 0,
   "ci_retries": 0,
