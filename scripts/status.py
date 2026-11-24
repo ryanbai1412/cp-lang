@@ -5,11 +5,14 @@
 
 Reads `plan/domains/*/metrics.toml` (the recorded `today`, not a fresh run;
 each metric's `command` re-measures it) and the "Open" section of
-`plan/QUESTIONS.md`.
+`plan/QUESTIONS.md`, and counts `Skipped: <process>, <reason>` commit trailers per
+lane per day from git history.
 """
+import collections
 import importlib.util
 import json
 import re
+import subprocess
 import sys
 import tomllib
 from pathlib import Path
@@ -28,6 +31,31 @@ def usecase_rows():
     spec.loader.exec_module(mod)
     entries, _, state = mod.load(ROOT)
     return mod.table(entries, state)
+
+
+SKIPPED_HEAD = "## Skipped process (`Skipped:` trailers per lane per day)"
+
+
+def skipped_table(log: str) -> list[str]:
+    """`log` is `date\x1fdomain\x1fskipped` per commit; one row per day and lane."""
+    counts = collections.Counter()
+    for line in log.split("\n"):
+        day, lane, skipped = (line.split("\x1f") + ["", ""])[:3]
+        n = len([s for s in skipped.split("\x1e") if s.strip()])
+        if n:
+            counts[(day, lane.strip() or "none")] += n
+    rows = [f"| {day} | {cell(lane)} | {n} |" for (day, lane), n in sorted(counts.items(), key=lambda kv: (kv[0][0], kv[0][1]), reverse=True)]
+    return ["| Day | Lane | Skipped |", "|---|---|---|", *rows] if rows else ["None."]
+
+
+def skipped_rows() -> list[str]:
+    """From git history; a shallow clone keeps the section already written."""
+    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, check=False).stdout
+    if git("rev-parse", "--is-shallow-repository").strip() != "false":
+        old = OUT.read_text().split(f"\n{SKIPPED_HEAD}\n\n", 1) if OUT.exists() else []
+        return old[1].split("\n\n## ", 1)[0].splitlines() if len(old) == 2 else ["None."]
+    return skipped_table(git("log", "--date=short", "--format=%ad%x1f%(trailers:key=Domain,valueonly,separator=%x2c)"
+                             "%x1f%(trailers:key=Skipped,valueonly,separator=%x1e)"))
 
 
 def render():
@@ -67,6 +95,10 @@ def render():
             "nothing runnable counts as a gap. M1 baseline gaps are the M1-critical ones open when the",
             "catalogue was first written and only go down; M1 readiness gaps are every open M1-critical one.", ""]
     out += usecase_rows()
+    out += ["", SKIPPED_HEAD, "",
+            "Process costing more than 10% of a change is skipped with a trailer",
+            "(`handbook/process/handbook-and-rfcs.md`); this counts them.", ""]
+    out += skipped_rows()
     out += ["", "## Open questions (`plan/QUESTIONS.md`)", ""] + [f"- {cell(q)}" for q in questions]
     return "\n".join(out) + "\n"
 

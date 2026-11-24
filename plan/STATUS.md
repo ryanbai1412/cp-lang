@@ -99,7 +99,7 @@ Authority: handbook leads design; spec/ is its downstream exhaustive form.
 | blind_skill_eval | 20/20 pass, 12/20 first attempt (16/20 without compile fixes), 0 workarounds, 3 lint kept (research/skill-eval/v3/REPORT.md) | 20/20 first-attempt pass, 0 workarounds, 0 non-idiomatic lint flags; then 20/20 on an unseen set |
 | skill_check | ok on main, 50 files, 76 cp blocks verified | on main, in the fast gate, 0 drift, every cp block checks |
 | ports_check_v03 | 289/305 (corpus/sets/v03.txt has 308 entries; cf2066f checks but stays out for the stored-range P0) | 305/305 v0.3 re-ports (as spec.cp or migrated port.cp) |
-| dreams_check_v03 | 280/305 (2026-11-24, on f4510aa13) | tracked, not a gate: each failing dream is a logged gap in plan/domains/spec/delta/hillclimb.md |
+| dreams_check_v03 | 280/305 (2026-11-24, on f4510aa13) | tracked, not a gate: each failing dream is a logged gap in its meta.json notes |
 | ports_judge_proven | 275/305 tracked ports (277 entries in corpus/sets/v03.txt) pass every_v03_port_checks; 276 of the 277 were also validated against orig.cpp on samples and/or 30 generated cases (interactive ones through interactor.py); ucup5s02f has no statement, gen or tests yet | 305/305 tracked ports compile with every judge's flags and pass their tests under the profile |
 | corpus_suite | 99/100 pass (1 error: noi09p4, a product-domain graph gap in std.graph) (2026-11-23, on 2ee04a2ba) | 100/100 hill-climb spec.cp pass; untested 0 (every problem has tests) |
 | port_lint_warnings | 21 warnings over the 275 v0.3 ports after cpl lint --fix (L0414 13, L0101 4, L0203 3, L0412 1); 5 are false positives, filed with lint-fmt | 0 false positives on the re-ported corpus (lint-fmt's FP gate) |
@@ -324,6 +324,16 @@ catalogue was first written and only go down; M1 readiness gaps are every open M
 | seq | 67 | 57 | 6 | 3 | 0 | 2 | 6 |
 | stress | 34 | 29 | 5 | 0 | 0 | 1 | 1 |
 | all | 189 | 160 | 22 | 6 | 0 | 4 | 11 |
+
+## Skipped process (`Skipped:` trailers per lane per day)
+
+Process costing more than 10% of a change is skipped with a trailer
+(`handbook/process/handbook-and-rfcs.md`); this counts them.
+
+| Day | Lane | Skipped |
+|---|---|---|
+| 2026-11-23 | perf | 1 |
+| 2026-11-23 | debugger | 1 |
 
 ## Open questions (`plan/QUESTIONS.md`)
 
