@@ -33,9 +33,7 @@ namespace wala { template <typename T> struct Point {
 #include <cstdint>
 #include <limits>
 #include <type_traits>
-#line 2 "/home/andrew/dev/cp-book/src/containers/vec.hpp"
 
-#line 15 "/home/andrew/dev/cp-book/src/containers/vec.hpp"
 
 namespace wala {
 
@@ -720,9 +718,7 @@ template <typename T> struct growable_vec : private bounded_vec<T> {
 };
 
 } // namespace wala
-#line 2 "/home/andrew/dev/cp-book/src/num/modnum.hpp"
 
-#line 10 "/home/andrew/dev/cp-book/src/num/modnum.hpp"
 
 namespace wala {
 

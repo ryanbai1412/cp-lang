@@ -111,7 +111,7 @@ int main() {
 		std::vector<edge_t> cuts(2*(N-1));
 		{
 			std::vector<int> par(N, -1);
-			std::vector<int> label(N); std::ranges::iota(label, 0);
+			std::vector<int> label(N); std::iota(label.begin(), label.end(), 0);
 			auto get_par = [&](int a) -> int {
 				while (par[a] >= 0) {
 					if (par[par[a]] >= 0) {

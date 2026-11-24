@@ -1,4 +1,4 @@
-# Cases for scripts/corpus-tests.py make (problem-packages/R9).
+# Cases for scripts/corpus.py make (problem-packages/R9).
 
 [[case]]
 input = "3 0 0 0 9 0 8 0 2\n7 0 5 8 0 0 0 0 0\n8 0 2 3 1 4 7 9 5\n0 3 0 4 7 9 5 8 0\n5 0 6 2 3 0 0 7 9\n4 7 0 5 8 6 2 0 0\n0 2 0 1 4 0 9 5 8\n1 4 7 9 0 8 0 2 3\n9 5 8 0 2 0 0 0 7\n"

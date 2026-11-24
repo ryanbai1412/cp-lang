@@ -17,5 +17,5 @@
  "difficulty": null,
  "dream": "draft",
  "spec": "draft",
- "notes": "The task is a grader function and `cpl run` has no grader, so spec.cp plays the sample grader: it reads H W K, builds the network with its own add_and/add_or/add_not, and evaluates it on each image."
+ "notes": "The task is a grader function and `cpl run` has no grader, so spec.cp plays the sample grader: it reads H W K, builds the network with its own add_and/add_or/add_not, and evaluates it on each image. orig.cpp is the AC submission corpus/submissions/5664246.cpp (a grader function) with a sample grader main that reads the port's input."
 }

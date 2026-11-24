@@ -1,0 +1,41 @@
+# The package's cases (problem-packages/R9): `input` inline, else `gen.py seed size` or `args`.
+
+[[case]]
+input = "26 1\n"
+
+[[case]]
+input = "17 9\n"
+
+[[case]]
+input = "2068 8\n"
+
+[[case]]
+input = "14 1\n"
+
+[[case]]
+input = "16 16\n"
+
+[[case]]
+input = "1450 1450\n"
+
+[[case]]
+input = "28 1\n"
+
+[[case]]
+input = "17 7\n"
+
+[[case]]
+seed = 9
+size = 4
+
+[[case]]
+seed = 10
+size = 8
+
+[[case]]
+seed = 11
+size = 16
+
+[[case]]
+seed = 12
+size = 32

@@ -1,0 +1,55 @@
+# The package's cases (problem-packages/R9): `input` inline, else `gen.py seed size` or `args`.
+
+[[case]]
+input = "7 3\nTTTTTTT\nTGGGGGT\nTGGGGGT\nMGGGGGD\nTGGGGGT\nTGGGGGT\nTHHHHHT\n"
+
+[[case]]
+input = "7 3\nTTTTTTT\nTGGGGGT\nTGGGGGT\nMGGGGGD\nTGGGGGT\nTGGGGGT\nTGHHGGT\n"
+
+[[case]]
+input = "3 1000\nHGH\nDMG\nGGH\n"
+
+[[case]]
+input = "7 405\nGGGGGGG\nGGHGGGG\nGGGGGGG\nDGGGGGG\nGGGGGGG\nGGGGGGG\nGGGGGGM\n"
+
+[[case]]
+input = "9 1000\nGTGGGTGTG\nGGGMGGGDG\nTTGGGGGTT\nGTTGGGGTG\nGGTHTTGTT\nGTGTGGGGT\nGGGTGGTGT\nGGGTGGGGG\nGGTGGGGTT\n"
+
+[[case]]
+seed = 6
+size = 16
+
+[[case]]
+seed = 7
+size = 128
+
+[[case]]
+input = "4 6\nGGHG\nMGHG\nHDGG\nHHGG\n"
+
+[[case]]
+seed = 9
+size = 32
+
+[[case]]
+seed = 10
+size = 16
+
+[[case]]
+seed = 11
+size = 128
+
+[[case]]
+seed = 12
+size = 4
+
+[[case]]
+seed = 13
+size = 8
+
+[[case]]
+seed = 14
+size = 16
+
+[[case]]
+seed = 15
+size = 32

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Unit tests for scripts/dream-gaps.py.
+"""Unit tests for `scripts/corpus.py gaps`, which files dream errors by gap.
 
     python3 -m unittest scripts/test_dream_gaps.py
 """
@@ -8,7 +8,7 @@ import os
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-spec = importlib.util.spec_from_file_location("dream_gaps", os.path.join(HERE, "dream-gaps.py"))
+spec = importlib.util.spec_from_file_location("corpus", os.path.join(HERE, "corpus.py"))
 dg = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(dg)
 

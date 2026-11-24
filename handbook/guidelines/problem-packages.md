@@ -4,7 +4,7 @@
 |---|---|
 | Kind | Guidelines |
 | Owner | idioms |
-| Describes | `corpus/problems/<id>/`, `research/acceptance/problems/`, `scripts/corpus-tests.py`, `research/acceptance/judge.py` |
+| Describes | `corpus/problems/<id>/`, `research/acceptance/problems/`, `scripts/corpus.py`, `research/acceptance/judge.py` |
 
 A problem package is everything needed to judge a solution offline: the
 statement's limits, a recipe for the tests, a trusted way to get each
@@ -39,7 +39,7 @@ seed = 7
 size = 200000
 ```
 
-`python3 scripts/corpus-tests.py make cf2147f` turns it into inputs and
+`python3 scripts/corpus.py make cf2147f` turns it into inputs and
 answers under `target/corpus-tests/cf2147f/`, running `gen.py` for each
 seed and the accepted C++ for each answer. Every reader (`cpl test`,
 `cpl-conform corpus`, the perf bench, the stress tests) reads that one

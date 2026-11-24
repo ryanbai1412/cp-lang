@@ -132,7 +132,7 @@ pub fn find_tests_dir(source: &Path) -> PathBuf {
     own
 }
 
-/// The cases `scripts/corpus-tests.py make` wrote for a package whose
+/// The cases `scripts/corpus.py make` wrote for a package whose
 /// `tests.toml` lists them: `target/corpus-tests/<id>/` at the repo root
 /// (problem-packages/R9).
 fn generated_cases(package: &Path) -> Option<PathBuf> {
@@ -271,6 +271,12 @@ mod generated_cases_tests {
         let source = package.join("port.cp");
         assert_eq!(find_tests_dir(&source), generated);
         assert_eq!(find_checker(&source), Some(package.join("checker.py")));
+        assert_eq!(find_interactor(&source), None);
+        std::fs::write(package.join("interactor.py"), "").unwrap();
+        assert_eq!(
+            find_interactor(&source),
+            Some(package.join("interactor.py"))
+        );
         assert_eq!(cases_in(&find_tests_dir(&source)).len(), 1);
         std::fs::remove_dir_all(&root).unwrap();
     }

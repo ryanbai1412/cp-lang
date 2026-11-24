@@ -83,7 +83,7 @@ fn programs() -> Vec<String> {
 }
 
 /// The three smallest `tests/*.in` of a port's directory, or of what
-/// `scripts/corpus-tests.py make` wrote for a seeded problem (problem-packages/R9).
+/// `scripts/corpus.py make` wrote for a seeded problem (problem-packages/R9).
 fn port_inputs(dir: &Path) -> Vec<PathBuf> {
     let cases = match dir.file_name() {
         Some(id) if dir.join("tests.toml").is_file() => {

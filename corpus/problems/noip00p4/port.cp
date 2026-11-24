@@ -1,7 +1,7 @@
 // Source: NOIP 2000 Senior P4 (Square Number Picking), https://dmoj.ca/problem/noip00p4
 //   (not public on DMOJ; statement from Luogu P1004)
 // Problem: an N x N grid (1 <= N <= 9) with numbers 1..=30 in some cells (any of them), given
-//   as lines x y v (1 <= x, y <= N) up to a line holding a single 0. Walk twice from the
+//   as lines x y v (1 <= x, y <= N) up to a line 0 0 0. Walk twice from the
 //   top-left to the bottom-right corner moving only down or right; a cell's number is taken
 //   the first time it is passed. Print the largest total taken.
 // Solution: walk both paths in lockstep. After k steps each walker is on anti-diagonal k, so

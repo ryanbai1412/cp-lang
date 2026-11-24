@@ -19,8 +19,8 @@ fn repo_root() -> PathBuf {
 
 #[test]
 fn vm_hot_loop_fallback_ratchet_zero_on_covered_worst_ports() {
-    let file = |rel: &str| std::fs::read(repo_root().join(rel)).expect("read sample");
-    // ccc03s4's cases are a seed list (problem-packages/R9), so its input is built here: three
+    // The ports' cases are seed lists (problem-packages/R9), so each input is written here;
+    // ccc03s4's is three
     // strings of 1500 letters from a fixed LCG, the size of its old committed 01.in.
     let mut x: u32 = 1;
     let mut letters = || {
@@ -35,12 +35,12 @@ fn vm_hot_loop_fallback_ratchet_zero_on_covered_worst_ports() {
     let cases = [
         (
             "corpus/problems/dmopc20c4p4/spec.cp",
-            file("corpus/problems/dmopc20c4p4/tests/01.in"),
+            b"51\n0 1 2 2 3 1 0 4 7 9 3 11 2 12 14 15 13 4 16 13 2 17 2 11 18 1 19 20 6 21 18 12 22 28 29 2 30 27 31 32 22 13 33 5 34 37 30 38 42 3 8\n".to_vec(),
         ),
         ("corpus/problems/ccc03s4/spec.cp", strings.into_bytes()),
         (
             "corpus/problems/aac5p4/spec.cp",
-            file("corpus/problems/aac5p4/tests/01.in"),
+            b"26 1\n".to_vec(),
         ),
     ];
     for (port_rel, sample) in cases {

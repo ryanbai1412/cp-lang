@@ -1,4 +1,4 @@
-# Cases for scripts/corpus-tests.py make (problem-packages/R9).
+# Cases for scripts/corpus.py make (problem-packages/R9).
 
 [[case]]
 input = "2\n816301246 212639531\n816731419 926321086\n"

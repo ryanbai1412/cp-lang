@@ -1,0 +1,44 @@
+# The package's cases (problem-packages/R9): `input` inline, else `gen.py seed size` or `args`.
+
+[[case]]
+input = "3 3\n3 2 1\n3 1 L\n3 2 T\n2 1 T\n3\n"
+
+[[case]]
+input = "12 3\n4 2 9\n1 7 10\n6 11 8\n5 12 3\n9 2 L\n8 6 L\n4 2 W\n1 7 W\n5 12 T\n1 10 W\n11 8 L\n10 7 L\n12 3 W\n5 3 L\n9 4 W\n6 11 L\n1\n"
+
+[[case]]
+seed = 3
+size = 16
+
+[[case]]
+input = "8 2\n6 8\n5 1\n3 2\n7 4\n3 2 W\n7 4 W\n6 8 T\n1 5 W\n2\n"
+
+[[case]]
+seed = 5
+size = 16
+
+[[case]]
+input = "6 2\n3 6\n5 1\n4 2\n4 2 L\n5 1 T\n3 6 W\n1\n"
+
+[[case]]
+input = "3 3\n3 1 2\n2 1 L\n1 3 W\n3 2 L\n1\n"
+
+[[case]]
+seed = 8
+size = 8
+
+[[case]]
+seed = 9
+size = 4
+
+[[case]]
+seed = 10
+size = 8
+
+[[case]]
+seed = 11
+size = 16
+
+[[case]]
+seed = 12
+size = 32

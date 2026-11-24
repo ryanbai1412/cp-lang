@@ -1716,9 +1716,7 @@ def module_loaders(root: Path) -> list[str]:
 # entries (None for a data list that exempts nothing), its owner, and how it
 # goes away. A new list without a row here fails `unregistered_lists`.
 LISTS: dict[str, tuple[str | None, str, str]] = {
-    "corpus/audit-known.txt": ("corpus_known", "idioms", "fix each audited port"),
     "corpus/generators-known.txt": ("corpus_known", "idioms", "write each generator"),
-    "corpus/port-check-failing.txt": ("skip_lists", "idioms", "fix each port"),
     "corpus/gold/GOLD.txt": (None, "idioms", "data: the gold set"),
     "corpus/newcomer/acceptance.txt": (None, "idioms", "data: newcomer acceptance expectations"),
     "corpus/sets/ecnerwala.txt": (None, "idioms", "data: a corpus set"),

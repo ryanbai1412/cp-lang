@@ -274,8 +274,8 @@ case "$gate_kind" in
         step "cpl-conform ratchet ($conform_suites --check against research/scoreboard.json)"
         cargo build -q -p cpl-cli -p cpl-conform
         # Seeded problems (problem-packages/R9) read their cases from target/corpus-tests/.
-        uv run --quiet python scripts/corpus-tests.py make --seeded >/dev/null \
-            || fail "corpus-tests.py make --seeded failed; rerun it to see which problem"
+        uv run --quiet python scripts/corpus.py make >/dev/null \
+            || fail "scripts/corpus.py make failed; rerun it to see which package"
         # shellcheck disable=SC2086
         # CI keeps main's last green run in $CPL_CONFORM_PREV, so a case newer than
         # research/scoreboard.json still can't regress unseen (ci.yml).
@@ -394,15 +394,14 @@ if [ "$mode" = commit ]; then
         done
     fi
     if [ "${sel_audit:-0}" = 1 ]; then
-        step "corpus package audit, no compiles (corpus/audit.py --check --no-run)"
-        uv run --quiet python corpus/audit.py --check --no-run \
-            || fail "a corpus package breaks handbook/guidelines/problem-packages-checklist.md; the finding above names the rule"
-        step "staged ports: generators and interpreter vs C++ (corpus/generators.py, corpus/differential.py)"
+        step "staged corpus packages pass every mode (scripts/corpus.py verify --changed staged)"
         cargo build -q -p cpl-cli
+        uv run --quiet python scripts/corpus.py make >/dev/null \
+            || fail "scripts/corpus.py make failed; rerun it to see which package"
+        uv run --quiet python scripts/corpus.py verify --changed staged --skip dream --cpl "$cpl" \
+            || fail "a staged corpus package fails scripts/corpus.py verify; the finding above names the mode and the package"
         uv run --quiet python corpus/generators.py --check --changed staged --cpl "$cpl" \
             || fail "a staged port's generator or answer disagrees with its accepted C++; the finding above names the port and test"
-        uv run --quiet python corpus/differential.py --check --changed staged --cpl "$cpl" \
-            || fail "a staged port's cpl run disagrees with its C++; the finding above names the port and test"
         mapfile -t dreams < <(git diff --cached --name-only --diff-filter=AMR -- 'corpus/problems/*/dream.cp' \
             | sed 's|^corpus/problems/||; s|/dream\.cp$||')
         if [ "${#dreams[@]}" -gt 0 ]; then
@@ -554,8 +553,9 @@ else
     recovery_pid=$!
 fi
 
-step "corpus ports pass cpl check (scripts/port-check.sh, hard gate)"
-scripts/port-check.sh "$cpl" || fail "a corpus port fails cpl check; fix it"
+step "every corpus package passes the static modes (scripts/corpus.py verify --no-run)"
+uv run --quiet python scripts/corpus.py verify --no-run --only check,package,lint --cpl "$cpl" \
+    || fail "a corpus package fails scripts/corpus.py verify; the finding above names the mode and the package"
 
 step "std/prelude.cp: name count"
 prelude=$(sed 's://.*::' std/prelude.cp | tr -d '\n' | grep -o '{[^}]*}' | tr ',' '\n' | grep -c '[A-Za-z_]')

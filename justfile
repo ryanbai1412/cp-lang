@@ -72,11 +72,15 @@ check-links:
 corpus-check:
     uv run python scripts/corpus.py check
 
-# Regenerate corpus/problems/<id>/tests/NN.{in,ans} from accepted C++ originals.
+# Write target/corpus-tests/<id>/NN.{in,ans} from each tests.toml and accepted C++.
 corpus-tests-make *args:
-    uv run python scripts/corpus-tests.py make {{args}}
+    uv run python scripts/corpus.py make {{args}}
 
-# Run the normative spec checks (stub, vocab, dream-gaps).
+# Run every corpus mode on packages: header, check, package, tests, stress, max, size, lint, dream.
+corpus-verify *args:
+    uv run python scripts/corpus.py verify {{args}}
+
+# Run the normative spec checks (stub, vocab, dream gaps).
 spec-check:
     scripts/spec-check.sh
 

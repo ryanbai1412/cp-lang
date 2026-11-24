@@ -1,4 +1,4 @@
-# Cases for scripts/corpus-tests.py make (problem-packages/R9).
+# Cases for scripts/corpus.py make (problem-packages/R9).
 
 [[case]]
 input = "4\n10 80 90 30\n"

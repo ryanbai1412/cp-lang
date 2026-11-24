@@ -1,0 +1,50 @@
+# The package's cases (problem-packages/R9): `input` inline, else `gen.py seed size` or `args`.
+
+[[case]]
+input = "3\n611178003 L\n273878288 L\n531969375 R\n8\n3 3\n1 1\n2 2\n2 3\n3 3\n3 3\n2 2\n3 3\n"
+
+[[case]]
+input = "1\n98338421 L\n6\n1 1\n1 1\n1 1\n1 1\n1 1\n1 1\n"
+
+[[case]]
+input = "4\n636343333 L\n397236330 R\n671862058 L\n650257552 L\n8\n3 3\n2 4\n4 4\n4 4\n2 4\n2 4\n4 4\n1 2\n"
+
+[[case]]
+input = "4\n325664384 L\n774400756 R\n514191761 L\n96744405 L\n1\n4 4\n"
+
+[[case]]
+input = "10\n274281999 R\n853832590 L\n902316928 R\n833179166 L\n696831126 L\n967334543 L\n121553982 R\n503659049 L\n408835700 L\n616264658 L\n1\n4 7\n"
+
+[[case]]
+input = "10\n882566438 L\n520801968 R\n39538126 L\n156313202 R\n815754556 R\n342937749 L\n292807338 R\n861050198 L\n783643441 R\n977719989 L\n4\n10 10\n10 10\n7 9\n2 7\n"
+
+[[case]]
+input = "6\n161973070 R\n698935573 L\n77777869 L\n392655487 L\n976787302 L\n40260663 L\n7\n4 4\n2 2\n5 6\n1 5\n1 2\n6 6\n5 6\n"
+
+[[case]]
+seed = 8
+size = 32
+
+[[case]]
+seed = 9
+size = 32
+
+[[case]]
+seed = 10
+size = 32
+
+[[case]]
+seed = 11
+size = 4
+
+[[case]]
+seed = 12
+size = 8
+
+[[case]]
+seed = 13
+size = 16
+
+[[case]]
+seed = 14
+size = 32

@@ -8,7 +8,7 @@ if sys.argv[1] == "--max":
     sys.exit()
 
 r = random.Random(int(sys.argv[1]))
-n = int(sys.argv[2]) if len(sys.argv) > 2 else r.choice([2, 3, 6, r.randint(2, 50), r.randint(2, 2000), 2000])
+n = min(int(sys.argv[2]), 2000) if len(sys.argv) > 2 else r.choice([2, 3, 6, r.randint(2, 50), r.randint(2, 2000), 2000])
 shape = r.choice(["one", "distinct", "few", "many", "rare", "even", "sqrt"])
 if shape == "one":
     sizes = [n]

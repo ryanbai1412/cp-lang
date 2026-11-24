@@ -66,7 +66,7 @@ pub fn discover_file(root: &Path, filter: Option<&str>, file: &str) -> Vec<Corpu
 }
 
 /// A problem's cases: its committed `tests/`, or, for a problem whose cases are a seed list
-/// (`tests.toml`), what `scripts/corpus-tests.py make` wrote under `target/corpus-tests/<id>/`.
+/// (`tests.toml`), what `scripts/corpus.py make` wrote under `target/corpus-tests/<id>/`.
 fn tests_dir(root: &Path, prob_dir: &Path, id: &str) -> PathBuf {
     if prob_dir.join("tests.toml").is_file() {
         root.join("target").join("corpus-tests").join(id)

@@ -1,7 +1,23 @@
-# Cases for scripts/corpus-tests.py make (problem-packages/R9).
+# The package's cases (problem-packages/R9): `input` inline, else `gen.py seed size` or `args`.
 
 [[case]]
 input = "8\n3\n1 2 2\n2\n1 1\n3\n1 2 1\n3\n1 2 3\n4\n1 2 2 4\n4\n1 2 3 3\n5\n1 2 3 2 3\n9\n1 2 3 4 5 4 5 6 6\n"
+
+[[case]]
+seed = 2
+size = 4
+
+[[case]]
+seed = 3
+size = 8
+
+[[case]]
+seed = 4
+size = 16
+
+[[case]]
+seed = 5
+size = 32
 
 [[case]]
 args = ["--max"]

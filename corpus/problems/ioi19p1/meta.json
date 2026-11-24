@@ -23,5 +23,5 @@
  "difficulty": "medium",
  "dream": "draft",
  "spec": "draft",
- "notes": "Per-value Deque of positions plus a Fenwick of standing shoes."
+ "notes": "Per-value Deque of positions plus a Fenwick of standing shoes. orig.cpp is the AC submission corpus/submissions/5661847.cpp (a grader function) with a sample grader main that reads the port's input."
 }

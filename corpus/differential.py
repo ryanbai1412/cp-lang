@@ -141,7 +141,7 @@ def interactor(pid):
 
 
 def make_cases(pid, cpl):
-    subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "corpus-tests.py"), "make", pid],
+    subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "corpus.py"), "make", pid],
                    cwd=ROOT, env={**os.environ, "CPL": cpl}, capture_output=True)
 
 

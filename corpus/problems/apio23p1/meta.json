@@ -26,5 +26,5 @@
  "difficulty": "hard",
  "dream": "draft",
  "spec": "draft",
- "notes": "Next customization by lambda (v => roads[v].filter(...)) passed to dijkstra."
+ "notes": "Next customization by lambda (v => roads[v].filter(...)) passed to dijkstra. orig.cpp is the AC submission corpus/submissions/5593318.cpp (a grader function) with a sample grader main that reads the port's input."
 }

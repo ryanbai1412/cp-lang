@@ -12,7 +12,7 @@ if [ $# -eq 0 ]; then
     uv run --quiet --project "$root" python "$root/scripts/spec-stub.py" --check >/dev/null ||
         echo "spec-check: WARNING: std has doc or signature problems; run scripts/spec-stub.py --check" >&2
     mapfile -t gold < <(grep -v '^#' "$root/corpus/gold/GOLD.txt" | sed '/^$/d; s|^|'"$root"'/|')
-    uv run --quiet --project "$root" python "$root/scripts/dream-gaps.py" "${gold[@]}" | sed '1s/^dreams:/gold:/'
+    uv run --quiet --project "$root" python "$root/scripts/corpus.py" gaps "${gold[@]}" | sed '1s/^dreams:/gold:/'
     echo
 fi
-exec uv run --quiet --project "$root" python "$root/scripts/dream-gaps.py" "$@"
+exec uv run --quiet --project "$root" python "$root/scripts/corpus.py" gaps "$@"

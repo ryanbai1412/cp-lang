@@ -1,0 +1,54 @@
+# The package's cases (problem-packages/R9): `input` inline, else `gen.py seed size` or `args`.
+
+[[case]]
+seed = 1
+size = 4
+
+[[case]]
+input = "1\n1 2\n-636895710\n4 9\n2 18441556806163220353 16\n"
+
+[[case]]
+input = "2\n2 6\n2 -1\n3 10138905509988816501 2778382620557046241\n3 16 10903862769591682850\n2 4970137034821939552 12\n4 12\n4 4\n4 9128987708747602683\n4 2\n-1 5 1 5\n4 10777543355238114395\n4 0\n"
+
+[[case]]
+seed = 4
+size = 4
+
+[[case]]
+seed = 5
+size = 4
+
+[[case]]
+input = "1\n4 5\n-687373597 423392026 259465703 9863313\n4 10\n4 15574260020853756039\n2 13937785173664988570 9\n1 16835897634174045771 16777520375023884121 105204948\n3 16 0\n"
+
+[[case]]
+seed = 7
+size = 4
+
+[[case]]
+seed = 8
+size = 16
+
+[[case]]
+seed = 9
+size = 16
+
+[[case]]
+seed = 10
+size = 16
+
+[[case]]
+seed = 11
+size = 4
+
+[[case]]
+seed = 12
+size = 8
+
+[[case]]
+seed = 13
+size = 16
+
+[[case]]
+seed = 14
+size = 32

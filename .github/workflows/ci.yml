@@ -66,7 +66,7 @@ jobs:
             cxx-${{ runner.os }}-${{ matrix.part }}-
             cxx-${{ runner.os }}-${{ startsWith(matrix.part, 'conform:diff') && 'conform:diff' || matrix.part }}
             cxx-${{ runner.os }}-
-      # scripts/corpus-tests.py writes each generated problem's tests here,
+      # scripts/corpus.py make writes each package's tests.toml cases here,
       # stamp-cached by content; cold, it compiles every accepted C++ (~1 min).
       - uses: actions/cache@v4
         if: matrix.part == 'conform:corpus+docs'
@@ -430,12 +430,12 @@ jobs:
           key: corpus-tests-${{ github.run_id }}
           restore-keys: corpus-tests-
       - name: The interpreter and the C++ agree on this shard's v03 ports
-        # corpus/differential.py: a hard gate, no list.
+        # scripts/corpus.py verify: cpl test, interpreter vs C++ and size, with no known list.
         if: ${{ !cancelled() }}
         timeout-minutes: 6
         run: |
           mapfile -t ids < <(awk -v s=${{ matrix.shard }} '!/^#/ && NF && (++n - 1) % 3 == s - 1 {print $1}' corpus/sets/v03.txt)
-          uv run --quiet python scripts/corpus-tests.py make --seeded "${ids[@]}" >/dev/null
+          uv run --quiet python scripts/corpus.py make "${ids[@]}" >/dev/null
           uv run --quiet python corpus/differential.py --check --cpl target/ci/cpl -j "$(nproc)" "${ids[@]}"
 
   corpus-audit:
@@ -454,7 +454,7 @@ jobs:
           restore-keys: corpus-audit-
       - name: Audit every problem package
         timeout-minutes: 12
-        run: uv run --quiet python corpus/audit.py --check -j "$(nproc)"
+        run: uv run --quiet python scripts/corpus.py verify --only package -j "$(nproc)"
 
   site:
     name: site build

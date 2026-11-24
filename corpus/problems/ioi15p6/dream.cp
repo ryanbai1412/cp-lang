@@ -4,7 +4,7 @@
 
 pub fn hub_distance(n: Int, sub: Int) -> Int:
     domain T = [n]
-    @memo(hash)
+    @memo
     fn d(u: T, v: T) -> Int = if u == v: 0 else: getDistance(Int(min(u, v)), Int(max(u, v)))
 
     let o = T.first!

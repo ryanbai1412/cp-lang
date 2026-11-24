@@ -1,4 +1,28 @@
-# Cases for scripts/corpus-tests.py make (problem-packages/R9).
+# The package's cases (problem-packages/R9): `input` inline, else `gen.py seed size` or `args`.
+
+[[case]]
+input = "2\n7 26\n"
+
+[[case]]
+input = "17\n4714 15860 19117 14269 7932 1324 18522 4249 5327 9207 17187 14425 2353 2923 12823 19965 19587\n"
+
+[[case]]
+input = "16\n476 466 344 515 91 348 520 35 553 329 575 145 34 397 415 262\n"
+
+[[case]]
+input = "14\n11 12 5 5 2 4 7 4 4 4 10 6 7 2\n"
+
+[[case]]
+input = "16\n18783 9846 5863 18766 12047 1210 19015 9733 11149 8685 9671 15516 19475 11675 17750 10015\n"
+
+[[case]]
+input = "12\n2 11 2 10 6 11 1 6 5 2 5 3\n"
+
+[[case]]
+input = "2\n49 13\n"
+
+[[case]]
+input = "17\n3359 4643 19377 19394 374 10743 15900 1333 3393 12301 3144 7339 7539 3393 14737 4170 14993\n"
 
 [[case]]
 seed = 1

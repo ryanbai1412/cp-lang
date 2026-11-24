@@ -25,21 +25,13 @@
 #include <cstddef>
 #include <functional>
 #include <optional>
-#line 2 "/home/andrew/dev/cp-book/src/fft/engines/ntt.hpp"
 
-#line 7 "/home/andrew/dev/cp-book/src/fft/engines/ntt.hpp"
 
-#line 2 "/home/andrew/dev/cp-book/src/fft/core.hpp"
 
-#line 7 "/home/andrew/dev/cp-book/src/fft/core.hpp"
 
-#line 2 "/home/andrew/dev/cp-book/src/fft/common.hpp"
 
-#line 7 "/home/andrew/dev/cp-book/src/fft/common.hpp"
 
-#line 2 "/home/andrew/dev/cp-book/src/containers/vec.hpp"
 
-#line 15 "/home/andrew/dev/cp-book/src/containers/vec.hpp"
 
 namespace wala {
 
@@ -724,7 +716,6 @@ template <typename T> struct growable_vec : private bounded_vec<T> {
 };
 
 } // namespace wala
-#line 9 "/home/andrew/dev/cp-book/src/fft/common.hpp"
 
 /**
  * Author: Andrew He
@@ -798,9 +789,7 @@ template <typename T> struct buffer_pool {
 };
 
 } // namespace wala::fft
-#line 2 "/home/andrew/dev/cp-book/src/num/modnum.hpp"
 
-#line 10 "/home/andrew/dev/cp-book/src/num/modnum.hpp"
 
 namespace wala {
 
@@ -1128,7 +1117,6 @@ template <typename T> struct mod_constraint {
 };
 
 } // namespace wala
-#line 10 "/home/andrew/dev/cp-book/src/fft/core.hpp"
 
 namespace wala::fft {
 
@@ -1334,11 +1322,8 @@ template <typename num> struct fft_core {
 };
 
 } // namespace wala::fft
-#line 2 "/home/andrew/dev/cp-book/src/fft/engine.hpp"
 
-#line 7 "/home/andrew/dev/cp-book/src/fft/engine.hpp"
 
-#line 9 "/home/andrew/dev/cp-book/src/fft/engine.hpp"
 
 namespace wala::fft {
 
@@ -1441,7 +1426,6 @@ concept same_engine = std::same_as<typename A::engine_t, typename B::engine_t>;
 template <engine E> using transformed = E::transformed;
 
 } // namespace wala::fft
-#line 10 "/home/andrew/dev/cp-book/src/fft/engines/ntt.hpp"
 
 namespace wala::fft::engines {
 
@@ -1542,19 +1526,12 @@ template <typename num> struct ntt {
 };
 
 } // namespace wala::fft::engines
-#line 2 "/home/andrew/dev/cp-book/src/fft/series.hpp"
 
-#line 8 "/home/andrew/dev/cp-book/src/fft/series.hpp"
 
-#line 2 "/home/andrew/dev/cp-book/src/fft/series_core.hpp"
 
-#line 11 "/home/andrew/dev/cp-book/src/fft/series_core.hpp"
 
-#line 2 "/home/andrew/dev/cp-book/src/fft/multiply.hpp"
 
-#line 9 "/home/andrew/dev/cp-book/src/fft/multiply.hpp"
 
-#line 11 "/home/andrew/dev/cp-book/src/fft/multiply.hpp"
 
 namespace wala::fft {
 
@@ -1894,7 +1871,6 @@ vec<typename E::value_type> middle_product(std::span<const typename E::value_typ
 }
 
 } // namespace wala::fft
-#line 14 "/home/andrew/dev/cp-book/src/fft/series_core.hpp"
 
 // ==== value types ====
 
@@ -2513,7 +2489,6 @@ private:
 };
 
 } // namespace wala::series
-#line 11 "/home/andrew/dev/cp-book/src/fft/series.hpp"
 
 // ==== analytic ops ====
 // Free functions over series-like operands; each borrows the operand's span

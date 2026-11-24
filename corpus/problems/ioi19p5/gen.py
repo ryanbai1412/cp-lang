@@ -4,7 +4,7 @@
 import random, sys
 
 r = random.Random(int(sys.argv[1]))
-side = int(sys.argv[2]) if len(sys.argv) > 2 else r.choice([3, 10, 40, 200])
+side = min(int(sys.argv[2]), 200) if len(sys.argv) > 2 else r.choice([3, 10, 40, 200])
 while True:
     shape = r.choice(["row", "col", "square", "wide", "any", "max"])
     if shape == "row":

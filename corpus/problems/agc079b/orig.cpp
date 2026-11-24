@@ -15,9 +15,7 @@
 #include <span>
 #include <variant>
 #include <array>
-#line 2 "/home/andrew/dev/cp-book/src/containers/vec.hpp"
 
-#line 15 "/home/andrew/dev/cp-book/src/containers/vec.hpp"
 
 namespace wala {
 
@@ -702,11 +700,8 @@ template <typename T> struct growable_vec : private bounded_vec<T> {
 };
 
 } // namespace wala
-#line 2 "/home/andrew/dev/cp-book/src/containers/tensor.hpp"
 
-#line 4 "/home/andrew/dev/cp-book/src/containers/tensor.hpp"
 
-#line 6 "/home/andrew/dev/cp-book/src/containers/tensor.hpp"
 
 namespace wala {
 
@@ -877,7 +872,7 @@ int main() {
 		for (int z = 0; z < M; z++) {
 			int l, r, c; std::cin >> l >> r >> c; l--, r--;
 			assert(r - l + 1 >= 2);
-			assert(C[{l, r}] == -1);
+			assert((C[{l, r}] == -1));
 			assert(c >= 1);
 			C[{l, r}] = c-1;
 			// C[{l, r}] means balance[l] - C[{l, r}] = min{l <= i <= r} balance[i]

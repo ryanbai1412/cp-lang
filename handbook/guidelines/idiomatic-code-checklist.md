@@ -66,14 +66,14 @@ a stable id that reviews, lints and tests cite. The ideas behind them are in
 **Rule:** use the spec's one spelling per idea.
 **Why:** a reader or model learns one form; a second spelling teaches a removed one.
 **Example:** `@!multitest`, `Some(x)`, `None`, `Mod<P>`, `.items`, `xs.sum()`; free form over a generator (`sum(f(x) for x in xs)`) and two values (`min(a, b)`).
-**Enforced by:** `cpl check` errors on removed spellings (E0503), so `scripts/skill-gen.py --check` covers the skill's code blocks; `corpus/differential.py` (`removed-spelling`) covers every v03 port, dream and spec, which need not check; `scripts/skill-prose.py` covers inline code in the skill's prose; prose in the other docs: `missing`.
+**Enforced by:** `cpl check` errors on removed spellings (E0503), so `scripts/skill-gen.py --check` covers the skill's code blocks; `scripts/corpus.py verify` (`stress`, `size`, `lint`) (`removed-spelling`) covers every v03 port, dream and spec, which need not check; `scripts/skill-prose.py` covers inline code in the skill's prose; prose in the other docs: `missing`.
 
 ### idiomatic-code/R9
 
 **Rule:** `cpl check` and `cpl lint` are clean, and corpus warning counts don't go up.
 **Why:** published code is what lints are tuned on; a warning there is a bug in the code or the lint.
 **Example:** a wrong lint goes to lint-fmt, not into an `allow`.
-**Enforced by:** commit-tier `cpl check` and lint ratchet on staged ports; `scripts/port-check.sh`.
+**Enforced by:** commit-tier `cpl check` and lint ratchet on staged ports; `scripts/corpus.py verify --only check`.
 
 ### idiomatic-code/R10
 

@@ -150,5 +150,107 @@ class DreamStressTest(Corpus):
         self.assertEqual(self.check(dream, meta)[0], 0)
 
 
+class CompareTest(unittest.TestCase):
+    def outcome(self, interp, *cxx):
+        """`run` gives the interpreter's result, then each C++ result in turn."""
+        results = iter([interp, *cxx])
+        return corpus.compare(lambda cmd, data: next(results), ["cpl"], ["exe"], b"")
+
+    def test_agreement_is_no_finding(self):
+        self.assertIsNone(self.outcome((0, b"1\n", b""), (0, b"1\n", b"")))
+
+    def test_one_cxx_timeout_is_retried_not_a_finding(self):
+        self.assertIsNone(self.outcome((0, b"1\n", b""), None, (0, b"1\n", b"")))
+
+    def test_two_cxx_timeouts_are_a_finding_that_says_so(self):
+        self.assertEqual(self.outcome((0, b"1\n", b""), None, None), "c++ timed out twice")
+
+    def test_an_interp_timeout_is_skipped(self):
+        self.assertIsNone(self.outcome(None))
+
+    def test_a_differ_names_both_exit_codes_and_the_first_differing_line(self):
+        self.assertEqual(self.outcome((0, b"a\nb\n", b""), (0, b"a\nB\n", b"")),
+                         "interp exit 0, c++ exit 0; stdout line 2: interp b'b', c++ b'B'")
+
+    def test_a_failing_side_shows_its_stderr(self):
+        why = self.outcome((3, b"", b"error[R0001]: internal: lost frame\n  at 4:2\n"), (0, b"4\n", b""))
+        self.assertIn("interp exit 3, c++ exit 0, interp stderr b'error[R0001]: internal: lost frame | at 4:2'", why)
+
+
+class StaticModesTest(Corpus):
+    def ctx(self, stderr):
+        cpl = self.root / "cpl"
+        cpl.write_text(f"#!/bin/sh\nprintf '{stderr}' >&2\n")
+        cpl.chmod(0o755)
+        return corpus.Context(str(cpl), run=False)
+
+    def test_a_warning_never_fails_a_port(self):
+        pkg = corpus.Package.at(self.package("p1", port_cp=""))
+        self.assertEqual(corpus.check_check(pkg, self.ctx("warning[L0608]: `s.first` does work\\n")), [])
+
+    def test_an_error_fails_the_port_it_names(self):
+        pkg = corpus.Package.at(self.package("p1", port_cp=""))
+        self.assertEqual(corpus.check_check(pkg, self.ctx("error[E0608]: `out` moves here\\n")), ["port-check p1 -"])
+
+    def test_a_failing_port_shows_its_errors(self):
+        pkg = corpus.Package.at(self.package("p1", port_cp=""))
+        with mock.patch("sys.stderr", new_callable=io.StringIO) as err:
+            corpus.check_check(pkg, self.ctx("error[E0608]: `out` moves here\\n  --> port.cp:9:5\\n"))
+        self.assertIn("error[E0608]", err.getvalue())
+        self.assertIn("port.cp:9:5", err.getvalue())
+
+    def test_the_header_needs_source_problem_and_solution(self):
+        pkg = corpus.Package.at(self.package("p1", port_cp="// Source: x\n// Solution: y\nprint(1)\n// Problem: late\n"))
+        self.assertEqual(corpus.check_header(pkg, None), ["no-header-problem p1 -"])
+
+    def test_committed_tests_are_a_finding(self):
+        d = self.package("p1", port_cp="")
+        (d / "tests").mkdir()
+        self.assertIn("committed-tests p1 -", corpus.check_package(corpus.Package.at(d), self.ctx("")))
+
+    def test_a_package_with_cases_needs_a_reference(self):
+        pkg = corpus.Package.at(self.package("p1", port_cp="", tests_toml='[[case]]\ninput = "1"\n', meta_json="{}"))
+        self.assertEqual(corpus.check_package(pkg, self.ctx("")), ["no-reference p1 -"])
+
+
+class SeedTest(Corpus):
+    def setUp(self):
+        super().setUp()
+        self.dir = self.package("p1", gen_py="import sys\nprint('y' * int(sys.argv[2]) * 10)\n")
+
+    def test_seed_keeps_small_inputs_inline_and_sizes_large_ones(self):
+        (self.dir / "tests").mkdir()
+        (self.dir / "tests" / "1.in").write_text("tiny\n")
+        (self.dir / "tests" / "2.in").write_text("x" * (corpus.INLINE + 1))
+        corpus.seed(type("A", (), {"ids": ["p1"]}))
+        self.assertFalse((self.dir / "tests").exists())
+        cases = corpus.Package.at(self.dir).cases()
+        self.assertEqual(cases[0], {"input": "tiny\n"})
+        self.assertEqual(cases[1], {"seed": 2, "size": 16})
+        self.assertEqual([c["size"] for c in cases[2:]], list(corpus.STRESS_SIZES))
+
+    def test_a_large_case_without_a_generator_is_not_seeded(self):
+        d = self.package("p2")
+        (d / "tests").mkdir()
+        (d / "tests" / "1.in").write_text("x" * (corpus.INLINE + 1))
+        self.assertEqual(corpus.seed(type("A", (), {"ids": ["p2"]})), 1)
+        self.assertTrue((d / "tests").exists())
+
+    def test_stamp_follows_the_list_and_generator(self):
+        (self.dir / "tests.toml").write_text("[[case]]\nseed = 1\nsize = 4\n")
+        first = corpus.stamp(corpus.Package.at(self.dir), None)
+        (self.dir / "tests.toml").write_text("[[case]]\nseed = 2\nsize = 4\n")
+        second = corpus.stamp(corpus.Package.at(self.dir), None)
+        self.assertNotEqual(first, second)
+        (self.dir / "gen.py").write_text("print(2)\n")
+        self.assertNotEqual(second, corpus.stamp(corpus.Package.at(self.dir), None))
+
+    def test_make_writes_inputs_and_reference_answers(self):
+        d = self.package("p3", gen_py=GEN, orig_cpp=ECHO_CPP, tests_toml='[[case]]\ninput = "1 5"\n\n[[case]]\nseed = 7\nsize = 1\n')
+        corpus.make_cases(corpus.Package.at(d), str(self.root / "out"))
+        out = self.root / "out" / "p3"
+        self.assertEqual([(out / f"0{i}.ans").read_text() for i in (1, 2)], ["5\n", "7\n"])
+
+
 if __name__ == "__main__":
     unittest.main()

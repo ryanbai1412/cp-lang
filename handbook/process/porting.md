@@ -140,7 +140,7 @@ The review lives in `research/reviews/<id>.md` (format and score scale in
 | Ports agree with their tests | `cpl-conform corpus` and `cpl test` |
 | Ports carry the header | `corpus/header.py` (reports, does not block) |
 | Dream agrees with the accepted C++ on the package's tests (or gen.py seeds) | `scripts/corpus.py verify --check`, on every staged dream in the commit tier |
-| Port is close to its dream | `scripts/review-check.py` reports the port-over-dream token gap; `scripts/dream-gaps.py` counts what the dreams need from the language (neither blocks) |
+| Port is close to its dream | `scripts/review-check.py` reports the port-over-dream token gap; `scripts/corpus.py gaps` counts what the dreams need from the language (neither blocks) |
 
 ## Changes
 

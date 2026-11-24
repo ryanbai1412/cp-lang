@@ -1,0 +1,43 @@
+# The package's cases (problem-packages/R9): `input` inline, else `gen.py seed size` or `args`.
+
+[[case]]
+seed = 1
+size = 512
+
+[[case]]
+input = "1 4\n7 2 1 6\n"
+
+[[case]]
+input = "2 9\n474 457 552 464 413 26 705 342 67\n"
+
+[[case]]
+input = "79 2\n709 685\n"
+
+[[case]]
+input = "53 7\n653 307 366 562 677 183 500\n"
+
+[[case]]
+input = "2 1\n1\n"
+
+[[case]]
+seed = 7
+size = 256
+
+[[case]]
+input = "1 6\n1 0 2 0 2 2\n"
+
+[[case]]
+seed = 9
+size = 4
+
+[[case]]
+seed = 10
+size = 8
+
+[[case]]
+seed = 11
+size = 16
+
+[[case]]
+seed = 12
+size = 32

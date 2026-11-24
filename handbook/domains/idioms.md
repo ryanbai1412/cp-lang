@@ -110,7 +110,7 @@ of user impact.
   lints cite and the corpus they must stay quiet on.
 - The site and its docs pages (site); `cpl test`, `cpl build` and the
   editors (tools); `cpl stress` (debugger).
-- Scripts under `scripts/` such as `port-check.sh`, `review-check.py`,
+- Scripts under `scripts/` such as `corpus.py`, `review-check.py`,
   `skill-gen.py`, `corpus.py` and `ports-page.py` (infra keeps them running;
   idioms is their main user and writes most changes to them).
 
@@ -170,7 +170,7 @@ GCC and LLVM's differential testing against a reference.
 | A model writes correct CP Lang from the skill alone | blind pass rate on a fresh unseen 20, first attempt, with no workaround | process: a cold agent per release; generated judging | `research/dryrun/v03/loop.sh`, `research/skill-eval/`; per-release unseen set: `missing` |
 | A model or person writes correct code from the docs alone | writable-from-docs tasks passing | process: cold model; generated judging | `scripts/writable-from-docs.py`, `research/writable-from-docs.json` (shared with site) |
 | Every skill example compiles and is current | skill `cp` blocks passing `cpl check`; generated stdlib pages in sync | generated suite | `scripts/skill-gen.py --check` in `scripts/check.sh` |
-| The skill teaches the normative spelling | skill and corpus lines using a removed spelling (`some(...)`, `none`, `.enumerate()`, `assume`) | `handbook/guidelines/idiomatic-code-checklist.md#r8`; generated: `cpl migrate --check` knows every removed spelling | `scripts/skill-gen.py --check` (skill code blocks); `corpus/differential.py` (`removed-spelling`, v03 ports, dreams and specs); `scripts/skill-prose.py` (inline code in the skill's prose) |
+| The skill teaches the normative spelling | skill and corpus lines using a removed spelling (`some(...)`, `none`, `.enumerate()`, `assume`) | `handbook/guidelines/idiomatic-code-checklist.md#r8`; generated: `cpl migrate --check` knows every removed spelling | `scripts/skill-gen.py --check` (skill code blocks); `scripts/corpus.py verify` (`stress`, `size`, `lint`) (`removed-spelling`, v03 ports, dreams and specs); `scripts/skill-prose.py` (inline code in the skill's prose) |
 | Showcase ports read like the editorial | taste-review median and count under 3 and under 4 | `handbook/guidelines/idiomatic-code-checklist.md#r2`; process: cold review per port; ratchet on the count under 4 | `scripts/review-check.py --check` |
 | The idiom catalog covers what newcomers write | marked newcomer spots a lint flags | generated suite | `corpus/newcomer/score.py`, `crates/cpl-cli/tests/newcomer.rs` |
 | Every idiom in the catalog has an example that checks and a lint or a reason | built lints whose `before.cp`, `after.cp` and near miss check; proposals whose replacement names a real API | generated suite over every record; generated check over every catalog row | `crates/cpl-lint/src/record_tests.rs`; `scripts/idioms-catalog.py` |
@@ -201,20 +201,20 @@ GCC and LLVM's differential testing against a reference.
 | Every dream agrees with its accepted C++ | dream.cp files with no passing `dream_stress` record for their current blob | gate per staged dream; ratchet to 0 over the corpus | `scripts/corpus.py verify --check` in the commit tier (`scripts/check.sh`); `dream_unverified` in `scripts/debt-ratchet.py` |
 | Every port has a dream and a review | ports newer than the baseline without either | gate | `scripts/review-check.py --check` |
 | Every gap between a port and its dream is reported with a repro and an owner | frictions with severity, goal and a run showing the failure | `handbook/guidelines/idiomatic-code-checklist.md#r11`; gate on format; process on content | `research/frictions/` (parsed in the gate) |
-| Dream and spec differences are logged | `dream.cp` and `spec.cp` diffs without a log entry | generated check (`dream-unlogged`: a code difference with no `meta.json` note or line in `research/design-history/spec-delta/hillclimb.md`) | `corpus/audit.py` |
+| Dream and spec differences are logged | `dream.cp` and `spec.cp` diffs without a log entry | generated check (`dream-unlogged`: a code difference with no `meta.json` note or line in `research/design-history/spec-delta/hillclimb.md`) | `scripts/corpus.py verify --only package` |
 
 ### Correctness of the corpus (J6, J7)
 
 | Quality | Metric | Mechanism | Check |
 |---|---|---|---|
-| Every port checks on the current language | ports failing `cpl check` | hard gate at 0, no list | `scripts/port-check.sh` in `scripts/check.sh`; per staged port in the commit tier |
+| Every port checks on the current language | ports failing `cpl check` | hard gate at 0, no list | `scripts/corpus.py verify --only check` in `scripts/check.sh`; per staged port in the commit tier |
 | Every port agrees with its accepted C++ | ports matching `orig.cpp` on samples plus generated inputs | differential | `crates/cpl-cli/tests/judges.rs` (`every_v03_port_checks`) over `corpus/sets/v03.txt`; `corpus/generators.py` (`disagrees`: the port's C++ against the accepted C++ on generated inputs, judged by `checker.py` when there is one) |
 | The hill-climb problems pass | `cpl-conform corpus` passes, judged by checker where one exists | generated suite, ratchet | `cpl-conform corpus`, `research/scoreboard.json` via `cpl-conform all --check` |
-| Every problem has tests, and expected outputs come from an accepted solution | untested problems; expected outputs regenerated from `orig.cpp` | `handbook/guidelines/problem-packages-checklist.md#r1`; generated | `scripts/corpus-tests.py verify`; `corpus/audit.py` (`answer-is-input`, `no-reference`, ratchet `corpus/audit-known.txt`) |
-| Multi-answer problems are judged by a checker | problems with several valid answers and no checker | `handbook/guidelines/problem-packages-checklist.md#r3`; differential: two accepted submissions that differ on a test | `corpus/audit.py` (`needs-checker`); `cpl-conform corpus` judges by `checker.py` |
-| Interactive problems run with an interactor | interactive ports with an interactor and generator | `handbook/guidelines/problem-packages-checklist.md#r4`; hand-written per problem | `corpus/problems/<id>/interactor.py`; `corpus/audit.py` (`interactor-no-gen`) |
+| Every problem has tests, and expected outputs come from an accepted solution | untested problems; expected outputs regenerated from `orig.cpp` | `handbook/guidelines/problem-packages-checklist.md#r1`; generated | `scripts/corpus.py verify`; `scripts/corpus.py verify --only package` (`answer-is-input`, `no-reference`, ratchet `corpus_test_files`) |
+| Multi-answer problems are judged by a checker | problems with several valid answers and no checker | `handbook/guidelines/problem-packages-checklist.md#r3`; differential: two accepted submissions that differ on a test | `scripts/corpus.py verify --only package` (`needs-checker`); `cpl-conform corpus` judges by `checker.py` |
+| Interactive problems run with an interactor | interactive ports with an interactor and generator | `handbook/guidelines/problem-packages-checklist.md#r4`; hand-written per problem | `corpus/problems/<id>/interactor.py`; `scripts/corpus.py verify --only package` (`interactor-no-gen`) |
 | Generators produce valid inputs | generated inputs accepted by a validator | `handbook/guidelines/problem-packages-checklist.md#r5`; generated: the port's read types validate `gen.py` output | `corpus/generators.py` (ratchet `corpus/generators-known.txt`) |
-| The interpreter and the C++ agree on every port | ports where `cpl run` and the built C++ differ on any test | differential | `corpus/differential.py` over `corpus/sets/v03.txt` (`cpl run` against the Codeforces C++ on every test; hard gate, no list) |
+| The interpreter and the C++ agree on every port | ports where `cpl run` and the built C++ differ on any test | differential | `scripts/corpus.py verify` (`stress`, `size`, `lint`) over `corpus/sets/v03.txt` (`cpl run` against the Codeforces C++ on every test; a hard gate, no list) |
 | Corpus edits keep working ports working | ports whose verdicts change in a commit that edits them | differential before and after | commit-tier `cpl check` and lint ratchet on staged ports; `corpus/generators.py --changed staged` (a changed port's answers against the accepted C++) and `corpus/differential.py --changed staged` (interpreter against C++) |
 
 ### Performance and size (J8, J9)
@@ -223,7 +223,7 @@ GCC and LLVM's differential testing against a reference.
 |---|---|---|---|
 | Idiomatic ports run as fast as matched C++ | p50, p95 and max runtime ratio on max inputs | `handbook/guidelines/idiomatic-code-checklist.md#r10`; `handbook/guidelines/performance.md`; generated benchmark | perf's corpus bench; `corpus/generators.py` (`slow`: over 1.5x on the `--max` input, best of three) |
 | Every port can be tuned to 1.1x in the language | tuned ports at or under 1.1x | process | `missing` |
-| Every built solution is under 32 KB | Codeforces builds over 32 KB; none over 64 KB | generated over every port | `crates/cpl-cli/tests/judges.rs` (64 KB hard limit); `corpus/differential.py` (`over-32kb`, hard gate, no list); `bench/sizes.py --check` over every port, spec and dream |
+| Every built solution is under 32 KB | Codeforces builds over 32 KB; none over 64 KB | generated over every port | `crates/cpl-cli/tests/judges.rs` (64 KB hard limit); `scripts/corpus.py verify` (`stress`, `size`, `lint`) (`over-32kb`, a hard gate, no list) |
 | A built solution compiles under each judge's flags | ports failing any judge's compiler and flags | generated matrix | `crates/cpl-cli/tests/judges.rs` (`every_port_compiles_with_every_judges_flags`) |
 | What passed locally passes on the judge | ports whose local verdict differs from the judge's | process: a sample of real submissions, by Ryan only | `missing` |
 
@@ -240,11 +240,11 @@ GCC and LLVM's differential testing against a reference.
 
 | Quality | Metric | Mechanism | Check |
 |---|---|---|---|
-| Old ports rebuild after library changes | ports broken by a change, migrated in the same change | ratchet; codemods from stdlib and diagnostics | `crates/cpl-cli/tests/judges.rs` (`every_port_is_written_for_every_judge_within_its_limit`: every port builds, deterministically); `corpus/differential.py` (`no-build`, `removed-spelling`) |
+| Old ports rebuild after library changes | ports broken by a change, migrated in the same change | ratchet; codemods from stdlib and diagnostics | `crates/cpl-cli/tests/judges.rs` (`every_port_is_written_for_every_judge_within_its_limit`: every port builds, deterministically); `scripts/corpus.py verify` (`stress`, `size`, `lint`) (`no-build`, `removed-spelling`) |
 | Old ports rebuild byte for byte across releases | a port pinned to an old release builds the same C++ | `cp.toml` pins (`spec/tools/cli.md`, not built yet) | `missing` |
 | Adding a port is cheap and the bar is clear | porting checklist; time per port | process | `handbook/process/porting.md` |
 | Concurrent corpus work can't turn main red | staged ports checked and linted before landing | gate | commit tier (`scripts/check.sh`) |
-| One problem-package format for corpus and acceptance | tools that read one format (gen, brute, checker, interactor, limits) | `handbook/guidelines/problem-packages-checklist.md#r8` | `corpus/differential.py` (`cpl-test-*`: what `cpl test` can't find or judge in a package) |
+| One problem-package format for corpus and acceptance | tools that read one format (gen, brute, checker, interactor, limits) | `handbook/guidelines/problem-packages-checklist.md#r8` | `scripts/corpus.py verify` (`stress`, `size`, `lint`) (`cpl-test-*`: what `cpl test` can't find or judge in a package) |
 | Generated reports are current | stale `research/PORTS.md`, `plan/STATUS.md`, `BLOCKERS.md` | generated, checked in the gate | `scripts/gen.py` |
 | Nothing private enters the corpus | home paths, session links, unknown hosts | gate | `scripts/check.sh` (staged-files scan: hosts outside `scripts/public-hosts.txt`, home paths, local sensitive words) |
 
@@ -253,7 +253,7 @@ GCC and LLVM's differential testing against a reference.
 | Run | What it catches |
 |---|---|
 | `target/release/cpl-conform corpus` | a hill-climb problem failing its tests or its checker |
-| `scripts/port-check.sh target/debug/cpl` | a port that stopped checking |
+| `scripts/corpus.py verify --no-run --only check` | a port that stopped checking |
 | `cargo test --release -p cpl-cli --test judges -- --include-ignored every_` | a judge-proven port failing its tests, its judge's flags or the size limit |
 | `cargo test -q -p cpl-lint corpus` | new lint warnings on the corpus |
 | `python3 research/acceptance/regress.py target/release/cpl -j 4` | a once-accepted acceptance solution no longer accepted |
@@ -307,13 +307,13 @@ the chunks touched (4); find a planted off-by-one with stress and trace
   `plan/domains/idioms/README.md` and `plan/domains/idioms/ARCHITECTURE.md`.
 - 2026-11-23: mechanism cells cite the rule in `handbook/guidelines/idiomatic-code.md` or `problem-packages.md`.
 - 2026-11-23: prose overview first, the tables under `# Reference`; cells cite checklist ids.
-- 2026-11-23: the package rows name `corpus/audit.py`.
+- 2026-11-23: the package rows name `scripts/corpus.py verify --only package`.
 - 2026-11-23: invariants and the judgment rubric folded in from the idioms plan folder.
-- 2026-11-23: the interpreter-and-C++ row names `corpus/differential.py`.
+- 2026-11-23: the interpreter-and-C++ row names `scripts/corpus.py verify` (`stress`, `size`, `lint`).
 - 2026-11-23: the generator and max-bound rows name `corpus/generators.py`.
-- 2026-11-23: the spelling and 32 KB rows name `corpus/differential.py`.
+- 2026-11-23: the spelling and 32 KB rows name `scripts/corpus.py verify` (`stress`, `size`, `lint`).
 - 2026-11-23: the accepted-C++ agreement row names `corpus/generators.py`.
 - 2026-11-24: `corpus/differential.py` is a hard gate; `corpus/differential-known.txt` is gone.
 - 2026-11-23: the verdict and privacy rows name their checks.
-- 2026-11-23: the dream-and-spec row names `corpus/audit.py`.
+- 2026-11-23: the dream-and-spec row names `scripts/corpus.py verify --only package`.
 - 2026-11-23: the deep-recursion and catalog rows name their checks.

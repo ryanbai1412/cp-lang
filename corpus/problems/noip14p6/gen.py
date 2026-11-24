@@ -6,7 +6,7 @@ if sys.argv[1] == "--max":
     for i in range(101): print(r.choice("-") * r.randint(0, 1) + str(r.randint(1, 9)) + "".join(r.choice("0123456789") for _ in range(9999)))
     sys.exit()
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
-m = r.randint(1, 5 * S + 5); p = [r.choice([-3, -1, 1, 2, 5])]
+m = r.randint(1, min(5 * S + 5, 10**6)); p = [r.choice([-3, -1, 1, 2, 5])]
 for _ in range(r.randint(1, 4)):
     root = r.randint(1, m + 2) if r.random() < 0.8 else -r.randint(1, 5)
     q = [0] * (len(p) + 1)

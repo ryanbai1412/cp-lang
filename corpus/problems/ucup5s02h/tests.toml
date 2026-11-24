@@ -1,0 +1,48 @@
+# The package's cases (problem-packages/R9): `input` inline, else `gen.py seed size` or `args`.
+
+[[case]]
+input = "2\n11\n4 24 A\n1 21 B\n14 18 B\n1 -26 ?\n15 -14 ?\n8 -23 B\n4 1 ?\n1 28 B\n1 -2 A\n18 0 ?\n13 11 A\n12\n15 -17 A\n1 -3 B\n18 16 B\n4 -29 ?\n10 3 A\n11 -16 A\n17 18 ?\n17 -2 B\n7 1 ?\n10 5 B\n16 25 ?\n13 -8 ?\n"
+
+[[case]]
+input = "1\n3\n10 -25 ?\n20 -7 B\n20 23 A\n"
+
+[[case]]
+input = "2\n11\n7 4 A\n16 -22 ?\n18 -7 ?\n13 8 B\n5 0 ?\n5 10 A\n13 7 ?\n1 -26 ?\n3 27 ?\n19 -30 A\n10 26 A\n14\n12 -29 A\n2 22 A\n16 25 A\n9 -13 A\n14 0 ?\n10 8 ?\n17 16 B\n19 -6 B\n18 15 B\n14 20 ?\n8 -3 ?\n1 -5 B\n20 24 B\n6 6 ?\n"
+
+[[case]]
+input = "2\n6\n18 -24 B\n2 16 B\n17 -5 A\n12 0 ?\n6 -21 B\n9 -25 A\n5\n9 30 ?\n7 29 ?\n6 -29 ?\n10 23 ?\n10 11 ?\n"
+
+[[case]]
+input = "3\n13\n4 -8 ?\n12 20 ?\n16 14 ?\n8 23 ?\n13 17 ?\n18 11 ?\n4 3 ?\n19 -29 ?\n8 -1 ?\n1 19 ?\n7 -15 ?\n14 25 ?\n9 -27 ?\n4\n5 28 A\n20 25 ?\n5 19 B\n1 -6 A\n2\n6 -17 A\n11 19 B\n"
+
+[[case]]
+input = "1\n9\n11 18 ?\n1 -14 ?\n9 -28 ?\n16 -30 ?\n7 -21 ?\n14 12 ?\n18 7 ?\n18 0 ?\n4 30 ?\n"
+
+[[case]]
+input = "3\n4\n4 -5 ?\n12 11 ?\n19 -27 ?\n2 -26 ?\n10\n4 -17 ?\n19 -28 A\n19 -25 A\n13 -3 ?\n8 -4 A\n18 -26 A\n10 -15 A\n5 28 B\n4 5 ?\n10 27 ?\n10\n3 22 ?\n19 13 ?\n2 -19 ?\n20 -24 ?\n7 7 ?\n16 6 ?\n18 10 ?\n14 -18 ?\n11 -7 ?\n15 27 ?\n"
+
+[[case]]
+input = "2\n7\n7 -6 ?\n1 -22 B\n16 -18 B\n13 15 B\n19 -28 B\n13 -25 A\n16 29 A\n5\n4 18 B\n9 -29 ?\n3 14 A\n20 -13 B\n4 3 B\n"
+
+[[case]]
+seed = 9
+size = 16777216
+
+[[case]]
+input = "1\n8\n2 0 A\n16 6 ?\n3 -30 B\n12 -17 A\n14 -1 A\n20 22 A\n13 1 B\n10 25 B\n"
+
+[[case]]
+seed = 11
+size = 4
+
+[[case]]
+seed = 12
+size = 8
+
+[[case]]
+seed = 13
+size = 16
+
+[[case]]
+seed = 14
+size = 32
