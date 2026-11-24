@@ -19,9 +19,11 @@ while read -r id sha updated; do
     # The live commit's own run is often cancelled and so never listed; a run
     # that ended before the live site was built is no newer than it.
     [ -z "$built" ] || [[ "$updated" > "$built" ]] || { echo "site-deployable: no passing commit since the live build ($built)" >&2; exit 0; }
-    jobs=$(gh run view "$id" -R "$repo" --json jobs --jq '.jobs[] | select(.name == "site build" or .name == "site browser tests") | "\(.conclusion) \(.name)"')
+    jobs=$(gh run view "$id" -R "$repo" --json jobs --jq '.jobs[] | select(.name == "site build" or (.name | startswith("site browser tests"))) | "\(.conclusion) \(.name)"')
     grep -q '^success site build$' <<<"$jobs" || continue
-    grep -q '^success site browser tests$' <<<"$jobs" || continue
+    # Every part of the browser tests passed, and there was at least one.
+    grep -q '^success site browser tests' <<<"$jobs" || continue
+    ! grep -v '^success ' <<<"$jobs" | grep -q ' site browser tests' || continue
     if [ -n "$live" ]; then
         rel=$(gh api "repos/$repo/compare/$sha...$live" --jq .status 2>/dev/null || true)
         if [ "$rel" = identical ] || [ "$rel" = ahead ]; then

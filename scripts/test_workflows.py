@@ -91,6 +91,28 @@ class WorkflowTest(unittest.TestCase):
                 views = [l for l in f if l.startswith("run view")]
             self.assertEqual(len(views), 1, "only the run newer than the live build is inspected")
 
+    def test_the_site_deploys_only_when_every_browser_part_passed(self):
+        # The browser tests run as matrix parts; one failing part must hold
+        # the deploy as the single job did.
+        with tempfile.TemporaryDirectory() as d:
+            for name, body in (
+                ("curl", 'echo \'{"commit":"live","built":"2026-11-23T16:15:00Z"}\''),
+                ("gh", '[ "$2" = list ] && printf "%s\\n" "2 new 2026-11-23T18:00:00Z" "1 old 2026-11-23T17:00:00Z"\n'
+                       '[ "$2" = view ] && [ "$3" = 2 ] && printf "%s\\n" "success site build" '
+                       '"success site browser tests (1/2)" "failure site browser tests (2/2)"\n'
+                       '[ "$2" = view ] && [ "$3" = 1 ] && printf "%s\\n" "success site build" '
+                       '"success site browser tests (1/2)" "success site browser tests (2/2)"\ntrue'),
+            ):
+                path = os.path.join(d, name)
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write("#!/usr/bin/env bash\n" + body + "\n")
+                os.chmod(path, 0o755)
+            env = {**os.environ, "PATH": d + os.pathsep + os.environ["PATH"], "GITHUB_REPOSITORY": "o/r"}
+            env.pop("GITHUB_OUTPUT", None)
+            out = subprocess.run(["bash", os.path.join(ROOT, "scripts", "site-deployable.sh")],
+                                 env=env, capture_output=True, text=True)
+            self.assertEqual((out.returncode, out.stdout), (0, "old\n"), out.stderr)
+
     def test_release_does_not_plan_on_superseded_runs(self):
         # Planning on each cancelled ci run spent the API rate limit that the
         # site and release selection share (ci/R26).

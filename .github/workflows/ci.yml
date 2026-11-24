@@ -524,10 +524,21 @@ jobs:
     # handbook/guidelines/site-checklist.md site/R6, site/R7: the browser
     # editor, Learn, phone widths and page weight, against the built site.
     # Its own job so chromium's install doesn't lengthen the site build.
-    name: site browser tests
+    # Two parts of about 3 min each: one serial run outgrew the step's 6 min
+    # on the lazy-std build (run 45319170236). scripts/site-deployable.sh
+    # needs every part green.
+    name: site browser tests (${{ matrix.part }})
     needs: site
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - part: 1/2
+            suites: smoke.mjs learn-smoke.mjs intelligence.mjs phone.mjs page-weight.mjs drafts.mjs diagnostics.mjs lint-fixes.mjs
+          - part: 2/2
+            suites: a11y.mjs resilience.mjs search-tasks.mjs completion-parity.mjs completion-surfaces.mjs
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -554,4 +565,4 @@ jobs:
         run: |
           chmod +x "$CPL"
           pnpm exec playwright install --with-deps chromium
-          node tests/run.mjs smoke.mjs learn-smoke.mjs intelligence.mjs phone.mjs page-weight.mjs drafts.mjs diagnostics.mjs lint-fixes.mjs a11y.mjs resilience.mjs search-tasks.mjs completion-parity.mjs completion-surfaces.mjs
+          node tests/run.mjs ${{ matrix.suites }}
