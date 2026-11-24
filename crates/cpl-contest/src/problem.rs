@@ -121,12 +121,30 @@ pub fn find_tests_dir(source: &Path) -> PathBuf {
         return own;
     }
     if let Some(parent) = source.parent() {
+        if let Some(generated) = generated_cases(parent) {
+            return generated;
+        }
         let sibling = parent.join("tests");
         if sibling.is_dir() {
             return sibling;
         }
     }
     own
+}
+
+/// The cases `scripts/corpus-tests.py make` wrote for a package whose
+/// `tests.toml` lists them: `target/corpus-tests/<id>/` at the repo root
+/// (problem-packages/R9).
+fn generated_cases(package: &Path) -> Option<PathBuf> {
+    if !package.join("tests.toml").is_file() {
+        return None;
+    }
+    let id = package.file_name()?;
+    package
+        .ancestors()
+        .skip(1)
+        .map(|up| up.join("target").join("corpus-tests").join(id))
+        .find(|dir| dir.is_dir())
 }
 
 /// The problem's own checker, `checker.py <input> <output> <answer>` (exit 0
@@ -136,6 +154,7 @@ pub fn find_checker(source: &Path) -> Option<PathBuf> {
     let cases = find_tests_dir(source);
     let beside = match cases.file_name() {
         Some(name) if name == "tests" => cases.parent().map(|p| p.join("checker.py")),
+        _ if cases != tests_dir(source) => source.parent().map(|p| p.join("checker.py")),
         _ => None,
     };
     [Some(cases.join("checker.py")), beside]
@@ -183,4 +202,27 @@ pub fn cases_in(dir: &Path) -> Vec<TestCase> {
 /// rest by name.
 pub fn cases(source: &Path) -> Vec<TestCase> {
     cases_in(&find_tests_dir(source))
+}
+
+#[cfg(test)]
+mod generated_cases_tests {
+    use super::*;
+
+    #[test]
+    fn a_package_with_tests_toml_reads_the_cases_corpus_tests_wrote() {
+        let root = std::env::temp_dir().join(format!("cpl-generated-{}", std::process::id()));
+        let package = root.join("corpus/problems/p1");
+        let generated = root.join("target/corpus-tests/p1");
+        std::fs::create_dir_all(&package).unwrap();
+        std::fs::create_dir_all(&generated).unwrap();
+        std::fs::write(package.join("tests.toml"), "[[case]]\ninput = \"1\\n\"\n").unwrap();
+        std::fs::write(package.join("checker.py"), "").unwrap();
+        std::fs::write(generated.join("01.in"), "1\n").unwrap();
+        std::fs::write(generated.join("01.ans"), "1\n").unwrap();
+        let source = package.join("port.cp");
+        assert_eq!(find_tests_dir(&source), generated);
+        assert_eq!(find_checker(&source), Some(package.join("checker.py")));
+        assert_eq!(cases_in(&find_tests_dir(&source)).len(), 1);
+        std::fs::remove_dir_all(&root).unwrap();
+    }
 }

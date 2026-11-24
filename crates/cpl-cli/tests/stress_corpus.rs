@@ -47,7 +47,7 @@ fn cpl_test_passes_on_corpus_in_and_ans_including_multitest() {
     ];
     for (id, rel_port) in problems {
         let port = root.join(rel_port);
-        let tests_dir = root.join("corpus/problems").join(id).join("tests");
+        let tests_dir = cpl_contest::problem::find_tests_dir(&port);
         let out = Command::new(cpl_bin())
             .arg("test")
             .arg(&port)
@@ -78,7 +78,8 @@ fn cpl_test_passes_on_corpus_in_and_ans_including_multitest() {
     std::fs::create_dir_all(&tests_copy).unwrap();
     let sol = scratch.join("noi15p1.cp");
     std::fs::copy(root.join("corpus/problems/noi15p1/spec.cp"), &sol).unwrap();
-    for entry in std::fs::read_dir(root.join("corpus/problems/noi15p1/tests")).unwrap() {
+    let noi15p1 = root.join("corpus/problems/noi15p1/spec.cp");
+    for entry in std::fs::read_dir(cpl_contest::problem::find_tests_dir(&noi15p1)).unwrap() {
         let path = entry.unwrap().path();
         std::fs::copy(&path, tests_copy.join(path.file_name().unwrap())).unwrap();
     }
