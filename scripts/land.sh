@@ -151,11 +151,23 @@ recheck() {
     moved=$(git diff --name-only "$checked" "$main_base" -- $gate_paths)
     checked=$main_base
     [ -n "$moved" ] && [ -x .githooks/pre-commit ] || return 0
+    # Land's own scripts, the script tests and docs judge no staged change: perf B's
+    # 42-min land reran the ~9 min tier for land.sh, new_reds.py and test_ci.py.
+    live=$(printf '%s\n' $moved | grep -Ev '^scripts/(land\.sh|new_reds\.py|test_[^/]*\.py|[^/]*\.md)$' || :)
+    [ -n "$live" ] || { echo "land: main changed only land's own scripts and tests ($(echo $moved)); no rerun" >&2; return 0; }
+    # Only step scripts and their data (debt-ratchet.json): rerun just the steps, not the tier.
+    only=
+    known=
+    [ -n "$(printf '%s\n' $live | grep -Ev '^scripts/[^/]*\.(py|json)$')" ] ||
+        known=$(uv run --quiet python -c 'import sys; sys.path.insert(0, "scripts"); import ci; print("\n".join(sorted(ci.step_scripts())))' 2>/dev/null) || known=
+    if [ -n "$known" ] && [ -z "$(printf '%s\n' $live | sed 's/\.json$/.py/' | grep -vxF "$known")" ]; then
+        only=scripts
+    fi
     # Once per land: rerunning on every lost push race livelocks landing while
     # main keeps changing scripts/; CI gates the tip that lands.
     [ -z "$rechecked" ] || { echo "land: main changed the gates again; landing on the rerun's result, CI checks this tip" >&2; return 0; }
     rechecked=1
-    echo "land: main changed the gates ($(printf '%s\n' $moved | head -3 | tr '\n' ' ' | sed 's/ $//')); rerunning the commit tier on the rebased tip" >&2
+    echo "land: main changed the gates ($(printf '%s\n' $live | head -3 | tr '\n' ' ' | sed 's/ $//')); rerunning ${only:+its steps of }the commit tier on the rebased tip" >&2
     tip=$(git rev-parse HEAD)
     prev=$(trap -p EXIT)
     trap 'git reset -q --soft "$tip"' EXIT
@@ -163,7 +175,11 @@ recheck() {
     # No cpl is handed over: the rebase rewrote main's crate files, and the commit tier
     # rebuilds target/debug/cpl before the corpus audit and the ratchet run it.
     set +e
-    .githooks/pre-commit >&2
+    if [ -n "$only" ]; then
+        uv run --quiet python scripts/ci.py commit --only "$only" >&2
+    else
+        .githooks/pre-commit >&2
+    fi
     rc=$?
     set -e
     git reset -q --soft "$tip"
@@ -272,15 +288,16 @@ changed=$(git diff --name-only --diff-filter=ACMR "$main_base" HEAD)
 # worse while lanes cut a crate back under.
 wasm_touched=$(printf '%s\n' "$changed" | sed -n 's|^crates/\([^/]*\)/.*|\1|p' | sort -u)
 if [ -n "$wasm_touched" ] && [ -x scripts/wasm-warm.sh ]; then
-    if ! wasm=$(scripts/wasm-warm.sh --current $wasm_touched); then
-        echo "land: no current wasm build; CI checks it" >&2
-    elif ! scripts/wasm-warm.sh --parent "$main_base" $wasm_touched >/dev/null; then
-        echo "land: no wasm sizes of main's tip to compare with; CI checks it" >&2
-    else
-        scripts/wasm-warm.sh --check "$wasm" "$main_base" $wasm_touched >&2 ||
-            { echo "land: a cpl.wasm crate grew past main while over its budget, or crossed its budget (above), touched here or not; cut it at its source and land again" >&2; exit 1; }
-        transfer_checked=1
+    # Fail closed (wasm-cut): skipping when the warm build was of the pre-rebase tree let
+    # 277f37f42 and five more grow an over-budget cpl_check. --check builds main's sizes.
+    if ! wasm=$(scripts/wasm-warm.sh --current $wasm_touched 2>/dev/null); then
+        echo "land: building the rebased tip's cpl.wasm to hold $(echo $wasm_touched) to their budgets" >&2
+        { CPL_WARM_MAIN=$main_base scripts/wasm-warm.sh --wait >&2 && wasm=$(scripts/wasm-warm.sh --current $wasm_touched); } ||
+            { echo "land: no cpl.wasm of the rebased tip (above: a missing wasm32 target, a build error or uncommitted crate changes), so its crates can't be held to their budgets; fix that and land again" >&2; exit 1; }
     fi
+    scripts/wasm-warm.sh --check "$wasm" "$main_base" $wasm_touched >&2 ||
+        { echo "land: a cpl.wasm crate grew past main while over its budget, or crossed its budget (above), touched here or not; cut it at its source and land again" >&2; exit 1; }
+    transfer_checked=1
 fi
 # A raised wasm budget no build measured against moved code (decisions.md 634) refuses.
 if [ -z "${transfer_checked:-}" ] && printf '%s\n' "$changed" | grep -qx web/scripts/wasm-crate-budgets.json; then
@@ -642,7 +659,12 @@ try=0
 push() {
     try=$((try + 1))
     git fetch -q "$remote" main
+    # Chasing main without the lock never ends at its pace (lint-fmt's c0493782e
+    # went round 4 times on its cargo check): after two pulls, rebase holding the lock.
+    chases=0
     while ! git merge-base --is-ancestor FETCH_HEAD HEAD; do
+        [ "$chases" -lt 2 ] || { echo "land: main keeps moving; taking the lock to rebase holding it" >&2; break; }
+        chases=$((chases + 1))
         pull || exit 1
         main_base=$(git rev-parse FETCH_HEAD)
         reexec_if_land_changed

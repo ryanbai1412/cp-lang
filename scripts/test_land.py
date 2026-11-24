@@ -151,6 +151,22 @@ class LandTest(unittest.TestCase):
         self.assertIn("CPL_LAND_RECHECKED=${rechecked:-}", exec_env)
         self.assertIn("CPL_LAND_STEPS_RUNS=${steps_runs:-0}", exec_env)
 
+    def test_main_changing_only_lands_own_scripts_reruns_nothing(self):
+        theirs = self.clone("theirs")
+        self._hook(theirs, "echo gate: ran\n")
+        self.commit(theirs, "gate")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        ours = self.clone("ours")
+        (ours / "pkg.txt").write_text("x\n")
+        self.commit(ours, "ours")
+        (theirs / "scripts" / "test_new.py").write_text("pass\n")
+        self.commit(theirs, "a script test")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        r = self.land(ours)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("main changed only land's own scripts and tests (scripts/test_new.py); no rerun", r.stderr)
+        self.assertNotIn("gate: ran", r.stderr)
+
     def test_a_rebase_past_a_gate_change_reruns_the_commit_tier_on_the_rebased_tip(self):
         theirs, ours = self.clone("theirs"), self.clone("ours")
         # main's new gate: no staged file may be named bad.txt.
@@ -1487,13 +1503,13 @@ done
                       (self.tmp / "node.log").read_text())
         self.assertNotIn("ours", git(ours, "log", "--format=%s", "origin/main"))
 
-    def test_without_main_tips_wasm_sizes_land_warns_and_lands(self):
+    def test_without_main_tips_wasm_sizes_land_builds_them_or_refuses(self):
         ours = self._crate_change("cpl-y")
         self._built(ours, parent=False)
         r = self.land(ours, **self._wasm(ours, 1))
-        self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("land: no wasm sizes of main's tip to compare with; CI checks it", r.stderr)
-        self.assertFalse((self.tmp / "node.log").exists())
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("could not build", r.stderr)
+        self.assertNotIn("ours", git(ours, "log", "--format=%s", "origin/main"))
 
     def test_a_warm_build_within_budget_lands(self):
         ours = self._crate_change("cpl-y")
@@ -1666,20 +1682,29 @@ done
         self.assertEqual(r.returncode, 1, r.stderr)
         self.assertIn("could not build HEAD's wasm", r.stderr)
 
-    def test_land_never_waits_on_a_wasm_build_it_lacks(self):
+    def test_land_refuses_when_it_cant_build_the_wasm_it_lacks(self):
+        # wasm-cut: "no current wasm build; CI checks it" let six cpl_check growths land.
         ours = self._crate_change("cpl-y")
         r = self.land(ours, **self._wasm(ours, 1))
-        self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("land: no current wasm build; CI checks it", r.stderr)
-        self.assertFalse((self.tmp / "node.log").exists())
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("land: no cpl.wasm of the rebased tip", r.stderr)
+        self.assertNotIn("CI checks it", r.stderr)
+        self.assertNotIn("ours", git(ours, "log", "--format=%s", "origin/main"))
 
-    def test_a_warm_build_of_a_touched_crate_main_has_since_changed_is_not_current(self):
+    def test_a_stale_warm_build_is_rebuilt_at_the_rebased_tip_and_held_to_main(self):
         ours = self._crate_change("cpl-x")
         self._built(ours)
-        r = self.land(ours, **self._wasm(ours, 1))
+        build = ours / "scripts" / "build-wasm.sh"
+        build.write_text('#!/bin/sh\nmkdir -p "$2"\necho built > "$2/cpl.wasm"\n')
+        build.chmod(0o755)
+        self.commit(ours, "build")
+        env = self._wasm(ours, 0)
+        node = self.tmp / "bin" / "node"
+        node.write_text(node.read_text().replace("exit 0", '[ "$2" != --sizes ] || echo \'{"fns": {}}\' > "$4"\nexit 0'))
+        r = self.land(ours, **env)
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("land: no current wasm build; CI checks it", r.stderr)
-        self.assertFalse((self.tmp / "node.log").exists())
+        self.assertIn("land: building the rebased tip's cpl.wasm", r.stderr)
+        self.assertIn("--data", (self.tmp / "node.log").read_text())
 
     def test_wasm_warm_records_the_tree_it_built_and_only_a_committed_one(self):
         ours = self.clone("ours")

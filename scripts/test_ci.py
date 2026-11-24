@@ -734,6 +734,16 @@ class GateTest(unittest.TestCase):
         self.assertIn("no base to diff the train against", out)
         self.assertFalse([e for e in ev if e.startswith("scripts/affected.py")])
 
+    def test_an_unmapped_path_in_a_commit_runs_fast_after_the_mapped_paths_steps(self) -> None:
+        # fb214018's unmapped dream.cp swapped its cpl-check change's rdeps nextest for --fast.
+        code, _, out, _, _ = self._gate("commit", affected="all=1\nreason=corpus/x/dream.cp\npackages=cpl-check\n"
+                                        "filter=rdeps(cpl-check)\n")
+        self.assertEqual(code, 0)
+        self.assertIn("running --fast after the steps for the paths it maps", out)
+        commit, fast = GateTest.FakeTier.made
+        self.assertEqual((commit.mode, commit.committed["filter"]), ("commit", "rdeps(cpl-check)"))
+        self.assertEqual(fast.mode, "fast")
+
     def test_a_failing_selection_fails_the_gate(self) -> None:
         code, _, _, err, _ = self._gate("commit", codes={"scripts/affected.py": 1})
         self.assertEqual(code, 1)
