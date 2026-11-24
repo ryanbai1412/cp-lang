@@ -96,3 +96,13 @@ pub(crate) fn each_closure(block: &Block, f: &mut dyn FnMut(ClosureId)) {
         }
     });
 }
+
+/// Every call of a fn value in `block`, at any depth: the callee and its
+/// arguments.
+pub(crate) fn each_value_call(block: &Block, f: &mut dyn FnMut(&Expr, &[Arg])) {
+    walk::deep_exprs(block, &mut |e| {
+        if let ExprKind::CallExpr(callee, args) = &e.kind {
+            f(callee, args);
+        }
+    });
+}

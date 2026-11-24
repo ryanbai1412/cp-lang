@@ -346,3 +346,17 @@ fn each_put_reports_lets_and_stores_in_order() {
     });
     assert_eq!(seen, ["let", "let", "update", "set"]);
 }
+
+#[test]
+fn each_value_call_reports_a_call_of_a_fn_value() {
+    use crate::uses::places::each_value_call;
+    let program = lower(concat!(
+        "fn apply(g: Int -> Int, x: Int) -> Int = g(g(x))\n",
+        "print(apply(x => x + 1, 3))\n",
+    ));
+    let mut calls = 0;
+    each_value_call(&program.fns[0].body, &mut |callee, args| {
+        calls += usize::from(callee.kind == cpl_ir::ExprKind::Local(0) && args.len() == 1);
+    });
+    assert_eq!(calls, 2, "g is called twice, once inside the other");
+}

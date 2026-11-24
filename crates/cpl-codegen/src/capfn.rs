@@ -7,8 +7,10 @@
 //! of a name no one changes is the value that name holds.
 
 use crate::devirt::Devirt;
+use crate::uses::places::{each_closure, each_put, each_value_call, each_write, Put, Write};
+use crate::uses::read_counts;
 use crate::walk;
-use cpl_ir::{Arg, Block, ClosureId, Expr, ExprKind, FnId, PlaceKind, Program, Slot, Stmt, Ty};
+use cpl_ir::{Block, ClosureId, ExprKind, FnId, Program, Slot, Stmt, Ty};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// A capture of a value with no representation (an op value like `+`,
@@ -49,10 +51,7 @@ pub(crate) fn known_captures(program: &mut Program) {
         for (id, f) in program.fns.iter().enumerate() {
             let changed = changed(program, id);
             let aliases = param_aliases(f);
-            walk::deep_exprs(&f.body, &mut |e| {
-                let ExprKind::Closure(cid) = e.kind else {
-                    return;
-                };
+            each_closure(&f.body, &mut |cid| {
                 if plan.contains_key(&(id, cid)) {
                     return;
                 }
@@ -120,18 +119,18 @@ pub(crate) fn known_captures(program: &mut Program) {
 /// optional one (`if let g = cmp`), with the parameter it names.
 fn param_aliases(f: &cpl_ir::Function) -> BTreeMap<Slot, Slot> {
     let mut lets: BTreeMap<Slot, Option<Slot>> = BTreeMap::new();
-    walk::deep_stmts(&f.body, &mut |s| {
-        if let Stmt::Let(slot, init) = s {
-            let param = match init.as_ref().map(|e| &e.kind) {
-                Some(ExprKind::Local(p)) => Some(*p),
-                Some(ExprKind::Unwrap(inner, _)) => match inner.kind {
+    each_put(&f.body, &mut |put, init| {
+        if let Put::Let(slot) = put {
+            let param = match &init.kind {
+                ExprKind::Local(p) => Some(*p),
+                ExprKind::Unwrap(inner, _) => match inner.kind {
                     ExprKind::Local(p) => Some(p),
                     _ => None,
                 },
                 _ => None,
             };
-            let once = !lets.contains_key(slot);
-            lets.insert(*slot, param.filter(|&p| once && p < f.params.len()));
+            let once = !lets.contains_key(&slot);
+            lets.insert(slot, param.filter(|&p| once && p < f.params.len()));
         }
     });
     lets.into_iter()
@@ -147,11 +146,7 @@ fn made_once(program: &Program) -> BTreeSet<ClosureId> {
     blocks.extend(program.fns.iter().map(|f| &f.body));
     blocks.extend(program.closures.iter().map(|c| &c.body));
     for block in blocks {
-        walk::deep_exprs(block, &mut |e| {
-            if let ExprKind::Closure(cid) = e.kind {
-                seen[cid] += 1;
-            }
-        });
+        each_closure(block, &mut |cid| seen[cid] += 1);
     }
     (0..seen.len()).filter(|&c| seen[c] == 1).collect()
 }
@@ -161,46 +156,28 @@ fn made_once(program: &Program) -> BTreeSet<ClosureId> {
 fn changed(program: &Program, id: FnId) -> BTreeSet<Slot> {
     let body = &program.fns[id].body;
     let mut out = BTreeSet::new();
-    walk::deep_stmts(body, &mut |s| {
-        if let Stmt::Assign(place, ..) = s {
-            if let (false, slot) = walk::root(place) {
-                out.insert(slot);
-            }
+    each_write(body, &mut |how, place| {
+        if let (Write::Store | Write::Mut, (false, slot)) = (how, walk::root(place)) {
+            out.insert(slot);
         }
     });
-    walk::deep_exprs(body, &mut |e| match &e.kind {
-        ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
-            for arg in args {
-                if let Arg::Mut(place) = arg {
-                    if let (false, slot) = walk::root(place) {
-                        out.insert(slot);
-                    }
-                }
-            }
-        }
-        ExprKind::Closure(cid) => {
-            let caps = program.closures[*cid].captures.iter();
-            out.extend(caps.filter(|c| !c.is_global && c.by_ref).map(|c| c.outer));
-        }
-        _ => {}
+    each_closure(body, &mut |cid| {
+        let caps = program.closures[cid].captures.iter();
+        out.extend(caps.filter(|c| !c.is_global && c.by_ref).map(|c| c.outer));
     });
     out
 }
 
 /// Every read of `slot` in `body` is the callee of a call.
 fn only_called(body: &Block, slot: Slot) -> bool {
-    let (mut reads, mut calls) = (0, 0);
-    walk::deep_exprs(body, &mut |e| match &e.kind {
-        ExprKind::Local(s) if *s == slot => reads += 1,
-        ExprKind::CallExpr(callee, _) if callee.kind == ExprKind::Local(slot) => calls += 1,
-        _ => {}
+    let reads = read_counts(body, slot + 1)[slot];
+    let mut calls = 0;
+    each_value_call(body, &mut |callee, _| {
+        calls += usize::from(callee.kind == ExprKind::Local(slot));
     });
     let mut written = false;
-    walk::deep_stmts(body, &mut |s| {
-        if let Stmt::Assign(place, ..) = s {
-            written |= matches!(place.kind, PlaceKind::Local(s) if s == slot)
-                || walk::root(place) == (false, slot);
-        }
+    each_write(body, &mut |how, place| {
+        written |= matches!(how, Write::Store) && walk::root(place) == (false, slot);
     });
     reads == calls && !written
 }
@@ -208,13 +185,11 @@ fn only_called(body: &Block, slot: Slot) -> bool {
 /// A closure made in `body` captures `slot`.
 fn nested_capture(program: &Program, body: &Block, slot: Slot) -> bool {
     let mut found = false;
-    walk::deep_exprs(body, &mut |e: &Expr| {
-        if let ExprKind::Closure(cid) = e.kind {
-            found |= program.closures[cid]
-                .captures
-                .iter()
-                .any(|c| !c.is_global && c.outer == slot);
-        }
+    each_closure(body, &mut |cid| {
+        found |= program.closures[cid]
+            .captures
+            .iter()
+            .any(|c| !c.is_global && c.outer == slot);
     });
     found
 }

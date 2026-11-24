@@ -61,7 +61,13 @@ pub(crate) const PASSES: &[Pass] = &[
     pass(
         "known-fn-capture",
         "capfn.rs",
-        Unasked,
+        Uses(&[
+            "each_closure",
+            "each_put",
+            "each_write",
+            "each_value_call",
+            "read_counts",
+        ]),
         "a_closure_capturing_a_known_fn_param_calls_it_directly",
     ),
     pass(
