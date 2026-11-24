@@ -9608,6 +9608,14 @@
    "n": 16384,
    "ok": true
   },
+  "bench/scaling/marks.cp::marks.Arena.free": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.Arena.free",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
   "bench/scaling/marks.cp::marks.Arena.get": {
    "cost": "1",
    "documented": 1.0,
@@ -9628,7 +9636,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.Arena.len",
-   "measured": 0.97,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -9636,7 +9644,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.Arena.new",
-   "measured": 1.0,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -9652,7 +9660,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.Interner.new",
-   "measured": 0.96,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -9660,7 +9668,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.MarkMap.clear",
-   "measured": 0.98,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -9668,7 +9676,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.MarkMap.contains",
-   "measured": 0.93,
+   "measured": 0.96,
    "n": 16384,
    "ok": true
   },
@@ -9700,7 +9708,7 @@
    "cost": "\\lvert D \\rvert",
    "documented": 4.0,
    "fn": "marks.MarkMap.new",
-   "measured": 3.91,
+   "measured": 4.0,
    "n": 16384,
    "ok": true
   },
@@ -9708,7 +9716,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.MarkMap.remove",
-   "measured": 1.01,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -9716,7 +9724,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.MarkMap.set",
-   "measured": 1.05,
+   "measured": 1.08,
    "n": 16384,
    "ok": true
   },
@@ -9724,7 +9732,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.Marks.add",
-   "measured": 1.06,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -9748,7 +9756,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.Marks.is_empty",
-   "measured": 1.02,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -9764,7 +9772,7 @@
    "cost": "\\lvert D \\rvert",
    "documented": 4.0,
    "fn": "marks.Marks.new",
-   "measured": 4.05,
+   "measured": 4.01,
    "n": 16384,
    "ok": true
   },
@@ -9772,7 +9780,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.Marks.remove",
-   "measured": 0.92,
+   "measured": 0.91,
    "n": 16384,
    "ok": true
   },
@@ -9780,7 +9788,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.SparseSet.add",
-   "measured": 1.08,
+   "measured": 1.07,
    "n": 16384,
    "ok": true
   },
@@ -9796,7 +9804,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.SparseSet.contains",
-   "measured": 0.95,
+   "measured": 0.97,
    "n": 16384,
    "ok": true
   },
@@ -9804,7 +9812,7 @@
    "cost": "\\mathit{len}",
    "documented": 4.0,
    "fn": "marks.SparseSet.each",
-   "measured": 4.09,
+   "measured": 4.02,
    "n": 16384,
    "ok": true
   },
@@ -9820,7 +9828,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.SparseSet.len",
-   "measured": 0.98,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -9828,7 +9836,7 @@
    "cost": "\\lvert D \\rvert",
    "documented": 4.0,
    "fn": "marks.SparseSet.new",
-   "measured": 3.99,
+   "measured": 3.98,
    "n": 16384,
    "ok": true
   },
@@ -9836,7 +9844,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.SparseSet.remove",
-   "measured": 0.93,
+   "measured": 0.94,
    "n": 16384,
    "ok": true
   },

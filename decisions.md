@@ -9065,4 +9065,8 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Why.** Making `xs.fold(op)` the only fold routed `max` and `min` through `Monoid.of`, which reads `T.MIN`/`T.MAX`; `Char` and `Bool` had none, so `"abc".fold(max)` broke. Giving them ends keeps one fold with one identity rule instead of a per-type fallback.
 - **Reverse.** Drop the `Char`/`Bool` arm in `cpl-ir` `lower/call/field.rs` and the two table notes in spec/core/02-values-types.md.
 
-## 582. (reserved, content)
+## 582. `Arena<T>.free` hands a slot back, and the next `alloc` reuses it (stdlib, 2026-11-24)
+
+- **Call.** `std.marks.Arena<T>` gets `free(id)`: the slot goes on a free list and the next `alloc` reuses the last-freed slot first, so a pool holds one slot per node live at its peak. `len`, `is_empty` and `items` count and walk live slots only. Freeing a handle the arena never issued, or one already freed, is an `assert`. A handle used after its slot is reused reads the new node, as any `Id` into a list would; a structure that needs stale handles to trap keeps a stamp in its node, as `MeldHeaps` does (decision 514). A pool that never frees pays one empty list per arena and nothing per node.
+- **Why.** A structure whose values share nodes (two heaps melded, two bags joined, a treap split in two) needs one pool many handles point into, and a pool that drops nodes needs to reuse them or its memory grows with the operation count instead of the live size (iati21a12's 2.0x RSS before 6b09bbfed). Putting reuse in the one std pool gives MeldHeaps, SortedBag and LazyTreap one mechanism instead of a private free list each.
+- **Reverse.** Drop `free`, `_free` and `_dead`; `len` goes back to the issued count.

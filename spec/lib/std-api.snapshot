@@ -1070,6 +1070,7 @@ std/lazy.cp: SeqFold.total(self) -> T
 std/lazy.cp: flip_action<T, M>(m: M) -> Action<Flip<T>, Bool>
 std/marks.cp: Arena.alloc(mut self, x: T) -> Id<T>
 std/marks.cp: Arena.clear(mut self)
+std/marks.cp: Arena.free(mut self, id: Id<T>)
 std/marks.cp: Arena.get(self, id: Id<T>) -> T
 std/marks.cp: Arena.is_empty(self) -> Bool
 std/marks.cp: Arena.items(self) -> yields (Id<T>, T)
@@ -1511,6 +1512,7 @@ std/segtree.cp: MergeSortTree.new(a: [D]T) -> MergeSortTree<D, T>
 std/segtree.cp: MergeTrees.get(self, t: MergeTree<D>, x: D) -> Z
 std/segtree.cp: MergeTrees.merge(mut self, a: MergeTree<D>, b: MergeTree<D>, leaf: (Z, Z, Z, Z) -> Z, pre_a: Z = Z.zero, pre_b: Z = Z.zero) -> MergeTree<D>
 std/segtree.cp: MergeTrees.new() -> MergeTrees<D, Z>
+std/segtree.cp: MergeTrees.reserve(mut self, sets: Int)
 std/segtree.cp: MergeTrees.scale(mut self, t: MergeTree<D>, k: Z)
 std/segtree.cp: MergeTrees.set(mut self, mut t: MergeTree<D>, x: D, v: Z)
 std/segtree.cp: MergeTrees.sum(self, t: MergeTree<D>, r: Range<D>) -> Z
