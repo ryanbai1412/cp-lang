@@ -6,7 +6,15 @@ impl<'a> Lowerer<'a> {
     /// Registers what `stmt`, a statement of module `m` at `offset`, declares.
     pub(super) fn collect_item(&mut self, m: ModId, offset: u32, stmt: &'a ast::Stmt) {
         match &stmt.kind {
-            ast::StmtKind::Struct(decl) if decl.intrinsic.is_some() => {}
+            ast::StmtKind::Struct(decl) if decl.intrinsic.is_some() => {
+                let key = decl.generics.first().map(|g| &g.text);
+                let bound = decl.bounds.iter().find(|b| Some(&b.name.text) == key);
+                if let Some(ast::TypeKind::Named { name, .. }) =
+                    bound.and_then(|b| b.traits.first()).map(|t| &t.kind)
+                {
+                    self.store_keys.push(name.text.clone());
+                }
+            }
             ast::StmtKind::Struct(decl) => {
                 if !decl.generics.is_empty() {
                     let gid = self.gen_structs.len();
