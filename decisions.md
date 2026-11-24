@@ -8980,3 +8980,5 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Call.** `std.math` adds `Exp(v, m)`, an exponent kept as `e` below `m` and `e % m + m` past it, made by `Exp.of(e, m)`; `pow_exp(a, x, m)` raises `a` by an exponent kept for `phi(m)` and returns one kept for `m`; `pow_tower(xs, m)` is `xs[0] ** xs[1] ** ... mod m`. Positions and cuts get `v.shift_saturating(k)`, `v.next(k)` that stops at the domain's ends instead of giving `None`.
 - **Why.** Towers mod `m` (etsr23r4p2, a^b^c problems) were hand-written totient chains with a reached-the-threshold flag beside each value. `pow_exp` sits beside `pow_mod` with the same argument order and only the exponent's type changes; `shift_saturating` is the clamped form of a step and pairs with the range-valued `shift`.
 - **Reverse.** Fold `Exp` into an `Int` exponent with a `phi:` argument on `pow_mod`, or rename `shift_saturating` to a `next(k, saturate: true)` option.
+
+## 564. (reserved, perf)
