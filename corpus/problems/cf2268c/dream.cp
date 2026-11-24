@@ -7,7 +7,7 @@
 // maximum is the largest gap maximum between them, so folding the class's
 // gaps from the smallest maximum up (a Cartesian tree of the gaps) meets
 // every pair exactly once, at the gap that is its maximum.
-// copies: 3
+// copies: 1
 use std.prefix.{prefix_fold}
 @!multitest
 domain I = read(1..=2e5)
