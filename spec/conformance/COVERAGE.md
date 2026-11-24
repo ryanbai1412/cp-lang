@@ -7,14 +7,14 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3832 (3739 passing). Rules: 618.
+Cases: 3833 (3740 passing). Rules: 618.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 57 rules, 191 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 53 rules, 164 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 25 rules, 120 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 73 rules, 201 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 73 rules, 202 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 56 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 82 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 50 rules, 257 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -288,7 +288,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.8.2 [4+ 3-]: Position arithmetic gives an `Int`; back into the domain is explicit.
 - R04.8.3 [2+ 1-]: `r.first_true(ok)`/`r.last_true(ok)` return `?` the element; `r.bsearch(ok)` returns the f...
 - R04.8.4 [3+ 2-]: Empty domains are valid; `V.first`/`V.last` are `?V` (no `NonEmpty` bound).
-- R04.8.5 [2+ 1-]: One generic `Range<D>`; elements are the kind of the ends, so `a..=b` on cuts is cuts. The...
+- R04.8.5 [3+ 1-]: One generic `Range<D>`; elements are the kind of the ends, so `a..=b` on cuts is cuts. The...
 - R04.8.6 [4+ 1-]: `..i`, `..=i`, `i..` are open-ended ranges over the end's domain; bare `..` only inside `[...
 - R04.8.7 [2+ 0-]: `r.mid` is the middle cut, always present; `r.halve()` is `?(r.l..r.mid, r.mid..r.r)`, `No...
 - R04.8.8 [2+ 1-]: Integer literals convert to positions and cuts of integer domains.
