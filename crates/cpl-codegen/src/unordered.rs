@@ -266,7 +266,25 @@ pub(crate) fn find(program: &Program) -> (Vec<Ty>, Vec<Ty>) {
         ordered_sets,
         ..
     } = found;
-    maps.retain(|k| !ordered_maps.contains(k));
-    sets.retain(|k| !ordered_sets.contains(k));
+    maps.retain(|k| !ordered_maps.contains(k) && hashable(program, k, &mut Vec::new()));
+    sets.retain(|k| !ordered_sets.contains(k) && hashable(program, k, &mut Vec::new()));
     (maps, sets)
+}
+
+/// Whether a key has `Hash` (R08.1.6): an `F64` inside has only `Ord`, so
+/// its table stays a tree.
+fn hashable(program: &Program, ty: &Ty, seen: &mut Vec<usize>) -> bool {
+    match ty {
+        Ty::Float => false,
+        Ty::Opt(inner) | Ty::List(inner) => hashable(program, inner, seen),
+        Ty::Tuple(items) => items.iter().all(|t| hashable(program, t, seen)),
+        Ty::Struct(id) if !seen.contains(id) => {
+            seen.push(*id);
+            let fields = &program.structs[*id].fields;
+            fields
+                .iter()
+                .all(|(_, field)| hashable(program, field, seen))
+        }
+        _ => true,
+    }
 }
