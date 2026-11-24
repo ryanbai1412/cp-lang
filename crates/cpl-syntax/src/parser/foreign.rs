@@ -318,13 +318,15 @@ impl<'a> Parser<'a> {
         );
     }
 
-    /// Whether the last token is a binary operator: `a + * b` is an
-    /// operator typed twice, not a dereference.
+    /// Whether the last token is a binary operator, or a character the
+    /// lexer rejected: `a + * b` is an operator typed twice, and the `*` in
+    /// `a + λ * b` multiplies; neither is a dereference.
     pub(super) fn after_operator(&self) -> bool {
         self.pos.checked_sub(1).is_some_and(|i| {
             matches!(
                 self.tokens[i].kind,
-                T::Plus
+                T::Error
+                    | T::Plus
                     | T::Minus
                     | T::Star
                     | T::StarStar

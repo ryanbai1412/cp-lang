@@ -62,6 +62,22 @@ fn misused(command: &str, args: &[&str], message: &str) {
     assert!(!stderr.contains("commands:"), "{stderr}");
 }
 
+/// `f(c) + λ * c`: the rejected `λ` stood for an operand, so the `*`
+/// multiplies; `cpl migrate` must not drop it as a C dereference.
+#[test]
+fn migrate_keeps_a_product_after_a_rejected_character() {
+    let dir = scratch("migrate-lambda");
+    let src = "let c = 3\nlet x = c + λ * c\nprint(x)\n";
+    std::fs::write(dir.join("x.cp"), src).unwrap();
+    let out = cpl(&dir, &["migrate", "x.cp"]);
+    assert_eq!(
+        std::fs::read_to_string(dir.join("x.cp")).unwrap(),
+        src,
+        "{}",
+        text(&out.stdout)
+    );
+}
+
 /// `cpl migrate` over a folder: rewrites removed spellings with a diff,
 /// leaves those without a rewrite to a hand edit, and reaches the brutes
 /// and generators in `a.tests/`.
