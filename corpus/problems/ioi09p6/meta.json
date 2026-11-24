@@ -30,5 +30,10 @@
  "difficulty": "hard",
  "dream": "draft",
  "spec": "draft",
- "notes": "Grid graphs are written as moves (p.adj4.filter); bfs gained enter: (v, d) for time-dependent safety; std/grid.cp added."
+ "notes": "Grid graphs are written as moves (p.adj4.filter); bfs gained enter: (v, d) for time-dependent safety; std/grid.cp added.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 15,
+  "sha": "e627ca444214e0e6195f06923e5123edc92cba6b"
+ }
 }
