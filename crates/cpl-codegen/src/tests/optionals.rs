@@ -197,3 +197,18 @@ fn an_optional_field_of_a_32_bit_range_is_an_opt_i32() {
     // Past `i32::MAX` the field keeps all 64 bits.
     assert_eq!(field("?(0..=3_000_000_000)"), "cpl::OptInt");
 }
+
+#[test]
+fn a_unit_optional_unwraps_as_its_flag() {
+    let out = cpp(concat!(
+        "fn each<R>(n: Int, f: Int -> R) -> List<R>:\n",
+        "    var res: List<?R> = [None for _ in 0..n]\n",
+        "    for i in 0..n: res[i] = Some(f(i))\n",
+        "    [x! for x in res]\n",
+        "var seen: List<Int> = []\n",
+        "let n: 1..=9 = read()\n",
+        "let done = each(n, i => seen.push(i))\n",
+        "print(done.len, seen)\n",
+    ));
+    assert!(!out.contains("cpl::have("), "{out}");
+}

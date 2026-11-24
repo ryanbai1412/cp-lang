@@ -235,6 +235,11 @@ pub(crate) fn struct_niche(program: &Program, id: usize) -> Option<&str> {
 }
 
 /// The C++ type of a value of type `ty`.
+/// `?()`: only presence is left, a `bool` (see `cty`).
+pub(crate) fn is_flag_opt(ty: &Ty) -> bool {
+    matches!(ty, Ty::Opt(inner) if **inner == Ty::Unit)
+}
+
 pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
     match ty {
         Ty::Unit | Ty::Error => "void".into(),
@@ -367,7 +372,9 @@ pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
 /// `std::vector<bool>` packs bits and hands out proxies, not references.
 pub(crate) fn elem_ty(program: &Program, niches: Niches, ty: &Ty) -> String {
     match ty {
+        // `std::vector<bool>` hands out proxies, not references.
         Ty::Bool => "char".into(),
+        flag if is_flag_opt(flag) => "char".into(),
         other => value_ty(program, niches, other),
     }
 }

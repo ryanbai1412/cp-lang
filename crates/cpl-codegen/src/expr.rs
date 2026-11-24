@@ -745,6 +745,15 @@ impl<'p> Emitter<'p> {
             ExprKind::IsSome(value) => Code::primary(self.has_value(value)),
             // The user's `!` is an assertion: on `none` it stops the
             // program, as it does in `cpl run`. After a test it is a plain read.
+            ExprKind::Unwrap(value, checked) if crate::names::is_flag_opt(&value.ty) => {
+                let code = self.expr(value);
+                let flag = code.at(COND);
+                Code::primary(if *checked {
+                    format!("({flag} ? cpl::Unit() : (cpl::fail(\"`!` on `None`: there is no value here\"), cpl::Unit()))")
+                } else {
+                    format!("((void){flag}, cpl::Unit())")
+                })
+            }
             ExprKind::Unwrap(value, true) => {
                 self.need("have");
                 let code = self.expr(value);
