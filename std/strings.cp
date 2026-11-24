@@ -786,7 +786,7 @@ pub fn find_all_wildcard<S: Indexed, P: Indexed>(
 
 /// \(O(n)\) space, \(O(1)\) queries. Manacher palindrome radii. `odd[i]` is the number of palindromes centred on `s[i]`;
 /// `even[i]` is the number centred between `s[i - 1]` and `s[i]`.
-pub struct Palindromes(pub odd: List<Int>, even: List<Int>):
+pub struct Palindromes(pub odd: List<Int>, even: List<Int>, first: Int = 0):
     /// The length of the sequence the radii were computed for.
     ///
     /// cost: \(O(1)\)
@@ -801,15 +801,18 @@ pub struct Palindromes(pub odd: List<Int>, even: List<Int>):
     /// example: `manacher("").is_empty == true`
     @get pub fn is_empty(self) -> Bool = odd.is_empty
 
-    /// The length of the longest odd-length palindrome centred on position `i`, `2 * odd[i] - 1`.
+    /// The length of the longest odd-length palindrome centred on the element at key `i` of the
+    /// sequence the radii were computed for, so a slice is asked in its own keys (R04b.5.6).
     ///
     /// cost: \(O(1)\)
-    /// traps: when `i` is outside `0..self.len`
+    /// traps: when `i` is not one of the sequence's keys
     /// example: `manacher("abacaba").longest_at(3) == 7`
-    pub fn longest_at(self, i: Int) -> Int:
+    /// example: `manacher("xaba"[1..]).longest_at(2) == 3`
+    pub fn longest_at<K>(self, i: K) -> Int:
         with lint(unproven_list_index: allow)
-        assert 0 <= i < odd.len, "`longest_at(i)` needs `0 <= i < len`"
-        2 * odd[i] - 1
+        let j = i.ord - first
+        assert 0 <= j < odd.len, "`longest_at(i)` needs `i` to be one of the sequence's keys"
+        2 * odd[j] - 1
 
     /// The length of the longest even-length palindrome centred on the cut `i` (between
     /// positions `i - 1` and `i`), `2 * even[i]`; `0` at the cuts `0` and `self.len`.
@@ -897,7 +900,7 @@ pub fn manacher<S: Indexed>(s: S) -> Palindromes:
             while i - k - 1 >= 0 and i + k < n and s.nth(i - k - 1) == s.nth(i + k): k += 1
             even[i] = k
             if i + k - 1 > r: (l, r) = (i - k, i + k - 1)
-    Palindromes(odd, even)
+    Palindromes(odd, even, if n == 0: 0 else: s.keys.first!.ord)
 
 fn induced_sort(
     vec: List<Int>,
