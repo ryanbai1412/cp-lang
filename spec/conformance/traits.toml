@@ -35,18 +35,8 @@ methods = ["into"]
 methods = ["ord", "nth"]
 
 
-# Core traits (spec/core/12-powers.md W4) and the core types that claim them
+# The core types that claim the std/seq.cp sequence traits (spec/core/12-powers.md W4)
 # (spec/core/07-sequences.md, capabilities table). Array is `[D]T`.
-[trait.Seq]
-methods = ["iter"]
-[trait.Keyed]
-methods = ["items"]
-[trait.Sized]
-methods = ["len"]
-[trait.Bidir]
-methods = ["iter_rev"]
-[trait.Indexed]
-methods = ["at", "keys"]
 [trait.IndexedMut]
 methods = ["at"]
 [trait.Contains]

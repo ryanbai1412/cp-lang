@@ -8813,7 +8813,11 @@ Reserved for call 5, which landed as decision 519.
 - **Why.** std-api/R11: math on two values is a free fn, like `gcd` and `max`; two spellings double what a reader must recognise.
 - **Reverse.** Restore the two methods and drop the R11 rule from the lint.
 
-## 523. (reserved, content)
+## 523. The sequence traits are declared in std before the checker reads them (stdlib, 2026-11-24)
+
+- **Call.** `std/seq.cp` declares `Seq<T>` (with `type Taken = Gen<T>`), `Keyed<D, T>`, `Sized`, `Bidir<T>` and `Indexed<D, T>` (with `type Taken = Slice<Self>`) as decision 509 asks. `std_shadowed` and `prelude_privilege` each go up by 5, and `consumer_rederived` by 5 (the LSP completion's type list), because the checker still answers these five names itself. They fall back when compiler (d) switches the checker to read the declarations. `Gen<T>` is declared in the same change as that switch: a std `struct Gen<T>()` today hides the built-in generator methods (`take`, `argmax`, `sort`).
+- **Why.** A shared interface lands before its consumers. The counters now show shadowing that was there but hidden: the built-ins existed with no std declaration to shadow.
+- **Reverse.** Delete the five traits; the counters go back down.
 
 ## 524. (reserved, unknown)
 

@@ -1252,6 +1252,38 @@ pub fn remove<T>(mut self: List<T>, i: Int) -> T:
 
 // --- Lazy views, slicing, and stream / combinator generators (W4, W6) ---
 
+/// A sequence: `for x in s` walks it in order, and each `for` runs it from the start
+/// (R07.3.1). Generators, adapters, collections and ranges implement it (decision 509).
+pub trait Seq<T>:
+    /// The view `take`/`drop` give: a lazy walk here, a slice for an `Indexed` sequence.
+    type Taken = Gen<T>
+    /// Walks the sequence from its start.
+    fn iter(self) -> yields T
+
+/// A `Seq` whose elements carry keys: `s.items` walks `(key, x)`, and keys survive `filter`
+/// (R07.3.2).
+pub trait Keyed<D, T>: Seq<T>:
+    /// Walks `(key, x)` in walk order.
+    fn items(self) -> yields (D, T)
+
+/// A sequence with an \(O(1)\) length (R07.3.3).
+pub trait Sized:
+    /// The element count.
+    @get fn len(self) -> Int
+
+/// A `Seq` that can also walk from its end, which is what `.rev` needs.
+pub trait Bidir<T>: Seq<T>:
+    /// Walks the sequence from its end.
+    fn iter_rev(self) -> yields T
+
+/// A keyed, sized, two-way sequence read in \(O(1)\) at any key; `take`/`drop` give a slice.
+pub trait Indexed<D, T>: Keyed<D, T> + Sized + Bidir<T>:
+    type Taken = Slice<Self>
+    /// The element at key `i`.
+    fn at(self, i: D) -> T
+    /// The keys, in walk order.
+    @get fn keys(self) -> Range<D>
+
 /// \(O(1)\) to make. The view `s.filter(p)`: walks `s`, skipping elements that fail `p`, with
 /// `s`'s keys. A lent value (R07.1.5).
 pub struct Filtered<S>():

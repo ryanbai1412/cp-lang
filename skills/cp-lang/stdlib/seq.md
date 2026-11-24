@@ -29,6 +29,26 @@ The distinct values of a coordinate compression, in increasing order, indexed by
 - `fn last_le(self, val: T) -> ?D` — \(O(\log n)\); The last index whose value is `<= val`, or `None`.
 - `fn last_lt(self, val: T) -> ?D` — \(O(\log n)\); The last index whose value is `< val`, or `None`.
 
+## `trait Seq<T>`
+
+A sequence: `for x in s` walks it in order, and each `for` runs it from the start (R07.3.1).
+
+## `trait Keyed<D, T>: Seq<T>`
+
+A `Seq` whose elements carry keys: `s.items` walks `(key, x)`, and keys survive `filter` (R07.3.2).
+
+## `trait Sized`
+
+A sequence with an \(O(1)\) length (R07.3.3).
+
+## `trait Bidir<T>: Seq<T>`
+
+A `Seq` that can also walk from its end, which is what `.rev` needs.
+
+## `trait Indexed<D, T>: Keyed<D, T> + Sized + Bidir<T>`
+
+A keyed, sized, two-way sequence read in \(O(1)\) at any key; `take`/`drop` give a slice.
+
 ## `struct Filtered<S>()`
 
 \(O(1)\) to make.
