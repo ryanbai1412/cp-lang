@@ -121,11 +121,12 @@ pub const subset = Disjoint()
 /// for `max`, slopes merged; `Right`: only `b`, `monotone_minima`; `Neither`: the \(O(n m)\) loop by
 /// name). Leaving `shape:` out there, or giving it with `Semiring(+, *)`, is a compile error.
 ///
-/// cost: \(O(n \log n)\) bitwise and for the product over a [`FastProduct`] type (NTT for `Mod<P>` when `P - 1` has the power of two; three NTT primes for `Int` while `max |a| * max |b| * min(n, m)` is under 1e25), the cyclic form included; \(O(n + m)\) `Both`; \(O(n m)\) today for any other product, `subset`, `gcd`/`lcm`, `Right`, `Neither` and any `IndexOp` (the transforms are planned)
+/// cost: \(O(n \log n)\) bitwise and for the product over a [`FastProduct`] type (NTT for `Mod<P>` when `P - 1` has the power of two; three NTT primes and Garner's CRT for any other `Mod<P>` while `(P - 1)^2 * min(n, m)` is under 7.8e25, and for `Int` while `max |a| * max |b| * min(n, m)` is under 1e25; a complex FFT for `F64`), the cyclic form included; \(O(n + m)\) `Both`; \(O(n m)\) today for any other product, `subset`, `gcd`/`lcm`, `Right`, `Neither` and any `IndexOp` (the transforms are planned)
 /// empty: `let e: List<Int> = []; convolve([1, 2], e) == [] and convolve(e, [1, 2]) == []`
 /// order: by output index `0..len`; a new `List`, keyed from 0
-/// traps: when `cyclic: true` and `a.len != b.len`; when a bitwise or `subset` input is not a power-of-two length equal to the other's; when an `Int` output overflows
+/// traps: when `cyclic: true` and `a.len != b.len`; when a bitwise or `subset` input is not a power-of-two length equal to the other's; when an `Int` output overflows; never for `F64`, whose FFT outputs are each off from the exact sum by up to about `(sum of a[i]^2 + sum of b[j]^2) * log2(n) * 2^-52` (inputs up to 60 long take the exact loop)
 /// example: `convolve([1, 2], [3, 4]) == [3, 10, 8]`
+/// example: `convolve([0.5, 2.0], [4.0, 1.0]) == [2.0, 8.5, 2.0]`
 /// example: `convolve([1, 2, 3], [4, 5, 6], cyclic: true) == [31, 31, 28]`
 /// example: `convolve([1, 2], [3, 4], on: ^) == [11, 10]`
 /// example: `convolve([1, 2, 3, 4], [1, 1, 1, 1], on: subset) == [1, 3, 4, 10]`
@@ -212,7 +213,7 @@ impl FastProduct for Mod<P>:
                     for j in 0..nb: out[i + j] += ai * b[j]
             return Some(out)
         let need = bit_ceil(n_out)
-        if (P - 1) % need != 0: return None
+        if (P - 1) % need != 0: return crt_product(a, b)
         var fa = List.filled(need, Mod<P>(0))
         var fb = List.filled(need, Mod<P>(0))
         unchecked:
@@ -243,17 +244,13 @@ impl FastProduct for Int:
         let r2 = residues(Mod<NTT_P2>(0), a, b) ?? return None
         var r3: List<Mod<NTT_P3>> = []
         if three: r3 = residues(Mod<NTT_P3>(0), a, b) ?? return None
-        // Garner over p1 = 998_244_353, p2 = 167_772_161, p3 = 469_762_049: 47_450_712 is
-        // 1 / p1 mod p2, 115_990_628 is 1 / (p1 p2) mod p3, P12 is p1 p2
         var out = List.filled(na + nb - 1, 0)
         for k in 0..out.len:
-            let x1 = r1[k].v
-            let c = x1 + ((r2[k] - Mod<NTT_P2>(x1)) * Mod<NTT_P2>(47_450_712)).v * NTT_P1
+            let c = garner2(r1[k], r2[k])
             if not three:
                 out[k] = if c > P12 / 2: c - P12 else: c
                 continue
-            let x3 = ((r3[k] - Mod<NTT_P3>(c)) * Mod<NTT_P3>(115_990_628)).v
-            let w = I128(c) + I128(x3) * I128(P12)
+            let w = garner3(c, r3[k])
             out[k] = Int(if w * I128(2) > I128(P12) * I128(NTT_P3): w - I128(P12) * I128(NTT_P3) else: w)
         Some(out)
 
@@ -265,6 +262,92 @@ const NTT_P3 = 469_762_049
 // `a * b` modulo `P`, through `Mod<P>`'s NTT product; `None` when `P - 1` lacks the power of two.
 fn residues<P>(_: Mod<P>, a: List<Int>, b: List<Int>) -> ?List<Mod<P>> =
     Mod<P>.product([Mod<P>(x) for x in a], [Mod<P>(x) for x in b])
+
+// Garner over p1 = 998_244_353, p2 = 167_772_161, p3 = 469_762_049: 47_450_712 is 1 / p1 mod p2,
+// 115_990_628 is 1 / (p1 p2) mod p3, and P12 is p1 p2. `garner2` is the value mod p1 p2 and
+// `garner3` the value mod p1 p2 p3, each in `0..` its modulus.
+fn garner2(r1: Mod<NTT_P1>, r2: Mod<NTT_P2>) -> Int:
+    let x1 = Int(r1.v)
+    x1 + Int(((r2 - Mod<NTT_P2>(x1)) * Mod<NTT_P2>(47_450_712)).v) * NTT_P1
+
+fn garner3(c: Int, r3: Mod<NTT_P3>) -> I128 = I128(c) + I128(garner_digit(c, r3)) * I128(P12)
+
+fn garner_digit(c: Int, r3: Mod<NTT_P3>) -> Int = Int(((r3 - Mod<NTT_P3>(c)) * Mod<NTT_P3>(115_990_628)).v)
+
+// `a * b` for a `Mod<P>` whose `P - 1` lacks the power of two: the exact product of the residues,
+// modulo the three NTT primes, rebuilt by Garner and reduced mod `P`. `None` when a coefficient
+// could reach p1 p2 p3 (about 7.9e25), past which the residues no longer pin it down.
+fn crt_product<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> ?List<Mod<P>>:
+    let bound = I128(P - 1) * I128(P - 1) * I128(min(a.len, b.len))
+    if bound >= I128(P12) * I128(NTT_P3): return None
+    let xa = [Int(x.v) for x in a]
+    let xb = [Int(x.v) for x in b]
+    let r1 = residues(Mod<NTT_P1>(0), xa, xb) ?? return None
+    let r2 = residues(Mod<NTT_P2>(0), xa, xb) ?? return None
+    let r3 = residues(Mod<NTT_P3>(0), xa, xb) ?? return None
+    let p12 = Mod<P>(P12)
+    var out = List.filled(r1.len, Mod<P>(0))
+    unchecked:
+        for k in 0..out.len:
+            let c = garner2(r1[k], r2[k])
+            out[k] = Mod<P>(c) + Mod<P>(garner_digit(c, r3[k])) * p12
+    Some(out)
+
+impl FastProduct for F64:
+    /// The FFT product: `a + i b` goes through one complex transform, is squared and split back,
+    /// then one more transform, \(O(n \log n)\). `None` for `min(a.len, b.len) <= 60`, where
+    /// `convolve` runs its exact loop. Each output is off from the exact sum by at most about
+    /// `(sum of a[i]^2 + sum of b[j]^2) * log2(n) * 2^-52`, so integer inputs round back exactly
+    /// while that stays under `0.5`.
+    fn product(a: List<F64>, b: List<F64>) -> ?List<F64>:
+        let (na, nb) = (a.len, b.len)
+        if min(na, nb) <= 60: return None
+        let n_out = na + nb - 1
+        let n = bit_ceil(n_out)
+        var re = List.filled(n, 0.0)
+        var im = List.filled(n, 0.0)
+        unchecked:
+            for i in 0..na: re[i] = a[i]
+            for i in 0..nb: im[i] = b[i]
+        fft(mut re, mut im)
+        var ore = List.filled(n, 0.0)
+        var oim = List.filled(n, 0.0)
+        unchecked:
+            for i in 0..n:
+                let j = (n - i) & (n - 1)
+                let (xr, xi) = (re[i], im[i])
+                let (yr, yi) = (re[j], im[j])
+                // (in[j])^2 - conj((in[i])^2)
+                ore[i] = (yr * yr - yi * yi) - (xr * xr - xi * xi)
+                oim[i] = 2.0 * yr * yi + 2.0 * xr * xi
+        fft(mut ore, mut oim)
+        let scale = 4.0 * F64(n)
+        Some([oim[i] / scale for i in 0..n_out])
+
+// In-place forward complex FFT of `re + i im`, length a power of two; the roots of each level are
+// taken from `cos`/`sin` directly so their error doesn't build up across levels.
+fn fft(mut re: List<F64>, mut im: List<F64>):
+    let n = re.len
+    bit_reverse(mut re)
+    bit_reverse(mut im)
+    let pi = acos(-1.0)
+    var k = 1
+    while k < n:
+        let wr = [cos(pi * F64(j) / F64(k)) for j in 0..k]
+        let wi = [sin(pi * F64(j) / F64(k)) for j in 0..k]
+        unchecked:
+            var i = 0
+            while i < n:
+                for j in 0..k:
+                    let (xr, xi) = (re[i + j + k], im[i + j + k])
+                    let zr = wr[j] * xr - wi[j] * xi
+                    let zi = wr[j] * xi + wi[j] * xr
+                    re[i + j + k] = re[i + j] - zr
+                    im[i + j + k] = im[i + j] - zi
+                    re[i + j] += zr
+                    im[i + j] += zi
+                i += 2 * k
+        k *= 2
 
 /// `convolve` over another semiring: `out[i + j]` folds `over.mul(a[i], b[j])` with `over.add`.
 /// `shape: Both` merges slopes (both inputs convex for `min`, concave for `max`, `mul` is `+`).
