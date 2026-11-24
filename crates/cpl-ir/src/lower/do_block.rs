@@ -6,6 +6,28 @@
 use super::*;
 
 impl<'a> Lowerer<'a> {
+    /// `e` as an operand that runs again or not at all (a `while` test, the
+    /// right of `and`, `or` and `??`): what it needs first runs with it,
+    /// each time it is worked out, and not once ahead of the statement.
+    pub(super) fn worked_out_here(
+        &mut self,
+        span: Span,
+        lower: impl FnOnce(&mut Self) -> Expr,
+    ) -> Expr {
+        let outer = std::mem::take(&mut self.cx.pending);
+        let value = lower(self);
+        let needs = std::mem::replace(&mut self.cx.pending, outer);
+        if needs.is_empty() || value.ty == Ty::Error {
+            self.cx.pending.extend(needs);
+            return value;
+        }
+        let ty = value.ty.clone();
+        self.do_expr(Some(&ty), span, |_, out| {
+            out.extend(needs);
+            out.push(Stmt::Give(value));
+        })
+    }
+
     pub(super) fn do_expr(
         &mut self,
         hint: Option<&Ty>,

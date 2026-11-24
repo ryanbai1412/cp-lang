@@ -406,7 +406,7 @@ impl<'a> Lowerer<'a> {
     ) {
         match cond {
             ast::Cond::Expr(cond) => {
-                let cond = self.expect(cond, &Ty::Bool);
+                let cond = self.worked_out_here(cond.span, |lw| lw.expect(cond, &Ty::Bool));
                 let id = self.open_loop(None);
                 let else_flag = self.begin_loop_else(id, else_body, out);
                 let body = self.block(body, Tail::Discard);
