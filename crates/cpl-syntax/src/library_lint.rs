@@ -3,7 +3,9 @@
 //! fn's parameter names are the holes. The checker reports the declarations
 //! it cannot use (E0505); `cpl-lint` matches the rest.
 
-use crate::ast::{EnumDecl, ExprKind, Stmt, StmtKind, StrPiece, StructDecl};
+use crate::ast::{
+    BinOp, EnumDecl, Expr, ExprKind, FnBody, FnDecl, Stmt, StmtKind, StrPiece, StructDecl, TypeKind,
+};
 use crate::token::{Token, TokenKind};
 use crate::ParsedItem;
 use cpl_diag::{msgs, Diagnostic, Span};
@@ -22,6 +24,9 @@ pub struct LibraryLint {
     /// `when:`'s bounds: a hole and the least and greatest value the code
     /// it matched must be proven to take.
     pub when: Vec<Bound>,
+    /// Per parameter: the built-in scalar type it is written as, which the
+    /// code its hole matches must have.
+    pub types: Vec<Option<String>>,
     pub from: String,
     pub to: String,
     /// The decorator, in file positions.
@@ -237,7 +242,7 @@ fn declared_on(stmt: &Stmt, offset: u32) -> (Vec<LibraryLint>, Vec<Diagnostic>) 
         let calls = to_toks.windows(2).any(|w| {
             (w[0].0 == TokenKind::Ident && w[0].1 == f.name.text && w[1].0 == TokenKind::LParen)
                 || (w[0].0 == TokenKind::Dot && w[1].0 == TokenKind::Ident && w[1].1 == f.name.text)
-        });
+        }) || writes_body_ops(f, &to, &to_toks);
         if !calls {
             error(
                 &msgs::syntax::LINT_TO_NO_CALL,
@@ -253,6 +258,7 @@ fn declared_on(stmt: &Stmt, offset: u32) -> (Vec<LibraryLint>, Vec<Diagnostic>) 
             holes,
             params,
             when,
+            types: f.params.iter().map(scalar).collect(),
             from,
             to,
             decorator: span,
@@ -269,6 +275,47 @@ fn declared_on(stmt: &Stmt, offset: u32) -> (Vec<LibraryLint>, Vec<Diagnostic>) 
         }
     }
     (lints, errors)
+}
+
+/// The types a hole's parameter can be written as for its hole to match
+/// only code the checker gives that type (a range type is an `Int`).
+pub const SCALARS: &[&str] = &["Int", "I128", "U64", "F64", "Bool", "Char", "Str"];
+
+fn scalar(p: &crate::ast::Param) -> Option<String> {
+    match &p.ty.as_ref()?.kind {
+        TypeKind::Named { name, args } if args.is_empty() && SCALARS.contains(&&*name.text) => {
+            Some(name.text.clone())
+        }
+        _ => None,
+    }
+}
+
+/// Whether `to` calls nothing and writes only operators that `f`'s
+/// one-expression body writes: the lint teaches the operator `f` is
+/// defined by (`self % d` on `divmod`, whose body is `(self / d, self % d)`).
+fn writes_body_ops(f: &FnDecl, to: &str, to_toks: &[(TokenKind, String)]) -> bool {
+    struct Ops(Vec<BinOp>);
+    impl crate::visit::Visitor for Ops {
+        fn expr(&mut self, e: &Expr) {
+            if let ExprKind::Binary { op, .. } = e.kind {
+                self.0.push(op);
+            }
+        }
+    }
+    let FnBody::Expr(body) = &f.body else {
+        return false;
+    };
+    let calls = to_toks.windows(2).any(|w| {
+        w[1].0 == TokenKind::LParen && matches!(w[0].0, TokenKind::Ident | TokenKind::RParen)
+    });
+    let (mut have, mut used) = (Ops(Vec::new()), Ops(Vec::new()));
+    crate::visit::walk_expr(body, &mut have);
+    for (_, item) in &crate::parse_file(to).items {
+        for s in &item.stmts {
+            crate::visit::walk_stmt(s, &mut used);
+        }
+    }
+    !calls && !used.0.is_empty() && used.0.iter().all(|op| have.0.contains(op))
 }
 
 /// The errors for the `@lint`s of one module, given as its items and their
@@ -467,5 +514,16 @@ mod tests {
             errors(unused),
             ["`holes:` of `@lint(walk_by_hand)` names `n`, which `from` does not use"]
         );
+    }
+
+    #[test]
+    fn to_may_write_only_the_operators_of_the_fns_body() {
+        let op = "@lint(rem_guard, from: \"(x + d) % d\", to: \"x % d\")\npub fn rem(x: Int, d: Int) -> Int = x % d\n";
+        assert!(errors(op).is_empty(), "{:?}", errors(op));
+        let other = "@lint(rem_guard, from: \"(x + d) % d\", to: \"x / d\")\npub fn rem(x: Int, d: Int) -> Int = x % d\n";
+        let call = "@lint(rem_guard, from: \"(x + d) % d\", to: \"abs(x) % d\")\npub fn rem(x: Int, d: Int) -> Int = x % d\n";
+        for bad in [other, call] {
+            assert_eq!(errors(bad).len(), 1, "{bad}: {:?}", errors(bad));
+        }
     }
 }

@@ -283,6 +283,9 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
         }
     }
     let mut out = Vec::new();
+    // One fn's spellings of a lint share their sites: the first spelling
+    // that matches a site takes it.
+    let mut taken: HashMap<(&str, Span), Vec<Span>> = HashMap::new();
     for d in declared {
         let all = &d.from;
         let to = library_lint::tokens(&d.decl.to);
@@ -334,7 +337,18 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                 runs
             }
         };
-        let mut taken: Vec<Span> = Vec::new();
+        let taken = taken.entry((&d.decl.name, d.decl.item)).or_default();
+        // A hole whose parameter is written as a scalar type matches only
+        // code of that type, where the checker's types are at hand.
+        let typed = |h: usize, (a, b): (usize, usize)| {
+            let (Some(Some(want)), Some(facts)) = (d.decl.types.get(h), file.facts) else {
+                return true;
+            };
+            let at = Span::new(toks[a].span.start, toks[b - 1].span.end);
+            facts
+                .type_of(at)
+                .is_some_and(|t| t.widen().to_string() == *want)
+        };
         for site in sites {
             // Up to the last token: a block statement's span runs on to the
             // next line's indent, which the fix must keep.
@@ -358,7 +372,10 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                 at.and_then(|i| holes[i])
                     .is_some_and(|run| proven(file, &toks, &text, run, b))
             };
-            if !matched || !d.decl.when.iter().all(bounded) {
+            if !matched
+                || !d.decl.when.iter().all(bounded)
+                || !(holes.iter().enumerate()).all(|(h, run)| run.is_none_or(|r| typed(h, r)))
+            {
                 continue;
             }
             taken.push(span);

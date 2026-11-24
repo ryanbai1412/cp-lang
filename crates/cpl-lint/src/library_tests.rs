@@ -292,3 +292,23 @@ fn a_statement_hole_matches_a_block_and_the_fix_keeps_its_indentation() {
         assert!(found(&near).is_empty(), "{near}");
     }
 }
+
+/// `to` may write the operator the fn's body is (calling nothing), a hole
+/// whose parameter is written `Int` matches only an `Int`, and one fn's
+/// spellings share sites, the first taking it. Rule: R06.4.9.
+#[test]
+fn a_lint_writes_its_fns_operator_and_holes_keep_their_scalar_type() {
+    let decl = "@lint(rem_guard, from: \"(x % d + d) % d\", to: \"x % d\")\n@lint(rem_guard, from: \"(x + d) % d\", to: \"x % d\")\npub fn rem(x: Int, d: Int) -> Int = x % d\n";
+    let found = |body: &str| -> Vec<String> {
+        crate::lint(&format!("{decl}{body}"), &crate::Config::default())
+            .into_iter()
+            .filter(|d| d.code.0 == "rem_guard")
+            .map(|d| d.fixes[0].edits[0].1.clone())
+            .collect()
+    };
+    let ints =
+        "let n: 1..=9 = read()\nlet a: Int = read()\nprint((a - 1 + n) % n, (a % n + n) % n)\n";
+    assert_eq!(found(ints), ["(a - 1) % n", "a % n"]);
+    let floats = "let f: F64 = read()\nprint((f + 2.0) % 2.0)\n";
+    assert!(found(floats).is_empty(), "{:?}", found(floats));
+}
