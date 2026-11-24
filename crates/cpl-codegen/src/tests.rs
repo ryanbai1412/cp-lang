@@ -1455,8 +1455,8 @@ fn a_range_of_a_sorted_bag_passes_its_constant_bounds_to_one_call() {
         "print(b.range(2..).first ?? -1, b.range(..=5).last ?? -1, b.range(lo..6).len)\n",
     ));
     for call in [
-        "_range_first(b, cpl::OptInt(2), true, cpl::OptInt(), false)",
-        "_range_last(b, cpl::OptInt(), true, cpl::OptInt(5), true)",
+        "_range_first(b, cpl::OptInt(2), cpl::OptInt(), false)",
+        "_range_last(b, cpl::OptInt(), cpl::OptInt(5), true)",
     ] {
         assert!(out.contains(call), "no `{call}` in\n{out}");
     }

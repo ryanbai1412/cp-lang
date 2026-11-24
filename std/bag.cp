@@ -301,7 +301,7 @@ pub struct SortedBag<K>:
     /// example: `var b = SortedBag.of([1, 3, 3, 5, 7]); b.drain_range(3..6).collect() == [3, 3, 5] and b.to_list() == [1, 7]`
     pub fn drain_range(mut self, r: Range<K>) -> yields K:
         if r.is_empty: return
-        while let x = self.range_first(Some(r.l), true, Some(r.r), false):
+        while let x = self.range_first(Some(r.l), Some(r.r), false):
             let _ = self.remove(x)
             yield x
 
@@ -331,11 +331,8 @@ pub struct SortedBag<K>:
 
     fn rank_le(self, k: K) -> Int = self.below(x => not (k < x))
 
-    fn lo_ok(self, x: K, lo: ?K, lo_inc: Bool) -> Bool:
-        if let a = lo:
-            if lo_inc: not (x < a) else: a < x
-        else:
-            true
+    fn lo_ok(self, x: K, lo: ?K) -> Bool:
+        if let a = lo: not (x < a) else: true
 
     fn hi_ok(self, x: K, hi: ?K, hi_inc: Bool) -> Bool:
         if let b = hi:
@@ -354,41 +351,35 @@ pub struct SortedBag<K>:
     /// traps: never
     /// example: `SortedBag.of([1, 3, 3, 7]).range(2..=7).len == 3`
     pub fn range(self, r: Range<K>) -> lends SortedRange<K> =
-        SortedRange(self, Some(r.l), true, Some(r.r), false)
+        SortedRange(self, Some(r.l), Some(r.r), false)
 
-    fn range_first(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> ?K:
-        let s = if let a = lo: self.ge(a, lo_inc) else: self.edge(false)
+    fn range_first(self, lo: ?K, hi: ?K, hi_inc: Bool) -> ?K:
+        let s = if let a = lo: self.ge(a, true) else: self.edge(false)
         if s < 0: return None
         unchecked:
             let k = keys[s]
             return if self.hi_ok(k, hi, hi_inc): k else: None
 
-    fn range_last(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> ?K:
+    fn range_last(self, lo: ?K, hi: ?K, hi_inc: Bool) -> ?K:
         let s = if let b = hi: self.le(b, hi_inc) else: self.edge(true)
         if s < 0: return None
         unchecked:
             let k = keys[s]
-            return if self.lo_ok(k, lo, lo_inc): k else: None
+            return if self.lo_ok(k, lo): k else: None
 
-    fn range_len(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> Int:
+    fn range_len(self, lo: ?K, hi: ?K, hi_inc: Bool) -> Int:
         if let a = lo:
             if let b = hi:
-                return self.below_diff(
-                    x => if lo_inc: x < a else: not (a < x),
-                    x => if hi_inc: not (b < x) else: x < b,
-                )
+                return self.below_diff(x => x < a, x => if hi_inc: not (b < x) else: x < b)
         let cnt_hi = if let b = hi:
             if hi_inc: self.rank_le(b) else: self.rank(b)
         else:
             self.len
-        let cnt_lo = if let a = lo:
-            if lo_inc: self.rank(a) else: self.rank_le(a)
-        else:
-            0
+        let cnt_lo = if let a = lo: self.rank(a) else: 0
         cnt_hi - cnt_lo
 
-    fn range_each(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> yields K:
-        var s = if let a = lo: self.ge(a, lo_inc) else: self.edge(false)
+    fn range_each(self, lo: ?K, hi: ?K, hi_inc: Bool) -> yields K:
+        var s = if let a = lo: self.ge(a, true) else: self.edge(false)
         unchecked:
             while s >= 0:
                 let k = keys[s]
@@ -396,12 +387,12 @@ pub struct SortedBag<K>:
                 for _ in 0..ws[s]: yield k
                 s = self.step(s, false)
 
-    fn range_each_rev(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> yields K:
+    fn range_each_rev(self, lo: ?K, hi: ?K, hi_inc: Bool) -> yields K:
         var s = if let b = hi: self.le(b, hi_inc) else: self.edge(true)
         unchecked:
             while s >= 0:
                 let k = keys[s]
-                if not self.lo_ok(k, lo, lo_inc): break
+                if not self.lo_ok(k, lo): break
                 for _ in 0..ws[s]: yield k
                 s = self.step(s, true)
 
@@ -1333,35 +1324,17 @@ pub struct SortedSet<K>:
     /// example: `SortedSet.of([1, 3, 7]).range(..7).last == Some(3)`
     pub fn range(self, r: Range<K>) -> lends SortedRange<K> = bag.range(r)
 
-    fn range_first(
-        self,
-        lo: ?K,
-        lo_inc: Bool,
-        hi: ?K,
-        hi_inc: Bool,
-    ) -> ?K = bag.range_first(lo, lo_inc, hi, hi_inc)
+    fn range_first(self, lo: ?K, hi: ?K, hi_inc: Bool) -> ?K = bag.range_first(lo, hi, hi_inc)
 
-    fn range_last(
-        self,
-        lo: ?K,
-        lo_inc: Bool,
-        hi: ?K,
-        hi_inc: Bool,
-    ) -> ?K = bag.range_last(lo, lo_inc, hi, hi_inc)
+    fn range_last(self, lo: ?K, hi: ?K, hi_inc: Bool) -> ?K = bag.range_last(lo, hi, hi_inc)
 
-    fn range_len(
-        self,
-        lo: ?K,
-        lo_inc: Bool,
-        hi: ?K,
-        hi_inc: Bool,
-    ) -> Int = bag.range_len(lo, lo_inc, hi, hi_inc)
+    fn range_len(self, lo: ?K, hi: ?K, hi_inc: Bool) -> Int = bag.range_len(lo, hi, hi_inc)
 
-    fn range_each(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> yields K:
-        for k in bag.range_each(lo, lo_inc, hi, hi_inc): yield k
+    fn range_each(self, lo: ?K, hi: ?K, hi_inc: Bool) -> yields K:
+        for k in bag.range_each(lo, hi, hi_inc): yield k
 
-    fn range_each_rev(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> yields K:
-        for k in bag.range_each_rev(lo, lo_inc, hi, hi_inc): yield k
+    fn range_each_rev(self, lo: ?K, hi: ?K, hi_inc: Bool) -> yields K:
+        for k in bag.range_each_rev(lo, hi, hi_inc): yield k
 
     /// Visit every key in ascending order.
     ///
@@ -2809,7 +2782,6 @@ fn sorted_map_btree_set_remove_and_walk_against_a_table():
 pub struct SortedRange<K>:
     bag: SortedBag<K>
     lo: ?K
-    lo_inc: Bool
     hi: ?K
     hi_inc: Bool
 
@@ -2820,7 +2792,7 @@ pub struct SortedRange<K>:
     /// ties: `let b = SortedBag.of([1, 3, 3]); b.range(2..5).first == Some(3) and b.range(3..=3).first == Some(3) and b.range(..=1).first == Some(1) and b.range(..1).first == None`
     /// traps: never
     /// example: `SortedSet.of([1, 3, 7]).range(2..).first == Some(3)`
-    @get pub fn first(self) -> ?K = bag.range_first(lo, lo_inc, hi, hi_inc)
+    @get pub fn first(self) -> ?K = bag.range_first(lo, hi, hi_inc)
 
     /// The largest key in the range.
     ///
@@ -2829,7 +2801,7 @@ pub struct SortedRange<K>:
     /// ties: `let b = SortedBag.of([3, 3, 5]); b.range(2..5).last == Some(3) and b.range(3..4).last == Some(3) and b.range(5..).last == Some(5) and b.range(..=3).last == Some(3)`
     /// traps: never
     /// example: `SortedSet.of([1, 3, 7]).range(..=6).last == Some(3)`
-    @get pub fn last(self) -> ?K = bag.range_last(lo, lo_inc, hi, hi_inc)
+    @get pub fn last(self) -> ?K = bag.range_last(lo, hi, hi_inc)
 
     /// The number of keys in the range, counting copies.
     ///
@@ -2838,7 +2810,7 @@ pub struct SortedRange<K>:
     /// ties: `let b = SortedBag.of([3, 3, 5, 5]); b.range(3..=5).len == 4 and b.range(3..5).len == 2 and b.range(..=3).len == 2 and b.range(5..).len == 2 and b.range(..5).len == 2`
     /// traps: never
     /// example: `SortedBag.of([1, 3, 3, 7]).range(3..=3).len == 2`
-    @get pub fn len(self) -> Int = bag.range_len(lo, lo_inc, hi, hi_inc)
+    @get pub fn len(self) -> Int = bag.range_len(lo, hi, hi_inc)
 
     /// True when the range holds no key.
     ///
@@ -2855,7 +2827,7 @@ pub struct SortedRange<K>:
     /// order: ascending
     /// traps: never
     /// example: `SortedBag.of([1, 3, 3, 7]).range(2..).each().collect() == [3, 3, 7]`
-    pub fn each(self) -> yields K = bag.range_each(lo, lo_inc, hi, hi_inc)
+    pub fn each(self) -> yields K = bag.range_each(lo, hi, hi_inc)
 
     /// The keys in descending order, copies included.
     ///
@@ -2864,7 +2836,7 @@ pub struct SortedRange<K>:
     /// order: descending
     /// traps: never
     /// example: `SortedSet.of([1, 3, 7]).range(..7).rev.collect() == [3, 1]`
-    @get pub fn rev(self) -> yields K = bag.range_each_rev(lo, lo_inc, hi, hi_inc)
+    @get pub fn rev(self) -> yields K = bag.range_each_rev(lo, hi, hi_inc)
 
 /// `push(x)` adds one copy of `x` and `pop(x)` removes one.
 impl Track<K> for SortedBag<K>:
