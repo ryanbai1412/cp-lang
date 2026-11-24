@@ -1049,15 +1049,15 @@ pub struct MeldHeaps<T>:
         if h._root < 0: return Meld()
         let base = _nodes.len
         if from._adds.len > 0 and _adds.len == 0: _adds = [None for _ in 0..base]
-        var todo = [(h._root, -1, true)]
-        while let (s, up, left) = todo.pop():
+        var stack = [(h._root, -1, true)]
+        while let (s, up, left) = stack.pop():
             let n = from._nodes[s]
             let at = _nodes.len
             if up >= 0:
                 if left: _nodes[up].l = at
                 else: _nodes[up].r = at
-            if n.r >= 0: todo.push((n.r, at, false))
-            if n.l >= 0: todo.push((n.l, at, true))
+            if n.r >= 0: stack.push((n.r, at, false))
+            if n.l >= 0: stack.push((n.l, at, true))
             _nodes.push(n)
             if _adds.len > 0: _adds.push(if from._adds.len > 0: from._adds[s] else: None)
         self.seal(base, h._len)
