@@ -8,7 +8,7 @@ if sys.argv[1:] == ["--max"]:
 seed = int(sys.argv[1]) if len(sys.argv) > 1 else 0
 S = min(int(sys.argv[2]) if len(sys.argv) > 2 else 10 ** 5, 10 ** 5)
 r = random.Random(seed)
-n = S if S == 10 ** 5 else r.randint(1, S)
+n = S if S == 10 ** 5 else r.randint(1, max(1, S))
 kind = seed % 5
 if kind == 0: s = "U" * n + "I" * n
 elif kind == 1: s = "UI" * n

@@ -10,9 +10,7 @@
 // original: corpus/submissions/4051682.cpp
 // Bounds: a, b, c: 0..=1e8
 @!multitest
-let a: 0..=1e8 = read()
-let b: 0..=1e8 = read()
-let c: 0..=1e8 = read()
-let ok = (a + 2 * b + 3 * c) % 2 == 0 and (if c > 0: a >= c else: b % 2 == 0 or a >= 2)
-if ok: print("YES")
-else: print("NO")
+let (a, b, c): (0..=1e8, 0..=1e8, 0..=1e8) = read()
+let even = (a + 2 * b + 3 * c) % 2 == 0
+let levels = if c > 0: a >= c else: b % 2 == 0 or a >= 2
+print(yes(even and levels))
