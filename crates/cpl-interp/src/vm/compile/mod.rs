@@ -19,6 +19,7 @@ mod range_loop;
 mod seq_load;
 mod sort;
 mod stmt;
+mod traced_effects;
 mod traced_take;
 
 struct LoopTargets {
@@ -123,8 +124,9 @@ pub(super) struct Compiler<'p, 'f> {
     trace_points: Vec<TracePoint<'p>>,
     /// The `for` whose body is compiled next, whose variable each round reports.
     traced_loop_var: Option<(Slot, Span)>,
-    /// Whether a `take` compiled next reports its place, as it runs.
-    trace_takes: bool,
+    /// The write being compiled, which [`Self::reporting_write`] reports
+    /// once it has run.
+    reporting: Option<&'p Expr>,
     back_edges: Vec<BackEdge>,
     call_sites: Vec<CallSite<'p>>,
     keeps: Vec<(u32, Option<SlotLoc>, usize)>,
@@ -210,7 +212,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             steps: Vec::new(),
             trace_points: Vec::new(),
             traced_loop_var: None,
-            trace_takes: false,
+            reporting: None,
             back_edges: Vec::new(),
             call_sites: Vec::new(),
             keeps: Vec::new(),

@@ -9,6 +9,9 @@ use std::rc::Rc;
 
 impl<'p, 'f> Compiler<'p, 'f> {
     pub(super) fn compile_expr_v(&mut self, expr: &'p Expr) -> u16 {
+        if let Some(place) = self.reported_write(expr) {
+            return self.reporting_write(expr, place, |c| c.compile_expr_v(expr));
+        }
         let span = expr.span;
         if let Some((fn_id, args)) = self.traced_call(expr) {
             if ScalarKind::of_ty(&expr.ty, self.program).is_none() {
@@ -652,14 +655,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     if let SlotLoc::V(src) = self.slot_loc(slot) {
                         let dst = self.alloc_v();
                         self.emit(Op::TakeLocalV { dst, src }, span);
-                        self.note_take(place, span);
                         return dst;
                     }
                 }
                 if let Some(path) = self.compile_place_path(place) {
                     let dst = self.alloc_v();
                     self.emit(Op::TakePlaceV { dst, path }, span);
-                    self.note_take(place, span);
                     return dst;
                 }
                 self.emit_fallback_expr_v(expr)
@@ -754,7 +755,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     dst,
                     exits: Vec::new(),
                 });
-                self.compile_stmts(&block.stmts);
+                self.compile_do_stmts(&block.stmts);
                 let mut target = self.give_targets.pop().unwrap();
                 self.pinned_v = prev_pinned;
                 let end_pc = self.ops.len() as u32;

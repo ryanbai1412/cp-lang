@@ -1506,6 +1506,11 @@ pub(crate) enum TracePoint<'p> {
     Loop(Slot, Span),
     /// After the loop the variable keeps its last value, not one past the end.
     LoopEnd(Slot),
+    /// A sort of a global, which the next step shows.
+    Sorted,
+    /// A `let` without a value: the local holds its zero, shown from then
+    /// on, with no step of its own.
+    Declared(Slot),
     /// The back edge of a `while`: a loop that writes nothing still meets the time limit.
     Tick,
 }

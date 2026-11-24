@@ -22,10 +22,22 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         match chunk.trace_points[idx as usize] {
             TracePoint::LoopEnd(slot) => {
                 let held = &self.stack[self.base + slot];
-                if let (SlotLoc::I(r, _), Value::Int(_) | Value::Bool(_) | Value::Char(_)) =
-                    (chunk.slot_map[slot], held)
-                {
+                // A loop that never ran leaves the variable as it was.
+                if let (SlotLoc::I(r, _), false) = (
+                    chunk.slot_map[slot],
+                    matches!(held, Value::Unit | Value::Moved),
+                ) {
                     regs_i[r as usize] = ScalarKind::unbox_val(held);
+                }
+            }
+            TracePoint::Declared(slot) => {
+                if matches!(self.stack[self.base + slot], Value::Unit) {
+                    self.stack[self.base + slot] = Value::Moved;
+                }
+            }
+            TracePoint::Sorted => {
+                if let Some(tracer) = self.tracer.as_mut() {
+                    tracer.globals_may_change();
                 }
             }
             TracePoint::Cell(place, _) | TracePoint::Assign(place) if self.quiet_write(place) => {}
@@ -143,7 +155,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 self.trace_local(slot, span);
                 self.trace_assigned_local(slot, span);
             }
-            TracePoint::LoopEnd(_) | TracePoint::Tick => {}
+            TracePoint::LoopEnd(_)
+            | TracePoint::Tick
+            | TracePoint::Sorted
+            | TracePoint::Declared(_) => {}
         }
     }
 

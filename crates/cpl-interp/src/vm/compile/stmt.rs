@@ -179,15 +179,16 @@ impl<'p, 'f> Compiler<'p, 'f> {
             Stmt::Let(slot, Some(init))
                 if self.feed_acc != Some(*slot) && self.traced_quiet(init) =>
             {
-                self.compile_untraced_stmt(stmt);
+                self.compile_reporting_stmt(stmt, init);
                 if !self.fell_back(stmt) {
                     self.emit_trace(TracePoint::Let(*slot, init), init.span);
                 }
             }
-            Stmt::Let(slot, Some(init))
-                if self.feed_acc != Some(*slot) && self.writing_let(*slot, init) =>
-            {
-                self.compile_traced_writing_let(*slot, init);
+            Stmt::Let(slot, None) => {
+                self.compile_untraced_stmt(stmt);
+                if !self.fell_back(stmt) {
+                    self.emit_trace(TracePoint::Declared(*slot), stmt.span().unwrap_or_default());
+                }
             }
             // A trap ends the run: the tracer takes it from the failure.
             Stmt::Break(_) | Stmt::Continue(_) | Stmt::Return(None) | Stmt::Trap(..) => {
@@ -198,15 +199,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 return false
             }
             Stmt::DefDomainFromVal { val, .. } if self.traced_quiet(val) => return false,
-            Stmt::Assign(place, AssignOp::Set, value)
-                if quiet_place(place, cpl_ir::walk::root(place)) && self.traced_take(value) =>
-            {
-                self.compile_traced_take_assign(stmt, place);
-            }
             Stmt::Assign(place, _, value)
                 if quiet_place(place, cpl_ir::walk::root(place)) && self.traced_quiet(value) =>
             {
-                self.compile_untraced_stmt(stmt);
+                self.compile_reporting_stmt(stmt, value);
                 if !self.fell_back(stmt) {
                     let point = self.cell_point(place).unwrap_or(TracePoint::Assign(place));
                     self.emit_trace(point, place.span);
@@ -230,12 +226,14 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 let end = self.ops.len() as u32;
                 self.patch(j_end, end);
             }
-            Stmt::Assert { cond, .. } if quiet(cond) => return false,
-            Stmt::Return(Some(value)) | Stmt::Give(value) if self.traced_quiet(value) => {
+            Stmt::Assert { cond, message, .. }
+                if self.traced_quiet(cond)
+                    && message.as_ref().is_none_or(|m| self.traced_quiet(m)) =>
+            {
                 return false
             }
-            Stmt::Return(Some(value)) if self.returns_after_writes(value) => {
-                self.compile_traced_writing_return(value);
+            Stmt::Return(Some(value)) | Stmt::Give(value) if self.traced_quiet(value) => {
+                return false
             }
             Stmt::Expr(e) if self.traced_call(e).is_some() => {
                 let dst = self.compile_expr_v(e);
@@ -268,9 +266,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     ExprKind::Local(slot) => slot as u16 + 1,
                     _ => 0,
                 };
-                let fallbacks = self.fallback_exprs.len();
                 let src = self.compile_expr_v(arg);
-                self.trace_writes_of(arg, fallbacks);
                 let point = self.trace_points.len() as u32;
                 self.trace_points.push(TracePoint::Assign(place));
                 let at = self.emit(
@@ -295,44 +291,14 @@ impl<'p, 'f> Compiler<'p, 'f> {
             }
             Stmt::Expr(
                 e @ Expr {
-                    kind: ExprKind::Mutate(_, place, args),
+                    kind: ExprKind::Sort(place, ..),
                     ..
                 },
-            ) if quiet_place(place, cpl_ir::walk::root(place))
-                && !self.yields_into(place)
-                && args.iter().all(|a| self.traced_quiet(a)) =>
-            {
+            ) if self.traced_quiet(e) => {
                 self.compile_untraced_stmt(stmt);
-                let whole = self
-                    .fallback_exprs
-                    .last()
-                    .is_some_and(|f| std::ptr::eq(*f, e));
-                if !self.fell_back(stmt) && !whole {
-                    self.emit_trace(TracePoint::Mutated(place, e.span), e.span);
-                }
+                self.trace_sorted(stmt, place);
             }
-            Stmt::Let(
-                slot,
-                Some(
-                    init @ Expr {
-                        kind: ExprKind::Mutate(_, place, args),
-                        ..
-                    },
-                ),
-            ) if self.feed_acc != Some(*slot)
-                && quiet_place(place, cpl_ir::walk::root(place))
-                && !self.yields_into(place)
-                && args.iter().all(|a| self.traced_quiet(a)) =>
-            {
-                self.compile_untraced_stmt(stmt);
-                if !self.fell_back(stmt) {
-                    self.emit_trace(TracePoint::Mutated(place, init.span), init.span);
-                    self.emit_trace(TracePoint::Let(*slot, init), init.span);
-                }
-            }
-            // `print_values` tells the tracer what it printed, as in the tree-walker.
-            Stmt::Expr(e) if Self::quiet_print(e) => self.compile_untraced_stmt(stmt),
-            Stmt::Expr(e) if self.traced_quiet(e) => self.compile_untraced_stmt(stmt),
+            Stmt::Expr(e) if self.traced_quiet(e) => self.compile_reporting_stmt(stmt, e),
             _ => {
                 self.emit_fallback_stmt(stmt);
                 self.emit_escapes();
@@ -370,6 +336,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
             // Making a closure writes nothing: `MakeClosure` on the VM, or
             // the tree-walker for one that captures a local by reference.
             ExprKind::Closure(_) => true,
+            // Reported as each runs: a write by `reporting_write`, a sort
+            // by `trace_sorted`, a print by `print_values`.
+            ExprKind::Mutate(_, place, _) => {
+                quiet_place(place, cpl_ir::walk::root(place)) && !self.yields_into(place)
+            }
+            ExprKind::Print(..) => true,
             _ => quiet_node(e),
         };
         let mut children = ok;
@@ -473,15 +445,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
             dst_i
         } else {
             dst_v
-        }
-    }
-
-    fn quiet_print(e: &Expr) -> bool {
-        match &e.kind {
-            ExprKind::Print(args, end) => {
-                args.iter().all(|a| quiet(&a.value)) && end.as_deref().is_none_or(quiet)
-            }
-            _ => false,
         }
     }
 

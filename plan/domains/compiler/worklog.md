@@ -993,3 +993,15 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
 - An enum whose tags are all one letter reads its tag as a `Char` (lower/call/prelude.rs
   `tagged_read`), so `[Game]Outcome` reads `WLW` as well as `W L W`, in both backends
   (R10.2.3). Regression: programs/packed_letter_enum_read; cases/ergo/columns now runs.
+
+### VM-traced lane (2026-11-24): traced statements run on the VM
+
+- A traced chunk reports a write an expression does in place (`xs.pop()`, `take(x)`)
+  through one hook in `compile_expr_{v,i,opt_i}` (vm/compile/traced_effects.rs), right
+  after it runs, so `let`, `=`, `assert`, `print` and `while` holding one no longer walk;
+  the per-form `note_take`/`trace_takes` reports are gone.
+- `let x: T` with no value declares its local (`TracePoint::Declared`), as the
+  tree-walker's zero does; a `do` block in a loop's iterable no longer opens the loop's
+  round, which showed a never-run loop's variable.
+- 8 fallback kinds gone (`vm_fallbacks` 24 -> 16). Regression:
+  tests/programs/vm_traced_statements.cp with its saved trace.
