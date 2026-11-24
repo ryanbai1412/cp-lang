@@ -2123,11 +2123,39 @@ fn set_before_read(path: &((bool, usize), Vec<usize>), rest: &[Stmt]) -> bool {
                 return !touches(&value, path);
             }
         }
-        if touches(stmt, path) {
+        if touches(stmt, path) && !only_grows(stmt, path) {
             return false;
         }
     }
     false
+}
+
+/// Whether `stmt` only pushes onto the variable path `path`, from values
+/// that neither read it nor can trap (`for i in 0..2: s.ks.push(i)`): what
+/// it builds there is never seen when a store sets the path whole before
+/// anything reads it, so the old value may be taken first.
+fn only_grows(stmt: &Stmt, path: &((bool, usize), Vec<usize>)) -> bool {
+    match stmt {
+        Stmt::Expr(Expr {
+            kind: ExprKind::Mutate(cpl_ir::Mutation::Push, place, args),
+            ..
+        }) => {
+            place_path(place).as_ref() == Some(path)
+                && args.iter().all(|arg| {
+                    !touches(&Stmt::Expr(arg.clone()), path)
+                        && cpl_ir::effects::trap_free_with(arg, true, &|_| false)
+                })
+        }
+        Stmt::For(id, slot, iter, body) => {
+            let head = Stmt::For(*id, *slot, iter.clone(), Block { stmts: Vec::new() });
+            let mut free = true;
+            walk::stmt_exprs(&head, &mut |e| {
+                free &= !touches(&Stmt::Expr(e.clone()), path)
+            });
+            free && body.stmts.iter().all(|s| only_grows(s, path))
+        }
+        _ => false,
+    }
 }
 
 /// Whether nothing in `rest`, nor code it calls, reads or sets the

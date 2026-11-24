@@ -1161,6 +1161,22 @@ fn a_let_of_a_field_pushed_to_before_it_is_set_again_still_copies() {
 }
 
 #[test]
+fn a_let_of_a_field_only_pushed_to_before_it_is_set_whole_moves_out() {
+    let out = cpp(concat!(
+        "struct S:\n",
+        "    var ks: List<Int>\n",
+        "fn grow(mut s: S):\n",
+        "    let old = s.ks\n",
+        "    for i in 0..read<Int>(): s.ks.push(i)\n",
+        "    s.ks = [old.len]\n",
+        "    print(old, s.ks)\n",
+        "var s = S(ks: [1, 2])\n",
+        "grow(mut s)\n",
+    ));
+    assert!(out.contains("std::vector<ll> old = std::move(s"), "{out}");
+}
+
+#[test]
 fn a_match_payload_whose_scrutinee_is_set_next_moves_out() {
     let out = cpp(concat!(
         "enum Ev = Ask(s: Str, k: Int) | Stop\n",
