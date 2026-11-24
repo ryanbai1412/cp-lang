@@ -988,3 +988,22 @@ fn a_capture_passed_later_by_const_ref_is_lent_to_the_closure() {
     assert!(out.contains("std::array<ll, 4> p{};"), "{out}");
     assert!(!out.contains("p.assign("), "{out}");
 }
+
+#[test]
+fn a_place_a_lent_call_gives_is_copied_into_a_call_that_grows_its_root() {
+    let out = cpp(concat!(
+        "use std.marks.{Arena, Id}\n",
+        "struct Node(l: Id<Node>, r: Id<Node>)\n",
+        "var seg = Arena<Node>()\n",
+        "let leaf = seg.alloc(Node(Id(0), Id(0)))\n",
+        "fn grow(a: Id<Node>, d: Int) -> Id<Node>:\n",
+        "    if d == 0: return a\n",
+        "    seg.alloc(Node(grow(seg[a].l, d - 1), grow(seg[a].r, d - 1)))\n",
+        "print(yes(grow(leaf, 12) == leaf))\n",
+    ));
+    assert!(out.contains("_get(seg, a).l), cpl::isub(d, 1))"), "{out}");
+    assert!(
+        !out.contains("grow(Arena_"),
+        "the arena element is copied, not lent: {out}"
+    );
+}

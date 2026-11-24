@@ -35,7 +35,7 @@ impl<'p> Emitter<'p> {
         lent: &[(bool, usize)],
     ) -> String {
         self.need("lent");
-        let shared = crate::lend::given_root(value).is_some_and(|root| {
+        let shared = crate::lend::given_root(value, &self.lent_roots).is_some_and(|root| {
             lent.contains(&root) || (root.0 && self.uses.effects(id).writes.contains(&root.1))
         });
         match &value.kind {
@@ -148,7 +148,7 @@ impl<'p> Emitter<'p> {
                             texts.push(format!("std::move({})", code.text));
                             continue;
                         }
-                        let shared = match crate::lend::given_root(value) {
+                        let shared = match crate::lend::given_root(value, &this.lent_roots) {
                             Some(root) => {
                                 lent.contains(&root)
                                     || (root.0 && this.uses.effects(id).writes.contains(&root.1))

@@ -204,32 +204,40 @@ fn gives_own_locals(block: &cpl_ir::Block, ty: &Ty) -> Option<Vec<usize>> {
     (!out.is_empty() && all).then(|| out.into_iter().flatten().collect())
 }
 
-/// The variable `value` reads in place: a path, or a `Do` block that gives
-/// one (see [`gives_outer_place`]).
-pub(crate) fn given_root(value: &Expr) -> Option<(bool, usize)> {
+/// The variable `value` reads in place: a path, a `Do` block that gives
+/// one (see [`gives_outer_place`]), or what a fn in `lent_roots` lends
+/// from its argument (`seg[a].l` through `Arena.get`).
+pub(crate) fn given_root(
+    value: &Expr,
+    lent_roots: &BTreeMap<cpl_ir::FnId, usize>,
+) -> Option<(bool, usize)> {
     match &value.kind {
         ExprKind::Do(block) if gives_outer_place(block, &value.ty) => {
             let mut root = None;
             walk::deep_stmts(block, &mut |s| {
                 if let Stmt::Give(g) = s {
-                    root = root.or_else(|| given_root(g));
+                    root = root.or_else(|| given_root(g, lent_roots));
                 }
             });
             root
         }
-        ExprKind::Builtin(cpl_ir::Builtin::ListToArray, of) => given_root(of.first()?),
-        _ => storage_root(value),
+        ExprKind::Builtin(cpl_ir::Builtin::ListToArray, of) => given_root(of.first()?, lent_roots),
+        _ => storage_root(value, lent_roots),
     }
 }
 
 /// The variable whose storage a place lives in, whatever its indices
 /// compute: `self.keys[i * 2]` is in `self`.
-fn storage_root(e: &Expr) -> Option<(bool, usize)> {
+fn storage_root(e: &Expr, lent_roots: &BTreeMap<cpl_ir::FnId, usize>) -> Option<(bool, usize)> {
     match &e.kind {
         ExprKind::Field(base, _)
         | ExprKind::Index(base, _)
         | ExprKind::Unwrap(base, _)
-        | ExprKind::Payload(base, ..) => storage_root(base),
+        | ExprKind::Payload(base, ..) => storage_root(base, lent_roots),
+        ExprKind::Call(callee, args) => match lent_roots.get(callee).map(|&s| &args[s]) {
+            Some(cpl_ir::Arg::Value(arg)) => given_root(arg, lent_roots),
+            _ => None,
+        },
         _ => walk::path_root(e),
     }
 }
