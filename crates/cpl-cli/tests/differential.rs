@@ -558,9 +558,11 @@ impl<T> Op<T> for (T, T) -> T:
     fn fold2(self, a: T, b: T) -> ?T = Some(self(a, b))
 fn go<M: Op<Int>>(m: M) -> M.Fold = m.fold2(2, 3)
 let y: ?Int = go((a: Int, b: Int) => a * b)
-print(y ?? 0)
+let z: ?Int = go((a, b) => a - b)
+let w: ?Int = go(+)
+print(y ?? 0, z ?? 0, w ?? 0)
 ",
-            "6\n",
+            "6 -1 5\n",
         ),
     ];
 

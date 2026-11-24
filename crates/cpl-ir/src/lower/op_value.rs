@@ -194,3 +194,87 @@ impl Lowerer<'_> {
         }
     }
 }
+
+impl Lowerer<'_> {
+    /// Recognizes a bare operator expression (`+`, `*`, `^`, `|`, `&`, `max`, `min`, `gcd`, `lcm`)
+    /// or a local variable bound to a `BareOp` generic parameter.
+    pub(super) fn detect_bare_op(&self, e: &ast::Expr) -> Option<BareOp> {
+        match &e.kind {
+            ast::ExprKind::Paren(inner) => self.detect_bare_op(inner),
+            ast::ExprKind::Unwrap(inner) => match &inner.kind {
+                ast::ExprKind::Name(n) => self.cx.op_locals.get(n).copied(),
+                _ => None,
+            },
+            ast::ExprKind::Name(n) => {
+                if let Some(&op) = self.cx.op_locals.get(n) {
+                    return Some(op);
+                }
+                if self.lookup(n).is_some() {
+                    return None;
+                }
+                match n.as_str() {
+                    "max" => Some(BareOp::Max),
+                    "min" => Some(BareOp::Min),
+                    "gcd" => Some(BareOp::Gcd),
+                    "lcm" => Some(BareOp::Lcm),
+                    _ => None,
+                }
+            }
+            ast::ExprKind::Lambda { params, body, .. } if params.len() == 2 => {
+                let ast::PatternKind::Name(p0) = &params[0].kind else {
+                    return None;
+                };
+                let ast::PatternKind::Name(p1) = &params[1].kind else {
+                    return None;
+                };
+                if let ast::ExprKind::Binary { op, lhs, rhs, .. } = &body.kind {
+                    let is_direct = matches!(&lhs.kind, ast::ExprKind::Name(a) if a == p0)
+                        && matches!(&rhs.kind, ast::ExprKind::Name(b) if b == p1);
+                    if is_direct {
+                        return match op {
+                            ast::BinOp::Add => Some(BareOp::Add),
+                            ast::BinOp::Mul => Some(BareOp::Mul),
+                            ast::BinOp::BitXor => Some(BareOp::BitXor),
+                            ast::BinOp::BitOr => Some(BareOp::BitOr),
+                            ast::BinOp::BitAnd => Some(BareOp::BitAnd),
+                            ast::BinOp::And => Some(BareOp::And),
+                            ast::BinOp::Or => Some(BareOp::Or),
+                            _ => None,
+                        };
+                    }
+                }
+                None
+            }
+            ast::ExprKind::Field { base, name: field } => {
+                let ast::ExprKind::Name(bname) = &base.kind else {
+                    return None;
+                };
+                let bty = if let Some(slot) = self.lookup(bname) {
+                    self.cx.locals[slot].ty.clone()
+                } else if let Some(Sym::Global(gid)) = self.get_sym(bname) {
+                    self.globals[gid].ty.clone()
+                } else {
+                    return None;
+                };
+                let Ty::Struct(sid) = bty else {
+                    return None;
+                };
+                let (gid, gargs) = self.structs[sid].origin_gen.as_ref()?;
+                let decl = self.gen_structs[*gid].decl;
+                let fdecl = decl.fields.iter().find(|f| f.name.text == field.text)?;
+                let ast::TypeKind::Named { name, args } = &fdecl.ty.kind else {
+                    return None;
+                };
+                if !args.is_empty() {
+                    return None;
+                }
+                let pos = decl.generics.iter().position(|g| g.text == name.text)?;
+                match gargs.get(pos) {
+                    Some(GenArg::Op(op)) => Some(*op),
+                    _ => None,
+                }
+            }
+            _ => None,
+        }
+    }
+}

@@ -64,6 +64,74 @@ impl<'a> Lowerer<'a> {
             .then_some(Some(env))
     }
 
+    /// The fn type a closure passed for `param` takes from a fn-type impl of
+    /// its bound: `M: Op<Int>` and `impl<T> Op<T> for (T, T) -> T` give
+    /// `(Int, Int) -> Int`, so `go((a, b) => a + b)` and `go(+)` are typed.
+    pub(super) fn fn_impl_shape(
+        &mut self,
+        bounds: &[ast::Bound],
+        param: &str,
+        tpl: (ModId, u32),
+        inferred: &GenEnv,
+    ) -> Option<Ty> {
+        let traits = bounds.iter().filter(|b| b.name.text == param);
+        for tr in traits.flat_map(|b| &b.traits) {
+            let ast::TypeKind::Named { name, args } = &tr.kind else {
+                continue;
+            };
+            let bound_args = self.quietly_in(tpl.0, tpl.1, inferred.clone(), |l| {
+                args.iter().map(|a| l.resolve_ty(a)).collect::<Vec<_>>()
+            });
+            if bound_args.contains(&Ty::Error) {
+                continue;
+            }
+            for idx in 0..self.impls.len() {
+                let imp = &self.impls[idx];
+                let (m, offset, target) = (imp.mod_id, imp.offset, imp.target);
+                if imp.trait_name.as_deref() != Some(name.text.as_str())
+                    || !matches!(target.kind, ast::TypeKind::Fn { .. })
+                    || imp.trait_args.len() != bound_args.len()
+                {
+                    continue;
+                }
+                let trait_args = imp.trait_args.clone();
+                let params = self.impl_params(m, target);
+                let mut env = GenEnv::default();
+                for (a, t) in trait_args.iter().zip(&bound_args) {
+                    self.unify_ast_ty(a, t, m, &params, &mut env);
+                }
+                if !params.iter().all(|p| env.contains_key(p)) {
+                    continue;
+                }
+                let ty = self.quietly_in(m, offset, env, |l| l.resolve_ty(target));
+                if matches!(ty, Ty::Fn(..)) {
+                    return Some(ty);
+                }
+            }
+        }
+        None
+    }
+
+    /// `f` resolved in module `m` at `offset` with `env`, its diagnostics dropped.
+    fn quietly_in<R>(
+        &mut self,
+        m: ModId,
+        offset: u32,
+        env: GenEnv,
+        f: impl FnOnce(&mut Self) -> R,
+    ) -> R {
+        let saved = (
+            std::mem::replace(&mut self.cur_mod, m),
+            std::mem::replace(&mut self.offset, offset),
+            std::mem::replace(&mut self.gen_env, env),
+            self.diags.len(),
+        );
+        let out = f(self);
+        (self.cur_mod, self.offset, self.gen_env) = (saved.0, saved.1, saved.2);
+        self.diags.truncate(saved.3);
+        out
+    }
+
     /// `impl<T> Op<T> for (T, T) -> T`: the method for one fn type, made the
     /// first time a value of that type calls it.
     pub(super) fn fn_impl_method(&mut self, ty: &Ty, method: &str) -> Option<FnId> {
