@@ -653,6 +653,7 @@ ioi21p4
 ioi22p2
 ioi22p4
 ioi22p5
+ioi25_festival
 ioi25_migrations
 ioi25_obstacles
 ioi25_souvenirs
