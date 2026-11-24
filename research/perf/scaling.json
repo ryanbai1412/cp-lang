@@ -6548,7 +6548,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "opt.and_then",
-   "measured": 1.06,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -6556,7 +6556,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "opt.is_none_or",
-   "measured": 1.06,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -6564,7 +6564,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "opt.is_some_and",
-   "measured": 1.05,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -6572,7 +6572,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "pair.Pair.at",
-   "measured": 1.02,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -6580,7 +6580,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "pair.Pair.new",
-   "measured": 1.02,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -6588,7 +6588,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "pair.Pair.other",
-   "measured": 1.02,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -6596,7 +6596,7 @@
    "cost": "n^2",
    "documented": 16.0,
    "fn": "pair.symmetric",
-   "measured": 20.03,
+   "measured": 19.7,
    "n": 16384,
    "ok": true
   },
@@ -7512,11 +7512,27 @@
    "n": 16384,
    "ok": true
   },
+  "bench/scaling/range.cp::range.RingRange.each": {
+   "cost": "\\mathit{len}",
+   "documented": 4.0,
+   "fn": "range.RingRange.each",
+   "measured": 3.97,
+   "n": 16384,
+   "ok": true
+  },
   "bench/scaling/range.cp::range.RingRange.end": {
    "cost": "1",
    "documented": 1.0,
    "fn": "range.RingRange.end",
    "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/range.cp::range.RingRange.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "range.RingRange.is_empty",
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -7556,7 +7572,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.clip",
-   "measured": 0.99,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -7564,7 +7580,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.ends",
-   "measured": 0.99,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -7572,7 +7588,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "range.first_true",
-   "measured": 1.15,
+   "measured": 1.14,
    "n": 16384,
    "ok": true
   },
@@ -7580,7 +7596,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.halve",
-   "measured": 0.99,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -7588,7 +7604,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.l",
-   "measured": 1.0,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -7596,7 +7612,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "range.last_true",
-   "measured": 1.15,
+   "measured": 1.14,
    "n": 16384,
    "ok": true
   },
@@ -7604,7 +7620,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.mid",
-   "measured": 0.99,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -7612,7 +7628,15 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.r",
-   "measured": 0.96,
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/range.cp::range.shift": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "range.shift",
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -7620,7 +7644,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.splits",
-   "measured": 1.03,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -8220,7 +8244,7 @@
    "cost": "\\mathit{steps}",
    "documented": 4.0,
    "fn": "search.bsearch",
-   "measured": 4.01,
+   "measured": 3.97,
    "n": 16384,
    "ok": true
   },
@@ -8228,7 +8252,7 @@
    "cost": "\\log(1 / \\mathit{eps})",
    "documented": 1.0,
    "fn": "search.dinkelbach",
-   "measured": 1.03,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -8236,7 +8260,7 @@
    "cost": "\\log d",
    "documented": 1.14,
    "fn": "search.gallop_first",
-   "measured": 1.19,
+   "measured": 1.15,
    "n": 16384,
    "ok": true
   },
@@ -8244,7 +8268,7 @@
    "cost": "(n + \\mathit{queries}) \\log n",
    "documented": 4.57,
    "fn": "search.parallel_bsearch",
-   "measured": 4.72,
+   "measured": 4.6,
    "n": 16384,
    "ok": true
   },
@@ -8252,7 +8276,7 @@
    "cost": "\\mathit{steps}",
    "documented": 4.0,
    "fn": "search.peak",
-   "measured": 3.99,
+   "measured": 3.96,
    "n": 16384,
    "ok": true
   },
@@ -8276,7 +8300,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "search.ternary_min",
-   "measured": 1.2,
+   "measured": 1.16,
    "n": 16384,
    "ok": true
   },
@@ -8284,14 +8308,1686 @@
    "cost": "\\mathit{steps}",
    "documented": 4.0,
    "fn": "search.valley",
-   "measured": 3.95,
+   "measured": 3.96,
    "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_coll.cp::seq.get_or_insert": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "seq.get_or_insert",
+   "measured": 1.26,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_coll.cp::seq.intersect": {
+   "cost": "n \\log m",
+   "documented": 4.57,
+   "fn": "seq.intersect",
+   "measured": 5.15,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_coll.cp::seq.pop_if": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.pop_if",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_coll.cp::seq.subtract": {
+   "cost": "m \\log n",
+   "documented": 4.57,
+   "fn": "seq.subtract",
+   "measured": 5.15,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_coll.cp::seq.swap_at": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.swap_at",
+   "measured": 0.98,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_coll.cp::seq.take_all": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.take_all",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_coll.cp::seq.union": {
+   "cost": "m \\log(n + m)",
+   "documented": 4.53,
+   "fn": "seq.union",
+   "measured": 5.48,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_coll.cp::seq.update": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "seq.update",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_comb.cp::seq.SubseqStep.prune": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.SubseqStep.prune",
+   "measured": 1.0,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/seq_comb.cp::seq.combinations": {
+   "cost": "k",
+   "documented": 1.0,
+   "fn": "seq.combinations",
+   "measured": 0.99,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/seq_comb.cp::seq.index_pairs": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.index_pairs",
+   "measured": 0.97,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/seq_comb.cp::seq.lcs": {
+   "cost": "\\lvert a \\rvert \\cdot \\lvert b \\rvert",
+   "documented": 16.0,
+   "fn": "seq.lcs",
+   "measured": 18.98,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/seq_comb.cp::seq.pairs": {
+   "cost": "n^2",
+   "documented": 16.0,
+   "fn": "seq.pairs",
+   "measured": 15.12,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/seq_comb.cp::seq.permutations": {
+   "cost": "k",
+   "documented": 1.0,
+   "fn": "seq.permutations",
+   "measured": 1.01,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/seq_comb.cp::seq.subsequences": {
+   "cost": "k",
+   "documented": 1.0,
+   "fn": "seq.subsequences",
+   "measured": 1.0,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/seq_fold.cp::seq.adjacent_diff": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.adjacent_diff",
+   "measured": 4.7,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_fold.cp::seq.all": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.all",
+   "measured": 4.4,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_fold.cp::seq.all_some": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.all_some",
+   "measured": 5.38,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_fold.cp::seq.any": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.any",
+   "measured": 4.25,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_fold.cp::seq.argmax": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.argmax",
+   "measured": 4.06,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_fold.cp::seq.argmin": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.argmin",
+   "measured": 4.12,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_fold.cp::seq.collect": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.collect",
+   "measured": 4.65,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_fold.cp::seq.count": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.count",
+   "measured": 4.15,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_fold.cp::seq.deduped": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.deduped",
+   "measured": 4.48,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_fold.cp::seq.distinct": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.distinct",
+   "measured": 4.11,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_fold.cp::seq.find": {
+   "cost": "k",
+   "documented": 4.0,
+   "fn": "seq.find",
+   "measured": 4.52,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_fold.cp::seq.first_some": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.first_some",
+   "measured": 4.46,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_fold.cp::seq.fold": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.fold",
+   "measured": 4.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_fold.cp::seq.fold_from": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.fold_from",
+   "measured": 4.34,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_fold.cp::seq.inversions": {
+   "cost": "n \\log n",
+   "documented": 4.57,
+   "fn": "seq.inversions",
+   "measured": 5.83,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_fold.cp::seq.is_permutation": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.is_permutation",
+   "measured": 4.91,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_fold.cp::seq.is_sorted": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.is_sorted",
+   "measured": 4.24,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_fold.cp::seq.is_subsequence": {
+   "cost": "\\lvert \\mathit{self} \\rvert + \\lvert \\mathit{of} \\rvert",
+   "documented": 4.0,
+   "fn": "seq.is_subsequence",
+   "measured": 5.22,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_fold.cp::seq.max": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.max",
+   "measured": 3.54,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_fold.cp::seq.max_count": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.max_count",
+   "measured": 4.05,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_fold.cp::seq.max_k": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.max_k",
+   "measured": 4.79,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_fold.cp::seq.mean": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.mean",
+   "measured": 4.18,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_fold.cp::seq.min": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.min",
+   "measured": 3.98,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_fold.cp::seq.min_count": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.min_count",
+   "measured": 4.16,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_fold.cp::seq.min_k": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.min_k",
+   "measured": 5.26,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_fold.cp::seq.minmax": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.minmax",
+   "measured": 4.32,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_fold.cp::seq.partition": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.partition",
+   "measured": 4.33,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_fold.cp::seq.prod": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.prod",
+   "measured": 4.18,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_fold.cp::seq.reduce": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.reduce",
+   "measured": 4.34,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_fold.cp::seq.rfind": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.rfind",
+   "measured": 4.4,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_fold.cp::seq.sorted": {
+   "cost": "n \\log n",
+   "documented": 4.57,
+   "fn": "seq.sorted",
+   "measured": 4.85,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_fold.cp::seq.sum": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.sum",
+   "measured": 4.39,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_fold.cp::seq.tally": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.tally",
+   "measured": 4.4,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_iter.cp::seq.adjacent": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.adjacent",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_iter.cp::seq.chain": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.chain",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_iter.cp::seq.chunks": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.chunks",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_iter.cp::seq.cyclic_pairs": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.cyclic_pairs",
+   "measured": 0.98,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_iter.cp::seq.drop_while": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.drop_while",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_iter.cp::seq.even": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.even",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_iter.cp::seq.filter": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.filter",
+   "measured": 0.98,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_iter.cp::seq.filter_map": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.filter_map",
+   "measured": 0.98,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_iter.cp::seq.flat_map": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.flat_map",
+   "measured": 0.98,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_iter.cp::seq.flatten": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.flatten",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_iter.cp::seq.items": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.items",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_iter.cp::seq.keyed": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.keyed",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_iter.cp::seq.keys": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.keys",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_iter.cp::seq.map": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.map",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_iter.cp::seq.odd": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.odd",
+   "measured": 0.98,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_iter.cp::seq.present": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.present",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_iter.cp::seq.record_highs": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.record_highs",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_iter.cp::seq.rev": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.rev",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_iter.cp::seq.runs": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.runs",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_iter.cp::seq.step": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.step",
+   "measured": 0.98,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_iter.cp::seq.take_while": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.take_while",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_iter.cp::seq.valleys": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.valleys",
+   "measured": 3.12,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_iter.cp::seq.windows": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.windows",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_iter.cp::seq.with_next": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.with_next",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_iter.cp::seq.with_prev": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.with_prev",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_iter.cp::seq.zip": {
+   "cost": "\\min(\\lvert a \\rvert, \\lvert b \\rvert)",
+   "documented": 4.0,
+   "fn": "seq.zip",
+   "measured": 4.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_iter.cp::seq.zip_exact": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.zip_exact",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_misc.cp::seq.bsearch": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "seq.bsearch",
+   "measured": 1.06,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_misc.cp::seq.chunks_padded": {
+   "cost": "k",
+   "documented": 1.0,
+   "fn": "seq.chunks_padded",
+   "measured": 1.04,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_misc.cp::seq.count_in": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "seq.count_in",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_misc.cp::seq.counting_sort": {
+   "cost": "n + \\lvert K \\rvert",
+   "documented": 4.0,
+   "fn": "seq.counting_sort",
+   "measured": 4.04,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_misc.cp::seq.drop": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.drop",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_misc.cp::seq.drop_last": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.drop_last",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_misc.cp::seq.equal_range": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "seq.equal_range",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_misc.cp::seq.first_gt": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "seq.first_gt",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_misc.cp::seq.iterate": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.iterate",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_misc.cp::seq.kway_merge": {
+   "cost": "N \\log k",
+   "documented": 4.0,
+   "fn": "seq.kway_merge",
+   "measured": 4.97,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_misc.cp::seq.last_lt": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "seq.last_lt",
+   "measured": 1.04,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_misc.cp::seq.majority": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.majority",
+   "measured": 4.28,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_misc.cp::seq.nth": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.nth",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_misc.cp::seq.outermost": {
+   "cost": "n \\log n",
+   "documented": 4.57,
+   "fn": "seq.outermost",
+   "measured": 4.62,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_misc.cp::seq.pop_while": {
+   "cost": "\\mathit{popped}",
+   "documented": 4.0,
+   "fn": "seq.pop_while",
+   "measured": 3.97,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_misc.cp::seq.product": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.product",
+   "measured": 0.98,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_misc.cp::seq.select": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.select",
+   "measured": 3.08,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_misc.cp::seq.span": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.span",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_misc.cp::seq.take": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.take",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_misc.cp::seq.take_last": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.take_last",
+   "measured": 0.98,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_misc.cp::seq.unzip": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.unzip",
+   "measured": 4.15,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_perm.cp::seq.compose": {
+   "cost": "\\lvert A \\rvert",
+   "documented": 4.0,
+   "fn": "seq.compose",
+   "measured": 4.11,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_perm.cp::seq.cycle": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.cycle",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_perm.cp::seq.inverse": {
+   "cost": "\\lvert I \\rvert",
+   "documented": 4.0,
+   "fn": "seq.inverse",
+   "measured": 4.09,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_perm.cp::seq.next_permutation": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.next_permutation",
+   "measured": 4.12,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_perm.cp::seq.partial_inverse": {
+   "cost": "\\lvert I \\rvert + \\lvert V \\rvert",
+   "documented": 4.0,
+   "fn": "seq.partial_inverse",
+   "measured": 4.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_perm.cp::seq.perm_cycles": {
+   "cost": "\\lvert V \\rvert",
+   "documented": 4.0,
+   "fn": "seq.perm_cycles",
+   "measured": 3.97,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_perm.cp::seq.perm_pow": {
+   "cost": "\\lvert V \\rvert",
+   "documented": 4.0,
+   "fn": "seq.perm_pow",
+   "measured": 3.81,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_perm.cp::seq.prev_permutation": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.prev_permutation",
+   "measured": 4.04,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_rank.cp::seq.perm_rank": {
+   "cost": "n \\log n",
+   "documented": 7.45,
+   "fn": "seq.perm_rank",
+   "measured": 2.11,
+   "n": 5,
+   "ok": true
+  },
+  "bench/scaling/seq_rank.cp::seq.perm_unrank": {
+   "cost": "n \\log n",
+   "documented": 7.45,
+   "fn": "seq.perm_unrank",
+   "measured": 2.72,
+   "n": 5,
    "ok": true
   },
   "bench/scaling/seq_rebase.cp::seq.rebase": {
    "cost": "1",
    "documented": 1.0,
    "fn": "seq.rebase",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort.cp::seq.clone": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.clone",
+   "measured": 4.2,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort.cp::seq.dedup": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.dedup",
+   "measured": 4.28,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort.cp::seq.group": {
+   "cost": "n \\log n",
+   "documented": 4.57,
+   "fn": "seq.group",
+   "measured": 4.17,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort.cp::seq.insert": {
+   "cost": "n - i",
+   "documented": 4.0,
+   "fn": "seq.insert",
+   "measured": 4.33,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort.cp::seq.lis": {
+   "cost": "n \\log n",
+   "documented": 4.57,
+   "fn": "seq.lis",
+   "measured": 4.83,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort.cp::seq.merge_sorted": {
+   "cost": "\\lvert a \\rvert + \\lvert b \\rvert",
+   "documented": 4.0,
+   "fn": "seq.merge_sorted",
+   "measured": 4.08,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort.cp::seq.next_same": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.next_same",
+   "measured": 4.12,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort.cp::seq.next_smaller": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.next_smaller",
+   "measured": 4.38,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort.cp::seq.partition_in_place": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.partition_in_place",
+   "measured": 4.19,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort.cp::seq.perm_order": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.perm_order",
+   "measured": 4.7,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort.cp::seq.perm_sign": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.perm_sign",
+   "measured": 4.75,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort.cp::seq.prev_same": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.prev_same",
+   "measured": 4.24,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort.cp::seq.prev_smaller": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.prev_smaller",
+   "measured": 4.52,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort.cp::seq.radix_sort": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.radix_sort",
+   "measured": 4.3,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort.cp::seq.remove": {
+   "cost": "n - i",
+   "documented": 4.0,
+   "fn": "seq.remove",
+   "measured": 4.36,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort.cp::seq.resized": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.resized",
+   "measured": 4.62,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort.cp::seq.reverse": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.reverse",
+   "measured": 4.49,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort.cp::seq.rotate_left": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.rotate_left",
+   "measured": 4.36,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort.cp::seq.rotate_right": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.rotate_right",
+   "measured": 4.31,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort.cp::seq.rotated_left": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.rotated_left",
+   "measured": 4.48,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort.cp::seq.rotated_right": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.rotated_right",
+   "measured": 4.31,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort.cp::seq.sort": {
+   "cost": "n \\log n",
+   "documented": 4.57,
+   "fn": "seq.sort",
+   "measured": 4.81,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort.cp::seq.sorted_diff": {
+   "cost": "\\lvert \\mathit{self} \\rvert + \\lvert b \\rvert",
+   "documented": 4.0,
+   "fn": "seq.sorted_diff",
+   "measured": 4.17,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort.cp::seq.sorted_intersect": {
+   "cost": "\\lvert \\mathit{self} \\rvert + \\lvert b \\rvert",
+   "documented": 4.0,
+   "fn": "seq.sorted_intersect",
+   "measured": 2.86,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort.cp::seq.sorted_union": {
+   "cost": "\\lvert \\mathit{self} \\rvert + \\lvert b \\rvert",
+   "documented": 4.0,
+   "fn": "seq.sorted_union",
+   "measured": 4.41,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort.cp::seq.spans": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.spans",
+   "measured": 4.27,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort.cp::seq.stable_partition_in_place": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.stable_partition_in_place",
+   "measured": 4.15,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.Compressed.contains": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "seq.Compressed.contains",
+   "measured": 1.05,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.Compressed.first_ge": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "seq.Compressed.first_ge",
+   "measured": 1.06,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.Compressed.first_gt": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "seq.Compressed.first_gt",
+   "measured": 1.04,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.Compressed.get": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.Compressed.get",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.Compressed.index_of": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "seq.Compressed.index_of",
+   "measured": 1.34,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.Compressed.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.Compressed.is_empty",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.Compressed.items": {
+   "cost": "\\mathit{len}",
+   "documented": 4.0,
+   "fn": "seq.Compressed.items",
+   "measured": 3.97,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.Compressed.last_le": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "seq.Compressed.last_le",
+   "measured": 1.05,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.Compressed.last_lt": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "seq.Compressed.last_lt",
+   "measured": 1.04,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.Compressed.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.Compressed.len",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.Compressed.slice": {
+   "cost": "r.\\mathit{len}",
+   "documented": 4.0,
+   "fn": "seq.Compressed.slice",
+   "measured": 4.67,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.Compressed.try_index_of": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "seq.Compressed.try_index_of",
+   "measured": 1.06,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.MonoStack.clear": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.MonoStack.clear",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.MonoStack.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.MonoStack.is_empty",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.MonoStack.items": {
+   "cost": "\\mathit{len}",
+   "documented": 4.0,
+   "fn": "seq.MonoStack.items",
+   "measured": 3.96,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.MonoStack.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.MonoStack.len",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.MonoStack.mark": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.MonoStack.mark",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.MonoStack.push": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.MonoStack.push",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.MonoStack.top": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.MonoStack.top",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.MonoStack.undo_to": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.MonoStack.undo_to",
+   "measured": 0.86,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.OnlineLis.clear": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.OnlineLis.clear",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.OnlineLis.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.OnlineLis.is_empty",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.OnlineLis.items": {
+   "cost": "\\mathit{len}",
+   "documented": 4.0,
+   "fn": "seq.OnlineLis.items",
+   "measured": 4.12,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.OnlineLis.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.OnlineLis.len",
+   "measured": 0.98,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.OnlineLis.mark": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.OnlineLis.mark",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.OnlineLis.push": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "seq.OnlineLis.push",
+   "measured": 1.08,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.OnlineLis.reconstruct": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.OnlineLis.reconstruct",
+   "measured": 4.12,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.OnlineLis.undo_to": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.OnlineLis.undo_to",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.Ring.from": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.Ring.from",
+   "measured": 1.04,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.Ring.next": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.Ring.next",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.Ring.prev": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.Ring.prev",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.Ring.span": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.Ring.span",
+   "measured": 1.06,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.Ring.step": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.Ring.step",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.Ring.windows": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.Ring.windows",
+   "measured": 1.04,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.RingSlice.each": {
+   "cost": "\\mathit{len}",
+   "documented": 4.0,
+   "fn": "seq.RingSlice.each",
+   "measured": 4.36,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.RingSlice.end": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.RingSlice.end",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.RingSlice.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.RingSlice.is_empty",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.RingSlice.keys": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.RingSlice.keys",
+   "measured": 1.05,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.RingSlice.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.RingSlice.len",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.RingSlice.range": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.RingSlice.range",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.RingSlice.start": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.RingSlice.start",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.compress": {
+   "cost": "n \\log n",
+   "documented": 4.57,
+   "fn": "seq.compress",
+   "measured": 4.94,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_struct.cp::seq.ring": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.ring",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_view.cp::seq.Rev.drop": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.Rev.drop",
+   "measured": 1.0,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/seq_view.cp::seq.Rev.drop_last": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.Rev.drop_last",
+   "measured": 1.0,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/seq_view.cp::seq.Rev.nth": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.Rev.nth",
+   "measured": 1.01,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/seq_view.cp::seq.Rev.scan": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.Rev.scan",
+   "measured": 4.08,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/seq_view.cp::seq.Rev.src": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.Rev.src",
+   "measured": 1.0,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/seq_view.cp::seq.Rev.take": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.Rev.take",
+   "measured": 1.0,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/seq_view.cp::seq.Rev.take_last": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.Rev.take_last",
+   "measured": 1.0,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/seq_view.cp::seq.Slice.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.Slice.is_empty",
+   "measured": 1.01,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/seq_view.cp::seq.Slice.items": {
+   "cost": "\\mathit{len}",
+   "documented": 4.0,
+   "fn": "seq.Slice.items",
+   "measured": 3.96,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/seq_view.cp::seq.Slice.keys": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.Slice.keys",
+   "measured": 1.0,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/seq_view.cp::seq.Slice.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.Slice.len",
+   "measured": 1.0,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/seq_view.cp::seq.StepKeys.contains": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.StepKeys.contains",
+   "measured": 1.04,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/seq_view.cp::seq.StepKeys.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.StepKeys.len",
+   "measured": 1.01,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/seq_view.cp::seq.Stepped.at": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.Stepped.at",
+   "measured": 1.01,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/seq_view.cp::seq.Stepped.each": {
+   "cost": "\\mathit{len}",
+   "documented": 4.0,
+   "fn": "seq.Stepped.each",
+   "measured": 4.13,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/seq_view.cp::seq.Stepped.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.Stepped.is_empty",
+   "measured": 1.01,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/seq_view.cp::seq.Stepped.keys": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.Stepped.keys",
+   "measured": 1.0,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/seq_view.cp::seq.Stepped.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.Stepped.len",
+   "measured": 1.0,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/seq_view.cp::seq.Stepped.nth": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.Stepped.nth",
+   "measured": 1.06,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/seq_win.cp::seq.Ring.maximal": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.Ring.maximal",
+   "measured": 3.91,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_win.cp::seq.Ring.minimal": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.Ring.minimal",
+   "measured": 3.95,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_win.cp::seq.buckets": {
+   "cost": "\\lvert D \\rvert + \\lvert K \\rvert",
+   "documented": 4.0,
+   "fn": "seq.buckets",
+   "measured": 2.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_win.cp::seq.cartesian_tree": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.cartesian_tree",
+   "measured": 4.69,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_win.cp::seq.covering": {
+   "cost": "\\log k",
+   "documented": 1.14,
+   "fn": "seq.covering",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_win.cp::seq.first": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.first",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_win.cp::seq.last": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.last",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_win.cp::seq.maximal": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.maximal",
+   "measured": 3.91,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_win.cp::seq.minimal": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.minimal",
+   "measured": 3.97,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_win.cp::seq.pieces": {
+   "cost": "k \\log k",
+   "documented": 4.57,
+   "fn": "seq.pieces",
+   "measured": 4.21,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_win.cp::seq.rekey": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.rekey",
+   "measured": 4.15,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_win.cp::seq.split": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.split",
+   "measured": 5.21,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_win.cp::seq.swap": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.swap",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_win.cp::seq.with_domain": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.with_domain",
    "measured": 0.99,
    "n": 16384,
    "ok": true
@@ -10164,7 +11860,7 @@
    "cost": "\\lvert \\mathit{dl} \\rvert + \\lvert \\mathit{dr} \\rvert",
    "documented": 4.0,
    "fn": "window.Sweep.move",
-   "measured": 4.22,
+   "measured": 2.37,
    "n": 16384,
    "ok": true
   },
@@ -10172,7 +11868,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Sweep.new",
-   "measured": 0.93,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -10180,7 +11876,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Sweep.range",
-   "measured": 1.04,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -10188,7 +11884,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Tracked.pop",
-   "measured": 0.96,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -10196,7 +11892,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Tracked.push",
-   "measured": 0.96,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -10204,7 +11900,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Tracked.state",
-   "measured": 0.95,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -10212,7 +11908,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "window.Undoing.pop",
-   "measured": 1.19,
+   "measured": 1.14,
    "n": 16384,
    "ok": true
   },
@@ -10220,7 +11916,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Undoing.push",
-   "measured": 1.03,
+   "measured": 0.96,
    "n": 16384,
    "ok": true
   },
@@ -10228,7 +11924,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Undoing.state",
-   "measured": 1.1,
+   "measured": 1.07,
    "n": 16384,
    "ok": true
   },
@@ -10236,7 +11932,23 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Window.all",
-   "measured": 0.97,
+   "measured": 0.98,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/window.cp::window.Window.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "window.Window.is_empty",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/window.cp::window.Window.items": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "window.Window.items",
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -10244,7 +11956,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Window.len",
-   "measured": 0.96,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -10252,7 +11964,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Window.new",
-   "measured": 0.93,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -10260,7 +11972,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Window.pop",
-   "measured": 0.96,
+   "measured": 0.98,
    "n": 16384,
    "ok": true
   },
@@ -10268,7 +11980,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.Window.push",
-   "measured": 0.97,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -10276,7 +11988,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.track",
-   "measured": 0.93,
+   "measured": 0.97,
    "n": 16384,
    "ok": true
   },
@@ -10284,7 +11996,15 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "window.undoing",
-   "measured": 0.93,
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/window.cp::window.window_fold": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "window.window_fold",
+   "measured": 3.97,
    "n": 16384,
    "ok": true
   },
@@ -11248,9 +12968,6 @@
   "poly.Poly.is_empty",
   "poly.Poly.items",
   "prefix.Prefix.of_rev_scan",
-  "range.RingRange.each",
-  "range.RingRange.is_empty",
-  "range.shift",
   "segtree.DynamicOrderTree.count_in",
   "segtree.DynamicOrderTree.count_lt",
   "segtree.DynamicOrderTree.get",
@@ -11308,218 +13025,9 @@
   "segtree.WaveletMatrix.prev_val",
   "segtree.WaveletMatrix.quantile_sum",
   "segtree.WaveletMatrix.rank",
-  "seq.Compressed.contains",
-  "seq.Compressed.first_ge",
-  "seq.Compressed.first_gt",
-  "seq.Compressed.get",
-  "seq.Compressed.index_of",
-  "seq.Compressed.is_empty",
-  "seq.Compressed.items",
-  "seq.Compressed.last_le",
-  "seq.Compressed.last_lt",
-  "seq.Compressed.len",
-  "seq.Compressed.slice",
-  "seq.Compressed.try_index_of",
   "seq.Filtered.src",
   "seq.Items.src",
   "seq.Mapped.src",
-  "seq.MonoStack.clear",
-  "seq.MonoStack.is_empty",
-  "seq.MonoStack.items",
-  "seq.MonoStack.len",
-  "seq.MonoStack.mark",
-  "seq.MonoStack.push",
-  "seq.MonoStack.top",
-  "seq.MonoStack.undo_to",
-  "seq.OnlineLis.clear",
-  "seq.OnlineLis.is_empty",
-  "seq.OnlineLis.items",
-  "seq.OnlineLis.len",
-  "seq.OnlineLis.mark",
-  "seq.OnlineLis.push",
-  "seq.OnlineLis.reconstruct",
-  "seq.OnlineLis.undo_to",
-  "seq.Rev.drop",
-  "seq.Rev.drop_last",
-  "seq.Rev.nth",
-  "seq.Rev.scan",
-  "seq.Rev.src",
-  "seq.Rev.take",
-  "seq.Rev.take_last",
-  "seq.Ring.from",
-  "seq.Ring.maximal",
-  "seq.Ring.minimal",
-  "seq.Ring.next",
-  "seq.Ring.prev",
-  "seq.Ring.span",
-  "seq.Ring.step",
-  "seq.Ring.windows",
-  "seq.RingSlice.each",
-  "seq.RingSlice.end",
-  "seq.RingSlice.is_empty",
-  "seq.RingSlice.keys",
-  "seq.RingSlice.len",
-  "seq.RingSlice.range",
-  "seq.RingSlice.start",
-  "seq.Slice.is_empty",
-  "seq.Slice.items",
-  "seq.Slice.keys",
-  "seq.Slice.len",
-  "seq.StepKeys.contains",
-  "seq.StepKeys.len",
-  "seq.Stepped.at",
-  "seq.Stepped.each",
-  "seq.Stepped.is_empty",
-  "seq.Stepped.keys",
-  "seq.Stepped.len",
-  "seq.Stepped.nth",
-  "seq.SubseqStep.prune",
-  "seq.adjacent",
-  "seq.adjacent_diff",
-  "seq.all",
-  "seq.all_some",
-  "seq.any",
-  "seq.argmax",
-  "seq.argmin",
-  "seq.bsearch",
-  "seq.buckets",
-  "seq.cartesian_tree",
-  "seq.chain",
-  "seq.chunks",
-  "seq.chunks_padded",
-  "seq.clone",
-  "seq.collect",
-  "seq.combinations",
-  "seq.compose",
-  "seq.compress",
-  "seq.count",
-  "seq.count_in",
-  "seq.counting_sort",
-  "seq.covering",
-  "seq.cycle",
-  "seq.cyclic_pairs",
-  "seq.dedup",
-  "seq.deduped",
-  "seq.distinct",
-  "seq.drop",
-  "seq.drop_last",
-  "seq.drop_while",
-  "seq.equal_range",
-  "seq.even",
-  "seq.filter",
-  "seq.filter_map",
-  "seq.find",
-  "seq.first",
-  "seq.first_gt",
-  "seq.first_some",
-  "seq.flat_map",
-  "seq.flatten",
-  "seq.fold",
-  "seq.fold_from",
-  "seq.get_or_insert",
-  "seq.group",
-  "seq.index_pairs",
-  "seq.insert",
-  "seq.intersect",
-  "seq.inverse",
-  "seq.inversions",
-  "seq.is_permutation",
-  "seq.is_sorted",
-  "seq.is_subsequence",
-  "seq.items",
-  "seq.iterate",
-  "seq.keyed",
-  "seq.keys",
-  "seq.kway_merge",
-  "seq.last",
-  "seq.last_lt",
-  "seq.lcs",
-  "seq.lis",
-  "seq.majority",
-  "seq.map",
-  "seq.max",
-  "seq.max_count",
-  "seq.max_k",
-  "seq.maximal",
-  "seq.mean",
-  "seq.merge_sorted",
-  "seq.min",
-  "seq.min_count",
-  "seq.min_k",
-  "seq.minimal",
-  "seq.minmax",
-  "seq.next_permutation",
-  "seq.next_same",
-  "seq.next_smaller",
-  "seq.nth",
-  "seq.odd",
-  "seq.outermost",
-  "seq.pairs",
-  "seq.partial_inverse",
-  "seq.partition",
-  "seq.partition_in_place",
-  "seq.perm_cycles",
-  "seq.perm_order",
-  "seq.perm_pow",
-  "seq.perm_rank",
-  "seq.perm_sign",
-  "seq.perm_unrank",
-  "seq.permutations",
-  "seq.pieces",
-  "seq.pop_if",
-  "seq.pop_while",
-  "seq.present",
-  "seq.prev_permutation",
-  "seq.prev_same",
-  "seq.prev_smaller",
-  "seq.prod",
-  "seq.product",
-  "seq.radix_sort",
-  "seq.record_highs",
-  "seq.reduce",
-  "seq.rekey",
-  "seq.remove",
-  "seq.resized",
-  "seq.rev",
-  "seq.reverse",
-  "seq.rfind",
-  "seq.ring",
-  "seq.rotate_left",
-  "seq.rotate_right",
-  "seq.rotated_left",
-  "seq.rotated_right",
-  "seq.runs",
-  "seq.select",
-  "seq.sort",
-  "seq.sorted",
-  "seq.sorted_diff",
-  "seq.sorted_intersect",
-  "seq.sorted_union",
-  "seq.span",
-  "seq.spans",
-  "seq.split",
-  "seq.stable_partition_in_place",
-  "seq.step",
-  "seq.subsequences",
-  "seq.subtract",
-  "seq.sum",
-  "seq.swap",
-  "seq.swap_at",
-  "seq.take",
-  "seq.take_all",
-  "seq.take_last",
-  "seq.take_while",
-  "seq.tally",
-  "seq.union",
-  "seq.unzip",
-  "seq.update",
-  "seq.valleys",
-  "seq.windows",
-  "seq.with_domain",
-  "seq.with_next",
-  "seq.with_prev",
-  "seq.zip",
-  "seq.zip_exact",
   "slope.Concave.add_abs",
   "slope.Concave.add_const",
   "slope.Concave.add_left",
@@ -11560,9 +13068,6 @@
   "strings.Palindromes.items",
   "strings.SuffixArray.each",
   "strings.Trie.each",
-  "strings.Trie.nodes",
-  "window.Window.is_empty",
-  "window.Window.items",
-  "window.window_fold"
+  "strings.Trie.nodes"
  ]
 }
