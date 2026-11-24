@@ -204,7 +204,7 @@ impl<'a> Lowerer<'a> {
             .map(|a| {
                 // `M.Fold` is fixed once `M` is.
                 let fixed = (self.impl_params(m, a).iter())
-                    .all(|n| env.contains_key(n.split('.').next().unwrap_or(n)))
+                    .all(|n| env.contains_key(n.split_once('.').map_or(&**n, |(o, _)| o)))
                     && !open.iter().any(|n| mono::ty_mentions(a, n));
                 fixed.then(|| self.quietly_in(m, self.offset, env.clone(), |l| l.resolve_ty(a)))
             })
@@ -286,9 +286,9 @@ impl<'a> Lowerer<'a> {
                 self.unify_ast_ty(t, k, m, &open, &mut env);
             }
             // `A: Acts<T, F>` with `T = -10..=10`: the impl's `T` is that range.
-            let given = ranged.and_then(|(args, outer)| ranged_name(outer, args.get(i)?));
-            if let (ast::TypeKind::Named { name, .. }, Some(g)) = (&t.kind, given) {
-                if open.contains(&name.text) {
+            if let ast::TypeKind::Named { name, .. } = &t.kind {
+                let given = ranged.and_then(|(args, outer)| ranged_name(outer, args.get(i)?));
+                if let Some(g) = given.filter(|_| open.contains(&name.text)) {
                     env.insert(name.text.clone(), g);
                 }
             }
