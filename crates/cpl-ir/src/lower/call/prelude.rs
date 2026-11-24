@@ -786,6 +786,11 @@ impl<'a> Lowerer<'a> {
                 self.show(&items.ty)
             );
             self.error(codes::TYPE_MISMATCH, span, message);
+            let (new, at) = (format!("List({})", self.source(span)), self.span(span));
+            if let (Ty::Str, Some(last)) = (&items.ty, self.diags.last_mut()) {
+                last.help = Some(format!("a string's characters are the list `{new}`"));
+                last.fix(format!("write `{new}`"), at, new);
+            }
             return self.err_expr(span);
         }
         let mut args = vec![sep, items];
