@@ -1,0 +1,14 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":7,"label":"var t = (n, n + 1)","stage":"main","values":{"stdout":[]},"locals":{"n":5,"t":[5,6]},"frames":[{"fn":"go","line":7},{"fn":"main","line":17}]},
+{"id":1,"line":8,"label":"swap(mut t.0, mut t.1)","stage":"main","values":{"stdout":[]},"locals":{"n":5,"t":[6,6]},"frames":[{"fn":"go","line":8},{"fn":"main","line":17}]},
+{"id":2,"line":8,"label":"swap(mut t.0, mut t.1)","stage":"main","values":{"stdout":[]},"locals":{"n":5,"t":[6,5]},"frames":[{"fn":"go","line":8},{"fn":"main","line":17}]},
+{"id":3,"line":9,"label":"var o: ?Int = Some(n * 2)","stage":"main","values":{"stdout":[]},"locals":{"n":5,"t":[6,5],"o":10},"frames":[{"fn":"go","line":9},{"fn":"main","line":17}]},
+{"id":4,"line":10,"label":"var q: ?Int = Some(n * 3)","stage":"main","values":{"stdout":[]},"locals":{"n":5,"t":[6,5],"o":10,"q":15},"frames":[{"fn":"go","line":10},{"fn":"main","line":17}]},
+{"id":5,"line":11,"label":"swap(mut o!, mut q!)","stage":"main","values":{"stdout":[]},"locals":{"n":5,"t":[6,5],"o":15,"q":15},"frames":[{"fn":"go","line":11},{"fn":"main","line":17}]},
+{"id":6,"line":11,"label":"swap(mut o!, mut q!)","stage":"main","values":{"stdout":[]},"locals":{"n":5,"t":[6,5],"o":15,"q":10},"frames":[{"fn":"go","line":11},{"fn":"main","line":17}]},
+{"id":7,"line":12,"label":"var u = (P(a: 3, b: 4), n)","stage":"main","values":{"stdout":[]},"locals":{"n":5,"t":[6,5],"o":15,"q":10,"u":[{"a":3,"b":4},5]},"frames":[{"fn":"go","line":12},{"fn":"main","line":17}]},
+{"id":8,"line":13,"label":"var w = P(a: 1, b: 2)","stage":"main","values":{"stdout":[]},"locals":{"n":5,"t":[6,5],"o":15,"q":10,"u":[{"a":3,"b":4},5],"w":{"a":1,"b":2}},"frames":[{"fn":"go","line":13},{"fn":"main","line":17}]},
+{"id":9,"line":14,"label":"swap(mut u.0, mut w)","stage":"main","values":{"stdout":[]},"locals":{"n":5,"t":[6,5],"o":15,"q":10,"u":[{"a":1,"b":2},5],"w":{"a":1,"b":2}},"frames":[{"fn":"go","line":14},{"fn":"main","line":17}]},
+{"id":10,"line":14,"label":"swap(mut u.0, mut w)","stage":"main","values":{"stdout":[]},"locals":{"n":5,"t":[6,5],"o":15,"q":10,"u":[{"a":1,"b":2},5],"w":{"a":3,"b":4}},"frames":[{"fn":"go","line":14},{"fn":"main","line":17}]},
+{"id":11,"line":15,"label":"print → 6 5 15 10 4 1","stage":"main","values":{"stdout":["6 5 15 10 4 1"]},"locals":{"n":5,"t":[6,5],"o":15,"q":10,"u":[{"a":1,"b":2},5],"w":{"a":3,"b":4}},"checkpoint":"print 1","frames":[{"fn":"go","line":15},{"fn":"main","line":17}]},
+{"id":12,"line":17,"label":"the program ended","stage":"main","values":{"stdout":["6 5 15 10 4 1"]},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":17}]}]}}}
+stderr:

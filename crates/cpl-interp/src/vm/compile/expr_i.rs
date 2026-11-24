@@ -4,9 +4,7 @@ use super::{Compiler, GiveTarget, ModSuperOp};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
 use cpl_ir::Prim;
-use cpl_ir::{
-    Arg, BinOp, Builtin, Cast, CmpOp, Expr, ExprKind, Mutation, PlaceKind, Stmt, Ty, UnOp,
-};
+use cpl_ir::{Arg, BinOp, Builtin, Cast, CmpOp, Expr, ExprKind, Mutation, Stmt, Ty, UnOp};
 
 impl<'p, 'f> Compiler<'p, 'f> {
     fn is_small_tuple_local(&self, e: &Expr) -> bool {
@@ -800,7 +798,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 let saved_ops = self.ops.len();
                 let saved_spans = self.spans.len();
                 let saved_places = self.places.len();
-                if let Some(path) = self.compile_place_path(place) {
+                if let Some(path) = self.compile_place_path_to(place, true) {
                     let val_v = self.compile_expr_v(&args[0]);
                     let dst = self.alloc_i();
                     self.emit(
@@ -824,12 +822,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
             }
             ExprKind::Index(base, indices)
-                if matches!(&base.ty, Ty::Map(kty, _) | Ty::HashMap(kty, _) if !crate::value::ty_has_cached(kty, self.program) && !crate::value::keys::user_ordered(kty, self.program))
+                if let Ty::Map(kty, _) | Ty::HashMap(kty, _) = &base.ty
+                    && !crate::value::ty_has_cached(kty, self.program)
+                    && !crate::value::keys::user_ordered(kty, self.program)
                     && indices.len() == 1 =>
             {
-                let (Ty::Map(kty, _) | Ty::HashMap(kty, _)) = &base.ty else {
-                    return self.emit_fallback_expr_i(expr);
-                };
                 let map_v = self.compile_expr_v(base);
                 let key_v = self.compile_expr_v(&indices[0]);
                 let key_ty = self.fill_tys.len() as u16;
@@ -898,29 +895,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
                             );
                         }
                         dst
-                    }
-                    ExprKind::Local(slot) => {
-                        if let SlotLoc::V(arr_v) = self.slot_loc(*slot) {
-                            let r_i = self.compile_expr_i(&indices[0]);
-                            let dst = self.alloc_i();
-                            if indices.len() == 2 {
-                                let r_j = self.compile_expr_i(&indices[1]);
-                                self.emit(
-                                    Op::LoadLArr2I {
-                                        dst,
-                                        arr_v,
-                                        r_i,
-                                        r_j,
-                                    },
-                                    span,
-                                );
-                            } else {
-                                self.emit(Op::LoadLArr1I { dst, arr_v, r_i }, span);
-                            }
-                            dst
-                        } else {
-                            self.emit_fallback_expr_i(expr)
-                        }
                     }
                     ExprKind::Index(outer, outer_indices)
                         if indices.len() == 1
@@ -1002,16 +976,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         );
                         dst
                     }
-                    ExprKind::Local(slot) => {
-                        if let SlotLoc::V(list_v) = self.slot_loc(*slot) {
-                            let r_i = self.compile_expr_i(&indices[0]);
-                            let dst = self.alloc_i();
-                            self.emit(Op::LoadLList1I { dst, list_v, r_i }, span);
-                            dst
-                        } else {
-                            self.emit_fallback_expr_i(expr)
-                        }
-                    }
                     ExprKind::Field(obj, fidx) if matches!(base.ty, Ty::List(_)) => {
                         let obj_v = self.compile_expr_v(obj);
                         let r_i = self.compile_expr_i(&indices[0]);
@@ -1064,39 +1028,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     }
                 }
                 dst
-            }
-            ExprKind::Mutate(Mutation::Take, place, args) if args.is_empty() => {
-                match &place.kind {
-                    PlaceKind::Local(slot) => {
-                        if let SlotLoc::I(src, _) = self.slot_loc(*slot) {
-                            let dst = self.alloc_i();
-                            self.emit(Op::MoveI { dst, src }, span);
-                            return dst;
-                        }
-                    }
-                    PlaceKind::Global(gid) => {
-                        let dst = self.alloc_i();
-                        self.emit(
-                            Op::LoadGlobalI {
-                                dst,
-                                gid: *gid as u16,
-                            },
-                            span,
-                        );
-                        return dst;
-                    }
-                    _ => {}
-                }
-                // Taking a scalar leaves it in place: a read of the place.
-                if let Some(path) = self.compile_place_path(place) {
-                    let src_v = self.alloc_v();
-                    self.emit(Op::TakePlaceV { dst: src_v, path }, span);
-                    let dst_i = self.alloc_i();
-                    self.emit(Op::UnboxI { dst_i, src_v }, span);
-                    self.emit(Op::ClearV { reg: src_v }, span);
-                    return dst_i;
-                }
-                self.emit_fallback_expr_i(expr)
             }
             ExprKind::Binary(BinOp::Coalesce, lhs, rhs)
                 if ScalarKind::of_opt_ty(&lhs.ty, self.program).is_some() =>

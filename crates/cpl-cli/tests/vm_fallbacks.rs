@@ -115,3 +115,19 @@ fn sort_print_and_debug_as_values_run_on_the_vm() {
         }
     }
 }
+
+#[test]
+fn plain_swaps_and_local_cell_reads_run_on_the_vm() {
+    for program in [
+        "programs/vm_scalar_swaps_and_local_reads.cp",
+        "programs/vm_swap_tuple_and_optional_parts.cp",
+    ] {
+        for traced in [false, true] {
+            assert_eq!(
+                walked(&tests_dir().join(program), traced),
+                0,
+                "{program} traced: {traced}"
+            );
+        }
+    }
+}
