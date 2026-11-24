@@ -3,9 +3,10 @@
 //! The operand is labelled so the fact table keeps the finding only on an
 //! integer (`typed.rs`).
 
+use crate::facts::Facts;
 use crate::std_fn;
 use crate::walk::Visitor;
-use crate::{File, Finding, FLOAT_SQRT_FOR_INT};
+use crate::{is_std, File, Finding, FLOAT_SQRT_FOR_INT};
 use cpl_diag::{Diagnostic, Fix, Span};
 use cpl_syntax::ast::{Expr, ExprKind};
 
@@ -13,6 +14,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     struct Isqrt<'a> {
         src: &'a str,
         base: u32,
+        facts: Option<&'a Facts>,
         covered: Vec<Span>,
         out: Vec<Finding>,
     }
@@ -22,9 +24,10 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             if self.covered.iter().any(|c| c.contains(span)) {
                 return;
             }
+            let root = |e| rounded_root(e, self.facts, self.base);
             let Some(n) = call_of(expr, &["Int"])
-                .and_then(rounded_root)
-                .or_else(|| rounded_root(expr))
+                .and_then(root)
+                .or_else(|| root(expr))
             else {
                 return;
             };
@@ -52,6 +55,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut v = Isqrt {
         src: file.src,
         base: 0,
+        facts: file.facts,
         covered: Vec::new(),
         out: Vec::new(),
     };
@@ -62,13 +66,16 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
 /// `n` in `floor(sqrt(n))`, `trunc(sqrt(F64(n)))`, `floor(n.sqrt)` or
 /// `sqrt(F64(n)).floor` (each also inside `Int(...)`), when `n` is a name or
 /// a field.
-fn rounded_root(expr: &Expr) -> Option<&Expr> {
+fn rounded_root<'e>(expr: &'e Expr, facts: Option<&Facts>, base: u32) -> Option<&'e Expr> {
     let root = match &expr.kind {
         ExprKind::Field { base, name } if matches!(name.text.as_str(), "floor" | "trunc") => base,
         _ => call_of(expr, &["floor", "trunc"])?,
     };
+    if !is_std(facts, root.span.shift(base), std_fn::SQRT) {
+        return None;
+    }
     let n = match &root.kind {
-        ExprKind::Field { base, name } if name.text == std_fn::SQRT => base,
+        ExprKind::Field { base, .. } => base,
         _ => call_of(root, &[std_fn::SQRT])?,
     };
     let n = call_of(n, &["F64"]).unwrap_or(n);

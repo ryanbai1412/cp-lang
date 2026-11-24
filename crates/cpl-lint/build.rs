@@ -107,7 +107,12 @@ fn std_fns(manifest: &std::path::Path) {
         let text =
             std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
         for line in text.lines() {
-            let Some(rest) = line.trim_start().strip_prefix("pub fn ") else {
+            // `@get pub fn len(self)`: attributes come before `pub fn`.
+            let mut rest = line.trim_start();
+            while let Some(attr) = rest.strip_prefix('@') {
+                rest = attr.split_once(' ').map_or("", |(_, r)| r).trim_start();
+            }
+            let Some(rest) = rest.strip_prefix("pub fn ") else {
                 continue;
             };
             let name: String = rest

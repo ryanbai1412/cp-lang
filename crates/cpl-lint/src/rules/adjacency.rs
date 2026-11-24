@@ -6,7 +6,7 @@
 use crate::facts::Facts;
 use crate::std_fn;
 use crate::walk::{unparen, walk_pattern, walk_stmt, Bind, Visitor};
-use crate::{File, Finding, MANUAL_ADJACENCY_LIST};
+use crate::{is_std, File, Finding, MANUAL_ADJACENCY_LIST};
 use cpl_check::Ty;
 use cpl_diag::{Diagnostic, Span};
 use cpl_syntax::ast::{BinOp, Expr, ExprKind, PatternKind, Stmt, StmtKind};
@@ -65,16 +65,21 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                     if reads.is_empty() {
                         return;
                     }
-                    struct Pushes<'a>(&'a mut Vec<String>, &'a [Vec<String>]);
+                    struct Pushes<'a>(
+                        &'a mut Vec<String>,
+                        &'a [Vec<String>],
+                        Option<&'a Facts>,
+                        u32,
+                    );
                     impl Visitor for Pushes<'_> {
                         fn expr(&mut self, expr: &Expr) {
                             let ExprKind::Call { callee, args } = &expr.kind else {
                                 return;
                             };
-                            let ExprKind::Field { base, name } = &callee.kind else {
+                            let ExprKind::Field { base, .. } = &callee.kind else {
                                 return;
                             };
-                            if name.text != std_fn::PUSH {
+                            if !is_std(self.2, expr.span.shift(self.3), std_fn::PUSH) {
                                 return;
                             }
                             if let ExprKind::Index { base, indices } = &base.kind {
@@ -98,7 +103,10 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                         }
                     }
                     for s in &body.stmts {
-                        walk_stmt(&mut Pushes(&mut self.pushed_per_edge, &reads), s);
+                        walk_stmt(
+                            &mut Pushes(&mut self.pushed_per_edge, &reads, self.facts, self.base),
+                            s,
+                        );
                     }
                 }
                 _ => {}

@@ -280,10 +280,35 @@ def lint_name_matchers(root: Path) -> list[str]:
     against a std fn (`method.text == std_fn::PUSH`, a `std_fn::SORT =>` arm)
     instead of asking the checker which fn it calls (`Facts::callee`): a
     user's own `push` fires them. Names a lint writes into its help or fix
-    don't count. `lint_std_names` keeps every such name on `std_fn`."""
-    matcher = re.compile(r"(==|!=)\s*std_fn::|std_fn::\w+\s*(==|!=|=>|\|)|\|\s*std_fn::|matches!\(.*std_fn::|contains\(std_fn::")
-    return [f"{_rel(root, p)}:{i}" for p in _rs_files(root, "crates/cpl-lint/src/rules", tests=False)
-            for i, line in enumerate(_lines(p), 1) if matcher.search(line)]
+    don't count, nor a line that asks the checker (`is_std`, `Calls::is`,
+    `Calls::name`), nor an arm of a `match` on the checker's callee name.
+    `lint_std_names` keeps every such name on `std_fn`."""
+    facts = re.compile(r"\bis_std\(|\.is\(|\.name\(")
+    compare = re.compile(r"(==|!=)\s*std_fn::|std_fn::\w+\s*(==|!=)|contains\(std_fn::")
+    arm = re.compile(r"std_fn::\w+\s*(=>|\|)|\|\s*std_fn::|matches!\(.*std_fn::")
+    written = re.compile(r"\.text\b|as_str\(\)")
+
+    def scrutinee(lines: list[str], i: int) -> str:
+        """The `match` an arm on line `i` belongs to: the nearest one above
+        it that is indented less."""
+        indent = len(lines[i]) - len(lines[i].lstrip())
+        for line in reversed(lines[:i]):
+            if "match " in line and len(line) - len(line.lstrip()) < indent:
+                return line
+        return ""
+
+    out = []
+    for p in _rs_files(root, "crates/cpl-lint/src/rules", tests=False):
+        lines = _lines(p)
+        for i, line in enumerate(lines):
+            if facts.search(line):
+                continue
+            by_arm = arm.search(line) and (
+                written.search(line) or written.search(scrutinee(lines, i))
+            )
+            if compare.search(line) or by_arm:
+                out.append(f"{_rel(root, p)}:{i + 1}")
+    return out
 
 
 def lint_type_syntax(root: Path) -> list[str]:

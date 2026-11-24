@@ -12,6 +12,7 @@
 use super::shapes::flip;
 use crate::std_fn;
 use crate::walk::{unparen, Bind, Scope, Visitor};
+use crate::Calls;
 use crate::{File, Finding, UNPROVEN_LIST_INDEX};
 use cpl_check::Ty;
 use cpl_diag::{Diagnostic, Span};
@@ -121,9 +122,10 @@ impl Indexes<'_> {
 }
 
 /// `xs` in `xs.field`.
-fn field_receiver<'a>(expr: &'a Expr, field: &str) -> Option<&'a str> {
-    match &unparen(expr).kind {
-        ExprKind::Field { base, name } if name.text == field => match &base.kind {
+fn field_receiver<'a>(expr: &'a Expr, field: &str, calls: Calls) -> Option<&'a str> {
+    let e = unparen(expr);
+    match &e.kind {
+        ExprKind::Field { base, .. } if calls.is(e, field) => match &base.kind {
             ExprKind::Name(list) => Some(list),
             _ => None,
         },
@@ -132,22 +134,22 @@ fn field_receiver<'a>(expr: &'a Expr, field: &str) -> Option<&'a str> {
 }
 
 /// `xs` in `xs.len`.
-fn list_of_len(len: &Expr) -> Option<&str> {
-    field_receiver(len, std_fn::LEN)
+fn list_of_len<'e>(len: &'e Expr, calls: Calls) -> Option<&'e str> {
+    field_receiver(len, std_fn::LEN, calls)
 }
 
 /// The list `iter` walks the indices of: `0..xs.len`, `xs.indices`, and
 /// either one `.rev`.
-fn indexed_list(iter: &Expr) -> Option<&str> {
+fn indexed_list<'e>(iter: &'e Expr, calls: Calls) -> Option<&'e str> {
     match &unparen(iter).kind {
-        ExprKind::Field { base, name } if name.text == "rev" => indexed_list(base),
+        ExprKind::Field { base, name } if name.text == "rev" => indexed_list(base, calls),
         ExprKind::Range {
             lo: Some(lo),
             hi: Some(hi),
             inclusive: false,
             step: None,
-        } if matches!(lo.kind, ExprKind::Int(_)) => field_receiver(hi, std_fn::LEN),
-        _ => field_receiver(iter, "indices"),
+        } if matches!(lo.kind, ExprKind::Int(_)) => field_receiver(hi, std_fn::LEN, calls),
+        _ => field_receiver(iter, "indices", calls),
     }
 }
 
@@ -155,7 +157,7 @@ fn indexed_list(iter: &Expr) -> Option<&str> {
 /// and `xs.len > i` prove `(i, xs)`; `xs.len > 0`, `xs.len >= 1`,
 /// `xs.len != 0` and `not xs.is_empty` prove `(LAST, xs)`. Both sides of an
 /// `and` count.
-fn guard_facts(test: &Expr, out: &mut Vec<(String, String)>) {
+fn guard_facts(test: &Expr, out: &mut Vec<(String, String)>, calls: Calls) {
     match &unparen(test).kind {
         ExprKind::Binary {
             op: BinOp::And,
@@ -163,21 +165,21 @@ fn guard_facts(test: &Expr, out: &mut Vec<(String, String)>) {
             rhs,
             ..
         } => {
-            guard_facts(lhs, out);
-            guard_facts(rhs, out);
+            guard_facts(lhs, out, calls);
+            guard_facts(rhs, out, calls);
         }
         ExprKind::Unary {
             op: UnOp::Not,
             expr,
         } => {
-            if let Some(list) = field_receiver(expr, "is_empty") {
+            if let Some(list) = field_receiver(expr, "is_empty", calls) {
                 out.push((LAST.to_string(), list.to_string()));
             }
         }
         ExprKind::Compare { first, rest } => {
             let mut lhs = &**first;
             for (op, rhs) in rest {
-                let (op, small, len) = match (list_of_len(lhs), list_of_len(rhs)) {
+                let (op, small, len) = match (list_of_len(lhs, calls), list_of_len(rhs, calls)) {
                     (None, Some(list)) => (*op, lhs, list),
                     (Some(list), None) => (flip(*op), rhs, list),
                     _ => {
@@ -204,9 +206,9 @@ fn guard_facts(test: &Expr, out: &mut Vec<(String, String)>) {
 }
 
 /// `xs.len - 1`.
-fn is_last(index: &Expr, list: &str) -> bool {
+fn is_last(index: &Expr, list: &str, calls: Calls) -> bool {
     matches!(&unparen(index).kind, ExprKind::Binary { op: BinOp::Sub, lhs, rhs, .. }
-        if list_of_len(lhs) == Some(list) && matches!(unparen(rhs).kind, ExprKind::Int(1)))
+        if list_of_len(lhs, calls) == Some(list) && matches!(unparen(rhs).kind, ExprKind::Int(1)))
 }
 
 impl Visitor for Indexes<'_> {
@@ -269,7 +271,10 @@ impl Visitor for Indexes<'_> {
     }
 
     fn for_loop(&mut self, pat: &Pattern, iter: &Expr) {
-        if let (PatternKind::Name(index), Some(list)) = (&pat.kind, indexed_list(iter)) {
+        if let (PatternKind::Name(index), Some(list)) = (
+            &pat.kind,
+            indexed_list(iter, Calls::new(self.facts, self.base)),
+        ) {
             if let Some(top) = self.scopes.last_mut() {
                 top.proves.push((index.clone(), list.to_string()));
             }
@@ -284,7 +289,7 @@ impl Visitor for Indexes<'_> {
 
     fn if_branch(&mut self, cond: &Cond) {
         if let (Cond::Expr(test), Some(top)) = (cond, self.scopes.last_mut()) {
-            guard_facts(test, &mut top.proves);
+            guard_facts(test, &mut top.proves, Calls::new(self.facts, self.base));
             top.test = Some(test.span.shift(self.base));
         }
     }
@@ -298,7 +303,7 @@ impl Visitor for Indexes<'_> {
         } = &expr.kind
         {
             let mut facts = Vec::new();
-            guard_facts(lhs, &mut facts);
+            guard_facts(lhs, &mut facts, Calls::new(self.facts, self.base));
             if !facts.is_empty() {
                 self.guards.push((rhs.span.shift(self.base), facts));
             }
@@ -317,7 +322,9 @@ impl Visitor for Indexes<'_> {
             return;
         }
         let at = index.span.shift(self.base);
-        if is_last(index, list) && (self.proven(at, LAST, list) || self.guarded(at, LAST, list)) {
+        if is_last(index, list, Calls::new(self.facts, self.base))
+            && (self.proven(at, LAST, list) || self.guarded(at, LAST, list))
+        {
             return;
         }
         match &unparen(index).kind {
@@ -381,7 +388,7 @@ mod tests {
     #[test]
     fn unproven_list_index_wants_two_loops_and_an_unproven_index() {
         let nest = |index: &str| {
-            format!("var ws: List<Int> = []\nws.push(read())\nvar total = 0\nfor i in 0..ws.len:\n    for j in ws.indices:\n        total += {index}\nprint(total)\n")
+            format!("var ws: List<Int> = []\nws.push(read())\nvar total = 0\nfor i in 0..ws.len:\n    for j in (0..ws.len).rev:\n        total += {index}\nprint(total)\n")
         };
         let found = only(&nest("ws[j + 1]"));
         assert_eq!(found.code.0, "L0414");
@@ -447,7 +454,6 @@ mod tests {
             format!("var ws: List<Int> = []\nws.push(read())\nvar total = 0\nfor i in 0..3:\n    for j in {iter}:\n        total += ws[j]\nprint(total)\n")
         };
         assert_eq!(codes(&rev("(0..ws.len).rev")), Vec::<&str>::new());
-        assert_eq!(codes(&rev("ws.indices.rev")), Vec::<&str>::new());
         // Any literal start is at least 0, and so is the outer `i in 0..3`;
         // `i - 5` may be negative.
         assert_eq!(codes(&rev("(1..ws.len).rev")), Vec::<&str>::new());

@@ -3,9 +3,10 @@
 //! (`std.heap`) pops the largest with the same costs. The heap is labelled
 //! so the fact table keeps the finding only on a min-heap (`typed.rs`).
 
+use crate::facts::Facts;
 use crate::std_fn;
 use crate::walk::{unparen, Visitor};
-use crate::{File, Finding, NEGATED_HEAP};
+use crate::{is_std, File, Finding, NEGATED_HEAP};
 use cpl_diag::Diagnostic;
 use cpl_syntax::ast::{Expr, ExprKind, UnOp};
 use std::collections::HashSet;
@@ -13,17 +14,18 @@ use std::collections::HashSet;
 use super::shapes::name;
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
-    struct Pushes {
+    struct Pushes<'a> {
         base: u32,
+        facts: Option<&'a Facts>,
         seen: HashSet<String>,
         out: Vec<Finding>,
     }
-    impl Visitor for Pushes {
+    impl Visitor for Pushes<'_> {
         fn expr(&mut self, expr: &Expr) {
             let ExprKind::Call { callee, args } = &expr.kind else {
                 return;
             };
-            let ExprKind::Field { base, name: method } = &callee.kind else {
+            let ExprKind::Field { base, .. } = &callee.kind else {
                 return;
             };
             let (Some(h), [arg]) = (name(base), args.as_slice()) else {
@@ -33,7 +35,10 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 &unparen(&arg.value).kind,
                 ExprKind::Unary { op: UnOp::Neg, .. }
             );
-            if method.text != std_fn::PUSH || !negated || !self.seen.insert(h.to_string()) {
+            if !negated
+                || !is_std(self.facts, expr.span.shift(self.base), std_fn::PUSH)
+                || !self.seen.insert(h.to_string())
+            {
                 return;
             }
             let diag = Diagnostic::warning(
@@ -53,6 +58,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     }
     let mut v = Pushes {
         base: 0,
+        facts: file.facts,
         seen: HashSet::new(),
         out: Vec::new(),
     };

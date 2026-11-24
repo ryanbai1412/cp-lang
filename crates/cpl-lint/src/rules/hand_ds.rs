@@ -3,8 +3,10 @@
 //! Fenwick tree (`inversions_by_fenwick`) and an interval DP stepped by
 //! length (`interval_dp_by_length`).
 
+use crate::facts::Facts;
 use crate::std_fn;
 use crate::walk::{unparen, Visitor};
+use crate::Calls;
 use crate::{
     File, Finding, Lint, INTERVAL_DP_BY_LENGTH, INVERSIONS_BY_FENWICK, SMALL_TO_LARGE_BY_HAND,
 };
@@ -17,6 +19,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut v = HandDs {
         src: file.src,
         base: 0,
+        facts: file.facts,
         out: Vec::new(),
     };
     file.walk(&mut v, |v, base| v.base = base);
@@ -26,25 +29,27 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
 struct HandDs<'a> {
     src: &'a str,
     base: u32,
+    facts: Option<&'a Facts>,
     out: Vec<Finding>,
 }
 
 /// `recv.method(args)`, the receiver as written.
-fn call<'e>(e: &'e Expr, method: &str) -> Option<(&'e Expr, &'e [Arg])> {
-    let ExprKind::Call { callee, args } = &unparen(e).kind else {
+fn call<'e>(e: &'e Expr, method: &str, calls: Calls) -> Option<(&'e Expr, &'e [Arg])> {
+    let e = unparen(e);
+    let ExprKind::Call { callee, args } = &e.kind else {
         return None;
     };
     match &callee.kind {
-        ExprKind::Field { base, name: m } if m.text == method => Some((base, args)),
+        ExprKind::Field { base, .. } if calls.is(e, method) => Some((base, args)),
         _ => None,
     }
 }
 
-fn call_stmt<'e>(stmt: &'e Stmt, methods: &[&str]) -> Option<(&'e Expr, &'e [Arg])> {
+fn call_stmt<'e>(stmt: &'e Stmt, methods: &[&str], calls: Calls) -> Option<(&'e Expr, &'e [Arg])> {
     let StmtKind::Expr(e) = &stmt.kind else {
         return None;
     };
-    methods.iter().find_map(|m| call(e, m))
+    methods.iter().find_map(|m| call(e, m, calls))
 }
 
 fn loop_var(pat: &Pattern) -> Option<&str> {
@@ -55,6 +60,10 @@ fn loop_var(pat: &Pattern) -> Option<&str> {
 }
 
 impl HandDs<'_> {
+    fn calls(&self) -> Calls<'_> {
+        Calls::new(self.facts, self.base)
+    }
+
     fn text(&self, span: Span) -> &str {
         span.shift(self.base).text(self.src)
     }
@@ -83,7 +92,10 @@ impl HandDs<'_> {
             let Some((l, CmpOp::Lt | CmpOp::Gt | CmpOp::Le | CmpOp::Ge, r)) = compare(c) else {
                 continue;
             };
-            let is_len = |e: &Expr| matches!(&unparen(e).kind, ExprKind::Field { name, .. } if name.text == std_fn::LEN);
+            let is_len = |e: &Expr| {
+                let e = unparen(e);
+                matches!(e.kind, ExprKind::Field { .. }) && self.calls().is(e, std_fn::LEN)
+            };
             if !is_len(l) || !is_len(r) {
                 continue;
             }
@@ -115,8 +127,8 @@ impl HandDs<'_> {
             let StmtKind::For { iter, body, .. } = &pair[1].kind else {
                 continue;
             };
-            let Some((recv, _)) =
-                single(body).and_then(|s| call_stmt(s, &[std_fn::ADD, std_fn::INSERT]))
+            let Some((recv, _)) = single(body)
+                .and_then(|s| call_stmt(s, &[std_fn::ADD, std_fn::INSERT], self.calls()))
             else {
                 continue;
             };
@@ -164,13 +176,13 @@ impl HandDs<'_> {
             else {
                 return None;
             };
-            name(call(rhs, std_fn::PREFIX)?.0)
+            name(call(rhs, std_fn::PREFIX, self.calls())?.0)
         });
         let Some(bit) = counted else {
             return;
         };
         let adds_one = body.stmts.iter().any(|s| {
-            call_stmt(s, &[std_fn::ADD]).is_some_and(|(r, args)| {
+            call_stmt(s, &[std_fn::ADD], self.calls()).is_some_and(|(r, args)| {
                 name(r) == Some(bit)
                     && match args {
                         [_] => true,

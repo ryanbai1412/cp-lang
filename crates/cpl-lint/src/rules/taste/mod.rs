@@ -4,8 +4,10 @@
 //! change what the program does.
 
 use super::shapes;
+use crate::facts::Facts;
 use crate::std_fn;
 use crate::walk::{self, Bind, Visitor};
+use crate::Calls;
 use crate::{
     File, Finding, COPY_SORT_WRITEBACK, DISCARDED_RESULT, DOMAIN_SPELLING, FREE_FOLD,
     HAND_ROLLED_ANSWER_SEARCH, HAND_ROLLED_BINARY_LIFTING, HAND_ROLLED_DSU, HAND_ROLLED_PREFIX_SUM,
@@ -34,6 +36,7 @@ use text::*;
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut rule = Taste {
         src: file.src,
+        facts: file.facts,
         base: 0,
         next_base: 0,
         valued_fns: HashSet::new(),
@@ -133,6 +136,7 @@ impl Visitor for Blocks<'_, '_> {
 
 struct Taste<'a> {
     src: &'a str,
+    facts: Option<&'a Facts>,
     /// The `unchecked:` blocks, as absolute offsets: hand-tuned on purpose.
     unchecked: Vec<(u32, u32)>,
     base: u32,
@@ -559,11 +563,12 @@ impl<'a> Taste<'a> {
 
         // Form 1 (2 statements): `let/var sub = xs[l..r].sorted(..)` / `.reversed()` / `.rotated_left(..)` / `.rotated_right(..)`
         if let ExprKind::Call { callee, args, .. } = &init.kind {
-            if let ExprKind::Field { base, name } = &callee.kind {
+            if let ExprKind::Field { base, .. } = &callee.kind {
                 if let Some((target, range, lo)) =
                     extract_contiguous_slice(self.src, first_base, base)
                 {
-                    let in_place = in_place_twin(&name.text);
+                    let calls = Calls::new(self.facts, first_base);
+                    let in_place = calls.name(init).and_then(in_place_twin);
                     if let Some(method) = in_place {
                         let args =
                             call_args_text(self.src, first_base, init.span, callee.span, args);
@@ -577,7 +582,7 @@ impl<'a> Taste<'a> {
                         });
                     }
                     // Form 2a (3 statements): `var sub = xs[l..r].to_list()` + `sub.sort(..)` + writeback
-                    if name.text == std_fn::TO_LIST && args.is_empty() {
+                    if calls.is(init, std_fn::TO_LIST) && args.is_empty() {
                         if let Some((method, args)) =
                             match_in_place_mut_stmt(self.src, stmts.get(i + 1)?, sub_name)
                         {
@@ -778,10 +783,11 @@ impl<'a> Taste<'a> {
     /// `g[u].push(v)` or `g[u].push((v, w..))` as (list, u, v, rest).
     fn push_call(&self, e: &Expr, base: u32) -> Option<(&'a str, &'a str, &'a str, Vec<&'a str>)> {
         let text = |span: Span| span.shift(base).text(self.src);
+        let calls = Calls::new(self.facts, base);
         let ExprKind::Call { callee, args } = &e.kind else {
             return None;
         };
-        let ExprKind::Field { base, name } = &callee.kind else {
+        let ExprKind::Field { base, .. } = &callee.kind else {
             return None;
         };
         let ExprKind::Index {
@@ -791,7 +797,7 @@ impl<'a> Taste<'a> {
         else {
             return None;
         };
-        if name.text != std_fn::PUSH || indices.len() != 1 || args.len() != 1 {
+        if !calls.is(e, std_fn::PUSH) || indices.len() != 1 || args.len() != 1 {
             return None;
         }
         let (v, rest) = match &walk::unparen(&args[0].value).kind {
@@ -1069,20 +1075,23 @@ impl<'a> Taste<'a> {
             }
             return;
         }
-        let ExprKind::Name(name) = &callee.kind else {
+        if !matches!(callee.kind, ExprKind::Name(_)) {
+            return;
+        }
+        let Some(name) = Calls::new(self.facts, self.base).name(expr) else {
             return;
         };
         let Some(seq) = args.first() else {
             return;
         };
-        if self.declared.contains(name.as_str())
+        if self.declared.contains(name)
             || seq.name.is_some()
             || matches!(seq.value.kind, ExprKind::Comprehension { .. })
         {
             return;
         }
         let positional = args.iter().all(|a| a.name.is_none() && !a.mutable);
-        let fits = match name.as_str() {
+        let fits = match name {
             std_fn::SUM | std_fn::PROD => args.len() == 1 && !seq.mutable,
             std_fn::MIN | std_fn::MAX => {
                 !seq.mutable
@@ -1101,9 +1110,7 @@ impl<'a> Taste<'a> {
         // is a list literal rather than a named sequence.
         let skip = match &seq.value.kind {
             ExprKind::Name(n) => n.starts_with(char::is_uppercase),
-            ExprKind::List(_) => {
-                matches!(name.as_str(), std_fn::MIN | std_fn::MAX) && args.len() == 1
-            }
+            ExprKind::List(_) => matches!(name, std_fn::MIN | std_fn::MAX) && args.len() == 1,
             _ => false,
         };
         if !fits || skip {
@@ -1129,10 +1136,9 @@ impl<'a> Taste<'a> {
             _ => "",
         };
         // The method form of `first(xs, p)` is `xs.find(p)` (decisions.md §182).
-        let method = if name == std_fn::FIRST {
-            std_fn::FIND
-        } else {
-            name.as_str()
+        let method = match name {
+            std_fn::FIRST => std_fn::FIND,
+            other => other,
         };
         let call = format!("{recv}.{method}({rest})");
         let mut diag = Diagnostic::warning(
@@ -1400,7 +1406,7 @@ impl<'a> Taste<'a> {
         let PatternKind::Name(index) = &pat.kind else {
             return;
         };
-        let Some(list) = zero_indexed_list(iter) else {
+        let Some(list) = zero_indexed_list(iter, Calls::new(self.facts, self.base)) else {
             return;
         };
         let mut uses = Uses {
@@ -1448,16 +1454,16 @@ impl<'a> Taste<'a> {
 }
 
 /// The name `xs` of `0..xs.len` or `xs.indices`.
-fn zero_indexed_list(iter: &Expr) -> Option<&str> {
-    fn len_of<'e>(e: &'e Expr, field: &str) -> Option<&'e str> {
+fn zero_indexed_list<'e>(iter: &'e Expr, calls: Calls) -> Option<&'e str> {
+    let len_of = |e: &'e Expr, field: &str| -> Option<&'e str> {
         match &e.kind {
-            ExprKind::Field { base, name } if name.text == field => match &base.kind {
+            ExprKind::Field { base, .. } if calls.is(e, field) => match &base.kind {
                 ExprKind::Name(list) => Some(list.as_str()),
                 _ => None,
             },
             _ => None,
         }
-    }
+    };
     match &walk::unparen(iter).kind {
         ExprKind::Range {
             lo: Some(lo),
