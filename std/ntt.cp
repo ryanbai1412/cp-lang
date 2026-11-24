@@ -7,27 +7,9 @@
 //! - linear (`cyclic: false`): length `a.len + b.len - 1` (or `[]` if either input is empty)
 //! - cyclic (`cyclic: true`): requires `a.len == b.len`, length `n = a.len`, index `(i + j) % n`.
 use std.algebra.{Monoid, Semiring}
-use std.math.{is_pow2, mul_mod, pow_mod, primitive_root, bit, gcd, lcm}
+use std.math.{is_pow2, primitive_root, bit, gcd, lcm}
 use std.mod.{Mod}
 use std.seq.{collect}
-
-const P1 = 998_244_353
-const P2 = 469_762_049
-const P3 = 167_772_161
-
-fn root_of(p: Int) -> Int = if p == P1 or p == P2 or p == P3: 3
-    elif p == 754_974_721: 11
-    else: primitive_root(p)
-
-fn mont_inv(p: Int) -> Int:
-    var x: U64 = U64(p)
-    let pu = U64(p)
-    for _ in 0..4: x = x * (U64(2) - pu * x)
-    Int((U64(0) - x) & U64(4_294_967_295))
-
-fn mred(x: Int, p: Int, pinv: Int) -> Int:
-    let r = (x + (((x & 4_294_967_295) * pinv) & 4_294_967_295) * p) >> 32
-    if r >= p: r - p else: r
 
 fn bit_reverse<T>(mut a: List<T>):
     let n = a.len
@@ -43,120 +25,6 @@ fn bit_reverse<T>(mut a: List<T>):
                 let tmp = a[i]
                 a[i] = a[j]
                 a[j] = tmp
-
-fn ntt_raw(mut a: List<Int>, p: Int, g: Int, inverse: Bool):
-    let n = a.len
-    assert n.is_pow2, "ntt requires a power-of-two length"
-    if n <= 1: return
-    assert (p - 1) % n == 0, "modulus p - 1 must be divisible by n"
-    bit_reverse(mut a)
-    if p < 1_073_741_824:
-        let pinv = mont_inv(p)
-        let r1 = (1 << 32) % p
-        let r2 = r1 * r1 % p
-        var roots = List.filled(n >> 1, 0)
-        unchecked:
-            for i in 0..n: a[i] = mred(a[i] * r2, p, pinv)
-            var len = 2
-            while len <= n:
-                let half = len >> 1
-                var wlen = pow_mod(g, (p - 1) / len, p)
-                if inverse: wlen = pow_mod(wlen, p - 2, p)
-                let wlen_m = mred(wlen * r2, p, pinv)
-                roots[0] = r1
-                for k in 1..half: roots[k] = mred(roots[k - 1] * wlen_m, p, pinv)
-                var i = 0
-                while i < n:
-                    for k in 0..half:
-                        let u = a[i + k]
-                        let v = mred(a[i + k + half] * roots[k], p, pinv)
-                        var x = u + v
-                        if x >= p: x -= p
-                        var y = u - v
-                        if y < 0: y += p
-                        a[i + k] = x
-                        a[i + k + half] = y
-                    i += len
-                len <<= 1
-            if inverse:
-                let inv_n = pow_mod(n, p - 2, p)
-                for i in 0..n: a[i] = mred(a[i] * inv_n, p, pinv)
-            else:
-                for i in 0..n: a[i] = mred(a[i], p, pinv)
-        return
-    let small = p <= 3_037_000_499
-    unchecked:
-        var len = 2
-        while len <= n:
-            let half = len >> 1
-            var wlen = pow_mod(g, (p - 1) / len, p)
-            if inverse: wlen = pow_mod(wlen, p - 2, p)
-            var i = 0
-            while i < n:
-                var w = 1
-                for k in 0..half:
-                    let u = a[i + k]
-                    let v = if small: a[i + k + half] * w % p else: mul_mod(a[i + k + half], w, p)
-                    var x = u + v
-                    if x >= p: x -= p
-                    var y = u - v
-                    if y < 0: y += p
-                    a[i + k] = x
-                    a[i + k + half] = y
-                    w = if small: w * wlen % p else: mul_mod(w, wlen, p)
-                i += len
-            len <<= 1
-        if inverse:
-            let inv_n = pow_mod(n, p - 2, p)
-            for i in 0..n: a[i] = if small: a[i] * inv_n % p else: mul_mod(a[i], inv_n, p)
-
-fn convolve_prime(a: List<Int>, b: List<Int>, p: Int, cyclic: Bool) -> List<Int>:
-    if a.is_empty or b.is_empty: return []
-    let na = a.len
-    let nb = b.len
-    if cyclic:
-        assert na == nb, "cyclic convolution requires equal-length inputs"
-    let n_out = if cyclic: na else: na + nb - 1
-    if min(na, nb) <= 60:
-        var out = List.filled(n_out, 0)
-        let small = p <= 3_037_000_499
-        for i in 0..na:
-            let ai = a[i] % p
-            if ai == 0: continue
-            for j in 0..nb:
-                let bj = b[j] % p
-                let prod = if small: ai * bj % p else: mul_mod(ai, bj, p)
-                let idx = if cyclic: (i + j) % na else: i + j
-                var s = out[idx] + prod
-                if s >= p: s -= p
-                out[idx] = s
-        return out
-    let g = root_of(p)
-    let need = if cyclic and na.is_pow2 and (p - 1) % na == 0: na else: bit_ceil(na + nb - 1)
-    assert (p - 1) % need == 0, "modulus p - 1 must be divisible by n"
-    var fa = List.filled(need, 0)
-    var fb = List.filled(need, 0)
-    unchecked:
-        for i in 0..na: fa[i] = a[i] % p
-        for i in 0..nb: fb[i] = b[i] % p
-    ntt_raw(mut fa, p, g, false)
-    ntt_raw(mut fb, p, g, false)
-    let small = p <= 3_037_000_499
-    unchecked:
-        for i in 0..need: fa[i] = if small: fa[i] * fb[i] % p else: mul_mod(fa[i], fb[i], p)
-    ntt_raw(mut fa, p, g, true)
-    if not cyclic:
-        if fa.len > n_out: fa.truncate(n_out)
-        return fa
-    if need == na: return fa
-    var out = List.filled(na, 0)
-    unchecked:
-        for i in 0..na + nb - 1:
-            let idx = i % na
-            var s = out[idx] + fa[i]
-            if s >= p: s -= p
-            out[idx] = s
-    out
 
 /// In-place number-theoretic transform of `a` modulo the NTT-friendly prime `P`.
 ///
@@ -180,60 +48,39 @@ pub fn ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false, bit_reversed: Bool = f
     assert n.is_pow2, "ntt requires a power-of-two length"
     if n <= 1: return
     assert (P - 1) % n == 0, "modulus p - 1 must be divisible by n"
-    let h = ctz(n)
-    let rank2 = ctz(P - 1)
-    var g = 0
-    if P == 998_244_353 or P == 469_762_049 or P == 167_772_161:
-        g = 3
-    elif P == 754_974_721:
-        g = 11
-    else:
-        g = primitive_root(P)
-    let r0 = Mod<P>(pow_mod(g, (P - 1) >> rank2, P))
-    let ir0 = r0.inv()
-    var root = List.filled(rank2 + 1, Mod<P>(1))
-    var iroot = List.filled(rank2 + 1, Mod<P>(1))
-    var rate = List.filled(max(1, rank2), Mod<P>(1))
+    var g = Mod<P>(3)
+    if P == 754_974_721: g = Mod<P>(11)
+    elif P != 998_244_353 and P != 469_762_049 and P != 167_772_161: g = Mod<P>(primitive_root(P))
+    // rate[i] = -w^(3 (P - 1) / 2^(i + 2)): the step between the twiddles of consecutive blocks
+    var rate = List.filled(ctz(n), Mod<P>(0))
+    for i in 0..rate.len - 1:
+        let e = 3 * ((P - 1) >> (i + 2))
+        rate[i] = Mod<P>(0) - g ** (if inverse: P - 1 - e else: e)
+    if inverse and not bit_reversed: bit_reverse(mut a)
     unchecked:
-        root[rank2] = if inverse: ir0 else: r0
-        iroot[rank2] = if inverse: r0 else: ir0
-        for i in (0..rank2).rev:
-            root[i] = root[i + 1] * root[i + 1]
-            iroot[i] = iroot[i + 1] * iroot[i + 1]
-        var prod = Mod<P>(1)
-        for i in 0..rank2 - 1:
-            rate[i] = root[i + 2] * prod
-            prod *= iroot[i + 2]
+        var p = if inverse: 1 else: n >> 1
+        while 0 < p < n:
+            var rot = Mod<P>(1)
+            var s = 0
+            while s * 2 * p < n:
+                let o = s * 2 * p
+                if inverse:
+                    for i in o..o + p:
+                        let (l, r) = (a[i], a[i + p])
+                        a[i] = l + r
+                        a[i + p] = (l - r) * rot
+                else:
+                    for i in o..o + p:
+                        let (l, r) = (a[i], a[i + p] * rot)
+                        a[i] = l + r
+                        a[i + p] = l - r
+                rot *= rate[ctz(s ^ -1)]
+                s += 1
+            p = if inverse: p * 2 else: p >> 1
         if inverse:
-            if not bit_reversed: bit_reverse(mut a)
-            for step in 0..h:
-                let p = 1 << step
-                var rot = Mod<P>(1)
-                let blocks = 1 << (h - step - 1)
-                for s in 0..blocks:
-                    let offset = s << (step + 1)
-                    for i in 0..p:
-                        let l = a[i + offset]
-                        let r = a[i + offset + p]
-                        a[i + offset] = l + r
-                        a[i + offset + p] = (l - r) * rot
-                    if s + 1 != blocks: rot = rot * rate[ctz(s ^ -1)]
             let inv_n = Mod<P>(n).inv()
             for i in 0..n: a[i] *= inv_n
-        else:
-            for step in 0..h:
-                let p = 1 << (h - step - 1)
-                var rot = Mod<P>(1)
-                let blocks = 1 << step
-                for s in 0..blocks:
-                    let offset = s << (h - step)
-                    for i in 0..p:
-                        let l = a[i + offset]
-                        let r = a[i + offset + p] * rot
-                        a[i + offset] = l + r
-                        a[i + offset + p] = l - r
-                    if s + 1 != blocks: rot = rot * rate[ctz(s ^ -1)]
-            if not bit_reversed: bit_reverse(mut a)
+    if not inverse and not bit_reversed: bit_reverse(mut a)
 
 /// Which arguments of a convolution over a semiring other than `(+, *)` have the shape that makes
 /// it fast: convex for `min`, concave for `max`. `Neither` asks for the \(O(n m)\) loop by name.
@@ -391,28 +238,30 @@ impl FastProduct for Int:
         for x in b: mb = max(mb, abs(x))
         let bound = I128(ma) * I128(mb) * I128(min(na, nb))
         if bound >= I128(10_000_000_000_000) * I128(1_000_000_000_000): return None
-        type P1 = Mod<998_244_353>
-        type P2 = Mod<167_772_161>
-        type P3 = Mod<469_762_049>
-        let r1 = convolve([P1(x) for x in a], [P1(x) for x in b])
-        let r2 = convolve([P2(x) for x in a], [P2(x) for x in b])
-        let (p1, p2) = (998_244_353, 167_772_161)
-        let inv1 = P2(p1).inv()
-        if bound < I128(80_000_000_000_000_000):
-            let half = p1 * p2 / 2
-            return Some([if c > half: c - p1 * p2 else: c for c in [r1[k].v + ((P2(r2[k].v) - P2(r1[k].v)) * inv1).v * p1 for k in 0..na + nb - 1]])
-        let r3 = convolve([P3(x) for x in a], [P3(x) for x in b])
-        let inv12 = (P3(p1) * P3(p2)).inv()
-        let whole = I128(p1) * I128(p2) * I128(469_762_049)
+        let three = bound >= I128(80_000_000_000_000_000)
+        let r1 = residues(Mod<998_244_353>(0), a, b) ?? return None
+        let r2 = residues(Mod<167_772_161>(0), a, b) ?? return None
+        var r3: List<Mod<469_762_049>> = []
+        if three: r3 = residues(Mod<469_762_049>(0), a, b) ?? return None
+        // Garner over p1 = 998_244_353, p2 = 167_772_161, p3 = 469_762_049: 47_450_712 is
+        // 1 / p1 mod p2, 115_990_628 is 1 / (p1 p2) mod p3, P12 is p1 p2
         var out = List.filled(na + nb - 1, 0)
         for k in 0..out.len:
             let x1 = r1[k].v
-            let x2 = ((P2(r2[k].v) - P2(x1)) * inv1).v
-            let x3 = ((P3(r3[k].v) - P3(x1) - P3(x2) * P3(p1)) * inv12).v
-            var c = I128(x1) + I128(x2) * I128(p1) + I128(x3) * I128(p1) * I128(p2)
-            if c * I128(2) > whole: c -= whole
-            out[k] = Int(c)
+            let c = x1 + (r2[k].v - x1 % 167_772_161 + 167_772_161) * 47_450_712 % 167_772_161 * 998_244_353
+            if not three:
+                out[k] = if c > P12 / 2: c - P12 else: c
+                continue
+            let x3 = (r3[k].v + 469_762_049 - c % 469_762_049) * 115_990_628 % 469_762_049
+            let w = I128(c) + I128(x3) * I128(P12)
+            out[k] = Int(if w * I128(2) > I128(P12) * I128(469_762_049): w - I128(P12) * I128(469_762_049) else: w)
         Some(out)
+
+const P12 = 167_477_612_308_856_833
+
+// `a * b` modulo `P`, through `Mod<P>`'s NTT product; `None` when `P - 1` lacks the power of two.
+fn residues<P>(_: Mod<P>, a: List<Int>, b: List<Int>) -> ?List<Mod<P>> =
+    Mod<P>.product([Mod<P>(x) for x in a], [Mod<P>(x) for x in b])
 
 /// `convolve` over another semiring: `out[i + j]` folds `over.mul(a[i], b[j])` with `over.add`.
 /// `shape: Both` merges slopes (both inputs convex for `min`, concave for `max`, `mul` is `+`).
