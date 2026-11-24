@@ -9,14 +9,14 @@ Status: draft for 0.3.0. Sources: `plan/60-editor.md`, decisions 29,
   warnings show the estimate on hover. (Rlsp.1)
 - **Hover**: the type, where `None` lives, storage width and peak bytes,
   proven ranges, the cost of a call, and representation choices
-  (niche, width from a range, specialization chosen by a law).
+  (niche, width from a range, specialization chosen by a law). (Rlsp.6)
 - **Storage sizes** (decision 149): hover on a type or variable gives its
   size, field storage order, padding and niche; inlay hints after array
   and structure declarations give element size and peak bytes at the
   input bounds (`var dist: [V]?Int  // 8 B x 2e5 = 1.6 MB`); a code lens
   above the program shows total peak memory against the judge profile;
   padding over 20 % and `wide_array` are quick fixes. The numbers come
-  from the same computation as `cpl explain`.
+  from the same computation as `cpl explain`. (Rlsp.7)
 - **Inlay hints**: inferred types, parameter names past two positional
   arguments, opt-in live sample values per top-level `let`.
 - **Completion** ranked by type (positions of `V` inside `a[` for
