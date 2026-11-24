@@ -546,6 +546,48 @@ pub(super) fn array_flat_index(
 }
 
 /// The row-major cell of `indices` in an array of `dims`, each checked.
+/// The first value of `lo..hi by step` (`..=hi` when `closed`), or of it
+/// walked backward when `rev`; `None` when no value is in range.
+pub(super) fn step_first(
+    lo: i64,
+    hi: i64,
+    step: i64,
+    closed: bool,
+    rev: bool,
+    span: Span,
+) -> Res<Option<i64>> {
+    if step <= 0 {
+        return trap(
+            span,
+            format!("a range steps forward: `by {step}` is not positive"),
+        );
+    }
+    // One past the last value, which an `Int` may not hold.
+    let (lo, end, step) = (
+        i128::from(lo),
+        i128::from(hi) + i128::from(closed),
+        i128::from(step),
+    );
+    if lo >= end {
+        return Ok(None);
+    }
+    let count = (end - lo + step - 1) / step;
+    Ok(Some(if rev { lo + (count - 1) * step } else { lo } as i64))
+}
+
+/// The value after `i` in a stepped loop that ends at `end` (see
+/// [`Op::ForStepNext`]), or `None` past it.
+pub(super) fn step_next(i: i64, step: i64, end: i64, closed: bool, rev: bool) -> Option<i64> {
+    let (i, step, end) = (i128::from(i), i128::from(step), i128::from(end));
+    let next = if rev { i - step } else { i + step };
+    let in_range = if rev {
+        next >= end
+    } else {
+        next < end + i128::from(closed)
+    };
+    in_range.then_some(next as i64)
+}
+
 pub(super) fn nd_flat_index(dims: &[i64], indices: &[i64], span: Span) -> Res<usize> {
     let mut flat = 0;
     for (&i, &d) in indices.iter().zip(dims) {

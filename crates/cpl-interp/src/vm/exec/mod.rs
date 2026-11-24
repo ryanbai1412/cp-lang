@@ -1097,32 +1097,29 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     r_hi,
                     r_step,
                     closed,
+                    rev,
                     skip,
                 } => {
+                    let (lo, hi) = (regs_i[r_lo as usize], regs_i[r_hi as usize]);
                     let step = regs_i[r_step as usize];
-                    if step <= 0 {
-                        return trap(
-                            spans[cur_pc],
-                            format!("a range steps forward: `by {step}` is not positive"),
-                        );
-                    }
-                    // One past the last value, which an `Int` may not hold.
-                    let end = i128::from(regs_i[r_hi as usize]) + i128::from(closed);
-                    if i128::from(regs_i[r_lo as usize]) >= end {
-                        pc = skip as usize;
+                    match step_first(lo, hi, step, closed, rev, spans[cur_pc])? {
+                        None => pc = skip as usize,
+                        Some(first) if rev => regs_i[r_hi as usize] = first,
+                        Some(_) => {}
                     }
                 }
                 Op::ForStepNext {
                     r_i,
-                    r_hi,
+                    r_end,
                     r_step,
                     closed,
+                    rev,
                     target,
                 } => {
-                    let next =
-                        i128::from(regs_i[r_i as usize]) + i128::from(regs_i[r_step as usize]);
-                    if next < i128::from(regs_i[r_hi as usize]) + i128::from(closed) {
-                        regs_i[r_i as usize] = next as i64;
+                    let (i, step) = (regs_i[r_i as usize], regs_i[r_step as usize]);
+                    let end = regs_i[r_end as usize];
+                    if let Some(next) = step_next(i, step, end, closed, rev) {
+                        regs_i[r_i as usize] = next;
                         if self.tick(spans[cur_pc])? {
                             self.take_checkpoint(
                                 compiled, chunk, cur_pc, base_i, vm_regs_i, regs_v,

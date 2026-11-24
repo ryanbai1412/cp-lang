@@ -1178,11 +1178,22 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 lo,
                 hi,
                 step: Some(step),
-                rev: false,
+                rev,
                 closed,
             } => {
-                let r_lo = self.compile_expr_i(lo);
-                // The body may change a variable the bounds were read from.
+                let mut copy = |e: &'p Expr| {
+                    let src = self.compile_expr_i(e);
+                    let dst = self.alloc_i();
+                    self.emit(Op::MoveI { dst, src }, e.span);
+                    dst
+                };
+                // The body may change a variable the bounds were read from;
+                // walked backward, the loop ends at `lo` and starts at `r_hi`.
+                let r_lo = if *rev {
+                    copy(lo)
+                } else {
+                    self.compile_expr_i(lo)
+                };
                 let [r_hi, r_step] = [hi, step].map(|e| {
                     let src = self.compile_expr_i(e);
                     let dst = self.alloc_i();
@@ -1195,15 +1206,17 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         r_hi,
                         r_step,
                         closed: *closed,
+                        rev: *rev,
                         skip: 0,
                     },
                     step.span,
                 );
-                if r_var != r_lo {
+                let (first, r_end) = if *rev { (r_hi, r_lo) } else { (r_lo, r_hi) };
+                if r_var != first {
                     self.emit(
                         Op::MoveI {
                             dst: r_var,
-                            src: r_lo,
+                            src: first,
                         },
                         lo.span,
                     );
@@ -1224,9 +1237,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.emit(
                     Op::ForStepNext {
                         r_i: r_var,
-                        r_hi,
+                        r_end,
                         r_step,
                         closed: *closed,
+                        rev: *rev,
                         target: body_pc,
                     },
                     hi.span,
