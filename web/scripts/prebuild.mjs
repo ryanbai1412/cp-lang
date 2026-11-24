@@ -1,11 +1,14 @@
 // Runs the prebuild steps as two independent chains at once: the wasm build
-// shares nothing with the generated docs and the snippet gate.
+// shares nothing with the generated docs and the snippet gate. Then the
+// timed steps run alone: stress-parity holds the browser build to a wall
+// clock limit, which another chain's load on the runner would break.
 import { spawn } from 'node:child_process';
 
 const chains = [
-  ['wasm', 'wasm-size', 'lint-inputs', 'practice-mutants', 'stress-parity'],
+  ['wasm', 'wasm-size', 'lint-inputs', 'practice-mutants'],
   ['stamp', 'releases', 'practice', 'downloads', 'gen-ref', 'gen-tools', 'gen-debug', 'facts', 'gate'],
 ];
+const alone = ['stress-parity'];
 
 // A stage that hangs fails by name instead of running into CI's job timeout
 // with no log; each stage's time is printed so slow ones show.
@@ -32,6 +35,9 @@ const results = await Promise.allSettled(
     for (const step of steps) await run(step);
   }),
 );
+if (results.every((r) => r.status === 'fulfilled')) {
+  for (const step of alone) await run(step).catch((e) => results.push({ status: 'rejected', reason: e }));
+}
 const failed = results.filter((r) => r.status === 'rejected');
 for (const f of failed) console.error(f.reason.message);
 process.exit(failed.length ? 1 : 0);
