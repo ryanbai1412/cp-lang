@@ -24,5 +24,10 @@
  "difficulty": "medium",
  "dream": "draft",
  "spec": "draft",
- "notes": "chain + sorted(by: (desc, desc)); [K]?Int knapsack with K.at for out-of-range transitions; clone per event instead of direction-dependent loops."
+ "notes": "chain + sorted(by: (desc, desc)); [K]?Int knapsack with K.at for out-of-range transitions; clone per event instead of direction-dependent loops.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 10,
+  "sha": "e6d034360cd1f06d4a5b7188c41d22f330956c87"
+ }
 }
