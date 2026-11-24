@@ -130,7 +130,7 @@
   "corpus_test_files": 0,
   "uncited_rules": 0,
   "register_rows_by_domain": {
-    "compiler": 1,
+    "compiler": 0,
     "debugger": 7,
     "diagnostics": 0,
     "idioms": 3,
