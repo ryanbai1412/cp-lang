@@ -130,6 +130,16 @@ fn choose_port(prob_dir: &Path) -> Option<(PathBuf, bool)> {
     if perf.is_file() {
         return Some((perf, true));
     }
+    // The frozen v0.2 copy keeps the series comparable while ports are re-ported in place.
+    if let Some(id) = prob_dir.file_name() {
+        let frozen = prob_dir
+            .join("../../../tests/v02-snapshot")
+            .join(id)
+            .join("port.cp");
+        if frozen.is_file() {
+            return Some((frozen, false));
+        }
+    }
     let port = prob_dir.join("port.cp");
     if port.is_file() {
         return Some((port, false));

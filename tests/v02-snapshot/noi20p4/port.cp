@@ -1,0 +1,96 @@
+// Source: NOI 2020 P4 (Dish), https://dmoj.ca/problem/noi20p4
+// Problem: n ingredients of d_i grams (sum = m * k); make m dishes of exactly k grams, each from
+//   at most 2 ingredients in positive whole grams, using everything up; print the dishes, or -1.
+//   Multitest (T <= 10), n <= 500, n - 2 <= m <= 5000, k <= 5000; any valid plan.
+// Solution: with m >= n - 1, greedy: while there are more dishes than ingredients - 1, the
+//   largest ingredient (>= k) makes a dish alone; otherwise the smallest (< k) is finished off
+//   with the largest. With m = n - 2, split the ingredients into two groups of s and n - s that
+//   each hold (size - 1) * k grams: a subset of offsets d_i - k summing to -k, found by a
+//   subset-sum DP over (prefix, offset) in O(n * n * k) and traced back; then greedy on each.
+// original: corpus/submissions/3890337.cpp
+// The m = n - 2 subset sum keeps one Bool per (prefix, offset) in a flat
+// List<Bool>: 8x the memory of the bitset the full limits need, so this form
+// is verified on small and medium cases only.
+let tests: 1..=10 = read()
+
+var rem: List<Int> = []  // grams left of each ingredient of this case
+var k = 0
+
+// Uses up the ingredients in `group` with exactly `dishes` dishes
+// (dishes >= group.len - 1 and their total is dishes * k).
+fn greedy(group: List<Int>, dishes: Int):
+    var live: List<Int> = []
+    for i in group:
+        if rem[i] > 0:
+            live.push(i)
+    for made in 0..dishes:
+        var a = 0
+        var b = 0
+        for p in 0..live.len:
+            if rem[live[p]] < rem[live[a]]:
+                a = p
+            if rem[live[p]] >= rem[live[b]]:
+                b = p
+        let i = live[a]
+        let j = live[b]
+        let small = rem[i]
+        if dishes - made > live.len - 1:
+            print(j + 1, k)
+            rem[j] -= k
+        else:
+            print(i + 1, small, j + 1, k - small)
+            rem[i] = 0
+            rem[j] -= k - small
+        var keep: List<Int> = []
+        for q in live:
+            if rem[q] > 0:
+                keep.push(q)
+        live = keep
+
+for t in 0..tests:
+    let n: 1..=500 = read()
+    let m: 1..=5000 = read()
+    let kk: 1..=5000 = read()
+    k = kk
+    rem = []
+    for i in 0..n:
+        let d: Int = read()
+        rem.push(d)
+    var everyone: List<Int> = []
+    for i in 0..n:
+        everyone.push(i)
+    if m >= n - 1:
+        greedy(everyone, m)
+    else:
+        // offsets d - k summed over a subset; find a subset summing to -k
+        var mn = 0
+        var mx = 0
+        for i in 0..n:
+            mn min= mn + rem[i] - k
+            mx max= mx + rem[i] - k
+        let w = mx - mn + 1
+        var reach: List<Bool> = []
+        for o in 0..w:
+            reach.push(o == -mn)
+        for i in 0..n:
+            let c = rem[i] - k
+            for o in 0..w:
+                var r = reach[i * w + o]
+                if o - c >= 0 and o - c < w and reach[i * w + o - c]:
+                    r = true
+                reach.push(r)
+        var off = -k - mn
+        if off < 0 or not reach[n * w + off]:
+            print(-1)
+        else:
+            var s: List<Int> = []
+            var rest: List<Int> = []
+            for back in 0..n:
+                let i = n - 1 - back
+                if reach[i * w + off]:
+                    rest.push(i)
+                else:
+                    s.push(i)
+                    off -= rem[i] - k
+            greedy(s, s.len - 1)
+            greedy(rest, rest.len - 1)

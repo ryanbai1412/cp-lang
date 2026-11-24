@@ -13,3 +13,4 @@ vitepress\.dev|ui\.shadcn\.com|dejavu-fonts\.github\.io|cp-lang\.(dev|org)|(www\
 api\.anthropic\.com|api\.openai\.com
 mise\.jdx\.dev
 mise\.run
+hsin\.hr|(www\.)?luogu\.com\.cn

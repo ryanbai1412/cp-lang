@@ -10,6 +10,9 @@
 //! Rule: `errors/R9`, handbook/guidelines/errors-checklist.md#r9-a-fix-is-safe-to-apply-unread.
 
 use std::path::{Path, PathBuf};
+
+#[path = "support/v02_snapshot.rs"]
+mod v02_snapshot;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
@@ -60,6 +63,11 @@ fn programs() -> Vec<String> {
             paths.push(dir.join("port.cp"));
         }
     }
+    for port in v02_snapshot::v02_snapshot_ports(&r) {
+        if !port_inputs(&v02_snapshot::problem_dir(&port)).is_empty() {
+            paths.push(port);
+        }
+    }
     let mut out: Vec<String> = paths
         .iter()
         .map(|p| {
@@ -100,7 +108,7 @@ fn port_inputs(dir: &Path) -> Vec<PathBuf> {
 fn inputs(src: &Path) -> Vec<Vec<u8>> {
     let read = |p: &Path| std::fs::read(p).unwrap();
     if src.file_name().is_some_and(|n| n == "port.cp") {
-        return port_inputs(src.parent().unwrap())
+        return port_inputs(&v02_snapshot::problem_dir(src))
             .iter()
             .map(|p| read(p))
             .collect();

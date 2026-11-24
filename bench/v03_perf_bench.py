@@ -388,7 +388,10 @@ def collect_items(suites, only, cache_dir):
             pid = os.path.basename(d)
             if only and pid not in only:
                 continue
-            cp = os.path.join(d, "port.cp")
+            # The frozen v0.2 copy keeps the series comparable while ports are re-ported in place.
+            cp = os.path.join(ROOT, "tests", "v02-snapshot", pid, "port.cp")
+            if not os.path.exists(cp):
+                cp = os.path.join(d, "port.cp")
             if not os.path.exists(cp):
                 continue
 
@@ -453,6 +456,8 @@ TUNED_BAR = 1.1
 def tuned_path(cp):
     """The tuned in-language variant kept next to `cp`, if there is one."""
     d, base = os.path.split(cp)
+    if os.path.basename(os.path.dirname(d)) == "v02-snapshot":
+        d = os.path.join(ROOT, "corpus", "problems", os.path.basename(d))
     t = os.path.join(d, "perf.cp") if base == "port.cp" else cp[:-3] + ".perf.cp"
     if not os.path.exists(t):
         # The dry runs keep their hand-rooted in-language rewrite as `<stem>_w.cp`.

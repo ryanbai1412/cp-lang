@@ -1,0 +1,72 @@
+// Source: CCC 2022 Senior S5 (Good Influencers), https://dmoj.ca/problem/ccc22s5
+// Problem: a tree of n <= 2e5 students, each initially Y or N (at least one of each), with costs
+//   c_i <= 1000. Paying a Y student c_i turns all their friends Y. Print the least total cost
+//   to make every student Y.
+// Solution: tree DP from the leaves, three costs per subtree (None if impossible): push[u], u
+//   pays (an N u first needs one child that pays); done[u], the subtree ends all Y without the
+//   parent; need[u], the same once the parent's seminar has reached u. Each child adds the
+//   cheapest state its parent allows, and an N vertex upgrades the one child whose push costs
+//   least extra. O(n); the answer is min(done, push) at the root.
+// original: corpus/submissions/4371349.cpp
+
+let n: Int = read()
+domain V = 1..=n
+domain E = 0..(n - 1)
+let edges: [E](u: V, v: V) = read()
+let init_s: Str = read()
+let cost: [V]Int = read()
+
+fn opt_add(a: ?Int, b: ?Int) -> ?Int:
+    if let x = a:
+        if let y = b: x + y
+        else: None
+    else: None
+
+fn opt_min(a: ?Int, b: ?Int) -> ?Int:
+    if let x = a:
+        if let y = b: min(x, y)
+        else: x
+    else: b
+
+let g = Graph<V, E>.undirected(edges)
+let tree = Rooted(u => g.out(u), V.first!)
+
+var need: [V]?Int = [V] _ => None
+var done: [V]?Int = [V] _ => None
+var push: [V]?Int = [V] _ => None
+
+for u in tree.at.rev:
+    let is_y = init_s[u.ord] == 'Y'
+
+    var sum_done: ?Int = 0
+    var sum_any: ?Int = 0
+    for c in tree.children(u):
+        sum_done = opt_add(sum_done, opt_min(done[c], push[c]))
+        sum_any = opt_add(sum_any, opt_min(need[c], opt_min(done[c], push[c])))
+
+    if is_y:
+        push[u] = opt_add(cost[u], sum_any)
+    else:
+        var best_push: ?Int = None
+        if let sa = sum_any:
+            for c in tree.children(u):
+                if let pc = push[c]:
+                    let base = opt_min(need[c], opt_min(done[c], pc))!
+                    best_push = opt_min(best_push, sa - base + pc)
+        push[u] = opt_add(cost[u], best_push)
+
+    if is_y:
+        done[u] = opt_min(sum_done, push[u])
+    else:
+        var best_unpaid: ?Int = None
+        if let sd = sum_done:
+            for c in tree.children(u):
+                if let pc = push[c]:
+                    let base = opt_min(done[c], pc)!
+                    best_unpaid = opt_min(best_unpaid, sd - base + pc)
+        done[u] = opt_min(best_unpaid, push[u])
+
+    let paid_from_parent = opt_add(cost[u], sum_any)
+    need[u] = opt_min(done[u], opt_min(sum_done, paid_from_parent))
+
+print(opt_min(done[V.first!], push[V.first!])!)

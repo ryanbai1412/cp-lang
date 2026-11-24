@@ -1,0 +1,48 @@
+// Source: Baltic OI 2008 Day 2 P3 (Gloves), https://dmoj.ca/problem/btoi08p6
+// Problem: n <= 20 colours, a_i left and b_i right gloves of colour i (<= 1e8). Taken blind, how
+//   many left L and right R gloves guarantee a same-colour pair? Print L and R minimising L + R.
+// Solution: (L, R) fails iff for some colour set S, L <= sum of a over S and R <= sum of b off S.
+//   So (L, R) must lie outside all 2^n such boxes. Sorted by the a-sum, a candidate is L = box
+//   i's a-sum + 1 and R = 1 + the largest b-sum among later boxes (a suffix max); take the
+//   smallest sum with L, R within the drawers. O(2^n n).
+// Runnable on proto/cpc today.
+// original: corpus/submissions/5325518.cpp
+let n: 1..=20 = read()
+domain C = 0..n
+let a: [C]Int = read()
+let b: [C]Int = read()
+
+var sa_tot = 0
+var sb_tot = 0
+for c in C:
+    sa_tot += a[c]
+    sb_tot += b[c]
+
+var boxes: List<(Int, Int)> = [(0, sb_tot)]
+for c in C:
+    let cur = boxes.len
+    for i in 0..cur:
+        let p = boxes[i]
+        boxes.push((p.0 + a[c], p.1 - b[c]))
+
+boxes.sort()
+let m = boxes.len
+var suff: [0..m]Int = 0
+for i in 0..m: suff[i] = boxes[i].1
+for i in (0..m - 1).rev:
+    suff[i] max= suff[i + 1]
+
+var best_x = 0
+var best_y = 0
+var best_s: ?Int = None
+for i in 0..m - 1:
+    let x = boxes[i].0 + 1
+    let y = suff[i + 1] + 1
+    if x <= sa_tot and y <= sb_tot:
+        if best_s == None or x + y < best_s!:
+            best_s = x + y
+            best_x = x
+            best_y = y
+
+print(best_x)
+print(best_y)

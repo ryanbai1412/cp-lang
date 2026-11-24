@@ -1,0 +1,42 @@
+// Source: CCC 2019 S5 (Triangle: The Data Structure), https://dmoj.ca/problem/ccc19s5
+// Problem: a triangle of n <= 3000 rows, row i holding i numbers in 0..=1e9, and 1 <= k <= n.
+//   Print the sum over every sub-triangle of size k of its largest element.
+// Solution: with m[i][j] the max of the size-s sub-triangle topped at (i, j), size s + d for d <=
+//   (s + 1) / 2 is the max of the three size-s ones at (i, j), (i + d, j), (i + d, j + d), which
+//   cover it. Grow s by about 1.5x up to k in two alternating buffers: O(n^2 log k).
+// original: corpus/submissions/5119931.cpp
+let n: 1..=3000 = read()
+let k: 1..=n = read()
+
+fn tri(i: Int, j: Int) -> Int: i * (i + 1) / 2 + j
+
+let total = n * (n + 1) / 2
+var buf: List<Int> = List.filled(2 * total, 0)
+
+for i in 0..n:
+    for j in 0..=i:
+        let x: Int = read()
+        buf[tri(i, j)] = x
+
+var cur_p = 0
+var side = 1
+while side < k:
+    let next_side = min(k, (side * 3 + 1) / 2)
+    let d = next_side - side
+    let src = cur_p * total
+    let dst = (1 - cur_p) * total
+    for i in 0..=n - next_side:
+        for j in 0..=i:
+            let v1 = buf[src + tri(i, j)]
+            let v2 = buf[src + tri(i + d, j)]
+            let v3 = buf[src + tri(i + d, j + d)]
+            buf[dst + tri(i, j)] = max(v1, max(v2, v3))
+    cur_p = 1 - cur_p
+    side = next_side
+
+let base = cur_p * total
+var ans = 0
+for i in 0..=n - k:
+    for j in 0..=i:
+        ans += buf[base + tri(i, j)]
+print(ans)

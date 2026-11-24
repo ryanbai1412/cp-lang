@@ -5,6 +5,9 @@
 
 use std::path::{Path, PathBuf};
 
+#[path = "../../cpl-cli/tests/support/v02_snapshot.rs"]
+mod v02_snapshot;
+
 fn sources() -> Vec<PathBuf> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut files = Vec::new();
@@ -16,6 +19,7 @@ fn sources() -> Vec<PathBuf> {
             files.push(entry.path().join(name));
         }
     }
+    files.extend(v02_snapshot::v02_snapshot_ports(&root));
     for entry in std::fs::read_dir(root.join("std")).unwrap().flatten() {
         files.push(entry.path());
     }

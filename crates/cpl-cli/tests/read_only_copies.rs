@@ -7,6 +7,9 @@
 
 use std::path::{Path, PathBuf};
 
+#[path = "support/v02_snapshot.rs"]
+mod v02_snapshot;
+
 #[path = "support/cpp_counts.rs"]
 mod cpp_counts;
 use cpp_counts::{deep_copies, std_functions};
@@ -94,6 +97,7 @@ fn sources() -> Vec<PathBuf> {
             }
         }
     }
+    found.extend(v02_snapshot::v02_snapshot_ports(&repo));
     found.sort();
     found
 }

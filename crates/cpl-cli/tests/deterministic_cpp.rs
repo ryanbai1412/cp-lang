@@ -6,6 +6,9 @@
 
 use std::path::{Path, PathBuf};
 
+#[path = "support/v02_snapshot.rs"]
+mod v02_snapshot;
+
 /// The `.cp` files one directory down from the corpus and conformance roots.
 fn sources() -> Vec<PathBuf> {
     let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
@@ -24,6 +27,7 @@ fn sources() -> Vec<PathBuf> {
             }
         }
     }
+    found.extend(v02_snapshot::v02_snapshot_ports(&repo));
     found.sort();
     found
 }

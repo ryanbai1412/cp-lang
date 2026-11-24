@@ -1,0 +1,24 @@
+// Source: An Animal Contest 4 P2 (Lavish Lights), https://dmoj.ca/problem/aac4p2
+// Problem: n lights (n <= 2e5) with a_i <= 1e9; light i is on at second t iff a_i | t.
+//   For each of q <= 1e6 queries t (0 <= t <= 1e9) print the first light that is off at second
+//   t, or -1 if all are on.
+// Solution: lights 1..i are all on iff lcm(a_1..a_i) | t, and a multiple of a longer
+//   prefix's lcm is a multiple of every shorter one, so "some light in 1..i is off" is
+//   monotone in i. Prefix lcms are capped at 2e9 (above every t, so a capped prefix never
+//   divides t) and each query binary-searches them with first_true. O(n log + q log n).
+
+const CAP = 2e9  // above every query: nothing divides past it
+let (n, q): (1..=1e6, 1..=1e6) = read()
+domain I = 1..=n
+let a: [I]1..=1e9 = read()
+
+var pre: [I]Int = 1  // lcm of a[..=i], capped
+var all = 1
+for i in I:
+    all = min(CAP, lcm(all, a[i]))
+    pre[i] = all
+
+for _ in 0..q:
+    let x: 0..=1e9 = read()
+    // multiples of a longer prefix are multiples of every shorter one
+    if let i = I.first_true(i => x % pre[i] != 0): print(i) else: print(-1)

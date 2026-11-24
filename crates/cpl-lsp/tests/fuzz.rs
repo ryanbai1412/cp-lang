@@ -9,6 +9,9 @@
 //! Enforces `handbook/guidelines/commands-checklist.md#r12-halftyped-code`.
 
 use cpl_json::{obj, Value};
+
+#[path = "../../cpl-cli/tests/support/v02_snapshot.rs"]
+mod v02_snapshot;
 use cpl_lsp::Server;
 
 const URI: &str = "file:///fuzz/solution.cp";
@@ -197,6 +200,7 @@ fn every_request_on_broken_ports_is_answered_without_an_internal_error() {
             }
         }
     }
+    files.extend(v02_snapshot::v02_snapshot_ports(&ports.join("../..")));
     files.sort();
     let ports = port_count().min(files.len());
     let step = (files.len() / ports).max(1);
