@@ -4,11 +4,15 @@
  "submissions": [
   {"id": "4239945", "language": "CPP17", "result": "WA", "time": 1.696720997, "memory_kb": 49404.0, "file": "corpus/submissions/4239945.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/aac5p6/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "The only C++ submission is WA, so there is no accepted reference. orig.cpp is a corpus-written Dijkstra over teleports where a centroid decomposition finds the not-yet-reached vertices within distance D of the settled vertex (each vertex is reached once, the cost of reaching v is its a_v), checked against the statement samples and an independent O(N^2) BFS-plus-Dijkstra brute on 200 random trees (paths, stars, caterpillars, random)."
 }
