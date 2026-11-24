@@ -6,7 +6,11 @@ Segment tree over a domain, for any associative operation: point or range update
 
 In prelude (no `use` needed): `SegTree`.
 
-## `struct SegTree<D, T, F = Int>(m: Monoid<T>)`
+## `trait Positions`
+
+The positions a `SegTree` runs over.
+
+## `struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>)`
 
 Point update and range fold.
 
