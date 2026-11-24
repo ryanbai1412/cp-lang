@@ -30,7 +30,7 @@ the structure; the laws pick its strategy.**
 var st = SegTree(max, a)                    // point set, range max
 var lz = SegTree(+, a, act: add)            // range add, range sum (lazy)
 var mx = SegTree(max, a, act: add)          // range add, range max: no push-down
-var du = SegTree(act: assign, a)            // range assign, point read (dual)
+var du = SegTree(a: a, act: assign)          // range assign, point read (dual)
 let sp = SparseTable(min, a)                // O(1) fold: overlapping halves
 let fw = Fenwick(a)                         // prefix and range sums
 let ps = Prefix(a)                          // static: O(1) range sums
@@ -40,8 +40,8 @@ let ps = Prefix(a)                          // static: O(1) range sums
 
 ### The traits
 
-<!-- spec-only: excerpt of std -->
-```python
+<!-- signatures: std/algebra.cp -->
+```cp
 pub trait Op<T>:
     fn op(self, a: T, b: T) -> T
     law assoc(a: T, b: T, c: T) = op(op(a, b), c) == op(a, op(b, c))
@@ -190,11 +190,13 @@ An order is the other operation value every contest program passes around:
 `sort`, `min`/`max`/`argmax`, heaps, ordered sets, `bsearch` over sorted
 data and Dijkstra all take one. One trait and one argument cover them all.
 
-<!-- spec-only: excerpt of std -->
-```python
-pub trait Ord:
-    fn cmp(self, b: Self) -> Ordering
-    law total(a, b, c) = ...       // antisymmetric, transitive, total
+An order a key can't express is an `impl Ord` (antisymmetric,
+transitive, total):
+
+<!-- given: struct Frac: p: Int, q: Int -->
+```cp
+impl Ord for Frac:
+    fn cmp(self, o: Frac) -> Ordering = (self.p * o.q).cmp(o.p * self.q)
 ```
 
 - Ints, floats (NaN traps in debug), `Str` and `Bool` are `Ord`; `?T` is
@@ -244,18 +246,22 @@ A shortest-path search needs two things from weights: how a path's cost
 grows by one arc, and which of two costs is better. That is a `Monoid` and
 an `Ord`, the same two concepts:
 
-<!-- spec-only: signature excerpt; the body is in std -->
-```python
-pub fn dijkstra<V, W: Ord, G: WeightedNext<V, W>, M: Monoid<W> = Plus>(
-    g: G, from: Seq<(V, W)>, step: M = +, until: ?V = None,
-) -> Paths<V, W, G.Arc>
+<!-- signatures: std/graph.cp -->
+```cp
+fn dijkstra<V, W, G: WeightedNext<V, W>, M>(g: G, from: Seq<(V, W)>, step: M = (+), until: ?V = None, hashed: Bool = false, ) -> Paths<V, W, G.Arc>
 ```
 
-<!-- spec-only: call forms over an unnamed `g`, `s`, `a`, `b`, not a program -->
-```python
-dijkstra(g, from: [(s, 0)])                          // sum of weights
-dijkstra(g, from: [(s, 0)], step: max)               // bottleneck path
-dijkstra(g.weighted(a => (a.w, 1)), from: [(s, (0, 0))])   // cost, then hops
+<!-- given:
+  use std.graph.dijkstra
+  domain V = 0..4
+  domain E = 0..3
+  let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 1, v: 2, w: 2), (u: 2, v: 3, w: 1)]
+  let g = Graph.directed(es)
+  let s = V(0) -->
+```cp
+let d = dijkstra(g, from: [(s, 0)])                  // sum of weights
+let b = dijkstra(g, from: [(s, 0)], step: max)       // bottleneck path
+let c = dijkstra(g.weighted(a => (a.w, 1)), from: [(s, (0, 0))], step: each(+, +))   // cost, then hops
 ```
 
 - Correctness needs one law: extending a path never makes it better,
@@ -276,10 +282,10 @@ to a folded value of `n` leaves. Tags compose **in time order**,
 its `compose(new, old)` applies `old` first, so `compose(new, old) ==
 tags.op(old, new)`. With add-3 then assign-5, both give assign-5.
 
-<!-- spec-only: excerpt of std -->
-```python
+<!-- signatures: std/algebra.cp -->
+```cp
 // a value, not a trait (decision 42.6); T is the folded value, F the tag
-pub struct Action<T, F>(id: F, compose: (F, F) -> F, apply: (F, T, Int) -> T, over: Monoid<T>)
+pub struct Action<T, F>(id: F, compose: (F, F) -> F, apply: (F, T, Int) -> T, over: Monoid<T>, commutes: Bool = false)
 // hom:  apply(f, over.op(a, b), 2) == over.op(apply(f, a, 1), apply(f, b, 1))
 // comp: apply(compose(g, f), x, 1) == apply(g, apply(f, x, 1), 1)
 ```
@@ -300,8 +306,13 @@ not a wrong answer. Today's combined names (`AddMax`, `AddSum`,
 
 A custom action, written inline:
 
-<!-- spec-only: fragment: `Low` is the reader's own struct (fields, `empty`, `join`) -->
-```python
+<!-- given:
+  domain V = 0..8
+  domain Cut = 0..=8
+  struct Low: cover: Int, l: Cut, r: Cut, len: Int
+  impl Low:
+      fn join(a: Low, b: Low) -> Low = todo -->
+```cp
 let shift = Action(compose: +, apply: (d, l: Low, n) => (..l, cover: l.cover + d))
 var low = SegTree(Low.join, [Cut] c => Low(0, c, c, 0), act: shift)
 ```
@@ -314,8 +325,8 @@ costs nothing extra. A lambda that takes `(f, x)` without `n` is accepted.
 Two ops, where `mul` distributes over `add`: what matrix products, path
 algebras and convolutions are generic over.
 
-<!-- spec-only: excerpt of std and its stock values -->
-```python
+<!-- signatures: std/algebra.cp -->
+```cp
 pub struct Semiring<A, M>(add: A, mul: M)   // a value (decision 42.6)
 // distrib: mul(a, add(b, c)) == add(mul(a, b), mul(a, c))
 // absorb:  mul(add.id, a) == add.id
@@ -364,6 +375,13 @@ the fast power under a named `op:`: matrices under any semiring, `Affine` maps,
 permutations, and any user monoid. `op` is anything `Monoid.of` takes, so `k = 0`
 gives its identity; a negative `k` traps. `pow(a, k, m)` is `pow_mod(a, k, m)`.
 
+<!-- given:
+  use std.algebra.{Affine}
+  domain V = 0..3
+  let (a, b, k) = (2, 3, 5)
+  let perm: [V]V = [V(1), V(2), V(0)]
+  let ident: [V]V = [V] v => v
+  fn compose(p: [V]V, q: [V]V) -> [V]V = [V] v => q[p[v]] -->
 ```python
 let f = pow(Affine(a, b), k, op: Affine.monoid())    // apply x -> a x + b, k times
 let p = pow(perm, 1e18, op: Monoid(ident, compose))  // a permutation applied 10^18 times
@@ -459,8 +477,8 @@ tags apply doesn't matter.
 **How a library writes it.** A generic body can test a bound, and the test
 is decided when the fn is instantiated:
 
-<!-- spec-only: excerpt of std -->
-```python
+<!-- signatures: std/segtree.cp -->
+```cp
 pub fn apply(mut self, r: Range<D>, f: F):
     if A.Tags: Commutative<F>:
         self.mark(r, f)          // no push
@@ -509,10 +527,13 @@ method exists when the op is a `Group`.
 **Union-find with potentials.** "Value of `b` is value of `a` plus `w`"
 constraints, checked online, are a `Group` on a DSU:
 
+<!-- given:
+  domain V = 0..4
+  let (a, b, w) = (V(0), V(2), 7) -->
 ```python
-var p = Potentials<V>(+)
-if not p.relate(a, b, w): print("CONTRADICTION")   // val[b] = val[a] + w
-p.diff(a, b)                                       // ?Int: val[b] - val[a], None if unrelated
+var p = PotentialDsu<V>.new(+)
+if not p.unite(a, b, w): print("CONTRADICTION")    // val[b] = val[a] + w
+print(p.diff(a, b) ?? -1)                                  // ?Int: val[b] - val[a], None if unrelated
 ```
 
 It works for any group: `^` for parity constraints, `Affine` for
@@ -558,8 +579,10 @@ Every tree and DP facility takes the same values:
 
 One fn, two choices: how indices combine, and which semiring values live in.
 
-<!-- spec-only: call forms over an unnamed `g`, `s`, `a`, `b`, not a program -->
-```python
+<!-- given:
+  use std.ntt.{convolve, subset, Curved}
+  let (a, b) = ([1, 2, 3], [4, 5, 6]) -->
+```cp
 convolve(a, b)                       // c[i + j] += a[i] * b[j]
 convolve(a, b, on: ^)                // c[i ^ j]  (Walsh–Hadamard)
 convolve(a, b, on: |)                // c[i | j]  (subset-sum transform)
@@ -617,25 +640,52 @@ A law is a promise; the tools make it cheap to check:
   `step(d, w) >= d`, `Ord`'s antisymmetry on the compared pair.
 ## 16. Examples from the dreams
 
-<!-- spec-only: fragments of ported solutions -->
-```python
+<!-- given:
+  domain V = 0..8
+  let s = (a: V(1), b: V(4)) -->
+```cp
 // cf2096f: range add, range min, test for zero
 var cover = SegTree<V, Int>(min, fill: 0, act: add)
 cover.apply(s.a..=s.b, 1)
-if cover.fold(s.a..=s.b) == 0: ...
+if cover.fold(s.a..=s.b) == 0: todo
+```
 
+<!-- given:
+  domain V = 0..8
+  struct Side: ends: Int
+  impl Side:
+      fn join(a: Side, b: Side) -> Side = todo
+  let t = Rooted.from_parents([V] v => if v == V.first!: None else: Some(V.first!))
+  let init: [V]Flip<Side> = todo
+  let v = V(2) -->
+```cp
 // cf2152g: flip a subtree, read the root
 var st = SegTree(Side.join, t.reorder(init), act: flip)
 st.apply(t.sub(v), true)
 print(st.all.now.ends)
+```
 
+<!-- given:
+  domain Pos = 0..8
+  struct Val: x: Int
+  let edge = Val(0)
+  fn op(a: Val, b: Val) -> Val = todo
+  var out: [Pos]Val = edge
+  let (v, below) = (Pos(3), true) -->
+```cp
 // cf2084f: a custom monoid, prefix and suffix folds
-var st = SegTree<Val, Pos>(Monoid(id: edge, op: op))
+var st = SegTree<Pos, Val>(Monoid(id: edge, op: op))
 out[v] = if below: st.fold(..=v) else: st.fold(v..)
+```
 
+<!-- given:
+  let a = [5, 3, 4, 1, 2]
+  var ans = [0, 0, 0, 0, 0]
+  let k = 3 -->
+```cp
 // window minimum
 var w = Window(min)
-for i in I:
+for i in 0..a.len:
     w.push(a[i])
     if w.len > k: w.pop(a[i - k])
     ans[i] = w.all!
