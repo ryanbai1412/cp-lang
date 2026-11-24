@@ -1367,6 +1367,24 @@ pub(crate) fn declare_with_var(
 /// error, and its fix declares `var` when `best` is assigned again
 /// (errors/R1). Runs on the whole file, as each top-level statement is
 /// checked as its own item.
+/// A name another error's fix declares (`n, m = ...` as `let (n, m) =
+/// ...`) is unknown below only as that error's echo.
+fn drop_fix_declared(diags: &mut Vec<Diagnostic>) {
+    let declared: Vec<String> = (diags.iter())
+        .filter(|d| d.code != codes::UNRESOLVED_NAME)
+        .flat_map(|d| d.fixes.iter().flat_map(|f| f.edits.iter()))
+        .filter_map(|(_, text)| text.strip_prefix("let ").or(text.strip_prefix("var ")))
+        .flat_map(|rest| {
+            let names = rest.split([':', '=']).next().unwrap_or_default().trim();
+            let names = names.trim_start_matches('(').trim_end_matches(')');
+            names
+                .split(',')
+                .map(|n| format!("no `{}` in scope", n.trim()))
+        })
+        .collect();
+    diags.retain(|d| d.code != codes::UNRESOLVED_NAME || !declared.contains(&d.message));
+}
+
 pub(crate) fn declare_on_first_assignment(
     mut diags: Vec<Diagnostic>,
     src: &str,
@@ -1381,6 +1399,7 @@ pub(crate) fn declare_on_first_assignment(
         (d.code == codes::UNRESOLVED_NAME && rest.starts_with(" in scope"))
             .then(|| name.to_string())
     };
+    drop_fix_declared(&mut diags);
     let mut first: HashMap<String, Span> = HashMap::default();
     for d in &diags {
         if let Some(name) = assigned(d) {
