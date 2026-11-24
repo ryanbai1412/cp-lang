@@ -1070,7 +1070,7 @@ impl Database {
                     .iter()
                     .any(|(span, ty)| *span == at && !matches!(ty, Ty::Optional(_)))
             };
-            for reread in view_rereads(&items, index, &is_view) {
+            for reread in view_rereads(&items, &checks, index, &is_view) {
                 sink.push(reread.diagnostic(range.span.start));
             }
         }

@@ -89,9 +89,9 @@ impl ViewReread {
     }
 }
 
-/// The `.map` or `.filter` view a `let` binds without a type: its name,
-/// initializer, method and function.
-fn view_let(stmt: &ast::Stmt) -> Option<(&str, &ast::Expr, &'static str, &ast::Expr)> {
+/// The `.map` or `.filter` view a `let` binds without a type: its name and
+/// its declaration's span, initializer, method and function.
+fn view_let(stmt: &ast::Stmt) -> Option<((&str, Span), &ast::Expr, &'static str, &ast::Expr)> {
     use ast::{ExprKind, PatternKind};
     let StmtKind::Let {
         pat,
@@ -119,14 +119,27 @@ fn view_let(stmt: &ast::Stmt) -> Option<(&str, &ast::Expr, &'static str, &ast::E
     let [arg] = args.as_slice() else {
         return None;
     };
-    Some((name, init, method, &arg.value))
+    Some(((name, pat.span), init, method, &arg.value))
 }
 
-/// Reads of the view `name`, in statements that come after its `let`.
-/// `loops` holds the spans of the loop bodies, comprehensions and lambdas
-/// seen so far (the walk is pre-order), so a read inside them repeats.
+/// Where the checker resolved each name read in a run of statements: a
+/// top-level name through the item's [`GlobalRef`]s, a local through the
+/// hover entries that point at its declaration.
+#[derive(Clone, Copy)]
+enum Binder<'a> {
+    Global(&'a [GlobalRef]),
+    Local(&'a [HoverEntry]),
+}
+
+/// Reads of the view `name`, in statements that come after its `let`: the
+/// names the checker resolved to that `let` (declared at `decl`), so a
+/// parameter or local of the same name is not one. `loops` holds the spans
+/// of the loop bodies, comprehensions and lambdas seen so far (the walk is
+/// pre-order), so a read inside them repeats.
 struct Reads<'a> {
     name: &'a str,
+    decl: Span,
+    binder: Binder<'a>,
     loops: Vec<Span>,
     index_reads: usize,
     repeated: bool,
@@ -141,8 +154,18 @@ impl Reads<'_> {
             .count()
     }
 
+    fn reads_view(&self, at: Span) -> bool {
+        match self.binder {
+            Binder::Global(refs) => refs.iter().any(|r| r.span == at && r.name == self.name),
+            Binder::Local(hovers) => hovers
+                .iter()
+                .any(|h| h.span == at && h.decl == Some(self.decl) && h.name == self.name),
+        }
+    }
+
     fn is_view(&self, e: &ast::Expr) -> bool {
-        matches!(&crate::check::lends::unparen(e).kind, ast::ExprKind::Name(n) if n == self.name)
+        let e = crate::check::lends::unparen(e);
+        matches!(&e.kind, ast::ExprKind::Name(_)) && self.reads_view(e.span)
     }
 }
 
@@ -177,7 +200,7 @@ impl cpl_syntax::visit::Visitor for Reads<'_> {
                     }
                 }
             }
-            ExprKind::Name(n) if n == self.name => self.seen = true,
+            ExprKind::Name(_) if self.reads_view(e.span) => self.seen = true,
             _ => {}
         }
     }
@@ -186,22 +209,25 @@ impl cpl_syntax::visit::Visitor for Reads<'_> {
 fn reread<'a>(
     stmt: &ast::Stmt,
     text: &str,
-    groups: impl Iterator<Item = &'a [ast::Stmt]>,
+    groups: impl Iterator<Item = (&'a [ast::Stmt], Binder<'a>)>,
     stop_after_first: bool,
     is_view: &dyn Fn(Span) -> bool,
 ) -> Option<ViewReread> {
-    let (name, init, method, func) = view_let(stmt)?;
+    let ((name, decl), init, method, func) = view_let(stmt)?;
     if !is_view(crate::check::lends::unparen(init).span) {
         return None;
     }
     let mut reads = Reads {
         name,
+        decl,
+        binder: Binder::Local(&[]),
         loops: Vec::new(),
         index_reads: 0,
         repeated: false,
         seen: false,
     };
-    for group in groups {
+    for (group, binder) in groups {
+        reads.binder = binder;
         reads.loops.clear();
         for s in group {
             cpl_syntax::visit::walk_stmt(s, &mut reads);
@@ -235,6 +261,7 @@ fn reread<'a>(
 /// a sequence view: `opt.map(f)` on an optional is an eager `?U`.
 pub(super) fn view_rereads(
     items: &[Arc<ItemSyntax>],
+    checks: &[Arc<ItemCheck>],
     index: usize,
     is_view: &dyn Fn(Span) -> bool,
 ) -> Vec<ViewReread> {
@@ -242,19 +269,28 @@ pub(super) fn view_rereads(
     let mut out = Vec::new();
     if let Some(stmt) = item.parsed.stmts.first() {
         let chain = rewalk_kind(items, index, false).is_some();
-        let later = items[index + 1..].iter().map(|i| i.parsed.stmts.as_slice());
+        let later = (index + 1..items.len()).map(|k| {
+            let refs = checks.get(k).map_or(&[][..], |c| &c.refs[..]);
+            (items[k].parsed.stmts.as_slice(), Binder::Global(refs))
+        });
         out.extend(reread(stmt, &item.text, later, chain, is_view));
     }
-    struct Blocks<'a>(&'a str, Vec<ViewReread>, &'a dyn Fn(Span) -> bool);
+    struct Blocks<'a>(
+        &'a str,
+        Vec<ViewReread>,
+        &'a dyn Fn(Span) -> bool,
+        &'a [HoverEntry],
+    );
     impl cpl_syntax::visit::Visitor for Blocks<'_> {
         fn block(&mut self, block: &ast::Block) {
             for (k, stmt) in block.stmts.iter().enumerate() {
-                let after = std::iter::once(&block.stmts[k + 1..]);
+                let after = std::iter::once((&block.stmts[k + 1..], Binder::Local(self.3)));
                 self.1.extend(reread(stmt, self.0, after, false, self.2));
             }
         }
     }
-    let mut blocks = Blocks(&item.text, Vec::new(), is_view);
+    let hovers = checks.get(index).map_or(&[][..], |c| &c.hovers[..]);
+    let mut blocks = Blocks(&item.text, Vec::new(), is_view, hovers);
     for stmt in &item.parsed.stmts {
         cpl_syntax::visit::walk_stmt(stmt, &mut blocks);
     }

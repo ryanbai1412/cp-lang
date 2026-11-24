@@ -264,6 +264,12 @@ fn a_lazy_view_read_on_every_pass_warns_with_a_copy_fix() {
     let quiet = [
         "let a = [3, 1, 4]\nlet sq = a.map(x => x * x)\nfor i in 0..a.len:\n    print(sq[i])\n",
         "fn f(o: ?Int):\n    let p = o.map(x => x + 1)\n    for i in 0..3:\n        if p.is_some_and(x => x > i): print(i)\nf(Some(1))\n",
+        // A read is the view's only if it resolves to the view's `let`: a
+        // parameter, lambda parameter or later `let` of the same name is another binding.
+        "let a = [3, 1, 4]\nlet ys = a.map(x => x * 2)\nfn ranked(ys: List<Int>) -> Int:\n    for v in 0..3:\n        print(v, ys.sorted().len)\n    ys.sorted().len\nprint(ranked([1]), ys[0])\n",
+        "let a = [3, 1, 4]\nlet ys = a.map(x => x * 2)\nprint(ys[0])\nlet f = (ys: List<Int>) => ys.sum()\nprint(f([1]))\n",
+        "let a = [3, 1, 4]\nlet ys = a.map(x => x * 2)\nprint(ys[0])\nfor i in 0..3:\n    let ys = [i]\n    print(ys.sum() + ys[0])\n",
+        "fn g():\n    let a = [3, 1, 4]\n    let sq = a.map(x => x * x)\n    print(sq[0])\n    for i in 0..3:\n        let sq = [i]\n        print(sq.sum() + sq[0])\ng()\n",
     ];
     for src in quiet {
         let lints = checker_lints(None, src, &Config::default());
