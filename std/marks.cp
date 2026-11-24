@@ -342,7 +342,7 @@ pub struct SparseSet<D>:
         for i in 0.._len: yield dense[i]
 
 /// Compact 4-byte typed handle into an `Arena<T>`.
-pub struct Id<T>(raw: 0..=2_000_000_000)
+pub struct Id<T>(pub raw: 0..=2_000_000_000)
 
 /// Contiguous pool allocator returning compact 4-byte `Id<T>` handles (for user trees, tries, and persistent nodes).
 pub struct Arena<T>:

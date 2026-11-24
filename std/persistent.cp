@@ -3,8 +3,72 @@
 //! Each update copies only the \(O(\log n)\) nodes on the root-to-leaf path and returns a
 //! new `Version` handle. All earlier versions remain readable in \(O(\log n)\).
 use std.algebra.{Action, Monoid}
-use std.seq.{deduped}
+use std.marks.{Id}
+use std.math.{splitmix64}
 use std.range.{ends}
+use std.seq.{deduped}
+
+/// An append-only node pool for persistent structures, held by the user: `alloc` returns a 4-byte
+/// `Id<T>`, and a node never changes after it is allocated, so every version that shares it stays
+/// valid. Persistent values such as `PMultiset` keep their nodes here and take the arena at each
+/// call; the library keeps no pool of its own, so a pool declared inside a test case is fresh in
+/// every case.
+///
+/// not a container: a pool; it has no `set` or `clear`, since either would change a node some
+/// version still reads.
+pub struct PArena<T>:
+    _xs: List<T>
+
+    /// An empty arena with room for `cap` nodes before it reallocates.
+    ///
+    /// cost: \(O(\mathit{cap})\)
+    /// traps: when `cap < 0`
+    /// example: `PArena<Int>(cap: 8).is_empty`
+    pub fn new(cap: Int = 0) -> PArena<T>:
+        var xs: List<T> = []
+        xs.reserve(cap)
+        PArena(xs)
+
+    /// The number of nodes allocated; valid handles have raw values `0..len`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var a = PArena<Int>(); a.alloc(5); a.alloc(6); a.len == 2`
+    @get pub fn len(self) -> Int:
+        _xs.len
+
+    /// Whether no node is allocated; `len == 0`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `PArena<Int>().is_empty`
+    @get pub fn is_empty(self) -> Bool:
+        _xs.len == 0
+
+    /// Store `x` as a new node and return its handle; handles are issued in order `0, 1, 2, ...`.
+    ///
+    /// cost: \(O(1)\) amortized
+    /// traps: when the arena already holds `2_000_000_001` nodes
+    /// example: `var a = PArena<Str>(); a.alloc("p"); a.alloc("q").raw == 1`
+    pub fn alloc(mut self, x: T) -> Id<T>:
+        _xs.push(x)
+        Id(_xs.len - 1)
+
+    /// The node behind `id`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: when `id` is not below `len`, so a handle from another arena that is out of range
+    /// example: `var a = PArena<Int>(); let i = a.alloc(5); a.alloc(6); a.get(i) == 5`
+    pub fn get(self, id: Id<T>) -> T:
+        _xs[id.raw]
+
+    /// Allocate room for at least `cap` nodes in total; changes no handle or node.
+    ///
+    /// cost: \(O(\mathit{cap})\)
+    /// traps: when `cap < 0`
+    /// example: `var a = PArena<Int>(); a.reserve(100); a.alloc(1); a.len == 1`
+    pub fn reserve(mut self, cap: Int):
+        _xs.reserve(cap)
 
 /// Opaque version handle for `PersistentSegTree`.
 pub struct Version(root: Int)
@@ -600,55 +664,130 @@ pub struct PersistentArray<D, T>:
     pub fn set(mut self, v: Version, i: D, x: T) -> Version:
         Version(self.set_rec(v.root, 0, D.count, i.ord, x))
 
-/// \(O(\log \lvert D \rvert)\) per update. Hashed persistent multiset over domain `D`:
-/// \(O(1)\) equality, \(O(\log \lvert D \rvert)\) lexicographic comparison (`desc: true` compares largest element first).
+/// A hashed persistent multiset over domain `D`, an immutable value whose nodes live in a
+/// `PArena<PMultiset<D>>` the caller holds and passes to every call that reads or adds nodes.
+/// `with`/`without` copy the \(O(\log \lvert D \rvert)\) nodes on one root-to-leaf path; `==` is
+/// \(O(1)\) by size and hash; `cmp` finds the first differing key by hash in
+/// \(O(\log \lvert D \rvert)\).
+///
+/// A multiset is a segment tree over `D.ord` whose node at a range holds the count and hash of the
+/// keys in it, and the hash adds a fixed 64-bit weight per copy of a key; two different multisets
+/// share a hash with probability about \(2^{-64}\) per comparison. A multiset only reads nodes of
+/// the arena that built it.
 pub struct PMultiset<D>:
-    root: Int
+    var _len: Int = 0
+    var _hash: U64 = U64(0)
+    var _l: ?Id<PMultiset<D>> = None
+    var _r: ?Id<PMultiset<D>> = None
 
-    /// The empty multiset over `D`. Every multiset is an immutable value; `==` compares two in \(O(1)\)
-    /// by hash.
+    /// The empty multiset over `D`; it needs no arena node.
     ///
     /// cost: \(O(1)\)
     /// traps: never
-    /// example: `PMultiset<0..10>.empty().count(3) == 0`
-    pub fn empty() -> PMultiset<D> = todo
+    /// example: `PMultiset<0..10>.empty().len == 0`
+    pub fn empty() -> PMultiset<D> = PMultiset()
+
+    /// The number of elements, counting copies.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `PMultiset<0..10>.empty().is_empty`
+    @get pub fn len(self) -> Int = _len
+
+    /// Whether the multiset has no element.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `PMultiset<0..10>.empty().is_empty`
+    @get pub fn is_empty(self) -> Bool = _len == 0
 
     /// A new multiset with one more copy of `x`; `self` is unchanged.
     ///
-    /// cost: \(O(\log \lvert D \rvert)\) time and memory
+    /// cost: \(O(\log \lvert D \rvert)\) time and arena nodes
     /// traps: when `x` is not in `D`
-    /// example: `let s = PMultiset<0..10>.empty().with(3).with(3); s.count(3) == 2`
-    pub fn with(self, x: D) -> PMultiset<D> = todo
+    /// example: `var ar = PArena<PMultiset<0..10>>(); let s = PMultiset<0..10>.empty().with(mut ar, 3).with(mut ar, 3); s.count(ar, 3) == 2`
+    pub fn with(self, mut ar: PArena<PMultiset<D>>, x: D) -> PMultiset<D> =
+        self.step(mut ar, x.ord, 1, 0, D.count)
 
-    /// A new multiset with one copy of `x` removed, or equal to `self` when `x` is absent; `self` is
+    /// A new multiset with one copy of `x` removed, or `self` when `x` is absent; `self` is
     /// unchanged.
     ///
-    /// cost: \(O(\log \lvert D \rvert)\) time and memory
+    /// cost: \(O(\log \lvert D \rvert)\) time and arena nodes
     /// traps: when `x` is not in `D`
-    /// example: `let s = PMultiset<0..10>.empty().with(3).with(3); s.without(3).count(3) == 1 and s.count(3) == 2`
-    /// example: `let s = PMultiset<0..10>.empty(); s.without(3) == s`
-    pub fn without(self, x: D) -> PMultiset<D> = todo
+    /// example: `var ar = PArena<PMultiset<0..10>>(); let s = PMultiset<0..10>.empty().with(mut ar, 3).with(mut ar, 3); s.without(mut ar, 3).count(ar, 3) == 1 and s.count(ar, 3) == 2`
+    /// example: `var ar = PArena<PMultiset<0..10>>(); let s = PMultiset<0..10>.empty(); s.without(mut ar, 3) == s`
+    pub fn without(self, mut ar: PArena<PMultiset<D>>, x: D) -> PMultiset<D>:
+        if self.count(ar, x) == 0: return self
+        self.step(mut ar, x.ord, -1, 0, D.count)
 
     /// The number of copies of `x`.
     ///
     /// cost: \(O(\log \lvert D \rvert)\)
     /// traps: when `x` is not in `D`
-    /// example: `PMultiset<0..10>.empty().with(4).count(4) == 1`
-    pub fn count(self, x: D) -> Int = todo
+    /// example: `var ar = PArena<PMultiset<0..10>>(); PMultiset<0..10>.empty().with(mut ar, 4).count(ar, 4) == 1`
+    pub fn count(self, ar: PArena<PMultiset<D>>, x: D) -> Int:
+        var (node, lo, hi) = (self, 0, D.count)
+        while hi - lo > 1 and node._len > 0:
+            let mid = lo + (hi - lo) / 2
+            if x.ord < mid:
+                node = kid(ar, node._l)
+                hi = mid
+            else:
+                node = kid(ar, node._r)
+                lo = mid
+        node._len
 
     /// Compare the elements of `self` and `other` as sorted sequences, lexicographically: ascending,
     /// or largest first with `desc: true`. A proper prefix is smaller. Returns `-1`, `0` or `1`.
     ///
-    /// The first differing key is found by hash in \(O(\log \lvert D \rvert)\); `0` exactly when the multisets are
-    /// equal.
+    /// The walk goes down the side where the two first differ by hash, so it reads one path.
     ///
     /// cost: \(O(\log \lvert D \rvert)\)
     /// ties: `0` only for equal multisets
     /// traps: never
-    /// example: `let e = PMultiset<0..10>.empty(); e.with(1).with(3).cmp(e.with(2)) == -1`
-    /// example: `let e = PMultiset<0..10>.empty(); e.with(1).with(3).cmp(e.with(2), desc: true) == 1`
-    /// example: `let e = PMultiset<0..10>.empty(); e.with(1).cmp(e.with(1).with(2)) == -1`
-    pub fn cmp(self, other: PMultiset<D>, desc: Bool = false) -> Int = todo
+    /// example: `var ar = PArena<PMultiset<0..10>>(); let e = PMultiset<0..10>.empty(); let a = e.with(mut ar, 1).with(mut ar, 3); let b = e.with(mut ar, 2); a.cmp(ar, b) == -1`
+    /// example: `var ar = PArena<PMultiset<0..10>>(); let e = PMultiset<0..10>.empty(); let a = e.with(mut ar, 1).with(mut ar, 3); let b = e.with(mut ar, 2); a.cmp(ar, b, desc: true) == 1`
+    /// example: `var ar = PArena<PMultiset<0..10>>(); let e = PMultiset<0..10>.empty(); let a = e.with(mut ar, 1); let b = a.with(mut ar, 2); a.cmp(ar, b) == -1`
+    pub fn cmp(self, ar: PArena<PMultiset<D>>, other: PMultiset<D>, desc: Bool = false) -> Int:
+        if self == other: return 0
+        var (a, b, lo, hi, before) = (self, other, 0, D.count, 0)
+        while hi - lo > 1:
+            let mid = lo + (hi - lo) / 2
+            let (al, ar_, bl, br) = (kid(ar, a._l), kid(ar, a._r), kid(ar, b._l), kid(ar, b._r))
+            let (first_a, first_b, rest_a, rest_b) = if desc: (ar_, br, al, bl) else: (al, bl, ar_, br)
+            if first_a == first_b:
+                before += first_a._len
+                (a, b) = (rest_a, rest_b)
+                if desc: hi = mid else: lo = mid
+            else:
+                (a, b) = (first_a, first_b)
+                if desc: lo = mid else: hi = mid
+        // `a` and `b` are one key's counts, and every key visited before it agrees.
+        if desc: return if a._len > b._len: 1 else: -1
+        if a._len > b._len: return if other._len - before - b._len > 0: -1 else: 1
+        if self._len - before - a._len > 0: 1 else: -1
+
+    fn step(self, mut ar: PArena<PMultiset<D>>, k: Int, d: Int, lo: Int, hi: Int) -> PMultiset<D>:
+        var n = self
+        n._len += d
+        let w = weight(k)
+        if d > 0: n._hash += w else: n._hash -= w
+        if hi - lo == 1: return n
+        let mid = lo + (hi - lo) / 2
+        if k < mid: n._l = Some(ar.alloc(kid(ar, _l).step(mut ar, k, d, lo, mid)))
+        else: n._r = Some(ar.alloc(kid(ar, _r).step(mut ar, k, d, mid, hi)))
+        n
+
+impl<D> Eq for PMultiset<D>:
+    fn eq(a, b) = a._len == b._len and a._hash == b._hash
+
+// The node behind `id`, or the empty multiset for a missing child.
+fn kid<D>(ar: PArena<PMultiset<D>>, id: ?Id<PMultiset<D>>) -> PMultiset<D>:
+    if let i = id: return ar.get(i)
+    PMultiset()
+
+// The hash weight of one copy of key `k`: splitmix64 of the key, so weights are fixed and spread.
+fn weight(k: Int) -> U64 = splitmix64(U64(k) ^ U64(0x2545F4914F6CDD1D))
 
 @test
 fn persistent_segtree_and_range_kth_match_brute():

@@ -566,8 +566,6 @@ tombstones never degrade performance.
   treap with affine-per-index lazy tags, `examples/local-lib/ds/rope.cp`):
   every problem invents its own node payload and pushdown; a generic implicit
   treap belongs in `local-lib`, not a one-size-fits-all stdlib container.
-- **Persistent hashed multisets** (`cf2135f`): waits for a general `Arena<T>`
-  with 4-byte handles and struct field narrowing (`research/frictions/cf2135f.md`).
 - **Offline dynamic connectivity driver (`TimeTree.run` / `offline_over`)**:
   now ships in `std.timetree` using `mark`/`apply`/`answer`/`undo` callbacks
   (zero `TimeStep` allocation, 1 mark per tree node, devirtualized in C++).
@@ -585,6 +583,39 @@ None of these are special-cased in stdlib; all are general core improvements:
   node RSS, `cf2135f.md`).
 - Scoped `defer` / `undo` for rollback safety across early returns (`cf2222f.md`).
 - Default-valued `Map`/`HashMap` and `.keys`/`.values` views (`cf2066c.md`).
+
+### 2.11 `std.persistent` node arenas
+
+A persistent value is immutable and shares nodes with the versions it came
+from, so its nodes live in a `PArena<T>` the caller declares and passes to
+each call; the library keeps no pool of its own (decision 519). A node never
+changes after `alloc`, so every handle stays valid while its arena lives. An
+arena declared inside a `@!multitest` case is fresh in every case.
+
+<!-- spec-only: signatures and costs, not a program -->
+```cp
+struct PArena<T>                               // append-only node pool
+    fn new(cap: Int = 0) -> PArena<T>          // O(cap)
+    @get fn len(self) -> Int                   // O(1)
+    @get fn is_empty(self) -> Bool             // O(1)
+    fn alloc(mut self, x: T) -> Id<T>          // O(1) amortized; ids 0, 1, ...
+    fn get(self, id: Id<T>) -> T               // O(1); traps past len
+    fn reserve(mut self, cap: Int)             // O(cap)
+
+struct PMultiset<D>                            // hashed persistent multiset
+    fn empty() -> PMultiset<D>                 // O(1), no node
+    @get fn len(self) -> Int                   // O(1)
+    fn with(self, mut ar: PArena<PMultiset<D>>, x: D) -> PMultiset<D>     // O(log |D|) time and nodes
+    fn without(self, mut ar: PArena<PMultiset<D>>, x: D) -> PMultiset<D>  // O(log |D|); self when absent
+    fn count(self, ar: PArena<PMultiset<D>>, x: D) -> Int                 // O(log |D|)
+    fn cmp(self, ar: PArena<PMultiset<D>>, other: PMultiset<D>, desc: Bool = false) -> Int  // O(log |D|)
+    // ==: O(1) by size and a 64-bit sum of fixed per-key weights
+```
+
+`cmp` orders the sorted elements lexicographically (largest first with
+`desc: true`), a proper prefix first; it walks one path, down the side where
+the two first differ by hash. Two different multisets compare equal with
+probability about \(2^{-64}\).
 
 ---
 
@@ -814,14 +845,11 @@ After landing the v1 surface above and rewriting the affected ports (`cf2066e`,
   prefix/range sums on `SortedBag`. If a second user appears, the general
   mechanism is a monoid-augmented `SortedBag<K, M: Monoid>` (matching `SegTree`
   / `Fenwick`), not an ad-hoc `.sum` field on `SortedBag<K>`.
-- **`PMultiset`:** now in `std.persistent` (no longer deferred).
 - **`MinHeap(by:)` (resolved by existing idiom):** `cf2159f.cp` reads cleanly
   with `stdlib/heap.cp`'s documented `(key, payload)` / `(key, desc(v))` entry
   idiom (`var heap = MinHeap<(Int, Seg)>()`), with zero comparator indirection.
 - **Dynamic bitset (`DynBitset`):** for problems where the bitset width is
   computed inside a loop without a domain in scope.
-- **Persistent `Arena<T>` + `PMultiset<K>`:** typed 4-byte arena handles so
-  persistent segment trees, tries, and `cf2135f` need zero raw-int pools.
 - **Group-valued `PotentialDsu<V, W>`:** shipped (`op:` takes `+`, `^` or a
   commutative `Group<W>`); `ParityDsu` stays the Z/2Z special case.
 

@@ -8793,4 +8793,9 @@ from `just next-decision`.
 - **Why.** "Small core, no privileged stdlib": a std body the compiler bypasses is a second implementation that nobody tests, and a matcher by name alone can't tell it from an unrelated method.
 - **Reverse.** Go back to the name intersection of 3e552fa13.
 
-## 519. (reserved, content)
+## 519. Persistent values keep their nodes in a `PArena<T>` the caller holds (stdlib, 2026-11-24)
+
+- **Call.** `std.persistent.PArena<T>` is an append-only pool: `alloc` returns a 4-byte `Id<T>` and a node never changes, so every version sharing it stays valid. A persistent value (`PMultiset<D>` first) is an immutable struct whose children are `?Id<Self>` and whose methods take the arena: `s.with(mut ar, x)`, `s.count(ar, x)`, `a.cmp(ar, b)`. `PMultiset` hashes with fixed per-key splitmix64 weights summed in `U64`, so `==` is \(O(1)\) and `cmp` walks one path. `Id.raw` is `pub` so a pool outside `std.marks` can mint and read handles.
+- **Why.** Ryan's call 5: a library keeps no hidden module-level state, so a pool is a value the user declares, and one declared in a `@!multitest` case is fresh per case. A struct cannot hold itself by value (`?N` fields are a check error pointing here), and a pool owned by each value would copy on every update.
+- **Reverse.** Give each persistent value its own node list, at \(O(n)\) per update.
+
