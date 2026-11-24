@@ -6,11 +6,15 @@
   {"id": "6518029", "language": "CPP17", "result": "RTE", "time": 0.898562351, "memory_kb": 85556.0, "file": "corpus/submissions/6518029.cpp"},
   {"id": "6518047", "language": "CPP17", "result": "RTE", "time": 0.900977079, "memory_kb": 85372.0, "file": "corpus/submissions/6518047.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/noi18p6/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted C++ submission (the three recorded ones are RTE). orig.cpp was written for the corpus: a tree DP that merges children left to right, keeping the partial cycle as paths over the subtree's top node and its first and last K leaves, deciding each ring edge at the merge that first joins its leaves and the wrap-around ones at the root. It matches an exhaustive Hamiltonian-cycle brute on 500 generated cases with n <= 11, 131 of the first 300 with a nonzero count."
 }
