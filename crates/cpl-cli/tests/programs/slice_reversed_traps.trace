@@ -3,7 +3,7 @@
 {"id":2,"line":4,"label":"print → slicing 2 3","stage":"main","values":{"stdout":["slicing 2 3"],"a":[1,2,3,4],"lo":3,"hi":1},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":4}]},
 {"id":3,"line":5,"label":"failed: slice 3..1 is outside a list of length 4","stage":"main","values":{"stdout":["slicing 2 3"],"a":[1,2,3,4],"lo":3,"hi":1},"locals":{},"frames":[{"fn":"main","line":5}]}]}}}
 stderr:
-error[R0001]: slice 3..1 is outside a list of length 4
+error[R0101]: slice 3..1 is outside a list of length 4
   --> slice_reversed_traps.cp:5:7
   |
 5 | print(a[lo..hi])
