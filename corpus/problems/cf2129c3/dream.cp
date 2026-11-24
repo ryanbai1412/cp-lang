@@ -38,14 +38,14 @@ let blk = weights.len
 let n: 2..=1000 = read()
 domain Pos = 1..=n
 
-fn ask(inds: Seq<Pos>) -> Int:
+fn ask(inds: List<Pos>) -> Int:
     print("?", inds.len, inds)
     read()
 
-let open_i = (Pos(2)..=Pos.last!).bsearch(p => ask(Pos.first!..=p) > 0).l!
+let open_i = (Pos(2)..=Pos.last!).bsearch(p => ask((Pos.first!..=p).collect()) > 0).l!
 
 var ans: [Pos]Char = '?'
-for inds in Pos.chunks_padded(blk, pad: Pos.last):
+for inds in Pos.chunks_padded(blk, pad: Pos.last!):
     var query: List<Pos> = []
     for (pos, k) in zip(inds, weights):
         repeat k:
