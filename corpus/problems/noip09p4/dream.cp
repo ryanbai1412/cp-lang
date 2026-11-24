@@ -1,27 +1,42 @@
 // NOIP 2009 Target Sudoku: complete the sudoku maximising Σ value × ring weight (10 at the
 // centre down to 6 at the border), or print -1. Backtrack on the empty cell with fewest options.
-domain D = [9]
-let grid = read [D, D]0..=9
-let weight = (r: D, c: D) => 10 - max(abs(Int(r) - 4), abs(Int(c) - 4))
-var used = (row: [D]Subset<1..=9>, col: [D]Subset<1..=9>, box: [D]Subset<1..=9>)
-fn box_of(r: D, c: D) -> D = D(Int(r) / 3 * 3 + Int(c) / 3)
-fn options(r: D, c: D) = (1..=9).all - used.row[r] - used.col[c] - used.box[box_of(r, c)]
+domain Line = 0..9
+domain Digit = 1..=9
+type Digits = Subset<Digit>
+var grid: [Line, Line]0..=9 = read()
+let weight = (r: Line, c: Line) => 10 - max(abs(r.idx - 4), abs(c.idx - 4))
+fn box_of(r: Line, c: Line) -> Line = Line(r.idx / 3 * 3 + c.idx / 3)
+var row: [Line]Digits = Digits.empty  // the digits placed in each row, column and box
+var col: [Line]Digits = Digits.empty
+var box: [Line]Digits = Digits.empty
+fn options(r: Line, c: Line) -> Digits = Digits.full - (row[r] | col[c] | box[box_of(r, c)])
 
-var empty: List<(D, D)> = []
-var base = 0
-for ((r, c), v) in grid.items:
-    if v == 0: empty.push((r, c)); continue
-    if v in used.row[r] or v in used.col[c] or v in used.box[box_of(r, c)]: print(-1); return
-    for s in [mut used.row[r], mut used.col[c], mut used.box[box_of(r, c)]]: s.add(v)
-    base += v * weight(r, c)
+fn mark(r: Line, c: Line, d: Digit, on: Bool):
+    row[r].set(d, on)
+    col[c].set(d, on)
+    box[box_of(r, c)].set(d, on)
+    grid[r, c] = if on: d.label else: 0
 
-fn search(left: List<(D, D)>) -> ?Int:
-    let Some(cell) = left.min_by(cell => options(cell).len) else: return Some(0)
-    let (r, c) = cell
+// the given digits' score, or None when two of them clash
+fn givens() -> ?Int:
+    var score = 0
+    for (r, c) in product(Line.all, Line.all):
+        if grid[r, c] == 0: continue
+        let d = Digit(grid[r, c])
+        if d not in options(r, c): return None
+        mark(r, c, d, true)
+        score += d.label * weight(r, c)
+    Some(score)
+
+// the best score the empty cells can add, or None when they can't be filled
+fn search() -> ?Int:
+    let empty = product(Line.all, Line.all).filter(((r, c)) => grid[r, c] == 0)
+    let Some((r, c)) = empty.min(by: ((r, c)) => options(r, c).len) else: return Some(0)
     var best: ?Int = None
-    for v in options(r, c).items:
-        place(r, c, v)
-        best max= search(left.without(cell)).map(s => s + v * weight(r, c))
-        unplace(r, c, v)
+    for d in options(r, c).items:
+        mark(r, c, d, true)
+        if let s = search(): best max= s + d.label * weight(r, c)
+        mark(r, c, d, false)
     best
-print(search(empty).map(s => s + base) ?? -1)
+
+print(givens().and_then(g => search().map(s => g + s)) ?? -1)
