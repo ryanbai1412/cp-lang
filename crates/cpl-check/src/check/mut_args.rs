@@ -11,7 +11,7 @@ impl Checker<'_> {
             return;
         };
         let user_fn = self
-            .global(name)
+            .free_global(name)
             .is_some_and(|d| matches!(&*d, Def::Fn { .. }));
         if self.local(name).is_some() || user_fn {
             return;

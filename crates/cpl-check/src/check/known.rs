@@ -93,9 +93,10 @@ impl<'a> Checker<'a> {
                 if params.first().is_some_and(|p| p.name == "self"))
         };
         let core = (Self::binary_min_max(callee, args) || generator)
-            && (self.env.origin(name).is_some() || self.global(name).is_some_and(|d| fold(&d)));
+            && (self.env.origin(name).is_some()
+                || self.free_global(name).is_some_and(|d| fold(&d)));
         let shadowed = name != "zip" && !core;
-        if self.local(name).is_some() || (self.global(name).is_some() && shadowed) {
+        if self.local(name).is_some() || (self.free_global(name).is_some() && shadowed) {
             return None;
         }
         let tys: Vec<Ty> = args

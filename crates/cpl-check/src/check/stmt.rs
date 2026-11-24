@@ -74,7 +74,7 @@ impl<'a> Checker<'a> {
         if self.local(name).is_some() || !self.env.names().contains(name) {
             return;
         }
-        let Some(def) = self.global(name) else {
+        let Some(def) = self.free_global(name) else {
             return;
         };
         let Def::Fn {

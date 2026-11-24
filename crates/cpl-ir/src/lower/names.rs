@@ -2,7 +2,7 @@
 //! and the prelude names a call keeps beside std's fold of that name.
 
 use super::call::Reduce;
-use super::Lowerer;
+use super::{Lowerer, Sym};
 use crate::Expr;
 use cpl_diag::Span;
 use cpl_syntax::ast::{self, Arg, ExprKind};
@@ -20,6 +20,28 @@ pub(super) fn core_over_std(name: &str, args: &[Arg]) -> bool {
 }
 
 impl Lowerer<'_> {
+    /// Whether `sym` is a `@get` fn, read as `.name` (R06.4.2).
+    pub(super) fn is_getter(&self, sym: Sym) -> bool {
+        let (m, offset, decl) = match sym {
+            Sym::Fn(id) => (
+                self.sigs[id].mod_id,
+                self.sigs[id].offset,
+                self.sigs[id].decl,
+            ),
+            Sym::GenFn(g) => (
+                self.gen_fns[g].mod_id,
+                self.gen_fns[g].offset,
+                self.gen_fns[g].decl,
+            ),
+            _ => return false,
+        };
+        self.mod_items(m).any(|(o, stmt)| {
+            o == offset
+                && matches!(&stmt.kind, ast::StmtKind::Fn(f) if f.name.text == decl.name.text)
+                && stmt.decorators.iter().any(|d| d.name.text == "get")
+        })
+    }
+
     /// Whether the module being lowered declares `name` at its top level as
     /// something a plain call can take: its own `fn max(a, b)` or `let max`
     /// wins over the core fn, its fold `fn max(self: ..)` doesn't (R11.2.3).

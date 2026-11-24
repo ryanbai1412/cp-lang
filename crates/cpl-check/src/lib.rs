@@ -50,7 +50,7 @@ pub use modules::{
 };
 pub use prelude::{
     import_edit, method_key, method_module, methods as std_methods, overload_key, overload_part,
-    set_domain, std_module, std_names, std_self_heads, SetDomain,
+    set_domain, std_module, std_names, std_self_heads, SetDomain, VALUE_NAMES as PRELUDE_VALUES,
 };
 pub use session::{open, Libraries, Revision, Session, SessionOptions, StdSource};
 pub use ty::{human_bytes, Param, Ty};

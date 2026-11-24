@@ -448,6 +448,14 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// `name` as a plain call: a `@get` fn is read as `.name` (R06.4.2), so it
+    /// never shadows the prelude fn of its name, `swap(mut a, mut b)`.
+    pub(crate) fn free_global(&mut self, name: &str) -> Option<Arc<Def>> {
+        let prelude = prelude::VALUE_NAMES.contains(&name);
+        self.global(name)
+            .filter(|d| !(prelude && matches!(&**d, Def::Fn { getter: true, .. })))
+    }
+
     /// `struct Eq(..)` inside a fn: its type and constructor are in scope
     /// for the whole block, like a top-level struct for the whole file.
     pub(crate) fn declare_local_types(&mut self, stmts: &[cpl_syntax::ast::Stmt]) {
@@ -923,7 +931,7 @@ impl<'a> Checker<'a> {
                 ("answers".into(), Ty::Tuple(vec![Ty::Str, Ty::Str])),
             ]);
         }
-        if let Some(def) = self.global(name) {
+        if let Some(def) = self.free_global(name) {
             let ty = match &*def {
                 // `Sum` without `<Int>`: nothing says what `T` is.
                 Def::Value { ty, generics, .. } if !generics.is_empty() => self.settle(ty),
