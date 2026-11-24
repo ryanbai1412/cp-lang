@@ -786,3 +786,37 @@ fn a_tuple_of_rows_binds_each_name_in_place() {
         "no tuple holds copies of both rows: {lent}"
     );
 }
+
+#[test]
+fn a_view_made_from_variables_points_to_them_while_nothing_changes_them() {
+    // `ms.within(mar)` lends both: no temporary copy, no owned field.
+    let src = |rest: &str| {
+        format!(
+            "use std.persistent.{{PArena, PMultiset}}\ndomain V = 0..100\nvar mar = PArena<PMultiset<V>>()\nvar ms = PMultiset<V>.empty()\nfor i in 0..100: ms = ms.with(mut mar, V(i))\n{rest}"
+        )
+    };
+    let lent = cpp(&src("let w = ms.within(mar)\nprint(w.len)\n"));
+    assert!(lent.contains("{&mar, &ms}"), "{lent}");
+    assert!(
+        !lent.contains("= std::move(mar);") && !lent.contains("= mar;"),
+        "{lent}"
+    );
+    // A variable written after the view is made may change under it.
+    let owned = cpp(&src(
+        "let w = ms.within(mar)\nprint(w.len)\nmar = PArena<PMultiset<V>>()\nprint(ms.len)\n",
+    ));
+    assert!(!owned.contains("{&mar, &ms}"), "{owned}");
+    // The same holds for a local of a block.
+    let local = cpp(concat!(
+        "struct H: xs: List<Int>\n",
+        "fn wrap(xs: List<Int>) -> lends H = H(xs)\n",
+        "for k in 0..read():\n",
+        "    let a = [i for i in 0..k]\n",
+        "    let h = wrap(a)\n",
+        "    print(h.xs.len)\n",
+    ));
+    assert!(
+        local.contains("const std::vector<ll>* xs = nullptr;"),
+        "{local}"
+    );
+}

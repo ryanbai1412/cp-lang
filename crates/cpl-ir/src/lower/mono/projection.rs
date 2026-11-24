@@ -180,8 +180,29 @@ impl<'a> Lowerer<'a> {
 
         // Evaluate arguments in caller context.
         let mut arg_slots = Vec::new();
+        let mut arg_globals = Vec::new();
         for ((pname, pty), arg) in param_tys.iter().zip(call_args) {
             let v = self.expect(&arg.value, pty);
+            // A read-only variable is lent, not copied: the checker holds it
+            // while the result lives.
+            if !arg.mutable && v.ty == *pty {
+                match v.kind {
+                    ExprKind::Local(src) => {
+                        arg_slots.push((pname.clone(), src));
+                        continue;
+                    }
+                    ExprKind::Global(g) => {
+                        let place = Place {
+                            kind: PlaceKind::Global(g),
+                            ty: v.ty,
+                            span: v.span,
+                        };
+                        arg_globals.push((pname.clone(), place));
+                        continue;
+                    }
+                    _ => {}
+                }
+            }
             let slot = self.new_slot(pname, pty.clone());
             out.push(Stmt::Let(slot, Some(v)));
             arg_slots.push((pname.clone(), slot));
@@ -193,6 +214,11 @@ impl<'a> Lowerer<'a> {
         let saved_env = std::mem::replace(&mut self.gen_env, proj.env.clone());
         let saved_self = self.self_struct.replace(proj.owner);
         let saved_inline = self.cx.inline_self.replace((recv_place, proj.owner));
+        let saved_aliases = self.cx.mut_aliases.clone();
+        for (pname, _) in &param_tys {
+            self.cx.mut_aliases.remove(pname);
+        }
+        self.cx.mut_aliases.extend(arg_globals);
         self.cx.scopes.push(HashMap::new());
         for (pname, slot) in arg_slots {
             self.cx.scopes.last_mut().unwrap().insert(pname, slot);
@@ -201,6 +227,7 @@ impl<'a> Lowerer<'a> {
         f(self, out);
 
         self.cx.scopes.pop();
+        self.cx.mut_aliases = saved_aliases;
         self.cx.inline_self = saved_inline;
         self.cur_mod = saved_mod;
         self.offset = saved_offset;

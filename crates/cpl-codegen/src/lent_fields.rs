@@ -13,7 +13,7 @@ use cpl_ir::{
     Arg, Block, Expr, ExprKind, FnId, Function, Place, PlaceKind, Program, ScopeId, Stmt, StructId,
     Ty,
 };
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Default)]
 pub(crate) struct LentFields {
@@ -72,6 +72,133 @@ fn param_root(e: &Expr) -> Option<usize> {
     }
 }
 
+/// The struct-literal items that point at a variable nothing changes while
+/// the struct lives: a `let` of a statement block (not a `do`, whose result
+/// outlives it) that no later statement of the block writes and no closure
+/// captures, or a global that no later statement of `main` writes and no
+/// fn or closure writes or captures.
+fn frozen_items(program: &Program) -> BTreeSet<*const Expr> {
+    let mut out = BTreeSet::new();
+    let mut shared = BTreeSet::new();
+    for (scope, body) in bodies(program) {
+        walk::deep_exprs(body, &mut |e| {
+            if let ExprKind::Closure(id) = e.kind {
+                let caps = &program.closures[id].captures;
+                shared.extend(caps.iter().filter(|c| c.is_global).map(|c| c.outer));
+            }
+        });
+        if !matches!(scope, ScopeId::Main) {
+            for stmt in &body.stmts {
+                let writes = written_roots(stmt);
+                shared.extend(writes.into_iter().filter(|w| w.0).map(|w| w.1));
+            }
+        }
+    }
+    let writes: Vec<_> = program.main.stmts.iter().map(written_roots).collect();
+    for (j, stmt) in program.main.stmts.iter().enumerate() {
+        stmt_deep_exprs(stmt, &mut |e| {
+            if let ExprKind::Tuple(items) = &e.kind {
+                for item in items {
+                    let Some((true, g)) = var_root(item) else {
+                        continue;
+                    };
+                    if !shared.contains(&g) && writes[j..].iter().all(|w| !w.contains(&(true, g))) {
+                        out.insert(item as *const Expr);
+                    }
+                }
+            }
+        });
+    }
+    for (_, body) in bodies(program) {
+        let mut captured = BTreeSet::new();
+        walk::deep_exprs(body, &mut |e| {
+            if let ExprKind::Closure(id) = e.kind {
+                let caps = &program.closures[id].captures;
+                captured.extend(caps.iter().filter(|c| !c.is_global).map(|c| c.outer));
+            }
+        });
+        plain_blocks(body, &mut |block| frozen_in(block, &captured, &mut out));
+    }
+    out
+}
+
+fn plain_blocks<'p>(block: &'p Block, f: &mut dyn FnMut(&'p Block)) {
+    f(block);
+    for stmt in &block.stmts {
+        walk::stmt_blocks(stmt, &mut |inner| plain_blocks(inner, f));
+    }
+}
+
+fn frozen_in(block: &Block, captured: &BTreeSet<usize>, out: &mut BTreeSet<*const Expr>) {
+    let writes: Vec<_> = block.stmts.iter().map(written_roots).collect();
+    for (d, stmt) in block.stmts.iter().enumerate() {
+        let Stmt::Let(v, _) = stmt else {
+            continue;
+        };
+        if captured.contains(v) {
+            continue;
+        }
+        let last = writes.iter().rposition(|w| w.contains(&(false, *v)));
+        let from = last.map_or(d + 1, |l| (l + 1).max(d + 1));
+        for stmt in block.stmts.iter().skip(from) {
+            stmt_deep_exprs(stmt, &mut |e| {
+                if let ExprKind::Tuple(items) = &e.kind {
+                    let mine = items.iter().filter(|i| param_root(i) == Some(*v));
+                    out.extend(mine.map(|i| i as *const Expr));
+                }
+            });
+        }
+    }
+}
+
+/// The variables `stmt` assigns, mutates or passes `mut`, at any depth,
+/// as `(is_global, index)`.
+fn written_roots(stmt: &Stmt) -> BTreeSet<(bool, usize)> {
+    let mut out = BTreeSet::new();
+    let mut local = |place: &Place| {
+        out.insert(walk::root(place));
+    };
+    stmt_deep_exprs(stmt, &mut |e| match &e.kind {
+        ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, ..) => local(place),
+        ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
+            for a in args {
+                if let Arg::Mut(place) = a {
+                    local(place);
+                }
+            }
+        }
+        ExprKind::Do(block) => walk::deep_stmts(block, &mut |s| {
+            if let Stmt::Assign(place, ..) = s {
+                local(place);
+            }
+        }),
+        _ => {}
+    });
+    let mut assigned = |s: &Stmt| {
+        if let Stmt::Assign(place, ..) = s {
+            local(place);
+        }
+    };
+    assigned(stmt);
+    walk::stmt_blocks(stmt, &mut |inner| walk::deep_stmts(inner, &mut assigned));
+    out
+}
+
+fn stmt_deep_exprs<'p>(stmt: &'p Stmt, f: &mut dyn FnMut(&'p Expr)) {
+    walk::stmt_exprs(stmt, &mut |e| walk::deep_expr(e, f));
+    walk::stmt_blocks(stmt, &mut |inner| walk::deep_exprs(inner, f));
+}
+
+/// The variable `e` names, directly or through fields: `(is_global, index)`.
+fn var_root(e: &Expr) -> Option<(bool, usize)> {
+    match &e.kind {
+        ExprKind::Local(slot) => Some((false, *slot)),
+        ExprKind::Global(g) => Some((true, *g)),
+        ExprKind::Field(base, _) => var_root(base),
+        _ => None,
+    }
+}
+
 fn bodies(program: &Program) -> Vec<(ScopeId, &Block)> {
     let mut out: Vec<(ScopeId, &Block)> = vec![
         (ScopeId::Main, &program.setup),
@@ -124,6 +251,7 @@ struct Scan<'p> {
     program: &'p Program,
     fields: BTreeSet<(StructId, usize)>,
     sources: Vec<BTreeSet<usize>>,
+    frozen: BTreeSet<*const Expr>,
 }
 
 impl Scan<'_> {
@@ -218,14 +346,34 @@ impl Scan<'_> {
 
     /// Whether the lent-struct value `e` points only into globals, so a
     /// global may hold it.
-    fn global_only(&self, e: &Expr) -> bool {
+    /// Whether lent-struct value `e` points only at globals; `lets` are the
+    /// initial values of `main`'s locals, when `e` is in `main`.
+    fn global_only(&self, e: &Expr, lets: Option<&BTreeMap<usize, &Expr>>) -> bool {
         self.has_lent(&e.ty).is_some()
             && match &e.kind {
                 ExprKind::Global(_) => true,
+                ExprKind::Local(t) => lets
+                    .and_then(|lets| lets.get(t))
+                    .is_some_and(|init| self.global_only(init, None)),
+                ExprKind::Tuple(items) => {
+                    let Ty::Struct(s) = e.ty else {
+                        return false;
+                    };
+                    self.fields.range((s, 0)..=(s, usize::MAX)).all(|(_, i)| {
+                        self.frozen.contains(&(&items[*i] as *const Expr))
+                            && matches!(var_root(&items[*i]), Some((true, _)))
+                    })
+                }
                 ExprKind::Call(g, args) => self.sources[*g].iter().all(|&k| {
                     matches!(args.get(k), Some(Arg::Value(v)) if matches!(walk::path_root(v), Some((true, _))))
                 }),
-                ExprKind::If(_, a, b) => self.global_only(a) && self.global_only(b),
+                ExprKind::If(_, a, b) => self.global_only(a, lets) && self.global_only(b, lets),
+                ExprKind::Do(block) => match block.stmts.split_last() {
+                    Some((Stmt::Give(given), rest)) => {
+                        !walk::has_give(rest) && self.global_only(given, lets)
+                    }
+                    _ => false,
+                },
                 _ => false,
             }
     }
@@ -274,11 +422,20 @@ impl Scan<'_> {
         }
         let mut writes = Vec::new();
         let mut made = Vec::new();
+        let mut main_lets = BTreeMap::new();
+        for body in [&program.setup, &program.main] {
+            walk::deep_stmts(body, &mut |stmt| {
+                if let Stmt::Let(t, Some(init)) = stmt {
+                    main_lets.insert(*t, init);
+                }
+            });
+        }
         for (scope, body) in bodies(program) {
+            let lets = matches!(scope, ScopeId::Main).then_some(&main_lets);
             walk::deep_stmts(body, &mut |stmt| {
                 if let Stmt::Assign(place, _, value) = stmt {
                     let global = matches!(place.kind, PlaceKind::Global(_));
-                    if !(global && self.global_only(value)) {
+                    if !(global && self.global_only(value, lets)) {
                         writes.push(place);
                     }
                 }
@@ -315,10 +472,12 @@ impl Scan<'_> {
                         .map(|(_, i)| *i)
                         .collect();
                     for i in lent {
-                        let ok = f.is_some_and(|f| {
-                            param_root(&items[i])
-                                .is_some_and(|p| p < f.params.len() && !f.params[p].mutable)
-                        });
+                        let frozen = self.frozen.contains(&(&items[i] as *const Expr));
+                        let ok = frozen
+                            || f.is_some_and(|f| {
+                                param_root(&items[i])
+                                    .is_some_and(|p| p < f.params.len() && !f.params[p].mutable)
+                            });
                         if !ok {
                             self.fields.remove(&(s, i));
                         }
@@ -417,10 +576,12 @@ pub(crate) fn lent_fields(
         .collect();
     let mut scan = Scan {
         program,
+        frozen: frozen_items(program),
         fields,
         sources: vec![BTreeSet::new(); program.fns.len()],
     };
     while !scan.fields.is_empty() && (scan.returns() | scan.check()) {}
+    let frozen = std::mem::take(&mut scan.frozen);
     let mut out = LentFields {
         fields: scan.fields,
         sources: scan.sources,
@@ -438,7 +599,17 @@ pub(crate) fn lent_fields(
             match &e.kind {
                 ExprKind::Tuple(items) => {
                     for (_, i) in out.fields.range((s, 0)..=(s, usize::MAX)) {
-                        if let (ScopeId::Fn(id), Some(p)) = (scope, param_root(&items[*i])) {
+                        if frozen.contains(&(&items[*i] as *const Expr)) {
+                            match var_root(&items[*i]) {
+                                Some((false, v)) => {
+                                    out.held.insert((scope, v));
+                                }
+                                Some((true, g)) => {
+                                    out.held_globals.insert(g);
+                                }
+                                None => {}
+                            }
+                        } else if let (ScopeId::Fn(id), Some(p)) = (scope, param_root(&items[*i])) {
                             out.by_ref.insert((id, p));
                         }
                     }

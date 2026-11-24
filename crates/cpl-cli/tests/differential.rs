@@ -80,6 +80,7 @@ fn aliasing_and_sort_keys_agree_between_interp_and_sanitized_cpp() {
             "interval_default_on_old",
             "items_of_temporary",
             "lent_fields",
+            "lent_views",
             "let_of_local_row_lends",
             "map_get_lend",
             "map_update_field",
