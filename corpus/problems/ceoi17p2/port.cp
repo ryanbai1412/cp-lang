@@ -9,9 +9,11 @@
 // original: corpus/submissions/5324109.cpp
 // Bounds: n: 1..=1e5
 let n: 1..=1e5 = read()
-let odds: [n](a: F64, b: F64) = read()
-let a = odds.map(o => o.a).sorted(by: desc)
-let b = odds.map(o => o.b).sorted(by: desc)
+var a: [n]F64 = 0.0
+var b: [n]F64 = 0.0
+for i in 0..n: (a[i], b[i]) = read()
+a.sort(by: desc)
+b.sort(by: desc)
 
 var (i, j, pays_a, pays_b, sure) = (0, 0, 0.0, 0.0, 0.0)
 while i < n or j < n:
