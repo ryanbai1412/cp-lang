@@ -81,7 +81,8 @@ cp -R "$tmp/pack" "$home/$vimdir/pack"
 printf 'fn main():\n    let total = 3\n    let y: Int = "text"\n    print(tot)\n' >"$tmp/bad.cp"
 (cd "$tmp" && HOME="$home" USERPROFILE="$home" "$vim_bin" -i NONE --not-a-term \
     --cmd "let g:cpl_path = '$cpl' | let g:cpl_result = '$tmp/lsp'" \
-    bad.cp -S "$here/lsp_vim.vim" < <(exec sleep 90 2>/dev/null) >/dev/null 2>&1) || true
+    bad.cp -S "$here/lsp_vim.vim" < <(exec sleep 90 2>/dev/null) >/dev/null 2>&1) ||
+    echo "vim smoke: vim exited $?; its result file decides" >&2
 [ "$(cat "$tmp/lsp" 2>/dev/null)" = ok ] || { echo "vim smoke: cpl lsp in vim-lsp: $(cat "$tmp/lsp" 2>/dev/null || echo 'no result')" >&2; exit 10; }
 
 python3 "$root/editors/lsp-smoke.py" vim "$cpl" lsp

@@ -378,11 +378,12 @@ jobs:
           # Machine-applicable clippy fixes land here too, so a lint slipped
           # past a `--no-verify` push heals without a lane's time. Best effort:
           # a clippy that can't run leaves the gate to report it.
-          CARGO_TARGET_DIR=target/clippy-fix cargo clippy -q --fix --allow-dirty --workspace --all-targets || true
+          CARGO_TARGET_DIR=target/clippy-fix cargo clippy -q --fix --allow-dirty --workspace --all-targets ||
+            echo "::warning::cargo clippy --fix could not run; the clippy gate says why"
           # Format every crate clippy touched or a `--no-verify` push left
           # unformatted, crate by crate (lanes never run `cargo fmt --all`).
           crates=$( { git diff --name-only -- crates; cargo fmt --all --check -- -l 2>/dev/null | sed "s|^$PWD/||"; } | cut -d/ -f2 | sort -u)
-          for c in $crates; do cargo fmt -p "$c" || true; done
+          for c in $crates; do cargo fmt -p "$c" || echo "::warning::cargo fmt -p $c failed; the fmt gate says why"; done
           changed="$changed$(git diff --name-only -- crates)"
           # The gate only warns on stale generated files on main, so a
           # generator that fails must turn this job red.

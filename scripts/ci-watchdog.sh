@@ -13,8 +13,8 @@ age() { [ -n "$1" ] && echo $((now - $(date -d "$1" +%s))) || echo 999999; }
 last() { gh api "repos/$repo/actions/workflows/ci.yml/runs?branch=main&event=push&status=$1&per_page=1" \
     --jq '.workflow_runs[0].updated_at // ""'; }
 ran=$(printf '%s\n' "$(last success)" "$(last failure)" | sort | tail -1)
-shipped=$(gh release view edge -R "$repo" --json assets \
-    --jq '.assets[] | select(.name == "latest.json") | .updatedAt' 2>/dev/null || true)
+shipped=$(retry gh release view edge -R "$repo" --json assets \
+    --jq '.assets[] | select(.name == "latest.json") | .updatedAt')
 ci_age=$(age "$ran"); edge_age=$(age "$shipped")
 problems=()
 [ "$ci_age" -le 1800 ] || problems+=("no main CI run has finished for $((ci_age / 60)) min (last: ${ran:-none})")

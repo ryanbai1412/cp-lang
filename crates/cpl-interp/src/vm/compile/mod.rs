@@ -1219,13 +1219,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 Self::place_mentions_slot(p, target)
                     || args.iter().any(|x| Self::expr_mentions_slot(x, target))
             }
-            ExprKind::Sort(p, _, desc) => {
-                Self::place_mentions_slot(p, target)
-                    || desc
-                        .as_ref()
-                        .is_some_and(|x| Self::expr_mentions_slot(x, target))
-                    || true
-            }
+            ExprKind::Sort(..) => true,
             ExprKind::Do(b) => b.stmts.iter().any(|s| Self::stmt_mentions_slot(s, target)),
             ExprKind::Fill(_, fill) => fill
                 .as_ref()

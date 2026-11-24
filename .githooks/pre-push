@@ -16,7 +16,7 @@ $markers"
 
 # 2. Validate any JSON/JSONL files touched since origin/main.
 if git rev-parse -q --verify origin/main >/dev/null 2>&1; then
-    changed_json=$(git diff --name-only --diff-filter=ACMR origin/main...HEAD -- '*.json' '*.jsonl' || true)
+    changed_json=$(git diff --name-only --diff-filter=ACMR origin/main...HEAD -- '*.json' '*.jsonl')
     if [ -n "$changed_json" ]; then
         python3 -c '
 import json, sys

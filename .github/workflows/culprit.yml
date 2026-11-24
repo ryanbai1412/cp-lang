@@ -42,7 +42,8 @@ jobs:
           good=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --branch main --event push \
               --status success --limit 1 --json headSha --jq '.[0].headSha')
           echo "good=$good" >>"$GITHUB_OUTPUT"
-          gh run view "$RUN_ID" --repo "$GITHUB_REPOSITORY" --log-failed >failed.log || true
+          . scripts/retry.sh
+          retry gh run view "$RUN_ID" --repo "$GITHUB_REPOSITORY" --log-failed >failed.log
           n=$(grep -cE '\b(FAIL|TIMEOUT|SIG[A-Z]+) +\[' failed.log || [ $? = 1 ])
           echo "fails=$n" >>"$GITHUB_OUTPUT"
           echo "good $good, bad $BAD, $n FAIL lines"

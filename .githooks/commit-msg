@@ -17,7 +17,7 @@ fi
 if ! git interpret-trailers --parse "$1" | grep -q '^Domain: '; then
     root="$(git rev-parse --show-toplevel)"
     # shellcheck disable=SC2046
-    d="$(python3 "$root/scripts/domain_of.py" $(git diff --cached --name-only) 2>/dev/null || true)"
+    d="$(python3 "$root/scripts/domain_of.py" $(git diff --cached --name-only))"
     if [ -n "$d" ]; then
         git interpret-trailers --in-place --trailer "Domain: $d" "$1"
     else

@@ -27,9 +27,10 @@ domain=$(git log -1 --format='%(trailers:key=Domain,valueonly,separator=)' HEAD)
 # A conflict only in generated files is resolved by taking main's copy and
 # regenerating, as CI's regen job would; any other conflict stops here.
 generated='^(spec/conformance/|skills/|pnpm-lock\.yaml$|editors/vscode/src/languageData\.ts$|editors/vscode/syntaxes/)'
+rebasing() { [ -d "$(git rev-parse --git-path rebase-merge)" ] || [ -d "$(git rev-parse --git-path rebase-apply)" ]; }
 pull() {
     git pull -q --rebase --autostash "$remote" main && return 0
-    while [ -d "$(git rev-parse --git-path rebase-merge)" ] || [ -d "$(git rev-parse --git-path rebase-apply)" ]; do
+    while rebasing; do
         conflicts=$(git diff --name-only --diff-filter=U)
         if [ -z "$conflicts" ] || printf '%s\n' "$conflicts" | grep -qvE "$generated"; then
             echo "land: rebase conflict in $(echo $conflicts); resolve it and run land.sh again" >&2
@@ -39,7 +40,9 @@ pull() {
         [ ! -x scripts/regen.sh ] || scripts/regen.sh >/dev/null
         git add -- $conflicts
         echo "land: regenerated conflicted $(echo $conflicts)" >&2
-        GIT_EDITOR=true git rebase --continue >/dev/null 2>&1 || true
+        # A failed continue that leaves a rebase going stopped on the next conflict.
+        GIT_EDITOR=true git rebase --continue >/dev/null 2>&1 || rebasing ||
+            { echo "land: git rebase --continue failed" >&2; return 1; }
     done
 }
 pull
