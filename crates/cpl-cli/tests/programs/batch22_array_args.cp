@@ -39,13 +39,13 @@ print(mul(a, b))
 
 var h = HashMap<Int, Int>()
 print(h.get_or_insert(1, 2), h.get_or_insert(1, 9))
-print(h.get_or_insert_with(1, () => 5), h.get_or_insert_with(7, () => 5))
+print(h.get_or_insert(1, 5), h.get_or_insert(7, 5))
 h[7] += 1
 print(h.len, h[7])
 var hs = HashMap<Str, Int>()
 for name in ["x", "y", "x", "z", "y"]:
     let next = hs.len
-    print(hs.get_or_insert_with(name, () => next))
+    print(hs.get_or_insert(name, next))
 
 // `s.remove(x)` for its effect alone, and for its answer.
 var seen = Set<Int>()

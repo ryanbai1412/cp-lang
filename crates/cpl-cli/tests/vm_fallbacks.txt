@@ -1,8 +1,5 @@
 # (mode, tag) kinds of tree-walker fallback over tests/programs; shrink-only (tests/vm_fallbacks.rs)
 expr:Call(SortedBag_Int.drain)
-expr:Call(m1_get_or_insert_with_Int_Int)
-expr:Call(m1_get_or_insert_with_Str_D0_P)
-expr:Call(m1_get_or_insert_with_Str_D1_P)
 expr:CallExpr
 expr:DomainVal
 expr:Read

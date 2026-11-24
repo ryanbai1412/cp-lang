@@ -3,13 +3,16 @@ struct Reg:
     p: Int
 
     fn id(mut self, name: Str) -> Int:
-        ids.get_or_insert_with(name, () => ids.len)
+        ids.update(name, -1, v => if v < 0: ids.len else: v)
+        ids[name]
 
     fn id2(mut self, name: Str) -> Int:
-        self.ids.get_or_insert_with(name, () => self.ids.len)
+        self.ids.update(name, -1, v => if v < 0: self.ids.len else: v)
+        self.ids[name]
 
 fn idm(mut ids: Map<Str, Int>, name: Str) -> Int:
-    ids.get_or_insert_with(name, () => ids.len)
+    ids.update(name, -1, v => if v < 0: ids.len else: v)
+    ids[name]
 
 var r = Reg(Map<Str, Int>(), 0)
 print("a", r.id("a"), "b", r.id("b"), "a", r.id("a"), "c", r.id2("c"))

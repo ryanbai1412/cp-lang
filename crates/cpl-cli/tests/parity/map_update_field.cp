@@ -18,7 +18,8 @@ struct S:
 
 fn deep(mut m: Map<Str, Int>, k: Str) -> Int:
     m.update(k, 10, v => v + 2)
-    m.get_or_insert_with("z", () => m.len * 10)
+    m.update("z", -1, v => if v < 0: m.len * 10 else: v)
+    m["z"]
 
 var s = S(Map<Str, Int>(), Reg(Map<Str, Int>(), 0))
 s.m["k"] = 10

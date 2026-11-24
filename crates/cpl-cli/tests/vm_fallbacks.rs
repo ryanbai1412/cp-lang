@@ -183,8 +183,8 @@ fn unnumbered_drops_only_instance_numbers() {
         "traced stmt:Assign(Index1D,Set)"
     );
     assert_eq!(
-        unnumbered("traced fn:m1_get_or_insert_with_Int_Int_1_2(part)"),
-        "traced fn:m1_get_or_insert_with_Int_Int(part)"
+        unnumbered("traced fn:m1_get_or_insert_Int_Int_1_2(part)"),
+        "traced fn:m1_get_or_insert_Int_Int(part)"
     );
 }
 

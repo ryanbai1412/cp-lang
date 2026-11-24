@@ -547,7 +547,7 @@ fn one_variable_lent_twice_to_a_call_is_refused() {
         )),
         vec![]
     );
-    let closure = "domain P = 0..3\nvar m = Map<Str, P>()\nprint(m.get_or_insert_with(\"a\", () => P(m.len)))\n";
+    let closure = "domain P = 0..3\nvar m = Map<Str, P>()\nm.update(\"a\", P(0), v => P(m.len - 1))\nprint(m[\"a\"])\n";
     assert_eq!(check(closure), vec![]);
 }
 

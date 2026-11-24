@@ -19,5 +19,5 @@ struct Jump:
 
 domain P = 0..3
 var ids = Map<Str, P>()
-for name in ["a", "b", "a", "c"]: print(ids.get_or_insert_with(name, () => P(ids.len)))
+for name in ["a", "b", "a", "c"]: print(ids.get_or_insert(name, P(ids.len)))
 print(Jump([1, 2]).far(1))

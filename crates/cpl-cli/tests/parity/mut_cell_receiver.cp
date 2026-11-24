@@ -3,7 +3,8 @@ struct Reg:
     var p: Int
 
     fn id(mut self, name: Str) -> Int:
-        ids.get_or_insert_with(name, () => ids.len)
+        ids.update(name, -1, v => if v < 0: ids.len else: v)
+        ids[name]
 
     fn late(mut self) -> Int:
         let f = () => p
