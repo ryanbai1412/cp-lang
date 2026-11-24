@@ -699,7 +699,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         let row_mut = Rc::make_mut(row_arr);
                         match &mut row_mut.data {
                             Cells::OptInt(v) => {
-                                let slot = unsafe { v.get_unchecked_mut(i1 as usize) };
+                                let slot = &mut v[i1 as usize];
                                 let replace = match *slot {
                                     None => true,
                                     Some(cur) => {
@@ -759,7 +759,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let arr_mut = Rc::make_mut(arr);
                     match &mut arr_mut.data {
                         Cells::OptInt(v) => {
-                            let slot = unsafe { v.get_unchecked_mut(flat) };
+                            let slot = &mut v[flat];
                             let replace = match *slot {
                                 None => true,
                                 Some(cur) => {
