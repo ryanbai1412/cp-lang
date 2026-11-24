@@ -14,9 +14,8 @@
 let stations: 2..=1e9 = read()
 let n: 2..=3000 = read()
 let k: n..=3000 = read()
-let slow: 1..=1e9 = read()
-let fast: 1..=1e9 = read()
-let semi: 1..=1e9 = read()
+let (slow, fast, semi): (1..=1e9, 1..=1e9, 1..=1e9) = read()
+assert fast < semi < slow
 let limit: 1..=1e18 = read()
 domain E = 1..=n
 
@@ -27,25 +26,24 @@ fn random_stops() -> [E]1..=stations:
     at[E.first!] = 1
     at[E.last!] = stations
     at
-let express: [E]1..=stations = read(gen: random_stops)  // Between two express stops, a stop serves the stations from itself up to
+let express: [E]1..=stations = read(gen: random_stops)
 assert all(express[e] < express[f] for e in E if let f = E.at(e + 1))
-// where the local train runs out of time, and the next stop is best put right
-// after those. Each stop serves no more than the one before it, so the best
-// k - n further stops are simply the k - n that serve the most.
+
+// In each stretch the express stop and then each further semiexpress stop serve the stations
+// up to where the local runs out of time; a further stop serves no more than the one before.
 let spare = k - n
-var reached = 0            // served by the express stops themselves
-var extra: List<Int> = []  // served by each further stop
+var reached = 0           // stations served from the express stops themselves
+var gains: List<Int> = [] // stations served by each possible further stop
 for e in E:
-    if let f = E.at(e + 1):
-        let from = express[e]
-        var at = from  // the next stop of this stretch
-        for stop in 0..=spare:
-            let left = limit - fast * (from - 1) - semi * (at - from)
-            if at == express[f] or left < 0: break
-            let served = min(left / slow + 1, express[f] - at)
-            if stop == 0: reached += served
-            else: extra.push(served)
-            at += served
-if fast * (stations - 1) <= limit: reached += 1
-sort(mut extra, by: s => -s)
-print(reached - 1 + sum(extra[i] for i in 0..min(spare, extra.len)))
+    let Some(f) = E.at(e + 1) else: continue
+    let (from, to) = (express[e], express[f])
+    var at = from
+    for stop in 0..=spare:
+        let left = limit - fast * (from - 1) - semi * (at - from)
+        if at == to or left < 0: break
+        let served = min(left / slow + 1, to - at)
+        if stop == 0: reached += served
+        else: gains.push(served)
+        at += served
+let last = if fast * (stations - 1) <= limit: 1 else: 0
+print(reached - 1 + last + gains.sorted().rev.take(spare).sum())
