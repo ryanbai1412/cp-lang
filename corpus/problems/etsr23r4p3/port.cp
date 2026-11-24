@@ -1,4 +1,5 @@
 // Source: DMOJ ETSR '23 R4 P3 (ZJOI 2016 Small Stars), https://dmoj.ca/problem/etsr23r4p3
+// limits: 1000 ms, 512 MB
 // Problem: a simple graph with n <= 17 vertices and m <= n(n-1)/2 edges, and a tree on the
 //   same n labels. Count the bijections from tree vertices to graph vertices that send every
 //   tree edge to a graph edge.

@@ -1,4 +1,5 @@
 // Source: NOI 2005 P2 (Sequence Maintenance), https://dmoj.ca/problem/noi05p2
+// limits: 600 ms, 64 MB
 // Problem: a sequence of N ints in [-1000, 1000] and M <= 20000 ops: INSERT tot numbers after
 //   posi; DELETE, MAKE-SAME c, REVERSE, GET-SUM (tot may be 0) the tot numbers from posi; MAX-SUM
 //   (best non-empty subarray). Print each query; <= 5e5 numbers alive, <= 4e6 inserted in all.

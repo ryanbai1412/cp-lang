@@ -1,4 +1,5 @@
 // Source: Baltic OI 2019 P6 (Olympiads), https://dmoj.ca/problem/btoi19p6
+// limits: 2000 ms, 256 MB
 // Problem: n <= 500 contestants score 0..=1e6 in each of k <= 6 events. A team is k distinct
 //   contestants scoring the sum over events of its best member there. Print the c-th best
 //   team score (c <= 2000, teams differ as sets; at least c teams exist).

@@ -1,4 +1,5 @@
 // Source: IOI 2020 P5 (Counting Mushrooms), https://dmoj.ca/problem/ioi20p5
+// limits: 2000 ms, 512 MB
 // Problem: interactive; n <= 2e4 mushrooms of species A or B, mushroom 0 is A. use_machine(x)
 //   on distinct labels returns the number of adjacent pairs of different species; at most 2e4
 //   calls and total length 1e5. Return the number of A mushrooms.
@@ -27,7 +28,9 @@ fn species(s: Slot, mask: Int) -> Int:
         Known(t) => t
         Unknown(i) => (mask >> i) & 1
 
-fn answer(q: List<Slot>, mask: Int) -> Int = (1..q.len).count(i => species(q[i - 1], mask) != species(q[i], mask))
+fn answer(q: List<Slot>, mask: Int) -> Int = (1..q.len).count(
+    i => species(q[i - 1], mask) != species(q[i], mask)
+)
 
 // the mask behind each of q's answers, if no two masks collide
 fn split(masks: List<Int>, q: List<Slot>) -> ?List<?Int>:
@@ -59,6 +62,7 @@ fn decision_tree(k: Int, x: Int, y: Int) -> Tree:
                     leaves[r] = Leaf(masks, q, mask_of)
                     break
                 if not q.next_permutation(): break
+            if r not in leaves: break
         if leaves.len == buckets.len: return Tree(root, leaves)
         assert root.next_permutation()
 

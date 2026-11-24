@@ -1,4 +1,5 @@
 // Source: NOI 2016 Day 1 P2 (Grid), https://dmoj.ca/problem/noi16p2
+// limits: 2000 ms, 1024 MB
 // Problem: multitest, T <= 20. An n x m grid (n, m <= 1e9) has c crickets in given cells (sum
 //   of c <= 1e5) and fleas everywhere else, linked by side adjacency. Print the least number of
 //   fleas to turn into crickets so that some two fleas are disconnected, or -1 if impossible.

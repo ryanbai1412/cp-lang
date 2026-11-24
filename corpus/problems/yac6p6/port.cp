@@ -1,4 +1,5 @@
 // Source: Yet Another Contest 6 P6 (No More Snakes and Ladders), https://dmoj.ca/problem/yac6p6
+// limits: 1000 ms, 256 MB
 // Problem: an n x m grid (n, m <= 200) of values <= 1e9. Each of Q <= 1e5 independent queries
 //   gives a subgrid (A, B)..(C, D) and K <= 5: a token walks right/down from (A, B) to (C, D)
 //   and may first set up to K cells to 0; print the least possible sum of the visited cells.

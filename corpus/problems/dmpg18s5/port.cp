@@ -2,8 +2,8 @@
 // Problem: N, Q <= 2e5 and an array A; queries "1 l r x" print how many of A[l..=r] are divisible
 //   by x, "2 u v" sets A[u] = v; values and x are at most 2e5.
 // Solution: sqrt decomposition with blocks of 500: each block keeps, for every d, how many of
-//   its values d divides, updated through the divisors of the old and new value (std
-//   `Sieve.divisors`). A query scans its two partial blocks and adds the counts at x of the
+//   its values d divides, updated through the divisors of the old and new value (lists from a
+//   harmonic sieve). A query scans its two partial blocks and adds the counts at x of the
 //   whole ones between. O((N + Q) (sqrt N + D)), D the most divisors, with N / 500 * V counters.
 // original: corpus/submissions/3476383.cpp
 // Bounds: n, q: 1..=2e5; a: 1..=MAX; kind: 1..=2; l, r, p: 1..=n; x, v: 1..=MAX
@@ -18,14 +18,16 @@ domain Val = 1..=MAX
 domain Block = 0..ceil_div(n, SIDE)
 var a: [Pos]Val = read()
 
-let sieve = Sieve.new(MAX)
+var divisors: [Val]List<Val> = []
+for d in Val:
+    for v in d.label..=MAX by d.label: divisors[Val(v)].push(d)
 fn block(p: Pos) -> Block = Block((p.label - 1) / SIDE)
 fn first(b: Block) -> Pos = Pos(b.label * SIDE + 1)
 fn last(b: Block) -> Pos = Pos(min(n, (b.label + 1) * SIDE))
 
 var count: [Block, Val]0..=SIDE = 0  // how many of the block's values each divisor divides
 fn shift(p: Pos, by: Int):
-    for d in sieve.divisors(a[p].label): count[block(p), Val(d)] += by
+    for d in divisors[a[p]]: count[block(p), d] += by
 for p in Pos: shift(p, 1)
 
 fn scan(lo: Pos, hi: Pos, x: Val) -> Int = (lo..=hi).count(p => a[p].label % x.label == 0)

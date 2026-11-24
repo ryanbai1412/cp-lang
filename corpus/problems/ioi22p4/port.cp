@@ -1,4 +1,5 @@
 // Source: IOI 2022 Day 2 P1, Digital Circuit, https://dmoj.ca/problem/ioi22p4
+// limits: 2000 ms, 512 MB
 // Problem: a tree of N threshold gates and M source gates (N, M <= 1e5, P[i] < i); a gate with
 //   c inputs takes a parameter p in 1..=c and is 1 iff at least p inputs are 1. Q <= 1e5 times,
 //   toggle sources L..=R and count parameter assignments making gate 0 output 1, mod 1000002022.

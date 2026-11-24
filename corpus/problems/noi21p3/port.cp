@@ -1,4 +1,5 @@
 // Source: NOI 2021 P3 (Celebration), https://dmoj.ca/problem/noi21p3
+// limits: 2000 ms, 1024 MB
 // Problem: a weakly connected digraph, n, q <= 3e5, m <= 6e5, where x => z and y => z imply
 //   x => y or y => x. Each query gives s, t and k <= 2 extra edges usable only by it; print
 //   how many cities lie on some s-to-t walk (0 if t is unreachable).

@@ -1,4 +1,5 @@
 // Source: DMOPC '21 Contest 7 P4 (Rocket Race), https://dmoj.ca/problem/dmopc21c7p4
+// limits: 2000 ms, 256 MB
 // Problem: n <= 2e5 single-use rockets; rocket i moves a_i forward, then b_i back. Q <= 2e5
 //   events: "0 r" prints the fewest rockets that reach or pass r metres at some moment (going
 //   forward only), or -1; "t x y" replaces rocket t by (x, y). Values <= 1e9.

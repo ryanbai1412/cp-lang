@@ -1,4 +1,5 @@
 // Source: IOI 2019 Day 1 P2, Split the Attractions, https://dmoj.ca/problem/ioi19p2
+// limits: 1000 ms, 1024 MB
 // Problem: a connected graph, n <= 1e5 vertices, m <= 2e5 edges, and a + b + c = n. Split the
 //   vertices into sets of sizes a, b, c, at least two of them connected; print each vertex's
 //   set (1, 2, 3), or all zeros if impossible. Here stdin gives n m a b, then the edges.

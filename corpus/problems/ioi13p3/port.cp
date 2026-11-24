@@ -1,4 +1,5 @@
 // Source: IOI 2013 P3 (Wombats), https://dmoj.ca/problem/ioi13p3
+// limits: 9000 ms, 256 MB
 // Problem: an R x C grid of roads (R <= 5000, C <= 200) with wombat counts on each segment;
 //   people walk east/west and only south. Handle <= 500 changes of one segment and <= 2e5
 //   escape(V1, V2) queries: fewest wombats from (0, V1) to (R - 1, V2).

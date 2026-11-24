@@ -1,4 +1,5 @@
 // Source: CCO 2021 P3 (Through Another Maze Darkly), https://dmoj.ca/problem/cco21p3
+// limits: 8000 ms, 1024 MB
 // Problem: a tree of n <= 8e5 rooms, each listing its neighbours clockwise, with a pointer at the
 //   first. A step turns the current room's pointer clockwise to the next corridor and walks it.
 //   For each of q <= 8e5 independent queries k <= 1e15, print the room reached after k steps

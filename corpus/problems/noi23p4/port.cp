@@ -1,4 +1,5 @@
 // Source: NOI 2023 P4 (Trade), https://dmoj.ca/problem/noi23p4
+// limits: 1500 ms, 512 MB
 // Problem: 2^n - 1 cities (2 <= n <= 18) in a heap-shaped tree: city i >= 2 has a one-way road to
 //   i/2 of length a_i, plus m <= 2^n directed roads u -> v with v in u's subtree (lengths <= 1e9).
 //   Print the sum of dist(x, y) over all ordered pairs (0 if unreachable) mod 998244353.
