@@ -7,58 +7,26 @@
 //   flips(v) = whacked(v) + sum of flips over its in-links, and flips must equal k: v is
 //   whacked iff k_v differs from the XOR of k over its in-links, a unique choice. Every whack
 //   so chosen is a lit figure or reachable from one, and every lit figure needs a whack that
-//   reaches it, so the answer is -1 iff a cycle is reachable from a lit figure (iterative DFS
-//   with colours). O(N + M).
+//   reaches it, so the answer is -1 iff a cycle is reachable from a lit figure: `topo` of
+//   the links leaving figures `reachable` from the lit ones. O(N + M).
 // original: corpus/submissions/4453037.cpp
-let n: 1..=1000000 = read()
-let m: 0..=1000000 = read()
-domain V = 0..n
-domain E = 0..m
-let lit: [V]0..=1 = read()
-let wires: [E](Int, Int) = read()
-
 // forward adjacency as linked lists: head[u] -> edge, nxt[edge]
-var head: [V]Int = -1
-var nxt: [E]Int = -1
-var after: [V]Int = 0
-for e in E:
-    let w = wires[e]
-    let u = V(w.0 - 1)
-    let v = V(w.1 - 1)
-    nxt[e] = head[u]
-    head[u] = e.ord
-    after[v] = after[v] ^ lit[u]
-
 // DFS colours over what the lit lamps reach: 1 = on the stack, 2 = done
-var colour: [V]Int = 0
-var edge: [V]Int = -1
-var stack: List<Int> = []
-var cyclic = false
-for s in V:
-    if lit[s] == 1 and colour[s] == 0:
-        colour[s] = 1
-        edge[s] = head[s]
-        stack.push(s.ord)
-        while stack.len > 0:
-            let u = V(stack.last!)
-            let e = edge[u]
-            if e < 0:
-                colour[u] = 2
-                stack.pop()
-            else:
-                edge[u] = nxt[E(e)]
-                let v = V(wires[E(e)].1 - 1)
-                if colour[v] == 1:
-                    cyclic = true
-                elif colour[v] == 0:
-                    colour[v] = 1
-                    edge[v] = head[v]
-                    stack.push(v.ord)
 
-if cyclic:
-    print(-1)
-else:
-    var ans = 0
-    for v in V:
-        ans += after[v] ^ lit[v]
-    print(ans)
+let n: 1..=1e6 = read()
+let m: 0..=1e6 = read()
+domain Figure = 1..=n
+let up: [Figure]0..=1 = read()
+let links: [m](from: Figure, to: Figure) = read()
+
+// fed[v]: the XOR of `up` over v's in-links, the flips v gets from figures above it
+var fed: [Figure]0..=1 = 0
+for w in links: fed[w.to] ^= up[w.from]
+
+let g = Graph.directed(links)
+var lit_reach: [Figure]Bool = false
+for v in reachable(g, [v for v in Figure if up[v] == 1]): lit_reach[v] = true
+let live = Graph.directed([(w.from, w.to) for w in links if lit_reach[w.from]])
+
+if topo(live) == None: print(-1)
+else: print(len([v for v in Figure if fed[v] != up[v]]))
