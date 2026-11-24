@@ -8942,13 +8942,12 @@ Reserved for call 5, which landed as decision 519.
 
 ## 555. (reserved, content)
 
-## 556. (reserved, unknown)
-
-## 557. (reserved, infra)
-
-## 558. (reserved, content)
 ## 556. The conform corpus ratchet times the max cases instead of judging them (idioms, 2026-11-24)
 
 - **Call.** `cpl-conform corpus` judges each package's tests.toml cases in the interpreter, except the `args = ["--max"]` ones, which `corpus.py make` marks with an empty `NN.max`. A package with an `interactor.py` is judged by it talking to `cpl run spec.cp`, as `cpl test --interactor` does, so its cases need no `.ans`. The max cases are only timed: `interp_max_over_20s` in research/scoreboard.json, a shrink-only debt-ratchet counter owned by Core, lists the packages whose interpreter runs one past the 20 s case timeout.
 - **Why.** The ratchet measures interpreter correctness. Max cases are judge workloads, and `corpus.py verify` (`max`, `stress`) already judges them on the C++. In the interpreter they turned eight passes into timeouts that said nothing about correctness. Dropping them would have hidden the interpreter's speed; a counter keeps it visible and owned.
 - **Reverse.** Once `interp_max_over_20s` is 0, judge the max cases in the ratchet too and delete the counter.
+
+## 557. (reserved, infra)
+
+## 558. (reserved, content)

@@ -11,6 +11,8 @@
 
 use std::path::{Path, PathBuf};
 
+#[path = "support/corpus_cases.rs"]
+mod corpus_cases;
 #[path = "support/corpus_programs.rs"]
 mod corpus_programs;
 use std::process::{Command, Stdio};
@@ -57,6 +59,7 @@ fn programs() -> Vec<String> {
         &mut paths,
     );
     // A port runs on its tests; one with none has nothing to compare.
+    corpus_cases::make(&r, &[]);
     for port in cpl_corpus::files(&r, "port.cp") {
         if !port_inputs(port.parent().unwrap()).is_empty() {
             paths.push(port);
@@ -90,8 +93,10 @@ fn port_inputs(dir: &Path) -> Vec<PathBuf> {
         }
         _ => dir.join("tests"),
     };
-    let Ok(entries) = std::fs::read_dir(cases) else {
-        return Vec::new();
+    let entries = match std::fs::read_dir(&cases) {
+        Ok(entries) => entries,
+        Err(_) if !dir.join("tests.toml").is_file() => return Vec::new(),
+        Err(e) => panic!("{}: {e}; scripts/corpus.py make writes it", cases.display()),
     };
     let mut ins: Vec<PathBuf> = entries
         .map(|e| e.unwrap().path())
