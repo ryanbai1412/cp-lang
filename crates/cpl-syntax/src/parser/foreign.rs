@@ -27,6 +27,18 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// `if c: x += 1;`: C's `;` after a one-line body is its one error, so
+    /// an `elif` or `else` on the next line still has its `if`.
+    pub(super) fn trailing_semi(&mut self) {
+        if self.brace_depth == 0 && self.at(T::Semi) {
+            let span = self.span();
+            let diag = msgs::stmt::EXPECTED_STMT_END.error(span, &[&T::Semi.describe()]);
+            let diag = self.statement_end_help(T::Semi, span, diag);
+            self.error(diag);
+            self.bump();
+        }
+    }
+
     /// `a, b = b, a`, Python's swap: the line as a tuple assignment.
     /// `n, m = map(int, input().split())` reads the names as a tuple.
     fn tuple_assign(&self) -> Option<(Span, String, &'static str)> {
@@ -111,7 +123,7 @@ impl<'a> Parser<'a> {
             || self.text() == "auto" && matches!(self.peek_n(1), T::LParen | T::LBracket))
     }
 
-    /// One error, then the line is read as `let`.
+    /// One error, then the line is read as `var`: a C++ variable may change.
     pub(super) fn c_auto(&mut self) -> StmtKind {
         let kw = self.span();
         self.error(
@@ -120,7 +132,11 @@ impl<'a> Parser<'a> {
                 .with_help(habits::C_AUTO.say(&[]))
                 .with_fix(habits::C_AUTO_2.say(&[]), kw, "let"),
         );
-        self.let_stmt()
+        let mut stmt = self.let_stmt();
+        if let StmtKind::Let { mutable, .. } = &mut stmt {
+            *mutable = true;
+        }
+        stmt
     }
 
     /// `cin >> a >> b;` under `long long a, b;`, which the declaration's

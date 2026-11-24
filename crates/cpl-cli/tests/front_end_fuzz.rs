@@ -295,3 +295,405 @@ fn a_broken_copy_checks_within_10_percent_of_its_original() {
         (ratio - 1.0) * 100.0
     );
 }
+
+/// One planted mistake: replace `src[start..end]` with `with`.
+struct Edit {
+    start: usize,
+    end: usize,
+    with: String,
+}
+
+type Sites = Box<dyn Fn(&str, &[Token]) -> Vec<Edit> + Sync>;
+
+use cpl_syntax::{Token, TokenKind as K};
+
+fn text<'a>(src: &'a str, t: &Token) -> &'a str {
+    &src[t.span.start as usize..t.span.end as usize]
+}
+
+fn edit(start: u32, end: u32, with: impl Into<String>) -> Edit {
+    Edit {
+        start: start as usize,
+        end: end as usize,
+        with: with.into(),
+    }
+}
+
+fn line_start(toks: &[Token], i: usize) -> bool {
+    i == 0 || matches!(toks[i - 1].kind, K::Newline | K::Indent | K::Dedent)
+}
+
+/// Every token of `kind` becomes `with`.
+fn swap(kind: K, with: &'static str) -> Sites {
+    Box::new(move |_, toks| {
+        toks.iter()
+            .filter(|t| t.kind == kind)
+            .map(|t| edit(t.span.start, t.span.end, with))
+            .collect()
+    })
+}
+
+/// The end of the expression starting at token `i`: the last token before a
+/// depth-0 `stop` token, a line end, or a closer of an enclosing bracket.
+fn expr_end(toks: &[Token], i: usize, stop: &[K]) -> Option<usize> {
+    let mut depth = 0i32;
+    for j in i..toks.len() {
+        match toks[j].kind {
+            K::LParen | K::LBracket | K::LBrace => depth += 1,
+            K::RParen | K::RBracket | K::RBrace if depth == 0 => return j.checked_sub(1),
+            K::RParen | K::RBracket | K::RBrace => depth -= 1,
+            K::Newline | K::Indent | K::Dedent | K::Eof | K::Comma if depth == 0 => {
+                return j.checked_sub(1)
+            }
+            k if depth == 0 && stop.contains(&k) => return j.checked_sub(1),
+            _ => {}
+        }
+    }
+    None
+}
+
+/// Single-edit habits a contestant from C++, Python or Rust really writes:
+/// the `fix` rows of `cpl_diag::habits` (a foreign word for a CP Lang one)
+/// and a table of foreign shapes.
+fn mistakes() -> Vec<(String, Sites)> {
+    let mut out: Vec<(String, Sites)> = vec![
+        ("`and` as `&&`".into(), swap(K::And, "&&")),
+        ("`or` as `||`".into(), swap(K::Or, "||")),
+        ("`==` as `===`".into(), swap(K::EqEq, "===")),
+        (
+            "`not x` as `!x`".into(),
+            Box::new(|_, toks| {
+                (0..toks.len().saturating_sub(1))
+                    .filter(|&i| toks[i].kind == K::Not && toks[i + 1].kind != K::In)
+                    .map(|i| edit(toks[i].span.start, toks[i + 1].span.start, "!"))
+                    .collect()
+            }),
+        ),
+        (
+            "a `;` at a statement's end".into(),
+            Box::new(|_, toks| {
+                (1..toks.len())
+                    .filter(|&i| toks[i].kind == K::Newline)
+                    .filter(|&i| {
+                        !matches!(
+                            toks[i - 1].kind,
+                            K::Colon | K::FatArrow | K::Newline | K::Indent | K::Dedent
+                        )
+                    })
+                    .map(|i| edit(toks[i - 1].span.end, toks[i - 1].span.end, ";"))
+                    .collect()
+            }),
+        ),
+        (
+            "`x += 1` as `x++`".into(),
+            Box::new(|src, toks| {
+                toks.windows(4)
+                    .filter(|w| {
+                        w[0].kind == K::Ident
+                            && text(src, &w[1]) == "+="
+                            && text(src, &w[2]) == "1"
+                            && w[3].kind == K::Newline
+                    })
+                    .map(|w| edit(w[0].span.end, w[2].span.end, "++"))
+                    .collect()
+            }),
+        ),
+        (
+            "`xs.len` as `xs.size()`".into(),
+            Box::new(|src, toks| {
+                toks.windows(3)
+                    .filter(|w| {
+                        w[0].kind == K::Dot && text(src, &w[1]) == "len" && w[2].kind != K::LParen
+                    })
+                    .map(|w| edit(w[1].span.start, w[1].span.end, "size()"))
+                    .collect()
+            }),
+        ),
+        (
+            "`print(..)` as `println!(..)`".into(),
+            Box::new(|src, toks| {
+                toks.windows(2)
+                    .filter(|w| text(src, &w[0]) == "print" && w[1].kind == K::LParen)
+                    .map(|w| edit(w[0].span.start, w[0].span.end, "println!"))
+                    .collect()
+            }),
+        ),
+        (
+            "`for x in xs:` as `for (x in xs):`".into(),
+            Box::new(|src, toks| {
+                let mut out = Vec::new();
+                for i in 0..toks.len().saturating_sub(1) {
+                    if toks[i].kind != K::For || !line_start(toks, i) {
+                        continue;
+                    }
+                    let Some(last) = expr_end(toks, i + 1, &[K::Colon, K::If]) else {
+                        continue;
+                    };
+                    if toks.get(last + 1).map(|t| t.kind) != Some(K::Colon) {
+                        continue;
+                    }
+                    let (a, b) = (toks[i + 1].span.start, toks[last].span.end);
+                    out.push(edit(a, b, format!("({})", &src[a as usize..b as usize])));
+                }
+                out
+            }),
+        ),
+        (
+            "Python's `a if c else b` for an inline `if`".into(),
+            Box::new(|src, toks| {
+                let mut out = Vec::new();
+                let s = |a: usize, b: usize| {
+                    &src[toks[a].span.start as usize..toks[b].span.end as usize]
+                };
+                for i in 1..toks.len() {
+                    if toks[i].kind != K::If
+                        || matches!(
+                            toks[i - 1].kind,
+                            K::Newline | K::Indent | K::Dedent | K::Colon | K::Else
+                        )
+                    {
+                        continue;
+                    }
+                    let Some(c) = expr_end(toks, i + 1, &[K::Colon]) else {
+                        continue;
+                    };
+                    let Some(a) = expr_end(toks, c + 2, &[K::Else, K::Colon, K::If]) else {
+                        continue;
+                    };
+                    if toks.get(a + 1).map(|t| t.kind) != Some(K::Else)
+                        || toks.get(a + 2).map(|t| t.kind) != Some(K::Colon)
+                    {
+                        continue;
+                    }
+                    let Some(b) = expr_end(toks, a + 3, &[K::Colon, K::If, K::Else]) else {
+                        continue;
+                    };
+                    if b < a + 3 || toks[c + 1].kind != K::Colon || a < c + 2 || c < i + 1 {
+                        continue;
+                    }
+                    let py = format!("{} if {} else {}", s(c + 2, a), s(i + 1, c), s(a + 3, b));
+                    out.push(edit(toks[i].span.start, toks[b].span.end, py));
+                }
+                out
+            }),
+        ),
+        (
+            "C++'s `int x = 0` for `let x = 0`".into(),
+            Box::new(|src, toks| {
+                let mut out = Vec::new();
+                for i in 0..toks.len().saturating_sub(4) {
+                    let t = &toks[i..i + 4];
+                    if !matches!(t[0].kind, K::Let | K::Var)
+                        || t[1].kind != K::Ident
+                        || !line_start(toks, i)
+                    {
+                        continue;
+                    }
+                    let name = text(src, &t[1]);
+                    if t[2].kind == K::Eq {
+                        out.push(edit(t[0].span.start, t[0].span.end, "int"));
+                    } else if t[2].kind == K::Colon
+                        && text(src, &t[3]) == "Int"
+                        && toks.get(i + 4).map(|t| t.kind) == Some(K::Eq)
+                    {
+                        out.push(edit(t[0].span.start, t[3].span.end, format!("int {name}")));
+                    }
+                }
+                out
+            }),
+        ),
+        (
+            "a `let` name typo'd at one use".into(),
+            Box::new(typo_sites),
+        ),
+    ];
+    for h in cpl_diag::habits::all().filter(|h| !h.fix.is_empty()) {
+        let want: Vec<String> = cpl_syntax::lex(h.fix)
+            .tokens
+            .iter()
+            .filter(|t| t.span.end > t.span.start)
+            .map(|t| text(h.fix, t).to_string())
+            .collect();
+        let call = h.kind == cpl_diag::habits::Kind::Call;
+        for name in h.names {
+            let want = want.clone();
+            let sites: Sites = Box::new(move |src, toks| {
+                let n = want.len();
+                (0..toks.len().saturating_sub(n))
+                    .filter(|&i| {
+                        (0..n).all(|j| text(src, &toks[i + j]) == want[j])
+                            && toks[i..i + n]
+                                .windows(2)
+                                .all(|w| w[0].span.end == w[1].span.start)
+                            && (i == 0 || toks[i - 1].kind != K::Dot)
+                            && (toks[i + n].kind == K::LParen) == call
+                            && toks[i + n].kind != K::FatArrow
+                    })
+                    .map(|i| edit(toks[i].span.start, toks[i + n - 1].span.end, *name))
+                    .collect()
+            });
+            out.push((
+                format!("habit `{}`: `{}` for `{}`", h.key, name, h.fix),
+                sites,
+            ));
+        }
+    }
+    out
+}
+
+/// A later use of a `let`/`var` name, its last two letters swapped into a
+/// name the file doesn't have.
+fn typo_sites(src: &str, toks: &[Token]) -> Vec<Edit> {
+    let names: std::collections::HashSet<&str> = toks
+        .iter()
+        .filter(|t| t.kind == K::Ident)
+        .map(|t| text(src, t))
+        .collect();
+    let mut out = Vec::new();
+    for i in 0..toks.len().saturating_sub(1) {
+        if !matches!(toks[i].kind, K::Let | K::Var) || toks[i + 1].kind != K::Ident {
+            continue;
+        }
+        let name = text(src, &toks[i + 1]);
+        let b = name.as_bytes();
+        if b.len() < 3 || !name.is_ascii() || b[b.len() - 1] == b[b.len() - 2] {
+            continue;
+        }
+        let typo = format!(
+            "{}{}{}",
+            &name[..b.len() - 2],
+            b[b.len() - 1] as char,
+            b[b.len() - 2] as char
+        );
+        if names.contains(typo.as_str()) || cpl_syntax::KEYWORDS.contains(&typo.as_str()) {
+            continue;
+        }
+        let uses = (i + 2..toks.len().saturating_sub(1)).filter(|&j| {
+            text(src, &toks[j]) == name
+                && !matches!(toks[j - 1].kind, K::Dot | K::Let | K::Var | K::For | K::Fn)
+                && toks[j + 1].kind != K::Colon
+        });
+        out.extend(uses.map(|j| edit(toks[j].span.start, toks[j].span.end, typo.clone())));
+    }
+    out
+}
+
+/// Planted mistakes that still cascade, as `<spec dir> | <mistake>`; goal 0.
+const CASCADES_KNOWN: &[&str] = &[];
+
+/// One real mistake gives one error: every corpus spec that checks clean gets
+/// one foreign habit planted at a seeded site (`mistakes`), and the checker
+/// and lowering must report exactly one error, whose span touches the edit.
+/// Warnings don't count. `CPL_FUZZ_ROUNDS` scales the sites per spec and
+/// mistake (12 rounds is one site).
+/// Rule: `errors/R01`, handbook/guidelines/errors-checklist.md.
+#[test]
+fn a_planted_mistake_gives_one_error() {
+    let sites_per: usize = cpl_env::FUZZ_ROUNDS
+        .parse::<usize>()
+        .map_or(1, |r| r.div_ceil(12).max(1));
+    let mut paths: Vec<PathBuf> = cpl_corpus::files(&root(), "spec.cp");
+    paths.sort();
+    let mistakes = mistakes();
+    let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
+    let errors = |db: &mut cpl_check::Session, name: &str, src: &str| {
+        db.set_file(name, src);
+        let analysis = db.analyze(name).expect("the file was just set");
+        cpl_ir::check(&analysis)
+            .into_iter()
+            .filter(|d| d.severity == cpl_diag::Severity::Error)
+            .collect::<Vec<_>>()
+    };
+    let results: Vec<(usize, Vec<usize>, Vec<(String, String)>, usize)> = std::thread::scope(
+        |scope| {
+            let workers: Vec<_> = (0..threads)
+            .map(|t| {
+                let (paths, mistakes, errors) = (&paths, &mistakes, &errors);
+                scope.spawn(move || {
+                    let mut db = cpl_check::Session::new();
+                    let (mut runs, mut covered, mut bad, mut clean) = (0, Vec::new(), Vec::new(), 0);
+                    for (k, path) in paths.iter().enumerate().skip(t).step_by(threads) {
+                        let src = std::fs::read_to_string(path).unwrap();
+                        let name = path.to_string_lossy().into_owned();
+                        if !errors(&mut db, &name, &src).is_empty() {
+                            continue;
+                        }
+                        clean += 1;
+                        let dir = path
+                            .parent()
+                            .and_then(|p| p.file_name())
+                            .map_or(String::new(), |d| d.to_string_lossy().into_owned());
+                        let toks = cpl_syntax::lex(&src).tokens;
+                        for (m, (what, sites)) in mistakes.iter().enumerate() {
+                            let sites = sites(&src, &toks);
+                            if sites.is_empty() {
+                                continue;
+                            }
+                            covered.push(m);
+                            for round in 0..sites_per.min(sites.len()) {
+                                let seed = 0x0E77_02u64 << 40 ^ (k as u64) << 24 ^ (m as u64) << 8 ^ round as u64;
+                                let e = &sites[Rng(seed | 1).below(sites.len())];
+                                let copy = format!("{}{}{}", &src[..e.start], e.with, &src[e.end..]);
+                                let (a, b) = (e.start as u32, (e.start + e.with.len()) as u32);
+                                let got = errors(&mut db, &name, &copy);
+                                runs += 1;
+                                let ok = got.len() == 1 && got[0].span.start <= b && got[0].span.end >= a;
+                                if !ok {
+                                    let shown: Vec<String> = got
+                                        .iter()
+                                        .map(|d| format!("  {:?} {}..{} {}", d.code, d.span.start, d.span.end, d.message))
+                                        .collect();
+                                    let line = copy[..e.start].matches('\n').count() + 1;
+                                    bad.push((
+                                        format!("{dir} | {what}"),
+                                        format!(
+                                            "{name} seed {seed:#x}: {what} at line {line} ({a}..{b}: `{}`), {} errors:\n{}",
+                                            e.with,
+                                            got.len(),
+                                            shown.join("\n")
+                                        ),
+                                    ));
+                                }
+                            }
+                        }
+                    }
+                    (runs, covered, bad, clean)
+                })
+            })
+            .collect();
+            workers.into_iter().map(|w| w.join().unwrap()).collect()
+        },
+    );
+    let runs: usize = results.iter().map(|r| r.0).sum();
+    let covered: std::collections::BTreeSet<usize> =
+        results.iter().flat_map(|r| r.1.iter().copied()).collect();
+    let files: usize = results.iter().map(|r| r.3).sum();
+    let bad: Vec<&(String, String)> = results.iter().flat_map(|r| &r.2).collect();
+    let fresh: Vec<&&(String, String)> = bad
+        .iter()
+        .filter(|(key, _)| !CASCADES_KNOWN.contains(&key.as_str()))
+        .collect();
+    let fixed: Vec<&&str> = CASCADES_KNOWN
+        .iter()
+        .filter(|k| !bad.iter().any(|(key, _)| key == *k))
+        .collect();
+    println!(
+        "{runs} planted mistakes ({} of {} kinds) in {files} of {} clean specs, {} give more or less than one error",
+        covered.len(),
+        mistakes.len(),
+        paths.len(),
+        bad.len()
+    );
+    for (m, (what, _)) in mistakes.iter().enumerate() {
+        if !covered.contains(&m) {
+            println!("never planted: {what}");
+        }
+    }
+    assert!(
+        fresh.is_empty() && fixed.is_empty(),
+        "{} planted mistakes don't give exactly one error at the edit; {} known cascades now pass (delete them from CASCADES_KNOWN: {fixed:?}):\n{}",
+        fresh.len(),
+        fixed.len(),
+        fresh.iter().map(|(_, msg)| msg.as_str()).collect::<Vec<_>>().join("\n-----\n")
+    );
+}

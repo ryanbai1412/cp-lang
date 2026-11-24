@@ -52,13 +52,16 @@ fn falls_through(block: &Block) -> End {
             body,
             else_body,
         } => {
-            let forever = matches!(
-                cond,
-                Cond::Expr(Expr {
-                    kind: ExprKind::Bool(true),
-                    ..
-                })
-            );
+            // `while True:` already has its error; read it as the `true` it means.
+            let forever = match cond {
+                Cond::Expr(Expr { kind, .. }) => match kind {
+                    ExprKind::Bool(b) => *b,
+                    ExprKind::Name(n) => cpl_diag::habits::find(cpl_diag::habits::Kind::Value, n)
+                        .is_some_and(|h| h.fix == "true"),
+                    _ => false,
+                },
+                _ => false,
+            };
             loop_falls(head(5), forever, body, else_body.as_ref())
         }
         StmtKind::For {

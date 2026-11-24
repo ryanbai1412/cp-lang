@@ -230,7 +230,7 @@ pub const HABITS: &[Habit] = &[
     value("true", &["True", "TRUE"], "Python/C", "CP Lang spells it `true`", "true"),
     value("false", &["False", "FALSE"], "Python/C", "CP Lang spells it `false`", "false"),
     value("null", &["null", "nil", "none", "NULL", "nullptr"], "C/C++/Java/Go/Python", "CP Lang spells it `None`", "None"),
-    value("int_max", &["INT_MAX", "LLONG_MAX", "LONG_MAX", "INF"], "C/C++", "CP Lang spells it `inf`", "inf"),
+    value("int_max", &["INT_MAX", "LLONG_MAX", "LONG_MAX"], "C/C++", "CP Lang spells it `inf`", "inf"),
     value("int_min", &["INT_MIN", "LLONG_MIN", "LONG_MIN"], "C/C++", "CP Lang spells it `-inf`", "-inf"),
 ];
 

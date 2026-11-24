@@ -490,6 +490,7 @@ impl Checker<'_> {
         ));
         match left {
             Ty::Optional(inner) if !inner.is_vague() || diverges => *inner,
+            Ty::Error if diverges => Ty::Error,
             Ty::Error => right,
             _ if diverges => Ty::Unknown,
             _ if right.is_vague() => Ty::Unknown,

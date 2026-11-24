@@ -1818,6 +1818,7 @@ impl<'a> Parser<'a> {
                 && self.at(T::Semi)
                 && !matches!(self.peek_n(1), T::Newline | T::Eof | T::Dedent);
             if !more {
+                self.trailing_semi();
                 break;
             }
             self.bump();

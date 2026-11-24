@@ -1354,7 +1354,9 @@ impl<'a> Checker<'a> {
                 if *op == AssignOp::Set && !not_assignable {
                     self.range_store(value, &target_ty);
                 }
-                if let Some((root, _)) = Self::root_name(target) {
+                // An unresolved target is already its own error.
+                let target_ok = !matches!(target_ty, Ty::Error);
+                if let Some((root, _)) = Self::root_name(target).filter(|_| target_ok) {
                     self.check_memo_capture_write(root, target.span);
                     let target_depth = self.var_depth(root);
                     let how = format!("assigned to `{root}` from an outer scope");
