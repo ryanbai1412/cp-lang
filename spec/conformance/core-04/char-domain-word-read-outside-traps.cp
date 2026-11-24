@@ -3,5 +3,5 @@
 // input: "abz\n"
 // A character outside the letter domain stops the read.
 domain Letter = 'a'..='c'
-let s: [domain S]Letter = read()
+let s: [domain S]Letter = read()  // <- here
 print(s.len)
