@@ -33065,28 +33065,6 @@
         "status": "D",
         "time": 50.440492478
     },
-    "5494240": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2023-04-22T01:34:33+00:00",
-        "language": "CPP17",
-        "memory": 3468.0,
-        "problem": "etsr23r1p1",
-        "result": "AC",
-        "status": "D",
-        "time": 0.044057198
-    },
-    "5494375": {
-        "case_points": 100.0,
-        "case_total": 100.0,
-        "date": "2023-04-22T02:29:33+00:00",
-        "language": "CPP17",
-        "memory": 3376.0,
-        "problem": "etsr23r2p1",
-        "result": "AC",
-        "status": "D",
-        "time": 0.066829514
-    },
     "5494408": {
         "case_points": 60.0,
         "case_total": 100.0,

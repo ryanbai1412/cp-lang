@@ -1,16 +1,16 @@
 {
- "problems": 1120,
- "with_cpp_ac": 1087,
+ "problems": 1118,
+ "with_cpp_ac": 1085,
  "dream": {
   "draft": 126,
   "gold": 0,
-  "none": 994,
+  "none": 992,
   "reviewed": 0
  },
  "spec": {
   "draft": 99,
   "gold": 0,
-  "none": 1021,
+  "none": 1019,
   "reviewed": 0
  },
  "by_source": {
@@ -42,7 +42,7 @@
   "dwite": 2,
   "egoi": 16,
   "eoi": 2,
-  "etsr": 8,
+  "etsr": 6,
   "factorial": 2,
   "fastbit": 1,
   "gaolian": 2,
