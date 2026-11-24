@@ -83,7 +83,7 @@ milestone = "M1"
 name = "programs over 32 KB, every v0.3 program bench/sizes.py builds"
 command = "python3 bench/sizes.py --cpl target/release/cpl --report /tmp/sizes.tsv --check -j 4"
 target = "0 (64 KB hard limit: 0)"
-today = "8, listed in bench/oversize.txt; largest corpus/problems/cf2229i/port.cp 48022 bytes (library fns 29129); 173 over 24 KB; 1144 of 1172 programs build; the 22 bench ones that do not are in bench/unbuilt.txt (2026-11-23)"
+today = "7, listed in bench/oversize.txt; largest corpus/problems/cf2201e/port.cp 47655 bytes; cf2229i/port 48909 -> 29670 once a decided branch's `return` drops the rest of `convolve`; 180 over 24 KB; 1144 of 1172 programs build (2026-11-23)"
 milestone = "M1"
 
 [[metric]]

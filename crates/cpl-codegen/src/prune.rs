@@ -346,4 +346,22 @@ fn block(b: &mut Block, asserts: bool, cx: &mut Cx) {
             _ => {}
         }
     }
+    // Nothing after a statement that always leaves the block runs, so an
+    // `if same(over.add, +)` folded to its `return` drops the rest of the fn.
+    if let Some(end) = b.stmts.iter().position(leaves) {
+        b.stmts.truncate(end + 1);
+    }
+}
+
+fn leaves(stmt: &Stmt) -> bool {
+    let any = |b: &Block| b.stmts.iter().any(leaves);
+    match stmt {
+        Stmt::Return(_) | Stmt::Break(_) | Stmt::Continue(_) | Stmt::Give(_) => true,
+        Stmt::If(cond, then, otherwise) => match cond.kind {
+            ExprKind::Bool(true) => any(then),
+            ExprKind::Bool(false) => any(otherwise),
+            _ => any(then) && any(otherwise),
+        },
+        _ => false,
+    }
 }

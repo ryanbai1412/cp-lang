@@ -23,6 +23,26 @@ fn a_branch_on_an_op_value_keeps_only_the_one_taken() {
 }
 
 #[test]
+fn a_return_a_known_branch_always_takes_drops_the_rest_of_the_fn() {
+    // cf2229i: `convolve(over: Semiring(max, +))` returns from its first branch, so
+    // the NTT path after it and the fns only that path calls are not emitted.
+    let cpp = cpp(concat!(
+        "fn same<A, B>(a: A, b: B) -> Bool = a == b\n",
+        "fn fast(a: Int, b: Int) -> Int = a * b + 1\n",
+        "fn slow(a: Int, b: Int) -> Int = a * b + 2\n",
+        "fn combine<F>(a: Int, b: Int, on: F = +) -> Int:\n",
+        "    if not same(on, +):\n",
+        "        return slow(a, b)\n",
+        "    fast(a, b)\n",
+        "let n: 1..=10 = read()\n",
+        "print(combine(n, n, on: max))\n",
+    ));
+    let code: String = cpp.lines().filter(|l| !l.starts_with("//")).collect();
+    assert!(code.contains("slow"), "{cpp}");
+    assert!(!code.contains("fast"), "{cpp}");
+}
+
+#[test]
 fn the_start_of_a_range_from_a_literal_is_the_literal() {
     let cpp = cpp(concat!(
         "let n: 1..=10 = read()\n",
