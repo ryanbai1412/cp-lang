@@ -218,7 +218,7 @@
   "rust_idiom_lints": 76,
   "scaling_mismatches": 0,
   "std_fns_unscaled": 152,
-  "std_types_shown_empty": 4,
+  "std_types_shown_empty": 3,
   "edge_labels_unrun": 0,
   "std_model_gaps": 0,
   "cpp_optional_copies": 6,
