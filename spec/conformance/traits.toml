@@ -1244,6 +1244,26 @@ print(SortedSet.of([5, 2, 5]))
 """
 out = "2 5"
 
+[case."Show/GridRows/show"]
+rule = "std.grid GridRows prints one row per line, like the grid"
+code = """
+domain R = 0..2
+domain C = 0..3
+let g: [R, C]Int = [R, C] (r, c) => Int(r) * 3 + Int(c)
+print(g.rows)
+"""
+out = "0 1 2\n3 4 5"
+
+[case."Show/GridCols/show"]
+rule = "std.grid GridCols prints one column per line, in C order"
+code = """
+domain R = 0..2
+domain C = 0..3
+let g: [R, C]Int = [R, C] (r, c) => Int(r) * 3 + Int(c)
+print(g.cols)
+"""
+out = "0 3\n1 4\n2 5"
+
 [case."Show/PotentialDsu/show"]
 rule = "std.dsu PotentialDsu prints each position's root:offset in V order, without changing the tree"
 code = """
