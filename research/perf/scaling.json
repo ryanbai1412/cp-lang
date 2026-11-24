@@ -10228,7 +10228,15 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "math.Exp.of",
-   "measured": 0.99,
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/math.cp::math.abs": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "math.abs",
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -10236,7 +10244,7 @@
    "cost": "\\log \\mathit{max\\_den}",
    "documented": 1.14,
    "fn": "math.best_rational",
-   "measured": 1.09,
+   "measured": 0.95,
    "n": 16384,
    "ok": true
   },
@@ -10252,6 +10260,14 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "math.bit_len",
+   "measured": 0.87,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/math.cp::math.ceil": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "math.ceil",
    "measured": 1.0,
    "n": 16384,
    "ok": true
@@ -10260,7 +10276,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "math.ceil_div",
-   "measured": 1.0,
+   "measured": 0.97,
    "n": 16384,
    "ok": true
   },
@@ -10268,7 +10284,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "math.ceil_sqrt",
-   "measured": 1.0,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -10276,7 +10292,7 @@
    "cost": "\\min(k, n - k)",
    "documented": 1.0,
    "fn": "math.choose",
-   "measured": 1.0,
+   "measured": 1.08,
    "n": 16384,
    "ok": true
   },
@@ -10284,7 +10300,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "math.choose2",
-   "measured": 1.0,
+   "measured": 1.06,
    "n": 16384,
    "ok": true
   },
@@ -10292,7 +10308,7 @@
    "cost": "\\log \\min(\\lvert p \\rvert, \\lvert q \\rvert)",
    "documented": 1.14,
    "fn": "math.continued_fraction",
-   "measured": 1.04,
+   "measured": 0.95,
    "n": 16384,
    "ok": true
   },
@@ -10300,7 +10316,7 @@
    "cost": "\\log \\min(m1, m2)",
    "documented": 1.14,
    "fn": "math.crt",
-   "measured": 1.0,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -10308,7 +10324,7 @@
    "cost": "\\mathit{log\\_base} x",
    "documented": 1.14,
    "fn": "math.digits",
-   "measured": 1.01,
+   "measured": 0.88,
    "n": 16384,
    "ok": true
   },
@@ -10316,7 +10332,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "math.divmod",
-   "measured": 1.0,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -10324,7 +10340,7 @@
    "cost": "\\log \\min(\\lvert a \\rvert, \\lvert b \\rvert)",
    "documented": 1.14,
    "fn": "math.ext_gcd",
-   "measured": 1.07,
+   "measured": 1.12,
    "n": 16384,
    "ok": true
   },
@@ -10332,7 +10348,15 @@
    "cost": "k + \\log \\lvert \\mathit{num} / \\mathit{den} \\rvert",
    "documented": 1.0,
    "fn": "math.fixed",
-   "measured": 1.03,
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/math.cp::math.floor": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "math.floor",
+   "measured": 0.77,
    "n": 16384,
    "ok": true
   },
@@ -10340,7 +10364,7 @@
    "cost": "\\log m",
    "documented": 1.14,
    "fn": "math.floor_sum",
-   "measured": 1.01,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -10364,7 +10388,7 @@
    "cost": "\\log x",
    "documented": 1.14,
    "fn": "math.iroot",
-   "measured": 1.0,
+   "measured": 0.93,
    "n": 16384,
    "ok": true
   },
@@ -10372,7 +10396,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "math.is_pow2",
-   "measured": 1.0,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -10380,7 +10404,7 @@
    "cost": "\\log^2 x",
    "documented": 1.31,
    "fn": "math.is_prime",
-   "measured": 1.05,
+   "measured": 0.97,
    "n": 16384,
    "ok": true
   },
@@ -10388,7 +10412,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "math.isqrt",
-   "measured": 1.0,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -10396,7 +10420,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "math.jacobi",
-   "measured": 1.07,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -10404,7 +10428,7 @@
    "cost": "\\log \\min(\\lvert a \\rvert, \\lvert b \\rvert)",
    "documented": 1.14,
    "fn": "math.lcm",
-   "measured": 1.08,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -10412,7 +10436,7 @@
    "cost": "\\log m",
    "documented": 1.14,
    "fn": "math.linear_congruence",
-   "measured": 1.06,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -10420,7 +10444,7 @@
    "cost": "\\log \\min(\\lvert a \\rvert, \\lvert b \\rvert)",
    "documented": 1.14,
    "fn": "math.linear_diophantine",
-   "measured": 1.04,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -10428,7 +10452,7 @@
    "cost": "\\log m",
    "documented": 1.14,
    "fn": "math.min_mod_in_range",
-   "measured": 0.99,
+   "measured": 0.9,
    "n": 16384,
    "ok": true
   },
@@ -10436,7 +10460,7 @@
    "cost": "\\log^2 p",
    "documented": 1.31,
    "fn": "math.mod_sqrt",
-   "measured": 1.19,
+   "measured": 1.15,
    "n": 16384,
    "ok": true
   },
@@ -10444,7 +10468,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "math.mul_mod",
-   "measured": 1.0,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -10452,7 +10476,7 @@
    "cost": "\\log x.v",
    "documented": 1.14,
    "fn": "math.pow_exp",
-   "measured": 1.1,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -10460,7 +10484,7 @@
    "cost": "\\log e",
    "documented": 1.14,
    "fn": "math.pow_mod",
-   "measured": 1.1,
+   "measured": 1.07,
    "n": 16384,
    "ok": true
   },
@@ -10468,7 +10492,15 @@
    "cost": "k \\log m",
    "documented": 1.14,
    "fn": "math.pow_tower",
-   "measured": 1.57,
+   "measured": 1.5,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/math.cp::math.round": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "math.round",
+   "measured": 0.98,
    "n": 16384,
    "ok": true
   },
@@ -10476,7 +10508,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "math.sign",
-   "measured": 1.0,
+   "measured": 0.9,
    "n": 16384,
    "ok": true
   },
@@ -10484,6 +10516,14 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "math.splitmix64",
+   "measured": 1.11,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/math.cp::math.sqrt": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "math.sqrt",
    "measured": 1.0,
    "n": 16384,
    "ok": true
@@ -10492,6 +10532,14 @@
    "cost": "\\log \\lvert \\mathit{self} \\rvert",
    "documented": 1.14,
    "fn": "math.to_str",
+   "measured": 0.96,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/math.cp::math.trunc": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "math.trunc",
    "measured": 1.03,
    "n": 16384,
    "ok": true
@@ -11164,7 +11212,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "strings.Palindromes.count",
-   "measured": 3.82,
+   "measured": 5.91,
    "n": 512,
    "ok": true
   },
@@ -11172,7 +11220,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.Palindromes.is_empty",
-   "measured": 0.89,
+   "measured": 1.0,
    "n": 512,
    "ok": true
   },
@@ -11180,7 +11228,15 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.Palindromes.is_palindrome",
-   "measured": 0.79,
+   "measured": 0.97,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/palindromes.cp::strings.Palindromes.items": {
+   "cost": "\\mathit{len}",
+   "documented": 4.0,
+   "fn": "strings.Palindromes.items",
+   "measured": 4.36,
    "n": 512,
    "ok": true
   },
@@ -11188,7 +11244,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.Palindromes.len",
-   "measured": 0.86,
+   "measured": 1.0,
    "n": 512,
    "ok": true
   },
@@ -11196,7 +11252,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "strings.Palindromes.longest",
-   "measured": 3.85,
+   "measured": 6.85,
    "n": 512,
    "ok": true
   },
@@ -11212,7 +11268,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.Palindromes.longest_between",
-   "measured": 0.9,
+   "measured": 0.93,
    "n": 512,
    "ok": true
   },
@@ -11220,7 +11276,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.PalindromicTree.at",
-   "measured": 1.06,
+   "measured": 0.92,
    "n": 512,
    "ok": true
   },
@@ -11228,7 +11284,7 @@
    "cost": "\\lvert \\mathit{word} \\rvert",
    "documented": 4.0,
    "fn": "strings.PalindromicTree.contains",
-   "measured": 3.73,
+   "measured": 3.81,
    "n": 512,
    "ok": true
   },
@@ -11236,7 +11292,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.PalindromicTree.diff",
-   "measured": 1.14,
+   "measured": 0.97,
    "n": 512,
    "ok": true
   },
@@ -11244,7 +11300,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.PalindromicTree.distinct",
-   "measured": 0.88,
+   "measured": 0.94,
    "n": 512,
    "ok": true
   },
@@ -11252,7 +11308,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.PalindromicTree.last_state",
-   "measured": 0.99,
+   "measured": 1.04,
    "n": 512,
    "ok": true
   },
@@ -11260,7 +11316,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.PalindromicTree.len",
-   "measured": 1.07,
+   "measured": 1.01,
    "n": 512,
    "ok": true
   },
@@ -11268,7 +11324,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.PalindromicTree.link",
-   "measured": 0.95,
+   "measured": 1.0,
    "n": 512,
    "ok": true
   },
@@ -11276,7 +11332,7 @@
    "cost": "n \\log n",
    "documented": 4.89,
    "fn": "strings.PalindromicTree.min_palindrome_partition",
-   "measured": 3.67,
+   "measured": 3.86,
    "n": 512,
    "ok": true
   },
@@ -11284,7 +11340,7 @@
    "cost": "\\lvert A \\rvert",
    "documented": 1.0,
    "fn": "strings.PalindromicTree.new",
-   "measured": 0.89,
+   "measured": 0.96,
    "n": 512,
    "ok": true
   },
@@ -11292,7 +11348,7 @@
    "cost": "\\mathit{states}",
    "documented": 4.0,
    "fn": "strings.PalindromicTree.occ_counts",
-   "measured": 3.66,
+   "measured": 4.34,
    "n": 512,
    "ok": true
   },
@@ -11300,7 +11356,7 @@
    "cost": "\\lvert s \\rvert \\cdot \\lvert A \\rvert",
    "documented": 4.0,
    "fn": "strings.PalindromicTree.of",
-   "measured": 3.37,
+   "measured": 3.43,
    "n": 512,
    "ok": true
   },
@@ -11308,7 +11364,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.PalindromicTree.pal_len",
-   "measured": 1.0,
+   "measured": 0.99,
    "n": 512,
    "ok": true
   },
@@ -11316,7 +11372,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.PalindromicTree.pop",
-   "measured": 0.78,
+   "measured": 1.01,
    "n": 512,
    "ok": true
   },
@@ -11324,7 +11380,7 @@
    "cost": "\\lvert A \\rvert",
    "documented": 1.0,
    "fn": "strings.PalindromicTree.push",
-   "measured": 0.93,
+   "measured": 0.97,
    "n": 512,
    "ok": true
   },
@@ -11332,7 +11388,7 @@
    "cost": "\\lvert A \\rvert",
    "documented": 1.0,
    "fn": "strings.PalindromicTree.push_front",
-   "measured": 0.88,
+   "measured": 1.02,
    "n": 512,
    "ok": true
   },
@@ -11340,7 +11396,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.PalindromicTree.series_link",
-   "measured": 0.8,
+   "measured": 0.9,
    "n": 512,
    "ok": true
   },
@@ -11348,7 +11404,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "strings.PalindromicTree.step",
-   "measured": 1.15,
+   "measured": 0.95,
    "n": 512,
    "ok": true
   },
@@ -19153,7 +19209,5 @@
    "ok": true
   }
  },
- "unscaled": [
-  "strings.Palindromes.items"
- ]
+ "unscaled": []
 }

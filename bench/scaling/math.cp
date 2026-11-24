@@ -41,6 +41,14 @@ for i in 0..8 * n:
     acc += min_mod_in_range(x, p, 0, n) ?? 0 // timed: math.min_mod_in_range
     acc += continued_fraction(x, y).len // timed: math.continued_fraction
     acc += best_rational(x, y, n).floor // timed: math.best_rational
+    let f = F64(x - y) / 3.0
+    acc += (x - y).abs // timed: math.abs
+    acc += F64(x).sqrt.trunc
+    let r = F64(y).sqrt // timed: math.sqrt
+    acc += f.floor // timed: math.floor
+    acc += f.ceil // timed: math.ceil
+    acc += f.round // timed: math.round
+    acc += f.trunc + r.trunc // timed: math.trunc
 for i in 0..n / 2:
     let x = n + i % n
     acc += mod_sqrt(x % p, p) ?? 0 // timed: math.mod_sqrt
