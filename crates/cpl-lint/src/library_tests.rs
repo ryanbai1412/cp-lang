@@ -772,3 +772,22 @@ fn an_advice_loops_statement_hole_moves_no_outside_name() {
         assert_eq!(found(&format!("{outer}{}", search(moves))), 0, "{moves}");
     }
 }
+
+/// A name `to` declares that the site spells like a name `to` reads keeps
+/// the finding with no fix. Rule: R06.4.9.
+#[test]
+fn a_bound_name_spelled_like_the_call_takes_no_fix() {
+    let decl = "@lint(twice_by_hand, from: \"let y = x + x\", to: \"let y = twice(x)\", holes: \"x\")\npub fn twice(n: Int) -> Int = n * 2\n";
+    let found = |body: &str| -> Vec<bool> {
+        crate::lint(
+            &format!("{decl}let a: Int = read()\n{body}"),
+            &crate::Config::default(),
+        )
+        .into_iter()
+        .filter(|d| d.code.0 == "twice_by_hand")
+        .map(|d| d.fixes.is_empty())
+        .collect()
+    };
+    assert_eq!(found("let b = a + a\nprint(b)\n"), [false]);
+    assert_eq!(found("let twice = a + a\nprint(twice)\n"), [true]);
+}
