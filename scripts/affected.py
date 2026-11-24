@@ -47,7 +47,11 @@ SITE = ["web/*", "docs/*"]
 SITE_SPELLINGS = ["crates/cpl-check/src/check/removed.rs", "std/prelude.cp"]
 # Data files and the nextest filter of the tests that read them.
 DATA_TESTS = [(f"{PACKAGES}/*/{leaf}", "package(cpl-lint) & test(/corpus_warnings/)")
-              for leaf in ("spec.cp", "port.cp")]
+              for leaf in ("spec.cp", "port.cp")] + [
+    # A record's code is checked against main's at the rebased tip, so two lanes'
+    # records that take one code can't both land.
+    (f"spec/{d}/*/lint.toml", "package(cpl-lint) & test(/record_codes_are_unique/)")
+    for d in ("lints", "checker-lints")]
 # Editor files a crate embeds or its tests read; the rest are CI's editor jobs'.
 # Programs no test reads but that must still pass `cpl check`.
 CHECK_ONLY = ["research/acceptance/solutions/*.cp", f"{PACKAGES}/*/perf.cp"]
@@ -330,7 +334,8 @@ def select(paths, dirs):
         elif expr := next((e for p, e in DATA_TESTS if fnmatch.fnmatch(path, p)), None):
             if expr not in data:
                 data.append(expr)
-            sel["check_files"].append(path)
+            if path.endswith(".cp"):
+                sel["check_files"].append(path)
         elif path.endswith(".cp") and matches(path, CHECK_ONLY):
             sel["check_files"].append(path)
         elif matches(path, AUDIT_ONLY):

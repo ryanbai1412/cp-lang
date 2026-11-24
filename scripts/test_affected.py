@@ -140,6 +140,11 @@ class AffectedTest(unittest.TestCase):
             self.assertTrue(self.sel(path)["spec_traits"], path)
         self.assertFalse(self.sel("crates/cpl-check/src/lib.rs")["spec_traits"])
 
+    def test_a_lint_record_runs_the_code_uniqueness_test(self):
+        s = self.sel("spec/lints/loop_reduction/lint.toml", "spec/checker-lints/x/lint.toml")
+        self.assertEqual(s["data_filter"], "(package(cpl-lint) & test(/record_codes_are_unique/))")
+        self.assertEqual(s["check_files"], [])
+
     def test_acceptance_and_perf_programs_get_cpl_check_only(self):
         s = self.sel("research/acceptance/solutions/2026-11-23-5/linux/cf1.cp",
                      f"{PKGS}/cf2/perf.cp")
