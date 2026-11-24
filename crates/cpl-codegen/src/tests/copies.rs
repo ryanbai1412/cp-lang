@@ -925,7 +925,7 @@ fn a_list_counted_in_each_cell_of_a_builder_is_kept() {
         "let n: 1..=100 = read()\n",
         "domain V = 1..=n\n",
         "let xs: [n]V = read()\n",
-        "let deg = [V] v => xs.count(v)\n",
+        "let deg = [V] v => xs.count(x => x == v)\n",
         "for v in V:\n",
         "    print(deg[v])\n",
     ));
