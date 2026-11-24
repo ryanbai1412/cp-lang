@@ -9,60 +9,49 @@
 //   beside it are not 'X' and both sides fit. Every such placement is a +1/-1 range in a
 //   difference array, so a cell can be black when its prefix sum is positive. O(nk).
 // original: corpus/submissions/4686585.cpp
-let row: Str = read()
-let k: Int = read()
-domain Clue = 1..=k
-let clues: [Clue]Int = read()
+let row = read<Str of "X_.">()
 let n = row.len
+assert 1 <= n <= 200_000
+let k: 1..=100 = read()
+let clues = read<[k]1..=n>()
 
-/// How many of the cells before each place are known white.
-fn whites_before(row: Str) -> List<Int>:
-    var before = [0]
-    for c in row: before.push(before.last + Int(c == '_'))
-    before
+// whites_before(row)[i]: the known white cells among the first i
+fn whites_before(row: Str) -> [0..=n]Int:
+    var count: [0..=n]Int = 0
+    for (i, c) in row.items: count[i + 1] = count[i] + Int(c == '_')
+    count
 
-fn fits(row: Str, clues: List<Int>) -> List<List<Bool>>:
-    let whites = whites_before(row)
-    var ok: List<List<Bool>> = []
-    for i in 0..=row.len:
-        var here = List.filled(clues.len + 1, false)
-        for j in 0..=clues.len:
-            if i == 0: here[j] = j == 0
-            else:
-                // The last cell is white, or the last block ends here.
-                if row[i - 1] != 'X' and ok[i - 1][j]: here[j] = true
-                if j > 0:
-                    let start = i - clues[j - 1]
-                    if start >= 0 and whites[i] == whites[start]:
-                        if start == 0: here[j] = here[j] or j == 1
-                        elif row[start - 1] != 'X' and ok[start - 1][j - 1]: here[j] = true
-        ok.push(here)
+// fits(row, lens)[i, j]: the first i cells can hold exactly the first j blocks
+fn fits(row: Str, lens: List<Int>) -> [0..=n, 0..=k]Bool:
+    let blanks = whites_before(row)
+    var ok: [0..=n, 0..=k]Bool = false
+    ok[0, 0] = true
+    for i in 1..=n:
+        for j in 0..=k:
+            // the last cell is white, or block j ends here, right after a white (or the start)
+            let blank = row[i - 1] != 'X' and ok[i - 1, j]
+            let start = if j > 0: i - lens[j - 1] else: -1
+            let block = start >= 0 and blanks[i] == blanks[start]
+                and (if start == 0: j == 1 else: row[start - 1] != 'X' and ok[start - 1, j - 1])
+            ok[i, j] = blank or block
     ok
 
-let lens = [clues[c] for c in Clue]
+let lens = clues.collect()
 let before = fits(row, lens)
-let after = fits(row.rev, lens.rev)  // after[n - i][j]: cells i.. hold the last j blocks
+let after = fits(row.rev, lens.rev)  // after[n - i, j]: cells i.. hold the last j blocks
 let whites = whites_before(row)
 
-var black_change = List.filled(n + 1, 0)
+// every placement of block j at start s that fits both sides paints s..s + len black
+domain Cell = 0..n
+var black = Diff<Cell, Int>()
 for j in 0..k:
     let len = lens[j]
     for start in 0..=n - len:
         let end = start + len
-        if whites[end] != whites[start]: continue
-        let left = if start == 0: j == 0 else: row[start - 1] != 'X' and before[start - 1][j]
-        let right = if end == n: j == k - 1 else: row[end] != 'X' and after[n - end - 1][k - 1 - j]
-        if left and right:
-            black_change[start] += 1
-            black_change[end] -= 1
+        let left = if start == 0: j == 0 else: row[start - 1] != 'X' and before[start - 1, j]
+        let right = if end == n: j == k - 1 else: row[end] != 'X' and after[n - end - 1, k - 1 - j]
+        if whites[end] == whites[start] and left and right: black.add(Cell(start)..=Cell(end - 1), 1)
+let can_black = black.finish()
 
-var out = ""
-var blacks = 0
-for i in 0..n:
-    blacks += black_change[i]
-    var white = false
-    if row[i] != 'X':
-        for j in 0..=k:
-            if before[i][j] and after[n - i - 1][k - j]: white = true
-    out.push(if white and blacks > 0: '?' elif white: '_' else: 'X')
-print(out)
+let white = (c: Cell) => row[Int(c)] != 'X' and (0..=k).any(j => before[Int(c), j] and after[n - Int(c) - 1, k - j])
+print(Str(Cell.map(c => if white(c) and can_black[c] > 0: '?' elif white(c): '_' else: 'X')))

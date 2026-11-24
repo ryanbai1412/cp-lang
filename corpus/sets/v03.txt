@@ -338,14 +338,13 @@ ioi01p1
 ioi10p3
 ioi11p4
 ioi13p4
-etsr23r2p2
-ioi13p4
 ioi15p1
 ioi15p4
 etsr23r2p2
 ioi13p4
 ioi15p5
 ioi16p1
+ioi16p4
 ioi16p6
 ioi16p6io
 ioi18p1
