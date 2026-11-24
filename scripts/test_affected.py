@@ -3,7 +3,9 @@
 import os
 import subprocess
 import sys
+import re
 import unittest
+from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import affected  # noqa: E402
@@ -120,6 +122,31 @@ class AffectedTest(unittest.TestCase):
         self.assertEqual(self.sel("crates/cpl-codegen/src/emit.rs")["slices"], ["copies"])
         self.assertEqual(self.sel("crates/cpl-interp/src/vm/run.rs")["slices"], ["vm-trace"])
         self.assertEqual(self.sel("crates/cpl-fmt/src/lib.rs")["slices"], [])
+
+    def test_every_slice_maps_the_inputs_its_tests_read(self):
+        """Each slice test's own source, the repo data it walks (path literals), and the
+        workspace crates it names select its slice, so a change to any of them can't land unrun."""
+        root = Path(affected.ROOT)
+        lits = re.compile(r'"((?:\.\./\.\./)?(?:corpus/[a-z_]+|spec/[a-z_]+|std|tests/programs))"|(STD_DIR)')
+        missing = []
+        for name, _, _, tests in affected.SLICES:
+            for t in tests:
+                src, crate = affected.test_source(t), t.split("::")[0].split(" ")[0]
+                self.assertTrue((root / src).is_file(), src)
+                text = (root / src).read_text()
+                inputs = [src]
+                for m in lits.finditer(text):
+                    d = "std" if m[2] else m[1].removeprefix("../../")
+                    d = f"crates/{crate}/{d}" if d == "tests/programs" else d
+                    # A package's tests read its spec.cp at least.
+                    sample = next((p for p in sorted((root / d).glob("*/spec.cp" if d == affected.PACKAGES else "**/*.cp"))), None)
+                    if sample:
+                        inputs.append(str(sample.relative_to(root)))
+                inputs += [f"crates/{d.replace('_', '-')}/src/lib.rs"
+                           for d in set(re.findall(r"\b(cpl_[a-z_]+)::", text)) if d.replace("_", "-") != crate]
+                missing += [f"{name}: {t} reads {p}" for p in inputs if name not in self.sel(p)["slices"]]
+        self.assertEqual(missing, [], "map these in affected.SLICES:\n" + "\n".join(missing))
+
 
     def test_a_lint_or_checker_change_runs_the_corpus_warnings_slice(self):
         for path in ("crates/cpl-lint/src/rules.rs", "crates/cpl-check/src/lib.rs"):
