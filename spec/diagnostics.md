@@ -94,7 +94,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0802 | with_not_first | a bare `with` line must come first in its block |
 | E0803 | question_in_condition | `x?` in a condition; write `... ?? false` |
 | E0804 | dropped_question | a `?` whose result is dropped |
-| E0805 | fresh_type_leaks_test *(0.3)* | a position of a per-test domain stored above `@!multitest` |
+| E0805 | fresh_type_leaks_test | a position of a per-test domain stored above `@!multitest` |
 | E0806 | inference_needs_annotation | `var x = None`; annotate `?Int` |
 | E0901 | no_u8 | `U8` is not a type; use `0..=255` |
 | E0902 | range_store_unprovable_const | a constant out of the range type |

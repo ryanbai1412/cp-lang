@@ -1213,6 +1213,7 @@ impl Database {
         });
         if imports_ok && !imported_module {
             self.memory_over_profile(path, &mut analysis);
+            self.per_test_leaks(&mut analysis);
         }
         let analysis = Arc::new(analysis);
         self.collect_garbage(items.len());

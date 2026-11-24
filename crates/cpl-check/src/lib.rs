@@ -23,6 +23,7 @@ mod fx;
 mod hover;
 mod labels;
 mod modules;
+mod multitest;
 mod nav;
 mod prelude;
 mod session;

@@ -662,6 +662,16 @@ pub const REGISTRY: &[CodeInfo] = &[
         input: "",
     },
     CodeInfo {
+        code: Code("E0805"),
+        title: "Per-test position kept across test cases",
+        summary: "A name declared above `@!multitest` holds a value of a domain declared below it.",
+        explanation: "Everything below `@!multitest` runs once per test case, and a domain declared there is fresh in each case. A name declared above the divider lives through every case, so a position stored in it would be read in a later case, where it means nothing. Declare the name below the divider, so each case has its own.",
+        trigger: "var keep = []\n@!multitest\nlet n: 1..=5 = read()\ndomain V = 0..n\nkeep.push(V(0))\nprint(keep.len)\n",
+        fix: "@!multitest\nlet n: 1..=5 = read()\ndomain V = 0..n\nvar keep = []\nkeep.push(V(0))\nprint(keep.len)\n",
+        mode: "check",
+        input: "",
+    },
+    CodeInfo {
         code: Code("E0806"),
         title: "Type annotation required for inference",
         summary: "An expression like `None` or bare `read()` needs a type annotation.",

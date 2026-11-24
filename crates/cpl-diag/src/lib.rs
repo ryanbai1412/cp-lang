@@ -278,6 +278,8 @@ pub mod codes {
     pub const USE_AFTER_MOVE: Code = Code("E0608");
     pub const OVERLOAD_BY_TYPE: Code = Code("E0702");
 
+    /// A position of a per-test domain kept in a name declared above `@!multitest`. (R02.9.2)
+    pub const FRESH_TYPE_LEAKS_TEST: Code = Code("E0805");
     /// A context value that is not a compile-time constant. (R09.1.2)
     pub const CONTEXT_NOT_CONSTANT: Code = Code("E0801");
     /// A bare `with` line after another statement of its block. (R09.1.1)
