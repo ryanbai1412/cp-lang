@@ -756,7 +756,7 @@ pub fn phi(x: Int) -> Int:
 /// An exponent `e >= 0` kept small enough to reduce: `v` is `e` itself when `e < m`, else
 /// `e % m + m`. With `m == phi(M)`, `pow_mod(a, x.v, M)` is `a ** e mod M` for every `a`, coprime
 /// to `M` or not (Euler's theorem in its extended form), so `pow_exp` can raise by it and a tower
-/// `a ** b ** c mod M` walks the totient chain `M`, `phi(M)`, ... (decision 562).
+/// `a ** b ** c mod M` walks the totient chain `M`, `phi(M)`, ... (decision 563).
 pub struct Exp(pub v: Int, pub m: Int):
     /// `e` kept for the modulus `m`.
     ///
