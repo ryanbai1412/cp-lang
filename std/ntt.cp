@@ -480,8 +480,9 @@ pub fn convolve_all<P>(polys: List<List<Mod<P>>>) -> List<Mod<P>>:
         layer = up
     layer[0]
 
-/// The 2D product of `a` and `b`, rows by rows: `out[i][j]` sums `a[r][c] * b[i - r][j - c]`. Rows may
-/// differ in length (a missing entry is zero); every output row is `wa + wb - 1` long for the widest
+/// The 2D product of `a` and `b`: `out[i][j]` sums `a[r][c] * b[i - r][j - c]`.
+///
+/// Rows may differ in length (a missing entry is zero); every output row is `wa + wb - 1` long for the widest
 /// rows `wa` of `a` and `wb` of `b`. One `convolve` of the rows laid end to end, `wa + wb - 1` apart,
 /// so no row's product spills into the next.
 ///

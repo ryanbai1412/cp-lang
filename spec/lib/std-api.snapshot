@@ -1036,6 +1036,8 @@ std/lazy.cp: SeqFold.apply(mut self, r: Range<Int>, f: F)
 std/lazy.cp: SeqFold.fold(mut self, r: Range<Int>) -> T
 std/lazy.cp: SeqFold.get(mut self, pos: Int) -> T
 std/lazy.cp: SeqFold.insert_at(mut self, pos: Int, x: T)
+std/lazy.cp: SeqFold.is_empty(self) -> Bool
+std/lazy.cp: SeqFold.items(self) -> yields T
 std/lazy.cp: SeqFold.len(self) -> Int
 std/lazy.cp: SeqFold.new<M>(op: M, xs: List<T> = [], act: ?Action<T, F> = None) -> SeqFold<T, F>
 std/lazy.cp: SeqFold.push(mut self, x: T)
@@ -1711,8 +1713,8 @@ std/seq.cp: windows<S: Indexed>(self: S, k: Int) -> yields Slice<S>
 std/seq.cp: with_domain<T>(self: List<T>) -> (domain I, [I]T)
 std/seq.cp: with_next<S: Seq, T>(self: S) -> yields (T, ?T)
 std/seq.cp: with_prev<S: Seq, T>(self: S) -> yields (?T, T)
-std/seq.cp: zip<A: Indexed<K, T>, B: Indexed<L, U>, K, L, T, U>(a: A, b: B) -> yields (T, U)
-std/seq.cp: zip_exact<A: Indexed<K, T>, B: Indexed<L, U>, K, L, T, U>(a: A, b: B) -> yields (T, U)
+std/seq.cp: zip<A: Indexed<K, T>, B: Positional<U>, K, T, U>(a: A, b: B) -> yields (T, U)
+std/seq.cp: zip_exact<A: Indexed<K, T>, B: Positional<U>, K, T, U>(a: A, b: B) -> yields (T, U)
 std/slope.cp: Concave.add_abs(mut self, a: Int)
 std/slope.cp: Concave.add_const(mut self, c: Int)
 std/slope.cp: Concave.add_left(mut self, a: Int)
@@ -2155,6 +2157,8 @@ std/window.cp: Undoing.pop(mut self, x: T)
 std/window.cp: Undoing.push(mut self, x: T)
 std/window.cp: Undoing.state(self) -> S
 std/window.cp: Window.all(self) -> ?T
+std/window.cp: Window.is_empty(self) -> Bool
+std/window.cp: Window.items(self) -> yields T
 std/window.cp: Window.len(self) -> Int
 std/window.cp: Window.new(op: M) -> Window<T, M>
 std/window.cp: Window.pop(mut self, x: T)

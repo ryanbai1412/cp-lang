@@ -1583,10 +1583,10 @@ pub struct MergeTrees<D, Z: Add + Mul>:
     /// example: `domain D = 0..8; var p = MergeTrees<D, Int>(); var t = MergeTree<D>(); p.set(mut t, D(3), 5); p.scale(t, 3); p.get(t, D(3)) == 15`
     pub fn scale(mut self, t: MergeTree<D>, k: Z) = self.scale_node(t.root, k)
 
-    /// The tree holding `leaf(a[x], b[x], pre_a, pre_b)` at each position `x`, where `pre_a` and
-    /// `pre_b` are the sums of `a` and `b` over the positions before `x`, plus the `pre_a:` and
-    /// `pre_b:` arguments (0 by default). Both inputs are used up: their nodes now belong to the
-    /// result.
+    /// The tree holding `leaf(a[x], b[x], pre_a, pre_b)` at each position `x`; it uses up `a` and `b`.
+    ///
+    /// `pre_a` and `pre_b` are the sums of `a` and `b` over the positions before `x`, plus the
+    /// `pre_a:` and `pre_b:` arguments (0 by default). The result owns the nodes of both inputs.
     ///
     /// A subtree only `a` reaches is scaled by `leaf(Z.one, Z.zero, pre_a, pre_b)` at its first
     /// position, and one only `b` reaches by `leaf(Z.zero, Z.one, pre_a, pre_b)`. That is exact when

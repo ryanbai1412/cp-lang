@@ -385,8 +385,10 @@ pub fn taylor_shift<P>(a: List<Mod<P>>, c: Mod<P>) -> List<Mod<P>>:
         for k in 0..n: out[k] = prod[n - 1 - k] * ifact[k]
     out
 
-/// The binomial transform `b[i] = sum_{j <= i} C(i, j) a[j]`, of length `a.len`; with
-/// `inverse: true` its inverse `a[i] = sum_{j <= i} (-1)^(i - j) C(i, j) b[j]`, which undoes
+/// The binomial transform `b[i] = sum_{j <= i} C(i, j) a[j]`, of length `a.len`, or with
+/// `inverse: true` its inverse.
+///
+/// The inverse is `a[i] = sum_{j <= i} (-1)^(i - j) C(i, j) b[j]`, which undoes
 /// "count with a labelled subset" sums like `exact[h] = labelled[h] - sum_{g < h} C(h, g) exact[g]`.
 /// The exponential generating function times `e^x` (or `e^-x`).
 ///

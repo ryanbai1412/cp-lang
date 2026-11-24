@@ -374,7 +374,7 @@ fn walking_a_type_alias_walks_the_aliased_type() {
 
 #[test]
 fn is_empty_on_a_type_with_len_is_fixed_to_len_zero() {
-    let d = check("var w = Window(+)\nw.push(3)\nif not w.is_empty: print(1)\n");
+    let d = check("struct Bag:\n    n: Int\n    @get pub fn len(self) -> Int = self.n\nlet b = Bag(3)\nif not b.is_empty: print(1)\n");
     assert_eq!(d.len(), 1, "{d:?}");
     assert_eq!(d[0].fixes[0].edits[0].1, "len == 0", "{d:?}");
 }

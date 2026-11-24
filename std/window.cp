@@ -85,6 +85,24 @@ pub struct Window<T, M>(op: M):
     @get pub fn len(self) -> Int:
         front.len + q.len
 
+    /// Whether the window holds no elements.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var w = Window(+); w.push(2); w.pop(2); w.is_empty`
+    @get pub fn is_empty(self) -> Bool = self.len == 0
+
+    /// The elements in the window, oldest first.
+    ///
+    /// cost: \(O(1)\) to make, \(O(1)\) per step
+    /// empty: `var w = Window(+); w.push(2); w.pop(2); w.items.collect().len == 0`
+    /// order: push order, oldest first
+    /// traps: never
+    /// example: `var w = Window(+); w.push(1); w.push(2); w.push(3); w.pop(1); w.push(4); w.items.collect() == [2, 3, 4]`
+    @get pub fn items(self) -> yields T:
+        for i in head..olds.len: yield olds[i]
+        for x in q: yield x
+
     fn push_back(mut self, x: T):
         q.push(x)
         if let b = back: back = Some(op(b, x))
@@ -107,6 +125,9 @@ pub struct Window<T, M>(op: M):
         assert olds[head] == x, "`pop(x)` is passed the oldest element, and `x` is not it"
         head += 1
         front.pop()
+
+impl Show for Window<T, M>:
+    fn show(w) = "{w.len} elements"
 
 /// `push(x)` and `pop(x)` are `Window`'s own `push(x)` and `pop(x)`.
 impl Track<T> for Window<T, M>:

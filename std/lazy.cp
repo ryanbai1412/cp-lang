@@ -1067,6 +1067,25 @@ pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>):
     /// example: `SeqFold<Int>(+, [4, 5]).len == 2`
     @get pub fn len(self) -> Int = sz[root]
 
+    /// Whether the sequence has no elements.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `SeqFold<Int>(+).is_empty and not SeqFold<Int>(+, [1]).is_empty`
+    @get pub fn is_empty(self) -> Bool = sz[root] == 0
+
+    /// Each element in position order, with every tag and reversal applied; the treap is unchanged.
+    ///
+    /// cost: \(O(n)\) to make, \(O(1)\) per step
+    /// empty: `SeqFold<Int>(+).items.collect().len == 0`
+    /// order: positions `0..len`
+    /// traps: never
+    /// example: `var s = SeqFold<Int, Int>(+, [1, 2, 3], act: Action<Int, Int>.of(add, +)); s.apply(0..2, 10); s.reverse(0..3); s.items.collect() == [3, 12, 11]`
+    @get pub fn items(self) -> yields T:
+        var out: List<T> = []
+        self.emit(root, None, false, mut out)
+        for x in out: yield x
+
     /// The fold of every element in order, with every tag and reversal applied.
     ///
     /// cost: \(O(1)\)
@@ -1149,6 +1168,19 @@ pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>):
         let (b, c) = self.cut(bc, hi - lo)
         self.flip(b)
         root = self.join(self.join(a, b), c)
+
+    // Walks `u` in order as if every pending tag `f` and reversal `flip` above it were pushed down.
+    fn emit(self, u: Int, f: ?F, flip: Bool, mut out: List<T>):
+        if u == 0: return
+        let r = flip != rev[u]
+        var g = f
+        if let a = act:
+            if let t = tag[u]:
+                g = if let h = f: Some(a.compose(h, t)) else: Some(t)
+        let (first, second) = if r: (rc[u], lc[u]) else: (lc[u], rc[u])
+        self.emit(first, g, r, mut out)
+        out.push(if let a = act: (if let h = f: a.apply(h, val[u], 1) else: val[u]) else: val[u])
+        self.emit(second, g, r, mut out)
 
     fn leaf(mut self, x: T) -> Int:
         lc.push(0)
