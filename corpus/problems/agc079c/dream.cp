@@ -60,8 +60,8 @@ fn solve() -> ?Int:
     var unpushed = Val.last
 
     fn swallow(mut l: Run) -> Run:
-        let under = runs.pop()!
-        l.vals.splice_back(under.vals)
+        var under = runs.pop()!
+        l.vals.splice_back(mut under.vals)
         Run(l.vals, under.opp_below)
 
     // Pop the front of the top run `x`, linking `x` to the newly exposed front.

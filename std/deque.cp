@@ -475,37 +475,37 @@ pub struct LinkedList<T>:
         _len -= 1
         Some(x)
 
-    /// Splice all elements of `other` onto the back of `self`, consuming `other`.
+    /// Splice all elements of `other` onto the back of `self`, leaving `other` empty.
     ///
     /// The elements keep their order: `self`'s first, then `other`'s. Only the shorter list's
     /// elements are moved, so merging lists smaller into larger costs \(O(n \log n)\) in total.
     ///
     /// cost: \(O(\min(\lvert \mathit{self} \rvert, \lvert \mathit{other} \rvert))\)
     /// traps: never
-    /// example: `var a = LinkedList.from_list([1, 2]); a.splice_back(LinkedList.from_list([3, 4])); a.each().collect() == [1, 2, 3, 4]`
-    pub fn splice_back(mut self, other: LinkedList<T>):
+    /// example: `var a = LinkedList.from_list([1, 2]); var b = LinkedList.from_list([3, 4]); a.splice_back(mut b); a.each().collect() == [1, 2, 3, 4] and b.is_empty`
+    pub fn splice_back(mut self, mut other: LinkedList<T>):
         if other.len <= _len:
             for x in other.each(): self.push(x)
-            return
-        var big = other
-        for x in self.each_rev(): big.push_front(x)
-        self = big
+        else:
+            swap(mut self, mut other)
+            for x in other.each_rev(): self.push_front(x)
+        other.clear()
 
-    /// Splice all elements of `other` onto the front of `self`, consuming `other`.
+    /// Splice all elements of `other` onto the front of `self`, leaving `other` empty.
     ///
     /// The elements keep their order: `other`'s first, then `self`'s. Only the shorter list's
     /// elements are moved, as in `splice_back`.
     ///
     /// cost: \(O(\min(\lvert \mathit{self} \rvert, \lvert \mathit{other} \rvert))\)
     /// traps: never
-    /// example: `var a = LinkedList.from_list([1, 2]); a.splice_front(LinkedList.from_list([3, 4])); a.each().collect() == [3, 4, 1, 2]`
-    pub fn splice_front(mut self, other: LinkedList<T>):
+    /// example: `var a = LinkedList.from_list([1, 2]); var b = LinkedList.from_list([3, 4]); a.splice_front(mut b); a.each().collect() == [3, 4, 1, 2] and b.is_empty`
+    pub fn splice_front(mut self, mut other: LinkedList<T>):
         if other.len <= _len:
             for x in other.each_rev(): self.push_front(x)
-            return
-        var big = other
-        for x in self.each(): big.push(x)
-        self = big
+        else:
+            swap(mut self, mut other)
+            for x in other.each(): self.push(x)
+        other.clear()
 
     /// Reverse the list in place. \(O(1)\) via reversible links.
     ///

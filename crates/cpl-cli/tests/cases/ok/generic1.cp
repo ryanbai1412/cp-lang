@@ -5,7 +5,7 @@ domain R = 1..=n
 domain C = 1..=m
 
 fn peel<D>(start: [D]Bool) -> List<D>:
-    var up = start
+    var up = start.clone()
     var gone: [D]Bool = false
     var ready = Set<D>()
     for i in D:

@@ -12,8 +12,10 @@ for r in 0..128:
     var ll = LinkedList<Int>.from_list(xs) // timed: deque.LinkedList.from_list
     s += ll.len
     // Both sides grow with n, so the min(|self|, |other|) a splice moves does.
-    ll.splice_back(LinkedList<Int>.from_list(xs)) // timed: deque.LinkedList.splice_back
-    ll.splice_front(LinkedList<Int>.from_list(xs)) // timed: deque.LinkedList.splice_front
+    var back = LinkedList<Int>.from_list(xs)
+    ll.splice_back(mut back) // timed: deque.LinkedList.splice_back
+    var front = LinkedList<Int>.from_list(xs)
+    ll.splice_front(mut front) // timed: deque.LinkedList.splice_front
     s += ll.len
 for r in 0..512:
     var q = Deque<Int>.of(xs) // timed: deque.Deque.of
