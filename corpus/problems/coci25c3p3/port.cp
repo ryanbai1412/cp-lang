@@ -1,4 +1,5 @@
 // Source: COCI 2025/2026 Contest 3 P3 (Domjenak), https://dmoj.ca/problem/coci25c3p3
+// limits: 1000 ms, 512 MB
 // Problem: 2N people (N <= 5e5), M <= 1e6 friendships, bipartite, with a unique perfect
 //   matching (the pairs who came together). Told a story, a person passes it to their pair if
 //   the pair hasn't heard it, else to one friend who hasn't. Print the longest chain of

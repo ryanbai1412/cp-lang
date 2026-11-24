@@ -1,5 +1,6 @@
 // Source: COCI 2025/26 Round 3 P5 (Ravnalo),
 //   https://hsin.hr/coci/archive/2025_2026/contest3_tasks.pdf
+// limits: 1000 ms, 512 MB
 // Problem: n <= 1e5 width-1 columns side by side; column i has height a_i and is cut into
 //   b_i equal parts (a_i, b_i <= 1e9). Print the fewest straight segments that draw every
 //   column edge and every division line.
