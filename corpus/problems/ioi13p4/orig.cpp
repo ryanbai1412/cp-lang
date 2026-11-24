@@ -87,26 +87,29 @@ void exploreCave(int n) {
         dbg(check(0), door[i], ty);
     }
     answer(pos, swtch);
-}// The original is the function the IOI grader calls. This `main` stands in for
-// the sample grader so the port can be stressed against it: N, each switch's
-// open position, each switch's door; prints `Accepted: <tries>`.
-static int n_in, open_in[5000], door_in[5000], tries_in;
+}
+// The original is the function the IOI grader calls. This `main` stands in for
+// the grader over interactor.py's protocol: read N; `try s..` gets the first
+// closed door (or -1); `answer S.. D..` ends the run.
+static int n_in;
 extern "C" int tryCombination(int S[]) {
-    tries_in++;
-    int first = -1;
-    for (int w = 0; w < n_in; w++)
-        if (S[w] != open_in[w] && (first == -1 || door_in[w] < first)) first = door_in[w];
+    printf("try");
+    for (int w = 0; w < n_in; w++) printf(" %d", S[w]);
+    printf("\n");
+    fflush(stdout);
+    int first;
+    if (scanf("%d", &first) != 1) exit(0);
     return first;
 }
 extern "C" void answer(int S[], int D[]) {
-    for (int w = 0; w < n_in; w++)
-        if (S[w] != open_in[w] || D[w] != door_in[w]) { printf("Wrong\n"); exit(0); }
-    printf("Accepted: %d\n", tries_in);
+    printf("answer");
+    for (int w = 0; w < n_in; w++) printf(" %d", S[w]);
+    for (int w = 0; w < n_in; w++) printf(" %d", D[w]);
+    printf("\n");
+    fflush(stdout);
     exit(0);
 }
 int main() {
     if (scanf("%d", &n_in) != 1) return 1;
-    for (int i = 0; i < n_in; i++) scanf("%d", &open_in[i]);
-    for (int i = 0; i < n_in; i++) scanf("%d", &door_in[i]);
     exploreCave(n_in);
 }
