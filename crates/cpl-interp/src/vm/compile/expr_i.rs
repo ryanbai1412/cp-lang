@@ -1352,7 +1352,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
                             Op::CallVmI {
                                 fn_id: *fn_id as u16,
                                 arg_base,
-                                argc: args.len() as u8,
                                 dst,
                             },
                             span,

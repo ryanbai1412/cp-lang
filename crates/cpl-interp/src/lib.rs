@@ -446,6 +446,7 @@ fn run_from<O: Observer>(
         sink: output,
         stack_top: std::ptr::addr_of!(top) as usize,
         stack_budget: limits.stack_bytes,
+        frame_bytes: 0,
         frame_locals: Vec::new(),
         call_frames: Vec::new(),
         current_case: None,
@@ -471,6 +472,7 @@ fn run_from<O: Observer>(
         lent: Vec::new(),
         frameless_base: None,
         vm_pool_v: Vec::new(),
+        vm_frames: Vec::new(),
         view_locals: Vec::new(),
         trace_shown: trace::ShowTexts::default(),
         trace_show_tys: show_hook::ShowTys::default(),
@@ -568,7 +570,29 @@ fn interp_failed(span: Span) -> Box<Trap> {
 }
 
 fn trap<T>(span: Span, said: cpl_diag::msgs::Said) -> Res<T> {
-    Err(Box::new(Trap::said(span, said)))
+    Err(trapped(span, said))
+}
+
+/// [`trap`]'s box, made out of line: a trap is rare, and each of the many
+/// places that can trap then takes a call, not the boxing.
+#[cold]
+#[inline(never)]
+fn trapped(span: Span, said: cpl_diag::msgs::Said) -> Box<Trap> {
+    Box::new(Trap::said(span, said))
+}
+
+/// The bounds `domains` holds for `doms` pushed on `saved`, for
+/// [`Interp::restore_domains`] from the mark it gives.
+fn save_domains(
+    saved: &mut Vec<(cpl_ir::DomainId, (i64, i64))>,
+    domains: &[(i64, i64)],
+    doms: &[cpl_ir::DomainId],
+) -> usize {
+    let mark = saved.len();
+    for &d in doms {
+        saved.push((d, domains[d]));
+    }
+    mark
 }
 
 /// An interpreter bug at `site`, a value lowering should have ruled out:
@@ -710,6 +734,8 @@ struct Interp<'p, 'o, O: Observer> {
     /// may use: the program's recursion is the interpreter's.
     stack_top: usize,
     stack_budget: usize,
+    /// Bytes the VM's heap frames hold: its calls run on no Rust stack.
+    frame_bytes: usize,
     /// The locals of each active fn, innermost last; `main` when empty.
     frame_locals: Vec<&'p [cpl_ir::Local]>,
     /// Active call frames `(fn_name, call_site_span)` from outermost to innermost.
@@ -756,6 +782,8 @@ struct Interp<'p, 'o, O: Observer> {
     frameless_base: Option<usize>,
     /// Reusable pool of `Value` register frames for VM calls.
     vm_pool_v: Vec<Vec<Value>>,
+    /// Emptied frame stacks of the VM's runs, kept for the next.
+    vm_frames: Vec<Vec<vm::VmFrame>>,
     /// The allocation [`Interp::view`] lists locals in, kept between steps.
     view_locals: Vec<(&'static str, &'static Ty, &'static Value)>,
     /// The text of each value a trace shows through its `impl Show`.

@@ -6,12 +6,15 @@ use crate::Flow;
 use crate::{bug, describe, release, trap, Interp, Res};
 use cpl_diag::msgs::interp as rows;
 use cpl_ir::{CmpOp, FnId, LoopId};
+pub(crate) use frames::VmFrame;
+use frames::{Escaped, Stop};
 use std::rc::Rc;
 
 mod calls;
 mod containers;
 mod entry;
 mod ext;
+mod frames;
 mod places;
 mod resume;
 mod trace;
@@ -22,99 +25,16 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         &mut self,
         compiled: &CompiledProgram<'p>,
         chunk: &Chunk<'p>,
-        args_i: &[i64],
         vm_regs_i: &mut Vec<i64>,
     ) -> Res<Value> {
-        let base_i = vm_regs_i.len();
-        vm_regs_i.resize(base_i + chunk.num_i, 0);
-        for (i, &v) in args_i.iter().enumerate() {
-            if let Some(SlotLoc::I(r, _)) = chunk.slot_map.get(i) {
-                vm_regs_i[base_i + *r as usize] = v;
-            }
-        }
-        let mut regs_v = self.take_regs_v(chunk.num_v);
-        let dom_mark = self.saved_domains.len();
-        for &d in &chunk.guarded_domains {
-            self.saved_domains.push((d, self.domains[d]));
-        }
+        let (base_i, mut regs_v) = self.callee_regs(chunk, vm_regs_i);
+        let dom_mark = crate::save_domains(
+            &mut self.saved_domains,
+            &self.domains,
+            &chunk.guarded_domains,
+        );
         let res = self.exec_chunk_inner(compiled, chunk, base_i, vm_regs_i, &mut regs_v, 0);
         self.restore_domains(dom_mark);
-        self.return_regs_v(regs_v);
-        vm_regs_i.truncate(base_i);
-        res
-    }
-
-    fn exec_chunk_mix(
-        &mut self,
-        compiled: &CompiledProgram<'p>,
-        chunk: &Chunk<'p>,
-        args_i: &mut [i64],
-        args_v: &mut [Value],
-        params: &[cpl_ir::ParamDef],
-        vm_regs_i: &mut Vec<i64>,
-    ) -> Res<ExecExit> {
-        let base_i = vm_regs_i.len();
-        vm_regs_i.resize(base_i + chunk.num_i, 0);
-        let mut regs_v = self.take_regs_v(chunk.num_v);
-        let mut ii = 0usize;
-        let mut iv = 0usize;
-        for loc in chunk.slot_map.iter().take(chunk.param_count) {
-            match *loc {
-                SlotLoc::I(r, _) => {
-                    vm_regs_i[base_i + r as usize] = args_i[ii];
-                    ii += 1;
-                }
-                SlotLoc::OptI { val, some, .. } => {
-                    vm_regs_i[base_i + val as usize] = args_i[ii];
-                    vm_regs_i[base_i + some as usize] = args_i[ii + 1];
-                    ii += 2;
-                }
-                SlotLoc::V(r) => {
-                    regs_v[r as usize] = std::mem::replace(&mut args_v[iv], Value::Unit);
-                    iv += 1;
-                }
-                SlotLoc::SmallTuple { base, len, .. } => {
-                    let (b, n) = (base_i + base as usize, len as usize);
-                    vm_regs_i[b..b + n].copy_from_slice(&args_i[ii..ii + n]);
-                    ii += n;
-                }
-            }
-        }
-        let dom_mark = self.saved_domains.len();
-        for &d in &chunk.guarded_domains {
-            self.saved_domains.push((d, self.domains[d]));
-        }
-        let res = self.exec_chunk_exit(compiled, chunk, base_i, vm_regs_i, &mut regs_v, 0);
-        self.restore_domains(dom_mark);
-        if res.is_ok() && params.iter().any(|p| p.mutable) {
-            let mut ii = 0usize;
-            let mut iv = 0usize;
-            for (k, loc) in chunk.slot_map.iter().take(chunk.param_count).enumerate() {
-                let is_mut = params[k].mutable;
-                match *loc {
-                    SlotLoc::I(r, _) => {
-                        if is_mut {
-                            args_i[ii] = vm_regs_i[base_i + r as usize];
-                        }
-                        ii += 1;
-                    }
-                    SlotLoc::OptI { val, some, .. } => {
-                        if is_mut {
-                            args_i[ii] = vm_regs_i[base_i + val as usize];
-                            args_i[ii + 1] = vm_regs_i[base_i + some as usize];
-                        }
-                        ii += 2;
-                    }
-                    SlotLoc::V(r) => {
-                        if is_mut {
-                            args_v[iv] = std::mem::replace(&mut regs_v[r as usize], Value::Unit);
-                        }
-                        iv += 1;
-                    }
-                    SlotLoc::SmallTuple { len, .. } => ii += len as usize,
-                }
-            }
-        }
         self.return_regs_v(regs_v);
         vm_regs_i.truncate(base_i);
         res
@@ -157,41 +77,32 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         regs_v: &mut [Value],
         start_pc: usize,
     ) -> Res<ExecExit> {
-        let exit = self.exec_chunk_core(compiled, chunk, base_i, vm_regs_i, regs_v, start_pc, None);
+        let exit =
+            self.exec_chunk_core(compiled, (chunk, base_i, start_pc), vm_regs_i, regs_v, None);
         if chunk.traced {
-            // The end of the run and a trap show the locals as they were left.
             let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
-            sync_to_stack(
-                &chunk.slot_map,
-                regs_i,
-                regs_v,
-                &mut self.stack,
-                self.base,
-                true,
-            );
-            if exit.is_err() {
-                self.keep_trap_frame();
-            }
+            self.left_traced(chunk, regs_i, regs_v, exit.is_err());
         }
         exit
     }
 
+    /// The ops of one frame, from `start_pc` until it ends or calls.
     #[allow(clippy::too_many_arguments)]
-    fn exec_chunk_core(
+    fn run_ops<'c>(
         &mut self,
-        compiled: &CompiledProgram<'p>,
+        compiled: &'c CompiledProgram<'p>,
         chunk: &Chunk<'p>,
         base_i: usize,
         vm_regs_i: &mut Vec<i64>,
         regs_v: &mut [Value],
         start_pc: usize,
-        mut fed: Option<&mut FedCtx<'_, 'p>>,
-    ) -> Res<ExecExit> {
+        escaped: &mut Escaped,
+        fed: &mut Option<&mut FedCtx<'_, 'p>>,
+    ) -> Res<Stop<'c, 'p>> {
         let ops = chunk.ops.as_slice();
         let spans = chunk.spans.as_slice();
         let mut pc: usize = start_pc;
         let mut regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
-        let mut escaped: Option<(bool, Option<LoopId>)> = None;
 
         loop {
             // Bounds checks here cost the loop bench about a fifth; the
@@ -877,9 +788,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     innermost,
                     target,
                 } => {
-                    if let Some((was_brk, was)) = escaped {
+                    if let Some((was_brk, was)) = *escaped {
                         if was_brk == brk && (was == Some(id) || (was.is_none() && innermost)) {
-                            escaped = None;
+                            *escaped = None;
                             pc = target as usize;
                         }
                     }
@@ -1772,15 +1683,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 }
                 other => {
                     if let Some(exit) = self.exec_ext_op(
-                        other,
-                        cur_pc,
-                        compiled,
-                        chunk,
-                        base_i,
-                        vm_regs_i,
-                        regs_v,
-                        &mut escaped,
-                        &mut fed,
+                        other, cur_pc, compiled, chunk, base_i, vm_regs_i, regs_v, escaped, fed,
                     )? {
                         return Ok(exit);
                     }

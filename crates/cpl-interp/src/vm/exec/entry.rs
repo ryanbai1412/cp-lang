@@ -49,15 +49,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             self.base,
             true,
         );
-        let exit = self.exec_chunk_core(
-            &compiled,
-            chunk,
-            base_i,
-            &mut vm_regs_i,
-            &mut regs_v,
-            pc as usize,
-            None,
-        );
+        let at = (chunk, base_i, pc as usize);
+        let exit = self.exec_chunk_core(&compiled, at, &mut vm_regs_i, &mut regs_v, None);
         let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
         sync_to_stack(
             &chunk.slot_map,
@@ -83,7 +76,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         if vm_regs_i.capacity() < 4096 {
             vm_regs_i.reserve(4096);
         }
-        let res = self.exec_chunk(compiled, &compiled.main, &[], &mut vm_regs_i);
+        let res = self.exec_chunk(compiled, &compiled.main, &mut vm_regs_i);
         self.vm_regs_i = vm_regs_i;
         let _ = res?;
         Ok(())
@@ -97,7 +90,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         setup: &Chunk<'p>,
     ) -> Res<bool> {
         let mut vm_regs_i = std::mem::take(&mut self.vm_regs_i);
-        let res = self.exec_chunk(compiled, setup, &[], &mut vm_regs_i);
+        let res = self.exec_chunk(compiled, setup, &mut vm_regs_i);
         self.vm_regs_i = vm_regs_i;
         Ok(!matches!(res?, Value::Int(1)))
     }

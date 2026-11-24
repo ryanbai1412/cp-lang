@@ -27,6 +27,7 @@ mod ir;
 mod program;
 mod scalar;
 
+pub(crate) use exec::VmFrame;
 #[cfg(not(target_family = "wasm"))]
 pub(crate) use helpers::stmt_tag;
 #[cfg(not(target_family = "wasm"))]

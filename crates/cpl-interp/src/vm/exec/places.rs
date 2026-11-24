@@ -26,19 +26,16 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         } = ctx;
         let (chunk, base_i, pc) = (*caller_chunk, *caller_base_i, *body_pc);
         match parent.as_deref_mut() {
-            None => {
-                self.exec_chunk_core(compiled, chunk, base_i, vm_regs_i, caller_regs_v, pc, None)
-            }
+            None => self.exec_chunk_core(
+                compiled,
+                (chunk, base_i, pc),
+                vm_regs_i,
+                caller_regs_v,
+                None,
+            ),
             Some(p) => p.with(&mut |up| {
-                self.exec_chunk_core(
-                    compiled,
-                    chunk,
-                    base_i,
-                    vm_regs_i,
-                    caller_regs_v,
-                    pc,
-                    Some(up),
-                )
+                let at = (chunk, base_i, pc);
+                self.exec_chunk_core(compiled, at, vm_regs_i, caller_regs_v, Some(up))
             }),
         }
     }
@@ -1097,13 +1094,11 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 );
                 let dom_mark = match &resumed {
                     Some(frames) => frames[0].doms,
-                    None => self.saved_domains.len(),
-                };
-                if resumed.is_none() {
-                    for &d in &fed_chunk.guarded_domains {
-                        self.saved_domains.push((d, self.domains[d]));
+                    None => {
+                        let doms = &fed_chunk.guarded_domains;
+                        crate::save_domains(&mut self.saved_domains, &self.domains, doms)
                     }
-                }
+                };
                 let caller_base = self.base;
                 let pushed_stack = fed_chunk.needs_stack;
                 if pushed_stack {
@@ -1131,13 +1126,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     var_loc: fc.var_loc,
                     parent: fed.as_deref_mut().map(|f| f as &mut dyn FedParent<'p>),
                 };
+                let at = (fed_chunk, callee_base_i, start_pc);
                 let res = self.exec_chunk_core(
                     compiled,
-                    fed_chunk,
-                    callee_base_i,
+                    at,
                     vm_regs_i,
                     &mut callee_regs_v,
-                    start_pc,
                     Some(&mut ctx),
                 );
                 if pushed_stack {
