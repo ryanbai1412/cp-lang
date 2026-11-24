@@ -1,6 +1,7 @@
 //! What a stress run found, as one typed value both `cpl stress
 //! --format json` and the browser serialize through `cpl_json`.
 
+use crate::case::{Ruling, Transcript};
 use crate::cli::Stage;
 use crate::run::{Report, StressError};
 use cpl_interp::trace::Divergence;
@@ -69,6 +70,9 @@ impl StressResult {
         if self.toolchain_bug {
             field("toolchain_bug", true.into());
         }
+        if let (Some(transcript), Some(ruling)) = (&failure.transcript, &failure.ruling) {
+            field("interaction", interaction_json(transcript, ruling));
+        }
         field(
             "stages",
             self.stages
@@ -98,6 +102,27 @@ impl StressResult {
     pub fn render(&self) -> String {
         format!("{}\n", cpl_json::to_string(&self.to_json()))
     }
+}
+
+/// What the two sides of an interactive case said, and the interactor's
+/// ruling in its own words.
+fn interaction_json(transcript: &Transcript, ruling: &Ruling) -> Value {
+    let lines: Vec<Value> = (transcript.lines.iter())
+        .map(|(side, line)| obj([("from", side.name().into()), ("line", line.as_str().into())]))
+        .collect();
+    let (verdict, message) = match ruling {
+        Ruling::Accepted => ("accepted", None),
+        Ruling::Rejected(said) => ("rejected", said.as_deref()),
+        Ruling::Broke(trap) => ("error", Some(trap.as_str())),
+    };
+    obj([
+        ("transcript", lines.into()),
+        ("truncated", transcript.truncated.into()),
+        (
+            "interactor",
+            obj([("verdict", verdict.into()), ("message", optional(message))]),
+        ),
+    ])
 }
 
 /// A run that stopped before a verdict, in the same schema.

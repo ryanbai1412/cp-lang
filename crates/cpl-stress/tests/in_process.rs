@@ -76,3 +76,101 @@ fn a_trapping_checker_in_process_is_a_checker_re() {
     assert_eq!(error.at(&["code"]).as_str(), Some("R0101"), "{error:?}");
     assert_eq!(error.at(&["start", "line"]).as_i64(), Some(9), "{error:?}");
 }
+
+const GUESS: &str = "let n: Int = read()
+var lo = 1
+var hi = n
+while lo < hi:
+    let mid = (lo + hi) / 2
+    let answer: Str = ask(\"?\", mid, limit: 10)
+    if answer == \"<\": hi = mid
+    else: lo = mid + 1
+ask(\"!\", lo)
+
+@interactor
+fn judge(mut sol: Interactor):
+    let n: 1..=1000 = read()
+    let secret: 1..=n = read()
+    sol.send(n)
+    while true:
+        let kind: Str = sol.recv()
+        let x: Int = sol.recv()
+        if kind == \"!\":
+            assert x == secret
+            return
+        sol.send(if secret <= x: \"<\" else: \">=\")
+";
+
+fn interactive(cases: usize) -> Options {
+    Options {
+        cases,
+        size: 50,
+        jobs: 1,
+        ..Options::default()
+    }
+}
+
+/// A file with only an `@interactor`, no brute, is judged by it
+/// (`stress/U22`), on this thread as in the browser and on its own.
+#[test]
+fn an_interactive_solution_is_judged_by_its_interactor_in_process() {
+    for stack in [Some(1 << 26), None] {
+        let result = stress_source("g.cp", GUESS, &interactive(100), stack, false).unwrap();
+        assert_eq!(result.report.failure, None, "{}", result.render());
+        assert_eq!(result.report.cases, 100);
+    }
+}
+
+/// A wrong guess is a WA the interactor names, with what each side said.
+#[test]
+fn an_interactive_failure_has_its_transcript_and_the_interactors_words() {
+    let wrong = GUESS.replace("hi = mid\n", "hi = mid - 1\n");
+    for stack in [Some(1 << 26), None] {
+        let result = stress_source("g.cp", &wrong, &interactive(100), stack, false).unwrap();
+        let json = cpl_json::parse(&result.render()).unwrap();
+        let case = json.at(&["counterexample"]);
+        assert_eq!(case.at(&["verdict"]).as_str(), Some("WA"), "{json:?}");
+        let interaction = case.at(&["interaction"]);
+        assert_eq!(
+            interaction.at(&["interactor", "verdict"]).as_str(),
+            Some("rejected")
+        );
+        let lines = interaction.at(&["transcript"]).as_array().unwrap();
+        let first = &lines[0];
+        assert_eq!(first.at(&["from"]).as_str(), Some("interactor"));
+        let n = case
+            .at(&["raw_input"])
+            .as_str()
+            .unwrap()
+            .split_whitespace()
+            .next()
+            .unwrap();
+        assert_eq!(first.at(&["line"]).as_str(), Some(n));
+        let last = lines.last().unwrap();
+        assert_eq!(last.at(&["from"]).as_str(), Some("solution"));
+        assert!(
+            last.at(&["line"]).as_str().unwrap().starts_with("! "),
+            "{json:?}"
+        );
+        assert_eq!(interaction.at(&["truncated"]).as_i64(), Some(0));
+    }
+}
+
+/// An interactor that fails itself is blamed, with its own trap.
+#[test]
+fn an_interactor_that_traps_is_an_interactor_re_with_its_trap() {
+    let broken = GUESS.replace(
+        "    sol.send(n)\n",
+        "    let a: [n]Int = 0\n    sol.send(a[n])\n",
+    );
+    let result = stress_source("g.cp", &broken, &interactive(5), Some(1 << 26), false).unwrap();
+    let failure = result
+        .report
+        .failure
+        .as_ref()
+        .expect("the interactor fails");
+    assert_eq!(failure.verdict.code(), "interactor RE", "{failure:?}");
+    let error = result.trap.as_ref().expect("the interactor's trap");
+    assert_eq!(error.at(&["code"]).as_str(), Some("R0101"), "{error:?}");
+    assert_eq!(error.at(&["start", "line"]).as_i64(), Some(16), "{error:?}");
+}

@@ -70,7 +70,9 @@ pub struct Talked {
     pub solution: Ran,
     pub ruling: Ruling,
     pub transcript: Transcript,
+    /// The interactor's trap, and the solution's.
     pub trap: Option<cpl_json::Value>,
+    pub solution_trap: Option<cpl_json::Value>,
 }
 
 /// A case the solution, or a helper, failed.
@@ -202,6 +204,7 @@ fn interaction(talked: Talked, expected: String) -> Wrong {
         ruling,
         transcript,
         trap,
+        solution_trap,
     } = talked;
     let starved = |said: &Option<String>| {
         said.as_deref()
@@ -218,12 +221,19 @@ fn interaction(talked: Talked, expected: String) -> Wrong {
             None => "the interactor rejected the run".to_string(),
         }),
     };
-    (!verdict.accepted()).then(|| Failed {
-        verdict,
+    if verdict.accepted() {
+        return None;
+    }
+    Some(Failed {
         expected,
         got: solution.out,
         transcript: Some(transcript),
-        trap: matches!(ruling, Ruling::Broke(_)).then_some(trap).flatten(),
+        trap: match verdict {
+            Verdict::JudgeError(..) => trap,
+            Verdict::RuntimeError(_) => solution_trap,
+            _ => None,
+        },
+        verdict,
         ruling: Some(ruling),
     })
 }
@@ -286,6 +296,7 @@ mod tests {
             ruling,
             transcript: Transcript::default(),
             trap: None,
+            solution_trap: None,
         })
     }
 

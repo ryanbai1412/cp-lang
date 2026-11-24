@@ -1343,3 +1343,14 @@ fn shrinking_a_digraph_keeps_each_arc_the_way_it_points() {
     let smallest = shrink(&spec, &start, 5000, &mut |case: &Case| pointing_down(case));
     assert_eq!(smallest.render(), "2 1\n2 1\n");
 }
+
+/// Each case runs the interactor once: the solution is what replays.
+#[test]
+fn an_in_process_interactor_runs_once_per_case() {
+    let src = "let n: Int = read()\nask(\"!\", n)\n\n@interactor\nfn judge(mut sol: Interactor):\n    let n: 1..=9 = read()\n    sol.send(n)\n    sol.send(n)\n    let kind: Str = sol.recv()\n    let x: Int = sol.recv()\n    assert kind == \"!\" and x == n\n";
+    let before = crate::duplex::INTERACTOR_RUNS.with(|runs| runs.get());
+    let result = crate::stress_source("o.cp", src, &options(40), Some(1 << 26), false).unwrap();
+    assert_eq!(result.report.failure, None, "{}", result.render());
+    let runs = crate::duplex::INTERACTOR_RUNS.with(|runs| runs.get()) - before;
+    assert_eq!(runs, 40);
+}

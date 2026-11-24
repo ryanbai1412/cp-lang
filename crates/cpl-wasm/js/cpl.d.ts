@@ -114,6 +114,14 @@ export interface StressDivergence {
 
 export type StressVerdict = "WA" | "RE" | "TLE" | "MLE" | "brute RE" | "checker RE" | "interactor RE";
 
+export interface StressInteraction {
+  /** The first 200 lines; `truncated` counts the rest. */
+  transcript: { from: "solution" | "interactor"; line: string }[];
+  truncated: number;
+  /** "error": the interactor failed itself (verdict "interactor RE"). */
+  interactor: { verdict: "accepted" | "rejected" | "error"; message: string | null };
+}
+
 export interface StressCounterexample {
   case: number;
   seed: number;
@@ -128,6 +136,8 @@ export interface StressCounterexample {
   error?: Diagnostic;
   /** The built solution and the interpreter disagree on the case (CLI only). */
   toolchain_bug?: true;
+  /** An interactive case: what each side said, in order. */
+  interaction?: StressInteraction;
   stages: StressStage[];
   /** Where the case was saved; null in the browser. */
   saved: string | null;

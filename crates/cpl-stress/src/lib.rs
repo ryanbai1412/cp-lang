@@ -5,6 +5,7 @@ pub mod args;
 pub mod case;
 pub mod choices;
 pub mod cli;
+pub mod duplex;
 pub mod engine;
 pub mod explain;
 pub mod gen;

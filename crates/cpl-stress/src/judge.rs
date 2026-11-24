@@ -512,6 +512,7 @@ pub(crate) fn interact(
         ruling,
         transcript: Transcript::default(),
         trap: None,
+        solution_trap: None,
     };
     Ok((talked, outcome))
 }

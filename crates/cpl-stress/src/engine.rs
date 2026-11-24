@@ -175,12 +175,21 @@ pub struct InterpEngine {
     pub fast: cpl_ir::Program,
     pub brute: Option<cpl_ir::Program>,
     pub checker: Option<cpl_ir::Program>,
+    /// The file's `@interactor`: the solution runs against it.
+    pub interactor: Option<FileJudge>,
     /// Stack byte limit when running on the calling thread (wasm).
     pub stack_limit: Option<u32>,
     /// How long one run may take before it is stopped, a time limit verdict.
     pub limit: Duration,
     /// Tells this engine's [`PRELUDES`] from another's.
     id: u64,
+}
+
+/// A judge fn of the file's, and the file, to say where it stops.
+pub struct FileJudge {
+    pub program: cpl_ir::Program,
+    pub name: String,
+    pub lines: cpl_diag::LineIndex,
 }
 
 /// Loop rounds and calls between the checkpoints a first run takes before
@@ -386,8 +395,33 @@ impl Sides for InterpEngine {
         }))
     }
 
-    fn interact(&self, _: &str, _: Duration) -> Result<Option<Talked>, Error> {
-        Ok(None)
+    fn interact(&self, input: &str, limit: Duration) -> Result<Option<Talked>, Error> {
+        let Some(interactor) = &self.interactor else {
+            return Ok(None);
+        };
+        let spoken = crate::duplex::talk(
+            &self.fast,
+            &interactor.program,
+            input.as_bytes(),
+            limit,
+            self.stack_limit,
+        );
+        let json = |trap: &cpl_interp::Trap| {
+            let diagnostic = trap.to_diagnostic(&interactor.name, &interactor.lines);
+            cpl_diag::json::diagnostic(&diagnostic, &interactor.lines)
+        };
+        let trap = spoken.interactor.as_ref().map(json);
+        let solution_trap = spoken.solution.as_ref().err().map(|(_, trap)| json(trap));
+        let ruled = spoken
+            .interactor
+            .map_or(Ok(String::new()), |trap| Err((String::new(), trap)));
+        Ok(Some(Talked {
+            solution: ran(spoken.solution),
+            ruling: ruling(ruled),
+            transcript: spoken.transcript,
+            trap,
+            solution_trap,
+        }))
     }
 }
 
@@ -465,12 +499,6 @@ pub fn stress_source(
         return Err(StressError(rendered));
     }
 
-    if cpl_ir::interactor(&analysis).is_some() {
-        return Err(StressError(
-            "in-process stress does not support `@interactor` yet; run `cpl stress` on the command line".to_string(),
-        ));
-    }
-
     let fast = cpl_ir::lower_sampling_laws(&analysis).map_err(|diags| {
         let lines = cpl_diag::LineIndex::new(source);
         let text: String = diags
@@ -522,6 +550,22 @@ pub fn stress_source(
         None => None,
     };
 
+    let interactor = match cpl_ir::interactor(&analysis) {
+        Some(judge) => Some(FileJudge {
+            program: cpl_ir::lower_judge(&analysis, &judge).map_err(|diags| {
+                let lines = cpl_diag::LineIndex::new(source);
+                let text: String = diags
+                    .iter()
+                    .map(|d| cpl_diag::render(d, name, source, &lines))
+                    .collect();
+                StressError(text)
+            })?,
+            name: name.to_string(),
+            lines: cpl_diag::LineIndex::new(source),
+        }),
+        None => None,
+    };
+
     let own_gen = cpl_ir::generator(&analysis);
     let interp_choices = match &own_gen {
         Some((gen_fn, _)) => {
@@ -569,6 +613,7 @@ pub fn stress_source(
         fast,
         brute,
         checker,
+        interactor,
         stack_limit,
         limit: options.limit,
         id: ENGINES.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
@@ -640,6 +685,9 @@ pub fn stress_source(
     }
 
     let error = report.failure.as_ref().and_then(|failure| {
+        if failure.trap.is_some() || failure.transcript.is_some() {
+            return failure.trap.clone();
+        }
         let path = std::path::Path::new(name);
         let brute = match failure.verdict {
             Verdict::RuntimeError(_) => false,
