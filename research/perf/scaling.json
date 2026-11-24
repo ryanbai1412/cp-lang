@@ -10440,6 +10440,38 @@
    "n": 4096,
    "ok": true
   },
+  "bench/scaling/pmultiset_within.cp::persistent.PMultiset.within": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "persistent.PMultiset.within",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/pmultiset_within.cp::persistent.PMultisetWithin.each": {
+   "cost": "\\min(\\mathit{len}, \\lvert D \\rvert) \\log \\lvert D \\rvert + \\mathit{len}",
+   "documented": 4.53,
+   "fn": "persistent.PMultisetWithin.each",
+   "measured": 8.45,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/pmultiset_within.cp::persistent.PMultisetWithin.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "persistent.PMultisetWithin.is_empty",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/pmultiset_within.cp::persistent.PMultisetWithin.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "persistent.PMultisetWithin.len",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
   "bench/scaling/pointset.cp::geometry.PointSet.contains": {
    "cost": "1",
    "documented": 1.0,
@@ -17797,10 +17829,6 @@
   "grid.GridCols.each",
   "grid.GridRows.at",
   "grid.GridRows.each",
-  "persistent.PMultiset.within",
-  "persistent.PMultisetWithin.each",
-  "persistent.PMultisetWithin.is_empty",
-  "persistent.PMultisetWithin.len",
   "strings.Palindromes.items"
  ]
 }
