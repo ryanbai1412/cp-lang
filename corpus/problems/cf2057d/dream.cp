@@ -8,6 +8,7 @@ domain Pos = 1..=n
 let a: [Pos]1..=1_000_000_000 = read()
 
 struct Span(best: Int, lo_l: Int, hi_l: Int, lo_r: Int, hi_r: Int):
+    @get pub fn zero() -> Span = Span(0, -1e15, -1e15, -1e15, -1e15)
     fn at(p: Pos, x: Int) -> Span = Span(0, -x + p.ord, x + p.ord, -x - p.ord, x - p.ord)
 
 impl Add for Span:
@@ -19,7 +20,7 @@ impl Add for Span:
         max(a.hi_r, b.hi_r),
     )
 
-var tree = SegTree<Pos, Span>([Pos] i => Span.at(i, a[i]))
+var tree = SegTree<Pos, Span>(+, [Pos] i => Span.at(i, a[i]))
 print(tree.all.best)
 repeat q:
     let (p, x): (Pos, 1..=1_000_000_000) = read()
