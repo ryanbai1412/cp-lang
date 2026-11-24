@@ -419,7 +419,7 @@ impl Checker<'_> {
         }
     }
 
-    /// `M.Fold` for `M: Folds<T>` bound to `NoOp`: the impl's choice, with the
+    /// `M.Fold` for `M: Op<T>` bound to `NoOp`: the impl's choice, with the
     /// impl's own `T` taken from the bound's.
     fn bound_assoc(
         &mut self,
@@ -427,27 +427,27 @@ impl Checker<'_> {
         bound_args: &BoundArgs,
         bindings: &crate::ty::Bindings,
     ) -> Ty {
-        want.map(&mut |t| {
-            let Ty::Assoc { of, name } = t else {
-                return None;
-            };
-            let Ty::Param(p) = of.as_ref() else {
-                return None;
-            };
-            let actual = self.settle(bindings.get(p)?);
-            let chosen = self.project(&actual, name)?;
-            let mut open = crate::ty::Bindings::default();
-            for (_, tr, args) in bound_args.iter().filter(|(q, ..)| q == p) {
-                for (w, g) in args
-                    .iter()
-                    .zip(self.trait_args_of(&actual, tr, args.len())?)
-                {
-                    g.unify(&w.subst(bindings), &mut open);
+        if let Ty::Assoc { of, name } = want {
+            if let Some((p, actual)) = match of.as_ref() {
+                Ty::Param(p) => bindings.get(p).map(|a| (p, a)),
+                _ => None,
+            } {
+                let actual = self.settle(actual);
+                if let Some(chosen) = self.project(&actual, name) {
+                    let mut open = crate::ty::Bindings::default();
+                    for (_, tr, args) in bound_args.iter().filter(|(q, ..)| q == p) {
+                        let given = self
+                            .trait_args_of(&actual, tr, args.len())
+                            .unwrap_or_default();
+                        for (w, g) in args.iter().zip(given) {
+                            g.unify(&w.subst(bindings), &mut open);
+                        }
+                    }
+                    return chosen.subst(&open).subst(bindings);
                 }
             }
-            Some(chosen.subst(&open))
-        })
-        .subst(bindings)
+        }
+        want.subst(bindings)
     }
 
     /// `fn f<A: Keyed<K, _>, B: Keyed<K, _>, K>`: a type parameter named in several bounds is

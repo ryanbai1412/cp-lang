@@ -196,7 +196,7 @@ impl Checker<'_> {
                             bindings.insert(g.clone(), d.clone());
                         }
                     }
-                    let outer = std::mem::replace(&mut self.call_bound_args, Some(bound_args));
+                    let outer = self.call_bound_args.replace(bound_args);
                     self.bind_bound_args(&mut bindings);
                     self.call_bound_args = outer;
                     // `new(..) -> SegTree<D, T, F, N>`: a struct param `new` fixes isn't its default.
