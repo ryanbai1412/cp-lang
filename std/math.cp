@@ -2,6 +2,7 @@
 //!
 //! start: `gcd`, `Sieve`, `isqrt`, `ext_gcd`, `popcount`
 //! example: `gcd(12, 18) == 6`
+use std.derive.{hash_fields}
 use std.range.{last_true}
 
 /// The greatest common divisor of `a` and `b`, never negative; `gcd(0, 0) == 0`.
@@ -1668,19 +1669,22 @@ pub fn best_rational(num: Int, den: Int, max_den: Int) -> Ratio:
     if lo.q != hi.q: return if lo.q < hi.q: lo else: hi
     if lo < hi: lo else: hi
 
-/// \(O(1)\) storage. Exact reduced rational `p / q` (`q > 0`, `gcd(|p|, q) == 1`).
-pub struct Ratio(pub p: Int, q: Int):
-    /// The fraction `p / q` in lowest terms, with a positive denominator.
+/// \(O(1)\) storage. Exact rational `p / q`, kept as built with a positive denominator.
+///
+/// Building, comparing, `==`, `floor`, `ceil`, `abs`, `inv` and `-` reduce nothing, so each is
+/// \(O(1)\); `+`, `-`, `*` and `/` of two `Ratio`s reduce their result (one `gcd`) to keep it small,
+/// and `.p`, `.q`, `hash` and `show` read the lowest terms (one `gcd`).
+pub struct Ratio(num: Int, den: Int):
+    /// The fraction `p / q`, the sign moved to the numerator; not reduced.
     ///
-    /// cost: \(O(\log \min(\lvert p \rvert, \lvert q \rvert))\)
+    /// cost: \(O(1)\)
     /// traps: when `q == 0`
     /// example: `Ratio(2, 4) == Ratio(1, 2)`
     /// example: `Ratio(3, -6).floor == -1`
     /// example: `Ratio(5) == Ratio.from_int(5)`
     pub fn new(p: Int, q: Int = 1) -> Ratio:
         assert q != 0
-        let g = gcd(p, q)
-        if q < 0: Ratio(-p / g, -q / g) else: Ratio(p / g, q / g)
+        if q < 0: Ratio(-p, -q) else: Ratio(p, q)
 
     /// `n` as the fraction `n / 1`.
     ///
@@ -1689,13 +1693,33 @@ pub struct Ratio(pub p: Int, q: Int):
     /// example: `Ratio.from_int(3) == Ratio(3, 1)`
     pub fn from_int(n: Int) -> Ratio = Ratio.new(n, 1)
 
+    /// `p / q` in lowest terms, with a positive denominator.
+    fn reduced(p: Int, q: Int) -> Ratio:
+        assert q != 0
+        let g = if q < 0: -gcd(p, q) else: gcd(p, q)
+        Ratio(p / g, q / g)
+
+    /// The numerator in lowest terms; its sign is the fraction's.
+    ///
+    /// cost: \(O(\log \min(\lvert p \rvert, q))\), one `gcd`
+    /// traps: never
+    /// example: `Ratio(6, -4).p == -3`
+    @get pub fn p(self) -> Int = num / gcd(num, den)
+
+    /// The denominator in lowest terms, always positive.
+    ///
+    /// cost: \(O(\log \min(\lvert p \rvert, q))\), one `gcd`
+    /// traps: never
+    /// example: `Ratio(6, -4).q == 2`
+    @get pub fn q(self) -> Int = den / gcd(num, den)
+
     /// The multiplicative inverse `q / p`, sign moved to the numerator.
     ///
     /// cost: \(O(1)\)
     /// traps: when `p == 0`
     /// example: `Ratio(-2, 3).inv == Ratio(-3, 2)`
     /// example: `Ratio(1, 4).inv == Ratio.from_int(4)`
-    @get pub fn inv(self) -> Ratio = Ratio.new(q, p)
+    @get pub fn inv(self) -> Ratio = Ratio.new(den, num)
 
     /// The floor of `p / q` (Euclidean division).
     ///
@@ -1703,7 +1727,7 @@ pub struct Ratio(pub p: Int, q: Int):
     /// traps: never
     /// example: `Ratio(7, 2).floor == 3`
     /// example: `Ratio(-7, 2).floor == -4`
-    @get pub fn floor(self) -> Int = p / q
+    @get pub fn floor(self) -> Int = num / den
 
     /// The ceiling of `p / q`: `ceil_div(p, q)`.
     ///
@@ -1711,32 +1735,38 @@ pub struct Ratio(pub p: Int, q: Int):
     /// traps: never
     /// example: `Ratio(7, 2).ceil == 4`
     /// example: `Ratio(-7, 2).ceil == -3`
-    @get pub fn ceil(self) -> Int = (p + q - 1) / q
+    @get pub fn ceil(self) -> Int = (num + den - 1) / den
 
     /// The absolute value `|p| / q`.
     ///
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `Ratio(-1, 2).abs == Ratio(1, 2)`
-    @get pub fn abs(self) -> Ratio = Ratio.new(abs(p), q)
+    @get pub fn abs(self) -> Ratio = Ratio(abs(num), den)
 
 impl Add for Ratio:
-    fn add(a, b) = Ratio.new(a.p * b.q + b.p * a.q, a.q * b.q)
+    fn add(a, b) = Ratio.reduced(a.num * b.den + b.num * a.den, a.den * b.den)
 
 impl Sub for Ratio:
-    fn sub(a, b) = Ratio.new(a.p * b.q - b.p * a.q, a.q * b.q)
+    fn sub(a, b) = Ratio.reduced(a.num * b.den - b.num * a.den, a.den * b.den)
 
 impl Neg for Ratio:
-    fn neg(a) = Ratio.new(-a.p, a.q)
+    fn neg(a) = Ratio(-a.num, a.den)
 
 impl Mul for Ratio:
-    fn mul(a, b) = Ratio.new(a.p * b.p, a.q * b.q)
+    fn mul(a, b) = Ratio.reduced(a.num * b.num, a.den * b.den)
 
 impl Div for Ratio:
-    fn div(a, b) = Ratio.new(a.p * b.q, a.q * b.p)
+    fn div(a, b) = Ratio.reduced(a.num * b.den, a.den * b.num)
+
+impl Eq for Ratio:
+    fn eq(a, b) = a.num * b.den == b.num * a.den
 
 impl Ord for Ratio:
-    fn lt(a, b) = a.p * b.q < b.p * a.q
+    fn lt(a, b) = a.num * b.den < b.num * a.den
+
+impl Hash for Ratio:
+    fn hash(self) -> U64 = hash_fields(Ratio.reduced(self.num, self.den))
 
 impl Show for Ratio:
     fn show(a) = "{a.p}/{a.q}"
