@@ -1,5 +1,4 @@
 // expect: ok, output "6"
-// gap: compiler 2026-11-24T04Z
 // rule: 04.2.10
 // A named product domain is an index space the run and build both handle.
 domain State = (comps: 0..=2, used: 0..2)

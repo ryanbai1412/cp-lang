@@ -1,5 +1,4 @@
 // expect: ok, output "0"
-// gap: compiler 2026-11-24T05Z
 // rule: 05.7.6
 domain V = 1..=4
 var a: [V]Int = 0

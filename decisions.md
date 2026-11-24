@@ -8782,6 +8782,7 @@ Reserved for call 5, which landed as decision 519.
 - **Decision.** A conformance case that fails today carries one header line `// gap: <owner> <YYYY-MM-DDTHHZ>`: the owning lane (`compiler`, `stdlib`, `diagnostics`, `tools`, `lint-fmt`, `perf`, `debugger`, `site`, `infra`, `idioms`) and the UTC hour it opened, with no reason text. `spec/SUBSET.md` is generated from those lines (`scripts/spec-gate.py subset --write`). `spec-gate.py gaps` fails a failing case with no gap line and a gap case that passes; `spec-gate.py gap-age` fails a gap past 48 h and, on a commit, one whose time moved later; the staged-case check (`conform_staged.py`) applies both rules to each touched case.
 - **Why.** The hand-kept list in `SUBSET.md` was edited by every lane, drifted from the suite (six failing cases were not on it) and grew reasons that kept entries alive. A line in the case travels with the case, is deleted in the commit that fixes it, and a raw count with an age cap leaves no room for a gap to settle in. Supersedes the known-gap list of decision 314.
 - **Reverse.** Put the list back in `SUBSET.md` and drop the `gap` gates.
+- **Superseded** by decision 527: the scoreboard is the only record of a failing case.
 
 ## 516. Polymorphic recursion is E0319 (compiler, 2026-11-24)
 
@@ -8829,4 +8830,8 @@ Reserved for call 5, which landed as decision 519.
 
 ## 526. (reserved, content)
 
-## 527. (reserved, content)
+## 527. A failing case is a plain failing expectation the scoreboard records (spec, 2026-11-24)
+
+- **Call.** A conformance case that fails today carries no marker: no `// gap:` line, no xfail or known-fail text. `research/scoreboard.json` (written by `cpl-conform conformance --write`) records its result, `conformance_failing` and `conformance_wrong_output` count the board raw, and `conform_staged.py` blocks a staged case that fails unless HEAD's board already records it failing. `xfail_markers` (which still counts `^// gap:`) is `HARD_ZERO`. A case for a rule not met yet keeps its full expectation; the owner's fix turns it green and the board drops it. Supersedes decision 515.
+- **Why.** A gap line was a second record of what the board already measures: it had to be added, aged and deleted by hand, and its count could only say "marked", not "failing". With the board as the only record there is nothing to rename and nothing to keep in sync.
+- **Reverse.** Put `// gap:` lines back, make `conform_staged.py` require one on a failing case, and drop `xfail_markers` from `HARD_ZERO`.

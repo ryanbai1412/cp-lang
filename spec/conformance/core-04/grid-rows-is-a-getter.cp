@@ -1,5 +1,4 @@
 // expect: E0304
-// gap: compiler 2026-11-24T05Z
 // rule: 04b.1.12
 // `g.rows` is an O(1) view, so it is a getter with no `()`, like `.len` and `.rev`.
 domain Row = 0..2

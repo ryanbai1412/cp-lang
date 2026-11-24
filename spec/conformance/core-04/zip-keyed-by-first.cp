@@ -1,5 +1,4 @@
 // expect: ok, output "5"
-// gap: compiler 2026-11-24T05Z
 // rule: 04b.1.3
 let a = [1, 2, 3, 4]
 let b = [7, 8]

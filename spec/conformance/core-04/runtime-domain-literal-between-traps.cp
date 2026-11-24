@@ -1,5 +1,4 @@
 // expect: R0101 (checked)
-// gap: compiler 2026-11-24T05Z
 // rule: 04.4.25
 // input: "2\n"
 domain V = 1..=read<1..=5>()

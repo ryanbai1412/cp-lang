@@ -1,5 +1,4 @@
 // expect: ok, output "3"
-// gap: stdlib 2026-11-24T04Z
 // Graph.undirected takes any keyed edge collection of (u:, v:, ..) records, a List too.
 domain V = 0..3
 let es = [(u: V(0), v: V(1), w: 5), (u: V(1), v: V(2), w: 7)]

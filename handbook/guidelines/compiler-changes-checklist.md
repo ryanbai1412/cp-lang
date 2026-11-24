@@ -35,7 +35,7 @@ fix, and fails without it.
 
 ### compiler-changes/R3: never weaken a case
 
-No conformance case, expected output, skip, xfail or allowlist entry is
+No conformance case, expected output, skip marker or allowlist entry is
 loosened to land a change. A case that contradicts the spec goes to spec.
 
 - Reason: a weakened case hides the regression it was written to catch.

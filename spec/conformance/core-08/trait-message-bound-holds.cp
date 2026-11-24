@@ -1,5 +1,4 @@
 // expect: ok, output "7"
-// gap: compiler 2026-11-24T05Z
 // rule: 08.1.8
 // A trait's attached message changes nothing when the bound holds.
 #on_unimplemented("Scorer needs fn score(self) -> Int")

@@ -1,5 +1,4 @@
 // expect: E0701
-// gap: compiler 2026-11-24T05Z
 // rule: 08.1.4
 // Two extension functions of one name that both take the receiver are ambiguous; a type's own cost is a trait override (decision 486).
 pub fn sum(self: Range<Int>) -> Int = 7

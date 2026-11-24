@@ -149,7 +149,7 @@ with no real check yet. Targets and current values are in
 
 | Quality | Metric | Mechanism | Where |
 |---|---|---|---|
-| Real mistakes get errors that name the place, the rule and a working fix | share of the real-mistake suite meeting all three | `errors/R15`: hand-written suite, graded on all three, with no known-failure list | `crates/cpl-cli/tests/mistakes/`, `diagnostics.rs` `real_mistakes_name_the_place_the_rule_and_a_fix` |
+| Real mistakes get errors that name the place, the rule and a working fix | share of the real-mistake suite meeting all three | `errors/R15`: hand-written suite, graded on all three, every case gated | `crates/cpl-cli/tests/mistakes/`, `diagnostics.rs` `real_mistakes_name_the_place_the_rule_and_a_fix` |
 | C++, Python and Rust habits get the CP Lang way | habits on the practice solutions whose first error is on the line and whose fix makes the tests pass | `errors/R8`: generated suite, gated | `crates/cpl-cli/tests/newcomer.rs` |
 | Common mistakes (`&&`, `!x`, `let` for `var`, typos) get a fix | errors with a fix; fixes that restore the program | `errors/R8`: generated suite, gated | `crates/cpl-cli/tests/recovery.rs` `fix_it_scoreboard` |
 | Messages use the spec's vocabulary, one spelling per idea | spellings `spec/GLOSSARY.md` rules out, in goldens, `cpl explain` pages and lint records | `errors/R5`: gate driven by the glossary's Never column | `crates/cpl-cli/tests/diagnostics.rs` `messages_use_the_glossary` |

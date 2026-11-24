@@ -24,4 +24,5 @@ the compiler is done when all three hold on main, each measured by its
   programs, corpus and conformance, and the tree-walker interpreter is gone.
 
 A gap that is not yet closed is an open debt-plan item with its owner; its
-case lands with the fix, never as a known-failing case.
+case keeps its full expectation and fails on the scoreboard until the fix
+turns it green (decision 527).

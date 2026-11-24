@@ -1,5 +1,4 @@
 // expect: ok, output "1"
-// gap: compiler 2026-11-24T04Z
 // rule: 08.3.1
 // A law names the trait's own methods unqualified.
 trait Op<T>:

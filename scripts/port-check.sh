@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Every corpus port (corpus/problems/*/port.cp) passes `cpl check`, check only,
-# in parallel. A hard gate: any port with an error turns it red; there is no
-# known-failing list (a port that can't check yet is a dream.cp, not a port).
+# in parallel. A hard gate: any port with an error turns it red; no port is
+# exempt (a port that can't check yet is a dream.cp, not a port).
 # Enforces idiomatic-code/R9 (handbook/guidelines/idiomatic-code-checklist.md#r9).
 #   scripts/port-check.sh [cpl]
 set -euo pipefail

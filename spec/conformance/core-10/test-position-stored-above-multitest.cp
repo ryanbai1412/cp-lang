@@ -1,5 +1,4 @@
 // expect: E0805
-// gap: compiler 2026-11-24T05Z
 // rule: 10.1.1
 // input: "1\n3\n"
 var keep = []

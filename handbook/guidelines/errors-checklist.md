@@ -168,7 +168,7 @@ An error a user, a blind reader or a bug report found unhelpful lands with its f
 
 - **Why:** suites only know the mistakes someone wrote down.
 - **Example:** `sort_by_takes_one_argument.cp`, from a contestant's first session.
-- **Enforced by:** `diagnostics.rs` `real_mistakes_name_the_place_the_rule_and_a_fix`, which has no known-failure list.
+- **Enforced by:** `diagnostics.rs` `real_mistakes_name_the_place_the_rule_and_a_fix`, which exempts no case.
 
 ## Before you land an error
 

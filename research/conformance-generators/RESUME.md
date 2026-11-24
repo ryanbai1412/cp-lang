@@ -40,7 +40,7 @@ Last in flight at wind-down: 32a81dd9 (empty subsets, compose order, grid Prefix
 ## Next steps (priority order)
 1. Land the matrix branch.
    - Test: `scripts/check.sh --fast` passes and `conformance-matrix.py --check` exits 0.
-   - The failing cells are already known to the ratchet, since `all --check` records new cases as known-failing.
+   - The failing cells are already known to the ratchet, since `all --check` records new cases as failing on the scoreboard.
 2. Trait generator (3): `scripts/conformance-traits.py`.
    - Parse `pub trait` bodies in `spec/std/*.cp`, plus the trait block in `spec/core/12-powers.md` (Seq, Keyed, Sized, Bidir, Indexed, IndexedMut, Contains).
    - Parse claims from `impl Trait for Type:` lines (about 72 in std).

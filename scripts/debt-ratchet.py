@@ -1760,6 +1760,7 @@ HARD_ZERO = frozenset({
     "rule_gaps",
     "direct_python",
     "sig_gaps",
+    "xfail_markers",
 })
 
 # name -> (label, measure, ratcheted). Informational counts are shown, never gated.

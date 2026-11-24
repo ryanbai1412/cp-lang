@@ -136,7 +136,7 @@ means no real check exists yet. Targets and current numbers are in
 | Handbook reads for an outsider | Shared-history phrases, commit hashes | Lint | `scripts/check-handbook.py` |
 | Skipped tests don't grow | Ignored Rust tests, pending tests | Ratchet | `scripts/debt-ratchet.py` (`rust_ignore`, `pending_tests`) |
 | Corpus tests are generated, not committed | Files committed under `corpus/problems/*/tests/` | Ratchet, and the commit tier refuses a new one (problem-packages/R9) | `scripts/debt-ratchet.py` (`corpus_test_files`), `scripts/check.sh` |
-| Allowlists, xfails and known-difference lists don't grow | Entries across every such list | Ratchet | `scripts/debt-ratchet.py` (`skip_lists`) |
+| Allowlists, skip markers and lists of known differences don't grow | Entries across every such list | Ratchet | `scripts/debt-ratchet.py` (`skip_lists`) |
 | Every register row names a real check | Rows naming no existing test, command or job, per domain (shown in `plan/STATUS.md`) | Ratchet per domain | `scripts/debt-ratchet.py` (`register_rows_by_domain`) |
 | Every rule has one home | Lints and gates citing no handbook rule | Ratchet at 0 ([quality.md](../process/quality.md#rules-live-in-guidelines)) | `scripts/debt-ratchet.py` (`uncited_rules`) |
 | Expected output changes for a reason | Commits that edit expectations and code together | Post-land detector, read in the hourly review | `scripts/expectation-edits.py` |
