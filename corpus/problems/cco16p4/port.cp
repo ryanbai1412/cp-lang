@@ -10,20 +10,15 @@ let n: 2..=10 = read()
 let g: 2..=10_000 = read()
 domain Row = 0..n
 domain Col = 0..n
-type Grid = [Row, Col]Char
 
-fn random_grid() -> Grid:
-    [Row, Col] (r, c) => if rand(0, 1) == 0: 'R' else: 'W'
+fn red(ch: Char) -> Int = Int(ch == 'R')
 
-// A move keeps the number of red cells in every row and every column even
-// or odd, and those parities are all it keeps: grids match when they agree.
 var seen: Counter<(List<Int>, List<Int>), Int> = Counter()
 var pairs = 0
 for _ in 0..g:
-    let grid: Grid = read(gen: random_grid)
-    let rows = [count(grid[r, c] == 'R' for c in Col) % 2 for r in Row]
-    let cols = [count(grid[r, c] == 'R' for r in Row) % 2 for c in Col]
-    let key = (rows, cols)
+    let grid: [Row, Col]Char = read()
+    let key = ([sum(red(grid[r, c]) for c in Col) % 2 for r in Row],
+               [sum(red(grid[r, c]) for r in Row) % 2 for c in Col])
     pairs += seen[key]
     seen[key] += 1
 print(pairs)

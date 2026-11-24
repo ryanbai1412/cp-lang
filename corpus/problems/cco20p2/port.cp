@@ -8,7 +8,7 @@
 //   means -1. The moves are the inversions of the order built, counted with a Fenwick of
 //   exercises already given a later day that started further left. O(n log n).
 
-let n: Int = read()
+let n: 1..=2e5 = read()
 domain Ex = 1..=n  // an exercise, by where it starts
 domain Day = 1..=n
 let due: [Ex]Day = read()
