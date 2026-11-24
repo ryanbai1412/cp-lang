@@ -237,8 +237,8 @@ Evidence: program `spec/conformance/std-seq/seq-u42-pieces-over-domain.cp`.
 ### seq/U43: split on a separator
 Need: split a list on zeros into segments.
 Design: `a.split(p)` yields slices.
-Milestone: M1-critical. Status: gap
-Evidence: `[1, 0, 2].split(x => x == 0)` is E0203: `Str.split` and seq `split` share a name (compiler: receiver-type lookup).
+Milestone: M1-critical. Status: supported
+Evidence: `spec/conformance/std-seq/split-on-separator-predicate.cp` splits a list and a `Str` on a predicate.
 
 ### seq/U44: prefixes and suffixes by count or predicate
 Need: the leading run of small values, or all but the first k.
