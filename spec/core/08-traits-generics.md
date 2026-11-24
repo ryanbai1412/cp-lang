@@ -107,6 +107,9 @@ struct Pair<A, B = Int>: a: A, b: B
   errors point at the generic or the call, never inside an
   instantiation. (R08.2.2)
 - Everything is monomorphized; there are no vtables and no `dyn`. (R08.2.3)
+- A generic fn may not reach itself, directly or mutually, at a type that
+  grows on every call: `wrap([x], n - 1)` inside `wrap<T>` would need
+  `wrap<List<T>>`, `wrap<List<List<T>>>` and so on (E0319). (R08.2.10)
 - `domain` is a kind on type parameters; `const N: Int` parameters take
   compile-time values (`Mod<998244353>`, `SegTree<0..=4e9>`); range
   types are types and may be arguments. (R08.2.4)

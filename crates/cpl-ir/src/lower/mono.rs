@@ -2,7 +2,6 @@
 //! closures, `lends` projections, and `laws_hold`.
 
 use super::*;
-use declare::{opt_mut_instance, param_marker};
 use std::collections::HashSet;
 
 pub(super) type ModId = usize;
@@ -1353,72 +1352,6 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    /// Resolves a generic function instantiation with concrete `args`, memoized.
-    pub(super) fn instantiate_fn(
-        &mut self,
-        gfid: GenFnId,
-        args: Vec<GenArg>,
-        trait_params: &[(usize, Ty)],
-        op_params: &[(String, BareOp)],
-        rev_params: Vec<String>,
-    ) -> FnId {
-        let key = (gfid, args.clone(), rev_params.clone());
-        if let Some(&id) = self.fn_insts.get(&key) {
-            if !self.sigs[id].returns_fresh_domain && self.sigs[id].new_domain_slots.is_empty() {
-                return id;
-            }
-        }
-        let tpl_mod = self.gen_fns[gfid].mod_id;
-        let tpl_offset = self.gen_fns[gfid].offset;
-        let owner = self.gen_fns[gfid].owner;
-        let mut env = self.gen_fns[gfid].owner_env.clone();
-        let decl = opt_mut_instance(self.gen_fns[gfid].decl, &rev_params);
-        for (p, a) in decl.generics.iter().zip(&args) {
-            env.insert(p.text.clone(), a.clone());
-        }
-        // `S: Indexed<K, T>` with `S` keyed by `Int`: a `[K]T` it returns
-        // starts at `S`'s first key, not at 0 (R04b.5.3).
-        for bound in &decl.bounds {
-            for tr in &bound.traits {
-                if let ast::TypeKind::Named { name, args: targs } = &tr.kind {
-                    if let (
-                        true,
-                        Some(ast::Type {
-                            kind:
-                                ast::TypeKind::Named {
-                                    name: k,
-                                    args: kargs,
-                                },
-                            ..
-                        }),
-                    ) = (
-                        matches!(name.text.as_str(), "Keyed" | "Indexed" | "IndexedMut"),
-                        targs.first(),
-                    ) {
-                        if kargs.is_empty() && env.get(&k.text) == Some(&GenArg::Ty(Ty::Int)) {
-                            env.insert(int_key_marker(&k.text), GenArg::Ty(Ty::Int));
-                        }
-                    }
-                }
-            }
-        }
-        for (idx, ty) in trait_params {
-            env.insert(format!("__trait_param_{idx}"), GenArg::Ty(ty.clone()));
-        }
-        for (name, op) in op_params {
-            env.insert(op_param_key(name), GenArg::Op(*op));
-        }
-        for name in &rev_params {
-            env.insert(param_marker(name), GenArg::Int(1));
-        }
-        let id = self.declare_fn_in(decl, tpl_mod, tpl_offset, owner, env);
-        let suffix: Vec<String> = args.iter().map(|a| self.mangle_arg(a)).collect();
-        self.sigs[id].name = format!("{}_{}_{id}", self.sigs[id].name, suffix.join("_"));
-        self.fn_insts.insert(key, id);
-        self.resolve_fn_sig(id, None);
-        id
-    }
-
     /// Evaluates a generic `const Sum<T> = ...` with concrete `args`.
     pub(super) fn eval_gen_const(&mut self, gcid: GenConstId, args: Vec<GenArg>) -> Expr {
         let tpl_mod = self.gen_consts[gcid].mod_id;
@@ -2259,6 +2192,9 @@ impl<'a> Lowerer<'a> {
         }
         final_args.extend(op_params.iter().map(|&(_, op)| GenArg::Op(op)));
         let rev = self.reversed_params(decl, &ast_params, receiver.as_ref(), args, &gen_names);
+        if let Some(e) = self.growing_call(gfid, &decl.name.text, span) {
+            return e;
+        }
         let fn_id = self.instantiate_fn(gfid, final_args, &trait_params, &op_params, rev);
         if let Some(ty) = hashed {
             self.sigs[fn_id].params[0].ty = ty;

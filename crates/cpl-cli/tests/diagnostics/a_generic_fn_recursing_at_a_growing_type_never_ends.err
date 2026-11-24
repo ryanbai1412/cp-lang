@@ -1,0 +1,19 @@
+error[E0319]: `wrap` calls itself at a type that grows on every call: `wrap<Int>` needs `wrap<List<Int>>`, and so on without end
+  --> a_generic_fn_recursing_at_a_growing_type_never_ends.cp:5:12
+  |
+2 | fn wrap<T>(x: T, n: Int) -> Int:
+  |    ---- `wrap` is declared here
+5 |     return wrap([x], n - 1)
+  |            ^^^^^^^^^^^^^^^^
+  = help: a generic fn is compiled once per type: recurse at the same type, or keep the growing part in a value of one fixed type (R08.2.10)
+
+error[E0319]: `boxed` calls itself at a type that grows on every call: `boxed<Int>` needs `boxed<Box<Int>>`, and so on without end
+  --> a_generic_fn_recursing_at_a_growing_type_never_ends.cp:9:12
+  |
+6 | fn boxed<T>(x: T, n: Int) -> Int:
+  |    ----- `boxed` is declared here
+9 |     return boxed(Box(v: x), n - 1)
+  |            ^^^^^^^^^^^^^^^^^^^^^^^
+  = help: a generic fn is compiled once per type: recurse at the same type, or keep the growing part in a value of one fixed type (R08.2.10)
+
+a_generic_fn_recursing_at_a_growing_type_never_ends.cp: 2 errors
