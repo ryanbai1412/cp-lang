@@ -7,6 +7,7 @@
 //   the two lap lengths (at most about 5e7, both are even and at most 1e4) both are back at
 //   their starts together, so simulate that many minutes, keep the least squared distance and
 //   print its root: O(lcm).
+// Bounds: n: 0..=100; d: -100..=100
 enum Axis:
     @tag("X") X
     @tag("Y") Y

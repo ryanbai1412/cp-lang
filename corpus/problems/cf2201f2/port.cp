@@ -9,7 +9,7 @@
 //   counts. Keep both as Ferrers diagrams: a new cell in row r adds cell (f, g) with f its old
 //   count and g the number of rows already that long, and the column side the same,
 //   transposed. Compare the two cell multisets by summed splitmix64 hashes: O(1) per query.
-// Bounds: n: 2..=2e6; q: 1..=min(n * n, 2e6)
+// Bounds: n: 2..=2e6; q: 1..=min(n * n, 2e6); r0, r1: 1..=n
 
 use std.math.{splitmix64}
 

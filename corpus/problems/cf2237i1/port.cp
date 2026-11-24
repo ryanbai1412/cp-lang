@@ -9,7 +9,7 @@
 //   reaching v, resolved a closed chain strictly deepest. Children merge in input order
 //   (ties are order-sensitive) under the canonical rules, and a -1 cancels the labelling
 //   reached both from an inactive prefix and from a chain started at v. O(n^2) per test.
-// Bounds: n: 2..=3000
+// Bounds: n: 2..=3000; c: 1..=n
 
 type Z = Mod<1_000_000_007>
 enum Label: Zero | One | Any

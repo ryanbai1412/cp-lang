@@ -6,7 +6,7 @@
 //   SegTree with range add and min: per attack one `apply`, one range fold and the whole-tree
 //   fold, O(log n).
 // original: corpus/submissions/3657393.cpp
-// Bounds: n: 1..=1e6; q: 1..=1e5; enemies: 0..=1e9
+// Bounds: n: 1..=1e6; q: 1..=1e5; enemies: 0..=1e9; l, r: 1..=n; kills: 0..=1e9
 
 let n: 1..=1e6 = read()
 let q: 1..=1e5 = read()

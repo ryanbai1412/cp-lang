@@ -12,7 +12,7 @@
 //   the deadlines, so k = 0 is a product and k > 0 a DP over the k-bit mask of pending
 //   deadlines, run from the last label back: O(m 2^k k) per test.
 // original: corpus/submissions/5723059.cpp
-// Bounds: tc_id: 0..=20; tcs: 1..=15
+// Bounds: tc_id: 0..=20; tcs: 1..=15; n: 1..=30000; m: 0..=3000; k: 0..=10; parents: 1..=n
 const P = 1000000007
 type Z = Mod<P>
 let tc_id: 0..=20 = read()

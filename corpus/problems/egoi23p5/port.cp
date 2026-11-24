@@ -8,7 +8,7 @@
 //   inner places. O(n^2).
 // Note: runnable on proto/cpc today.
 // original: corpus/submissions/5678053.cpp
-// Bounds: n: 1..=1000
+// Bounds: n: 1..=1000; g: 0..n
 let n: 1..=1000 = read()
 domain G = 0..n
 var path: List<G> = [G(0)]

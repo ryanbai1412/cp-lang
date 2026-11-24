@@ -7,7 +7,7 @@
 //   once. A node takes its most valuable units while they are worth at least 0; served
 //   units re-enter at value 0 so a later node can re-route them. O(n log^2 n).
 // original: corpus/submissions/5071843.cpp
-// Bounds: n: 1..=2e5
+// Bounds: n: 1..=2e5; p: 1..=n
 let n: 1..=2e5 = read()
 domain V = 0..n
 let want: [V]Int = read()

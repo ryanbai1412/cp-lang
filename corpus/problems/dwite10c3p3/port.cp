@@ -7,6 +7,7 @@
 //   column; the rest must pair up vertically (none, the top two or the bottom two).
 //   O(N * 8 * 8) per width.
 // original: corpus/submissions/4804312.cpp
+// Bounds: n: 0..=30
 
 const MOD = 1_000_000
 type Z = Mod<MOD>

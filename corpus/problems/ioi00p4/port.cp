@@ -8,7 +8,7 @@
 //   regions, then a region's total sums, per member, the distance to the nearest region at
 //   the member's town. O(M^3).
 // original: corpus/submissions/4682453.cpp
-// Bounds: m: 2..=200; n: 3..=250; k: 1..=30; homes: 1..=n
+// Bounds: m: 2..=200; n: 3..=250; k: 1..=30; homes: 1..=n; border: 1..=n
 let (m, n, k): (2..=200, 3..=250, 1..=30) = read()
 domain Region = 1..=m
 domain Town = 1..=n

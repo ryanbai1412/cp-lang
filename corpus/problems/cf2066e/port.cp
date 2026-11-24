@@ -9,7 +9,7 @@
 //   so O(log sum) stuck points; at each, the unique amounts >= b fold to their sum (so `have`) and
 //   their smallest gap. A bag of barrels and a set of unique amounts folded into runs give
 //   O(log n log sum) per answer.
-// Bounds: n, q: 1..=200_000
+// Bounds: n, q: 1..=200_000; v: 1..=1_000_000
 
 use std.bag.{AugSortedBag, AugSortedSet}
 

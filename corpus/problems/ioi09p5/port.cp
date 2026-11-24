@@ -5,7 +5,7 @@
 // Solution: simulate with a MinHeap of free spaces and a Deque of waiting cars; after each
 //   event, park cars from the queue front while spaces are free. O(m log n).
 // original: corpus/submissions/5106592.cpp
-// Bounds: n, rate: 1..=100; m: 1..=2000; weight: 1..=10_000
+// Bounds: n, rate: 1..=100; m: 1..=2000; weight: 1..=10_000; event: -m..=m
 let n: 1..=100 = read()
 let m: 1..=2000 = read()
 domain Spot = 1..=n

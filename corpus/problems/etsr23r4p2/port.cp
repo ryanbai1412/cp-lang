@@ -7,7 +7,7 @@
 //   raisings for every s up to that length, a node keeps those sums, and a range raise shifts
 //   them by one, saturating at the settled value. O((n + q) log n log p).
 // original: corpus/submissions/5529698.cpp
-// Bounds: n, q: 1..=5e4; p, base: 1..=1e8; a: 0..=1e8
+// Bounds: n, q: 1..=5e4; p, base: 1..=1e8; a: 0..=1e8; kind: 0..=1; l, r: 1..=n
 
 let (n, q, p, base): (1..=5e4, 1..=5e4, 1..=1e8, 1..=1e8) = read()
 type Z = Mod<p>

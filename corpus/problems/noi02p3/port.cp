@@ -8,6 +8,7 @@
 //   fruits the big head eats in v's subtree], merging each child into its parent, children
 //   first, over all count pairs: O(n^3). -1 when m - 1 + k > n.
 // original: corpus/submissions/3718952.cpp
+// Bounds: n, k: 1..=300; heads: 2..=300
 let (n, heads, k) = read<(1..=300, 2..=300, 1..=300)>()
 domain F = 1..=n
 let g = Graph.undirected(read<[n - 1](u: F, v: F, cost: 0..=100_000)>())

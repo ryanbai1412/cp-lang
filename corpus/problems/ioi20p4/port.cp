@@ -9,7 +9,7 @@
 //   O(k^2) per call.
 // original: corpus/submissions/4733047.cpp (grader function count_tastiness)
 // stdin here: q, then per call `k x` and a[0..k).
-// Bounds: q: 1..=1000
+// Bounds: q: 1..=1000; k: 1..=60; x: 1..=1_000_000_000_000_000_000; a: 0..=1_000_000_000_000_000_000
 let q: 1..=1000 = read()
 domain Bit = 0..60
 

@@ -5,7 +5,7 @@
 // Solution: row by row, each cell adds its value to the better of the (at most two) cells
 //   above it; print the best of the last row. O(n^2).
 // original: corpus/submissions/4810274.cpp
-// Bounds: n: 1..=100
+// Bounds: n: 1..=100; row: 0..=99
 let n: 1..=100 = read()
 // best[c]: the best path sum ending at cell c of the row so far
 var best: List<Int> = []

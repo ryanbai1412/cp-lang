@@ -7,7 +7,7 @@
 //   in l..=r, then the last range starting before l if it reaches l. Each range is
 //   thrown out once, O(q log q).
 // original: corpus/submissions/5494248.cpp
-// Bounds: q: 1..=2e5; n: 1..=1e9
+// Bounds: q: 1..=2e5; n: 1..=1e9; kind: 1..=2; l: 1..=n; r: l..=n
 let q: 1..=2e5 = read()
 let n: 1..=1e9 = read()
 type Order = (kind: 1..=2, l: 1..=1e9, r: 1..=1e9)

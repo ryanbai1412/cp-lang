@@ -7,6 +7,7 @@
 //   pop every larger top that occurs again later (last[] holds each value's last position),
 //   since it can be picked up after x. What stays on the stack is the answer. O(N).
 // original: corpus/submissions/7011313.cpp
+// Bounds: n, k: 1..=200_000; a: 1..=k
 let (n, k) = read<(1..=200_000, 1..=200_000)>()
 domain V = 1..=k
 let a = read<[n]V>()

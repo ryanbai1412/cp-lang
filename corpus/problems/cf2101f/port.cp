@@ -9,7 +9,7 @@
 //   alone. If layer d holds both colours the score is 2d, else it is all red (x2 for blue) and
 //   scores d + d' for the outermost blue depth d', summed by a running scan over d. O(n) per
 //   centre, O(n^2) total; halve for the subdivision.
-// Bounds: n: 1..=3000
+// Bounds: n: 1..=3000; u, v: 1..2 * n
 
 type Z = Mod<998_244_353>
 

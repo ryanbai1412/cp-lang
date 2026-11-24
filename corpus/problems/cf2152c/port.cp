@@ -6,7 +6,7 @@
 // Solution: possible iff the length and the number of ones are multiples of 3. Every triple
 //   costs 1 if some adjacent pair is equal, and an alternating subarray pays 1 extra once.
 //   Prefix sums of a_i and of a_i xor (i & 1) answer both checks in O(1) per query.
-// Bounds: n, q: 1..=250_000; a: 0..=1
+// Bounds: n, q: 1..=250_000; a: 0..=1; l_pos, r_pos: 1..=n
 
 @!multitest
 let (n, q): (1..=250_000, 1..=250_000) = read()

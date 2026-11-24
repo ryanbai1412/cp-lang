@@ -7,6 +7,7 @@
 //   s-t path iff dist(s, v) + dist(v, t) == dist(s, t), and then carries
 //   ways(s, v) * ways(v, t) of the ways(s, t) paths. O(n^3).
 // original: corpus/submissions/3756474.cpp
+// Bounds: n: 1..=100; m: 1..=4500
 let (n, m) = read<(1..=100, 1..=4500)>()
 domain V = 1..=n
 var best: [V, V]?(d: Int, ways: Int) = [V, V] (s, t) => if s == t: Some((d: 0, ways: 1)) else: None

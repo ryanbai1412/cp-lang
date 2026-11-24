@@ -5,6 +5,7 @@
 //   the largest popcount. O(2^N M).
 // Written for CP Lang 0.2.2.
 // original: corpus/submissions/4223449.cpp
+// Bounds: u, v: 1..=n
 let (n, m): (Int, Int) = read()
 domain V = 1..=n
 var edges: List<(V, V)> = []

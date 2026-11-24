@@ -7,6 +7,7 @@
 //   depths with the root at depth 1. For a fixed root, BFS over boss -> report arcs gives every
 //   employee their least depth; skip roots that do not reach everyone. O(n (n + sum k)).
 // original: corpus/submissions/5323961.cpp
+// Bounds: boss: 1..=n
 
 let n: Int = read()
 domain P = 1..=n

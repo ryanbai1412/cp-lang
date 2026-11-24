@@ -7,7 +7,7 @@
 //   (a prefix min of 0 against a mex >= 1), so the answer is n - zeros or one more; the best one
 //   to keep is the leftmost. Build that subsequence b and test it with prefix minima and suffix
 //   mexes computed right to left over a seen array capped at |b|; O(n).
-// Bounds: n: 1..=2e5
+// Bounds: n: 1..=2e5; a: 0..=1e9
 @!multitest
 let n: 1..=2e5 = read()
 let a = read<[n]0..=1e9>()

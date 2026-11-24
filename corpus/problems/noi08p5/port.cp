@@ -13,7 +13,7 @@
 //   two passes over the stored events so one tree fits the memory limit; a delete finds its cloud
 //   by colour in an array. O(n log^2 len).
 // original: corpus/submissions/6067573.cpp
-// Bounds: n: 1..=200_000; len: 1..=1000
+// Bounds: n: 1..=200_000; len: 1..=1000; kind: 1..=3; t: 0..=2_000_000_000; c: 1..=1_000_000; l, r: 0..=len; d: -1..=1
 
 let (n, len): (1..=200_000, 1..=1000) = read()
 let p = 2 * len

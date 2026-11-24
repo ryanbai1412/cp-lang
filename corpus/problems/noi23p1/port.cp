@@ -12,7 +12,7 @@
 // Strokes are (line, lo, hi) tuples in three lists, and the sweep carries a
 // hand-rolled Fenwick over the sorted vertical lines: the prototype has no
 // compress(...).first_ge and no Set.rank.
-// Bounds: _test_id: 0..=20; cols, rows: 1..=1e9; q: 1..=1e5
+// Bounds: _test_id: 0..=20; cols, rows: 1..=1e9; q: 1..=1e5; kind: 1..=3; x1, x2: 1..=cols; y1, y2: 1..=rows
 let _test_id: 0..=20 = read()
 let cols: 1..=1e9 = read()
 let rows: 1..=1e9 = read()

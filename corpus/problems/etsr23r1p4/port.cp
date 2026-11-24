@@ -7,7 +7,7 @@
 //   the same amount, which happens after O(log) divisions of a node's spread, so BeatsSegTree's
 //   chdiv is amortised O((n + q) log n log V) with add, min and sum as usual.
 // original: corpus/submissions/5495163.cpp
-// Bounds: n, q: 1..=2e5; a: -2147483648..=2147483647
+// Bounds: n, q: 1..=2e5; a: -2147483648..=2147483647; op: 1..=4; l, r: 1..=n
 
 let (n, q): (1..=2e5, 1..=2e5) = read()
 domain I = 1..=n

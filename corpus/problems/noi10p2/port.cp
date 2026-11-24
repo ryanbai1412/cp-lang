@@ -8,6 +8,7 @@
 //   and its best chord; taking the top k times splits its window around the end used into
 //   two candidates. O((n + k) log n).
 // original: corpus/submissions/5670502.cpp
+// Bounds: n, k: 1..=5e5
 
 let (n, k) = read<(1..=5e5, 1..=5e5)>()
 let len = read<Range<1..=n>>()

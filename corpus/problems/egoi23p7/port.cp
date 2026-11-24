@@ -11,7 +11,7 @@
 //   stays available to hang below later ones. NO unless N_trees - 1 links are found; each link
 //   takes the first allowed building. O((N + M + K) log N).
 // original: corpus/submissions/5678057.cpp
-// Bounds: n: 1..=3e5; m1, m2: 0..=3e5
+// Bounds: n: 1..=3e5; m1, m2: 0..=3e5; child, parent: 0..n
 let n: 1..=3e5 = read()
 let m1: 0..=3e5 = read()
 let m2: 0..=3e5 = read()

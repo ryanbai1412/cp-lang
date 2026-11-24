@@ -5,6 +5,7 @@
 //   diameter counted in vertices. One DFS per tree keeps the deepest branch below each vertex
 //   and the best path through it. O(n).
 // original: corpus/submissions/4196157.cpp
+// Bounds: u, v: 1..=n
 let n: Int = read()
 let m: Int = read()
 domain V = 1..=n

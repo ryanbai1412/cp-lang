@@ -9,7 +9,7 @@
 //   a side is even. The split peels an odd-degree vertex after complementing the odd edges among
 //   its neighbours, and puts it back on the side where it is even. n - 1 flows plus O(n^2) bitset
 //   steps.
-// Bounds: n: 1..=50; m: 0..=1225
+// Bounds: n: 1..=50; m: 0..=1225; edges.u, edges.v: 1..=n; edges.w: 1..=1_000_000
 use std.flow.gomory_hu
 
 @!multitest

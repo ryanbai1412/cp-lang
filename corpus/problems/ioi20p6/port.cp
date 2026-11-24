@@ -12,7 +12,7 @@
 // original: corpus/submissions/4725602.cpp (grader functions label / find_next_station)
 // stdin here: n, the n - 1 links, q, then q queries `s t`; stdout: the station a packet at s
 //   bound for t is sent to, per query.
-// Bounds: n: 2..=1000; q: 1..=100_000
+// Bounds: n: 2..=1000; q: 1..=100_000; s, t: 0..n
 let n: 2..=1000 = read()
 domain Station = 0..n
 domain Link = 1..n

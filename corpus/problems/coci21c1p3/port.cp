@@ -6,6 +6,7 @@
 //   counts blues so each vertex gets exactly one blue among its parent, its children and,
 //   for a or b, the other end of the extra edge. O(n) times 4 guesses.
 // original: corpus/submissions/4080960.cpp
+// Bounds: u, v: 1..=n
 
 let n: Int = read()
 domain V = 1..=n

@@ -9,7 +9,7 @@
 //   slope". A ride walks right while the highest prefix stays at most h, then divides the
 //   height left by the slope of the piece where it stops. O(q log q).
 // original: corpus/submissions/5032753.cpp
-// Bounds: n: 1..=1e9
+// Bounds: n: 1..=1e9; a, b: 1..=n; d: -1e9..=1e9
 
 let n: 1..=1e9 = read()
 domain Rail = 1..=n

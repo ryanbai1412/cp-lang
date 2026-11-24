@@ -8,8 +8,8 @@
 //   centre, with N even move second; then answer (x, y) with (N + 1 - x, N + 1 - y). The
 //   position stays symmetric and a cell is never adjacent to its own mirror, so the mirror
 //   is always legal and the judge runs out of moves first. O(1) per move.
-// Bounds: n, t: 1..=100
 // original: corpus/submissions/4380584.cpp
+// Bounds: n, t: 1..=100; x, y: 0..=n
 
 let (n, t): (1..=100, 1..=100) = read()
 

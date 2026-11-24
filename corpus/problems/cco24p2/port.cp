@@ -11,7 +11,7 @@
 //   the next person's, so cover b by chains decreasing in placement order: greedy patience
 //   piles, binary-searching the first pile top below the new placement. O(N log N).
 // original: corpus/submissions/6435481.cpp
-// Bounds: n: 1..=1_000_000
+// Bounds: n: 1..=1_000_000; x: 1..=n
 let n: 1..=1_000_000 = read()
 domain I = 0..n
 

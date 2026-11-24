@@ -9,7 +9,7 @@
 //   and an erase is L - 1, a binary decrement: the topmost odd layer loses its middle x
 //   (becomes even, length 2L) and the layers above are replayed odd. Each decrement creates one
 //   0 bit, so the replays are O(q) amortized in total.
-// Bounds: q: 1..=1_000_000
+// Bounds: q: 1..=1_000_000; op: 1..=3
 
 type Z = Mod<1_000_000_007>
 

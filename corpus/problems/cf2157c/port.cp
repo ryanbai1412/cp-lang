@@ -7,7 +7,7 @@
 //   min-only or free position gets k; one in both gets k + 1 (>= k and != k); the mex-only
 //   positions, left to right, cycle through 0..k-1, so every mex range holds all of 0..k-1 and
 //   no k.
-// Bounds: n, k, q: 1..=100
+// Bounds: n, k, q: 1..=100; c: 1..=2; l, r: 1..=n
 
 enum Kind:
     Min

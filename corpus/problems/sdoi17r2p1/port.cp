@@ -8,7 +8,7 @@
 //   (the intended solution): the total is near normal with mean Y(X-1)/2, variance Y(X^2-1)/12,
 //   so P(total <= k) = Phi((k + 1/2 - mean) / sd), Phi from the erf Taylor series. O(1) a query.
 // original: corpus/submissions/5481972.cpp
-// Bounds: faces: 2..=20; dice: 1..=2e5
+// Bounds: faces: 2..=20; dice: 1..=2e5; lo, hi: 0..=top
 
 fn normal_below(z: F64) -> F64:  // P(N(0, 1) <= z)
     if z < -6.0: return 0.0

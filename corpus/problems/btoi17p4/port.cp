@@ -10,7 +10,7 @@
 //   leaves. Then uncross: for each pair i < j, A_i - A_j stays valid or else A_j - A_i does (cut
 //   size is submodular), so after all pairs the groups are disjoint. O(n^2 (p + q)) after search.
 // original: corpus/submissions/4523876.cpp
-// Bounds: n: 1..=2500; p: 1..=16; q: 0..=16
+// Bounds: n: 1..=2500; p: 1..=16; q: 0..=16; deg: 0..=n; v: 0..n
 let n: 1..=2500 = read()
 let p: 1..=16 = read()
 let q: 0..=16 = read()

@@ -8,7 +8,7 @@
 //   Run 2: if Emma wrote 1, her house is (sum of 1-houses - s) mod N for both parities of s; if
 //   she wrote 11..=16, guess both such houses; else the flag names her pair of slots. O(N).
 // original: corpus/submissions/5659039.cpp (91/100)
-// Bounds: phase: 1..=2; n: 13..=150_000
+// Bounds: phase: 1..=2; n: 13..=150_000; h, flag: 0..n; label: 0..=16
 const PARTS = 9
 const TOTAL = 11
 

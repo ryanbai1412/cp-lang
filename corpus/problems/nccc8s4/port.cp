@@ -7,7 +7,7 @@
 //   the edge tile[i] -> -tile[j] (the next atom needs a side labelled -tile[j]). The molecule
 //   exists iff this graph has a cycle: a coloured DFS, O(16 N + 53^2).
 // original: corpus/submissions/3381215.java
-// Bounds: m: 1..=100_000
+// Bounds: m: 1..=100_000; v: -26..=26
 domain Side = 0..=52
 let m: 1..=100_000 = read()
 var adj: [Side, Side]Bool = false

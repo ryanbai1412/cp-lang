@@ -6,6 +6,7 @@
 //   symmetric: the classes are the components of the graph with edges i - p_i over all friends.
 //   A Dsu over boxes: n m unions, then one `same` per query.
 // original: corpus/submissions/4143417.cpp
+// Bounds: p, a, b: 1..=n
 
 let n: Int = read()
 let m: Int = read()

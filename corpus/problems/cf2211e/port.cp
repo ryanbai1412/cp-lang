@@ -8,7 +8,7 @@
 //   a_v). v extends child u iff gcd(a_v, good[u]) > 1, so good[v] = lcm over u of
 //   gcd(a_v, good[u]); when that is 1, v opens a new path: cost + 1 and good[v] = a_v.
 //   O(n log A) for the gcds.
-// Bounds: n: 1..=200_000
+// Bounds: n: 1..=200_000; a: 1..=10 ** 18; k: 0..=n; children: 1..=n
 
 @!interactive
 @!multitest

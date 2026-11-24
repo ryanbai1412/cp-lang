@@ -10,7 +10,7 @@
 //   Prefix sums of pass sizes find a query's pass (past the last, the full tour repeats); offline
 //   by pass, a Fenwick over tour steps holds the joined steps and `kth` finds the k-th one.
 //   O((n + q) log n).
-// Bounds: n: 2..=8e5; q: 1..=8e5
+// Bounds: n: 2..=8e5; q: 1..=8e5; k: 1..=1e15
 let (n, q): (2..=8e5, 1..=8e5) = read()
 domain Room = 1..=n
 // The pointer starts at the first corridor, so the first step from a room takes the second.

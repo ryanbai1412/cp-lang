@@ -7,6 +7,7 @@
 //   quadrant (ext1..ext4) to rank one; encode binary searches the least card of rank n,
 //   decode ranks the least rotation of the drawn card.
 // original: corpus/submissions/5202737.cpp
+// Bounds: kind: 1..=2; n: 1..=67_000_000; k: 0..=28
 
 fn turn(p: Int) -> Int = (2 - p % 3) * 3 + p / 3
 fn seg_key(p: Int, q: Int) -> Int = min(p, q) * 9 + max(p, q)

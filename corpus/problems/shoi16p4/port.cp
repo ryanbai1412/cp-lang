@@ -6,6 +6,7 @@
 //   spanning trees of the remaining companies' roads, by the matrix-tree theorem (Laplacian
 //   minus city n, Gaussian determinant in Mod). O(2^(n-1) n^3).
 // original: corpus/submissions/5635192.cpp
+// Bounds: e.u, e.v: 1..=n
 type Z = Mod<1_000_000_007>
 
 let n: Int = read()

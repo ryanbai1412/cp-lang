@@ -11,7 +11,7 @@
 //   Complete iff every trie node reached from the root ends a word or has all four children:
 //   O(sum n).
 // original: corpus/submissions/3803796.cpp
-// Bounds: m: 1..=2e6
+// Bounds: m: 1..=2e6; n: 1..=2e6; kids.l, kids.r: 0..=n
 use std.strings.{Trie}
 
 // a spine step: only a left child, only a right child, or both with the other one a leaf

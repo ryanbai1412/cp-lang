@@ -9,7 +9,7 @@
 //   takes the nearest greater element to its left and the nearest smaller to its right (std
 //   prev_smaller / next_smaller); bad[l] keeps the least such right end, and suffix minima make
 //   min_bad[l] the first right end that fails a query starting at l. O(n + q).
-// Bounds: n, q: 1..=500_000; a: 1..=n
+// Bounds: n, q: 1..=500_000; a: 1..=n; l, r: 1..=n
 
 use std.seq.{next_smaller, prev_smaller}
 

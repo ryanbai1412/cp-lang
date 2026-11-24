@@ -8,7 +8,7 @@
 //   Item i covers cuts min(p, s) ..< max(p, s): a SegTree with range add keeps the cuts at
 //   the minimum cover (always 0, since cuts 0 and n are free) and their gap sum; a swap
 //   re-adds the two changed items, O(log n) per query.
-// Bounds: n: 2..=100_000; q: 1..=100_000; p, s: 0..=n
+// Bounds: n: 2..=100_000; q: 1..=100_000; p, s: 0..=n; t: 1..=2; i, j: 1..=n
 
 @!multitest
 let n: 2..=100_000 = read()

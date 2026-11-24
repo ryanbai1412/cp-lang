@@ -317,6 +317,17 @@ class BoundsTest(unittest.TestCase):
                          ["bounds-undeclared p m"])
         self.assertEqual(corpus.bounds_findings("p", "let n: Int = read()\n"), [])
 
+    def test_a_read_spelled_read_of_a_type_or_indented_is_checked(self):
+        self.assertEqual(corpus.bounds_findings("p", "// Bounds: n: 1..=9\nlet n = read<1..=5>()\n"),
+                         ["bounds-narrow p n: reads 1..=5, statement 1..=9"])
+        self.assertEqual(corpus.bounds_findings("p", "// Bounds: k: 0..=1\nlet k: 0..=1 = read()\nif k:\n    let m: 1..=5 = read()\n"),
+                         ["bounds-undeclared p m"])
+        self.assertEqual(corpus.bounds_findings("p", "let v: List<Int> = read<List<Int>>()\n"), [])
+
+    def test_a_second_bounds_line_is_a_finding(self):
+        self.assertEqual(corpus.bounds_findings("p", "// Bounds: n: 1..=9\n// Bounds: n: 1..=9\nlet n: 1..=9 = read()\n"),
+                         ["bounds-twice p -"])
+
     def test_a_stated_bound_nothing_reads_is_a_finding(self):
         self.assertEqual(corpus.bounds_findings("p", "// Bounds: n: 1..=9; m\nlet n: 1..=9 = read()\n"),
                          ["bounds-unparsed p m"])

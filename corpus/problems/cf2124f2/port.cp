@@ -11,7 +11,7 @@
 //   run [c..j) of length L = j - c followed by a shorter 1-starting run [j..k) (k - j <= L - 1)
 //   valid on diagonal j (k <= wrap_limit(j)) is the same array as one cyclic shift, so another
 //   sweep subtracts it. O(n^2) time and memory.
-// Bounds: n: 1..=5000; m: 0..=5000
+// Bounds: n: 1..=5000; m: 0..=5000; pos, val: 1..=n
 
 use std.prefix.SweepAdd
 

@@ -5,7 +5,7 @@
 // Solution: tree DP. BFS from node 1 gives an order with parents first; in reverse,
 //   best[u] = max(D + best[v], best[w]), leaves 0. Print R + best[1]: O(2^N).
 // original: corpus/submissions/4121049.cpp
-// Bounds: k: 1..=19; r: 0..=1_000_000_000
+// Bounds: k: 1..=19; r: 0..=1_000_000_000; u, a, b: 1..=1_048_576; w: -1_000_000_000..=1_000_000_000
 
 let k: 1..=19 = read()
 let r: 0..=1_000_000_000 = read()

@@ -5,7 +5,7 @@
 // Solution: sort a minister's cities by preorder and walk them cyclically: each leg a -> b adds
 //   +1 at a and -1 at lca(a, b), so the marks below a track sum to 1 exactly when it is
 //   wanted. Summing marks children-first counts the ministers per track. O(S log n + n).
-// Bounds: n: 2..=1e5; m, k: 1..=5e4; tracks.u, tracks.v: 1..=n
+// Bounds: n: 2..=1e5; m, k: 1..=5e4; tracks.u, tracks.v: 1..=n; s: 2..=1e5; plan: 1..=n
 let (n, m, k): (2..=1e5, 1..=5e4, 1..=5e4) = read()
 domain City = 1..=n
 domain Track = 1..n

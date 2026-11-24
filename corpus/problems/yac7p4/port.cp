@@ -11,7 +11,7 @@
 // original: corpus/submissions/5705324.cpp
 // Uses a SegTree over Euler preorder positions to support first_ge/min active tin
 // since proto/cpc Set<T> lacks ordered first/first_ge.
-// Bounds: n, m: 1..=200_000; queries: 1..=n
+// Bounds: n, m: 1..=200_000; queries: 1..=n; u, v: 1..=n
 
 let n: 1..=200_000 = read()
 let m: 1..=200_000 = read()

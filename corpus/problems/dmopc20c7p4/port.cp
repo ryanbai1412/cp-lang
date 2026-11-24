@@ -8,7 +8,7 @@
 //   parent, so a query is one path sum plus two lookups; a toggle updates near[parent].
 //   O(log^2 N) per query.
 // original: corpus/submissions/3686586.cpp
-// Bounds: n, q: 1..=2e5; roads.u, roads.v: 1..=n
+// Bounds: n, q: 1..=2e5; roads.u, roads.v: 1..=n; kind: 1..=2; u, v: 1..=n
 
 let n: 1..=2e5 = read()
 let q: 1..=2e5 = read()

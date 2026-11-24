@@ -9,9 +9,8 @@
 //   neighbours between them. In each direction along the sorted list an arrived chain and a
 //   leave chain step between neighbours at cost 0, and the arrived chain crosses to the next
 //   leave node at their LCP (an LCA depth). O(m) nodes and arcs, O(m log m).
-// Bounds: n: 2..=5e4; m: 1..=5e4; k: 1..=2e4; roads.u, roads.v: 1..=n; roads.w: 0..=2e4;
-//   roads.word: 1..=k
 // original: corpus/submissions/5515890.cpp
+// Bounds: n: 2..=5e4; m: 1..=5e4; k: 1..=2e4; roads.u, roads.v: 1..=n; roads.w: 0..=2e4; roads.word: 1..=k
 @!multitest
 let (n, m, k): (2..=5e4, 1..=5e4, 1..=2e4) = read()
 domain V = 1..=n

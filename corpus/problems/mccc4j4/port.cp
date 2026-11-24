@@ -6,6 +6,7 @@
 // Solution: add up the points, sort each group by (-points, number) and take entry K.
 //   O(N log N + matches).
 // original: corpus/submissions/4264934.cpp
+// Bounds: t, u, v: 1..=n
 
 let (n, m): (Int, Int) = read()
 domain Team = 1..=n

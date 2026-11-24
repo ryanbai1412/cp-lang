@@ -6,7 +6,7 @@
 // Solution: an optimal segment has its max and min at its two ends (else shrink it), so maximize
 //   (a_j - j) - (a_i - i) or (a_i + i) - (a_j + j) over i <= j. A SegTree keeps the best of each
 //   endpoint term per side and the best pair, combined across the midpoint. O((n + q) log n).
-// Bounds: n, q: 1..=200_000; a: 1..=1_000_000_000
+// Bounds: n, q: 1..=200_000; a: 1..=1_000_000_000; p: 1..=n; x: 1..=1_000_000_000
 @!multitest
 let n: 1..=200_000 = read()
 let q: 1..=200_000 = read()

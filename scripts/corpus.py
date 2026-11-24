@@ -408,7 +408,7 @@ def header_fields(text):
     return found
 
 
-READ_LINE = re.compile(r"^(?:let|var) (.+?): (.+) = read\(\)\s*$")
+READ_LINE = re.compile(r"^\s*(?:let|var) (?:(.+?): (.+) = read\(\)|([^:=]+?) = read<(.+)>\(\))\s*$")
 DOMAIN_LINE = re.compile(r"^domain (\w+) = (.+?)\s*$")
 READ_RANGE = re.compile(r"^(-?[\w.]+(?:\s*[-+*/^]\s*[\w.]+)*)\s*\.\.(=?)\s*(.+)$")
 def split_top(s):
@@ -448,13 +448,13 @@ def port_ranges(text):
     domains, out = {}, {}
     for line in text.split("\n"):
         line = line.split("//")[0].rstrip()
-        m = DOMAIN_LINE.match(line)
+        m = DOMAIN_LINE.match(line.strip())
         if m: domains[m.group(1)] = m.group(2)
         m = READ_LINE.match(line)
         if m:
-            pat = m.group(1).strip()
+            pat = (m.group(1) or m.group(3)).strip()
             names = split_top(pat[1:-1]) if pat.startswith("(") else [pat]
-            out.update(read_ranges(names, m.group(2), domains))
+            out.update(read_ranges(names, m.group(2) or m.group(4), domains))
     return out
 
 
@@ -505,6 +505,9 @@ def bounds_findings(pid, text):
     declared, read = declared_bounds(text), port_ranges(text)
     if declared is None:
         return [f"no-header-bounds {pid} -"] if read else []
+    header = text.split("\n")[:next((i for i, l in enumerate(text.split("\n")) if not l.startswith("//")), None)]
+    if sum(1 for l in header if re.match(r"//\s*Bounds:", l)) > 1:
+        return [f"bounds-twice {pid} -"]
     found = [f"bounds-unparsed {pid} {n}" for n, r in declared.items() if r is None]
     found += [f"bounds-unread {pid} {n}" for n in declared if declared[n] and n not in read]
     found += [f"bounds-undeclared {pid} {n}" for n in read if n not in declared]

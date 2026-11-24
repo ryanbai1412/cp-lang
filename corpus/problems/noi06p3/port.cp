@@ -10,7 +10,7 @@
 //   per row). A DP from the bottom keeps states lo (on the trunk, may rise) and hi (on a foot,
 //   may fall) per candidate, with running minima over the lower and higher next heights: O(25 n).
 // original: corpus/submissions/3868871.cpp
-// Bounds: n: 1..=1_000_000
+// Bounds: n: 1..=1_000_000; ai, bi: 0..=1_000_000
 let n: 1..=1_000_000 = read()
 domain Col = 0..n
 var a: [Col]Int = 0

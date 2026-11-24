@@ -10,6 +10,7 @@
 // The slope is printed to 5 decimals (the original first cuts it to 6).
 // The sums fit an Int; the products in the slope do not, so it is formed in F64.
 // original: corpus/submissions/5461671.cpp
+// Bounds: l, r: 1..=n
 
 type Sums = (xy: Int, x: Int, y: Int, xx: Int, lo: Int, len: Int)
 type Edit = (set: ?(x: Int, y: Int), dx: Int, dy: Int)  // set first, then add

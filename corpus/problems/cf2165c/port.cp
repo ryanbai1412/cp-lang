@@ -7,7 +7,7 @@
 //   take any lower bits: done. If c needs bit b and no value has it, raise the value with the
 //   largest low part to the next multiple of 2^b. At most 30 values are raised, always among
 //   the 30 largest, so keep only those: O(n log n + q 30^2).
-// Bounds: n: 1..=500_000; q: 1..=50_000; a: 0..=2 ** 30 - 1
+// Bounds: n: 1..=500_000; q: 1..=50_000; a: 0..=2 ** 30 - 1; c: 0..2 ** 30
 
 use std.seq.{argmax}
 

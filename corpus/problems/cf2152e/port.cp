@@ -7,7 +7,7 @@
 //   longer than n is printed at once. Otherwise label them layer i. After n rounds some index
 //   is unlabelled, and each element left after round i has a larger layer-i element to its
 //   left; walking back from it through layers n - 1..0 gives a decreasing sequence. O(n^3).
-// Bounds: n: 1..=100
+// Bounds: n: 1..=100; got: 1..=n * n + 1
 
 @!interactive
 @!multitest

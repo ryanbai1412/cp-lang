@@ -10,7 +10,7 @@
 //   O((n + m) log + q log n).
 // original: corpus/submissions/6512702.cpp
 // Bounds: n: 1..=2e5; m: 0..=4e5; roads.u, roads.v: 1..=n; roads.w: 1..=1e4;
-//   roads.alt: 1..=1e9; q: 1..=4e5; k: 0..=1; s: 0..=1e9
+//   roads.alt: 1..=1e9; q: 1..=4e5; k: 0..=1; s: 0..=1e9; v0: 1..=n; p0: 0..=s
 
 @!multitest
 let n: 1..=2e5 = read()

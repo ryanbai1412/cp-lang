@@ -9,7 +9,7 @@
 //   left (carry the nearest later partner, cut where it is next door) gives the fewest cuts.
 //   Pair cut i with cut i + half as one segment, adding cut 0 when the outermost bad pair still
 //   collides and cut n to make the count even. O((n + m) log n).
-// Bounds: n: 1..=2e5; m: 0..=2e5
+// Bounds: n: 1..=2e5; m: 0..=2e5; l, r: 1..=n
 
 @!multitest
 let (n, m): (1..=2e5, 0..=2e5) = read()

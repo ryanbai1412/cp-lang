@@ -8,6 +8,7 @@
 //   shared block (a vertex's own blocks join after its children, unchecked). Length 0 tests
 //   whether a distant pair exists. O(S log S log S) expected.
 // original: corpus/submissions/4899354.cpp
+// Bounds: parent: 1..=n
 use std.strings.{HashVal}
 
 let n: Int = read()

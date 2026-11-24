@@ -9,7 +9,7 @@
 //   beside it are not 'X' and both sides fit. Every such placement is a +1/-1 range in a
 //   difference array, so a cell can be black when its prefix sum is positive. O(nk).
 // original: corpus/submissions/4686585.cpp
-// Bounds: k: 1..=100
+// Bounds: k: 1..=100; clues: 1..=n
 let row = read<Str of "X_.">()
 let n = row.len
 assert 1 <= n <= 200_000

@@ -8,7 +8,7 @@
 //   queue, updating degrees, like a topological sort; if some ball is never peeled the wires
 //   hold a cycle and the answer is -1. Print the peel order reversed, O(n + m).
 // original: corpus/submissions/4530006.cpp
-// Bounds: n: 1..=2e5; m: 1..=5e5
+// Bounds: n: 1..=2e5; m: 1..=5e5; u, v: 1..=n
 let n: 1..=2e5 = read()
 let m: 1..=5e5 = read()
 domain V = 1..=n

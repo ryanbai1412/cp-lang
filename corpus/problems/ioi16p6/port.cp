@@ -10,6 +10,7 @@
 // original: corpus/submissions/4730545.cpp
 // The square from cut l to cut r costs (r - l)^2, a line in l at r; each line carries its photo
 // count so equal costs prefer fewer photos, which `aliens` needs.
+// Bounds: n, k: 1..=1e5; m: 1..=1e6
 let (n, m, k) = read<(1..=1e5, 1..=1e6, 1..=1e5)>()
 domain Diag = 0..m
 let spans = read<[n](r: Diag, c: Diag)>().map(p => min(p.r, p.c)..=max(p.r, p.c)).outermost()

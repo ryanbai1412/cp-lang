@@ -11,7 +11,7 @@
 // input: `n 0` and the array, or `n 1`, `x y z b1 b2 m` and m lines `p l r`:
 //   b[i] = (x b[i-1] + y b[i-2] + z) mod 2^30, and a[i] = b[i] mod (r - l + 1) + l for the
 //   first line with i <= p.
-// Bounds: n: 2..=4e7; kind: 0..=1
+// Bounds: n: 2..=4e7; kind: 0..=1; x, y, z, b1, b2: 0..B; m: 1..=1e5; parts.p: 1..=n; parts.l, parts.r: 1..=1e9
 // original: corpus/submissions/5148191.cpp
 
 const B = 1 << 30

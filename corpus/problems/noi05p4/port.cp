@@ -9,6 +9,7 @@
 //   memoised E(cat, mouse) = 1 + the average of E over the mouse's deg + 1 choices after the
 //   cat's two steps, or 1 if a step catches it. O(n (n + e)).
 // original: corpus/submissions/5032733.cpp
+// Bounds: n, e: 1..=1_000; cat, mouse: 1..=n
 let (n, e) = read<(1..=1_000, 1..=1_000)>()
 domain V = 1..=n
 let (cat, mouse) = read<(V, V)>()

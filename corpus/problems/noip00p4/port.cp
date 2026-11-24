@@ -9,7 +9,7 @@
 //   its number once. best[a, b] over diagonal k is the best of the (up to four) reached
 //   predecessor row pairs on diagonal k - 1 plus the cells' numbers. O(N^3).
 // original: corpus/submissions/5067920.cpp
-// Bounds: n: 1..=9
+// Bounds: n: 1..=9; x: 0..=n; y: 1..=n; v: 1..=30
 let n: 1..=9 = read()
 domain Row = 1..=n
 var grid: [Row, Row]0..=30 = 0

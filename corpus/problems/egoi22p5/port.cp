@@ -5,7 +5,7 @@
 // Solution: keep the counts sorted. After taking m from the top c, both the top c less m
 //   and the rest are still sorted, so std `merge_sorted` on the window where they overlap
 //   (two binary searches) restores the order instead of a sort. O(n log n + s n).
-// Bounds: n: 1..=1e5; s: 1..=5000; start: 0..=1e9
+// Bounds: n: 1..=1e5; s: 1..=5000; start: 0..=1e9; take: 1..=1e9; top: 1..=n
 // original: corpus/submissions/5203693.cpp
 
 let n: 1..=1e5 = read()

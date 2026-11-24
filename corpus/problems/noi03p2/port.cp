@@ -9,6 +9,7 @@
 //   never copying them) and rebuilds the piece start offsets, O(pieces). Moving is free; a
 //   Get binary-searches the offsets for the cursor's piece, then costs O(n) to print. Insert
 //   text is read by lines, so spaces survive. The original uses a rope.
+// Bounds: n: 0..=2_097_152
 let t: Int = read()
 var pieces: List<Str> = []
 var starts = [0]  // starts[i]: where piece i begins; the last entry is the text's length

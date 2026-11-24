@@ -9,7 +9,7 @@
 //   keeps runs with strictly falling death times: a new run pops every run it outlives,
 //   noting when the last popped one died, and merges with a same-value run it reaches. The
 //   strength is the bottom run's death time. Amortized O(n).
-// Bounds: n: 1..=300_000
+// Bounds: n: 1..=300_000; val: 0..=n
 @!multitest
 let n: 1..=300_000 = read()
 var stack: List<(dies: Int, val: Int)> = []

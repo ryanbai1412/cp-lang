@@ -8,7 +8,7 @@
 //   affine map x => a_i * x + a_i * that count, and a SegTree of their compositions keeps
 //   the whole sum: O(log n) per update.
 // original: corpus/submissions/5445695.cpp
-// Bounds: n: 1..=1e5; q: 0..=1e5
+// Bounds: n: 1..=1e5; q: 0..=1e5; i: 1..=n
 const MOD = 1000000007
 type Z = Mod<MOD>
 let n: 1..=1e5 = read()

@@ -9,7 +9,7 @@
 //   shorten. Each state of t's own automaton covers lengths (link len, len] ending at one
 //   position; the lengths above what matched there are new. O((|s| + sum |t|) log |s|).
 // original: corpus/submissions/6513115.cpp
-// Bounds: q: 1..=1e5
+// Bounds: q: 1..=1e5; l, r: 1..=n
 use std.segtree.{MergeSeg, MergeSegs}
 use std.strings.{SuffixAutomaton}
 

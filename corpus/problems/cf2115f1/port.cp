@@ -11,7 +11,7 @@
 //   those at its ancestors. A query walks root to p without pushing and returns the deepest alive
 //   id (leftmost alive leaf), pruning dead leaves in place so each is visited once. O(log) treap
 //   work per op plus the segment-tree merges.
-// Bounds: n, q_cnt: 1..=100_000
+// Bounds: n, q_cnt: 1..=100_000; p: 1..=n
 use std.marks.{Arena, Id}
 use std.rand.Rng
 

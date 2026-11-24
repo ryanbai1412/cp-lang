@@ -12,7 +12,7 @@
 // Both trees share one node space (H is offset by |G|) held in List<List<Int>>,
 // and shapes are named through a Map<List<Int>, Int>: the prototype has no
 // per-test domain inside a loop and no Rooted.from_parents.
-// Bounds: tests: 1..=500; k: 0..=5
+// Bounds: tests: 1..=500; k: 0..=5; n: 1..=1e5; p: -1..=n
 let tc: Int = read()
 let tests: 1..=500 = read()
 let k: 0..=5 = read()

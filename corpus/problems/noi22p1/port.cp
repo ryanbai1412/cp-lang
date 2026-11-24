@@ -13,7 +13,7 @@
 // HashMap keyed by store * 2^20 + value: the prototype has no Deque, no
 // struct arena, no way to walk a HashMap, and `m[(s, x)] += 1` on a tuple key
 // emits C++ that does not compile.
-// Bounds: n, q: 1..=5e5
+// Bounds: n, q: 1..=5e5; len: 0..=5e5; x, y, z: 1..=n + q; kind: 1..=4; m: 1..=5e5
 let n: 1..=5e5 = read()
 let q: 1..=5e5 = read()
 const BITS = 20  // values are at most n + q < 2^20

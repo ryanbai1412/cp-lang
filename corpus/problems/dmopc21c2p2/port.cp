@@ -8,7 +8,7 @@
 //   two values (positions inv[x], inv[y]). Answer Q with start[v] = p[inv[v]]. O(1) per swap, O(n)
 //   per Q.
 // original: corpus/submissions/3946515.cpp
-// Bounds: n: 1..=300; q: 1..=3e5
+// Bounds: n: 1..=300; q: 1..=3e5; u, v, i, j, target: 1..=n
 let n: 1..=300 = read()
 let q: 1..=3e5 = read()
 domain Pos = 1..=n

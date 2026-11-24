@@ -6,7 +6,7 @@
 //   tree walks (from house 1 to find a, from a to find b, from b), O(n).
 // original: corpus/submissions/5032732.cpp
 // The walk is hand-rolled: the prototype's bfs has no edge weights.
-// Bounds: n: 1..=2e5; m: 0..=2e5
+// Bounds: n: 1..=2e5; m: 0..=2e5; u, v: 1..=n; w: 1..=1e9
 let n: 1..=2e5 = read()
 let m: 0..=2e5 = read()
 domain Home = 1..=n

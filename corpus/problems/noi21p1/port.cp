@@ -9,7 +9,7 @@
 //   neighbours (heavy edges inside the range); a query adds those over its ranges and compares
 //   colours across each range's top edge. O(m log^2 n).
 // original: corpus/submissions/3859087.cpp
-// Bounds: t: 1..=3
+// Bounds: t: 1..=3; n, m: 1..=1e5; kind: 1..=2; a, b: 1..=n
 
 // A range's colours at both ends and its count of equal neighbours; `l == 0` is the empty range.
 type Run = (l: Int, r: Int, ties: Int)

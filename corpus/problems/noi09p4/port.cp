@@ -10,6 +10,7 @@
 //   answer is the positive sum minus the max flow (FlowGraph) on NM + 2 nodes.
 // Runnable port (proto/cp.py lib-run) of statement-first noi09p4.cp
 // original: corpus/submissions/5144326.cpp
+// Bounds: pr: 0..n; pc: 0..m
 
 let (n, m): (Int, Int) = read()
 domain Row = 0..n

@@ -8,7 +8,7 @@
 //   Y - 2 (or the same with U and V swapped). O(1) per query.
 // original: corpus/submissions/4564027.cpp
 // All-pairs distances by one BFS per source (the graph is connected).
-// Bounds: n, m: 1..=3000; routes.u, routes.v: 1..=n; q: 1..=1e6
+// Bounds: n, m: 1..=3000; routes.u, routes.v: 1..=n; q: 1..=1e6; s, t, u, v: 1..=n
 
 let n: 1..=3000 = read()
 let m: 1..=3000 = read()

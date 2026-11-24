@@ -7,7 +7,7 @@
 //   bit k: compare the low part of digit k / 30, and if equal, the highest lower digit where
 //   up and down differ, from an or-SegTree of differing digits searched with left_while. O(n log n) amortised.
 // original: corpus/submissions/5690633.cpp
-// Bounds: q: 1..=1e6
+// Bounds: q: 1..=1e6; a: -1e9..=1e9; b, k: 0..=30 * q
 let (q, _, _, _): (1..=1e6, Int, Int, Int) = read()
 const BASE = 1 << 30
 domain Digit = 0..q + 4  // b <= 30 q, plus room for the carries
