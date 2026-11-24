@@ -104,10 +104,6 @@ fn checker_errors(path: &Path, src: &str) -> usize {
     })
 }
 
-/// Dream ports a fix still makes worse, each waiting on another domain. The
-/// list only shrinks: an entry that stops getting worse fails the test.
-const KNOWN_WORSE: &[(&str, &str)] = &[];
-
 /// A verified autofix never makes a file worse: `cpl fix` leaves the checker
 /// with no more errors than before, on idiomatic code and on dream ports.
 #[test]
@@ -141,10 +137,7 @@ fn fixes_never_add_checker_errors() {
             .collect();
         jobs.into_iter().flat_map(|j| j.join().unwrap()).collect()
     });
-    let (known, worse): (Vec<_>, Vec<_>) = found
-        .into_iter()
-        .partition(|(rel, _, _)| KNOWN_WORSE.iter().any(|(k, _)| k == rel));
-    let worse: Vec<String> = worse
+    let worse: Vec<String> = found
         .iter()
         .map(|(rel, before, after)| format!("{rel}: {before} -> {after}"))
         .collect();
@@ -152,14 +145,6 @@ fn fixes_never_add_checker_errors() {
         worse.is_empty(),
         "fixes add checker errors:\n{}",
         worse.join("\n")
-    );
-    let fixed: Vec<_> = KNOWN_WORSE
-        .iter()
-        .filter(|(k, _)| !known.iter().any(|(w, _, _)| w == k))
-        .collect();
-    assert!(
-        fixed.is_empty(),
-        "no longer made worse, drop from KNOWN_WORSE: {fixed:?}"
     );
 }
 
@@ -229,35 +214,25 @@ fn one_item_proves_what_the_whole_file_proves_there() {
     assert!(compared > 1000, "compared {compared} items");
 }
 
-/// Two lints that fire on one span either share a root cause (the inner one
-/// is superseded: the wider one rewrites it away, so only the wider is shown) or teach two things
-/// (listed here). A new pair has to be one or the other.
-/// The rewrite of the outer one keeps the inner code, so both still teach.
-pub(crate) const DISTINCT: &[(&str, &str)] = &[
-    ("L0415", "L0506"),
-    ("L0501", "L0549"),
-    ("L0504", "L0203"),
-    ("L0504", "L0415"),
-    ("L0504", "L0506"),
-    ("L0504", "L0540"),
-    ("L0507", "L0540"),
-    ("L0531", "L0506"),
-    ("L0536", "L0506"),
-    ("L0549", "L0203"),
-    ("L0551", "L0506"),
-    ("L0580", "L0523"),
-    ("L0585", "L0504"),
-    ("L0585", "L0523"),
-    ("L0585", "L0540"),
-    ("L0586", "L0101"),
-    ("L0504", "L0588"),
-    ("L0504", "L0592"),
-    ("L0507", "L0592"),
-    ("L0524", "L0551"),
-];
+/// Whether `outer` and a finding coded `inner` inside it teach two things:
+/// `outer` has no fix, or applying its fix alone still leaves as many
+/// `inner` findings. A fix that rewrites `inner` away makes them one cause,
+/// which containment (`supersedes` in lib.rs) must hide.
+pub(crate) fn teach_apart(src: &str, config: &Config, outer: &Diagnostic, inner: &str) -> bool {
+    if outer.fixes.is_empty() {
+        return true;
+    }
+    let count = |s: &str| lint(s, config).iter().filter(|d| d.code.0 == inner).count();
+    let one = Diagnostic {
+        fixes: outer.fixes[..1].to_vec(),
+        ..outer.clone()
+    };
+    let (fixed, _) = cpl_diag::apply_fixes(src, &[one]);
+    count(&fixed) >= count(src)
+}
 
 #[test]
-fn nested_findings_are_one_cause_or_listed_distinct() {
+fn nested_findings_shown_together_teach_two_things() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut found = std::collections::BTreeSet::new();
     let sets = [
@@ -275,20 +250,18 @@ fn nested_findings_are_one_cause_or_listed_distinct() {
                     if outer.code != inner.code
                         && outer.span != inner.span
                         && outer.span.contains(inner.span)
+                        && !teach_apart(&src, &config, outer, inner.code.0)
                     {
-                        found.insert((outer.code.0, inner.code.0));
+                        let rel = file.strip_prefix(&root).unwrap().display().to_string();
+                        found.insert((rel, outer.code.0, inner.code.0));
                     }
                 }
             }
         }
     }
-    let new: Vec<_> = found
-        .into_iter()
-        .filter(|(o, i)| !DISTINCT.contains(&(*o, *i)))
-        .collect();
     assert!(
-        new.is_empty(),
-        "lints nested in another's span; supersede the inner one or list the pair in DISTINCT: {new:?}"
+        found.is_empty(),
+        "a lint's fix rewrites away a finding nested in it, yet both are shown: {found:?}"
     );
 }
 

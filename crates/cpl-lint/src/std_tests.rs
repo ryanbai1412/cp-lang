@@ -46,20 +46,12 @@ fn a_fn_is_not_told_to_call_itself() {
 /// `std` modules `cpl lint` refuses because `cpl_syntax` does not parse
 /// them (requests in the compiler and stdlib worklogs). No other module may
 /// join the list; one that starts parsing can leave it.
-const NOT_PARSED: &[&str] = &[
-    "algebra.cp",
-    "geometry.cp",
-    "graph.cp",
-    "seq.cp",
-    "strings.cp",
-];
-
 #[test]
-fn every_std_module_but_the_known_ones_parses() {
+fn every_std_module_parses() {
     let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
         .join(crate::STD_DIR);
-    let mut failing: Vec<String> = std::fs::read_dir(dir)
+    let failing: Vec<String> = std::fs::read_dir(dir)
         .unwrap()
         .map(|entry| entry.unwrap().path())
         .filter(|path| path.extension().is_some_and(|e| e == "cp"))
@@ -69,7 +61,6 @@ fn every_std_module_but_the_known_ones_parses() {
         })
         .map(|path| path.file_name().unwrap().to_string_lossy().into_owned())
         .collect();
-    failing.retain(|name| !NOT_PARSED.contains(&name.as_str()));
     assert!(
         failing.is_empty(),
         "these std modules stopped parsing: {failing:?}"

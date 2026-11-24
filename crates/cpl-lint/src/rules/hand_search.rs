@@ -425,13 +425,15 @@ impl HandSearch<'_> {
         }
     }
 
-    /// `for _ in 0..k:` popping a heap with `h.pop()!` and never pushing it.
-    fn heap_drain(&mut self, stmt: &Stmt, iter: &Expr, body: &Block) {
+    /// `for _ in 0..k:`, or a comprehension's `for _ in 0..k`, popping a heap
+    /// with `h.pop()!` and never pushing it; `head` runs from the `for` to the
+    /// end of `iter`, `body` is what runs each time.
+    fn heap_drain(&mut self, head: cpl_diag::Span, iter: &Expr, body: cpl_diag::Span) {
         let raw = iter.span.shift(self.base).text(self.src).trim();
         let Some(k) = raw.strip_prefix("0..").map(str::trim) else {
             return;
         };
-        let whole = squash_code(body.span.shift(self.base).text(self.src));
+        let whole = squash_code(body.shift(self.base).text(self.src));
         let file = self.squashed_file();
         let pops: Vec<_> = whole.match_indices(".pop()").collect();
         let [(at, _)] = pops.as_slice() else {
@@ -455,8 +457,7 @@ impl HandSearch<'_> {
         if !heap || whole.contains(&format!("{h}.push(")) || pushed_in_fn(self.src, h) {
             return;
         }
-        let head = stmt.span.shift(self.base);
-        let head = cpl_diag::Span::new(head.start, iter.span.shift(self.base).end);
+        let head = cpl_diag::Span::new(head.start, iter.span.end).shift(self.base);
         let diag = Diagnostic::warning(
             MANUAL_HEAP_DRAIN.code,
             head,
@@ -583,6 +584,11 @@ impl HandSearch<'_> {
 
 impl Visitor for HandSearch<'_> {
     fn expr(&mut self, expr: &Expr) {
+        if let ExprKind::Comprehension { body, clauses } = &expr.kind {
+            if let [c] = clauses.as_slice() {
+                self.heap_drain(c.pat.span, &c.iter, body.span);
+            }
+        }
         let span = expr.span.shift(self.base);
         let text = squash_code(span.text(self.src));
         let Some(recv) = text.strip_suffix(".sorted()") else {
@@ -614,7 +620,7 @@ impl Visitor for HandSearch<'_> {
             self.subset_masks(stmt, pat, iter, body);
             self.adjacent(stmt, pat, iter, body);
             self.fact_table(pat, iter, body);
-            self.heap_drain(stmt, iter, body);
+            self.heap_drain(stmt.span, iter, body.span);
             self.group_into_map(pat, iter, body);
             self.sliding_sum(pat, iter, body);
         }

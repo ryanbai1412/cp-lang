@@ -96,10 +96,18 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     let lines = cpl_diag::LineIndex::new(file.src);
     let mut out = Vec::new();
     for (value, mut spans) in ints.seen {
-        // `-1e9..=1e9` is one fact: count lines, not occurrences.
+        // A big value is a fact each time it is written, but `-1e9..=1e9`
+        // is one: a range's two ends count once. A small one counts by line:
+        // `m + 1000, q - 1000` on one line is arithmetic, not a fact.
         spans.sort_by_key(|s| s.start);
-        spans.dedup_by_key(|s| lines.line_col(s.start).line);
-        let need = if value >= 1_000_000 { 2 } else { 3 };
+        let big = value >= 1_000_000;
+        spans.dedup_by(|hi, lo| {
+            let between = file.src.get(lo.end as usize..hi.start as usize);
+            let range_ends = between
+                .is_some_and(|t| matches!(t.trim().trim_end_matches('-').trim(), ".." | "..="));
+            range_ends || (!big && lines.line_col(hi.start).line == lines.line_col(lo.start).line)
+        });
+        let need = if big { 2 } else { 3 };
         if spans.len() < need {
             continue;
         }
@@ -115,8 +123,9 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             REPEATED_LITERAL.code,
             span,
             format!(
-                "`{text}` is written on {} lines; it is first on line {line}",
-                spans.len()
+                "`{text}` is written {} {}; it is first on line {line}",
+                spans.len(),
+                if big { "times" } else { "lines" }
             ),
         )
         .with_help(format!(

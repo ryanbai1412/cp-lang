@@ -585,7 +585,19 @@ impl<'a> Scanner<'a> {
                     self.scan_expr(e);
                 }
             }
-            ExprKind::Comprehension { .. } => {}
+            ExprKind::Comprehension { body, clauses } => {
+                let mut writes = HashSet::new();
+                for c in clauses {
+                    self.scan_expr(&c.iter);
+                    collect_pat_names(&c.pat, &mut writes);
+                }
+                self.loops.push(LoopFrame {
+                    stmt_span: expr.span.shift(self.base),
+                    writes,
+                });
+                self.scan_expr(body);
+                self.loops.pop();
+            }
             ExprKind::Lambda { body, .. } => {
                 let saved = std::mem::take(&mut self.loops);
                 self.scan_expr(body);

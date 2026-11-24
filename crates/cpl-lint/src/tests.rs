@@ -940,7 +940,7 @@ fn repeated_literal_from_noip19p4() {
     assert_eq!(found.code, REPEATED_LITERAL.code);
     assert_eq!(
         found.message,
-        "`998244353` is written on 2 lines; it is first on line 1"
+        "`998244353` is written 2 times; it is first on line 1"
     );
     // proto/ports/scout_batch_39/today/aac4p5.cp: equal statement bounds of
     // different inputs are separate facts; `-1e9..=1e9` is one; small numbers repeat.

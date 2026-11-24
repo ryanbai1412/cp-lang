@@ -1259,6 +1259,7 @@ LINT_POST_FILTERS = {
     "crates/cpl-lint/src/typed.rs": ("TYPED",),
     "crates/cpl-lint/src/corpus_tests.rs": ("DISTINCT", "KNOWN_WORSE"),
     "crates/cpl-lint/src/std_tests.rs": ("NOT_PARSED",),
+    "crates/cpl-lint/src/record_tests.rs": ("DISTINCT",),
 }
 ARRAY_DECL_RE = re.compile(
     r"^\s*(?:pub(?:\([a-z]+\))?\s+)?(?:const|static)\s+([A-Z][A-Z0-9_]*)\s*:[^=]*=\s*&?\[", re.M)
@@ -1734,7 +1735,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
 HARD_ZERO = frozenset({
     "pending_tests", "edition_refs", "uncited_rules", "decision_dup_numbers", "why_written_twice", "authority_drift",
     "continue_on_error", "unregistered_lists", "codegen_effect_guesses", "spec_std_refs",
-    "stress_hand_json", "lint_dup_helpers",
+    "stress_hand_json", "lint_dup_helpers", "lint_post_filters",
     "measure_broken", "mono_unguarded", "ts_ignore",
     "site_rederived", "browser_lsp_gaps",
     "unrun_script_tests",

@@ -504,18 +504,21 @@ fn records_and_helps_spell_options_some_none() {
 }
 
 /// Two records whose `before.cp` each fire the other's lint teach one shape
-/// twice, unless the pair is decided: one supersedes the other, or they
-/// teach two things (`DISTINCT`).
+/// twice, unless on each trigger the fix of its own lint leaves the other
+/// firing (`teach_apart`).
 #[test]
 fn no_two_records_teach_one_shape_undecided() {
+    let config = Config::default();
     let fires: Vec<(&str, Vec<&str>)> =
         LINTS.iter().map(|l| (l.code.0, codes(l.trigger))).collect();
-    let decided = |a: &str, b: &str| {
-        let pair = |x: &str, y: &str| (x == a && y == b) || (x == b && y == a);
-        crate::corpus_tests::DISTINCT
+    let apart_on = |own: &str, other: &str| {
+        let lint = LINTS.iter().find(|l| l.code.0 == own).unwrap();
+        crate::lint(lint.trigger, &config)
             .iter()
-            .any(|(x, y)| pair(x, y))
+            .filter(|d| d.code.0 == own)
+            .all(|d| crate::corpus_tests::teach_apart(lint.trigger, &config, d, other))
     };
+    let decided = |a: &str, b: &str| apart_on(a, b) && apart_on(b, a);
     let mut undecided = Vec::new();
     for (a, on_a) in &fires {
         for (b, on_b) in &fires {
@@ -526,6 +529,6 @@ fn no_two_records_teach_one_shape_undecided() {
     }
     assert!(
         undecided.is_empty(),
-        "records that fire each other: merge the rules, supersede one, or list the pair in DISTINCT: {undecided:?}"
+        "records that fire each other and whose fixes rewrite each other away: merge the rules or supersede one: {undecided:?}"
     );
 }
