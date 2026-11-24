@@ -1143,7 +1143,7 @@ fn a_problems_interactor_py_judges_each_case_once() {
         dir.join("interactor.py"),
         format!(
             "import sys\nsys.path.insert(0, {lib:?})\nfrom interactor_lib import run_interactor\n\
-             def drive(case, io):\n    open({runs:?}, 'a').write('run\\n')\n    secret = int(case)\n\
+             def drive(case, io):\n    open({runs:?}, 'a', newline='').write('run\\n')\n    secret = int(case)\n\
              \x20   kind, g = io.recv_line().split()\n    assert kind == 'guess'\n\
              \x20   io.send(str(secret - int(g)))\n    kind, x = io.recv_line().split()\n\
              \x20   if kind != 'answer' or int(x) != secret:\n        sys.exit('wrong answer ' + x)\n\
