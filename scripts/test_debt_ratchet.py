@@ -580,6 +580,26 @@ class DebtRatchetTest(unittest.TestCase):
                              ["crates/cpl-codegen/src/lend.rs:1", "crates/cpl-codegen/src/lend.rs:3",
                               "crates/cpl-codegen/src/lend.rs:4"])
 
+    def test_stress_hand_json_and_helper_env_vars(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            files = {
+                "crates/cpl-stress/src/cli.rs": 'let j = format!("{{\\"case\\":{}}}", n);\nlet s = cpl_json::escape_string(x);\n',
+                "crates/cpl-wasm/src/lib.rs": 'let ok = cpl_json::to_string(&v);\n',
+                "crates/cpl-cli/src/dap.rs": 'format!("{{\\"seq\\":1}}")\n',
+                "crates/cpl-stress/src/choices.rs": 'run(g, &[("CPL_SEED", s)]);\np.env.push(("CPL_CHOICES".to_string(), x));\n',
+                "crates/cpl-codegen/src/runtime.rs": 'std::getenv(\\"CPL_CHOICES_OUT\\")\n',
+                "crates/cpl-cli/src/toolchain.rs": 'command.env("CPL_TOOLCHAIN", &id);\n',
+            }
+            for rel, text in files.items():
+                (root / rel).parent.mkdir(parents=True, exist_ok=True)
+                (root / rel).write_text(text)
+            self.assertEqual(dr.stress_hand_json(root), ["crates/cpl-stress/src/cli.rs:1", "crates/cpl-stress/src/cli.rs:2"])
+            self.assertEqual(dr.helper_env_vars(root), [
+                "CPL_CHOICES: crates/cpl-stress/src/choices.rs:2",
+                "CPL_CHOICES_OUT: crates/cpl-codegen/src/runtime.rs:1",
+            ])
+
     def test_own_databases_and_copy_baselines(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

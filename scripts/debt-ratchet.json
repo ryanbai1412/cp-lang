@@ -174,5 +174,7 @@
   "std_doc_parsers": 5,
   "edit_engines": 3,
   "codemods_outside_fix": 2,
-  "module_loaders": 20
+  "module_loaders": 20,
+  "stress_hand_json": 0,
+  "helper_env_vars": 4
 }

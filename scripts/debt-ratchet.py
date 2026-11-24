@@ -558,6 +558,36 @@ def own_databases(root: Path) -> list[str]:
     return out
 
 
+def stress_hand_json(root: Path) -> list[str]:
+    """JSON assembled by hand in the stress engine and its browser entry; `cpl_json` values render it."""
+    out = []
+    for p in _rs_files(root, "crates/cpl-stress", "crates/cpl-wasm/src"):
+        out += [f"{_rel(root, p)}:{i}" for i, line in enumerate(_lines(p), 1)
+                if '{{\\"' in line or "escape_string(" in line]
+    return out
+
+
+# Variables the toolchain may hand a program it runs: stress seeds a built `@gen` fn.
+HELPER_ENV_ALLOWED = {"CPL_SEED"}
+
+
+def helper_env_vars(root: Path) -> list[str]:
+    """`CPL_*` side channels to a compiled program or helper beyond `CPL_SEED`: one a generated runtime
+    `getenv`s, or one stress or the judge sets on a program it runs. Helpers talk through stdin/stdout."""
+    found: dict[str, str] = {}
+    for p in _rs_files(root, tests=False):
+        rel = _rel(root, p)
+        helper = rel.startswith(("crates/cpl-stress/", "crates/cpl-judge/", "crates/cpl-cli/src/profile.rs"))
+        for i, line in enumerate(_lines(p), 1):
+            names = re.findall(r'getenv\(\\?"(CPL_[A-Z0-9_]+)', line)
+            if helper:
+                names += re.findall(r'(?:\.env\(|\(\(?)"(CPL_[A-Z0-9_]+)"(?:\.to_string\(\))?\s*,', line)
+            for name in names:
+                if name not in HELPER_ENV_ALLOWED:
+                    found.setdefault(name, f"{name}: {rel}:{i}")
+    return sorted(found.values())
+
+
 def _copy_baseline(root: Path, name: str) -> list[str]:
     """The `read_only_copies` test's shrink-only count `name` over the corpus C++, one item per unit."""
     path = root / "crates/cpl-cli/tests/read_only_copies.rs"
@@ -1223,6 +1253,7 @@ def unregistered_lists(root: Path) -> list[str]:
 HARD_ZERO = frozenset({
     "pending_tests", "edition_refs", "uncited_rules", "decision_dup_numbers",
     "continue_on_error", "unregistered_lists", "codegen_effect_guesses", "spec_std_refs",
+    "stress_hand_json",
 })
 
 # name -> (label, measure, ratcheted). Informational counts are shown, never gated.
@@ -1256,6 +1287,8 @@ COUNTERS = {
     "plan_delta_lines": ("lines of notes under plan/domains/*/delta", plan_delta_lines, True),
     "vm_fallbacks": ("tree-walker fallbacks over tests/programs", vm_fallbacks, True),
     "own_databases": ("Database::new() outside tests and cpl-check", own_databases, True),
+    "stress_hand_json": ("hand-built JSON in cpl-stress and cpl-wasm", stress_hand_json, True),
+    "helper_env_vars": ("CPL_* helper side channels beyond CPL_SEED", helper_env_vars, True),
     "cpp_deep_copies": ("deep copies in the corpus C++ (read_only_copies)", cpp_deep_copies, True),
     "cpp_std_functions": ("std::function in the corpus C++ (read_only_copies)", cpp_std_functions, True),
     "codegen_effect_guesses": ("codegen effect or purity guesses outside the Uses table", codegen_effect_guesses, True),
