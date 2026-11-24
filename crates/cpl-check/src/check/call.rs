@@ -72,15 +72,18 @@ impl<'a> Checker<'a> {
     /// its parameters names, `fn mk<T: Default>() -> T`: only the type its
     /// value goes to can bind it.
     fn returns_only_its_own_param(&mut self, name: &str) -> bool {
-        let Some(Def::Fn {
+        let Some(def) = self.global(name) else {
+            return false;
+        };
+        let Def::Fn {
             ty: Ty::Fn { params, ret },
             generics,
             ..
-        }) = self.global(name).as_deref().cloned()
+        } = &*def
         else {
             return false;
         };
-        let Ty::Param(p) = &*ret else {
+        let Ty::Param(p) = &**ret else {
             return false;
         };
         let names_p = |t: &Ty| {
@@ -876,10 +879,11 @@ impl<'a> Checker<'a> {
         if self.local(type_name).is_some() {
             return None;
         }
-        let Some(Def::Struct {
+        let def = self.type_def(type_name)?;
+        let Def::Struct {
             generics: struct_generics,
             ..
-        }) = self.type_def(type_name).as_deref().cloned()
+        } = &*def
         else {
             return None;
         };
@@ -909,11 +913,8 @@ impl<'a> Checker<'a> {
             3 => "triples",
             _ => return None,
         };
-        let Some(Def::Fn { ty, generics, .. }) = self
-            .type_def(&format!("{}_of_{suffix}", name.text))
-            .as_deref()
-            .cloned()
-        else {
+        let def = self.type_def(&format!("{}_of_{suffix}", name.text))?;
+        let Def::Fn { ty, generics, .. } = &*def else {
             return None;
         };
         // `Graph<V, E>.directed(pairs)` meets `Graph`'s bounds as `Graph<V, E>.directed(edges)`
@@ -1501,16 +1502,17 @@ impl<'a> Checker<'a> {
                         let Some(actual) = bindings.get(param) else {
                             continue;
                         };
-                        let Some(Def::Trait { fields, .. }) =
-                            self.global(tname).as_deref().cloned()
-                        else {
+                        let Some(def) = self.global(tname) else {
+                            continue;
+                        };
+                        let Def::Trait { fields, .. } = &*def else {
                             continue;
                         };
                         if fields.is_empty() {
                             continue;
                         }
                         if let Ty::Record(actual_fs) = actual {
-                            for (req_name, req_ty) in &fields {
+                            for (req_name, req_ty) in fields {
                                 let found = actual_fs.iter().find(|(n, _)| n == req_name);
                                 if !matches!(found, Some((_, got_ty)) if self.fits(got_ty, req_ty))
                                 {

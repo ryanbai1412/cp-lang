@@ -115,9 +115,9 @@ pub enum Def {
         /// `trait Both = Sh + Nm` (R08.2.6).
         alias: bool,
         /// The associated types it declares, `type Found` (R08.1.9), each
-        /// with the traits its bound names (`type Arc: Target<V>`) and its
-        /// default, if any (`type Item = Int`, decision 469).
-        assoc: Vec<(String, Vec<String>, Option<Ty>)>,
+        /// with the traits its bound names and their arguments (`type Arc: Target<V>`)
+        /// and its default, if any (`type Item = Int`, decision 469).
+        assoc: Vec<(String, Vec<TraitRef>, Option<Ty>)>,
         /// `@structural trait Hash`: a compound type has it when each part does, and a
         /// built-in scalar only through its own impl.
         structural: bool,
@@ -401,3 +401,6 @@ pub(crate) fn guessed(stmt: &cpl_syntax::ast::Stmt) -> bool {
 
 /// Each generic's bound with its trait arguments: `("S", "Indexed", [K, T])`.
 pub type BoundArgs = Vec<(String, String, Vec<Ty>)>;
+
+/// A trait as a bound names it, with its arguments: `Target<V>`.
+pub type TraitRef = (String, Vec<Ty>);

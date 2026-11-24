@@ -846,6 +846,9 @@ impl<'a> Checker<'a> {
                     )
                 })
             }
+            Ty::Assoc { of, name: assoc } if let Ty::Param(param) = &**of => {
+                return (self.assoc_bound_member(param, assoc, &name.text)).unwrap_or(Ty::Unknown);
+            }
             Ty::Param(param) => {
                 return match self.bound_method(param, &name.text) {
                     Some(Ty::Fn { params, ret }) if !self.in_call_callee && params.is_empty() => {

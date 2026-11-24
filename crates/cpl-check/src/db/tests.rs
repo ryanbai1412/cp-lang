@@ -490,3 +490,12 @@ fn a_bare_bound_gives_the_fn_its_free_trait_arg() {
         print(yes(xs.contains(W.cuts.nth(1).ord)), W.cuts.nth(0).ord + 1)\n";
     assert_eq!(silent_unknowns_of(src), (vec![], 0));
 }
+
+#[test]
+fn a_param_typed_by_a_trait_is_a_bounded_generic_with_its_members() {
+    let own =
+        "trait Big<T>:\n    fn get(self, i: Int) -> T\nfn first<T>(b: Big<T>) -> T = b.get(0)\n";
+    assert_eq!(silent_unknowns_of(own), (vec![], 0));
+    let arcs = "use std.graph.{Next}\nfn reach<V>(g: Next<V>, u: V) -> Int:\n    var n = 0\n    for a in g.out(u): n += g.out(a.to).count()\n    n\n";
+    assert_eq!(silent_unknowns_of(arcs), (vec![], 0));
+}

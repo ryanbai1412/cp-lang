@@ -268,6 +268,60 @@ impl Checker<'_> {
         None
     }
 
+    /// The type of member `name` of `param.assoc`, from the traits its declaration bounds it
+    /// by: inside `fn f<G: Next<V>>`, an arc `a: G.Arc` has `Target<V>`'s `to`.
+    pub(crate) fn assoc_bound_member(
+        &mut self,
+        param: &str,
+        assoc: &str,
+        name: &str,
+    ) -> Option<Ty> {
+        let of = Ty::Assoc {
+            of: Box::new(Ty::Param(param.into())),
+            name: assoc.into(),
+        };
+        let bounds: Vec<String> = (self.param_bounds.iter())
+            .filter(|(p, _)| p == param)
+            .flat_map(|(_, ts)| ts.iter().cloned())
+            .collect();
+        for trait_name in bounds {
+            let Some(def) = self.type_def(&trait_name) else {
+                continue;
+            };
+            let Def::Trait {
+                assoc: declared, ..
+            } = &*def
+            else {
+                continue;
+            };
+            let Some((_, assoc_bounds, _)) = declared.iter().find(|(n, ..)| n == assoc) else {
+                continue;
+            };
+            let outer = self.bound_bindings(param, &trait_name);
+            for (bound, args) in assoc_bounds {
+                let Some(def) = self.type_def(bound) else {
+                    continue;
+                };
+                let Def::Trait {
+                    generics, methods, ..
+                } = &*def
+                else {
+                    continue;
+                };
+                let Some(m) = methods.iter().find(|m| m.name == name) else {
+                    continue;
+                };
+                let mut on = crate::ty::Bindings::default();
+                on.insert("Self".into(), of.clone());
+                for (g, a) in generics.iter().zip(args) {
+                    on.insert(g.clone(), a.subst(&outer));
+                }
+                return Some(super::assoc::read_as(m, m.ty.subst(&on)));
+            }
+        }
+        None
+    }
+
     /// A bare op (`+`, `max`) passed for `M: Op<E>` is the `Monoid<E>` the
     /// trait has an impl for, once `E` is known, at a generic bound as at a
     /// concrete one; a closure keeps its fn type (R08.1.9, decision 456).

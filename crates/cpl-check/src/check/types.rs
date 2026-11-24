@@ -1082,6 +1082,7 @@ impl<'a> Checker<'a> {
                     .into_iter()
                     .map(|(n, bounds, default)| {
                         let default = default.map(|t| self.quietly(|c| c.resolve_type(t)));
+                        let bounds = self.trait_refs(bounds);
                         (n, bounds, default)
                     })
                     .collect();

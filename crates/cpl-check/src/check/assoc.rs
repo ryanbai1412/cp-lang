@@ -9,14 +9,14 @@ use cpl_syntax::ast::{self, Stmt, StmtKind};
 
 /// The associated types a trait body declares, each with its bound's traits
 /// and the default it writes (`type Item = Int`), if any.
-pub(super) fn declared(body: &[Stmt]) -> Vec<(String, Vec<String>, Option<&ast::Type>)> {
+pub(super) fn declared(body: &[Stmt]) -> Vec<(String, &[ast::Type], Option<&ast::Type>)> {
     body.iter()
         .filter_map(|s| match &s.kind {
             StmtKind::TypeAlias {
                 name, bounds, ty, ..
             } => Some((
                 name.text.clone(),
-                bounds.iter().filter_map(type_head).collect(),
+                bounds.as_slice(),
                 (!matches!(ty.kind, ast::TypeKind::Error)).then_some(ty),
             )),
             _ => None,
@@ -25,6 +25,21 @@ pub(super) fn declared(body: &[Stmt]) -> Vec<(String, Vec<String>, Option<&ast::
 }
 
 impl Checker<'_> {
+    /// Each bound as written, `Target<V>`, with its arguments resolved.
+    pub(crate) fn trait_refs(&mut self, bounds: &[ast::Type]) -> Vec<crate::def::TraitRef> {
+        (bounds.iter())
+            .filter_map(|b| match &b.kind {
+                ast::TypeKind::Named { name, args } if !name.text.is_empty() => Some((
+                    name.text.clone(),
+                    (args.iter())
+                        .map(|a| self.quietly(|c| c.resolve_type(a)))
+                        .collect(),
+                )),
+                _ => None,
+            })
+            .collect()
+    }
+
     /// `of.name` for a known `of`: the type the impl for `of` chooses (R08.1.9).
     pub(crate) fn project(&mut self, of: &Ty, name: &str) -> Option<Ty> {
         let key = match of {
@@ -59,13 +74,12 @@ impl Checker<'_> {
         self_ty: &Ty,
         mut assoc: Vec<(String, Ty)>,
     ) -> Vec<(String, Ty)> {
-        let Some(Def::Trait {
+        let Some(def) = trait_ty.and_then(type_head).and_then(|n| self.global(&n)) else {
+            return assoc;
+        };
+        let Def::Trait {
             assoc: declared, ..
-        }) = trait_ty
-            .and_then(type_head)
-            .and_then(|n| self.global(&n))
-            .as_deref()
-            .cloned()
+        } = &*def
         else {
             return assoc;
         };
@@ -73,8 +87,8 @@ impl Checker<'_> {
         on.insert("Self".into(), self_ty.clone());
         for (name, _, default) in declared {
             if let Some(default) = default {
-                if assoc.iter().all(|(n, _)| *n != name) {
-                    assoc.push((name, default.subst(&on)));
+                if assoc.iter().all(|(n, _)| n != name) {
+                    assoc.push((name.clone(), default.subst(&on)));
                 }
             }
         }
@@ -162,12 +176,12 @@ impl Checker<'_> {
         target: &ast::Type,
         body: &[Stmt],
     ) {
-        let Some(Def::Trait {
+        let Some(def) = type_head(trait_ty).and_then(|n| self.global(&n)) else {
+            return;
+        };
+        let Def::Trait {
             assoc: declared, ..
-        }) = type_head(trait_ty)
-            .and_then(|n| self.global(&n))
-            .as_deref()
-            .cloned()
+        } = &*def
         else {
             return;
         };
@@ -208,7 +222,7 @@ impl Checker<'_> {
             {
                 continue;
             }
-            for b in bounds {
+            for (b, _) in bounds {
                 if self.implements_trait(&chosen, b) {
                     continue;
                 }
@@ -286,7 +300,7 @@ impl Checker<'_> {
 }
 
 /// What reading the trait fn `m` as a member gives: a `@get` fn's value, else the fn.
-fn read_as(m: &crate::def::TraitMethod, ty: Ty) -> Ty {
+pub(super) fn read_as(m: &crate::def::TraitMethod, ty: Ty) -> Ty {
     match ty {
         Ty::Fn { ret, .. } if m.getter => *ret,
         ty => ty,
