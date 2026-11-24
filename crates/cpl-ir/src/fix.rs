@@ -92,8 +92,7 @@ fn adds_a_kind(before: &[Diagnostic], after: &[Diagnostic]) -> bool {
 
 /// The errors the front end reports for `text` as `path`.
 pub fn errors_in(db: &mut cpl_check::Session, path: &str, text: &str) -> Vec<Diagnostic> {
-    db.set_file(path, text);
-    let analysis = db.analyze(path).expect("the file was just set");
+    let analysis = db.analyze_text(path, text);
     let mut out = crate::check(&analysis);
     out.retain(|d| d.severity == cpl_diag::Severity::Error);
     out
@@ -174,7 +173,7 @@ mod tests {
 
     fn chosen(text: &str, d: &Diagnostic) -> String {
         let mut db = cpl_check::Session::new();
-        checked_fix(&mut db, "a.cp", text, d).unwrap().title.clone()
+        checked_fix(&mut db, "a.cp", text, d).map_or(String::new(), |f| f.title.clone())
     }
 
     #[test]

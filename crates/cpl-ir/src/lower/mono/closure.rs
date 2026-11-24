@@ -1,6 +1,7 @@
 //! Local fns, lambdas, and fns or bound methods as closure values.
 
 use super::*;
+use crate::invariant;
 use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
@@ -153,7 +154,10 @@ impl<'a> Lowerer<'a> {
             self.local_fn_block(decl, &ret_ty)
         };
 
-        let inner_cx = std::mem::replace(&mut self.cx, self.outer_cxs.pop().unwrap());
+        let inner_cx = match self.outer_cxs.pop() {
+            Some(outer) => std::mem::replace(&mut self.cx, outer),
+            None => invariant::broken_invariant("a closure's outer cx is pushed before its body"),
+        };
         let cid = self.closures.len();
         self.record_narrow_locals(
             ScopeId::Closure(cid),
@@ -217,7 +221,9 @@ impl<'a> Lowerer<'a> {
             self.cx.scopes.outer_mut().insert(p.name.text.clone(), slot);
             slots.push((slot, p.ty.as_ref()));
         }
-        let body = self.capture_from_outer(&body_name).expect("just declared");
+        let Some(body) = self.capture_from_outer(&body_name) else {
+            invariant::broken_invariant("a local fn's body is declared in its outer scope")
+        };
         let args = slots
             .iter()
             .map(|(slot, _)| Arg::Value(self.local(*slot, span)))
@@ -235,7 +241,10 @@ impl<'a> Lowerer<'a> {
                 &mut lets,
             ),
         };
-        let inner_cx = std::mem::replace(&mut self.cx, self.outer_cxs.pop().unwrap());
+        let inner_cx = match self.outer_cxs.pop() {
+            Some(outer) => std::mem::replace(&mut self.cx, outer),
+            None => invariant::broken_invariant("a closure's outer cx is pushed before its body"),
+        };
         out.extend(lets);
         let wrapper = self.closures.len();
         self.closures.push(ClosureDef {
@@ -486,7 +495,10 @@ impl<'a> Lowerer<'a> {
             ));
         }
 
-        let finished = std::mem::replace(&mut self.cx, self.outer_cxs.pop().expect("parent cx"));
+        let finished = match self.outer_cxs.pop() {
+            Some(outer) => std::mem::replace(&mut self.cx, outer),
+            None => invariant::broken_invariant("a closure's outer cx is pushed before its body"),
+        };
         let cid = self.closures.len();
         self.record_narrow_locals(
             ScopeId::Closure(cid),
@@ -518,17 +530,15 @@ impl<'a> Lowerer<'a> {
     ) -> Expr {
         self.queue_fn(fn_id);
         let all = self.sigs[fn_id].params.clone();
-        let keep = match hint {
-            Some(Ty::Fn(ps, _))
-                if ps.len() < all.len()
-                    && all[ps.len()..]
-                        .iter()
-                        .all(|p| p.default.is_some() && !p.mutable) =>
-            {
-                ps.len()
-            }
-            _ => all.len(),
+        let trimmed: Option<Vec<_>> = match hint {
+            Some(Ty::Fn(ps, _)) if ps.len() < all.len() => all[ps.len()..]
+                .iter()
+                .map(|p| p.default.filter(|_| !p.mutable).map(|d| (d, p.ty.clone())))
+                .collect(),
+            _ => None,
         };
+        let trimmed = trimmed.unwrap_or_default();
+        let keep = all.len() - trimmed.len();
         let params: Vec<Ty> = all[..keep].iter().map(|p| p.ty.clone()).collect();
         let ret = self.ret_of(fn_id, span);
         let mut locals = Vec::new();
@@ -547,12 +557,11 @@ impl<'a> Lowerer<'a> {
                 span: self.span(span),
             }));
         }
-        for p in &all[keep..] {
-            let default = p.default.expect("trimmed params have defaults");
+        for (default, ty) in trimmed {
             let sm = std::mem::replace(&mut self.cur_mod, self.sigs[fn_id].mod_id);
             let so = std::mem::replace(&mut self.offset, self.sigs[fn_id].offset);
             let se = std::mem::replace(&mut self.gen_env, self.sigs[fn_id].env.clone());
-            let value = self.expr_as(default, &p.ty);
+            let value = self.expr_as(default, &ty);
             self.cur_mod = sm;
             self.offset = so;
             self.gen_env = se;

@@ -2,6 +2,7 @@
 //! projection coercion.
 
 use super::*;
+use crate::invariant;
 use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
@@ -13,11 +14,9 @@ impl<'a> Lowerer<'a> {
         args: &[ast::Arg],
         span: Span,
     ) -> Expr {
-        let recv_place = self.try_place(base);
-        let recv_val = if recv_place.is_none() {
-            Some(self.expr(base, None))
-        } else {
-            None
+        let recv = match self.try_place(base) {
+            Some(place) => Ok(place),
+            None => Err(self.expr(base, None)),
         };
         let (pre_stmts, lend_place_ast, post_stmts) = split_projection_body(proj.decl);
         let Some(lend_place_ast) = lend_place_ast else {
@@ -26,10 +25,9 @@ impl<'a> Lowerer<'a> {
         };
 
         self.do_expr(None, span, |lw, out| {
-            let p_place = match recv_place {
-                Some(p) => p,
-                None => {
-                    let v = recv_val.unwrap();
+            let p_place = match recv {
+                Ok(p) => p,
+                Err(v) => {
                     let slot = lw.temp(v.ty.clone());
                     let sp = v.span;
                     out.push_let(slot, v);
@@ -133,7 +131,10 @@ impl<'a> Lowerer<'a> {
                 lw.stmt(s, post_out);
             }
         });
-        lent_place.unwrap()
+        match lent_place {
+            Some(place) => place,
+            None => invariant::broken_invariant("a projection scope runs its body"),
+        }
     }
 
     pub(in crate::lower) fn with_projection_scope(

@@ -49,3 +49,10 @@ fn a_tagged_enum_reads_each_variant_by_its_one_tag() {
         for m in ms:\n    print(yes(m == Move.Left))\n";
     assert_eq!(runs(source, "R L\n"), "NO\nYES\n");
 }
+
+#[test]
+fn a_min_over_optionals_starts_from_its_first_plain_value() {
+    let source =
+        "let a: ?Int = None\nlet b: ?Int = Some(1)\nprint(min(a, 5, 3))\nprint(min(b, 5))\n";
+    assert_eq!(runs(source, ""), "3\n1\n");
+}

@@ -1,6 +1,7 @@
 //! Lowering `laws_hold` into nested assertion loops over every law.
 
 use super::*;
+use crate::invariant;
 use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
@@ -243,6 +244,6 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
-        unreachable!("mod const requires at least one fn in loaded modules")
+        invariant::broken_invariant("the loaded modules declare a fn")
     }
 }

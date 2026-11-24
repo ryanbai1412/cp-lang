@@ -189,8 +189,7 @@ impl<'a> Lowerer<'a> {
                     ty,
                     init: Some(init),
                     ..
-                } if let_const_name(pat).is_some() => {
-                    let cname = let_const_name(pat).expect("guarded");
+                } if let Some(cname) = let_const_name(pat) => {
                     self.structs[id].consts.insert(
                         cname.to_string(),
                         StructConst {

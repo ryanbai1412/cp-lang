@@ -104,10 +104,8 @@ impl<'a> Lowerer<'a> {
                         let want = self.product_factor_ty(&factors[idx].1);
                         slots[idx] = Some(self.expr_as(&arg.value, &want));
                     }
-                    if slots.iter().all(|s| s.is_some()) {
-                        for s in slots {
-                            parts.push(s.unwrap());
-                        }
+                    if let Some(filled) = slots.into_iter().collect::<Option<Vec<_>>>() {
+                        parts.extend(filled);
                         return self.encode_product(id, parts, span);
                     }
                 } else {
@@ -326,12 +324,7 @@ impl<'a> Lowerer<'a> {
         }
         match &callee.kind {
             ast::ExprKind::Paren(inner) => self.call(whole, inner, args, hint),
-            ast::ExprKind::Field { name, .. }
-                if matches!(self.sym(callee), Some(Sym::Domain(_))) =>
-            {
-                let Some(Sym::Domain(id)) = self.sym(callee) else {
-                    unreachable!()
-                };
+            ast::ExprKind::Field { name, .. } if let Some(Sym::Domain(id)) = self.sym(callee) => {
                 self.domain_call(id, &name.text, args, span)
             }
             ast::ExprKind::Name(name) => {
@@ -862,7 +855,9 @@ impl<'a> Lowerer<'a> {
                     Sym::Global(_) | Sym::GenConst(_) | Sym::ModConst(_) => "value",
                     Sym::Trait(_) => "trait",
                     Sym::Mod(_) => "module",
-                    Sym::GenFn(_) | Sym::GenStruct(_) | Sym::GenAlias(_) => unreachable!(),
+                    Sym::GenFn(_) => "generic function",
+                    Sym::GenStruct(_) => "generic struct",
+                    Sym::GenAlias(_) => "generic type alias",
                 };
                 self.report(span, msgs::ir::UNSUPPORTED_IS_A_AND_CANNOT, &[&name, &kind]);
                 self.err_expr(span)
@@ -1558,18 +1553,19 @@ impl<'a> Lowerer<'a> {
             self.cx.scopes.push(HashMap::new());
             self.cx.local_syms.push(HashMap::new());
             if !temps.is_empty() {
-                let mut vals: Vec<Expr> = temps
+                let vals: Vec<Expr> = temps
                     .iter()
                     .map(|(slot, sp, tys)| {
                         let base = self.local(*slot, *sp);
                         self.mk_field(base, i, tys[i].clone(), *sp)
                     })
                     .collect();
-                let value = if vals.len() == 1 {
-                    vals.pop().unwrap()
-                } else {
-                    let ty = Ty::Tuple(vals.iter().map(|e| e.ty.clone()).collect());
-                    self.mk(ExprKind::Tuple(vals), ty, temps[0].1)
+                let value = match <[Expr; 1]>::try_from(vals) {
+                    Ok([one]) => one,
+                    Err(vals) => {
+                        let ty = Ty::Tuple(vals.iter().map(|e| e.ty.clone()).collect());
+                        self.mk(ExprKind::Tuple(vals), ty, temps[0].1)
+                    }
                 };
                 self.bind(&clause.pat, value, &mut stmts);
             }

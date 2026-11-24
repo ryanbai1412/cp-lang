@@ -540,13 +540,13 @@ impl<'a> Lowerer<'a> {
                 let mut while_ast = None;
                 let mut ok = true;
                 for a in args {
-                    match a.name.as_ref().map(|n| n.text.as_str()) {
-                        Some("after") if after_ast.is_none() => after_ast = Some(&a.value),
-                        Some("before") if before_ast.is_none() => before_ast = Some(&a.value),
-                        Some("while") if while_ast.is_none() => while_ast = Some(&a.value),
-                        Some(other) => {
+                    match a.name.as_ref().map(|n| (n.text.as_str(), n.span)) {
+                        Some(("after", _)) if after_ast.is_none() => after_ast = Some(&a.value),
+                        Some(("before", _)) if before_ast.is_none() => before_ast = Some(&a.value),
+                        Some(("while", _)) if while_ast.is_none() => while_ast = Some(&a.value),
+                        Some((other, at)) => {
                             self.report(
-                                a.name.as_ref().unwrap().span,
+                                at,
                                 msgs::ir::UNKNOWN_ARG_NAME_DRAIN_HAS_NO_PARAMETER,
                                 &[&other],
                             );

@@ -59,6 +59,16 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// The numbered fields of a tuple, record or struct.
+    fn product_fields(&mut self, ty: Ty) -> Option<Vec<(usize, Ty)>> {
+        match ty {
+            Ty::Tuple(ts) => Some(ts.into_iter().enumerate().collect()),
+            Ty::Record(fs) => Some(fs.into_iter().map(|(_, t)| t).enumerate().collect()),
+            Ty::Struct(id) => Some(self.shown_fields(id)),
+            _ => None,
+        }
+    }
+
     fn shifted(&mut self, value: Expr, b: i64, span: Span) -> Expr {
         let Some(to) = self.shifted_ty(&value.ty) else {
             return value;
@@ -68,13 +78,7 @@ impl<'a> Lowerer<'a> {
                 let ord = self.cast(Cast::Ord, value, Ty::Int);
                 self.int_add(ord, b)
             }
-            from @ (Ty::Tuple(_) | Ty::Record(_) | Ty::Struct(_)) => {
-                let fields: Vec<(usize, Ty)> = match from {
-                    Ty::Tuple(ts) => ts.into_iter().enumerate().collect(),
-                    Ty::Record(fs) => fs.into_iter().map(|(_, t)| t).enumerate().collect(),
-                    Ty::Struct(id) => self.shown_fields(id),
-                    _ => unreachable!(),
-                };
+            from if let Some(fields) = self.product_fields(from.clone()) => {
                 self.do_expr(Some(&to.clone()), span, |lw, out| {
                     let held = lw.hold(value, out);
                     let parts = fields
@@ -96,8 +100,9 @@ impl<'a> Lowerer<'a> {
                 let none = lw.mk(ExprKind::None, to.clone(), span);
                 out.push_give(lw.mk_if(some, some_val, none, to, span));
             }),
-            Ty::Array { dims, elem } if dims.len() > 1 => {
-                let cell = self.shifted_ty(&elem).expect("a cell that shifts");
+            Ty::Array { dims, elem }
+                if let Some(cell) = self.shifted_ty(&elem).filter(|_| dims.len() > 1) =>
+            {
                 self.do_expr(Some(&to.clone()), span, |lw, out| {
                     let held = lw.hold(value, out);
                     let lens: Vec<Expr> = (0..dims.len())

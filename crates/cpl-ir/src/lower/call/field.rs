@@ -1,6 +1,7 @@
 //! Fields and members, and the items/pairs/projection heads of a walk.
 
 use super::*;
+use crate::invariant;
 use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
@@ -545,14 +546,8 @@ impl<'a> Lowerer<'a> {
                 }
             }
             (Ty::Struct(id), field_name)
-                if matches!(
-                    self.structs[*id].env.get(field_name),
-                    Some(GenArg::Domain(_))
-                ) =>
+                if let Some(GenArg::Domain(d)) = self.structs[*id].env.get(field_name).cloned() =>
             {
-                let Some(GenArg::Domain(d)) = self.structs[*id].env.get(field_name).cloned() else {
-                    unreachable!()
-                };
                 self.mk(ExprKind::DomainVal(d), Ty::DomainVal, span)
             }
             (Ty::Range(inner), "first" | "last") => {
@@ -668,19 +663,19 @@ impl<'a> Lowerer<'a> {
             }
             // Of a grid they are `g[R.first, C.first]` and `g[R.last, C.last]`.
             (Ty::Array { dims, elem }, "first" | "last")
-                if dims
+                if let Some(axes) = dims
                     .iter()
-                    .all(|d| matches!(d, Dim::Pos(_) | Dim::Bound(_))) =>
+                    .map(|dim| match dim {
+                        Dim::Bound(d) => Some((*d, 0, Ty::Bound(*d))),
+                        Dim::Pos(d) => Some((*d, -1, Ty::Pos(*d))),
+                        _ => None,
+                    })
+                    .collect::<Option<Vec<_>>>() =>
             {
                 let last = name.text == "last";
                 let mut filled = self.mk(ExprKind::Bool(true), Ty::Bool, span);
                 let mut indices = Vec::new();
-                for dim in dims {
-                    let (d, extra, ty) = match dim {
-                        Dim::Bound(d) => (*d, 0, Ty::Bound(*d)),
-                        Dim::Pos(d) => (*d, -1, Ty::Pos(*d)),
-                        _ => unreachable!("guarded above"),
-                    };
+                for (d, extra, ty) in axes {
                     let len = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
                     let zero = self.int_lit(0, span);
                     let some = self.mk_cmp(CmpOp::Gt, len.clone(), zero.clone(), Ty::Bool, span);
@@ -695,8 +690,14 @@ impl<'a> Lowerer<'a> {
                 self.mk_if(filled, some, none, opt, span)
             }
             // `xs.items` kept as a value: the list of `(index, element)`.
-            (Ty::Map(..) | Ty::HashMap(..), "items") => self.pairs_of_map(value, span),
-            (Ty::Map(..) | Ty::HashMap(..), "keys") => self.proj_of_map(value, 0, span),
+            (Ty::Map(key, held) | Ty::HashMap(key, held), "items") => {
+                let (key, held) = ((**key).clone(), (**held).clone());
+                self.pairs_of_map(value, key, held, span)
+            }
+            (Ty::Map(key, held) | Ty::HashMap(key, held), "keys") => {
+                let kv = ((**key).clone(), (**held).clone());
+                self.proj_of_map(value, kv, 0, span)
+            }
             // A range's keys are its own elements (R04.4.31): `r.keys` is `r`.
             (Ty::Range(_), "keys") => value,
             (Ty::ListView(..), "keys") if self.is_reversed(&value) => {
@@ -769,11 +770,15 @@ impl<'a> Lowerer<'a> {
                     )
                 }
             },
-            (Ty::Map(..) | Ty::HashMap(..), "values") => self.proj_of_map(value, 1, span),
-            (Ty::Array { dims, .. }, "items")
+            (Ty::Map(key, held) | Ty::HashMap(key, held), "values") => {
+                let kv = ((**key).clone(), (**held).clone());
+                self.proj_of_map(value, kv, 1, span)
+            }
+            (Ty::Array { dims, elem }, "items")
                 if dims.len() > 1 && dims.iter().all(|d| !matches!(d, Dim::Bound(_))) =>
             {
-                self.cells_of_grid(value, span)
+                let shape = (dims.clone(), (**elem).clone());
+                self.cells_of_grid(value, shape, span)
             }
             (
                 Ty::List(_)
@@ -784,18 +789,17 @@ impl<'a> Lowerer<'a> {
                 | Ty::Str
                 | Ty::StrView,
                 "items",
-            ) if self.items_of(&value, span).is_some() => {
+            ) if let Some(shape) = self.items_of(&value, span) => {
                 let pair = |items: &Items| Ty::Tuple(vec![items.index.clone(), items.elem.clone()]);
                 let held_ty = value.ty.clone();
-                let Some(shape) = self.items_of(&value, span) else {
-                    unreachable!("checked above")
-                };
                 let list_ty = Ty::list(pair(&shape));
                 self.do_expr(Some(&list_ty.clone()), span, |lw, out| {
                     let held = lw.temp(held_ty);
                     out.push_let(held, value);
                     let seq = lw.local(held, span);
-                    let items = lw.items_of(&seq, span).expect("the same type");
+                    let Some(items) = lw.items_of(&seq, span) else {
+                        invariant::broken_invariant("a held sequence has the items of its type")
+                    };
                     let acc = lw.temp(list_ty.clone());
                     out.push_let(
                         acc,
@@ -1311,11 +1315,14 @@ impl<'a> Lowerer<'a> {
 
     /// `m.items` kept as a value: the list of `(key, value)`, in the
     /// order a `for` over the map goes.
-    pub(in crate::lower) fn pairs_of_map(&mut self, map: Expr, span: Span) -> Expr {
-        let (Ty::Map(key, held) | Ty::HashMap(key, held)) = &map.ty else {
-            unreachable!("the caller matched a map")
-        };
-        let pair = Ty::Tuple(vec![(**key).clone(), (**held).clone()]);
+    pub(in crate::lower) fn pairs_of_map(
+        &mut self,
+        map: Expr,
+        key: Ty,
+        held: Ty,
+        span: Span,
+    ) -> Expr {
+        let pair = Ty::Tuple(vec![key, held]);
         self.collected(pair.clone(), span, |lw, out, push| {
             let map = lw.hold(map, out);
             let each = lw.temp(pair);
@@ -1329,16 +1336,15 @@ impl<'a> Lowerer<'a> {
 
     /// `m.keys` / `m.values` kept as a value: the list of keys (`idx == 0`) or
     /// values (`idx == 1`), in the order a `for` over the map goes.
-    pub(in crate::lower) fn proj_of_map(&mut self, map: Expr, idx: usize, span: Span) -> Expr {
-        let (Ty::Map(key, held) | Ty::HashMap(key, held)) = &map.ty else {
-            unreachable!("the caller matched a map")
-        };
-        let pair = Ty::Tuple(vec![(**key).clone(), (**held).clone()]);
-        let elem = if idx == 0 {
-            (**key).clone()
-        } else {
-            (**held).clone()
-        };
+    pub(in crate::lower) fn proj_of_map(
+        &mut self,
+        map: Expr,
+        (key, held): (Ty, Ty),
+        idx: usize,
+        span: Span,
+    ) -> Expr {
+        let pair = Ty::Tuple(vec![key.clone(), held.clone()]);
+        let elem = if idx == 0 { key } else { held };
         self.collected(elem.clone(), span, |lw, out, push| {
             let map = lw.hold(map, out);
             let each = lw.temp(pair);
@@ -1410,11 +1416,12 @@ impl<'a> Lowerer<'a> {
 
     /// `g.items` on an array of two or more dimensions: every cell with
     /// the tuple of its indices, `((r, c), g[r, c])`, row by row.
-    pub(in crate::lower) fn cells_of_grid(&mut self, grid: Expr, span: Span) -> Expr {
-        let Ty::Array { dims, elem } = &grid.ty else {
-            unreachable!("the caller matched an array")
-        };
-        let (dims, elem) = (dims.clone(), (**elem).clone());
+    pub(in crate::lower) fn cells_of_grid(
+        &mut self,
+        grid: Expr,
+        (dims, elem): (Vec<Dim>, Ty),
+        span: Span,
+    ) -> Expr {
         let index_tys: Vec<Ty> = dims
             .iter()
             .map(|dim| match dim {

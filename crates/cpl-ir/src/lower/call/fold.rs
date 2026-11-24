@@ -411,9 +411,9 @@ impl<'a> Lowerer<'a> {
                 // result plain, and each `none` is skipped.
                 let plain = values
                     .iter()
-                    .find(|v| !matches!(v.ty, Ty::Opt(_)))
-                    .map(|v| v.ty.clone());
-                if let Some(plain) = plain.filter(|plain| {
+                    .position(|v| !matches!(v.ty, Ty::Opt(_)))
+                    .map(|first| (first, values[first].ty.clone()));
+                if let Some((first, plain)) = plain.filter(|(_, plain)| {
                     self.ordered(plain)
                         && values.iter().any(|v| matches!(v.ty, Ty::Opt(_)))
                         && values
@@ -429,10 +429,6 @@ impl<'a> Lowerer<'a> {
                             out.push_let(slot, value);
                         }
                         let best = lw.temp(plain.clone());
-                        let first = slots
-                            .iter()
-                            .position(|(_, ty)| *ty == plain)
-                            .expect("one value is plain");
                         let start = lw.local(slots[first].0, span);
                         out.push_let(best, start);
                         for (i, (slot, ty)) in slots.iter().enumerate() {
@@ -668,10 +664,11 @@ impl<'a> Lowerer<'a> {
         let at = test.value.span;
         let mk = |kind: ast::ExprKind| ast::Expr { kind, span: at };
         let (pat, body) = match &test.value.kind {
-            ast::ExprKind::Lambda { params, body, .. } if !params.is_empty() => (
-                ast::Pattern::single_param(params).expect("a parameter"),
-                (**body).clone(),
-            ),
+            ast::ExprKind::Lambda { params, body, .. }
+                if let Some(pat) = ast::Pattern::single_param(params) =>
+            {
+                (pat, (**body).clone())
+            }
             _ => {
                 let var = "it\u{b7}".to_string();
                 let call = mk(ast::ExprKind::Call {

@@ -1,6 +1,7 @@
 //! Sorting, domain members, and the seq adapters map, filter and partition.
 
 use super::*;
+use crate::invariant;
 use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
@@ -835,7 +836,9 @@ impl<'a> Lowerer<'a> {
                     let hi = lw.mk_binary(BinOp::Add, lw.int_lit(*c, span), len, Ty::Int, span);
                     (lw.int_lit(*c, span), hi)
                 }
-                Dim::Sym(_) => unreachable!(),
+                Dim::Sym(_) => {
+                    invariant::broken_invariant("a symmetric `inverse` target returned above")
+                }
             };
             let i_slot = lw.temp(src_idx_ty.clone());
             let lid = lw.open_loop(None);

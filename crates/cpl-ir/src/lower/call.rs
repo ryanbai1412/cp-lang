@@ -604,17 +604,12 @@ impl<'a> Lowerer<'a> {
                 }
             }
             Some(Sym::Domain(id))
-                if self
+                if let Some(tag) = self
                     .sum_enums
                     .get(&id)
-                    .is_some_and(|info| info.variants.iter().any(|(v, _)| *v == name.text)) =>
+                    .and_then(|info| info.variants.iter().position(|(v, _)| *v == name.text)) =>
             {
                 let info = self.sum_enums[&id].clone();
-                let tag = info
-                    .variants
-                    .iter()
-                    .position(|(v, _)| *v == name.text)
-                    .unwrap();
                 return self.variant(info.enum_id, tag, args, span);
             }
             Some(Sym::Enum(id)) => {
@@ -1114,7 +1109,7 @@ impl<'a> Lowerer<'a> {
                             inclusive,
                             step: None,
                         } => {
-                            let use_domain_ords = if let Ty::Pos(d) = key_ty {
+                            let domain_ords = if let Ty::Pos(d) = key_ty {
                                 let lo_is_bound = lo
                                     .as_deref()
                                     .and_then(|x| self.probe_ty_silent(x))
@@ -1123,12 +1118,11 @@ impl<'a> Lowerer<'a> {
                                     .as_deref()
                                     .and_then(|x| self.probe_ty_silent(x))
                                     .is_some_and(|t| t == Ty::Bound(d));
-                                lo_is_bound || hi_is_bound
+                                (lo_is_bound || hi_is_bound).then_some(d)
                             } else {
-                                false
+                                None
                             };
-                            if use_domain_ords {
-                                let Ty::Pos(d) = key_ty else { unreachable!() };
+                            if let Some(d) = domain_ords {
                                 let lo_ord = match lo.as_deref() {
                                     Some(l) => {
                                         let le = self.expr(l, None);
