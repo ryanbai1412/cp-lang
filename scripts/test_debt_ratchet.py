@@ -119,6 +119,17 @@ class DebtRatchetTest(unittest.TestCase):
             subprocess.run(["git", "-C", str(root), "add", "."], check=True)
             self.assertEqual(dr.v02_port_files(root), [f"{PKGS}/a/port.cp"])
 
+    def test_ports_unreported_needs_both_friction_and_review(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            for f in [f"{PKGS}/a/port.cp", f"{PKGS}/b/port.cp", f"{PKGS}/c/port.cp", f"{PKGS}/d/spec.cp",
+                      "research/frictions/a.md", "research/reviews/a.md", "research/reviews/b.md"]:
+                (root / f).parent.mkdir(parents=True, exist_ok=True)
+                (root / f).write_text("b\n")
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            subprocess.run(["git", "-C", str(root), "add", "."], check=True)
+            self.assertEqual(dr.ports_unreported(root), [f"{PKGS}/b/port.cp", f"{PKGS}/c/port.cp"])
+
     def test_dead_code_allows_and_external_crates(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

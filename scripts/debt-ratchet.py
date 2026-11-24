@@ -711,6 +711,14 @@ def v02_port_files(root: Path) -> list[str]:
     return [p for p in _git(root, "ls-files", "corpus/problems/*/port.cp") if p.split("/")[2] not in v03]
 
 
+def ports_unreported(root: Path) -> list[str]:
+    """Corpus ports landed without their friction report or review
+    (`research/frictions/<id>.md`, `research/reviews/<id>.md`; porting.md steps 4-5)."""
+    have = set(_git(root, "ls-files", "research/frictions/*.md", "research/reviews/*.md"))
+    return [p for p in _git(root, "ls-files", "corpus/problems/*/port.cp")
+            if not {f"research/frictions/{p.split('/')[2]}.md", f"research/reviews/{p.split('/')[2]}.md"} <= have]
+
+
 def spec_std_refs(root: Path) -> list[str]:
     """`spec/std` mentions outside history (the stdlib moved to `std/`; decision 307)."""
     return _git(root, "grep", "-n", "spec/std", "--", ".", ":!research", ":!decisions.md",
@@ -2539,6 +2547,7 @@ COUNTERS = {
     "layer_violations": ("forbidden shipped crate edges", layer_violations, True),
     "tree_walker": ("second interpreter engine", tree_walker, True),
     "v02_port_files": ("corpus ports not yet re-ported in v0.3 style", v02_port_files, True),
+    "ports_unreported": ("corpus ports without a friction report or review (idioms)", ports_unreported, True),
     "direct_python": ("direct python3 calls in gate/justfile", direct_python, True),
     "unrun_script_tests": ("script tests the gate never runs", unrun_script_tests, True),
     "decision_dup_numbers": ("decision numbers headed twice in decisions.md", decision_dup_numbers, True),
