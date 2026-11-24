@@ -463,6 +463,7 @@ pub enum SosOver = Sub | Sup
 /// example: `var a = [1, 3, 4, 10]; sos(mut a, inverse: true); a == [1, 2, 3, 4]`
 pub fn sos<S: IndexedMut>(mut a: S, over: SosOver = Sub, inverse: Bool = false):
     let n = a.len
+    let ks = a.keys
     assert n.is_pow2, "sos requires a power-of-two length"
     var bit = 1
     match over:
@@ -470,15 +471,15 @@ pub fn sos<S: IndexedMut>(mut a: S, over: SosOver = Sub, inverse: Bool = false):
             while bit < n:
                 for mask in 0..n:
                     if (mask & bit) != 0:
-                        if inverse: a[mask] -= a[mask ^ bit]
-                        else: a[mask] += a[mask ^ bit]
+                        if inverse: a[ks.nth(mask)] -= a[ks.nth(mask ^ bit)]
+                        else: a[ks.nth(mask)] += a[ks.nth(mask ^ bit)]
                 bit <<= 1
         Sup:
             while bit < n:
                 for mask in 0..n:
                     if (mask & bit) == 0:
-                        if inverse: a[mask] -= a[mask | bit]
-                        else: a[mask] += a[mask | bit]
+                        if inverse: a[ks.nth(mask)] -= a[ks.nth(mask | bit)]
+                        else: a[ks.nth(mask)] += a[ks.nth(mask | bit)]
                 bit <<= 1
 
 /// In-place Walsh-Hadamard (XOR) transform of `a`, length `2^k`.
@@ -497,6 +498,7 @@ pub fn sos<S: IndexedMut>(mut a: S, over: SosOver = Sub, inverse: Bool = false):
 /// example: `var a = [10, -2, -4, 0]; fwht(mut a, inverse: true); a == [1, 2, 3, 4]`
 pub fn fwht<S: IndexedMut, T>(mut a: S, inverse: Bool = false):
     let n = a.len
+    let ks = a.keys
     assert n.is_pow2, "fwht requires a power-of-two length"
     var step = 1
     unchecked:
@@ -504,10 +506,10 @@ pub fn fwht<S: IndexedMut, T>(mut a: S, inverse: Bool = false):
             var i = 0
             while i < n:
                 for j in i..i + step:
-                    let u = a[j]
-                    let v = a[j + step]
-                    a[j] = u + v
-                    a[j + step] = u - v
+                    let u = a[ks.nth(j)]
+                    let v = a[ks.nth(j + step)]
+                    a[ks.nth(j)] = u + v
+                    a[ks.nth(j + step)] = u - v
                 i += step << 1
             step <<= 1
     if inverse and n > 1:
@@ -519,12 +521,12 @@ pub fn fwht<S: IndexedMut, T>(mut a: S, inverse: Bool = false):
         let inv_n = T.one / n_t
         unchecked:
             if inv_n != T.zero:
-                for i in 0..n: a[i] = a[i] * inv_n
+                for i in 0..n: a[ks.nth(i)] = a[ks.nth(i)] * inv_n
             else:
                 for i in 0..n:
-                    let q = a[i] / n_t
-                    assert q * n_t == a[i], "`fwht(inverse: true)` needs every entry divisible by `n`"
-                    a[i] = q
+                    let q = a[ks.nth(i)] / n_t
+                    assert q * n_t == a[ks.nth(i)], "`fwht(inverse: true)` needs every entry divisible by `n`"
+                    a[ks.nth(i)] = q
 
 /// \(O(\log^2 n)\) amortized per step, \(O(n \log^2 n)\) total. Online (relaxed) NTT convolution:
 /// supply `(a[k], b[k])` one step at a time and immediately receive `c[k] = sum_{i=0..=k} a[i] * b[k - i]`.
