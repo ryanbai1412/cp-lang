@@ -14,13 +14,13 @@ is_empty [10] is_empty: Bool
 first [10] first: ?Edge
 last [10] last: ?Edge
 push [2] push(x: Edge)
+push_id [2] push_id(x: Edge) -> Int
 pop [2] pop() -> ?Edge
 get [2] get(i: Int) -> ?Edge
 insert [2] insert(i: Int, x: Edge)
 remove [2] remove(i: Int) -> Edge
 swap [2] swap(i: Int, j: Int)
 resize [2] resize(n: Int, x: Edge)
-truncate [2] truncate(n: Int)
 
 == completion @ 10:14
 c [6] c: Int
@@ -61,5 +61,5 @@ count [2] fn count<S: Seq, T>(self: S, p: T -> Bool = _ => true) -> Int
 any [2] fn any<S: Seq, T>(self: S, p: T -> Bool) -> Bool
 all [2] fn all<S: Seq, T>(self: S, p: T -> Bool) -> Bool
 is_sorted [2] fn is_sorted<S: Seq, T, K>(self: S, by: T -> K = x => x) -> Bool
-filter [2] fn filter<S: Seq, T>(self: S, p: T -> Bool) -> Filtered<S>
-map [2] fn map<S: Seq, T, U>(self: S, f: T -> U) -> Mapped<S, U>
+first [2] fn first<S: Seq, T>(self: S) -> ?T
+sorted [2] fn sorted<S: Seq, T, K: Ord>(self: S, by: T -> K = x => x) -> List<T>
