@@ -34,20 +34,6 @@ use std.range.{ends, RingRange, first_true}
 pub fn scan<D, T, M>(self: [D]T, f: M, from: ?T = None) -> Prefix<D, T> =
     Prefix<D, T>.of_scan(self, f, from)
 
-impl Rev<[D]T>:
-    /// \(O(n)\) calls of `f`.
-    ///
-    /// The n + 1 suffix folds, keyed by the source's own cuts: `suf[c]` folds everything right of
-    /// cut `c` (`from`, or `f`'s identity, at the last cut). The value at `c` is
-    /// `f(a[c.r], suf[c.next])`, so `f` need not be commutative.
-    ///
-    /// cost: \(O(n)\) calls of `f`; \(O(n)\) space
-    /// empty: one cut, holding `from` or the identity
-    /// order: keyed by `D.cuts`, right to left
-    /// traps: never (beyond what `f` traps on)
-    /// example: `domain D = 0..3; let a = [D] d => d.ord + 2; a.rev.scan(*).at(D(1).l) == 12`
-    /// example: `domain D = 0..3; let a = [D] d => d.ord + 2; a.rev.scan(+).all == 9`
-    pub fn scan<M>(self, f: M, from: ?T = None) -> Prefix<D, T> = Prefix<D, T>.of_rev_scan(self.src, f, from)
 
 fn same<A, B>(a: A, b: B) -> Bool = a == b
 
@@ -173,7 +159,8 @@ pub struct Prefix<D, T: Add + Sub>:
     pub fn prefix(self, b: Cut<D>) -> T:
         if back:
             assert sums, "a range read subtracts prefix folds, which is only right for a `scan(+)` table"
-            return self.all - self.p[b]
+            if T: Sub:
+                return self.all - self.p[b]
         self.p[b]
 
     // Builds the table in place, so scan returns it without a copy.
