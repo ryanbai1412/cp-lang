@@ -1225,15 +1225,9 @@ fn receives(detail: &str, ty: &Ty, walks: bool) -> bool {
         .split(',')
         .any(|g| g.split(':').next().unwrap_or("").trim() == self_ty);
     match bound {
-        Some(bound) => bound.split('+').all(|b| match b.trim() {
-            "Seq" => ty.is_seq() || walks,
-            "Sized" => ty.is_sized(),
-            "Bidir" => ty.is_bidir(),
-            "Keyed" => ty.is_keyed(),
-            "Indexed" => ty.is_indexed(),
-            "IndexedMut" => ty.is_indexed_mut(),
-            _ => false,
-        }),
+        Some(bound) => bound
+            .split('+')
+            .all(|b| ty.meets_seq_bound(b.trim(), walks)),
         None if is_generic => false,
         // `self: ?T`, `T` generic, takes every optional.
         None if matches!(ty, Ty::Optional(_))

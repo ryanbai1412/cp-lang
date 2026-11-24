@@ -119,7 +119,7 @@
   "cpp_std_functions": 79,
   "codegen_effect_guesses": 0,
   "near_dup_fns": 12,
-  "consumer_rederived": 63,
+  "consumer_rederived": 58,
   "rs_near_cap": [
     "crates/cpl-check/src/db.rs",
     "crates/cpl-interp/src/vm/exec/mod.rs"

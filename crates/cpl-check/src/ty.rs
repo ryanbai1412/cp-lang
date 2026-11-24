@@ -236,6 +236,21 @@ impl Ty {
         }
     }
 
+    /// Whether this type meets the sequence-trait bound named `bound` (`Seq`, `Sized`, `Bidir`,
+    /// `Keyed`, `Indexed`, `IndexedMut`); `walks` says a `for` can walk it, which is enough for
+    /// `Seq`. Any other bound is false.
+    pub fn meets_seq_bound(&self, bound: &str, walks: bool) -> bool {
+        match bound {
+            "Seq" => self.is_seq() || walks,
+            "Sized" => self.is_sized(),
+            "Bidir" => self.is_bidir(),
+            "Keyed" => self.is_keyed(),
+            "Indexed" => self.is_indexed(),
+            "IndexedMut" => self.is_indexed_mut(),
+            _ => false,
+        }
+    }
+
     /// True when this type implements the built-in `IndexedMut` trait (O(1) random read/write).
     pub fn is_indexed_mut(&self) -> bool {
         match self {
