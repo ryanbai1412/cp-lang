@@ -30,6 +30,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import tomllib
+
 # Which --fast leaves to --full (the reasons are in scripts/check.sh's nextest step).
 SLOW_TESTS = (
     "products_and_variable_divisors_are_never_decided_wrongly",
@@ -74,19 +76,33 @@ def wall_filter() -> str:
 NEXTEST_LINE = re.compile(r"\b(?:PASS|FAIL|TIMEOUT|SIG[A-Z]+)\s+\[\s*([0-9.]+)s\]\s+(?:\(\s*\d+/\d+\)\s+)?(\S+)\s+(\S+)")
 
 
-def time_shard(listing: str, times: dict, shard: str) -> list[tuple[str, str]]:
+def listed_tests(listing: str) -> list[tuple[str, str]]:
+    """(binary id, test) of each test a `cargo nextest list --message-format json` matched."""
+    return sorted((b, t) for b, suite in json.loads(listing)["rust-suites"].items()
+                  for t, case in suite["testcases"].items()
+                  if case["filter-match"]["status"] == "matches" and not case.get("ignored"))
+
+
+def whole_machine_filter() -> str:
+    """The nextest filters of .config/nextest.toml's `threads-required = 'num-cpus'` tests."""
+    conf = tomllib.loads((ROOT / ".config" / "nextest.toml").read_text())
+    return " | ".join(f"({o['filter']})" for prof in conf.get("profile", {}).values()
+                      for o in prof.get("overrides", []) if o.get("threads-required") == "num-cpus")
+
+
+def time_shard(listing: str, times: dict, shard: str, whole: frozenset = frozenset(),
+               cores: int = 1) -> list[tuple[str, str]]:
     """Shard k/n of the tests a `cargo nextest list --message-format json` matched, dealt by
     measured time (longest first, each to the least-loaded shard) so the shards end
-    together; a test with no time weighs `default_s`. Every shard deals the same list the
-    same way, so each test runs in exactly one."""
+    together; a test with no time weighs `default_s`, and a `whole` one (it holds the
+    runner's `cores` alone) weighs its time on every core. Every shard deals the same list
+    the same way, so each test runs in exactly one."""
     k, n = (int(x) for x in shard.split("/"))
     if not 1 <= k <= n:
         raise ValueError(f"time:{shard}: the shard must be 1..{n}")
     secs, default = times.get("tests", {}), float(times.get("default_s", 1.0))
-    weight = lambda bt: secs.get(f"{bt[0]} {bt[1]}", default)
-    tests = sorted((b, t) for b, suite in json.loads(listing)["rust-suites"].items()
-                   for t, case in suite["testcases"].items()
-                   if case["filter-match"]["status"] == "matches" and not case.get("ignored"))
+    weight = lambda bt: secs.get(f"{bt[0]} {bt[1]}", default) * (cores if bt in whole else 1)
+    tests = listed_tests(listing)
     load, mine = [0.0] * n, []
     for bt in sorted(tests, key=lambda bt: -weight(bt)):
         i = min(range(n), key=lambda j: (load[j], j))
@@ -906,8 +922,16 @@ class Tail:
                                    "--message-format", "json"], cwd=ROOT, capture_output=True, text=True)
                 if listed.returncode:
                     raise Failed("cargo nextest list failed; the lines above say why")
+                whole: frozenset = frozenset()
+                if wf := whole_machine_filter():
+                    held = self.run(["cargo", "nextest", "list", *src, "--profile", "gate",
+                                     "-E", f"({wf}) & not ({slow_filter()})", "--message-format", "json"],
+                                    cwd=ROOT, capture_output=True, text=True)
+                    if held.returncode:
+                        raise Failed("cargo nextest list failed; the lines above say why")
+                    whole = frozenset(listed_tests(held.stdout))
                 times = json.loads(TEST_TIMES.read_text())
-                mine = time_shard(listed.stdout, times, part.removeprefix("time:"))
+                mine = time_shard(listed.stdout, times, part.removeprefix("time:"), whole, os.cpu_count() or 1)
                 first = target_dir() / "nextest-priorities.toml"
                 first.parent.mkdir(parents=True, exist_ok=True)
                 first.write_text(time_priorities(mine, times))

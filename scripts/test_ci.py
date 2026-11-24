@@ -412,6 +412,15 @@ class TailTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             ci.time_shard(listing, times, "3/2")
 
+    def test_a_test_that_holds_the_runner_weighs_its_time_on_every_core(self) -> None:
+        ok = {"filter-match": {"status": "matches"}}
+        listing = json.dumps({"rust-suites": {"b": {"testcases": {"lsp": ok, "x": ok, "y": ok, "z": ok}}}})
+        times = {"default_s": 1, "tests": {"b lsp": 10, "b x": 12, "b y": 11, "b z": 9}}
+        self.assertEqual(ci.time_shard(listing, times, "1/2"), [("b", "x"), ("b", "z")])
+        self.assertEqual(ci.time_shard(listing, times, "1/2", frozenset({("b", "lsp")}), 4), [("b", "lsp")])
+        self.assertIn("(binary_id(cpl-lsp::ports) | binary_id(cpl-lsp::latency))", ci.whole_machine_filter())
+        self.assertIn("(test(=std_own_tests_pass))", ci.whole_machine_filter())
+
     def test_a_shard_starts_its_long_tests_longest_first(self) -> None:
         times = {"default_s": 1, "tests": {"a::x slow": 148.3, "b t2": 30.4, "b short": 4}}
         self.assertEqual(ci.time_priorities([("b", "t2"), ("a::x", "slow"), ("b", "short"), ("b", "new")], times),
