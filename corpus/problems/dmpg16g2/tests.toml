@@ -1,0 +1,27 @@
+# Cases for scripts/corpus-tests.py make (problem-packages/R9).
+
+[[case]]
+input = "1\nE\n"
+
+[[case]]
+input = "7\n.A.C.EC\nAE..C.C\nADDC.ED\nECDCD.B\n..ADEC.\nBCDA..D\n..A.AD.\n"
+
+[[case]]
+seed = 3
+size = 32
+
+[[case]]
+input = "7\nECDCADE\nACDDDEB\nCD...EA\nA..E.EC\nA.EBE.D\nCDBDBA.\nBD..ECC\n"
+
+[[case]]
+input = "8\nADBE.BAB\n.DDBB.C.\n....ADB.\n.DCA.EBD\n.BA.DBED\n.B.DD.EA\nDB.AA...\nEA.....A\n"
+
+[[case]]
+seed = 6
+size = 32
+
+[[case]]
+input = "1\n.\n"
+
+[[case]]
+input = "8\n.C.EC.CE\nBCAD.AA.\nCE...D.D\nE.C.C..C\n..D..C.A\nA...ACA.\nB.C.AA..\nAAE.CD..\n"
