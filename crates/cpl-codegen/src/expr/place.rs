@@ -28,6 +28,17 @@ impl<'p> Emitter<'p> {
             PlaceKind::Some(base) => format!("(*{})", self.place_at(base, false)),
             PlaceKind::Index(base, indices) => {
                 let b = self.place_at(base, false);
+                if let (Ty::Array { dims, .. }, PlaceKind::Local(_) | PlaceKind::Global(_)) =
+                    (&base.ty, &base.kind)
+                {
+                    let joined = crate::flat::joined(dims, indices)
+                        .filter(|_| self.grid_ck(&base.kind, indices).is_empty());
+                    if let Some(groups) = joined {
+                        let at: Vec<String> = groups.iter().map(|g| self.expr(g.0).text).collect();
+                        let spans: Vec<usize> = groups.iter().map(|g| g.1).collect();
+                        return crate::flat::cell(&b, &at, &spans);
+                    }
+                }
                 let touches: Vec<Touch> = indices.iter().map(|e| self.touch(e)).collect();
                 let n = indices.len();
                 if (0..n).any(|i| (i + 1..n).any(|j| touches[i].conflicts(&touches[j]))) {

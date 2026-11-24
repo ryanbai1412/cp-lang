@@ -75,3 +75,23 @@ print((0..xs.len).rev.find(i => xs[i] > 2)!)
         "`(0..n).rev.find(p)` must not list the range first:\n{out}"
     );
 }
+
+#[test]
+fn a_grid_read_and_written_at_product_positions_indexes_the_cell_by_ordinal() {
+    // `(i / n, i % n)` per position put back together by the grid is `i`.
+    let out = cpp(concat!(
+        "let n: 1..=10 = read()\n",
+        "domain City = 0..n\n",
+        "domain Corner = 0..4\n",
+        "type Airport = (City, Corner)\n",
+        "var w = [Airport, Airport] (u, v) => u.0.ord + v.1.ord\n",
+        "for i in Airport:\n",
+        "    for j in Airport: w[i, j] = min(w[i, j], w[j, i] + 1)\n",
+        "print(w[(City.first!, Corner.first!), (City.last!, Corner.last!)])\n",
+    ));
+    assert!(out.contains("w.d[(size_t)("), "{out}");
+    assert!(
+        !out.contains("emod((ll)i"),
+        "no position is taken apart: {out}"
+    );
+}

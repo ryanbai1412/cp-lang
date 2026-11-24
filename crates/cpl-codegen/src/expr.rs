@@ -475,6 +475,21 @@ impl<'p> Emitter<'p> {
                     || (self.target.checks == crate::Checks::None
                         && !matches!(base_ty, Ty::Range(_)));
                 let checked = !proven(indices) && !raw_list;
+                let joined = match base_ty {
+                    Ty::Array { dims, .. }
+                        if !checked
+                            && matches!(base.kind, ExprKind::Local(_) | ExprKind::Global(_)) =>
+                    {
+                        crate::flat::joined(dims, indices)
+                    }
+                    _ => None,
+                };
+                if let Some(groups) = &joined {
+                    operands = std::iter::once(&**base)
+                        .chain(groups.iter().map(|g| g.0))
+                        .collect();
+                }
+                let spans: Option<Vec<usize>> = joined.map(|g| g.iter().map(|g| g.1).collect());
                 if (matches!(
                     base_ty,
                     Ty::List(_) | Ty::ListView(_, _) | Ty::Keyed(_, _) | Ty::MutView(..)
@@ -514,7 +529,10 @@ impl<'p> Emitter<'p> {
                     let code = match base_ty {
                         Ty::Array { dims, elem } if dims.len() > 1 => {
                             let call = if checked { ".ck" } else { "" };
-                            let cell = format!("{b}{call}({})", at.join(", "));
+                            let cell = match &spans {
+                                Some(spans) => crate::flat::cell(&b, &at, spans),
+                                None => format!("{b}{call}({})", at.join(", ")),
+                            };
                             if **elem == Ty::Bool {
                                 Code::new(format!("(bool){cell}"), UNARY)
                             } else {

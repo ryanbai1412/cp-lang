@@ -3912,7 +3912,7 @@ impl<'a> Lowerer<'a> {
                 let indexes = indexes
                     .into_iter()
                     .map(|index| {
-                        if settled(&index) {
+                        if settled(&index) || self.decoded_from(&index).is_some() {
                             return index;
                         }
                         let wrap = match &index.kind {

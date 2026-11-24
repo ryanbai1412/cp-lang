@@ -4,6 +4,7 @@
 //! Also `d[p, q]` on `[P, P]T`: product positions spelled out as their factor indices.
 
 use super::call::is_place;
+use super::stmt::settled;
 use super::*;
 
 impl<'a> Lowerer<'a> {
@@ -194,5 +195,34 @@ impl<'a> Lowerer<'a> {
             }
         }
         (out.len() == dims.len()).then_some(out)
+    }
+}
+
+impl Lowerer<'_> {
+    /// The product domain whose position `e` takes apart (`p.ord / n`,
+    /// `p.ord / n % m`): a settled position divided only by its own factors'
+    /// lengths, none of them 0 while a position exists.
+    pub(super) fn decoded_from(&self, e: &Expr) -> Option<DomainId> {
+        match &e.kind {
+            ExprKind::Cast(Cast::Trust, inner) => self.decoded_from(inner),
+            ExprKind::Cast(Cast::Ord, x) if settled(x) => match x.ty {
+                Ty::Pos(p) if self.product_domains.contains_key(&p) => Some(p),
+                _ => None,
+            },
+            ExprKind::Binary(BinOp::Div | BinOp::Rem, l, r) => {
+                let p = self.decoded_from(l)?;
+                let factor = |f: &ProductFactor| match (f, &r.kind) {
+                    (ProductFactor::Domain(d), ExprKind::DomainLen(l))
+                    | (ProductFactor::Library { dom: d, .. }, ExprKind::DomainLen(l)) => d == l,
+                    (_, ExprKind::Int(n)) => *n > 0,
+                    _ => false,
+                };
+                self.product_domains[&p]
+                    .iter()
+                    .any(|(_, f)| factor(f))
+                    .then_some(p)
+            }
+            _ => None,
+        }
     }
 }

@@ -9,6 +9,7 @@ mod devirt;
 mod divrem;
 mod emit;
 mod expr;
+mod flat;
 mod fold;
 mod fuse;
 mod globals;
