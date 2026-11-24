@@ -15,14 +15,17 @@ use std.heap.{Meld, MeldHeaps}
 let n: 1..=1e6 = read()
 domain V = 0..n
 let t: [V]0..=2e9 = read()
-let x = [V] i => t[i] - i.idx
+fn x(i: V) -> Int = t[i] - i.idx
+type Key = -2_000_000_000..=1_000_000  // -x
 
-struct Block(from: V, to: V, len: Int, low: Meld<Int>)
-var pool = MeldHeaps<Int>()
+struct Block(from: V, to: V, len: Int, low: Meld<Key>)
+var pool = MeldHeaps<Key>()
 pool.reserve(n)
 var blocks = List<Block>()
 for i in V:
-    var b = Block(i, i, 1, pool.of([-x[i]]))
+    let low: Key = -x(i)
+    let one: List<Key> = [low]
+    var b = Block(i, i, 1, pool.of(one))
     while let top = blocks.last:
         if pool.top(top.low)! >= pool.top(b.low)!:
             break
@@ -32,10 +35,9 @@ for i in V:
             pool.pop(mut b.low)
     blocks.push(b)
 
-var fit: [V]Int = 0
+var cost = 0
 for b in blocks:
-    for i in b.from..=b.to:
-        fit[i] = -pool.top(b.low)!
-print(V.map(i => abs(x[i] - fit[i])).sum())
-for i in V:
-    print(fit[i] + i.idx)
+    for i in b.from..=b.to: cost += abs(x(i) + pool.top(b.low)!)
+print(cost)
+for b in blocks:
+    for i in b.from..=b.to: print(i.idx - pool.top(b.low)!)
