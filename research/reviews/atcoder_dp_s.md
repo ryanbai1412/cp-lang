@@ -5,7 +5,7 @@ Dream: 5/5
 
 Cold review against the idiomatic checklist.
 
-- R1: K's length bound is missing from `// Bounds:`; no `original:` line.
+- R1: K's length bound is missing from `// Bounds:`.
 - R2: `below[r]` plus K's own residue `own` is the standard tight/non-tight digit DP.
 - R5/R6: `Rem = 0..d` makes the residue a domain and `Rem.wrap` keeps it in range.
 - R8: `Int(own != Rem.first)` subtracts K itself when its sum is not divisible; the

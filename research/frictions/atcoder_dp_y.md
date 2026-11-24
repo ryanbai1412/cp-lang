@@ -15,5 +15,3 @@ Port: `corpus/problems/atcoder_dp_y/port.cp`, dream: `corpus/problems/atcoder_dp
 None. `type Cell = (r: 1..=h, c: 1..=w)` makes start, goal and walls one type, so
 `paths(a, b)` serves all three uses and the sort is the record order. `paths` returning
 0 for a cell not down-right of the other is the number of paths, not a sentinel.
-
-The header lacks `original:` (header edit, idioms).

@@ -5,7 +5,7 @@ Dream: 5/5
 
 Cold review against the idiomatic checklist.
 
-- R1: Source, limits, Problem, Solution and Bounds are present; `original:` is missing (header edit).
+- R1: Source, limits, Problem, Solution and Bounds are present.
 - R2: two subtree tables over `tree.at.rev` read as the editorial's white/black recurrence.
 - R3: `Rooted(Graph.undirected(edges), V.first!)` replaces the hand DFS.
 - R5/R6: `n: 1..=1e5`, vertices `V`, edges `E`; the root has no parent through `?V`, no sentinel.
@@ -13,7 +13,7 @@ Cold review against the idiomatic checklist.
 
 ## Checklist failures
 
-None beyond the missing `original:` header line.
+None.
 
 ## Owed rewrites
 

@@ -18,6 +18,4 @@ tables `white` and `black` filled children-first over `tree.at.rev`, with
 ## Frictions
 
 None. The `Rooted` traversal removes the recursive DFS and the parent sentinel the
-accepted C++ carries, and the port beats it on time and memory. The header has no
-`original:` line although meta.json names the reference; that is a header edit owed
-by idioms, tracked for the lint in the atcoder_dp_g report (Owner: Consumers).
+accepted C++ carries, and the port beats it on time and memory.

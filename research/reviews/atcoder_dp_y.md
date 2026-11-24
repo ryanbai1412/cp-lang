@@ -5,7 +5,7 @@ Dream: 5/5
 
 Cold review against the idiomatic checklist.
 
-- R1: `original:` missing; otherwise complete.
+- R1: complete.
 - R2: `clean[i]` = paths minus earlier walls' contributions, then the same for the goal.
 - R3: `Comb<Z>` for binomials, `walls.sort()` on the record.
 - R4: one `paths` serves every pair.
@@ -14,7 +14,7 @@ Cold review against the idiomatic checklist.
 
 ## Checklist failures
 
-R1 (`original:`).
+None.
 
 ## Owed rewrites
 

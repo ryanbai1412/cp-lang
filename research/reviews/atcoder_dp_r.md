@@ -4,7 +4,7 @@ Score: 4/5
 
 Cold review against the idiomatic checklist.
 
-- R1: complete header except `original:`.
+- R1: complete.
 - R2: "answer = sum of adj^k" is exactly the editorial; `Mat ** k` is the right spelling.
 - R3: std `Mat` and `**`, no hand-written squaring loop.
 - R5: `k: 1..=1e18`, `adj: [V, V]0..=1`.
