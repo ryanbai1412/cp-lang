@@ -155,6 +155,26 @@ class LandTest(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("rerun cpl=unset", r.stderr)
 
+    def test_slices_the_hooks_cut_skipped_run_before_the_push(self):
+        ours = self.clone("ours")
+        (ours / "scripts" / "affected.py").write_text(
+            "import sys\nprint('slices', *sys.argv[1:], file=sys.stderr)\n"
+            "sys.exit(1 if sys.argv[1:] == ['--run-slices', 'copies'] else 0)\n")
+        self.commit(ours, "a slice runner")
+        git(ours, "push", "-q", "origin", "HEAD:main")
+        for slices, code in (("copies\n", 1), ("vm-trace\nvm-trace\n", 0)):
+            pending = ours / ".git" / "cpl-pending-slices"
+            pending.write_text(slices)
+            (ours / "pkg.txt").write_text(slices)
+            self.commit(ours, "ours")
+            r = self.land(ours)
+            self.assertEqual(r.returncode, code, r.stderr)
+            self.assertIn("slices --run-slices " + slices.split()[0], r.stderr)
+            self.assertEqual(pending.exists(), code != 0)
+            git(ours, "fetch", "-q")
+            self.assertEqual(git(ours, "show", "origin/main:pkg.txt") if code == 0 else
+                             git(ours, "ls-tree", "origin/main", "pkg.txt"), "" if code else slices)
+
     def test_a_rebase_past_no_gate_change_lands_without_rerunning_it(self):
         theirs, ours = self.clone("theirs"), self.clone("ours")
         self._hook(theirs, "echo gate ran; exit 1\n")

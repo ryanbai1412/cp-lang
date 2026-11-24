@@ -173,6 +173,15 @@ class CheckCacheTest(unittest.TestCase):
                     self.assertIn("--run-slices vm-trace copies\n", r.stderr)
             with open(os.path.join(tmp, ".git", "cpl-commit-slow.log"), encoding="utf-8") as f:
                 self.assertIn("slow step", f.read())
+            pending = os.path.join(tmp, ".git", "cpl-pending-slices")
+            self.assertFalse(os.path.exists(pending))
+            with open(check, "w", encoding="utf-8") as f:
+                f.write("#!/usr/bin/env bash\necho \"==> build of the touched-path slices' tests: vm-trace copies\"; sleep 30 | cat; true\n")
+            r = subprocess.run([hook], cwd=tmp, capture_output=True, text=True, env={**env, "CPL_COMMIT_TIMEOUT": "1"})
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertIn("land.sh runs them", r.stderr)
+            with open(pending, encoding="utf-8") as f:
+                self.assertEqual(f.read(), "vm-trace\ncopies\n")
 
     def test_gate_env_pins_target_to_the_checkout(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

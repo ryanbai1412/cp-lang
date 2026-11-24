@@ -4,7 +4,8 @@
 # A commit never waits more than 25 s on it: past that the hook warns, names
 # the step it was in, logs it to .git/cpl-commit-slow.log and allows the
 # commit, unless that step was the touched-path slices: the tests a change
-# maps to (scripts/affected.py) refuse rather than reach main unrun. Turn it on once per clone with scripts/install-hooks.sh; skip it
+# maps to (scripts/affected.py) refuse rather than reach main unrun, and
+# slices a cut skipped are left for scripts/land.sh to run before it pushes. Turn it on once per clone with scripts/install-hooks.sh; skip it
 # for one commit with `git commit --no-verify`.
 set -uo pipefail
 root="$(git rev-parse --show-toplevel)"
@@ -38,5 +39,17 @@ case "$slow" in
             tee "$(git rev-parse --git-common-dir)/cpl-commit-failed.log" >&2
         exit 1 ;;
 esac
+# Cut before its slices ran (a cold build of their tests): the commit goes in, and
+# land.sh runs those slices before it pushes, so they never reach main unrun.
+case "$slow" in
+    "build of the touched-path slices' tests: "*) slices=${slow#*tests: } ;;
+    *) slices=
+       grep -q '^==> touched-path slices: ' "$out" || [ ! -f "$root/scripts/affected.py" ] ||
+           slices=$(uv run --quiet python "$root/scripts/affected.py" 2>/dev/null | sed -n 's/^slices=//p') ;;
+esac
+if [ -n "$slices" ]; then
+    printf '%s\n' $slices >>"$(git rev-parse --git-common-dir)/cpl-pending-slices"
+    echo "pre-commit: the touched-path slices ($slices) didn't run; scripts/land.sh runs them before it pushes" >&2
+fi
 echo "pre-commit: WARNING: the commit tier passed ${limit}s in \`${slow:-setup}\`; allowing the commit, CI runs the rest" >&2
 exit 0

@@ -135,6 +135,17 @@ if [ -z "$(git rev-list FETCH_HEAD..HEAD)" ]; then
 fi
 rm -f "$failed_log"
 recheck
+# The slices a hook's 25 s cut skipped (a cold build of their tests) run here,
+# on the rebased tip, before anything lands.
+pending="$(git rev-parse --git-common-dir)/cpl-pending-slices"
+if [ -s "$pending" ]; then
+    slices=$(sort -u "$pending" | tr '\n' ' ' | sed 's/ $//')
+    echo "land: running the touched-path slices the hook's cut skipped: $slices" >&2
+    { uv run --quiet python scripts/affected.py --build-slices $slices >&2 &&
+        uv run --quiet python scripts/affected.py --run-slices $slices >&2; } ||
+        { echo "land: a touched-path slice fails at the rebased tip; fix it and land again: uv run scripts/affected.py --run-slices $slices" >&2; exit 1; }
+    rm -f "$pending"
+fi
 changed=$(git diff --name-only --diff-filter=ACMR FETCH_HEAD HEAD)
 seen="$(git rev-parse --git-dir)/cpl-last-land"
 if [ -s "$seen" ] && git cat-file -e "$(cat "$seen")^{commit}" 2>/dev/null; then
