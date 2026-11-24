@@ -16,11 +16,15 @@
   {"id": "5198916", "language": "CPP17", "result": "RTE", "time": 9.081803083, "memory_kb": 141388.0, "file": "corpus/submissions/5198916.cpp"},
   {"id": "5198925", "language": "CPP17", "result": "TLE", "time": 6.642471277, "memory_kb": 141364.0, "file": "corpus/submissions/5198925.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/noip07p4/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted C++ on DMOJ (its C++ submissions are TLE, WA or RTE), so orig.cpp is a corpus-written O(n) reference: one diameter, its deepest hanging branch and a sliding window of length <= s. It matches both statement samples and a brute over every diameter and every sub-path on 400 generated trees."
 }
