@@ -366,6 +366,12 @@ pub(crate) const PASSES: &[Pass] = &[
         "a_branch_on_the_len_of_a_list_field_nothing_fills_is_left_out",
     ),
     pass(
+        "loop-bound-order",
+        "ranges/order.rs",
+        Uses(&["pushed_value"]),
+        "a_split_of_a_cut_walking_a_drop_has_no_empty_check",
+    ),
+    pass(
         "sign-ranges",
         "ranges.rs",
         Types,
