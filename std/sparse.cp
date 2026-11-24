@@ -15,8 +15,10 @@ pub struct SparseTable<D, T>(op: (T, T) -> T):
     /// Level `k` holds the fold of every window of length `2^k`, so any non-empty range is the fold
     /// of two overlapping windows. The table copies `a` and keeps its domain `D`.
     ///
+    /// An empty `a` builds an empty table; every `fold` on it traps.
+    ///
     /// cost: \(O(\lvert D \rvert \log \lvert D \rvert)\) time and memory, `op` called \(O(\lvert D \rvert \log \lvert D \rvert)\) times
-    /// empty: an empty `a` builds an empty table; every `fold` on it traps, `try_fold` is `None`
+    /// empty: `let a: List<Int> = []; SparseTable(min, a).try_fold(0..0) == None`
     /// order: the table keeps the domain `D` of `a`
     /// traps: never (a non-idempotent or non-associative `op` gives unspecified folds; check with `idempotent`)
     /// example: `SparseTable(min, [3, 1, 4]).fold(0..3) == 1`
@@ -46,8 +48,10 @@ pub struct SparseTable<D, T>(op: (T, T) -> T):
     /// The fold of `op` over the positions of the non-empty range `r`, as two overlapping
     /// power-of-two windows combined with one `op` call.
     ///
+    /// Use `try_fold` when `r` may be empty.
+    ///
     /// cost: \(O(1)\)
-    /// empty: traps; use `try_fold` when `r` may be empty
+    /// empty: `SparseTable(min, [3, 1, 4]).fold(1..1) == 0` (traps R0401)
     /// traps: when `r` is empty or reaches outside `D`
     /// example: `SparseTable(max, [3, 1, 4]).fold(0..2) == 3`
     /// example: `SparseTable(min, [3, 1, 4]).fold(1..2) == 1`
@@ -62,7 +66,7 @@ pub struct SparseTable<D, T>(op: (T, T) -> T):
     /// The fold of `r` like `fold`, or `None` when `r` is empty.
     ///
     /// cost: \(O(1)\)
-    /// empty: `None`
+    /// empty: `SparseTable(min, [3, 1, 4]).try_fold(1..1) == None`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `SparseTable(min, [3, 1, 4]).try_fold(1..1) == None`
     /// example: `SparseTable(min, [3, 1, 4]).try_fold(1..3) == Some(1)`
@@ -81,7 +85,7 @@ pub struct SparseTable<D, T>(op: (T, T) -> T):
     /// The fold of every position of `D`; `fold(D.all)`.
     ///
     /// cost: \(O(1)\)
-    /// empty: traps on an empty domain
+    /// empty: `let a: List<Int> = []; SparseTable(min, a).all == 0` (traps R0401)
     /// traps: when `D` is empty
     /// example: `SparseTable(gcd, [4, 6, 10]).all == 2`
     @get pub fn all(self) -> T:
@@ -94,7 +98,7 @@ pub struct SparseTable<D, T>(op: (T, T) -> T):
 /// associativity. A sample check, not a proof; associativity is not tested.
 ///
 /// cost: \(O(n)\) calls of `op`
-/// empty: `true`
+/// empty: `let xs: List<Int> = []; idempotent(max, xs) == true`
 /// order: samples are checked in list order; the first failure decides
 /// traps: never (`op` may trap)
 /// example: `idempotent(max, [1, 5]) == true`
@@ -117,8 +121,10 @@ pub struct DisjointSparseTable<D, T>(op: (T, T) -> T):
     /// so a range is answered by combining one suffix fold and one prefix fold; no idempotence,
     /// identity or inverse is needed.
     ///
+    /// An empty `a` builds an empty table; every `fold` on it traps.
+    ///
     /// cost: \(O(\lvert D \rvert \log \lvert D \rvert)\) time and memory, `op` called \(O(\lvert D \rvert \log \lvert D \rvert)\) times
-    /// empty: an empty `a` builds an empty table; every `fold` on it traps, `try_fold` is `None`
+    /// empty: `let a: List<Int> = []; DisjointSparseTable((x, y) => x + y, a).try_fold(0..0) == None`
     /// order: the table keeps the domain `D` of `a`; folds run in domain order
     /// traps: never (a non-associative `op` gives unspecified folds)
     /// example: `DisjointSparseTable((a, b) => a + b, [3, 1, 4]).fold(0..3) == 8`
@@ -158,8 +164,10 @@ pub struct DisjointSparseTable<D, T>(op: (T, T) -> T):
     /// The fold of `op` over the non-empty range `r`, left to right in domain order, so a
     /// non-commutative `op` sees its operands in position order.
     ///
+    /// Use `try_fold` when `r` may be empty.
+    ///
     /// cost: \(O(1)\), at most one `op` call
-    /// empty: traps; use `try_fold` when `r` may be empty
+    /// empty: `DisjointSparseTable((a, b) => a + b, [3, 1, 4]).fold(1..1) == 0` (traps R0401)
     /// traps: when `r` is empty or reaches outside `D`
     /// example: `DisjointSparseTable((a, b) => a + b, [3, 1, 4]).fold(1..3) == 5`
     /// example: `DisjointSparseTable((a, b) => a, [7, 8, 9]).fold(1..3) == 8`
@@ -177,7 +185,7 @@ pub struct DisjointSparseTable<D, T>(op: (T, T) -> T):
     /// The fold of `r` like `fold`, or `None` when `r` is empty.
     ///
     /// cost: \(O(1)\)
-    /// empty: `None`
+    /// empty: `DisjointSparseTable((a, b) => a + b, [3, 1, 4]).try_fold(2..2) == None`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `DisjointSparseTable((a, b) => a + b, [3, 1, 4]).try_fold(2..2) == None`
     /// example: `DisjointSparseTable((a, b) => a + b, [3, 1, 4]).try_fold(0..2) == Some(4)`
@@ -196,7 +204,7 @@ pub struct DisjointSparseTable<D, T>(op: (T, T) -> T):
     /// The fold of every position of `D`, left to right; `fold(D.all)`.
     ///
     /// cost: \(O(1)\)
-    /// empty: traps on an empty domain
+    /// empty: `let a: List<Int> = []; DisjointSparseTable((x, y) => x + y, a).all == 0` (traps R0401)
     /// traps: when `D` is empty
     /// example: `DisjointSparseTable((a, b) => a + b, [3, 1, 4]).all == 8`
     @get pub fn all(self) -> T:
@@ -223,7 +231,7 @@ pub struct SparseTable2D<R, C, T>(op: (T, T) -> T):
     /// `SparseTable` level per power-of-two row height and column width. Keeps the domains `R`, `C`.
     ///
     /// cost: \(O(\lvert R \rvert \lvert C \rvert \log \lvert R \rvert \log \lvert C \rvert)\) time and memory
-    /// empty: an empty grid builds an empty table; every `fold` on it traps
+    /// empty: `SparseTable2D(min, [0, 0] (r, c) => r + c).fold(0..0, 0..0) == 0` (traps R0401)
     /// order: the table keeps the domains `R` and `C` of `a`
     /// traps: never (a non-idempotent `op` gives unspecified folds)
     /// example: `SparseTable2D(max, [2, 2] (r, c) => r * 2 + c).fold(0..2, 0..2) == 3`
@@ -254,8 +262,10 @@ pub struct SparseTable2D<R, C, T>(op: (T, T) -> T):
     /// The fold of `op` over the rectangle `rows` by `cols`, both non-empty: four overlapping
     /// power-of-two blocks combined with `op`.
     ///
+    /// `fold` traps when either range is empty; use `try_fold` when one may be.
+    ///
     /// cost: \(O(1)\)
-    /// empty: traps when either range is empty; use `try_fold`
+    /// empty: `SparseTable2D(min, [2, 2] (r, c) => r * 2 + c).fold(0..2, 1..1) == 0` (traps R0401)
     /// traps: when either range is empty or reaches outside its domain
     /// example: `SparseTable2D(min, [2, 2] (r, c) => r * 2 + c).fold(1..2, 0..2) == 2`
     pub fn fold(self, rows: Range<R>, cols: Range<C>) -> T:
@@ -272,7 +282,7 @@ pub struct SparseTable2D<R, C, T>(op: (T, T) -> T):
     /// The rectangle fold like `fold`, or `None` when `rows` or `cols` is empty.
     ///
     /// cost: \(O(1)\)
-    /// empty: `None` when either range is empty
+    /// empty: `let t = SparseTable2D(min, [2, 2] (r, c) => r * 2 + c); t.try_fold(1..1, 0..2) == None and t.try_fold(0..2, 1..1) == None`
     /// traps: when a range reaches outside its domain on a non-empty rectangle
     /// example: `SparseTable2D(min, [2, 2] (r, c) => r * 2 + c).try_fold(0..2, 1..1) == None`
     /// example: `SparseTable2D(min, [2, 2] (r, c) => r * 2 + c).try_fold(0..2, 1..2) == Some(1)`
@@ -311,8 +321,10 @@ pub struct LinearRmq<D, T>(before: (T, T) -> Bool):
     /// Blocks of 64 positions carry a sparse table over block bests and an in-block bitmask stack,
     /// so queries never scan.
     ///
+    /// An empty `a` builds an empty structure; `argbest` and `best` on it trap.
+    ///
     /// cost: \(O(\lvert D \rvert)\) time and memory
-    /// empty: an empty `a` builds an empty structure; `argbest` and `best` on it trap
+    /// empty: `let a: List<Int> = []; LinearRmq(a).argbest(0..0) == 0` (traps R0401)
     /// order: the structure keeps the domain `D` of `a`
     /// traps: never (`before` must be a strict weak order, or results are unspecified)
     /// example: `LinearRmq([3, 1, 4]).best(0..3) == 1`
@@ -345,8 +357,8 @@ pub struct LinearRmq<D, T>(before: (T, T) -> Bool):
     /// when several are equally best (neither is `before` the other).
     ///
     /// cost: \(O(1)\)
-    /// empty: traps
-    /// ties: the first in key order
+    /// empty: `LinearRmq([3, 1]).argbest(1..1) == 0` (traps R0401)
+    /// ties: `LinearRmq([2, 1, 4, 1]).argbest(0..4) == 1`
     /// traps: when `r` is empty or reaches outside `D`
     /// example: `LinearRmq([3, 1, 1, 4]).argbest(0..4) == 1`
     /// example: `LinearRmq([3, 1, 4], before: (x, y) => x > y).argbest(0..3) == 2`
@@ -364,9 +376,13 @@ pub struct LinearRmq<D, T>(before: (T, T) -> Bool):
 
     /// The value of the best element of the non-empty range `r` under `before`; `a[argbest(r)]`.
     ///
+    /// Use `try_best` when `r` may be empty.
+    ///
+    /// Equal-best values are interchangeable under `before`; `best` returns the one at the leftmost.
+    ///
     /// cost: \(O(1)\)
-    /// empty: traps; use `try_best` when `r` may be empty
-    /// ties: equal-best values are interchangeable; the value at the leftmost is returned
+    /// empty: `LinearRmq([3, 1]).best(1..1) == 0` (traps R0401)
+    /// ties: `LinearRmq([(2, 'a'), (1, 'b'), (1, 'c')], before: (x, y) => x.0 < y.0).best(0..3) == (1, 'b')`
     /// traps: when `r` is empty or reaches outside `D`
     /// example: `LinearRmq([3, 1, 4], before: (x, y) => x > y).best(0..3) == 4`
     pub fn best(self, r: Range<D>) -> T:
@@ -375,8 +391,8 @@ pub struct LinearRmq<D, T>(before: (T, T) -> Bool):
     /// The value of the best element of `r` like `best`, or `None` when `r` is empty.
     ///
     /// cost: \(O(1)\)
-    /// empty: `None`
-    /// ties: the value at the leftmost equal-best position
+    /// empty: `LinearRmq([3, 1]).try_best(1..1) == None`
+    /// ties: `LinearRmq([(2, 'a'), (1, 'b'), (1, 'c')], before: (x, y) => x.0 < y.0).try_best(0..3) == Some((1, 'b'))`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `LinearRmq([3, 1]).try_best(1..1) == None`
     /// example: `LinearRmq([3, 1]).try_best(0..2) == Some(1)`
