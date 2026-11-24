@@ -82,9 +82,21 @@ class ProblemsTest(Corpus):
         old.write_text("#!/bin/sh\necho 13.3.0\n")
         old.chmod(0o755)
         with mock.patch("shutil.which", lambda name: str(old) if name == "g++" else None), \
-                self.assertRaises(RuntimeError) as e:
+                mock.patch.dict(os.environ, CPL_GXX_FETCH="0"), self.assertRaises(RuntimeError) as e:
             corpus.reference_cxx.__wrapped__()
         self.assertIn("g++ 14", str(e.exception))
+
+    def test_with_no_gxx_14_on_path_the_fetched_one_is_the_reference(self):
+        new = self.root / "fetched-g++"
+        new.write_text("#!/bin/sh\necho 14.4.0\n")
+        new.chmod(0o755)
+        fetch = subprocess.CompletedProcess([], 0, stdout=f"{new}\n")
+        real_run = subprocess.run
+        run = lambda cmd, *a, **k: fetch if cmd[-1].endswith("gxx14.sh") else real_run(cmd, *a, **k)
+        with mock.patch("shutil.which", lambda name: None), mock.patch("subprocess.run", run), \
+                mock.patch.dict(os.environ, CPL_GXX_FETCH="1"):
+            cxx, version = corpus.reference_cxx.__wrapped__()
+        self.assertEqual((cxx[0], version), (str(new), "14.4.0"))
 
     def test_reference_falls_back_to_an_accepted_submission(self):
         d = self.package("p1", orig_cpp="")

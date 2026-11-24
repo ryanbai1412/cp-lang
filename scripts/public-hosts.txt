@@ -14,3 +14,4 @@ api\.anthropic\.com|api\.openai\.com
 mise\.jdx\.dev
 mise\.run
 hsin\.hr|(www\.)?luogu\.com\.cn
+micro\.mamba\.pm

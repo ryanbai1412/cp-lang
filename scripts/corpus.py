@@ -129,14 +129,20 @@ REFERENCE_FLAGS = ["-std=gnu++23", "-O2", "-w", "-static-libstdc++", "-static-li
 @functools.cache
 def reference_cxx():
     """The g++ 14+ command that builds accepted C++, and its version."""
-    for name in REFERENCE_GXX:
-        path = shutil.which(name)
-        if not path:
-            continue
-        version = subprocess.run([path, "-dumpfullversion"], capture_output=True, text=True).stdout.strip()
-        if version and int(version.split(".")[0]) >= 14:
+    def version_14(path):
+        v = subprocess.run([path, "-dumpfullversion"], capture_output=True, text=True).stdout.strip()
+        return v if v and int(v.split(".")[0]) >= 14 else None
+    for path in filter(None, map(shutil.which, REFERENCE_GXX)):
+        if version := version_14(path):
             return [path, *REFERENCE_FLAGS], version
-    raise RuntimeError(f"no g++ 14 or newer on PATH (tried {', '.join(REFERENCE_GXX)}); "
+    if os.environ.get("CPL_GXX_FETCH", "1") != "0":
+        fetched = subprocess.run(["bash", os.path.join(ROOT, "scripts", "gxx14.sh")],
+                                 stdout=subprocess.PIPE, text=True)
+        path = fetched.stdout.strip()
+        if fetched.returncode == 0 and (version := version_14(path)):
+            return [path, *REFERENCE_FLAGS], version
+    raise RuntimeError(f"no g++ 14 or newer on PATH (tried {', '.join(REFERENCE_GXX)}) "
+                       "and scripts/gxx14.sh could not fetch one; "
                        "accepted C++ needs the judges' C++23 g++ (README: Setup)")
 
 
