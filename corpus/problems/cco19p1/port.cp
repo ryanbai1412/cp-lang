@@ -5,11 +5,11 @@
 //   adjacent piece (either colour) and captures it; a player who cannot move loses. Each
 //   player picks uniformly among his J (resp. D) <= 13 best moves (all, if fewer). Print the
 //   chance Justin wins, to 3 decimals.
-// Solution: at most 13 cells, so search every reachable board, memoized on the board in base
-//   3 plus the side to move. A position's chance for the mover is the mean of 1 - (the
+// Solution: at most 13 cells, so search every reachable board, memoized per side to move on the
+//   board itself. A position's chance for the mover is the mean of 1 - (the
 //   opponent's chance) over his best `slack` moves, or 0 with no move.
 // original: corpus/submissions/3613457.cpp
-// Bounds: n, m: 1..=13
+// Bounds: n, m: 1..=13; slack: 1..=16
 let n: 1..=13 = read()
 let m: 1..=13 = read()                                    // at most 13 cells in all
 domain Row = 0..n
@@ -22,37 +22,25 @@ type Board = [Row, Col]?Player                            // None once a piece h
 
 let letters: [Row, Col]Char = read()
 let start: Board = [Row, Col] (r, c) => Some(if letters[r, c] == 'J': J else: D)
-let (j_slack, d_slack): (Int, Int) = read()              // how many of his best moves each picks from
-fn slack(p: Player) -> Int = if p == J: j_slack else: d_slack
+let slack: [Player]1..=16 = read()                       // how many of his best moves each picks from
 
-fn key(board: Board, who: Player) -> Int:
-    var k = if who == J: 0 else: 1
-    for r in Row:
-        for c in Col:
-            k = k * 3 + (if let p = board[r, c]: (if p == J: 1 else: 2) else: 0)
-    k
-
-var memo: Map<Int, F64> = Map()
+var memo: [Player]Map<Board, F64> = [Player] _ => Map()
 
 // The chance that `who`, about to move, wins from here.
 fn wins(board: Board, who: Player) -> F64:
-    let k = key(board, who)
-    if let known = memo.get(k): return known
+    if let known = memo[who].get(board): return known
     var chances: List<F64> = []
-    for r in Row:
-        for c in Col:
-            if board[r, c] != Some(who): continue
-            let p: Cell = (r, c)
-            for q in p.adj4:
-                if board[q] == None: continue
-                var next = board
-                next[q] = Some(who)
-                next[p] = None
-                chances.push(1.0 - wins(next, other(who)))
-    let best = chances.sorted(by: x => desc(x))
-    let take = min(best.len, slack(who))
-    let chance = if take == 0: 0.0 else: best[0..take].sum() / F64(take)
-    memo[k] = chance
+    for (p, piece) in board.items:
+        if piece != Some(who): continue
+        for q in p.adj4:
+            if board[q] == None: continue
+            var next = board
+            next[q] = Some(who)
+            next[p] = None
+            chances.push(1.0 - wins(next, other(who)))
+    let best = chances.sorted(by: x => desc(x)).take(slack[who])
+    let chance = if best.is_empty: 0.0 else: best.sum() / F64(best.len)
+    memo[who][board] = chance
     chance
 
 print("{wins(start, J):.3}")
