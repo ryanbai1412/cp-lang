@@ -4,49 +4,23 @@
 //   unit height. A sail costs the number of sails behind it at its height. Print the least total.
 // Solution: only the count c at each height matters (total sum c(c - 1) / 2), not the mast order.
 //   Taking masts by height, each greedily puts its K sails on the K least-used heights in 1..=H.
-//   Counts stay non-increasing in height, so those are the heights below v = count[H - K + 1] up
-//   to H, plus the leftmost end of the block equal to v; adding there keeps the order. A range-add
-//   segment tree with binary searches, O(N log^2 H).
-// Runnable port (proto/cp.py lib-run) of statement-first ioi07p3.cp
+//   Counts never rise with height, so with v the count at H - K + 1 those are every height up to
+//   H whose count is below v, plus the lowest heights whose count is v: adding there keeps the
+//   order. A range-add min SegTree finds both runs with `right_while`, O(N log H).
 // original: corpus/submissions/5120005.cpp
+// Bounds: n: 2..=1e5; masts.h, masts.k: 1..=1e5
+let n: 2..=1e5 = read()
+let masts: [n](h: 1..=1e5, k: 1..=1e5) = read()
+domain Height = 1..=1e5
+var sails = SegTree<Height, Int, Int>(min, act: add, a: [Height] _ => 0)
 
-let n: Int = read()
-domain M = 0..n
-let masts: [M](h: Int, k: Int) = read()
+for (h, k) in masts.sorted():
+    let top = Height(h).r
+    let v = sails.get(Height(h - k + 1))
+    let level = sails.right_while(Height.cuts.first!, c => c > v)  // the first height at v
+    let below = min(sails.right_while(level, c => c >= v), top)    // the first height under v
+    sails.apply(below..top, 1)
+    let rest = k - (Int(top) - Int(below))
+    sails.apply(level..Height.cuts(Int(level) + rest), 1)
 
-var max_h = 0
-var pairs: List<(h: Int, k: Int)> = []
-for m in M:
-    max_h max= masts[m].h
-    pairs.push(masts[m])
-pairs = pairs.sorted()
-
-domain H = 1..=max_h
-
-let init = [H] _ => 0
-var st = SegTree<H, Int, Int>(min, act: add, a: init)
-
-// First height in 1..=limit with count <= target (non-increasing array).
-fn first_le(mut st: SegTree<H, Int, Int>, limit: Int, target: Int) -> Int:
-    let lo = (1..limit + 1).first_true(mid => st.get(H(mid)) <= target) ?? (limit + 1)
-    lo
-
-for p in pairs:
-    let h = p.h
-    let k = p.k
-    let lo_idx = h - k + 1
-    let v = st.get(H(lo_idx))
-    // Leftmost index in 1..=h with count <= v, and leftmost with count <= v - 1.
-    let left_eq = first_le(mut st, h, v)
-    let right_after = first_le(mut st, h, v - 1)
-    if right_after <= h:
-        st.apply(H(right_after)..=H(h), 1)
-    let rem = k - (h - right_after + 1)
-    if rem > 0:
-        st.apply(H(left_eq)..=H(left_eq + rem - 1), 1)
-
-var ans = 0
-for i in H:
-    let c = st.get(i)
-    ans += c * (c - 1) / 2
-print(ans)
+print(Height.map(x => sails.get(x)).map(c => c * (c - 1) / 2).sum())
