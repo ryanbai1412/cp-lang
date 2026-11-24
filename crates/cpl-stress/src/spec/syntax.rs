@@ -349,6 +349,56 @@ pub(super) fn streams<'a>(
     streams
 }
 
+/// The body of a block fn that reads in order to its end: no generics or
+/// decorators, and no `return` before its last read.
+fn reading_block<'a>(src: &str, base: u32, stmt: &'a Stmt) -> Option<&'a [Stmt]> {
+    let StmtKind::Fn(decl) = &stmt.kind else {
+        return None;
+    };
+    let FnBody::Block(block) = &decl.body else {
+        return None;
+    };
+    let code = |stmt: &Stmt| &src[span_range(stmt.span.shift(base))];
+    // A `return` after the last read ends the fn as its end
+    // would; one before it leaves later reads to the caller.
+    let last = block
+        .stmts
+        .iter()
+        .rposition(|stmt| reads_inside(code(stmt)));
+    let early = block.stmts.iter().enumerate().any(|(at, stmt)| {
+        let jumps = Jumps::of(stmt);
+        Some(at) <= last
+            && jumps
+                .returns
+                .iter()
+                .any(|&r| !Jumps::within(&jumps.calls, r))
+    });
+    (decl.generics.is_empty() && stmt.decorators.is_empty() && reads_inside(code(stmt)) && !early)
+        .then_some(&block.stmts[..])
+}
+
+/// Each block fn that reads ([`reading_block`]), read for its caller
+/// wherever it is called: a call reads its arguments, then the body's
+/// reads in order, which may not use its params. Its param names ride
+/// along so [`Builder::rows`] refuses a read sized by one.
+pub(super) fn blocks<'a>(
+    src: &str,
+    items: &'a [(u32, cpl_syntax::ParsedItem)],
+) -> HashMap<&'a str, (u32, &'a [Stmt], Vec<String>)> {
+    let mut blocks = HashMap::new();
+    for (base, item) in items {
+        for stmt in &item.stmts {
+            let (StmtKind::Fn(decl), Some(body)) = (&stmt.kind, reading_block(src, *base, stmt))
+            else {
+                continue;
+            };
+            let params = decl.params.iter().map(|p| p.name.text.clone()).collect();
+            blocks.insert(decl.name.text.as_str(), (*base, body, params));
+        }
+    }
+    blocks
+}
+
 /// The fns whose reads are their callers': no parameters, no `return`, and
 /// every call a whole top-level statement or a `let`'s whole value, so each
 /// call reads the body's input right there, in order.
@@ -362,31 +412,8 @@ pub(super) fn readers<'a>(
             let StmtKind::Fn(decl) = &stmt.kind else {
                 continue;
             };
-            let FnBody::Block(block) = &decl.body else {
-                continue;
-            };
-            let code = |stmt: &Stmt| &src[span_range(stmt.span.shift(*base))];
-            // A `return` after the last read ends the fn as its end
-            // would; one before it leaves later reads to the caller.
-            let last = block
-                .stmts
-                .iter()
-                .rposition(|stmt| reads_inside(code(stmt)));
-            let early = block.stmts.iter().enumerate().any(|(at, stmt)| {
-                let jumps = Jumps::of(stmt);
-                Some(at) <= last
-                    && jumps
-                        .returns
-                        .iter()
-                        .any(|&r| !Jumps::within(&jumps.calls, r))
-            });
-            if decl.params.is_empty()
-                && decl.generics.is_empty()
-                && stmt.decorators.is_empty()
-                && reads_inside(code(stmt))
-                && !early
-            {
-                readers.insert(decl.name.text.as_str(), (*base, &block.stmts[..]));
+            if let Some(body) = reading_block(src, *base, stmt).filter(|_| decl.params.is_empty()) {
+                readers.insert(decl.name.text.as_str(), (*base, body));
             }
         }
     }

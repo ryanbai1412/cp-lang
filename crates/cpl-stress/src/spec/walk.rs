@@ -45,6 +45,8 @@ pub(super) struct Builder<'a> {
     pub(super) char_domains: HashSet<String>,
     /// Each `fn f(..) -> T = body` whose body reads ([`bodies`]).
     pub(super) bodies: HashMap<&'a str, (u32, &'a Expr)>,
+    /// Each block fn whose body reads ([`blocks`]).
+    pub(super) blocks: HashMap<&'a str, (u32, &'a [Stmt], Vec<String>)>,
     /// Each `fn f() -> yields T` that reads until a sentinel ([`streams`]).
     pub(super) streams: HashMap<&'a str, (u32, &'a Stmt)>,
     /// The fns of [`Builder::bodies`] being inlined, outermost first.
@@ -1267,18 +1269,52 @@ impl Builder<'_> {
         if self.streams.contains_key(name) || (name == "read" && !args.is_empty()) {
             return Ok(Some(false));
         }
-        if !builtin && body.is_none() {
+        let block = self
+            .blocks
+            .get_key_value(name)
+            .filter(|_| !self.values.contains_key(name))
+            .map(|(&name, (base, body, params))| (name, (*base, *body, params.clone())));
+        if !builtin && body.is_none() && block.is_none() {
             return Ok(None);
+        }
+        if let Some(name) = body
+            .map(|(name, _)| name)
+            .or(block.as_ref().map(|(name, _)| *name))
+        {
+            if self.inlining.contains(&name) {
+                return Err(self.error(
+                    at,
+                    format!("`{name}` reads input and calls itself, so how much it reads depends on values a generated input can't know; read the input at top level and pass the values in"),
+                ));
+            }
         }
         for arg in args {
             if !self.inline(&arg.value, out)? {
                 return Ok(Some(false));
             }
         }
-        if let Some((name, (base, body))) = body {
-            if self.inlining.contains(&name) {
+        if let Some((name, (base, body, params))) = block {
+            self.inlining.push(name);
+            let outer = std::mem::replace(&mut self.base, base);
+            // What runs after the last read (its `return`) reads nothing.
+            let last = body.iter().rposition(|stmt| self.reads(stmt));
+            let body = &body[..last.map_or(0, |last| last + 1)];
+            let (mut parts, mut binds) = (Vec::new(), Vec::new());
+            let read = self.rows(
+                body,
+                &mut params.into_iter().collect(),
+                &mut parts,
+                &mut binds,
+            );
+            self.base = outer;
+            self.inlining.pop();
+            if !read? {
                 return Ok(Some(false));
             }
+            out.extend(pass(parts, binds));
+            return Ok(Some(true));
+        }
+        if let Some((name, (base, body))) = body {
             self.inlining.push(name);
             let outer = std::mem::replace(&mut self.base, base);
             let read = self.inline(body, out);
@@ -1329,6 +1365,7 @@ impl Builder<'_> {
                     && (name == "ask"
                         || self.values.contains_key(name)
                         || self.bodies.contains_key(name)
+                        || self.blocks.contains_key(name)
                         || self.streams.contains_key(name))
             })
         }

@@ -333,7 +333,7 @@ for _ in 0..n:
 #[test]
 fn reads_no_field_describes_are_refused_not_left_out() {
     let cases = [
-        ("let n: 1..=5 = read()\nfn row() -> Int:\n    let x: Int = read()\n    if x > 0: return x\n    x\nprint(row())\n", "this fn reads input"),
+        ("let n: 1..=5 = read()\nfn row() -> Int:\n    if n > 3: return 0\n    let x: Int = read()\n    x\nprint(row())\n", "this fn reads input"),
         ("let n: 1..=5 = read()\n@memo\nfn row(i: Int) -> Int:\n    let x: Int = read()\n    x\nprint(row(n))\n", "this fn reads input"),
         (
             "@!multitest\nlet n: 2..=9 = read()\nfn pick() -> Int: n\nlet x: 1..=n = read(gen: pick)\n",
@@ -348,6 +348,68 @@ fn reads_no_field_describes_are_refused_not_left_out() {
     // `read2(n)` is a call of the program's own fn, not of `read`.
     let src = "let n: 1..=5 = read()\nfn read2(x: Int) -> Int: x\nprint(read2(n))\n";
     assert!(InputSpec::from_source(src).is_ok());
+}
+
+#[test]
+fn a_fn_that_reads_reads_for_its_caller_wherever_it_is_called() {
+    let src = "let t: 1..=3 = read()
+fn row(scale: Int) -> Int:
+    var s = 0
+    for _ in 0..scale:
+        s += 1
+    let (a, b): (1..=9, 0..=2) = read()
+    a * s + b
+for _ in 0..t:
+    print(row(2))
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    for seed in 0..30 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(8)).unwrap();
+        let tokens: Vec<i128> = case
+            .render()
+            .split_whitespace()
+            .map(|t| t.parse().unwrap())
+            .collect();
+        assert_eq!(tokens.len() as i128, 1 + 2 * tokens[0], "{}", case.render());
+        for pair in tokens[1..].chunks(2) {
+            assert!((1..=9).contains(&pair[0]) && (0..=2).contains(&pair[1]));
+        }
+    }
+    // A read sized by a param depends on the call, which no field knows.
+    let sized = "let n: 1..=5 = read()
+fn row(k: Int) -> Int:
+    let xs: [k]Int = read()
+    xs.len
+print(row(n))
+";
+    assert!(InputSpec::from_source(sized).is_err());
+}
+
+#[test]
+fn a_fn_that_reads_and_recurses_is_refused_by_name() {
+    let direct = "let n: 1..=5 = read()
+fn walk(d: Int) -> Int:
+    let x: 0..=1 = read()
+    x + walk(d + 1)
+print(walk(n))
+";
+    let mutual = "fn ping(d: Int) -> Int:
+    let x: 0..=1 = read()
+    x + pong(d)
+fn pong(d: Int) -> Int:
+    let y: 0..=1 = read()
+    y + ping(d + 1)
+print(ping(0))
+";
+    for (src, name) in [(direct, "walk"), (mutual, "ping")] {
+        let err = InputSpec::from_source(src).unwrap_err();
+        assert!(
+            err.message
+                .contains(&format!("`{name}` reads input and calls itself")),
+            "{src}: {}",
+            err.message
+        );
+    }
 }
 
 #[test]
@@ -417,11 +479,10 @@ solve()
         assert!((1..=3).contains(&tokens[2]) && (7..=8).contains(&tokens[3]));
         assert!((20..=29).contains(&tokens[4]), "{tokens:?}");
     }
-    // A call that runs only some of the time, a reader with a parameter
-    // or an early `return` reads what no field can describe.
+    // A call that runs only some of the time or an early `return` reads
+    // what no field can describe.
     for refused in [
         "fn one() -> Int:\n    let a: 1..=3 = read()\n    a\nlet c: 0..=1 = read()\nif c == 1: print(one())\n",
-        "fn one(m: Int) -> Int:\n    let a: 1..=3 = read()\n    a + m\nlet b = one(2)\n",
         "fn one() -> Int:\n    let c: 0..=1 = read()\n    if c == 0: return 0\n    let a: 1..=3 = read()\n    a\nlet b = one()\n",
     ] {
         let error = InputSpec::from_source(refused).unwrap_err();
@@ -462,9 +523,22 @@ print(a.sum())
     // Called only some of the time, its reads are not a field.
     let branch = "fn ri() -> Int:\n    let x: Int = read()\n    x\nlet c: 0..=1 = read()\nif c == 1: print(ri())\n";
     assert!(InputSpec::from_source(branch).is_err());
-    // A type that uses a value the body read is not the same each call.
-    let dependent = "fn row() -> Int:\n    let k: 1..=3 = read()\n    let a: [k]Int = read()\n    a.sum()\nfor _ in 0..2: print(row())\n";
-    assert!(InputSpec::from_source(dependent).is_err());
+    // A type that uses a value the body read is read beside it, each call.
+    let dependent = "fn row() -> Int:\n    let k: 1..=3 = read()\n    let a: [k]0..=9 = read()\n    a.sum()\nfor _ in 0..2: print(row())\n";
+    let spec = InputSpec::from_source(dependent).unwrap();
+    std::fs::write(&path, dependent).unwrap();
+    for seed in 0..20 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(5)).unwrap();
+        let text = case.render();
+        assert_eq!(crate::explain::runtime_error(&path, &text), None, "{text}");
+        let tokens: Vec<usize> = text
+            .split_whitespace()
+            .map(|t| t.parse().unwrap())
+            .collect();
+        let second = 1 + tokens[0];
+        assert_eq!(tokens.len(), second + 1 + tokens[second], "{text}");
+    }
+    std::fs::remove_file(&path).ok();
 }
 
 #[test]

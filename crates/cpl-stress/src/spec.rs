@@ -612,6 +612,7 @@ impl InputSpec {
             read_types: &read_types,
             char_domains: HashSet::new(),
             bodies: bodies(src, &parsed.items),
+            blocks: blocks(src, &parsed.items),
             streams: streams(src, &parsed.items),
             inlining: Vec::new(),
             domains: HashMap::new(),
@@ -967,6 +968,7 @@ impl InputSpec {
                         && !readers.contains_key(decl.name.text.as_str())
                         && !builder.values.contains_key(&decl.name.text)
                         && !builder.bodies.contains_key(decl.name.text.as_str())
+                        && !builder.blocks.contains_key(decl.name.text.as_str())
                         && !builder.streams.contains_key(decl.name.text.as_str())
                         && stmt
                             .decorators
