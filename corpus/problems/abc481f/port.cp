@@ -12,62 +12,27 @@ type Z = Mod<998_244_353>
 
 let (n, m): (2..=2e5, 1..=2e5) = read()
 domain V = 1..=n
-domain E = 0..m
-let edges: [E](u: V, v: V, w: 1..=9) = read()
+let edges: [m](u: V, v: V, w: 1..=9) = read()
+let g = Graph.directed(edges)
 
-var adj: [V]List<(V, Int)> = []
-for e in E:
-    adj[edges[e].u].push((edges[e].v, edges[e].w))
+// value[v] is set once, by the first group (in layer order) that reaches v with the least digit
+var value: [V]?Z = None
+value[V.first!] = Z(0)
+var layer: List<List<V>> = [[V.first!]]
+while not layer.is_empty:
+    var next: List<List<V>> = []
+    for group in layer:
+        let here = value[group[0]]!
+        var by_digit: [1..=9]List<V> = []
+        for u in group:
+            for a in g.out(u) if value[a.to].is_none:
+                by_digit[a.w].push(a.to)
+        for (d, reached) in by_digit.items:
+            var fresh: List<V> = []
+            for v in reached if value[v].is_none:
+                value[v] = here * 10 + d
+                fresh.push(v)
+            if not fresh.is_empty: next.push(fresh)
+    layer = next
 
-var vis: [V]Bool = false
-var ans: [V]Z = 0
-vis[V.first!] = true
-var groups: List<List<V>> = [[V.first!]]
-
-while not groups.is_empty:
-    var next_groups: List<List<V>> = []
-    for grp in groups:
-        let val = ans[grp[0]]
-        var buckets: [0..10]List<V> = []
-        for u in grp:
-            for (to, c) in adj[u]:
-                if not vis[to]:
-                    buckets[c].push(to)
-        for c in 1..=9:
-            var ng: List<V> = []
-            for to in buckets[c]:
-                if not vis[to]:
-                    vis[to] = true
-                    ans[to] = val * 10 + c
-                    ng.push(to)
-            if not ng.is_empty:
-                next_groups.push(ng)
-    groups = next_groups
-
-let out = [ans[v] for v in V if v != V.first!]
-print(out, sep: "\n")
-
-@alt(program)
-fn slow():
-    var best_len: [V]?Int = None
-    var best_str: [V]Str = ""
-    best_len[V.first!] = 0
-    for step in 0..n:
-        for e in E:
-            let u = edges[e].u
-            let v = edges[e].v
-            let c = edges[e].w
-            if let du = best_len[u]:
-                let cand = best_str[u] + Str(['0' + c])
-                let nd = du + 1
-                if best_len[v] == None or nd < best_len[v]! or (
-                    nd == best_len[v]! and cand < best_str[v]
-                ):
-                    best_len[v] = nd
-                    best_str[v] = cand
-    for v in V:
-        if v != V.first!:
-            var acc: Z = 0
-            for i in 0..best_str[v].len:
-                acc = acc * 10 + (best_str[v][i] - '0')
-            print(acc)
+print([value[v]! for v in V if v != V.first!], sep: "\n")
