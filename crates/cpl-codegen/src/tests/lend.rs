@@ -1252,3 +1252,20 @@ fn a_fn_that_gives_a_part_on_one_return_and_builds_on_another_lends_the_part() {
         "a walk whose body changes the argument takes its own copy: {kept}"
     );
 }
+
+#[test]
+fn a_whole_read_moves_when_its_source_is_overwritten_before_its_next_read() {
+    let swapped = cpp(concat!(
+        "fn f(n: Int) -> Int:\n",
+        "    var xs = [1]\n",
+        "    var ys = [2]\n",
+        "    for i in 0..n:\n",
+        "        let t = xs\n",
+        "        xs = ys\n",
+        "        ys = t\n",
+        "        xs.push(i)\n",
+        "    xs.len + ys.len\n",
+        "print(f(3))\n",
+    ));
+    assert!(swapped.contains("xs = std::move(ys);"), "{swapped}");
+}

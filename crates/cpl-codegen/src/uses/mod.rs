@@ -661,7 +661,8 @@ pub(crate) fn last_read(
     };
     field_store(place)
         && walk::root(place) != (false, *slot)
-        && dead_after(program, block, k, *slot, outer)
+        && (crate::lend::overwritten_before_read(value, &block.stmts[k + 1..])
+            || dead_after(program, block, k, *slot, outer))
 }
 
 /// A variable or a field path on one: `x`, `s.a.b`.
