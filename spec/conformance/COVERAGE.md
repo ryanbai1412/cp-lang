@@ -7,20 +7,20 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3332 (1093 passing). Rules: 612.
+Cases: 3337 (1093 passing). Rules: 612.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 57 rules, 183 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 53 rules, 158 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 116 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 73 rules, 192 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 73 rules, 193 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 55 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 78 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 50 rules, 250 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 25 rules, 121 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 94 rules, 234 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R08 (08-traits-generics.md): 31 rules, 103 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R08 (08-traits-generics.md): 31 rules, 104 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 20 rules, 118 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 16 rules, 52 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -233,7 +233,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.2.7 [1+ 1-]: | `V(x)` | integer to position, trapping outside `V` | \(O(1)\)
 - R04.2.8 [1+ 0-]: | `V.at(x)` | integer to position, `?V`: `None` outside `V` | \(O(1)\)
 - R04.2.9 [3+ 0-]: | `P.nth(k)` | a product domain walks row-major (the last factor fastest), so `P.nth(k)` d...
-- R04.2.10 [11+ 3-]: | `P.at((x, y))`, `P((x, y))` | for a product domain `P = (A, B)`, a tuple of integers to ...
+- R04.2.10 [12+ 3-]: | `P.at((x, y))`, `P((x, y))` | for a product domain `P = (A, B)`, a tuple of integers to ...
 - R04.2.19 [3+ 0-]: | `v.after`, `v.before` | the pieces `v.r..` and `..v.l` of `v`'s domain, so `for j in v.a...
 - R04.2.11 [10+ 0-]: | `a[p]`, `a[x, y]` | for `P = (A, B)`, `[P]T` and `[A, B]T` are the same type: a `p: P` i...
 - R04.2.12 [2+ 1-]: | `Pair<V>` | the unordered pairs `{u, v}` of distinct positions, `V.count * (V.count - 1)...
@@ -567,7 +567,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R08.2.6 [1+ 1-]: **Trait aliases** name a bundle of bounds: `trait WeightedNext<V, W> = Next<V> where Arc: ...
 - R08.2.8 [1+ 0-]: Return-type dispatch: a call may be resolved by its expected type (`read<T>()`).
 - R08.2.9 [7+ 0-]: **Conditional code** on a bound: `if T: Commutative: ... else: ...` chooses at compile tim...
-- R08.3.1 [1+ 1-]: A `law` is a Boolean property of a trait's operations. Implementing a trait promises its l...
+- R08.3.1 [2+ 1-]: A `law` is a Boolean property of a trait's operations. Implementing a trait promises its l...
 - R08.3.2 [1+ 0-]: Laws are never assumed by the type checker. They select documented, answer-preserving spec...
 - R08.3.3 [1+ 0-]: `cpl stress` samples laws on the values a program actually builds; `laws_hold(op, samples)...
 - R08.3.4 [1+ 0-]: A false law gives wrong answers, never undefined behaviour.
