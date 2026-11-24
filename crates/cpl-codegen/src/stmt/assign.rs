@@ -525,6 +525,9 @@ impl<'p> Emitter<'p> {
                 (Ty::Int | Ty::I128, BinOp::Add | BinOp::Sub | BinOp::Mul)
                     if !self.store_fits(place, bop, value) =>
                 {
+                    if place.ty == Ty::Int {
+                        self.note_arith(place.span, value.span, true);
+                    }
                     let f = self.overflow_checked(&place.ty, bop);
                     twice(self, out, &|p, v| format!("{f}({p}, {v})"));
                 }
@@ -552,6 +555,9 @@ impl<'p> Emitter<'p> {
                         BinOp::Shr => ">>",
                         _ => "+",
                     };
+                    if place.ty == Ty::Int && matches!(bop, BinOp::Add | BinOp::Sub | BinOp::Mul) {
+                        self.note_arith(place.span, value.span, false);
+                    }
                     if narrow.is_some() {
                         twice(self, out, &|p, v| format!("{p} {sym} {v}"));
                     } else {

@@ -285,6 +285,9 @@ pub struct Lowered {
     pub specializations: Vec<String>,
     /// Each index the file writes, by span, in a build that keeps index checks.
     pub checks: Vec<(cpl_diag::Span, explain::Index)>,
+    /// Each `Int` `+ - *` the file writes, by span, and whether a build
+    /// that keeps checks tests it for overflow.
+    pub overflows: Vec<(cpl_diag::Span, bool)>,
 }
 
 pub fn explain_lowered(program: &cpl_ir::Program) -> Lowered {
@@ -303,15 +306,19 @@ pub fn explain_lowered(program: &cpl_ir::Program) -> Lowered {
         checks: Checks::Traps,
         ..judge_target()
     };
-    let mut checks = emit::Emitter::new(&crate::prepared(program, &traps), &traps).index_checks();
+    let (mut checks, mut overflows) =
+        emit::Emitter::new(&crate::prepared(program, &traps), &traps).checks();
     checks.sort_by_key(|(span, index)| (span.start, span.end, *index));
     checks.dedup_by_key(|(span, _)| (span.start, span.end));
+    overflows.sort_by_key(|&(span, checked)| (span.start, span.end, !checked));
+    overflows.dedup_by_key(|(span, _)| (span.start, span.end));
     Lowered {
         closures,
         copies,
         dropped: devirt::dropped_fields(program, &cpp),
         specializations: width::explained(&prepared),
         checks,
+        overflows,
     }
 }
 

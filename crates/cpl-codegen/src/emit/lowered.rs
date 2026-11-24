@@ -23,10 +23,33 @@ impl Emitter<'_> {
         (cpp, copies, direct, self.take_written())
     }
 
-    /// Each index the written file has, and whether its C++ checks it.
-    pub fn index_checks(mut self) -> Vec<(cpl_diag::Span, crate::explain::Index)> {
+    /// Each index the written file has and whether its C++ checks it, and
+    /// each `Int` `+ - *` and whether its C++ checks it for overflow.
+    #[allow(clippy::type_complexity)]
+    pub fn checks(
+        mut self,
+    ) -> (
+        Vec<(cpl_diag::Span, crate::explain::Index)>,
+        Vec<(cpl_diag::Span, bool)>,
+    ) {
         self.write("", None);
-        std::mem::take(&mut self.index_checks)
+        (
+            std::mem::take(&mut self.index_checks),
+            std::mem::take(&mut self.arith_checks),
+        )
+    }
+
+    /// Records the `Int` `+ - *` from `l` to `r`, which the C++ checks for
+    /// overflow when `checked`. Library bodies are left out, as for indices.
+    pub(crate) fn note_arith(&mut self, l: cpl_diag::Span, r: cpl_diag::Span, checked: bool) {
+        if self.in_library() || l.end > r.start {
+            return;
+        }
+        let span = cpl_diag::Span {
+            start: l.start,
+            end: r.end,
+        };
+        self.arith_checks.push((span, checked));
     }
 
     /// Records the index at `span`: `checked` when its C++ checks it, and
@@ -39,10 +62,7 @@ impl Emitter<'_> {
         indices: &[Expr],
         raw: bool,
     ) {
-        if self
-            .fn_id
-            .is_some_and(|f| self.program.library_fns.get(f).copied().unwrap_or(false))
-        {
+        if self.in_library() {
             return;
         }
         let index = match () {

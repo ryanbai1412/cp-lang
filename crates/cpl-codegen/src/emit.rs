@@ -117,6 +117,9 @@ pub(crate) struct Emitter<'p> {
     pub copies: Vec<crate::lend::Copied>,
     /// Each index the file writes and whether its C++ checks it, for `cpl explain`.
     pub index_checks: Vec<(cpl_diag::Span, crate::explain::Index)>,
+    /// Each `Int` `+ - *` the file writes and whether its C++ checks it
+    /// for overflow, for `cpl explain`.
+    pub arith_checks: Vec<(cpl_diag::Span, bool)>,
     /// Which of the packed optionals (`cpl::OptPos`, `cpl::OptInt`, ...)
     /// the file names, as bits.
     pub niche_types: std::cell::Cell<u16>,
@@ -354,6 +357,7 @@ impl<'p> Emitter<'p> {
             capture_owns: Default::default(),
             copies: Vec::new(),
             index_checks: Vec::new(),
+            arith_checks: Vec::new(),
             niche_types: std::cell::Cell::new(0),
             used: BTreeSet::new(),
             top_names,

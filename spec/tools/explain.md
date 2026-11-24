@@ -38,4 +38,8 @@ whether an array over it is a `std::array`) and the checks left per build:
 each index the file writes, marked `[check]` where `--checks traps` and
 `all` check it, or `[no check]` with why (its index's type keeps it in
 range, one check before its loop covers it, or it is a raw index);
-`--checks none`, the judge default, keeps no index check.
+`--checks none`, the judge default, keeps no index check. When the file
+writes an `Int` `+`, `-` or `*`, a last section lists each one the same
+way: `[check]` where `traps` and `all` test it for overflow, or
+`[no check]` where its operands' proven ranges keep it in `Int`. These
+are the range facts the C++ is emitted from, so the list is the C++'s.

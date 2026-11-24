@@ -169,6 +169,10 @@ impl<'p> Emitter<'p> {
     /// `l op r` for operands already emitted as `a` and `b`.
     pub fn arith(&mut self, op: BinOp, l: &Expr, r: &Expr, a: &Code, b: &Code) -> Code {
         let both_narrow = a.narrow && b.narrow;
+        if l.ty == Ty::Int && matches!(op, BinOp::Add | BinOp::Sub | BinOp::Mul) {
+            let checked = !both_narrow && !self.facts.fits(self.facts_home(), op, l, r);
+            self.note_arith(l.span, r.span, checked);
+        }
         match (&l.ty, op) {
             (Ty::Int, BinOp::Add | BinOp::Sub | BinOp::Mul)
                 if !both_narrow && !self.facts.fits(self.facts_home(), op, l, r) =>

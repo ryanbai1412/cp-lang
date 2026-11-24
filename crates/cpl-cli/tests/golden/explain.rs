@@ -111,6 +111,38 @@ fn explain_shows_the_specializations_chosen_and_the_checks_left() {
     assert!(has("", "specialization"), "{rows:?}");
 }
 
+/// Each `Int` `+ - *` says whether it keeps its overflow check, from the
+/// same range facts that decide the C++.
+#[test]
+fn explain_shows_each_overflow_check_left() {
+    let dir = scratch("explain_overflow_checked");
+    std::fs::write(
+        dir.join("a.cp"),
+        "let n: 1..=1000 = read()\nlet a: Int = read()\nvar s = n * n\ns += a\nprint(s, a + 1)\n",
+    )
+    .unwrap();
+    let out = cpl(&dir, &["explain", "a.cp"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let stdout = text(&out.stdout);
+    for line in [
+        "  [no check] 3:9  n * n -> its operands' proven ranges keep it in `Int`\n",
+        "  [check] 4:1  s += a\n",
+        "  [check] 5:10  a + 1\n",
+    ] {
+        assert!(stdout.contains(line), "{line}{stdout}");
+    }
+    let json = cpl(&dir, &["explain", "a.cp", "--json"]);
+    let json = cpl_json::parse(&text(&json.stdout)).expect("JSON");
+    let rows = json.as_array().unwrap();
+    let has = |site: &str, lowering: &str| {
+        rows.iter().any(|e| {
+            e.at(&["site"]).as_str() == Some(site) && e.at(&["lowering"]).as_str() == Some(lowering)
+        })
+    };
+    assert!(has("3:9", "overflow_unchecked"), "{rows:?}");
+    assert!(has("5:10", "overflow_checked"), "{rows:?}");
+}
+
 /// The peak is reported against the memory limit of the file's judge
 /// (spec/tools/judge-profiles.md, Rjudge.7).
 #[test]

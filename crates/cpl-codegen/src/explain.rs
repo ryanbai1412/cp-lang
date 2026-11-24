@@ -34,6 +34,7 @@ pub fn report_with(
         dropped,
         specializations,
         checks,
+        overflows,
     } = crate::explain_lowered(program);
     let view_ops = explain_views(text, program);
     let sunk = explain_sunk(text, program);
@@ -105,6 +106,7 @@ pub fn report_with(
             let _ = writeln!(stdout, "{path}: no closure or fn-typed sites");
         }
         chosen_and_checked(stdout, path, text, &specializations, &checks);
+        overflow_checked(stdout, path, text, &overflows);
         return out;
     }
     if !entries.is_empty() {
@@ -208,6 +210,7 @@ pub fn report_with(
         }
     }
     chosen_and_checked(stdout, path, text, &specializations, &checks);
+    overflow_checked(stdout, path, text, &overflows);
     out
 }
 
@@ -233,6 +236,32 @@ impl Index {
             Index::Hoisted => "one check before its loop covers it",
             Index::Raw => "a raw index, never checked",
         }
+    }
+}
+
+/// Why an `Int` `+ - *` has no overflow check.
+pub const FITS: &str = "its operands' proven ranges keep it in `Int`";
+
+/// Each `Int` `+ - *` with whether the checked builds test it for overflow,
+/// as the shared range facts decide; nothing when the file has none.
+fn overflow_checked(stdout: &mut String, path: &str, text: &str, ops: &[(cpl_diag::Span, bool)]) {
+    if ops.is_empty() {
+        return;
+    }
+    let _ = writeln!(
+        stdout,
+        "Overflow checks left per build for {path}, by `Int` `+ - *` (`--checks none` keeps none; `traps` and `all` keep each [check]):"
+    );
+    for &(span, checked) in ops {
+        let (line, col) = line_col(text, span);
+        let shown = text
+            .get(span.start as usize..span.end as usize)
+            .and_then(|s| s.lines().next())
+            .unwrap_or("");
+        let _ = match checked {
+            true => writeln!(stdout, "  [check] {line}:{col}  {shown}"),
+            false => writeln!(stdout, "  [no check] {line}:{col}  {shown} -> {FITS}"),
+        };
     }
 }
 

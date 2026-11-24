@@ -548,3 +548,29 @@ fn a_call_is_bounded_by_what_its_fn_returns() {
     let rec = body("fn h(n: Int) -> Int:\n    if n <= 0: return 1\n    h(n - 1) + h(n - 2)\nprint(h(read()) * 2)\n");
     assert!(rec.contains("cpl::imul(h("), "{rec}");
 }
+
+#[test]
+fn explain_marks_each_int_op_as_the_cpp_checks_it() {
+    let src = "let n: 1..=1000 = read()\nlet a: Int = read()\nvar s = n * n + 1\ns += a\nprint(s, a - 1, n - 3)\n";
+    let program = super::lower(src);
+    let ops = crate::explain_lowered(&program).overflows;
+    let shown: Vec<(&str, bool)> = (ops.iter())
+        .map(|&(span, checked)| (&src[span.start as usize..span.end as usize], checked))
+        .collect();
+    assert_eq!(
+        shown,
+        [
+            ("n * n", false),
+            ("n * n + 1", false),
+            ("s += a", true),
+            ("a - 1", true),
+            ("n - 3", false),
+        ]
+    );
+    let cpp = crate::emit(&program, "t.cp", Some(src));
+    let checked = ["cpl::iadd(", "cpl::isub(", "cpl::imul("]
+        .iter()
+        .map(|f| cpp.matches(f).count())
+        .sum::<usize>();
+    assert_eq!(checked, 2, "{cpp}");
+}

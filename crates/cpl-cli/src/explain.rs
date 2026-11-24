@@ -181,6 +181,14 @@ pub(crate) fn explain_file(
             };
             rows.push(row(&format!("{line}:{col}"), lowering, index.why()));
         }
+        for &(span, checked) in &lowered.overflows {
+            let (line, col) = cpl_codegen::explain::line_col(&compiled.text, span);
+            let (lowering, why) = match checked {
+                true => ("overflow_checked", ""),
+                false => ("overflow_unchecked", cpl_codegen::explain::FITS),
+            };
+            rows.push(row(&format!("{line}:{col}"), lowering, why));
+        }
         for (name, rep) in crate::with_db(|db| cpl_lsp::explain::storage(db, path)).rows {
             let detail = format!("{}: {}", rep.ty, cpl_lsp::explain::describe(&rep));
             rows.push(row(&name, "storage", &detail));
