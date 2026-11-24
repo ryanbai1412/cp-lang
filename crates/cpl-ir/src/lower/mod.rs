@@ -1037,7 +1037,8 @@ impl<'a> Lowerer<'a> {
                             "interactive" if decorator.directive => {}
                             "get" | "brute" | "alt" | "test" | "solution" | "tags" | "memo"
                             | "law" | "gen" | "checker" | "check" | "interactor" | "grader"
-                            | "on_unimplemented" | "droppable" | "from_op" | "structural" | "" => {}
+                            | "on_unimplemented" | "droppable" | "from_op" | "structural"
+                            | "was" | "" => {}
                             // For `cpl lint` alone: they change nothing a run does.
                             "allow" | "lint" => {}
                             other => self
