@@ -25,11 +25,12 @@ pub struct Mat<T>:
     /// Row `i` is `R`'s `i`-th position and column `j` is `C`'s `j`-th, so `get(i, j)` reads
     /// `a[R.nth(i), C.nth(j)]`; the matrix has `|R|` rows and `|C|` columns. The keys are not kept.
     ///
+    /// Under any other `over:` the entries are `?W`, `None` being the semiring's zero (no path):
+    /// `Mat(over: Semiring(min, +), d)` with `d: [V, V]?Int` multiplies shortest walks.
+    ///
     /// cost: \(O(\mathit{rows} \cdot \mathit{cols})\) time and space
     /// empty: a matrix with zero rows or columns
     /// traps: never
-    /// Under any other `over:` the entries are `?W`, `None` being the semiring's zero (no path):
-    /// `Mat(over: Semiring(min, +), d)` with `d: [V, V]?Int` multiplies shortest walks.
     ///
     /// example: `domain R = 0..2; domain C = 0..3; Mat([R, C] (r, c) => 10 * Int(r) + Int(c)).get(1, 2) == 12`
     /// example: `domain V = 0..2; let m = Mat([V, V] (i, j) => if i == j: None else: Some(Int(i) + 1), over: Semiring(min, +)); (m * m).get(0, 0) == Some(3)`
@@ -92,6 +93,10 @@ pub struct Mat<T>:
     /// empty: a matrix with zero rows or columns when `data` is empty
     /// traps: when `rows < 0`, `cols < 0` or `data.len != rows * cols`
     /// example: `Mat<Int>.from_flat(2, 3, [1, 2, 3, 4, 5, 6]).get(1, 0) == 4`
+    pub fn from_flat(rows: Int, cols: Int, data: List<T>) -> Mat<T>:
+        assert rows >= 0 and cols >= 0 and data.len == rows * cols
+        Mat(rows, cols, data.clone())
+
     fn unit(n: Int, r: ?Ring<T>) -> Mat<T>:
         if T: Add:
             if let g = r: return Mat<T>.eye_in(n, g)
@@ -103,10 +108,6 @@ pub struct Mat<T>:
         var d = List.filled(n * n, g.zero)
         for i in 0..n: d[i * n + i] = g.one
         Mat(n, n, d, Some(g))
-
-    pub fn from_flat(rows: Int, cols: Int, data: List<T>) -> Mat<T>:
-        assert rows >= 0 and cols >= 0 and data.len == rows * cols
-        Mat(rows, cols, data.clone())
 
     /// Build a matrix from a list of equal-length rows: `grid[r][c]` is entry `(r, c)`.
     ///

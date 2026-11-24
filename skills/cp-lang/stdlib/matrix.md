@@ -15,7 +15,7 @@ A dense `rows x cols` matrix stored flat in row-major order.
 - `fn filled<S>(rows: Int, cols: Int, fill: T, over: S = Semiring(+, *)) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; A `rows x cols` matrix with every entry `fill`, multiplied under `over` (default `Semiring(+, *)`).; traps: when `rows < 0` or `cols < 0`
 - `fn zeros(rows: Int, cols: Int) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; A `rows x cols` matrix of `T.zero`.; traps: when `rows < 0` or `cols < 0`
 - `fn identity(n: Int) -> Mat<T>` — \(O(n^2)\) time and space; The `n x n` identity matrix: `T.one` on the diagonal, `T.zero` elsewhere.; traps: when `n < 0`
-- `fn from_flat(rows: Int, cols: Int, data: List<T>) -> Mat<T>`
+- `fn from_flat(rows: Int, cols: Int, data: List<T>) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; Build a `rows x cols` matrix from a flat row-major list of length `rows * cols`: entry `(r, c)` is `data[r * cols + c]`.; traps: when `rows < 0`, `cols < 0` or `data.len != rows * cols`
 - `fn from_rows(grid: List<List<T>>) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; Build a matrix from a list of equal-length rows: `grid[r][c]` is entry `(r, c)`.; traps: when the rows differ in length
 - `fn get(self, r: Int, c: Int) -> T` — \(O(1)\); The entry at `(r, c)`, 0-based.; traps: when `r` is not in `0..rows` or `c` is not in `0..cols`
 - `fn set(mut self, r: Int, c: Int, val: T)` — \(O(1)\); Set the entry at `(r, c)` to `val`.; traps: when `r` is not in `0..rows` or `c` is not in `0..cols`
