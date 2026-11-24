@@ -24,7 +24,9 @@ fn add(x: 1..=max_a):
     freq[b] += 1
     least[b] = min(least[b] ?? x, x)
 
-for x in read<[n]1..=1e9>(): add(x)
+repeat n:
+    let x: 1..=1e9 = read()
+    add(x)
 
 var ans = 0
 var carry = 0
