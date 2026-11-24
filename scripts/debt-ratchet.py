@@ -561,10 +561,15 @@ def plan_delta_lines(root: Path) -> list[str]:
             for i, _ in enumerate(_lines(root / f), 1)]
 
 
+def _code_lines(p: Path) -> int:
+    """Lines that are neither blank nor a `//` comment: trimming comments can't game the cap."""
+    return sum(1 for l in _lines(p) if l.strip() and not l.lstrip().startswith("//"))
+
+
 def _near_cap(root: Path, max_rs_lines: int = DEFAULT_MAX_RS_LINES) -> dict[str, int]:
     out = {}
     for p in _rs_files(root, "crates"):
-        n = len(_lines(p))
+        n = _code_lines(p)
         if max_rs_lines - NEAR_CAP_LINES < n <= max_rs_lines:
             out[_rel(root, p)] = n
     return dict(sorted(out.items()))
@@ -1059,6 +1064,11 @@ def _registered_entries(root: Path, counter: str) -> list[str]:
     return [rel for rel, (c, _, _) in LISTS.items() if c == counter for _ in range(_list_entries(root, rel))]
 
 
+def corpus_known(root: Path) -> list[str]:
+    """Entries of corpus/audit-, differential- and generators-known.txt: ports a corpus check skips."""
+    return _registered_entries(root, "corpus_known")
+
+
 def known_lists(root: Path) -> list[str]:
     """Entries of *-known.txt and other accepted-finding baselines."""
     return _registered_entries(root, "known_lists")
@@ -1082,24 +1092,31 @@ def _workflow_lines(root: Path) -> Iterator[tuple[str, int, str]]:
                 yield rel, i, line
 
 
+def _grep_all(root: Path, pattern: str) -> list[str]:
+    """`file:line` for every tracked line matching `pattern`, the ratchet and its test aside."""
+    return [":".join(hit.split(":", 2)[:2]) for hit in
+            _git(root, "grep", "-n", "-E", pattern, "--", ".", ":!scripts/debt-ratchet.py",
+                 ":!scripts/test_debt_ratchet.py")]
+
+
 def or_true(root: Path) -> list[str]:
-    """`|| true` in workflows, scripts and the justfile: a failure swallowed."""
-    return [f"{rel}:{i}" for rel, i, line in _workflow_lines(root) if re.search(r"\|\|\s*true\b", line)]
+    """`|| true` anywhere in the repo: a failure swallowed."""
+    return _grep_all(root, r"\|\|[[:space:]]*true\b")
+
+
+def trace_engine_refs(root: Path) -> list[str]:
+    """`CPL_TRACE_ENGINE` mentions: the switch back to the tree-walker for traces."""
+    return _grep_all(root, "CPL_TRACE_ENGINE")
 
 
 CONTINUE_RE = re.compile(r"^(\s*)(?:-\s+)?continue-on-error:\s*(.+?)\s*$")
 
 
 def continue_on_error(root: Path) -> list[str]:
-    """Steps marked `continue-on-error` (not `false`): a red step that turns nothing red."""
+    """Jobs and steps marked `continue-on-error` (not `false`) in any workflow or action:
+    a red that turns nothing red."""
     return [f"{rel}:{i}" for rel, i, line in _workflow_lines(root)
-            if (m := CONTINUE_RE.match(line)) and m.group(2) != "false" and len(m.group(1)) > 4]
-
-
-def nonblocking_jobs(root: Path) -> list[str]:
-    """Workflow jobs marked `continue-on-error` (not `false`): checks that decide nothing."""
-    return [f"{rel}:{i}" for rel, i, line in _workflow_lines(root)
-            if (m := CONTINUE_RE.match(line)) and m.group(2) != "false" and len(m.group(1)) == 4]
+            if (m := CONTINUE_RE.match(line)) and m.group(2) != "false"]
 
 
 def dream_unverified(root: Path) -> list[str]:
@@ -1230,9 +1247,9 @@ def module_loaders(root: Path) -> list[str]:
 # goes away. A new list without a row here fails `unregistered_lists`.
 LISTS: dict[str, tuple[str | None, str, str]] = {
     "bench/oversize.txt": ("bench_lists", "perf", "shrink inputs or give the bench a size cap"),
-    "corpus/audit-known.txt": ("known_lists", "idioms", "fix each audited port"),
-    "corpus/differential-known.txt": ("known_lists", "idioms", "fix each differing port"),
-    "corpus/generators-known.txt": ("known_lists", "idioms", "write each generator"),
+    "corpus/audit-known.txt": ("corpus_known", "idioms", "fix each audited port"),
+    "corpus/differential-known.txt": ("corpus_known", "idioms", "fix each differing port"),
+    "corpus/generators-known.txt": ("corpus_known", "idioms", "write each generator"),
     "corpus/port-check-failing.txt": ("skip_lists", "idioms", "fix each port"),
     "corpus/gold/GOLD.txt": (None, "idioms", "data: the gold set"),
     "corpus/newcomer/acceptance.txt": (None, "idioms", "data: newcomer acceptance expectations"),
@@ -1300,7 +1317,7 @@ COUNTERS = {
     "dead_code_allows": ("allow(dead_code) attributes", dead_code_allows, True),
     "external_crates": ("third-party packages in Cargo.lock", external_crates, True),
     "written_twice": ("hand-kept files listing most of a sourced fact", written_twice, True),
-    "bench_lists": ("entries in bench/*.txt exemption lists", bench_lists, True),
+    "bench_lists": ("entries in bench/*.txt exemption lists (scoreboard K5)", bench_lists, True),
     "skip_lists": ("entries in skip, xfail, known-failure and gap lists", skip_lists, True),
     "corpus_test_files": ("files committed under corpus/problems/*/tests/", corpus_test_files, True),
     "edition_refs": ("dead 0.2 edition references", edition_refs, True),
@@ -1345,9 +1362,10 @@ COUNTERS = {
     "known_lists": ("entries of known-finding lists", known_lists, True),
     "prelude_gaps": ("prelude names with no conformance case", prelude_gaps, True),
     "permits": ("entries of spec/conformance/permits.txt", permits, True),
-    "or_true": ("`|| true` in workflows, scripts and the justfile", or_true, True),
-    "continue_on_error": ("workflow steps marked continue-on-error", continue_on_error, True),
-    "nonblocking_jobs": ("workflow jobs marked continue-on-error", nonblocking_jobs, True),
+    "or_true": ("`|| true` anywhere (scoreboard CI2)", or_true, True),
+    "continue_on_error": ("continue-on-error jobs and steps (scoreboard CI1)", continue_on_error, True),
+    "trace_engine_refs": ("CPL_TRACE_ENGINE mentions (scoreboard F3, Core)", trace_engine_refs, True),
+    "corpus_known": ("entries of corpus/*-known.txt (scoreboard K6, Content)", corpus_known, True),
     "dream_unverified": ("dream.cp files with no passing stress record", dream_unverified, True),
     "measure_broken": ("plan measure.py scripts with no test", measure_broken, True),
     "mono_unguarded": ("monomorphization with no termination guard", mono_unguarded, True),
@@ -1374,7 +1392,7 @@ def register_rows_by_domain(root: Path) -> dict[str, int]:
 def rs_over_cap(root: Path, max_rs_lines: int) -> dict[str, int]:
     over = {}
     for p in _rs_files(root):
-        n = len(_lines(p))
+        n = _code_lines(p)
         if n > max_rs_lines:
             over[_rel(root, p)] = n
     return dict(sorted(over.items(), key=lambda kv: (-kv[1], kv[0])))
@@ -1505,6 +1523,9 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main") -> l
                if cap > old_allow.get(rel, 0)]
     if "rs_near_cap" in old and set(baseline.get("rs_near_cap", [])) - set(old["rs_near_cap"]) - set(old_allow):
         raised.append("rs_near_cap")
+    zero = [n for n in raised if n in COUNTERS and int(old.get(n, 1)) == 0]
+    if zero:
+        return [f"{n}: reached 0 on {ref}; a counter at 0 is never raised" for n in zero]
     if not raised:
         return []
     base = (_git(root, "merge-base", ref, "HEAD") or [ref])[0]

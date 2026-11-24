@@ -1,15 +1,14 @@
 {
   "max_rs_lines": 2000,
   "rs_file_size_allowlist": {
-    "crates/cpl-ir/src/lower/stmt.rs": 6353,
-    "crates/cpl-ir/src/lower/mod.rs": 5682,
-    "crates/cpl-ir/src/lower/expr.rs": 5194,
-    "crates/cpl-ir/src/lower/mono.rs": 4276,
-    "crates/cpl-check/src/check/expr.rs": 4141,
-    "crates/cpl-interp/src/lib.rs": 3827,
-    "crates/cpl-check/src/check/stmt.rs": 3132,
-    "crates/cpl-check/src/check/lends.rs": 2801,
-    "crates/cpl-check/src/db.rs": 2160
+    "crates/cpl-ir/src/lower/stmt.rs": 6005,
+    "crates/cpl-ir/src/lower/mod.rs": 5146,
+    "crates/cpl-ir/src/lower/expr.rs": 4923,
+    "crates/cpl-ir/src/lower/mono.rs": 3954,
+    "crates/cpl-check/src/check/expr.rs": 3912,
+    "crates/cpl-interp/src/lib.rs": 3553,
+    "crates/cpl-check/src/check/stmt.rs": 2958,
+    "crates/cpl-check/src/check/lends.rs": 2480
   },
   "stdlib_todo": 35,
   "rust_ignore": 15,
@@ -120,16 +119,8 @@
   "near_dup_fns": 9,
   "consumer_rederived": 60,
   "rs_near_cap": [
-    "crates/cpl-check/src/check/types.rs",
-    "crates/cpl-codegen/src/expr.rs",
-    "crates/cpl-codegen/src/runtime.rs",
-    "crates/cpl-codegen/src/tests.rs",
-    "crates/cpl-interp/src/vm/exec/mod.rs",
-    "crates/cpl-lint/src/rules/proven/mod.rs",
-    "crates/cpl-lsp/src/server.rs",
-    "crates/cpl-lsp/src/tests.rs",
-    "crates/cpl-syntax/src/parser/expr.rs",
-    "crates/cpl-syntax/src/tests.rs"
+    "crates/cpl-check/src/db.rs",
+    "crates/cpl-interp/src/vm/exec/mod.rs"
   ],
   "skip_lists": 243,
   "dead_code_allows": 6,
@@ -158,12 +149,11 @@
   "unsupported_sites": 43,
   "lsp_string_types": 11,
   "lint_post_filters": 52,
-  "known_lists": 449,
+  "known_lists": 123,
   "prelude_gaps": 100,
   "permits": 26,
-  "or_true": 38,
+  "or_true": 45,
   "continue_on_error": 0,
-  "nonblocking_jobs": 6,
   "dream_unverified": 421,
   "measure_broken": 0,
   "mono_unguarded": 1,
@@ -177,5 +167,7 @@
   "codemods_outside_fix": 2,
   "module_loaders": 20,
   "stress_hand_json": 0,
-  "helper_env_vars": 4
+  "helper_env_vars": 4,
+  "trace_engine_refs": 11,
+  "corpus_known": 326
 }

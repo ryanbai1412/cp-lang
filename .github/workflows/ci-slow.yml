@@ -1,7 +1,7 @@
 name: ci-slow
 
-# Reports that never block main, kept out of ci.yml so a run there isn't held
-# open (and main's one-waiting-run queue blocked) by jobs that decide nothing.
+# Slow budgets and reports, kept out of ci.yml so a run there isn't held
+# open (and main's one-waiting-run queue blocked) by slow jobs.
 on:
   push:
     branches: [main]
@@ -22,10 +22,9 @@ concurrency:
 jobs:
   # Timing budgets report here and never turn main red (decision 225).
   timing:
-    name: wall-clock budgets (not blocking)
+    name: wall-clock budgets
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-rust
@@ -39,10 +38,9 @@ jobs:
 
   # Coverage of each crate by its own tests and by all (handbook/process/quality.md#how-suites-are-measured).
   coverage:
-    name: coverage matrix (not blocking)
+    name: coverage matrix
     runs-on: ubuntu-latest
     timeout-minutes: 120
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-rust
@@ -62,10 +60,9 @@ jobs:
   # Mutation score: one-line compiler mutants against the conformance suite
   # (handbook/guidelines/conformance-checklist.md, conformance/R9).
   mutants:
-    name: mutation score (not blocking)
+    name: mutation score
     runs-on: ubuntu-latest
     timeout-minutes: 240
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-rust
@@ -80,11 +77,9 @@ jobs:
 
   # The editor's latency budgets on each OS, in the optimized build people
   # run. Its own job, so its release build doesn't lengthen the cli job.
-  # Not blocking until a few runs show the hosted runners meet them.
   lsp-latency:
     name: lsp latency (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:

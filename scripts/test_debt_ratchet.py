@@ -22,7 +22,7 @@ class DebtRatchetTest(unittest.TestCase):
         (root / "stdlib").mkdir(parents=True)
 
         # Big file (25 lines, using max_rs_lines=20 in tests)
-        (root / "crates/demo/src/big.rs").write_text("\n".join(["// line"] * 25) + "\n")
+        (root / "crates/demo/src/big.rs").write_text("\n".join(["x();"] * 25) + "\n")
         # Small file with one real #[ignore] and one commented #[ignore]
         (root / "crates/demo/src/small.rs").write_text(
             "//! doc mentioning #[ignore]\n#[ignore = \"slow\"]\nfn t() {}\n"
@@ -259,9 +259,8 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(len(dr.unsupported_sites(root)), 2)
             self.assertEqual(dr.lsp_string_types(root), ["crates/cpl-lsp/src/hover.rs:1", "crates/cpl-lsp/src/hover.rs:2"])
             self.assertEqual(dr.lint_post_filters(root), ["crates/cpl-lint/src/lib.rs SUPERSEDED_BY"] * 2)
-            self.assertEqual(dr.or_true(root), [".github/workflows/ci.yml:5"])
-            self.assertEqual(dr.continue_on_error(root), [".github/workflows/ci.yml:6"])
-            self.assertEqual(dr.nonblocking_jobs(root), [".github/workflows/ci.yml:3"])
+            self.assertEqual(dr.or_true(root), [".github/workflows/ci.yml:5", ".github/workflows/ci.yml:9"])
+            self.assertEqual(dr.continue_on_error(root), [".github/workflows/ci.yml:3", ".github/workflows/ci.yml:6"])
             self.assertEqual(dr.dream_unverified(root), ["corpus/problems/p/dream.cp"])
             self.assertEqual(dr.measure_broken(root), ["plan/domains/tools/measure.py"])
             self.assertEqual(dr.mono_unguarded(root), ["crates/cpl-check, crates/cpl-ir: no GROWING_INSTANTIATION use"])
@@ -293,6 +292,32 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.edit_engines(root), ["crates/a/src/lib.rs:5"])
             self.assertEqual(dr.codemods_outside_fix(root), ["scripts/mod.py p"])
             self.assertEqual(dr.module_loaders(root), ["crates/a/src/lib.rs:6"])
+
+    def test_raw_repo_wide_counters(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init", "-q", str(root)], check=True, env=dr._git_env())
+            self._write(root, "web/install.sh", "rm x || true\n")
+            self._write(root, "crates/a/src/lib.rs", 'env::var("CPL_TRACE_ENGINE");\n')
+            self._write(root, "corpus/generators-known.txt", "# why\ncf1\ncf2\n")
+            self._write(root, "crates/a/src/big.rs", "fn a() {}\n\n// note\n    // more\nfn b() {}\n")
+            subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
+            self.assertEqual(dr.or_true(root), ["web/install.sh:1"])
+            self.assertEqual(dr.trace_engine_refs(root), ["crates/a/src/lib.rs:1"])
+            self.assertEqual(dr.corpus_known(root), ["corpus/generators-known.txt"] * 2)
+            self.assertEqual(dr.rs_over_cap(root, 1), {"crates/a/src/big.rs": 2})
+
+    def test_a_counter_at_zero_is_never_raised(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init", "-q", str(root)], check=True, env=dr._git_env())
+            self._write(root, "scripts/debt-ratchet.json", json.dumps({"lint_std_names": 0}))
+            subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
+            subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "x"],
+                           cwd=root, check=True, env=dr._git_env())
+            self._write(root, "decisions.md", "lint_std_names may rise\n")
+            self.assertEqual(dr.unexplained_bumps(root, {"lint_std_names": 1}, ref="HEAD"),
+                             ["lint_std_names: reached 0 on HEAD; a counter at 0 is never raised"])
 
     def test_every_list_row_names_a_counter(self) -> None:
         for rel, (counter, owner, plan) in dr.LISTS.items():
