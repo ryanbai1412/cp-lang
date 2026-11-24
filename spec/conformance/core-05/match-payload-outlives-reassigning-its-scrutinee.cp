@@ -1,7 +1,7 @@
 // expect: ok, output "abc 2\nzz 9 abc\n5 hello\nnow stop"
 // rule: 05.3.2
-// A payload a match binds keeps its value when the arm reassigns the scrutinee, directly or through a `mut` call, so codegen may lend it only when nothing in the arm can change the scrutinee.
-// copies: 1
+// A payload a match binds keeps its value when the arm reassigns the scrutinee, directly or through a `mut` call
+// whose fn sets it whole before reading it: either way the payload is moved out before the store, not copied.
 enum Ev = Ask(s: Str, k: Int) | Stop
 var e = Ev.Ask("abc", 2)
 var log: List<Str> = []
