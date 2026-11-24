@@ -1549,6 +1549,23 @@ fn replay_lenses(text: &str) -> Vec<(u32, String)> {
     out
 }
 
+/// The samples (name, input) `cpl run --samples` runs on `file` and whether
+/// `cpl test` has cases for it (`cpl_contest::problem`).
+#[cfg(not(target_arch = "wasm32"))]
+fn file_cases(file: &std::path::Path) -> (Vec<(String, String)>, bool) {
+    let samples = cpl_contest::problem::samples(file)
+        .into_iter()
+        .map(|case| (case.name, case.input.display().to_string()))
+        .collect();
+    (samples, !cpl_contest::problem::cases(file).is_empty())
+}
+
+/// A browser has no files, so no samples or cases.
+#[cfg(target_arch = "wasm32")]
+fn file_cases(_: &std::path::Path) -> (Vec<(String, String)>, bool) {
+    (Vec::new(), false)
+}
+
 /// Each lens's 0-based line, title and `cpl` arguments: Run, Run on all,
 /// Trace, Test and Stress above the file, a Stress lens above each fn
 /// `cpl stress` judges by, and a Trace lens above every other fn but
@@ -1559,11 +1576,7 @@ fn code_lenses(path: &str, text: &str) -> Vec<(u32, String, Vec<String>)> {
     if file.parent().is_none() || file.file_stem().is_none() {
         return Vec::new();
     }
-    let samples: Vec<(String, String)> = cpl_contest::problem::samples(file)
-        .into_iter()
-        .map(|case| (case.name, case.input.display().to_string()))
-        .collect();
-    let has_tests = !cpl_contest::problem::cases(file).is_empty();
+    let (samples, has_tests) = file_cases(file);
     let mut lenses = Vec::new();
     let with_input = |title: &str, mut args: Vec<String>| match samples.first() {
         Some((label, input)) => {

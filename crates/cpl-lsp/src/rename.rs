@@ -204,6 +204,7 @@ fn field_references(
 
 /// The `.cp` files of the project holding `uri` (the folder of the nearest
 /// `cp.toml` above it, else its own folder) that import `name`, by text.
+#[cfg(not(target_arch = "wasm32"))]
 pub fn project_files(uri: &str, name: &str) -> Vec<String> {
     let Some(path) = crate::server::path_of_uri(uri) else {
         return Vec::new();
@@ -249,6 +250,12 @@ pub fn project_files(uri: &str, name: &str) -> Vec<String> {
         }
     }
     found
+}
+
+/// A browser has no project on disk: only its open files.
+#[cfg(target_arch = "wasm32")]
+pub fn project_files(_: &str, _: &str) -> Vec<String> {
+    Vec::new()
 }
 
 /// Why replacing `spans` of `old` with `new` in each file would make some
