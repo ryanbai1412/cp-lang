@@ -5,9 +5,9 @@ Port: `corpus/problems/atcoder_dp_r/port.cp`. There is no `dream.cp`; the dream 
 ## Measurements
 
 - Tokens: port 119, accepted C++ 515.
-- Emitted C++: 19325 bytes (19675 before `Mat.sum`).
-- `--max` (n = 50, k = 1e18, median of 21, g++ -O2): port 11.5 ms / 3.1 MB, accepted 9.8 ms /
-  3.5 MB (1.17x time). The `Mat.sum` rewrite changes neither time nor output (old port 11.5 ms).
+- Emitted C++: 19489 bytes (19675 before `Mat.sum`).
+- `--max` (n = 50, k = 1e18, median of 41, g++ -O2): port 9.9 ms / 3.1 MB, accepted 10.3 ms /
+  3.5 MB (0.96x time) since 88fdf8bab; before it the port was 11.5 ms against 9.8 ms (1.17x).
 - Output: identical to the accepted C++.
 
 ## Dream
@@ -35,7 +35,7 @@ print(walks.sum())
 - Severity: low (this port no longer indexes it).
 - Owner: Content (std/matrix.cp), blocked on Core (E0309).
 
-## Friction 2: 1.17x at --max on an 11 ms run
+## Friction 2: 1.17x at --max on an 11 ms run (fixed)
 
 - Where: `Mat.mul`'s no-ring product loop (std/matrix.cp), reached through `** k`; perf record
   puts 91% of the port's samples in `Mat_S24_25_mul` (88% of the AC's in its `operator*`).
@@ -49,5 +49,6 @@ print(walks.sum())
   loop it runs 7.3 ms against the AC's 9.8 ms (0.74x, median of 41, same output); fusing the two
   reductions into one `%` (Perf's measurement) reaches parity, 9.8 ms.
 - Severity: low (11 ms against a 2000 ms limit).
-- Owner: Perf, owed in plan/domains/perf/PLAN.md (b7c7f0f0e); the lazy-reduction measurement
-  and patched C++ were sent to Perf.
+- Fixed: 88fdf8bab writes a residue add of a product as one `%` (0.96x, re-measured here).
+  Lazy reduction (0.74x) stays owed in plan/domains/perf/PLAN.md.
+- Owner: Perf (the lazy residue dot product).
