@@ -162,7 +162,7 @@
     "tools": 10
   },
   "written_twice": 0,
-  "lint_type_syntax": 24,
+  "lint_type_syntax": 21,
   "idioms_evidenced_unlinted": 0,
   "bench_lists": 0,
   "unwrap_input": 712,

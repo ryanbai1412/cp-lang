@@ -402,7 +402,7 @@ impl<'a> Taste<'a> {
             found.arr
         ));
         if let Some((decl_idx, decl_base, decl_stmt)) =
-            prefix_zero_decl(self.src, stmts, i, found.arr, &found.kind, self.facts)
+            prefix_zero_decl(stmts, i, found.arr, &found.kind, self.facts)
         {
             if let Some(reads) = collect_pure_index_reads(&stmts[i + 1..], found.arr) {
                 let expr = match &found.kind {

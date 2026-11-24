@@ -4,6 +4,7 @@ use super::*;
 use crate::facts::Facts;
 use crate::std_fn;
 use crate::Calls;
+use cpl_check::Ty;
 use cpl_diag::msgs::lint_rules;
 
 /// Flags hand-rolled union-find (L0517), prime/SPF sieve (L0518), and
@@ -780,7 +781,6 @@ pub(super) fn is_zero_init(e: &Expr) -> bool {
 }
 
 pub(super) fn prefix_zero_decl<'a>(
-    src: &str,
     stmts: &[(u32, &'a Stmt)],
     loop_idx: usize,
     arr: &str,
@@ -809,37 +809,23 @@ pub(super) fn prefix_zero_decl<'a>(
     if name != arr {
         return None;
     }
+    let declared = || ty.as_ref().and(facts)?.place_type(pat.span.shift(base));
     match kind {
         PrefixLoopKind::Domain1d { domain, .. } => {
-            let Some(ty) = ty else {
+            let Some(Ty::Array { index, .. }) = declared() else {
                 return None;
             };
-            let TypeKind::Array { index, .. } = &ty.kind else {
+            let [Ty::Pos(d)] = index.as_slice() else {
                 return None;
             };
-            if index.len() != 1 {
-                return None;
-            }
-            let dim_src =
-                &src[(base + index[0].span.start) as usize..(base + index[0].span.end) as usize];
-            if dim_src == format!("{domain}.cuts") && is_zero_init(val) {
-                Some((idx, base, stmt))
-            } else {
-                None
-            }
+            (*d == format!("{domain}.cuts") && is_zero_init(val)).then_some((idx, base, stmt))
         }
         PrefixLoopKind::RangeZero { .. } => {
-            if let Some(ty) = ty {
-                let TypeKind::Array { index, .. } = &ty.kind else {
+            if ty.is_some() {
+                let Some(Ty::Array { index, .. }) = declared() else {
                     return None;
                 };
-                if index.len() != 1 {
-                    return None;
-                }
-                let is_zero_range = matches!(
-                    &index[0].kind,
-                    TypeKind::Range { lo: Some(lo), hi: Some(_), .. } if is_int_lit(lo, 0)
-                );
+                let is_zero_range = matches!(index.as_slice(), [Ty::Range { lo: Some(0), .. }]);
                 if is_zero_range && is_zero_init(val) {
                     return Some((idx, base, stmt));
                 }
