@@ -4,7 +4,7 @@
 
 use super::*;
 
-impl Lowerer<'_> {
+impl<'a> Lowerer<'a> {
     /// The param a blanket `impl<D: Domain> Tr for D` is over.
     pub(super) fn domain_blanket_param(&self, idx: usize) -> Option<String> {
         let imp = &self.impls[idx];
@@ -81,6 +81,35 @@ impl Lowerer<'_> {
 
     /// `D.m(..)` with `D` a domain, or the cuts `V.cuts` of one: the method
     /// a blanket domain impl gives it.
+    /// The body trait `impls[idx]` gives `method` when the impl writes none:
+    /// `impl<D: Domain> Target<D> for D` takes `Target`'s `to`, with the
+    /// trait's parameters bound by the impl's trait arguments.
+    fn impl_trait_default(
+        &mut self,
+        idx: usize,
+        method: &str,
+        ty: &Ty,
+        mut env: GenEnv,
+    ) -> Option<(&'a ast::FnDecl, ModId, u32, GenEnv)> {
+        let name = self.impls[idx].trait_name.clone()?;
+        let t = self.traits.iter().find(|t| t.name == name)?;
+        let f = t.methods.iter().copied().find(|m| {
+            m.name.text == method && m.generics.is_empty() && !matches!(m.body, ast::FnBody::None)
+        })?;
+        let (tm, toff) = (t.mod_id, t.offset);
+        let generics: Vec<String> = t.generics.iter().map(|g| g.to_string()).collect();
+        let (im, ioff) = (self.impls[idx].mod_id, self.impls[idx].offset);
+        let args = self.impls[idx].trait_args.clone();
+        let tys: Vec<Ty> = self.quietly_in(im, ioff, env.clone(), |l| {
+            args.iter().map(|a| l.resolve_ty(a)).collect()
+        });
+        for (g, t) in generics.into_iter().zip(tys) {
+            env.insert(g, GenArg::Ty(t));
+        }
+        env.insert("Self".to_string(), GenArg::Ty(ty.clone()));
+        Some((f, tm, toff, env))
+    }
+
     pub(super) fn domain_impl_method(&mut self, ty: Ty, method: &str) -> Option<FnId> {
         let arg = match ty {
             Ty::Pos(d) => GenArg::Domain(d),
@@ -103,14 +132,19 @@ impl Lowerer<'_> {
                 self.impls[idx].offset,
                 self.impls[idx].body,
             );
-            let Some(f) = body.stmts.iter().find_map(|item| match &item.kind {
+            let own = body.stmts.iter().find_map(|item| match &item.kind {
                 ast::StmtKind::Fn(f) if f.name.text == method && f.generics.is_empty() => Some(f),
                 _ => None,
-            }) else {
-                continue;
+            });
+            let env = GenEnv::from([(param, arg.clone())]);
+            let (f, m, offset, env) = match own {
+                Some(f) => (f, m, offset, env),
+                None => match self.impl_trait_default(idx, method, &ty, env) {
+                    Some(found) => found,
+                    None => continue,
+                },
             };
             let trait_name = self.impls[idx].trait_name.clone();
-            let env = GenEnv::from([(param, arg.clone())]);
             let saved = (
                 std::mem::replace(&mut self.cur_mod, m),
                 std::mem::replace(&mut self.offset, offset),
