@@ -241,7 +241,7 @@ fn install_vim_lsp(package: &Path) -> Result<String, String> {
     let start = package
         .parent()
         .ok_or("no folder beside the package for vim-lsp")?;
-    if let Some(client) = package.ancestors().nth(3).and_then(vim_lsp_client) {
+    if let Some(client) = package.ancestors().nth(4).and_then(vim_lsp_client) {
         return Ok(format!(
             "\n`cpl lsp` runs through the {client} already installed"
         ));
