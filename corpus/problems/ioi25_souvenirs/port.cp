@@ -4,64 +4,63 @@
 //   P[0] > ... > P[N-1] >= 1, only P[0] known. transaction(M), for P[0] > M >= P[N-1],
 //   buys greedily from type 0 (one of each type M still covers) and returns the types
 //   bought and the change. Buy exactly i souvenirs of type i in at most 5000 transactions.
-// Solution: a "lead" is the first type a transaction buys; its cost (M minus the change)
-//   and its bought types give an equation. Walk leads forward from type 0 paying the lead's
-//   average (one less for a single type), which buys a later lead, until type N-1 leads.
-//   Then from the right peel solved types off each equation; a lead left alone is solved,
-//   one with more types pays its average again. No type is bought more than i times on
-//   the way, so top each type up to i at its now known price.
+// Solution: a transaction gives one equation (the types bought and their total price) whose
+//   smallest unknown type is the first one M can afford; keep one per smallest unknown, as a
+//   Bitset of unknown types and their sum. Scan from the right: just past a known price, pay
+//   one less than it; an equation in one unknown solves it (and is peeled off the others);
+//   otherwise pay the equation's average, which yields an equation for a later type. No type
+//   is bought more than i times, so top each type up to i at its known price.
 // Interaction (interactor.py, the official manager's protocol over stdio): read N and P[0];
 //   transaction(M) prints "? M" and reads the k types bought and the change; "!" ends.
 // original: corpus/problems/ioi25_souvenirs/orig.cpp (the official model solution plus the sample grader)
-// Bounds: n: 2..=100; p0: 1..=1e15; k: 1..=n; bought: [k]0..n
+// Bounds: n: 2..=100; p0: 1..=1e15; k: 1..=n
 
-let n: 2..=100 = read()
-domain T = 0..n
-let p0: 1..=1e15 = read()
+let n = read<2..=100>()
+domain T = [n]
+let p0 = read<1..=1e15>()
 
 fn transaction(m: Int) -> (List<T>, Int):
     print("?", m)
-    let k: 1..=n = read()
-    let bought: List<T> = read<[k]T>()
-    let change: Int = read()
-    (bought, change)
+    let k = read<1..=n>()
+    let types: List<T> = read<[k]T>()
+    (types, read<Int>())
 
-var counters: [T]Int = 0
-var lead_cost: [T]?Int = None
-var lead_bought: [T]List<T> = []
-
-fn buy_next_lead(i: T) -> T:
-    let s = lead_bought[i].len
-    var m = lead_cost[i]! / s
-    if s == 1: m -= 1
-    let (got, change) = transaction(m)
-    for j in got: counters[j] += 1
-    let l = got[0]
-    lead_cost[l] = Some(m - change)
-    lead_bought[l] = got
-    l
+struct Eq:
+    var types: Bitset<T>
+    var sum: Int
 
 fn buy_souvenirs(p0: Int):
-    let last = T.last!
-    lead_cost[T.first!] = Some(p0)
-    lead_bought[T.first!] = [T.first!]
-    var lead = T.first!
-    while lead < last: lead = buy_next_lead(lead)
-    var prices = last
-    while prices > T.first!:
-        if lead_cost[lead] != None:
-            while lead_bought[lead].len > 1 and lead_cost[lead_bought[lead].last!] != None:
-                lead_cost[lead] = Some(lead_cost[lead]! - lead_cost[lead_bought[lead].last!]!)
-                lead_bought[lead].pop()
-            if lead == prices:
-                prices = prices.prev!
-                lead = lead.prev!
-            else:
-                lead = buy_next_lead(lead)
-        else:
-            lead = lead.prev!
-    for i in T:
-        repeat i.ord - counters[i]: transaction(lead_cost[i]!)
+    var price: [T]?Int = None
+    var bought: [T]Int = 0
+    var eq: [T]?Eq = None
+    price[T.first!] = p0
+
+    fn pay(m: Int):
+        let (types, change) = transaction(m)
+        for x in types: bought[x] += 1
+        let (known, unknown) = types.partition(x => price[x] != None)
+        eq[unknown.min()!] = Eq(
+            types: Bitset.of(unknown),
+            sum: m - change - known.sum(of: x => price[x]!),
+        )
+
+    fn learn(i: T, v: Int):
+        price[i] = v
+        eq[i] = None
+        for k in T if eq[k] is Some(e) and i in e.types:
+            let e = mut eq[k]!
+            e.types.remove(i)
+            e.sum -= v
+
+    while T.any(i => price[i] == None):
+        for i in T.rev:
+            if let v = price[i]:
+                if T.after(i).any(j => price[j] == None): pay(v - 1); break
+            elif let e = eq[i]:
+                if e.types.len == 1: learn(i, e.sum) else: pay(e.sum / e.types.len)
+                break
+
+    for i in T: repeat i.ord - bought[i]: transaction(price[i]!)
 
 buy_souvenirs(p0)
 print("!")

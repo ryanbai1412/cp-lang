@@ -11,27 +11,23 @@
 // Bounds: n, m: 1..=100; k: 0..n; top: 1..=1e9; rank: 1..=n
 // original: corpus/submissions/5445693.cpp
 use std.poly.{lagrange_at}
-
 type Z = Mod<1_000_000_007>
-
 let (n, m): (1..=100, 1..=100) = read()
 let k: 0..n = read()
 domain Course = 0..m
-let top: [Course]1..=1e9 = read()
-let rank: [Course]1..=n = read()
-domain Others = 0..n  // how many of the n - 1 others have never been above B
+let top = read<[Course]1..=1e9>()
+let rank = read<[Course]1..=n>()
+domain Others = 0..n
 let comb = Comb<Z>(n + 2)
 
-// one course's score tables: B scores s, `below` others at most s, `above` others more
-fn tables(c: Course, above: Int, below: Int) -> Z:
-    let ys = (0..=n + 1).map(u => sum(Z(s) ** below * Z(u - s) ** above for s in 1..=u)).to_list()
-    lagrange_at(ys, Z(top[c]))
-
-var still: [Others]Z = [Others] j => Z(if j.label == n - 1: 1 else: 0)
-for c in Course:
+fn tables(c: Course) -> Z:
     let (above, below) = (rank[c] - 1, n - rank[c])
-    let ways = tables(c, above, below)
-    // of the j still at or below, `keep` stay so here; the other below - keep were already out
+    lagrange_at([sum(Z(s) ** below * Z(u - s) ** above for s in 1..=u) for u in 0..=n + 1], Z(top[c]))
+
+var still = [Others] j => Z(Int(j.label == n - 1))
+for c in Course:
+    let below = n - rank[c]
+    let ways = tables(c)
     still = [Others] keep => ways * sum(
         still[j] * comb.choose(j.label, keep.label) * comb.choose(
             n - 1 - j.label,

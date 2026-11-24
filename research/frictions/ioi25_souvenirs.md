@@ -13,8 +13,8 @@ while T.any(i => price[i] == None):
 
 The port is the dream: one equation per smallest unknown type, scanning from the right. It
 replaced a port of the official model solution (leads walked forward, then peeled from the
-right) whose `lead_cost` used `-1` for "unknown". Both are stdin programs that simulate the
-sample grader's `transaction`.
+right) whose `lead_cost` used `-1` for "unknown". Port, dream and `orig.cpp` all speak the
+official manager's protocol over stdio, judged by `interactor.py`.
 
 ## `break` takes no value, so a last call can't ride on it
 - **Where:** `dream.cp`, the scan's two exits, which now read
@@ -62,12 +62,11 @@ sample grader's `transaction`.
   `corpus.py make` has written `target/corpus-tests/<id>/`, and otherwise reports
   `cpl: dream.cp links only with the judge's grader ... pass --grader grader.cpp, or put
   grader.cpp beside its tests`. No package commits a `grader.cpp`, and `corpus.py` passes no
-  `--grader`. So the dream became a stdin program that simulates `transaction` itself, as
-  ioi14p1's port does.
+  `--grader`. So the dream and port are stdio programs that print `? M` and read the
+  manager's reply, judged by the package's `interactor.py`.
 - **What felt wrong:** the program a contestant submits (the `@grader` fns) is not the
-  program the corpus verifies. Each grader task copies the sample grader into CP Lang, and the
-  dream carries a second copy, so the judge's interface is never checked against the
-  reference.
+  program the corpus verifies. The interactor checks the protocol, but the judge's function
+  interface (`transaction` called in-process) is never compiled or linked.
 - **Goal it hurts:** evidence, submission.
 - **Ideal code:** the dream exactly as the judge takes it, `@grader fn
   transaction(m: 1..=1e15) -> (List<0..100>, 0..=1e15)` and `@grader fn
@@ -81,7 +80,7 @@ sample grader's `transaction`.
 
 ## Measurements
 
-- **Tokens:** solution only, grader simulation excluded: port and dream 352 (the model-solution port was 299), original
+- **Tokens:** solution only: port and dream 352 (the model-solution port was 299), original
   (author_solution.cpp) 410.
 - **Runtime and memory:** on the `--max` case (N = 100), port 0.00 s / 3.7 MB, accepted C++
   0.00 s / 3.7 MB.
