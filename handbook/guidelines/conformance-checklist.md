@@ -30,7 +30,8 @@ both sides of a boundary, empty and one-element inputs.
 
 A failing case is a known gap when research/scoreboard.json records it as
 failing; `conformance_failing` counts them (target 0) and the case carries no
-marker line. A mistake in a failing case itself (a wrong `// <- here` line, a
+marker line. `cpl-conform --check` fails on a recorded failure that now passes,
+so the board can't keep a fixed case as a gap. A mistake in a failing case itself (a wrong `// <- here` line, a
 stale API) hides until the implementation catches up, so before you commit
 one, check that the failure is the bug the case is about. Enforced by
 `scripts/spec-gate.py case-bugs` (the case's own code at another line, or a

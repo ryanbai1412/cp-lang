@@ -27,6 +27,7 @@ suites:
 options:
   --check         fail if any suite's pass count drops or a passing case regresses
   --write         update the scoreboard JSON with the suites that were run
+                  (with a filter, only the cases that ran)
   --shard N/M     diff runs only every Mth target, starting at the Nth
   --scoreboard P  scoreboard JSON path (default: research/scoreboard.json)
   --prev P        with --check, also fail on a case that passed in scoreboard P
@@ -313,6 +314,16 @@ fn main() -> ExitCode {
                 println!("  ... and {} more", ratchet.improvements.len() - 20);
             }
         }
+        if !ratchet.stale.is_empty() {
+            eprintln!(
+                "cpl-conform: {} case(s) research/scoreboard.json records as failing now pass; record them: cargo run -p cpl-conform -- <suite> --write",
+                ratchet.stale.len()
+            );
+            for s in &ratchet.stale {
+                eprintln!("  - {s}");
+            }
+            exit_fail = true;
+        }
         if !ratchet.regressions.is_empty() {
             eprintln!(
                 "cpl-conform: RATCHET FAILED ({} regression(s)):",
@@ -335,12 +346,12 @@ fn main() -> ExitCode {
     }
 
     if write {
-        if filter.is_some() {
-            eprintln!("cpl-conform: refusing --write with a filter");
-            return ExitCode::from(2);
-        }
         let mut merged = Scoreboard::load(&sb_path).unwrap_or_default();
-        merged.merge_from(&current);
+        if filter.is_some() {
+            merged.merge_cases_from(&current);
+        } else {
+            merged.merge_from(&current);
+        }
         if let Err(e) = merged.save(&sb_path) {
             eprintln!("cpl-conform: {e}");
             return ExitCode::FAILURE;

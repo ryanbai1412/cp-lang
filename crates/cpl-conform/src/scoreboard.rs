@@ -401,6 +401,26 @@ impl Scoreboard {
             .map_err(|e| format!("cannot write `{}`: {e}", path.display()))
     }
 
+    /// Records each case a filtered run ran, keeping every other case of its suite.
+    pub fn merge_cases_from(&mut self, updated: &Scoreboard) {
+        for (name, report) in &updated.suites {
+            let into = self.suites.entry(name.clone()).or_default();
+            for (case, status) in &report.cases {
+                into.cases.insert(case.clone(), status.clone());
+                match report.details.get(case) {
+                    Some(d) => into.details.insert(case.clone(), d.clone()),
+                    None => into.details.remove(case),
+                };
+            }
+            into.counts.clear();
+            for status in into.cases.values() {
+                *into.counts.entry(status.clone()).or_insert(0) += 1;
+            }
+            into.total = into.cases.len();
+            into.passed = into.counts.get("pass").copied().unwrap_or(0);
+        }
+    }
+
     /// Merges updated suites into `self`, preserving suites that were not run.
     pub fn merge_from(&mut self, updated: &Scoreboard) {
         for (name, report) in &updated.suites {
@@ -451,6 +471,8 @@ fn case_file(case_id: &str) -> &str {
 pub struct RatchetReport {
     pub regressions: Vec<String>,
     pub improvements: Vec<String>,
+    /// Cases the baseline records as failing that pass now: the record is stale.
+    pub stale: Vec<String>,
 }
 
 /// Checks `current` against `baseline` for every suite present in `current`.
@@ -507,10 +529,18 @@ pub fn check_ratchet(baseline: &Scoreboard, current: &Scoreboard, filtered: bool
             }
         }
         for (case_id, cur_status) in &cur.cases {
-            if cur_status == "pass" && base.cases.get(case_id).map(String::as_str) != Some("pass") {
-                report
+            if cur_status != "pass" {
+                continue;
+            }
+            match base.cases.get(case_id).map(String::as_str) {
+                // `untested` means the run had no inputs for the case, so it records nothing.
+                Some("pass" | "untested") => {}
+                Some(recorded) => report.stale.push(format!(
+                    "{suite_name}/{case_id}: recorded as {recorded} but passes"
+                )),
+                None => report
                     .improvements
-                    .push(format!("{suite_name}/{case_id}: newly passing"));
+                    .push(format!("{suite_name}/{case_id}: newly passing")),
             }
         }
     }

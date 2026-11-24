@@ -64,7 +64,7 @@ Factory owns it.
 | Judges and targets | One judge/target table that drives the emitter | Core | to build: `judge_tables` |
 | Codegen optimizations | Every optimization reads the effects/Uses table | Core, with Factory | to build: `opt_without_uses` |
 | Site | Generated from the tools | Factory | `gen.py --check` |
-| Known gaps | A gap is a case `research/scoreboard.json` records failing; no case carries a `// gap:` line, and `spec/SUBSET.md` is generated from the board | Content | `conformance_failing`, the marker counter (hard zero); `spec-gate.py subset` |
+| Known gaps | A gap is a case `research/scoreboard.json` records failing; no case carries a `// gap:` line, and `spec/SUBSET.md` is generated from the board; a recorded failure that passes fails the ratchet | Content | `conformance_failing`, the marker counter (hard zero); `spec-gate.py subset`; `cpl-conform --check` (stale records) |
 | Decisions | One number each, reserved with `spec-gate.py decisions --reserve` | Content | `decision_dup_numbers` |
 
 ## Designed later

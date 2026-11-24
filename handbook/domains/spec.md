@@ -190,7 +190,8 @@ In order of what a user would feel:
 - A case carries no gap or failure marker. A case for a rule the compiler
   can't meet yet keeps its full expectation and fails until the fix turns it
   green; `research/scoreboard.json` is its only record, and a case that newly
-  fails blocks the land (decision 527).
+  fails blocks the land (decision 527). So does a case the board records as
+  failing that now passes: the fix commit records it with `cpl-conform <suite> --write`.
 - Normative rules live only in `spec/`. The handbook explains them and
   `plan/domains/spec/` tracks work on them; neither restates them.
 
