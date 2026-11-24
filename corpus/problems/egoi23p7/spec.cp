@@ -1,4 +1,4 @@
-use std.graph.{complement, components}
+use std.graph.{complement}
 // egoi23p7 Sopsug: N - 1 tubes forming a tree directed toward one root, using every existing
 // tube and no banned pair, or NO. The existing tubes must form a forest; each of its trees is a
 // block whose root needs one new tube into another block. Block c may hang under block k unless
