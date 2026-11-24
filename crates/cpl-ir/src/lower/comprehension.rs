@@ -310,7 +310,8 @@ impl Lowerer<'_> {
     }
 
     /// `[deg[u] * 2 for u in V]` where a `[V]T` is declared builds the
-    /// array, like the table `[V] u => deg[u] * 2`.
+    /// array, like the table `[V] u => deg[u] * 2`; so does
+    /// `[i * 2 for i in 0..n]` where a `[n]T` is.
     pub(super) fn comprehension_table(
         &mut self,
         init: &ast::Expr,
@@ -321,18 +322,35 @@ impl Lowerer<'_> {
         let ast::ExprKind::Comprehension { body, clauses } = &init.kind else {
             return None;
         };
-        let ([clause], [DimSpec::Pos(dim)]) = (clauses.as_slice(), dims) else {
+        let [clause] = clauses.as_slice() else {
             return None;
         };
-        let ast::ExprKind::Name(domain) = &clause.iter.kind else {
-            return None;
-        };
-        if !clause.conds.is_empty() || self.lookup(domain).is_some() {
+        if !clause.conds.is_empty() {
             return None;
         }
-        let dom_matches = match self.gen_env.get(domain) {
-            Some(GenArg::Domain(id)) => id == dim,
-            _ => matches!(self.get_sym(domain), Some(Sym::Domain(id)) if id == *dim),
+        let dom_matches = match (dims, &clause.iter.kind) {
+            ([DimSpec::Pos(dim)], ast::ExprKind::Name(domain)) if self.lookup(domain).is_none() => {
+                match self.gen_env.get(domain) {
+                    Some(GenArg::Domain(id)) => id == dim,
+                    _ => matches!(self.get_sym(domain), Some(Sym::Domain(id)) if id == *dim),
+                }
+            }
+            // `[0 for _ in 0..n]` where a `[n]T` is declared.
+            (
+                [DimSpec::Int(len)],
+                ast::ExprKind::Range {
+                    lo,
+                    hi: Some(hi),
+                    inclusive: false,
+                    step: None,
+                },
+            ) => {
+                lo.as_ref()
+                    .is_none_or(|lo| matches!(lo.kind, ast::ExprKind::Int(0)))
+                    && matches!(hi.kind, ast::ExprKind::Name(_) | ast::ExprKind::Int(_))
+                    && self.expr(hi, None).kind == len.kind
+            }
+            _ => false,
         };
         if !dom_matches {
             return None;

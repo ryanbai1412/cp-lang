@@ -10,6 +10,32 @@ use super::*;
 const WRONG_KEYS: &str = "this array doesn't have the keys its declared type gives it";
 
 impl<'a> Lowerer<'a> {
+    pub(super) fn declared_value(
+        &mut self,
+        ty: Option<&ast::Type>,
+        init: Option<&ast::Expr>,
+        span: Span,
+    ) -> Option<Expr> {
+        let before = self.diags.len();
+        let value = self.declared_value_inner(ty, init, span);
+        // A counted array's type holds no count, so it shows as `[Int]Int`:
+        // an error about the declared type names it as written, `[n]Int`.
+        let counted = |t: &Ty| matches!(t, Ty::Array { dims, .. } if dims.iter().any(|d| matches!(d, Dim::Int | Dim::IntFrom(_))));
+        if let Some(ty) = ty.filter(|_| self.diags.len() > before) {
+            let want = self.resolve(ty, true).ty();
+            if counted(&want) {
+                let (shown, written) = (
+                    format!("`{}`", self.show(&want)),
+                    format!("`{}`", self.source(ty.span)),
+                );
+                for d in &mut self.diags[before..] {
+                    d.message = d.message.replace(&shown, &written);
+                }
+            }
+        }
+        value
+    }
+
     /// The count each count-indexed axis of `ty` declares, by axis.
     fn declared_counts(&mut self, ty: &ast::Type) -> Vec<(usize, Expr)> {
         let ast::TypeKind::Array { index, .. } = &ty.kind else {

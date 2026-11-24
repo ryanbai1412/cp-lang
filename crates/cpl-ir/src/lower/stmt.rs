@@ -2852,7 +2852,7 @@ impl<'a> Lowerer<'a> {
 
     /// The value a `let` binds: its initializer, read or allocated the way
     /// the declared type says.
-    pub(super) fn declared_value(
+    pub(super) fn declared_value_inner(
         &mut self,
         ty: Option<&ast::Type>,
         init: Option<&ast::Expr>,
