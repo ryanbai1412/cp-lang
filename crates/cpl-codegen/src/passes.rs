@@ -259,7 +259,7 @@ pub(crate) const PASSES: &[Pass] = &[
     pass(
         "narrow",
         "scope/narrow.rs",
-        Unasked,
+        Uses(&["each_put", "each_write", "each_call"]),
         "ranged_int_struct_fields_take_the_narrowest_width",
     ),
     pass(

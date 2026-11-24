@@ -2,7 +2,28 @@
 //! the fns it passes them to and the closures it makes.
 
 use crate::walk;
-use cpl_ir::{Arg, Block, ClosureId, Expr, ExprKind, FnId, Mutation, Place, Stmt, Ty};
+use cpl_ir::{
+    Arg, AssignOp, Block, ClosureId, Expr, ExprKind, FnId, Mutation, Place, Slot, Stmt, Ty,
+};
+
+/// Where a statement puts a whole value.
+#[derive(Clone, Copy)]
+pub(crate) enum Put<'a> {
+    /// `let slot = v`.
+    Let(Slot),
+    /// `place = v` or `place op= v`.
+    Store(&'a Place, &'a AssignOp),
+}
+
+/// Every `let` with a value and every store in `block`, at any depth and in
+/// order: where it puts the value, and the value.
+pub(crate) fn each_put(block: &Block, f: &mut dyn FnMut(Put, &Expr)) {
+    walk::deep_stmts(block, &mut |stmt| match stmt {
+        Stmt::Let(slot, Some(v)) => f(Put::Let(*slot), v),
+        Stmt::Assign(target, op, v) => f(Put::Store(target, op), v),
+        _ => {}
+    });
+}
 
 /// How a write changes its place.
 #[derive(Clone, Copy)]
@@ -11,7 +32,9 @@ pub(crate) enum Write<'a> {
     Store,
     /// A push, pop, insert or other mutation in place.
     Mutate(&'a Mutation),
-    /// Sorted, or viewed `mut` (a slice or a line of it).
+    /// Sorted in place.
+    Sort,
+    /// Viewed `mut`: a slice or a line of it.
     InPlace,
     /// Passed `mut` to a call.
     Mut,
@@ -20,8 +43,8 @@ pub(crate) enum Write<'a> {
 /// Every place `block` writes, at any depth, and how: each target a write
 /// could change.
 pub(crate) fn each_write(block: &Block, f: &mut dyn FnMut(Write, &Place)) {
-    walk::deep_stmts(block, &mut |stmt| {
-        if let Stmt::Assign(target, ..) = stmt {
+    each_put(block, &mut |put, _| {
+        if let Put::Store(target, _) = put {
             f(Write::Store, target);
         }
     });
@@ -34,9 +57,8 @@ pub(crate) fn each_write(block: &Block, f: &mut dyn FnMut(Write, &Place)) {
             }
         }
         ExprKind::Mutate(how, target, _) => f(Write::Mutate(how), target),
-        ExprKind::Sort(target, _, _)
-        | ExprKind::MutSlice(target, ..)
-        | ExprKind::MutLine(target, ..) => f(Write::InPlace, target),
+        ExprKind::Sort(target, _, _) => f(Write::Sort, target),
+        ExprKind::MutSlice(target, ..) | ExprKind::MutLine(target, ..) => f(Write::InPlace, target),
         _ => {}
     });
 }

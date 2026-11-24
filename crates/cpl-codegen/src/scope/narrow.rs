@@ -1,6 +1,8 @@
 //! Element and field narrowing: which ranged ints, arrays, lists and tuples store as 32-bit across every flow.
 
 use super::*;
+use crate::uses::loops::{each_loop, Loop};
+use crate::uses::places::{each_call, each_closure, each_put, each_write, Put, Write};
 
 /// The niche a narrow width stores an optional field in, with the wide type it
 /// reads back as and its bit in `niche_types`: `?Int` is `cpl::OptI32`,
@@ -55,25 +57,17 @@ pub(crate) fn narrow_ints(program: &Program) -> BTreeMap<(usize, usize), cpl_ir:
         .chain(program.fns.iter().map(|f| &f.body))
         .chain(program.closures.iter().map(|c| &c.body));
     for body in bodies {
-        crate::walk::deep_stmts(body, &mut |stmt| {
-            if let Stmt::Assign(place, op, _) = stmt {
+        each_put(body, &mut |put, _| {
+            if let Put::Store(place, op) = put {
                 if *op != cpl_ir::AssignOp::Set {
                     widen(place, &mut narrow);
                 }
             }
         });
-        crate::walk::deep_exprs(body, &mut |e| match &e.kind {
-            ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, _, _) => {
-                widen(place, &mut narrow)
+        each_write(body, &mut |how, place| {
+            if let Write::Mutate(_) | Write::Sort | Write::Mut = how {
+                widen(place, &mut narrow);
             }
-            ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
-                for arg in args {
-                    if let cpl_ir::Arg::Mut(place) = arg {
-                        widen(place, &mut narrow);
-                    }
-                }
-            }
-            _ => {}
         });
     }
     narrow
@@ -154,8 +148,8 @@ pub(crate) fn narrow_elems(
     .collect();
     let mut stored: BTreeSet<ElemLoc> = BTreeSet::new();
     for &(scope, body) in &scopes {
-        crate::walk::deep_stmts(body, &mut |stmt| {
-            if let Stmt::Assign(place, op, val) = stmt {
+        each_put(body, &mut |put, val| {
+            if let Put::Store(place, op) = put {
                 let root = match &place.kind {
                     PlaceKind::Index(_, _) if matches!(val.kind, ExprKind::None) => None,
                     PlaceKind::Index(base, _) => place_loc(scope, base),
@@ -170,24 +164,23 @@ pub(crate) fn narrow_elems(
                 stored.extend(root);
             }
         });
-        crate::walk::deep_exprs(body, &mut |e| match &e.kind {
-            ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, ..) => {
-                stored.extend(place_loc(scope, place))
+        each_write(body, &mut |how, place| {
+            if let Write::Mutate(_) | Write::Sort = how {
+                stored.extend(place_loc(scope, place));
             }
-            _ => {}
         });
     }
     loop {
         let mut grew = false;
         for &(scope, body) in &scopes {
-            crate::walk::deep_stmts(body, &mut |stmt| {
-                let (dst, val) = match stmt {
-                    Stmt::Let(slot, Some(val)) => (ElemLoc::Local(scope, *slot), val),
-                    Stmt::Assign(place, cpl_ir::AssignOp::Set, val)
+            each_put(body, &mut |put, val| {
+                let dst = match put {
+                    Put::Let(slot) => ElemLoc::Local(scope, slot),
+                    Put::Store(place, cpl_ir::AssignOp::Set)
                         if matches!(place.kind, PlaceKind::Local(_) | PlaceKind::Global(_)) =>
                     {
                         match place_loc(scope, place) {
-                            Some(dst) => (dst, val),
+                            Some(dst) => dst,
                             None => return,
                         }
                     }
@@ -211,16 +204,13 @@ pub(crate) fn narrow_elems(
         // so a generic instance takes its argument's storage, not widens it.
         let mut passed: BTreeMap<ElemLoc, Option<NarrowLayout>> = BTreeMap::new();
         for &(scope, body) in &scopes {
-            crate::walk::deep_exprs(body, &mut |e| {
-                let ExprKind::Call(fid, args) = &e.kind else {
-                    return;
-                };
-                let f = &program.fns[*fid];
+            each_call(body, &mut |fid, args| {
+                let f = &program.fns[fid];
                 for (i, arg) in args.iter().enumerate().take(f.params.len()) {
                     if !f.locals.get(i).is_some_and(|l| is_narrowable_seq(&l.ty)) {
                         continue;
                     }
-                    let p = ElemLoc::Local(ScopeId::Fn(*fid), i);
+                    let p = ElemLoc::Local(ScopeId::Fn(fid), i);
                     let layout = match arg {
                         // A recursive fn forwarding its own param agrees with every other call.
                         Arg::Value(v) if expr_loc(scope, v) == Some(p) => continue,
@@ -300,22 +290,20 @@ pub(crate) fn narrow_elems(
     let mut cap_links: Vec<(ElemLoc, ElemLoc)> = Vec::new();
     let collect_caps =
         |scope: ScopeId, body: &cpl_ir::Block, links: &mut Vec<(ElemLoc, ElemLoc)>| {
-            crate::walk::deep_exprs(body, &mut |e| {
-                if let ExprKind::Closure(cid) = &e.kind {
-                    let c = &program.closures[*cid];
-                    for cap in &c.captures {
-                        if c.locals
-                            .get(cap.inner)
-                            .is_some_and(|l| is_narrowable_seq(&l.ty))
-                        {
-                            let outer = if cap.is_global {
-                                ElemLoc::Global(cap.outer)
-                            } else {
-                                ElemLoc::Local(scope, cap.outer)
-                            };
-                            let inner = ElemLoc::Local(ScopeId::Closure(*cid), cap.inner);
-                            links.push((outer, inner));
-                        }
+            each_closure(body, &mut |cid| {
+                let c = &program.closures[cid];
+                for cap in &c.captures {
+                    if c.locals
+                        .get(cap.inner)
+                        .is_some_and(|l| is_narrowable_seq(&l.ty))
+                    {
+                        let outer = if cap.is_global {
+                            ElemLoc::Global(cap.outer)
+                        } else {
+                            ElemLoc::Local(scope, cap.outer)
+                        };
+                        let inner = ElemLoc::Local(ScopeId::Closure(cid), cap.inner);
+                        links.push((outer, inner));
                     }
                 }
             });
@@ -414,11 +402,11 @@ pub(crate) fn narrow_elems(
     let mut for_links: Vec<(ElemLoc, usize, ElemLoc)> = Vec::new();
     let collect_fors =
         |scope: ScopeId, body: &cpl_ir::Block, links: &mut Vec<(ElemLoc, usize, ElemLoc)>| {
-            crate::walk::deep_stmts(body, &mut |stmt| {
-                if let Stmt::For(_, slot, Iter::Seq(e, _), _) = stmt {
+            each_loop(body, &mut |_, head| {
+                if let Loop::For(slot, Iter::Seq(e, _)) = head {
                     if is_narrowable_seq(&e.ty) {
                         if let Some((src_loc, depth)) = expr_root(scope, e) {
-                            links.push((src_loc, depth + 1, ElemLoc::Local(scope, *slot)));
+                            links.push((src_loc, depth + 1, ElemLoc::Local(scope, slot)));
                         }
                     }
                 }

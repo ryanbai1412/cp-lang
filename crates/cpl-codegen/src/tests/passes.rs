@@ -323,3 +323,26 @@ fn each_call_and_each_closure_see_inside_a_fn() {
     assert_eq!(calls, [("twice".to_string(), 1)], "g's body is its own");
     assert_eq!(closures, 1);
 }
+
+#[test]
+fn each_put_reports_lets_and_stores_in_order() {
+    use crate::uses::places::{each_put, Put};
+    let program = lower(concat!(
+        "fn f(n: Int) -> Int:\n",
+        "    let a = n\n",
+        "    var b = a\n",
+        "    b += 2\n",
+        "    b = a\n",
+        "    b\n",
+        "print(f(3))\n",
+    ));
+    let mut seen = Vec::new();
+    each_put(&program.fns[0].body, &mut |put, _| {
+        seen.push(match put {
+            Put::Let(_) => "let",
+            Put::Store(_, cpl_ir::AssignOp::Set) => "set",
+            Put::Store(..) => "update",
+        });
+    });
+    assert_eq!(seen, ["let", "let", "update", "set"]);
+}
