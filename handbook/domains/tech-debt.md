@@ -120,7 +120,7 @@ means no real check exists yet. Targets and current numbers are in
 
 | Attribute | Metric | Mechanism | Check |
 |---|---|---|---|
-| One engine runs programs | Statements the tree-walker runs, kinds of VM fallback | Re-architecture: delete the tree-walker; meanwhile a shrink-only fallback list | `crates/cpl-cli/tests/vm_fallbacks.rs`, `scripts/debt-ratchet.py` (`vm_fallbacks`, `tree_walker`) |
+| One engine runs programs | Statements the tree-walker runs, kinds of VM fallback | Re-architecture: delete the tree-walker; meanwhile a shrink-only fallback list | `crates/cpl-cli/tests/trace_goldens.rs` `tree_walker_fallbacks_only_shrink`, `scripts/debt-ratchet.py` (`vm_fallbacks`, `tree_walker`) |
 | No stdlib privilege by name | Std names matched in the checker, IR, lints and backend | Re-architecture: an intrinsics table; meanwhile ratchets | `scripts/debt-ratchet.py` (`ir_builtin_names`, `backend_std_names`, `lint_std_names`, `prelude_privilege`) |
 | One home per mechanism | Near-duplicate and duplicate fn bodies across crates | Ratchet with a detector | `scripts/debt-ratchet.py` (`near_dup_fns`, `dup_fn_bodies`, `lint_dup_helpers`) |
 | Consumers use checker facts, not their own | Re-derivations of types or facts outside the checker | Ratchet with a detector | `scripts/debt-ratchet.py` (`consumer_rederived`) |
@@ -163,7 +163,7 @@ means no real check exists yet. Targets and current numbers are in
 |---|---|---|
 | Debt ratchet | Any structural count rising above its baseline | `python3 scripts/debt-ratchet.py` (`--show`, `--list NAME`) |
 | Ratchet tests | A detector miscounting | `python3 -m unittest scripts/test_debt_ratchet.py` |
-| VM fallback list | A program part newly running on the tree-walker | `cargo nextest run -p cpl-cli --test vm_fallbacks` |
+| VM fallback list | A program part newly running on the tree-walker | `cargo nextest run -p cpl-cli --test trace_goldens` |
 | Walked-statement counts | Tree-walker statements, including inside fallbacks | `CPL_VM_STATS=1 cpl run ...` |
 | Entry-point parity | CLI and playground disagreeing | `cargo nextest run -p cpl-wasm --test parity` |
 | Handbook check | Text only its writer can follow | `python3 scripts/check-handbook.py` |

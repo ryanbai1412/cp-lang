@@ -174,7 +174,7 @@ tests for wording.
 | No saved trace records a crash of `cpl` itself | saved traces holding an internal error | gate in the trace suite | `crates/cpl-cli/tests/trace_goldens.rs` |
 | Any step rebuilt alone equals the step the run took | mismatches | property test | `crates/cpl-interp/tests/trace_log.rs` `any_step_rebuilt_alone_is_the_step_the_run_took` |
 | A run resumed from a checkpoint equals the whole run there | differing steps, output or input | differential tests over long loops, deep calls, closures, mutation, feeds, test cases and interactive runs | `crates/cpl-interp/tests/checkpoint.rs` |
-| Traces run on the VM, not the tree-walker | tree-walker fallbacks by kind; only goes down | ratchet | `crates/cpl-cli/tests/vm_fallbacks.rs` |
+| Traces run on the VM, not the tree-walker | tree-walker fallbacks by kind; only goes down | ratchet | `crates/cpl-cli/tests/trace_goldens.rs` `tree_walker_fallbacks_only_shrink` |
 | Large values stay visible | values over the trace's size cap shown as `[]` | hand-written suite: a 30000-cell array is drawn by a window of its cells | `crates/cpl-cli/tests/trace_goldens.rs` `a_large_array_is_drawn_by_a_window` |
 | Library code stays out of a user's trace | steps inside an imported module's fns the trace didn't ask for | design: the tracer steps over library calls (`debugging/R2`); saved traces of std calls | `crates/cpl-cli/tests/trace_goldens.rs` `every_program_records_its_saved_trace` |
 | Huge traces can be narrowed to what matters | filters by fn, test, watch, depth, window | hand-written suite | `crates/cpl-cli/tests/trace_filters.rs` |
@@ -239,9 +239,9 @@ question has a probe a cold agent attempts with only the docs and the CLI.
 | `crates/cpl-cli/tests/seeded_bugs.rs` | A seeded bug not found, not minimal, slow, or not named by `--explain` | `cargo nextest run -p cpl-cli --test seeded_bugs` |
 | `crates/cpl-stress/src/tests.rs` | Invalid generation, bad shrinking, judges, interactors, jobs | `cargo nextest run -p cpl-stress` |
 | `crates/cpl-cli/tests/debugger.rs`, `stress_corpus.rs`, `stress_bench.rs` | The stress loop end to end, `--explain` JSON, corpus problems | `cargo nextest run -p cpl-cli --test debugger --test stress_corpus --test stress_bench` |
-| `crates/cpl-cli/tests/trace_goldens.rs` | Any change to a saved trace; a saved crash; a program with no saved trace | `cargo nextest run -p cpl-cli --test trace_goldens`; `CPL_BLESS=1` records |
+| `crates/cpl-cli/tests/trace_goldens.rs` | Any change to a saved trace; a saved crash; a program with no saved trace; output that tracing changes; a new tree-walker fallback | `cargo nextest run -p cpl-cli --test trace_goldens`; `CPL_BLESS=1` records |
 | `crates/cpl-interp/tests/trace_log.rs`, `checkpoint.rs`, `stop.rs` | Step rebuild, windows, checkpoints and resume, time limits; the 10^7-step budget (ignored) | `cargo nextest run -p cpl-interp`; budget: `cargo test --release -p cpl-interp --test trace_log ten_million -- --ignored --nocapture` |
-| `crates/cpl-cli/tests/vm_fallbacks.rs` | A new tree-walker fallback in traced runs | `cargo nextest run -p cpl-cli --test vm_fallbacks` |
+| `crates/cpl-cli/tests/vm_fallbacks.rs` | Code above a multitest's cases running on the tree-walker | `cargo nextest run -p cpl-cli --test vm_fallbacks` |
 | `crates/cpl-cli/tests/dap.rs`, `replay.rs`, `trace_live.rs`, `trace_filters.rs` | The debug adapter, replay, live traces, filters and windows | `cargo nextest run -p cpl-cli --test dap --test replay --test trace_live --test trace_filters` |
 | `crates/cpl-cli/tests/runtime_errors.rs`, `trap_parity.rs` | Trap reports and their locals; traps one build misses | `cargo nextest run -p cpl-cli --test runtime_errors --test trap_parity` |
 | `tools/trace/*.test.cjs`, `crates/cpl-cli/tests/trace_browser.rs` | Viewer logic, schema, and what a browser shows | `node tools/trace/trace.test.cjs`; `cargo nextest run -p cpl-cli --test trace_browser` |

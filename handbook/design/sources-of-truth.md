@@ -81,7 +81,7 @@ Each kind of duplicate and the counter that detects it.
 | A mechanism lives in one crate | Two crates each compare real-number output tokens with their own tolerance | `scripts/debt-ratchet.py` (`near_dup_fns`, `dup_fn_bodies`, `lint_dup_helpers`) |
 | Clients read checker facts, never re-derive them | A lint re-computes a type the checker already knows | `scripts/debt-ratchet.py` (`consumer_rederived`) |
 | One analysis per process | A tool builds its own query database | `scripts/debt-ratchet.py` (`own_databases`) |
-| One engine runs programs | A statement runs on the tree-walker instead of the VM | `scripts/debt-ratchet.py` (`vm_fallbacks`, `tree_walker`), `crates/cpl-cli/tests/vm_fallbacks.rs` |
+| One engine runs programs | A statement runs on the tree-walker instead of the VM | `scripts/debt-ratchet.py` (`vm_fallbacks`, `tree_walker`), `crates/cpl-cli/tests/trace_goldens.rs` `tree_walker_fallbacks_only_shrink` |
 | The stdlib's behavior lives in the stdlib | The IR lowers a std method by its name | `scripts/debt-ratchet.py` (`ir_builtin_names`, `backend_std_names`, `lint_std_names`, `prelude_privilege`) |
 | Docs cite code that exists | An architecture doc names a deleted file | `scripts/debt-ratchet.py` (`stale_arch_paths`) |
 | The why is written once: `handbook/language/` explains, `decisions.md` records the call and its reversal, `spec/` states the rule | A sentence of reasoning copied from the handbook into a spec chapter, or a `spec/RATIONALE.md` | `scripts/debt-ratchet.py` (`why_written_twice`) |

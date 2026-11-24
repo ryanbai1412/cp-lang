@@ -945,7 +945,7 @@ def rs_near_cap(root: Path) -> list[str]:
 
 
 def vm_fallbacks(root: Path) -> list[str]:
-    """(program, mode, tag) tree-walker fallbacks; cpl-cli's vm_fallbacks test keeps the list true."""
+    """(program, mode, tag) tree-walker fallbacks; cpl-cli's trace_goldens test keeps the list true."""
     path = root / "crates/cpl-cli/tests/vm_fallbacks.txt"
     return [l for l in _lines(path) if l and not l.startswith("#")] if path.is_file() else []
 

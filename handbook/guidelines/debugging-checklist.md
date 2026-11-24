@@ -51,7 +51,8 @@ Check: process: review of changes to `crates/cpl-interp/src/trace*`.
 The trace is recorded where the program runs. A construct that falls back
 to the tree-walker under tracing is a listed exception that only shrinks.
 
-Check: `crates/cpl-cli/tests/vm_fallbacks.rs` over `vm_fallbacks.txt`.
+Check: `crates/cpl-cli/tests/trace_goldens.rs`
+`tree_walker_fallbacks_only_shrink` over `vm_fallbacks.txt`.
 
 ## R5: Store changes, recompute far steps
 
