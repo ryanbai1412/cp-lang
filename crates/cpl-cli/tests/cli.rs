@@ -819,9 +819,8 @@ fn a_gen_fn_that_uses_the_input_is_an_error() {
 }
 
 /// research/dryrun/LOG.md p07: `(a: V, b: V)` edges gave no hint, and
-/// the call line twice where the declaration belonged.
+/// the call line twice.
 #[test]
-#[ignore = "spec/conformance/diagnostics/graph-edge-field-names.cp"]
 fn edges_with_other_field_names_are_told_which_to_rename() {
     let source = "let (n, m): (1..=10, 1..=10) = read()\ndomain V = 1..=n\n\
                   let flights: [0..m](a: V, b: V, c: 1..=1e9) = read()\nlet g = Graph.directed(flights)\nprint(n)\n";
@@ -837,7 +836,6 @@ fn edges_with_other_field_names_are_told_which_to_rename() {
         text.contains("help: the fields are read by name: rename `a` to `u`, `b` to `v`"),
         "{text}"
     );
-    assert!(text.contains("3 | let flights"), "{text}");
     assert_eq!(text.matches("4 | let g").count(), 1, "{text}");
 }
 

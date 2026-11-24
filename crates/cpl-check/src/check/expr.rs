@@ -3552,7 +3552,7 @@ impl<'a> Checker<'a> {
 
 /// `(a: V, b: V)` given where `(u: V, v: V)` is wanted, inside the same
 /// arrays, lists or optionals: the help names the fields to rename.
-fn rename_fields(got: &Ty, want: &Ty) -> Option<String> {
+pub(super) fn rename_fields(got: &Ty, want: &Ty) -> Option<String> {
     match (got, want) {
         (Ty::Array { elem: got, .. }, Ty::Array { elem: want, .. })
         | (Ty::Optional(got), Ty::Optional(want)) => rename_fields(got, want),

@@ -1207,6 +1207,10 @@ impl<'a> Checker<'a> {
                         match found {
                             Some((_, got_ty)) if self.fits(got_ty, req_ty) => {}
                             _ => {
+                                let help = super::expr::rename_fields(
+                                    actual,
+                                    &Ty::Record(req_fields.clone()),
+                                );
                                 let diag = self.error(
                                     codes::ROW_MISSING_FIELD,
                                     call.span,
@@ -1215,7 +1219,13 @@ impl<'a> Checker<'a> {
                                         found.map_or(format!("has no `{req_name}`"), |(_, t)| format!("has `{req_name}: {t}`"))
                                     ),
                                 );
-                                suggest_rename(diag, args, actual_fs, &req_fields);
+                                if let Some(diag) = diag {
+                                    if help.is_some() {
+                                        diag.help = help;
+                                    }
+                                    suggest_rename(Some(diag), args, actual_fs, &req_fields);
+                                }
+                                break;
                             }
                         }
                     }
