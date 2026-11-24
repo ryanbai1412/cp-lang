@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-24
+- 2026-11-24 landed (from compiler (f), interp acceptance timeouts): a fn or closure returning a small tuple returns a field of a boxed value, such as the `Pt` of a nested tuple, with `RetV` as it is (`tuple_ret_of`), not `RetSmallTuple`, so a V caller no longer gets it unboxed and boxed again. This undoes the slowdown 253cb831b brought dmopc20c7p2 11.in (`equal_range(p, by: e => e.from)`, 78M key calls): 43.0 s at 1596b8a94, 47.4 s at 253cb831b, 50.0 s at ef194a5f7, 44.8 s with this (release, alone, least of interleaved runs). Paid for by one `emit_ret` for `yield` and `return` (cpl_interp -409 B normalized). Test: vm_alone `vm_returns_a_small_tuple_it_holds_boxed_as_it_is`. Next: nested small tuples in registers.
 - 2026-11-24 landed (from core, interp acceptance timeouts): an array shares its cells with the list it came from (`Array.data` is an `Rc<Cells>`, written through `Rc::make_mut`), so a list passed where an array is wanted (`ListToArray`), `reversed`, `rekey` and a key slice of an array no longer copy every cell, and `to_list` of an array no longer clones them. dmopc21c2p4 06.in >200 s to 0.5 s; dmopc20c7p2 11.in >200 s to ~44 s (each `leaving(p)` copied the 1.6e6-edge list for `edges.equal_range`). Regression: cpl-interp tests/list_as_array.rs (bytes allocated per pass, and copy-on-write). Next: dmopc20c7p2's remaining cost is closure calls in `first_true`/`flip_at` and boxing each packed `(from: Pt, to: Pt, tile)` load.
 
 ## 2026-11-24

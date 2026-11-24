@@ -719,11 +719,12 @@ pub(super) enum ElemRoot {
 }
 
 impl Compiler<'_, '_> {
-    /// The shape `RetSmallTuple` returns `e` in, when this body returns small tuples of `e`'s.
+    /// The shape `RetSmallTuple` returns `e` in, when this body returns small tuples of `e`'s
+    /// and `e` is not a field of a boxed value, which `RetV` hands back as it is.
     pub(super) fn tuple_ret_of(&self, e: &Expr) -> Option<(u8, [crate::value::SmallFieldKind; 5])> {
         let (len, kinds) = self.tuple_ret?;
         let (l, k) = small_tuple_shape(&e.ty, self.program)?;
-        (l == len && k == kinds).then_some((len, kinds))
+        (l == len && k == kinds && !matches!(e.kind, ExprKind::Field(..))).then_some((len, kinds))
     }
 
     /// Whether the call `e` returns a small tuple of `len` fields.

@@ -665,6 +665,21 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
     }
 
+    /// Returns `e` from this body: in registers when it is a small tuple or a scalar, else boxed.
+    fn emit_ret(&mut self, e: &'p Expr) {
+        if let Some((len, kinds)) = self.tuple_ret_of(e) {
+            let base = self.small_tuple_operand(e, len);
+            self.emit(Op::RetSmallTuple { base, len, kinds }, e.span);
+        } else if ScalarKind::of_ty(&e.ty, self.program).is_some() {
+            let r = self.compile_expr_i(e);
+            self.emit(Op::RetI { src: r }, e.span);
+        } else {
+            let r = self.compile_expr_v(e);
+            let r = self.ret_v(r, e.span);
+            self.emit(Op::RetV { src: r }, e.span);
+        }
+    }
+
     pub(super) fn compile_untraced_stmt(&mut self, stmt: &'p Stmt) {
         match stmt {
             Stmt::Let(slot, init) => {
@@ -972,16 +987,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     // The program's own block: its value ends the program.
                     let _ = self.compile_expr_v(e);
                     self.emit(Op::RetUnit, e.span);
-                } else if let Some((len, kinds)) = self.tuple_ret_of(e) {
-                    let base = self.small_tuple_operand(e, len);
-                    self.emit(Op::RetSmallTuple { base, len, kinds }, e.span);
-                } else if ScalarKind::of_ty(&e.ty, self.program).is_some() {
-                    let r = self.compile_expr_i(e);
-                    self.emit(Op::RetI { src: r }, e.span);
                 } else {
-                    let r = self.compile_expr_v(e);
-                    let r = self.ret_v(r, e.span);
-                    self.emit(Op::RetV { src: r }, e.span);
+                    self.emit_ret(e);
                 }
             }
             Stmt::Return(val) => {
@@ -1006,17 +1013,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 } else if self.feed_acc.is_some() {
                     self.emit(Op::FeedEnd, Span::default());
                 } else if let Some(e) = val {
-                    if let Some((len, kinds)) = self.tuple_ret_of(e) {
-                        let base = self.small_tuple_operand(e, len);
-                        self.emit(Op::RetSmallTuple { base, len, kinds }, e.span);
-                    } else if ScalarKind::of_ty(&e.ty, self.program).is_some() {
-                        let r = self.compile_expr_i(e);
-                        self.emit(Op::RetI { src: r }, e.span);
-                    } else {
-                        let r = self.compile_expr_v(e);
-                        let r = self.ret_v(r, e.span);
-                        self.emit(Op::RetV { src: r }, e.span);
-                    }
+                    self.emit_ret(e);
                 } else {
                     self.emit(Op::RetUnit, Span::default());
                 }

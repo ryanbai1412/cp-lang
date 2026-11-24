@@ -482,3 +482,50 @@ print([g(i) for i in 0..3])
     assert_eq!((count("FieldI"), count("FieldV")), (1, 1), "{ops:?}");
     assert_eq!(count("ClearV"), 0, "{ops:?}");
 }
+
+#[test]
+fn vm_returns_a_small_tuple_it_holds_boxed_as_it_is() {
+    // dmopc20c7p2's `equal_range(p, by: e => e.from)`: the key of a boxed
+    // nested tuple is already a boxed `Pt`, so it is returned as it is, not
+    // unboxed into registers for the caller to box again.
+    let source = "\
+struct Pt(x: Int, y: Int)
+var edges: List<(from: Pt, to: Pt, w: Int)> = []
+for i in 0..6:
+    edges.push((from: Pt(i / 2, i % 2), to: Pt(i, 0), w: i))
+fn from_of(e: (from: Pt, to: Pt, w: Int)) -> Pt = e.from
+fn twin(p: Pt) -> Pt = Pt(p.y, p.x)
+print([edges[i].w for i in edges.equal_range(Pt(1, 0), by: e => e.from)])
+print(from_of(edges[3]).x, from_of(edges[3]).y, twin(from_of(edges[5])).x)
+";
+    assert_eq!(vm_runs_alone(source, ""), "2\n1 1 1\n");
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", source);
+    let analysis = db.analyze("t.cp").expect("the file was just set");
+    let program = cpl_ir::lower(&analysis).expect("lowers");
+    let feeds = cpl_ir::pushed::Feeds::of(&program);
+    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false, false);
+    let ops = |chunk: &crate::vm::Chunk| -> Vec<String> {
+        chunk.ops.iter().map(|op| format!("{op:?}")).collect()
+    };
+    let count = |ops: &[String], name: &str| ops.iter().filter(|op| op.starts_with(name)).count();
+    let fn_ops = |name: &str| {
+        let id = (0..program.fns.len()).find(|&id| program.fns[id].name.ends_with(name));
+        ops(compiled.fns[id.expect(name)].as_ref().expect("on the VM"))
+    };
+    let from_of = fn_ops("from_of");
+    assert_eq!(count(&from_of, "UnboxSmallTuple"), 0, "{from_of:?}");
+    assert_eq!(count(&from_of, "RetSmallTuple"), 0, "{from_of:?}");
+    let twin = fn_ops("twin");
+    assert_eq!(count(&twin, "RetSmallTuple"), 1, "{twin:?}");
+    let key = compiled
+        .closures
+        .iter()
+        .flatten()
+        .map(ops)
+        .collect::<Vec<_>>();
+    assert!(!key.is_empty());
+    for ops in &key {
+        assert_eq!(count(ops, "RetSmallTuple"), 0, "{ops:?}");
+    }
+}
