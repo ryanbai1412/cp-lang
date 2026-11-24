@@ -48,6 +48,8 @@ pub(crate) struct Declared {
     loop_read: bool,
     /// Whether `to` drops `reads:`'s name: every use must then be a read.
     drops_read: bool,
+    /// `each:`: the name `to` writes for an element, and its hole.
+    each: Option<(String, usize)>,
     /// Per name `to` declares, the holes its initializer uses.
     inits: Vec<(String, Vec<String>)>,
     /// The module's public names `to` uses, each as the linted file spells
@@ -129,6 +131,12 @@ fn declare(
         .collect();
     let reads = (decl.reads.split_once("->"))
         .and_then(|(r, w)| Some((library_lint::code(r.trim())?, w.trim().to_string())));
+    let each = (decl.each.split_once(" in ")).and_then(|(x, xs)| {
+        Some((
+            x.trim().to_string(),
+            decl.holes.iter().position(|h| h == xs.trim())?,
+        ))
+    });
     let read_name = (reads.as_ref())
         .and_then(|(pat, _)| pat.iter().find(|t| bound_names(&from).contains(&t.1)))
         .map(|t| t.1.clone());
@@ -165,6 +173,7 @@ fn declare(
         reads,
         loop_read,
         drops_read,
+        each,
         inits,
         decl,
         module: module.to_string(),
@@ -711,6 +720,24 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
             // the rest of the block, or a loop variable's statement holes. A
             // use that is no such read (a write, `p.len`) leaves the code
             // unfixed; where `to` drops the name, it is no such code.
+            // `each:` asks its hole to match a name, and spells its own as
+            // that name's singular (`vals` -> `val`), one the file does not
+            // use; with none such the finding has no fix.
+            let plural = d.each.as_ref().map(|(_, h)| match holes[*h] {
+                Some((a, b)) if b == a + 1 && kinds[a] == K::Ident => Some(text[a]),
+                _ => None,
+            });
+            if plural == Some(None) {
+                continue;
+            }
+            let named_each = d.each.as_ref().is_none_or(|(x, _)| {
+                let plural = plural.flatten().unwrap_or_default();
+                let used =
+                    |o: &str| (text.iter().zip(&kinds)).any(|(t, k)| *k == K::Ident && *t == o);
+                let one = (plural.strip_suffix('s')).filter(|o| o.len() > 1 && !used(o));
+                one.map(|o| names.push((x.clone(), o.to_string())))
+                    .is_some()
+            });
             let hole_runs: Vec<(usize, usize)> = (d.from.iter().zip(&d.stmt_holes))
                 .filter(|(_, s)| **s)
                 .filter_map(|((_, h), _)| holes[d.decl.holes.iter().position(|x| x == h)?])
@@ -854,6 +881,9 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                 Some(None) => fixed = diag.clone(),
                 Some(Some(edits)) if !d.loop_read => fixed.fixes[0].edits.extend(edits),
                 _ => {}
+            }
+            if !named_each {
+                fixed = diag.clone();
             }
             if !d.rebinds.is_empty()
                 && !rebinding_holds(

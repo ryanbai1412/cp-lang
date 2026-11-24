@@ -282,6 +282,9 @@ library or by this spec:
   "self[i] -> x"`). Where `to` drops the name, a use that is no such read,
   or none at all, means the code does not match; nor does it where the
   scope declares again or assigns a name the read's holes matched.
+  `each: "x in xs"` spells the name `x` that `to` writes as the singular
+  of the one name the hole `xs` matched (`vals` gives `val`); where that is
+  no name, or one the file already uses, the finding has no fix.
   A finding inside a wider one is shown with it when `from` still
   matches the wider fix's text, which keeps the code it is about.
   It applies in every file that uses the module, and in the module outside
@@ -292,7 +295,8 @@ library or by this spec:
   name, `from:` or `to:` (or has both `to:` and `advice:`), when `from`,
   `to` or an `also:` line is not one expression or
   statement or a run of statements, when `reads:` is not two expressions
-  around `->`, when `to` drops a parameter `from` matches or uses one it does
+  around `->`, when `each:` is not a name `to` writes (no hole), `in`,
+  and a hole, when `to` drops a parameter `from` matches or uses one it does
   not, when `holes:` names a name neither `from` nor `also:` uses, when `when:` is not
   holes `from` uses compared with integers, when neither `to` (not `advice:`) calls the
   fn (or its `builtin:`) or writes only its body's operators nor `from`

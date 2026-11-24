@@ -49,6 +49,9 @@ pub struct LibraryLint {
     /// `reads:`, `p[k] -> p.cut(k)`: how the fix rewrites each later read
     /// of a name `from` declares; empty when it rewrites none.
     pub reads: String,
+    /// `each:`, `x in xs`: a name `to` writes for an element of the hole
+    /// `xs`, spelled as its singular (`vals` -> `val`); empty for none.
+    pub each: String,
     /// The decorator, in file positions.
     pub decorator: Span,
     /// The decorated fn, in file positions: the pattern does not apply
@@ -199,6 +202,25 @@ fn declared_on(
                 continue;
             }
         };
+        let each = text("each").unwrap_or_default();
+        let each_ok = each.is_empty()
+            || each.split_once(" in ").is_some_and(|(x, xs)| {
+                let x_in_to = tokens(&to)
+                    .iter()
+                    .any(|t| &to[t.span.start as usize..t.span.end as usize] == x.trim());
+                x_in_to
+                    && !holes.iter().any(|h| h == x.trim())
+                    && holes.iter().any(|h| h == xs.trim())
+            });
+        if !each_ok {
+            error(
+                &msgs::syntax::LINT_EACH,
+                &[&name],
+                "write `each: \"x in xs\"`: a name `to` writes that is no hole, `in`, and the hole whose element it names",
+                &mut label,
+            );
+            continue;
+        }
         let (from_run, to_run) = (run(&from), run(&to));
         let bad_to = from_run.is_some() && to_run.is_none();
         let read_of = reads.split_once("->").map_or("", |r| r.0.trim());
@@ -302,6 +324,7 @@ fn declared_on(
             advice,
             also,
             reads,
+            each,
             decorator: span,
             item: stmt.span.shift(offset),
         });
@@ -731,6 +754,17 @@ mod tests {
         assert!(errors(src).is_empty(), "{:?}", errors(src));
         let other = src.replace("fn iter", "fn walk");
         assert_eq!(errors(&other).len(), 1, "{:?}", errors(&other));
+    }
+
+    #[test]
+    fn each_names_a_to_name_for_an_element_of_a_hole() {
+        let ok = "pub trait Walk<T>:\n    @lint(index_walk, from: \"for i in 0..self.len:\\n    b\", to: \"for x in self:\\n    b\", each: \"x in self\", holes: \"b\")\n    fn iter(self) -> yields T\n";
+        assert!(errors(ok).is_empty(), "{:?}", errors(ok));
+        assert_eq!(parse_lints(ok)[0].each, "x in self");
+        for bad in ["y in self", "x in q", "b in self", "x"] {
+            let src = ok.replace("\"x in self\"", &format!("\"{bad}\""));
+            assert_eq!(errors(&src).len(), 1, "{bad}: {:?}", errors(&src));
+        }
     }
 
     #[test]

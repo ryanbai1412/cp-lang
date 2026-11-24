@@ -867,3 +867,31 @@ fn reads_of_a_loop_variable_are_rewritten_in_its_body() {
         assert_eq!(run(body).0, 0, "{body}");
     }
 }
+
+/// `each:` names `to`'s element after its hole's singular, `vals` -> `val`;
+/// with no such free name the finding has no fix. Rule: R06.4.9.
+#[test]
+fn each_spells_an_element_as_its_holes_singular() {
+    let decl = "pub trait Walk<T>:\n    @lint(index_walk, from: \"for i in 0..self.len:\\n    b\", to: \"for x in self:\\n    b\", reads: \"self[i] -> x\", each: \"x in self\", holes: \"b\")\n    fn iter(self) -> yields T\n";
+    let run = |list: &str, more: &str| {
+        let src = format!(
+            "{decl}let {list} = [1, 2]\n{more}for i in 0..{list}.len:\n    print({list}[i])\n"
+        );
+        let found: Vec<_> = (crate::lint(&src, &crate::Config::default()).into_iter())
+            .filter(|d| d.code.0 == "index_walk")
+            .collect();
+        let fixes = found.iter().map(|d| d.fixes.len()).sum::<usize>();
+        let (text, _) = cpl_diag::splice_fixes(&src, &found);
+        (found.len(), fixes, text[decl.len()..].to_string())
+    };
+    let (found, _, text) = run("vals", "");
+    assert_eq!(found, 1);
+    assert!(
+        text.ends_with("for val in vals:\n    print(val)\n"),
+        "{text}"
+    );
+    assert_eq!(run("g", "").0, 1);
+    assert_eq!(run("g", "").1, 0);
+    let taken = run("vals", "let val = 0\nprint(val)\n");
+    assert_eq!((taken.0, taken.1), (1, 0));
+}
