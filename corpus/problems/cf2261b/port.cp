@@ -1,5 +1,6 @@
 // Source: Codeforces 2261B (What's the Capital of France?),
 //   https://codeforces.com/contest/2261/problem/B
+// limits: 1500 ms, 256 MB
 // Problem: n <= 2e5 ratings 0 <= a_i <= 1e9 in a line; an operation on two adjacent unequal
 //   ratings raises the lower by 1. Print the largest bitwise OR of all ratings reachable.
 //   Multitest, sum n <= 2e5.

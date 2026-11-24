@@ -1,5 +1,6 @@
 // Source: Codeforces 2261D1 (Come Be My Friend, Don't Be So Scared, easy version),
 //   https://codeforces.com/contest/2261/problem/D1
+// limits: 2000 ms, 256 MB
 // Problem: multitest; n hiding spots in a row (n <= 2e5, sum of n <= 2e5) and m = 0 given
 //   detectors. Print the fewest segment detectors [u, v] whose yes/no reports determine
 //   every spot (each spot has a different set of covering segments), then the segments.

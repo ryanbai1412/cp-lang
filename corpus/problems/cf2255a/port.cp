@@ -1,5 +1,6 @@
 // Source: Codeforces 2255A (Hot Potatoes at the Fairy Warehouse),
 //   https://codeforces.com/contest/2255/problem/A
+// limits: 2000 ms, 256 MB
 // Problem: 2n leprechauns sit in a circle (n <= 1e5), odd numbers Red, even Blue; s marks who
 //   holds a potato. For k <= 1e9 rounds each holder keeps it or passes it clockwise if the next
 //   one held none at the round's start. Each team scores the other team's holders at the end;

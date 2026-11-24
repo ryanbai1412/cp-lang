@@ -1,5 +1,6 @@
 // Source: Codeforces 2268B (What a SauSaGe! It's All Meat),
 //   https://codeforces.com/contest/2268/problem/B
+// limits: 2000 ms, 256 MB
 // Problem: n <= 2e5 values a_i < 16. An operation XORs a_i and a_{i+1} with the same 3k,
 //   1 <= k <= 5. Before the q <= 2e5 point assignments a_p := x and after each, print the
 //   most a_i that operations can make divisible by 3. Multitest, sums of n and q <= 2e5.

@@ -1,4 +1,5 @@
 // Source: Codeforces 2262C (Traveling the World), https://codeforces.com/contest/2262/problem/C
+// limits: 2000 ms, 256 MB
 // Problem: n values 0 = a_1 < ... < a_n (4 <= n <= 2e5, a_i <= 1e9). Count the orders b of
 //   them in which a path visits every position once, moving i -> j only when b_i + b_j =
 //   max(b_i..b_n). Mod 1e9+7, multitest, sum of n <= 2e5.

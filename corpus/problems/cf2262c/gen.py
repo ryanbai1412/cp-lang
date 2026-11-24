@@ -1,4 +1,8 @@
 import sys, random
+if sys.argv[1] == "--max":  # one case n = 2e5 (sum n), the two-ramp shape with a_n near 1e9
+    n = 200000; h = n // 2; d = 10**9 // n; top = d * (n - 1) + d // 2
+    a = sorted([d * i for i in range(h)] + [top - d * i for i in range(n - h)])
+    print(1); print(n); print(*a); sys.exit()
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 t = 6; print(t)
 for _ in range(t):

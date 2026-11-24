@@ -1,4 +1,9 @@
 import sys, random
+if sys.argv[1] == "--max":  # sums n = q = 2e5 in one case, values and updates over all of 0..16
+    rng = random.Random(0); n = q = 200000
+    out = ["1", f"{n} {q}", " ".join(str(rng.randrange(16)) for _ in range(n))]
+    out += [f"{rng.randint(1, n)} {rng.randrange(16)}" for _ in range(q)]
+    print("\n".join(out)); sys.exit()
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 # statement: t <= 1e4, 2 <= n <= 2e5, 0 <= q <= 2e5, 0 <= a_i, x < 16, sums of n and q <= 2e5
 MAX, MAX_T = 200_000, 10_000

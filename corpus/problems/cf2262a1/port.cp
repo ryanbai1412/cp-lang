@@ -1,4 +1,5 @@
 // Source: Codeforces 2262A1 (Floor of MEX, easy), https://codeforces.com/contest/2262/problem/A1
+// limits: 2000 ms, 256 MB
 // Problem: f(S, x) = mex of {floor(y / x) : y in S}. Given a_k = f(A, k) for k = 1..=n (n <= 1e5,
 //   0 <= a_k <= n) of a hidden A within 0..n, print any B within 0..n with f(B, k) = a_k for
 //   all k: its size, then its elements. Multitest, sum n <= 1e5.

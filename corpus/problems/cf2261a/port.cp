@@ -1,5 +1,6 @@
 // Source: Codeforces 2261A (Hey, It's Me, Souvlakity),
 //   https://codeforces.com/contest/2261/problem/A
+// limits: 1000 ms, 256 MB
 // Problem: the integers 1..=n (n <= 100) are split by a binary string s (1 = Souvlakity, at least
 //   one). For 10^100 turns, Souvlakity first, the player to move gives one own integer to the
 //   other. Souvlakity's score is max - min of his set; he maximises it and Kalamakity minimises
