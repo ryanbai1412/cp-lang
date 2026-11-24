@@ -5,8 +5,8 @@
 # tip, and the infra sheriff reverts or fixes a red one. Every commit to land
 # needs a `Domain: <d>` trailer. Before the first push it runs the checks
 # behind most red mains, in a few seconds: conflict markers in the changed
-# files, the debt ratchet, `cargo fmt --check` and clippy on the touched crates, and
-# generated files (regenerated and committed, as CI's regen job would).
+# files, the debt ratchet, and `cargo fmt --check` and clippy on the touched
+# crates. Generated files are CI's regen job's: it rewrites and commits them.
 # It also says when AGENTS.md, handbook/ or plan/product/ changed since this worktree's
 # last land, so product direction reaches every lane.
 # Each landing appends one JSON line (domain, seconds, tries) to
@@ -24,8 +24,8 @@ for c in $(git rev-list "FETCH_HEAD..HEAD"); do
         { echo "land: $(git log -1 --format='%h %s' "$c") has no Domain: trailer" >&2; exit 1; }
 done
 domain=$(git log -1 --format='%(trailers:key=Domain,valueonly,separator=)' HEAD)
-# A conflict only in generated files is resolved by taking main's copy and
-# regenerating, as CI's regen job would; any other conflict stops here.
+# A conflict only in generated files is resolved by taking main's copy; CI's
+# regen job regenerates it on the pushed tip. Any other conflict stops here.
 generated='^(spec/conformance/|skills/|pnpm-lock\.yaml$|editors/vscode/src/languageData\.ts$|editors/vscode/syntaxes/)'
 rebasing() { [ -d "$(git rev-parse --git-path rebase-merge)" ] || [ -d "$(git rev-parse --git-path rebase-apply)" ]; }
 pull() {
@@ -37,9 +37,8 @@ pull() {
             return 1
         fi
         git checkout -q --ours -- $conflicts
-        [ ! -x scripts/regen.sh ] || scripts/regen.sh >/dev/null
         git add -- $conflicts
-        echo "land: regenerated conflicted $(echo $conflicts)" >&2
+        echo "land: took main's $(echo $conflicts); CI's regen job regenerates them" >&2
         # A failed continue that leaves a rebase going stopped on the next conflict.
         GIT_EDITOR=true git rebase --continue >/dev/null 2>&1 || rebasing ||
             { echo "land: git rebase --continue failed" >&2; return 1; }
@@ -118,19 +117,6 @@ print(" ".join("-p " + n for n in sorted(seen)))
            printf '%s\n' "$out" | grep -E '^(error|warning)|-->' | head -20 >&2
            echo "land: WARNING: clippy fails on $users (maybe already on main); landing, CI's regen applies clippy --fix" >&2 ;;
     esac
-fi
-# Regenerating reads the working tree, so with uncommitted changes it would
-# commit output of source that isn't landing; CI's regen job does it then.
-if [ -n "$(git status --porcelain)" ]; then
-    regen=""
-    [ ! -x scripts/regen.sh ] || echo "land: uncommitted changes; not regenerating (CI's regen job will)" >&2
-else
-    regen=$([ ! -x scripts/regen.sh ] || scripts/regen.sh)
-fi
-if [ -n "$regen" ]; then
-    git add -- $regen
-    git commit -q --no-verify -m "factory: regenerate generated files" -m "Domain: $domain" -- $regen
-    echo "land: regenerated $(echo $regen)"
 fi
 . "$(dirname "$0")/retry.sh"
 try=0
