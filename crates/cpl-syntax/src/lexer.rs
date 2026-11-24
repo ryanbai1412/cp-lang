@@ -272,21 +272,27 @@ impl<'a> Lexer<'a> {
     /// import gcd` as a top-level line: another language's header, which
     /// CP Lang doesn't need. One error, and the fix removes the line.
     fn foreign_header(&mut self) -> bool {
-        let begin = self.src[..self.pos].rfind('\n').map_or(0, |i| i + 1);
-        let end = self.src[self.pos..]
-            .find('\n')
-            .map_or(self.src.len(), |i| self.pos + i);
-        let line = self.src[begin..end].trim_end();
         if let Some((_, close, close_end)) = self.c_main.filter(|m| m.1 == self.pos) {
             debug_assert_eq!(close, self.pos);
             self.pos = close_end;
             self.c_main = None;
             return true;
         }
+        // Only a line's first token can start a header: asked of every
+        // token, finding the line first made lexing quadratic in its length.
         let shift = self.c_main.map_or(0, |m| m.0 as usize);
-        if begin + shift != self.pos || self.indents.len() > 1 {
+        let Some(begin) = self.pos.checked_sub(shift) else {
+            return false;
+        };
+        let at_line_start = begin == 0 || self.bytes[begin - 1] == b'\n';
+        if !at_line_start || self.bytes[begin..self.pos].contains(&b'\n') || self.indents.len() > 1
+        {
             return false;
         }
+        let end = self.src[self.pos..]
+            .find('\n')
+            .map_or(self.src.len(), |i| self.pos + i);
+        let line = self.src[begin..end].trim_end();
         if self.c_main_header(begin, end, line) {
             return true;
         }
