@@ -7,11 +7,8 @@
 
 use crate::facts::Facts;
 use crate::{
-    CEIL_DIV_FORMULA, CHMIN_CHMAX_IF, COMPOUND_SELF_REF, CONTAINS_THEN_ADD, COPY_COMPREHENSION,
-    COUNTER_BY_MAP, FLOAT_EQUALITY, FLOAT_SQRT_FOR_INT, LAST_VIA_LEN, LOOP_REDUCTION,
-    MANUAL_BIT_TEST, MANUAL_STARTS_WITH, MAP_AS_MULTISET, NEGATED_HEAP, NEG_MOD_FIXUP,
-    PEEK_THEN_POP, POP_MIN_LOOP, PUSH_POP_PAIR, REVERSE_INDEX, SORT_FOR_EXTREME, STALE_ENTRY_SKIP,
-    UNPROVEN_LIST_INDEX,
+    CEIL_DIV_FORMULA, CHMIN_CHMAX_IF, COMPOUND_SELF_REF, COPY_COMPREHENSION, FLOAT_EQUALITY,
+    FLOAT_SQRT_FOR_INT, LOOP_REDUCTION, MANUAL_BIT_TEST, NEG_MOD_FIXUP, UNPROVEN_LIST_INDEX,
 };
 use cpl_check::{Analysis, Ty};
 use cpl_diag::{Diagnostic, Span};
@@ -113,7 +110,7 @@ fn fix_checks(d: &Diagnostic, facts: &Facts) -> bool {
         // generic fn `cpl run` has no `Range.collect` yet (std `sa_order`).
         c if c == COPY_COMPREHENSION.code => d.labels.first().is_some_and(|l| {
             matches!(facts.place_type(l.span), Some(Ty::Array { .. }))
-                || matches!(facts.place_type(l.span), Some(Ty::Named { name, .. }) if name == "List")
+                || facts.place_type(l.span).is_some_and(|t| t.is_list())
         }),
         _ => true,
     }
@@ -122,12 +119,24 @@ fn fix_checks(d: &Diagnostic, facts: &Facts) -> bool {
 /// Whether `facts` leave the finding `d` standing.
 fn keep(d: &Diagnostic, facts: &Facts) -> bool {
     let label = || d.labels.first().map(|l| facts.place_type(l.span));
+    // A lint whose record names the types it is `on` keeps a finding only
+    // where the checker types its first label as one of them.
+    let on = crate::LINTS
+        .iter()
+        .find(|l| l.code == d.code)
+        .map_or(&[][..], |l| l.on);
+    if !on.is_empty() {
+        return if d.code == UNPROVEN_LIST_INDEX.code {
+            // A label names a list only where the checker's type for it is one.
+            facts.typed_index(d.span).is_none()
+                && label().is_none_or(|ty| ty.is_some_and(|t| t.is_one_of(on)))
+        } else {
+            label().is_some_and(|ty| ty.is_some_and(|t| t.is_one_of(on)))
+        };
+    }
     match d.code {
         c if c == CHMIN_CHMAX_IF.code => scalar_place(d, facts),
         c if c == COMPOUND_SELF_REF.code => plain_place(d, facts),
-        c if c == PEEK_THEN_POP.code || c == REVERSE_INDEX.code => {
-            matches!(label(), Some(Some(Ty::Named { name, .. })) if name == "List")
-        }
         c if c == CEIL_DIV_FORMULA.code => match label() {
             None => true,
             Some(ty) => matches!(ty, Some(Ty::Range { lo: Some(lo), .. }) if *lo >= 1),
@@ -142,31 +151,6 @@ fn keep(d: &Diagnostic, facts: &Facts) -> bool {
         c if c == MANUAL_BIT_TEST.code => {
             matches!(label(), Some(Some(Ty::Int | Ty::Range { .. })))
         }
-        c if c == LAST_VIA_LEN.code => {
-            matches!(label(), Some(Some(Ty::Str | Ty::Array { .. })))
-                || matches!(label(), Some(Some(Ty::Named { name, .. })) if name == "List")
-        }
-        // Slices take keys and `starts_with` positions: they agree on `Str` and `List`.
-        c if c == MANUAL_STARTS_WITH.code => {
-            matches!(label(), Some(Some(Ty::Str)))
-                || matches!(label(), Some(Some(Ty::Named { name, .. })) if name == "List")
-        }
-        c if c == STALE_ENTRY_SKIP.code => matches!(label(), Some(Some(Ty::Named { name, .. }))
-            if ["Heap", "MaxHeap", "MinMaxHeap", "ErasableHeap", "MeldHeap"].contains(&name.as_str())),
-        // A label names a list only the checker's type for it shows is one.
-        c if c == UNPROVEN_LIST_INDEX.code => {
-            facts.typed_index(d.span).is_none()
-                && label()
-                    .is_none_or(|ty| matches!(ty, Some(Ty::Named { name, .. }) if name == "List"))
-        }
-        c if c == MAP_AS_MULTISET.code => matches!(label(), Some(Some(Ty::Named { name, args }))
-            if name == "Map" && matches!(args.as_slice(), [_, Ty::Int | Ty::Range { .. }])),
-        c if c == SORT_FOR_EXTREME.code => {
-            matches!(label(), Some(Some(Ty::Array { .. })))
-                || matches!(label(), Some(Some(Ty::Named { name, .. })) if name == "List")
-        }
-        c if c == COUNTER_BY_MAP.code => matches!(label(), Some(Some(Ty::Named { name, args }))
-            if (name == "Map" || name == "HashMap") && matches!(args.as_slice(), [_, Ty::Int | Ty::Range { .. }])),
         // Kept unless the checker types the operand read as a float as an
         // integer (std/geometry.cp: `Pt.x` is an `Int`, `Vec.x` an `F64`).
         c if c == FLOAT_EQUALITY.code => !matches!(label(), Some(Some(ty)) if ty.is_int()),
@@ -174,20 +158,6 @@ fn keep(d: &Diagnostic, facts: &Facts) -> bool {
         // none. Domains, generic `S: Seq` and generators are `Seq` too.
         c if c == COPY_COMPREHENSION.code => {
             !matches!(label(), Some(Some(ty @ Ty::Named { .. })) if !ty.is_seq())
-        }
-        c if c == CONTAINS_THEN_ADD.code => {
-            matches!(label(), Some(Some(Ty::Named { name, args }))
-                if (name == "Map" || name == "HashMap") && matches!(args.as_slice(), [_, Ty::Int | Ty::Range { .. }]))
-                || matches!(label(), Some(Some(Ty::Named { name, .. })) if name == "Counter")
-        }
-        c if c == POP_MIN_LOOP.code => {
-            matches!(label(), Some(Some(Ty::Named { name, .. })) if name == "SortedBag" || name == "SortedSet")
-        }
-        c if c == PUSH_POP_PAIR.code => {
-            matches!(label(), Some(Some(Ty::Named { name, .. })) if name == "Heap" || name == "MaxHeap")
-        }
-        c if c == NEGATED_HEAP.code => {
-            matches!(label(), Some(Some(Ty::Named { name, .. })) if name == "Heap")
         }
         _ => true,
     }

@@ -110,6 +110,7 @@ pub(crate) fn intern(name: &str) -> &'static Lint {
         replaces_whole: false,
         std_structure: false,
         quiet_in_namesake: false,
+        on: &[],
         no_fix: None,
         removed: None,
         family: None,

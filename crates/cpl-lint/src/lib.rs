@@ -154,6 +154,9 @@ pub struct Lint {
     /// Its message names the call to write, so it is quiet inside a fn of
     /// that name.
     pub quiet_in_namesake: bool,
+    /// The types it is about, from its record's `on`: a finding stands only
+    /// where the checker types its first label as one (`Ty::is_one_of`).
+    pub on: &'static [&'static str],
     pub no_fix: Option<&'static str>,
     /// The checker error `trigger` shows because it uses a removed spelling;
     /// `None` when it passes `cpl check`.

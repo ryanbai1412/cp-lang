@@ -13,14 +13,16 @@
 //! it is not shown; `replaces = "structure"` also names a std structure, so it
 //! is quiet in a library module, where such structures are written.
 //! `namesake = "quiet"` marks a lint whose message names the call to write,
-//! so it is quiet inside a fn of that name.
+//! so it is quiet inside a fn of that name. `on = "Heap | MaxHeap"` names
+//! the types the lint is about, as `Ty::is_one_of` reads them: a finding
+//! stands only where the checker types its first label as one.
 
 use std::fmt::Write as _;
 use std::path::PathBuf;
 
 const KEYS: [&str; 6] = ["code", "level", "title", "summary", "group", "rule"];
-const OPTIONAL: [&str; 6] = [
-    "no_fix", "family", "practice", "removed", "replaces", "namesake",
+const OPTIONAL: [&str; 7] = [
+    "no_fix", "family", "practice", "removed", "replaces", "namesake", "on",
 ];
 const FILES: [(&str, &str); 4] = [
     ("explanation", "explain.md"),
@@ -177,6 +179,18 @@ fn lint((code, name, fields, dir): &Record, texts: bool) -> String {
         "{name}: `namesake` is \"quiet\" or absent"
     );
     writeln!(out, "    quiet_in_namesake: {},", namesake == "quiet").unwrap();
+    let on: Vec<&str> = match fields.get(12).map_or("", |v| v.as_str()) {
+        "" => Vec::new(),
+        on => on.split('|').map(str::trim).collect(),
+    };
+    for ty in &on {
+        assert!(
+            ty.starts_with(|c: char| c.is_ascii_uppercase())
+                && ty.matches('<').count() == ty.matches('>').count(),
+            "{name}: `on` is types separated by `|`, `List | Map<_, Int>`"
+        );
+    }
+    writeln!(out, "    on: &{on:?},").unwrap();
     for (field, file) in FILES {
         let path = dir.join(file);
         println!("cargo:rerun-if-changed={}", path.display());

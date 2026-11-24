@@ -26,7 +26,7 @@ const HOT_DEPTH: usize = 2;
 const LAST: &str = "len - 1";
 
 fn is_list_ty(ty: &Ty) -> bool {
-    matches!(ty, Ty::Named { name, .. } if name == "List")
+    ty.is_list()
 }
 
 /// `[]`, `[1, 2]`, `List<Int>()`.

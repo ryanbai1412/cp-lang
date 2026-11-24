@@ -1755,3 +1755,50 @@ fn a_library_search_helper_of_first_true_is_part_of_its_definition() {
     assert!(!codes(&lib("first_true")).contains(&"L0520"));
     assert!(codes(&lib("cut")).contains(&"L0520"));
 }
+
+#[test]
+fn every_lint_is_on_types_std_or_the_compiler_declares() {
+    let std_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../std");
+    let mut known: Vec<String> = cpl_check::BUILTIN_TYPES
+        .iter()
+        .map(|t| t.name.to_string())
+        .collect();
+    known.push("Array".into());
+    for entry in std::fs::read_dir(&std_dir).unwrap() {
+        let text = std::fs::read_to_string(entry.unwrap().path()).unwrap_or_default();
+        for line in text.lines() {
+            let Some(rest) = line.trim_start().strip_prefix("pub ") else {
+                continue;
+            };
+            let Some(rest) = ["struct ", "enum ", "type ", "trait "]
+                .iter()
+                .find_map(|k| rest.strip_prefix(k))
+            else {
+                continue;
+            };
+            known.push(
+                rest.chars()
+                    .take_while(|c| c.is_alphanumeric() || *c == '_')
+                    .collect(),
+            );
+        }
+    }
+    let mut checked = 0;
+    for lint in crate::LINTS {
+        for ty in lint.on {
+            for name in ty
+                .split(['<', '>', ','])
+                .map(str::trim)
+                .filter(|n| !n.is_empty() && *n != "_")
+            {
+                assert!(
+                    known.iter().any(|k| k == name),
+                    "{}: `on` names `{name}`, which nothing declares",
+                    lint.name
+                );
+                checked += 1;
+            }
+        }
+    }
+    assert!(checked >= 13, "only {checked} `on` types");
+}

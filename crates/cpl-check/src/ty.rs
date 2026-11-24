@@ -199,6 +199,63 @@ impl Ty {
     }
 
     /// True when this type implements the built-in `Seq` trait.
+    /// True for `List<T>`.
+    pub fn is_list(&self) -> bool {
+        matches!(self, Ty::Named { name, .. } if name == "List")
+    }
+
+    /// What `x[i]` reads for `x` of this type: an array's or a list's
+    /// element, a map's value.
+    pub fn index_value(&self) -> Option<Ty> {
+        match self {
+            Ty::Array { elem, .. } => Some((**elem).clone()),
+            Ty::Named { name, args } if name == "List" && args.len() == 1 => Some(args[0].clone()),
+            Ty::Named { name, args } if (name == "Map" || name == "HashMap") && args.len() == 2 => {
+                Some(args[1].clone())
+            }
+            _ => None,
+        }
+    }
+
+    /// Whether this type is one of `patterns`, each a type name with
+    /// optional arguments, `List` or `Map<_, Int>`: `_` takes any type and
+    /// `Int` any integer type. `Str` and `Array` name those types.
+    pub fn is_one_of(&self, patterns: &[&str]) -> bool {
+        patterns.iter().any(|p| self.is_instance_of(p))
+    }
+
+    fn is_instance_of(&self, pattern: &str) -> bool {
+        let (name, args) = match pattern.split_once('<') {
+            Some((name, rest)) => {
+                let args = rest.strip_suffix('>').unwrap_or(rest);
+                (
+                    name.trim(),
+                    Some(args.split(',').map(str::trim).collect::<Vec<_>>()),
+                )
+            }
+            None => (pattern.trim(), None),
+        };
+        let fits = |ty: &Ty, want: &str| match want {
+            "_" => true,
+            "Int" => ty.is_int(),
+            want => ty.is_instance_of(want),
+        };
+        match self {
+            Ty::Str => name == "Str" && args.is_none(),
+            Ty::Array { .. } => name == "Array" && args.is_none(),
+            Ty::Named {
+                name: have,
+                args: given,
+            } => {
+                have == name
+                    && args.is_none_or(|want| {
+                        want.len() == given.len() && given.iter().zip(want).all(|(t, w)| fits(t, w))
+                    })
+            }
+            _ => false,
+        }
+    }
+
     pub fn is_seq(&self) -> bool {
         self.seq_elem().is_some()
     }

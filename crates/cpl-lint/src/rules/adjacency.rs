@@ -130,7 +130,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
 }
 
 fn is_list(ty: &Ty) -> bool {
-    matches!(ty, Ty::Named { name, .. } if name == "List")
+    ty.is_list()
 }
 
 fn is_empty_list(e: &Expr) -> bool {

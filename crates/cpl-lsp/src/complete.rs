@@ -976,12 +976,7 @@ fn type_of(item: &AnalyzedItem, expr: &Expr) -> Option<Ty> {
         ExprKind::Field { name, .. } => hover_at(item, name.span)?.clone(),
         ExprKind::Generic { base, .. } => return type_of(item, base),
         ExprKind::Call { callee, .. } => call_type(item, callee)?,
-        ExprKind::Index { base, .. } => match type_of(item, base)? {
-            Ty::Array { elem, .. } => *elem,
-            Ty::Named { name, args } if name == "List" && args.len() == 1 => args[0].clone(),
-            Ty::Named { name, args } if name == "Map" && args.len() == 2 => args[1].clone(),
-            _ => return None,
-        },
+        ExprKind::Index { base, .. } => type_of(item, base)?.index_value()?,
         ExprKind::Unwrap(inner) | ExprKind::Try(inner) => match type_of(item, inner)? {
             Ty::Optional(inner) => *inner,
             _ => return None,
