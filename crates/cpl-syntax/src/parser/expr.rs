@@ -655,7 +655,7 @@ impl<'a> Parser<'a> {
     }
 
     /// The two short ways to write a fn as an argument: `.cost` is
-    /// `x => x.cost`, and an operator alone, `+`, is `(a, b) => a + b`.
+    /// `x => x.cost` (`.0` is `x => x.0`), and an operator alone, `+`, is `(a, b) => a + b`.
     fn fn_shorthand(&mut self) -> Option<Expr> {
         let start = self.start();
         let span = self.span();
@@ -670,7 +670,7 @@ impl<'a> Parser<'a> {
             })
         };
         let mut param_tys = Vec::new();
-        let (params, body) = if self.at(T::Dot) && self.peek_n(1) == T::Ident {
+        let (params, body) = if self.at(T::Dot) && matches!(self.peek_n(1), T::Ident | T::Int) {
             self.bump();
             let field = self.name();
             let body = ExprKind::Field {

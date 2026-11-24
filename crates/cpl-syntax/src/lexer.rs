@@ -110,6 +110,25 @@ impl<'a> Lexer<'a> {
         self.bytes.get(self.pos + n).copied().unwrap_or(0)
     }
 
+    /// Whether the `.` at `start` opens a tuple-field shorthand: it begins
+    /// an argument and its digits end the argument.
+    fn field_shorthand_at(&self, start: usize) -> bool {
+        let opens = (self.out.tokens.last()).is_some_and(|t| {
+            matches!(
+                t.kind,
+                TokenKind::LParen | TokenKind::Comma | TokenKind::Colon
+            )
+        });
+        let mut end = start + 1;
+        while self.bytes.get(end).is_some_and(u8::is_ascii_digit) {
+            end += 1;
+        }
+        while self.bytes.get(end) == Some(&b' ') {
+            end += 1;
+        }
+        opens && matches!(self.bytes.get(end), Some(b',' | b')'))
+    }
+
     fn push(&mut self, kind: TokenKind, start: usize) {
         self.out.tokens.push(Token {
             kind,
@@ -1048,6 +1067,9 @@ impl<'a> Lexer<'a> {
             }
             (b'.', b'.', b'=') => (DotDotEq, 3),
             (b'.', b'.', _) => (DotDot, 2),
+            // `by: .0` is `x => x.0`, as `by: .len` is (R11.3.3): an
+            // argument that starts with a tuple field.
+            (b'.', d, _) if d.is_ascii_digit() && self.field_shorthand_at(start) => (Dot, 1),
             // R01.4.2: `.5` is not a number; `x.0` after a value is a field.
             (b'.', d, _)
                 if d.is_ascii_digit()
@@ -1245,6 +1267,14 @@ impl<'a> Lexer<'a> {
             while digit(self.peek()) || self.peek() == b'_' {
                 self.pos += 1;
             }
+        } else if self
+            .out
+            .tokens
+            .last()
+            .is_some_and(|t| t.kind == TokenKind::Dot)
+        {
+            // A field index: `t.0.1` is field 1 of field 0 (R01.6).
+            self.digits();
         } else {
             self.digits();
             // `0..n` is a range, and `x.0` or `1.max(2)` are not fractions.
