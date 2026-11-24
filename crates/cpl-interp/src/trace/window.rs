@@ -13,7 +13,7 @@ use std::sync::{mpsc, Mutex};
 impl Tracer {
     /// Steps seen so far, skipped or kept.
     pub(crate) fn steps_so_far(&self) -> usize {
-        self.rec.skipped + self.rec.log.len()
+        self.rec.skipped + self.log.len()
     }
 
     /// Whether this step comes before the window and is dropped.

@@ -4,7 +4,7 @@
 //! again.
 
 use super::Step;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, OnceLock};
 
 pub(super) const SNAPSHOT_EVERY: usize = 1 << 10;
 
@@ -161,9 +161,52 @@ struct Snapshot {
     state: State,
 }
 
+/// A kept step that only wrote an `Int` variable, as the VM made it: its
+/// line, the variable and its value; its locals are in [`Tail::locals`].
+#[derive(Clone, Copy, Debug)]
+pub(super) struct RawStep {
+    pub line: u32,
+    pub var: u16,
+    pub value: i64,
+}
+
+/// The steps kept raw since the log last changed any other way, all with
+/// one frame, stage and set of local names: [`Log::render`] logs them.
+#[derive(Clone, Debug, Default)]
+struct Tail {
+    steps: Vec<RawStep>,
+    /// Each step's `width` local `Int`s, in order.
+    locals: Vec<i64>,
+    width: usize,
+    frame: Option<u32>,
+    stage: u32,
+    /// [`Log::now`] before the first step.
+    start: State,
+}
+
+/// Where the raw steps go once the run is over: what the log held then.
+/// What it logs after them is moved up when they are logged.
+#[derive(Clone, Copy, Debug)]
+struct Hole {
+    entries: usize,
+    changes: usize,
+    ints: usize,
+    notes: usize,
+    frame_runs: usize,
+    snapshots: usize,
+}
+
+/// What a raw step logs at most, in bytes: its entry, its change, a
+/// change of locals with their header and values, and a share of a snapshot.
+const fn raw_step_bytes(width: usize) -> usize {
+    (8 * 4 + 8 * (width + 1)) * 5 / 4
+}
+
 #[derive(Clone, Debug, Default)]
 pub(super) struct Log {
     source: String,
+    tail: Tail,
+    hole: Option<Hole>,
     entries: Vec<Entry>,
     changes: Vec<Delta>,
     text: Vec<u8>,
@@ -211,11 +254,13 @@ impl Log {
     }
 
     pub fn len(&self) -> usize {
-        self.entries.len()
+        self.entries.len() + self.tail.steps.len()
     }
 
+    /// Exact once [`Log::render`]ed; until then, at most this.
     pub fn bytes(&self) -> usize {
-        self.text.len()
+        self.tail.steps.len() * raw_step_bytes(self.tail.width)
+            + self.text.len()
             + self.changes.len() * std::mem::size_of::<Delta>()
             + self.ints.len() * std::mem::size_of::<i64>()
             + self.entries.len() * std::mem::size_of::<Entry>()
@@ -281,9 +326,134 @@ impl Log {
         self.changes.push(delta);
     }
 
+    /// Keeps a step that only wrote `Int` variable `step.var`, its locals
+    /// `locals` under the names of the last [`Log::locals_ints`], without
+    /// logging it yet. False when no such names are kept.
+    pub fn pend(&mut self, frame: Option<u32>, stage: u32, step: RawStep, locals: &[i64]) -> bool {
+        let Some((_, named)) = self.int_names else {
+            return false;
+        };
+        let tail = &self.tail;
+        if !tail.steps.is_empty()
+            && (tail.frame != frame || tail.stage != stage || tail.width != locals.len())
+        {
+            self.render();
+        }
+        if self.tail.steps.is_empty() {
+            let start = self.now.clone();
+            let tail = &mut self.tail;
+            (tail.frame, tail.stage, tail.width, tail.start) = (frame, stage, locals.len(), start);
+        }
+        // What logging the step does to `now`.
+        let now = &mut self.now;
+        let var = step.var as usize;
+        if now.values.len() <= var {
+            now.values.resize(var + 1, None);
+        }
+        now.values[var] = Some(Slot::Int(step.value));
+        now.locals = Locals::Ints(named);
+        now.local_ints.clear();
+        now.local_ints.extend_from_slice(locals);
+        now.stage = stage;
+        self.tail.steps.push(step);
+        self.tail.locals.extend_from_slice(locals);
+        true
+    }
+
+    /// The run is over: the raw steps stay raw until the log is read, and
+    /// what it logs from now on goes after them.
+    pub fn seal(&mut self) {
+        if !self.tail.steps.is_empty() && self.hole.is_none() {
+            self.hole = Some(Hole {
+                entries: self.entries.len(),
+                changes: self.changes.len(),
+                ints: self.ints.len(),
+                notes: self.notes.len(),
+                frame_runs: self.frame_runs.len(),
+                snapshots: self.snapshots.len(),
+            });
+        }
+    }
+
+    /// Logs the steps [`Log::pend`] kept, as if each had been logged when
+    /// it was kept, unless the log is sealed.
+    pub fn render(&mut self) {
+        if !self.tail.steps.is_empty() && self.hole.is_none() {
+            self.log_tail();
+        }
+    }
+
+    /// Logs the raw steps, sealed or not.
+    pub fn unseal(&mut self) {
+        let Some(hole) = self.hole.take() else {
+            return self.render();
+        };
+        let entries = self.entries.split_off(hole.entries);
+        let changes = self.changes.split_off(hole.changes);
+        let ints = self.ints.split_off(hole.ints);
+        let notes = self.notes.split_off(hole.notes);
+        let runs = self.frame_runs.split_off(hole.frame_runs);
+        let snapshots = self.snapshots.split_off(hole.snapshots);
+        let before = self.frame_runs.last().map(|&(_, frame)| frame);
+        let now = std::mem::take(&mut self.now);
+        self.log_tail();
+        self.now = now;
+        let steps = (self.entries.len() - hole.entries) as u32;
+        let moved = (self.changes.len() - hole.changes) as u32;
+        let ints_moved = (self.ints.len() - hole.ints) as u32;
+        self.entries.extend(entries.into_iter().map(|entry| Entry {
+            changes: entry.changes + moved,
+            ..entry
+        }));
+        self.changes.extend(changes.into_iter().map(|delta| match delta {
+            Delta::Int(var, at) => Delta::Int(var, at + ints_moved),
+            Delta::SmallIntItem(var, at) => Delta::SmallIntItem(var, at + ints_moved),
+            Delta::IntItem(var, at) => Delta::IntItem(var, at + ints_moved),
+            Delta::IntLocals(at) => Delta::IntLocals(at + ints_moved),
+            delta => delta,
+        }));
+        self.ints.extend(ints);
+        self.notes
+            .extend(notes.into_iter().map(|(step, note)| (step + steps, note)));
+        // The steps after the hole run on in the frame before it until a run starts.
+        let first = (hole.entries + steps as usize) as u32;
+        let mut runs: Vec<_> = runs.into_iter().map(|(at, frame)| (at + steps, frame)).collect();
+        if let Some(frame) = before.filter(|_| runs.first().is_none_or(|&(at, _)| at > first)) {
+            if self.entries.len() > first as usize {
+                runs.insert(0, (first, frame));
+            }
+        }
+        for (at, frame) in runs {
+            if self.frame_runs.last().is_none_or(|&(_, last)| last != frame) {
+                self.frame_runs.push((at, frame));
+            }
+        }
+        self.snapshots.extend(snapshots.into_iter().map(|snapshot| Snapshot {
+            step: snapshot.step + steps,
+            change: snapshot.change + moved,
+            ..snapshot
+        }));
+    }
+
+    fn log_tail(&mut self) {
+        let mut tail = std::mem::take(&mut self.tail);
+        self.now = std::mem::take(&mut tail.start);
+        for (k, step) in tail.steps.iter().enumerate() {
+            self.snapshot_if_due();
+            self.set_int(step.var as usize, step.value);
+            let locals = &tail.locals[k * tail.width..][..tail.width];
+            self.locals_ints("", false, locals);
+            self.step(step.line, tail.frame, tail.stage, None, None, None);
+        }
+        tail.steps.clear();
+        tail.locals.clear();
+        self.tail = tail;
+    }
+
     /// `var` holds `json` now; a change only if it held something else.
     /// A trace shows the first 65536 variables.
     pub fn set(&mut self, var: usize, json: &str) {
+        self.render();
         let Ok(small) = Var::try_from(var) else {
             return;
         };
@@ -301,6 +471,7 @@ impl Log {
 
     /// `var` holds the `Int` `value` now.
     pub fn set_int(&mut self, var: usize, value: i64) {
+        self.render();
         let Ok(small_var) = Var::try_from(var) else {
             return;
         };
@@ -330,6 +501,7 @@ impl Log {
     /// Item `index` of the array of `Int`s `var` holds `value` now. False
     /// when `var` does not hold such an array with that item.
     pub fn set_int_item(&mut self, var: usize, index: usize, value: i64) -> bool {
+        self.render();
         let (Ok(small), Ok(at)) = (Var::try_from(var), i64::try_from(index)) else {
             return false;
         };
@@ -370,6 +542,7 @@ impl Log {
     /// Item `index` of array `var` holds `json` now. False when `var` does
     /// not hold an array with that item, so the whole value is wanted.
     pub fn set_item(&mut self, var: usize, index: usize, json: &str) -> bool {
+        self.render();
         let (Ok(small), Ok(at)) = (Var::try_from(var), u32::try_from(index)) else {
             return false;
         };
@@ -400,6 +573,7 @@ impl Log {
     }
 
     pub fn unset(&mut self, var: usize) {
+        self.render();
         let Ok(small) = Var::try_from(var) else {
             return;
         };
@@ -409,6 +583,7 @@ impl Log {
     }
 
     pub fn set_tree(&mut self, var: usize, json: &str) {
+        self.render();
         let Ok(small) = Var::try_from(var) else {
             return;
         };
@@ -426,6 +601,7 @@ impl Log {
     }
 
     pub fn locals_changed(&mut self, json: &str) {
+        self.render();
         let fresh = self.entries.is_empty() && self.changes.is_empty();
         let same = || match self.now.locals {
             Locals::Text(text) => self.raw(self.piece_of(text)) == json.as_bytes(),
@@ -440,6 +616,7 @@ impl Log {
     /// The locals are `Int`s: `names` as in [`Locals::Ints`], and their
     /// values. `renamed` when `names` differs from the last call's.
     pub fn locals_ints(&mut self, names: &str, renamed: bool, values: &[i64]) {
+        self.render();
         let named = match &self.int_names {
             Some((_, text)) if !renamed => *text,
             Some((kept, text)) if kept == names => *text,
@@ -510,6 +687,7 @@ impl Log {
     /// The program printed `text`: each line is a piece, and the first
     /// goes on the line the last print left open.
     pub fn print(&mut self, text: &str) {
+        self.render();
         for piece in text.split_inclusive('\n') {
             let line = piece.strip_suffix('\n').unwrap_or(piece);
             let line = line.strip_suffix('\r').unwrap_or(line);
@@ -524,6 +702,7 @@ impl Log {
     }
 
     pub fn new_case(&mut self) {
+        self.render();
         self.open = false;
         self.push(Delta::Case);
     }
@@ -589,6 +768,7 @@ impl Log {
         checkpoint: Option<String>,
         focus: Option<(usize, &[usize])>,
     ) {
+        self.render();
         let at = self.entries.len() as u32;
         let mut focus = focus;
         let mut line = line;
@@ -631,6 +811,7 @@ impl Log {
     /// [`SNAPSHOT_EVERY`] steps, and no sooner than the changes since the
     /// last one outweigh it four times, so snapshots hold a fifth of the log at most.
     pub fn snapshot_if_due(&mut self) {
+        self.render();
         let step = self.entries.len() as u32;
         let (since, changes) = self
             .snapshots
@@ -667,6 +848,7 @@ impl Log {
 
     /// The last step is taken back: its changes go to the next one.
     pub fn reopen(&mut self) {
+        self.unseal();
         if self.entries.pop().is_some() {
             let at = self.entries.len() as u32;
             if self.notes.last().is_some_and(|&(step, _)| step == at) {
@@ -732,7 +914,8 @@ impl Log {
             .filter_map(|(at, note)| Some((*at as usize, note.checkpoint.as_deref()?)))
     }
 
-    pub fn last(&self) -> Option<(u32, Option<&Note>, u32)> {
+    pub fn last(&mut self) -> Option<(u32, Option<&Note>, u32)> {
+        self.unseal();
         let at = self.entries.len().checked_sub(1)?;
         let entry = &self.entries[at];
         Some((entry.line(), self.note(at), self.now.stage))
@@ -740,6 +923,7 @@ impl Log {
 
     /// Keeps only the last `keep` steps.
     pub fn keep_last(&mut self, keep: usize) {
+        self.unseal();
         let drop = self.entries.len().saturating_sub(keep);
         if drop == 0 {
             return;
@@ -1305,5 +1489,53 @@ impl Iterator for Steps<'_> {
         self.log.advance(&mut self.state, self.next);
         self.next += 1;
         Some(self.log.step_of(self.next - 1, &self.state, self.vars))
+    }
+}
+
+/// A [`Log`] whose raw steps are logged when it is first read.
+#[derive(Default)]
+pub(super) struct Lazy {
+    log: OnceLock<Log>,
+    raw: Mutex<Option<Log>>,
+}
+
+impl Lazy {
+    pub fn new(log: Log) -> Lazy {
+        match log.tail.steps.is_empty() {
+            true => Lazy {
+                log: OnceLock::from(log),
+                ..Lazy::default()
+            },
+            false => Lazy {
+                raw: Mutex::new(Some(log)),
+                ..Lazy::default()
+            },
+        }
+    }
+}
+
+impl std::ops::Deref for Lazy {
+    type Target = Log;
+
+    fn deref(&self) -> &Log {
+        self.log.get_or_init(|| {
+            let raw = self.raw.lock().unwrap_or_else(|e| e.into_inner()).take();
+            let mut log = raw.unwrap_or_default();
+            log.unseal();
+            log.shrink();
+            log
+        })
+    }
+}
+
+impl Clone for Lazy {
+    fn clone(&self) -> Lazy {
+        Lazy::new((**self).clone())
+    }
+}
+
+impl std::fmt::Debug for Lazy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        (**self).fmt(f)
     }
 }

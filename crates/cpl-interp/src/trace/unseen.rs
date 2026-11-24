@@ -67,7 +67,7 @@ impl Tracer {
         let at = (self.line(span).max(1), self.stage_id());
         self.skip_declaration(fresh, at);
         self.skipped();
-        self.skipped_at = (self.rec.log.len() == 0).then_some(at);
+        self.skipped_at = (self.log.len() == 0).then_some(at);
         true
     }
 }

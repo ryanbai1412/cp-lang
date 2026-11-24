@@ -57,6 +57,6 @@ impl Tracer {
             let name = shown.get(*name).map_or(*name, String::as_str);
             (name, line_at(lines, last_line, *at).max(1))
         });
-        self.rec.log.frame(stack)
+        self.log.frame(stack)
     }
 }
