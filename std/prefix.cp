@@ -950,9 +950,9 @@ fn rev_scan_folds_every_suffix():
     assert s.all == sum(a[i] for i in V)
     for c in V.cuts:
         let right = [a[i] for i in V if c <= i.l]
-        assert s[c] == sum(right)
-        assert s.suffix(c) == sum(right)
-        assert s.prefix(c) == s.all - sum(right)
+        assert s[c] == right.sum()
+        assert s.suffix(c) == right.sum()
+        assert s.prefix(c) == s.all - right.sum()
         assert m[c] == (right.max() ?? Monoid<Int>.of(max).id)
         for d in V.cuts:
             if d < c: continue

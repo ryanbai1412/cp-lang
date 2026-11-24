@@ -248,11 +248,11 @@ impl FastProduct for Int:
         var out = List.filled(na + nb - 1, 0)
         for k in 0..out.len:
             let x1 = r1[k].v
-            let c = x1 + (r2[k].v - x1 % 167_772_161 + 167_772_161) * 47_450_712 % 167_772_161 * 998_244_353
+            let c = x1 + ((r2[k] - Mod<167_772_161>(x1)) * Mod<167_772_161>(47_450_712)).v * 998_244_353
             if not three:
                 out[k] = if c > P12 / 2: c - P12 else: c
                 continue
-            let x3 = (r3[k].v + 469_762_049 - c % 469_762_049) * 115_990_628 % 469_762_049
+            let x3 = ((r3[k] - Mod<469_762_049>(c)) * Mod<469_762_049>(115_990_628)).v
             let w = I128(c) + I128(x3) * I128(P12)
             out[k] = Int(if w * I128(2) > I128(P12) * I128(469_762_049): w - I128(P12) * I128(469_762_049) else: w)
         Some(out)
