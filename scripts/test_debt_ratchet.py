@@ -1427,13 +1427,14 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertTrue(any(re.search(r"must (stay at|be) 0", e) for e in errors), errors)
             case = root / "spec/conformance/core-05/a.cp"
             case.parent.mkdir(parents=True)
-            case.write_text("// expect: ok\n// copies: 2\n// std_functions: 1\nprint(1)\n// copies: 9\n")
+            case.write_text("// expect: ok\n// copies: 2\n// std_functions: 1\n// sunk_copies: 2\nprint(1)\n// copies: 9\n")
             port = root / f"{PKGS}/cf1/port.cp"
             port.parent.mkdir(parents=True)
             port.write_text("// copies: 1\nprint(1)\n")
             (root / f"{PKGS}/cf1/notes.md").write_text("// copies: 5\n")
             self.assertEqual(len(dr.cpp_deep_copies(root)), 3)
             self.assertEqual(len(dr.cpp_std_functions(root)), 1)
+            self.assertEqual(len(dr.cpp_sunk_copies(root)), 2)
 
     def test_std_shadowed_counts_receivers_a_builtin_arm_catches(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

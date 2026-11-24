@@ -125,8 +125,10 @@ class AffectedTest(unittest.TestCase):
 
     def test_std_and_vm_paths_select_their_owners_slices(self):
         self.assertEqual(self.sel("std/seq.cp")["slices"], ["vm-trace", "corpus-warnings", "ports-check", "browser-std", "copies"])
-        self.assertEqual(self.sel("corpus/problems/noip18p4/port.cp")["slices"], ["copies"])
-        self.assertEqual(self.sel("spec/conformance/std-bag/x.cp")["slices"], ["copies"])
+        noip = affected.shard_of("corpus/problems/noip18p4/port.cp", 16)
+        self.assertEqual(self.sel("corpus/problems/noip18p4/port.cp")["slices"], [f"copies@{noip}"])
+        bag = affected.shard_of("spec/conformance/std-bag/x.cp", 16)
+        self.assertEqual(self.sel("spec/conformance/std-bag/x.cp")["slices"], [f"copies@{bag}"])
         self.assertEqual(self.sel("crates/cpl-codegen/src/emit.rs")["slices"], ["copies"])
         self.assertEqual(self.sel("crates/cpl-interp/src/vm/run.rs")["slices"], ["vm-trace"])
         self.assertEqual(self.sel("crates/cpl-fmt/src/lib.rs")["slices"], [])
@@ -152,7 +154,7 @@ class AffectedTest(unittest.TestCase):
                         inputs.append(str(sample.relative_to(root)))
                 inputs += [f"crates/{d.replace('_', '-')}/src/lib.rs"
                            for d in set(re.findall(r"\b(cpl_[a-z_]+)::", text)) if d.replace("_", "-") != crate]
-                missing += [f"{name}: {t} reads {p}" for p in inputs if name not in self.sel(p)["slices"]]
+                missing += [f"{name}: {t} reads {p}" for p in inputs if name not in affected.base(self.sel(p)["slices"])]
         self.assertEqual(missing, [], "map these in affected.SLICES:\n" + "\n".join(missing))
 
 
@@ -165,6 +167,17 @@ class AffectedTest(unittest.TestCase):
                          "(binary_id(cpl-lint) & test(=corpus_tests::corpus_warnings_only_go_down))")
         self.assertEqual(affected.slice_filter(["vm-trace"]),
                          "binary_id(cpl-cli::trace_goldens) | binary_id(cpl-cli::vm_fallbacks)")
+
+    def test_a_change_to_programs_alone_runs_only_their_shards(self):
+        # crates/cpl-cli/tests/read_only_copies.rs pins the same paths to the same shards.
+        self.assertEqual(affected.shard_of("spec/conformance/std-models/heaps.cp", 16), 8)
+        self.assertEqual(affected.shard_of("corpus/problems/cf2165c/port.cp", 16), 4)
+        both = ["spec/conformance/std-models/heaps.cp", "corpus/problems/cf2165c/port.cp"]
+        self.assertEqual(self.sel(*both)["slices"], ["copies@4,8"])
+        self.assertEqual(self.sel(both[0], "crates/cpl-codegen/src/emit.rs")["slices"], ["copies"])
+        self.assertEqual(affected.slice_filter(["copies@8", "copies@4"]),
+                         "(binary_id(cpl-cli::read_only_copies) & (not test(/^shard_/) | test(=shard_04) | test(=shard_08)))")
+        self.assertEqual(affected.slice_filter(["copies@8", "copies"]), "binary_id(cpl-cli::read_only_copies)")
 
     def test_a_slice_takes_its_slowest_test(self):
         out = ("        PASS [  14.789s] (2/3) cpl-cli::trace_goldens every_program\n"

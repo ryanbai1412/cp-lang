@@ -1016,14 +1016,6 @@ def helper_env_vars(root: Path) -> list[str]:
     return sorted(found.values())
 
 
-def _copy_baseline(root: Path, name: str) -> list[str]:
-    """The `read_only_copies` test's shrink-only corpus total `name`, one item per unit."""
-    path = root / "crates/cpl-cli/tests/read_only_copies.rs"
-    text = path.read_text() if path.is_file() else ""
-    m = re.search(rf'\("{name}",\s*\w+,\s*(\d+)\)', text)
-    return [f"{name} {i}" for i in range(int(m.group(1)))] if m else []
-
-
 def _header_counts(root: Path, key: str) -> list[str]:
     """The `// <key>: N` header lines of the programs `read_only_copies` builds (the
     `.cp` files one directory down from corpus/problems and spec/conformance), one
@@ -1055,7 +1047,7 @@ def cpp_std_functions(root: Path) -> list[str]:
 
 
 def cpp_sunk_copies(root: Path) -> list[str]:
-    return _copy_baseline(root, "sunk_copies")
+    return _header_counts(root, "sunk_copies")
 
 
 _RUNS_CODE = re.compile(r"ExprKind::(Call|CallExpr)\(\.\.\)|ExprKind::Closure\(_\)")
@@ -2830,7 +2822,7 @@ COUNTERS = {
     "cpp_optional_copies": ("`// optional_copies:` header sum over the corpus (read_only_copies)",
                             cpp_optional_copies, True),
     "cpp_std_functions": ("`// std_functions:` header sum over the corpus (read_only_copies)", cpp_std_functions, True),
-    "cpp_sunk_copies": ("places copied into a by-value param a fn moves into its struct (read_only_copies)", cpp_sunk_copies, True),
+    "cpp_sunk_copies": ("`// sunk_copies:` header sum over the corpus (read_only_copies)", cpp_sunk_copies, True),
     "codegen_effect_guesses": ("codegen effect or purity guesses outside the Uses table", codegen_effect_guesses, True),
     "opt_without_uses": ("codegen passes deciding what code does without the Uses table (PASSES)", opt_without_uses, True),
     "rs_near_cap": ("rs files within 100 lines of the cap", rs_near_cap, False),

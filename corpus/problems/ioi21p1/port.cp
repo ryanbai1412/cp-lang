@@ -12,6 +12,7 @@
 // stdin: n, the n capacities, q, then q lines l r v. stdout: the final counts.
 // Bounds: n, q: 1..=200_000; cap: 1..=1_000_000_000; days.l, days.r: 0..=n - 1;
 //   days.v: -1_000_000_000..=1_000_000_000
+// sunk_copies: 2
 let n: 1..=200_000 = read()
 domain Box = 0..n
 let cap: [Box]1..=1_000_000_000 = read()

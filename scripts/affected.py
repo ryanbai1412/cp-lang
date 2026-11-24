@@ -72,6 +72,11 @@ SLICES = [
                                   "crates/cpl-cli/tests/support/cpp_counts.rs"],
      ["cpl-cli::read_only_copies"]),
 ]
+# A sharded slice's binary has a test `shard_NN` per shard of its programs, NN being the
+# FNV-1a hash of the program's path mod the shard count (shard_of in
+# crates/cpl-cli/tests/read_only_copies.rs), so a change to programs alone runs their
+# shards and the binary's other tests: the slice `copies@3,7`.
+SHARDED = {"copies": (16, [f"{PACKAGES}/*/*.cp", "spec/conformance/*/*.cp"])}
 # Globs name the data and crates a slice's tests run; slice_globs adds each test's
 # source and the workspace crates it names. scripts/test_affected.py fails on a
 # path literal in a test that its slice's globs miss.
@@ -149,14 +154,43 @@ def ci_only(path):
     return path.endswith(".sh")
 
 
+def shard_of(rel, shards):
+    h = 0xcbf29ce484222325
+    for b in rel.encode():
+        h = ((h ^ b) * 0x100000001b3) & 0xFFFFFFFFFFFFFFFF
+    return h % shards
+
+
+def sharded(name, globs, tests, paths):
+    """`name`, or `name@<its shards>` when each path it maps to is one of its sharded programs."""
+    if name not in SHARDED:
+        return name
+    shards, programs = SHARDED[name]
+    hit = [p for p in paths if matches(p, slice_globs(globs, tests))]
+    if not all(any(fnmatch.fnmatch(p, g) and p.count("/") == g.count("/") for g in programs) for p in hit):
+        return name
+    return f"{name}@{','.join(str(k) for k in sorted({shard_of(p, shards) for p in hit}))}"
+
+
+def base(names):
+    return [n.partition("@")[0] for n in names]
+
+
 def slice_filter(names):
-    """The nextest filter running the named slices' tests."""
+    picked = {}
+    for n in names:
+        name, _, shards = n.partition("@")
+        picked.setdefault(name, set()).update(shards.split(",") if shards else ["all"])
     parts = []
     for name, _, _, tests in SLICES:
-        if name in names:
+        if name in picked:
             for t in tests:
                 binary, _, test = t.partition(" ")
-                parts.append(f"(binary_id({binary}) & test(={test}))" if test else f"binary_id({binary})")
+                part = f"(binary_id({binary}) & test(={test}))" if test else f"binary_id({binary})"
+                if "all" not in picked[name]:
+                    some = " | ".join(f"test(=shard_{int(k):02})" for k in sorted(picked[name], key=int))
+                    part = f"({part} & (not test(/^shard_/) | {some}))"
+                parts.append(part)
     return " | ".join(parts)
 
 
@@ -175,7 +209,7 @@ def slice_times(output, names):
 def build_slices(names):
     """Compiles the slices' test binaries: the commit hook times this apart from
     the run, since a cold build after a crate change is slow compiling, not a slow test."""
-    unknown = [n for n in names if n not in {s[0] for s in SLICES}]
+    unknown = [n for n in base(names) if n not in {s[0] for s in SLICES}]
     if unknown:
         print(f"affected: unknown slice {' '.join(unknown)}; one of {', '.join(s[0] for s in SLICES)}")
         return 2
@@ -186,7 +220,7 @@ def build_slices(names):
 def run_slices(names):
     if names == ["all"]:
         names = [s[0] for s in SLICES]
-    unknown = [n for n in names if n not in {s[0] for s in SLICES}]
+    unknown = [n for n in base(names) if n not in {s[0] for s in SLICES}]
     if unknown:
         print(f"affected: unknown slice {' '.join(unknown)}; one of {', '.join(s[0] for s in SLICES)}")
         return 2
@@ -198,7 +232,7 @@ def run_slices(names):
                           "-E", expr], cwd=ROOT, capture_output=True, text=True)
     sys.stdout.write(run.stdout + run.stderr)
     owners = {s[0]: s[1] for s in SLICES}
-    slow = {n: t for n, t in slice_times(run.stdout + run.stderr, names).items() if t > SLICE_LIMIT_S}
+    slow = {n: t for n, t in slice_times(run.stdout + run.stderr, base(names)).items() if t > SLICE_LIMIT_S}
     # A slow slice is its owner's to speed up, never a reason to refuse another lane's
     # commit: it warns and is logged for the owner, and only a failing test fails.
     log = os.path.join(ROOT, ".git", "cpl-slow-slices.log") if os.path.isdir(os.path.join(ROOT, ".git")) else None
@@ -269,7 +303,8 @@ def select(paths, dirs):
         else:
             sel.update(all=True, reason=path)
             break
-    sel["slices"] = [name for name, _, globs, tests in SLICES if any(matches(p, slice_globs(globs, tests)) for p in paths)]
+    sel["slices"] = [sharded(name, globs, tests, paths) for name, _, globs, tests in SLICES
+                     if any(matches(p, slice_globs(globs, tests)) for p in paths)]
     sel["packages"] = sorted(packages)
     sel["script_tests"] = sorted(tests)
     sel["steps"] = sorted(steps)

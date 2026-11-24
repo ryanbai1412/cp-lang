@@ -181,17 +181,17 @@ const NEVER: [(&str, Count); 4] = [
 ];
 
 /// What a program's header says its C++ makes: `// copies: N` deep copies,
-/// `// optional_copies: N` containers copied into an optional and
-/// `// std_functions: N` type-erased `std::function`s, 0 when the line is
-/// absent.
-const DIRECTIVES: [(&str, Count); 3] = [
+/// `// optional_copies: N` containers copied into an optional,
+/// `// std_functions: N` type-erased `std::function`s and
+/// `// sunk_copies: N` places copied into a param a fn moves into its
+/// struct, 0 when the line is absent. scripts/debt-ratchet.py bounds each
+/// header sum over the corpus.
+const DIRECTIVES: [(&str, Count); 4] = [
     ("copies", deep_copies),
     ("optional_copies", optional_copies),
     ("std_functions", std_functions),
+    ("sunk_copies", sunk_copies),
 ];
-
-/// The most of each the corpus may build to, summed over programs.
-const TOTALS: [(&str, Count, usize); 1] = [("sunk_copies", sunk_copies, 8)];
 
 /// The value of the header line `// <key>: N` (0 without one), or why the
 /// header is malformed. The header is the file's leading `//` lines.
@@ -221,9 +221,8 @@ fn declared(text: &str, key: &str) -> Result<usize, String> {
     Ok(found.unwrap_or(0))
 }
 
-/// How `src`'s C++ disagrees with its header, and its count of each of
-/// `TOTALS` (0 when it doesn't build).
-fn disagreements(src: &Path, out: &Path) -> (Vec<String>, [usize; TOTALS.len()]) {
+/// How `src`'s C++ disagrees with its header.
+fn disagreements(src: &Path, out: &Path) -> Vec<String> {
     let text = std::fs::read_to_string(src).unwrap();
     let built = cpl_cli::run(&["build", src.to_str().unwrap(), "-o", out.to_str().unwrap()]);
     let cpp = std::fs::read_to_string(out)
@@ -251,7 +250,6 @@ fn disagreements(src: &Path, out: &Path) -> (Vec<String>, [usize; TOTALS.len()])
             _ => {}
         }
     }
-    let totals = TOTALS.map(|(_, count, _)| cpp.as_deref().map_or(0, count));
     if let Some(cpp) = &cpp {
         for (name, count) in NEVER {
             if count(cpp) > 0 {
@@ -266,7 +264,7 @@ fn disagreements(src: &Path, out: &Path) -> (Vec<String>, [usize; TOTALS.len()])
             ));
         }
     }
-    (wrong, totals)
+    wrong
 }
 
 /// The `.cp` files one directory down from each root: the corpus
@@ -279,76 +277,104 @@ fn repo() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
-#[test]
-fn every_program_makes_the_copies_its_header_says() {
-    let out = Path::new(env!("CARGO_TARGET_TMPDIR")).join("read_only_copies");
+/// The shard of the program at `rel`, its path from the repo root: FNV-1a
+/// of the path, mod `SHARDS`. Each shard is one test, so a change to one
+/// program runs only its shard; scripts/affected.py computes the same.
+fn shard_of(rel: &str) -> u64 {
+    rel.bytes().fold(0xcbf2_9ce4_8422_2325, |h: u64, b| {
+        (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3)
+    }) % SHARDS
+}
+
+const SHARDS: u64 = 16;
+
+fn rel(src: &Path) -> String {
+    let rel = src.strip_prefix(repo()).unwrap_or(src);
+    rel.to_string_lossy().replace('\\', "/")
+}
+
+/// Builds every program of shard `k` and checks its C++ against its header.
+fn check_shard(k: u64) {
+    let out = Path::new(env!("CARGO_TARGET_TMPDIR")).join(format!("read_only_copies_{k}"));
     std::fs::create_dir_all(&out).unwrap();
-    let sources = sources();
+    let sources: Vec<PathBuf> = sources()
+        .into_iter()
+        .filter(|src| shard_of(&rel(src)) == k)
+        .collect();
     let next = std::sync::atomic::AtomicUsize::new(0);
     let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
-    let found: Vec<(Vec<String>, [usize; TOTALS.len()])> = std::thread::scope(|s| {
+    let wrong: Vec<String> = std::thread::scope(|s| {
         let jobs: Vec<_> = (0..threads)
             .map(|n| {
                 let (out, sources, next) = (out.join(format!("{n}.cpp")), &sources, &next);
                 s.spawn(move || {
-                    let mut found = Vec::new();
+                    let mut wrong = Vec::new();
                     while let Some(src) =
                         sources.get(next.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
                     {
-                        let (wrong, totals) = disagreements(src, &out);
-                        let rel = src
-                            .strip_prefix(repo())
-                            .unwrap_or(src)
-                            .display()
-                            .to_string();
-                        let mut lines: Vec<String> =
-                            wrong.into_iter().map(|w| format!("{rel}: {w}")).collect();
-                        for ((name, _, _), n) in TOTALS.iter().zip(totals) {
-                            if n > 0 {
-                                lines.push(format!("{rel}: {n} {name}"));
-                            }
-                        }
-                        found.push((lines, totals));
+                        let rel = rel(src);
+                        wrong.extend(
+                            disagreements(src, &out)
+                                .into_iter()
+                                .map(|w| format!("{rel}: {w}")),
+                        );
                     }
-                    found
+                    wrong
                 })
             })
             .collect();
         jobs.into_iter().flat_map(|j| j.join().unwrap()).collect()
     });
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+macro_rules! shards {
+    ($($name:ident = $k:literal),* $(,)?) => {
+        $(#[test]
+        fn $name() {
+            check_shard($k)
+        })*
+        const SHARD_TESTS: &[u64] = &[$($k),*];
+    };
+}
+
+shards!(
+    shard_00 = 0,
+    shard_01 = 1,
+    shard_02 = 2,
+    shard_03 = 3,
+    shard_04 = 4,
+    shard_05 = 5,
+    shard_06 = 6,
+    shard_07 = 7,
+    shard_08 = 8,
+    shard_09 = 9,
+    shard_10 = 10,
+    shard_11 = 11,
+    shard_12 = 12,
+    shard_13 = 13,
+    shard_14 = 14,
+    shard_15 = 15,
+);
+
+#[test]
+fn every_shipped_program_falls_in_a_shard_with_a_test() {
+    assert_eq!(SHARD_TESTS, (0..SHARDS).collect::<Vec<_>>());
+    let sources = sources();
     assert!(
         sources.len() >= 1000,
         "only {} programs found",
         sources.len()
     );
-    let mut wrong = Vec::new();
-    for (k, (name, _, bound)) in TOTALS.iter().enumerate() {
-        let total: usize = found.iter().map(|(_, t)| t[k]).sum();
-        if total > *bound {
-            let suffix = format!(" {name}");
-            let offenders = found
-                .iter()
-                .flat_map(|(l, _)| l)
-                .filter(|l| l.ends_with(&suffix));
-            wrong.push(format!(
-                "{name}: {total} in all, more than the {bound} allowed"
-            ));
-            wrong.extend(offenders.cloned());
-        } else if total < *bound {
-            eprintln!("{name}: {total} in all, under the bound of {bound}: lower it");
-        }
+    for k in 0..SHARDS {
+        assert!(
+            sources.iter().any(|src| shard_of(&rel(src)) == k),
+            "shard {k} is empty"
+        );
     }
-    let suffixes: Vec<String> = TOTALS
-        .iter()
-        .map(|(name, _, _)| format!(" {name}"))
-        .collect();
-    let headers: Vec<&String> = found
-        .iter()
-        .flat_map(|(l, _)| l)
-        .filter(|l| !suffixes.iter().any(|s| l.ends_with(s.as_str())))
-        .collect();
-    wrong.extend(headers.iter().map(|l| l.to_string()));
-    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+    // scripts/test_affected.py pins the same paths to the same shards.
+    assert_eq!(shard_of("spec/conformance/std-models/heaps.cp"), 8);
+    assert_eq!(shard_of("corpus/problems/cf2165c/port.cp"), 4);
 }
 
 #[test]

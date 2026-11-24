@@ -12,6 +12,7 @@
 //   id (leftmost alive leaf), pruning dead leaves in place so each is visited once. O(log) treap
 //   work per op plus the segment-tree merges.
 // Bounds: n, q_cnt: 1..=100_000; p, op.r: 1..=n; op.id: 1..=q_cnt
+// sunk_copies: 2
 use std.marks.{Arena, Id}
 use std.rand.Rng
 
