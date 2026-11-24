@@ -5,8 +5,9 @@
 // Solution: build the answer v from bit 17 down, keeping a bit when some segment has a maximum
 //   containing v and xor of a_i & v equal to v. Such a segment is two cuts at least 2 apart
 //   whose masked prefix xors p, p ^ v share the class min(p, p ^ v) with opposite parity. Per
-//   class, a monotonic stack over the gaps between consecutive cuts (gap maxima by SparseTable)
-//   merges groups at each gap's maximum, the maximum of every pair it joins. O(18 n log n).
+//   class (interned, so a counting sort by class id groups the cuts in O(n)), a monotonic stack over the gaps between consecutive cuts (gap maxima by SparseTable)
+//   merges groups at each gap's maximum, the maximum of every pair it joins. O(18 n).
+use std.marks.{Interner}
 use std.prefix.{prefix_fold}
 
 @!multitest
@@ -28,11 +29,13 @@ struct Ends(even: ?Span, odd: ?Span):
 
 let a: [I]Int = read()
 let peak = SparseTable<I, Int>(max, a)
+domain C = 0..=I.len  // a class id per cut at most
 
 fn feasible(v: Int) -> Bool:
     let pre = prefix_fold((x, y) => x ^ y, [I] i => a[i] & v)
-    var cuts = [(class: min(pre[c], pre[c] ^ v), at: c, odd: (pre[c] ^ v) < pre[c]) for c in I.cuts]
-    cuts.sort()
+    var ids = Interner<Int>()
+    var cuts = [(class: C(ids.id(min(pre[c], pre[c] ^ v))), at: c, odd: (pre[c] ^ v) < pre[c]) for c in I.cuts]
+    cuts.counting_sort(by: x => x.class)
     var stk: List<(top: Int, ends: Ends)> = []
     for (t, b) in cuts.items:
         let here = Span(b.at, b.at)

@@ -3,5 +3,4 @@
 # but reports them as `unmatched` and leaves them out of p50/max.
 # One per line: problem id, then why. Remove a line once the pair matches.
 cf2115a  port: shortest path over gcd values, O(max * distinct); orig: Mobius count with random hashes, O(V log V) per step
-cf2268c  port: sorts (class, cut, parity) tuples per bit, O(n log n); orig: hash map of classes plus a counting sort, O(n) (perf record: 59% in std::sort of the emitted C++)
 cf1284e  port: per centre, sort the other n-1 points by angle and sweep, n sorts of n; orig: one sort of all n^2/2 pair directions and a rotating-line sweep swapping neighbours
