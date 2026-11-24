@@ -493,6 +493,32 @@ jobs:
   # (research/acceptance/solutions/) with the release cpl and the
   # Codeforces profile; any non-AC blocks. Split over 8 runners, parallel on
   # each one's 4 cores, restoring the release target/ the site job saves.
+  # stdlib.md "Tests catch real bugs": every one-line mutant of the std/*.cp lines
+  # this push (or pull request) changed is caught by std's own suites
+  # (scripts/mutation-score.py --std --min 1.0); a missed one fails the run.
+  std-mutants:
+    name: std mutants
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: ./.github/actions/setup-rust
+        with:
+          target: release
+      - name: Fetch the base
+        id: base
+        run: |
+          base="${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}"
+          if [ -n "$base" ] && git fetch -q --depth=1 origin "$base"; then echo "sha=$base" >> "$GITHUB_OUTPUT"
+          else git fetch -q --depth=2 origin "$GITHUB_SHA" && echo "sha=$(git rev-parse HEAD~1)" >> "$GITHUB_OUTPUT"; fi
+      - name: Std mutation score
+        env:
+          CPL_GATE_PART: std-mutants
+          CPL_STD_MUTANTS_BASE: ${{ steps.base.outputs.sha }}
+        shell: bash
+        run: just check | tee -a "$GITHUB_STEP_SUMMARY"
+
   acceptance:
     name: acceptance solutions stay AC (${{ matrix.shard }}/8)
     runs-on: ubuntu-latest

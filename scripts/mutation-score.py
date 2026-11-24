@@ -11,7 +11,10 @@ Usage:
         [--test-package cpl-lsp ...]   # also run tests of crates that call it
         [--nextest] [--profile ci]     # stop at the first failing test; optimized tests
     python3 scripts/mutation-score.py --report DIR   # score a finished run
+    python3 scripts/mutation-score.py --std [--since REV] [-f std/x.cp]   # std/*.cp, see std_mutants.py
     add --min 0.98 to fail (exit 1) when the score is below 0.98
+
+Rule: handbook/process/quality.md#how-suites-are-measured (mutation score).
 """
 
 from __future__ import annotations
@@ -102,9 +105,15 @@ def main(argv: list[str] | None = None) -> int:
                         help="only run this test target, e.g. dap")
     parser.add_argument("--report", type=Path, help="only score a finished run in DIR")
     parser.add_argument("--min", type=float, help="exit 1 when the score is below this, e.g. 0.98")
+    parser.add_argument("--std", action="store_true",
+                        help="mutate std/*.cp and score std's own suites (scripts/std_mutants.py)")
+    parser.add_argument("--bin", type=Path, default=ROOT / "target/release",
+                        help="with --std: the directory holding the cpl and cpl-conform to run")
     args = parser.parse_args(argv)
     if args.report:
         return report(args.report, args.min)
+    if args.std:
+        return std_main(args)
     if not args.package:
         parser.error("-p/--package is required unless --report is given")
     out = args.output or Path(tempfile.mkdtemp(prefix=f"mutants-{args.package}-"))
@@ -118,6 +127,22 @@ def main(argv: list[str] | None = None) -> int:
     cmd = mutants_command(args.package, out, args.jobs, args.test_package,
                           args.nextest, args.profile, args.file, args.test, extra)
     subprocess.run(cmd, cwd=ROOT)
+    return report(out, args.min)
+
+
+def std_main(args) -> int:
+    """`--std`: every mutant of std/*.cp, or of its lines changed since `--since`;
+    `-f std/x.cp` narrows to files, `--shard K/N` takes one slice."""
+    import std_mutants as sm
+    files = [ROOT / f for f in args.file] or sorted(sm.STD.glob("*.cp"))
+    only = sm.changed_lines(args.since) if args.since else None
+    mutants = sm.shard(sm.sites(files, only), args.shard)
+    out = args.output or Path(tempfile.mkdtemp(prefix="mutants-std-"))
+    print(f"mutation-score: {len(mutants)} std mutant(s)", flush=True)
+    if not mutants:
+        return 0
+    runner = sm.Runner(str(args.bin / "cpl-conform"), str(args.bin / "cpl"))
+    sm.run_all(mutants, runner, int(args.jobs), out)
     return report(out, args.min)
 
 

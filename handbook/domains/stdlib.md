@@ -203,7 +203,7 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 | Every trait method of every claimer works | uncovered (type, trait, method) triples | generated suite `scripts/spec-gate.py traits`, gap list only shrinks |
 | No undefined behaviour in emitted std code | sanitizer failures over std cases | sanitized C++ in `crates/cpl-cli/tests/differential.rs`; `missing` for the full std suite |
 | A bug that escapes is caught next time | escaped std bugs with no row and no case | process: each escape adds its case and names the row that should have caught it |
-| Tests catch real bugs | mutation score of the std suites | `missing` (mutation runs over `std/*.cp`, graded by tech-debt) |
+| Tests catch real bugs | mutation score of the std suites | every one-line mutant of the `std/*.cp` lines a push changes fails std's own `@test` fns, doc examples, `std-<file>/` or std-models cases, blocking in CI's `std-mutants` job: `scripts/mutation-score.py --std --since origin/main --min 1.0` |
 
 ### Guessable and consistent API (J2, J5)
 
