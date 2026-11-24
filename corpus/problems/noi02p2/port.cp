@@ -12,30 +12,27 @@
 // original: corpus/submissions/4793917.cpp
 let (stars, moons): (0..=500, 0..=500) = ask("GetNM")
 let n = stars + moons + 1
+domain Child = 0..n
+enum Role:
+    Star
+    Moon
+    Referee
 
-fn says_star(asker: Int, about: Int) -> 0..=1 = ask("Ask", asker + 1, about + 1, 0)
+fn says_star(asker: Child, about: Child) -> Bool:
+    let yes: 0..=1 = ask("Ask", Int(asker) + 1, Int(about) + 1, 0)
+    yes == 1
 
 // each child about its right neighbour, then its left: the referee's first answer is true
-var right: List<Int> = []
-var left: List<Int> = []
-for p in 0..n:
-    right.push(says_star(p, (p + 1) % n))
-    left.push(says_star(p, (p + n - 1) % n))
+let right = [Child] p => says_star(p, Child.wrap(Int(p) + 1))
+let left = [Child] p => says_star(p, Child.wrap(Int(p) - 1))
 
 // both answers on an edge agree, except where the referee spoke first
-var wild = 0
-for p in 0..n:
-    if right[p] != left[(p + 1) % n]:
-        wild = p
-        break
+let referee = Child.find(p => right[p] != left[Child.wrap(Int(p) + 1)])!
 
-// 0 Star, 1 Moon, 2 referee: walking away from him, each answer fixes the next child
-var role = [0..n] _ => 0
-role[wild] = 2
-var p = wild - 1
-while p >= 0:
-    role[p] = Int(right[p] != Int(role[p + 1] == 0))
-    p -= 1
-for q in wild + 1..n:
-    role[q] = Int(left[q] != Int(role[q - 1] == 0))
-for i in 0..n: print("Answer", role[i])
+// walking away from him, each answer fixes the next child: a Star's answer is the truth
+var role: [Child]Role = Referee
+for p in (..referee).rev:
+    role[p] = if right[p] == (role[p.next!] == Star): Star else: Moon
+for p in Child.after(referee):
+    role[p] = if left[p] == (role[p.prev!] == Star): Star else: Moon
+for c in Child: print("Answer", role[c].ord)
