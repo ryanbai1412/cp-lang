@@ -22,7 +22,7 @@ let pos_of = deck.inverse()
 let nxt_gt = deck.next_smaller(by: c => -c.ord)
 
 var bit = Fenwick<Card, Int>()
-var run_len: [Card]Int = 0
+var run_len: [Card]0..=n = 0
 
 fn insert_runs(lo: Pos, hi: Pos):
     var cur: ?Pos = Some(lo)
