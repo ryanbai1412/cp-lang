@@ -33,7 +33,7 @@ fn bit_reverse<T>(mut a: List<T>):
 /// by `n`, so it exactly undoes the forward transform. `bit_reversed: true` skips the
 /// bit-reversal permutation: the forward transform then leaves `â` in bit-reversed order and the
 /// inverse expects its input in that order, so a pointwise product between the two needs no
-/// reordering. The standard primes use radix-4 Montgomery butterflies; `cpl explain` names the
+/// reordering. Radix-2 butterflies over one twiddle table per call; `cpl explain` names the
 /// engine.
 ///
 /// cost: \(O(n \log n)\)
@@ -51,19 +51,28 @@ pub fn ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false, bit_reversed: Bool = f
     var g = Mod<P>(3)
     if P == 754_974_721: g = Mod<P>(11)
     elif P != NTT_P1 and P != NTT_P3 and P != NTT_P2: g = Mod<P>(primitive_root(P))
-    // rate[i] = -w^(3 (P - 1) / 2^(i + 2)): the step between the twiddles of consecutive blocks
-    var rate = List.filled(ctz(n), Mod<P>(0))
-    for i in 0..rate.len - 1:
-        let e = 3 * ((P - 1) >> (i + 2))
-        rate[i] = Mod<P>(0) - g ** (if inverse: P - 1 - e else: e)
+    // tw[s] is block s's twiddle in every layer: `z^bitrev(s)` over `log2(n) - 1` bits, `z` the
+    // primitive n-th root (conjugated for the inverse). One table, filled by independent products,
+    // keeps a serial twiddle chain off the short-block layers.
+    let h = ctz(n)
+    let half = n >> 1
+    var roots = List.filled(h + 1, Mod<P>(1))
+    roots[h] = g ** (if inverse: P - 1 - (P - 1) / n else: (P - 1) / n)
+    var tw = List.filled(half, Mod<P>(1))
     if inverse and not bit_reversed: bit_reverse(mut a)
     unchecked:
-        var p = if inverse: 1 else: n >> 1
+        for k in (0..h).rev: roots[k] = roots[k + 1] * roots[k + 1]
+        var b = 1
+        while b < half:
+            let c = roots[ctz(b) + 2]
+            for t in 0..b: tw[b + t] = tw[t] * c
+            b *= 2
+        var p = if inverse: 1 else: half
         while 0 < p < n:
-            var rot = Mod<P>(1)
+            var o = 0
             var s = 0
-            while s * 2 * p < n:
-                let o = s * 2 * p
+            while o < n:
+                let rot = tw[s]
                 if inverse:
                     for i in o..o + p:
                         let (l, r) = (a[i], a[i + p])
@@ -74,7 +83,7 @@ pub fn ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false, bit_reversed: Bool = f
                         let (l, r) = (a[i], a[i + p] * rot)
                         a[i] = l + r
                         a[i + p] = l - r
-                rot *= rate[ctz(s ^ -1)]
+                o += 2 * p
                 s += 1
             p = if inverse: p * 2 else: p >> 1
         if inverse:
@@ -690,6 +699,31 @@ fn ranked<P>(a: List<Mod<P>>, exp: Bool) -> List<Mod<P>>:
                 for m in 0..n:
                     if m.bit(bit): f[r * n + m] -= f[r * n + (m ^ (1 << bit))]
     [f[popcount(m) * n + m] for m in 0..n]
+
+@test
+fn ntt_matches_the_naive_dft_in_both_orders():
+    // Every length up to the largest power of two the prime allows; `Mod<97>` has only
+    // `2^5 | P - 1` and a computed primitive root.
+    ntt_matches_dft(Mod<NTT_P1>(3), 9)
+    ntt_matches_dft(Mod<97>(primitive_root(97)), 5)
+    ntt_matches_dft(Mod<17>(primitive_root(17)), 4)
+
+fn ntt_matches_dft<P>(g: Mod<P>, max_lg: Int):
+    for lg in 0..=max_lg:
+        let n = 1 << lg
+        let a = [Mod<P>(rand(0, P - 1)) for _ in 0..n]
+        let w = g ** ((P - 1) / n)
+        let want = [sum(a[j] * w ** (j * k % n) for j in 0..n) for k in 0..n]
+        var f = a.collect()
+        ntt(mut f)
+        assert f == want
+        ntt(mut f, inverse: true)
+        assert f == a
+        var b = a.collect()
+        ntt(mut b, bit_reversed: true)
+        for k in 0..n: assert b[k] == want[sum((k >> i & 1) << (lg - 1 - i) for i in 0..lg)]
+        ntt(mut b, inverse: true, bit_reversed: true)
+        assert b == a
 
 @test
 fn ntt_round_trip_and_convolve():
