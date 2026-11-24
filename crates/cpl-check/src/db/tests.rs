@@ -399,6 +399,12 @@ fn a_generic_domain_position_has_a_typed_rank() {
 }
 
 #[test]
+fn a_keyed_impl_s_items_read_is_std_s_getter() {
+    let src = "struct W(xs: List<Int>)\nimpl Seq<Int> for W:\n    fn iter(self) -> yields Int:\n        for x in self.xs: yield x\nimpl Keyed<Int, Int> for W:\n    fn items(self) -> yields (Int, Int):\n        for (i, x) in self.xs.items: yield (i, x)\nlet it = W([5, 6]).items\nfor (i, x) in it: print(i + x)\n";
+    assert_eq!(silent_unknowns_of(src), (vec![], 0));
+}
+
+#[test]
 fn a_slice_walks_its_source_keys_typed() {
     let graph = "domain V = 0..3\nlet g = Graph.undirected([(V(0), V(1)), (V(1), V(2))])\nfor (a, w) in g[V(1)].items: print(a + w.ord)\n";
     assert_eq!(silent_unknowns_of(graph), (vec![], 0));

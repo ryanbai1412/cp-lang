@@ -79,6 +79,21 @@ pub struct Param {
     pub lazy: bool,
 }
 
+impl Param {
+    /// A plain positional parameter: not `mut`, no default.
+    pub fn new(name: &str, ty: Ty) -> Self {
+        Param {
+            name: name.into(),
+            ty,
+            mutable: false,
+            has_default: false,
+            named_only: false,
+            variadic: false,
+            lazy: false,
+        }
+    }
+}
+
 impl Ty {
     /// The domain an integer literal labels where this type is wanted (R04.2.18): `V` for a
     /// position, `V.cuts` for a cut (also spelled `Cut<V>`), the cell's for an array of them.
@@ -130,11 +145,17 @@ impl Ty {
         }
     }
 
-    pub fn list(elem: Ty) -> Ty {
+    /// `name<arg>`: a named type of one argument.
+    #[inline(never)]
+    pub fn named1(name: &str, arg: Ty) -> Ty {
         Ty::Named {
-            name: "List".into(),
-            args: vec![elem],
+            name: name.into(),
+            args: vec![arg],
         }
+    }
+
+    pub fn list(elem: Ty) -> Ty {
+        Ty::named1("List", elem)
     }
 
     /// Element type of a built-in `Seq` / `Indexed` sequence (`Str`, `List<T>`,
@@ -162,13 +183,15 @@ impl Ty {
         }
     }
 
+    /// `s[r]`: std's `Slice<S>` over `source` (R07.4.17).
+    pub fn slice_of(source: Ty) -> Ty {
+        Ty::named1("Slice", source)
+    }
+
     /// The sequence a view walks: a `.rev`'s or a `Slice`'s source, whose
     /// elements it has (R07.4.5).
     pub fn view_source(&self) -> Option<&Ty> {
-        match self {
-            Ty::Named { name, args } if name == "Slice" && args.len() == 1 => args.first(),
-            _ => self.rev_source(),
-        }
+        self.slice_source().or(self.rev_source())
     }
 
     /// The fields a lambda of several parameters takes from one element of
@@ -183,19 +206,18 @@ impl Ty {
 
     /// A `.rev` view of `source`.
     pub fn rev_of(source: Ty) -> Ty {
-        Ty::Named {
-            name: "Rev".into(),
-            args: vec![source],
-        }
+        Ty::named1("Rev", source)
     }
 
     /// The sequence a `.rev` view reverses: it walks and keys like that
     /// sequence, but is not `Indexed` (R07.3.5).
     pub fn rev_source(&self) -> Option<&Ty> {
-        match self {
-            Ty::Named { name, args } if name == "Rev" && args.len() == 1 => args.first(),
-            _ => None,
-        }
+        self.named_arg("Rev")
+    }
+
+    /// The sequence a `Slice` was cut from: it reads as that sequence (R07.4.17).
+    pub fn slice_source(&self) -> Option<&Ty> {
+        self.named_arg("Slice")
     }
 
     /// The element of a sequence made of its values (`List<T>`,
@@ -214,8 +236,23 @@ impl Ty {
 
     /// True when this type implements the built-in `Seq` trait.
     /// True for `List<T>`.
+    /// The one argument of named type `name`: a `List<T>`'s `T`.
+    #[inline(never)]
+    pub fn named_arg(&self, name: &str) -> Option<&Ty> {
+        match self {
+            Ty::Named { name: n, args } if n == name && args.len() == 1 => args.first(),
+            _ => None,
+        }
+    }
+
     pub fn is_list(&self) -> bool {
-        matches!(self, Ty::Named { name, .. } if name == "List")
+        self.is_named("List")
+    }
+
+    /// Whether this is the named type `name`, of any arguments.
+    #[inline(never)]
+    pub fn is_named(&self, name: &str) -> bool {
+        matches!(self, Ty::Named { name: n, .. } if n == name)
     }
 
     /// What `x[i]` reads for `x` of this type: an array's or a list's
@@ -223,7 +260,7 @@ impl Ty {
     pub fn index_value(&self) -> Option<Ty> {
         match self {
             Ty::Array { elem, .. } => Some((**elem).clone()),
-            Ty::Named { name, args } if name == "List" && args.len() == 1 => Some(args[0].clone()),
+            t if let Some(e) = t.named_arg("List") => Some(e.clone()),
             Ty::Named { name, args } if (name == "Map" || name == "HashMap") && args.len() == 2 => {
                 Some(args[1].clone())
             }
@@ -333,7 +370,7 @@ impl Ty {
         match self {
             Ty::Str => true,
             Ty::Array { index, .. } if index.len() == 1 => true,
-            Ty::Named { name, args } if name == "List" && args.len() == 1 => true,
+            t if t.named_arg("List").is_some() => true,
             _ => false,
         }
     }
@@ -503,7 +540,7 @@ impl Ty {
             // A `.rev` view passes where its source's type is written; only
             // a bound sees that it is not `Indexed`.
             (a, b)
-                if !matches!(b, Ty::Named { name, .. } if name == "Indexed")
+                if !b.is_named("Indexed")
                     && a.rev_source().is_some_and(|s| s.fits_in(b, number)) =>
             {
                 true
@@ -786,10 +823,7 @@ impl Ty {
         // type, and one of its positions is an `Int`.
         bound.map(&mut |ty| match ty {
             Ty::Array { index, elem } if *index == [Ty::list_index()] || *index == [Ty::Int] => {
-                Some(Ty::Named {
-                    name: "List".to_string(),
-                    args: vec![elem.subst(bindings)],
-                })
+                Some(Ty::list(elem.subst(bindings)))
             }
             ty if *ty == list_index => Some(Ty::Int),
             _ => None,
@@ -1282,10 +1316,7 @@ mod tests {
         for ty in [Ty::Int, Ty::I128, Ty::U64, range(0, 9), Ty::Float, Ty::Char] {
             assert!(ty.is_one_of(&on), "{ty}");
         }
-        let list = Ty::Named {
-            name: "List".into(),
-            args: vec![Ty::Int],
-        };
+        let list = Ty::list(Ty::Int);
         for ty in [Ty::Bool, Ty::Str, Ty::Tuple(vec![Ty::Int, Ty::Int]), list] {
             assert!(!ty.is_one_of(&on), "{ty}");
         }

@@ -419,7 +419,18 @@ impl Checker<'_> {
         let Some(bound_args) = self.call_bound_args.take() else {
             return;
         };
-        for (param, trait_name, args) in &bound_args {
+        self.bind_written_bound_args(&bound_args, bindings);
+        self.call_bound_args = Some(bound_args);
+    }
+
+    /// [`Self::bind_bound_args`] for the bounds `bound_args` writes:
+    /// `S: Indexed<K, T>` given a `Slice<List<Int>>` has `K = Int`.
+    pub(crate) fn bind_written_bound_args(
+        &mut self,
+        bound_args: &crate::def::BoundArgs,
+        bindings: &mut crate::ty::Bindings,
+    ) {
+        for (param, trait_name, args) in bound_args {
             let Some(actual) = bindings.get(param).cloned() else {
                 continue;
             };
@@ -439,7 +450,6 @@ impl Checker<'_> {
                 }
             }
         }
-        self.call_bound_args = Some(bound_args);
     }
 
     /// `fn f<A: Keyed<K, _>, B: Keyed<K, _>, K>`: a type parameter named in several bounds is
@@ -494,6 +504,40 @@ impl Checker<'_> {
                     ],
                 );
                 return;
+            }
+        }
+    }
+
+    /// What an impl for `target` binds its generics to on `ty`, those its
+    /// bounds fix included: `impl<S: Indexed<K, T>, K, T> Seq<T> for
+    /// Rebased<S>` on a `Rebased<List<Int>>` has `T = Int`.
+    fn impl_on(
+        &mut self,
+        target: &Ty,
+        bound_args: &crate::def::BoundArgs,
+        ty: &Ty,
+    ) -> crate::ty::Bindings {
+        let mut on = crate::ty::Bindings::default();
+        target.unify(ty, &mut on);
+        self.bind_written_bound_args(bound_args, &mut on);
+        on
+    }
+
+    /// The generics `ty`'s impls fix for the members they give it: on a
+    /// `Slice<[V]Int>`, `at(self, i: K)` takes a `V`.
+    pub(crate) fn impl_bindings(&mut self, ty: &Ty, bindings: &mut crate::ty::Bindings) {
+        let Ty::Named { name, .. } = ty else {
+            return;
+        };
+        for (_, def) in self.env.impls(name) {
+            if let Def::Impl {
+                target, bound_args, ..
+            } = &*def
+            {
+                let on = self.impl_on(target, bound_args, ty);
+                for (g, t) in on {
+                    bindings.entry(g).or_insert(t);
+                }
             }
         }
     }
@@ -560,25 +604,8 @@ impl Checker<'_> {
                     ..
                 } = &*def
                 {
-                    let mut on = crate::ty::Bindings::default();
-                    target.unify(ty, &mut on);
+                    let on = self.impl_on(target, bound_args, ty);
                     if trait_args.len() == n && ty.fits(&target.subst(&on)) {
-                        // `impl<S: Indexed<K, T>, K, T> Seq<T> for Rebased<S>`: `T` is what `S` gives.
-                        for (param, bound, args) in bound_args {
-                            let Some(actual) = on.get(param).cloned() else {
-                                continue;
-                            };
-                            let Some(given) = self.trait_args_of(&actual, bound, args.len()) else {
-                                continue;
-                            };
-                            let mut solved = crate::ty::Bindings::default();
-                            for (want, got) in args.iter().zip(&given) {
-                                want.unify(got, &mut solved);
-                            }
-                            for (g, t) in solved {
-                                on.entry(g).or_insert(t);
-                            }
-                        }
                         return Some(trait_args.iter().map(|t| t.subst(&on)).collect());
                     }
                 }

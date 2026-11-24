@@ -433,7 +433,7 @@ impl Checker<'_> {
             }
             if callee != "List"
                 && callee != "zip"
-                && matches!(slot, Ty::Named { name, .. } if name == "List")
+                && slot.is_named("List")
                 && self.view_kind(&arg.value) == Some("slice")
             {
                 let arg_text = self.quote(arg.value.span);
@@ -642,8 +642,7 @@ impl Checker<'_> {
         let ty = self.infer_quietly(&arg.value);
         let text = self.text(arg.value.span).to_string();
         let of = methods.iter().any(|(m, _)| m == "of") && !receivers.iter().any(|r| r == "of");
-        let list = matches!(&ty, Ty::Array { .. })
-            || matches!(&ty, Ty::Named { name, .. } if name == "List");
+        let list = matches!(&ty, Ty::Array { .. }) || ty.is_named("List");
         let option = (params.iter())
             .find(|p| p.named_only && (matches!(p.ty, Ty::Param(_)) || self.fits(&ty, &p.ty)));
         let (help, new) = match option {

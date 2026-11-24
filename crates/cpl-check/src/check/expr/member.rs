@@ -67,6 +67,7 @@ impl<'a> Checker<'a> {
             Some(Def::Enum { methods, .. }) => add(&mut out, methods, &[]),
             _ => return None,
         }
+        let mut readers: Vec<String> = Vec::new();
         for (trait_name, def) in self.env.impls(type_name) {
             // Every fn of the trait comes with the impl: the ones the
             // trait writes a body for, and the ones the impl must write
@@ -92,11 +93,18 @@ impl<'a> Checker<'a> {
             } = &*def
             {
                 out.mutators.extend(mutators.iter().cloned());
+                for (m, _) in methods {
+                    if !mutators.contains(m) {
+                        readers.push(m.clone());
+                    }
+                }
                 add(&mut out, methods, getters);
                 out.members.extend(owned.iter().cloned());
                 out.projections.extend(projections.iter().cloned());
             }
         }
+        // `Indexed.at` beside `IndexedMut.at`: a read of the name is the read one.
+        out.mutators.retain(|m| !readers.contains(m));
         Some(out)
     }
 
@@ -177,14 +185,14 @@ impl<'a> Checker<'a> {
             Ty::Str | Ty::Range { .. } | Ty::Pos(_) | Ty::Domain(_) | Ty::Array { .. }
         ) || matches!(&base_ty, Ty::Named { name, .. } if name == "List" || name == "Range");
         // A generator only has what std declares on sequences: no `next` (R07.1.1).
-        let generator = matches!(&base_ty, Ty::Named { name, .. } if name == "Gen");
+        let generator = base_ty.is_named("Gen");
         if ty == Ty::Unknown
             && (built_in || generator)
             && !(if generator {
                 crate::prelude::spec_receiver_method_names().contains(&name.text)
             } else {
                 (crate::prelude::spec_member_names().contains(&name.text)
-                    && !(matches!(&base_ty, Ty::Named { name, .. } if name == "Range")
+                    && !(base_ty.is_named("Range")
                         && crate::prelude::spec_struct_only_member_names().contains(&name.text)))
                     || crate::builtins::BUILTIN_MEMBERS
                         .iter()
@@ -202,8 +210,7 @@ impl<'a> Checker<'a> {
                 .as_ref()
                 .and_then(|f| f.edits.first())
                 .map(|(at, _)| *at);
-            let listed = matches!(&base_ty, Ty::Str | Ty::Array { .. })
-                || matches!(&base_ty, Ty::Named { name, .. } if name == "List");
+            let listed = matches!(&base_ty, Ty::Str | Ty::Array { .. }) || base_ty.is_named("List");
             let position = listed
                 .then(|| super::advice::iterator_position_fix(self.src, base.span, name.span))
                 .flatten();
@@ -365,7 +372,10 @@ impl<'a> Checker<'a> {
                 }
             }
         }
-        if let Some(elem) = base_ty.seq_elem() {
+        // A view that declares the member, `Slice<S>.at`, answers it itself.
+        let declared =
+            base_ty.view_source().is_some() && self.declares_member(&base_ty, &name.text);
+        if let Some(elem) = base_ty.seq_elem().filter(|_| !declared) {
             match name.text.as_str() {
                 "len" => {
                     if !base_ty.is_sized() {
@@ -391,23 +401,12 @@ impl<'a> Checker<'a> {
                     );
                     return Ty::Error;
                 }
-                "first" | "last"
-                    if base_ty == Ty::Str
-                        || matches!(&base_ty, Ty::Named { name, .. } if name == "List") =>
-                {
+                "first" | "last" if base_ty == Ty::Str || base_ty.is_named("List") => {
                     return Ty::Optional(Box::new(elem));
                 }
                 "get" => {
                     return Ty::Fn {
-                        params: vec![crate::Param {
-                            name: "i".into(),
-                            ty: Ty::Int,
-                            mutable: false,
-                            has_default: false,
-                            named_only: false,
-                            variadic: false,
-                            lazy: false,
-                        }],
+                        params: vec![crate::Param::new("i", Ty::Int)],
                         ret: Box::new(Ty::Optional(Box::new(elem))),
                     };
                 }
@@ -423,39 +422,15 @@ impl<'a> Checker<'a> {
                         _ => (Ty::Int, elem),
                     };
                     return Ty::Fn {
-                        params: vec![crate::Param {
-                            name: "i".into(),
-                            ty: arg,
-                            mutable: false,
-                            has_default: false,
-                            named_only: false,
-                            variadic: false,
-                            lazy: false,
-                        }],
+                        params: vec![crate::Param::new("i", arg)],
                         ret: Box::new(ret),
                     };
                 }
                 "set_at" if base_ty.is_indexed_mut() => {
                     return Ty::Fn {
                         params: vec![
-                            crate::Param {
-                                name: "i".into(),
-                                ty: Ty::Int,
-                                mutable: false,
-                                has_default: false,
-                                named_only: false,
-                                variadic: false,
-                                lazy: false,
-                            },
-                            crate::Param {
-                                name: "x".into(),
-                                ty: elem,
-                                mutable: false,
-                                has_default: false,
-                                named_only: false,
-                                variadic: false,
-                                lazy: false,
-                            },
+                            crate::Param::new("i", Ty::Int),
+                            crate::Param::new("x", elem),
                         ],
                         ret: Box::new(Ty::Unit),
                     };
@@ -463,24 +438,8 @@ impl<'a> Checker<'a> {
                 "swap_idx" if base_ty.is_indexed_mut() => {
                     return Ty::Fn {
                         params: vec![
-                            crate::Param {
-                                name: "i".into(),
-                                ty: Ty::Int,
-                                mutable: false,
-                                has_default: false,
-                                named_only: false,
-                                variadic: false,
-                                lazy: false,
-                            },
-                            crate::Param {
-                                name: "j".into(),
-                                ty: Ty::Int,
-                                mutable: false,
-                                has_default: false,
-                                named_only: false,
-                                variadic: false,
-                                lazy: false,
-                            },
+                            crate::Param::new("i", Ty::Int),
+                            crate::Param::new("j", Ty::Int),
                         ],
                         ret: Box::new(Ty::Unit),
                     };
@@ -488,38 +447,14 @@ impl<'a> Checker<'a> {
                 "reach" => {
                     let pred_ty = Ty::Fn {
                         params: vec![
-                            crate::Param {
-                                name: "a".into(),
-                                ty: elem.clone(),
-                                mutable: false,
-                                has_default: false,
-                                named_only: false,
-                                variadic: false,
-                                lazy: false,
-                            },
-                            crate::Param {
-                                name: "b".into(),
-                                ty: elem,
-                                mutable: false,
-                                has_default: false,
-                                named_only: false,
-                                variadic: false,
-                                lazy: false,
-                            },
+                            crate::Param::new("a", elem.clone()),
+                            crate::Param::new("b", elem),
                         ],
                         ret: Box::new(Ty::Bool),
                     };
                     return Ty::Fn {
                         params: vec![
-                            crate::Param {
-                                name: "while".into(),
-                                ty: pred_ty,
-                                mutable: false,
-                                has_default: false,
-                                named_only: false,
-                                variadic: false,
-                                lazy: false,
-                            },
+                            crate::Param::new("while", pred_ty),
                             crate::Param {
                                 name: "cyclic".into(),
                                 ty: Ty::Bool,
@@ -533,7 +468,7 @@ impl<'a> Checker<'a> {
                         ret: Box::new(Ty::list(Ty::Int)),
                     };
                 }
-                "halves" if matches!(&base_ty, Ty::Named { name, .. } if name == "Range") => {
+                "halves" if base_ty.is_named("Range") => {
                     return Ty::Fn {
                         params: vec![],
                         ret: Box::new(Ty::Tuple(vec![base_ty.clone(), base_ty.clone()])),
@@ -634,15 +569,7 @@ impl<'a> Checker<'a> {
         ) && matches!(&base_ty, Ty::Named { name: r, .. } if r == "Range")
         {
             return Ty::Fn {
-                params: vec![crate::ty::Param {
-                    name: "k".into(),
-                    ty: Ty::Int,
-                    mutable: false,
-                    has_default: false,
-                    named_only: false,
-                    variadic: false,
-                    lazy: false,
-                }],
+                params: vec![crate::Param::new("k", Ty::Int)],
                 ret: Box::new(base_ty),
             };
         }
@@ -663,15 +590,7 @@ impl<'a> Checker<'a> {
         }
         // `xs.items`: each element with its index (an `I` for `[I]T`, else `Int`).
         if name.text == "items" {
-            // A slice keeps its source's keys, so it walks the same pairs (R07.4.5).
-            let mut source = &base_ty;
-            while let Ty::Named { name: slice, args } = source {
-                if slice != "Slice" || args.len() != 1 {
-                    break;
-                }
-                source = &args[0];
-            }
-            let pair = match source {
+            let pair = match &base_ty {
                 Ty::Named { name: list, args } if list == "List" && args.len() == 1 => {
                     Some((Ty::Int, args[0].clone()))
                 }
@@ -836,8 +755,13 @@ impl<'a> Checker<'a> {
                     }
                     return Ty::Error;
                 }
-                self.members_of(type_name).map(|members| {
-                    let bindings = members.bindings(args);
+                let members = self.members_of(type_name);
+                let mut bindings = members
+                    .as_ref()
+                    .map(|m| m.bindings(args))
+                    .unwrap_or_default();
+                self.impl_bindings(&base_ty, &mut bindings);
+                members.map(|members| {
                     (
                         members
                             .fields
@@ -877,15 +801,7 @@ impl<'a> Checker<'a> {
                     "all" => Ty::Unknown,
                     "rev" => Ty::Domain(domain.clone()),
                     "mask" => Ty::Fn {
-                        params: vec![crate::ty::Param {
-                            name: "vs".into(),
-                            ty: Ty::Unknown,
-                            mutable: false,
-                            has_default: false,
-                            named_only: false,
-                            variadic: false,
-                            lazy: false,
-                        }],
+                        params: vec![crate::Param::new("vs", Ty::Unknown)],
                         ret: Box::new(Ty::Array {
                             index: vec![Ty::Pos(domain.clone())],
                             elem: Box::new(Ty::Bool),
@@ -903,64 +819,30 @@ impl<'a> Checker<'a> {
                         Ty::Pos(domain.clone()),
                     ])),
                     "after" | "before" => Ty::Fn {
-                        params: vec![crate::ty::Param {
-                            name: "pos".into(),
-                            ty: Ty::Pos(domain.clone()),
-                            mutable: false,
-                            has_default: false,
-                            named_only: false,
-                            variadic: false,
-                            lazy: false,
-                        }],
+                        params: vec![crate::Param::new("pos", Ty::Pos(domain.clone()))],
                         ret: Box::new(range_ty(Ty::Pos(domain.clone()))),
                     },
                     "partition" => Ty::Fn {
-                        params: vec![crate::ty::Param {
-                            name: "keep".into(),
-                            ty: Ty::Fn {
-                                params: vec![crate::ty::Param {
-                                    name: "".into(),
-                                    ty: Ty::Pos(domain.clone()),
-                                    mutable: false,
-                                    has_default: false,
-                                    named_only: false,
-                                    variadic: false,
-                                    lazy: false,
-                                }],
+                        params: vec![crate::Param::new(
+                            "keep",
+                            Ty::Fn {
+                                params: vec![crate::Param::new("", Ty::Pos(domain.clone()))],
                                 ret: Box::new(Ty::Bool),
                             },
-                            mutable: false,
-                            has_default: false,
-                            named_only: false,
-                            variadic: false,
-                            lazy: false,
-                        }],
+                        )],
                         ret: Box::new(Ty::Tuple(vec![
                             Ty::list(Ty::Pos(domain.clone())),
                             Ty::list(Ty::Pos(domain.clone())),
                         ])),
                     },
                     "filter" => Ty::Fn {
-                        params: vec![crate::ty::Param {
-                            name: "pred".into(),
-                            ty: Ty::Fn {
-                                params: vec![crate::ty::Param {
-                                    name: "".into(),
-                                    ty: Ty::Pos(domain.clone()),
-                                    mutable: false,
-                                    has_default: false,
-                                    named_only: false,
-                                    variadic: false,
-                                    lazy: false,
-                                }],
+                        params: vec![crate::Param::new(
+                            "pred",
+                            Ty::Fn {
+                                params: vec![crate::Param::new("", Ty::Pos(domain.clone()))],
                                 ret: Box::new(Ty::Bool),
                             },
-                            mutable: false,
-                            has_default: false,
-                            named_only: false,
-                            variadic: false,
-                            lazy: false,
-                        }],
+                        )],
                         ret: Box::new(Ty::list(Ty::Pos(domain.clone()))),
                     },
                     "sort" => Ty::Unknown,
@@ -1115,6 +997,14 @@ impl<'a> Checker<'a> {
                         Ty::Fn { params, ret } if !self.in_call_callee && params.is_empty() => *ret,
                         other => other,
                     }
+                }
+                // `v.push(x)` on a slice is reported once, with its fix, as a length change.
+                None if matches!(&expr.kind, ExprKind::Field { base, .. }
+                    if self.view_kind(base) == Some("slice"))
+                    && super::super::known::LENGTH_CHANGING_MUTATORS
+                        .contains(&name.text.as_str()) =>
+                {
+                    return Ty::Error;
                 }
                 None => {
                     self.unknown_member(name, &base_ty, &field_names, &methods);

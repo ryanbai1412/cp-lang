@@ -1130,24 +1130,13 @@ impl Checker<'_> {}
 impl Checker<'_> {}
 
 fn range_ty(of: Ty) -> Ty {
-    Ty::Named {
-        name: "Range".into(),
-        args: vec![of],
-    }
+    Ty::named1("Range", of)
 }
 
 /// `fn(i: Int) -> ret`: a domain's member from an ordinal or label.
 fn int_fn(ret: Ty) -> Ty {
     Ty::Fn {
-        params: vec![crate::ty::Param {
-            name: "i".into(),
-            ty: Ty::Int,
-            mutable: false,
-            has_default: false,
-            named_only: false,
-            variadic: false,
-            lazy: false,
-        }],
+        params: vec![crate::Param::new("i", Ty::Int)],
         ret: Box::new(ret),
     }
 }

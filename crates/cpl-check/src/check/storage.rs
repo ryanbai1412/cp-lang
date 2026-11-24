@@ -20,7 +20,7 @@ impl Checker<'_> {
         };
         let base: &Expr = base;
         let base_ty = self.infer_quietly(base);
-        if !matches!(&base_ty, Ty::Named { name, .. } if name == "Range") {
+        if !base_ty.is_named("Range") {
             return;
         }
         let base = show(base);

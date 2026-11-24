@@ -50,11 +50,10 @@ impl<'a> Checker<'a> {
             return None;
         }
         let (part, one) = if is_part(lhs) { (lhs, rhs) } else { (rhs, lhs) };
-        let (part_ty, one_ty) = (self.infer(part), self.infer(one));
+        let part_ty = self.infer(part);
+        let (part_ty, one_ty) = (self.as_row(&part_ty), self.infer(one));
         let cell = self.element_ty(&part_ty);
-        let row = |ty: &Ty| {
-            matches!(ty, Ty::Array { .. }) || matches!(ty, Ty::Named { name, .. } if name == "List")
-        };
+        let row = |ty: &Ty| matches!(ty, Ty::Array { .. }) || ty.is_named("List");
         if part_ty == Ty::Error || one_ty == Ty::Error {
             return Some(Ty::Error);
         }
@@ -96,14 +95,14 @@ impl<'a> Checker<'a> {
         // `a[l..r] max= x`, `g[r, ..] min= x`: one value against every cell
         // of the part.
         let part = matches!(&target.kind, ExprKind::Index { indices, .. } if indices.iter().any(|i| matches!(i.kind, ExprKind::Range { .. })));
+        let target_ty = &self.as_row(target_ty);
         let cell = match target_ty {
             Ty::Array { elem, .. } => Some(&**elem),
-            Ty::Named { name, args } if name == "List" && args.len() == 1 => Some(&args[0]),
+            t if let Some(e) = t.named_arg("List") => Some(e),
             _ => None,
         };
         if let (true, Some(cell)) = (part, cell) {
-            let row = matches!(value_ty, Ty::Array { .. })
-                || matches!(value_ty, Ty::Named { name, .. } if name == "List");
+            let row = matches!(value_ty, Ty::Array { .. }) || value_ty.is_named("List");
             if !row && !value_ty.is_vague() && self.fits(value_ty, cell) {
                 return;
             }
@@ -114,9 +113,7 @@ impl<'a> Checker<'a> {
                 Ty::Array { index, elem } if index.len() == 1 || Self::part_of_grid(value) => {
                     Some((**elem).clone())
                 }
-                Ty::Named { name, args } if name == "List" && args.len() == 1 => {
-                    Some(args[0].clone())
-                }
+                t if let Some(e) = t.named_arg("List") => Some(e.clone()),
                 other if other.is_vague() || *other == Ty::Error => return,
                 _ => None,
             };

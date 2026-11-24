@@ -28,15 +28,7 @@ impl Checker<'_> {
             _ => Ty::Int,
         };
         Some(Ty::Fn {
-            params: vec![crate::Param {
-                name: "i".into(),
-                ty: key,
-                mutable: false,
-                has_default: false,
-                named_only: false,
-                variadic: false,
-                lazy: false,
-            }],
+            params: vec![crate::Param::new("i", key)],
             ret: Box::new(ret),
         })
     }

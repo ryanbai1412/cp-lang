@@ -23,7 +23,7 @@ impl Checker<'_> {
             return None;
         }
         let base_ty = self.infer_quietly(base);
-        if !matches!(base_ty.seq_elem()?, Ty::Named { name, .. } if name == "List") {
+        if !base_ty.seq_elem()?.is_named("List") {
             return None;
         }
         self.infer(&u.value);

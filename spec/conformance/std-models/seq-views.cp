@@ -21,7 +21,8 @@
 // model: keyed
 // model: keys
 // model: rekey
-// The std views (filter, map, rev, slices, steps, keyed, rekey) over a List against index
+// model: to_list
+// The std views (filter, map, rev, slices, steps, keyed, rekey, to_list) over a List against index
 // loops: each op draws a short random list and cut points and checks every view's elements,
 // keys and length. Reads `seed n`; prints the first op that differs.
 use std.rand.{Rng}
@@ -58,6 +59,7 @@ for k in 0..n:
     elif a.drop_last(c).collect() != [a[j] for j in 0..len - m]: why = "drop_last"
     elif s.len != hi - lo or s.is_empty != (hi == lo) or (lo < hi and s.keys != lo..hi): why = "slice shape"
     elif s.items.collect() != [(j, a[j]) for j in lo..hi] or s.collect() != [a[j] for j in lo..hi]: why = "slice items"
+    elif s.to_list() != [a[j] for j in lo..hi] or s.rev.to_list() != [a[hi - 1 - j] for j in 0..hi - lo]: why = "to_list"
     elif i < len and a.nth(i) != a[i]: why = "nth"
     elif i < hi - lo and (s.nth(i) != a[lo + i] or s.rebase.nth(i) != a[lo + i]): why = "slice nth/rebase"
     elif a.step(st).len != (len + st - 1) / st or a.step(st).is_empty != (len == 0): why = "step len"

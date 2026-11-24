@@ -631,6 +631,18 @@ pub enum DimSpec {
     IntFrom(i64, Box<Expr>),
 }
 
+impl Dim {
+    /// The type of one index along this dimension.
+    pub fn index_ty(self) -> Ty {
+        match self {
+            Dim::Pos(d) => Ty::Pos(d),
+            Dim::Bound(d) => Ty::Bound(d),
+            Dim::Enum(e) => Ty::Enum(e),
+            Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
+        }
+    }
+}
+
 impl DimSpec {
     pub fn dim(&self) -> Dim {
         match self {
