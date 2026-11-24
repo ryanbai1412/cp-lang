@@ -5,4 +5,4 @@ struct Sparse<T>:
     _xs: List<T>
     pub fn get(self, i: Int) -> ?T = _xs.get(i)
 let s = Sparse([3])
-print(s[0])
+print(s[0])  // <- here
