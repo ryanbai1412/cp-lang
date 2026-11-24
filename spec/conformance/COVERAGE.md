@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3537 (3494 passing). Rules: 617.
+Cases: 3537 (3524 passing). Rules: 617.
 
 ## Summary per chapter
 
@@ -985,8 +985,8 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0609 A `@cache` field written outside its type: 1 case(s)
 - L0610 A `mut` parameter the fn never changes: **no case**
 - R0001 Runtime trap: 12 case(s)
-- R0101 Index out of range: 36 case(s)
-- R0102 Value outside a domain: 6 case(s)
+- R0101 Index out of range: 35 case(s)
+- R0102 Value outside a domain: 7 case(s)
 - R0201 Range store out of range: 11 case(s)
 - R0202 Integer overflow: 48 case(s)
 - R0203 Division by zero: 4 case(s)
