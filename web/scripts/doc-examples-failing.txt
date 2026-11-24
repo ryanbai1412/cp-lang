@@ -2,9 +2,4 @@
 # Written by web/scripts/gen-ref.mjs's check; it fails when a line is missing or runs again.
 pair.symmetric: `domain V = 0..3; let d: [Pair<V>]Int = [5, 6, 7]; let m = d.symmetric(diag: 0); m[2, 1] == 7 and m[0, 2] == 6 and m[1, 1] == 0`
 segtree.SegTree.new: `var s = SegTree<Int, Int>(+, over: 0..1_000_000_000); s.set(999_999_999, 4); s.all == 4`
-seq.Filtered.src: `let a = [1, 2]; a.filter(x => x > 1).src == a`
 seq.Mapped.src: `let a = [1, 2]; a.map(x => x * 2).src == a`
-seq.Items.src: `let a = [1, 2]; a.items.src == a`
-seq.keyed: `"ab".keyed().items.collect() == [(0, 'a'), (1, 'b')]`
-tree.Rooted.up_arc: `domain V = 0..3; let es: [0..2](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2)]; let t = Rooted(Graph.undirected(es), root: 0); t.up_arc(2)!.to == 2 and t.up_arc(0) == None`
-tree.Rooted.child_arcs: `domain V = 0..3; let es: [0..2](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2)]; let t = Rooted(Graph.undirected(es), root: 0); t.child_arcs(1).map(a => a.to).collect() == [2]`
