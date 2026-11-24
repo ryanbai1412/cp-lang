@@ -328,6 +328,214 @@
    "n": 16384,
    "ok": true
   },
+  "bench/scaling/automata.cp::strings.KmpAutomaton.find_all": {
+   "cost": "\\lvert \\mathit{text} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.KmpAutomaton.find_all",
+   "measured": 6.92,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/automata.cp::strings.KmpAutomaton.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.KmpAutomaton.len",
+   "measured": 1.16,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/automata.cp::strings.KmpAutomaton.link": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.KmpAutomaton.link",
+   "measured": 1.06,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/automata.cp::strings.KmpAutomaton.new": {
+   "cost": "\\lvert \\mathit{pat} \\rvert \\cdot \\lvert A \\rvert",
+   "documented": 4.0,
+   "fn": "strings.KmpAutomaton.new",
+   "measured": 5.24,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/automata.cp::strings.KmpAutomaton.step": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.KmpAutomaton.step",
+   "measured": 1.57,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/automata.cp::strings.SuffixAutomaton.add_word": {
+   "cost": "\\lvert \\mathit{word} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.SuffixAutomaton.add_word",
+   "measured": 4.26,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/automata.cp::strings.SuffixAutomaton.contains": {
+   "cost": "\\lvert \\mathit{word} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.SuffixAutomaton.contains",
+   "measured": 4.63,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/automata.cp::strings.SuffixAutomaton.distinct": {
+   "cost": "\\mathit{states}",
+   "documented": 4.0,
+   "fn": "strings.SuffixAutomaton.distinct",
+   "measured": 3.87,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/automata.cp::strings.SuffixAutomaton.endpos_tree": {
+   "cost": "\\mathit{states}",
+   "documented": 4.0,
+   "fn": "strings.SuffixAutomaton.endpos_tree",
+   "measured": 5.61,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/automata.cp::strings.SuffixAutomaton.find": {
+   "cost": "\\lvert \\mathit{word} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.SuffixAutomaton.find",
+   "measured": 5.28,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/automata.cp::strings.SuffixAutomaton.first_pos": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.SuffixAutomaton.first_pos",
+   "measured": 1.15,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/automata.cp::strings.SuffixAutomaton.kth_substring": {
+   "cost": "\\mathit{states} \\cdot \\lvert A \\rvert",
+   "documented": 4.0,
+   "fn": "strings.SuffixAutomaton.kth_substring",
+   "measured": 5.19,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/automata.cp::strings.SuffixAutomaton.lcs": {
+   "cost": "\\lvert \\mathit{other} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.SuffixAutomaton.lcs",
+   "measured": 4.94,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/automata.cp::strings.SuffixAutomaton.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.SuffixAutomaton.len",
+   "measured": 1.11,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/automata.cp::strings.SuffixAutomaton.link": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.SuffixAutomaton.link",
+   "measured": 1.48,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/automata.cp::strings.SuffixAutomaton.longest": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.SuffixAutomaton.longest",
+   "measured": 1.32,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/automata.cp::strings.SuffixAutomaton.new": {
+   "cost": "\\lvert A \\rvert",
+   "documented": 1.0,
+   "fn": "strings.SuffixAutomaton.new",
+   "measured": 1.67,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/automata.cp::strings.SuffixAutomaton.occ_counts": {
+   "cost": "\\mathit{states}",
+   "documented": 4.0,
+   "fn": "strings.SuffixAutomaton.occ_counts",
+   "measured": 4.87,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/automata.cp::strings.SuffixAutomaton.of": {
+   "cost": "\\lvert s \\rvert \\cdot \\lvert A \\rvert",
+   "documented": 4.0,
+   "fn": "strings.SuffixAutomaton.of",
+   "measured": 4.65,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/automata.cp::strings.SuffixAutomaton.push": {
+   "cost": "\\lvert A \\rvert",
+   "documented": 1.0,
+   "fn": "strings.SuffixAutomaton.push",
+   "measured": 1.3,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/automata.cp::strings.SuffixAutomaton.reset": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.SuffixAutomaton.reset",
+   "measured": 1.02,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/automata.cp::strings.SuffixAutomaton.root": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.SuffixAutomaton.root",
+   "measured": 1.09,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/automata.cp::strings.SuffixAutomaton.shortest": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.SuffixAutomaton.shortest",
+   "measured": 1.05,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/automata.cp::strings.SuffixAutomaton.states": {
+   "cost": "\\mathit{states}",
+   "documented": 4.0,
+   "fn": "strings.SuffixAutomaton.states",
+   "measured": 5.66,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/automata.cp::strings.SuffixAutomaton.step": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.SuffixAutomaton.step",
+   "measured": 1.67,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/automata.cp::strings.SuffixAutomaton.topo_order": {
+   "cost": "\\mathit{states}",
+   "documented": 4.0,
+   "fn": "strings.SuffixAutomaton.topo_order",
+   "measured": 4.32,
+   "n": 512,
+   "ok": true
+  },
   "bench/scaling/bigint.cp::math.BigInt.abs": {
    "cost": "n",
    "documented": 4.0,
@@ -5424,6 +5632,198 @@
    "n": 16384,
    "ok": true
   },
+  "bench/scaling/palindromes.cp::strings.Palindromes.count": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "strings.Palindromes.count",
+   "measured": 3.82,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/palindromes.cp::strings.Palindromes.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.Palindromes.is_empty",
+   "measured": 0.89,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/palindromes.cp::strings.Palindromes.is_palindrome": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.Palindromes.is_palindrome",
+   "measured": 0.79,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/palindromes.cp::strings.Palindromes.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.Palindromes.len",
+   "measured": 0.86,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/palindromes.cp::strings.Palindromes.longest": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "strings.Palindromes.longest",
+   "measured": 3.85,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/palindromes.cp::strings.Palindromes.longest_at": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.Palindromes.longest_at",
+   "measured": 0.95,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/palindromes.cp::strings.Palindromes.longest_between": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.Palindromes.longest_between",
+   "measured": 0.9,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/palindromes.cp::strings.PalindromicTree.at": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.PalindromicTree.at",
+   "measured": 1.06,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/palindromes.cp::strings.PalindromicTree.contains": {
+   "cost": "\\lvert \\mathit{word} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.PalindromicTree.contains",
+   "measured": 3.73,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/palindromes.cp::strings.PalindromicTree.diff": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.PalindromicTree.diff",
+   "measured": 1.14,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/palindromes.cp::strings.PalindromicTree.distinct": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.PalindromicTree.distinct",
+   "measured": 0.88,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/palindromes.cp::strings.PalindromicTree.last_state": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.PalindromicTree.last_state",
+   "measured": 0.99,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/palindromes.cp::strings.PalindromicTree.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.PalindromicTree.len",
+   "measured": 1.07,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/palindromes.cp::strings.PalindromicTree.link": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.PalindromicTree.link",
+   "measured": 0.95,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/palindromes.cp::strings.PalindromicTree.min_palindrome_partition": {
+   "cost": "n \\log n",
+   "documented": 4.89,
+   "fn": "strings.PalindromicTree.min_palindrome_partition",
+   "measured": 3.67,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/palindromes.cp::strings.PalindromicTree.new": {
+   "cost": "\\lvert A \\rvert",
+   "documented": 1.0,
+   "fn": "strings.PalindromicTree.new",
+   "measured": 0.89,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/palindromes.cp::strings.PalindromicTree.occ_counts": {
+   "cost": "\\mathit{states}",
+   "documented": 4.0,
+   "fn": "strings.PalindromicTree.occ_counts",
+   "measured": 3.66,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/palindromes.cp::strings.PalindromicTree.of": {
+   "cost": "\\lvert s \\rvert \\cdot \\lvert A \\rvert",
+   "documented": 4.0,
+   "fn": "strings.PalindromicTree.of",
+   "measured": 3.37,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/palindromes.cp::strings.PalindromicTree.pal_len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.PalindromicTree.pal_len",
+   "measured": 1.0,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/palindromes.cp::strings.PalindromicTree.pop": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.PalindromicTree.pop",
+   "measured": 0.78,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/palindromes.cp::strings.PalindromicTree.push": {
+   "cost": "\\lvert A \\rvert",
+   "documented": 1.0,
+   "fn": "strings.PalindromicTree.push",
+   "measured": 0.93,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/palindromes.cp::strings.PalindromicTree.push_front": {
+   "cost": "\\lvert A \\rvert",
+   "documented": 1.0,
+   "fn": "strings.PalindromicTree.push_front",
+   "measured": 0.88,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/palindromes.cp::strings.PalindromicTree.series_link": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.PalindromicTree.series_link",
+   "measured": 0.8,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/palindromes.cp::strings.PalindromicTree.step": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.PalindromicTree.step",
+   "measured": 1.15,
+   "n": 512,
+   "ok": true
+  },
   "bench/scaling/poly.cp::poly.bell_table": {
    "cost": "n \\log n",
    "documented": 4.73,
@@ -6984,6 +7384,638 @@
    "n": 256,
    "ok": true
   },
+  "bench/scaling/str_free.cp::strings.borders": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "strings.borders",
+   "measured": 4.91,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.common_prefix_len": {
+   "cost": "\\min(\\lvert \\mathit{self} \\rvert, \\lvert \\mathit{other} \\rvert)",
+   "documented": 4.0,
+   "fn": "strings.common_prefix_len",
+   "measured": 4.35,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.common_suffix_len": {
+   "cost": "\\min(\\lvert \\mathit{self} \\rvert, \\lvert \\mathit{other} \\rvert)",
+   "documented": 4.0,
+   "fn": "strings.common_suffix_len",
+   "measured": 4.83,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.digit": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.digit",
+   "measured": 0.86,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.ends_with": {
+   "cost": "\\min(\\lvert \\mathit{self} \\rvert, \\lvert \\mathit{pat} \\rvert)",
+   "documented": 4.0,
+   "fn": "strings.ends_with",
+   "measured": 4.29,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.find_all": {
+   "cost": "\\lvert \\mathit{self} \\rvert + \\lvert \\mathit{pat} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.find_all",
+   "measured": 4.53,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.find_all_wildcard": {
+   "cost": "\\lvert \\mathit{self} \\rvert \\cdot \\lvert \\mathit{pat} \\rvert",
+   "documented": 16.0,
+   "fn": "strings.find_all_wildcard",
+   "measured": 13.54,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.is_alnum": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.is_alnum",
+   "measured": 0.96,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.is_alpha": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.is_alpha",
+   "measured": 0.75,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.is_digit": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.is_digit",
+   "measured": 1.0,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.is_lower": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.is_lower",
+   "measured": 0.8,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.is_palindrome": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "strings.is_palindrome",
+   "measured": 3.6,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.is_space": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.is_space",
+   "measured": 0.94,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.is_upper": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.is_upper",
+   "measured": 0.96,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.join": {
+   "cost": "\\lvert \\mathit{output} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.join",
+   "measured": 3.97,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.lcs_all": {
+   "cost": "\\sum_w \\lvert w \\rvert \\cdot \\log n",
+   "documented": 4.89,
+   "fn": "strings.lcs_all",
+   "measured": 3.13,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.lower": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.lower",
+   "measured": 0.92,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.lyndon_factorization": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "strings.lyndon_factorization",
+   "measured": 3.82,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.lyndon_runs": {
+   "cost": "n \\log n",
+   "documented": 4.89,
+   "fn": "strings.lyndon_runs",
+   "measured": 3.63,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.manacher": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "strings.manacher",
+   "measured": 4.51,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.max_rotation": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "strings.max_rotation",
+   "measured": 4.33,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.min_rotation": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "strings.min_rotation",
+   "measured": 4.99,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.overlap": {
+   "cost": "\\lvert a \\rvert + \\lvert b \\rvert",
+   "documented": 4.0,
+   "fn": "strings.overlap",
+   "measured": 4.45,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.parse": {
+   "cost": "\\lvert \\mathit{self} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.parse",
+   "measured": 4.78,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.parse_int": {
+   "cost": "\\lvert \\mathit{self} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.parse_int",
+   "measured": 3.86,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.period": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "strings.period",
+   "measured": 5.43,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.prefix_function": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "strings.prefix_function",
+   "measured": 3.96,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.prefix_matches": {
+   "cost": "\\lvert \\mathit{self} \\rvert + \\lvert \\mathit{pat} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.prefix_matches",
+   "measured": 4.38,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.repeat": {
+   "cost": "\\lvert \\mathit{self} \\rvert \\cdot n",
+   "documented": 4.0,
+   "fn": "strings.repeat",
+   "measured": 4.5,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.replace": {
+   "cost": "\\lvert \\mathit{self} \\rvert + \\lvert \\mathit{output} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.replace",
+   "measured": 3.92,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.rsearch": {
+   "cost": "\\lvert \\mathit{self} \\rvert + \\lvert p \\rvert",
+   "documented": 4.0,
+   "fn": "strings.rsearch",
+   "measured": 5.93,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.search": {
+   "cost": "\\lvert \\mathit{self} \\rvert + \\lvert p \\rvert",
+   "documented": 4.0,
+   "fn": "strings.search",
+   "measured": 5.1,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.shift_and": {
+   "cost": "\\lvert \\mathit{self} \\rvert + \\lvert \\mathit{pat} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.shift_and",
+   "measured": 4.37,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.split_once": {
+   "cost": "\\lvert \\mathit{self} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.split_once",
+   "measured": 4.23,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.split_whitespace": {
+   "cost": "\\lvert \\mathit{self} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.split_whitespace",
+   "measured": 2.03,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.starts_with": {
+   "cost": "\\min(\\lvert \\mathit{self} \\rvert - \\mathit{at}, \\lvert \\mathit{pat} \\rvert)",
+   "documented": 4.01,
+   "fn": "strings.starts_with",
+   "measured": 4.51,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.suffix_array": {
+   "cost": "n \\log n",
+   "documented": 4.89,
+   "fn": "strings.suffix_array",
+   "measured": 3.74,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.suffix_tree_edges": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "strings.suffix_tree_edges",
+   "measured": 3.97,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.to_lower": {
+   "cost": "\\lvert \\mathit{self} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.to_lower",
+   "measured": 5.3,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.to_upper": {
+   "cost": "\\lvert \\mathit{self} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.to_upper",
+   "measured": 2.39,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.trim": {
+   "cost": "\\lvert \\mathit{self} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.trim",
+   "measured": 3.62,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.trim_end": {
+   "cost": "\\lvert \\mathit{self} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.trim_end",
+   "measured": 4.42,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.trim_start": {
+   "cost": "\\lvert \\mathit{self} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.trim_start",
+   "measured": 4.31,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.upper": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.upper",
+   "measured": 1.22,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_free.cp::strings.z_function": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "strings.z_function",
+   "measured": 3.41,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.DynamicHash.all": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.DynamicHash.all",
+   "measured": 1.01,
+   "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.DynamicHash.get": {
+   "cost": "\\log n",
+   "documented": 1.25,
+   "fn": "strings.DynamicHash.get",
+   "measured": 1.23,
+   "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.DynamicHash.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.DynamicHash.is_empty",
+   "measured": 1.01,
+   "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.DynamicHash.is_palindrome": {
+   "cost": "\\log n",
+   "documented": 1.25,
+   "fn": "strings.DynamicHash.is_palindrome",
+   "measured": 1.23,
+   "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.DynamicHash.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.DynamicHash.len",
+   "measured": 0.96,
+   "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.DynamicHash.new": {
+   "cost": "n \\log n",
+   "documented": 5.0,
+   "fn": "strings.DynamicHash.new",
+   "measured": 4.52,
+   "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.DynamicHash.rev_get": {
+   "cost": "\\log n",
+   "documented": 1.25,
+   "fn": "strings.DynamicHash.rev_get",
+   "measured": 1.23,
+   "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.DynamicHash.set": {
+   "cost": "\\log n",
+   "documented": 1.25,
+   "fn": "strings.DynamicHash.set",
+   "measured": 1.17,
+   "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.Hash2D.new": {
+   "cost": "\\lvert R \\rvert \\cdot \\lvert C \\rvert",
+   "documented": 4.0,
+   "fn": "strings.Hash2D.new",
+   "measured": 3.73,
+   "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.Hash2D.rect": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.Hash2D.rect",
+   "measured": 1.03,
+   "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.HashVal.hash_token": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.HashVal.hash_token",
+   "measured": 1.13,
+   "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.RollingHash.all": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.RollingHash.all",
+   "measured": 1.12,
+   "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.RollingHash.combine": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.RollingHash.combine",
+   "measured": 1.02,
+   "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.RollingHash.concat": {
+   "cost": "\\lvert \\mathit{parts} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.RollingHash.concat",
+   "measured": 3.52,
+   "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.RollingHash.get": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.RollingHash.get",
+   "measured": 1.13,
+   "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.RollingHash.hash_of": {
+   "cost": "\\lvert \\mathit{seq} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.RollingHash.hash_of",
+   "measured": 3.98,
+   "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.RollingHash.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.RollingHash.is_empty",
+   "measured": 1.03,
+   "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.RollingHash.lcp": {
+   "cost": "\\log n",
+   "documented": 1.25,
+   "fn": "strings.RollingHash.lcp",
+   "measured": 1.11,
+   "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.RollingHash.lcs": {
+   "cost": "\\log n",
+   "documented": 1.25,
+   "fn": "strings.RollingHash.lcs",
+   "measured": 1.02,
+   "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.RollingHash.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.RollingHash.len",
+   "measured": 1.02,
+   "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.RollingHash.new": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "strings.RollingHash.new",
+   "measured": 3.95,
+   "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.RollingHash.pop": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.RollingHash.pop",
+   "measured": 1.0,
+   "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.RollingHash.push": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.RollingHash.push",
+   "measured": 0.91,
+   "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.RollingHash.slice": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.RollingHash.slice",
+   "measured": 1.07,
+   "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.RollingHash61.all": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.RollingHash61.all",
+   "measured": 1.04,
+   "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.RollingHash61.combine": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.RollingHash61.combine",
+   "measured": 1.01,
+   "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.RollingHash61.get": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.RollingHash61.get",
+   "measured": 1.04,
+   "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.RollingHash61.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.RollingHash61.is_empty",
+   "measured": 1.01,
+   "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.RollingHash61.lcp": {
+   "cost": "\\log n",
+   "documented": 1.25,
+   "fn": "strings.RollingHash61.lcp",
+   "measured": 1.18,
+   "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.RollingHash61.lcs": {
+   "cost": "\\log n",
+   "documented": 1.25,
+   "fn": "strings.RollingHash61.lcs",
+   "measured": 1.17,
+   "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.RollingHash61.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.RollingHash61.len",
+   "measured": 1.0,
+   "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.RollingHash61.new": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "strings.RollingHash61.new",
+   "measured": 3.58,
+   "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.RollingHash61.pop": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.RollingHash61.pop",
+   "measured": 1.0,
+   "n": 256,
+   "ok": true
+  },
+  "bench/scaling/str_hash.cp::strings.RollingHash61.push": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.RollingHash61.push",
+   "measured": 0.98,
+   "n": 256,
+   "ok": true
+  },
   "bench/scaling/subproduct_tree.cp::poly.SubproductTree.eval": {
    "cost": "(\\deg f + m) \\log^2 m",
    "documented": 5.59,
@@ -7142,6 +8174,110 @@
    "fn": "subset.Subset.without",
    "measured": 0.98,
    "n": 98304,
+   "ok": true
+  },
+  "bench/scaling/suffix_array.cp::strings.SuffixArray.compare": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.SuffixArray.compare",
+   "measured": 1.14,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/suffix_array.cp::strings.SuffixArray.count": {
+   "cost": "\\lvert \\mathit{pat} \\rvert \\log n",
+   "documented": 4.89,
+   "fn": "strings.SuffixArray.count",
+   "measured": 8.21,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/suffix_array.cp::strings.SuffixArray.distinct": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.SuffixArray.distinct",
+   "measured": 1.11,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/suffix_array.cp::strings.SuffixArray.find_all": {
+   "cost": "\\lvert \\mathit{pat} \\rvert \\log n + \\mathit{occurrences}",
+   "documented": 4.8,
+   "fn": "strings.SuffixArray.find_all",
+   "measured": 5.87,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/suffix_array.cp::strings.SuffixArray.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.SuffixArray.is_empty",
+   "measured": 1.05,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/suffix_array.cp::strings.SuffixArray.kth_distinct": {
+   "cost": "\\log n",
+   "documented": 1.22,
+   "fn": "strings.SuffixArray.kth_distinct",
+   "measured": 1.34,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/suffix_array.cp::strings.SuffixArray.lcp_between": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.SuffixArray.lcp_between",
+   "measured": 1.43,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/suffix_array.cp::strings.SuffixArray.lcp_of_ranks": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.SuffixArray.lcp_of_ranks",
+   "measured": 1.3,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/suffix_array.cp::strings.SuffixArray.lcp_range": {
+   "cost": "\\log n",
+   "documented": 1.22,
+   "fn": "strings.SuffixArray.lcp_range",
+   "measured": 1.64,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/suffix_array.cp::strings.SuffixArray.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.SuffixArray.len",
+   "measured": 1.5,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/suffix_array.cp::strings.SuffixArray.new": {
+   "cost": "n \\log n",
+   "documented": 4.89,
+   "fn": "strings.SuffixArray.new",
+   "measured": 4.24,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/suffix_array.cp::strings.SuffixArray.rank_range": {
+   "cost": "\\lvert \\mathit{pat} \\rvert \\log n",
+   "documented": 4.89,
+   "fn": "strings.SuffixArray.rank_range",
+   "measured": 7.27,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/suffix_array.cp::strings.SuffixArray.split": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.SuffixArray.split",
+   "measured": 1.24,
+   "n": 512,
    "ok": true
   },
   "bench/scaling/tree_misc.cp::tree.Centroids.ancestors": {
@@ -7350,6 +8486,278 @@
    "fn": "tree.spanning_tree",
    "measured": 4.17,
    "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.AhoCorasick.counts": {
+   "cost": "\\lvert \\mathit{text} \\rvert + \\mathit{states}",
+   "documented": 4.0,
+   "fn": "strings.AhoCorasick.counts",
+   "measured": 4.68,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.AhoCorasick.exit_link": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.AhoCorasick.exit_link",
+   "measured": 1.44,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.AhoCorasick.fail_order": {
+   "cost": "\\mathit{states}",
+   "documented": 4.0,
+   "fn": "strings.AhoCorasick.fail_order",
+   "measured": 3.12,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.AhoCorasick.find_all": {
+   "cost": "\\lvert \\mathit{text} \\rvert + \\mathit{output}",
+   "documented": 4.0,
+   "fn": "strings.AhoCorasick.find_all",
+   "measured": 3.86,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.AhoCorasick.hit": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.AhoCorasick.hit",
+   "measured": 1.44,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.AhoCorasick.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.AhoCorasick.len",
+   "measured": 0.85,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.AhoCorasick.link": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.AhoCorasick.link",
+   "measured": 0.9,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.AhoCorasick.new": {
+   "cost": "\\sum_p \\lvert p \\rvert \\cdot \\lvert A \\rvert",
+   "documented": 4.0,
+   "fn": "strings.AhoCorasick.new",
+   "measured": 4.0,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.AhoCorasick.pattern_state": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.AhoCorasick.pattern_state",
+   "measured": 1.3,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.AhoCorasick.root": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.AhoCorasick.root",
+   "measured": 1.06,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.AhoCorasick.step": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.AhoCorasick.step",
+   "measured": 0.73,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.AhoCorasick.words_at": {
+   "cost": "\\mathit{output}",
+   "documented": 4.0,
+   "fn": "strings.AhoCorasick.words_at",
+   "measured": 4.28,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.DynamicAhoCorasick.add": {
+   "cost": "\\lvert \\mathit{pattern} \\rvert \\cdot \\lvert A \\rvert \\cdot \\log n",
+   "documented": 1.22,
+   "fn": "strings.DynamicAhoCorasick.add",
+   "measured": 1.1,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.DynamicAhoCorasick.count_matches": {
+   "cost": "\\lvert \\mathit{text} \\rvert \\cdot \\log n",
+   "documented": 4.89,
+   "fn": "strings.DynamicAhoCorasick.count_matches",
+   "measured": 4.1,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.DynamicAhoCorasick.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.DynamicAhoCorasick.is_empty",
+   "measured": 0.98,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.DynamicAhoCorasick.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.DynamicAhoCorasick.len",
+   "measured": 1.08,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.DynamicAhoCorasick.new": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.DynamicAhoCorasick.new",
+   "measured": 1.04,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.DynamicAhoCorasick.remove": {
+   "cost": "\\lvert \\mathit{pattern} \\rvert \\cdot \\lvert A \\rvert \\cdot \\log n",
+   "documented": 1.22,
+   "fn": "strings.DynamicAhoCorasick.remove",
+   "measured": 1.3,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.Trie.add": {
+   "cost": "\\lvert \\mathit{word} \\rvert \\cdot \\lvert A \\rvert",
+   "documented": 4.0,
+   "fn": "strings.Trie.add",
+   "measured": 5.16,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.Trie.clear": {
+   "cost": "\\lvert A \\rvert",
+   "documented": 1.0,
+   "fn": "strings.Trie.clear",
+   "measured": 1.18,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.Trie.contains": {
+   "cost": "\\lvert \\mathit{word} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.Trie.contains",
+   "measured": 3.79,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.Trie.count": {
+   "cost": "\\lvert \\mathit{word} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.Trie.count",
+   "measured": 4.28,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.Trie.count_less": {
+   "cost": "\\lvert \\mathit{word} \\rvert \\cdot \\lvert A \\rvert",
+   "documented": 4.0,
+   "fn": "strings.Trie.count_less",
+   "measured": 4.96,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.Trie.count_prefix": {
+   "cost": "\\lvert \\mathit{prefix} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.Trie.count_prefix",
+   "measured": 4.08,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.Trie.ends_at": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.Trie.ends_at",
+   "measured": 1.16,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.Trie.find": {
+   "cost": "\\lvert \\mathit{word} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.Trie.find",
+   "measured": 2.98,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.Trie.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.Trie.is_empty",
+   "measured": 1.58,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.Trie.kth": {
+   "cost": "\\mathit{depth} \\cdot \\lvert A \\rvert",
+   "documented": 4.0,
+   "fn": "strings.Trie.kth",
+   "measured": 2.75,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.Trie.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.Trie.len",
+   "measured": 1.0,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.Trie.new": {
+   "cost": "\\lvert A \\rvert",
+   "documented": 1.0,
+   "fn": "strings.Trie.new",
+   "measured": 1.23,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.Trie.pass_at": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.Trie.pass_at",
+   "measured": 1.06,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.Trie.remove": {
+   "cost": "\\lvert \\mathit{word} \\rvert",
+   "documented": 4.0,
+   "fn": "strings.Trie.remove",
+   "measured": 5.57,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.Trie.root": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.Trie.root",
+   "measured": 0.95,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/trie.cp::strings.Trie.step": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "strings.Trie.step",
+   "measured": 1.26,
+   "n": 512,
    "ok": true
   },
   "bench/scaling/window.cp::window.Sweep.move": {
@@ -8900,182 +10308,6 @@
   "spec.poly_degree",
   "spec.recurrence_at",
   "spec.unimodality_break",
-  "strings.AhoCorasick.counts",
-  "strings.AhoCorasick.exit_link",
-  "strings.AhoCorasick.fail_order",
-  "strings.AhoCorasick.find_all",
-  "strings.AhoCorasick.hit",
-  "strings.AhoCorasick.len",
-  "strings.AhoCorasick.link",
-  "strings.AhoCorasick.new",
-  "strings.AhoCorasick.pattern_state",
-  "strings.AhoCorasick.root",
-  "strings.AhoCorasick.step",
-  "strings.AhoCorasick.words_at",
-  "strings.DynamicAhoCorasick.add",
-  "strings.DynamicAhoCorasick.count_matches",
-  "strings.DynamicAhoCorasick.is_empty",
-  "strings.DynamicAhoCorasick.len",
-  "strings.DynamicAhoCorasick.new",
-  "strings.DynamicAhoCorasick.remove",
-  "strings.DynamicHash.all",
-  "strings.DynamicHash.get",
-  "strings.DynamicHash.is_empty",
-  "strings.DynamicHash.is_palindrome",
-  "strings.DynamicHash.len",
-  "strings.DynamicHash.new",
-  "strings.DynamicHash.rev_get",
-  "strings.DynamicHash.set",
-  "strings.Hash2D.new",
-  "strings.Hash2D.rect",
-  "strings.HashVal.hash_token",
-  "strings.KmpAutomaton.find_all",
-  "strings.KmpAutomaton.len",
-  "strings.KmpAutomaton.link",
-  "strings.KmpAutomaton.new",
-  "strings.KmpAutomaton.step",
-  "strings.Palindromes.count",
-  "strings.Palindromes.is_empty",
-  "strings.Palindromes.is_palindrome",
-  "strings.Palindromes.len",
-  "strings.Palindromes.longest",
-  "strings.Palindromes.longest_at",
-  "strings.Palindromes.longest_between",
-  "strings.PalindromicTree.at",
-  "strings.PalindromicTree.contains",
-  "strings.PalindromicTree.diff",
-  "strings.PalindromicTree.distinct",
-  "strings.PalindromicTree.last_state",
-  "strings.PalindromicTree.len",
-  "strings.PalindromicTree.link",
-  "strings.PalindromicTree.min_palindrome_partition",
-  "strings.PalindromicTree.new",
-  "strings.PalindromicTree.occ_counts",
-  "strings.PalindromicTree.of",
-  "strings.PalindromicTree.pal_len",
-  "strings.PalindromicTree.pop",
-  "strings.PalindromicTree.push",
-  "strings.PalindromicTree.push_front",
-  "strings.PalindromicTree.series_link",
-  "strings.PalindromicTree.step",
-  "strings.RollingHash.all",
-  "strings.RollingHash.combine",
-  "strings.RollingHash.concat",
-  "strings.RollingHash.get",
-  "strings.RollingHash.hash_of",
-  "strings.RollingHash.is_empty",
-  "strings.RollingHash.lcp",
-  "strings.RollingHash.lcs",
-  "strings.RollingHash.len",
-  "strings.RollingHash.new",
-  "strings.RollingHash.pop",
-  "strings.RollingHash.push",
-  "strings.RollingHash.slice",
-  "strings.RollingHash61.all",
-  "strings.RollingHash61.combine",
-  "strings.RollingHash61.get",
-  "strings.RollingHash61.is_empty",
-  "strings.RollingHash61.lcp",
-  "strings.RollingHash61.lcs",
-  "strings.RollingHash61.len",
-  "strings.RollingHash61.new",
-  "strings.RollingHash61.pop",
-  "strings.RollingHash61.push",
-  "strings.SuffixArray.compare",
-  "strings.SuffixArray.count",
-  "strings.SuffixArray.distinct",
-  "strings.SuffixArray.find_all",
-  "strings.SuffixArray.is_empty",
-  "strings.SuffixArray.kth_distinct",
-  "strings.SuffixArray.lcp_between",
-  "strings.SuffixArray.lcp_of_ranks",
-  "strings.SuffixArray.lcp_range",
-  "strings.SuffixArray.len",
-  "strings.SuffixArray.new",
-  "strings.SuffixArray.rank_range",
-  "strings.SuffixArray.split",
-  "strings.SuffixAutomaton.add_word",
-  "strings.SuffixAutomaton.contains",
-  "strings.SuffixAutomaton.distinct",
-  "strings.SuffixAutomaton.endpos_tree",
-  "strings.SuffixAutomaton.find",
-  "strings.SuffixAutomaton.first_pos",
-  "strings.SuffixAutomaton.kth_substring",
-  "strings.SuffixAutomaton.lcs",
-  "strings.SuffixAutomaton.len",
-  "strings.SuffixAutomaton.link",
-  "strings.SuffixAutomaton.longest",
-  "strings.SuffixAutomaton.new",
-  "strings.SuffixAutomaton.occ_counts",
-  "strings.SuffixAutomaton.of",
-  "strings.SuffixAutomaton.push",
-  "strings.SuffixAutomaton.reset",
-  "strings.SuffixAutomaton.root",
-  "strings.SuffixAutomaton.shortest",
-  "strings.SuffixAutomaton.states",
-  "strings.SuffixAutomaton.step",
-  "strings.SuffixAutomaton.topo_order",
-  "strings.Trie.add",
-  "strings.Trie.clear",
-  "strings.Trie.contains",
-  "strings.Trie.count",
-  "strings.Trie.count_less",
-  "strings.Trie.count_prefix",
-  "strings.Trie.ends_at",
-  "strings.Trie.find",
-  "strings.Trie.is_empty",
-  "strings.Trie.kth",
-  "strings.Trie.len",
-  "strings.Trie.new",
-  "strings.Trie.pass_at",
-  "strings.Trie.remove",
-  "strings.Trie.root",
-  "strings.Trie.step",
-  "strings.borders",
-  "strings.common_prefix_len",
-  "strings.common_suffix_len",
-  "strings.digit",
-  "strings.ends_with",
-  "strings.find_all",
-  "strings.find_all_wildcard",
-  "strings.is_alnum",
-  "strings.is_alpha",
-  "strings.is_digit",
-  "strings.is_lower",
-  "strings.is_palindrome",
-  "strings.is_space",
-  "strings.is_upper",
-  "strings.join",
-  "strings.lcs_all",
-  "strings.lower",
-  "strings.lyndon_factorization",
-  "strings.lyndon_runs",
-  "strings.manacher",
-  "strings.max_rotation",
-  "strings.min_rotation",
-  "strings.overlap",
-  "strings.parse",
-  "strings.parse_int",
-  "strings.period",
-  "strings.prefix_function",
-  "strings.prefix_matches",
-  "strings.repeat",
-  "strings.replace",
-  "strings.rsearch",
-  "strings.search",
-  "strings.shift_and",
-  "strings.split_once",
-  "strings.split_whitespace",
-  "strings.starts_with",
-  "strings.suffix_array",
-  "strings.suffix_tree_edges",
-  "strings.to_lower",
-  "strings.to_upper",
-  "strings.trim",
-  "strings.trim_end",
-  "strings.trim_start",
-  "strings.upper",
-  "strings.z_function",
   "timetree.TimeTree.add_interval",
   "timetree.TimeTree.add_range",
   "timetree.TimeTree.event",

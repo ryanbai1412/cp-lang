@@ -260,7 +260,7 @@ pub fn split_whitespace(self: Str) -> List<Str>:
 /// Each element is written as string interpolation `"{x}"` writes it, so `Str`, `Char` and
 /// numbers all join without a `map`.
 ///
-/// cost: \(O(\text{total output length})\)
+/// cost: \(O(\lvert \mathit{output} \rvert)\)
 /// empty: `", ".join(List<Str>()) == ""`
 /// traps: never
 /// example: `", ".join(["a", "b", "c"]) == "a, b, c"`
@@ -708,11 +708,11 @@ pub struct KmpAutomaton<A>:
             if state == m: yield pos - m
 
 /// The start position of every occurrence of `pat` in `self`, overlapping ones included,
-/// by bit-parallel Shift-And. Faster than `find_all` for short patterns on small alphabets.
+/// the same matches as `find_all`, which it runs (KMP), for code ported from Shift-And.
 ///
 /// The starts are keys of `self`, as for `find_all`.
 ///
-/// cost: \(O(\lvert \mathit{self} \rvert \cdot \mathit{ceil}(\lvert \mathit{pat} \rvert / 64))\)
+/// cost: \(O(\lvert \mathit{self} \rvert + \lvert \mathit{pat} \rvert)\)
 /// empty: `("ab".shift_and("").collect(), "".shift_and("a").collect()) == ([0, 1], [])`
 /// order: increasing start
 /// traps: never
@@ -1054,7 +1054,7 @@ pub struct SuffixArray<T: Ord>:
     /// Elements are compared by `Ord`, so a shorter suffix that is a prefix of a longer one
     /// ranks first.
     ///
-    /// cost: \(O(n)\) for `Str` and small integer alphabets, \(O(n \log n)\) otherwise
+    /// cost: \(O(n \log n)\) time and memory (the LCP sparse table; the suffix sort itself is \(O(n)\) for `Str` and small integer alphabets)
     /// empty: `let s = SuffixArray(""); (s.len, s.sa, s.lcp) == (0, [], [])`
     /// traps: never
     /// example: `SuffixArray("banana").sa == [5, 3, 1, 0, 4, 2]`
@@ -1207,7 +1207,7 @@ pub struct SuffixArray<T: Ord>:
 
     /// The number of distinct non-empty substrings: `n * (n + 1) / 2 - sum(lcp)`.
     ///
-    /// cost: \(O(n)\)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `SuffixArray("banana").distinct() == 15`
     pub fn distinct(self) -> Int = dcum[sa.len]
@@ -1257,7 +1257,7 @@ pub struct SuffixArray<T: Ord>:
 
 /// The suffix array of `s`; the same as `SuffixArray(s)`.
 ///
-/// cost: \(O(n)\) for `Str` and small integer alphabets, \(O(n \log n)\) otherwise
+/// cost: \(O(n \log n)\) time and memory (the LCP sparse table; the suffix sort itself is \(O(n)\) for `Str` and small integer alphabets)
 /// empty: `suffix_array("").sa == []`
 /// traps: never
 /// example: `suffix_array([3, 1, 2]).sa == [1, 2, 0]`
@@ -1848,7 +1848,7 @@ pub struct DynamicHash<D>:
     /// backwards in a segment tree; call it as `DynamicHash(seq)`. Positions are `seq`'s keys
     /// (domain `D`); hashes follow the `RollingHash` scheme and bases.
     ///
-    /// cost: \(O(n)\)
+    /// cost: \(O(n \log n)\)
     /// empty: `DynamicHash("").len == 0`
     /// traps: when a given base is outside `2..M`
     /// example: `let h = DynamicHash("abab"); h.get(0..2) == h.get(2..4)`
@@ -1979,8 +1979,8 @@ fn dh_sum(tree: List<Int>, e: Int, m: Int) -> Int:
 
 // ---- alphabet-domain automata
 
-/// \(O(n \cdot \lvert A \rvert)\) space, \(O(1)\) amortized push. Online suffix automaton over alphabet domain `A`.
-/// \(O(n \cdot \lvert A \rvert)\) flat memory, \(O(n)\) amortized build, \(O(\mathit{states})\) `topo_order` and `occurrences`.
+/// \(O(n \cdot \lvert A \rvert)\) space, \(O(\lvert A \rvert)\) amortized push. Online suffix automaton over alphabet domain `A`.
+/// \(O(n \cdot \lvert A \rvert)\) flat memory, \(O(n \cdot \lvert A \rvert)\) build, \(O(\mathit{states})\) `topo_order` and `occurrences`.
 ///
 /// not a container: an automaton; `len` counts states, which are walked by `step`.
 pub struct SuffixAutomaton<A>:
@@ -1989,7 +1989,7 @@ pub struct SuffixAutomaton<A>:
     links: List<Slot>
     max_len: List<Count>
     first_end: List<Slot>
-    prefix: List<Bool>
+    prefix: List<Count>
     pub last: Count
     letters: List<?A>
 
@@ -2002,7 +2002,7 @@ pub struct SuffixAutomaton<A>:
     pub fn new() -> SuffixAutomaton<A>:
         let k = A.count
         let lts: List<?A> = [None for _ in 0..k]
-        SuffixAutomaton(k, List.filled(k, -1), [-1], [0], [-1], [false], 0, lts)
+        SuffixAutomaton(k, List.filled(k, -1), [-1], [0], [-1], [0], 0, lts)
 
     /// The suffix automaton of `s`: `SuffixAutomaton<A>()` followed by `push` of each element.
     ///
@@ -2010,7 +2010,7 @@ pub struct SuffixAutomaton<A>:
     /// clone if one is needed. For `"abb"` the states are `0` (empty), `1` (`a`), `2` (`ab`),
     /// `3` (`abb`, `bb`) and `4` (`b`, the clone).
     ///
-    /// cost: \(O(\lvert s \rvert \cdot \lvert A \rvert)\) memory, \(O(\lvert s \rvert)\) amortized time
+    /// cost: \(O(\lvert s \rvert \cdot \lvert A \rvert)\) memory, \(O(\lvert s \rvert \cdot \lvert A \rvert)\) time
     /// empty: `SuffixAutomaton<Char>.of("").len == 1`
     /// traps: when an element of `s` is not in `A`
     /// example: `SuffixAutomaton<Char>.of("abb").len == 5`
@@ -2019,13 +2019,13 @@ pub struct SuffixAutomaton<A>:
         for a in s: sam.push(a)
         sam
 
-    fn add_empty_state(mut self, length: Int, is_prefix: Bool) -> Int:
+    fn add_empty_state(mut self, length: Int) -> Int:
         let id = links.len
         for _ in 0..alpha: next.push(-1)
         links.push(-1)
         max_len.push(length)
         first_end.push(length - 1)
-        prefix.push(is_prefix)
+        prefix.push(1)
         id
 
     fn clone_state(mut self, src: Int, length: Int) -> Int:
@@ -2035,18 +2035,33 @@ pub struct SuffixAutomaton<A>:
         links.push(links[src])
         max_len.push(length)
         first_end.push(first_end[src])
-        prefix.push(false)
+        prefix.push(0)
         id
 
     /// Appends the letter `a` to the string the automaton recognises the substrings of.
     ///
-    /// cost: \(O(1)\) amortized (\(O(\lvert A \rvert)\) for a cloned state)
+    /// cost: \(O(\lvert A \rvert)\) amortized (each push makes one or two states of \(\lvert A \rvert\) slots)
     /// traps: never (`a` is an `A`)
     /// example: `var m = SuffixAutomaton<Char>(); m.push('a'); m.push('b'); m.distinct() == 3`
     pub fn push(mut self, a: A):
         let c = a.ord
         letters[c] = Some(a)
-        let cur = self.add_empty_state(max_len[last] + 1, true)
+        unchecked:
+            let have = next[last * alpha + c]
+            if have != -1:
+                if max_len[have] == max_len[last] + 1:
+                    last = have
+                else:
+                    let clone = self.clone_state(have, max_len[last] + 1)
+                    links[have] = clone
+                    var p = last
+                    while p != -1 and next[p * alpha + c] == have:
+                        next[p * alpha + c] = clone
+                        p = links[p]
+                    last = clone
+                prefix[last] += 1
+                return
+        let cur = self.add_empty_state(max_len[last] + 1)
         unchecked:
             var p = last
             while p != -1 and next[p * alpha + c] == -1:
@@ -2199,7 +2214,7 @@ pub struct SuffixAutomaton<A>:
     /// example: `SuffixAutomaton<Char>.of("abb").occ_counts() == [3, 1, 1, 1, 2]`
     pub fn occ_counts(self) -> List<Int>:
         let order = self.topo_order()
-        var occ = [if prefix[v]: 1 else: 0 for v in 0..links.len]
+        var occ = prefix.clone()
         unchecked:
             for i in (1..order.len).rev:
                 let v = order[i]
@@ -2326,7 +2341,7 @@ pub struct SuffixAutomaton<A>:
 
 /// The length of the longest sequence that is a substring of every word in `words`.
 ///
-/// cost: \(O(\mathit{sum} \lvert w \rvert \cdot \lvert A \rvert)\)
+/// cost: \(O(\sum_w \lvert w \rvert \cdot \log n)\) expected, `n` the shortest word's length
 /// empty: `(lcs_all(List<Str>()), lcs_all(["abc"])) == (0, 3)`
 /// traps: never
 /// example: `lcs_all(["abcd", "xbcy", "bcz"]) == 2`
@@ -2359,7 +2374,7 @@ pub fn lcs_all<A, S: Seq>(words: List<S>) -> Int:
         if not cur.is_empty: lo = mid else: hi = mid - 1
     lo
 
-/// \(O(n \cdot \lvert A \rvert)\) space, \(O(1)\) amortized push. Online palindromic tree (eertree) over alphabet domain `A`, with `diff` and `series_link`
+/// \(O(n \cdot \lvert A \rvert)\) space, \(O(\lvert A \rvert)\) amortized push. Online palindromic tree (eertree) over alphabet domain `A`, with `diff` and `series_link`
 /// for \(O(n \log n)\) palindromic partition DP.
 /// State `0` is the odd root (`pal_len == -1`); state `1` is the even root (`pal_len == 0`).
 ///
@@ -2410,7 +2425,7 @@ pub struct PalindromicTree<A>:
     /// The palindromic tree of `s`: `PalindromicTree<A>()` followed by `push` of each element.
     /// New states are numbered from `2` in creation order.
     ///
-    /// cost: \(O(\lvert s \rvert \cdot \lvert A \rvert)\) memory, \(O(\lvert s \rvert)\) amortized time
+    /// cost: \(O(\lvert s \rvert \cdot \lvert A \rvert)\) memory, \(O(\lvert s \rvert \cdot \lvert A \rvert)\) time
     /// empty: `PalindromicTree<Char>.of("").len == 2`
     /// traps: when an element of `s` is not in `A`
     /// example: `PalindromicTree<Char>.of("aba").distinct == 3`
@@ -2422,7 +2437,7 @@ pub struct PalindromicTree<A>:
     /// Appends the letter `a` and returns the state of the longest palindromic suffix of the
     /// new string, creating it if it is new.
     ///
-    /// cost: \(O(1)\) amortized
+    /// cost: \(O(\lvert A \rvert)\) amortized (a new state takes \(\lvert A \rvert\) slots)
     /// traps: never (`a` is an `A`)
     /// example: `var t = PalindromicTree<Char>(); t.push('a'); t.push('a') == 3`
     pub fn push(mut self, a: A) -> Int:
@@ -2558,7 +2573,7 @@ pub struct PalindromicTree<A>:
     /// Prepends the letter `a` (a double-ended tree) and returns the state of the longest
     /// palindromic prefix of the new string, creating it if it is new.
     ///
-    /// cost: \(O(1)\) amortized
+    /// cost: \(O(\lvert A \rvert)\) amortized (a new state takes \(\lvert A \rvert\) slots)
     /// traps: never (`a` is an `A`)
     /// example: `var t = PalindromicTree<Char>.of("ba"); t.push_front('a') == 4`
     pub fn push_front(mut self, a: A) -> Int:
@@ -2671,7 +2686,7 @@ pub struct PalindromicTree<A>:
                     v = t.ser_link[v]
         dp
 
-/// Dynamic trie over alphabet domain `A`. \(O(\lvert \mathit{word} \rvert)\) per operation; flat `|A|`-stride table.
+/// Dynamic trie over alphabet domain `A`. \(O(\lvert \mathit{word} \rvert)\) per lookup, \(O(\lvert \mathit{word} \rvert \cdot \lvert A \rvert)\) per `add`; flat `|A|`-stride table.
 pub struct Trie<A>:
     alpha: Count
     next: List<Slot>
@@ -2740,7 +2755,7 @@ pub struct Trie<A>:
     /// Inserts one copy of `word` and returns its terminal node; `count(word)` and
     /// `count_prefix(p)` for every prefix `p` of `word` grow by one.
     ///
-    /// cost: \(O(\lvert \mathit{word} \rvert)\)
+    /// cost: \(O(\lvert \mathit{word} \rvert \cdot \lvert A \rvert)\) (a new node takes \(\lvert A \rvert\) slots)
     /// empty: `var t = Trie<Char>(); t.add("") == 0`
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("ab") == 2`
@@ -2825,7 +2840,7 @@ pub struct Trie<A>:
 
     /// Removes every word and node, leaving just the root.
     ///
-    /// cost: \(O(1)\)
+    /// cost: \(O(\lvert A \rvert)\)
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("ab"); t.clear(); t.is_empty and t.len == 1`
     pub fn clear(mut self):
@@ -2897,7 +2912,7 @@ pub struct AhoCorasick<A>:
     /// `p` is `patterns[p]`. States are the trie nodes of the patterns, numbered in creation
     /// order with the root `0`; equal patterns share a state.
     ///
-    /// cost: \(O(\mathit{sum} \lvert p \rvert \cdot \lvert A \rvert)\)
+    /// cost: \(O(\sum_p \lvert p \rvert \cdot \lvert A \rvert)\)
     /// empty: `(AhoCorasick<Char>(List<Str>()).len, AhoCorasick<Char>([""]).find_all("ab").collect()) == (1, [(0, 0), (1, 0), (2, 0)])`
     /// traps: when an element of a pattern is not in `A`
     /// example: `AhoCorasick<Char>(["a", "ab", "b"]).len == 4`
