@@ -48,9 +48,14 @@ while [ $# -gt 0 ]; do
 done
 
 target=wasm32-unknown-unknown
-if ! rustc --print target-libdir --target "$target" 2>/dev/null | xargs test -d; then
-    echo "build-wasm: the $target target is not installed; run: rustup target add $target" >&2
-    exit 1
+has_target() { rustc --print target-libdir --target "$target" 2>/dev/null | xargs test -d; }
+# RUSTUP_TOOLCHAIN overrides rust-toolchain.toml, and then rustup never adds its targets.
+if ! has_target; then
+    echo "build-wasm: adding the $target target" >&2
+    rustup target add "$target" >&2 && has_target || {
+        echo "build-wasm: the $target target is not installed; run: rustup target add $target" >&2
+        exit 1
+    }
 fi
 
 # A profile of its own, set here so the workspace's Cargo.toml stays as it

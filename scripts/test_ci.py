@@ -557,7 +557,8 @@ class CommitTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(self.tiers, [])
         self.assertEqual(ev, [self.TREE + " --target wasm32-unknown-unknown -e normal --prefix none",
-                              "rustc --print target-libdir --target wasm32-unknown-unknown"])
+                              "rustc --print target-libdir --target wasm32-unknown-unknown",
+                              "rustup target add wasm32-unknown-unknown", "rustc --print target-libdir --target wasm32-unknown-unknown"])
 
     def test_progress_lists_the_step_a_cut_stops_in_and_every_later_one(self) -> None:
         progress = Path(self.enterContext(tempfile.TemporaryDirectory())) / "progress"
@@ -586,6 +587,7 @@ class CommitTest(unittest.TestCase):
         expr = f"(rdeps(cpl-check)) & not ({ci.slow_filter()}) & not (test(=s))"
         self.assertEqual(ev[1:], [f"cargo fmt --check {ps}", f"cargo clippy -q {ps} --all-targets -- -D warnings",
                                   self.TREE + " --target wasm32-unknown-unknown -e normal --prefix none",
+                                  "rustc --print target-libdir --target wasm32-unknown-unknown", "rustup target add wasm32-unknown-unknown",
                                   "rustc --print target-libdir --target wasm32-unknown-unknown",
                                   f"scripts/new_reds.py -- cargo nextest run --workspace --profile commit --no-fail-fast -E {expr}"])
         code, ev, _, _, _, _ = self._commit(sel, outs={self.TREE: "cpl-wasm v0.1.0\n"})

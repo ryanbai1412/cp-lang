@@ -603,10 +603,18 @@ class Tail:
         if os.environ.get("CI"):
             print("skipped in CI: the site build job builds cpl-wasm")
             return False
-        lib = self.run(["rustc", "--print", "target-libdir", "--target", "wasm32-unknown-unknown"],
-                       cwd=ROOT, capture_output=True, text=True)
-        libdir = lib.stdout.strip() if lib.returncode == 0 else ""
-        if not libdir or not Path(libdir).is_dir():
+        def libdir():
+            lib = self.run(["rustc", "--print", "target-libdir", "--target", "wasm32-unknown-unknown"],
+                           cwd=ROOT, capture_output=True, text=True)
+            d = lib.stdout.strip() if lib.returncode == 0 else ""
+            return d and Path(d).is_dir()
+        # RUSTUP_TOOLCHAIN overrides rust-toolchain.toml, and then rustup never adds its targets.
+        if not libdir():
+            try:
+                self.run(["rustup", "target", "add", "wasm32-unknown-unknown"], cwd=ROOT, capture_output=True)
+            except OSError:
+                pass
+        if not libdir():
             print("WARNING: skipped; the wasm32 target is not installed (run: rustup target add wasm32-unknown-unknown)",
                   file=sys.stderr)
             return False
