@@ -2,9 +2,11 @@
 // input: "1 300\n"
 // model: RollbackArray
 // model: PersistentDsu
+// model: PersistentDsuWithin
 // RollbackArray<D, Int> against a List with saved copies: seeded random set, mark and undo_to.
 // PersistentDsu<V> against a root-per-position list kept for every version: seeded random unite
-// on a random earlier version, with find, same and size compared on the new and the old version.
+// on a random earlier version, with find, same and size compared on the new and the old version,
+// and the version's `within(ar)` view (items, len, is_empty, Show) against the root list.
 // Reads `seed n`; prints the first op that differs.
 use std.dsu.{DsuNode, Mark, PersistentDsu, RollbackArray}
 use std.persistent.{PArena}
@@ -54,6 +56,9 @@ for k in 0..n:
                     bad = "op {k}: version {w} find or size {i}"
                 for j in 0..7:
                     if vers[w].same(ar, V(i), V(j)) != (roots[w][i] == roots[w][j]): bad = "op {k}: version {w} same {i} {j}"
+            let view = vers[w].within(ar)
+            if [r.ord for (_, r) in view.items] != roots[w] or view.len != 7 or view.is_empty: bad = "op {k}: version {w} within"
+            elif "{view}" != " ".join(["{r}" for r in roots[w]]): bad = "op {k}: version {w} within show"
     for i in 0..6:
         if arr.get(D(i)) != a[i]: bad = "op {k}: get {i} is {arr.get(D(i))} want {a[i]}"
     if bad != "": break

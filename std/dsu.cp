@@ -758,6 +758,14 @@ pub struct PersistentDsu<V>:
     pub fn same(self, ar: PArena<DsuNode<V>>, a: V, b: V) -> Bool =
         self.root_ord(ar, a.ord) == self.root_ord(ar, b.ord)
 
+    /// \(O(1)\). This version read through the arena it lives in: a lent view that walks and
+    /// prints its sets like any container.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `use std.persistent.{PArena}; domain V = 0..3; var ar = PArena<DsuNode<V>>(); let d = PersistentDsu<V>.new(mut ar).unite(mut ar, 2, 1); "{d.within(ar)}" == "0 2 2"`
+    pub fn within(self, ar: PArena<DsuNode<V>>) -> lends PersistentDsuWithin<V> = PersistentDsuWithin(ar, self)
+
     /// The number of positions in `v`'s set, `v` included.
     ///
     /// cost: \(O(\log^2 n)\)
@@ -1125,6 +1133,43 @@ impl Show for DsuNode<V>:
     ///
     /// example: `"{DsuNode<0..2>()}" == "parent 0, size 0"`
     fn show(n) = "parent {n._parent}, size {n._size}"
+
+/// A `PersistentDsu` version read through its `PArena`, from `d.within(ar)`. It lends both, so it
+/// lives no longer than either and copies nothing.
+pub struct PersistentDsuWithin<V>(ar: PArena<DsuNode<V>>, dsu: PersistentDsu<V>):
+    /// The number of positions, `V.count`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `use std.persistent.{PArena}; domain V = 0..3; var ar = PArena<DsuNode<V>>(); PersistentDsu<V>.new(mut ar).within(ar).len == 3`
+    @get pub fn len(self) -> Int = V.count
+
+    /// Whether `V` has no position.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `use std.persistent.{PArena}; domain V = 0..3; var ar = PArena<DsuNode<V>>(); not PersistentDsu<V>.new(mut ar).within(ar).is_empty`
+    @get pub fn is_empty(self) -> Bool = V.count == 0
+
+    /// Visit every position with its set's representative, as `find` gives it.
+    ///
+    /// cost: \(O(n \log^2 n)\)
+    /// order: increasing position
+    /// traps: never
+    /// example: `use std.persistent.{PArena}; domain V = 0..3; var ar = PArena<DsuNode<V>>(); let d = PersistentDsu<V>.new(mut ar).unite(mut ar, 0, 2); d.within(ar).items.collect() == [(0, 0), (1, 1), (2, 0)]`
+    @get pub fn items(self) -> yields (V, V):
+        for v in V: yield (v, dsu.find(ar, v))
+
+impl Show for PersistentDsuWithin<V>:
+    /// Each position's representative, in position order, as `Dsu` prints.
+    ///
+    /// example: `use std.persistent.{PArena}; domain V = 0..3; var ar = PArena<DsuNode<V>>(); "{PersistentDsu<V>.new(mut ar).within(ar)}" == "0 1 2"`
+    fn show(w):
+        var out = ""
+        for (_, r) in w.items:
+            if not out.is_empty: out += " "
+            out += "{r}"
+        out
 
 impl Show for PersistentDsu<V>:
     /// The arena node this version's tree is rooted at, as `version at node i`; read a version's

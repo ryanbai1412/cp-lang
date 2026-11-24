@@ -1967,3 +1967,14 @@ let s = PMultiset<0..10>.empty().with(mut ar, 7).with(mut ar, 2).with(mut ar, 7)
 print(s.within(ar))
 """
 out = "2 7 7"
+
+[case."Show/PersistentDsuWithin/show"]
+code = """
+use std.dsu.{DsuNode, PersistentDsu}
+use std.persistent.{PArena}
+domain V = 0..3
+var ar = PArena<DsuNode<V>>()
+let d = PersistentDsu<V>.new(mut ar).unite(mut ar, 2, 1)
+print(d.within(ar))
+"""
+out = "0 2 2"

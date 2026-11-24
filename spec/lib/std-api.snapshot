@@ -444,6 +444,10 @@ std/dsu.cp: PersistentDsu.new(mut ar: PArena<DsuNode<V>>) -> PersistentDsu<V>
 std/dsu.cp: PersistentDsu.same(self, ar: PArena<DsuNode<V>>, a: V, b: V) -> Bool
 std/dsu.cp: PersistentDsu.size(self, ar: PArena<DsuNode<V>>, v: V) -> Int
 std/dsu.cp: PersistentDsu.unite(self, mut ar: PArena<DsuNode<V>>, a: V, b: V) -> PersistentDsu<V>
+std/dsu.cp: PersistentDsu.within(self, ar: PArena<DsuNode<V>>) -> lends PersistentDsuWithin<V>
+std/dsu.cp: PersistentDsuWithin.is_empty(self) -> Bool
+std/dsu.cp: PersistentDsuWithin.items(self) -> yields (V, V)
+std/dsu.cp: PersistentDsuWithin.len(self) -> Int
 std/dsu.cp: PotentialDsu.components(self) -> Int
 std/dsu.cp: PotentialDsu.consistent(self) -> Bool
 std/dsu.cp: PotentialDsu.diff(self, a: V, b: V) -> ?W
@@ -2165,7 +2169,7 @@ std/tree.cp: Rooted.up_arc(self, v: V) -> ?A
 std/tree.cp: Rooted.virtual(self, keys: List<V>) -> VirtualTree<V, _>
 std/tree.cp: Rooted.w(self, v: V) -> Int
 std/tree.cp: cartesian_tree<D, T>(a: [D]T, by: (T, T) -> Bool = (x, y) => x < y) -> [D]?D
-std/tree.cp: dfs_tree<V, A, E>(self: Graph<V, A>, root: V) -> (tree: Rooted<V, _, _>, tree_edge: [E]Bool) where A: Edged<E>
+std/tree.cp: dfs_tree<V, A, E>(self: Graph<V, A>, root: V) -> (
 std/tree.cp: from_prufer<V>(code: List<V>) -> Tree<V>
 std/tree.cp: kruskal_tree<V, E, W, R: (u: V, v: V, ..)
 std/tree.cp: prufer<V, E, R: (u: V, v: V, ..)

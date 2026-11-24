@@ -589,6 +589,10 @@ tree or array (`PersistentSegTree`, `PersistentLazySegTree`,
 `PersistentArray`) is its own pool: its nodes live in the value the program
 declares, and each write returns a `Version<S>` that names the structure type
 `S`, so a version of one structure type is rejected by another's methods.
+An arena-stored value walks and prints through `x.within(ar)`, a lent view
+of it inside its arena that is a container like any other (`len`,
+`is_empty`, a walk and `Show`); copying nothing, it lives no longer than
+`x` or `ar`.
 
 <!-- signatures: std/persistent.cp std/dsu.cp -->
 ```cp
@@ -607,6 +611,7 @@ struct PMultiset<D>                                                             
     fn without(self, mut ar: PArena<PMultiset<D>>, x: D) -> PMultiset<D>                    // O(log |D|); self when absent
     fn count(self, ar: PArena<PMultiset<D>>, x: D) -> Int                                   // O(log |D|)
     fn cmp(self, ar: PArena<PMultiset<D>>, other: PMultiset<D>, desc: Bool = false) -> Int  // O(log |D|)
+    fn within(self, ar: PArena<PMultiset<D>>) -> lends PMultisetWithin<D>                   // O(1); len, is_empty, each (ascending, copies), Show
     // ==: O(1) by size and a 64-bit sum of fixed per-key weights
 
 struct Version<S>(root: Int)  // a version of tree or array type S; only S takes it
@@ -617,6 +622,7 @@ struct PersistentDsu<V>                                                         
     fn same(self, ar: PArena<DsuNode<V>>, a: V, b: V) -> Bool                   // O(log^2 n)
     fn size(self, ar: PArena<DsuNode<V>>, v: V) -> Int                          // O(log^2 n)
     fn unite(self, mut ar: PArena<DsuNode<V>>, a: V, b: V) -> PersistentDsu<V>  // O(log^2 n), O(log n) nodes; self when already one set
+    fn within(self, ar: PArena<DsuNode<V>>) -> lends PersistentDsuWithin<V>     // O(1); len, is_empty, items (v, find(v)), Show as Dsu
 ```
 
 `cmp` orders the sorted elements lexicographically (largest first with
