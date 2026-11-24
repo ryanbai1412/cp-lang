@@ -544,6 +544,15 @@ closed list, so `grep -E '@(cache|law|trusted|cpp)'` finds all of it.
 Nothing is optimized on a promise: a `disjoint` law emits no
 `__restrict`, so a broken promise cannot become undefined behaviour.
 
+### 13. Shared nodes live in a value you hold (decision 519)
+
+**Chosen.** Persistent versions share nodes, and those nodes belong to a
+value the program declares: the persistent tree itself, or a
+`PArena<T>` passed to each call, as in `s.with(mut ar, x)`. **Lost.** A hidden
+module-level arena, which reads more briefly but is global state: it
+outlives a test case, and two structures that share it can't be told
+apart by their types.
+
 ## What the compiler proves and what each build checks
 
 | Property | When | Cost on the judge |

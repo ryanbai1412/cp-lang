@@ -8749,7 +8749,9 @@ from `just next-decision`.
 - **Why.** "Small core, no privileged stdlib": a built-in `Seq` or `Gen` is a second definition that the docs, LSP and lints each have to rederive, and `ir_builtin_names` and `prelude_privilege` count exactly these. Declaring them in std makes the library the one source, so a user `impl Seq` gets everything a built-in gets.
 - **Reverse.** Keep `Seq`, `Gen` and `.rev` compiler-known, with `std/seq.cp` stubs that only document them.
 
-## 510. (reserved, content)
+## 510. Number unused
+
+Reserved for call 5, which landed as decision 519.
 
 ## 511. `suffix_fold` and `prefix_excl` are removed; `cpl fix` rewrites them (spec, 2026-11-24)
 
