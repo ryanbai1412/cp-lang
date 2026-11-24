@@ -122,7 +122,7 @@ class DebtRatchetTest(unittest.TestCase):
             "max_rs_lines": 20,
             "rs_file_size_allowlist": {"crates/demo/src/big.rs": 25},
             "stdlib_todo": 2,
-            "rust_ignore": 1,
+            "allow_attrs": 1,
             "unsafe_blocks": 1,
         }
         # Exact match passes with no warnings/errors
@@ -137,7 +137,7 @@ class DebtRatchetTest(unittest.TestCase):
                 "crates/demo/src/new_big.rs": 22,
             },
             "stdlib_todo": 3,
-            "rust_ignore": 2,
+            "allow_attrs": 2,
             "unsafe_blocks": 2,
         }
         errs, warns, _ = dr.evaluate(worse, baseline)
@@ -654,6 +654,12 @@ class DebtRatchetTest(unittest.TestCase):
         self.assertEqual(len(errs), 1)
         self.assertEqual(dr.inherited_baseline({name: 0}, {name: 3})[name], 0)
 
+    def test_an_ignored_rust_test_fails_the_ratchet(self) -> None:
+        self.assertIn("rust_ignore", dr.HARD_ZERO)
+        errs, _, _ = dr.evaluate({"rust_ignore": 1}, {"rust_ignore": 0})
+        self.assertEqual(len(errs), 1)
+        self.assertIn("must stay at 0", errs[0])
+
     def test_hard_zero_is_assigned_once(self) -> None:
         src = Path(dr.__file__).read_text(encoding="utf-8")
         self.assertEqual(len(re.findall(r"^HARD_ZERO\s*[|:]?=", src, re.M)), 1,
@@ -902,11 +908,11 @@ class DebtRatchetTest(unittest.TestCase):
             root = Path(tmp)
             ratchet = root / "ratchet.json"
             ratchet.write_text(json.dumps({"max_rs_lines": 2000, "rs_file_size_allowlist": {"a.rs": 9000},
-                                           "stdlib_todo": 99, "rust_ignore": 7}))
+                                           "stdlib_todo": 99, "allow_attrs": 7}))
             self.assertEqual(dr.main(["--update", "stdlib_todo", "--root", str(root), "--ratchet", str(ratchet)]), 0)
             data = json.loads(ratchet.read_text())
             self.assertEqual(data["stdlib_todo"], 0)
-            self.assertEqual(data["rust_ignore"], 7)
+            self.assertEqual(data["allow_attrs"], 7)
             self.assertEqual(data["rs_file_size_allowlist"], {"a.rs": 9000})
             self.assertEqual(dr.main(["--update", "nope", "--root", str(root), "--ratchet", str(ratchet)]), 2)
 
@@ -918,6 +924,7 @@ class DebtRatchetTest(unittest.TestCase):
             # A hard-zero counter above 0 is never written as a baseline.
             self.assertEqual(dr.main(["--update", "--root", str(root), "--ratchet", str(ratchet)]), 1)
             (root / "crates/cpl-cli/tests/pending/case1.cp").unlink()
+            (root / "crates/demo/src/small.rs").write_text("fn t() {}\n")
             (root / "crates/cpl-ir/src").mkdir(parents=True)
             (root / "crates/cpl-ir/src/instance.rs").write_text("use codes::GROWING_INSTANTIATION;\n")
             (root / dr.SCALING_BOARD).parent.mkdir(parents=True)
