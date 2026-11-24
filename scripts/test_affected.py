@@ -177,9 +177,9 @@ class AffectedTest(unittest.TestCase):
         self.assertEqual(self.sel("corpus/problems/noip18p4/port.cp")["slices"], ["silent-unknowns", f"copies@{noip}"])
         bag = affected.shard_of("spec/conformance/std-bag/x.cp", 16)
         self.assertEqual(self.sel("spec/conformance/std-bag/x.cp")["slices"], ["silent-unknowns", f"copies@{bag}", "readable-inputs"])
-        self.assertEqual(self.sel("crates/cpl-codegen/src/emit.rs")["slices"], ["copies"])
-        self.assertEqual(self.sel("crates/cpl-interp/src/vm/run.rs")["slices"], ["vm-trace", "readable-inputs"])
-        self.assertEqual(self.sel("crates/cpl-fmt/src/lib.rs")["slices"], [])
+        self.assertEqual(self.sel("crates/cpl-codegen/src/emit.rs")["slices"], ["vm-trace", "copies", "editor-contract"])
+        self.assertEqual(self.sel("crates/cpl-interp/src/vm/run.rs")["slices"], ["vm-trace", "readable-inputs", "editor-contract"])
+        self.assertEqual(self.sel("crates/cpl-fmt/src/lib.rs")["slices"], ["vm-trace", "editor-contract"])
 
     def test_every_slice_maps_the_inputs_its_tests_read(self):
         """Each slice test's own source, the repo data it walks (path literals), and the
@@ -222,6 +222,13 @@ class AffectedTest(unittest.TestCase):
                      "spec/tools/cli.md", "spec/tools/lsp.md"):
             self.assertIn("editor-contract", self.sel(path)["slices"], path)
 
+    def test_a_crate_a_tested_binary_links_runs_the_slice(self):
+        """41ffcffe5 changed only cpl-codegen's output and landed with cpl-cli's
+        output_pins unrun: output_pins runs the `cpl` binary, which links cpl-codegen."""
+        for path in ("crates/cpl-codegen/src/emit.rs", "crates/cpl-ir/src/lib.rs", "crates/cpl-rt/src/lib.rs"):
+            self.assertIn("editor-contract", self.sel(path)["slices"], path)
+        self.assertLessEqual({"cpl-cli", "cpl-codegen", "cpl-rt"}, affected.crate_deps("cpl-cli"))
+
     def test_a_lint_or_checker_change_runs_the_corpus_warnings_slice(self):
         for path in ("crates/cpl-lint/src/rules.rs", "crates/cpl-check/src/lib.rs"):
             self.assertIn("corpus-warnings", self.sel(path)["slices"], path)
@@ -238,7 +245,8 @@ class AffectedTest(unittest.TestCase):
         self.assertEqual(affected.shard_of("corpus/problems/cf2165c/port.cp", 16), 4)
         both = ["spec/conformance/std-models/heaps.cp", "corpus/problems/cf2165c/port.cp"]
         self.assertEqual(self.sel(*both)["slices"], ["silent-unknowns", "copies@4,8", "readable-inputs"])
-        self.assertEqual(self.sel(both[0], "crates/cpl-codegen/src/emit.rs")["slices"], ["silent-unknowns", "copies", "readable-inputs"])
+        self.assertEqual(self.sel(both[0], "crates/cpl-codegen/src/emit.rs")["slices"],
+                         ["vm-trace", "silent-unknowns", "copies", "readable-inputs", "editor-contract"])
         self.assertEqual(affected.slice_filter(["copies@8", "copies@4"]),
                          "(binary_id(cpl-cli::read_only_copies) & (not test(/^shard_/) | test(=shard_04) | test(=shard_08)))")
         self.assertEqual(affected.slice_filter(["copies@8", "copies"]), "binary_id(cpl-cli::read_only_copies)")

@@ -119,9 +119,32 @@ def slice_globs(globs, tests):
         except OSError:
             text = ""
         # Its own crate's change already runs it, through nextest's rdeps.
-        out += [src] + [f"crates/{c}/*" for c in sorted({"cpl-" + d.replace("_", "-")
-                                                          for d in re.findall(r"\bcpl_([a-z_]+)::", text)} - {own})]
+        named = {"cpl-" + d.replace("_", "-") for d in re.findall(r"\bcpl_([a-z_]+)::", text)}
+        # A test that runs a binary runs every crate the binary links: 41ffcffe5 changed
+        # cpl-codegen's output and landed with cpl-cli's output_pins unrun.
+        for b in re.findall(r"CARGO_BIN_EXE_([a-z_-]+)", text):
+            named |= crate_deps(BIN_CRATES.get(b, b))
+        out += [src] + [f"crates/{c}/*" for c in sorted(named - {own})]
     return out
+
+
+BIN_CRATES = {"cpl": "cpl-cli"}
+
+
+def crate_deps(crate, seen=None):
+    """`crate` and the workspace crates it depends on, transitively (build and dev deps aside)."""
+    seen = set() if seen is None else seen
+    if crate in seen:
+        return seen
+    seen.add(crate)
+    try:
+        toml = (Path(ROOT) / "crates" / crate / "Cargo.toml").read_text(encoding="utf-8")
+    except OSError:
+        return seen
+    deps = re.split(r"^\[(?:dev-|build-)dependencies\]", toml, flags=re.M)[0]
+    for d in re.findall(r"^(cpl-[a-z-]+)\s*[.=]", deps, flags=re.M):
+        crate_deps(d, seen)
+    return seen
 EDITOR_CRATES = {"editors/neovim/": "cpl-cli", "editors/vscode/": "cpl-cli",
                  "editors/jetbrains/": "cpl-cli", "editors/tree-sitter-cp/": "cpl-cli",
                  "editors/lsp-matrix.json": "cpl-lsp"}
