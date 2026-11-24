@@ -558,7 +558,7 @@ impl<'a> Parser<'a> {
                         kind: ExprKind::Error,
                         span: self.rel(whole),
                     }),
-                    None => self.cond(),
+                    None => self.round_cond(),
                 };
                 let body = match countdown {
                     Some((.., ":", _)) => self.block("the `while` condition"),
@@ -1462,6 +1462,22 @@ impl<'a> Parser<'a> {
             }
         }
         false
+    }
+
+    /// A `while` test runs every round, so `const` (which picks an `if`
+    /// branch at compile time) has no place in it.
+    fn round_cond(&mut self) -> Cond {
+        if self.at(T::Const) {
+            let at = self.span();
+            self.bump();
+            let gone = Span::new(at.start, self.span().start);
+            self.sink.push(
+                msg::CONST_IN_WHILE
+                    .error(at, &[])
+                    .with_fix("drop `const`", gone, ""),
+            );
+        }
+        self.cond()
     }
 
     pub(super) fn cond(&mut self) -> Cond {

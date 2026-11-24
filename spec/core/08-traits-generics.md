@@ -180,7 +180,7 @@ struct Pair<A, B = Int>: a: A, b: B
   part of the bound tested: inside `fn pick<T, M: Op<T>>`,
   `if M: Selective<T>:` holds only when `M` implements `Selective` at this
   `T`, and the branch it guards sees `M: Selective<T>`. `if const cond:` branches on a compile-time
-  value. (R08.2.9)
+  value; `while const` is an error, since a `while` test runs every round. (R08.2.9)
 
 ## 8.3 Laws
 

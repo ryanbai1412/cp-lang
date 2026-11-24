@@ -417,7 +417,7 @@ impl<'a> Lowerer<'a> {
             ));
         };
         match cond {
-            ast::Cond::Expr(test) => {
+            ast::Cond::Expr(test) | ast::Cond::Const(test) => {
                 let test = self.expr_as(test, &Ty::Bool);
                 leave_unless(self, test, stmts);
                 true
@@ -438,10 +438,6 @@ impl<'a> Lowerer<'a> {
                 and.as_ref()
                     .is_none_or(|and| self.while_clauses(and, stmts))
             }
-            ast::Cond::Const(c) => {
-                self.unsupported(c.span, "`const` in a `while` condition");
-                false
-            }
         }
     }
 
@@ -453,7 +449,7 @@ impl<'a> Lowerer<'a> {
         out: &mut Vec<Stmt>,
     ) {
         match cond {
-            ast::Cond::Expr(cond) => {
+            ast::Cond::Expr(cond) | ast::Cond::Const(cond) => {
                 let cond = self.worked_out_here(cond.span, |lw| lw.expr_as(cond, &Ty::Bool));
                 let id = self.open_loop(None);
                 let else_flag = self.begin_loop_else(id, else_body, out);
@@ -476,7 +472,6 @@ impl<'a> Lowerer<'a> {
                 out.push(Stmt::While(id, always, Block { stmts }));
                 self.end_loop_else(id, else_flag, else_body, out);
             }
-            ast::Cond::Const(cond) => self.unsupported(cond.span, "`while const`"),
         }
     }
 }

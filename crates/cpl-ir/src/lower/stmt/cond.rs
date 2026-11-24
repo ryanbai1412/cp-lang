@@ -239,7 +239,7 @@ impl<'a> Lowerer<'a> {
             stmts: els.to_vec(),
         };
         match cond {
-            ast::Cond::Expr(test) => {
+            ast::Cond::Expr(test) | ast::Cond::Const(test) => {
                 let test = self.expr_as(test, &Ty::Bool);
                 let mark = self.cx.present.len();
                 let mutators = self.mutators.clone();
@@ -270,9 +270,6 @@ impl<'a> Lowerer<'a> {
                 }
                 self.cx.scopes.pop();
                 out.push(Stmt::If(present, Block { stmts: then }, els()));
-            }
-            ast::Cond::Const(c) => {
-                self.unsupported(c.span, "`const` after another clause of a condition")
             }
         }
     }

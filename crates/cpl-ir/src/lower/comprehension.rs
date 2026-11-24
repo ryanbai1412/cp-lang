@@ -108,7 +108,7 @@ impl Lowerer<'_> {
         guards: &mut Vec<(Vec<Stmt>, Expr, Vec<Stmt>)>,
     ) {
         match cond {
-            ast::Cond::Expr(c) => {
+            ast::Cond::Expr(c) | ast::Cond::Const(c) => {
                 let test = self.expr_as(c, &Ty::Bool);
                 guards.push((std::mem::take(&mut self.cx.pending), test, Vec::new()));
             }
@@ -130,7 +130,6 @@ impl Lowerer<'_> {
                 guards.push((std::mem::take(&mut self.cx.pending), test, Vec::new()));
                 self.guard(and, guards);
             }
-            ast::Cond::Const(c) => self.unsupported(c.span, "`if const` in a comprehension"),
         }
     }
 
