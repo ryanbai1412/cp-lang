@@ -3320,8 +3320,8 @@ pub fn arborescence<V, E, W: Add + Sub, R: (u: V, v: V, w: W, ..)>(edges: [E]R, 
             let top = heap[u]
             arb_push(mut h, top)
             let w = h.w[top]
-            if h.l[top] >= 0: h.lazy[h.l[top]] = h.lazy[h.l[top]] - w
-            if h.r[top] >= 0: h.lazy[h.r[top]] = h.lazy[h.r[top]] - w
+            if h.l[top] >= 0: h.lazy[h.l[top]] -= w
+            if h.r[top] >= 0: h.lazy[h.r[top]] -= w
             heap[u] = arb_merge(mut h, h.l[top], h.r[top])
             q.push(top)
             path.push(u)
