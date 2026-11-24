@@ -1386,7 +1386,7 @@ pub fn bfs01<V, G: WeightedNext<V, Int>>(
 @lint(stale_entry_skip, from: "let (d, u) = pq.pop()!\nif d > dist[u]!:\n    continue", to: "dijkstra(Graph.directed(es), from: [(s, 0)])", holes: "pq, dist")
 @lint(stale_entry_skip, from: "let (d, u) = pq.pop()!\nif d != dist[u]:\n    continue", to: "dijkstra(Graph.directed(es), from: [(s, 0)])", holes: "pq, dist")
 @lint(stale_entry_skip, from: "let (d, u) = pq.pop()!\nif d != dist[u]!:\n    continue", to: "dijkstra(Graph.directed(es), from: [(s, 0)])", holes: "pq, dist")
-pub fn dijkstra<V, W, G: WeightedNext<V, W>, M>(
+pub fn dijkstra<V, W, G: WeightedNext<V, W>, M: Op<W>>(
     g: G,
     from: Seq<(V, W)>,
     step: M = (+),
@@ -2517,7 +2517,7 @@ pub fn smallest_topo<V>(g: Next<V>) -> ?List<V>:
 /// traps: never
 /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; dag_fold(g, init: v => 0, step: (x, a) => x + 1, op: max) == Some([0, 1, 1, 2])`
 /// example: `domain V = 0..2; let g: [V]List<V> = [[1], [0]]; dag_fold(g, init: v => 0, step: (x, a) => x + 1, op: max) == None`
-pub fn dag_fold<V, T, M, G: Next<V>>(g: G, init: V -> T, step: (T, G.Arc) -> T, op: M) -> ?[V]T:
+pub fn dag_fold<V, T, M: Op<T>, G: Next<V>>(g: G, init: V -> T, step: (T, G.Arc) -> T, op: M) -> ?[V]T:
     let ord = topo(g) ?? return None
     let k = Monoid<T>.of(op)
     var val = [V] v => init(v)

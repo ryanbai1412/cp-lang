@@ -356,7 +356,7 @@ pub struct Rooted<V, Pre, A>:
     /// order: child order
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.excl_fold(0, +, c => t.size(c)).collect() == [(c: 1, rest: 1), (c: 2, rest: 3)]`
-    pub fn excl_fold<T, M>(self, v: V, op: M, f: V -> T) -> yields (c: V, rest: T):
+    pub fn excl_fold<T, M: Op<T>>(self, v: V, op: M, f: V -> T) -> yields (c: V, rest: T):
         let mon = Monoid<T>.of(op)
         let k = k1[v] - k0[v]
         let vals = [f(bfs[i]) for i in k0[v]..k1[v]]
@@ -439,7 +439,7 @@ pub struct Rooted<V, Pre, A>:
     /// order: keyed by `V`
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.up(+, finish: (s, v) => s + 1) == [5, 3, 1, 1, 1]`
-    pub fn up<T, U, M>(
+    pub fn up<T, U, M: Op<U>>(
         self,
         op: M,
         lift: (T, V, V) -> U = (x, c, p) => x,
@@ -486,7 +486,7 @@ pub struct Rooted<V, Pre, A>:
     /// order: keyed by `V`
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.reroot(+, finish: (s, v) => s + 1) == [5, 5, 5, 5, 5]`
-    pub fn reroot<T, U, M>(
+    pub fn reroot<T, U, M: Op<U>>(
         self,
         op: M,
         lift: (T, V, V) -> U = (x, c, p) => x,
@@ -989,7 +989,7 @@ pub struct Rooted<V, Pre, A>:
     /// order: keyed by `V`
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.above(+, finish: (s, v) => s + 1) == [None, Some(2), Some(4), Some(4), Some(4)]`
-    pub fn above<T, U, M>(
+    pub fn above<T, U, M: Op<U>>(
         self,
         op: M,
         lift: (T, V, V) -> U = (x, c, p) => x,
@@ -2140,7 +2140,7 @@ pub struct LinkCut<V, T>(m: Monoid<T>):
     /// empty: `domain V = 0..3; var lc = LinkCut<V, Int>(+); lc.get(2) == 0`
     /// traps: never
     /// example: `domain V = 0..3; var lc = LinkCut<V, Int>(+); lc.get(2) == 0 and not lc.connected(0, 1)`
-    pub fn new<M>(op: M, a: ?[V]T = None) -> LinkCut<V, T>:
+    pub fn new<M: Op<T>>(op: M, a: ?[V]T = None) -> LinkCut<V, T>:
         let m = Monoid<T>.of(op)
         let val = if let init = a: init else: [V] _ => m.id
         LinkCut(
@@ -2474,7 +2474,7 @@ pub struct LazyLinkCut<V, T, F>(act: Action<T, F>):
     /// example: `domain V = 0..3; var lc = LazyLinkCut<V, Int, Int>(Action<Int, Int>(apply: (d, x, n) => x + d * n)); lc.get(1) == 0`
     /// `act` is an `Action` or a stock action (`add`, `assign`, `affine`) resolved against `over:`, as for `SegTree`.
     /// example: `domain V = 0..3; var lc = LazyLinkCut<V, Int, Int>(add); lc.link(0, 1); lc.link(1, 2); lc.apply_path(0, 2, 3); lc.fold_path(0, 2) == 9`
-    pub fn new<A: Acts<T, F>, M>(act: A, a: ?[V]T = None, over: M = (+)) -> LazyLinkCut<V, T, F>:
+    pub fn new<A: Acts<T, F>, M: Op<T>>(act: A, a: ?[V]T = None, over: M = (+)) -> LazyLinkCut<V, T, F>:
         let act = Action<T, F>.of(act, over)
         let val = if let init = a: init else: [V] _ => act.over.id
         LazyLinkCut(
@@ -3526,7 +3526,7 @@ pub struct EulerTourTree<V, T>(m: Monoid<T>):
     /// empty: `domain V = 0..3; var et = EulerTourTree<V, Int>(+); et.get(1) == 0`
     /// traps: never
     /// example: `domain V = 0..3; var et = EulerTourTree<V, Int>(+); et.get(1) == 0 and et.len(1) == 1`
-    pub fn new<M>(op: M, a: ?[V]T = None) -> EulerTourTree<V, T>:
+    pub fn new<M: Op<T>>(op: M, a: ?[V]T = None) -> EulerTourTree<V, T>:
         let m = Monoid<T>.of(op)
         let val = if let init = a: init else: [V] _ => m.id
         EulerTourTree(
@@ -3804,7 +3804,7 @@ pub struct LazyEulerTourTree<V, T, F>(act: Action<T, F>):
     /// example: `domain V = 0..3; var et = LazyEulerTourTree<V, Int, Int>(Action<Int, Int>(apply: (d, x, n) => x + d * n)); et.get(1) == 0`
     /// `act` is an `Action` or a stock action (`add`, `assign`, `affine`) resolved against `over:`, as for `SegTree`.
     /// example: `domain V = 0..3; var et = LazyEulerTourTree<V, Int, Int>(add); et.link(0, 1); et.apply_tree(0, 3); et.fold_tree(1) == 6`
-    pub fn new<A: Acts<T, F>, M>(act: A, a: ?[V]T = None, over: M = (+)) -> LazyEulerTourTree<V, T, F>:
+    pub fn new<A: Acts<T, F>, M: Op<T>>(act: A, a: ?[V]T = None, over: M = (+)) -> LazyEulerTourTree<V, T, F>:
         let act = Action<T, F>.of(act, over)
         let val = if let init = a: init else: [V] _ => act.over.id
         LazyEulerTourTree(
@@ -4027,7 +4027,7 @@ pub struct KruskalTree<V, N, W>:
     /// order: keyed by `N`
     /// traps: never
     /// example: `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 1, v: 2, w: 3)]; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); let c = kt.up(+, leaf: v => 1); c[kt.reach(2, 3)] == 2 and c[kt.leaf[0]] == 1`
-    pub fn up<T, M>(self, op: M, leaf: V -> T) -> [N]T:
+    pub fn up<T, M: Op<T>>(self, op: M, leaf: V -> T) -> [N]T:
         let m = Monoid<T>.of(op)
         var acc: [N]?T = None
         for v in V: acc[self.leaf[v]] = Some(leaf(v))

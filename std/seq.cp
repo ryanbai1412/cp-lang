@@ -2290,7 +2290,7 @@ pub fn reduce<S: Seq<T>, T>(self: S, f: (T, T) -> T) -> ?T:
 /// traps: never (an `op` without a known identity is a compile-time error)
 /// example: `[1, 2, 3].fold(+) == 6`
 /// example: `[3, 9, 6].fold(gcd) == 3`
-pub fn fold<S: Seq<T>, T, M>(self: S, op: M) -> T:
+pub fn fold<S: Seq<T>, T, M: Op<T>>(self: S, op: M) -> T:
     let m = Monoid<T>.of(op)
     var acc = m.id
     for x in self: acc = m.op(acc, x)
@@ -3763,7 +3763,7 @@ impl Rev<[D]T>:
     /// example: `domain D = 0..3; let a = [D] d => d.ord + 2; a.rev.scan(+).all == 9`
     /// example: `domain D = 0..3; let a: [D]Int = [3, 1, 4]; a.rev.scan(+).suffix(D(1).l) == 5`
     /// example: `domain D = 0..3; let a: [D]Int = [3, 1, 4]; a.rev.scan(max).suffix(D(2).l) == 4`
-    pub fn scan<M>(self, f: M, from: ?T = None) -> Prefix<D, T> = Prefix<D, T>.of_rev_scan(self.src, f, from)
+    pub fn scan<M: Op<T>>(self, f: M, from: ?T = None) -> Prefix<D, T> = Prefix<D, T>.of_rev_scan(self.src, f, from)
 
 impl<T> Sep<T> for T -> Bool:
     fn is_sep(self, x: T) -> Bool = self(x)
