@@ -217,6 +217,15 @@ impl std::ops::DerefMut for Session {
     }
 }
 
+/// A [`Session`] lowering reads body facts from.
+pub struct SessionFacts<'s>(std::cell::RefCell<&'s mut Session>);
+
+impl crate::FactsSource for SessionFacts<'_> {
+    fn body_facts(&self, path: &str, at: cpl_diag::Span) -> Option<Arc<Facts>> {
+        self.0.borrow_mut().body_facts(path, at)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::Session;
@@ -271,14 +280,5 @@ mod tests {
             "{:?}",
             s.diagnostics("m.cp")
         );
-    }
-}
-
-/// A [`Session`] lowering reads body facts from.
-pub struct SessionFacts<'s>(std::cell::RefCell<&'s mut Session>);
-
-impl crate::FactsSource for SessionFacts<'_> {
-    fn body_facts(&self, path: &str, at: cpl_diag::Span) -> Option<Arc<Facts>> {
-        self.0.borrow_mut().body_facts(path, at)
     }
 }

@@ -342,6 +342,23 @@ fn add_calls(
     }
 }
 
+/// Where lowering reads what the checker found in an imported module's
+/// bodies, which the module's own analysis left unchecked.
+pub trait FactsSource {
+    /// The facts of the item of the module at `path` around `at`, in file
+    /// positions; `None` reads the module's own analysis.
+    fn body_facts(&self, path: &str, at: cpl_diag::Span) -> Option<std::sync::Arc<Facts>>;
+}
+
+/// Each module's own analysis: an import's bodies say nothing.
+pub struct OwnFacts;
+
+impl FactsSource for OwnFacts {
+    fn body_facts(&self, _: &str, _: cpl_diag::Span) -> Option<std::sync::Arc<Facts>> {
+        None
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{CalleeKind, Database, Ty};
@@ -661,22 +678,5 @@ mod tests {
             Some(&[("T".to_string(), Ty::Str)][..])
         );
         assert_eq!(facts.instantiation(at("f(p.twice())")), None);
-    }
-}
-
-/// Where lowering reads what the checker found in an imported module's
-/// bodies, which the module's own analysis left unchecked.
-pub trait FactsSource {
-    /// The facts of the item of the module at `path` around `at`, in file
-    /// positions; `None` reads the module's own analysis.
-    fn body_facts(&self, path: &str, at: cpl_diag::Span) -> Option<std::sync::Arc<Facts>>;
-}
-
-/// Each module's own analysis: an import's bodies say nothing.
-pub struct OwnFacts;
-
-impl FactsSource for OwnFacts {
-    fn body_facts(&self, _: &str, _: cpl_diag::Span) -> Option<std::sync::Arc<Facts>> {
-        None
     }
 }

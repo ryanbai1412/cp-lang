@@ -264,9 +264,10 @@ impl Playground {
                 // The brute's side, when the file has one that builds.
                 let slow = self.db.analyze(name).and_then(|analysis| {
                     let (brute_fn, _) = cpl_ir::brute(&analysis)?;
-                    let facts = self.db.facts_source();
-                    let program = cpl_ir::lower_brute(&analysis, &facts, &brute_fn).ok()?;
-                    drop(facts);
+                    let program = {
+                        let facts = self.db.facts_source();
+                        cpl_ir::lower_brute(&analysis, &facts, &brute_fn).ok()?
+                    };
                     let mut sink = Vec::new();
                     let recording =
                         observe(&program, input, &mut sink, stack, config()).recording?;

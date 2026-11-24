@@ -9,6 +9,10 @@ use crate::ty::Ty;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
+/// A trait's associated type: its name, the traits its bound names with
+/// their arguments, and its default.
+pub type AssocDecl = (String, Vec<(String, Vec<Ty>)>, Option<Ty>);
+
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Def {
     /// `let`, `var` or `const`.
@@ -114,7 +118,7 @@ pub enum Def {
         /// The associated types it declares, `type Found` (R08.1.9), each
         /// with the traits its bound names (`type Arc: Target<V>`) and its
         /// default, if any (`type Item = Int`, decision 469).
-        assoc: Vec<(String, Vec<(String, Vec<Ty>)>, Option<Ty>)>,
+        assoc: Vec<AssocDecl>,
         /// `@structural trait Hash`: a compound type has it when each part does, and a
         /// built-in scalar only through its own impl.
         structural: bool,
