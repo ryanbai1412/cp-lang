@@ -1080,12 +1080,12 @@ fn knuth_matches_the_cubic_interval_dp():
         let n = rand(1, 10)
         let a = [rand(1, 9) for _ in 0..n]
         let pre = a.scan(+)
-        let dp = knuth(n, (l, r) => pre[r] - pre[l])
+        let dp = knuth(n, (l, r) => pre.cut(r) - pre.cut(l))
         var slow: [0..=n, 0..=n]Int = 0
         for len in 2..=n:
             for i in 0..=n - len:
                 let j = i + len
-                slow[i, j] = pre[j] - pre[i] + (i + 1..j).map(k => slow[i, k] + slow[k, j]).min()!
+                slow[i, j] = pre.cut(j) - pre.cut(i) + (i + 1..j).map(k => slow[i, k] + slow[k, j]).min()!
         assert (0..=n).all(i => (0..=n).all(j => dp[i][j] == slow[i, j]))
 
 @test
