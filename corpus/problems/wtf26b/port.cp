@@ -12,7 +12,8 @@
 //   counts valid suffixes starting at value x with an open decreasing run of length k (0 once
 //   resolved) and largest cut threshold cut. The next value either resolves, extends the run
 //   (x = y + 1) or shrinks it (x <= y), raising cut to k - x - 1 and resolving once
-//   cut >= k - 1. Suffix sums over the first value make each transition O(1): O(N^4) total.
+//   cut >= k - 1. Each step sums over the next value y >= x - 1 for x < a[i] only, so the cost
+//   follows a: O(N^5) at worst, far less on small a.
 
 const MOD = 998_244_353
 type Z = Mod<MOD>
@@ -24,26 +25,19 @@ var dp: [0..n, 0..n, 0..n]Z = 0
 for x in 0..a[n - 1]: dp[x, x, 0] = 1
 
 for i in (0..n - 1).rev:
-    var suf = dp.clone()
-    for y in (0..n - 1).rev:
-        suf[y, 0, 0] += suf[y + 1, 0, 0]
-        for k in 1..=i + 1:
-            for cut in 0..k:
-                suf[y, k, cut] += suf[y + 1, k, cut]
-
     var ndp: [0..n, 0..n, 0..n]Z = 0
     for x in 0..a[i]:
-        ndp[x, 0, 0] += suf[max(0, x - 1), 0, 0]
-        for k in 1..=i + 1:
-            let ncut_base = k - x - 1
-            for cut in 0..k:
-                if x > 0 and k <= i:
-                    ndp[x, k, cut] += dp[x - 1, k, cut]
-                let v = suf[x, k, cut]
-                if v != 0:
-                    let ncut = max(cut, ncut_base)
-                    if ncut >= k - 1: ndp[x, 0, 0] += v
-                    else: ndp[x, k - 1, ncut] += v
+        for y in max(0, x - 1)..n:
+            ndp[x, 0, 0] += dp[y, 0, 0]
+            for k in 1..=i + 1:
+                for cut in 0..k:
+                    let v = dp[y, k, cut]
+                    if x == y + 1:
+                        if k <= i: ndp[x, k, cut] += v
+                    else:
+                        let ncut = max(cut, k - x - 1)
+                        if ncut >= k - 1: ndp[x, 0, 0] += v
+                        else: ndp[x, k - 1, ncut] += v
     dp = ndp
 
 print(sum(dp[x, 0, 0] for x in 0..n))

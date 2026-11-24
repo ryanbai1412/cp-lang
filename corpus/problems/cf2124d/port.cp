@@ -7,7 +7,7 @@
 //   a palindrome; larger values can always go, and copies of thresh can go while k values
 //   remain. Cut a at the small values into gaps of thresh copies: a palindrome keeps
 //   min(gaps[i], gaps[g - 1 - i]) of each mirrored pair; YES iff that plus the small values is
-//   at least k - 1. O(n log n) for the sort.
+//   at least k - 1. O(n) with select for thresh.
 @!multitest
 use std.strings.{is_palindrome}
 
@@ -15,7 +15,9 @@ let (n, k): (1..=2e5, 1..=2e5) = read()
 let a: [0..n]1..=2e5 = read()
 if k == 1: return print("YES")
 
-let thresh = a.sorted()[k - 2]
+var order = a.clone()
+order.select(k - 2)
+let thresh = order[k - 2]
 let small = a.filter(v => v < thresh).to_list()
 var gaps = List.filled(small.len + 1, 0)
 var before = 0
