@@ -24,6 +24,7 @@ pub mod narrow;
 pub mod order;
 mod parser;
 pub mod planned;
+pub mod stress;
 mod token;
 pub mod visit;
 

@@ -56,6 +56,8 @@ super::msgs! {
     LINT_TO_NO_CALL = BAD_LIBRARY_LINT, "`to` of `@lint({})` does not call `{}`";
     LINT_HOLE_UNUSED = BAD_LIBRARY_LINT, "`holes:` of `@lint({})` names `{}`, which neither `from` nor `also:` uses";
     LINT_WHEN = BAD_LIBRARY_LINT, "`when:` of `@lint({})` is not holes `from` uses compared with integers";
+    STRESS_NOT_ON_TYPE = BAD_STRESS, "`@stress` decorates a type alias";
+    STRESS_KIND = BAD_STRESS, "`@stress` takes one of {}";
     LINT_TWICE = BAD_LIBRARY_LINT, "`@lint({})` declares the same `from` twice in this module";
     RECORD_HAS_NO_FIELD = TYPE_MISMATCH, "the record has no field `{}`";
     PATTERN_LEAVES_OUT = TYPE_MISMATCH, "the pattern leaves out `{}`; add it or `..`";

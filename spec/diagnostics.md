@@ -64,6 +64,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0322 | recursive_field | `l: ?N` stores `N` inside `N` itself, so its size would never end; keep the nodes in a `var nodes = PArena<N>()` from `std.persistent` and link them by handle, `?Id<N>`, or hold them in a `List<N>` (R03.2.9) |
 | E0323 | alias_cycle | `type A` is defined by itself, so it never names a type; write the type `A` stands for, or give the alias a name of its own (R02.6.2) |
 | E0324 | not_a_fn_item | `type_of(sq)`: `sq` is a `let`, not a fn item, so it has no type of its own; declare it with `fn sq(...)`, or write its fn type `(Int) -> Int` (R08.1.10) |
+| E0325 | bad_stress | an `@stress` on anything but a type alias, or with anything but one bare kind of `perm`, `tree`, `simple`, `connected`, `dag` and `digraph` (decision 25.32) |
 | E0401 | assign_to_let | `x` is a `let`, so it can't be assigned |
 | E0402 | missing_mut_at_call | write `mut seen` at the call |
 | E0403 | mut_of_immutable | `a` is a `let`, so it can't be passed as `mut` |

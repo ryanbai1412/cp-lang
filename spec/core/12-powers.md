@@ -309,6 +309,15 @@ A std item states the names it replaced, `@was(Prefix1, PrefixN)` above
 naming the new one, with the fix (and a word built on the type, the
 snake-case forms: `prefix_n`). Status: checks
 (`std-prefix/was-diff1-names-diff.cp`).
+`@stress(kind)` above a type alias says how `cpl stress` makes and shrinks
+its values: `perm`, `tree`, `simple`, `connected`, `dag` or `digraph`
+(decision 25.32). std writes it above `Perm`, `Tree` and the graph
+aliases; stress reads it on the declaration a written type resolves to, so
+`type P = Perm<V>` is a permutation and a user's own undecorated `Tree` is
+not, and a weighted tree is `@stress(tree) type Tree = [0..n - 1](u: V,
+v: V, w: W)`. Anything but one bare kind, or `@stress` on anything but a
+type alias, is E0325. `cpl run` and `cpl build` ignore it. Status: checks
+(`core-12/stress-not-on-a-type.cp`, `core-12/stress-unknown-kind.cp`).
 
 ## W14. Inline C++ (P14)
 
