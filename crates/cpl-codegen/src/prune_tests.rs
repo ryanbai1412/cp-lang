@@ -309,3 +309,18 @@ fn a_lazy_segtree_over_a_domain_emits_only_the_dense_tree() {
     }
     assert!(cpp.len() < 26 * 1024, "{} bytes", cpp.len());
 }
+
+#[test]
+fn a_none_passed_on_through_a_parameter_still_drops_the_branch_on_it() {
+    let cpp = cpp(concat!(
+        "fn slow(a: Int) -> Int = a * a + 2\n",
+        "fn inner(a: Int, b: ?Int) -> Int:\n",
+        "    if let v = b: return slow(v + a)\n",
+        "    a + 1\n",
+        "fn outer(a: Int, b: ?Int) -> Int = inner(a, b)\n",
+        "let n: 1..=10 = read()\n",
+        "print(outer(n, None))\n",
+    ));
+    let code: String = cpp.lines().filter(|l| !l.starts_with("//")).collect();
+    assert!(!code.contains("slow"), "{cpp}");
+}
