@@ -139,7 +139,7 @@
     "perf": 3,
     "site": 0,
     "spec": 0,
-    "stdlib": 24,
+    "stdlib": 20,
     "tech-debt": 0,
     "tools": 11
   },
@@ -193,5 +193,7 @@
   "stress_engines": 5,
   "conformance_failing": 39,
   "conformance_wrong_output": 6,
-  "rust_idiom_lints": 77
+  "rust_idiom_lints": 77,
+  "scaling_mismatches": 0,
+  "std_fns_unscaled": 2111
 }

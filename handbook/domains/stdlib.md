@@ -221,7 +221,7 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 | Each type's common tasks are one short call | journeys per type with a tested example (`SortedBag`: insert, erase one, erase at cursor, predecessor, successor, range) | rule `std-api/R13`; `missing` (usage-journey suite, first for `SortedBag`/`SortedSet`) |
 | Composes: views, keys and ops pass through each other | pairs of std features that fail together (`.rev` into `zip`, `Window` into `maximal`) | rule `std-api/R14`; `missing` (pairwise composition suite) |
 | Every common operation from the C++ STL, Python, Rust and the AtCoder Library has a spelling | inventory operations with no spelling and no listed gap | rule `std-api/R15`; `missing` (comparative inventory checked against `cpl doc --format json std`) |
-| The obvious code is the fast code | std calls that look O(1) and are not | rule `std-api/R16`; `missing` (scaling test, below) |
+| The obvious code is the fast code | std calls that look O(1) and are not | rule `std-api/R16`; `bench/scaling.py --check` (time per call at n and 4n against the `cost:` line; `scaling_mismatches` hard zero, `std_fns_unscaled` only shrinks) |
 
 ### Discoverable (J2, J5)
 
@@ -240,7 +240,7 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 | Every doc example compiles and runs | failing `example:` lines | rule `std-docs/R6`; `cpl-conform docs`, ratcheted by the scoreboard; `web/scripts/gen-ref.mjs` fails the site build on a newly failing example (`site/R1`, shrink-only `web/scripts/doc-examples-failing.txt`) |
 | Every spec/lib example compiles and runs | failing code blocks in `spec/lib/*.md` | `crates/cpl-conform/src/spec_blocks.rs` in `cpl-conform all --check` |
 | Every public fn states cost, traps and edge cases | fns missing a required label | rule `std-docs/R1`; `scripts/spec-stub.py --audit` |
-| The documented cost is the real cost | fns slower than their `cost:` | rule `std-docs/R3`; `missing` (scaling test per fn: time at n and 4n) |
+| The documented cost is the real cost | fns slower than their `cost:` | rule `std-docs/R3`; `bench/scaling.py --check` (one `bench/scaling/*.cp` case per fn, time at n and 4n; `scaling_mismatches`, `std_fns_unscaled`) |
 | Docs show trait bounds and required labels | rendered docs missing bounds | rule `std-docs/R5`; `scripts/test_std_doc_json.py` |
 | Docs are readable: summary first, short, example near the top | pages over the length limit, summaries over one line | rule `std-docs/R8`; `scripts/std-docs-lint.py` (in `scripts/check.sh`, shrink-only) |
 | A person or model writes correct code from the docs alone | unseen problems solved first try from docs only | process: cold-reader rounds, each miss traced to a row here |
@@ -253,9 +253,9 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 | Within 1.1x of matched C++ | p50 and max ratio over std benches | `cpl bench` matched baselines in `bench/`, owned with perf |
 | No hidden allocation or copy | std fns that allocate without saying so | `missing` (allocation counter in the interpreter checked against docs) |
 | Fixed-size `windows(k)` for a compile-time `k` does not allocate | allocations per window | rule `std-api/R17`; `missing` (allocation counter in the interpreter) |
-| Small submissions | bytes of std code per emitted solution | `crates/cpl-cli/tests/read_only_copies.rs` counts std fns; a size budget is `missing` |
+| Small submissions | bytes of std code per emitted solution | `bench/sizes.py --check` (every corpus and bench program's judge C++ under 32 KB, no list); `crates/cpl-cli/tests/read_only_copies.rs` counts std fns |
 | Fast front end with std loaded | `check` and `explain` time of a program that uses every std module | `crates/cpl-cli/tests/cold_start.rs` (500 ms median, release build; about 110 ms today) |
-| Compiles fast on the judge | g++ time of std-heavy solutions | `missing` |
+| Compiles fast on the judge | g++ time of std-heavy solutions | `bench/compile_time.py --check` (g++ -O2 CPU time of every bench program over a `<bits/stdc++.h>` baseline: median under 1.0x, max under 2.2x) |
 
 ### Debuggable (J6, J7)
 

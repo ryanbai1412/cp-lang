@@ -1609,6 +1609,33 @@ def std_shadowed(root: Path) -> list[str]:
 WALK_RE = re.compile(r"\b(?:glob|rglob|iglob|listdir|iterdir|scandir|walk|read_dir|readdir\w*|ls)\b|\*")
 
 
+SCALING_BOARD = "research/perf/scaling.json"
+
+
+def _scaling_board(root: Path) -> dict | None:
+    try:
+        return json.loads((root / SCALING_BOARD).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def scaling_mismatches(root: Path) -> list[str]:
+    """bench/scaling cases whose std fn grows other than its `cost:` says, as
+    `bench/scaling.py --write` recorded them; a missing board counts."""
+    board = _scaling_board(root)
+    if board is None:
+        return [f"{SCALING_BOARD}: no board; run bench/scaling.py --write"]
+    return [f"{c}: {r.get('fn')}" for c, r in sorted(board.get("cases", {}).items()) if not r.get("ok")]
+
+
+def std_fns_unscaled(root: Path) -> list[str]:
+    """std fns with a `cost:` line and no bench/scaling case timing it."""
+    board = _scaling_board(root)
+    if board is None:
+        return [f"{SCALING_BOARD}: no board; run bench/scaling.py --write"]
+    return list(board.get("unscaled", []))
+
+
 def corpus_walkers(root: Path) -> list[str]:
     """Files besides scripts/corpus.py that list corpus/problems themselves: a second corpus walker."""
     found = []
@@ -1788,7 +1815,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
 
 
 HARD_ZERO = frozenset({
-    "bench_lists",
+    "bench_lists", "scaling_mismatches",
     "own_databases", "module_loaders", "web_skip_only", "todo_fixme", "ci_retries",
     "pending_tests", "edition_refs", "uncited_rules", "decision_dup_numbers", "why_written_twice", "authority_drift",
     "continue_on_error", "unregistered_lists", "codegen_effect_guesses", "spec_std_refs",
@@ -1892,6 +1919,8 @@ COUNTERS = {
     "mono_unguarded": ("monomorphization with no termination guard", mono_unguarded, True),
     "std_shadowed": ("std names lowering bypasses off the builtin floor", std_shadowed, True),
     "corpus_walkers": ("files listing corpus/problems besides scripts/corpus.py", corpus_walkers, True),
+    "scaling_mismatches": ("bench/scaling cases slower or faster than the std fn's cost:", scaling_mismatches, True),
+    "std_fns_unscaled": ("std fns with a cost: and no bench/scaling case", std_fns_unscaled, True),
     "json_outside_cpl_json": ("serde_json or hand-built JSON outside cpl-json", json_outside_cpl_json, True),
     "config_schemas": ("cp.toml/toml:: readers outside the config module", config_schemas, True),
     "std_doc_parsers": ("`///` doc-comment readers outside cpl-syntax/cpl-doc", std_doc_parsers, True),

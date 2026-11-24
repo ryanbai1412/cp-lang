@@ -151,7 +151,7 @@ numbers live in `plan/domains/perf/metrics.toml`. Journeys are from
 | Memory matches C++ (J8) | peak RSS ratio p95 (bar 1.5x) and max (bar 2x), programs over 1.5x | `bench/v03_perf_bench.py` `peak RSS` line ([performance/R5](../guidelines/performance-checklist.md)) | measured, not gated |
 | Submissions fit (J9) | programs over 32 KB, over 64 KB, per judge profile | `bench/sizes.py --check`; `crates/cpl-cli/tests/budget.rs`, `judges.rs` ([performance/R8](../guidelines/performance-checklist.md)) | enforced for 32 KB and 64 KB, no list |
 | Submissions compile everywhere (J9) | programs that build but fail g++ -std=c++17, per profile | `bench/compiles.py`; `crates/cpl-cli/tests/judges.rs` | partial: not every profile in CI |
-| Fast to compile (J6, J9) | g++ -O2 time p50 and max | `bench/v03_perf_bench.py` compile column; `budget.rs` | partial |
+| Fast to compile (J6, J9) | g++ -O2 time p50 and max | `bench/compile_time.py --check`; `bench/v03_perf_bench.py` compile column; `budget.rs` | enforced: median 1.0x, max 2.2x a `<bits/stdc++.h>` compile |
 | No undefined behaviour in the C++ | sanitizer reports | `crates/cpl-cli/tests/differential.rs` and `crates/cpl-cli/tests/fuzz_three_way.rs` under ASan/UBSan ([performance/R9](../guidelines/performance-checklist.md)) | partial: the corpus isn't run sanitized |
 | Deterministic output | byte differences across two builds of the same program | `crates/cpl-cli/tests/deterministic_cpp.rs`: every corpus and conformance program built twice ([performance/R18](../guidelines/performance-checklist.md)) | enforced |
 | Costs are visible (J8) | implicit codegen choices `cpl explain` doesn't name (copies, closures, fusion, sinking, check elision, widths) | `cpl explain` text and `--json`; `crates/cpl-cli` explain tests ([performance/R17](../guidelines/performance-checklist.md)) | partial: copies and closures only |
@@ -176,6 +176,8 @@ numbers live in `plan/domains/perf/metrics.toml`. Journeys are from
 | zero-cost pairs | an abstraction costing more than its hand-written form | `./target/release/cpl bench --zero-cost bench/zero-cost --reps 11` |
 | sizes | a program over 32 KB or 64 KB | `python3 bench/sizes.py --cpl target/release/cpl --check -j 4` |
 | compiles | C++ that g++ rejects | `python3 bench/compiles.py` |
+| compile time | g++ -O2 over its bars | `python3 bench/compile_time.py --check` |
+| scaling | a std fn growing other than its `cost:` | `python3 bench/scaling.py --check` |
 | toolchain latency | slow check, run, build, LSP or stress | `python3 bench/rust_latency_audit.py --reps 1` |
 | `cpl explain` | why a value was copied, how a closure is called | `cpl explain a.cp [--json]` |
 

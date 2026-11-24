@@ -607,6 +607,12 @@ uv run --quiet python bench/sizes.py --check --cpl "$cpl" >"$target/sizes.log" 2
 grep -v ': warning: ' "$target/sizes.log"
 [ "$sizes_status" -eq 0 ] \
     || fail "a program is over the 32 KB bar or a bench program stopped building; see above"
+step "g++ -O2 compile time of the bench programs within its bars (bench/compile_time.py --check)"
+uv run --quiet python bench/compile_time.py --check --cpl "$cpl" \
+    || fail "the bench programs' g++ -O2 time is over a bar in bench/compile_time.py; see above"
+step "every std fn with a case grows as its cost: says (bench/scaling.py --check)"
+uv run --quiet python bench/scaling.py --check --cpl "$cpl" \
+    || fail "a std fn's time at n and 4n disagrees with its cost:, or research/perf/scaling.json is stale; see above"
 
 step "conformance coverage: COVERAGE.md current, no new rule gaps"
 uv run scripts/conformance-coverage.py --check ||
