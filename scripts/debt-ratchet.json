@@ -199,7 +199,7 @@
   "habit_matchers": 124,
   "unchecked_fix_paths": 7,
   "stress_engines": 2,
-  "conformance_failing": 12,
+  "conformance_failing": 11,
   "conformance_wrong_output": 1,
   "rust_idiom_lints": 77,
   "scaling_mismatches": 0,
