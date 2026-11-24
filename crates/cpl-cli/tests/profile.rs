@@ -185,6 +185,25 @@ fn a_reduce_lowered_inline_starts_its_line_once() {
 }
 
 #[test]
+fn a_loop_binding_a_tuple_starts_its_line_once() {
+    let file = scratch(
+        "tuple_for.cp",
+        "let xs = [i for i in 0..5]\nvar s = 0\nfor (a, b) in xs.adjacent:\n    s += a ^ b\nprint(s)\n",
+    );
+    let path = file.to_str().unwrap();
+    for engine in [&[][..], &["--native"][..]] {
+        if !engine.is_empty() && !has_gxx() {
+            continue;
+        }
+        let args = [&["profile", path, "-", "--format", "json"][..], engine].concat();
+        let (out, err, code) = cpl(&args);
+        assert_eq!(code, 0, "{err}");
+        let starts = field(&out, "start_count");
+        assert_eq!(&starts[2..4], [(3, 1), (4, 4)], "{engine:?}");
+    }
+}
+
+#[test]
 fn native_profile_charges_the_caller_again_after_a_user_fn_returns() {
     if !has_gxx() {
         return;

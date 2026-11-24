@@ -94,6 +94,18 @@ fn arms<'p>(stmt: &'p Stmt, f: &mut dyn FnMut(&'p Stmt)) {
                 _ => written(otherwise, f),
             }
         }
+        // A body statement spanned before the loop's iterable binds its
+        // pattern (`for (a, b) in ...`): the loop's, not one a step starts.
+        Stmt::For(..) => {
+            let at = stmt.span().map_or(0, |span| span.start);
+            walk::stmt_blocks(stmt, &mut |inner| {
+                written(inner, &mut |s: &'p Stmt| {
+                    if s.span().is_none_or(|span| span.start >= at) {
+                        f(s)
+                    }
+                })
+            })
+        }
         _ => walk::stmt_blocks(stmt, &mut |inner| written(inner, f)),
     }
 }
