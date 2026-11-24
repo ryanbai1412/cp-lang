@@ -1753,17 +1753,6 @@ pub struct Slice<S>(
     /// example: `[1, 2][2..].is_empty == true`
     @get pub fn is_empty(self) -> Bool = hi <= lo
 
-    /// \(O(\mathit{len})\). Visit every element with its source key; `for x in s` walks the
-    /// same elements without the keys.
-    ///
-    /// cost: \(O(\mathit{len})\)
-    /// empty: `[1, 2][2..].items.collect() == []`
-    /// order: increasing key
-    /// traps: never
-    /// example: `[5, 6, 7][1..].items.collect() == [(1, 6), (2, 7)]`
-    @get pub fn items<K, T>(self) -> yields (K, T):
-        for k in self.keys: yield (k, self.at(k))
-
 /// \(O(1)\). The view without its first `k` elements, clamped (traps if `k < 0` or `k >= 2^31`). Consuming a view
 /// from the front is `w = w.drop(1)`.
 ///
@@ -1832,6 +1821,14 @@ impl<S: Indexed<K, T>, K, T> Sized for Slice<S>:
     @get fn len(self) -> Int = self.hi - self.lo
 
 impl<S: Indexed<K, T>, K, T> Keyed<K, T> for Slice<S>:
+    /// \(O(\mathit{len})\). Visit every element with its source key; `for x in s` walks the
+    /// same elements without the keys.
+    ///
+    /// cost: \(O(\mathit{len})\)
+    /// empty: `[1, 2][2..].items.collect() == []`
+    /// order: increasing key
+    /// traps: never
+    /// example: `[5, 6, 7][1..].items.collect() == [(1, 6), (2, 7)]`
     fn items(self) -> yields (K, T):
         for i in self.lo..self.hi: yield (self.src.keys.nth(i), self.src.nth(i))
 
