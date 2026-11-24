@@ -1619,6 +1619,8 @@ def main(argv: list[str] | None = None) -> int:
                        help="Write current measurements to the ratchet file; with NAMEs, only those entries.")
     group.add_argument("--show", nargs="*", metavar="NAME", help="Print `name count` for counters.")
     group.add_argument("--list", metavar="NAME", help="Print the offenders behind one counter.")
+    group.add_argument("--zero", action="store_true",
+                       help="Fail while any gated counter is above 0: main's own debt, reported red.")
     parser.add_argument("--ratchet", type=Path, default=DEFAULT_RATCHET, help="Path to debt-ratchet.json.")
     parser.add_argument("--root", type=Path, default=ROOT, help="Repository root.")
     args = parser.parse_args(argv)
@@ -1626,6 +1628,15 @@ def main(argv: list[str] | None = None) -> int:
     max_lines = DEFAULT_MAX_RS_LINES
     if args.ratchet.is_file():
         max_lines = int(json.loads(args.ratchet.read_text(encoding="utf-8")).get("max_rs_lines", max_lines))
+
+    if args.zero:
+        left = {n: len(fn(args.root)) for n, (_, fn, gated) in COUNTERS.items() if gated}
+        left = {"rs_over_cap": len(rs_over_cap(args.root, max_lines)), **left}
+        left = {n: c for n, c in left.items() if c}
+        for n, c in left.items():
+            print(f"debt-ratchet: {n} {c} (target 0; `--list {n}` shows them)")
+        print(f"debt-ratchet: {len(left)} counter(s) above 0" if left else "debt-ratchet: every counter at 0")
+        return 1 if left else 0
 
     if args.show is not None or args.list:
         names = [args.list] if args.list else (args.show or ["rs_over_cap", *COUNTERS])

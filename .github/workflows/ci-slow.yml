@@ -20,6 +20,17 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Main's own debt: red until every gated counter is 0. ci.yml's ratchet
+  # inherits main's counts so a tip fails only on debt it adds.
+  debt-zero:
+    name: every debt counter at 0
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Debt counters at 0
+        run: python3 scripts/debt-ratchet.py --zero
+
   # Timing budgets report here and never turn main red (decision 225).
   timing:
     name: wall-clock budgets

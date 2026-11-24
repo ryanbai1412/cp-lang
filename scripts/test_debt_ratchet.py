@@ -4,6 +4,7 @@ import os
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 _SPEC = importlib.util.spec_from_file_location(
@@ -306,6 +307,15 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.trace_engine_refs(root), ["crates/a/src/lib.rs:1"])
             self.assertEqual(dr.corpus_known(root), ["corpus/generators-known.txt"] * 2)
             self.assertEqual(dr.rs_over_cap(root, 1), {"crates/a/src/big.rs": 2})
+
+    def test_zero_fails_while_any_gated_counter_is_above_zero(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self._make_repo(root)
+            self.assertEqual(dr.main(["--zero", "--root", str(root)]), 1)
+            with mock.patch.dict(dr.COUNTERS, {n: (l, lambda r: [], g) for n, (l, _, g) in dr.COUNTERS.items()}), \
+                    mock.patch.object(dr, "rs_over_cap", lambda r, m: {}):
+                self.assertEqual(dr.main(["--zero", "--root", str(root)]), 0)
 
     def test_a_counter_at_zero_is_never_raised(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
