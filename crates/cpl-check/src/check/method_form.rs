@@ -211,11 +211,16 @@ impl Checker<'_> {
         if matches!(y, Ty::Param(_)) {
             return false;
         }
-        let traits: Vec<String> = (bounds.iter())
+        !self.param_traits_hold(bounds, g, y)
+    }
+
+    /// Whether `ty` implements every trait `bounds` puts on the generic `g`.
+    #[inline(never)]
+    fn param_traits_hold(&mut self, bounds: &[(String, Vec<String>)], g: &str, ty: &Ty) -> bool {
+        (bounds.iter())
             .filter(|(p, _)| p == g)
-            .flat_map(|(_, t)| t.iter().cloned())
-            .collect();
-        traits.iter().any(|t| !self.implements_trait(y, t))
+            .flat_map(|(_, t)| t)
+            .all(|t| self.implements_trait(ty, t))
     }
 
     /// Whether `def`'s parameters, on `base`, take the types `args` have,
@@ -333,11 +338,7 @@ impl Checker<'_> {
             return false;
         };
         if let Ty::Param(g) = &first.ty {
-            let traits: Vec<String> = (bounds.iter())
-                .filter(|(p, _)| p == g)
-                .flat_map(|(_, t)| t.iter().cloned())
-                .collect();
-            return traits.iter().all(|t| self.implements_trait(base, t));
+            return self.param_traits_hold(bounds, g, base);
         }
         let base = &self.narrowed(base, &first.ty);
         let same_shape = match (&first.ty, base) {
@@ -392,9 +393,8 @@ impl Checker<'_> {
         }
         // Of several, those whose parameters take the arguments' types.
         if let Some(args) = args.filter(|_| fit.len() > 1) {
-            let defs: Vec<Arc<Def>> = fit.iter().map(|f| f.1.clone()).collect();
-            let takes: Vec<bool> = (defs.iter())
-                .map(|d| self.takes_arg_types(d, base, args))
+            let takes: Vec<bool> = (0..fit.len())
+                .map(|i| self.takes_arg_types(&fit[i].1, base, args))
                 .collect();
             if takes.contains(&true) {
                 let mut takes = takes.into_iter();
@@ -402,9 +402,9 @@ impl Checker<'_> {
             }
         }
         // R08.1.4: of the candidates, those no other is more specific than.
-        let defs: Vec<Arc<Def>> = fit.iter().map(|f| f.1.clone()).collect();
-        let beaten: Vec<bool> = (0..defs.len())
-            .map(|b| (0..defs.len()).any(|a| a != b && self.beats(&defs[a], &defs[b])))
+        let n = fit.len();
+        let beaten: Vec<bool> = (0..n)
+            .map(|b| (0..n).any(|a| a != b && self.beats(&fit[a].1, &fit[b].1)))
             .collect();
         let mut beaten = beaten.into_iter();
         fit.retain(|_| !beaten.next().unwrap_or(false));
@@ -1058,6 +1058,7 @@ impl Checker<'_> {
     /// E0701 (R08.1.4): an extension fn with a `self` of its own shape that
     /// the receiver's own member always wins over is never called: `fn
     /// sum(self: Range<Int>)` beside `Range.sum`.
+    #[inline(never)]
     pub(super) fn member_hides_extension(&mut self, callee: &Expr, args: &[Arg]) -> bool {
         let ExprKind::Field { base, name } = &callee.kind else {
             return false;

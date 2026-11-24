@@ -402,8 +402,7 @@ impl Checker<'_> {
                 // bound's, where the call already fixed it.
                 let mut open = crate::ty::Bindings::default();
                 for (want, got) in args.iter().zip(&given) {
-                    let known = self.bound_assoc(want, &bound_args, bindings);
-                    let known = self.resolve_assoc(&known);
+                    let known = self.resolve_assoc(&want.subst(bindings));
                     if !known.mentions_param() && !known.has_assoc() {
                         got.unify(&known, &mut open);
                     }
@@ -417,37 +416,6 @@ impl Checker<'_> {
                 }
             }
         }
-    }
-
-    /// `M.Fold` for `M: Op<T>` bound to `NoOp`: the impl's choice, with the
-    /// impl's own `T` taken from the bound's.
-    fn bound_assoc(
-        &mut self,
-        want: &Ty,
-        bound_args: &BoundArgs,
-        bindings: &crate::ty::Bindings,
-    ) -> Ty {
-        if let Ty::Assoc { of, name } = want {
-            if let Some((p, actual)) = match of.as_ref() {
-                Ty::Param(p) => bindings.get(p).map(|a| (p, a)),
-                _ => None,
-            } {
-                let actual = self.settle(actual);
-                if let Some(chosen) = self.project(&actual, name) {
-                    let mut open = crate::ty::Bindings::default();
-                    for (_, tr, args) in bound_args.iter().filter(|(q, ..)| q == p) {
-                        let given = self
-                            .trait_args_of(&actual, tr, args.len())
-                            .unwrap_or_default();
-                        for (w, g) in args.iter().zip(given) {
-                            g.unify(&w.subst(bindings), &mut open);
-                        }
-                    }
-                    return chosen.subst(&open).subst(bindings);
-                }
-            }
-        }
-        want.subst(bindings)
     }
 
     /// `fn f<A: Keyed<K, _>, B: Keyed<K, _>, K>`: a type parameter named in several bounds is

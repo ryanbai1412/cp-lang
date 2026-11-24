@@ -207,37 +207,34 @@ impl Checker<'_> {
                     let outer = self.call_bound_args.replace(bound_args);
                     self.bind_bound_args(&mut bindings);
                     self.call_bound_args = outer;
-                    // `new(..) -> SegTree<D, T, F, N>`: a struct param `new` fixes isn't its default.
-                    let new_ret = (methods.iter().filter(|_| !is_generated_ctor)).find_map(
-                        |(m, t)| match t {
-                            Ty::Fn { ret, .. } if m == "new" => Some(ret),
-                            _ => None,
-                        },
-                    );
-                    if let Some(Ty::Named { args: rargs, .. }) = new_ret.map(|r| r.as_ref()) {
-                        let unwritten = generics
-                            .iter()
-                            .zip(rargs)
-                            .zip(defaults)
-                            .skip(type_args.len());
-                        for ((g, r), d) in unwritten {
-                            let r = r.subst(&bindings);
-                            if d.is_some() && !r.mentions_param() {
-                                bindings.insert(g.clone(), r);
-                            }
-                        }
-                    }
                     if !is_generated_ctor && self.sink.len() > before {
                         self.ctor_arg_fix(callee_text, params, (methods, receivers), args, call);
                     }
                     if is_generated_ctor {
                         self.move_ctor_args(args);
                     }
+                    // `new(..) -> SegTree<D, T, F, N>`: a struct param `new` fixes isn't its default.
+                    let new_ret = match methods
+                        .iter()
+                        .find(|(m, _)| m == "new" && !is_generated_ctor)
+                    {
+                        Some((_, Ty::Fn { ret, .. })) => match ret.as_ref() {
+                            Ty::Named { args, .. } => &args[..],
+                            _ => &[],
+                        },
+                        _ => &[],
+                    };
                     for (i, g) in generics.iter().enumerate() {
-                        if !bindings.contains_key(g) {
-                            if let Some(Some(def_ty)) = defaults.get(i) {
-                                bindings.insert(g.clone(), def_ty.subst(&bindings));
-                            }
+                        let Some(Some(def_ty)) = defaults.get(i) else {
+                            continue;
+                        };
+                        let from_new = (new_ret.get(i).filter(|_| i >= type_args.len()))
+                            .map(|r| r.subst(&bindings))
+                            .filter(|r| !r.mentions_param());
+                        if let Some(r) = from_new {
+                            bindings.insert(g.clone(), r);
+                        } else if !bindings.contains_key(g) {
+                            bindings.insert(g.clone(), def_ty.subst(&bindings));
                         }
                     }
                     // Type arguments left out are read off the values.

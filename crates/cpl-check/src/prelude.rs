@@ -536,7 +536,7 @@ fn struct_decorations(decorator: &str) -> Vec<(&'static str, &'static str)> {
     let leak = |s: &str| &*Box::leak(s.to_string().into_boxed_str());
     let mut out = Vec::new();
     for (_, text) in crate::modules::std_index() {
-        if !text.contains(&format!("@{decorator}(")) {
+        if !text.contains(decorator) {
             continue;
         }
         for (_, item) in cpl_syntax::parse_file(text).items {
