@@ -152,12 +152,14 @@ impl Show for Mod<P>:
 impl Read for Mod<P>:
     fn read() -> Mod<P>:
         let s: Str = read()
-        var r = 0
+        // `Mod` arithmetic, so `r * 10` cannot overflow for a modulus near 2^61.
+        let ten = Mod(10 % P)
+        var r = Mod(0)
         for c in s:
             if c != '-':
                 assert '0' <= c <= '9', "`read<Mod<P>>()` reads an integer token"
-                r = (r * 10 + Int(c) - Int('0')) % P
-        return Mod(if s[0] == '-' and r > 0: P - r else: r)
+                r = r * ten + Mod((Int(c) - Int('0')) % P)
+        return if s[0] == '-': -r else: r
 
 /// Factorials and inverse factorials for a modular type `M = Mod<P>` (prime `P`).
 /// Its tables are `@cache` fields that grow on demand, so an immutable
