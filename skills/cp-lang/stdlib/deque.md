@@ -38,7 +38,7 @@ Fields: `buf: List<T>`, `head: Int`, `n: Int`, `mask: Int`, `want: Int`.
 
 ## `struct LinkedList<T>`
 
-Doubly-linked list supporting \(O(1)\) end pushes/pops and \(O(1)\) splicing (`splice_back`, `splice_front`).
+Doubly-linked list supporting \(O(1)\) end pushes/pops and splicing (`splice_back`, `splice_front`) that moves only the shorter list.
 
 Fields: `head: Int`, `tail: Int`, `nx: List<Int>`, `pv: List<Int>`, `val: List<T>`, `flip: Bool`.
 

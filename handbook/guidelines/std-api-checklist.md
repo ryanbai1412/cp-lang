@@ -36,7 +36,7 @@ One idea has one name in every module; a new idea adds a row here in the commit 
 | membership | `x in s`, method form `s.contains(x)` | `has`, `count(x) > 0` |
 | back of a sequence | `push`, `pop` | `append`, `push_back` |
 | insert at a position of a list | `a.insert(i, x)` | |
-| splice a whole structure onto an end | `t.splice_back(other)`, `t.splice_front(other)` | `append` |
+| splice a whole structure onto an end | `t.splice_back(mut other)`, `t.splice_front(mut other)` | `append` |
 | front of a sequence | `push_front`, `pop_front` | `appendleft`, `shift` |
 | ends, possibly absent | `first`, `last` (`?T`) | `front`, `back` |
 | the reverse of a direction or a matching | `d.back` (the opposite direction), `m.back(r)` (`r`'s partner) | |

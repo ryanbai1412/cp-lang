@@ -325,7 +325,7 @@ pub struct Deque<T>:
         if n == 0: return
         self.rotate_left(-k)
 
-/// Doubly-linked list supporting \(O(1)\) end pushes/pops and \(O(1)\) splicing (`splice_back`, `splice_front`).
+/// Doubly-linked list supporting \(O(1)\) end pushes/pops and splicing (`splice_back`, `splice_front`) that moves only the shorter list.
 pub struct LinkedList<T>:
     _len: Int
     head: Int

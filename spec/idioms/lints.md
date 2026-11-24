@@ -626,7 +626,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | Lint | Catches | Write instead | Tier | P | Engine |
 |---|---|---|---|---|---|
 | manual_deque_pop_front_while | `while not d.is_empty and p(d.first!): d.pop_front()` | `d.pop_front_while(p)` | fix | #2 | loop |
-| manual_deque_splice | loop popping from one deque and pushing to another | `d.splice_back(other)` / `d.splice_front(other)` | fix | #1 | loop |
+| manual_deque_splice | loop popping from one deque and pushing to another | `d.splice_back(mut other)` / `d.splice_front(mut other)` | fix | #1 | loop |
 | manual_grid_dir_turn | `(dir + 1) % 4` / `(dir + 3) % 4` on integer direction index | `Dir4` / `Dir8` `.left` / `.right` | fix | #3 | syn |
 | manual_rng_pick_sample | `xs[rng.int(0..xs.len)]` or Floyd/reservoir loop | `rng.pick(xs)` / `rng.sample(xs, k)` | fix | #1 | syn |
 | manual_rng_chance | `rng.int(0..d) < n` for Bernoulli trial | `rng.chance(n, d)` | fix | #1 | syn |
