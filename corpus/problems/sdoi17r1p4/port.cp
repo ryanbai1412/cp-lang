@@ -2,41 +2,24 @@
 //   (not public; statement read on Luogu as P3705)
 // Problem: n <= 100 boys and n girls; pairing boy i with girl j gives a[i][j] and b[i][j]
 //   (both 1..1e4). Over perfect matchings, maximise sum a / sum b; print it to 6 decimals.
-// Solution: fractional programming: the ratio exceeds r iff the max-weight perfect matching
-//   with weights a - r b is positive. Binary search r scaled by SCALE = 1e7 (integer weights
-//   SCALE a - mid b, hi = max(a) * SCALE) with `max_weight_matching` (Hungarian, O(n^3)),
-//   about 37 rounds; print lo / 1e7 rounded to 6 decimals by hand.
+// Solution: fractional programming by Dinkelbach's method. For a ratio num / den reached by
+//   some matching, the best matching under weights den a - num b has weight 0 exactly when
+//   num / den is optimal; otherwise its own ratio is strictly larger. So start from num = 0
+//   and replace the ratio by the best matching's until its weight is 0: a few Hungarian
+//   rounds (`max_weight_matching`, O(n^3) each), exact in integers.
 // original: corpus/submissions/5466798.cpp
+// Bounds: n: 1..=100; a, b: 1..=1e4
 use std.flow.{max_weight_matching}
 
-let n: Int = read()
+let n: 1..=100 = read()
 domain Boy = 0..n
 domain Girl = 0..n
+let a: [Boy, Girl]1..=1e4 = read()
+let b: [Boy, Girl]1..=1e4 = read()
 
-let a: [Boy][Girl]Int = read()
-let b: [Boy][Girl]Int = read()
-
-const SCALE = 10000000
-var max_a = 0
-for i in Boy:
-    for j in Girl:
-        max_a max= a[i][j]
-
-var (lo, hi) = (0, max_a * SCALE)
-while lo < hi:
-    let mid = (lo + hi + 1) / 2
-    let best = max_weight_matching<Boy, Girl>((i, j) => SCALE * a[i][j] - mid * b[i][j]).total
-    if best > 0: lo = mid
-    else: hi = mid - 1
-
-// Round `lo / 10^7` to 6 decimal places (`print` has no fixed-precision format).
-let scaled6 = (lo + 5) / 10
-let whole = scaled6 / 1000000
-var frac = scaled6 % 1000000
-var digits = List.filled(6, 0)
-for k in (0..6).rev:
-    digits[k] = frac % 10
-    frac /= 10
-var out = Str(whole) + "."
-for d in digits: out += Str(d)
-print(out)
+var (num, den) = (0, 1)
+loop:
+    let best = max_weight_matching<Boy, Girl>((i, j) => den * a[i, j] - num * b[i, j])
+    if best.total == 0: break
+    (num, den) = (Boy.sum(i => a[i, best.mate[i]]), Boy.sum(i => b[i, best.mate[i]]))
+print(fixed(num, den, 6))
