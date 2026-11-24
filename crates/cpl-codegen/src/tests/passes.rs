@@ -498,3 +498,26 @@ fn each_sink_says_how_a_store_combines() {
         "{ops:?}"
     );
 }
+
+#[test]
+fn each_sink_reports_lets_and_stores_in_statement_order() {
+    use crate::uses::split::{each_sink, Sink};
+    let program = lower(concat!(
+        "fn f(n: Int) -> Int:\n",
+        "    var k = n\n",
+        "    k = k * 2\n",
+        "    let j = k + 1\n",
+        "    j\n",
+        "print(f(3))\n",
+    ));
+    let mut order = String::new();
+    each_sink(&program.fns[0].body, &mut |sink| match sink {
+        Sink::Let(..) => order.push('L'),
+        Sink::Store(..) => order.push('S'),
+        _ => {}
+    });
+    assert!(
+        order.contains("LSL"),
+        "let k, the store, then let j: {order}"
+    );
+}

@@ -3,6 +3,7 @@
 use super::*;
 use crate::uses::loops::{each_loop, Loop};
 use crate::uses::places::{each_call, each_closure, each_put, each_write, Put, Write};
+use crate::uses::split::{each_sink, Sink};
 
 /// The niche a narrow width stores an optional field in, with the wide type it
 /// reads back as and its bit in `niche_types`: `?Int` is `cpl::OptI32`,
@@ -363,10 +364,10 @@ pub(crate) fn narrow_elems(
         }
     }
     for &(scope, body) in &scopes {
-        crate::walk::deep_stmts(body, &mut |stmt| {
-            let (dst, val) = match stmt {
-                Stmt::Let(slot, Some(val)) => (Some(ElemLoc::Local(scope, *slot)), val),
-                Stmt::Assign(place, cpl_ir::AssignOp::Set, val) => (place_loc(scope, place), val),
+        each_sink(body, &mut |sink| {
+            let (dst, val) = match sink {
+                Sink::Let(slot, Some(val)) => (Some(ElemLoc::Local(scope, slot)), val),
+                Sink::Store(place, cpl_ir::AssignOp::Set, val) => (place_loc(scope, place), val),
                 _ => return,
             };
             if let (Some(l), Some(t)) =
