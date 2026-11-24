@@ -182,7 +182,7 @@
   "unsafe_blocks": 26,
   "cpl_env_reads": 45,
   "test_sleeps": 23,
-  "ci_retries": 1,
+  "ci_retries": 0,
   "hardcoded_codes": 1,
   "xfail_markers": 0,
   "todo_fixme": 0,

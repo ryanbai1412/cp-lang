@@ -1379,10 +1379,10 @@ def test_sleeps(root: Path) -> list[str]:
 
 def ci_retries(root: Path) -> list[str]:
     """Retries in workflows, scripts and the justfile outside the one helper,
-    scripts/retry.sh: a `--retry`/`--retries` flag or a hand-rolled retry loop.
+    scripts/retry.sh and retry.py: a `--retry`/`--retries` flag or a hand-rolled retry loop.
     nextest's `--retries N --flaky-result fail` isn't one: the flake still fails."""
     hits = _git(root, "grep", "-n", "-E", "-e", RETRY_RE, "--", ".github", "scripts", "justfile",
-                ":!scripts/retry.sh", ":!scripts/test_*.py",
+                ":!scripts/retry.sh", ":!scripts/retry.py", ":!scripts/test_*.py",
                 ":!scripts/debt-ratchet.py", ":!scripts/test_debt_ratchet.py")
     return [":".join(h.split(":", 2)[:2]) for h in hits if not FLAKE_FAILS_RE.search(h)]
 
@@ -1760,7 +1760,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
 
 HARD_ZERO = frozenset({
     "bench_lists",
-    "own_databases", "module_loaders", "web_skip_only", "todo_fixme",
+    "own_databases", "module_loaders", "web_skip_only", "todo_fixme", "ci_retries",
     "pending_tests", "edition_refs", "uncited_rules", "decision_dup_numbers", "why_written_twice", "authority_drift",
     "continue_on_error", "unregistered_lists", "codegen_effect_guesses", "spec_std_refs",
     "stress_hand_json", "lint_dup_helpers", "lint_post_filters",

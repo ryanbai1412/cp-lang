@@ -30,6 +30,9 @@ import time
 import urllib.error
 import urllib.request
 
+sys.path.insert(0, str(Path(__file__).parent))
+from retry import retry  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
 STATEMENTS_DIR = ROOT / "corpus/statements"
 CPL = ROOT / "target/debug/cpl"
@@ -206,27 +209,19 @@ def call_model(system_prompt: str, user_prompt: str, model: str | None = None) -
             },
             method="POST",
         )
-        last_err: Exception | None = None
-        for attempt in range(3):
-            try:
-                with urllib.request.urlopen(req, timeout=300) as resp:
-                    if payload.get("stream"):
-                        return mdl, parse_openai_sse(resp)
-                    data = json.loads(resp.read().decode())
-                return mdl, data["choices"][0]["message"]["content"]
-            except urllib.error.HTTPError as exc:
-                last_err = exc
-                if exc.code in (429, 500, 502, 503, 504) and attempt < 2:
-                    time.sleep(2 ** (attempt + 1))
-                    continue
-                raise
-            except (http.client.HTTPException, urllib.error.URLError, TimeoutError, OSError) as exc:
-                last_err = exc
-                if attempt < 2:
-                    time.sleep(2 ** (attempt + 1))
-                    continue
-                raise
-        raise last_err  # pragma: no cover
+        def once() -> tuple[str, str]:
+            with urllib.request.urlopen(req, timeout=300) as resp:
+                if payload.get("stream"):
+                    return mdl, parse_openai_sse(resp)
+                data = json.loads(resp.read().decode())
+            return mdl, data["choices"][0]["message"]["content"]
+
+        def transient(exc: Exception) -> bool:
+            if isinstance(exc, urllib.error.HTTPError):
+                return exc.code in (429, 500, 502, 503, 504)
+            return isinstance(exc, (http.client.HTTPException, urllib.error.URLError, TimeoutError, OSError))
+
+        return retry(once, transient=transient)
 
     raise RuntimeError("No ANTHROPIC_API_KEY or OPENAI_API_KEY in environment")
 
