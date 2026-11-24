@@ -15,7 +15,7 @@ fn answers(s: Str, t: Str) -> List<Int>:
         elif ws.len == 0:
             out.push(1)
         else:
-            let c = gaps.partition_point(g => g >= len)
+            let c = gaps.bsearch(g => g >= len)
             out.push(1 + len + gs[c] + len * (gaps.len - c))
     out
 

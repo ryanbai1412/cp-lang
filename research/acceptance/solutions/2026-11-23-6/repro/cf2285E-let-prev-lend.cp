@@ -19,7 +19,7 @@ for j in 1..n:
             continue
         let p = j - g
         let prev = ends[p % w]
-        let at = prev.partition_point(e => e.0 >= d)
+        let at = prev.bsearch(e => e.0 >= d)
         var (left, kept) = (p, 1)
         if at < prev.len and prev[at].0 == d:
             (left, kept) = (prev[at].1, prev[at].2)

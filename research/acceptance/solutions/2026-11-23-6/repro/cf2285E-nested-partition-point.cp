@@ -18,7 +18,7 @@ for j in 1..n:
         if t > 0 and cands[t - 1].0 == d:
             continue
         let p = j - g
-        let at = ends[p % w].partition_point(e => e.0 >= d)
+        let at = ends[p % w].bsearch(e => e.0 >= d)
         var (left, kept) = (p, 1)
         if at < ends[p % w].len and ends[p % w][at].0 == d:
             (left, kept) = (ends[p % w][at].1, ends[p % w][at].2)

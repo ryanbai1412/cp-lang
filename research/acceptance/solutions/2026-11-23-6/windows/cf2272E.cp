@@ -25,7 +25,7 @@ fn answers(s: Str, t: Str) -> List<Int>:
             res.push(m + 1 + max(0, wt[wt.len - 1] + i - p - m))
         else:
             let l = i + 1
-            let c = gaps.partition_point(g => g >= l)
+            let c = gaps.bsearch(g => g >= l)
             res.push(1 + l + pre[c] + l * (gaps.len - c))
     res
 

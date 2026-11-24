@@ -14,7 +14,7 @@ for p in 0..n:
             cand[p].push(x)
 var vis: [0..n]List<Bool> = [0..n] p => [false for _ in 0..cand[p].len]
 fn find(q: Int, d: Int) -> Int:
-    let i = cand[q].partition_point(x => x.d >= d)
+    let i = cand[q].bsearch(x => x.d >= d)
     if i < cand[q].len and cand[q][i].d == d: i else: -1
 var best = 1
 for p in 0..n:

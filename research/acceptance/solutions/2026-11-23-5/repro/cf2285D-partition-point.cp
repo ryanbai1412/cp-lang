@@ -15,8 +15,8 @@ let keyed = [(pre.cut(s) + pre.cut(n - s) - total, s) for s in 1..n].sorted()
 fn count(d: Int, lo: Int, hi: Int) -> Int:
     if lo > hi: return 0
     let len = keyed.len
-    let r = keyed.partition_point(p => p > (d, hi))
-    let l = keyed.partition_point(p => p >= (d, lo))
+    let r = keyed.bsearch(p => p > (d, hi))
+    let l = keyed.bsearch(p => p >= (d, lo))
     r - l
 for _ in 0..q:
     let (i, v): (1..=n, Int) = read()

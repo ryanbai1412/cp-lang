@@ -9,13 +9,15 @@
 <id>-<what>.cp` are drafts that exposed a blocker (each says which in its first line).
 Each is built with `cpl build --judge codeforces` and judged by judge.py, so a codegen or
 stdlib change that makes an accepted run solution WA or TLE fails here. Exits 1 unless all
-are AC.
+are AC. A CE that `cpl fix` turns into an AC says so with the command to run: a language
+change's fix-it migrates the solution, nothing broke it.
 
 `-j N` (default: the CPU count) judges N solutions at once. Load only slows a run, so an
 AC under load is an AC alone; a TLE under load is judged again by itself before it counts.
 """
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
@@ -28,6 +30,15 @@ def opt(argv, name):
     return argv[argv.index(name) + 1] if name in argv else None
 
 
+def migrated(cpl, src, tmp):
+    """`src` after `cpl fix` in a copy, when the fix changes it and leaves no error: a CE that
+    a language change's fix-it migrates, as opposed to one the change broke."""
+    copy = Path(tempfile.mkdtemp(dir=tmp)) / src.name
+    shutil.copy(src, copy)
+    fixed = subprocess.run([cpl, "fix", str(copy)], capture_output=True).returncode == 0
+    return copy if fixed and copy.read_text() != src.read_text() else None
+
+
 def main(argv):
     only, jobs = opt(argv, "--only"), int(opt(argv, "-j") or os.cpu_count() or 1)
     shard, shards = map(int, (opt(argv, "--shard") or "1/1").split("/"))
@@ -37,7 +48,12 @@ def main(argv):
     srcs = srcs[shard - 1::shards]
     with tempfile.TemporaryDirectory() as tmp:
         def judge(src):
-            return verdict(cpl, src, src.stem.split("-")[0].lower(), tempfile.mkdtemp(dir=tmp), judge="codeforces")
+            pid = src.stem.split("-")[0].lower()
+            v = verdict(cpl, src, pid, tempfile.mkdtemp(dir=tmp), judge="codeforces")
+            fixed = migrated(cpl, src, tmp) if v.startswith("CE") else None
+            if fixed and verdict(cpl, fixed, pid, tempfile.mkdtemp(dir=tmp), judge="codeforces").startswith("AC"):
+                v += f"; AC after `cpl fix`, so migrate it: cpl fix {src.relative_to(ROOT)}"
+            return v
 
         with ThreadPoolExecutor(max_workers=jobs) as pool:
             verdicts = list(pool.map(judge, srcs))
