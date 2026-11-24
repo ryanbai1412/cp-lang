@@ -1412,13 +1412,13 @@ pub struct DynamicOrderTree<D, T>:
     val: List<T> = []
     // `bit[j]` for `j >= 1` holds the values at positions `j - (j & -j)..j`; `bit[0]` holds
     // every value, the candidates `kth` searches.
-    bit: List<SortedBag<T>> = []
+    var bit: List<SortedBag<T>> = []
     // With `values:`, the sorted distinct values `vs`, and `at[p]`, a segment tree of `sz` leaves
     // over their ranks whose node `p` holds the positions whose value's rank is under it.
-    ranked: Bool = false
+    var ranked: Bool = false
     vs: List<T> = []
-    sz: Int = 1
-    at: List<SortedBag<Int>> = []
+    var sz: Int = 1
+    var at: List<SortedBag<Int>> = []
 
     fn rank_of(self, x: T, le: Bool) -> Int = (0..vs.len).first_true(
         i => if le: vs[i] > x else: vs[i] >= x
