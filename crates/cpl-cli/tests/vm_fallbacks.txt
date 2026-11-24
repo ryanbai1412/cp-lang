@@ -4,7 +4,6 @@ expr:Call(m1_get_or_insert_with_Int_Int)
 expr:Call(m1_get_or_insert_with_Str_D0_P)
 expr:Call(m1_get_or_insert_with_Str_D1_P)
 expr:CallExpr
-expr:Closure
 expr:DomainVal
 expr:Read
 traced stmt:Assert

@@ -666,7 +666,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             }
             ExprKind::Closure(cid) => {
                 let def = &self.program.closures[*cid];
-                if def.captures.iter().all(|c| c.is_global || !c.by_ref) {
+                {
                     let mut caps = Vec::with_capacity(def.captures.len());
                     for cap in &def.captures {
                         if cap.is_global {
@@ -675,6 +675,15 @@ impl<'p, 'f> Compiler<'p, 'f> {
                             } else {
                                 caps.push(CapSrc::GlobalVal(cap.outer as u16));
                             }
+                        } else if cap.by_ref {
+                            let v = match self.slot_loc(cap.outer) {
+                                SlotLoc::V(r) => r,
+                                _ => u16::MAX,
+                            };
+                            caps.push(CapSrc::LocalRef {
+                                slot: cap.outer as u16,
+                                v,
+                            });
                         } else {
                             match self.slot_loc(cap.outer) {
                                 SlotLoc::I(r, kind) => caps.push(CapSrc::LocalI(r, kind)),
@@ -696,8 +705,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     let dst = self.alloc_v();
                     self.emit(Op::MakeClosure { dst, spec }, span);
                     dst
-                } else {
-                    self.emit_fallback_expr_v(expr)
                 }
             }
             ExprKind::Range { lo, hi }

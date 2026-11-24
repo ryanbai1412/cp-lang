@@ -902,6 +902,26 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         CapSrc::LocalV(r) => {
                             caps.push(CaptureVal::Val(regs_v[r as usize].clone()));
                         }
+                        CapSrc::LocalRef { slot, v } => {
+                            let at = self.base + slot as usize;
+                            let lent = (self.lent.iter().rev())
+                                .take_while(|l| l.0 >= self.base)
+                                .find(|l| l.0 == at)
+                                .map(|l| Rc::clone(&l.1));
+                            caps.push(match (lent, regs_v.get(v as usize)) {
+                                (Some(part), _) if !part.steps.is_empty() => {
+                                    CaptureVal::PartRef(part)
+                                }
+                                (Some(part), _) if part.global => CaptureVal::GlobalRef(part.at),
+                                (Some(part), _) => CaptureVal::StackRef(part.at),
+                                (None, Some(Value::Alias(true, id))) => CaptureVal::GlobalRef(*id),
+                                (None, Some(Value::Alias(false, at))) => CaptureVal::StackRef(*at),
+                                (None, Some(Value::Part(part))) => {
+                                    CaptureVal::PartRef(Rc::clone(part))
+                                }
+                                _ => CaptureVal::StackRef(at),
+                            });
+                        }
                     }
                 }
                 regs_v[dst as usize] = Value::Closure(cs.cid as usize, Rc::new(caps));

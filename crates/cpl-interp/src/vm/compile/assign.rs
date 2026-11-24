@@ -63,6 +63,21 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
                 _ => false,
             },
+            // The one field of a struct held as its only Int is that register.
+            (PlaceKind::Field(obj, 0), op, Some(_), _)
+                if (op == AssignOp::Set || place.ty == Ty::Int)
+                    && matches!(&obj.kind, PlaceKind::Local(slot)
+                        if matches!(self.slot_loc(*slot), SlotLoc::I(_, ScalarKind::OneIntStruct))) =>
+            {
+                let PlaceKind::Local(slot) = obj.kind else {
+                    return false;
+                };
+                let SlotLoc::I(dst, _) = self.slot_loc(slot) else {
+                    return false;
+                };
+                let r = self.compile_expr_i(value);
+                self.emit_assign_op_i(dst, dst, r, op, place.span)
+            }
             (PlaceKind::Local(slot), op, Some(ScalarKind::Int), _) => {
                 let SlotLoc::I(dst, _) = self.slot_loc(*slot) else {
                     return false;

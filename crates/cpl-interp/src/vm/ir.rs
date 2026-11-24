@@ -1514,6 +1514,13 @@ pub(crate) enum CapSrc {
         kinds: [SmallFieldKind; 4],
     },
     LocalV(u16),
+    /// A local captured by reference: its stack slot, and the register that
+    /// holds it when it is boxed (`u16::MAX` for a scalar), which may already
+    /// be an alias of a place outside the frame.
+    LocalRef {
+        slot: u16,
+        v: u16,
+    },
 }
 
 #[derive(Clone, Debug)]
