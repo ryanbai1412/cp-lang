@@ -1906,6 +1906,77 @@ impl Emitter<'_> {
     }
 }
 
+impl Emitter<'_> {
+    /// The stores to run before the place the `let` at `stmts[k]` reads,
+    /// when they are all that may change it while the name lives: each sets
+    /// the place (or one holding it) whole, from a value that doesn't read
+    /// it. Then the name can point at the place and take its old value only
+    /// when a store runs (`let old = s.ks; if c: s.ks = [7]`), not copy it.
+    pub(crate) fn rebind_at(&self, stmts: &[Stmt], k: usize) -> Option<Vec<*const Place>> {
+        let Stmt::Let(slot, Some(init)) = &stmts[k] else {
+            return None;
+        };
+        let path = path_of(init).filter(|((global, _), fields)| !global && !fields.is_empty())?;
+        if self.locals()[*slot].name.is_empty()
+            || self.spent.contains(slot)
+            || !holds_heap(self.program, &init.ty)
+            || matches!(init.ty, Ty::Fn(..))
+        {
+            return None;
+        }
+        let rest = &stmts[k + 1..];
+        let block = Block {
+            stmts: rest.to_vec(),
+        };
+        if Touch::of_block(&block).closures {
+            return None;
+        }
+        let tail = self.tail_at(stmts, k);
+        if self.source_change(*slot, init, tail.as_ref()) != Some(crate::uses::SOURCE_SET) {
+            return None;
+        }
+        let mut sets = Vec::new();
+        let mut kept: Vec<Stmt> = stmts[..=k].to_vec();
+        kept.extend(rest.iter().map(|s| without_sets(s, &path, &mut sets)));
+        let tail = self.tail_at(&kept, k);
+        (!sets.is_empty() && self.source_change(*slot, init, tail.as_ref()).is_none())
+            .then_some(sets)
+    }
+}
+
+/// `stmt` with each store that sets `path` whole (or a place holding it),
+/// from a value that doesn't read it, kept as just that value; the stores
+/// it drops go to `sets`.
+fn without_sets(
+    stmt: &Stmt,
+    path: &((bool, usize), Vec<usize>),
+    sets: &mut Vec<*const Place>,
+) -> Stmt {
+    let block = |b: &Block, sets: &mut Vec<*const Place>| Block {
+        stmts: b
+            .stmts
+            .iter()
+            .map(|s| without_sets(s, path, sets))
+            .collect(),
+    };
+    match stmt {
+        Stmt::Assign(place, AssignOp::Set, value)
+            if place_path(place)
+                .is_some_and(|(root, fields)| root == path.0 && path.1.starts_with(&fields))
+                && !touches(&Stmt::Expr(value.clone()), path) =>
+        {
+            sets.push(place as *const Place);
+            Stmt::Expr(value.clone())
+        }
+        Stmt::If(cond, then, otherwise) => {
+            Stmt::If(cond.clone(), block(then, sets), block(otherwise, sets))
+        }
+        Stmt::While(id, cond, body) => Stmt::While(*id, cond.clone(), block(body, sets)),
+        Stmt::For(id, slot, iter, body) => Stmt::For(*id, *slot, iter.clone(), block(body, sets)),
+        _ => stmt.clone(),
+    }
+}
+
 /// A variable and the fields read on it, outermost first: `self.ks`.
 fn path_of(e: &Expr) -> Option<((bool, usize), Vec<usize>)> {
     match &e.kind {
@@ -1916,9 +1987,16 @@ fn path_of(e: &Expr) -> Option<((bool, usize), Vec<usize>)> {
             fields.push(*f);
             (root, fields)
         }),
+        // A match binding's payload: a step no field number can equal.
+        ExprKind::Payload(base, variant, k) => path_of(base).map(|(root, mut fields)| {
+            fields.push(PAYLOAD_STEP | variant << 16 | k);
+            (root, fields)
+        }),
         _ => None,
     }
 }
+
+const PAYLOAD_STEP: usize = 1 << (usize::BITS - 1);
 
 /// The local a place expression reads through fields and indexes.
 /// The local whose part `e` gives when returned: `p` of `p.x0`, of
@@ -2003,6 +2081,14 @@ fn touches(stmt: &Stmt, (root, fields): &((bool, usize), Vec<usize>)) -> bool {
                 usize::from(path_of(base).is_some_and(|(r, fs)| r == *root && fs.is_empty()));
         }
     });
+    // A payload of a sibling field reads the root, not the field.
+    crate::uses::places::each_payload(&block, &mut |e, base| {
+        elsewhere += usize::from(
+            path_of(e).is_some_and(|(r, fs)| {
+                r == *root && fs.len() == 1 && fields.first().is_some_and(|f0| *f0 != fs[0])
+            }) && path_of(base).is_some_and(|(_, fs)| fs.is_empty()),
+        );
+    });
     let stored = match stmt {
         Stmt::Let(..) | Stmt::Expr(_) => false,
         Stmt::Assign(place, _, _) => place_path(place)
@@ -2029,7 +2115,10 @@ pub(crate) fn local_set_before_read(slot: usize, rest: &[Stmt]) -> bool {
 fn set_before_read(path: &((bool, usize), Vec<usize>), rest: &[Stmt]) -> bool {
     for stmt in rest {
         if let Stmt::Assign(place, AssignOp::Set, value) = stmt {
-            if place_path(place).as_ref() == Some(path) {
+            // Setting the path or a place holding it replaces the whole of it.
+            if place_path(place)
+                .is_some_and(|(root, fields)| root == path.0 && path.1.starts_with(&fields))
+            {
                 let value = Stmt::Expr(value.clone());
                 return !touches(&value, path);
             }
