@@ -277,7 +277,7 @@ impl Checker<'_> {
                 let names = self
                     .public_receivers(&owner)
                     .unwrap_or_else(|| methods.iter().map(|(m, _)| m.clone()).collect());
-                if let Some(list) = method_list(names) {
+                if let Some(list) = method_list(&names) {
                     if let Some(d) = self.sink.last_mut() {
                         d.help = Some(habits::UNKNOWN_MEMBER_10.say(&[&list]));
                     }
@@ -291,42 +291,8 @@ impl Checker<'_> {
         let Ty::Named { name, .. } = ty else {
             return None;
         };
-        let names = self.public_receivers(name).unwrap_or_else(|| {
-            let mut names = Vec::new();
-            for m in crate::builtins::BUILTIN_MEMBERS {
-                if m.receiver.name() == name {
-                    names.push(m.name.to_string());
-                }
-            }
-            names
-        });
-        method_list(names).map(|list| format!("a `{ty}` offers {list}"))
-    }
-
-    /// The help for a call whose `ty` misses a bound. `m.find("a")` on a
-    /// `Map<Str, Int>`: an argument of the container's key type is a key, so
-    /// the help is the lookup, and for a map the `get` rewrite its fix.
-    /// Returns the help and the text the call is changed to.
-    pub(super) fn unmet_bound_advice(
-        &mut self,
-        ty: &Ty,
-        args: &[Arg],
-    ) -> (Option<String>, Option<String>) {
-        let (Ty::Named { name, args: parts }, [base, key]) = (ty, args) else {
-            return (self.unmet_bound_help(ty), None);
-        };
-        let is_key = (self.exprs.last_type(key.value.span))
-            .is_some_and(|t| !matches!(t, Ty::Unknown) && parts.first().is_some_and(|p| t.fits(p)));
-        if !is_key || key.name.is_some() || !crate::builtins::is_catalog_type(name) {
-            return (self.unmet_bound_help(ty), None);
-        }
-        let (c, k) = (self.quote(base.value.span), self.quote(key.value.span));
-        // A `Set<T>` has the one part; a `Map<K, V>` looks its key up.
-        if parts.len() == 1 {
-            return (Some(habits::SET_FIND_KEY.say(&[&k, &k, &c])), None);
-        }
-        let help = habits::MAP_FIND_KEY.say(&[&k, &c, &k, &k, &c]);
-        (Some(help), Some(format!("{c}.get({k})")))
+        let names = self.public_receivers(name);
+        method_list(&names?).map(|list| format!("a `{ty}` offers {list}"))
     }
 
     /// The public methods a value of struct `owner` calls: `self` methods
@@ -352,9 +318,13 @@ impl Checker<'_> {
 
 /// Up to ten public method names, sorted, then how many more: the help for
 /// a member or bound a type lacks, so the reader sees what it does have.
-fn method_list(mut names: Vec<String>) -> Option<String> {
+fn method_list(names: &[String]) -> Option<String> {
     const SHOWN: usize = 10;
-    names.retain(|m| !m.starts_with('_'));
+    let mut names: Vec<String> = names
+        .iter()
+        .filter(|m| !m.starts_with('_'))
+        .cloned()
+        .collect();
     names.sort();
     names.dedup();
     let more = names.len().saturating_sub(SHOWN);

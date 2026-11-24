@@ -90,23 +90,31 @@ impl Checker<'_> {
 
     /// `xs.push(x)`: a method the compiler gives the receiver's built-in type.
     fn builtin_method(&self, callee: &Expr, name: &str) -> bool {
-        use crate::builtins::{builtin_member, MemberKind};
+        use crate::builtins::{builtin_members, MemberKind, Receiver};
         let ExprKind::Field { base, .. } = &callee.kind else {
             return false;
         };
         // `List.filled(n, x)`: a built-in type's own constructor.
         if let ExprKind::Name(t) = &base.kind {
-            if crate::builtins::is_catalog_type(t) && self.local(t).is_none() {
+            const TYPES: [&str; 6] = ["List", "Map", "HashMap", "Set", "HashSet", "Str"];
+            if TYPES.contains(&t.as_str()) && self.local(t).is_none() {
                 return true;
             }
         }
-        let owner = match self.exprs.last_type(base.span) {
-            Some(Ty::Named { name, .. }) => name.as_str(),
-            Some(Ty::Str) => "Str",
-            Some(Ty::Array { .. }) => "[D]T",
+        let receiver = match self.exprs.last_type(base.span) {
+            Some(Ty::Named { name, args }) => match (name.as_str(), args.len()) {
+                ("List", 1) => Receiver::List,
+                ("Map", 2) => Receiver::Map,
+                ("HashMap", 2) => Receiver::HashMap,
+                ("Set", 1) => Receiver::Set,
+                ("HashSet", 1) => Receiver::HashSet,
+                _ => return false,
+            },
+            Some(Ty::Str) => Receiver::Str,
+            Some(Ty::Array { .. }) => Receiver::Array,
             _ => return false,
         };
-        builtin_member(owner, name).is_some_and(|m| m.kind == MemberKind::Method)
+        builtin_members(receiver).any(|m| m.kind == MemberKind::Method && m.name == name)
     }
 
     /// The type each generic parameter of the callee took at `call`.

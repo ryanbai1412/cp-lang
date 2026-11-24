@@ -652,6 +652,26 @@ impl<'a> Checker<'a> {
     /// declaration of its own.
     pub(super) fn builtin_get(&self, base_ty: &Ty, name: &str) -> bool {
         let is_builtin_get = match base_ty {
+            Ty::Named { name: n, args } if n == "List" && args.len() == 1 => {
+                crate::builtins::builtin_members(crate::builtins::Receiver::List)
+                    .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name)
+            }
+            Ty::Str => crate::builtins::builtin_members(crate::builtins::Receiver::Str)
+                .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name),
+            Ty::Named { name: n, args }
+                if matches!(n.as_str(), "Map" | "HashMap") && args.len() == 2
+                    || matches!(n.as_str(), "Set" | "HashSet") && args.len() == 1 =>
+            {
+                let receiver = crate::builtins::Receiver::ALL
+                    .into_iter()
+                    .find(|r| r.name() == n);
+                receiver.is_some_and(|r| {
+                    crate::builtins::builtin_members(r)
+                        .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name)
+                })
+            }
+            Ty::Array { .. } => crate::builtins::builtin_members(crate::builtins::Receiver::Array)
+                .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name),
             Ty::Named { name: n, .. } if n == "Range" => {
                 matches!(
                     name,
@@ -663,16 +683,7 @@ impl<'a> Checker<'a> {
             }
             t if t.is_int() => matches!(name, "abs" | "ord" | "sqrt"),
             Ty::Float => matches!(name, "abs" | "ceil" | "floor" | "round" | "sqrt" | "trunc"),
-            _ => {
-                let owner = match base_ty {
-                    Ty::Str => "Str",
-                    Ty::Array { .. } => "[D]T",
-                    Ty::Named { name: n, .. } => n,
-                    _ => "",
-                };
-                (crate::builtins::builtin_member(owner, name))
-                    .is_some_and(|m| m.kind == crate::builtins::MemberKind::Get)
-            }
+            _ => false,
         };
         // `xs.rev`: every `Bidir` sequence's reverse view, a std `@get`.
         let is_builtin_get = is_builtin_get || (name == "rev" && base_ty.is_bidir());
@@ -1370,15 +1381,12 @@ impl<'a> Checker<'a> {
                                 let bound_ty = self.settle(bound_ty);
                                 for trait_name in traits {
                                     if !self.implements_trait(&bound_ty, &trait_name) {
-                                        let (help, fix) = self.unmet_bound_advice(&bound_ty, args);
+                                        let help = self.unmet_bound_help(&bound_ty);
                                         if let Some(diag) = self.report(
                                             call.span,
                                             msgs::check::MISSING_IMPL_DOES_NOT_IMPLEMENT_REQUIRED,
                                             &[&bound_ty, &trait_name, &fn_name],
                                         ) {
-                                            if let Some(new) = fix {
-                                                diag.suggest(call.span, new);
-                                            }
                                             diag.help = help;
                                         }
                                     }

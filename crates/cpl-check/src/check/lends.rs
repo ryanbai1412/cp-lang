@@ -1894,7 +1894,10 @@ impl<'a> Checker<'a> {
         }
         let stored = match iter_ty {
             Ty::Array { .. } => true,
-            Ty::Named { name, .. } => crate::builtins::is_catalog_type(name),
+            Ty::Named { name, .. } => matches!(
+                name.as_str(),
+                "List" | "Set" | "HashSet" | "Map" | "HashMap"
+            ),
             _ => false,
         };
         if !stored && self.view_kind(iter).is_none() {
