@@ -29,3 +29,7 @@ special-purpose `BeatsSegTree`, whose `chdiv` hides that rule.
 - **General fix:** let `[D]R` widen to `[D]Int` where a range type `R` is
   accepted for `Int` (a view, not a copy).
 - **Severity:** low.
+
+## Tuned twin retired (2026-11-24)
+
+The plain port is within 1.1x of the accepted C++ on `gen.py --max` on both counts (7 runs, `bench/v03_perf_bench.py --live`): 257.6 ms / 23.0 MB against 291.9 ms / 44.8 MB (0.88x time, 0.51x memory), since 87f0fbde0 keeps `BeatsSegTree`'s second extremes only once `chmin` or `chmax` runs and hands a constant node's value down as one tag, so `perf.cp` is deleted (performance/R6 keeps a twin only over 1.1x).
