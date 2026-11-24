@@ -72,53 +72,9 @@ export class Runner {
         this.overlays.show(document.uri, view);
     }
 
-    async stress(uri?: vscode.Uri, part?: string): Promise<void> {
-        const document = await this.document(uri);
-        if (!document) {
-            return;
-        }
-        this.output.show(true);
+    async stress(uri?: vscode.Uri): Promise<void> {
         const extra = vscode.workspace.getConfiguration('cp').get<string[]>('stress.args', []);
-        const baseArgs = ['stress', document.uri.fsPath, '--format', 'json', ...extra];
-        const result = await vscode.window.withProgress(
-            {
-                location: vscode.ProgressLocation.Window,
-                title: part ? `CP: Stressing ${part}...` : `CP: Stressing ${path.basename(document.uri.fsPath)}...`,
-                cancellable: true,
-            },
-            async (_progress, token) => {
-                const controller = new AbortController();
-                const cancelSub = token.onCancellationRequested(() => controller.abort());
-                try {
-                    let run = await this.cpl(
-                        document,
-                        part ? [...baseArgs, '--part', part] : baseArgs,
-                        'cpl stress',
-                        undefined,
-                        { allowUsageFallback: Boolean(part), signal: controller.signal },
-                    );
-                    // Current `cpl stress` does not take `--part`; retry whole-file stress cleanly.
-                    if (part && run && run.code === 2 && /--part/.test(run.stderr)) {
-                        run = await this.cpl(document, baseArgs, 'cpl stress', undefined, {
-                            signal: controller.signal,
-                        });
-                    }
-                    return run;
-                } finally {
-                    cancelSub.dispose();
-                }
-            },
-        );
-        if (!result) {
-            return;
-        }
-        const view = viewOf(result.stdout);
-        if (!view) {
-            this.printRaw(result);
-            return;
-        }
-        this.output.append(view.panel);
-        this.overlays.show(document.uri, view);
+        await this.report(uri, 'stress', ['--format', 'json', ...extra]);
     }
 
     /**
@@ -191,28 +147,37 @@ export class Runner {
 
     /** `cpl submit`: build what the judge gets, check it on the samples, and copy it when it is ready. */
     async submit(uri?: vscode.Uri): Promise<void> {
+        const copy = vscode.workspace.getConfiguration('cp').get<boolean>('submit.copy', true);
+        await this.report(uri, 'submit', ['--json', ...(copy ? ['--copy'] : [])]);
+    }
+
+    /** Runs `cpl <command>` on the file and shows the report's view as is. */
+    private async report(uri: vscode.Uri | undefined, command: string, args: string[]): Promise<void> {
         const document = await this.document(uri);
         if (!document) {
             return;
         }
         this.output.show(true);
-        const copy = vscode.workspace.getConfiguration('cp').get<boolean>('submit.copy', true);
-        const args = ['submit', document.uri.fsPath, '--json', ...(copy ? ['--copy'] : [])];
-        const result = await this.cpl(document, args, 'cpl submit');
-        if (!result) {
-            return;
-        }
-        const view = viewOf(result.stdout);
-        if (!view?.status) {
-            this.printRaw(result);
+        const title = `CP: cpl ${command} ${path.basename(document.uri.fsPath)}...`;
+        const location = vscode.ProgressLocation.Window;
+        const result = await vscode.window.withProgress({ location, title, cancellable: true }, (_progress, token) => {
+            const controller = new AbortController();
+            token.onCancellationRequested(() => controller.abort());
+            const argv = [command, document.uri.fsPath, ...args];
+            return this.cpl(document, argv, `cpl ${command}`, undefined, { signal: controller.signal });
+        });
+        const view = result && viewOf(result.stdout);
+        if (!view) {
+            if (result) {
+                this.printRaw(result);
+            }
             return;
         }
         this.output.append(view.panel);
         this.overlays.show(document.uri, view);
-        if (view.status.ok) {
-            void vscode.window.showInformationMessage(view.status.label);
-        } else {
-            void vscode.window.showWarningMessage(view.status.label);
+        if (view.status) {
+            const show = view.status.ok ? vscode.window.showInformationMessage : vscode.window.showWarningMessage;
+            void show(view.status.label);
         }
     }
 
@@ -285,7 +250,7 @@ export class Runner {
         args: string[],
         what: string,
         stdin?: string,
-        options?: { allowUsageFallback?: boolean; allowRuntimeError?: boolean; signal?: AbortSignal },
+        options?: { allowRuntimeError?: boolean; signal?: AbortSignal },
     ): Promise<CplResult | undefined> {
         const binary = serverBinary();
         if (!binary) {
@@ -314,9 +279,6 @@ export class Runner {
         if (result.timedOut) {
             this.output.appendLine(`${what}: stopped after ${result.timeMs} ms (\`cp.run.timeoutMs\`)`);
             return undefined;
-        }
-        if (options?.allowUsageFallback && result.code === 2 && result.stdout.trim() === '') {
-            return result;
         }
         if (result.code === EXIT_NOT_BUILT && /not built yet/i.test(result.stderr)) {
             // The file checked clean; this command's back end is not in this `cpl` yet.
