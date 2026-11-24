@@ -27,11 +27,11 @@ pub(crate) fn fn_refs(program: &Program, devirt: &Devirt, uses: &Uses) -> Vec<BT
             continue;
         }
         let held = &mut out[id];
-        for slot in 0..f.params.len() {
+        for (slot, local) in f.locals.iter().enumerate().take(f.params.len()) {
             let free = devirt.template_param_index(id, slot).is_none()
                 && !devirt.param_elidable(id, slot)
                 && !devirt.param_known(id, slot);
-            let viewed = match &f.locals[slot].ty {
+            let viewed = match &local.ty {
                 Ty::Fn(..) => crate::lend::fn_param_only_called(program, id, slot),
                 Ty::Opt(inner) if matches!(**inner, Ty::Fn(..)) => {
                     crate::lend::opt_fn_param_only_called(program, id, slot)
