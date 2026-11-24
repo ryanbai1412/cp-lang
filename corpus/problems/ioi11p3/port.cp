@@ -5,21 +5,20 @@
 // Solution: the fields taken are a contiguous block and the hub goes on its median field,
 //   whose cost prefix sums give in O(1). The cost only grows as the block widens, so slide
 //   two pointers: for each right end, advance the left end while over budget. O(n).
-// original: corpus/submissions/3732163.cpp
-// As it builds today: the window is two hand-moved positions, and the sorted input needs
-//   its own generator (R3, R5).
+// original: corpus/problems/ioi11p3/orig.cpp (submission 3732163, its grader reading B as 64-bit)
 let n: 1..=1e5 = read()
-let len: 1..=1e9 = read()
+type Spot = 1..=1e9
+let len: Spot = read()
 let budget: 0..=2e15 = read()
 domain Field = 1..=n
 
-fn sorted_fields() -> [Field]1..=1e9:
-    var at: [Field]1..=1e9 = 1
+fn sorted_fields() -> [Field]Spot:
+    var at: [Field]Spot = 1
     for i in Field: at[i] = rand(1, len)
     at.sort()
     at
 
-let x: [Field]1..=1e9 = read(gen: sorted_fields)
+let x: [Field]Spot = read(gen: sorted_fields)
 let pre = prefix(x)
 
 // the hub goes on the middle field of the block
