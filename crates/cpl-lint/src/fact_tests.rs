@@ -774,3 +774,35 @@ fn parsed_facts_agree_with_the_facts_of_the_source() {
         crate::proven_expr_ranges(src)
     );
 }
+
+#[test]
+fn a_session_proves_once_what_each_entry_point_proves_alone() {
+    let src = "let (n, q): (1..=200000, 1..=1000) = read()\ndomain V = 1..=n\nlet a: [V]Int = 0\nvar xs: List<Int> = []\nfor i in 0..q: xs.push(i)\nfn f() -> Int:\n    var s = 0\n    for i in 0..q: s += i\n    s\nprint(a.sum(), xs.len, f())\n";
+    let session = crate::Session::new(crate::analyze_alone(src).unwrap());
+    assert!(!session.loops().is_empty());
+    assert_eq!(session.fns(), crate::proven_fns(src));
+    assert_eq!(session.ranges(), crate::proven_ranges(src));
+    assert_eq!(session.loops(), crate::proven_loops(src));
+    assert_eq!(session.indexes(), crate::proven_indexes(src));
+    assert_eq!(session.exprs(), crate::proven_expr_ranges(src));
+    assert_eq!(session.sizes(), crate::proven_sizes(src));
+    assert_eq!(session.domains(), crate::domain_sizes(src));
+    let config = crate::Config::default();
+    let std = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../std/strings.cp"),
+    )
+    .unwrap();
+    for text in [src, std.as_str()] {
+        let analysis = crate::analyze_alone(text).unwrap();
+        let session = crate::Session::new(analysis.clone());
+        let codes = |d: Vec<cpl_diag::Diagnostic>| {
+            d.into_iter()
+                .map(|d| (d.code, d.span, d.message))
+                .collect::<Vec<_>>()
+        };
+        let alone = codes(crate::lint_analysis(&analysis, &config));
+        // Hovers first, so the lints read the proof they left.
+        let _ = (session.loops(), session.exprs());
+        assert_eq!(codes(session.lints(&config)), alone);
+    }
+}

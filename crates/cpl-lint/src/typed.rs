@@ -55,17 +55,37 @@ pub fn lint_analysis(analysis: &Analysis, config: &crate::Config) -> Vec<Diagnos
     if analysis.has_syntax_errors {
         return Vec::new();
     }
+    let facts = Facts::from_analysis(analysis);
+    lints_of(analysis, &facts, &Default::default(), config)
+}
+
+/// [`lint_analysis`] with `analysis`'s facts and the bounds proof, which a
+/// [`crate::Session`] shares with the editor's hovers.
+pub(crate) fn lints_of(
+    analysis: &Analysis,
+    facts: &Facts,
+    proven: &std::sync::OnceLock<crate::rules::Proven>,
+    config: &crate::Config,
+) -> Vec<Diagnostic> {
+    if analysis.has_syntax_errors {
+        return Vec::new();
+    }
     let items: Vec<_> = analysis
         .items
         .iter()
         .map(|i| (i.offset, &i.syntax.parsed))
         .collect();
-    let facts = Facts::from_analysis(analysis);
     let library = crate::library::collect(analysis);
-    let mut diags =
-        crate::lint_parsed_library(&analysis.text, &items, Some(&facts), config, &library);
+    let mut diags = crate::lint_parsed_library(
+        &analysis.text,
+        &items,
+        Some(facts),
+        config,
+        &library,
+        proven,
+    );
     if diags.iter().any(|d| TYPED.contains(&d.code)) {
-        refine_with_facts(&mut diags, &facts);
+        refine_with_facts(&mut diags, facts);
     }
     crate::recheck::recheck(&mut diags, &analysis.text);
     crate::drop_repeats(&mut diags, &analysis.diagnostics);

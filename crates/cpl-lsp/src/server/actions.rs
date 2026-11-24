@@ -6,9 +6,10 @@ use super::*;
 impl Server {
     pub(super) fn code_actions(&mut self, params: &Value) -> Result<Reply, (i32, String)> {
         let uri = uri_of(params)?;
-        let Some(analysis) = self.db.analyze(uri) else {
+        let Some(facts) = self.proven(uri) else {
             return Ok(Reply::result(Value::Array(Vec::new())));
         };
+        let analysis = facts.analysis().clone();
         let start = position_of(params.at(&["range", "start"]))?;
         let end = position_of(params.at(&["range", "end"]))?;
         let wanted = Span::new(
@@ -16,7 +17,7 @@ impl Server {
             analysis.lines.offset_utf16(end, &analysis.text),
         );
         let mut actions = Vec::new();
-        let lints = lints(uri, &analysis);
+        let lints = lints(uri, &facts);
         let mut rechecked = false;
         for diag in analysis.diagnostics.iter().chain(&lints) {
             if diag.span.end < wanted.start || diag.span.start > wanted.end {

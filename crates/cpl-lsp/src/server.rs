@@ -892,11 +892,9 @@ impl Server {
     /// once per edit and shared by every request until the next.
     fn proven(&mut self, uri: &str) -> Option<Arc<Proven>> {
         let analysis = self.db.analyze(uri)?;
-        if let Some(facts) = self
-            .proven
-            .get(uri)
-            .filter(|f| Arc::ptr_eq(&f.analysis, &analysis) || *f.analysis.text == *analysis.text)
-        {
+        if let Some(facts) = self.proven.get(uri).filter(|f| {
+            Arc::ptr_eq(f.analysis(), &analysis) || *f.analysis().text == *analysis.text
+        }) {
             return Some(facts.clone());
         }
         let facts = Arc::new(Proven::new(analysis));

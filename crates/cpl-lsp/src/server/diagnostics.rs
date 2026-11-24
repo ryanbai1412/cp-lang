@@ -59,7 +59,7 @@ impl Server {
         let analysis = self.db.analyze(uri).expect("proven implies an analysis");
         // The same answer as `cpl check`: the checker's diagnostics, then
         // what lowering rejects; then, as `cpl lint` reports them, the lints.
-        let lints = lints(uri, &analysis);
+        let lints = lints(uri, &facts);
         // A lint on the same span (L0306) already says it, with a fix.
         let mut notes = overflows(&facts);
         notes.retain(|n| !lints.iter().any(|l| l.span == n.span));
@@ -117,13 +117,13 @@ fn at_levels(
 }
 
 #[cfg(target_arch = "wasm32")]
-pub(super) fn lints(_uri: &str, _analysis: &cpl_check::Analysis) -> Vec<Diagnostic> {
+pub(super) fn lints(_uri: &str, _facts: &Proven) -> Vec<Diagnostic> {
     Vec::new()
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub(super) fn lints(uri: &str, analysis: &cpl_check::Analysis) -> Vec<Diagnostic> {
-    cpl_lint::lint_analysis(analysis, &lint_config(uri))
+pub(super) fn lints(uri: &str, facts: &Proven) -> Vec<Diagnostic> {
+    facts.lints(&lint_config(uri))
 }
 
 #[cfg(not(target_arch = "wasm32"))]
