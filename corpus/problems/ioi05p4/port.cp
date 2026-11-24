@@ -1,4 +1,5 @@
 // Source: IOI 2005 Day 2 (Birthday), https://dmoj.ca/problem/ioi05p4
+// limits: 1000 ms, 32 MB
 // Problem: n <= 1e6 children sit in order 1..n around a round table; reseat them so the circle
 //   reads p_1..p_n in either direction, each child moving left or right. Print the minimum
 //   possible largest distance any child moves.
@@ -24,7 +25,7 @@ let wish: [Seat]Seat = read(gen: random_wish)
 fn worst(order: [Seat]Seat) -> Int:
     let shifts = [(i.label - order[i].label) % n for i in Seat].sorted()
     let wrap = shifts[0] + n - shifts.last!
-    let gap = max(wrap, shifts.windows(2).map(w => w.last! - w.first!).max() ?? 0)
+    let gap = max(wrap, max(shifts[j] - shifts[j - 1] for j in 1..n) ?? 0)
     (n - gap + 1) / 2
 
 let mirrored = [Seat] i => wish[Seat(n + 1 - i.label)]
