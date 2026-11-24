@@ -116,13 +116,13 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 .first()
                 .filter(|_| found.len() == 1)
                 .and_then(|first| own_line_let(src, base, first, found[0]));
-            let name = match &bound {
-                Some((name, _)) => name.clone(),
+            let (name, line) = match bound {
+                Some((name, line)) => (name, Some(line)),
                 None => match ["v", "got", "found", "entry", "stored"]
                     .into_iter()
                     .find(|n| !has_word(src, n) && !self.taken.iter().any(|t| t == n))
                 {
-                    Some(n) => n.to_string(),
+                    Some(n) => (n.to_string(), None),
                     None => return,
                 },
             };
@@ -143,8 +143,8 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 None => lookup.clone(),
             };
             let mut edits = vec![(test.shift(base), replaced)];
-            match bound {
-                Some((_, line)) => edits.push((line, String::new())),
+            match line {
+                Some(line) => edits.push((line, String::new())),
                 None => edits.extend(found.iter().map(|s| (s.shift(base), name.clone()))),
             }
             let mut diag = message.warning(test.shift(base), &[&key, &map, &map, &key])
