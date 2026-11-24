@@ -436,7 +436,7 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                 diag = diag.with_label(at, format!("what `{}` takes", d.decl.fn_name));
             }
             if !commented && d.lint.no_fix.is_none() {
-                diag.fix(format!("use `{}`", d.decl.fn_name), span, fix);
+                diag.fix(format!("use `{}`", d.decl.suggests), span, fix);
             }
             out.push(Finding { lint: d.lint, diag });
         }

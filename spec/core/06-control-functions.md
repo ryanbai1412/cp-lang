@@ -201,7 +201,9 @@ library or by this spec:
   a method or getter (`xs.f`), as its compound assignment (`x max= e`,
   R01.6.4), or calls nothing and writes only operators the fn's
   one-expression body writes (`self % d` on `divmod`, whose body is
-  `(self / d, self % d)`); a compound `to` runs its right side before the
+  `(self / d, self % d)`). On a fn that documents a compiler built-in,
+  `builtin: "filled"` lets `to` call that built-in in its place
+  (`[n, m].filled(c)` on a grid fn), since std cannot declare it. A compound `to` runs its right side before the
   place's indices, so then every hole matches only code that calls
   nothing. A hole whose parameter is written
   as a scalar type (`Int`, `I128`, `U64`, `F64`, `Bool`, `Char`, `Str`)
@@ -221,7 +223,7 @@ library or by this spec:
   statement, when `to` drops a parameter `from` matches or uses one it does
   not, when `holes:` names a name `from` does not use, when `when:` is not
   holes `from` uses compared with integers, when `to` neither calls the
-  fn nor writes only its body's operators, or when one module declares a
+  fn (or its `builtin:`) nor writes only its body's operators, or when one module declares a
   name twice with the same `from` (a name is declared once per spelling,
   on several fns when its fix calls one of them: `min=` or `max=`). (R06.4.9)
 - An idiom whose fix is one library call is declared this way beside the

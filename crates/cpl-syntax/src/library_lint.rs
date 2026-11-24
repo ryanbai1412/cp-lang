@@ -15,6 +15,9 @@ pub struct LibraryLint {
     pub name: String,
     /// The decorated fn.
     pub fn_name: String,
+    /// What `to` calls: the fn, or the compiler built-in `builtin:` names
+    /// when the fn documents one (`[R, C].filled(x)` on a grid fn).
+    pub suggests: String,
     /// The fn's parameter names, then the names `holes:` adds.
     pub holes: Vec<String>,
     /// How many of `holes` are the fn's parameters; `to` may drop the rest.
@@ -237,15 +240,16 @@ fn declared_on(stmt: &Stmt, offset: u32) -> (Vec<LibraryLint>, Vec<Diagnostic>) 
             );
             continue;
         }
+        let suggests = text("builtin").unwrap_or_else(|| f.name.text.clone());
         let calls = to_toks.windows(2).any(|w| {
-            (w[0].0 == TokenKind::Ident && w[0].1 == f.name.text && w[1].0 == TokenKind::LParen)
-                || (w[0].0 == TokenKind::Dot && w[1].0 == TokenKind::Ident && w[1].1 == f.name.text)
+            (w[0].0 == TokenKind::Ident && w[0].1 == suggests && w[1].0 == TokenKind::LParen)
+                || (w[0].0 == TokenKind::Dot && w[1].0 == TokenKind::Ident && w[1].1 == suggests)
         }) || writes_body_ops(f, &to, &to_toks)
             || compound(&to_toks, &f.name.text);
         if !calls {
             error(
                 &msgs::syntax::LINT_TO_NO_CALL,
-                &[&name, &f.name.text],
+                &[&name, &suggests],
                 "a library lint suggests the fn it decorates",
                 &mut label,
             );
@@ -254,6 +258,7 @@ fn declared_on(stmt: &Stmt, offset: u32) -> (Vec<LibraryLint>, Vec<Diagnostic>) 
         lints.push(LibraryLint {
             name,
             fn_name: f.name.text.clone(),
+            suggests,
             holes,
             params,
             when,
@@ -519,6 +524,17 @@ mod tests {
         assert_eq!(lints(on_enum), [("signed".to_string(), "of".to_string())]);
         let bad = "pub struct Box:\n    v: Int\n    @lint(boxed, from: \"x * x\", to: \"cube(x)\")\n    pub fn sq(x: Int) -> Int = x * x\n";
         assert_eq!(errors(bad).len(), 1, "{:?}", errors(bad));
+    }
+
+    #[test]
+    fn builtin_lets_to_call_the_compiler_built_in_the_fn_documents() {
+        let ok = "@lint(grid_by_hand, from: \"[[c for _ in 0..m] for _ in 0..n]\", to: \"[n, m].filled(c)\", holes: \"c, m, n\", builtin: \"filled\")\npub fn rows(g: List<Int>) -> Int = 0\n";
+        assert!(errors(ok).is_empty(), "{:?}", errors(ok));
+        let other = "@lint(grid_by_hand, from: \"[[c for _ in 0..m] for _ in 0..n]\", to: \"rows([n, m].filled(c))\", holes: \"c, m, n\", builtin: \"fill\")\npub fn rows(g: List<Int>) -> Int = 0\n";
+        assert_eq!(
+            errors(other),
+            ["`to` of `@lint(grid_by_hand)` does not call `fill`"]
+        );
     }
 
     #[test]
