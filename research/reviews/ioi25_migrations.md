@@ -43,3 +43,11 @@ Scored cold on main against the statement (IOI 2025 Day 2, Migrations), `dream.c
 - Left: L0507 on line 135 wants `[0] + [send_message(...) for i in 1..n]`. `send_message`
   changes the sender's state on every call, so a comprehension would hide that (R7). This is
   a lint false positive for stateful calls. Route: lint.
+
+## Port nits from the friction triage
+
+- `dream.cp:117`, `let s = [Int(x) for x in s]` is not needed: a `List<0..=4>` already passes
+  where `heard` takes a `List<Int>` (a three-line repro prints `3`), as `port.cp:43` does.
+- `List<Site>` and `?Site` filler compile today (`var p: List<Site> = [Site(0)]`, then
+  `p.map(x => Some(x)).resized(8, fill: None)`), so the `List<Int>` candidates and the
+  `resized(4, fill: 0)` filler above are rewrites, not language gaps.
