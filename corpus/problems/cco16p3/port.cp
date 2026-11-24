@@ -22,7 +22,7 @@ fn grows_from(pattern: 1..=5) -> Bool:
     domain V = 1..=n
     domain E = 0..m
     let edges: [E](u: V, v: V) = read()
-    let g = Graph<V, E>.undirected(edges)
+    let g = Graph.undirected(edges)
     let (domain B, block) = blocks(g)
     var length: [B]Int = 0
     for e in E: length[block[e]] += 1

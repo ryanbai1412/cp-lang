@@ -16,7 +16,7 @@ let (m, q, k): (n - 1..=6e5, 1..=3e5, 0..=2) = read()  // weakly connected: m >=
 domain V = 1..=n
 domain E = 0..m
 let edges: [E](u: V, v: V) = read()
-let g = Graph<V, E>.directed(edges)
+let g = Graph.directed(edges)
 
 let (C, comp) = scc(g)
 var size: [C]Int = 0

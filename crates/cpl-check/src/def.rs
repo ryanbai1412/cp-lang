@@ -71,6 +71,9 @@ pub enum Def {
         value_domains: Vec<String>,
         projections: Vec<Projection>,
         cached_fields: Vec<String>,
+        /// Each type parameter's trait bounds, `A: Target<V>`: the parameter's index,
+        /// the trait, and each trait argument as the index of the parameter it names.
+        generic_bounds: Vec<(usize, String, Vec<Option<usize>>)>,
     },
     Enum {
         variants: Vec<(String, Vec<Ty>)>,

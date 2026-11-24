@@ -25,7 +25,7 @@ fn grows_from(pattern: 1..=5) -> Bool:
     domain V = 1..=n
     domain E = 0..m
     let edges: [E](u: V, v: V) = read()
-    let g = Graph<V, E>.undirected(edges)
+    let g = Graph.undirected(edges)
     // `blocks(g)` by hand over flat arc lists: arc 2e runs u -> v and arc 2e + 1 back
     var head: List<Int> = [-1 for v in 0..n]
     var link: List<Int> = [-1 for a in 0..2 * m]
