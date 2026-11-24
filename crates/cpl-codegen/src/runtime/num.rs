@@ -114,45 +114,6 @@ inline __int128 abs128(__int128 x) { return x < 0 ? -x : x; }
 ",
     },
     Piece {
-        name: "fsqrt",
-        needs: &["out"],
-        code: "\
-inline double fsqrt(double x) {
-#ifdef LOCAL
-    if (x < 0.0) { cpl::flush(); fprintf(stderr, \"sqrt(%g) of a negative number\\n\", x); exit(3); }
-#endif
-    return std::sqrt(x);
-}
-",
-    },
-    Piece {
-        name: "fln",
-        needs: &["out"],
-        code: "\
-inline double fln(double x) {
-#ifdef LOCAL
-    if (x < 0.0) { cpl::flush(); fprintf(stderr, \"ln(%g) of a negative number\\n\", x); exit(3); }
-#endif
-    return std::log(x);
-}
-",
-    },
-    Piece {
-        name: "farc",
-        needs: &["out"],
-        code: "\
-inline void farc_check(const char* f, double x) {
-#ifdef LOCAL
-    if (!(x >= -1.0 && x <= 1.0)) { cpl::flush(); fprintf(stderr, \"%s(%g) is outside -1..=1\\n\", f, x); exit(3); }
-#else
-    (void)f, (void)x;
-#endif
-}
-inline double fasin(double x) { farc_check(\"asin\", x); return std::asin(x); }
-inline double facos(double x) { farc_check(\"acos\", x); return std::acos(x); }
-",
-    },
-    Piece {
         name: "check_range",
         needs: &["out"],
         code: "\

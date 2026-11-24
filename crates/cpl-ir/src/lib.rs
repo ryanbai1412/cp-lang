@@ -922,17 +922,6 @@ pub enum Builtin {
     WrapAdd,
     WrapSub,
     WrapMul,
-    Atan2,
-    /// `sin`, `cos`, `tan`, `asin`, `acos` of an `F64`, in radians.
-    Sin,
-    Cos,
-    Tan,
-    Asin,
-    Acos,
-    /// `exp`, `ln` of an `F64`, and `hypot(x, y)`, the length of `(x, y)`.
-    Exp,
-    Ln,
-    Hypot,
     /// `flush()`: what was printed so far is written out now.
     Flush,
     /// `ask(.., limit: K)`: counts the query and fails past `K` of them.

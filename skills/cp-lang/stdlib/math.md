@@ -4,7 +4,7 @@
 
 Number theory on plain `Int`s.
 
-In prelude (no `use` needed): `BigInt`, `Ratio`, `Sieve`, `Sign`, `abs`, `bit`, `bit_ceil`, `bit_len`, `bit_width`, `ceil`, `ceil_div`, `choose`, `choose2`, `clz`, `crt`, `crt_all`, `ctz`, `digits`, `divisors`, `divisors_from_factors`, `divmod`, `ext_gcd`, `factor`, `fixed`, `floor`, `floor_quotients`, `floor_sum`, `gcd`, `inf`, `inv_mod`, `is_prime`, `isqrt`, `lcm`, `mod_log`, `mod_sqrt`, `mul_mod`, `phi`, `popcount`, `pow_mod`, `primitive_root`, `round`, `sieve_multiplicative`, `sign`, `splitmix64`, `sqrt`, `to_str`, `trunc`.
+In prelude (no `use` needed): `BigInt`, `Ratio`, `Sieve`, `Sign`, `abs`, `acos`, `asin`, `atan2`, `bit`, `bit_ceil`, `bit_len`, `bit_width`, `ceil`, `ceil_div`, `choose`, `choose2`, `clz`, `cos`, `crt`, `crt_all`, `ctz`, `digits`, `divisors`, `divisors_from_factors`, `divmod`, `exp`, `ext_gcd`, `factor`, `fixed`, `floor`, `floor_quotients`, `floor_sum`, `gcd`, `hypot`, `inf`, `inv_mod`, `is_prime`, `isqrt`, `lcm`, `ln`, `mod_log`, `mod_sqrt`, `mul_mod`, `phi`, `popcount`, `pow_mod`, `primitive_root`, `round`, `sieve_multiplicative`, `sign`, `sin`, `splitmix64`, `sqrt`, `tan`, `to_str`, `trunc`.
 
 ## Types & Constants
 
@@ -106,6 +106,15 @@ Fields: `pre: List<T>`, `g_sum: Int -> T`, `fg_sum: Int -> T`, `g1: T`, `memo: M
 - `@get fn ceil(self: F64) -> Int` — \(O(1)\); `x` rounded up to an `Int`; traps outside `Int`.
 - `@get fn round(self: F64) -> Int` — \(O(1)\); `x` rounded to an `Int`, halves away from zero; traps outside `Int`.
 - `@get fn trunc(self: F64) -> Int` — \(O(1)\); `x` rounded toward zero to an `Int`; traps outside `Int`.
+- `fn sin<N: Real>(x: N) -> F64` — \(O(1)\); The sine of `x` radians.
+- `fn cos<N: Real>(x: N) -> F64` — \(O(1)\); The cosine of `x` radians.
+- `fn tan<N: Real>(x: N) -> F64` — \(O(1)\); The tangent of `x` radians.
+- `fn asin<N: Real>(x: N) -> F64` — \(O(1)\); The angle in `-pi/2..=pi/2` radians whose sine is `x`.; traps: when `x` is outside `-1..=1`
+- `fn acos<N: Real>(x: N) -> F64` — \(O(1)\); The angle in `0..=pi` radians whose cosine is `x`.; traps: when `x` is outside `-1..=1`
+- `fn atan2<A: Real, B: Real>(y: A, x: B) -> F64` — \(O(1)\); The angle in `-pi..=pi` radians of the point `(x, y)`; `y` comes first.
+- `fn hypot<A: Real, B: Real>(x: A, y: B) -> F64` — \(O(1)\); The length of `(x, y)`, with no overflow in the squares.
+- `fn exp<N: Real>(x: N) -> F64` — \(O(1)\); `e` to the power `x`.
+- `fn ln<N: Real>(x: N) -> F64` — \(O(1)\); The natural logarithm of `x`.; traps: when `x < 0`
 - `fn bit_len(x: Int) -> Int` — \(O(1)\); The number of bits needed to write `x >= 0`: `bit_len(0) == 0`, `bit_len(5) == 3`.; traps: when `self < 0`
 - `fn digits(self: 0.., base: Int = 10) -> List<Int>` — \(O(\mathit{log\_base} x)\); The digits of `x >= 0` in `base`, lowest first; `0` has the one digit `0`.; traps: when `self < 0` or `base < 2`
 - `fn to_str(self: Int, base: Int = 10) -> Str` — \(O(\log \lvert \mathit{self} \rvert)\); `self` written in `base` (2..=36), highest digit first, lowercase letters past 9, a leading `-` when negative.; traps: when `base` is outside `2..=36`

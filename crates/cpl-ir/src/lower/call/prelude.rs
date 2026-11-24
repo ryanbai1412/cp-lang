@@ -397,9 +397,6 @@ impl<'a> Lowerer<'a> {
                 };
                 self.reduce(kind, exprs[0], span)
             }
-            "atan2" | "sin" | "cos" | "tan" | "asin" | "acos" | "exp" | "ln" | "hypot" => {
-                self.float_fn(name, args, span)
-            }
             // A program that flushes is read by someone who answers: it
             // reads as it goes.
             "flush" => match self.positional_any(name, args, 0, span) {

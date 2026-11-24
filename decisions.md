@@ -9421,8 +9421,6 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
   (`plan/QUESTIONS.md`) would make most transfers unnecessary.
 - **Status.** Accepted (Factory and Core); the instantiating-crate question stays open.
 
-## 640. (reserved, unknown)
-
 ## 641. (reserved, compiler)
 
 ## 642. (reserved, compiler)
@@ -9432,3 +9430,8 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 - **Call.** The name-ban counter skips the build-option tables a CLI flag parses, listed by path in `NAME_BAN_OUT_OF_SCOPE` in `scripts/debt-ratchet.py`: today only `crates/cpl-ir/src/checks.rs`, whose `"all"` is the `--checks all` value. A std name in any lowering, checker or codegen module still counts. Factory ruling of 2026-11-24.
 - **Why.** The counter measures compiler code that matches a std name. A flag value that happens to be spelled like a std fn is not such a match. A path scope keeps it structural, where a name allowlist would also hide real arms that use the same spelling.
 - **Reverse.** Empty `NAME_BAN_OUT_OF_SCOPE`. The counter then scans every module of the four crates again.
+## 640. A float fn's domain is std's own `assert`; the intrinsic row never traps (compiler, 2026-11-24)
+
+- **Call.** `sqrt`, `ln`, `asin` and `acos` in std/math.cp are ordinary bodies: `let f = F64(x); assert <domain>, "<what>"; <name>_of(f)`, where `<name>_of` is a private `@intrinsic` row. A checked build traps R0401 with std's message and `f`'s value on both engines; a release build skips the assert (R09.3.7) and gives the C++ result, NaN for `sqrt(-1.0)`. R09.3.6 says so. cpl_rt keeps only a bare `fn(f64) -> f64` table and a two-argument one for `atan2` and `hypot`: no bounds, no `Fault::Negative`, no domain branch; the C++ forms are `std::sqrt`, `std::log`, `std::asin`, `std::acos` with no runtime piece. Coordinator ruling for the compiler lane of 2026-11-24.
+- **Why.** One rule for one kind of fault: the check is code any library could write, `explain` shows it and its cost, and cpl_rt stays within its 500 B budget.
+- **Reverse.** Add a general precondition mechanism that lets any library name its own trap code (so std's float preconditions could say R0001 again), not a per-fn check in cpl_rt.

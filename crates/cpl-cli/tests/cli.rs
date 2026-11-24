@@ -1218,11 +1218,11 @@ fn sqrt_negative_traps_in_interp_and_checked_cpp_not_release() {
     let interp_err = String::from_utf8_lossy(&interp.stderr);
     let chk_err = String::from_utf8_lossy(&chk.stderr);
     assert!(
-        interp_err.contains("sqrt(-1) of a negative number"),
+        interp_err.contains("sqrt of a negative number"),
         "interp: {interp_err}"
     );
     assert!(
-        chk_err.contains("sqrt(-1) of a negative number"),
+        chk_err.contains("sqrt of a negative number"),
         "checked: {chk_err}"
     );
 

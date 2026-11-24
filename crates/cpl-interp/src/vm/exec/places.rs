@@ -368,15 +368,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 };
             }
             Op::FloatSqrt { dst, src } => {
-                let x = regs_v[src as usize].float();
-                if x < 0.0 {
-                    let fault = cpl_rt::Fault::Negative(x);
-                    return trap(
-                        spans[cur_pc],
-                        crate::fault_said(cpl_ir::Scalar::F64(x), fault),
-                    );
-                }
-                regs_v[dst as usize] = Value::Float(x.sqrt());
+                regs_v[dst as usize] = Value::Float(regs_v[src as usize].float().sqrt());
             }
             Op::DomainValV { dst, dom } => {
                 let (lo, len) = self.domains[dom as usize];

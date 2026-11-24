@@ -81,15 +81,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 }
                 best
             }
-            Builtin::Atan2
-            | Builtin::Sin
-            | Builtin::Cos
-            | Builtin::Tan
-            | Builtin::Asin
-            | Builtin::Acos
-            | Builtin::Exp
-            | Builtin::Ln
-            | Builtin::Hypot => float_fn::eval(op, first.float(), values.next(), span)?,
             Builtin::Flush => {
                 self.write_out(true);
                 Value::Unit

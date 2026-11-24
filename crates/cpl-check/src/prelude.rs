@@ -770,9 +770,7 @@ fn fn_of(arity: usize, param: Ty, ret: Ty) -> Ty {
 pub fn value(name: &str) -> Option<Ty> {
     Some(match name {
         "INF" => Ty::Int,
-        "cbrt" | "sin" | "cos" | "tan" | "asin" | "acos" | "atan" | "exp" | "ln" | "log2"
-        | "log10" => float_fn(1),
-        "atan2" | "hypot" => float_fn(2),
+        "cbrt" | "atan" | "log2" | "log10" => float_fn(1),
         // `ask("?", x)` prints a query, flushes, and reads the judge's
         // answer; `cpl-ir` lowers it.
         "ask" => Ty::Unknown,
@@ -917,15 +915,6 @@ pub const VALUE_NAMES: &[&str] = &[
     "rand",
     "some",
     "laws_hold",
-    "atan2",
-    "sin",
-    "cos",
-    "tan",
-    "asin",
-    "acos",
-    "exp",
-    "ln",
-    "hypot",
     "flush",
     "len",
     "counts",

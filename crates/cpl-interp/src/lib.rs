@@ -19,7 +19,6 @@ mod cases;
 pub mod checkpoint;
 mod closed_form;
 mod compare;
-mod float_fn;
 mod fn_value;
 mod for_loop;
 mod input;
@@ -1668,11 +1667,28 @@ pub(crate) fn intrinsic(p: Prim, vals: &[Value], span: Span) -> Res<Value> {
         Value::Float(f) => Scalar::F64(f),
         ref other => Scalar::Int(other.int()),
     };
+    let y = match vals.get(1) {
+        Some(Value::Float(f)) => *f,
+        Some(other) => other.int() as f64,
+        None => 0.0,
+    };
     Ok(match p.run(a) {
         Ok(Scalar::Int(v)) => Value::Int(v),
         Ok(Scalar::I128(v)) => Value::I128(v.into()),
         Ok(Scalar::U64(v)) => Value::U64(v),
-        Ok(Scalar::F64(v)) => Value::Float(v),
+        Ok(Scalar::F64(x)) => Value::Float(match p {
+            Prim::Sqrt => x.sqrt(),
+            Prim::Acos => x.acos(),
+            Prim::Asin => x.asin(),
+            Prim::Cos => x.cos(),
+            Prim::Sin => x.sin(),
+            Prim::Tan => x.tan(),
+            Prim::Exp => x.exp(),
+            Prim::Ln => x.ln(),
+            Prim::Atan2 => x.atan2(y),
+            Prim::Hypot => x.hypot(y),
+            _ => x,
+        }),
         Err(fault) => return trap(span, fault_said(a, fault)),
     })
 }
@@ -1686,7 +1702,6 @@ pub(crate) fn fault_said(a: Scalar, fault: Fault) -> cpl_diag::msgs::Said {
     };
     let (row, shown): (_, &dyn std::fmt::Display) = match &fault {
         Fault::NotInt(v) => (rows::DOES_NOT_FIT_IN_INT_2, v),
-        Fault::Negative(v) => (rows::SQRT_NEGATIVE_NUMBER, v),
         Fault::CeilOverflow => (rows::INTEGER_OVERFLOW_BIT_CEIL_DOES, &wide),
         Fault::WideOverflow => (rows::INTEGER_OVERFLOW_ABS_I128, &wide),
         Fault::Overflow => (rows::INTEGER_OVERFLOW_ABS_DOES_NOT, &wide),

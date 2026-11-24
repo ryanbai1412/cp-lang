@@ -81,21 +81,6 @@ impl<'p> Emitter<'p> {
                 self.need("out");
                 Code::primary("(cpl::flush(), fflush(stdout))".to_string())
             }
-            Builtin::Atan2 => Code::primary(format!("std::atan2({}, {})", text(0), text(1))),
-            Builtin::Hypot => Code::primary(format!("std::hypot({}, {})", text(0), text(1))),
-            Builtin::Exp => Code::primary(format!("std::exp({})", text(0))),
-            Builtin::Ln => {
-                self.need("fln");
-                Code::primary(format!("cpl::fln({})", text(0)))
-            }
-            Builtin::Sin => Code::primary(format!("std::sin({})", text(0))),
-            Builtin::Cos => Code::primary(format!("std::cos({})", text(0))),
-            Builtin::Tan => Code::primary(format!("std::tan({})", text(0))),
-            Builtin::Asin | Builtin::Acos => {
-                self.need("farc");
-                let f = if op == Builtin::Asin { "asin" } else { "acos" };
-                Code::primary(format!("cpl::f{f}({})", text(0)))
-            }
             Builtin::CountQuery => {
                 self.need("count_query");
                 Code::primary(format!("cpl::count_query({})", text(0)))

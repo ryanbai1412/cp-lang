@@ -99,7 +99,7 @@ compiler can prove, and what each build does.
 | store into a range type | the value's range fits (`x % 7` into `0..7`) | trap naming value and range | truncates to the width (R09.3.3) |
 | `Int` / `I128` overflow | interval arithmetic proves it fits | trap with operands | wraps (R09.3.4) |
 | `x!` on `None` | flow proves `Some` | trap naming the place | reads the niche as a value (R09.3.5) |
-| division by zero, negative shift, `sqrt` of a negative | the divisor's range excludes 0 | trap | defined fallback (0) (R09.3.6) |
+| division by zero, negative shift; a float fn's domain (`sqrt` or `ln` of a negative, `asin` or `acos` outside `-1..=1`) | the divisor's range excludes 0 | trap; a float domain is std's own `assert`, so R0401 with its message | defined fallback (0); a float fn gives its C++ result, NaN for `sqrt(-1.0)` (R09.3.6) |
 | `assert c` | n/a | trap with the message | skipped (R09.3.7) |
 | `@cache` cold-mode check | n/a | stress compares cold and cached runs | none (R09.3.8) |
 | `law` promises | n/a | stress samples them | none (R09.3.9) |
