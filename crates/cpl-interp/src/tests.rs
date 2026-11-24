@@ -1576,3 +1576,37 @@ fn vm_combines_boxed_values_in_place_itself() {
         include_str!("../../cpl-cli/tests/programs/vm_assign_op_values.out")
     );
 }
+
+#[test]
+fn only_a_closure_made_off_the_vm_syncs_the_whole_frame_around_calls() {
+    // `(has_by_ref_closure, ref_slots)` of fn `name`'s chunk, or main's.
+    let syncs = |source: &str, name: Option<&str>| {
+        let mut db = cpl_check::Database::new();
+        db.set_file("t.cp", source);
+        let analysis = db.analyze("t.cp").expect("the file was just set");
+        assert!(
+            analysis.diagnostics.is_empty(),
+            "{:?}",
+            analysis.diagnostics
+        );
+        let program = cpl_ir::lower(&analysis).expect("lowers");
+        let feeds = cpl_ir::pushed::Feeds::of(&program);
+        let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false);
+        let chunk = match name {
+            None => &compiled.main,
+            Some(name) => {
+                let id = program.fns.iter().position(|f| f.name == name).expect("fn");
+                compiled.fns[id].as_ref().expect("on the vm")
+            }
+        };
+        (chunk.has_by_ref_closure, chunk.ref_slots.clone())
+    };
+    // A ranged read is not a closure, so calls in the loop sync nothing.
+    let read = "let n: 1..=5 = read()\nfn f(x: Int) -> Int = x + n\nvar s = 0\nfor i in 0..3: s += f(i)\nprint(s)\n";
+    assert_eq!(syncs(read, None), (false, Some(vec![])));
+    // A closure capturing `t` by reference syncs only `t`.
+    let closure = "fn call(g: () -> ()) = g()\nfn run(k: Int) -> Int:\n    var t = k\n    let u = 1\n    call(() => t += u)\n    t\nprint(run(2))\n";
+    let (by_ref, slots) = syncs(closure, Some("run"));
+    assert!(by_ref);
+    assert_eq!(slots.map(|s| s.len()), Some(1));
+}

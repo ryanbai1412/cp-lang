@@ -1254,6 +1254,23 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
     }
 
+    /// Whether `e` makes a closure, at any depth.
+    pub(super) fn expr_makes_closure(e: &Expr) -> bool {
+        let mut found = false;
+        cpl_ir::walk::deep_expr(e, &mut |x| found |= matches!(x.kind, ExprKind::Closure(_)));
+        found
+    }
+
+    /// Whether `stmt` makes a closure, at any depth.
+    pub(super) fn stmt_makes_closure(stmt: &Stmt) -> bool {
+        let mut found = false;
+        cpl_ir::walk::stmt_exprs(stmt, &mut |e| found |= Self::expr_makes_closure(e));
+        cpl_ir::walk::stmt_blocks(stmt, &mut |b| {
+            found |= b.stmts.iter().any(Self::stmt_makes_closure);
+        });
+        found
+    }
+
     pub(in crate::vm) fn stmts_have_closure(stmts: &[Stmt]) -> bool {
         stmts
             .iter()
