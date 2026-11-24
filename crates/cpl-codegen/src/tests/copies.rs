@@ -685,6 +685,20 @@ fn a_list_sorted_by_a_key_at_its_last_use_moves_into_the_sort() {
 }
 
 #[test]
+fn a_global_sorted_by_a_key_at_its_last_read_moves_into_the_sort() {
+    let out = cpp(concat!(
+        "let n: 2..=10 = read()\n",
+        "let xs = [(t: read<Int>(), x: i) for i in 0..n]\n",
+        "let best = xs.sorted(by: o => o.t).take(n / 2).collect()\n",
+        "var hits: List<Int> = [0, 0]\n",
+        "let bump = (i: Int) => hits[i % 2] += 1\n",
+        "for o in best: bump(o.x)\n",
+        "print(best.len, hits)\n",
+    ));
+    assert!(out.contains("= std::move(xs);"), "{out}");
+}
+
+#[test]
 fn a_param_copied_whole_into_a_var_is_taken_by_value_and_moved_in() {
     let out = cpp(concat!(
         "fn top(xs: List<Int>) -> List<Int>:\n",
