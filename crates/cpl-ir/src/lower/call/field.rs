@@ -475,7 +475,7 @@ impl<'a> Lowerer<'a> {
                     self.try_ufcs_call(field, base, &[], span, Some(recv_mark), None)
                 {
                     res
-                } else if field == "to" {
+                } else if self.self_getter(field) {
                     // A product position is a plain vertex: its own `Target::to`.
                     value
                 } else {
@@ -959,8 +959,8 @@ impl<'a> Lowerer<'a> {
                 let some = self.mk_is_some(value, Ty::Bool, span);
                 self.mk_unary(UnOp::Not, some, Ty::Bool, span)
             }
-            // Default `Target::to` trait getter on plain values (e.g. vertices yielded by `u => adj[u]`).
-            (_, "to") => value,
+            // A trait getter defaulted to `= self` on a plain value: a vertex's `Target::to`.
+            (_, field) if self.self_getter(field) => value,
             // `Hashable::hash_token` of a position, until a blanket domain impl's getter reaches it.
             _ => {
                 // A getter an impl gives a non-struct type (`'a'.hash_token`, `v.tk` for a domain).
@@ -1577,4 +1577,16 @@ pub(in crate::lower) enum ItemsCount {
     Bound(DomainId),
     Int,
     IntFrom(i64),
+}
+
+impl Lowerer<'_> {
+    /// A trait declares `@get fn name(self) -> P = self`, so a value with no impl of it is its
+    /// own `name`: a vertex is its own `Target::to`.
+    fn self_getter(&self, name: &str) -> bool {
+        (self.traits.iter().flat_map(|t| &t.methods)).any(|f| {
+            f.name.text == name
+                && f.params.len() == 1
+                && matches!(&f.body, ast::FnBody::Expr(e) if matches!(e.kind, ast::ExprKind::SelfValue))
+        })
+    }
 }

@@ -14,9 +14,11 @@ impl Checker<'_> {
         span: Span,
         generics: &[String],
         bounds: &[(usize, String, Vec<Option<usize>>)],
+        bound_getters: &[Option<Vec<(String, usize)>>],
         args: &[Ty],
     ) {
-        for (i, trait_name, trait_args) in bounds {
+        for (k, (i, trait_name, trait_args)) in bounds.iter().enumerate() {
+            let getters = bound_getters.get(k).cloned().flatten();
             let Some(ty) = args.get(*i) else {
                 continue;
             };
@@ -27,18 +29,29 @@ impl Checker<'_> {
                 .iter()
                 .map(|a| a.and_then(|a| args.get(a).cloned()))
                 .collect();
-            let (meets, wants) = match (trait_name.as_str(), given.as_deref()) {
-                ("Target", Some([v])) => {
-                    if v.mentions_param() || matches!(v, Ty::Unknown | Ty::Error) {
+            let (meets, wants) = match (getters, given.as_deref()) {
+                (Some(getters), Some(given)) => {
+                    let wants: Vec<(&String, &Ty)> = (getters.iter())
+                        .filter_map(|(m, k)| Some((m, given.get(*k)?)))
+                        .filter(|(_, v)| {
+                            !v.mentions_param() && !matches!(v, Ty::Unknown | Ty::Error)
+                        })
+                        .collect();
+                    if wants.is_empty() {
                         continue;
                     }
-                    let meets = match ty {
-                        Ty::Record(fields) => fields.iter().any(|(n, t)| n == "to" && t == v),
-                        other => other == v,
-                    };
+                    let meets = wants.iter().all(|(m, v)| match ty {
+                        Ty::Record(fields) => fields.iter().any(|(n, t)| n == *m && t == *v),
+                        other => other == *v,
+                    });
+                    let wants = wants
+                        .iter()
+                        .map(|(m, v)| format!("`{v}` itself or a record with `{m}: {v}`"));
+                    let args = given.iter().map(Ty::to_string).collect::<Vec<_>>();
+                    let wants = wants.collect::<Vec<_>>().join(", ");
                     (
                         meets,
-                        format!("an arc type of `{v}`: `{v}` itself or a record with `to: {v}`"),
+                        format!("a `{trait_name}<{}>`: {wants}", args.join(", ")),
                     )
                 }
                 // Built-in types meet std traits through their impls in std, which the
@@ -89,6 +102,7 @@ impl Checker<'_> {
                 generics,
                 defaults,
                 generic_bounds,
+                bound_getters,
                 ..
             } => {
                 // `Pt<1..=100>` on a struct with no generics, or `Q<Int, Int>`
@@ -131,7 +145,14 @@ impl Checker<'_> {
                         }
                     }
                 }
-                self.struct_args_meet_bounds(name, span, generics, generic_bounds, &args);
+                self.struct_args_meet_bounds(
+                    name,
+                    span,
+                    generics,
+                    generic_bounds,
+                    bound_getters,
+                    &args,
+                );
                 Ty::Named {
                     name: name.to_string(),
                     args,

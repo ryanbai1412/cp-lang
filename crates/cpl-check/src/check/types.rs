@@ -1036,10 +1036,14 @@ impl<'a> Checker<'a> {
                     })
                     .collect();
                 let generic_bounds = struct_generic_bounds(&generics, &s.bounds);
+                let bound_getters = (generic_bounds.iter())
+                    .map(|(_, t, _)| self.self_getters(t))
+                    .collect();
                 vec![(
                     s.name.text.clone(),
                     Def::Struct {
                         generic_bounds,
+                        bound_getters,
                         generics,
                         defaults,
                         fields,
@@ -1151,6 +1155,8 @@ impl<'a> Checker<'a> {
                             ty: self.fn_sig(f, Some(&Ty::Param("Self".into()))),
                             required: matches!(f.body, ast::FnBody::None),
                             getter: m.decorators.iter().any(|d| d.name.text == "get"),
+                            default_self: matches!(&f.body, ast::FnBody::Expr(e)
+                                if matches!(e.kind, ast::ExprKind::SelfValue)),
                         }),
                         _ => None,
                     })
@@ -1647,10 +1653,14 @@ impl<'a> Checker<'a> {
                 Ty::Named { name, .. } => self.has_impl(name, "Index"),
                 _ => false,
             },
-            "Target" => match ty {
-                Ty::Pos(_) | Ty::Int => true,
-                Ty::Record(fields) => fields.iter().any(|(n, _)| n == "to"),
-                _ => false,
+            // With its argument open, a getter's `= self` is met by a value of any type but a
+            // struct, which needs its impl; a record meets it by the getter's fields.
+            _ if let Some(getters) = self.self_getters(trait_name) => match ty {
+                Ty::Record(fields) => {
+                    (getters.iter()).all(|(m, _)| fields.iter().any(|(n, _)| n == m))
+                }
+                Ty::Named { .. } => false,
+                _ => true,
             },
             "Next" => matches!(ty, Ty::Array { .. } | Ty::Fn { .. }),
             _ => match ty {
@@ -1679,6 +1689,34 @@ impl<'a> Checker<'a> {
     /// R08.1.7: a record or tuple meets a trait when a field meets each member the trait and its
     /// supertraits leave without a body, a field `w: W` or a bodiless `@get fn w(self) -> W`
     /// alike, with its type.
+    /// The getters of a trait made only of `@get fn m(self) -> P = self`, each with the
+    /// index of its `P` among the trait's generics: `Target<V>`'s `to` returns `V`.
+    pub(crate) fn self_getters(&mut self, trait_name: &str) -> Option<Vec<(String, usize)>> {
+        let Some(Def::Trait {
+            generics,
+            methods,
+            fields,
+            supers,
+            ..
+        }) = self.global(trait_name).as_deref().cloned()
+        else {
+            return None;
+        };
+        if methods.is_empty() || !fields.is_empty() || !supers.is_empty() {
+            return None;
+        }
+        methods
+            .into_iter()
+            .map(|m| match m.ty {
+                Ty::Fn { ret, .. } if m.getter && m.default_self => match *ret {
+                    Ty::Param(p) => Some((m.name, generics.iter().position(|g| *g == p)?)),
+                    _ => None,
+                },
+                _ => None,
+            })
+            .collect()
+    }
+
     pub(crate) fn meets_by_shape(&mut self, fields: &[(String, Ty)], trait_name: &str) -> bool {
         let Some(Def::Trait {
             methods,
@@ -1965,7 +2003,7 @@ fn value_domains(fields: &[&str], body: &[ast::Stmt]) -> Vec<String> {
         .collect()
 }
 
-/// `A: Target<V>` on `struct Graph<V, A>` as `(1, "Target", [Some(0)])`.
+/// `A: Tagged<T>` on `struct Hold<T, A>` as `(1, "Tagged", [Some(0)])`.
 fn struct_generic_bounds(
     generics: &[String],
     bounds: &[ast::Bound],

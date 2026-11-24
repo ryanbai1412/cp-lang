@@ -79,6 +79,9 @@ pub enum Def {
         /// Each type parameter's trait bounds, `A: Target<V>`: the parameter's index,
         /// the trait, and each trait argument as the index of the parameter it names.
         generic_bounds: Vec<(usize, String, Vec<Option<usize>>)>,
+        /// Each bound's trait as `= self` getters, read where the struct is declared:
+        /// `A: Target<V>` as `[("to", 0)]`.
+        bound_getters: Vec<Option<Vec<(String, usize)>>>,
     },
     Enum {
         variants: Vec<(String, Vec<Ty>)>,
@@ -162,6 +165,8 @@ pub struct TraitMethod {
     pub required: bool,
     /// `@get`: a read of it is its value.
     pub getter: bool,
+    /// Defaulted as `= self`: `@get fn to(self) -> V = self` is met by `V` itself.
+    pub default_self: bool,
 }
 
 /// The name an impl is filed under, next to the fns and types of its file:
