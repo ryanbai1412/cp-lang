@@ -141,31 +141,6 @@ impl Checker<'_> {
         }
         true
     }
-
-    /// `List(a)` keeps `a`'s elements, not its keys: it is indexed by `Int` (R04a.8.1).
-    pub(super) fn list_index_by_position(
-        &mut self,
-        base: &Expr,
-        indices: &[Expr],
-        index_tys: &[Ty],
-    ) {
-        if let ([Ty::Pos(_)], [index]) = (index_tys, indices) {
-            let message = format!(
-                "`{}` is indexed by `Int`, but `{}` is {}",
-                self.quote(base.span),
-                self.quote(index.span),
-                index_tys[0].with_article()
-            );
-            let help = format!(
-                "a `List` is indexed by number: write `{}[Int({})]`",
-                self.quote(base.span),
-                self.quote(index.span)
-            );
-            if let Some(diag) = self.error(codes::WRONG_DOMAIN, index.span, message) {
-                diag.help = Some(help);
-            }
-        }
-    }
 }
 
 impl Checker<'_> {
