@@ -42,7 +42,7 @@ use std.dsu.{Dsu, DsuOf, ParityDsu, PotentialDsu}
 use std.fenwick.{Fenwick, Fenwick2D}
 use std.flow.{Arc, FlowGraph, max_closure}
 use std.geometry.{ByAngle, Location, Pt, cross, dot, locate, turn}
-use std.ntt.{Curved, convolve}
+use std.ntt.{Curved, convolve, convolve_2d}
 use std.graph.{
     Functional,
     Graph,
@@ -169,7 +169,7 @@ use std.seq.{
 }
 use std.hashmap.{Counter}
 use std.pair.{Pair}
-use std.poly.{eval}
+use std.poly.{binomial_transform, eval}
 use std.sparse.{SparseTable}
 use std.subset.{Subset}
 use std.strings.{

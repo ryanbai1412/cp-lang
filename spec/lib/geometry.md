@@ -507,14 +507,14 @@ print("{polygon_area(poly):.10f}")
 
 ### Coordinate-range overflow table
 
-Exact integer geometry is the default path. Coordinate bounds in declarations
-(e.g. `Pt<-1e9..=1e9>` once parameterized ranged structs land; today documented
-on `Pt`/`Pt3`) determine which width is overflow-free:
+Exact integer geometry is the default path. The coordinate bounds of the input
+(the ranges its `read()` declarations state; `Pt`/`Pt3` hold `Int` fields)
+determine which width is overflow-free:
 
 | Coordinate bound | Max diff | `dot` / `cross` / `dist2` | `turn` / `cross128` / `dot128` | `any_segments_meet` (`I128`) | `convex_hull_3d` (`I128`) |
 | --- | --- | --- | --- | --- | --- |
 | `\|c\| <= 1e6` | `2e6` | `8e12` (`Int` safe) | `8e12` (`I128` safe) | `1.6e19` (`I128` safe) | `4.8e19` (`I128` safe) |
-| `\|c\| <= 1e9` (`Pt<-1e9..=1e9>`) | `2e9` | `8e18` (2-pt diff fits `Int`; `dot`/`cross` of single vectors <= `2e18`) | `8e18` (`I128` safe, 19 orders spare) | `1.6e28` (`I128` safe) | `4.8e28` (`I128` safe) |
+| `\|c\| <= 1e9` | `2e9` | `8e18` (2-pt diff fits `Int`; `dot`/`cross` of single vectors <= `2e18`) | `8e18` (`I128` safe, 19 orders spare) | `1.6e28` (`I128` safe) | `4.8e28` (`I128` safe) |
 | `\|c\| <= 1e12` | `2e12` | overflows `Int` | `8e24` (`I128` safe) | `1.6e37` (`I128` safe) | `4.8e37` (`I128` safe) |
 | `\|c\| <= 2e18` | `4e18` | overflows `Int` | `3.2e37` (`I128` safe) | overflows `I128` | overflows `I128` |
 
