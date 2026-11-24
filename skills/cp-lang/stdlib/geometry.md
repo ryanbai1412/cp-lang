@@ -42,18 +42,18 @@ In prelude (no `use` needed): `ByAngle`, `Location`, `Pt`, `Pt3`, `Vec`, `Vec3`,
 
 \(O(n)\) memory.
 
-Fields: `hull: List<Pt>`.
+Fields: `up: HullChain`, `lo: HullChain`.
 
 - `fn new() -> OnlineHull` — \(O(1)\); An empty online convex hull.
-- `fn add(mut self, p: Pt) -> Bool` — \(O(\log n)\) amortized; Insert `p` and report whether the hull changed (whether `p` is now a corner).
-- `fn locate(self, p: Pt) -> Location` — \(O(\log n)\); Where `p` is relative to the current hull: `Inside`, `Boundary` or `Outside`.
-- `fn extreme(self, dir: Pt) -> ?Pt` — \(O(\log n)\); The hull corner maximizing `v.dot128(dir)`, or `None` when the hull is empty.
+- `fn add(mut self, p: Pt) -> Bool` — \(O(\log n)\) amortized, expected; Insert `p` and report whether the hull changed (whether `p` is now a corner).
+- `fn locate(self, p: Pt) -> Location` — \(O(\log n)\) expected; Where `p` is relative to the current hull: `Inside`, `Boundary` or `Outside`.
+- `fn extreme(self, dir: Pt) -> ?Pt` — \(O(\log n)\) expected; The hull corner maximizing `v.dot128(dir)`, or `None` when the hull is empty.
 - `@get fn area2(self) -> Int` — \(O(1)\); Twice the area of the current hull; 0 with fewer than 3 non-collinear points.; traps: when the value overflows `Int`
 - `@get fn len(self) -> Int` — \(O(1)\); The number of hull corners.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether no point has been added since creation or the last `clear`.
 - `fn vertices(self) -> List<Pt>` — \(O(n)\) time and memory; The current hull corners, counter-clockwise from the least `(x, y)`.
 - `fn iter(self) -> yields Pt` — \(O(n)\); The current hull corners, yielded in `vertices()` order without building a list.
-- `fn clear(mut self)` — \(O(n)\); Remove every point; the hull is then empty.
+- `fn clear(mut self)` — \(O(1)\); Remove every point; the hull is then empty.
 
 ## `enum Location`
 
