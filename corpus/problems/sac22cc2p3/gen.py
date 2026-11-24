@@ -1,5 +1,6 @@
-"""sac22cc2p3 generator: N <= 17, R <= 1e9, then the 2^N - 1 forks `u v w D` of a perfect
-binary decision tree rooted at node 1 over labels 1..=2^(N+1) - 1, |D| <= 10000."""
+"""sac22cc2p3 generator: N <= 19, R <= 1e9, then the 2^N - 1 forks `u v w D` of a perfect
+binary decision tree rooted at node 1 over labels 1..=2^(N+1) - 1, |D| <= 1e9.
+--max: N = 19 and |D| up to 1e9."""
 import random
 import sys
 
@@ -15,7 +16,7 @@ def emit(rng, n, r, d):
 
 
 if sys.argv[1] == "--max":
-    emit(random.Random(0), 17, 10**9, 10000)
+    emit(random.Random(0), 19, 10**9, 10**9)
     sys.exit()
 seed, size = int(sys.argv[1]), int(sys.argv[2])
 rng = random.Random(seed)

@@ -22,8 +22,7 @@
     "max-short ioi13p1 m: --max reads 99997, the statement allows n - 1",
     "max-short noi18p2 n: --max reads 1, the statement allows 6e5",
     "max-short noip10p2 m: --max reads 115, the statement allows 120",
-    "max-short noip10p2 n: --max reads 341, the statement allows 350",
-    "max-short sac22cc2p3 k: --max reads 17, the statement allows 19"
+    "max-short noip10p2 n: --max reads 341, the statement allows 350"
   ],
   "max_unread": [
     "max-unread agc077c multitest",
