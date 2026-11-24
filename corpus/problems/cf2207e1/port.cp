@@ -18,8 +18,8 @@ if (0..n - 1).any(i => a[i] < a[i + 1]) or (0..n).any(i => a[i] < n - i - 1 or a
     print("NO")
     return
 
-var b: [0..n]Int = 0
-var stk: List<Int> = []
+var b: [0..n]0..=200_000 = 0
+var stk: List<0..=200_000> = []
 var next_val = 0
 for i in (0..=n).rev:
     let cur = if i == 0: n else: a[i - 1]
