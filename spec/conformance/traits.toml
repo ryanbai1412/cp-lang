@@ -2541,3 +2541,45 @@ t.push('b')
 print(t)
 """
 out = "a a b: 3 palindromes"
+
+[case."Show/DynamicOrderTree/show"]
+code = """
+use std.segtree.{DynamicOrderTree}
+var t = DynamicOrderTree([4, 4, 1])
+t.set(0, 6)
+print(t)
+"""
+out = "6 4 1"
+
+[case."Show/MergeSortTree/show"]
+code = """
+use std.segtree.{MergeSortTree}
+print(MergeSortTree([5, 2, 8, 2, 9]))
+"""
+out = "5 2 8 2 9"
+
+[case."Show/SegTree/show"]
+code = """
+use std.segtree.{SegTree}
+var s = SegTree(max, [2, 7, 1, 8])
+s.set(2, 5)
+print(s)
+"""
+out = "2 7 5 8"
+
+[case."Show/SegTree2D/show"]
+code = """
+use std.segtree.{SegTree2D}
+var g = SegTree2D<0..2, 0..3, Int>(+, fill: 0)
+g.set(0, 2, 4)
+g.set(1, 1, 6)
+print(g)
+"""
+out = "0 0 4 / 0 6 0"
+
+[case."Show/WaveletMatrix/show"]
+code = """
+use std.segtree.{WaveletMatrix}
+print(WaveletMatrix([7, 0, 3, 3, 12]))
+"""
+out = "7 0 3 3 12"

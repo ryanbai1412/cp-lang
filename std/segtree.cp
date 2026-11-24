@@ -1675,3 +1675,63 @@ fn merge_sort_and_sparse_segtree_match_brute():
                 assert mst.count_lt(rng, v) == cnt(rng, x => x < v)
                 assert mst.count_le(rng, v) == cnt(rng, x => x <= v)
             assert mst.count_in(rng, -3, 4) == cnt(rng, x => -3 <= x <= 4)
+
+impl Show for SegTree<D, T, F>:
+    /// Every position's value, with tags applied, space-separated; a sparse tree (built with `over:`) shows its size and fold.
+    ///
+    /// example: `var s = SegTree(+, [4, 5, 6]); s.set(1, 9); "{s}" == "4 9 6"`
+    /// example: `var s = SegTree<Int, Int>(+, over: 0..1_000_000); s.set(7, 4); "{s}" == "1000000 positions, all 4"`
+    fn show(s):
+        if s.lc.len > 0: return "{s.count} positions, all {s.all}"
+        var out = ""
+        for i in 0..D.count():
+            if not out.is_empty: out += " "
+            out += "{s.get(D.at(i))}"
+        out
+
+impl Show for MergeSortTree<D, T>:
+    /// The values it was built from, space-separated in position order.
+    ///
+    /// example: `"{MergeSortTree([3, 1, 4])}" == "3 1 4"`
+    fn show(t):
+        var out = ""
+        for i in 0..D.count:
+            if not out.is_empty: out += " "
+            out += "{t.data[t.beg[t.size + i]]}"
+        out
+
+impl Show for SegTree2D<R, C, T>:
+    /// Every cell's value, space-separated within a row, rows separated by ` / `.
+    ///
+    /// example: `var g = SegTree2D<0..2, 0..2, Int>(+, fill: 1); g.set(1, 0, 7); "{g}" == "1 1 / 7 1"`
+    fn show(g):
+        var out = ""
+        for r in 0..R.count:
+            if r > 0: out += " / "
+            for c in 0..C.count:
+                if c > 0: out += " "
+                out += "{g.get(R.at(r), C.at(c))}"
+        out
+
+impl Show for WaveletMatrix<D>:
+    /// The values it was built from, space-separated in position order.
+    ///
+    /// example: `"{WaveletMatrix([3, 1, 4])}" == "3 1 4"`
+    fn show(w):
+        var out = ""
+        for i in 0..D.count:
+            if not out.is_empty: out += " "
+            out += "{w.kth(D.at(i)..=D.at(i), 0)!}"
+        out
+
+impl Show for DynamicOrderTree<D, T>:
+    /// The current values, space-separated in position order.
+    ///
+    /// example: `var t = DynamicOrderTree([3, 1, 4]); t.set(2, 9); "{t}" == "3 1 9"`
+    fn show(t):
+        var out = ""
+        for i in 0..t.n:
+            if not out.is_empty: out += " "
+            out += "{t.get(D.at(i))}"
+        out
+
