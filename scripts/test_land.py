@@ -422,32 +422,6 @@ class LandTest(unittest.TestCase):
         self.assertIn("taking over a land lock", r.stderr)
         self.assertEqual(self.lock_on_remote(), "")
 
-    def test_losing_the_lock_to_churn_is_not_a_refusal(self):
-        # A lane that takes and drops the lock between our push and our look
-        # leaves no holder; my land read 2 of those as "origin refuses" and
-        # pushed without the lock.
-        repo = self.clone("lane")
-        shim = self.tmp / "shim"
-        shim.mkdir()
-        (shim / "git").write_text(f"""#!/bin/sh
-case "$*" in *--force-with-lease=refs/land/lock:\\ *|*--force-with-lease=refs/land/lock:) 
-    n=$(cat "{shim}/n" 2>/dev/null || echo 0)
-    if [ "$n" -lt 6 ]; then
-        echo $((n + 1)) >"{shim}/n"
-        echo " ! [rejected]        x -> refs/land/lock (stale info)" >&2
-        exit 1
-    fi ;;
-esac
-exec {shutil.which("git")} "$@"
-""")
-        (shim / "git").chmod(0o755)
-        (repo / "pkg.txt").write_text("x\n")
-        self.commit(repo, "ours")
-        r = self.land(repo, PATH=f"{shim}:{os.environ['PATH']}")
-        self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertEqual((shim / "n").read_text(), "6\n")
-        self.assertNotIn("refuses", r.stderr)
-
     def test_a_remote_that_refuses_the_lock_refuses_the_land(self):
         repo = self.clone("lane")
         hook = self.tmp / "remote.git" / "hooks" / "pre-receive"
@@ -622,6 +596,75 @@ exec {shutil.which("git")} "$@"
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertGreaterEqual(len(log.read_text().split()) if log.exists() else 0, 2)
         self.assertEqual(self.lock_on_remote(), "")
+
+    def ticket(self, repo, name, age=0):
+        empty = git(repo, "hash-object", "-t", "tree", "/dev/null").strip()
+        env = dict(os.environ)
+        stamp = subprocess.run(["date", "+%s"], capture_output=True, text=True).stdout.strip()
+        env["GIT_COMMITTER_DATE"] = f"{int(stamp) - age} +0000"
+        sha = subprocess.run(["git", "commit-tree", empty, "-m", "land ticket other"], cwd=repo, env=env,
+                             capture_output=True, text=True, check=True).stdout.strip()
+        git(repo, "push", "-q", "origin", f"{sha}:refs/locks/queue/{name}")
+
+    def tickets_on_remote(self, repo):
+        out = git(repo, "ls-remote", "origin", "refs/locks/queue/*")
+        return [line.split("/")[-1] for line in out.splitlines()]
+
+    def test_an_earlier_live_ticket_takes_its_turn_first(self):
+        repo = self.clone("lane")
+        self.ticket(repo, "1000000000000000000-1-other")
+        self.ticket(repo, "9000000000000000000-1-later")
+        (repo / "pkg.txt").write_text("x\n")
+        self.commit(repo, "ours")
+        # The lock is free, but an earlier waiter is in line: ours waits its turn.
+        r = self.land(repo, CPL_LAND_LOCK_WAIT="2")
+        self.assertNotEqual(r.returncode, 0, r.stderr)
+        self.assertIn("waiting in line behind 1000000000000000000-1-other", r.stderr)
+        self.assertEqual(self.lock_on_remote(), "")
+        self.assertEqual(self.tickets_on_remote(repo), ["1000000000000000000-1-other", "9000000000000000000-1-later"])
+        # Once the earlier waiter has landed, ours goes ahead of the later one.
+        git(repo, "push", "-q", "origin", ":refs/locks/queue/1000000000000000000-1-other")
+        r = self.land(repo, CPL_LAND_LOCK_WAIT="2")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("pushed", r.stdout)
+        self.assertEqual(self.tickets_on_remote(repo), ["9000000000000000000-1-later"])
+        self.assertEqual(self.lock_on_remote(), "")
+
+    def test_losing_the_lock_to_churn_is_not_a_refusal(self):
+        # A lane that takes and drops the lock between our push and our look
+        # leaves no holder; my land read 2 of those as "origin refuses" and
+        # pushed without the lock.
+        repo = self.clone("lane")
+        shim = self.tmp / "shim"
+        shim.mkdir()
+        (shim / "git").write_text(f"""#!/bin/sh
+case "$*" in *--force-with-lease=refs/land/lock:\\ *|*--force-with-lease=refs/land/lock:) 
+    n=$(cat "{shim}/n" 2>/dev/null || echo 0)
+    if [ "$n" -lt 6 ]; then
+        echo $((n + 1)) >"{shim}/n"
+        echo " ! [rejected]        x -> refs/land/lock (stale info)" >&2
+        exit 1
+    fi ;;
+esac
+exec {shutil.which("git")} "$@"
+""")
+        (shim / "git").chmod(0o755)
+        (repo / "pkg.txt").write_text("x\n")
+        self.commit(repo, "ours")
+        r = self.land(repo, PATH=f"{shim}:{os.environ['PATH']}")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual((shim / "n").read_text(), "6\n")
+        self.assertNotIn("refuses", r.stderr)
+
+    def test_a_dead_waiters_ticket_expires(self):
+        repo = self.clone("lane")
+        self.ticket(repo, "1000000000000000000-1-dead", age=150)
+        (repo / "pkg.txt").write_text("x\n")
+        self.commit(repo, "ours")
+        r = self.land(repo, CPL_LAND_LOCK_WAIT="2")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn("waiting in line", r.stderr)
+        self.assertEqual(self.tickets_on_remote(repo), [])
 
     def test_a_lock_whose_holder_cant_be_read_is_never_taken_over(self):
         repo = self.clone("lane")
