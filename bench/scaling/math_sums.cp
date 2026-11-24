@@ -1,5 +1,5 @@
 // fixed: k, d, lcm, base, lo
-// let: popcount = \log n
+// let: mask = n - 1
 use std.math.{crt_all, is_prime, primes_in, prime_count, floor_quotients, submasks, dirichlet_convolve, dirichlet_inv, sum_phi, sum_mobius, sum_multiplicative, sieve_multiplicative}
 let n: Int = read()
 var acc = 0
