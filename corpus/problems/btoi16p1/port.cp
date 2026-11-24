@@ -20,7 +20,7 @@ for p in P:
 
 var best: ?Int = None
 for root in P:
-    let depth = bfs(u => reports[u], [root])
+    let depth = bfs(reports, [root])
     var pay = n
     for p in P:
         let d = depth[p] else:
