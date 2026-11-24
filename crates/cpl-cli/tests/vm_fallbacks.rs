@@ -142,3 +142,26 @@ fn a_set_in_an_entry_found_by_user_order_changes_on_the_vm() {
         assert_eq!(walked(&program, traced), 0, "traced: {traced}");
     }
 }
+
+/// A tuple part a `@cpp` `show` fn prints stops the traced run on the VM, as
+/// a direct call does, where the C++ build prints `P 2`. Rtrace.6 and
+/// decision 449 want the traced run to print that too (a C++-build trace);
+/// until then this divergence is tracked here, owned by the compiler lane,
+/// not in `programs/`, where a traced run prints what the untraced one does.
+/// When the trace prints `P 2`, move the case there.
+#[test]
+fn a_cpp_show_fn_in_a_tuple_stops_on_the_vm() {
+    let program = tests_dir().join("cpp_show_in_tuple.cp");
+    assert_eq!(walked(&program, true), 0);
+    let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .args(["run", "--trace", "--format", "json"])
+        .arg(&program)
+        .current_dir(std::env::temp_dir())
+        .output()
+        .expect("run cpl");
+    let trace = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        trace.contains("only the C++ build runs it") && !trace.contains("\"P 2\""),
+        "the traced run no longer stops at the `@cpp` show; move the case to programs/:\n{trace}"
+    );
+}

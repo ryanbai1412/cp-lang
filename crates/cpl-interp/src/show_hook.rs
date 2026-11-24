@@ -14,6 +14,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     /// Stops the run before a call would overflow the interpreter's own
     /// stack: the program's recursion is the interpreter's.
     pub(crate) fn call_direct(&mut self, id: FnId, values: Vec<Value>, span: Span) -> Res<Value> {
+        // Only a judge's or `@cpp` fn has no chunk.
+        if !self.on_vm(id) {
+            return Err(self.no_body(id, span));
+        }
         let f = &self.program.fns[id];
         self.stack_left(span, Some(&f.name))?;
         let base = self.stack.len();
@@ -26,10 +30,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         for &d in &self.fn_guarded[id] {
             self.saved_domains.push((d, self.domains[d]));
         }
-        let flow = match self.on_vm(id) {
-            true => self.run_fn_vm_waited(&Rc::clone(&self.vm), id, span, saved, dom_mark),
-            false => self.block(&f.body),
-        };
+        let flow = self.run_fn_vm_waited(&Rc::clone(&self.vm), id, span, saved, dom_mark);
         self.restore_domains(dom_mark);
         self.frame_locals.pop();
         self.base = saved;
