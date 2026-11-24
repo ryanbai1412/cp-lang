@@ -51,6 +51,7 @@ CASES = {
     "sort_field": lambda: "",  # sort(by: e => es[e].w) 250k edges, as std kruskal does
     "hash_counter_narrow": lambda: "3375000\n",
     "sieve": lambda: "10000000\n",  # primality only: no smallest-factor table
+    "enum_grid": lambda: "4000\n",  # 16e6 cells: 16 MB at a byte, 64 MB at four
 }
 
 

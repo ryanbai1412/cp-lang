@@ -408,8 +408,9 @@ impl<'p> Emitter<'p> {
                 let def = &program.enums[*id];
                 let names: Vec<String> = def.variants.iter().map(|(v, _)| ident(v)).collect();
                 out.push_str(&format!(
-                    "enum class {} {{ {} }};\n",
+                    "enum class {} : {} {{ {} }};\n",
                     ident(&def.name),
+                    tag_cpp(names.len()),
                     names.join(", ")
                 ));
             }
@@ -418,7 +419,8 @@ impl<'p> Emitter<'p> {
                 let name = ident(&def.name);
                 let tags: Vec<String> = def.variants.iter().map(|(v, _)| ident(v)).collect();
                 out.push_str(&format!(
-                    "struct {name} {{\n    enum Tag {{ {} }} tag = {};\n",
+                    "struct {name} {{\n    enum Tag : {} {{ {} }} tag = {};\n",
+                    tag_cpp(tags.len()),
                     tags.join(", "),
                     tags[0]
                 ));
@@ -457,5 +459,15 @@ impl<'p> Emitter<'p> {
             }
             _ => {}
         }
+    }
+}
+
+/// The smallest unsigned type that holds an enum's `variants` tags: a grid
+/// of a two-colour enum is a byte per cell, not four.
+fn tag_cpp(variants: usize) -> &'static str {
+    match variants {
+        0..=256 => "uint8_t",
+        257..=65536 => "uint16_t",
+        _ => "uint32_t",
     }
 }

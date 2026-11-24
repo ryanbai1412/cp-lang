@@ -332,3 +332,28 @@ print(ys[0])
 ");
     assert!(!out.contains("check_range"), "{out}");
 }
+
+#[test]
+fn an_enum_tag_is_the_smallest_unsigned_type_that_holds_its_variants() {
+    let out = cpp("enum Colour: Red | Blue
+enum Shape:
+    Circle(r: Int)
+    Square(s: Int)
+let n: 1..=5 = read()
+var grid = List.filled(n, Colour.Red)
+grid[0] = Colour.Blue
+let s = if n > 3: Shape.Circle(n) else: Shape.Square(n)
+let area = match s:
+    Circle(r): r * r
+    Square(x): x * x
+print(grid.count(c => c == Colour.Blue), area)
+");
+    assert!(
+        out.contains("enum class Colour : uint8_t { Red, Blue };"),
+        "a two-colour grid must take a byte a cell:\n{out}"
+    );
+    assert!(
+        out.contains("enum Tag : uint8_t { Circle, Square }"),
+        "{out}"
+    );
+}
