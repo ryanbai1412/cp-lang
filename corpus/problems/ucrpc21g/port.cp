@@ -28,7 +28,7 @@ for (r, c, t) in boulders: crush[t, r, c] = true
 var held: [Row, Col]?Int = None
 held[start] = Some(0)
 for t in Tick:
-    let moved = [Row, Col] p => [held[q] for q in p.adj4 + [p]].present().max()
+    let moved = [Row, Col] p => max(h for q in p.adj4 + [p] if let h = held[q])
     held = [Row, Col] p => moved[p].map(
         h => if crush[t, p.0, p.1]: h / 2 else: h + gain[t, p.0, p.1]
     )
