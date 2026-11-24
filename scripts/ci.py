@@ -350,6 +350,12 @@ CACHED = "cached (tree unchanged outside its excludes)"
 GIT_SCOPE = ("GIT_DIR", "GIT_INDEX_FILE", "GIT_WORK_TREE", "GIT_OBJECT_DIRECTORY", "GIT_PREFIX")
 
 
+def target_dir() -> Path:
+    """Cargo's target directory, as scripts/gate-env.sh resolves it."""
+    t = Path(os.environ.get("CARGO_TARGET_DIR", "target"))
+    return t if t.is_absolute() else ROOT / t
+
+
 def bare_home(home: str, env=None) -> dict[str, str]:
     """A CI runner's environment for the script tests: an empty HOME, no system git config
     and no git identity, while the toolchains keep their real homes. A commit hook's
@@ -564,6 +570,77 @@ class Tail:
         traps = open_traps((ROOT / "crates/cpl-cli/tests/known_traps.cp").read_text(encoding="utf-8"))
         print(f"\nknown_traps: {traps} open (crates/cpl-cli/tests/known_traps.cp)")
 
+    def part(self, since: float) -> int:
+        """A CI gate part other than checks (CPL_GATE_PART=conform..., tests:..., fmt);
+        `since` is when the gate started, for its closing line."""
+        try:
+            done = self._part(gate_part(self.gate_part, self.mode))
+        except (Failed, ValueError) as e:
+            print(f"check: {e}", file=sys.stderr)
+            return 1
+        finally:
+            self.end_step()
+        print(f"\ncheck: {done} passed in {int(time.time() - since)}s")
+        return 0
+
+    def _part(self, g: dict[str, str]) -> str:
+        env = os.environ
+        if g["kind"] == "conform":
+            suites = g["suites"].split()
+            if {"all", "conformance"} & set(suites):
+                self.step("script unit tests")
+                with tempfile.TemporaryDirectory(prefix="cpl-home-") as home:
+                    tests = self.run(["git", "ls-files", *SCRIPT_TESTS], cwd=ROOT, capture_output=True,
+                                     text=True).stdout.split()
+                    if self.call([sys.executable, "-m", "unittest", *tests], env=bare_home(home)):
+                        raise Failed("script unit test failure; rerun: uv run python -m unittest scripts/test_*.py")
+            self.step(f"cpl-conform ratchet ({g['suites']} --check against research/scoreboard.json)")
+            if self.call(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform"]):
+                raise Failed("cargo build -p cpl-cli -p cpl-conform failed")
+            # Seeded problems (problem-packages/R9) read their cases from
+            # target/corpus-tests/; only the corpus suite reads them.
+            if {"all", "corpus"} & set(suites):
+                if self.call([sys.executable, "scripts/corpus.py", "make"], stdout=subprocess.DEVNULL):
+                    raise Failed("scripts/corpus.py make failed; rerun it to see which package")
+            # CI keeps main's last green run in $CPL_CONFORM_PREV, so a case newer than
+            # research/scoreboard.json still can't regress unseen (ci.yml).
+            prev = env.get("CPL_CONFORM_PREV")
+            argv = [str(target_dir() / "debug/cpl-conform"), *suites, *g["shard"].split(), "--check",
+                    *(["--prev", prev, "--save", f"{prev}.new"] if prev else [])]
+            if self.call(argv):
+                raise Failed(f"cpl-conform ratchet failure; rerun: cargo run -p cpl-conform -- "
+                             f"{g['suites']} {g['shard']} --check")
+            return "conformance part"
+        if g["kind"] == "doc":
+            self.step("cargo test --workspace --doc")
+            if self.call(["cargo", "test", "-q", "--workspace", "--doc"]):
+                raise Failed("a doctest failed; rerun: cargo test --workspace --doc")
+            return "doctests"
+        if g["kind"] == "tests":
+            # CI compiles the test binaries once (cargo nextest archive) and every
+            # partition runs them from CPL_NEXTEST_ARCHIVE; unset, nextest builds.
+            archive = env.get("CPL_NEXTEST_ARCHIVE")
+            src = (["--archive-file", archive, "--workspace-remap", ".", "--extract-to", ".", "--extract-overwrite"]
+                   if archive else ["--workspace"])
+            self.step(f"cargo nextest run --partition {g['partition']} (without the --full tests)")
+            # No retries: a flaky test fails on its first run (ci/R35).
+            if self.call(["cargo", "nextest", "run", *src, "--profile", "gate", "--no-fail-fast",
+                          "--partition", g["partition"], "-E", f"not ({slow_filter()})"]):
+                raise Failed("a test failed; nextest's summary above names it, rerun: cargo nextest run -E 'test(<name>)'")
+            return f"test partition {g['partition']}"
+        if g["kind"] == "fmt":
+            self.step("cpl fmt is idempotent and keeps meaning on every .cp file")
+            if self.hit("fmt_corpus"):
+                print(CACHED)
+            else:
+                if self.call(["cargo", "build", "-q", "-p", "cpl-cli"]):
+                    raise Failed("cargo build -p cpl-cli failed")
+                if self.call([sys.executable, "scripts/fmt_check.py", "--cpl", self.cpl]):
+                    raise Failed("cpl fmt is unstable or changes meaning; rerun: scripts/fmt_check.py")
+                self.save("fmt_corpus")
+            return "fmt part"
+        raise ValueError(f"CPL_GATE_PART={self.gate_part} runs through `ci.py tail`")
+
     def _tests(self) -> None:
         """The workspace tests. --full runs SLOW_TESTS (why: beside the list)."""
         slow = slow_filter()
@@ -628,7 +705,16 @@ def main(argv: list[str] | None = None) -> int:
     t.add_argument("--sel-filter", default="")
     t.add_argument("--sel-site", default="")
     t.add_argument("--times", help="append each step's `seconds<TAB>title` here")
+    pt = sub.add_parser("part", help="run a CI gate part other than checks (CPL_GATE_PART)")
+    pt.add_argument("--mode", choices=MODES, required=True)
+    pt.add_argument("--gate-part", required=True)
+    pt.add_argument("--cpl", default="target/debug/cpl")
+    pt.add_argument("--cache-dir", default="")
+    pt.add_argument("--manifest", default="", help="the stage cache's manifest; empty turns the cache off")
+    pt.add_argument("--since", type=float, default=time.time(), help="when the gate started (epoch seconds)")
     args = ap.parse_args(argv)
+    if args.cmd == "part":
+        return Tail(args.mode, args.gate_part, args.cpl, args.cache_dir, args.manifest).part(args.since)
     if args.cmd == "tail":
         tail = Tail(args.mode, args.gate_part, args.cpl, args.cache_dir, args.manifest,
                     args.sel_packages, args.sel_filter, args.sel_site)

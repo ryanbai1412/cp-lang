@@ -335,8 +335,8 @@ class DebtRatchetTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             subprocess.run(["git", "init", "-q"], cwd=root, check=True, env=dr._git_env())
-            self._write(root, "scripts/check.sh", "mapfile -t script_tests < <(git ls-files 'scripts/test_*.py')\n"
-                        "uv run python -m unittest tools/x/test_named.py\n")
+            self._write(root, "scripts/ci.py", 'SCRIPT_TESTS = ("scripts/test_*.py",)\n')
+            self._write(root, "scripts/check.sh", "uv run python -m unittest tools/x/test_named.py\n")
             for rel in ("scripts/test_a.py", "tools/x/test_named.py", "tools/y/test_b.py", "corpus/test_c.py"):
                 self._write(root, rel, "")
             subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())

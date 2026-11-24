@@ -259,76 +259,17 @@ if [ "$mode" = timing ]; then
     exit
 fi
 
-# CPL_GATE_PART's parts are listed in scripts/ci.py.
-# Every tracked script test; unrun_script_tests fails on one outside these globs.
-mapfile -t script_tests < <(git ls-files 'scripts/test_*.py' 'bench/test_*.py' 'tools/*/test_*.py')
-case "$gate_kind" in
-    checks) ;;
-    conform)
-        case " $conform_suites " in
-            *" all "* | *" conformance "*)
-                step "script unit tests"
-                bare_home uv run --quiet python -m unittest "${script_tests[@]}" \
-                    || fail "script unit test failure; rerun: uv run python -m unittest scripts/test_*.py"
-                ;;
-        esac
-        step "cpl-conform ratchet ($conform_suites --check against research/scoreboard.json)"
-        cargo build -q -p cpl-cli -p cpl-conform
-        # Seeded problems (problem-packages/R9) read their cases from target/corpus-tests/;
-        # only the corpus suite reads them.
-        case " $conform_suites " in
-            *" all "* | *" corpus "*)
-                uv run --quiet python scripts/corpus.py make >/dev/null \
-                    || fail "scripts/corpus.py make failed; rerun it to see which package"
-                ;;
-        esac
-        # shellcheck disable=SC2086
-        # CI keeps main's last green run in $CPL_CONFORM_PREV, so a case newer than
-        # research/scoreboard.json still can't regress unseen (ci.yml).
-        "$target/debug/cpl-conform" $conform_suites $conform_shard --check \
-            ${CPL_CONFORM_PREV:+--prev "$CPL_CONFORM_PREV" --save "$CPL_CONFORM_PREV.new"} \
-            || fail "cpl-conform ratchet failure; rerun: cargo run -p cpl-conform -- $conform_suites $conform_shard --check"
-        step_end
-        printf '\ncheck: conformance part passed in %ss\n' "$(( $(date +%s) - gate_t0 ))"
-        exit 0
-        ;;
-    doc)
-        step "cargo test --workspace --doc"
-        cargo test -q --workspace --doc
-        step_end
-        printf '\ncheck: doctests passed in %ss\n' "$(( $(date +%s) - gate_t0 ))"
-        exit 0
-        ;;
-    tests)
-        # CI compiles the test binaries once (cargo nextest archive) and every
-        # partition runs them from CPL_NEXTEST_ARCHIVE; unset, nextest builds.
-        from=(--workspace)
-        [ -z "${CPL_NEXTEST_ARCHIVE:-}" ] \
-            || from=(--archive-file "$CPL_NEXTEST_ARCHIVE" --workspace-remap . --extract-to . --extract-overwrite)
-        step "cargo nextest run --partition $part (without the --full tests)"
-        # No retries: a flaky test fails on its first run (ci/R35).
-        cargo nextest run "${from[@]}" --profile gate --no-fail-fast --partition "$part" -E "not ($slow_filter)" \
-            || tests_status=$?
-        [ "${tests_status:-0}" = 0 ] || fail "a test failed; nextest's summary above names it, rerun: cargo nextest run -E 'test(<name>)'"
-        step_end
-        printf '\ncheck: test partition %s passed in %ss\n' "$part" "$(( $(date +%s) - gate_t0 ))"
-        exit 0
-        ;;
-    fmt)
-        step "cpl fmt is idempotent and keeps meaning on every .cp file"
-        if cache_hit fmt_corpus; then
-            echo "cached (tree unchanged outside its excludes)"
-        else
-            cargo build -q -p cpl-cli
-            scripts/fmt_check.py --cpl "$cpl" \
-                || fail "cpl fmt is unstable or changes meaning; rerun: scripts/fmt_check.py"
-            cache_save fmt_corpus
-        fi
-        step_end
-        printf '\ncheck: fmt part passed in %ss\n' "$(( $(date +%s) - gate_t0 ))"
-        exit 0
-        ;;
-esac
+# CPL_GATE_PART's parts other than checks run in scripts/ci.py part.
+stage_manifest=""
+[ "$use_cache" -eq 0 ] || stage_manifest="$manifest"
+if [ "$gate_kind" != checks ]; then
+    step_end
+    part_status=0
+    uv run --quiet python scripts/ci.py part --mode "$mode" --gate-part "$gate_part" --cpl "$cpl" \
+        --cache-dir "$cache_dir" --manifest "$stage_manifest" --since "$gate_t0" || part_status=$?
+    rm -f "$manifest" "$manifest.reads"
+    exit "$part_status"
+fi
 
 # --land diffs the train against origin/main, --commit the staged files.
 if [ "$mode" = land ] || [ "$mode" = commit ]; then
@@ -465,10 +406,8 @@ cargo build -q -p cpl-cli -p cpl-conform
 step_end
 tail_times="$(mktemp)"
 tail_status=0
-tail_manifest=""
-[ "$use_cache" -eq 0 ] || tail_manifest="$manifest"
 uv run --quiet python scripts/ci.py tail --mode "$mode" --gate-part "$gate_part" --cpl "$cpl" \
-    --cache-dir "$cache_dir" --manifest "$tail_manifest" --sel-packages "${sel_packages:-}" \
+    --cache-dir "$cache_dir" --manifest "$stage_manifest" --sel-packages "${sel_packages:-}" \
     --sel-filter "${sel_filter:-}" --sel-site "${sel_site:-}" --times "$tail_times" || tail_status=$?
 mapfile -t -O "${#step_times[@]}" step_times <"$tail_times"
 rm -f "$tail_times" "$manifest" "$manifest.reads"

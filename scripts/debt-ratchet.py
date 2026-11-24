@@ -711,11 +711,11 @@ def direct_python(root: Path) -> list[str]:
 
 
 def unrun_script_tests(root: Path) -> list[str]:
-    """Tracked `test_*.py` files the gate neither names nor globs in its `script_tests`."""
-    gate = root / "scripts/check.sh"
-    text = gate.read_text() if gate.is_file() else ""
-    m = re.search(r"^mapfile -t script_tests < <\(git ls-files (.*)\)$", text, re.M)
-    globs = re.findall(r"'([^']+)'", m[1]) if m else []
+    """Tracked `test_*.py` files the gate neither names (check.sh, ci.py) nor globs in
+    ci.py's SCRIPT_TESTS."""
+    text = "".join(f.read_text() for f in (root / "scripts/check.sh", root / "scripts/ci.py") if f.is_file())
+    m = re.search(r"^SCRIPT_TESTS = \((.*)\)$", text, re.M)
+    globs = re.findall(r'"([^"]+)"', m[1]) if m else []
     return sorted(rel for rel in _git(root, "ls-files", "*test_*.py")
                   if Path(rel).name.startswith("test_") and Path(rel).name not in text
                   and not any(fnmatch.fnmatchcase(rel, g) for g in globs))

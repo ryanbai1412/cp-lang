@@ -165,8 +165,8 @@ class WorkflowTest(unittest.TestCase):
         self.assertIsNotNone(gate, "nextest.toml needs a [profile.gate]")
         m = re.search(r'slow-timeout = \{ period = "(\d+)s", terminate-after = (\d+) \}', gate.group(0))
         self.assertIsNotNone(m, "[profile.gate] needs a slow-timeout with terminate-after")
-        with open(os.path.join(ROOT, "scripts", "check.sh"), encoding="utf-8") as f:
-            self.assertRegex(f.read(), r"nextest run [^\n]*--profile gate --no-fail-fast --partition")
+        with open(os.path.join(ROOT, "scripts", "ci.py"), encoding="utf-8") as f:
+            self.assertRegex(f.read(), r'"nextest", "run", [^\n]*"--profile", "gate", "--no-fail-fast",\s*"--partition"')
         with open(os.path.join(ROOT, ".github", "workflows", "ci.yml"), encoding="utf-8") as f:
             cap = int(re.search(r"^    timeout-minutes: (\d+)", job_block(f.read(), "gate"), re.M).group(1))
         # Both tries of a hung test end with minutes left for the build.
@@ -182,8 +182,8 @@ class WorkflowTest(unittest.TestCase):
         for compiles in ("Restore target/", "rust-cache", "cargo build", "cargo test"):
             self.assertNotIn(compiles, shards, f"tests shards run the archive, never compile (ci/R37): {compiles}")
         self.assertNotIn("tests:hash", job_block(ci, "gate"), "the gate must not rebuild the tests")
-        with open(os.path.join(ROOT, "scripts", "check.sh"), encoding="utf-8") as f:
-            self.assertIn('--archive-file "$CPL_NEXTEST_ARCHIVE"', f.read())
+        with open(os.path.join(ROOT, "scripts", "ci.py"), encoding="utf-8") as f:
+            self.assertIn('env.get("CPL_NEXTEST_ARCHIVE")', f.read())
 
     def test_no_ci_job_fails_without_turning_main_red(self):
         with open(os.path.join(ROOT, ".github", "workflows", "ci.yml"), encoding="utf-8") as f:

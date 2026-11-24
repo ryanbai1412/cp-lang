@@ -209,7 +209,7 @@ class FakeProc:
 
 
 class TailTest(unittest.TestCase):
-    def _tail(self, mode="fast", part="", cached=(), codes=None, procs=None, manifest="m", **kw):
+    def _tail(self, mode="fast", part="", cached=(), codes=None, procs=None, manifest="m", since=None, **kw):
         events, codes, procs = [], codes or {}, procs or {}
 
         def label(argv):
@@ -240,7 +240,7 @@ class TailTest(unittest.TestCase):
         tail = ci.Tail(mode, part, cache_dir="d", manifest=manifest, run=run, popen=popen, which=lambda c: f"/bin/{c}", **kw)
         out, err = io.StringIO(), io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-            code = tail()
+            code = tail() if since is None else tail.part(since)
         return code, events, out.getvalue(), err.getvalue(), tail, spawned
 
     def test_fast_overlaps_the_tests_and_saves_each_stage_after_it_passes(self) -> None:
@@ -316,6 +316,63 @@ class TailTest(unittest.TestCase):
         self.assertTrue(board.killed)
         self.assertIs(ci.signal.getsignal(ci.signal.SIGTERM), ci._interrupt)
         ci.signal.signal(ci.signal.SIGTERM, ci.signal.SIG_DFL)
+
+    def _part(self, part, env=None, **kw):
+        env = {"CPL_CONFORM_PREV": "", "CPL_NEXTEST_ARCHIVE": "", **(env or {})}
+        with mock.patch.dict(ci.os.environ, env):
+            for k in [k for k, v in env.items() if not v]:
+                ci.os.environ.pop(k, None)
+            return self._tail(part=part, since=0, **kw)
+
+    def test_the_whole_conform_part_runs_the_script_tests_and_the_corpus_cases_first(self) -> None:
+        code, ev, out, _, _, _ = self._part("conform")
+        self.assertEqual(code, 0)
+        conform = next(e for e in ev if e.split()[0].endswith("cpl-conform"))
+        self.assertTrue(conform.endswith(" all --check"), conform)
+        order = [ev.index(e) for e in ("-m unittest scripts/test_ci.py", "cargo build -q -p cpl-cli -p cpl-conform",
+                                         "scripts/corpus.py make", conform)]
+        self.assertEqual(order, sorted(order))
+        self.assertIn("check: conformance part passed in", out)
+
+    def test_a_conform_shard_runs_only_its_suites(self) -> None:
+        code, ev, _, _, _, _ = self._part("conform:diff@1/3", env={"CPL_CONFORM_PREV": "/p.json"})
+        self.assertEqual(code, 0)
+        self.assertFalse([e for e in ev if "unittest" in e or "corpus.py make" in e])
+        conform = next(e for e in ev if e.split()[0].endswith("cpl-conform"))
+        self.assertTrue(conform.endswith(" diff --shard 1/3 --check --prev /p.json --save /p.json.new"), conform)
+
+    def test_a_failed_conform_ratchet_names_its_rerun(self) -> None:
+        code, _, _, err, _, _ = self._part("conform:corpus", codes={str(ci.target_dir() / "debug/cpl-conform").replace(str(ci.ROOT) + "/", ""): 1})
+        self.assertEqual(code, 1)
+        self.assertIn("rerun: cargo run -p cpl-conform -- corpus  --check", err)
+
+    def test_a_test_partition_runs_from_the_archive_once_with_no_retries(self) -> None:
+        code, ev, out, _, _, _ = self._part("tests:hash:3/12", env={"CPL_NEXTEST_ARCHIVE": "a.tar.zst"})
+        self.assertEqual(code, 0)
+        run = next(e for e in ev if e.startswith("cargo nextest run"))
+        self.assertIn("--archive-file a.tar.zst --workspace-remap . --extract-to . --extract-overwrite", run)
+        self.assertIn("--profile gate --no-fail-fast --partition hash:3/12", run)
+        self.assertNotIn("--retries", run)
+        self.assertIn("check: test partition hash:3/12 passed in", out)
+        code, ev, _, err, _, _ = self._part("tests:hash:1/12", codes={"cargo": 1})
+        self.assertEqual(code, 1)
+        self.assertIn("--workspace --profile gate", next(e for e in ev if e.startswith("cargo nextest run")))
+        self.assertIn("nextest's summary above names it", err)
+
+    def test_the_doc_and_fmt_parts(self) -> None:
+        code, ev, out, _, _, _ = self._part("tests:doc")
+        self.assertEqual((code, [e for e in ev if e.startswith("cargo")]), (0, ["cargo test -q --workspace --doc"]))
+        code, ev, out, _, _, _ = self._part("fmt", cached=("fmt_corpus",))
+        self.assertEqual(code, 0)
+        self.assertFalse([e for e in ev if e.startswith(("cargo", "scripts/fmt_check.py", "save"))])
+        self.assertIn(ci.CACHED, out)
+        code, ev, out, _, _, _ = self._part("fmt")
+        self.assertEqual(ev[-3:], ["cargo build -q -p cpl-cli", "scripts/fmt_check.py --cpl target/debug/cpl", "save fmt_corpus"])
+        self.assertIn("check: fmt part passed in", out)
+
+    def test_a_part_needs_fast_and_checks_is_not_a_part(self) -> None:
+        self.assertEqual(self._part("fmt", mode="land")[0], 1)
+        self.assertEqual(self._part("checks")[0], 1)
 
     def test_counts_and_the_bare_home(self) -> None:
         self.assertEqual(ci.prelude_names("use a.{x, y} // {z}\nuse b.{\n  w,\n}\n"), 3)
