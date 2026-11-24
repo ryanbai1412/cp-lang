@@ -797,7 +797,6 @@
 4 corpus/problems/noip14p6/port.cp
 6 corpus/problems/noip14p6/spec.cp
 12 corpus/problems/noip18p3/dream.cp
-10 corpus/problems/noip18p3/perf.cp
 9 corpus/problems/noip18p3/port.cp
 5 corpus/problems/noip18p3/spec.cp
 9 corpus/problems/noip18p4/port.cp

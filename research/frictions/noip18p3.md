@@ -16,3 +16,7 @@ method `fold_up``.
 
 ## Measurements
 Stress: 30/30 agree with the v0.2 port and with AC 4002963; max (n = 5e4) 0.14 s vs C++ 0.12 s, same output. The v0.2 skip-pointer union-find is now `SortedBag.take_first`.
+
+## Tuned twin retired (2026-11-24)
+
+The plain port is within 1.1x of the accepted C++ on `gen.py --max` on both counts (best of 7, CPU time and peak RSS, `scripts/corpus.py`'s judge builds): 0.102 s / 7.4 MB against 0.121 s / 7.2 MB (0.84x time, 1.02x memory), with the same output, since 22e4e29bd pairs every junction's chains in one reused bag, so `perf.cp` is deleted (performance/R6 keeps a twin only over 1.1x).
