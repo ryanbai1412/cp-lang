@@ -923,6 +923,27 @@ class StaleCplTest(unittest.TestCase):
         os.utime(self.root / "crates/cpl-other/src/lib.rs", (3000, 3000))
         corpus.require_cpl(str(self.cpl))
 
+    def dep_info(self, *deps):
+        Path(f"{self.cpl}.d").write_text(f"{self.cpl}: " + " ".join(str(self.root / d).replace(" ", "\\ ") for d in deps) + "\n")
+
+    def test_cargo_dep_info_names_inputs_outside_the_crates(self):
+        (self.root / "std").mkdir()
+        (self.root / "std/a b.cp").write_text("")
+        os.utime(self.root / "std/a b.cp", (1000, 1000))
+        self.dep_info("crates/cpl-cli/src/main.rs", "std/a b.cp")
+        corpus.require_cpl(str(self.cpl))
+        os.utime(self.root / "std/a b.cp", (3000, 3000))
+        self.assertEqual(self.stale(), "corpus: target/release/cpl is stale: run cargo build --release -p cpl-cli")
+
+    def test_cargo_dep_info_is_the_whole_list(self):
+        self.dep_info("crates/cpl-cli/src/main.rs")
+        os.utime(self.root / "crates/cpl-a/src/lib.rs", (3000, 3000))
+        corpus.require_cpl(str(self.cpl))
+
+    def test_a_dependency_cargo_recorded_but_is_gone_is_stale(self):
+        self.dep_info("crates/cpl-cli/src/main.rs", "crates/cpl-cli/src/gone.rs")
+        self.assertIn("is stale", self.stale())
+
     def test_a_cpl_outside_target_is_never_stale(self):
         cpl = self.root / "elsewhere-cpl"
         cpl.write_text("")

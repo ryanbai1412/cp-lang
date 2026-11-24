@@ -1185,6 +1185,21 @@ def cpl_sources(crate="cpl-cli"):
     return [f for f in files if os.path.isfile(f)]
 
 
+def cpl_dep_info(cpl):
+    """The files cargo built `cpl` from, by the `<cpl>.d` it writes beside it (std/
+    through include_str!, build.rs inputs, every source), or None with no .d. It is
+    the list cargo itself rebuilds by, so this agrees with cargo, and with CI's
+    back-dated checkouts (scripts/ci-mtime.sh)."""
+    try:
+        with open(cpl + ".d", encoding="utf-8") as f:
+            text = f.read().replace("\\\n", " ")
+    except OSError:
+        return None
+    rule = next((l for l in text.splitlines() if re.match(r"(\\ |[^ ])+: ", l)), "")
+    deps = re.split(r"(?<!\\)\s+", rule.partition(": ")[2].strip())
+    return [os.path.join(ROOT, d.replace("\\ ", " ")) for d in deps if d]
+
+
 def require_cpl(cpl):
     """Exit with one line saying how to build `cpl` when it is missing, or when a
     build under target/ is older than a source it is built from: a stale binary
@@ -1195,7 +1210,10 @@ def require_cpl(cpl):
     target = os.path.join(ROOT, "target")
     if os.path.commonpath([os.path.abspath(cpl), target]) == target:
         built = os.path.getmtime(cpl)
-        if any(os.path.getmtime(f) > built for f in cpl_sources()):
+        inputs = cpl_dep_info(cpl)
+        if inputs is None:
+            inputs = cpl_sources()
+        if any(not os.path.exists(f) or os.path.getmtime(f) > built for f in inputs):
             sys.exit(f"corpus: {rel} is stale: run {CPL_BUILD}")
 
 
