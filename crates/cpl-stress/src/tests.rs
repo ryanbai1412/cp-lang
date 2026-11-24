@@ -1631,7 +1631,8 @@ fn a_shrunk_case_shrinks_no_further() {
         }),
         _ => false,
     };
-    let bugs: [(&str, &dyn Fn(&Case) -> bool); 3] = [
+    type Bug<'a> = (&'a str, &'a dyn Fn(&Case) -> bool);
+    let bugs: [Bug; 3] = [
         ("a value of 5 or more", &|case| {
             numbers(case, 1).iter().any(|&x| x >= 5)
         }),
