@@ -3,8 +3,9 @@
 //   (possibly negative) to cell (X, Y), "2 L B R T" prints the sum over L <= X <= R,
 //   B <= Y <= T, "3" ends. At most 60002 commands; cells stay in 0..=32767.
 // Solution: a 2D Fenwick tree over X x Y: point add and rectangle sum in O(log^2 S) each.
+// original: corpus/submissions/3477640.cpp
 
-let (_, n): (Int, Int) = read()
+let (_, n): (0..=0, 1..=1024) = read()
 domain X = 0..n
 domain Y = 0..n
 
@@ -13,7 +14,7 @@ var grid = Fenwick2D<X, Y, Int>.new()
 while true:
     let op: Int = read()
     if op == 1:
-        let (x, y, a): (X, Y, Int) = read()
+        let (x, y, a): (X, Y, -32767..=32767) = read()
         grid.add(x, y, a)
     elif op == 2:
         let (l, b, r, t): (X, Y, X, Y) = read()
