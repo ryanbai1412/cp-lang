@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3738 (3600 passing). Rules: 617.
+Cases: 3739 (3600 passing). Rules: 617.
 
 ## Summary per chapter
 
@@ -16,7 +16,7 @@ Cases: 3738 (3600 passing). Rules: 617.
 - R03 (03-numbers-layout.md): 25 rules, 120 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 73 rules, 198 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 56 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04b (04b-keys.md): 28 rules, 81 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04b (04b-keys.md): 28 rules, 82 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 50 rules, 257 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 26 rules, 127 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 97 rules, 263 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -345,7 +345,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04b.1.3 [4+ 1-]: **Combining two sequences pairs them by walk order, never by key.** This covers `==`, `<`,...
 - R04b.1.5 [3+ 1-]: **An array can cover any run of keys.** `[r]T` for a range `r` of `K` is indexed by `K` an...
 - R04b.1.6 [4+ 0-]: To keep `w`'s keys, build a table over them: `[w.keys] k => w[k]`.
-- R04b.1.7 [8+ 4-]: `a.rekey(r)` is the inverse: the same cells re-keyed onto a range `r` of equal length, \(O...
+- R04b.1.7 [9+ 4-]: `a.rekey(r)` is the inverse: the same cells re-keyed onto a range `r` of equal length, \(O...
 - R04b.1.8 [1+ 1-]: , so `a.sorted().rev[0]` is an error whose fix is `.nth(0)`.
 - R04b.1.9 [2+ 1-]: **Lint: 0-based counter used as a slice key** (`for k in 0..w.len: w[k]`). Suggests `w.ite...
 - R04b.1.10 [3+ 3-]: **Trap: an out-of-keys read.** The message names the key range, e.g. "`w` has keys 3..7 (i...
@@ -1128,8 +1128,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **range** (19/19 named by a case)
 - **search** (9/9 named by a case)
 - **segtree** (66/66 named by a case)
-- **seq** (233/237 named by a case)
-  - uncovered: `Filtered`, `Mapped`, `Rebased`, `RingWindows`
+- **seq** (234/237 named by a case)
+  - uncovered: `Filtered`, `Mapped`, `RingWindows`
 - **slope** (39/39 named by a case)
 - **sparse** (23/23 named by a case)
 - **spec** (16/16 named by a case)
@@ -1141,7 +1141,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Rooted.reroot`, `Rooted.chains`, `VirtualTree`, `PermNode`
 - **window** (24/24 named by a case)
 
-2440 of 2477 std items are named by a case.
+2441 of 2477 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
