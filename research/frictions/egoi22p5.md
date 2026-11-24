@@ -4,6 +4,8 @@ The hand-written two-pointer merge and copy back are now std `merge_sorted`, on 
 
 A full `merge_sorted` per service took 2.2 s at max (TLE in `cpl test`), and 4.8 s with `by: x => desc(x)`. I sent Core a repro for the `Desc` key not inlining.
 
+On a fresh `cpl`, `xs.merge_runs(2)` gives `error[E0203]: a List<Int> has no method merge_runs`. General fix: std in-place `merge_runs(mid)` on a `List` (owner: stdlib).
+
 ## Dream
 
 ```cp

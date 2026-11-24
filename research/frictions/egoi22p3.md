@@ -4,6 +4,8 @@ The v0.2 port hand-built the DFS forest (recursive `build_tree` with `vis`, `par
 
 Gap: the grader is played over stdin with `Wire`, as the package has no local `@grader` stub, so the port cannot be the `social_engineering(n, edges)` function of the dream. Also, `open.chunks(2)` yields a trailing single chunk; pairs are indexed as `open[2 * i], open[2 * i + 1]`.
 
+On a fresh `cpl`, `xs.chunks_exact(2)` gives `error[E0203]: a List<Int> has no method chunks_exact`. General fix: std `chunks_exact(k)` yielding `k`-tuples (owner: stdlib).
+
 ## Dream
 
 ```cp
