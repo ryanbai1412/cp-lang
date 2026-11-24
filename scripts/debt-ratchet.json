@@ -140,9 +140,9 @@
   "codegen_effect_guesses": 0,
   "opt_without_uses": 16,
   "near_dup_fns": 0,
-  "consumer_rederived": 10,
+  "consumer_rederived": 9,
   "rs_near_cap": [],
-  "skip_lists": 28,
+  "skip_lists": 26,
   "dead_code_allows": 0,
   "external_crates": 5,
   "corpus_test_files": 0,
@@ -168,7 +168,7 @@
   "lint_type_syntax": 0,
   "idioms_evidenced_unlinted": 0,
   "bench_lists": 0,
-  "unwrap_input": 682,
+  "unwrap_input": 681,
   "unsupported_sites": 41,
   "lsp_string_types": 0,
   "lint_post_filters": 0,
@@ -244,6 +244,6 @@
   "std_names_outside_rt": 115,
   "corpus_fmt_dirty": 0,
   "trap_text_outside_registry": 0,
-  "reviews_pending": 436,
+  "reviews_pending": 426,
   "std_gaps": 6
 }
