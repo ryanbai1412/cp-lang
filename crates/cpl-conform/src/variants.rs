@@ -53,8 +53,17 @@ const SHOWN_HASHED: [&str; 4] = [
 /// order to disagree on.
 const SHOWN_HASH_INSIDE: [&str; 2] = ["[cpl_x.len for cpl_x in {}]", "{}.len"];
 
+/// How a probe prints a var with a `Range` in its type: by its bounds, since a range shows
+/// every element and `0..1e9` would print a billion numbers. A probe never prints a value
+/// whose text has no size bound.
+const SHOWN_RANGED: [&str; 3] = [
+    "({}.l, {}.r)",
+    "[(cpl_x.l, cpl_x.r) for cpl_x in {}]",
+    "{}.len",
+];
+
 /// The probe forms for the top-level `var v` of `text`, by whether its type walks in hash
-/// order at the top, only inside, or not at all.
+/// order at the top, only inside, or not at all, or by its bounds when it holds ranges.
 fn shown_forms(db: &mut Session, path: &str, text: &str, v: &str) -> &'static [&'static str] {
     const HASHED: [&str; 3] = ["HashMap", "HashSet", "Interner"];
     let decl = format!("var {v}");
@@ -77,6 +86,7 @@ fn shown_forms(db: &mut Session, path: &str, text: &str, v: &str) -> &'static [&
     };
     let count = HASHED.iter().map(|t| ty.matches(t).count()).sum::<usize>();
     match count {
+        0 if ty.contains("Range<") => &SHOWN_RANGED,
         0 => &SHOWN,
         1 if HASHED.iter().any(|t| ty.starts_with(t)) => &SHOWN_HASHED,
         _ => &SHOWN_HASH_INSIDE,

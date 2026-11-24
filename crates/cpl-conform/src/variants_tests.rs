@@ -77,3 +77,18 @@ fn a_hash_container_inside_a_table_prints_its_sizes() {
     assert!(variant.contains(".len for cpl_x in cnt]"), "{variant}");
     assert!(error_lines(&mut db, "probe.cp", &variant).is_none());
 }
+
+#[test]
+fn a_var_of_ranges_prints_its_bounds_not_its_elements() {
+    let mut db = Session::new();
+    let text = "var reach: [0..3]Range<Int> = 0..0\nreach[0] = 0..1_000_000_001\nfor i in 1..3:\n    reach[i] = 0..i\nvar r = 0..1_000_000_001\nprint(reach[1].r, r.l)\n";
+    let (variant, _) = build(&mut db, "probe.cp", text).expect("some probe checks");
+    assert!(
+        variant.contains("print([(cpl_x.l, cpl_x.r) for cpl_x in reach])"),
+        "{variant}"
+    );
+    assert!(variant.contains("print((r.l, r.r))"), "{variant}");
+    for line in variant.lines().filter(|l| l.starts_with("print(")) {
+        assert!(line != "print(reach)" && line != "print(r)", "{variant}");
+    }
+}
