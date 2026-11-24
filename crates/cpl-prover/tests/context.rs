@@ -29,3 +29,24 @@ fn undecided_goals_fall_back_to_sampled_inputs() {
         "{verdict:?}"
     );
 }
+
+#[test]
+fn bool_and_option_flags_are_zero_or_one() {
+    let mut ctx = Context::new();
+    ctx.var("p", "Bool").unwrap();
+    ctx.var("o", "?Int").unwrap();
+    assert!(ctx.prove("p or not p").unwrap().is_proved());
+    assert!(ctx.prove("o == none or o != none").unwrap().is_proved());
+    assert!(!ctx.prove("p").unwrap().is_proved());
+}
+
+#[test]
+fn solving_an_equation_rewrites_earlier_bounds() {
+    let mut ctx = Context::new();
+    ctx.var("a", "Int").unwrap();
+    ctx.var("b", "Int").unwrap();
+    ctx.assume("a >= 5 and a <= 9").unwrap();
+    ctx.assume("a == b + 2").unwrap();
+    assert!(ctx.prove("b >= 3 and b <= 7").unwrap().is_proved());
+    assert!(!ctx.prove("b >= 4").unwrap().is_proved());
+}

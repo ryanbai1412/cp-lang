@@ -183,8 +183,8 @@ fn int(c: i128) -> Poly {
     Poly::constant(c)
 }
 
-fn bool_of(var: Var) -> Formula {
-    Formula::ge(Poly::var(var).add_const(-1).unwrap())
+fn bool_of(var: Var) -> Res<Formula> {
+    Formula::le(&int(1), &Poly::var(var))
 }
 
 fn in_int_range(p: &Poly) -> Res<Formula> {
@@ -261,7 +261,7 @@ impl<'a> Lowerer<'a> {
                 let v = self.store.fresh(name);
                 let p = Poly::var(v);
                 let facts = Formula::and([Formula::le(&int(0), &p)?, Formula::le(&p, &int(1))?]);
-                (SVal::Bool(bool_of(v)), facts)
+                (SVal::Bool(bool_of(v)?), facts)
             }
             Sort::Range { lo, hi, inclusive } => {
                 let (lo, hi) = (self.poly(lo)?, self.poly(hi)?);
@@ -292,7 +292,7 @@ impl<'a> Lowerer<'a> {
                     Formula::and([Formula::le(&int(0), &p)?, Formula::le(&p, &int(1))?, fact]);
                 (
                     SVal::Opt {
-                        some: bool_of(flag),
+                        some: bool_of(flag)?,
                         value: Box::new(value),
                     },
                     facts,

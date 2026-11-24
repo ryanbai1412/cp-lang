@@ -107,14 +107,14 @@ impl Interval {
             )
         };
         let ((a, b), (c, d)) = (ends(self), ends(other));
-        let products = [a.times(c), a.times(d), b.times(c), b.times(d)];
+        let (ac, ad, bc, bd) = (a.times(c), a.times(d), b.times(c), b.times(d));
         let fin = |e: End| match e {
             End::Fin(v) => Some(v),
             _ => None,
         };
         Interval {
-            lo: fin(*products.iter().min().unwrap()),
-            hi: fin(*products.iter().max().unwrap()),
+            lo: fin(ac.min(ad).min(bc).min(bd)),
+            hi: fin(ac.max(ad).max(bc).max(bd)),
         }
     }
 
