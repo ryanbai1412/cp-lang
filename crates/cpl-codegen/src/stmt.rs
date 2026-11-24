@@ -1693,7 +1693,9 @@ fn expr_may_alias_root(e: &Expr, root: (bool, usize)) -> bool {
 /// anything, so reading them again gives the same cell.
 pub(crate) fn place_root(e: &Expr) -> Option<(bool, usize)> {
     match &e.kind {
-        ExprKind::Unwrap(base, _) | ExprKind::Field(base, _) => place_root(base),
+        ExprKind::Unwrap(base, _) | ExprKind::Field(base, _) | ExprKind::Payload(base, ..) => {
+            place_root(base)
+        }
         ExprKind::Index(base, indices) if indices.iter().all(writes_nothing) => place_root(base),
         _ => walk::path_root(e),
     }

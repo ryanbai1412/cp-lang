@@ -25,6 +25,32 @@ pub fn is_place(text: &str) -> bool {
     name(text) || (text.starts_with("cpl::at(") && text.ends_with(')') && !text[8..].contains("::"))
 }
 
+/// The C++ types a local that shadows a container name may have.
+const SCALARS: [&str; 9] = [
+    "int",
+    "ll",
+    "bool",
+    "double",
+    "char",
+    "auto",
+    "unsigned",
+    "__int128",
+    "cpl::OptPos",
+];
+
+/// The name a scalar local declares, `int f = 0;` or `for (int f = lo; ..`,
+/// which a lambda then captures as a scalar, not the container named `f`
+/// further out.
+fn scalar_decl(line: &str) -> Option<&str> {
+    let decl = line.strip_prefix("for (").unwrap_or(line);
+    let (ty, rest) = decl.split_once(' ')?;
+    if !SCALARS.contains(&ty) {
+        return None;
+    }
+    let name = rest.split([' ', '=', ';']).next()?;
+    (!name.is_empty() && name.chars().all(|c| c.is_alphanumeric() || c == '_')).then_some(name)
+}
+
 /// Every deep copy of a container the C++ spells out: a container local
 /// initialised from a place (`std::vector<ll> row = cpl::at(rows, i);`), a
 /// tuple of containers built from a pair's fields, and a by-value lambda
@@ -36,6 +62,9 @@ pub fn deep_copies(cpp: &str) -> usize {
     for line in cpp.lines() {
         let line = line.trim();
         let decl = line.strip_prefix("const ").unwrap_or(line);
+        if let Some(name) = scalar_decl(decl) {
+            held.remove(name);
+        }
         if container(decl) {
             // `T name = place;`, `const T& name`, `T name(...)`: the name is
             // the last word before `=`, `(`, `;`, `,` or `)` at depth 0.
@@ -71,8 +100,6 @@ pub fn deep_copies(cpp: &str) -> usize {
         {
             count += 1;
         }
-    }
-    for line in cpp.lines() {
         let Some(open) = line.find("= [") else {
             continue;
         };

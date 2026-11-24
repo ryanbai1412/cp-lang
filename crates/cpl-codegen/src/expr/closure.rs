@@ -43,6 +43,7 @@ impl<'p> Emitter<'p> {
             for cap in &def.captures {
                 let inner = &inner_names[cap.inner];
                 let non_scalar = !def.locals[cap.inner].ty.is_scalar();
+                let heap = crate::lend::holds_heap(self.program, &def.locals[cap.inner].ty);
                 if !cap.is_global && Some(cap.outer) == rec_slot {
                     continue;
                 }
@@ -60,11 +61,7 @@ impl<'p> Emitter<'p> {
                         };
                         global_ref_aliases.push(format!("{constant}auto& {inner} = {gname};"));
                     } else {
-                        self.note_capture_copy(
-                            cid,
-                            non_scalar,
-                            &self.program.globals[cap.outer].name,
-                        );
+                        self.note_capture_copy(cid, heap, &self.program.globals[cap.outer].name);
                         cap_parts.push(format!("{inner} = {gname}"));
                     }
                 } else {
@@ -74,7 +71,7 @@ impl<'p> Emitter<'p> {
                     } else {
                         cap_parts.push(format!("{inner} = {outer}"));
                         let name = self.locals()[cap.outer].name.clone();
-                        self.note_capture_copy(cid, non_scalar, &name);
+                        self.note_capture_copy(cid, heap, &name);
                     }
                 }
             }

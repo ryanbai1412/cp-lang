@@ -939,10 +939,11 @@ impl Emitter<'_> {
             ExprKind::Local(_)
                 | ExprKind::Global(_)
                 | ExprKind::Field(..)
+                | ExprKind::Payload(..)
                 | ExprKind::Index(..)
                 | ExprKind::Unwrap(..)
         );
-        if place && !e.ty.is_scalar() && !matches!(e.ty, Ty::Fn(..)) {
+        if place && holds_heap(self.program, &e.ty) {
             self.copies.push(Copied::Let(
                 e.span,
                 "a later operand may change it, and operands are read left to right",
@@ -976,14 +977,16 @@ impl Emitter<'_> {
         }
         let place = matches!(
             init.kind,
-            ExprKind::Field(..) | ExprKind::Index(..) | ExprKind::Unwrap(..)
+            ExprKind::Field(..)
+                | ExprKind::Payload(..)
+                | ExprKind::Index(..)
+                | ExprKind::Unwrap(..)
         );
         // A temporary bound by reference names the place it was bound to.
         let whole = matches!(init.kind, ExprKind::Local(s)
                 if !self.locals()[s].name.is_empty() || self.ref_bound.contains(&s))
             || matches!(init.kind, ExprKind::Global(_));
-        if init.ty.is_scalar()
-            || matches!(init.ty, Ty::Fn(..))
+        if !holds_heap(self.program, &init.ty)
             || !(place || whole)
             || text.starts_with("std::move(")
         {
@@ -994,8 +997,8 @@ impl Emitter<'_> {
     }
 
     /// Records a closure capturing the heap value `name` by value.
-    pub(crate) fn note_capture_copy(&mut self, cid: usize, non_scalar: bool, name: &str) {
-        if non_scalar {
+    pub(crate) fn note_capture_copy(&mut self, cid: usize, heap: bool, name: &str) {
+        if heap {
             self.copies
                 .push(Copied::Capture(cid, name.to_string(), KEPT));
         }
@@ -1003,6 +1006,34 @@ impl Emitter<'_> {
 }
 
 /// Each copy as the span of its source, what is copied and why.
+/// True when a value of `ty` owns heap memory, so copying it is a deep
+/// copy `cpl explain` lists; a `Mod` or a tuple of ints copies its bytes.
+pub(crate) fn holds_heap(program: &cpl_ir::Program, ty: &Ty) -> bool {
+    fn go(program: &cpl_ir::Program, ty: &Ty, depth: u32) -> bool {
+        let inner = |t: &Ty| depth < 16 && go(program, t, depth + 1);
+        match ty {
+            Ty::Str
+            | Ty::Array { .. }
+            | Ty::List(_)
+            | Ty::Keyed(..)
+            | Ty::Map(..)
+            | Ty::HashMap(..)
+            | Ty::Set(_)
+            | Ty::HashSet(_) => true,
+            Ty::Opt(t) | Ty::Mut(t) => inner(t),
+            Ty::Tuple(parts) => parts.iter().any(inner),
+            Ty::Record(fields) => fields.iter().any(|(_, t)| inner(t)),
+            Ty::Struct(id) => program.structs[*id].fields.iter().any(|(_, t)| inner(t)),
+            Ty::Enum(id) => program.enums[*id]
+                .variants
+                .iter()
+                .any(|(_, payload)| payload.iter().any(inner)),
+            _ => false,
+        }
+    }
+    go(program, ty, 0)
+}
+
 pub(crate) fn copy_sites(
     program: &cpl_ir::Program,
     copies: &[Copied],

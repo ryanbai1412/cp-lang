@@ -89,6 +89,16 @@ print(f([[1], [2]]))
 }
 
 #[test]
+fn a_value_that_owns_no_heap_memory_is_never_listed_as_a_copy() {
+    let modular = "type Z = Mod<1000000007>\nlet x: Z = 3\nprint(x ** 4, x ** 0)\n";
+    assert_eq!(copy_reasons(modular), [] as [&str; 0]);
+    let pair = "fn f(ps: List<(Int, Int)>) -> Int:\n    var p = ps[0]\n    p.0 += 1\n    p.0\nprint(f([(1, 2)]))\n";
+    assert_eq!(copy_reasons(pair), [] as [&str; 0]);
+    let holder = "struct H:\n    xs: List<Int>\nfn f(hs: List<H>) -> Int:\n    var h = hs[0]\n    h.xs.push(1)\n    h.xs.len\nprint(f([H(xs: [1])]))\n";
+    assert_eq!(copy_reasons(holder), [crate::uses::SET_AGAIN]);
+}
+
+#[test]
 fn explain_reads_closures_copies_and_dropped_fields_off_one_write() {
     let program = lower(
         "struct S:\n    f: (Int) -> Int\n    unused: Int\nvar a = [3, 1, 2]\nvar b = a.clone()\nb.push(4)\nlet s = S(f: x => x + 1, unused: 0)\nprint(s.f(b[0]))\n",
