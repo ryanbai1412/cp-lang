@@ -1,5 +1,6 @@
 // Tuned: port.cp with every DP row as plain Int and NONE = -2^62 for no way, as orig.cpp's
-// -INF vectors, not ?Int: the split's inner max is one add and one max per term, unchecked.
+// -INF vectors, not ?Int: the split's inner max is one add and one max per term, unchecked. Each
+// row is built and split in place in down[v] and up[v], with no copy of either.
 // Source: Codeforces 2229I (The Endians), https://codeforces.com/contest/2229/problem/I
 // limits: 2000 ms, 1024 MB
 // Problem: a tree of n <= 4000 nodes (sum n <= 4000, multitest) with weights w_i <= 1e9, and
@@ -40,24 +41,22 @@ fn split(f: List<Int>, b: List<Int>) -> List<Int>:
 var down: [V]List<Int> = []
 var joined_before: [V]List<List<Int>> = []
 for v in t.at.rev:
-    var f = [0]
+    down[v] = [0]
     for c in kids[v]:
-        joined_before[v].push(f.clone())
-        f = convolve(f, down[c], over: Semiring(max, +), shape: Curved.Neither)
-    f.push(0)
+        joined_before[v].push(down[v].clone())
+        down[v] = convolve(down[v], down[c], over: Semiring(max, +), shape: Curved.Neither)
+    down[v].push(0)
     unchecked:
-        for i in (1..f.len).rev: f[i] max= f[i - 1] + w[v] * i
-    down[v] = f
+        for i in (1..down[v].len).rev: down[v][i] max= down[v][i - 1] + w[v] * i
 
 var ans: [V]Int = 0
 var up: [V]List<Int> = []
 up[t.root] = [if i == k: 0 else: NONE for i in 0..=n]
 for v in t.at:
-    var f = up[v]
     for (z, c) in kids[v].items.rev:
-        let g = split(f, joined_before[v][z])
+        let g = split(up[v], joined_before[v][z])
         up[c] = [max(g[i], g[i + 1] + w[v] * (k - i)) for i in 0..g.len - 1]
-        f = split(f, down[c])
-    ans[v] = f[1] + w[v] * k
+        up[v] = split(up[v], down[c])
+    ans[v] = up[v][1] + w[v] * k
 
 print(ans)
