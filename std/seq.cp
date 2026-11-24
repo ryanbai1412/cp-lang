@@ -616,8 +616,8 @@ pub fn cyclic_pairs<S: Seq<T>, T>(self: S) -> yields (T, T):
     if let p = prev, let f = first_val:
         yield (p, f)
 
-/// The pairs `(a.nth(i), b.nth(i))`, as many as the shorter sequence has.
-/// Works on any `Indexed` sequences (`List`, `[D]T`, `Str`, `Range`, views). \(O(\min(\lvert a \rvert, \lvert b \rvert))\).
+/// The pairs `(x, b.nth(i))` for the `i`th `x` that `a` walks, as many as the shorter sequence has.
+/// `a` is any `Seq`, a stream too (`zip(xs.cyclic_pairs(), w)`); `b` is read by position. \(O(\min(\lvert a \rvert, \lvert b \rvert))\).
 /// Either input empty yields nothing.
 ///
 /// cost: \(O(\min(\lvert a \rvert, \lvert b \rvert))\)
@@ -625,8 +625,12 @@ pub fn cyclic_pairs<S: Seq<T>, T>(self: S) -> yields (T, T):
 /// order: position by position, stopping at the shorter
 /// traps: never
 /// example: `zip([1, 2, 3], "ab").collect() == [(1, 'a'), (2, 'b')]`
-pub fn zip<A: Indexed<K, T>, B: Positional<U>, K, T, U>(a: A, b: B) -> yields (T, U):
-    for i in 0..min(a.len, b.len): yield (a.nth(i), b.nth(i))
+pub fn zip<A: Seq<T>, B: Positional<U>, T, U>(a: A, b: B) -> yields (T, U):
+    var i = 0
+    for x in a:
+        if i == b.len: return
+        yield (x, b.nth(i))
+        i += 1
 
 /// The first and second halves of each pair, as two lists: the inverse of `zip`.
 ///
