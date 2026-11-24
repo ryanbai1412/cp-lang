@@ -808,6 +808,28 @@ impl InputSpec {
                             .insert(decl.name.text.clone(), (builder.base, record));
                     }
                 }
+                // `let (domain D, comp) = compress([30, 10, 20, 10])`: one
+                // position of `D` per distinct value.
+                StmtKind::Let {
+                    pat,
+                    init: Some(init),
+                    ..
+                } if compressed(pat, init, &builder.spec.consts).is_some() => {
+                    let (name, count) =
+                        compressed(pat, init, &builder.spec.consts).expect("tested above");
+                    builder.domains.insert(name, (int(0), int(count - 1)));
+                }
+                StmtKind::Impl { .. } if builder.reads(stmt) => {
+                    let Some((name, parts)) = builder.read_impl(stmt)? else {
+                        return Err(builder.error(
+                            stmt.span,
+                            "this impl reads more than `let name: Type = read()` lines in a `fn read()` of `impl Read`, so a generated input would leave its reads out; read one field per line, like `let r: Int = read()`".into(),
+                        ));
+                    };
+                    builder
+                        .records
+                        .insert(name, (builder.base, Record::Shaped(parts)));
+                }
                 StmtKind::Let {
                     init: Some(init), ..
                 } if !in_judge

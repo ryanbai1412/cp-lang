@@ -1575,6 +1575,59 @@ impl Builder<'_> {
         shape
     }
 
+    /// `impl Read for Cell` reads a `Cell` as its `fn read()` does: one
+    /// field per `let name: Type = read()` line. `None` when it reads in
+    /// any other way.
+    pub(super) fn read_impl(
+        &mut self,
+        stmt: &Stmt,
+    ) -> Result<Option<(String, Vec<Shape>)>, SpecError> {
+        let StmtKind::Impl {
+            trait_name: Some(trait_name),
+            target,
+            body,
+            ..
+        } = &stmt.kind
+        else {
+            return Ok(None);
+        };
+        let (
+            TypeKind::Named {
+                name: trait_name, ..
+            },
+            TypeKind::Named { name: target, args },
+        ) = (&trait_name.kind, &target.kind)
+        else {
+            return Ok(None);
+        };
+        if trait_name.text != "Read" || !args.is_empty() {
+            return Ok(None);
+        }
+        let read = body.stmts.iter().find_map(|stmt| match &stmt.kind {
+            StmtKind::Fn(decl) if decl.name.text == "read" && decl.params.is_empty() => Some(decl),
+            _ => None,
+        });
+        let Some(cpl_syntax::ast::FnBody::Block(block)) = read.map(|decl| &decl.body) else {
+            return Ok(None);
+        };
+        let mut parts = Vec::new();
+        for line in &block.stmts {
+            match &line.kind {
+                StmtKind::Let {
+                    ty,
+                    init: Some(init),
+                    ..
+                } if typed_read(ty.as_ref(), init).is_some() => {
+                    let (ty, none) = typed_read(ty.as_ref(), init).expect("tested above");
+                    parts.push(self.shape_read(&ty, none, init)?);
+                }
+                _ if self.reads(line) => return Ok(None),
+                _ => {}
+            }
+        }
+        Ok(Some((target.text.clone(), parts)))
+    }
+
     pub(super) fn shape_written(
         &mut self,
         ty: &Type,

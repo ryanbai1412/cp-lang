@@ -1425,3 +1425,33 @@ let d = read<V>(base: 1)
         assert!(one.contains(&tokens[10]), "{text}");
     }
 }
+
+#[test]
+fn read_impls_and_constant_compressed_domains_are_generated() {
+    let src = "struct Cell(r: Int, c: Int)
+impl Read for Cell:
+    fn read() -> Cell:
+        let r: 1..=3 = read()
+        let c: 7..=9 = read()
+        return Cell(r - 1, c - 1)
+let (domain D, comp) = compress([30, 10, 20, 10])
+let cell: Cell = read()
+let a: [D]0..=0 = read()
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    for seed in 0..30 {
+        let text = generate(&spec, &mut Rng::new(seed), Size::Small(5))
+            .unwrap()
+            .render();
+        let tokens: Vec<i128> = text
+            .split_whitespace()
+            .map(|t| t.parse().unwrap())
+            .collect();
+        assert_eq!(tokens.len(), 5, "{text}");
+        assert!(
+            (1..=3).contains(&tokens[0]) && (7..=9).contains(&tokens[1]),
+            "{text}"
+        );
+        assert!(tokens[2..].iter().all(|&v| v == 0), "{text}");
+    }
+}

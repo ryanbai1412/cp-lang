@@ -737,3 +737,31 @@ pub(super) fn is_read(expr: &Expr) -> bool {
     matches!(&expr.kind, ExprKind::Call { callee, args }
         if args.is_empty() && matches!(&callee.kind, ExprKind::Name(name) if name == "read"))
 }
+
+/// `let (domain D, ..) = compress([..])` of constant values: `D` and how
+/// many distinct values it has.
+pub(super) fn compressed(pat: &Pattern, init: &Expr, env: &super::Env) -> Option<(String, i128)> {
+    let PatternKind::Tuple(pats) = &pat.kind else {
+        return None;
+    };
+    let PatternKind::Domain(name) = &pats.first()?.kind else {
+        return None;
+    };
+    let ExprKind::Call { callee, args } = &init.kind else {
+        return None;
+    };
+    let (ExprKind::Name(func), [arg]) = (&callee.kind, args.as_slice()) else {
+        return None;
+    };
+    let ExprKind::List(items) = &arg.value.kind else {
+        return None;
+    };
+    if func != "compress" || arg.name.is_some() {
+        return None;
+    }
+    let values: std::collections::BTreeSet<i128> = items
+        .iter()
+        .map(|item| super::eval(item, env))
+        .collect::<Option<_>>()?;
+    (!values.is_empty()).then(|| (name.text.clone(), values.len() as i128))
+}
