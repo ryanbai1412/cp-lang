@@ -24,7 +24,7 @@ let hash = [xors.prefix(i + 1) for i in 0..n]
 
 var next: [0..n]?Int = None
 var (first_bad, last_bad): (?Int, ?Int) = (None, None)
-let order = (0..n).sorted(by: i => (hash[i], i))
+let order = (0..n).sorted(by: i => hash[i])
 for (a, b) in order.adjacent if hash[a] == hash[b]:
     next[a] min= b
     first_bad min= a
