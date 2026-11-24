@@ -1,4 +1,18 @@
 import sys, random
+if sys.argv[1:] == ["--max"]:
+    # n = 3000, a random tree of depth 17 from city 1 (diameter at most 34 < 36): bushy
+    # subtrees, so the polynomials multiplied around every vertex are long
+    g = random.Random(1)
+    n = 3000
+    depth = [0] * n; ok = [0]; es = []
+    for v in range(1, n):
+        p = g.choice(ok); depth[v] = depth[p] + 1; es.append((p + 1, v + 1))
+        if depth[v] < 17: ok.append(v)
+    perm = list(range(1, n + 1)); g.shuffle(perm); g.shuffle(es)
+    print(n)
+    for u, v in es: print(perm[u - 1], perm[v - 1])
+    sys.exit()
+
 # usage: gen.py seed size; every tree has fewer than 36 roads between any two cities
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 n = r.randint(1, max(1, min(3000, S))) if S < 3000 else 3000

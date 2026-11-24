@@ -1,5 +1,6 @@
 // Source: COCI 2025/2026 Round 3 (Kist); not on DMOJ, statement in the COCI archive at hsin.hr,
 //   2025_2026/contest3_tasks.pdf
+// limits: 1000 ms, 512 MB
 // Problem: an n x n grid of '.' (n odd, n, k <= 50); Ivo starts in the centre cell and runs a
 //   word of <= 50 capital letters: L R U D move one cell (skipped if it would leave the grid),
 //   any other letter paints every cell at Manhattan distance < k with that letter. Print the grid.

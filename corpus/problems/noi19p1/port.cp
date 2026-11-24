@@ -1,4 +1,5 @@
 // Source: NOI 2019 P1 (Route), https://dmoj.ca/problem/noi19p1
+// limits: 1000 ms, 512 MB
 // Problem: m trains (x, y, p, q) leave station x at time p and reach y at q. Starting at station
 //   1 at time 0, reach station n; each wait of t >= 0 (incl. before the first train) costs
 //   A t^2 + B t + C, arriving at time z adds z; print the least total. n <= 1e5, m <= 2e5,

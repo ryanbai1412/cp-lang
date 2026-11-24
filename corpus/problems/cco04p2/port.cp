@@ -1,4 +1,5 @@
 // Source: CCO 2004 P2, Hockey Scores, https://dmoj.ca/problem/cco04p2
+// limits: 1000 ms, 32 MB
 // Problem: multitest; each test has s <= 1000 scores `x-y`, each possibly written in either
 //   order, taken from games in progress or finished. Print the fewest games such that every
 //   score occurs in one, then each game's scores on a line (a valid scenario, any one).

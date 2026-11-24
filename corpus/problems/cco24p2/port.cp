@@ -1,4 +1,5 @@
 // Source: CCO 2024 Day 1 P2, Pizza Party, https://dmoj.ca/problem/cco24p2
+// limits: 4000 ms, 1024 MB
 // Problem: pizzas a_1..a_N leave a cart top first, each onto a new stack or the top of one;
 //   then people b_1..b_N each take a pizza of their flavour from some stack top (N <= 1e6,
 //   flavours <= N). Print the fewest stacks K, each pizza's stack and each person's stack, or

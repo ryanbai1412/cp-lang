@@ -1,5 +1,26 @@
 # usage: gen.py SEED [SUM_N]: T cases in the sample grader's format, sum N and sum M <= SUM_N.
 import random, sys
+if sys.argv[1:] == ["--max"]:
+    # one call at sum N = sum M = 1e5, K = 1e6, mostly halving countries and a few resets,
+    # times up to 1e9 on a random connected graph: every halving layer runs a full Dijkstra
+    g = random.Random(1)
+    n = m = 10**5
+    pairs = [(g.randrange(i), i) for i in range(1, n)]
+    seen = set(pairs)
+    while len(pairs) < m:
+        u, v = sorted(g.sample(range(n), 2))
+        if (u, v) not in seen: seen.add((u, v)); pairs.append((u, v))
+    g.shuffle(pairs)
+    h = g.randint(1, n - 1)
+    arr = [g.choice((1, 2, 2, 2)) if g.random() > 0.01 else 0 for _ in range(n)]
+    arr[0] = arr[h] = 1
+    print(1)
+    print(n, m, 10**6)
+    print(h)
+    print(*arr)
+    for u, v in pairs: print(u, v, g.randint(1, 10**9))
+    sys.exit()
+
 
 r = random.Random(int(sys.argv[1]))
 budget = int(sys.argv[2]) if len(sys.argv) > 2 else r.choice([6, 20, 200, 2000])

@@ -1,4 +1,5 @@
 // Source: COCI 2025/26 Round 3 (Drzava), https://dmoj.ca/problem/coci25c3p4
+// limits: 2000 ms, 512 MB
 // Problem: a tree on n <= 3000 cities whose diameter is below 36 roads. A state is a capital
 //   and a set of other secondary cities, none of which lies on the path from the capital to
 //   another. For every size k = 1..n print the number of states with k cities, mod 1e9 + 7.

@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 """COCI 2025/26 R3 Kist: n odd, 1 <= n, k <= 50, a word of 1..=50 capital letters."""
 import random, sys
+if sys.argv[1:] == ["--max"]:
+    # n = 49 (the largest odd n), k = 50, 50 paint letters: every paint covers the whole grid
+    g = random.Random(1)
+    print(49, 50)
+    print("".join(g.choice("ABCEFGHIJKMNOPQSTVWXYZ") for _ in range(50)))
+    sys.exit()
+
 r = random.Random(int(sys.argv[1]))
 size = int(sys.argv[2])
 if size >= 1000:

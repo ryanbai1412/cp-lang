@@ -1,4 +1,14 @@
 import sys, random
+if sys.argv[1:] == ["--max"]:
+    # N = 1e6 distinct flavours (the judged subtask at full size), people in random order: many
+    # stacks, each placement a binary search over the stack fronts
+    g = random.Random(1)
+    n = 10**6
+    a = list(range(1, n + 1)); g.shuffle(a)
+    b = a[:]; g.shuffle(b)
+    print(n); print(*a); print(*b)
+    sys.exit()
+
 # seed size: N <= size (capped at 1e6), inputs from the judged subtasks only: flavours <= 2, or distinct a
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 big = S >= 10**6

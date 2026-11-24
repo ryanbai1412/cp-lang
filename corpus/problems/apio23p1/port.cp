@@ -1,4 +1,5 @@
 // Source: APIO 2023, Cyberland, https://dmoj.ca/problem/apio23p1
+// limits: 2500 ms, 1024 MB
 // Problem: n countries, m two-way roads with times c <= 1e9; travel from country 0 to h (the
 //   trip ends on arrival). Arriving at a kind-0 country may reset the clock to 0, at a kind-2
 //   country may halve it (at most k <= 1e6 halvings in all). Least time at h, or -1 if h is
@@ -9,10 +10,11 @@
 //   half that time plus each road. After ~70 halvings any time is below the tolerance, so
 //   min(k, 80) layers suffice: O(min(k, 80) (n + m) log n).
 //
-// The original is a grader function; this port reads
-// `n m k h`, the n kinds, then m lines `u v time`.
+// The original is a grader function; this port reads the sample grader's input: T calls,
+// each `n m k h`, the n kinds, then m lines `u v time`.
 // original: corpus/submissions/5593318.cpp
 
+@!multitest
 let (n, m, k, h): (Int, Int, Int, Int) = read()
 domain C = 0..n
 var kind: [C]Int = 0

@@ -1,4 +1,9 @@
 import sys, random
+if sys.argv[1:] == ["--max"]:
+    # n = 1e5, m = 2e5, A = 10, B = C = 1e6, times up to 1000, trains crowded on a few hub
+    # stations (mode 1) so every arrival queries a large hull of departures
+    sys.argv[1:] = [str(next(s for s in range(100) if random.Random(s).randint(0, 2) == 1)), "100000"]
+
 # seed size: n <= size, m <= 2 * size (capped at 1e5 / 2e5); a route 1 -> n always exists
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 big = S >= 10**5
