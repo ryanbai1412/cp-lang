@@ -1092,9 +1092,10 @@ mod tests {
         let _ = std::fs::remove_dir_all(dir);
     }
 
-    /// The draws, interpreter output and C++ of `text`'s `@gen fn input` and
-    /// program, built in `db`.
-    fn built(db: &mut Session, text: &str) -> [String; 3] {
+    /// What `text`'s `@gen fn input` draws and its program prints on that
+    /// input, the same on the VM and the C++ build, and both C++ sources,
+    /// built in `db`.
+    fn built(db: &mut Session, text: &str) -> [String; 4] {
         let analysis = db.analyze_text("t.cp", text);
         db.remove_file("t.cp");
         assert!(
@@ -1104,10 +1105,22 @@ mod tests {
         );
         let gen = cpl_ir::lower_gen(&analysis, "input", 3).expect("the @gen fn lowers");
         let program = cpl_ir::lower(&analysis).expect("the program lowers");
-        let drawn = runner::run_interp(&gen, "t.cp", text, b"");
-        assert!(drawn.trap.is_none(), "{}", drawn.trap_rendered);
+        let both = |program: &cpl_ir::Program, input: &[u8]| {
+            let vm = runner::run_interp(program, "t.cp", text, input);
+            assert!(vm.trap.is_none(), "{}", vm.trap_rendered);
+            let native = run_cpp_build(program, "t.cp", text, input).expect("the C++ builds");
+            assert!(!native.trapped, "{}", native.trap_rendered);
+            assert_eq!(
+                vm.stdout, native.stdout,
+                "the VM and C++ disagree on {text}"
+            );
+            vm.stdout
+        };
+        let drawn = both(&gen, b"");
+        let printed = both(&program, &drawn);
         [
-            String::from_utf8_lossy(&drawn.stdout).into_owned(),
+            String::from_utf8_lossy(&drawn).into_owned(),
+            String::from_utf8_lossy(&printed).into_owned(),
             cpl_codegen::emit(&gen, "t", Some(text)),
             cpl_codegen::emit(&program, "t", Some(text)),
         ]
@@ -1131,7 +1144,7 @@ let k: Int = read()
 print(k + 1)
 ";
         let alone = [graph, plain].map(|text| built(&mut Session::new(), text));
-        assert_eq!(alone[0][0], "5\n");
+        assert_eq!(alone[0][..2], ["5\n", "5\n"]);
         let mut db = Session::new();
         for order in [[0, 1], [1, 0], [0, 0]] {
             for i in order {
