@@ -2348,7 +2348,23 @@
    "cost": "E \\sqrt V",
    "documented": 5.66,
    "fn": "flow.Matching.augment_all",
-   "measured": 3.24,
+   "measured": 3.37,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/flow_bipartite.cp::flow.Matching.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "flow.Matching.is_empty",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/flow_bipartite.cp::flow.Matching.items": {
+   "cost": "\\lvert L \\rvert",
+   "documented": 2.0,
+   "fn": "flow.Matching.items",
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -2356,7 +2372,7 @@
    "cost": "F E \\log V",
    "documented": 9.14,
    "fn": "flow.best_matching",
-   "measured": 6.81,
+   "measured": 7.4,
    "n": 16384,
    "ok": true
   },
@@ -2364,7 +2380,7 @@
    "cost": "E V",
    "documented": 8.0,
    "fn": "flow.edge_coloring",
-   "measured": 9.36,
+   "measured": 9.58,
    "n": 16384,
    "ok": true
   },
@@ -2372,7 +2388,7 @@
    "cost": "V\u00b3",
    "documented": 8.0,
    "fn": "flow.general_matching",
-   "measured": 2.56,
+   "measured": 2.65,
    "n": 16384,
    "ok": true
   },
@@ -2380,7 +2396,7 @@
    "cost": "E \\sqrt V",
    "documented": 5.66,
    "fn": "flow.max_matching",
-   "measured": 3.43,
+   "measured": 3.59,
    "n": 16384,
    "ok": true
   },
@@ -2388,7 +2404,7 @@
    "cost": "L^2 R",
    "documented": 8.0,
    "fn": "flow.max_weight_matching",
-   "measured": 3.95,
+   "measured": 4.22,
    "n": 16384,
    "ok": true
   },
@@ -2396,7 +2412,7 @@
    "cost": "E \\sqrt V",
    "documented": 5.66,
    "fn": "flow.min_vertex_cover",
-   "measured": 3.39,
+   "measured": 3.6,
    "n": 16384,
    "ok": true
   },
@@ -2404,7 +2420,7 @@
    "cost": "L^2 R",
    "documented": 8.0,
    "fn": "flow.min_weight_matching",
-   "measured": 4.29,
+   "measured": 4.42,
    "n": 16384,
    "ok": true
   },
@@ -2412,7 +2428,7 @@
    "cost": "L R",
    "documented": 4.0,
    "fn": "flow.stable_matching",
-   "measured": 3.88,
+   "measured": 4.08,
    "n": 16384,
    "ok": true
   },
@@ -8127,8 +8143,6 @@
   "fenwick.XorFenwick.new",
   "fenwick.XorFenwick.prefix",
   "fenwick.XorFenwick.xor",
-  "flow.Matching.is_empty",
-  "flow.Matching.items",
   "geometry.Circle.area",
   "geometry.Circle.circumference",
   "geometry.Circle.locate",

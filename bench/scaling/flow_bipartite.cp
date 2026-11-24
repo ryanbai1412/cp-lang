@@ -17,7 +17,7 @@ let badj = [L] l => do:
     b += [R(j) for j in 0..i if i + 1 < k or j > 0]
     b
 let adj = [V] v => [V((v.ord * 31 + j * 7) % k) for j in 0..k]
-for _ in 0..64:
+for _ in 0..112:
     s += general_matching(adj).size // timed: flow.general_matching
 for _ in 0..112:
     s += max_matching(badj).size // timed: flow.max_matching
@@ -27,6 +27,14 @@ for _ in 0..64:
     for l in L:
         for r in badj[l]: m.add(l, r)
     s += m.augment_all() // timed: flow.Matching.augment_all
+var mm = Matching<L, R>()
+for l in L:
+    for r in badj[l]: mm.add(l, r)
+s += mm.augment_all()
+for _ in 0..8 * n:
+    s += Int(mm.is_empty) // timed: flow.Matching.is_empty
+for _ in 0..1024:
+    for (l, r) in mm.items: s += r.ord // timed: flow.Matching.items
 for _ in 0..16:
     s += max_weight_matching((l: L, r: R) => (l.ord * 7919 + r.ord * 31) % 1009).total // timed: flow.max_weight_matching
 s += min_weight_matching((l: L, r: R) => (l.ord * 7919 + r.ord * 31) % 1009).total // timed: flow.min_weight_matching
