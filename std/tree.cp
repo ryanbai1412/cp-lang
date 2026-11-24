@@ -215,24 +215,25 @@ pub struct Rooted<V, Pre, A>:
         // heavy-first preorder without a stack: a vertex's heavy child comes right after it, then
         // its other children's subtrees in `next` order; each root's tree follows the last one
         var top: [V]V = [V] v => v
-        var tin: [V]Int = 0
-        var order = List.filled(bfs.len, bfs[0])
+        domain Order = 0..V.count
+        // `tin` and `order` are built as the struct holds them, so no second copy is made
+        var tin: [V]Order = Order.first!
+        var order: [Order]V = bfs[0]
         var after_roots = 0
         for u in bfs:
             if par[u] == None:
-                tin[u] = after_roots
+                tin[u] = Order(after_roots)
                 after_roots += sz[u]
             order[tin[u]] = u
-            var at = tin[u] + 1
+            var at = tin[u].ord + 1
             if let h = heavy[u]:
-                tin[h] = at
+                tin[h] = Order(at)
                 top[h] = top[u]
                 at += sz[h]
             for j in k0[u]..k1[u]:
                 if heavy[u] != Some(bfs[j]):
-                    tin[bfs[j]] = at
+                    tin[bfs[j]] = Order(at)
                     at += sz[bfs[j]]
-        domain Order = 0..V.count
         Rooted<V, Order, N.Arc>(
             bfs[0],
             par,
@@ -244,8 +245,8 @@ pub struct Rooted<V, Pre, A>:
             k1,
             heavy,
             top,
-            [V] v => Order.nth(tin[v]),
-            [Order] p => order[p.ord],
+            tin,
+            order,
             in_arc,
         )
 

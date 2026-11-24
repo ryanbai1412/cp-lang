@@ -25,6 +25,7 @@ use std.heap.{Heap, MinHeap}
 use std.math.{abs, gcd, popcount, ctz}
 use std.opt.{is_none_or}
 use std.rand.{Random, shuffle}
+use std.range.{Len}
 use std.seq.{collect, reverse, count, Seq, Slice, all, any}
 
 /// \(O(\deg u)\) per walk of `out(u)`.
@@ -160,7 +161,7 @@ pub type Digraph<V, E> = [E](u: V, v: V)
 /// vertex contiguous and in input order. Immutable; a graph that grows is a `[V]List` of arcs,
 /// which is already a `Next`. \(O(n + m)\) memory and build.
 pub struct Graph<V: Domain, A: Target<V> = V>:
-    pub start: [V.cuts]Int
+    pub start: [V.cuts]Len
     pub arcs: List<A>
 
     /// A graph with one arc `u -> v` per edge of `edges`, in compressed sparse rows.
@@ -188,7 +189,7 @@ pub struct Graph<V: Domain, A: Target<V> = V>:
         E,
         R> -> B = a => a,
     ) -> Graph<V, B>:
-        var start: [V.cuts]Int = 0
+        var start: [V.cuts]Len = 0
         for e in edges.keys: start[edges[e].u.ord] += 1
         // counts become each vertex's end; placing arcs back to front lowers it to its start
         for i in 1..start.len: start[i] += start[i - 1]
@@ -221,7 +222,7 @@ pub struct Graph<V: Domain, A: Target<V> = V>:
         E,
         R> -> B = a => a,
     ) -> Graph<V, B>:
-        var start: [V.cuts]Int = 0
+        var start: [V.cuts]Len = 0
         for e in edges.keys:
             start[edges[e].u.ord] += 1
             start[edges[e].v.ord] += 1
@@ -248,7 +249,7 @@ pub struct Graph<V: Domain, A: Target<V> = V>:
     /// traps: never
     /// example: `domain V = 0..2; let g = Graph.of([(from: V(1), arc: V(0)), (from: V(0), arc: V(1)), (from: V(1), arc: V(1))]); g.next(1).collect() == [0, 1]`
     pub fn of(arcs: Seq<(from: V, arc: A)>) -> Graph<V, A>:
-        var start: [V.cuts]Int = 0
+        var start: [V.cuts]Len = 0
         var pairs = List<(from: V, arc: A)>()
         for p in arcs:
             start[p.from.ord] += 1
@@ -456,7 +457,7 @@ pub struct Graph<V: Domain, A: Target<V> = V>:
     /// traps: never
     /// example: `domain V = 0..4; domain E = 0..4; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 0, v: 2), (u: 1, v: 3), (u: 2, v: 3)]; Graph.directed(es).transpose().out(3).collect() == [(to: 1, e: 2), (to: 2, e: 3)]`
     pub fn transpose(self) -> Graph<V, A>:
-        var tstart: [V.cuts]Int = 0
+        var tstart: [V.cuts]Len = 0
         for a in arcs: tstart[a.to.ord] += 1
         for i in 1..tstart.len: tstart[i] += tstart[i - 1]
         var src: List<Int> = List.filled(arcs.len, 0)
@@ -2835,7 +2836,7 @@ pub fn block_cut_tree<V>(g: Next<V>) -> (domain B, links: List<(b: B, v: V)>):
 /// traps: in checked builds, when the graph is not undirected (an arc without its reverse on the same `e`)
 /// example: `domain V = 0..4; domain E = 0..4; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 0), (u: 2, v: 3)]; let (domain B, block) = blocks(Graph.undirected(es)); B.count == 2 and block[0] == block[1] and block[1] == block[2] and block[3] != block[0]`
 pub fn blocks<V, E>(g: EdgedNext<V, E>) -> (domain B, block: [E]B):
-    var start: [V.cuts]Int = 0
+    var start: [V.cuts]Len = 0
     var to = List<V>()
     var eid = List<E>()
     for u in V:
@@ -3921,7 +3922,7 @@ pub struct Only<V, G>(g: G, keep: V -> Bool, from: V -> Bool):
         for u in V:
             for a in self.out(u):
                 indeg[a.to] += 1
-        var tstart: [V.cuts]Int = 0
+        var tstart: [V.cuts]Len = 0
         var acc = 0
         for v in V:
             tstart[v.ord] = acc
