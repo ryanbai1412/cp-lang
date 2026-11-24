@@ -354,8 +354,11 @@ if [ "$mode" = commit ]; then
     step "generated files current: skill pages, COVERAGE.md, gap lists (scripts/gen.py --check)"
     # CI's regen job regenerates stale files on main, so a commit isn't
     # blocked by staleness it may not have caused.
-    uv run --quiet python scripts/gen.py --check \
-        || echo "WARNING: generated files are stale; run: just gen (CI's regen job also fixes them)" >&2
+    # Only the summary line: the per-file lines are CI's regen job's to act on.
+    if ! gen_out=$(uv run --quiet python scripts/gen.py --check 2>&1); then
+        printf '%s\n' "$gen_out" | tail -n 1
+        echo "note: not blocking; CI's regen job rewrites these on main (details: uv run scripts/gen.py --check)"
+    fi
     if [ -n "${sel_slices:-}" ]; then
         step "touched-path slices: $sel_slices (scripts/affected.py, each under 20 s)"
         uv run --quiet python scripts/affected.py --run-slices $sel_slices \
