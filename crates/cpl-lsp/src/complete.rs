@@ -1022,9 +1022,14 @@ fn members_of_ty(cursor: &Cursor, std: &mut StdLib, ty: &Ty) -> Vec<(Entry, u8)>
         ty => ty,
     };
     let walks = seen.contains("each");
+    let imported = cursor.analysis.imports();
     for entry in std_methods(cursor, std) {
-        if receives(&entry.detail, ty, walks) && seen.insert(entry.name.clone()) {
-            out.push((entry, 1));
+        // A `fn f<T>(self: T)` a `use` names is everyone's member; unnamed, it would crowd every list.
+        // It sorts after the members whose receiver bound `ty` meets.
+        let received = receives(&entry.detail, ty, walks);
+        let named = imported.contains_key(&entry.name) && takes_any_self(&entry.detail);
+        if (received || named) && seen.insert(entry.name.clone()) {
+            out.push((entry, if received { 1 } else { 2 }));
         }
     }
     out
@@ -1077,8 +1082,25 @@ pub fn member_hover(cursor: &Cursor, std: &mut StdLib) -> Option<cpl_check::Hove
 
 /// The top-level `fn name(self: ..)` of every std module: a program that
 /// writes `.name` gets the fn without a `use`, so all of them are members.
+/// A library's such fns are members once a `use` names them.
 fn std_methods(cursor: &Cursor, std: &mut StdLib) -> Vec<Entry> {
     let mut out = Vec::new();
+    let modules = cursor.analysis.modules();
+    for (local, import) in cursor.analysis.imports() {
+        let Some(module) = modules.get(import.module) else {
+            continue;
+        };
+        let outline = std.outline_of(&module.path, module.analysis.text.clone());
+        if let Some(entry) = outline.find(&import.name) {
+            if entry.kind == Kind::Fn && entry.public && self_type(&entry.detail).is_some() {
+                let mut entry = entry.clone();
+                entry.name = local.clone();
+                entry.kind = Kind::Method;
+                entry.instance = true;
+                out.push(entry);
+            }
+        }
+    }
     for (path, name) in cpl_check::std_methods() {
         let module: Vec<&str> = path[1..].iter().map(|n| n.text.as_str()).collect();
         let Some(outline) = std.module(cursor.uri, &module.join(".")) else {
@@ -1129,6 +1151,19 @@ fn self_type(detail: &str) -> Option<&str> {
 
 /// Whether `ty` can be the `self` of the fn whose signature is `detail`:
 /// its generic's bound (`S: Indexed`) holds, or its type is `ty`'s.
+/// `fn f<T>(self: T)`: the receiver is a type parameter with no bound.
+fn takes_any_self(detail: &str) -> bool {
+    let Some(self_ty) = self_type(detail) else {
+        return false;
+    };
+    let generics = detail
+        .split_once('<')
+        .filter(|(head, _)| !head.contains('('))
+        .and_then(|(_, rest)| rest.split_once(">("))
+        .map_or("", |(g, _)| g);
+    generics.split(',').any(|g| g.trim() == self_ty)
+}
+
 fn receives(detail: &str, ty: &Ty, walks: bool) -> bool {
     let Some(self_ty) = self_type(detail) else {
         return false;
