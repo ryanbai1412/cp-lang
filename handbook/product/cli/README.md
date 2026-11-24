@@ -15,7 +15,8 @@ next one runs. `cpl --help` lists them all, and each command has its own
 
 **Check and fix** (`cpl check`, `cpl fix`, `cpl migrate`) answer "is this
 legal, and what's the fix?" with one error per root cause, then apply the
-fixes. Not drafted yet.
+fixes. `cpl fix`: [fix.md](fix.md), [fix-usecases.md](fix-usecases.md);
+`cpl check` not drafted yet.
 
 **Run** (`cpl run`) answers "what does it print on this input?" in the
 debug interpreter, where every check traps with the local values in
@@ -38,7 +39,9 @@ judge profile. Not drafted yet.
 Not drafted yet.
 
 **Format and lint** (`cpl fmt`, `cpl lint`) answer "is this the
-idiomatic form?" without changing what the program means. Not drafted yet.
+idiomatic form?" without changing what the program means:
+[fmt.md](fmt.md), [fmt-usecases.md](fmt-usecases.md), [lint.md](lint.md),
+[lint-usecases.md](lint-usecases.md).
 
 **New and fetch** (`cpl new`, `cpl fetch`) answer "how do I start this
 problem?" from its URL, samples or constraints. Not drafted yet.
