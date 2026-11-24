@@ -9,7 +9,7 @@ type Z = Mod<1e9 + 7>
 // B balances the O(N^2 / B) table of big powers against O(B) work per query.
 const N = 3e5, B = 1200
 
-let (a, b, c): (1..Z.MOD, 1..Z.MOD, 1..Z.MOD) = read()
+let (a, b, c): (Z, Z, Z) = read()
 
 fn coeffs_of_power(m: Int) -> List<Z>:
     var f: List<Z> = [c ** m]
@@ -23,7 +23,7 @@ let big = [0..=N / B] i => coeffs_of_power(i * B).scan(+)
 
 var ans: Z = 0
 repeat read():
-    let (n, k): (0..=N, Int) = read(xor: ans)
+    let (n, k): (0..=N, Int) = (read<Int>() ^ ans.v, read<Int>() ^ ans.v)
     let (i, j) = n.divmod(B)
-    ans = sum(small[j][z] * big[i][min(2 * i * B, k - z)] for z in 0..=min(2 * j, k))
+    ans = sum(small[j][z] * big[i].prefix(min(2 * i * B, k - z) + 1) for z in 0..=min(2 * j, k))
     print(ans)
