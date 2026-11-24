@@ -13,11 +13,15 @@
   {"id": "4801135", "language": "CPP17", "result": "WA", "time": 2.033646945, "memory_kb": 125448.0, "file": "corpus/submissions/4801135.cpp"},
   {"id": "4801137", "language": "CPP17", "result": "WA", "time": 2.176132613, "memory_kb": 125448.0, "file": "corpus/submissions/4801137.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/noi22p3/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "Interactive with a grader: orig.cpp is LOJ 3849's accepted submission 2362244 under LOJ's count.h grader, which counts MR/MC calls (at most 3e7 in init, M per ask) and prints each answer's edge-set hash. No DMOJ submission is AC. It and LOJ AC 2387874 match LOJ's 20 official tests, and 2362244 matches a BFS brute (hash of the edges inside the d-neighbourhood) on 300 random gen.py cases, and 2387874 agrees with it on 150 more."
 }
