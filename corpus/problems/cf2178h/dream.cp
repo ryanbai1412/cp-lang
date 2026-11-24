@@ -10,15 +10,23 @@ enum Move: Create(T), Double(1..=3)
 @!multitest
 let x: [T]1..=5e5 = read()
 let (m, k): (2..=5e5, 1..=5e5) = read()
-domain R = Zmod(m)
-domain State = (r: R, s: Subset<T>)
+domain R = 0..m
+type State = (R, Subset<T>)
 
 fn cost(mv: Move) -> Int = match mv:
     Create(t) => x[t]
     Double(j) => j * k
-fn step(mv: Move, (r, s): State) -> ?State = match mv:
-    Create(t) => (r + x[t], s.with(t))
-    Double(j) => if s.len == j: (2 * r, s) else: None
+fn step(mv: Move, st: State) -> ?State:
+    let (r, s) = st
+    match mv:
+        Create(t) => (R((r.ord + x[t]) % m), s.with(t))
+        Double(j) => if s.len == j: (R(2 * r.ord % m), s) else: None
 
-let dist = fixed_cost_paths(from: [(R(0), {})], moves: Move.all, cost: cost, step: step)
-print(dist[(R(0), T.all)]! - x.sum())
+let dist = fixed_cost_paths(
+    from: [(R(0), Subset<T>.empty)],
+    moves: [Create(t) for t in T] + [Double(j) for j in 1..=3],
+    cost: cost,
+    step: step,
+    until: (R(0), Subset<T>.full),
+)
+print(dist[(R(0), Subset<T>.full)]! - x.sum())
