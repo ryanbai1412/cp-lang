@@ -8,10 +8,9 @@
 // cp: 0.1 8ef64b9+dirty
 domain Ship = 1..=30000
 
-@tags("M", "C")
 enum Op:
-    Merge(a, b: Ship)
-    Ask(a, b: Ship)
+    @tag("M") Merge(a, b: Ship)
+    @tag("C") Ask(a, b: Ship)
 
 let q: 1..=5e5 = read()
 domain Query = 0..q
