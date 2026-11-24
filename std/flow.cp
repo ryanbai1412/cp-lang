@@ -344,8 +344,8 @@ pub struct FlowGraph<V>:
                         queue.push(v)
         level
 
-    /// One augmenting path in the level graph, found without recursion.
-    pub fn augment(mut self, s: V, t: V, level: [V]?Int, mut next: [V]Int, most: Int) -> Int:
+    // One augmenting path in the level graph, found without recursion.
+    fn augment(mut self, s: V, t: V, level: [V]?Int, mut next: [V]Int, most: Int) -> Int:
         var path = List<Arc>()
         var u = s
         unchecked:
@@ -601,9 +601,9 @@ pub struct CostFlow<V>:
                 last_unit = unit
         curve
 
-    /// Potentials under which every residual arc has a nonnegative reduced cost: all zero
-    /// when no residual arc is negative, else Bellman-Ford from every vertex at once.
-    pub fn potentials(self) -> [V]Int:
+    // Potentials under which every residual arc has a nonnegative reduced cost: all zero
+    // when no residual arc is negative, else Bellman-Ford from every vertex at once.
+    fn potentials(self) -> [V]Int:
         var pot: [V]Int = 0
         var changed = true
         var rounds = 0

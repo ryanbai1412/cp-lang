@@ -287,6 +287,7 @@ pub struct GridRows<R, C, T>(g: [R, C]T):
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = 1; g.rows[R(1)].sum() == 3`
+    /// order: column order
     pub fn at(self, r: R) -> lends [C]T = g[r]
 
     /// The rows in `R` order.
@@ -320,6 +321,7 @@ pub struct GridCols<R, C, T>(g: [R, C]T):
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = 1; g.cols[C(1)].sum() == 2`
+    /// order: row order
     pub fn at(self, c: C) -> lends [R]T = g[.., c]
 
     /// The columns in `C` order.

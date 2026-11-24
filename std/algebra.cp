@@ -318,6 +318,7 @@ pub struct MaxSubAt<D>(
     /// empty: `None`
     /// traps: never
     /// example: `domain D = 0..3; MaxSubAt.of(D(2), 5).try_at == Some(D(2).l..D(2).r)`
+    /// order: the range runs left to right
     @get pub fn try_at(self) -> ?Range<D> = if has: Some(at) else: None
 
     /// `Monoid(MaxSubAt<D>.zero, MaxSubAt.join)`, for `SegTree` and `fold`.
@@ -626,6 +627,7 @@ pub fn cmp<T: Ord>(self: T, other: T) -> Ordering =
 /// example: `minmax(3, 1) == (1, 3)`
 /// example: `minmax(1, 3) == (1, 3)`
 /// example: `minmax("b", "a") == ("a", "b")`
+/// ties: equal operands come back in argument order, `(a, b)`
 pub fn minmax<T: Ord>(a: T, b: T) -> (T, T) = if b < a: (b, a) else: (a, b)
 
 /// \(O(1)\). A semiring from two operation values: `Semiring(min, +)`, `Semiring(or, and)`.

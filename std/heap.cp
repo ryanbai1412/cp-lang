@@ -943,6 +943,7 @@ pub struct MeldHeaps<T>:
     /// empty: `None`
     /// traps: when `h` is a stale copy (see `Meld`)
     /// example: `var p = MeldHeaps<Int>(); var h = p.of([5]); p.add_all(h, 2); p.top(h) == Some(7)`
+    /// ties: any one of the equal smallest elements
     pub fn top(self, h: Meld<T>) -> ?T:
         self.check(h)
         if h._root < 0: None else: Some(_nodes[h._root].key)

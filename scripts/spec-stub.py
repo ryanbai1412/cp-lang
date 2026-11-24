@@ -34,6 +34,8 @@ def doc_gaps(lines):
             doc.insert(0, lines[j].strip()[3:].strip())
             j -= 1
         labels = {d.split(":", 1)[0] for d in doc if re.match(r"^[a-z]+:", d)}
+        if "```cp" in doc:
+            labels.add("example")
         header = " ".join(lines[i:i + 6])
         end = re.search(r"\)\s*(?:->[^=\n]*?)?(?:\s=\s|:\s*(?:$|\s{2,}))", header)
         header = header[:end.end()] if end else header
@@ -210,42 +212,32 @@ def undocumented_prelude(root):
             if not re.search(r"`[^`\n]*\b" + re.escape(n) + r"\b[^`\n]*`", docs)]
 
 
-def audit(files, write):
-    base_path = os.path.join(os.path.dirname(__file__), "..", "std", "doc-baseline.json")
+def audit(files):
     counts, total, fns = {}, 0, 0
     for f in files:
         lines = open(f).read().split("\n")
         gaps = doc_gaps(lines)
         fns += sum(1 for l in lines if PUB_FN.match(l))
-        counts[os.path.basename(f)] = len(gaps)
         total += len(gaps)
         for line, name, missing in gaps:
             print(f"{os.path.relpath(f)}:{line}: `{name}` lacks {', '.join(missing)}")
     print(f"spec-stub audit: {total} of {fns} pub fns lack a required doc label")
-    if write:
-        open(base_path, "w").write(json.dumps(counts, indent=1, sort_keys=True) + "\n")
     return 0
 
 
-def over_baseline(files):
-    base_path = os.path.join(os.path.dirname(__file__), "..", "std", "doc-baseline.json")
-    base = json.load(open(base_path)) if os.path.exists(base_path) else {}
-    out = []
-    for f in files:
-        n = len(doc_gaps(open(f).read().split("\n")))
-        if n > base.get(os.path.basename(f), 0):
-            out.append(f"{os.path.relpath(f)}: {n} pub fns lack doc labels, baseline "
-                       f"{base.get(os.path.basename(f), 0)} (std/README.md)")
-    return out
+def label_gaps(files):
+    """Every pub fn carries its required doc labels (std/README.md): no baseline, zero allowed."""
+    return [f"{os.path.relpath(f)}:{line}: `{name}` lacks {', '.join(missing)} (std/README.md)"
+            for f in files for line, name, missing in doc_gaps(open(f).read().split("\n"))]
 
 
 def main(argv):
     check = "--check" in argv
-    flags = ("--check", "--audit", "--write-baseline")
+    flags = ("--check", "--audit")
     files = [a for a in argv if a not in flags] or sorted(glob.glob(
         os.path.join(os.path.dirname(__file__), "..", "std", "*.cp")))
     if "--audit" in argv:
-        return audit(files, "--write-baseline" in argv)
+        return audit(files)
     total = 0
     for f in files:
         lines = open(f).read().split("\n")
@@ -265,7 +257,7 @@ def main(argv):
                       "no return type")
                 total += 1
     if check:
-        for msg in over_baseline(files):
+        for msg in label_gaps(files):
             print(msg)
             total += 1
     if check and len(files) > 1:

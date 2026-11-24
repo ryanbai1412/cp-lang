@@ -7,7 +7,7 @@
 # (a measurement over history; rewritten only by its own command).
 # Measurements updated by an explicit `--update` are not generated files:
 # scripts/debt-ratchet.json, research/scoreboard.json,
-# research/reviews/baseline.json, std/doc-baseline.json.
+# research/reviews/baseline.json.
 
 [[gen]]
 name = "layout"

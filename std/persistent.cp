@@ -428,8 +428,8 @@ pub struct PersistentLazySegTree<D, T, F>(act: Action<T, F>):
         else: rc = self.set_rec(rc, mid, nr, idx, x)
         self.push_node(lc, rc, act.over.op(val[lc], val[rc]), act.id)
 
-    /// `acc` holds the tags of the ancestors of `u`, which are newer than every tag below them.
-    pub fn fold_rec(self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int, acc: F) -> T:
+    // `acc` holds the tags of the ancestors of `u`, which are newer than every tag below them.
+    fn fold_rec(self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int, acc: F) -> T:
         if qr <= nl or nr <= ql: return act.over.id
         if ql <= nl and nr <= qr: return act.apply(acc, val[u], nr - nl)
         let mid = (nl + nr) / 2

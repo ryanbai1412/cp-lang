@@ -2203,6 +2203,8 @@ pub struct LinkCut<V, T>(m: Monoid<T>):
     /// with the previously accessed vertex.
     ///
     /// cost: amortized \(O(\log n)\)
+    /// traps: never
+    /// example: `domain V = 0..2; var lc = LinkCut<V, Int>(+); lc.access(1) == 1`
     pub fn access(mut self, x: V) -> V:
         var last: ?V = None
         var joined = x
@@ -2545,6 +2547,8 @@ pub struct LazyLinkCut<V, T, F>(act: Action<T, F>):
     /// with the previously accessed vertex.
     ///
     /// cost: amortized \(O(\log n)\)
+    /// traps: never
+    /// example: `domain V = 0..2; var lc = LazyLinkCut<V, Int, Int>(Action<Int, Int>(apply: (d, x, n) => x + d * n)); lc.access(1) == 1`
     pub fn access(mut self, x: V) -> V:
         var last: ?V = None
         var joined = x
@@ -3428,8 +3432,8 @@ pub struct EulerTourTree<V, T>(m: Monoid<T>):
                 if (lc[g] == Some(p)) == (lc[p] == Some(x)): self.rotate(p) else: self.rotate(x)
             self.rotate(x)
 
-    /// The first node of `x`'s sequence, splayed to the root: one name per tree.
-    pub fn first(mut self, x: Int) -> Int:
+    // The first node of `x`'s sequence, splayed to the root: one name per tree.
+    fn first(mut self, x: Int) -> Int:
         self.splay(x)
         var y = x
         while let c = lc[y]:
@@ -3467,8 +3471,8 @@ pub struct EulerTourTree<V, T>(m: Monoid<T>):
         self.pull(x)
         r
 
-    /// Rotates `x`'s tour so that it starts at `x`.
-    pub fn reroot(mut self, x: Int):
+    // Rotates `x`'s tour so that it starts at `x`.
+    fn reroot(mut self, x: Int):
         self.splay(x)
         let l = self.cut_left(x)
         let _ = self.join(Some(x), l)
@@ -3698,8 +3702,8 @@ pub struct LazyEulerTourTree<V, T, F>(act: Action<T, F>):
                 if (lc[g] == Some(p)) == (lc[p] == Some(x)): self.rotate(p) else: self.rotate(x)
             self.rotate(x)
 
-    /// The first node of `x`'s sequence, splayed to the root: one name per tree.
-    pub fn first(mut self, x: Int) -> Int:
+    // The first node of `x`'s sequence, splayed to the root: one name per tree.
+    fn first(mut self, x: Int) -> Int:
         self.splay(x)
         var y = x
         self.push(y)
@@ -3741,8 +3745,8 @@ pub struct LazyEulerTourTree<V, T, F>(act: Action<T, F>):
         self.pull(x)
         r
 
-    /// Rotates `x`'s tour so that it starts at `x`.
-    pub fn reroot(mut self, x: Int):
+    // Rotates `x`'s tour so that it starts at `x`.
+    fn reroot(mut self, x: Int):
         self.splay(x)
         let l = self.cut_left(x)
         let _ = self.join(Some(x), l)

@@ -2584,6 +2584,8 @@ pub struct PalindromicTree<A>:
     /// The character at position `i` of the current string, counting from the front.
     ///
     /// cost: \(O(1)\)
+    /// traps: unless `0 <= i` and `i` is less than the current string's length
+    /// example: `var t = PalindromicTree<Char>(); t.push('a'); t.push('b'); t.at(0) == 'a' and t.at(1) == 'b'`
     pub fn at(self, i: Int) -> A:
         with lint(unproven_list_index: allow)
         return if i < front.len: front[front.len - 1 - i] else: chars[i - front.len]
@@ -3977,5 +3979,9 @@ fn dynamic_aho_corasick_matches_brute_after_adds_and_removes():
             assert d.count_matches(text) == want
 
 /// `gen<Str of alphabet>(len: lo..=hi)`.
+///
+/// cost: \(O(\mathit{hi})\)
+/// traps: when `lo > hi` or `alphabet` is empty
+/// example: `_gen_str("ab", 3, 3).len == 3`
 pub fn _gen_str(alphabet: Str, lo: Int, hi: Int) -> Str =
     Str([alphabet[rand(0, alphabet.len - 1)] for _ in 0..rand(lo, hi)])

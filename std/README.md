@@ -33,9 +33,8 @@ pub fn argmin<S: Keyed, K, T: Ord>(self: S) -> ?K = todo
 | `see:` | optional | the neighbour to use instead (`sort` for `sorted`) |
 
 Struct methods document the same way; a struct's own doc says its invariant and its layout.
-`scripts/spec-stub.py --audit` lists every entry missing a required label; `--check` fails when
-a file has more such entries than `doc-baseline.json` records, so the count only goes down.
-Lower the baseline in the same commit that fixes entries (`--audit --write-baseline`).
+`scripts/spec-stub.py --audit` lists every entry missing a required label; `--check` fails on
+any, so a new `pub fn` lands with its labels.
 
 ## Surface index (migrated from plan/STDLIB.md)
 

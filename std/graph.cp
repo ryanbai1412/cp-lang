@@ -108,6 +108,7 @@ pub struct Reweighted<V, E, A, W>(g: Graph<V, A>, f: A -> W):
     /// cost: \(O(1)\) per arc plus one call of `f`
     /// order: the graph's arc order
     /// traps: never
+    /// example: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V) = [(u: 0, v: 1)]; Graph.directed(es).weighted(a => 5).out(0).collect() == [(to: V(1), e: E(0), w: 5)]`
     pub fn out(self, u: V) -> yields (to: V, e: E, w: W):
         for a in g.out(u):
             yield (to: a.to, e: a.e, w: f(a))
@@ -681,6 +682,7 @@ pub fn undirected_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>:
 /// cost: \(O(1)\)
 /// traps: never
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; g.deg(0) == 2 and g.deg(2) == 0`
+/// empty: 0 for a vertex with no arcs
 pub fn deg<V, A>(self: [V]List<A>, u: V) -> Int = self[u].len
 
 /// Where `u`'s arcs lead in an adjacency list, as `Graph.next` is for a `Graph`: each entry's
@@ -690,6 +692,7 @@ pub fn deg<V, A>(self: [V]List<A>, u: V) -> Int = self[u].len
 /// order: list order
 /// traps: never
 /// example: `domain V = 0..3; let g: [V]List<V> = [[2, 1], [2], []]; g.next(0).collect() == [2, 1] and g.next(2).count() == 0`
+/// empty: nothing for a vertex with no arcs
 pub fn next<V, A: Target<V>>(self: [V]List<A>, u: V) -> yields V:
     for a in self[u]: yield a.to
 
@@ -699,6 +702,7 @@ pub fn next<V, A: Target<V>>(self: [V]List<A>, u: V) -> yields V:
 /// cost: \(O(\deg u)\)
 /// traps: never
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; g.has(0, 2) and not g.has(2, 0)`
+/// empty: false for a vertex with no arcs
 pub fn has<V>(self: [V]List<V>, u: V, v: V) -> Bool = self[u].contains(v)
 
 /// The reverse of an adjacency list: `v` lists `u` once for each arc `u -> v`, `u` ascending.
@@ -707,6 +711,7 @@ pub fn has<V>(self: [V]List<V>, u: V, v: V) -> Bool = self[u].contains(v)
 /// order: each list ascending by source vertex
 /// traps: never
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; g.transpose() == [[], [0], [0, 1]]`
+/// empty: an empty list at each vertex no arc enters
 pub fn transpose<V>(self: [V]List<V>) -> [V]List<V>:
     var t: [V]List<V> = []
     for u in V:
