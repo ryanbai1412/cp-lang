@@ -374,12 +374,20 @@ jobs:
         run: cargo build --profile ci --bin cpl
       - name: Rejudge the acceptance solutions
         run: python3 research/acceptance/regress.py target/ci/cpl -j "$(nproc)" --shard ${{ matrix.shard }}/3
+      # Seeded problems (problem-packages/R9) keep their cases in target/corpus-tests/.
+      - uses: actions/cache/restore@v4
+        if: ${{ !cancelled() }}
+        with:
+          path: target/corpus-tests
+          key: corpus-tests-${{ github.run_id }}
+          restore-keys: corpus-tests-
       - name: The interpreter and the C++ agree on this shard's v03 ports
         # corpus/differential.py; its baseline corpus/differential-known.txt only shrinks.
         if: ${{ !cancelled() }}
         timeout-minutes: 6
         run: |
           mapfile -t ids < <(awk -v s=${{ matrix.shard }} '!/^#/ && NF && (++n - 1) % 3 == s - 1 {print $1}' corpus/sets/v03.txt)
+          python3 scripts/corpus-tests.py make --seeded "${ids[@]}" >/dev/null
           python3 corpus/differential.py --check --cpl target/ci/cpl -j "$(nproc)" "${ids[@]}"
 
   corpus-audit:
