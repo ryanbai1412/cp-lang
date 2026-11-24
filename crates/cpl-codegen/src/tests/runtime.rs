@@ -207,3 +207,15 @@ fn a_plain_sort_is_unstable_only_where_equal_means_the_same() {
         "a profile counts the interpreter's comparisons: {profiled}"
     );
 }
+
+#[test]
+fn a_long_token_is_scanned_a_word_at_a_time_and_copied_out_by_chunk() {
+    let cpp = cpp("let s: Str = read()\nprint(s.len)\n");
+    let read = &cpp[cpp.find("inline void read_str_into(").unwrap()..];
+    let read = &read[..read.find("\n}").unwrap()];
+    assert!(
+        read.contains("need_value()") && !read.contains("need_input()"),
+        "{read}"
+    );
+    assert!(read.contains("0x8080808080808080ULL"), "{read}");
+}

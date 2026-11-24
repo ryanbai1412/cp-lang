@@ -354,6 +354,57 @@ fn strings_are_bytes_and_literals_are_ascii() {
 }
 
 #[test]
+fn a_long_token_reads_whole_in_a_native_build() {
+    // Tokens that cross the input's 64 KiB chunks and its 8-byte scan,
+    // with control and high bytes inside, end at each kind of space.
+    let path = scratch(
+        "long-token",
+        "lens.cp",
+        b"let n: Int = read()\nfor _ in 0..n:\n    let s: Str = read()\n    print(s.len, s[0], s[s.len - 1])\n",
+    );
+    let mut input = b"6\n".to_vec();
+    for (k, (len, end)) in [
+        (70_001, b' '),
+        (7, b'\t'),
+        (8, b'\r'),
+        (65_536, 0x0c),
+        (9, b'\r'),
+        (131_075, b'\n'),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        input.extend((0..len).map(|i| [b'a' + k as u8, 0x01, 0x7f, 0x80, 0xff, b'!'][i % 6]));
+        input.push(end);
+    }
+    let interp = cpl(&["run".as_ref(), path.as_os_str()], &input);
+    assert_eq!(
+        interp.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&interp.stderr)
+    );
+    if Command::new("g++").arg("--version").output().is_ok() {
+        let native = cpl(
+            &["run".as_ref(), "--release".as_ref(), path.as_os_str()],
+            &input,
+        );
+        assert_eq!(
+            native.status.code(),
+            Some(0),
+            "{}",
+            String::from_utf8_lossy(&native.stderr)
+        );
+        assert_eq!(native.stdout, interp.stdout);
+    }
+    assert!(
+        interp.stdout.starts_with(b"70001 a "),
+        "{:?}",
+        &interp.stdout[..20]
+    );
+}
+
+#[test]
 fn build_writes_cpp_that_opens_with_the_source() {
     let source = "// Doubles a number. \\\nlet n: Int = read()\nprint(n * 2)\n";
     let path = scratch("build-out", "double.cp", source.as_bytes());

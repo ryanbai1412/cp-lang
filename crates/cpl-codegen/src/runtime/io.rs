@@ -213,9 +213,9 @@ inline void skip_space() { for (;;) { while (in_at < in.size() && is_space(in[in
 // Before a value is read: input that has run out stops the program, as it
 // stops `cpl run`. The input comes in pieces, so the rest of the value is
 // brought in too, up to the space after it.
+inline void need_value() { skip_space(); if (in_at >= in.size()) fail(\"the input ended where a value was expected\"); }
 inline void need_input() {
-    skip_space();
-    if (in_at >= in.size()) fail(\"the input ended where a value was expected\");
+    need_value();
     if (in.size() - in_at >= 512) return;
     // `more` moves the token to the front, so the scan counts from `in_at`.
     for (size_t k = 0;; k++) { if (in_at + k >= in.size() && !more()) return; if (is_space(in[in_at + k])) return; }
@@ -376,14 +376,23 @@ template <class V> void read_chars(V& v) {
         name: "read_str",
         needs: &["in"],
         code: "\
+// A token is copied out a chunk at a time, so `in` never holds all of it.
 inline void read_str_into(std::string& r) {
-    need_input();
+    need_value();
     r.clear();
     for (;;) {
-        const char* p = in.data(); size_t n = in.size(), st = in_at;
-        while (in_at < n && !is_space(p[in_at])) in_at++;
-        r.append(p + st, in_at - st);
-        if (in_at < n || !more()) return;
+        // A local index: `in_at` would be stored on every char, as a char
+        // read may alias it.
+        const char* p = in.data(); size_t n = in.size(), st = in_at, i = st;
+        // Eight chars at a time while none is at most ' ', which a space is.
+        for (unsigned long long w; i + 8 <= n; i += 8) {
+            __builtin_memcpy(&w, p + i, 8);
+            if ((w - 0x2121212121212121ULL) & ~w & 0x8080808080808080ULL) break;
+        }
+        while (i < n && !is_space(p[i])) i++;
+        r.append(p + st, i - st);
+        in_at = i;
+        if (i < n || !more()) return;
     }
 }
 inline std::string read_str() { std::string r; read_str_into(r); return r; }
