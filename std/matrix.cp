@@ -778,7 +778,7 @@ fn sentinel_form(a: List<?Int>, far: Int) -> List<Int>:
     for i in 0..a.len:
         if let x = a[i]:
             out[i] = x
-            reach = max(reach, abs(x))
+            reach max= abs(x)
     out[a.len] = reach
     out
 
@@ -821,7 +821,7 @@ impl TropicalProduct for Int:
                 let v = out[i]
                 let kept = (v >= edge) == most
                 out[i] = if kept: v else: far
-                reach = max(reach, if kept: abs(v) else: 0)
+                reach max= if kept: abs(v) else: 0
         out[r * c] = reach
         Some(out)
 

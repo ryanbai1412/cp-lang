@@ -1692,7 +1692,7 @@ fn down_and_up_match_depth_size_and_height():
         for u in V:
             if r.is_anc(v, u):
                 n += 1
-                h = max(h, r.depth(u) - r.depth(v))
+                h max= r.depth(u) - r.depth(v)
         assert sz[v] == n and ht[v] == h
 
 @test
