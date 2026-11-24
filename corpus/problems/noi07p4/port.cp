@@ -12,7 +12,7 @@
 //   map from position to slot, x -> (dir * x + off) mod n (`Slot.wrap`). A segment maps to one
 //   slot range, or two when it wraps; C merges the ends if they match. O((n + q) log n).
 // original: corpus/submissions/5032746.cpp
-// Bounds: n: 1..=5e5; colours: 1..=1000; bead: 1..=colours; q: 1..=5e5; x: 1..=colours
+// Bounds: n: 1..=5e5; colours: 1..=1000; bead: 1..=colours; q: 1..=5e5; x: 1..=colours; i, j: 1..=n
 let (n, colours): (1..=5e5, 1..=1000) = read()
 domain Pos = 1..=n
 domain Slot = 0..n
