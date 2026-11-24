@@ -1,5 +1,6 @@
 """nccc10s3 generator: s, q, then q lines "t k" (total |t| <= 2e5). t is usually a substring
-of s. --max: s = 'a' * 2e5 and 2e5 queries for 'a' (every suffix matches)."""
+of s. --max: s = 'a' * (2e5 - 1) + 'b' and 2e5 queries for 'a' (all but one suffix matches; the
+one 'b' keeps the text off a single-letter shortcut)."""
 import random
 import sys
 
@@ -8,7 +9,7 @@ r = random.Random(0 if big else int(sys.argv[1]))
 size = int(sys.argv[2]) if len(sys.argv) > 2 else 8
 if big:
     n, q = 200_000, 200_000
-    s = "a" * n
+    s = "a" * (n - 1) + "b"
     qs = [("a", r.randint(1, n + 5)) for _ in range(q)]
 else:
     abc = "abc"[: r.randint(1, 3)]

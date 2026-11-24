@@ -18,5 +18,5 @@
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "orig.cpp is a written reference (suffix array by prefix doubling, persistent segment tree for the k-th start). The only accepted C++, 4214399, special-cases a one-letter text and otherwise takes about 1.7 ms a query on a near one-letter text (60 s for 'a' * (2e5 - 1) + 'b' with 2e5 queries), so it cannot answer the max case. orig.cpp matches 4214399 on 420 gen.py cases (seeds 1..=60, sizes 4..=1000) and on 'a' * 2e5 with 2e5 random queries, and matches the statement samples."
 }
