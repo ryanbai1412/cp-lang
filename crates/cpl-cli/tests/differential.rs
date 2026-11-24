@@ -587,6 +587,18 @@ print(x, m, y ?? 0)
 ",
             "5 3 6\n",
         ),
+        (
+            // `min` named as a value is the closure that calls `min`, so at
+            // `?Int` it keeps `None` as the identity a direct call does.
+            "min_value_keeps_none_identity",
+            "\
+let a: ?Int = None
+let b: ?Int = Some(3)
+let m = Monoid<?Int>(None, min)
+print(m.op(a, b) ?? -1, Monoid<?Int>(None, max).op(b, a) ?? -1, [4, 1, 7].fold(min)!)
+",
+            "3 3 1\n",
+        ),
     ];
 
     let tmp = std::env::temp_dir().join(format!("cpl_lowering_gaps_{}", std::process::id()));

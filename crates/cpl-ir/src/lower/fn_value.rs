@@ -61,14 +61,19 @@ impl<'a> Lowerer<'a> {
     }
 
     fn gen_fn_closure_ast(&mut self, gfid: GenFnId, name: &str, span: Span) -> ast::Expr {
-        let params: Vec<String> = self.gen_fns[gfid]
+        let arity = self.gen_fns[gfid]
             .decl
             .params
             .iter()
             .filter(|p| p.default.is_none() && !p.variadic)
-            .enumerate()
-            .map(|(i, _)| format!("__{name}{i}"))
-            .collect();
+            .count();
+        self.call_closure_ast(name, arity, span)
+    }
+
+    /// `(a, b) => name(a, b)`: a fn named as a value is the closure that calls
+    /// it, so it means what a direct call does (`min` keeps `none` as identity).
+    pub(super) fn call_closure_ast(&self, name: &str, arity: usize, span: Span) -> ast::Expr {
+        let params: Vec<String> = (0..arity).map(|i| format!("__{name}{i}")).collect();
         let at = |kind| ast::Expr { kind, span };
         let body = at(ast::ExprKind::Call {
             callee: Box::new(at(ast::ExprKind::Name(name.into()))),
