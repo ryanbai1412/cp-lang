@@ -21,6 +21,7 @@ fn check_in(
     let json = args.contains(&"--json");
     let files = args.iter().filter(|arg| **arg != "--json");
     let mut reports = Vec::new();
+    let mut panel = String::new();
     let mut code = 0;
     for path in files {
         let text = match std::fs::read_to_string(path) {
@@ -39,6 +40,10 @@ fn check_in(
             .iter()
             .any(|d| d.severity == cpl_diag::Severity::Error);
         if json {
+            panel += &match diagnostics.is_empty() {
+                true => format!("{path}: no errors\n"),
+                false => cpl_diag::render_all(&diagnostics, path, &text),
+            };
             let lines = cpl_diag::LineIndex::new(&text);
             let diagnostics = diagnostics.iter().map(|d| json_out::diagnostic(d, &lines));
             reports.push(cpl_json::obj([
@@ -61,11 +66,12 @@ fn check_in(
     }
     if json {
         let files = cpl_json::Value::Array(reports);
-        let _ = writeln!(
-            stdout,
-            "{}",
-            cpl_json::to_string(&cpl_json::obj([("files", files)]))
-        );
+        let view = cpl_diag::view::View {
+            panel,
+            ..Default::default()
+        };
+        let report = cpl_json::obj([("files", files), ("view", view.to_value())]);
+        let _ = writeln!(stdout, "{}", cpl_json::to_string(&report));
     }
     code
 }

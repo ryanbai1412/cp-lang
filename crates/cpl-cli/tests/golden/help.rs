@@ -93,6 +93,11 @@ fn check_json_reports_each_file_and_its_diagnostics() {
         Some(0)
     );
     assert_eq!(files[1].at(&["path"]).as_str(), Some("bad.cp"));
+    let panel = json.at(&["view", "panel"]).as_str().unwrap_or_default();
+    assert!(
+        panel.starts_with("ok.cp: no errors\n") && panel.contains("--> bad.cp:2:12"),
+        "the view's panel is not `cpl check`'s text: {panel}"
+    );
     assert_eq!(files[1].at(&["ok"]).as_bool(), Some(false));
     let first = &files[1].at(&["diagnostics"]).as_array().unwrap()[0];
     assert!(
