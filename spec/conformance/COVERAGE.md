@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3691 (3597 passing). Rules: 617.
+Cases: 3693 (3597 passing). Rules: 617.
 
 ## Summary per chapter
 
@@ -22,7 +22,7 @@ Cases: 3691 (3597 passing). Rules: 617.
 - R07 (07-sequences.md): 97 rules, 262 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 31 rules, 112 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R10 (10-io.md): 20 rules, 122 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R10 (10-io.md): 20 rules, 124 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 16 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R12 (12-powers.md): 17 rules, 37 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 33 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -622,7 +622,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R10.1.2 [4+ 0-]: Top-level `return` ends the program, or the current case under `@!multitest`.
 - R10.1.3 [1+ 0-]: IOI-style tasks mark entry points with `@grader`, `@grader(interactive)` or `@grader(two_p...
 - R10.2.1 [7+ 1-]: `read<T>()` dispatches on the expected type, so `let n: 1..=2e5 = read()` and `read<[n]Int...
-- R10.2.2 [9+ 1-]: Range types read with their contract. A domain written with explicit ends (`1..=n`, `0..n`...
+- R10.2.2 [10+ 2-]: Range types read with their contract. A domain written with explicit ends (`1..=n`, `0..n`...
 - R10.2.3 [21+ 5-]: Arrays `[D]T` read `D.count` values; `[R, C]T` reads `R.count * C.count` tokens row-major,...
 - R10.2.4 [3+ 0-]: `s.parse<T>()` reads a `T` from a string by these same rules, `None` on a bad or leftover ...
 - R10.2.5 [1+ 1-]: Graphs are built from an edge list read as records, `read<[E](u: V, v: V)>()`, then `Graph...
@@ -994,7 +994,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0401 Assertion failed: 93 case(s)
 - R0402 todo reached: 2 case(s)
 - R0501 Bad input token: 10 case(s)
-- R0502 Input outside its read contract: 4 case(s)
+- R0502 Input outside its read contract: 5 case(s)
 - R0601 Stack exhausted: 1 case(s)
 - W0101 Unused expression value: 1 case(s)
 - W0201 Submission near the size limit: 1 case(s)
