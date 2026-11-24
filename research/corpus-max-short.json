@@ -18,7 +18,6 @@
     "max-short ioi07p2 n: --max reads 99856, the statement allows 1e5",
     "max-short ioi08p3 kinds: --max reads 100000, the statement allows fishes",
     "max-short ioi08p6 p: --max reads 30000, the statement allows 4e5",
-    "max-short ioi13p1 m: --max reads 99997, the statement allows n - 1",
     "max-short noi18p2 n: --max reads 1, the statement allows 6e5"
   ],
   "max_unread": [
