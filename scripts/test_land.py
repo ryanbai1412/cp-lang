@@ -386,6 +386,22 @@ class LandTest(unittest.TestCase):
         taken = [int(s.split()[3]) for s in stamps.read_text().splitlines() if " other " not in f" {s} "]
         self.assertTrue(taken and taken[0] >= int(freed[0]), (taken, freed))
 
+    def test_a_change_to_land_sh_lands_with_its_own_copy(self):
+        ours = self.clone("ours")
+        land = ours / "scripts" / "land.sh"
+        land.write_text(land.read_text().replace("set -euo pipefail\n",
+                                                 "set -euo pipefail\necho 'land: the new copy runs' >&2\n", 1))
+        self.commit(ours, "a new land.sh")
+        # The land starts on main's copy; the first pull puts this change's copy in
+        # the tree, and re-execs before any lock is held.
+        r = self.land(ours)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stderr.count("landing with the new copy"), 1, r.stderr)
+        # Once before it hands over to main's copy, once after the re-exec.
+        self.assertEqual(r.stderr.count("the new copy runs"), 2, r.stderr)
+        self.assertIn("pushed", r.stdout)
+        self.assertEqual(self.lock_on_remote(), "")
+
     def test_a_pull_that_changes_land_sh_lands_with_the_new_copy_once(self):
         theirs, ours = self.clone("theirs"), self.clone("ours")
         pending, runs = self._steps_runner(ours)

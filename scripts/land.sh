@@ -122,7 +122,8 @@ reexec_if_land_changed() {
     [ -z "${CPL_LAND_REEXEC:-}" ] && [ -f scripts/land.sh ] || return 0
     [ "$(git hash-object scripts/land.sh)" != "$self_blob" ] || return 0
     echo "land: the pull changed scripts/land.sh; landing with the new copy" >&2
-    drop_lock
+    # Set only once push() ran, after drop_lock is defined; the first pull holds no lock.
+    [ -z "${lock_held:-}" ] || drop_lock
     CPL_LAND_REEXEC=1 CPL_LAND_MAIN=1 CPL_LAND_T0=$t0 CPL_LAND_CHECKED=$checked \
         exec bash scripts/land.sh ${land_args[@]+"${land_args[@]}"}
 }
