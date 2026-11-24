@@ -48,7 +48,8 @@ pub(crate) fn sets_whole_first(
         }
     }
     open.push(f);
-    let set = crate::lend::set_before_read(program, &(root, Vec::new()), &fun.body.stmts, open);
+    let set =
+        crate::uses::whole::set_before_read(program, &(root, Vec::new()), &fun.body.stmts, open);
     open.pop();
     set
 }
