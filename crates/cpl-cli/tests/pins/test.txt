@@ -9,6 +9,6 @@ next: `cpl submit a` builds what the judge gets and checks it on these cases; it
 $ cpl test a --format json
 exit 0
 -- stdout
-{"case_count":1,"cases":[{"expected":"6\n","explained":null,"message":null,"name":"1","outcome":"passed","output":"6\n","peak_kb":<n>,"time_ms":<n>,"verdict":"ok","why":null}],"passed_count":1,"view":{"panel":"  1  ok <time>\n  1/1 passed\n","status":{"label":"1/1 passed","line":0,"ok":true}}}
+{"case_count":1,"cases":[{"expected":"6\n","explained":null,"message":null,"name":"1","outcome":"passed","output":"6\n","peak_kb":<n>,"time_ms":<n>,"verdict":"ok","why":null}],"passed_count":1,"view":{"panel":"  1  ok <time>\n  1/1 passed\n","status":{"label":"1/1 passed","line":0,"ok":true},"tests":[{"name":"1","outcome":"passed","output":"6\n","time_ms":<n>}]}}
 -- stderr
 

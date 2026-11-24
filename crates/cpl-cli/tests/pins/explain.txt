@@ -21,6 +21,6 @@ print(a[Row.first!])
 $ cpl explain a.cp --json
 exit 0
 -- stdout
-[{"site":"n","lowering":"storage","detail":"Int: 8 B"}]
+[{"site":"2:7","lowering":"overflow_checked","detail":""},{"site":"n","lowering":"storage","detail":"Int: 8 B"}]
 -- stderr
 

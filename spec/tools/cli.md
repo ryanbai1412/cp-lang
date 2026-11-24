@@ -45,7 +45,8 @@ POSIX tools and getopt use it; 3 the program itself failed (a trap, a failed
 doesn't have reads the same on every command,
 ``cpl: `test` has no option `--loud`; `cpl test --help` lists them``, then that command's usage. Everything is deterministic given the seed.
 
-`cpl check --json` prints `{"files": [{"path", "ok", "diagnostics"}]}`; each
+`cpl check --json` prints `{"files": [{"path", "ok", "diagnostics"}], "view": {"panel"}}`,
+the view's panel being the text `cpl check` prints; each
 diagnostic has `code`, `severity`, `message`, `start`, `end`, `labels`,
 `notes`, `help`, `fixes`, `witness` (the values that break the rule, each a
 `name` and `value`; empty when there are none) and `page` (its page on the
