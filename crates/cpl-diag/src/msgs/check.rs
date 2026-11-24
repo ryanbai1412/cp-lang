@@ -274,6 +274,7 @@ super::msgs! {
     USE_AFTER_MOVE_WAS_ALREADY_MOVED = USE_AFTER_MOVE, "`{}` was already moved";
     /// R05.7.1: a parameter is lent, so a `var` can't take it from the caller.
     USE_AFTER_MOVE_VAR_FROM_LENT_PARAM = USE_AFTER_MOVE, "`{}` would take `{}` from the caller: a parameter is lent, never moved";
+    USE_AFTER_MOVE_VAR_FROM_TOP_LEVEL = USE_AFTER_MOVE, "`{}` would take `{}` from the file body: a fn reads top-level state lent, never moved";
     UNRESOLVED_NAME_WAS_REPLACED_BY = UNRESOLVED_NAME, "`{}` was replaced by `{}`";
     /// R02.7.1: a variant is spelled as its enum declares it.
     UNRESOLVED_NAME_IS_A_VARIANT_SPELLED = UNRESOLVED_NAME, "no `{}` in scope; `{}` has the variant `{}`";
