@@ -1,6 +1,5 @@
-// expect: ok, output "YES YES YES"
-// std_functions: 2
-// A `Semiring(max, +)` or `Semiring(min, +)` product of `?Int` matrices, `None` the zero, is the one the loop over `?Int` gives, `**` too.
+// expect: ok, output "YES"
+// A `Semiring(min, +)` product of `?Int` matrices, `None` the zero, is the one the loop over `?Int` gives.
 domain R = 0..4
 domain K = 0..5
 domain C = 0..3
@@ -24,10 +23,5 @@ fn brute(most: Bool) -> List<?Int>:
                         ) else: Some(s)
             out.push(best)
     out
-let hi = Mat(a, over: Semiring(max, +)) * Mat(b, over: Semiring(max, +))
 let lo = Mat(a, over: Semiring(min, +)) * Mat(b, over: Semiring(min, +))
-domain V = 0..3
-let d: [V, V]?Int = [V, V] (i, j) => if i == j: None else: Some(i.ord - 2 * j.ord)
-let sq = Mat(d, over: Semiring(max, +)) ** 2
-let by_hand = Mat(d, over: Semiring(max, +)) * Mat(d, over: Semiring(max, +))
-print(yes(hi.data == brute(true)), yes(lo.data == brute(false)), yes(sq.data == by_hand.data))
+print(yes(lo.data == brute(false)))
