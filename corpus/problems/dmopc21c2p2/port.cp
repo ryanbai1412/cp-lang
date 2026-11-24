@@ -7,38 +7,32 @@
 //   two values (positions inv[x], inv[y]). Answer Q with start[v] = p[inv[v]]. O(1) per swap, O(n)
 //   per Q.
 // original: corpus/submissions/3946515.cpp
-
-let (n, q): (Int, Int) = read()
+let n: 1..=300 = read()
+let q: 1..=3e5 = read()
 domain Pos = 1..=n
 domain Val = 1..=n
 
-var perm: [Pos]Val = [Pos] p => Val(p.ord + 1)
-var inv: [Val]Pos = [Val] v => Pos(v.ord + 1)
+// final[i] = start[perm[i]]; at_pos is perm's inverse
+var perm: [Pos]Val = [Pos] i => Val.nth(i.ord)
+var at_pos: [Val]Pos = [Val] v => Pos.nth(v.ord)
 
-fn swap_pos(i: Pos, j: Pos):
-    if i == j: return
-    let u = perm[i]
-    let v = perm[j]
+fn swap_positions(i: Pos, j: Pos):
+    let (u, v) = (perm[i], perm[j])
     perm[i] = v
     perm[j] = u
-    inv[u] = j
-    inv[v] = i
-
-fn swap_val(u: Val, v: Val):
-    swap_pos(inv[u], inv[v])
+    at_pos[u] = j
+    at_pos[v] = i
 
 for _ in 0..q:
     let kind: Str = read()
     if kind == "B":
-        let (u, v): (Val, Val) = read()
-        swap_val(u, v)
+        let u: Val = read()
+        let v: Val = read()
+        swap_positions(at_pos[u], at_pos[v])
     elif kind == "E":
-        let (i, j): (Pos, Pos) = read()
-        swap_pos(i, j)
+        let i: Pos = read()
+        let j: Pos = read()
+        swap_positions(i, j)
     else:
-        let target: [Pos]Int = read()
-        var out = ""
-        for v in Val:
-            if v.ord > 0: out += " "
-            out += "{target[inv[v]]}"
-        print(out)
+        let target: [Pos]1..=n = read()
+        print([target[at_pos[v]] for v in Val])

@@ -3,17 +3,23 @@
 //   permanent power, P seconds 1 power for the next fight only. Print the least total time to
 //   clear every level. N, H, P, A_i <= 1e6.
 // Solution: permanent power is best bought up front, so pick a level L and pay H L +
-//   P sum max(0, A_i - L) (a = H, b = P in the code). That is piecewise linear in L, so L is 0 or
+//   P sum max(0, A_i - L). That is piecewise linear in L, so L is 0 or
 //   some A_i: sort the powers descending, keep the count and sum of those above, and try each. O(N
 //   log N).
-let (n, a, b): (1..=1e6, 1..=1e6, 1..=1e6) = read()
-let heights: [0..n]0..=1e6 = read()
+// original: corpus/submissions/3946478.cpp
+let n: 1..=1e6 = read()
+let h: 1..=1e6 = read()
+let p: 1..=1e6 = read()
+var boss: [0..n]0..=1e6 = read()
 
-var best = b * heights.sum()  // level 0
-var taller = 0                // posts above the current level
-var taller_sum = 0
-for h in heights.sorted().rev:
-    best min= a * h + b * (taller_sum - taller * h)
-    taller += 1
-    taller_sum += h
+// Buying L up front costs h L + p sum(max(0, A_i - L)), linear between powers, so L is 0 or
+// some A_i. From the strongest boss down, `above` holds the bosses stronger than A_i.
+var best = p * boss.sum()
+var above = 0
+var above_sum = 0
+boss.sort()
+for a in boss.rev:
+    best min= h * a + p * (above_sum - above * a)
+    above += 1
+    above_sum += a
 print(best)
