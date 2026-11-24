@@ -63,7 +63,7 @@ documented.
 | R05.4 | 4. Parameters and calls (R4) | supported |  |
 | R05.5 | 5. Returns (R5) | supported |  |
 | R05.6 | 6. `lends` fns and projections | supported |  |
-| R05.7 | 7. Lent values (R6 to R8) | supported | 1 known gap |
+| R05.7 | 7. Lent values (R6 to R8) | supported |  |
 | R05.8 | 8. Overlap and order (R9 to R11) | supported |  |
 | R05.9 | 9. Generators and views (R12) | supported |  |
 | R05.10 | 10. Closures and nested fns | supported |  |
@@ -116,7 +116,7 @@ documented.
 | R04a.8 | G. Revision: changing your mind | supported |  |
 | R04a.9 | H. Keys of the other views | supported |  |
 | R04a.11 | Recommendation: identity everywhere (I) | supported |  |
-| R04b.1 | The rules | supported | 1 known gap |
+| R04b.1 | The rules | supported |  |
 | R04b.3 | User helpers | supported |  |
 | R04b.4 | Library code | supported |  |
 | R04b.5 | Spec changes this implies | supported |  |
@@ -151,7 +151,7 @@ documented.
 | std-matrix | library: matrix | documented | stdlib: outside the Milestone 1 contest staples |
 | std-mo | library: mo | documented | stdlib: outside the Milestone 1 contest staples |
 | std-mod | library: mod | supported |  |
-| std-models | library: models | supported |  |
+| std-models | library: models | supported | 1 known gap |
 | std-ntt | library: ntt | documented | stdlib: outside the Milestone 1 contest staples |
 | std-opt | library: opt | documented | stdlib: outside the Milestone 1 contest staples |
 | std-pair | library: pair | documented | stdlib: outside the Milestone 1 contest staples |
@@ -175,7 +175,6 @@ documented.
 
 ## Known gaps
 
-- core-04/zip-keyed-by-first.cp: fail
-- core-05/exercise-04-var-from-lent-param.cp: fail
+- std-models/mo.cp: fail
 - std-segtree/closure-folds-optional-monoid-folds-plain.cp: fail
 - std-segtree/closure-op-picks-index.cp: fail
