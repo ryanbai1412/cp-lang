@@ -740,6 +740,12 @@ impl<'p> Emitter<'p> {
                     {
                         // The fn may hand the parts as references ([`Emitter::lent_parts`]).
                         (format!("const auto& {var}"), &first)
+                    } else if matches!(&seq.kind, ExprKind::Call(f, _)
+                    if self.pushers.get(f).is_some_and(|&acc| {
+                        crate::uses::places::yields_owned(&self.program.fns[*f].body, acc)
+                    })) {
+                        // Every value the fn yields is one it makes: take each owned.
+                        (format!("{cpp} {var}"), &first)
                     } else {
                         (format!("const {cpp}& {var}"), &first)
                     };
@@ -781,6 +787,7 @@ impl<'p> Emitter<'p> {
                     }
                     _ => String::new(),
                 };
+                let mut owned_holder = false;
                 let holder = if let Some((items, elem)) = lit_arr {
                     let elem_cpp = if matches!(elem.as_ref(), Ty::Bool) {
                         "bool".to_string()
@@ -825,6 +832,7 @@ impl<'p> Emitter<'p> {
                         );
                         self.line(out, &format!("const {holder_ty}& {held} = *{held}_h;"));
                     } else {
+                        owned_holder = true;
                         self.line(out, &format!("{holder_ty} {held} = {seq_text};"));
                         let lent = matches!(&seq.kind, ExprKind::Call(f, _) if self.lent_roots.contains_key(f));
                         if (lent || held_root(crate::uses::in_place(seq)).is_some())
@@ -850,8 +858,15 @@ impl<'p> Emitter<'p> {
                     self.expr_elem_layout(seq),
                     Some(cpl_ir::NarrowLayout::Tuple(_))
                 );
+                // The walked list is a copy only the loop holds: it dies with the loop.
+                let dying = !is_grid
+                    && !is_map
+                    && matches!(seq.ty, Ty::List(_) | Ty::Array { .. })
+                    && owned_holder;
                 let decl = if ty.is_scalar() || var != name || narrow_tuple_iter {
                     format!("{cpp} {var}")
+                } else if dying {
+                    format!("{cpp}& {var}")
                 } else {
                     format!("const {cpp}& {var}")
                 };

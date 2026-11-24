@@ -705,6 +705,7 @@ impl<'p> Emitter<'p> {
                 && self.closure_id.is_none()
                 && matches!(place.kind, PlaceKind::Local(slot) if Some(slot) == self.pushing) =>
             {
+                let owned = crate::uses::places::makes_own_value(&items[0]);
                 let item = self.flatten(&items[0], out);
                 // A tuple of scalars goes to the callback part by part.
                 let spread = self.sites.is_none()
@@ -738,6 +739,10 @@ impl<'p> Emitter<'p> {
                             _ => match self.lent_parts(item) {
                                 Some(parts) => {
                                     format!("cpl_f(std::forward_as_tuple({}))", parts.join(", "))
+                                }
+                                // A block's own local dies with the yield: hand it on.
+                                None if owned && matches!(item.kind, ExprKind::Local(_)) => {
+                                    format!("cpl_f(std::move({}))", self.yielded(item, out))
                                 }
                                 None => format!("cpl_f({})", self.yielded(item, out)),
                             },
