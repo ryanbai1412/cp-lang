@@ -23,7 +23,7 @@ fn answers(own: Str, other: Str) -> List<Int>:
             out.push(m + 1 + max(0, ws.last! + len - 1 - m))
         else:
             let c = gaps.first_ge(len) ?? gaps.len
-            out.push(1 + pre[c] + len * (gaps.len - c) + len)
+            out.push(1 + pre.cut(c) + len * (gaps.len - c) + len)
     out
 
 print(answers(s, t))

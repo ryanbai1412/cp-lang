@@ -2,7 +2,7 @@
 let n: 2..=2e5 = read()
 let a: [0..n]-1e9..=1e9 = read()
 let pre = a.scan(+)
-let ps = [pre[i] for i in 1..=n]
+let ps = [pre.cut(i) for i in 1..=n]
 if ps.any(x => x < 0):
     print(-1)
 else:

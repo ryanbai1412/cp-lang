@@ -7,10 +7,10 @@ let comb = Comb<Z>()
 let (n, m, q): (1..=2e5, 1..=2e5, 1..=2e5) = read()
 let a: [0..n]-1e9..=1e9 = read()
 let pre = a.scan(+)
-let total = pre[n]
+let total = pre.cut(n)
 var pos: Map<Int, List<Int>> = Map()
 for s in 1..n:
-    (pos[pre[s] + pre[n - s] - total] ??= []).push(s)
+    (pos[pre.cut(s) + pre.cut(n - s) - total] ??= []).push(s)
 fn count_in(w: Int, l: Int, r: Int) -> Int:
     let xs = pos.get(w) ?? []
     (xs.first_gt(r) ?? xs.len) - (xs.first_ge(l) ?? xs.len)

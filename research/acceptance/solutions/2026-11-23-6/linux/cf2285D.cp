@@ -5,10 +5,10 @@ let cb = Comb<Z>()
 let (n, m, q): (1..=2e5, 1..=2e5, 1..=2e5) = read()
 let a: [0..n]-1e9..=1e9 = read()
 let sc = a.scan(+)
-let total = sc[n]
+let total = sc.cut(n)
 var pos = HashMap<Int, List<Int>>()
 for s in 1..n:
-    (pos[sc[s] + sc[n - s] - total] ??= []).push(s)
+    (pos[sc.cut(s) + sc.cut(n - s) - total] ??= []).push(s)
 
 fn cnt(x: Int, lo: Int, hi: Int) -> Int:
     if lo > hi:
