@@ -199,7 +199,7 @@ impl Builder<'_> {
     pub(super) fn cell<'t>(&self, ty: &'t Type) -> Option<&'t Type> {
         match &ty.kind {
             TypeKind::Named { name, args }
-                if matches!(name.text.as_str(), "List" | "Iter" | "Seq") && args.len() == 1 =>
+                if args.len() == 1 && checked_type(&name.text, 1).held_elem().is_some() =>
             {
                 Some(&args[0])
             }
@@ -219,7 +219,7 @@ impl Builder<'_> {
         match &ty.kind {
             // A view of `S` reads as `S` does.
             TypeKind::Named { name, args }
-                if matches!(name.text.as_str(), "Slice" | "Rev") && args.len() == 1 =>
+                if args.len() == 1 && checked_type(&name.text, 1).view_source().is_some() =>
             {
                 self.shape(&args[0])
             }
@@ -240,7 +240,7 @@ impl Builder<'_> {
                     Some(hi) => ((**hi).clone(), *inclusive),
                     None => (int(DEFAULT_INT.1), true),
                 };
-                let (lo, hi) = Self::inclusive(&lo, &hi, inclusive);
+                let (lo, hi) = Self::inclusive(&self.valued(&lo), &self.valued(&hi), inclusive);
                 names_in(&lo, &mut self.spec.sizes);
                 names_in(&hi, &mut self.spec.sizes);
                 Ok(Shape::Int { lo, hi })
@@ -249,24 +249,24 @@ impl Builder<'_> {
                 if let Some(shape) = self.in_bound(&name.text, |this, ty| this.shape(ty)) {
                     return shape;
                 }
-                match name.text.as_str() {
+                match checked_type(&name.text, 0) {
                     // A whole number is an `F64` too; drawing fractions
                     // waits for a fixed-point value (decision 25.21).
-                    "Int" | "I128" | "F64" => {
+                    Ty::Int | Ty::I128 | Ty::Float => {
                         return Ok(Shape::Int {
                             lo: int(DEFAULT_INT.0),
                             hi: int(DEFAULT_INT.1),
                         })
                     }
-                    "U64" => {
+                    Ty::U64 => {
                         return Ok(Shape::Int {
                             lo: int(0),
                             hi: int(DEFAULT_INT.1),
                         })
                     }
-                    "Char" => return Ok(Shape::Char { lo: b'a', hi: b'z' }),
-                    "Bool" => return Ok(Shape::Bool),
-                    "Str" => return Ok(Shape::WORD),
+                    Ty::Char => return Ok(Shape::Char { lo: b'a', hi: b'z' }),
+                    Ty::Bool => return Ok(Shape::Bool),
+                    Ty::Str => return Ok(Shape::WORD),
                     _ => {}
                 }
                 if self.std_scope.is_some() {
@@ -372,20 +372,6 @@ impl Builder<'_> {
                     ],
                     binds: vec![vec![Some(start)], Vec::new()],
                 })
-            }
-            // `Mod<P>` reads a residue, `0..P`.
-            TypeKind::Named { name, args } if name.text == "Mod" && args.len() == 1 => {
-                let p = match &args[0].kind {
-                    TypeKind::Value(p) => (**p).clone(),
-                    TypeKind::Named { name, args } if args.is_empty() => Expr {
-                        kind: ExprKind::Name(name.text.clone()),
-                        span: name.span,
-                    },
-                    _ => return Err(unsupported(self)),
-                };
-                let hi = binary(BinOp::Sub, p, int(1));
-                names_in(&hi, &mut self.spec.sizes);
-                Ok(Shape::Int { lo: int(0), hi })
             }
             // `Perm<V>` and `Tree<V>`: a permutation of a domain, and the
             // edges of a tree on it.
@@ -1525,6 +1511,25 @@ impl Builder<'_> {
         shape
     }
 
+    /// `e` with each std generic it names (`P` in `Mod<P>(pub v: 0..P)`)
+    /// replaced by the value it stands for.
+    fn valued(&self, e: &Expr) -> Expr {
+        match &e.kind {
+            ExprKind::Name(name) => match self.bound.get(name).map(|b| &b.ty.kind) {
+                Some(TypeKind::Value(p)) => (**p).clone(),
+                Some(TypeKind::Named { name, args }) if args.is_empty() => Expr {
+                    kind: ExprKind::Name(name.text.clone()),
+                    span: name.span,
+                },
+                _ => e.clone(),
+            },
+            ExprKind::Binary { op, lhs, rhs, .. } => {
+                binary(*op, self.valued(lhs), self.valued(rhs))
+            }
+            _ => e.clone(),
+        }
+    }
+
     /// Runs `f` on what the std generic `name` stands for, in the text and
     /// scope it is written in.
     fn in_bound<R>(&mut self, name: &str, f: impl FnOnce(&mut Self, &Type) -> R) -> Option<R> {
@@ -1583,7 +1588,13 @@ impl Builder<'_> {
                         return None;
                     }
                     let new = method("new", 1).and_then(|f| f.params[0].ty.clone());
+                    // A public field says which values the struct holds
+                    // (`Mod<P>(pub v: 0..P)`), tighter than what `new`
+                    // reduces into one.
                     let (types, fields) = match new {
+                        Some(_) if decl.fields.len() == 1 && decl.fields[0].public => {
+                            (vec![decl.fields[0].ty.clone()], false)
+                        }
                         Some(param) if decl.fields.len() == 1 => (vec![param], false),
                         _ if decl.fields.iter().all(|f| f.public) => {
                             (decl.fields.iter().map(|f| f.ty.clone()).collect(), true)

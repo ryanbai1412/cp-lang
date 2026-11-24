@@ -11,7 +11,7 @@
 //! vertices. Bounds can use the values read before them, which is what
 //! lets the generator and the shrinker keep every case valid.
 
-use cpl_check::{set_domain, SetDomain};
+use cpl_check::{set_domain, SetDomain, Ty};
 use cpl_diag::Span;
 use cpl_syntax::ast::{
     AssignOp, BinOp, Block, CmpOp, Cond, Expr, ExprKind, FnBody, Pattern, PatternKind, Stmt,
@@ -355,7 +355,7 @@ impl cpl_syntax::visit::Visitor for Sizes<'_> {
             return;
         };
         let filled = matches!(&callee.kind, ExprKind::Field { base, name }
-            if name.text == "filled" && matches!(&base.kind, ExprKind::Name(list) if list == "List"));
+            if name.text == "filled" && matches!(&base.kind, ExprKind::Name(list) if checked_type(list, 1).is_list()));
         if let (true, Some(len)) = (filled, args.first()) {
             names_in(&len.value, self.0);
         }
@@ -1036,5 +1036,20 @@ impl InputSpec {
         };
         sizes_count(&mut spec);
         Ok(spec)
+    }
+}
+
+/// What the checker makes of a type written `name` with `arity` arguments,
+/// the arguments left unknown: how the generator asks what a type is
+/// rather than matching its name.
+pub(super) fn checked_type(name: &str, arity: usize) -> Ty {
+    let args = vec![Ty::Unknown; arity];
+    match cpl_check::prelude_type(name) {
+        Some(Ty::Named { name, .. }) => Ty::Named { name, args },
+        Some(ty) => ty,
+        None => Ty::Named {
+            name: name.to_string(),
+            args,
+        },
     }
 }

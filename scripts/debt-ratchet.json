@@ -138,7 +138,7 @@
   "cpp_sunk_copies": 12,
   "codegen_effect_guesses": 0,
   "near_dup_fns": 8,
-  "consumer_rederived": 37,
+  "consumer_rederived": 26,
   "rs_near_cap": [],
   "skip_lists": 34,
   "dead_code_allows": 0,

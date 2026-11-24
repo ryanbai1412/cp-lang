@@ -146,7 +146,7 @@ pub(super) fn elems(items: &[(u32, cpl_syntax::ParsedItem)]) -> HashMap<String, 
                             Some((base, (**elem).clone()))
                         }
                         (PatternKind::Name(_), Some(TypeKind::Named { name, args }))
-                            if name.text == "List" && args.len() == 1 =>
+                            if args.len() == 1 && checked_type(&name.text, 1).is_list() =>
                         {
                             Some((base, args[0].clone()))
                         }
@@ -741,7 +741,9 @@ pub(super) fn typed_read<'a>(
     if let ExprKind::Comprehension { body, clauses } = &init.kind {
         // `let a: List<T> = [read() for _ in lo..hi]` reads `[lo..hi]T`.
         let elem = ty.and_then(|ty| match &ty.kind {
-            TypeKind::Named { name, args } if name.text == "List" && args.len() == 1 => {
+            TypeKind::Named { name, args }
+                if args.len() == 1 && checked_type(&name.text, 1).is_list() =>
+            {
                 Some(&args[0])
             }
             _ => None,

@@ -198,6 +198,20 @@ impl Ty {
         }
     }
 
+    /// The element of a sequence made of its values (`List<T>`,
+    /// `Iter<T>`, `Seq<T>`), so read as a count then that many values;
+    /// a `Range<T>` is its two ends instead.
+    pub fn held_elem(&self) -> Option<&Ty> {
+        match self {
+            Ty::Named { name, args }
+                if matches!(name.as_str(), "List" | "Iter" | "Seq") && args.len() == 1 =>
+            {
+                args.first()
+            }
+            _ => None,
+        }
+    }
+
     /// True when this type implements the built-in `Seq` trait.
     /// True for `List<T>`.
     pub fn is_list(&self) -> bool {
