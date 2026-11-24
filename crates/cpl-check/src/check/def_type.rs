@@ -1,14 +1,26 @@
 //! The type a declared name stands for when written in a type: a struct with its
 //! type arguments checked and defaults filled, an enum, an alias, a domain.
 
+use super::types::struct_generic_bounds;
 use super::*;
 use cpl_diag::msgs;
 
 impl Checker<'_> {
+    /// A std intrinsic type's arguments meet its declared bounds where the type is
+    /// written: `HashSet<F>` with `F` not `Hash` (`HashSet<K: Hash>`, R12.14.6).
+    pub(super) fn intrinsic_args_meet_bounds(&mut self, name: &str, span: Span, args: &[Ty]) {
+        if let Some(s) = (prelude::std_intrinsic_types().iter()).find(|s| s.name.text == name) {
+            let generics: Vec<String> = s.generics.iter().map(|g| g.text.clone()).collect();
+            let bounds = struct_generic_bounds(&generics, &s.bounds);
+            let getters = vec![None; bounds.len()];
+            self.struct_args_meet_bounds(name, span, &generics, &bounds, &getters, args);
+        }
+    }
+
     /// A struct's type arguments meet its parameters' bounds, reported at the type the
     /// user wrote: `Graph<V, E>` with `E` an edge domain is not an arc type of `V`
     /// (`A: Target<V>`), caught here rather than inside a std body (R08.2.5).
-    pub(super) fn struct_args_meet_bounds(
+    fn struct_args_meet_bounds(
         &mut self,
         name: &str,
         span: Span,

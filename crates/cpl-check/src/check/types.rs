@@ -499,12 +499,7 @@ impl<'a> Checker<'a> {
                     return Ty::Error;
                 }
             }
-            if let Some(s) = (prelude::std_intrinsic_types().iter()).find(|s| s.name.text == name) {
-                let generics: Vec<String> = s.generics.iter().map(|g| g.text.clone()).collect();
-                let bounds = struct_generic_bounds(&generics, &s.bounds);
-                let getters = vec![None; bounds.len()];
-                self.struct_args_meet_bounds(name, span, &generics, &bounds, &getters, &args);
-            }
+            self.intrinsic_args_meet_bounds(name, span, &args);
             return match ty {
                 Ty::Named { name, .. } => Ty::Named { name, args },
                 other => other,
@@ -1839,18 +1834,6 @@ impl<'a> Checker<'a> {
         self.expect_fits(got, want, at, message)
     }
 
-    /// Is there a written `impl trait_name for name`?
-    pub(super) fn has_impl(&mut self, name: &str, trait_name: &str) -> bool {
-        self.global(&crate::def::impl_name(Some(trait_name), name))
-            .is_some()
-            || self
-                .env
-                .impls(name)
-                .into_iter()
-                .filter_map(|(t, _)| t)
-                .any(|t| t.split('<').next().unwrap_or(&t) == trait_name)
-    }
-
     /// True when `ty` can be passed to `print(...)`: a written `impl Show`
     /// is its print hook, else it prints field by field.
     /// When `allow_none` is true (`print(x, none: "...")`), `?T` is printable if `T` is.
@@ -1993,7 +1976,7 @@ fn value_domains(fields: &[&str], body: &[ast::Stmt]) -> Vec<String> {
 }
 
 /// `A: Tagged<T>` on `struct Hold<T, A>` as `(1, "Tagged", [Some(0)])`.
-fn struct_generic_bounds(
+pub(super) fn struct_generic_bounds(
     generics: &[String],
     bounds: &[ast::Bound],
 ) -> Vec<(usize, String, Vec<Option<usize>>)> {

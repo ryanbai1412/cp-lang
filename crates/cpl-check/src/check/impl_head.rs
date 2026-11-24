@@ -265,6 +265,18 @@ impl Checker<'_> {
         self.param_bounds.truncate(outer);
     }
 
+    /// Is there a written `impl trait_name for name`?
+    pub(super) fn has_impl(&mut self, name: &str, trait_name: &str) -> bool {
+        self.global(&crate::def::impl_name(Some(trait_name), name))
+            .is_some()
+            || self
+                .env
+                .impls(name)
+                .into_iter()
+                .filter_map(|(t, _)| t)
+                .any(|t| t.split('<').next().unwrap_or(&t) == trait_name)
+    }
+
     /// What a type's own `Eq` or `Ord` decides about `trait_name` before its fields do: its own
     /// `Ord` gives its `==`, and its own `Eq` or `Ord` would disagree with a field-by-field `Ord`
     /// or `Hash` (R08.1.6).
