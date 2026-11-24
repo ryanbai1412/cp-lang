@@ -3,7 +3,18 @@ cards 1..4, at most 40 of each, summing to N - 1. size >= 350 gives the largest
 state spaces: up to 40 of each card with N - 1 >= 329 (at most 120 cards fit)."""
 import random, sys
 if sys.argv[1] == "--max":
-    sys.argv[1:] = ["0", "350"]
+    # N = 350 and M = 120 together: 120 cards of at most 40 per kind moving 349 squares, the
+    # counts chosen for the most states (each count + 1, multiplied).
+    best = max(((a, b, c, d) for a in range(41) for b in range(41) for c in range(41)
+                for d in [120 - a - b - c] if 0 <= d <= 40 and a + 2 * b + 3 * c + 4 * d == 349),
+               key=lambda t: (t[0] + 1) * (t[1] + 1) * (t[2] + 1) * (t[3] + 1))
+    rng = random.Random(0)
+    cards = [k + 1 for k, c in enumerate(best) for _ in range(c)]
+    rng.shuffle(cards)
+    print(350, len(cards))
+    print(" ".join(str(100 if rng.random() < 0.3 else rng.randint(0, 100)) for _ in range(350)))
+    print(" ".join(map(str, cards)))
+    sys.exit()
 seed, size = int(sys.argv[1]), int(sys.argv[2])
 rng = random.Random(seed)
 while True:
