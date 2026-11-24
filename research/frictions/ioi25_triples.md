@@ -1,0 +1,118 @@
+# Friction report: ioi25_triples
+
+## Dream
+
+```cp
+for (g, group) in at.group(by: x => h[x] - x):
+    if group.len <= isqrt(h.len):
+        for a in 0..group.len:
+            for b in a + 1..group.len: crossed(group[a], group[b], group[a] + h[group[b]])
+    else:
+        for k in at if (k - g - h[k]) % 2 == 0:
+            crossed((k - g - h[k]) / 2, (k - g + h[k]) / 2, k)
+```
+
+Part I counts the triples by which position holds the largest distance, k - i. If an end
+holds it, or the middle holds it with h[i] = j - i, one position fixes the triple. The
+remaining middle case pairs positions with equal h[x] - x: all pairs in groups of at most
+sqrt(n), and one solve per k in the larger groups. Part II puts peaks at the midpoints of a
+random even point set and keeps the best of 8e5 / M tries. This is the official model
+solution's algorithm. The port and the dream share the counting code, and both are stdin
+programs that read the sample grader's input. The dream as first written failed `cpl check`
+on the names below. The errors quoted come from that dream (commit 44d032e0f) on a freshly
+built `cpl`.
+
+## Std names and syntax the dream wanted that don't exist
+- **Where:** `dream.cp` as first written. Each name, its error and what the dream uses now:
+
+| Wanted | Error | Used instead |
+|---|---|---|
+| `let (i, j, k) = sort3(x, y, z)` | ``error[E0201]: no `sort3` in scope`` | a local `fn sort3(a, b, c) -> (Int, Int)` giving the min and middle |
+| `(i, j, k) all in I` | ``error[E0103]: expected `:` after the condition, found a name`` | `i < j < k and i in at and k in at` (only the ends need the check) |
+| `let found = Bag<(I, I, I)>()` with `.add` | ``error[E0201]: no `Bag` in scope, and not in the stdlib (yet)`` | `var found = 0`, and each candidate names the position `top` that holds k - i, so every triple counts once |
+| `Rng(seed)` with no import | ``error[E0201]: no `Rng` in scope`` | `use std.rand.{Rng}` and `Rng.new(seed)` |
+| `.max_by(h => count_triples(h))` | ``error[E0203]: a `List<List<Int>>` has no method `max_by` `` | `.map(h => (count_triples(h), h)).max(by: p => p.0)!.1` |
+
+- **What felt wrong:** `Bag` was there to deduplicate. The same triple can be found from two
+  positions, and a set of triples is the obvious way to count it once. Without it, the dream
+  must prove a canonical finder for every triple. The first version without the set counted
+  some triples twice: it disagreed with orig.cpp on gen.py seeds 51, 77 and 383 (7 vs 8, 29
+  vs 30, 52 vs 53). The `top` argument fixes this. `all in` reads naturally next to `x in I`.
+  `sort3` and `max_by` are names a C++ or Python user reaches for first. `max_by` is the same
+  friction as research/frictions/ioi25_worldmap.md.
+- **Goal it hurts:** express, hard-to-get-wrong.
+- **Ideal code:** `let found = Bag<(I, I, I)>()` with `found.add(ok(...))` and
+  `found.len`, `(i, j, k) all in I`, and `(x, y, z).sorted()` on a homogeneous tuple.
+- **General fix:** in std, `Bag` (or `Set.extend` over an optional, the form
+  corpus/gold/ioi25_triples.cp writes), and `sorted` on homogeneous tuples. In the parser,
+  either accept `xs all in R` or give E0103 a help line naming `[..].all(x => x in R)`.
+  For a missing `max_by`, E0203 could offer `max(by:)`. Missing types such as `Rng` could
+  get a help line naming the `use`. Owner: stdlib lead (Content), diagnostics.
+- **Severity:** high (the double count is a silent wrong answer), low (the rest).
+
+## The `@grader` signatures are dropped
+- **Where:** the dream as first written, `@grader fn count_triples(h: List<1..2e5>) -> Int`
+  and `@grader fn construct_range(m: 3..=2e5, k: Int) -> List<Int>`. Run without a grader,
+  a `@grader fn` program stops with `cpl: the judge's grader calls ..., and ... has no
+  `main` without it: run it with `--grader grader.cpp`, or put grader.cpp beside its tests`.
+  The dream now ends with the sample grader's I/O loop (`part`, then `N, H` or `M K`).
+- **What felt wrong:** the program verified is not the program submitted. The judge's
+  interface is two typed functions, and the dream copies the grader instead. The official
+  grader in the task archive carries the judge's secret tokens, so it can't be committed.
+  research/frictions/ioi25_worldmap.md links the public sample grader from `dream.tests/`
+  instead. This package doesn't do that yet.
+- **Goal it hurts:** evidence, submission.
+- **Ideal code:** the two `@grader fn`s and nothing else.
+- **General fix (tools):** the same as the `@grader` section of
+  research/frictions/ioi25_souvenirs.md: a package commits the sample grader, and
+  `corpus.py` passes `--grader` for the dream. The port could then share it.
+- **Severity:** medium.
+
+## `for (i, j) in group.pairs()` builds every pair first
+- **Where:** `dream.cp` as first written, `for (i, j) in group.pairs(): crossed(i, j, i +
+  h[j])`, now nested index loops (see the Dream section). `cpl build` turns that loop into
+  `std::vector<std::tuple<ll, ll>> t7 = m2_pairs_Lst_Int_Int_131(group);`. That function
+  first copies `group` (`self.collect()`), then `push_back`s all |group|^2 / 2 pairs before
+  the loop starts. In the same program, `for (x, y) in s.pairs() if ...` is emitted as a
+  streaming `cpl_each_m2_pairs_...` callback. `pairs`'s doc (std/seq.cp) says "O(1) per
+  pair". It doesn't say that a plain `for` allocates them all.
+- **Measured:** these are `cpl build` plus `g++ -O2`, best of 5. The Part I `--max` case is
+  N = 200000. The Part II case is M = 200000 with five tries.
+
+| Inner loop | Part I `--max` | Part II M = 200000 |
+|---|---|---|
+| `group.pairs()` (first dream) | 0.29 s | 1.42 s |
+| index loops | 0.20 s | 0.97 s |
+| `for s in [-1, 1]` unrolled into two cases, still `pairs()` | 0.30 s | 1.42 s |
+
+  Under `cpl test` with the 2000 ms limit, the first dream took 2221 ms on Part II (M =
+  200000), a TLE. It also tripped the `slow --max` gate against orig.cpp. Unrolling the
+  two-element list literal had no measurable effect, so the slowness is `pairs()` alone.
+  `dream.cp` still has the unrolled form, and `for s in [-1, 1]` could come back at no cost.
+  The tries went from 1e6 / M to 8e5 / M (four at M = 200000) for headroom. The dream now
+  takes 1486 ms there.
+- **What felt wrong:** `pairs()` is the obvious way to write "every pair in a small group",
+  but in a hot loop it costs a third of the runtime. The cost line doesn't show this, so the
+  obvious way isn't the fast way. `cpl lint` also pushes back to the slow form: on the index
+  loops it warns ``warning[L0543]: `for b in a + 1..group.len` walks each pair `a < b` by
+  hand`` with `help: write `for (x, y) in group.pairs()``. The port keeps that warning.
+- **Goal it hurts:** performance.
+- **Ideal code:** `for (i, j) in group.pairs(): crossed(i, j, i + h[j])`, as fast as the
+  index loops.
+- **General fix (codegen):** emit a `for` over a `yields` fn as the streaming
+  `cpl_each_` callback whenever the body allows it (it already does for the filtered form).
+  Have `pairs` borrow `self` when it is a `List`, not `collect()` it. This helps every
+  `pairs`/`windows`-style generator in a hot loop. Owner: codegen.
+- **Severity:** medium.
+
+## Measurements
+
+- **Tokens** (scripts/ports-page.py tokenizers): port 837, dream 832, original 1171 (1132
+  after `strip_cpp_library`; it includes the sample grader's `main`).
+- **Runtime and memory** (`-O2`): on the `gen.py --max` input (Part I, N = 200000), the port
+  takes 0.20 s and 11.3 MB, and orig.cpp takes 0.22 s and 12.5 MB. On Part II with M =
+  200000, the port takes 0.84 s and 21.1 MB, and orig.cpp takes 1.13 s and 14.4 MB.
+- **Emitted C++:** port 28713 bytes, dream 27057 bytes (`cpl build`, judge `generic`).
+- **Agreement:** the dream and port match orig.cpp on all 29 package cases, and the dream
+  matches it on 1500 gen.py seeds (sizes 10, 40 and 300). orig.cpp itself agrees with the
+  archive's O(n^3) and O(n^2) correct solutions.
