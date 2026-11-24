@@ -385,7 +385,7 @@ pub struct SortedBag<K>:
             if lo_inc: self.rank(a) else: self.rank_le(a)
         else:
             0
-        if cnt_hi > cnt_lo: cnt_hi - cnt_lo else: 0
+        cnt_hi - cnt_lo
 
     fn range_each(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> yields K:
         var s = if let a = lo: self.ge(a, lo_inc) else: self.edge(false)
@@ -415,8 +415,10 @@ pub struct SortedBag<K>:
     /// traps: never
     /// example: `SortedBag.of([5, 2, 2, 1]).nth(2) == Some(2)`
     /// example: `SortedBag.of([5, 2, 2, 1]).nth(4) == None`
-    pub fn nth(self, i: Int) -> ?K:
-        let s = self.slot_at(i)
+    pub fn nth(self, i: Int) -> ?K = self.key_at(self.slot_at(i))
+
+    // The key at slot `s`, or `None` for -1.
+    fn key_at(self, s: Int) -> ?K:
         unchecked: return if s >= 0: keys[s] else: None
 
     // The slot of the `i`-th smallest element, or -1.
@@ -494,12 +496,12 @@ pub struct SortedBag<K>:
         ), "drain takes either after: or before:, not both"
         var out: List<K> = []
         if let b = before:
-            while let x = self.range_last(None, false, Some(b), false):
+            while let x = self.key_at(self.le(b, false)):
                 if not ok(x): break
                 let _ = self.remove(x)
                 out.push(x)
         elif let a = after:
-            while let x = self.range_first(Some(a), false, None, false):
+            while let x = self.key_at(self.ge(a, false)):
                 if not ok(x): break
                 let _ = self.remove(x)
                 out.push(x)
@@ -649,7 +651,11 @@ pub struct SortedBag<K>:
     /// traps: never
     /// example: `SortedBag.of([5, 2, 2]).each().collect() == [2, 2, 5]`
     pub fn each(self) -> yields K:
-        for k in self.range_each(None, false, None, false): yield k
+        var s = self.edge(false)
+        unchecked:
+            while s >= 0:
+                for _ in 0..ws[s]: yield keys[s]
+                s = self.step(s, false)
 
     /// Visit every element, duplicates included, in descending order.
     ///
@@ -659,7 +665,11 @@ pub struct SortedBag<K>:
     /// traps: never
     /// example: `SortedBag.of([5, 2, 2]).each_rev().collect() == [5, 2, 2]`
     pub fn each_rev(self) -> yields K:
-        for k in self.range_each_rev(None, false, None, false): yield k
+        var s = self.edge(true)
+        unchecked:
+            while s >= 0:
+                for _ in 0..ws[s]: yield keys[s]
+                s = self.step(s, true)
 
     /// Every element in ascending order, repeated by multiplicity.
     ///
@@ -2807,7 +2817,7 @@ pub struct SortedRange<K>:
     ///
     /// cost: \(O(\log n)\) expected
     /// empty: `let b = SortedBag.of([1, 5]); b.range(2..5).first == None`
-    /// ties: `let b = SortedBag.of([1, 3, 3]); b.range(2..5).first == Some(3)`
+    /// ties: `let b = SortedBag.of([1, 3, 3]); b.range(2..5).first == Some(3) and b.range(3..=3).first == Some(3) and b.range(..=1).first == Some(1) and b.range(..1).first == None`
     /// traps: never
     /// example: `SortedSet.of([1, 3, 7]).range(2..).first == Some(3)`
     @get pub fn first(self) -> ?K = bag.range_first(lo, lo_inc, hi, hi_inc)
@@ -2816,7 +2826,7 @@ pub struct SortedRange<K>:
     ///
     /// cost: \(O(\log n)\) expected
     /// empty: `let b = SortedBag.of([1, 5]); b.range(2..5).last == None`
-    /// ties: `let b = SortedBag.of([3, 3, 5]); b.range(2..5).last == Some(3)`
+    /// ties: `let b = SortedBag.of([3, 3, 5]); b.range(2..5).last == Some(3) and b.range(3..4).last == Some(3) and b.range(5..).last == Some(5) and b.range(..=3).last == Some(3)`
     /// traps: never
     /// example: `SortedSet.of([1, 3, 7]).range(..=6).last == Some(3)`
     @get pub fn last(self) -> ?K = bag.range_last(lo, lo_inc, hi, hi_inc)
@@ -2825,6 +2835,7 @@ pub struct SortedRange<K>:
     ///
     /// cost: \(O(\log n)\) expected
     /// empty: `let b = SortedBag.of([1, 5]); b.range(2..5).len == 0`
+    /// ties: `let b = SortedBag.of([3, 3, 5, 5]); b.range(3..=5).len == 4 and b.range(3..5).len == 2 and b.range(..=3).len == 2 and b.range(5..).len == 2 and b.range(..5).len == 2`
     /// traps: never
     /// example: `SortedBag.of([1, 3, 3, 7]).range(3..=3).len == 2`
     @get pub fn len(self) -> Int = bag.range_len(lo, lo_inc, hi, hi_inc)
