@@ -33,7 +33,7 @@ documented.
 | R01.5 | 1.5 Operators and precedence | supported |  |
 | R01.6 | 1.6 Statements | supported |  |
 | R01.7 | 1.7 Control flow | supported |  |
-| R01.8 | 1.8 Expressions | supported | 1 known gap |
+| R01.8 | 1.8 Expressions | supported |  |
 | R01.9 | 1.9 Items | supported |  |
 | R01.10 | 1.10 Grammar | supported |  |
 | R01.11 | 1.11 Rejected spellings | supported |  |
@@ -53,7 +53,7 @@ documented.
 | R03.3 | 3. Operations on niche types | supported |  |
 | R03.4 | 4. Overflow, in one table | supported |  |
 | R03.5 | 5. Modular numbers | supported |  |
-| R04.2 | The model in one paragraph | supported | 2 known gaps |
+| R04.2 | The model in one paragraph | supported | 1 known gap |
 | R04.3 | Positions and cuts move the same way | supported |  |
 | R04.4 | Two kinds of range, one type | supported |  |
 | R04.7 | Middle of a range | supported |  |
@@ -174,8 +174,6 @@ documented.
 
 ## Known gaps
 
-- core-01/stepped-range-is-a-value.cp: fail
-- core-04/named-product-domain-runs.cp: fail
 - core-04/rebased-str-indexes-from-zero.cp: fail
 - core-04/zip-keyed-by-first.cp: fail
 - core-05/exercise-04-var-from-lent-param.cp: fail

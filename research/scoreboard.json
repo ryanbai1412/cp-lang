@@ -167,7 +167,7 @@
         "core-01/spec-block-dist-fn.cp": "pass",
         "core-01/static-argument-value-arithmetic.cp": "pass",
         "core-01/static-expression-type-argument.cp": "pass",
-        "core-01/stepped-range-is-a-value.cp": "fail",
+        "core-01/stepped-range-is-a-value.cp": "pass",
         "core-01/stray-closer.cp": "pass",
         "core-01/tab-indent.cp": "pass",
         "core-01/table.cp": "pass",
@@ -628,7 +628,7 @@
         "core-04/lyndon-starts-are-keys.cp": "pass",
         "core-04/min-rotation-is-key.cp": "pass",
         "core-04/mod-int-operand-is-mod.cp": "pass",
-        "core-04/named-product-domain-runs.cp": "fail",
+        "core-04/named-product-domain-runs.cp": "pass",
         "core-04/nested-slice-below-view-start-traps.cp": "pass",
         "core-04/nth-element-renamed.cp": "pass",
         "core-04/nth-past-end-traps.cp": "pass",
@@ -3810,10 +3810,10 @@
         }
       ],
       "counts": {
-        "fail": 9,
-        "pass": 3737
+        "fail": 7,
+        "pass": 3739
       },
-      "passed": 3737,
+      "passed": 3739,
       "total": 3746
     },
     "corpus": {
