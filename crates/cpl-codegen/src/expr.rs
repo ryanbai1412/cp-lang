@@ -1657,14 +1657,18 @@ impl Emitter<'_> {
             Sign::NonNeg => Some(0),
             Sign::Unknown => None,
         };
-        let Some(floor) = sign.max(self.facts.lower_bound(home, value, 0)) else {
-            return false;
-        };
+        let floor = sign.max(self.facts.lower_bound(home, value, 0));
         let top = || self.facts.upper_bound(home, value, 0);
-        let lo_ok = lo.is_none_or(|lo| matches!(lo.kind, ExprKind::Int(l) if l <= floor));
+        let lo_ok = lo.is_none_or(|lo| match lo.kind {
+            ExprKind::Int(l) => floor.is_some_and(|f| l <= f),
+            _ => self.facts.at_least(home, value, lo, 0),
+        });
         let hi_ok = hi.is_none_or(|hi| match hi.kind {
             ExprKind::Int(h) => top().is_some_and(|t| t <= h),
-            _ => self.facts.sign(home, hi) != Sign::Unknown && top().is_some_and(|t| t <= 0),
+            _ => {
+                (self.facts.sign(home, hi) != Sign::Unknown && top().is_some_and(|t| t <= 0))
+                    || self.facts.at_most(home, value, hi, 0)
+            }
         });
         lo_ok && hi_ok
     }

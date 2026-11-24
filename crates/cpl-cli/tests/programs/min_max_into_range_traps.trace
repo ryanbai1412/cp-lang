@@ -1,0 +1,26 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"n":{"name":"n","type":"Int","kind":"scalar"},"x":{"name":"x","type":"Int","kind":"scalar"},"y":{"name":"y","type":"Int","kind":"scalar"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":14,"label":"let n: 1..=100 = read()","stage":"main","values":{"stdout":[],"n":7},"locals":{},"frames":[{"fn":"main","line":14}]},
+{"id":1,"line":15,"label":"let x: 0..=1000 = read()","stage":"main","values":{"stdout":[],"n":7,"x":500},"locals":{},"frames":[{"fn":"main","line":15}]},
+{"id":2,"line":16,"label":"let y: Int = read()","stage":"main","values":{"stdout":[],"n":7,"x":500,"y":-4},"locals":{},"frames":[{"fn":"main","line":16}]},
+{"id":3,"line":6,"label":"var c: 0..=V.count = 0","stage":"main","values":{"stdout":[],"n":7,"x":500,"y":-4},"locals":{"n":7,"x":500,"y":-4,"z":5,"c":0},"frames":[{"fn":"clamp","line":6},{"fn":"main","line":17}]},
+{"id":4,"line":7,"label":"c = min(x, V.count)","stage":"main","values":{"stdout":[],"n":7,"x":500,"y":-4},"locals":{"n":7,"x":500,"y":-4,"z":5,"c":7},"frames":[{"fn":"clamp","line":7},{"fn":"main","line":17}]},
+{"id":5,"line":8,"label":"var d: 3..=10 = 3","stage":"main","values":{"stdout":[],"n":7,"x":500,"y":-4},"locals":{"n":7,"x":500,"y":-4,"z":5,"c":7,"d":3},"frames":[{"fn":"clamp","line":8},{"fn":"main","line":17}]},
+{"id":6,"line":9,"label":"d = max(min(y, 10), 3)","stage":"main","values":{"stdout":[],"n":7,"x":500,"y":-4},"locals":{"n":7,"x":500,"y":-4,"z":5,"c":7,"d":3},"frames":[{"fn":"clamp","line":9},{"fn":"main","line":17}]},
+{"id":7,"line":10,"label":"print → 7 3","stage":"main","values":{"stdout":["7 3"],"n":7,"x":500,"y":-4},"locals":{"n":7,"x":500,"y":-4,"z":5,"c":7,"d":3},"checkpoint":"print 1","frames":[{"fn":"clamp","line":10},{"fn":"main","line":17}]},
+{"id":8,"line":11,"label":"var e: 0..=V.count = 0","stage":"main","values":{"stdout":["7 3"],"n":7,"x":500,"y":-4},"locals":{"n":7,"x":500,"y":-4,"z":5,"c":7,"d":3,"e":0},"frames":[{"fn":"clamp","line":11},{"fn":"main","line":17}]},
+{"id":9,"line":12,"label":"e = min(z, V.count)","stage":"main","values":{"stdout":["7 3"],"n":7,"x":500,"y":-4},"locals":{"n":7,"x":500,"y":-4,"z":5,"c":7,"d":3,"e":5},"frames":[{"fn":"clamp","line":12},{"fn":"main","line":17}]},
+{"id":10,"line":17,"label":"print → 15","stage":"main","values":{"stdout":["7 3","15"],"n":7,"x":500,"y":-4},"locals":{},"checkpoint":"print 2","frames":[{"fn":"main","line":17}]},
+{"id":11,"line":6,"label":"var c: 0..=V.count = 0","stage":"main","values":{"stdout":["7 3","15"],"n":7,"x":500,"y":-4},"locals":{"n":7,"x":500,"y":4,"z":-1,"c":0},"frames":[{"fn":"clamp","line":6},{"fn":"main","line":18}]},
+{"id":12,"line":7,"label":"c = min(x, V.count)","stage":"main","values":{"stdout":["7 3","15"],"n":7,"x":500,"y":-4},"locals":{"n":7,"x":500,"y":4,"z":-1,"c":7},"frames":[{"fn":"clamp","line":7},{"fn":"main","line":18}]},
+{"id":13,"line":8,"label":"var d: 3..=10 = 3","stage":"main","values":{"stdout":["7 3","15"],"n":7,"x":500,"y":-4},"locals":{"n":7,"x":500,"y":4,"z":-1,"c":7,"d":3},"frames":[{"fn":"clamp","line":8},{"fn":"main","line":18}]},
+{"id":14,"line":9,"label":"d = max(min(y, 10), 3)","stage":"main","values":{"stdout":["7 3","15"],"n":7,"x":500,"y":-4},"locals":{"n":7,"x":500,"y":4,"z":-1,"c":7,"d":4},"frames":[{"fn":"clamp","line":9},{"fn":"main","line":18}]},
+{"id":15,"line":10,"label":"print → 7 4","stage":"main","values":{"stdout":["7 3","15","7 4"],"n":7,"x":500,"y":-4},"locals":{"n":7,"x":500,"y":4,"z":-1,"c":7,"d":4},"checkpoint":"print 3","frames":[{"fn":"clamp","line":10},{"fn":"main","line":18}]},
+{"id":16,"line":11,"label":"var e: 0..=V.count = 0","stage":"main","values":{"stdout":["7 3","15","7 4"],"n":7,"x":500,"y":-4},"locals":{"n":7,"x":500,"y":4,"z":-1,"c":7,"d":4,"e":0},"frames":[{"fn":"clamp","line":11},{"fn":"main","line":18}]},
+{"id":17,"line":12,"label":"failed: -1 is outside `0..=V.count`","stage":"main","values":{"stdout":["7 3","15","7 4"],"n":7,"x":500,"y":-4},"locals":{"n":7,"x":500,"y":4,"z":-1,"c":7,"d":4,"e":0},"frames":[{"fn":"clamp","line":12},{"fn":"main","line":18}]}]}}}
+stderr:
+error[R0201]: -1 is outside `0..=V.count`
+  --> min_max_into_range_traps.cp:12:5
+   |
+12 |     e = min(z, V.count)
+   |     ^
+   = note: call stack: clamp (min_max_into_range_traps.cp:12) <- top level (min_max_into_range_traps.cp:18)
+   = help: the value leaves the range its variable was declared with: widen the type, or check the value first

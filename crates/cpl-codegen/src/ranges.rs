@@ -1089,6 +1089,11 @@ impl<'p> Facts<'p> {
                     _ => hi,
                 })
             }
+            // At most any argument with a bound.
+            ExprKind::Builtin(Builtin::Min, args) => args
+                .iter()
+                .filter_map(|arg| self.upper_bound(fn_id, arg, depth + 1))
+                .min(),
             ExprKind::Builtin(Builtin::Max, args) if !args.is_empty() => {
                 let mut hi = i64::MIN;
                 for arg in args {

@@ -176,3 +176,28 @@ print(go(b), bump(mut b))
     // A store to the field ends its guard.
     assert!(out.contains("check_range(w,"), "{out}");
 }
+
+#[test]
+fn a_min_with_the_range_end_or_a_max_with_its_start_stores_unchecked() {
+    let out = cpp("fn f(n: 1..=100, x: 0..=1000, y: Int) -> Int:
+    domain V = 0..n
+    var c: 0..=V.count = 0
+    c = min(x, V.count)
+    var d: 3..=10 = 3
+    d = max(min(y, 10), 3)
+    var e: 0..=V.count = 0
+    e = min(y, V.count)
+    c + d + e
+print(f(read(), read(), read()))
+");
+    assert!(out.contains("c = std::min<ll>(x, V_0_len);"), "{out}");
+    assert!(
+        out.contains("d = std::max<ll>(std::min<ll>(y, 10), 3);"),
+        "{out}"
+    );
+    // `y` may be negative, below the range's start.
+    assert!(
+        out.contains("e = cpl::check_range(std::min<ll>(y, V_0_len), 0, V_0_len"),
+        "{out}"
+    );
+}
