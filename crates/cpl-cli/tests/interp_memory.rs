@@ -99,31 +99,67 @@ fn peak_kb(spec: &Path, input: &Path) -> u64 {
     peak
 }
 
+/// The run on the `rank`th largest input, one test each so nextest spreads
+/// them over CI's test partitions.
+#[cfg(target_os = "linux")]
+fn largest_input_fits_the_judges_memory(rank: usize) {
+    let root = repo_root();
+    let inputs = largest_inputs(&root);
+    assert_eq!(inputs.len(), PROBLEMS, "fewer corpus problems with inputs");
+    let (name, input) = &inputs[rank];
+    let spec = root.join("corpus/problems").join(name).join("spec.cp");
+    let src = std::fs::read_to_string(&spec).expect("read spec");
+    let limit = cpl_contest::problem::Limits::of(&spec, &src).memory_kb;
+    let peak = peak_kb(&spec, input);
+    let known = KNOWN_OVER_MEMORY.iter().any(|(k, _)| k == name);
+    match (peak > limit, known) {
+        (true, false) => panic!(
+            "{name}: `cpl run` peaks at {} MB on {}, over the {} MB limit",
+            peak / 1024,
+            input.display(),
+            limit / 1024
+        ),
+        (false, true) => panic!(
+            "{name}: peaks at {} MB, under the {} MB limit now; delete it from KNOWN_OVER_MEMORY",
+            peak / 1024,
+            limit / 1024
+        ),
+        _ => {}
+    }
+}
+
 #[test]
 #[cfg(target_os = "linux")]
-fn the_interpreter_runs_the_largest_corpus_inputs_in_the_judges_memory() {
-    let root = repo_root();
-    let mut wrong = Vec::new();
-    for (name, input) in largest_inputs(&root) {
-        let spec = root.join("corpus/problems").join(&name).join("spec.cp");
-        let src = std::fs::read_to_string(&spec).expect("read spec");
-        let limit = cpl_contest::problem::Limits::of(&spec, &src).memory_kb;
-        let peak = peak_kb(&spec, &input);
-        let known = KNOWN_OVER_MEMORY.iter().any(|(k, _)| *k == name);
-        match (peak > limit, known) {
-            (true, false) => wrong.push(format!(
-                "{name}: `cpl run` peaks at {} MB on {}, over the {} MB limit",
-                peak / 1024,
-                input.display(),
-                limit / 1024
-            )),
-            (false, true) => wrong.push(format!(
-                "{name}: peaks at {} MB, under the {} MB limit now; delete it from KNOWN_OVER_MEMORY",
-                peak / 1024,
-                limit / 1024
-            )),
-            _ => {}
-        }
-    }
-    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+fn the_interpreter_runs_the_largest_corpus_inputs_in_the_judges_memory_0() {
+    largest_input_fits_the_judges_memory(0);
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn the_interpreter_runs_the_largest_corpus_inputs_in_the_judges_memory_1() {
+    largest_input_fits_the_judges_memory(1);
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn the_interpreter_runs_the_largest_corpus_inputs_in_the_judges_memory_2() {
+    largest_input_fits_the_judges_memory(2);
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn the_interpreter_runs_the_largest_corpus_inputs_in_the_judges_memory_3() {
+    largest_input_fits_the_judges_memory(3);
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn the_interpreter_runs_the_largest_corpus_inputs_in_the_judges_memory_4() {
+    largest_input_fits_the_judges_memory(4);
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn the_interpreter_runs_the_largest_corpus_inputs_in_the_judges_memory_5() {
+    largest_input_fits_the_judges_memory(5);
 }

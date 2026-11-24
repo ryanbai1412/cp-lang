@@ -165,7 +165,7 @@ within that limit too, on the largest inputs the corpus has.
   on the interpreter for big tests (J6).
 - Example: a DFS 200,000 calls deep fits in about 20 MB of C++ stack, so
   its interpreted frames must not take 6 KB each (1.2 GB).
-- Enforced by: `the_interpreter_runs_the_largest_corpus_inputs_in_the_judges_memory`
+- Enforced by: `the_interpreter_runs_the_largest_corpus_inputs_in_the_judges_memory_*`
   in `crates/cpl-cli/tests/interp_memory.rs`, which runs the largest
   input of each of the 6 corpus problems with the largest inputs against
   the problem's limit. `KNOWN_OVER_MEMORY` lists the runs over it today,
