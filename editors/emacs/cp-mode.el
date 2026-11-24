@@ -14,42 +14,30 @@
   "The cpl executable; its `lsp' subcommand is the language server."
   :type 'string)
 
-;; The rules come from `cpl setup emacs --grammar', generated from the lexer's own tables.
-(defvar cp--grammar nil "The font-lock rules cpl printed, once read.")
+;; The highlighting and syntax come from `cpl setup emacs --grammar', generated from the lexer's tables.
+(defvar cp--grammar nil "The grammar cpl printed, once read.")
+
+(defun cp--rules (key)
+  "KEY of the grammar cpl generates: `:font-lock', `:syntax' or `:syntactic'."
+  (plist-get (or cp--grammar
+                 (setq cp--grammar
+                       (with-temp-buffer
+                         (when (eql 0 (ignore-errors (call-process cp-cpl-program nil '(t nil) nil "setup" "emacs" "--grammar")))
+                           (goto-char (point-min))
+                           (ignore-errors (read (current-buffer)))))))
+             key))
 
 (defun cp-font-lock-keywords ()
   "The font-lock rules cpl generates; with `cpl lsp' running, its semantic tokens add to them."
-  (or cp--grammar
-      (setq cp--grammar
-            (with-temp-buffer
-              (when (eql 0 (ignore-errors (call-process cp-cpl-program nil '(t nil) nil "setup" "emacs" "--grammar")))
-                (goto-char (point-min))
-                (ignore-errors (read (current-buffer))))))))
-
-(defvar cp-mode-syntax-table
-  (let ((table (make-syntax-table)))
-    (modify-syntax-entry ?/ ". 12" table)
-    (modify-syntax-entry ?\n ">" table)
-    (modify-syntax-entry ?_ "_" table)
-    ;; Operators end a name, as the lexer reads them: `impl<S>`, `n=4`.
-    (dolist (c (string-to-list "+-*%<>=!&|^~?:,.@#$;"))
-      (modify-syntax-entry c "." table))
-    (modify-syntax-entry ?' "\"" table)
-    (modify-syntax-entry ?\" "\"" table)
-    table))
-
-(defun cp--syntax-propertize (start end)
-  "Make a quote that starts a loop label, as in 'outer, punctuation between START and END."
-  (goto-char start)
-  (while (re-search-forward "'[[:alpha:]_][[:alnum:]_]+" end t)
-    (unless (eq (char-after) ?')
-      (put-text-property (match-beginning 0) (1+ (match-beginning 0)) 'syntax-table (string-to-syntax ".")))))
+  (cp--rules :font-lock))
 
 ;;;###autoload
 (define-derived-mode cp-mode prog-mode "CP"
   "Major mode for CP Lang."
+  (dolist (entry (cp--rules :syntax))
+    (modify-syntax-entry (car entry) (cdr entry)))
   (setq-local font-lock-defaults '(cp-font-lock-keywords))
-  (setq-local syntax-propertize-function #'cp--syntax-propertize)
+  (setq-local syntax-propertize-function (syntax-propertize-via-font-lock (cp--rules :syntactic)))
   (setq-local comment-start "// ")
   (setq-local comment-start-skip "//+[ \t]*")
   (setq-local indent-tabs-mode nil)

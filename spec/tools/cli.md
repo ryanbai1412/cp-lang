@@ -72,8 +72,8 @@ would, under `--check`), `ok` when it is formatted, the lexer `diagnostics`
 that stopped formatting and any other `error` (`null` when none).
 `cpl setup <vim | emacs | jetbrains> --grammar` prints, and installs nothing, the
 highlighting an editor reads without `cpl lsp`: Vim's `syntax/cp.vim` (what `cpl
-setup neovim` and `vim` write), Emacs's font-lock rules as one `read`able list (what
-`cp-mode.el` loads), or the JetBrains plugin's lexer, one rule per line tried in order
+setup neovim` and `vim` write), Emacs's font-lock rules, syntax table and label-quote rule as
+one `read`able plist (what `cp-mode.el` loads), or the JetBrains plugin's lexer, one rule per line tried in order
 (tab-separated: the token, its color key, the key's default, its settings name, and the
 regex in Java's syntax) (`editors/lexer.tsv`, which `just gen`
 writes and the plugin bundles). All are generated from the lexer's keyword and literal
