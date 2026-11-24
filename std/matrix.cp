@@ -954,7 +954,7 @@ pub struct BitMat(pub rows: Int, pub cols: Int):
     /// The determinant over GF(2): `true` iff the matrix is invertible. The `0 x 0` determinant is
     /// `true`.
     ///
-    /// cost: \(O(n^3 / 64)\)
+    /// cost: \(O(n^2 + n^3 / 64)\)
     /// traps: when the matrix is not square
     /// example: `var m = BitMat.identity(2); m.set(0, 1, true); m.det()`
     /// example: `var m = BitMat(2, 2); m.set(0, 0, true); m.set(1, 0, true); not m.det()`
@@ -964,7 +964,7 @@ pub struct BitMat(pub rows: Int, pub cols: Int):
 
     /// The rank over GF(2).
     ///
-    /// cost: \(O(\mathit{rows} \cdot \mathit{cols} \cdot \min(\mathit{rows}, \mathit{cols}) / 64)\)
+    /// cost: \(O(\mathit{rows} \cdot \mathit{cols} + \mathit{rows} \cdot \mathit{cols} \cdot \min(\mathit{rows}, \mathit{cols}) / 64)\)
     /// empty: `BitMat(0, 3).rank() == 0`
     /// traps: never
     /// example: `var m = BitMat(2, 2); m.set(0, 0, true); m.set(0, 1, true); m.set(1, 0, true); m.set(1, 1, true); m.rank() == 1`
@@ -975,7 +975,7 @@ pub struct BitMat(pub rows: Int, pub cols: Int):
     /// Any solution to `self * x == b` over GF(2), or `None`: the one with every free (non-pivot)
     /// variable `false`, as in `Mat.solve`.
     ///
-    /// cost: \(O(\mathit{rows} \cdot \mathit{cols} \cdot \min(\mathit{rows}, \mathit{cols}) / 64)\)
+    /// cost: \(O(\mathit{rows} \cdot \mathit{cols} + \mathit{rows} \cdot \mathit{cols} \cdot \min(\mathit{rows}, \mathit{cols}) / 64)\)
     /// empty: `let m = BitMat(2, 0); m.solve([false, false]) == Some([]) and m.solve([true, false]) == None`
     /// order: indexed by column (variable)
     /// traps: when `b.len != rows`
@@ -991,7 +991,7 @@ pub struct BitMat(pub rows: Int, pub cols: Int):
     /// column order, with `true` at that column and `false` at the other free columns, as in
     /// `Mat.solve_space`.
     ///
-    /// cost: \(O(\mathit{rows} \cdot \mathit{cols} \cdot \min(\mathit{rows}, \mathit{cols}) / 64)\)
+    /// cost: \(O(\mathit{rows} \cdot \mathit{cols} + \mathit{rows} \cdot \mathit{cols} \cdot \min(\mathit{rows}, \mathit{cols}) / 64)\)
     /// empty: `let m = BitMat(2, 0); m.solve_space([false, false]) == Some((x0: [], basis: [])) and m.solve_space([false, true]) == None`
     /// order: basis vectors by increasing free column
     /// traps: when `b.len != rows`
@@ -999,9 +999,11 @@ pub struct BitMat(pub rows: Int, pub cols: Int):
     pub fn solve_space(self, b: List<Bool>) -> ?(x0: List<Bool>, basis: List<List<Bool>>):
         assert b.len == rows, "solve_space needs one right-hand side per row"
         var aug = BitMat.new(rows, cols + 1)
+        let (w, aw) = (bit_words(cols), bit_words(cols + 1))
+        unchecked:
+            for r in 0..rows:
+                for k in 0..w: aug.bits[r * aw + k] = bits[r * w + k]
         for r in 0..rows:
-            for c in 0..cols:
-                if self.get(r, c): aug.set(r, c, true)
             if b[r]: aug.set(r, cols, true)
         let piv = bit_rref(rows, cols + 1, mut aug.bits)
         if piv.len > 0 and piv.last! == cols: return None
@@ -1021,7 +1023,7 @@ pub struct BitMat(pub rows: Int, pub cols: Int):
 
     /// The inverse of a square GF(2) matrix, or `None` when it is singular.
     ///
-    /// cost: \(O(n^3 / 64)\)
+    /// cost: \(O(n^2 + n^3 / 64)\)
     /// empty: `let inv = BitMat(0, 0).inverse()!; inv.rows == 0 and inv.cols == 0`
     /// traps: when the matrix is not square
     /// example: `var m = BitMat.identity(2); m.set(0, 1, true); let inv = m.inverse()!; inv.get(0, 1) and inv.get(1, 1) and not inv.get(1, 0)`
@@ -1029,31 +1031,40 @@ pub struct BitMat(pub rows: Int, pub cols: Int):
         assert rows == cols, "inverse requires a square matrix"
         let n = rows
         var aug = BitMat.new(n, 2 * n)
-        for r in 0..n:
-            for c in 0..n:
-                if self.get(r, c): aug.set(r, c, true)
-            aug.set(r, n + r, true)
+        let (w, aw) = (bit_words(n), bit_words(2 * n))
+        unchecked:
+            for r in 0..n:
+                for k in 0..w: aug.bits[r * aw + k] = bits[r * w + k]
+        for r in 0..n: aug.set(r, n + r, true)
         let piv = bit_rref(n, 2 * n, mut aug.bits)
         if (piv.last ?? -1) >= n: return None
+        // Column n + c of `aug` is bit (n + c) % 62 of word (n + c) / 62: shift each row's right half
+        // down by n % 62, a word at a time. Bits past column 2n are zero, so no mask is needed.
         var out = BitMat.new(n, n)
-        for r in 0..n:
-            for c in 0..n:
-                if aug.get(r, n + c): out.set(r, c, true)
+        let (base, sh) = (n / 62, n % 62)
+        unchecked:
+            for r in 0..n:
+                for k in 0..w:
+                    var x = aug.bits[r * aw + base + k] >> sh
+                    if sh > 0 and base + k + 1 < aw:
+                        x |= (aug.bits[r * aw + base + k + 1] & ((1 << sh) - 1)) << (62 - sh)
+                    out.bits[r * w + k] = x
         Some(out)
 
     /// The matrix product `self * o` over GF(2) (AND for multiply, XOR for add).
     ///
-    /// cost: \(O(\mathit{rows} \cdot \mathit{cols} \cdot o.\mathit{cols} / 64)\)
+    /// cost: \(O(\mathit{rows} \cdot \mathit{cols} + \mathit{rows} \cdot \mathit{cols} \cdot o.\mathit{cols} / 64)\)
     /// traps: when `self.cols != o.rows`
     /// example: `var m = BitMat.identity(2); m.set(0, 1, true); let p = m.mul(m); not p.get(0, 1) and p.get(0, 0)`
     pub fn mul(self, o: BitMat) -> BitMat:
         assert cols == o.rows, "mul needs `self.cols == o.rows`"
         var out = BitMat.new(rows, o.cols)
-        let w = bit_words(o.cols)
-        for i in 0..rows:
-            for t in 0..cols:
-                if self.get(i, t):
-                    for k in 0..w: out.bits[i * w + k] ^= o.bits[t * w + k]
+        let (w, sw) = (bit_words(o.cols), bit_words(cols))
+        unchecked:
+            for i in 0..rows:
+                for t in 0..cols:
+                    if bits[i * sw + t / 62].bit(t % 62):
+                        for k in 0..w: out.bits[i * w + k] ^= o.bits[t * w + k]
         out
 
 fn bit_words(cols: Int) -> Int = (cols + 61) / 62
@@ -1067,13 +1078,15 @@ fn bit_rref(rows: Int, cols: Int, mut a: List<Int>) -> List<Int>:
         let k = c / 62
         let bit = 1 << (c % 62)
         var p = r
-        while p < rows and (a[p * w + k] & bit) == 0: p += 1
+        unchecked:
+            while p < rows and (a[p * w + k] & bit) == 0: p += 1
         if p == rows: continue
-        if p != r:
-            for j in 0..w: a.swap(p * w + j, r * w + j)
-        for i in 0..rows:
-            if i != r and (a[i * w + k] & bit) != 0:
-                for j in 0..w: a[i * w + j] ^= a[r * w + j]
+        unchecked:
+            if p != r:
+                for j in 0..w: a.swap(p * w + j, r * w + j)
+            for i in 0..rows:
+                if i != r and (a[i * w + k] & bit) != 0:
+                    for j in 0..w: a[i * w + j] ^= a[r * w + j]
         piv.push(c)
         r += 1
     piv

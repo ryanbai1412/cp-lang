@@ -1263,9 +1263,10 @@ struct BitTrieNode:
 pub struct BitTrieArena<W>:
     nodes: List<BitTrieNode>
 
-    /// An empty arena with room for `cap` nodes before it reallocates.
+    /// An empty arena with room for `cap` nodes before it reallocates. The room is allocated,
+    /// not filled: `add` touches each node's memory as it uses it.
     ///
-    /// cost: \(O(\mathit{cap})\)
+    /// cost: \(O(1)\)
     /// traps: when `cap < 0`
     /// example: `BitTrieArena<3>.new(cap: 8).node_count == 0`
     pub fn new(cap: Int = 0) -> BitTrieArena<W>:

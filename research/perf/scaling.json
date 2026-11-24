@@ -780,7 +780,7 @@
    "cost": "\\min(\\mathit{nodes}(\\mathit{self}), \\mathit{nodes}(\\mathit{other}))",
    "documented": 4.0,
    "fn": "bitset.BitTrie.absorb",
-   "measured": 6.55,
+   "measured": 4.37,
    "n": 16384,
    "ok": true
   },
@@ -788,7 +788,7 @@
    "cost": "W",
    "documented": 1.0,
    "fn": "bitset.BitTrie.add",
-   "measured": 1.03,
+   "measured": 1.07,
    "n": 16384,
    "ok": true
   },
@@ -796,7 +796,15 @@
    "cost": "W",
    "documented": 1.0,
    "fn": "bitset.BitTrie.count",
-   "measured": 1.36,
+   "measured": 1.18,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/bit_trie.cp::bitset.BitTrie.each": {
+   "cost": "\\mathit{nodes} + \\mathit{len}",
+   "documented": 4.0,
+   "fn": "bitset.BitTrie.each",
+   "measured": 6.57,
    "n": 16384,
    "ok": true
   },
@@ -804,7 +812,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bitset.BitTrie.is_empty",
-   "measured": 1.01,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -812,7 +820,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bitset.BitTrie.len",
-   "measured": 1.01,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -820,7 +828,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bitset.BitTrie.new",
-   "measured": 1.01,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -828,7 +836,7 @@
    "cost": "W",
    "documented": 1.0,
    "fn": "bitset.BitTrie.of",
-   "measured": 1.01,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -836,23 +844,31 @@
    "cost": "W",
    "documented": 1.0,
    "fn": "bitset.BitTrie.walk",
-   "measured": 0.98,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/bitmat.cp::matrix.BitMat.det": {
-   "cost": "n^3 / 64",
-   "documented": 64.0,
-   "fn": "matrix.BitMat.det",
-   "measured": 31.51,
-   "n": 256,
+  "bench/scaling/bit_trie.cp::bitset.BitTrieArena.new": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "bitset.BitTrieArena.new",
+   "measured": 0.89,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/bit_trie.cp::bitset.BitTrieArena.node_count": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "bitset.BitTrieArena.node_count",
+   "measured": 1.0,
+   "n": 16384,
    "ok": true
   },
   "bench/scaling/bitmat.cp::matrix.BitMat.get": {
    "cost": "1",
    "documented": 1.0,
    "fn": "matrix.BitMat.get",
-   "measured": 1.08,
+   "measured": 1.01,
    "n": 256,
    "ok": true
   },
@@ -860,23 +876,7 @@
    "cost": "n^2 / 64",
    "documented": 16.0,
    "fn": "matrix.BitMat.identity",
-   "measured": 6.82,
-   "n": 256,
-   "ok": true
-  },
-  "bench/scaling/bitmat.cp::matrix.BitMat.inverse": {
-   "cost": "n^3 / 64",
-   "documented": 64.0,
-   "fn": "matrix.BitMat.inverse",
-   "measured": 25.95,
-   "n": 256,
-   "ok": true
-  },
-  "bench/scaling/bitmat.cp::matrix.BitMat.mul": {
-   "cost": "\\mathit{rows} \\cdot \\mathit{cols} \\cdot o.\\mathit{cols} / 64",
-   "documented": 64.0,
-   "fn": "matrix.BitMat.mul",
-   "measured": 25.48,
+   "measured": 5.93,
    "n": 256,
    "ok": true
   },
@@ -884,15 +884,7 @@
    "cost": "\\mathit{rows} \\cdot \\mathit{cols} / 64",
    "documented": 16.0,
    "fn": "matrix.BitMat.new",
-   "measured": 21.35,
-   "n": 256,
-   "ok": true
-  },
-  "bench/scaling/bitmat.cp::matrix.BitMat.rank": {
-   "cost": "\\mathit{rows} \\cdot \\mathit{cols} \\cdot \\min(\\mathit{rows}, \\mathit{cols}) / 64",
-   "documented": 64.0,
-   "fn": "matrix.BitMat.rank",
-   "measured": 31.58,
+   "measured": 22.62,
    "n": 256,
    "ok": true
   },
@@ -900,24 +892,56 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "matrix.BitMat.set",
-   "measured": 1.11,
+   "measured": 1.0,
    "n": 256,
    "ok": true
   },
-  "bench/scaling/bitmat.cp::matrix.BitMat.solve": {
-   "cost": "\\mathit{rows} \\cdot \\mathit{cols} \\cdot \\min(\\mathit{rows}, \\mathit{cols}) / 64",
-   "documented": 64.0,
+  "bench/scaling/bitmat_solve.cp::matrix.BitMat.det": {
+   "cost": "n^2 + n^3 / 64",
+   "documented": 58.67,
+   "fn": "matrix.BitMat.det",
+   "measured": 35.28,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/bitmat_solve.cp::matrix.BitMat.inverse": {
+   "cost": "n^2 + n^3 / 64",
+   "documented": 58.67,
+   "fn": "matrix.BitMat.inverse",
+   "measured": 45.12,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/bitmat_solve.cp::matrix.BitMat.mul": {
+   "cost": "\\mathit{rows} \\cdot \\mathit{cols} + \\mathit{rows} \\cdot \\mathit{cols} \\cdot o.\\mathit{cols} / 64",
+   "documented": 58.67,
+   "fn": "matrix.BitMat.mul",
+   "measured": 34.37,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/bitmat_solve.cp::matrix.BitMat.rank": {
+   "cost": "\\mathit{rows} \\cdot \\mathit{cols} + \\mathit{rows} \\cdot \\mathit{cols} \\cdot \\min(\\mathit{rows}, \\mathit{cols}) / 64",
+   "documented": 58.67,
+   "fn": "matrix.BitMat.rank",
+   "measured": 35.17,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/bitmat_solve.cp::matrix.BitMat.solve": {
+   "cost": "\\mathit{rows} \\cdot \\mathit{cols} + \\mathit{rows} \\cdot \\mathit{cols} \\cdot \\min(\\mathit{rows}, \\mathit{cols}) / 64",
+   "documented": 58.67,
    "fn": "matrix.BitMat.solve",
-   "measured": 19.76,
-   "n": 256,
+   "measured": 30.78,
+   "n": 512,
    "ok": true
   },
-  "bench/scaling/bitmat.cp::matrix.BitMat.solve_space": {
-   "cost": "\\mathit{rows} \\cdot \\mathit{cols} \\cdot \\min(\\mathit{rows}, \\mathit{cols}) / 64",
-   "documented": 64.0,
+  "bench/scaling/bitmat_solve.cp::matrix.BitMat.solve_space": {
+   "cost": "\\mathit{rows} \\cdot \\mathit{cols} + \\mathit{rows} \\cdot \\mathit{cols} \\cdot \\min(\\mathit{rows}, \\mathit{cols}) / 64",
+   "documented": 58.67,
    "fn": "matrix.BitMat.solve_space",
-   "measured": 20.86,
-   "n": 256,
+   "measured": 30.64,
+   "n": 512,
    "ok": true
   },
   "bench/scaling/bitset.cp::bitset.Bitset.add": {
@@ -12452,9 +12476,6 @@
   "bag.SortedSet.split_at",
   "bag.SortedSet.take",
   "bag.SortedSet.to_list",
-  "bitset.BitTrie.each",
-  "bitset.BitTrieArena.new",
-  "bitset.BitTrieArena.node_count",
   "bitset.XorTrie.each",
   "builtin.Array.all",
   "builtin.Array.any",
