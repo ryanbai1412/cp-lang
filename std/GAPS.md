@@ -4,7 +4,7 @@ One line per fn left `todo`, or written below its documented cost, because
 of a compiler gap: module, fn, and what the compiler is missing. Remove a
 line when the gap closes and the body lands.
 
-- subset: every `Subset` method: `Subset` is built into the compiler, so `cpl run` ignores these bodies, lacks `shifted`, `complement`, `supersets` and `for` over `items`, and a program's `Subset<D>` doesn't unify with the stub's (E0302 "expected `Subset<D>`, found `Subset<D>`"). The bodies check but can't be exercised by conformance cases yet.
+- subset: every `Subset` method: `Subset` is built into the compiler (`crates/cpl-ir/src/lower/expr.rs`, `library_domain.rs`, cpl-check `prelude.rs`), so `cpl run` answers its calls itself instead of running these bodies.
 - tree: `Lift.of(next)` without type arguments: `V` is not inferred from the lambda `next: V -> ?V` (E0302 "`Lift.of` needs a domain for `V`, and `Int` is not one"), so programs write `Lift<V, ()>.of(next)`.
 - strings: `SuffixArray.rank_range`, `find_all`, `count`: the pattern must be compared with the original elements, but `SuffixArray` is not generic over its element type, so it cannot store `s`; needs `SuffixArray<T>` (a signature change) or an element-erased `Ord` box.
 - poly: `Poly<T>` `mul`, `div`, `inv`, `log`, `exp`, `pow`, `sqrt`, `shift`, `transposed_mul`: their documented O(n log n) cost needs an NTT, which exists only for `Mod<P>`, and a generic `T` method has no way to specialize on `T = Mod<P>`; the free `List<Mod<P>>` functions carry the bodies.
