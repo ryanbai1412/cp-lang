@@ -1561,13 +1561,14 @@ fn lsp_completes_and_hovers_the_v03_stdlib_with_no_edition_set() {
 }
 
 /// An error inside std reached through a user library names each library
-/// call on the way, innermost first, below the std line it fails on.
+/// call on the way, innermost first, below the std line it fails on. A `Str`
+/// has no `MIN`, so `scan(max)` over one always fails inside `Monoid.of`.
 #[test]
 fn an_error_inside_std_names_the_library_calls_that_led_there() {
     let main = scratch(
         "std-error-chain",
         "main.cp",
-        b"use mylib.text.{suffix_count}\n\nlet n: 1..=10 = read()\ndomain Pos = 0..n\nlet s: [Pos]Char = read()\nprint(suffix_count(s))\n",
+        b"use mylib.text.{running_max}\n\nlet n: 1..=10 = read()\ndomain Pos = 0..n\nlet s: [Pos]Str = read()\nprint(running_max(s))\n",
     );
     let root = main.parent().unwrap();
     let lib_dir = root.join("mylib");
@@ -1576,14 +1577,14 @@ fn an_error_inside_std_names_the_library_calls_that_led_there() {
     std::fs::write(lib_dir.join("lib.toml"), "name = \"mylib\"\n").unwrap();
     std::fs::write(
         lib_dir.join("text.cp"),
-        "use std.strings.{SuffixArray}\n\npub fn suffix_count<D>(s: [D]Char) -> Int:\n    let sa = SuffixArray(s)\n    return sa.len\n",
+        "use std.prefix.{scan}\n\npub fn running_max<D>(s: [D]Str) -> Str:\n    let best = s.scan(max)\n    return best.all\n",
     )
     .unwrap();
     let checked = cpl(&["check".as_ref(), main.as_os_str()], b"");
     let err = String::from_utf8_lossy(&checked.stderr);
-    let inside = err.find("inside `SuffixArray.new`").expect(&err);
+    let inside = err.find("inside `Monoid.of`").expect(&err);
     let via = err
-        .find("mylib/text.cp:4: called from `suffix_count`")
+        .find("mylib/text.cp:4: called from `running_max`")
         .expect(&err);
     assert!(inside < via && err.contains("main.cp:6:7"), "{err}");
 }
