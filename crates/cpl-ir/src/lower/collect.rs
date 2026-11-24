@@ -390,7 +390,7 @@ impl<'a> Lowerer<'a> {
                     name: name.text.clone(),
                     methods,
                     fields,
-                    generic: !generics.is_empty(),
+                    generics: generics.iter().map(|g| g.text.as_str()).collect(),
                     unimplemented,
                     alias_of,
                 });

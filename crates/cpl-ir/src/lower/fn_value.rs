@@ -232,8 +232,12 @@ impl<'a> Lowerer<'a> {
             .map(|m| m.name.text.clone())
             .collect();
         let info = &self.traits[tid];
-        let (m, offset, generic, fields) =
-            (info.mod_id, info.offset, info.generic, info.fields.clone());
+        let (m, offset, generic, fields) = (
+            info.mod_id,
+            info.offset,
+            !info.generics.is_empty(),
+            info.fields.clone(),
+        );
         let fields_met = fields.iter().all(|&(name, want)| {
             let Some((_, got)) = self.field_of(&ty, name) else {
                 return false;

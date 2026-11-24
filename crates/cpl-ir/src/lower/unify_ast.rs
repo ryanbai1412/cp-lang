@@ -223,14 +223,15 @@ impl<'a> Lowerer<'a> {
                         self.unify_ast_ty(&args[0], elem, tpl_mod, gen_names, env);
                     }
                 }
-                ("Edged" | "Weighted" | "Target", Ty::Record(rfields)) if args.len() == 1 => {
-                    let field_name = match name.text.as_str() {
-                        "Edged" => "e",
-                        "Weighted" => "w",
-                        _ => "to",
-                    };
-                    if let Some((_, fty)) = rfields.iter().find(|(fnm, _)| fnm == field_name) {
-                        self.unify_ast_ty(&args[0], fty, tpl_mod, gen_names, env);
+                (_, Ty::Record(rfields))
+                    if !self.record_getters(&name.text, tpl_mod).is_empty() =>
+                {
+                    for (at, getter) in self.record_getters(&name.text, tpl_mod) {
+                        if let (Some(arg), Some((_, fty))) =
+                            (args.get(at), rfields.iter().find(|(f, _)| *f == getter))
+                        {
+                            self.unify_ast_ty(arg, fty, tpl_mod, gen_names, env);
+                        }
                     }
                 }
                 (_, Ty::Fn(ps, _)) if self.fn_meets_trait_over(&name.text, args, tpl_mod, ps) => {
@@ -352,5 +353,26 @@ impl<'a> Lowerer<'a> {
             }
             _ => {}
         }
+    }
+
+    /// A trait a record meets through getters, as `Weighted<W>`'s `@get fn w(self) -> W`:
+    /// each (parameter index, getter name) whose getter returns that bare parameter, so the
+    /// record's field of that name binds it.
+    fn record_getters(&self, trait_name: &str, tpl_mod: ModId) -> Vec<(usize, &str)> {
+        let Some(Sym::Trait(tid)) = self.mod_syms[tpl_mod].get(trait_name) else {
+            return Vec::new();
+        };
+        let info = &self.traits[*tid];
+        info.methods
+            .iter()
+            .filter(|m| m.params.len() == 1)
+            .filter_map(|m| match &m.ret.as_ref()?.kind {
+                ast::TypeKind::Named { name, args } if args.is_empty() => {
+                    let at = info.generics.iter().position(|g| *g == name.text)?;
+                    Some((at, m.name.text.as_str()))
+                }
+                _ => None,
+            })
+            .collect()
     }
 }
