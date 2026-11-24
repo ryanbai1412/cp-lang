@@ -126,6 +126,38 @@ impl<'a> Parser<'a> {
                         name,
                         elem: Box::new(self.ty()),
                     }
+                } else if self.at(T::Ident) && self.peek_n(1) == T::In {
+                    // `[i in V][..i]T`: a ragged read says how the input is written, not
+                    // what the data is (indices-and-keys.md, "Lost").
+                    let open = self.rel(self.tokens[self.pos - 1].span);
+                    let dom = self
+                        .tokens
+                        .get(self.pos + 2)
+                        .map_or("V", |t| t.span.text(self.src));
+                    let dom = dom.to_string();
+                    self.pos = after_group(self.tokens, self.pos - 1);
+                    while self.at(T::LBracket) {
+                        self.pos = after_group(self.tokens, self.pos);
+                    }
+                    let elem = self.ty();
+                    let span = Span::new(open.start, elem.span.end);
+                    self.tree_error(
+                        Diagnostic::error(
+                            codes::EXPECTED_TYPE,
+                            span,
+                            "a ragged read `[i in V][..i]T` is not a type",
+                        )
+                        .with_help(format!(
+                            "the pairs of `{dom}` are the domain `Pair<{dom}>`: `[Pair<{dom}>]T` reads the triangle in their walk order"
+                        )),
+                    );
+                    TypeKind::Array {
+                        index: vec![Type {
+                            kind: TypeKind::Error,
+                            span,
+                        }],
+                        elem: Box::new(elem),
+                    }
                 } else if self.at_ident("_") && self.peek_n(1) == T::RBracket {
                     let span = self.span();
                     self.planned(span, &crate::planned::ANY_LENGTH);

@@ -80,6 +80,8 @@ pub(crate) struct Parser<'a> {
     speculation_failed: bool,
     /// Planned syntax read while speculating, reported if the speculation holds.
     speculative_planned: Vec<(Span, &'static crate::planned::Planned)>,
+    /// Errors from a parse that reads the right tree anyway, reported if the speculation holds.
+    speculative_errors: Vec<Diagnostic>,
     /// Inside `{ ... }`, where `;` separates statements.
     brace_depth: u32,
     /// How many blocks deep the statement being read is: 0 at the top
@@ -124,6 +126,7 @@ impl<'a> Parser<'a> {
             speculating: 0,
             speculation_failed: false,
             speculative_planned: Vec::new(),
+            speculative_errors: Vec::new(),
             stmt_head: false,
             brace_depth: 0,
             block_depth: 0,
@@ -341,6 +344,16 @@ impl<'a> Parser<'a> {
 
     // --- Errors ---------------------------------------------------------
 
+    /// An error whose tree is still the one meant, so a speculation that reads it holds:
+    /// `read<[i in V][..i]Int>()` is reported as a type, not as a comparison.
+    fn tree_error(&mut self, diag: Diagnostic) {
+        if self.speculating > 0 {
+            self.speculative_errors.push(diag);
+        } else {
+            self.error(diag);
+        }
+    }
+
     fn error(&mut self, diag: Diagnostic) {
         if self.speculating > 0 {
             self.speculation_failed = true;
@@ -437,7 +450,10 @@ impl<'a> Parser<'a> {
     /// restored, if `f` hit one.
     fn speculate<R>(&mut self, f: impl FnOnce(&mut Self) -> R) -> Option<R> {
         let (pos, failed, half) = (self.pos, self.speculation_failed, self.half_shr);
-        let planned = self.speculative_planned.len();
+        let (planned, errors) = (
+            self.speculative_planned.len(),
+            self.speculative_errors.len(),
+        );
         self.speculating += 1;
         self.speculation_failed = false;
         let result = f(self);
@@ -449,10 +465,14 @@ impl<'a> Parser<'a> {
                 for (span, p) in std::mem::take(&mut self.speculative_planned) {
                     self.planned(span, p);
                 }
+                for diag in std::mem::take(&mut self.speculative_errors) {
+                    self.error(diag);
+                }
             }
             Some(result)
         } else {
             self.speculative_planned.truncate(planned);
+            self.speculative_errors.truncate(errors);
             self.pos = pos;
             self.half_shr = half;
             None
