@@ -438,7 +438,7 @@ pub(super) fn sort_by_keys(seq: Value, keys: &Value, desc: bool, span: Span) -> 
     };
     let mut order: Vec<usize> = (0..keys.len()).collect();
     order.sort_by(|&a, &b| {
-        let o = keys[a].cmp(&keys[b]);
+        let o = keys.get_unchecked_val(a).cmp(&keys.get_unchecked_val(b));
         if desc {
             o.reverse()
         } else {
@@ -447,7 +447,7 @@ pub(super) fn sort_by_keys(seq: Value, keys: &Value, desc: bool, span: Span) -> 
     });
     match seq {
         Value::List(items) => Ok(Value::List(Rc::new(
-            order.iter().map(|&k| items[k].clone()).collect(),
+            order.iter().map(|&k| items.get_unchecked_val(k)).collect(),
         ))),
         Value::Array(arr) => {
             let values = order.iter().map(|&k| arr.get_unchecked_val(k)).collect();
@@ -463,7 +463,7 @@ pub(super) fn sort_by_keys(seq: Value, keys: &Value, desc: bool, span: Span) -> 
 /// The elements of a list or an array, with the array's dims.
 pub(super) fn seq_items(seq: Value, span: Span) -> Res<(Vec<Value>, Option<Vec<i64>>)> {
     match seq {
-        Value::List(items) => Ok((Rc::unwrap_or_clone(items), None)),
+        Value::List(items) => Ok((crate::value::Cells::unwrap_values(items), None)),
         Value::Array(arr) => Ok((
             (0..arr.len()).map(|k| arr.get_unchecked_val(k)).collect(),
             Some(arr.dims.clone()),
@@ -475,7 +475,7 @@ pub(super) fn seq_items(seq: Value, span: Span) -> Res<(Vec<Value>, Option<Vec<i
 /// The inverse of `seq_items`.
 pub(super) fn seq_of_items(items: Vec<Value>, dims: Option<Vec<i64>>) -> Value {
     match dims {
-        None => Value::List(Rc::new(items)),
+        None => Value::list(items),
         Some(dims) => Value::Array(Rc::new(Array::from_values(dims, items))),
     }
 }
@@ -488,7 +488,13 @@ pub(super) fn exec_sort_place(target: &mut Value, desc: bool, span: Span) -> Res
         }
     }
     match target {
-        Value::List(items) => sort_ord(Rc::make_mut(items).as_mut_slice(), desc),
+        Value::List(items) => {
+            let items = Rc::make_mut(items);
+            items.sort_unstable();
+            if desc {
+                items.reverse();
+            }
+        }
         Value::Str(bytes) => sort_ord(Rc::make_mut(bytes).as_mut_slice(), desc),
         Value::Array(arr) => {
             let a = Rc::make_mut(arr);
@@ -772,7 +778,7 @@ pub(super) fn walk_place_mut<'a>(
                             format!("index {idx} is outside a list of length {len}"),
                         );
                     }
-                    cur = &mut Rc::make_mut(items)[idx as usize];
+                    cur = &mut Rc::make_mut(items).as_mut_values()[idx as usize];
                 }
                 Value::Array(arr) => {
                     let flat = array_flat_index(arr, step, regs_i, span)?;
@@ -846,7 +852,7 @@ pub(super) fn store_place_leaf_scalar(
                         format!("index {idx} is outside a list of length {len}"),
                     );
                 }
-                Rc::make_mut(items)[idx as usize] = kind.box_val(raw);
+                Rc::make_mut(items).set(idx as usize, kind.box_val(raw));
                 Ok(())
             }
             _ => trap(span, "internal: expected array or list"),
@@ -910,7 +916,7 @@ pub(super) fn store_place_leaf_opt_scalar(
                         format!("index {idx} is outside a list of length {len}"),
                     );
                 }
-                Rc::make_mut(items)[idx as usize] = kind.box_opt(raw, some);
+                Rc::make_mut(items).set(idx as usize, kind.box_opt(raw, some));
                 Ok(())
             }
             _ => trap(span, "internal: expected array or list"),
@@ -965,7 +971,7 @@ pub(super) fn store_place_leaf_val(
                         format!("index {idx} is outside a list of length {len}"),
                     );
                 }
-                Rc::make_mut(items)[idx as usize] = val;
+                Rc::make_mut(items).set(idx as usize, val);
                 Ok(())
             }
             _ => trap(span, "internal: expected array or list"),
@@ -1166,9 +1172,9 @@ pub(super) fn assign_place_leaf_scalar(
                     );
                 }
                 let slice = Rc::make_mut(items);
-                let cur = ScalarKind::unbox_val(&slice[idx as usize]);
+                let cur = ScalarKind::unbox_val(&slice.get_unchecked_val(idx as usize));
                 let next = apply_scalar_assign_op(cur, rhs, op, kind, span)?;
-                slice[idx as usize] = kind.box_val(next);
+                slice.set(idx as usize, kind.box_val(next));
                 Ok(())
             }
             _ => trap(span, "internal: expected array or list"),

@@ -277,7 +277,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     return trap(span, "internal: expected the sort keys");
                 };
                 let (items, dims) = seq_items(seq, span)?;
-                let keyed: Vec<(Value, Value)> = by.iter().cloned().zip(items).collect();
+                let keyed: Vec<(Value, Value)> = by.iter().zip(items).collect();
                 let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
                 sync_to_stack(
                     &chunk.slot_map,
@@ -590,6 +590,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 } else {
                     &regs_v[root as usize]
                 };
+                let b = dst_base as usize;
+                let n = len as usize;
                 let elem = match list_val {
                     Value::List(list) => {
                         let n_len = list.len() as i64;
@@ -599,7 +601,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 format!("index {idx} is outside a list of length {n_len}"),
                             );
                         }
-                        &list[idx as usize]
+                        list.get_small_tuple(idx as usize, n, &mut regs_i[b..b + n]);
+                        return Ok(None);
                     }
                     Value::ListView(view) => {
                         let n_len = view.len as i64;
@@ -613,8 +616,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                     _ => return trap(spans[cur_pc], "internal: expected list"),
                 };
-                let b = dst_base as usize;
-                let n = len as usize;
                 if let Value::Tuple(TupleVal::Boxed(fs)) = elem {
                     for (k, f) in fs.iter().take(n).enumerate() {
                         regs_i[b + k] = ScalarKind::unbox_val(f);
@@ -775,7 +776,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 format!("index {i} is outside a list of length {len}"),
                             );
                         }
-                        &list[i as usize]
+                        &list.get_unchecked_val(i as usize)
                     }
                     Value::Array(arr) => {
                         let len = arr.dims[0];
@@ -815,7 +816,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 format!("index {j} is outside a list of length {len}"),
                             );
                         }
-                        match &list[j as usize] {
+                        match &list.get_unchecked_val(j as usize) {
                             Value::Opt(OptVal::Int(n)) => (*n, 1),
                             Value::Opt(OptVal::None) => (0, 0),
                             Value::Opt(OptVal::Boxed(b)) => (ScalarKind::unbox_val(b), 1),
@@ -864,7 +865,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 format!("index {i} is outside a list of length {len}"),
                             );
                         }
-                        &list[i as usize]
+                        &list.get_unchecked_val(i as usize)
                     }
                     _ => return trap(spans[cur_pc], "internal: expected array or list"),
                 };
@@ -920,7 +921,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 format!("index {i} is outside a list of length {len}"),
                             );
                         }
-                        &list[i as usize]
+                        &list.get_unchecked_val(i as usize)
                     }
                     _ => return trap(spans[cur_pc], "internal: expected array or list"),
                 };
@@ -974,7 +975,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 format!("index {i} is outside a list of length {len}"),
                             );
                         }
-                        &list[i as usize]
+                        &list.get_unchecked_val(i as usize)
                     }
                     _ => return trap(spans[cur_pc], "internal: expected array or list"),
                 };
@@ -1308,7 +1309,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     .as_deref_mut()
                     .expect("FeedYieldExtend outside fed call");
                 let items: Vec<Value> = match seq {
-                    Value::List(xs) => xs.iter().cloned().collect(),
+                    Value::List(xs) => xs.iter().collect(),
                     Value::Array(arr) => (0..arr.len()).map(|i| arr.get_unchecked_val(i)).collect(),
                     _ => {
                         return trap(

@@ -185,7 +185,10 @@ pub(super) fn cells(value: &Value) -> usize {
             crate::value::Cells::Values(v) => all_cells(v.iter()),
             _ => array.len(),
         },
-        Value::List(items) => 1 + all_cells(items.iter()),
+        Value::List(items) => match &**items {
+            crate::value::Cells::Values(v) => 1 + all_cells(v.iter()),
+            _ => 1 + items.len(),
+        },
         Value::Enum(_, items) => 1 + items.iter().map(cells).sum::<usize>(),
         Value::Tuple(TupleVal::OneInt(_)) => 2,
         Value::Tuple(TupleVal::Boxed(items)) => 1 + items.iter().map(cells).sum::<usize>(),
@@ -402,7 +405,7 @@ fn window(value: &Value, ty: &Ty, view: &View) -> Option<String> {
     match (value, ty) {
         (Value::List(items), Ty::List(elem)) => {
             for (at, x) in items.iter().take(WINDOW).enumerate() {
-                item(&mut out, at, x, elem);
+                item(&mut out, at, &x, elem);
             }
         }
         (Value::Array(array), Ty::Array { elem, .. }) if array.dims.len() == 1 => {
@@ -539,7 +542,9 @@ pub(super) fn snapshot(
             let n = start.len().saturating_sub(1);
             let mut edges = Vec::new();
             for from in 0..n {
-                for arc in start[from].int()..start[from + 1].int() {
+                for arc in
+                    start.get_unchecked_val(from).int()..start.get_unchecked_val(from + 1).int()
+                {
                     if let Some(Value::Tuple(arc)) = arcs.get(arc as usize) {
                         edges.push((
                             from as i64 + lo,

@@ -1212,10 +1212,12 @@ mod tests {
         let ints = |n: i64| Value::List(std::rc::Rc::new((0..n).map(Value::Int).collect()));
         assert_eq!(cells(&ints(5)), 6);
         assert_eq!(
-            cells(&Value::List(std::rc::Rc::new(vec![ints(2), ints(3)]))),
+            cells(&Value::List(std::rc::Rc::new(
+                vec![ints(2), ints(3)].into()
+            ))),
             1 + 3 + 4
         );
-        assert_eq!(cells(&Value::List(std::rc::Rc::new(Vec::new()))), 1);
+        assert_eq!(cells(&Value::List(std::rc::Rc::default())), 1);
     }
 
     use super::*;

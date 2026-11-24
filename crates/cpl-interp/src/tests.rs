@@ -1617,3 +1617,25 @@ fn a_value_is_three_words() {
     // List<Int> cost six times the C++ vector<long long>.
     assert_eq!(std::mem::size_of::<crate::value::Value>(), 24);
 }
+
+#[test]
+fn a_list_of_scalars_is_packed() {
+    use crate::value::{Cells, TupleVal, Value};
+    // A List<Int> cell is 8 bytes and a list of (Int, Int) 16, as in the
+    // C++, not a 24-byte Value (or a boxed tuple) each.
+    let ints = Cells::from((0..4).map(Value::Int).collect::<Vec<_>>());
+    assert!(matches!(ints, Cells::Int(_)));
+    let mut pairs = Cells::default();
+    for i in 0..3 {
+        pairs.push(Value::tuple(vec![Value::Int(i), Value::Int(-i)]));
+    }
+    assert!(matches!(pairs, Cells::SmallIntTuple { stride: 2, .. }));
+    assert_eq!(
+        pairs.pop(),
+        Some(Value::tuple(vec![Value::Int(2), Value::Int(-2)]))
+    );
+    // A cell of another kind keeps every value, boxed.
+    pairs.push(Value::Tuple(TupleVal::OneInt(7)));
+    assert!(matches!(pairs, Cells::Values(_)));
+    assert_eq!(pairs.len(), 3);
+}

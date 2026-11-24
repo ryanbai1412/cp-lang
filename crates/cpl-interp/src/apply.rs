@@ -91,11 +91,15 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let mut vals = vals.into_iter();
                 let (l, r) = (vals.next().unwrap(), vals.next().unwrap());
                 let l = match l {
-                    Value::MutView(mv) => Value::List(Rc::new(self.mut_view_to_vec(&mv, span)?)),
+                    Value::MutView(mv) => Value::List(Rc::new(crate::value::Cells::from(
+                        self.mut_view_to_vec(&mv, span)?,
+                    ))),
                     other => other,
                 };
                 let r = match r {
-                    Value::MutView(mv) => Value::List(Rc::new(self.mut_view_to_vec(&mv, span)?)),
+                    Value::MutView(mv) => Value::List(Rc::new(crate::value::Cells::from(
+                        self.mut_view_to_vec(&mv, span)?,
+                    ))),
                     other => other,
                 };
                 match (&l, &r) {
@@ -184,7 +188,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     return Ok(Value::Tuple(TupleVal::Boxed(Rc::new(vec![v]))));
                 }
                 match &e.ty {
-                    Ty::List(_) => Value::List(Rc::new(values)),
+                    Ty::List(_) => Value::List(Rc::new(crate::value::Cells::from(values))),
                     Ty::Set(_) | Ty::HashSet(_) => {
                         Value::Set(Rc::new(values.into_iter().collect()))
                     }

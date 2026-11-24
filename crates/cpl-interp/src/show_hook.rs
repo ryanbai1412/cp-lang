@@ -109,11 +109,14 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let mut out = Vec::with_capacity(items.len());
                 let mut elem = (**t).clone();
                 for v in items.iter() {
-                    let (v, t) = self.show_parts(v, t, span)?;
+                    let (v, t) = self.show_parts(&v, t, span)?;
                     out.push(v);
                     elem = t;
                 }
-                Ok((Value::List(Rc::new(out)), Ty::List(Box::new(elem))))
+                Ok((
+                    Value::List(Rc::new(crate::value::Cells::from(out))),
+                    Ty::List(Box::new(elem)),
+                ))
             }
             (Value::Array(array), Ty::Array { dims, elem }, _) => {
                 let mut out = Vec::with_capacity(array.len());
@@ -288,7 +291,7 @@ fn wanted_shows(program: &Program, value: &Value, ty: &Ty, out: &mut Vec<(FnId, 
             each(&mut array.to_values().iter().map(|v| (v, &**elem)));
         }
         (Value::List(items), Ty::List(elem)) if items.len() <= 200 => {
-            each(&mut items.iter().map(|v| (v, &**elem)));
+            each(&mut items.to_values().iter().map(|v| (v, &**elem)));
         }
         (Value::Set(items), Ty::Set(elem) | Ty::HashSet(elem)) if items.len() <= 200 => {
             each(&mut items.iter().map(|v| (v, &**elem)));

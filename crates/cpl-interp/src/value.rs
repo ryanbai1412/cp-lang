@@ -247,7 +247,7 @@ pub(crate) enum Value {
     Tuple(TupleVal),
     Enum(u32, Rc<Vec<Value>>),
     Array(Rc<Array>),
-    List(Rc<Vec<Value>>),
+    List(Rc<Cells>),
     /// O(1) read-only view (slice or reverse) into a `List<T>`.
     ListView(Rc<ListViewVal>),
     /// O(1) fixed-length mutable slice view into a `List<T>` or 1D `[D]T`.
@@ -381,7 +381,7 @@ pub(crate) struct MutViewVal {
 /// O(1) read-only slice/reverse view into a `List<T>`'s backing `Vec`.
 #[derive(Clone, Debug)]
 pub(crate) struct ListViewVal {
-    pub base: Rc<Vec<Value>>,
+    pub base: Rc<Cells>,
     pub lo: usize,
     pub len: usize,
     pub rev: bool,
@@ -394,7 +394,7 @@ impl ListViewVal {
         self.lo as i64 + self.shift
     }
 
-    pub fn whole(base: Rc<Vec<Value>>, rev: bool) -> ListViewVal {
+    pub fn whole(base: Rc<Cells>, rev: bool) -> ListViewVal {
         let len = base.len();
         ListViewVal {
             base,
@@ -406,7 +406,7 @@ impl ListViewVal {
     }
 
     #[inline]
-    pub fn get(&self, idx: usize) -> Option<&Value> {
+    pub fn get(&self, idx: usize) -> Option<Value> {
         if idx >= self.len {
             return None;
         }
@@ -415,7 +415,12 @@ impl ListViewVal {
         } else {
             self.lo + idx
         };
-        Some(&self.base[pos])
+        Some(self.base.get_unchecked_val(pos))
+    }
+
+    /// The cells in walk order.
+    pub fn iter(&self) -> impl Iterator<Item = Value> + '_ {
+        (0..self.len).map(move |i| self.get(i).unwrap())
     }
 
     /// The cells `rel` counted in storage order from `lo`, whatever the walk direction.
@@ -456,45 +461,19 @@ impl ListViewVal {
     }
 
     pub fn to_vec(&self) -> Vec<Value> {
-        let slice = &self.base[self.lo..self.lo + self.len];
-        if self.rev {
-            slice.iter().rev().cloned().collect()
-        } else {
-            slice.to_vec()
-        }
+        self.iter().collect()
     }
 
-    pub fn cmp_slice(&self, other: &[Value]) -> Ordering {
-        if !self.rev {
-            return self.base[self.lo..self.lo + self.len].cmp(other);
-        }
-        let n = self.len.min(other.len());
-        for i in 0..n {
-            let ord = self.base[self.lo + self.len - 1 - i].cmp(&other[i]);
-            if ord != Ordering::Equal {
-                return ord;
-            }
-        }
-        self.len.cmp(&other.len())
+    pub fn cmp_slice(&self, other: &Cells) -> Ordering {
+        self.iter().cmp(other.iter())
     }
 
     pub fn cmp_view(&self, other: &ListViewVal) -> Ordering {
-        if !self.rev && !other.rev {
-            return self.base[self.lo..self.lo + self.len]
-                .cmp(&other.base[other.lo..other.lo + other.len]);
-        }
-        let n = self.len.min(other.len);
-        for i in 0..n {
-            let ord = self.get(i).unwrap().cmp(other.get(i).unwrap());
-            if ord != Ordering::Equal {
-                return ord;
-            }
-        }
-        self.len.cmp(&other.len)
+        self.iter().cmp(other.iter())
     }
 
     pub fn contains(&self, needle: &Value) -> bool {
-        self.base[self.lo..self.lo + self.len].contains(needle)
+        self.iter().any(|v| &v == needle)
     }
 }
 
@@ -576,6 +555,10 @@ impl Value {
 
     pub fn some(value: Value) -> Value {
         Value::Opt(OptVal::some(value))
+    }
+
+    pub fn list(items: Vec<Value>) -> Value {
+        Value::List(Rc::new(Cells::from(items)))
     }
 
     pub fn tuple(fields: Vec<Value>) -> Value {
@@ -698,10 +681,11 @@ pub(crate) fn zero(ty: &Ty, program: &Program) -> Value {
             Value::Enum(0, Rc::new(payload))
         }
         Ty::Array { dims, .. } => Value::Array(Rc::new(Array::empty(vec![0; dims.len()]))),
-        Ty::List(_) => Value::List(Rc::new(Vec::new())),
-        Ty::ListView(_, _) | Ty::Keyed(_, _) => {
-            Value::ListView(Rc::new(ListViewVal::whole(Rc::new(Vec::new()), false)))
-        }
+        Ty::List(_) => Value::List(Rc::new(crate::value::Cells::from(Vec::new()))),
+        Ty::ListView(_, _) | Ty::Keyed(_, _) => Value::ListView(Rc::new(ListViewVal::whole(
+            Rc::new(crate::value::Cells::from(Vec::new())),
+            false,
+        ))),
         Ty::MutView(..) => Value::Unit,
         Ty::Map(..) | Ty::HashMap(..) => Value::Map(Rc::new(BTreeMap::new())),
         Ty::Set(_) | Ty::HashSet(_) => Value::Set(Rc::new(BTreeSet::new())),
@@ -775,7 +759,7 @@ pub(crate) fn strip_cached(val: &Value, ty: &Ty, program: &Program) -> Value {
             Value::Opt(OptVal::Boxed(Rc::new(strip_cached(inner, t, program))))
         }
         (Value::List(items), Ty::List(t)) => Value::List(Rc::new(
-            items.iter().map(|v| strip_cached(v, t, program)).collect(),
+            items.iter().map(|v| strip_cached(&v, t, program)).collect(),
         )),
         _ => val.clone(),
     }
@@ -903,7 +887,7 @@ pub(crate) fn show(
                 if i > 0 {
                     out.extend_from_slice(sep.bytes());
                 }
-                rec(out, item, elem);
+                rec(out, &item, elem);
             }
         }
         (Value::ListView(view), Ty::ListView(elem, _) | Ty::Keyed(elem, _)) => {
@@ -912,7 +896,7 @@ pub(crate) fn show(
                 if i > 0 {
                     out.extend_from_slice(sep.bytes());
                 }
-                rec(out, view.get(i).unwrap(), elem);
+                rec(out, &view.get(i).unwrap(), elem);
             }
         }
         (Value::Set(items), Ty::Set(elem) | Ty::HashSet(elem)) => {

@@ -504,3 +504,194 @@ impl Cells {
         }
     }
 }
+
+/// The list operations: a push of a cell of the store's kind
+/// stays packed, an empty store takes the kind of its first cell, and any
+/// other cell turns the store back into boxed values.
+impl Cells {
+    pub fn push(&mut self, val: Value) {
+        match (&mut *self, val) {
+            (Cells::Int(v), Value::Int(x)) => v.push(x),
+            (Cells::OneIntStruct(v), Value::Tuple(TupleVal::OneInt(x))) => v.push(x),
+            (Cells::OptInt(v), Value::Opt(OptVal::None)) => v.push(None),
+            (Cells::OptInt(v), Value::Opt(OptVal::Int(x))) => v.push(Some(x)),
+            (Cells::Bool(v), Value::Bool(b)) => v.push(u8::from(b)),
+            (Cells::Char(v), Value::Char(c)) => v.push(c),
+            (Cells::Float(v), Value::Float(f)) => v.push(f),
+            (Cells::Values(v), other) if v.is_empty() => {
+                let cap = v.capacity();
+                *self = Cells::filled(1, other);
+                self.reserve(cap.saturating_sub(1));
+            }
+            (Cells::Values(v), other) => v.push(other),
+            (
+                Cells::SmallIntTuple {
+                    stride,
+                    kinds,
+                    data,
+                },
+                other,
+            ) => {
+                let s = *stride as usize;
+                match try_unbox_small_tuple(&other) {
+                    Some((st, ks, vals)) if st == *stride && ks[..s] == kinds[..s] => {
+                        data.extend_from_slice(&vals[..s]);
+                    }
+                    _ => self.as_mut_values().push(other),
+                }
+            }
+            (_, other) => self.as_mut_values().push(other),
+        }
+    }
+
+    pub fn reserve(&mut self, extra: usize) {
+        match self {
+            Cells::Int(v) | Cells::OneIntStruct(v) => v.reserve(extra),
+            Cells::OptInt(v) => v.reserve(extra),
+            Cells::Bool(v) | Cells::Char(v) => v.reserve(extra),
+            Cells::Float(v) => v.reserve(extra),
+            Cells::SmallIntTuple { stride, data, .. } => data.reserve(extra * *stride as usize),
+            Cells::Values(v) => v.reserve(extra),
+        }
+    }
+
+    pub fn truncate(&mut self, len: usize) {
+        match self {
+            Cells::Int(v) | Cells::OneIntStruct(v) => v.truncate(len),
+            Cells::OptInt(v) => v.truncate(len),
+            Cells::Bool(v) | Cells::Char(v) => v.truncate(len),
+            Cells::Float(v) => v.truncate(len),
+            Cells::SmallIntTuple { stride, data, .. } => data.truncate(len * *stride as usize),
+            Cells::Values(v) => v.truncate(len),
+        }
+    }
+
+    pub fn clear(&mut self) {
+        self.truncate(0);
+    }
+
+    pub fn pop(&mut self) -> Option<Value> {
+        let last = self.len().checked_sub(1)?;
+        let val = self.get_unchecked_val(last);
+        self.truncate(last);
+        Some(val)
+    }
+
+    pub fn extend(&mut self, vals: impl IntoIterator<Item = Value>) {
+        for v in vals {
+            self.push(v);
+        }
+    }
+
+    pub fn iter(&self) -> impl DoubleEndedIterator<Item = Value> + ExactSizeIterator + '_ {
+        (0..self.len()).map(move |i| self.get_unchecked_val(i))
+    }
+}
+
+impl Default for Cells {
+    fn default() -> Cells {
+        Cells::Values(Vec::new())
+    }
+}
+
+impl From<Vec<Value>> for Cells {
+    fn from(values: Vec<Value>) -> Cells {
+        Cells::from_values(values)
+    }
+}
+
+impl FromIterator<Value> for Cells {
+    fn from_iter<I: IntoIterator<Item = Value>>(iter: I) -> Cells {
+        let mut cells = Cells::default();
+        cells.extend(iter);
+        cells
+    }
+}
+
+impl Ord for Cells {
+    fn cmp(&self, other: &Cells) -> Ordering {
+        self.cmp_data(other)
+    }
+}
+
+impl PartialOrd for Cells {
+    fn partial_cmp(&self, other: &Cells) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for Cells {
+    fn eq(&self, other: &Cells) -> bool {
+        self.len() == other.len() && self.cmp(other) == Ordering::Equal
+    }
+}
+
+impl Eq for Cells {}
+
+impl Cells {
+    /// Cell `idx` as a stored value, which only a store of boxed values holds.
+    pub fn stored(&self, idx: usize) -> Option<&Value> {
+        match self {
+            Cells::Values(v) => v.get(idx),
+            _ => None,
+        }
+    }
+
+    /// A place for cell `idx`, boxing the store first.
+    pub fn cell_mut(&mut self, idx: usize) -> &mut Value {
+        &mut self.as_mut_values()[idx]
+    }
+
+    pub fn values_in(&self, lo: usize, hi: usize) -> Vec<Value> {
+        (lo..hi).map(|i| self.get_unchecked_val(i)).collect()
+    }
+
+    /// The cells as values, without a copy when `cells` is not shared.
+    pub fn unwrap_values(cells: Rc<Cells>) -> Vec<Value> {
+        Rc::try_unwrap(cells).map_or_else(|r| r.to_values(), Cells::into_values)
+    }
+
+    pub fn resize(&mut self, len: usize, fill: Value) {
+        if len <= self.len() {
+            self.truncate(len);
+            return;
+        }
+        self.reserve(len - self.len());
+        while self.len() < len {
+            self.push(fill.clone());
+        }
+    }
+
+    pub fn reverse_range(&mut self, lo: usize, hi: usize) {
+        let (mut a, mut b) = (lo, hi);
+        while a + 1 < b {
+            b -= 1;
+            self.swap(a, b);
+            a += 1;
+        }
+    }
+
+    pub fn fill_range(&mut self, lo: usize, hi: usize, val: Value) {
+        for i in lo..hi {
+            self.set(i, val.clone());
+        }
+    }
+
+    /// Sorts in the order `<` uses on the cells.
+    pub fn sort_unstable(&mut self) {
+        match self {
+            Cells::Int(v) | Cells::OneIntStruct(v) => v.sort_unstable(),
+            Cells::OptInt(v) => v.sort_unstable(),
+            Cells::Bool(v) | Cells::Char(v) => v.sort_unstable(),
+            Cells::Float(v) => {
+                v.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap_or_else(|| a.total_cmp(b)))
+            }
+            Cells::Values(v) => v.sort_unstable(),
+            Cells::SmallIntTuple { .. } => {
+                let mut vals = self.to_values();
+                vals.sort_unstable();
+                *self = Cells::from_values(vals);
+            }
+        }
+    }
+}

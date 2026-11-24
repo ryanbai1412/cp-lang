@@ -286,6 +286,7 @@ pub(super) fn render(out: &mut String, value: &Value, ty: &Ty, view: &View, mode
             rows(out, &vals, &array.dims, elem, view, mode);
         }
         (Value::List(items), Ty::List(elem)) => {
+            let items = items.to_values();
             list(out, &mut items.iter().map(|item| (item, &**elem)), '[', ']')
         }
         (Value::Set(items), Ty::Set(elem) | Ty::HashSet(elem)) => {
