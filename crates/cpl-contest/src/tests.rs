@@ -287,7 +287,7 @@ fn list_names_the_cases_in_the_order_they_run() {
         "10",
         "2",
         "02",
-        "Hand",
+        "Hard",
         "+3",
         "18446744073709551616",
     ];
@@ -316,7 +316,7 @@ fn list_names_the_cases_in_the_order_they_run() {
         "+3",
         "10",
         "18446744073709551616",
-        "Hand",
+        "Hard",
         "hand",
         "stress-7",
     ];
@@ -329,6 +329,37 @@ fn list_names_the_cases_in_the_order_they_run() {
         .collect();
     assert_eq!(seen, order);
     assert!(cases[0].at(&["input"]).as_str().unwrap().ends_with("02.in"));
+}
+
+#[test]
+fn cases_named_apart_only_by_letter_case_are_rejected() {
+    let case = |name: &str| crate::problem::TestCase {
+        name: name.to_string(),
+        input: PathBuf::from(format!("{name}.in")),
+        expected: None,
+    };
+    let clash = crate::problem::case_clash(&[case("2"), case("Hand"), case("x"), case("hand")]);
+    assert_eq!(
+        clash.as_deref(),
+        Some("cases `Hand` and `hand` differ only in letter case, and macOS and Windows keep one file for both; rename one")
+    );
+    assert_eq!(
+        crate::problem::case_clash(&[case("Hard"), case("hand")]),
+        None
+    );
+    // Where the file system keeps both, `cpl test` and `--list` refuse them.
+    let dir = scratch("clash");
+    let tests = dir.join("d.tests");
+    std::fs::create_dir_all(&tests).unwrap();
+    std::fs::write(tests.join("Hand.in"), "").unwrap();
+    std::fs::write(tests.join("hand.in"), "").unwrap();
+    if crate::problem::cases_in(&tests).len() == 2 {
+        let d = dir.join("d.cp").to_string_lossy().into_owned();
+        let (mut out, mut err) = (Vec::new(), Vec::new());
+        let args = [d, "--list".to_string()];
+        assert_eq!(crate::test::run(&args, &mut out, &mut err), 1);
+        assert!(String::from_utf8_lossy(&err).contains("differ only in letter case"));
+    }
 }
 
 #[test]

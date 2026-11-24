@@ -180,7 +180,9 @@ token 1: expected `7`, got `6``); the view's panel is the text `cpl test` prints
 status `2/3 passed`.
 `cpl test --list --json` prints `{"cases": [{"name", "input"}]}`: the
 cases in the order `cpl test` runs them, each `input` its `.in` file; the
-editors' test trees list them so.
+editors' test trees list them so. Two case names that differ only in letter
+case (`Hand`, `hand`) are an error for `cpl test` and `--list`: macOS and
+Windows keep one file for both.
 `cpl test --format teamcity` prints TeamCity service messages (`##teamcity[...]`),
 as IntelliJ's test tree and CI servers read them: per case `testStarted` (its
 `locationHint` the absolute `file://` URL of `NAME.in`), `testStdOut`, `testFailed`

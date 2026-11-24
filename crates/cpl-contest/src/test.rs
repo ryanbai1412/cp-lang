@@ -12,8 +12,8 @@
 //! ```
 
 use crate::problem::{
-    cases_in, find_checker, find_grader, find_interactor, find_tests_dir, hidden_cases_in,
-    source_path, tests_dir, Limits, TestCase,
+    case_clash, cases_in, find_checker, find_grader, find_interactor, find_tests_dir,
+    hidden_cases_in, source_path, tests_dir, Limits, TestCase,
 };
 use cpl_diag::view::{Status, View};
 use cpl_diag::Shown;
@@ -569,9 +569,19 @@ fn make_cases(
 
 /// `cpl test --list`: the problem's cases in the order `cpl test` runs
 /// them, so an editor's test tree lists them as the CLI does.
-fn list_cases(file: &str, tests: Option<&str>, json: bool, stdout: &mut dyn Write) -> u8 {
+fn list_cases(
+    file: &str,
+    tests: Option<&str>,
+    json: bool,
+    stdout: &mut dyn Write,
+    stderr: &mut dyn Write,
+) -> u8 {
     let dir = tests.map_or_else(|| find_tests_dir(&source_path(file)), PathBuf::from);
     let cases = cases_in(&dir);
+    if let Some(clash) = case_clash(&cases) {
+        let _ = writeln!(stderr, "cpl: {}: {clash}", dir.display());
+        return 1;
+    }
     if json {
         let cases = cases.iter().map(|case| {
             cpl_json::obj([
@@ -622,7 +632,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         }
         if args.has("--list") {
             let json = matches!(report, Report::Json);
-            return list_cases(file, args.value("--tests"), json, stdout);
+            return list_cases(file, args.value("--tests"), json, stdout, stderr);
         }
     }
     let (args, source, report) = match parsed {
@@ -679,6 +689,9 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
                 Judge::Interactor(..) => hidden_cases_in(&dir),
                 _ => cases_in(&dir),
             };
+            if let Some(clash) = case_clash(&cases) {
+                return Err(format!("{}: {clash}", dir.display()));
+            }
             if let Some(name) = only.as_deref() {
                 let names: Vec<&str> = cases.iter().map(|c| c.name.as_str()).collect();
                 if !names.contains(&name) {

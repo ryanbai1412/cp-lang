@@ -214,6 +214,20 @@ pub fn cases_in(dir: &Path) -> Vec<TestCase> {
     cases
 }
 
+/// Two of `cases` whose names differ only in letter case, as `Hand` and
+/// `hand`: a case-insensitive file system (macOS's, Windows') keeps one file
+/// for both, so a folder holding them loses a case once it is copied there.
+pub fn case_clash(cases: &[TestCase]) -> Option<String> {
+    let mut seen = std::collections::HashMap::new();
+    cases.iter().find_map(|case| {
+        let other = seen.insert(case.name.to_lowercase(), &case.name)?;
+        Some(format!(
+            "cases `{other}` and `{}` differ only in letter case, and macOS and Windows keep one file for both; rename one",
+            case.name
+        ))
+    })
+}
+
 fn sort(cases: &mut [TestCase]) {
     cases.sort_by(
         |a, b| match (a.name.parse::<u64>(), b.name.parse::<u64>()) {
