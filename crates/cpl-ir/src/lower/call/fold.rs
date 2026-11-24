@@ -734,7 +734,13 @@ impl<'a> Lowerer<'a> {
                 if let Some(found) = self.try_ufcs_call(method, arg, &[], span, None, None) {
                     return found;
                 }
-                self.unsupported(span, "`argmax` / `argmin` of a sequence without a `for`");
+                let seq = self.expr(arg, None);
+                let shown = self.show(&seq.ty);
+                self.report(
+                    span,
+                    msgs::check::MISSING_IMPL_DOES_NOT_IMPLEMENT_REQUIRED,
+                    &[&shown, &"Keyed", &method],
+                );
                 self.help("name the position: `argmax(a[i] for i in D)`");
                 return self.err_expr(span);
             }

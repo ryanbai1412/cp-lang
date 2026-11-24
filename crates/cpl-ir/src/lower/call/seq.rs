@@ -542,7 +542,11 @@ impl<'a> Lowerer<'a> {
                         self.suggest_last(name.span, s);
                     }
                     None => {
-                        self.unsupported(name.span, &format!("`.{other}` of a domain as a value"))
+                        self.report(
+                            name.span,
+                            msgs::ir::UNKNOWN_FIELD_A_DOMAIN_HAS_NO,
+                            &[&other],
+                        );
                     }
                 }
                 self.err_expr(span)
