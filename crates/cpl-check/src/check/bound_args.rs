@@ -468,6 +468,19 @@ impl Checker<'_> {
                     continue;
                 }
                 let Some(&(_, j, ref first)) = seen.iter().find(|(h, ..)| *h == g) else {
+                    // `S<Int, NoTags>(1, act: Add())` under `new<A: Acts<F>>`: a written `F` is held to
+                    // what `A`'s impl gives.
+                    if let Some(fixed) = bindings.get(g) {
+                        if !got.fits(fixed) && !fixed.fits(got) {
+                            let bound = Ty::Named {
+                                name: trait_name.clone(),
+                                args: args.clone(),
+                            }
+                            .subst(bindings);
+                            self.report_unmet_bound(span, &actual, &bound, fn_name);
+                            return;
+                        }
+                    }
                     seen.push((g, i, got.clone()));
                     continue;
                 };

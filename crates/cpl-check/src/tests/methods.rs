@@ -179,3 +179,20 @@ print(Tw<V>.filter(x => x.a > 0).count(), Tw<V>.min(by: x => -x.a)!.a)
 "#;
     assert!(check(src).is_empty(), "{:?}", check(src));
 }
+
+#[test]
+fn a_written_type_arg_meets_a_bound_on_new() {
+    let head = "trait Acts<F>:\n    fn tag(self) -> F\nstruct NoTags\nstruct NoAct\nimpl Acts<NoTags> for NoAct:\n    fn tag(self) -> NoTags = NoTags()\nstruct Add\nimpl Acts<Int> for Add:\n    fn tag(self) -> Int = 0\nstruct S<D, F = NoTags>(n: Int):\n    pub fn new<A: Acts<F>>(n: Int, act: A = NoAct()) -> S<D, F> = S<D, F>(n)\n    pub fn apply(self, f: F) -> Int = self.n\n";
+    let wrong = format!("{head}let b = S<Int, NoTags>(1, act: Add())\nprint(b.n)\n");
+    assert_eq!(
+        messages(&check(&wrong)),
+        ["`Add` does not implement `Acts<NoTags>` required by `S<Int, NoTags>`"]
+    );
+    let right = format!("{head}let c = S<Int, Int>(1, act: Add())\nprint(c.apply(5))\n");
+    assert!(check(&right).is_empty(), "{:?}", check(&right));
+    let free = format!("{head}fn g<F, A: Acts<F>>(a: A) -> Int = 0\nprint(g::<NoTags>(Add()))\nprint(g::<Int>(Add()))\n");
+    assert_eq!(
+        messages(&check(&free)),
+        ["`Add` does not implement `Acts<NoTags>` required by `g`"]
+    );
+}

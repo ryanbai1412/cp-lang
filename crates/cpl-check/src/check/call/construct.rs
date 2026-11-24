@@ -201,6 +201,9 @@ impl Checker<'_> {
                     if is_generated_ctor {
                         self.move_ctor_args(args);
                     }
+                    if let Some((_, _, bound_args, _)) = new.filter(|_| !type_args.is_empty()) {
+                        self.shared_bound_args_agree(callee_text, bound_args, &bindings, call.span);
+                    }
                     for (i, g) in generics.iter().enumerate() {
                         if !bindings.contains_key(g) {
                             if let Some(Some(def_ty)) = defaults.get(i) {

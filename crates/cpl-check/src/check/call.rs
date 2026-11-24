@@ -1476,11 +1476,21 @@ impl<'a> Checker<'a> {
                 if let (
                     Some(fn_name),
                     Some(Def::Fn {
-                        bound_args, bounds, ..
+                        bound_args,
+                        bounds,
+                        generics,
+                        ..
                     }),
                 ) = (callee_name, callee_def.as_deref())
                 {
-                    self.shared_bound_args_agree(fn_name, bound_args, &bindings, call.span);
+                    // `g::<NoTags>(Add())`: a written type argument holds the bounds to it.
+                    let mut held = bindings.clone();
+                    if let ExprKind::Generic { args: written, .. } = &callee.kind {
+                        for (g, t) in generics.iter().zip(written) {
+                            held.insert(g.clone(), self.quietly(|c| c.type_arg(t)));
+                        }
+                    }
+                    self.shared_bound_args_agree(fn_name, bound_args, &held, call.span);
                     let bounds = (bounds.iter())
                         .flat_map(|(p, ts)| ts.iter().map(move |t| (p.clone(), t.clone())))
                         .collect::<Vec<_>>();

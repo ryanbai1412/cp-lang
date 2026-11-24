@@ -115,14 +115,25 @@ impl Checker<'_> {
                 );
                 continue;
             }
-            let help = self.unmet_bound_help(&ty);
-            if let Some(diag) = self.report(
-                call.span,
-                msgs::check::MISSING_IMPL_DOES_NOT_IMPLEMENT_REQUIRED,
-                &[&ty, trait_name, &callee],
-            ) {
-                diag.help = help;
-            }
+            self.report_unmet_bound(call.span, &ty, trait_name, callee);
+        }
+    }
+
+    /// E0606: `ty` lacks the `bound` that `callee` requires, with how to give it one.
+    pub(crate) fn report_unmet_bound(
+        &mut self,
+        span: Span,
+        ty: &Ty,
+        bound: &dyn std::fmt::Display,
+        callee: &str,
+    ) {
+        let help = self.unmet_bound_help(ty);
+        if let Some(diag) = self.report(
+            span,
+            msgs::check::MISSING_IMPL_DOES_NOT_IMPLEMENT_REQUIRED,
+            &[ty, bound, &callee],
+        ) {
+            diag.help = help;
         }
     }
 }
