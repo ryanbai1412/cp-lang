@@ -263,10 +263,36 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.continue_on_error(root), [".github/workflows/ci.yml:6"])
             self.assertEqual(dr.nonblocking_jobs(root), [".github/workflows/ci.yml:3"])
             self.assertEqual(dr.dream_unverified(root), ["corpus/problems/p/dream.cp"])
-            self.assertEqual(dr.measure_untested(root), ["plan/domains/tools/measure.py"])
+            self.assertEqual(dr.measure_broken(root), ["plan/domains/tools/measure.py"])
             self.assertEqual(dr.mono_unguarded(root), ["crates/cpl-check, crates/cpl-ir: no GROWING_INSTANTIATION use"])
             self.assertEqual(dr.corpus_walkers(root), ["scripts/walk.py"])
             self.assertEqual(dr.unregistered_lists(root), ["tools/new-allow.txt"])
+
+    def test_one_mechanism_surface_counters(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init", "-q", str(root)], check=True, env=dr._git_env())
+            self._write(root, "crates/cpl-json/Cargo.toml", "[dependencies]\nserde_json = '1'\n")
+            self._write(root, "crates/cpl-json/src/lib.rs", 'let j = format!("{{\\"a\\":{}}}", 1);\n')
+            self._write(root, "crates/a/Cargo.toml", "[dependencies]\nserde_json = '1'\n")
+            self._write(root, "crates/a/src/lib.rs", "\n".join([
+                'let j = format!("{{\\"a\\":{}}}", 1);', 'let k = format!("x\\": {}", 1);',
+                'let c = root.join("cp.toml");', 'if l.starts_with("///") {}', "s.replace_range(0..1, \"\");",
+                "let db = Database::new();", ""]))
+            self._write(root, "crates/a/src/tests_x.rs", "s.replace_range(0..1, \"\");\n")
+            self._write(root, "crates/cpl-diag/src/lib.rs", "fn apply_fixes() { s.replace_range(0..1, \"\"); }\n")
+            self._write(root, "crates/cpl-doc/src/lib.rs", 'l.strip_prefix("///");\n')
+            self._write(root, "crates/cpl-check/src/lib.rs", "Database::new();\n")
+            self._write(root, "scripts/mod.py", "for p in root.glob('**/*.cp'):\n    p.write_text(fix(p))\n")
+            self._write(root, "scripts/read.py", "for p in root.glob('**/*.cp'):\n    out.write_text(p.name)\n")
+            subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
+            self.assertEqual(dr.json_outside_cpl_json(root),
+                             ["crates/a/Cargo.toml", "crates/a/src/lib.rs:1", "crates/a/src/lib.rs:2"])
+            self.assertEqual(dr.config_schemas(root), ["crates/a/src/lib.rs"])
+            self.assertEqual(dr.std_doc_parsers(root), ["crates/a/src/lib.rs:4"])
+            self.assertEqual(dr.edit_engines(root), ["crates/a/src/lib.rs:5"])
+            self.assertEqual(dr.codemods_outside_fix(root), ["scripts/mod.py p"])
+            self.assertEqual(dr.module_loaders(root), ["crates/a/src/lib.rs:6"])
 
     def test_every_list_row_names_a_counter(self) -> None:
         for rel, (counter, owner, plan) in dr.LISTS.items():

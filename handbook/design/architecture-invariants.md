@@ -24,7 +24,8 @@ Factory owns it.
 - **A second implementation carries its own deletion plan.** A fallback, shim,
   cache of another tool's data, allowlist or skip list lands with a ratchet
   counter, an owner and a deletion step, all in the same commit. The gate:
-  a new list file or allowlist with no registered counter fails `check.sh`.
+  a new list file or allowlist with no `LISTS` row (counter, owner, deletion
+  plan) in `scripts/debt-ratchet.py` fails `unregistered_lists`, a hard zero.
 - **Interface before consumers.** The owner publishes a surface's API shape
   before anyone builds on it. Shared analysis is per-revision and
   query-shaped, so incremental editor analysis can extend it later without
@@ -44,22 +45,22 @@ Factory owns it.
 |---|---|---|---|
 | Analysis | `cpl_check::Session` is the only thing that builds an analysis; it is per-revision and query-shaped | Core, with Consumers | `own_databases`, `consumer_rederived` |
 | Std names in the compiler | Only the intrinsics table (decision 266) may name a std item | Core | `ir_builtin_names`, `backend_std_names`, `lint_std_names`, `prelude_privilege` |
-| Std metrics | Each `plan/domains/*/measure.py` has a self-test that fails on a `0 of 0` reading | Content | `scripts/test_stdlib_measure.py`; to build: `measure_broken` |
-| Std bodies | Every pub std item runs its CP Lang body; the compiler never bypasses it | Content | to build: `std_shadowed` (std pub names the compiler also matches by string, intrinsics excluded) |
-| Running programs | The VM, also built to wasm; no interpreter fallback path | Core | `vm_fallbacks`, `tree_walker` |
+| Std metrics | Each `plan/domains/*/measure.py` has a self-test that fails on a `0 of 0` reading | Content | `measure_broken`, `scripts/test_stdlib_measure.py` |
+| Std bodies | Every pub std item runs its CP Lang body; the compiler never bypasses it | Content | `std_shadowed` (std pub names the compiler also matches by string, intrinsics excluded) |
+| Running programs | The VM, also built to wasm; no interpreter fallback path; compile-time growth is refused (E0319) | Core | `vm_fallbacks`, `tree_walker`, `mono_unguarded` |
 | Crate dependencies | The layer map in `design/architecture.md` | Factory | `layer_violations`, `crate_edges` |
 | Tool data on the site | `web/` reads tool output; nothing is copied in by hand | Factory | to build: `web_hand_copied` |
-| Machine output | One versioned schema crate, `cpl-json`, for `--format json`, LSP, wasm and trace files; no `serde_json` or hand-built JSON anywhere else | Consumers | to build: `json_outside_cpl_json` |
+| Machine output | One versioned schema crate, `cpl-json`, for `--format json`, LSP, wasm and trace files; no `serde_json` or hand-built JSON anywhere else | Consumers | `json_outside_cpl_json` |
 | Diagnostics | One registry (code, message key, fix, docs) read by checker, lint, diag and docs; no diagnostic text outside it | Consumers, with Core | to build: `diag_text_outside_registry` |
-| Configuration | One schema for `cp.toml`, judge profiles, CLI flags and editor settings | Consumers | to build: `config_schemas` |
-| Std documentation | One doc model, produced by the checker, for `cpl doc`, hover, site and completion | Consumers; the site reads it (Factory) | to build: `std_doc_parsers` |
-| Source edits | One lossless tree and edit engine for fmt, `cpl fix`, codemods and migrations; every codemod is a `cpl fix` | Consumers | to build: `codemods_outside_fix` |
+| Configuration | One schema for `cp.toml`, judge profiles, CLI flags and editor settings | Consumers | `config_schemas` |
+| Std documentation | One doc model, produced by the checker, for `cpl doc`, hover, site and completion | Consumers; the site reads it (Factory) | `std_doc_parsers` |
+| Source edits | One lossless tree and edit engine for fmt, `cpl fix`, codemods and migrations; every codemod is a `cpl fix` | Consumers | `codemods_outside_fix`, `edit_engines` |
 | Execution events | One event model on the VM for trace, profiler, debugger and replay | Core, with Consumers | to build: `event_models` |
 | Integer widths and overflow | One width table, read by both the interpreter and codegen | Core | to build: `width_tables` |
 | Input and output | One I/O contract, tested across the interpreter, the C++ runtime and the browser | Core, with Factory for the browser | to build: an I/O parity suite |
-| Problems | One problem package (`corpus/problems/<id>/`) and one walker, `scripts/corpus.py` `problems()`, used by ports, bench, stress and judge | Content, with Factory for bench | to build: `corpus_walkers` (any other glob of `corpus/problems`), `dream_unverified` (a `dream.cp` without a current `dream_stress` record) |
+| Problems | One problem package (`corpus/problems/<id>/`) and one walker, `scripts/corpus.py` `problems()`, used by ports, bench, stress and judge | Content, with Factory for bench | `corpus_walkers` (any other glob of `corpus/problems`), `dream_unverified` (a `dream.cp` without a current `dream_stress` record) |
 | Editors | Editors stay thin, with all logic in the LSP | Consumers | to build: `editor_logic_lines` |
-| Modules | One module loader and resolver for CLI, LSP, wasm and judge | Core | to build: `module_loaders` |
+| Modules | One module loader and resolver for CLI, LSP, wasm and judge | Core | `module_loaders` |
 | Judges and targets | One judge/target table that drives the emitter | Core | to build: `judge_tables` |
 | Codegen optimizations | Every optimization reads the effects/Uses table | Core, with Factory | to build: `opt_without_uses` |
 | Site | Generated from the tools | Factory | `gen.py --check` |

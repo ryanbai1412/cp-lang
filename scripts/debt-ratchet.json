@@ -152,7 +152,7 @@
   "lint_type_syntax": 27,
   "idioms_evidenced_unlinted": 13,
   "bench_lists": 9,
-  "unwrap_input": 721,
+  "unwrap_input": 718,
   "unsupported_sites": 43,
   "lsp_string_types": 11,
   "lint_post_filters": 68,
@@ -163,9 +163,15 @@
   "continue_on_error": 0,
   "nonblocking_jobs": 6,
   "dream_unverified": 421,
-  "measure_untested": 1,
+  "measure_broken": 1,
   "mono_unguarded": 1,
   "std_shadowed": 55,
   "corpus_walkers": 49,
-  "unregistered_lists": 0
+  "unregistered_lists": 0,
+  "json_outside_cpl_json": 13,
+  "config_schemas": 6,
+  "std_doc_parsers": 5,
+  "edit_engines": 3,
+  "codemods_outside_fix": 2,
+  "module_loaders": 20
 }

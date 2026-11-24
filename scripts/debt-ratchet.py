@@ -925,7 +925,7 @@ def _src_lines(root: Path, *subdirs: str) -> Iterator[tuple[str, int, str]]:
     for p in _rs_files(root, *subdirs, tests=False):
         rel = _rel(root, p)
         parts = set(Path(rel).parts[:-1])
-        if parts & NON_TEST_RS_PARTS or p.name == "build.rs" or p.name.endswith("_tests.rs") \
+        if parts & NON_TEST_RS_PARTS or p.name == "build.rs" or p.name.endswith("_tests.rs") or p.name.startswith("tests_") \
                 or "/src/tests/" in rel:
             continue
         for i, line in enumerate(_lines(p), 1):
@@ -1053,7 +1053,7 @@ def dream_unverified(root: Path) -> list[str]:
     return found
 
 
-def measure_untested(root: Path) -> list[str]:
+def measure_broken(root: Path) -> list[str]:
     """plan/domains/*/measure.py with no scripts/test_<domain>_measure.py to catch "0 of 0"."""
     return [_rel(root, p) for p in sorted((root / "plan/domains").glob("*/measure.py"))
             if not (root / f"scripts/test_{p.parent.name}_measure.py").is_file()]
@@ -1098,6 +1098,66 @@ def corpus_walkers(root: Path) -> list[str]:
                     found.append(rel)
                     break
     return found
+
+def _outside(rel: str, owners: tuple[str, ...]) -> bool:
+    return not rel.startswith(owners)
+
+
+JSON_FORMAT_RE = re.compile(r'format!\("(?:\{\{\\"|[^"]*\\":)')
+
+
+def json_outside_cpl_json(root: Path) -> list[str]:
+    """`serde_json` in a Cargo.toml or a hand-built JSON `format!` outside crates/cpl-json:
+    a second machine-output schema."""
+    found = [rel for rel in _git(root, "ls-files", "Cargo.toml", "crates/*/Cargo.toml")
+             if _outside(rel, ("crates/cpl-json/",)) and "serde_json" in (root / rel).read_text(encoding="utf-8")]
+    return found + [f"{rel}:{i}" for rel, i, line in _src_lines(root)
+                    if _outside(rel, ("crates/cpl-json/",)) and JSON_FORMAT_RE.search(line)]
+
+
+# The one config module, named by its owner (Consumers' tools child) once it exists.
+CONFIG_MODULES: tuple[str, ...] = ()
+CONFIG_RE = re.compile(r'"cp\.toml"|\btoml::')
+
+
+def config_schemas(root: Path) -> list[str]:
+    """Shipped files reading `cp.toml` or using `toml::` outside the one config module."""
+    return sorted({rel for rel, _, line in _src_lines(root)
+                   if CONFIG_RE.search(line) and (not CONFIG_MODULES or _outside(rel, CONFIG_MODULES))})
+
+
+def std_doc_parsers(root: Path) -> list[str]:
+    """`"///` literals outside cpl-syntax and cpl-doc: a second reader of std doc comments."""
+    return [f"{rel}:{i}" for rel, i, line in _src_lines(root)
+            if '"///' in line and _outside(rel, ("crates/cpl-syntax/", "crates/cpl-doc/"))]
+
+
+EDIT_ENGINE_RE = re.compile(r"\bfn apply_fixes\b|\bfn apply_edits\b|\.replace_range\(")
+
+
+def edit_engines(root: Path) -> list[str]:
+    """Text edits applied outside cpl-diag's `apply_fixes` and cpl-fmt: a second edit engine."""
+    return [f"{rel}:{i}" for rel, i, line in _src_lines(root)
+            if EDIT_ENGINE_RE.search(line) and _outside(rel, ("crates/cpl-diag/", "crates/cpl-fmt/"))]
+
+
+def codemods_outside_fix(root: Path) -> list[str]:
+    """Scripts that rewrite the `.cp` files they glob, instead of going through `cpl fix`."""
+    found = []
+    for rel in _git(root, "ls-files", "scripts/*.py", "scripts/*.sh"):
+        if Path(rel).name.startswith("test_"):
+            continue
+        text = (root / rel).read_text(encoding="utf-8", errors="replace")
+        for v in sorted(set(re.findall(r"for (\w+) in [^\n]*\*\.cp['\"]", text))):
+            if re.search(rf"\b{v}\.write_text\(|open\({v},\s*['\"]w|sed -i[^\n]*\${{?{v}\b", text):
+                found.append(f"{rel} {v}")
+    return found
+
+
+def module_loaders(root: Path) -> list[str]:
+    """`Database::new(` outside cpl-check: a second module loader beside `SessionOptions`."""
+    return [f"{rel}:{i}" for rel, i, line in _src_lines(root)
+            if "Database::new(" in line and _outside(rel, ("crates/cpl-check/",))]
 
 
 # Every tracked list file outside test data: the counter that counts its
@@ -1162,7 +1222,7 @@ def unregistered_lists(root: Path) -> list[str]:
 # committed baseline is 0 is listed here (scripts/test_debt_ratchet.py checks).
 HARD_ZERO = frozenset({
     "pending_tests", "edition_refs", "uncited_rules", "decision_dup_numbers",
-    "continue_on_error", "unregistered_lists",
+    "continue_on_error", "unregistered_lists", "codegen_effect_guesses",
 })
 
 # name -> (label, measure, ratcheted). Informational counts are shown, never gated.
@@ -1219,10 +1279,16 @@ COUNTERS = {
     "continue_on_error": ("workflow steps marked continue-on-error", continue_on_error, True),
     "nonblocking_jobs": ("workflow jobs marked continue-on-error", nonblocking_jobs, True),
     "dream_unverified": ("dream.cp files with no passing stress record", dream_unverified, True),
-    "measure_untested": ("plan measure.py scripts with no test", measure_untested, True),
+    "measure_broken": ("plan measure.py scripts with no test", measure_broken, True),
     "mono_unguarded": ("monomorphization with no termination guard", mono_unguarded, True),
     "std_shadowed": ("std names lowering bypasses off the builtin floor", std_shadowed, True),
     "corpus_walkers": ("files listing corpus/problems besides scripts/corpus.py", corpus_walkers, True),
+    "json_outside_cpl_json": ("serde_json or hand-built JSON outside cpl-json", json_outside_cpl_json, True),
+    "config_schemas": ("cp.toml/toml:: readers outside the config module", config_schemas, True),
+    "std_doc_parsers": ("`///` doc-comment readers outside cpl-syntax/cpl-doc", std_doc_parsers, True),
+    "edit_engines": ("text edits applied outside cpl-diag/cpl-fmt", edit_engines, True),
+    "codemods_outside_fix": ("scripts rewriting .cp files instead of cpl fix", codemods_outside_fix, True),
+    "module_loaders": ("Database::new outside cpl-check", module_loaders, True),
     "unregistered_lists": ("list files with no LISTS row (counter, owner, plan)", unregistered_lists, True),
 }
 
