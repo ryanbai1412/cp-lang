@@ -1583,3 +1583,62 @@ impl<'a> Lowerer<'a> {
         })
     }
 }
+
+impl Lowerer<'_> {
+    /// The zero-arg `each(self)` (such as `Bitset<D>`'s), or the `iter(self)` of its
+    /// `impl Seq`, that walks a struct, and the element it yields.
+    pub(in crate::lower) fn struct_walk(
+        &mut self,
+        sid: StructId,
+        span: Span,
+    ) -> Option<(FnId, Ty)> {
+        let f = ["each", "iter"].into_iter().find_map(|m| {
+            let f = *self.structs[sid].methods.get(m)?;
+            self.sigs[f].params.is_empty().then_some(f)
+        })?;
+        self.queue_fn(f);
+        match self.ret_of(f, span) {
+            Ty::List(elem) => Some((f, *elem)),
+            _ => None,
+        }
+    }
+
+    /// What a `for` over a `ty` binds: a built-in sequence's or set's element, or
+    /// what a struct's walk yields.
+    pub(in crate::lower) fn walk_elem(&mut self, ty: &Ty, span: Span) -> Option<Ty> {
+        match ty {
+            Ty::Set(elem) | Ty::HashSet(elem) => Some((**elem).clone()),
+            Ty::Struct(sid) => self.struct_walk(*sid, span).map(|(_, elem)| elem),
+            _ => ty.seq_elem(),
+        }
+    }
+
+    /// `seq` as a built-in sequence a loop walks: a struct becomes the call of its walk.
+    pub(in crate::lower) fn walked_struct(&mut self, seq: Expr) -> Expr {
+        let Ty::Struct(sid) = seq.ty else {
+            return seq;
+        };
+        let span = seq.span;
+        match self.struct_walk(sid, span) {
+            Some((f, elem)) => self.mk(
+                ExprKind::Call(f, vec![Arg::Value(seq)]),
+                Ty::List(Box::new(elem)),
+                span,
+            ),
+            None => seq,
+        }
+    }
+}
+
+impl Lowerer<'_> {
+    /// The element of the first bound generic that is walkable.
+    pub(in crate::lower) fn inferred_elem(&mut self, inferred: &GenEnv, span: Span) -> Option<Ty> {
+        let tys: Vec<Ty> = (inferred.values())
+            .filter_map(|ga| match ga {
+                GenArg::Ty(t) => Some(t.clone()),
+                _ => None,
+            })
+            .collect();
+        tys.iter().find_map(|t| self.walk_elem(t, span))
+    }
+}

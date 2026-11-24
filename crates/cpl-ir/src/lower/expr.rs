@@ -4620,21 +4620,13 @@ impl<'a> Lowerer<'a> {
                 // A struct with a zero-arg `each(self)` (such as `Bitset<D>`), or the
                 // `iter(self)` of its `impl Seq`, walks what that call gives.
                 if let Ty::Struct(sid) = value.ty {
-                    let walk = ["each", "iter"].into_iter().find_map(|m| {
-                        let f = *self.structs[sid].methods.get(m)?;
-                        self.sigs[f].params.is_empty().then_some(f)
-                    });
-                    if let Some(each_fn) = walk {
-                        self.queue_fn(each_fn);
-                        let ret = self.ret_of(each_fn, span);
-                        if let Ty::List(elem) = ret {
-                            let call = self.mk(
-                                ExprKind::Call(each_fn, vec![Arg::Value(value)]),
-                                Ty::List(elem.clone()),
-                                span,
-                            );
-                            return (Iter::Seq(call, false), *elem);
-                        }
+                    if let Some((each_fn, elem)) = self.struct_walk(sid, span) {
+                        let call = self.mk(
+                            ExprKind::Call(each_fn, vec![Arg::Value(value)]),
+                            Ty::List(Box::new(elem.clone())),
+                            span,
+                        );
+                        return (Iter::Seq(call, false), elem);
                     }
                     // A struct with `len` and `nth(self, j)` (an `Indexed` view such
                     // as `Stepped<S>`) walks `nth(j)` for `j` in `0..len`.

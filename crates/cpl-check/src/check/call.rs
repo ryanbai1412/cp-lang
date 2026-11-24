@@ -958,11 +958,10 @@ impl<'a> Checker<'a> {
         // Sequence higher-order operations: `map`, `filter`, `partition`,
         // `group`, `first(pred)`, `sorted`, through one unified `seq_elem()` path.
         let seq_elem: Option<Ty> = base_ty.seq_elem().or_else(|| match &base_ty {
-            Ty::Named { name: n, args }
-                if matches!(n.as_str(), "Bitset" | "Set" | "HashSet") && args.len() == 1 =>
-            {
-                Some(args[0].clone())
-            }
+            Ty::Named { .. } => match self.element_ty(&base_ty) {
+                Ty::Unknown | Ty::Error => None,
+                elem => Some(elem),
+            },
             _ => None,
         });
         if let Some(elem) = seq_elem {

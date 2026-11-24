@@ -1623,9 +1623,9 @@ impl<'a> Lowerer<'a> {
                         if !is_seq_bound {
                             return None;
                         }
-                        match inferred.get(&b.name.text) {
-                            Some(GenArg::Ty(t)) => t.seq_elem(),
-                            Some(GenArg::Domain(d)) => Some(Ty::Pos(*d)),
+                        match inferred.get(&b.name.text).cloned() {
+                            Some(GenArg::Ty(t)) => self.walk_elem(&t, span),
+                            Some(GenArg::Domain(d)) => Some(Ty::Pos(d)),
                             _ => None,
                         }
                     });
@@ -1916,13 +1916,7 @@ impl<'a> Lowerer<'a> {
                 // fall back to deducing an unbound `T`/`E`/`X` from a bound container generic `S`.
                 for g in &gen_names {
                     if !inferred.contains_key(g) && (g == "T" || g == "E" || g == "X") {
-                        let elem_ty = inferred.values().find_map(|ga| match ga {
-                            GenArg::Ty(t) => t.seq_elem().or_else(|| match t {
-                                Ty::Set(e) | Ty::HashSet(e) => Some((**e).clone()),
-                                _ => None,
-                            }),
-                            _ => None,
-                        });
+                        let elem_ty = self.inferred_elem(&inferred, span);
                         if let Some(ety) = elem_ty {
                             inferred.insert(g.clone(), GenArg::Ty(ety));
                         }
@@ -1991,10 +1985,7 @@ impl<'a> Lowerer<'a> {
             if let ast::TypeKind::Named { name: rn, args: ra } = &ret_ast.kind {
                 if ra.is_empty() && gen_names.contains(&rn.text) && !inferred.contains_key(&rn.text)
                 {
-                    let elem_from_container = inferred.values().find_map(|ga| match ga {
-                        GenArg::Ty(t) => t.seq_elem(),
-                        _ => None,
-                    });
+                    let elem_from_container = self.inferred_elem(&inferred, span);
                     if let Some(elem_ty) = elem_from_container {
                         inferred.insert(rn.text.clone(), GenArg::Ty(elem_ty));
                     }
