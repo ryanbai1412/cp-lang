@@ -195,10 +195,17 @@ class Runner:
     def __init__(self, conform: str, cpl: str, timeout: float = 120):
         self.conform, self.cpl, self.timeout = conform, cpl, timeout
         self.baseline: dict[tuple, dict | None] = {}
+        self.base = STD
+        self.texts: list[tuple[Path, str, set[str]]] = []
+        self.types: dict[str, set[str]] = {}
+        self.has_tests: dict[str, bool] = {}
+        self.found: dict[tuple, list[Path]] = {}
 
     def slices(self, m: dict) -> list[tuple]:
         stem = Path(m["file"]).stem
-        out = [("test", m["file"])]
+        if m["file"] not in self.has_tests:
+            self.has_tests[m["file"]] = "@test" in (STD / m["file"]).read_text(encoding="utf-8")
+        out = [("test", m["file"])] if self.has_tests[m["file"]] else []
         out += [("docs", f"{m['file']}#{m['item']}")] if m["item"] else []
         if (ROOT / f"spec/conformance/std-{stem}").is_dir():
             out.append(("conformance", f"std-{stem}/"))
@@ -207,15 +214,18 @@ class Runner:
         return out
 
     def models(self, m: dict) -> list[Path]:
-        types = set(TYPE.findall((STD / m["file"]).read_text(encoding="utf-8")))
-        names = types | ({m["item"]} if m["item"] else set())
-        found = []
-        for p in sorted(MODELS.glob("*.cp")):
-            text = p.read_text(encoding="utf-8")
-            named = set(re.findall(r"^// (?:model|brute): (\w+)", text, re.M))
-            if named & names or (m["item"] and re.search(rf"\b{re.escape(m['item'])}\b", text)):
-                found.append(p)
-        return found
+        key = (m["file"], m["item"])
+        if key not in self.found:
+            if not self.texts:
+                for p in sorted(MODELS.glob("*.cp")):
+                    text = p.read_text(encoding="utf-8")
+                    self.texts.append((p, text, set(re.findall(r"^// (?:model|brute): (\w+)", text, re.M))))
+            if m["file"] not in self.types:
+                self.types[m["file"]] = set(TYPE.findall((STD / m["file"]).read_text(encoding="utf-8")))
+            names = self.types[m["file"]] | ({m["item"]} if m["item"] else set())
+            self.found[key] = [p for p, text, named in self.texts if named & names or (
+                m["item"] and re.search(rf"\b{re.escape(m['item'])}\b", text))]
+        return self.found[key]
 
     def run(self, sl: tuple, std: Path, limit: float) -> dict | None:
         """{case: status} of one slice; None when the run crashed; "timeout" when over `limit`."""
@@ -252,8 +262,8 @@ class Runner:
         nothing; a red std @test, or a slice that timed out or crashed, stops the run:
         it would score its mutants for a reason that is not the mutant."""
         if sl not in self.baseline:
-            base = self.run(sl, STD, self.timeout)
-            bad = {k: v for k, v in (base or {"*": "crash"}).items()
+            base = self.run(sl, self.base, self.timeout)
+            bad = {k: v for k, v in ({"*": "crash"} if base is None else base).items()
                    if v in ("timeout", "crash") or sl[0] == "test" and v != "pass"}
             if bad:
                 raise BaselineRed(f"{' '.join(sl)} is red on unmutated std: {bad}")
@@ -276,17 +286,29 @@ class Runner:
         return "Timeout" if "timeout" in seen else "Unviable" if seen else "MissedMutant"
 
 
+# `cpl test`'s 2 s judge limit is for one run on an idle machine: a std @test near it times out
+# under the run's parallel load. A copy's cp.toml widens it; the run's own timeout still ends a hang.
+TEST_CP_TOML = "[judge.generic]\ntime_ms = 20000\n"
+
+
+def copy_std(root: Path) -> Path:
+    """A scratch std/ under `root`, beside the cp.toml its @tests are timed by."""
+    std = root / "std"
+    shutil.rmtree(std, ignore_errors=True)
+    shutil.copytree(STD, std)
+    (root / "cp.toml").write_text(TEST_CP_TOML, encoding="utf-8")
+    return std
+
+
 def run_all(mutants: list[dict], runner: Runner, jobs: int, out: Path) -> dict:
     """Score every mutant; writes and returns cargo-mutants-shaped outcomes."""
     out.mkdir(parents=True, exist_ok=True)
+    runner.base = copy_std(out / "std-base")
     with ThreadPoolExecutor(max_workers=max(jobs, 1)) as pool:
         list(pool.map(runner.clean, dict.fromkeys(sl for m in mutants for sl in runner.slices(m))))
     free: queue.Queue[Path] = queue.Queue()
     for k in range(max(jobs, 1)):
-        std = out / f"std-{k}" / "std"
-        shutil.rmtree(std, ignore_errors=True)
-        shutil.copytree(STD, std)
-        free.put(std)
+        free.put(copy_std(out / f"std-{k}"))
 
     def one(m: dict) -> tuple[dict, str]:
         std = free.get()
