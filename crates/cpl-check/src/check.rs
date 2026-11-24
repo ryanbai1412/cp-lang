@@ -12,6 +12,7 @@ mod assoc;
 mod bound_args;
 mod bounded_str;
 mod built_from_param;
+mod const_bounds;
 mod def_type;
 mod impl_head;
 pub(crate) use advice::rename_values;

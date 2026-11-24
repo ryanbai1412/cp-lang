@@ -322,6 +322,24 @@ mod tests {
     }
 
     #[test]
+    fn a_range_folds_its_constant_ends() {
+        let src = "const K = 2000\nconst N = 5\nlet a: 1..=K * K = read()\nlet b: 0..2 * N + 1 = read()\nlet c: 1..=10 ** 9 + 7 = read()\nprint(a, b, c)\n";
+        let mut db = Database::new();
+        db.set_file("a.cp", src);
+        let analysis = db.analyze("a.cp").unwrap();
+        let ends = |name: &str| {
+            let start = src.find(&format!("let {name}")).unwrap() as u32 + 4;
+            match analysis.facts().place_type(Span::new(start, start + 1)) {
+                Some(Ty::Range { lo, hi, .. }) => (*lo, *hi),
+                other => panic!("{name}: {other:?}"),
+            }
+        };
+        assert_eq!(ends("a"), (Some(1), Some(4_000_000)));
+        assert_eq!(ends("b"), (Some(0), Some(10)));
+        assert_eq!(ends("c"), (Some(1), Some(1_000_000_007)));
+    }
+
+    #[test]
     fn a_written_type_keeps_the_type_it_resolved_to() {
         let src = "domain V = 1..=5\nfn f<K>(m: Map<V, Int>, k: Set<K>) -> Int = m.len\n";
         let mut db = Database::new();

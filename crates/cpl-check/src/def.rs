@@ -21,6 +21,8 @@ pub enum Def {
         /// `const FAST = true`: the `Bool` it is known to be when
         /// compiling, for `if const FAST:`.
         settled: Option<bool>,
+        /// `const K = 2000`: the integer it is known to be.
+        value: Option<i128>,
     },
     Fn {
         ty: Ty,
@@ -329,6 +331,7 @@ impl Def {
                 keyword,
                 generics,
                 settled,
+                value,
                 ..
             } if annotation_broken => Def::Value {
                 ty: Ty::Error,
@@ -336,6 +339,7 @@ impl Def {
                 keyword,
                 generics,
                 settled,
+                value,
             },
             other => other,
         }
