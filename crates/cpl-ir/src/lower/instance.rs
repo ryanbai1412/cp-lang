@@ -32,8 +32,8 @@ impl<'a> Lowerer<'a> {
         let base_one = self.base_one() && reads_a_param(self.gen_fns[gfid].decl);
         let mut key_args = args.clone();
         key_args.extend(range_ends.iter().map(|(_, a)| a.clone()));
-        let key = (gfid, key_args, rev_params.clone(), base_one);
-        if let Some(&id) = self.fn_insts.get(&key) {
+        let key = mono::InstKey::Fn(gfid, key_args, rev_params.clone(), base_one);
+        if let Some(&id) = self.insts.get(&key) {
             if !self.sigs[id].returns_fresh_domain && self.sigs[id].new_domain_slots.is_empty() {
                 return id;
             }
@@ -99,7 +99,7 @@ impl<'a> Lowerer<'a> {
         let suffix: Vec<String> = args.iter().map(|a| self.mangle_arg(a)).collect();
         self.record_instance(id, gfid, &args);
         self.sigs[id].name = format!("{}_{}_{id}", self.sigs[id].name, suffix.join("_"));
-        self.fn_insts.insert(key, id);
+        self.insts.insert(key, id);
         self.resolve_fn_sig(id, None);
         id
     }

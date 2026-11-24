@@ -35,8 +35,8 @@ impl<'a> Lowerer<'a> {
             self.cur_mod = saved_mod;
             self.offset = saved_offset;
         }
-        let key = (gid, args.clone());
-        if let Some(&id) = self.struct_insts.get(&key) {
+        let key = InstKey::Struct(gid, args.clone());
+        if let Some(&id) = self.insts.get(&key) {
             return id;
         }
         let id = self.structs.len();
@@ -76,9 +76,10 @@ impl<'a> Lowerer<'a> {
             owned_domains: HashMap::new(),
             owned_domain_inits: Vec::new(),
             laws: Vec::new(),
+            field_ranges: Vec::new(),
             index_domain: None,
         });
-        self.struct_insts.insert(key, id);
+        self.insts.insert(key, id);
 
         // Switch context to the struct's defining module and generic env.
         let saved_mod = std::mem::replace(&mut self.cur_mod, tpl_mod);
@@ -246,8 +247,8 @@ impl<'a> Lowerer<'a> {
         gid: GenEnumId,
         args: Vec<GenArg>,
     ) -> EnumId {
-        let key = (gid, args.clone());
-        if let Some(&id) = self.enum_insts.get(&key) {
+        let key = InstKey::Enum(gid, args.clone());
+        if let Some(&id) = self.insts.get(&key) {
             return id;
         }
         let tpl_mod = self.gen_enums[gid].mod_id;
@@ -269,7 +270,7 @@ impl<'a> Lowerer<'a> {
             tags: Vec::new(),
             show_fn: None,
         });
-        self.enum_insts.insert(key, id);
+        self.insts.insert(key, id);
 
         let mut env = HashMap::new();
         for (p, a) in decl.generics.iter().zip(&args) {
@@ -680,6 +681,7 @@ impl<'a> Lowerer<'a> {
                 used_fresh_call: false,
                 state: State::Done,
                 sig: SigState::Resolved,
+                judge_ranges: Default::default(),
                 asked_at: self.asked_at.callee(self.cur_mod),
             });
             self.bodies.push(Some(Function {

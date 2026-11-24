@@ -561,13 +561,17 @@ impl Lowerer<'_> {
                 .iter()
                 .map(|st| size_input_set(st, locals))
                 .collect();
-            let mut seen = HashSet::new();
             let mut stmts = Vec::with_capacity(b.stmts.len());
-            for (stmt, set) in std::mem::take(&mut b.stmts).into_iter().zip(&sets) {
+            for (at, (stmt, set)) in std::mem::take(&mut b.stmts)
+                .into_iter()
+                .zip(&sets)
+                .enumerate()
+            {
                 stmts.push(stmt);
                 if let Some(input) = *set {
-                    seen.insert(input);
-                    let pending = |i: SizeInput| !seen.contains(&i) && sets.contains(&Some(i));
+                    let (done, rest) = sets.split_at(at + 1);
+                    let pending =
+                        |i: SizeInput| !done.contains(&Some(i)) && rest.contains(&Some(i));
                     self.library_sizing(input, &pending, &mut stmts);
                 }
             }

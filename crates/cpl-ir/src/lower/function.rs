@@ -131,7 +131,7 @@ impl<'a> Lowerer<'a> {
                 .map(|slot| self.cx.local_ranges.get(&slot).cloned())
                 .collect();
             let ret = decl.ret.as_ref().and_then(|t| self.range_info_from_ast(t));
-            self.sig_ranges.insert(id, (declared, ret));
+            self.sigs[id].judge_ranges = (declared, ret);
         }
         let mut out = Vec::new();
 
@@ -282,6 +282,7 @@ impl<'a> Lowerer<'a> {
                 used_fresh_call: false,
                 state: State::Done,
                 sig: SigState::Resolved,
+                judge_ranges: Default::default(),
                 asked_at: self.asked_at.callee(self.cur_mod),
             });
             self.bodies.push(Some(Function {
@@ -347,6 +348,7 @@ impl<'a> Lowerer<'a> {
                     used_fresh_call: false,
                     state: State::Done,
                     sig: SigState::Resolved,
+                    judge_ranges: Default::default(),
                     asked_at: self.asked_at.callee(self.cur_mod),
                 });
                 self.bodies.push(Some(Function {

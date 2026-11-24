@@ -369,6 +369,8 @@ struct StructInfo<'a> {
     laws: Vec<LawInfo<'a>>,
     /// Backing domain id when `impl Index for S` is defined.
     index_domain: Option<DomainId>,
+    /// The range each field's type gives, by field.
+    field_ranges: Vec<Option<RangeInfo>>,
 }
 
 #[derive(Clone)]
@@ -424,6 +426,8 @@ struct FnSig<'a> {
     sig: SigState,
     /// Where this fn was first asked for.
     asked_at: report::Asked,
+    /// The ranges of the params and result, for a fn the judge calls.
+    judge_ranges: (Vec<Option<RangeInfo>>, Option<RangeInfo>),
 }
 
 /// What a block is for, which decides what happens to its last expression.
@@ -651,7 +655,8 @@ struct Lowerer<'a> {
     /// The domain each `[0..r]` over a `Range<Int>` value names, by `r`'s source: one per key
     /// set, however often its type is probed.
     key_domains: HashMap<(ModId, u32, Span), DomainId>,
-    view_fns: HashMap<(FnId, Vec<(usize, Ty)>), FnId>,
+    /// Every memoized generic instance and view copy.
+    insts: HashMap<mono::InstKey, usize>,
     io_global: Option<GlobalId>,
     lexical_call_at: Option<Span>,
     context_defs: HashMap<String, (GlobalId, Vec<(String, Ty)>)>,
@@ -665,7 +670,6 @@ struct Lowerer<'a> {
     /// The empty struct each bare operator value has as its type (`op_value`).
     op_types: Vec<(BareOp, StructId)>,
     item_types: Vec<(String, StructId)>,
-    struct_insts: HashMap<(GenStructId, Vec<GenArg>), StructId>,
     /// `w.Idx` by the place of `w` and the struct's own `Idx`.
     value_domain_ids: HashMap<((bool, usize), DomainId), DomainId>,
     /// The domains made for arrays indexed by a plain range (`[0..n]T`,
@@ -687,7 +691,6 @@ struct Lowerer<'a> {
     enum_discriminants: Vec<Vec<i64>>,
     enum_decls: Vec<(ModId, u32, &'a ast::EnumDecl)>,
     gen_enums: Vec<GenEnumTemplate<'a>>,
-    enum_insts: HashMap<(GenEnumId, Vec<GenArg>), EnumId>,
 
     domains: Vec<String>,
     /// How each library domain is sized, by its `DomainId`: right after
@@ -724,11 +727,7 @@ struct Lowerer<'a> {
     char_domains: HashSet<DomainId>,
     /// Declared integer range bounds for globals and struct fields.
     global_ranges: HashMap<GlobalId, RangeInfo>,
-    /// Declared ranges of each top-level fn's parameters and result, for
-    /// the types a `@grader` fn gives the grader.
-    sig_ranges: HashMap<FnId, (Vec<Option<RangeInfo>>, Option<RangeInfo>)>,
     judge_tys: Vec<(FnId, Vec<JudgeTy>, JudgeTy)>,
-    struct_field_ranges: HashMap<(StructId, usize), RangeInfo>,
     /// Declared 32-bit element storage layouts for ranged-`Int` arrays/grids/lists/tuples.
     narrow_elems: std::collections::BTreeMap<ElemLoc, NarrowLayout>,
     written_back: Vec<Span>,
@@ -756,7 +755,6 @@ struct Lowerer<'a> {
     gen_fns: Vec<GenFnTemplate<'a>>,
     /// Block-local generators lifted to fns of their own.
     lifted: HashMap<FnId, local_gen::Lifted>,
-    fn_insts: HashMap<(GenFnId, Vec<GenArg>, Vec<String>, bool), FnId>,
     growth: instance::Growth,
 
     closures: Vec<ClosureDef>,
@@ -803,7 +801,6 @@ struct Lowerer<'a> {
     announce_tests: bool,
 
     cx: FnCx,
-    open_impl_fns: HashMap<(StructId, usize, String, Vec<GenArg>), FnId>,
     outer_cxs: Vec<FnCx>,
     gen_env: GenEnv,
     /// The type wanted of the generic call being lowered, which fills a
@@ -852,7 +849,6 @@ impl<'a> Lowerer<'a> {
             gen_structs: Vec::new(),
             op_types: Vec::new(),
             item_types: Vec::new(),
-            struct_insts: HashMap::new(),
             value_domain_ids: HashMap::new(),
             range_domains: HashMap::new(),
             range_domain_sites: HashMap::new(),
@@ -863,7 +859,6 @@ impl<'a> Lowerer<'a> {
             enum_discriminants: Vec::new(),
             enum_decls: Vec::new(),
             gen_enums: Vec::new(),
-            enum_insts: HashMap::new(),
             domains: Vec::new(),
             library_sizes: BTreeMap::new(),
             product_domains: HashMap::new(),
@@ -887,9 +882,7 @@ impl<'a> Lowerer<'a> {
             domain_lens: HashMap::new(),
             char_domains: HashSet::new(),
             global_ranges: HashMap::new(),
-            sig_ranges: HashMap::new(),
             judge_tys: Vec::new(),
-            struct_field_ranges: HashMap::new(),
             narrow_elems: std::collections::BTreeMap::new(),
             written_back: Vec::new(),
             const_ints: HashMap::new(),
@@ -906,7 +899,6 @@ impl<'a> Lowerer<'a> {
             bodies: Vec::new(),
             gen_fns: Vec::new(),
             lifted: HashMap::new(),
-            fn_insts: HashMap::new(),
             growth: instance::Growth::default(),
             closures: Vec::new(),
             queued_fns: Vec::new(),
@@ -929,7 +921,7 @@ impl<'a> Lowerer<'a> {
             counted_domains: HashSet::new(),
             range_keyed: HashSet::new(),
             key_domains: HashMap::new(),
-            view_fns: HashMap::new(),
+            insts: HashMap::new(),
             io_global: None,
             lexical_call_at: None,
             context_defs: HashMap::new(),
@@ -952,7 +944,6 @@ impl<'a> Lowerer<'a> {
             written: Vec::new(),
             announce_tests: false,
             cx: FnCx::default(),
-            open_impl_fns: HashMap::new(),
             outer_cxs: Vec::new(),
             gen_env: HashMap::new(),
             call_hint: (None, None),
@@ -1457,6 +1448,7 @@ impl<'a> Lowerer<'a> {
             owned_domains: HashMap::new(),
             owned_domain_inits: Vec::new(),
             laws: Vec::new(),
+            field_ranges: Vec::new(),
             index_domain: None,
         });
         id

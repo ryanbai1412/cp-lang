@@ -993,6 +993,7 @@ impl<'a> Lowerer<'a> {
                     owned_domains: HashMap::new(),
                     owned_domain_inits: Vec::new(),
                     laws: Vec::new(),
+                    field_ranges: Vec::new(),
                     index_domain: None,
                 });
                 let scope = self.cx.local_syms.top_mut();

@@ -236,13 +236,13 @@ impl<'a> Lowerer<'a> {
                 .map(|n| self.gen_env.get(&format!("impl{idx}.{n}")).cloned())
                 .collect();
             let Some(args) = args else { continue };
-            let key = (sid, idx, method.to_string(), args.clone());
-            if let Some(&id) = self.open_impl_fns.get(&key) {
+            let key = mono::InstKey::OpenImpl(sid, idx, method.to_string(), args.clone());
+            if let Some(&id) = self.insts.get(&key) {
                 return Some(id);
             }
             env.extend(open.into_iter().zip(args));
             let fn_id = self.declare_fn_in(f, m, offset, Some(sid), env.clone());
-            self.open_impl_fns.insert(key, fn_id);
+            self.insts.insert(key, fn_id);
             let saved = (
                 std::mem::replace(&mut self.cur_mod, m),
                 std::mem::replace(&mut self.offset, offset),

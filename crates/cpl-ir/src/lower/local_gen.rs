@@ -100,6 +100,7 @@ impl<'a> Lowerer<'a> {
             used_fresh_call: false,
             state: State::InProgress,
             sig: SigState::Resolved,
+            judge_ranges: Default::default(),
             asked_at: self.asked_at.callee(self.cur_mod),
         });
         self.bodies.push(None);

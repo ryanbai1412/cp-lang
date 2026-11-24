@@ -43,6 +43,7 @@ impl<'a> Lowerer<'a> {
                         owned_domains: HashMap::new(),
                         owned_domain_inits: Vec::new(),
                         laws: Vec::new(),
+                        field_ranges: Vec::new(),
                         index_domain: None,
                     });
                     // The domains first, so every method's signature sees them.

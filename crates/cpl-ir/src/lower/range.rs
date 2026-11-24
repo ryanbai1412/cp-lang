@@ -620,7 +620,11 @@ impl<'a> Lowerer<'a> {
                             .entry(idx)
                             .or_insert((lo, hi));
                     }
-                    self.struct_field_ranges.insert((id, idx), info);
+                    let ranges = &mut self.structs[id].field_ranges;
+                    if ranges.len() <= idx {
+                        ranges.resize(idx + 1, None);
+                    }
+                    ranges[idx] = Some(info);
                 }
             }
         }
@@ -628,11 +632,15 @@ impl<'a> Lowerer<'a> {
         self.outer_cxs = saved_outer;
     }
 
+    fn field_range(&self, id: StructId, idx: usize) -> Option<&RangeInfo> {
+        self.structs.get(id)?.field_ranges.get(idx)?.as_ref()
+    }
+
     /// Looks up `RangeInfo` for field `idx` of struct `id`, falling back to
     /// resolving the field's AST type in the current scope for dynamic bounds
     /// (e.g. `struct Pt(r: 1..=n, c: 1..=m)`).
     pub(super) fn struct_field_range(&mut self, id: StructId, idx: usize) -> Option<RangeInfo> {
-        if let Some(info) = self.struct_field_ranges.get(&(id, idx)) {
+        if let Some(info) = self.field_range(id, idx) {
             return Some(info.clone());
         }
         let decl = self.structs.get(id)?.decl?;
@@ -867,7 +875,7 @@ impl<'a> Lowerer<'a> {
             ExprKind::Global(gid) => self.global_ranges.get(gid).cloned(),
             ExprKind::Field(base, idx) => {
                 if let Ty::Struct(sid) = base.ty {
-                    return self.struct_field_ranges.get(&(sid, *idx)).cloned();
+                    return self.field_range(sid, *idx).cloned();
                 }
                 match self.expr_range(base)? {
                     RangeInfo::Tuple(items) => items.get(*idx).cloned().flatten(),

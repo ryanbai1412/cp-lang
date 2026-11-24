@@ -74,8 +74,8 @@ impl<'a> Lowerer<'a> {
         if takes.is_empty() {
             return id;
         }
-        let key = (id, takes);
-        if let Some(&copy) = self.view_fns.get(&key) {
+        let key = mono::InstKey::View(id, takes.clone());
+        if let Some(&copy) = self.insts.get(&key) {
             return copy;
         }
         let sig = &self.sigs[id];
@@ -83,10 +83,10 @@ impl<'a> Lowerer<'a> {
         let copy = self.declare_fn_in(decl, mod_id, offset, owner, sig.env.clone());
         self.sigs[copy].name = format!("{}_{copy}", self.sigs[copy].name);
         self.resolve_fn_sig(copy, None);
-        for (at, view) in &key.1 {
+        for (at, view) in &takes {
             self.sigs[copy].params[*at].ty = view.clone();
         }
-        self.view_fns.insert(key, copy);
+        self.insts.insert(key, copy);
         copy
     }
 

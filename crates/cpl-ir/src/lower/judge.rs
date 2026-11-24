@@ -60,7 +60,7 @@ impl<'a> Lowerer<'a> {
                 );
                 self.help(format!("take `{param}` by value and return what changed"));
             } else {
-                let (params, result) = self.sig_ranges.get(&id).cloned().unwrap_or_default();
+                let (params, result) = self.sigs[id].judge_ranges.clone();
                 let at = |i: usize| params.get(i).and_then(Option::as_ref);
                 let sides: Result<Vec<JudgeTy>, Uncrossable> = (tys.iter().enumerate())
                     .map(|(i, ty)| judge_ty(ty, at(i)))

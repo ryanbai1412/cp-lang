@@ -55,6 +55,21 @@ pub(super) enum GenArg {
 
 pub(super) type GenEnv = HashMap<String, GenArg>;
 
+/// What a memoized instance or view copy is made from. Every kind shares one
+/// cache, so cpl.wasm carries one hash table for them, not one per key shape.
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub(super) enum InstKey {
+    Struct(GenStructId, Vec<GenArg>),
+    Enum(GenEnumId, Vec<GenArg>),
+    /// The fn, its args with the range ends, its reversed params, and
+    /// whether it reads 1-based.
+    Fn(GenFnId, Vec<GenArg>, Vec<String>, bool),
+    /// The struct, its impl, the method and the impl's open params.
+    OpenImpl(StructId, usize, String, Vec<GenArg>),
+    /// The fn and the params it takes as views.
+    View(FnId, Vec<(usize, Ty)>),
+}
+
 /// The env entry saying type parameter `k` is the `Int` key of an indexed
 /// parameter, so `[k]T` is a table keyed like that parameter.
 pub(super) fn int_key_marker(k: &str) -> String {
