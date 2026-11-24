@@ -1465,6 +1465,17 @@ pub fn floyd_warshall<V, W, R>(mut d: [V, V]?W, over: R = Semiring(min, +)) -> B
     let add = Monoid<W>.of(over.add)
     let mul = Monoid<W>.of(over.mul)
     let one = mul.id
+    if V.all(i => V.all(j => d[i, j] != None)):
+        // Total: every sum stays `Some`, so the loop runs on plain weights.
+        var w = [V, V] (i, j) => d[i, j]!
+        for v in V: w[v, v] = add.op(w[v, v], one)
+        for k in V:
+            for i in V:
+                let a = w[i, k]
+                for j in V: w[i, j] = add.op(w[i, j], mul.op(a, w[k, j]))
+        for i in V:
+            for j in V: d[i, j] = Some(w[i, j])
+        return V.all(v => add.op(w[v, v], one) == one)
     for v in V:
         if let cur = d[v, v]: d[v, v] = Some(add.op(cur, one))
         else: d[v, v] = Some(one)
