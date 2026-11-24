@@ -1672,7 +1672,7 @@ fn a_release_run_does_what_the_judge_build_does() {
     let (_, traps) = at_checks(source, Checks::Traps);
     assert!(traps.is_some_and(|m| m.starts_with("division by zero")));
     let (_, all) = at_checks(source, Checks::LOCAL);
-    assert!(all.is_some_and(|m| m.starts_with("division by zero")));
+    assert!(all.is_some_and(|m| m.starts_with("integer overflow")));
     let wraps = "let big = 9223372036854775807 - id(0)\nfn id(k: Int) -> Int = k\nprint(big + id(1))\nassert id(0) == 1\n";
     assert_eq!(at_checks(wraps, Checks::Traps).0, "-9223372036854775808\n");
     let (_, asserted) = at_checks(wraps, Checks::Traps);
