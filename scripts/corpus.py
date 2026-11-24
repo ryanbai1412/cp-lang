@@ -38,7 +38,7 @@ SETS = os.path.join(ROOT, "corpus", "sets")
 # Under ~/.cache/cpl/cxx, which CI caches across runs; the key holds the source and compiler.
 CXX_CACHE = os.path.join(os.path.expanduser("~"), ".cache", "cpl", "cxx", "corpus")
 HAND = {"tags": [], "difficulty": None, "dream": "none", "spec": "none", "notes": ""}
-RECORDED = ("dream_stress",)
+RECORDED = ("dream_stress", "statement")
 STATUSES = {"none", "draft", "reviewed", "gold"}
 EXT = {"CPP": ".cpp", "CPP03": ".cpp", "CPP11": ".cpp", "CPP14": ".cpp", "CPP17": ".cpp",
        "CPP20": ".cpp", "JAVA": ".java", "PY3": ".py", "PYPY3": ".py", "PY2": ".py", "C": ".c",

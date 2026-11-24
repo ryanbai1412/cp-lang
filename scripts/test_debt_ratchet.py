@@ -83,6 +83,21 @@ class DebtRatchetTest(unittest.TestCase):
                     self._write(root, f"corpus/problems/{name}/{f}", text)
             self.assertEqual(dr.corpus_no_statement(root), [f"{PKGS}/b", f"{PKGS}/c"])
 
+    def test_corpus_no_statement_skips_only_a_pinned_statement_with_no_samples(self) -> None:
+        pinned = {"url": "https://example.org/t.pdf", "sha256": "ab" * 32, "samples": 0}
+        variants = {"ok": pinned, "no_url": {k: v for k, v in pinned.items() if k != "url"},
+                    "no_sha": {k: v for k, v in pinned.items() if k != "sha256"},
+                    "no_samples": {k: v for k, v in pinned.items() if k != "samples"},
+                    "has_samples": {**pinned, "samples": 2}, "empty_url": {**pinned, "url": ""},
+                    "bool_samples": {**pinned, "samples": False}, "not_a_dict": "https://example.org/t.pdf"}
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for name, st in variants.items():
+                self._write(root, f"corpus/problems/{name}/meta.json", json.dumps({"statement": st}))
+                self._write(root, f"corpus/problems/{name}/tests.toml", '[[case]]\nseed = 1\nsize = 4\n')
+            self.assertEqual(dr.corpus_no_statement(root),
+                             [f"corpus/problems/{n}" for n in sorted(variants) if n != "ok"])
+
     def test_corpus_no_max_counts_packages_without_a_max_mode(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

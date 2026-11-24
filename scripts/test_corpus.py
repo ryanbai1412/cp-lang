@@ -46,6 +46,16 @@ class Corpus(unittest.TestCase):
 
 
 class ProblemsTest(Corpus):
+    def test_build_keeps_a_recorded_statement(self) -> None:
+        st = {"url": "https://example.org/t.pdf", "sha256": "ab" * 32, "samples": 0}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "meta.json")
+            with open(path, "w") as f:
+                json.dump({"statement": st, "notes": "n", "stale": 1}, f)
+            meta = corpus.merged({"problem": "p", "submissions": []}, path)
+        self.assertEqual((meta["statement"], meta["notes"]), (st, "n"))
+        self.assertNotIn("stale", meta)
+
     def test_lists_every_package_sorted_with_its_files(self):
         self.package("p2", port_cp="", gen_py=GEN)
         self.package("p1", dream_cp="", orig_cpp="", tests_toml="")

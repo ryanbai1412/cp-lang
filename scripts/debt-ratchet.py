@@ -1176,7 +1176,9 @@ def corpus_no_statement(root: Path) -> list[str]:
     Rule: problem-packages/R9 (handbook/guidelines/problem-packages-checklist.md#r9): a
     package's cases start with its statement's samples as `input` cases. A package whose
     statement can't be found has none, and can't have valid bounds or tests either, so it
-    is deleted (git history keeps it) rather than listed.
+    is deleted (git history keeps it) rather than listed. A statement with no sample at all is
+    recorded in meta.json as `"statement": {"url", "sha256", "samples": 0}`, pinning the
+    document that was read, and is not listed.
     """
     import tomllib
     problems = root / "corpus" / "problems"
@@ -1189,9 +1191,19 @@ def corpus_no_statement(root: Path) -> list[str]:
             cases = tomllib.loads(t.read_text(encoding="utf-8")).get("case", []) if t.is_file() else []
         except tomllib.TOMLDecodeError:
             cases = []
-        if not any("input" in c for c in cases):
+        if not any("input" in c for c in cases) and not _no_sample_statement(d / "meta.json"):
             found.append(d.relative_to(root).as_posix())
     return found
+
+
+def _no_sample_statement(meta: Path) -> bool:
+    """meta.json pins a statement (url and sha256) that has no samples."""
+    try:
+        st = json.loads(meta.read_text(encoding="utf-8")).get("statement")
+    except (OSError, ValueError, AttributeError):
+        return False
+    return (isinstance(st, dict) and bool(st.get("url")) and bool(st.get("sha256"))
+            and type(st.get("samples")) is int and st["samples"] == 0)
 
 
 def corpus_test_files(root: Path) -> list[str]:
