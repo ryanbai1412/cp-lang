@@ -28,19 +28,19 @@ fn then(g: Tag, f: Tag) -> Tag:  // f first, then g
         Path(b.to, a.seen + b.seen)
     Tag([Sign] x => compose_sign(x), g.set)
 
-fn tag(to: Sign -> Sign = x => x, seen: Sign -> MaxSub = _ => MaxSub.empty(), set: ?Cell = None) -> Tag =
+fn tag(to: Sign -> Sign = x => x, seen: Sign -> MaxSub = _ => MaxSub.zero, set: ?Cell = None) -> Tag =
     Tag([Sign] x => Path(to(x), seen(x)), set)
 
 let record = tag(seen: x => MaxSub.of(Int(x)))
 let negate = tag(to: x => Sign(-Int(x)))
 let clamp = tag(to: x => max(x, Sign.zero))
-fn assign(v: Int) -> Tag = tag(set: Cell(v, MaxSub.empty()))
+fn assign(v: Int) -> Tag = tag(set: Cell(v, MaxSub.zero))
 
 @!multitest
 let (n, q): (1..=5e5, 1..=5e5) = read()
 domain I = 1..=n
 let a: [I]-1e9..=1e9 = read()
-let unfolded = Monoid<Cell>(Cell(0, MaxSub.empty()), (x, _) => x)
+let unfolded = Monoid<Cell>(Cell(0, MaxSub.zero), (x, _) => x)
 var st = SegTree<I, Cell, Tag>(
     a: [I] i => Cell(a[i], MaxSub.of(a[i])),
     act: Action<Cell, Tag>(id: tag(), compose: (g, f) => then(g, f), apply: (f, c, _) => run(f, c), over: unfolded),

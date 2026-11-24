@@ -38,10 +38,10 @@ fn plain() -> Tag = Tag(
     -1,
     0,
     1,
-    MaxSub.empty(),
-    MaxSub.empty(),
-    MaxSub.empty(),
-    MaxSub.empty(),
+    MaxSub.zero,
+    MaxSub.zero,
+    MaxSub.zero,
+    MaxSub.zero,
 )
 
 fn signs(a: Sign, b: Sign, c: Sign) -> Tag:
@@ -73,7 +73,7 @@ fn compose(mut a: Tag, b: Tag):
         a.p2 = a.p2 + pv(b, z2)
     if b.set:
         if not a.set:
-            a.tail = MaxSub.empty()
+            a.tail = MaxSub.zero
             a.set = true
         a.val = b.val
         a.tail += b.tail

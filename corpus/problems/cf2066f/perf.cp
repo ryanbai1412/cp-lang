@@ -32,7 +32,7 @@ let total = [Seg] s => a[span[s]].sum()
 
 var mss: [PosB.cuts, PosB.cuts]-500_000_000..=500_000_000 = 0
 for l in PosB:
-    var acc = MaxSub.empty()
+    var acc = MaxSub.zero
     for r in l..=PosB.last!:
         acc = acc + MaxSub.of(b[r])
         mss[l.l, r.r] = acc.best

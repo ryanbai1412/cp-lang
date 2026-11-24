@@ -166,7 +166,7 @@ pub fn fold<T, M, S: Seq>(m: M, xs: S) -> T:
     acc
 
 /// Maximum non-empty subarray summary (Kadane monoid).
-/// Concatenation (`+` or `MaxSub.join`) is associative with identity `MaxSub.empty` in \(O(1)\);
+/// Concatenation (`+` or `MaxSub.join`) is associative with identity `MaxSub.zero` in \(O(1)\);
 /// `s.scale(k)` scales every element by non-negative `k` in \(O(1)\).
 /// Implements `Reversible` (swapping `pre` and `suf`) for tree-path folds.
 pub struct MaxSub(has: Bool, pub best: Int, pub total: Int, pub pre: Int, pub suf: Int):
@@ -174,8 +174,8 @@ pub struct MaxSub(has: Bool, pub best: Int, pub total: Int, pub pre: Int, pub su
     ///
     /// cost: \(O(1)\)
     /// traps: never
-    /// example: `MaxSub.empty().try_best == None`
-    pub fn empty() -> MaxSub = MaxSub(false, 0, 0, 0, 0)
+    /// example: `MaxSub.zero.try_best == None`
+    @get pub fn zero() -> MaxSub = MaxSub(false, 0, 0, 0, 0)
 
     /// The summary of the single element `v`: best, total, best prefix and best suffix are all `v`.
     ///
@@ -185,7 +185,7 @@ pub struct MaxSub(has: Bool, pub best: Int, pub total: Int, pub pre: Int, pub su
     pub fn of(v: Int) -> MaxSub = MaxSub(true, v, v, v, v)
 
     /// The summary of `a`'s elements followed by `b`'s (the same as `a + b`). Associative, with
-    /// `MaxSub.empty()` as identity; the best subarray may cross the seam (`a.suf + b.pre`).
+    /// `MaxSub.zero` as identity; the best subarray may cross the seam (`a.suf + b.pre`).
     ///
     /// cost: \(O(1)\)
     /// traps: never (overflow wraps in release, traps in debug)
@@ -223,12 +223,12 @@ pub struct MaxSub(has: Bool, pub best: Int, pub total: Int, pub pre: Int, pub su
     /// example: `MaxSub.join(MaxSub.of(-1), MaxSub.of(-2)).try_best == Some(-1)`
     @get pub fn try_best(self) -> ?Int = if has: Some(best) else: None
 
-    /// `Monoid(MaxSub.empty(), MaxSub.join)`, for `SegTree` and `fold`.
+    /// `Monoid(MaxSub.zero, MaxSub.join)`, for `SegTree` and `fold`.
     ///
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `MaxSub.monoid().id.try_best == None`
-    pub fn monoid() -> Monoid<MaxSub> = Monoid(MaxSub.empty(), (a, b) => MaxSub.join(a, b))
+    pub fn monoid() -> Monoid<MaxSub> = Monoid(MaxSub.zero, (a, b) => MaxSub.join(a, b))
 
 impl Add for MaxSub:
     fn add(a, b) = MaxSub.join(a, b)
@@ -466,16 +466,16 @@ fn plain_values_are_their_own_reverse():
 @test
 fn max_sub_monoid_laws_and_kadane():
     let samples = [
-        MaxSub.empty(),
+        MaxSub.zero,
         MaxSub.of(-5),
         MaxSub.of(3),
         MaxSub.of(-2) + MaxSub.of(4),
         MaxSub.of(5) + MaxSub.of(-1) + MaxSub.of(2),
     ]
     assert laws_hold(MaxSub.monoid(), samples)
-    assert MaxSub.empty().try_best == None
+    assert MaxSub.zero.try_best == None
     let xs = [-3, 4, -1, 2, -5, 3, 2, -1]
-    var got = MaxSub.empty()
+    var got = MaxSub.zero
     for x in xs: got = got + MaxSub.of(x)
     var want = Int.MIN
     for l in 0..xs.len:

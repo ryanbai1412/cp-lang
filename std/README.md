@@ -984,7 +984,7 @@ fn desc<T>(x: T) -> Desc<T>
 trait Reversible
 fn fold<T, M>(m: M, xs: List<T>) -> T
 struct MaxSub(has: Bool, best: Int, total: Int, pre: Int, suf: Int)  // [new] O(1), Reversible
-    const empty: MaxSub
+    const zero: MaxSub
     fn of(v: Int) -> MaxSub
     fn join(a: MaxSub, b: MaxSub) -> MaxSub  // `+`
     fn scale(self, k: Int) -> MaxSub         // `*`, k >= 0

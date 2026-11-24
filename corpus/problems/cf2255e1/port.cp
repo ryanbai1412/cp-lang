@@ -22,7 +22,7 @@ type Tag = (neg: Path, zero: Path, pos: Path, set: ?Cell)
 
 fn path(f: Tag, s: Sign) -> Path = if s < 0: f.neg elif s == 0: f.zero else: f.pos
 
-fn tag(to: Sign -> Sign, seen: Sign -> MaxSub = _ => MaxSub.empty(), set: ?Cell = None) -> Tag =
+fn tag(to: Sign -> Sign, seen: Sign -> MaxSub = _ => MaxSub.zero, set: ?Cell = None) -> Tag =
     ((to(-1), seen(-1)), (to(0), seen(0)), (to(1), seen(1)), set)
 
 fn run(f: Tag, c: Cell) -> Cell:
@@ -39,13 +39,13 @@ let identity = tag(s => s)
 let record = tag(s => s, s => MaxSub.of(s))
 let negate = tag(s => -s)
 let clamp = tag(s => max(s, 0))
-fn assign(x: Int) -> Tag = tag(s => s, set: (x, MaxSub.empty()))
+fn assign(x: Int) -> Tag = tag(s => s, set: (x, MaxSub.zero))
 
 @!multitest
 let (n, q): (1..=500_000, 1..=500_000) = read()
 domain I = 1..=n
 let a: [I]-1e9..=1e9 = read()
-let unfolded = Monoid<Cell>((0, MaxSub.empty()), (x, _) => x)
+let unfolded = Monoid<Cell>((0, MaxSub.zero), (x, _) => x)
 var st = SegTree<I, Cell, Tag>(
     a: [I] i => (a[i], MaxSub.of(a[i])),
     act: Action<Cell,

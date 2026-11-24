@@ -135,7 +135,7 @@ let lo = Monoid(id: Low.empty, op: join).commutative()
 ```
 
 A record type can also be its own operation by implementing `Add`.
-`SegTree(+, a)` over `[D]MaxSub` then uses `MaxSub.empty()` as the identity and `+`. Nothing
+`SegTree(+, a)` over `[D]MaxSub` then uses `MaxSub.zero` as the identity and `+`. Nothing
 special is needed, because `+` is generic over `T: Add`.
 
 ## 2. Combining operations
