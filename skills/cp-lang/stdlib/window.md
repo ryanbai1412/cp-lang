@@ -22,8 +22,8 @@ Fields: `q: List<T>`, `front: List<T>`, `olds: List<T>`, `head: Int`, `back: ?T`
 
 A `Track` built from a structure and two closures.
 
-- `fn push(mut self, x: T)` — one call of `add`; Apply `x` at the back: one call of `add(state, x)`.; traps: never (beyond what `add` traps on)
-- `fn pop(mut self, x: T)` — one call of `remove`; Take the front element `x` back out: one call of `remove(state, x)`.; traps: never (beyond what `remove` traps on)
+- `fn push(mut self, x: T)` — \(O(1)\) plus one call of `add`; Apply `x` at the back: one call of `add(state, x)`.; traps: never (beyond what `add` traps on)
+- `fn pop(mut self, x: T)` — \(O(1)\) plus one call of `remove`; Take the front element `x` back out: one call of `remove(state, x)`.; traps: never (beyond what `remove` traps on)
 - `@get fn state(self) -> S` — \(O(1)\); The structure with exactly the window's elements applied.
 
 ## `trait Undo`
