@@ -1,4 +1,5 @@
 // Source: NOI 2004 P1 (The Depressed Cashier), https://dmoj.ca/problem/noi04p1
+// limits: 600 ms, 64 MB
 // Problem: n <= 3e5 commands and a wage floor. "I x" hires at salary x (gone at once, and
 //   not counted, if below the floor); "A x" raises every salary by x; "S x" cuts every
 //   salary by x, then everyone below the floor leaves; "F k" prints the k-th highest salary

@@ -15,5 +15,5 @@
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "orig.cpp is the AC submission corpus/submissions/3754486.cpp: the first AC, 3754467, prints 0 instead of the sample's 75 for the third sum."
 }

@@ -1,4 +1,5 @@
 // Source: NOI 2003 P4 (The Truant Children), https://dmoj.ca/problem/noi03p4
+// limits: 1000 ms, 64 MB
 // Problem: a tree of n <= 2e5 houses with edge times <= 1e9. Choose houses X, Y, Z with
 //   |XY| <= |XZ| that maximise |XY| + |YZ|; print that maximum.
 // Solution: Y and Z are the two ends a, b of a diameter and X the house farthest from the
