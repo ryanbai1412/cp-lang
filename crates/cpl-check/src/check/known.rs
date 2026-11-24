@@ -188,6 +188,17 @@ impl<'a> Checker<'a> {
             ("all" | "any", [_]) if generator => Some(Ty::Bool),
             ("abs", [Ty::Int | Ty::Range { .. }]) => Some(Ty::Int),
             ("abs", [t @ (Ty::I128 | Ty::Float)]) => Some(t.clone()),
+            // `first(xs)`, `last(xs, x => x > 3)`: the free form of the members, an optional.
+            ("first" | "last", [over, ..])
+                if args.len() <= 2
+                    && args[0].name.is_none()
+                    && !matches!(over, Ty::Named { name, .. } if name.contains("Map")) =>
+            {
+                match self.element_ty(over) {
+                    Ty::Unknown => None,
+                    elem => Some(Ty::Optional(Box::new(elem))),
+                }
+            }
             // `none` is neither skipped nor passed on by `sum` (v2.2).
             ("sum", [over]) => {
                 let elem = self.element_ty(over);
