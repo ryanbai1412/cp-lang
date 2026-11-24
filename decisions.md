@@ -8814,3 +8814,5 @@ Reserved for call 5, which landed as decision 519.
 - **Reverse.** Restore the two methods and drop the R11 rule from the lint.
 
 ## 523. (reserved, content)
+
+## 524. (reserved, unknown)
