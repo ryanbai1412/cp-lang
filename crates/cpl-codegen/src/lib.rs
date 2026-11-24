@@ -590,3 +590,6 @@ mod tests;
 mod walk_tests;
 #[cfg(test)]
 mod width_tests;
+
+#[cfg(test)]
+mod std_overflow_exp;

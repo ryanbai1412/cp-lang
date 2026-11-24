@@ -78,6 +78,8 @@ pub(crate) struct Facts<'p> {
     /// Variables only set to bounded values `>= 0` and stepped by one: see
     /// [`Facts::unit_step`].
     unit_steps: BTreeSet<Var>,
+    /// Prototype of the facts Core owes (positions in `0..len`, `len <= 2^31`).
+    pub(crate) assume_len: bool,
 }
 
 fn var(fn_id: Option<usize>, kind: &PlaceKind) -> Option<Var> {
@@ -92,8 +94,13 @@ fn var(fn_id: Option<usize>, kind: &PlaceKind) -> Option<Var> {
 
 impl<'p> Facts<'p> {
     pub fn collect(program: &'p Program) -> Facts<'p> {
+        Self::collect_with(program, false)
+    }
+
+    pub(crate) fn collect_with(program: &'p Program, assume_len: bool) -> Facts<'p> {
         let mut facts = Facts {
             fns: program.fns.len(),
+            assume_len,
             ..Facts::default()
         };
         facts.block(None, &program.setup);
@@ -582,6 +589,8 @@ impl<'p> Facts<'p> {
                     self.init
                         .get(&v)
                         .and_then(|init| self.upper_bound(v.0, init, depth + 1))
+                } else if self.assume_len && self.unit_steps.contains(&v) {
+                    Some(1 << 62)
                 } else {
                     None
                 }
@@ -596,7 +605,13 @@ impl<'p> Facts<'p> {
                     None
                 }
             }
-            ExprKind::DomainLen(d) => self.domain_max_len_at(*d, depth + 1),
+            ExprKind::DomainLen(d) => self
+                .domain_max_len_at(*d, depth + 1)
+                .or(self.assume_len.then_some(1 << 31)),
+            ExprKind::Builtin(Builtin::Len | Builtin::AxisLen, _) if self.assume_len => Some(1 << 31),
+            ExprKind::Cast(Cast::Ord, inner) if self.assume_len => {
+                Some(self.upper_bound(fn_id, inner, depth + 1).unwrap_or(1 << 31))
+            }
             ExprKind::Binary(BinOp::Mul, l, r)
                 if self.sign_at(fn_id, l, u32::from(depth) * 2) != Sign::Unknown
                     && self.sign_at(fn_id, r, u32::from(depth) * 2) != Sign::Unknown =>
