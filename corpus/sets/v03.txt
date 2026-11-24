@@ -461,6 +461,7 @@ etsr23r2p2
 etsr23r2p3
 etsr23r2p4
 etsr23r3p1
+etsr23r3p2
 etsr23r3p3
 etsr23r4p2
 etsr23r4p3
