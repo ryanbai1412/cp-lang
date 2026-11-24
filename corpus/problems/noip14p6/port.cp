@@ -16,21 +16,15 @@ let n: 1..=100 = read()
 let m: 1..=1e6 = read()
 let digits = read<[0..=n]Str>()
 
-// The numbers are far too long to hold, so keep each one modulo P.
-fn residue<P>(s: Str) -> Mod<P>:
-    let digit = (c: Char) => Mod<P>(Int(c) - Int('0'))
-    let v = s.fold_from(Mod<P>(0), (v, c) => if c == '-': v else: v * Mod<P>(10) + digit(c))
-    if s.starts_with("-"): -v else: v
-
 // which residues of x mod p make f vanish modulo p
 fn roots_mod(p: Int) -> List<Bool>:
     type Z = Mod(p)
-    let under_p: List<Z> = [residue(s) for s in digits]
+    let under_p = [s.parse<Z>()! for s in digits]
     [under_p.eval(Z(r)) == Z(0) for r in 0..p]
 
 let sieves = [(p:, root: roots_mod(p)) for p in primes_in(10_000, 10_100)[..3]]
 type Z = Mod<2305843009213693951>
-let coef: List<Z> = [residue(s) for s in digits]
+let coef = [s.parse<Z>()! for s in digits]
 
 let roots = [x for x in 1..=m if sieves.all(s => s.root[x % s.p]) and coef.eval(Z(x)) == Z(0)]
 print(roots.len)

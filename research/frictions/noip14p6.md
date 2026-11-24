@@ -1,14 +1,15 @@
 # Friction Report: noip14p6
 
-## 1. Reading a huge integer modulo several primes
-- **Where:** `fn residue<P>(s: Str) -> Mod<P>` folds the digits and the sign by hand, once per
-  modulus, from the coefficients kept as `Str`.
-- **What felt wrong:** "this decimal text, mod P" is the whole reading step; `read<Mod<P>>()`
-  does it for one modulus, but `Str.parse<T: Read>` is still `todo`, so the same text cannot be
-  read again under a second modulus.
+## 1. Reading a huge integer modulo several primes (fixed)
+- **Where:** the coefficients are kept as `Str` and read once per modulus.
+- **What felt wrong:** the port folded the digits and the sign by hand, because a `type Z =
+  Mod(p)` declared inside a fn had no input format (E0501), so `s.parse<Z>()` failed there.
 - **Goal it hurts:** express.
-- **Ideal code:** `digits.map(s => s.parse<Z>()!)`, as in the dream.
-- **General fix:** implement `Str.parse<T: Read>` by reading from the string.
+- **General fix:** a local alias of a struct now reads by the struct's `Read` impl, as a
+  top-level one does, so the port is `[s.parse<Z>()! for s in digits]` under each modulus.
+  Moving onto it also showed that `read<Mod<P>>()` overflowed `r * 10` for `P` near 2^61; it now
+  uses `Mod` arithmetic. Both have conformance cases (core-10/parse-local-runtime-modulus,
+  core-10/parse-mod-near-2-61).
 - **Severity:** medium.
 
 ## Measurements

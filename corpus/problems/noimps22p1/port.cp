@@ -8,7 +8,7 @@
 //   and other characters; a run naming a macro not being expanded becomes its body,
 //   expanded with the name marked active until it returns; every other run is copied. The bounds are tiny.
 // Original C++: corpus/submissions/4533698.cpp (116 LOC raw, ~76 LOC stripped)
-let n: 1..=100 = read_line().parse_int()!
+let n = read_line().parse<1..=100>()!
 let lines: List<Str> = [read_line() for _ in 0..n]
 
 fn is_ident(ch: Char) -> Bool = ch.is_alnum or ch == '_'

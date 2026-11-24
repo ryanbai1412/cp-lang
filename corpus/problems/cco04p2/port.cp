@@ -13,7 +13,7 @@ type Score = (a: Int, b: Int)  // a <= b
 
 fn score(word: Str) -> Score:
     let (x, y) = word.split_once('-')!
-    let (p, q) = (x.parse_int()!, y.parse_int()!)
+    let (p, q) = (x.parse<Int>()!, y.parse<Int>()!)
     (a: min(p, q), b: max(p, q))
 
 @!multitest
