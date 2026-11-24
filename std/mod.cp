@@ -447,7 +447,7 @@ pub struct ModComb(pub m: Int):
     /// Binomial coefficients modulo any `m >= 1`: factor `m` and build one `PrimePowerComb` per
     /// prime power, combined by CRT.
     ///
-    /// cost: \(O(\text{sum p\_i}^\mathit{e\_i})\)
+    /// cost: \(O(\sum_i p_i^{e_i})\) for \(m = \prod_i p_i^{e_i}\)
     /// traps: when `m < 1`
     /// example: `ModComb(12).choose(6, 3) == 8`
     pub fn new(m: Int) -> ModComb:

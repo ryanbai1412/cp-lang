@@ -416,8 +416,8 @@ pub struct RelaxedConvolve<P>:
         var w = 1
         while q % w == 0 and q / w >= 2:
             let j = q / w - 1
-            add_block(mut c, a, w, b, j * w, w, q)
-            if j != 1: add_block(mut c, b, w, a, j * w, w, q)
+            add_block(mut c, window(a, w, w), window(b, j * w, w), (j + 1) * w, q)
+            if j != 1: add_block(mut c, window(b, w, w), window(a, j * w, w), (j + 1) * w, q)
             w *= 2
         c[i]
 
@@ -453,7 +453,7 @@ pub struct SemiRelaxedConvolve<P>:
         let q = i + 1
         var w = 1
         while q % w == 0 and w < b.len:
-            add_block(mut c, a, q - w, b, w, w, q)
+            add_block(mut c, window(a, q - w, w), window(b, w, w), q, q)
             w *= 2
         c[i]
 
@@ -513,22 +513,16 @@ pub fn subset_log<P>(a: List<Mod<P>>) -> List<Mod<P>>:
     assert a[0] == Mod<P>(1), "subset_log needs `a[0] == 1`"
     ranked(a, false)
 
-fn add_block<P>(
-    mut c: List<Mod<P>>,
-    x: List<Mod<P>>,
-    xs: Int,
-    y: List<Mod<P>>,
-    ys: Int,
-    w: Int,
-    at: Int,
-):
+fn window<P>(x: List<Mod<P>>, s: Int, w: Int) -> List<Mod<P>>:
     with lint(unproven_list_index: allow)
-    let ylen = min(w, y.len - ys)
-    if ylen <= 0: return
-    let xa = [x[xs + t] for t in 0..w]
-    let ya = [y[ys + t] for t in 0..ylen]
+    [x[s + t] for t in 0..min(w, x.len - s)]
+
+// Takes the windows rather than the whole lists: a whole `self` list beside `mut self.c` is copied
+// at the call.
+fn add_block<P>(mut c: List<Mod<P>>, xa: List<Mod<P>>, ya: List<Mod<P>>, base: Int, at: Int):
+    with lint(unproven_list_index: allow)
+    if xa.is_empty or ya.is_empty: return
     let prod = times(xa, ya)
-    let base = xs + ys
     while c.len < base + prod.len: c.push(Mod<P>(0))
     unchecked:
         for t in 0..prod.len:
