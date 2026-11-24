@@ -731,9 +731,8 @@ pub struct SortedBag<K>:
 
     // Copy entry `i` of node `a` to entry `j` of node `b`; an `inner` entry carries a child too.
     fn mv(mut self, a: Int, i: Int, b: Int, j: Int, inner: Bool):
-        keys[b * BAG_B + j] = keys[a * BAG_B + i]
-        ws[b * BAG_B + j] = ws[a * BAG_B + i]
-        if inner or pay: kids[self.kix(b) * BAG_B + j] = kids[self.kix(a) * BAG_B + i]
+        let s = a * BAG_B + i
+        self.put(b * BAG_B + j, keys[s], ws[s], if inner or pay: self.kid(a, i) else: -1)
 
     fn put(mut self, s: Int, x: K, w: Int, k: Int):
         keys[s] = x
