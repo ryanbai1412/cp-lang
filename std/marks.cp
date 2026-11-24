@@ -171,6 +171,7 @@ pub struct MarkMap<D, T>:
 
 /// Online value-to-id interner assigning contiguous `0..len` IDs to distinct keys `K`.
 /// `id`, `get`, and `key` are \(O(1)\) expected; `len`, `is_empty`, `clear` are \(O(1)\).
+/// It prints its keys in id order, space-separated, so output never depends on hash order.
 pub struct Interner<K>:
     to_id: HashMap<K, Int>
     keys: List<K>
@@ -526,3 +527,11 @@ fn interval_map_cross_module_assign():
     )
     assert total_len == 4 and sum_old == 6
     assert im.runs == 3 and im.run_at(P(5)).range.len == 6
+
+impl Show for Interner<K>:
+    fn show(t):
+        var out = ""
+        for k in t.keys:
+            if not out.is_empty: out += " "
+            out += "{k}"
+        out
