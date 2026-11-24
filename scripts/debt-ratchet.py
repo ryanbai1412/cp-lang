@@ -1403,6 +1403,11 @@ def allow_attrs(root: Path) -> list[str]:
     return _grep_all(root, r"#!?\[allow\(", "crates/**/*.rs")
 
 
+def std_lint_allows(root: Path) -> list[str]:
+    """`with lint(...: allow)` in std: a lint silenced instead of answered."""
+    return _grep_all(root, r"with lint\([^)]*: *allow", "std")
+
+
 def unsafe_blocks(root: Path) -> list[str]:
     """`unsafe {`, `unsafe fn`, `unsafe impl` in crates."""
     return _grep_all(root, r"\bunsafe (\{|fn\b|impl\b)", "crates/**/*.rs")
@@ -1966,6 +1971,7 @@ COUNTERS = {
                               std_types_shown_empty, True),
     "corpus_known": ("entries of corpus/*-known.txt (scoreboard K6, Content)", corpus_known, True),
     "allow_attrs": ("#[allow(...)] in crates (Core, Consumers)", allow_attrs, True),
+    "std_lint_allows": ("with lint(...: allow) in std (Content)", std_lint_allows, True),
     "unsafe_blocks": ("unsafe blocks, fns and impls in crates (Core)", unsafe_blocks, True),
     "cpl_env_reads": ("CPL_* env reads outside the config module (Consumers)", cpl_env_reads, True),
     "test_sleeps": ("sleeps in tests (Factory)", test_sleeps, True),

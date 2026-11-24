@@ -181,6 +181,7 @@
   "site_rederived": 0,
   "browser_lsp_gaps": 0,
   "allow_attrs": 42,
+  "std_lint_allows": 127,
   "unsafe_blocks": 26,
   "cpl_env_reads": 45,
   "test_sleeps": 18,
