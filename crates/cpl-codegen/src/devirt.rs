@@ -27,6 +27,9 @@ mod elide;
 
 mod escape;
 
+mod functor;
+pub(crate) use functor::functor_name;
+
 pub use explain::explain_dropped_fields;
 pub(crate) use explain::{dropped_fields, explain_closures};
 
@@ -43,6 +46,9 @@ pub enum ClosureMode {
     /// Local `auto` closure binding: no `std::function` wrapper or heap
     /// allocation.
     StaticLocalAuto,
+    /// A struct fn field holding one capturing closure: the field is that
+    /// closure's own type, a struct of its captures with a call operator.
+    StaticFunctor { closure: ClosureId },
     /// A fn field nothing reads: dropped, whatever was stored in it.
     Unread,
     /// A fn field of a struct the program never builds: no value holds
@@ -126,6 +132,10 @@ pub(crate) struct Devirt<'p> {
     /// Fns whose result is one closure, made at their one `return`: the
     /// C++ fn returns `auto`, that lambda's own type.
     lambda_returns: BTreeSet<FnId>,
+    /// Struct fn fields holding one capturing closure, stored as its own type.
+    functor_fields: BTreeMap<(usize, usize), ClosureId>,
+    /// The closures those fields hold, each built as a `cpl_clN` value.
+    functors: BTreeSet<ClosureId>,
     changed: bool,
 }
 
@@ -157,6 +167,8 @@ impl<'p> Devirt<'p> {
             same,
             globals: BTreeMap::new(),
             lambda_returns: BTreeSet::new(),
+            functor_fields: BTreeMap::new(),
+            functors: BTreeSet::new(),
             changed: true,
         };
         // The judge's grader calls these with values of its own.
@@ -180,6 +192,7 @@ impl<'p> Devirt<'p> {
             }
         }
         pass.compute_elidable();
+        pass.compute_functors();
         pass.compute_template_params();
         pass.globals = pass.called_globals();
         pass.lambda_returns = pass.lambda_returning_fns();

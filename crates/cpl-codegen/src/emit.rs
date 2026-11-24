@@ -92,6 +92,8 @@ pub(crate) struct Emitter<'p> {
     pub devirt: crate::devirt::Devirt<'p>,
     /// Closures called by name, each emitted once as a fn of the program.
     pub direct: BTreeSet<usize>,
+    /// Closures built as their own `cpl_clN` type, declared with the types.
+    pub functors: BTreeSet<usize>,
     /// The structs and fns the written file defines.
     written: lowered::Written,
     /// Non-escaping closures passed to call-only parameters; immutable non-scalar
@@ -279,6 +281,7 @@ impl<'p> Emitter<'p> {
             niches: crate::niche::small(program),
             devirt: crate::devirt::Devirt::collect(program),
             direct: BTreeSet::new(),
+            functors: BTreeSet::new(),
             written: Default::default(),
             borrow_closures: BTreeSet::new(),
             call_scoped: BTreeSet::new(),
@@ -1186,6 +1189,11 @@ impl<'p> Emitter<'p> {
         // Closures that are called by name (see `devirt`): emit dependencies
         // before callers so higher-order combinators (e.g. `flip_action`) can
         // call another `cpl_fnM` regardless of closure id order.
+        let mut functor_bodies = String::new();
+        for cid in self.functors.clone() {
+            self.enter(None, &program.closures[cid].body, 0);
+            functor_bodies.push_str(&self.functor_body(cid));
+        }
         let mut direct = String::new();
         let mut emitted_direct: BTreeSet<usize> = BTreeSet::new();
         let mut visiting: Vec<(usize, bool)> = Vec::new();
@@ -1228,6 +1236,7 @@ impl<'p> Emitter<'p> {
                 }
             }
         }
+        direct.push_str(&functor_bodies);
         // The pragma first: every float op rounds as the interpreter's does, never an FMA.
         // On an AVX2 judge the same pragma asks for O3 too: one optimize set for the library and
         // the program, or g++ won't inline one into the other.

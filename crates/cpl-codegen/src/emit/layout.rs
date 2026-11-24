@@ -290,6 +290,21 @@ impl<'p> Emitter<'p> {
         match ty {
             Ty::Struct(id) => {
                 let def = &program.structs[*id];
+                for idx in 0..def.fields.len() {
+                    let Some(cid) = self.devirt.field_functor(*id, idx) else {
+                        continue;
+                    };
+                    if !self.functors.insert(cid) {
+                        continue;
+                    }
+                    for cap in &program.closures[cid].captures {
+                        let ty = &program.closures[cid].locals[cap.inner].ty;
+                        if matches!(ty, Ty::Struct(_)) {
+                            self.type_def(ty, done, out);
+                        }
+                    }
+                    out.push_str(&self.functor_decl(cid));
+                }
                 out.push_str(&format!("struct {} {{\n", ident(&def.name)));
                 let mut names = Vec::new();
                 for (field_idx, (field, field_ty)) in def.fields.iter().enumerate() {
@@ -309,6 +324,14 @@ impl<'p> Emitter<'p> {
                         self.need("no_fn");
                         let ret = self.ty(ret);
                         out.push_str(&format!("    cpl::NoFn<{ret}> {name};\n"));
+                        names.push(name);
+                        continue;
+                    }
+                    if let Some(cid) = self.devirt.field_functor(*id, field_idx) {
+                        out.push_str(&format!(
+                            "    {} {name};\n",
+                            crate::devirt::functor_name(cid)
+                        ));
                         names.push(name);
                         continue;
                     }

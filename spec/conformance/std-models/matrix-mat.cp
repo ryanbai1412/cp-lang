@@ -8,7 +8,6 @@
 // Gauss-Jordan, det_mod by cofactor expansion over Int, and the min-plus semiring by its own triple
 // loop. MatPow is checked against repeated mul_vec. Reads `seed n`; prints the first op that
 // differs.
-// std_functions: 2
 use std.matrix.{Mat, MatPow}
 use std.algebra.{Semiring}
 use std.mod.{Mod}
