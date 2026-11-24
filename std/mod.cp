@@ -374,7 +374,7 @@ pub struct Barrett(pub m: Int, im: U64):
     /// example: `Barrett(1).mul(0, 0) == 0`
     pub fn mul(self, a: Int, b: Int) -> Int:
         assert 0 <= a and a < m and 0 <= b and b < m
-        a * b % m
+        self.reduce(U64(a) * U64(b))
 
     /// `a % m`, for `a < m * m`.
     ///
@@ -384,7 +384,9 @@ pub struct Barrett(pub m: Int, im: U64):
     /// example: `Barrett(7).reduce(0) == 0`
     pub fn reduce(self, a: U64) -> Int:
         assert a < U64(m) * U64(m)
-        Int(a % U64(m))
+        let q = Int((I128(a) * I128(im)) >> 64)
+        let r = Int(a) - q * m
+        if r < 0: r + m else: r
 
 /// \(O(p^e)\) build, \(O(\mathit{log\_p} n)\) query. Binomial coefficients modulo a prime power `p^e` (Granville's theorem).
 pub struct PrimePowerComb(p: Int, e: Int, pe: Int):
