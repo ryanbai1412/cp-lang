@@ -4027,3 +4027,41 @@ impl Show for Hash61:
     ///
     /// example: `let h = RollingHash61("abab"); "{h.get(0..2)}" == "{h.get(2..4)}"`
     fn show(h) = "hash {h.v}"
+
+impl Show for KmpAutomaton<A>:
+    /// How many states the automaton has (the pattern's length plus one), as `n states`.
+    ///
+    /// example: `"{KmpAutomaton<Char>("aba")}" == "4 states"`
+    fn show(k) = "{k.len} states"
+
+impl Show for Hash2D<R, C>:
+    /// The size of the grid it hashes, as `rows x cols grid`.
+    ///
+    /// example: `domain R = 0..2; domain C = 0..4; "{Hash2D<R, C>((r, c) => c.ord)}" == "2x4 grid"`
+    fn show(h) = "{R.count}x{C.count} grid"
+
+impl Show for DynamicHash<D>:
+    /// How many elements it hashes, as `n elements` (`1 element`).
+    ///
+    /// example: `"{DynamicHash("abc")}" == "3 elements"`
+    fn show(h):
+        if h.len == 1: return "1 element"
+        "{h.len} elements"
+
+impl Show for PalindromicTree<A>:
+    /// The elements pushed so far, space-separated, then how many distinct palindromes they hold.
+    ///
+    /// example: `"{PalindromicTree<Char>.of("aba")}" == "a b a: 3 palindromes"`
+    fn show(t):
+        var out = ""
+        for a in t.chars:
+            if not out.is_empty: out += " "
+            out += "{a}"
+        "{out}: {t.distinct} palindromes"
+
+impl Show for AhoCorasick<A>:
+    /// How many patterns it matches and how many states its trie has.
+    ///
+    /// example: `"{AhoCorasick<Char>(["a", "ab", "b"])}" == "3 patterns, 4 states"`
+    fn show(ac) = "{ac.pat_state.len} patterns, {ac.len} states"
+

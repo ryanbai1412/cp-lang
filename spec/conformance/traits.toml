@@ -2500,3 +2500,44 @@ sc.push(Z(3))
 print(sc)
 """
 out = "2 5"
+
+[case."Show/AhoCorasick/show"]
+code = """
+use std.strings.{AhoCorasick}
+print(AhoCorasick<Char>(["he", "she", "his"]))
+"""
+out = "3 patterns, 8 states"
+
+[case."Show/DynamicHash/show"]
+code = """
+use std.strings.{DynamicHash}
+print(DynamicHash("hello"), DynamicHash("x"))
+"""
+out = "5 elements 1 element"
+
+[case."Show/Hash2D/show"]
+code = """
+use std.strings.{Hash2D}
+domain R = 0..3
+domain C = 0..5
+print(Hash2D<R, C>((r, c) => r.ord + c.ord))
+"""
+out = "3x5 grid"
+
+[case."Show/KmpAutomaton/show"]
+code = """
+use std.strings.{KmpAutomaton}
+print(KmpAutomaton<Char>("abab"))
+"""
+out = "5 states"
+
+[case."Show/PalindromicTree/show"]
+code = """
+use std.strings.{PalindromicTree}
+var t = PalindromicTree<Char>()
+t.push('a')
+t.push('a')
+t.push('b')
+print(t)
+"""
+out = "a a b: 3 palindromes"
