@@ -236,7 +236,7 @@ class DebtRatchetTest(unittest.TestCase):
         baseline = {
             "max_rs_lines": 20,
             "rs_file_size_allowlist": {"crates/demo/src/big.rs": 25},
-            "unwrap_input": 2,
+            "ir_reinfer": 2,
             "allow_attrs": 1,
             "unsafe_blocks": 1,
         }
@@ -251,7 +251,7 @@ class DebtRatchetTest(unittest.TestCase):
                 "crates/demo/src/big.rs": 26,
                 "crates/demo/src/new_big.rs": 22,
             },
-            "unwrap_input": 3,
+            "ir_reinfer": 3,
             "allow_attrs": 2,
             "unsafe_blocks": 2,
         }
@@ -264,14 +264,14 @@ class DebtRatchetTest(unittest.TestCase):
         baseline = {
             "max_rs_lines": 20,
             "rs_file_size_allowlist": {"crates/demo/src/big.rs": 25},
-            "unwrap_input": 2,
+            "ir_reinfer": 2,
             "rust_ignore": 1,
             "pending_tests": 1,
         }
         better = {
             "max_rs_lines": 20,
             "rs_file_size_allowlist": {},
-            "unwrap_input": 1,
+            "ir_reinfer": 1,
             "rust_ignore": 0,
             "pending_tests": 0,
         }
@@ -1062,9 +1062,15 @@ class DebtRatchetTest(unittest.TestCase):
         self.assertEqual({n for n in gated if n not in baseline}, set())
 
     def test_a_gated_counter_without_a_baseline_fails(self) -> None:
-        errs, _, _ = dr.evaluate({"unwrap_input": 1, "rust_ignore": 0}, {"rust_ignore": 0})
+        errs, _, _ = dr.evaluate({"ir_reinfer": 1, "rust_ignore": 0}, {"rust_ignore": 0})
         self.assertEqual(len(errs), 1)
         self.assertIn("no baseline", errs[0])
+
+    def test_one_unwrap_in_shipped_code_fails_even_against_a_looser_baseline(self) -> None:
+        self.assertIn("unwrap_input", dr.HARD_ZERO)
+        errs, _, _ = dr.evaluate({"unwrap_input": 1}, {"unwrap_input": 5})
+        self.assertEqual(len(errs), 1)
+        self.assertIn("must stay at 0", errs[0])
 
     def test_register_rows_counts_missing_and_unknown_checks(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1374,14 +1380,14 @@ class DebtRatchetTest(unittest.TestCase):
                 self.assertEqual(json.loads(ratchet.read_text())["skip_lists"], 5 if code else 4)
 
     def test_debt_already_on_main_is_not_this_changes_error(self):
-        base = {"unwrap_input": 10, "rs_file_size_allowlist": {"a.rs": 2100}}
-        main = {"unwrap_input": 12, "rs_file_size_allowlist": {"a.rs": 2200}}
+        base = {"ir_reinfer": 10, "rs_file_size_allowlist": {"a.rs": 2100}}
+        main = {"ir_reinfer": 12, "rs_file_size_allowlist": {"a.rs": 2200}}
         eff = dr.inherited_baseline(base, main)
-        same = {"unwrap_input": 12, "rs_file_size_allowlist": {"a.rs": 2200}}
+        same = {"ir_reinfer": 12, "rs_file_size_allowlist": {"a.rs": 2200}}
         self.assertEqual(dr.evaluate(same, eff)[0], [])
-        more = {"unwrap_input": 13, "rs_file_size_allowlist": {"a.rs": 2201}}
+        more = {"ir_reinfer": 13, "rs_file_size_allowlist": {"a.rs": 2201}}
         self.assertEqual(len(dr.evaluate(more, eff)[0]), 2)
-        self.assertEqual(base["unwrap_input"], 10)
+        self.assertEqual(base["ir_reinfer"], 10)
 
     def test_last_touched_never_blames_a_shallow_clones_boundary(self) -> None:
         with tempfile.TemporaryDirectory() as d:
