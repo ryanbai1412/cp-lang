@@ -281,19 +281,19 @@ Laws:
 
 <!-- signatures: std/strings.cp -->
 ```cp
-fn suffix_array<S: Indexed>(s: S) -> SuffixArray  // the `SuffixArray` below; `.sa`, `.lcp` (Kasai)
+fn suffix_array<S: Indexed<K, T>, K, T: Ord>(s: S) -> SuffixArray<T>  // the `SuffixArray` below; `.sa`, `.lcp` (Kasai)
 
-struct SuffixArray:
-    s: List<T>
+struct SuffixArray<T: Ord>:
+    src: List<T>
     sa: List<Int>
     rank: List<Int>
     lcp: List<Int>
 
-    fn new<S: Indexed>(s: S) -> SuffixArray                // O(n log n) build (SA-IS + Kasai + RMQ)
+    fn new<S: Indexed<K, T>, K>(s: S) -> SuffixArray<T>    // O(n log n) build (SA-IS + Kasai + RMQ)
     @get fn len(self) -> Int                               // O(1)
     fn lcp_between(self, i: Int, j: Int) -> Int            // O(1)
-    fn rank_range<P: Indexed>(self, pat: P) -> Range<Int>  // O(|pat| log n); rank range lo..hi
-    fn count<P: Indexed>(self, pat: P) -> Int              // O(|pat| log n)
+    fn rank_range<P: Indexed<J, T>, J>(self, pat: P) -> Range<Int>  // O(|pat| log n); rank range lo..hi
+    fn count<P: Indexed<J, T>, J>(self, pat: P) -> Int     // O(|pat| log n)
     fn lcp_range(self, i: Int, len: Int) -> Range<Int>
     // O(log n); rank range whose LCP with suffix i is >= len
     fn compare(self, l1: Int, r1: Int, l2: Int, r2: Int) -> Int
