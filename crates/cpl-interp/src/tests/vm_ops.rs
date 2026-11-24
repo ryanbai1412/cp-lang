@@ -76,3 +76,37 @@ print(none.runs(by: x => key(x)).count())
         keys([0, 1, 2, 3, 4, 5]) + "1 3 0 2 4 5\n" + &keys([1, 3, 0, 2, 4, 5]) + "2 3 1\n0\n";
     assert_eq!(out, want);
 }
+
+#[test]
+fn a_leaf_whose_branches_all_return_inlines() {
+    // std/geometry's `half`: both arms of the last `if` return, so lowering
+    // ends the body in an unreachable trap; it still inlines into its caller.
+    let source = "
+fn half(x: Int, y: Int) -> Int:
+    if x == 0 and y == 0: return 0
+    if y > 0 or (y == 0 and x > 0): return 1 else: return 2
+fn halves(x: Int, y: Int) -> Int = half(x, y) * 10 + half(-x, -y)
+print([halves(x, y) for (x, y) in [(0, 0), (1, 0), (-1, 0), (3, -2)]])
+";
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", source);
+    let analysis = db.analyze("t.cp").expect("the file was just set");
+    assert!(
+        analysis.diagnostics.is_empty(),
+        "{:?}",
+        analysis.diagnostics
+    );
+    let program = cpl_ir::lower(&analysis).expect("lowers");
+    let feeds = cpl_ir::pushed::Feeds::of(&program);
+    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false, false);
+    let id = (program.fns.iter())
+        .position(|f| f.name == "halves")
+        .expect("`halves` is lowered");
+    let chunk = compiled.fns[id].as_ref().expect("runs on the VM");
+    let ops: Vec<String> = chunk.ops.iter().map(|op| format!("{op:?}")).collect();
+    assert!(!ops.iter().any(|op| op.starts_with("CallVm")), "{ops:?}");
+    assert!(chunk.leaf, "{ops:?}");
+    let (out, trap) = outcome(source, "");
+    assert_eq!(out, "0 12 21 21\n");
+    assert!(trap.is_none(), "{trap:?}");
+}

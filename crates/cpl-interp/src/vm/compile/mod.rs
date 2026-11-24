@@ -956,19 +956,15 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         && simple_expr(e, f, program)
                 }
                 Stmt::Return(Some(e)) | Stmt::Give(e) | Stmt::Expr(e) => simple_expr(e, f, program),
-                Stmt::If(c, t, e) => {
-                    if let Some(b) = Compiler::const_bool(c) {
-                        if b {
-                            simple_block(t, f, program)
-                        } else {
-                            simple_block(e, f, program)
-                        }
-                    } else {
+                Stmt::Trap(..) => true,
+                Stmt::If(c, t, e) => match Compiler::const_bool(c) {
+                    Some(b) => simple_block(if b { t } else { e }, f, program),
+                    None => {
                         simple_expr(c, f, program)
                             && simple_block(t, f, program)
                             && simple_block(e, f, program)
                     }
-                }
+                },
                 _ => false,
             }
         }

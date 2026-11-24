@@ -11,3 +11,4 @@ echo 300 | target/release/cpl profile bench/interp/sort_runs_by_angle.cp
 | bench | input | line | before | after | change |
 |---|---|---|---:|---:|---|
 | `sort_runs_by_angle` | `n = 300`: 300 rounds of 300 `Pt`s | `ds.runs(by: d => arg(d))` | 381.5 ms | 351.2 ms | `runs(by:)` calls `by` once per element, not again at each run's start |
+| `sort_runs_by_angle` | `n = 300` | `fn half(a: Pt) -> Int` in std/geometry | 770 ms | 640 ms | a leaf whose arms all return (its body ends in lowering's unreachable trap) inlines into `x_angle_less`, with no `CallVmMix` per comparison |
