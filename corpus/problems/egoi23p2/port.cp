@@ -1,4 +1,5 @@
 // Source: EGOI 2023 Day 1 P2 (Padel Prize Pursuit), https://dmoj.ca/problem/egoi23p2
+// limits: 3000 ms, 1024 MB
 // Problem: N players, M matches (N, M <= 2e5); on day i, x_i beats y_i, gets a new medal and all
 //   of y_i's medals. Each medal finally goes to whoever held it the most nights up to day M (ties:
 //   smallest index). Print every player's final medal count.

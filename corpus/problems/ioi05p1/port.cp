@@ -1,4 +1,5 @@
 // Source: IOI 2005 Day 1, Garden, https://dmoj.ca/problem/ioi05p1
+// limits: 300 ms, 32 MB
 // Problem: an l x w garden (l, w <= 250) with n <= 5000 roses on unit squares (several per
 //   square allowed). Choose two disjoint axis-parallel rectangles, each holding exactly k roses,
 //   with the least total perimeter; print it, or NO.

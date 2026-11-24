@@ -1,7 +1,7 @@
 """noi22p1 (Major) inputs: `gen.py SEED SIZE`, or `gen.py --max` (n = q = 5e5).
 
 "n q", n sequences "len x..", then q ops: 1 x y, 2 x (x non-empty), 3 m x..x (distinct live
-ids), 4 x1 x2 x3 (x3 a fresh id). n, q, the total length and the sum of m are at most 5e5;
+ids, not all empty), 4 x1 x2 x3 (x3 a fresh id). n, q, the total length and the sum of m are at most 5e5;
 values are at most n + q. --max: few values so majorities exist, joins of long sequences, and
 queries over many sequences.
 """
@@ -56,6 +56,19 @@ for _ in range(q):
     elif kind == 3:
         m = min(m_left, len(alive), rng.randint(1, 50 if MAX else 5))
         xs = rng.sample(alive, m)
+        if not any(size_of[x] for x in xs):
+            full = [a for a in alive if size_of[a]]
+            if full:
+                xs[0] = rng.choice(full)
+                if xs.count(xs[0]) > 1:
+                    xs = list(dict.fromkeys(xs))
+                    m = len(xs)
+            else:
+                xs = [alive[0]]
+                m = 1
+                out.append(f"1 {xs[0]} 1")
+                size_of[xs[0]] += 1
+                length += 1
         m_left -= m
         out.append(" ".join(map(str, [3, m] + xs)))
     else:
