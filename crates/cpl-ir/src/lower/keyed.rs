@@ -441,6 +441,9 @@ impl<'a> Lowerer<'a> {
             ExprKind::Builtin(Builtin::Reversed, mut args) if !self.is_reversed(&args[0]) => {
                 args.remove(0)
             }
+            ExprKind::Local(slot) if self.cx.rev_src.contains_key(&slot) => {
+                self.cx.rev_src[&slot].clone()
+            }
             _ => {
                 let ty = value.ty.clone();
                 self.mk_builtin(Builtin::Reversed, [value], ty, span)

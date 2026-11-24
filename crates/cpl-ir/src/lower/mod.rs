@@ -496,6 +496,8 @@ struct FnCx {
     let_bounds: HashMap<Slot, (i64, i64)>,
     view_lo: HashMap<Slot, i64>,
     view_rev: HashSet<Slot>,
+    /// The forward sequence a reversed view local reverses, read for its `.src`.
+    rev_src: HashMap<Slot, Expr>,
     ret: Option<Ty>,
     /// A scalar range return type (`-> 0..10`): what each returned value is checked against.
     ret_bounds: Option<range::RangeBounds>,

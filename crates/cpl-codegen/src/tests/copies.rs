@@ -956,3 +956,15 @@ fn a_list_walked_again_or_read_later_is_kept() {
         assert!(!out.contains(".swap(words)"), "{out}");
     }
 }
+
+#[test]
+fn a_reversed_lists_scan_reads_the_list_in_place() {
+    let out = cpp(r#"
+let n: Int = read()
+let v: List<Int> = [0..n] i => i * 7 % 5
+let hi = v.rev.scan(max)
+print(hi.cut(0), hi.cut(n - 1))
+"#);
+    let main = &out[out.find("void solve()").unwrap()..];
+    assert!(!main.contains("to_list("), "{main}");
+}

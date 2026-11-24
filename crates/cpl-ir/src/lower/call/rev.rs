@@ -150,6 +150,18 @@ impl<'a> Lowerer<'a> {
         self.cx.scopes.push(HashMap::new());
         let this = self.temp(value.ty.clone());
         self.cx.view_rev.insert(this);
+        // `self.src` reads the reversed sequence itself, not the view reversed back.
+        if let ExprKind::Builtin(Builtin::Reversed, of) = &value.kind {
+            if let [src @ Expr {
+                kind: ExprKind::Local(_) | ExprKind::Global(_),
+                ..
+            }] = of.as_slice()
+            {
+                if !self.is_reversed(src) {
+                    self.cx.rev_src.insert(this, src.clone());
+                }
+            }
+        }
         self.cx.pending.push_let(this, value);
         self.bind_local("self", this);
         let op_params: Vec<String> = ops.iter().map(|(name, _)| name.clone()).collect();
