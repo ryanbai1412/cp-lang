@@ -1555,6 +1555,13 @@ impl Checker<'_> {
             return None;
         };
         let (member, elem) = self.catalog_row(base, &name.text)?;
+        // `m.get(k, 0)` is not the row `get(k)`: its arity error says so.
+        let arity = split_top(member.params)
+            .into_iter()
+            .filter(|p| !p.trim().is_empty());
+        if args.len() > arity.count() {
+            return None;
+        }
         // `xs.find(x => x > 1)` is the element, not the row's index.
         if args
             .iter()
