@@ -1418,6 +1418,7 @@ impl<'a> Checker<'a> {
                 self.branch -= 1;
                 let mark = self.lend_mark();
                 self.add_cond_facts(cond, false);
+                self.begin_cond_hold(cond, body);
                 let before = self.moved.clone();
                 self.block(body);
                 self.lend_reset(mark);

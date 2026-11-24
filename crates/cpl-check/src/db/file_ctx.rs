@@ -192,6 +192,16 @@ impl FileCtx<'_> {
         });
         let mut carried = crate::fx::HashSet::default(); // views a closure carries here
         for k in (0..current).rev() {
+            // `let d = o!` lends what `o` lends, so `o`'s loan lives while `d` does.
+            if let Flow::View(name) | Flow::LentVar(name) = &items[k].flow {
+                let live = carried.contains(name)
+                    || (current..items.len()).any(|j| names[j].0.contains(name));
+                if let (true, [stmt]) = (live, &items[k].parsed.stmts[..]) {
+                    if let Some(src) = crate::check::lends::unwrapped_name(stmt) {
+                        carried.insert(src.to_string());
+                    }
+                }
+            }
             if let Flow::Capture(name) = &items[k].flow {
                 if carried.contains(name)
                     || (current..items.len()).any(|j| names[j].0.contains(name))

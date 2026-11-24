@@ -480,6 +480,7 @@ impl<'a> Checker<'a> {
                     }
                     let branch = self.lend_mark();
                     self.add_cond_facts(cond, false);
+                    self.begin_cond_hold(cond, body);
                     let past = self.present.len();
                     let held = narrow::in_branch(cond, body, &mut |f, x| self.call_writes(f, x));
                     self.present.extend(held.into_iter().map(String::from));
