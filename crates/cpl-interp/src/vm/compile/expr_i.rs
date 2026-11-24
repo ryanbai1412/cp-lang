@@ -1076,7 +1076,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 dst
             }
             ExprKind::Call(fn_id, args) => {
-                if let Some(mop) = Self::recognize_mod_op(self.program, *fn_id) {
+                // A profiled run counts the body's statement, so it calls.
+                let mop = Self::recognize_mod_op(self.program, *fn_id).filter(|_| !self.profiled);
+                if let Some(mop) = mop {
                     if args.iter().all(|a| matches!(a, Arg::Value(_))) {
                         let dst = self.alloc_i();
                         match (mop, args.as_slice()) {

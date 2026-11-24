@@ -521,7 +521,7 @@ print(gtot, local_driver(2), glob[0])
     );
     let program = cpl_ir::lower(&analysis).expect("lowers");
     let feeds = cpl_ir::pushed::Feeds::of(&program);
-    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false);
+    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false, false);
     let has_loop_fallback = |chunk: &crate::vm::Chunk<'_>| {
         chunk.ops.iter().any(|op| {
             matches!(
@@ -1117,7 +1117,7 @@ print(x, a[0])
     );
     let program = cpl_ir::lower(&analysis).expect("lowers");
     let feeds = cpl_ir::pushed::Feeds::of(&program);
-    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, true);
+    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, true, false);
     let in_loop =
         |op: &crate::vm::Op| matches!(op, crate::vm::Op::FallbackStmt { in_loop: true, .. });
     assert!(
@@ -1301,7 +1301,7 @@ fn vm_runs_alone(source: &str, input: &str) -> String {
     );
     let program = cpl_ir::lower(&analysis).expect("lowers");
     let feeds = cpl_ir::pushed::Feeds::of(&program);
-    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false);
+    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false, false);
     let own = |id: &usize| {
         let name = program.fns[*id].name.rsplit('.').next().unwrap_or_default();
         source.contains(&format!("fn {name}("))
@@ -1529,7 +1529,7 @@ fn traced_vm_swaps_grid_cells_itself() {
     );
     let program = cpl_ir::lower(&analysis).expect("lowers");
     let feeds = cpl_ir::pushed::Feeds::of(&program);
-    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, true);
+    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, true, false);
     let writes = (compiled.main.fallback_stmts.iter())
         .filter(|s| matches!(s, cpl_ir::Stmt::Let(..) | cpl_ir::Stmt::Assign(..)))
         .count();
@@ -1591,7 +1591,7 @@ fn only_a_closure_made_off_the_vm_syncs_the_whole_frame_around_calls() {
         );
         let program = cpl_ir::lower(&analysis).expect("lowers");
         let feeds = cpl_ir::pushed::Feeds::of(&program);
-        let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false);
+        let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false, false);
         let chunk = match name {
             None => &compiled.main,
             Some(name) => {

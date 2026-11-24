@@ -25,7 +25,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let mut declared = Vec::new();
         let mut i = 0;
         while i < stmts.len() {
-            if self.traced {
+            if self.traced || self.profiled {
                 self.compile_stmt(&stmts[i]);
                 i += 1;
                 continue;
@@ -106,10 +106,32 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
     }
 
+    /// In a profiled chunk, a step for `stmt` starting: its op.
+    pub(super) fn emit_step(&mut self, stmt: &'p Stmt) -> Option<usize> {
+        self.profiled.then(|| {
+            let idx = self.steps.len() as u32;
+            self.steps.push(stmt);
+            self.emit(Op::Step { idx }, stmt.span().unwrap_or_default())
+        })
+    }
+
     pub(super) fn compile_stmt(&mut self, stmt: &'p Stmt) {
+        let step = self.emit_step(stmt);
         let start = self.ops.len();
         if !self.traced || !self.compile_traced_stmt(stmt) {
             self.compile_untraced_stmt(stmt);
+        }
+        // The tree-walker steps a statement it runs itself.
+        if let Some(step) = step {
+            let falls_back = (start..self.ops.len()).any(|pc| {
+                matches!(self.ops[pc], Op::FallbackStmt { idx, .. }
+                    if std::ptr::eq(self.fallback_stmts[idx as usize], stmt))
+            });
+            if falls_back {
+                self.ops[step] = Op::Jmp {
+                    target: start as u32,
+                };
+            }
         }
         self.note_call_site(start, stmt);
     }

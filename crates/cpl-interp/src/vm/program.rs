@@ -45,6 +45,8 @@ pub(crate) struct Chunk<'p> {
     pub formats: Vec<FormatSpec<'p>>,
     pub applies: Vec<ApplySpec<'p>>,
     pub fallback_stmts: Vec<&'p Stmt>,
+    /// The statement each `Step` starts.
+    pub steps: Vec<&'p Stmt>,
     /// The `assert`s and `Trap`s each `Fail` reports.
     pub fails: Vec<&'p Stmt>,
     pub fallback_exprs: Vec<&'p Expr>,
@@ -170,12 +172,18 @@ pub(crate) struct CompiledProgram<'p> {
 
 impl<'p> CompiledProgram<'p> {
     /// With `traced`, every write, print and call is reported to the
-    /// tracer as the tree-walker reports it.
-    pub fn compile(program: &'p Program, feeds: &cpl_ir::pushed::Feeds, traced: bool) -> Self {
+    /// tracer as the tree-walker reports it; with `profiled`, each
+    /// statement's start is a step for the profiler.
+    pub fn compile(
+        program: &'p Program,
+        feeds: &cpl_ir::pushed::Feeds,
+        traced: bool,
+        profiled: bool,
+    ) -> Self {
         let empty_fed: Vec<bool> = vec![false; program.fns.len()];
         let mut fed_fns = Vec::with_capacity(program.fns.len());
         for (id, f) in program.fns.iter().enumerate() {
-            if traced || f.locals.len() > 512 || program.judge_fns.contains(&id) {
+            if traced || profiled || f.locals.len() > 512 || program.judge_fns.contains(&id) {
                 fed_fns.push(None);
             } else if let Some(&acc_slot) = feeds.pushers.get(&id) {
                 let guarded_domains = program.fn_guarded_domains(&f.ret, &f.body);
@@ -223,6 +231,7 @@ impl<'p> CompiledProgram<'p> {
                 let mut c =
                     Compiler::new(program, feeds, &fed_ok, &f.locals, Some(id), f.params.len());
                 c.traced = traced;
+                c.profiled = profiled;
                 let ret_kind = ScalarKind::of_ty(&f.ret, program);
                 c.compile_block(&f.body, ret_kind, true);
                 let mut chunk = c.finish();
@@ -238,7 +247,8 @@ impl<'p> CompiledProgram<'p> {
         let mut closures = Vec::with_capacity(program.closures.len());
         let mut fast_closures = Vec::with_capacity(program.closures.len());
         for def in &program.closures {
-            fast_closures.push(recognize_fast_closure(def, program));
+            // A fast closure runs no statements, so a profiled run has none.
+            fast_closures.push(recognize_fast_closure(def, program).filter(|_| !profiled));
             let can_compile = def.locals.len() <= 512
                 && def.muts.is_empty()
                 && def.captures.iter().all(|cap| !cap.by_ref)
@@ -250,6 +260,7 @@ impl<'p> CompiledProgram<'p> {
                 let mut c =
                     Compiler::new(program, feeds, &fed_ok, &def.locals, None, def.params.len());
                 c.traced = traced;
+                c.profiled = profiled;
                 let ret_kind = ScalarKind::of_ty(&def.ret, program);
                 c.compile_block(&def.body, ret_kind, true);
                 let mut chunk = c.finish();
@@ -264,6 +275,7 @@ impl<'p> CompiledProgram<'p> {
         }
         let mut main_c = Compiler::new(program, feeds, &fed_ok, &program.main_locals, None, 0);
         main_c.traced = traced;
+        main_c.profiled = profiled;
         main_c.compile_block(&program.main, None, false);
         main_c.emit(Op::RetUnit, Span::default());
         let mut main = main_c.finish();
@@ -273,6 +285,7 @@ impl<'p> CompiledProgram<'p> {
         let setup = program.multitest.then(|| {
             let mut c = Compiler::new(program, feeds, &fed_ok, &program.main_locals, None, 0);
             c.traced = traced;
+            c.profiled = profiled;
             c.compile_block(&program.setup, None, false);
             let done = c.alloc_i();
             c.emit_const_i(done, 1, Span::default());

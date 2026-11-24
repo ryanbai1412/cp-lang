@@ -118,6 +118,8 @@ pub(super) struct Compiler<'p, 'f> {
     dom_clears: u32,
     assigned_locals: Vec<Slot>,
     pub(in crate::vm) traced: bool,
+    pub(in crate::vm) profiled: bool,
+    steps: Vec<&'p Stmt>,
     trace_points: Vec<TracePoint<'p>>,
     /// The `for` whose body is compiled next, whose variable each round reports.
     traced_loop_var: Option<(Slot, Span)>,
@@ -204,6 +206,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
             dom_clears: 0,
             assigned_locals: Vec::new(),
             traced: false,
+            profiled: false,
+            steps: Vec::new(),
             trace_points: Vec::new(),
             traced_loop_var: None,
             trace_takes: false,
@@ -238,6 +242,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             lent_calls: self.lent_calls,
             trace_points: self.trace_points,
             traced: self.traced,
+            steps: self.steps,
             fill_tys: self.fill_tys,
             num_i: self.next_i as usize,
             num_v: self.next_v as usize,
@@ -944,7 +949,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
     }
 
     pub(super) fn is_pure_leaf_fn(&self, fn_id: FnId) -> bool {
-        if self.cur_fn == Some(fn_id)
+        // A profiled run counts each statement of the body, so it calls.
+        if self.profiled
+            || self.cur_fn == Some(fn_id)
             || self.inline_slots.is_some()
             || self.program.judge_fns.contains(&fn_id)
         {

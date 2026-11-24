@@ -1,4 +1,4 @@
-//! Typed register bytecode VM for plain (untraced, unprofiled) runs.
+//! Typed register bytecode VM.
 //!
 //! `cpl-ir` already resolves every local to a `Slot` and gives every slot,
 //! global, and expression a static [`Ty`]. The VM exploits that static typing:

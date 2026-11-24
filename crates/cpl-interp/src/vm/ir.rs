@@ -1468,6 +1468,10 @@ pub(crate) enum Op {
         path: u16,
         dst: u16,
     },
+    /// A user statement starts: the profiler's step (see `Observer::step`).
+    Step {
+        idx: u32,
+    },
     FallbackStmt {
         idx: u32,
         clear_from_v: u16,

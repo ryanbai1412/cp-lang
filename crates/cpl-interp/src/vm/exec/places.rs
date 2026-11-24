@@ -1355,6 +1355,11 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         crate::mutation::mutate_cell(*op, cell, &place.ty, arg, arg2, program, span)
                     })?;
             }
+            Op::Step { idx } => {
+                if let Some(profiler) = &mut self.profiler {
+                    profiler.enter(chunk.steps[idx as usize]);
+                }
+            }
             Op::FallbackStmt {
                 idx,
                 clear_from_v,

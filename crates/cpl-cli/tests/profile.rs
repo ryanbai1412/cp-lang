@@ -92,6 +92,29 @@ fn profile_charges_library_code_to_the_line_that_calls_it() {
 }
 
 #[test]
+fn profile_runs_on_the_vm_and_counts_bodies_it_would_inline() {
+    // `mod5` is a modular op and a pure leaf, both of which the VM would
+    // otherwise run without its statement.
+    let file = scratch(
+        "vm.cp",
+        "fn mod5(x: Int) -> Int: x % 5\nvar ys = [9, 3, 7]\nys.sort(by: mod5)\nprint(ys)\n",
+    );
+    let output = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .args(["profile", file.to_str().unwrap(), "-", "--format", "json"])
+        .env("CPL_VM_STATS", "json")
+        .output()
+        .expect("cpl runs");
+    let (out, err) = (
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    assert!(output.status.success(), "{err}");
+    assert_eq!(hits(&out), [(1, 3), (2, 1), (3, 1), (4, 1)]);
+    assert!(err.contains("\"total_fallbacks\":0,"), "{err}");
+    assert!(err.contains("\"walked\":0,"), "{err}");
+}
+
+#[test]
 fn profile_of_a_failed_run_still_reports_and_fails() {
     let file = scratch(
         "fails.cp",
