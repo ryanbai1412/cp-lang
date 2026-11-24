@@ -949,6 +949,22 @@ impl Checker<'_> {
         Some(traits)
     }
 
+    /// Whether an impl for an optional (`impl<T: Total> Total for ?T`), or
+    /// its trait, declares `name`.
+    pub(super) fn optional_impls_declare(&mut self, name: &str) -> bool {
+        let targets = self.env.impl_targets();
+        for target in &targets {
+            if target.starts_with('?')
+                && self
+                    .member_traits(target, name)
+                    .is_none_or(|t| !t.is_empty())
+            {
+                return true;
+            }
+        }
+        false
+    }
+
     /// Whether `base.name(args)` gives arguments its built-in member's row
     /// doesn't take while a library fn fits the receiver: then the call is
     /// the library's, `xs.fold_from(0, f)` beside the built-in `xs.fold(+)`.

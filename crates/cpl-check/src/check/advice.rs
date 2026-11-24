@@ -220,16 +220,20 @@ impl Checker<'_> {
         }
         let public =
             |c: &mut Self, m: &String| owner.is_empty() || !c.env.is_private_field(&owner, m);
-        let field_names: Vec<String> = field_names
-            .iter()
-            .filter(|f| public(self, f))
-            .cloned()
-            .collect();
-        let methods: Vec<(String, Ty)> = methods
-            .iter()
-            .filter(|(m, _)| public(self, m))
-            .cloned()
-            .collect();
+        let mut public_fields = Vec::new();
+        for f in field_names {
+            if public(self, f) {
+                public_fields.push(f.clone());
+            }
+        }
+        let field_names = public_fields;
+        let mut public_methods = Vec::new();
+        for m in methods {
+            if public(self, &m.0) {
+                public_methods.push(m.clone());
+            }
+        }
+        let methods = public_methods;
         let habit = (!owner.is_empty())
             .then(|| self.public_foreign_twin(&owner, &name.text))
             .flatten();
@@ -245,34 +249,42 @@ impl Checker<'_> {
         let fold_for = folds && range_arg && has("fold");
         // C++'s `pq.top()`: a heap's top is its `peek`, never the `pop` it's spelled like.
         let top = name.text == "top" && has("peek") && after.starts_with("()");
+        let unwrap =
+            matches!(base_ty, Ty::Optional(_)) && matches!(name.text.as_str(), "unwrap" | "expect");
         let peek_getter = |getters: &[String]| getters.iter().any(|g| g == "peek");
         let peek = match self.type_def(&owner).as_deref() {
             Some(Def::Struct { getters, .. }) if peek_getter(getters) => "peek!",
-            _ if (self.env.impls(&owner).into_iter()).any(
-                |(_, def)| matches!(&*def, Def::Impl { getters, .. } if peek_getter(getters)),
+            _ if (self.env.impls(&owner).iter()).any(
+                |(_, def)| matches!(&**def, Def::Impl { getters, .. } if peek_getter(getters)),
             ) =>
             {
                 "peek!"
             }
             _ => "peek()!",
         };
-        let known = field_names
-            .iter()
-            .chain(methods.iter().map(|(m, _)| m))
-            .map(String::as_str)
-            .chain(has("range_first").then_some("range"));
-        let suggestion = closest(&name.text, known);
+        let mut known: Vec<&str> = Vec::new();
+        for f in &field_names {
+            known.push(f);
+        }
+        for (m, _) in &methods {
+            known.push(m);
+        }
+        if has("range_first") {
+            known.push("range");
+        }
+        let suggestion = closest(&name.text, known.iter().copied());
         let library_domain = match base_ty {
             Ty::Named { name, .. } | Ty::TypeName(name) => self.has_impl(name, "Index"),
             _ => false,
         };
         let core_only =
             library_domain && super::library_domain::CORE_DOMAIN_ONLY.contains(&name.text.as_str());
-        let Some(diag) = self.report(
-            name.span,
-            msgs::check::UNKNOWN_FIELD_HAS_NO_FIELD_OR,
-            &[&base_ty, &name.text],
-        ) else {
+        let said = if unwrap {
+            msgs::check::NO_METHOD_ON.at(&[&"a", base_ty, &name.text])
+        } else {
+            msgs::check::UNKNOWN_FIELD_HAS_NO_FIELD_OR.at(&[base_ty, &name.text])
+        };
+        let Some(diag) = self.report_said(name.span, said) else {
             return;
         };
         let renamed = library_domain
@@ -300,6 +312,14 @@ impl Checker<'_> {
                 diag.help = Some(habits::UNKNOWN_MEMBER_6.say(&[&base_ty]));
                 let at = Span::new(name.span.start, name.span.end + 2);
                 diag.fix(habits::WRITE.say(&[&peek]), at, peek);
+            }
+            // `x.unwrap()` is `x!`.
+            _ if unwrap => {
+                diag.help = Some(crate::builtins::OPTIONAL_UNWRAP_HELP.to_string());
+                if after.starts_with("()") {
+                    let at = Span::new(name.span.start.saturating_sub(1), name.span.end + 2);
+                    diag.fix(habits::WRITE.say(&[&"!"]), at, "!");
+                }
             }
             _ if fold_for => {
                 diag.help = Some(habits::UNKNOWN_MEMBER_7.say(&[&base_ty]));
@@ -339,23 +359,23 @@ impl Checker<'_> {
     /// The public methods a value of struct `owner` calls: `self` methods
     /// and getters, not constructors.
     fn public_receivers(&mut self, owner: &str) -> Option<Vec<String>> {
-        let found = self.type_def(owner);
-        let Some(Def::Struct {
+        let def = self.type_def(owner)?;
+        let Def::Struct {
             receivers,
             mutators,
             getters,
             ..
-        }) = found.as_deref()
+        } = &*def
         else {
             return None;
         };
-        let names = receivers.iter().chain(mutators).chain(getters);
-        Some(
-            names
-                .filter(|m| !self.env.is_private_field(owner, m))
-                .cloned()
-                .collect(),
-        )
+        let mut names = Vec::new();
+        for m in [receivers, mutators, getters].into_iter().flatten() {
+            if !self.env.is_private_field(owner, m) {
+                names.push(m.clone());
+            }
+        }
+        Some(names)
     }
 }
 

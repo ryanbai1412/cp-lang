@@ -297,15 +297,6 @@ impl<'a> Checker<'a> {
         ty
     }
 
-    /// True when a trait declares `name`: `impl<T: Total> Total for ?T`
-    /// gives `?C` its `total`, and an impl for `?T` is filed under no head.
-    fn trait_method_named(&mut self, name: &str) -> bool {
-        (self.env.names().into_iter()).any(|n| {
-            matches!(self.global(&n).as_deref(), Some(Def::Trait { methods, .. })
-                if methods.iter().any(|m| m.name == name))
-        })
-    }
-
     pub(crate) fn member_ty(&mut self, expr: &Expr, name: &ast::Name, base_ty: Ty) -> Ty {
         if name.text.is_empty() {
             return Ty::Error;
@@ -1055,37 +1046,18 @@ impl<'a> Checker<'a> {
                 let methods = self.shape_impl_members(&base_ty);
                 (methods.iter().any(|(m, _)| *m == name.text)).then(|| (None, Vec::new(), methods))
             }
+            // An optional has the checker's own members, std's `self: ?T`
+            // fns and its traits' fns; any other name is unknown, as on a struct.
+            Ty::Optional(_)
+                if !crate::builtins::optional_member(&name.text)
+                    && self.method_candidates(&name.text).is_empty()
+                    && !self.optional_impls_declare(&name.text) =>
+            {
+                Some((None, Vec::new(), Vec::new()))
+            }
             _ => None,
         };
         let Some((field_ty, field_names, methods)) = found else {
-            // An optional has the checker's own members, std's `self: ?T`
-            // fns and its traits' fns; any other name is unknown, as on a struct.
-            if matches!(base_ty, Ty::Optional(_))
-                && !crate::builtins::optional_member(&name.text)
-                && self.method_candidates(&name.text).is_empty()
-                && !self.trait_method_named(&name.text)
-            {
-                if !matches!(name.text.as_str(), "unwrap" | "expect") {
-                    self.unknown_member(name, &base_ty, &[], &[]);
-                    return Ty::Error;
-                }
-                // `x.unwrap()` is `x!`.
-                let call = Span::new(name.span.start.saturating_sub(1), name.span.end + 2);
-                let bare = (self.src.get(call.start as usize..call.end as usize))
-                    .is_some_and(|t| t == format!(".{}()", name.text));
-                let ty = base_ty.to_string();
-                let message = msgs::check::NO_METHOD_ON.at(&[&"a", &ty, &name.text]);
-                if let Some(diag) = self.report_said(name.span, message) {
-                    diag.help = Some(crate::builtins::OPTIONAL_UNWRAP_HELP.to_string());
-                    if bare {
-                        diag.fixes.push(cpl_diag::Fix {
-                            title: "write `!`".to_string(),
-                            edits: vec![(call, "!".to_string())],
-                        });
-                    }
-                }
-                return Ty::Error;
-            }
             // Members of library types, arrays and domains (`xs.len`,
             // `V.rev`) come from `std`, which is not loaded yet.
             return if base_ty == Ty::Error {
