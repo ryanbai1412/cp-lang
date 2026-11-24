@@ -194,7 +194,7 @@ pub fn completion(cursor: &Cursor, std: &mut StdLib, trigger: Option<char>) -> V
             .collect();
     }
     if head.ends_with('@') {
-        return DECORATORS
+        return cpl_syntax::decorators::DECORATORS
             .iter()
             .map(|(name, detail)| item_json(&plain(name, Kind::Keyword, (*detail).into(), ""), 0))
             .collect();
@@ -235,55 +235,6 @@ pub fn completion(cursor: &Cursor, std: &mut StdLib, trigger: Option<char>) -> V
 
 /// `xs.sorted(b|`: each parameter of the open call that no argument gives
 /// yet, offered as `name:`, the named-only ones first.
-/// The closed set of decorators (spec/core/06-control-functions.md, 6.4).
-const DECORATORS: &[(&str, &str)] = &[
-    ("test", "tool role: a test fn `cpl test` runs"),
-    (
-        "alt",
-        "tool role: `@alt(f, caps)`, another implementation of `f`",
-    ),
-    ("gen", "tool role: a stress generator"),
-    ("check", "tool role: the checker of an output"),
-    (
-        "interactor",
-        "tool role: the judge side of an interactive problem",
-    ),
-    ("memo", "`@memo(array)` / `@memo(map)`: cache a function"),
-    ("get", "an O(1) read-only method called without parentheses"),
-    ("cache", "on a struct field: interior mutability"),
-    (
-        "bits",
-        "on a `List<U64>` field: one bit per domain position",
-    ),
-    ("trusted", "`@trusted:` block: the unsafe tier"),
-    ("cpp", "an item written in C++: the unsafe tier"),
-    ("grader", "`@grader(..)`: a judge entry point"),
-    (
-        "laws",
-        "`@laws(sample: n)`: stress sampling of a type's laws",
-    ),
-    (
-        "tag",
-        "`@tag(lit)` on a variant: the token it reads and prints as",
-    ),
-    (
-        "droppable",
-        "the result may be dropped without the unused-result lint",
-    ),
-    (
-        "from_op",
-        "on a struct's static fn: a bare op passed where the struct is wanted goes through it",
-    ),
-    (
-        "structural",
-        "on a trait: a tuple, record, optional, array or struct has it when each part does",
-    ),
-    (
-        "lint",
-        "`@lint(name, from:, to:)` on a `pub fn`: a library's own lint",
-    ),
-];
-
 /// The file-level directives, `@!name`, in force from their line down.
 const DIRECTIVES: &[(&str, &str)] = &[
     (

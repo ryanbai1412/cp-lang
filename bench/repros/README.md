@@ -11,7 +11,7 @@ for f in bench/repros/*.cp; do echo "=== $f ==="; target/release/cpl build "$f" 
 ## Compiler Correctness / Codegen Bugs
 
 1. `bug_01_multitest_empty_solve.cp` — `@multitest fn solve():` emits an empty `void solve() {}` body and produces empty stdout (`ccc03s4.cp`).
-2. `bug_02_solution_fn_empty_solve.cp` — `@solution fn main():` emits an empty `void solve() {}` body and produces empty stdout (`sac22cc2p4.cp`).
+2. `bug_02_solution_fn_empty_solve.cp` — `@solution fn main():` emits an empty `void solve() {}` body and produces empty stdout (`sac22cc2p4.cp`). Closed: `@solution` is not a decorator (spec/core 6.4), and the parser now rejects it as unknown (E0107).
 3. `bug_03_optbool_pop_char.cp` — `List<Bool>.pop()` returns `std::optional<char>` (from `std::vector<char>`), which fails `g++` when wrapped in `cpl::OptBool` (`btoi19p6.cp`).
 4. `bug_04_adl_std_apply.cp` — unqualified calls to a user `fn apply(...)` taking a `std::vector` / array collide with `std::apply` via C++ ADL and fail `g++` (`noi20p1.cp`).
 

@@ -5,6 +5,7 @@ super::msgs! {
     USE_DIRECTIVE = REMOVED_SYNTAX, "use `{}` instead of `{}`";
     SEMI_AFTER_DECORATOR = UNEXPECTED_TOKEN, "no `;` after a decorator";
     UNKNOWN_DIRECTIVE = UNEXPECTED_TOKEN, "unknown directive `@!{}`";
+    UNKNOWN_DECORATOR = UNEXPECTED_TOKEN, "unknown decorator `@{}`";
     DIRECTIVE_IN_BLOCK = UNEXPECTED_TOKEN, "`@!{}` stands at the top level of the file";
     INTERACTIVE_ARGS = UNEXPECTED_TOKEN, "`@!interactive` takes nothing";
     ALLOW_REMOVED = REMOVED_SYNTAX, "`@allow` was removed in CP Lang 0.3; lints are contexts";

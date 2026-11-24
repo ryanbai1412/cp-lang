@@ -10,7 +10,6 @@ var pre: [V.cuts]Int = 0
 for i in V:
     pre[i.after] = pre[i.before] + a[i]
 
-@solution
 fn main():
     for x in qs:
         print(pre[x.r.after] - pre[x.l.before])

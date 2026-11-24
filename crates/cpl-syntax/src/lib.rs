@@ -13,6 +13,7 @@
 
 pub mod ast;
 pub mod const_int;
+pub mod decorators;
 pub mod doc;
 pub mod files;
 pub mod grammar;

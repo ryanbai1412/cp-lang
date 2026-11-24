@@ -178,6 +178,12 @@ library or by this spec:
   array or struct has it when each part does, a position when `Int` does,
   and a built-in scalar only through its own `impl` (so `F64`, with none, is
   not `Hash`).
+- `@word(name)` on a std struct: `name(args)` is a call of its
+  constructor (std's `@word(prefix)` on `Prefix`).
+- Documented where they act: `@bits` on a field and `@law` (chapter 5),
+  `@on_unimplemented`, `@was(..)` and `@stress(kind)` (chapter 12). Any
+  other `@name` is E0107, naming the nearest decorator, so no later pass
+  meets one. (R06.4.11)
 - `@lint(name, from: "<code>", to: "<code>")` on a `pub fn` or a struct's
   or enum's method: a lint the
   library declares, so its users are told to call the fn where they write

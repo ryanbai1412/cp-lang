@@ -1026,24 +1026,6 @@ impl<'a> Lowerer<'a> {
             let items: Vec<(u32, &'a ast::Stmt)> = self.mod_items(m).collect();
             for (offset, stmt) in items {
                 self.offset = offset;
-                if m == 0 {
-                    for decorator in &stmt.decorators {
-                        match decorator.name.text.as_str() {
-                            // The divider: `main` splits the file at it.
-                            "multitest" => {}
-                            // Read once, before lowering: see `directed`.
-                            "interactive" if decorator.directive => {}
-                            "get" | "brute" | "alt" | "test" | "solution" | "tags" | "memo"
-                            | "law" | "gen" | "checker" | "check" | "interactor" | "grader"
-                            | "on_unimplemented" | "droppable" | "from_op" | "structural"
-                            | "was" | "" => {}
-                            // For `cpl lint` and `cpl stress` alone: they change nothing a run does.
-                            "allow" | "lint" | "stress" => {}
-                            other => self
-                                .unsupported(decorator.span, &format!("the `@{other}` decorator")),
-                        }
-                    }
-                }
                 self.collect_item(m, offset, stmt);
             }
         }

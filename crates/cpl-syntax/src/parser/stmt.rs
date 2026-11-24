@@ -146,7 +146,9 @@ impl<'a> Parser<'a> {
             || (self.at(T::Minus) && self.peek_n(1) == T::Minus && self.peek_n(2) == T::Minus)
         {
             if self.at(T::At) {
-                decorators.push(self.decorator());
+                let decorator = self.decorator();
+                self.known_decorator(&decorator);
+                decorators.push(decorator);
                 if !self.eat(T::Newline)
                     && !self.at_line_end()
                     && decorators.last().is_some_and(|d| d.name.text.is_empty())
@@ -213,6 +215,36 @@ impl<'a> Parser<'a> {
             directive: true,
             span,
         }
+    }
+
+    /// An item's `@name` outside the closed set: one error, naming the
+    /// nearest decorator or else all of them.
+    fn known_decorator(&mut self, d: &Decorator) {
+        let name = &d.name.text;
+        if d.directive
+            || name.is_empty()
+            || self.speculating > 0
+            || crate::decorators::is_known(name)
+        {
+            return;
+        }
+        let names = crate::decorators::DECORATORS.iter().map(|(d, _)| *d);
+        let near = names
+            .clone()
+            .filter(|d| cpl_diag::edit_distance(d, name) <= 2)
+            .min_by_key(|d| cpl_diag::edit_distance(d, name));
+        let help = match near {
+            Some(d) => format!("did you mean `@{d}`?"),
+            None => {
+                let all: Vec<String> = names.map(|d| format!("`@{d}`")).collect();
+                format!("the decorators are {}", all.join(", "))
+            }
+        };
+        self.sink.push(
+            msg::UNKNOWN_DECORATOR
+                .error(d.name.span, &[name])
+                .with_help(help),
+        );
     }
 
     fn decorator(&mut self) -> Decorator {
