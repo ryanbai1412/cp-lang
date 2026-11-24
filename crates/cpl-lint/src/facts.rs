@@ -43,16 +43,20 @@ impl Facts {
                 });
             }
         }
+        // By end, then start: `place_type` looks a place up by its end.
+        facts.types.sort_by_key(|(s, _)| (s.end, s.start));
         facts
     }
 
     /// The type of the place `span` names (`x`, `g[i][j]`, `self.best`): the
     /// widest typed span inside it that ends where it ends.
     pub fn place_type(&self, span: Span) -> Option<&Ty> {
+        let at = self
+            .types
+            .partition_point(|(s, _)| (s.end, s.start) < (span.end, span.start));
         self.types
-            .iter()
-            .filter(|(s, _)| s.end == span.end && s.start >= span.start)
-            .min_by_key(|(s, _)| s.start)
+            .get(at)
+            .filter(|(s, _)| s.end == span.end)
             .map(|(_, ty)| ty)
     }
 

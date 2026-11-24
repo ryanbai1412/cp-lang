@@ -52,7 +52,7 @@ pub(crate) fn proven_fns(file: &File) -> Vec<crate::ProvenFn> {
         state[i] = State::Done((total, terms.clone()));
         (total, terms)
     }
-    let fns = proven(file).fns;
+    let fns = &proven(file).fns;
     let mut by_name = std::collections::HashMap::new();
     for (i, f) in fns.iter().enumerate() {
         by_name.entry(f.name.as_str()).or_insert(i);
@@ -72,7 +72,7 @@ pub(crate) fn proven_fns(file: &File) -> Vec<crate::ProvenFn> {
     let mut state: Vec<State> = fns.iter().map(|_| State::Todo).collect();
     (0..fns.len())
         .map(|i| {
-            let (steps, terms) = cost(i, &fns, &by_name, &mut state);
+            let (steps, terms) = cost(i, fns, &by_name, &mut state);
             let f = &fns[i];
             crate::ProvenFn {
                 name: f.at,

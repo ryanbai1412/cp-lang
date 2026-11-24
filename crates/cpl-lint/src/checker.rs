@@ -127,6 +127,7 @@ fn allowed_regions(analysis: &cpl_check::Analysis) -> Vec<(cpl_diag::Span, &'sta
         src: &analysis.text,
         items: &items,
         facts: None,
+        proven: Default::default(),
     };
     Allows::collect(&file, &[]).regions
 }

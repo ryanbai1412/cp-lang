@@ -193,6 +193,8 @@ pub(crate) struct File<'a> {
     /// What the checker found, for rules that read types; `None` where
     /// only the syntax is at hand.
     pub facts: Option<&'a Facts>,
+    /// What the declared bounds prove, worked out once for every rule.
+    pub proven: std::cell::OnceCell<rules::Proven>,
 }
 
 fn with_parsed<T: Default>(src: &str, f: impl FnOnce(&File) -> T) -> T {
@@ -205,6 +207,7 @@ fn with_parsed<T: Default>(src: &str, f: impl FnOnce(&File) -> T) -> T {
         src,
         items: &items,
         facts: None,
+        proven: Default::default(),
     })
 }
 
@@ -322,6 +325,7 @@ pub fn proven_fns_parsed(src: &str, items: &[(u32, &ParsedItem)]) -> Vec<ProvenF
         src,
         items,
         facts: None,
+        proven: Default::default(),
     })
 }
 
@@ -359,6 +363,7 @@ pub fn proven_sizes_parsed(src: &str, items: &[(u32, &ParsedItem)]) -> Vec<Prove
         src,
         items,
         facts: None,
+        proven: Default::default(),
     })
 }
 
@@ -379,6 +384,7 @@ pub fn domain_sizes_parsed(src: &str, items: &[(u32, &ParsedItem)]) -> Vec<(Stri
         src,
         items,
         facts: None,
+        proven: Default::default(),
     })
 }
 
@@ -392,6 +398,7 @@ pub fn proven_indexes_parsed(src: &str, items: &[(u32, &ParsedItem)]) -> Vec<Pro
         src,
         items,
         facts: None,
+        proven: Default::default(),
     })
 }
 
@@ -405,6 +412,7 @@ pub fn proven_loops_and_indexes_parsed(
         src,
         items,
         facts: None,
+        proven: Default::default(),
     })
 }
 
@@ -420,6 +428,7 @@ pub fn proven_loops_and_indexes_in_item(
             src,
             items,
             facts: None,
+            proven: Default::default(),
         },
         item,
     )
@@ -435,6 +444,7 @@ pub fn proven_loops_parsed(src: &str, items: &[(u32, &ParsedItem)]) -> Vec<Prove
         src,
         items,
         facts: None,
+        proven: Default::default(),
     })
 }
 
@@ -450,6 +460,7 @@ pub fn proven_expr_ranges_parsed(src: &str, items: &[(u32, &ParsedItem)]) -> Vec
         src,
         items,
         facts: None,
+        proven: Default::default(),
     })
 }
 
@@ -466,6 +477,7 @@ pub fn proven_ranges_parsed(src: &str, items: &[(u32, &ParsedItem)]) -> Vec<(u32
         src,
         items,
         facts: None,
+        proven: Default::default(),
     })
 }
 
@@ -506,7 +518,16 @@ pub fn lint_parsed(
     facts: Option<&Facts>,
     config: &Config,
 ) -> Vec<Diagnostic> {
-    lint_file(&File { src, items, facts }, config, &[])
+    lint_file(
+        &File {
+            src,
+            items,
+            facts,
+            proven: Default::default(),
+        },
+        config,
+        &[],
+    )
 }
 
 /// [`lint_parsed`] with the `@lint` declarations the file can see.
@@ -517,7 +538,16 @@ pub(crate) fn lint_parsed_library(
     config: &Config,
     library: &[library::Declared],
 ) -> Vec<Diagnostic> {
-    lint_file(&File { src, items, facts }, config, library)
+    lint_file(
+        &File {
+            src,
+            items,
+            facts,
+            proven: Default::default(),
+        },
+        config,
+        library,
+    )
 }
 
 fn lint_file(file: &File, config: &Config, declared: &[library::Declared]) -> Vec<Diagnostic> {

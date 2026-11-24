@@ -20,7 +20,7 @@ pub(super) struct Found {
 pub(crate) type NoopMod = ((u32, u32), (u32, u32));
 
 pub(crate) fn proven_noop_mods(file: &crate::File) -> Vec<NoopMod> {
-    super::proven(file).found.noop_mods
+    super::proven(file).found.noop_mods.clone()
 }
 
 pub(super) fn hazards(
@@ -117,7 +117,7 @@ pub(super) fn empty_range(base: u32, iter: &Expr, bounds: &bounds::Bounds) -> Op
 pub(crate) type EmptySlice = ((u32, u32), (u32, u32));
 
 pub(crate) fn proven_empty_slices(file: &crate::File) -> Vec<EmptySlice> {
-    super::proven(file).found.empty_slices
+    super::proven(file).found.empty_slices.clone()
 }
 
 /// `a[l..r].first!` or `a[l..r].max()!` where the declared `l` and `r`
@@ -249,7 +249,7 @@ pub(crate) fn declared(
 pub(crate) type Settled = ((u32, u32), bool);
 
 pub(crate) fn proven_settled(file: &crate::File) -> Vec<Settled> {
-    super::proven(file).found.settled
+    super::proven(file).found.settled.clone()
 }
 
 /// `x >= 0` with `x: 0..=n`, or `n == 0` with `n: 1..=10`: one comparison

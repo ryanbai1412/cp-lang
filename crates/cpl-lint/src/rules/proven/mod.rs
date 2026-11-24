@@ -13,44 +13,44 @@ pub(crate) use cost::*;
 /// a range, whose value the declared bounds prove, as the name's offset and
 /// the inclusive range. Inside a fn, a typed range parameter is a bound too.
 pub(crate) fn proven_ranges(file: &File) -> Vec<(u32, i128, i128)> {
-    proven(file).names
+    proven(file).names.clone()
 }
 
 /// Each `+`, `-`, `*`, `/`, `%` and `**` whose operands the declared bounds prove, with the
 /// range of its value, under the same scoping as [`proven_ranges`].
 pub(crate) fn proven_expr_ranges(file: &File) -> Vec<crate::ProvenExpr> {
-    proven(file).exprs
+    proven(file).exprs.clone()
 }
 
 /// Each `/` and `%` whose divisor the declared bounds let be 0, under the
 /// same scoping as [`proven_ranges`]: operator, divisor and its range.
 pub(crate) fn proven_divisors(file: &File) -> Vec<Divisor> {
-    proven(file).divisors
+    proven(file).divisors.clone()
 }
 
 /// Each `x << k` whose declared `k` can shift a bounded `x` out of `Int`.
 pub(crate) fn proven_shifts(file: &File) -> Vec<Divisor> {
-    proven(file).shifts
+    proven(file).shifts.clone()
 }
 
 /// Each `for` range the declared bounds prove empty: it starts above its end.
 pub(crate) fn proven_empty_ranges(file: &File) -> Vec<(u32, u32)> {
-    proven(file).empty_ranges
+    proven(file).empty_ranges.clone()
 }
 
 pub(crate) fn proven_loops(file: &File) -> Vec<crate::ProvenLoop> {
-    proven(file).loops
+    proven(file).loops.clone()
 }
 
 pub(crate) fn proven_indexes(file: &File) -> Vec<crate::ProvenIndex> {
-    proven(file).indexes
+    proven(file).indexes.clone()
 }
 
 pub(crate) fn proven_loops_and_indexes(
     file: &File,
 ) -> (Vec<crate::ProvenLoop>, Vec<crate::ProvenIndex>) {
     let p = proven(file);
-    (p.loops, p.indexes)
+    (p.loops.clone(), p.indexes.clone())
 }
 
 /// The loops and indexes inside top-level item `item`, proved against the
@@ -79,16 +79,16 @@ pub(crate) fn domain_sizes(file: &File) -> Vec<(String, u128)> {
 }
 
 pub(crate) fn list_sizes(file: &File) -> Vec<(String, u128)> {
-    proven(file).lists
+    proven(file).lists.clone()
 }
 
 pub(crate) fn proven_sizes(file: &File) -> Vec<crate::ProvenSize> {
     proven(file)
         .sizes
-        .into_iter()
+        .iter()
         .map(|(receiver, max, terms)| crate::ProvenSize {
-            receiver,
-            max,
+            receiver: *receiver,
+            max: *max,
             count: if terms
                 .iter()
                 .flatten()
@@ -96,7 +96,7 @@ pub(crate) fn proven_sizes(file: &File) -> Vec<crate::ProvenSize> {
             {
                 max.to_string()
             } else {
-                render_sum(file, &terms)
+                render_sum(file, terms)
             },
         })
         .collect()
@@ -199,7 +199,7 @@ pub(crate) type Divisor = ((u32, u32), (u32, u32), i128, i128);
 /// A `push` call's list, how often it runs, and the counts of the loops around it.
 type Push = (String, Option<u128>, Vec<Factor>);
 
-struct Proven {
+pub(crate) struct Proven {
     names: Vec<(u32, i128, i128)>,
     /// Each method call's receiver of a bounded size, with that size.
     sizes: Vec<((u32, u32), u128, Terms)>,
@@ -260,8 +260,8 @@ impl Default for Proven {
     }
 }
 
-fn proven(file: &File) -> Proven {
-    proven_in(file, None)
+fn proven<'f>(file: &'f File) -> &'f Proven {
+    file.proven.get_or_init(|| proven_in(file, None))
 }
 
 /// [`proven`], skipping the fn, impl and struct bodies of every item but
