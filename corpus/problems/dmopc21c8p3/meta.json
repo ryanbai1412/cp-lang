@@ -16,5 +16,5 @@
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "orig.cpp is the AC submission corpus/submissions/4537755.cpp, unchanged, the port's original: the answer is unique (the lexicographically smallest permutation), and the other AC, 4522760.cpp, passed the weaker judge data but prints a larger valid permutation at N = 1e6, K = 1e15."
 }
