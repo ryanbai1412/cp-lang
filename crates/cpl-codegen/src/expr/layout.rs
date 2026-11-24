@@ -129,6 +129,14 @@ impl<'p> Emitter<'p> {
         let Some(l) = layout else {
             return self.expr(e);
         };
+        if matches!(l, cpl_ir::NarrowLayout::Map(..)) {
+            return match &e.kind {
+                ExprKind::Tuple(items) if items.is_empty() => {
+                    Code::primary(format!("{}()", self.ty_with_elem_layout(&e.ty, Some(l))))
+                }
+                _ => self.expr(e),
+            };
+        }
         let elem_ty = match &e.ty {
             Ty::Array { elem, .. }
             | Ty::List(elem)

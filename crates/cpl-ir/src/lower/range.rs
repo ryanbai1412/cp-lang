@@ -23,6 +23,8 @@ pub(super) enum RangeInfo {
     Elem(Box<RangeInfo>),
     /// A tuple or record whose fields may carry `RangeInfo`.
     Tuple(Vec<Option<RangeInfo>>),
+    /// A map whose keys or values carry `RangeInfo` (e.g. `HashMap<0..N, 0..=1e6>`).
+    Map(Option<Box<RangeInfo>>, Option<Box<RangeInfo>>),
     /// A key of `V.ranges`: a range that is non-empty by its type, so its
     /// `first` and `last` are positions, not optionals (lib/search-dp.md).
     Piece,
@@ -232,6 +234,15 @@ impl RangeInfo {
     }
 
     pub(super) fn narrow_elem_layout(&self, container_ty: &Ty) -> Option<NarrowLayout> {
+        if let (RangeInfo::Map(k, v), Ty::Map(kt, vt) | Ty::HashMap(kt, vt)) = (self, container_ty)
+        {
+            let width = |info: &Option<Box<RangeInfo>>, ty: &Ty| match (info.as_deref(), ty) {
+                (Some(RangeInfo::Scalar(b)), Ty::Int) => b.narrow_width(),
+                _ => None,
+            };
+            let (k, v) = (width(k, kt), width(v, vt));
+            return (k.is_some() || v.is_some()).then_some(NarrowLayout::Map(k, v));
+        }
         let elem_ty = match container_ty {
             Ty::Array { elem, .. }
             | Ty::List(elem)
@@ -475,6 +486,14 @@ impl<'a> Lowerer<'a> {
                         .range_info_from_ast(&args[0])
                         .map(|e| RangeInfo::Elem(Box::new(e)));
                 }
+                if matches!(name.text.as_str(), "HashMap" | "Map")
+                    && args.len() == 2
+                    && self.get_sym(&name.text).is_none()
+                {
+                    let k = self.range_info_from_ast(&args[0]).map(Box::new);
+                    let v = self.range_info_from_ast(&args[1]).map(Box::new);
+                    return (k.is_some() || v.is_some()).then_some(RangeInfo::Map(k, v));
+                }
                 if args.is_empty() {
                     if let Some(GenArg::Range(lo, hi)) = self.gen_env.get(&name.text).cloned() {
                         return Some(RangeInfo::Scalar(self.const_bounds(lo, hi, ty.span)));
@@ -706,6 +725,7 @@ impl<'a> Lowerer<'a> {
             }
             PlaceKind::Index(base, _) => match self.place_range(base)? {
                 RangeInfo::Elem(inner) => Some(*inner),
+                RangeInfo::Map(_, value) => value.map(|v| *v),
                 _ => None,
             },
             PlaceKind::Some(_) => None,
@@ -1242,6 +1262,15 @@ impl<'a> Lowerer<'a> {
             AssignOp::Set => {
                 let checked = self.check_range(value, &bounds, span);
                 out.push(Stmt::Assign(place, AssignOp::Set, checked));
+            }
+            // `m[k] += d` starts an absent key at zero, so write first and check what it holds.
+            AssignOp::Binary(_) if matches!(&place.kind, PlaceKind::Index(base, _) if matches!(base.ty, Ty::Map(..) | Ty::HashMap(..))) =>
+            {
+                let held = self.check_range(super::stmt::place_to_expr(&place), &bounds, span);
+                out.push(Stmt::Assign(place, op, value));
+                if matches!(held.kind, ExprKind::RangeCheck { .. }) {
+                    out.push(Stmt::Expr(held));
+                }
             }
             AssignOp::Binary(bin) => {
                 let cur = super::stmt::place_to_expr(&place);

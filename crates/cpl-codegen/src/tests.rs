@@ -227,6 +227,34 @@ fn a_table_key_hashes_over_its_cells() {
 }
 
 #[test]
+fn a_map_of_ranged_keys_and_values_stores_them_narrow() {
+    let narrow = cpp(concat!(
+        "let n: 1..=100 = read()\n",
+        "var c: Counter<-5..=1000, 0..=4000000> = Counter()\n",
+        "for i in 0..n: c.add(i, 1)\n",
+        "print(c[3])\n",
+    ));
+    assert!(
+        narrow.contains("cpl::HashMap<int16_t, uint32_t, cpl::CpHash> m;"),
+        "{narrow}"
+    );
+    // `+=` sums wide and checks the count against its range: the cell's width can't wrap it back in.
+    assert!(narrow.contains("cpl::fit<uint32_t>(ll("), "{narrow}");
+    assert!(narrow.contains("0, 4000000, \"0..=4000000\")"), "{narrow}");
+    // A map given whole from elsewhere keeps its stored width.
+    let wide = cpp(concat!(
+        "struct Hold:\n    m: HashMap<0..=9, 0..=9>\n",
+        "var m: HashMap<Int, Int> = []\nm[1] = 2\n",
+        "let h = Hold(m)\n",
+        "print(h.m.len)\n",
+    ));
+    assert!(
+        wide.contains("cpl::HashMap<ll, ll, cpl::CpHash> m;"),
+        "{wide}"
+    );
+}
+
+#[test]
 fn hash_map_uses_salted_splitmix64_cphash() {
     let cpp = cpp("var hm: HashMap<Int, Int> = []\nhm[42] = 7\nprint(hm.get(42) ?? 0)\n");
     assert!(cpp.contains("struct CpHash"), "{cpp}");

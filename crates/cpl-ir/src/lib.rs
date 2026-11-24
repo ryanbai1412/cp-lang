@@ -1351,6 +1351,8 @@ pub enum NarrowLayout {
     /// Leaf element is a `??lo..hi` inside `int32_t`: `INT32_MIN` is the outer `none` and
     /// `INT32_MIN + 1` the inner one, both below the range.
     OptOptI32,
+    /// A map whose key and value, where given, are narrowed 32-bit `Int`s.
+    Map(Option<IntWidth>, Option<IntWidth>),
 }
 
 impl NarrowLayout {

@@ -199,7 +199,17 @@ impl<'p> Emitter<'p> {
                             AssignOp::Binary(BinOp::BitXor) => "^",
                             _ => "+",
                         };
-                        if matches!(base.ty, Ty::HashMap(..))
+                        if let Some(cpl_ir::NarrowLayout::Map(_, Some(w))) =
+                            self.place_elem_layout(base)
+                        {
+                            // The sum is made wide, so a value its narrow cell can't hold traps.
+                            let (w, c) = (w.cpp(), self.temp());
+                            self.need("fit");
+                            self.line(
+                                out,
+                                &format!("{{ auto& {c} = {cell}; {c} = cpl::fit<{w}>(ll({c}) {sym} {}); }}", v.text),
+                            );
+                        } else if matches!(base.ty, Ty::HashMap(..))
                             && expr_may_alias_root(value, walk::root(base))
                         {
                             let tmp = self.temp();

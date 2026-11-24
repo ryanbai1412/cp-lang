@@ -182,6 +182,22 @@ impl<'p> Emitter<'p> {
                         return format!("cpl::MutView<{cell}>");
                     }
                 }
+                Ty::Map(key, value) | Ty::HashMap(key, value) => {
+                    if let cpl_ir::NarrowLayout::Map(kw, vw) = l {
+                        let part = |w: &Option<cpl_ir::IntWidth>, t: &Ty| match w {
+                            Some(w) => w.cpp().to_string(),
+                            None => crate::names::value_ty(self.program, self.niches, t),
+                        };
+                        let (k, v) = (part(kw, key), part(vw, value));
+                        let hashed = matches!(ty, Ty::HashMap(..))
+                            || self.program.unordered_maps.contains(key.as_ref());
+                        return if hashed {
+                            format!("cpl::HashMap<{k}, {v}, cpl::CpHash>")
+                        } else {
+                            format!("std::map<{k}, {v}>")
+                        };
+                    }
+                }
                 _ => {}
             }
         }
@@ -235,7 +251,7 @@ impl<'p> Emitter<'p> {
                 let parts: Vec<&str> = ws.iter().map(|w| w.cpp()).collect();
                 format!("std::tuple<{}>({text})", parts.join(", "))
             }
-            cpl_ir::NarrowLayout::Seq(_) => text.to_string(),
+            cpl_ir::NarrowLayout::Seq(_) | cpl_ir::NarrowLayout::Map(..) => text.to_string(),
         }
     }
 
