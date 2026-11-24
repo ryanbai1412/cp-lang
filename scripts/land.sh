@@ -166,14 +166,18 @@ fi
 changed=$(git diff --name-only --diff-filter=ACMR FETCH_HEAD HEAD)
 # The touched crates' cpl.wasm budgets, from the named build .githooks/post-commit
 # started (scripts/wasm-warm.sh), never waiting on one: 849a0be7d's commit hook
-# was cut before its wasm check and grew cpl_lsp 544 B gz past its budget.
+# was cut before its wasm check and grew cpl_lsp 544 B gz past its budget. Held to
+# main's sizes, a crate over its budget refuses only if it grew, so main never gets
+# worse while lanes cut a crate back under.
 wasm_touched=$(printf '%s\n' "$changed" | sed -n 's|^crates/\([^/]*\)/.*|\1|p' | sort -u)
 if [ -n "$wasm_touched" ] && [ -x scripts/wasm-warm.sh ]; then
-    if wasm=$(scripts/wasm-warm.sh --current $wasm_touched); then
-        node web/scripts/wasm-crates.mjs --data "$wasm" --touched "$(echo $wasm_touched | tr ' -' ',_')" >&2 ||
-            { echo "land: a crate this change touches is over its cpl.wasm budget (above); cut it at its source and land again" >&2; exit 1; }
-    else
+    if ! wasm=$(scripts/wasm-warm.sh --current $wasm_touched); then
         echo "land: no current wasm build; CI checks it" >&2
+    elif ! parent=$(scripts/wasm-warm.sh --parent FETCH_HEAD $wasm_touched); then
+        echo "land: no wasm sizes of main's tip to compare with; CI checks it" >&2
+    else
+        node web/scripts/wasm-crates.mjs --data "$wasm" --touched "$(echo $wasm_touched | tr ' -' ',_')" --parent "$parent" >&2 ||
+            { echo "land: a crate this change touches grew past main or its cpl.wasm budget (above); cut it at its source and land again" >&2; exit 1; }
     fi
 fi
 seen="$(git rev-parse --git-dir)/cpl-last-land"
