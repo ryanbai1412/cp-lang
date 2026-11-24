@@ -3,7 +3,7 @@ use crate::value::{Part, TupleVal, Value};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
 use crate::Flow;
-use crate::{describe, trap, Interp, Res};
+use crate::{describe, release, trap, Interp, Res};
 use cpl_ir::{CmpOp, FnId, LoopId};
 use std::rc::Rc;
 
@@ -458,7 +458,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let bv = regs_i[b as usize];
                     match av.checked_add(bv).filter(|v| *v != i64::MIN) {
                         Some(v) => regs_i[dst as usize] = v,
-                        None => return trap(spans[cur_pc], format!("integer overflow: `{av} + {bv}` does not fit in an `Int` (64 bits)")),
+                        None => regs_i[dst as usize] = release::overflow(spans[cur_pc], format!("integer overflow: `{av} + {bv}` does not fit in an `Int` (64 bits)"), av.wrapping_add(bv))?,
                     }
                 }
                 Op::SubI { dst, a, b } => {
@@ -466,7 +466,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let bv = regs_i[b as usize];
                     match av.checked_sub(bv).filter(|v| *v != i64::MIN) {
                         Some(v) => regs_i[dst as usize] = v,
-                        None => return trap(spans[cur_pc], format!("integer overflow: `{av} - {bv}` does not fit in an `Int` (64 bits)")),
+                        None => regs_i[dst as usize] = release::overflow(spans[cur_pc], format!("integer overflow: `{av} - {bv}` does not fit in an `Int` (64 bits)"), av.wrapping_sub(bv))?,
                     }
                 }
                 Op::MulI { dst, a, b } => {
@@ -474,27 +474,29 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let bv = regs_i[b as usize];
                     match av.checked_mul(bv).filter(|v| *v != i64::MIN) {
                         Some(v) => regs_i[dst as usize] = v,
-                        None => return trap(spans[cur_pc], format!("integer overflow: `{av} * {bv}` does not fit in an `Int` (64 bits)")),
+                        None => regs_i[dst as usize] = release::overflow(spans[cur_pc], format!("integer overflow: `{av} * {bv}` does not fit in an `Int` (64 bits)"), av.wrapping_mul(bv))?,
                     }
                 }
                 Op::DivI { dst, a, b } => {
                     let av = regs_i[a as usize];
                     let bv = regs_i[b as usize];
-                    if bv == 0 {
-                        return trap(spans[cur_pc], format!("division by zero: `{av} / 0`"));
-                    }
-                    match av.checked_div_euclid(bv).filter(|v| *v != i64::MIN) {
-                        Some(v) => regs_i[dst as usize] = v,
-                        None => return trap(spans[cur_pc], format!("integer overflow: `{av} / {bv}` does not fit in an `Int` (64 bits)")),
+                    let at = spans[cur_pc];
+                    regs_i[dst as usize] = match av.checked_div_euclid(bv).filter(|v| *v != i64::MIN) {
+                        _ if bv == 0 => release::div_zero(at, format!("division by zero: `{av} / 0`"))?,
+                        Some(v) => v,
+                        None => release::overflow(at, format!("integer overflow: `{av} / {bv}` does not fit in an `Int` (64 bits)"), av.wrapping_div_euclid(bv))?,
                     }
                 }
                 Op::RemI { dst, a, b } => {
                     let av = regs_i[a as usize];
                     let bv = regs_i[b as usize];
-                    if bv == 0 {
-                        return trap(spans[cur_pc], format!("division by zero: `{av} % 0`"));
-                    }
-                    regs_i[dst as usize] = av.checked_rem_euclid(bv).unwrap_or(0);
+                    regs_i[dst as usize] = match av.checked_rem_euclid(bv) {
+                        _ if bv == 0 => release::div_zero(
+                            spans[cur_pc],
+                            format!("division by zero: `{av} % 0`"),
+                        )?,
+                        v => v.unwrap_or(0),
+                    };
                 }
                 Op::ModAddI { dst, a, b, modulus } => {
                     let s = regs_i[a as usize] + regs_i[b as usize];
@@ -527,7 +529,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let bv = i64::from(imm);
                     match av.checked_add(bv).filter(|v| *v != i64::MIN) {
                         Some(v) => regs_i[dst as usize] = v,
-                        None => return trap(spans[cur_pc], format!("integer overflow: `{av} + {bv}` does not fit in an `Int` (64 bits)")),
+                        None => regs_i[dst as usize] = release::overflow(spans[cur_pc], format!("integer overflow: `{av} + {bv}` does not fit in an `Int` (64 bits)"), av.wrapping_add(bv))?,
                     }
                 }
                 Op::NegI { dst, a } => {

@@ -195,12 +195,32 @@ pub fn run_interp_within(
     input: &[u8],
     limit: u64,
 ) -> Result<RunOutput, String> {
+    run_interp_at(
+        program,
+        path,
+        text,
+        input,
+        limit,
+        cpl_ir::checks::Checks::LOCAL,
+    )
+}
+
+/// [`run_interp_within`] at a judge build's `checks`: what it doesn't trap
+/// on does what that build does (R09.3).
+pub fn run_interp_at(
+    program: &cpl_ir::Program,
+    path: &str,
+    text: &str,
+    input: &[u8],
+    limit: u64,
+    checks: cpl_ir::checks::Checks,
+) -> Result<RunOutput, String> {
     let stop = cpl_interp::Stop::after(std::time::Duration::from_secs(limit));
     let run = run_interp_io(
         program,
         path,
         text,
-        cpl_interp::Io::fixed(input).until(stop),
+        cpl_interp::Io::fixed(input).until(stop).at(checks),
     );
     match &run.trap {
         Some(trap) if trap.message == cpl_interp::OUT_OF_TIME => {

@@ -379,6 +379,7 @@ fn run_one(db: &mut Session, cache_dir: &Path, target: &DiffTarget) -> (String, 
     } else {
         text
     };
+    let checks = release_checks(&text);
     let compiled = match runner::compile_program(db, &path_str, &text) {
         Ok(c) => c,
         Err(CompileError::Diagnostics(_)) => {
@@ -415,7 +416,9 @@ fn run_one(db: &mut Session, cache_dir: &Path, target: &DiffTarget) -> (String, 
             interp_outputs.push(want.clone().into_bytes());
             continue;
         }
-        let run = match runner::run_interp_bounded(&compiled.program, &path_str, &text, inp) {
+        let limit = runner::case_timeout();
+        let at = checks.unwrap_or(cpl_codegen::Checks::LOCAL);
+        let run = match runner::run_interp_at(&compiled.program, &path_str, &text, inp, limit, at) {
             Ok(run) => run,
             Err(detail) => {
                 return (
@@ -443,7 +446,11 @@ fn run_one(db: &mut Session, cache_dir: &Path, target: &DiffTarget) -> (String, 
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("main.cp");
-    let cpp = cpl_codegen::emit(&compiled.program, name, Some(&text));
+    let target = cpl_codegen::Target {
+        checks: checks.unwrap_or_default(),
+        ..cpl_codegen::Target::default()
+    };
+    let cpp = cpl_codegen::emit_for(&compiled.program, name, Some(&text), &target);
     let bin = match compile_cpp(&cpp, cache_dir) {
         Ok(b) => b,
         Err(CppCompileError::Cxx(err)) => {
@@ -627,5 +634,46 @@ mod rerun_tests {
         assert_eq!(outcomes["slow"].status, "pass");
         assert_eq!(outcomes["hung"].status, "error");
         assert_eq!(outcomes["wrong"].status, "fail");
+    }
+}
+
+/// The checks a `// tool: run --release [--checks LEVEL]` case runs at on
+/// both sides: release against release (R09.2.2), the judge build's level
+/// (`none` unless it says) in the interpreter as in the C++. `None` for any
+/// other case: the interpreter checks everything, as `cpl run` does.
+fn release_checks(text: &str) -> Option<cpl_codegen::Checks> {
+    let words: Vec<&str> = conformance::header_values(text, "tool:")
+        .first()
+        .map(|t| t.split_whitespace().collect())
+        .unwrap_or_default();
+    if words.first() != Some(&"run") || !words.contains(&"--release") {
+        return None;
+    }
+    match words.iter().position(|w| *w == "--checks") {
+        Some(i) => words.get(i + 1).and_then(|l| cpl_codegen::Checks::parse(l)),
+        None => Some(cpl_codegen::Checks::None),
+    }
+}
+
+#[cfg(test)]
+mod release_checks_tests {
+    use super::release_checks;
+    use cpl_codegen::Checks;
+
+    #[test]
+    fn a_release_case_runs_its_level_on_both_sides() {
+        assert_eq!(
+            release_checks("// tool: run --release --checks none\n"),
+            Some(Checks::None)
+        );
+        assert_eq!(
+            release_checks("// tool: run --release --checks traps\n"),
+            Some(Checks::Traps)
+        );
+        assert_eq!(
+            release_checks("// tool: run --release\n"),
+            Some(Checks::None)
+        );
+        assert_eq!(release_checks("// expect: ok\n"), None);
     }
 }

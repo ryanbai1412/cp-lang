@@ -1,6 +1,6 @@
 use super::ir::*;
 use crate::value::{Array, Cells, TupleVal, Value};
-use crate::{trap, Res, LENT};
+use crate::{release, trap, Res, LENT};
 use cpl_diag::Span;
 use cpl_ir::{AssignOp, BinOp, Expr, ExprKind, Iter, Place, PlaceKind, Program, Stmt, Ty};
 use std::rc::Rc;
@@ -389,13 +389,13 @@ pub(super) fn exec_bin_u64(a_raw: i64, b_raw: i64, op: BinOp, span: Span) -> Res
         BinOp::Mul => av.wrapping_mul(bv),
         BinOp::Div => {
             if bv == 0 {
-                return trap(span, format!("division by zero: `{av} / 0`"));
+                return release::div_zero(span, format!("division by zero: `{av} / 0`"));
             }
             av / bv
         }
         BinOp::Rem => {
             if bv == 0 {
-                return trap(span, format!("division by zero: `{av} % 0`"));
+                return release::div_zero(span, format!("division by zero: `{av} % 0`"));
             }
             av % bv
         }
@@ -1004,13 +1004,13 @@ pub(super) fn apply_scalar_assign_op(
             AssignOp::Binary(BinOp::Mul) => a.wrapping_mul(b),
             AssignOp::Binary(BinOp::Div) => {
                 if b == 0 {
-                    return trap(span, format!("division by zero: `{a} / 0`"));
+                    return release::div_zero(span, format!("division by zero: `{a} / 0`"));
                 }
                 a / b
             }
             AssignOp::Binary(BinOp::Rem) => {
                 if b == 0 {
-                    return trap(span, format!("division by zero: `{a} % 0`"));
+                    return release::div_zero(span, format!("division by zero: `{a} % 0`"));
                 }
                 a % b
             }
@@ -1038,61 +1038,52 @@ pub(super) fn apply_scalar_assign_op(
     let out = match op {
         AssignOp::Binary(BinOp::Add) => match cur.checked_add(rhs) {
             Some(v) => v,
-            None => {
-                return trap(
-                    span,
-                    format!("integer overflow: `{cur} + {rhs}` does not fit in an `Int` (64 bits)"),
-                )
-            }
+            None => release::overflow(
+                span,
+                format!("integer overflow: `{cur} + {rhs}` does not fit in an `Int` (64 bits)"),
+                cur.wrapping_add(rhs),
+            )?,
         },
         AssignOp::Binary(BinOp::Sub) => match cur.checked_sub(rhs) {
             Some(v) => v,
-            None => {
-                return trap(
-                    span,
-                    format!("integer overflow: `{cur} - {rhs}` does not fit in an `Int` (64 bits)"),
-                )
-            }
+            None => release::overflow(
+                span,
+                format!("integer overflow: `{cur} - {rhs}` does not fit in an `Int` (64 bits)"),
+                cur.wrapping_sub(rhs),
+            )?,
         },
         AssignOp::Binary(BinOp::Mul) => match cur.checked_mul(rhs) {
             Some(v) => v,
-            None => {
-                return trap(
-                    span,
-                    format!("integer overflow: `{cur} * {rhs}` does not fit in an `Int` (64 bits)"),
-                )
-            }
+            None => release::overflow(
+                span,
+                format!("integer overflow: `{cur} * {rhs}` does not fit in an `Int` (64 bits)"),
+                cur.wrapping_mul(rhs),
+            )?,
         },
         AssignOp::Binary(BinOp::Div) => {
             if rhs == 0 {
-                return trap(span, format!("division by zero: `{cur} / 0`"));
+                return release::div_zero(span, format!("division by zero: `{cur} / 0`"));
             }
             match cur.checked_div_euclid(rhs) {
                 Some(v) => v,
-                None => {
-                    return trap(
-                        span,
-                        format!(
-                            "integer overflow: `{cur} / {rhs}` does not fit in an `Int` (64 bits)"
-                        ),
-                    )
-                }
+                None => release::overflow(
+                    span,
+                    format!("integer overflow: `{cur} / {rhs}` does not fit in an `Int` (64 bits)"),
+                    cur.wrapping_div_euclid(rhs),
+                )?,
             }
         }
         AssignOp::Binary(BinOp::Rem) => {
             if rhs == 0 {
-                return trap(span, format!("division by zero: `{cur} % 0`"));
+                return release::div_zero(span, format!("division by zero: `{cur} % 0`"));
             }
             match cur.checked_rem_euclid(rhs) {
                 Some(v) => v,
-                None => {
-                    return trap(
-                        span,
-                        format!(
-                            "integer overflow: `{cur} % {rhs}` does not fit in an `Int` (64 bits)"
-                        ),
-                    )
-                }
+                None => release::overflow(
+                    span,
+                    format!("integer overflow: `{cur} % {rhs}` does not fit in an `Int` (64 bits)"),
+                    cur.wrapping_rem_euclid(rhs),
+                )?,
             }
         }
         AssignOp::Binary(BinOp::BitAnd) => cur & rhs,

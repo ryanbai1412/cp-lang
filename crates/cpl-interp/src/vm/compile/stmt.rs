@@ -707,6 +707,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
             }
             Stmt::Assert {
+                cond, kept: false, ..
+            } if !crate::release::keeps(cpl_ir::checks::Check::Asserts) => {
+                self.compile_expr_i(cond);
+            }
+            Stmt::Assert {
                 cond,
                 message,
                 span,

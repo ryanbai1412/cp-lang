@@ -1,46 +1,7 @@
 //! What a judge build checks at run time: [`Checks`], and the runtime
 //! rewritten for a build that keeps no traps.
 
-/// The runtime checks a judge build keeps (`cpl build --checks`).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum Checks {
-    /// No index, `/ 0` or `assert` traps: what hand-written C++ checks. A
-    /// zero divisor gives 0, so the program still has no undefined
-    /// behaviour there; an index out of range is left unchecked.
-    None,
-    /// Index, `/ 0` and `assert` stop the program with their message.
-    #[default]
-    Traps,
-    /// [`Checks::Traps`], plus range stores, overflow and the other checks
-    /// of the local build (`-DLOCAL`).
-    All,
-}
-
-impl Checks {
-    /// What every local run checks, as the debug interpreter does: `cpl
-    /// test`, `cpl stress` and their builds of brutes and generators. A
-    /// program that traps under `cpl run` traps under each of them.
-    pub const LOCAL: Checks = Checks::All;
-
-    pub const NAMES: [&'static str; 3] = ["none", "traps", "all"];
-
-    pub fn parse(name: &str) -> Option<Checks> {
-        Some(match name {
-            "none" => Checks::None,
-            "traps" => Checks::Traps,
-            "all" => Checks::All,
-            _ => return None,
-        })
-    }
-
-    pub fn name(self) -> &'static str {
-        match self {
-            Checks::None => "none",
-            Checks::Traps => "traps",
-            Checks::All => "all",
-        }
-    }
-}
+pub use cpl_ir::checks::Checks;
 
 /// Each trap in the runtime pieces, and what a build without traps does
 /// instead.

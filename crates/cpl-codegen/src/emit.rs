@@ -1128,7 +1128,7 @@ impl<'p> Emitter<'p> {
 
         let mut out = String::new();
         out.push_str(&header(name, source, self.target.stamp.as_deref()));
-        if self.target.checks == crate::Checks::All {
+        if self.target.checks.keeps(cpl_ir::checks::Check::Overflow) {
             out.push_str("#define LOCAL\n");
         }
         let what = if source.is_some() {

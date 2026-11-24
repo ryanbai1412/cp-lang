@@ -190,7 +190,10 @@ fn prepared(program: &cpl_ir::Program, target: &Target) -> cpl_ir::Program {
     let mut program = program.clone();
     (program.unordered_maps, program.unordered_sets) = unordered::find(&program);
     program.wide_domains = width::wide_domains(&program);
-    prune::prune(&mut program, target.checks != Checks::None);
+    prune::prune(
+        &mut program,
+        target.checks.keeps(cpl_ir::checks::Check::Asserts),
+    );
     splice::splice(&mut program);
     unpack::unpack(&mut program);
     optfn::known_options(&mut program);
@@ -199,7 +202,10 @@ fn prepared(program: &cpl_ir::Program, target: &Target) -> cpl_ir::Program {
     // A closure `capfn` freed of its capture can now split its struct.
     split::split(&mut program);
     // A param `optfn` knows is `None` can leave a field only ever `None`.
-    prune::prune(&mut program, target.checks != Checks::None);
+    prune::prune(
+        &mut program,
+        target.checks.keeps(cpl_ir::checks::Check::Asserts),
+    );
     program.unreached_closures = emit::unreached_closures(&program);
     program
 }

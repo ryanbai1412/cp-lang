@@ -3,6 +3,8 @@
 use crate::{More, Stop};
 use std::sync::{Arc, Mutex};
 
+use cpl_ir::checks::Checks;
+
 /// What a program reads.
 pub struct Io<'a> {
     /// What `read()` reads.
@@ -19,6 +21,8 @@ pub struct Io<'a> {
     /// Where `rand` and `shuffle` write down their choices, and the
     /// choices they replay.
     pub(crate) choices: Option<Arc<Mutex<Choices>>>,
+    /// What the run traps on, and what it does instead where it doesn't.
+    pub(crate) checks: Checks,
 }
 
 /// The choices a run's `rand` and `shuffle` made: each is how far above
@@ -46,7 +50,14 @@ impl<'a> Io<'a> {
             stop: None,
             last_values: None,
             choices: None,
+            checks: Checks::LOCAL,
         }
+    }
+
+    /// The run at a judge build's `checks`: where they keep no check, the
+    /// program does what that build does instead of trapping (R09.3).
+    pub fn at(self, checks: Checks) -> Io<'a> {
+        Io { checks, ..self }
     }
 
     /// An input that arrives while the program runs: the solution's side
@@ -59,6 +70,7 @@ impl<'a> Io<'a> {
             stop: None,
             last_values: None,
             choices: None,
+            checks: Checks::LOCAL,
         }
     }
 
@@ -72,6 +84,7 @@ impl<'a> Io<'a> {
             stop: None,
             last_values: None,
             choices: None,
+            checks: Checks::LOCAL,
         }
     }
 
