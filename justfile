@@ -37,6 +37,11 @@ mutation-score *args:
 std-sanitize *args:
     cargo run --release -q -p cpl-conform -- sanitize {{args}}
 
+# Every pair of std views, keys and ops, lazy against materialized, on both
+# engines (std-api/R14; not in CI until it is green).
+std-compose *args:
+    uv run --quiet python scripts/std-compose.py {{args}}
+
 # LSP request latency, in release (CI: ci-slow `lsp-latency`).
 lsp-latency:
     cargo test --release -p cpl-lsp --test latency -- --nocapture
