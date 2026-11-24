@@ -12,6 +12,15 @@
   `refresh` inlines it.
 - **Severity:** medium
 
+## The reversed walkways are an adjacency loop
+- **Where:** `var into: [Station]List<Station> = []` and `for (from, to) in walkways: into[to].push(from)`.
+- **What felt wrong:** the same gap as ccc20s2's "`group(pairs, over: D)`" friction: an adjacency
+  list from pairs is a loop of pushes.
+- **Ideal code:** `bfs(group((to, from) for (from, to) in walkways, over: Station), from: [Station.last!])`.
+- **General fix:** see `research/frictions/ccc20s2.md` (`group(pairs, over: D) -> [D]List<T>`).
+- **Severity:** low
+- **Owner:** stdlib.
+
 ## Dream
 
 ```cp

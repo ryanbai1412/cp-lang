@@ -11,6 +11,18 @@
   `for s in row` without copies.
 - **Severity:** low
 
+## `Map<Str, Group>` costs 8x the memory of the C++
+- **Where:** `var group_of = Map<Str, Group>()` filled with up to 3e5 names.
+- **What felt wrong:** at `gen.py --max` the port takes 0.12 s and 89352 KB against the
+  original's 0.08 s and 11392 KB (see Measurements): 1.5x the time and 8x the memory, past R10's
+  1.1x, for the obvious spelling.
+- **Goal it hurts:** the obvious way is fast.
+- **Ideal code:** the port as written.
+- **General fix:** profile `Map<Str, _>` (per-entry overhead and string copies on insert) and bring
+  it to an `unordered_map<string, int>`'s footprint.
+- **Severity:** medium
+- **Owner:** perf.
+
 ## Dream
 
 ```cp
