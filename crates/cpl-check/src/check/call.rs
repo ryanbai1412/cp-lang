@@ -616,7 +616,7 @@ impl<'a> Checker<'a> {
         let ExprKind::Field { base, name } = &callee.kind else {
             return;
         };
-        let base_ty = self.quietly(|c| c.infer(base));
+        let base_ty = self.base_ty(base);
         if self.declares_field(&base_ty, &name.text) {
             return;
         }
@@ -916,7 +916,7 @@ impl<'a> Checker<'a> {
         let ExprKind::Field { base, name } = &callee.kind else {
             return None;
         };
-        let base_ty = self.quietly(|c| c.infer(base));
+        let base_ty = self.base_ty(base);
         if self.ambiguous_method(&base_ty, base, name) {
             return Some(Ty::Error);
         }
@@ -1597,7 +1597,7 @@ impl Checker<'_> {
         base: &Expr,
         name: &str,
     ) -> Option<(&'static crate::builtins::BuiltinMember, Option<Ty>)> {
-        let base_ty = self.quietly(|c| c.infer(base));
+        let base_ty = self.base_ty(base);
         let owner = catalog_owner(&base_ty)?;
         let elem = match &base_ty {
             Ty::Str => Some(Ty::Char),
@@ -1632,7 +1632,7 @@ impl Checker<'_> {
             return None;
         }
         // `m.get(k)` on a `Map<K, V>` is a `?V`.
-        let key_value = match self.quietly(|c| c.infer(base)) {
+        let key_value = match self.base_ty(base) {
             Ty::Named { name, args } if matches!(name.as_str(), "Map" | "HashMap") => args,
             _ => Vec::new(),
         };

@@ -276,6 +276,9 @@ pub(crate) struct Checker<'a> {
     /// A `Range<V>` is expected here, so a half-open cut-ended literal is the piece.
     expected_piece: bool,
     in_call_callee: bool,
+    /// Where the call being checked started recording types: its
+    /// receiver's type is read back from there rather than inferred again.
+    call_types_from: usize,
     /// A `for` over `j..i` with two cut ends iterates cuts (§124).
     iterating_range: bool,
     /// Factor types for local product domains (`domain State = (V, K)` inside a fn).
@@ -365,6 +368,7 @@ impl<'a> Checker<'a> {
             expected_bounds_range: false,
             expected_piece: false,
             in_call_callee: false,
+            call_types_from: usize::MAX,
             iterating_range: false,
             local_product_domains: HashMap::default(),
             let_ranges: HashMap::default(),
@@ -620,6 +624,21 @@ impl<'a> Checker<'a> {
         self.lends.conflicts.truncate(conflicts);
         self.exprs.truncate(exprs);
         out
+    }
+
+    /// `base`'s type: what the call being checked already gave it, else
+    /// inferred quietly.
+    #[inline(never)]
+    pub(crate) fn base_ty(&mut self, base: &cpl_syntax::ast::Expr) -> Ty {
+        let given = self
+            .exprs
+            .types
+            .get(self.call_types_from..)
+            .unwrap_or_default();
+        match given.iter().rev().find(|(at, _)| *at == base.span) {
+            Some((_, ty)) => ty.clone(),
+            None => self.quietly(|c| c.infer(base)),
+        }
     }
 
     /// A type that came out of a generic, as the code here sees it: type

@@ -50,7 +50,9 @@ impl Checker<'_> {
         if let Some(ty) = self.adjacency_contains(call, callee, args) {
             return ty;
         }
+        let from = std::mem::replace(&mut self.call_types_from, self.exprs.types.len());
         let mut ty = self.call_unrecorded(call, callee, args);
+        self.call_types_from = from;
         // `rand()` and `rand(lo, hi)` are an `Int`.
         if ty == Ty::Unknown
             && matches!(args.len(), 0 | 2)

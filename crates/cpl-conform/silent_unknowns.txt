@@ -2,11 +2,11 @@
 497 cause:branch
 2487 cause:call
 1246 cause:index
-235 cause:list
-4137 cause:member
+234 cause:list
+4136 cause:member
 1812 cause:method-call
-8933 cause:name
-2559 cause:operator
+8901 cause:name
+2544 cause:operator
 291 cause:other
 622 cause:unwrap
 1 corpus/problems/aac4p2/dream.cp
@@ -21,10 +21,9 @@
 2 corpus/problems/aac4p6/spec.cp
 1 corpus/problems/aac5p2/dream.cp
 1 corpus/problems/aac5p2/port.cp
-27 corpus/problems/aac5p3/dream.cp
+14 corpus/problems/aac5p3/dream.cp
 3 corpus/problems/aac5p3/perf.cp
-27 corpus/problems/aac5p3/port.cp
-2 corpus/problems/aac5p4/perf.cp
+14 corpus/problems/aac5p3/port.cp
 2 corpus/problems/aac5p4/port.cp
 2 corpus/problems/aac5p4/spec.cp
 1 corpus/problems/abc478e/port.cp
@@ -132,7 +131,6 @@
 6 corpus/problems/cco09p4/perf.cp
 8 corpus/problems/cco09p4/port.cp
 31 corpus/problems/cco16p2/port.cp
-21 corpus/problems/cco16p3/perf.cp
 17 corpus/problems/cco16p3/port.cp
 5 corpus/problems/cco16p4/dream.cp
 2 corpus/problems/cco16p4/port.cp
@@ -265,8 +263,8 @@
 2 corpus/problems/cf2084g1/port.cp
 1 corpus/problems/cf2084g2/dream.cp
 2 corpus/problems/cf2084g2/port.cp
-23 corpus/problems/cf2084h/dream.cp
-14 corpus/problems/cf2084h/port.cp
+13 corpus/problems/cf2084h/dream.cp
+1 corpus/problems/cf2084h/port.cp
 7 corpus/problems/cf2089b2/dream.cp
 6 corpus/problems/cf2089c2/dream.cp
 6 corpus/problems/cf2089c2/perf.cp
@@ -311,7 +309,7 @@
 16 corpus/problems/cf2124f2/perf.cp
 10 corpus/problems/cf2124f2/port.cp
 23 corpus/problems/cf2124g/dream.cp
-27 corpus/problems/cf2124g/port.cp
+19 corpus/problems/cf2124g/port.cp
 4 corpus/problems/cf2124i/dream.cp
 4 corpus/problems/cf2124i/port.cp
 1 corpus/problems/cf2127a/dream.cp
@@ -523,8 +521,8 @@
 1 corpus/problems/cf2262e/dream.cp
 1 corpus/problems/cf2262e/port.cp
 10 corpus/problems/cf2268c/dream.cp
-10 corpus/problems/cf2268c/perf.cp
-7 corpus/problems/cf2268c/port.cp
+7 corpus/problems/cf2268c/perf.cp
+4 corpus/problems/cf2268c/port.cp
 1 corpus/problems/cf2268e/dream.cp
 1 corpus/problems/cf2268e/perf.cp
 1 corpus/problems/cf2268e/port.cp
@@ -576,7 +574,6 @@
 1 corpus/problems/dmopc21c5p3/port.cp
 1 corpus/problems/dmopc21c5p4/port.cp
 1 corpus/problems/dmopc21c6p2/port.cp
-3 corpus/problems/dmopc21c6p3/perf.cp
 3 corpus/problems/dmopc21c6p3/port.cp
 17 corpus/problems/dmopc21c6p4/port.cp
 3 corpus/problems/dmopc21c7p1/port.cp
@@ -679,7 +676,6 @@
 10 corpus/problems/ioi16p6/port.cp
 10 corpus/problems/ioi16p6/spec.cp
 9 corpus/problems/ioi16p6io/dream.cp
-2 corpus/problems/ioi16p6io/perf.cp
 10 corpus/problems/ioi16p6io/port.cp
 9 corpus/problems/ioi16p6io/spec.cp
 2 corpus/problems/ioi17p2/port.cp
@@ -792,7 +788,6 @@
 4 corpus/problems/noi19p4/port.cp
 5 corpus/problems/noi19p5/port.cp
 12 corpus/problems/noi20p1/port.cp
-10 corpus/problems/noi20p2/perf.cp
 6 corpus/problems/noi20p2/port.cp
 30 corpus/problems/noi20p4/port.cp
 28 corpus/problems/noi21p1/port.cp
@@ -869,7 +864,6 @@
 2 corpus/problems/shoi16p3/spec.cp
 5 corpus/problems/shoi16p4/port.cp
 1 corpus/problems/shoi16p5/port.cp
-2 corpus/problems/tle17c5p6/port.cp
 1 corpus/problems/tsoc15c2p6/port.cp
 5 corpus/problems/ucrpc21f/perf.cp
 4 corpus/problems/ucrpc21f/port.cp
@@ -899,7 +893,7 @@
 1 corpus/problems/ucup5s03a/dream.cp
 1 corpus/problems/ucup5s03f/dream.cp
 1 corpus/problems/ucup5s03f/port.cp
-18 corpus/problems/ucup5s05e/dream.cp
+16 corpus/problems/ucup5s05e/dream.cp
 11 corpus/problems/ucup5s05e/port.cp
 3 corpus/problems/ucup5s05f/dream.cp
 6 corpus/problems/ucup5s05f/perf.cp
@@ -1000,7 +994,7 @@
 2 spec/conformance/core-02/product-union-domains.cp
 1 spec/conformance/core-02/question-result-dropped.cp
 5 spec/conformance/core-02/range-alias-ends-are-its-min-and-max.cp
-5 spec/conformance/core-02/range-alias-has-its-ranges-ends.cp
+4 spec/conformance/core-02/range-alias-has-its-ranges-ends.cp
 1 spec/conformance/core-02/rb1-q26-question-in-condition.cp
 1 spec/conformance/core-02/rb1-q28-no-forward-inference.cp
 1 spec/conformance/core-02/record-pattern-match.cp
@@ -1193,10 +1187,9 @@
 2 spec/conformance/core-07/compress.cp
 2 spec/conformance/core-07/cyclic-pairs.cp
 3 spec/conformance/core-07/first-last-pred.cp
-3 spec/conformance/core-07/fold-by-a-fn-fixes-to-reduce.cp
 1 spec/conformance/core-07/fold-method-and-free-forms.cp
 1 spec/conformance/core-07/fold-of-and-or-over-empty-uses-identity.cp
-7 spec/conformance/core-07/fold-seeded-fixes-to-fold-from.cp
+3 spec/conformance/core-07/fold-seeded-fixes-to-fold-from.cp
 2 spec/conformance/core-07/for-over-views-of-temporary.cp
 1 spec/conformance/core-07/for-walks-every-sequence.cp
 2 spec/conformance/core-07/forwarding-generator-stops-early.cp
@@ -1840,7 +1833,7 @@
 2 spec/conformance/std-ntt/convolve-2d-matches-the-loop.cp
 9 spec/conformance/std-ntt/convolve-any-modulus-matches-the-loop.cp
 17 spec/conformance/std-ntt/convolve-fast-product.cp
-14 spec/conformance/std-ntt/convolve-index-ops-and-semirings.cp
+5 spec/conformance/std-ntt/convolve-index-ops-and-semirings.cp
 2 spec/conformance/std-ntt/max-plus-shape-right-matches-the-loop.cp
 1 spec/conformance/std-ntt/online.cp
 4 spec/conformance/std-opt/and-then-chains-optionals.cp
@@ -1933,7 +1926,7 @@
 1 spec/conformance/std-seq/last_true-1.cp
 8 spec/conformance/std-seq/max-min-follow-a-reversed-ord-on-ties.cp
 2 spec/conformance/std-seq/maximal-empty.cp
-2 spec/conformance/std-seq/maximal-window-sum.cp
+1 spec/conformance/std-seq/maximal-window-sum.cp
 1 spec/conformance/std-seq/mean-empty-none.cp
 2 spec/conformance/std-seq/method-after-std-import.cp
 1 spec/conformance/std-seq/minimal-never-ok-is-none.cp
@@ -1999,7 +1992,7 @@
 12 spec/conformance/std-seq/set-union-intersect-subtract.cp
 12 spec/conformance/std-seq/shift-positions-and-cuts.cp
 2 spec/conformance/std-seq/slice-keys-len-is-empty.cp
-15 spec/conformance/std-seq/slice-runs-maximal-minimal.cp
+13 spec/conformance/std-seq/slice-runs-maximal-minimal.cp
 4 spec/conformance/std-seq/sort-by-desc-runs-std-desc.cp
 14 spec/conformance/std-seq/sort-sorted-last.cp
 2 spec/conformance/std-seq/span-of-two-cuts-is-the-range-between.cp
@@ -2195,8 +2188,8 @@
 123 std/dsu.cp
 356 std/fenwick.cp
 726 std/flow.cp
-641 std/geometry.cp
-1370 std/graph.cp
+639 std/geometry.cp
+1369 std/graph.cp
 36 std/grid.cp
 33 std/hashmap.cp
 89 std/heap.cp
@@ -2225,5 +2218,5 @@
 725 std/strings.cp
 51 std/subset.cp
 2 std/timetree.cp
-916 std/tree.cp
+914 std/tree.cp
 34 std/window.cp

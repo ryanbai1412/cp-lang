@@ -468,7 +468,7 @@ impl<'a> Checker<'a> {
         };
         let Ty::Named {
             name: type_name, ..
-        } = self.quietly(|c| c.infer(base))
+        } = self.base_ty(base)
         else {
             return false;
         };
