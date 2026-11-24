@@ -516,6 +516,12 @@ pub static MEMBER_FOR_CALL_3: Habit = shape(
     "{} in CP Lang: `{}`",
     "",
 );
+pub static LEFT_OUT_DEFAULT: Habit = shape(
+    "left_out_default",
+    codes::TYPE_MISMATCH,
+    "write `{}` in full: a type param left out takes its default",
+    "",
+);
 pub static NO_OPERATOR_IMPL: Habit = shape(
     "no_operator_impl",
     codes::TYPE_MISMATCH,
@@ -904,6 +910,7 @@ pub static SPLIT_ON_SPACE: Habit = shape(
 
 /// Every shape row; `all` walks them after the named rows.
 pub static SHAPES: &[&Habit] = &[
+    &LEFT_OUT_DEFAULT,
     &ARROW_LAMBDA,
     &WRITE,
     &BAD_OPERANDS_2,
