@@ -2975,31 +2975,30 @@ PASS_ROW_RE = re.compile(r'\bpass\(\s*"([\w-]+)",\s*"([\w/.]+)",\s*(\w+)')
 IR_WALK_RE = re.compile(r"\bdeep_\w+\(")
 
 
+def _private_walks(root: Path) -> list[tuple[str, int]]:
+    """Each line of codegen outside uses/ that walks IR bodies itself (a `deep_*` call)."""
+    src = root / "crates/cpl-codegen/src"
+    return [(rel, i) for rel, i, line in _src_lines(root, "crates/cpl-codegen/src")
+            if IR_WALK_RE.search(line) and not (root / rel).is_relative_to(src / "uses")
+            and (root / rel) != src / "walk.rs"]
+
+
 def opt_without_uses(root: Path) -> list[str]:
-    """Codegen passes that decide what code does without the Uses table: each `Unasked` row
-    of the PASSES table (crates/cpl-codegen/src/passes.rs), and each module that walks IR
-    bodies with no row there. Every optimization asks the effects/Uses table what code does."""
+    """Codegen that decides what code does without the Uses table: each `Unasked` row of the
+    PASSES table (crates/cpl-codegen/src/passes.rs), each module that walks IR bodies with no
+    row there, and each line outside uses/ that walks IR bodies itself (a `deep_*` call), even
+    in a pass whose row asks the table: that walk belongs in uses/ as a named query every pass
+    can ask. Every optimization asks the effects/Uses table what code does."""
     src = root / "crates/cpl-codegen/src"
     table = src / "passes.rs"
     rows = PASS_ROW_RE.findall(table.read_text(encoding="utf-8")) if table.is_file() else []
     out = [f"{_rel(root, src / module)}: {name} asks no Uses query"
            for name, module, evidence in rows if evidence == "Unasked"]
     listed = {_rel(root, src / module) for _, module, _ in rows}
-    walkers = {rel for rel, _, line in _src_lines(root, "crates/cpl-codegen/src")
-               if IR_WALK_RE.search(line) and not (root / rel).is_relative_to(src / "uses")
-               and (root / rel) != src / "walk.rs"}
-    out += [f"{rel}: walks IR with no PASSES row" for rel in sorted(walkers - listed)]
+    walks = _private_walks(root)
+    out += [f"{rel}: walks IR with no PASSES row" for rel in sorted({rel for rel, _ in walks} - listed)]
+    out += [f"{rel}:{i}: walks IR itself, not through a named uses/ query" for rel, i in walks]
     return sorted(out)
-
-
-def opt_private_walks(root: Path) -> list[str]:
-    """Each line of codegen outside uses/ that walks IR bodies itself (a `deep_*` call),
-    even in a pass whose PASSES row asks the Uses table: the walk belongs in uses/ as a
-    named query every pass can ask. Folds into `opt_without_uses` once it is 0."""
-    src = root / "crates/cpl-codegen/src"
-    return [f"{rel}:{i}" for rel, i, line in _src_lines(root, "crates/cpl-codegen/src")
-            if IR_WALK_RE.search(line) and not (root / rel).is_relative_to(src / "uses")
-            and (root / rel) != src / "walk.rs"]
 
 
 # Every tracked list file outside test data: the counter that counts its
@@ -3125,7 +3124,7 @@ HARD_ZERO = frozenset({
     "bench_lists", "hardcoded_codes", "scaling_mismatches", "std_fns_unscaled", "config_schemas", "corpus_test_files", "corpus_known", "corpus_no_max", "corpus_no_limits", "stale_arch_paths",
     "own_databases", "string_keyed_maps", "module_loaders", "web_skip_only", "test_sleeps", "todo_fixme", "ci_retries", "cpp_std_functions", "or_true", "codemods_outside_fix",
     "pending_tests", "unchecked_fix_paths", "edition_refs", "uncited_rules", "decision_dup_numbers", "why_written_twice", "authority_drift",
-    "continue_on_error", "unregistered_lists", "codegen_effect_guesses", "spec_std_refs", "opt_without_uses", "opt_private_walks",
+    "continue_on_error", "unregistered_lists", "codegen_effect_guesses", "spec_std_refs", "opt_without_uses",
     "stress_hand_json", "lint_dup_helpers", "lint_post_filters",
     "measure_broken", "mono_unguarded", "ts_ignore", "ports_unreported",
     "site_rederived", "browser_lsp_gaps",
@@ -3244,7 +3243,6 @@ COUNTERS = {
                                 explain_copy_mismatches, True),
     "codegen_effect_guesses": ("codegen effect or purity guesses outside the Uses table", codegen_effect_guesses, True),
     "opt_without_uses": ("codegen passes deciding what code does without the Uses table (PASSES)", opt_without_uses, True),
-    "opt_private_walks": ("codegen lines walking IR themselves instead of a named uses/ query", opt_private_walks, True),
     "rs_near_cap": ("rs files within 100 lines of the cap", rs_near_cap, False),
     "stale_arch_paths": ("missing paths cited by ARCHITECTURE docs", stale_arch_paths, True),
     "crate_edges": ("shipped crate edges", crate_edges, False),

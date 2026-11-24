@@ -1691,12 +1691,13 @@ class DebtRatchetTest(unittest.TestCase):
             (src / "passes.rs").write_text(
                 'pass("loop-fusion", "fuse.rs", Uses(&["Touch"]), "t"),\n'
                 'pass("presize", "presize.rs", Unasked, "t"),\n')
+            walk = "walks IR itself, not through a named uses/ query"
             self.assertEqual(dr.opt_without_uses(root),
-                             ["crates/cpl-codegen/src/presize.rs: presize asks no Uses query",
-                              "crates/cpl-codegen/src/stray.rs: walks IR with no PASSES row"])
-            self.assertEqual(dr.opt_private_walks(root),
-                             ["crates/cpl-codegen/src/fuse.rs:2", "crates/cpl-codegen/src/presize.rs:1",
-                              "crates/cpl-codegen/src/stray.rs:1"])
+                             [f"crates/cpl-codegen/src/fuse.rs:2: {walk}",
+                              "crates/cpl-codegen/src/presize.rs: presize asks no Uses query",
+                              f"crates/cpl-codegen/src/presize.rs:1: {walk}",
+                              "crates/cpl-codegen/src/stray.rs: walks IR with no PASSES row",
+                              f"crates/cpl-codegen/src/stray.rs:1: {walk}"])
 
     def test_stress_hand_json_and_helper_env_vars(self) -> None:
         with tempfile.TemporaryDirectory() as d:

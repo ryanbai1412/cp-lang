@@ -144,7 +144,6 @@
   "cpp_sunk_copies": 0,
   "codegen_effect_guesses": 0,
   "opt_without_uses": 0,
-  "opt_private_walks": 0,
   "near_dup_fns": 0,
   "consumer_rederived": 0,
   "rs_near_cap": [],
