@@ -1164,6 +1164,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - core-02/lowercase-none-local-beside-none-named-arg.cp
 - core-02/none-names-a-param-and-a-field.cp
 - core-02/optional-min-assign-skips-none.cp
+- core-02/range-alias-has-its-ranges-ends.cp
 - core-02/range-type-argument-is-anonymous-domain.cp
 - core-02/range-type-arguments-index-a-2d-segtree.cp
 - core-02/str-from-slice-copies.cp
