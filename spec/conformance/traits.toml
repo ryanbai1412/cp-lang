@@ -264,6 +264,15 @@ print(desc(4))
 """
 out = "desc(4)"
 
+[case."Show/Interner/show"]
+code = """
+use std.marks.{Interner}
+var t = Interner<Str>()
+for w in ["b", "a", "b"]: t.id(w)
+print(t)
+"""
+out = "b a"
+
 [case."Undo/Dsu/mark"]
 code = """
 use std.dsu.{Dsu}
