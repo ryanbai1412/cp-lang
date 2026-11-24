@@ -93,6 +93,14 @@ class ProblemsTest(Corpus):
         self.assertEqual([p.id for p in corpus.problems(ids=["p3", "p1"])], ["p1", "p3"])
         self.assertEqual([p.id for p in corpus.problems(sets=["small"], ids=["p1"])], [])
 
+    def test_shards_cover_every_package_once_by_id(self):
+        pkgs = [types.SimpleNamespace(id=f"p{i}") for i in (5, 1, 4, 2, 3)]
+        got = [[p.id for p in corpus.sharded(pkgs, f"{n}/2")] for n in (1, 2)]
+        self.assertEqual(got, [["p1", "p3", "p5"], ["p2", "p4"]])
+        self.assertIs(corpus.sharded(pkgs, None), pkgs)
+        with self.assertRaises(SystemExit):
+            corpus.sharded(pkgs, "3/2")
+
     def test_gen_input_runs_gen_py_and_ends_the_input_with_a_newline(self):
         d = self.package("p1", gen_py=GEN)
         self.assertEqual(corpus.Package.at(d).gen_input([7, 4]), "1\n7\n")
@@ -386,7 +394,7 @@ class MakeTest(Corpus):
         for pid in ("p1", "p2", "p3"):
             self.package(pid, port_cp="", interactor_py="", tests_toml='[[case]]\ninput = "%s"\n' % pid)
         out = self.root / "out"
-        args = mock.Mock(set=None, ids=[], out=str(out), j=2, changed=None, cpl="my-cpl")
+        args = mock.Mock(set=None, ids=[], out=str(out), j=2, changed=None, cpl="my-cpl", shard=None)
 
         def make_cases(pkg, out, cpl):
             Path(out, pkg.id).mkdir(parents=True)

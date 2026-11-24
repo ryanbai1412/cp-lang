@@ -1249,6 +1249,18 @@ def require_cpl(cpl):
         sys.exit(f"corpus: {why}")
 
 
+def sharded(pkgs, shard):
+    """Shard `N/M` of `pkgs`: every M-th by sorted id from the N-th, so the M shards
+    cover each package once. CI's per-shard jobs split the corpus this way."""
+    if not shard:
+        return pkgs
+    m = re.fullmatch(r"(\d+)/(\d+)", shard)
+    n, of = (int(g) for g in m.groups()) if m else (0, 0)
+    if not 1 <= n <= of:
+        sys.exit(f"corpus: --shard {shard}: want N/M with 1 <= N <= M")
+    return sorted(pkgs, key=lambda p: p.id)[n - 1::of]
+
+
 def make_cases(pkg, out=OUT, cpl=None):
     """<out>/<id>/NN.in from tests.toml and NN.ans from the accepted C++ (an interactive
     package's NN.in is the interactor's hidden data, with no answer), and an empty NN.max
@@ -1281,7 +1293,7 @@ def make(args):
         ids = [p.id for p in problems(ids=changed_ids(args.changed))]
         if not ids:
             return 0
-    wanted = [p for p in problems(sets=args.set or None, ids=ids or None) if p.tests]
+    wanted = sharded([p for p in problems(sets=args.set or None, ids=ids or None) if p.tests], getattr(args, "shard", None))
     if wanted:
         require_cpl(args.cpl or default_cpl())
     jobs = [(p.id, args.out or OUT, args.cpl) for p in wanted]
@@ -1367,7 +1379,7 @@ def verify(args):
         if not ids:
             print("corpus: no package changed")
             return 0
-    wanted = list(problems(sets=opt("set"), ids=ids or None))
+    wanted = sharded(list(problems(sets=opt("set"), ids=ids or None)), opt("shard"))
     missing = set(ids) - {p.id for p in wanted}
     if missing and not opt("changed"):
         sys.exit(f"corpus: no package {', '.join(sorted(missing))}")
@@ -1602,6 +1614,7 @@ def cli(argv):
     v.add_argument("--cpl")
     v.add_argument("--check", action="store_true")
     v.add_argument("-j", type=int, default=os.cpu_count() or 4)
+    v.add_argument("--shard", metavar="N/M", help="only shard N of M (every M-th package by id)")
     m = sub.add_parser("make")
     m.add_argument("ids", nargs="*")
     m.add_argument("--set", action="append")
@@ -1609,6 +1622,7 @@ def cli(argv):
     m.add_argument("--out")
     m.add_argument("--cpl")
     m.add_argument("-j", type=int, default=os.cpu_count() or 4)
+    m.add_argument("--shard", metavar="N/M", help="only shard N of M (every M-th package by id)")
     sd = sub.add_parser("seed")
     sd.add_argument("ids", nargs="*")
     ls = sub.add_parser("ls", help="print each package's dir, or its FILE, relative to the repo root")
