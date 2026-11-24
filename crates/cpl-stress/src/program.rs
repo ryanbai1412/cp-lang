@@ -46,8 +46,9 @@ pub struct Program {
     /// What the user called it: the path they gave.
     pub name: String,
     pub argv: Vec<String>,
-    /// Variables set for it, on top of the ones `cpl` runs with.
-    pub env: Vec<(String, String)>,
+    /// A `cpl judge` run, which takes `--diagnostic <file>` to write
+    /// where it trapped there as JSON.
+    pub says_trap: bool,
 }
 
 /// Why a path could not be made into a program.
@@ -707,7 +708,7 @@ impl Program {
         Program {
             name: name.to_string(),
             argv: argv.iter().map(|arg| arg.to_string()).collect(),
-            env: Vec::new(),
+            says_trap: false,
         }
     }
 
@@ -770,7 +771,7 @@ impl Program {
         Ok(Program {
             name,
             argv,
-            env: Vec::new(),
+            says_trap: false,
         })
     }
 
@@ -780,7 +781,7 @@ impl Program {
         Ok(Program {
             name: path.shown(),
             argv: build_judged(path, None, Part::Solution, checks)?,
-            env: Vec::new(),
+            says_trap: false,
         })
     }
 
@@ -794,7 +795,7 @@ impl Program {
         Ok(Program {
             name: path.shown(),
             argv: build_linked(path, None, Part::Solution, LOCAL, Some(grader))?,
-            env: Vec::new(),
+            says_trap: false,
         })
     }
 
@@ -804,7 +805,7 @@ impl Program {
         Ok(Program {
             name: path.shown(),
             argv: build_judged(path, Some(text), Part::Solution, LOCAL)?,
-            env: Vec::new(),
+            says_trap: false,
         })
     }
 
@@ -814,7 +815,7 @@ impl Program {
         Ok(Program {
             name: format!("{} (@cache cold)", path.shown()),
             argv: build_judged(path, None, Part::ColdCache, LOCAL)?,
-            env: Vec::new(),
+            says_trap: false,
         })
     }
 
@@ -824,7 +825,7 @@ impl Program {
         Ok(Program {
             name: format!("{} (`{fn_name}`)", path.shown()),
             argv: build_judged(path, None, Part::Brute, LOCAL)?,
-            env: Vec::new(),
+            says_trap: false,
         })
     }
 
@@ -892,7 +893,6 @@ impl Program {
                 command
             }
         };
-        command.envs(self.env.iter().map(|(key, value)| (key, value)));
         // Its own process group, so a time limit stops what it started too.
         #[cfg(unix)]
         std::os::unix::process::CommandExt::process_group(&mut command, 0);

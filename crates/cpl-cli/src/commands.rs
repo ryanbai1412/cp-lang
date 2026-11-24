@@ -71,7 +71,7 @@ pub(crate) const COMMANDS: &[Command] = &[
             "`@check`; exit status 0 accepts",
         ],
         json: Json::Flag,
-        options: Some(&["--json"]),
+        options: Some(&["--json", "--diagnostic"]),
     },
     Command {
         name: "build",
@@ -468,17 +468,21 @@ top of the file once, save the samples as <file>.tests/1.in and 1.out, then
 ";
 
 const JUDGE_USAGE: &str = "\
-usage: cpl judge <file.cp> <input> [--json]
-       cpl judge <file.cp> <input> <output> [answer] [--json]
+usage: cpl judge <file.cp> <input> [options]
+       cpl judge <file.cp> <input> <output> [answer] [options]
 
 With an input alone, runs the file's `@interactor` on it as a judge
 program: it talks to a solution on standard input and output. With an
 output, runs the file's `@check` on that output. The exit status is 0
 when the judge accepts, 3 when it rejects.
 
+options:
   --json    print one JSON object: `accepted`, and when it rejects, the
             `reason` and the `diagnostic` where the judge failed, as
             `cpl check --json` prints one
+  --diagnostic <file>
+            when the judge traps, write its diagnostic there as
+            `cpl check --json` gives it, keeping stdout for the solution
 ";
 
 const LSP_USAGE: &str = "\

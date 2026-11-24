@@ -471,11 +471,11 @@ pub fn interactor_trap_json(
     input: &str,
     limit: Duration,
 ) -> Option<String> {
+    if !interactor.says_trap {
+        return None;
+    }
     let out = Scratch::new("diagnostic", "").ok()?;
-    let mut interactor = interactor.clone();
-    interactor
-        .env
-        .push(("CPL_JUDGE_DIAGNOSTIC".to_string(), out.path().to_string()));
+    let interactor = interactor.with_args(&["--diagnostic", out.path()]);
     interact(solution, &interactor, Launch::Stdio, input, limit).ok()?;
     let json = std::fs::read_to_string(out.path()).ok()?;
     Some(json.trim().to_string()).filter(|json| !json.is_empty())
@@ -738,7 +738,6 @@ fn spawned(
     let mut args = vec![input_file.path(), "--"];
     args.extend(solution.argv.iter().map(String::as_str));
     let mut command = interactor.with_args(&args).to_command();
-    command.envs(solution.env.iter().map(|(key, value)| (key, value)));
     let start = Instant::now();
     let mut judge = command
         .stdin(Stdio::null())

@@ -192,7 +192,7 @@ pub fn select_judge(
                         "judge".to_string(),
                         name.to_string(),
                     ],
-                    env: Vec::new(),
+                    says_trap: true,
                 },
                 Launch::Stdio,
             ))
@@ -210,7 +210,7 @@ pub fn select_judge(
                     "judge".to_string(),
                     name.to_string(),
                 ],
-                env: Vec::new(),
+                says_trap: false,
             }))
         }
         (None, None, None) => Ok(Judge::Tokens),

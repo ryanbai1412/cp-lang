@@ -222,12 +222,23 @@ pub fn exec<S: AsRef<str>>(
             Err(message) => usage_error(message),
         },
         Some("judge") => {
-            let json = rest.contains(&"--json");
-            let args: Vec<&str> = rest.iter().copied().filter(|a| *a != "--json").collect();
+            let (mut json, mut diagnostic, mut args) = (false, None, Vec::new());
+            let mut rest = rest.iter().copied();
+            while let Some(arg) = rest.next() {
+                match arg {
+                    "--json" => json = true,
+                    "--diagnostic" => match rest.next() {
+                        Some(file) => diagnostic = Some(file),
+                        None => return usage_error("`--diagnostic` takes a file".into()),
+                    },
+                    _ => args.push(arg),
+                }
+            }
+            let say = Say { json, diagnostic };
             match args.as_slice() {
-                [file, input] => judge_file(file, input, json, stdout, stderr),
+                [file, input] => judge_file(file, input, say, stdout, stderr),
                 [file, input, output] | [file, input, output, _] => {
-                    check_output(file, input, output, json, stdout, stderr)
+                    check_output(file, input, output, say, stdout, stderr)
                 }
                 _ => usage_error(
                     "`judge` takes a file and the hidden test: `cpl judge a.cp in.txt`".into(),
@@ -812,10 +823,19 @@ fn compile_text(path: &str, text: String, side: Side, stderr: &mut String) -> Re
 /// `cpl judge`: the file's `@interactor`, talking to a solution on
 /// standard input and output. The first line of what it says on failure
 /// is the reason, which is what `cpl stress` reports.
+/// How `cpl judge` reports: one JSON object on stdout with `--json`, and
+/// with `--diagnostic <file>` a trap's diagnostic, as JSON, to that file,
+/// which stress reads since the solution reads the interactor's stdout.
+#[derive(Clone, Copy)]
+struct Say<'a> {
+    json: bool,
+    diagnostic: Option<&'a str>,
+}
+
 fn judge_file(
     path: &str,
     input: &str,
-    json: bool,
+    say: Say,
     stdout: &mut (dyn Write + Send),
     stderr: &mut String,
 ) -> u8 {
@@ -835,7 +855,7 @@ fn judge_file(
         return EXIT_USAGE;
     };
     let result = interact::judge_alone(judge, &input);
-    verdict(path, &compiled.text, result, json, stdout, stderr)
+    verdict(path, &compiled.text, result, say, stdout, stderr)
 }
 
 /// `cpl judge <file> <input> <output>`: the file's `@check` on what a
@@ -844,7 +864,7 @@ fn check_output(
     path: &str,
     input: &str,
     output: &str,
-    json: bool,
+    say: Say,
     stdout: &mut (dyn Write + Send),
     stderr: &mut String,
 ) -> u8 {
@@ -867,7 +887,7 @@ fn check_output(
     let io = cpl_interp::Io::judge(&input, Box::new(move || printed.take()));
     let mut sink = Vec::new();
     let result = cpl_interp::run_with(&compiled.program, io, &mut sink);
-    verdict(path, &compiled.text, result, json, stdout, stderr)
+    verdict(path, &compiled.text, result, say, stdout, stderr)
 }
 
 /// What `cpl judge` says of the judge's verdict: nothing when it accepts,
@@ -877,7 +897,7 @@ fn verdict(
     path: &str,
     text: &str,
     result: Result<(), cpl_interp::Trap>,
-    json: bool,
+    Say { json, diagnostic }: Say,
     stdout: &mut (dyn Write + Send),
     stderr: &mut String,
 ) -> u8 {
@@ -900,8 +920,7 @@ fn verdict(
     } else if let Err(trap) = &result {
         *stderr += &format!("{}\n", trap.message);
         *stderr += &render_trap(path, text, trap);
-        // Stress reads the trap as `cpl check --format json` gives it.
-        if let Some(file) = cpl_env::JUDGE_DIAGNOSTIC.raw() {
+        if let Some(file) = diagnostic {
             let lines = cpl_diag::LineIndex::new(text);
             let json = cpl_diag::json::diagnostic(&trap.to_diagnostic(path, &lines), &lines);
             let _ = std::fs::write(file, json.to_string());
@@ -958,7 +977,7 @@ fn run_release_judged(
     stdout: &mut (dyn Write + Send),
     stderr: &mut String,
 ) -> u8 {
-    let ruling = match interact::run_built(&program.argv, &program.env, judge, input, stdout) {
+    let ruling = match interact::run_built(&program.argv, judge, input, stdout) {
         Ok(ruling) => ruling,
         Err(error) => {
             *stderr += &format!("cpl: can't run the build of `{}`: {error}\n", args.file);

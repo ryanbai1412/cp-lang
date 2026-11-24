@@ -71,8 +71,6 @@ vars! {
     COMMIT = "CPL_COMMIT";
     /// At build time: the release channel stamped into `cpl --version` (default `dev`).
     CHANNEL = "CPL_CHANNEL";
-    /// The file a trapped `cpl run` writes its diagnostic to, as JSON, for the stress judge.
-    JUDGE_DIAGNOSTIC = "CPL_JUDGE_DIAGNOSTIC";
     /// `1`: `cpl` panics on start, to test the crash report.
     FORCE_ICE = "CPL_FORCE_ICE";
     /// Where crash reports go (default `~/.cpl/crashes`).

@@ -292,13 +292,14 @@ pub fn emit_for(
 
 /// [`emit_for`] with every statement counting its starts and the time until
 /// the next one starts, the books `cpl_interp::profile` keeps. The tally is
-/// written when the program exits, to the file named by `CPL_PROFILE`, a
-/// line `site hits nanos` for each site that ran; the spans are the sites
-/// by number.
+/// written when the program exits, to the file `tally`, a line
+/// `site hits nanos` for each site that ran; the spans are the sites by
+/// number.
 pub fn emit_profiled(
     program: &cpl_ir::Program,
     name: &str,
     target: &Target,
+    tally: &str,
 ) -> (String, Vec<cpl_diag::Span>) {
     let program = prepared(program, target);
     let mut emitter = emit::Emitter::new(&program, target);
@@ -307,7 +308,9 @@ pub fn emit_profiled(
     emitter.counted = cpl_ir::sites::user_stmts(&program);
     emitter.entries = cpl_ir::sites::user_entries(&program);
     let (cpp, sites) = emitter.file_with_sites(name, None);
-    let tally = PROFILE_TALLY.replace("SITES", &sites.len().max(1).to_string());
+    let tally = PROFILE_TALLY
+        .replace("SITES", &sites.len().max(1).to_string())
+        .replace("TALLY_FILE", &expr::string_literal(tally.as_bytes()));
     // Before the first namespace, after every include and `#if` block, so
     // the tally never lands inside a platform-only block.
     let at = cpp.find("\nnamespace ").map_or(0, |at| at + 1);
@@ -332,12 +335,11 @@ struct Frame {
 struct Tally {
     ~Tally() {
         charge(std::chrono::steady_clock::now());
-        const char* path = std::getenv("CPL_PROFILE");
-        FILE* out = path ? std::fopen(path, "w") : stderr;
+        FILE* out = std::fopen(TALLY_FILE, "w");
         if (!out) return;
         for (long long i = 0; i < SITES; ++i)
             if (hits[i]) std::fprintf(out, "%lld %llu %llu\n", i, hits[i], nanos[i]);
-        if (out != stderr) std::fclose(out);
+        std::fclose(out);
     }
 } tally;
 }

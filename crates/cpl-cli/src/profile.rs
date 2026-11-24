@@ -115,13 +115,18 @@ fn run_native(file: &str, compiled: &Compiled, input: &[u8]) -> Result<Run, Stri
         avx2: judge.avx2,
         ..cpl_codegen::Target::default()
     };
-    let (cpp, spans) = cpl_codegen::emit_profiled(&compiled.program, "profile", &target);
     let dir = std::env::temp_dir().join(format!("cpl-profile-{}", std::process::id()));
     std::fs::create_dir_all(&dir).map_err(|e| format!("can't make `{}`: {e}", dir.shown()))?;
     let (source, binary, tally) = (
         dir.join("profile.cpp"),
         dir.join("profile"),
         dir.join("profile.txt"),
+    );
+    let (cpp, spans) = cpl_codegen::emit_profiled(
+        &compiled.program,
+        "profile",
+        &target,
+        &tally.display().to_string(),
     );
     std::fs::write(&source, cpp).map_err(|e| format!("can't write `{}`: {e}", source.shown()))?;
     let host = judge.host();
@@ -146,7 +151,6 @@ fn run_native(file: &str, compiled: &Compiled, input: &[u8]) -> Result<Run, Stri
     let argv = judge.on_stack(binary.display().to_string());
     let mut child = std::process::Command::new(&argv[0])
         .args(&argv[1..])
-        .env("CPL_PROFILE", &tally)
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::piped())

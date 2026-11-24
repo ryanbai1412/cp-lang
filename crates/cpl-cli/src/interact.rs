@@ -176,7 +176,6 @@ pub struct BuiltRuling {
 /// judge waits for it: its output ended.
 pub fn run_built(
     argv: &[String],
-    env: &[(String, String)],
     judge: &cpl_ir::Program,
     input: &[u8],
     stdout: &mut (dyn Write + Send),
@@ -186,7 +185,6 @@ pub fn run_built(
     const PATIENCE: std::time::Duration = std::time::Duration::from_secs(10);
     let mut child = Command::new(&argv[0])
         .args(&argv[1..])
-        .envs(env.iter().map(|(k, v)| (k, v)))
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

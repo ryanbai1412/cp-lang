@@ -576,6 +576,35 @@ fn judge_is_the_interactor_as_a_program_on_stdin_and_stdout() {
     assert!(String::from_utf8_lossy(&out.stderr).starts_with("assertion failed: x == secret"));
 }
 
+#[test]
+fn judge_writes_where_it_trapped_to_the_diagnostic_file() {
+    let path = guess("interactor-diagnostic", "10", "lo");
+    let hidden = path.with_file_name("hidden.in");
+    std::fs::write(&hidden, "8 3\n").unwrap();
+    let diagnostic = path.with_file_name("diagnostic.json");
+    let args = [
+        "judge".as_ref(),
+        path.as_os_str(),
+        "--diagnostic".as_ref(),
+        diagnostic.as_os_str(),
+        hidden.as_os_str(),
+    ];
+    let out = cpl(&args, b"? 4\n? 2\n? 3\n! 3\n");
+    assert_eq!(out.status.code(), Some(0));
+    assert!(
+        !diagnostic.exists(),
+        "an accepting judge writes no diagnostic"
+    );
+    let out = cpl(&args, b"! 5\n");
+    assert_eq!(out.status.code(), Some(3));
+    let json = std::fs::read_to_string(&diagnostic).unwrap();
+    assert!(json.contains("\"severity\":\"error\""), "{json}");
+    assert!(
+        json.contains("x == secret") || json.contains("\"span\""),
+        "{json}"
+    );
+}
+
 // The generator is a `#!/bin/sh` script, which `cpl stress` runs through
 // `sh` on every OS (Git for Windows' on Windows).
 #[test]
