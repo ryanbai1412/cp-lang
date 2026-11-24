@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3499 (3471 passing). Rules: 616.
+Cases: 3500 (3471 passing). Rules: 616.
 
 ## Summary per chapter
 
@@ -19,7 +19,7 @@ Cases: 3499 (3471 passing). Rules: 616.
 - R04b (04b-keys.md): 28 rules, 78 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 50 rules, 256 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 26 rules, 125 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 96 rules, 253 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 96 rules, 254 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 31 rules, 108 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 20 rules, 120 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -542,7 +542,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.12.2 [1+ 0-]: | `s.flat_map(f)`, `s.flatten()` | each element to a sequence, all inner elements in order...
 - R07.12.3 [1+ 0-]: | `iterate(x, step)` | `x, step(x), step(step(x)), ...` until `step` gives `None` | \(O(1)...
 - R07.12.4 [1+ 0-]: | `s.is_sorted(by:)`, `s.is_subsequence(t)` | the two common checks | \(O(n)\)
-- R07.12.5 [3+ 1-]: | `a.bsearch(ok)`, `a.equal_range(x, by:)` | on sorted `a`: the cut where monotone `ok` tu...
+- R07.12.5 [4+ 1-]: | `a.bsearch(ok)`, `a.equal_range(x, by:)` | on sorted `a`: the cut where monotone `ok` tu...
 - R07.12.6 [1+ 0-]: | `a.next_permutation()`, `a.prev_permutation()` | step to the neighbouring arrangement in...
 - R07.12.7 [1+ 0-]: | `a.rotate_left(k)`, `a.rotate_right(k)`; `s.rotated_left(k)`, `s.rotated_right(k)` | rot...
 - R07.12.8 [1+ 0-]: | `m.get_or_insert(k, v)` | `m[k]`, storing `v` first if absent: `ids.get_or_insert(name, ...
