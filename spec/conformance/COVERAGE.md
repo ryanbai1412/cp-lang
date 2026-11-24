@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3664 (3599 passing). Rules: 617.
+Cases: 3666 (3599 passing). Rules: 617.
 
 ## Summary per chapter
 
@@ -1089,8 +1089,8 @@ Every `pub` item in `std`, counted as covered when a conformance
 case names it. `/// example:` lines are also run by the `docs` suite of
 `cpl-conform`; this list is about whole-program cases (edges, traps).
 
-- **algebra** (58/69 named by a case)
-  - uncovered: `Monoid.commutative`, `Comm`, `Desc`, `Reversible`, `HasId`, `HasInv`, `Idempotent`, `AddAction`, `AssignAction`, `AffineAction`, `FlipAction`
+- **algebra** (60/69 named by a case)
+  - uncovered: `Desc`, `Reversible`, `HasId`, `HasInv`, `Idempotent`, `AddAction`, `AssignAction`, `AffineAction`, `FlipAction`
 - **bag** (166/166 named by a case)
 - **beats** (25/25 named by a case)
 - **bitset** (104/104 named by a case)
@@ -1140,7 +1140,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Rooted.reroot`, `Rooted.chains`, `VirtualTree`, `PermNode`
 - **window** (24/24 named by a case)
 
-2397 of 2462 std items are named by a case.
+2399 of 2462 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
