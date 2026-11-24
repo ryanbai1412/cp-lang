@@ -244,9 +244,11 @@ pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
         Ty::Char => "cpl::u8".into(),
         Ty::Str => "std::string".into(),
         Ty::StrView => "cpl::StrView".into(),
-        Ty::Pos(_) | Ty::Bound(_) => "int".into(),
+        Ty::Pos(d) | Ty::Bound(d) => crate::width::pos_cpp(program, *d).into(),
         Ty::Range(inner) => match **inner {
-            Ty::Pos(_) | Ty::Bound(_) => "cpl::Range<int>".into(),
+            Ty::Pos(d) | Ty::Bound(d) => {
+                format!("cpl::Range<{}>", crate::width::pos_cpp(program, d))
+            }
             Ty::I128 => "cpl::Range<__int128>".into(),
             Ty::Float => "cpl::Range<double>".into(),
             _ => "cpl::Range<ll>".into(),
@@ -265,6 +267,7 @@ pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
         Ty::Opt(inner) => match **inner {
             // A bare operator the fn was specialized for holds no value; only presence is left.
             Ty::Unit => "bool".into(),
+            Ty::Pos(d) | Ty::Bound(d) if crate::width::is_wide(program, d) => "cpl::OptInt".into(),
             Ty::Pos(_) | Ty::Bound(_) => "cpl::OptPos".into(),
             // `Int` stops above INT64_MIN, which is left for `none`.
             Ty::Int => "cpl::OptInt".into(),

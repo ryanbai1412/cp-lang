@@ -1,0 +1,5 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"n":{"name":"n","type":"Int","kind":"scalar"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":1,"label":"let n: 1..=1e5 = read()","stage":"main","values":{"stdout":[],"n":100000},"locals":{},"frames":[{"fn":"main","line":1}]},
+{"id":1,"line":7,"label":"print → path 30000 30000","stage":"main","values":{"stdout":["path 30000 30000"],"n":100000},"locals":{"op":3000029999,"x":30000,"y":30000},"checkpoint":"print 1","frames":[{"fn":"main","line":7}]},
+{"id":2,"line":6,"label":"print → paint 2","stage":"main","values":{"stdout":["path 30000 30000","paint 2"],"n":100000},"locals":{"op":1,"x":2,"x":30000,"y":30000},"checkpoint":"print 2","frames":[{"fn":"main","line":6}]},
+{"id":3,"line":4,"label":"the program ended","stage":"main","values":{"stdout":["path 30000 30000","paint 2"],"n":100000},"locals":{"op":1,"x":2,"x":30000,"y":30000},"checkpoint":"end","frames":[{"fn":"main","line":4}]}]}}}
+stderr:

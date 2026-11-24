@@ -465,6 +465,7 @@ impl Lowerer<'_> {
             warnings: lw.warnings,
             struct_shown,
             unordered_maps: Vec::new(),
+            wide_domains: Vec::new(),
             unordered_sets: Vec::new(),
             structs: lw.structs.iter().map(|s| s.def.clone()).collect(),
             enums: lw.enums,

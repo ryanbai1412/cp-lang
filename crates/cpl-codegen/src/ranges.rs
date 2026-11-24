@@ -353,8 +353,21 @@ impl<'p> Facts<'p> {
     /// A static upper bound on `domain`'s length when provable from literals
     /// and declared input ranges (`let n: 5..=300 = read()`).
     pub fn domain_max_len(&self, id: usize) -> Option<i64> {
+        self.domain_max_len_at(id, 0)
+    }
+
+    fn domain_max_len_at(&self, id: usize, depth: u8) -> Option<i64> {
         let (fn_id, len) = self.domain_len.get(&id).copied().flatten()?;
-        self.upper_bound(fn_id, len, 0)
+        self.upper_bound(fn_id, len, depth)
+    }
+
+    /// `domain`'s length expression, when it is defined once.
+    pub fn domain_len_expr(&self, id: usize) -> Option<&'p Expr> {
+        self.domain_len
+            .get(&id)
+            .copied()
+            .flatten()
+            .map(|(_, len)| len)
     }
 
     /// A constant lower bound for `domain` when every definition of it in the
@@ -417,6 +430,13 @@ impl<'p> Facts<'p> {
                 } else {
                     None
                 }
+            }
+            ExprKind::DomainLen(d) => self.domain_max_len_at(*d, depth + 1),
+            ExprKind::Binary(BinOp::Mul, l, r)
+                if self.sign(fn_id, l) != Sign::Unknown && self.sign(fn_id, r) != Sign::Unknown =>
+            {
+                self.upper_bound(fn_id, l, depth + 1)?
+                    .checked_mul(self.upper_bound(fn_id, r, depth + 1)?)
             }
             ExprKind::Binary(BinOp::Add, l, r) => self
                 .upper_bound(fn_id, l, depth + 1)?

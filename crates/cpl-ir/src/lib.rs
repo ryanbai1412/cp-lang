@@ -1427,6 +1427,10 @@ pub struct Program {
     /// names them: each a `Pos`, `Enum` or `Bool`, the first the most
     /// significant digit of a position's ordinal.
     pub products: Vec<Option<ProductParts>>,
+    /// By domain, whether a position may pass `i32::MAX`: a product or
+    /// sum domain with no proven bound under it. Filled in by the code
+    /// generator.
+    pub wide_domains: Vec<bool>,
     pub globals: Vec<Global>,
     pub fns: Vec<Function>,
     /// By [`FnId`]: whether the fn is an imported module's, not the file's.

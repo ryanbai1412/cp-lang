@@ -34,6 +34,7 @@ mod unordered;
 mod unpack;
 mod uses;
 mod walk;
+mod width;
 
 pub use checks::Checks;
 pub mod explain;
@@ -184,6 +185,7 @@ fn unmangled(name: &str) -> String {
 fn prepared(program: &cpl_ir::Program, target: &Target) -> cpl_ir::Program {
     let mut program = program.clone();
     (program.unordered_maps, program.unordered_sets) = unordered::find(&program);
+    program.wide_domains = width::wide_domains(&program);
     prune::prune(&mut program, target.checks != Checks::None);
     splice::splice(&mut program);
     unpack::unpack(&mut program);

@@ -666,7 +666,16 @@ impl<'p> Emitter<'p> {
                 let code = self.expr(ord);
                 match cast {
                     Cast::FromLabel(d) => Code::new(
-                        format!("(int)({} - {}_lo)", code.at(ADD), dom_ident(program, *d)),
+                        format!(
+                            "({})({} - {}_lo)",
+                            crate::width::pos_cpp(program, *d),
+                            code.at(ADD),
+                            dom_ident(program, *d)
+                        ),
+                        UNARY,
+                    ),
+                    Cast::FromOrd(d) => Code::new(
+                        format!("({}){}", crate::width::pos_cpp(program, *d), code.at(UNARY)),
                         UNARY,
                     ),
                     _ => Code::new(format!("(int){}", code.at(UNARY)), UNARY),
@@ -729,17 +738,22 @@ impl<'p> Emitter<'p> {
                     Cast::FromLabel(d) => {
                         self.need("at");
                         let d = dom_ident(program, *d);
-                        Code::primary(format!("cpl::pos({} - {d}_lo, {d}_len)", code.at(ADD)))
+                        let pos = crate::width::pos_fn(program, e);
+                        Code::primary(format!("{pos}({} - {d}_lo, {d}_len)", code.at(ADD)))
                     }
                     Cast::FromOrd(d) => {
                         self.need("at");
                         let d = dom_ident(program, *d);
-                        Code::primary(format!("cpl::pos({}, {d}_len)", code.text))
+                        let pos = crate::width::pos_fn(program, e);
+                        Code::primary(format!("{pos}({}, {d}_len)", code.text))
                     }
                     Cast::Raw if inner.ty == Ty::U64 => c_cast("ll"),
                     Cast::Raw => code,
                     Cast::Trust if matches!(inner.ty, Ty::Pos(_) | Ty::Bound(_)) => code,
-                    Cast::Trust => c_cast("int"),
+                    Cast::Trust => c_cast(match e.ty {
+                        Ty::Pos(d) | Ty::Bound(d) => crate::width::pos_cpp(program, d),
+                        _ => "int",
+                    }),
                 }
             }
             ExprKind::Index(base, indices)

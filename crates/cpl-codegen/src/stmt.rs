@@ -24,6 +24,24 @@ fn flat(e: &Expr) -> Option<(&[Stmt], &Expr)> {
 }
 
 impl<'p> Emitter<'p> {
+    /// A plain domain's position is an `int`: a checked build traps on one
+    /// with more positions than that holds (a product or sum domain is
+    /// widened instead).
+    fn domain_fits(&mut self, out: &mut String, id: usize, d: &str) {
+        let proven = (self.facts.domain_max_len(id)).is_some_and(|n| n <= i64::from(i32::MAX));
+        if self.target.checks == crate::Checks::None
+            || proven
+            || crate::width::is_wide(self.program, id)
+        {
+            return;
+        }
+        self.need("fail");
+        self.line(
+            out,
+            &format!("if ({d}_len > 2147483647) cpl::fail(\"a domain has more than 2^31 - 1 positions\");"),
+        );
+    }
+
     pub(crate) fn line(&self, out: &mut String, text: &str) {
         out.push_str(&pad(self.indent));
         out.push_str(text);
@@ -1647,6 +1665,7 @@ impl<'p> Emitter<'p> {
                     self.line(out, &format!("{d}_lo = {lo};"));
                 }
                 self.line(out, &format!("{d}_len = std::max<ll>({len}, 0);"));
+                self.domain_fits(out, *id, &d);
             }
             Stmt::DefDomainFromVal { id, val } => {
                 let d = dom_ident(program, *id);
@@ -1655,6 +1674,7 @@ impl<'p> Emitter<'p> {
                 self.line(out, &format!("auto {tmp} = {v};"));
                 self.line(out, &format!("{d}_lo = {tmp}.lo;"));
                 self.line(out, &format!("{d}_len = std::max<ll>({tmp}.len, 0);"));
+                self.domain_fits(out, *id, &d);
             }
             Stmt::Trap(message, _) => {
                 self.need("fail");

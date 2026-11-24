@@ -1409,6 +1409,7 @@ inline char& at(std::string& s, ll i) { if ((unsigned long long)i >= s.size()) f
 inline const char& at(const std::string& s, ll i) { if ((unsigned long long)i >= s.size()) fail(\"index outside the string\"); return s[(size_t)i]; }
 // `V(x)` and `V.at(i)`: an ordinal that must be one of the domain's `len`.
 inline int pos(ll ord, ll len) { if ((unsigned long long)ord >= (unsigned long long)len) fail(\"outside the domain\"); return (int)ord; }
+inline ll pos_wide(ll ord, ll len) { if ((unsigned long long)ord >= (unsigned long long)len) fail(\"outside the domain\"); return ord; }
 ",
     },
     Piece {
