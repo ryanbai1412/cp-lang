@@ -441,7 +441,17 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
     file.walk(&mut spans, |s, base| s.base = base);
     (spans.blocks).push(file.top_level().map(|(b, s)| s.span.shift(b)).collect());
     // A statement's span can run past its last token (a block's newline).
-    let before = |at: u32| toks.partition_point(|t| t.span.start < at);
+    // How many tokens start before each offset, looked up once per site and lint.
+    let mut starting_before = Vec::with_capacity(file.src.len() + 1);
+    for at in 0..=file.src.len() as u32 {
+        let seen = starting_before.last().copied().unwrap_or(0);
+        let more = toks[seen..]
+            .iter()
+            .take_while(|t| t.span.start < at)
+            .count();
+        starting_before.push(seen + more);
+    }
+    let before = |at: u32| starting_before[(at as usize).min(file.src.len())];
     let mut ends: HashMap<u32, Vec<u32>> = HashMap::new();
     for e in (spans.exprs.iter()).chain(&spans.types).chain(&spans.pats) {
         ends.entry(e.start).or_default().push(e.end);
