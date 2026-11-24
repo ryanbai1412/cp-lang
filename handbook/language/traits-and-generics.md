@@ -263,6 +263,15 @@ impl's choice, so it is still checked once against its bound (R08.1.9). The
 cost is one concept a contestant meets mostly in library signatures, and
 Rust programmers know it already.
 
+**An associated type can have a default (decision 469).** A trait may
+write `type Item = Int`; an impl that says nothing gets `Int`, and one that
+writes `type Item = List<Int>` gets its own choice. This is what lets a
+trait grow: `Seq` can gain `type Taken`, so `take(k)` is a slice on a list
+and a lazy walk on a generator, without every existing `impl Seq` having
+to name a type it never uses. The alternative, a second `take` chosen by
+which trait is more specific, would be overloading by type, which CP Lang
+leaves out (R08.5.2).
+
 Associated types and trait aliases:
 
 ```cp

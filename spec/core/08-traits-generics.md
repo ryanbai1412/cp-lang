@@ -80,8 +80,11 @@ impl Ord for Frac:
   concrete type (`impl Search for F64`). A generic fn names the choice as
   `M.Name` (R08.2.7), and its body is checked against the bound alone
   (R08.2.2): it can't assume `M.Name` is one type, so `fn f<B: Box>(b: B) ->
-  Int = b.get()` is E0302. An impl that leaves out an associated type its
-  trait declares is E0606 naming it. Two impls that apply to one type are
+  Int = b.get()` is E0302. A trait may give an associated type a default
+  (`type Item = Int`): an impl that leaves it out gets the default, and
+  `type Item = T` in the impl overrides it, so adding a defaulted
+  associated type breaks no existing impl (decision 469). An impl that
+  leaves out one with no default is E0606 naming it. Two impls that apply to one type are
   E0202 (R08.1.2), so a type has one choice. (R08.1.9)
 
 `cmp(a, b)` is the three-way comparison of two `Ord` values, an
