@@ -228,8 +228,8 @@ impl Cx<'_, '_> {
                     }
                 }
             }
-            ExprKind::Call(..) if std::env::var_os("CPL_INL_NO_CALL").is_none() => self.call(e),
-            ExprKind::CallExpr(..) if std::env::var_os("CPL_INL_NO_BETA").is_none() => self.beta(e),
+            ExprKind::Call(..) => self.call(e),
+            ExprKind::CallExpr(..) => self.beta(e),
             _ => {}
         }
     }
@@ -268,20 +268,13 @@ impl Cx<'_, '_> {
         if !func.params.iter().all(takes) {
             return;
         }
-        // A check in a library body names its fn's frame, which the user's
-        // code doesn't have.
-        let mut checks = false;
-        deep_stmts(&func.body, &mut |s| checks |= matches!(s, Stmt::Assert { .. } | Stmt::Trap(..)));
-        if self.user && checks {
-            return;
-        }
         // A value the body builds in its own frame is handed out whole;
         // spread into the user's code, the parts would be copied.
         let lone = matches!(
             func.body.stmts.as_slice(),
             [Stmt::Return(Some(Expr { kind: ExprKind::Local(_) | ExprKind::Builtin(..) | ExprKind::Intrinsic(..), .. }))]
         );
-        if self.user && !func.ret.is_scalar() && !lone {
+        if self.user && !plain(&func.ret) && !lone {
             return;
         }
         let closure_arg = args.iter().any(|a| matches!(a, Arg::Value(v) if self.closure_of(v).is_some()));
@@ -391,6 +384,16 @@ impl Cx<'_, '_> {
                 deep_exprs(body, &mut |e| n += usize::from(e.kind == ExprKind::Local(p)));
                 n
             };
+            // `{ domain D = xs; xs }`: the setup runs here, and the value is read in place.
+            if let ExprKind::Do(Block { stmts }) = &v.kind {
+                if let [setup @ .., Stmt::Give(tail)] = stmts.as_slice() {
+                    if direct(tail) && setup.iter().all(|s| matches!(s, Stmt::DefDomainFromVal { .. })) {
+                        lets.extend(setup.iter().cloned());
+                        map[p] = Some(Sub::Expr(tail.clone()));
+                        continue;
+                    }
+                }
+            }
             if direct(v) || (matches!(v.kind, ExprKind::Closure(_)) && reads() <= 1) {
                 map[p] = Some(Sub::Expr(v.clone()));
             } else if indexes(v) && !scalar(&v.ty) {
@@ -660,4 +663,13 @@ fn drop_unused_closures(body: &mut Block, closures: &[ClosureDef]) {
             !matches!(s, Stmt::Let(slot, Some(Expr { kind: ExprKind::Closure(_), .. })) if !read.contains(slot))
         })
     });
+}
+
+/// Held whole in registers: a scalar, or an option or tuple of them.
+fn plain(ty: &Ty) -> bool {
+    match ty {
+        Ty::Opt(t) => plain(t),
+        Ty::Tuple(ts) => ts.iter().all(plain),
+        t => t.is_scalar(),
+    }
 }

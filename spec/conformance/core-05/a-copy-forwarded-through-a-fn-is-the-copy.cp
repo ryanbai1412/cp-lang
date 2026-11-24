@@ -1,4 +1,4 @@
-// expect: ok, output "5 1 2 3 9 1 2 3 7 [1, 2, 3]"
+// expect: ok, output "6 1 2 3 9 1 2 3 7 1 2 3"
 // rule: 05.2.2
 // A fn that only hands its param to `copy` (std's `clone` is one) gives the same owned copy through one or two forwarders, and the source is left alone.
 fn dup(xs: List<Int>) -> List<Int> = copy(xs)

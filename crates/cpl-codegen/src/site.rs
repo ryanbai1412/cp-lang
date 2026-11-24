@@ -110,7 +110,13 @@ impl Emitter<'_> {
     ) {
         self.need("fail");
         let cond = self.expr(cond).text;
-        let library = note.is_some() && !text.is_empty();
+        // A library assert run inline in user code names the user's line
+        // as it is written, with no `cpl::site` call before it.
+        let library = note.is_some() && !text.is_empty() && self.in_library();
+        let line = match note.is_some() && !self.in_library() {
+            true => self.site.line.unwrap_or(line),
+            false => line,
+        };
         let report = match text {
             "" => String::new(),
             _ if library => cpl_ir::assert_head(text),
