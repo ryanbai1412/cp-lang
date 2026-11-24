@@ -424,3 +424,84 @@ test("the worker client has every method the worker answers", () => {
   const methods = (file) => /METHODS = (?:new Set\()?\[([^\]]+)\]/.exec(readFileSync(join(dist, file), "utf8"))[1];
   assert.equal(methods("cpl.js"), methods("cpl.worker.js"));
 });
+
+// Go to definition through the module's language server, as the site's
+// editors ask it, over every hill-climb port: the first use of each word
+// (the walk of crates/cpl-lsp/tests/ports.rs) resolves at least as often as
+// the floor `definition-floors.json` holds the native server to, and every
+// answer in std is a /std/<module>.cp file the site maps to its docs page,
+// on the name asked, the item it belongs to or the module's first line.
+test("definition reaches as many names as the native server, std ones on their docs", () => {
+  const floors = JSON.parse(readFileSync(join(root, "crates/cpl-lsp/tests/definition-floors.json"), "utf8"));
+  const { problems } = JSON.parse(readFileSync(join(root, "corpus/hillclimb.json"), "utf8"));
+  assert.equal(problems.length, 100);
+  // Keywords and literals are not names, as cpl-syntax's lists say.
+  const tokens = readFileSync(join(root, "crates/cpl-syntax/src/token.rs"), "utf8");
+  const words = (list) => [...new RegExp(`pub const ${list}[^=]*= &?\\[([^\\]]*)\\]`).exec(tokens)[1].matchAll(/"(\w+)"/g)];
+  const notNames = new Set([...words("KEYWORDS"), ...words("LITERAL_WORDS")].map((m) => m[1]));
+  assert.ok(notNames.has("while") && notNames.has("None"));
+  const firstUses = (src) => {
+    const seen = new Set();
+    const out = [];
+    let at = 0;
+    for (const line of src.split(/(?<=\n)/)) {
+      const code = line.split("//")[0];
+      let quoted = false;
+      for (let i = 0; i < code.length; ) {
+        if (code[i] === '"') quoted = !quoted;
+        if (!quoted && /[A-Za-z_]/.test(code[i])) {
+          const start = i;
+          while (i < code.length && /[A-Za-z0-9_]/.test(code[i])) i++;
+          const word = code.slice(start, i);
+          if (!seen.has(word)) {
+            seen.add(word);
+            out.push([at + start, word]);
+          }
+          continue;
+        }
+        i++;
+      }
+      at += line.length;
+    }
+    return out;
+  };
+  const position = (src, offset) => {
+    const before = src.slice(0, offset);
+    const lineStart = before.lastIndexOf("\n") + 1;
+    return { line: before.split("\n").length - 1, character: offset - lineStart };
+  };
+  let id = 1;
+  const ask = (method, params) => cpl.lsp({ jsonrpc: "2.0", id: ++id, method, params }).find((m) => m.id === id);
+  cpl.lsp({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} });
+  let [asked, resolved] = [0, 0];
+  const wrong = [];
+  for (const pid of problems) {
+    const src = readFileSync(join(root, "corpus/problems", pid, "spec.cp"), "utf8");
+    provideStd(cpl, src);
+    const uri = `file:///ports/${pid}.cp`;
+    const textDocument = { uri, languageId: "cp", version: 1, text: src };
+    cpl.lsp({ jsonrpc: "2.0", method: "textDocument/didOpen", params: { textDocument } });
+    for (const [offset, word] of firstUses(src)) {
+      // `1_000` and `2e5` are numbers, not names.
+      if (notNames.has(word) || /[0-9]$/.test(src.slice(0, offset))) continue;
+      asked++;
+      const { result } = ask("textDocument/definition", { textDocument: { uri }, position: position(src, offset) });
+      const locations = result == null ? [] : [result].flat();
+      if (locations.length > 0) resolved++;
+      for (const { uri: to, range } of locations) {
+        if (to === uri) continue;
+        const std = /\/std\/(.+)\.cp$/.exec(to);
+        const { start, end } = range;
+        const lines = std ? readFileSync(join(root, "std", `${std[1]}.cp`), "utf8").split("\n") : [];
+        const landed = (lines[start.line] ?? "").slice(start.character, end.character);
+        const moduleStart = std && start.line === 0 && end.character === 0 && std[1].split("/").at(-1) === word;
+        if (!std || !(moduleStart || landed === word || /^[A-Za-z_]\w*$/.test(landed)))
+          wrong.push(`${pid}: \`${word}\` went to ${to}:${start.line + 1} ${JSON.stringify(landed)}`);
+      }
+    }
+    cpl.lsp({ jsonrpc: "2.0", method: "textDocument/didClose", params: { textDocument: { uri } } });
+  }
+  assert.deepEqual(wrong, []);
+  const permille = Math.floor((resolved * 1000) / asked);
+  assert.ok(permille >= floors.hillclimb, `definition reached ${resolved} of ${asked} names = ${permille} permille, under ${floors.hillclimb}`);
+});
