@@ -155,6 +155,45 @@ fn golden_fixes() {
     }
 }
 
+/// Every fix a golden diagnostic offers, applied, leaves source that parses
+/// with no syntax error it didn't already have: no fix text is a guess.
+#[test]
+fn every_golden_fix_parses_once_applied() {
+    let syntax_errors = |text: &str| -> Vec<String> {
+        (cpl_syntax::parse_file(text).diagnostics.into_iter())
+            .filter(|d| d.severity == cpl_diag::Severity::Error)
+            .map(|d| d.message)
+            .collect()
+    };
+    let mut sources: Vec<PathBuf> = fs::read_dir(dir())
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .filter(|p| p.extension().is_some_and(|e| e == "cp"))
+        .collect();
+    sources.sort();
+    let mut wrong = Vec::new();
+    for src in &sources {
+        let path = src.to_string_lossy();
+        let text = fs::read_to_string(src).unwrap();
+        let (fixed, applied) = cpl_cli::apply_error_fixes(&path, &text);
+        if applied == 0 {
+            continue;
+        }
+        let before = syntax_errors(&text);
+        let new: Vec<String> = (syntax_errors(&fixed).into_iter())
+            .filter(|m| !before.contains(m))
+            .collect();
+        if !new.is_empty() {
+            wrong.push(format!("{path}: {}", new.join("; ")));
+        }
+    }
+    assert!(
+        wrong.is_empty(),
+        "golden fixes that don't parse:\n{}",
+        wrong.join("\n")
+    );
+}
+
 /// The spellings `spec/GLOSSARY.md` rules out (its "Never" column), found in
 /// `text`. A backticked term is code: a `quoted` span that is the term, or
 /// for punctuation starts with it and a space (`&mut x`). A plain term is prose, outside the
