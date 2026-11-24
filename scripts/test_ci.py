@@ -2,6 +2,7 @@ import subprocess
 import contextlib
 import io
 import sys
+import tempfile
 import unittest
 from unittest import mock
 from pathlib import Path
@@ -381,6 +382,99 @@ class TailTest(unittest.TestCase):
         self.assertEqual((env["HOME"], env["CARGO_HOME"], env["RUSTUP_HOME"], env["PATH"]), ("/h", "/c", "/real/.rustup", "/bin"))
         self.assertNotIn("GIT_DIR", env)
         self.assertEqual(env["GIT_CONFIG_NOSYSTEM"], "1")
+
+
+class GuardTest(unittest.TestCase):
+    # Built at run time so this file's own added lines pass the guard.
+    TOKEN = "gh" + "p_" + "a" * 36
+    HOME = "/" + "home" + "/someone/"
+    HOSTS = ["# comment", r"(www\.)?github\.com", ""]
+
+    def test_scan_added_names_what_must_not_be_published(self) -> None:
+        scan = lambda paths=(), lines=(), deny=(): ci.scan_added(list(paths), list(lines), self.HOSTS, list(deny))
+        self.assertIsNone(scan(["src/a.rs"], ["+let x = 1;", "+see https://github.com/x"]))
+        self.assertIn("build output under dist/", scan(["web/dist/app.js"]))
+        self.assertIn("look like credentials", scan(["keys/server.pem"]))
+        self.assertIn("look like credentials", scan([".env.local"]))
+        why = scan(lines=[f"+token = {self.TOKEN}"])
+        self.assertIn("ghp_aaaaaaaa...", why)
+        self.assertNotIn(self.TOKEN, why)
+        self.assertIn("not in scripts/public-hosts.txt", scan(lines=["+https://" + "intranet.corp/x"]))
+        self.assertIsNone(scan(lines=["+https://www.github.com/x"]))
+        self.assertIn("personal home paths", scan(lines=[f"+path = {self.HOME}x"]))
+        self.assertIn("sensitive-words", scan(lines=["+Project NIGHTJAR"], deny=["nightjar"]))
+        self.assertIsNone(scan(lines=["+anything"], deny=["", "  "]), "a blank deny line matches nothing")
+
+    def _repo(self, files: dict[str, str], staged: dict[str, str] | None = None) -> Path:
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.enterContext(mock.patch.dict(ci.os.environ, {"GIT_CONFIG_NOSYSTEM": "1"}))
+        for k in [k for k in ci.os.environ if k.startswith("GIT_") and k != "GIT_CONFIG_NOSYSTEM"]:
+            ci.os.environ.pop(k)
+        git = lambda *a: subprocess.run(["git", *a], cwd=tmp, check=True, capture_output=True)
+        git("init", "-q")
+        git("config", "user.email", "t@example.com")
+        git("config", "user.name", "t")
+        (tmp / "scripts").mkdir()
+        (tmp / "scripts/public-hosts.txt").write_text("\n".join(self.HOSTS) + "\n")
+        for rel, text in files.items():
+            (tmp / rel).parent.mkdir(parents=True, exist_ok=True)
+            (tmp / rel).write_text(text)
+        git("add", "-A")
+        git("commit", "-q", "-m", "base")
+        for rel, text in (staged or {}).items():
+            (tmp / rel).parent.mkdir(parents=True, exist_ok=True)
+            (tmp / rel).write_text(text)
+            git("add", rel)
+        return tmp
+
+    def _guard(self, root: Path, mode: str = "fast") -> tuple[int, str]:
+        err = io.StringIO()
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
+            return ci.guard(mode, root), err.getvalue()
+
+    def test_a_clean_tree_passes(self) -> None:
+        root = self._repo({"a.md": "hi\n", "web/package-lock.json": '"resolved": "https://registry.npmjs.org/x"\n'})
+        self.assertEqual(self._guard(root), (0, ""))
+
+    def test_conflict_markers_fail(self) -> None:
+        root = self._repo({"a.md": "x\n<<<<<<< HEAD\ny\n=======\nz\n>>>>>>> b\n"})
+        code, err = self._guard(root)
+        self.assertEqual(code, 1)
+        self.assertIn("merge conflict markers left in:\na.md:2", err)
+
+    def test_a_program_needs_its_trace_and_a_commit_answers_only_for_its_own(self) -> None:
+        old = "crates/cpl-cli/tests/programs/old.cp"
+        root = self._repo({old: "print(1)\n"}, staged={"crates/cpl-cli/tests/programs/new.cp": "print(2)\n"})
+        code, err = self._guard(root, "commit")
+        self.assertEqual(code, 1)
+        self.assertIn("programs/new.cp", err)
+        self.assertNotIn("old.cp", err)
+        self.assertIn(old, self._guard(root, "fast")[1])
+
+    def test_a_commit_may_not_add_corpus_test_files(self) -> None:
+        root = self._repo({"a.md": "x\n"}, staged={"corpus/problems/p/tests/1.in": "1\n"})
+        code, err = self._guard(root, "commit")
+        self.assertEqual(code, 1)
+        self.assertIn("problem-packages/R9", err)
+        self.assertEqual(self._guard(root, "fast")[0], 0)
+
+    def test_a_staged_secret_fails_and_is_not_echoed(self) -> None:
+        root = self._repo({"a.md": "x\n"}, staged={"b.md": f"key {self.TOKEN}\n"})
+        code, err = self._guard(root, "commit")
+        self.assertEqual(code, 1)
+        self.assertIn("look like secrets", err)
+        self.assertNotIn(self.TOKEN, err)
+
+    def test_a_private_npm_mirror_fails(self) -> None:
+        root = self._repo({"web/package-lock.json": '"resolved": "https://' + 'npm.corp/x"\n'})
+        code, err = self._guard(root)
+        self.assertEqual(code, 1)
+        self.assertIn("private mirror", err)
+
+    def test_check_sh_runs_the_guards_from_ci(self) -> None:
+        check = (Path(__file__).parent / "check.sh").read_text(encoding="utf-8")
+        self.assertIn('scripts/ci.py guard --mode "$mode"', check)
+        self.assertNotIn("staged_guard", check)
 
 
 if __name__ == "__main__":

@@ -2049,7 +2049,7 @@ def std_fns_unscaled(root: Path) -> list[str]:
 
 
 ONE_PROBLEM_RE = re.compile(r"corpus/problems/[\w.-]+")
-GIT_CHANGED_RE = re.compile(r"\bgit\b[^|;]*\b(?:diff|status)\b")
+GIT_CHANGED_RE = re.compile(r"(?<![A-Za-z0-9])_?git\b[^|;]*\b(?:diff|status)\b")
 
 
 def _names_corpus_set(line: str) -> bool:
