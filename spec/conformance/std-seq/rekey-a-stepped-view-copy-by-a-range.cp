@@ -3,4 +3,4 @@
 let os = [Some(3), None, Some(1), Some(4)]
 let evens = List(os.even).rekey(1..3)
 print(evens[1]!, evens[2]!)
-print(List(evens))
+print([o! for o in List(evens)])

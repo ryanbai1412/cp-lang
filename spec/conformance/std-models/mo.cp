@@ -121,7 +121,7 @@ for k in 0..n:
             mark: () => cnt.clone(),
             add: p => cnt[p.ord] += 1,
             answer: qi => (cnt == [if ends[qi].0 <= i and i < ends[qi].1: 1 else: 0 for i in 0..N], (0..N).map(i => cnt[i] * a[i]).sum()),
-            undo: m => cnt = m,
+            undo: m => cnt = m.clone(),
             reset: () =>
                 resets += 1
                 cnt = List.filled(N, 0))
