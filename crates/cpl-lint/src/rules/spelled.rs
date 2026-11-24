@@ -382,11 +382,7 @@ impl Spelled<'_> {
         let ExprKind::Field { name: method, .. } = &callee.kind else {
             return;
         };
-        if method.text != "sort" && method.text != "sorted"
-            || args
-                .iter()
-                .any(|a| a.name.as_ref().is_some_and(|n| n.text == "desc"))
-        {
+        if method.text != "sort" && method.text != "sorted" {
             return;
         }
         for arg in args {
@@ -406,17 +402,12 @@ impl Spelled<'_> {
             else {
                 continue;
             };
-            let plain = pat_name(param).is_some() && name_of(negated) == pat_name(param);
             let span = Span::new(name.span.start, arg.value.span.end);
-            let key = format!("{} => {}", self.text_pat(param), self.text(negated));
-            let (help, fix) = if plain {
-                (
-                    "write `desc: true` instead of negating the key".to_string(),
-                    Some((span, "desc: true".to_string())),
-                )
-            } else {
-                (format!("write `by: {key}, desc: true`; negating the key overflows on the smallest value"), None)
-            };
+            let key = format!("{} => desc({})", self.text_pat(param), self.text(negated));
+            let help = format!(
+                "write `by: {key}`; `desc` reverses the order, and negating the key overflows on the smallest value"
+            );
+            let fix = Some((span, format!("by: {key}")));
             self.push(
                 &SORT_DESC_BY_NEGATION,
                 span,

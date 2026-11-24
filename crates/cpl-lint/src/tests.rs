@@ -1645,16 +1645,16 @@ print(xs)
         "var xs = [5, 4, 3, 2, 1]\nxs[1..4].sort()\nprint(xs)\n"
     );
 
-    // 2-statement form with `by:`/`desc:` args and `.items` writeback.
+    // 2-statement form with a `by:` arg and `.items` writeback.
     let with_args = "\
 fn f(mut xs: List<Int>, l: Int, r: Int):
-    let sub = xs[l..r].sorted(by: x => -x, desc: true)
+    let sub = xs[l..r].sorted(by: x => desc(x))
     for (i, v) in sub.items: xs[l + i] = v
 ";
     assert_eq!(taste_codes(with_args), ["L0522"]);
     assert_eq!(
         fixed(with_args),
-        "fn f(mut xs: List<Int>, l: Int, r: Int):\n    xs[l..r].sort(by: x => -x, desc: true)\n"
+        "fn f(mut xs: List<Int>, l: Int, r: Int):\n    xs[l..r].sort(by: x => desc(x))\n"
     );
 
     // 3-statement form: `.to_list()` + `.sort()` + `0..sub.len` writeback.
@@ -1891,5 +1891,22 @@ fn loop_reduction_keeps_a_widening_call_in_a_typed_lambda() {
     assert!(
         found.contains("Pos.fold((root: ?Pos, p: Pos) => merge(root, p), None)"),
         "{found}"
+    );
+}
+
+/// A level prints as the word `cp.toml` reads back.
+
+/// `desc:` is gone from `sort` (decisions 290, 366): a negated key, field or
+/// not, becomes `desc(..)`. Rule: `idiomatic-code/R3`.
+#[test]
+fn sort_desc_by_negation_wraps_the_key_in_desc() {
+    let src = "let ps = [(1, 2), (3, 4)]\nprint(ps.sorted(by: p => -p.1))\n";
+    assert_eq!(
+        only(src).help.as_deref(),
+        Some("write `by: p => desc(p.1)`; `desc` reverses the order, and negating the key overflows on the smallest value")
+    );
+    assert_eq!(
+        fixed(src),
+        "let ps = [(1, 2), (3, 4)]\nprint(ps.sorted(by: p => desc(p.1)))\n"
     );
 }

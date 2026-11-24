@@ -64,7 +64,7 @@ those, then run `just gen`. `cpl explain <code>` prints a lint's page.
 | L0537 | manual_adjacency_list | `adj[u].push(v)` per read edge: `Graph.undirected(es)` / `Graph.directed(es)` |
 | L0539 | dx_dy_arrays | `dx = [1, -1, 0, 0]`: `for d in Dir4.all()` with `(r, c).step(d)` |
 | L0540 | manual_bit_test | `(x >> i) & 1 == 1`: `x.bit(i)` reads one bit |
-| L0541 | sort_desc_by_negation | `sorted(by: x => -x)`: `sorted(desc: true)` says it and never overflows |
+| L0541 | sort_desc_by_negation | `sorted(by: x => -x)`: `sorted(by: x => desc(x))` says it and never overflows |
 | L0542 | last_via_len | `xs[xs.len - 1]`: `xs.last!` is the last element |
 | L0543 | manual_pair_loop | `for i ..: for j in i + 1..n`: `xs.pairs()` walks each pair once |
 | L0544 | manual_digit_loop | `while y > 0: .. y % 10 .. y /= 10`: `y.digits()` lists the digits |
