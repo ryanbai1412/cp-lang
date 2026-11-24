@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { budgetFor, checkBudgets, checkSortCopies, crateOf, DATA, dataOverBudget, grewOverBudget, ownerOf, owners, readCharters, sortCopies, touchedOverBudget } from './wasm-crates.mjs';
+import { budgetFor, checkBudgets, checkSortCopies, crateOf, DATA, dataOverBudget, lowered, lowerTo, ownerOf, ratchet, owners, readCharters, sortCopies, touchedOverBudget } from './wasm-crates.mjs';
 
 const charters = {
   compiler: '| Kind | Metric |\n| Describes | `crates/cpl-syntax`, `crates/cpl-check`, `crates/cpl-interp` |\n',
@@ -66,26 +66,33 @@ describe('wasm crate budgets', () => {
     expect(touchedOverBudget(rows, { ...budgets, [DATA]: 50 }, map, []).errors).toEqual([]);
   });
 
-  test('against its parent, a touched crate over budget refuses only if it grew or crossed', () => {
+  test('the ratchet holds every crate to its parent, touched or not', () => {
     const map = owners(charters);
     const budgets = { cpl_check: 250, cpl_lsp: 100, [DATA]: 40 };
-    const rows = [['cpl_check', 900, 300], ['cpl_lsp', 500, 200], [DATA, 900, 50]];
-    const gate = (parent) => grewOverBudget(rows, budgets, map, ['cpl_check', 'cpl_lsp'], parent);
-    const held = gate({ cpl_check: 300, cpl_lsp: 210, [DATA]: 50 });
-    expect(held.errors).toEqual([]);
-    expect(held.held).toEqual([
+    const rows = [['cpl_check', 900, 300], ['cpl_lsp', 500, 90], [DATA, 900, 50]];
+    const gate = (parent) => ratchet(rows, budgets, map, parent);
+    const shrank = gate({ cpl_check: 301, cpl_lsp: 90, [DATA]: 50 });
+    expect(shrank.errors).toEqual([]);
+    expect(shrank.held).toEqual([
+      expect.stringMatching(/^cpl_check is 300 B gzipped, .*, but no more than its parent's 301 B$/),
       expect.stringMatching(/^data .* over its budget of 40.*, but no more than its parent's 50 B$/),
-      expect.stringMatching(/^cpl_check is 300 B gzipped, .*, but no more than its parent's 300 B$/),
-      expect.stringMatching(/^cpl_lsp is 200 B gzipped, .*, but no more than its parent's 210 B$/),
     ]);
-    const grew = gate({ cpl_check: 299, cpl_lsp: 210, [DATA]: 50 });
-    expect(grew.errors).toEqual([expect.stringMatching(/^cpl_check is 300 B gzipped, over its budget of 250/)]);
-    const crossed = gate({ cpl_check: 300, cpl_lsp: 90, [DATA]: 50 });
-    expect(crossed.errors).toEqual([expect.stringMatching(/^cpl_lsp is 200 B gzipped, over its budget of 100/)]);
-    expect(gate({ cpl_lsp: 210, [DATA]: 50 }).errors).toEqual([expect.stringMatching(/^cpl_check is 300 B/)]);
-    expect(held.grew).toEqual([]);
-    expect(gate({ cpl_check: 100, cpl_lsp: 210, [DATA]: 50 }).grew).toEqual(['cpl_check grew 200 B gzipped against its parent\'s 100 B']);
-    expect(gate({ cpl_check: 101, cpl_lsp: 0, [DATA]: 0 }).grew).toEqual(['cpl_lsp grew 200 B gzipped against its parent\'s 0 B']);
+    expect(gate({ cpl_check: 299, cpl_lsp: 90, [DATA]: 50 }).errors)
+      .toEqual([expect.stringMatching(/^cpl_check is 300 B gzipped, over its budget of 250.*; it grew 1 B against its parent's 299 B$/)]);
+    expect(gate({ cpl_check: 300, cpl_lsp: 90, [DATA]: 49 }).errors).toEqual([expect.stringMatching(/^data .* it grew 1 B/)]);
+    const crossed = ratchet([['cpl_lsp', 500, 101]], budgets, map, { cpl_lsp: 100 });
+    expect(crossed.errors).toEqual([expect.stringMatching(/^cpl_lsp is 101 B gzipped, over its budget of 100/)]);
+    expect(ratchet([['cpl_lsp', 500, 100]], budgets, map, { cpl_lsp: 99 }).errors).toEqual([]);
+    expect(ratchet([['cpl_check', 900, 300]], budgets, map, {}).errors).toEqual([expect.stringMatching(/^cpl_check is 300 B/)]);
+    expect(ratchet([['cpl_lsp', 500, 199]], { cpl_lsp: 400 }, map, { cpl_lsp: 0 }).grew).toEqual([]);
+    expect(ratchet([['cpl_lsp', 500, 300]], { cpl_lsp: 400 }, map, { cpl_lsp: 100 }).grew).toEqual(['cpl_lsp grew 200 B gzipped against its parent\'s 100 B']);
+  });
+
+  test('a build lowers each budget with slack to its measurement and some room, never up', () => {
+    const budgets = { core: 71100, cpl_json: 19600, cpl_rt: 500, cpl_check: 250, gone: 5 };
+    expect(lowered([['core', 1, 62220], ['cpl_json', 1, 14865], ['cpl_rt', 1, 100], ['cpl_check', 1, 300]], budgets))
+      .toEqual({ core: 62900, cpl_json: 15200, cpl_rt: 400, cpl_check: 250, gone: 5 });
+    expect(lowered([['core', 1, 70300]], budgets)).toBeNull();
   });
 
   test('each element type and crate a sort is compiled for is one copy of core\'s sort', () => {

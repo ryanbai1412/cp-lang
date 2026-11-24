@@ -544,8 +544,8 @@ class LandTest(unittest.TestCase):
         out = self._built(ours)
         r = self.land(ours, **self._wasm(ours, 1))
         self.assertEqual(r.returncode, 1, r.stderr)
-        self.assertIn("grew past main or its cpl.wasm budget", r.stderr)
-        self.assertIn(f"node web/scripts/wasm-crates.mjs --data {out}/cpl.wasm --touched cpl_x --parent {out}/sizes/",
+        self.assertIn("grew past main while over its budget, or crossed its budget", r.stderr)
+        self.assertIn(f"node web/scripts/wasm-crates.mjs --data {out}/cpl.wasm --parent {out}/sizes/",
                       (self.tmp / "node.log").read_text())
         self.assertNotIn("ours", git(ours, "log", "--format=%s", "origin/main"))
 
@@ -562,7 +562,61 @@ class LandTest(unittest.TestCase):
         self._built(ours)
         r = self.land(ours, **self._wasm(ours, 0))
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("--touched cpl_x", (self.tmp / "node.log").read_text())
+        self.assertIn("--parent", (self.tmp / "node.log").read_text())
+
+    def _ratchet(self, ours_gz, parent_gz, budgets):
+        """A land of a cpl-x change through the real wasm-crates.mjs: a warm build measuring
+        `ours_gz` and main's tip `parent_gz` (crate -> B gz), under `budgets`."""
+        data = "data (std source, strings)"
+        budgets, ours_gz, parent_gz = {data: 100, **budgets}, {data: 90, **ours_gz}, {data: 90, **parent_gz}
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        web = theirs / "web" / "scripts"
+        web.mkdir(parents=True)
+        shutil.copy(HERE.parent / "web" / "scripts" / "wasm-crates.mjs", web)
+        (web / "wasm-crate-budgets.json").write_text(json.dumps(budgets))
+        (web / "wasm-sort-copies.json").write_text('{"max": 0}\n')
+        shutil.copytree(HERE.parent / "handbook" / "domains", theirs / "handbook" / "domains")
+        self.commit(theirs, "theirs")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        (ours / "crates" / "cpl-x").mkdir(parents=True)
+        (ours / "crates" / "cpl-x" / "lib.rs").write_text("ours\n")
+        self.commit(ours, "ours")
+        out = self._built(ours)
+        (out / "cpl.wasm").write_text(json.dumps({"crates": ours_gz, "sorts": 0}))
+        (next((out / "sizes").iterdir())).write_text(json.dumps({"crates": parent_gz, "sorts": 0}))
+        env = self._wasm(ours, 0)
+        (self.tmp / "bin" / "node").unlink()
+        return self.land(ours, **env)
+
+    def test_the_wasm_ratchet_refuses_growth_of_a_crate_the_change_never_touched(self):
+        # ecd92f8e6..b434e93d3 grew cpl_check and cpl_syntax past their budgets in lands
+        # that touched other crates, which only warned.
+        r = self._ratchet({"cpl_x": 50, "cpl_y": 151}, {"cpl_x": 50, "cpl_y": 150}, {"cpl_x": 100, "cpl_y": 100})
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("cpl_y is 151 B gzipped, over its budget of 100", r.stderr)
+        self.assertIn("it grew 1 B against its parent's 150 B", r.stderr)
+
+    def test_the_wasm_ratchet_refuses_a_touched_crate_over_budget_that_grew_a_byte(self):
+        r = self._ratchet({"cpl_x": 151}, {"cpl_x": 150}, {"cpl_x": 100})
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("it grew 1 B against its parent's 150 B", r.stderr)
+
+    def test_the_wasm_ratchet_lands_a_crate_over_budget_that_shrank(self):
+        r = self._ratchet({"cpl_x": 149, "cpl_y": 150}, {"cpl_x": 150, "cpl_y": 150}, {"cpl_x": 100, "cpl_y": 100})
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("cpl_x is 149 B gzipped, over its budget of 100", r.stderr)
+        self.assertIn("but no more than its parent's 150 B", r.stderr)
+
+    def test_the_wasm_ratchet_lands_a_crate_over_budget_that_held_its_size(self):
+        r = self._ratchet({"cpl_x": 150}, {"cpl_x": 150}, {"cpl_x": 100})
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("but no more than its parent's 150 B", r.stderr)
+
+    def test_the_wasm_ratchet_keeps_a_crate_within_budget_within_it(self):
+        r = self._ratchet({"cpl_x": 50, "cpl_y": 101}, {"cpl_x": 50, "cpl_y": 90}, {"cpl_x": 100, "cpl_y": 100})
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("cpl_y is 101 B gzipped, over its budget of 100", r.stderr)
+        self.assertNotIn("ours", git(self.tmp / "remote.git", "log", "--format=%s", "main"))
 
     def test_land_never_waits_on_a_wasm_build_it_lacks(self):
         ours = self._crate_change("cpl-y")
