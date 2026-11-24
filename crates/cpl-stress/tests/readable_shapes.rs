@@ -8,6 +8,9 @@ use std::path::{Path, PathBuf};
 
 use cpl_stress::spec::InputSpec;
 
+#[path = "../../cpl-cli/tests/support/shards.rs"]
+mod shards;
+
 fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
     for entry in std::fs::read_dir(dir).unwrap() {
         let path = entry.unwrap().path();
@@ -19,8 +22,14 @@ fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
-/// `path: why` for each program whose input stress can't generate.
-fn gaps(root: &Path) -> Vec<String> {
+const SHARDS: usize = 4;
+
+fn root() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
+}
+
+/// The corpus specs, conformance programs and saved-trace programs, sorted.
+fn programs(root: &Path) -> Vec<PathBuf> {
     let mut files = Vec::new();
     for dir in [
         "corpus/problems",
@@ -31,8 +40,22 @@ fn gaps(root: &Path) -> Vec<String> {
     }
     files.retain(|f| !f.starts_with(root.join("corpus")) || f.ends_with("spec.cp"));
     files.sort();
+    files
+}
+
+/// A program's path under the repo root, which picks its shard.
+fn key(path: &Path) -> String {
+    path.strip_prefix(root()).unwrap().display().to_string()
+}
+
+fn keys() -> Vec<String> {
+    programs(&root()).iter().map(|p| key(p)).collect()
+}
+
+/// `path: why` for each program of shard `k` whose input stress can't generate.
+fn gaps(root: &Path, k: usize) -> Vec<String> {
     let mut gaps = Vec::new();
-    for file in files {
+    for file in shards::mine(programs(root), |p| key(p), k, SHARDS) {
         let src = std::fs::read_to_string(&file).unwrap();
         let builds = src
             .lines()
@@ -49,16 +72,26 @@ fn gaps(root: &Path) -> Vec<String> {
     gaps
 }
 
-#[test]
-fn every_readable_input_can_be_generated() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let found = gaps(&root);
+fn every_readable_input_can_be_generated(k: usize) {
+    let found = gaps(&root(), k);
     assert!(
         found.is_empty(),
         "stress can't generate these inputs; teach the generator the shape:\n{}",
         found.join("\n")
     );
 }
+
+shards::shard_tests!(
+    every_readable_input_can_be_generated,
+    keys(),
+    the_readable_shards_cover_every_program,
+    [
+        every_readable_input_can_be_generated_0 = 0,
+        every_readable_input_can_be_generated_1 = 1,
+        every_readable_input_can_be_generated_2 = 2,
+        every_readable_input_can_be_generated_3 = 3,
+    ]
+);
 
 /// `name` filled in each way its generics can be: by a domain, `Int`, or a
 /// modulus.
@@ -83,12 +116,16 @@ fn filled(name: &str, arity: usize) -> Vec<String> {
 
 /// A program reading one `ty` from `std.<module>`, when the checker and
 /// the lowering accept that read.
-fn reads(module: &str, name: &str, ty: &str) -> Option<(String, cpl_ir::Program)> {
+fn reads(
+    db: &mut cpl_check::Session,
+    module: &str,
+    name: &str,
+    ty: &str,
+) -> Option<(String, cpl_ir::Program)> {
     let src = format!(
         "use std.{module}.{{{name}}}\nlet (n, m): (1..=8, 1..=8) = read()\n\
          domain V = 1..=n\ndomain E = 0..m\nlet x: {ty} = read()\nprint(n)\n"
     );
-    let mut db = cpl_check::Session::new();
     db.set_file("s.cp", src.as_str());
     let analysis = db.analyze("s.cp")?;
     let error = |d: &cpl_diag::Diagnostic| d.severity == cpl_diag::Severity::Error;
@@ -144,12 +181,14 @@ fn stress_generates_every_std_input_type() {
                     .stack_size(1 << 26)
                     .spawn_scoped(scope, || {
                         let (mut read, mut gaps) = (Vec::new(), Vec::new());
+                        let mut db = cpl_check::Session::new();
                         while let Some(&(module, name, arity)) =
                             names.get(next.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
                         {
-                            let Some((ty, (src, program))) = filled(name, arity)
-                                .into_iter()
-                                .find_map(|ty| Some((ty.clone(), reads(module, name, &ty)?)))
+                            let Some((ty, (src, program))) =
+                                filled(name, arity).into_iter().find_map(|ty| {
+                                    Some((ty.clone(), reads(&mut db, module, name, &ty)?))
+                                })
                             else {
                                 continue;
                             };
