@@ -16,8 +16,7 @@ if not (n <= k <= 2 * n - 1):
 
 print("YES")
 let braid = k - n + 1
-var out: List<1..=300_000> = []
-out.reserve(2 * n)
+var out: List<1..=n> = []
 for v in (braid + 1..=n).rev: out.extend([v, v])
 if braid == 1:
     out.extend([1, 1])

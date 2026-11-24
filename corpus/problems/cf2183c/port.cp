@@ -7,10 +7,11 @@
 //   one side and b <= r on the other takes max(2a + b, a + 2b) - 1 days. With M = m + 1:
 //   all n if l + 2r <= M; else, if 3l <= M, the whole near side and (M - l) / 2 far cells;
 //   else balance the sides for 2M / 3 cells. Plus the home base. O(1).
-// Bounds: n, m_in, k: 1..=10 ** 9
+// Bounds: n: 1..=1e5; m_in: 1..=10 ** 9; k: 1..=n
 
 @!multitest
-let (n, m_in, k): (1..=10 ** 9, 1..=10 ** 9, 1..=10 ** 9) = read()
+let n: 1..=1e5 = read()
+let (m_in, k): (1..=10 ** 9, 1..=n) = read()
 let m = m_in + 1
 let (l, r) = (min(k - 1, n - k), max(k - 1, n - k))
 let ans = if l + 2 * r <= m: l + r + 1

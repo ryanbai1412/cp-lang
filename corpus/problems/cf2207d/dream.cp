@@ -1,20 +1,21 @@
 // Codeforces 2207 D — Tree Leaf-Pair Distance Collapse
 //
-// Root the tree at `v_in`. In bottom-up order `t.at.rev`, compute `dist[u]`:
+// Root the tree at `start`. In bottom-up order `t.at.rev`, compute `dist[u]`:
 // the minimum edge distance from `u` to an escaping leaf in `u`'s subtree
 // (capped at `k + 2`, meaning no leaf within `k + 1` edges).
 //
 // A leaf (`g[u].len == 1`) has `dist[u] = 0`. For an internal node `u`, if any
 // two child subtrees yield leaves at combined distance `d + nd <= k + 1`
 // through `u`, `u` itself becomes safe (`dist[u] = 0`); otherwise `dist[u]`
-// keeps the minimum child distance `nd`. The root is safe iff `dist[V(v_in)] == 0`.
+// keeps the minimum child distance `nd`. The root is safe iff `dist[start] == 0`.
 
 @!multitest
-let (n, k, v_in): (2..=200_000, 1..=200_000, 1..=200_000) = read()
+let n: 3..=500_000 = read()
 domain V = 1..=n
+let (k, start): (1..=n, V) = read()
 let edges: [0..n - 1](u: V, v: V) = read()
 let g = Graph.undirected(edges)
-let t = Rooted(g, root: V(v_in))
+let t = Rooted(g, root: start)
 
 var dist: [V]Int = k + 2
 for u in t.at.rev:
@@ -30,4 +31,4 @@ for u in t.at.rev:
         d min= nd
     dist[u] = d
 
-print(if dist[V(v_in)] == 0: "YES" else: "NO")
+print(yes(dist[start] == 0))

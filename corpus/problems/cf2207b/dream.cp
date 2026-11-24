@@ -17,7 +17,8 @@
 // direct simulation over `vals: List<Int>` runs in O(l * min(m, n)) time.
 
 @!multitest
-let (n, m, l): (1..=2_000, 1..=2_000, 1..=2_000) = read()
+let (n, m): (1..=2e5, 1..=2e5) = read()
+let l: n..=2e5 / m = read()
 let a: [0..n]1..=l = read()
 
 var vals = [0 for _ in 0..min(m, n + 1)]

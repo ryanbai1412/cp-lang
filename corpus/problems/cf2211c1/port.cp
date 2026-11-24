@@ -12,7 +12,7 @@
 @!multitest
 let (n, k): (1..=200_000, 1..=200_000) = read()
 let a: [0..n]1..=n = read()
-let b: [0..n]?Int = read(none: -1)
+let b: [0..n]?(1..=n) = read(none: -1)
 
 fn ok() -> Bool:
     for i in 0..n if i < n - k or i >= k:
