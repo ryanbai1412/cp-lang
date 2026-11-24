@@ -74,7 +74,17 @@ impl Checker<'_> {
                 ty: Ty::Domain(domain),
                 ..
             } => Ty::Pos(domain.clone()),
-            Def::Alias { ty, generics } => ty.subst(&generics.iter().cloned().zip(args).collect()),
+            Def::Alias { ty, generics } => {
+                match ty.subst(&generics.iter().cloned().zip(args).collect()) {
+                    // A range keeps how it is written, which here is the alias.
+                    Ty::Range { lo, hi, .. } => Ty::Range {
+                        lo,
+                        hi,
+                        text: name.to_string(),
+                    },
+                    ty => ty,
+                }
+            }
             Def::Struct {
                 generics,
                 defaults,

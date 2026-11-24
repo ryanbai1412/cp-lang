@@ -142,7 +142,9 @@ fn completion_and_hover_see_names_from_a_declaration_that_did_not_parse() {
 
 #[test]
 fn completion_offers_locals_declarations_and_the_prelude_with_signatures() {
-    let src = format!("{ROAD}/// Adds one.\nfn inc(x: Int) -> Int = x + 1\nfn main(n: Int):\n    let total = n * 2\n    pr|\n");
+    let src = format!(
+        "{ROAD}/// Adds one.\nfn inc(x: Int) -> Int = x + 1\nfn main(n: Int):\n    let total = n * 2\n    pr|\n"
+    );
     let items = completions(&src);
     let names = labels(&items);
     // Locals first, then this file, then the prelude, then keywords.
@@ -508,7 +510,28 @@ fn signature_help_shows_defaults_and_named_only_parameters() {
     assert!(active > 2, "{active}");
     // A stdlib method's default, as its declaration writes it.
     let (label, ..) = signature("use std.mod.{Comb}\nlet c = Comb<7>.new(|)\n");
-    assert!(label.starts_with("new(limit: 0.. = 0) -> Comb<"), "{label}");
+    assert!(label.starts_with("new(limit: Len = 0) -> Comb<"), "{label}");
+}
+
+#[test]
+fn a_parameter_typed_by_an_alias_shows_the_alias_on_every_surface() {
+    let decl =
+        "type Small = 0..100\nfn walk(n: Small, g: List<Small>; back: Small = 0) -> Small = n\n";
+    let want = "walk(n: Small, g: List<Small>; back: Small = 0) -> Small";
+    let (label, ..) = signature(&format!("{decl}print(walk(1, |))\n"));
+    assert_eq!(label, want);
+    let hover = ask_at(
+        "textDocument/hover",
+        &format!("{decl}print(wa|lk(1, [2]))\n"),
+    );
+    let hover = hover.at(&["contents", "value"]).as_str().unwrap_or("");
+    assert!(
+        hover.contains("walk(n: Small, g: List<Small>, back: Small) -> Small"),
+        "{hover}"
+    );
+    let items = completions(&format!("{decl}print(wa|\n"));
+    let detail = detail_of(&items, "walk");
+    assert!(detail.contains(&want["walk".len()..]), "{detail}");
 }
 
 #[test]
@@ -718,9 +741,11 @@ fn a_typed_paren_comma_or_brace_completes_only_what_belongs_there() {
         [" scale: "],
         "after `,` the name comes with its space"
     );
-    assert!(triggered("print(|)\n", "(")
-        .iter()
-        .all(|n| n.ends_with(": ")));
+    assert!(
+        triggered("print(|)\n", "(")
+            .iter()
+            .all(|n| n.ends_with(": "))
+    );
     let items = triggered("use std.graph.{|\n", "{");
     assert!(items.iter().any(|i| i == "Graph"), "{items:?}");
     assert!(triggered("let s = \"{|\"\n", "{").is_empty());
