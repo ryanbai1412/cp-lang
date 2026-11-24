@@ -71,7 +71,7 @@ fn a_program_checks_and_runs_once_the_host_gives_the_std_it_needs() {
         has(&before, "std module `std.math` is not loaded yet"),
         "{before}"
     );
-    assert_eq!(before.at(&["needs"]).to_string(), r#"["math"]"#);
+    assert_eq!(before.at(&["needs"]).to_string(), r#"["math","range"]"#);
 
     let hover = playground.lsp(r#"{"jsonrpc":"2.0","id":2,"method":"textDocument/hover","params":{"textDocument":{"uri":"file:///main.cp"},"position":{"line":5,"character":10}}}"#);
     assert!(has(&hover, "fn splitmix64(x: U64) -> U64"), "{hover}");
