@@ -6,7 +6,7 @@
 //   i) minus the sum of clean[j] * paths(j, i) over earlier walls j, each a binomial
 //   C(dr + dc, dr) from `Comb`. The answer is paths(start, goal) minus the sum of
 //   clean[i] * paths(i, goal): O(N^2).
-// Bounds: h, w: 2..=1e5; n: 1..=3000
+// Bounds: h, w: 2..=1e5; n: 1..=3000; walls.r: 1..=h; walls.c: 1..=w
 type Z = Mod<1_000_000_007>
 let (h, w, n): (2..=1e5, 2..=1e5, 1..=3000) = read()
 type Cell = (r: 1..=h, c: 1..=w)

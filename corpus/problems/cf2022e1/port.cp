@@ -6,7 +6,7 @@
 //   row[r] xor col[c] = v between n + m lines. A union-find (by size) keeps each line's xor to its
 //   root; a contradictory cycle gives 0. Otherwise each component has a free 30-bit label, less
 //   one for the global xor shift: 2^(30 (components - 1)). O((n + m + k) log).
-// Bounds: n, m: 2..=1e5; k: 0..=1e5; _: 0..=0; cells.r: 1..=n; cells.c: 1..=m
+// Bounds: n, m: 2..=1e5; k: 0..=1e5; _: 0..=0; cells.r: 1..=n; cells.c: 1..=m; cells.v: 0..(1 << 30)
 @!multitest
 use std.dsu.{PotentialDsu}
 type Z = Mod<1e9 + 7>

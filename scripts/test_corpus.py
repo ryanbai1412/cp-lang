@@ -278,6 +278,12 @@ class CheckTestsTest(Corpus):
         self.assertEqual(found, ["cpl-test-no-cases p -"])
 
 
+    def test_a_reference_crash_on_a_made_case_is_a_finding(self):
+        d = self.package("p", port_cp="print(1)\n", tests_toml="")
+        with mock.patch.object(corpus.Package, "reference", lambda self: "orig.cpp"), \
+                mock.patch.object(corpus, "make_cases", mock.Mock(side_effect=corpus.ReferenceFails("03", -11))):
+            self.assertEqual(corpus.check_tests(corpus.Package.at(d), mock.Mock(cpl="cpl")), ["reference-fails p 03"])
+
 class CommittedInputsTest(Corpus):
     def test_an_interactive_package_seeds_from_its_cases_not_its_reply_transcripts(self):
         d = self.package("p", port_cp="", interactor_py="")
@@ -323,6 +329,17 @@ class BoundsTest(unittest.TestCase):
         self.assertEqual(corpus.bounds_findings("p", "// Bounds: k: 0..=1\nlet k: 0..=1 = read()\nif k:\n    let m: 1..=5 = read()\n"),
                          ["bounds-undeclared p m"])
         self.assertEqual(corpus.bounds_findings("p", "let v: List<Int> = read<List<Int>>()\n"), [])
+
+    def test_a_read_through_a_type_alias_is_checked(self):
+        port = ("// Bounds: weak: 1..=2e9; toys.weight, toys.size: 1..=2e9\ntype Limit = 1..=2e9\n"
+                "let weak: [3]Limit = read()\nlet toys: [3](weight: Limit, size: Limit) = read()\n")
+        self.assertEqual(corpus.bounds_findings("p", port), [])
+        self.assertEqual(corpus.bounds_findings("p", port.replace("type Limit = 1..=2e9", "type Limit = 1..=1e9")),
+                         ["bounds-narrow p weak: reads 1..=1e9, statement 1..=2e9",
+                          "bounds-narrow p toys.weight: reads 1..=1e9, statement 1..=2e9",
+                          "bounds-narrow p toys.size: reads 1..=1e9, statement 1..=2e9"])
+        self.assertEqual(corpus.bounds_findings("p", "// Bounds: qs.t: 0..=1e9; a: 0..=2^30\nstruct Query(t: 0..=1e9, i: Pos)\n"
+                                                     "type Coord = 0..=2^30\nlet qs: [Q]Query = read()\nlet a: [n]Coord = read()\n"), [])
 
     def test_a_second_bounds_line_is_a_finding(self):
         self.assertEqual(corpus.bounds_findings("p", "// Bounds: n: 1..=9\n// Bounds: n: 1..=9\nlet n: 1..=9 = read()\n"),

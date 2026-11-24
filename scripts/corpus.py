@@ -409,7 +409,8 @@ def header_fields(text):
 
 
 READ_LINE = re.compile(r"^\s*(?:let|var) (?:(.+?): (.+) = read\(\)|([^:=]+?) = read<(.+)>\(\))\s*$")
-DOMAIN_LINE = re.compile(r"^domain (\w+) = (.+?)\s*$")
+DOMAIN_LINE = re.compile(r"^(?:domain|type) (\w+) = (.+?)\s*$")
+STRUCT_LINE = re.compile(r"^struct (\w+)(\(.*\))\s*$")
 READ_RANGE = re.compile(r"^(-?[\w.]+(?:\s*[-+*/^]\s*[\w.]+)*)\s*\.\.(=?)\s*(.+)$")
 def split_top(s):
     out, depth, cur = [], 0, ""
@@ -429,6 +430,7 @@ def strip_index(t):
 def read_ranges(names, t, domains):
     """name -> (lo, hi) text for every ranged leaf of read type t."""
     t = strip_index(t.strip())
+    t = domains.get(t, t)
     if t.startswith("(") and t.endswith(")"):
         parts = split_top(t[1:-1]); out = {}
         if len(names) == len(parts):
@@ -448,7 +450,7 @@ def port_ranges(text):
     domains, out = {}, {}
     for line in text.split("\n"):
         line = line.split("//")[0].rstrip()
-        m = DOMAIN_LINE.match(line.strip())
+        m = DOMAIN_LINE.match(line.strip()) or STRUCT_LINE.match(line.strip())
         if m: domains[m.group(1)] = m.group(2)
         m = READ_LINE.match(line)
         if m:
@@ -643,6 +645,8 @@ def check_tests(pkg, ctx):
         return [f"no-reference {pkg.id} -"]
     try:
         make_cases(pkg)
+    except ReferenceFails as e:
+        return [f"reference-fails {pkg.id} {e.case}"]
     except (RuntimeError, subprocess.SubprocessError) as e:
         raise InfraError(f"{pkg.id}: {e}") from e
     cases = cpl_cases(ctx.cpl, pkg.port, "--tests", os.path.join(OUT, pkg.id), *judge_args(pkg), *package_limits(pkg))
@@ -1029,6 +1033,13 @@ def stamp(pkg, ref):
     return h.hexdigest()
 
 
+class ReferenceFails(RuntimeError):
+    """The accepted C++ crashes on a case tests.toml makes: the case or the reference is wrong."""
+    def __init__(self, case, code):
+        super().__init__(f"accepted C++ exits {code} on case {case}")
+        self.case = case
+
+
 def make_cases(pkg, out=OUT):
     """Write <out>/<id>/NN.in from tests.toml and NN.ans from the accepted C++
     (an interactive package's NN.in is the interactor's hidden data, with no answer)."""
@@ -1048,7 +1059,7 @@ def make_cases(pkg, out=OUT):
         if exe:
             r = subprocess.run([exe], input=text, capture_output=True, text=True, timeout=TIMEOUT, preexec_fn=judge_stack)
             if r.returncode:
-                raise RuntimeError(f"accepted C++ exits {r.returncode} on case {i}")
+                raise ReferenceFails(f"{i:02}", r.returncode)
             Path(tests, f"{i:02}.ans").write_text(r.stdout)
     Path(key).write_text(stamp(pkg, ref))
 

@@ -7,7 +7,7 @@
 //   rate, so every machine an order may use is already in the pool. 0/1 knapsack on spare
 //   cores (best[c], up to 50 n): a machine adds cores for its price, an order spends cores
 //   for its payment; print the best entry. O((n + m) * 50 n).
-// Bounds: n, m: 1..=2000
+// Bounds: n, m: 1..=2000; machines.cores, orders.cores: 1..=50; machines.rate, machines.price, orders.rate, orders.price: 1..=1e9
 type Offer = (cores: 1..=50, rate: 1..=1e9, price: 1..=1e9)
 let n: 1..=2000 = read()
 let machines: [0..n]Offer = read()

@@ -10,7 +10,7 @@
 //   spent, so the polygon cannot touch itself. The first side lies on line 0 and runs forwards,
 //   counting each polygon once. Exponential in n, fine for n <= 12.
 // original: corpus/submissions/4225209.cpp
-// Bounds: n: 3..=12
+// Bounds: n: 3..=12; ends.x1, ends.y1, ends.x2, ends.y2: -2000..=2000
 
 struct Line(a: Int, b: Int, c: Int)  // a x + b y + c = 0
 struct Hom(x: Int, y: Int, w: Int)   // the point (x / w, y / w), w > 0, reduced

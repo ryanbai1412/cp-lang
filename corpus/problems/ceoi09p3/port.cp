@@ -7,7 +7,7 @@
 //   k-th compressed height. An end point at or below it is dropped; otherwise the leftmost
 //   point's rectangle spans it to some point i at the tallest height area / width allows:
 //   1 + dp[l..=i, that height] + dp[i+1..=r, k]. O(n^4): n^2 ranges, n heights, n splits.
-// Bounds: n: 1..=100; area: 1..=2e6
+// Bounds: n: 1..=100; area: 1..=2e6; raw.x, raw.y: 0..=1e5
 let n: 1..=100 = read()
 let area: 1..=2e6 = read()
 domain P = 0..n

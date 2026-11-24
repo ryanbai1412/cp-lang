@@ -7,7 +7,7 @@
 //   highest down; before each, add every cord at least that tall to a Fenwick tree over the
 //   compressed cord x, then count the added cords at or left of X_i. O((n + m) log m).
 // original: corpus/submissions/3484973.cpp
-// Bounds: n, m: 1..=2e5
+// Bounds: n, m: 1..=2e5; roombas.x, roombas.y, cords.x, cords.y: 1..=1e9
 type Pt = (x: 1..=1e9, y: 1..=1e9)
 let n: 1..=2e5 = read()
 let m: 1..=2e5 = read()

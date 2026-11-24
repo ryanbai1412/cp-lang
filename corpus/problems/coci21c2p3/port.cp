@@ -8,7 +8,7 @@
 //   copies sharing an edge would differ by one bit, which is odd, so the 2^(n-1) copies are
 //   edge-disjoint. O(2^n n).
 // original: corpus/submissions/4226187.cpp
-// Bounds: n: 1..=16
+// Bounds: n: 1..=16; edges.u, edges.v: 0..=n
 let n: 1..=16 = read()
 domain V = 0..=n
 domain E = 0..n
