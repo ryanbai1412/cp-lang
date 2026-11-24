@@ -120,12 +120,30 @@ impl<'p> Emitter<'p> {
         self.ty(ty)
     }
 
+    /// The signature of the `cpl::FnRef` that holds `slot` of fn `id`
+    /// ([`crate::uses::fn_refs`]), when it is one.
+    pub fn fn_view(&self, id: cpl_ir::FnId, slot: usize) -> Option<String> {
+        if !self.fn_refs[id].contains(&slot) {
+            return None;
+        }
+        let fun = match &self.program.fns[id].locals[slot].ty {
+            Ty::Opt(inner) => &**inner,
+            ty => ty,
+        };
+        let cpp = self.ty(fun);
+        let sig = cpp.strip_prefix("std::function<")?.strip_suffix('>')?;
+        Some(sig.to_string())
+    }
+
     pub fn ty_for_loc(&self, ty: &Ty, loc: cpl_ir::ElemLoc) -> String {
         if let Some(k) = self.fixed_array_len(loc) {
             return self.fixed_array_cpp(ty, k);
         }
         let cpp = self.ty_with_elem_layout(ty, self.elem_layout(loc));
         if let cpl_ir::ElemLoc::Local(cpl_ir::ScopeId::Fn(id), slot) = loc {
+            if let Some(sig) = self.fn_view(id, slot) {
+                return format!("cpl::FnRef<{sig}>");
+            }
             if self.lent_opts[id].contains(&slot) {
                 if let Some(held) = cpp
                     .strip_prefix("std::optional<")

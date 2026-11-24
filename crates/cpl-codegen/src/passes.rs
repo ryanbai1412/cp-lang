@@ -203,6 +203,16 @@ pub(crate) const PASSES: &[Pass] = &[
         "a_struct_built_from_a_lent_param_points_to_it_unless_it_may_outlive_it",
     ),
     pass(
+        "fn-refs",
+        "uses/fn_refs.rs",
+        Uses(&[
+            "of_binding",
+            "fn_param_only_called",
+            "opt_fn_param_only_called",
+        ]),
+        "a_fn_param_its_fn_only_tests_and_calls_is_a_fn_ref_not_a_std_function",
+    ),
+    pass(
         "lent-optional-params",
         "lentopt.rs",
         Uses(&[

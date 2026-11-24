@@ -143,6 +143,10 @@ pub(crate) fn explain_file(
                     "bound",
                     "every closure it can hold copies captures of the same types".to_string(),
                 ),
+                cpl_codegen::ClosureMode::FnRef => (
+                    "fn_ref",
+                    "a view of the caller's callable, a pointer and a trampoline".to_string(),
+                ),
                 cpl_codegen::ClosureMode::DynamicStdFunction { reason } => {
                     ("dynamic_std_function", reason.clone())
                 }

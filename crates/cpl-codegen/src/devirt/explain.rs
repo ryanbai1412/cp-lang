@@ -42,6 +42,8 @@ pub fn explain_closures(
     let mut devirt = Devirt::collect(program);
     devirt.built_only_in(&written.fns, &written.closures);
     devirt.bound = written.bound.clone();
+    let uses = crate::uses::Uses::of(program, &devirt, true);
+    let views = crate::uses::fn_refs::fn_refs(program, &devirt, &uses);
     let mut out = Vec::new();
 
     for (sid, s) in program.structs.iter().enumerate() {
@@ -101,6 +103,8 @@ pub fn explain_closures(
                 ClosureMode::StaticDirect { closure: cid }
             } else if devirt.template_param_index(fid, slot).is_some() {
                 ClosureMode::StaticTemplate
+            } else if views[fid].contains(&slot) {
+                ClosureMode::FnRef
             } else {
                 let reason = if program.entry_fns.contains(&fid) || program.judge_fns.contains(&fid)
                 {
@@ -136,6 +140,7 @@ pub fn explain_closures(
             &format!("fn {}", f.name),
             &f.locals,
             &f.body,
+            &views[fid],
             &mut out,
         );
     }
@@ -146,6 +151,7 @@ pub fn explain_closures(
         "main",
         &program.main_locals,
         &program.main,
+        &BTreeSet::new(),
         &mut out,
     );
 
@@ -299,6 +305,7 @@ pub(super) fn explain_locals_in_block(
     owner: &str,
     locals: &[cpl_ir::Local],
     block: &Block,
+    views: &BTreeSet<usize>,
     out: &mut Vec<ClosureLowering>,
 ) {
     let mut stores: BTreeMap<usize, usize> = BTreeMap::new();
@@ -323,6 +330,13 @@ pub(super) fn explain_locals_in_block(
             return;
         }
         let site = format!("{owner} local {}", locals[*slot].name);
+        if views.contains(slot) {
+            out.push(ClosureLowering {
+                site,
+                mode: ClosureMode::FnRef,
+            });
+            return;
+        }
         let Some(init) = init else {
             if memo_pairs.contains_key(slot) {
                 out.push(ClosureLowering {

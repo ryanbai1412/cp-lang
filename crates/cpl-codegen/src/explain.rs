@@ -156,6 +156,14 @@ pub fn report_with(
                         entry.site
                     );
                 }
+                ClosureMode::FnRef => {
+                    static_count += 1;
+                    let _ = writeln!(
+                        stdout,
+                        "  [static: fn ref]   {} -> a view of the caller's callable, a pointer and a trampoline (no std::function)",
+                        entry.site
+                    );
+                }
                 ClosureMode::DynamicStdFunction { reason } => {
                     dynamic_count += 1;
                     let _ = writeln!(

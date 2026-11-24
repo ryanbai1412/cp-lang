@@ -26,6 +26,28 @@ impl<'p> Emitter<'p> {
             .collect()
     }
 
+    /// The view signature of a `?fn` parameter held as a `cpl::FnRef`.
+    fn opt_view(&self, id: usize, slot: usize) -> Option<String> {
+        let optional =
+            matches!(self.program.fns[id].locals.get(slot), Some(l) if matches!(l.ty, Ty::Opt(_)));
+        self.fn_view(id, slot).filter(|_| optional)
+    }
+
+    /// The `cpl::FnRef` a `?fn` argument of [`view_shape`] is: null for
+    /// `None`, a pointer to what `Some` holds, through either arm of an `if`.
+    fn view_arg(&mut self, sig: &str, value: &Expr) -> String {
+        match &value.kind {
+            ExprKind::None => format!("cpl::FnRef<{sig}>()"),
+            ExprKind::Some(inner) => format!("cpl::FnRef<{sig}>({})", self.expr(inner).text),
+            ExprKind::If(cond, then, otherwise) => {
+                let cond = self.expr(cond).at(COND);
+                let (a, b) = (self.view_arg(sig, then), self.view_arg(sig, otherwise));
+                format!("({cond} ? {a} : {b})")
+            }
+            _ => format!("cpl::FnRef<{sig}>({})", self.expr(value).text),
+        }
+    }
+
     /// The argument for a parameter held as a `cpl::Lent` (see
     /// [`crate::lentopt`]): a pointer to the value, or to a copy when the
     /// call also changes it through a `mut` argument.
@@ -74,6 +96,7 @@ impl<'p> Emitter<'p> {
                         None
                     } else {
                         match &value.kind {
+                            _ if self.opt_view(id, slot).is_some() && view_shape(value) => None,
                             ExprKind::Some(inner) if self.lent_opts[id].contains(&slot) => {
                                 Some(&**inner)
                             }
@@ -136,10 +159,24 @@ impl<'p> Emitter<'p> {
                             texts.push("false".to_string());
                             continue;
                         }
+                        if let Some(sig) = this.opt_view(id, slot) {
+                            if view_shape(value) {
+                                let text = this.view_arg(&sig, value);
+                                texts.push(text);
+                                continue;
+                            }
+                        }
                         let code = match codes.next() {
                             Some(code) => code,
                             None => this.expr(value),
                         };
+                        if let Some(sig) = this.fn_view(id, slot) {
+                            texts.push(match this.opt_view(id, slot) {
+                                Some(_) => format!("cpl::FnRef<{sig}>({})", code.text),
+                                None => code.text,
+                            });
+                            continue;
+                        }
                         if slot < f.params.len() && f.locals[slot].ty == Ty::Unit {
                             if code.text != "(void)0" {
                                 ran.push(code.text);
@@ -258,5 +295,20 @@ impl<'p> Emitter<'p> {
                     }
                 }
         })
+    }
+}
+
+/// A `?fn` argument built in place as a `cpl::FnRef`: `None`, `Some` of a
+/// closure or name, or an `if` on a name between two of them.
+fn view_shape(value: &Expr) -> bool {
+    match &value.kind {
+        ExprKind::None => true,
+        ExprKind::Some(inner) => matches!(inner.kind, ExprKind::Closure(_) | ExprKind::Local(_)),
+        ExprKind::If(cond, then, otherwise) => {
+            matches!(cond.kind, ExprKind::Local(_) | ExprKind::Bool(_))
+                && view_shape(then)
+                && view_shape(otherwise)
+        }
+        _ => false,
     }
 }

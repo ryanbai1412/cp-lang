@@ -59,12 +59,31 @@ template <class... F> Pick<F...> pick(int i, F... f) { return {i, {std::move(f).
         name: "fn_ref",
         needs: &[],
         code: "\
-// A recursive generator's callback, by reference and of one type, so its
-// `cpl_each_` form is written once however deep the recursion goes.
+// A callable by reference: a pointer to it and a trampoline, so a fn that
+// only calls its `fn` or `?fn` parameter copies nothing. A recursive
+// generator's callback is one too, so its `cpl_each_` form is written once
+// however deep the recursion goes. Null is `None`; a callable that captures
+// nothing is held as its fn pointer, so a temporary one may outlive its call.
 template <class S> struct FnRef;
+template <class D, class = void> struct FnPtrOf { static constexpr bool ok = false; };
+template <class D> struct FnPtrOf<D, std::void_t<decltype(+std::declval<D&>())>> { static constexpr bool ok = std::is_pointer_v<decltype(+std::declval<D&>())>; };
+template <class T> struct IsOpt : std::false_type {};
+template <class T> struct IsOpt<std::optional<T>> : std::true_type {};
 template <class R, class... A> struct FnRef<R(A...)> {
-  void* o; R (*f)(void*, A...);
-  template <class L, class = std::enable_if_t<!std::is_same_v<std::decay_t<L>, FnRef>>> FnRef(L& l) : o((void*)&l), f([](void* o, A... a) -> R { return (*(L*)o)((A)a...); }) {}
+  void* o = nullptr; R (*f)(void*, A...) = nullptr;
+  FnRef() = default;
+  FnRef(std::nullopt_t) {}
+  template <class L, class D = std::remove_reference_t<L>, class = std::enable_if_t<!std::is_same_v<std::decay_t<L>, FnRef> && !std::is_same_v<std::decay_t<L>, std::nullopt_t> && !IsOpt<std::decay_t<L>>::value>> FnRef(L&& l) {
+    if constexpr (FnPtrOf<D>::ok) {
+      o = (void*)+l; f = [](void* o, A... a) -> R { return ((decltype(+std::declval<D&>()))o)((A)a...); };
+    } else {
+      o = (void*)&l; f = [](void* o, A... a) -> R { return (*(D*)o)((A)a...); };
+    }
+  }
+  template <class F> FnRef(const std::optional<F>& l) { if (l) *this = FnRef(*l); }
+  bool has_value() const { return f != nullptr; }
+  explicit operator bool() const { return f != nullptr; }
+  const FnRef& operator*() const { return *this; }
   R operator()(A... a) const { return f(o, (A)a...); }
 };
 template <class T> struct FnSig;

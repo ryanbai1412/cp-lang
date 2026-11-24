@@ -166,6 +166,9 @@ pub(crate) struct Emitter<'p> {
     pub sunk: Vec<BTreeSet<usize>>,
     /// Per fn, the `?T` slots held as a `cpl::Lent`: see [`crate::lentopt::lent_opts`].
     pub lent_opts: Vec<BTreeSet<usize>>,
+    /// Per fn, the `fn` and `?fn` slots held as a `cpl::FnRef`: see
+    /// [`crate::uses::fn_refs`].
+    pub fn_refs: Vec<BTreeSet<usize>>,
     /// Struct fields that point to a lent value: see [`crate::lent_fields`].
     pub lent_fields: crate::lent_fields::LentFields,
     /// Set while the call a `return` makes is written: its local arguments
@@ -366,6 +369,7 @@ impl<'p> Emitter<'p> {
             rows,
             sunk,
             lent_opts: crate::lentopt::lent_opts(program),
+            fn_refs: Vec::new(),
             lent_fields,
             last_use_call: false,
             give_ref: false,
@@ -418,6 +422,7 @@ impl<'p> Emitter<'p> {
             &emitter.devirt,
             emitter.target.checks != crate::Checks::None,
         );
+        emitter.fn_refs = crate::uses::fn_refs::fn_refs(program, &emitter.devirt, &emitter.uses);
         emitter.pushers = feeds.pushers;
         emitter.eager = feeds.eager;
         emitter.feed_scope = feeds.scope;
@@ -751,7 +756,7 @@ impl<'p> Emitter<'p> {
                 }
                 let cpp =
                     self.ty_for_loc(ty, cpl_ir::ElemLoc::Local(cpl_ir::ScopeId::Fn(id), slot));
-                if self.lent_opts[id].contains(&slot) {
+                if self.lent_opts[id].contains(&slot) || self.fn_view(id, slot).is_some() {
                     return format!("{cpp} {name}");
                 }
                 if self.devirt.param_known(id, slot) {
@@ -1162,6 +1167,9 @@ impl<'p> Emitter<'p> {
             };
             self.enter(Some(id), &f.body, f.params.len());
             let (signature, root, held) = self.signature(id, f);
+            if signature.contains("cpl::FnRef<") {
+                self.need("fn_ref");
+            }
             self.lends_result = root.is_some();
             if let Some(slot) = root {
                 self.lent_roots.insert(id, slot);

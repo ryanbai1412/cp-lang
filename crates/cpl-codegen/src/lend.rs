@@ -985,6 +985,12 @@ fn opt_only_called(program: &cpl_ir::Program, body: &Block, slot: usize, depth: 
                 ok += 1;
                 escapes |= !only_called(program, body, *s, depth);
             }
+            ExprKind::Binary(cpl_ir::BinOp::Coalesce, opt, default)
+                if is_slot(opt) && plain_closure(program, default) =>
+            {
+                ok += 1;
+                escapes |= !only_called(program, body, *s, depth);
+            }
             _ => {}
         },
         _ => {}
@@ -1001,6 +1007,11 @@ fn opt_only_called(program: &cpl_ir::Program, body: &Block, slot: usize, depth: 
         _ => {}
     });
     !escapes && uses == ok
+}
+
+/// Whether `e` is a closure that captures nothing: a plain fn.
+pub(crate) fn plain_closure(program: &cpl_ir::Program, e: &cpl_ir::Expr) -> bool {
+    matches!(e.kind, ExprKind::Closure(cid) if program.closures[cid].captures.is_empty())
 }
 
 /// The closures an optional argument holds: `Some(closure)`, through the
@@ -1062,7 +1073,9 @@ fn only_called_in(
                 let Arg::Value(value) = arg else { continue };
                 let onward = || depth > 0 && fn_param_only_called_at(program, *f, j, depth - 1);
                 match value.kind {
-                    ExprKind::Closure(cid) if onward() => _ = passed_on.insert(cid),
+                    ExprKind::Closure(cid) if this == Some((*f, j)) || onward() => {
+                        _ = passed_on.insert(cid)
+                    }
                     ExprKind::Local(s) if s == slot && (this == Some((*f, j)) || onward()) => {
                         calls += 1
                     }

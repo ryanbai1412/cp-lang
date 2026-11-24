@@ -135,8 +135,8 @@ fn recursive_fn_threads_its_closure_param_as_a_template() {
         "{out}"
     );
     assert!(
-        out.contains("ll wrap(ll n, const std::function<ll(ll)>& f)"),
-        "{out}"
+        out.contains("ll wrap(ll n, cpl::FnRef<ll(ll)> f)"),
+        "each call of `wrap` passes a new closure, so no template fits, but `wrap` only calls `f`: a view of it\n{out}"
     );
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", src);
@@ -146,9 +146,11 @@ fn recursive_fn_threads_its_closure_param_as_a_template() {
         .iter()
         .filter(|e| matches!(e.mode, crate::ClosureMode::DynamicStdFunction { .. }))
         .collect();
-    assert_eq!(dynamic.len(), 1, "{explained:?}");
+    assert!(dynamic.is_empty(), "{explained:?}");
     assert!(
-        matches!(&dynamic[0].mode, crate::ClosureMode::DynamicStdFunction { reason } if reason.contains("different closure")),
+        explained
+            .iter()
+            .any(|e| e.site == "fn wrap param f" && e.mode == crate::ClosureMode::FnRef),
         "{explained:?}"
     );
 }
@@ -940,5 +942,67 @@ fn a_yielded_tuple_keeps_its_closures_own_type() {
             .iter()
             .any(|e| matches!(e.mode, crate::ClosureMode::DynamicStdFunction { .. })),
         "{explained:?}"
+    );
+}
+
+#[test]
+fn a_fn_param_its_fn_only_tests_and_calls_is_a_fn_ref_not_a_std_function() {
+    let source = concat!(
+        "fn total(n: Int, weight: ?(Int -> Int) = None) -> Int:\n",
+        "    var t = 0\n",
+        "    for i in 0..n:\n",
+        "        if let w = weight: t += w(i)\n",
+        "        else: t += 1\n",
+        "    t\n",
+        "fn scaled(n: Int, weight: ?(Int -> Int) = None) -> Int:\n",
+        "    let w = weight ?? ((i: Int) => 1)\n",
+        "    w(n) * 2\n",
+        "fn go(k: Int) -> Int:\n",
+        "    let xs = [k, 2, 3]\n",
+        "    var s = 0\n",
+        "    for weighted in [false, true]:\n",
+        "        s += total(3, weight: if weighted: Some((i: Int) => xs[i]) else: None)\n",
+        "        s += scaled(1, weight: if weighted: Some((i: Int) => xs[i]) else: None)\n",
+        "    s\n",
+        "print(go(read<Int>()))\n",
+    );
+    let out = cpp(source);
+    assert!(
+        !out.contains("std::function"),
+        "a `?fn` its fn only tests and calls is a view of the caller's closure:\n{out}"
+    );
+    assert!(
+        out.contains("ll total(ll n, cpl::FnRef<ll(ll)> weight)"),
+        "{out}"
+    );
+    assert!(out.contains("cpl::FnRef<ll(ll)> w = "), "{out}");
+    assert!(
+        out.contains(": cpl::FnRef<ll(ll)>()"),
+        "None is a null view:\n{out}"
+    );
+}
+
+#[test]
+fn a_fn_param_its_recursion_passes_a_new_closure_is_a_fn_ref_not_a_std_function() {
+    let source = concat!(
+        "fn apply(n: Int, f: Int -> Int) -> Int:\n",
+        "    if n == 0: f(0)\n",
+        "    else: apply(n - 1, (x: Int) => f(x) + 1)\n",
+        "fn go(xs: List<Int>) -> Int:\n",
+        "    apply(3, (i: Int) => xs[i] + 10)\n",
+        "print(go([read<Int>(), 2, 3]))\n",
+    );
+    let out = cpp(source);
+    assert!(
+        !out.contains("std::function"),
+        "no template fits `f`, but `apply` only calls it, so it is a view:\n{out}"
+    );
+    assert!(
+        out.contains("ll apply(ll n, cpl::FnRef<ll(ll)> f)"),
+        "{out}"
+    );
+    assert!(
+        out.contains("[&f_2 = f]") && out.contains("[&xs_2 = xs]"),
+        "{out}"
     );
 }

@@ -60,6 +60,10 @@ pub enum ClosureMode {
     /// Every capturing closure that can reach it copies captures of the
     /// same types: a function beside those captures (`cpl::Bound`).
     Bound,
+    /// A fn parameter its fn only tests and calls, or a name bound from
+    /// one: a view of the caller's callable (`cpl::FnRef`), a pointer to it
+    /// and a trampoline, no `std::function`.
+    FnRef,
     /// Genuinely dynamic fn value: falls back to `std::function`.
     DynamicStdFunction { reason: String },
 }

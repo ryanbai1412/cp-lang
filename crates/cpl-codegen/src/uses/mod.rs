@@ -8,6 +8,7 @@
 //! block's value) keeps it live to the end of the block.
 
 pub(crate) mod effects;
+pub(crate) mod fn_refs;
 pub(crate) mod loops;
 pub(crate) mod places;
 pub(crate) mod split;
