@@ -39,6 +39,8 @@ pub struct Fenwick<D, T: Add + Sub>:
     /// cost: \(O(\log \lvert D \rvert)\)
     /// traps: when `i` is outside `D`
     /// example: `var f = Fenwick([1, 2, 3]); f.add(0, 5); f.fold(0..2) == 8`
+    @lint(hand_rolled_range_tree, from: "while i <= n:\n    t[i] += x\n    i += i & -i", to: "t.add(i, x)", holes: "n, t")
+    @lint(hand_rolled_range_tree, from: "while i < n:\n    t[i] += x\n    i = i | (i + 1)", to: "t.add(i, x)", holes: "n, t")
     pub fn add(mut self, i: D, x: T):
         var p = i.ord + 1
         while p < t.len:

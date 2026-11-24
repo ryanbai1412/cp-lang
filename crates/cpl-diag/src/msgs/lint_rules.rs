@@ -28,10 +28,6 @@ super::msgs! {
     HAND_ROLLED_GCD = "L0546", "`{}` is Euclid's algorithm, written by hand";
     HAND_ROLLED_POW = "L0545", "`{}` is fast exponentiation by squaring, written by hand";
     HAND_ROLLED_PREFIX_SUM = "L0521", "`{}` is a running total built by hand: use `Prefix(...)`";
-    HAND_ROLLED_RANGE_TREE = "L0514", "hand-rolled Fenwick loop";
-    HAND_ROLLED_RANGE_TREE_2 = "L0514", "hand-rolled segment tree loop";
-    HAND_ROLLED_RANGE_TREE_3 = "L0514", "hand-rolled segment tree pull loop";
-    HAND_ROLLED_RANGE_TREE_4 = "L0514", "hand-rolled recursive segment tree";
     HAND_ROLLED_SIEVE = "L0518", "hand-rolled prime/SPF sieve loop";
     INT_DIV_POSSIBLE_ZERO = "L0599", "`{}` can be 0 here (its bounds give `{}..={}`), and `{}` by 0 traps";
     INT_OVERFLOW_AT_BOUNDS = "L0306", "`{}` can leave `Int` (64 bits) at the declared bounds: with `{}` it does, and that traps";

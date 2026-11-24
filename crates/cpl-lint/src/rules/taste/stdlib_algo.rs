@@ -468,69 +468,6 @@ pub(super) fn is_binary_lifting_loop(level_var: &str, body: &Block) -> bool {
     c.found
 }
 
-/// Bottom-up segment-tree build/pull loop: `for i in (1..n).rev:` writing
-/// `t[i] = ... t[2 * i] ... t[2 * i + 1]` on the same array `t`.
-pub(super) fn is_segtree_build_pull_loop(var: &str, body: &Block) -> bool {
-    struct Check<'a> {
-        var: &'a str,
-        found: bool,
-    }
-    fn rhs_reads_both_children(e: &Expr, arr: &str, var: &str) -> bool {
-        struct Reads<'a> {
-            arr: &'a str,
-            var: &'a str,
-            left: bool,
-            right: bool,
-        }
-        impl Visitor for Reads<'_> {
-            fn expr(&mut self, expr: &Expr) {
-                if let Some((a, ix)) = plain_index(expr) {
-                    if a == self.arr {
-                        if is_double(ix, self.var) {
-                            self.left = true;
-                        }
-                        if is_double_plus_one(ix, self.var) {
-                            self.right = true;
-                        }
-                    }
-                }
-            }
-        }
-        let mut r = Reads {
-            arr,
-            var,
-            left: false,
-            right: false,
-        };
-        walk::walk_expr(&mut r, e);
-        r.left && r.right
-    }
-    impl Visitor for Check<'_> {
-        fn stmt(&mut self, stmt: &Stmt) {
-            if self.found {
-                return;
-            }
-            if let StmtKind::Assign {
-                target,
-                op: AssignOp::Set,
-                value,
-            } = &stmt.kind
-            {
-                if let Some((arr, ix)) = plain_index(target) {
-                    if shapes::name(ix) == Some(self.var)
-                        && rhs_reads_both_children(value, arr, self.var)
-                    {
-                        self.found = true;
-                    }
-                }
-            }
-        }
-    }
-    let mut c = Check { var, found: false };
-    walk_block(&mut c, body);
-    c.found
-}
-
 pub(super) enum PrefixLoopKind<'a> {
     Domain1d { var: &'a str, domain: &'a str },
     RangeZero { var: &'a str, hi: &'a Expr },

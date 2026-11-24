@@ -231,7 +231,7 @@
   "stress_engines": 0,
   "conformance_failing": 3,
   "conformance_wrong_output": 0,
-  "rust_idiom_lints": 65,
+  "rust_idiom_lints": 46,
   "scaling_mismatches": 0,
   "std_fns_unscaled": 0,
   "std_types_shown_empty": 0,

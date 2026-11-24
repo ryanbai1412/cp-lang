@@ -4,8 +4,6 @@
 // `fold` builds tuples). The "1"s stack loop runs inside the answer sweep, so
 // no per-position list of opened "2"s is built.
 
-// Both trees are written out on purpose: this is the tuned variant.
-with lint(hand_rolled_range_tree: allow)
 @!multitest
 let n: 1..=1_000_000 = read()
 domain I = 0..n

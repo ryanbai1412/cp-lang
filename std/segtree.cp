@@ -564,6 +564,9 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
     /// cost: \(O(\log \lvert D \rvert)\)
     /// traps: when `i` is outside `D`
     /// example: `var s = SegTree(+, [1, 2, 3]); s.set(0, 10); s.all == 15`
+    @lint(hand_rolled_range_tree, from: "while i > 0:\n    t[i] = t[2 * i] + t[2 * i + 1]\n    i >>= 1", to: "t.set(i, t[i])", holes: "t")
+    @lint(hand_rolled_range_tree, from: "while i > 1:\n    i >>= 1\n    t[i] = t[2 * i] + t[2 * i + 1]", to: "t.set(i, t[i])", holes: "t")
+    @lint(hand_rolled_range_tree, from: "while i > 1:\n    i >>= 1\n    t[i] = f(t[2 * i], t[2 * i + 1])", to: "t.set(i, t[i])", holes: "t, f")
     pub fn set(mut self, i: D, x: T):
         let p = self.place(i)
         t[p] = x

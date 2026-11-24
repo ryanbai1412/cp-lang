@@ -1035,64 +1035,36 @@ let b = V.find(v => w[v] > 1)
     );
 }
 
+/// std states L0514 as `@lint`s on `Fenwick.add` and `SegTree.set`, one per spelling of their loops.
+/// Rule: R06.4.10, spec/core/06-control-functions.md.
 #[test]
 fn hand_rolled_range_tree_flags_bit_and_segtree_without_false_positives() {
-    let fenwick_add = "\
+    let fenwick = "\
 var bit: [0..=8]Int = 0
 var p = 3
 while p <= 8:
     bit[p] += 1
     p += p & -p
-";
-    assert_eq!(taste_codes(fenwick_add), ["L0514"]);
-
-    let fenwick_zero_idx = "\
-var bit: [0..8]Int = 0
 var i = 2
 while i < 8:
     bit[i] += 1
     i = i | (i + 1)
+print(bit[4])
 ";
-    assert_eq!(taste_codes(fenwick_zero_idx), ["L0514"]);
+    assert_eq!(taste_codes(fenwick), ["L0514"; 2]);
 
-    let iter_seg_pull = "\
+    let seg_pull = "\
 var t: [0..16]Int = 0
 var p = 4
 while p > 0:
     t[p] = t[2 * p] + t[2 * p + 1]
     p >>= 1
-";
-    assert_eq!(taste_codes(iter_seg_pull), ["L0514"]);
-
-    let iter_seg_fold = "\
-var t: [0..16]Int = 0
-var l = 8
 var r = 13
-var acc = 0
-while l < r:
-    if (l & 1) == 1:
-        acc += t[l]
-        l += 1
-    if (r & 1) == 1:
-        r -= 1
-        acc += t[r]
-    l >>= 1
+while r > 1:
     r >>= 1
+    t[r] = max(t[2 * r], t[2 * r + 1])
 ";
-    assert_eq!(taste_codes(iter_seg_fold), ["L0514"]);
-
-    let rec_seg = "\
-var seg: [0..32]Int = 0
-fn upd(node: Int, lo: Int, hi: Int, ql: Int, qr: Int):
-    if qr <= lo or hi <= ql: return
-    if ql <= lo and hi <= qr:
-        seg[node] += 1
-        return
-    let mid = (lo + hi) / 2
-    upd(2 * node, lo, mid, ql, qr)
-    upd(2 * node + 1, mid, hi, ql, qr)
-";
-    assert_eq!(taste_codes(rec_seg), ["L0514"]);
+    assert_eq!(taste_codes(seg_pull), ["L0514"; 2]);
 
     // Negative cases: ordinary arithmetic, bit-counting, and polynomial divide-and-conquer.
     let clean = "\
@@ -1256,14 +1228,7 @@ print(s.lo, s.hi, r.start, r.end)
 }
 
 #[test]
-fn hand_rolled_stdlib_algo_family_flags_dsu_sieve_binlift_and_segtree_pull() {
-    let seg_build_pull = "\
-var t: [0..16]Int = 0
-for i in (1..8).rev:
-    t[i] = t[2 * i] + t[2 * i + 1]
-";
-    assert_eq!(taste_codes(seg_build_pull), ["L0514"]);
-
+fn hand_rolled_stdlib_algo_family_flags_dsu_sieve_and_binlift() {
     let dsu_halving = "\
 domain V = 0..4
 var up: [V]V = [V] v => v

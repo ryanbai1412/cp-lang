@@ -11,8 +11,8 @@ use crate::Calls;
 use crate::{
     File, Finding, COPY_SORT_WRITEBACK, DISCARDED_RESULT, DOMAIN_SPELLING, FREE_FOLD,
     HAND_ROLLED_ANSWER_SEARCH, HAND_ROLLED_BINARY_LIFTING, HAND_ROLLED_DSU, HAND_ROLLED_PREFIX_SUM,
-    HAND_ROLLED_RANGE_TREE, HAND_ROLLED_SIEVE, INDEX_ONLY_LOOP, LOOP_REDUCTION, NONE_CHECK_UNWRAP,
-    PUSH_LOOP, SEARCH_LOOP, SYMMETRIC_WRITE, TREE_ORDER,
+    HAND_ROLLED_SIEVE, INDEX_ONLY_LOOP, LOOP_REDUCTION, NONE_CHECK_UNWRAP, PUSH_LOOP, SEARCH_LOOP,
+    SYMMETRIC_WRITE, TREE_ORDER,
 };
 use cpl_diag::msgs;
 use cpl_diag::{Diagnostic, Fix, Span};
@@ -20,14 +20,12 @@ use cpl_syntax::ast::*;
 use std::collections::HashSet;
 
 mod forms;
-mod range_tree;
 mod search;
 mod stdlib_algo;
 mod stmts;
 mod string_algo;
 mod text;
 use forms::{AccLoop, Form};
-use range_tree::*;
 use search::*;
 use stdlib_algo::*;
 use stmts::*;
@@ -85,9 +83,18 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     file.walk(&mut spans, |v, base| v.base = base);
     let mut blocks = Blocks { taste: &mut rule };
     file.walk(&mut blocks, |b, base| b.taste.base = base);
-    rule.findings.extend(hand_rolled_range_trees(file));
     rule.findings.extend(hand_rolled_stdlib_algos(file));
     rule.findings
+}
+
+fn is_int_lit(e: &Expr, want: i128) -> bool {
+    matches!(walk::unparen(e).kind, ExprKind::Int(v) if v == want)
+}
+
+fn walk_block(v: &mut dyn Visitor, block: &Block) {
+    for s in &block.stmts {
+        walk::walk_stmt(v, s);
+    }
 }
 
 /// Hands every nested statement list to [`Taste::block`].
