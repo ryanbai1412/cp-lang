@@ -19,7 +19,7 @@ if sys.argv[1] == "--max":
     print("\n".join(out))
     sys.exit()
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
-n = r.randint(2, S)
+n = r.randint(2, max(2, S))
 side = [r.randint(0, 1) for _ in range(n + 1)]
 cross = r.choice([0.0, 0.02, 0.2, 1.0])
 want = r.randint(1, 2 * S)

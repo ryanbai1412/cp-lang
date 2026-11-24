@@ -41,7 +41,7 @@ def counts(n, edges):
 
 
 def make():
-    n = r.randint(2, S)
+    n = r.randint(2, max(2, S))
     shape = r.choice(["tree", "sparse", "dense", "layers"])
     wts = r.choice([[1], [1, 2], [1, 2, 3], list(range(1, 1001))])
     perm = list(range(n))

@@ -6,7 +6,7 @@ if sys.argv[1:] == ["--max"]:
     sys.argv[1:] = ['0', '1000']
 rng = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 while True:  # size >= 1000: the full 1000 x 1000 board
-    r, c = (S, S) if S >= 1000 else (rng.randint(1, S), rng.randint(1, S))
+    r, c = (S, S) if S >= 1000 else (rng.randint(1, max(S, 4)), rng.randint(1, max(S, 4)))
     if r * c >= 4: break
 region = [[-1] * c for _ in range(r)]
 cells = rng.sample([(i, j) for i in range(r) for j in range(c)], 4)

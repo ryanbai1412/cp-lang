@@ -11,7 +11,7 @@ if sys.argv[1] == "--max":
     sys.exit()
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2]) if len(sys.argv) > 2 else 100
 for _ in range(r.randint(1, 4)):
-    m, n = r.randint(2, S), r.randint(2, S)
+    m, n = r.randint(2, max(2, S)), r.randint(2, max(2, S))
     wall = r.choice([0.0, 0.1, 0.3, 0.6])
     g = [[r.choice('*') if r.random() < wall else r.choice('.123456789') for _ in range(n)] for _ in range(m)]
     row = m - 1  # carve a right/up/down path from the bottom-left to the bottom-right

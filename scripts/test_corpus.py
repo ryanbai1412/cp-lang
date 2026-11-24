@@ -81,9 +81,11 @@ class ProblemsTest(Corpus):
         self.assertEqual(out, "0 4 3\n")
 
     def test_a_gen_that_fails_at_a_small_size_is_a_finding(self):
-        gen = "import random, sys\nprint(random.randint(1, int(sys.argv[2])))\n"
-        pkg = corpus.Package.at(self.package("p", gen_py=gen))
-        self.assertIn("gen-fails p size=0", corpus.check_package(pkg, corpus.Context("cpl", run=True)))
+        gen = "import random, sys\nprint(random.randint(1, int(sys.argv[2]) - 1))\n"
+        pkg = corpus.Package.at(self.package("p", gen_py=gen, tests_toml="[[case]]\nseed = 1\nsize = 0\n"))
+        found = corpus.check_package(pkg, corpus.Context("cpl", run=False))
+        self.assertIn("size-below-1 p 1", found)
+        self.assertIn("gen-fails p size=1", corpus.check_package(pkg, corpus.Context("cpl", run=True)))
 
     def test_a_gxx_older_than_14_is_not_the_reference(self):
         old = self.root / "g++"

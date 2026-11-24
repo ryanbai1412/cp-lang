@@ -596,7 +596,9 @@ def check_package(pkg, ctx):
         found.append(f"interactor-no-gen {pkg.id} -")
     if pkg.dir.joinpath("tests").exists():
         found.append(f"committed-tests {pkg.id} -")
-    for size in range(6) if pkg.gen and ctx.run else ():
+    # gen.py SEED SIZE takes any size >= 1: tests.toml may grow a case down to 1.
+    found += [f"size-below-1 {pkg.id} {i}" for i, c in enumerate(pkg.cases(), 1) if "size" in c and c["size"] < 1]
+    for size in range(1, 6) if pkg.gen and ctx.run else ():
         try:
             pkg.case_input({"seed": 1, "size": size})
         except (subprocess.SubprocessError, OSError):
