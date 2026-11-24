@@ -3839,11 +3839,6 @@ pub struct LazyEulerTourTree<V, T, F>(act: Action<T, F>):
         self.splay(v.ord)
         cnt[v.ord]
 
-    /// The value at `v`, with every update to a tree or side holding it applied.
-    ///
-    /// cost: expected \(O(\log n)\)
-    /// traps: never
-    /// example: `domain V = 0..4; let vals: [V]Int = [1, 2, 3, 4]; var et = LazyEulerTourTree(Action<Int, Int>(apply: (d, x, n) => x + d * n), a: Some(vals)); et.link(0, 1); et.link(1, 2); et.apply_tree(0, 10); et.get(2) == 13 and et.get(3) == 4`
     /// Every vertex's value with every pending tag applied as it walks the splay trees; it reads
     /// the trees and writes nothing back, so no splay moves.
     ///
@@ -3860,6 +3855,11 @@ pub struct LazyEulerTourTree<V, T, F>(act: Action<T, F>):
             if let c = rc[x]: stack.push((c, g))
         out
 
+    /// The value at `v`, with every update to a tree or side holding it applied.
+    ///
+    /// cost: expected \(O(\log n)\)
+    /// traps: never
+    /// example: `domain V = 0..4; let vals: [V]Int = [1, 2, 3, 4]; var et = LazyEulerTourTree(Action<Int, Int>(apply: (d, x, n) => x + d * n), a: Some(vals)); et.link(0, 1); et.link(1, 2); et.apply_tree(0, 10); et.get(2) == 13 and et.get(3) == 4`
     pub fn get(mut self, v: V) -> T:
         self.splay(v.ord)
         val[v]
