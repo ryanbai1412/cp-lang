@@ -22,7 +22,6 @@ exhaustive form, and `plan/STATUS.md` lists what is still open.
 
 ### Library
 
-- `Prefix.of_rev_scan` is private, as `of_scan` is: write `a.rev.scan(f)`.
 - The library is respecified in `std/`: about 1,700 documented
   signatures, each with its cost.
 - Prefix sums and Fenwick trees answer range queries with `fold(r)`, not
