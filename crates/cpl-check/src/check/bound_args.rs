@@ -4,17 +4,16 @@
 use super::*;
 use cpl_syntax::ast;
 
+/// `(param, trait, args)` of each bound that gives its trait arguments.
+pub(crate) type BoundArgs = Vec<(String, String, Vec<Ty>)>;
+
 impl Checker<'_> {
     /// `f`'s bounds: the record rows (`R: (u: V, ..)`) and the traits (`T: Ord`) its type
     /// parameters must meet.
     pub(crate) fn fn_bounds(
         &mut self,
         f: &ast::FnDecl,
-    ) -> (
-        crate::def::RowBounds,
-        Vec<(String, String)>,
-        Vec<(String, String, Vec<Ty>)>,
-    ) {
+    ) -> (crate::def::RowBounds, Vec<(String, String)>, BoundArgs) {
         let outer = self.generics.len();
         self.generics
             .extend(f.generics.iter().map(|g| g.text.clone()));
