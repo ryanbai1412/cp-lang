@@ -21,7 +21,7 @@ type Raw = {
 };
 type Rule = Raw & { re?: RegExp; endRe?: RegExp; rules?: Rule[] };
 
-const repository = grammar.repository as unknown as Record<string, Raw>;
+const repository: Record<string, Raw> = (grammar as { repository?: Record<string, Raw> }).repository ?? {};
 const compiled = new Map<Raw, Rule>();
 
 function compile(raw: Raw): Rule {
