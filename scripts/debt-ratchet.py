@@ -1208,8 +1208,10 @@ def _header_counts(root: Path, key: str,
 
 
 def cpp_deep_copies(root: Path) -> list[str]:
-    """Deep copies in shipped programs (corpus ports, dreams and specs): each one is avoidable."""
-    return _header_counts(root, "copies", ("corpus/problems",))
+    """Deep copies corpus programs (ports, dreams and specs) make that a move or a borrow could
+    leave out: each `// copies:` header less the copies codegen's copy fact marks kept, which
+    read_only_copies proves on each package's cases and lists by path:line."""
+    return _avoidable_copies(root, "corpus/problems")
 
 
 def _kept_copies(root: Path, rels: list[str]) -> dict[str, int]:
@@ -1235,7 +1237,12 @@ def spec_avoidable_copies(root: Path) -> list[str]:
     (decision 629): each case's `// copies:` header, which read_only_copies holds to its C++,
     less the copies codegen's copy fact marks kept. read_only_copies proves the fact by
     rewriting each copy to a move and a borrow, so explain, codegen and this count agree."""
-    heads = _header_counts(root, "copies", ("spec/conformance",))
+    return _avoidable_copies(root, "spec/conformance")
+
+
+def _avoidable_copies(root: Path, base: str) -> list[str]:
+    """The `// copies:` headers under `base`, less each program's copies its copy fact keeps."""
+    heads = _header_counts(root, "copies", (base,))
     if not heads:
         return []
     total = collections.Counter(h.rsplit(" ", 1)[0] for h in heads)
@@ -3204,7 +3211,7 @@ COUNTERS = {
     "string_keyed_maps": ("name-keyed HashMaps in cpl-check, not NameMap", string_keyed_maps, True),
     "stress_hand_json": ("hand-built JSON in cpl-stress and cpl-wasm", stress_hand_json, True),
     "helper_env_vars": ("CPL_* helper side channels beyond CPL_SEED", helper_env_vars, True),
-    "cpp_deep_copies": ("`// copies:` header sum over corpus programs (read_only_copies)", cpp_deep_copies, True),
+    "cpp_deep_copies": ("corpus copies codegen's copy fact doesn't mark kept (read_only_copies)", cpp_deep_copies, True),
     "spec_avoidable_copies": ("spec/conformance copies codegen's copy fact doesn't mark kept (read_only_copies)",
                               spec_avoidable_copies, True),
     "cpp_optional_copies": ("`// optional_copies:` header sum over the corpus (read_only_copies)",
@@ -3491,7 +3498,7 @@ def evaluate(actual: dict, baseline: dict) -> tuple[list[str], list[str], list[s
 # counter reads (read_only_copies.rs) is not one: raising it is the bump.
 MEASURED_BY = {
     "corpus_fmt_dirty": ("crates/cpl-fmt/src",),
-    "cpp_deep_copies": ("crates/cpl-codegen/src/cpp_counts.rs",),
+    "cpp_deep_copies": ("crates/cpl-codegen/src", "crates/cpl-cli/src/explain.rs"),
     "spec_avoidable_copies": ("crates/cpl-codegen/src", "crates/cpl-cli/src/explain.rs"),
     "cpp_optional_copies": ("crates/cpl-codegen/src/cpp_counts.rs",),
     "cpp_std_functions": ("crates/cpl-codegen/src/cpp_counts.rs",),

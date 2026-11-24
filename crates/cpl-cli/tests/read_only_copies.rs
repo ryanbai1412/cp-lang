@@ -13,6 +13,8 @@ use cpl_codegen::cpp_counts::{
     block_copies, container_copies, declared, entry_copies, lent_part_copies, map_get_copies,
     optional_copies, std_functions, sunk_copies,
 };
+#[path = "support/corpus_cases.rs"]
+mod corpus_cases;
 #[path = "support/result_cache.rs"]
 mod result_cache;
 use result_cache::ResultCache;
@@ -410,7 +412,9 @@ fn a_place_passed_to_a_fn_that_moves_it_into_a_struct_is_a_sunk_copy() {
     assert_eq!(sunk_copies(&commented), 1);
     let small = "struct P {\n  ll x = 0;\n  bool b = false;\n};\nstruct W {\n  P p;\n  std::vector<ll> xs;\n};\n";
     let holding = |ty: &str| {
-        format!("{small}inline H wrap({ty} v) {{\n  return H{{std::move(v)}};\n}}\nvoid solve() {{\n  h = wrap(a);\n}}\n")
+        format!(
+            "{small}inline H wrap({ty} v) {{\n  return H{{std::move(v)}};\n}}\nvoid solve() {{\n  h = wrap(a);\n}}\n"
+        )
     };
     assert_eq!(sunk_copies(&holding("P")), 0);
     assert_eq!(sunk_copies(&holding("W")), 1);
@@ -491,7 +495,8 @@ fn a_copy_is_kept_exactly_when_a_move_or_a_borrow_would_show() {
                 let dir = dir.join(i.to_string());
                 s.spawn(move || {
                     std::fs::create_dir_all(&dir).unwrap();
-                    let (kept, shown) = (kept_copies(src), shown_copies(src, &dir));
+                    let input = case_input(&std::fs::read_to_string(src).unwrap());
+                    let (kept, shown) = (kept_copies(src), shown_copies(src, &[input], &dir));
                     (kept != shown).then(|| {
                         format!(
                             "{}: `cpl explain` keeps {kept} copies, a move or a borrow shows {shown}",
@@ -506,6 +511,101 @@ fn a_copy_is_kept_exactly_when_a_move_or_a_borrow_would_show() {
     assert!(wrong.is_empty(), "{}", wrong.join("\n"));
 }
 
+/// Each copy a corpus program makes that codegen's copy fact keeps, by
+/// path:line, so a copy that becomes kept or stops being kept is a diff here.
+const KEPT_CORPUS: [&str; 5] = [
+    "corpus/problems/cf2066f/perf.cp:90",
+    "corpus/problems/cf2066f/port.cp:85",
+    "corpus/problems/egoi23p7/dream.cp:36",
+    "corpus/problems/egoi23p7/port.cp:44",
+    "corpus/problems/utso15p5/port.cp:22",
+];
+
+/// [`a_copy_is_kept_exactly_when_a_move_or_a_borrow_would_show`] for the
+/// corpus, on each package's cases: the kept copies are [`KEPT_CORPUS`],
+/// `cpl explain` lists each, and a move or a borrow shows exactly those.
+#[test]
+fn a_corpus_copy_is_kept_exactly_when_a_move_or_a_borrow_would_show_on_its_cases() {
+    let programs: Vec<PathBuf> = sources()
+        .into_iter()
+        .filter(|src| rel(src).starts_with("corpus/problems/"))
+        .filter(|src| {
+            declared(&std::fs::read_to_string(src).unwrap(), "copies").is_ok_and(|n| n > 0)
+        })
+        .collect();
+    let mut ids: Vec<&str> = programs
+        .iter()
+        .map(|src| src.parent().unwrap().file_name().unwrap().to_str().unwrap())
+        .collect();
+    ids.dedup();
+    corpus_cases::make(&repo(), &ids);
+    let mut kept: Vec<String> = Vec::new();
+    for src in &programs {
+        let text =
+            String::from_utf8_lossy(&cpl_cli::run(&["explain", src.to_str().unwrap()]).stdout)
+                .into_owned();
+        for (line, col) in kept_sites(src) {
+            assert!(
+                text.contains(&format!("[copy] {line}:{col} ")),
+                "{}:{line}: `cpl explain` does not list the kept copy",
+                rel(src)
+            );
+            kept.push(format!("{}:{line}", rel(src)));
+        }
+    }
+    kept.sort();
+    assert_eq!(kept, KEPT_CORPUS, "the corpus copies codegen keeps changed");
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("kept_corpus_copies");
+    std::fs::create_dir_all(&dir).unwrap();
+    let wrong: Vec<String> = std::thread::scope(|s| {
+        let jobs: Vec<_> = programs
+            .iter()
+            .enumerate()
+            .map(|(i, src)| {
+                let dir = dir.join(i.to_string());
+                s.spawn(move || {
+                    std::fs::create_dir_all(&dir).unwrap();
+                    let cases = cpl_contest::package::cases_dir(src.parent().unwrap());
+                    let mut inputs: Vec<PathBuf> = std::fs::read_dir(&cases)
+                        .unwrap()
+                        .map(|e| e.unwrap().path())
+                        .filter(|p| p.extension().is_some_and(|x| x == "in"))
+                        .collect();
+                    inputs.sort();
+                    let inputs: Vec<String> = (inputs.iter())
+                        .map(|p| std::fs::read_to_string(p).unwrap())
+                        .collect();
+                    assert!(!inputs.is_empty(), "{} has no cases", rel(src));
+                    let kept = kept_sites(src).len();
+                    let shown = shown_copies(src, &inputs, &dir);
+                    (kept != shown).then(|| {
+                        format!(
+                            "{}: `cpl explain` keeps {kept} copies, a move or a borrow shows {shown}",
+                            rel(src)
+                        )
+                    })
+                })
+            })
+            .collect();
+        jobs.into_iter().filter_map(|j| j.join().unwrap()).collect()
+    });
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// The line and column of each copy `cpl explain --json` marks kept in `src`.
+fn kept_sites(src: &Path) -> Vec<(usize, usize)> {
+    let explain = cpl_cli::run(&["explain", "--json", src.to_str().unwrap()]);
+    let rows = cpl_json::parse(&String::from_utf8_lossy(&explain.stdout)).unwrap();
+    (rows.as_array().unwrap().iter())
+        .filter(|r| r.get("kept").and_then(|k| k.as_bool()) == Some(true))
+        .map(|r| {
+            let site = r.get("site").and_then(|s| s.as_str()).unwrap();
+            let (line, col) = site.split_once(':').unwrap();
+            (line.parse().unwrap(), col.parse().unwrap())
+        })
+        .collect()
+}
+
 /// The copies `cpl explain --json` marks kept in `src`.
 fn kept_copies(src: &Path) -> usize {
     let explain = cpl_cli::run(&["explain", "--json", src.to_str().unwrap()]);
@@ -515,8 +615,8 @@ fn kept_copies(src: &Path) -> usize {
 }
 
 /// The copies of `src`'s `--full` C++ whose rewrite to a move or a borrow
-/// of what they copy changes what the program prints on its `// input:`.
-fn shown_copies(src: &Path, dir: &Path) -> usize {
+/// of what they copy changes what the program prints on one of `inputs`.
+fn shown_copies(src: &Path, inputs: &[String], dir: &Path) -> usize {
     let cpp_path = dir.join("p.cpp");
     let built = cpl_cli::run(&[
         "build",
@@ -527,8 +627,9 @@ fn shown_copies(src: &Path, dir: &Path) -> usize {
     ]);
     assert_eq!(built.code, 0, "{} does not build", rel(src));
     let cpp = std::fs::read_to_string(&cpp_path).unwrap();
-    let input = case_input(&std::fs::read_to_string(src).unwrap());
-    let base = run_cpp(&cpp, &input, dir).unwrap_or_else(|e| panic!("{}: {e}", rel(src)));
+    let outputs =
+        |cpp: &str| run_cpp(cpp, inputs, dir).unwrap_or_else(|e| panic!("{}: {e}", rel(src)));
+    let base = outputs(&cpp);
     let lines: Vec<&str> = cpp.lines().collect();
     let total = container_copies(&cpp);
     let mut sites = 0;
@@ -546,9 +647,9 @@ fn shown_copies(src: &Path, dir: &Path) -> usize {
             continue;
         }
         sites += 1;
-        let differs = [moved, borrowed].iter().any(|new| {
-            run_cpp(&with(new), &input, dir).unwrap_or_else(|e| panic!("{}: {e}", rel(src))) != base
-        });
+        let differs = [moved, borrowed]
+            .iter()
+            .any(|new| outputs(&with(new)) != base);
         shown += usize::from(differs);
     }
     assert_eq!(
@@ -576,8 +677,8 @@ fn rewrites(line: &str) -> Option<(String, String)> {
     ))
 }
 
-/// What the C++ `cpp` prints on `input`, built in `dir`.
-fn run_cpp(cpp: &str, input: &str, dir: &Path) -> Result<String, String> {
+/// What the C++ `cpp` prints on each of `inputs`, built once in `dir`.
+fn run_cpp(cpp: &str, inputs: &[String], dir: &Path) -> Result<Vec<String>, String> {
     use std::io::Write;
     let (src, bin) = (dir.join("v.cpp"), dir.join("v"));
     std::fs::write(&src, cpp).unwrap();
@@ -593,24 +694,29 @@ fn run_cpp(cpp: &str, input: &str, dir: &Path) -> Result<String, String> {
             .take(3)
             .collect());
     }
-    let mut child = std::process::Command::new(&bin)
-        .stdin(std::process::Stdio::piped())
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::null())
-        .spawn()
+    let run = |input: &String| -> Result<String, String> {
+        let mut child = std::process::Command::new(&bin)
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::null())
+            .spawn()
+            .map_err(|e| e.to_string())?;
+        let mut stdin = child.stdin.take().unwrap();
+        let out = std::thread::scope(|s| {
+            // A program may print before it reads all of a long input.
+            s.spawn(move || {
+                let _ = stdin.write_all(input.as_bytes());
+            });
+            child.wait_with_output()
+        })
         .map_err(|e| e.to_string())?;
-    child
-        .stdin
-        .take()
-        .unwrap()
-        .write_all(input.as_bytes())
-        .unwrap();
-    let out = child.wait_with_output().map_err(|e| e.to_string())?;
-    Ok(format!(
-        "{:?}\n{}",
-        out.status.code(),
-        String::from_utf8_lossy(&out.stdout)
-    ))
+        Ok(format!(
+            "{:?}\n{}",
+            out.status.code(),
+            String::from_utf8_lossy(&out.stdout)
+        ))
+    };
+    inputs.iter().map(run).collect()
 }
 
 /// A case's `// input: "..."` header, unescaped; empty when absent.
