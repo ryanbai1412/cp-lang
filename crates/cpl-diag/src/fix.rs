@@ -30,14 +30,21 @@ pub fn splice_fixes(src: &str, diagnostics: &[Diagnostic]) -> (String, usize) {
                 || !src.is_char_boundary(span.start as usize)
                 || !src.is_char_boundary(span.end as usize)
         });
-        if clashes || out_of_source || fix.edits.is_empty() {
+        if out_of_source || fix.edits.is_empty() {
             continue;
         }
-        edits.extend(
-            fix.edits
-                .iter()
-                .map(|(span, text)| crate::edit_like(src, *span, text)),
-        );
+        let fix_edits: Vec<(Span, String)> = (fix.edits.iter())
+            .map(|(span, text)| crate::edit_like(src, *span, text))
+            .collect();
+        // Two errors can offer the same fix, e.g. one `.clone()` for every
+        // later use of a moved value: it is applied once.
+        if fix_edits.iter().all(|edit| edits.contains(edit)) {
+            continue;
+        }
+        if clashes {
+            continue;
+        }
+        edits.extend(fix_edits);
         applied += 1;
     }
     match splice(src, edits) {
@@ -96,5 +103,20 @@ mod tests {
             None
         );
         assert_eq!(splice("é", vec![(Span::new(1, 2), String::new())]), None);
+    }
+
+    #[test]
+    fn a_fix_two_errors_share_is_applied_once() {
+        let moved = |at: u32| {
+            let mut d = Diagnostic::error(
+                crate::codes::UNCLOSED_DELIMITER,
+                Span::new(at, at + 1),
+                "test",
+            );
+            d.fix("clone", Span::point(1), ".clone()");
+            d
+        };
+        let (out, applied) = splice_fixes("k f(k) g(k)", &[moved(4), moved(9)]);
+        assert_eq!((out.as_str(), applied), ("k.clone() f(k) g(k)", 1));
     }
 }
