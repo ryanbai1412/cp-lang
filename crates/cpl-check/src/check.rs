@@ -418,14 +418,7 @@ impl<'a> Checker<'a> {
         }
         match ty {
             Ty::Str | Ty::Array { .. } => true,
-            Ty::Named { name, .. }
-                if matches!(
-                    name.as_str(),
-                    "List" | "Map" | "Set" | "Deque" | "Heap" | "Counter"
-                ) =>
-            {
-                true
-            }
+            Ty::Named { name, .. } if matches!(name.as_str(), "List" | "Map" | "Set") => true,
             Ty::Named { name, .. } => {
                 let field_tys: Vec<Ty> = match self.type_def(name).as_deref() {
                     Some(Def::Struct { fields, .. }) => {
