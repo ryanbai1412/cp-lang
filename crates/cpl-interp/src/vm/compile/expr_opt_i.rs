@@ -1,3 +1,4 @@
+use super::jump::JumpOp;
 use super::stmt::Callee;
 use super::{Compiler, GiveTarget};
 use crate::vm::ir::*;
@@ -645,7 +646,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     },
                     lhs.span,
                 );
-                let j_done = self.emit(Op::JmpIfNonZero { reg: ls, target: 0 }, span);
+                let j_done = self.emit_jump(JumpOp::JmpIfNonZero { reg: ls }, span);
                 let (rv, rs) = self.compile_expr_opt_i(rhs);
                 self.emit(
                     Op::MoveI {
@@ -723,7 +724,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     },
                     then_e.span,
                 );
-                let j_end = self.emit(Op::Jmp { target: 0 }, span);
+                let j_end = self.emit_jump(JumpOp::Jmp, span);
                 let else_pc = self.ops.len() as u32;
                 self.patch(j_else, else_pc);
                 let (ev, es) = self.compile_expr_opt_i(else_e);

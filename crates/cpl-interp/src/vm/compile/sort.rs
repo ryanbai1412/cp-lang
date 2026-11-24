@@ -1,3 +1,4 @@
+use super::jump::JumpOp;
 use super::seq_load::SeqKind;
 use super::Compiler;
 use crate::vm::helpers::ty_uses_structural_cmp;
@@ -142,14 +143,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let r_one = self.alloc_i();
         self.emit(Op::ConstImmI { dst: r_idx, val: 0 }, span);
         self.emit(Op::ConstImmI { dst: r_one, val: 1 }, span);
-        let j_skip = self.emit(
-            Op::JmpGeI {
-                a: r_idx,
-                b: r_len,
-                target: 0,
-            },
-            span,
-        );
+        let j_skip = self.emit_jump(JumpOp::JmpGeI { a: r_idx, b: r_len }, span);
         let body_pc = self.ops.len() as u32;
         let saved_pinned = self.pinned_v;
         self.pinned_v = self.pinned_v.max(r_seq.max(r_keys).max(callee_v) + 1);

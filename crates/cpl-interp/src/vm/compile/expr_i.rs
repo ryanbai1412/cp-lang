@@ -1,3 +1,4 @@
+use super::jump::JumpOp;
 use super::stmt::Callee;
 use super::{Compiler, GiveTarget, ModSuperOp};
 use crate::vm::helpers::*;
@@ -132,13 +133,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 let (val, some) = self.compile_expr_opt_i(lhs);
                 let dst = self.alloc_i();
                 self.emit(Op::MoveI { dst, src: val }, lhs.span);
-                let j_done = self.emit(
-                    Op::JmpIfNonZero {
-                        reg: some,
-                        target: 0,
-                    },
-                    span,
-                );
+                let j_done = self.emit_jump(JumpOp::JmpIfNonZero { reg: some }, span);
                 let rv = self.compile_expr_i(rhs);
                 if rv != dst {
                     self.emit(Op::MoveI { dst, src: rv }, rhs.span);
@@ -330,7 +325,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 let j_false = self.emit_branch_if_false(lhs);
                 let r = self.compile_expr_i(rhs);
                 self.emit(Op::MoveI { dst, src: r }, rhs.span);
-                let j_end = self.emit(Op::Jmp { target: 0 }, span);
+                let j_end = self.emit_jump(JumpOp::Jmp, span);
                 let false_pc = self.ops.len() as u32;
                 self.patch(j_false, false_pc);
                 self.emit(Op::ConstImmI { dst, val: 0 }, span);
@@ -341,10 +336,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
             ExprKind::Binary(BinOp::Or, lhs, rhs) => {
                 let dst = self.alloc_i();
                 let l = self.compile_expr_i(lhs);
-                let j_true = self.emit(Op::JmpIfNonZero { reg: l, target: 0 }, lhs.span);
+                let j_true = self.emit_jump(JumpOp::JmpIfNonZero { reg: l }, lhs.span);
                 let r = self.compile_expr_i(rhs);
                 self.emit(Op::MoveI { dst, src: r }, rhs.span);
-                let j_end = self.emit(Op::Jmp { target: 0 }, span);
+                let j_end = self.emit_jump(JumpOp::Jmp, span);
                 let true_pc = self.ops.len() as u32;
                 self.patch(j_true, true_pc);
                 self.emit(Op::ConstImmI { dst, val: 1 }, span);
@@ -1109,7 +1104,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 let (lv, ls) = self.compile_expr_opt_i(lhs);
                 let dst = self.alloc_i();
                 self.emit(Op::MoveI { dst, src: lv }, span);
-                let j_done = self.emit(Op::JmpIfNonZero { reg: ls, target: 0 }, span);
+                let j_done = self.emit_jump(JumpOp::JmpIfNonZero { reg: ls }, span);
                 let rv = self.compile_expr_i(rhs);
                 if rv != dst {
                     self.emit(Op::MoveI { dst, src: rv }, span);
@@ -1132,7 +1127,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 if rt != dst {
                     self.emit(Op::MoveI { dst, src: rt }, then_e.span);
                 }
-                let j_end = self.emit(Op::Jmp { target: 0 }, span);
+                let j_end = self.emit_jump(JumpOp::Jmp, span);
                 let else_pc = self.ops.len() as u32;
                 self.patch(j_else, else_pc);
                 let re = self.compile_expr_i(else_e);
@@ -1286,9 +1281,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                             let end_pc = self.ops.len() as u32;
                             self.inline_ret = prev_ret;
                             self.inline_slots = prev_slots;
-                            for j in jumps {
-                                self.patch(j, end_pc);
-                            }
+                            self.patch_all(jumps, end_pc);
                             for reg in boxed {
                                 self.emit(Op::ClearV { reg }, span);
                             }

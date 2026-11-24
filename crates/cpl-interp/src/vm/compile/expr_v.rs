@@ -1,3 +1,4 @@
+use super::jump::JumpOp;
 use super::{Compiler, GiveTarget};
 use crate::value::Value;
 use crate::vm::ir::*;
@@ -279,7 +280,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             ExprKind::If(cond, then_e, else_e) => {
                 let dst = self.alloc_v();
                 let rc = self.compile_expr_i(cond);
-                let j_else = self.emit(Op::JmpIfZero { reg: rc, target: 0 }, span);
+                let j_else = self.emit_jump(JumpOp::JmpIfZero { reg: rc }, span);
                 let rt = self.compile_expr_v(then_e);
                 if rt != dst {
                     if rt >= self.num_local_v {
@@ -288,7 +289,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         self.emit(Op::MoveV { dst, src: rt }, span);
                     }
                 }
-                let j_end = self.emit(Op::Jmp { target: 0 }, span);
+                let j_end = self.emit_jump(JumpOp::Jmp, span);
                 let else_pc = self.ops.len() as u32;
                 self.patch(j_else, else_pc);
                 let re = self.compile_expr_v(else_e);
@@ -599,13 +600,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     lhs.span,
                 );
                 let dst = self.alloc_v();
-                let j_none = self.emit(
-                    Op::JmpIfZero {
-                        reg: is_some,
-                        target: 0,
-                    },
-                    span,
-                );
+                let j_none = self.emit_jump(JumpOp::JmpIfZero { reg: is_some }, span);
                 // An optional default keeps the optional; a plain one gives what is inside.
                 if lhs.ty == expr.ty {
                     self.emit(Op::MoveV { dst, src: lv }, lhs.span);
@@ -618,7 +613,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         lhs.span,
                     );
                 }
-                let j_done = self.emit(Op::Jmp { target: 0 }, span);
+                let j_done = self.emit_jump(JumpOp::Jmp, span);
                 let none_pc = self.ops.len() as u32;
                 self.patch(j_none, none_pc);
                 let rv = self.compile_expr_v(rhs);
@@ -1333,7 +1328,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             ExprKind::If(cond, then_e, else_e) => {
                 let j_else = self.emit_branch_if_false(cond);
                 self.compile_expr_small_tuple(then_e, dst_base, len);
-                let j_end = self.emit(Op::Jmp { target: 0 }, span);
+                let j_end = self.emit_jump(JumpOp::Jmp, span);
                 let else_pc = self.ops.len() as u32;
                 self.patch(j_else, else_pc);
                 self.compile_expr_small_tuple(else_e, dst_base, len);

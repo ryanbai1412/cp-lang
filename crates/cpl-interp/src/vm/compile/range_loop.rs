@@ -1,3 +1,4 @@
+use super::jump::JumpOp;
 use super::Compiler;
 use crate::vm::ir::*;
 use cpl_diag::Span;
@@ -24,25 +25,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
         lo_span: Span,
         hi_span: Span,
     ) {
-        let j_skip = if closed {
-            self.emit(
-                Op::JmpGtI {
-                    a: r_lo,
-                    b: r_hi,
-                    target: 0,
-                },
-                lo_span,
-            )
+        let skip = if closed {
+            JumpOp::JmpGtI { a: r_lo, b: r_hi }
         } else {
-            self.emit(
-                Op::JmpGeI {
-                    a: r_lo,
-                    b: r_hi,
-                    target: 0,
-                },
-                lo_span,
-            )
+            JumpOp::JmpGeI { a: r_lo, b: r_hi }
         };
+        let j_skip = self.emit_jump(skip, lo_span);
         if r_var != r_lo {
             self.emit(
                 Op::MoveI {
@@ -61,9 +49,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         if let Some(d) = positions_of {
             self.drop_checks_of_positions(r_var, d, slot, body_pc, marks);
         }
-        for c in lt.continues {
-            self.patch(c, step_pc);
-        }
+        self.patch_all(lt.continues, step_pc);
         let back = self.ops.len();
         self.note_back_edge(back, reg);
         if closed {
@@ -87,9 +73,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
         let end_pc = self.ops.len() as u32;
         self.patch(j_skip, end_pc);
-        for b in lt.breaks {
-            self.patch(b, end_pc);
-        }
+        self.patch_all(lt.breaks, end_pc);
     }
 
     /// An enum loop variable (`tag_v`) is counted by its tag in `r_var`
@@ -121,25 +105,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
         lo_span: Span,
         hi_span: Span,
     ) {
-        let j_skip = if closed {
-            self.emit(
-                Op::JmpGtI {
-                    a: r_lo,
-                    b: r_hi,
-                    target: 0,
-                },
-                lo_span,
-            )
+        let skip = if closed {
+            JumpOp::JmpGtI { a: r_lo, b: r_hi }
         } else {
-            self.emit(
-                Op::JmpGeI {
-                    a: r_lo,
-                    b: r_hi,
-                    target: 0,
-                },
-                lo_span,
-            )
+            JumpOp::JmpGeI { a: r_lo, b: r_hi }
         };
+        let j_skip = self.emit_jump(skip, lo_span);
         if closed {
             if r_var != r_hi {
                 self.emit(
@@ -164,9 +135,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         self.emit_loop_tag(tag_v, r_var, hi_span);
         let lt = self.loop_body(id, None, &body.stmts);
         let step_pc = self.ops.len() as u32;
-        for c in lt.continues {
-            self.patch(c, step_pc);
-        }
+        self.patch_all(lt.continues, step_pc);
         self.emit(
             Op::ForDec {
                 r_i: r_var,
@@ -177,8 +146,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
         );
         let end_pc = self.ops.len() as u32;
         self.patch(j_skip, end_pc);
-        for b in lt.breaks {
-            self.patch(b, end_pc);
-        }
+        self.patch_all(lt.breaks, end_pc);
     }
 }
