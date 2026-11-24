@@ -18,7 +18,7 @@ Fields: `alpha: Count`, `goto: List<Count>`, `pi: List<Count>`.
 - `fn link(self, state: Int) -> Int` — \(O(1)\); The failure link of `state`: the length of the longest proper border of `pat[..state]`, and `0` at state `0`.; traps: when `state` is outside `0..self.len`
 - `fn find_all<S: Seq>(self, text: S) -> yields Int` — \(O(\lvert \mathit{text} \rvert)\); The start position (0-based, counted in `text`'s iteration order) of every occurrence of `pat` in `text`, overlapping ones included.; traps: when an element of `text` is not in `A`
 
-## `struct Palindromes(pub odd: List<Int>, even: List<Int>, first: Int = 0)`
+## `struct Palindromes(pub odd: List<Len>, even: List<Len>, first: Int = 0)`
 
 \(O(n)\) space, \(O(1)\) queries.
 
