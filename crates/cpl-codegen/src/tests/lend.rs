@@ -1412,3 +1412,45 @@ fn pairs_of_a_lazy_sequence_collects_it_once() {
         "the filtered values are collected: {out}"
     );
 }
+
+#[test]
+fn a_loop_over_a_list_only_it_holds_moves_its_elements_out() {
+    let out = cpp("fn word(i: Int) -> Str = \"w\".repeat(i % 4 + 1)
+let n = read<Int>()
+let longest = (0..n).map(word).max(by: w => w.len)!
+print(longest)
+");
+    assert!(
+        out.contains("for (std::string& "),
+        "the walked copy dies with the loop: {out}"
+    );
+    assert!(
+        out.contains("std::optional<std::string>(std::move("),
+        "the kept element moves out: {out}"
+    );
+}
+
+#[test]
+fn a_loop_over_a_yields_fn_that_makes_each_value_takes_it_owned() {
+    let made = cpp("fn rows(n: Int) -> yields List<Int>:
+    for i in 0..n: yield [i for _ in 0..i]
+var best: ?List<Int> = None
+for w in rows(read<Int>()):
+    if best == None or w.len > best!.len: best = Some(w)
+print(best!)
+");
+    assert!(made.contains("](std::vector<ll> w)"), "{made}");
+    assert!(made.contains("std::move(w)"), "{made}");
+    let named = cpp("let xs = read<List<Str>>()
+fn words(xs: List<Str>) -> yields Str:
+    for x in xs: yield x
+var best: ?Str = None
+for w in words(xs):
+    if best == None or w.len > best!.len: best = Some(w)
+print(best!, xs.len)
+");
+    assert!(
+        named.contains("](const std::string& w)"),
+        "a yielded place is lent, not copied into the callback: {named}"
+    );
+}
