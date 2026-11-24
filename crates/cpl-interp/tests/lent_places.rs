@@ -39,7 +39,15 @@ fn allocations(prog: &cpl_ir::Program, m: usize) -> usize {
     let mut out = Vec::with_capacity(64);
     let input = format!("{m}\n");
     let before = counting::usage().1;
-    cpl_interp::run(prog, input.as_bytes(), &mut out).expect("the program runs");
+    cpl_interp::run_on_this_thread(
+        prog,
+        input.as_bytes(),
+        &mut out,
+        cpl_interp::Limits {
+            stack_bytes: 1 << 20,
+        },
+    )
+    .expect("the program runs");
     counting::usage().1 - before
 }
 
