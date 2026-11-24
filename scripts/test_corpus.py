@@ -1251,6 +1251,15 @@ class DanglingReferenceTest(unittest.TestCase):
         self.track("scripts/x.py", f"{PKGS}/gone\n")
         self.assertEqual(corpus.dangling_references(), [("scripts/x.py", 1, f"{PKGS}/gone")])
 
+    def test_refs_fails_on_a_dangling_reference_alone(self):
+        err = io.StringIO()
+        with mock.patch.object(corpus, "dangling_references", return_value=[("crates/a.rs", 9, f"{PKGS}/p")]), \
+                contextlib.redirect_stderr(err):
+            self.assertEqual(corpus.cli(["refs"]), 1)
+        self.assertIn(f"crates/a.rs:9: names {PKGS}/p, which doesn't exist", err.getvalue())
+        with mock.patch.object(corpus, "dangling_references", return_value=[]):
+            self.assertEqual(corpus.cli(["refs"]), 0)
+
     def test_check_fails_on_a_dangling_reference(self):
         err = io.StringIO()
         with mock.patch.object(corpus, "generate", return_value={}), mock.patch.object(corpus, "problems", return_value=[]), \

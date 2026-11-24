@@ -1777,6 +1777,15 @@ def dangling_references():
     return found
 
 
+def refs():
+    """`corpus.py refs`: each dangling corpus reference, the part of `check` regenerating
+    can't fix, so the commit gate blocks on it while a stale index only warns."""
+    found = dangling_references()
+    for f, n, path in found:
+        print(f"{f}:{n}: names {path}, which doesn't exist", file=sys.stderr)
+    return 1 if found else 0
+
+
 def main(mode):
     gen = generate()
     metas, errors = {}, []
@@ -1842,6 +1851,7 @@ def cli(argv):
     sub = ap.add_subparsers(dest="mode", required=True)
     sub.add_parser("build")
     sub.add_parser("check")
+    sub.add_parser("refs")
     d = sub.add_parser("delete")
     d.add_argument("ids", nargs="+")
     v = sub.add_parser("verify")
@@ -1884,6 +1894,8 @@ def cli(argv):
     g.add_argument("--cpl")
     g.add_argument("--top", type=int, default=1000)
     args = ap.parse_args(argv)
+    if args.mode == "refs":
+        return refs()
     if args.mode == "verify":
         return verify(args)
     if args.mode == "record":

@@ -372,7 +372,7 @@ mod tests {
     fn seeded(name: &str, gen: &str) -> (PathBuf, PathBuf) {
         let root = std::env::temp_dir().join(format!("cpl-conform-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
-        let pkg = root.join("corpus/problems/p");
+        let pkg = root.join("corpus").join("problems").join("p");
         std::fs::create_dir_all(&pkg).unwrap();
         std::fs::write(pkg.join("spec.cp"), "").unwrap();
         std::fs::write(pkg.join("interactor.py"), "").unwrap();

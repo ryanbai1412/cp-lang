@@ -291,7 +291,7 @@ class TailTest(unittest.TestCase):
         self.assertEqual([e for e in ev if e.startswith("spawn")], ["spawn gate.mjs"])
         self.assertEqual([e for e in ev if e.startswith("cargo")], [self.FMT, self.CLIPPY, self.BUILD])
         self.assertEqual(out.count("CPL_GATE_PART=checks"), 5)
-        self.assertFalse([e for e in ev if e.startswith("scripts/corpus.py")])
+        self.assertEqual([e for e in ev if e.startswith("scripts/corpus.py")], ["scripts/corpus.py refs"])
 
     def test_a_failed_job_names_its_rerun_and_stops_the_rest(self) -> None:
         board = FakeProc(0, running=True)

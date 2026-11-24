@@ -136,6 +136,8 @@ def _stale(what: str, name: str) -> str:
 
 RATCHET = Step("tech-debt ratchet (scripts/debt-ratchet.py --check)", ("scripts/debt-ratchet.py", "--check"),
                "tech-debt ratchet failed; see scripts/debt-ratchet.json")
+REFS = Step("every corpus path a file names exists (scripts/corpus.py refs)", ("scripts/corpus.py", "refs"),
+            "a file names a corpus package or submission that doesn't exist; the line above names it")
 USECASES = Step("use cases: unique IDs, every field, evidence that exists (scripts/check-usecases.py)",
                 ("scripts/check-usecases.py", "--check"), "use-case catalogue check failed; see above", stdout=False)
 
@@ -148,9 +150,9 @@ SUBSET = gate("subset", fail=_stale("spec/SUBSET.md", "subset"))
 STEPS = {
     "commit": (Step("cargo build -p cpl-cli (the cpl the ratchet's corpus_fmt_dirty runs)",
                     ("cargo", "build", "-q", "-p", "cpl-cli"), "cargo build -p cpl-cli failed; see above"),
-               RATCHET, USECASES, SUBSET),
+               RATCHET, REFS, USECASES, SUBSET),
     "checks": (
-        RATCHET,
+        RATCHET, REFS,
         Step("handbook reads for an outsider (scripts/check-handbook.py)", ("scripts/check-handbook.py",),
              "handbook doc leans on shared context; see above"),
         USECASES,
