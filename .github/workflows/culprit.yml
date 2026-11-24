@@ -43,7 +43,14 @@ jobs:
               --status success --limit 1 --json headSha --jq '.[0].headSha')
           echo "good=$good" >>"$GITHUB_OUTPUT"
           . scripts/retry.sh
-          retry gh run view "$RUN_ID" --repo "$GITHUB_REPOSITORY" --log-failed >failed.log
+          # Job by job: `gh run view --log-failed` gives up on a run with many red
+          # jobs ("too many API requests needed to fetch logs"), which left run
+          # 45428862352's 41 red jobs unbisected.
+          : >failed.log
+          for job in $(retry gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/jobs?per_page=100" \
+              --jq '.jobs[] | select(.conclusion == "failure") | .id'); do
+              retry gh api "repos/$GITHUB_REPOSITORY/actions/jobs/$job/logs" >>failed.log || echo "no log for job $job"
+          done
           n=$(grep -cE '\b(FAIL|TIMEOUT|SIG[A-Z]+) +\[' failed.log || [ $? = 1 ])
           echo "fails=$n" >>"$GITHUB_OUTPUT"
           echo "good $good, bad $BAD, $n FAIL lines"
