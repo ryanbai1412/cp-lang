@@ -797,6 +797,9 @@ class AtMax(unittest.TestCase):
     def test_a_checked_trap_is_a_finding(self):
         self.assertEqual(self.findings((3, b"", 0.1, 10), (0, b"1\n", 0.05, 10)), ["traps p --max"])
 
+    def test_a_checked_run_past_its_budget_is_not_called_a_trap(self):
+        self.assertEqual(self.findings(None, (0, b"1\n", 0.05, 10)), ["checked-over-limit p --max"])
+
     def test_over_the_time_limit(self):
         self.assertIn("over-limit p --max", self.findings((0, b"1\n", 1, 10), (0, b"1\n", 2.5, 10), (0, b"1\n", 2.4, 10)))
 

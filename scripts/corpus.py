@@ -1013,7 +1013,9 @@ def at_max(pkg, cpl, exe, orig, data):
         found.append(f"no-build {pid} -")
     else:
         r = measure(safe, data, max(TIMEOUT, CHECKED_SLOWER * ms / 1000))
-        if r is None or r[0] != 0:
+        if r is None:
+            found.append(f"checked-over-limit {pid} --max")
+        elif r[0] != 0:
             found.append(f"traps {pid} --max")
     if not exe:
         return found
