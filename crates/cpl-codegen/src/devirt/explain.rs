@@ -187,17 +187,19 @@ pub fn explain_closures(
             if let Stmt::Let(slot, init) = stmt {
                 if matches!(c.locals[*slot].ty, Ty::Fn(..)) {
                     let site = format!("closure {cid} local {}", c.locals[*slot].name);
-                    let auto = match init.as_ref().map(|e| &e.kind) {
-                        Some(ExprKind::Closure(i)) => devirt.let_auto(Some(cid), *slot, *i, 0),
-                        Some(ExprKind::Call(f, _)) => {
-                            !hoisted.contains(slot) && devirt.let_auto_call(Some(cid), *slot, *f, 0)
-                        }
-                        Some(_) => {
-                            let init = init.as_ref().expect("some");
-                            !hoisted.contains(slot)
-                                && devirt.let_auto_join(Some(cid), *slot, init, 0)
-                        }
-                        _ => false,
+                    let auto = match init.as_ref() {
+                        Some(init) => match &init.kind {
+                            ExprKind::Closure(i) => devirt.let_auto(Some(cid), *slot, *i, 0),
+                            ExprKind::Call(f, _) => {
+                                !hoisted.contains(slot)
+                                    && devirt.let_auto_call(Some(cid), *slot, *f, 0)
+                            }
+                            _ => {
+                                !hoisted.contains(slot)
+                                    && devirt.let_auto_join(Some(cid), *slot, init, 0)
+                            }
+                        },
+                        None => false,
                     };
                     out.push(match auto {
                         true => ClosureLowering {
