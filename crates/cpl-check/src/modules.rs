@@ -299,25 +299,32 @@ pub(crate) fn std_modules() -> &'static [(&'static str, &'static str)] {
 /// a member is, for ordering completion.
 pub fn std_calls(name: &str) -> u32 {
     static TEXT: &str = include!(concat!(env!("OUT_DIR"), "/std_calls.rs"));
-    static CALLS: std::sync::OnceLock<Vec<(&'static str, u32)>> = std::sync::OnceLock::new();
+    // Two lists, each sorted as written: `call_names` reads a set and
+    // `call_table` writes the rest from a map. Sorting them here instead
+    // put a copy of core's sort for `(&str, u32)` in cpl.wasm.
+    static CALLS: std::sync::OnceLock<[Vec<(&'static str, u32)>; 2]> = std::sync::OnceLock::new();
     let calls = CALLS.get_or_init(|| {
         let (counts, rest) = TEXT.split_once('\n').unwrap_or((TEXT, ""));
         let names = crate::std_files::call_names(BUILT_INDEX.iter().map(|(_, text)| *text));
-        let mut calls: Vec<(&str, u32)> = names
+        let indexed = names
             .into_iter()
             .zip(counts.split(' '))
-            .filter_map(|(name, count)| Some((name, count.parse().ok()?)))
-            .chain(rest.lines().filter_map(|line| {
-                let (name, count) = line.split_once(' ')?;
-                Some((name, count.parse().ok()?))
-            }))
-            .collect();
-        calls.sort_unstable();
-        calls
+            .filter_map(|(name, count)| Some((name, count.parse().ok()?)));
+        let unindexed = rest.lines().filter_map(|line| {
+            let (name, count) = line.split_once(' ')?;
+            Some((name, count.parse().ok()?))
+        });
+        [indexed.collect(), unindexed.collect()]
     });
     calls
-        .binary_search_by(|(known, _)| (*known).cmp(name))
-        .map_or(0, |at| calls[at].1)
+        .iter()
+        .find_map(|calls| {
+            let at = calls
+                .binary_search_by(|(known, _)| (*known).cmp(name))
+                .ok()?;
+            Some(calls[at].1)
+        })
+        .unwrap_or(0)
 }
 
 /// Every module of the standard library, by name, with its
