@@ -106,7 +106,8 @@ pub struct Rooted<V, Pre, A>:
     /// on ties; `t.Pre` is the preorder that visits the heavy child first and then the other
     /// children in child order.
     ///
-    /// cost: \(O(n + m)\) for m listed arcs, without recursion
+    /// cost: \(O(n + m)\) for m listed arcs, without recursion; memory one `[V]` row per field,
+    /// filled in place (the preorder and its inverse are stored as built, not copied)
     /// traps: when some vertex is not reachable from `root`
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.children(0).collect() == [1, 2] and t.children(1).collect() == [3, 4] and t.depth(4) == 2`
     pub fn new(next: Next<V>, root: V) -> Rooted<V, _, _> = Rooted.build(next, [root])
@@ -479,7 +480,8 @@ pub struct Rooted<V, Pre, A>:
     /// Each vertex folds its parent's side first, then its children in child order; the sibling
     /// folds use prefixes and suffixes, so `op` needs no inverse.
     ///
-    /// cost: \(O(n)\) calls of `lift` and `finish`, \(O(n)\) calls of `op`
+    /// cost: \(O(n)\) calls of `lift` and `finish`, \(O(n)\) calls of `op`; memory one `[V]?T` row
+    /// reused for the down folds, the up folds and the answers, plus the returned `[V]T`
     /// empty: `domain V = 0..1; let adj: [V]List<V> = [[]]; let t = Rooted(adj, root: 0); t.reroot(+, finish: (s, v) => s + 1) == [1]`
     /// order: keyed by `V`
     /// traps: never
@@ -499,26 +501,28 @@ pub struct Rooted<V, Pre, A>:
                 let c = bfs[i]
                 acc = mon.op(acc, lift(dn[c]!, c, v))
             dn[v] = Some(finish(acc, v))
-        var ab: [V]?T = None
-        var ans: [V]?T = None
+        // `dn[v]` holds v's subtree fold until v's parent reads it, then the fold of everything
+        // outside v's subtree, then v's answer
+        var pre = List<U>()
         for p in Pre:
             let v = at[p]
             let m = k1[v] - k0[v]
-            var pre = List.filled(m + 1, mon.id)
+            pre = List.filled(m + 1, mon.id)
             if let pv = par[v]:
-                pre[0] = lift(ab[v]!, pv, v)
+                pre[0] = lift(dn[v]!, pv, v)
             for j in 0..m:
                 let c = bfs[k0[v] + j]
                 pre[j + 1] = mon.op(pre[j], lift(dn[c]!, c, v))
-            ans[v] = Some(finish(pre[m], v))
             var suf = mon.id
             var j = m - 1
             while j >= 0:
                 let c = bfs[k0[v] + j]
-                ab[c] = Some(finish(mon.op(pre[j], suf), v))
-                suf = mon.op(lift(dn[c]!, c, v), suf)
+                let below = lift(dn[c]!, c, v)
+                dn[c] = Some(finish(mon.op(pre[j], suf), v))
+                suf = mon.op(below, suf)
                 j -= 1
-        [V] v => ans[v]!
+            dn[v] = Some(finish(pre[m], v))
+        [V] v => dn[v]!
 
     /// The isomorphism class of every subtree: `of[a] == of[b]` exactly when the subtrees of `a` and
     /// `b` are the same rooted tree up to reordering children.
