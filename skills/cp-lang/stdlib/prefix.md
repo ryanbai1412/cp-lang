@@ -25,16 +25,17 @@ Fields: `p: [D.cuts]T`.
 
 Prefix sums over a domain `D`, a 2-D grid `(R, C)`, or a `List<T>`, of `Int`s, `F64`s, `Mod`s, or anything else with `+`, `-` and a zero.
 
-Fields: `p: [D.cuts]T`, `sums: Bool`, `rises: Bool`.
+Fields: `p: [D.cuts]T`, `sums: Bool`, `rises: Bool`, `back: Bool`.
 
 - `fn new(a: [D]T) -> Prefix<D, T>` — \(O(\lvert D \rvert)\) time and space; Build 1-D prefix sums over `a: [D]T`; `Prefix(a)` calls it.
 - `fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<D, T>` — \(O(\lvert D \rvert)\) time and space; Create an append-only 1-D prefix/suffix sum table filled via `.set(i, x)` in `order`.
-- `fn prefix(self, b: Cut<D>) -> T` — \(O(1)\); The sum of everything left of boundary `b`: zero at the first cut, `all` at the last.
+- `fn prefix(self, b: Cut<D>) -> T` — \(O(1)\); The sum of everything left of boundary `b`: zero at the first cut, `all` at the last.; traps: on a suffix table (`a.rev.scan(f)`) with `f` other than `+`, which subtracts
+- `fn of_rev_scan<M>(a: [D]T, f: M, from: ?T) -> Prefix<D, T>`
 - `fn fold(self, r: Range<D>) -> T` — \(O(1)\); The sum of `a[i]` for `i` in `r`, or `0` when `r` is empty: `prefix(r.r) - prefix(r.l)`.; traps: on a table from `scan(f)` with `f` other than `+`
 - `fn cyclic_sum(self, r: RingRange<D>) -> T` — \(O(1)\); The sum over a wrapping run of positions, e.g.; traps: on a table from `scan(f)` with `f` other than `+`
 - `fn at(self, c: Cut<D>) -> T` — \(O(1)\); `p[c]`: the sum of everything left of cut `c`, the same as `prefix(c)`; at a position `v`, `p[v]` is the sum through `v`, the same as `p[v.r]` (R07.1.6).
 - `fn suffix(self, b: Cut<D>) -> T` — \(O(1)\); The sum of everything right of boundary `b`: `all - prefix(b)`, zero at the last cut.; traps: on a table from `scan(f)` with `f` other than `+`
-- `@get fn all(self) -> T` — \(O(1)\); The sum of the entire domain: `prefix` at the last cut, zero for an empty domain.
+- `@get fn all(self) -> T` — \(O(1)\); The sum of the entire domain: `prefix` at the last cut (a suffix table's first), zero for an empty domain.
 - `fn first_ge(self, target: T) -> ?Cut<D>` — \(O(\log \lvert D \rvert)\); The first boundary `b` with `prefix(b) >= target`, or `None` when even `all` is smaller.; traps: when some element is negative
 - `fn first_gt(self, target: T) -> ?Cut<D>` — \(O(\log \lvert D \rvert)\); The first boundary `b` with `prefix(b) > target`, or `None` when `all <= target`.; traps: when some element is negative
 
