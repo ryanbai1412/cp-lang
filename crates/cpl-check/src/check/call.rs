@@ -192,9 +192,7 @@ impl<'a> Checker<'a> {
                         let ty = self.quietly(|c| c.type_arg(t));
                         // `gen<T>(args)` on a type that draws itself is `T.gen(args)`;
                         // a domain draws a position.
-                        if !matches!(ty, Ty::Pos(_))
-                            && !matches!(&t.kind, cpl_syntax::ast::TypeKind::Named { name, .. } if name.text == "Graph")
-                        {
+                        if !matches!(ty, Ty::Pos(_) | Ty::Param(_)) {
                             if let Some(own) = t.gen_call(args, call.span) {
                                 return self.infer(&own);
                             }

@@ -1295,7 +1295,7 @@ impl<'a> Lowerer<'a> {
             return call;
         }
         if self.sigs[id].returns_fresh_domain && self.sigs[id].used_fresh_call {
-            id = self.clone_fresh_domain_fn(id);
+            id = self.copy_fn(id, self.sigs[id].env.clone());
         }
         id = self.view_param_fn(id, args);
         self.queue_fn(id);

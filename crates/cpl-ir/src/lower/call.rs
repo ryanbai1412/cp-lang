@@ -37,22 +37,21 @@ pub(super) enum Reduce {
 }
 
 impl<'a> Lowerer<'a> {
-    /// The range ends a struct's type arguments carry in this instance: a
-    /// written `T` that is an `Int` with known ends gives its parameter those
-    /// ends, without making the struct a type of its own.
-    fn written_ranges(&self, params: &[ast::Name], written: &[ast::Type]) -> Vec<(String, GenArg)> {
-        params
-            .iter()
-            .zip(written)
-            .filter_map(|(p, t)| {
-                let ast::TypeKind::Named { name, .. } = &t.kind else {
-                    return None;
-                };
-                let ends = self.gen_env.get(&mono::range_ends_marker(&name.text))?;
-                (self.gen_env.get(&name.text) == Some(&GenArg::Ty(Ty::Int)))
-                    .then(|| (mono::range_ends_marker(&p.text), ends.clone()))
-            })
-            .collect()
+    /// `fn_id` made again under `marks`, what its owner's type parameters
+    /// were written as, so a `gen<A>()` in it draws `A`'s fields from their ranges.
+    fn drawn_method(&mut self, fn_id: FnId, marks: Vec<(String, GenArg)>) -> FnId {
+        if marks.is_empty() {
+            return fn_id;
+        }
+        let key = mono::InstKey::Drawn(fn_id, marks.clone());
+        if let Some(&made) = self.insts.get(&key) {
+            return made;
+        }
+        let mut env = self.sigs[fn_id].env.clone();
+        env.extend(marks);
+        let made = self.copy_fn(fn_id, env);
+        self.insts.insert(key, made);
+        made
     }
 
     /// `base.name(args)`.
@@ -516,9 +515,6 @@ impl<'a> Lowerer<'a> {
                     if let Some(call) = self.list_form_call(gid, name, gtypes, args, span) {
                         return call;
                     }
-                    if let Some(call) = self.list_form_call(gid, name, gtypes, args, span) {
-                        return call;
-                    }
                     let gargs = self.resolve_gen_args_for_struct(gid, gtypes);
                     if gargs.contains(&GenArg::Ty(Ty::Error)) {
                         return self.err_expr(span);
@@ -535,10 +531,12 @@ impl<'a> Lowerer<'a> {
                     }
                     let sid = self.instantiate_struct(gid, gargs);
                     if let Some(fn_id) = self.own_method(sid, &name.text) {
+                        let marks = self.drawn_args(&decl.generics, gtypes);
+                        let fn_id = self.drawn_method(fn_id, marks);
                         return self.method_call(fn_id, None, args, span);
                     }
                     if let Some(&gfid) = self.structs[sid].gen_methods.get(&name.text) {
-                        self.owner_ranges = self.written_ranges(&decl.generics, gtypes);
+                        self.owner_ranges = self.drawn_args(&decl.generics, gtypes);
                         return self.call_gen_fn(gfid, Vec::new(), None, args, span);
                     }
                     if self.structs[sid].index_domain.is_some() {

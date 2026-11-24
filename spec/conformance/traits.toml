@@ -3189,6 +3189,14 @@ print(V.count, yes(V.all(v => t.depth(v) <= 1)))
 """
 out = "5 YES"
 
+[case."Random/Graph/gen"]
+code = """
+domain V = 0..5
+let g = gen<Graph<V, (to: V, w: 1..=9)>>(simple: true, connected: true)
+print(V.count, yes(V.all(v => g.out(v).all(e => e.to != v and 1 <= e.w <= 9))))
+"""
+out = "5 YES"
+
 [case."Seq/Zipped/iter"]
 code = """
 for (x, y) in zip([1, 2, 3], [10, 20]): print(x, y)

@@ -24,7 +24,7 @@ use std.dsu.{Dsu}
 use std.heap.{Heap, MinHeap}
 use std.math.{abs, gcd, popcount, ctz}
 use std.opt.{is_none_or}
-use std.rand.{shuffle}
+use std.rand.{Random, shuffle}
 use std.seq.{collect, reverse, count, Seq, Slice, all, any}
 
 /// \(O(\deg u)\) per walk of `out(u)`.
@@ -61,6 +61,12 @@ fn reversed_arc<A, V>(a: A, u: V) -> A:
     if A: ToField:
         return (..a, to: u)
     u
+
+// An arc into `v`: a record draws its other fields with `gen<A>()`, a plain vertex is `v`.
+fn drawn_arc<A, V>(v: V) -> A:
+    if A: ToField:
+        return (..gen<A>(), to: v)
+    v
 
 /// \(O(1)\). The weight of an arc: a record with a `w` field, or `.weighted(f)`.
 pub trait Weighted<W>:
@@ -3924,42 +3930,37 @@ pub struct Only<V, G>(g: G, keep: V -> Bool, from: V -> Bool):
                     tarcs[pos] = reversed_arc(a, u)
         Graph<V, G.Arc>(start: tstart, arcs: tarcs)
 
-/// `gen<Graph<V, A>>(simple:, connected:, directed:)`: `arc(to)` draws an
-/// arc and `mirror(a, from)` turns it back, so both arcs of an undirected
-/// edge carry the same fields. Up to `2 * V.count` edges, a random spanning
-/// tree among them when `connected`.
-fn gen_graph<V, A>(
-    arc: (V) -> A,
-    mirror: (A, V) -> A,
-    simple: Bool,
-    connected: Bool,
-    directed: Bool,
-) -> Graph<V, A>:
-    let n = V.count
-    var label = V.collect()
-    shuffle(mut label)
-    var used: [V, V]Bool = false
-    var edges = List<(V, V)>()
-    if connected:
-        for i in 1..n:
-            let (u, v) = (label[rand(0, i - 1)], label[i])
+/// `gen<Graph<V, A>>(simple:, connected:, directed:)`: each arc is a
+/// `gen<A>()` sent to its end, and an undirected edge's arc back is it
+/// turned around, so both carry the same fields. Up to `2 * V.count` edges,
+/// a random spanning tree among them when `connected`.
+impl<V, A> Random for Graph<V, A>:
+    fn gen(simple: Bool = false, connected: Bool = false, directed: Bool = false) -> Graph<V, A>:
+        let n = V.count
+        var label = V.collect()
+        shuffle(mut label)
+        var used: [V, V]Bool = false
+        var edges = List<(V, V)>()
+        if connected:
+            for i in 1..n:
+                let (u, v) = (label[rand(0, i - 1)], label[i])
+                edges.push((u, v))
+                used[u, v] = true
+                if not directed: used[v, u] = true
+        let most = if simple: (if directed: n * (n - 1) else: n * (n - 1) / 2) else: 2 * n
+        let m = rand(edges.len, max(edges.len, min(most, 2 * n)))
+        while edges.len < m:
+            let (u, v) = (label[rand(0, n - 1)], label[rand(0, n - 1)])
+            if simple and (u == v or used[u, v]): continue
             edges.push((u, v))
             used[u, v] = true
             if not directed: used[v, u] = true
-    let most = if simple: (if directed: n * (n - 1) else: n * (n - 1) / 2) else: 2 * n
-    let m = rand(edges.len, max(edges.len, min(most, 2 * n)))
-    while edges.len < m:
-        let (u, v) = (label[rand(0, n - 1)], label[rand(0, n - 1)])
-        if simple and (u == v or used[u, v]): continue
-        edges.push((u, v))
-        used[u, v] = true
-        if not directed: used[v, u] = true
-    var pairs = List<(from: V, arc: A)>()
-    for (u, v) in edges:
-        let a = arc(v)
-        pairs.push((from: u, arc: a))
-        if not directed: pairs.push((from: v, arc: mirror(a, u)))
-    Graph.of(pairs)
+        var pairs = List<(from: V, arc: A)>()
+        for (u, v) in edges:
+            let a = drawn_arc<A, V>(v)
+            pairs.push((from: u, arc: a))
+            if not directed: pairs.push((from: v, arc: reversed_arc(a, u)))
+        Graph.of(pairs)
 
 impl Show for Reweighted<V, E, A, W>:
     /// Every arc as `u->v:w`, space-separated in vertex then arc order; `no arcs` for none.

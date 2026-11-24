@@ -50,7 +50,51 @@ impl<'a> Lowerer<'a> {
                 out[i] = GenArg::Sized(ty.clone(), lens);
             }
         }
+        let marks = self.drawn_args(&decl.generics, args);
+        self.owner_ranges.extend(marks);
         out
+    }
+
+    /// The type parameters `params` written as records of ranges, or as a
+    /// parameter that was: what `gen<P>()` draws for each, under its marker.
+    pub(in crate::lower) fn drawn_args(
+        &mut self,
+        params: &[ast::Name],
+        written: &[ast::Type],
+    ) -> Vec<(String, GenArg)> {
+        let mut out = Vec::new();
+        for (p, t) in params.iter().zip(written) {
+            if let Some(drawn) = self.drawn(t) {
+                out.push((mono::range_ends_marker(&p.text), drawn));
+            }
+        }
+        out
+    }
+
+    /// What `gen<T>()` draws for `t` when its type does not keep it: a
+    /// record or tuple with a range field, or a parameter that was one.
+    fn drawn(&mut self, t: &ast::Type) -> Option<GenArg> {
+        let tys: Vec<&ast::Type> = match &t.kind {
+            ast::TypeKind::Record(fields) => fields.iter().map(|(_, t)| t).collect(),
+            ast::TypeKind::Tuple(items) => items.iter().collect(),
+            ast::TypeKind::Named { name, args } if args.is_empty() => {
+                return self
+                    .gen_env
+                    .get(&mono::range_ends_marker(&name.text))
+                    .cloned();
+            }
+            _ => return None,
+        };
+        let (mut items, mut drawn) = (Vec::new(), false);
+        for t in tys {
+            let arg = match self.drawn(t) {
+                Some(arg) => arg,
+                None => self.resolve_gen_arg(t),
+            };
+            drawn |= matches!(arg, GenArg::Range(..) | GenArg::Drawn(..));
+            items.push(arg);
+        }
+        drawn.then(|| GenArg::Drawn(self.resolve_ty(t), items))
     }
 
     pub(in crate::lower) fn resolve_gen_args_for_struct(

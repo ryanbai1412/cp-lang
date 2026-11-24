@@ -9241,7 +9241,12 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 - **Why.** `cpl setup jetbrains` already installs LSP4IJ in every IDE, so the built-in client ran only for a plugin installed by hand without it; choosing a client was editor logic for that one case. An IDE installing the plugin by hand now installs LSP4IJ with it.
 - **Reverse.** Restore `cp-lang-lsp.xml` with its provider, make the LSP4IJ dependency optional again, and bring back the `loaded` check.
 
-## 618. (reserved, unknown)
+## 618. `gen<A>()` over a type parameter draws what `A` was written as; Graph draws through its `impl Random` (compiler, 2026-11-24)
+
+- **Call.** A generic body's `gen<A>()` draws what the caller wrote for `A`: a range, a domain, a named type through its `impl Random`, or a record or tuple of them field by field (`(to: V, w: 1..=9)` keeps `w`'s range through instantiation). std's `gen<Graph<V, A>>(..)` is now `impl<V, A> Random for Graph<V, A>`, drawing each arc as `gen<A>()` sent to its end; the compiler's Graph arm (`arc_lambdas`) and the checker's `Graph` exclusion are gone, and `gen<Graph<V>>()` with the arc left to its default now works. Coordinator ruling (86fc4851) of 2026-11-24.
+- **Why.** Graph generation was the one named type the compiler drew itself (std_shadowed). With `gen<A>()` general, Graph is an ordinary std impl a user type could copy.
+- **Seeded output.** Graphs with plain-vertex arcs are byte-identical per seed. Record arcs now draw their `to` field before it is set to the edge's end, so a seed gives other weights (and a different stream after); no golden in spec/ or the corpus depended on it.
+- **Reverse.** Put `gen_graph` and the lowering arm back; `gen<A>()` over a type parameter keeps working.
 
 ## 619. (reserved, content)
 

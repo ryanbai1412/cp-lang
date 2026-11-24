@@ -51,6 +51,9 @@ pub(super) enum GenArg {
     /// `[3]Int` given to a `T: Read`: the type, and the lengths its
     /// `read<T>()` reads, which the type itself does not keep.
     Sized(Ty, Vec<i64>),
+    /// `(to: V, w: 1..=9)` given to a type parameter: the type, and what
+    /// `gen<T>()` draws for each field, which the type itself does not keep.
+    Drawn(Ty, Vec<GenArg>),
 }
 
 pub(super) type GenEnv = HashMap<String, GenArg>;
@@ -68,6 +71,8 @@ pub(super) enum InstKey {
     OpenImpl(StructId, usize, String, Vec<GenArg>),
     /// The fn and the params it takes as views.
     View(FnId, Vec<(usize, Ty)>),
+    /// The method and what its owner's type parameters were written as.
+    Drawn(FnId, Vec<(String, GenArg)>),
 }
 
 /// The env entry saying type parameter `k` is the `Int` key of an indexed
@@ -78,7 +83,8 @@ pub(super) fn int_key_marker(k: &str) -> String {
 
 /// The env entry holding the ends of the range generic `k`'s `Int` was inferred from: `T` of
 /// `fold` over a `List<1..=9>` is `Int`, so its values widen as a range's do (R03.1.7), while
-/// `T.MIN`/`T.MAX`/`T.count` read `1..=9` (decision 544).
+/// `T.MIN`/`T.MAX`/`T.count` read `1..=9` (decision 544). For a record or tuple
+/// `k` it holds what `gen<k>()` draws for each field (`GenArg::Drawn`).
 pub(super) fn range_ends_marker(k: &str) -> String {
     format!("__range_ends_{k}")
 }
@@ -293,7 +299,7 @@ impl<'a> Lowerer<'a> {
                 }
             }
             GenArg::Domain(d) => format!("D{d}_{}", self.domains[*d]),
-            GenArg::Ty(ty) => self.mangle_ty(ty),
+            GenArg::Ty(ty) | GenArg::Drawn(ty, _) => self.mangle_ty(ty),
             GenArg::RuntimeInt(gid) => format!("RI{gid}"),
             GenArg::Op(op) => format!("Op_{op:?}"),
             GenArg::Range(lo, hi) => format!("R{:?}_{:?}", lo, hi),

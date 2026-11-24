@@ -127,7 +127,7 @@ impl<'a> Lowerer<'a> {
                         // their first generic arg is `T`!
                         for (pa, actual) in args.iter().zip(actual_args) {
                             match actual {
-                                GenArg::Ty(t) | GenArg::Sized(t, _) => {
+                                GenArg::Ty(t) | GenArg::Sized(t, _) | GenArg::Drawn(t, _) => {
                                     self.unify_ast_ty(pa, t, tpl_mod, gen_names, env)
                                 }
                                 GenArg::Domain(d) => {

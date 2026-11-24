@@ -41,7 +41,7 @@ impl<'a> Lowerer<'a> {
                     GenArg::Range(_, _) => "Int".to_string(),
                     GenArg::OptRange(_, _) => "?Int".to_string(),
                     GenArg::Domain(d) => domains[*d].clone(),
-                    GenArg::Ty(ty) | GenArg::Sized(ty, _) => {
+                    GenArg::Ty(ty) | GenArg::Sized(ty, _) | GenArg::Drawn(ty, _) => {
                         crate::show::ty_name(ty, domains, &structs, &self.enums)
                     }
                     GenArg::RuntimeInt(_) => "_".to_string(),

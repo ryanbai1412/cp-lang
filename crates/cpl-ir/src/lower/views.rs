@@ -78,11 +78,7 @@ impl<'a> Lowerer<'a> {
         if let Some(&copy) = self.insts.get(&key) {
             return copy;
         }
-        let sig = &self.sigs[id];
-        let (decl, mod_id, offset, owner) = (sig.decl, sig.mod_id, sig.offset, sig.owner);
-        let copy = self.declare_fn_in(decl, mod_id, offset, owner, sig.env.clone());
-        self.sigs[copy].name = format!("{}_{copy}", self.sigs[copy].name);
-        self.resolve_fn_sig(copy, None);
+        let copy = self.copy_fn(id, self.sigs[id].env.clone());
         for (at, view) in &takes {
             self.sigs[copy].params[*at].ty = view.clone();
         }

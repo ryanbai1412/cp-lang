@@ -91,12 +91,10 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    pub(super) fn clone_fresh_domain_fn(&mut self, orig: FnId) -> FnId {
-        let decl = self.sigs[orig].decl;
-        let mod_id = self.sigs[orig].mod_id;
-        let offset = self.sigs[orig].offset;
-        let owner = self.sigs[orig].owner;
-        let env = self.sigs[orig].env.clone();
+    /// `orig` declared again under `env`, named apart.
+    pub(super) fn copy_fn(&mut self, orig: FnId, env: GenEnv) -> FnId {
+        let sig = &self.sigs[orig];
+        let (decl, mod_id, offset, owner) = (sig.decl, sig.mod_id, sig.offset, sig.owner);
         let new_id = self.declare_fn_in(decl, mod_id, offset, owner, env);
         self.sigs[new_id].name = format!("{}_{new_id}", self.sigs[new_id].name);
         self.resolve_fn_sig(new_id, None);

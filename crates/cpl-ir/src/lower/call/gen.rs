@@ -1,7 +1,7 @@
 //! `gen(lo..=hi)` and `gen<T>(...)`: a random value of a type the input
 //! could hold (R06.4.3, lib/random-stress.md). Ranges draw with `rand`,
-//! arrays draw each element, `Str of` and `Graph` call the std fns beside
-//! each type, and a named type's `impl Random` draws the rest.
+//! arrays draw each element, `Str of` calls the std fn beside it, and a
+//! named type's `impl Random` draws the rest.
 
 use super::*;
 
@@ -115,47 +115,17 @@ impl<'a> Lowerer<'a> {
                 if tys.is_empty()
                     && let Ty::Pos(d) = self.resolve_ty(ty) =>
             {
-                // A position drawn uniformly: `V.nth(rand(0, V.count - 1))`.
-                let n = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
-                let last = self.int_add(n, -1);
-                let ord =
-                    self.mk_builtin(Builtin::Rand, [self.int_lit(0, span), last], Ty::Int, span);
-                self.cast(Cast::Trust, ord, Ty::Pos(d))
+                self.gen_pos(d, span)
             }
             ast::TypeKind::Named { name, args: tys } => {
                 match (name.text.as_str(), tys.as_slice()) {
-                    ("Graph", [_, arc]) => {
-                        let flag = |name: &str| ast::Arg {
-                            name: Some(ast::Name {
-                                text: name.into(),
-                                span,
-                            }),
-                            mutable: false,
-                            value: named(name).map_or(
-                                ast::Expr {
-                                    kind: ast::ExprKind::Bool(false),
-                                    span,
-                                },
-                                |a| a.value.clone(),
-                            ),
-                        };
-                        let (make, mirror) = arc_lambdas(arc, span);
-                        let call = [
-                            ast::Arg {
-                                name: None,
-                                mutable: false,
-                                value: make,
-                            },
-                            ast::Arg {
-                                name: None,
-                                mutable: false,
-                                value: mirror,
-                            },
-                            flag("simple"),
-                            flag("connected"),
-                            flag("directed"),
-                        ];
-                        self.std_call("graph", "gen_graph", tys, &call, span)
+                    (_, [])
+                        if let Some(arg) =
+                            (self.gen_env.get(&mono::range_ends_marker(&name.text)))
+                                .or_else(|| self.gen_env.get(&name.text))
+                                .cloned() =>
+                    {
+                        self.gen_param(arg, args, span)
                     }
                     _ => match ty.gen_call(args, span) {
                         Some(call) => self.expr(&call, None),
@@ -221,6 +191,41 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// `gen<A>()` for a type parameter `A`: what the argument it stands for draws.
+    fn gen_param(&mut self, arg: GenArg, args: &[ast::Arg], span: Span) -> Expr {
+        let (ty, items) = match arg {
+            GenArg::Range(Some(lo), Some(hi)) => {
+                let bounds = [self.int_lit(lo, span), self.int_lit(hi, span)];
+                return self.mk_builtin(Builtin::Rand, bounds, Ty::Int, span);
+            }
+            GenArg::Ty(Ty::Pos(d)) | GenArg::Domain(d) => return self.gen_pos(d, span),
+            GenArg::Ty(Ty::Struct(sid)) => {
+                return match self.structs[sid].methods.get("gen") {
+                    Some(&fn_id) => self.user_call(fn_id, None, args, span),
+                    None => self.gen_unsupported(span),
+                };
+            }
+            GenArg::Drawn(ty, items) => (ty, items),
+            GenArg::Ty(ty) if let Some(fields) = ty.fields() => {
+                (ty, fields.into_iter().map(GenArg::Ty).collect())
+            }
+            _ => return self.gen_unsupported(span),
+        };
+        let mut parts = Vec::new();
+        for a in items {
+            parts.push(self.gen_param(a, &[], span));
+        }
+        self.mk(ExprKind::Tuple(parts), ty, span)
+    }
+
+    /// A position drawn uniformly: `V.nth(rand(0, V.count - 1))`.
+    fn gen_pos(&mut self, d: DomainId, span: Span) -> Expr {
+        let n = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
+        let last = self.int_add(n, -1);
+        let ord = self.mk_builtin(Builtin::Rand, [self.int_lit(0, span), last], Ty::Int, span);
+        self.cast(Cast::Trust, ord, Ty::Pos(d))
+    }
+
     fn gen_unsupported(&mut self, span: Span) -> Expr {
         self.gen_error(cpl_diag::msgs::ir::GEN_MAKES.at(&[]), span)
     }
@@ -268,63 +273,4 @@ fn gen_of(ty: &ast::Type, args: Vec<ast::Arg>) -> ast::Expr {
         },
         span,
     }
-}
-
-/// For an arc type `A`: `to => A` drawing every field but `to`, and
-/// `(a, to) => A`, the same arc pointing back.
-fn arc_lambdas(arc: &ast::Type, span: Span) -> (ast::Expr, ast::Expr) {
-    let name = |text: &str| ast::Expr {
-        kind: ast::ExprKind::Name(text.into()),
-        span,
-    };
-    let lambda = |params: &[&str], body: ast::Expr| ast::Expr {
-        kind: ast::ExprKind::Lambda {
-            params: params
-                .iter()
-                .map(|p| ast::Pattern {
-                    kind: ast::PatternKind::Name(p.to_string()),
-                    span,
-                })
-                .collect(),
-            param_tys: vec![None; params.len()],
-            param_mut: Vec::new(),
-            ret_ty: None,
-            body: Box::new(body),
-        },
-        span,
-    };
-    let ast::TypeKind::Record(fields) = &arc.kind else {
-        return (
-            lambda(&["gen_to"], name("gen_to")),
-            lambda(&["gen_arc", "gen_to"], name("gen_to")),
-        );
-    };
-    let record = |value: &dyn Fn(&ast::Name, &ast::Type) -> ast::Expr| ast::Expr {
-        kind: ast::ExprKind::Record(
-            fields
-                .iter()
-                .map(|(field, ty)| {
-                    let value = if field.text == "to" {
-                        name("gen_to")
-                    } else {
-                        value(field, ty)
-                    };
-                    (field.clone(), value)
-                })
-                .collect(),
-        ),
-        span,
-    };
-    let drawn = record(&|_, ty| gen_of(ty, Vec::new()));
-    let back = record(&|field, _| ast::Expr {
-        kind: ast::ExprKind::Field {
-            base: Box::new(name("gen_arc")),
-            name: field.clone(),
-        },
-        span,
-    });
-    (
-        lambda(&["gen_to"], drawn),
-        lambda(&["gen_arc", "gen_to"], back),
-    )
 }
