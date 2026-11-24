@@ -18,7 +18,11 @@ pub(crate) fn impl_target_head(ty: &ast::Type) -> Option<String> {
 impl Checker<'_> {
     /// Whether `n` names a fn item, not a local or another global.
     pub(crate) fn names_fn_item(&mut self, n: &str) -> bool {
-        self.local(n).is_none() && self.global_is(n, |d| matches!(d, Def::Fn { .. }))
+        self.local(n).is_none()
+            && match self.global(n) {
+                Some(d) => matches!(*d, Def::Fn { .. }),
+                None => matches!(crate::prelude::value(n), Some(Ty::Fn { .. })),
+            }
     }
 
     /// `type_of(f)`: the own type of the fn item `f` names (R08.1.10). A

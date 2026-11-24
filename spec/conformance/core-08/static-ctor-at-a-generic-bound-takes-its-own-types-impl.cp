@@ -1,10 +1,10 @@
 // expect: ok, output "9 5"
 // rule: 08.1.9
-// A static fn returning `Tree<M.Fold>` under `M: Op3<E>` gets the bare operator's `Monoid<E>` impl (`Fold = E`) and a closure's fn-type impl (`Fold = ?E`) once `a` gives `E` (decision 456, Q6).
+// A static fn returning `Tree<M.Fold>` under `M: Op3<E>` gets the bare operator's own `type_of(+)` impl (`Fold = E`) and a closure's fn-type impl (`Fold = ?E`) once `a` gives `E` (decision 456, Q6; G7.3).
 trait Op3<T>:
     type Fold
     fn lift(self, x: T) -> Self.Fold
-impl<T> Op3<T> for Monoid<T>:
+impl<T> Op3<T> for type_of(+):
     type Fold = T
     fn lift(self, x: T) -> T = x
 impl<T> Op3<T> for (T, T) -> T:
