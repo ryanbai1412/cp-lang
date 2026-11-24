@@ -32,10 +32,10 @@ runs:
       if: inputs.add != ''
       shell: bash
       run: rustup ${{ inputs.add }}
-    - name: Install just (CI runs each check through its recipe)
+    - name: Install just (CI runs each check through its recipe) and actionlint
       uses: taiki-e/install-action@v2
       with:
-        tool: just
+        tool: just,actionlint
     - uses: Swatinem/rust-cache@v2
       if: inputs.cache == 'true'
       with:

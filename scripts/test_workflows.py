@@ -142,6 +142,15 @@ class WorkflowTest(unittest.TestCase):
         with open(os.path.join(ROOT, "scripts", "site-deployable.sh"), encoding="utf-8") as f:
             self.assertIn("updatedAt", f.read())
 
+    def test_checks_gate_lints_every_workflow(self) -> None:
+        with open(os.path.join(ROOT, ".github/workflows/ci.yml"), encoding="utf-8") as f:
+            gate = job_block(f.read(), "gate")
+        self.assertRegex(gate, r"if: matrix\.part == 'checks'\n +run: just workflow-lint\n")
+        with open(os.path.join(ROOT, "justfile"), encoding="utf-8") as f:
+            self.assertRegex(f.read(), r"\nworkflow-lint:\n    actionlint ")
+        with open(os.path.join(ROOT, ".github/actions/setup-rust/action.yml"), encoding="utf-8") as f:
+            self.assertRegex(f.read(), r"tool: just,actionlint\n")
+
     def test_blocking_jobs_cover_every_os(self):
         with open(os.path.join(ROOT, ".github", "workflows", "ci.yml"), encoding="utf-8") as f:
             ci = f.read()

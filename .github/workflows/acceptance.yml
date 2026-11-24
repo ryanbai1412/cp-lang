@@ -21,14 +21,15 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: just
         with:
           sparse-checkout: |
+            justfile
             research/acceptance
             editors/lsp-*
           sparse-checkout-cone-mode: false
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
       - name: Install from the site
         if: runner.os != 'Windows'
         run: curl -fsSL https://cp-lang.org/install.sh | sh

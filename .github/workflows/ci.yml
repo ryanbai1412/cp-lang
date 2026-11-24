@@ -56,6 +56,10 @@ jobs:
           node-version: "24"
       - name: Compiler versions
         run: g++ --version | head -1 && rustc --version
+      # A workflow GitHub can't parse fails with no jobs and nothing in any gate.
+      - name: Workflow lint
+        if: matrix.part == 'checks'
+        run: just workflow-lint
       # The cxx and corpus caches are saved once an hour, not once a run:
       # per-run saves passed GitHub's cache limit and evicted the warm ones.
       - name: Cache hour
