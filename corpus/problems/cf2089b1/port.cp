@@ -9,7 +9,7 @@
 //   answer is the largest such value. O(n) amortized.
 // Bounds: n: 1..=200_000; _k: 0..=10 ** 14; a, b: 0..=10 ** 9
 
-struct Supply(qty: Int, pos: Int)
+struct Supply(qty: 0..=10 ** 9, pos: 0..=200_000)
 
 @!multitest
 let (n, _k): (1..=200_000, 0..=10 ** 14) = read()
