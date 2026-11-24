@@ -2442,10 +2442,11 @@ DIAG_SITE_RE = re.compile(r"\bDiagnostic::(?:error|warning)\(")
 
 
 # A crate's own funnel that takes message text and builds the diagnostic itself:
-# each call passes text the registry should hold, so each call counts.
+# each call passes text the registry should hold, so each call counts. A
+# `said.error(span)` renders a registry row's `Said`, which only cpl-diag builds.
 DIAG_TEXT_FUNNELS = {
-    "crates/cpl-check/src": re.compile(r"\b[a-z_][a-z0-9_]*\.error\("),
-    "crates/cpl-ir/src": re.compile(r"\b[a-z_][a-z0-9_]*\.error\("),
+    "crates/cpl-check/src": re.compile(r"\b(?!said\.)[a-z_][a-z0-9_]*\.error\("),
+    "crates/cpl-ir/src": re.compile(r"\b(?!said\.)[a-z_][a-z0-9_]*\.error\("),
     "crates/cpl-lint/src": re.compile(r"\b[a-z_][a-z0-9_]*\.warn\("),
 }
 
