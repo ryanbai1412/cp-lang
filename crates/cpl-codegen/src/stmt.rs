@@ -348,7 +348,7 @@ impl<'p> Emitter<'p> {
             | ExprKind::Binary(..)
             | ExprKind::Cast(..) => {
                 let text = self.expr(e).text;
-                self.line(out, &format!("(void){text};"));
+                self.line(out, &format!("(void)({text});"));
             }
             _ => {
                 let text = self.expr(e).text;

@@ -599,3 +599,20 @@ fn a_global_nothing_written_reads_is_dropped_with_its_store() {
     );
     assert!(code.contains("USED") && code.contains("\"left\""), "{out}");
 }
+
+#[test]
+fn an_unread_condition_is_voided_whole() {
+    let out = cpp("let a = 4\nlet b = 3\nlet _ = (a == 4 and b == 3)\n");
+    let voided: Vec<&str> = out
+        .lines()
+        .map(str::trim)
+        .filter(|l| l.starts_with("(void)"))
+        .collect();
+    assert!(!voided.is_empty(), "{out}");
+    for line in voided {
+        assert!(
+            line.starts_with("(void)(") && line.ends_with(");"),
+            "{line}"
+        );
+    }
+}
