@@ -215,9 +215,9 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `@get fn splits<D>(self: Range<D>) -> yields (Range<D>, Range<D>)` — \(O(1)\) to make, \(O(1)\) per pair, nothing allocated; Every way to cut the range into two non-empty pieces, as `(left, right)` with `left.r == right.l`.
 - `@get fn mid<D>(self: Range<D>) -> Cut<D>` — \(O(1)\)
 - `fn clip<D>(self: Range<D>, other: Range<D>) -> Range<D>` — \(O(1)\)
-- `fn first_true<D>(self: Range<D>, ok: D -> Bool) -> ?D` — \(O(\log n)\) calls of `ok`; \(O(\log n)\) calls to `ok`.; traps: never; an `ok` that is not false-then-true gives an unspecified answer
-- `fn last_true<D>(self: Range<D>, ok: D -> Bool) -> ?D` — \(O(\log n)\) calls of `ok`; \(O(\log n)\) calls to `ok`.; traps: never; an `ok` that is not true-then-false gives an unspecified answer
-- `fn bsearch<D>(self: Range<D>, ok: D -> Bool, last: Bool = false) -> Cut<D>` — \(O(\log n)\) calls of `ok`; The cut where `ok` flips: false then true along `r` by default, true then false with `last: true`.
+- `fn first_true<D>(self: Range<D>, ok: D -> Bool) -> ?D` — \(O(\log n)\) calls of `ok`, plus one when the answer is the first element or `None`; \(O(\log n)\) calls to `ok`.; traps: when `ok` is true at the start and false at the end; any other `ok` that is not
+- `fn last_true<D>(self: Range<D>, ok: D -> Bool) -> ?D` — \(O(\log n)\) calls of `ok`, plus one when the answer is the last element or `None`; \(O(\log n)\) calls to `ok`.; traps: when `ok` is false at the start and true at the end; any other `ok` that is not
+- `fn bsearch<D>(self: Range<D>, ok: D -> Bool, last: Bool = false) -> Cut<D>` — \(O(\log n)\) calls of `ok`, plus one when the cut is an end of `r`; The cut where `ok` flips: false then true along `r` by default, true then false with `last: true`.; traps: when `ok` flips the other way (true then false by default, false then true with
 - `@get fn ends<D>(self: Range<D>) -> (Int, Int)` — \(O(1)\); The two ends of a range as offsets, `(lo, hi)` with `lo <= hi`: what a range query walks.; traps: when the range is written backwards
 - `fn first_gt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D` — \(O(\log n)\); First index in sorted `self` with `by(self[i]) > target`, or `None`.; traps: never; unsorted input gives an unspecified key
 - `fn last_lt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D` — \(O(\log n)\); Last index in sorted `self` with `by(self[i]) < target`, or `None`.; traps: never; unsorted input gives an unspecified key
@@ -273,7 +273,7 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn stable_partition_in_place<S: IndexedMut, T>(mut self: S, keep: T -> Bool) -> Int` — \(O(n)\), \(O(n)\) memory
 - `fn adjacent_diff<S: Seq, T>(self: S) -> List<T>` — \(O(n)\), \(O(n)\) memory
 - `fn span<D>(lo: Cut<D>, hi: Cut<D>) -> Range<D>` — \(O(1)\); traps: when `lo > hi`
-- `fn partition_point<D, T>(self: [D]T, ok: T -> Bool) -> Cut<D>` — \(O(\log n)\) calls of `ok`; \(O(\log n)\).; traps: never; an `ok` that is not false-then-true gives an unspecified answer
+- `fn partition_point<D, T>(self: [D]T, ok: T -> Bool) -> Cut<D>` — \(O(\log n)\) calls of `ok`, plus one when the cut is an end; \(O(\log n)\).; traps: when `ok` is true at the start and false at the end; any other `ok` that is not
 - `fn equal_range<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> Range<D>` — \(O(\log n)\); traps: never; unsorted input gives an unspecified range
 - `fn sorted_union<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<T>` — \(O(\lvert a \rvert + \lvert b \rvert)\), \(O(\lvert a \rvert + \lvert b \rvert)\) memory
 - `fn sorted_intersect<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<T>` — \(O(\lvert a \rvert + \lvert b \rvert)\), \(O(\lvert a \rvert + \lvert b \rvert)\) memory; The values in both of two sorted sequences, merged in one pass.

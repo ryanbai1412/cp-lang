@@ -1067,31 +1067,52 @@ pub fn clip<D>(self: Range<D>, other: Range<D>) -> Range<D>:
 /// \(O(\log n)\) calls to `ok`. The first element where `ok`, false then true along `r`, holds;
 /// `None` when it never does.
 ///
-/// cost: \(O(\log n)\) calls of `ok`
+/// An `ok` that is true at the start and false at the end (C++'s `lower_bound` habit) stops a
+/// checked build; it costs one more call of `ok` when the answer is an end of `r`.
+///
+/// cost: \(O(\log n)\) calls of `ok`, plus one when the answer is the first element or `None`
 /// empty: `None`
-/// traps: never; an `ok` that is not false-then-true gives an unspecified answer
+/// traps: when `ok` is true at the start and false at the end; any other `ok` that is not
+/// false-then-true gives an unspecified answer
 /// example: `(0..100).first_true(x => x * x >= 50) == Some(8)`
 /// ties: none: a monotone `ok` has one first true position
 pub fn first_true<D>(self: Range<D>, ok: D -> Bool) -> ?D:
-    var lo = 0
-    var hi = self.len
-    while lo < hi:
-        let m = lo + (hi - lo) / 2
-        if ok(self.nth(m)): hi = m
-        else: lo = m + 1
+    let lo = flip_at(self.len, m => ok(self.nth(m)), "`ok` is true at the start and false at the end, but this search wants false then true; for true then false use `last_true`")
     if lo < self.len: Some(self.nth(lo)) else: None
 
 /// \(O(\log n)\) calls to `ok`. The last element where `ok`, true then false along `r`, holds;
 /// `None` when it never does.
 ///
-/// cost: \(O(\log n)\) calls of `ok`
+/// An `ok` that is false at the start and true at the end stops a checked build; it costs one
+/// more call of `ok` when the answer is an end of `r`.
+///
+/// cost: \(O(\log n)\) calls of `ok`, plus one when the answer is the last element or `None`
 /// empty: `None`
-/// traps: never; an `ok` that is not true-then-false gives an unspecified answer
+/// traps: when `ok` is false at the start and true at the end; any other `ok` that is not
+/// true-then-false gives an unspecified answer
 /// example: `(0..100).last_true(x => x * x <= 50) == Some(7)`
 /// ties: none: a monotone `ok` has one last true position
 pub fn last_true<D>(self: Range<D>, ok: D -> Bool) -> ?D:
-    let lo = (0..self.len).first_true(m => not (ok(self.nth(m)))) ?? self.len
+    let lo = flip_at(self.len, m => not (ok(self.nth(m))), "`ok` is false at the start and true at the end, but `last_true` wants true then false; for false then true use `first_true`")
     if lo > 0: Some(self.nth(lo - 1)) else: None
+
+// The first offset in `0..n` where `ok` holds, for `ok` false then true. A wrong-way `ok` (true
+// at offset 0, false at `n - 1`) always lands on 0 or `n`, so checking the other end there
+// catches every one; the check's call of `ok` happens in every build (R09.2.3).
+fn flip_at(n: Int, ok: Int -> Bool, wrong_way: Str) -> Int:
+    var lo = 0
+    var hi = n
+    while lo < hi:
+        let m = lo + (hi - lo) / 2
+        if ok(m): hi = m
+        else: lo = m + 1
+    if n > 1 and lo == 0:
+        let at_end = ok(n - 1)
+        assert at_end, wrong_way
+    elif n > 1 and lo == n:
+        let at_start = ok(0)
+        assert not at_start, wrong_way
+    lo
 
 /// The cut where `ok` flips: false then true along `r` by default, true then false with
 /// `last: true`. \(O(\log n)\) calls to `ok`.
@@ -1100,13 +1121,15 @@ pub fn last_true<D>(self: Range<D>, ok: D -> Bool) -> ?D:
 /// `last: true` it is `r.r` when `ok` always holds. `first_true(ok)` is `.r` of it; `last_true(ok)` is
 /// `bsearch(ok, last: true).l`.
 ///
-/// cost: \(O(\log n)\) calls of `ok`
+/// cost: \(O(\log n)\) calls of `ok`, plus one when the cut is an end of `r`
 /// empty: `r.l`
-/// traps: never
+/// traps: when `ok` flips the other way (true then false by default, false then true with
+/// `last: true`)
 /// example: `(0..100).bsearch(x => x * x >= 50).r == 8`
 pub fn bsearch<D>(self: Range<D>, ok: D -> Bool, last: Bool = false) -> Cut<D>:
     let n = self.len
-    let lo = (0..n).first_true(m => ok(self.nth(m)) != last) ?? n
+    let wrong_way = if last: "`ok` is false at the start and true at the end, but `last: true` wants true then false; drop `last: true` for false then true" else: "`ok` is true at the start and false at the end, but `bsearch` wants false then true; pass `last: true` for true then false"
+    let lo = flip_at(n, m => ok(self.nth(m)) != last, wrong_way)
     if lo < n: (self.nth(lo)..self.nth(lo)).l else: self.r
 
 /// The two ends of a range as offsets, `(lo, hi)` with `lo <= hi`: what a range query walks.
@@ -2060,9 +2083,13 @@ pub fn span<D>(lo: Cut<D>, hi: Cut<D>) -> Range<D>:
 
 /// \(O(\log n)\). Cut between the false prefix and true suffix of monotone `ok` on `self` (total; never `None`).
 ///
-/// cost: \(O(\log n)\) calls of `ok`
+/// An `ok` that is true at the start and false at the end (C++'s `lower_bound` habit) stops a
+/// checked build.
+///
+/// cost: \(O(\log n)\) calls of `ok`, plus one when the cut is an end
 /// empty: the only cut
-/// traps: never; an `ok` that is not false-then-true gives an unspecified answer
+/// traps: when `ok` is true at the start and false at the end; any other `ok` that is not
+/// false-then-true gives an unspecified answer
 /// example: `[1, 3, 5].partition_point(x => x > 2).r == 1`
 /// ties: none: a monotone `ok` has one flip
 pub fn partition_point<D, T>(self: [D]T, ok: T -> Bool) -> Cut<D>:
