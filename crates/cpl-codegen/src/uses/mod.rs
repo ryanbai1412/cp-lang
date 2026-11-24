@@ -273,11 +273,15 @@ pub(crate) fn dead_past(
 /// True when nothing after statement `k` of `block`, nor a closure in it,
 /// reads `slot`.
 pub(crate) fn unread_after(program: &Program, block: &Block, k: usize, slot: usize) -> bool {
-    let mut closure = false;
+    // A closure made before `k` may hold the slot by reference and run later.
+    let mut held = false;
     walk::deep_exprs(block, &mut |e| {
-        closure |= matches!(e.kind, ExprKind::Closure(_))
+        if let ExprKind::Closure(cid) = e.kind {
+            held |=
+                (program.closures[cid].captures.iter()).any(|c| !c.is_global && c.outer == slot);
+        }
     });
-    !closure && !mentions(program, &block.stmts[k + 1..], slot).any
+    !held && !mentions(program, &block.stmts[k + 1..], slot).any
 }
 
 /// Why the place a lent `let` reads may change while the name lives.

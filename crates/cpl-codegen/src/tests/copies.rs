@@ -530,3 +530,28 @@ fn an_if_let_over_a_fresh_optional_moves_its_payload() {
     );
     assert!(!out.contains("& got"), "{out}");
 }
+
+#[test]
+fn a_param_dead_after_its_sink_moves_past_a_closure_that_does_not_hold_it() {
+    let out = cpp(concat!(
+        "fn join(a: List<(Int, Int)>, b: List<(Int, Int)>) -> List<(Int, Int)>:\n",
+        "    var all = a\n",
+        "    for x in b:\n",
+        "        if let i = (0..all.len).find(i => all[i].0 == x.0): all[i].1 += x.1\n",
+        "        else: all.push(x)\n",
+        "    all\n",
+        "fn held(a: List<Int>) -> Int:\n",
+        "    let g = () => a.len\n",
+        "    var all = a\n",
+        "    all.push(1)\n",
+        "    g() + all.len\n",
+        "let n: Int = read()\n",
+        "let a = [(i, i) for i in 0..n]\n",
+        "print(join(a, a).len, held([n]))\n",
+    ));
+    assert_eq!(
+        out.matches("all = std::move(a").count(),
+        1,
+        "join's param moves; held's, which a closure made first holds, is copied:\n{out}"
+    );
+}
