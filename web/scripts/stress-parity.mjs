@@ -15,8 +15,9 @@ const repo = dirname(web);
 const cli = cplBin();
 const wasmDir = [join(repo, 'dist/wasm'), join(web, 'public/wasm')].find((d) => existsSync(join(d, 'cpl-build.wasm')));
 if (!wasmDir) {
-  console.log('stress-parity: no browser build; skipping');
-  process.exit(0);
+  // CI always builds it; only a local run without one may skip.
+  console.error('stress-parity: no browser build; run scripts/build-wasm.sh');
+  process.exit(process.env.CI ? 1 : 0);
 }
 
 const opts = { cases: 30, seed: 1, size: 8 };
@@ -58,7 +59,7 @@ for (const [i, f] of files.entries()) {
     console.error(`stress-parity: ${f}\n  cpl stress: ${JSON.stringify(a)}\n  browser:    ${JSON.stringify(b)}`);
   } else if (a.status === 'fail') found++;
 }
-for (const f of slow) console.log(`stress-parity: slow in the browser (over ${BROWSER_LIMIT_MS / 1000} s for ${opts.cases} cases): ${f}`);
+for (const f of slow) console.error(`stress-parity: too slow in the browser (over ${BROWSER_LIMIT_MS / 1000} s for ${opts.cases} cases): ${f}`);
 const compared = files.length - slow.length;
-console.log(`stress-parity: ${compared - bad} of ${compared} @alt programs agree (${found} counterexamples found alike); ${slow.length} too slow there`);
-process.exit(bad ? 1 : 0);
+console.log(`stress-parity: ${compared - bad} of ${files.length} @alt programs agree (${found} counterexamples found alike); ${slow.length} too slow`);
+process.exit(bad || slow.length ? 1 : 0);
