@@ -330,3 +330,43 @@ print(hits, deepest, depth, visits)
     );
     assert_eq!(out, "10 4 0 10\n");
 }
+
+#[test]
+fn vm_reads_an_int_cell_of_arrays_nested_any_depth_in_one_op() {
+    // cf2062h's `ways[hi][lo][cols]`: three levels of a global, a list of
+    // arrays, and a local, each read as one `LoadNestedArrI`.
+    let source = "
+let n = read<Int>()
+var ways: [0..3][0..n][0..4]Int = 0
+for a in 0..3:
+    for b in 0..n:
+        for c in 0..4: ways[a][b][c] = a * 100 + b * 10 + c
+let rows: List<[0..4]Int> = [ways[2][1], ways[1][0]]
+fn deep(t: [0..3][0..n][0..4]Int) -> Int = t[1][n - 1][3]
+var acc = 0
+for a in 0..3:
+    for c in 0..4: acc += ways[a][n - 1][c]
+print(acc, rows[1][2] + rows[0][3], deep(ways))
+";
+    let (out, trap) = outcome(source, "2\n");
+    assert_eq!(trap, None);
+    assert_eq!(out, "1338 315 113\n");
+    assert_eq!(vm_runs_alone(source, "2\n"), out);
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", source);
+    let analysis = db.analyze("t.cp").expect("the file was just set");
+    let program = cpl_ir::lower(&analysis).expect("lowers");
+    let feeds = cpl_ir::pushed::Feeds::of(&program);
+    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false, false);
+    let nested = |c: &crate::vm::Chunk| {
+        (c.ops.iter())
+            .filter(|op| matches!(op, crate::vm::Op::LoadNestedArrI { .. }))
+            .count()
+    };
+    assert_eq!(nested(&compiled.main), 3);
+    let (_, trap) = outcome(&source.replace("ways[a][n - 1][c]", "ways[a][n][c]"), "2\n");
+    assert!(
+        trap.as_ref().is_some_and(|t| t.contains("outside")),
+        "{trap:?}"
+    );
+}

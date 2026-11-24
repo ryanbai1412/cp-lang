@@ -936,28 +936,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
                             && outer_indices.len() == 1
                             && matches!(outer.ty, Ty::Array { .. } | Ty::List(_)) =>
                     {
-                        let root_info = match &outer.kind {
-                            ExprKind::Global(gid) => Some((*gid as u16, true)),
-                            ExprKind::Local(slot) => match self.slot_loc(*slot) {
-                                SlotLoc::V(v) => Some((v, false)),
-                                _ => None,
-                            },
-                            _ => None,
-                        };
-                        if let Some((root, is_global)) = root_info {
-                            let r_i = self.compile_expr_i(&outer_indices[0]);
-                            let r_j = self.compile_expr_i(&indices[0]);
+                        if let Some(path) = self.nested_read_path(base, &indices[0]) {
                             let dst = self.alloc_i();
-                            self.emit(
-                                Op::LoadNestedArrI {
-                                    dst,
-                                    root,
-                                    is_global,
-                                    r_i,
-                                    r_j,
-                                },
-                                span,
-                            );
+                            self.emit(Op::LoadNestedArrI { dst, path }, span);
                             return dst;
                         }
                         let arr_v = self.compile_expr_v(base);

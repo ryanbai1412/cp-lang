@@ -1505,12 +1505,11 @@ pub(crate) enum Op {
         r_i: u16,
         r_j: u16,
     },
+    /// An Int cell of arrays (or lists) nested any depth, at `places[path]`:
+    /// one `Index1` step per level, read without copying a level out.
     LoadNestedArrI {
         dst: u16,
-        root: u16,
-        is_global: bool,
-        r_i: u16,
-        r_j: u16,
+        path: u16,
     },
     SeqIdxEndOptI {
         dst_val: u16,

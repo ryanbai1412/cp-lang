@@ -297,6 +297,45 @@ fn slot_from_stack(
 }
 
 #[inline(always)]
+/// The Int cell `steps` (each an `Index1`) name inside arrays and lists
+/// nested from `v`, trapping on an index outside its level.
+pub(super) fn nested_read_i(
+    v: &Value,
+    steps: &[PlaceStep],
+    regs_i: &[i64],
+    span: Span,
+) -> Res<i64> {
+    let [PlaceStep::Index1(r), rest @ ..] = steps else {
+        return bug(span, "expected an index step");
+    };
+    let i = regs_i[*r as usize];
+    let (len, msg) = match v {
+        Value::Array(arr) => (
+            arr.dims[0],
+            cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_LENGTH,
+        ),
+        Value::List(list) => (
+            list.len() as i64,
+            cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH,
+        ),
+        _ => return bug(span, "expected array or list"),
+    };
+    if i < 0 || i >= len {
+        return trap(span, msg.at(&[&i, &len]));
+    }
+    match (v, rest.is_empty()) {
+        (Value::Array(arr), true) => Ok(read_array_i(arr, i as usize)),
+        (Value::Array(arr), false) => match &arr.data {
+            Cells::Values(vs) => nested_read_i(&vs[i as usize], rest, regs_i, span),
+            _ => bug(span, "expected nested array"),
+        },
+        (Value::List(list), false) => {
+            nested_read_i(&list.get_unchecked_val(i as usize), rest, regs_i, span)
+        }
+        _ => bug(span, "expected an array of Int"),
+    }
+}
+
 pub(super) fn read_array_i(arr: &Array, at: usize) -> i64 {
     // Bounds checks here cost the array benches about 2%; the VM checks
     // `at` against the array's domain before it calls this, and debug

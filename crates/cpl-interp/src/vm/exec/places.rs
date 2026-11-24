@@ -970,59 +970,13 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 regs_i[dst_val as usize] = v;
                 regs_i[dst_some as usize] = s;
             }
-            Op::LoadNestedArrI {
-                dst,
-                root,
-                is_global,
-                r_i,
-                r_j,
-            } => {
-                let i = regs_i[r_i as usize];
-                let j = regs_i[r_j as usize];
-                let outer_val = if is_global {
-                    &self.globals[root as usize]
-                } else {
-                    &regs_v[root as usize]
+            Op::LoadNestedArrI { dst, path } => {
+                let path = &chunk.places[path as usize];
+                let root = match path.root {
+                    PlaceRoot::Global(g) => &self.globals[g as usize],
+                    PlaceRoot::LocalV(v) => &regs_v[v as usize],
                 };
-                let inner_val = match outer_val {
-                    Value::Array(arr) => {
-                        let len = arr.dims[0];
-                        if i < 0 || i >= len {
-                            return trap(
-                                spans[cur_pc],
-                                cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_LENGTH.at(&[&i, &len]),
-                            );
-                        }
-                        match &arr.data {
-                            Cells::Values(v) => &v[i as usize],
-                            _ => return bug(spans[cur_pc], "expected nested array"),
-                        }
-                    }
-                    Value::List(list) => {
-                        let len = list.len() as i64;
-                        if i < 0 || i >= len {
-                            return trap(
-                                spans[cur_pc],
-                                cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH.at(&[&i, &len]),
-                            );
-                        }
-                        &list.get_unchecked_val(i as usize)
-                    }
-                    _ => return bug(spans[cur_pc], "expected array or list"),
-                };
-                regs_i[dst as usize] = match inner_val {
-                    Value::Array(arr) => {
-                        let len = arr.dims[0];
-                        if j < 0 || j >= len {
-                            return trap(
-                                spans[cur_pc],
-                                cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_LENGTH.at(&[&j, &len]),
-                            );
-                        }
-                        read_array_i(arr, j as usize)
-                    }
-                    _ => return bug(spans[cur_pc], "expected inner array"),
-                };
+                regs_i[dst as usize] = nested_read_i(root, &path.steps, regs_i, spans[cur_pc])?;
             }
             Op::SeqIdxEndOptI {
                 dst_val,
