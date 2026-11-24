@@ -256,16 +256,17 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
             if w == 0: return
             if leaf or not dual: t[p] = act!.apply(f, t[p], w)
             if not leaf:
-                act!.compose_onto(mut lz[p], f)
-                has_lz[p] = true
+                if has_lz[p]: act!.compose_onto(mut lz[p], f)
+                else:
+                    lz[p] = f
+                    has_lz[p] = true
 
     // Hand node `p`'s pending tag to its children `l` and `r`, holding `wl` and `wr` positions.
     fn push(mut self, p: Int, l: Int, r: Int, wl: Int, wr: Int, leaf: Bool):
         unchecked:
             if not has_lz[p]: return
-            let f = lz[p]
-            lz[p] = act!.id
             has_lz[p] = false
+            let f = lz[p]
             self.put(l, f, wl, leaf)
             self.put(r, f, wr, leaf)
 
@@ -355,7 +356,8 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
     /// Apply tag `f` to every position of `r`: each fold over `r` then sees the values with `f`
     /// applied, through the action given to `act:`.
     ///
-    /// cost: \(O(\log \lvert D \rvert)\)
+    /// cost: \(O(\log \lvert D \rvert)\) tag puts; a put is one `compose_in` (else `compose`) on a
+    /// node that holds a tag and one copy of the tag onto a node that holds none
     /// empty: `var s = SegTree(+, [1, 2, 3], act: add); s.apply(1..1, 10); s.all == 6`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var s = SegTree(+, [1, 2, 3], act: add); s.apply(0..2, 10); s.all == 26`
