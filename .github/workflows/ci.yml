@@ -572,6 +572,7 @@ jobs:
         # `timeout` (exit 124, a failure) ends g++ before the save below, so a
         # slow run still leaves the next one warm.
         run: |
+          # shellcheck disable=SC2016  # the inner bash expands $(nproc)
           timeout 340 bash -c 'just corpus-tests-make --cpl target/ci/cpl --set v03 --shard ${{ matrix.shard }}/8 >/dev/null &&
             just corpus-verify --only tests,stress,size,lint --cpl target/ci/cpl -j "$(nproc)" --set v03 --shard ${{ matrix.shard }}/8'
       - uses: actions/cache/save@v4
