@@ -1,4 +1,5 @@
 // Source: WOSS Dual Olympiad 2021 S3 (Late for Class!), https://dmoj.ca/problem/wossoly21s3
+// limits: 2000 ms, 512 MB
 // Problem: an R x C grid (R, C <= 200) of '.', '#' walls, marks 0-4 and letter portals: stepping
 //   onto capital X teleports you for free to its small x, and small letters can't be entered.
 //   Walk 0 -> 1 -> 2 -> 3 -> 4 in order (4-neighbour steps, 1 s each); print the fewest seconds,

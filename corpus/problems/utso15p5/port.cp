@@ -1,4 +1,5 @@
 // Source: UTS Open 2015 P5 (Distribution Channel), https://dmoj.ca/problem/utso15p5
+// limits: 3000 ms, 256 MB
 // Problem: N <= 5e4 stores, M <= 1e5 possible connections (a, b, cost <= 1e4). Print the
 //   cost of the second cheapest way to connect all stores with N - 1 connections (a set that
 //   costs strictly more than the cheapest), or -1 if there is none.

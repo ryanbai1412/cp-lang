@@ -1,4 +1,5 @@
 // Source: New Year's '18 P7 (Tree of Life), https://dmoj.ca/problem/year2018p7
+// limits: 1000 ms, 256 MB
 // Problem: a tree rooted at 1 with N <= 20000 vertices, each with a DNA word (total length S
 //   <= 1e5). Two vertices are distant when neither is an ancestor of the other. Print the
 //   longest common substring of the words of two distant vertices, or -1 if no pair exists.

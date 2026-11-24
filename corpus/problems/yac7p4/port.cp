@@ -1,4 +1,5 @@
 // Source: YAC 7 P4, https://dmoj.ca/problem/yac7p4
+// limits: 3000 ms, 512 MB
 // Problem: a tree of n <= 2e5 towns, one paparazzo in each. For each of m <= 2e5 appearances at a
 //   town a, every paparazzo moves one road towards a (staying put at a); print the number of
 //   occupied towns after each appearance.
