@@ -206,7 +206,8 @@ impl<'a> Parser<'a> {
         if !inclusive && self.at(T::Lt) && self.span().start == self.prev_end() {
             let span = self.span();
             self.error(
-                Diagnostic::error(codes::UNEXPECTED_TOKEN, span, "`..<` is `..` in CP Lang")
+                msgs::syntax::HALF_OPEN_LT
+                    .error(span, &[])
                     .with_help("`lo..hi` already leaves out `hi`; `lo..=hi` keeps it")
                     .with_fix("write `..`", span, ""),
             );
@@ -330,8 +331,8 @@ impl<'a> Parser<'a> {
         }
         if self.at(T::Int) {
             let span = self.error_span();
-            let message = format!("expected {what}, found a number");
-            let diag = Diagnostic::error(codes::EXPECTED_NAME, span, message)
+            let diag = msgs::syntax::NAME_IS_NUMBER
+                .error(span, &[&what])
                 .with_help("a name starts with a letter or `_`, as in `f2`");
             self.error(diag);
         } else {
@@ -390,19 +391,17 @@ impl<'a> Parser<'a> {
         if self.at(T::Indent) {
             let span = Span::point(self.span().start);
             self.error(
-                Diagnostic::error(
-                    codes::UNEXPECTED_INDENT,
-                    span,
-                    "this line is indented, but no block starts above it",
-                )
-                .with_help("remove the extra indentation, or end the line above with `:`"),
+                msgs::stmt::STRAY_INDENT
+                    .error(span, &[])
+                    .with_help("remove the extra indentation, or end the line above with `:`"),
             );
             self.dedent_fix();
             return;
         }
         let span = self.error_span();
         let found = self.peek().describe();
-        let mut diag = Diagnostic::error(code, span, format!("expected {what}, found {found}"));
+        let mut diag = msgs::syntax::EXPECTED_FOUND.error(span, &[&what, &found]);
+        diag.code = code;
         if let Some(text) = fix {
             diag = self.with_insert_fix(diag, span, text);
         }
@@ -584,22 +583,24 @@ impl<'a> Parser<'a> {
         if self.speculating > 0 {
             self.speculative_planned.push((span, planned));
         } else {
-            let message = planned.message();
-            self.sink.push(
-                Diagnostic::error(codes::NOT_IMPLEMENTED, span, message).with_help(planned.now),
-            );
+            self.sink.push(planned.error(span).with_help(planned.now));
             self.sink.poison(span);
         }
     }
 
     /// Reports `span` as a form the language leaves out on purpose. Like
     /// planned syntax, it is read and poisoned rather than recovered from.
-    fn not_in_language(&mut self, span: Span, message: &str, help: &str) {
+    fn not_in_language(
+        &mut self,
+        span: Span,
+        msg: &msgs::Msg,
+        args: &[&dyn std::fmt::Display],
+        help: &str,
+    ) {
         if self.speculating > 0 {
             self.speculation_failed = true;
         } else {
-            self.sink
-                .push(Diagnostic::error(codes::UNSUPPORTED, span, message).with_help(help));
+            self.sink.push(msg.error(span, args).with_help(help));
             self.sink.poison(span);
         }
     }
@@ -681,13 +682,10 @@ impl<'a> Parser<'a> {
         }
         let (eq, from) = (self.span(), self.prev_end());
         self.error(
-            Diagnostic::error(
-                codes::REMOVED_SYNTAX,
-                eq,
-                "a body on the lines below starts with `:`, not `=`",
-            )
-            .with_help("`=` takes a body on the same line: `fn f() -> Int = a + 1`")
-            .with_fix("replace `=` with `:`", Span::new(from, eq.end), ":"),
+            msgs::syntax::BLOCK_BODY_COLON
+                .error(eq, &[])
+                .with_help("`=` takes a body on the same line: `fn f() -> Int = a + 1`")
+                .with_fix("replace `=` with `:`", Span::new(from, eq.end), ":"),
         );
         self.bump();
         Some(self.block(&format!("the signature of `{}`", name.text)))
@@ -695,12 +693,9 @@ impl<'a> Parser<'a> {
 
     /// `{k: v}`, a map written the other languages' way: `[k: v]` in cp.
     fn brace_map(&mut self, span: Span, open: Span, close: Span) {
-        let mut diag = Diagnostic::error(
-            codes::REMOVED_SYNTAX,
-            span,
-            "a map literal is written in brackets, `[k: v]`, not braces",
-        )
-        .with_help("braces make a block; brackets make lists and maps");
+        let mut diag = msgs::syntax::BRACE_MAP
+            .error(span, &[])
+            .with_help("braces make a block; brackets make lists and maps");
         diag.fixes.push(cpl_diag::Fix {
             title: "write it in brackets".into(),
             edits: vec![(open, "[".into()), (close, "]".into())],
@@ -716,19 +711,19 @@ impl<'a> Parser<'a> {
         }
         let (message, help, l, r) = match pair {
             true => (
-                "a pair is written `(a, b)`, not in braces",
+                &msgs::syntax::BRACE_PAIR,
                 "braces make a block; parentheses make a tuple",
                 "(",
                 ")",
             ),
             false => (
-                "a set is made from a list, `Set([a, b])`, not written in braces",
+                &msgs::syntax::BRACE_SET,
                 "braces make a block; brackets make lists and maps",
                 "Set([",
                 "])",
             ),
         };
-        let mut diag = Diagnostic::error(codes::REMOVED_SYNTAX, span, message).with_help(help);
+        let mut diag = message.error(span, &[]).with_help(help);
         diag.fixes.push(cpl_diag::Fix {
             title: format!("write `{l}..{r}`"),
             edits: vec![(open, l.into()), (close, r.into())],

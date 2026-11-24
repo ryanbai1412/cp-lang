@@ -489,7 +489,8 @@ impl<'a> Parser<'a> {
                 let span = self.span();
                 self.not_in_language(
                     span,
-                    "there are no macros (R08.5.4)",
+                    &msgs::syntax::NO_MACROS,
+                    &[],
                     "write a generic fn; a lambda argument covers code that takes code",
                 );
                 self.skip_line();

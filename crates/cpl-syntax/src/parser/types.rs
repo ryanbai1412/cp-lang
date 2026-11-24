@@ -80,7 +80,8 @@ impl<'a> Parser<'a> {
             let span = self.span();
             self.not_in_language(
                 span,
-                "there is no `dyn`: every trait call is resolved at compile time, with no vtables (R08.2.3)",
+                &msgs::syntax::NO_DYN,
+                &[],
                 "take a type parameter instead: `fn f<T: Ord>(x: T)`",
             );
             self.bump();
@@ -794,10 +795,8 @@ impl<'a> Parser<'a> {
                 let span = self.span_from(start);
                 self.not_in_language(
                     span,
-                    &format!(
-                        "type parameter `{}` can't take type parameters: there are no higher-kinded types (R08.5.3)",
-                        name.text
-                    ),
+                    &msgs::syntax::NO_HIGHER_KINDS,
+                    &[&name.text],
                     "pass the concrete type, or use a trait with an associated type",
                 );
             }

@@ -99,17 +99,14 @@ impl<'a> Parser<'a> {
             T::Mut if self.prev_kind() == Some(T::Let) => {
                 let span = self.span();
                 self.error(
-                    Diagnostic::error(
-                        codes::UNEXPECTED_TOKEN,
-                        span,
-                        "a binding in a `let` condition can't be `mut`",
-                    )
-                    .with_help("copy it where it changes: `var x = x` at the top of the block")
-                    .with_fix(
-                        "remove `mut`",
-                        Span::new(span.start, self.span_n(1).start),
-                        "",
-                    ),
+                    msgs::syntax::LET_BINDING_MUT
+                        .error(span, &[])
+                        .with_help("copy it where it changes: `var x = x` at the top of the block")
+                        .with_fix(
+                            "remove `mut`",
+                            Span::new(span.start, self.span_n(1).start),
+                            "",
+                        ),
                 );
                 self.bump();
                 return self.pattern_atom();
@@ -118,13 +115,10 @@ impl<'a> Parser<'a> {
             T::FatArrow => {
                 let at = Span::point(self.span().start);
                 self.error(
-                    Diagnostic::error(
-                        codes::EXPECTED_PATTERN,
-                        at,
-                        "a match arm needs a pattern before `=>`",
-                    )
-                    .with_help("write `_ =>` for the arm that takes everything else")
-                    .with_fix("insert `_`", at, "_ "),
+                    msgs::syntax::ARM_NEEDS_PATTERN
+                        .error(at, &[])
+                        .with_help("write `_ =>` for the arm that takes everything else")
+                        .with_fix("insert `_`", at, "_ "),
                 );
                 PatternKind::Error
             }

@@ -17,7 +17,6 @@ impl<'a> Parser<'a> {
             && self.peek_n(1) == T::Ident
             && self.peek_n(2) == T::LParen
             && self.peek_n(3) == T::RParen;
-        let message = "a generator is written only as a call's argument";
         let mut diag;
         if fold {
             let name = self.tokens[self.pos + 1].span.text(self.src).to_string();
@@ -26,7 +25,8 @@ impl<'a> Parser<'a> {
                 self.bump();
             }
             let ours = format!("{name}({inner})");
-            diag = Diagnostic::error(codes::EXPECTED_TOKEN, self.span_from(start), message)
+            diag = msgs::syntax::GENERATOR_OUTSIDE_CALL
+                .error(self.span_from(start), &[])
                 .with_help(format!("write `{ours}`"));
             diag.fixes.push(cpl_diag::Fix {
                 title: format!("write `{ours}`"),
@@ -36,7 +36,8 @@ impl<'a> Parser<'a> {
                 ],
             });
         } else {
-            diag = Diagnostic::error(codes::EXPECTED_TOKEN, self.span_from(start), message)
+            diag = msgs::syntax::GENERATOR_OUTSIDE_CALL
+                .error(self.span_from(start), &[])
                 .with_help(format!("pass it to the fold, as in `max({inner})`"));
         }
         self.error(diag);

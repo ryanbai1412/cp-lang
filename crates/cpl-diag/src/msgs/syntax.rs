@@ -24,4 +24,35 @@ super::msgs! {
     TYPE_AFTER_COLON = EXPECTED_TYPE, "expected a type after `:`, found {}";
     EXPECTED_A_TYPE = EXPECTED_TYPE, "expected a type";
     TYPE_ARGS_IN_ANGLES = EXPECTED_TYPE, "CP Lang writes type arguments in `<>`: `{}<...>`, not `{}[...]`";
+    HALF_OPEN_LT = UNEXPECTED_TOKEN, "`..<` is `..` in CP Lang";
+    NAME_IS_NUMBER = EXPECTED_NAME, "expected {}, found a number";
+    /// Emitted under the code of what was expected.
+    EXPECTED_FOUND = EXPECTED_TOKEN, "expected {}, found {}";
+    PLANNED_DEFERRED = NOT_IMPLEMENTED, "not implemented yet, and deferred: {} (see {})";
+    PLANNED = NOT_IMPLEMENTED, "not implemented yet: {} (see {})";
+    PLANNED_UNDESIGNED = NOT_IMPLEMENTED, "not implemented yet: {} (not in the design)";
+    NO_MACROS = UNSUPPORTED, "there are no macros (R08.5.4)";
+    NO_DYN = UNSUPPORTED, "there is no `dyn`: every trait call is resolved at compile time, with no vtables (R08.2.3)";
+    NO_HIGHER_KINDS = UNSUPPORTED, "type parameter `{}` can't take type parameters: there are no higher-kinded types (R08.5.3)";
+    NO_INHERITANCE = UNSUPPORTED, "`{}` can't inherit from another struct: there is no inheritance (R08.5.1)";
+    BLOCK_BODY_COLON = REMOVED_SYNTAX, "a body on the lines below starts with `:`, not `=`";
+    BRACE_MAP = REMOVED_SYNTAX, "a map literal is written in brackets, `[k: v]`, not braces";
+    BRACE_PAIR = REMOVED_SYNTAX, "a pair is written `(a, b)`, not in braces";
+    BRACE_SET = REMOVED_SYNTAX, "a set is made from a list, `Set([a, b])`, not written in braces";
+    OP_BODY_START = EXPECTED_TOKEN, "expected `:` or `=` to start the body of operator `{}`, found {}";
+    OP_NEEDS_TYPE = EXPECTED_TOKEN, "an operator fn needs a type on its first parameter";
+    FN_BODY_START = EXPECTED_TOKEN, "expected `:` or `=` to start the body of `{}`, found {}";
+    EXPR_BODY_ONE = UNEXPECTED_TOKEN, "`{}` is defined with `=`, so its body is one expression";
+    LET_BINDING_MUT = UNEXPECTED_TOKEN, "a binding in a `let` condition can't be `mut`";
+    ARM_NEEDS_PATTERN = EXPECTED_PATTERN, "a match arm needs a pattern before `=>`";
+    GENERATOR_OUTSIDE_CALL = EXPECTED_TOKEN, "a generator is written only as a call's argument";
+    WHERE_FILTER = REMOVED_SYNTAX, "comprehension filters use `if`, not `where`";
+    LINT_NOT_ON_FN = BAD_LIBRARY_LINT, "`@lint` decorates a fn";
+    LINT_ARGS = BAD_LIBRARY_LINT, "`@lint` takes a name, `from:` and `to:`";
+    LINT_FROM_NOT_CODE = BAD_LIBRARY_LINT, "`from` of `@lint({})` is not one expression or statement, or a run of statements";
+    LINT_TO_NOT_CODE = BAD_LIBRARY_LINT, "`to` of `@lint({})` is not one expression or statement";
+    LINT_TO_DROPS = BAD_LIBRARY_LINT, "`to` of `@lint({})` drops `{}`, which `from` matches";
+    LINT_TO_EXTRA = BAD_LIBRARY_LINT, "`to` of `@lint({})` uses `{}`, which `from` does not match";
+    LINT_TO_NO_CALL = BAD_LIBRARY_LINT, "`to` of `@lint({})` does not call `{}`";
+    LINT_TWICE = BAD_LIBRARY_LINT, "`@lint({})` is declared twice in this module";
 }
