@@ -29,6 +29,10 @@ class Growth(unittest.TestCase):
                               (r"\lvert \mathit{from} \rvert", 4.0)]:
             self.assertAlmostEqual(scaling.growth(formula, fixed=("P",)), want, places=3, msg=formula)
 
+    def test_a_binomial_grows_as_its_value(self):
+        self.assertAlmostEqual(scaling.growth("C(n, k)", let={"k": "2"}, n=15.0), 1770 / 105, places=3)
+        self.assertAlmostEqual(scaling.growth("C(n, k)", fixed=("k",)), 4.0, places=3)
+
     def test_a_sum_grows_as_its_term_times_its_bound(self):
         self.assertEqual(scaling.growth(r"\sum_i p_i^{e_i}", fixed=("p_i", "e_i")), 1.0)
         self.assertAlmostEqual(scaling.growth(r"\sum_{i=1}^{k} \log n", fixed=("k",)), 16 / 14, places=3)
@@ -58,6 +62,16 @@ class Judge(unittest.TestCase):
     def test_noise_around_the_documented_growth_passes(self):
         for measured, documented in [(0.8, 1.0), (1.5, 1.14), (5.0, 4.0), (3.1, 4.0)]:
             self.assertTrue(scaling.judge(measured, documented))
+
+
+class Env(unittest.TestCase):
+    def test_runs_pin_the_malloc_thresholds(self):
+        self.assertEqual(scaling.profile_env({"A": "1"}),
+                         {"A": "1", "GLIBC_TUNABLES": scaling.MALLOC_TUNABLES})
+
+    def test_a_callers_tunables_are_kept(self):
+        env = scaling.profile_env({"GLIBC_TUNABLES": "glibc.cpu.x=1"})
+        self.assertEqual(env["GLIBC_TUNABLES"], "glibc.cpu.x=1:" + scaling.MALLOC_TUNABLES)
 
 
 class Alias(unittest.TestCase):

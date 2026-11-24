@@ -17,6 +17,7 @@ let lim = [C] _ => n
 for _ in 0..64:
     let gm = GraphicMatroid(es) // timed: flow.GraphicMatroid.new
     if gm.can_add(E(0)): s += 1
+for _ in 0..1024:
     let cm = ColorMatroid(col, lim) // timed: flow.ColorMatroid.new
     if cm.can_add(E(0)): s += 1
 var g = FlowGraph<V>()

@@ -69,7 +69,7 @@ s += (min_cost_circulation(priced))!.cost // timed: flow.min_cost_circulation
 let weighted: [E](u: V, v: V, w: Int) = [E] e => (u: V(e.ord / k), v: V(e.ord % k), w: (e.ord * 7919) % 97 + 1)
 s += gomory_hu(weighted).len // timed: flow.gomory_hu
 s += global_min_cut(weighted).w // timed: flow.global_min_cut
-for _ in 0..2:
+for _ in 0..3:
     s += max_weight_general_matching(weighted).total // timed: flow.max_weight_general_matching
 // Greedy matches l_i to r_i and strands l_{k-1}, whose one augmenting path walks the whole
 // chain; the padding edges l_i - r_j, j < i, only lead back along it.

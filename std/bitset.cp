@@ -1042,7 +1042,7 @@ pub struct XorTrie:
     /// Reserve pool capacity for at least `nodes` trie nodes, so later adds do not reallocate; the
     /// contents are unchanged.
     ///
-    /// cost: \(O(\mathit{nodes})\) time and space
+    /// cost: \(O(\mathit{nodes})\) when the pool grows, \(O(1)\) otherwise
     /// traps: when `nodes < 0`
     /// example: `var t = XorTrie(3); t.reserve(100); t.len == 0`
     pub fn reserve(mut self, nodes: Int):

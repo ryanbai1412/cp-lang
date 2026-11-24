@@ -13,8 +13,12 @@ means (`// scaling: bag.SortedBag.add`), hold symbols at a constant
 for a fn whose cost names a size the case derives from n) or set the base size (`// n: 4096`, default N). Each case runs under `cpl profile --native`, the
 judge's C++ with a counter per statement, RUNS times at n and at 4n; the
 time per hit of the timed lines (the fastest run) gives the measured growth.
+The runs pin glibc's malloc thresholds (MALLOC_TUNABLES): left dynamic, a
+list over the threshold at 4n but not at n is handed back to the OS on
+each free and faulted in again on each call, a cost of the allocator's
+size class, not of the fn.
 The documented growth is the `cost:` formula evaluated at 4n over n, every
-symbol but the fixed ones standing for n; a cost written ``as `fn` ``
+symbol but the fixed ones standing for n (`C(n, k)` is the binomial); a cost written ``as `fn` ``
 reads that fn's. A callback the fn calls is written on its own line, out
 of the timed one, and marked `// within: <fn>`: a profile charges a
 callback's time to its own line, which counts to the fn's time but not
@@ -39,6 +43,13 @@ CASES = os.path.join(ROOT, "bench", "scaling")
 BOARD = os.path.join(ROOT, "research", "perf", "scaling.json")
 N, RUNS, SLACK = 1 << 14, 3, 2.0
 MIN_NS = 2_000_000
+MALLOC_TUNABLES = "glibc.malloc.mmap_threshold=33554432:glibc.malloc.trim_threshold=1073741824"
+
+
+def profile_env(environ):
+    """`environ` with MALLOC_TUNABLES added to any GLIBC_TUNABLES it sets."""
+    have = environ.get("GLIBC_TUNABLES")
+    return dict(environ, GLIBC_TUNABLES=f"{have}:{MALLOC_TUNABLES}" if have else MALLOC_TUNABLES)
 
 
 def std_costs(cpl):
@@ -81,7 +92,7 @@ def big_o(cost):
     return m.group(1) if m else None
 
 
-BUILTINS = ("lg", "sqrt", "min", "max")
+BUILTINS = ("lg", "sqrt", "min", "max", "C")
 
 
 def _arg(f, i):
@@ -149,7 +160,8 @@ def growth(formula, fixed=(), k=4.0, n=float(N), let=None):
     case's n is 2^k), and every other symbol for n."""
     let = {s: python(e) for s, e in (let or {}).items()}
     env = {"__builtins__": {}, "lg": lambda v: math.log2(max(v, 2.0)),
-           "sqrt": math.sqrt, "min": min, "max": max}
+           "sqrt": math.sqrt, "min": min, "max": max,
+           "C": lambda a, b: math.exp(math.lgamma(a + 1) - math.lgamma(b + 1) - math.lgamma(a - b + 1))}
 
     def at(x, f):
         names = {}
@@ -186,7 +198,8 @@ def per_hit(cpl, case, n, groups, tmp, within=None):
     best = {}
     for _ in range(RUNS):
         run = subprocess.run([cpl, "profile", "--native", case, inp, "--format", "json"],
-                             cwd=ROOT, capture_output=True, text=True, timeout=300)
+                             cwd=ROOT, capture_output=True, text=True, timeout=300,
+                             env=profile_env(os.environ))
         if run.returncode != 0:
             raise RuntimeError(run.stderr.strip().splitlines()[0] if run.stderr.strip() else "profile failed")
         by_line = {l["line"]: l for l in json.loads(run.stdout)["lines"]}

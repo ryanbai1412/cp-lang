@@ -89,7 +89,7 @@ fn pow_at_most(r: Int, k: Int, x: Int) -> Bool:
 /// sign: `fixed(-1, 300, 2) == "0.00"`. With `k == 0` there is no point. A negative `den` flips
 /// the sign. `fixed(t, 2, 1)` prints a half-integer. `|num| * 10^k * 2` must fit an `Int`.
 ///
-/// cost: \(O(k + \text{digits of the result})\)
+/// cost: \(O(k + \log \lvert \mathit{num} / \mathit{den} \rvert)\), the digits of the result
 /// traps: when `den == 0`, `k < 0`, or `|num| * 10^k * 2` overflows
 /// example: `fixed(1, 3, 2) == "0.33"`
 /// example: `fixed(2, 3, 2) == "0.67"`
@@ -1666,9 +1666,13 @@ fn big_mul_mag(a: List<Int>, b: List<Int>) -> List<Int>:
     out
 
 fn big_divmod_mag(a: List<Int>, b: List<Int>) -> (List<Int>, List<Int>):
-    var q = List.filled(a.len, 0)
-    var r: List<Int> = []
-    for i in (0..a.len).rev:
+    if a.len < b.len: return ([], copy(a))
+    // Quotient limbs sit at 0..=a.len - b.len only; the remainder starts as the limbs above them.
+    let top = a.len - b.len + 1
+    var q = List.filled(top, 0)
+    var r = [a[k] for k in top..a.len]
+    while not r.is_empty and r.last! == 0: r.pop()
+    for i in (0..top).rev:
         let shifted = [a[i]] + copy(r)
         r = shifted
         while not r.is_empty and r.last! == 0: r.pop()

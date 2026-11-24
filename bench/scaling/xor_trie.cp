@@ -23,9 +23,11 @@ for i in 0..n:
     acc += t.mex_xor(x) // timed: bitset.XorTrie.mex_xor
 for i in 0..n:
     if t.remove(i * 2654435761 % (1 << 40)): acc += 1 // timed: bitset.XorTrie.remove
-for r in 0..256:
-    var u = XorTrie()
-    u.reserve(64 * n) // timed: bitset.XorTrie.reserve
+var full = XorTrie()
+for i in 0..n / 16: full.add(i * 2654435761 % (1 << 40))
+for r in 0..64:
+    var u = copy(full)
+    u.reserve(8 * n) // timed: bitset.XorTrie.reserve
     acc += u.len
 var u = XorTrie()
 for r in 0..6 * n:
