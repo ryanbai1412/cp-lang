@@ -63,8 +63,8 @@ The distinct values of a coordinate compression, in increasing order, indexed by
 \(O(1)\) to make.
 
 - `@get fn keys<K>(self) -> Range<K>` — \(O(1)\)
-- `@get fn len(self) -> Int` — \(O(1)\)
-- `@get fn is_empty(self) -> Bool` — \(O(1)\)
+- `@get fn len(self) -> Int` — \(O(1)\); The number of elements in the slice.
+- `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the slice has no elements.
 
 ## `struct Rebased<S>(pub src: S)`
 
@@ -141,18 +141,18 @@ Which end of a piece a two-pointer result is keyed by.
 
 A run of positions of `D` read cyclically, possibly wrapping past the last position, at most `D.count` of them.
 
-- `@get fn len(self) -> Int` — \(O(1)\)
+- `@get fn len(self) -> Int` — \(O(1)\); The number of positions in the run.
 - `@get fn start(self) -> D` — \(O(1)\)
 - `@get fn end(self) -> D` — \(O(1)\); traps: on an empty span
 - `@get fn keys(self) -> yields D` — \(O(1)\) to make, \(O(1)\) per step; \(O(1)\) to make.
-- `fn contains(self, i: D) -> Bool` — \(O(1)\)
+- `fn contains(self, i: D) -> Bool` — \(O(1)\); Whether position `i` is in the run, counting the wrap past the last position.
 
 ## `struct RingSlice<D, T>()`
 
 A contiguous piece of a ring, possibly wrapping past the end, at most n elements.
 
 - `@get fn range(self) -> RingRange<D>` — \(O(1)\)
-- `@get fn len(self) -> Int` — \(O(1)\)
+- `@get fn len(self) -> Int` — \(O(1)\); The number of elements in the window.
 - `@get fn start(self) -> D` — \(O(1)\)
 - `@get fn end(self) -> D` — \(O(1)\)
 - `@get fn keys(self) -> yields D` — \(O(1)\) to make, \(O(1)\) per step; \(O(1)\) to make.
@@ -168,7 +168,7 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn any<S: Seq, T>(self: S, p: T -> Bool) -> Bool` — \(O(n)\), stopping at the first match; Whether some element satisfies `p`; stops at the first.
 - `fn all<S: Seq, T>(self: S, p: T -> Bool) -> Bool` — \(O(n)\), stopping at the first failure; Whether every element satisfies `p`; stops at the first that doesn't.
 - `fn is_sorted<S: Seq, T, K>(self: S, by: T -> K = x => x) -> Bool` — \(O(n)\); Whether `self` is non-decreasing (optionally under key `by:`).
-- `fn filter<S: Seq, T>(self: S, p: T -> Bool) -> Filtered<S>` — \(O(1)\) to make; \(O(n)\) calls of `p` per walk; \(O(1)\) to make.; traps: never (beyond what `p` traps on)
+- `fn filter<S: Seq, T>(self: S, p: T -> Bool) -> Filtered<S>` — \(O(1)\) to make; \(O(n)\) calls of `p` per walk; A view of the elements satisfying `p`, in order.; traps: never (beyond what `p` traps on)
 - `fn map<S: Seq, T, U>(self: S, f: T -> U) -> Mapped<S, U>` — \(O(1)\) to make; one call of `f` per element read; \(O(1)\) to make.; traps: never (beyond what `f` traps on)
 - `@get fn rev<S: Bidir>(self: S) -> Rev<S>` — \(O(1)\)
 - `@get fn items<S: Keyed, K, T>(self: S) -> Items<S>` — \(O(1)\)
@@ -201,10 +201,10 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn rotated_right<S: Seq, T>(self: S, k: Int) -> List<T>` — \(O(n)\); A new list rotated right by `k`.
 - `fn next_permutation<S: IndexedMut>(mut self: S) -> Bool` — \(O(n)\) worst case, amortized \(O(1)\) over all arrangements; Step `self` to the next arrangement in sorted order, in place.
 - `fn prev_permutation<S: IndexedMut>(mut self: S) -> Bool` — \(O(n)\) worst case, amortized \(O(1)\) over all arrangements; Step `self` to the previous arrangement in sorted order, in place.
-- `fn runs<S: Indexed, T, K>(self: S, by: T -> K = x => x, link: ?((T, T) -> Bool) = None) -> yields Slice<S>` — \(O(1)\) to make, \(O(n)\) to walk; The stretches of equal neighbours (or equal `by:` keys), in order: each a slice of `self`: `"aabccc".runs()` walks `"aa"`, `"b"`, `"ccc"`, and `[r.len for r in s.runs()]` is `[2, 1, 3]`.
+- `fn runs<S: Indexed, T, K>(self: S, by: T -> K = x => x, link: ?((T, T) -> Bool) = None) -> yields Slice<S>` — \(O(1)\) to make, \(O(n)\) to walk; The stretches of equal neighbours (or equal `by:` keys), in order, each a slice of `self`.
 - `fn buckets<D, K: Domain>(self: [D]K) -> [K]List<D>` — \(O(\lvert D \rvert + \lvert K \rvert)\) time and memory; Bucket the keys of `self` by value: `b[k]` lists every `i` with `self[i] == k`, in key order.
-- `fn compress<S: Seq, T: Ord>(all: S) -> (domain C, Compressed<C, T>)` — \(O(n \log n)\); Coordinate compression: `let (domain C, xs) = compress(all)` sorts the values, drops the duplicates and binds a fresh domain `C` for them, so an array over them is `[C]Int` and an index of one compression cannot be used in another.
-- `fn pieces<D: Ord, S: Seq>(self: Range<D>, cuts: S) -> (domain P, [P]Range<D>)` — \(O(k \log k)\) for k cuts; Split a range at cuts: `let (domain P, piece) = D.pieces(cuts: cs)` binds a fresh domain of the non-empty pieces between consecutive cuts (the range's own ends always count; repeats drop), with `piece[p]` the `Range<D>` that piece covers, in order.; traps: when a cut lies outside the range
+- `fn compress<S: Seq, T: Ord>(all: S) -> (domain C, Compressed<C, T>)` — \(O(n \log n)\); Coordinate compression: `let (domain C, xs) = compress(all)` sorts the values, drops the duplicates and binds a fresh domain `C` for them.
+- `fn pieces<D: Ord, S: Seq>(self: Range<D>, cuts: S) -> (domain P, [P]Range<D>)` — \(O(k \log k)\) for k cuts; Split a range at cuts: `let (domain P, piece) = D.pieces(cuts: cs)` binds a fresh domain of the non-empty pieces between consecutive cuts, with `piece[p]` the `Range<D>` that piece covers.; traps: when a cut lies outside the range
 - `fn covering<P, D>(self: [P]Range<D>, r: Range<D>) -> Range<P>` — \(O(\log k)\); The range of pieces exactly covering `r`, whose ends must be among the cuts the pieces were made from (traps otherwise).; traps: when an end of `r` is not one of the cuts
 - `fn first_some<S: Seq, T, U>(self: S, f: T -> ?U) -> ?U` — \(O(1)\) per element walked, stopping at the first `Some`; The first `f(x)` that is not `None`, stopping there; `None` if every one is.
 - `fn find<S: Seq, T>(self: S, p: T -> Bool) -> ?T` — \(O(\text{position found})\) calls of `p`; The first element satisfying `p`, `None` if None does; stops there.
@@ -213,12 +213,12 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `@get fn l<D>(self: Range<D>) -> Cut<D>` — \(O(1)\); Left boundary cut of a range (valid even when empty).
 - `@get fn r<D>(self: Range<D>) -> Cut<D>` — \(O(1)\); Right boundary cut of a range (valid even when empty).
 - `fn halve<D>(self: Range<D>) -> ?(Range<D>, Range<D>)` — \(O(1)\)
-- `@get fn splits<D>(self: Range<D>) -> yields (Range<D>, Range<D>)` — \(O(1)\) to make, \(O(1)\) per pair, nothing allocated; Every way to cut the range into two non-empty pieces, as `(left, right)` with `left.r == right.l`: one pair per cut strictly inside, so `len - 1` of them.
+- `@get fn splits<D>(self: Range<D>) -> yields (Range<D>, Range<D>)` — \(O(1)\) to make, \(O(1)\) per pair, nothing allocated; Every way to cut the range into two non-empty pieces, as `(left, right)` with `left.r == right.l`.
 - `@get fn mid<D>(self: Range<D>) -> Cut<D>` — \(O(1)\)
 - `fn clip<D>(self: Range<D>, other: Range<D>) -> Range<D>` — \(O(1)\)
 - `fn first_true<D>(self: Range<D>, ok: D -> Bool) -> ?D` — \(O(\log n)\) calls of `ok`; \(O(\log n)\) calls to `ok`.; traps: never; an `ok` that is not false-then-true gives an unspecified answer
 - `fn last_true<D>(self: Range<D>, ok: D -> Bool) -> ?D` — \(O(\log n)\) calls of `ok`; \(O(\log n)\) calls to `ok`.; traps: never; an `ok` that is not true-then-false gives an unspecified answer
-- `fn bsearch<D>(self: Range<D>, ok: D -> Bool, last: Bool = false) -> Cut<D>` — \(O(\log n)\) calls of `ok`; \(O(\log n)\) calls to `ok`.
+- `fn bsearch<D>(self: Range<D>, ok: D -> Bool, last: Bool = false) -> Cut<D>` — \(O(\log n)\) calls of `ok`; The cut where `ok` flips: false then true along `r` by default, true then false with `last: true`.
 - `@get fn ends<D>(self: Range<D>) -> (Int, Int)` — \(O(1)\); The two ends of a range as offsets, `(lo, hi)` with `lo <= hi`: what a range query walks.; traps: when the range is written backwards
 - `fn first_gt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D` — \(O(\log n)\); First index in sorted `self` with `by(self[i]) > target`, or `None`.; traps: never; unsorted input gives an unspecified key
 - `fn last_lt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D` — \(O(\log n)\); Last index in sorted `self` with `by(self[i]) < target`, or `None`.; traps: never; unsorted input gives an unspecified key
@@ -245,7 +245,7 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `@get fn even<S: Indexed<K, T>, K, T>(self: S) -> Stepped<S, T>` — \(O(1)\) to make, \(O(1)\) per step; \(O(1)\).
 - `@get fn odd<S: Indexed<K, T>, K, T>(self: S) -> Stepped<S, T>` — \(O(1)\) to make, \(O(1)\) per step; \(O(1)\).
 - `fn rekey<D, K, T>(self: [D]T, keys: Range<K>) -> [K]T` — \(O(1)\); traps: when `keys.len != self.len`
-- `fn collect<S: Seq, T>(self: S) -> List<T>` — \(O(n)\), allocates
+- `fn collect<S: Seq, T>(self: S) -> List<T>` — \(O(n)\), allocates; The end of a lazy chain, materialized into the type the context expects, else a `List`.
 - `fn keyed<S: Seq, I: Indexed, T, K>(self: S, keys: I = 0.., by: ?(T -> K) = None) -> Keys<S, I, K>` — \(O(1)\) to make, \(O(1)\) per step; `self` with keys attached, so it is `Keyed`: walking it still gives values, `.items` gives `(key, x)`, and `argmax`/`find` answer with keys.; traps: when both `keys` and `by` are given; when `keys` runs out first
 - `fn take_while<S: Seq, T>(self: S, keep: T -> Bool) -> yields T` — \(O(1)\) per step
 - `fn drop_while<S: Seq, T>(self: S, drop: T -> Bool) -> yields T` — \(O(1)\) per step
@@ -277,7 +277,7 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn partition_point<D, T>(self: [D]T, ok: T -> Bool) -> Cut<D>` — \(O(\log n)\) calls of `ok`; \(O(\log n)\).; traps: never; an `ok` that is not false-then-true gives an unspecified answer
 - `fn equal_range<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> Range<D>` — \(O(\log n)\); traps: never; unsorted input gives an unspecified range
 - `fn sorted_union<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<T>` — \(O(\lvert a \rvert + \lvert b \rvert)\), \(O(\lvert a \rvert + \lvert b \rvert)\) memory
-- `fn sorted_intersect<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<T>` — \(O(\lvert a \rvert + \lvert b \rvert)\), \(O(\lvert a \rvert + \lvert b \rvert)\) memory
+- `fn sorted_intersect<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<T>` — \(O(\lvert a \rvert + \lvert b \rvert)\), \(O(\lvert a \rvert + \lvert b \rvert)\) memory; The values in both of two sorted sequences, merged in one pass.
 - `fn sorted_diff<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<T>` — \(O(\lvert a \rvert + \lvert b \rvert)\), \(O(\lvert a \rvert + \lvert b \rvert)\) memory
 - `fn kway_merge<S: Indexed, T>(lists: List<S>) -> List<T>` — \(O(N \log k)\), \(O(N)\) memory
 - `fn radix_sort<S: IndexedMut, T>(mut self: S, by: T -> Int = x => x)` — \(O(n)\) passes over 8-bit digits of the key, \(O(n)\) memory; \(O(n)\), \(O(n)\) memory.
@@ -296,11 +296,11 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn lis<D, T, K>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -> List<D>` — \(O(n \log n)\), \(O(n)\) memory
 - `fn lcs<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<(Int, Int)>` — \(O(\lvert a \rvert \cdot \lvert b \rvert)\), \(O(\lvert a \rvert \cdot \lvert b \rvert)\) memory
 - `fn cartesian_tree<D, T>(self: [D]T, min_root: Bool = true) -> (root: ?D, left: [D]?D, right: [D]?D, parent: [D]?D)` — \(O(n)\), \(O(n)\) memory
-- `fn argmax<S: Keyed, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D` — \(O(n)\); The index of the first largest value (optionally under key `by:`), or `None` when empty: `[3, 9, 2, 9].argmax()` is `Some(1)` and `words.argmax(by: w => w.len)` is the index of the longest word.
+- `fn argmax<S: Keyed, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D` — \(O(n)\); The index of the first largest value (optionally under key `by:`), or `None` when empty.
 - `fn argmin<S: Keyed, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D` — \(O(n)\); The index of the first smallest value (optionally under key `by:`), or `None` when empty.
 - `@get fn swap<A>(self: (A, A)) -> (A, A)` — \(O(1)\)
 - `fn split<S: Indexed, T>(self: S, sep: T -> Bool) -> yields Slice<S>` — \(O(n)\); Pieces between elements where `sep` holds; separators excluded, empty pieces kept.
-- `fn maximal<D, T, St>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]Range<D>` — \(O(n)\) amortized pushes and pops on `state`; Two pointers: for each right end, the longest piece ending there that is `ok`, fed through `state: Track`, as its positions: read the piece as `a[w]`, like [`spans`](spans).; traps: never in release; debug traps when `ok` fails on a single element after a shrink
+- `fn maximal<D, T, St>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]Range<D>` — \(O(n)\) amortized pushes and pops on `state`; Two pointers: for each right end, the longest piece ending there that is `ok`, fed through `state: Track`, as its positions.; traps: never in release; debug traps when `ok` fails on a single element after a shrink
 - `fn minimal<D, T, St>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]?Range<D>` — \(O(n)\) amortized pushes and pops on `state`; For each right end, the shortest piece ending there that is `ok` (its positions), or None, keyed by that end like the ring forms; `anchor: Anchor.Start` keys by left end.
 - `@get fn ring<D, T>(self: [D]T) -> Ring<D, T>` — \(O(1)\); \(O(1)\) to make.
 - `fn valleys<D, T>(self: [D]T) -> yields Range<D>` — \(O(n)\) to walk; The non-empty ranges whose every element is strictly below both elements just outside it (both must exist).
