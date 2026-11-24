@@ -29,6 +29,7 @@ pub type Perm<V> = [V]V
 /// empty: `let a: List<Int> = []; a.prod() == 1`
 /// traps: never (overflow wraps in release, traps in debug)
 /// example: `[2, 3, 4].prod() == 24`
+@lint(free_fold, from: "prod(self)", to: "self.prod()")
 pub fn prod<S: Seq<T>, T>(self: S) -> T:
     var out = T.one
     for x in self: out *= x
@@ -41,6 +42,10 @@ pub fn prod<S: Seq<T>, T>(self: S) -> T:
 /// empty: `let a: List<Int> = []; a.sum() == 0`
 /// traps: never (overflow wraps in release, traps in debug)
 /// example: `[1, 2, 3].sum(of: x => x * x) == 14`
+@lint(free_fold, from: "sum(self)", to: "self.sum()")
+@lint(loop_reduction, from: "var t = 0\nfor x in self:\n    t += x", to: "let t = self.sum()")
+@lint(loop_reduction, from: "var t = 0\nfor x in self:\n    t += v", to: "let t = sum(v for x in self)", holes: "v")
+@lint(loop_reduction, from: "var t = 0\nfor x in self:\n    if c:\n        t += v", to: "let t = sum(v for x in self if c)", holes: "v, c")
 pub fn sum<S: Seq<T>, T, U>(self: S, of: T -> U = x => x) -> U:
     var out = U.zero
     for x in self: out += of(x)
@@ -87,6 +92,7 @@ pub enum Ties = First | Last
 @lint(loop_argmax, from: "var j = self.first!\nfor i in self if a[i] < a[j]:\n    j = i", to: "var j = self.min(by: i => a[i])!", holes: "a")
 @lint(sentinel_scalar, from: "var x = v\nfor y in self:\n    x = min(x, y)", to: "let x = self.min()", holes: "v", when: "v >= 1000000000")
 @lint(sentinel_scalar, from: "var x = v\nfor y in self:\n    if y < x:\n        x = y", to: "let x = self.min()", holes: "v", when: "v >= 1000000000")
+@lint(loop_reduction, from: "var t = i\nfor x in self:\n    t min= v", advice: "min(i, self.map(x => v).min() ?? i)", holes: "i, v")
 pub fn min<S: Seq<T>, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T:
     let last = ties == Ties.Last
     var best: ?T = None
@@ -115,6 +121,7 @@ pub fn min<S: Seq<T>, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.Firs
 @lint(loop_argmax, from: "var j = self.first!\nfor i in self if a[i] > a[j]:\n    j = i", to: "var j = self.max(by: i => a[i])!", holes: "a")
 @lint(sentinel_scalar, from: "var x = v\nfor y in self:\n    x = max(x, y)", to: "let x = self.max()", holes: "v", when: "v <= -1000000000")
 @lint(sentinel_scalar, from: "var x = v\nfor y in self:\n    if y > x:\n        x = y", to: "let x = self.max()", holes: "v", when: "v <= -1000000000")
+@lint(loop_reduction, from: "var t = i\nfor x in self:\n    t max= v", advice: "max(i, self.map(x => v).max() ?? i)", holes: "i, v")
 pub fn max<S: Seq<T>, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T:
     let last = ties == Ties.Last
     var best: ?T = None
@@ -151,6 +158,8 @@ pub fn minmax<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> ?(T, T):
 /// traps: never
 /// example: `[1, 2, 3, 4].count(x => x % 2 == 0) == 2`
 /// example: `[1, 2, 3].pairs().count() == 3`
+@lint(free_fold, from: "count(self, p)", to: "self.count(p)")
+@lint(loop_reduction, from: "var n = 0\nfor x in self:\n    if p:\n        n += 1", to: "let n = self.count(x => p)")
 pub fn count<S: Seq<T>, T>(self: S, p: T -> Bool = _ => true) -> Int:
     var n = 0
     for x in self:
@@ -163,6 +172,7 @@ pub fn count<S: Seq<T>, T>(self: S, p: T -> Bool = _ => true) -> Int:
 /// empty: `let a: List<Int> = []; not a.any(x => x > 0)`
 /// traps: never
 /// example: `[1, 2].any(x => x > 1) == true`
+@lint(free_fold, from: "any(self, p)", to: "self.any(p)")
 pub fn any<S: Seq<T>, T>(self: S, p: T -> Bool) -> Bool:
     for x in self:
         if p(x): return true
@@ -174,6 +184,7 @@ pub fn any<S: Seq<T>, T>(self: S, p: T -> Bool) -> Bool:
 /// empty: `let a: List<Int> = []; a.all(x => x > 0) == true`
 /// traps: never
 /// example: `[1, 2].all(x => x > 1) == false`
+@lint(free_fold, from: "all(self, p)", to: "self.all(p)")
 pub fn all<S: Seq<T>, T>(self: S, p: T -> Bool) -> Bool:
     for x in self:
         if not p(x): return false
@@ -308,6 +319,11 @@ fn sort_cmp<S: IndexedMut, T>(mut self: S, before: (T, T) -> Bool):
 /// example: `var a = [(3, 1), (1, 2), (2, 2)]; a.sort(cmp: (p, q) => p.0 * q.1 < q.0 * p.1); a == [(1, 2), (2, 2), (3, 1)]`
 /// example: `var a = [2, 1]; a.sort(cmp: (x, y) => x <= y); a == [1, 2]` (traps R0001)
 /// example: `var a = [2, 1]; a.sort(by: x => x, cmp: (x, y) => x < y); a == [1, 2]` (error E0309)
+@lint(free_fold, from: "sort(mut self)", to: "self.sort()")
+@lint(free_fold, from: "sort(mut self, by: by)", to: "self.sort(by: by)")
+@lint(copy_sort_writeback, from: "let sub = self[a..b].sorted()\nfor i in a..b:\n    self[i] = sub[i - a]", to: "self[a..b].sort()", holes: "a, b")
+@lint(copy_sort_writeback, from: "let sub = self[a..b].sorted(by: by)\nfor i in a..b:\n    self[i] = sub[i - a]", to: "self[a..b].sort(by: by)", holes: "a, b")
+@lint(copy_sort_writeback, from: "var sub: List<E> = []\nfor i in a..b:\n    sub.push(self[i])\nsub.sort()\nfor i in a..b:\n    self[i] = sub[i - a]", to: "self[a..b].sort()", holes: "a, b, E")
 pub fn sort<S: IndexedMut, T, K: Ord>(mut self: S; by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None):
     if let before = cmp: return sort_cmp(mut self, before)
     let n = self.len
@@ -367,6 +383,8 @@ fn merge_runs<E>(src: List<E>, mut dst: List<E>, w: Int, before: (E, E) -> Bool)
 /// example: `[(3, 1), (1, 2), (2, 2)].sorted(cmp: (p, q) => p.0 * q.1 < q.0 * p.1) == [(1, 2), (2, 2), (3, 1)]`
 @lint(argsort_loop, from: "[(xs[i], i) for i in self].sorted()", to: "self.sorted(by: i => xs[i])", holes: "xs")
 @lint(argsort_loop, from: "for i in self:\n    p.push((xs[i], i))\nlet s = p.sorted()", to: "let s = self.sorted(by: i => xs[i])", holes: "xs, p")
+@lint(free_fold, from: "sorted(self)", to: "self.sorted()")
+@lint(free_fold, from: "sorted(self, by: by)", to: "self.sorted(by: by)")
 pub fn sorted<S: Seq<T>, T, K: Ord>(self: S; by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None) -> List<T>:
     var out: List<T> = self.collect()
     if let before = cmp: sort_cmp(mut out, before)
@@ -1144,6 +1162,7 @@ pub fn first_some<S: Seq<T>, T, U>(self: S, f: T -> ?U) -> ?U:
 @lint(count_until, from: "var x = 1\nvar k = 0\nwhile x <= n:\n    x *= c\n    k += 1", to: "let k = (0..).find(k => c ** k > n)!", holes: "c, n")
 @lint(count_until, from: "var x = 1\nvar k = 0\nwhile x <= n:\n    k += 1\n    x *= c", to: "let k = (0..).find(k => c ** k > n)!", holes: "c, n")
 @lint(manual_mex, from: "while seen[m]:\n    m += 1", to: "(lo..=hi).find(m => not seen[m])", holes: "seen, m")
+@lint(free_fold, from: "first(self, p)", to: "self.find(p)")
 pub fn find<S: Seq<T>, T>(self: S, p: T -> Bool) -> ?T:
     for x in self:
         if p(x): return Some(x)
@@ -3364,7 +3383,7 @@ fn map_entry_remove_and_four_lookups():
             let v = rand(0, 99)
             rm[k] = v
             if not ks.contains(k): ks.push(k)
-        sort(mut ks)
+        ks.sort()
         for q in -12..=12:
             let want_ge = first((k, rm[k]) for k in ks if k >= q)
             let want_gt = first((k, rm[k]) for k in ks if k > q)
@@ -3378,7 +3397,7 @@ fn map_entry_remove_and_four_lookups():
 @test
 fn deduped_and_partition_leave_the_list_alone():
     let xs = [3, 1, 3, 2, 1]
-    assert sorted(xs).deduped() == [1, 2, 3]
+    assert xs.sorted().deduped() == [1, 2, 3]
     assert xs.deduped() == xs
     let (small, big) = xs.partition(x => x < 3)
     assert small == [1, 2, 1] and big == [3, 3]
@@ -3493,10 +3512,10 @@ fn argmax_and_argmin_give_the_first_best_index():
 
 @test
 fn prod_and_is_sorted_cover_sequences():
-    assert prod([2, 3, 5]) == 30
+    assert [2, 3, 5].prod() == 30
     let empty_int: List<Int> = []
-    assert prod(empty_int) == 1
-    assert abs(prod([1.5, 2.0]) - 3.0) < 1e-12
+    assert empty_int.prod() == 1
+    assert abs([1.5, 2.0].prod() - 3.0) < 1e-12
     assert [1, 2, 2, 5].is_sorted() and not [1, 3, 2].is_sorted()
     assert empty_int.is_sorted() and [42].is_sorted()
     assert ["a", "bb", "ccc"].is_sorted(by: s => s.len)
@@ -3507,7 +3526,7 @@ fn select_merge_sorted_and_rotate_right():
     for _ in 0..50:
         let n = rand(1, 10)
         var a = [rand(-9, 9) for _ in 0..n]
-        let want = sorted(a.clone())
+        let want = a.sorted()
         let k = rand(0, n - 1)
         a.select(k)
         assert a.nth(k) == want[k]
@@ -3517,7 +3536,7 @@ fn select_merge_sorted_and_rotate_right():
         let y = sorted([rand(0, 9) for _ in 0..rand(0, 6)])
         var both = x.clone()
         for v in y: both.push(v)
-        assert merge_sorted(x, y) == sorted(both)
+        assert merge_sorted(x, y) == both.sorted()
         let r = rand(-12, 12)
         var z = x.clone()
         z.rotate_right(r)
@@ -3630,7 +3649,7 @@ fn seq_and_indexed_traits_unify_sequences_and_views():
     assert arr.is_sorted() and arr.first == Some(10) and arr.last == Some(30)
     let r = 1..=5
     assert r.is_sorted() and r.first == Some(1) and r.last == Some(5)
-    assert sum(r) == 15 and r.prod() == 120
+    assert r.sum() == 15 and r.prod() == 120
     let vs = [1, 3, 5, 2, 4, 6]
     assert merge_sorted([1, 3, 5], [2, 4, 6]) == [1, 2, 3, 4, 5, 6]
     assert zip(vs, [10, 10, 20, 30, 30]).collect() == [

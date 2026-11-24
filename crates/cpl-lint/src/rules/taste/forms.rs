@@ -2,7 +2,6 @@
 //! does, found once so every loop-shaped lint reads the same answer.
 
 use super::{breaks_after_setting, pushed_onto, var_decl};
-use crate::std_fn;
 use crate::Calls;
 use cpl_syntax::ast::*;
 
@@ -23,12 +22,6 @@ pub(super) struct AccLoop<'a> {
 pub(super) enum Form<'a> {
     /// Some branch sets it and breaks: a search (L0501).
     Search,
-    /// The body is one assignment to it, maybe under one `if`: a fold (L0504).
-    Fold {
-        cond: Option<&'a Expr>,
-        op: &'a AssignOp,
-        value: &'a Expr,
-    },
     /// The body is one push onto it, maybe under one `if`: a build (L0507).
     Build {
         cond: Option<&'a Expr>,
@@ -85,7 +78,7 @@ impl<'a> AccLoop<'a> {
         out
     }
 
-    /// A body that is one write to the variable, maybe under one `if`.
+    /// A body that is one push onto the variable, maybe under one `if`.
     fn single_write(&self) -> Option<Form<'a>> {
         let [only] = &self.body.stmts[..] else {
             return None;
@@ -108,77 +101,11 @@ impl<'a> AccLoop<'a> {
             _ => (None, only),
         };
         match &only.kind {
-            StmtKind::Assign { target, op, value } if matches!(&target.kind, ExprKind::Name(n) if n == self.name) =>
-            {
-                let (op, value) = match op {
-                    AssignOp::Set => spelled_out(self.name, value, self.calls)?,
-                    _ => (op, value),
-                };
-                Some(Form::Fold { cond, op, value })
-            }
             StmtKind::Expr(e) => {
                 pushed_onto(e, self.name, self.calls).map(|value| Form::Build { cond, value })
             }
             _ => None,
         }
-    }
-}
-
-static ADD: AssignOp = AssignOp::Binary(BinOp::Add);
-static MAX: AssignOp = AssignOp::Max;
-/// `x = f(x, e)`: the fold is the whole call.
-static SET: AssignOp = AssignOp::Set;
-static MIN: AssignOp = AssignOp::Min;
-
-/// `x = x + v` and `x = max(x, v)`, C++'s spellings of `x += v` and `x max= v`:
-/// the operator and `v`.
-fn spelled_out<'a>(
-    name: &str,
-    value: &'a Expr,
-    calls: Calls,
-) -> Option<(&'static AssignOp, &'a Expr)> {
-    let other = |a: &'a Expr, b: &'a Expr| {
-        let is_self = |e: &Expr| matches!(&e.kind, ExprKind::Name(n) if n == name);
-        match (is_self(a), is_self(b)) {
-            (true, false) => Some(b),
-            (false, true) => Some(a),
-            _ => None,
-        }
-    };
-    match &value.kind {
-        ExprKind::Binary {
-            op: BinOp::Add,
-            lhs,
-            rhs,
-            ..
-        } => Some((&ADD, other(lhs, rhs)?)),
-        ExprKind::Call { callee, args } => {
-            let op = match &callee.kind {
-                ExprKind::Name(_) if calls.is(value, std_fn::MAX) => &MAX,
-                ExprKind::Name(_) if calls.is(value, std_fn::MIN) => &MIN,
-                ExprKind::Name(_) => {
-                    let is_self = |e: &Expr| matches!(&e.kind, ExprKind::Name(n) if n == name);
-                    return match &args[..] {
-                        [a, b]
-                            if [a, b].iter().all(|x| x.name.is_none() && !x.mutable)
-                                && is_self(&a.value)
-                                && !is_self(&b.value) =>
-                        {
-                            Some((&SET, value))
-                        }
-                        _ => None,
-                    };
-                }
-                _ => return None,
-            };
-            match &args[..] {
-                [a, b] if [a, b].iter().all(|x| x.name.is_none() && !x.mutable) => {
-                    Some((op, other(&a.value, &b.value)?))
-                }
-                _ => None,
-            }
-        }
-        _ => None,
     }
 }
 

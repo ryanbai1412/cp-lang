@@ -5,6 +5,6 @@ fn g(x: Int, y: Int) -> Int:  // expect: hand_rolled_gcd
         return x
     return g(y, x % y)
 var r = 0
-for x in a:  // expect: loop_reduction
+for x in a:
     r = g(r, x)
 print(r)

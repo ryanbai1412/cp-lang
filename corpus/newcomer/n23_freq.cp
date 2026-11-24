@@ -7,6 +7,6 @@ for x in a:
     else:
         cnt[x] = 1
 var best = 0
-for (k, v) in cnt.items:  // expect: loop_reduction
-    best = max(best, v)
+for (k, v) in cnt.items:
+    best = max(best, v)  // expect: chmin_chmax_if
 print(best)

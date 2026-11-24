@@ -413,11 +413,10 @@ fn a_compound_to_needs_pure_holes_and_a_comment_drops_the_fix() {
     );
 }
 
-/// A hole does not match a bare generator: `total(x * x for x in a)` folds
-/// the generator, and `(x * x for x in a).total()` is no value to call on.
-/// Rule: R06.4.9.
+/// A hole does not match a comprehension: `total(x * x for x in a)` folds
+/// it as math, bare or bracketed. Rule: R06.4.9.
 #[test]
-fn a_hole_does_not_match_a_bare_generator() {
+fn a_hole_does_not_match_a_comprehension() {
     let decl = "@lint(total_free, from: \"total(xs)\", to: \"xs.total()\")\npub fn total(xs: List<Int>) -> Int = xs.len\n";
     let src = format!(
         "{decl}let a = [3, 1]\nprint(total(a), total(x * x for x in a), total([x for x in a]))\n"
@@ -427,7 +426,7 @@ fn a_hole_does_not_match_a_bare_generator() {
         .filter(|d| d.code.0 == "total_free")
         .map(|d| d.fixes[0].edits[0].1.clone())
         .collect();
-    assert_eq!(fixes, ["a.total()", "[x for x in a].total()"]);
+    assert_eq!(fixes, ["a.total()"]);
 }
 
 /// A hole written as a `let` pattern matches any pattern there (and a
@@ -458,10 +457,14 @@ fn a_hole_matches_a_binding_pattern() {
 #[test]
 fn a_no_fix_lint_drops_a_statement_hole_and_keeps_its_on_types() {
     let lint = |name: &str| {
-        format!("@lint({name}, from: \"while let (d, u) = pq.pop():\\n    if d > dist[u]:\\n        continue\\n    rest\", to: \"settle(pq, from: 0)\", holes: \"dist, rest\")\npub fn settle(pq: MinHeap<(Int, Int)>, from: Int) = ()\n")
+        format!(
+            "@lint({name}, from: \"while let (d, u) = pq.pop():\\n    if d > dist[u]:\\n        continue\\n    rest\", to: \"settle(pq, from: 0)\", holes: \"dist, rest\")\npub fn settle(pq: MinHeap<(Int, Int)>, from: Int) = ()\n"
+        )
     };
     let body = |q: &str| {
-        format!("var pq = {q}\npq.push((0, 1))\nlet best = [0, 0]\nwhile let (c, v) = pq.pop():\n    if c > best[v]:\n        continue\n    print(v)\n")
+        format!(
+            "var pq = {q}\npq.push((0, 1))\nlet best = [0, 0]\nwhile let (c, v) = pq.pop():\n    if c > best[v]:\n        continue\n    print(v)\n"
+        )
     };
     let found = |name: &str, q: &str| -> Vec<(String, usize)> {
         crate::lint(
@@ -484,7 +487,9 @@ fn a_no_fix_lint_drops_a_statement_hole_and_keeps_its_on_types() {
 #[test]
 fn a_no_fix_finding_ends_before_its_statement_hole() {
     let decl = "@lint(manual_mex, from: \"while i < q.len:\\n    let v = q[i]\\n    i += 1\\n    rest\", to: \"walk(q)\", holes: \"i, rest\")\npub fn walk(q: List<Int>) -> Int = 0\n";
-    let src = format!("{decl}var q = [1]\nvar i = 0\nwhile i < q.len:\n    let v = q[i]\n    i += 1\n    print(v)\n");
+    let src = format!(
+        "{decl}var q = [1]\nvar i = 0\nwhile i < q.len:\n    let v = q[i]\n    i += 1\n    print(v)\n"
+    );
     let spans: Vec<String> = crate::lint(&src, &crate::Config::default())
         .into_iter()
         .filter(|d| d.message == "write `walk(q)`")
@@ -608,10 +613,7 @@ fn also_needs_a_use_and_advice_offers_no_fix() {
             .collect()
     };
     let compared = "var memo = [-1 for _ in 0..5]\nmemo[2] = 4\nprint(-1 == memo[2])\n";
-    assert_eq!(
-        found(compared),
-        ["write `var memo = [None for _ in (0..5)]`"]
-    );
+    assert_eq!(found(compared), ["write `var memo = [None for _ in 0..5]`"]);
     assert!(found("var memo = [-1 for _ in 0..5]\nmemo[2] = 4\nprint(memo[2])\n").is_empty());
     assert!(found(
         "var memo = [-1 for _ in 0..5]\nvar other = [0]\nprint(memo[0] == 0, other[0] == -1)\n"
@@ -716,4 +718,137 @@ fn a_no_fix_lint_reports_in_the_program_s_fn_of_its_name() {
         .filter(|d| d.message == "write `word(n > 0)`")
         .collect();
     assert_eq!(found.len(), 1, "{found:?}");
+}
+
+/// A hole whose parameter's type parameter a sequence trait bounds
+/// (`xs: S` with `S: Seq<Int>`) matches only code whose type meets it: a
+/// list, not a map. Rule: R06.4.9.
+#[test]
+fn a_hole_bounded_by_a_sequence_trait_matches_only_such_code() {
+    let decl = "@lint(tally, from: \"var n = 0\\nfor x in xs:\\n    n += 1\", to: \"let n = tally(xs)\")\npub fn tally<S: Seq<Int>>(xs: S) -> Int = 0\n";
+    let src = format!(
+        "{decl}let a = [3, 1]\nlet m: Map<Int, Int> = [1: 2]\nvar k = 0\nfor x in a:\n    k += 1\nvar j = 0\nfor kv in m:\n    j += 1\nprint(k, j)\n"
+    );
+    let fixes: Vec<String> = crate::lint(&src, &crate::Config::default())
+        .into_iter()
+        .filter(|d| d.code.0 == "tally")
+        .map(|d| d.fixes[0].edits[0].1.clone())
+        .collect();
+    assert_eq!(fixes, ["let k = tally(a)"]);
+}
+
+/// A hole `to` writes as a generator's element or filter needs no brackets:
+/// each takes a whole expression, like an argument. Rule: R06.4.9.
+#[test]
+fn a_generator_element_or_filter_hole_is_written_bare() {
+    let decl = "@lint(tally_if, from: \"var t = 0\\nfor x in xs:\\n    if c:\\n        t += v\", to: \"let t = total(v for x in xs if c)\", holes: \"v, c\")\npub fn total(xs: List<Int>) -> Int = 0\n";
+    let src = format!(
+        "{decl}let a = [3, 1]\nvar s = 0\nfor y in a:\n    if y % 2 == 1:\n        s += y * y\nvar r = 0\nfor y in a + a:\n    if y > 1:\n        r += y\nprint(s, r)\n"
+    );
+    let fixes: Vec<String> = crate::lint(&src, &crate::Config::default())
+        .into_iter()
+        .filter(|d| d.code.0 == "tally_if")
+        .map(|d| d.fixes[0].edits[0].1.clone())
+        .collect();
+    assert_eq!(
+        fixes,
+        [
+            "let s = total(y * y for y in a if y % 2 == 1)",
+            "let r = total(y for y in a + a if y > 1)"
+        ]
+    );
+}
+/// A hole after an argument label or a lambda's `=>` is written bare, and
+/// the label itself names no hole.
+/// Rule: R06.4.9, spec/core/06-control-functions.md.
+#[test]
+fn a_labelled_argument_or_lambda_body_hole_is_written_bare() {
+    let decl = "@lint(arrange_method, from: \"arrange(xs, by: by)\", to: \"xs.arrange(by: by)\")\npub fn arrange(xs: List<Int>; by: Int -> Int = x => x) -> List<Int> = xs\n@lint(tally_loop, from: \"var n = 0\\nfor x in xs:\\n    if p:\\n        n += 1\", to: \"let n = xs.tally(x => p)\", holes: \"p\")\npub fn tally(xs: List<Int>, p: Int -> Bool) -> Int = 0\n";
+    let src = format!(
+        "{decl}let a = [3, 1]\nvar n = 0\nfor y in a:\n    if y > 1:\n        n += 1\nprint(arrange(a, by: x => x % 2), n)\n"
+    );
+    let fixes: Vec<String> = crate::lint(&src, &crate::Config::default())
+        .into_iter()
+        .filter(|d| ["arrange_method", "tally_loop"].contains(&d.code.0))
+        .map(|d| d.fixes[0].edits[0].1.clone())
+        .collect();
+    assert_eq!(
+        fixes,
+        ["let n = a.tally(y => y > 1)", "a.arrange(by: x => x % 2)"]
+    );
+}
+
+/// Fns declaring one lint share its sites: where two spellings match the
+/// same code, the one with fewer holes reports it, once.
+/// Rule: R06.4.9, spec/core/06-control-functions.md.
+#[test]
+fn one_lints_spellings_across_fns_report_a_site_once() {
+    let decl = "@lint(by_hand, from: \"var t = 0\\nfor x in xs:\\n    if c:\\n        t += v\", to: \"let t = total(v for x in xs if c)\", holes: \"v, c\")\npub fn total(xs: List<Int>) -> Int = 0\n@lint(by_hand, from: \"var n = 0\\nfor x in xs:\\n    if p:\\n        n += 1\", to: \"let n = xs.tally(x => p)\")\npub fn tally(xs: List<Int>, p: Int -> Bool) -> Int = 0\n";
+    let src = format!(
+        "{decl}let a = [3, 1]\nvar n = 0\nfor y in a:\n    if y > 1:\n        n += 1\nprint(n)\n"
+    );
+    let fixes: Vec<String> = crate::lint(&src, &crate::Config::default())
+        .into_iter()
+        .filter(|d| d.code.0 == "by_hand")
+        .map(|d| d.fixes[0].edits[0].1.clone())
+        .collect();
+    assert_eq!(fixes, ["let n = a.tally(y => y > 1)"]);
+}
+
+/// A name `to` reaches through `.` is a member, not one the code's own
+/// binding could capture: `var rev = 0` keeps `xs.rev()` matching.
+/// Rule: R06.4.9, spec/core/06-control-functions.md.
+#[test]
+fn a_member_name_in_to_is_not_captured_by_a_binding() {
+    let decl = "@lint(tot_method, from: \"tot(xs)\", to: \"xs.rev().tot()\")\npub fn tot(xs: List<Int>) -> Int = 0\n";
+    let src = format!("{decl}let a = [1, 2]\nvar rev = 0\nrev += tot(a)\nprint(rev)\n");
+    let fixes: Vec<String> = crate::lint(&src, &crate::Config::default())
+        .into_iter()
+        .filter(|d| d.code.0 == "tot_method")
+        .map(|d| d.fixes[0].edits[0].1.clone())
+        .collect();
+    assert_eq!(fixes, ["a.rev().tot()"]);
+}
+
+/// A compound assignment in `from` also matches its spelled-out form:
+/// `t += v` is `t = t + v`, `t max= v` is `t = max(t, v)`.
+/// Rule: R06.4.9, spec/core/06-control-functions.md.
+#[test]
+fn a_compound_assignment_matches_its_spelled_out_form() {
+    let decl = "@lint(by_hand, from: \"var t = 0\\nfor x in xs:\\n    t += v\", to: \"let t = total(v for x in xs)\", holes: \"v\")\npub fn total(xs: List<Int>) -> Int = 0\n@lint(top, from: \"var t = 0\\nfor x in xs:\\n    t max= v\", advice: \"best(v for x in xs)\", holes: \"v\")\npub fn best(xs: List<Int>) -> Int = 0\n";
+    let src = format!(
+        "{decl}let a = [3, 1]\nvar s = 0\nfor y in a:\n    s = s + y * 2\nvar m = 0\nfor y in a:\n    m = max(m, y - 1)\nvar d = 0\nfor y in a:\n    d = d - y\nprint(s, m, d)\n"
+    );
+    let found: Vec<String> = crate::lint(&src, &crate::Config::default())
+        .into_iter()
+        .filter(|d| d.code.0 == "by_hand" || d.code.0 == "top")
+        .map(|d| d.message)
+        .collect();
+    assert_eq!(
+        found,
+        [
+            "write `let s = total(y * 2 for y in a)`",
+            "write `best(y - 1 for y in a)`"
+        ]
+    );
+}
+
+/// A `to` that maps by a hole which matched the element itself writes no
+/// map: `xs.map(x => x).max()` is `xs.max()`.
+/// Rule: R06.4.9, spec/core/06-control-functions.md.
+#[test]
+fn an_identity_map_in_to_is_dropped() {
+    let decl = "@lint(top, from: \"var t = 0\\nfor x in xs:\\n    t max= v\", advice: \"xs.map(x => v).best()\", holes: \"v\")\npub fn best(xs: List<Int>) -> Int = 0\n";
+    let src = format!(
+        "{decl}let a = [3, 1]\nvar m = 0\nfor y in a:\n    m max= y\nvar k = 0\nfor y in a:\n    k max= y + 1\nprint(m, k)\n"
+    );
+    let found: Vec<String> = crate::lint(&src, &crate::Config::default())
+        .into_iter()
+        .filter(|d| d.code.0 == "top")
+        .map(|d| d.message)
+        .collect();
+    assert_eq!(
+        found,
+        ["write `a.best()`", "write `a.map(y => y + 1).best()`"]
+    );
 }

@@ -10,7 +10,7 @@ while hi - lo > 2:  // expect: ternary_search_by_hand
         hi = m2
     else:
         lo = m1
-var best = cost(lo)
-for x in lo..=hi:  // expect: loop_reduction
+var best = cost(lo)  // expect: loop_reduction
+for x in lo..=hi:
     best = min(best, cost(x))
 print(best)
