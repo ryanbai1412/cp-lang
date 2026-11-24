@@ -193,6 +193,7 @@ impl Lowerer<'_> {
         span: Span,
     ) -> Expr {
         if let Some(filled) = self.comprehension_filled(body, clauses, hint, span) {
+            self.empty_item_help(body);
             return filled;
         }
         let frames = self.open_loops(clauses);
@@ -205,6 +206,7 @@ impl Lowerer<'_> {
             Some(elem) => self.expect(body, elem),
             None => self.expr(body, None),
         };
+        self.empty_item_help(body);
         let ty = if is_set {
             Ty::Set(Box::new(value.ty.clone()))
         } else {
@@ -236,6 +238,21 @@ impl Lowerer<'_> {
         stmts.extend(loops);
         stmts.push(Stmt::Give(self.local(acc, span)));
         self.mk(ExprKind::Do(Block { stmts }), ty, span)
+    }
+
+    /// `[[] for _ in 0..n]` with no type: the `[]`'s error names the whole list.
+    fn empty_item_help(&mut self, body: &ast::Expr) {
+        let empty = matches!(&body.kind, ast::ExprKind::List(items) if items.is_empty());
+        let at = self.span(body.span);
+        let last = self.diags.last_mut().filter(|d| empty && d.span == at);
+        if let Some(last) = last.filter(|d| d.message.contains("empty list holds")) {
+            last.message = "can't tell what each `[]` in this list holds".into();
+            last.help = Some(
+                "say it where the list is stored, as in `var adj: List<List<Int>> = ...`, \
+                 with the item type in place of `Int`"
+                    .into(),
+            );
+        }
     }
 
     /// `[List<V>() for _ in lo..hi]`: the body names no loop variable and
