@@ -8847,3 +8847,5 @@ Reserved for call 5, which landed as decision 519.
 - **Reverse.** Stop `_ungated_lines` at the first `#[cfg(test)]` again and lower those five baselines.
 
 ## 531. (reserved, content)
+
+## 532. (reserved, content)
