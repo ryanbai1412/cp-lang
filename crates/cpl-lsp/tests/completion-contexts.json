@@ -309,6 +309,31 @@
   ]
  },
  {
+  "context": "dot/str-literal",
+  "source": "let o = \"ABXY\".$0",
+  "want": [
+   "filter",
+   "len"
+  ]
+ },
+ {
+  "context": "dot/pub-field",
+  "source": "use std.geometry.{cross}\nlet h = Pt(1, 2)\nprint(h.$0)",
+  "want": [
+   "x",
+   "y",
+   "cross"
+  ]
+ },
+ {
+  "context": "dot/array-ring",
+  "source": "domain V = 0..3\ndomain Street = [4]\nlet street = [Street] s => (V(0), V(1))\nlet odd = street.$0",
+  "want": [
+   "ring",
+   "sum"
+  ]
+ },
+ {
   "context": "dot/domain-seq",
   "source": "let n = 5\ndomain V = 1..=n\nlet s = V.$0",
   "want": [

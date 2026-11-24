@@ -769,6 +769,7 @@ fn type_of(item: &AnalyzedItem, expr: &Expr) -> Option<Ty> {
     }
     let ty = match &expr.kind {
         ExprKind::Paren(inner) => return type_of(item, inner),
+        ExprKind::Str(_) => Ty::Str,
         ExprKind::Field { name, .. } => hover_at(item, name.span)?.clone(),
         ExprKind::Generic { base, .. } => return type_of(item, base),
         ExprKind::Call { callee, .. } => match type_of(item, callee)? {
@@ -1013,6 +1014,16 @@ fn receives(detail: &str, ty: &Ty, walks: bool) -> bool {
         {
             true
         }
+        // `self: [D]T`: any array whose element is `T`'s.
+        None if self_ty.starts_with('[') => match (ty, self_ty.split_once(']')) {
+            (Ty::Array { elem, .. }, Some((_, want))) => {
+                let generic = generics
+                    .split(',')
+                    .any(|g| g.split(':').next().unwrap_or("").trim() == want.trim());
+                generic || elem.to_string() == want.trim()
+            }
+            _ => false,
+        },
         None => {
             let name = self_ty.split('<').next().unwrap_or(self_ty);
             let ty = match ty {

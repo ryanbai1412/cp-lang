@@ -507,7 +507,7 @@ fn a_library_type_offers_its_api_not_its_internals() {
         "push",
         "pull_node",
     ] {
-        assert!(!shown.contains(&internal), "{internal} shown: {shown:?}");
+        assert!(!shown.contains(&internal), "{internal} shown: {items:?}");
     }
     // Its methods rank first, and a documented field is still offered.
     assert!(

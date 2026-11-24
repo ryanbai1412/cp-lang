@@ -144,12 +144,13 @@ impl Outline {
     }
 
     /// Whether another module sees `member` of the type `name` declared
-    /// here: a `pub` method, or a documented field. A type with no `pub`
-    /// methods is plain data, and shows every field.
+    /// here: a `pub` method, or a `pub` or documented field. A type with no
+    /// `pub` methods is plain data, and shows every field.
     pub fn offers(&self, name: &str, member: &Entry) -> bool {
         match member.kind {
             Kind::Field => {
-                !member.doc.is_empty()
+                member.public
+                    || !member.doc.is_empty()
                     || self
                         .members_of(name)
                         .all(|m| m.kind == Kind::Field || !m.public)
@@ -318,7 +319,7 @@ impl Reader<'_> {
                     .map(|f| Entry {
                         name: f.name.text.clone(),
                         kind: Kind::Field,
-                        public: true,
+                        public: f.public,
                         detail: format!("{}: {}", f.name.text, squash(self.slice(f.ty.span))),
                         doc: self.doc_at(f.name.span.start),
                         params: Vec::new(),
@@ -340,7 +341,7 @@ impl Reader<'_> {
                     .map(|f| Entry {
                         name: f.name.text.clone(),
                         kind: Kind::Field,
-                        public: true,
+                        public: f.public,
                         detail: format!("{}: {}", f.name.text, squash(self.slice(f.ty.span))),
                         // A parameter on the struct's own line has the struct's doc.
                         doc: if line_of(f.name.span) == line_of(s.name.span) {

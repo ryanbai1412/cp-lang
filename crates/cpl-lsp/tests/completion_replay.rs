@@ -221,8 +221,8 @@ fn completion_offers_what_each_hill_climb_port_types_next() {
     }
     // Recall per kind in tenths of a percent; raise these as completion improves.
     let floors = [
-        (Kind::Member, 840),
-        (Kind::AfterCall, 710),
+        (Kind::Member, 860),
+        (Kind::AfterCall, 740),
         (Kind::Scope, 1000),
     ];
     for (kind, floor) in floors {
