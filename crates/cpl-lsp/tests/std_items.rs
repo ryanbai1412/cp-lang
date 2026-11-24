@@ -37,6 +37,9 @@ fn position(src: &str, offset: usize) -> Value {
 const FIXTURE: &str = "var xs = [3, 1, 2]\nvar s = \"hello\"\nvar m = Map<Int, Int>()\nm[1] = 10\nm[5] = 50\n\
                        var st = Set<Int>()\nst.insert(4)\nst.insert(9)\nvar a: [0..3]Int = 0\na[1] = 7\n";
 
+const STD_URI: &str = "file:///std_items/a.cp";
+const BUILTIN_URI: &str = "file:///std_items/builtin.cp";
+
 struct Lsp {
     server: Server,
     id: u32,
@@ -221,9 +224,11 @@ fn program_of(example: &str) -> String {
     lines.join("\n") + "\n"
 }
 
-fn std_cases(root: &Path) -> Vec<Case> {
+/// The public items of the `.cp` modules in `dir`, imported as
+/// `use {lib}.<module>`.
+fn lib_cases(dir: &Path, lib: &str) -> Vec<Case> {
     let mut cases = Vec::new();
-    let mut files: Vec<_> = std::fs::read_dir(root.join("std"))
+    let mut files: Vec<_> = std::fs::read_dir(dir)
         .unwrap()
         .filter_map(|e| e.ok().map(|e| e.path()))
         .filter(|p| p.extension().is_some_and(|e| e == "cp"))
@@ -236,6 +241,16 @@ fn std_cases(root: &Path) -> Vec<Case> {
         }
         let src = std::fs::read_to_string(&path).unwrap();
         let doc = cpl_doc::extract(&src, &path.to_string_lossy());
+        // A library has no prelude: its example uses its module's other names.
+        let every: Vec<&str> = doc
+            .items
+            .iter()
+            .filter(|i| i.signature.trim_start().starts_with("pub "))
+            .filter(|i| matches!(i.kind, cpl_doc::Kind::Fn | cpl_doc::Kind::Struct))
+            .map(|i| i.name.as_str())
+            .collect::<std::collections::BTreeSet<_>>()
+            .into_iter()
+            .collect();
         for (owner, item) in doc.all_items() {
             let owner_item = owner.and_then(|o| doc.items.iter().find(|i| i.name == o));
             let public = |i: &cpl_doc::Item| i.signature.trim_start().starts_with("pub ");
@@ -262,16 +277,18 @@ fn std_cases(root: &Path) -> Vec<Case> {
                 continue;
             };
             let import = owner.unwrap_or(&item.name);
-            let head = if takes_self && owner.is_none() {
-                format!("use std.{module}.{{{}}}\n", item.name)
+            let head = if lib != "std" {
+                format!("use {lib}.{module}.{{{}}}\n", every.join(", "))
+            } else if takes_self && owner.is_none() {
+                format!("use {lib}.{module}.{{{}}}\n", item.name)
             } else {
-                format!("use std.{module}.{{{import}}}\n")
+                format!("use {lib}.{module}.{{{import}}}\n")
             };
             let program = format!("{head}{}", program_of(&example));
             let at = use_of(&program[head.len()..], &name, member).unwrap() + head.len();
             let who = match owner {
-                Some(o) => format!("std.{module}.{o}.{}", item.name),
-                None => format!("std.{module}.{}", item.name),
+                Some(o) => format!("{lib}.{module}.{o}.{}", item.name),
+                None => format!("{lib}.{module}.{}", item.name),
             };
             cases.push(Case {
                 who,
@@ -340,8 +357,7 @@ impl Tally {
     }
 }
 
-fn run(lsp: &mut Lsp, case: &Case, tally: &mut Tally) {
-    let uri = "file:///std_items/a.cp";
+fn run(lsp: &mut Lsp, case: &Case, uri: &str, tally: &mut Tally) {
     let text = &case.program;
     lsp.open(uri, text);
     let hover = lsp.ask("textDocument/hover", uri, text, case.at + 1);
@@ -376,6 +392,22 @@ fn run(lsp: &mut Lsp, case: &Case, tally: &mut Tally) {
                 format!("want {cost} in {code:?}")
             });
         }
+    }
+    if let Some(module) = case.who.split('.').nth(1).filter(|_| uri != BUILTIN_URI) {
+        let def = lsp.ask("textDocument/definition", uri, text, case.at + 1);
+        let target = def.as_array().and_then(|a| a.first()).unwrap_or(&def);
+        let reached = target
+            .at(&["uri"])
+            .as_str()
+            .or(target.at(&["targetUri"]).as_str())
+            .unwrap_or("")
+            .to_string();
+        tally.check(
+            "definition reaches its module",
+            reached.ends_with(&format!("/{module}.cp")),
+            &case.who,
+            || format!("went to {reached:?} from {text:?}"),
+        );
     }
     let end = case.at + case.name.len();
     if text[end..].starts_with('(') {
@@ -494,7 +526,7 @@ fn run(lsp: &mut Lsp, case: &Case, tally: &mut Tally) {
 
 /// Runs the cases on one server per core, dealt round-robin since a
 /// module's cases cost alike, and adds up the tallies.
-fn run_all(cases: &[Case]) -> Tally {
+fn run_all(cases: &[Case], uri: &str) -> Tally {
     let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
     let tallies: Vec<Tally> = std::thread::scope(|scope| {
         let workers: Vec<_> = (0..threads)
@@ -503,7 +535,7 @@ fn run_all(cases: &[Case]) -> Tally {
                     let mut lsp = Lsp::new();
                     let mut tally = Tally::default();
                     for case in cases.iter().skip(first).step_by(threads) {
-                        run(&mut lsp, case, &mut tally);
+                        run(&mut lsp, case, uri, &mut tally);
                     }
                     tally
                 })
@@ -539,7 +571,7 @@ fn report(name: &str, tally: &Tally, floors: &[(&str, usize)]) {
 #[test]
 fn every_public_std_item_hovers_signs_and_completes_with_its_parameters() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let tally = run_all(&std_cases(&root));
+    let tally = run_all(&lib_cases(&root.join("std"), "std"), STD_URI);
     report(
         "std",
         &tally,
@@ -557,7 +589,7 @@ fn every_public_std_item_hovers_signs_and_completes_with_its_parameters() {
 
 #[test]
 fn every_builtin_member_hovers_signs_and_completes_with_its_parameters() {
-    let tally = run_all(&builtin_cases());
+    let tally = run_all(&builtin_cases(), BUILTIN_URI);
     report(
         "builtin",
         &tally,
@@ -570,5 +602,121 @@ fn every_builtin_member_hovers_signs_and_completes_with_its_parameters() {
             ("completion offers it", 149),
             ("completion detail names every parameter", 146),
         ],
+    );
+}
+
+/// A std module's text with its top-level public names given a `_mine` (or
+/// `Mine`) suffix everywhere in the file, docs included, so the library's
+/// items don't meet std's through the prelude.
+fn own_names(text: &str) -> String {
+    let doc = cpl_doc::extract(text, "mine.cp");
+    let names: Vec<&str> = doc
+        .items
+        .iter()
+        .filter(|i| i.signature.trim_start().starts_with("pub "))
+        .filter(|i| matches!(i.kind, cpl_doc::Kind::Fn | cpl_doc::Kind::Struct))
+        // A `= todo` body is the compiler's own, found by its std name; a name
+        // also declared as a member would rename the member too.
+        .filter(|i| {
+            let declares = |l: &str| {
+                [format!("fn {}<", i.name), format!("fn {}(", i.name)]
+                    .iter()
+                    .any(|d| l.contains(d.as_str()))
+            };
+            !text
+                .lines()
+                .any(|l| declares(l) && (l.starts_with(' ') || l.trim_end().ends_with("= todo")))
+        })
+        .map(|i| i.name.as_str())
+        .collect();
+    let bytes = text.as_bytes();
+    let mut out = String::with_capacity(text.len() + 1024);
+    let mut i = 0;
+    while i < text.len() {
+        let start = i;
+        if is_word(bytes[i]) {
+            while i < text.len() && is_word(bytes[i]) {
+                i += 1;
+            }
+            let word = &text[start..i];
+            out.push_str(word);
+            if names.contains(&word) && !(start > 0 && is_word(bytes[start - 1])) {
+                let upper = word.starts_with(|c: char| c.is_ascii_uppercase());
+                out.push_str(if upper { "Mine" } else { "_mine" });
+            }
+        } else {
+            let c = text[i..].chars().next().unwrap();
+            out.push(c);
+            i += c.len_utf8();
+        }
+    }
+    out
+}
+
+/// A personal library (`cp.toml`'s `[libs]`) holding a copy of every std
+/// module gets what std gets: each item hovers, signs, completes and goes to
+/// its definition as often as the same item imported from std.
+#[test]
+fn a_personal_library_gets_what_std_gets() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("personal-lib");
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("mine")).unwrap();
+    std::fs::write(dir.join("cp.toml"), "[libs]\nmine = \"mine\"\n").unwrap();
+    for entry in std::fs::read_dir(root.join("std")).unwrap() {
+        let path = entry.unwrap().path();
+        if path.extension().is_some_and(|e| e == "cp") {
+            let text = std::fs::read_to_string(&path).unwrap();
+            std::fs::write(
+                dir.join("mine").join(path.file_name().unwrap()),
+                own_names(&text),
+            )
+            .unwrap();
+        }
+    }
+    let shown = dir.display().to_string().replace('\\', "/");
+    let uri = format!(
+        "file://{}{shown}/a.cp",
+        if shown.starts_with('/') { "" } else { "/" }
+    );
+    let std = run_all(&lib_cases(&root.join("std"), "std"), STD_URI);
+    // Only the renamed items: the rest meet std's through the prelude.
+    let mut cases = lib_cases(&dir.join("mine"), "mine");
+    cases.retain(|c| {
+        c.who
+            .split('.')
+            .nth(2)
+            .is_some_and(|n| n.ends_with("Mine") || n.ends_with("_mine"))
+    });
+    // An example that reaches the item through a std name (`xs.rev()`) tests std.
+    let own = |t: &str| t.contains("Mine") || t.contains("_mine");
+    cases.retain(|c| c.program.lines().skip(1).any(own));
+    println!("mine cases: {}", cases.len());
+    assert!(cases.len() >= 1900, "only {} library cases", cases.len());
+    let mine = run_all(&cases, &uri);
+    report("mine", &mine, &[]);
+    let mut only = Vec::new();
+    for (what, fails) in &mine.fails {
+        let theirs: Vec<&str> = std.fails.get(what).map_or(vec![], |f| {
+            f.iter().filter_map(|f| f.split(':').next()).collect()
+        });
+        for f in fails {
+            let who = f
+                .split(':')
+                .next()
+                .unwrap_or("")
+                .replacen("mine.", "std.", 1)
+                .replace("_mine", "")
+                .replace("Mine", "");
+            if !theirs.contains(&who.as_str()) {
+                only.push(format!("{what}: {f:.300}"));
+            }
+        }
+    }
+    assert!(
+        only.is_empty(),
+        "the library falls behind std on {} items:\n{}",
+        only.len(),
+        only.join("\n")
     );
 }
