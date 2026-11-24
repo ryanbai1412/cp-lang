@@ -4,6 +4,7 @@
 //! example: `var s: SortedSet<Int> = SortedSet(); s.add(5); s.add(2); s.add(9); s.nth(1) == 5 and s.rank(9) == 2`
 
 use std.seq.Track
+use std.math.{ceil_sqrt}
 
 /// Read-only handle to one key's slot in a `SortedBag<K>`, valid until the bag's next `add`,
 /// `remove` or `clear`, because a B+tree change may move keys between leaves (decision 579).
@@ -2264,8 +2265,7 @@ pub struct BucketCount:
     /// example: `var b = BucketCount(0..10); b.len == 0`
     pub fn new(r: Range<Int>) -> BucketCount:
         let n = max(r.len, 0)
-        var bs = 1
-        while bs * bs < n: bs += 1
+        let bs = max(ceil_sqrt(n), 1)
         BucketCount(r.start, r.start + n, bs, 0, List.filled(n, 0), List.filled(n / bs + 1, 0))
 
     /// \(O(1)\). Add `delta` (default 1; may be negative) copies of `x`.
