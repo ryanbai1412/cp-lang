@@ -222,7 +222,7 @@ their front ends.
 | Every command starts in under 100 ms | median and p90 per command, release build | generated over the command list and the largest corpus ports; rule `commands/R7` | `crates/cpl-cli/tests/cold_start.rs`; CI `lsp latency` job on macOS and Windows |
 | The same input prints the same bytes | `cpl-json` output order | architecture: objects are a `BTreeMap`; rule `commands/R6` | `crates/cpl-json` unit tests |
 | Paths shown are ones the user can open | printed paths going through one helper | architecture: `cpl_diag::Shown`; rule `commands/R8` | `crates/cpl-cli/tests/golden.rs` |
-| Help, errors, hover and explain use the spec's words | terms not in `spec/GLOSSARY.md` | `missing` (a generated scan of help and hover text) | `missing` |
+| Help, errors, hover and explain use the spec's words | spellings `spec/GLOSSARY.md`'s Never column bans, in prose | generated scan: every `--help`, every `cpl explain` entry, `cpl explain` and hover over 200 conformance files | `scripts/tool-vocab.py` (in `check.sh`); error messages over the corpus: `missing` |
 | Names are guessable | wrong guesses on fixed tasks given only `cpl --help` | process: a cold run on fixed tasks | `missing` as a suite |
 
 ### Long-term use and contributing (J10)

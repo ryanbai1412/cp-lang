@@ -359,7 +359,7 @@ pub(crate) fn command_usage(command: &str) -> Option<&'static str> {
 const CHECK_USAGE: &str = "\
 usage: cpl check <file.cp>... [--json]
 
-Reports every error in the files: names, types, borrows, input ranges.
+Reports every error in the files: names, types, lending, input ranges.
 Nothing is run and nothing is written. The exit status is 1 when a file
 has an error.
 
