@@ -4,12 +4,13 @@ Port: `corpus/problems/ccc04s5/port.cp`, dream: `corpus/problems/ccc04s5/dream.c
 
 ## Measurements
 
-- Tokens: port 318, accepted C++ 569.
-- Emitted C++: 14705 bytes.
-- `--max` (100 x 100 grids, median of 15): port 14.3 ms / 3.1 MB, accepted 8.6 ms / 2.5 MB (1.65x time).
-- Output: identical to the accepted C++.
+- Tokens: accepted C++ 569; v0.2-form port 318 (14705 bytes of C++).
+- Emitted C++ after the re-port: 15913 bytes.
+- `--max` (100 x 100 grids, median of 21, g++ -O2): port 7.1 ms / 3.1 MB, accepted 7.7 ms /
+  3.5 MB (0.92x time); the v0.2-form port was 12.2 ms on the same input.
+- Output: identical to the accepted C++ and to the v0.2-form port.
 
-## Friction 1: the port is the v0.2 translation, not the dream
+## Friction 1: the port was the v0.2 translation, not the dream (fixed)
 
 - Where: the whole of `solve_case`: `let neg_inf = -1000000000`, `var c = cols - 1; while c >= 0`,
   the duplicated upward and downward scans, `R(r)` / `C(c)` conversions on every access,
@@ -25,9 +26,11 @@ Port: `corpus/problems/ccc04s5/port.cp`, dream: `corpus/problems/ccc04s5/dream.c
   header (minus `Buildable today-form.`), and check it against tests/v02-snapshot as the
   brute. This is a port job, not a language gap; every spelling the dream uses checks today.
 - Severity: high (a v03 port carrying a sentinel and duplicated code).
-- Owner: idioms.
+- Fixed: the port is now the dream's body under the original header; `corpus.py verify`
+  has 0 findings.
+- Owner: none open.
 
-## Friction 2: 1.65x at --max
+## Friction 2: 1.65x at --max (fixed by the re-port)
 
 - Where: the per-cell `R(r)`, `C(c)` conversions and checks inside the O(m^2 n) scans.
 - What felt wrong: each conversion is a range check the accepted C++ does not do; the
@@ -36,4 +39,5 @@ Port: `corpus/problems/ccc04s5/port.cp`, dream: `corpus/problems/ccc04s5/dream.c
 - Ideal code: the dream.
 - General fix: the re-port in friction 1; measure again after it.
 - Severity: low (14 ms against 1000 ms).
-- Owner: idioms (re-measure after the re-port; route to Core only if the dream is still over 1.1x).
+- Fixed: re-measured after the re-port at 0.92x.
+- Owner: none open.

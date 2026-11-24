@@ -1,28 +1,29 @@
 # ccc04s5
 
-Score: 2/5
+Score: 4/5
 Dream: 4/5
 
-Cold review against the idiomatic checklist.
+Cold review against the idiomatic checklist, of the port re-ported from `dream.cp`.
 
-- R1: complete, but carries a stale `// Buildable today-form.` line.
-- R2: column DP is the editorial, but written as the C++: right-to-left `while`, two
-  copies of the vertical scan.
-- R4: the scan is written twice (up and down).
-- R5: `neg_inf = -1000000000` stands for "unreachable"; `?Int` is the type.
-- R6: rows and columns are domains, but every access converts from `Int` (`R(r)`, `C(c)`).
-- R10: 1.65x on a 14 ms run.
-- Dream: `?Int` states, one scan with `step in [-1, 1]`, `value(ch)`; it still mutates
-  `q` by hand (`q += step`), where `R.at(q)` in a `while let` would keep the domain.
+- R1: complete; the Solution states the per-column up/down walk and the `None` start.
+- R2: column DP left to right, one straight run per column: the editorial.
+- R4: one scan, `for step in [-1, 1]`, instead of separate up and down loops.
+- R5: `here: [R]?Int`, `None` for unreachable rows; no sentinel.
+- R6: rows are `R`, columns `Col`; the walk position `q` is an `Int` converted with `R(q)`
+  after the `q in 0..rows` guard, so the conversion is visibly in-domain (R12).
+- R10: 0.92x.
+- Short of 5/5: `q += step` walks an `Int`, where a domain step (`R.at(q)` in a `while let`)
+  would keep the walk in `R`.
 
 ## Checklist failures
 
-R2, R4, R5, R6, R10.
+None.
 
 ## Owed rewrites
 
-Re-port from dream.cp (friction 1).
+None.
 
 ## Language gaps
 
-None.
+None. (`a[1] max= 5` on a `[0..3]?Int` slot that holds `None` stores 5 under `cpl run`, so
+port and dream use `leave[R(q)] max= got`.)

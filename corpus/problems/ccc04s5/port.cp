@@ -4,53 +4,34 @@
 //   coins '1'..'9' and '.'. Moving only right, up or down, never revisiting a cell, go from the
 //   bottom-left to the bottom-right corner; print the largest total of coins collected.
 // Solution: A path enters each column once and runs straight up or down in it before moving
-//   right. Go column by column from the right: dp[r] is the best total from entering column c
-//   at row r, the max over rows reachable straight up or down without crossing '*' of the coins
-//   on the way plus the next column's dp there (a virtual column past the end allows only the
-//   bottom row). O(m^2 n) per test.
-// Buildable today-form.
+//   right. Go column by column from the left: here[r] is the most collected on entering the
+//   column at row r (None if no path gets there); from each reachable row walk up and down
+//   until '*' or the edge, and every row passed is a place to leave the column. Start with
+//   only the bottom row reachable; the answer is here[bottom] past the last column.
+//   O(m^2 n) per test.
 // original: corpus/submissions/4806811.cpp
-// Bounds: m, n: 0..=100
-fn solve_case(rows: Int, cols: Int):
-    domain R = 0..rows
-    domain C = 0..cols
-    let grid: [R, C]Char = read()
-    let neg_inf = -1000000000
-
-    var dp: [R]Int = neg_inf
-    dp[R(rows - 1)] = 0
-
-    var c = cols - 1
-    while c >= 0:
-        var nxt: [R]Int = neg_inf
-        for start in 0..rows:
-            var gain = 0
-            for r in start..rows:
-                let ch = grid[R(r), C(c)]
-                if ch == '*':
-                    break
-                if '0' <= ch <= '9':
-                    gain += ch - '0'
-                if dp[R(r)] > neg_inf:
-                    nxt[R(start)] max= gain + dp[R(r)]
-            gain = 0
-            var r = start
-            while r >= 0:
-                let ch = grid[R(r), C(c)]
-                if ch == '*':
-                    break
-                if '0' <= ch <= '9':
-                    gain += ch - '0'
-                if dp[R(r)] > neg_inf:
-                    nxt[R(start)] max= gain + dp[R(r)]
-                r -= 1
-        dp = nxt
-        c -= 1
-    print(dp[R(rows - 1)])
+// Bounds: rows, cols: 0..=100
+fn value(ch: Char) -> Int = if '0' <= ch <= '9': ch - '0' else: 0
 
 while true:
-    let m: 0..=100 = read()
-    let n: 0..=100 = read()
-    if m == 0 and n == 0:
+    let rows: 0..=100 = read()
+    let cols: 0..=100 = read()
+    if rows == 0 and cols == 0:
         break
-    solve_case(m, n)
+    domain R = 0..rows
+    domain Col = 0..cols
+    let g: [R, Col]Char = read()
+    var here: [R]?Int = None
+    here[R.last!] = Some(0)
+    for c in Col:
+        var leave: [R]?Int = None
+        for from in R:
+            let base = here[from] else: continue
+            for step in [-1, 1]:
+                var (q, got) = (from.ord, base)
+                while q in 0..rows and g[R(q), c] != '*':
+                    got += value(g[R(q), c])
+                    leave[R(q)] max= got
+                    q += step
+        here = leave
+    print(here[R.last!]!)

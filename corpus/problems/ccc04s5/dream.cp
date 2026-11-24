@@ -23,7 +23,7 @@ while true:
                 var (q, got) = (from.ord, base)
                 while q in 0..rows and g[R(q), c] != '*':
                     got += value(g[R(q), c])
-                    leave[R(q)] = Some(max(leave[R(q)] ?? got, got))
+                    leave[R(q)] max= got
                     q += step
         here = leave
     print(here[R.last!]!)
