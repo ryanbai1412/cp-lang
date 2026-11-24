@@ -231,7 +231,7 @@ impl<'a> Checker<'a> {
                             bounds_domain(&lo_ty).is_some() && bounds_domain(&hi_ty).is_some();
                         if self.expected_bounds_range
                             || (*inclusive || !self.expected_piece)
-                            || (self.iterating_range && both_cuts && !*inclusive)
+                            || (self.walked == expr.span.start && both_cuts && !*inclusive)
                         {
                             Ty::Pos(bd)
                         } else {

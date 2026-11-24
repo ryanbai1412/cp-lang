@@ -317,8 +317,9 @@ pub(crate) struct Checker<'a> {
     /// Where the call being checked started recording types: its
     /// receiver's type is read back from there rather than inferred again.
     call_types_from: usize,
-    /// A `for` over `j..i` with two cut ends iterates cuts (§124).
-    iterating_range: bool,
+    /// Where the header of the `for` being checked starts: a stream it walks
+    /// is not held, and a `j..i` there with two cut ends iterates cuts (§124).
+    pub(crate) walked: u32,
     /// Factor types for local product domains (`domain State = (V, K)` inside a fn).
     pub(crate) local_product_domains: crate::names::NameMap<Vec<(Option<String>, Ty)>>,
     /// The computed range of each `let` with a constant initializer (R02.10.2).
@@ -411,7 +412,7 @@ impl<'a> Checker<'a> {
             full_ranges: Vec::new(),
             in_call_callee: false,
             call_types_from: usize::MAX,
-            iterating_range: false,
+            walked: u32::MAX,
             local_product_domains: Default::default(),
             let_ranges: Default::default(),
             walk_only: Default::default(),

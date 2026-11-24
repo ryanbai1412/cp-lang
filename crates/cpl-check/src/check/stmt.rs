@@ -1550,12 +1550,10 @@ impl<'a> Checker<'a> {
                             Some("name what to walk: `for x in D` or `for i in 0..n`".into());
                     }
                 }
-                let prev_iterating = std::mem::replace(
-                    &mut self.iterating_range,
-                    matches!(iter.kind, ExprKind::Range { .. }),
-                );
+                let prev_walked =
+                    std::mem::replace(&mut self.walked, super::lends::unparen(iter).span.start);
                 let iter_ty = self.infer(iter);
-                self.iterating_range = prev_iterating;
+                self.walked = prev_walked;
                 let elem = self.walk_elem_ty(iter, &iter_ty);
                 let steerable = matches!(&iter_ty, Ty::Named { name, .. } if name == "Gen")
                     && matches!(&elem, Ty::Named { .. });
