@@ -3277,8 +3277,11 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         digits: u32,
         span: Span,
     ) -> Res<()> {
+        // Printed once: an empty list keeps its element type, so asking
+        // again would find the same hook and never stop.
         if let Some((parts, ty)) = self.shown_parts(value, ty, span)? {
-            return self.show_val(out, &parts, &ty, digits, span);
+            show(out, &parts, &ty, digits, self.program, &self.domains);
+            return Ok(());
         }
         if let Value::MutView(mv) = value {
             let items = Value::List(Rc::new(self.mut_view_to_vec(mv, span)?));

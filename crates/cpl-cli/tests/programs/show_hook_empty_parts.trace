@@ -1,0 +1,8 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"dp":{"name":"dp","type":"[V]List\u003cMod\u003c998244353>>","kind":"json"},"l":{"name":"l","type":"List\u003cList\u003cMod\u003c998244353>>>","kind":"json"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":5,"label":"var dp: [V]List\u003cZ> = []","stage":"main","values":{"stdout":[],"dp":[[],[]]},"locals":{},"frames":[{"fn":"main","line":5}]},
+{"id":1,"line":6,"label":"dp[V(1)].push(Z(3))","stage":"main","values":{"stdout":[],"dp":[[],["3"]]},"locals":{},"frames":[{"fn":"main","line":6}]},
+{"id":2,"line":7,"label":"print → \n3","stage":"main","values":{"stdout":["","3"],"dp":[[],["3"]]},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":7}]},
+{"id":3,"line":8,"label":"let l: List\u003cList\u003cZ>> = [[], [Z(4), Z(5)]]","stage":"main","values":{"stdout":["","3"],"dp":[[],["3"]],"l":[[],["4","5"]]},"locals":{},"frames":[{"fn":"main","line":8}]},
+{"id":4,"line":9,"label":"print → \n4 5","stage":"main","values":{"stdout":["","3","","4 5"],"dp":[[],["3"]],"l":[[],["4","5"]]},"locals":{},"checkpoint":"print 2","frames":[{"fn":"main","line":9}]},
+{"id":5,"line":10,"label":"print → 6","stage":"main","values":{"stdout":["","3","","4 5","6 "],"dp":[[],["3"]],"l":[[],["4","5"]]},"locals":{},"checkpoint":"print 3","frames":[{"fn":"main","line":10}]},
+{"id":6,"line":10,"label":"the program ended","stage":"main","values":{"stdout":["","3","","4 5","6 "],"dp":[[],["3"]],"l":[[],["4","5"]]},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":10}]}]}}}
+stderr:
