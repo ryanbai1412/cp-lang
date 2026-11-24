@@ -23,5 +23,10 @@
  "difficulty": "hard",
  "dream": "none",
  "spec": "none",
- "notes": "No DMOJ AC submission is on file: orig.cpp is the IOI task archive's model solution (2025/day2/migrations/solutions/model_solution/zein_Z4_M8.cpp, Z = 4, M = 8) with the sample grader as its main, the two phases in separate processes; it scores in full on all 132 official tests (the adaptive type-3 ones replayed from the archive's manager.cpp) under checker.py. dream.tests/grader.cpp is that sample grader, which cpl test links into the @grader(two_phase) dream; it sits in dream.tests/ because a grader.cpp beside the stdin port would be linked into it too."
+ "notes": "No DMOJ AC submission is on file: orig.cpp is the IOI task archive's model solution (2025/day2/migrations/solutions/model_solution/zein_Z4_M8.cpp, Z = 4, M = 8) with the sample grader as its main, the two phases in separate processes; it scores in full on all 132 official tests (the adaptive type-3 ones replayed from the archive's manager.cpp) under checker.py. dream.tests/grader.cpp is that sample grader, which cpl test links into the @grader(two_phase) dream; it sits in dream.tests/ because a grader.cpp beside the stdin port would be linked into it too. The dream's `@grader(two_phase) mod` became two top-level @grader fns: only those are built for the grader. Its fresh diameter at each phase could pick a tied pair outside the candidate lists; it now tracks the ends on a JumpTree.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 14,
+  "sha": "3da0220f5234b7c8db3245ffb1634cad77320217"
+ }
 }
