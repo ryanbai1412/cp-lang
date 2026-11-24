@@ -1,6 +1,15 @@
 # Cases for scripts/corpus.py make (problem-packages/R9).
 
 [[case]]
+input = "3\n10 1 6\n20 1 7\n21 8 1\n"
+
+[[case]]
+input = "3\n10 2 5\n15 2 6\n25 2 5\n"
+
+[[case]]
+input = "2\n10 5 2\n11 6 3\n"
+
+[[case]]
 seed = 1
 size = 16777216
 
@@ -35,3 +44,6 @@ size = 16777216
 [[case]]
 seed = 21
 size = 100
+
+[[case]]
+args = ["--max"]
