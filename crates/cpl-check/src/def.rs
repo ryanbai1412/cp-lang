@@ -53,6 +53,8 @@ pub enum Def {
         /// The parameters of `fn new(..)` when the struct defines it:
         /// outside the struct's body, `S(..)` calls `new`.
         ctor: Option<Vec<crate::ty::Param>>,
+        /// `new<M>(op: M = NoOp())`: what `M` is when `op` is left out.
+        ctor_defaults: Vec<(String, Ty)>,
         /// Methods marked `@get`: read like fields, without `()`.
         getters: Vec<String>,
         /// Methods that take `mut self`.
@@ -274,7 +276,6 @@ impl Def {
                         ty: ty.clone(),
                         mutable: false,
                         has_default: false,
-                        default_ty: None,
                         named_only: false,
                         variadic: false,
                         lazy: false,

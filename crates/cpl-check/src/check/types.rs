@@ -201,7 +201,6 @@ impl<'a> Checker<'a> {
                             ty: self.resolve_type(inner),
                             mutable,
                             has_default: false,
-                            default_ty: None,
                             named_only: false,
                             variadic: false,
                             lazy: false,
@@ -571,15 +570,11 @@ impl<'a> Checker<'a> {
             if p.ty.as_ref().is_some_and(Self::names_range_keys) {
                 self.lends.range_keys.insert(p.name.span);
             }
-            let params_ty_is_param = matches!(ty, Ty::Param(_));
             params.push(Param {
                 name: p.label_text().to_string(),
                 ty,
                 mutable: p.mutable || self.note_opt_mut(p),
                 has_default: p.default.is_some(),
-                default_ty: (p.default.as_ref())
-                    .filter(|_| params_ty_is_param)
-                    .map(|d| self.quietly(|c| c.infer(d))),
                 named_only: p.named_only,
                 variadic: p.variadic,
                 lazy: p.lazy,
@@ -980,7 +975,6 @@ impl<'a> Checker<'a> {
                         ty: self.field_type(f),
                         mutable: false,
                         has_default: f.default.is_some(),
-                        default_ty: None,
                         named_only: false,
                         variadic: false,
                         lazy: false,
@@ -1009,6 +1003,22 @@ impl<'a> Checker<'a> {
                     }
                     _ => None,
                 });
+                let mut ctor_defaults = Vec::new();
+                for m in &s.methods {
+                    let ast::StmtKind::Fn(f) = &m.kind else {
+                        continue;
+                    };
+                    for p in f.params.iter().filter(|_| f.name.text == "new") {
+                        if let (Some(d), Some(ast::TypeKind::Named { name, .. })) =
+                            (&p.default, p.ty.as_ref().map(|t| &t.kind))
+                        {
+                            if f.generics.iter().any(|g| g.text == name.text) {
+                                ctor_defaults
+                                    .push((name.text.clone(), self.quietly(|c| c.infer(d))));
+                            }
+                        }
+                    }
+                }
                 let receivers = s
                     .methods
                     .iter()
@@ -1036,6 +1046,7 @@ impl<'a> Checker<'a> {
                         var_fields,
                         methods,
                         ctor,
+                        ctor_defaults,
                         getters,
                         mutators,
                         receivers,
