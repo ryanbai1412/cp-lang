@@ -241,7 +241,7 @@ GCC and LLVM's differential testing against a reference.
 | Quality | Metric | Mechanism | Check |
 |---|---|---|---|
 | Old ports rebuild after library changes | ports broken by a change, migrated in the same change | ratchet; codemods from stdlib and diagnostics | `crates/cpl-cli/tests/judges.rs` (`every_port_is_written_for_every_judge_within_its_limit`: every port builds, deterministically); `scripts/corpus.py verify` (`stress`, `size`, `lint`) (`no-build`, `removed-spelling`) |
-| Old ports rebuild byte for byte across releases | a port pinned to an old release builds the same C++ | `cp.toml` pins (`spec/tools/cli.md`, not built yet) | `missing` |
+| Old ports rebuild byte for byte across releases | a port pinned to an old release builds the same C++ | the launcher's `cpl.toml` `version` pin (R11.4.2); library pins by content hash are the tools lane's `cp.toml` pins | `crates/cpl-cli/tests/pinned_release.rs` (`crates/cpl-cli/tests/pinned_release/cpl.toml` pins edge-2026-11-23; every frozen v0.2 port gives the exit code and sha256 of C++ and diagnostics its record holds) |
 | Adding a port is cheap and the bar is clear | porting checklist; time per port | process | `handbook/process/porting.md` |
 | Concurrent corpus work can't turn main red | staged ports checked and linted before landing | gate | commit tier (`scripts/check.sh`) |
 | One problem-package format for corpus and acceptance | tools that read one format (gen, brute, checker, interactor, limits) | `handbook/guidelines/problem-packages-checklist.md#r8` | `scripts/corpus.py verify` (`stress`, `size`, `lint`) (`cpl-test-*`: what `cpl test` can't find or judge in a package) |

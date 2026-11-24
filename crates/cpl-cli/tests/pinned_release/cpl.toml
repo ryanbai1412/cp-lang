@@ -1,0 +1,5 @@
+# A project pinned to an old release: the launcher builds everything under
+# this folder with this toolchain (spec/core/11-modules-prelude.md, R11.4.2).
+# `pinned_release.rs` checks it still builds every frozen v0.2 port byte for
+# byte as `<version>.txt` records.
+version = "edge-2026-11-23"
