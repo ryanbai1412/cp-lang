@@ -103,8 +103,8 @@ Evidence: program `spec/conformance/std-seq/seq-u03-extreme-position.cp`; widest
 ### seq/U32: min and max in one pass
 Need: the spread `max - min` of a list.
 Design: `a.minmax() -> ?(T, T)`.
-Milestone: M1-differentiating. Status: gap
-Evidence: `[5, 1, 4].minmax()` is E0203; std's `minmax(a, b)` is the two-value form.
+Milestone: M1-differentiating. Status: supported
+Evidence: program `spec/conformance/std-seq/seq-u32-minmax-one-pass.cp`.
 
 ### seq/U33: how many times the extreme occurs
 Need: count the positions holding the maximum.
@@ -115,8 +115,8 @@ Evidence: program `spec/conformance/std-seq/seq-u33-count-of-extreme.cp`.
 ### seq/U34: k-th smallest and the k smallest
 Need: median, or the three best scores.
 Design: `a.select(k)` (in place, average \(O(n)\)); `a.min_k(k)`, `a.max_k(k)` as sorted lists.
-Milestone: M1-critical. Status: partial
-Evidence: program `spec/conformance/std-seq/seq-u34-kth-and-top-k.cp`; `[5, 1, 4, 2].select(1)` is E0401 inside std on a literal.
+Milestone: M1-critical. Status: supported
+Evidence: program `spec/conformance/std-seq/seq-u34-kth-and-top-k.cp`; `select` on a literal is E0401 at the call, asking for a `var`.
 
 ### seq/U35: majority element
 Need: the value that fills more than half.
@@ -375,8 +375,8 @@ Evidence: program `spec/conformance/std-seq/seq-u15-zip-and-items.cp`.
 ### seq/U57: split a list of pairs
 Need: separate `(x, y)` pairs into two lists.
 Design: `ps.unzip() -> (List<A>, List<B>)`.
-Milestone: M1-differentiating. Status: gap
-Evidence: `unzip` does not exist (E0203).
+Milestone: M1-differentiating. Status: supported
+Evidence: program `spec/conformance/std-seq/seq-u57-unzip.cp`.
 
 ### seq/U16: walk backwards and keep the keys
 Need: scan from the right and still write `ans[i]`.

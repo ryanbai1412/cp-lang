@@ -164,6 +164,7 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn mean<S: Seq, T>(self: S, of: T -> F64 = x => F64(x)) -> ?F64` — \(O(n)\); The average of `of` over the elements as `F64`; `None` when empty.
 - `fn min<S: Seq, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T` — \(O(n)\); The least element by `by`, the first on ties (`ties: Ties.Last` for the last); `None` when empty.
 - `fn max<S: Seq, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T` — \(O(n)\); The greatest element by `by`, the first on ties (`ties: Ties.Last` for the last); `None` when empty.
+- `fn minmax<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(T, T)` — \(O(n)\); The least and greatest elements by `by` in one pass, the first of each on ties; `None` when empty.
 - `fn count<S: Seq, T>(self: S, p: T -> Bool = _ => true) -> Int` — \(O(n)\); How many elements satisfy `p` (every element without `p`).
 - `fn any<S: Seq, T>(self: S, p: T -> Bool) -> Bool` — \(O(n)\), stopping at the first match; Whether some element satisfies `p`; stops at the first.
 - `fn all<S: Seq, T>(self: S, p: T -> Bool) -> Bool` — \(O(n)\), stopping at the first failure; Whether every element satisfies `p`; stops at the first that doesn't.
@@ -192,6 +193,7 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `@get fn with_prev<S: Seq, T>(self: S) -> yields (?T, T)` — \(O(1)\) per step; Every element paired with the one before it, starting with `(None, first)`: `[10, 20, 30].with_prev` gives `(None, 10)`, `(10, 20)`, `(20, 30)`.
 - `fn cyclic_pairs<S: Seq, T>(self: S) -> yields (T, T)` — \(O(1)\) per step; Every element with the one after it, the last with the first: the sides of a polygon, the links of a ring.
 - `fn zip<A: Indexed<K, T>, B: Indexed<L, U>, K, L, T, U>(a: A, b: B) -> yields (T, U)` — \(O(\min(\lvert a \rvert, \lvert b \rvert))\); The pairs `(a.nth(i), b.nth(i))`, as many as the shorter sequence has.
+- `fn unzip<S: Seq<(A, B)>, A, B>(self: S) -> (List<A>, List<B>)` — \(O(n)\), two new lists; The first and second halves of each pair, as two lists: the inverse of `zip`.
 - `fn get_or_insert<K, V>(mut self: Map<K, V>, k: K, v: V) -> V` — \(O(\log n)\); The value `m` holds for `k`, after storing `v` there if it held none: `ids.get_or_insert(name, ids.len)` gives each new name the next id.
 - `fn update<K, V>(mut self: Map<K, V>, k: K, init: V, f: fn(V) -> V)` — \(O(\log n)\), plus one call of `f`; Replace the value under `k` by `f` of it, starting from `init` when `m` holds none: `cnt.update(x, 0, c => c + 1)`.
 - `fn rotate_left<S: IndexedMut>(mut self: S, k: Int, range: ?Range<Int> = None)` — \(O(n)\), \(O(1)\) extra space; Rotate `self` left by `k` in place (or only the subrange `range` when given): what was at offset `k % len` comes first.; traps: when `range` falls outside the keys

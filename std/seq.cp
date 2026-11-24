@@ -96,6 +96,26 @@ pub fn max<S: Seq, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) 
         else: best = Some(x)
     best
 
+/// The least and greatest elements by `by` in one pass, the first of each on ties; `None` when
+/// empty.
+///
+/// A method call (`s.minmax()`) picks this fold; a plain call with two values (`minmax(a, b)`) orders the pair. \(O(n)\).
+///
+/// cost: \(O(n)\)
+/// empty: `None`
+/// ties: the first in sequence order, for both ends
+/// traps: never
+/// example: `[5, 1, 4].minmax() == Some((1, 5))`
+/// example: `[(2, 'a'), (1, 'b'), (2, 'c')].minmax(by: p => p.0) == Some(((1, 'b'), (2, 'a')))`
+pub fn minmax<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(T, T):
+    var best: ?(T, T) = None
+    for x in self:
+        if let (lo, hi) = best:
+            if by(x) < by(lo): best = Some((x, hi))
+            elif by(x) > by(hi): best = Some((lo, x))
+        else: best = Some((x, x))
+    best
+
 /// How many elements satisfy `p` (every element without `p`).
 ///
 /// cost: \(O(n)\)
@@ -582,6 +602,20 @@ pub fn cyclic_pairs<S: Seq, T>(self: S) -> yields (T, T):
 /// example: `zip([1, 2, 3], "ab").collect() == [(1, 'a'), (2, 'b')]`
 pub fn zip<A: Indexed<K, T>, B: Indexed<L, U>, K, L, T, U>(a: A, b: B) -> yields (T, U):
     for i in 0..min(a.len, b.len): yield (a.nth(i), b.nth(i))
+
+/// The first and second halves of each pair, as two lists: the inverse of `zip`.
+///
+/// cost: \(O(n)\), two new lists
+/// empty: `([], [])`
+/// order: the order of `self`, keyed from 0
+/// traps: never
+/// example: `[(1, 'a'), (2, 'b')].unzip() == ([1, 2], ['a', 'b'])`
+pub fn unzip<S: Seq<(A, B)>, A, B>(self: S) -> (List<A>, List<B>):
+    var (xs, ys): (List<A>, List<B>) = ([], [])
+    for (x, y) in self:
+        xs.push(x)
+        ys.push(y)
+    (xs, ys)
 
 /// The value `m` holds for `k`, after storing `v` there if it held none: `ids.get_or_insert(name, ids.len)`
 /// gives each new name the next id. \(O(\log n)\).
