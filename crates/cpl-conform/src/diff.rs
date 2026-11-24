@@ -10,6 +10,7 @@ use crate::corpus;
 use crate::runner::{self, CompileError};
 use crate::scoreboard::{CaseOutcome, SuiteReport};
 use crate::variants;
+use cpl_stress::Verdict;
 
 #[derive(Clone, Debug)]
 enum DiffTarget {
@@ -29,6 +30,7 @@ enum DiffTarget {
         id: String,
         port_path: PathBuf,
         input: PathBuf,
+        interactor: Option<PathBuf>,
     },
 }
 
@@ -104,6 +106,7 @@ fn discover(root: &Path, filter: Option<&str>) -> Vec<DiffTarget> {
                 id,
                 port_path: prob.spec_path,
                 input,
+                interactor: prob.interactor,
             });
         }
     }
@@ -327,6 +330,7 @@ fn run_one(db: &mut Session, cache_dir: &Path, target: &DiffTarget) -> (String, 
             id,
             port_path,
             input,
+            ..
         } => match std::fs::read(input) {
             Ok(bytes) => (
                 id.clone(),
@@ -365,6 +369,14 @@ fn run_one(db: &mut Session, cache_dir: &Path, target: &DiffTarget) -> (String, 
         }
     };
     let path_str = path.to_string_lossy();
+    let interactor = match target {
+        DiffTarget::Corpus { interactor, .. } | DiffTarget::Variant { interactor, .. } => {
+            interactor.as_deref()
+        }
+        DiffTarget::Conformance { .. } => None,
+    };
+    // What `cpl run` runs: the port, or for a variant the written variant.
+    let mut run_path = path.clone();
     let text = if matches!(target, DiffTarget::Variant { .. }) {
         let skip = |detail: &str| CaseOutcome {
             status: "skip".into(),
@@ -374,14 +386,32 @@ fn run_one(db: &mut Session, cache_dir: &Path, target: &DiffTarget) -> (String, 
             return (id, skip("the port does not compile yet"));
         }
         let input = inputs.first().map_or(&[][..], |(_, b)| b.as_slice());
-        let Some((variant, _)) = variants::build_running(db, &path_str, &text, input) else {
+        // An interactive port runs only against its interactor, so its probes are not pruned.
+        let built = if interactor.is_some() {
+            variants::build(db, &path_str, &text)
+        } else {
+            variants::build_running(db, &path_str, &text, input)
+        };
+        let Some((variant, _)) = built else {
             return (id, skip("no probe checks"));
         };
         // Kept for reproducing a mismatch: `cpl run` it next to the port.
         let dir = cache_dir.join("variants");
-        let _ = std::fs::create_dir_all(&dir).and_then(|_| {
-            std::fs::write(dir.join(format!("{}.cp", id.replace('/', "_"))), &variant)
-        });
+        let written = dir.join(format!("{}.cp", id.replace('/', "_")));
+        if std::fs::create_dir_all(&dir)
+            .and_then(|_| std::fs::write(&written, &variant))
+            .is_ok()
+        {
+            run_path = written;
+        } else if interactor.is_some() {
+            return (
+                id,
+                CaseOutcome {
+                    status: "error".into(),
+                    detail: format!("cannot write {}", written.display()),
+                },
+            );
+        }
         variant
     } else {
         text
@@ -416,10 +446,6 @@ fn run_one(db: &mut Session, cache_dir: &Path, target: &DiffTarget) -> (String, 
     // for the interpreter's run (decision 449).
     let written = match conformance::parse_header(&text) {
         Ok(Expect::OkOutput(want)) if !compiled.program.cpp_bodies.is_empty() => Some(want),
-        _ => None,
-    };
-    let interactor = match target {
-        DiffTarget::Corpus { interactor, .. } => interactor.as_deref(),
         _ => None,
     };
     for (_, inp) in inputs.iter().filter(|_| interactor.is_none()) {
@@ -497,7 +523,7 @@ fn run_one(db: &mut Session, cache_dir: &Path, target: &DiffTarget) -> (String, 
                 )
             }
         };
-        let (spec, bin) = (path.display().to_string(), bin.display().to_string());
+        let (spec, bin) = (run_path.display().to_string(), bin.display().to_string());
         let interp = cpl_stress::Program::command(&spec, &[&cpl, "run", &spec]);
         let cpp = cpl_stress::Program::command(&bin, &[&bin]);
         return (id, interactive_outcome(interactor, &interp, &cpp, &inputs));
@@ -555,8 +581,26 @@ fn run_one(db: &mut Session, cache_dir: &Path, target: &DiffTarget) -> (String, 
     )
 }
 
+/// Whether two runs against an interactor agree: the same verdict and the same
+/// transcript, except that after the interactor stops a run, how much more it
+/// printed depends on timing, so only the shorter transcript must match.
+fn agree(a: &cpl_stress::Judged, b: &cpl_stress::Judged) -> bool {
+    if std::mem::discriminant(&a.verdict) != std::mem::discriminant(&b.verdict) {
+        return false;
+    }
+    let (x, y) = (
+        a.outcome.stdout.split_whitespace(),
+        b.outcome.stdout.split_whitespace(),
+    );
+    if a.verdict == Verdict::Accepted {
+        x.eq(y)
+    } else {
+        x.zip(y).all(|(p, q)| p == q)
+    }
+}
+
 /// An interactive package, judged by its interactor under `cpl run` and as
-/// the built C++: the two verdicts must agree on every case.
+/// the built C++: the verdicts and what each printed must agree on every case.
 fn interactive_outcome(
     interactor: &Path,
     interp: &cpl_stress::Program,
@@ -573,10 +617,27 @@ fn interactive_outcome(
             corpus::interacted(interactor, interp, &inp),
             corpus::interacted(interactor, cpp, &inp),
         ) {
-            (Ok(a), Ok(b)) if std::mem::discriminant(&a) == std::mem::discriminant(&b) => {}
+            (Ok(a), Ok(b)) if agree(&a, &b) => {}
             (Ok(a), Ok(b)) => {
-                let detail = format!("{name}: interp {a:?}, cpp {b:?}");
-                return outcome("mismatch", runner::first_line_trimmed(&detail, 160));
+                let (al, bl) = (a.outcome.stdout.lines(), b.outcome.stdout.lines());
+                let at = al
+                    .clone()
+                    .zip(bl.clone())
+                    .take_while(|(x, y)| x == y)
+                    .count();
+                let line = |mut l: std::str::Lines, v: &Verdict| {
+                    format!(
+                        "{:?} {v:?}",
+                        runner::truncate_chars(l.nth(at).unwrap_or(""), 50)
+                    )
+                };
+                let detail = format!(
+                    "{name}: line {}: interp {}, cpp {}",
+                    at + 1,
+                    line(al, &a.verdict),
+                    line(bl, &b.verdict),
+                );
+                return outcome("mismatch", runner::first_line_trimmed(&detail, 240));
             }
             (Err(e), _) | (_, Err(e)) => return outcome("error", format!("{name}: {e}")),
         }

@@ -5,7 +5,7 @@ use cpl_check::Session;
 
 use crate::runner::{self, CompileError};
 use crate::scoreboard::{CaseOutcome, SuiteReport};
-use cpl_stress::{Judge, Launch, Program, Verdict};
+use cpl_stress::{Judge, Judged, Launch, Program, Verdict};
 
 #[derive(Clone, Debug)]
 pub struct CorpusProblem {
@@ -229,6 +229,7 @@ fn interact(interactor: &Path, spec: &Path, in_path: &Path) -> Result<Verdict, S
         &Program::command(&spec, &[&cpl, "run", &spec]),
         &input,
     )
+    .map(|judged| judged.verdict)
 }
 
 /// `interactor.py <in>` talking to `solution` on `input`.
@@ -236,7 +237,7 @@ pub(crate) fn interacted(
     interactor: &Path,
     solution: &Program,
     input: &str,
-) -> Result<Verdict, String> {
+) -> Result<Judged, String> {
     let judge_path = interactor.display().to_string();
     let judge = Judge::Interactor(
         Program::command(&judge_path, &["python3", &judge_path]),
@@ -249,7 +250,6 @@ pub(crate) fn interacted(
             None,
             Duration::from_secs(runner::case_timeout()),
         )
-        .map(|judged| judged.verdict)
         .map_err(|e| e.to_string())
 }
 
