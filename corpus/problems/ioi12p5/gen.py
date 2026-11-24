@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """gen.py seed size | --max: IOI 2012 Last Supper. N <= 1e5 colours, 1 <= K < N on the
-scaffold, N requests. --max: N = 1e5, K = 5e4, requests cycling over K + 1 colours (a miss
+scaffold, N requests. --max [--k K]: N = 1e5, K = N (or K), requests cycling over K + 1 colours (a miss
 almost every time) mixed with random spells over all N colours."""
 import random, sys
 MAX = sys.argv[1] == "--max"
 r = random.Random(0 if MAX else int(sys.argv[1]))
 n = 100_000 if MAX else max(2, min(100_000, int(sys.argv[2])))
-k = 50_000 if MAX else r.randint(1, n - 1)
+k = (int(sys.argv[3]) if sys.argv[2:3] == ["--k"] else n) if MAX else r.randint(1, n - 1)
 req = []
 while len(req) < n:
     base, span = r.randrange(n), k + 1
