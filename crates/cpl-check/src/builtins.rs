@@ -192,9 +192,13 @@ pub enum PreludeKind {
 /// Every name a file can use without a `use`: the compiler's own, then the
 /// ones `std/prelude.cp` brings in.
 pub fn prelude_names() -> Vec<(&'static str, PreludeKind)> {
-    let own = prelude::TYPE_NAMES
-        .iter()
-        .map(|name| (*name, PreludeKind::Type))
+    let own = (prelude::TYPE_NAMES.iter().copied())
+        .chain(
+            prelude::std_intrinsic_types()
+                .iter()
+                .map(|s| s.name.text.as_str()),
+        )
+        .map(|name| (name, PreludeKind::Type))
         .chain(
             prelude::TRAIT_NAMES
                 .iter()
@@ -560,7 +564,7 @@ mod builtin_type_tests {
         }
         for t in BUILTIN_TYPES {
             assert!(
-                t.members == Some(Receiver::Array) || prelude::TYPE_NAMES.contains(&t.name),
+                t.members == Some(Receiver::Array) || prelude::is_type_name(t.name),
                 "{}",
                 t.name
             );

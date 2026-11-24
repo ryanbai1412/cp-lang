@@ -1225,8 +1225,7 @@ impl<'a> Checker<'a> {
         // likely a library type that doesn't exist yet than a typo.
         let near_builtin = !value
             && suggestion.as_deref().is_some_and(|s| {
-                prelude::TYPE_NAMES.contains(&s)
-                    || prelude::std_names().iter().any(|(n, _)| *n == s)
+                prelude::is_type_name(s) || prelude::std_names().iter().any(|(n, _)| *n == s)
             });
         let mut free_twin = advice::free_by_twin(self.src, name, span).filter(|_| value);
         let unknown = free_twin.is_none()

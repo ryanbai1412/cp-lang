@@ -227,6 +227,12 @@ fn receiver_method_names(std: Std) -> crate::fx::HashSet<String> {
         .collect()
 }
 
+/// A type name the compiler knows with no `use`: its own, or a type std
+/// declares as an intrinsic row (`HashSet`).
+pub fn is_type_name(name: &str) -> bool {
+    TYPE_NAMES.contains(&name) || std_intrinsic_types().iter().any(|s| s.name.text == name)
+}
+
 /// The types std declares as rows of the intrinsics table
 /// (`pub struct HashSet<K: Hash> = @intrinsic("hash_set")`), whose bounds a
 /// written `HashSet<F>` meets like a struct's (R12.14.6).
@@ -811,7 +817,7 @@ pub fn value(name: &str) -> Option<Ty> {
         // `ask("?", x)` prints a query, flushes, and reads the judge's
         // answer; `cpl-ir` lowers it.
         "ask" => Ty::Unknown,
-        _ if TYPE_NAMES.contains(&name) => Ty::TypeName(name.into()),
+        _ if is_type_name(name) => Ty::TypeName(name.into()),
         _ if VALUE_NAMES.contains(&name) => Ty::Unknown,
         _ => return None,
     })
@@ -884,8 +890,6 @@ pub const TYPE_NAMES: &[&str] = &[
     "Opt",
     "Range",
     "Cut",
-    "HashMap",
-    "HashSet",
     "Interactor",
     "Sym",
     "Seq",
@@ -971,7 +975,6 @@ pub const VALUE_NAMES: &[&str] = &[
     "List",
     "Map",
     "Set",
-    "HashSet",
     "Int",
     "I128",
     "U64",
@@ -1038,7 +1041,7 @@ fn type_arity_in(std: Std, name: &str) -> Option<usize> {
     match name {
         "Map" | "HashMap" => return Some(2),
         "List" | "Set" | "HashSet" => return Some(1),
-        _ if TYPE_NAMES.contains(&name) => return Some(0),
+        _ if is_type_name(name) => return Some(0),
         _ => {}
     }
     std.iter().find_map(|(_, text)| {
