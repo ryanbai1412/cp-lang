@@ -56,10 +56,10 @@ sum [2] fn sum<S: Seq, T, U>(self: S, of: T -> U = x => x) -> U
 mean [2] fn mean<S: Seq, T>(self: S, of: T -> F64 = x => F64(x)) -> ?F64
 min [2] fn min<S: Seq, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T
 max [2] fn max<S: Seq, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T
+minmax [2] fn minmax<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(T, T)
 count [2] fn count<S: Seq, T>(self: S, p: T -> Bool = _ => true) -> Int
 any [2] fn any<S: Seq, T>(self: S, p: T -> Bool) -> Bool
 all [2] fn all<S: Seq, T>(self: S, p: T -> Bool) -> Bool
 is_sorted [2] fn is_sorted<S: Seq, T, K>(self: S, by: T -> K = x => x) -> Bool
 filter [2] fn filter<S: Seq, T>(self: S, p: T -> Bool) -> Filtered<S>
 map [2] fn map<S: Seq, T, U>(self: S, f: T -> U) -> Mapped<S, U>
-first [2] fn first<S: Seq, T>(self: S) -> ?T
