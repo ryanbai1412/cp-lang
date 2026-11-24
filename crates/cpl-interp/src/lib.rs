@@ -775,7 +775,7 @@ fn relifetime<'a, 'b>(
     mut locals: Vec<(&'a str, &'a Ty, &'a Value)>,
 ) -> Vec<(&'b str, &'b Ty, &'b Value)> {
     locals.clear();
-    locals.into_iter().map_while(|_| None).collect()
+    locals.into_iter().flat_map(|_| None).collect()
 }
 
 impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
