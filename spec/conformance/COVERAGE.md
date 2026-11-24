@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3141 (1093 passing). Rules: 603.
+Cases: 3147 (1093 passing). Rules: 603.
 
 ## Summary per chapter
 
@@ -19,10 +19,10 @@ Cases: 3141 (1093 passing). Rules: 603.
 - R04b (04b-keys.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 49 rules, 228 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 25 rules, 116 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 91 rules, 216 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 91 rules, 220 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 92 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R09 (09-contexts-checks.md): 27 rules, 61 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R10 (10-io.md): 19 rules, 112 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R09 (09-contexts-checks.md): 27 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R10 (10-io.md): 19 rules, 113 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 16 rules, 52 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R12 (12-powers.md): 17 rules, 37 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 30 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -483,7 +483,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.4.3 [1+ 0-]: **`[s.keys]x`** is a table over exactly `s`'s keys; `t.rekey(r)` re-keys equal-length cell...
 - R07.4.4 [2+ 1-]: **Materializing counts from 0:** `.collect()`, `.sorted()`, `List(w)` and `Str(w)` build a...
 - R07.4.14 [2+ 1-]: **Cuts in walk order.** On any keyed view with cuts (`[D]T`, `List`, `Str`, slices, `.rev`...
-- R07.4.5 [5+ 9-]: any other `x` is checked: out of `w.keys` traps R0101 naming the key and `w.keys`, and nev...
+- R07.4.5 [5+ 12-]: any other `x` is checked: out of `w.keys` traps R0101 naming the key and `w.keys`, and nev...
 - R07.4.6 [1+ 1-]: | `a[r]` (`r: Range<D>`; `a[j..i]` with cut ends is the piece) | `D`, only inside `r` | `r...
 - R07.4.7 [5+ 2-]: | `a.rev` | not indexable: it walks out of key order; `.nth(k)` reads by walk position, an...
 - R07.4.8 [1+ 0-]: | `a.items` | `D`, gives `(i, a[i])` | in order | \(O(1)\)
@@ -525,7 +525,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.9.4 [2+ 2-]: | `s.count(p)`, `s.any(p)`, `s.all(p)`; `s.count()` counts every element, so on a `Seq<Boo...
 - R07.9.5 [3+ 0-]: | `s.find(p)`, `s.rfind(p)` | `?T`, linear scan (binary search is `r.first_true`) | \(O(n)...
 - R07.9.6 [5+ 4-]: , generic code included, and the compiler never pattern matches a pipeline. User types get...
-- R07.11.1 [4+ 2-]: | `s.sort(by: k)`, `s.reverse()`, `s.dedup()`, `s.fill(x)` | in place: needs a `var` sourc...
+- R07.11.1 [5+ 2-]: | `s.sort(by: k)`, `s.reverse()`, `s.dedup()`, `s.fill(x)` | in place: needs a `var` sourc...
 - R07.11.2 [2+ 0-]: | `s.sorted(by: k)`, `s.deduped()` | new `List` | same, allocates
 - R07.11.3 [3+ 0-]: | `s.group(by: k)` | `Map<K, List<T>>`, each list in walk order | \(O(n)\) expected
 - R07.11.4 [3+ 0-]: | `s.tally(by: k)` | `Counter<K>` | \(O(n)\) expected
@@ -589,7 +589,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R09.3.4 [2+ 1-]: | `Int` / `I128` overflow | interval arithmetic proves it fits | trap with operands | wrap...
 - R09.3.5 [1+ 1-]: | `x!` on `None` | flow proves `Some` | trap naming the place | reads the niche as a value
 - R09.3.6 [2+ 2-]: | division by zero, negative shift, `sqrt` of a negative | the divisor's range excludes 0 ...
-- R09.3.7 [3+ 1-]: | `assert c` | n/a | trap with the message | skipped
+- R09.3.7 [3+ 2-]: | `assert c` | n/a | trap with the message | skipped
 - R09.3.8 [2+ 1-]: | `@cache` cold-mode check | n/a | stress compares cold and cached runs | none
 - R09.3.9 [2+ 0-]: | `law` promises | n/a | stress samples them | none
 - R09.4.2 [1+ 0-]: `with checks(...: off)` removes a check in checked builds too, for a hot loop whose stress...
@@ -608,7 +608,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R10.1.2 [4+ 0-]: Top-level `return` ends the program, or the current case under `@!multitest`.
 - R10.1.3 [1+ 0-]: IOI-style tasks mark entry points with `@grader`, `@grader(interactive)` or `@grader(two_p...
 - R10.2.1 [7+ 1-]: `read<T>()` dispatches on the expected type, so `let n: 1..=2e5 = read()` and `read<[n]Int...
-- R10.2.2 [7+ 1-]: Range types read with their contract. A domain written with explicit ends (`1..=n`, `0..n`...
+- R10.2.2 [8+ 1-]: Range types read with their contract. A domain written with explicit ends (`1..=n`, `0..n`...
 - R10.2.3 [21+ 5-]: Arrays `[D]T` read `D.count` values; `[R, C]T` reads `R.count * C.count` tokens row-major,...
 - R10.2.4 [3+ 0-]: `s.parse<T>()` reads a `T` from a string by these same rules, `None` on a bad or leftover ...
 - R10.2.5 [1+ 1-]: Graphs are built from an edge list read as records, `read<[E](u: V, v: V)>()`, then `Graph...
@@ -965,13 +965,13 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0609 A `@cache` field written outside its type: 1 case(s)
 - L0610 A `mut` parameter the fn never changes: **no case**
 - R0001 Runtime trap: 12 case(s)
-- R0101 Index out of range: 28 case(s)
+- R0101 Index out of range: 31 case(s)
 - R0102 Value outside a domain: 6 case(s)
 - R0201 Range store out of range: 10 case(s)
 - R0202 Integer overflow: 46 case(s)
 - R0203 Division by zero: 4 case(s)
 - R0301 Unwrap of None: 7 case(s)
-- R0401 Assertion failed: 83 case(s)
+- R0401 Assertion failed: 84 case(s)
 - R0402 todo reached: 2 case(s)
 - R0501 Bad input token: 10 case(s)
 - R0502 Input outside its read contract: 4 case(s)
@@ -1065,8 +1065,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `SosOver`
 - **opt** (3/3 named by a case)
 - **pair** (5/5 named by a case)
-- **persistent** (34/39 named by a case)
-  - uncovered: `RangeKth`, `RangeKth.new`, `PersistentLazySegTree.fold_rec`, `PMultiset`, `PMultiset.cmp`
+- **persistent** (35/39 named by a case)
+  - uncovered: `RangeKth`, `RangeKth.new`, `PersistentLazySegTree.fold_rec`, `PMultiset`
 - **poly** (56/57 named by a case)
   - uncovered: `prod_linear`
 - **prefix** (45/56 named by a case)
@@ -1089,7 +1089,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2232 of 2354 std items are named by a case.
+2233 of 2354 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
