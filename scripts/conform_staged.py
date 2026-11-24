@@ -102,8 +102,7 @@ def base_verdicts(cases, base, run=subprocess.run):
                 r = run([str(target / "debug" / "cpl-conform"), "conformance", "--verbose", c], cwd=wt, env=env,
                         capture_output=True, text=True)
                 cache[f"conform:{c}"] = verdict(c, r.stdout + r.stderr)
-            cache_file.parent.mkdir(exist_ok=True)
-            cache_file.write_text(json.dumps(cache, indent=1, sort_keys=True) + "\n")
+            new_reds.save_cache(cache_file, cache)
     return {c: cache[f"conform:{c}"] for c in cases}
 
 
@@ -126,8 +125,7 @@ def base_checks(programs, base, run=subprocess.run):
                     continue
                 r = run([str(target / "debug" / "cpl"), "check", p], cwd=wt, env=env, capture_output=True, text=True)
                 cache[f"check:{p}"] = "fail" if r.returncode else "pass"
-            cache_file.parent.mkdir(exist_ok=True)
-            cache_file.write_text(json.dumps(cache, indent=1, sort_keys=True) + "\n")
+            new_reds.save_cache(cache_file, cache)
     return {p: cache[f"check:{p}"] for p in programs}
 
 

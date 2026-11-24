@@ -72,6 +72,28 @@ class LandTest(unittest.TestCase):
         env = {**{k: v for k, v in os.environ.items() if not k.startswith("CPL_LAND")}, "CPL_LAND_QUEUE": "1", "CPL_LAND_TRIES": "1", "CPL_LAND_LOCK_POLL": "1", **extra}
         return subprocess.run(["bash", "scripts/land.sh"], cwd=repo, env=env, capture_output=True, text=True)
 
+    def test_two_lands_from_worktrees_of_one_clone_both_push(self):
+        # 29411aa2 sat behind its own land: a second land of one clone shares its .git, so
+        # the lock, rebase and base-rerun state must each be per worktree (or locked).
+        one = self.clone("one")
+        two = self.tmp / "two"
+        git(one, "worktree", "add", "-q", "-b", "two", str(two), "origin/main")
+        (one / "one.txt").write_text("1\n")
+        self.commit(one, "one")
+        (two / "two.txt").write_text("2\n")
+        self.commit(two, "two")
+        env = {**{k: v for k, v in os.environ.items() if not k.startswith("CPL_LAND")},
+               "CPL_LAND_TRIES": "3", "CPL_LAND_LOCK_POLL": "1"}
+        runs = [subprocess.Popen(["bash", "scripts/land.sh"], cwd=r, env=env, text=True,
+                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE) for r in (one, two)]
+        outs = [p.communicate(timeout=300) for p in runs]
+        for p, (_, err) in zip(runs, outs):
+            self.assertEqual(p.returncode, 0, err)
+        git(one, "fetch", "-q", "origin")
+        landed = git(one, "log", "--format=%s", "origin/main")
+        self.assertIn("one", landed.split())
+        self.assertIn("two", landed.split())
+
     def test_a_generated_file_conflict_takes_mains_copy_and_lands(self):
         theirs, ours = self.clone("theirs"), self.clone("ours")
         (theirs / GEN).write_text("main's\n")

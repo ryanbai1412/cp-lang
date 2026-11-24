@@ -102,6 +102,15 @@ def base_checkout(common, base, fresh=False, wt=None):
     return wt
 
 
+def save_cache(cache_file, cache):
+    """Writes the base-verdict cache whole: two lands of one clone share it, and a reader
+    never sees half a file."""
+    cache_file.parent.mkdir(exist_ok=True)
+    tmp = cache_file.with_name(f"{cache_file.name}.{os.getpid()}")
+    tmp.write_text(json.dumps(cache, indent=1, sort_keys=True) + "\n")
+    tmp.replace(cache_file)
+
+
 BASE_SLOTS = 3
 
 
@@ -192,8 +201,7 @@ def main(argv):
             if r != "unbuilt":
                 cache[" ".join(t)] = r
                 cache[f"rows {' '.join(t)}"] = base_rows.get(t[1], {})
-        cache_file.parent.mkdir(exist_ok=True)
-        cache_file.write_text(json.dumps(cache, indent=1, sort_keys=True) + "\n")
+        save_cache(cache_file, cache)
     new = [t for t in tests if cache.get(" ".join(t)) != "fail"]
     grown = {}
     for t in tests:
