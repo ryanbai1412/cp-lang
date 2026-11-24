@@ -101,10 +101,15 @@ pull || exit 1
 # rebased tip, staged against main, since passing the old gates says nothing about
 # the new ones (5 fixtures passed on an old base after cafd6ffbf's check landed).
 gate_paths="scripts .githooks gen.toml justfile"
+rechecked=
 recheck() {
     moved=$(git diff --name-only "$checked" FETCH_HEAD -- $gate_paths)
     checked=$(git rev-parse FETCH_HEAD)
     [ -n "$moved" ] && [ -x .githooks/pre-commit ] || return 0
+    # Once per land: rerunning on every lost push race livelocks landing while
+    # main keeps changing scripts/; CI gates the tip that lands.
+    [ -z "$rechecked" ] || { echo "land: main changed the gates again; landing on the rerun's result, CI checks this tip" >&2; return 0; }
+    rechecked=1
     echo "land: main changed the gates ($(printf '%s\n' $moved | head -3 | tr '\n' ' ' | sed 's/ $//')); rerunning the commit tier on the rebased tip" >&2
     tip=$(git rev-parse HEAD)
     trap 'git reset -q --soft "$tip"' EXIT
