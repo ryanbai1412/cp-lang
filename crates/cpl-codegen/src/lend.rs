@@ -1190,6 +1190,13 @@ pub(crate) const SET_COPY: &str =
 
 /// Why `Some(xs)` of a place copies.
 const SOME_COPY: &str = "an optional holds its own value";
+pub(crate) const STATIC_COPY: &str =
+    "a long literal is one shared static, so a value that keeps it copies it";
+
+/// Whether `e` is a long literal, which the C++ names as its one static.
+fn names_a_static(e: &Expr) -> bool {
+    matches!(&e.kind, ExprKind::Str(bytes) if bytes.len() > crate::expr::SHORT_STR)
+}
 
 /// Whether `e` reads part of a named value: `a.f`, `xs[i]!`. Part of a
 /// call's result (`xs.pop()!`, `s.parse()!.0`) is a temporary the C++
@@ -1335,7 +1342,9 @@ impl Emitter<'_> {
             ) && rooted_in_a_name(value));
         let named = names_a_place(text);
         let lent = matches!(value.kind, ExprKind::Call(f, _) if self.lent_roots.contains_key(&f));
-        if (place && named || lent) && holds_heap(self.program, &value.ty) && !moved(text) {
+        if names_a_static(value) && !moved(text) {
+            self.note_copy(value.span, STATIC_COPY, None);
+        } else if (place && named || lent) && holds_heap(self.program, &value.ty) && !moved(text) {
             self.note_copy(value.span, SET_COPY, None);
         }
     }
@@ -1367,8 +1376,23 @@ impl Emitter<'_> {
     /// A copy the contestant wrote as a method on a heap place,
     /// `a.clone()` or `a.sorted()`, not one a generated constructor makes
     /// of its parameter at the call's span.
-    pub(crate) fn note_written_copy(&mut self, e: &Expr, args: &[Expr], why: &'static str) {
-        let [arg, ..] = args else { return };
+    pub(crate) fn note_written_copy(
+        &mut self,
+        e: &Expr,
+        args: &[Expr],
+        text: &str,
+        why: &'static str,
+    ) {
+        let [first, ..] = args else { return };
+        let mut arg = first;
+        // A conversion the C++ spells as its argument (`p.sorted()` of an
+        // array is `cpl::sorted(p)`) copies that argument.
+        while let ExprKind::Builtin(_, inner) = &arg.kind {
+            match inner.as_slice() {
+                [one] if is_place_text(text) => arg = one,
+                _ => break,
+            }
+        }
         let place = matches!(
             arg.kind,
             ExprKind::Local(_)
@@ -1438,6 +1462,10 @@ impl Emitter<'_> {
             (arms.into_iter()).find(|a| is_part(a) || (is_whole(a) && named_arm(a)))
         }) {
             init = arm;
+        }
+        if names_a_static(init) && !moved(text) && !self.lent_slot(slot) {
+            self.note_copy(init.span, STATIC_COPY, Some(slot));
+            return;
         }
         let place = is_part(init);
         let whole = is_whole(init);

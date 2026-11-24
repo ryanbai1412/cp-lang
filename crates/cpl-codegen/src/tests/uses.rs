@@ -167,6 +167,28 @@ fn a_clone_or_sorted_of_a_place_is_listed_as_a_copy() {
 }
 
 #[test]
+fn a_sorted_of_an_array_is_listed_as_a_copy() {
+    let source = "domain V = 0..5\nlet p = gen<Perm<V>>()\nprint(p.len, p.sorted())\n";
+    assert_eq!(copy_reasons(source), [crate::uses::SORTED]);
+}
+
+#[test]
+fn a_value_kept_from_a_long_literal_is_listed_as_a_copy() {
+    let source = "fn f(k: Int) -> Str:
+    var why = \"\"
+    if k > 0: why = \"a message past the short-string buffer\"
+    var s = \"another message past the short buffer\"
+    s += why
+    s
+print(f(1))
+";
+    assert_eq!(
+        copy_reasons(source),
+        [crate::lend::STATIC_COPY, crate::lend::STATIC_COPY]
+    );
+}
+
+#[test]
 fn explain_reads_closures_copies_and_dropped_fields_off_one_write() {
     let program = lower(
         "struct S:\n    f: (Int) -> Int\n    unused: Int\nvar a = [3, 1, 2]\nvar b = a.clone()\nb.push(4)\nlet s = S(f: x => x + 1, unused: 0)\nprint(s.f(b[0]))\n",

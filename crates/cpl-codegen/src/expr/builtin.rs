@@ -90,7 +90,7 @@ impl<'p> Emitter<'p> {
                 Code::primary(format!("cpl::rand_range({}, {})", text(0), text(1)))
             }
             Builtin::Copy => {
-                self.note_written_copy(e, args, crate::uses::CLONED);
+                self.note_written_copy(e, args, &text(0), crate::uses::CLONED);
                 let l = args.first().and_then(|a| self.expr_elem_layout(a));
                 Code::primary(format!(
                     "{}({})",
@@ -298,7 +298,7 @@ impl<'p> Emitter<'p> {
             Builtin::SetMin => helper(self, "set_min"),
             Builtin::SetMax => helper(self, "set_max"),
             Builtin::Sorted => {
-                self.note_written_copy(e, args, crate::uses::SORTED);
+                self.note_written_copy(e, args, &text(0), crate::uses::SORTED);
                 self.need("sorted");
                 let elem = match &e.ty {
                     Ty::List(t) => Some(&**t),
