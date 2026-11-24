@@ -52,6 +52,13 @@ stash_conflict() {
 # the tip's rule, not the lower of two rules' numbers (scripts/ratchet_remeasure.py).
 remeasure() {
     [ -f scripts/ratchet_remeasure.py ] && [ "$(git rev-parse HEAD)" != "$before" ] || return 0
+    # The amend goes on this checkout's own commit, so with none there is
+    # nothing to restate; a hand edit of the ratchet stays uncommitted.
+    [ -n "$(git rev-list FETCH_HEAD..HEAD)" ] || return 0
+    if ! git diff --quiet HEAD -- "$ratchet"; then
+        echo "land: WARNING: $ratchet has uncommitted edits; not re-measuring it" >&2
+        return 0
+    fi
     uv run --quiet python scripts/ratchet_remeasure.py "$before" FETCH_HEAD || return 1
     git diff --quiet -- "$ratchet" || git commit -q --amend --no-edit --no-verify -- "$ratchet"
 }

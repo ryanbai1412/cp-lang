@@ -312,6 +312,29 @@ class LandTest(unittest.TestCase):
         self.assertNotIn("restated", r.stderr)
         self.assertEqual(json.loads((ours / RATCHET).read_text())["a"], 3)
 
+    def test_an_uncommitted_ratchet_edit_stays_out_of_mains_commits(self):
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        (theirs / "src.txt").write_text("1\n")
+        self.commit(theirs, "theirs")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        tip = git(theirs, "rev-parse", "HEAD").strip()
+        edited = json.dumps({"a": 4, "b": 5, "names": ["x", "y"]}, indent=2) + "\n"
+        (ours / RATCHET).write_text(edited)
+        self.land(ours)
+        # With no commit of its own, a land rewrites none of main's.
+        self.assertEqual(git(ours, "ls-remote", "origin", "main").split()[0], tip)
+        self.assertEqual((ours / RATCHET).read_text(), edited)
+        (ours / "other.txt").write_text("other\n")
+        git(ours, "add", "other.txt")
+        git(ours, "commit", "-q", "--no-verify", "-m", "ours", "-m", "Domain: infra")
+        (theirs / "src.txt").write_text("2\n")
+        self.commit(theirs, "theirs again")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        r = self.land(ours)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(git(ours, "show", "--name-only", "--format=", "origin/main").split(), ["other.txt"])
+        self.assertEqual((ours / RATCHET).read_text(), edited)
+
     def test_a_corpus_index_conflict_is_rebuilt_from_both_sides_packages(self):
         theirs, ours = self.clone("theirs"), self.clone("ours")
         for repo, pkg in ((theirs, "b"), (ours, "c")):
