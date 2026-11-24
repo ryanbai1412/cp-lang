@@ -22,6 +22,7 @@ generator of moves. One gap: reading a product-domain value.
   with input `2 3` prints `1 3`, and leaves `3` unread; reading `(R, C)` prints `2 3`.
 - **General fix:** io: a product domain reads and prints as its factors, like the tuple it names.
 - **Severity:** high (wrong answer, no diagnostic)
+- **Status:** fixed by Core in 50ed27f43. The port now reads `let marble: Cell = read()`, the ideal line.
 
 ## Measurements
 
