@@ -10,7 +10,7 @@
 //   maxima in O(hi - lo) time.
 // Taking the upper hull of the per-length maxima and maximizing `dot(p, Pt(v, 1))`
 // answers each query in O(log n).
-use std.geometry.{best_dot, minkowski_upper, upper_hull}
+use std.geometry.{hull_extreme, minkowski_upper, upper_hull}
 
 @!multitest
 let (n, q): (1..=500_000, 1..=500_000) = read()
@@ -34,7 +34,7 @@ fn solve_dc(lo: Int, hi: Int) -> List<?Int>:
     res
 
 let best = solve_dc(0, n + 1)
-let hull = upper_hull([Pt(i + 1, y) for (i, v) in best.items if let y = v])
+let hull = upper_hull([Pt(i + 1, y) for (i, v) in best.items if let y = v]).rev.collect()   // CCW for hull_extreme
 
 let qs: [0..q]Int = read()
-print([best_dot(hull, Pt(v, 1)) for v in qs])
+print([hull[hull_extreme(hull, d)].dot(d) for d in qs.map(v => Pt(v, 1))])
