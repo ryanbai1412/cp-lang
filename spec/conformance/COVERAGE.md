@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3410 (3312 passing). Rules: 615.
+Cases: 3411 (3312 passing). Rules: 615.
 
 ## Summary per chapter
 
@@ -1071,7 +1071,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Edged`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Walk`, `TwoSat.add_or`, `Complement`
 - **grid** (39/39 named by a case)
 - **hashmap** (37/37 named by a case)
-- **heap** (101/101 named by a case)
+- **heap** (102/102 named by a case)
 - **interval** (44/44 named by a case)
 - **io** (5/5 named by a case)
 - **lazy** (31/31 named by a case)
@@ -1111,7 +1111,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2281 of 2391 std items are named by a case.
+2282 of 2392 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
