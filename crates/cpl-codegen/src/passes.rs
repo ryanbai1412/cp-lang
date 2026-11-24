@@ -360,7 +360,15 @@ pub(crate) const PASSES: &[Pass] = &[
     pass(
         "sink",
         "sink.rs",
-        Uses(&["trap_free_stmts", "pure_call", "value_closure", "pure_fns"]),
+        Uses(&[
+            "trap_free_stmts",
+            "pure_call",
+            "value_closure",
+            "pure_fns",
+            "each_call",
+            "each_value",
+            "has_jump",
+        ]),
         "a_sum_over_a_generator_builds_no_list",
     ),
     pass(

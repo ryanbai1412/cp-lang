@@ -541,3 +541,26 @@ fn each_sink_reports_a_for_binding_and_a_return() {
     });
     assert_eq!((fors, returns), (1, 1));
 }
+
+#[test]
+fn has_jump_sees_a_break_nested_in_an_if() {
+    use crate::uses::loops::has_jump;
+    let program = lower(concat!(
+        "fn f(n: Int) -> Int:\n",
+        "    var s = 0\n",
+        "    for i in 0..n:\n",
+        "        if i > 2:\n",
+        "            break\n",
+        "        s += i\n",
+        "    s\n",
+        "fn g(n: Int):\n",
+        "    var s = 0\n",
+        "    for i in 0..n:\n",
+        "        s += i\n",
+        "    print(s)\n",
+        "print(f(3))\n",
+        "g(3)\n",
+    ));
+    assert!(has_jump(&program.fns[0].body), "f breaks out of its loop");
+    assert!(!has_jump(&program.fns[1].body), "g only runs to its end");
+}

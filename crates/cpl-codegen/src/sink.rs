@@ -14,6 +14,9 @@ use crate::devirt::Devirt;
 use crate::emit::{Code, Emitter};
 use crate::fuse::{producer, FusedPush};
 use crate::uses::effects::{pure_call, pure_fns, trap_free_stmts, trap_free_with, value_closure};
+use crate::uses::loops::has_jump;
+use crate::uses::places::each_call;
+use crate::uses::split::each_value;
 use crate::walk;
 
 /// What `sinks` finds.
@@ -36,16 +39,13 @@ pub(crate) fn sinks(
     let mut found = BTreeMap::new();
     let mut producers = BTreeSet::new();
     let mut visit = |block| {
-        walk::deep_exprs(block, &mut |e: &Expr| {
-            let ExprKind::Call(fid, args) = &e.kind else {
-                return;
-            };
-            if let Some(slot) = sink_param(program, devirt, &pure, traps, *fid) {
-                if sinkable_args(program, devirt, pushers, &pure, *fid, slot, args) {
+        each_call(block, &mut |fid, args| {
+            if let Some(slot) = sink_param(program, devirt, &pure, traps, fid) {
+                if sinkable_args(program, devirt, pushers, &pure, fid, slot, args) {
                     if let Some(Arg::Value(v)) = args.get(slot) {
                         producers.extend(yields_call(pushers, v));
                     }
-                    let (mut f, mut s) = (*fid, slot);
+                    let (mut f, mut s) = (fid, slot);
                     found.insert(f, s);
                     while let Some((g, k, _)) = forwards(program, f, s) {
                         if found.insert(g, k).is_some() {
@@ -113,13 +113,10 @@ fn sink_param_within(
             return false;
         };
         let mut uses = 0;
-        walk::deep_exprs(&f.body, &mut |e| {
+        each_value(&f.body, &mut |e| {
             uses += usize::from(matches!(e.kind, ExprKind::Local(l) if l == slot));
         });
-        let mut escapes = false;
-        walk::deep_stmts(body, &mut |s| {
-            escapes |= matches!(s, Stmt::Break(_) | Stmt::Continue(_) | Stmt::Return(_));
-        });
+        let escapes = has_jump(body);
         let pure_call = |e: &Expr| pure_call(program, devirt, pure, Some(fid), traps, e);
         // A call of a fn-valued parameter devirt can't pin is as pure as the closure
         // each sunk call passes for it, which `sinkable_args` checks there.
@@ -132,7 +129,7 @@ fn sink_param_within(
                             Arg::Value(v) if trap_free_with(v, traps, &pure_call))))
         };
         let mut global = false;
-        walk::deep_exprs(&f.body, &mut |e| {
+        each_value(&f.body, &mut |e| {
             global |= matches!(e.kind, ExprKind::Global(_))
         });
         matches!(f.locals[slot].ty, Ty::List(_))
@@ -183,7 +180,7 @@ fn forwards(program: &Program, fid: usize, slot: usize) -> Option<(usize, usize,
         return None;
     };
     let mut uses = 0;
-    walk::deep_exprs(&f.body, &mut |e| {
+    each_value(&f.body, &mut |e| {
         uses += usize::from(matches!(e.kind, ExprKind::Local(l) if l == slot));
     });
     let k = args.iter().position(
@@ -418,7 +415,7 @@ pub(crate) fn explained(program: &Program) -> Vec<cpl_diag::Span> {
     let found = sinks(&program, &devirt, &pushers, false);
     let mut spans = Vec::new();
     let mut visit = |block| {
-        walk::deep_exprs(block, &mut |e: &Expr| {
+        each_value(block, &mut |e| {
             if let ExprKind::Call(fid, args) = &e.kind {
                 if found.fns.get(fid).is_some_and(|&slot| {
                     sinkable_args(&program, &devirt, &pushers, &found.pure, *fid, slot, args)

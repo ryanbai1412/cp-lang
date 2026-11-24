@@ -100,3 +100,13 @@ pub(crate) fn carried_read(
     });
     read.filter(|_| stores == 1 && !other)
 }
+
+/// Whether `block` has a `break`, `continue` or `return` at any depth: a
+/// way out of it other than its end.
+pub(crate) fn has_jump(block: &Block) -> bool {
+    let mut found = false;
+    walk::deep_stmts(block, &mut |stmt| {
+        found |= matches!(stmt, Stmt::Break(_) | Stmt::Continue(_) | Stmt::Return(_));
+    });
+    found
+}
