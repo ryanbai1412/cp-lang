@@ -76,6 +76,7 @@ fn aliasing_and_sort_keys_agree_between_interp_and_sanitized_cpp() {
             "domain_step_not_positive",
             "float_digits",
             "grid_parts_generic",
+            "hash_churn",
             "interval_default_on_old",
             "items_of_temporary",
             "let_of_local_row_lends",

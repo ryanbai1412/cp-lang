@@ -1139,6 +1139,9 @@ impl<'p> Emitter<'p> {
         if self.used.contains("str_view") {
             out.push_str("#include <string_view>\n");
         }
+        if self.used.contains("hashcore") {
+            out.push_str("#if defined(__linux__)\n#include <sys/mman.h>\n#endif\n");
+        }
         if self.used.contains("deque") {
             out.push_str("#include <deque>\n");
         }

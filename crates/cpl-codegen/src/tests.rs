@@ -147,6 +147,12 @@ fn hash_map_uses_salted_splitmix64_cphash() {
     assert!(cpp.contains("struct CpHash"), "{cpp}");
     assert!(cpp.contains("splitmix64"), "{cpp}");
     assert!(cpp.contains("steady_clock"), "{cpp}");
+    // Fingerprinted slots at a load of at most 7/8, sized exactly, freeing the old table as a rehash walks it.
+    assert!(
+        cpp.contains("n + (n + 6) / 7") && cpp.contains("release_pages"),
+        "{cpp}"
+    );
+    assert!(!cpp.contains("2 * (n + 1)"), "{cpp}");
     assert!(cpp.len() < 65536, "{} bytes", cpp.len());
 }
 
