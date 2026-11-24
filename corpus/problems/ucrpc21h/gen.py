@@ -1,4 +1,11 @@
 import sys, random
+if sys.argv[1:] == ["--max"]:
+    # n = 100, m = 1e4, every crystal 12 away: total 1188, the loads DP at full size
+    r = random.Random(1)
+    print(100, 10000)
+    for v in range(1, 100): print(0, v, 12)
+    for _ in range(10000 - 99): print(r.randrange(1, 100), r.randrange(1, 100), r.randint(12, 300))
+    sys.exit()
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 n = r.randint(1, min(S, 100)); extra = r.randint(0, 3 * n)
 cap = r.choice([3, 10, 40, 150, 300])

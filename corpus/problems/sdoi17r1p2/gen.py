@@ -2,11 +2,14 @@
 import random
 import sys
 
+big = sys.argv[1:] == ["--max"]  # n = m = 1e5, a random tree
+if big:
+    sys.argv[1:] = ["1", "100000"]
 seed, size = int(sys.argv[1]), int(sys.argv[2]) if len(sys.argv) > 2 else 10
 rng = random.Random(seed)
-n = rng.randint(1, max(1, min(size, 100_000)))
-m = rng.randint(1, max(1, min(size, 100_000)))
-shape = rng.choice(["random", "path", "star", "caterpillar"])
+n = 100_000 if big else rng.randint(1, max(1, min(size, 100_000)))
+m = 100_000 if big else rng.randint(1, max(1, min(size, 100_000)))
+shape = "random" if big else rng.choice(["random", "path", "star", "caterpillar"])
 print(n, m)
 for v in range(2, n + 1):
     if shape == "path":

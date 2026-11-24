@@ -17,3 +17,7 @@
   `cpl run`, past the 20 s corpus limit. Keeping the third load as a `Bitset<Load>` per `(a, b)`
   cell (`shifted`, `union`) does the same DP 64 cells per word: 0.9 s. Not a gap: the bitset is
   the right algorithm, and what the C++ submissions use.
+
+## Dream
+
+`dream.cp`.

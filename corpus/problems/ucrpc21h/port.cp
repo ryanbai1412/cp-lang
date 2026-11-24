@@ -1,64 +1,36 @@
 // Source: UCRPC Fall 2021 H (Fetch Quest), https://dmoj.ca/problem/ucrpc21h
-// Problem: a graph of n <= 50 vertices and m < 1000 weighted edges; every vertex but 0 holds
-//   a crystal. Four players start at 0 and each carries one crystal at a time back to 0.
-//   Print the least time to bring every crystal to 0 if it is at most 600, else "Impossible!".
-// Solution: a crystal costs its carrier the round trip 2 * dist(v) (Dijkstra from 0), so
-//   split the one-way distances among four players to minimize the largest load, each at
-//   most 300. split[a, b, c] marks the loads three players can carry exactly (a 0/1 knapsack
-//   in three dimensions), the fourth takes the rest; take the best max. O(n * 301^3).
+// Problem: a graph of n vertices and m weighted edges; every vertex but 0 holds a crystal.
+//   Four players start at 0 and each carries one crystal at a time back to 0. Print the
+//   least time to bring every crystal to 0 if it is at most 600, else "Impossible!".
+// Solution: a crystal costs its carrier the round trip 2 dist(v) (Dijkstra from 0), so split
+//   the one-way distances into four loads of at most 300 each, minimizing the largest: a
+//   subset-sum over three loads, the third kept as a bitset per (a, b) cell, the fourth
+//   taking the rest. An edge over 300 is already too long. O(n 301^3 / 64).
 // original: corpus/submissions/3950286.cpp
-const LIMIT = 300
-let n: 1..=100 = read()
-let m: 0..=1e4 = read()
-domain V = 0..n
-var adj: [V]List<(V, Int)> = []
-var too_long = false
-for _ in 0..m:
-    let u: V = read()
-    let v: V = read()
-    let w: Int = read()
-    if w > LIMIT: too_long = true
-    adj[u].push((v, w))
-    adj[v].push((u, w))
-
-var dist: [V]Int = 1e18
-var pq = MinHeap<(Int, V)>()
-dist[V.first!] = 0
-pq.push((0, V.first!))
-while pq.len > 0:
-    let (d, u) = pq.pop()!
-    if d == dist[u]:
-        for (v, w) in adj[u]:
-            if d + w < dist[v]:
-                dist[v] = d + w
-                pq.push((d + w, v))
-
-var total = 0
-var far = 0
-for v in V:
-    total += dist[v]
-    far max= dist[v]
-
-if too_long or far > LIMIT or total > 4 * LIMIT:
-    print("Impossible!")
-else:
-    // split[a, b, c]: three couriers can carry exactly a, b and c; the fourth takes the rest
-    let cap = min(LIMIT, total)
-    var split: [0..=cap, 0..=cap, 0..=cap]Bool = false
-    split[0, 0, 0] = true
+const limit = 300
+let (n, m) = read<(1..=100, 0..=10_000)>()
+domain V = [n]
+let roads = read<[m](u: V, v: V, w: 1..=1_000_000_000)>()
+let paths = dijkstra(Graph.undirected(roads), from: [(V.first!, 0)])
+fn busiest() -> ?Int:
+    if roads.any(r => r.w > limit) or V.any(v => paths.dist[v] == None):
+        return None
+    let d = [V] v => paths.dist[v]!
+    let total = d.sum()
+    if d.max()! > limit or total > 4 * limit:
+        return None
+    domain Load = 0..=min(limit, total)
+    var can: [Load, Load]Bitset<Load> = Bitset<Load>.new()
+    can[0, 0] = Bitset<Load>.single(Load(0))
     for v in V:
-        let x = dist[v]
-        if x > 0:
-            for a in (0..=cap).rev:
-                for b in (0..=cap).rev:
-                    for c in (0..=cap).rev:
-                        if not split[a, b, c]:
-                            if (a >= x and split[a - x, b, c]) or (b >= x and split[a, b - x, c]) or (c >= x and split[a, b, c - x]):
-                                split[a, b, c] = true
-    var best = 1e18
-    for a in 0..=cap:
-        for b in 0..=cap:
-            for c in 0..=cap:
-                if split[a, b, c]: best min= max(max(a, b), max(c, total - a - b - c))
-    if best <= LIMIT: print(2 * best)
-    else: print("Impossible!")
+        if d[v] > 0:
+            for (a, b) in (Load, Load).rev:
+                var next = can[a, b].shifted(d[v])
+                if let a2 = Load.at(a - d[v]): next.union(can[a2, b])
+                if let b2 = Load.at(b - d[v]): next.union(can[a, b2])
+                can[a, b].union(next)
+    (Load, Load).flat_map(((a, b)) => can[a, b].each().map(c => max(Int(a), Int(b), Int(c), total - Int(a) - Int(b) - Int(c)))).min()
+if let day = busiest() and day <= limit:
+    print(2 * day)
+else:
+    print("Impossible!")

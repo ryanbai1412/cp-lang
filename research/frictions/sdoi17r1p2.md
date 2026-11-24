@@ -1,22 +1,21 @@
 # Friction Report: sdoi17r1p2
 
-## 1. `PreferredPaths.access` doesn't yield the cut below `v` (`stdlib`)
+## 1. An enum with two domain payloads misreads in the C++ build (`codegen`)
 
-- **Where:** `access(v)` sets `rc[v] = None` on its first step, so the path that `v` stopped
-  preferring is never yielded; only switches with a `gained` path are. The doc says counting "how
-  many paths lie between `v` and the root reads off the switches", which is then wrong: painting
-  6 then 4 (tests/08.in) misses the `+1` on the subtree of 4's old preferred child.
-- **Repro:** `domain V = 0..3; let t = Rooted.from_parents([None, Some(0), Some(1)]); var pp = PreferredPaths(t); pp.access(2).count(); pp.access(1).collect()` yields `[]`, but 1 stopped preferring 2.
-- **Goal it hurts:** hard to get wrong (the obvious loop gives wrong answers, no trap).
-- **General fix:** yield the first cut too, e.g. `(lost: ?V, gained: ?V)` with `gained: None` on
-  the step at `v` (or a `cut:` field), and fix the doc's claim and the brute test that mirrors it.
-- **Workaround:** spec.cp keeps `below: [V]?V`, each vertex's preferred child, from the switches.
-- **Severity:** high. **Status:** open (stdlib).
+- **Where:** `enum Op = ... Path(x: V, y: V)`: with n = 1e5 the judge build traps "no arm of
+  this `match` fits the value" on `2 30000 30000`; `cpl run` reads it right.
+- **Workaround:** payloads are `1..=n`, converted with `V(x)` at each use.
+- **General fix:** pack enum payloads by their declared widths (Core, enum packing).
+- **Goal it hurts:** hard to get wrong (a domain payload is the obvious spelling).
+- **Severity:** high. **Status:** sent to Core.
 
-## 2. An enum with domain-element payload fields doesn't read by tag (`compiler`, already filed)
+## 2. `LcaTable` is a second object beside the `Rooted` it indexes
 
-- **Where:** `enum Op = @tag(1) Paint(x: V) | ...` reads the tag as the sum domain's ordinal:
-  `cpl run` traps "1 is not in `Op`", and with two payload variants every op silently reads as
-  the first variant. Same root as noi02p1 (compiler worklog, 2026-11-22).
-- **Workaround:** payloads are `1..=n`, converted with `V(x)`.
-- **Severity:** medium. **Status:** open (compiler).
+- **Where:** `let lca = LcaTable(t)`, then `lca.lca(x, y)`; `t.lca` is O(log n).
+- **General fix:** `Rooted` could build its O(1) LCA lazily on first `t.lca` call.
+- **Goal it hurts:** express.
+- **Severity:** low.
+
+## Dream
+
+`dream.cp`.

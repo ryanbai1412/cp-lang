@@ -26,3 +26,17 @@ carried by prefix chains over its roads sorted by trie preorder.
 Largest test (10: n = m - 1 = 5e4, k = 2e4, a path at max cost and LCP):
 `cpl run` 1.5 s, 457 MB; the accepted C++ (`corpus/submissions/5515890.cpp`)
 agrees on all 10 tests and 74 generated inputs.
+
+## An O(1) `LcaTable` costs 6 KB of C++
+- **Where:** `port.cp`, `trie.lca(...)` (O(log k)) where the dream builds `LcaTable(trie)`.
+- **What felt wrong:** `LcaTable` takes the generated C++ from 32 076 to 38 004 bytes, over the
+  32 768-byte target (`corpus/differential.py` flags `over-32kb`), so the port keeps the
+  binary-lifting `Rooted.lca`, which is fast enough here.
+- **General fix:** `LcaTable` built on the Euler tour `Rooted` already stores, with a smaller
+  sparse table in the runtime.
+- **Goal it hurts:** fast to run (the O(1) table is the natural choice).
+- **Severity:** low.
+
+## Dream
+
+`dream.cp`.

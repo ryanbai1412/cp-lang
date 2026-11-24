@@ -1,4 +1,6 @@
 import sys, random
+if sys.argv[1:] == ["--max"]:  # ten tests, two at n = m = 5e4 and k = 2e4
+    sys.argv[1:] = ["1", "50000"]
 # seed size: n, m <= size (capped at 5e4), k <= 2e4; T <= 10 tests, at most 2 with n or m > 5000
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 T = r.randint(1, 10) if S <= 5000 else 10
