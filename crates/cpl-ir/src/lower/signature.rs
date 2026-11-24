@@ -80,23 +80,36 @@ impl<'a> Lowerer<'a> {
     /// trait's generics as the impl's trait arguments.
     fn resolve_assoc_src(&mut self, idx: usize, src: AssocSrc<'a>) -> Ty {
         let (tid, default) = match src {
-            AssocSrc::Impl(ty) => return self.resolve_ty(ty),
+            AssocSrc::Impl(ty) => {
+                self.assoc_range = self.ranged_name(ty);
+                return self.resolve_ty(ty);
+            }
             AssocSrc::Default(tid, ty) => (tid, ty),
         };
         let trait_args = self.impls[idx].trait_args.clone();
-        let args: Vec<Ty> = trait_args.iter().map(|a| self.resolve_ty(a)).collect();
+        let args: Vec<GenArg> = trait_args.iter().map(|a| self.resolve_gen_arg(a)).collect();
         let tr = &self.traits[tid];
         let env: GenEnv = (tr.generics.iter().zip(args))
-            .map(|(g, ty)| (g.to_string(), GenArg::Ty(ty)))
+            .map(|(g, a)| (g.to_string(), a))
             .collect();
         let saved = (
             std::mem::replace(&mut self.cur_mod, tr.mod_id),
             std::mem::replace(&mut self.offset, tr.offset),
             std::mem::replace(&mut self.gen_env, env),
         );
+        self.assoc_range = self.ranged_name(default);
         let found = self.resolve_ty(default);
         (self.cur_mod, self.offset, self.gen_env) = saved;
         found
+    }
+
+    /// The range a bare type name stands for here: `T` with `T = -10..=10`.
+    fn ranged_name(&self, ty: &ast::Type) -> Option<GenArg> {
+        let ast::TypeKind::Named { name, args } = &ty.kind else {
+            return None;
+        };
+        let g = self.gen_env.get(&name.text).filter(|_| args.is_empty())?;
+        matches!(g, GenArg::Range(..)).then(|| g.clone())
     }
 
     /// `B.Item` for `B` bound to `t`: the `type Item = ..` of an impl for `t`.
@@ -124,9 +137,18 @@ impl<'a> Lowerer<'a> {
                 Ty::Struct(sid) => self.opened_impl_env(idx, *sid),
                 _ => None,
             };
-            let Some(env) = opened.or_else(|| self.impl_env(idx, t)) else {
+            let was_opened = opened.is_some();
+            let Some(mut env) = opened.or_else(|| self.impl_env(idx, t)) else {
                 continue;
             };
+            // `impl<T, Ms> Folds<T> for Each<Ms>`: `T` is what the bound solved.
+            if !was_opened {
+                for n in self.open_impl_params(idx, &env) {
+                    if let Some(g) = self.gen_env.get(&format!("impl{idx}.{n}")).cloned() {
+                        env.insert(n, g);
+                    }
+                }
+            }
             let saved = (
                 std::mem::replace(&mut self.cur_mod, m),
                 std::mem::replace(&mut self.offset, offset),
