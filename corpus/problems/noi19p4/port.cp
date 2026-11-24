@@ -1,4 +1,5 @@
 // Source: NOI 2019 D2P1 (Jump), https://dmoj.ca/problem/noi19p4
+// limits: 1000 ms, 511 MB
 // Problem: n <= 7e4 cities at distinct points of a w x h grid (w, h <= n) and m <= 1.5e5
 //   portals; portal i at city p_i takes time t_i <= 1e4 to any city in [L_i, R_i] x [D_i, U_i].
 //   Print the least time from city 1 to each of cities 2..n.

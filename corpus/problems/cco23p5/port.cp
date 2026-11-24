@@ -1,4 +1,5 @@
 // Source: CCO 2023 P5 (Travelling Trader), https://dmoj.ca/problem/cco23p5
+// limits: 2000 ms, 1024 MB
 // Problem: a tree of n <= 2e5 cities with profits p_i <= 1e9, and K in 1..=3. The trader does
 //   business in city 1, walks one road per day and may go at most K days in a row without doing
 //   business in a new city. Print the max total profit, then how many cities and which, in order.

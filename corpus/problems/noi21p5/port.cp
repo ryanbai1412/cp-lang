@@ -1,4 +1,5 @@
 // Source: NOI 2021 P5 (Code), https://dmoj.ca/problem/noi21p5
+// limits: 3000 ms, 1024 MB
 // Problem: a string of n <= 1e5 ops W/E builds a sequence from (0, 1): W adds 1 to the last term;
 //   E adds 1 to the second-to-last if the last is 1, else decrements it, appends 1, 1. Print the
 //   continued fraction a0 + 1/(a1 + ...) as a b mod 998244353, then after each of q <= 1e5

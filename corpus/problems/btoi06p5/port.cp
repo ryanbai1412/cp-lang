@@ -1,4 +1,5 @@
 // Source: BOI 2006 P5 (RLE Compression), https://dmoj.ca/problem/btoi06p5
+// limits: 5000 ms, 64 MB
 // Problem: alphabet 0..n-1 (n <= 1e5) and a code of m <= 2e6 symbols with escape e (initially
 //   0): "e e k" is k + 1 copies of e, "e b 0" makes b the escape, "e b k" (k > 0) is k + 3
 //   copies of b, any other symbol is itself. Print a shortest code for the same sequence: its

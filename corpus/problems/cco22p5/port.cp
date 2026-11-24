@@ -1,4 +1,5 @@
 // Source: CCO 2022 Day 2 (Phone Plans), https://dmoj.ca/problem/cco22p5
+// limits: 3000 ms, 1024 MB
 // Problem: N <= 2e5 houses; companies A and B each have up to 2e5 lines (u, v, level <= 1e9).
 //   Buying level l from a company gives its lines of level <= l, for price l (0 allowed). Two
 //   houses can talk iff joined by one company's lines. Print the least total price that makes

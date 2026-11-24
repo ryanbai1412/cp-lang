@@ -1,4 +1,5 @@
 // Source: NOI 2020 P2 (Destiny), https://dmoj.ca/problem/noi20p2
+// limits: 2000 ms, 1024 MB
 // Problem: a tree on n <= 5e5 vertices rooted at 1 and m <= 5e5 pairs (u, v), u an ancestor
 //   of v. Count the 0/1 labellings of the edges where every pair's path has an edge labelled 1,
 //   mod 998244353.
@@ -34,6 +35,12 @@ var lc: List<Int> = [0]
 var rc: List<Int> = [0]
 var nd_sum: List<Int> = [0]
 var nd_mul: List<Int> = [1]
+// Each vertex's set_point adds at most a root-to-leaf path of nodes, and merges add none.
+let pool_cap = 1 + (n + 1) * 22  // a path is at most 21 nodes for n <= 5e5
+lc.reserve(pool_cap)
+rc.reserve(pool_cap)
+nd_sum.reserve(pool_cap)
+nd_mul.reserve(pool_cap)
 
 fn alloc_node() -> Int:
     let id = lc.len

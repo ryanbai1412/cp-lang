@@ -1,4 +1,5 @@
 // Source: CCC 2002 S4 (Bridge Crossing, Hard), https://dmoj.ca/problem/ccc02s4hard
+// limits: 4000 ms, 256 MB
 // Problem: a queue of Q <= 1e5 people (name, crossing time <= 1e9) crosses a bridge in consecutive
 //   groups of at most M <= 1e5; a group takes its slowest member's time. Print "Total Time: T"
 //   for the min total, then the names of one optimal grouping, a group per line.

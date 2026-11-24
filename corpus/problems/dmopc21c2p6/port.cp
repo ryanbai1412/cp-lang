@@ -1,4 +1,5 @@
 // Source: DMOPC '21 Contest 2 P6 (Strange Function), https://dmoj.ca/problem/dmopc21c2p6
+// limits: 2000 ms, 256 MB
 // Problem: a permutation p of 1..N and Q queries, N, Q <= 3e5. f(l, r) finds the minimum of
 //   p[l..=r] at i, rotates p[l..=i] right by one so it lands at l, then calls f(i + 1, r).
 //   Query 1: apply f(1, N). Query 2 i: print p_i. Query 3 i: print j with p_j = i.
