@@ -293,3 +293,10 @@ fn a_cp_toml_key_no_table_has_is_reported_through_the_schema() {
         ]
     );
 }
+
+#[test]
+fn a_misspelt_lint_with_a_level_is_named_by_its_error() {
+    let (_, errors) = Config::from_toml("[lints]\npaddng = \"allow\"\nmissng = \"loud\"\n");
+    let named: Vec<_> = errors.iter().map(|e| e.lint.as_deref()).collect();
+    assert_eq!(named, [Some("paddng"), None], "{errors:?}");
+}

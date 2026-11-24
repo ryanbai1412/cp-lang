@@ -134,16 +134,23 @@ impl Config {
                 continue;
             }
             let Some(name) = any_lint_named(key) else {
-                error(match closest_lint(key) {
-                    Some(close) => {
-                        format!("there is no lint called `{key}`; did you mean `{close}`?")
-                    }
-                    None => format!("there is no lint called `{key}`"),
-                });
-                if let Some(level) = level(value) {
+                // A known level still applies, so the error names the lint
+                // whose level it sets.
+                let level = level(value);
+                let lint = level.is_some().then(|| key.to_string());
+                if let Some(level) = level {
                     config.named.insert(key.to_string(), level);
-                    errors.last_mut().unwrap().lint = Some(key.to_string());
                 }
+                errors.push(ConfigError {
+                    line: line.line,
+                    message: match closest_lint(key) {
+                        Some(close) => {
+                            format!("there is no lint called `{key}`; did you mean `{close}`?")
+                        }
+                        None => format!("there is no lint called `{key}`"),
+                    },
+                    lint,
+                });
                 continue;
             };
             match level(value) {

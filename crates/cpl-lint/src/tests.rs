@@ -1899,3 +1899,14 @@ fn a_declared_tuple_reads_each_name_s_range_from_the_checker() {
     let src = "let (n, a): (1..=9, [0..n]Int) = read()\nprint(n, a.max()!)\n";
     assert_eq!(codes(src), Vec::<&str>::new());
 }
+
+#[test]
+fn a_hoisted_inverse_takes_the_first_free_numbered_name() {
+    let src = "type Z = Mod<998_244_353>\nlet d = Z(3)\nlet inv_d = 1\nlet inv_d_2 = 2\nvar xs = [Z(1), Z(2)]\nfor i in 0..xs.len:\n    xs[i] /= d\nprint(xs, inv_d, inv_d_2)\n";
+    assert_eq!(codes(src), ["L0415"]);
+    assert!(
+        fixed(src).contains("let inv_d_3 = d.inv()\n"),
+        "{}",
+        fixed(src)
+    );
+}

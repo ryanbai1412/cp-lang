@@ -97,6 +97,18 @@ impl<'f> Bounds<'f> {
         // In source order: a bound can only use what is declared above it.
         for (base, stmt) in file.top_level() {
             bounds.base = base;
+            if let StmtKind::Let {
+                pat,
+                ty: None,
+                init: Some(init),
+                ..
+            } = &stmt.kind
+            {
+                if let Some(ty) = read_type(init) {
+                    bounds.declare(base, &super::binding(pat), ty);
+                    continue;
+                }
+            }
             match &stmt.kind {
                 StmtKind::Const {
                     name,
@@ -110,14 +122,6 @@ impl<'f> Bounds<'f> {
                 StmtKind::Let {
                     pat, ty: Some(ty), ..
                 } => bounds.declare(base, &super::binding(pat), ty),
-                StmtKind::Let {
-                    pat,
-                    ty: None,
-                    init: Some(init),
-                    ..
-                } if read_type(init).is_some() => {
-                    bounds.declare(base, &super::binding(pat), read_type(init).unwrap())
-                }
                 StmtKind::Let {
                     mutable: false,
                     pat,

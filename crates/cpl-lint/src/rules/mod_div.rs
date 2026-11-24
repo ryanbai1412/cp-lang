@@ -690,13 +690,14 @@ fn fresh_name(base: &str, used: &mut HashSet<String>) -> String {
     if used.insert(base.to_string()) {
         return base.to_string();
     }
-    for k in 2.. {
+    let mut k = 2;
+    loop {
         let cand = format!("{base}_{k}");
         if used.insert(cand.clone()) {
             return cand;
         }
+        k += 1;
     }
-    unreachable!()
 }
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {

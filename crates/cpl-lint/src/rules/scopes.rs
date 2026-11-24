@@ -32,8 +32,10 @@ struct Scopes<'a> {
     src: &'a str,
     base: u32,
     bindings: Vec<Binding>,
-    /// Innermost last; the first is the top level.
-    scopes: Vec<HashMap<String, usize>>,
+    /// The names bound at the top level.
+    top: HashMap<String, usize>,
+    /// The scopes the walk is in below the top level, innermost last.
+    inner: Vec<HashMap<String, usize>>,
     vars: Vec<VarStmt>,
     /// The `var` statement whose pattern is being bound.
     current_var: Option<usize>,
@@ -53,9 +55,10 @@ struct Scopes<'a> {
 
 impl Scopes<'_> {
     fn resolve(&self, name: &str) -> Option<&Binding> {
-        self.scopes
+        self.inner
             .iter()
             .rev()
+            .chain([&self.top])
             .find_map(|scope| scope.get(name))
             .map(|id| &self.bindings[*id])
     }
@@ -110,7 +113,7 @@ impl Scopes<'_> {
 
 impl Visitor for Scopes<'_> {
     fn stmt(&mut self, stmt: &Stmt) {
-        if self.scopes.len() == 1 {
+        if self.inner.is_empty() {
             self.statement = stmt.span.shift(self.base);
         }
         if let StmtKind::Let { .. } = stmt.kind {
@@ -162,7 +165,7 @@ impl Visitor for Scopes<'_> {
 
     fn bind(&mut self, name: &str, span: Span, how: Bind) {
         let span = span.shift(self.base);
-        let top_level = self.scopes.len() == 1;
+        let top_level = self.inner.is_empty();
         let var = if how == Bind::Var {
             self.current_var
         } else {
@@ -178,9 +181,9 @@ impl Visitor for Scopes<'_> {
             let after = Span::new(self.let_end.max(span.end), self.statement.end);
             self.locals.push((name.to_string(), span, after));
         }
-        let helper_param = how == Bind::Param && self.fns == 1 && self.scopes.len() == 2;
+        let helper_param = how == Bind::Param && self.fns == 1 && self.inner.len() == 1;
         if !top_level && !helper_param && name != "_" {
-            let hidden = self.scopes[0].get(name).map(|id| &self.bindings[*id]);
+            let hidden = self.top.get(name).map(|id| &self.bindings[*id]);
             // A fn can name a top-level `let` written below it, so there a
             // later one is hidden too. Top-level code runs in order: a loop
             // that ends before `var i` is written hides nothing.
@@ -222,7 +225,7 @@ impl Visitor for Scopes<'_> {
         // The top level was bound in full before the walk, so that a fn can
         // name a `let` written below it.
         if top_level {
-            if let Some(id) = self.scopes[0].get(name) {
+            if let Some(id) = self.top.get(name) {
                 self.bindings[*id].var = var;
                 return;
             }
@@ -233,17 +236,20 @@ impl Visitor for Scopes<'_> {
             top_level,
         });
         let id = self.bindings.len() - 1;
-        self.scopes.last_mut().unwrap().insert(name.to_string(), id);
+        self.inner
+            .last_mut()
+            .unwrap_or(&mut self.top)
+            .insert(name.to_string(), id);
     }
 
     fn enter(&mut self, scope: Scope) {
         self.fns += usize::from(scope == Scope::Fn);
-        self.scopes.push(HashMap::new());
+        self.inner.push(HashMap::new());
     }
 
     fn exit(&mut self, scope: Scope) {
         self.fns -= usize::from(scope == Scope::Fn);
-        self.scopes.pop();
+        self.inner.pop();
     }
 }
 
@@ -264,7 +270,7 @@ impl Visitor for TopLevel<'_, '_> {
             });
             let id = self.scopes.bindings.len() - 1;
             // The first definition is the one a later local hides.
-            self.scopes.scopes[0].entry(name.to_string()).or_insert(id);
+            self.scopes.top.entry(name.to_string()).or_insert(id);
         }
     }
 
@@ -282,7 +288,8 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         src: file.src,
         base: 0,
         bindings: Vec::new(),
-        scopes: vec![HashMap::new()],
+        top: HashMap::new(),
+        inner: Vec::new(),
         vars: Vec::new(),
         current_var: None,
         fns: 0,
