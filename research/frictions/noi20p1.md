@@ -10,10 +10,12 @@ C++, and --max gives the same output.
 
 ## Remaining gap: speed
 
-On --max the port takes 0.47-0.53 s, and the AC (3890258, avx2/Ofast pragmas) 0.135 s. The
-same program with an Int sentinel runs 0.22 s, so about half the gap is ?Int codegen: `c[l]
-max= Some(via + w)` emits an overflow-checked add plus a `has_value` test on the Some it just
-built. The rest is vectorisation. Both are with Core. The port stays out of v03 until they land.
+On --max the port took 0.47-0.53 s, and the AC (3890258, avx2/Ofast pragmas) 0.135-0.15 s.
+`?Int max=` now lowers to one `std::max<OptInt>` on the niche's raw value (no `has_value` test
+on the Some it just built, no branch), which brings the port to 0.33-0.36 s at the same 19.8 MB.
+What is left is the inner loop's `if let w = bj[l]` branch and the overflow-checked add: g++
+can't vectorise either, and ranges can't prove the add safe. The port stays out of v03 until a
+branch-free optional max-plus inner loop lands.
 
 ## Dream
 

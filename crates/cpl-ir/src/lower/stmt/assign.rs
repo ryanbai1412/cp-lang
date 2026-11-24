@@ -356,6 +356,11 @@ impl<'a> Lowerer<'a> {
                     }
                     let is_max = op == ast::AssignOp::Max;
                     let rhs = self.coerce(value, &place.ty, span);
+                    // `none` orders below every Int, so `?Int max=` is a plain max.
+                    if is_max && *inner == Ty::Int {
+                        out.push(Stmt::Assign(place, AssignOp::Max, rhs));
+                        return;
+                    }
                     let r_slot = self.temp(place.ty.clone());
                     out.push(Stmt::Let(r_slot, Some(rhs)));
                     let r_expr = self.local(r_slot, span);

@@ -346,3 +346,18 @@ fn a_match_arm_binding_of_a_temporary_is_a_reference() {
     ));
     assert!(cpp.contains("const std::string& kind = "), "{cpp}");
 }
+
+#[test]
+fn an_opt_int_max_is_one_max_with_no_branch() {
+    let cpp = cpp(concat!(
+        "let x: Int = read()\n",
+        "var best: [3]?Int = None\n",
+        "for i in 0..3:\n",
+        "    best[i] max= Some(x + i)\n",
+        "print(best[2] ?? -1)\n",
+    ));
+    assert!(
+        cpp.contains("std::max<cpl::OptInt>(") && !cpp.contains(".has_value() ||"),
+        "{cpp}"
+    );
+}

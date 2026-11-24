@@ -37,7 +37,11 @@ template <class T, class S, S NONE> struct Niche {
     explicit operator std::optional<T>() const { return *this ? std::optional<T>(**this) : std::nullopt; }
     friend bool operator==(Niche a, Niche b) { return a.raw == b.raw; }
     friend bool operator!=(Niche a, Niche b) { return a.raw != b.raw; }
-    friend bool operator<(Niche a, Niche b) { return b && (!a || *a < *b); }
+    // `none` is below every value; when NONE is the least S, the raw order says so already.
+    friend bool operator<(Niche a, Niche b) {
+        if constexpr (NONE == std::numeric_limits<S>::min()) return a.raw < b.raw;
+        else return b && (!a || *a < *b);
+    }
 };
 // A position is an ordinal from 0: -1 is free.
 using OptPos = Niche<int, int, -1>;
