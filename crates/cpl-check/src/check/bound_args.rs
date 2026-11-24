@@ -112,7 +112,18 @@ impl Checker<'_> {
                 .collect(),
             _ => Vec::new(),
         };
-        (trait_args, self.quietly(|c| c.bound_args(bounds)))
+        let mut bound_args = self.quietly(|c| c.bound_args(bounds));
+        // A plain bound (`impl<T: Mul + One>`) holds too, with no arguments to bind.
+        for b in bounds {
+            for t in &b.traits {
+                if let ast::TypeKind::Named { name, args } = &t.kind {
+                    if args.is_empty() {
+                        bound_args.push((b.name.text.clone(), name.text.clone(), Vec::new()));
+                    }
+                }
+            }
+        }
+        (trait_args, bound_args)
     }
 
     /// `Self` and the trait's own parameters, as bound `param: trait_name<..>` gives them.
@@ -387,6 +398,74 @@ impl Checker<'_> {
             }
         }
         self.call_bound_args = Some(bound_args);
+    }
+
+    /// An item bound to `M: Op<T>` has its impl's own bounds met at the `T` the call gives:
+    /// `impl<T: Mul + One> Op<T> for type_of(*)` takes `q(*, 3)`, not `q(*, (1, 2))`.
+    pub(crate) fn item_impls_hold(
+        &mut self,
+        fn_name: &str,
+        bound_args: &BoundArgs,
+        bindings: &crate::ty::Bindings,
+        span: Span,
+    ) {
+        for (param, trait_name, args) in bound_args {
+            let Some(Ty::Named { name: item, .. }) = bindings.get(param).map(|t| self.settle(t))
+            else {
+                continue;
+            };
+            if !item.starts_with("type_of(") {
+                continue;
+            }
+            let want: Vec<Ty> = (args.iter())
+                .map(|a| self.settle(&a.subst(bindings)))
+                .collect();
+            if want.iter().any(|t| t.has_vague() || t.mentions_param())
+                || self.item_impl_holds(&item, trait_name, &want)
+            {
+                continue;
+            }
+            let want = want
+                .iter()
+                .map(Ty::to_string)
+                .collect::<Vec<_>>()
+                .join(", ");
+            self.report(
+                span,
+                msgs::check::MISSING_IMPL_DOES_NOT_IMPLEMENT_REQUIRED,
+                &[&item, &format!("{trait_name}<{want}>"), &fn_name],
+            );
+        }
+    }
+
+    /// Whether one of `item`'s impls of `trait_name` meets its head's bounds with its trait
+    /// arguments bound to `want`.
+    fn item_impl_holds(&mut self, item: &str, trait_name: &str, want: &[Ty]) -> bool {
+        let impls: Vec<_> = (self.env.impls(item).into_iter())
+            .filter(|(t, _)| t.as_deref().and_then(|t| t.split('<').next()) == Some(trait_name))
+            .map(|(_, d)| d)
+            .collect();
+        impls.is_empty()
+            || impls.iter().any(|def| {
+                let Def::Impl {
+                    trait_args,
+                    bound_args,
+                    ..
+                } = &**def
+                else {
+                    return true;
+                };
+                let mut on = crate::ty::Bindings::default();
+                for (a, w) in trait_args.iter().zip(want) {
+                    a.unify(w, &mut on);
+                }
+                let mut seen = Vec::new();
+                bound_args.iter().all(|(p, b, _)| {
+                    on.get(p).cloned().is_none_or(|t| {
+                        t.has_vague() || self.implements_trait_inner(&t, b, &mut seen)
+                    })
+                })
+            })
     }
 
     /// `fn f<A: Keyed<K, _>, B: Keyed<K, _>, K>`: a type parameter named in several bounds is
