@@ -984,3 +984,6 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
   std bodies in std/strings.cp; their five arms in lower/call/field.rs are gone
   (`ir_builtin_derived` 38 -> 33). std.mod and std.math, which can't import std.strings,
   compare the digit range directly. Case: std-strings/char-tests-run-std-bodies.
+- Deleted the `(lo..hi).clamp(D)` arm in lower/call/value_method.rs: the checker has no
+  `clamp` on a range (E0203) and no spec section names it, so nothing reached it
+  (`ir_builtin_derived` 33 -> 32).
