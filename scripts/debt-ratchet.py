@@ -2371,11 +2371,39 @@ def web_hand_copied(root: Path) -> list[str]:
 DIAG_SITE_RE = re.compile(r"\bDiagnostic::(?:error|warning)\(")
 
 
+# A crate's own funnel that takes message text and builds the diagnostic itself:
+# each call passes text the registry should hold, so each call counts.
+DIAG_TEXT_FUNNELS = {
+    "crates/cpl-check/src": re.compile(r"\b[a-z_][a-z0-9_]*\.error\("),
+    "crates/cpl-ir/src": re.compile(r"\b[a-z_][a-z0-9_]*\.error\("),
+    "crates/cpl-lint/src": re.compile(r"\b[a-z_][a-z0-9_]*\.warn\("),
+}
+
+
 def diag_text_outside_registry(root: Path) -> list[str]:
     """Diagnostics built with inline message text outside cpl-diag: each one's wording
-    belongs in the registry row for its code (crates/cpl-diag/src/registry.rs)."""
-    return [f"{rel}:{i}" for rel, i, line in _src_lines(root)
-            if DIAG_SITE_RE.search(line) and _outside(rel, ("crates/cpl-diag/",))]
+    belongs in a cpl_diag::msgs row, and the emit site names the row plus its
+    arguments. Counts each `Diagnostic::error`/`warning` call and each call of a
+    crate's text-taking funnel (`Checker::error`, lower's `error`, lint `warn`)."""
+    out = []
+    for rel, i, line in _src_lines(root):
+        if not _outside(rel, ("crates/cpl-diag/",)):
+            continue
+        funnel = next((r for d, r in DIAG_TEXT_FUNNELS.items() if rel.startswith(d + "/")), None)
+        if DIAG_SITE_RE.search(line) or (funnel and funnel.search(line)):
+            out.append(f"{rel}:{i}")
+    return out
+
+
+TRAP_SITE_RE = re.compile(r"\btrap(?:::<[^>]*>)?\(|\bTrap \{|\.fail\(")
+
+
+def trap_text_outside_registry(root: Path) -> list[str]:
+    """Runtime trap messages written inline in cpl-interp: a trap's text is a
+    user-facing diagnostic (run, trace and explain show it), so it belongs in a
+    cpl_diag::msgs row like any other message."""
+    return [f"{rel}:{i}" for rel, i, line in _src_lines(root, "crates/cpl-interp")
+            if TRAP_SITE_RE.search(line) and not re.search(r"\bfn (?:trap|fail)\b", line)]
 
 
 # The VM's one event model: the `observe::Observer` its `tracer` slot holds.
@@ -2724,6 +2752,8 @@ COUNTERS = {
     "web_hand_copied": ("web/ string arrays copying std names, keywords or codes (Factory)", web_hand_copied, True),
     "diag_text_outside_registry": ("diagnostics with inline text outside cpl-diag's registry (Consumers, Core)",
                                    diag_text_outside_registry, True),
+    "trap_text_outside_registry": ("runtime trap messages with inline text outside cpl-diag's registry (Consumers)",
+                                   trap_text_outside_registry, True),
     "event_models": ("interpreter event sinks beside the one Observer slot (Core, Consumers)", event_models, True),
     "width_tables": ("integer-width match arms outside cpl_ir::IntWidth (Core)", width_tables, True),
     "judge_tables": ("judges named outside cpl-judge's table (Core, Consumers)", judge_tables, True),

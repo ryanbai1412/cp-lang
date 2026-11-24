@@ -232,11 +232,12 @@
   "corpus_no_statement": 1,
   "ci_jobs_without_recipe": 1,
   "web_hand_copied": 0,
-  "diag_text_outside_registry": 18,
+  "diag_text_outside_registry": 563,
   "event_models": 14,
   "width_tables": 12,
   "judge_tables": 0,
   "editor_logic_lines": 3010,
   "std_names_outside_rt": 115,
-  "corpus_fmt_dirty": 0
+  "corpus_fmt_dirty": 0,
+  "trap_text_outside_registry": 515
 }
