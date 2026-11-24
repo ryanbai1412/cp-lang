@@ -9192,3 +9192,5 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 - **Call.** A family's constructor `F(a)` on a `List<T>` or a `[0..n]T` builds the shape `F<T>` whose `new` takes a `List<T>`, as it already built the 2-D shape for `[R, C]T`. So `Prefix(list)` is `Prefix<T>`, read by `Int` cuts, the same table `prefix(list)` builds. Coordinator ruling for Consumers of 2026-11-24.
 - **Why.** `Prefix(list)` built the domain shape `Prefix<Int, T>` over a made-up domain, with an extra `back` test on every fold, while `prefix(list)` built `Prefix<T>`. With one rule the word can be the constructor (`@word(prefix)`), and the compiler's `prefix` arms go.
 - **Reverse.** Drop the list-shape arm; `Prefix(list)` is `Prefix<Int, T>` again.
+
+## 612. (reserved, stdlib)
