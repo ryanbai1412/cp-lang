@@ -177,8 +177,19 @@ impl Builder<'_> {
                 if let Some(bounds) = self.domains.get(&name.text) {
                     return Ok(bounds.clone());
                 }
-                // `V.cuts`: the gaps around `V`'s positions, one more than it has.
-                if let Some(of) = name.text.strip_suffix(".cuts") {
+                // `type Cut = V.bounds` names the domain it stands for.
+                if let Some((base, alias)) = self.aliases.get(&name.text).cloned() {
+                    let outer = std::mem::replace(&mut self.base, base);
+                    let bounds = self.index(&alias);
+                    self.base = outer;
+                    return bounds;
+                }
+                // `V.cuts` (or `V.bounds`): the gaps around `V`'s positions, one more than it has.
+                if let Some(of) = name
+                    .text
+                    .strip_suffix(".cuts")
+                    .or_else(|| name.text.strip_suffix(".bounds"))
+                {
                     if let Some((lo, hi)) = self.domains.get(of) {
                         return Ok((lo.clone(), binary(BinOp::Add, hi.clone(), int(1))));
                     }

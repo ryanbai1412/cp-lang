@@ -83,6 +83,20 @@ fn types_the_generator_cannot_make_are_reported_where_they_are() {
 }
 
 #[test]
+fn an_array_keyed_by_an_alias_of_cuts_reads_one_more_than_the_domain() {
+    let src =
+        "let n: 1..=5 = read()\ndomain B = 0..n\ntype Cut = B.bounds\nlet w: [Cut]0..=9 = read()\n";
+    let spec = InputSpec::from_source(src).unwrap();
+    for seed in 0..50 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(8)).unwrap();
+        let [Value::Int(n), Value::Seq(w)] = case.values.as_slice() else {
+            panic!("{case:?}");
+        };
+        assert_eq!(w.len() as i128, n + 1, "seed {seed}");
+    }
+}
+
+#[test]
 fn cases_are_valid_small_and_the_same_for_the_same_seed() {
     let spec = spec();
     for seed in 0..200 {
