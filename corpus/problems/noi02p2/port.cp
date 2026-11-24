@@ -1,4 +1,5 @@
 // Source: NOI 2002 P2 (Naughty Kid), https://dmoj.ca/problem/noi02p2
+// limits: 5000 ms, 512 MB
 // Problem: interactive. N + M + 1 <= 501 children: N Star (always truthful), M Moon (always lie)
 //   and a referee (true on his odd-numbered answers, false on even). Ask(a, b, T) asks a whether
 //   b is in team T (never about himself, each pair once). Name the referee and everyone's team,
@@ -8,52 +9,33 @@
 //   edge agree, except the referee's first (true) one about his right neighbour: the first
 //   disagreeing edge finds him. Walking away from him, each answer fixes the next child's team.
 //   Two questions per child, O(N + M).
-// This port simulates the interactor: stdin has N, M, the hidden roles (0 Moon, 1 Star,
-//   2 referee) and the referee's answer about each child; it prints the recovered roles.
 // original: corpus/submissions/4793917.cpp
+let (stars, moons): (0..=500, 0..=500) = ask("GetNM")
+let n = stars + moons + 1
 
-fn ri() -> Int:
-    let x: Int = read()
-    return x
+fn says_star(asker: Int, about: Int) -> 0..=1 = ask("Ask", asker + 1, about + 1, 0)
 
-fn main_solve():
-    let cnt_n: Int = read()
-    let cnt_m: Int = read()
-    let n = cnt_n + cnt_m + 1
-    var kind: List<Int> = []
-    var wild_ans: List<Int> = []
-    for _ in 0..n: kind.push(ri())
-    for _ in 0..n: wild_ans.push(ri())
+// each child about its right neighbour, then its left: the referee's first answer is true
+var right: List<Int> = []
+var left: List<Int> = []
+for p in 0..n:
+    right.push(says_star(p, (p + 1) % n))
+    left.push(says_star(p, (p + n - 1) % n))
 
-    // 0 = truth, 1 = liar, 2 = wild
-    fn ask_ring(i: Int, j: Int) -> Int:
-        if kind[i] == 2: return wild_ans[j]
-        if kind[i] == 0: return Int(kind[j] == 0)
-        return if kind[j] == 0: 0 else: 1
+// both answers on an edge agree, except where the referee spoke first
+var wild = 0
+for p in 0..n:
+    if right[p] != left[(p + 1) % n]:
+        wild = p
+        break
 
-    var dir_r = [0..n] _ => 0
-    var dir_l = [0..n] _ => 0
-    for p in 0..n:
-        dir_r[p] = ask_ring(p, (p + 1) % n)
-        dir_l[p] = ask_ring(p, (p + n - 1) % n)
-
-    var wild = 0
-    for p in 0..n:
-        if dir_r[p] != dir_l[(p + 1) % n]:
-            wild = p
-            break
-
-    var ans = [0..n] _ => 0
-    ans[wild] = 2
-    var p = wild - 1
-    while p >= 0:
-        let next_is_zero = Int(ans[p + 1] == 0)
-        ans[p] = Int(dir_r[p] != next_is_zero)
-        p -= 1
-    for q in wild + 1..n:
-        let prev_is_zero = Int(ans[q - 1] == 0)
-        ans[q] = Int(dir_l[q] != prev_is_zero)
-
-    for i in 0..n: print(ans[i])
-
-main_solve()
+// 0 Star, 1 Moon, 2 referee: walking away from him, each answer fixes the next child
+var role = [0..n] _ => 0
+role[wild] = 2
+var p = wild - 1
+while p >= 0:
+    role[p] = Int(right[p] != Int(role[p + 1] == 0))
+    p -= 1
+for q in wild + 1..n:
+    role[q] = Int(left[q] != Int(role[q - 1] == 0))
+for i in 0..n: print("Answer", role[i])
