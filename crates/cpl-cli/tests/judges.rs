@@ -413,18 +413,6 @@ fn passing_corpus_ports() -> Vec<PathBuf> {
         .collect()
 }
 
-/// `cpl build` the way `cpl-conform corpus` checks the file.
-fn build_spec(file: &Path, judge: &str) -> Result<String, String> {
-    let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
-        .args(["build", file.to_str().unwrap(), "--judge", judge, "-o", "-"])
-        .output()
-        .unwrap();
-    match out.status.success() {
-        true => Ok(String::from_utf8(out.stdout).unwrap()),
-        false => Err(String::from_utf8_lossy(&out.stderr).into_owned()),
-    }
-}
-
 /// The corpus test is split into `CORPUS_SHARDS` tests by each port's index,
 /// so each stays short and together they cover every passing port.
 const CORPUS_SHARDS: usize = 8;
@@ -457,9 +445,9 @@ fn corpus_shard(shard: usize) {
                 .unwrap()
                 .to_str()
                 .unwrap();
-            let cpp = build_spec(port, &profile.name)
+            let cpp = build(port, &profile.name)
                 .map_err(|e| format!("{id} for {}: does not build:\n{e}", profile.name))?;
-            if build_spec(port, &profile.name).as_ref() != Ok(&cpp) {
+            if build(port, &profile.name).as_ref() != Ok(&cpp) {
                 return Err(format!("{id} for {}: not deterministic", profile.name));
             }
             if cpp.len() > profile.limit() {
