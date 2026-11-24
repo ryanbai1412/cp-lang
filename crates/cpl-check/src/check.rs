@@ -212,6 +212,16 @@ pub struct GlobalRef {
     pub in_lambda: bool,
 }
 
+/// What `Checker::quietly` puts back after its probe.
+struct Hushed {
+    lens: [usize; 7],
+    exprs: [usize; 6],
+    moved: HashMap<String, Span>,
+    lambda_params: Vec<(Span, Vec<Ty>)>,
+    chosen: Vec<(Span, Resolved)>,
+    sink: Sink,
+}
+
 pub(crate) struct Checker<'a> {
     pub(crate) env: &'a mut dyn Env,
     /// The item's text; spans index into it.
@@ -606,19 +616,40 @@ impl<'a> Checker<'a> {
     /// Runs `f` without keeping what it reports or records: for reading a
     /// type out of code that is checked, and reported, somewhere else.
     fn quietly<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
-        let (hovers, refs, typed) = (self.hovers.len(), self.refs.len(), self.typed_indexes.len());
-        let resolved = self.resolved.len();
-        let (fixed, io) = (self.fixed_io.len(), self.io_costs.len());
-        let (conflicts, exprs) = (self.lends.conflicts.len(), self.exprs.mark());
-        let moved = self.moved.clone();
-        let lambda_params = self.lambda_params.clone();
-        let chosen = self.chosen_methods.clone();
-        let sink = std::mem::replace(&mut self.sink, Sink::new());
+        let kept = self.hush();
         let out = f(self);
-        self.sink = sink;
-        self.moved = moved;
-        self.lambda_params = lambda_params;
-        self.chosen_methods = chosen;
+        self.unhush(kept);
+        out
+    }
+
+    /// What `quietly` restores, kept out of line so its many callers share it.
+    #[inline(never)]
+    fn hush(&mut self) -> Hushed {
+        Hushed {
+            lens: [
+                self.hovers.len(),
+                self.refs.len(),
+                self.typed_indexes.len(),
+                self.resolved.len(),
+                self.fixed_io.len(),
+                self.io_costs.len(),
+                self.lends.conflicts.len(),
+            ],
+            exprs: self.exprs.mark(),
+            moved: self.moved.clone(),
+            lambda_params: self.lambda_params.clone(),
+            chosen: self.chosen_methods.clone(),
+            sink: std::mem::replace(&mut self.sink, Sink::new()),
+        }
+    }
+
+    #[inline(never)]
+    fn unhush(&mut self, kept: Hushed) {
+        let [hovers, refs, typed, resolved, fixed, io, conflicts] = kept.lens;
+        self.sink = kept.sink;
+        self.moved = kept.moved;
+        self.lambda_params = kept.lambda_params;
+        self.chosen_methods = kept.chosen;
         self.hovers.truncate(hovers);
         self.refs.truncate(refs);
         self.resolved.truncate(resolved);
@@ -626,8 +657,7 @@ impl<'a> Checker<'a> {
         self.fixed_io.truncate(fixed);
         self.io_costs.truncate(io);
         self.lends.conflicts.truncate(conflicts);
-        self.exprs.truncate(exprs);
-        out
+        self.exprs.truncate(kept.exprs);
     }
 
     /// `base`'s type: what the call being checked already gave it, else
