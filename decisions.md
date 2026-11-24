@@ -8509,3 +8509,8 @@ Reverse: drop `opt_mut_params`/`note_opt_mut` in the checker and `opt_mut_instan
 - **Why.** A library view such as `a.step(2)` checks its keys with an `assert`, so a skipped key trapped R0401 while `a[i]` on a slice traps R0101 (core-04/h-step-skipped-key-traps). Libraries had no way to raise the index trap, which is stdlib privilege for core views. Reading the one condition that already says "not a key" as an index check keeps assert's surface unchanged; a trap-kind argument (`assert c, as: key`) would add surface for the same single case.
 - **Reverse.** Drop R09.3.10; give `assert` a named trap kind instead, or leave library key checks at R0401.
 
+
+## 449. An `@cpp("...")` body is opaque C++, and a program calling one runs as its C++ build (compiler, 2026-11-23)
+
+W14/Rbundle.5: an `@cpp` body goes into the bundle as written. Before, the parser read a `return e;` body back as CP Lang (so `a + b` became `cpl::iadd`, and `__builtin_popcountll` was E0201), and any other body became `()`, a silent wrong value. Now `@cpp("...")` is its own expression, `ExprKind::Cpp`. The checker checks only the fn's signature and gives E0501 for `@cpp` anywhere but a fn's whole body. Lowering lists the fn in `judge_fns`, so no pass looks into its empty body, and records its text in `Program::cpp_bodies`, which codegen emits as the body. The interpreter can't run C++, so `cpl run` (and the conformance runner) runs such a program as its C++ build, as spec recommended. `cpl explain` lists each such fn. Calling one in the interpreter by another path traps with a message that says why.
+Reverse: drop `ExprKind::Cpp` and `cpp_bodies`, and restore the parser's re-read of `return e;`.

@@ -1100,6 +1100,10 @@ fn run_file(
         Ok(compiled) => compiled,
         Err(code) => return code,
     };
+    // An `@cpp` body is C++ only, so the program runs as its C++ build.
+    if !compiled.program.cpp_bodies.is_empty() && !args.trace {
+        return run_release(args, &input.whole(), stdout, stderr);
+    }
     let json = args.format == Some("json");
     if args.trace || json {
         return observe_file(args, &compiled, &input.whole(), stdout, stderr);

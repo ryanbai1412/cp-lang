@@ -49,6 +49,9 @@ impl Backend<'_> {
             Backend::Linked(db) => {
                 let compiled = runner::compile_program(db, path, text)
                     .map_err(|CompileError::Diagnostics(d)| d)?;
+                if !compiled.program.cpp_bodies.is_empty() {
+                    return run_cpp_build(&compiled.program, path, text, input);
+                }
                 let run = runner::run_interp_within(
                     &compiled.program,
                     path,
@@ -120,6 +123,32 @@ fn case_limit(text: &str) -> u64 {
         .iter()
         .filter_map(|v| v.parse().ok())
         .fold(runner::case_timeout(), u64::max)
+}
+
+/// An `@cpp` body is C++ only, so the program runs as its C++ build, as
+/// `cpl run` runs it.
+fn run_cpp_build(
+    program: &cpl_ir::Program,
+    path: &str,
+    text: &str,
+    input: &[u8],
+) -> Result<Ran, String> {
+    let cpp = cpl_codegen::emit(program, path, Some(text));
+    let cache = match std::env::var_os("CPL_CXX_CACHE_DIR") {
+        Some(dir) => std::path::PathBuf::from(dir).join("conform-cpp-body"),
+        None => std::env::temp_dir().join("cpl-conform-cpp-body"),
+    };
+    let _ = std::fs::create_dir_all(&cache);
+    let bin = crate::diff::compile_cpp(&cpp, &cache).map_err(|e| match e {
+        crate::diff::CppCompileError::Cxx(m) | crate::diff::CppCompileError::Infra(m) => m,
+    })?;
+    let out = runner::run_piped(std::process::Command::new(bin), input, case_limit(text))
+        .map_err(|e| format!("the C++ build {e}"))?;
+    Ok(Ran {
+        stdout: out.stdout,
+        trapped: !out.status.success(),
+        trap_rendered: String::from_utf8_lossy(&out.stderr).into_owned(),
+    })
 }
 
 fn cli_within(

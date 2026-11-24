@@ -396,7 +396,7 @@ impl Lowerer<'_> {
             });
             return Err(lw.diags);
         }
-        let (judge_fns, entry_fns) = lw.grader_fns(analysis);
+        let (judge_fns, entry_fns, cpp_bodies) = lw.opaque_fns(analysis);
         if !lw.diags.is_empty() {
             return Err(lw.diags);
         }
@@ -472,6 +472,7 @@ impl Lowerer<'_> {
             interactive: lw.interactive,
             announce_tests: lw.announce_tests,
             judge_fns,
+            cpp_bodies,
             entry_fns,
             raw_lists: lw.raw_lists,
             narrow_elems: lw.narrow_elems,
@@ -1714,18 +1715,6 @@ impl<'a> Lowerer<'a> {
             );
         }
         self.product_factor_from_ord(&factors[idx].1, ord, span)
-    }
-
-    /// `fn new(next: Next<V>)`: a trait-typed parameter makes the fn generic in
-    /// that argument's type, as an explicit `<N: Next<V>>` would.
-    pub(super) fn takes_trait(&self, f: &ast::FnDecl, m: usize) -> bool {
-        f.params.iter().any(|p| {
-            matches!(
-                &p.ty,
-                Some(ast::Type { kind: ast::TypeKind::Named { name, .. }, .. })
-                    if matches!(self.mod_syms[m].get(&name.text), Some(Sym::Trait(_)))
-            ) || declare::is_opt_mut(p)
-        })
     }
 
     /// `fn size(s: List<T>)`: an undeclared one-letter type in the signature
@@ -3714,10 +3703,10 @@ impl<'a> Lowerer<'a> {
                 };
                 self.stmt(&each, &mut out);
             }
-            ast::FnBody::Expr(expr) => self.tail(expr, Tail::Return, &mut out),
-            // The judge's grader supplies the body: the signature is all
-            // there is.
-            ast::FnBody::None => {}
+            ast::FnBody::Expr(e) if !collect::is_cpp(e) => self.tail(e, Tail::Return, &mut out),
+            // The judge's grader, or an `@cpp` body's C++, supplies the
+            // body: the signature is all there is.
+            ast::FnBody::Expr(_) | ast::FnBody::None => {}
         }
         self.fn_keys(decl, &mut out);
         self.contexts.truncate(self.file_contexts_len);

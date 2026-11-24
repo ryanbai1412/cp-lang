@@ -2688,7 +2688,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     ) -> Res<Value> {
         let f = &self.program.fns[id];
         if !self.program.judge_fns.is_empty() && self.program.judge_fns.contains(&id) {
-            return trap(span, NO_GRADER);
+            let cpp = self.program.cpp_bodies.iter().any(|(c, _)| *c == id);
+            return trap(span, if cpp { CPP_ONLY } else { NO_GRADER });
         }
         self.stack_left(span, Some(&f.name))?;
         let base = match args {
@@ -3528,6 +3529,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     // ----- input -----
 }
 
+const CPP_ONLY: &str =
+    "this fn's body is C++ (`@cpp`), so only the C++ build runs it: `cpl run` does that by itself";
 const NO_GRADER: &str =
     "this fn has no body: the judge's grader supplies it, so there is nothing to run here";
 /// The 64 bits of an `Int` or a `U64`.

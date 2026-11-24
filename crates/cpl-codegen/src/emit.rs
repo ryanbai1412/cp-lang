@@ -1288,6 +1288,12 @@ impl<'p> Emitter<'p> {
                 at: fns.len(),
                 always: hook || program.judge_fns.contains(&id),
             });
+            if let Some((_, code)) = program.cpp_bodies.iter().find(|(c, _)| *c == id) {
+                fns.push_str(&format!("{signature} {{\n    {code}\n}}\n"));
+                self.chunks
+                    .push((part, f.name.clone(), fns[start..].to_string()));
+                continue;
+            }
             if program.judge_fns.contains(&id) {
                 // The judge's fn, declared at the top of the file, behind
                 // a fn of the program's own types.

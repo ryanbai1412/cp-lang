@@ -343,6 +343,7 @@ pub(crate) fn walk_expr(v: &mut dyn Visitor, expr: &Expr) {
         | ExprKind::None
         | ExprKind::Name(_)
         | ExprKind::SelfValue
+        | ExprKind::Cpp(_)
         | ExprKind::Missing
         | ExprKind::Error => {}
         ExprKind::Str(pieces) => {

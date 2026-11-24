@@ -985,28 +985,7 @@ impl<'a> Parser<'a> {
                     String::new()
                 };
                 self.expect(T::RParen, "`)`");
-                let trimmed = code.trim();
-                let inner = trimmed
-                    .strip_prefix("return ")
-                    .and_then(|s| s.strip_suffix(';'))
-                    .map(str::trim);
-                if let Some(expr_src) = inner {
-                    let parsed = crate::parse_file(expr_src);
-                    if parsed.diagnostics.is_empty() && parsed.items.len() == 1 {
-                        if let Some(Stmt {
-                            kind: StmtKind::Expr(e),
-                            ..
-                        }) = parsed
-                            .items
-                            .into_iter()
-                            .next()
-                            .and_then(|(_, item)| item.stmts.into_iter().next())
-                        {
-                            return e;
-                        }
-                    }
-                }
-                ExprKind::Tuple(Vec::new())
+                ExprKind::Cpp(code)
             }
             T::Dot if self.peek_n(1) == T::Int => {
                 self.bump();

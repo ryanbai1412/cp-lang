@@ -455,3 +455,47 @@ impl<'a> Lowerer<'a> {
 pub(super) fn is_projection(f: &ast::FnDecl) -> bool {
     f.lends.is_some() && f.params.first().is_some_and(|p| p.name.text == "self")
 }
+
+/// `fn f(..) = @cpp("...")`: a body written in C++ (Rbundle.5).
+pub(super) fn is_cpp(e: &ast::Expr) -> bool {
+    matches!(e.kind, ast::ExprKind::Cpp(_))
+}
+
+impl<'a> Lowerer<'a> {
+    /// `fn new(next: Next<V>)`: a trait-typed parameter makes the fn generic in
+    /// that argument's type, as an explicit `<N: Next<V>>` would.
+    /// A `?mut T` param does too: each call shape is its own instance.
+    pub(super) fn takes_trait(&self, f: &ast::FnDecl, m: usize) -> bool {
+        f.params.iter().any(|p| {
+            matches!(
+                &p.ty,
+                Some(ast::Type { kind: ast::TypeKind::Named { name, .. }, .. })
+                    if matches!(self.mod_syms[m].get(&name.text), Some(Sym::Trait(_)))
+            ) || declare::is_opt_mut(p)
+        })
+    }
+
+    /// The fns no engine but the C++ can run: the judge's grader's, and
+    /// the `@cpp` ones, which are in `judge_fns` too, with their C++.
+    #[allow(clippy::type_complexity)]
+    pub(super) fn opaque_fns(
+        &mut self,
+        analysis: &'a Analysis,
+    ) -> (Vec<FnId>, Vec<FnId>, Vec<(FnId, String)>) {
+        let (mut judge_fns, entry_fns) = self.grader_fns(analysis);
+        let mut cpp = Vec::new();
+        for id in 0..self.sigs.len() {
+            if let ast::FnBody::Expr(ast::Expr {
+                kind: ast::ExprKind::Cpp(code),
+                ..
+            }) = &self.sigs[id].decl.body
+            {
+                if self.bodies[id].is_some() {
+                    judge_fns.push(id);
+                    cpp.push((id, code.clone()));
+                }
+            }
+        }
+        (judge_fns, entry_fns, cpp)
+    }
+}

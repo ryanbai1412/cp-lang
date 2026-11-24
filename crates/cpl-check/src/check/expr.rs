@@ -44,6 +44,7 @@ impl<'a> Checker<'a> {
             }
             ExprKind::Name(name) => self.name_ty(name, expr.span),
             ExprKind::SelfValue => self.name_ty("self", expr.span),
+            ExprKind::Cpp(_) => self.cpp_outside_body(expr.span),
             ExprKind::Paren(inner) => self.infer(inner),
             ExprKind::Unary { op, expr: inner } => {
                 let ty = self.infer(inner);

@@ -56,6 +56,15 @@ pub fn report_with(
             let _ = writeln!(stdout, "  [hashed] {ty} -> {HASHED}");
         }
     }
+    if !program.cpp_bodies.is_empty() {
+        let _ = writeln!(
+            stdout,
+            "C++ bodies for {path} (`@cpp`, emitted as written; `cpl run` runs the C++ build):"
+        );
+        for (id, _) in &program.cpp_bodies {
+            let _ = writeln!(stdout, "  [cpp] {}", program.fns[*id].name);
+        }
+    }
     if !sunk.is_empty() {
         let _ = writeln!(stdout, "Reductions sunk for {path} (judge build):");
         for (line, col, call) in &sunk {

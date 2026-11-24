@@ -160,6 +160,7 @@ impl<'a> Lowerer<'a> {
                 self.error(codes::UNRESOLVED_NAME, span, "`self` outside a method");
                 self.err_expr(span)
             }
+            ast::ExprKind::Cpp(_) => self.err_expr(span),
             ast::ExprKind::Paren(inner) if self.is_filled(inner) => {
                 let held = self.expr(inner, None);
                 match held.ty.clone() {

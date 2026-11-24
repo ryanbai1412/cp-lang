@@ -1406,6 +1406,9 @@ pub struct Program {
     /// `@grader fn name(...)` without a body: the judge's grader supplies
     /// these fns. Each has its signature and an empty body.
     pub judge_fns: Vec<FnId>,
+    /// `@cpp("...")` fns and their C++ bodies, emitted as written. Each is
+    /// in `judge_fns` too: only the C++ can run it (Rbundle.5).
+    pub cpp_bodies: Vec<(FnId, String)>,
     /// `@grader fn` with a body: the judge's grader calls these. A program
     /// with one has no `main` of its own in the emitted C++.
     pub entry_fns: Vec<FnId>,

@@ -478,6 +478,9 @@ pub enum ExprKind {
     None,
     Name(String),
     SelfValue,
+    /// `@cpp("...")`: a fn's body written in C++, which the bundle emits as
+    /// written (Rbundle.5).
+    Cpp(String),
     Unary {
         op: UnOp,
         expr: Box<Expr>,

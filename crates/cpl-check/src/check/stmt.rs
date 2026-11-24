@@ -2559,7 +2559,7 @@ impl<'a> Checker<'a> {
                     c.lend_reset(mark);
                     c.pop_scope();
                 }
-                FnBody::Expr(expr) => {
+                FnBody::Expr(expr) if !matches!(expr.kind, ExprKind::Cpp(_)) => {
                     if matches!(expr.kind, ExprKind::If { .. } | ExprKind::Match { .. }) {
                         c.plain_if = Some(expr.span);
                     }
@@ -2571,7 +2571,8 @@ impl<'a> Checker<'a> {
                     }
                     c.no_escape_return(expr, "returning it");
                 }
-                FnBody::None => {}
+                // An `@cpp` body is C++: only the signature is checked.
+                FnBody::Expr(_) | FnBody::None => {}
             }
         });
         self.fns.pop();

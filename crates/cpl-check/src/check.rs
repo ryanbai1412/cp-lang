@@ -542,6 +542,14 @@ impl<'a> Checker<'a> {
         opt_mut
     }
 
+    /// `@cpp("...")` anywhere but as a fn's whole body.
+    fn cpp_outside_body(&mut self, at: Span) -> Ty {
+        let message =
+            "`@cpp(\"...\")` is a fn's whole body: `fn f(a: Int) -> Int = @cpp(\"return a;\")`";
+        self.error(codes::UNSUPPORTED, at, message.to_string());
+        Ty::Error
+    }
+
     fn local(&self, name: &str) -> Option<&Local> {
         self.scopes.iter().rev().find_map(|scope| scope.get(name))
     }
