@@ -685,10 +685,11 @@ impl Checker<'_> {
         if param_tys.iter().any(Option::is_some) || !params.iter().all(|p| fixed(&p.ty)) {
             return false;
         }
-        // A catalog row's guess that left a parameter unknown gives way.
+        // A catalog row's guess that left a parameter unknown gives way; one
+        // that fixed them all types the lambda, so its result binds as well.
         let at = arg.value.span;
         match self.lambda_params.iter().position(|(s, _)| *s == at) {
-            Some(i) if self.lambda_params[i].1.iter().all(fixed) => return false,
+            Some(i) if self.lambda_params[i].1.iter().all(fixed) => return true,
             Some(i) => {
                 self.lambda_params.swap_remove(i);
             }

@@ -7,8 +7,6 @@
 13:6 : Row
 15:7 : List<Int>
 15:22 : Int
-15:22 : Int
-16:10 : Int
 16:10 : Int
 
 == foldingRange
