@@ -111,6 +111,18 @@ impl Database {
             doc_above(&source, def.span.start)
         });
         let doc = doc.or_else(|| builtin.map(|m| m.doc.to_string()));
+        // A member of a type with no declaration of its own (`xs.rev`) is
+        // std's top-level fn of that name.
+        let undeclared = entry.keyword == "field"
+            && entry.owner.as_ref().is_some_and(|owner| {
+                !analysis.imports().contains_key(owner) && analysis.decl_span(owner).is_none()
+            });
+        let doc = doc.or_else(|| {
+            let def = undeclared
+                .then(|| self.std_method(path, &entry.name))
+                .flatten()?;
+            doc_above(&self.file_text(&def.path)?, def.span.start)
+        });
         let receiver = item
             .check
             .hovers
@@ -242,12 +254,10 @@ impl Database {
                 }
                 None => (path.to_string(), analysis.clone(), owner.clone()),
             };
-            let own =
-                member_span(&owner_analysis, &owner_name, &entry.name).map(|span| Definition {
-                    path: owner_path,
-                    span,
-                });
-            return own.or_else(|| self.std_method(path, &entry.name));
+            return member_span(&owner_analysis, &owner_name, &entry.name).map(|span| Definition {
+                path: owner_path,
+                span,
+            });
         }
         if let Some(decl) = entry.decl {
             return Some(Definition {

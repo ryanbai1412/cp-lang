@@ -15,8 +15,6 @@ help: `let left = (..).first_true(at => ..)`: the predicate must be monotone alo
 help: iterate the values: `for x in g:`; with no index there is nothing to get wrong
 101:5-104:5 L0504 a loop that only accumulates `best` is one `max`
 help: write `V.map(v => cells[v]).max()`, or `max(0, V.map(v => cells[v]).max() ?? 0)` if `0` can win or the loop can run zero times
-101:9-101:13 L0203 this local hides the top-level `best`
-help: from here on `best` means the local; give it another name if the top-level one is meant below
 107:5-110:5 L0504 a loop that only accumulates `least` is one `min`
 help: write `V.map(v => abs(cells[v])).min()`, or `min(0, V.map(v => abs(cells[v])).min() ?? 0)` if `0` can win or the loop can run zero times
 12:12-12:30 R0202 `area * area * area` overflows Int when n = 1448
@@ -211,11 +209,11 @@ fn ranked(ys: List<Int>) -> Int
 
 == hover @ 84:10
 ```cp
-sorted(by: T -> K = x => x, cmp: (T, T) -> Bool = (a, b) => a < b, desc: Bool = false) -> List<T>
+sorted(by: T -> K = x => x, cmp: (T, T) -> Bool = (a, b) => a < b) -> List<T>
 cost: O(n log n)
 ```
 
-A new sorted list in O(n log n); takes `by:`, `cmp:`, and `desc:` like `sort`.
+A new sorted list in O(n log n); takes `by:` and `cmp:` like `sort`.
 
 == hover @ 86:7
 ```cp
@@ -226,19 +224,19 @@ fn order(cells: [V]Int)
 
 == hover @ 88:41
 ```cp
-sorted(by: T -> K = x => x, cmp: (T, T) -> Bool = (a, b) => a < b, desc: Bool = false) -> List<T>
+sorted(by: T -> K = x => x, cmp: (T, T) -> Bool = (a, b) => a < b) -> List<T>
 cost: O(n log n), about 3521929 (3.5e6) steps: cells has at most n = 200000 (2e5) items
 ```
 
-The cells as a sorted list in O(n log n); takes `by:`, `cmp:`, and `desc:` like `sort`.
+The cells as a sorted list in O(n log n); takes `by:` and `cmp:` like `sort`.
 
 == hover @ 89:13
 ```cp
-sorted(by: T -> K = x => x, cmp: (T, T) -> Bool = (a, b) => a < b, desc: Bool = false) -> List<T>
+sorted(by: T -> K = x => x, cmp: (T, T) -> Bool = (a, b) => a < b) -> List<T>
 cost: O(n log n), about 20 steps: pts has at most k = 7 items
 ```
 
-The cells as a sorted list in O(n log n); takes `by:`, `cmp:`, and `desc:` like `sort`.
+The cells as a sorted list in O(n log n); takes `by:` and `cmp:` like `sort`.
 
 == hover @ 90:8
 ```cp
@@ -272,11 +270,11 @@ fn collect() -> Int
 
 == hover @ 99:12
 ```cp
-sorted(by: T -> K = x => x, cmp: (T, T) -> Bool = (a, b) => a < b, desc: Bool = false) -> List<T>
+sorted(by: T -> K = x => x, cmp: (T, T) -> Bool = (a, b) => a < b) -> List<T>
 cost: O(n log n), about 28583794 (2.9e7) steps: seen has at most n * k = 1400000 (1.4e6) items
 ```
 
-A new sorted list in O(n log n); takes `by:`, `cmp:`, and `desc:` like `sort`.
+A new sorted list in O(n log n); takes `by:` and `cmp:` like `sort`.
 
 == hover @ 100:7
 ```cp

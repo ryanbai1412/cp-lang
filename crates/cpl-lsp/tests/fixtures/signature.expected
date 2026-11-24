@@ -14,7 +14,7 @@ reach(while: (a: Int, b: Int) -> Bool; cyclic: Bool = false) -> List<Int>
 active: cyclic: Bool = false
 
 == signatureHelp @ 8:12
-sort(by: Int -> K = x => x, cmp: (Int, Int) -> Bool = (a, b) => a < b, desc: Bool = false)
+sort(by: Int -> K = x => x, cmp: (Int, Int) -> Bool = (a, b) => a < b)
 active: by: Int -> K = x => x
 
 == signatureHelp @ 10:17
