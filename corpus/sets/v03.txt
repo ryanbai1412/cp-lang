@@ -42,6 +42,7 @@ ccc21s3
 cco16p3
 cco21p3
 cco22p5
+cco23p5
 ceoi18p1
 cf1146h
 cf1284e
@@ -325,6 +326,7 @@ cf2268c
 cf2268d
 cf2268e
 cheerio1s3
+coci21c1p5
 coi06p2
 csps21p2
 ctsc04p4
