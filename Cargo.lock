@@ -152,6 +152,7 @@ version = "0.3.0"
 dependencies = [
  "cpl-check",
  "cpl-diag",
+ "cpl-interp",
  "cpl-rt",
  "cpl-syntax",
 ]

@@ -506,7 +506,7 @@ impl<'a> Lowerer<'a> {
                     Ty::range(Ty::Pos(id)),
                     span,
                 );
-                self.reversed_range(range, span)
+                self.reversed_range(range, Ty::Pos(id), span)
             }
             "bounds" | "cuts" => {
                 let hi = self.int_add(len, 1);

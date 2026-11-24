@@ -112,16 +112,14 @@ impl<'a> Lowerer<'a> {
                     None => self.err_expr(span),
                 }
             }
-            (ty, "get") if ty.is_indexed() => {
-                let elem = ty.seq_elem().unwrap();
+            (ty, "get") if let Some(elem) = ty.seq_elem() => {
                 let opt = Ty::opt(elem);
                 match self.one_arg("get", args, &Ty::Int, span) {
                     Some(at) => self.mk_builtin(Builtin::SeqGet, [value, at], opt, span),
                     None => self.err_expr(span),
                 }
             }
-            (ty, "at") if Self::keyed_view(ty) => {
-                let elem = ty.seq_elem().unwrap();
+            (ty, "at") if let Some(elem) = ty.seq_elem().filter(|_| Self::keyed_view(ty)) => {
                 match self.one_arg("at", args, &Ty::Int, span) {
                     Some(at) => {
                         let view = self.hold_view(value, span);
@@ -134,20 +132,19 @@ impl<'a> Lowerer<'a> {
                 self.cut_beside(value, ty.clone(), method, args, span)
             }
             (ty, "nth")
-                if ty.is_indexed()
-                    && matches!(
+                if let Some(elem) = ty.seq_elem().filter(|_| {
+                    matches!(
                         ty,
                         Ty::List(_) | Ty::ListView(_, _) | Ty::Keyed(_, _) | Ty::Str | Ty::StrView
-                    ) =>
+                    )
+                }) =>
             {
-                let elem = ty.seq_elem().unwrap();
                 match self.one_arg("nth", args, &Ty::Int, span) {
                     Some(at) => self.mk_index(value, vec![at], elem, span),
                     None => self.err_expr(span),
                 }
             }
-            (ty, "at") if ty.is_indexed() => {
-                let elem = ty.seq_elem().unwrap();
+            (ty, "at") if let Some(elem) = ty.seq_elem() => {
                 match self.one_arg("at", args, &ty.key_ty(), span) {
                     Some(at) => {
                         let indices = self.vouched(ty, vec![at]);
@@ -156,8 +153,7 @@ impl<'a> Lowerer<'a> {
                     None => self.err_expr(span),
                 }
             }
-            (ty, "set_at") if ty.is_indexed_mut() => {
-                let elem = ty.seq_elem().unwrap();
+            (ty, "set_at") if let Some(elem) = ty.seq_elem().filter(|_| ty.is_indexed_mut()) => {
                 let ty_owned = ty.clone();
                 match self.positional_any(method, args, 2, span) {
                     Some(exprs) => {
@@ -925,9 +921,10 @@ impl<'a> Lowerer<'a> {
             // for; `xs.find(3)` is where the value 3 is. Handled uniformly across
             // every `Indexed` sequence (`List`, `ListView`, 1D `[D]T`, `Str`, `StrView`, `Range`).
             (ty, "find" | "rfind")
-                if ty.is_indexed() && args.len() == 1 && self.is_test(&args[0].value) =>
+                if let Some(elem) = ty
+                    .seq_elem()
+                    .filter(|_| args.len() == 1 && self.is_test(&args[0].value)) =>
             {
-                let elem = ty.seq_elem().unwrap();
                 self.find_first(value, elem, &args[0].value, method == "rfind", span)
             }
             (ty, "find" | "rfind")
@@ -1055,7 +1052,7 @@ impl<'a> Lowerer<'a> {
                 })
             }
             (ty, "first_ge" | "first_gt" | "last_le" | "last_lt" | "find" | "rfind")
-                if ty.is_indexed() =>
+                if let Some(elem) = ty.seq_elem() =>
             {
                 let dom = match &ty {
                     Ty::Array { dims, .. } if dims.len() == 1 => match dims[0] {
@@ -1064,7 +1061,6 @@ impl<'a> Lowerer<'a> {
                     },
                     _ => None,
                 };
-                let elem = ty.seq_elem().unwrap();
                 self.seq_search_method(method, value, elem, dom, args, span)
             }
             (Ty::Fn(_, _), "out") => self.call_fn_val(value, args, span),
@@ -1234,8 +1230,7 @@ impl<'a> Lowerer<'a> {
             // `xs.last(k)`: the element `k` back from the last one, so
             // `xs.last(1)` is the one before the last; `none` when there
             // are not that many.
-            (ty, "last") if ty.is_indexed() && args.len() == 1 => {
-                let elem = ty.seq_elem().unwrap();
+            (ty, "last") if let Some(elem) = ty.seq_elem().filter(|_| args.len() == 1) => {
                 // An array of positions is read at the position that far in.
                 let of = match &ty {
                     Ty::Array { dims, .. } => match dims[0] {
@@ -1301,7 +1296,10 @@ impl<'a> Lowerer<'a> {
             }
             // A range answers its own `count()` from its ends, O(1) (R07.9.6).
             (Ty::Range(_), "count") if args.is_empty() => self.len_of(value, span),
-            (Ty::Range(_), "rev") if args.is_empty() => self.reversed_range(value, span),
+            (Ty::Range(of), "rev") if args.is_empty() => {
+                let of = (**of).clone();
+                self.reversed_range(value, of, span)
+            }
             // `r.halves()`: split `r` into `(left, right)` with `left.len == (r.len + 1) / 2`
             // and `right.len == r.len / 2` (both non-empty whenever `r.len >= 2`).
             (Ty::Range(_), "halves") if args.is_empty() => {

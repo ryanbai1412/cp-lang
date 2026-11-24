@@ -927,8 +927,7 @@ impl<'a> Lowerer<'a> {
                 let elem = (**elem).clone();
                 self.walked_list(Iter::RangeVal(value, false), elem, span)
             }
-            ty if ty.is_seq() => {
-                let elem = ty.seq_elem().unwrap();
+            ty if let Some(elem) = ty.seq_elem() => {
                 if !self.ordered(&elem) {
                     self.report(
                         span,
@@ -1029,11 +1028,7 @@ impl<'a> Lowerer<'a> {
 
     /// `r.rev` kept as a value: the list of what the range goes over, last
     /// first. A loop over `r.rev` never comes here and builds no list.
-    pub(in crate::lower) fn reversed_range(&mut self, range: Expr, span: Span) -> Expr {
-        let Ty::Range(elem) = &range.ty else {
-            unreachable!("only a range is asked for")
-        };
-        let elem = (**elem).clone();
+    pub(in crate::lower) fn reversed_range(&mut self, range: Expr, elem: Ty, span: Span) -> Expr {
         let iter = match range.kind {
             ExprKind::Range { lo, hi } => Iter::Range {
                 lo: *lo,
@@ -1069,11 +1064,11 @@ impl<'a> Lowerer<'a> {
             }
             (kind, _) => Expr { kind, ..value },
         };
-        let list_ty = match value.ty.clone() {
-            Ty::List(e) | Ty::ListView(e, _) | Ty::Keyed(e, _) | Ty::MutView(e, _) => Ty::List(e),
-            Ty::Array { elem, .. } => Ty::List(elem),
-            Ty::Set(e) | Ty::HashSet(e) => Ty::List(e),
-            ty if ty.is_seq() => Ty::list(ty.seq_elem().unwrap()),
+        let elem = match value.ty.clone() {
+            Ty::List(e) | Ty::ListView(e, _) | Ty::Keyed(e, _) | Ty::MutView(e, _) => *e,
+            Ty::Array { elem, .. } => *elem,
+            Ty::Set(e) | Ty::HashSet(e) => *e,
+            ty if let Some(elem) = ty.seq_elem() => elem,
             Ty::Error => return value,
             other => {
                 self.report(
@@ -1084,10 +1079,7 @@ impl<'a> Lowerer<'a> {
                 return self.err_expr(span);
             }
         };
-        let elem = match &list_ty {
-            Ty::List(e) => (**e).clone(),
-            _ => unreachable!(),
-        };
+        let list_ty = Ty::list(elem.clone());
         self.do_expr(Some(&list_ty), span, |lw, out| {
             let init = match value.ty {
                 Ty::List(_) => lw.mk_builtin(Builtin::Copy, [value], list_ty.clone(), span),
@@ -1139,8 +1131,7 @@ impl<'a> Lowerer<'a> {
     pub(in crate::lower) fn spec_of(&mut self, ty: &Ty) -> Option<Spec> {
         Some(match ty {
             Ty::Struct(id) => self.struct_spec(*id),
-            Ty::Tuple(_) | Ty::Record(_) => {
-                let fields = ty.fields().expect("a tuple or record");
+            Ty::Tuple(_) | Ty::Record(_) if let Some(fields) = ty.fields() => {
                 let specs: Option<Vec<Spec>> = fields.iter().map(|f| self.spec_of(f)).collect();
                 Spec::Fields(ty.clone(), specs?)
             }
@@ -1285,20 +1276,13 @@ impl<'a> Lowerer<'a> {
             let read = lw.mk_read(Spec::Plain(tok_ty.clone()), tok_ty.clone(), span);
             out.push_let(token, read);
             for (tag, (_, specs)) in variants.iter().zip(fields).enumerate() {
-                let tags = [tokens[tag].clone()];
-                let mut cond: Option<Expr> = None;
-                for text in tags {
-                    let lit = match letters {
-                        true => lw.mk(ExprKind::Char(text.as_bytes()[0]), Ty::Char, span),
-                        false => lw.mk(ExprKind::Str(text.into_bytes()), Ty::Str, span),
-                    };
-                    let tok = lw.local(token, span);
-                    let eq = lw.mk_cmp(CmpOp::Eq, tok, lit, Ty::Bool, span);
-                    cond = Some(match cond {
-                        Some(prev) => lw.mk_binary(BinOp::Or, prev, eq, Ty::Bool, span),
-                        None => eq,
-                    });
-                }
+                let text = tokens[tag].clone();
+                let lit = match letters {
+                    true => lw.mk(ExprKind::Char(text.as_bytes()[0]), Ty::Char, span),
+                    false => lw.mk(ExprKind::Str(text.into_bytes()), Ty::Str, span),
+                };
+                let tok = lw.local(token, span);
+                let cond = lw.mk_cmp(CmpOp::Eq, tok, lit, Ty::Bool, span);
                 let mut body = Vec::new();
                 let mut values = Vec::with_capacity(specs.len());
                 for spec in specs {
@@ -1312,7 +1296,6 @@ impl<'a> Lowerer<'a> {
                     None => lw.mk(ExprKind::Variant(tag, values), ty.clone(), span),
                 };
                 body.push_give(value);
-                let cond = cond.expect("a variant has a name");
                 out.push(Stmt::If(cond, Block { stmts: body }, Block::default()));
             }
             out.push(Stmt::Trap(

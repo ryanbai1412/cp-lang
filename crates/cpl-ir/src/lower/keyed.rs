@@ -449,11 +449,13 @@ impl<'a> Lowerer<'a> {
     }
 
     pub(super) fn reversed_keys(&mut self, value: Expr, span: Span) -> Expr {
-        let keys = match value.kind {
-            ExprKind::Builtin(Builtin::Reversed, mut args) => self.seq_keys(args.remove(0), span),
-            _ => self.seq_keys(value, span),
+        let value = match value.kind {
+            ExprKind::Builtin(Builtin::Reversed, mut args) => args.remove(0),
+            _ => value,
         };
-        self.reversed_range(keys, span)
+        let key = value.ty.key_ty();
+        let keys = self.seq_keys(value, span);
+        self.reversed_range(keys, key, span)
     }
 
     /// `s.filter(p)` written as a call: its source and its test.
