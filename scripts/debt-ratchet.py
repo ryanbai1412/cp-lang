@@ -2055,6 +2055,7 @@ RETRY_FETCHES = {
     "micromamba": r"\"?\S*/micromamba\"? create ",
     "git push race": r"(sh -c 'git pull -q --rebase origin main && git push |push( |$)|push_reservation,)",
     "git push holding the land lock": r"push_held( |$)",
+    "git push deleting the land lock": r"delete_lock( |$)",
     "chat completion": r"post_chat,",
     "gradle fetch": r"\./gradlew --no-daemon --init-script \S+ prefetch\b",
     "cargo install": r"cargo install --locked --root ",

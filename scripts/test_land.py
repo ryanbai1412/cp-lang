@@ -1030,18 +1030,19 @@ exec {shutil.which("git")} "$@"
         self.commit(ours, "ours")
         self.lock(theirs)
 
-        def holder_pushes_and_lets_go():
-            remote = str(self.tmp / "remote.git")
-            while "refs/locks/queue/" not in git(self.tmp, "ls-remote", remote, "refs/locks/queue/*"):
-                time.sleep(0.1)
-            time.sleep(1)
-            git(theirs, "push", "-q", "origin", "HEAD:main")
-            git(theirs, "push", "-q", "origin", ":refs/land/lock-v2")
-
-        holder = threading.Thread(target=holder_pushes_and_lets_go)
-        holder.start()
+        # The holder pushes and lets go once ours is in line, from the remote's hook.
+        hook = self.tmp / "remote.git" / "hooks" / "post-receive"
+        hook.write_text(f"""#!/bin/sh
+unset GIT_DIR
+while read old new ref; do
+    case "$ref" in refs/locks/queue/*)
+        mkdir "{self.tmp}/held" 2>/dev/null || continue
+        (cd "{theirs}" && git push -q origin HEAD:main && git push -q origin :refs/land/lock-v2) </dev/null >/dev/null 2>&1 & ;;
+    esac
+done
+""")
+        hook.chmod(0o755)
         r = self.land(ours, CPL_LAND_LOCK_WAIT="60")
-        holder.join()
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("rebasing holding it", r.stderr)
         self.assertIn("(try 1)", r.stdout)

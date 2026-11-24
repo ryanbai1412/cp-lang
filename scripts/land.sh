@@ -598,9 +598,7 @@ take_lock() {
 drop_lock() {
     [ -n "$lock_held" ] || return 0
     stop_beat
-    [ -e "$lock_file.lost" ] ||
-        RETRY_TRIES=3 RETRY_WAIT=1 retry git push -q --no-verify \
-            --force-with-lease="$lock_ref:$(cat "$lock_file")" "$remote" ":$lock_ref" 2>/dev/null || :
+    [ -e "$lock_file.lost" ] || RETRY_TRIES=3 RETRY_WAIT=1 retry delete_lock || :
     rm -f "$lock_file.lost"
     lock_held=""
 }
@@ -645,6 +643,9 @@ push() {
     RETRY_TRIES=3 RETRY_WAIT=1 retry push_held && [ -z "$moved" ] && return 0
     drop_lock
     return 1
+}
+delete_lock() {
+    git push -q --no-verify --force-with-lease="$lock_ref:$(cat "$lock_file")" "$remote" ":$lock_ref" 2>/dev/null
 }
 # Succeeds once pushed, or once main moved under the lock (set $moved): then
 # only a rebase helps, not another try.
