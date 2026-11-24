@@ -114,7 +114,15 @@ pub(crate) const PASSES: &[Pass] = &[
     pass(
         "lend-bindings",
         "emit.rs",
-        Uses(&["Uses::of", "Touch"]),
+        Uses(&[
+            "Uses::of",
+            "Touch",
+            "each_sink",
+            "labeled_jumps",
+            "each_write",
+            "each_value",
+            "each_value_call",
+        ]),
         "a_let_of_a_list_nothing_changes_is_a_reference_not_a_copy",
     ),
     pass(

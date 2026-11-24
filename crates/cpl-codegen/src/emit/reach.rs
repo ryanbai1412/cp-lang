@@ -1,7 +1,7 @@
 //! What a program reaches: the fns, closures, structs and enums worth
 //! writing, so uncalled std fns, unused types and their hooks are left out.
 
-use crate::walk;
+use crate::uses::split::each_value;
 use cpl_ir::{Block, ClosureId, ExprKind, OrdHook, Program, Ty};
 use std::collections::BTreeSet;
 
@@ -143,7 +143,7 @@ impl Reach {
     }
 
     fn block(&mut self, program: &Program, same: &[ClosureId], b: &Block) {
-        walk::deep_exprs(b, &mut |e| {
+        each_value(b, &mut |e| {
             self.ty(program, &e.ty);
             if let Ty::Set(k) | Ty::HashSet(k) | Ty::Map(k, _) | Ty::HashMap(k, _) = &e.ty {
                 self.needs_tie |= has_adt(k);

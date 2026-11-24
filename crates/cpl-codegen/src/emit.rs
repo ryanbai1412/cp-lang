@@ -3,7 +3,9 @@
 use crate::names::{cty, dom_ident, fn_name, global_ident, ident, is_plain_enum, judge_ty, Niches};
 use crate::ranges::Facts;
 use crate::runtime::pieces;
-use crate::walk;
+use crate::uses::loops::labeled_jumps;
+use crate::uses::places::{each_value_call, each_write, Write};
+use crate::uses::split::{each_sink, each_value, Sink};
 use cpl_ir::{Block, Expr, ExprKind, Function, Local, LoopId, OrdHook, Program, Stmt, Ty};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -656,20 +658,14 @@ impl<'p> Emitter<'p> {
         self.given_parts.clear();
         self.break_targets.clear();
         self.continue_targets.clear();
-        walk::deep_stmts(body, &mut |stmt| match stmt {
-            Stmt::Return(Some(e)) => {
+        each_sink(body, &mut |sink| {
+            if let Sink::Return(e) = sink {
                 if let Some(root) = crate::lend::given_part_root(e) {
                     self.given_parts.insert(root);
                 }
             }
-            Stmt::Break(Some(id)) => {
-                self.break_targets.insert(*id);
-            }
-            Stmt::Continue(Some(id)) => {
-                self.continue_targets.insert(*id);
-            }
-            _ => {}
         });
+        (self.break_targets, self.continue_targets) = labeled_jumps(body);
     }
 
     /// Whether `f` is `std.interval.IntervalMap<D, T>.assign`, which lowers to
@@ -888,8 +884,8 @@ impl<'p> Emitter<'p> {
         }
         // A part only a conditional's arm gives is copied into its value either way.
         let mut alone = false;
-        walk::deep_stmts(&f.body, &mut |s| {
-            if let Stmt::Return(Some(e)) = s {
+        each_sink(&f.body, &mut |sink| {
+            if let Sink::Return(e) = sink {
                 alone |= root.is_some() && self.lent_place_root(e, by_ref) == root;
             }
         });
@@ -1131,34 +1127,19 @@ impl<'p> Emitter<'p> {
             crate::globals::touched(&c.body, &mut shared_globals);
         }
         let mut read_in_main: std::collections::HashSet<usize> = std::collections::HashSet::new();
-        crate::walk::deep_stmts(&program.main, &mut |stmt| {
-            if let Stmt::Assign(place, _, _) = stmt {
-                if !matches!(place.kind, cpl_ir::PlaceKind::Global(_)) {
-                    if let (true, id) = crate::walk::root(place) {
-                        read_in_main.insert(id);
-                    }
-                }
-            }
-        });
-        crate::walk::deep_exprs(&program.main, &mut |e| match &e.kind {
-            ExprKind::Global(id) => {
-                read_in_main.insert(*id);
-            }
-            ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, _, _) => {
+        each_write(&program.main, &mut |how, place| {
+            let direct =
+                matches!(how, Write::Store) && matches!(place.kind, cpl_ir::PlaceKind::Global(_));
+            if !direct && !matches!(how, Write::InPlace) {
                 if let (true, id) = crate::walk::root(place) {
                     read_in_main.insert(id);
                 }
             }
-            ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
-                for arg in args {
-                    if let cpl_ir::Arg::Mut(place) = arg {
-                        if let (true, id) = crate::walk::root(place) {
-                            read_in_main.insert(id);
-                        }
-                    }
-                }
+        });
+        each_value(&program.main, &mut |e| {
+            if let ExprKind::Global(id) = e.kind {
+                read_in_main.insert(id);
             }
-            _ => {}
         });
 
         let mut vars = String::new();
@@ -1482,12 +1463,10 @@ impl<'p> Emitter<'p> {
                 } else {
                     visiting.push((cid, true));
                     let mut deps = Vec::new();
-                    crate::walk::deep_exprs(&program.closures[cid].body, &mut |e| {
-                        if let cpl_ir::ExprKind::CallExpr(callee, _) = &e.kind {
-                            if let Some(dep) = self.devirt.target(None, callee) {
-                                if dep != cid && !emitted_direct.contains(&dep) {
-                                    deps.push(dep);
-                                }
+                    each_value_call(&program.closures[cid].body, &mut |callee, _| {
+                        if let Some(dep) = self.devirt.target(None, callee) {
+                            if dep != cid && !emitted_direct.contains(&dep) {
+                                deps.push(dep);
                             }
                         }
                     });
