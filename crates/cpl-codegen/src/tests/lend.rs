@@ -547,3 +547,69 @@ fn a_named_closure_borrows_each_capture_nothing_changes() {
         "`door` changes, so it is copied: {out}"
     );
 }
+
+#[test]
+fn a_named_closure_borrows_its_unchanged_captures_beside_a_changed_one() {
+    let out = cpp(concat!(
+        "let n = read::<Int>()\n",
+        "fn go() -> Int:\n",
+        "    var seen = [0 for _ in 0..n]\n",
+        "    let free = [i for i in 0..n]\n",
+        "    fn ok(k: Int) -> Bool:\n",
+        "        seen[0] += 1\n",
+        "        free.len >= k\n",
+        "    seen[0] = 1\n",
+        "    let k = (0..=n).first_true(k => not ok(k)) ?? 0\n",
+        "    k + seen[0] + free.len\n",
+        "print(go())\n",
+    ));
+    assert!(
+        out.contains("&free_2 = free"),
+        "an unchanged list is borrowed, not copied, though `seen` changes: {out}"
+    );
+}
+
+#[test]
+fn a_closure_borrows_a_list_moved_only_after_its_last_call() {
+    let lent = cpp(concat!(
+        "let n = read::<Int>()\n",
+        "let around: [0..n]List<Int> = read()\n",
+        "fn walk(u: 0..n, p: Int) -> Int:\n",
+        "    let doors = around[u]\n",
+        "    let back = (0..doors.len).find(i => doors[i] == p) ?? 0\n",
+        "    [c for c in doors[back..]].len + [c for c in doors].len\n",
+        "print(walk(0, read()))\n",
+    ));
+    assert!(lent.contains("&doors_2 = doors"), "{lent}");
+    let kept = cpp(concat!(
+        "let n = read::<Int>()\n",
+        "let around: [0..n]List<Int> = read()\n",
+        "fn walk(u: 0..n, p: Int) -> Int:\n",
+        "    let doors = around[u]\n",
+        "    let has = (i: Int) => doors[i] == p\n",
+        "    let seen = doors\n",
+        "    seen.len + (if has(0): 1 else: 0)\n",
+        "print(walk(0, read()))\n",
+    ));
+    assert!(!kept.contains("&doors_2 = doors"), "{kept}");
+}
+
+#[test]
+fn a_top_level_list_sorted_at_its_last_read_moves_after_a_comprehension() {
+    let out = cpp(concat!(
+        "let m = read::<Int>()\n",
+        "let cords: [m](x: Int, y: Int) = read()\n",
+        "let xs = [c.x for c in cords]\n",
+        "let tall = cords.sorted(by: c => -c.y)\n",
+        "print(xs.len, tall.len)\n",
+    ));
+    assert!(out.contains("std::move(cords)"), "{out}");
+    let viewed = cpp(concat!(
+        "let m = read::<Int>()\n",
+        "let cords: [m](x: Int, y: Int) = read()\n",
+        "let head = cords[..1]\n",
+        "let tall = cords.sorted(by: c => -c.y)\n",
+        "print(head.len, tall.len)\n",
+    ));
+    assert!(!viewed.contains("std::move(cords)"), "{viewed}");
+}

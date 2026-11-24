@@ -743,15 +743,48 @@ fn dies_in(
         },
         &mut |stmt| match stmt {
             Stmt::Let(_, Some(e)) | Stmt::Assign(_, _, e) => {
-                let mut reads = false;
-                walk::deep_expr(e, &mut |inner| reads |= reads_whole(inner, src));
-                held |= reads && !e.ty.is_scalar() && !reads_whole(e, src)
+                held |= !e.ty.is_scalar() && !reads_whole(e, src) && reads_unbuilt(e, src)
             }
             _ => {}
         },
     );
     let inside = callee.map_or(0, |f| count(&program.fns[f].body));
     !elsewhere && !held && count(&here) + inside == 1
+}
+
+/// Whether `e` reads `src` whole other than inside a value a block builds
+/// from scratch, which holds no reference into it.
+fn reads_unbuilt(e: &Expr, src: (bool, usize)) -> bool {
+    if built_fresh(e) && !e.ty.holds_view() {
+        return false;
+    }
+    if reads_whole(e, src) {
+        return true;
+    }
+    let mut found = false;
+    if let ExprKind::Do(block) = &e.kind {
+        walk::deep_exprs(block, &mut |inner| found |= reads_whole(inner, src));
+    }
+    walk::children(e, &mut |child| found |= reads_unbuilt(child, src));
+    found
+}
+
+/// A value a block builds from scratch and gives, `[c.x for c in cs]`:
+/// it holds no reference into what it read.
+fn built_fresh(e: &Expr) -> bool {
+    let ExprKind::Do(block) = &e.kind else {
+        return false;
+    };
+    let Some(Stmt::Give(given)) = block.stmts.last() else {
+        return false;
+    };
+    let ExprKind::Local(built) = given.kind else {
+        return false;
+    };
+    block
+        .stmts
+        .iter()
+        .any(|stmt| matches!(stmt, Stmt::Let(slot, _) if *slot == built))
 }
 
 /// The `let x = g` statements of a fn that read the global `g` for the

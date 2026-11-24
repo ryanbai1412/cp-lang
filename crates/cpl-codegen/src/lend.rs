@@ -288,7 +288,9 @@ impl<'p> Emitter<'p> {
                 let found = self.uses.of_binding(home, o);
                 if found.mutated {
                     Some((o, CAPTURE_SET))
-                } else if found.moved || sunk.is_some_and(|s| s.contains(&o)) {
+                } else if (found.moved && blocks.iter().any(|b| moved_while_live(b, slot, o)))
+                    || sunk.is_some_and(|s| s.contains(&o))
+                {
                     Some((o, CAPTURE_MOVED))
                 } else {
                     None
@@ -783,6 +785,49 @@ pub(crate) fn fn_param_only_called(program: &cpl_ir::Program, fn_id: usize, slot
 /// or captured by a closure that may keep it. A closure that captures it
 /// and is itself passed where it is only called (`first_true(m =>
 /// ok(m))`), or passed on itself (`bag.first_true(ok)`), counts as a call.
+/// Whether, in the block of `body` that declares the closure `slot`, a
+/// statement from that `let` to the closure's last mention reads `capture`
+/// whole (which may move it). A move before the closure is made or after
+/// its last call leaves a borrowed capture alone.
+fn moved_while_live(body: &Block, slot: usize, capture: usize) -> bool {
+    let mut home = None;
+    walk::blocks(body, &mut |b| {
+        if b.stmts
+            .iter()
+            .any(|st| matches!(st, Stmt::Let(s, _) if *s == slot))
+        {
+            home = Some(b);
+        }
+    });
+    let Some(block) = home else {
+        let mut named = false;
+        walk::deep_exprs(body, &mut |e| {
+            named |= matches!(e.kind, ExprKind::Local(s) if s == slot)
+        });
+        return named;
+    };
+    let names = |stmt: &Stmt| {
+        let mut found = matches!(stmt, Stmt::Let(s, _) if *s == slot);
+        walk::deep_exprs(
+            &Block {
+                stmts: vec![stmt.clone()],
+            },
+            &mut |e| found |= matches!(e.kind, ExprKind::Local(s) if s == slot),
+        );
+        found
+    };
+    let at: Vec<usize> = (0..block.stmts.len())
+        .filter(|&k| names(&block.stmts[k]))
+        .collect();
+    let (Some(&first), Some(&last)) = (at.first(), at.last()) else {
+        return true;
+    };
+    whole_reads(&Block {
+        stmts: block.stmts[first..=last].to_vec(),
+    })
+    .contains(&capture)
+}
+
 pub(crate) fn only_called(program: &cpl_ir::Program, body: &Block, slot: usize, depth: u8) -> bool {
     let (mut uses, mut calls, mut escapes) = (0usize, 0usize, false);
     let mut passed_on = std::collections::BTreeSet::new();
