@@ -409,7 +409,34 @@ impl<'p> Emitter<'p> {
             self.carries.push(c);
             decl
         });
+        let grid_rows = self.loop_grid_rows(slot, iter, body);
+        let grid_mark = self.grid_rows.len();
+        let body_start = out.len();
+        if !grid_rows.is_empty() {
+            let steps: Vec<&str> = grid_rows.iter().map(|(_, _, s)| s.as_str()).collect();
+            self.grid_steps = Some((slot, steps.join(", ")));
+            self.grid_rows
+                .extend(grid_rows.iter().map(|(r, ..)| r.clone()));
+        }
         self.for_stmt(id, slot, iter, body, out);
+        self.grid_rows.truncate(grid_mark);
+        let grid_rows = if self.grid_steps.take_if(|(at, _)| *at == slot).is_some() {
+            // The loop was written without the head that moves the rows.
+            out.truncate(body_start);
+            self.for_stmt(id, slot, iter, body, out);
+            Vec::new()
+        } else {
+            grid_rows
+        };
+        if !grid_rows.is_empty() {
+            let lead = pad(self.indent);
+            let mut head = format!("{lead}{{\n");
+            for (_, decl, _) in &grid_rows {
+                head.push_str(&format!("{lead}{decl}\n"));
+            }
+            out.insert_str(body_start, &head);
+            self.line(out, "}");
+        }
         if let Some(decl) = decl {
             self.carries.pop();
             let lead = pad(self.indent);

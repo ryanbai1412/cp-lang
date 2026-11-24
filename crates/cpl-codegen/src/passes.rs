@@ -366,6 +366,12 @@ pub(crate) const PASSES: &[Pass] = &[
         "a_row_a_loop_never_moves_is_checked_once_per_loop",
     ),
     pass(
+        "grid-row-pointers",
+        "gridrow.rs",
+        Uses(&["rows_led_by", "Touch::of_block"]),
+        "a_loop_over_the_rows_of_a_grid_walks_them_by_pointer",
+    ),
+    pass(
         "carry-prev-cell",
         "carry.rs",
         Uses(&["Touch::of_block"]),

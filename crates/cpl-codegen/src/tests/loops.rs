@@ -274,3 +274,43 @@ print(seen, s.len, h.len)
         "a body that reads the set or leaves keeps the test: {out}"
     );
 }
+
+#[test]
+fn a_loop_over_the_rows_of_a_grid_walks_them_by_pointer() {
+    let source = concat!(
+        "let n: 1..=100 = read()\n",
+        "domain S = 0..n\n",
+        "fn mul(a: [S, S]Int, b: [S, S]Int) -> [S, S]Int:\n",
+        "    var c: [S, S]Int = [S, S] (i, j) => 0\n",
+        "    for i in S:\n",
+        "        for j in S:\n",
+        "            let via = a[i, j]\n",
+        "            for l in S: c[i, l] max= via + b[j, l]\n",
+        "    c\n",
+        "let g: [S, S]Int = [S, S] (i, j) => i.ord + j.ord\n",
+        "print(mul(g, g)[(S.first)!, (S.first)!])\n",
+    );
+    let out = cpp(source);
+    assert!(
+        out.contains("++, c_row += c.n[1], a_row += a.n[1]"),
+        "the rows of `c` and `a` move with `i`: {out}"
+    );
+    assert!(out.contains("++, b_row += b.n[1]"), "{out}");
+    assert!(
+        out.contains("c_row[(size_t)(l)] = ") && out.contains("b_row[(size_t)(l)]"),
+        "{out}"
+    );
+    let rebound = cpp(concat!(
+        "let n: 1..=100 = read()\n",
+        "domain S = 0..n\n",
+        "var c: [S, S]Int = [S, S] (i, j) => 0\n",
+        "for i in S:\n",
+        "    c[i, (S.first)!] = 1\n",
+        "    c = [S, S] (i, j) => 2\n",
+        "print(c[(S.first)!, (S.first)!])\n",
+    ));
+    assert!(
+        !rebound.contains("c_row"),
+        "a grid the loop replaces: {rebound}"
+    );
+}

@@ -224,7 +224,7 @@ print(total)
         "expected [R, C]-100..=100 to emit cpl::Grid<int8_t, 2>:\n{grid}"
     );
     assert!(
-        grid.contains("ll(g("),
+        grid.contains("ll(g_row_2["),
         "expected 2D grid read to widen to ll before arithmetic:\n{grid}"
     );
 

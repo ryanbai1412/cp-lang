@@ -453,8 +453,15 @@ impl<'p> Emitter<'p> {
                                     }
                                     _ => String::new(),
                                 };
+                                let steps = match self.grid_steps.take() {
+                                    Some((at, steps)) if at == slot => format!(", {steps}"),
+                                    other => {
+                                        self.grid_steps = other;
+                                        String::new()
+                                    }
+                                };
                                 format!(
-                                    "{unroll}for ({cpp} {var} = {start}{extra}; {var} < {bound}; {var}++) {{"
+                                    "{unroll}for ({cpp} {var} = {start}{extra}; {var} < {bound}; {var}++{steps}) {{"
                                 )
                             }
                             // Up to a last value that is not the largest

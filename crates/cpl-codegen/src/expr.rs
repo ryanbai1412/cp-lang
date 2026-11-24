@@ -618,6 +618,9 @@ impl<'p> Emitter<'p> {
                         .chain(groups.iter().map(|g| g.0))
                         .collect();
                 }
+                let row = (joined.is_none() && !checked)
+                    .then(|| self.grid_row(crate::uses::rows::expr_root(base), indices))
+                    .flatten();
                 let spans: Option<Vec<usize>> = joined.map(|g| g.iter().map(|g| g.1).collect());
                 if (matches!(
                     base_ty,
@@ -658,9 +661,10 @@ impl<'p> Emitter<'p> {
                     let code = match base_ty {
                         Ty::Array { dims, elem } if dims.len() > 1 => {
                             let call = if checked { ".ck" } else { "" };
-                            let cell = match &spans {
-                                Some(spans) => crate::flat::cell(&b, &at, spans),
-                                None => format!("{b}{call}({})", at.join(", ")),
+                            let cell = match (&spans, &row) {
+                                (Some(spans), _) => crate::flat::cell(&b, &at, spans),
+                                (None, Some(row)) => crate::gridrow::row_cell(row, &at),
+                                (None, None) => format!("{b}{call}({})", at.join(", ")),
                             };
                             if **elem == Ty::Bool {
                                 Code::new(format!("(bool){cell}"), UNARY)

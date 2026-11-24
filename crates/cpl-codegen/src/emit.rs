@@ -298,6 +298,10 @@ pub(crate) struct Emitter<'p> {
     /// Rows the loops being written reach once: the row, the pointer
     /// that holds it, and the C++ that reaches it the first time.
     pub row_ptrs: Vec<(crate::rowcache::Row, String, String)>,
+    /// Grid rows the loops being written walk by pointer (`gridrow.rs`).
+    pub grid_rows: Vec<crate::gridrow::GridRow>,
+    /// The steps of those pointers, for the head of the loop over the slot.
+    pub grid_steps: Option<(usize, String)>,
     /// Cells the loops being written keep in a local (`carry.rs`).
     pub carries: Vec<crate::carry::Carry>,
     /// How deep the statement being written is indented.
@@ -442,6 +446,8 @@ impl<'p> Emitter<'p> {
             found: Vec::new(),
             inside: Vec::new(),
             row_ptrs: Vec::new(),
+            grid_rows: Vec::new(),
+            grid_steps: None,
             carries: Vec::new(),
             indent: 0,
             sites: None,

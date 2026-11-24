@@ -654,8 +654,11 @@ fn an_index_of_the_arrays_own_domain_has_no_bounds_test() {
                for r in R:\n    for d in D:\n        a[d] += g[r, d]\n        g[r, d] = a[d]\n\
                b[k] = h[k, k]\nprint(a, g, b)\n";
     let out = cpp(src);
-    assert!(out.contains("a[d] = cpl::iadd(a[d], g(r, d));"), "{out}");
-    assert!(out.contains("g(r, d) = a[d];"), "{out}");
+    assert!(
+        out.contains("a[d] = cpl::iadd(a[d], g_row[(size_t)(d)]);"),
+        "{out}"
+    );
+    assert!(out.contains("g_row[(size_t)(d)] = a[d];"), "{out}");
     assert!(out.contains("cpl::at(b, k) = h.ck(k, k);"), "{out}");
 }
 

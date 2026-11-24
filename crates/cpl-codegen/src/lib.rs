@@ -16,6 +16,7 @@ mod fold;
 mod frame;
 mod fuse;
 mod globals;
+mod gridrow;
 mod inline;
 mod into;
 mod invariant;

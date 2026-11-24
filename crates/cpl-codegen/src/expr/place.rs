@@ -62,6 +62,13 @@ impl<'p> Emitter<'p> {
                 {
                     let joined = crate::flat::joined(dims, indices)
                         .filter(|_| self.grid_ck(&base.kind, indices).is_empty());
+                    if joined.is_none() && self.grid_ck(&base.kind, indices).is_empty() {
+                        if let Some(cell) =
+                            self.grid_row_cell(crate::uses::rows::place_root(&base.kind), indices)
+                        {
+                            return cell;
+                        }
+                    }
                     if let Some(groups) = joined {
                         let at: Vec<String> = groups.iter().map(|g| self.expr(g.0).text).collect();
                         let spans: Vec<usize> = groups.iter().map(|g| g.1).collect();
