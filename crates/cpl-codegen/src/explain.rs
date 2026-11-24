@@ -15,6 +15,10 @@ pub fn report(path: &str, text: &str, program: &cpl_ir::Program) -> String {
 
 /// [`report`] opening with `storage`, the types and memory section the
 /// checker's representation query fills (`cpl explain` and the playground
+/// Why a `mut` argument is passed as a copy.
+pub const WRITTEN_BACK: &str =
+    "a `Bool` element is a bit with no address: passed as a copy, put back after the call";
+
 /// always pass it).
 pub fn report_with(
     path: &str,
@@ -51,6 +55,19 @@ pub fn report_with(
             let _ = writeln!(stdout, "  [copy] {line}:{col}  {shown} -> {why}");
         }
     }
+    if !program.written_back.is_empty() {
+        let _ = writeln!(stdout, "Written back for {path}:");
+        for span in &program.written_back {
+            let (line, col) = line_col(text, *span);
+            let shown = text
+                .get(span.start as usize..span.end as usize)
+                .unwrap_or("");
+            let _ = writeln!(
+                stdout,
+                "  [written back] {line}:{col}  {shown} -> {WRITTEN_BACK}"
+            );
+        }
+    }
     if !hashed.is_empty() {
         let _ = writeln!(stdout, "Tables stored as hash tables for {path}:");
         for ty in &hashed {
@@ -79,7 +96,12 @@ pub fn report_with(
         }
     }
     if entries.is_empty() && view_ops.is_empty() {
-        if dropped.is_empty() && sunk.is_empty() && hashed.is_empty() && copies.is_empty() {
+        if dropped.is_empty()
+            && sunk.is_empty()
+            && hashed.is_empty()
+            && copies.is_empty()
+            && program.written_back.is_empty()
+        {
             let _ = writeln!(stdout, "{path}: no closure or fn-typed sites");
         }
         chosen_and_checked(stdout, path, text, &specializations, &checks);

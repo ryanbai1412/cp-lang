@@ -210,6 +210,12 @@ impl Lowerer<'_> {
             judge_tys: lw.judge_tys,
             raw_lists: lw.raw_lists,
             narrow_elems: lw.narrow_elems,
+            written_back: {
+                let mut spans = lw.written_back;
+                spans.sort_by_key(|s| (s.start, s.end));
+                spans.dedup();
+                spans
+            },
         };
         let escapes = crate::pushed::escaping_yields(&program);
         escapes.is_empty().then_some(program).ok_or(escapes)

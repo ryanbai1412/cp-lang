@@ -1293,3 +1293,21 @@ fn a_whole_read_moves_when_its_source_is_overwritten_before_its_next_read() {
         "a fn reads ys before it is set again: {read_by_a_call}"
     );
 }
+
+#[test]
+fn a_bool_element_lent_mut_shows_its_write_back() {
+    let source = concat!(
+        "fn flip(mut b: Bool): b = not b\n",
+        "var tags = [false, true]\n",
+        "flip(mut tags[1])\n",
+        "print(yes(tags[1]))\n",
+    );
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", source);
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let report = crate::explain::report("t.cp", source, &program);
+    assert!(
+        report.contains("[written back] 3:10  tags[1] -> "),
+        "{report}"
+    );
+}

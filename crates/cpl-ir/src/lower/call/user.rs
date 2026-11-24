@@ -263,6 +263,7 @@ impl<'a> Lowerer<'a> {
             return self.err_expr(span);
         };
         let mut vals = Vec::with_capacity(args.len());
+        let (mut pre, mut post) = (Vec::new(), Vec::new());
         for (i, arg) in args.iter().enumerate() {
             let v = match (param_tys.get(i), arg.mutable) {
                 // The fn changes the caller's variable, as a top-level
@@ -272,12 +273,10 @@ impl<'a> Lowerer<'a> {
                     if let PlaceKind::Local(slot) = place.kind {
                         self.cx.mut_slots.insert(slot);
                     }
-                    if place.ty == Ty::Bool && matches!(place.kind, PlaceKind::Index(..)) {
-                        self.unsupported(arg.value.span, "a `Bool` element passed as `mut`");
-                    } else if place.ty != **want && place.ty != Ty::Error && **want != Ty::Error {
+                    if place.ty != **want && place.ty != Ty::Error && **want != Ty::Error {
                         self.mismatch(arg.value.span, want, &place.ty);
                     }
-                    Arg::Mut(place)
+                    Arg::Mut(self.written_back(place, arg.value.span, &mut pre, &mut post))
                 }
                 (Some(Ty::Mut(_)), false) => {
                     let message = cpl_diag::msgs::ir::PARAMETER_MUT_FN_CHANGES.at(&[]);
@@ -299,7 +298,88 @@ impl<'a> Lowerer<'a> {
             };
             vals.push(v);
         }
-        self.mk_call_expr(callee, vals, *ret_ty, span)
+        let call = self.mk_call_expr(callee, vals, *ret_ty, span);
+        self.around_call(pre, call, post, span)
+    }
+
+    /// `pre; call; post`, giving what the call gives.
+    fn around_call(&mut self, pre: Vec<Stmt>, call: Expr, post: Vec<Stmt>, span: Span) -> Expr {
+        if pre.is_empty() && post.is_empty() {
+            return call;
+        }
+        let ret = call.ty.clone();
+        let mut stmts = pre;
+        if ret == Ty::Unit {
+            stmts.push(Stmt::Expr(call));
+            stmts.extend(post);
+            stmts.push_give(self.mk(ExprKind::Unit, Ty::Unit, span));
+        } else {
+            let res_slot = self.temp(ret.clone());
+            stmts.push_let(res_slot, call);
+            stmts.extend(post);
+            stmts.push_give(self.local(res_slot, span));
+        }
+        self.mk(ExprKind::Do(Block { stmts }), ret, span)
+    }
+
+    /// A `mut` argument whose place has no address of its own (a `Bool`
+    /// element, which C++ packs into bits) passes a temp the call changes,
+    /// written back after it: `t = place; f(mut t); place = t`.
+    fn written_back(
+        &mut self,
+        place: Place,
+        span: Span,
+        pre: &mut Vec<Stmt>,
+        post: &mut Vec<Stmt>,
+    ) -> Place {
+        if !(place.ty == Ty::Bool && matches!(place.kind, PlaceKind::Index(..))) {
+            return place;
+        }
+        let place = self.pinned_place(place, span, pre);
+        let slot = self.temp(Ty::Bool);
+        self.cx.mut_slots.insert(slot);
+        pre.push_let(slot, super::stmt::place_to_expr(&place));
+        let back = self.local(slot, span);
+        let at = place.span;
+        if self.cur_mod == 0 {
+            self.written_back.push(at);
+        }
+        post.push(Stmt::Assign(place, crate::AssignOp::Set, back));
+        Place {
+            kind: PlaceKind::Local(slot),
+            ty: Ty::Bool,
+            span: at,
+        }
+    }
+
+    /// `place` with each index it computes read once, into a temp.
+    fn pinned_place(&mut self, place: Place, span: Span, pre: &mut Vec<Stmt>) -> Place {
+        let kind = match place.kind {
+            PlaceKind::Index(base, idx) => {
+                let base = self.pinned_place(*base, span, pre);
+                let idx = (idx.into_iter())
+                    .map(|e| match e.kind {
+                        ExprKind::Local(_) | ExprKind::Global(_) | ExprKind::Int(_) => e,
+                        _ => {
+                            let slot = self.temp(e.ty.clone());
+                            pre.push_let(slot, e);
+                            self.local(slot, span)
+                        }
+                    })
+                    .collect();
+                PlaceKind::Index(Box::new(base), idx)
+            }
+            PlaceKind::Field(base, i) => {
+                PlaceKind::Field(Box::new(self.pinned_place(*base, span, pre)), i)
+            }
+            PlaceKind::Some(base) => PlaceKind::Some(Box::new(self.pinned_place(*base, span, pre))),
+            kind => kind,
+        };
+        Place {
+            kind,
+            ty: place.ty,
+            span: place.span,
+        }
     }
 
     pub(in crate::lower) fn call(
@@ -1338,11 +1418,8 @@ impl<'a> Lowerer<'a> {
                     } {
                         self.cx.mut_slots.insert(s);
                     }
-                    if place.ty == Ty::Bool && matches!(place.kind, PlaceKind::Index(..)) {
-                        self.unsupported(arg.value.span, "a `Bool` element passed as `mut`");
-                        ok = false;
-                    }
-                    let mut place = place;
+                    let mut place =
+                        self.written_back(place, arg.value.span, &mut pre_stmts, &mut post_stmts);
                     let synthetic_dom = self.range_domain_of(&param.ty, &place.ty).or_else(|| {
                         if self
                             .list_given(&param.ty)
@@ -1466,22 +1543,7 @@ impl<'a> Lowerer<'a> {
         }
         post_stmts.extend(put_back);
         let call_expr = self.call_holding_cells(id, lowered, ret.clone(), span);
-        let call = if pre_stmts.is_empty() && post_stmts.is_empty() {
-            call_expr
-        } else {
-            let mut stmts = pre_stmts;
-            if ret == Ty::Unit {
-                stmts.push(Stmt::Expr(call_expr));
-                stmts.extend(post_stmts);
-                stmts.push_give(self.mk(ExprKind::Unit, Ty::Unit, span));
-            } else {
-                let res_slot = self.temp(ret.clone());
-                stmts.push_let(res_slot, call_expr);
-                stmts.extend(post_stmts);
-                stmts.push_give(self.local(res_slot, span));
-            }
-            self.mk(ExprKind::Do(Block { stmts }), ret, span)
-        };
+        let call = self.around_call(pre_stmts, call_expr, post_stmts, span);
         // What the fn gives in terms of an array's plain range is the
         // caller's plain `Int`s.
         let plain = self.plain_ty(&call.ty);

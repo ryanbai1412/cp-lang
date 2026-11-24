@@ -1568,6 +1568,10 @@ pub struct Program {
     /// Declared 32-bit element storage layouts for ranged-`Int` arrays, grids,
     /// nested arrays, lists, and all-ranged tuple elements.
     pub narrow_elems: std::collections::BTreeMap<ElemLoc, NarrowLayout>,
+    /// Each `mut` argument in the user's file passed as a copy and written
+    /// back after its call: a place with no address of its own (a `Bool`
+    /// element).
+    pub written_back: Vec<Span>,
     /// The file's top-level code and its locals.
     pub main: Block,
     pub main_locals: Vec<Local>,
