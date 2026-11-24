@@ -1123,7 +1123,6 @@ fn int_fn(ret: Ty) -> Ty {
             ty: Ty::Int,
             mutable: false,
             has_default: false,
-            default_ty: None,
             named_only: false,
             variadic: false,
             lazy: false,
