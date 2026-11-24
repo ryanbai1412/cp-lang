@@ -4,35 +4,27 @@
 //   M x M squares (M odd, unknown) in a 5 x 5 checkerboard. Given N and one flattened cell
 //   (X0, Y0), ask `examine X Y` (true if flattened) at most 300 times and print
 //   `solution XC YC`, the formation's centre cell.
-// Solution: `reach` finds how far the flattened run goes in one direction by doubling then
-//   binary search (O(log N) asks); left and right give the square side m and the left edge,
+// Solution: `reach` finds how far the flattened run goes in one direction by `gallop_first`,
+//   doubling then binary search (O(log N) asks); left and right give the square side m and the left edge,
 //   down gives the bottom edge. Hop diagonally by m, then by 2m left and down, while still
 //   flattened, to reach the bottom-left square; the centre is that corner + 2m + m / 2.
 // original: corpus/submissions/5111683.cpp
 // Bounds: n: 15..=2e9; x0, y0: 1..=n
+use std.search.{gallop_first}
+
 let n: 15..=2e9 = read()
 let x0: 1..=n = read()
 let y0: 1..=n = read()
 
+domain Cell = 1..=n
 fn examine(x: Int, y: Int) -> Bool:
-    if x < 1 or x > n or y < 1 or y > n:
-        return false
+    if Cell.at(x) == None or Cell.at(y) == None: return false
     let rep: Str = ask("examine", x, y)
     rep == "true"
 
-fn reach(dx: Int, dy: Int) -> Int:
-    var lo = 0
-    var hi = 1
-    while examine(x0 + dx * hi, y0 + dy * hi):
-        lo = hi
-        hi *= 2
-    while lo < hi:
-        let mid = (lo + hi + 1) / 2
-        if examine(x0 + dx * mid, y0 + dy * mid):
-            lo = mid
-        else:
-            hi = mid - 1
-    lo
+// How far the flattened run from (x0, y0) goes in direction (dx, dy). The run is shorter than
+// the gap after it, so the doubling probes never jump into the next square.
+fn reach(dx: Int, dy: Int) -> Int = gallop_first(1, k => not examine(x0 + dx * k, y0 + dy * k))! - 1
 
 let xl0 = x0 - reach(-1, 0)
 let xr0 = x0 + reach(1, 0)

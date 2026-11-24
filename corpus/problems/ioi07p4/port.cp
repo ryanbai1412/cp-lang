@@ -12,11 +12,7 @@
 let n: 1..=1e5 = read()
 domain Ship = 1..=n
 
-fn menu() -> [Ship]Char:
-    let kinds: List<Char> = ['M', 'F', 'B']
-    [Ship] _ => kinds[rand(0, 2)]  // WISH: "MFB"[rand(0, 2)]
-
-let food: [Ship]Char = read(gen: menu)
+let food: [Ship]Char = read()
 
 // A mine remembers its last two shipments as older * 4 + old, 0 standing for none.
 domain Mine = 0..16
