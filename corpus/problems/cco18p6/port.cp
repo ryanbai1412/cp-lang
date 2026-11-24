@@ -8,77 +8,52 @@
 //   (three run reversals), then recurse on the two sides. Print a's flops, then b's in reverse
 //   (each flop undoes itself). O(N log^2 N) flops.
 // original: corpus/submissions/4575245.cpp
-// Bounds: n: 1..=4096
+// Bounds: n: 1..=4096; p: 1..=n
 let n: 1..=4096 = read()
-var a0: List<Int> = []
-for _ in 0..n:
-    let x: Int = read()
-    a0.push(x - 1)
-var b0: List<Int> = []
-for _ in 0..n:
-    let x: Int = read()
-    b0.push(x - 1)
+type Val = 1..=n
+type Flop = (l: Int, r: Int)  // 0-based positions
 
-var cur: List<Int> = []
-var ox: List<Int> = []
-var oy: List<Int> = []
+var cur: List<Val> = []
+var flops: List<Flop> = []
 
-fn flip(l0: Int, r0: Int):
-    var l = l0
-    var r = r0 - 1
+// Reverses the run cur[lo..hi]: a monotone run's ends are its min and max at every step.
+fn reverse(lo: Int, hi: Int):
+    var (l, r) = (lo, hi - 1)
     while l < r:
         cur.swap(l, r)
-        ox.push(l)
-        oy.push(r)
+        flops.push((l:, r:))
         l += 1
         r -= 1
 
-fn lb(l0: Int, r0: Int, target: Int) -> Int:
-    let lo = (l0..r0).first_true(mid => cur[mid] >= target) ?? r0
-    lo
-
+// Merges the sorted runs cur[l..mid] and cur[mid..r].
 fn merge(l: Int, mid: Int, r: Int):
     if l == mid or mid == r: return
-    var sub: List<Int> = [cur[i] for i in l..r]
-    sub.sort()
-    let med = sub[sub.len / 2]
-    let m1 = lb(l, mid, med)
-    let m2 = lb(mid, r, med)
-    flip(m1, mid)
-    flip(mid, m2)
-    flip(m1, m2)
-    let len1 = m1 - l
-    let len2 = mid - m1
-    let len3 = m2 - mid
-    let len4 = r - m2
-    merge(l, l + len1, l + len1 + len3)
-    merge(r - len4 - len2, r - len4, r)
+    let med = cur[l..r].sorted()[(r - l) / 2]
+    let m1 = (l..mid).first_true(i => cur[i] >= med) ?? mid
+    let m2 = (mid..r).first_true(i => cur[i] >= med) ?? r
+    reverse(m1, mid)
+    reverse(mid, m2)
+    reverse(m1, m2)
+    merge(l, m1, m1 + (m2 - mid))
+    merge(m2 - (mid - m1), m2, r)
 
-fn dnc(l: Int, r: Int):
+fn sort_range(l: Int, r: Int):
     if r - l <= 1: return
     let mid = (l + r) / 2
-    dnc(l, mid)
-    dnc(mid, r)
+    sort_range(l, mid)
+    sort_range(mid, r)
     merge(l, mid, r)
 
-for i in 0..n: cur.push(a0[i])
-dnc(0, n)
-var fx: List<Int> = []
-var fy: List<Int> = []
-for i in 0..ox.len:
-    fx.push(ox[i])
-    fy.push(oy[i])
+// Reads a permutation and returns the flops that sort it into 1..=n.
+fn sorting_flops() -> List<Flop>:
+    let p: [n]Val = read()
+    cur = p
+    flops = []
+    sort_range(0, n)
+    flops
 
-cur.clear()
-ox.clear()
-oy.clear()
-for i in 0..n: cur.push(b0[i])
-dnc(0, n)
-
-let total = fx.len + ox.len
-print(total)
-for i in 0..fx.len: print(fx[i] + 1, fy[i] + 1)
-var ri = ox.len - 1
-while ri >= 0:
-    print(ox[ri] + 1, oy[ri] + 1)
-    ri -= 1
+let there = sorting_flops()  // a
+let back = sorting_flops()  // b
+print(there.len + back.len)
+for f in there: print(f.l + 1, f.r + 1)
+for f in back.rev: print(f.l + 1, f.r + 1)
