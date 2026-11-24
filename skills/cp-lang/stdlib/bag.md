@@ -81,7 +81,6 @@ An ordered set of unique keys `K` with order statistics (`rank`, `nth`), \(O(1)\
 - `fn pop_last(mut self) -> ?K` — \(O(\log n)\) expected; Remove and return the largest key, or `None`.
 - `fn rank(self, k: K) -> Int` — \(O(\log n)\) expected; Number of keys strictly less than `k`.
 - `fn nth(self, i: Int) -> ?K` — \(O(\log n)\) expected; 0-indexed `i`-th smallest key, or `None` if out of range.
-- `fn sum(self, keys: Range<K> = ..) -> K` — \(O(\log n)\) expected; The sum of the elements in `keys` (all of them by default), for additive `K`: `set.sum(..b)` adds everything below `b`.; traps: never (overflow wraps in release, traps in debug)
 - `fn first_true(self, ok: K -> Bool) -> ?K` — \(O(\log n)\) expected calls of `ok`; Smallest key `k` where monotone `ok(k)` holds (`false..false, true..true`), or `None`.; traps: never; an `ok` that is not false-then-true gives an unspecified answer
 - `fn last_true(self, ok: K -> Bool) -> ?K` — \(O(\log n)\) expected calls of `ok`; Largest key `k` where monotone `ok(k)` holds (`true..true, false..false`), or `None`.; traps: never; an `ok` that is not true-then-false gives an unspecified answer
 - `fn drain(mut self; after: ?K = None, before: ?K = None, while ok: K -> Bool) -> List<K>` — \(O(k \log n)\) expected for `k` removed keys; Remove and return the maximal run of keys strictly after `after` (ascending), strictly before `before` (descending), or from the smallest key (ascending) while `ok(k)` holds.; traps: when both `after` and `before` are given
