@@ -74,7 +74,6 @@ pub(super) fn unreadable(spec: &Spec) -> Option<Ty> {
             other => Some(other.clone()),
         },
         Spec::Int { .. } | Spec::Str { .. } | Spec::Call(_) | Spec::Line => None,
-        Spec::Parse(_, inner) => unreadable(inner),
         Spec::Fields(_, fields) => fields.iter().find_map(unreadable),
         Spec::Array { elem, .. } | Spec::List(elem) => unreadable(elem),
         Spec::Opt(inner, None) => unreadable(inner),

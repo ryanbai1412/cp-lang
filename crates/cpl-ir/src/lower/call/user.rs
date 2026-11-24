@@ -665,18 +665,13 @@ impl<'a> Lowerer<'a> {
         }
         // Check `base.method::<T>(...)`.
         if let ast::ExprKind::Field { base: recv, name } = &base.kind {
-            if let ("parse", [ty], []) = (name.text.as_str(), types, args) {
-                if self.probe_ty_silent(recv) == Some(Ty::Str) {
-                    return self.parse_str(recv, ty, span);
-                }
-            }
             if let Some(Sym::Mod(target_mod)) = self.sym(recv) {
                 let saved_mod = std::mem::replace(&mut self.cur_mod, target_mod);
                 let sym = self.mod_syms[target_mod].get(&name.text).copied();
                 self.cur_mod = saved_mod;
                 match sym {
                     Some(Sym::GenFn(gfid)) => {
-                        let gargs = self.resolve_gen_args(types);
+                        let gargs = self.fn_gen_args(gfid, types);
                         return self.call_gen_fn(gfid, gargs, None, args, span);
                     }
                     Some(Sym::GenStruct(gid)) => {
@@ -686,92 +681,26 @@ impl<'a> Lowerer<'a> {
                     _ => {}
                 }
             }
-            let val = self.expr(recv, None);
-            if name.text == "parse"
-                && types.len() == 1
-                && args.is_empty()
-                && matches!(val.ty, Ty::Str | Ty::StrView)
-            {
-                let spec = self.resolve(&types[0], true);
-                let out_ty = spec.ty();
-                if let Spec::Plain(Ty::Pos(d)) = spec {
-                    if self.counted_domains.contains(&d) {
-                        if let Some(base_shift) = self.io_base.filter(|&b| b != 0) {
-                            let parsed = self.mk(
-                                ExprKind::Parse(Box::new(val), Box::new(Spec::Plain(Ty::Int))),
-                                Ty::opt(Ty::Int),
-                                span,
-                            );
-                            let opt_slot = self.temp(Ty::opt(Ty::Int));
-                            let res_ty = Ty::opt(Ty::Pos(d));
-                            let is_some =
-                                self.mk_is_some(self.local(opt_slot, span), Ty::Bool, span);
-                            let raw =
-                                self.mk_unwrap(self.local(opt_slot, span), false, Ty::Int, span);
-                            let ord = self.int_add(raw, -base_shift);
-                            let ord_slot = self.temp(Ty::Int);
-                            let zero = self.int_lit(0, span);
-                            let len = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
-                            let ge0 = self.mk_cmp(
-                                CmpOp::Ge,
-                                self.local(ord_slot, span),
-                                zero,
-                                Ty::Bool,
-                                span,
-                            );
-                            let lt_len = self.mk_cmp(
-                                CmpOp::Lt,
-                                self.local(ord_slot, span),
-                                len,
-                                Ty::Bool,
-                                span,
-                            );
-                            let in_range = self.mk_binary(BinOp::And, ge0, lt_len, Ty::Bool, span);
-                            let pos_val =
-                                self.cast(Cast::Trust, self.local(ord_slot, span), Ty::Pos(d));
-                            let some_pos = self.mk_some(pos_val, res_ty.clone(), span);
-                            let none_pos = self.mk(ExprKind::None, res_ty.clone(), span);
-                            let checked = self.mk(
-                                ExprKind::Do(Block {
-                                    stmts: vec![
-                                        Stmt::Let(ord_slot, Some(ord)),
-                                        Stmt::Give(self.mk_if(
-                                            in_range,
-                                            some_pos,
-                                            none_pos.clone(),
-                                            res_ty.clone(),
-                                            span,
-                                        )),
-                                    ],
-                                }),
-                                res_ty.clone(),
-                                span,
-                            );
-                            return self.mk(
-                                ExprKind::Do(Block {
-                                    stmts: vec![
-                                        Stmt::Let(opt_slot, Some(parsed)),
-                                        Stmt::Give(self.mk_if(
-                                            is_some,
-                                            checked,
-                                            none_pos,
-                                            res_ty.clone(),
-                                            span,
-                                        )),
-                                    ],
-                                }),
-                                res_ty,
-                                span,
-                            );
-                        }
+            // `s.parse<T>()`: a generic std fn whose first parameter is `self`.
+            if !matches!(self.probe_ty_silent(recv), Some(Ty::Struct(_)) | None) {
+                let candidates = self.method_syms(&name.text);
+                if let Some(Sym::GenFn(gfid)) = self.fitting_method(&candidates, recv, args.len()) {
+                    let by_value = (self.gen_fns[gfid].decl.params.first())
+                        .is_some_and(|p| p.name.text == "self" && !p.mutable);
+                    if by_value {
+                        let gargs = self.fn_gen_args(gfid, types);
+                        let mut all_args = vec![ast::Arg {
+                            name: None,
+                            mutable: false,
+                            value: (**recv).clone(),
+                        }];
+                        all_args.extend(args.iter().cloned());
+                        self.call_hint.0 = hint.cloned();
+                        return self.call_gen_fn(gfid, gargs, None, &all_args, span);
                     }
                 }
-                return self.mk(
-                    ExprKind::Parse(Box::new(val), Box::new(spec)),
-                    Ty::opt(out_ty),
-                    span,
-                );
             }
+            let val = self.expr(recv, None);
             if let Ty::Struct(sid) = val.ty {
                 if let Some(&gfid) = self.structs[sid].gen_methods.get(&name.text) {
                     let gargs = self.resolve_gen_args(types);
@@ -890,7 +819,7 @@ impl<'a> Lowerer<'a> {
                 self.call_gen_struct(gid, gargs, args, hint, span)
             }
             Some(Sym::GenFn(gfid)) => {
-                let gargs = self.resolve_gen_args(types);
+                let gargs = self.fn_gen_args(gfid, types);
                 self.call_gen_fn(gfid, gargs, None, args, span)
             }
             Some(Sym::GenAlias(gaid)) => {

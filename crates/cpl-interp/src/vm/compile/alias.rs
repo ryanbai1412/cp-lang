@@ -142,7 +142,7 @@ impl Reach<'_> {
             | ExprKind::Mutate(..)
             | ExprKind::Sort(..)
             | ExprKind::Read(..)
-            | ExprKind::Parse(..)
+            | ExprKind::ReadFrom(..)
             | ExprKind::Print(..)
             | ExprKind::Debug(..)
             | ExprKind::Format(..)

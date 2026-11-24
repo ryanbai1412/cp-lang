@@ -9097,4 +9097,8 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Why.** "Small core, no privileged stdlib": a fixed list of drawable types in lowering keeps a user type from being generated at all.
 - **Reverse.** Drop the trait and the fallback; `gen<P>()` of a user type goes back to E0501.
 
-## 588. (reserved, compiler)
+## 588. `read<T>(from: s)` reads with a string as the input; `parse` is its std body (compiler, 2026-11-24)
+
+- **Call.** `read<T>(from: s)` runs the read of `T` (every `Read` impl, builtin or written in std, ranged, counted under `io(base: 1)`, fixed-length arrays included) with `s` as the whole input, and is `None` when a read fails or a token is left over; standard input's buffer and cursor are restored. `Str.parse<T: Read>` is `read<T>(from: self)` in std/strings.cp. A generic fn with a `T: Read` keeps the lengths of an array type argument (`parse<[3]Int>`) and the caller's `io(base: 1)` in its instance, so a read inside std reads what the caller's own `read<T>()` would (R10.2.2, R10.2.4).
+- **Why.** `parse` was a compiler built-in (`ExprKind::Parse`) because `Read` only read standard input. A named argument on the core `read` adds no prelude name and lets std write `parse`; the C++ path for standard input is unchanged.
+- **Reverse.** Restore `ExprKind::Parse` and the `parse` intercept in cpl-ir `lower/call/user.rs`.

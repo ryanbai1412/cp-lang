@@ -11,7 +11,10 @@ impl<'a> Lowerer<'a> {
     /// `T.MIN` of `type M = -10..=10` is `-10`.
     pub(super) fn named_gen_arg(&mut self, name: &str) -> Option<GenArg> {
         if let Some(a) = self.gen_env.get(name).cloned() {
-            return Some(a);
+            return Some(match a {
+                GenArg::Sized(ty, _) => GenArg::Ty(ty),
+                a => a,
+            });
         }
         let Some(Sym::Alias(aid)) = self.get_sym(name) else {
             return None;

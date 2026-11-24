@@ -1341,17 +1341,21 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 Value::Unit
             }
             ExprKind::Read(spec) => self.read(spec, span, &[])?,
-            ExprKind::Parse(src, spec) => {
-                let s = self.eval(src)?;
-                let bytes = match s {
+            // The string is the input while `f` runs. (R10.2.4)
+            ExprKind::ReadFrom(text, body) => {
+                let text = match self.eval(text)? {
                     Value::Str(b) => (*b).clone(),
                     Value::StrView(v) => v.to_vec(),
                     _ => Vec::new(),
                 };
-                let saved = std::mem::replace(&mut self.input, Input::owned(bytes));
-                let res = self.read(spec, span, &[]);
-                self.input = saved;
-                Value::Opt(OptVal::from_option(res.ok()))
+                let held = std::mem::replace(&mut self.input, Input::owned(text));
+                let value = self.eval(body);
+                let whole = value.is_ok() && self.input.at_eof();
+                self.input = held;
+                match value {
+                    Ok(value) if whole => Value::some(value),
+                    _ => Value::Opt(OptVal::None),
+                }
             }
             ExprKind::Debug(line, args) => {
                 let mut values = Vec::new();

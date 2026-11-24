@@ -1554,8 +1554,10 @@ impl<'a> Lowerer<'a> {
 
     /// `with io(base: 1)`: counted domains read and print 1-based. (R10.2.2)
     pub(super) fn base_one(&self) -> bool {
-        self.context("io", "base")
-            .is_some_and(|v| matches!(v.kind, ast::ExprKind::Int(1)))
+        self.gen_env.contains_key(instance::IO_BASE_ONE)
+            || self
+                .context("io", "base")
+                .is_some_and(|v| matches!(v.kind, ast::ExprKind::Int(1)))
     }
 
     /// Binds the names in `pat` to `value`.

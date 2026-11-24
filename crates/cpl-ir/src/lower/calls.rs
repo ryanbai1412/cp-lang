@@ -95,10 +95,6 @@ pub(super) fn collect_spec_calls(spec: &Spec, out: &mut Vec<FnId>) {
         Spec::Plain(_) | Spec::Line => {}
         Spec::Call(call) => collect_expr_calls(call, out),
         Spec::List(each) => collect_spec_calls(each, out),
-        Spec::Parse(text, inner) => {
-            collect_expr_calls(text, out);
-            collect_spec_calls(inner, out);
-        }
         Spec::Int { lo, hi, .. } | Spec::Str { lo, hi, .. } => {
             if let Some(e) = lo {
                 collect_expr_calls(e, out);
@@ -231,9 +227,9 @@ pub(super) fn collect_expr_calls(e: &Expr, out: &mut Vec<FnId>) {
             }
         }
         ExprKind::Read(spec) => collect_spec_calls(spec, out),
-        ExprKind::Parse(src, spec) => {
-            collect_expr_calls(src, out);
-            collect_spec_calls(spec, out);
+        ExprKind::ReadFrom(text, body) => {
+            collect_expr_calls(text, out);
+            collect_expr_calls(body, out);
         }
         ExprKind::Print(args, end) => {
             for a in args {

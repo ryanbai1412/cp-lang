@@ -566,7 +566,7 @@ impl Reader<'_> {
                 touch.reads.insert((true, *id));
             }
             ExprKind::Read(_)
-            | ExprKind::Parse(..)
+            | ExprKind::ReadFrom(..)
             | ExprKind::Print(..)
             | ExprKind::Builtin(Builtin::CountQuery | Builtin::SwapInput | Builtin::AtEof, _) => {
                 touch.io = true

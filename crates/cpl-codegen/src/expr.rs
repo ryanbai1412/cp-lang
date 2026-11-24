@@ -1189,21 +1189,25 @@ impl<'p> Emitter<'p> {
                 this.sort_stmts(place, sort_by, desc.as_deref(), out)
             }),
             ExprKind::Read(spec) => self.read(spec),
-            ExprKind::Parse(src, spec) => {
+            // A bad token throws instead of stopping the program while the
+            // string is the input; see `parse_str` in the runtime. (R10.2.4)
+            ExprKind::ReadFrom(text, body) => {
+                self.need("parse_str");
                 let ty = self.ty(&e.ty);
+                let text = self.expr(text).text;
                 self.lambda(&ty, |this, out| {
-                    let s = this.expr(src).text;
-                    let saved = this.temp();
-                    let ss = this.temp();
-                    let p = pad(this.indent);
-                    out.push_str(&format!("{p}auto {saved} = std::cin.rdbuf();\n"));
-                    out.push_str(&format!("{p}std::istringstream {ss}({s});\n"));
-                    out.push_str(&format!("{p}std::cin.rdbuf({ss}.rdbuf());\n"));
-                    let val = this.read(spec).text;
-                    let r = this.temp();
-                    out.push_str(&format!("{p}auto {r} = {val};\n"));
-                    out.push_str(&format!("{p}std::cin.rdbuf({saved});\n"));
-                    out.push_str(&format!("{p}return {ty}({r});\n"));
+                    let lead = pad(this.indent);
+                    out.push_str(&format!("{lead}cpl::parse_scope cpl_scope({text});\n"));
+                    out.push_str(&format!("{lead}try {{\n"));
+                    this.indent += 1;
+                    let value = this.expr(body).text;
+                    this.indent -= 1;
+                    out.push_str(&format!("{lead}    auto cpl_value = {value};\n"));
+                    out.push_str(&format!(
+                        "{lead}    if (cpl_scope.whole()) return {ty}(std::move(cpl_value));\n"
+                    ));
+                    out.push_str(&format!("{lead}}} catch (const cpl::parse_failed&) {{}}\n"));
+                    out.push_str(&format!("{lead}return {ty}();\n"));
                 })
             }
             ExprKind::Print(args, end) => self.lambda("void", |this, out| {

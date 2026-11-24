@@ -177,6 +177,13 @@ fn an_optional_read_checks_for_the_end_of_input_first() {
 }
 
 #[test]
+fn a_read_from_a_string_swaps_the_input_in_a_scope() {
+    let cpp = cpp("let x = \"4\".parse<Int>()!\nprint(x)\n");
+    assert!(cpp.contains("cpl::parse_scope cpl_scope("), "{cpp}");
+    assert!(cpp.contains("catch (const cpl::parse_failed&)"), "{cpp}");
+}
+
+#[test]
 fn the_same_source_gives_the_same_bytes() {
     let source = "var m: Map<Str, Int> = []\nm[\"b\"] = 1\nm[\"a\"] = 2\nvar s: Set<Int> = []\ns.insert(3)\nprint(m, s)\n";
     assert_eq!(cpp(source), cpp(source));

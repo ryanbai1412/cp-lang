@@ -162,7 +162,7 @@ impl<'p> Emitter<'p> {
                 | ExprKind::Field(..)
                 | ExprKind::Char(_)
                 | ExprKind::Read(_)
-                | ExprKind::Parse(..)
+                | ExprKind::ReadFrom(..)
         ) || matches!(
             (&e.kind, &e.ty),
             (ExprKind::Index(..), Ty::Pos(_) | Ty::Bound(_))

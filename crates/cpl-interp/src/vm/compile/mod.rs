@@ -1090,7 +1090,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 cpl_ir::FmtPiece::Value(a) => Self::expr_mentions_slot(&a.value, target),
                 cpl_ir::FmtPiece::Number(e, _) => Self::expr_mentions_slot(e, target),
             }),
-            ExprKind::Read(_) | ExprKind::Parse(..) => true,
+            ExprKind::Read(_) | ExprKind::ReadFrom(..) => true,
             ExprKind::Unit
             | ExprKind::Int(_)
             | ExprKind::Float(_)
@@ -1379,7 +1379,7 @@ impl<'p> Effects<'p> {
             }
             ExprKind::CallExpr(..)
             | ExprKind::Read(_)
-            | ExprKind::Parse(..)
+            | ExprKind::ReadFrom(..)
             | ExprKind::Print(..)
             | ExprKind::Mutate(..)
             | ExprKind::Sort(..)

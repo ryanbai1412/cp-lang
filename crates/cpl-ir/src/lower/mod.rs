@@ -740,7 +740,7 @@ struct Lowerer<'a> {
     gen_fns: Vec<GenFnTemplate<'a>>,
     /// Block-local generators lifted to fns of their own.
     lifted: HashMap<FnId, local_gen::Lifted>,
-    fn_insts: HashMap<(GenFnId, Vec<GenArg>, Vec<String>), FnId>,
+    fn_insts: HashMap<(GenFnId, Vec<GenArg>, Vec<String>, bool), FnId>,
     growth: instance::Growth,
 
     closures: Vec<ClosureDef>,

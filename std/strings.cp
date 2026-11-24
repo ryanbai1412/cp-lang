@@ -343,7 +343,7 @@ pub fn parse_int(self: Str, base: Int = 10) -> ?Int:
 /// example: `"-12".parse<Mod<7>>() == Some(2)`
 /// example: `"3 4".parse<(Int, Int)>() == Some((3, 4))`
 /// example: `"3 4".parse<Int>() == None`
-pub fn parse<T: Read>(self: Str) -> ?T = todo
+pub fn parse<T: Read>(self: Str) -> ?T = read<T>(from: self)
 
 /// The Z-array of `s`: `z[i]` is the length of the longest common prefix of `s` and the
 /// suffix starting at `i`; `z` at the first key is `s.len`.

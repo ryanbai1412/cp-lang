@@ -26,7 +26,10 @@ impl<'a> Lowerer<'a> {
         op_params: &[(String, BareOp)],
         rev_params: Vec<String>,
     ) -> FnId {
-        let key = (gfid, args.clone(), rev_params.clone());
+        // A `T: Read` fn called under `with io(base: 1)` reads its counted
+        // positions 1-based, like the caller's own `read<T>()` (R10.2.2).
+        let base_one = self.base_one() && reads_a_param(self.gen_fns[gfid].decl);
+        let key = (gfid, args.clone(), rev_params.clone(), base_one);
         if let Some(&id) = self.fn_insts.get(&key) {
             if !self.sigs[id].returns_fresh_domain && self.sigs[id].new_domain_slots.is_empty() {
                 return id;
@@ -84,6 +87,9 @@ impl<'a> Lowerer<'a> {
         }
         for name in &rev_params {
             env.insert(param_marker(name), GenArg::Int(1));
+        }
+        if base_one {
+            env.insert(IO_BASE_ONE.to_string(), GenArg::Int(1));
         }
         let id = self.declare_fn_in(decl, tpl_mod, tpl_offset, owner, env);
         let suffix: Vec<String> = args.iter().map(|a| self.mangle_arg(a)).collect();
@@ -157,4 +163,16 @@ impl<'a> Lowerer<'a> {
         let outer = chain.pop()?;
         Some((outer, chain.pop()?))
     }
+}
+
+/// The instance env's mark that the caller reads under `io(base: 1)`.
+pub(super) const IO_BASE_ONE: &str = "__io_base_one";
+
+/// Whether a generic fn bounds one of its type parameters by `Read`.
+pub(super) fn reads_a_param(decl: &ast::FnDecl) -> bool {
+    decl.bounds.iter().any(|b| {
+        b.traits
+            .iter()
+            .any(|t| matches!(&t.kind, ast::TypeKind::Named { name, .. } if name.text == "Read"))
+    })
 }

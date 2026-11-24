@@ -92,7 +92,11 @@ impl<'a> Lowerer<'a> {
                 GenArg::Int(v) => return self.mk(ExprKind::Int(v), Ty::Int, span),
                 GenArg::RuntimeInt(gid) => return self.mk(ExprKind::Global(gid), Ty::Int, span),
                 GenArg::Domain(d) => return self.mk(ExprKind::DomainVal(d), Ty::DomainVal, span),
-                GenArg::Ty(_) | GenArg::Op(_) | GenArg::Range(_, _) | GenArg::OptRange(_, _) => {}
+                GenArg::Ty(_)
+                | GenArg::Sized(..)
+                | GenArg::Op(_)
+                | GenArg::Range(_, _)
+                | GenArg::OptRange(_, _) => {}
             }
         }
         if let Some(&Ty::Pos(d)) = self.cx.local_type_aliases.get(name) {

@@ -51,7 +51,7 @@ fn spec_exprs(spec: &Spec) -> Option<Vec<&Expr>> {
                 out.extend(absent.as_deref());
                 todo.push(inner);
             }
-            Spec::Call(_) | Spec::Parse(..) | Spec::List(_) => return None,
+            Spec::Call(_) | Spec::List(_) => return None,
         }
     }
     Some(out)

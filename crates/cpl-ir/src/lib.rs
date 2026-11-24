@@ -570,9 +570,6 @@ pub enum Spec {
     Opt(Box<Spec>, Option<Box<Expr>>),
     /// A type its own `impl Read` reads: the call to its `read()`.
     Call(Box<Expr>),
-    /// `s.parse<T>()`: the inner spec read from the string `s` instead of
-    /// the input, `none` on a bad or leftover token.
-    Parse(Box<Expr>, Box<Spec>),
     /// `read_line()`: the rest of the current line (skipping a trailing `\r?\n` after a token).
     Line,
     /// `List<T>`: a count, then that many `T`s (R10.2.3). Lowering spells it
@@ -616,7 +613,6 @@ impl Spec {
             },
             Spec::Opt(inner, _) => Ty::opt(inner.ty()),
             Spec::Call(call) => call.ty.clone(),
-            Spec::Parse(_, inner) => Ty::opt(inner.ty()),
             Spec::Line | Spec::Str { .. } => Ty::Str,
             Spec::List(each) => Ty::list(each.ty()),
         }
@@ -707,8 +703,10 @@ pub enum ExprKind {
     /// equal elements staying as they were.
     Sort(Box<Place>, SortBy, Option<Box<Expr>>),
     Read(Box<Spec>),
-    /// `s.parse<T>()`: parse a value of `Spec` from a string, returning `?T`.
-    Parse(Box<Expr>, Box<Spec>),
+    /// `read<T>(from: s)`: the read with the string `s` as the input, `Some`
+    /// of its value when it succeeds and no token is left over, else `None`.
+    /// (R10.2.4)
+    ReadFrom(Box<Expr>, Box<Expr>),
     /// `print(a, b)`: the values space-separated, then a newline, or the
     /// text of `end: s` in its place.
     Print(Vec<FmtArg>, Option<Box<Expr>>),

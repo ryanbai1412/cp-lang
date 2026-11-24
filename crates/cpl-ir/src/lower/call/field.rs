@@ -1087,7 +1087,7 @@ impl<'a> Lowerer<'a> {
     /// the first candidate whose written `self` shape the receiver may have.
     /// A fn that can't take `arg_count` arguments after `self` is not the call:
     /// `xs.fold()` is then the built-in `fold`, reported as such.
-    fn fitting_method(
+    pub(in crate::lower) fn fitting_method(
         &mut self,
         candidates: &[Sym],
         base: &ast::Expr,

@@ -1413,7 +1413,7 @@ pub(super) fn expr_tag_short(expr: &Expr) -> &'static str {
         ExprKind::IsVariant(..) => "IsVariant",
         ExprKind::Payload(..) => "Payload",
         ExprKind::Read(_) => "Read",
-        ExprKind::Parse(..) => "Parse",
+        ExprKind::ReadFrom(..) => "ReadFrom",
         ExprKind::Print { .. } => "Print",
         ExprKind::Debug { .. } => "Debug",
         ExprKind::Format(_) => "Format",

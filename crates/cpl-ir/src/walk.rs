@@ -124,9 +124,9 @@ macro_rules! walkers {
                 ExprKind::Read(s) => {
                     $spec(s, f);
                 }
-                ExprKind::Parse(src, s) => {
-                    f(src);
-                    $spec(s, f);
+                ExprKind::ReadFrom(text, body) => {
+                    f(text);
+                    f(body);
                 }
                 ExprKind::Print(args, end) => {
                     args.$iter().for_each(|arg| f(&$($m)* arg.value));
@@ -170,10 +170,6 @@ macro_rules! walkers {
                 Spec::Fields(_, fields) => fields.$iter().for_each(|field| $spec(field, f)),
                 Spec::Call(call) => f(call),
                 Spec::List(each) => $spec(each, f),
-                Spec::Parse(text, inner) => {
-                    f(text);
-                    $spec(inner, f);
-                }
                 Spec::Array { dims: ds, elem } => {
                     for dim in ds {
                         if let DimSpec::Int(len) | DimSpec::IntFrom(_, len) = dim {

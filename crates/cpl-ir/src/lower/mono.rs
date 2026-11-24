@@ -48,6 +48,9 @@ pub(super) enum GenArg {
     Range(Option<i64>, Option<i64>),
     /// `?lo..hi`: an optional of a range, so a field `List<?F>` keeps `F`'s bounds.
     OptRange(Option<i64>, Option<i64>),
+    /// `[3]Int` given to a `T: Read`: the type, and the lengths its
+    /// `read<T>()` reads, which the type itself does not keep.
+    Sized(Ty, Vec<i64>),
 }
 
 pub(super) type GenEnv = HashMap<String, GenArg>;
@@ -264,6 +267,7 @@ impl<'a> Lowerer<'a> {
             GenArg::Op(op) => format!("Op_{op:?}"),
             GenArg::Range(lo, hi) => format!("R{:?}_{:?}", lo, hi),
             GenArg::OptRange(lo, hi) => format!("OR{:?}_{:?}", lo, hi),
+            GenArg::Sized(ty, lens) => format!("S{}_{lens:?}", self.mangle_ty(ty)),
         }
     }
 

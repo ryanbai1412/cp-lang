@@ -9,6 +9,50 @@ impl<'a> Lowerer<'a> {
         args.iter().map(|t| self.resolve_gen_arg(t)).collect()
     }
 
+    /// A generic fn's type arguments; a `T: Read` given an array of fixed
+    /// lengths keeps them for its `read<T>()`.
+    pub(in crate::lower) fn fn_gen_args(
+        &mut self,
+        gfid: GenFnId,
+        args: &[ast::Type],
+    ) -> Vec<GenArg> {
+        let decl = self.gen_fns[gfid].decl;
+        let mut out = self.resolve_gen_args(args);
+        for (i, t) in args.iter().enumerate() {
+            let Some(param) = decl.generics.get(i) else {
+                break;
+            };
+            let reads = decl.bounds.iter().any(|b| {
+                b.name.text == param.text
+                    && b.traits.iter().any(|t| {
+                        matches!(&t.kind, ast::TypeKind::Named { name, .. } if name.text == "Read")
+                    })
+            });
+            let ast::TypeKind::Array { index, .. } = &t.kind else {
+                continue;
+            };
+            let lens: Option<Vec<i64>> = index
+                .iter()
+                .map(|d| match &d.kind {
+                    ast::TypeKind::Value(e) => self.eval_const_int(e),
+                    ast::TypeKind::Range {
+                        lo: Some(lo),
+                        hi: Some(hi),
+                        inclusive,
+                    } => {
+                        let (lo, hi) = (self.eval_const_int(lo)?, self.eval_const_int(hi)?);
+                        Some(hi - lo + i64::from(*inclusive))
+                    }
+                    _ => None,
+                })
+                .collect();
+            if let (true, Some(lens), GenArg::Ty(ty)) = (reads, lens, &out[i]) {
+                out[i] = GenArg::Sized(ty.clone(), lens);
+            }
+        }
+        out
+    }
+
     pub(in crate::lower) fn resolve_gen_args_for_struct(
         &mut self,
         gid: usize,

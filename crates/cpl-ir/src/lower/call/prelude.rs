@@ -332,13 +332,20 @@ impl<'a> Lowerer<'a> {
                     }
                 }
                 if !args.iter().all(|a| {
-                    a.name
-                        .as_ref()
-                        .is_some_and(|n| matches!(n.text.as_str(), "gen" | "none" | "base"))
+                    a.name.as_ref().is_some_and(|n| {
+                        matches!(n.text.as_str(), "gen" | "none" | "base" | "from")
+                    })
                 }) && self.positional_any("read", args, 0, span).is_none()
                 {
                     return self.err_expr(span);
                 }
+                let from = args
+                    .iter()
+                    .any(|a| a.name.as_ref().is_some_and(|n| n.text == "from"));
+                let hint = match hint {
+                    Some(Ty::Opt(inner)) if from => Some(&**inner),
+                    hint => hint,
+                };
                 let Some(want) = hint else {
                     self.report(span, msgs::ir::TYPE_MISMATCH_CAN_T_TELL_WHAT.at(&[]));
                     self.help("`read()` reads what the type says: `let n: Int = read()`");
@@ -1211,24 +1218,6 @@ impl<'a> Lowerer<'a> {
         })
     }
 
-    /// `s.parse<T>()`: a `T` read from `s` by the rules of `read<T>()`.
-    /// (R10.2.4)
-    pub(in crate::lower) fn parse_str(
-        &mut self,
-        text: &ast::Expr,
-        ty: &ast::Type,
-        span: Span,
-    ) -> Expr {
-        let spec = self.resolve(ty, true);
-        let text = self.expect(text, &Ty::Str);
-        let read = self.read(spec, span);
-        let ExprKind::Read(spec) = read.kind else {
-            return read;
-        };
-        let opt = Ty::opt(read.ty);
-        self.mk_read(Spec::Parse(Box::new(text), spec), opt, span)
-    }
-
     /// `read()` of a value shaped like `spec`.
     /// A spec with each `Range<Int>` inside spelled out as its read of `l r`.
     pub(in crate::lower) fn readable(&mut self, spec: Spec) -> Spec {
@@ -1363,10 +1352,25 @@ impl<'a> Lowerer<'a> {
         if !args.iter().all(|a| {
             a.name
                 .as_ref()
-                .is_some_and(|n| matches!(n.text.as_str(), "gen" | "none" | "base"))
+                .is_some_and(|n| matches!(n.text.as_str(), "gen" | "none" | "base" | "from"))
         }) && self.positional_any("read", args, 0, span).is_none()
         {
             return self.err_expr(span);
+        }
+        // `read<T>(from: s)`: a `T` read with `s` as the whole input, `None`
+        // when a read fails or a token is left over. (R10.2.4)
+        if let Some(at) = args
+            .iter()
+            .position(|a| a.name.as_ref().is_some_and(|n| n.text == "from"))
+        {
+            let text = self.expect(&args[at].value, &Ty::Str);
+            let rest: Vec<ast::Arg> = (args.iter().enumerate())
+                .filter(|&(i, _)| i != at)
+                .map(|(_, a)| a.clone())
+                .collect();
+            let body = self.read_with_args(spec, &rest, span);
+            let ty = Ty::opt(body.ty.clone());
+            return self.mk(ExprKind::ReadFrom(Box::new(text), Box::new(body)), ty, span);
         }
         if let Some(absent) = args
             .iter()

@@ -362,7 +362,7 @@ impl<'a> Checker<'a> {
         if !args.iter().all(|a| {
             a.name
                 .as_ref()
-                .is_some_and(|n| matches!(n.text.as_str(), "base" | "none" | "gen"))
+                .is_some_and(|n| matches!(n.text.as_str(), "base" | "none" | "gen" | "from"))
         }) {
             return None;
         }
@@ -373,6 +373,10 @@ impl<'a> Checker<'a> {
             return None;
         }
         let ty = self.quietly(|c| c.type_arg(t));
+        let from = args
+            .iter()
+            .any(|a| a.name.as_ref().is_some_and(|n| n.text == "from"));
+        let ty = if from { Ty::Optional(Box::new(ty)) } else { ty };
         (!matches!(ty, Ty::Unknown | Ty::Error)).then_some(ty)
     }
 

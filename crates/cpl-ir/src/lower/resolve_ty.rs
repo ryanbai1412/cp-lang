@@ -206,8 +206,29 @@ impl<'a> Lowerer<'a> {
                         return spec;
                     }
                 }
+                if let GenArg::Sized(ty, lens) = &ga {
+                    if let (true, Ty::Array { dims, elem }) = (values, ty) {
+                        if let Some(elem) = self.spec_of(elem) {
+                            let dims = dims
+                                .iter()
+                                .zip(lens)
+                                .map(|(d, &n)| {
+                                    let len = Box::new(self.int_lit(n, name.span));
+                                    match *d {
+                                        Dim::IntFrom(first) => DimSpec::IntFrom(first, len),
+                                        _ => DimSpec::Int(len),
+                                    }
+                                })
+                                .collect();
+                            return Spec::Array {
+                                dims,
+                                elem: Box::new(elem),
+                            };
+                        }
+                    }
+                }
                 return Spec::Plain(match ga {
-                    GenArg::Ty(t) => t,
+                    GenArg::Ty(t) | GenArg::Sized(t, _) => t,
                     GenArg::Domain(d) => Ty::Pos(d),
                     GenArg::Int(_) | GenArg::RuntimeInt(_) | GenArg::Range(_, _) => Ty::Int,
                     GenArg::OptRange(_, _) => Ty::opt(Ty::Int),
