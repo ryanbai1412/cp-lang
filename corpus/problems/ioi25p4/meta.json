@@ -4,11 +4,15 @@
  "submissions": [
   {"id": "7921943", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/7921943.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/ioi25p4/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted C++ (the one submission is CE). ioi25p4 is the DMOJ copy of ioi25_festival, so it takes that package's reference, generator, checker and tests: orig.cpp is the IOI task archive's model solution (2025/day2/festival/solutions/model_solution/isaac_full.cpp) with the sample grader as its main, which also agrees with an every-order brute on 300 random cases with N <= 7."
 }
