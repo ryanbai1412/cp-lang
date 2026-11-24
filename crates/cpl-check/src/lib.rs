@@ -62,7 +62,7 @@ pub use prelude::{
     VALUE_NAMES as PRELUDE_VALUES,
 };
 pub use session::{open, Libraries, Revision, Session, SessionOptions, StdSource};
-pub use ty::{human_bytes, Param, Ty};
+pub use ty::{human_bytes, spare, Param, Ty};
 
 /// A `<fn>_of_pairs`/`<fn>_of_triples` fn: what `T.fn(list)` resolves to, never a name
 /// anyone types, so completion and the editor tables leave it out.

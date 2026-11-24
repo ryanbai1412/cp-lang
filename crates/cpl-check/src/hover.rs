@@ -12,7 +12,7 @@ use crate::builtins::builtin_member;
 use crate::check::{HoverEntry, Resolved};
 use crate::db::{Analysis, Database, ItemSyntax};
 use crate::def::{DeclKind, Def};
-use crate::ty::{has_niche, human_bytes, human_int, size_of, struct_layout, struct_size, Ty};
+use crate::ty::{human_bytes, human_int, size_of, spares, struct_layout, struct_size, Named, Ty};
 use cpl_diag::Span;
 use cpl_syntax::ast::{self, StmtKind};
 use std::sync::Arc;
@@ -1050,24 +1050,7 @@ fn size_at_depth(ty: &Ty, lookup: &mut Lookup, depth: u32) -> Option<u64> {
         .into_iter()
         .map(|n| (n.clone(), domain_size(&n, lookup)))
         .collect();
-    let mut structs = Vec::new();
-    structs_in(ty, &mut structs);
-    let struct_sizes: Vec<(String, Option<u64>)> = structs
-        .into_iter()
-        .map(|name| {
-            let size = match lookup(&name).as_deref() {
-                Some(Def::Struct { fields, .. }) => {
-                    let sizes: Vec<Option<u64>> = fields
-                        .iter()
-                        .map(|f| size_at_depth(&f.ty, lookup, depth + 1))
-                        .collect();
-                    struct_size(sizes.into_iter())
-                }
-                _ => None,
-            };
-            (name, size)
-        })
-        .collect();
+    let structs = named_in(ty, lookup, depth);
     size_of(
         ty,
         &|name| {
@@ -1076,21 +1059,67 @@ fn size_at_depth(ty: &Ty, lookup: &mut Lookup, depth: u32) -> Option<u64> {
                 .find(|(n, _)| n == name)
                 .and_then(|(_, s)| *s)
         },
-        &|name| {
-            struct_sizes
-                .iter()
-                .find(|(n, _)| n == name)
-                .and_then(|(_, s)| *s)
-        },
+        &|t| structs.iter().find(|(n, _)| n == t).and_then(|(_, s)| *s),
     )
 }
 
-/// The struct names a type's size depends on.
-fn structs_in(ty: &Ty, out: &mut Vec<String>) {
+/// `spare`'s count for `ty`, its structs' fields looked up.
+fn spare_count(ty: &Ty, lookup: &mut Lookup, depth: u32) -> u128 {
+    if depth > 8 {
+        return 0;
+    }
+    let structs = named_in(ty, lookup, depth);
+    spares(ty, &|t| {
+        structs.iter().find(|(n, _)| n == t).and_then(|(_, s)| *s)
+    })
+}
+
+/// The fields of struct type `ty`, a generic one's with its arguments in.
+fn struct_fields(ty: &Ty, lookup: &mut Lookup) -> Option<Vec<Ty>> {
+    let Ty::Named { name, args } = ty else {
+        return None;
+    };
+    match lookup(name).as_deref() {
+        Some(Def::Struct {
+            fields, generics, ..
+        }) if generics.len() == args.len() => {
+            let bindings = generics.iter().cloned().zip(args.iter().cloned()).collect();
+            Some(fields.iter().map(|f| f.ty.subst(&bindings)).collect())
+        }
+        _ => None,
+    }
+}
+
+/// The size and spare values of each struct `ty`'s storage holds.
+fn named_in(ty: &Ty, lookup: &mut Lookup, depth: u32) -> Vec<(Ty, Option<Named>)> {
+    let mut structs = Vec::new();
+    structs_in(ty, &mut structs);
+    structs
+        .into_iter()
+        .map(|t| {
+            let named = struct_fields(&t, lookup).and_then(|fields| {
+                let mut sizes = Vec::with_capacity(fields.len());
+                let mut spares = 0;
+                for f in &fields {
+                    sizes.push(size_at_depth(f, lookup, depth + 1));
+                    if spares == 0 {
+                        spares = spare_count(f, lookup, depth + 1);
+                    }
+                }
+                let size = struct_size(sizes.into_iter())?;
+                Some(Named { size, spares })
+            });
+            (t, named)
+        })
+        .collect()
+}
+
+/// The structs a type's size depends on.
+fn structs_in(ty: &Ty, out: &mut Vec<Ty>) {
     match ty {
-        Ty::Named { name, args } if args.is_empty() => {
-            if !out.contains(name) {
-                out.push(name.clone());
+        Ty::Named { .. } => {
+            if !out.contains(ty) {
+                out.push(ty.clone());
             }
         }
         Ty::Optional(inner) => structs_in(inner, out),
@@ -1311,17 +1340,13 @@ fn struct_note(ty: &Ty, lookup: &mut Lookup) -> Option<String> {
 fn layout(ty: &Ty, lookup: &mut Lookup) -> (Option<bool>, Vec<u64>, u64) {
     let sizes: Option<Vec<u64>> = match ty {
         Ty::Optional(inner) => {
-            let spare = size(inner, lookup).map(|s| has_niche(inner, s));
+            let spare = size(inner, lookup).map(|_| spare_count(inner, lookup, 0) > 0);
             return (spare, Vec::new(), 0);
         }
         Ty::Tuple(items) => items.iter().map(|t| size(t, lookup)).collect(),
         Ty::Record(fields) => fields.iter().map(|(_, t)| size(t, lookup)).collect(),
-        Ty::Named { name, args } if args.is_empty() => match lookup(name).as_deref() {
-            Some(Def::Struct {
-                fields, generics, ..
-            }) if generics.is_empty() => fields.iter().map(|f| size(&f.ty, lookup)).collect(),
-            _ => None,
-        },
+        Ty::Named { .. } => struct_fields(ty, lookup)
+            .and_then(|fields| fields.iter().map(|t| size(t, lookup)).collect()),
         _ => None,
     };
     let Some(sizes) = sizes.filter(|s| s.len() > 1) else {

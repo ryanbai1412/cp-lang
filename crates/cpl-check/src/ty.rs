@@ -1038,11 +1038,11 @@ impl fmt::Display for Ty {
 /// holds it, and `?T` uses a spare value of `T` when there is one.
 ///
 /// `domain_size` gives the most positions a domain can have, and
-/// `named_size` the size of a struct.
+/// `named_size` the size and spare values of a struct.
 pub fn size_of(
     ty: &Ty,
     domain_size: &dyn Fn(&str) -> Option<i128>,
-    named_size: &dyn Fn(&str) -> Option<u64>,
+    named_size: &dyn Fn(&Ty) -> Option<Named>,
 ) -> Option<u64> {
     Some(match ty {
         Ty::Int | Ty::U64 | Ty::Float => 8,
@@ -1061,7 +1061,7 @@ pub fn size_of(
         },
         Ty::Optional(inner) => {
             let inner_size = size_of(inner, domain_size, named_size)?;
-            if has_niche(inner, inner_size) {
+            if spares(inner, named_size) > 0 {
                 inner_size
             } else {
                 inner_size + inner_size.clamp(1, 8)
@@ -1073,7 +1073,7 @@ pub fn size_of(
                 .iter()
                 .map(|(_, t)| size_of(t, domain_size, named_size)),
         )?,
-        Ty::Named { name, args } if args.is_empty() => named_size(name)?,
+        Ty::Named { .. } => named_size(ty)?.size,
         _ => return None,
     })
 }
@@ -1128,17 +1128,59 @@ pub fn struct_layout(sizes: &[u64]) -> Layout {
     }
 }
 
-/// Whether `?T` stores `None` in a value `T` never takes, so it needs no
-/// flag and costs what `T` costs.
-pub fn has_niche(inner: &Ty, inner_size: u64) -> bool {
-    match inner {
-        Ty::Int | Ty::Pos(_) => true,
+/// A struct's size, and the spare values of its first field that has any.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct Named {
+    pub size: u64,
+    pub spares: u128,
+}
+
+/// How many raw values a `T`'s storage never holds, each of which can stand
+/// for a `None` (R03.2.2): `Int` keeps INT64_MIN, a range the values past
+/// one edge of its width, a position every negative value, `?T` those `T`
+/// leaves after its own `None`, and a struct those of its first field, in
+/// declaration order, that has any. Zero: `?T` needs a flag beside `T`.
+/// Layout, `cpl explain` and codegen's `?S` all count by these rules.
+pub mod spare {
+    /// A position's negative values, too many to run out of.
+    pub const MANY: u128 = u128::MAX;
+
+    /// A `lo..=hi` in the narrowest width that holds it: below `lo` when the
+    /// width is signed, above `hi` when it is unsigned (`lo >= 0`).
+    pub fn of_range(lo: i128, hi: i128) -> u128 {
+        let bits = 8 * super::int_width(lo, hi) as u32;
+        if bits < 64 && lo >= 0 {
+            ((1i128 << bits) - 1 - hi).max(0) as u128
+        } else {
+            (lo + (1i128 << (bits - 1))).max(0) as u128
+        }
+    }
+
+    /// `?T` takes one of `T`'s spare values for its `None`.
+    pub fn of_opt(inner: u128) -> u128 {
+        inner.saturating_sub(1)
+    }
+
+    /// The first field, in declaration order, with a spare value, and its count.
+    pub fn first(fields: impl IntoIterator<Item = u128>) -> Option<(usize, u128)> {
+        fields.into_iter().enumerate().find(|&(_, s)| s > 0)
+    }
+}
+
+/// `spare`'s count for a checker type; `named` gives a struct's.
+pub fn spares(ty: &Ty, named: &dyn Fn(&Ty) -> Option<Named>) -> u128 {
+    match ty {
+        Ty::Int => 1,
         Ty::Range {
             lo: Some(lo),
             hi: Some(hi),
             ..
-        } => inner_size < 16 && hi - lo + 1 < 1i128 << (8 * inner_size),
-        _ => false,
+        } => spare::of_range(*lo, *hi),
+        Ty::Range { .. } => 1,
+        Ty::Pos(_) => spare::MANY,
+        Ty::Optional(inner) => spare::of_opt(spares(inner, named)),
+        Ty::Named { .. } => named(ty).map_or(0, |n| n.spares),
+        _ => 0,
     }
 }
 
@@ -1294,7 +1336,7 @@ mod tests {
         assert!(Ty::Bool.is_one_of(&["Bool"]) && !Ty::Int.is_one_of(&["Int<_>"]));
     }
 
-    fn no_structs(_: &str) -> Option<u64> {
+    fn no_structs(_: &Ty) -> Option<Named> {
         None
     }
 

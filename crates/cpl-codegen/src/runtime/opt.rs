@@ -102,24 +102,30 @@ template <class T, size_t... P> struct OptTuple {
         name: "niche_field",
         needs: &[],
         code: "\
-// `?S` with no flag: S's field M (an Int or a position) never holds NONE.
+// `?S` with no flag: the scalar S reaches through member pointers M, P... (an
+// Int, a position, a range, or the inside of a packed `?` field) never holds
+// NONE, the spare value after the K that the `?`s along the path keep.
 template <class P> struct Member;
 template <class S0, class F0> struct Member<F0 S0::*> { using S = S0; using F = F0; };
-template <auto M> struct OptField {
+template <auto M, auto... P, class T> auto& niche_at(T& s) {
+    if constexpr (sizeof...(P) == 0) return s.*M;
+    else return niche_at<P...>(s.*M);
+}
+template <unsigned K, auto M, auto... P> struct OptField {
     using S = typename Member<decltype(M)>::S;
-    using F = typename Member<decltype(M)>::F;
-    static constexpr F NONE = sizeof(F) == 8 ? F(-0x7fffffffffffffffLL - 1) : F(-1);
+    using F = std::remove_reference_t<decltype(niche_at<M, P...>(std::declval<S&>()))>;
+    static constexpr F NONE = std::is_unsigned<F>::value ? F(std::numeric_limits<F>::max() - K) : F(std::numeric_limits<F>::min() + K);
     S raw = empty();
-    static S empty() { S s{}; s.*M = NONE; return s; }
+    static S empty() { S s{}; niche_at<M, P...>(s) = NONE; return s; }
     OptField() = default;
     explicit OptField(const S& x) : raw(x) {}
     explicit OptField(const std::optional<S>& o) : raw(o ? *o : empty()) {}
-    bool has_value() const { return raw.*M != NONE; }
+    bool has_value() const { return niche_at<M, P...>(raw) != NONE; }
     explicit operator bool() const { return has_value(); }
     const S& operator*() const { return raw; }
     S& operator*() { return raw; }
     explicit operator std::optional<S>() const { return *this ? std::optional<S>(raw) : std::nullopt; }
-    friend bool operator==(const OptField& a, const OptField& b) { return a.raw.*M == b.raw.*M && (!a || a.raw == b.raw); }
+    friend bool operator==(const OptField& a, const OptField& b) { return a.has_value() == b.has_value() && (!a || a.raw == b.raw); }
     friend bool operator!=(const OptField& a, const OptField& b) { return !(a == b); }
 };
 ",

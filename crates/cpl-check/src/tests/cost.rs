@@ -316,6 +316,22 @@ fn representation_is_the_data_behind_the_storage_line() {
 }
 
 #[test]
+fn a_struct_takes_the_niche_of_a_generic_optional_first_field() {
+    let src = "use std.marks.{Id}\nstruct N:\n    var a: ?Id<Int> = None\n    var b: ?(0..=2_000_000_000) = None\n\
+               struct Node:\n    var key: (at: Int, cnt: Int)\n    var l: ?Id<Int> = None\n\
+               \x20   var r: ?Id<Int> = None\n    var stamp: 0..=2_000_000_000 = 0\n\
+               let o: ?N = None\nlet m: ?Node = None\nprint(yes(o == None), yes(m == None))\n";
+    let at = |needle: &str| src.find(needle).unwrap() as u32;
+    let mut db = Database::new();
+    db.set_file("a.cp", src);
+    let o = db.representation("a.cp", at("o:")).unwrap();
+    assert_eq!((o.bytes, o.none_is_spare), (Some(8), Some(true)));
+    // Two 4-byte `?Id<Int>` links, not two 8-byte flagged ones: 32 B, not 40.
+    let m = db.representation("a.cp", at("m:")).unwrap();
+    assert_eq!((m.bytes, m.none_is_spare), (Some(32), Some(true)));
+}
+
+#[test]
 fn every_builtin_cost_is_written_as_std_writes_it() {
     for m in crate::BUILTIN_MEMBERS {
         let Some(cost) = cpl_syntax::doc::Facts::parse(m.doc).cost else {

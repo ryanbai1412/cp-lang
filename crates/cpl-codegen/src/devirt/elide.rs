@@ -281,13 +281,13 @@ impl<'p> Devirt<'p> {
             }
         }
         for (sid, def) in program.structs.iter().enumerate() {
-            let niche = crate::names::struct_niche(program, sid);
+            let niche = crate::names::struct_niche(program, sid).map(|n| n.field);
             for (idx, (name, ty)) in def.fields.iter().enumerate() {
                 let key = (sid, idx);
                 if read.contains(&key)
                     || unskippable.contains(&key)
                     || (!is_fn_or_opt_fn(ty)
-                        && (whole.contains(&sid) || niche == Some(name.as_str())))
+                        && (whole.contains(&sid) || niche.as_deref() == Some(name.as_str())))
                 {
                     continue;
                 }

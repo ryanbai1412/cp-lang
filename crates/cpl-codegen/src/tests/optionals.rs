@@ -105,9 +105,37 @@ fn an_optional_struct_with_an_int_field_has_no_flag() {
         "t = Tag('a')\n",
         "print(yes(best == None), yes(t == None))\n",
     ));
-    assert!(cpp.contains("cpl::OptField<&Edge::to> best"), "{cpp}");
+    assert!(cpp.contains("cpl::OptField<0, &Edge::to> best"), "{cpp}");
     // A `Char` has no free value, so `?Tag` keeps its flag.
     assert!(cpp.contains("std::optional<Tag> t"), "{cpp}");
+}
+
+#[test]
+fn a_struct_takes_the_niche_of_a_generic_optional_first_field() {
+    let cpp = cpp(concat!(
+        "use std.marks.{Id}\n",
+        "struct N:\n",
+        "    var a: ?Id<Int> = None\n",
+        "    var b: ?(0..=2_000_000_000) = None\n",
+        "var ns: List<?N> = [None, Some(N())]\n",
+        "print(ns.len, yes(ns[1] == None))\n",
+    ));
+    let id = cpp
+        .split("struct ")
+        .find(|s| s.starts_with("Id_Int"))
+        .unwrap();
+    let id = &id[..id.find(' ').unwrap()];
+    // `?Id<Int>` takes its range's first spare value, `?N` the next one.
+    assert!(
+        cpp.contains(&format!("cpl::OptField<0, &{id}::raw> a;")),
+        "{cpp}"
+    );
+    assert!(
+        cpp.contains(&format!(
+            "std::vector<cpl::OptField<1, &N::a, &decltype(N::a)::raw, &{id}::raw>> ns"
+        )),
+        "{cpp}"
+    );
 }
 
 #[test]
