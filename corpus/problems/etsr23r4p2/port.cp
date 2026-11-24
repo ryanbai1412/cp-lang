@@ -25,7 +25,11 @@ fn modulus(depth: Int) -> Int = moduli[min(depth, moduli.len - 1)]
 // reached modulus(depth + 1) = phi(modulus(depth)), so the true exponent is e + that.
 // base^e mod modulus(d) as low[d][e % step] * high[d][e / step]; e < 2 * modulus(d + 1)
 let step = 1 << 15
-let low = [[pow_mod(base, e, modulus(d)) for e in 0..step] for d in 0..moduli.len]
+fn powers(m: Int) -> List<Int>:
+    var t = [1 % m]
+    for _ in 1..step: t.push(t.last! * base % m)
+    t
+let low = [powers(modulus(d)) for d in 0..moduli.len]
 let high = [
     [
         pow_mod(base, h * step, modulus(d)) for h in 0..=2 * modulus(d + 1) / step
