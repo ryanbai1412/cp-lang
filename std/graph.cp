@@ -995,7 +995,7 @@ fn topo_orders_a_dag_and_rejects_a_cycle():
     for (i, v) in [(i, order[i]) for i in 0..order.len]: pos[v] = i
     for u in V:
         for v in out[u]: assert pos[u] < pos[v]
-    assert topo<V>(v => [v.cyc(1)]) == None
+    assert topo<V>(v => [V.wrap(v.ord + 1)]) == None
     let stuck = [V] v => [V(x) for x in [[1, 2], [3], [3], [4], [3], [0]][v.ord]]
     assert topo<V>(v => stuck[v]) == None
 

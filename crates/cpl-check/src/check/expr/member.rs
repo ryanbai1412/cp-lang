@@ -289,7 +289,6 @@ impl<'a> Checker<'a> {
         }
         let positional = match &base_ty {
             Ty::Domain(_) => ["nth", "at", "wrap"].contains(&name.text.as_str()),
-            Ty::Pos(_) => ["offset", "ahead", "back"].contains(&name.text.as_str()),
             _ => false,
         };
         if positional && matches!(ty, Ty::Fn { .. }) {
@@ -832,20 +831,6 @@ impl<'a> Checker<'a> {
                         "ord" | "idx" | "label" => return Ty::Int,
                         "l" | "r" => return Ty::Pos(format!("{type_name}.cuts")),
                         "prev" | "next" => return Ty::Optional(Box::new(base_ty.clone())),
-                        "offset" | "ahead" | "back" => {
-                            return Ty::Fn {
-                                params: vec![crate::ty::Param {
-                                    name: "k".into(),
-                                    ty: Ty::Int,
-                                    mutable: false,
-                                    has_default: false,
-                                    named_only: false,
-                                    variadic: false,
-                                    lazy: false,
-                                }],
-                                ret: Box::new(Ty::Optional(Box::new(base_ty.clone()))),
-                            };
-                        }
                         _ => {}
                     }
                 }
@@ -1014,20 +999,6 @@ impl<'a> Checker<'a> {
                 match name.text.as_str() {
                     "ord" | "idx" | "label" => return Ty::Int,
                     "prev" | "next" => return Ty::Optional(Box::new(Ty::Pos(domain.clone()))),
-                    "offset" | "ahead" | "back" => {
-                        return Ty::Fn {
-                            params: vec![crate::ty::Param {
-                                name: "k".into(),
-                                ty: Ty::Int,
-                                mutable: false,
-                                has_default: false,
-                                named_only: false,
-                                variadic: false,
-                                lazy: false,
-                            }],
-                            ret: Box::new(Ty::Optional(Box::new(Ty::Pos(domain.clone())))),
-                        };
-                    }
                     // The cuts on either side of a position.
                     // R04.2.19: the pieces on either side of a position.
                     "before" | "after" if !domain.ends_with(".cuts") => {

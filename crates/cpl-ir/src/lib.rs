@@ -1013,9 +1013,6 @@ pub enum Builtin {
     /// `SymIdx` of ends known to be in order, `lo <= last`: the cell of a
     /// `V.ranges` key, whose non-emptiness is already checked or proven.
     TriIdx,
-    /// `v.offset(k)` / `v + k` -> `?V`, and `v.cyc(k)` -> `V`.
-    PosOffset(DomainId),
-    PosCyc(DomainId),
     /// `v.l(k)` / `v.r(k)` -> `Bound(d)` (checked in `0..=K`).
     BoundStepL(DomainId),
     BoundStepR(DomainId),

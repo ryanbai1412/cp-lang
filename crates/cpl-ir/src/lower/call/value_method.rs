@@ -78,40 +78,6 @@ impl<'a> Lowerer<'a> {
                     None => self.err_expr(span),
                 }
             }
-            (Ty::Pos(d), "offset" | "ahead") => {
-                let d = *d;
-                match self.one_arg(method, args, &Ty::Int, span) {
-                    Some(k) => self.mk_builtin(
-                        Builtin::PosOffset(d),
-                        [value, k],
-                        Ty::opt(Ty::Pos(d)),
-                        span,
-                    ),
-                    None => self.err_expr(span),
-                }
-            }
-            (Ty::Pos(d), "back") => {
-                let d = *d;
-                match self.one_arg("back", args, &Ty::Int, span) {
-                    Some(k) => {
-                        let neg_k = self.mk_unary(UnOp::Neg, k, Ty::Int, span);
-                        self.mk_builtin(
-                            Builtin::PosOffset(d),
-                            [value, neg_k],
-                            Ty::opt(Ty::Pos(d)),
-                            span,
-                        )
-                    }
-                    None => self.err_expr(span),
-                }
-            }
-            (Ty::Pos(d), "cyc") => {
-                let d = *d;
-                match self.one_arg("cyc", args, &Ty::Int, span) {
-                    Some(k) => self.mk_builtin(Builtin::PosCyc(d), [value, k], Ty::Pos(d), span),
-                    None => self.err_expr(span),
-                }
-            }
             (ty, "get") if let Some(elem) = ty.seq_elem() => {
                 let opt = Ty::opt(elem);
                 match self.one_arg("get", args, &Ty::Int, span) {

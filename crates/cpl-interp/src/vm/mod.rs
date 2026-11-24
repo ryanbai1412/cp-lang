@@ -14,7 +14,7 @@
 //!   caller's bytecode stream at compile time.
 //! - Hot contest loops use superinstructions (`ForInc`, `ForIncClosed`,
 //!   `ForDec`, `LoadGArr1I`/`StoreGArr1I`, `LoadGArr2I`/`StoreGArr2I`,
-//!   `LoadGArr2OptI`/`StoreGArr2OptI`, `PosNext`/`PosPrev`/`PosOffset`,
+//!   `LoadGArr2OptI`/`StoreGArr2OptI`, `PosNext`/`PosPrev`,
 //!   `JmpLtI`/`JmpLeI`/`JmpEqI`/`JmpNeI`).
 //! - Any IR construct not lowered natively executes via `FallbackStmt` /
 //!   `FallbackExpr`, syncing live local slots with `Interp` so 100% of CP Lang

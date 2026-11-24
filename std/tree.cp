@@ -20,7 +20,7 @@ use std.dsu.{Dsu}
 use std.graph.{Next, Target, Graph, Visit, Edged, dfs, Tree, arc_len}
 use std.math.{bit, bit_width}
 use std.rand.{Rng, shuffle}
-use std.range.{Len, first_true}
+use std.range.{Len, first_true, offset}
 use std.segtree.{SegTree}
 use std.seq.{collect, dedup, get_or_insert, span, any}
 

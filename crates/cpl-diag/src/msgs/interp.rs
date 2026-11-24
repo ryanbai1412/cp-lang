@@ -8,7 +8,6 @@ super::msgs! {
     CHECKPOINT_DOES_NOT_MATCH_PROGRAM = RUNTIME, "the checkpoint does not match the program";
     CMP_MUST_RETURN_ORDERING = RUNTIME, "`cmp` must return an `Ordering`";
     CUTS_NEED_SEQUENCE = RUNTIME, "cuts need a sequence";
-    CYC_ON_EMPTY_DOMAIN = RUNTIME, "cyc on empty domain";
     DIV_BY_ZERO_OP = DIVISION_BY_ZERO, "division by zero: `{} {} 0`";
     DOES_NOT_FIT_IN = OVERFLOW, "`{}` does not fit in {}";
     DOES_NOT_FIT_IN_INT = OVERFLOW, "`{}` does not fit in an `Int`";

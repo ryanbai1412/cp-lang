@@ -832,22 +832,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let last = values.next().unwrap_or_default().int();
                 Value::Int(last * (last + 1) / 2 + lo)
             }
-            Builtin::PosOffset(d) => {
-                let (_, len) = self.domains[d];
-                let ord = first.int();
-                let delta = values.next().unwrap_or_default().int();
-                let target = ord.saturating_add(delta);
-                optional((target >= 0 && target < len).then_some(Value::Int(target)))
-            }
-            Builtin::PosCyc(d) => {
-                let (_, len) = self.domains[d];
-                if len <= 0 {
-                    return trap(span, cpl_diag::msgs::interp::CYC_ON_EMPTY_DOMAIN.at(&[]));
-                }
-                let ord = first.int();
-                let delta = values.next().unwrap_or_default().int();
-                Value::Int((ord + delta).rem_euclid(len))
-            }
             Builtin::BoundStepL(d) => {
                 let (_, len) = self.domains[d];
                 let ord = first.int();

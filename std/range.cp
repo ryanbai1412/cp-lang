@@ -226,6 +226,30 @@ pub fn shift_saturating<D>(self: D, k: Int) -> D:
     let o = self.ord
     D.nth(if k >= n - 1 - o: n - 1 elif k <= -o: 0 else: o + k)
 
+/// The position `k` steps from `self`, or `None` outside its domain: `v.next` for any `k`. One
+/// definition for positions and cuts, like `shift`.
+///
+/// cost: \(O(1)\)
+/// traps: never
+/// example: `domain V = 1..=6; V(5).offset(1) == Some(V(6)) and V(5).offset(2) == None and V(2).offset(-1) == Some(V(1))`
+pub fn offset<D>(self: D, k: Int) -> ?D:
+    let o = self.ord + k
+    if 0 <= o < D.count: Some(D.nth(o)) else: None
+
+/// The position `k` steps after `self`, or `None` past the domain's last: `v.offset(k)`.
+///
+/// cost: \(O(1)\)
+/// traps: never
+/// example: `domain V = 0..6; V(4).ahead(1) == Some(V(5)) and V(4).ahead(2) == None`
+pub fn ahead<D>(self: D, k: Int) -> ?D = self.offset(k)
+
+/// The position `k` steps before `self`, or `None` before the domain's first: `v.offset(-k)`.
+///
+/// cost: \(O(1)\)
+/// traps: never
+/// example: `domain V = 0..6; V(1).back(1) == Some(V(0)) and V(1).back(2) == None`
+pub fn back<D>(self: D, k: Int) -> ?D = self.offset(-k)
+
 /// The two ends of a range as offsets, `(lo, hi)` with `lo <= hi`: what a range query walks.
 /// A range written backwards, `P(3)..P(1)`, stops the program here: no query silently answers
 /// as if it were empty. `l..l` is in order and empty.

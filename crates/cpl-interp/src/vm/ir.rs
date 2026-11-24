@@ -320,13 +320,6 @@ pub(crate) enum Op {
         dst_some: u16,
         src: u16,
     },
-    PosOffset {
-        dst_val: u16,
-        dst_some: u16,
-        src: u16,
-        delta: u16,
-        dom: u16,
-    },
     PosTryOrd {
         dst_val: u16,
         dst_some: u16,

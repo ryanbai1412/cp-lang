@@ -814,19 +814,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     regs_i[dst_val as usize] = ord - 1;
                     regs_i[dst_some as usize] = i64::from(ok);
                 }
-                Op::PosOffset {
-                    dst_val,
-                    dst_some,
-                    src,
-                    delta,
-                    dom,
-                } => {
-                    let len = self.domains[dom as usize].1;
-                    let target = regs_i[src as usize].saturating_add(regs_i[delta as usize]);
-                    let ok = target >= 0 && target < len;
-                    regs_i[dst_val as usize] = target;
-                    regs_i[dst_some as usize] = i64::from(ok);
-                }
                 Op::PosTryOrd {
                     dst_val,
                     dst_some,

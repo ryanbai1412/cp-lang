@@ -28,9 +28,9 @@ impl<'a> Lowerer<'a> {
     /// range has a list's too), the record's fields and every fn in reach that takes `self`.
     pub(super) fn member_typo(&mut self, ty: &Ty, name: &str, span: Span) {
         use cpl_check::Receiver;
-        const POS_MEMBERS: [&str; 18] = [
-            "after", "ahead", "back", "before", "count", "cyc", "first", "idx", "is_empty",
-            "label", "len", "next", "offset", "ord", "prev", "rank", "with", "without",
+        const POS_MEMBERS: [&str; 14] = [
+            "after", "before", "count", "first", "idx", "is_empty", "label", "len", "next", "ord",
+            "prev", "rank", "with", "without",
         ];
         const BOUND_EXTRA: [&str; 4] = ["l", "left", "r", "right"];
         const RANGE_MEMBERS: [&str; 10] = [

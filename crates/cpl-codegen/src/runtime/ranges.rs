@@ -146,8 +146,6 @@ template <class T> ll key_pos(const Range<T>& r, ll k) { ll i = k - (ll)r.lo, n 
         needs: &["fail", "niche"],
         code: "\
 inline OptPos pos_try_ord(ll i, ll len) { return (i >= 0 && i < len) ? OptPos((int)i) : OptPos(); }
-inline OptPos pos_offset(ll i, ll d, ll len) { ll t = i + d; return (t >= 0 && t < len) ? OptPos((int)t) : OptPos(); }
-inline int pos_cyc(ll i, ll d, ll len) { ll r = (i + d) % len; return (int)(r < 0 ? r + len : r); }
 inline int bound_step(ll b, ll len) { if (b < 0 || b > len) fail(\"window leaves domain\"); return (int)b; }
 inline OptPos bound_left(ll b) { return b > 0 ? OptPos((int)(b - 1)) : OptPos(); }
 inline OptPos bound_right(ll b, ll len) { return b < len ? OptPos((int)b) : OptPos(); }

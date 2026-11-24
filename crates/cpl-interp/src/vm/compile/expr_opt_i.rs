@@ -103,23 +103,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 );
                 (dst_val, dst_some)
             }
-            ExprKind::Builtin(Builtin::PosOffset(d), args) if args.len() == 2 => {
-                let src = self.compile_expr_i(&args[0]);
-                let delta = self.compile_expr_i(&args[1]);
-                let dst_val = self.alloc_i();
-                let dst_some = self.alloc_i();
-                self.emit(
-                    Op::PosOffset {
-                        dst_val,
-                        dst_some,
-                        src,
-                        delta,
-                        dom: *d as u16,
-                    },
-                    span,
-                );
-                (dst_val, dst_some)
-            }
             ExprKind::Builtin(Builtin::PosTryOrd(d), args) if args.len() == 1 => {
                 let src = self.compile_expr_i(&args[0]);
                 let dst_val = self.alloc_i();
