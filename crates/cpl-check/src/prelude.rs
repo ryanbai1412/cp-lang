@@ -25,7 +25,7 @@ use crate::ty::{Param, Ty};
 /// takes it from (`std.mod`, `Mod`). The compiler has no list of its own.
 pub fn names() -> &'static [(Vec<ast::Name>, ast::Name)] {
     static NAMES: OnceLock<Vec<(Vec<ast::Name>, ast::Name)>> = OnceLock::new();
-    NAMES.get_or_init(|| {
+    lazy(&NAMES, || {
         // A `CPL_STD_DIR` without a prelude gives programs no prelude names.
         let Some(text) = crate::modules::bundled_std(&["prelude".to_string()]) else {
             return Vec::new();
@@ -136,7 +136,7 @@ pub fn shared_method(name: &str) -> bool {
 /// the checker can't type and no module declares is a spec gap.
 pub fn spec_member_names() -> &'static crate::fx::HashSet<String> {
     static NAMES: OnceLock<crate::fx::HashSet<String>> = OnceLock::new();
-    NAMES.get_or_init(|| member_names(crate::modules::std_index()))
+    lazy(&NAMES, || member_names(crate::modules::std_index()))
 }
 
 fn member_names(std: Std) -> crate::fx::HashSet<String> {
@@ -175,7 +175,9 @@ fn member_names(std: Std) -> crate::fx::HashSet<String> {
 /// them, though the name is on `spec_member_names`.
 pub fn spec_struct_only_member_names() -> &'static crate::fx::HashSet<String> {
     static NAMES: OnceLock<crate::fx::HashSet<String>> = OnceLock::new();
-    NAMES.get_or_init(|| struct_only_member_names(crate::modules::std_index()))
+    lazy(&NAMES, || {
+        struct_only_member_names(crate::modules::std_index())
+    })
 }
 
 fn struct_only_member_names(std: Std) -> crate::fx::HashSet<String> {
@@ -217,7 +219,10 @@ fn struct_only_member_names(std: Std) -> crate::fx::HashSet<String> {
 /// of no declared struct, such as a generator, can be given.
 pub fn spec_receiver_method_names() -> &'static crate::fx::HashSet<String> {
     static NAMES: OnceLock<crate::fx::HashSet<String>> = OnceLock::new();
-    NAMES.get_or_init(|| receiver_method_names(crate::modules::std_index()))
+    lazy(
+        &NAMES,
+        || receiver_method_names(crate::modules::std_index()),
+    )
 }
 
 fn receiver_method_names(std: Std) -> crate::fx::HashSet<String> {
@@ -232,7 +237,7 @@ fn receiver_method_names(std: Std) -> crate::fx::HashSet<String> {
 /// `None` for one of the fn's own type parameters, which takes any receiver.
 pub fn std_self_heads() -> &'static crate::names::NameMap<Vec<Option<String>>> {
     static HEADS: OnceLock<crate::names::NameMap<Vec<Option<String>>>> = OnceLock::new();
-    HEADS.get_or_init(|| self_heads(crate::modules::std_index()))
+    lazy(&HEADS, || self_heads(crate::modules::std_index()))
 }
 
 fn self_heads(std: Std) -> crate::names::NameMap<Vec<Option<String>>> {
@@ -348,7 +353,7 @@ fn self_methods_in(text: &str) -> SelfMethods {
 /// E0304 as `xs.len()` is (R06.4.2).
 pub fn getter_methods() -> &'static crate::fx::HashSet<String> {
     static NAMES: OnceLock<crate::fx::HashSet<String>> = OnceLock::new();
-    NAMES.get_or_init(|| getter_methods_in(crate::modules::std_index()))
+    lazy(&NAMES, || getter_methods_in(crate::modules::std_index()))
 }
 
 fn getter_methods_in(std: Std) -> crate::fx::HashSet<String> {
@@ -385,7 +390,7 @@ fn getter_methods_in(std: Std) -> crate::fx::HashSet<String> {
 /// the prelude's list. A name two modules give is there once for each.
 pub fn methods() -> &'static [(Vec<ast::Name>, ast::Name)] {
     static METHODS: OnceLock<Vec<(Vec<ast::Name>, ast::Name)>> = OnceLock::new();
-    METHODS.get_or_init(|| methods_in(crate::modules::std_index()))
+    lazy(&METHODS, || methods_in(crate::modules::std_index()))
 }
 
 fn methods_in(std: Std) -> Vec<(Vec<ast::Name>, ast::Name)> {
@@ -515,7 +520,7 @@ pub const BUILT_ON: &[(&str, &str)] = &[];
 /// `pub struct Prefix`: `prefix(a)` is that type's constructor, `Prefix(a)`.
 pub fn built_on() -> &'static [(&'static str, &'static str)] {
     static ALL: OnceLock<Vec<(&'static str, &'static str)>> = OnceLock::new();
-    ALL.get_or_init(|| {
+    lazy(&ALL, || {
         let mut all = BUILT_ON.to_vec();
         all.extend(struct_decorations("word"));
         all
@@ -561,7 +566,7 @@ fn struct_decorations(decorator: &str) -> Vec<(&'static str, &'static str)> {
 /// domain `D`.
 pub fn domain_members() -> &'static [(&'static str, &'static str)] {
     static FOUND: OnceLock<Vec<(&'static str, &'static str)>> = OnceLock::new();
-    FOUND.get_or_init(|| struct_decorations("member"))
+    lazy(&FOUND, || struct_decorations("member"))
 }
 
 /// The struct whose domain `D.member` is, when std declares one.
@@ -617,7 +622,7 @@ pub fn aka(on: &str, name: &str) -> Option<&'static str> {
 /// on that type was written in snake case: `prefix_n` for `PrefixN`.
 pub fn renamed(name: &str) -> Option<&'static str> {
     static WAS: OnceLock<crate::names::NameMap<&'static str>> = OnceLock::new();
-    let was = WAS.get_or_init(|| {
+    let was = lazy(&WAS, || {
         let mut was = crate::names::NameMap::default();
         let leak = |s: &str| &*Box::leak(s.to_string().into_boxed_str());
         for (_, text) in crate::modules::std_index() {
@@ -678,7 +683,7 @@ pub const INTERNAL_BUILT_ON: &[(&str, &str, &str)] = &[
 /// type gets these with it, so what its methods take and return can be named.
 pub fn companions(name: &str) -> &'static [&'static str] {
     static ALL: OnceLock<crate::names::NameMap<Vec<&'static str>>> = OnceLock::new();
-    let all = ALL.get_or_init(|| {
+    let all = lazy(&ALL, || {
         let mut all = crate::names::NameMap::default();
         for (module, ty) in names() {
             if !ty.text.starts_with(char::is_uppercase) || module.len() < 2 {
@@ -831,10 +836,12 @@ pub fn ty(name: &str) -> Option<Ty> {
 /// for: its type parameters and its body (R08.1.5).
 pub fn core_trait_decl(name: &str) -> Option<(&'static [ast::Name], &'static [ast::Stmt])> {
     static DECLS: OnceLock<Vec<ast::Stmt>> = OnceLock::new();
-    let decls = DECLS.get_or_init(|| {
+    let decls = lazy(&DECLS, || {
         let mut out = Vec::new();
         for (_, item) in cpl_syntax::parse_file(include_str!("core_traits.cp")).items {
-            out.extend(item.stmts);
+            for stmt in item.stmts {
+                out.push(stmt);
+            }
         }
         out
     });
@@ -847,6 +854,12 @@ pub fn core_trait_decl(name: &str) -> Option<(&'static [ast::Name], &'static [as
         } if n.text == name => Some((generics.as_slice(), body.stmts.as_slice())),
         _ => None,
     })
+}
+
+/// `cell`'s value, built by `init` the first time. `init` is a fn, not a
+/// closure, so the cells of one type share one copy of the code that fills them.
+fn lazy<T>(cell: &'static OnceLock<T>, init: fn() -> T) -> &'static T {
+    cell.get_or_init(init)
 }
 
 /// A prelude trait: what `T: Ord` and `impl Add for V` may name.
@@ -1085,7 +1098,7 @@ pub fn import_edit(text: &str, module: &str, name: &str) -> (Span, String) {
 pub fn std_names() -> &'static [(&'static str, &'static str)] {
     static NAMES: std::sync::OnceLock<Vec<(&'static str, &'static str)>> =
         std::sync::OnceLock::new();
-    NAMES.get_or_init(|| {
+    lazy(&NAMES, || {
         let leak = |s: String| &*Box::leak(s.into_boxed_str());
         public_names(crate::modules::std_index().iter().copied())
             .into_iter()
