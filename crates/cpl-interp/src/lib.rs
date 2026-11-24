@@ -457,7 +457,10 @@ fn run_from<O: Observer>(
         trap,
         debug: std::mem::take(&mut interp.debug_out),
         recording,
-        profile: interp.profiler.take().map(|profiler| profiler.finish()),
+        profile: interp
+            .profiler
+            .take()
+            .map(|profiler| profile::Profiler::finish(*profiler)),
     };
     if interp.ckpt.on() {
         interp.ckpt.read = interp.input.bytes().to_vec();
@@ -963,7 +966,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             *stats.walked_counts.entry(vm::stmt_tag(stmt)).or_default() += 1;
         }
         if let Some(profiler) = &mut self.profiler {
-            profiler.enter(stmt);
+            observe::Observer::step(&mut **profiler, stmt);
         }
         match stmt {
             Stmt::Let(slot, init) => {
@@ -3116,32 +3119,24 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         desc: bool,
         span: Span,
     ) -> Res<Vec<Value>> {
-        let saved_profiler = self.profiler.take();
         for x in &xs {
-            let res = self.call_value(cmp.clone(), vec![x.clone(), x.clone()], span);
-            match res {
-                Ok(v) if v.bool() => {
-                    self.profiler = saved_profiler;
-                    return trap(
-                        span,
-                        "sort `cmp:` comparator is not a strict weak order: cmp(x, x) is true",
-                    );
-                }
-                Ok(_) => {}
-                Err(e) => {
-                    self.profiler = saved_profiler;
-                    return Err(e);
-                }
+            let pair = vec![x.clone(), x.clone()];
+            if self
+                .quietly(|run| run.call_value(cmp.clone(), pair, span))?
+                .bool()
+            {
+                return trap(
+                    span,
+                    "sort `cmp:` comparator is not a strict weak order: cmp(x, x) is true",
+                );
             }
         }
-        self.profiler = saved_profiler;
         let out = self.merge_sort_by(xs, cmp, desc, span)?;
-        let saved_profiler = self.profiler.take();
         for i in 1..out.len() {
             let checks = [
                 (&out[i], &out[i - 1]),
                 (&out[i], &out[0]),
-                (out.last().unwrap(), &out[i - 1]),
+                (&out[out.len() - 1], &out[i - 1]),
             ];
             for (lhs, rhs) in checks {
                 let pair = if desc {
@@ -3149,23 +3144,17 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 } else {
                     vec![lhs.clone(), rhs.clone()]
                 };
-                match self.call_value(cmp.clone(), pair, span) {
-                    Ok(v) if v.bool() => {
-                        self.profiler = saved_profiler;
-                        return trap(
-                            span,
-                            "sort `cmp:` comparator is not a strict weak order: result is not ordered",
-                        );
-                    }
-                    Ok(_) => {}
-                    Err(e) => {
-                        self.profiler = saved_profiler;
-                        return Err(e);
-                    }
+                if self
+                    .quietly(|run| run.call_value(cmp.clone(), pair, span))?
+                    .bool()
+                {
+                    return trap(
+                        span,
+                        "sort `cmp:` comparator is not a strict weak order: result is not ordered",
+                    );
                 }
             }
         }
-        self.profiler = saved_profiler;
         Ok(out)
     }
 
@@ -3195,10 +3184,11 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 .call_value(cmp.clone(), vec![first.clone(), second.clone()], span)?
                 .bool();
             if lt {
-                let saved_profiler = self.profiler.take();
-                let rev = self.call_value(cmp.clone(), vec![second.clone(), first.clone()], span);
-                self.profiler = saved_profiler;
-                if rev?.bool() {
+                let pair = vec![second.clone(), first.clone()];
+                if self
+                    .quietly(|run| run.call_value(cmp.clone(), pair, span))?
+                    .bool()
+                {
                     return trap(
                         span,
                         "sort `cmp:` comparator is not a strict weak order: both cmp(a, b) and cmp(b, a) are true",

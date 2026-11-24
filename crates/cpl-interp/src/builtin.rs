@@ -553,9 +553,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     if j > i + 1 {
                         let a = if cyclic { (i + 1) % m } else { i + 1 };
                         let b = if cyclic { (j - 1) % m } else { j - 1 };
-                        let saved_profiler = self.profiler.take();
-                        let check_res = (|| -> Res<bool> {
-                            let ok_a = self
+                        let check_res = self.quietly(|run| -> Res<bool> {
+                            let ok_a = run
                                 .call_value(
                                     pred.clone(),
                                     vec![elems[i].clone(), elems[a].clone()],
@@ -566,7 +565,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                                 return Ok(false);
                             }
                             if b != a {
-                                return Ok(self
+                                return Ok(run
                                     .call_value(
                                         pred.clone(),
                                         vec![elems[i].clone(), elems[b].clone()],
@@ -575,8 +574,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                                     .bool());
                             }
                             Ok(true)
-                        })();
-                        self.profiler = saved_profiler;
+                        });
                         if !check_res? {
                             return trap(
                                 span,

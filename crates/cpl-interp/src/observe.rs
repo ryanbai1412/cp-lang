@@ -7,13 +7,18 @@ use crate::trace::{Recording, Tracer, View};
 use crate::Value;
 use crate::{leading_indices, relifetime, root_global, root_local, trace, Interp};
 use cpl_diag::Span;
-use cpl_ir::{Place, PlaceKind};
+use cpl_ir::{Place, PlaceKind, Stmt};
 
 /// Each hook is a step of the run, seen through a [`View`] of its state.
 /// The defaults ignore it, so an observer implements what it watches.
 pub(crate) trait Observer {
     /// False compiles every hook out of the run.
     const ON: bool = true;
+    /// A user statement (one of [`cpl_ir::sites::user_stmts`]) starts: the
+    /// step a profiler charges time between. Internal calls, such as a
+    /// comparator's strict-weak-order checks, run [`Interp::quietly`] and
+    /// emit no event at all.
+    fn step(&mut self, _stmt: &Stmt) {}
     /// The run is a multitest; its cases come next.
     fn begin_cases(&mut self) {}
     /// The output between two cases.
@@ -126,6 +131,12 @@ impl Observer for Unobserved {
     const ON: bool = false;
 }
 
+impl Observer for crate::profile::Profiler {
+    fn step(&mut self, stmt: &Stmt) {
+        self.enter(stmt)
+    }
+}
+
 impl Observer for Tracer {
     fn steps(&self) -> usize {
         self.steps_so_far()
@@ -233,6 +244,16 @@ impl<O: Observer> Interp<'_, '_, O> {
     /// Whether the run is watched; false at compile time when unobserved.
     pub(crate) fn observed(&self) -> bool {
         O::ON && self.tracer.is_some()
+    }
+
+    /// Runs `run` unwatched: an internal call, such as a comparator's
+    /// strict-weak-order check, is no step of the user's program, so no
+    /// observer (tracer or profiler) hears of it.
+    pub(crate) fn quietly<R>(&mut self, run: impl FnOnce(&mut Self) -> R) -> R {
+        let (profiler, tracer) = (self.profiler.take(), self.tracer.take());
+        let out = run(self);
+        (self.profiler, self.tracer) = (profiler, tracer);
+        out
     }
 
     /// A trap once the tracer has what it wanted, as after the call to replay.
@@ -526,6 +547,28 @@ print(a[1])
                 "no {want:?} in order in {heard:?}"
             );
         }
+    }
+
+    /// The strict-weak-order checks of a sort call the comparator too; the
+    /// observer hears only the calls the sort itself makes.
+    #[test]
+    fn a_comparator_check_is_heard_by_no_observer() {
+        let program = program(
+            "fn lt(a: Int, b: Int) -> Bool:\n    return a < b\nvar xs = [2, 1]\nxs.sort(cmp: (a, b) => lt(a, b))\nprint(xs[0])\n",
+        );
+        let heard = Rc::new(RefCell::new(Vec::new()));
+        let limits = Limits {
+            stack_bytes: 1 << 22,
+        };
+        let (io, mut out) = (Io::fixed(b""), Vec::new());
+        let observer = Some(Box::new(Heard(heard.clone())));
+        let observed = run_as(&program, io, &mut out, limits, observer, false);
+        assert!(observed.trap.is_none(), "{:?}", observed.trap);
+        assert_eq!(String::from_utf8(out).unwrap(), "1\n");
+        let heard = heard.borrow();
+        // Merging [2] and [1] asks lt(1, 2) once; the checks ask six more.
+        let calls = heard.iter().filter(|said| *said == "enter lt").count();
+        assert_eq!(calls, 1, "{heard:?}");
     }
 
     #[test]
