@@ -163,6 +163,9 @@ pub(crate) struct Facts<'p> {
     loop_hi: BTreeMap<Var, (&'p Expr, bool)>,
     /// Each domain's length expression, when defined once.
     domain_len: BTreeMap<usize, Option<(Option<usize>, &'p Expr)>>,
+    /// Each domain's length bound, worked out once from its definition: a
+    /// bound reached through a call or a field doesn't spend its depth on it.
+    domain_hi: BTreeMap<usize, i64>,
     /// Struct fields whose declared range narrows to unsigned 32-bit (`>= 0`).
     u32_fields: BTreeSet<(usize, usize)>,
     /// Struct fields' declared ranges (`StructDef::int_ranges`): every value holds them.
@@ -348,6 +351,12 @@ impl<'p> Facts<'p> {
             .filter_map(|&v| Some((v, facts.stores_hi(v)?)))
             .collect();
         facts.var_hi = hi;
+        let domains: Vec<usize> = facts.domain_len.keys().copied().collect();
+        for d in domains {
+            if let Some(hi) = facts.domain_max_len_at(d, 0) {
+                facts.domain_hi.insert(d, hi);
+            }
+        }
         facts
     }
 
@@ -825,10 +834,13 @@ impl<'p> Facts<'p> {
     /// The most positions `domain` has: its length's bound, else below
     /// 2^31 when its positions are held in an `int`.
     fn domain_len_hi(&self, id: usize, depth: u8) -> Option<i64> {
-        self.domain_max_len_at(id, depth).or_else(|| {
-            let narrow = self.wide.as_ref().is_some_and(|w| !w.contains(&id));
-            narrow.then_some(i64::from(i32::MAX))
-        })
+        let known = self.domain_hi.get(&id).copied();
+        known
+            .or_else(|| self.domain_max_len_at(id, depth))
+            .or_else(|| {
+                let narrow = self.wide.as_ref().is_some_and(|w| !w.contains(&id));
+                narrow.then_some(i64::from(i32::MAX))
+            })
     }
 
     /// `domain`'s length expression, when it is defined once.
