@@ -35,8 +35,26 @@ impl<'a> Lowerer<'a> {
             }
         }
         for b in bounds {
-            let Some(GenArg::Ty(seq)) = env.get(&b.name.text).cloned() else {
-                continue;
+            let seq = match env.get(&b.name.text).cloned() {
+                Some(GenArg::Ty(seq)) => seq,
+                // A domain walks, and is keyed by, its own positions.
+                Some(GenArg::Domain(d)) => {
+                    for tr in &b.traits {
+                        let ast::TypeKind::Named { name, args } = &tr.kind else {
+                            continue;
+                        };
+                        let given = match name.text.as_str() {
+                            "Seq" | "Bidir" | "Positional" => &args[..args.len().min(1)],
+                            "Keyed" | "Indexed" => &args[..args.len().min(2)],
+                            _ => &[],
+                        };
+                        for arg in given {
+                            self.unify_ast_ty(arg, &Ty::Pos(d), m, &open, env);
+                        }
+                    }
+                    continue;
+                }
+                _ => continue,
             };
             for tr in &b.traits {
                 let ast::TypeKind::Named { name, args } = &tr.kind else {

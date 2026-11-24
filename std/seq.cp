@@ -634,8 +634,43 @@ pub fn cyclic_pairs<S: Seq<T>, T>(self: S) -> yields (T, T):
 /// order: position by position, stopping at the shorter
 /// traps: never
 /// example: `zip([1, 2, 3], "ab").collect() == [(1, 'a'), (2, 'b')]`
-pub fn zip<A: Indexed<K, T>, B: Positional<U>, K, T, U>(a: A, b: B) -> yields (T, U):
-    for i in 0..min(a.len, b.len): yield (a.nth(i), b.nth(i))
+pub fn zip<A: Indexed<K, T>, B: Positional<U>, K, T, U>(a: A, b: B) -> Zipped<A, B> = Zipped(a, b)
+
+/// \(O(1)\) to make. The view `zip(a, b)`: `(a.nth(i), b.nth(i))` up to the shorter input, keyed
+/// by `a`'s keys, so `zip(a[2..], b).items` starts at key 2. A lent value (R07.1.5).
+pub struct Zipped<A, B>(
+    /// \(O(1)\). The sequence whose keys the pairs take.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `let a = [1, 2]; zip(a, "ab").a == a`
+    pub a: A,
+    /// \(O(1)\). The sequence giving each pair's second half.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `zip([1, 2], "ab").b == "ab"`
+    pub b: B,
+)
+
+impl Seq<(T, U)> for Zipped<A: Positional<T>, B: Positional<U>>:
+    fn iter(self) -> yields (T, U):
+        for i in 0..self.len: yield (a.nth(i), b.nth(i))
+
+impl Sized for Zipped<A: Positional<T>, B: Positional<U>>:
+    @get fn len(self) -> Int = if a.len < b.len: a.len else: b.len
+
+impl Keyed<K, (T, U)> for Zipped<A: Indexed<K, T>, B: Positional<U>>:
+    fn items(self) -> yields (K, (T, U)):
+        let n = self.len
+        var i = 0
+        for (k, x) in a.items:
+            if i == n: return
+            yield (k, (x, b.nth(i)))
+            i += 1
+
+impl Positional<(T, U)> for Zipped<A: Positional<T>, B: Positional<U>>:
+    fn nth(self, k: Int) -> (T, U) = (a.nth(k), b.nth(k))
 
 /// The first and second halves of each pair, as two lists: the inverse of `zip`.
 ///
@@ -1574,13 +1609,11 @@ impl Indexed<D, (D, T)> for Items<S: Indexed<D, T>>:
 /// offsets. Writable through a `var` source; the source's length can't change while it is alive.
 /// See `spec/core/04b-keys.md`.
 pub struct Slice<S>(
-    /// \(O(1)\). The source sequence this slice views.
-    ///
-    /// cost: \(O(1)\)
-    /// traps: never
-    /// example: `let a = [1, 2, 3]; a[1..].src == a`
-    pub src: S,
+    /// The sequence the slice was cut from, lent: frozen while the slice is alive.
+    src: S,
+    /// The position in `src` of the slice's first element.
     lo: Int,
+    /// The position in `src` just past the slice's last element; `lo <= hi <= src.len`.
     hi: Int,
 ):
     /// The number of elements in the slice.
@@ -3307,9 +3340,9 @@ fn adjacent_and_with_prev_yield_neighbours():
     assert [7].adjacent.count() == 0
     let empty: List<Int> = []
     assert empty.adjacent.count() == 0 and empty.pairs().count() == 0
-    assert [(p ?? -1, x) for (p, x) in [10, 20, 30].with_prev()] == [(-1, 10), (10, 20), (20, 30)]
-    assert [(p ?? -1, x) for (p, x) in [7].with_prev()] == [(-1, 7)]
-    assert empty.with_prev().collect().len == 0
+    assert [(p ?? -1, x) for (p, x) in [10, 20, 30].with_prev] == [(-1, 10), (10, 20), (20, 30)]
+    assert [(p ?? -1, x) for (p, x) in [7].with_prev] == [(-1, 7)]
+    assert empty.with_prev.collect().len == 0
 
 @test
 fn cyclic_pairs_close_the_ring():
