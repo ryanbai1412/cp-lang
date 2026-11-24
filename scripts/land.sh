@@ -235,8 +235,8 @@ if [ -n "$wasm_touched" ] && [ -x scripts/wasm-warm.sh ]; then
     elif ! parent=$(scripts/wasm-warm.sh --parent FETCH_HEAD $wasm_touched); then
         echo "land: no wasm sizes of main's tip to compare with; CI checks it" >&2
     else
-        node web/scripts/wasm-crates.mjs --data "$wasm" --touched "$(echo $wasm_touched | tr ' -' ',_')" --parent "$parent" >&2 ||
-            { echo "land: a crate this change touches grew past main or its cpl.wasm budget (above); cut it at its source and land again" >&2; exit 1; }
+        node web/scripts/wasm-crates.mjs --data "$wasm" --parent "$parent" >&2 ||
+            { echo "land: a cpl.wasm crate grew past main while over its budget, or crossed its budget (above), touched here or not; cut it at its source and land again" >&2; exit 1; }
     fi
 fi
 seen="$(git rev-parse --git-dir)/cpl-last-land"

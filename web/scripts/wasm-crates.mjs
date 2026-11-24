@@ -193,25 +193,43 @@ export function touchedOverBudget(rows, budgets, map, touched) {
 }
 
 /**
- * The land gate's budgets against the parent build (`parent`: crate -> gz): a touched
- * crate, or the data segment, over its budget refuses only if it grew past the parent or
- * crossed its budget here, so main never gets worse while a crate is still over.
+ * The land gate's shrink-only ratchet against the rebased parent build (`parent`:
+ * crate -> gz), for every crate and the data segment, whichever paths the change
+ * touched: one within its budget in the parent stays within it, and one over it
+ * may not grow by a byte; growth of GREW_WARN B or more within budget warns.
  */
-export function grewOverBudget(rows, budgets, map, touched, parent) {
-  const { errors, warnings } = touchedOverBudget(rows, budgets, map, touched);
-  const held = rows
-    .filter(([c, , gz]) => parent[c] !== undefined && gz <= parent[c] && parent[c] > (budgets[c] ?? Infinity))
-    .map(([c]) => `${c} `);
-  const isHeld = (e) => held.some((c) => e.startsWith(c));
-  const was = (e) => parent[held.find((c) => e.startsWith(c)).trim()].toLocaleString('en-US');
-  return {
-    errors: errors.filter((e) => !isHeld(e)),
-    warnings,
-    held: errors.filter(isHeld).map((e) => `${e}, but no more than its parent's ${was(e)} B`),
-    grew: rows
-      .filter(([c, , gz]) => touched.includes(c) && parent[c] !== undefined && gz - parent[c] >= GREW_WARN)
-      .map(([c, , gz]) => `${c} grew ${(gz - parent[c]).toLocaleString('en-US')} B gzipped against its parent's ${parent[c].toLocaleString('en-US')} B`),
-  };
+export function ratchet(rows, budgets, map, parent) {
+  const errors = [];
+  const held = [];
+  for (const row of rows) {
+    const [crate, , gz] = row;
+    const over = crate === DATA ? dataOverBudget(rows, budgets) : checkBudgets([row], budgets, map).errors[0];
+    if (!over) continue;
+    const was = parent[crate];
+    const wasOver = was !== undefined && budgets[crate] !== undefined && was > budgets[crate];
+    const b = (n) => n.toLocaleString('en-US');
+    if (wasOver && gz <= was) held.push(`${over}, but no more than its parent's ${b(was)} B`);
+    else if (wasOver) errors.push(`${over}; it grew ${b(gz - was)} B against its parent's ${b(was)} B`);
+    else errors.push(over);
+  }
+  const grew = rows
+    .filter(([c, , gz]) => parent[c] !== undefined && gz - parent[c] >= GREW_WARN && gz <= (budgets[c] ?? -1))
+    .map(([c, , gz]) => `${c} grew ${(gz - parent[c]).toLocaleString('en-US')} B gzipped against its parent's ${parent[c].toLocaleString('en-US')} B`);
+  return { errors, warnings: [], held, grew };
+}
+
+/** A lowered budget for a crate measured at `gz`: 1% or 256 B of room, to the next 100. */
+export const lowerTo = (gz) => Math.ceil((gz + Math.max(gz * 0.01, 256)) / 100) * 100;
+
+/**
+ * The budgets after a build within them: each budget with more room than lowerTo
+ * gives over its crate's measurement comes down to lowerTo, so slack a cut freed
+ * can't be regrown. Budgets only go down. Null when nothing lowers.
+ */
+export function lowered(rows, budgets) {
+  const next = { ...budgets };
+  for (const [crate, , gz] of rows) if (budgets[crate] !== undefined && lowerTo(gz) < budgets[crate]) next[crate] = lowerTo(gz);
+  return Object.keys(next).some((c) => next[c] !== budgets[c]) ? next : null;
 }
 
 /** A touched crate growing at least this many B gz against its parent warns at land. */
@@ -233,8 +251,10 @@ export function dataOverBudget(rows, budgets) {
 // [--parent SIZES.json]` (a scripts/build-wasm.sh --names build): the commit gate's
 // check that the data segment and every touched crate are within their budgets; other
 // crates over theirs only warn. With `--parent`, a parent build's sizes, a crate over
-// its budget refuses only if it grew (grewOverBudget), and the sort copies only if they
-// grew. `--sizes DIR/cpl.wasm SIZES.json` writes a build's sizes for `--parent`.
+// every crate is held to the shrink-only ratchet, and the sort copies only grow if they
+// grew. `--sizes DIR/cpl.wasm SIZES.json` writes a build's sizes for `--parent`, and
+// `--data` takes such a file in place of a build. `--lower-budgets` lowers each budget
+// with slack after a pass (lowered).
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href && process.argv[2] === '--sizes') {
   const wasm = readFileSync(process.argv[3]);
   const crates = Object.fromEntries(contributors(wasm).map(([c, , gz]) => [c, gz]));
@@ -248,17 +268,24 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href &
   const t = process.argv.indexOf('--touched');
   const touched = t < 0 ? [] : (process.argv[t + 1] ?? '').split(',').filter(Boolean);
   const wasm = readFileSync(process.argv[at + 1]);
-  const rows = contributors(wasm);
+  // A --sizes file in place of the build (scripts/test_land.py's builds) has no names to read sorts from.
+  const sized = wasm[0] === 0x7b && JSON.parse(wasm.toString('utf8'));
+  const rows = sized ? Object.entries(sized.crates).map(([c, gz]) => [c, 0, gz]) : contributors(wasm);
   const here = dirname(fileURLToPath(import.meta.url));
   const budgets = JSON.parse(readFileSync(join(here, 'wasm-crate-budgets.json'), 'utf8'));
   const map = owners(readCharters(join(here, '../../handbook/domains')));
   const flag = (name) => (process.argv.indexOf(name) < 0 ? null : process.argv[process.argv.indexOf(name) + 1]);
   const parent = flag('--parent') && JSON.parse(readFileSync(flag('--parent'), 'utf8'));
   const { errors, warnings, held = [], grew = [] } = parent
-    ? grewOverBudget(rows, budgets, map, touched, parent.crates)
+    ? ratchet(rows, budgets, map, parent.crates)
     : touchedOverBudget(rows, budgets, map, touched);
-  const copies = sortCopies(functionNames(wasm));
+  let next;
+  const copies = sized ? Array(sized.sorts ?? 0).fill('') : sortCopies(functionNames(wasm));
   const sorts = checkSortCopies(copies, JSON.parse(readFileSync(join(here, '../..', sortCopiesFile), 'utf8')).max);
+  if (flag('--lower-budgets') !== null && !errors.length && (next = lowered(rows, budgets))) {
+    writeFileSync(join(here, 'wasm-crate-budgets.json'), `${JSON.stringify(next, null, 2)}\n`);
+    console.error('wasm-crates: lowered each budget a crate is under to its measurement (wasm-crate-budgets.json)');
+  }
   if (sorts.error && parent && copies.length <= parent.sorts) held.push(`${sorts.error.split(':')[0]}, but no more than its parent's ${parent.sorts}`);
   else if (sorts.error) errors.push(sorts.error);
   if (sorts.lower) console.error(`wasm-crates: ${sorts.lower}`);
