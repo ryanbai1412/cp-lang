@@ -270,6 +270,18 @@ pub fn rfind<S: Bidir, T>(self: S, p: T -> Bool) -> ?T:
         if p(x): return Some(x)
     None
 
+// `sort(cmp:)`'s body, apart so that no key type is solved for it: `T` needs no `Ord`.
+fn sort_cmp<S: IndexedMut, T>(mut self: S, before: (T, T) -> Bool):
+    let n = self.len
+    let ks = self.keys
+    var a: List<T> = [self[k] for k in ks]
+    var b = a.clone()
+    let in_a = merge_passes(mut a, mut b, n, before)
+    var t = 0
+    for k in ks:
+        self[k] = if in_a: a[t] else: b[t]
+        t += 1
+
 /// Sort `self` in place by `by`; descending is a key, `by: x => desc(x)`. Stable: equal keys keep their order.
 /// When no single key orders the elements (an exchange argument, an angle), `cmp: (a, b) => Bool` says
 /// whether `a` goes before `b`; give `by:` or `cmp:`, not both (decision 87).
@@ -285,17 +297,9 @@ pub fn rfind<S: Bidir, T>(self: S, p: T -> Bool) -> ?T:
 /// example: `var a = [2, 1]; a.sort(cmp: (x, y) => x <= y); a == [1, 2]` (traps R0001)
 /// example: `var a = [2, 1]; a.sort(by: x => x, cmp: (x, y) => x < y); a == [1, 2]` (error E0309)
 pub fn sort<S: IndexedMut, T, K: Ord>(mut self: S; by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None):
+    if let before = cmp: return sort_cmp(mut self, before)
     let n = self.len
     let ks = self.keys
-    if let before = cmp:
-        var a: List<T> = [self[k] for k in ks]
-        var b = a.clone()
-        let in_a = merge_passes(mut a, mut b, n, before)
-        var t = 0
-        for k in ks:
-            self[k] = if in_a: a[t] else: b[t]
-            t += 1
-        return
     var a: List<(K, T)> = [(by(self[k]), self[k]) for k in ks]
     var b = a.clone()
     let in_a = merge_passes(mut a, mut b, n, (p, q) => p.0 < q.0)
@@ -351,7 +355,7 @@ fn merge_runs<E>(src: List<E>, mut dst: List<E>, w: Int, before: (E, E) -> Bool)
 /// example: `[(3, 1), (1, 2), (2, 2)].sorted(cmp: (p, q) => p.0 * q.1 < q.0 * p.1) == [(1, 2), (2, 2), (3, 1)]`
 pub fn sorted<S: Seq<T>, T, K: Ord>(self: S; by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None) -> List<T>:
     var out: List<T> = self.collect()
-    if let before = cmp: sort(mut out, cmp: before)
+    if let before = cmp: sort_cmp(mut out, before)
     else: sort(mut out, by:)
     out
 
@@ -3123,7 +3127,7 @@ fn sorted_lookup_and_linear_search():
     let nothing: List<Str> = []
     assert nothing.min(by: w => w.len) == None
     domain D = 0..5
-    assert [w.len for w in D.windows(3)] == [3, 3, 3] and D.windows(3)[1] == (D(1)..=D(3))
+    assert [w.len for w in D.windows(3)] == [3, 3, 3] and D.windows(3).collect()[1] == (D(1)..=D(3))
 
 @test
 fn reorder_and_permutations_in_place():
