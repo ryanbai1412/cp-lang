@@ -1005,7 +1005,7 @@ def skip_lists(root: Path) -> list[str]:
 
 def bench_lists(root: Path) -> list[str]:
     """Entries in tracked `bench/**/*.txt` files: every such file exempts programs from a bench
-    gate (oversize), so the bench gates hold only once there are none."""
+    gate, so the bench gates hold only while there are none."""
     found = []
     for rel in _git(root, "ls-files", "bench/*.txt"):
         found += [rel] * sum(1 for l in _lines(root / rel) if l.strip() and not l.lstrip().startswith("#"))
@@ -1651,7 +1651,6 @@ def module_loaders(root: Path) -> list[str]:
 # entries (None for a data list that exempts nothing), its owner, and how it
 # goes away. A new list without a row here fails `unregistered_lists`.
 LISTS: dict[str, tuple[str | None, str, str]] = {
-    "bench/oversize.txt": ("bench_lists", "perf", "shrink inputs or give the bench a size cap"),
     "corpus/audit-known.txt": ("corpus_known", "idioms", "fix each audited port"),
     "corpus/differential-known.txt": ("corpus_known", "idioms", "fix each differing port"),
     "corpus/generators-known.txt": ("corpus_known", "idioms", "write each generator"),
@@ -1751,6 +1750,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
 
 
 HARD_ZERO = frozenset({
+    "bench_lists",
     "own_databases", "module_loaders", "web_skip_only", "todo_fixme",
     "pending_tests", "edition_refs", "uncited_rules", "decision_dup_numbers", "why_written_twice", "authority_drift",
     "continue_on_error", "unregistered_lists", "codegen_effect_guesses", "spec_std_refs",

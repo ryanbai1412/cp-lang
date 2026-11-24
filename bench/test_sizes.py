@@ -8,23 +8,25 @@ spec.loader.exec_module(sizes)
 
 
 class Verdict(unittest.TestCase):
-    def test_a_listed_program_over_the_bar_passes(self):
-        messages, failed = sizes.verdict([(40000, "a.cp")], {"a.cp"})
-        self.assertFalse(failed)
-        self.assertIn("listed", messages[0])
-
-    def test_an_unlisted_program_over_the_bar_fails(self):
-        _, failed = sizes.verdict([(40000, "a.cp")], set())
+    def test_a_program_over_the_bar_fails(self):
+        messages, failed = sizes.verdict([(40000, "a.cp")])
         self.assertTrue(failed)
+        self.assertIn("a.cp is 40000 bytes", messages[0])
 
-    def test_a_listed_program_that_fits_must_come_off_the_list(self):
-        messages, failed = sizes.verdict([], {"a.cp"})
-        self.assertTrue(failed)
-        self.assertIn("take it off", messages[0])
+    def test_nothing_over_the_bar_passes(self):
+        self.assertEqual(sizes.verdict([]), ([], False))
 
-    def test_every_listed_program_exists(self):
-        for path in sizes.oversize():
-            self.assertTrue(os.path.exists(os.path.join(sizes.ROOT, path)), path)
+    def test_there_is_no_oversize_list(self):
+        self.assertFalse(os.path.exists(os.path.join(sizes.ROOT, "bench", "oversize.txt")))
+
+
+class Programs(unittest.TestCase):
+    def test_every_corpus_port_spec_and_dream_is_walked(self):
+        walked = set(sizes.programs())
+        for p in sizes.problems():
+            for f in (p.port, p.spec, p.dream):
+                if f:
+                    self.assertIn(os.path.relpath(f, sizes.ROOT), walked)
 
 
 class BuildVerdict(unittest.TestCase):

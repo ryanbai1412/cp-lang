@@ -4,12 +4,12 @@ against the 32 KB bar.
 
     python3 bench/sizes.py [--judge J] [--cpl PATH] [--report FILE] [--check]
 
-Programs: corpus/problems/*/spec.cp, corpus/problems/*/port.cp,
-research/dryrun/v03/*.cp, bench/*/*.cp and bench/zero-cost/*/*.cp. A
+Programs: every corpus package's port.cp, spec.cp and dream.cp (through
+scripts/corpus.py's problems()), research/dryrun/v03/*.cp, bench/*/*.cp and
+bench/zero-cost/*/*.cp. A
 program that does not build is listed, not sized. --report writes one line
-per program (bytes, the largest part, the path). --check fails when a built
-program is over the bar but not in bench/oversize.txt, or is in it and fits,
-and when any bench program does not build: nothing else builds the bench
+per program (bytes, the largest part, the path). --check fails when any built
+program is over the bar, and when any bench program does not build: nothing else builds the bench
 programs, so a rename would rot them unseen. Enforces performance/R8.
 """
 import argparse, glob, os, re, statistics, subprocess, sys
@@ -18,28 +18,23 @@ from concurrent.futures import ThreadPoolExecutor
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BAR = 32 * 1024
 WARN = 24 * 1024
-OVERSIZE = os.path.join(ROOT, "bench", "oversize.txt")
 SETS = (
-    "corpus/problems/*/spec.cp",
-    "corpus/problems/*/port.cp",
     "research/dryrun/v03/*.cp",
     "bench/*/*.cp",
     "bench/zero-cost/*/*.cp",
 )
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+from corpus import problems  # noqa: E402
 
 
 def programs():
-    return [p for pat in SETS for p in sorted(glob.glob(pat, root_dir=ROOT))]
-
-
-def listed(path):
-    """The paths a list file names: the first word of each line, past comments."""
-    with open(path) as f:
-        return {(l.split("#")[0].split() or [""])[0] for l in f} - {""}
-
-
-def oversize():
-    return listed(OVERSIZE)
+    corpus = [
+        os.path.relpath(f, ROOT)
+        for kind in ("spec", "port", "dream")
+        for pkg in problems()
+        if (f := getattr(pkg, kind))
+    ]
+    return corpus + [p for pat in SETS for p in sorted(glob.glob(pat, root_dir=ROOT))]
 
 
 def build_verdict(broken):
@@ -65,19 +60,10 @@ def size(cpl, judge, path):
     return int(total.group(1)), f"{biggest[0]} {biggest[1]}"
 
 
-def verdict(over, known):
-    """What to say about the programs `over` the bar, as (bytes, path), given
-    the paths `known` to be, and whether --check fails."""
-    messages, failed = [], False
-    for n, p in over:
-        listed = p in known
-        failed |= not listed
-        note = " (listed in bench/oversize.txt)" if listed else ""
-        messages.append(f"sizes: {p} is {n} bytes, over the {BAR}-byte bar{note}")
-    for p in sorted(known - {p for _, p in over}):
-        failed = True
-        messages.append(f"sizes: {p} is not over the {BAR}-byte bar now: take it off bench/oversize.txt")
-    return messages, failed
+def verdict(over):
+    """What to say about the programs `over` the bar, as (bytes, path), and
+    whether --check fails: any one over it does, as there is no list to excuse it."""
+    return [f"sizes: {p} is {n} bytes, over the {BAR}-byte bar" for n, p in over], bool(over)
 
 
 def main():
@@ -106,7 +92,7 @@ def main():
               f"{len(warn)} over {WARN}, {len(over)} over {BAR}")
     for n, p in warn:
         print(f"sizes: warning: {p} is {n} bytes, over the {WARN}-byte warning", file=sys.stderr)
-    messages, failed = verdict(over, oversize())
+    messages, failed = verdict(over)
     more, broke = build_verdict(broken)
     messages, failed = messages + more, failed or broke
     for m in messages:

@@ -87,8 +87,7 @@ Owns:
 - `cpl bench` behaviour (`crates/cpl-contest/src/{bench,zero_cost,corpus_bench}.rs`,
   files kept in tools' crate) and every harness under `bench/`.
 - The perf set: matched C++ references (`orig.cpp`, `_ref.cpp`), tuned
-  variants (`perf.cp` beside `port.cp`) and their accounting
-  (`bench/oversize.txt`).
+  variants (`perf.cp` beside `port.cp`).
 - The codegen sections of `cpl explain` (copies, closures, dropped fields).
 - Ratchets on the generated C++: `deep_copies` and `std_functions` in
   `crates/cpl-cli/tests/read_only_copies.rs`.
@@ -150,7 +149,7 @@ numbers live in `plan/domains/perf/metrics.toml`. Journeys are from
 | Redundant checks are dropped | `cpl::at` on indices a domain or range proves | `crates/cpl-codegen/src/tests.rs`, `range_tests.rs` shape tests | partial: no corpus count |
 | Values take the fewest bytes their types allow | fields and elements wider than their declared range | `crates/cpl-codegen/src/tests.rs` narrowing tests | partial: no corpus count |
 | Memory matches C++ (J8) | peak RSS ratio p95 (bar 1.5x) and max (bar 2x), programs over 1.5x | `bench/v03_perf_bench.py` `peak RSS` line ([performance/R5](../guidelines/performance-checklist.md)) | measured, not gated |
-| Submissions fit (J9) | programs over 32 KB, over 64 KB, per judge profile | `bench/sizes.py --check`; `crates/cpl-cli/tests/budget.rs`, `judges.rs` ([performance/R8](../guidelines/performance-checklist.md)) | enforced for 64 KB; 32 KB measured |
+| Submissions fit (J9) | programs over 32 KB, over 64 KB, per judge profile | `bench/sizes.py --check`; `crates/cpl-cli/tests/budget.rs`, `judges.rs` ([performance/R8](../guidelines/performance-checklist.md)) | enforced for 32 KB and 64 KB, no list |
 | Submissions compile everywhere (J9) | programs that build but fail g++ -std=c++17, per profile | `bench/compiles.py`; `crates/cpl-cli/tests/judges.rs` | partial: not every profile in CI |
 | Fast to compile (J6, J9) | g++ -O2 time p50 and max | `bench/v03_perf_bench.py` compile column; `budget.rs` | partial |
 | No undefined behaviour in the C++ | sanitizer reports | `crates/cpl-cli/tests/differential.rs` and `crates/cpl-cli/tests/fuzz_three_way.rs` under ASan/UBSan ([performance/R9](../guidelines/performance-checklist.md)) | partial: the corpus isn't run sanitized |

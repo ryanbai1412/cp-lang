@@ -606,7 +606,7 @@ sizes_status=0
 uv run --quiet python bench/sizes.py --check --cpl "$cpl" >"$target/sizes.log" 2>&1 || sizes_status=1
 grep -v ': warning: ' "$target/sizes.log"
 [ "$sizes_status" -eq 0 ] \
-    || fail "a program is over the 32 KB bar or a bench program stopped building; see above, then bench/oversize.txt or bench/unbuilt.txt"
+    || fail "a program is over the 32 KB bar or a bench program stopped building; see above"
 
 step "conformance coverage: COVERAGE.md current, no new rule gaps"
 uv run scripts/conformance-coverage.py --check ||
