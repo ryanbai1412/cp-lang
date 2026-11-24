@@ -26,6 +26,7 @@ else:
     var cuts = [n]
     while cuts.last! > 0: cuts.push(best.prev[cuts.last!])
     cuts.reverse()
-    print(sum(line(j, i) ** p for (j, i) in cuts.adjacent))
+    let at = List(Sentence.cuts)
+    print(sum(line(at[j], at[i]) ** p for (j, i) in cuts.adjacent))
     for (j, i) in cuts.adjacent: print(words[j + 1..=i])
 print("--------------------")

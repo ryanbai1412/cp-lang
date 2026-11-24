@@ -510,6 +510,7 @@
         "core-04/d2-slice-loop-over-keys.cp": "pass",
         "core-04/d3-relative-by-variable.cp": "pass",
         "core-04/declared-domain-satisfies-domain-bound.cp": "pass",
+        "core-04/declared-tuple-of-ranges-builds-pieces.cp": "pass",
         "core-04/dom-at.cp": "pass",
         "core-04/dom-call-traps.cp": "pass",
         "core-04/dom-count.cp": "pass",
@@ -3811,10 +3812,10 @@
       ],
       "counts": {
         "fail": 7,
-        "pass": 3739
+        "pass": 3740
       },
-      "passed": 3739,
-      "total": 3746
+      "passed": 3740,
+      "total": 3747
     },
     "corpus": {
       "cases": {

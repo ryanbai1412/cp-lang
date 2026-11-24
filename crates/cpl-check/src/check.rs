@@ -477,6 +477,10 @@ impl<'a> Checker<'a> {
                 matches!(args.as_slice(), [Ty::Pos(d) | Ty::Domain(d)] if !d.ends_with(".cuts"))
             }
             Ty::Optional(elem) => Self::expects_piece(elem),
+            Ty::Tuple(items) => {
+                items.iter().any(Self::expects_piece)
+                    && !items.iter().any(Self::expects_bounds_range)
+            }
             _ => false,
         }
     }
