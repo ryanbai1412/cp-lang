@@ -277,10 +277,13 @@ impl<'a> Lowerer<'a> {
                     return Spec::Plain(self.subset_ty(d, name.span));
                 }
             }
-            if let Some(GenArg::Ty(t)) = self.gen_env.get(prefix).cloned() {
-                if let Some(ty) = self.assoc_type(&t, rest) {
-                    return Spec::Plain(ty);
-                }
+            let projected = match self.gen_env.get(prefix).cloned() {
+                Some(GenArg::Ty(t)) => Some(t),
+                Some(GenArg::Domain(d)) => Some(Ty::Pos(d)),
+                _ => None,
+            };
+            if let Some(ty) = projected.and_then(|t| self.assoc_type(&t, rest)) {
+                return Spec::Plain(ty);
             }
             if let Some(Sym::Mod(target_mod)) = self.get_sym(prefix) {
                 let saved_mod = std::mem::replace(&mut self.cur_mod, target_mod);
