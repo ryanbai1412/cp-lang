@@ -169,7 +169,7 @@ pub(crate) fn report(replay: &Replay) -> String {
         None => {}
     }
     if let Some(trap) = &replay.trap {
-        out += &format!("the replay stopped: {}\n", trap.message);
+        out += &format!("the replay stopped: {}\n", trap.message());
     }
     out
 }
@@ -243,7 +243,7 @@ pub(crate) fn report_json(replay: &Replay) -> String {
             replay
                 .trap
                 .as_ref()
-                .map_or(Value::Null, |t| t.message.as_str().into()),
+                .map_or(Value::Null, |t| t.message().into()),
         ),
     ]);
     cpl_json::to_string(&report) + "\n"

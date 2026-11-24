@@ -644,7 +644,7 @@ fn stops_at_its_time_limit(source: &str) {
         &mut out,
         Some(config),
     );
-    let trap = observed.trap.map(|trap| trap.message);
+    let trap = observed.trap.map(|trap| trap.into_message());
     assert_eq!(trap.as_deref(), Some(cpl_interp::trace::OUT_OF_TIME.text()));
     assert!(started.elapsed().as_secs() < 5, "{:?}", started.elapsed());
 }

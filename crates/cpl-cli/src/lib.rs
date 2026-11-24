@@ -913,7 +913,7 @@ fn verdict(
         let (reason, diagnostic) = match &result {
             Ok(()) => (cpl_json::Value::Null, cpl_json::Value::Null),
             Err(trap) => (
-                trap.message.as_str().into(),
+                trap.message().into(),
                 json_out::diagnostic(&trap.to_diagnostic(path, &lines), &lines),
             ),
         };
@@ -924,7 +924,7 @@ fn verdict(
         ]);
         let _ = writeln!(stdout, "{}", cpl_json::to_string(&report));
     } else if let Err(trap) = &result {
-        *stderr += &format!("{}\n", trap.message);
+        *stderr += &format!("{}\n", trap.message());
         *stderr += &render_trap(path, text, trap);
         if let Some(file) = diagnostic {
             let lines = cpl_diag::LineIndex::new(text);
@@ -1003,7 +1003,8 @@ fn run_release_judged(
     }
     // A judge left with nothing to read after the solution failed only
     // follows from that failure.
-    let starved = |trap: &cpl_interp::Trap| trap.message.starts_with("the solution's output ended");
+    let starved =
+        |trap: &cpl_interp::Trap| trap.message().starts_with("the solution's output ended");
     match &ruling.judge {
         Some(trap) if solved || !starved(trap) => {
             *stderr += &format!("cpl: the interactor `{name}` rejected the run\n");
@@ -1283,8 +1284,8 @@ fn run_file(
         // A side that stops leaves the other with nothing to read: that
         // second failure only follows from the first.
         let starved = |trap: &cpl_interp::Trap| {
-            trap.message.starts_with("the input ended")
-                || trap.message.starts_with("the solution's output ended")
+            trap.message().starts_with("the input ended")
+                || trap.message().starts_with("the solution's output ended")
         };
         let (judge_trap, solution_trap) = match (ruling.judge, ruling.solution) {
             (Some(judge), Some(solution)) if starved(&judge) && !starved(&solution) => {

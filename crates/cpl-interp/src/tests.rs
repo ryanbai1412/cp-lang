@@ -19,7 +19,7 @@ fn outcome(source: &str, input: &str) -> (String, Option<String>) {
     let mut out = Vec::new();
     let failure = run(&program, input.as_bytes(), &mut out).err().map(|trap| {
         let at = &source[trap.span.start as usize..trap.span.end as usize];
-        format!("{} @ {at}", trap.message)
+        format!("{} @ {at}", trap.message())
     });
     (String::from_utf8(out).expect("ASCII"), failure)
 }
@@ -151,7 +151,7 @@ fn recursion_without_end_is_reported_not_crashed() {
         .join()
         .expect("the run does not crash")
         .expect_err("the run stops");
-    let message = trap.message;
+    let message = trap.into_message();
     assert!(
         message.contains("`f` never stops calling itself?"),
         "{message}"
@@ -1699,7 +1699,7 @@ fn at_checks(source: &str, checks: cpl_ir::checks::Checks) -> (String, Option<St
     let io = crate::Io::fixed(b"").at(checks);
     let failure = crate::run_with(&program, io, &mut out)
         .err()
-        .map(|t| t.message);
+        .map(|t| t.into_message());
     (String::from_utf8(out).expect("ASCII"), failure)
 }
 

@@ -217,7 +217,7 @@ pub fn run_interp_at(
         cpl_interp::Io::fixed(input).until(stop).at(checks),
     );
     match &run.trap {
-        Some(trap) if trap.message == cpl_interp::OUT_OF_TIME.text() => {
+        Some(trap) if trap.message() == cpl_interp::OUT_OF_TIME.text() => {
             Err(format!("the interpreter timed out after {limit}s"))
         }
         _ => Ok(run),

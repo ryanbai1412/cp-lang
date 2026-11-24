@@ -100,7 +100,7 @@ fn run(file: &str, compiled: &Compiled, input: &[u8], native: bool) -> Result<Ru
             .sites
             .into_iter()
             .collect(),
-        failure: observed.trap.map(|trap| trap.message),
+        failure: observed.trap.map(|trap| trap.into_message()),
     })
 }
 

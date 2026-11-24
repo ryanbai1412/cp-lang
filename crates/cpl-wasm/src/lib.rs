@@ -709,7 +709,7 @@ fn trap_locals(
 ) -> Option<String> {
     let config = cpl_interp::trace::trap_config(source);
     let observed = observe(program, input, &mut Vec::new(), stack, config);
-    (observed.trap?.message == trap.message).then_some(())?;
+    (observed.trap?.message() == trap.message()).then_some(())?;
     let at = source.get(trap.span.start as usize..trap.span.end as usize);
     cpl_interp::trace::trap_locals(&observed.recording?, source, at.unwrap_or(""))
 }

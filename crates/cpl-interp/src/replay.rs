@@ -130,7 +130,7 @@ fn replay_by(rerun: Rerun, config: TraceConfig, observe: &Runner) -> Replay {
     let past_input = run
         .1
         .as_ref()
-        .is_some_and(|trap| trap.message.contains("the input ended"));
+        .is_some_and(|trap| trap.message().contains("the input ended"));
     if stop.is_some() && (replayed.is_none() || past_input) {
         fallback = Some(match past_input {
             true => format!(
@@ -279,7 +279,7 @@ impl Replay {
                     .end(),
             };
             w.key("trap")
-                .opt_str(self.trap.as_ref().map(|trap| trap.message.as_str()));
+                .opt_str(self.trap.as_ref().map(|trap| trap.message()));
             w.end();
         })
     }

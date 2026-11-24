@@ -82,9 +82,8 @@ pub struct Frame {
 /// A program that failed while running.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Trap {
-    pub message: String,
-    /// The catalogued `R` code (`spec/diagnostics.md`) for this trap's kind.
-    pub code: cpl_diag::Code,
+    /// The failure's text and its catalogued `R` code (`spec/diagnostics.md`).
+    said: cpl_diag::msgs::Said,
     /// The expression or statement that failed.
     pub span: Span,
     /// Active calls from innermost to outermost (`main` is not listed).
@@ -98,13 +97,25 @@ pub struct Trap {
 impl Trap {
     /// The catalogued `R` code (`spec/diagnostics.md`) for this trap's kind.
     pub fn code(&self) -> cpl_diag::Code {
-        self.code
+        self.said.code()
+    }
+
+    pub fn message(&self) -> &str {
+        self.said.as_str()
+    }
+
+    pub fn into_message(self) -> String {
+        self.said.text()
+    }
+
+    fn set_code(&mut self, code: cpl_diag::Code) {
+        let said = std::mem::replace(&mut self.said, cpl_diag::msgs::interp::WRITTEN.at(&[&""]));
+        self.said = said.with_code(code);
     }
 
     fn said(span: Span, said: cpl_diag::msgs::Said) -> Trap {
         Trap {
-            code: said.code(),
-            message: said.text(),
+            said,
             span,
             call_stack: Vec::new(),
             case: None,
@@ -115,9 +126,11 @@ impl Trap {
     /// A trap whose text the program wrote, an `assert` or a lowered `Trap`
     /// statement: its code is read from that text.
     fn written(span: Span, message: String) -> Trap {
+        let code = written_code(&message);
         Trap {
-            code: written_code(&message),
-            message,
+            said: cpl_diag::msgs::interp::WRITTEN
+                .at(&[&message])
+                .with_code(code),
             span,
             call_stack: Vec::new(),
             case: None,
@@ -127,9 +140,8 @@ impl Trap {
 
     /// Builds the runtime diagnostic with test-case and call-stack notes.
     pub fn to_diagnostic(&self, path: &str, lines: &cpl_diag::LineIndex) -> cpl_diag::Diagnostic {
-        let mut diagnostic =
-            cpl_diag::Diagnostic::error(self.code(), self.span, self.message.clone());
-        if let Some(help) = trap_help::help(&self.message) {
+        let mut diagnostic = self.said.clone().error(self.span);
+        if let Some(help) = trap_help::help(self.message()) {
             diagnostic = diagnostic.with_help(help);
         }
         diagnostic = self
@@ -451,7 +463,7 @@ fn run_from<O: Observer>(
         trace_raw: Vec::new(),
     };
     let result = match interp.main() {
-        Err(trap) if trap.message == trace::STOPPED.text() => Ok(()),
+        Err(trap) if trap.message() == trace::STOPPED.text() => Ok(()),
         result => result,
     };
     let _ = interp.sink.write_all(&interp.out);
@@ -469,7 +481,7 @@ fn run_from<O: Observer>(
     let mut profile = None;
     let recording = interp.tracer.take().and_then(|mut tracer| {
         profile = tracer.profile();
-        let failed = trap.as_ref().map(|trap| (trap.message.as_str(), trap.span));
+        let failed = trap.as_ref().map(|trap| (trap.message(), trap.span));
         if !tracer.traces() {
             return tracer.finish(&interp.view(), failed);
         }

@@ -23,7 +23,7 @@ fn ends_at(source: &str, stop: Stop, traced: bool) -> Option<String> {
         "{:?}",
         started.elapsed()
     );
-    observed.trap.map(|trap| trap.message)
+    observed.trap.map(|trap| trap.into_message())
 }
 
 const NEVER_ENDS: [&str; 5] = [

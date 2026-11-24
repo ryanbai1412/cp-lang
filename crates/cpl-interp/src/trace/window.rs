@@ -180,7 +180,7 @@ fn tail_from(
     stop: &Stop,
 ) -> Option<Recording> {
     let stopped = |observed: Observed| match &observed.trap {
-        Some(trap) if is_stop(&trap.message) => None,
+        Some(trap) if is_stop(trap.message()) => None,
         _ => observed.recording,
     };
     let mut back = 1;
@@ -199,7 +199,7 @@ fn tail_from(
         };
         let want = Checkpoints::resuming(from);
         let resumed = checkpointed(program, io, &mut ignored, limits, trace, want).observed;
-        let stopped_early = resumed.trap.as_ref().is_some_and(|t| is_stop(&t.message));
+        let stopped_early = resumed.trap.as_ref().is_some_and(|t| is_stop(t.message()));
         let resumed = stopped(resumed);
         if stopped_early {
             return None;

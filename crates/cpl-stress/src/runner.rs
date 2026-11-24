@@ -165,8 +165,10 @@ fn ran(run: Interpreted) -> Ran {
 fn ruling(run: Interpreted) -> Ruling {
     match run {
         Ok(_) => Ruling::Accepted,
-        Err((_, trap)) if crate::judge::judge_bug(trap.code().0) => Ruling::Broke(trap.message),
-        Err((_, trap)) => Ruling::Rejected(Some(trap.message)),
+        Err((_, trap)) if crate::judge::judge_bug(trap.code().0) => {
+            Ruling::Broke(trap.into_message())
+        }
+        Err((_, trap)) => Ruling::Rejected(Some(trap.into_message())),
     }
 }
 
@@ -383,7 +385,7 @@ impl Runner {
                         "the `@gen` fn of {} failed on seed {seed} at line {}: {}",
                         vm.name,
                         vm.lines.line_of(trap.span.start) + 1,
-                        trap.message
+                        trap.into_message()
                     ))
                 })
             }
