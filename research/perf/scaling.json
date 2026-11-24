@@ -2164,7 +2164,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "dp.LiChao.add",
-   "measured": 1.37,
+   "measured": 1.19,
    "n": 16384,
    "ok": true
   },
@@ -2172,7 +2172,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "dp.LiChao.at",
-   "measured": 1.1,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -2180,7 +2180,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dp.LiChao.clear",
-   "measured": 0.94,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -2188,7 +2188,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "dp.LiChao.line_at",
-   "measured": 1.14,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -2196,7 +2196,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dp.LiChao.new",
-   "measured": 1.11,
+   "measured": 0.98,
    "n": 16384,
    "ok": true
   },
@@ -2204,7 +2204,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dp.Line.at",
-   "measured": 1.21,
+   "measured": 0.98,
    "n": 16384,
    "ok": true
   },
@@ -2212,7 +2212,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "dp.LineContainer.add",
-   "measured": 1.0,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -2220,7 +2220,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "dp.LineContainer.at",
-   "measured": 0.99,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -2228,7 +2228,7 @@
    "cost": "\\mathit{len}",
    "documented": 4.0,
    "fn": "dp.LineContainer.each",
-   "measured": 4.5,
+   "measured": 4.68,
    "n": 16384,
    "ok": true
   },
@@ -2236,7 +2236,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dp.LineContainer.is_empty",
-   "measured": 0.99,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -2244,7 +2244,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dp.LineContainer.len",
-   "measured": 0.99,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -2252,7 +2252,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "dp.LineContainer.line_at",
-   "measured": 0.99,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -2260,7 +2260,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dp.MongePath.is_empty",
-   "measured": 0.92,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -2268,7 +2268,7 @@
    "cost": "\\mathit{len}",
    "documented": 4.0,
    "fn": "dp.MongePath.items",
-   "measured": 4.44,
+   "measured": 4.43,
    "n": 16384,
    "ok": true
   },
@@ -2276,7 +2276,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dp.MongePath.len",
-   "measured": 0.96,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -2284,7 +2284,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dp.MongePath.next",
-   "measured": 0.84,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -2292,7 +2292,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dp.MongePath.val",
-   "measured": 0.96,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -2300,7 +2300,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dp.MonotoneHull.add",
-   "measured": 1.0,
+   "measured": 1.09,
    "n": 16384,
    "ok": true
   },
@@ -2308,7 +2308,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "dp.MonotoneHull.at",
-   "measured": 1.25,
+   "measured": 1.27,
    "n": 16384,
    "ok": true
   },
@@ -2316,7 +2316,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dp.MonotoneHull.at_next",
-   "measured": 1.0,
+   "measured": 1.07,
    "n": 16384,
    "ok": true
   },
@@ -2324,7 +2324,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dp.MonotoneHull.best_next",
-   "measured": 1.06,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -2332,7 +2332,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dp.MonotoneHull.clear",
-   "measured": 1.02,
+   "measured": 0.94,
    "n": 16384,
    "ok": true
   },
@@ -2340,7 +2340,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dp.MonotoneHull.is_empty",
-   "measured": 0.99,
+   "measured": 1.09,
    "n": 16384,
    "ok": true
   },
@@ -2348,7 +2348,7 @@
    "cost": "\\mathit{len}",
    "documented": 4.0,
    "fn": "dp.MonotoneHull.items",
-   "measured": 4.37,
+   "measured": 4.3,
    "n": 16384,
    "ok": true
   },
@@ -2356,7 +2356,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dp.MonotoneHull.len",
-   "measured": 0.97,
+   "measured": 1.06,
    "n": 16384,
    "ok": true
   },
@@ -2364,7 +2364,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "dp.Step.prune",
-   "measured": 0.89,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -2372,7 +2372,7 @@
    "cost": "\\log \\mathit{lambdas}.\\mathit{len}",
    "documented": 1.14,
    "fn": "dp.aliens",
-   "measured": 1.15,
+   "measured": 1.09,
    "n": 16384,
    "ok": true
   },
@@ -2380,7 +2380,7 @@
    "cost": "\\mathit{visited}",
    "documented": 4.0,
    "fn": "dp.backtrack",
-   "measured": 3.67,
+   "measured": 4.03,
    "n": 16384,
    "ok": true
   },
@@ -2388,7 +2388,7 @@
    "cost": "n \\log n",
    "documented": 4.57,
    "fn": "dp.dnc_layer",
-   "measured": 4.07,
+   "measured": 4.11,
    "n": 16384,
    "ok": true
   },
@@ -2396,7 +2396,7 @@
    "cost": "n^2",
    "documented": 4.0,
    "fn": "dp.knuth",
-   "measured": 3.55,
+   "measured": 4.05,
    "n": 16384,
    "ok": true
   },
@@ -2404,7 +2404,7 @@
    "cost": "n \\log n",
    "documented": 4.57,
    "fn": "dp.lis_ends",
-   "measured": 3.58,
+   "measured": 4.18,
    "n": 16384,
    "ok": true
   },
@@ -2412,7 +2412,7 @@
    "cost": "C(\\mathit{bits}, k)",
    "documented": 1.14,
    "fn": "dp.masks_of_size",
-   "measured": 1.44,
+   "measured": 1.52,
    "n": 16384,
    "ok": true
   },
@@ -2420,7 +2420,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "dp.monge_path",
-   "measured": 4.31,
+   "measured": 4.11,
    "n": 16384,
    "ok": true
   },
@@ -2428,7 +2428,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "dp.monge_paths",
-   "measured": 4.09,
+   "measured": 4.12,
    "n": 16384,
    "ok": true
   },
@@ -2436,7 +2436,7 @@
    "cost": "(\\mathit{rows} + \\mathit{cols}) \\log \\mathit{rows}",
    "documented": 4.57,
    "fn": "dp.monotone_minima",
-   "measured": 4.7,
+   "measured": 4.49,
    "n": 16384,
    "ok": true
   },
@@ -2444,7 +2444,7 @@
    "cost": "\\mathit{rows} + \\mathit{cols}",
    "documented": 4.0,
    "fn": "dp.smawk",
-   "measured": 4.07,
+   "measured": 4.35,
    "n": 16384,
    "ok": true
   },
@@ -2452,7 +2452,7 @@
    "cost": "2^n",
    "documented": 4.0,
    "fn": "dp.subset_folds",
-   "measured": 3.77,
+   "measured": 4.09,
    "n": 16384,
    "ok": true
   },
@@ -2460,7 +2460,7 @@
    "cost": "2^n",
    "documented": 4.0,
    "fn": "dp.subset_sums",
-   "measured": 3.59,
+   "measured": 3.81,
    "n": 16384,
    "ok": true
   },
@@ -2468,7 +2468,7 @@
    "cost": "2^(\\mathit{bits} - \\mathit{popcount}(m))",
    "documented": 4.0,
    "fn": "dp.supermasks",
-   "measured": 3.9,
+   "measured": 4.0,
    "n": 16384,
    "ok": true
   },
@@ -7428,7 +7428,7 @@
    "cost": "(1 + \\mathit{overwritten}) \\log \\mathit{runs}",
    "documented": 1.14,
    "fn": "interval.IntervalMap.assign",
-   "measured": 1.65,
+   "measured": 1.63,
    "n": 16384,
    "ok": true
   },
@@ -7436,7 +7436,7 @@
    "cost": "\\log \\mathit{runs}",
    "documented": 1.14,
    "fn": "interval.IntervalMap.assign_point",
-   "measured": 1.2,
+   "measured": 1.29,
    "n": 16384,
    "ok": true
   },
@@ -7444,7 +7444,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "interval.IntervalMap.each",
-   "measured": 1.12,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -7452,7 +7452,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "interval.IntervalMap.each_rev",
-   "measured": 1.13,
+   "measured": 1.07,
    "n": 16384,
    "ok": true
   },
@@ -7460,7 +7460,7 @@
    "cost": "\\log \\mathit{runs} + \\mathit{skipped}",
    "documented": 1.13,
    "fn": "interval.IntervalMap.first_where",
-   "measured": 1.2,
+   "measured": 1.22,
    "n": 16384,
    "ok": true
   },
@@ -7468,7 +7468,7 @@
    "cost": "\\lvert D \\rvert",
    "documented": 4.0,
    "fn": "interval.IntervalMap.from",
-   "measured": 6.52,
+   "measured": 6.75,
    "n": 16384,
    "ok": true
   },
@@ -7476,7 +7476,7 @@
    "cost": "\\log \\mathit{runs}",
    "documented": 1.14,
    "fn": "interval.IntervalMap.get",
-   "measured": 1.99,
+   "measured": 2.03,
    "n": 16384,
    "ok": true
   },
@@ -7484,7 +7484,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "interval.IntervalMap.new",
-   "measured": 1.01,
+   "measured": 0.97,
    "n": 16384,
    "ok": true
   },
@@ -7492,7 +7492,7 @@
    "cost": "\\log \\mathit{runs} + k",
    "documented": 1.13,
    "fn": "interval.IntervalMap.range",
-   "measured": 1.14,
+   "measured": 1.2,
    "n": 16384,
    "ok": true
   },
@@ -7500,7 +7500,7 @@
    "cost": "\\log \\mathit{runs}",
    "documented": 1.14,
    "fn": "interval.IntervalMap.run_at",
-   "measured": 1.21,
+   "measured": 1.25,
    "n": 16384,
    "ok": true
   },
@@ -7508,7 +7508,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "interval.IntervalMap.runs",
-   "measured": 1.06,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -7516,7 +7516,7 @@
    "cost": "\\log \\mathit{runs}",
    "documented": 1.14,
    "fn": "interval.IntervalMap.set",
-   "measured": 1.22,
+   "measured": 1.27,
    "n": 16384,
    "ok": true
   },
@@ -7524,7 +7524,7 @@
    "cost": "(1 + \\mathit{merged}) \\log \\mathit{runs}",
    "documented": 1.14,
    "fn": "interval.IntervalSet.add",
-   "measured": 1.35,
+   "measured": 1.3,
    "n": 16384,
    "ok": true
   },
@@ -7540,7 +7540,7 @@
    "cost": "\\log \\mathit{runs}",
    "documented": 1.14,
    "fn": "interval.IntervalSet.contains_range",
-   "measured": 1.11,
+   "measured": 1.17,
    "n": 16384,
    "ok": true
   },
@@ -7548,7 +7548,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "interval.IntervalSet.covered",
-   "measured": 0.99,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -7556,7 +7556,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "interval.IntervalSet.each",
-   "measured": 1.1,
+   "measured": 1.07,
    "n": 16384,
    "ok": true
   },
@@ -7564,7 +7564,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "interval.IntervalSet.new",
-   "measured": 0.98,
+   "measured": 0.96,
    "n": 16384,
    "ok": true
   },
@@ -7572,7 +7572,7 @@
    "cost": "\\log \\mathit{runs}",
    "documented": 1.14,
    "fn": "interval.IntervalSet.next_covered",
-   "measured": 1.09,
+   "measured": 1.12,
    "n": 16384,
    "ok": true
   },
@@ -7580,7 +7580,7 @@
    "cost": "\\log \\mathit{runs}",
    "documented": 1.14,
    "fn": "interval.IntervalSet.next_gap",
-   "measured": 1.13,
+   "measured": 1.18,
    "n": 16384,
    "ok": true
   },
@@ -7588,7 +7588,7 @@
    "cost": "(1 + \\mathit{split}) \\log \\mathit{runs}",
    "documented": 1.14,
    "fn": "interval.IntervalSet.remove",
-   "measured": 1.18,
+   "measured": 1.15,
    "n": 16384,
    "ok": true
   },
@@ -7596,7 +7596,7 @@
    "cost": "\\log \\mathit{runs}",
    "documented": 1.14,
    "fn": "interval.IntervalSet.run_at",
-   "measured": 1.14,
+   "measured": 1.13,
    "n": 16384,
    "ok": true
   },
@@ -7604,39 +7604,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "interval.IntervalSet.runs",
-   "measured": 0.99,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/interval.cp::interval.SparseIntervalMap.assign": {
-   "cost": "(1 + \\mathit{removed}) \\log \\mathit{runs}",
-   "documented": 1.14,
-   "fn": "interval.SparseIntervalMap.assign",
-   "measured": 1.3,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/interval.cp::interval.SparseIntervalMap.each": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "interval.SparseIntervalMap.each",
-   "measured": 0.99,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/interval.cp::interval.SparseIntervalMap.each_rev": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "interval.SparseIntervalMap.each_rev",
-   "measured": 1.01,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/interval.cp::interval.SparseIntervalMap.get": {
-   "cost": "\\log \\mathit{runs}",
-   "documented": 1.14,
-   "fn": "interval.SparseIntervalMap.get",
-   "measured": 2.27,
+   "measured": 1.05,
    "n": 16384,
    "ok": true
   },
@@ -7644,39 +7612,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "interval.SparseIntervalMap.new",
-   "measured": 0.97,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/interval.cp::interval.SparseIntervalMap.range": {
-   "cost": "\\log \\mathit{runs} + k",
-   "documented": 1.13,
-   "fn": "interval.SparseIntervalMap.range",
-   "measured": 1.1,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/interval.cp::interval.SparseIntervalMap.run_at": {
-   "cost": "\\log \\mathit{runs}",
-   "documented": 1.14,
-   "fn": "interval.SparseIntervalMap.run_at",
-   "measured": 1.33,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/interval.cp::interval.SparseIntervalMap.runs": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "interval.SparseIntervalMap.runs",
-   "measured": 0.92,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/interval.cp::interval.SparseIntervalMap.update": {
-   "cost": "(1 + \\mathit{touched}) \\log \\mathit{runs}",
-   "documented": 1.14,
-   "fn": "interval.SparseIntervalMap.update",
-   "measured": 1.23,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -7684,7 +7620,7 @@
    "cost": "(1 + \\mathit{merged}) \\log \\mathit{runs}",
    "documented": 1.14,
    "fn": "interval.SparseIntervalSet.add",
-   "measured": 1.57,
+   "measured": 1.54,
    "n": 16384,
    "ok": true
   },
@@ -7692,7 +7628,7 @@
    "cost": "\\log \\mathit{runs}",
    "documented": 1.14,
    "fn": "interval.SparseIntervalSet.contains",
-   "measured": 1.21,
+   "measured": 1.24,
    "n": 16384,
    "ok": true
   },
@@ -7700,7 +7636,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "interval.SparseIntervalSet.covered",
-   "measured": 1.04,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -7708,7 +7644,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "interval.SparseIntervalSet.each",
-   "measured": 1.04,
+   "measured": 1.08,
    "n": 16384,
    "ok": true
   },
@@ -7716,7 +7652,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "interval.SparseIntervalSet.new",
-   "measured": 1.02,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -7724,7 +7660,7 @@
    "cost": "\\log \\mathit{runs}",
    "documented": 1.14,
    "fn": "interval.SparseIntervalSet.next_gap",
-   "measured": 1.44,
+   "measured": 1.32,
    "n": 16384,
    "ok": true
   },
@@ -7732,7 +7668,7 @@
    "cost": "(1 + \\mathit{split}) \\log \\mathit{runs}",
    "documented": 1.14,
    "fn": "interval.SparseIntervalSet.remove",
-   "measured": 1.39,
+   "measured": 1.34,
    "n": 16384,
    "ok": true
   },
@@ -7740,8 +7676,72 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "interval.SparseIntervalSet.runs",
-   "measured": 1.05,
+   "measured": 1.0,
    "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/interval_l2.cp::interval.SparseIntervalMap.assign": {
+   "cost": "(1 + \\mathit{removed}) \\log \\mathit{runs}",
+   "documented": 1.17,
+   "fn": "interval.SparseIntervalMap.assign",
+   "measured": 1.05,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/interval_l2.cp::interval.SparseIntervalMap.each": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "interval.SparseIntervalMap.each",
+   "measured": 1.05,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/interval_l2.cp::interval.SparseIntervalMap.each_rev": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "interval.SparseIntervalMap.each_rev",
+   "measured": 1.04,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/interval_l2.cp::interval.SparseIntervalMap.get": {
+   "cost": "\\log \\mathit{runs}",
+   "documented": 1.17,
+   "fn": "interval.SparseIntervalMap.get",
+   "measured": 1.37,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/interval_l2.cp::interval.SparseIntervalMap.range": {
+   "cost": "\\log \\mathit{runs} + k",
+   "documented": 1.15,
+   "fn": "interval.SparseIntervalMap.range",
+   "measured": 1.02,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/interval_l2.cp::interval.SparseIntervalMap.run_at": {
+   "cost": "\\log \\mathit{runs}",
+   "documented": 1.17,
+   "fn": "interval.SparseIntervalMap.run_at",
+   "measured": 1.15,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/interval_l2.cp::interval.SparseIntervalMap.runs": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "interval.SparseIntervalMap.runs",
+   "measured": 0.99,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/interval_l2.cp::interval.SparseIntervalMap.update": {
+   "cost": "(1 + \\mathit{touched}) \\log \\mathit{runs}",
+   "documented": 1.17,
+   "fn": "interval.SparseIntervalMap.update",
+   "measured": 1.01,
+   "n": 4096,
    "ok": true
   },
   "bench/scaling/io.cp::io.Wire.ask": {
