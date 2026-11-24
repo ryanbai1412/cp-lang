@@ -139,6 +139,18 @@ fn compact_line(line: &str, rename: &BTreeMap<String, String>) -> String {
                 i += 3;
             }
         }
+        // A call codegen wrote `::prog::f(..)` to keep it from a library fn
+        // of the same name needs no namespace once `f` is a short name with
+        // a capital, which no library name has.
+        let home = [":", ":", "prog", ":", ":"];
+        if tokens.len() > i + 5 && (0..5).all(|k| tokens[i + k].1 == home[k]) {
+            if let Some(short) = rename.get(tokens[i + 5].1) {
+                if short.bytes().any(|b| b.is_ascii_uppercase()) {
+                    token = short;
+                    i += 5;
+                }
+            }
+        }
         let token = rename.get(token).map_or(token, String::as_str);
         if let Some(last) = last {
             if space && needs_space(last, token) {
@@ -487,6 +499,24 @@ mod tests {
             "{out}"
         );
         assert!(out.contains("std::get<0>"), "{out}");
+    }
+
+    #[test]
+    fn a_shortened_fn_is_called_without_its_namespace() {
+        let cpp = concat!(
+            "using ll=long long;\n",
+            "namespace prog{\n",
+            "ll walk_Int_3(std::vector<ll>&v){return v.size();}\n",
+            "ll solve(std::vector<ll>&v){return ::prog::walk_Int_3(v)+::prog::walk_Int_3(v)+::prog::run(v);}\n",
+            "}\n",
+        );
+        let names = short_names(cpp);
+        let short = &names["walk_Int_3"];
+        let out = compact(cpp, false, &names);
+        assert!(
+            out.contains(&format!("{{return {short}(v)+{short}(v)+::prog::run(v);}}")),
+            "{out}"
+        );
     }
 
     #[test]
