@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3186 (1093 passing). Rules: 606.
+Cases: 3187 (1093 passing). Rules: 606.
 
 ## Summary per chapter
 
@@ -16,7 +16,7 @@ Cases: 3186 (1093 passing). Rules: 606.
 - R03 (03-numbers-layout.md): 24 rules, 116 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 73 rules, 188 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04b (04b-keys.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04b (04b-keys.md): 28 rules, 71 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 50 rules, 234 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 25 rules, 118 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 91 rules, 221 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -357,7 +357,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04b.4.4 [1+ 0-]: | An owned list as a domain array | `let (domain I, b) = xs.with_domain()` | `[I]T` that o...
 - R04b.4.5 [1+ 0-]: | Results back in the caller's keys | `table.rekey(s.keys)` | \(O(1)\) re-key
 - R04b.5.1 [3+ 0-]: | `search`, `rsearch` | `-> ?Int` on `Str` | `-> ?K` on any `Indexed<K, Char>`; a match st...
-- R04b.5.2 [3+ 0-]: | `find_all`, `shift_and`, `KmpAutomaton.find_all` | `yields Int` | `yields K`; an empty p...
+- R04b.5.2 [4+ 0-]: | `find_all`, `shift_and`, `KmpAutomaton.find_all` | `yields Int` | `yields K`; an empty p...
 - R04b.5.3 [7+ 0-]: | `z_function`, `prefix_function`, `prefix_matches` | `-> List<Int>` | `-> [K]Int`, keyed ...
 - R04b.5.4 [1+ 0-]: | `min_rotation`, `max_rotation` | `-> Int` | `-> ?K`, the start, `None` when empty
 - R04b.5.5 [1+ 0-]: | `lyndon_factorization` | `-> List<Int>` | `-> List<K>`, the starts
