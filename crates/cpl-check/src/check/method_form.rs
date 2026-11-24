@@ -371,7 +371,7 @@ impl<'a> Checker<'a> {
             self.chosen_methods.retain(|r| r.0 != span);
             self.chosen_methods.push((span, resolved));
         }
-        if plain_value(&ty) {
+        if plain_value(&ty) || self.declared_value(&ty) {
             // The probe's facts went with it, and the caller checks nothing
             // more: check the call for real so its arguments keep their
             // hovers, refs and warnings (a lambda's body).
@@ -536,6 +536,16 @@ fn plain_value(ty: &Ty) -> bool {
 }
 
 impl Checker<'_> {
+    /// A struct the program or library declares, over plain values:
+    /// `Prefix<I, Int>` from `b.scan(+)`.
+    fn declared_value(&mut self, ty: &Ty) -> bool {
+        let Ty::Named { name, args } = ty else {
+            return false;
+        };
+        args.iter().all(plain_value)
+            && (self.type_def(name)).is_some_and(|d| matches!(&*d, Def::Struct { .. }))
+    }
+
     /// E0701: two candidates fit the receiver equally well.
     fn ambiguous_candidates(&mut self, base: &Expr, name: &ast::Name, keys: &[String]) {
         let mut modules: Vec<String> = Vec::new();

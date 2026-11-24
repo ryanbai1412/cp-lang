@@ -7,7 +7,7 @@ let sa = odds.map(o => o.a).sorted(by: desc).scan(+)
 let sb = odds.map(o => o.b).sorted(by: desc).scan(+)
 var best = 0.0
 for i in 0..=n:
-    let j = Int(sb.first_ge(sa[i]) ?? n)
+    let j = Int(sb.first_ge(sa.cut(i)) ?? n)
     for k in [j, max(j - 1, 0)]:
-        best max= min(sa[i], sb[k]) - F64(i + k)
+        best max= min(sa.cut(i), sb.cut(k)) - F64(i + k)
 print(best, precision: 4)

@@ -33,7 +33,7 @@ let pref = a.scan(^)
 var groups = List<Group>()
 var total = 0
 for (r, x) in a.items:
-    groups.push(Group(FULL, BitTrie<L>.of(pref[r])))
+    groups.push(Group(FULL, BitTrie<L>.of(pref.cut(r))))
     groups = shrink_groups(groups, x)
-    total += sum(group_contrib(g, pref[r + 1]) for g in groups)
+    total += sum(group_contrib(g, pref.cut(r + 1)) for g in groups)
 print(total)

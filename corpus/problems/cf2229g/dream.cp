@@ -21,9 +21,9 @@ let v: [Pos]Int = read()
 let road_d: [Pos.cuts.inner]Int = read()
 
 fn records(path: List<Pos>) -> List<House>:
-    let d = path.windows(2).scan(0, (t, w) => max(t + 1, road_d[cut(w[0], w[1])]))
+    let d = path.windows(2).scan(0, (t, w) => max(t + 1, road_d[Cut(w[0], w[1])]))
     let pref = path.scan(0, (s, i) => s + v[i])
-    [House(s, v[i], d[s], pref[s]) for (s, i) in path.items].prefix_records(by: h => h.v)
+    [House(s, v[i], d[s], pref.cut(s)) for (s, i) in path.items].prefix_records(by: h => h.v)
 
 let side: [Side]List<House> = [Side] s => records(Pos.walk(from: x, s))
 
