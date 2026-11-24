@@ -1210,7 +1210,7 @@ def corpus_no_statement(root: Path) -> list[str]:
     """Problem packages whose tests.toml has no statement sample inline (owner: Content, idioms).
 
     Rule: problem-packages/R9 (handbook/guidelines/problem-packages-checklist.md#r9): a
-    package's cases start with its statement's samples as `input` cases. A package whose
+    package's cases start with its statement's samples as `input` (or `input_file`) cases. A package whose
     statement can't be found has none, and can't have valid bounds or tests either, so it
     is deleted (git history keeps it) rather than listed. A statement with no sample at all is
     recorded in meta.json as `"statement": {"url", "sha256", "samples": 0}`, pinning the
@@ -1227,7 +1227,7 @@ def corpus_no_statement(root: Path) -> list[str]:
             cases = tomllib.loads(t.read_text(encoding="utf-8")).get("case", []) if t.is_file() else []
         except tomllib.TOMLDecodeError:
             cases = []
-        if not any("input" in c for c in cases) and not _no_sample_statement(d / "meta.json"):
+        if not any("input" in c or "input_file" in c for c in cases) and not _no_sample_statement(d / "meta.json"):
             found.append(d.relative_to(root).as_posix())
     return found
 

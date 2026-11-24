@@ -78,7 +78,8 @@ class DebtRatchetTest(unittest.TestCase):
             sample = '[[case]]\ninput = "1\\n"\n\n[[case]]\nseed = 1\nsize = 4\n'
             for name, files in (("a", {"meta.json": "{}", "tests.toml": sample}),
                                 ("b", {"meta.json": "{}", "tests.toml": "[[case]]\nargs = [\"--max\"]\n"}),
-                                ("c", {"meta.json": "{}"}), ("d", {"notes.md": ""})):
+                                ("c", {"meta.json": "{}"}), ("d", {"notes.md": ""}),
+                                ("e", {"meta.json": "{}", "tests.toml": '[[case]]\ninput_file = "samples/1.in"\n'})):
                 for f, text in files.items():
                     self._write(root, f"corpus/problems/{name}/{f}", text)
             self.assertEqual(dr.corpus_no_statement(root), [f"{PKGS}/b", f"{PKGS}/c"])

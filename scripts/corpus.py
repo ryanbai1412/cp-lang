@@ -656,6 +656,9 @@ def built(src):
         return None
 
 
+INLINE_INPUT_LIMIT = 64 * 1024
+
+
 def check_package(pkg, ctx):
     """problem-packages R1-R4: answers from an accepted C++, a checker where
     answers vary, a generator for interactive hidden data, a logged dream."""
@@ -664,6 +667,10 @@ def check_package(pkg, ctx):
         found.append(f"interactor-no-gen {pkg.id} -")
     if pkg.dir.joinpath("tests").exists():
         found.append(f"committed-tests {pkg.id} -")
+    # Every walk parses tests.toml: a sample over 64 KiB goes in a package file its case names.
+    cases = tomllib.loads(pkg.tests.read_text()).get("case", []) if pkg.tests else []
+    found += [f"inline-input-over-64k {pkg.id} case={i},use=input_file" for i, c in enumerate(cases, 1)
+              if len(c.get("input", "").encode()) > INLINE_INPUT_LIMIT]
     for size in range(1, 6) if pkg.gen and ctx.run else ():
         try:
             pkg.gen_input([1, size])
@@ -1237,14 +1244,19 @@ def make(args):
 
 
 def seed_toml(pkg, inputs):
-    """tests.toml for `inputs` (name, text): a tiny one inline, a larger one a
-    gen.py case of the largest power-of-two size whose input is no longer, plus
+    """tests.toml for `inputs` (name, text): a tiny one inline (over 64 KiB, as an
+    input_file in samples/), a larger one a gen.py case of the largest power-of-two size whose input is no longer, plus
     `--max` when gen.py has it."""
     lines = ["# The package's cases (problem-packages/R9): `input` inline, else `gen.py seed size` or `args`.", ""]
     for n, (_, text) in enumerate(inputs, 1):
         if len(text) <= INLINE or not pkg.gen or pkg.interactor:
             if len(text) > INLINE and not pkg.interactor:
                 raise RuntimeError(f"a {len(text)}-byte case and no gen.py")
+            if len(text.encode()) > INLINE_INPUT_LIMIT:
+                (pkg.dir / "samples").mkdir(exist_ok=True)
+                (pkg.dir / "samples" / f"{n}.in").write_text(text)
+                lines += ["[[case]]", f'input_file = "samples/{n}.in"', ""]
+                continue
             lines += ["[[case]]", "input = " + json.dumps(text), ""]
             continue
         size = 4

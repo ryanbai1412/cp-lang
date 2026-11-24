@@ -70,10 +70,10 @@ with a stable id that audits and tests cite. The ideas behind them are in
 
 ### problem-packages/R9
 
-**Rule:** no literal test data is committed under `corpus/`: a problem's tests are its `gen.py` plus a seed list in `tests.toml`, with only tiny hand-picked inputs inline there.
+**Rule:** no literal test data is committed under `corpus/`: a problem's tests are its `gen.py` plus a seed list in `tests.toml`, with only tiny hand-picked inputs inline there. A statement sample over 64 KiB goes in a package-local file its case names, `input_file = "samples/4.in"`, so tests.toml stays quick to parse.
 **Why:** committed inputs can't be regenerated or resized and bloat the repository forever; a seed list is reviewable and a size change is a one-line edit.
 **Example:** `[[case]] seed = 7 size = 200000` in `tests.toml`; `scripts/corpus.py make` writes inputs and answers to `target/corpus-tests/<id>/`.
-**Enforced by:** `scripts/corpus.py make` writes only under `target/`; `scripts/debt-ratchet.py` (`corpus_test_files`, a hard zero) and `scripts/corpus.py verify --only package` (`committed-tests`). `scripts/corpus.py verify --only package` (`stale-tests-path`) fails when a tracked file outside `corpus/` still names a seeded problem's deleted `tests/`.
+**Enforced by:** `scripts/corpus.py make` writes only under `target/`; `scripts/debt-ratchet.py` (`corpus_test_files`, a hard zero) and `scripts/corpus.py verify --only package` (`committed-tests`, and `inline-input-over-64k` for an inline input that belongs in an `input_file`); `cpl test` rejects an `input_file` that is missing or outside the package. `scripts/corpus.py verify --only package` (`stale-tests-path`) fails when a tracked file outside `corpus/` still names a seeded problem's deleted `tests/`.
 
 ### problem-packages/R10
 

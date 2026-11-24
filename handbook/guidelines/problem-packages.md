@@ -22,6 +22,7 @@ corpus/problems/cf2147f/
   orig.cpp      the accepted C++ the answers come from
   gen.py        gen.py SEED SIZE prints one input
   tests.toml    the cases: a seed and size each, or a tiny input inline
+  samples/      only statement samples over 64 KiB, each an input_file case
   checker.py    only if several outputs are valid
   interactor.py only if the problem is interactive
 ```

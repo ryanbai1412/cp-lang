@@ -560,6 +560,16 @@ class StaticModesTest(Corpus):
         pkg = corpus.Package.at(self.package("p1", port_cp="// Source: x\n// Solution: y\nprint(1)\n// Problem: late\n"))
         self.assertEqual(corpus.check_header(pkg, None), ["no-header-problem p1 -"])
 
+    def test_an_inline_input_over_64k_is_a_finding_and_an_input_file_is_not(self):
+        big = "1 " * (32 * 1024 + 1)
+        d = self.package("p1", port_cp="", tests_toml=f'[[case]]\ninput = "1"\n\n[[case]]\ninput = "{big}"\n\n'
+                                                       '[[case]]\ninput_file = "samples/3.in"\n')
+        (d / "samples").mkdir()
+        (d / "samples" / "3.in").write_text(big)
+        found = corpus.check_package(corpus.Package.at(d), self.ctx(""))
+        self.assertEqual([f for f in found if f.startswith("inline-input")],
+                         ["inline-input-over-64k p1 case=2,use=input_file"])
+
     def test_committed_tests_are_a_finding(self):
         d = self.package("p1", port_cp="")
         (d / "tests").mkdir()
@@ -639,6 +649,16 @@ class SeedTest(Corpus):
         self.assertEqual(cases[0], {"input": "tiny\n"})
         self.assertEqual(cases[1], {"seed": 2, "size": 16})
         self.assertEqual([c["size"] for c in cases[2:]], list(corpus.STRESS_SIZES))
+
+    def test_an_inline_case_over_64k_is_seeded_as_an_input_file(self):
+        d = self.package("p3", interactor_py="")
+        (d / "tests").mkdir()
+        big = "x" * (corpus.INLINE_INPUT_LIMIT + 1)
+        (d / "tests" / "1.in").write_text(big)
+        corpus.seed(type("A", (), {"ids": ["p3"]}))
+        cases = tomllib.loads((d / "tests.toml").read_text())["case"]
+        self.assertEqual(cases, [{"input_file": "samples/1.in"}])
+        self.assertEqual((d / "samples" / "1.in").read_text(), big)
 
     def test_a_large_case_without_a_generator_is_not_seeded(self):
         d = self.package("p2")
