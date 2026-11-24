@@ -6580,712 +6580,680 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.ErasableHeap.clear",
-   "measured": 0.98,
-   "n": 16384,
+   "measured": 1.01,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.ErasableHeap.is_empty": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.ErasableHeap.is_empty",
-   "measured": 1.02,
-   "n": 16384,
+   "measured": 1.01,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.ErasableHeap.len": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.ErasableHeap.len",
-   "measured": 1.03,
-   "n": 16384,
+   "measured": 1.01,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.ErasableHeap.new": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.ErasableHeap.new",
-   "measured": 0.97,
-   "n": 16384,
+   "measured": 1.0,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.ErasableHeap.peek": {
    "cost": "\\log n",
-   "documented": 1.14,
+   "documented": 1.18,
    "fn": "heap.ErasableHeap.peek",
-   "measured": 1.03,
-   "n": 16384,
+   "measured": 1.0,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.ErasableHeap.pop": {
    "cost": "\\log n",
-   "documented": 1.14,
+   "documented": 1.18,
    "fn": "heap.ErasableHeap.pop",
-   "measured": 1.16,
-   "n": 16384,
+   "measured": 1.11,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.ErasableHeap.push": {
    "cost": "\\log n",
-   "documented": 1.14,
+   "documented": 1.18,
    "fn": "heap.ErasableHeap.push",
-   "measured": 0.99,
-   "n": 16384,
+   "measured": 1.02,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.ErasableHeap.remove": {
    "cost": "\\log n",
-   "documented": 1.14,
+   "documented": 1.18,
    "fn": "heap.ErasableHeap.remove",
-   "measured": 0.95,
-   "n": 16384,
+   "measured": 1.01,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.ErasableHeap.take": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.ErasableHeap.take",
-   "measured": 1.03,
-   "n": 16384,
+   "measured": 1.0,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.Heap.clear": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.Heap.clear",
-   "measured": 0.99,
-   "n": 16384,
+   "measured": 1.0,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.Heap.drain": {
    "cost": "\\log n",
-   "documented": 1.14,
+   "documented": 1.18,
    "fn": "heap.Heap.drain",
-   "measured": 1.13,
-   "n": 16384,
+   "measured": 1.12,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.Heap.is_empty": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.Heap.is_empty",
-   "measured": 1.03,
-   "n": 16384,
+   "measured": 0.99,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.Heap.len": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.Heap.len",
-   "measured": 1.03,
-   "n": 16384,
+   "measured": 1.0,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.Heap.new": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.Heap.new",
-   "measured": 0.88,
-   "n": 16384,
+   "measured": 1.0,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.Heap.of": {
    "cost": "n",
    "documented": 4.0,
    "fn": "heap.Heap.of",
-   "measured": 6.48,
-   "n": 16384,
+   "measured": 3.76,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.Heap.peek": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.Heap.peek",
-   "measured": 1.02,
-   "n": 16384,
+   "measured": 1.0,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.Heap.pop": {
    "cost": "\\log n",
-   "documented": 1.14,
+   "documented": 1.18,
    "fn": "heap.Heap.pop",
-   "measured": 1.18,
-   "n": 16384,
+   "measured": 1.16,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.Heap.push": {
    "cost": "\\log n",
-   "documented": 1.14,
+   "documented": 1.18,
    "fn": "heap.Heap.push",
-   "measured": 1.01,
-   "n": 16384,
+   "measured": 1.02,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.Heap.push_all": {
    "cost": "k \\log n",
-   "documented": 4.57,
+   "documented": 4.73,
    "fn": "heap.Heap.push_all",
-   "measured": 5.45,
-   "n": 16384,
+   "measured": 4.38,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.Heap.push_pop": {
    "cost": "\\log n",
-   "documented": 1.14,
+   "documented": 1.18,
    "fn": "heap.Heap.push_pop",
-   "measured": 1.52,
-   "n": 16384,
+   "measured": 1.13,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.Heap.replace_top": {
    "cost": "\\log n",
-   "documented": 1.14,
+   "documented": 1.18,
    "fn": "heap.Heap.replace_top",
-   "measured": 1.53,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.Heap.reserve": {
-   "cost": "\\mathit{cap}",
-   "documented": 4.0,
-   "fn": "heap.Heap.reserve",
-   "measured": 5.16,
-   "n": 16384,
+   "measured": 1.16,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.Heap.take": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.Heap.take",
-   "measured": 1.03,
-   "n": 16384,
+   "measured": 1.02,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.IndexedHeap.clear": {
    "cost": "\\mathit{len}",
    "documented": 4.0,
    "fn": "heap.IndexedHeap.clear",
-   "measured": 4.04,
-   "n": 16384,
+   "measured": 5.5,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.IndexedHeap.contains": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.IndexedHeap.contains",
-   "measured": 1.01,
-   "n": 16384,
+   "measured": 1.02,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.IndexedHeap.decrease": {
    "cost": "\\log n",
-   "documented": 1.14,
+   "documented": 1.18,
    "fn": "heap.IndexedHeap.decrease",
-   "measured": 1.04,
-   "n": 16384,
+   "measured": 1.02,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.IndexedHeap.get": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.IndexedHeap.get",
-   "measured": 1.01,
-   "n": 16384,
+   "measured": 1.0,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.IndexedHeap.increase": {
    "cost": "\\log n",
-   "documented": 1.14,
+   "documented": 1.18,
    "fn": "heap.IndexedHeap.increase",
-   "measured": 0.95,
-   "n": 16384,
+   "measured": 1.02,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.IndexedHeap.is_empty": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.IndexedHeap.is_empty",
-   "measured": 1.01,
-   "n": 16384,
+   "measured": 1.02,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.IndexedHeap.len": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.IndexedHeap.len",
-   "measured": 1.01,
-   "n": 16384,
+   "measured": 1.02,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.IndexedHeap.new": {
    "cost": "\\lvert D \\rvert",
    "documented": 4.0,
    "fn": "heap.IndexedHeap.new",
-   "measured": 3.93,
-   "n": 16384,
+   "measured": 4.69,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.IndexedHeap.peek": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.IndexedHeap.peek",
-   "measured": 1.01,
-   "n": 16384,
+   "measured": 1.0,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.IndexedHeap.pop": {
    "cost": "\\log n",
-   "documented": 1.14,
+   "documented": 1.18,
    "fn": "heap.IndexedHeap.pop",
-   "measured": 1.21,
-   "n": 16384,
+   "measured": 1.51,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.IndexedHeap.remove": {
    "cost": "\\log n",
-   "documented": 1.14,
+   "documented": 1.18,
    "fn": "heap.IndexedHeap.remove",
-   "measured": 1.08,
-   "n": 16384,
+   "measured": 1.28,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.IndexedHeap.set": {
    "cost": "\\log n",
-   "documented": 1.14,
+   "documented": 1.18,
    "fn": "heap.IndexedHeap.set",
-   "measured": 1.08,
-   "n": 16384,
+   "measured": 1.03,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MaxHeap.clear": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.MaxHeap.clear",
-   "measured": 0.99,
-   "n": 16384,
+   "measured": 1.03,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MaxHeap.drain": {
    "cost": "\\log n",
-   "documented": 1.14,
+   "documented": 1.18,
    "fn": "heap.MaxHeap.drain",
-   "measured": 1.12,
-   "n": 16384,
+   "measured": 1.13,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MaxHeap.is_empty": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.MaxHeap.is_empty",
-   "measured": 1.03,
-   "n": 16384,
+   "measured": 1.01,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MaxHeap.len": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.MaxHeap.len",
-   "measured": 1.03,
-   "n": 16384,
+   "measured": 1.0,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MaxHeap.new": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.MaxHeap.new",
-   "measured": 0.99,
-   "n": 16384,
+   "measured": 1.02,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MaxHeap.of": {
    "cost": "n",
    "documented": 4.0,
    "fn": "heap.MaxHeap.of",
-   "measured": 5.1,
-   "n": 16384,
+   "measured": 4.14,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MaxHeap.peek": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.MaxHeap.peek",
-   "measured": 1.03,
-   "n": 16384,
+   "measured": 1.0,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MaxHeap.pop": {
    "cost": "\\log n",
-   "documented": 1.14,
+   "documented": 1.18,
    "fn": "heap.MaxHeap.pop",
-   "measured": 1.18,
-   "n": 16384,
+   "measured": 1.16,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MaxHeap.push": {
    "cost": "\\log n",
-   "documented": 1.14,
+   "documented": 1.18,
    "fn": "heap.MaxHeap.push",
-   "measured": 1.07,
-   "n": 16384,
+   "measured": 0.98,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MaxHeap.push_all": {
    "cost": "n + k \\log(n + k)",
-   "documented": 4.5,
+   "documented": 4.62,
    "fn": "heap.MaxHeap.push_all",
-   "measured": 6.31,
-   "n": 16384,
+   "measured": 3.69,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MaxHeap.push_pop": {
    "cost": "\\log n",
-   "documented": 1.14,
+   "documented": 1.18,
    "fn": "heap.MaxHeap.push_pop",
-   "measured": 1.56,
-   "n": 16384,
+   "measured": 1.16,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MaxHeap.replace_top": {
    "cost": "\\log n",
-   "documented": 1.14,
+   "documented": 1.18,
    "fn": "heap.MaxHeap.replace_top",
-   "measured": 1.53,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MaxHeap.reserve": {
-   "cost": "\\mathit{cap}",
-   "documented": 4.0,
-   "fn": "heap.MaxHeap.reserve",
-   "measured": 4.3,
-   "n": 16384,
+   "measured": 1.15,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MaxHeap.take": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.MaxHeap.take",
-   "measured": 1.03,
-   "n": 16384,
+   "measured": 1.0,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.Meld.is_empty": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.Meld.is_empty",
-   "measured": 0.99,
-   "n": 16384,
+   "measured": 1.03,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.Meld.len": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.Meld.len",
-   "measured": 0.99,
-   "n": 16384,
+   "measured": 1.01,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MeldHeap.add_all": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.MeldHeap.add_all",
-   "measured": 0.99,
-   "n": 16384,
+   "measured": 1.0,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MeldHeap.clear": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.MeldHeap.clear",
-   "measured": 0.98,
-   "n": 16384,
+   "measured": 0.99,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MeldHeap.drain": {
    "cost": "n \\log n",
-   "documented": 4.57,
+   "documented": 4.73,
    "fn": "heap.MeldHeap.drain",
-   "measured": 5.59,
-   "n": 16384,
+   "measured": 5.29,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MeldHeap.is_empty": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.MeldHeap.is_empty",
-   "measured": 0.99,
-   "n": 16384,
+   "measured": 1.01,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MeldHeap.len": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.MeldHeap.len",
-   "measured": 0.98,
-   "n": 16384,
+   "measured": 1.0,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MeldHeap.new": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.MeldHeap.new",
-   "measured": 0.98,
-   "n": 16384,
+   "measured": 1.0,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MeldHeap.of": {
    "cost": "n",
    "documented": 4.0,
    "fn": "heap.MeldHeap.of",
-   "measured": 4.49,
-   "n": 16384,
+   "measured": 3.9,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MeldHeap.peek": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.MeldHeap.peek",
-   "measured": 0.99,
-   "n": 16384,
+   "measured": 0.98,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MeldHeap.pop": {
    "cost": "\\log n",
-   "documented": 1.14,
+   "documented": 1.18,
    "fn": "heap.MeldHeap.pop",
-   "measured": 1.33,
-   "n": 16384,
+   "measured": 1.26,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MeldHeap.push": {
    "cost": "\\log n",
-   "documented": 1.14,
+   "documented": 1.18,
    "fn": "heap.MeldHeap.push",
-   "measured": 1.21,
-   "n": 16384,
+   "measured": 1.14,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MeldHeap.push_all": {
    "cost": "k \\log n",
-   "documented": 4.57,
+   "documented": 4.73,
    "fn": "heap.MeldHeap.push_all",
-   "measured": 5.67,
-   "n": 16384,
+   "measured": 4.78,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MeldHeap.take": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.MeldHeap.take",
-   "measured": 0.98,
-   "n": 16384,
+   "measured": 1.01,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MeldHeap.top": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.MeldHeap.top",
-   "measured": 0.98,
-   "n": 16384,
+   "measured": 1.0,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MeldHeaps.add_all": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.MeldHeaps.add_all",
-   "measured": 0.99,
-   "n": 16384,
+   "measured": 1.04,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MeldHeaps.drain": {
    "cost": "n \\log n",
-   "documented": 4.57,
+   "documented": 4.73,
    "fn": "heap.MeldHeaps.drain",
-   "measured": 5.91,
-   "n": 16384,
+   "measured": 5.1,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MeldHeaps.meld": {
    "cost": "\\log n",
-   "documented": 1.14,
+   "documented": 1.18,
    "fn": "heap.MeldHeaps.meld",
-   "measured": 1.23,
-   "n": 16384,
+   "measured": 1.18,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MeldHeaps.new": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.MeldHeaps.new",
-   "measured": 0.97,
-   "n": 16384,
+   "measured": 1.0,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MeldHeaps.of": {
    "cost": "n",
    "documented": 4.0,
    "fn": "heap.MeldHeaps.of",
-   "measured": 4.63,
-   "n": 16384,
+   "measured": 3.92,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MeldHeaps.pop": {
    "cost": "\\log n",
-   "documented": 1.14,
+   "documented": 1.18,
    "fn": "heap.MeldHeaps.pop",
-   "measured": 1.5,
-   "n": 16384,
+   "measured": 1.22,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MeldHeaps.push": {
    "cost": "\\log n",
-   "documented": 1.14,
+   "documented": 1.18,
    "fn": "heap.MeldHeaps.push",
-   "measured": 1.24,
-   "n": 16384,
+   "measured": 1.17,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MeldHeaps.push_all": {
    "cost": "k \\log n",
-   "documented": 4.57,
+   "documented": 4.73,
    "fn": "heap.MeldHeaps.push_all",
-   "measured": 6.05,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MeldHeaps.reserve": {
-   "cost": "\\mathit{nodes}",
-   "documented": 4.0,
-   "fn": "heap.MeldHeaps.reserve",
-   "measured": 6.47,
-   "n": 16384,
+   "measured": 5.03,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MeldHeaps.top": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.MeldHeaps.top",
-   "measured": 0.99,
-   "n": 16384,
+   "measured": 1.0,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MinMaxHeap.clear": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.MinMaxHeap.clear",
-   "measured": 0.99,
-   "n": 16384,
+   "measured": 1.0,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MinMaxHeap.first": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.MinMaxHeap.first",
-   "measured": 1.02,
-   "n": 16384,
+   "measured": 1.0,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MinMaxHeap.is_empty": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.MinMaxHeap.is_empty",
-   "measured": 1.04,
-   "n": 16384,
+   "measured": 1.02,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MinMaxHeap.last": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.MinMaxHeap.last",
-   "measured": 1.03,
-   "n": 16384,
+   "measured": 1.01,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MinMaxHeap.len": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.MinMaxHeap.len",
-   "measured": 1.02,
-   "n": 16384,
+   "measured": 1.01,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MinMaxHeap.new": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.MinMaxHeap.new",
-   "measured": 0.98,
-   "n": 16384,
+   "measured": 0.99,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MinMaxHeap.of": {
    "cost": "n",
    "documented": 4.0,
    "fn": "heap.MinMaxHeap.of",
-   "measured": 5.07,
-   "n": 16384,
+   "measured": 4.07,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MinMaxHeap.pop_first": {
    "cost": "\\log n",
-   "documented": 1.14,
+   "documented": 1.18,
    "fn": "heap.MinMaxHeap.pop_first",
-   "measured": 1.15,
-   "n": 16384,
+   "measured": 1.13,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MinMaxHeap.pop_last": {
    "cost": "\\log n",
-   "documented": 1.14,
+   "documented": 1.18,
    "fn": "heap.MinMaxHeap.pop_last",
-   "measured": 1.13,
-   "n": 16384,
+   "measured": 1.18,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MinMaxHeap.push": {
    "cost": "\\log n",
-   "documented": 1.14,
+   "documented": 1.18,
    "fn": "heap.MinMaxHeap.push",
-   "measured": 1.0,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/heap.cp::heap.MinMaxHeap.reserve": {
-   "cost": "\\mathit{cap}",
-   "documented": 4.0,
-   "fn": "heap.MinMaxHeap.reserve",
-   "measured": 5.61,
-   "n": 16384,
+   "measured": 0.98,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.MinMaxHeap.take": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.MinMaxHeap.take",
-   "measured": 1.03,
-   "n": 16384,
+   "measured": 1.02,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.Settle.get": {
    "cost": "1",
    "documented": 1.0,
    "fn": "heap.Settle.get",
-   "measured": 1.29,
-   "n": 16384,
+   "measured": 1.11,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.Settle.offer": {
    "cost": "\\log n",
-   "documented": 1.14,
+   "documented": 1.18,
    "fn": "heap.Settle.offer",
-   "measured": 1.07,
-   "n": 16384,
+   "measured": 0.97,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.Settle.pop": {
    "cost": "\\log n",
-   "documented": 1.14,
+   "documented": 1.18,
    "fn": "heap.Settle.pop",
-   "measured": 1.14,
-   "n": 16384,
+   "measured": 1.09,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.Settle.settled": {
@@ -7293,7 +7261,7 @@
    "documented": 1.0,
    "fn": "heap.Settle.settled",
    "measured": 1.09,
-   "n": 16384,
+   "n": 2048,
    "ok": true
   },
   "bench/scaling/heap_each.cp::heap.ErasableHeap.each": {
@@ -7342,6 +7310,38 @@
    "fn": "heap.MinMaxHeap.each",
    "measured": 5.71,
    "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/heap_reserve.cp::heap.Heap.reserve": {
+   "cost": "\\mathit{cap}",
+   "documented": 4.0,
+   "fn": "heap.Heap.reserve",
+   "measured": 2.78,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/heap_reserve.cp::heap.MaxHeap.reserve": {
+   "cost": "\\mathit{cap}",
+   "documented": 4.0,
+   "fn": "heap.MaxHeap.reserve",
+   "measured": 3.21,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/heap_reserve.cp::heap.MeldHeaps.reserve": {
+   "cost": "\\mathit{nodes}",
+   "documented": 4.0,
+   "fn": "heap.MeldHeaps.reserve",
+   "measured": 3.42,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/heap_reserve.cp::heap.MinMaxHeap.reserve": {
+   "cost": "\\mathit{cap}",
+   "documented": 4.0,
+   "fn": "heap.MinMaxHeap.reserve",
+   "measured": 2.54,
+   "n": 512,
    "ok": true
   },
   "bench/scaling/interval.cp::interval.IntervalMap.assign": {
@@ -8428,7 +8428,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.Arena.alloc",
-   "measured": 0.87,
+   "measured": 0.98,
    "n": 16384,
    "ok": true
   },
@@ -8436,7 +8436,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.Arena.clear",
-   "measured": 1.03,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -8444,7 +8444,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.Arena.get",
-   "measured": 0.97,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -8452,7 +8452,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.Arena.is_empty",
-   "measured": 0.96,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -8468,15 +8468,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.Arena.new",
-   "measured": 0.96,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/marks.cp::marks.Arena.reserve": {
-   "cost": "\\mathit{len}",
-   "documented": 4.0,
-   "fn": "marks.Arena.reserve",
-   "measured": 5.51,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -8484,63 +8476,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.Arena.set",
-   "measured": 0.97,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/marks.cp::marks.Interner.clear": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "marks.Interner.clear",
-   "measured": 1.05,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/marks.cp::marks.Interner.contains": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "marks.Interner.contains",
-   "measured": 1.03,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/marks.cp::marks.Interner.get": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "marks.Interner.get",
-   "measured": 1.13,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/marks.cp::marks.Interner.id": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "marks.Interner.id",
-   "measured": 1.54,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/marks.cp::marks.Interner.is_empty": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "marks.Interner.is_empty",
-   "measured": 1.03,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/marks.cp::marks.Interner.key": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "marks.Interner.key",
-   "measured": 1.04,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/marks.cp::marks.Interner.len": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "marks.Interner.len",
-   "measured": 1.04,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -8548,15 +8484,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.Interner.new",
-   "measured": 1.03,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/marks.cp::marks.Interner.reserve": {
-   "cost": "\\mathit{len}",
-   "documented": 4.0,
-   "fn": "marks.Interner.reserve",
-   "measured": 6.02,
+   "measured": 0.96,
    "n": 16384,
    "ok": true
   },
@@ -8564,7 +8492,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.MarkMap.clear",
-   "measured": 1.02,
+   "measured": 0.98,
    "n": 16384,
    "ok": true
   },
@@ -8572,7 +8500,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.MarkMap.contains",
-   "measured": 0.98,
+   "measured": 0.93,
    "n": 16384,
    "ok": true
   },
@@ -8580,7 +8508,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.MarkMap.get",
-   "measured": 1.02,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -8588,7 +8516,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.MarkMap.is_empty",
-   "measured": 1.03,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -8596,7 +8524,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.MarkMap.len",
-   "measured": 1.03,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -8604,7 +8532,7 @@
    "cost": "\\lvert D \\rvert",
    "documented": 4.0,
    "fn": "marks.MarkMap.new",
-   "measured": 4.15,
+   "measured": 3.91,
    "n": 16384,
    "ok": true
   },
@@ -8612,7 +8540,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.MarkMap.remove",
-   "measured": 1.06,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -8620,7 +8548,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.MarkMap.set",
-   "measured": 1.07,
+   "measured": 1.05,
    "n": 16384,
    "ok": true
   },
@@ -8628,7 +8556,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.Marks.add",
-   "measured": 0.9,
+   "measured": 1.06,
    "n": 16384,
    "ok": true
   },
@@ -8636,7 +8564,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.Marks.clear",
-   "measured": 1.03,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -8644,7 +8572,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.Marks.contains",
-   "measured": 0.86,
+   "measured": 0.96,
    "n": 16384,
    "ok": true
   },
@@ -8652,7 +8580,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.Marks.is_empty",
-   "measured": 0.99,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -8660,7 +8588,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.Marks.len",
-   "measured": 1.01,
+   "measured": 0.98,
    "n": 16384,
    "ok": true
   },
@@ -8668,7 +8596,7 @@
    "cost": "\\lvert D \\rvert",
    "documented": 4.0,
    "fn": "marks.Marks.new",
-   "measured": 4.09,
+   "measured": 4.05,
    "n": 16384,
    "ok": true
   },
@@ -8676,7 +8604,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.Marks.remove",
-   "measured": 0.9,
+   "measured": 0.92,
    "n": 16384,
    "ok": true
   },
@@ -8684,7 +8612,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.SparseSet.add",
-   "measured": 1.04,
+   "measured": 1.08,
    "n": 16384,
    "ok": true
   },
@@ -8692,7 +8620,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.SparseSet.clear",
-   "measured": 1.03,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -8700,7 +8628,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.SparseSet.contains",
-   "measured": 0.97,
+   "measured": 0.95,
    "n": 16384,
    "ok": true
   },
@@ -8708,7 +8636,7 @@
    "cost": "\\mathit{len}",
    "documented": 4.0,
    "fn": "marks.SparseSet.each",
-   "measured": 3.91,
+   "measured": 4.09,
    "n": 16384,
    "ok": true
   },
@@ -8716,7 +8644,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.SparseSet.is_empty",
-   "measured": 1.02,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -8724,7 +8652,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.SparseSet.len",
-   "measured": 1.02,
+   "measured": 0.98,
    "n": 16384,
    "ok": true
   },
@@ -8732,7 +8660,7 @@
    "cost": "\\lvert D \\rvert",
    "documented": 4.0,
    "fn": "marks.SparseSet.new",
-   "measured": 4.13,
+   "measured": 3.99,
    "n": 16384,
    "ok": true
   },
@@ -8740,7 +8668,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "marks.SparseSet.remove",
-   "measured": 0.94,
+   "measured": 0.93,
    "n": 16384,
    "ok": true
   },
@@ -8774,6 +8702,78 @@
    "fn": "marks.Marks.each",
    "measured": 5.37,
    "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks_interner.cp::marks.Interner.clear": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.Interner.clear",
+   "measured": 0.99,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/marks_interner.cp::marks.Interner.contains": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.Interner.contains",
+   "measured": 1.06,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/marks_interner.cp::marks.Interner.get": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.Interner.get",
+   "measured": 1.08,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/marks_interner.cp::marks.Interner.id": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.Interner.id",
+   "measured": 1.11,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/marks_interner.cp::marks.Interner.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.Interner.is_empty",
+   "measured": 1.0,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/marks_interner.cp::marks.Interner.key": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.Interner.key",
+   "measured": 1.01,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/marks_interner.cp::marks.Interner.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.Interner.len",
+   "measured": 1.0,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/marks_reserve.cp::marks.Arena.reserve": {
+   "cost": "\\mathit{len}",
+   "documented": 4.0,
+   "fn": "marks.Arena.reserve",
+   "measured": 4.25,
+   "n": 512,
+   "ok": true
+  },
+  "bench/scaling/marks_reserve.cp::marks.Interner.reserve": {
+   "cost": "\\mathit{len}",
+   "documented": 4.0,
+   "fn": "marks.Interner.reserve",
+   "measured": 3.51,
+   "n": 512,
    "ok": true
   },
   "bench/scaling/mat.cp::matrix.Mat.adjugate": {

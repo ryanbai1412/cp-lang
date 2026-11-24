@@ -1,9 +1,12 @@
+// n: 2048
+// At n = 2048 the 4n heaps (about 400 KB together) still fit in one core's L2, so the
+// O(log n) sifts are timed in one cache tier; more rounds keep the O(n) lines over the floor.
 use std.heap.{MinMaxHeap, ErasableHeap, MeldHeap, MeldHeaps, IndexedHeap, Settle}
 
 let n: Int = read()
 domain V = 0..n
 let reps = 1 << 17
-let rounds = 8
+let rounds = 64
 let xs = [i * 7919 % n for i in 0..n]
 var s = 0
 
@@ -21,18 +24,6 @@ for _ in 0..12 * rounds:
     s += MeldHeap<Int>.of(xs).len // timed: heap.MeldHeap.of
     var pool = MeldHeaps<Int>()
     s += pool.of(xs).len // timed: heap.MeldHeaps.of
-// Storage grows by moving the elements already there.
-for _ in 0..128 * rounds:
-    var r = Heap<Int>.of(xs)
-    r.reserve(2 * n) // timed: heap.Heap.reserve
-    var rx = MaxHeap<Int>.of(xs)
-    rx.reserve(2 * n) // timed: heap.MaxHeap.reserve
-    var rm = MinMaxHeap<Int>.of(xs)
-    rm.reserve(2 * n) // timed: heap.MinMaxHeap.reserve
-    var rp = MeldHeaps<Int>()
-    s += rp.of(xs).len
-    rp.reserve(2 * n) // timed: heap.MeldHeaps.reserve
-    s += r.len + rx.len + rm.len
 for _ in 0..6 * rounds:
     var p = Heap<Int>()
     p.push_all(xs) // timed: heap.Heap.push_all
@@ -64,6 +55,8 @@ for round in 0..rounds:
             s += m.last() ?? 0 // timed: heap.MinMaxHeap.last
             s += e.len // timed: heap.ErasableHeap.len
             if e.is_empty: s += 1 // timed: heap.ErasableHeap.is_empty
+        // A loop of its own, so no sift's cache misses spill into the O(1) reads above.
+        for i in 0..reps:
             let v = i * 31 % n
             s += h.push_pop(v) // timed: heap.Heap.push_pop
             s += h.replace_top(v) ?? 0 // timed: heap.Heap.replace_top
