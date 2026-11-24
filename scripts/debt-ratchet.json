@@ -189,6 +189,7 @@
   "cpl_env_reads": 45,
   "test_sleeps": 2,
   "ci_retries": 0,
+  "stale_arch_paths": 0,
   "hardcoded_codes": 1,
   "xfail_markers": 0,
   "todo_fixme": 0,

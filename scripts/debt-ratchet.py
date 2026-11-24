@@ -948,6 +948,8 @@ def stale_arch_paths(root: Path) -> list[str]:
                     found.append((f"{_rel(root, d)}:{i}", path))
     me = root / "scripts/debt-ratchet.py"
     for i, line in enumerate(_lines(me) if me.is_file() else [], 1):
+        if '"deleted: ' in line:
+            continue  # a LISTS row for a list that is gone on purpose
         for m in re.finditer(r'"(crates/[\w./-]+)"', line):
             path = m.group(1).rstrip("/.")
             if "*" not in path and not (root / path).exists():
@@ -1460,15 +1462,14 @@ def test_sleeps(root: Path) -> list[str]:
 def ci_retries(root: Path) -> list[str]:
     """Retries in workflows, scripts and the justfile outside the one helper,
     scripts/retry.sh and retry.py: a `--retry`/`--retries` flag or a hand-rolled retry loop.
-    nextest's `--retries N --flaky-result fail` isn't one: the flake still fails."""
+    Tests get none, even with `--flaky-result fail`: a retry costs the run and a flake fails once."""
     hits = _git(root, "grep", "-n", "-E", "-e", RETRY_RE, "--", ".github", "scripts", "justfile",
                 ":!scripts/retry.sh", ":!scripts/retry.py", ":!scripts/test_*.py",
                 ":!scripts/debt-ratchet.py", ":!scripts/test_debt_ratchet.py")
-    return [":".join(h.split(":", 2)[:2]) for h in hits if not FLAKE_FAILS_RE.search(h)]
+    return [":".join(h.split(":", 2)[:2]) for h in hits]
 
 
 RETRY_RE = r"--retr(y|ies)\b|\b(re)?try\(\) *\{|\bfor (try|tries|attempt) in |\bfor _ in range\((tries|retries|attempts)\)"
-FLAKE_FAILS_RE = re.compile(r"--retries [0-9]+ --flaky-result fail")
 
 
 def hardcoded_codes(root: Path) -> list[str]:
@@ -1944,7 +1945,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
 
 
 HARD_ZERO = frozenset({
-    "bench_lists", "scaling_mismatches", "corpus_test_files", "corpus_known",
+    "bench_lists", "scaling_mismatches", "corpus_test_files", "corpus_known", "stale_arch_paths",
     "own_databases", "module_loaders", "web_skip_only", "todo_fixme", "ci_retries", "or_true", "codemods_outside_fix",
     "pending_tests", "edition_refs", "uncited_rules", "decision_dup_numbers", "why_written_twice", "authority_drift",
     "continue_on_error", "unregistered_lists", "codegen_effect_guesses", "spec_std_refs",
@@ -2014,7 +2015,7 @@ COUNTERS = {
     "cpp_std_functions": ("std::function in the corpus C++ (read_only_copies)", cpp_std_functions, True),
     "codegen_effect_guesses": ("codegen effect or purity guesses outside the Uses table", codegen_effect_guesses, True),
     "rs_near_cap": ("rs files within 100 lines of the cap", rs_near_cap, False),
-    "stale_arch_paths": ("missing paths cited by ARCHITECTURE docs", stale_arch_paths, False),
+    "stale_arch_paths": ("missing paths cited by ARCHITECTURE docs", stale_arch_paths, True),
     "crate_edges": ("shipped crate edges", crate_edges, False),
     "dev_crate_edges": ("test-only crate edges", dev_crate_edges, False),
     "spec_std_refs": ("spec/std references", spec_std_refs, False),

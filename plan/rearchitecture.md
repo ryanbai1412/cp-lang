@@ -28,7 +28,7 @@ and `plan/domains/compiler/metrics.toml`.
 | no library names in the compiler | 89 names string-matched in `cpl-ir/src/lower/call.rs` (`ir_builtin_names`) |
 | operator table as data; every spec block parses | precedence in parser code and prose; 19/185 spec blocks pass |
 | coherent traits checked at definition; `Error` poisons | generics and traits partial; cascading errors |
-| harness and scoreboard in one place | `cpl-conform`, plus `scripts/corpus-tests.py` |
+| harness and scoreboard in one place | `cpl-conform`, plus `scripts/corpus.py` |
 | ownership on the IR | partial checks in `cpl-check` |
 | one facts framework | range reasoning spread across checker and codegen (`prover`, `ranges.rs`); `cpl-lint -> cpl-prover` (`layer_violations` 1) |
 | one interpreter | a tree-walker (`cpl-interp/src/lib.rs`) plus a VM (`vm/`) that falls back to it on 13 of 13 runnable corpus programs |

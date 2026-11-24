@@ -307,18 +307,15 @@ test is listed.
 
 ### ci/R35
 
-CI's test partitions retry a failed test once only to tell a flake from a
-break: a test that passes only on the retry still fails the run
-(`--flaky-result fail`), and is named as a `flaky test` warning on the run
-and in its summary.
-*Why:* a retry that passes hid each flake while main stayed green, and the
-audit's target for test retries and flaky tests is 0. Failing on the flake
-makes its owner fix it, and the name says it is a flake, not a break.
-*Example:* a test that races a temp file fails, passes on try 2, the
-partition fails, and the run shows `flaky test (failed, then passed on
-retry; fails the run): cpl-cli::corpus <name>`.
-*Enforced by:* `scripts/flaky.py`, tested by `scripts/test_flaky.py`, run by
-`scripts/check.sh`.
+**Tests run once: no retries.** A test partition runs nextest without
+`--retries`, so a flaky test fails the run on its first failure.
+*Why:* a retry that passes hid each flake while main stayed green, and even
+`--flaky-result fail` spends a second run on it; the audit's target for test
+retries and flaky tests is 0. Failing on the flake makes its owner fix it.
+*Example:* a test that races a temp file fails its partition; its owner
+reruns it with `cargo nextest run -E 'test(<name>)'` and fixes the race.
+*Enforced by:* `ci_retries` in `scripts/debt-ratchet.py` (hard zero), which
+counts any `--retries` outside `scripts/retry.sh` and `scripts/retry.py`.
 
 ### ci/R36
 

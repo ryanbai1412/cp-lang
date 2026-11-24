@@ -171,7 +171,8 @@ class DebtRatchetTest(unittest.TestCase):
     def test_stale_arch_paths_reads_the_ratchets_own_crate_paths(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
-            self._write(root, "scripts/debt-ratchet.py", 'X = ("crates/a/src/gone.rs", "crates/**/*.rs")\n')
+            self._write(root, "scripts/debt-ratchet.py", 'X = ("crates/a/src/gone.rs", "crates/**/*.rs")\n'
+                        '"crates/b/old.txt": ("c", "o", "deleted: a test fails instead"),\n')
             self.assertEqual(dr.stale_arch_paths(root), ["scripts/debt-ratchet.py:1 crates/a/src/gone.rs"])
 
     def test_std_fn_copies_count_as_duplicates(self) -> None:
@@ -283,7 +284,7 @@ class DebtRatchetTest(unittest.TestCase):
                "mod tests {", "    fn x() { y.unwrap(); }", "}"]
         self.assertEqual([i for i, _ in dr._ungated_lines(src)], [1, 8, 11])
 
-    def test_ci_retries_spares_only_the_helper_and_failing_flakes(self) -> None:
+    def test_ci_retries_spares_only_the_helper(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             subprocess.run(["git", "init", "-q"], cwd=root, check=True, env=dr._git_env())
@@ -292,7 +293,7 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, ".github/workflows/x.yml", "nextest run --retries 1 --flaky-result fail\n"
                         "for try in 1 2 3; do\n  try() { x; }\nnextest run --retries 2\n")
             subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
-            self.assertEqual(dr.ci_retries(root), [".github/workflows/x.yml:2", ".github/workflows/x.yml:3",
+            self.assertEqual(dr.ci_retries(root), [".github/workflows/x.yml:1", ".github/workflows/x.yml:2", ".github/workflows/x.yml:3",
                                                    ".github/workflows/x.yml:4", "scripts/r.py:1"])
 
     def test_web_skip_only_reads_only_js_and_ts(self) -> None:
