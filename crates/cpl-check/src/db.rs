@@ -584,6 +584,9 @@ impl Database {
                         if prev_dot {
                             dot_ident_tokens.insert(s);
                         }
+                    } else if tok.kind == cpl_syntax::TokenKind::In {
+                        // `x in s` is `s.contains(x)`, std's for a `Seq` (R07.9.5).
+                        dot_ident_tokens.insert("contains");
                     } else if tok.kind == cpl_syntax::TokenKind::Str {
                         let s = &text[tok.span.start as usize..tok.span.end as usize];
                         if s.contains('{') {

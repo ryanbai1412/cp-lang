@@ -1,6 +1,6 @@
 //! Double-ended queue: `Deque<T>`.
 
-use std.seq.{remove}
+use std.seq.{Bidir, Seq, remove}
 
 /// A queue with both ends open: `var q = Deque<Int>()`. `push` / `pop` work at the back,
 /// `push_front` / `pop_front` at the front, all amortized \(O(1)\); `q[i]` is the `i`-th element
@@ -550,6 +550,22 @@ pub struct LinkedList<T>:
         while u >= 0:
             yield val[u]
             u = self.bwd(u)
+
+impl Seq<T> for Deque<T>:
+    fn iter(self) -> yields T:
+        for x in self.each(): yield x
+
+impl Bidir<T> for Deque<T>:
+    fn iter_rev(self) -> yields T:
+        for x in self.each_rev(): yield x
+
+impl Seq<T> for LinkedList<T>:
+    fn iter(self) -> yields T:
+        for x in self.each(): yield x
+
+impl Bidir<T> for LinkedList<T>:
+    fn iter_rev(self) -> yields T:
+        for x in self.each_rev(): yield x
 
 @test
 fn a_deque_matches_a_list():

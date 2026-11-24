@@ -306,6 +306,23 @@ impl<'a> Checker<'a> {
             Pick::NoFit => self.pick_method(&base_ty, &name.text),
             pick => pick,
         };
+        // Of candidates the receiver fits alike, the one the arguments fit is the call.
+        let pick = match pick {
+            Pick::Ambiguous(keys) => {
+                let mut takes: Vec<(String, Arc<Def>)> = (self.method_candidates(&name.text))
+                    .into_iter()
+                    .filter(|(k, d)| keys.contains(k) && takes_count(d, args.len()))
+                    .collect();
+                match takes.len() {
+                    1 => {
+                        let (key, def) = takes.pop().unwrap_or_else(|| unreachable!());
+                        Pick::One(key, def)
+                    }
+                    _ => Pick::Ambiguous(keys),
+                }
+            }
+            pick => pick,
+        };
         let key = match &pick {
             Pick::One(key, _) => key.clone(),
             Pick::Ambiguous(keys) => {
@@ -718,4 +735,18 @@ impl Members {
             .zip(args.iter().cloned())
             .collect()
     }
+}
+
+/// Whether the method `def` takes `given` positional arguments after `self`.
+fn takes_count(def: &Def, given: usize) -> bool {
+    let Def::Fn {
+        ty: Ty::Fn { params, .. },
+        ..
+    } = def
+    else {
+        return false;
+    };
+    let after: Vec<_> = params.iter().skip(1).filter(|p| !p.named_only).collect();
+    let required = after.iter().filter(|p| !p.has_default).count();
+    after.iter().any(|p| p.variadic) || (required <= given && given <= after.len())
 }
