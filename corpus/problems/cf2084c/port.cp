@@ -24,14 +24,18 @@ if V.count(v => a_to_b[v] == v) > 1 or V.any(v => a_to_b[a_to_b[v]] != v):
     print(-1)
     return
 
-let couples = [(i, inv_a[b[i]]) for i in I if i < inv_a[b[i]]]
 var target: [I]I = [I] i => i
-for (k, (u, v)) in couples.items:
-    target[u] = I.nth(k)
-    target[v] = I.nth(n - 1 - k)
+var k = 0
+for i in I if i < inv_a[b[i]]:
+    target[i] = I.nth(k)
+    target[inv_a[b[i]]] = I.nth(n - 1 - k)
+    k += 1
 if let mid = I.find(i => inv_a[b[i]] == i):
     target[mid] = I(n / 2 + 1)
 
-let ops = [(cyc[0], cyc[j]) for cyc in perm_cycles(target) for j in 1..cyc.len]
+var ops: List<(I, I)> = []
+ops.reserve(n - 1)
+for cyc in perm_cycles(target):
+    for j in 1..cyc.len: ops.push((cyc[0], cyc[j]))
 print(ops.len)
 for (u, v) in ops: print(u, v)
