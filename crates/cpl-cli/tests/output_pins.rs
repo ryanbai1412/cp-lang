@@ -114,7 +114,13 @@ fn framed(messages: &[&str]) -> String {
 }
 
 fn cpl(dir: &Path, home: &Path, args: &[&str], stdin: &str) -> std::process::Output {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_cpl"))
+    let mut command = Command::new(env!("CARGO_BIN_EXE_cpl"));
+    if args[0] == "setup" {
+        // `cpl setup` asks the editors on the PATH their versions (an old Neovim
+        // warns), so it runs with none and prints the same on every machine.
+        command.env("PATH", "");
+    }
+    let mut child = command
         .args(args)
         .current_dir(dir)
         .env("HOME", home)
