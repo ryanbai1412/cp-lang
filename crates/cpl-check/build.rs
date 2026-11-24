@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 #[path = "src/std_files.rs"]
 mod std_files;
-use std_files::{collect, outline, public_names, without_tests, EMBEDDED};
+use std_files::{collect, outline, without_tests, EMBEDDED};
 
 fn main() {
     let manifest = PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR").expect("set by cargo"));
@@ -30,7 +30,7 @@ fn main() {
 }
 
 /// Writes `<prefix>_modules.rs`, the table of every module under `root`,
-/// and `<prefix>_names.rs`, every public name with its module.
+/// and `<prefix>_index.rs`, their outlines.
 fn bundle(root: &Path, out: &Path, folder: &str, prefix: &str, track: bool) {
     if track {
         println!("cargo:rerun-if-changed={}", root.display());
@@ -100,8 +100,6 @@ fn bundle(root: &Path, out: &Path, folder: &str, prefix: &str, track: bool) {
     index.push_str("]\n");
     std::fs::write(out.join(format!("{prefix}_modules.rs")), table).expect("a writable OUT_DIR");
     std::fs::write(out.join(format!("{prefix}_index.rs")), index).expect("a writable OUT_DIR");
-    std::fs::write(out.join(format!("{prefix}_names.rs")), std_names(&modules))
-        .expect("a writable OUT_DIR");
     std::fs::write(out.join(format!("{prefix}_calls.rs")), std_calls(&modules))
         .expect("a writable OUT_DIR");
 }
@@ -154,21 +152,4 @@ fn without_comments(text: &str) -> String {
             }
         })
         .collect()
-}
-
-/// The `public_names` table as Rust source.
-fn std_names(modules: &[(String, PathBuf)]) -> String {
-    let texts: Vec<(&str, String)> = modules
-        .iter()
-        .map(|(module, path)| {
-            let text = std::fs::read_to_string(path).expect("a readable module");
-            (module.as_str(), text)
-        })
-        .collect();
-    let mut table = String::from("&[\n");
-    for (name, module) in public_names(texts.iter().map(|(m, t)| (*m, t.as_str()))) {
-        writeln!(table, "    ({name:?}, {module:?}),").expect("writing to a string");
-    }
-    table.push_str("]\n");
-    table
 }

@@ -830,21 +830,56 @@ pub fn import_edit(text: &str, module: &str, name: &str) -> (Span, String) {
 }
 
 /// Every public name of the standard library and its module, sorted by
-/// name. `build.rs` reads it off the files; when std is read from disk
-/// (`modules::modules`), it is read off those files instead.
+/// name, read off the outlines (`modules::std_index`), which keep every
+/// top-level line: nothing embeds a table of them.
 pub fn std_names() -> &'static [(&'static str, &'static str)] {
-    static FROM_DISK: std::sync::OnceLock<Vec<(&'static str, &'static str)>> =
+    static NAMES: std::sync::OnceLock<Vec<(&'static str, &'static str)>> =
         std::sync::OnceLock::new();
-    if !crate::modules::std_from_disk() {
-        return include!(concat!(env!("OUT_DIR"), "/std_names.rs"));
-    }
-    FROM_DISK.get_or_init(|| {
+    NAMES.get_or_init(|| {
         let leak = |s: String| &*Box::leak(s.into_boxed_str());
-        crate::std_files::public_names(crate::modules::modules().iter().copied())
+        public_names(crate::modules::std_index().iter().copied())
             .into_iter()
             .map(|(name, module)| (leak(name), leak(module)))
             .collect()
     })
+}
+
+/// Every public name that exactly one module declares, with that module,
+/// sorted by name: what the hint for a missing `use` reads. It is read off
+/// the files, so a new `pub fn` needs no second edit.
+pub(crate) fn public_names<'a>(
+    modules: impl IntoIterator<Item = (&'a str, &'a str)>,
+) -> Vec<(String, String)> {
+    let mut found: std::collections::BTreeMap<String, Vec<&str>> = Default::default();
+    for (module, text) in modules {
+        for line in text.lines() {
+            let mut words = line.split_whitespace();
+            let public = !line.starts_with(' ') && words.next() == Some("pub");
+            let declares = matches!(
+                words.next(),
+                Some("fn" | "struct" | "enum" | "trait" | "type" | "const" | "domain")
+            );
+            if !public || !declares {
+                continue;
+            }
+            let name: String = words
+                .next()
+                .unwrap_or_default()
+                .chars()
+                .take_while(|c| c.is_alphanumeric() || *c == '_')
+                .collect();
+            if !name.starts_with('_') {
+                found.entry(name).or_default().push(module);
+            }
+        }
+    }
+    found
+        .into_iter()
+        .filter_map(|(name, modules)| match modules.as_slice() {
+            [module] => Some((name, module.to_string())),
+            _ => None,
+        })
+        .collect()
 }
 
 #[cfg(test)]

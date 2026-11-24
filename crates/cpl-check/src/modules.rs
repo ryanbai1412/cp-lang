@@ -662,24 +662,20 @@ mod tests {
                 ("x", "\n\n\npub fn f() -> Int: 1\n")
             ]
         );
-        let names = crate::std_files::public_names(found.iter().copied());
+        let names = crate::prelude::public_names(found.iter().copied());
         assert_eq!(
             names,
             [("f".into(), "x".into()), ("g".into(), "graph/y".into())]
         );
     }
 
-    /// The names a run from disk reads off the files are the ones the build
-    /// put in, for the same std.
+    /// The names read off the outlines are the ones read off the files.
     #[test]
-    fn std_names_read_at_run_time_match_the_built_in_table() {
-        let read: Vec<(String, String)> = crate::std_files::public_names(BUNDLED.iter().copied());
-        let table: &[(&str, &str)] = include!(concat!(env!("OUT_DIR"), "/std_names.rs"));
-        let built: Vec<(String, String)> = table
-            .iter()
-            .map(|(n, m)| (n.to_string(), m.to_string()))
-            .collect();
-        assert_eq!(read, built);
+    fn std_names_read_off_the_outlines_match_the_files() {
+        let files = crate::prelude::public_names(BUNDLED.iter().copied());
+        let outlines = crate::prelude::public_names(BUILT_INDEX.iter().copied());
+        assert!(!files.is_empty());
+        assert_eq!(outlines, files);
     }
 
     #[test]
