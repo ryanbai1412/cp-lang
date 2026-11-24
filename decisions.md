@@ -8615,6 +8615,7 @@ Reverse: drop `walk_in_key_order` in `cpl-codegen/src/show.rs`; a printed hash t
 
 - **Call.** `crates/cpl-cli/tests/interactive_corpus.rs` runs each corpus problem's `port.cp` against its `interactor.py`. Three problems are listed instead, which adds 3 skip-list entries: `KNOWN_NO_JUDGE` has ioi13p4 (an ideal sketch, not run) and ioi18p1 (a grader task with no `interactor.py`), and `KNOWN_OTHER_PROTOCOL` has egoi22p3, whose `port.cp` prints YES/NO for an offline checker, so its `spec.cp` is run instead. A listed port that starts satisfying its judge fails the test until its line is removed.
 - **Why.** The 25 judged problems are guarded now; the three need a port or a judge, not a tools change.
+- **Update.** egoi22p3's `port.cp` now asks `?` and plays its paired paths, so `KNOWN_OTHER_PROTOCOL` is empty.
 - **Reverse.** Delete `interactive_corpus.rs`.
 
 ## 468. The browser compiler fetches std module text on first use; the cap keeps the headroom (site, 2026-11-24)

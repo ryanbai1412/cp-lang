@@ -7,13 +7,14 @@
 //   degree and an even number of neighbours in each component of the graph without her. DFS
 //   trees per component; bottom up each vertex pairs its open neighbours through itself and
 //   passes at most one up. O(n + m).
-// Stdin protocol: n, m, then m edges (u, v) in 1..=n.
-// Prints "NO" if the strategy gives up, else "YES" followed by the number of paired paths
-// and each path (len then 1-based vertices) so the checker verifies edge-disjointness
-// for all games.
+// Stdin protocol (the grader played over stdin, as in spec.cp): n, m, then m edges (u, v) in
+//   1..=n. Prints "!" at once when the strategy gives up. Otherwise asks "?" for Maria's move (0
+//   once she resigns), answers a move into a neighbour along its paired path and back to vertex
+//   1, and prints "!" once she has resigned.
 // original: corpus/submissions/5199301.cpp
 
 fn main_solve():
+    let wire = Wire()
     let n: Int = read()
     let m: Int = read()
     domain V = 0..n
@@ -26,7 +27,7 @@ fn main_solve():
 
     let root = V(0)
     if g[root].len % 2 == 1:
-        print("NO")
+        print("!")
         return
 
     var special: [V]Bool = false
@@ -52,10 +53,11 @@ fn main_solve():
         comp_special = 0
         build_tree(u, None)
         if comp_special % 2 == 1:
-            print("NO")
+            print("!")
             return
 
-    var pairings: List<List<V>> = []
+    // Each paired path from either end: to its partner, then back to Maria's vertex.
+    var route: [V]List<V> = []
 
     fn climb(start: V, top: V) -> List<V>:
         var up: List<V> = []
@@ -76,7 +78,8 @@ fn main_solve():
             var full = climb(open[i + 1], u)
             full.push(u)
             for x in right.rev: full.push(x)
-            pairings.push(full)
+            route[full.last!] = full.rev.to_list()
+            route[full.first!] = full
             i += 2
         if open.len % 2 == 1: return open.last!
         return None
@@ -84,10 +87,11 @@ fn main_solve():
     for r in roots:
         let _ = pair_sub(r)
 
-    print("YES")
-    print(pairings.len)
-    for path in pairings:
-        let line: List<Int> = [path.len] + [v.idx + 1 for v in path]
-        print(line)
+    while true:
+        let v: Int = wire.ask("?")
+        if v == 0: break
+        for u in route[V(v - 1)].drop(1): print(u.idx + 1)
+        print(1)
+    print("!")
 
 main_solve()

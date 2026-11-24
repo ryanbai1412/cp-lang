@@ -21,10 +21,7 @@ const GENERATED: [(u32, u32); 2] = [(1, 8), (2, 64)];
 /// Ports that don't speak their judge's protocol, and why; their
 /// `spec.cp` is run instead. Shrink-only: a port that starts passing must
 /// leave the list.
-const KNOWN_OTHER_PROTOCOL: &[(&str, &str)] = &[(
-    "egoi22p3",
-    "port.cp prints YES/NO and the paths for an offline checker",
-)];
+const KNOWN_OTHER_PROTOCOL: &[(&str, &str)] = &[];
 
 fn problems() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../corpus/problems")
