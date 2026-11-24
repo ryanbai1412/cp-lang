@@ -2110,6 +2110,19 @@ pub fn equal_range<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> Range
     let a = (lo..D.count).first_true(m => by(self[D.nth(m)]) > target) ?? D.count
     D.cuts.nth(lo)..D.cuts.nth(a)
 
+/// \(O(\log n)\). How many elements of sorted `self` have `by(x)` in the half-open `r`.
+///
+/// cost: \(O(\log n)\)
+/// empty: 0, as for an empty `r`
+/// traps: never; unsorted input gives an unspecified count
+/// example: `[1, 3, 3, 5, 8].count_in(3..6) == 3`
+/// example: `[1, 3, 3, 5, 8].count_in(4..5) == 0`
+pub fn count_in<D, T, K>(self: [D]T, r: Range<K>, by: T -> K = x => x) -> Int:
+    if r.r <= r.l: return 0
+    let lo = (0..D.count).first_true(m => by(self[D.nth(m)]) >= r.l) ?? D.count
+    let hi = (lo..D.count).first_true(m => by(self[D.nth(m)]) >= r.r) ?? D.count
+    hi - lo
+
 /// \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\), \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\) memory. Sorted deduplicated union of two sorted sequences.
 ///
 /// cost: \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\), \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\) memory

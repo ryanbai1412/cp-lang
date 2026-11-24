@@ -52,7 +52,6 @@ spec/lib/graphs-trees.md: bfs01
 spec/lib/graphs-trees.md: blocks
 spec/lib/graphs-trees.md: bridges
 spec/lib/graphs-trees.md: complement
-spec/lib/graphs-trees.md: components
 spec/lib/graphs-trees.md: dial
 spec/lib/graphs-trees.md: euler_walk
 spec/lib/graphs-trees.md: find_cycle
@@ -95,10 +94,8 @@ spec/lib/search-dp.md: monotone_minima
 spec/lib/search-dp.md: parallel_bsearch
 spec/lib/search-dp.md: smawk
 spec/lib/sequence-patterns.md: mo
-spec/lib/strings.md: borders
 spec/lib/strings.md: is_palindrome
 spec/lib/strings.md: lyndon_runs
-spec/lib/strings.md: overlap
 spec/lib/strings.md: prefix_matches
 spec/lib/strings.md: rsearch
 spec/lib/strings.md: search

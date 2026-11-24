@@ -275,6 +275,7 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn span<D>(lo: Cut<D>, hi: Cut<D>) -> Range<D>` — \(O(1)\); traps: when `lo > hi`
 - `fn partition_point<D, T>(self: [D]T, ok: T -> Bool) -> Cut<D>` — \(O(\log n)\) calls of `ok`, plus one when the cut is an end; \(O(\log n)\).; traps: when `ok` is true at the start and false at the end; any other `ok` that is not
 - `fn equal_range<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> Range<D>` — \(O(\log n)\); traps: never; unsorted input gives an unspecified range
+- `fn count_in<D, T, K>(self: [D]T, r: Range<K>, by: T -> K = x => x) -> Int` — \(O(\log n)\); traps: never; unsorted input gives an unspecified count
 - `fn sorted_union<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>` — \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\), \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\) memory
 - `fn sorted_intersect<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>` — \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\), \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\) memory; The values in both of two sorted sequences, merged in one pass.
 - `fn sorted_diff<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>` — \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\), \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\) memory

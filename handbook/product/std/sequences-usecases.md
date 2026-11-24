@@ -62,9 +62,9 @@ Evidence: program `spec/conformance/std-seq/seq-u27-bsearch-as-cut.cp`.
 
 ### seq/U28: how many sorted values fall in `[lo, hi)`
 Need: count values in a range after sorting once.
-Design: `a.equal_range(x)` gives the positions equal to `x`; a general `[lo, hi)` count is `count_in(lo..hi)`.
-Milestone: M1-critical. Status: partial
-Evidence: program `spec/conformance/std-seq/seq-u28-count-in-value-range.cp`; `count_in` does not exist.
+Design: `a.equal_range(x)` gives the positions equal to `x`; a general `[lo, hi)` count is `a.count_in(lo..hi)`.
+Milestone: M1-critical. Status: supported
+Evidence: program `spec/conformance/std-seq/seq-u28-count-in-value-range.cp`.
 
 ### seq/U29: binary search over reals
 Need: the smallest real `x` with `f(x) >= t`.
@@ -143,8 +143,8 @@ Evidence: program `spec/conformance/std-seq/seq-u18-aggregates-every-shape.cp`.
 ### seq/U9: a fold with a seed and a custom step
 Need: count something with state as you walk.
 Design: `a.fold((acc, x) => .., init: v)`: the seed is a named option.
-Milestone: M1-critical. Status: gap
-Evidence: `[1, 2, 3].fold(f, init: 10)` and `fold(f, 10)` are E0203: std has two `fold`s (algebra's `fold(m, xs)`, seq's `fold(self, f, init)`) and method lookup finds neither.
+Milestone: M1-critical. Status: supported
+Evidence: program `spec/conformance/std-seq/seq-u9-fold-seed.cp`.
 
 ### seq/U36: a fold with no identity
 Need: fold with an op that has no neutral value, on a non-empty list.
@@ -249,8 +249,8 @@ Evidence: program `spec/conformance/std-seq/seq-u44-take-drop-while.cp`.
 ### seq/U45: every k-th element
 Need: odd positions, or a stride.
 Design: `a.step(k)`.
-Milestone: M1-critical. Status: gap
-Evidence: `a.step(2)` resolves to the grid `step` (E0302); compiler is adding receiver-type lookup.
+Milestone: M1-critical. Status: partial
+Evidence: program `spec/conformance/std-seq/seq-u45-step.cp`; on a view, `a.drop(1).step(2)` still resolves to the grid `step` (E0302).
 
 ## Sorting and permutations
 
@@ -265,8 +265,8 @@ Evidence: program `spec/conformance/std-seq/seq-u12-sort-by-key.cp`; cost progra
 ### seq/U46: sort by a user order
 Need: structs with `impl Ord`.
 Design: `sort()`, `sorted()`, `max()` follow the type's `Ord`.
-Milestone: M1-critical. Status: gap
-Evidence: `impl Ord` with spec's `cmp` is ignored; with `lt` sort works but `max()` ignores it (sent to compiler).
+Milestone: M1-critical. Status: supported
+Evidence: program `spec/conformance/std-seq/seq-u46-user-ord.cp`.
 
 ### seq/U47: sort part of an array
 Need: sort `a[l..r]` in place.
