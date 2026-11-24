@@ -384,9 +384,9 @@ impl<'a> Lowerer<'a> {
         // `S: Indexed<K, T>`: `K` is what `S` is keyed by and `T` its element (R04b.5.3).
         // A domain passed as `S` is the sequence of its positions.
         for b in &decl.bounds {
-            let (key, elem) = match inferred.get(&b.name.text) {
-                Some(GenArg::Ty(seq)) => (seq.seq_key(), seq.seq_elem()),
-                Some(GenArg::Domain(d)) => (None, Some(Ty::Pos(*d))),
+            let (key, elem) = match inferred.get(&b.name.text).cloned() {
+                Some(GenArg::Ty(seq)) => (seq.seq_key(), self.walk_elem(&seq, span)),
+                Some(GenArg::Domain(d)) => (None, Some(Ty::Pos(d))),
                 _ => continue,
             };
             for tr in &b.traits {

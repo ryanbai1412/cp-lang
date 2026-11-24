@@ -314,6 +314,17 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
+        // `xs + view`: a struct view on the right joins as the list its walk yields.
+        let r = match (op, seq_concat_elem(&l.ty), &r.ty) {
+            (Add, Some(elem), Ty::Struct(sid))
+                if self
+                    .struct_walk(*sid, span)
+                    .is_some_and(|(_, e)| &e == elem) =>
+            {
+                self.walked_struct(r)
+            }
+            _ => r,
+        };
         let arith = matches!(op, Add | Sub | Mul | Div | Pow);
         let (l, r, ty) = match (&l.ty, &r.ty) {
             (Ty::Error, _) | (_, Ty::Error) => return self.err_expr(span),
