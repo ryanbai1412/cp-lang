@@ -76,6 +76,8 @@ struct FrameAt {
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Body {
     Main,
+    /// What is above `@!multitest`, run once before the first case.
+    Setup,
     Fn(FnId),
     /// A `yields` fn feeding a loop's body as it yields.
     Fed(FnId),
@@ -678,7 +680,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             .find(|&k| frames[k].volatile)
             .unwrap_or(depth);
         let (up, caller, caller_fn, span, doms) = match self.ckpt.frames.last() {
-            None => (None, &compiled.main, Body::Main, Span::default(), 0),
+            None => {
+                let (top, body) = top_of(compiled, chunk as *const Chunk<'p> as *const ());
+                (None, top, body, Span::default(), 0)
+            }
             Some(s) => {
                 let Snap::Yes(up) = &s.snap else {
                     return None;
@@ -729,7 +734,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     fn snap_caller(&self, compiled: &CompiledProgram<'p>, vm_regs_i: &[i64], k: usize) -> Snap {
         let s = &self.ckpt.frames[k];
         let (caller, caller_fn, span, doms, up) = match k.checked_sub(1) {
-            None => (&compiled.main, Body::Main, Span::default(), 0, None),
+            None => {
+                let (top, body) = top_of(compiled, s.caller);
+                (top, body, Span::default(), 0, None)
+            }
             Some(outer) => {
                 let o = &self.ckpt.frames[outer];
                 let Snap::Yes(up) = &o.snap else {
@@ -747,7 +755,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         let lends = match s.callee {
             Body::Fn(_) | Body::Fed(_) => false,
             Body::Closure(cid) => !self.program.closures[cid].muts.is_empty(),
-            Body::Main => true,
+            Body::Main | Body::Setup => true,
         };
         if lends {
             return Snap::No;
@@ -809,7 +817,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         from_stack: bool,
     ) -> Option<FrameAt> {
         let (n, body) = self.body_of(callee);
-        let stacked = callee == Body::Main || chunk.needs_stack;
+        let stacked = matches!(callee, Body::Main | Body::Setup) || chunk.needs_stack;
         let mut locals = match stacked {
             true => self.stack.get(base..base + n)?.to_vec(),
             false => vec![Value::Unit; n],
@@ -823,7 +831,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             // undeclared unless it surely is declared by now.
             let mut surely = vec![false; n];
             match callee {
-                Body::Main => {}
+                Body::Main | Body::Setup => {}
                 Body::Fn(id) | Body::Fed(id) => (surely.iter_mut())
                     .take(self.program.fns[id].params.len())
                     .for_each(|d| *d = true),
@@ -942,7 +950,11 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             self.resume_frame(&frames, 0)?;
             return self.run_cases(left, case);
         }
-        self.resume_frame(&frames, 0).map(|_| ())
+        let flow = self.resume_frame(&frames, 0)?;
+        if frames[0].body == Body::Setup && !matches!(flow, Flow::Return(_)) {
+            return self.run_after_setup();
+        }
+        Ok(())
     }
 
     /// Frame `k` of `frames`, from where it was to its end.
@@ -956,6 +968,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         let program = self.program;
         match body {
             Body::Main => (program.main_locals.len(), &program.main),
+            Body::Setup => (program.main_locals.len(), &program.setup),
             Body::Fn(id) | Body::Fed(id) => (program.fns[id].locals.len(), &program.fns[id].body),
             Body::Closure(cid) => {
                 let def = &program.closures[cid];
@@ -1008,7 +1021,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         let id = match frame.body {
             Body::Fn(id) | Body::Fed(id) => id,
             Body::Closure(cid) => return self.resume_closure(frames, k, cid),
-            Body::Main => unreachable!("a callee frame is a fn's or a closure's"),
+            Body::Main | Body::Setup => unreachable!("a callee frame is a fn's or a closure's"),
         };
         let f = &self.program.fns[id];
         let span = frame.span;
@@ -1244,10 +1257,22 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     }
 }
 
+/// The top-level chunk at `chunk`: what is above `@!multitest` when it is
+/// that, else the file's top-level code.
+fn top_of<'c, 'p>(compiled: &'c CompiledProgram<'p>, chunk: *const ()) -> (&'c Chunk<'p>, Body) {
+    match &compiled.setup {
+        Some(setup) if std::ptr::eq(setup as *const Chunk<'p> as *const (), chunk) => {
+            (setup, Body::Setup)
+        }
+        _ => (&compiled.main, Body::Main),
+    }
+}
+
 /// The chunk the VM runs `body` on, if it does.
 fn chunk_of<'c, 'p>(compiled: &'c CompiledProgram<'p>, body: Body) -> Option<&'c Chunk<'p>> {
     match body {
         Body::Main => Some(&compiled.main),
+        Body::Setup => compiled.setup.as_ref(),
         Body::Fn(id) => compiled.fns[id].as_ref(),
         Body::Fed(id) => compiled.fed_fns[id].as_ref(),
         Body::Closure(cid) => compiled.closures[cid].as_ref(),

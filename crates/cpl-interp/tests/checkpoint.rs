@@ -805,3 +805,36 @@ fn no_checkpoint_before_input_is_taken_after_a_read_or_a_print() {
         assert!(run.taken.is_empty(), "{source}");
     }
 }
+
+const WORKS_OUT_ABOVE_MULTITEST: &str = "var sq: [0..100000]Int = 0
+for i in 0..100000:
+    sq[i] = i * i
+@!multitest
+let n: 0..100000 = read()
+print(sq[n])
+";
+
+/// The work above `@!multitest` gets a checkpoint before the run reads, and
+/// a run from it reads the test count and runs every case.
+#[test]
+fn a_checkpoint_before_input_is_taken_above_multitest() {
+    let program = program(WORKS_OUT_ABOVE_MULTITEST);
+    let mut out = Vec::new();
+    let first = cpl_interp::checkpoint::observe_on_this_thread(
+        &program,
+        Io::fixed(b"1\n5"),
+        &mut out,
+        LIMITS,
+        None,
+        Checkpoints::before_input(10),
+    );
+    assert!(first.observed.trap.is_none());
+    assert_eq!(out, b"25\n");
+    let [from] = &first.taken[..] else {
+        panic!("one checkpoint, not {}", first.taken.len());
+    };
+    let mut again = Vec::new();
+    let resumed = resume_on_this_thread(&program, b"2\n37\n3", from, &mut again, LIMITS, None);
+    assert!(resumed.trap.is_none());
+    assert_eq!(again, b"1369\n9\n");
+}

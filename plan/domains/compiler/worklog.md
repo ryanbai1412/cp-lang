@@ -952,3 +952,13 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
   std-prefix/rev-scan-is-suffix-fold waits on its `s.cut(i)` rewrite (decision 507, E0320).
 - Parity program view_receiver_runs_once: `total` takes any `Seq`, since `.rev` is a `Rev<S>`
   view and not a `List` (R07.3.2).
+
+### P0 from Site (2026-11-23): code above `@!multitest` gets a checkpoint before input again
+
+- Since f91acb5b6 ran the code above `@!multitest` on the VM, `checkpoint_here` took only
+  `compiled.main` at depth 0, so a loop in the setup chunk never yielded the before-input
+  checkpoint (3fc5dc4a4) and stress reran the precompute per case (abc476g, stress-parity over
+  20 s). A frame there is `Body::Setup`: its block is `program.setup` over the main locals, and
+  a run from it finishes the setup then reads the test count and runs the cases
+  (`run_after_setup`, moved with `run_cases` to `cases.rs`).
+- Regression: cpl-interp checkpoint `a_checkpoint_before_input_is_taken_above_multitest`.
