@@ -36,5 +36,10 @@
  "difficulty": null,
  "dream": "draft",
  "spec": "draft",
- "notes": "orig.cpp is the AC submission corpus/submissions/4785860.cpp (a grader function) with a sample grader main that reads the port's input."
+ "notes": "orig.cpp is the AC submission corpus/submissions/4785860.cpp (a grader function) with a sample grader main that reads the port's input.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 17,
+  "sha": "66b120da1cab5e2c828e4dca18511447c6485271"
+ }
 }
