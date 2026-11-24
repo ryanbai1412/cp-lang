@@ -1203,6 +1203,22 @@ impl<'p> Facts<'p> {
         self.loop_lo.get(&v).copied()
     }
 
+    /// Whether `e` is the counter of a loop `for v in lo..n` with `lo >= 0`,
+    /// so `0 <= v < n` wherever it is read.
+    pub(crate) fn counts_below(&self, fn_id: Option<usize>, e: &Expr, n: &Expr) -> bool {
+        let ExprKind::Local(slot) = &e.kind else {
+            return false;
+        };
+        let v = self.local(fn_id, *slot);
+        match (self.stores(v), self.loop_hi.get(&v), self.loop_lo.get(&v)) {
+            (1, Some(&(hi, false)), Some(lo)) if v.0 == fn_id => {
+                crate::span::same_count(hi, n)
+                    && self.lower_bound(fn_id, lo, 0).is_some_and(|lo| lo >= 0)
+            }
+            _ => false,
+        }
+    }
+
     /// The value of the variable's first store.
     pub fn init(&self, v: Var) -> Option<&'p Expr> {
         self.init.get(&v).copied()

@@ -114,7 +114,8 @@ impl<'p> Emitter<'p> {
             ty: Ty::Int,
             span: ord.span,
         };
-        self.facts.reduce(self.facts_home(), ord, &len) == Some(Reduce::Keep)
+        self.facts.counts_below(self.facts_home(), ord, &len)
+            || self.facts.reduce(self.facts_home(), ord, &len) == Some(Reduce::Keep)
     }
 
     /// `l % r` where `l`'s bounds against `r > 0` leave at most one lap

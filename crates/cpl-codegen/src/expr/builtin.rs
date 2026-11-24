@@ -344,6 +344,18 @@ impl<'p> Emitter<'p> {
                     text(2)
                 ))
             }
+            // A position of the array's own domain needs no check.
+            Builtin::CutAfter | Builtin::CutBefore
+                if !matches!(args[0].ty, Ty::ListView(..) | Ty::StrView | Ty::MutView(..))
+                    && matches!(&args[1].kind, ExprKind::Cast(Cast::Ord, p)
+                        if matches!((&p.ty, args[0].ty.seq_key()),
+                            (Ty::Pos(d), Some(cpl_ir::Dim::Pos(k))) if *d == k)) =>
+            {
+                match op {
+                    Builtin::CutAfter => Code::new(format!("{} + 1", codes[1].at(ADD)), ADD),
+                    _ => codes[1].clone(),
+                }
+            }
             Builtin::CutAfter | Builtin::CutBefore => {
                 self.need("cut_beside");
                 let v = text(0);

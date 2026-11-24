@@ -607,6 +607,23 @@ print(s)
 }
 
 #[test]
+fn a_walk_over_an_arrays_items_checks_no_position() {
+    let out = cpp(r#"
+fn total<D>(a: [D]Int) -> Int:
+    var s = 0
+    for (i, x) in a.items:
+        s += x * Int(a.cut_after(i)) + Int(a.cut_before(i))
+    s
+let n: Int = read()
+let v: List<Int> = [0..n] i => i
+print(total(v), v.scan(min).prefix(1))
+"#);
+    let walk = &out[out.find("total").unwrap()..];
+    assert!(!walk.contains("cpl::pos("), "{walk}");
+    assert!(!walk.contains("cut_beside("), "{walk}");
+}
+
+#[test]
 fn unchecked_drops_domain_positions_but_keeps_range_stores() {
     let src = |block: &str| {
         format!(
