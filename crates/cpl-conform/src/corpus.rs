@@ -222,18 +222,30 @@ pub fn run_one(db: &mut Session, prob: &CorpusProblem) -> CaseOutcome {
 fn interact(interactor: &Path, spec: &Path, in_path: &Path) -> Result<Verdict, String> {
     let cpl = crate::conformance::cli_binary()?.display().to_string();
     let spec = spec.display().to_string();
-    let solution = Program::command(&spec, &[&cpl, "run", &spec]);
+    let input = std::fs::read_to_string(in_path)
+        .map_err(|e| format!("cannot read {}: {e}", in_path.display()))?;
+    interacted(
+        interactor,
+        &Program::command(&spec, &[&cpl, "run", &spec]),
+        &input,
+    )
+}
+
+/// `interactor.py <in>` talking to `solution` on `input`.
+pub(crate) fn interacted(
+    interactor: &Path,
+    solution: &Program,
+    input: &str,
+) -> Result<Verdict, String> {
     let judge_path = interactor.display().to_string();
     let judge = Judge::Interactor(
         Program::command(&judge_path, &["python3", &judge_path]),
         Launch::declared(interactor),
     );
-    let input = std::fs::read_to_string(in_path)
-        .map_err(|e| format!("cannot read {}: {e}", in_path.display()))?;
     judge
         .run(
-            &solution,
-            &input,
+            solution,
+            input,
             None,
             Duration::from_secs(runner::case_timeout()),
         )

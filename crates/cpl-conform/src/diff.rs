@@ -21,6 +21,8 @@ enum DiffTarget {
         id: String,
         spec_path: PathBuf,
         tests: Vec<PathBuf>,
+        /// An interactive package's interactor: both engines are judged by it.
+        interactor: Option<PathBuf>,
     },
     /// A corpus `port.cp` with side-effect probes (`variants`), on its smallest input.
     Variant {
@@ -75,6 +77,7 @@ fn discover(root: &Path, filter: Option<&str>) -> Vec<DiffTarget> {
             id,
             spec_path: prob.spec_path,
             tests: prob.tests.into_iter().map(|(inp, _)| inp).collect(),
+            interactor: prob.interactor,
         });
     }
 
@@ -297,6 +300,7 @@ fn run_one(db: &mut Session, cache_dir: &Path, target: &DiffTarget) -> (String, 
             id,
             spec_path,
             tests,
+            ..
         } => {
             let mut inps = Vec::with_capacity(tests.len());
             for t in tests {
@@ -414,7 +418,11 @@ fn run_one(db: &mut Session, cache_dir: &Path, target: &DiffTarget) -> (String, 
         Ok(Expect::OkOutput(want)) if !compiled.program.cpp_bodies.is_empty() => Some(want),
         _ => None,
     };
-    for (_, inp) in &inputs {
+    let interactor = match target {
+        DiffTarget::Corpus { interactor, .. } => interactor.as_deref(),
+        _ => None,
+    };
+    for (_, inp) in inputs.iter().filter(|_| interactor.is_none()) {
         if let Some(want) = &written {
             interp_outputs.push(want.clone().into_bytes());
             continue;
@@ -476,6 +484,24 @@ fn run_one(db: &mut Session, cache_dir: &Path, target: &DiffTarget) -> (String, 
         }
     };
 
+    if let Some(interactor) = interactor {
+        let cpl = match conformance::cli_binary() {
+            Ok(cpl) => cpl.display().to_string(),
+            Err(detail) => {
+                return (
+                    id,
+                    CaseOutcome {
+                        status: "error".into(),
+                        detail,
+                    },
+                )
+            }
+        };
+        let (spec, bin) = (path.display().to_string(), bin.display().to_string());
+        let interp = cpl_stress::Program::command(&spec, &[&cpl, "run", &spec]);
+        let cpp = cpl_stress::Program::command(&bin, &[&bin]);
+        return (id, interactive_outcome(interactor, &interp, &cpp, &inputs));
+    }
     for ((inp_name, inp), interp_out) in inputs.iter().zip(interp_outputs.iter()) {
         let cpp_out = match run_binary(&bin, inp) {
             Ok(o) => o,
@@ -527,6 +553,35 @@ fn run_one(db: &mut Session, cache_dir: &Path, target: &DiffTarget) -> (String, 
             detail: String::new(),
         },
     )
+}
+
+/// An interactive package, judged by its interactor under `cpl run` and as
+/// the built C++: the two verdicts must agree on every case.
+fn interactive_outcome(
+    interactor: &Path,
+    interp: &cpl_stress::Program,
+    cpp: &cpl_stress::Program,
+    inputs: &[(String, Vec<u8>)],
+) -> CaseOutcome {
+    let outcome = |status: &str, detail: String| CaseOutcome {
+        status: status.into(),
+        detail,
+    };
+    for (name, inp) in inputs {
+        let inp = String::from_utf8_lossy(inp);
+        match (
+            corpus::interacted(interactor, interp, &inp),
+            corpus::interacted(interactor, cpp, &inp),
+        ) {
+            (Ok(a), Ok(b)) if std::mem::discriminant(&a) == std::mem::discriminant(&b) => {}
+            (Ok(a), Ok(b)) => {
+                let detail = format!("{name}: interp {a:?}, cpp {b:?}");
+                return outcome("mismatch", runner::first_line_trimmed(&detail, 160));
+            }
+            (Err(e), _) | (_, Err(e)) => return outcome("error", format!("{name}: {e}")),
+        }
+    }
+    outcome("pass", String::new())
 }
 
 pub fn run(root: &Path, filter: Option<&str>) -> SuiteReport {
@@ -678,5 +733,43 @@ mod release_checks_tests {
             Some(Checks::None)
         );
         assert_eq!(release_checks("// expect: ok\n"), None);
+    }
+}
+
+#[cfg(test)]
+mod interactive_tests {
+    use super::interactive_outcome;
+    use cpl_stress::Program;
+    use std::path::Path;
+
+    #[test]
+    fn an_interactive_package_is_judged_by_its_interactor_on_both_sides() {
+        let dir = std::env::temp_dir().join(format!("cpl-diff-interactive-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let lib = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../corpus/lib");
+        let interactor = dir.join("interactor.py");
+        std::fs::write(
+            &interactor,
+            format!(
+                "import sys\nsys.path.insert(0, {:?})\nfrom interactor_lib import run_interactor\n\n\
+                 def drive(case_text, io):\n    n = int(case_text)\n    io.send(str(n))\n    \
+                 got = io.recv_line().strip()\n    \
+                 if got != str(2 * n):\n        raise RuntimeError(f\"answer {{got}}, want {{2 * n}}\")\n\n\
+                 run_interactor(drive)\n",
+                lib.display().to_string()
+            ),
+        )
+        .unwrap();
+        let solve = |body: &str| Program::command(body, &["python3", "-c", body]);
+        let right = solve("print(2 * int(input()))");
+        let wrong = solve("print(int(input()))");
+        let inputs = vec![("01.in".to_string(), b"3\n".to_vec())];
+        assert_eq!(
+            interactive_outcome(&interactor, &right, &right, &inputs).status,
+            "pass"
+        );
+        let split = interactive_outcome(&interactor, &right, &wrong, &inputs);
+        assert_eq!(split.status, "mismatch", "{}", split.detail);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }
