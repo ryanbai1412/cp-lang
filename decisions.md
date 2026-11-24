@@ -8799,3 +8799,4 @@ from `just next-decision`.
 - **Why.** Ryan's call 5: a library keeps no hidden module-level state, so a pool is a value the user declares, and one declared in a `@!multitest` case is fresh per case. A struct cannot hold itself by value (`?N` fields are a check error pointing here), and a pool owned by each value would copy on every update.
 - **Reverse.** Give each persistent value its own node list, at \(O(n)\) per update.
 
+## 520. (reserved, compiler)
