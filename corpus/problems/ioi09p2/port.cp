@@ -5,8 +5,8 @@
 //   print the count and the hired candidates (any best set).
 // Solution: the rate per point of Q is set by the hire with the largest S/Q, and the
 //   cheapest hires at that rate are those with the smallest Q. Sweep candidates by the exact
-//   `Ratio` S/Q, keep a max-heap of Q, and pop the largest Q while points * rate is over
-//   budget; keep the best plan (most hires, then the smallest bill). Its hires are the
+//   `Ratio` S/Q, keep a max-heap of Q, and pop the largest Q while S * points > W * Q; keep
+//   the best plan (most hires, then the smallest bill, compared by cross-multiplying). Its hires are the
 //   plan's size smallest Q among the candidates up to its rate setter. O(n log n).
 // limits: 1500 ms, 64 MB
 // original: corpus/submissions/5102705.cpp
@@ -15,12 +15,15 @@ let (n, w): (1..=5e5, 1..=1e10) = read()
 domain Worker = 1..=n
 let ask: [Worker](s: 1..=2e4, q: 1..=2e4) = read()
 
-fn rate(i: Worker) -> Ratio = Ratio.new(ask[i].s, ask[i].q)
-let by_rate = Worker.sort(by: rate)
+let rate: [Worker]Ratio = [Worker] i => Ratio.new(ask[i].s, ask[i].q)
+let by_rate = Worker.sort(by: i => rate[i])
 
-// A plan hires `size` candidates rated up to by_rate[upto] and bills them `bill`.
-type Plan = (size: Int, bill: Ratio, upto: Int)
-fn better(a: Plan, b: Plan) -> Bool = a.size > b.size or (a.size == b.size and a.bill < b.bill)
+// A plan hires `size` candidates, the rate setter `by` among them, with `points` of Q in all;
+// it bills by.s * points / by.q.
+type Plan = (size: Int, by: Worker, points: Int, upto: Int)
+fn bill_times(a: Plan, q: Int) -> Int = ask[a.by].s * a.points * q
+fn better(a: Plan, b: Plan) -> Bool =
+    a.size > b.size or (a.size == b.size and bill_times(a, ask[b.by].q) < bill_times(b, ask[a.by].q))
 
 var hired = MaxHeap<Int>()
 var points = 0
@@ -28,8 +31,8 @@ var best: ?Plan = None
 for (upto, i) in by_rate.items:
     hired.push(ask[i].q)
     points += ask[i].q
-    while rate(i) * Ratio.new(points, 1) > Ratio.new(w, 1): points -= hired.pop()!
-    let plan: Plan = (size: hired.len, bill: rate(i) * Ratio.new(points, 1), upto:)
+    while ask[i].s * points > w * ask[i].q: points -= hired.pop()!
+    let plan: Plan = (size: hired.len, by: i, points:, upto:)
     if best == None or better(plan, best!): best = plan
 
 let plan = best!
