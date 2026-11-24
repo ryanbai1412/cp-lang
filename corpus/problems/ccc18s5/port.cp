@@ -6,26 +6,25 @@
 //   Kruskal over the p + q link kinds by cost with one Dsu for cities and one for planets:
 //   a flight that joins two city groups is kept once per current planet group, a portal
 //   once per current city group. O((p + q) log).
+// original: corpus/submissions/4329864.cpp
 let (n, m, p, q): (1..=1e5, 1..=1e5, 1..=1e5, 1..=1e5) = read()
 domain Planet = 1..=n
 domain City = 1..=m
-let flights: [0..p](a: City, b: City, cost: 1..=1e8) = read()      // one copy per planet
-let portals: [0..q](a: Planet, b: Planet, cost: 1..=1e8) = read()  // one copy per city
+domain F = 0..p
+domain G = 0..q
+let flights: [F](a: City, b: City, cost: 1..=1e8) = read()
+let portals: [G](a: Planet, b: Planet, cost: 1..=1e8) = read()
 
 enum Link:
-    Flight(a: City, b: City)
-    Portal(a: Planet, b: Planet)
-let links: List<(cost: Int, link: Link)> = [(f.cost, Flight(f.a, f.b)) for f in flights] + [
-    (g.cost, Portal(g.a, g.b)) for g in portals
-]
+    Flight(f: F)
+    Portal(g: G)
+let links = [(flights[f].cost, Flight(f)) for f in F] + [(portals[g].cost, Portal(g)) for g in G]
 
-// Kruskal on the product graph without building it: a flight that joins two
-// groups of cities is kept once for each group of planets, and vice versa.
 var cities = Dsu<City>()
 var planets = Dsu<Planet>()
 var kept = 0
-for (cost, link) in links.sorted(by: l => l.cost):
+for (cost, link) in links.sorted(by: l => l.0):
     match link:
-        Flight(a, b) => if cities.unite(a, b): kept += cost * planets.components
-        Portal(a, b) => if planets.unite(a, b): kept += cost * cities.components
+        Flight(f) => if cities.unite(flights[f].a, flights[f].b): kept += cost * planets.components
+        Portal(g) => if planets.unite(portals[g].a, portals[g].b): kept += cost * cities.components
 print(n * sum(f.cost for f in flights) + m * sum(g.cost for g in portals) - kept)
