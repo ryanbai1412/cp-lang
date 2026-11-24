@@ -399,7 +399,7 @@ Cost summary (NTTs of length `N = bit_ceil(n)`):
 | `x.digits(base:)`, `x.to_str(base:)` | digits lowest first; the written form, highest first | \(O(\log x)\) |
 | `x.sign` | the side of zero, a `Sign` | \(O(1)\) |
 | `floor_quotients(n, from: 1)` | each distinct `n / i` for `i >= from`, with its run of `i`, `(q, lo, hi)` | \(O(\sqrt{n})\) |
-| `Ratio(p, q)` | an exact reduced rational | \(O(\log)\) per op |
+| `Ratio(p, q)` | an exact rational, kept as built; `.p`, `.q`, `show`, `hash` read lowest terms | \(O(1)\) to build, compare, `floor`; \(O(\log)\) for `+ - * /`, `.p`, `.q`, `hash` |
 | `coef.eval(x)` | a polynomial at `x` over any ring, by Horner | \(O(\mathit{len})\) |
 | `Curved` | the `shape:` of a non-`(+, *)` `convolve` (`Both`, `Right`, `Neither`) | — |
 
