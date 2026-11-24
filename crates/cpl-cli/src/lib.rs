@@ -248,7 +248,10 @@ pub fn exec<S: AsRef<str>>(
         // `cpl stress` traces a failure in the debug interpreter, which
         // this crate links and `cpl-stress` does not.
         Some("stress") => {
-            let args: Vec<String> = rest.iter().map(|arg| arg.to_string()).collect();
+            let mut args: Vec<String> = rest.iter().map(|arg| arg.to_string()).collect();
+            if let Some(grader) = stress_grader(&args) {
+                args.extend(["--grader".to_string(), grader.display().to_string()]);
+            }
             let mut errors = Vec::new();
             let code = cpl_stress::cli::run_with(&args, stdout, &mut errors, Some(&trace::page));
             *stderr += &String::from_utf8_lossy(&errors);
@@ -1173,6 +1176,17 @@ fn run_release(
             EXIT_FAILED
         }
     }
+}
+
+/// The grader.cpp `cpl stress` links a file of `@grader` fns against when
+/// no `--grader` or `--fast` says otherwise: the one `cpl test` finds.
+fn stress_grader(args: &[String]) -> Option<std::path::PathBuf> {
+    if args.iter().any(|arg| arg == "--grader" || arg == "--fast") {
+        return None;
+    }
+    let file = cpl_stress::cli::stressed_file(args)?;
+    let text = std::fs::read_to_string(&file).ok()?;
+    cpl_contest::problem::find_grader(&file, &text)
 }
 
 /// The judge's grader to link the file against: `--grader`, else a

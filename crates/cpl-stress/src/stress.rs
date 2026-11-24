@@ -32,6 +32,8 @@ pub struct Native<'a> {
     pub fast: Option<&'a Path>,
     pub brute: Option<&'a Path>,
     pub gen: Option<&'a Path>,
+    /// `--grader`: the judge's grader the solution is linked against.
+    pub grader: Option<&'a Path>,
     /// The judge `--checker`, `--interactor` or the file's own picks.
     pub judge: Judge,
     /// `--checker` or `--interactor` names the judge.
@@ -267,7 +269,10 @@ impl Stress {
                         true => Program::resolve_cold_cache(path).map(Some).map_err(said),
                         false => Ok(None),
                     });
-                    let fast = crate::cli::solution(path, native.fast).map_err(Unbuilt::Said);
+                    let fast = match native.grader {
+                        Some(grader) => Program::resolve_with_grader(path, grader).map_err(said),
+                        None => crate::cli::solution(path, native.fast).map_err(Unbuilt::Said),
+                    };
                     (
                         fast,
                         brute.join().expect("a build does not panic"),

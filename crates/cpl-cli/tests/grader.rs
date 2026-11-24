@@ -362,3 +362,53 @@ fn cpl_test_without_a_grader_names_the_flag() {
     assert!(stderr.contains("compare"), "{stderr}");
     assert!(!stderr.contains("undefined reference"), "{stderr}");
 }
+
+/// `cpl stress` on a file of `@grader` fns links the grader.cpp beside its
+/// tests, as `cpl test` does, so the solution it stresses has a `main`.
+#[test]
+fn cpl_stress_links_the_grader_beside_the_tests() {
+    let package = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/grader_package");
+    let here = Path::new(env!("CARGO_TARGET_TMPDIR")).join("grader-stress");
+    let _ = std::fs::remove_dir_all(&here);
+    std::fs::create_dir_all(here.join("tests")).expect("a scratch directory");
+    for file in ["sum.cp", "sum.h", "grader.cpp", "tests/1.in", "tests/1.out"] {
+        std::fs::copy(package.join(file), here.join(file)).expect("the package copies");
+    }
+    std::fs::write(
+        here.join("gen.py"),
+        "import random, sys\nrandom.seed(int(sys.argv[1]))\nn = random.randint(1, 5)\n\
+         print(n)\nprint(*[random.randint(-9, 9) for _ in range(n)])\n",
+    )
+    .unwrap();
+    std::fs::write(
+        here.join("brute.py"),
+        "input()\nprint(sum(map(int, input().split())))\n",
+    )
+    .unwrap();
+    let stress = |extra: &[&str]| {
+        Command::new(env!("CARGO_BIN_EXE_cpl"))
+            .current_dir(&here)
+            .args([
+                "stress", "sum.cp", "--gen", "gen.py", "--brute", "brute.py", "--cases", "20",
+            ])
+            .args(extra)
+            .output()
+            .expect("cpl runs")
+    };
+    for out in [stress(&[]), stress(&["--grader", "grader.cpp"])] {
+        let said = format!(
+            "{}{}",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        );
+        assert!(out.status.success(), "{said}");
+        assert!(said.contains("20 cases"), "{said}");
+    }
+    let out = stress(&["--fast", "brute.py", "--grader", "grader.cpp"]);
+    assert_eq!(
+        out.status.code(),
+        Some(2),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}

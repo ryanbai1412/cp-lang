@@ -25,6 +25,9 @@ program: a .cpp file (built with g++), a .py file, or an executable.
 options:
   --brute PROG       the slow, obviously right solution to compare with
   --fast PROG        run this instead of building the file
+  --grader FILE      link the judge's grader FILE (a .cpp with the `main`) into
+                     the solution, as `cpl test` does; a file of `@grader` fns
+                     links the grader.cpp beside its tests without it
   --gen PROG         make inputs with `PROG <seed> <size>` instead of from the
                      file's `@gen fn` or its types; such a case is not shrunk
   --checker PROG     judge with `PROG <input> <output> <answer>`; exit 0 accepts
@@ -80,12 +83,18 @@ struct Args {
     brute: Option<PathBuf>,
     fast: Option<PathBuf>,
     gen: Option<PathBuf>,
+    grader: Option<PathBuf>,
     checker: Option<PathBuf>,
     interactor: Option<PathBuf>,
     options: Options,
     json: bool,
     trace: bool,
     explain: bool,
+}
+
+/// The file `cpl stress` with `args` stresses, when they parse.
+pub fn stressed_file(args: &[String]) -> Option<PathBuf> {
+    parse(args).ok().map(|args| args.file)
 }
 
 fn parse(args: &[String]) -> Result<Args, String> {
@@ -96,6 +105,7 @@ fn parse(args: &[String]) -> Result<Args, String> {
             "--brute",
             "--fast",
             "--gen",
+            "--grader",
             "--checker",
             "--interactor",
             "--cases",
@@ -147,11 +157,15 @@ fn parse(args: &[String]) -> Result<Args, String> {
     if checker.is_some() && interactor.is_some() {
         return Err("a problem has a checker or an interactor, not both".to_string());
     }
+    if raw.value("--fast").is_some() && raw.value("--grader").is_some() {
+        return Err("`--fast` runs a program as it is, so it takes no `--grader`".to_string());
+    }
     Ok(Args {
         file,
         brute: raw.value("--brute").map(PathBuf::from),
         fast: raw.value("--fast").map(PathBuf::from),
         gen: raw.value("--gen").map(PathBuf::from),
+        grader: raw.value("--grader").map(PathBuf::from),
         checker,
         interactor,
         options,
@@ -557,6 +571,7 @@ pub fn run_with(
         fast: args.fast.as_deref(),
         brute: args.brute.as_deref(),
         gen: args.gen.as_deref(),
+        grader: args.grader.as_deref(),
         judge: judge.clone(),
         judge_given: args.checker.is_some() || args.interactor.is_some(),
     };
