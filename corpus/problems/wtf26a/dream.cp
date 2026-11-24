@@ -12,13 +12,24 @@ type Z = Mod<998_244_353>
 @!multitest
 let n: 2..=2e5 = read()
 domain U = 1..=n
-let edges = read<[0..n - 1](u: U, v: U, w: 1..=1e9)>().sorted(by: e => desc(e.w))
+let edges = read<[0..n - 1](u: U, v: U, w: 1..=1e12)>().sorted(by: e => desc(e.w))
 let max_w = edges[0].w * (n - 1)
 
-let tree = KruskalTree<U>(edges)
-domain Node = tree.nodes
-let total: [Node]Int = tree.down(0, (above, v) => above + tree.weight(v) * tree.other_size(v))
-let cost = [v => min(total[v] * tree.size(v), max_w, saturating) for v in tree.non_root]
+let (domain Node, kt) = kruskal_tree(edges, w: e => e)   // `edges` is heaviest first
+let tree = kt.tree
+let leaves = kt.up(+, leaf: _ => 1)
+fn cut(v: Node) -> Int:                        // the edge above v times the other side's size
+    guard let p = tree.parent(v) else: return 0
+    edges[kt.w[p]!].w * (leaves[p] - leaves[v])
+let total = tree.down(0, (above, v) => above + cut(v))
+let joins = [
+    (cost: if total[v] > max_w / leaves[v]: max_w else: total[v] * leaves[v], v:, p:)
+    for v in Node if let p = tree.parent(v)
+].sorted(by: j => desc(j.cost))
 
-let joins = KruskalTree<Node>(cost.edges(to: tree.parent).sorted(by: e => desc(e.w)))
-print(sum(Z(e.w) * joins.leaves(e.a) * joins.leaves(e.b) for e in joins.merges))
+var sets = DsuOf<Node, Int>(v => if v.ord < n: 1 else: 0, (a, b) => a + b)
+var ans: Z = 0
+for j in joins:
+    let (a, b) = (sets.get(j.v), sets.get(j.p))
+    if sets.unite(j.v, j.p): ans += Z(a) * b * j.cost
+print(ans)
