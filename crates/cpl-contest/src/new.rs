@@ -198,7 +198,7 @@ fn expand_lengths(ty: &str) -> String {
 
 /// Splits on `sep` outside brackets.
 fn split_top(text: &str, sep: &[char]) -> Vec<String> {
-    let mut parts = vec![String::new()];
+    let (mut parts, mut part) = (Vec::new(), String::new());
     let mut depth = 0i32;
     for c in text.chars() {
         match c {
@@ -207,11 +207,12 @@ fn split_top(text: &str, sep: &[char]) -> Vec<String> {
             _ => {}
         }
         if depth == 0 && sep.contains(&c) {
-            parts.push(String::new());
+            parts.push(std::mem::take(&mut part));
         } else {
-            parts.last_mut().unwrap().push(c);
+            part.push(c);
         }
     }
+    parts.push(part);
     parts
 }
 

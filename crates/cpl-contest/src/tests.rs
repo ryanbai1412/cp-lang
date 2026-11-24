@@ -1409,3 +1409,12 @@ fn test_json_says_how_each_case_shows_in_a_test_tree() {
         Some("2/2 passed")
     );
 }
+
+#[test]
+fn empty_and_trailing_constraint_entries_are_skipped() {
+    assert_eq!(
+        reads(";n: 1..=5;\n; m: [n]1..=5;").unwrap(),
+        ["let n: 1..=5 = read()", "let m: [0..n]1..=5 = read()"]
+    );
+    assert_eq!(reads("").unwrap(), Vec::<String>::new());
+}
