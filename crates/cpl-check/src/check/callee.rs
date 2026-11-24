@@ -122,13 +122,10 @@ impl Checker<'_> {
         if bindings.is_empty() {
             return;
         }
-        let mut names: Vec<String> = bindings.keys().cloned().collect();
-        names.sort();
-        let bound: Vec<(String, Ty)> = (names.into_iter())
-            .map(|name| {
-                let ty = self.settle(&bindings[&name]);
-                (name, ty)
-            })
+        let mut named: Vec<(&String, &Ty)> = bindings.iter().collect();
+        named.sort_by(|a, b| a.0.cmp(b.0));
+        let bound: Vec<(String, Ty)> = (named.into_iter())
+            .map(|(name, ty)| (name.clone(), self.settle(ty)))
             .collect();
         self.exprs.instantiations.retain(|(at, _)| *at != call.span);
         self.exprs.instantiations.push((call.span, bound));

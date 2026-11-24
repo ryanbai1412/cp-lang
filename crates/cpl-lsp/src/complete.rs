@@ -1467,15 +1467,10 @@ fn scope_completion(
             add(variant, 1, &mut items);
         }
     }
-    let mut imports: Vec<(&String, usize)> = analysis
-        .imports()
-        .iter()
-        .map(|(name, import)| (name, import.module))
-        .collect();
+    let mut imports: Vec<_> = analysis.imports().iter().collect();
     cpl_diag::sort_by_str_key(&mut imports, |(name, _)| name);
-    for (name, module) in imports {
-        if let Some(outline) = module_outline(cursor, std, module) {
-            let import = &analysis.imports()[name];
+    for (name, import) in imports {
+        if let Some(outline) = module_outline(cursor, std, import.module) {
             if let Some(entry) = outline.find(&import.name) {
                 let mut entry = entry.clone();
                 entry.name = name.clone();

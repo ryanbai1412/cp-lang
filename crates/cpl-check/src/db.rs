@@ -944,14 +944,11 @@ impl Database {
         }
         for (index, decl) in duplicates {
             let offset = ranges[index].span.start;
-            let first_index = scope.names[&decl.name];
-            let first = items[first_index]
-                .decls
-                .iter()
-                .find(|d| d.name == decl.name);
+            let first = (scope.names.get(&decl.name))
+                .and_then(|&at| Some((at, items[at].decls.iter().find(|d| d.name == decl.name)?)));
             // R02.11.3, R06.1.6: a second `fn f` is an overload, which 0.3 has not.
             let overload =
-                decl.kind == DeclKind::Fn && first.is_some_and(|f| f.kind == DeclKind::Fn);
+                decl.kind == DeclKind::Fn && first.is_some_and(|(_, f)| f.kind == DeclKind::Fn);
             let mut diag = if overload {
                 msgs::FN_OVERLOAD
                     .error(decl.span.shift(offset), &[&decl.name])
@@ -961,9 +958,9 @@ impl Database {
                     .error(decl.span.shift(offset), &[&decl.name])
                     .with_help("rename one of them; a top-level name has one definition")
             };
-            if let Some(first) = first {
+            if let Some((at, first)) = first {
                 diag = diag.with_label(
-                    first.span.shift(ranges[first_index].span.start),
+                    first.span.shift(ranges[at].span.start),
                     "first defined here",
                 );
             }

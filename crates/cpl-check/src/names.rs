@@ -234,13 +234,6 @@ impl<V: std::fmt::Debug> std::fmt::Debug for NameMap<V> {
     }
 }
 
-impl<V> std::ops::Index<&str> for NameMap<V> {
-    type Output = V;
-    fn index(&self, name: &str) -> &V {
-        self.get(name).expect("a name in the map")
-    }
-}
-
 impl<V> Extend<(String, V)> for NameMap<V> {
     fn extend<I: IntoIterator<Item = (String, V)>>(&mut self, items: I) {
         for (n, v) in items {
@@ -301,7 +294,7 @@ mod tests {
         m.retain(|_, v| *v % 2 == 0);
         assert!(m.iter().all(|(n, v)| m.get(n) == Some(v) && v % 2 == 0));
         *m.entry("fresh".into()).or_default() += 5;
-        assert_eq!(m["fresh"], 5);
+        assert_eq!(m.get("fresh").copied(), Some(5));
         loop {
             let first = m.keys().next().cloned();
             let Some(n) = first else { break };
