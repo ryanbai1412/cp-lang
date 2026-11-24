@@ -1463,3 +1463,15 @@ fn xor_basis_span_kth_and_merge():
     let _ = b2.add(10)
     let merged = m.op(b1, b2)
     assert merged.rank == 2 and merged.max_xor() == 15
+
+impl Show for XorBasis:
+    /// Its rank and basis vectors, as `rank r: v1 v2 ...`.
+    ///
+    /// example: `var b = XorBasis(); b.add(6); b.add(5); b.add(3); "{b}" == "rank 2: 5 3"`
+    fn show(b):
+        var out = "rank {b.rank}"
+        var sep = ": "
+        for v in b.basis_vecs():
+            out += "{sep}{v}"
+            sep = " "
+        out

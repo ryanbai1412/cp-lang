@@ -698,3 +698,36 @@ impl Show for SparseIntervalMap<T>:
             if not out.is_empty: out += ", "
             out += "{run.range.l}..{run.range.r}={run.val}"
         out
+
+impl Show for IntervalMap<D, T>:
+    /// Each run as `range: value`, comma-separated, in key order; `empty` for an empty `D`.
+    ///
+    /// example: `var m = IntervalMap<0..5, Int>(0); m.assign(1..3, 7); "{m}" == "0..1: 0, 1..3: 7, 3..5: 0"`
+    fn show(m):
+        var out = ""
+        for run in m.each():
+            if not out.is_empty: out += ", "
+            out += "{run.range.start}..{run.range.end}: {run.val}"
+        if out.is_empty: "empty" else: out
+
+impl Show for IntervalSet<D>:
+    /// Its runs in key order, comma-separated; `empty` when nothing is covered.
+    ///
+    /// example: `var s = IntervalSet<0..10>(); s.add(1..3); s.add(5..7); "{s}" == "1..3, 5..7"`
+    fn show(s):
+        var out = ""
+        for r in s.each():
+            if not out.is_empty: out += ", "
+            out += "{r.start}..{r.end}"
+        if out.is_empty: "empty" else: out
+
+impl Show for SparseIntervalSet:
+    /// Its runs in order, comma-separated; `empty` when nothing is covered.
+    ///
+    /// example: `var s = SparseIntervalSet(); s.add(-5..0); s.add(2..4); "{s}" == "-5..0, 2..4"`
+    fn show(s):
+        var out = ""
+        for r in s.each():
+            if not out.is_empty: out += ", "
+            out += "{r.start}..{r.end}"
+        if out.is_empty: "empty" else: out

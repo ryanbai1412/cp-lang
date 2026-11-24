@@ -567,3 +567,15 @@ fn comb_multinomial():
     let cs = Comb<Mod<7>>()
     assert cs.multinomial([3, 3, 3]) == cs.choose(9, 3) * cs.choose(6, 3)
     assert cs.multinomial([5, 5]) == cs.choose(10, 5)
+
+impl Show for Comb<M>:
+    /// How far its tables reach, as `factorials up to n`.
+    ///
+    /// example: `type Z = Mod<7>; "{Comb<Z>(3)}" == "factorials up to 3"`
+    fn show(c) = "factorials up to {c.f.len - 1}"
+
+impl Show for PrimePowerComb:
+    /// Its modulus, as `choose mod p^e`.
+    ///
+    /// example: `"{PrimePowerComb(2, 3)}" == "choose mod 2^3"`
+    fn show(c) = "choose mod {c.p}^{c.e}"

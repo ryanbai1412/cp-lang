@@ -1577,3 +1577,9 @@ impl Show for MaxHeap<T>:
             if not out.is_empty: out += " "
             out += "{x}"
         out
+
+impl Show for Settle<K, P>:
+    /// How many keys are settled and how many are still open, as `s settled, o open`.
+    ///
+    /// example: `var s: Settle<Char, Int> = Settle(); s.offer('a', 5); s.offer('b', 3); s.pop(); "{s}" == "1 settled, 1 open"`
+    fn show(s) = "{s.done.len} settled, {s.cur.len - s.done.len} open"

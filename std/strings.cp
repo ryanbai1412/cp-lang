@@ -4021,3 +4021,9 @@ impl Show for Trie<A>:
             first = false
             for c in w: out += "{c}"
         out
+
+impl Show for Hash61:
+    /// The hash value, as `hash v`; equal strings show equal values.
+    ///
+    /// example: `let h = RollingHash61("abab"); "{h.get(0..2)}" == "{h.get(2..4)}"`
+    fn show(h) = "hash {h.v}"

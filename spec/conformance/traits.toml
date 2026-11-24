@@ -2053,3 +2053,73 @@ let b = SortedBag.of([4])
 print(b.cursor_first()!)
 """
 out = "cursor at node 0"
+
+[case."Show/IntervalMap/show"]
+code = """
+use std.interval.{IntervalMap}
+var m = IntervalMap<0..4, Int>(1)
+m.assign(2..3, 9)
+print(m)
+"""
+out = "0..2: 1, 2..3: 9, 3..4: 1"
+
+[case."Show/IntervalSet/show"]
+code = """
+use std.interval.{IntervalSet}
+var s = IntervalSet<0..8>()
+s.add(4..6)
+print(s)
+"""
+out = "4..6"
+
+[case."Show/SparseIntervalSet/show"]
+code = """
+use std.interval.{SparseIntervalSet}
+print(SparseIntervalSet())
+"""
+out = "empty"
+
+[case."Show/Comb/show"]
+code = """
+use std.mod.{Mod, Comb}
+type Z = Mod<11>
+print(Comb<Z>(5))
+"""
+out = "factorials up to 5"
+
+[case."Show/PrimePowerComb/show"]
+code = """
+use std.mod.{PrimePowerComb}
+print(PrimePowerComb(3, 2))
+"""
+out = "choose mod 3^2"
+
+[case."Show/XorBasis/show"]
+code = """
+use std.matrix.{XorBasis}
+var b = XorBasis()
+b.add(4)
+print(b)
+"""
+out = "rank 1: 4"
+
+[case."Show/Hash61/show"]
+code = """
+use std.strings.{RollingHash61}
+let h = RollingHash61("xyxy")
+let same = "{h.get(0..2)}" == "{h.get(2..4)}"
+print(if same and "{h.get(0..1)}".starts_with("hash "): "ok" else: "bad")
+"""
+out = "ok"
+
+[case."Show/Settle/show"]
+code = """
+use std.heap.{Settle}
+var s: Settle<Int, Int> = Settle()
+s.offer(1, 4)
+s.offer(2, 6)
+s.offer(3, 1)
+s.pop()
+print(s)
+"""
+out = "1 settled, 2 open"
