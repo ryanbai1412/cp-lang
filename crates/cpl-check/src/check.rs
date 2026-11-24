@@ -581,7 +581,7 @@ impl<'a> Checker<'a> {
             return None;
         }
         let before = self.sink.len();
-        self.sink.push(said.error_as(code, span));
+        self.sink.push(said.with_code(code).error(span));
         (self.sink.len() > before)
             .then(|| self.sink.last_mut())
             .flatten()

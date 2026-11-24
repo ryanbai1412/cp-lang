@@ -1209,7 +1209,8 @@ impl Database {
                 };
                 let mut diag = row
                     .at(&[&r.name, &line])
-                    .error_as(code, r.span.shift(offset));
+                    .with_code(code)
+                    .error(r.span.shift(offset));
                 if def_index != index {
                     diag = diag
                         .with_label(decl_span, "set here")

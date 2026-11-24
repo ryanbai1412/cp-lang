@@ -187,12 +187,6 @@ impl Said {
     pub fn warning(self, span: Span) -> Diagnostic {
         Diagnostic::warning(self.code, span, self.text)
     }
-
-    /// The said text as an error under `code`, for a site that picks the
-    /// code at run time.
-    pub fn error_as(self, code: Code, span: Span) -> Diagnostic {
-        Diagnostic::error(code, span, self.text)
-    }
 }
 
 /// `text` with each `{}` replaced by the next argument; `{{` and `}}` are
