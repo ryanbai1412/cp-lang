@@ -23,7 +23,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
-import { budgetFor, checkBudgets, contributors, owners } from './wasm-crates.mjs';
+import { budgetFor, checkBudgets, contributors, owners, readCharters } from './wasm-crates.mjs';
 import { sizeDelta } from './wasm-delta.mjs';
 
 // A shrink-only ratchet: after each cut, lower the cap to the new size plus
@@ -99,7 +99,7 @@ if (names && existsSync(names)) {
     console.log(`wasm-size: wrote ${rows.length} crate budgets to web/scripts/wasm-crate-budgets.json`);
   }
   const budgets = JSON.parse(readFileSync(budgetsFile, 'utf8'));
-  const { errors, lower } = checkBudgets(rows, budgets, owners(readFileSync(join(repo, 'handbook/domains/README.md'), 'utf8')));
+  const { errors, lower } = checkBudgets(rows, budgets, owners(readCharters(join(repo, 'handbook/domains'))));
   over = errors;
   for (const e of errors) {
     console.error(`wasm-size: ${e}`);

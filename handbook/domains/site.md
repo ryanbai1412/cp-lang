@@ -5,7 +5,7 @@
 | Kind | Domain charter |
 | Owner | site |
 | Status | Active |
-| Describes | `web/`, `scripts/site-check.sh` |
+| Describes | `web/`, `crates/cpl-wasm`, `scripts/site-check.sh` |
 
 cp-lang.org is where most people first meet CP Lang. It teaches the language from a first program to the whole design, gives every tool (check, lint, run, trace, stress, explain, build) in the browser, and hosts the std reference. The site domain owns those pages, the playground and the editors embedded in every page.
 

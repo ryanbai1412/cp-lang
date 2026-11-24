@@ -3,6 +3,8 @@
 // growth is eating it. Budgets live in wasm-crate-budgets.json, measured on
 // CI (the hosted build is the truth); each crate's owner is the domain
 // handbook/domains/README.md says owns it.
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 
 export const DATA = 'data (std source, strings)';
@@ -83,13 +85,28 @@ export function contributors(wasm) {
     .sort((a, b) => b[1] - a[1]);
 }
 
-/** crate (`cpl-check`) -> domain, from the Owns column of handbook/domains/README.md. */
-export function owners(readme) {
+/**
+ * crate (`cpl-check`) -> domain, from the `Describes` row of each charter,
+ * `charters` being domain -> the text of handbook/domains/<domain>.md. A
+ * whole crate is described as `crates/cpl-x` or `crates/cpl-x/`; a file in
+ * one (`crates/cpl-interp/src/trace.rs`) does not own the crate.
+ */
+export function owners(charters) {
   const out = new Map();
-  for (const m of readme.matchAll(/^\| \[([\w-]+)\]\([\w-]+\.md\) \| ([^|]*) \|/gm)) {
-    for (const c of m[2].matchAll(/\bcpl-[a-z-]+/g)) out.set(c[0], m[1]);
+  for (const [domain, text] of Object.entries(charters)) {
+    const row = text.match(/^\| Describes \| (.*) \|$/m);
+    for (const c of row?.[1].matchAll(/`crates\/(cpl-[a-z-]+)\/?`/g) ?? []) out.set(c[1], domain);
   }
   return out;
+}
+
+/** domain -> charter text, for every handbook/domains/<domain>.md but the README. */
+export function readCharters(dir) {
+  return Object.fromEntries(
+    readdirSync(dir)
+      .filter((f) => f.endsWith('.md') && f !== 'README.md')
+      .map((f) => [f.slice(0, -3), readFileSync(join(dir, f), 'utf8')]),
+  );
 }
 
 /** The domain whose lane answers for `crate`'s bytes, or why none does. */
@@ -105,7 +122,7 @@ export function checkBudgets(rows, budgets, map) {
   const lower = [];
   for (const [crate, , gz] of rows) {
     const owner = ownerOf(crate, map);
-    const who = owner ? `the ${owner} lane (handbook/domains/${owner}.md)` : `no domain: add crates/${crate.replaceAll('_', '-')} to handbook/domains/README.md`;
+    const who = owner ? `the ${owner} lane (handbook/domains/${owner}.md)` : `no domain: add crates/${crate.replaceAll('_', '-')} to the Describes row of its charter in handbook/domains/`;
     const budget = budgets[crate];
     if (budget === undefined) errors.push(`${crate} (${who}) has no budget in web/scripts/wasm-crate-budgets.json; it is ${gz.toLocaleString('en-US')} B gzipped`);
     else if (gz > budget) errors.push(`${crate} is ${gz.toLocaleString('en-US')} B gzipped, over its budget of ${budget.toLocaleString('en-US')}: ${who} grew it`);
