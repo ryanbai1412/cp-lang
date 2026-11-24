@@ -25,7 +25,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
         if (args.iter().zip(&f.params)).any(|(a, p)| matches!(a, Arg::Mut(_)) != p.mutable) {
             return None;
         }
-        if has_mut && has_fn_param && !self.mut_fn_args_alias_free(fn_id, args) {
+        if has_mut && has_fn_param && !self.mut_fn_args_alias_free(fn_id, args)
+            || self.fn_args_reach_held(fn_id, args)
+        {
             return self.compile_call_lending(fn_id, args, ret_mode, span);
         }
         let tys: Vec<&'p Ty> = (f.locals.iter().take(f.params.len()))

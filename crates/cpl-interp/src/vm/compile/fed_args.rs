@@ -20,7 +20,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let has_fn_param =
             (f.locals.iter().take(f.params.len())).any(|l| matches!(l.ty, Ty::Fn(..)));
         let has_mut = f.params.iter().any(|p| p.mutable);
-        if has_mut && has_fn_param && !self.mut_fn_args_alias_free(fn_id, args) {
+        if has_mut && has_fn_param && !self.mut_fn_args_alias_free(fn_id, args)
+            || self.fn_args_reach_held(fn_id, args)
+        {
             return None;
         }
         let held = |c: &Self, arg: &Arg| match arg {

@@ -49,6 +49,34 @@ impl<'p> Compiler<'p, '_> {
     }
 }
 
+impl Compiler<'_, '_> {
+    /// Whether a fn value among `args` may reach a slot this frame holds
+    /// lent: the callee would call it while the lender's place is empty.
+    pub(super) fn fn_args_reach_held(&self, fn_id: FnId, args: &[Arg]) -> bool {
+        if self.held.is_empty() {
+            return false;
+        }
+        let f = &self.program.fns[fn_id];
+        let held = |s: &Slot| self.held.contains(&(*s as u16));
+        (args.iter().zip(&f.locals)).any(|(arg, param)| {
+            if !param.ty.has_fn(self.program) {
+                return false;
+            }
+            match arg {
+                Arg::Value(Expr {
+                    kind: ExprKind::Closure(cid),
+                    ..
+                }) => (self.program.closures[*cid].captures.iter())
+                    .any(|c| c.by_ref && !c.is_global && held(&c.outer)),
+                Arg::Value(_) => {
+                    self.ref_all || (self.ref_slots.iter()).any(|&s| held(&(s as Slot)))
+                }
+                Arg::Mut(_) => false,
+            }
+        })
+    }
+}
+
 enum Root {
     Global(GlobalId),
     Local(Slot),
