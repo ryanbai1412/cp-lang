@@ -13,7 +13,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
         let span = expr.span;
         if let Some((fn_id, args)) = self.traced_call(expr) {
-            return self.emit_traced_call(expr, fn_id, args, true);
+            return self.emit_traced_call(expr.span, fn_id, args, true);
         }
         match &expr.kind {
             ExprKind::Int(v) => {

@@ -247,7 +247,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 match self.traced_feed(*id, *slot, seq, body) {
                     Some((fn_id, feed, args)) => {
                         let eager = self.emit(Op::JmpEager { target: 0 }, seq.span);
-                        let dst = self.emit_traced_call(seq, Callee::Fn(fn_id), args, false);
+                        let dst = self.emit_traced_call(seq.span, Callee::Fn(fn_id), args, false);
                         // `emit_traced_call` ends with its `CallTraced`.
                         let call = self.ops.len() - 1;
                         self.traced_feeds.push((call as u32, feed));
@@ -413,7 +413,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
 
     pub(super) fn emit_traced_call(
         &mut self,
-        e: &'p Expr,
+        span: Span,
         callee: Callee<'p>,
         args: &'p [Arg],
         scalar: bool,
@@ -462,7 +462,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 dst_i,
                 lends,
             },
-            e.span,
+            span,
         );
         if scalar {
             dst_i
