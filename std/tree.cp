@@ -133,11 +133,13 @@ pub struct Rooted<V, Pre, A>:
             if let p = par[v]: kids[p].push(v)
             else: roots.push(v)
         // a cycle in `par` is a set of vertices no root reaches
-        var todo = roots.clone()
+        var todo: List<V> = []
         var reached = 0
-        while let u = todo.pop():
-            reached += 1
-            for c in kids[u]: todo.push(c)
+        for r in roots:
+            todo.push(r)
+            while let u = todo.pop():
+                reached += 1
+                for c in kids[u]: todo.push(c)
         if roots.len > 0 and reached == V.count: Some(Rooted.build(kids, roots)) else: None
 
     /// A spanning forest: walks `from` as `dfs` does, skipping a root already reached, then roots
@@ -167,10 +169,8 @@ pub struct Rooted<V, Pre, A>:
         var k0: [V]0..=V.count = 0
         var k1: [V]0..=V.count = 0
         var i = 0
-        var cand = roots.clone()
-        if span:
-            for v in V: cand.push(v)
-        for r in cand:
+        for j in 0..roots.len + (if span: V.count else: 0):
+            let r = if j < roots.len: roots[j] else: V.nth(j - roots.len)
             if seen[r]:
                 assert span
                 continue
@@ -1011,12 +1011,12 @@ pub struct Rooted<V, Pre, A>:
         var start: List<Int> = List.filled(V.count + 1, 0)
         for v in V: start[dep[v] + 1] += 1
         for d in 1..start.len: start[d] += start[d - 1]
-        var fill = start.clone()
+        var fill: List<Int> = List.filled(start.len, 0)
         var order: List<V> = List.filled(V.count, root)
         var slot: [V]Int = 0
         for p in Pre:
             let v = at[p]
-            slot[v] = fill[dep[v]]
+            slot[v] = start[dep[v]] + fill[dep[v]]
             order[slot[v]] = v
             fill[dep[v]] += 1
         domain Level = 0..V.count

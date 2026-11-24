@@ -443,12 +443,15 @@ pub struct Graph<V: Domain, A: Target<V>>:
         var tstart: [V.cuts]Int = 0
         for a in arcs: tstart[a.to.ord] += 1
         for i in 1..tstart.len: tstart[i] += tstart[i - 1]
-        var tarcs = arcs.clone()
+        var src: List<Int> = List.filled(arcs.len, 0)
+        var from: List<V> = []
+        for u in V:
+            for _ in start[u.ord]..start[u.ord + 1]: from.push(u)
         for u in V.rev:
             for i in (start[u.ord]..start[u.ord + 1]).rev:
-                let a = arcs[i]
-                tstart[a.to.ord] -= 1
-                tarcs[tstart[a.to.ord]] = reversed_arc(a, u)
+                tstart[arcs[i].to.ord] -= 1
+                src[tstart[arcs[i].to.ord]] = i
+        let tarcs = src.map(i => reversed_arc(arcs[i], from[i])).collect()
         Graph<V, A>(start: tstart, arcs: tarcs)
 
 // blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
