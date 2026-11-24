@@ -538,3 +538,26 @@ fn a_bare_bound_gives_the_fn_its_free_trait_arg() {
         print(yes(xs.contains(W.cuts.nth(1).ord)), W.cuts.nth(0).ord + 1)\n";
     assert_eq!(silent_unknowns_of(src), (vec![], 0));
 }
+
+#[test]
+fn a_catalog_closure_takes_the_element_past_named_only_and_optional_params() {
+    let src = "var xs = [(1, 2), (0, 5)]\nxs.sort(cmp: (p, q) => p.0 < q.0)\nxs.sort(by: p => p.1)\nlet ys = xs.sorted(cmp: (p, q) => p.1 > q.1)\nlet zs = xs.sorted(by: p => -p.0)\nvar s = \"cab\"\ns.sort(cmp: (a, b) => a > b)\nvar a = [0..3] i => 3 - i\na.sort(cmp: (x, y) => x > y)\nlet b = a.sorted(by: x => -x)\nprint(ys[0].1 + zs[0].0, s, b[0])\n";
+    assert_eq!(silent_unknowns_of(src), (vec![], 0));
+    let mut db = Database::new();
+    db.set_file("main.cp", src);
+    for (name, ty, at) in [
+        ("p", "(Int, Int)", "p.0 < q"),
+        ("q", "(Int, Int)", "q.1"),
+        ("a", "Char", "a > b"),
+        ("x", "Int", "x > y"),
+    ] {
+        let at = src.find(at).unwrap() as u32;
+        let hover = db.hover("main.cp", at).map(|h| h.text);
+        assert!(
+            hover
+                .as_deref()
+                .is_some_and(|h| h.contains(&format!("{name}: {ty}"))),
+            "{name}: {hover:?}"
+        );
+    }
+}
