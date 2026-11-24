@@ -104,6 +104,11 @@ pub(crate) struct Emitter<'p> {
     /// Some compared, sorted or keyed value holds a struct or enum: only
     /// then do types get a `cpl_tie`.
     pub(crate) ties: bool,
+    /// Some ordered value holds an optional: only then does the file get
+    /// the optionals' `<`.
+    pub(crate) orders_opt: bool,
+    /// Some compared value holds a range: only then does `Range` get its `==` and `<`.
+    pub(crate) compares_range: bool,
     /// Non-escaping closures passed to call-only parameters; immutable non-scalar
     /// captures can be borrowed by reference instead of deep-copied.
     pub borrow_closures: BTreeSet<usize>,
@@ -359,6 +364,8 @@ impl<'p> Emitter<'p> {
             functors: BTreeSet::new(),
             written: Default::default(),
             ties: true,
+            orders_opt: true,
+            compares_range: true,
             borrow_closures: BTreeSet::new(),
             call_scoped: BTreeSet::new(),
             capture_owns: Default::default(),
@@ -1086,8 +1093,12 @@ impl<'p> Emitter<'p> {
             structs: reachable_structs,
             enums: reachable_enums,
             needs_tie,
+            orders_opt,
+            compares_range,
             ..
         } = reach::Reach::of(program, &same);
+        self.orders_opt = orders_opt;
+        self.compares_range = compares_range;
 
         // Ensure runtime types used by reachable globals, fns, closures, and main are registered.
         for g in &program.globals {
@@ -1567,6 +1578,15 @@ impl<'p> Emitter<'p> {
                 self.need(piece);
             }
         }
+        for (kind, cmp, wanted) in [
+            ("niche", "niche_order", self.orders_opt),
+            ("niche_tuple", "niche_tuple_order", self.orders_opt),
+            ("range", "range_cmp", self.compares_range),
+        ] {
+            if wanted && self.used.contains(kind) {
+                self.need(cmp);
+            }
+        }
         for piece in pieces() {
             if self.used.contains(piece.name) {
                 let mut code = self.piece_code(piece);
@@ -1868,17 +1888,14 @@ static bool cpl_on(size_t n) {
 KEEP_HEAP    static ucontext_t u;
     void* p = mmap(0, n, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON | MAP_NORESERVE, -1, 0);
     if (p == MAP_FAILED || mprotect(p, 4096, PROT_NONE)) return false;
-    getcontext(&u);
-    u.uc_stack = {p, 0, n};
-    makecontext(&u, cpl_main, 0);
+    getcontext(&u), u.uc_stack = {p, 0, n}, makecontext(&u, cpl_main, 0);
     return setcontext(&u), false;
 }
 #else
 #include <pthread.h>
 static void* cpl_go(void*) { cpl_main(); return 0; }
 static bool cpl_on(size_t n) {
-    pthread_attr_t a;
-    pthread_t t;
+    pthread_attr_t a; pthread_t t;
     return !pthread_attr_init(&a) && !pthread_attr_setstacksize(&a, n) &&
            !pthread_create(&t, &a, cpl_go, 0) && (pthread_join(t, 0), true);
 }

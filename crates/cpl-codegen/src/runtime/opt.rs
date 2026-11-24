@@ -37,16 +37,21 @@ template <class T, class S, S NONE> struct Niche {
     explicit operator std::optional<T>() const { return *this ? std::optional<T>(**this) : std::nullopt; }
     friend bool operator==(Niche a, Niche b) { return a.raw == b.raw; }
     friend bool operator!=(Niche a, Niche b) { return a.raw != b.raw; }
-    // A negative `none` is below every value it stands for (positions and bytes are never
-    // negative, Int and I32 take the least), so the order is the raw one: no branch.
-    static constexpr bool none_first = NONE < S(0);
-    friend bool operator<(Niche a, Niche b) {
-        if constexpr (none_first) return a.raw < b.raw;
-        else return b && (!a || *a < *b);
-    }
 };
 // A position is an ordinal from 0: -1 is free.
 using OptPos = Niche<int, int, -1>;
+",
+    },
+    Piece {
+        name: "niche_order",
+        needs: &["niche"],
+        code: "\
+// `none` sorts first. A negative `none` is below every value it stands for (positions and
+// bytes are never negative, Int and I32 take the least), so the order is the raw one: no branch.
+template <class T, class S, S NONE> bool operator<(Niche<T, S, NONE> a, Niche<T, S, NONE> b) {
+    if constexpr (NONE < S(0)) return a.raw < b.raw;
+    else return b && (!a || *a < *b);
+}
 ",
     },
     Piece {
@@ -91,11 +96,17 @@ template <class T, size_t... P> struct OptTuple {
     explicit operator std::optional<T>() const { return has_value() ? std::optional<T>(raw) : std::nullopt; }
     friend bool operator==(const OptTuple& a, const OptTuple& b) { return a.has_value() == b.has_value() && (!a.has_value() || a.raw == b.raw); }
     friend bool operator!=(const OptTuple& a, const OptTuple& b) { return !(a == b); }
-    friend bool operator<(const OptTuple& a, const OptTuple& b) { return b.has_value() && (!a.has_value() || a.raw < b.raw); }
-    friend bool operator>(const OptTuple& a, const OptTuple& b) { return b < a; }
-    friend bool operator<=(const OptTuple& a, const OptTuple& b) { return !(b < a); }
-    friend bool operator>=(const OptTuple& a, const OptTuple& b) { return !(a < b); }
 };
+",
+    },
+    Piece {
+        name: "niche_tuple_order",
+        needs: &["niche_tuple"],
+        code: "\
+template <class T, size_t... P> bool operator<(const OptTuple<T, P...>& a, const OptTuple<T, P...>& b) { return b.has_value() && (!a.has_value() || a.raw < b.raw); }
+template <class T, size_t... P> bool operator>(const OptTuple<T, P...>& a, const OptTuple<T, P...>& b) { return b < a; }
+template <class T, size_t... P> bool operator<=(const OptTuple<T, P...>& a, const OptTuple<T, P...>& b) { return !(b < a); }
+template <class T, size_t... P> bool operator>=(const OptTuple<T, P...>& a, const OptTuple<T, P...>& b) { return !(a < b); }
 ",
     },
     Piece {

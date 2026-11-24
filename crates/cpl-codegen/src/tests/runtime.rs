@@ -201,7 +201,7 @@ fn a_plain_sort_is_unstable_only_where_equal_means_the_same() {
         )
     };
     let same = cpp(&src("", "(Int, Bool, Char, Str, (a: Int, b: Int))"));
-    assert!(same.contains("cpl::sort_seq<true>(xs.begin()"), "{same}");
+    assert!(same.contains("std::sort(xs.begin()"), "{same}");
     assert!(same.contains("cpl::sorted<true>(xs)"), "{same}");
     let float = cpp(&src("", "(Int, F64)"));
     let own = cpp(&src(
@@ -349,5 +349,36 @@ fn a_profile_counts_a_users_key_fn_a_library_closure_calls_directly() {
     assert!(
         key.contains("cpl_prof::mark("),
         "the key fn's line counts each call: {key}"
+    );
+}
+
+#[test]
+fn only_ordered_optionals_and_compared_ranges_get_their_operators() {
+    let order = ["bool operator<(Niche<", "bool operator<(const Range<T>&"];
+    let plain = cpp(concat!(
+        "let n: Int = read()\n",
+        "var xs: List<?Int> = [None, Some(n)]\n",
+        "let r = 0..n\n",
+        "print(xs.len + r.len)\n",
+    ));
+    assert!(order.iter().all(|op| !plain.contains(op)), "{plain}");
+    // `?Int` itself has no order, but a set's key can hold one.
+    let ordered = cpp(concat!(
+        "struct P(a: Int, b: ?Int)\n",
+        "let n: Int = read()\n",
+        "var s: Set<P> = Set()\n",
+        "s.add(P(a: n, b: None))\n",
+        "let same = 0..n == 1..n\n",
+        "print(s.len + (if same: 1 else: 0))\n",
+    ));
+    assert!(order.iter().all(|op| ordered.contains(op)), "{ordered}");
+}
+
+#[test]
+fn a_sort_in_the_elements_own_order_is_std_sort() {
+    let out = cpp("let n: Int = read()\nvar xs = [n, 3, 1]\nxs.sort()\nprint(xs)\n");
+    assert!(
+        out.contains("std::sort(") && !out.contains("sort_seq"),
+        "{out}"
     );
 }

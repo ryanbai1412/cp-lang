@@ -301,15 +301,14 @@ inline bool scan_nonneg(unsigned long long& x) {
     in_at = (size_t)(p - in.data());
     return true;
 }
+inline ll scan_in(ll lo) { unsigned long long u; return lo >= 0 && scan_nonneg(u) ? (ll)u : read_int(); }
 inline ll read_in(ll lo, ll hi) {
-    unsigned long long u;
-    ll x = lo >= 0 && scan_nonneg(u) ? (ll)u : read_int();
+    ll x = scan_in(lo);
     if (lo >= 0 ? (unsigned long long)x < (unsigned long long)lo || (unsigned long long)x > (unsigned long long)hi : x < lo || x > hi) fail(\"a number in the input is outside its range\");
     return x;
 }
 inline int read_pos(ll lo, ll len) {
-    unsigned long long u;
-    ll ord = lo >= 0 && scan_nonneg(u) ? (ll)(u - (unsigned long long)lo) : read_int() - lo;
+    ll ord = (ll)((unsigned long long)scan_in(lo) - (unsigned long long)lo);
     if ((unsigned long long)ord >= (unsigned long long)len) fail(\"outside the domain\");
     return (int)ord;
 }

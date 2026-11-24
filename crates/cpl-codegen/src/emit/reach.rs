@@ -14,6 +14,12 @@ pub(crate) struct Reach {
     /// Some compared, sorted or keyed value holds a struct or enum, so the
     /// file needs `cpl_tie`.
     pub needs_tie: bool,
+    /// Some value ordered (compared by `<`, sorted, kept in a set or `max=`)
+    /// holds an optional, so the file needs the optionals' order.
+    pub orders_opt: bool,
+    /// Some compared or ordered value holds a range, so `Range` needs its
+    /// `==`, `!=` and `<`.
+    pub compares_range: bool,
     fn_work: Vec<usize>,
     closure_work: Vec<usize>,
 }
@@ -146,7 +152,7 @@ impl Reach {
         each_value(b, &mut |e| {
             self.ty(program, &e.ty);
             if let Ty::Set(k) | Ty::HashSet(k) | Ty::Map(k, _) | Ty::HashMap(k, _) = &e.ty {
-                self.needs_tie |= has_adt(k);
+                self.ordered(program, k);
             }
             match &e.kind {
                 ExprKind::Call(fid, _) => self.call(*fid),
@@ -154,16 +160,24 @@ impl Reach {
                     self.closure(*cid);
                     self.closure(same[*cid]);
                 }
-                ExprKind::Cmp(_, left, _) => self.needs_tie |= has_adt(&left.ty),
+                // `x == None` is written as `has_value`: it compares nothing.
+                ExprKind::Cmp(_, l, r) if [l, r].iter().any(|s| s.kind == ExprKind::None) => {}
+                ExprKind::Cmp(op, left, _) => {
+                    self.needs_tie |= has_adt(&left.ty);
+                    self.compares_range |= holds(program, &left.ty, is_range);
+                    if !matches!(op, cpl_ir::CmpOp::Eq | cpl_ir::CmpOp::Ne) {
+                        self.orders_opt |= holds(program, &left.ty, is_opt);
+                    }
+                }
                 ExprKind::Sort(place, by, _) => match by {
-                    cpl_ir::SortBy::Natural => self.needs_tie |= has_adt(&place.ty),
-                    cpl_ir::SortBy::Key(_, k) => self.needs_tie |= has_adt(&k.ty),
+                    cpl_ir::SortBy::Natural => self.ordered(program, &place.ty),
+                    cpl_ir::SortBy::Key(_, k) => self.ordered(program, &k.ty),
                     cpl_ir::SortBy::Fn {
                         func,
                         is_order: false,
                     } => {
                         if let Ty::Fn(_, ret) = &func.ty {
-                            self.needs_tie |= has_adt(ret);
+                            self.ordered(program, ret);
                         }
                     }
                     _ => {}
@@ -181,7 +195,11 @@ impl Reach {
                     | cpl_ir::Builtin::LastLe
                     | cpl_ir::Builtin::LastLt,
                     args,
-                ) => self.needs_tie |= args.iter().any(|a| has_adt(&a.ty)),
+                ) => {
+                    for a in args {
+                        self.ordered(program, &a.ty);
+                    }
+                }
                 ExprKind::Print(args, _) => {
                     let mut seen = Default::default();
                     for a in args {
@@ -205,7 +223,76 @@ impl Reach {
                 _ => {}
             }
         });
+        crate::uses::places::each_put(b, &mut |put, _| {
+            if let crate::uses::places::Put::Store(
+                place,
+                cpl_ir::AssignOp::Max | cpl_ir::AssignOp::Min,
+            ) = put
+            {
+                self.ordered(program, &place.ty);
+            }
+        });
     }
+
+    fn ordered(&mut self, program: &Program, ty: &Ty) {
+        self.needs_tie |= has_adt(ty);
+        self.orders_opt |= holds(program, ty, is_opt);
+        self.compares_range |= holds(program, ty, is_range);
+    }
+}
+
+fn is_opt(ty: &Ty) -> bool {
+    matches!(ty, Ty::Opt(_))
+}
+
+fn is_range(ty: &Ty) -> bool {
+    matches!(ty, Ty::Range(_))
+}
+
+/// Whether `ty`, or a type inside it (its fields and payloads too), is `want`.
+fn holds(program: &Program, ty: &Ty, want: fn(&Ty) -> bool) -> bool {
+    holds_in(program, ty, want, &mut BTreeSet::new())
+}
+
+fn holds_in(
+    program: &Program,
+    ty: &Ty,
+    want: fn(&Ty) -> bool,
+    seen: &mut BTreeSet<(bool, usize)>,
+) -> bool {
+    want(ty)
+        || match ty {
+            Ty::Struct(id) => {
+                seen.insert((true, *id))
+                    && program.structs[*id]
+                        .fields
+                        .iter()
+                        .any(|(_, t)| holds_in(program, t, want, seen))
+            }
+            Ty::Enum(id) => {
+                seen.insert((false, *id))
+                    && program.enums[*id]
+                        .variants
+                        .iter()
+                        .any(|(_, ts)| ts.iter().any(|t| holds_in(program, t, want, seen)))
+            }
+            Ty::Range(t)
+            | Ty::Opt(t)
+            | Ty::List(t)
+            | Ty::ListView(t, _)
+            | Ty::Keyed(t, _)
+            | Ty::MutView(t, _)
+            | Ty::Set(t)
+            | Ty::HashSet(t)
+            | Ty::Mut(t) => holds_in(program, t, want, seen),
+            Ty::Array { elem, .. } => holds_in(program, elem, want, seen),
+            Ty::Map(k, v) | Ty::HashMap(k, v) => {
+                holds_in(program, k, want, seen) || holds_in(program, v, want, seen)
+            }
+            Ty::Tuple(ts) => ts.iter().any(|t| holds_in(program, t, want, seen)),
+            Ty::Record(fs) => fs.iter().any(|(_, t)| holds_in(program, t, want, seen)),
+            _ => false,
+        }
 }
 
 /// Whether `ty` holds a struct or enum.

@@ -439,7 +439,6 @@ impl<'p> Emitter<'p> {
         };
         match sort_by {
             SortBy::Natural => {
-                self.need("sorted");
                 let elem = match &place.ty {
                     Ty::List(t) | Ty::MutView(t, _) | Ty::Array { elem: t, .. } => Some(&**t),
                     _ => None,
@@ -452,10 +451,15 @@ impl<'p> Emitter<'p> {
                         format!(", [&](const auto& {a}, const auto& {b}) {{ return {desc} ? {b} < {a} : {a} < {b}; }}")
                     }
                 };
-                self.line(
-                    out,
-                    &format!("cpl::sort_seq{same}({seq}.begin(), {seq}.end(){lt});"),
-                );
+                // Equal elements are one value: no order of them shows, so
+                // `std::sort` needs none of the runtime's stable sort.
+                let sort = if same.is_empty() {
+                    self.need("sorted");
+                    "cpl::sort_seq"
+                } else {
+                    "std::sort"
+                };
+                self.line(out, &format!("{sort}({seq}.begin(), {seq}.end(){lt});"));
             }
             SortBy::Key(slot, key) => {
                 let elem = self.locals()[*slot].ty.clone();
@@ -475,7 +479,6 @@ impl<'p> Emitter<'p> {
                 let traps = self.target.checks != crate::Checks::None;
                 let calls = self.sites.is_none().then_some(self.program);
                 if is_cheap_pure_key(calls, key, traps) {
-                    self.need("sorted");
                     let (a, b) = (self.temp(), self.temp());
                     let cmp = turned(
                         format!("{kf}({a}) < {kf}({b})"),
@@ -496,10 +499,12 @@ impl<'p> Emitter<'p> {
                     let profiled = self.sites.is_some();
                     let sort = if unique && !profiled {
                         "std::sort"
-                    } else if !profiled && ties_by_value(&elem) {
-                        "cpl::sort_distinct"
                     } else {
-                        "cpl::stable_sort_lt"
+                        self.need("sorted");
+                        match !profiled && ties_by_value(&elem) {
+                            true => "cpl::sort_distinct",
+                            false => "cpl::stable_sort_lt",
+                        }
                     };
                     self.line(
                         out,

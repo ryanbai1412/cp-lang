@@ -70,10 +70,16 @@ template <class T> struct Range {
         if (lo < hi) { out.reserve((size_t)len()); for (T x = hi; x-- > lo;) out.push_back(x); }
         return out;
     }
-    bool operator==(const Range& o) const { return lo == o.lo && hi == o.hi; }
-    bool operator!=(const Range& o) const { return !(*this == o); }
-    bool operator<(const Range& o) const { return lo != o.lo ? lo < o.lo : hi < o.hi; }
 };
+",
+    },
+    Piece {
+        name: "range_cmp",
+        needs: &["range"],
+        code: "\
+template <class T> bool operator==(const Range<T>& a, const Range<T>& b) { return a.lo == b.lo && a.hi == b.hi; }
+template <class T> bool operator!=(const Range<T>& a, const Range<T>& b) { return !(a == b); }
+template <class T> bool operator<(const Range<T>& a, const Range<T>& b) { return a.lo != b.lo ? a.lo < b.lo : a.hi < b.hi; }
 ",
     },
     Piece {
