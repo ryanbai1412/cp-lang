@@ -1,4 +1,5 @@
-// Source: Universal Cup 5 Stage 2 (EPS) E (Common Prefix Cuts)
+// Source: Universal Cup 5 Stage 2 (Grand Prix of EPS) E (EPS.AC), UCUP contest 4207 problem 20719
+// limits: 1000 ms, 512 MB
 // Problem: three rankings of n <= 2e5 contestants; a cut after place i is good when two
 //   of the rankings hold the same set of contestants in their first i + 1 places. Print
 //   1 + the number of good cuts.
