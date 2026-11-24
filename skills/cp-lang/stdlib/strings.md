@@ -142,7 +142,7 @@ Fields: `prefix: List<Bool>`, `letters: List<?A>`.
 - `fn link(self, state: Int) -> ?Int` — \(O(1)\); The suffix link of `state`: the state of its longest suffix that lies in another state; `None` at the root.; traps: when `state` is outside `0..self.len`
 - `fn longest(self, state: Int) -> Int` — \(O(1)\); The length of the longest substring in `state`; `0` at the root.; traps: when `state` is outside `0..self.len`
 - `fn shortest(self, state: Int) -> Int` — \(O(1)\); The length of the shortest substring in `state`, `longest(link) + 1`; `0` at the root.; traps: when `state` is outside `0..self.len`
-- `fn first_pos(self, state: Int) -> Int` — \(O(1)\); The 0-based position where the first occurrence of `state`'s substrings ends; `-1` at the root.; traps: when `state` is outside `0..self.len`
+- `fn first_pos(self, state: Int) -> ?Int` — \(O(1)\); The 0-based position where the first occurrence of `state`'s substrings ends; `None` at the root, whose only substring is empty.; traps: when `state` is outside `0..self.len`
 - `fn find<S: Seq>(self, word: S) -> ?Int` — \(O(\lvert \mathit{word} \rvert)\); The state holding `word`, or `None` when `word` is not a substring; the root for an empty `word`.; traps: when an element of `word` is not in `A`
 - `fn contains<S: Seq>(self, word: S) -> Bool` — \(O(\lvert \mathit{word} \rvert)\); True when `word` is a substring of the automaton's string: `find(word) != None`.; traps: when an element of `word` is not in `A`
 - `fn distinct(self) -> Int` — \(O(\mathit{states})\); The number of distinct non-empty substrings: the sum of `longest(v) - shortest(v) + 1` over the states other than the root.

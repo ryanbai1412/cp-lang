@@ -16,7 +16,7 @@ In prelude (no `use` needed): `eval`.
 - `@get fn one() -> Poly<T>` — \(O(1)\); The constant polynomial `1`.
 - `@get fn x() -> Poly<T>` — \(O(1)\); The indeterminate `x`: coefficients `[0, 1]`.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of stored coefficients, trailing zeros included.
-- `fn deg(self) -> Int` — \(O(1)\) plus the number of stored trailing zeros; The degree: the highest index with a nonzero coefficient, `-1` for the zero polynomial.
+- `fn deg(self) -> ?Int` — \(O(1)\) plus the number of stored trailing zeros; The degree: the highest index with a nonzero coefficient, `None` for the zero polynomial.
 - `fn is_zero(self) -> Bool` — \(O(1)\) plus the number of stored trailing zeros; Whether all coefficients are zero (including when there are None).
 - `fn at(self, i: Int) -> T` — \(O(1)\); Read coefficient `i` (0 when `i >= self.len`).; traps: when `i < 0`
 - `fn set(mut self, i: Int, v: T)` — \(O(1)\), or \(O(i)\) when it grows; Write coefficient `i`, growing with zeros if needed.; traps: when `i < 0`
