@@ -1014,8 +1014,7 @@ impl<'a> Checker<'a> {
                             (&p.default, p.ty.as_ref().map(|t| &t.kind))
                         {
                             if f.generics.iter().any(|g| g.text == name.text) {
-                                ctor_defaults
-                                    .push((name.text.clone(), self.quietly(|c| c.infer(d))));
+                                ctor_defaults.push((name.text.clone(), self.infer_quietly(d)));
                             }
                         }
                     }

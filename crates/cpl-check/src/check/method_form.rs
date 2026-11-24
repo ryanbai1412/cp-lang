@@ -217,10 +217,14 @@ impl Checker<'_> {
     /// Whether `ty` implements every trait `bounds` puts on the generic `g`.
     #[inline(never)]
     fn param_traits_hold(&mut self, bounds: &[(String, Vec<String>)], g: &str, ty: &Ty) -> bool {
-        (bounds.iter())
-            .filter(|(p, _)| p == g)
-            .flat_map(|(_, t)| t)
-            .all(|t| self.implements_trait(ty, t))
+        for (p, traits) in bounds {
+            for t in traits.iter().filter(|_| p == g) {
+                if !self.implements_trait(ty, t) {
+                    return false;
+                }
+            }
+        }
+        true
     }
 
     /// Whether `def`'s parameters, on `base`, take the types `args` have,
@@ -393,9 +397,10 @@ impl Checker<'_> {
         }
         // Of several, those whose parameters take the arguments' types.
         if let Some(args) = args.filter(|_| fit.len() > 1) {
-            let takes: Vec<bool> = (0..fit.len())
-                .map(|i| self.takes_arg_types(&fit[i].1, base, args))
-                .collect();
+            let mut takes = Vec::new();
+            for f in &fit {
+                takes.push(self.takes_arg_types(&f.1, base, args));
+            }
             if takes.contains(&true) {
                 let mut takes = takes.into_iter();
                 fit.retain(|_| takes.next().unwrap_or(false));
@@ -403,9 +408,14 @@ impl Checker<'_> {
         }
         // R08.1.4: of the candidates, those no other is more specific than.
         let n = fit.len();
-        let beaten: Vec<bool> = (0..n)
-            .map(|b| (0..n).any(|a| a != b && self.beats(&fit[a].1, &fit[b].1)))
-            .collect();
+        let mut beaten = vec![false; n];
+        for b in 0..n {
+            for a in 0..n {
+                if a != b && !beaten[b] && self.beats(&fit[a].1, &fit[b].1) {
+                    beaten[b] = true;
+                }
+            }
+        }
         let mut beaten = beaten.into_iter();
         fit.retain(|_| !beaten.next().unwrap_or(false));
         // Of candidates the receiver fits alike, those the argument count fits.
