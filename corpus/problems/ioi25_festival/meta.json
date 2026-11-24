@@ -2,16 +2,27 @@
  "problem": "ioi25_festival",
  "source": "ioi",
  "submissions": [],
- "cpp_ac": 0,
+ "cpp_ac": 1,
  "artifacts": {
   "dream": [
    "corpus/gold/ioi25_festival.cp",
    "corpus/problems/ioi25_festival/dream.cp"
+  ],
+  "original": [
+   "corpus/problems/ioi25_festival/orig.cpp"
+  ],
+  "port": [
+   "corpus/problems/ioi25_festival/port.cp"
   ]
  },
- "tags": [],
- "difficulty": null,
+ "tags": [
+  "greedy",
+  "exchange-argument",
+  "dp",
+  "binary-search"
+ ],
+ "difficulty": "hard",
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No DMOJ AC submission is on file: orig.cpp is the IOI task archive's model solution (2025/day2/festival/solutions/model_solution/isaac_full.cpp) with the sample grader as its main; its counts equal the official answers on all 115 official tests under checker.py (which mirrors the archive's checker.cpp), and on 3000 random inputs with N <= 12 it equals an exhaustive subset DP. dream.tests/grader.cpp + festival.h are the sample grader without the judge secrets, which cpl test links into the @grader dream; they sit in dream.tests/ because a grader.cpp beside the stdin port would be linked into it too."
 }
