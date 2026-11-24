@@ -9380,3 +9380,5 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 - **Hash(Eq).** std declares `trait Hash(Eq)`, so "own `Eq` or `Ord` derives no `Hash`" is the general supertrait rule read off `Def::Trait.supers` (a derived impl can't sit on a supertrait the type decides itself, R08.1.6), and the IR records a struct's `hash_fn` from its impl of whichever trait std bounds a store's key by (`Lowerer::store_keys`, collected off std's `= @intrinsic` declarations). Reverse: drop `(Eq)` and restore the `"Hash"` arms in `own_impl_decides` and `instantiate`.
 - **Floor.** `HashMap` and `HashSet` stay on the builtin floor for now: their members, constructors and typing are still the checker's `Receiver::HashMap`/`HashSet` arms. They leave the floor when those members become `Kind::Host` rows declared in std.
 - **Reverse.** Delete the two std declarations, `Store` and the parser's `= @intrinsic` arm in `struct_decl`; the types are the floor's again.
+
+## 641. (reserved, compiler)
