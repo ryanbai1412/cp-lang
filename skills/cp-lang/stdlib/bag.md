@@ -153,6 +153,7 @@ Fields: `op: (T, T) -> T`, `id: T`, `leaf: K -> T`.
 - `fn fold_le(self, hi: K) -> T` — \(O(\log n)\) expected; Fold elements with key `<= hi`.
 - `fn fold_ge(self, lo: K) -> T` — \(O(\log n)\) expected; Fold elements with key `>= lo`.
 - `fn fold_gt(self, lo: K) -> T` — \(O(\log n)\) expected; Fold elements with key `> lo`.
+- `fn fold(self, keys: Range<K>) -> T` — \(O(\log n)\) expected; Fold the elements with key in `keys`, in ascending key order, one `leaf(k)` per copy; the one fold for any ordered range (`a..b`, `a..=b`, `..b`, `a..`), as `range(r)` is on `SortedBag` (decision 103).
 - `fn fold_between(self, lo: K, hi: K) -> T` — \(O(\log n)\) expected; Fold elements with key in `[lo, hi)`.
 - `fn each(self) -> yields K` — \(O(1)\) amortized per step; Yield all elements in ascending order.
 
@@ -178,6 +179,7 @@ Fields: `bag: AugSortedBag<K, T>`.
 - `fn fold_le(self, hi: K) -> T` — \(O(\log n)\) expected; Fold keys `<= hi`.
 - `fn fold_ge(self, lo: K) -> T` — \(O(\log n)\) expected; Fold keys `>= lo`.
 - `fn fold_gt(self, lo: K) -> T` — \(O(\log n)\) expected; Fold keys `> lo`.
+- `fn fold(self, keys: Range<K>) -> T` — \(O(\log n)\) expected; Fold the keys in `keys`, in ascending order; the one fold for any ordered range (`a..b`, `a..=b`, `..b`, `a..`), so `s.fold(..b)` is a prefix sum when `op` is `+`.
 - `fn fold_between(self, lo: K, hi: K) -> T` — \(O(\log n)\) expected; Fold keys in `[lo, hi)`.
 - `fn each(self) -> yields K` — \(O(1)\) amortized per step; Yield all keys in ascending order.
 
