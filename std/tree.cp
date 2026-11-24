@@ -4060,15 +4060,6 @@ pub fn kruskal_tree<V, E, W, R: (u: V, v: V, ..)>(edges: [E]R, w: E -> W) -> (
         ),
     )
 
-/// The Prüfer code of a tree on `V`: repeatedly remove the least leaf and record its neighbour,
-/// until two vertices remain. `V.count - 2` vertices, in bijection with the labelled trees.
-///
-/// cost: \(O(n)\)
-/// empty: `domain V = 0..2; let tr: Tree<V> = [(u: 0, v: 1)]; prufer(tr) == []`
-/// order: removal order
-/// traps: when `V` has fewer than two vertices, or `edges` is not a tree
-/// example: `domain V = 0..4; let tr: Tree<V> = [(u: 0, v: 1), (u: 1, v: 2), (u: 1, v: 3)]; prufer(tr) == [1, 1]`
-/// example: `domain V = 0..4; let tr: Tree<V> = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 3)]; prufer(tr) == [1, 2]`
 @test
 fn a_kruskal_tree_reaches_what_the_light_edges_connect():
     domain V = 0..8
@@ -4089,6 +4080,15 @@ fn a_kruskal_tree_reaches_what_the_light_edges_connect():
     for a in V:
         for b in V: assert kt.bottleneck(a, b) == first[a.ord * V.count + b.ord]
 
+/// The Prüfer code of a tree on `V`: repeatedly remove the least leaf and record its neighbour,
+/// until two vertices remain. `V.count - 2` vertices, in bijection with the labelled trees.
+///
+/// cost: \(O(n)\)
+/// empty: `domain V = 0..2; let tr: Tree<V> = [(u: 0, v: 1)]; prufer(tr) == []`
+/// order: removal order
+/// traps: when `V` has fewer than two vertices, or `edges` is not a tree
+/// example: `domain V = 0..4; let tr: Tree<V> = [(u: 0, v: 1), (u: 1, v: 2), (u: 1, v: 3)]; prufer(tr) == [1, 1]`
+/// example: `domain V = 0..4; let tr: Tree<V> = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 3)]; prufer(tr) == [1, 2]`
 pub fn prufer<V, E, R: (u: V, v: V, ..)>(edges: [E]R) -> List<V>:
     assert V.count >= 2, "`prufer` needs at least two vertices"
     assert E.count == V.count - 1, "`prufer`: `edges` is not a tree"

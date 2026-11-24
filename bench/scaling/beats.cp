@@ -13,6 +13,7 @@ for _ in 0..200:
     s += BeatsSegTree(a).all_sum // timed: beats.BeatsSegTree.new
     var hn = HistoricBeatsSegTree(a) // timed: beats.HistoricBeatsSegTree.new
     s += hn.sum(D(0)..=D(n - 1))
+    s += hn.to_array()[D(n - 1)] // timed: beats.HistoricBeatsSegTree.to_array
 var c = BeatsSegTree(a)
 for i in 0..reps:
     c.chmin(span(i), 1000 - i % 997) // timed: beats.BeatsSegTree.chmin

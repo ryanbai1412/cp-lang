@@ -18,6 +18,7 @@ let p = Prefix<V, Int>(a)
 for i in 0..reps:
     s += p.all // timed: prefix.Prefix.all
     s += p.at(V.cuts.nth(i % n)) // timed: prefix.Prefix.at
+    s += p.through(V(i * 3 % n)) // timed: prefix.Prefix.through
     s += p.prefix(V.cuts.nth(i * 7 % n)) // timed: prefix.Prefix.prefix
     s += p.suffix(V.cuts.nth(i * 13 % n)) // timed: prefix.Prefix.suffix
     s += p.cut(i * 17 % n) // timed: prefix.Prefix.cut
