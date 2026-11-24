@@ -1,4 +1,5 @@
 // Source: EGOI 2023 Day 2 (Sopsug), https://dmoj.ca/problem/egoi23p7
+// limits: 5000 ms, 1024 MB
 // Problem: N <= 3e5 buildings, M <= 3e5 existing directed tubes (u sends garbage to v) that
 //   must be used and K <= 3e5 ordered pairs where no tube may be built. Print N - 1 tubes that
 //   form a tree directed toward one root, including the existing ones, or "NO".

@@ -1,4 +1,5 @@
 // Source: Codeforces 2237I1 (DBFS Order, easy), https://codeforces.com/contest/2237/problem/I1
+// limits: 2000 ms, 1024 MB
 // Problem: a rooted tree, n <= 3000, children in a fixed order (multitest, sum of n^2 <= 9e6).
 //   A colour-0 child is pushed to the deque front (DFS step), colour 1 to the back (BFS
 //   step); s fixes each colour to 0 or leaves it free (easy version: no '1'). Count the

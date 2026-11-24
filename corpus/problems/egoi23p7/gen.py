@@ -1,4 +1,17 @@
 import sys, random
+if sys.argv[1] == "--max":
+    # N = K = 3e5; M = N - 601 existing tubes: one 299400-building path (deepest DFS) plus 600
+    # lone buildings, banned from each other almost densely (K = 3e5), so the complement DFS scans
+    # every ban; each lone building can still hang below the path, so the answer is a tree.
+    rng = random.Random(0); n, lone = 300000, 600
+    lab = list(range(n)); rng.shuffle(lab)
+    path, solo = lab[:n - lone], lab[n - lone:]
+    must = [(path[i], path[i + 1]) for i in range(len(path) - 1)]
+    ban = [(a, b) for a in solo for b in solo if a != b]
+    rng.shuffle(ban); ban = ban[:300000]
+    rng.shuffle(must)
+    out = [f"{n} {len(must)} {len(ban)}"] + [f"{a} {b}" for a, b in must + ban]
+    print("\n".join(out)); sys.exit()
 # seed size: N in 2..=size (capped at 3e5); a random in-tree on shuffled labels, a random share
 # of its arcs as the existing tubes (sometimes broken by a cycle or a second outgoing tube), then
 # banned pairs: sparse random, dense on small N, or a few roots banned from all but a few trees.

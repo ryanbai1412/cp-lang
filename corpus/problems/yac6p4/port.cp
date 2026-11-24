@@ -1,4 +1,5 @@
 // Source: Yet Another Contest 6 P4 (No More Nails!), https://dmoj.ca/problem/yac6p4
+// limits: 600 ms, 512 MB
 // Problem: N <= 1e6 square boards of sides s_i <= 100, each with a nail in its bottom-right
 //   cell. A move picks one board and cuts it along a row or column line keeping the nail's part,
 //   or moves the nail X >= 1 cells left, up, or both left and up by X. Nils moves first; whoever

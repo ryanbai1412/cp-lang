@@ -1,5 +1,6 @@
 // Source: The 5th Universal Cup, Stage 5 (Grand Prix of Chengdu), problem E (Enclose the
 //   Point), qoj.ac/problem/23596
+// limits: 1000 ms, 1024 MB
 // Problem: multitest. Given n distinct points (sum n <= 1e5, |coords| <= 1e9) and q query
 //   points (sum q <= 1e5): for each, output a simple polygon on the given points with the
 //   fewest vertices that strictly contains the query (vertex count and indices), or -1.
