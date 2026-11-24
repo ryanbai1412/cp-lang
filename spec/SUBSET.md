@@ -40,7 +40,7 @@ documented.
 | R02.1 | 2.1 The kinds of value | supported |  |
 | R02.2 | 2.2 Scalars | supported |  |
 | R02.3 | 2.3 Strings | supported |  |
-| R02.4 | 2.4 Optionals | supported | 1 known gap |
+| R02.4 | 2.4 Optionals | supported |  |
 | R02.5 | 2.5 Tuples and records | supported |  |
 | R02.6 | 2.6 Structs | supported |  |
 | R02.7 | 1.3 Names | supported |  |
@@ -63,9 +63,9 @@ documented.
 | R05.4 | 4. Parameters and calls (R4) | supported |  |
 | R05.5 | 5. Returns (R5) | supported |  |
 | R05.6 | 6. `lends` fns and projections | supported |  |
-| R05.7 | 7. Lent values (R6 to R8) | supported | 2 known gaps |
+| R05.7 | 7. Lent values (R6 to R8) | supported | 1 known gap |
 | R05.8 | Contest code | supported |  |
-| R05.9 | 9. Generators and views (R12) | supported | 1 known gap |
+| R05.9 | 9. Generators and views (R12) | supported |  |
 | R05.10 | 10. Closures and nested fns | supported |  |
 | R06.1 | 6.1 Functions | supported |  |
 | R06.2 | 6.2 Nested functions and lambdas | supported |  |
@@ -83,7 +83,7 @@ documented.
 | R07.9 | Folds | supported |  |
 | R07.11 | Ordering and grouping | supported |  |
 | R07.12 | More vocabulary | supported |  |
-| R08.1 | Folds | supported | 3 known gaps |
+| R08.1 | Folds | supported | 2 known gaps |
 | R08.2 | 8.1 Traits and impls | supported |  |
 | R08.3 | 8.3 Laws | supported | 1 known gap |
 | R08.4 | 8.4 Record row types (trial) | supported |  |
@@ -150,6 +150,7 @@ documented.
 | std-matrix | library: matrix | documented | stdlib: outside the Milestone 1 contest staples |
 | std-mo | library: mo | documented | stdlib: outside the Milestone 1 contest staples |
 | std-mod | library: mod | supported |  |
+| std-models | library: models | supported |  |
 | std-ntt | library: ntt | documented | stdlib: outside the Milestone 1 contest staples |
 | std-opt | library: opt | documented | stdlib: outside the Milestone 1 contest staples |
 | std-pair | library: pair | documented | stdlib: outside the Milestone 1 contest staples |
@@ -180,17 +181,12 @@ documented.
 - core-04/runtime-domain-literal-between-traps.cp: fail
 - core-04/zip-keyed-by-first.cp: fail
 - core-05/exercise-04-var-from-lent-param.cp: fail
-- core-05/exercise-35-lent-optional-kept.cp: fail
-- core-05/lent-generator-blocks-overlapping-write.cp: fail
 - core-05/let-heap-element-lends-no-copy.cp: fail
 - core-05/map-entry-index-key-lends.cp: fail
 - core-08/extension-concrete-and-generic-ambiguous.cp: fail
 - core-08/law-calls-trait-method.cp: fail
-- core-08/trait-message-bound-holds.cp: fail
 - core-10/test-position-stored-above-multitest.cp: fail
-- diagnostics/graph-edge-field-names.cp: fail
 - std-graph/undirected-takes-list-of-records.cp: fail
 - std-search/real-bsearch-is-a-range-method.cp: fail
 - std-segtree/closure-folds-optional-monoid-folds-plain.cp: fail
 - std-segtree/closure-op-picks-index.cp: fail
-- std-subset/enum-subsets-is-a-domain.cp: fail
