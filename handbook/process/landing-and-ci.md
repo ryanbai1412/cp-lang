@@ -50,7 +50,10 @@ status (`scripts/commit_status.py`, set after each finished run):
 | failure, "culprit of run N: ..." | the culprit finder bisected the failing tests to it |
 
 Every long step has a `timeout-minutes` cap, so a hung
-job ends instead of holding the queue.
+job ends instead of holding the queue. A run whose jobs all finished their
+steps but sit in GitHub's "Complete job" for over 3 min is force-cancelled
+(`.github/workflows/unstick.yml`, `scripts/ci_unstick.py`) and its tip marked
+failure, "red: runner hang, covered by run N", until run N covers it.
 
 ## When main goes red
 
