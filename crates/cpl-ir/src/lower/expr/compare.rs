@@ -245,6 +245,14 @@ impl<'a> Lowerer<'a> {
                 return self.err_expr(span);
             }
         }
+        // `x != None` is the optional's has-value test, as std.opt writes it.
+        if matches!(r.kind, ExprKind::None) && matches!(op, CmpOp::Eq | CmpOp::Ne) {
+            let some = self.mk_is_some(l, Ty::Bool, span);
+            return match op {
+                CmpOp::Ne => some,
+                _ => self.mk_unary(UnOp::Not, some, Ty::Bool, span),
+            };
+        }
         self.mk_cmp(op, l, r, Ty::Bool, span)
     }
 }

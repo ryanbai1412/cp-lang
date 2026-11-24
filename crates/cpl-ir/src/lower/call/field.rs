@@ -969,11 +969,6 @@ impl<'a> Lowerer<'a> {
                 });
                 self.mk_builtin(op, [value], ty, span)
             }
-            (Ty::Opt(_), "is_some") => self.mk_is_some(value, Ty::Bool, span),
-            (Ty::Opt(_), "is_none") => {
-                let some = self.mk_is_some(value, Ty::Bool, span);
-                self.mk_unary(UnOp::Not, some, Ty::Bool, span)
-            }
             // A trait getter defaulted to `= self` on a plain value: a vertex's `Target::to`.
             (_, field) if self.self_getter(field) => value,
             // `Hashable::hash_token` of a position, until a blanket domain impl's getter reaches it.
