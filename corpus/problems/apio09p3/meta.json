@@ -27,5 +27,10 @@
  "difficulty": "medium",
  "dream": "draft",
  "spec": "draft",
- "notes": "Added seq filter_map. spec.cp fills best[c] over C.rev; a let-bound `.max()` is typed `T`, not `?T` (compiler worklog, cf2229e), so it uses `.max() ?? stop` directly."
+ "notes": "Added seq filter_map. spec.cp fills best[c] over C.rev; a let-bound `.max()` is typed `T`, not `?T` (compiler worklog, cf2229e), so it uses `.max() ?? stop` directly.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 9,
+  "sha": "ebbb75c923aa7fc179a8a4c0cefd7d3d13b77918"
+ }
 }
