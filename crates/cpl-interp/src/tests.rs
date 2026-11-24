@@ -2034,3 +2034,31 @@ print(t.0, m!, \"{t.0}:{x}\")
     assert!(trap.is_none(), "unexpected trap: {trap:?}");
     assert_eq!(out, "7 7 7:1.5000000000\n");
 }
+
+#[test]
+fn vm_compiles_keyed_sorts_searches_and_inlined_calls() {
+    let src = "\
+fn sq(x: Int) -> Int:
+    return x * x
+fn neg(x: Int) -> Int:
+    return -x
+var xs = [3, 1, 2]
+xs.sort(by: neg)
+var s: Set<Int> = []
+s.insert(4)
+s.insert(9)
+var m: Map<Int, Int> = []
+m[1] = 5
+var t: [0..2](Int, Int) = (0, 0)
+t[1] = (2, 3)
+t[1] max= (2, 7)
+var total = 0
+for i in 0..4:
+    if i < 2:
+        total += sq(i + 1)
+print(\" \".join(xs), s.first_ge(5)!, m[1], t[1].1, total)
+";
+    let (out, trap) = outcome(src, "");
+    assert!(trap.is_none(), "unexpected trap: {trap:?}");
+    assert_eq!(out, "3 2 1 9 5 7 5\n");
+}

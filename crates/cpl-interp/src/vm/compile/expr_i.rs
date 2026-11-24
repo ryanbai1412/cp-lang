@@ -413,7 +413,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         || self.is_small_tuple_local(rhs)
                         || self.small_tuple_is_cheap(lhs) && self.small_tuple_is_cheap(rhs)) =>
             {
-                let (len, _) = crate::vm::scalar::small_tuple_shape(&lhs.ty, self.program).unwrap();
+                let Some((len, _)) = crate::vm::scalar::small_tuple_shape(&lhs.ty, self.program)
+                else {
+                    return self.emit_fallback_expr_i(expr);
+                };
                 let a_base = self.small_tuple_operand(lhs, len);
                 let b_base = self.small_tuple_operand(rhs, len);
                 let dst = self.alloc_i();
@@ -774,7 +777,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     && indices.len() == 1 =>
             {
                 let (Ty::Map(kty, _) | Ty::HashMap(kty, _)) = &base.ty else {
-                    unreachable!()
+                    return self.emit_fallback_expr_i(expr);
                 };
                 let map_v = self.compile_expr_v(base);
                 let key_v = self.compile_expr_v(&indices[0]);
@@ -1207,111 +1210,64 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         self.fallback_exprs.len(),
                         self.trace_points.len(),
                     );
-                    let mut map = Vec::with_capacity(f.locals.len());
-                    for (i, a) in args.iter().enumerate() {
-                        let Arg::Value(ae) = a else { unreachable!() };
-                        if let Some(kind) = ScalarKind::of_ty(&f.locals[i].ty, self.program) {
-                            let fresh = self.next_i;
-                            let src = self.compile_expr_i(ae);
-                            // A parameter is never assigned, so it reads its
-                            // argument where it already is, unless a later
-                            // argument could still change that register.
-                            if src >= fresh || i + 1 == args.len() {
-                                map.push(SlotLoc::I(src, kind));
-                            } else {
-                                let reg = self.alloc_i();
-                                self.emit(Op::MoveI { dst: reg, src }, span);
-                                map.push(SlotLoc::I(reg, kind));
-                            }
-                        } else if let Some((len, kinds)) =
-                            small_tuple_shape(&f.locals[i].ty, self.program)
-                                .filter(|_| self.small_tuple_is_cheap(ae))
-                        {
-                            let fresh = self.next_i;
-                            let src = self.small_tuple_operand(ae, len);
-                            if src >= fresh || i + 1 == args.len() {
-                                map.push(SlotLoc::SmallTuple {
-                                    base: src,
-                                    len,
-                                    kinds,
-                                });
-                            } else {
-                                let base = self.next_i;
-                                for k in 0..u16::from(len) {
-                                    let reg = self.alloc_i();
-                                    self.emit(
-                                        Op::MoveI {
-                                            dst: reg,
-                                            src: src + k,
-                                        },
-                                        span,
-                                    );
+                    match self.leaf_locals(f, args, span) {
+                        None => {
+                            self.ops.truncate(mark.0);
+                            self.spans.truncate(mark.0);
+                            self.fallback_stmts.truncate(mark.1);
+                            self.fallback_exprs.truncate(mark.2);
+                            self.trace_points.truncate(mark.3);
+                            None
+                        }
+                        Some((map, boxed)) => {
+                            let dst = self.alloc_i();
+                            let prev_slots = self.inline_slots.replace(map);
+                            let prev_ret = self.inline_ret.replace((dst, Vec::new()));
+                            let (tail, body) = match f.body.stmts.split_last() {
+                                Some((Stmt::Return(Some(e)) | Stmt::Give(e), rest)) => {
+                                    (Some(e), rest)
                                 }
-                                map.push(SlotLoc::SmallTuple { base, len, kinds });
-                            }
-                        } else if let ExprKind::Local(slot) = &ae.kind {
-                            let SlotLoc::V(r) = self.slot_loc(*slot) else {
-                                unreachable!()
+                                _ => (None, &f.body.stmts[..]),
                             };
-                            map.push(SlotLoc::V(r));
-                        } else {
-                            unreachable!()
-                        }
-                    }
-                    let mut boxed = Vec::new();
-                    for l in f.locals.iter().skip(args.len()) {
-                        if let Some(kind) = ScalarKind::of_ty(&l.ty, self.program) {
-                            let reg = self.alloc_i();
-                            self.emit(Op::ConstImmI { dst: reg, val: 0 }, span);
-                            map.push(SlotLoc::I(reg, kind));
-                        } else {
-                            let reg = self.inline_v + boxed.len() as u16;
-                            boxed.push(reg);
-                            map.push(SlotLoc::V(reg));
-                        }
-                    }
-                    let dst = self.alloc_i();
-                    let prev_slots = self.inline_slots.replace(map);
-                    let prev_ret = self.inline_ret.replace((dst, Vec::new()));
-                    let (tail, body) = match f.body.stmts.split_last() {
-                        Some((Stmt::Return(Some(e)) | Stmt::Give(e), rest)) => (Some(e), rest),
-                        _ => (None, &f.body.stmts[..]),
-                    };
-                    for s in body {
-                        self.compile_stmt(s);
-                    }
-                    // The last statement's value falls through to the end, so
-                    // it needs no jump, nor a move when nothing else returns.
-                    let tail = tail.map(|e| self.compile_expr_i(e));
-                    let jumps = self.inline_ret.take().map_or_else(Vec::new, |(_, j)| j);
-                    let dst = match tail {
-                        Some(r) if jumps.is_empty() => r,
-                        Some(r) => {
-                            if r != dst {
-                                self.emit(Op::MoveI { dst, src: r }, span);
+                            for s in body {
+                                self.compile_stmt(s);
                             }
-                            dst
+                            // The last statement's value falls through to the end, so
+                            // it needs no jump, nor a move when nothing else returns.
+                            let tail = tail.map(|e| self.compile_expr_i(e));
+                            let jumps = self.inline_ret.take().map_or_else(Vec::new, |(_, j)| j);
+                            let dst = match tail {
+                                Some(r) if jumps.is_empty() => r,
+                                Some(r) => {
+                                    if r != dst {
+                                        self.emit(Op::MoveI { dst, src: r }, span);
+                                    }
+                                    dst
+                                }
+                                None => dst,
+                            };
+                            let end_pc = self.ops.len() as u32;
+                            self.inline_ret = prev_ret;
+                            self.inline_slots = prev_slots;
+                            for j in jumps {
+                                self.patch(j, end_pc);
+                            }
+                            for reg in boxed {
+                                self.emit(Op::ClearV { reg }, span);
+                            }
+                            if (self.fallback_stmts.len(), self.fallback_exprs.len())
+                                == (mark.1, mark.2)
+                            {
+                                Some(dst)
+                            } else {
+                                self.ops.truncate(mark.0);
+                                self.spans.truncate(mark.0);
+                                self.fallback_stmts.truncate(mark.1);
+                                self.fallback_exprs.truncate(mark.2);
+                                self.trace_points.truncate(mark.3);
+                                None
+                            }
                         }
-                        None => dst,
-                    };
-                    let end_pc = self.ops.len() as u32;
-                    self.inline_ret = prev_ret;
-                    self.inline_slots = prev_slots;
-                    for j in jumps {
-                        self.patch(j, end_pc);
-                    }
-                    for reg in boxed {
-                        self.emit(Op::ClearV { reg }, span);
-                    }
-                    if (self.fallback_stmts.len(), self.fallback_exprs.len()) == (mark.1, mark.2) {
-                        Some(dst)
-                    } else {
-                        self.ops.truncate(mark.0);
-                        self.spans.truncate(mark.0);
-                        self.fallback_stmts.truncate(mark.1);
-                        self.fallback_exprs.truncate(mark.2);
-                        self.trace_points.truncate(mark.3);
-                        None
                     }
                 } else {
                     None
@@ -1327,12 +1283,17 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         && (0..f.params.len())
                             .all(|i| ScalarKind::of_ty(&f.locals[i].ty, self.program).is_some())
                         && ScalarKind::of_ty(&f.ret, self.program).is_some()
-                        && args.len() <= 8
-                        && args.iter().all(|a| matches!(a, Arg::Value(_)));
-                    if can_vm {
-                        let mut evaluated = Vec::with_capacity(args.len());
-                        for a in args {
-                            let Arg::Value(ae) = a else { unreachable!() };
+                        && args.len() <= 8;
+                    let values: Option<Vec<&'p Expr>> = args
+                        .iter()
+                        .map(|a| match a {
+                            Arg::Value(e) => Some(e),
+                            _ => None,
+                        })
+                        .collect();
+                    if let (true, Some(values)) = (can_vm, values) {
+                        let mut evaluated = Vec::with_capacity(values.len());
+                        for ae in values {
                             evaluated.push(self.compile_expr_i(ae));
                         }
                         let arg_base = self.next_i;
@@ -1373,5 +1334,79 @@ impl<'p, 'f> Compiler<'p, 'f> {
             }
             _ => self.emit_fallback_expr_i(expr),
         }
+    }
+
+    /// The registers an inlined pure leaf fn `f` keeps its locals in, its
+    /// arguments compiled into them, and the V registers it boxes locals in;
+    /// `None` for an argument it can't take.
+    fn leaf_locals(
+        &mut self,
+        f: &'p cpl_ir::Function,
+        args: &'p [Arg],
+        span: cpl_diag::Span,
+    ) -> Option<(Vec<SlotLoc>, Vec<u16>)> {
+        let mut map = Vec::with_capacity(f.locals.len());
+        for (i, a) in args.iter().enumerate() {
+            let Arg::Value(ae) = a else { return None };
+            if let Some(kind) = ScalarKind::of_ty(&f.locals.get(i)?.ty, self.program) {
+                let fresh = self.next_i;
+                let src = self.compile_expr_i(ae);
+                // A parameter is never assigned, so it reads its
+                // argument where it already is, unless a later
+                // argument could still change that register.
+                if src >= fresh || i + 1 == args.len() {
+                    map.push(SlotLoc::I(src, kind));
+                } else {
+                    let reg = self.alloc_i();
+                    self.emit(Op::MoveI { dst: reg, src }, span);
+                    map.push(SlotLoc::I(reg, kind));
+                }
+            } else if let Some((len, kinds)) = small_tuple_shape(&f.locals.get(i)?.ty, self.program)
+                .filter(|_| self.small_tuple_is_cheap(ae))
+            {
+                let fresh = self.next_i;
+                let src = self.small_tuple_operand(ae, len);
+                if src >= fresh || i + 1 == args.len() {
+                    map.push(SlotLoc::SmallTuple {
+                        base: src,
+                        len,
+                        kinds,
+                    });
+                } else {
+                    let base = self.next_i;
+                    for k in 0..u16::from(len) {
+                        let reg = self.alloc_i();
+                        self.emit(
+                            Op::MoveI {
+                                dst: reg,
+                                src: src + k,
+                            },
+                            span,
+                        );
+                    }
+                    map.push(SlotLoc::SmallTuple { base, len, kinds });
+                }
+            } else if let ExprKind::Local(slot) = &ae.kind {
+                let SlotLoc::V(r) = self.slot_loc(*slot) else {
+                    return None;
+                };
+                map.push(SlotLoc::V(r));
+            } else {
+                return None;
+            }
+        }
+        let mut boxed = Vec::new();
+        for l in f.locals.iter().skip(args.len()) {
+            if let Some(kind) = ScalarKind::of_ty(&l.ty, self.program) {
+                let reg = self.alloc_i();
+                self.emit(Op::ConstImmI { dst: reg, val: 0 }, span);
+                map.push(SlotLoc::I(reg, kind));
+            } else {
+                let reg = self.inline_v + boxed.len() as u16;
+                boxed.push(reg);
+                map.push(SlotLoc::V(reg));
+            }
+        }
+        Some((map, boxed))
     }
 }

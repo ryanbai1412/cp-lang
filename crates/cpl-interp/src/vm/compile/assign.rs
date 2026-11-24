@@ -710,7 +710,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     && indices.len() == 1
                     && small_tuple_shape(&place.ty, self.program).is_some() =>
             {
-                let (len, _) = small_tuple_shape(&place.ty, self.program).unwrap();
+                let Some((len, _)) = small_tuple_shape(&place.ty, self.program) else {
+                    return false;
+                };
                 let is_max = op == AssignOp::Max;
                 let src_base = self.next_i;
                 self.next_i += len as u16;
@@ -756,7 +758,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     && (indices.len() == 1 || indices.len() == 2)
                     && small_tuple_shape(&place.ty, self.program).is_some() =>
             {
-                let (len, kinds) = small_tuple_shape(&place.ty, self.program).unwrap();
+                let Some((len, kinds)) = small_tuple_shape(&place.ty, self.program) else {
+                    return false;
+                };
                 let src_base = self.next_i;
                 self.next_i += len as u16;
                 match &base.kind {
@@ -1517,18 +1521,21 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge | CmpOp::Eq | CmpOp::Ne
                 )
             {
+                let inv: fn(u16, u16) -> Op = match op {
+                    CmpOp::Lt => |a, b| Op::JmpGeI { a, b, target: 0 },
+                    CmpOp::Le => |a, b| Op::JmpGtI { a, b, target: 0 },
+                    CmpOp::Gt => |a, b| Op::JmpLeI { a, b, target: 0 },
+                    CmpOp::Ge => |a, b| Op::JmpLtI { a, b, target: 0 },
+                    CmpOp::Eq => |a, b| Op::JmpNeI { a, b, target: 0 },
+                    CmpOp::Ne => |a, b| Op::JmpEqI { a, b, target: 0 },
+                    _ => {
+                        let r = self.compile_expr_i(cond);
+                        return self.emit(Op::JmpIfZero { reg: r, target: 0 }, cond.span);
+                    }
+                };
                 let a = self.compile_expr_i(lhs);
                 let b = self.compile_expr_i(rhs);
-                let inv = match op {
-                    CmpOp::Lt => Op::JmpGeI { a, b, target: 0 },
-                    CmpOp::Le => Op::JmpGtI { a, b, target: 0 },
-                    CmpOp::Gt => Op::JmpLeI { a, b, target: 0 },
-                    CmpOp::Ge => Op::JmpLtI { a, b, target: 0 },
-                    CmpOp::Eq => Op::JmpNeI { a, b, target: 0 },
-                    CmpOp::Ne => Op::JmpEqI { a, b, target: 0 },
-                    _ => unreachable!(),
-                };
-                return self.emit(inv, cond.span);
+                return self.emit(inv(a, b), cond.span);
             }
         }
         if let ExprKind::Unary(UnOp::Not, inner) = &cond.kind {

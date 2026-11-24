@@ -262,8 +262,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
             }
             // Only the condition is left to the tree-walker; the branches stay here.
             Stmt::If(cond, then_b, else_b) if cond_writes(cond).is_some() => {
+                let Some(writes) = cond_writes(cond) else {
+                    return false;
+                };
                 let reg = self.emit_fallback_expr_i(cond);
-                for (place, span) in cond_writes(cond).unwrap() {
+                for (place, span) in writes {
                     self.emit_trace(TracePoint::Mutated(place, span), span);
                 }
                 let j_else = self.emit(Op::JmpIfZero { reg, target: 0 }, cond.span);
@@ -331,7 +334,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
             }
             Stmt::Expr(e) if self.traced_yield(e).is_some() => {
-                let (acc, list_v, place, arg, each) = self.traced_yield(e).unwrap();
+                let Some((acc, list_v, place, arg, each)) = self.traced_yield(e) else {
+                    return false;
+                };
                 let back = match arg.kind {
                     ExprKind::Local(slot) if !each => slot as u16 + 1,
                     _ => 0,
@@ -441,7 +446,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
     /// in it traces its own lets as a `let` initializer's would.
     fn traced_quiet_iter(&self, iter: &'p Iter) -> Option<Span> {
         match iter {
-            Iter::Walk { .. } => unreachable!("Iter::Walk is expanded before codegen"),
+            Iter::Walk { .. } => None,
             Iter::Range { lo, hi, step, .. } => (self.traced_quiet(lo)
                 && self.traced_quiet(hi)
                 && step.as_ref().is_none_or(|s| self.traced_quiet(s)))

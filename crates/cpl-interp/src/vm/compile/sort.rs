@@ -14,6 +14,13 @@ pub(super) enum SortKey<'p> {
     Fn(&'p Expr),
 }
 
+/// A sort key: a key expression in the slot, or a key fn's one parameter.
+#[derive(Clone, Copy)]
+enum KeyBy<'p> {
+    Slot(Slot, &'p Expr),
+    Fn(&'p Ty),
+}
+
 /// The parts of a keyed sort statement.
 pub(super) fn sort_key_of(kind: &ExprKind) -> Option<(&Place, SortKey<'_>, Option<&Expr>)> {
     match kind {
@@ -48,10 +55,13 @@ impl<'p, 'f> Compiler<'p, 'f> {
             Ty::Array { dims, .. } if dims.len() == 1 => SeqKind::Array,
             _ => return false,
         };
-        let key_ty = match by {
-            SortKey::Slot(_, key) => &key.ty,
+        let (key_ty, key_by) = match by {
+            SortKey::Slot(slot, key) => (&key.ty, KeyBy::Slot(slot, key)),
             SortKey::Fn(func) => match &func.ty {
-                Ty::Fn(params, ret) if params.len() == 1 => &**ret,
+                Ty::Fn(params, ret) => match params.as_slice() {
+                    [param] => (&**ret, KeyBy::Fn(param)),
+                    _ => return false,
+                },
                 _ => return false,
             },
         };
@@ -120,8 +130,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let body_pc = self.ops.len() as u32;
         let saved_pinned = self.pinned_v;
         self.pinned_v = self.pinned_v.max(r_seq.max(r_keys).max(callee_v) + 1);
-        let key = match by {
-            SortKey::Slot(slot, key) => {
+        let key = match key_by {
+            KeyBy::Slot(slot, key) => {
                 let slot_loc = self.slot_loc(slot);
                 self.emit_seq_load(slot_loc, seq_kind, SeqHeld::Local(r_seq), r_idx, span);
                 if self.traced {
@@ -129,10 +139,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
                 Some(key)
             }
-            SortKey::Fn(func) => {
-                let Ty::Fn(params, _) = &func.ty else {
-                    unreachable!()
-                };
+            KeyBy::Fn(param) => {
                 // A key built in place, such as the bound method `t.key`, is a
                 // temporary the call would take: each round calls a copy.
                 let callee = match callee_v >= self.num_local_v {
@@ -149,7 +156,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     }
                     false => callee_v,
                 };
-                self.emit_seq_call(callee, &params[0], key_kind, seq_kind, r_seq, r_idx, span);
+                self.emit_seq_call(callee, param, key_kind, seq_kind, r_seq, r_idx, span);
                 None
             }
         };

@@ -236,13 +236,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 && !crate::value::ty_has_cached(&args[1].ty, self.program)
                 && !crate::value::keys::user_ordered(&args[1].ty, self.program) =>
             {
-                let mode = match b {
-                    Builtin::FirstGe => 0,
-                    Builtin::FirstGt => 1,
-                    Builtin::LastLe => 2,
-                    Builtin::LastLt => 3,
-                    _ => unreachable!(),
-                };
+                // 0 to 3: `first_ge`, `first_gt`, `last_le`, `last_lt`.
+                let mode = 2 * u8::from(matches!(b, Builtin::LastLe | Builtin::LastLt))
+                    + u8::from(matches!(b, Builtin::FirstGt | Builtin::LastLt));
                 let src_v = self.compile_expr_v(&args[0]);
                 let key_v = self.compile_expr_v(&args[1]);
                 let tmp_v = self.alloc_v();
