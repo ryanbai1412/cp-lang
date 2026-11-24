@@ -828,6 +828,7 @@ fn listen_takes_a_problem_posted_by_the_extension() {
     assert!(notes.contains("ignored a request"), "{notes}");
 }
 
+#[cfg(unix)]
 #[test]
 fn test_judges_memory_against_the_problems_limit() {
     if !cfg!(target_os = "linux") {
