@@ -430,7 +430,7 @@ fn in_receiver_domains(cost: &str, generics: &[(String, Ty)]) -> String {
 
 /// The cost a doc states: its `cost:` fact, in plain text.
 fn cost_of(doc: &str) -> Option<String> {
-    let cost = cpl_syntax::doc::DocText::parse(doc).facts.cost?;
+    let cost = cpl_syntax::doc::Facts::parse(doc).cost?;
     Some(cpl_diag::plain::text(&cost))
 }
 

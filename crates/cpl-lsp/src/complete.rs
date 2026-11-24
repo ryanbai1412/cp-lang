@@ -1105,8 +1105,7 @@ pub fn member_hover(cursor: &Cursor, std: &mut StdLib) -> Option<cpl_check::Hove
         .into_iter()
         .map(|(e, _)| e)
         .find(|e| e.name == text[start..end])?;
-    let cost = cpl_syntax::doc::DocText::parse(&entry.doc)
-        .facts
+    let cost = cpl_syntax::doc::Facts::parse(&entry.doc)
         .cost
         .filter(|c| c.starts_with("O("))
         .map(|c| cpl_diag::plain::text(&c));
