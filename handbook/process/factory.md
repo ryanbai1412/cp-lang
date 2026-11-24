@@ -28,7 +28,8 @@ factory fast.
 
 - **Lanes.** One agent per domain. It owns its domain's code, its charter in
   `handbook/domains/`, and its plan, metrics and worklog in
-  `plan/domains/<domain>/`.
+  `plan/domains/<domain>/`. About 5% of its time is a standing hunt for
+  debt no counter sees ([domains](../domains/README.md)).
 - **Helpers.** A lane may start short-lived helper agents for parallel work
   inside its domain. The lane stays accountable for what they land.
 - **The coordinator.** Starts and briefs lanes, reads every lane's reports,
