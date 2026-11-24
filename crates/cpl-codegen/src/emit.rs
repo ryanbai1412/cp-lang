@@ -666,14 +666,40 @@ impl<'p> Emitter<'p> {
         }
         self.cold_ret =
             self.ty_with_elem_layout(&f.ret, self.elem_layout(cpl_ir::ElemLoc::FnRet(id)));
-        let scalar = |s: usize| f.locals[s].ty.is_scalar();
-        let present = |s: usize| f.locals[s].ty != Ty::Unit && !self.devirt.dead_local(Some(id), s);
-        crate::frame::cold_suffixes(&crate::frame::Fn {
-            program: self.program,
-            id,
-            scalar: &scalar,
-            present: &present,
-        })
+        let program = self.program;
+        let origin = crate::instance_origin(&f.name);
+        let ids: Vec<usize> = std::iter::once(id)
+            .chain((0..program.fns.len()).filter(|&g| {
+                g != id
+                    && self.devirt.recursive_fns.contains(&g)
+                    && crate::instance_origin(&program.fns[g].name) == origin
+            }))
+            .collect();
+        let devirt = &self.devirt;
+        type Of<'a> = Box<dyn Fn(usize) -> bool + 'a>;
+        let scalar: Vec<Of> = ids
+            .iter()
+            .map(|&g| Box::new(move |s: usize| program.fns[g].locals[s].ty.is_scalar()) as Of)
+            .collect();
+        let present: Vec<Of> = ids
+            .iter()
+            .map(|&g| {
+                Box::new(move |s: usize| {
+                    program.fns[g].locals[s].ty != Ty::Unit && !devirt.dead_local(Some(g), s)
+                }) as Of
+            })
+            .collect();
+        let fns: Vec<crate::frame::Fn> = ids
+            .iter()
+            .enumerate()
+            .map(|(k, &g)| crate::frame::Fn {
+                program,
+                id: g,
+                scalar: &*scalar[k],
+                present: &*present[k],
+            })
+            .collect();
+        crate::frame::cold_suffixes(&fns[0], &fns[1..])
     }
 
     /// The fn's C++ signature, and the parameter whose place it lends

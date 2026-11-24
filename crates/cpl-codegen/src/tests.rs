@@ -1214,3 +1214,38 @@ fn a_record_spread_of_a_local_reads_its_fields_without_a_lambda() {
     ));
     assert!(!cpp.contains("[&]()"), "{cpp}");
 }
+
+#[test]
+fn a_cold_branch_keeps_the_instances_of_a_generic_fn_one_template() {
+    let source = concat!(
+        "fn below<T: Ord>(xs: List<T>, n: Int, x: T) -> Int:\n",
+        "    if n == 0: return 0\n",
+        "    let r = below(xs, n - 1, x)\n",
+        "    let y = xs[n % xs.len]\n",
+        "    let up = if y < x: 1 else: 0\n",
+        "    r + up\n",
+        "print(below([3, 1, 2], 4, 2), below([(1, 2), (0, 5)], 3, (1, 0)))\n",
+    );
+    let out = cpp(source);
+    let heads: Vec<&str> = out
+        .lines()
+        .filter(|l| l.contains("__attribute__((noinline))"))
+        .collect();
+    assert_eq!(heads.len(), 2, "{out}");
+    assert_eq!(
+        heads[0], heads[1],
+        "the Int and the tuple instance differ:\n{out}"
+    );
+    assert!(heads[0].contains("auto&& x"), "{out}");
+    let program = lower(source);
+    let fitted = crate::emit_aiming(
+        &program,
+        "t.cp",
+        source,
+        (1, 1 << 20),
+        &crate::Target::default(),
+    )
+    .unwrap_or_else(|f| f);
+    assert!(!fitted.folded.is_empty(), "{}", fitted.cpp);
+    assert_eq!(fitted.cpp.matches("noinline").count(), 1, "{}", fitted.cpp);
+}

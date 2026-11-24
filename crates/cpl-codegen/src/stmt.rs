@@ -102,15 +102,9 @@ impl<'p> Emitter<'p> {
         }
         let params: Vec<String> = inputs
             .iter()
-            .map(|&(s, by_value)| {
-                format!(
-                    "{} {}",
-                    if by_value { "auto" } else { "auto&&" },
-                    self.names[s]
-                )
-            })
+            .map(|&s| format!("auto&& {}", self.names[s]))
             .collect();
-        let args: Vec<String> = inputs.iter().map(|&(s, _)| self.names[s].clone()).collect();
+        let args: Vec<String> = inputs.iter().map(|&s| self.names[s].clone()).collect();
         let head = format!(
             "return [&]({}) __attribute__((noinline)) -> {} {{",
             params.join(", "),

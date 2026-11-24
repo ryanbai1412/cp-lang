@@ -76,7 +76,8 @@ the heap. Locals of plain types live in registers or the stack.
 - A recursive fn's frame is the size of its largest branch at every
   level. A tail branch that holds locals and cannot call back into the
   recursion is emitted out of line, so its locals sit in one frame at the
-  leaf instead of every frame on the path. (R13.3.6)
+  leaf instead of every frame on the path. The instances of one generic
+  fn move out the same branches, so they stay one template. (R13.3.6)
 
 ## 13.4 Ownership
 

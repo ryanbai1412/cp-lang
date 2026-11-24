@@ -546,6 +546,16 @@ fn instance_origins(
     target: &Target,
 ) -> std::collections::BTreeMap<String, String> {
     let program = prepared(program, target);
+    program
+        .fns
+        .iter()
+        .map(|f| (names::fn_name(&f.name), instance_origin(&f.name)))
+        .collect()
+}
+
+/// The generic fn the fn named `name` is an instance of, with the number
+/// of a clone `split` made (`_k0`) dropped too.
+pub(crate) fn instance_origin(name: &str) -> String {
     let clone = |segment: &str| {
         let mut s = segment;
         while let Some((head, n)) = s.rsplit_once("_k") {
@@ -556,15 +566,8 @@ fn instance_origins(
         }
         s.to_string()
     };
-    program
-        .fns
-        .iter()
-        .map(|f| {
-            let origin = unmangled(&f.name);
-            let origin: Vec<String> = origin.split('.').map(clone).collect();
-            (names::fn_name(&f.name), origin.join("."))
-        })
-        .collect()
+    let origin: Vec<String> = unmangled(name).split('.').map(clone).collect();
+    origin.join(".")
 }
 
 #[cfg(test)]

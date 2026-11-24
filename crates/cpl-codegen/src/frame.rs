@@ -9,9 +9,9 @@ use crate::walk;
 use cpl_ir::{Arg, Block, Expr, ExprKind, FnId, Program, Stmt};
 use std::collections::{BTreeMap, BTreeSet};
 
-/// The outer locals a cold suffix reads, each with whether it is passed by
-/// value (a scalar it never writes) or by reference.
-pub(crate) type Inputs = Vec<(usize, bool)>;
+/// The outer locals a cold suffix reads, each passed by reference whatever
+/// its type, so the instances of a generic fn still differ only in types.
+pub(crate) type Inputs = Vec<usize>;
 
 /// Where a cold suffix starts: its block, by address, and statement index.
 pub(crate) type At = (*const Block, usize);
@@ -25,21 +25,55 @@ pub(crate) struct Fn<'a> {
     pub present: &'a dyn std::ops::Fn(usize) -> bool,
 }
 
-/// The cold suffixes of the fn's body, with their inputs.
-pub(crate) fn cold_suffixes(f: &Fn) -> BTreeMap<At, Inputs> {
-    let reach = effects::reaching(f.program, f.id);
-    let mut cold = BTreeMap::new();
-    tail_block(f, &reach, &f.program.fns[f.id].body, true, &mut cold);
-    cold
+/// A suffix that can leave the frame: where it starts, by address and by
+/// its path of statement and branch indices (alike in every instance of a
+/// generic fn), and whether it holds enough to be worth it.
+struct Candidate {
+    path: Vec<usize>,
+    at: At,
+    heavy: bool,
+    inputs: Inputs,
 }
 
-/// `b` returns on every path, or falls off the end of the fn.
+/// The cold suffixes of the fn's body, with their inputs. A suffix that is
+/// heavy in one of `siblings`, the other instances of the same generic fn,
+/// is cold in each: whether a local is a scalar differs from one instance
+/// to the next, and instances whose suffixes split alike stay one template.
+pub(crate) fn cold_suffixes(f: &Fn, siblings: &[Fn]) -> BTreeMap<At, Inputs> {
+    let heavy_in_some: BTreeSet<Vec<usize>> = siblings
+        .iter()
+        .flat_map(candidates)
+        .filter(|c| c.heavy)
+        .map(|c| c.path)
+        .collect();
+    candidates(f)
+        .into_iter()
+        .filter(|c| c.heavy || heavy_in_some.contains(&c.path))
+        .map(|c| (c.at, c.inputs))
+        .collect()
+}
+
+fn candidates(f: &Fn) -> Vec<Candidate> {
+    let reach = effects::reaching(f.program, f.id);
+    let mut out = Vec::new();
+    tail_block(
+        f,
+        &reach,
+        &f.program.fns[f.id].body,
+        &mut Vec::new(),
+        &mut out,
+    );
+    out
+}
+
+/// `b` returns on every path, or falls off the end of the fn; `path` leads
+/// to it from the body, which it is when empty.
 fn tail_block(
     f: &Fn,
     reach: &BTreeSet<FnId>,
     b: &Block,
-    root: bool,
-    cold: &mut BTreeMap<At, Inputs>,
+    path: &mut Vec<usize>,
+    out: &mut Vec<Candidate>,
 ) {
     let hot: Vec<bool> = b
         .stmts
@@ -47,31 +81,33 @@ fn tail_block(
         .map(|s| effects::calls_back(f.program, reach, s))
         .collect();
     let Some(last) = hot.iter().rposition(|&h| h) else {
-        if !root {
-            note(f, b, 0, cold);
+        if !path.is_empty() {
+            note(f, b, 0, path, out);
         }
         return;
     };
     // A suffix that can't move out whole may still have branches that can.
-    let upto = if note(f, b, last + 1, cold) {
+    let upto = if note(f, b, last + 1, path, out) {
         last + 1
     } else {
         b.stmts.len()
     };
     for (i, stmt) in b.stmts[..upto].iter().enumerate() {
         if let Stmt::If(_, then, otherwise) = stmt {
-            for branch in [then, otherwise] {
+            for (k, branch) in [then, otherwise].into_iter().enumerate() {
                 if returns(&branch.stmts) || i + 1 == b.stmts.len() {
-                    tail_block(f, reach, branch, false, cold);
+                    path.extend([i, k]);
+                    tail_block(f, reach, branch, path, out);
+                    path.truncate(path.len() - 2);
                 }
             }
         }
     }
 }
 
-/// Records `b.stmts[start..]` when it is worth its own frame; true when
-/// it is, or when it is empty.
-fn note(f: &Fn, b: &Block, start: usize, cold: &mut BTreeMap<At, Inputs>) -> bool {
+/// Records `b.stmts[start..]` as a candidate; true when it can leave the
+/// frame, or when it is empty.
+fn note(f: &Fn, b: &Block, start: usize, path: &[usize], out: &mut Vec<Candidate>) -> bool {
     let suffix = &b.stmts[start..];
     if suffix.is_empty() {
         return true;
@@ -82,9 +118,12 @@ fn note(f: &Fn, b: &Block, start: usize, cold: &mut BTreeMap<At, Inputs>) -> boo
     let suffix = Block {
         stmts: suffix.to_vec(),
     };
-    if heavy(f, &suffix) {
-        cold.insert((b as *const Block, start), inputs(f, &suffix));
-    }
+    out.push(Candidate {
+        path: [path, &[start]].concat(),
+        at: (b as *const Block, start),
+        heavy: heavy(f, &suffix),
+        inputs: inputs(f, &suffix),
+    });
     true
 }
 
@@ -149,10 +188,9 @@ fn heavy(f: &Fn, b: &Block) -> bool {
 /// What `b` reads from before it.
 fn inputs(f: &Fn, b: &Block) -> Inputs {
     let inner = declared(b);
-    let (mut read, mut written) = (BTreeSet::new(), BTreeSet::new());
-    let mut write = |p: &cpl_ir::Place, read: &mut BTreeSet<usize>| {
+    let mut read = BTreeSet::new();
+    let write = |p: &cpl_ir::Place, read: &mut BTreeSet<usize>| {
         if let (false, slot) = walk::root(p) {
-            written.insert(slot);
             read.insert(slot);
         }
     };
@@ -179,6 +217,5 @@ fn inputs(f: &Fn, b: &Block) -> Inputs {
     });
     read.into_iter()
         .filter(|s| !inner.contains(s) && (f.present)(*s))
-        .map(|s| (s, (f.scalar)(s) && !written.contains(&s)))
         .collect()
 }
