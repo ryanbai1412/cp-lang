@@ -130,7 +130,7 @@
   "cpp_std_functions": 93,
   "cpp_sunk_copies": 16,
   "codegen_effect_guesses": 0,
-  "near_dup_fns": 11,
+  "near_dup_fns": 10,
   "consumer_rederived": 39,
   "rs_near_cap": [
     "crates/cpl-check/src/db.rs",

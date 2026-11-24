@@ -9,6 +9,7 @@ use std.algebra.{Monoid, Semiring}
 use std.math.{mul_mod, bit, ceil_div}
 use std.mod.{Mod}
 use std.rand.{Rng}
+use std.spec.{berlekamp_massey}
 use std.seq.{collect}
 
 const SEED = 998_244_353
@@ -1283,38 +1284,12 @@ fn wiedemann<P>(
         for k in 0..n: dot += u[k] * v[k]
         seq.push(dot)
         v = sparse_apply(n, entries, diag, v)
-    let c = berlekamp_massey(seq)
-    let deg = c.len - 1
+    let r = berlekamp_massey(seq)
+    let deg = r.len
     var f = List.filled(deg + 1, Mod<P>(0))
-    for i in 0..=deg: f[deg - i] = c[i]
+    f[deg] = Mod<P>(1)
+    for i in 1..=deg: f[deg - i] = Mod<P>(0) - r[i - 1]
     (f:, diag:, singular: deg >= 1 and f[0] == Mod<P>(0))
-
-fn berlekamp_massey<P>(s: List<Mod<P>>) -> List<Mod<P>>:
-    var cur: List<Mod<P>> = [Mod<P>(1)]
-    var prev: List<Mod<P>> = [Mod<P>(1)]
-    var len = 0
-    var shift = 1
-    var last = Mod<P>(1)
-    for i in 0..s.len:
-        var d = s[i]
-        for j in 1..=min(len, cur.len - 1): d += cur[j] * s[i - j]
-        if d == Mod<P>(0):
-            shift += 1
-            continue
-        let coef = d / last
-        var next = cur.clone()
-        while next.len < prev.len + shift: next.push(Mod<P>(0))
-        for j in 0..prev.len: next[j + shift] -= coef * prev[j]
-        if 2 * len <= i:
-            len = i + 1 - len
-            prev = cur
-            last = d
-            shift = 1
-        else:
-            shift += 1
-        cur = next
-    while cur.len < len + 1: cur.push(Mod<P>(0))
-    [cur[i] for i in 0..=len]
 
 /// Maximize `c . x` subject to `a * x <= b`, `x >= 0`; `None` if infeasible or unbounded.
 ///
