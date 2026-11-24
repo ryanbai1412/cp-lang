@@ -187,8 +187,10 @@ library or by this spec:
   bound the call no longer needs); `to` may drop one of those only when it
   matched an expression that calls nothing. `to` calls the fn by name or
   as a method or getter (`xs.f`). A lint named like a `spec/lints` record
-  reports as that record: its code, level and explanation. `from` does not
-  match an assigned place (`xs[i] = v`) or the base it indexes.
+  reports as that record: its code, level and explanation, and with no fix
+  when the record gives `no_fix` (its `to` is then only the advice).
+  `from` does not match an assigned place (`xs[i] = v`) or the base it
+  indexes.
   It applies in every file that uses the module, and in the module outside
   the fn. E0505 (`bad_library_lint`) when `@lint` is not on a fn, lacks a
   name, `from:` or `to:`, when `from` or `to` is not one expression or

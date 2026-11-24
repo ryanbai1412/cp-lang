@@ -161,3 +161,20 @@ fn a_lint_has_spellings_and_skips_assigned_places() {
     assert_eq!(found(read), ["end(a)", "end(a)"]);
     assert!(found("var a = [3, 1]\na[a.len - 1] = 0\nprint(a)\n").is_empty());
 }
+
+/// A lint named like a record with `no_fix` still names `to`, but offers no
+/// fix: `yes(ok)` prints the judge profile's words, which may not be the
+/// ones written (decision 301).
+/// Rule: R06.4.9, spec/core/06-control-functions.md.
+#[test]
+fn a_record_with_no_fix_keeps_a_library_lint_to_advice() {
+    let decl = "@lint(bool_ternary_print, from: \"if ok: \\\"YES\\\" else: \\\"NO\\\"\", to: \"word(ok)\")\npub fn word(ok: Bool) -> Str = yes(ok)\n";
+    let src = format!("{decl}let n: Int = read()\nprint(if n > 0: \"YES\" else: \"NO\")\n");
+    let found: Vec<_> = crate::lint(&src, &crate::Config::default())
+        .into_iter()
+        .filter(|d| d.message == "write `word(n > 0)`")
+        .collect();
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert_eq!(found[0].code.0, "L0524");
+    assert!(found[0].fixes.is_empty(), "{:?}", found[0].fixes);
+}

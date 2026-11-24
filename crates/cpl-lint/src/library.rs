@@ -322,7 +322,9 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                     "{from} declares this lint with `@lint` on `{}`",
                     d.decl.fn_name
                 ));
-            diag.fix(format!("use `{}`", d.decl.fn_name), span, fix);
+            if d.lint.no_fix.is_none() {
+                diag.fix(format!("use `{}`", d.decl.fn_name), span, fix);
+            }
             out.push(Finding { lint: d.lint, diag });
         }
     }
