@@ -250,7 +250,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 self.read(spec, span, &given)?
             }
             ExprKind::Builtin(op, args) => self.builtin_values(*op, args, e, vals)?,
-            ExprKind::Intrinsic(p, _) => crate::intrinsic(*p, &vals),
+            ExprKind::Intrinsic(p, _) => crate::intrinsic(*p, &vals, span)?,
             ExprKind::Index(base, _) => self.index_value(&vals[0], &vals[1..], &base.ty, span)?,
             ExprKind::Binary(op, ..) => {
                 let mut vals = vals.into_iter();

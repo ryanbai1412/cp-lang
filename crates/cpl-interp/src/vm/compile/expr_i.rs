@@ -556,7 +556,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.emit(op, span);
                 dst
             }
-            ExprKind::Builtin(Builtin::Abs, args)
+            ExprKind::Intrinsic(Prim::Abs, args)
                 if args.len() == 1 && matches!(expr.ty, Ty::Int) =>
             {
                 let a = self.compile_expr_i(&args[0]);

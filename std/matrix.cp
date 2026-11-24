@@ -6,7 +6,7 @@
 //! Over an ordered `T` such as `F64` elimination pivots on the largest `abs` entry and treats an
 //! entry within the `eps:` argument of zero as zero.
 use std.algebra.{Monoid, Semiring}
-use std.math.{mul_mod, bit, ceil_div}
+use std.math.{abs, mul_mod, bit, ceil_div}
 use std.mod.{Mod}
 use std.rand.{Rng}
 use std.seq.{collect}

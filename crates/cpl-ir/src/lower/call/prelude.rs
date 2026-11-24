@@ -387,24 +387,7 @@ impl<'a> Lowerer<'a> {
                 };
                 self.reduce(kind, exprs[0], span)
             }
-            "abs" => {
-                let Some(exprs) = self.positional_any(name, args, 1, span) else {
-                    return self.err_expr(span);
-                };
-                let value = self.expr(exprs[0], None);
-                match value.ty {
-                    Ty::Int | Ty::I128 | Ty::Float => {
-                        let ty = value.ty.clone();
-                        self.mk_builtin(Builtin::Abs, [value], ty, span)
-                    }
-                    Ty::Error => value,
-                    _ => {
-                        self.mismatch(exprs[0].span, &Ty::Int, &value.ty);
-                        self.err_expr(span)
-                    }
-                }
-            }
-            "sqrt" | "atan2" | "sin" | "cos" | "tan" | "asin" | "acos" | "exp" | "ln" | "hypot" => {
+            "atan2" | "sin" | "cos" | "tan" | "asin" | "acos" | "exp" | "ln" | "hypot" => {
                 self.float_fn(name, args, span)
             }
             // A program that flushes is read by someone who answers: it
@@ -522,22 +505,6 @@ impl<'a> Lowerer<'a> {
                     }
                 };
                 self.sort_place(place, &elem, &args[1..], span)
-            }
-            // Toward zero: what `Int(x)` used to mean without saying so.
-            "trunc" => match self.one_arg(name, args, &Ty::Float, span) {
-                Some(value) => self.cast(Cast::FloatToInt, value, Ty::Int),
-                None => self.err_expr(span),
-            },
-            "floor" | "ceil" | "round" => {
-                let op = match name {
-                    "floor" => Builtin::Floor,
-                    "ceil" => Builtin::Ceil,
-                    _ => Builtin::Round,
-                };
-                match self.one_arg(name, args, &Ty::Float, span) {
-                    Some(value) => self.mk_builtin(op, [value], Ty::Int, span),
-                    None => self.err_expr(span),
-                }
             }
             "len" => {
                 let Some(exprs) = self.positional_any(name, args, 1, span) else {
@@ -809,11 +776,10 @@ impl<'a> Lowerer<'a> {
                 self.report(span, msgs::ir::TYPE_MISMATCH_INT_OF_AN_F64.at(&[]));
                 // `Int(sqrt(n))`, C++'s `(int)sqrt(n)`: the exact root is `n.isqrt`.
                 let root = match &value.kind {
-                    ExprKind::Builtin(Builtin::Sqrt, args)
-                        if matches!(
-                            args.first().map(|a| &a.kind),
-                            Some(ExprKind::Cast(Cast::IntToFloat, _))
-                        ) =>
+                    ExprKind::Intrinsic(Prim::Sqrt, args)
+                        if args.first().is_some_and(|a| {
+                            a.ty == Ty::Int || matches!(a.kind, ExprKind::Cast(Cast::IntToFloat, _))
+                        }) =>
                     {
                         super::float_fn::sqrt_operand(&self.source(span))
                     }

@@ -11,7 +11,7 @@ fn a_prelude_call_hovers_its_doc_and_the_cost_of_its_shape() {
     db.set_file("a.cp", src);
     let abs = db.hover("a.cp", at("abs")).unwrap();
     assert_eq!((abs.span.start, abs.span.end), (at("abs"), at("abs") + 3));
-    assert_eq!(abs.text, "abs: built-in\ncost: O(1)");
+    assert_eq!(abs.text, "fn abs<N>(self: N) -> N\ncost: O(1)");
     assert!(abs.doc.unwrap().starts_with("The absolute value"));
     let cost = |db: &mut Database, needle| db.hover("a.cp", at(needle)).unwrap().text;
     assert_eq!(cost(&mut db, "max("), "max: built-in\ncost: O(1)");

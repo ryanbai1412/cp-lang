@@ -50,16 +50,6 @@ impl<'p> Emitter<'p> {
                     text(1)
                 ))
             }
-            Builtin::Abs if e.ty == Ty::Float => Code::primary(format!("std::fabs({})", text(0))),
-            Builtin::Abs if e.ty == Ty::I128 => {
-                self.need("abs128");
-                Code::primary(format!("cpl::abs128({})", text(0)))
-            }
-            Builtin::Abs => Code::primary(format!("std::abs({})", widen(&codes[0]).text)),
-            Builtin::Sqrt => {
-                self.need("fsqrt");
-                Code::primary(format!("cpl::fsqrt({})", text(0)))
-            }
             Builtin::Flush => {
                 self.need("out");
                 Code::primary("(cpl::flush(), fflush(stdout))".to_string())
@@ -78,15 +68,6 @@ impl<'p> Emitter<'p> {
                 self.need("farc");
                 let f = if op == Builtin::Asin { "asin" } else { "acos" };
                 Code::primary(format!("cpl::f{f}({})", text(0)))
-            }
-            Builtin::Floor | Builtin::Ceil | Builtin::Round => {
-                self.need("narrow");
-                let f = match op {
-                    Builtin::Floor => "floor",
-                    Builtin::Ceil => "ceil",
-                    _ => "round",
-                };
-                Code::primary(format!("cpl::to_int(std::{f}({}))", text(0)))
             }
             Builtin::CountQuery => {
                 self.need("count_query");

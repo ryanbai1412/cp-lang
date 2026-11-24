@@ -506,6 +506,57 @@ impl Word for U64:
 /// example: `popcount(U64(11)) == 3`
 pub fn popcount<W: Word>(x: W) -> Int = @intrinsic("popcount")
 
+/// `Int`, `I128` or `F64`: has an `abs`.
+pub trait Signed
+
+impl Signed for Int
+impl Signed for I128
+impl Signed for F64
+
+/// `Int` or `F64`: has a `sqrt`.
+pub trait Real
+
+impl Real for Int
+impl Real for F64
+
+/// The absolute value of `x`, of its type.
+///
+/// cost: \(O(1)\)
+/// traps: when an integer has none (`abs(Int.MIN)`)
+/// example: `(-2.5).abs == 2.5`
+@get pub fn abs<N: Signed>(self: N) -> N = @intrinsic("abs")
+
+/// The square root of `x` as an `F64`.
+///
+/// cost: \(O(1)\)
+/// traps: when `x < 0`
+/// example: `sqrt(16) == 4.0`
+@get pub fn sqrt<N: Real>(self: N) -> F64 = @intrinsic("sqrt")
+
+/// `x` rounded down to an `Int`; traps outside `Int`.
+///
+/// cost: \(O(1)\)
+/// example: `(-2.5).floor == -3`
+@get pub fn floor(self: F64) -> Int = @intrinsic("floor")
+
+/// `x` rounded up to an `Int`; traps outside `Int`.
+///
+/// cost: \(O(1)\)
+/// example: `(-2.5).ceil == -2`
+@get pub fn ceil(self: F64) -> Int = @intrinsic("ceil")
+
+/// `x` rounded to an `Int`, halves away from zero; traps outside `Int`.
+///
+/// cost: \(O(1)\)
+/// example: `(-2.5).round == -3`
+@get pub fn round(self: F64) -> Int = @intrinsic("round")
+
+/// `x` rounded toward zero to an `Int`; traps outside `Int`.
+///
+/// cost: \(O(1)\)
+/// example: `(-2.5).trunc == -2`
+@get pub fn trunc(self: F64) -> Int = @intrinsic("trunc")
+
 /// The number of bits needed to write `x >= 0`: `bit_len(0) == 0`, `bit_len(5) == 3`.
 ///
 /// cost: \(O(1)\)

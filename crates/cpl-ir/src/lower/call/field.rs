@@ -929,24 +929,6 @@ impl<'a> Lowerer<'a> {
             // Default `Target::to` trait getter on plain values (e.g. vertices yielded by `u => adj[u]`).
             (_, "to") => value,
             // `Hashable::hash_token` of a position, until a blanket domain impl's getter reaches it.
-            // A number's math reads either way: `sqrt(x)` or `x.sqrt`.
-            (Ty::Float, "sqrt") => self.mk_builtin(Builtin::Sqrt, [value], Ty::Float, span),
-            (Ty::Int, "sqrt") => {
-                let value = self.coerce(value, &Ty::Float, span);
-                self.mk_builtin(Builtin::Sqrt, [value], Ty::Float, span)
-            }
-            (Ty::Float, "floor" | "ceil" | "round") => {
-                let op = match name.text.as_str() {
-                    "floor" => Builtin::Floor,
-                    "ceil" => Builtin::Ceil,
-                    _ => Builtin::Round,
-                };
-                self.mk_builtin(op, [value], Ty::Int, span)
-            }
-            (Ty::Float, "trunc") => self.cast(Cast::FloatToInt, value, Ty::Int),
-            (Ty::Int | Ty::I128 | Ty::Float, "abs") => {
-                self.mk_builtin(Builtin::Abs, [value], ty.clone(), span)
-            }
             _ => {
                 // A getter an impl gives a non-struct type (`'a'.hash_token`, `v.tk` for a domain).
                 if let Some(fid) = self.value_impl_method(&ty, &name.text) {

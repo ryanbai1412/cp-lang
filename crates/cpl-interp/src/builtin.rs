@@ -44,34 +44,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 }
                 best
             }
-            Builtin::Abs => match first {
-                Value::Int(v) => match v.checked_abs() {
-                    Some(v) => Value::Int(v),
-                    None => {
-                        return trap(
-                            span,
-                            format!(
-                                "integer overflow: `abs({v})` does not fit in an `Int` (64 bits)"
-                            ),
-                        )
-                    }
-                },
-                Value::I128(v) => match v.get().checked_abs() {
-                    Some(v) => Value::I128(v.into()),
-                    None => {
-                        return trap(
-                            span,
-                            format!(
-                                "integer overflow: `abs({v})` does not fit in an `I128` (128 bits)"
-                            ),
-                        )
-                    }
-                },
-                Value::Float(v) => Value::Float(v.abs()),
-                other => other,
-            },
-            Builtin::Sqrt
-            | Builtin::Atan2
+            Builtin::Atan2
             | Builtin::Sin
             | Builtin::Cos
             | Builtin::Tan
@@ -83,14 +56,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             Builtin::Flush => {
                 self.write_out(true);
                 Value::Unit
-            }
-            Builtin::Floor | Builtin::Ceil | Builtin::Round => {
-                let v = match op {
-                    Builtin::Floor => first.float().floor(),
-                    Builtin::Ceil => first.float().ceil(),
-                    _ => first.float().round(),
-                };
-                float_int(v, span)?
             }
             Builtin::CountQuery => {
                 self.queries += 1;

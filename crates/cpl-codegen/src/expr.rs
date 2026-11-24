@@ -949,12 +949,18 @@ impl<'p> Emitter<'p> {
             }
             ExprKind::Intrinsic(p, args) => {
                 let operands: Vec<&Expr> = args.iter().collect();
+                let ty = match args.first().map(|a| &a.ty) {
+                    Some(Ty::Float) => "F64",
+                    Some(Ty::I128) => "I128",
+                    Some(Ty::U64) => "U64",
+                    _ => "Int",
+                };
                 self.sequence(&operands, &e.ty, |this, codes| {
-                    if let Some(need) = p.entry().need {
+                    if let Some(need) = p.form(ty).need {
                         this.need(need);
                     }
                     let texts: Vec<String> = codes.into_iter().map(|c| c.text).collect();
-                    Code::new(p.cpp(&texts), crate::emit::UNARY)
+                    Code::new(p.cpp(ty, &texts), crate::emit::UNARY)
                 })
             }
             ExprKind::Builtin(op, args) => {

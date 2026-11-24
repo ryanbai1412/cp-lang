@@ -1153,7 +1153,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             ExprKind::Builtin(op, args) => self.builtin(*op, args, e)?,
             ExprKind::Intrinsic(p, args) => {
                 let vals = args.iter().map(|a| self.eval(a)).collect::<Res<Vec<_>>>()?;
-                intrinsic(*p, &vals)
+                intrinsic(*p, &vals, e.span)?
             }
             ExprKind::MutSlice(place, lo, hi) => {
                 let lo = self.eval(lo)?.int();
@@ -1782,21 +1782,24 @@ const NO_GRADER: &str =
     "this fn has no body: the judge's grader supplies it, so there is nothing to run here";
 /// The 64 bits of an `Int` or a `U64`.
 /// The table's VM implementation of `p` on `vals` (R12.14.3).
-pub(crate) fn intrinsic(p: Prim, vals: &[Value]) -> Value {
+pub(crate) fn intrinsic(p: Prim, vals: &[Value], span: Span) -> Res<Value> {
     let args: Vec<Scalar> = (vals.iter())
         .map(|v| match v {
             Value::U64(b) => Scalar::U64(*b),
+            Value::I128(b) => Scalar::I128(b.get()),
             Value::Float(f) => Scalar::F64(*f),
             Value::Bool(b) => Scalar::Bool(*b),
             other => Scalar::Int(other.int()),
         })
         .collect();
-    match p.run(&args) {
-        Scalar::Int(v) => Value::Int(v),
-        Scalar::U64(v) => Value::U64(v),
-        Scalar::F64(v) => Value::Float(v),
-        Scalar::Bool(v) => Value::Bool(v),
-    }
+    Ok(match p.run(&args) {
+        Ok(Scalar::Int(v)) => Value::Int(v),
+        Ok(Scalar::I128(v)) => Value::I128(v.into()),
+        Ok(Scalar::U64(v)) => Value::U64(v),
+        Ok(Scalar::F64(v)) => Value::Float(v),
+        Ok(Scalar::Bool(v)) => Value::Bool(v),
+        Err(message) => return trap(span, message),
+    })
 }
 
 fn bits64(value: &Value) -> u64 {

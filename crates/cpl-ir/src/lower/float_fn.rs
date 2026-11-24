@@ -1,4 +1,4 @@
-//! The `F64` intrinsics: `sqrt`, `atan2`, `hypot`, `exp`, `ln` and the trigonometric fns.
+//! The `F64` intrinsics: `atan2`, `hypot`, `exp`, `ln` and the trigonometric fns.
 
 use super::*;
 
@@ -17,7 +17,6 @@ impl Lowerer<'_> {
             return self.mk_builtin(op, [a, b], Ty::Float, span);
         }
         let op = match name {
-            "sqrt" => Builtin::Sqrt,
             "sin" => Builtin::Sin,
             "cos" => Builtin::Cos,
             "tan" => Builtin::Tan,

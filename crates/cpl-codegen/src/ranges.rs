@@ -947,7 +947,7 @@ impl<'p> Facts<'p> {
                 _ => Unknown,
             },
             ExprKind::Builtin(Builtin::Len | Builtin::AxisLen, _) => NonNeg,
-            ExprKind::Builtin(Builtin::Abs, _) => NonNeg,
+            ExprKind::Intrinsic(cpl_ir::Prim::Abs, _) => NonNeg,
             ExprKind::Builtin(Builtin::WrapAdd | Builtin::WrapMul, a) => {
                 match self.plain_wrap(fn_id, e) {
                     Some(BinOp::Add) => match (of(&a[0]), of(&a[1])) {

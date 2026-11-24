@@ -5,8 +5,6 @@ use super::*;
 /// `op` applied to `x` (and `y`, for `atan2` and `hypot`), trapping where the result would be NaN.
 pub(crate) fn eval(op: Builtin, x: f64, y: Option<Value>, span: Span) -> Res<Value> {
     Ok(Value::Float(match op {
-        Builtin::Sqrt if x < 0.0 => return trap(span, format!("sqrt({x}) of a negative number")),
-        Builtin::Sqrt => x.sqrt(),
         Builtin::Atan2 => x.atan2(y.unwrap_or_default().float()),
         Builtin::Hypot => x.hypot(y.unwrap_or_default().float()),
         Builtin::Exp => x.exp(),

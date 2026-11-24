@@ -875,12 +875,10 @@ pub enum Builtin {
     /// Smallest and largest of two or more values of one type.
     Min,
     Max,
-    Abs,
     /// `Int` `+`, `-` and `*` inside `unchecked:`: wrap at 64 bits.
     WrapAdd,
     WrapSub,
     WrapMul,
-    Sqrt,
     Atan2,
     /// `sin`, `cos`, `tan`, `asin`, `acos` of an `F64`, in radians.
     Sin,
@@ -894,9 +892,6 @@ pub enum Builtin {
     Hypot,
     /// `flush()`: what was printed so far is written out now.
     Flush,
-    Floor,
-    Ceil,
-    Round,
     /// `ask(.., limit: K)`: counts the query and fails past `K` of them.
     CountQuery,
     /// Switches `read()` between the hidden test and what the solution

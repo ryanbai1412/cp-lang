@@ -2,6 +2,7 @@ use super::{Compiler, GiveTarget};
 use crate::value::Value;
 use crate::vm::ir::*;
 use cpl_diag::Span;
+use cpl_ir::Prim;
 use cpl_ir::{
     BinOp, Builtin, Cast, Expr, ExprKind, FmtArg, FmtPiece, Mutation, Place, PlaceKind, Stmt, Ty,
 };
@@ -784,7 +785,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.emit(Op::IntToFloat { dst, src }, span);
                 dst
             }
-            ExprKind::Builtin(Builtin::Sqrt, args) if args.len() == 1 => {
+            ExprKind::Intrinsic(Prim::Sqrt, args) if args.len() == 1 && args[0].ty == Ty::Float => {
                 let src = self.compile_expr_v(&args[0]);
                 let dst = self.alloc_v();
                 self.emit(Op::FloatSqrt { dst, src }, span);

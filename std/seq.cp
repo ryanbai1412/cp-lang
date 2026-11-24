@@ -12,6 +12,7 @@
 
 use std.algebra.{Monoid}
 use std.hashmap.{Counter}
+use std.math.{abs}
 use std.prefix.{Prefix}
 use std.range.{RingRange, ends, first_true, last_true}
 use std.rand.{shuffle}

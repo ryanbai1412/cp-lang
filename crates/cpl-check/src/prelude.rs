@@ -525,8 +525,8 @@ pub fn value(name: &str) -> Option<Ty> {
     Some(match name {
         "INF" => Ty::Int,
         "bit_ceil" => int_fn(1),
-        "sqrt" | "cbrt" | "sin" | "cos" | "tan" | "asin" | "acos" | "atan" | "exp" | "ln"
-        | "log2" | "log10" => float_fn(1),
+        "cbrt" | "sin" | "cos" | "tan" | "asin" | "acos" | "atan" | "exp" | "ln" | "log2"
+        | "log10" => float_fn(1),
         "atan2" | "hypot" => float_fn(2),
         // `ask("?", x)` prints a query, flushes, and reads the judge's
         // answer; `Subset<D>` is the subsets of a domain. Both are lowered
@@ -553,7 +553,6 @@ pub fn value_doc(name: &str, args: Option<usize>, fixed: bool) -> Option<&'stati
         ("Int" | "I128" | "U64" | "F64" | "Char" | "Bool", Some(1)) if fixed => "Converts a number, character or `Bool` to this type, in O(1).\n\ncost: O(1)",
         ("gen", _) => "A random value of its type, or of its range, within the type's contract, in time linear in the value's size.",
         ("rand", Some(0 | 2)) => "A random `Int`, from `lo` to `hi` when given, in O(1).\n\ncost: O(1)",
-        ("abs", _) => "The absolute value, in O(1).\n\ncost: O(1)",
         ("min", Some(1)) => "The smallest element of a list, an array, a slice `xs[a..b]` or a generator, in O(n) for n elements.\n\ncost: O(n)",
         ("max", Some(1)) => "The largest element of a list, an array, a slice `xs[a..b]` or a generator, in O(n) for n elements.\n\ncost: O(n)",
         ("min", _) => "The smallest of its arguments, in O(1) per argument; `min(xs)` gives the smallest element of `xs`.\n\ncost: O(1)",
@@ -666,7 +665,6 @@ pub const VALUE_NAMES: &[&str] = &[
     "min",
     "max",
     "adjacency",
-    "abs",
     "sum",
     "count",
     "all",
@@ -686,7 +684,6 @@ pub const VALUE_NAMES: &[&str] = &[
     "ctz",
     "bit_width",
     "bit_ceil",
-    "sqrt",
     "atan2",
     "sin",
     "cos",
@@ -697,10 +694,6 @@ pub const VALUE_NAMES: &[&str] = &[
     "ln",
     "hypot",
     "flush",
-    "floor",
-    "trunc",
-    "ceil",
-    "round",
     "len",
     "counts",
     "prefix",

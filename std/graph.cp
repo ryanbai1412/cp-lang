@@ -19,7 +19,7 @@ use std.bitset.{Bitset}
 use std.deque.{Deque}
 use std.dsu.{Dsu}
 use std.heap.{Heap, MinHeap}
-use std.math.{gcd, popcount}
+use std.math.{abs, gcd, popcount}
 use std.opt.{is_none_or}
 use std.rand.{shuffle}
 use std.seq.{collect, reverse, count, Slice}
