@@ -559,7 +559,7 @@ pub fn chunks<S: Indexed>(self: S, k: Int) -> yields Slice<S>:
 /// Every pair `(x, y)` with `x` before `y`: `[10, 20, 30].pairs()` gives `(10, 20)`, `(10, 30)`,
 /// `(20, 30)`. \(O(n^2)\) to walk; for adjacent pairs use `adjacent`.
 ///
-/// cost: \(O(n^2)\) to walk, \(O(1)\) per pair
+/// cost: \(O(1)\) per pair, \(O(n^2)\) to walk
 /// empty: `let a: List<Int> = []; a.pairs().count() == 0`
 /// order: by the first element's position, then the second's
 /// traps: never
