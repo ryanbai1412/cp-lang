@@ -46,10 +46,21 @@ fn setup_writes_the_editor_files() {
         .unwrap()
         .starts_with("can't write taken"));
 
-    let out = cpl(&dir, &["setup", "emacs"]);
+    let out = cpl(&dir, &["setup", "emacs", "--dir", "elpa"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let version = env!("CARGO_PKG_VERSION").split('-').next().unwrap();
+    for file in ["cp-mode.el", "cp-mode-pkg.el", "cp-mode-autoloads.el"] {
+        let path = dir
+            .join("elpa")
+            .join(format!("cp-mode-{version}"))
+            .join(file);
+        assert!(path.is_file(), "{file}");
+    }
+
+    let out = cpl(&dir, &["setup", "notepad"]);
     assert_eq!(out.status.code(), Some(EXIT_USAGE as i32));
     assert!(
-        text(&out.stderr).contains("no setup for `emacs`"),
+        text(&out.stderr).contains("no setup for `notepad`"),
         "{}",
         text(&out.stderr)
     );
