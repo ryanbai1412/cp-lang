@@ -31,5 +31,5 @@
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "All four accepted C++ agree with the sample and a sort-each-range brute on 200 generated cases, and with each other on --max (about 3 s); they recurse deeply and need the judges' unlimited stack, which scripts/corpus.py gives them."
 }
