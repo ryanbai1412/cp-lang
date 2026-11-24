@@ -317,3 +317,67 @@ fn every_vscode_setting_is_read_documented_and_defaults_alike() {
         wrong.join("\n")
     );
 }
+
+/// Every `@name(...)` the editor plugins write, document or test is one the
+/// compiler accepts: a spelling it rejects as removed (E0503) cannot linger
+/// in a README, a setting or a lens.
+#[test]
+fn the_editors_spell_only_decorators_the_compiler_accepts() {
+    let mut stale = Vec::new();
+    let mut dirs = vec![root().join("editors")];
+    while let Some(dir) = dirs.pop() {
+        for entry in fs::read_dir(&dir).expect("a dir") {
+            let path = entry.expect("an entry").path();
+            let name = path.file_name().unwrap().to_string_lossy();
+            if path.is_dir() {
+                if !matches!(
+                    name.as_ref(),
+                    "node_modules" | "out" | "build" | ".gradle" | "target"
+                ) {
+                    dirs.push(path);
+                }
+                continue;
+            }
+            let Ok(text) = fs::read_to_string(&path) else {
+                continue;
+            };
+            for (at, _) in text.match_indices('@') {
+                let rest = &text[at + 1..];
+                let len = rest
+                    .find(|c: char| !c.is_ascii_alphanumeric() && c != '_')
+                    .unwrap_or(rest.len());
+                let word = &rest[..len];
+                if !is_word(word)
+                    || at > 0 && text[..at].ends_with(|c: char| c.is_ascii_alphanumeric())
+                {
+                    continue;
+                }
+                let args = rest[len..]
+                    .strip_prefix('(')
+                    .and_then(|r| r.find(')').map(|end| &r[..end]))
+                    .filter(|a| a.chars().all(|c| c.is_ascii_alphanumeric() || c == '_'));
+                let decorator = match args {
+                    Some(a) => format!("@{word}({a})"),
+                    None => format!("@{word}"),
+                };
+                let program = format!("{decorator}\nfn f():\n    print(1)\n");
+                let parsed = cpl_syntax::parse_file(&program);
+                if parsed.diagnostics.iter().any(|d| d.code.0 == "E0503") {
+                    let rel = path
+                        .strip_prefix(root())
+                        .unwrap_or(&path)
+                        .display()
+                        .to_string();
+                    stale.push(format!("{rel}: {decorator}"));
+                }
+            }
+        }
+    }
+    stale.sort();
+    stale.dedup();
+    assert!(
+        stale.is_empty(),
+        "removed decorator spellings in editors/:\n{}",
+        stale.join("\n")
+    );
+}

@@ -289,7 +289,7 @@
         "cp.codeLens.enabled": {
           "type": "boolean",
           "default": true,
-          "description": "Show Run, Stress and Trace lenses above the file, its samples and its `@brute`/`@check`/`@interactor` functions."
+          "description": "Show Run, Stress and Trace lenses above the file, its samples and its `@alt`/`@check`/`@interactor` functions."
         },
         "cp.inlayHints.enabled": {
           "type": "boolean",

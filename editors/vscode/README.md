@@ -70,7 +70,7 @@ print("ans = {best}, avg = {avg:.6f}")  // interpolation + format specs
 
 Highlights worth noting:
 
-- All **34 0.2.2 reserved keywords** (30 contestant + 4 library-author: `trait`, `impl`, `lends`, `yield`), contextual `as` / `from` / `invariant` / `law` / `yields` / `do`, file-level directives (`@!multitest`, `@!...`, scoped `keyword.control.directive.cp`), and item attributes (`@memo`, `@brute`, `@checker`, `@interactor`, `@law`, `@grader`, `@tags`, `@gen`, `@get`, `@test`, scoped `entity.name.function.decorator.cp`) stay in lockstep between `src/languageData.ts` and `syntaxes/cp.tmLanguage.json`.
+- All **34 0.2.2 reserved keywords** (30 contestant + 4 library-author: `trait`, `impl`, `lends`, `yield`), contextual `as` / `from` / `invariant` / `law` / `yields` / `do`, file-level directives (`@!multitest`, `@!...`, scoped `keyword.control.directive.cp`), and item attributes (`@memo`, `@alt`, `@check`, `@interactor`, `@law`, `@grader`, `@tags`, `@gen`, `@get`, `@test`, scoped `entity.name.function.decorator.cp`) stay in lockstep between `src/languageData.ts` and `syntaxes/cp.tmLanguage.json`.
 - Compiler built-in types (`Int`, `U64`, `I128`, `F64`, `Bool`, `Char`, `Str`, `List`, `Map`, `HashMap`, `Set`, `Range`, `Bounds`, `Iter`, `Subset`, `Interactor`), every public `stdlib/` type (`Mod<P>`, `SegTree`, `LazySegTree`, `Deque`, `Bitset`, `Rooted`, ...), the prelude's lazy actions (`AddSum`, `AssignMin`, ...), prelude functions and the `stdlib/` functions that need a `use` each get their own scope, including nested generics and turbofish (`f::<Int>()`). `test/unit/languageData.test.ts` reads `crates/cpl-check/src/prelude.rs`, `stdlib/*.cp` and `stdlib/prelude.cp`, and fails on any phantom or missing name.
 - Tropical Optionals (`?T`, `??Int`, `?[V]Int`, `min=`, `max=`, `??=`) receive dedicated `meta.type.optional.cp` / `meta.operator.tropical.cp` scopes distinct from postfix `?` and binary `??`.
 - Boundary properties `.l`, `.r`, `.l(k)`, and `.r(k)` use `variable.other.property.boundary.cp` (without misreading open-ended ranges like `..l` / `..r`); mutation (`var`, `mut`, `lends mut`) and escape hatches (`.raw`, `unchecked`) carry dedicated scopes so themes can emphasize them.
@@ -87,7 +87,7 @@ Highlights worth noting:
 - `segtree` / `segtree-monoid` (`Monoid`) / `lazysegtree` / `lazysegtree-action` (`Action`) / `sparsetable` — domain-indexed range structures with built-in operators/actions and 0.2.2 `Action(id, (new_f, old_f) => ..., (f, val, span) => ..., over: op)`
 - `rooted` / `hld` — `Rooted<V>` with `LazySegTree<t.Pre, ...>` path and subtree queries
 - `dsu` / `touched` / `small-to-large` / `mod` — explicit `dsu.mark()` / `dsu.undo_to(snap)`, 1-byte `[V]Bool` + touched-list reset, `swap` + `.take()` small-to-large merge, and `Mod<MOD>` + immutable `let comb = Comb<Z>()`
-- `multitest` / `@!multitest` / `@brute` / `grader` / `checker` / `interactor` / `stress` / `atgen` — file-level `@!multitest` divider, standalone `@brute(main)` oracle, stateful IOI `@grader`, `@checker`, explicit `sol: Interactor` `@interactor`, and `read(gen: ...)` + `@brute(main)` stress setups
+- `multitest` / `@!multitest` / `@alt` / `grader` / `@check` / `interactor` / `stress` / `atgen` — file-level `@!multitest` divider, standalone `@alt(program)` oracle, stateful IOI `@grader`, `@check`, explicit `sol: Interactor` `@interactor`, and `read(gen: ...)` + `@alt(program)` stress setups
 
 ## Language server (`cpl lsp`) and inlay hints
 
@@ -100,7 +100,7 @@ The extension launches `cpl lsp` over stdio (`cp.server.path`, default `cpl`, se
 
 ## Running, live values, stress testing, and traces
 
-CodeLenses (`cp.codeLens.enabled`, default `true`) appear at the top of `.cp` files and above `@brute`, `@checker`, and `@interactor` functions:
+CodeLenses (`cp.codeLens.enabled`, default `true`) appear at the top of `.cp` files and above `@alt`, `@check`, and `@interactor` functions:
 
 ```cp
 ▷ Run on i1 | Run on all 3 samples | Stress | Trace
@@ -108,8 +108,8 @@ let n: 1..=2e5 = read()                          i1: 3
 domain V = 1..=n
 let a: [V]Int = read()                           i1: [1, 2, 3]
 
-Stress main against slow | Trace
-@brute(main)
+Stress the program against slow | Trace
+@alt(program)
 fn slow():
     ...
 ```
@@ -153,7 +153,7 @@ Every setting the extension reads; `crates/cpl-cli/tests/vscode_sync.rs` checks 
 | `cp.server.path` | `"cpl"` | The `cpl` binary. A bare name is looked up on `PATH`, then in the workspace's `target/release` and `target/debug`. |
 | `cp.server.args` | `["lsp"]` | Arguments that start the language server. The server speaks LSP on stdio. |
 | `cp.trace.server` | `"off"` | Log the messages between VS Code and the language server. |
-| `cp.codeLens.enabled` | `true` | Show Run, Stress and Trace lenses above the file, its samples and its `@brute`/`@check`/`@interactor` functions. |
+| `cp.codeLens.enabled` | `true` | Show Run, Stress and Trace lenses above the file, its samples and its `@alt`/`@check`/`@interactor` functions. |
 | `cp.inlayHints.enabled` | `true` | Show inferred type inlay hints for unannotated bindings and domain loops when `cpl lsp` does not provide its own. |
 | `cp.liveValues.enabled` | `false` | After each save, run the file on ``cp.liveValues.input`` and show the value of each top-level `let` at the end of its line. |
 | `cp.liveValues.input` | `""` | The sample live values are computed on, such as `i1` or `1`. Empty means the file's first sample. |

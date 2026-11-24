@@ -27,9 +27,9 @@ use std.segtree.*
 // <- punctuation.definition.decorator.cp
 // <~---- meta.decorator.cp entity.name.function.decorator.cp
 
-@brute(main)
-// <~----- entity.name.function.decorator.cp
-//     ^^^^ - entity.name.function
+@alt(program)
+// <~--- entity.name.function.decorator.cp
+//   ^^^^^^^ - entity.name.function
 
 @grader fn restore(n: Int) -> Int:
 // <~------ entity.name.function.decorator.cp
@@ -37,10 +37,10 @@ use std.segtree.*
 //         ^^^^^^^ entity.name.function.cp
 //                 ^ variable.parameter.label.cp
 
-@checker fn check():
-// <~------- entity.name.function.decorator.cp
-//       ^^ storage.type.function.cp
-//          ^^^^^ entity.name.function.cp
+@check fn check():
+// <~----- entity.name.function.decorator.cp
+//     ^^ storage.type.function.cp
+//        ^^^^^ entity.name.function.cp
 
 @interactor fn judge(sol: Interactor):
 // <~---------- entity.name.function.decorator.cp

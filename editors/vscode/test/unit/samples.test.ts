@@ -22,7 +22,7 @@ const PROGRAM = [
     'let n = read()',
     '',
     '@memo',
-    '@brute(count_brute)',
+    '@alt(count_brute)',
     'fn count() -> Int:',
     '    fn inner() -> Int = 1',
     '    inner()',
@@ -36,7 +36,7 @@ const PROGRAM = [
 
 test('parts lists top-level fns with their decorators', () => {
     assert.deepEqual(parts(PROGRAM), [
-        { name: 'count', line: 3, fnLine: 5, decorators: [{ name: 'memo', args: undefined }, { name: 'brute', args: 'count_brute' }] },
+        { name: 'count', line: 3, fnLine: 5, decorators: [{ name: 'memo', args: undefined }, { name: 'alt', args: 'count_brute' }] },
         { name: 'count_brute', line: 9, fnLine: 9, decorators: [] },
         { name: 'helper', line: 10, fnLine: 10, decorators: [{ name: 'grader', args: undefined }] },
         { name: 'api', line: 13, fnLine: 13, decorators: [] },
@@ -56,15 +56,15 @@ test('planLenses puts Run above the file and Stress above each bruted part', () 
     assert.deepEqual(planLenses(PROGRAM, samples)[3].args, ['count']);
 });
 
-test('planLenses supports v2.1 @brute(main), @checker and @interactor lenses', () => {
+test('planLenses supports @alt(program), @check and @interactor lenses', () => {
     const v21 = [
         'let n = read()',
         '',
-        '@brute(main)',
+        '@alt(program)',
         'fn slow():',
         '    print(n)',
         '',
-        '@checker',
+        '@check',
         'fn check():',
         '    assert true',
         '',
@@ -78,7 +78,7 @@ test('planLenses supports v2.1 @brute(main), @checker and @interactor lenses', (
             [0, '$(play) Run', 'cp.runSample'],
             [0, 'Stress', 'cp.stress'],
             [0, 'Trace', 'cp.trace'],
-            [2, 'Stress main against slow', 'cp.stress'],
+            [2, 'Stress the program against slow', 'cp.stress'],
             [2, 'Trace', 'cp.trace'],
             [6, 'Stress with checker check', 'cp.stress'],
             [10, 'Stress with interactor judge', 'cp.stress'],
@@ -99,18 +99,9 @@ test('planLenses on a file with no samples and no brute still offers Run and Tra
 });
 
 test('replayLenses puts Replay above each fn of the solution, not its tools', () => {
-    const text = ['fn most() -> Int:', '    return 1', '', '@brute(main)', 'fn slow():', '    print(1)', 'print(most())'].join('\n');
+    const text = ['fn most() -> Int:', '    return 1', '', '@alt(program)', 'fn slow():', '    print(1)', 'print(most())'].join('\n');
     assert.deepEqual(
         replayLenses(text).map(l => [l.line, l.title, l.command, l.args]),
         [[0, '$(debug-restart) Replay this call', 'cp.replayCall', [{ fn: 'most' }]]],
     );
-});
-
-test('planLenses gives @alt(program) and @check the lenses of their old spellings', () => {
-    const old = ['let n = read()', '', '@brute(main)', 'fn slow():', '    print(n)', '', '@checker', 'fn ok():', '    assert true'];
-    const now = old.map(line => line.replace('@brute(main)', '@alt(program)').replace('@checker', '@check'));
-    const plan = (lines: string[]) => planLenses(lines.join('\n'), []).map(l => [l.line, l.command, l.args]);
-    assert.deepEqual(plan(now), plan(old));
-    assert.ok(planLenses(now.join('\n'), []).some(l => l.title === 'Stress the program against slow'));
-    assert.ok(planLenses(now.join('\n'), []).some(l => l.command === 'cp.stress'));
 });

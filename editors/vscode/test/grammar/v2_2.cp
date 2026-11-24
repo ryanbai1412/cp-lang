@@ -114,10 +114,10 @@ assert all(x >= 0 for x in vals)
 // <~------ entity.name.function.decorator.cp
 @multitest
 // <~--------- entity.name.function.decorator.cp
-@brute(main)
+@alt(program)
+// <~--- entity.name.function.decorator.cp
+@check
 // <~----- entity.name.function.decorator.cp
-@checker
-// <~------- entity.name.function.decorator.cp
 @interactor
 // <~---------- entity.name.function.decorator.cp
 fn judge(sol: Interactor):
