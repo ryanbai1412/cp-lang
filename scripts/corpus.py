@@ -659,7 +659,7 @@ def bounds_findings(pid, text):
     return found
 
 
-TOP_READ = re.compile(r"^(?:let|var) (\w+|\([\w, ]+\))(?::.+?)? = read(?:\(\)|<.+>\(\))$")
+TOP_READ = re.compile(r"^(?:let|var) (\w+|\([\w, ]+\))(?::.+?)? = read(?:<.+>)?\(.*\)$")
 
 
 def size_reads(text):
@@ -681,8 +681,82 @@ def read_prefix(text, upto):
     """The port's top-level declarations and reads through line `upto`, the program that reads
     the sizes and nothing else: what `cpl run --format json` takes to name each value."""
     keep = re.compile(r"^(?:use |domain |type \w+ = |const |@)")
+    lines = logical_lines(text)[:upto + 1]
+    kept = {i for i, l in enumerate(lines) if keep.match(l) or TOP_READ.match(l)}
+    # A top-level `let` a kept line names (`let top = 1e8` under `domain Half = 0..=top / 2`).
+    lets = {i: m[1] for i, l in enumerate(lines) if (m := re.match(r"(?:let|var) (\w+)(?::[^=]+)? = (?!read)", l))
+            and not (i + 1 < len(lines) and lines[i + 1][:1].isspace())}
+    while new := {i for i, name in lets.items() if i not in kept and any(
+            re.search(rf"(?<![\w.]){name}\b", lines[k]) for k in kept if k > i)}:
+        kept |= new
+    return "\n".join(lines[i] for i in sorted(kept)) + "\n"
+
+
+def case_prefix(text):
+    """The port through the top-level statement holding its last read: every read a test case
+    makes, without the work after them."""
     lines = logical_lines(text)
-    return "\n".join(l for l in lines[:upto + 1] if keep.match(l) or TOP_READ.match(l)) + "\n"
+    last = max(i for i, l in enumerate(lines) if re.search(r"(?<![\w.])read(?:<.+>)?\(", l))
+    end = next((j for j in range(last + 1, len(lines)) if lines[j] and not lines[j][0].isspace()), len(lines))
+    return "\n".join(lines[:end]) + "\n"
+
+
+READ_CALL = re.compile(r"(?<![\w.])read(?:<.+>)?\(")
+
+
+def read_slice(text):
+    """The port cut to its reads: each read, the blocks around it, and the definitions they name
+    (`let`, `var`, `fn`, transitively), so a case reads its whole input without its work."""
+    lines = logical_lines(text)
+    depth = [len(l) - len(l.lstrip()) if l.strip() else None for l in lines]
+
+    def body(i):
+        j = i + 1
+        while j < len(lines) and (depth[j] is None or depth[j] > depth[i]):
+            j += 1
+        return range(i + 1, j)
+
+    def around(i):
+        """`i` and the headers it sits under, with the `if` and `elif` an `elif` or `else` needs."""
+        out, d = {i}, depth[i]
+        chain = d is not None and lines[i].lstrip().startswith(("elif", "else"))
+        for j in range(i - 1, -1, -1):
+            if d is None or depth[j] is None or depth[j] > d:
+                continue
+            if depth[j] < d or chain:
+                out.add(j)
+                d = depth[j]
+                chain = lines[j].lstrip().startswith(("elif", "else"))
+
+        return out
+
+    keep = re.compile(r"^(?:use |domain |type \w+ = |const |@)")
+    kept = {i for i, l in enumerate(lines) if keep.match(l)}
+    for i, l in enumerate(lines):
+        if READ_CALL.search(l):
+            kept |= around(i)
+    defs = {}
+    for i, l in enumerate(lines):
+        if m := re.match(r"\s*(?:let|var) (\w+)(?::[^=]+)? = ", l):
+            if not any(depth[j] is not None for j in body(i)):
+                defs.setdefault(m[1], []).append({i})
+        elif m := re.match(r"fn (\w+)", l):
+            defs.setdefault(m[1], []).append({i, *body(i)})
+    def sees(i, k):
+        """Whether line `k` is in the scope of a definition on line `i`."""
+        return i < k and all(depth[j] is None or depth[j] >= depth[i] for j in range(i + 1, k + 1))
+
+    while True:
+        uses = {(w, k) for k in kept for w in re.findall(r"(?<![\w.])\w+", lines[k])}
+        new = set().union(*(b for w, k in uses for b in defs.get(w, ()) if sees(min(b), k))) - kept
+        if not new:
+            break
+        for i in new:
+            kept |= around(i)
+    for i in sorted(kept):
+        if lines[i].rstrip().endswith(":") and not any(j in kept for j in body(i)):
+            kept |= set(body(i))
+    return "\n".join(lines[i] for i in sorted(kept)) + "\n"
 
 
 def capped_memory():
@@ -692,10 +766,10 @@ def capped_memory():
     resource.setrlimit(resource.RLIMIT_AS, (4 << 30, 4 << 30))
 
 
-def read_values(cpl, program, data):
+def read_values(cpl, program, data, where=None):
     """name -> value text of each top-level value `program` has after reading `data`, None when
     it fails, or TIMED_OUT past INTERP_TIMEOUT."""
-    with tempfile.TemporaryDirectory() as d:
+    with tempfile.TemporaryDirectory(dir=where) as d:
         src = Path(d, "sizes.cp")
         src.write_text(program)
         try:
@@ -738,10 +812,10 @@ def short_of(pid, text, cases):
     return found
 
 
-def case_values(cpl, text, data, names):
+def case_values(cpl, text, data, names, where=None):
     """Each multitest case's values of `names` on `data`, from a trace of the whole port watching
     them; None when it fails, or TIMED_OUT past INTERP_TIMEOUT."""
-    with tempfile.TemporaryDirectory() as d:
+    with tempfile.TemporaryDirectory(dir=where) as d:
         src = Path(d, "port.cp")
         src.write_text(text)
         try:
@@ -762,34 +836,38 @@ def case_values(cpl, text, data, names):
 
 
 def max_short(pkg, cpl, data):
-    """The max-short findings of `data`, the package's --max input (problem-packages/R6)."""
+    """The max-short findings of `data`, the package's --max input (problem-packages/R6). Each
+    program reads the sizes with less of the port's work than the next: its declarations and
+    reads, the port up to them, then the whole port. Each runs beside the port, under its
+    cp.toml."""
     text = pkg.port.read_text(errors="replace")
     sizes = size_reads(text)
     if not sizes:
         return []
-    if re.search(r"(?m)^@!multitest", text):
-        lines = logical_lines(text)
-        below = lines[next(i for i, l in enumerate(lines) if l.startswith("@!multitest")):]
-        nested = any(re.search(r"(?<![\w.])read(?:\(|<)", l) and not TOP_READ.match(l) for l in below)
+    where, lines = pkg.port.parent, logical_lines(text)
+    if re.search(r"(?m)^@!?multitest", text):
+        below = lines[next(i for i, l in enumerate(lines) if re.match(r"@!?multitest", l)):]
+        nested = any(re.search(r"(?<![\w.])read(?:<.+>)?\(", l) and not TOP_READ.match(l) for l in below)
         last = max(i for i, l in enumerate(lines) if TOP_READ.match(l))
-        # Each case's reads alone, when they are all top-level or there is one case: tracing the
-        # whole port keeps its tables and runs its work.
-        one = not re.search(r"(?m)^@!multitest\(", text) and data.split(None, 1)[:1] == ["1"]
-        got = None if nested and not one else case_values(cpl, read_prefix(text, last), data, sorted(sizes))
-        if got is None:
-            got = case_values(cpl, text, data, sorted(sizes))
-        if got is TIMED_OUT or got is None:
-            return [f"max-unread {pkg.id} {'timeout' if got else '-'}"]
-        return short_of(pkg.id, text, [{k: v for k, v in c.items() if isinstance(v, int)} for c in got])
-    got = read_values(cpl, read_prefix(text, max(sizes.values())), data)
-    if got is None or got is TIMED_OUT:
-        got = read_values(cpl, text, data)  # sizes a computed domain bound needs, read by the whole port
-    if got is TIMED_OUT:
-        return [f"max-unread {pkg.id} timeout"]
-    if got is None:
-        return [f"max-unread {pkg.id} -"]
-    ints = {k: int(v) for k, v in got.items() if re.fullmatch(r"-?\d+", v)}
-    return short_of(pkg.id, text, ints)
+        # With one case, or every read top-level, the declarations and reads keep each case's
+        # input aligned; otherwise each case runs through its last read.
+        one = not re.search(r"(?m)^@!?multitest\(", text) and data.split(None, 1)[:1] == ["1"]
+        programs = [read_prefix(text, last)] if one or not nested else []
+        programs += [read_slice(text), case_prefix(text), text]
+        count = None if re.search(r"(?m)^@!?multitest\(", text) else int(data.split(None, 1)[0])
+        for program in programs:
+            got = case_values(cpl, program, data, sorted(sizes), where)
+            # A cut that misreads its input loses alignment, so it never ends on exactly T cases.
+            if got is not None and got is not TIMED_OUT and (count is None or len(got) == count):
+                return short_of(pkg.id, text, [{k: v for k, v in c.items() if isinstance(v, int)} for c in got])
+        return [f"max-unread {pkg.id} {'timeout' if got is TIMED_OUT else '-'}"]
+    upto = max(sizes.values())
+    for program in (read_prefix(text, upto), "\n".join(lines[:upto + 1]) + "\n", text):
+        got = read_values(cpl, program, data, where)
+        if got is not None and got is not TIMED_OUT:
+            ints = {k: int(v) for k, v in got.items() if re.fullmatch(r"-?\d+", v)}
+            return short_of(pkg.id, text, ints)
+    return [f"max-unread {pkg.id} {'timeout' if got is TIMED_OUT else '-'}"]
 
 
 MAX_SHORT = "research/corpus-max-short.json"

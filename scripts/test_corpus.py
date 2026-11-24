@@ -573,6 +573,27 @@ class MaxShortTest(unittest.TestCase):
                          ["max-short p n: --max reads 100000, the statement allows 2e5"])
         self.assertEqual(corpus.short_of("p", self.MULTI, [{"n": 100000, "k": 5}] * 2), [])
 
+    def test_the_read_prefix_keeps_the_lets_a_kept_line_names(self):
+        port = ("let top = 100\ndomain Half = 0..=top / 2\nvar sieve = Bitset<Half>.single(Half(0))\n"
+                "for p in 3..10 by 2:\n    sieve.add(Half(p))\n@multitest\nlet n: 1..=1e4 = read()\n")
+        self.assertEqual(corpus.read_prefix(port, 6), "let top = 100\ndomain Half = 0..=top / 2\n@multitest\n"
+                         "let n: 1..=1e4 = read()\n")
+        self.assertEqual(corpus.case_prefix(port + "for i in 0..n:\n    let x: Int = read()\nprint(n)\n"),
+                         port + "for i in 0..n:\n    let x: Int = read()\n")
+
+    def test_the_read_slice_keeps_reads_their_blocks_and_what_they_name(self):
+        port = ("type Run = (l: Int, v: Int)\n@!multitest\nlet n: 1..=1e5 = read()\ndomain V = 1..=n\n"
+                "fn gen() -> [V]Int:\n    [V] e => 1\n\nlet w: [V]Int = read(gen: gen)\nvar tree = Tree(w)\n"
+                "var last = 0\nfor _ in 0..n:\n    let kind: 1..=2 = read()\n    if kind == 1:\n"
+                "        let l = tree.top\n        last = l\n    elif kind == 2:\n        tree.add(1)\n"
+                "    else:\n        let v: V = read()\n        print(v)\nprint(last)\n")
+        self.assertEqual(corpus.read_slice(port),
+                         "type Run = (l: Int, v: Int)\n@!multitest\nlet n: 1..=1e5 = read()\ndomain V = 1..=n\nfn gen() -> [V]Int:\n"
+                         "    [V] e => 1\n\nlet w: [V]Int = read(gen: gen)\nfor _ in 0..n:\n"
+                         "    let kind: 1..=2 = read()\n    if kind == 1:\n        let l = tree.top\n"
+                         "        last = l\n    elif kind == 2:\n        tree.add(1)\n    else:\n"
+                         "        let v: V = read()\n")
+
     def test_a_port_it_cant_read_is_max_unread_not_passed(self):
         pkg = types.SimpleNamespace(id="p", port=mock.Mock(read_text=lambda **_: "@!multitest\n" + self.REL))
         with mock.patch.object(corpus, "case_values", return_value=None):
@@ -580,7 +601,9 @@ class MaxShortTest(unittest.TestCase):
         with mock.patch.object(corpus, "case_values", return_value=corpus.TIMED_OUT):
             self.assertEqual(corpus.max_short(pkg, "cpl", "1\n"), ["max-unread p timeout"])
         with mock.patch.object(corpus, "case_values", return_value=[{"n": 9, "m": 2}, {"n": 100000, "m": 99999}]):
-            self.assertEqual(corpus.max_short(pkg, "cpl", "1\n"), [])
+            self.assertEqual(corpus.max_short(pkg, "cpl", "2\n"), [])
+            # a cut that ends on other than T cases misread its input
+            self.assertEqual(corpus.max_short(pkg, "cpl", "3\n"), ["max-unread p -"])
         pkg.port.read_text = lambda **_: self.REL
         with mock.patch.object(corpus, "read_values", return_value=None):
             self.assertEqual(corpus.max_short(pkg, "cpl", "1\n"), ["max-unread p -"])

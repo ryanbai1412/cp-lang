@@ -1579,6 +1579,8 @@ class DebtRatchetTest(unittest.TestCase):
             (root / "crates/cpl-ir/src/instance.rs").write_text("use codes::GROWING_INSTANTIATION;\n")
             (root / dr.SCALING_BOARD).parent.mkdir(parents=True)
             (root / dr.SCALING_BOARD).write_text('{"cases": {}, "unscaled": []}')
+            (root / dr.CORPUS_MAX_SHORT).parent.mkdir(parents=True, exist_ok=True)
+            (root / dr.CORPUS_MAX_SHORT).write_text('{"max_short": [], "max_unread": []}')
             board = root / dr.SCOREBOARD
             board.parent.mkdir(parents=True, exist_ok=True)
             board.write_text('{"suites": {"corpus": {"interp_max_over_20s": []}, "conformance": {"cases": {}, "causes": []}}}')

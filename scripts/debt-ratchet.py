@@ -1030,8 +1030,8 @@ def corpus_max_short(root: Path) -> list[str]:
 
 
 def corpus_max_unread(root: Path) -> list[str]:
-    """v03 ports whose --max sizes the max-short check can't read (a multitest port, a size its
-    prefix can't compute), so nothing shows they reach their Bounds (owner: Idioms)."""
+    """v03 ports whose --max sizes the max-short check can't read (no cut of the port, nor the
+    port itself, reads them in time), so nothing shows they reach their Bounds (owner: Idioms)."""
     return _max_short_record(root, "max_unread")
 
 
@@ -3121,7 +3121,7 @@ HARD_ZERO = frozenset({
     "stdlib_todo", "editor_logic_lines",
     "uncached_installs",
     "corpus_walkers", "ci_jobs_without_recipe", "poll_sleeps", "retry_calls", "site_spec_snippets",
-    "bench_lists", "hardcoded_codes", "scaling_mismatches", "std_fns_unscaled", "config_schemas", "corpus_test_files", "corpus_known", "corpus_no_max", "corpus_no_limits", "stale_arch_paths",
+    "bench_lists", "hardcoded_codes", "scaling_mismatches", "std_fns_unscaled", "config_schemas", "corpus_test_files", "corpus_known", "corpus_no_max", "corpus_max_unread", "corpus_no_limits", "stale_arch_paths",
     "own_databases", "string_keyed_maps", "module_loaders", "web_skip_only", "test_sleeps", "todo_fixme", "ci_retries", "cpp_std_functions", "or_true", "codemods_outside_fix",
     "pending_tests", "unchecked_fix_paths", "edition_refs", "uncited_rules", "decision_dup_numbers", "why_written_twice", "authority_drift",
     "continue_on_error", "unregistered_lists", "codegen_effect_guesses", "spec_std_refs", "opt_without_uses",
