@@ -220,7 +220,7 @@ fn is_part_or_name(text: &str) -> bool {
 
 /// A part of a value given out by value: `return self.agg[t];` in a fn
 /// returning a heap type (a container's is [`deep_copies`]'s), `Mat v = c ?
-/// f(..) : self.t[p];` and a tuple's field `std::vector<u8> w =
+/// f(..) : self.t[p];`, `Mat a = self.m.id;` and a tuple's field `std::vector<u8> w =
 /// std::get<1>(top);`. Mirrors
 /// `returned_parts` in scripts/specgate/explain_copies.py.
 fn returned_part_copies(cpp: &str) -> usize {
@@ -288,7 +288,18 @@ fn returned_part_copies(cpp: &str) -> usize {
                         n.chars().all(|c| c.is_ascii_digit()) && is_part_or_name(place)
                     })
         });
-        count += usize::from(returned) + usize::from(branch) + usize::from(field);
+        // `Mat a = self.m.id;`: a struct that holds a container, copied from a part.
+        let held = decl.split_once(' ').is_some_and(|(ty, rest)| {
+            holders.contains(ty)
+                && rest
+                    .strip_suffix(';')
+                    .and_then(|r| r.split_once(" = "))
+                    .is_some_and(|(name, part)| {
+                        name.chars().all(|c| c.is_alphanumeric() || c == '_') && is_part(part)
+                    })
+        });
+        count +=
+            usize::from(returned) + usize::from(branch) + usize::from(field) + usize::from(held);
     }
     count
 }
@@ -381,12 +392,17 @@ fn constructed_copies(cpp: &str) -> usize {
     program_lines(cpp)
         .map(|line| {
             let sorted = line
-                .match_indices("cpl::sorted(")
-                .filter(|(at, _)| {
-                    line[at + "cpl::sorted(".len()..]
-                        .split_once(')')
-                        .is_some_and(|(a, _)| is_place(a) && !a.starts_with("cpl::"))
+                .match_indices("cpl::sorted")
+                .filter_map(|(at, _)| {
+                    let rest = &line[at + "cpl::sorted".len()..];
+                    // `cpl::sorted<true>(xs)` sorts the same copy.
+                    let rest = match rest.strip_prefix('<') {
+                        Some(args) => args.split_once('>')?.1,
+                        None => rest,
+                    };
+                    rest.strip_prefix('(')?.split_once(')')
                 })
+                .filter(|(a, _)| is_place(a) && !a.starts_with("cpl::"))
                 .count();
             let built = CONSTRUCTED
                 .iter()
@@ -665,6 +681,7 @@ fn a_part_given_out_by_value_is_a_copy() {
         "inline H all(const B& self) {\n  return self.agg[self.bag.root];\n}",
         "inline H blank(const T& self) {\n  return self.m.id;\n}",
         "  H v = p == 0 ? f(self) : self.t[p];",
+        "  H a = self.m.id;",
         "  std::vector<cpl::u8> w = std::get<1>(top);",
     ];
     for line in copies {
@@ -672,6 +689,8 @@ fn a_part_given_out_by_value_is_a_copy() {
     }
     let not_copies = [
         "inline ll at(const T& self) {\n  return self.t[0];\n}",
+        "  H a = f(self.m);",
+        "  const H& a = self.m.id;",
         "inline H make(const T& self) {\n  return acc;\n}",
         "inline std::string& at(T& self) {\n  return self.vals[0];\n}",
         "inline H make(const T& s) {\n  auto f = [&](ll i) -> ll {\n    return s.t[i];\n  };\n}",
@@ -712,6 +731,7 @@ fn a_container_built_from_a_place_or_sorted_is_a_copy() {
         "m = std::map<ll, std::vector<ll>>(cpl::at(ms, i));",
         "a = cpl::sorted(a);",
         "show_1(cpl::sorted(self.xs), 10);",
+        "show_1(cpl::sorted<true>(u), 10);",
         "auto v = cpl::to_list(it);",
         "return cpl::to_str(cpl::str_slice(s, 0, q));",
     ];
