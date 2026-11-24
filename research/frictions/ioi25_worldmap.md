@@ -147,6 +147,19 @@ form is what compiles. The quoted errors come from the first dream on a freshly 
 - **General fix (idioms):** move the dream to the port's rule when the dream is next rewritten.
 - **Severity:** low.
 
+## `cpl run` doesn't find the root `grader.cpp`
+- **Where:** `cpl run dream.cp <input>` in `corpus/problems/ioi25_worldmap` asked for
+  `--grader grader.cpp`, while `cpl test` and `corpus.py verify` found the root grader.
+- **What felt wrong:** two commands looked for the package's grader in different places, so
+  running the dream by hand needed a flag the judge path never did.
+- **Goal it hurts:** coherence, evidence.
+- **Ideal code:** `cpl run dream.cp` in a package finds the grader the way `cpl test` does.
+- **General fix (tools):** one grader lookup shared by `cpl run`, `cpl test` and verify.
+- **Owner:** Consumers/Tools.
+- **Severity:** low.
+- **Status:** fixed by 68f20b8be: all three use one `find_grader`, which finds a tests.toml
+  package's root `grader.cpp` even before its cases are made.
+
 ## Measurements
 
 Contestant-written tokens (scripts/ports-page.py tokenizers): port 493, dream 425, original
