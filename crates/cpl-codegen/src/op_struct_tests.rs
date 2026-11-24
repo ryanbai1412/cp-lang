@@ -22,8 +22,9 @@ fn a_defaulted_op_param_names_the_monoid_instance() {
          s.add(read())\n\
          print(s.sum())\n"
     ));
-    assert!(cpp.contains("struct Acc_Int_S"), "{cpp}");
-    assert!(cpp.contains("inline ll Acc_Int_S"), "{cpp}");
+    assert!(cpp.contains("struct Acc_Int_"), "{cpp}");
+    assert!(!cpp.contains("Acc_Int_Monoid"), "{cpp}");
+    assert!(cpp.contains("inline ll Acc_Int_"), "{cpp}");
     assert!(!cpp.contains("cpl::OptInt"), "{cpp}");
 }
 
@@ -37,8 +38,11 @@ fn m_fold_is_t_for_a_monoid_and_optional_for_a_closure() {
          lo.add(x)\n\
          print(s.sum(), lo.sum() ?? -1)\n"
     ));
-    assert!(cpp.contains("inline ll Acc_Int_S"), "{cpp}");
-    assert!(cpp.contains("cpl::OptInt& Acc_Int_Fn_Int_Int_Int_"), "{cpp}");
+    assert!(cpp.contains("inline ll Acc_Int_"), "{cpp}");
+    assert!(
+        cpp.contains("cpl::OptInt& Acc_Int_Fn_Int_Int_Int_"),
+        "{cpp}"
+    );
 }
 
 #[test]
@@ -52,7 +56,10 @@ fn a_closure_segtree_folds_to_an_optional_and_a_sum_tree_does_not() {
         "let s: Int = sum.all\n",
         "print(low.all ?? -1, s)\n",
     ));
-    assert!(cpp.contains("struct SegTree_D0_V_Int_Int_Fn_Int_Int_Int_"), "{cpp}");
+    assert!(
+        cpp.contains("struct SegTree_D0_V_Int_Int_Fn_Int_Int_Int_"),
+        "{cpp}"
+    );
     assert!(cpp.contains("std::vector<cpl::OptInt> t;"), "{cpp}");
     assert!(cpp.contains("std::vector<ll> t;"), "{cpp}");
 }

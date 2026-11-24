@@ -381,7 +381,7 @@ let onto = Action<P, Int>(
 )
 let init = [D] _ => (a: 0, b: 0)
 var st = SegTree<D, P, Int>(act: onto, a: init)
-fn first_le(mut st: SegTree<D, P, Int>, t: Int) -> Int = (0..4).first_true(m => st.get(D(m)).a <= t) ?? 4
+fn first_le(mut st: SegTree<D, P, Int, NoOp>, t: Int) -> Int = (0..4).first_true(m => st.get(D(m)).a <= t) ?? 4
 st.apply(0..2, 1)
 print(first_le(mut st, 1))
 ");

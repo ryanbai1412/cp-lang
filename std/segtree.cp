@@ -2,7 +2,7 @@
 //!
 //! start: `SegTree`, `MergeSortTree`, `WaveletMatrix`, `SegTree2D`
 //! example: `SegTree(+, [1, 2, 3]).all == 6`
-use std.algebra.{Action, Acts, Monoid, Op}
+use std.algebra.{Action, Acts, Monoid, NoOp, Op}
 use std.bag.{SortedBag}
 use std.math.{gcd, bit, popcount, bit_ceil, bit_width, ctz}
 use std.range.{Len, ends, first_true}
@@ -15,18 +15,9 @@ impl<T> Acts<T, Int> for NoAction:
     fn action(self, over: Monoid<T>, sums: Bool) -> Action<T, Int>:
         assert false, "a tree without `act:` has no action"
         Action(0, (f, g) => f, (f: Int, v: T, span: Int) => v, over)
-struct NoOp
 struct NoOver
 fn same<A, B>(a: A, b: B) -> Bool = a == b
 
-impl<T> Op<T> for NoOp:
-    type Fold = T
-    fn op(self, a: T, b: T) -> T = a
-    // Never called: a tree without an op folds nothing (`on_domain` and `new` check `same(op, NoOp())`).
-    fn folds(self) -> Monoid<T>:
-        let none: ?T = None
-        Monoid(none!, (a, _) => a)
-    fn lift(self, x: T) -> T = x
 
 /// The positions a `SegTree` runs over. A domain brings its own; `Int` has none, so a
 /// `SegTree<Int, T>` takes them from `over: lo..hi`.

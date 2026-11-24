@@ -995,6 +995,36 @@ impl<'a> Lowerer<'a> {
         }
         let said = crate::show::mismatch(&self.show(want), &self.show(found), want, found);
         self.type_mismatch(span, want, found, said);
+        self.defaulted_arg_help(want, found);
+    }
+
+    /// Two instances of one struct that differ first at a defaulted param:
+    /// the written type left it out and got the default.
+    fn defaulted_arg_help(&mut self, want: &Ty, found: &Ty) {
+        let (Ty::Struct(w), Ty::Struct(f)) = (want, found) else {
+            return;
+        };
+        let (Some((wg, wa)), Some((fg, fa))) =
+            (&self.structs[*w].origin_gen, &self.structs[*f].origin_gen)
+        else {
+            return;
+        };
+        let Some(i) = wa.iter().zip(fa).position(|(a, b)| a != b) else {
+            return;
+        };
+        let decl = self.gen_structs[*wg].decl;
+        if wg != fg || !matches!(decl.generic_defaults.get(i), Some(Some(_))) {
+            return;
+        }
+        let (full, param) = (self.show(found), decl.generics[i].text.clone());
+        let default = match &wa[i] {
+            GenArg::Ty(t) => self.show(t),
+            GenArg::Domain(d) => self.show(&Ty::Pos(*d)),
+            _ => return,
+        };
+        self.help(format!(
+            "write `{full}` in full: left out, `{param}` is its default `{default}`"
+        ));
     }
 
     /// Each domain by the name it is written with: one made for a `D`
