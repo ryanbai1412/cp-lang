@@ -1064,17 +1064,18 @@ impl Checker<'_> {
         if base_ty.has_vague() {
             return false;
         }
-        let own = self.declares_member(&base_ty, &name.text)
-            || self.catalog_row(base, &name.text).is_some();
-        if !own {
+        let declared = self.declares_member(&base_ty, &name.text);
+        if !declared && self.catalog_row(base, &name.text).is_none() {
             return false;
         }
         let Pick::One(key, def) = self.pick_method_for(&base_ty, &name.text, Some(args)) else {
             return false;
         };
-        let library = !self.local_defs.contains_key(&key)
-            && (self.env.origin(&key)).is_some_and(|m| m == "prelude" || m.starts_with("std."));
-        if library || self_ty(&def).is_none_or(|s| matches!(s, Ty::Param(_))) {
+        // An imported fn is its own module's to rename; a catalog row stands for the std fn of its
+        // name, so std's own fn of that name hides nothing.
+        let imported = self.env.origin(&key).is_some();
+        let same = !declared && self.env.is_std();
+        if imported || same || self_ty(&def).is_none_or(|s| matches!(s, Ty::Param(_))) {
             return false;
         }
         let shown = self.quote(base.span);

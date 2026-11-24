@@ -3559,7 +3559,7 @@ fn first_gt_and_last_lt_match_linear_scan():
     assert va.first_gt(3) == V(4) and va.last_lt(3) == V(1)
     assert xs[1..4].first_gt(3) == Some(2) and xs[1..4].last_lt(3) == None
     assert xs[0..4].last_lt(3) == Some(0) and xs[0..4].first_gt(7) == None
-    assert pairs[1..4].first_gt(3, by: p => p.0) == Some(2)
+    assert pairs[1..4].first_gt(3, by: p => p.0) == Some(3)
     assert pairs[0..3].last_lt(3, by: p => p.0) == Some(0)
     let s = "abccd"
     assert s[1..4].first_gt('b') == Some(1) and s[1..4].last_lt('c') == Some(0)

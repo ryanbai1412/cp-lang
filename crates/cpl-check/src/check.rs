@@ -150,6 +150,11 @@ pub(crate) trait Env {
     fn item_index(&mut self) -> Option<usize> {
         None
     }
+
+    /// True if this file is one of std's.
+    fn is_std(&mut self) -> bool {
+        false
+    }
     /// True if this file declares `name` as a struct or enum, even while its
     /// definition is being computed (`struct A: b: ?B` inside `B`'s fields).
     fn declares_type(&mut self, _name: &str) -> bool {

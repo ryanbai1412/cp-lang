@@ -108,6 +108,8 @@ pub struct AnalyzedItem {
 
 #[derive(Debug, Default, Clone)]
 pub(crate) struct Scope {
+    /// The file is one of std's.
+    pub std: bool,
     /// Name to the index of the item that defines it.
     pub names: crate::names::NameMap<usize>,
     pub names_fp: u64,
@@ -525,7 +527,10 @@ impl Database {
 
         // The file's scope: the first declaration of a name wins, and later
         // ones are reported below.
-        let mut scope = Scope::default();
+        let mut scope = Scope {
+            std: is_std_path(path),
+            ..Scope::default()
+        };
         let mut import_diags: Vec<(usize, Diagnostic)> = Vec::new();
         let mut failed_names: crate::fx::HashSet<String> = crate::fx::HashSet::default();
         let mut prelude_off = false;

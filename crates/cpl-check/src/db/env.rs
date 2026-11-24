@@ -74,6 +74,10 @@ impl Env for FileCtx<'_> {
         self.current
     }
 
+    fn is_std(&mut self) -> bool {
+        self.scope.std
+    }
+
     fn decl_order(&mut self, name: &str) -> Option<usize> {
         self.record(DEP_NAMES, self.scope.names_fp);
         self.scope.names.get(name).copied()
