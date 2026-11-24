@@ -1136,3 +1136,36 @@ fn a_read_modify_write_of_one_map_entry_walks_the_map_once() {
         "a value that reads the map again, or a default that prints, keeps both walks: {kept}"
     );
 }
+
+#[test]
+fn a_returned_part_of_an_owned_local_moves_out_even_through_an_if_let() {
+    let out = cpp(concat!(
+        "fn pair(n: Int) -> ?(a: List<Int>, b: List<Int>):\n",
+        "    if n < 0: return None\n",
+        "    Some((a: [n], b: [n, n]))\n",
+        "fn wrapped(n: Int) -> ?List<Int>:\n",
+        "    let t = (a: [n], b: [n, n])\n",
+        "    Some(t.a)\n",
+        "fn bound(n: Int) -> ?List<Int>:\n",
+        "    if let p = pair(n): return Some(p.a)\n",
+        "    None\n",
+        "fn bound_part(n: Int) -> List<Int>:\n",
+        "    if let p = pair(n): return p.b\n",
+        "    []\n",
+        "let n: Int = read()\n",
+        "print(wrapped(n)!, bound(n) ?? [], bound_part(n))\n",
+    ));
+    assert!(
+        out.contains("return std::optional<std::vector<ll>>(std::move(std::get<0>(t)));"),
+        "Some(t.a) moves t's part at its last use:\n{out}"
+    );
+    assert!(
+        out.contains("std::tuple<std::vector<ll>, std::vector<ll>>& p = *t0;"),
+        "the if-let binding may give its part away:\n{out}"
+    );
+    assert!(
+        out.contains("return std::optional<std::vector<ll>>(std::move(std::get<0>(p)));")
+            && out.contains("return std::move(std::get<1>(p));"),
+        "each part of the tested optional moves out:\n{out}"
+    );
+}

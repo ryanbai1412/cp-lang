@@ -808,6 +808,7 @@ impl<'p> Emitter<'p> {
                 }
                 // Slots are per fn: one another fn lent says nothing of this one.
                 self.ref_bound.remove(slot);
+                self.mut_bound.remove(slot);
                 if hoisted {
                     self.line(out, &format!("{name} = {text};"));
                 } else if name.starts_with('_') {
@@ -816,8 +817,21 @@ impl<'p> Emitter<'p> {
                     self.line(out, &format!("[[maybe_unused]] {cpp} {name} = {text};"));
                 } else if !taken && self.lends(*slot, init, tail.as_ref()) {
                     // `let sp = sorted[b]`: a name for what is already
-                    // there. A copy would cost the whole list.
-                    self.line(out, &format!("const {cpp}& {name} = {text};"));
+                    // there. A copy would cost the whole list. One a return
+                    // gives a part of, on a local the fn owns, may move it out.
+                    let owner = crate::lend::bound_root(init).filter(|&src| {
+                        self.closure_id.is_none()
+                            && self
+                                .fn_id
+                                .is_some_and(|id| src >= self.program.fns[id].params.len())
+                            && !self.ref_bound.contains(&src)
+                    });
+                    if owner.is_some() && self.given_parts.contains(slot) {
+                        self.line(out, &format!("{cpp}& {name} = {text};"));
+                        self.mut_bound.insert(*slot);
+                    } else {
+                        self.line(out, &format!("const {cpp}& {name} = {text};"));
+                    }
                     self.ref_bound.insert(*slot);
                 } else if let Some(args) = sized_ctor(&cpp, &text) {
                     // `std::vector<ll> f((size_t)(n), 1);`: the type once.

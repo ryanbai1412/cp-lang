@@ -234,6 +234,11 @@ pub(crate) struct Emitter<'p> {
     pub slot_written_next: bool,
     /// Locals bound as `const T&` to a place they read.
     pub ref_bound: BTreeSet<usize>,
+    /// Locals a `return` gives a part of (`return Some(p.x0)`, `return t.b`).
+    pub given_parts: BTreeSet<usize>,
+    /// Of `ref_bound`, those bound as `T&` to a local the fn owns, so a
+    /// return may move a part out of it.
+    pub mut_bound: BTreeSet<usize>,
     pub taken: BTreeSet<String>,
     pub fresh: usize,
     /// Loops that a `break` or `continue` names from an inner loop.
@@ -331,6 +336,8 @@ impl<'p> Emitter<'p> {
             plain_let: false,
             slot_written_next: false,
             ref_bound: BTreeSet::new(),
+            given_parts: BTreeSet::new(),
+            mut_bound: BTreeSet::new(),
             taken: BTreeSet::new(),
             fresh: 0,
             break_targets: BTreeSet::new(),
@@ -586,9 +593,16 @@ impl<'p> Emitter<'p> {
         self.spent = crate::scope::spent(self.program, body);
         self.lent.clear();
         self.ref_bound.clear();
+        self.mut_bound.clear();
+        self.given_parts.clear();
         self.break_targets.clear();
         self.continue_targets.clear();
         walk::deep_stmts(body, &mut |stmt| match stmt {
+            Stmt::Return(Some(e)) => {
+                if let Some(root) = crate::lend::given_part_root(e) {
+                    self.given_parts.insert(root);
+                }
+            }
             Stmt::Break(Some(id)) => {
                 self.break_targets.insert(*id);
             }

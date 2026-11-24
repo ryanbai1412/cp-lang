@@ -1094,6 +1094,18 @@ impl Emitter<'_> {
         let ExprKind::Some(inner) = &value.kind else {
             return None;
         };
+        if matches!(inner.kind, ExprKind::Field(..) | ExprKind::Index(..)) {
+            // `return Some(p.x0)`: the return is the owner's last use.
+            if self.closure_id.is_some()
+                || !holds_heap(self.program, &inner.ty)
+                || !self.returned_item_dies(std::slice::from_ref(&**inner), 0)
+            {
+                return None;
+            }
+            let text = self.expr(inner).text;
+            let text = self.moved_if(true, text);
+            return Some(format!("{}({text})", self.ty(&value.ty)));
+        }
         let ExprKind::Local(slot) = inner.kind else {
             return None;
         };
@@ -1488,7 +1500,7 @@ impl Emitter<'_> {
         };
         let params = self.fn_id.map_or(0, |id| self.program.fns[id].params.len());
         (slot >= params || self.fn_id.is_some_and(|id| self.sunk[id].contains(&slot)))
-            && !self.ref_bound.contains(&slot)
+            && (!self.ref_bound.contains(&slot) || self.mut_bound.contains(&slot))
             && !item.ty.is_scalar()
             && !matches!(item.ty, Ty::Fn(..))
             && !items.iter().enumerate().any(|(j, other)| {
@@ -1608,6 +1620,32 @@ fn path_of(e: &Expr) -> Option<((bool, usize), Vec<usize>)> {
 }
 
 /// The local a place expression reads through fields and indexes.
+/// The local whose part `e` gives when returned: `p` of `p.x0`, of
+/// `Some(p.x0)` and of `t.b[0]`.
+pub(crate) fn given_part_root(e: &Expr) -> Option<usize> {
+    let part = match &e.kind {
+        ExprKind::Some(inner) => inner,
+        _ => e,
+    };
+    match part.kind {
+        ExprKind::Field(..) | ExprKind::Index(..) => owned_root(part),
+        _ => None,
+    }
+}
+
+/// The local a binding of `init` names a place on: `t0` of `*t0` (the
+/// optional an `if let` tests), of `t0.a` and of `t0`.
+pub(crate) fn bound_root(e: &Expr) -> Option<usize> {
+    match &e.kind {
+        ExprKind::Local(s) => Some(*s),
+        ExprKind::Unwrap(base, _)
+        | ExprKind::Payload(base, ..)
+        | ExprKind::Field(base, _)
+        | ExprKind::Index(base, _) => bound_root(base),
+        _ => None,
+    }
+}
+
 fn owned_root(e: &Expr) -> Option<usize> {
     match &e.kind {
         ExprKind::Local(s) => Some(*s),
