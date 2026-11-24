@@ -116,12 +116,12 @@ The complement of `missing` over a domain `V`: an arc `u -> v` for every `v != u
 
 \(O(n)\) build: the functional graph `v -> next[v]` (every vertex one out-arc).
 
-- `fn new(next: [V]V) -> Functional<V>` — \(O(n \log n)\); The functional graph `v -> next[v]` (every vertex has one out-arc), with its cycles, tails and binary-lifting tables built.
+- `fn new(next: [V]V) -> Functional<V>` — \(O(n)\); The functional graph `v -> next[v]` (every vertex has one out-arc), with its cycles, tails and one jump pointer per vertex (`O(n)` memory, `O(log n)` walks).
 - `fn on_cycle(self, v: V) -> Bool` — \(O(1)\); Does `v` lie on a cycle?
 - `fn root_of(self, v: V) -> V` — \(O(1)\); The first cycle vertex reached from `v` (`v` itself on a cycle): the root of the in-tree hanging off the cycle that holds `v`.
 - `fn depth(self, v: V) -> Int` — \(O(1)\); The steps from `v` to `root_of(v)`; `0` on a cycle.
 - `fn cycle_len(self, v: V) -> Int` — \(O(1)\); The length of the cycle `v` eventually reaches.
-- `fn after(self, v: V, k: Int) -> V` — \(O(\log k)\); The vertex `k` steps after `v`, by binary lifting: `after(v, 0) == v`.; traps: when `k < 0`
+- `fn after(self, v: V, k: Int) -> V` — \(O(\log k)\); The vertex `k` steps after `v`, by jump pointers: `after(v, 0) == v`.; traps: when `k < 0`
 - `fn jump_while(self, v: V, pred: V -> Bool) -> ?V` — \(O(\log n)\); The first vertex `u` on the walk from `v`, `v` included, with `pred(u)`, or `None` if None appears.
 - `fn dist(self, a: V, b: V) -> ?Int` — \(O(\log n)\); The fewest steps from `a` to `b`, or `None` if the walk from `a` never reaches `b`; `dist(a, a) == Some(0)`.
 - `fn cycles(self) -> List<List<V>>` — \(O(n)\); Every cycle once, each in walk order from its smallest vertex.
