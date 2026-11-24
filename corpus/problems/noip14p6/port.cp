@@ -3,28 +3,35 @@
 // Problem: given n <= 100, m < 1e6 and integers a_0..a_n with |a_i| <= 10^10000, a_n != 0,
 //   print the number of integer roots of a_0 + a_1 x + ... + a_n x^n = 0 in 1..=m, then
 //   the roots in increasing order, one per line.
-// Solution: read each coefficient modulo the prime 2^61 - 1 and test every x in 1..=m by
-//   Horner's rule (`eval`); x is reported when the value is 0, which a nonzero value
-//   passes only by bad luck (about n / 2^61 per x). O(n m).
+// Solution: f(x) = f(x mod p) (mod p), so under a small prime p one Horner pass over the
+//   residues 0..p (`eval`) says which x can be roots; f mod p has at most n roots, so each
+//   prime keeps at most n / p of the x. Every x that survives three primes near 10^4 is then
+//   checked by Horner modulo 2^61 - 1, which a nonzero value passes only by bad luck (about
+//   n / 2^61 per x). O(n (p + m n / p)) instead of O(n m).
 // original: corpus/submissions/5445671.cpp
 // Bounds: n: 1..=100; m: 1..=1e6
+use std.math.{primes_in}
+
 let n: 1..=100 = read()
 let m: 1..=1e6 = read()
+let digits = read<[0..=n]Str>()
 
-// a short signed number, for stress tests
-fn random_number() -> List<Char>:
-    var s: List<Char> = []
-    if rand(0, 1) == 0: s.push('-')
-    for _ in 0..rand(1, 3): s.push('0' + rand(0, 9))
-    s
+// The numbers are far too long to hold, so keep each one modulo P.
+fn residue<P>(s: Str) -> Mod<P>:
+    let digit = (c: Char) => Mod<P>(Int(c) - Int('0'))
+    let v = s.fold_from(Mod<P>(0), (v, c) => if c == '-': v else: v * Mod<P>(10) + digit(c))
+    if s.starts_with("-"): -v else: v
 
-// The numbers are far too long to hold, so keep each one modulo a large prime.
+// which residues of x mod p make f vanish modulo p
+fn roots_mod(p: Int) -> List<Bool>:
+    type Z = Mod(p)
+    let under_p: List<Z> = [residue(s) for s in digits]
+    [under_p.eval(Z(r)) == Z(0) for r in 0..p]
+
+let sieves = [(p:, root: roots_mod(p)) for p in primes_in(10_000, 10_100)[..3]]
 type Z = Mod<2305843009213693951>
-fn residue(s: [domain S]Char) -> Z:
-    let v = s.fold_from(Z(0), (v, c) => if c == '-': v else: v * Z(10) + Z(c - '0'))
-    if s[S.first!] == '-': -v else: v
-let coef = [residue(read(gen: random_number)) for _ in 0..=n]
+let coef: List<Z> = [residue(s) for s in digits]
 
-let roots = [x for x in 1..=m if coef.eval(Z(x)) == Z(0)]
+let roots = [x for x in 1..=m if sieves.all(s => s.root[x % s.p]) and coef.eval(Z(x)) == Z(0)]
 print(roots.len)
 for x in roots: print(x)
