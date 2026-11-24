@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3439 (3389 passing). Rules: 616.
+Cases: 3440 (3389 passing). Rules: 616.
 
 ## Summary per chapter
 
@@ -1135,7 +1135,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `RingRange`
 - **search** (11/11 named by a case)
 - **segtree** (57/57 named by a case)
-- **seq** (220/227 named by a case)
+- **seq** (221/228 named by a case)
   - uncovered: `Compressed`, `Filtered`, `Mapped`, `Rebased`, `StepKeys`, `SubseqStep`, `Ring`
 - **slope** (39/39 named by a case)
 - **sparse** (23/23 named by a case)
@@ -1147,10 +1147,10 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **timetree** (11/11 named by a case)
 - **tree** (160/176 named by a case)
   - uncovered: `Rooted.reroot`, `Rooted.chains`, `Rooted.virtual`, `VirtualTree`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.vals`, `Layers`, `Events`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `KruskalTree`
-- **window** (20/22 named by a case)
-  - uncovered: `Tracked`, `Undo`
+- **window** (20/21 named by a case)
+  - uncovered: `Undo`
 
-2283 of 2395 std items are named by a case.
+2284 of 2395 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
