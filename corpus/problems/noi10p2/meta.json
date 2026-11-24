@@ -32,5 +32,10 @@
  "difficulty": "hard",
  "dream": "draft",
  "spec": "draft",
- "notes": "SparseTable over (prefix, cut) pairs; heap of end-range groups split around the argmax."
+ "notes": "SparseTable over (prefix, cut) pairs; heap of end-range groups split around the argmax.",
+ "dream_stress": {
+  "ok": false,
+  "cases": 0,
+  "sha": "3e8c82d33836b9a30bc20b76b65f74959dbea04a"
+ }
 }

@@ -2,10 +2,13 @@
 
 `python3 gen.py SEED SIZE [MODE]`: MODE `neg` makes every note negative, `wide` takes L=1, R=n,
 `max` uses n = SIZE with k at its largest, `narrow` is `max` with R - L <= 2.
+`--max` is `0 500000 max`.
 """
 import random
 import sys
 
+if sys.argv[1] == "--max":
+    sys.argv = [sys.argv[0], "0", "500000", "max"]
 seed, size = int(sys.argv[1]), int(sys.argv[2]) if len(sys.argv) > 2 else 8
 mode = sys.argv[3] if len(sys.argv) > 3 else ""
 rng = random.Random(seed)

@@ -1,5 +1,6 @@
 import sys, random
 # seed size: a tree on 1..size cities: random, path, star, caterpillar or complete binary
+if sys.argv[1] == "--max": sys.argv[1:] = ["0", "1000"]  # n = 1000
 rng = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 n = S if S >= 1000 or rng.random() < 0.4 else rng.randint(1, S)  # size 1000: the limit
 kind = rng.randrange(5)

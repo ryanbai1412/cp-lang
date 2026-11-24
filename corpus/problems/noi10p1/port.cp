@@ -13,12 +13,6 @@ let k = min(n, m)
 // pairs[g]: plants (x, y) with gcd(x, y) == g; a plant with gcd g has g - 1
 // plants between it and the machine and loses 2 * (g - 1) + 1
 var pairs: [1..=k]Int = 0
-var lost = 0
 for g in (1..=k).rev:
-    pairs[g] = (n / g) * (m / g)
-    var mult = 2 * g
-    while mult <= k:
-        pairs[g] -= pairs[mult]
-        mult += g
-    lost += pairs[g] * (2 * g - 1)
-print(lost)
+    pairs[g] = (n / g) * (m / g) - sum(pairs[x] for x in (2 * g..=k).step(g))
+print(sum(pairs[g] * (2 * g - 1) for g in 1..=k))

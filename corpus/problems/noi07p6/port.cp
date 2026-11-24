@@ -8,31 +8,23 @@
 //   the vertex, then walk into the heaviest one. Try every root, O(n^2 log n), and run the
 //   plan from the best one: land on the root, clear lighter children and recall their
 //   detectives, then step into the heaviest.
+// original: corpus/submissions/3756630.cpp
 let n: 1..=1000 = read()
 domain City = 1..=n
-
-var adj: [City]List<City> = []
-for _ in 0..n - 1:
-    let (u, v): (City, City) = read()
-    adj[u].push(v)
-    adj[v].push(u)
+domain Road = 1..n
+let roads: [Road](u: City, v: City) = read()
+let g = Graph.undirected(roads, a => a.to)
 
 var need: [City]Int = 0
-fn children(u: City, p: ?City) -> List<City> = [v for v in adj[u] if Some(v) != p]
+fn children(u: City, p: ?City) -> List<City> = [v for v in g[u] if Some(v) != p]
 
 // detectives that clear the subtree of u entered from its parent p
 fn label(u: City, p: ?City) -> Int:
-    var (a, b) = (0, 0)  // the two largest child labels
-    for v in children(u, p):
-        let x = label(v, Some(u))
-        if x > a: (a, b) = (x, a)
-        elif x > b: b = x
-    need[u] = if a == 0: 1 else: max(a, b + 1)
+    let top = children(u, p).map(v => label(v, Some(u))).max_k(2).sorted(by: x => desc(x))
+    need[u] = if top.len == 0: 1 elif top.len == 1: top[0] else: max(top[0], top[1] + 1)
     need[u]
 
-var root = City.first!
-for r in City:
-    if label(r, None) < label(root, None): root = r
+let root = City.min(by: r => label(r, None))!
 print(label(root, None))
 
 var plan: List<Str> = []
@@ -41,17 +33,16 @@ fn land(u: City): plan.push("L {u}")
 // clear the subtree of u; `guarded`: a detective already stands on u and stays in the
 // subtree, else one detective comes back up to p
 fn sweep(u: City, p: ?City, guarded: Bool):
-    var cs = children(u, p)
-    cs.sort(by: v => -need[v])
+    let cs = children(u, p).sorted(by: v => desc(need[v]))
     if cs.len == 0 and not guarded: land(u)
     for i in 1..cs.len:
         if i == 1 and not guarded: sweep(cs[0], Some(u), false)
         sweep(cs[i], Some(u), false)
         plan.push("B {u}")
     if guarded:
-        if cs.len > 0:
-            plan.push("M {u} {cs[0]}")
-            sweep(cs[0], Some(u), true)
+        if let heavy = cs.first:
+            plan.push("M {u} {heavy}")
+            sweep(heavy, Some(u), true)
     else:
         if cs.len == 1: sweep(cs[0], Some(u), false)
         plan.push("M {u} {p!}")

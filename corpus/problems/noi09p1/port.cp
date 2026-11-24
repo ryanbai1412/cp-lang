@@ -4,84 +4,48 @@
 //   smallest one, or "No Answer".
 // Solution: T[i] is (i - D[i]) mod n or (i + D[i]) mod n, so each position is an edge between
 //   its two candidate values and T picks one endpoint per edge, each value once. A value of
-//   degree 1 is forced: peel those with a queue. What is left must be disjoint cycles; going
-//   through positions in order, the first unassigned edge of a cycle takes its smaller value,
-//   which orients the whole cycle. O(n).
+//   degree 1 is forced: peel those. What is left must be disjoint cycles; going through
+//   positions in order, the first unassigned edge of a cycle takes its smaller value, which
+//   orients the whole cycle. O(n).
 // original: corpus/submissions/5102817.cpp
 
-let n: Int = read()
+let n: 1..=1e4 = read()
 domain Pos = 0..n
 domain Val = 0..n
+let dist: [Pos]0..n = read()
+let ends = [Pos] i => (u: Val((i.ord - dist[i]) % n), v: Val((i.ord + dist[i]) % n))
+let g = Graph.undirected(ends)
 
-let dist: [Pos]Int = read()
-let ends: [Pos](Val, Val) = [Pos] i => (
-    Val((i.ord - dist[i]) % n),
-    Val((i.ord + dist[i]) % n),
-)
+fn solve() -> ?[Pos]Val:
+    var at: [Pos]?Val = None
+    var taken: [Val]Bool = false
+    var deg = [Val] u => g[u].len
+    fn take(i: Pos, u: Val) -> Bool:
+        if at[i] != None or taken[u]: return false
+        at[i] = u
+        taken[u] = true
+        true
 
-var adj: [Val]List<(to: Val, edge: Pos)> = []
-var deg: [Val]Int = 0
-for i in Pos:
-    let (u, v) = ends[i]
-    adj[u].push((to: v, edge: i))
-    adj[v].push((to: u, edge: i))
-    deg[u] += 1
-    deg[v] += 1
+    var forced = [u for u in Val if deg[u] == 1]
+    while let u = forced.pop():
+        for a in g[u]:
+            if at[a.e] == None:
+                if not take(a.e, u): return None
+                deg[u] -= 1
+                deg[a.to] -= 1
+                if deg[a.to] == 1: forced.push(a.to)
 
-var ans: [Pos]?Val = None
-var used_val: [Val]Bool = false
-var impossible = false
-
-fn assign(i: Pos, u: Val):
-    if ans[i] != None or used_val[u]:
-        impossible = true
-        return
-    ans[i] = u
-    used_val[u] = true
-
-// Peel forced degree-1 values.
-var leaves = [u for u in Val if deg[u] == 1]
-var head = 0
-while head < leaves.len and not impossible:
-    let u = leaves[head]
-    head += 1
-    for a in adj[u]:
-        if ans[a.edge] == None:
-            assign(a.edge, u)
-            deg[u] -= 1
-            deg[a.to] -= 1
-            if deg[a.to] == 1: leaves.push(a.to)
-
-// Orient each remaining cycle starting from its smallest position index.
-for i in Pos:
-    if impossible or ans[i] != None: continue
-    let (u, v) = ends[i]
-    let first = min(u, v)
-    let other = if first == u: v else: u
-    assign(i, first)
-    var cur = other
-    while cur != first and not impossible:
-        var moved = false
-        for a in adj[cur]:
-            if ans[a.edge] == None:
-                assign(a.edge, cur)
-                cur = a.to
-                moved = true
-                break
-        if not moved:
-            impossible = true
-            break
-
-for i in Pos:
-    if ans[i] == None: impossible = true
-for u in Val:
-    if not used_val[u]: impossible = true
-
-if impossible:
-    print("No Answer")
-else:
-    var line = ""
     for i in Pos:
-        if i.ord > 0: line += " "
-        line += "{ans[i]!.ord}"
-    print(line)
+        if at[i] != None: continue
+        let first = min(ends[i].u, ends[i].v)
+        if not take(i, first): return None
+        var cur = if first == ends[i].u: ends[i].v else: ends[i].u
+        while cur != first:
+            if let a = g[cur].find(a => at[a.e] == None):
+                if not take(a.e, cur): return None
+                cur = a.to
+            else: return None
+    if Val.any(u => not taken[u]): return None
+    Some([Pos] i => at[i]!)
+
+if let t = solve(): print(t) else: print("No Answer")
