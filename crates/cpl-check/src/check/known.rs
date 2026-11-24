@@ -320,6 +320,32 @@ impl<'a> Checker<'a> {
         })
     }
 
+    /// `Prefix(a)` on a `List<T>` or a `[0..n]T` builds the family's shape
+    /// whose `new` takes a `List<T>`, as `new(a: List<T>)` states.
+    pub(super) fn list_shape_call(&mut self, callee: &Expr, args: &[Arg]) -> Option<Ty> {
+        let ExprKind::Name(name) = &callee.kind else {
+            return None;
+        };
+        let shape = crate::prelude::arity_key(name, 1);
+        let takes_list = self.global(&shape).is_some_and(|d| {
+            matches!(&*d, Def::Struct { ctor: Some(ps), .. }
+                if matches!(ps.first().map(|p| &p.ty), Some(Ty::Named { name, .. }) if name == "List"))
+        });
+        if self.local(name).is_some() || !takes_list || args.len() != 1 || args[0].name.is_some() {
+            return None;
+        }
+        let elem = match self.quietly(|c| c.infer(&args[0].value)) {
+            Ty::Array { index, elem } if index.len() == 1 && index[0].is_int() => *elem,
+            Ty::Named { name, mut args } if name == "List" && args.len() == 1 => args.remove(0),
+            _ => return None,
+        };
+        self.infer(&args[0].value);
+        Some(Ty::Named {
+            name: shape,
+            args: vec![elem],
+        })
+    }
+
     /// `let g: [Row, Col]Tile = read()` reads each `Tile` as text, so the
     /// enum says how its variants are written: nothing is read as a
     /// number or by guessing.

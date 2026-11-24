@@ -563,6 +563,16 @@ impl<'a> Lowerer<'a> {
                     {
                         self.grid_shape_ctor(&cpl_check::arity_key(name, 3), args, span)
                     }
+                    Some(Sym::GenStruct(_))
+                        if args.len() == 1
+                            && args[0].name.is_none()
+                            && self.takes_list(&cpl_check::arity_key(name, 1))
+                            && self
+                                .probe_ty_silent(&args[0].value)
+                                .is_some_and(|t| Self::counted_ty(&t)) =>
+                    {
+                        self.list_shape_ctor(&cpl_check::arity_key(name, 1), args, span)
+                    }
                     Some(Sym::GenStruct(gid)) => {
                         self.call_gen_struct(gid, Vec::new(), args, hint, span)
                     }
