@@ -18,3 +18,7 @@ size = 300
 
 [[case]]
 args = ["--max"]
+
+# both accepted C++ print NO here: in pieces 1..=30, flavour 1 has 10 and flavour 3 has 11
+[[case]]
+input = "34 6\n1 2 3 3 3 1 5 2 5 1 1 3 3 3 1 1 2 3 1 1 1 3 3 2 1 3 3 5 4 2 3 1 1 3\n1\n1 30\n"
