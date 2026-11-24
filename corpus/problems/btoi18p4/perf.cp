@@ -54,7 +54,7 @@ fn ring(dir: [Wire]Bool, d: Bool) -> Bool:
 
 var holder: [Wire]?Wire = None
 var reach: ?(end: Int, by: Wire) = None
-let order = Wire.collect().sorted(by: w => 4 * n * lo[w] - hi[w])  // by start, longest first
+let order = Wire.collect().sorted(by: w => (lo[w], desc(hi[w])))  // by start, longest first
 for s in [0, n]:
     for w in order:
         match reach:
