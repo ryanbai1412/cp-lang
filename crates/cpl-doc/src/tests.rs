@@ -276,6 +276,18 @@ fn examples_that_do_not_parse_fail_the_check() {
 }
 
 #[test]
+fn example_lines_are_checked_like_blocks() {
+    let src = "/// example: `let x = 1; x + 1 == 2`\n/// example: `larger(1, 2`\n/// example: two plus two is four\nfn larger(a: Int, b: Int) -> Int = a\n";
+    let report = examples::check(&extract(src, "m.cp"));
+    assert_eq!(report.checked, 3);
+    let [unclosed, prose] = report.failures.as_slice() else {
+        panic!("{report:#?}");
+    };
+    assert_eq!(unclosed.diagnostics[0].message, "this `(` is never closed");
+    assert!(prose.diagnostics.is_empty() && prose.code.is_empty());
+}
+
+#[test]
 fn a_file_with_a_syntax_error_still_documents_the_rest() {
     let module = extract(
         "/// Fine.\nfn ok() = 1\n\nfn broken( = \n\n/// Also fine.\nfn after() = 2\n",

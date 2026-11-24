@@ -143,9 +143,14 @@ fn run_examples(modules: &[Module], stdout: &mut dyn Write, stderr: &mut dyn Wri
         checked += report.checked;
         failed += report.failures.len();
         for failure in &report.failures {
+            let what = if failure.diagnostics.is_empty() {
+                "is prose; write it as backticked code"
+            } else {
+                "does not parse"
+            };
             let _ = writeln!(
                 stdout,
-                "FAIL {}:{}: the example for `{}` does not parse",
+                "FAIL {}:{}: the example for `{}` {what}",
                 module.path, failure.line, failure.item
             );
             // Positions inside the example, shown against its own text.

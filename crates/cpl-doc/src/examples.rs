@@ -1,10 +1,9 @@
 //! `cpl doc --test`: the examples in doc comments must be programs.
 //!
-//! Each fenced block is parsed on its own (`example:` lines are run by
-//! cpl-conform's doc suite). An example that no longer
-//! parses is one the reader cannot copy, which is the drift this guards
-//! against. Running them and comparing output waits on the interpreter;
-//! [`Failure`] is what that will report too.
+//! Every example, an `example:` line or a fenced block, is parsed on its own
+//! (cpl-conform's doc suite also runs them). An example that no longer parses,
+//! or is prose rather than code, is one the reader cannot copy, which is the
+//! drift this guards against.
 
 use crate::Module;
 use cpl_diag::Diagnostic;
@@ -18,7 +17,7 @@ pub struct Failure {
     /// The 1-based line of the file the example starts on.
     pub line: u32,
     pub code: String,
-    /// Positions are within `code`.
+    /// Positions are within `code`; empty when the example is prose, not code.
     pub diagnostics: Vec<Diagnostic>,
 }
 
@@ -37,15 +36,28 @@ pub fn check(module: &Module) -> Report {
         let name = item.anchor(owner);
         item.examples.iter().map(move |e| (name.clone(), e))
     });
-    for (item, example) in own.chain(items).filter(|(_, e)| e.block) {
-        let code = example.code.as_deref().unwrap_or_default();
+    for (item, example) in own.chain(items) {
         report.checked += 1;
-        let diagnostics = cpl_syntax::parse_file(code).diagnostics;
+        let Some(code) = &example.code else {
+            report.failures.push(Failure {
+                item,
+                line: example.line,
+                code: String::new(),
+                diagnostics: Vec::new(),
+            });
+            continue;
+        };
+        let code = if example.block {
+            code.clone()
+        } else {
+            example.statements().join("\n")
+        };
+        let diagnostics = cpl_syntax::parse_file(&code).diagnostics;
         if !diagnostics.is_empty() {
             report.failures.push(Failure {
                 item,
                 line: example.line,
-                code: code.to_string(),
+                code,
                 diagnostics,
             });
         }
