@@ -3,7 +3,7 @@
 //   edges on its longest directed path.
 // Solution: longest[u] = max(longest[v] + 1) over edges u -> v, filled in reverse topological
 //   order so every successor is done first; print the max. O(n + m).
-// Bounds: n: 2..=1e5; m: 1..=1e5
+// Bounds: n: 2..=1e5; m: 1..=1e5; arcs.0, arcs.1: 1..=n
 
 let (n, m): (2..=1e5, 1..=1e5) = read()
 domain V = 1..=n

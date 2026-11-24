@@ -9,7 +9,7 @@
 //   O(n m) moves.
 // Protocol: print L, R or F (F reads 0 or 1), then A, then the map.
 // original: corpus/submissions/5040084.cpp
-// Bounds: n, m: 1..=80
+// Bounds: n, m: 1..=80; at.0: 1..=n; at.1: 1..=m
 let n: 1..=80 = read()
 let m: 1..=80 = read()
 domain Row = 1..=n
