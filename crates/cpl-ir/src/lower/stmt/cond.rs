@@ -425,7 +425,9 @@ impl<'a> Lowerer<'a> {
                 })
             }
             ast::PatternKind::Variant { path, args } => {
-                let name = path.last().expect("a variant pattern has a name");
+                let Some(name) = path.last() else {
+                    return Some(self.err_expr(span));
+                };
                 if path.len() == 1 && name.text == "some" {
                     let Ty::Opt(inner_ty) = value.ty.clone() else {
                         if value.ty != Ty::Error {
