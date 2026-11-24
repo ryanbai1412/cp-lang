@@ -12,16 +12,20 @@
 // The answer searches on random monotone, unimodal and ratio instances, each against a scan:
 // bsearch_real against its own halving loop, the discrete ternaries against the first extreme,
 // the real ones against the known optimum, parallel_bsearch against prefix sums, dinkelbach
-// against the best ratio, and split_best against the sorted values. Reads `seed n`; prints the
+// against the best ratio, and split_best against the sorted values, on `Int` ranges and on a
+// cuts domain, whose positions have no `+ Int`. Reads `seed n`; prints the
 // first op that differs.
 use std.rand.{Rng}
 use std.search.{gallop_first}
+
+domain C = 0..6
 
 fn near(a: F64, b: F64) -> Bool = abs(a - b) <= 1e-6
 
 let seed0 = read<Int>()
 let n = read<Int>()
 var rng = Rng(seed0)
+let cs = [x for x in C.cuts]
 var bad = ""
 for k in 0..n:
     let lo = F64(rng.int(-20, 20)) / 4.0
@@ -83,5 +87,10 @@ for k in 0..n:
     let groups = [(l..l + rng.int(0, len - l)) for l in [rng.int(0, len) for _ in 0..rng.int(0, 3)]]
     let vals = [f[i] for g in groups for i in g].sorted(by: x => desc(x))
     if split_best(groups, range: g => g, best: (_, r) => r.map(i => (f[i], i)).max()!).collect() != vals: bad = "op {k}: split_best"
+    let fc = [rng.int(-9, 9) for _ in cs]
+    let cg: List<Range<C.cuts>> = [cs[l]..cs[l + rng.int(0, cs.len - 1 - l)] for l in [rng.int(0, cs.len - 1) for _ in 0..rng.int(0, 3)]]
+    let cv = [fc[x.ord] for g in cg for x in g].sorted(by: x => desc(x))
+    if split_best<Range<C.cuts>, C.cuts, Int>(cg, range: g => g, best: (_, r) => r.map(x => (fc[x.ord], x)).max()!).collect() != cv:
+        bad = "op {k}: split_best on a cuts domain"
     if bad != "": break
 print(if bad == "": "ok" else: bad)

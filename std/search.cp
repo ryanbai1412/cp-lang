@@ -243,7 +243,7 @@ pub fn dinkelbach(lo: F64, solve: F64 -> (num: F64, den: F64), eps: F64 = 1e-9) 
 /// `best(g, r)` is the top value over a non-empty `r` and the position of `r` that gives it.
 ///
 /// A queue holds one entry per non-empty group range. Taking the top entry `(g, r)` with value
-/// `t` at position `p` yields `t` and queues the non-empty pieces `r.start..p` and `p.next..r.end`
+/// `t` at position `p` yields `t` and queues the non-empty pieces before and after `p`
 /// with their own `best`. So the k best cost \(O(k \log(n + k))\) `best` calls, n the number of
 /// groups: the k largest subarray sums, Super Piano, k smallest pair sums (with negated values).
 /// Equal values come out in group order, then left piece before right piece.
@@ -277,7 +277,7 @@ pub fn split_best<G, D, T: Ord>(
     fn push_entry(g: G, r: Range<D>, gi: Int):
         if r.len == 0: return
         let (val, pos) = best(g, r)
-        assert r.l <= pos < r.r, "split_best: best returned position outside range"
+        assert pos in r, "split_best: best returned position outside range"
         let id = v_list.len
         g_list.push(g)
         r_list.push(r)
@@ -326,11 +326,9 @@ pub fn split_best<G, D, T: Ord>(
         let r = r_list[top]
         let p = p_list[top]
         let g_idx = gi_list[top]
-        if r.l < p:
-            push_entry(g, r.l..p, g_idx)
-        let after = p + 1
-        if after < r.r:
-            push_entry(g, after..r.r, g_idx)
+        let at = p..=p
+        push_entry(g, r.l..at.l, g_idx)
+        push_entry(g, at.r..r.r, g_idx)
 
 /// A point of `self` where a continuous unimodal `by` is largest, by golden-section search,
 /// within `(hi - lo) * 0.618^steps` of the maximizer: the real `peak`, picked by the range's
