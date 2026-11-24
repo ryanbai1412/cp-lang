@@ -6,6 +6,9 @@ use cpl_json::{obj, Value};
 use cpl_lsp::Server;
 use std::path::{Path, PathBuf};
 
+#[path = "../../cpl-cli/tests/support/shards.rs"]
+mod shards;
+
 fn message(id: Option<u32>, method: &str, params: Value) -> Value {
     let mut members = vec![("jsonrpc".to_string(), Value::from("2.0"))];
     if let Some(id) = id {
@@ -52,16 +55,36 @@ fn apply(text: &str, edits: &[Value]) -> String {
     lines.concat()
 }
 
-#[test]
-fn editor_formatting_equals_cpl_fmt_on_every_conformance_case() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/conformance");
+const SHARDS: usize = 8;
+
+fn root() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/conformance")
+}
+
+fn files() -> Vec<PathBuf> {
     let mut files = Vec::new();
-    cases(&root, &mut files);
-    assert!(
-        files.len() > 1000,
-        "found {} conformance cases",
-        files.len()
-    );
+    cases(&root(), &mut files);
+    files
+}
+
+/// A case's path under spec/conformance, which picks its shard.
+fn key(path: &Path) -> String {
+    path.strip_prefix(root()).unwrap().display().to_string()
+}
+
+fn keys() -> Vec<String> {
+    files().iter().map(|p| key(p)).collect()
+}
+
+#[test]
+fn there_are_over_1000_conformance_cases() {
+    let n = files().len();
+    assert!(n > 1000, "found {n} conformance cases");
+}
+
+fn editor_formatting_equals_cpl_fmt_on_every_conformance_case(k: usize) {
+    let root = root();
+    let files = shards::mine(files(), |p| key(p), k, SHARDS);
     let mut server = Server::new();
     server.handle(&message(Some(1), "initialize", obj([])));
     let mut differ = Vec::new();
@@ -108,3 +131,19 @@ fn editor_formatting_equals_cpl_fmt_on_every_conformance_case() {
         differ.join("\n")
     );
 }
+
+shards::shard_tests!(
+    editor_formatting_equals_cpl_fmt_on_every_conformance_case,
+    keys(),
+    the_format_shards_cover_every_case,
+    [
+        editor_formatting_equals_cpl_fmt_on_every_conformance_case_0 = 0,
+        editor_formatting_equals_cpl_fmt_on_every_conformance_case_1 = 1,
+        editor_formatting_equals_cpl_fmt_on_every_conformance_case_2 = 2,
+        editor_formatting_equals_cpl_fmt_on_every_conformance_case_3 = 3,
+        editor_formatting_equals_cpl_fmt_on_every_conformance_case_4 = 4,
+        editor_formatting_equals_cpl_fmt_on_every_conformance_case_5 = 5,
+        editor_formatting_equals_cpl_fmt_on_every_conformance_case_6 = 6,
+        editor_formatting_equals_cpl_fmt_on_every_conformance_case_7 = 7,
+    ]
+);

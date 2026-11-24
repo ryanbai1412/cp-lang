@@ -6,7 +6,6 @@
     "cpl-cli::judges every_passing_corpus_port_compiles_with_every_judges_flags_3": 96.9,
     "cpl-cli::judges every_passing_corpus_port_compiles_with_every_judges_flags_2": 90.5,
     "cpl-cli::judges every_passing_corpus_port_compiles_with_every_judges_flags_4": 81.9,
-    "cpl-lsp::format_parity editor_formatting_equals_cpl_fmt_on_every_conformance_case": 76.8,
     "cpl-cli::judges every_passing_corpus_port_compiles_with_every_judges_flags_5": 75.1,
     "cpl-cli::judges every_passing_corpus_port_compiles_with_every_judges_flags_6": 74.6,
     "cpl-cli::judges every_passing_corpus_port_compiles_with_every_judges_flags_7": 73.1,
