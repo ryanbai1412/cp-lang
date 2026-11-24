@@ -21,12 +21,9 @@ fn ask(inds: List<Pos>) -> Int:
     print("?", inds.len, inds)
     read()
 
-var (mi, ma) = (0, n)
-while ma - mi > 1:
-    let md = (mi + ma) / 2
-    if ask([Pos(i) for i in mi + 1..=md + 1]) > 0: ma = md else: mi = md
-let open_i = Pos(mi + 1)
-let close_i = Pos((mi + 1) % n + 1)
+let ma = (1..n).first_true(md => ask([Pos(i) for i in 1..=md + 1]) > 0) ?? n
+let open_i = Pos(ma)
+let close_i = Pos(ma % n + 1)
 
 fn check2(p1: Pos, p2: Pos):
     let r = ask([p1, close_i, open_i, p2, open_i, p2])

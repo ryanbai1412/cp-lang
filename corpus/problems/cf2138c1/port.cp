@@ -20,23 +20,12 @@ var par: [V]?V = None
 for i in 2..=n: par[V(i)] = raw_par[i]
 let t = Rooted.from_parents(par)
 
-let leaf_depth = V.filter(v => t.size(v) == 1).map(v => t.depth(v)).min()!
+let leaf_depth = min(t.depth(v) for v in V if t.size(v) == 1)!
 var freq: [0..n]Int = 0
 for v in V: freq[t.depth(v)] += 1
 
 fn is_good(l: Int) -> Bool:
-    var ff: [0..=n]Int = 0
-    for i in 0..l: ff[freq[i]] += 1
-    for i in l..n: ff[1] += freq[i]
-    var dp = Bitset<S>.empty().set(S(0), true)
-    for w in 1..=n if ff[w] > 0:
-        var rem = ff[w]
-        var p = 1
-        while rem > 0:
-            let take = min(p, rem)
-            dp |= dp.shifted(take * w)
-            rem -= take
-            p *= 2
-    S(k) in dp
+    let deep = sum(freq[i] for i in l..n)
+    S(k) in Bitset<S>.subset_sums([freq[i] for i in 0..l] + List.filled(deep, 1))
 
 print((0..leaf_depth + 2).last_true(is_good)!)
