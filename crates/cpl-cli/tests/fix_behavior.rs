@@ -1,7 +1,7 @@
 //! A quick fix keeps what the program does: every runnable program in the
 //! repository (lint records' `before.cp`, the conformance cases and the
 //! `tests/programs` and `tests/parity` programs, with the `.in` beside
-//! each, and the corpus ports on their three smallest tests) runs to the
+//! each or their `// input:` header, and the corpus ports on their three smallest tests) runs to the
 //! same exit status and output after `cpl fix`.
 //!
 //! Only programs that run cleanly before the fix are held to this: a fix
@@ -13,9 +13,11 @@ use std::path::{Path, PathBuf};
 
 #[path = "support/corpus_cases.rs"]
 mod corpus_cases;
+#[path = "support/shards.rs"]
+mod shards;
 use std::time::Duration;
 
-const SHARDS: usize = 32;
+const SHARDS: usize = 64;
 
 fn root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -105,16 +107,20 @@ fn port_inputs(dir: &Path) -> Vec<PathBuf> {
     ins
 }
 
-/// What `rel` runs on: a port its tests, any other program the `.in` beside it.
+/// What `rel` runs on: a port its tests, any other program the `.in` beside
+/// it, else its `// input:` header.
 fn inputs(src: &Path) -> Vec<Vec<u8>> {
     let read = |p: &Path| std::fs::read(p).unwrap();
+    let read_text = |p: &Path| std::fs::read_to_string(p).unwrap();
     if src.file_name().is_some_and(|n| n == "port.cp") {
         return port_inputs(&cpl_corpus::programs::problem_dir(src))
             .iter()
             .map(|p| read(p))
             .collect();
     }
-    vec![std::fs::read(src.with_extension("in")).unwrap_or_default()]
+    let input = std::fs::read(src.with_extension("in"))
+        .unwrap_or_else(|_| cpl_conform::conformance::header_input(&read_text(src)));
+    vec![input]
 }
 
 /// `(exit status, stdout)` of `cpl run path` on `input`, run in process on
@@ -168,10 +174,10 @@ fn changed(rel: &str, file: &Path, text: &str, fixed: &str) -> Option<String> {
 fn shard(n: usize) {
     let scratch = std::env::temp_dir().join(format!("cpl-fix-behavior-{}-{n}", std::process::id()));
     let mut copies = Vec::new();
-    for (i, rel) in programs().into_iter().enumerate() {
-        if i % SHARDS != n {
-            continue;
-        }
+    for (i, rel) in shards::mine(programs(), String::clone, n, SHARDS)
+        .into_iter()
+        .enumerate()
+    {
         let src = root().join(&rel);
         let dir = scratch.join(i.to_string());
         std::fs::create_dir_all(&dir).unwrap();
@@ -239,48 +245,74 @@ fn shard(n: usize) {
     );
 }
 
-macro_rules! shards {
-    ($($name:ident = $n:expr),* $(,)?) => {
-        $(
-            #[test]
-            fn $name() {
-                shard($n);
-            }
-        )*
-    };
-}
-
-shards! {
-    fixes_keep_behaviour_0 = 0,
-    fixes_keep_behaviour_1 = 1,
-    fixes_keep_behaviour_2 = 2,
-    fixes_keep_behaviour_3 = 3,
-    fixes_keep_behaviour_4 = 4,
-    fixes_keep_behaviour_5 = 5,
-    fixes_keep_behaviour_6 = 6,
-    fixes_keep_behaviour_7 = 7,
-    fixes_keep_behaviour_8 = 8,
-    fixes_keep_behaviour_9 = 9,
-    fixes_keep_behaviour_10 = 10,
-    fixes_keep_behaviour_11 = 11,
-    fixes_keep_behaviour_12 = 12,
-    fixes_keep_behaviour_13 = 13,
-    fixes_keep_behaviour_14 = 14,
-    fixes_keep_behaviour_15 = 15,
-    fixes_keep_behaviour_16 = 16,
-    fixes_keep_behaviour_17 = 17,
-    fixes_keep_behaviour_18 = 18,
-    fixes_keep_behaviour_19 = 19,
-    fixes_keep_behaviour_20 = 20,
-    fixes_keep_behaviour_21 = 21,
-    fixes_keep_behaviour_22 = 22,
-    fixes_keep_behaviour_23 = 23,
-    fixes_keep_behaviour_24 = 24,
-    fixes_keep_behaviour_25 = 25,
-    fixes_keep_behaviour_26 = 26,
-    fixes_keep_behaviour_27 = 27,
-    fixes_keep_behaviour_28 = 28,
-    fixes_keep_behaviour_29 = 29,
-    fixes_keep_behaviour_30 = 30,
-    fixes_keep_behaviour_31 = 31,
-}
+shards::shard_tests!(
+    shard,
+    programs(),
+    the_shards_cover_every_program,
+    [
+        fixes_keep_behaviour_0 = 0,
+        fixes_keep_behaviour_1 = 1,
+        fixes_keep_behaviour_2 = 2,
+        fixes_keep_behaviour_3 = 3,
+        fixes_keep_behaviour_4 = 4,
+        fixes_keep_behaviour_5 = 5,
+        fixes_keep_behaviour_6 = 6,
+        fixes_keep_behaviour_7 = 7,
+        fixes_keep_behaviour_8 = 8,
+        fixes_keep_behaviour_9 = 9,
+        fixes_keep_behaviour_10 = 10,
+        fixes_keep_behaviour_11 = 11,
+        fixes_keep_behaviour_12 = 12,
+        fixes_keep_behaviour_13 = 13,
+        fixes_keep_behaviour_14 = 14,
+        fixes_keep_behaviour_15 = 15,
+        fixes_keep_behaviour_16 = 16,
+        fixes_keep_behaviour_17 = 17,
+        fixes_keep_behaviour_18 = 18,
+        fixes_keep_behaviour_19 = 19,
+        fixes_keep_behaviour_20 = 20,
+        fixes_keep_behaviour_21 = 21,
+        fixes_keep_behaviour_22 = 22,
+        fixes_keep_behaviour_23 = 23,
+        fixes_keep_behaviour_24 = 24,
+        fixes_keep_behaviour_25 = 25,
+        fixes_keep_behaviour_26 = 26,
+        fixes_keep_behaviour_27 = 27,
+        fixes_keep_behaviour_28 = 28,
+        fixes_keep_behaviour_29 = 29,
+        fixes_keep_behaviour_30 = 30,
+        fixes_keep_behaviour_31 = 31,
+        fixes_keep_behaviour_32 = 32,
+        fixes_keep_behaviour_33 = 33,
+        fixes_keep_behaviour_34 = 34,
+        fixes_keep_behaviour_35 = 35,
+        fixes_keep_behaviour_36 = 36,
+        fixes_keep_behaviour_37 = 37,
+        fixes_keep_behaviour_38 = 38,
+        fixes_keep_behaviour_39 = 39,
+        fixes_keep_behaviour_40 = 40,
+        fixes_keep_behaviour_41 = 41,
+        fixes_keep_behaviour_42 = 42,
+        fixes_keep_behaviour_43 = 43,
+        fixes_keep_behaviour_44 = 44,
+        fixes_keep_behaviour_45 = 45,
+        fixes_keep_behaviour_46 = 46,
+        fixes_keep_behaviour_47 = 47,
+        fixes_keep_behaviour_48 = 48,
+        fixes_keep_behaviour_49 = 49,
+        fixes_keep_behaviour_50 = 50,
+        fixes_keep_behaviour_51 = 51,
+        fixes_keep_behaviour_52 = 52,
+        fixes_keep_behaviour_53 = 53,
+        fixes_keep_behaviour_54 = 54,
+        fixes_keep_behaviour_55 = 55,
+        fixes_keep_behaviour_56 = 56,
+        fixes_keep_behaviour_57 = 57,
+        fixes_keep_behaviour_58 = 58,
+        fixes_keep_behaviour_59 = 59,
+        fixes_keep_behaviour_60 = 60,
+        fixes_keep_behaviour_61 = 61,
+        fixes_keep_behaviour_62 = 62,
+        fixes_keep_behaviour_63 = 63,
+    ]
+);

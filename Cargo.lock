@@ -31,6 +31,7 @@ version = "0.3.0"
 dependencies = [
  "cpl-check",
  "cpl-codegen",
+ "cpl-conform",
  "cpl-contest",
  "cpl-corpus",
  "cpl-diag",
