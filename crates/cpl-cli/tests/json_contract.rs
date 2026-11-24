@@ -163,6 +163,7 @@ fn fixtures() -> PathBuf {
     std::fs::create_dir_all(dir.join("home")).unwrap();
     let files: &[(&str, &str)] = &[
         ("a.cp", "let n: Int = read()\nprint(n * 2)\n"),
+        ("v.cp", "use std.prefix.{Prefix}\nprint(1)\n"),
         ("a.tests/1.in", "3\n"),
         ("a.tests/1.out", "6\n"),
         ("bad.cp", "let x: Int = \"s\"\n"),
@@ -220,6 +221,7 @@ fn every_json_output_has_the_published_keys() {
         ("--help", &["--help", "--json"]),
         ("run", &["run", "a.cp", "a.tests/1.in", "--format", "json"]),
         ("judges", &["judges", "--json"]),
+        ("vendor", &["vendor", "v.cp", "--json"]),
         ("explain", &["explain", "--json"]),
         ("explain d", &["explain", "a.cp", "--json"]),
         ("vendor d", &["vendor", "a.cp", "--json"]),

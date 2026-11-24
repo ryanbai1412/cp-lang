@@ -109,6 +109,8 @@ checker lint has no `rule`). The site's lint pages read it.
 "name", "value"}]}`: what the program printed, how long it ran and the
 top-level `values` it ended with; with `--trace` it prints the trace
 instead (`tools/trace/trace-schema.json`).
+`cpl vendor --json` prints `{"vendored": [{"module", "path"}]}`, one
+row per std module it copied.
 `cpl judges --json` prints `{"judges": [{"name", "title", "chosen",
 "command", "os", "stack", "thread_stack_kb", "time_limit_ms", "memory_limit_kb",
 "source_limit_kb", "evidence"}]}`, `chosen` on the profile the file builds for.
