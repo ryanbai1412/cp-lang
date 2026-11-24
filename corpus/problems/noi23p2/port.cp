@@ -9,12 +9,12 @@
 //   nodes, the new label hangs under a node or splits an edge (2c - 1 ways), becomes a pending
 //   node, or hangs off a new pending node on an edge (c - 1 ways); a pending node whose last
 //   label arrives must take it. Original LCAs are kept, and the shape never matters, only c and
-//   the deadlines, so k = 0 is a product and k > 0 a DP over the k-bit mask of pending
-//   deadlines, run from the last label back: O(m 2^k k) per test.
+//   the deadlines, so a DP over the Subset of pending deadlines, run from the last label
+//   back, counts the ways: O(m 2^k k) per test (k = 0 leaves one state and a product).
 // original: corpus/submissions/5723059.cpp
 // Bounds: tc_id: 0..=20; tcs: 1..=15; n: 1..=30000; m: 0..=3000; k: 0..=10; parents: 1..=n
-const P = 1000000007
-type Z = Mod<P>
+type Z = Mod<1_000_000_007>
+
 let tc_id: 0..=20 = read()
 let tcs: 1..=15 = read()
 
@@ -23,30 +23,21 @@ for _ in 0..tcs:
     let m: 0..=3000 = read()
     let k: 0..=10 = read()
     let parents: [n - 1]1..=n = read()
-    if k == 0:
-        var ans = Z(1)
-        for i in 0..m: ans *= 2 * (n + i) - 1
-        print(ans)
-    else:
-        let lim = 1 << k
-        let half = 1 << (k - 1)
-        var pcnt: [0..lim]Int = 0
-        for mask in 1..lim: pcnt[mask] = pcnt[mask / 2] + (mask & 1)
-
-        var dp: [0..lim]Z = Z(0)
-        dp[0] = 1
-        for i in (0..m).rev:
-            var next: [0..lim]Z = Z(0)
-            for mask in half..lim:
-                next[mask] = dp[(mask << 1) ^ lim]
-            for mask in 0..half:
-                let cn = n + i + pcnt[mask]
-                var cur = Z(2 * cn - 1) * dp[mask << 1] + Z(cn - 1) * dp[(mask << 1) | 1]
-                var x = mask
-                while x > 0:
-                    let low = x & (-x)
-                    cur += dp[(mask ^ low) << 1]
-                    x = x ^ low
-                next[mask] = cur
-            dp = next
-        print(dp[0])
+    // a pending branch node in slot j must take a label within the next k - j
+    domain Slot = 0..k
+    var ways: [Slot.subsets]Z = Z(0)
+    ways[Subset<Slot>.empty] = 1
+    for i in (0..m).rev:
+        var next: [Slot.subsets]Z = Z(0)
+        for wait in Slot.subsets:
+            let later = wait.shifted(1)
+            if let last = Slot.last and wait.contains(last):
+                next[wait] = ways[later]
+                continue
+            let c = n + i + wait.len
+            var w = Z(2 * c - 1) * ways[later]
+            if let first = Slot.first: w += Z(c - 1) * ways[later.with(first)]
+            for b in wait: w += ways[wait.without(b).shifted(1)]
+            next[wait] = w
+        ways = next
+    print(ways[Subset<Slot>.empty])
