@@ -15,12 +15,15 @@ domain P = 0..n
 let at: [P](x: F64, y: F64) = read()
 
 var total: [P]F64 = 0.0
+// each direction turns a little from the last, so its order is nearly the last one's
+var order = List(P)
 for k in 0..K:
     let dir = sin_cos(PI * k / K)
     let shadow = [P] p => at[p].x * dir.cos + at[p].y * dir.sin
     let all = sum(shadow[p] for p in P)
     var behind = 0.0  // the shadows already passed
-    for (i, p) in sorted(P, by: p => shadow[p]).items:
+    order.sort(by: p => shadow[p])
+    for (i, p) in order.items:
         let s = shadow[p]
         total[p] += (i * s - behind) + (all - behind - (n - i) * s)
         behind += s
