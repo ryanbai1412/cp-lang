@@ -119,6 +119,7 @@ impl Checker<'_> {
                 ty,
                 mutable,
                 has_default: false,
+                default_ty: None,
                 named_only: false,
                 variadic: false,
                 lazy: false,

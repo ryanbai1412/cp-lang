@@ -1107,6 +1107,31 @@ impl<'a> Lowerer<'a> {
                     }
                 }
             }
+            // `op: M = NoOp()` left out: `M` is its default's type, before `A: Acts<M.Fold, F>`.
+            for p in params {
+                let (Some(d), Some(ty)) = (&p.default, &p.ty) else {
+                    continue;
+                };
+                let ast::TypeKind::Named { name, .. } = &ty.kind else {
+                    continue;
+                };
+                if !all_names.contains(&name.text)
+                    || inferred.contains_key(&name.text)
+                    || ops.iter().any(|(t, _)| std::ptr::eq(*t, ty))
+                {
+                    continue;
+                }
+                let saved = (
+                    std::mem::replace(&mut self.cur_mod, tpl_mod),
+                    std::mem::replace(&mut self.offset, tpl_offset),
+                    std::mem::replace(&mut self.gen_env, inferred.clone()),
+                );
+                let probed = self.probe_ty_silent(d);
+                (self.cur_mod, self.offset, self.gen_env) = saved;
+                if let Some(t) = probed.filter(|t| *t != Ty::Error) {
+                    inferred.insert(name.text.clone(), GenArg::Ty(t));
+                }
+            }
             let bounds: Vec<ast::Bound> =
                 new_fn.bounds.iter().chain(&decl.bounds).cloned().collect();
             self.bind_bare_ops(&ops, &bounds, (tpl_mod, tpl_offset), &mut inferred);
