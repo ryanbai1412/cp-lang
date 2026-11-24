@@ -843,23 +843,8 @@ impl Database {
             let empty = Arc::new(ItemCheck::default());
             vec![empty; items.len()]
         } else {
-            let mut ctx = FileCtx {
-                db: self,
-                file: id,
-                items: items.clone(),
-                scope: scope.clone(),
-                frame: Vec::new(),
-                recording: false,
-                in_progress: Vec::new(),
-                current: None,
-                offsets: ranges.iter().map(|r| r.span.start).collect(),
-                names: None,
-                effects: Default::default(),
-                own_effects: Default::default(),
-                effects_of: Vec::new(),
-                vars: None,
-                impl_names: None,
-            };
+            let offsets = ranges.iter().map(|r| r.span.start).collect();
+            let mut ctx = FileCtx::new(self, id, items.clone(), scope.clone(), offsets);
             (0..items.len()).map(|i| ctx.check_item(i)).collect()
         };
 
@@ -1548,23 +1533,13 @@ impl Database {
         scope: Arc<Scope>,
     ) -> Option<FileCtx<'_>> {
         let id = self.files.get(path)?.id;
-        Some(FileCtx {
-            db: self,
-            file: id,
-            items: analysis.syntax.clone(),
+        Some(FileCtx::new(
+            self,
+            id,
+            analysis.syntax.clone(),
             scope,
-            frame: Vec::new(),
-            recording: false,
-            in_progress: Vec::new(),
-            current: None,
-            offsets: Vec::new(),
-            names: None,
-            effects: Default::default(),
-            own_effects: Default::default(),
-            effects_of: Vec::new(),
-            vars: None,
-            impl_names: None,
-        })
+            Vec::new(),
+        ))
     }
 
     /// Drops memos that no recent revision used, once they outnumber the
@@ -1859,6 +1834,34 @@ struct FileCtx<'d> {
     vars: Option<crate::fx::HashSet<String>>,
     /// Every impl in reach, by the type it is for, once a lookup needs it.
     impl_names: Option<ImplNames>,
+}
+
+impl<'d> FileCtx<'d> {
+    fn new(
+        db: &'d mut Database,
+        file: u32,
+        items: Arc<Vec<Arc<ItemSyntax>>>,
+        scope: Arc<Scope>,
+        offsets: Vec<u32>,
+    ) -> Self {
+        FileCtx {
+            db,
+            file,
+            items,
+            scope,
+            frame: Vec::new(),
+            recording: false,
+            in_progress: Vec::new(),
+            current: None,
+            offsets,
+            names: None,
+            effects: Default::default(),
+            own_effects: Default::default(),
+            effects_of: Vec::new(),
+            vars: None,
+            impl_names: None,
+        }
+    }
 }
 
 /// Whether `item` is `type N = ...` with `N` on its right side.

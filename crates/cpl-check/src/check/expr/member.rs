@@ -914,30 +914,22 @@ impl<'a> Checker<'a> {
             // `a.to` on `a: G.Arc` reads through the bound `type Arc: Target<V>`.
             Ty::Assoc { of, name: assoc } => {
                 if let Ty::Param(param) = &**of {
-                    match self.assoc_bound_method(param, assoc, &name.text) {
-                        Some(Ty::Fn { params, ret })
-                            if !self.in_call_callee && params.is_empty() =>
-                        {
-                            return *ret;
-                        }
-                        Some(ty) => return ty,
-                        None => {}
+                    if let Some(ty) = self.assoc_bound_method(param, assoc, &name.text) {
+                        return self.read_member(ty);
                     }
                 }
                 None
             }
             Ty::Param(param) => {
                 return match self.bound_method(param, &name.text) {
-                    Some(Ty::Fn { params, ret }) if !self.in_call_callee && params.is_empty() => {
-                        *ret
-                    }
+                    Some(ty) => self.read_member(ty),
                     // A position of a generic domain has its rank, as one of a named domain.
                     None if matches!(name.text.as_str(), "ord" | "idx")
                         && self.param_has_bound(param, "Domain") =>
                     {
                         Ty::Int
                     }
-                    other => other.unwrap_or(Ty::Unknown),
+                    None => Ty::Unknown,
                 };
             }
             // The members of a domain that give positions or ranges back.
@@ -1234,5 +1226,15 @@ fn written_path(expr: &Expr) -> Option<Vec<String>> {
         }
         ExprKind::Paren(inner) => written_path(inner),
         _ => None,
+    }
+}
+
+impl Checker<'_> {
+    /// A bound's member read outside a call: a getter gives its result.
+    fn read_member(&self, ty: Ty) -> Ty {
+        match ty {
+            Ty::Fn { params, ret } if !self.in_call_callee && params.is_empty() => *ret,
+            ty => ty,
+        }
     }
 }

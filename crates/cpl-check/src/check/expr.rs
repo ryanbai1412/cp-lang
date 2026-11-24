@@ -1130,12 +1130,11 @@ impl Checker<'_> {
     /// `(R, C)` naming domains is the inline product domain over them, the
     /// one a `[R, C]T` is indexed by (decision 159).
     fn inline_product(&mut self, tys: &[Ty]) -> Option<Ty> {
-        let factors = (tys.iter())
-            .map(|t| match t {
-                Ty::Domain(d) => Some(d.as_str()),
-                _ => None,
-            })
-            .collect::<Option<Vec<_>>>()?;
+        let mut factors = Vec::with_capacity(tys.len());
+        for t in tys {
+            let Ty::Domain(d) = t else { return None };
+            factors.push(d.as_str());
+        }
         self.product_named(&factors).map(Ty::Domain)
     }
 

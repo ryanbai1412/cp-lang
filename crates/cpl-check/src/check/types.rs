@@ -1168,27 +1168,11 @@ impl<'a> Checker<'a> {
                     .into_iter()
                     .map(|(n, bounds, default)| {
                         let default = default.map(|t| self.quietly(|c| c.resolve_type(t)));
-                        let bounds = (bounds.iter())
-                            .filter_map(|b| {
-                                let TypeKind::Named { args, .. } = &b.kind else {
-                                    return None;
-                                };
-                                let args = args.iter().map(|t| self.quietly(|c| c.resolve_type(t)));
-                                Some((type_head(b)?, args.collect()))
-                            })
-                            .collect();
+                        let bounds = (bounds.iter()).filter_map(|b| self.head_args(b)).collect();
                         (n, bounds, default)
                     })
                     .collect();
-                let super_args = (supers.iter())
-                    .filter_map(|t| {
-                        let TypeKind::Named { args, .. } = &t.kind else {
-                            return None;
-                        };
-                        let args = args.iter().map(|a| self.quietly(|c| c.resolve_type(a)));
-                        Some((type_head(t)?, args.collect()))
-                    })
-                    .collect();
+                let super_args = (supers.iter()).filter_map(|t| self.head_args(t)).collect();
                 self.leave_body(scope);
                 vec![(
                     name.text.clone(),
@@ -2006,4 +1990,19 @@ pub(crate) fn positional(items: &[Ty]) -> Vec<(String, Ty)> {
         .enumerate()
         .map(|(i, t)| (i.to_string(), t.clone()))
         .collect()
+}
+
+impl Checker<'_> {
+    /// A bound or super `Next<V>` as its trait and resolved arguments.
+    fn head_args(&mut self, t: &ast::Type) -> Option<(String, Vec<Ty>)> {
+        let TypeKind::Named { args, .. } = &t.kind else {
+            return None;
+        };
+        let head = type_head(t)?;
+        let mut out = Vec::with_capacity(args.len());
+        for a in args {
+            out.push(self.quietly(|c| c.resolve_type(a)));
+        }
+        Some((head, out))
+    }
 }

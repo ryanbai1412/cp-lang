@@ -42,23 +42,14 @@ impl Database {
     }
 
     fn check_body(&mut self, file: u32, analysis: &Analysis, index: usize) -> Arc<ItemCheck> {
-        let mut ctx = FileCtx {
-            db: self,
+        let offsets = analysis.items.iter().map(|i| i.offset).collect();
+        let mut ctx = FileCtx::new(
+            self,
             file,
-            items: analysis.syntax.clone(),
-            scope: analysis.scope.clone(),
-            frame: Vec::new(),
-            recording: false,
-            in_progress: Vec::new(),
-            current: None,
-            offsets: analysis.items.iter().map(|i| i.offset).collect(),
-            names: None,
-            effects: Default::default(),
-            own_effects: Default::default(),
-            effects_of: Vec::new(),
-            vars: None,
-            impl_names: None,
-        };
+            analysis.syntax.clone(),
+            analysis.scope.clone(),
+            offsets,
+        );
         ctx.check_item(index)
     }
 }
