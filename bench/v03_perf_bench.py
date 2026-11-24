@@ -359,7 +359,7 @@ def scaled_gen_inputs(gen, cache_dir):
     return outs[-2:]
 
 
-def collect_items(suites, only, cache_dir):
+def collect_items(suites, only, cache_dir, live=False):
     items = []
     if "dryrun" in suites:
         for name, _, _ in DRYRUN_MATCHED:
@@ -387,7 +387,7 @@ def collect_items(suites, only, cache_dir):
             orig, d, pid = str(pkg.orig), str(pkg.dir), pkg.id
             # The frozen v0.2 copy keeps the series comparable while ports are re-ported in place.
             cp = os.path.join(ROOT, "tests", "v02-snapshot", pid, "port.cp")
-            if not os.path.exists(cp):
+            if live or not os.path.exists(cp):
                 cp = os.path.join(d, "port.cp")
             if not os.path.exists(cp):
                 continue
@@ -529,6 +529,7 @@ def main():
     ap.add_argument("--jobs", type=int, default=min(8, os.cpu_count() or 4))
     ap.add_argument("--cache", default="/tmp/cpl-perf-cache")
     ap.add_argument("--json-out", default="")
+    ap.add_argument("--live", action="store_true", help="time each corpus port as it is now, not its frozen v0.2 copy")
     ap.add_argument(
         "--cxx23",
         default=os.environ.get("CPL_BENCH_CXX23", DEFAULT_CXX23),
@@ -541,7 +542,7 @@ def main():
     cpl_hash = sha256_file(CPL)
     suites = {s.strip() for s in args.suite.split(",") if s.strip()}
     only = {s.strip() for s in args.only.split(",") if s.strip()}
-    items = collect_items(suites, only, args.cache)
+    items = collect_items(suites, only, args.cache, args.live)
 
     def build_one(item):
         suite, name, cp, orig, input_fn = item
