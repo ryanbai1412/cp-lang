@@ -13,50 +13,48 @@
 //   pirates' buckets are cleared down to price 1 (amortized, each bucket cleared once per
 //   insertion).
 // original: corpus/submissions/4849378.cpp
-// Bounds: n: 2..=1e6; kv: 1..=1e18; arr: 1..=n
+// Bounds: n: 2..=1e6; k: 1..=1e18; votes: 1..=n
 let n: 2..=1e6 = read()
-let kv: 1..=1e18 = read()
-let arr: [0..n](1..=n) = read()
+let k: 1..=1e18 = read()
+let votes: [n](1..=n) = read()
 
-domain Slot = 0..=n + 1
-struct Node:
-    siz: Int
-    sm: Int
-
-var st = SegTree<Slot, Node>(
-    Monoid(Node(siz: 0, sm: 0), (a, b) => Node(siz: a.siz + b.siz, sm: a.sm + b.sm))
+// A voter in bucket b sells his vote for b - base + 1 coins; `base` falls by one per pirate,
+// raising every price at once. The last bucket holds the one pirate richer than any price.
+domain Bucket = 0..=n + 1
+type Load = (count: Int, sum: Int)  // voters in the buckets, and their bucket indices summed
+var st = SegTree<Bucket, Load>(
+    Monoid((count: 0, sum: 0), (a, b) => (count: a.count + b.count, sum: a.sum + b.sum))
 )
+let rich = Bucket.last!
 
-fn set_slot(idx: Int, cnt: Int):
-    st.set(Slot(idx), Node(siz: cnt, sm: idx * cnt))
+fn put(b: Int, count: Int):
+    st.set(Bucket(b), (count:, sum: b * count))
 
-fn add_slot(idx: Int, delta: Int):
-    let cur = st.get(Slot(idx))
-    st.set(Slot(idx), Node(siz: cur.siz + delta, sm: cur.sm + idx * delta))
+fn add(b: Int, delta: Int):
+    let cur = st.get(Bucket(b))
+    st.set(Bucket(b), (count: cur.count + delta, sum: cur.sum + b * delta))
 
 var base = n
-var mx = n
-
-for i in 0..n:
-    let need = arr[i] - 1
-    let cut = if need == 0: base - 1 else: st.right_while(Slot(base - 1).l, t => t.siz < need).ord
-    let cur = st.fold(Slot(base - 1)..=Slot(cut))
-    let extra = cur.siz - need
-    let cost = cur.sm - cut * extra + need * (1 - base)
-    if cost <= kv:
-        set_slot(n + 1, 0)
-        for j in (cut + 1..=mx).rev:
-            set_slot(j, 0)
-        add_slot(cut, -extra)
-        mx = cut
+var top = n  // the highest bucket below `rich` that may be non-empty
+for (i, v) in votes.items:
+    let need = v - 1
+    let cut =
+        if need == 0: base - 1
+        else: st.right_while(Bucket(base - 1).l, t => t.count < need).ord
+    let bought = st.fold(Bucket(base - 1)..=Bucket(cut))
+    let extra = bought.count - need
+    let cost = bought.sum - cut * extra + need * (1 - base)
+    if cost <= k:
+        st.set(rich, (count: 0, sum: 0))
+        for b in (cut + 1..=top).rev: put(b, 0)
+        add(cut, -extra)
+        top = cut
         base -= 1
-        add_slot(base, i - need)
-        let keep = kv - cost
-        if keep + base <= mx:
-            add_slot(keep + base, 1)
-        else:
-            st.set(Slot(n + 1), Node(siz: 1, sm: keep + base))
+        add(base, i - need)
+        let keep = k - cost
+        if keep + base <= top: add(keep + base, 1)
+        else: st.set(rich, (count: 1, sum: keep + base))
         print(keep)
     else:
-        add_slot(base - 1, 1)
+        add(base - 1, 1)
         print(-1)

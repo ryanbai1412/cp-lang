@@ -104,6 +104,7 @@ cco16p2
 cco16p3
 cco16p4
 cco16p5
+cco16p6
 cco17p1
 cco17p2
 cco17p3
