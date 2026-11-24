@@ -7,6 +7,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     /// The test cases, once what is above `@!multitest` has run.
     pub(crate) fn run_after_setup(&mut self) -> Res<()> {
         let program = self.program;
+        self.setup_done();
         if let Some(tracer) = &mut self.tracer {
             tracer.divider();
         }

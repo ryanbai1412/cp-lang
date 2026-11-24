@@ -838,3 +838,33 @@ fn a_checkpoint_before_input_is_taken_above_multitest() {
     assert!(resumed.trap.is_none());
     assert_eq!(again, b"1369\n9\n");
 }
+
+/// Setup above `@!multitest` the VM runs with no read in it: a run from its
+/// checkpoint skips it, whatever loops it has.
+#[test]
+fn a_checkpoint_is_taken_once_the_setup_above_multitest_is_done() {
+    let program = program(
+        "var s = 0\nfor i in 0..1000000:\n    s += i\n@!multitest\nlet n: Int = read()\nprint(s + n)\n",
+    );
+    let mut out = Vec::new();
+    let first = cpl_interp::checkpoint::observe_on_this_thread(
+        &program,
+        Io::fixed(b"1\n5"),
+        &mut out,
+        LIMITS,
+        None,
+        Checkpoints::before_input(1 << 16),
+    );
+    assert!(first.observed.trap.is_none());
+    assert_eq!(out, b"499999500005\n");
+    let from = first.taken.last().expect("a checkpoint before the cases");
+    let mut again = Vec::new();
+    let resumed = resume_on_this_thread(&program, b"2\n1\n2", from, &mut again, LIMITS, None);
+    assert!(resumed.trap.is_none());
+    assert_eq!(again, b"499999500001\n499999500002\n");
+    // The setup's loop jumps back 999_999 times.
+    assert_eq!(
+        from.ticks, 999_999,
+        "the checkpoint is where the setup ends"
+    );
+}

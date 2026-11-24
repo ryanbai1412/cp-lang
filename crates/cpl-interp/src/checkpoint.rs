@@ -95,8 +95,9 @@ pub struct Checkpoint {
     pub steps: usize,
     /// How many calls were under way.
     depth: usize,
-    /// The innermost frame, and up from it the frames that called it.
-    frames: Rc<Chain>,
+    /// The innermost frame, and up from it the frames that called it; none
+    /// once the setup above `@!multitest` is done, before the cases.
+    frames: Option<Rc<Chain>>,
     globals: Vec<Value>,
     domains: Vec<(i64, i64)>,
     saved_domains: Vec<(cpl_ir::DomainId, (i64, i64))>,
@@ -630,21 +631,58 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         regs_v: &[Value],
     ) {
         if let Some(taken) = self.checkpoint_here(compiled, chunk, pc, base_i, vm_regs_i, regs_v) {
-            self.ckpt.next_at = taken.ticks + self.ckpt.every;
-            self.ckpt.soon = SOON;
-            self.countdown = self.ckpt.load_instead(crate::stop::EVERY);
-            self.ckpt.taken.push(taken);
-            if self.ckpt.taken.len() > self.ckpt.keep {
-                self.ckpt.taken.remove(0);
-            }
-            if self.ckpt.taken.len() > self.ckpt.spread {
-                let mut left = self.ckpt.taken.len();
-                self.ckpt.taken.retain(|_| {
-                    left -= 1;
-                    left.is_multiple_of(2)
-                });
-                self.ckpt.every *= 2;
-            }
+            self.keep_taken(taken);
+        }
+    }
+
+    /// The setup above `@!multitest` just ran: a checkpoint here resumes
+    /// straight into the cases, with none of the setup run again.
+    pub(crate) fn setup_done(&mut self) {
+        if !self.ckpt.on() || self.fed_bodies > 0 || self.peer.is_some() {
+            return;
+        }
+        if self.ckpt.before_input
+            && !(self.input.untouched() && self.ckpt.printed == 0 && self.out.is_empty())
+        {
+            return;
+        }
+        // With no loop round or call since the last one, a run from here
+        // skips nothing a run from that one does not.
+        let ticks = self.ckpt.ticks(self.countdown);
+        if ticks == 0 || self.ckpt.taken.last().is_some_and(|t| t.ticks == ticks) {
+            return;
+        }
+        self.keep_taken(Checkpoint {
+            ticks,
+            printed: self.ckpt.printed + self.out.len() as u64,
+            steps: self.tracer.as_ref().map_or(0, |t| t.steps()),
+            depth: 0,
+            frames: None,
+            globals: self.globals.clone(),
+            domains: self.domains.clone(),
+            saved_domains: self.saved_domains.clone(),
+            input_at: self.input.cursor(),
+            rng_state: self.rng_state,
+            queries: self.queries,
+            case: None,
+        });
+    }
+
+    fn keep_taken(&mut self, taken: Checkpoint) {
+        self.ckpt.next_at = taken.ticks + self.ckpt.every;
+        self.ckpt.soon = SOON;
+        self.countdown = self.ckpt.load_instead(crate::stop::EVERY);
+        self.ckpt.taken.push(taken);
+        if self.ckpt.taken.len() > self.ckpt.keep {
+            self.ckpt.taken.remove(0);
+        }
+        if self.ckpt.taken.len() > self.ckpt.spread {
+            let mut left = self.ckpt.taken.len();
+            self.ckpt.taken.retain(|_| {
+                left -= 1;
+                left.is_multiple_of(2)
+            });
+            self.ckpt.every *= 2;
         }
     }
 
@@ -717,7 +755,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             printed: self.ckpt.printed + self.out.len() as u64,
             steps: self.tracer.as_ref().map_or(0, |t| t.steps()),
             depth,
-            frames: Rc::new(Chain { frame, up }),
+            frames: Some(Rc::new(Chain { frame, up })),
             globals: self.globals.clone(),
             domains: self.domains.clone(),
             saved_domains: self.saved_domains.clone(),
@@ -933,8 +971,14 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         self.rng_state = from.rng_state;
         self.queries = from.queries;
         self.ckpt.printed = from.printed;
+        let Some(chain) = &from.frames else {
+            if let Some(tracer) = &mut self.tracer {
+                tracer.begin_cases();
+            }
+            return self.run_after_setup();
+        };
         let mut frames = Vec::with_capacity(from.depth + 1);
-        let mut at = Some(&from.frames);
+        let mut at = Some(chain);
         while let Some(chain) = at {
             frames.push(chain.frame.clone());
             at = chain.up.as_ref();
