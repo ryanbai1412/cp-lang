@@ -2967,7 +2967,7 @@ pub struct PermTree<I, V, Node>:
     /// The binary permutation tree of `p`, built by one stack pass from left to right: a run that
     /// keeps extending in one direction builds left-deep, so `[0, 1, 2]` is `((0, 1), 2)`.
     ///
-    /// cost: \(O(n)\)
+    /// cost: \(O(n)\); memory: the 2n nodes' fields, plus two rows of n narrow ints and the stack while building
     /// empty: `domain I = 0..0; let p: [I]I = []; let pt = PermTree(p); pt.span(pt.root) == 0..0` (traps R0401)
     /// traps: when `I` is empty, `I.count != V.count`, or `p` is not a bijection
     /// example: `domain I = 0..3; let p: [I]I = [1, 0, 2]; let pt = PermTree(p); pt.kind[pt.root] == PermKind.Incr and pt.kind[pt.left(pt.root)] == PermKind.Decr`
@@ -2978,7 +2978,6 @@ pub struct PermTree<I, V, Node>:
         for i in I:
             assert not seen[p[i]], "`PermTree` needs a bijection"
             seen[p[i]] = true
-        let val = [p[i].ord for i in I]
         domain N = 0..2 * n - 1
         // leaf `i` is node `2 i`; the inner node splitting before position `i` is node `2 i - 1`
         var tree = PermTree<I, V, N>(
@@ -2992,16 +2991,16 @@ pub struct PermTree<I, V, Node>:
             [N] x => p[I.nth(x.ord / 2)],
         )
         // `prv[v]` and `nxt[v]` are the nearest values below and above `v` at earlier positions
-        var prv = [v - 1 for v in 0..n]
-        var nxt = [v + 1 for v in 0..n]
+        var prv: List<-1..V.count> = [v - 1 for v in 0..V.count]
+        var nxt: List<1..=V.count> = [v + 1 for v in 0..V.count]
         for i in (0..n).rev:
-            let v = val[i]
+            let v = p[I.nth(i)].ord
             if prv[v] >= 0: nxt[prv[v]] = nxt[v]
             if nxt[v] < n: prv[nxt[v]] = prv[v]
         // runs not yet closed, left to right; a value outside `gap` of the last can't extend it
         var st: List<(first: Int, lo: Int, hi: Int, gap: Range<Int>, node: N)> = []
         for i in 0..n:
-            let v = val[i]
+            let v = p[I.nth(i)].ord
             while let t = st.last:
                 if t.gap.contains(v): break
                 st.pop()
