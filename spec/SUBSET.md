@@ -67,6 +67,7 @@ documented.
 | R05.8 | 8. Overlap and order (R9 to R11) | supported |  |
 | R05.9 | 9. Generators and views (R12) | supported |  |
 | R05.10 | 10. Closures and nested fns | supported |  |
+| R05.11 | 11. Top-level state | supported |  |
 | R06.1 | 6.1 Functions | supported |  |
 | R06.2 | 6.2 Nested functions and lambdas | supported |  |
 | R06.3 | 6.3 Generators | supported |  |
