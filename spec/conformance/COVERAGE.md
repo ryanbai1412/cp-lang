@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3717 (3599 passing). Rules: 617.
+Cases: 3724 (3600 passing). Rules: 617.
 
 ## Summary per chapter
 
@@ -15,14 +15,14 @@ Cases: 3717 (3599 passing). Rules: 617.
 - R02 (02-values-types.md): 53 rules, 163 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 25 rules, 120 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 73 rules, 198 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04a (04a-identity-vs-offset.md): 39 rules, 55 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04b (04b-keys.md): 28 rules, 79 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04a (04a-identity-vs-offset.md): 39 rules, 56 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04b (04b-keys.md): 28 rules, 81 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 50 rules, 256 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R06 (06-control-functions.md): 26 rules, 125 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 97 rules, 262 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R06 (06-control-functions.md): 26 rules, 126 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 97 rules, 263 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 31 rules, 114 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R10 (10-io.md): 20 rules, 124 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R10 (10-io.md): 20 rules, 125 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 16 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R12 (12-powers.md): 17 rules, 37 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 33 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -57,7 +57,7 @@ negative case. Complete: rules with both they need; the gate fails on any other.
 | R07 | 97 | 97 (100%) | 33 | 33 (100%) | 97 (100%) |
 | R08 | 31 | 31 (100%) | 12 | 12 (100%) | 31 (100%) |
 | R09 | 28 | 28 (100%) | 17 | 17 (100%) | 28 (100%) |
-| R10 | 20 | 20 (100%) | 10 | 10 (100%) | 20 (100%) |
+| R10 | 20 | 20 (100%) | 11 | 11 (100%) | 20 (100%) |
 | R11 | 16 | 16 (100%) | 10 | 10 (100%) | 16 (100%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 5 | 5 (100%) | 22 (100%) |
@@ -69,7 +69,7 @@ negative case. Complete: rules with both they need; the gate fails on any other.
 | Rlsp | 9 | 9 (100%) | 2 | 2 (100%) | 9 (100%) |
 | Rstress | 2 | 2 (100%) | 1 | 1 (100%) | 2 (100%) |
 | Rtrace | 6 | 6 (100%) | 4 | 4 (100%) | 6 (100%) |
-| all | 617 | 617 (100%) | 257 | 257 (100%) | 617 (100%) |
+| all | 617 | 617 (100%) | 258 | 258 (100%) | 617 (100%) |
 
 ## Rules
 
@@ -332,7 +332,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04a.9.7 [1+ 0-]: | `.items` | `(key, x)` | `(offset, x)`
 - R04a.11.1 [3+ 0-]: **Order-based pairing** for every operation that combines two sequences (group A).
 - R04a.11.2 [2+ 1-]: **`.items` gives keys; `.keyed().items` gives a 0-based counter.** Use `.items` when the i...
-- R04a.11.3 [1+ 1-]: **`w.rebase`**: an \(O(1)\) view of `w` keyed `0..w.len`, for the rare relative case (D3, ...
+- R04a.11.3 [1+ 2-]: **`w.rebase`**: an \(O(1)\) view of `w` keyed `0..w.len`, for the rare relative case (D3, ...
 - R04a.11.4 [1+ 1-]: **Per-element results are keyed like their input** (`[S.keys]T`), so `z_function(s[l..])[i...
 - R04a.11.5 [1+ 2-]: **Diagnostics:** a literal index into a slice is a lint ("`w` starts at `l`; use `w.first`...
 - R04a.11.6 [1+ 1-]: **Copies count from 0:** `List(w)`, `Str(w)` and `.collect()` build fresh sequences, keyed...
@@ -345,7 +345,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04b.1.3 [4+ 1-]: **Combining two sequences pairs them by walk order, never by key.** This covers `==`, `<`,...
 - R04b.1.5 [3+ 1-]: **An array can cover any run of keys.** `[r]T` for a range `r` of `K` is indexed by `K` an...
 - R04b.1.6 [4+ 0-]: To keep `w`'s keys, build a table over them: `[w.keys] k => w[k]`.
-- R04b.1.7 [7+ 3-]: `a.rekey(r)` is the inverse: the same cells re-keyed onto a range `r` of equal length, \(O...
+- R04b.1.7 [8+ 4-]: `a.rekey(r)` is the inverse: the same cells re-keyed onto a range `r` of equal length, \(O...
 - R04b.1.8 [1+ 1-]: , so `a.sorted().rev[0]` is an error whose fix is `.nth(0)`.
 - R04b.1.9 [2+ 1-]: **Lint: 0-based counter used as a slice key** (`for k in 0..w.len: w[k]`). Suggests `w.ite...
 - R04b.1.10 [3+ 3-]: **Trap: an out-of-keys read.** The message names the key range, e.g. "`w` has keys 3..7 (i...
@@ -435,7 +435,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R06.2.2 [1+ 2-]: A captured variable cannot be moved while the closure is alive, and a closure cannot outli...
 - R06.2.3 [2+ 1-]: A `let`-bound lambda may call itself; a `var` binding cannot. When recursion leaves the re...
 - R06.2.4 [1+ 1-]: There is no `pure` and no `mut fn` marker. Purity that a library needs (lazy `map`, `@memo...
-- R06.2.5 [2+ 1-]: Function types are `(A, B) -> R`. Every call with a known function value is specialized; t...
+- R06.2.5 [3+ 1-]: Function types are `(A, B) -> R`. Every call with a known function value is specialized; t...
 - R06.3.1 [3+ 1-]: A generator **value** is a recipe: a call with every argument but the loop body filled in....
 - R06.3.2 [2+ 1-]: A generator value built from lent arguments holds those lends until its last use, like a s...
 - R06.3.3 [2+ 0-]: The loop body may `break`, `continue`, `return`, use labels and loop `else`, even when the...
@@ -490,7 +490,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.4.3 [1+ 0-]: **`[s.keys]x`** is a table over exactly `s`'s keys; `t.rekey(r)` re-keys equal-length cell...
 - R07.4.4 [2+ 1-]: **Materializing counts from 0:** `.collect()`, `.sorted()`, `List(w)` and `Str(w)` build a...
 - R07.4.14 [2+ 1-]: **Cuts in walk order.** On any keyed view with cuts (`[D]T`, `List`, `Str`, slices, `.rev`...
-- R07.4.5 [5+ 12-]: any other `x` is checked: out of `w.keys` traps R0101 naming the key and `w.keys`, and nev...
+- R07.4.5 [6+ 12-]: any other `x` is checked: out of `w.keys` traps R0101 naming the key and `w.keys`, and nev...
 - R07.4.6 [1+ 1-]: | `a[r]` (`r: Range<D>`; `a[j..i]` with cut ends is the piece) | `D`, only inside `r` | `r...
 - R07.4.7 [5+ 2-]: | `a.rev` | not indexable: it walks out of key order; `.nth(k)` reads by walk position, an...
 - R07.4.8 [1+ 0-]: | `a.items` | `D`, gives `(i, a[i])` | in order | \(O(1)\)
@@ -620,7 +620,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R10.3.7 [1+ 2-]: `?T` is not a `Seq`: `for v in x` on a `?Int` is E0302 naming `if let`. A sequence prints ...
 - R10.1.1 [16+ 3-]: Functions hoist within their block; every capture must be initialized before the first cal...
 - R10.1.2 [4+ 0-]: Top-level `return` ends the program, or the current case under `@!multitest`.
-- R10.1.3 [1+ 0-]: IOI-style tasks mark entry points with `@grader`, `@grader(interactive)` or `@grader(two_p...
+- R10.1.3 [2+ 1-]: IOI-style tasks mark entry points with `@grader`, `@grader(interactive)` or `@grader(two_p...
 - R10.2.1 [7+ 1-]: `read<T>()` dispatches on the expected type, so `let n: 1..=2e5 = read()` and `read<[n]Int...
 - R10.2.2 [10+ 2-]: Range types read with their contract. A domain written with explicit ends (`1..=n`, `0..n`...
 - R10.2.3 [21+ 5-]: Arrays `[D]T` read `D.count` values; `[R, C]T` reads `R.count * C.count` tokens row-major,...
@@ -794,7 +794,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0207 Private item: 3 case(s)
 - E0208 Uppercase value name: 2 case(s)
 - E0209 Definition cycle: 1 case(s)
-- E0301 Wrong index domain: 17 case(s)
+- E0301 Wrong index domain: 18 case(s)
 - E0302 Type mismatch: 64 case(s)
 - E0303 Wrong number of arguments: 21 case(s)
 - E0304 Value is not callable: 3 case(s)
@@ -1075,9 +1075,9 @@ prepends it.
   - line 37: `fn solve():`
   - line 127: `with checks(ranges: on, overflow: on, bounds: on):`
 - 10-io.md: 4 blocks, 1 with a case, 0 spec-only, 3 neither
-  - line 52: `let n: 1..=2e5 = read()`
-  - line 175: `let n: Int = read(base: 1)`
-  - line 183: `fn read_all<T>(until: ?(T -> Bool) = None) -> List<T>`
+  - line 55: `let n: 1..=2e5 = read()`
+  - line 178: `let n: Int = read(base: 1)`
+  - line 186: `fn read_all<T>(until: ?(T -> Bool) = None) -> List<T>`
 - 11-modules-prelude.md: 1 blocks, 0 with a case, 0 spec-only, 1 neither
   - line 38: `use std.graph.{dijkstra, Paths}`
 
@@ -1128,8 +1128,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **range** (19/19 named by a case)
 - **search** (9/9 named by a case)
 - **segtree** (66/66 named by a case)
-- **seq** (233/236 named by a case)
-  - uncovered: `Filtered`, `Mapped`, `Rebased`
+- **seq** (233/237 named by a case)
+  - uncovered: `Filtered`, `Mapped`, `Rebased`, `RingWindows`
 - **slope** (39/39 named by a case)
 - **sparse** (23/23 named by a case)
 - **spec** (16/16 named by a case)
@@ -1141,7 +1141,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Rooted.reroot`, `Rooted.chains`, `VirtualTree`, `PermNode`
 - **window** (24/24 named by a case)
 
-2440 of 2476 std items are named by a case.
+2440 of 2477 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
