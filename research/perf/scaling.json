@@ -15092,7 +15092,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "seq.clone",
-   "measured": 4.2,
+   "measured": 3.99,
    "n": 16384,
    "ok": true
   },
@@ -15100,7 +15100,15 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "seq.dedup",
-   "measured": 4.28,
+   "measured": 3.65,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort.cp::seq.next_same": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.next_same",
+   "measured": 4.13,
    "n": 16384,
    "ok": true
   },
@@ -15108,7 +15116,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "seq.resized",
-   "measured": 4.62,
+   "measured": 3.67,
    "n": 16384,
    "ok": true
   },
@@ -15116,7 +15124,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "seq.reverse",
-   "measured": 4.49,
+   "measured": 3.96,
    "n": 16384,
    "ok": true
   },
@@ -15124,7 +15132,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "seq.rotate_left",
-   "measured": 4.36,
+   "measured": 2.97,
    "n": 16384,
    "ok": true
   },
@@ -15132,7 +15140,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "seq.rotate_right",
-   "measured": 4.31,
+   "measured": 3.83,
    "n": 16384,
    "ok": true
   },
@@ -15140,23 +15148,7 @@
    "cost": "n \\log n",
    "documented": 4.57,
    "fn": "seq.group",
-   "measured": 4.23,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/seq_sort_group.cp::seq.next_same": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "seq.next_same",
-   "measured": 4.27,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/seq_sort_group.cp::seq.prev_same": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "seq.prev_same",
-   "measured": 4.32,
+   "measured": 4.03,
    "n": 16384,
    "ok": true
   },
@@ -15164,7 +15156,7 @@
    "cost": "n \\log n",
    "documented": 4.57,
    "fn": "seq.sort",
-   "measured": 5.12,
+   "measured": 4.84,
    "n": 16384,
    "ok": true
   },
@@ -15172,7 +15164,15 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "seq.merge_sorted",
-   "measured": 1.0,
+   "measured": 1.1,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort_merge.cp::seq.prev_same": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.prev_same",
+   "measured": 4.16,
    "n": 16384,
    "ok": true
   },
@@ -15180,7 +15180,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "seq.rotated_left",
-   "measured": 4.16,
+   "measured": 4.39,
    "n": 16384,
    "ok": true
   },
@@ -15188,7 +15188,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "seq.rotated_right",
-   "measured": 4.17,
+   "measured": 4.14,
    "n": 16384,
    "ok": true
   },
@@ -15196,7 +15196,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert + \\lvert b \\rvert",
    "documented": 4.0,
    "fn": "seq.sorted_diff",
-   "measured": 4.05,
+   "measured": 2.29,
    "n": 16384,
    "ok": true
   },
@@ -15204,7 +15204,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert + \\lvert b \\rvert",
    "documented": 4.0,
    "fn": "seq.sorted_intersect",
-   "measured": 2.75,
+   "measured": 2.97,
    "n": 16384,
    "ok": true
   },
@@ -15212,7 +15212,7 @@
    "cost": "\\lvert \\mathit{self} \\rvert + \\lvert b \\rvert",
    "documented": 4.0,
    "fn": "seq.sorted_union",
-   "measured": 4.23,
+   "measured": 4.35,
    "n": 16384,
    "ok": true
   },

@@ -11,4 +11,6 @@ for r in 0..1024:
     s += a.resized(n + 1, 0).len // timed: seq.resized
     a.insert(0, 5)
     s += a.remove(0)
+for r in 0..16:
+    s += xs.next_same().len // timed: seq.next_same
 print(s)

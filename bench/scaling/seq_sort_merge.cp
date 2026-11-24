@@ -10,6 +10,8 @@ for r in 0..256:
     s += a.sorted_union(ys).len // timed: seq.sorted_union
     s += a.sorted_intersect(ys).len // timed: seq.sorted_intersect
     s += a.sorted_diff(ys).len // timed: seq.sorted_diff
+for r in 0..16:
+    s += xs.prev_same().len // timed: seq.prev_same
 // merge_sorted costs O(1) a step: take one step a call.
 for r in 0..1 << 17:
     for x in xs.merge_sorted(ys): // timed: seq.merge_sorted
