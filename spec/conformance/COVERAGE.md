@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3269 (1093 passing). Rules: 608.
+Cases: 3271 (1093 passing). Rules: 609.
 
 ## Summary per chapter
 
@@ -19,7 +19,7 @@ Cases: 3269 (1093 passing). Rules: 608.
 - R04b (04b-keys.md): 28 rules, 78 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 50 rules, 247 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 25 rules, 120 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 91 rules, 225 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 92 rules, 227 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 30 rules, 98 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 20 rules, 118 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -54,7 +54,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R04b | 28 | 28 (100%) | 7 | 7 (100%) | 28 (100%) |
 | R05 | 50 | 50 (100%) | 26 | 26 (100%) | 50 (100%) |
 | R06 | 25 | 25 (100%) | 17 | 17 (100%) | 25 (100%) |
-| R07 | 91 | 91 (100%) | 27 | 27 (100%) | 91 (100%) |
+| R07 | 92 | 92 (100%) | 28 | 28 (100%) | 92 (100%) |
 | R08 | 30 | 30 (100%) | 11 | 11 (100%) | 30 (100%) |
 | R09 | 28 | 28 (100%) | 17 | 17 (100%) | 28 (100%) |
 | R10 | 20 | 20 (100%) | 10 | 10 (100%) | 20 (100%) |
@@ -69,7 +69,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlsp | 9 | 8 (88%) | 1 | 1 (100%) | 8 (88%) |
 | Rstress | 2 | 1 (50%) | 1 | 0 (0%) | 1 (50%) |
 | Rtrace | 6 | 4 (66%) | 4 | 1 (25%) | 2 (33%) |
-| all | 608 | 604 (99%) | 247 | 239 (96%) | 598 (98%) |
+| all | 609 | 605 (99%) | 248 | 240 (96%) | 599 (98%) |
 
 ## Rules
 
@@ -517,6 +517,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.7.6 [1+ 0-]: | `s.pairs()` | `Seq<(T, T)>`, every pair `x` before `y` | \(O(n^2)\) to walk, so a call
 - R07.7.7 [1+ 0-]: | `s.with_prev` | `Seq<(?T, T)>`, starting `(None, first)` | path walks that treat the fir...
 - R07.7.8 [1+ 0-]: | `s.cyclic_pairs` | `Seq<(T, T)>`, plus (last, first) | polygons, rings
+- R07.7.12 [1+ 1-]: | `product(a, b)` | `Seq<(T, U)>`, every `(x, y)` with `x` from `a` and `y` from `b`, `a` ...
 - R07.7.9 [3+ 0-]: | `a.windows(k)`, `a.chunks(k)` | `Seq` of views of `a` | each view keeps `a`'s indices
 - R07.7.10 [5+ 1-]: | `a.runs(by: k)` | `Seq` of views: maximal equal-key runs | `.keys` of each is its range
 - R07.7.11 [4+ 1-]: | `s.step(k)` | every k-th element | ranges and indexed
@@ -822,7 +823,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0603 Lent value escapes its scope: 37 case(s)
 - E0604 Invalid `lends` projection: 1 case(s)
 - E0605 Invalid `Index` implementation: 2 case(s)
-- E0606 Missing trait implementation for operator: 28 case(s)
+- E0606 Missing trait implementation for operator: 29 case(s)
 - E0607 Moved while captured by a closure: 3 case(s)
 - E0608 Use of moved value: 16 case(s)
 - E0701 Ambiguous trait method: 2 case(s)

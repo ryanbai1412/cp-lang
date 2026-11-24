@@ -266,6 +266,7 @@ for d in divisors(n):
 | `s.pairs()` | `Seq<(T, T)>`, every pair `x` before `y` | \(O(n^2)\) to walk, so a call (R07.7.6) |
 | `s.with_prev` | `Seq<(?T, T)>`, starting `(None, first)` | path walks that treat the first step apart (R07.7.7) |
 | `s.cyclic_pairs` | `Seq<(T, T)>`, plus (last, first) | polygons, rings (R07.7.8) |
+| `product(a, b)` | `Seq<(T, U)>`, every `(x, y)` with `x` from `a` and `y` from `b`, `a` outer | \(O(1)\) per step; `b` is walked once per `x`, so it must be `Indexed` (E0606 on a generator) (R07.7.12) |
 | `a.windows(k)`, `a.chunks(k)` | `Seq` of views of `a` | each view keeps `a`'s indices (R07.7.9) |
 | `a.runs(by: k)` | `Seq` of views: maximal equal-key runs | `.keys` of each is its range (R07.7.10) |
 | `s.step(k)` | every k-th element | ranges and indexed (R07.7.11) |
