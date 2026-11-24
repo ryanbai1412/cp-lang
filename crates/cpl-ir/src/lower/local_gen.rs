@@ -128,6 +128,7 @@ impl<'a> Lowerer<'a> {
             params.push(ParamDef {
                 mutable: false,
                 range: None,
+                fills_cache: false,
             });
         }
         // What the body names from the fns around it, each a parameter
@@ -157,6 +158,7 @@ impl<'a> Lowerer<'a> {
             params.push(ParamDef {
                 mutable: cap.by_ref,
                 range: None,
+                fills_cache: false,
             });
             caps.push((cap.outer, cap.by_ref, n));
         }

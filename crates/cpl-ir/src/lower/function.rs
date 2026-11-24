@@ -64,6 +64,7 @@ impl<'a> Lowerer<'a> {
             params.push(ParamDef {
                 mutable,
                 range: None,
+                fills_cache: mutable && decl.params.first().is_some_and(|p| !p.mutable),
             });
         }
         for param in &self.sigs[id].params {
@@ -80,6 +81,7 @@ impl<'a> Lowerer<'a> {
             params.push(ParamDef {
                 mutable: param.mutable,
                 range: None,
+                fills_cache: false,
             });
         }
         for ast_p in &decl.params {

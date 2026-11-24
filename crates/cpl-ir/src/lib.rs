@@ -1234,6 +1234,9 @@ pub struct ParamDef {
     /// The declared range of a ranged `Int` param (`x: 0..=1e9`), a
     /// [`Spec::Int`]: every call checks its argument into it (R04.4.24).
     pub range: Option<Spec>,
+    /// A `self` declared without `mut` that is passed by reference only so
+    /// the fn can grow its `@cache` fields: a call is a cache fill.
+    pub fills_cache: bool,
 }
 
 #[derive(Clone, PartialEq, Debug)]

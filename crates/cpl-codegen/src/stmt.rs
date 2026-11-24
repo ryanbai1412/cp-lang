@@ -205,7 +205,11 @@ impl<'p> Emitter<'p> {
             }
             ExprKind::If(cond, then, otherwise) if e.ty == Ty::Unit => {
                 let cond = self.expr(cond).text;
-                self.line(out, &format!("if ({cond}) {{"));
+                if matches!(otherwise.kind, ExprKind::Unit) && self.fills_cache_call(then) {
+                    self.line(out, &format!("if (__builtin_expect({cond}, 0)) {{"));
+                } else {
+                    self.line(out, &format!("if ({cond}) {{"));
+                }
                 self.indent += 1;
                 self.expr_stmt(then, out);
                 self.indent -= 1;
@@ -442,6 +446,11 @@ impl<'p> Emitter<'p> {
                 format!("(*{it})")
             };
             self.found.push((map.clone(), key.clone(), cell));
+        } else if otherwise.stmts.is_empty() && self.fills_cache(then) {
+            // A cache miss is the rare way in: g++ lays the fill out of line,
+            // so the hit path of a query in a loop stays a compare and a load.
+            let c = self.expr(cond).text;
+            out.push_str(&format!("{lead}if (__builtin_expect({c}, 0)) {{\n"));
         } else {
             let c = self.expr(cond).text;
             out.push_str(&format!("{lead}if ({c}) {{\n"));
@@ -466,6 +475,23 @@ impl<'p> Emitter<'p> {
                 self.line(out, "}");
             }
         }
+    }
+
+    /// `then` is one call to a unit fn that takes a read-only `self` to grow
+    /// its `@cache` fields: all it can change is the cache.
+    fn fills_cache(&self, then: &Block) -> bool {
+        match then.stmts.as_slice() {
+            [Stmt::Expr(e)] => self.fills_cache_call(e),
+            _ => false,
+        }
+    }
+
+    fn fills_cache_call(&self, e: &Expr) -> bool {
+        let ExprKind::Call(id, _) = &e.kind else {
+            return false;
+        };
+        let callee = &self.program.fns[*id];
+        callee.ret == Ty::Unit && callee.params.first().is_some_and(|p| p.fills_cache)
     }
 
     pub fn stmt(&mut self, stmt: &Stmt, out: &mut String) {

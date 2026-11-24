@@ -211,3 +211,19 @@ fn a_ranges_table_is_indexed_by_plain_index_math() {
     // `min` over the splits starts from its identity: no first-value branch.
     assert!(body.contains("9223372036854775807LL"), "{body}");
 }
+
+#[test]
+fn a_cache_fill_is_the_unlikely_branch() {
+    let out = cpp("struct Memo:\n    @cache t: List<Int>\n\
+         \n    fn grow(self, n: Int):\n        while t.len <= n: t.push(t.len * t.len)\n\
+         \n    fn at(self, n: Int) -> Int:\n        if n >= t.len: self.grow(n)\n        t[n]\n\
+         \nlet m = Memo([])\nlet n: 0..=100 = read()\nif n > 5: print(n)\nprint(m.at(n))\n");
+    let fill = out
+        .lines()
+        .find(|l| l.contains("if (") && l.contains("self.t.size()"));
+    assert!(
+        fill.is_some_and(|l| l.contains("if (__builtin_expect(")),
+        "{out}"
+    );
+    assert_eq!(out.matches("__builtin_expect(n").count(), 1, "{out}");
+}
