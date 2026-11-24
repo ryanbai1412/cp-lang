@@ -1392,6 +1392,26 @@ def orphan_submissions(metas):
         cwd=ROOT).returncode != 0]
 
 
+PATH_REF = re.compile(r"(?<![\w./-])corpus/(problems|submissions)/([\w-](?:[\w.-]*[\w-])?)(\*)?")
+
+
+def dangling_references():
+    """(file, line, path) for each `corpus/problems/<id>` or `corpus/submissions/<file>`
+    a tracked file outside corpus/ names that doesn't exist; a trailing `*` names a prefix."""
+    out = subprocess.run(["git", "grep", "-n", "-I", "-E", "corpus/(problems|submissions)/", "--", ".", ":!corpus"],
+                         cwd=ROOT, capture_output=True, text=True).stdout
+    found = []
+    for hit in out.splitlines():
+        f, n, text = hit.split(":", 2)
+        for m in PATH_REF.finditer(text):
+            kind, name, star = m.groups()
+            d = PROBLEMS if kind == "problems" else SUBS
+            ok = any(e.startswith(name) for e in os.listdir(d)) if star else os.path.exists(os.path.join(d, name))
+            if not ok:
+                found.append((f, int(n), f"corpus/{kind}/{name}{star or ''}"))
+    return found
+
+
 def main(mode):
     gen = generate()
     metas, errors = {}, []
@@ -1416,6 +1436,7 @@ def main(mode):
             errors.append(f"corpus/problems/{pkg.id}: no submissions or artifacts")
     errors += [f"corpus/submissions/{n}: no package lists it; delete it or add it to info.json"
                for n in orphan_submissions(metas)]
+    errors += [f"{f}:{n}: names {path}, which doesn't exist" for f, n, path in dangling_references()]
     ipath = os.path.join(ROOT, "corpus", "index.json")
     if mode == "build":
         open(ipath, "w").write(dump(index(metas)))

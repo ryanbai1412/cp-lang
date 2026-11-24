@@ -765,6 +765,54 @@ class GraderTest(Corpus):
         self.assertEqual(corpus.judge_args(pkg, pkg.port), ["--checker", str(d / "checker.py")])
 
 
+class DanglingReferenceTest(unittest.TestCase):
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.root = Path(tmp.name)
+        for name, value in (("ROOT", self.root), ("PROBLEMS", self.root / PKGS), ("SUBS", self.root / SUBS_DIR)):
+            self.addCleanup(setattr, corpus, name, getattr(corpus, name))
+            setattr(corpus, name, str(value))
+        (self.root / PKGS / "p1").mkdir(parents=True)
+        (self.root / SUBS_DIR).mkdir(parents=True)
+        (self.root / SUBS_DIR / "1.cpp").write_text("")
+        subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
+
+    def track(self, path, text):
+        (self.root / path).parent.mkdir(parents=True, exist_ok=True)
+        (self.root / path).write_text(text)
+        subprocess.run(["git", "add", path], cwd=self.root, check=True)
+
+    def test_a_path_to_a_missing_package_or_submission_is_named(self):
+        self.track("bench/audit.py", f"{PKGS}/p1/port.cp\n{PKGS}/gone/port.cp\n"
+                                     f"{SUBS_DIR}/1.cpp\n'{SUBS_DIR}/2.cpp'.\n")
+        self.assertEqual(corpus.dangling_references(), [("bench/audit.py", 2, f"{PKGS}/gone"),
+                                                        ("bench/audit.py", 4, f"{SUBS_DIR}/2.cpp")])
+
+    def test_existing_targets_prefixes_placeholders_and_foreign_roots_pass(self):
+        self.track("docs/a.md", f"`{PKGS}/p1/`, {PKGS}/p*, {PKGS}/<id>, {SUBS_DIR}/1.cpp,\n"
+                                f"{PKGS}/{{pid}}/x, /tmp/x/{PKGS}/gone, ../{SUBS_DIR}/9.cpp\n")
+        self.assertEqual(corpus.dangling_references(), [])
+
+    def test_a_prefix_nothing_matches_is_named(self):
+        self.track("docs/a.md", f"{PKGS}/q*\n")
+        self.assertEqual(corpus.dangling_references(), [("docs/a.md", 1, f"{PKGS}/q*")])
+
+    def test_only_tracked_files_outside_corpus_count(self):
+        self.track(f"{PKGS}/p1/notes.md", f"{PKGS}/gone\n")
+        (self.root / "loose.md").write_text(f"{PKGS}/gone\n")
+        self.assertEqual(corpus.dangling_references(), [])
+
+    def test_check_fails_on_a_dangling_reference(self):
+        err = io.StringIO()
+        with mock.patch.object(corpus, "generate", return_value={}), mock.patch.object(corpus, "problems", return_value=[]), \
+                mock.patch.object(corpus, "orphan_submissions", return_value=[]), \
+                mock.patch.object(corpus, "dangling_references", return_value=[("bench/a.py", 3, f"{PKGS}/gone")]), \
+                contextlib.redirect_stderr(err), contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(corpus.main("build"), 1)
+        self.assertIn(f"bench/a.py:3: names {PKGS}/gone, which doesn't exist", err.getvalue())
+
+
 class OrphanSubmissionTest(unittest.TestCase):
     def test_a_submission_file_no_package_lists_is_an_orphan(self):
         with tempfile.TemporaryDirectory() as d, mock.patch.object(corpus, "SUBS", d), \
