@@ -365,3 +365,11 @@ fn what_lives_past_a_let_ends_inside_the_branches_of_its_last_if() {
         "{live:?}"
     );
 }
+
+#[test]
+fn a_global_set_from_a_place_that_still_holds_it_is_listed() {
+    let src = "struct S:\n    xs: List<Int>\nvar ss = [S([1, 2])]\nvar acc = ss[0].xs\nacc.push(3)\nprint(acc.len, ss[0].xs.len)\n";
+    let out = super::cpp(src);
+    assert!(out.contains("acc = cpl::at(ss, 0).xs;"), "{out}");
+    assert_eq!(copy_reasons(src), [crate::lend::SET_COPY]);
+}

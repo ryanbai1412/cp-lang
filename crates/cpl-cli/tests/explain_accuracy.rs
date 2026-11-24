@@ -376,6 +376,7 @@ fn declared(decl: &str) -> (&str, &str) {
 
 /// The name `decl` declares and its type, without `const`, `&` and `*`.
 fn typed(decl: &str) -> Option<(&str, &str)> {
+    let decl = decl.strip_prefix("static ").unwrap_or(decl);
     let (head, name) = declared(decl.strip_prefix("const ").unwrap_or(decl));
     let word = !name.is_empty() && name.chars().all(|c| c.is_alphanumeric() || c == '_');
     (word && name.len() < head.len()).then(|| {
@@ -432,6 +433,80 @@ fn params(header: &str) -> HashMap<&str, &str> {
     out
 }
 
+/// The element type an index reads from container type `ty`, a map's
+/// value type.
+fn element(ty: &str) -> Option<&str> {
+    let (pick, rest) = [
+        ("std::vector<", 0),
+        ("std::deque<", 0),
+        ("std::array<", 0),
+        ("cpl::Grid<", 0),
+        ("std::map<", 1),
+        ("std::unordered_map<", 1),
+    ]
+    .into_iter()
+    .find_map(|(p, k)| Some((k, ty.strip_prefix(p)?)))?;
+    let (args, _) = template_arg(rest)?;
+    let mut depth = 0;
+    let top_comma = |c: char| {
+        depth += match c {
+            '<' | '(' => 1,
+            '>' | ')' => -1,
+            _ => 0,
+        };
+        c == ',' && depth == 0
+    };
+    args.split(top_comma).nth(pick).map(str::trim)
+}
+
+/// The type of a place, `w.s.xs` or `self.vals[t0]`: its root's type, then
+/// each field's and each index's element type. Mirrors `part_type` in
+/// scripts/specgate/explain_copies.py.
+fn place_type<'a>(
+    place: &str,
+    types: &HashMap<&str, &'a str>,
+    fields: &HashMap<&str, HashMap<&str, &'a str>>,
+) -> Option<&'a str> {
+    let word = |t: &str| {
+        t.starts_with(|c: char| c.is_alphabetic() || c == '_')
+            && t.chars().all(|c| c.is_alphanumeric() || c == '_')
+    };
+    let (mut ty, mut depth, mut start) = (None, 0, 0);
+    for (i, c) in place.char_indices().chain([(place.len(), '.')]) {
+        match c {
+            '[' => depth += 1,
+            ']' => depth -= 1,
+            '.' if depth == 0 => {
+                let seg = &place[start..i];
+                start = i + 1;
+                let name = seg.split('[').next().unwrap_or("");
+                if !word(name) {
+                    return None;
+                }
+                let mut t = match ty {
+                    None => types.get(name).copied()?,
+                    Some(t) => fields.get(t)?.get(name).copied()?,
+                };
+                let mut d = 0;
+                for c in seg.chars() {
+                    match c {
+                        '[' if d == 0 => {
+                            t = element(t)?;
+                            d += 1;
+                        }
+                        '[' => d += 1,
+                        ']' => d -= 1,
+                        _ => {}
+                    }
+                }
+                ty = Some(t);
+            }
+            _ => {}
+        }
+    }
+    ty
+}
+
 /// A container or a struct holding one assigned from a place, `ys = xs;`
 /// or into a field of that type, `h_2.xs = xs;`, by the types the fn
 /// declares (a scalar `v.mn1 = p.mx1;` is no copy), or from a fn that
@@ -465,8 +540,13 @@ fn assigned_copies(cpp: &str) -> usize {
             types = params(raw);
         }
         let line = raw.trim();
+        if let Some(at) = line.find("](").filter(|_| line.ends_with('{')) {
+            types.extend(params(&line[at..]));
+        }
         if let Some((name, ty)) = typed(line) {
-            types.insert(name, ty);
+            let alias = line.strip_suffix(';').and_then(|l| l.split_once(" = "));
+            let aliased = alias.and_then(|(_, init)| place_type(init, &types, &fields));
+            types.insert(name, aliased.filter(|_| ty == "auto").unwrap_or(ty));
         }
         let Some((lhs, rhs)) = line.split_once(" = ") else {
             continue;
@@ -483,18 +563,27 @@ fn assigned_copies(cpp: &str) -> usize {
             .is_some_and(|(n, p)| n.chars().all(|c| c.is_ascii_digit()) && is_indexed_place(p));
         let held = decl.is_some_and(|(_, ty)| holders.contains(ty));
         let place = is_indexed_place(rhs) && !["nullptr", "true", "false", "this"].contains(&rhs)
-            || rhs.starts_with("cpl::at(") && is_place(rhs);
+            || rhs.starts_with("cpl::at(") && is_place(rhs)
+            || place_type(rhs, &types, &fields).is_some();
         if decl.is_some_and(|(_, ty)| heap(ty)) && ref_call(rhs)
             || held && (place && !is_part(rhs) || got)
         {
             count += 1;
         }
-        let mut path = lhs.split('.');
-        let root = path.next().unwrap_or("");
-        let ty = path.try_fold(types.get(root).copied(), |ty, f| {
-            Some(ty.and_then(|t| fields.get(t)?.get(f).copied()))
-        });
-        if is_indexed_place(lhs) && ty.flatten().is_some_and(heap) && (place || ref_call(rhs)) {
+        let fixed = |t: &str| t.starts_with("std::array<") || t.starts_with("cpl::Row<");
+        let stored = |ty: &str| {
+            heap(ty)
+                || fixed(ty)
+                || fields
+                    .get(ty)
+                    .is_some_and(|fs| fs.values().any(|t| fixed(t)))
+                || ty.starts_with("std::tuple<") && CONTAINERS.iter().any(|c| ty.contains(c))
+        };
+        let into = place_type(lhs, &types, &fields);
+        let from = place.then(|| place_type(rhs, &types, &fields)).flatten();
+        if into.is_some_and(stored) && (place || ref_call(rhs))
+            || (into.is_some() || is_indexed_place(lhs)) && from.is_some_and(stored)
+        {
             count += 1;
         }
     }
@@ -784,6 +873,10 @@ const CASES: &[&str] = &[
     "std-hashmap/reserve-keeps-entries.cp",
     "std-poly/advanced-free-fns-match-brute.cp",
     "core-01/while-let-tuple-pattern.cp",
+    "std-heap/heap-push_pop-1.cp",
+    "std-heap/heap-of-1.cp",
+    "core-05/element-field-let-then-sibling-read.cp",
+    "std-matrix/min-plus-gaps-fold-in-a-segtree.cp",
     "std-hashmap/counter-most_common-1.cp",
     "std-matrix/inverse-f64-singular-none.cp",
     "std-geometry/closest-pair2-duplicates.cp",
@@ -931,6 +1024,11 @@ fn a_heap_value_assigned_from_a_place_is_a_copy() {
     let copies = [
         "void f(const std::vector<ll>& xs) {\n  std::vector<ll> ys = g();\n  ys = xs;\n}",
         "struct H {\n  std::vector<ll> xs;\n};\nH f(const std::vector<ll>& xs) {\n  H h_2 = H_new();\n  h_2.xs = xs;\n}",
+        "struct M {\n  std::vector<std::string> vals;\n};\ninline void set(M& self, ll t0, const std::string& v) {\n  self.vals[t0] = v;\n}",
+        "struct C {\n  std::array<char, 7> take;\n};\ninline void rebuild(C& self, const std::array<char, 7>& take) {\n  self.take = take;\n}",
+        "struct B {\n  cpl::Row<cpl::u64, 1> w;\n};\nvoid f(std::vector<B>& out, const B& b) {\n  out[0] = b;\n}",
+        "void f() {\n  auto g = [&c_3 = c_2](const std::vector<ll>& m) mutable -> void {\n    c_3 = m;\n  };\n}",
+        "void f(std::vector<std::string>& out) {\n  static std::vector<std::string> t2;\n  auto& r = t2;\n  out[0] = r[c[0]];\n}",
     ];
     for cpp in copies {
         assert_eq!(assigned_copies(cpp), 1, "{cpp}");

@@ -1156,8 +1156,29 @@ fn is_place_text(text: &str) -> bool {
         .all(|c| c.is_alphanumeric() || c == '_' || c == '.')
 }
 
+/// Whether stored text `text` names a place (`v`, `t[f(i)].xs`,
+/// `cpl::at(ss, 0)`), not a call whose result is a value of its own.
+fn names_a_place(text: &str) -> bool {
+    if let Some(at) = text.strip_prefix("cpl::at(") {
+        return !at.contains("::");
+    }
+    let mut depth = 0;
+    text.chars().all(|c| {
+        depth += match c {
+            '[' => 1,
+            ']' => -1,
+            _ => 0,
+        };
+        depth > 0 || c != '('
+    })
+}
+
 /// Why `return self.f` copies.
 const GIVEN: &str = "a part of a value that still holds it, given by value";
+
+/// Why `p = q` of a place that still holds its value copies.
+pub(crate) const SET_COPY: &str =
+    "a store keeps its own value, and the place it reads still holds it";
 
 /// Why `Some(xs)` of a place copies.
 const SOME_COPY: &str = "an optional holds its own value";
@@ -1265,6 +1286,20 @@ impl Emitter<'_> {
             ) && rooted_in_a_name(inner));
         if place && holds_heap(self.program, &inner.ty) && !moved(text) {
             self.note_copy(inner.span, SOME_COPY, None);
+        }
+    }
+
+    /// Records the copy `p = q` makes when the stored text `text` names
+    /// the place `value`, whose heap value it still holds after.
+    pub(crate) fn note_set_copy(&mut self, value: &Expr, text: &str) {
+        let place = matches!(value.kind, ExprKind::Local(_) | ExprKind::Global(_))
+            || (matches!(
+                value.kind,
+                ExprKind::Field(..) | ExprKind::Payload(..) | ExprKind::Index(..)
+            ) && rooted_in_a_name(value));
+        let named = names_a_place(text);
+        if place && named && holds_heap(self.program, &value.ty) && !moved(text) {
+            self.note_copy(value.span, SET_COPY, None);
         }
     }
 

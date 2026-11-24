@@ -238,7 +238,7 @@ def declared(decl):
 
 def typed(decl):
     """The name `decl` declares and its type, without `const` and `&`."""
-    head, name, _ = declared(decl.removeprefix("const "))
+    head, name, _ = declared(decl.removeprefix("static ").removeprefix("const "))
     if not re.fullmatch(r"\w+", name) or len(name) == len(head):
         return None
     return name, head[: len(head) - len(name)].strip().rstrip("&*").strip()
@@ -267,13 +267,44 @@ def params(header):
     return dict(t for p in split_top(inner) if p and (t := typed(p)))
 
 
+def element(ty):
+    """The element type an index reads from container type `ty`, a map's value type."""
+    for prefix, pick in (("std::vector<", 0), ("std::deque<", 0), ("std::array<", 0), ("cpl::Grid<", 0), ("std::map<", 1), ("std::unordered_map<", 1)):
+        if ty and ty.startswith(prefix) and (got := template_arg(ty[len(prefix) :])):
+            args = split_top(got[0])
+            return args[pick] if pick < len(args) else None
+    return None
+
+
 def part_type(place, types, fields):
-    """The type of a field place, `w.s.xs`, through its root's type."""
-    root, *path = place.split(".")
-    ty = types.get(root)
-    for f in path:
-        ty = fields.get(ty, {}).get(f)
+    """The type of a place, `w.s.xs` or `self.vals[t0]`, through its root's
+    type, each field's and each index's element type. Mirrors place_type in
+    crates/cpl-cli/tests/explain_accuracy.rs."""
+    ty, depth, start, first = None, 0, 0, True
+    for i, c in enumerate(place + "."):
+        depth += {"[": 1, "]": -1}.get(c, 0)
+        if c != "." or depth:
+            continue
+        seg, start = place[start:i], i + 1
+        name = seg.split("[", 1)[0]
+        if not re.fullmatch(r"[A-Za-z_]\w*", name):
+            return None
+        ty = types.get(name) if first else fields.get(ty, {}).get(name)
+        first, d = False, 0
+        for ch in seg:
+            if ch == "[":
+                if d == 0:
+                    ty = element(ty)
+                d += 1
+            elif ch == "]":
+                d -= 1
     return ty
+
+
+def stored(ty, holders):
+    """Whether a store of a `ty` value copies what it owns: a container, a
+    fixed array, a struct holding either or a tuple holding a container."""
+    return bool(ty) and (ty.startswith(CONTAINERS + ("std::array<", "cpl::Row<")) or ty in holders or (ty.startswith("std::tuple<") and any(c in ty for c in CONTAINERS)))
 
 
 def opens_fn(line):
@@ -295,6 +326,7 @@ def deep_copies(cpp):
     refs = {m.group(1) for line in program(cpp).splitlines() if (m := REF_FN.match(line))}
     copied = lambda init: is_copied(init) or bool((m := CALL.fullmatch(init.strip())) and m.group(1) in refs)
     fields = struct_fields(cpp)
+    owners = holders | {n for n, fs in fields.items() if any(t.startswith(("std::array<", "cpl::Row<")) for t in fs.values())}
     heap = lambda ty: bool(ty) and (ty.startswith(CONTAINERS) or ty in holders)
     count += optional_copies(program(cpp), holders) + returned_parts(program(cpp), holders)
     arrays = set(ARRAY.findall(program(cpp)))
@@ -304,8 +336,12 @@ def deep_copies(cpp):
             held, types = set(PARAM.findall(raw)), params(raw)
         line = raw.strip()
         decl = line.removeprefix("const ")
+        if "](" in line and line.endswith("{"):
+            types.update(params(line[line.index("](") :]))
         if t := typed(decl):
-            types[t[0]] = t[1]
+            init = decl.removesuffix(";").partition(" = ")[2]
+            aliased = part_type(init, types, fields) if t[1] == "auto" and init else None
+            types[t[0]] = aliased or t[1]
         ty, _, rest = decl.partition(" ")
         if ty in holders:
             name, eq, init = rest.partition("=")
@@ -328,7 +364,10 @@ def deep_copies(cpp):
         elif decl.startswith("std::tuple<"):
             count += tuple_copies(decl)
         lhs, eq, rhs = line.partition(" = ")
-        if eq and rhs.endswith(";") and NAME.fullmatch(lhs) and heap(part_type(lhs, types, fields)) and (is_place(rhs[:-1]) or copied(rhs[:-1])):
+        into = part_type(lhs, types, fields)
+        place = eq and (is_place(rhs[:-1]) or part_type(rhs[:-1], types, fields) is not None)
+        from_ = part_type(rhs[:-1], types, fields) if place else None
+        if eq and rhs.endswith(";") and NAME.fullmatch(lhs) and (stored(into, owners) and (place or copied(rhs[:-1])) or stored(from_, owners)):
             count += 1
         for caps in CAPTURES.findall(line):
             for cap in re.split(r"\s*,\s*", caps):

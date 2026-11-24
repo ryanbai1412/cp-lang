@@ -251,6 +251,11 @@ class GatesTest(unittest.TestCase):
                     "struct N {\n  std::vector<ll> big;\n};\ninline const N& get(const A& a, ll i) {\n  return a.xs[i];\n}\nvoid f(const A& a) {\n  N n;\n  n = get(a, 0);\n}", "t16[v] = cpl::sorted<true>(sadj[(ll)v]);",
                     "void f(const std::vector<ll>& xs) {\n  std::vector<ll> ys = g();\n  ys = xs;\n}",
                     "struct H {\n  std::vector<ll> xs;\n};\nH f(const std::vector<ll>& xs) {\n  H h_2 = H_new();\n  h_2.xs = xs;\n}",
+                    "struct M {\n  std::vector<std::string> vals;\n};\ninline void set(M& self, ll t0, const std::string& v) {\n  self.vals[t0] = v;\n}",
+                    "struct C {\n  std::array<char, 7> take;\n};\ninline void rebuild(C& self, const std::array<char, 7>& take) {\n  self.take = take;\n}",
+                    "struct B {\n  cpl::Row<cpl::u64, 1> w;\n};\nvoid f(std::vector<B>& out, const B& b) {\n  out[0] = b;\n}",
+                    "void f() {\n  auto g = [&c_3 = c_2](const std::vector<ll>& m) mutable -> void {\n    c_3 = m;\n  };\n}",
+                    "void f(std::vector<std::string>& out) {\n  static std::vector<std::string> t2;\n  auto& r = t2;\n  out[0] = r[c[0]];\n}",
                     "void f(const std::vector<std::vector<int>>& adj) {\n  auto g = [&adj](int u) mutable -> std::vector<int> {\n    return adj[u];\n  };\n}"):
             self.assertEqual(ec.deep_copies(cpp + "\n"), 1, cpp)
         self.assertEqual(ec.deep_copies("auto b = std::vector<int64_t>(a);\n"), 1)

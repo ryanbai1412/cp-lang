@@ -455,6 +455,7 @@ impl<'p> Emitter<'p> {
         match op {
             AssignOp::Set if hash_alias => {
                 let tmp = self.temp();
+                self.note_set_copy(value, &v.text);
                 self.line(out, &format!("auto {tmp} = {};", v.text));
                 self.line(out, &format!("{p} = std::move({tmp});"));
             }
@@ -466,6 +467,7 @@ impl<'p> Emitter<'p> {
                     _ => v.text,
                 };
                 let v = self.as_stored(value, text);
+                self.note_set_copy(value, &v);
                 self.line(out, &format!("{p} = {v};"))
             }
             AssignOp::Max => twice(self, out, &|p, v| format!("std::max<{ty}>({p}, {v})")),
