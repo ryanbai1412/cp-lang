@@ -4,6 +4,25 @@
 use crate::tests::cpp;
 
 #[test]
+fn an_optional_list_a_fn_only_reads_is_lent_not_copied() {
+    let cpp = cpp(concat!(
+        "use std.fenwick.Fenwick\n",
+        "let n: Int = read()\n",
+        "domain V = 0..n\n",
+        "let a: [V]Int = [V] v => Int(v) % 5\n",
+        "let f = Fenwick<V, Int>.new(a)\n",
+        "let g = Fenwick<V, Int>.new()\n",
+        "print(f.all + g.all)\n",
+    ));
+    assert!(!cpp.contains("std::optional<std::vector<ll>>(a)"), "{cpp}");
+    assert!(cpp.contains("_new(cpl::lend(a))"), "{cpp}");
+    assert!(
+        cpp.contains("_new(cpl::Lent<std::vector<ll>>{nullptr})"),
+        "{cpp}"
+    );
+}
+
+#[test]
 fn a_returned_rekey_moves_its_local_list() {
     let cpp = cpp(concat!(
         "use std.strings.{z_function, prefix_function}\n",

@@ -131,6 +131,13 @@ impl<'p> Emitter<'p> {
                 v.text = format!("std::move({})", v.text);
             }
         }
+        if let (AssignOp::Set, ExprKind::Some(inner)) = (op, &value.kind) {
+            if last && std::ptr::eq(value, whole) {
+                if let Some(text) = self.some_moved(inner, &value.ty) {
+                    v.text = text;
+                }
+            }
+        }
         // Handle map/hashmap fold-on-missing-key (`max=`, `min=`, `*=`, `+=`, `-=`, `|=`, `^=`, `&=`).
         if let PlaceKind::Index(base, idx) = &place.kind {
             if matches!(base.ty, Ty::Map(..) | Ty::HashMap(..)) && op != AssignOp::Set {

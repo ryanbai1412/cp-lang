@@ -934,6 +934,9 @@ pub(crate) enum Copied {
     Capture(usize, String, &'static str),
 }
 
+/// Why `Some(xs)` of a place copies.
+const SOME_COPY: &str = "an optional holds its own value";
+
 /// Whether `e` reads part of a named value: `a.f`, `xs[i]!`. Part of a
 /// call's result (`xs.pop()!`, `s.parse()!.0`) is a temporary the C++
 /// moves from, so binding it copies nothing.
@@ -954,6 +957,69 @@ const CAPTURE_MOVED: &str = "the captured name is moved later, so the closure ow
 pub(crate) const KEPT: &str = "the closure may be kept (stored, returned or passed where it is kept), so it owns what it reads";
 
 impl Emitter<'_> {
+    /// `return Some(xs)`, or `return if c: Some(xs) else: None`, for a
+    /// local `xs` the fn or closure owns: the optional takes `xs` by move,
+    /// as `return xs` would.
+    pub(crate) fn moved_some(&mut self, value: &Expr) -> Option<String> {
+        if let ExprKind::If(cond, then, otherwise) = &value.kind {
+            let (a, b) = (self.moved_some(then), self.moved_some(otherwise));
+            if a.is_none() && b.is_none() {
+                return None;
+            }
+            let c = self.expr(cond).text;
+            let a = a.unwrap_or_else(|| self.expr(then).text);
+            let b = b.unwrap_or_else(|| self.expr(otherwise).text);
+            return Some(format!("({c} ? {a} : {b})"));
+        }
+        let ExprKind::Some(inner) = &value.kind else {
+            return None;
+        };
+        let ExprKind::Local(slot) = inner.kind else {
+            return None;
+        };
+        let borrowed = match self.closure_id {
+            Some(cid) => {
+                let c = &self.program.closures[cid];
+                slot < c.params.len() || c.captures.iter().any(|cap| cap.inner == slot)
+            }
+            None => self
+                .fn_id
+                .is_some_and(|id| slot < self.program.fns[id].params.len()),
+        };
+        if borrowed {
+            return None;
+        }
+        self.some_moved(inner, &value.ty)
+    }
+
+    /// `Some(xs)` taking the local `xs` by move, when it is read for the
+    /// last time and owns its value; the copy noted for it is not made.
+    pub(crate) fn some_moved(&mut self, inner: &Expr, ty: &Ty) -> Option<String> {
+        let ExprKind::Local(slot) = inner.kind else {
+            return None;
+        };
+        if self.ref_bound.contains(&slot) || !holds_heap(self.program, &inner.ty) {
+            return None;
+        }
+        self.copies.retain(
+            |c| !matches!(c, Copied::Let(span, why) if *span == inner.span && *why == SOME_COPY),
+        );
+        Some(format!("{}(std::move({}))", self.ty(ty), self.names[slot]))
+    }
+
+    /// Records the copy `Some(xs)` makes when `xs` is a place holding a
+    /// heap value: the `std::optional` holds a value of its own.
+    pub(crate) fn note_some_copy(&mut self, inner: &Expr, text: &str) {
+        let place = matches!(inner.kind, ExprKind::Local(_) | ExprKind::Global(_))
+            || (matches!(
+                inner.kind,
+                ExprKind::Field(..) | ExprKind::Payload(..) | ExprKind::Index(..)
+            ) && rooted_in_a_name(inner));
+        if place && holds_heap(self.program, &inner.ty) && !moved(text) {
+            self.copies.push(Copied::Let(inner.span, SOME_COPY));
+        }
+    }
+
     /// Records the copy naming operand `e` before a later one runs makes,
     /// when `e` is a place holding a heap value: `up[find(u)]` with a
     /// `find` that writes `up` reads `up` as it was before the call.
@@ -1117,8 +1183,8 @@ pub(crate) fn copy_sites(
             }
         })
         .collect();
-    sites.sort_by_key(|(span, what, _)| (span.start, what.clone()));
-    sites.dedup_by(|a, b| a.0 == b.0 && a.1 == b.1);
+    sites.sort_by_key(|(span, what, why)| (span.start, what.clone(), *why));
+    sites.dedup_by(|a, b| a == b);
     sites
 }
 
@@ -1182,6 +1248,15 @@ impl Emitter<'_> {
     /// `let old_k = ks; ks = List.filled(..)` takes the list, not a copy.
     pub(crate) fn take_if_overwritten(&mut self, init: &Expr, text: String) -> String {
         let taken = std::mem::take(&mut self.moves_last);
+        if let ExprKind::Some(inner) = &init.kind {
+            return match taken {
+                true => self.some_moved(inner, &init.ty).unwrap_or(text),
+                false => text,
+            };
+        }
+        if let (ExprKind::If(..), true) = (&init.kind, taken) {
+            return self.moved_some(init).unwrap_or(text);
+        }
         // A `const T&` name cannot be moved from; `std::move` of it only copies.
         let lent =
             path_of(init).is_some_and(|((global, s), _)| !global && self.ref_bound.contains(&s));

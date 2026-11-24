@@ -15,7 +15,7 @@ mod corpus_programs;
 
 #[path = "support/cpp_counts.rs"]
 mod cpp_counts;
-use cpp_counts::{deep_copies, std_functions};
+use cpp_counts::{deep_copies, optional_copies, std_functions};
 
 /// `std::optional<std::vector<..>> t = cpl::map_get(m, k)`: the entry
 /// copied out of the map to be read.
@@ -68,9 +68,13 @@ const NEVER: [(&str, Count); 3] = [
     ("entry_copies", entry_copies),
 ];
 
-/// What a program's header says its C++ makes: `// copies: N` deep copies,
-/// 0 when the line is absent.
-const DIRECTIVES: [(&str, Count); 1] = [("copies", deep_copies)];
+/// What a program's header says its C++ makes: `// copies: N` deep copies
+/// and `// optional_copies: N` containers copied into an optional, 0 when
+/// the line is absent.
+const DIRECTIVES: [(&str, Count); 2] = [
+    ("copies", deep_copies),
+    ("optional_copies", optional_copies),
+];
 
 /// The most `std::function`s the corpus may build to, summed over programs.
 const TOTALS: [(&str, Count, usize); 1] = [("std_functions", std_functions, 84)];
@@ -140,7 +144,7 @@ fn disagreements(src: &Path, out: &Path) -> (Vec<String>, [usize; TOTALS.len()])
                 wrong.push(format!("{} {name}: a read made into a copy", count(cpp)));
             }
         }
-        let copies = deep_copies(cpp);
+        let copies = deep_copies(cpp) + optional_copies(cpp);
         let explained = if copies > 0 { explained_copies(src) } else { 0 };
         if explained < copies {
             wrong.push(format!(

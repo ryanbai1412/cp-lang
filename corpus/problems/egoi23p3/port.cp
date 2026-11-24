@@ -11,6 +11,7 @@
 //   through the top rows. O(H W |moves|) simulation per query.
 // original: corpus/submissions/5678051.cpp
 // Bounds: h, w: 1..=50
+// optional_copies: 1
 let wire = Wire()
 let h: 1..=50 = read()
 let w: 1..=50 = read()

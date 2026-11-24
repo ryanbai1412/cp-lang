@@ -13,7 +13,7 @@ mod corpus_programs;
 
 #[path = "support/cpp_counts.rs"]
 mod cpp_counts;
-use cpp_counts::{deep_copies, std_functions};
+use cpp_counts::{deep_copies, optional_copies, std_functions};
 
 /// The `.cp` files one directory down from the corpus problems and the
 /// conformance cases.
@@ -80,7 +80,8 @@ fn disagreements(src: &Path, out: &Path) -> Option<Vec<String>> {
     // One source copy may be written in more than one specialization.
     let mut seen = std::collections::BTreeSet::new();
     let distinct: Vec<&str> = cpp.lines().filter(|l| seen.insert(l.trim())).collect();
-    let copies = deep_copies(&distinct.join("\n"));
+    let distinct = distinct.join("\n");
+    let copies = deep_copies(&distinct) + optional_copies(&distinct);
     if copies > listed {
         wrong.push(format!(
             "explain lists {listed} copies, the C++ spells out {copies}"

@@ -155,6 +155,8 @@ pub(crate) struct Emitter<'p> {
     /// Per fn, the parameters it takes by value to move into its result:
     /// see [`crate::scope::sunk_params`].
     pub sunk: Vec<BTreeSet<usize>>,
+    /// Per fn, the `?T` slots held as a `cpl::Lent`: see [`crate::lentopt::lent_opts`].
+    pub lent_opts: Vec<BTreeSet<usize>>,
     /// Set while the call a `return` makes is written: its local arguments
     /// are at their last use.
     pub last_use_call: bool,
@@ -292,6 +294,7 @@ impl<'p> Emitter<'p> {
             fixed_arrays,
             rows,
             sunk: crate::scope::sunk_params(program),
+            lent_opts: crate::lentopt::lent_opts(program),
             last_use_call: false,
             give_ref: false,
             read_in_place: BTreeSet::new(),
@@ -588,6 +591,9 @@ impl<'p> Emitter<'p> {
                 }
                 let cpp =
                     self.ty_for_loc(ty, cpl_ir::ElemLoc::Local(cpl_ir::ScopeId::Fn(id), slot));
+                if self.lent_opts[id].contains(&slot) {
+                    return format!("{cpp} {name}");
+                }
                 if self.devirt.param_known(id, slot) {
                     format!("[[maybe_unused]] const {cpp}& {name}")
                 } else if !named.contains(&slot) && !param.mutable {

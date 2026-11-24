@@ -8909,13 +8909,14 @@ Reserved for call 5, which landed as decision 519.
 
 ## 546. (reserved, unknown)
 
-## 548. (reserved, perf)
-
-## 549. (reserved, infra)
-
 ## 550. (reserved, content)
 ## 549. One Rust corpus walker crate, `cpl-corpus` (infra, 2026-11-24)
 
 - **Call.** Rust code lists the problem packages only through `cpl_corpus::{packages, files, package}`, a dependency-free crate every tool and test can reach. `scripts/corpus.py` stays the walker for everything else; `corpus_walkers` counts any other file that lists `corpus/problems` itself.
 - **Why.** Twenty Rust suites each had their own `read_dir("corpus/problems")`, so a layout change (generated tests, a moved package) had to be made twenty times. No existing crate sits below `cpl-check`, `cpl-fmt`, `cpl-lint` and `cpl-conform` without a cycle, so the walker gets its own leaf crate.
 - **Reverse.** If a Rust tool can run `scripts/corpus.py ls` everywhere it runs, read that listing and delete the crate.
+## 548. A read-only `?T` container param is lent, and optional copies get their own counter (codegen, 2026-11-24)
+
+- **Call.** A `?T` param holding a container that its fn never stores, mutates or captures is passed as `cpl::Lent<T>`, a `const T*` with None as nullptr, not a `std::optional<T>` built by copying the argument (`Fenwick.new(a)` copied `a`). `Some(local)` at the local's last read moves it. The C++ counters now see `std::optional<C>(place)`, a container copied into an optional, and count it under its own `// optional_copies:` header and the `cpp_optional_copies` ratchet (9), apart from `cpp_deep_copies`, which does not change. The 9 are needed copies: `Rope.new` storing its base list (7 ropes built from one list in the two std-lazy conformance files), and `find`/`max` keeping an element they return (egoi23p3, ioi08p1, ucup5s05e, core-12 generic folds).
+- **Why.** The copy was invisible to `cpp_deep_copies`, so the ratchet could not see it come back. Folding the newly visible copies into `cpp_deep_copies` would raise that count; a separate counter keeps it from going up and makes this pattern drop on its own as codegen learns to move or lend these.
+- **Reverse.** Emit `std::optional<T>` params again and fold `optional_copies` into `deep_copies`.

@@ -226,8 +226,9 @@ impl<'p> Emitter<'p> {
                 Code::primary(format!("((void)({inner}), true)"))
             }
             ExprKind::Some(inner) => {
-                let inner = self.expr(inner).text;
-                Code::primary(format!("{}({inner})", self.ty(&e.ty)))
+                let text = self.expr(inner).text;
+                self.note_some_copy(inner, &text);
+                Code::primary(format!("{}({text})", self.ty(&e.ty)))
             }
             ExprKind::Local(_) if e.ty == Ty::Unit => Code::primary("void()"),
             ExprKind::Local(slot) => Code::primary(self.names[*slot].clone()),

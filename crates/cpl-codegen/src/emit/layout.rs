@@ -107,7 +107,18 @@ impl<'p> Emitter<'p> {
         if let Some(k) = self.fixed_array_len(loc) {
             return self.fixed_array_cpp(ty, k);
         }
-        self.ty_with_elem_layout(ty, self.elem_layout(loc))
+        let cpp = self.ty_with_elem_layout(ty, self.elem_layout(loc));
+        if let cpl_ir::ElemLoc::Local(cpl_ir::ScopeId::Fn(id), slot) = loc {
+            if self.lent_opts[id].contains(&slot) {
+                if let Some(held) = cpp
+                    .strip_prefix("std::optional<")
+                    .and_then(|t| t.strip_suffix('>'))
+                {
+                    return format!("cpl::Lent<{held}>");
+                }
+            }
+        }
+        cpp
     }
 
     pub fn ty_with_elem_layout(&self, ty: &Ty, layout: Option<&cpl_ir::NarrowLayout>) -> String {

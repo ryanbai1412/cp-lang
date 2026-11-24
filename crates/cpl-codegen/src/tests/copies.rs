@@ -86,7 +86,7 @@ fn an_if_let_payload_nothing_changes_is_a_reference_not_a_copy() {
         "print(total(5, Some([1, 2, 3])), swap())\n",
     ));
     assert!(
-        cpp.contains("const std::optional<std::vector<ll>>& t0 = end;"),
+        cpp.contains("const cpl::Lent<std::vector<ll>>& t0 = end;"),
         "{cpp}"
     );
     assert!(cpp.contains("const std::vector<ll>& e = *t0;"), "{cpp}");

@@ -897,6 +897,10 @@ def cpp_deep_copies(root: Path) -> list[str]:
     return _header_counts(root, "copies")
 
 
+def cpp_optional_copies(root: Path) -> list[str]:
+    return _header_counts(root, "optional_copies")
+
+
 def cpp_std_functions(root: Path) -> list[str]:
     return _copy_baseline(root, "std_functions")
 
@@ -2055,6 +2059,8 @@ COUNTERS = {
     "stress_hand_json": ("hand-built JSON in cpl-stress and cpl-wasm", stress_hand_json, True),
     "helper_env_vars": ("CPL_* helper side channels beyond CPL_SEED", helper_env_vars, True),
     "cpp_deep_copies": ("`// copies:` header sum over the corpus (read_only_copies)", cpp_deep_copies, True),
+    "cpp_optional_copies": ("`// optional_copies:` header sum over the corpus (read_only_copies)",
+                            cpp_optional_copies, True),
     "cpp_std_functions": ("std::function in the corpus C++ (read_only_copies)", cpp_std_functions, True),
     "codegen_effect_guesses": ("codegen effect or purity guesses outside the Uses table", codegen_effect_guesses, True),
     "rs_near_cap": ("rs files within 100 lines of the cap", rs_near_cap, False),

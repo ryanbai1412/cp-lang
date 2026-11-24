@@ -666,7 +666,10 @@ impl<'p> Emitter<'p> {
                     let rekeyed = (is_return && self.closure_id.is_none())
                         .then(|| self.rekeyed_local(value))
                         .flatten();
-                    let mut text = if is_return && self.closure_id.is_none() {
+                    let moved_some = is_return.then(|| self.moved_some(value));
+                    let mut text = if let Some(Some(text)) = moved_some {
+                        text
+                    } else if is_return && self.closure_id.is_none() {
                         if let ExprKind::Tuple(items) = &value.kind {
                             if !items.is_empty()
                                 && !matches!(

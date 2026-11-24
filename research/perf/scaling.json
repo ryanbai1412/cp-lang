@@ -2280,6 +2280,14 @@
    "n": 2048,
    "ok": true
   },
+  "bench/scaling/fenwick.cp::fenwick.Fenwick.new": {
+   "cost": "\\lvert D \\rvert",
+   "documented": 4.0,
+   "fn": "fenwick.Fenwick.new",
+   "measured": 3.86,
+   "n": 16384,
+   "ok": true
+  },
   "bench/scaling/flow.cp::flow.Arc.rev": {
    "cost": "1",
    "documented": 1.0,
@@ -9527,7 +9535,6 @@
   "fenwick.Fenwick.fold",
   "fenwick.Fenwick.get",
   "fenwick.Fenwick.kth",
-  "fenwick.Fenwick.new",
   "fenwick.Fenwick.prefix",
   "fenwick.Fenwick.set",
   "fenwick.Fenwick.suffix",
