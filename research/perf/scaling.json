@@ -8984,11 +8984,19 @@
    "n": 32,
    "ok": true
   },
+  "bench/scaling/math.cp::math.Exp.of": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "math.Exp.of",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
   "bench/scaling/math.cp::math.best_rational": {
    "cost": "\\log \\mathit{max\\_den}",
    "documented": 1.14,
    "fn": "math.best_rational",
-   "measured": 1.14,
+   "measured": 1.09,
    "n": 16384,
    "ok": true
   },
@@ -8996,7 +9004,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "math.bit",
-   "measured": 1.08,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -9004,7 +9012,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "math.bit_len",
-   "measured": 1.03,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -9012,7 +9020,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "math.ceil_div",
-   "measured": 1.04,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -9020,7 +9028,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "math.ceil_sqrt",
-   "measured": 1.05,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -9028,7 +9036,7 @@
    "cost": "\\min(k, n - k)",
    "documented": 1.0,
    "fn": "math.choose",
-   "measured": 1.03,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -9036,7 +9044,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "math.choose2",
-   "measured": 1.04,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -9044,7 +9052,7 @@
    "cost": "\\log \\min(\\lvert p \\rvert, \\lvert q \\rvert)",
    "documented": 1.14,
    "fn": "math.continued_fraction",
-   "measured": 1.1,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -9052,7 +9060,7 @@
    "cost": "\\log \\min(m1, m2)",
    "documented": 1.14,
    "fn": "math.crt",
-   "measured": 1.04,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -9060,7 +9068,7 @@
    "cost": "\\mathit{log\\_base} x",
    "documented": 1.14,
    "fn": "math.digits",
-   "measured": 1.07,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -9068,7 +9076,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "math.divmod",
-   "measured": 1.03,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -9076,7 +9084,7 @@
    "cost": "\\log \\min(\\lvert a \\rvert, \\lvert b \\rvert)",
    "documented": 1.14,
    "fn": "math.ext_gcd",
-   "measured": 1.13,
+   "measured": 1.07,
    "n": 16384,
    "ok": true
   },
@@ -9084,7 +9092,7 @@
    "cost": "k + \\log \\lvert \\mathit{num} / \\mathit{den} \\rvert",
    "documented": 1.0,
    "fn": "math.fixed",
-   "measured": 1.08,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -9092,7 +9100,7 @@
    "cost": "\\log m",
    "documented": 1.14,
    "fn": "math.floor_sum",
-   "measured": 1.04,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -9100,7 +9108,7 @@
    "cost": "\\log \\min(\\lvert a \\rvert, \\lvert b \\rvert)",
    "documented": 1.14,
    "fn": "math.gcd",
-   "measured": 1.11,
+   "measured": 1.07,
    "n": 16384,
    "ok": true
   },
@@ -9108,7 +9116,7 @@
    "cost": "\\log m",
    "documented": 1.14,
    "fn": "math.inv_mod",
-   "measured": 1.11,
+   "measured": 1.06,
    "n": 16384,
    "ok": true
   },
@@ -9116,7 +9124,7 @@
    "cost": "\\log x",
    "documented": 1.14,
    "fn": "math.iroot",
-   "measured": 1.05,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -9124,7 +9132,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "math.is_pow2",
-   "measured": 1.04,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -9132,7 +9140,7 @@
    "cost": "\\log^2 x",
    "documented": 1.31,
    "fn": "math.is_prime",
-   "measured": 1.08,
+   "measured": 1.05,
    "n": 16384,
    "ok": true
   },
@@ -9140,7 +9148,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "math.isqrt",
-   "measured": 1.03,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -9148,7 +9156,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "math.jacobi",
-   "measured": 1.11,
+   "measured": 1.07,
    "n": 16384,
    "ok": true
   },
@@ -9156,7 +9164,7 @@
    "cost": "\\log \\min(\\lvert a \\rvert, \\lvert b \\rvert)",
    "documented": 1.14,
    "fn": "math.lcm",
-   "measured": 1.12,
+   "measured": 1.08,
    "n": 16384,
    "ok": true
   },
@@ -9164,7 +9172,7 @@
    "cost": "\\log m",
    "documented": 1.14,
    "fn": "math.linear_congruence",
-   "measured": 1.08,
+   "measured": 1.06,
    "n": 16384,
    "ok": true
   },
@@ -9172,7 +9180,7 @@
    "cost": "\\log \\min(\\lvert a \\rvert, \\lvert b \\rvert)",
    "documented": 1.14,
    "fn": "math.linear_diophantine",
-   "measured": 1.08,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -9180,7 +9188,7 @@
    "cost": "\\log m",
    "documented": 1.14,
    "fn": "math.min_mod_in_range",
-   "measured": 1.04,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -9188,7 +9196,7 @@
    "cost": "\\log^2 p",
    "documented": 1.31,
    "fn": "math.mod_sqrt",
-   "measured": 1.22,
+   "measured": 1.19,
    "n": 16384,
    "ok": true
   },
@@ -9196,7 +9204,15 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "math.mul_mod",
-   "measured": 1.06,
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/math.cp::math.pow_exp": {
+   "cost": "\\log x.v",
+   "documented": 1.14,
+   "fn": "math.pow_exp",
+   "measured": 1.1,
    "n": 16384,
    "ok": true
   },
@@ -9204,7 +9220,15 @@
    "cost": "\\log e",
    "documented": 1.14,
    "fn": "math.pow_mod",
-   "measured": 1.14,
+   "measured": 1.1,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/math.cp::math.pow_tower": {
+   "cost": "k \\log m",
+   "documented": 1.14,
+   "fn": "math.pow_tower",
+   "measured": 1.57,
    "n": 16384,
    "ok": true
   },
@@ -9212,7 +9236,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "math.sign",
-   "measured": 1.03,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -9220,7 +9244,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "math.splitmix64",
-   "measured": 1.05,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -9228,7 +9252,7 @@
    "cost": "\\log \\lvert \\mathit{self} \\rvert",
    "documented": 1.14,
    "fn": "math.to_str",
-   "measured": 1.08,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -10436,7 +10460,7 @@
    "cost": "n \\log n",
    "documented": 4.73,
    "fn": "poly.bell_table",
-   "measured": 4.0,
+   "measured": 4.41,
    "n": 2048,
    "ok": true
   },
@@ -10444,7 +10468,7 @@
    "cost": "n \\log n",
    "documented": 4.73,
    "fn": "poly.bernoulli_table",
-   "measured": 4.12,
+   "measured": 4.25,
    "n": 2048,
    "ok": true
   },
@@ -10452,7 +10476,7 @@
    "cost": "n \\log n",
    "documented": 4.73,
    "fn": "poly.binomial_transform",
-   "measured": 4.14,
+   "measured": 4.41,
    "n": 2048,
    "ok": true
   },
@@ -10460,7 +10484,7 @@
    "cost": "(n + m) \\log(n + m)",
    "documented": 4.67,
    "fn": "poly.chirp_z",
-   "measured": 4.16,
+   "measured": 4.39,
    "n": 2048,
    "ok": true
   },
@@ -10468,7 +10492,7 @@
    "cost": "n \\log^2 n",
    "documented": 5.59,
    "fn": "poly.compose",
-   "measured": 5.18,
+   "measured": 5.23,
    "n": 2048,
    "ok": true
   },
@@ -10476,7 +10500,7 @@
    "cost": "n \\log^2 n",
    "documented": 5.59,
    "fn": "poly.compose_inv",
-   "measured": 5.01,
+   "measured": 5.22,
    "n": 2048,
    "ok": true
   },
@@ -10484,7 +10508,7 @@
    "cost": "a.\\mathit{len}",
    "documented": 4.0,
    "fn": "poly.deriv",
-   "measured": 4.02,
+   "measured": 3.79,
    "n": 2048,
    "ok": true
   },
@@ -10492,7 +10516,7 @@
    "cost": "a.\\mathit{len} \\log a.\\mathit{len}",
    "documented": 4.73,
    "fn": "poly.div_mod",
-   "measured": 4.18,
+   "measured": 4.42,
    "n": 2048,
    "ok": true
   },
@@ -10500,7 +10524,7 @@
    "cost": "\\mathit{self}.\\mathit{len}",
    "documented": 4.0,
    "fn": "poly.eval",
-   "measured": 3.96,
+   "measured": 4.02,
    "n": 2048,
    "ok": true
   },
@@ -10508,7 +10532,7 @@
    "cost": "(a.\\mathit{len} + \\mathit{xs}.\\mathit{len}) \\log^2 \\mathit{xs}.\\mathit{len}",
    "documented": 5.59,
    "fn": "poly.eval_all",
-   "measured": 4.81,
+   "measured": 5.15,
    "n": 2048,
    "ok": true
   },
@@ -10516,7 +10540,7 @@
    "cost": "n \\log n",
    "documented": 4.73,
    "fn": "poly.exp",
-   "measured": 3.78,
+   "measured": 4.14,
    "n": 2048,
    "ok": true
   },
@@ -10524,7 +10548,7 @@
    "cost": "n \\log^2 n",
    "documented": 5.59,
    "fn": "poly.gcd_poly",
-   "measured": 3.99,
+   "measured": 4.07,
    "n": 2048,
    "ok": true
   },
@@ -10532,7 +10556,7 @@
    "cost": "a.\\mathit{len}",
    "documented": 4.0,
    "fn": "poly.integral",
-   "measured": 3.97,
+   "measured": 4.2,
    "n": 2048,
    "ok": true
   },
@@ -10540,7 +10564,7 @@
    "cost": "n \\log^2 n",
    "documented": 5.59,
    "fn": "poly.interpolate",
-   "measured": 5.02,
+   "measured": 4.99,
    "n": 2048,
    "ok": true
   },
@@ -10548,7 +10572,7 @@
    "cost": "n \\log n",
    "documented": 4.73,
    "fn": "poly.inv",
-   "measured": 3.81,
+   "measured": 4.14,
    "n": 2048,
    "ok": true
   },
@@ -10556,7 +10580,7 @@
    "cost": "\\mathit{ys}.\\mathit{len}",
    "documented": 4.0,
    "fn": "poly.lagrange_at",
-   "measured": 3.96,
+   "measured": 4.0,
    "n": 2048,
    "ok": true
   },
@@ -10564,7 +10588,7 @@
    "cost": "n \\log n",
    "documented": 4.73,
    "fn": "poly.log",
-   "measured": 4.08,
+   "measured": 4.21,
    "n": 2048,
    "ok": true
   },
@@ -10572,7 +10596,7 @@
    "cost": "n \\log n",
    "documented": 4.73,
    "fn": "poly.partition_table",
-   "measured": 4.09,
+   "measured": 4.31,
    "n": 2048,
    "ok": true
   },
@@ -10580,7 +10604,7 @@
    "cost": "n \\log n",
    "documented": 4.73,
    "fn": "poly.pow",
-   "measured": 3.84,
+   "measured": 4.34,
    "n": 2048,
    "ok": true
   },
@@ -10588,7 +10612,7 @@
    "cost": "d \\log d \\log k",
    "documented": 4.73,
    "fn": "poly.pow_mod_poly",
-   "measured": 4.04,
+   "measured": 4.42,
    "n": 2048,
    "ok": true
   },
@@ -10596,7 +10620,7 @@
    "cost": "(n + \\deg) \\log^2 n",
    "documented": 5.59,
    "fn": "poly.power_sums",
-   "measured": 4.56,
+   "measured": 4.98,
    "n": 2048,
    "ok": true
   },
@@ -10604,7 +10628,7 @@
    "cost": "n \\log^2 n",
    "documented": 5.59,
    "fn": "poly.prod_linear",
-   "measured": 5.13,
+   "measured": 5.26,
    "n": 2048,
    "ok": true
   },
@@ -10612,7 +10636,7 @@
    "cost": "(n + m) \\log(n + m)",
    "documented": 4.67,
    "fn": "poly.sample_points_shift",
-   "measured": 4.39,
+   "measured": 4.35,
    "n": 2048,
    "ok": true
   },
@@ -10620,7 +10644,7 @@
    "cost": "n \\log n + \\log^2 P",
    "documented": 4.73,
    "fn": "poly.sqrt",
-   "measured": 3.48,
+   "measured": 4.06,
    "n": 2048,
    "ok": true
   },
@@ -10628,7 +10652,7 @@
    "cost": "n \\log n",
    "documented": 4.73,
    "fn": "poly.stirling1_col",
-   "measured": 3.86,
+   "measured": 4.27,
    "n": 2048,
    "ok": true
   },
@@ -10636,7 +10660,7 @@
    "cost": "n \\log n",
    "documented": 4.73,
    "fn": "poly.stirling1_row",
-   "measured": 5.08,
+   "measured": 5.1,
    "n": 2048,
    "ok": true
   },
@@ -10644,7 +10668,7 @@
    "cost": "n \\log n",
    "documented": 4.73,
    "fn": "poly.stirling2_col",
-   "measured": 3.82,
+   "measured": 4.27,
    "n": 2048,
    "ok": true
   },
@@ -10652,7 +10676,7 @@
    "cost": "n \\log n",
    "documented": 4.73,
    "fn": "poly.stirling2_row",
-   "measured": 4.46,
+   "measured": 4.53,
    "n": 2048,
    "ok": true
   },
@@ -10660,7 +10684,7 @@
    "cost": "n \\log n",
    "documented": 4.73,
    "fn": "poly.taylor_shift",
-   "measured": 4.2,
+   "measured": 4.41,
    "n": 2048,
    "ok": true
   },
@@ -10668,7 +10692,7 @@
    "cost": "(n + m) \\log(n + m)",
    "documented": 4.67,
    "fn": "poly.transposed_mul",
-   "measured": 4.27,
+   "measured": 4.51,
    "n": 2048,
    "ok": true
   },
@@ -11180,7 +11204,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.RingRange.contains",
-   "measured": 1.01,
+   "measured": 1.06,
    "n": 16384,
    "ok": true
   },
@@ -11188,7 +11212,7 @@
    "cost": "\\mathit{len}",
    "documented": 4.0,
    "fn": "range.RingRange.each",
-   "measured": 3.97,
+   "measured": 4.4,
    "n": 16384,
    "ok": true
   },
@@ -11196,7 +11220,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.RingRange.end",
-   "measured": 1.01,
+   "measured": 1.05,
    "n": 16384,
    "ok": true
   },
@@ -11204,7 +11228,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.RingRange.is_empty",
-   "measured": 1.03,
+   "measured": 1.05,
    "n": 16384,
    "ok": true
   },
@@ -11220,7 +11244,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.RingRange.len",
-   "measured": 1.01,
+   "measured": 1.06,
    "n": 16384,
    "ok": true
   },
@@ -11228,7 +11252,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.RingRange.start",
-   "measured": 1.01,
+   "measured": 1.06,
    "n": 16384,
    "ok": true
   },
@@ -11236,7 +11260,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "range.bsearch",
-   "measured": 1.15,
+   "measured": 1.12,
    "n": 16384,
    "ok": true
   },
@@ -11244,7 +11268,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.clip",
-   "measured": 1.03,
+   "measured": 0.94,
    "n": 16384,
    "ok": true
   },
@@ -11252,7 +11276,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.ends",
-   "measured": 1.0,
+   "measured": 0.94,
    "n": 16384,
    "ok": true
   },
@@ -11260,7 +11284,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "range.first_true",
-   "measured": 1.14,
+   "measured": 1.12,
    "n": 16384,
    "ok": true
   },
@@ -11268,7 +11292,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.halve",
-   "measured": 1.01,
+   "measured": 0.94,
    "n": 16384,
    "ok": true
   },
@@ -11276,7 +11300,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.l",
-   "measured": 1.01,
+   "measured": 0.94,
    "n": 16384,
    "ok": true
   },
@@ -11292,7 +11316,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.mid",
-   "measured": 1.01,
+   "measured": 0.94,
    "n": 16384,
    "ok": true
   },
@@ -11300,7 +11324,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.r",
-   "measured": 1.0,
+   "measured": 0.93,
    "n": 16384,
    "ok": true
   },
@@ -11308,7 +11332,15 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.shift",
-   "measured": 1.0,
+   "measured": 0.94,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/range.cp::range.shift_saturating": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "range.shift_saturating",
+   "measured": 0.94,
    "n": 16384,
    "ok": true
   },
@@ -11316,7 +11348,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "range.splits",
-   "measured": 1.0,
+   "measured": 0.91,
    "n": 16384,
    "ok": true
   },
@@ -17705,7 +17737,14 @@
   "persistent.PMultisetWithin.each",
   "persistent.PMultisetWithin.is_empty",
   "persistent.PMultisetWithin.len",
+  "persistent.Version.within",
+  "persistent.VersionWithin.each",
+  "persistent.VersionWithin.is_empty",
+  "persistent.VersionWithin.items",
+  "persistent.VersionWithin.len",
+  "rand.shuffle",
   "strings.Palindromes.items",
-  "strings.SuffixArray.each"
+  "strings.SuffixArray.each",
+  "strings.SuffixArray.lcp"
  ]
 }

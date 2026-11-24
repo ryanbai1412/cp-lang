@@ -10,6 +10,7 @@ for i in 0..8 * n:
     s += r.clip(3..i + 5).len // timed: range.clip
     s += r.ends.0 // timed: range.ends
     s += V(i % 64).shift(-2..=9).len // timed: range.shift
+    s += V(i % 64).shift_saturating(i % 9 - 4).ord // timed: range.shift_saturating
 for (a, b) in (0..8 * n).splits: // timed: range.splits
     s += a.len - b.len // timed: range.splits
 for i in 0..4 * n:

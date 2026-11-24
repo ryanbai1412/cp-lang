@@ -45,6 +45,11 @@ for i in 0..n / 2:
     let x = n + i % n
     acc += mod_sqrt(x % p, p) ?? 0 // timed: math.mod_sqrt
     acc += pow_exp(x, Exp.of(i * 7919, p - 1), p).v // timed: math.pow_exp
+    acc += pow_exp(x + 1, Exp.of(i * 104729, p - 1), p).v // timed: math.pow_exp
+    acc += pow_exp(x + 2, Exp.of(i * 1299709, p - 1), p).v // timed: math.pow_exp
     acc += pow_tower([x, i, 3], p) // timed: math.pow_tower
+for i in 0..8 * n:
+    let ex = Exp.of(i * 7919, p - 1 - i % 5) // timed: math.Exp.of
+    acc += ex.v
 print(acc)
 print(h)
