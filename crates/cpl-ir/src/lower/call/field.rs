@@ -309,6 +309,17 @@ impl<'a> Lowerer<'a> {
                         _ => {}
                     }
                 }
+                // `U.zero` in a generic body whose `U` is a `Str`: the type
+                // it was given lacks the constant, so the call can't use it.
+                if let Some(GenArg::Ty(ty)) = self.gen_env.get(type_name).cloned() {
+                    if matches!(name.text.as_str(), "zero" | "one" | "MAX" | "MIN")
+                        && !matches!(ty, Ty::Error | Ty::Struct(_))
+                    {
+                        let message = format!("{} has no `{}`", self.a_ty(&ty), name.text);
+                        self.error(codes::MISSING_IMPL, span, message);
+                        return self.err_expr(span);
+                    }
+                }
             }
         }
         if let Some(kept) = self.filtered_items(base, name, span) {
