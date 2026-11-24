@@ -1109,6 +1109,7 @@ impl<'p> Emitter<'p> {
         let mut solve_locals = String::new();
         for (id, global) in program.globals.iter().enumerate() {
             if global.ty == Ty::Unit
+                || self.devirt.dead_global(id)
                 || self.devirt.global_direct(id)
                 || self.devirt.main_auto_global(id)
             {

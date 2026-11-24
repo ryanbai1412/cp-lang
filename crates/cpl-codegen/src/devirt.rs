@@ -128,6 +128,8 @@ pub(crate) struct Devirt<'p> {
     /// The closures the emitter wrote beside a copy of their captures.
     pub(crate) bound: BTreeSet<ClosureId>,
     dead_locals: BTreeSet<(Option<FnId>, usize)>,
+    /// Globals no written code reads, set only whole to values that run nothing.
+    dead_globals: BTreeSet<usize>,
     /// Locals never read whose one `let` may trap or have an effect:
     /// the value is still computed, as a statement, but not bound.
     unread_lets: BTreeSet<(Option<FnId>, usize)>,
@@ -176,6 +178,7 @@ impl<'p> Devirt<'p> {
             unbuilt: crate::built::unbuilt(program, None),
             bound: BTreeSet::new(),
             dead_locals: BTreeSet::new(),
+            dead_globals: BTreeSet::new(),
             unread_lets: BTreeSet::new(),
             returned: BTreeMap::new(),
             made_by: made_by(program),
@@ -801,6 +804,7 @@ impl<'p> Devirt<'p> {
             | ExprKind::Float(_)
             | ExprKind::Bool(_)
             | ExprKind::Char(_)
+            | ExprKind::Str(_)
             | ExprKind::None
             | ExprKind::DomainLen(_)
             | ExprKind::DomainLo(_) => true,
@@ -863,6 +867,11 @@ impl<'p> Devirt<'p> {
 
     pub fn dead_local(&self, home: Option<FnId>, slot: usize) -> bool {
         self.dead_locals.contains(&(home, slot))
+    }
+
+    /// Global `g` is left out with its stores: nothing the file writes reads it.
+    pub fn dead_global(&self, g: usize) -> bool {
+        self.dead_globals.contains(&g)
     }
 
     /// Whether `let slot = v` only computes `v`: nothing reads `slot`.
@@ -1298,7 +1307,10 @@ impl Emitter<'_> {
     pub(crate) fn dropped_store(&self, place: &Place, op: AssignOp) -> bool {
         let dead_root = match crate::walk::root(place) {
             (false, slot) => self.closure_id.is_none() && self.devirt.dead_local(self.fn_id, slot),
-            (true, g) => matches!(place.kind, PlaceKind::Global(_)) && self.devirt.global_direct(g),
+            (true, g) => {
+                matches!(place.kind, PlaceKind::Global(_))
+                    && (self.devirt.global_direct(g) || self.devirt.dead_global(g))
+            }
         };
         (dead_root || self.devirt.in_unread_field(place)) && self.devirt.skippable_store(place, op)
     }

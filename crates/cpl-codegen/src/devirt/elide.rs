@@ -100,10 +100,18 @@ impl<'p> Devirt<'p> {
         // A dropped field leaves locals dead, and a dead `let f = s.op`
         // reads `op` no more.
         loop {
-            let before = (self.unread_fields.len(), self.dead_locals.len());
+            let sizes = |s: &Self| {
+                (
+                    s.unread_fields.len(),
+                    s.dead_locals.len(),
+                    s.dead_globals.len(),
+                )
+            };
+            let before = sizes(self);
             self.drop_unread_fields();
             self.drop_dead_locals();
-            if (self.unread_fields.len(), self.dead_locals.len()) == before {
+            self.drop_dead_globals();
+            if sizes(self) == before {
                 break;
             }
         }
@@ -299,6 +307,72 @@ impl<'p> Devirt<'p> {
             while self.find_dead_locals(Some(fid), &params, &[&f.body]) {}
         }
         while self.find_dead_locals(None, &[], &[&program.setup, &program.main]) {}
+    }
+
+    /// A global no written fn, closure or main reads, set only whole to
+    /// values that run nothing, is dropped with its stores: std.grid's
+    /// `DIR_NAMES` in a program that uses std.grid only for `.step`. One
+    /// round: a dropped store reads nothing, so a global only it read goes
+    /// in the next.
+    pub(super) fn drop_dead_globals(&mut self) {
+        let program = self.program;
+        let reach = crate::emit::reach::Reach::of(program, &self.same);
+        let mut blocks = vec![&program.setup, &program.main];
+        blocks.extend(reach.fns.iter().map(|&id| &program.fns[id].body));
+        blocks.extend(reach.closures.iter().map(|&c| &program.closures[c].body));
+        let mut live: BTreeSet<usize> = reach
+            .closures
+            .iter()
+            .flat_map(|&c| &program.closures[c].captures)
+            .filter(|cap| cap.is_global)
+            .map(|cap| cap.outer)
+            .collect();
+        let rooted = |place: &cpl_ir::Place, live: &mut BTreeSet<usize>| {
+            if let (true, g) = walk::root(place) {
+                live.insert(g);
+            }
+        };
+        for block in blocks {
+            let mut gone: BTreeSet<*const Expr> = BTreeSet::new();
+            walk::deep_stmts(block, &mut |stmt| {
+                if let Stmt::Assign(place, op, value) = stmt {
+                    match place.kind {
+                        PlaceKind::Global(g)
+                            if *op == AssignOp::Set && self.skippable_value(value) =>
+                        {
+                            if self.dead_globals.contains(&g) {
+                                walk::deep_expr(value, &mut |e| {
+                                    gone.insert(e as *const Expr);
+                                });
+                            }
+                        }
+                        _ => rooted(place, &mut live),
+                    }
+                }
+            });
+            walk::deep_exprs(block, &mut |e| match &e.kind {
+                ExprKind::Global(g) if !gone.contains(&(e as *const Expr)) => {
+                    live.insert(*g);
+                }
+                ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
+                    for arg in args {
+                        if let Arg::Mut(place) = arg {
+                            rooted(place, &mut live);
+                        }
+                    }
+                }
+                ExprKind::MutSlice(place, ..)
+                | ExprKind::MutLine(place, ..)
+                | ExprKind::Mutate(_, place, _)
+                | ExprKind::Sort(place, ..) => rooted(place, &mut live),
+                _ => {}
+            });
+        }
+        for (g, global) in program.globals.iter().enumerate() {
+            if global.ty != Ty::Unit && !live.contains(&g) {
+                self.dead_globals.insert(g);
+            }
+        }
     }
 
     /// One round: a store or push left out reads nothing, so what it alone

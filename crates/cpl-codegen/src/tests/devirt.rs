@@ -579,3 +579,23 @@ print(go(k))
         "`run` never names `g`, and the one call (inside `go`) passes a closure:\n{out}"
     );
 }
+
+#[test]
+fn a_global_nothing_written_reads_is_dropped_with_its_store() {
+    let out = cpp(concat!(
+        "const UNUSED = [\"up\", \"down\"]\n",
+        "const USED = [\"left\", \"right\"]\n",
+        "let n: Int = read()\n",
+        "var s = 0\n",
+        "for i in (1..=n).step(3):\n",
+        "    s += i\n",
+        "print(s)\n",
+        "print(USED[0])\n",
+    ));
+    let code: String = out.lines().filter(|l| !l.starts_with("//")).collect();
+    assert!(
+        !code.contains("DIR_NAMES") && !code.contains("UNUSED") && !code.contains("\"up\""),
+        "std.grid's DIR_NAMES and UNUSED are set to plain values and never read, so neither is declared or filled:\n{out}"
+    );
+    assert!(code.contains("USED") && code.contains("\"left\""), "{out}");
+}
