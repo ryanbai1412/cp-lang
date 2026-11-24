@@ -1,8 +1,10 @@
 // Enforces site/R15 (handbook/guidelines/site-checklist.md): the playground's
 // Stress tab finds the counterexample `cpl stress` finds. For every program in
-// the repo with an `@alt(program)` brute, the browser build's stress and the
-// CLI's, with the same seed, cases and size, must agree on the verdict, the
-// shrunk input and the first diverging variable.
+// the repo with an `@alt(program)` brute or an `@interactor`, the browser
+// build's stress and the CLI's, with the same seed, cases, size and time limit,
+// must agree on the verdict, the shrunk input, the first diverging variable,
+// the solution's output and, for an interactive run, the transcript and the
+// interactor's verdict.
 import { execFileSync, spawnSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -23,12 +25,13 @@ if (!wasmDir) {
 const opts = { cases: 30, seed: 1, size: 8, timeLimit: 1000 };
 // A browser run longer than this is a Stress tab a contestant gives up on.
 const BROWSER_LIMIT_MS = 20000;
-const files = execFileSync('git', ['grep', '-l', '@alt(program)', '--', '*.cp', ':!spec/conformance'], { cwd: repo, encoding: 'utf8' })
+const files = execFileSync('git', ['grep', '-lE', '@alt\\(program\\)|^\\s*@interactor', '--', '*.cp', ':!spec/conformance'], { cwd: repo, encoding: 'utf8' })
   .split('\n').filter(Boolean);
 const tmp = mkdtempSync(join(tmpdir(), 'stress-parity-'));
 const view = (o) => o.status === 'fail'
   ? { status: 'fail', case: o.counterexample.case, verdict: o.counterexample.verdict, input: o.counterexample.raw_input,
-      first: o.counterexample.explain?.divergence?.name ?? null }
+      first: o.counterexample.explain?.divergence?.name ?? null, got: o.counterexample.got ?? null,
+      interaction: o.counterexample.interaction ?? null }
   : o.status === 'ok' ? { status: 'ok', cases: o.case_count } : { status: 'error' };
 
 let bad = 0, found = 0;
@@ -61,5 +64,5 @@ for (const [i, f] of files.entries()) {
 }
 for (const f of slow) console.error(`stress-parity: too slow in the browser (over ${BROWSER_LIMIT_MS / 1000} s for ${opts.cases} cases): ${f}`);
 const compared = files.length - slow.length;
-console.log(`stress-parity: ${compared - bad} of ${files.length} @alt programs agree (${found} counterexamples found alike); ${slow.length} too slow`);
+console.log(`stress-parity: ${compared - bad} of ${files.length} stress programs agree (${found} counterexamples found alike); ${slow.length} too slow`);
 process.exit(bad || slow.length ? 1 : 0);
