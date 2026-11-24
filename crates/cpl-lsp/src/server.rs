@@ -1376,7 +1376,14 @@ fn apply_change(text: &mut String, change: &Value) -> Result<(), (i32, String)> 
             "content change range ends before it starts".to_string(),
         ));
     }
-    text.replace_range(start..end, new_text);
+    let edit = (
+        cpl_diag::Span::new(start as u32, end as u32),
+        new_text.to_string(),
+    );
+    *text = cpl_diag::splice(text, vec![edit]).ok_or((
+        INVALID_PARAMS,
+        "content change range splits a character".to_string(),
+    ))?;
     Ok(())
 }
 

@@ -39,15 +39,61 @@ pub fn apply_fixes(src: &str, diagnostics: &[Diagnostic]) -> (String, usize) {
         );
         applied += 1;
     }
-    // An insertion at a replacement's start goes before it.
+    match splice(src, edits) {
+        Some(out) => (out, applied),
+        None => (src.to_string(), 0),
+    }
+}
+
+/// Replaces each span of `src` with its text, all against the original
+/// `src`: the one edit engine every fix, rename, refactor and editor change
+/// goes through. An insertion at a replacement's start goes before it.
+/// `None` when two edits overlap or one is outside `src` (ends before it
+/// starts, past the end, or inside a character).
+pub fn splice(src: &str, mut edits: Vec<(Span, String)>) -> Option<String> {
     crate::sort_by_key(&mut edits, |(span, _)| span.order());
     let mut out = String::with_capacity(src.len());
     let mut at = 0usize;
-    for (span, text) in edits {
-        out.push_str(&src[at..span.start as usize]);
-        out.push_str(&text);
-        at = span.end as usize;
+    for (span, text) in &edits {
+        let (start, end) = (span.start as usize, span.end as usize);
+        if start < at || start > end || !src.is_char_boundary(start) || !src.is_char_boundary(end) {
+            return None;
+        }
+        out.push_str(&src[at..start]);
+        out.push_str(text);
+        at = end;
     }
     out.push_str(&src[at..]);
-    (out, applied)
+    Some(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn edits_apply_against_the_original_text_in_one_pass() {
+        let edits = vec![
+            (Span::new(4, 5), "yy".to_string()),
+            (Span::new(0, 1), "x".to_string()),
+            (Span::new(4, 4), "<".to_string()),
+        ];
+        assert_eq!(splice("a = b + c", edits).as_deref(), Some("x = <yy + c"));
+        assert_eq!(splice("abc", Vec::new()).as_deref(), Some("abc"));
+    }
+
+    #[test]
+    fn overlapping_or_out_of_source_edits_apply_nothing() {
+        let overlap = vec![
+            (Span::new(0, 3), String::new()),
+            (Span::new(2, 4), String::new()),
+        ];
+        assert_eq!(splice("abcdef", overlap), None);
+        assert_eq!(splice("ab", vec![(Span::new(1, 9), String::new())]), None);
+        assert_eq!(
+            splice("ab", vec![(Span { start: 2, end: 1 }, String::new())]),
+            None
+        );
+        assert_eq!(splice("é", vec![(Span::new(1, 2), String::new())]), None);
+    }
 }

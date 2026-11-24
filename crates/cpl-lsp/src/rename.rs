@@ -291,10 +291,10 @@ pub fn changed_meaning(
             let Some(text) = db.file_text(&path) else {
                 continue;
             };
-            let mut edited = text.to_string();
-            for span in spans.iter().rev() {
-                edited.replace_range(span.start as usize..span.end as usize, new);
-            }
+            let words = spans.iter().map(|s| (*s, new.to_string())).collect();
+            let Some(edited) = cpl_diag::splice(&text, words) else {
+                continue;
+            };
             originals.push((path.clone(), text, db.file_loaded(&path)));
             db.set_file(&path, edited);
         }

@@ -186,7 +186,7 @@
   "json_outside_cpl_json": 0,
   "config_schemas": 1,
   "std_doc_parsers": 0,
-  "edit_engines": 4,
+  "edit_engines": 0,
   "codemods_outside_fix": 0,
   "module_loaders": 0,
   "stress_hand_json": 0,
