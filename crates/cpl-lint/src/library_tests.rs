@@ -227,10 +227,7 @@ fn declared_holes_match_free_names_and_a_record_name_keeps_its_code() {
     let hit = "let a = [3, 1]\nlet m = a.len\nfor j in 0..m:\n    print(a[j])\n";
     assert_eq!(
         found("binom_by_hand", hit),
-        [(
-            "L0557".into(),
-            "write `for x in a.walk:\n    print(x)`".into()
-        )]
+        [("L0557".into(), "write `for x in a.walk: ...`".into())]
     );
     assert_eq!(found("walk_by_hand", hit).len(), 1);
     let calls = "let a = [3, 1]\nfn m() -> Int = 2\nfor j in 0..m():\n    print(a[j])\n";
@@ -894,4 +891,17 @@ fn each_spells_an_element_as_its_holes_singular() {
     assert_eq!(run("g", "").1, 0);
     let taken = run("vals", "let val = 0\nprint(val)\n");
     assert_eq!((taken.0, taken.1), (1, 0));
+}
+
+/// A finding's message is one line: a fix of several shows its first, `...`
+/// for the rest. Rule: R06.4.9.
+#[test]
+fn a_multi_line_fix_shows_its_first_line_in_the_message() {
+    let decl = "pub trait Walk<T>:\n    @lint(index_walk, from: \"for i in 0..self.len:\\n    b\", to: \"for x in self:\\n    b\", reads: \"self[i] -> x\", holes: \"b\")\n    fn iter(self) -> yields T\n";
+    let src = format!("{decl}let xs = [1, 2]\nfor i in 0..xs.len:\n    print(xs[i])\n");
+    let messages: Vec<String> = (crate::lint(&src, &crate::Config::default()).into_iter())
+        .filter(|d| d.code.0 == "index_walk")
+        .map(|d| d.message)
+        .collect();
+    assert_eq!(messages, ["write `for x in xs: ...`"]);
 }

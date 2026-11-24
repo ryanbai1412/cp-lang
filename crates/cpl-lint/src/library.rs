@@ -861,7 +861,7 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                 _ => span,
             };
             let mut diag = cpl_diag::msgs::lint_rules::LIBRARY_LINT_FIX
-                .warning_as(d.lint.code, shown, &[&fix])
+                .warning_as(d.lint.code, shown, &[&first_line(&fix)])
                 .with_help(format!(
                     "{from} declares this lint with `@lint` on `{}`",
                     d.decl.fn_name
@@ -1233,6 +1233,15 @@ fn fill(
     }
     out.push_str(&lines(&to[last..]));
     out
+}
+
+/// A fix's first line, `...` standing for the rest: a message is one line,
+/// as every tool shows it.
+fn first_line(fix: &str) -> String {
+    match fix.split_once('\n') {
+        Some((first, _)) => format!("{} ...", first.trim_end()),
+        None => fix.to_string(),
+    }
 }
 
 fn balanced(s: &str) -> bool {
