@@ -173,6 +173,16 @@ test('an editor hears each new step line once and every clicked line, 0-based',(
     {type:'step',line:0},{type:'reveal',line:0}]);
 });
 
+test('the page posts to VS Code its messages and to JetBrains their 0-based line',()=>{
+  const vscode=[];
+  T.editorHost({acquireVsCodeApi:()=>({postMessage:m=>vscode.push(m)})})({type:'step',line:2});
+  assert.deepEqual(vscode,[{type:'step',line:2}]);
+  const jetbrains=[];
+  T.editorHost({jbCefQuery:q=>jetbrains.push(plain(q))})({type:'reveal',line:0});
+  assert.deepEqual(jetbrains,[{request:'0'}]);
+  assert.equal(T.editorHost({}),null);
+});
+
 test('a re-run keeps the place by line visit and names the first change', () => {
   const run = values => ({steps: values.map((v, i) => ({line: [1, 2, 2, 2, 3][i], label: `s${i}`, values: {total: v}}))});
   const before = run([0, 1, 3, 6, 6]), after = run([0, 2, 6, 12, 12]);

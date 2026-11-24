@@ -2556,7 +2556,7 @@ EDITOR_SOURCE_RE = re.compile(r"^editors/(?!tree-sitter-cp/)(?!.*(?:/tests?/|/sc
 EDITOR_COMMENT = ("//", "/*", "*", "#", ";", "--", '"')
 # In an `EDITOR_GLUE` file a line is client wiring unless it decides or computes:
 # a branch, a loop, a condition, or a search or transform of data (strings blanked).
-EDITOR_DECIDES_RE = re.compile(r"\b(?:if|else|for|while|switch|case|catch|when)\b|\?\?|&&|\|\||\s\?\s"
+EDITOR_DECIDES_RE = re.compile(r"\b(?:if|else|for|while|switch|case|catch|when)\b|\?\?|\?:|&&|\|\||\s\?\s"
                                r"|\.(?:map|filter|find|flatMap|sort|reduce|split|replace|match|test|some|every|includes)\("
                                r"|\b(?:and|or|not|elseif)\b|\bvim\.(?:tbl_\w+|split|startswith)\(|:(?:match|gsub|find|sub)\(")
 EDITOR_STRING_RE = re.compile(r"'(?:\\.|[^'\\])*'|\"(?:\\.|[^\"\\])*\"|`(?:\\.|[^`\\])*`")

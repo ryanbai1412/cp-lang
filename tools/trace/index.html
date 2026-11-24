@@ -741,6 +741,12 @@ const TraceCore = (() => {
       reveal(line) { if (real(line)) post({type:"reveal", line:line - 1}); },
     };
   }
+  // VS Code's webview gives `acquireVsCodeApi`; a JetBrains JCEF panel routes `jbCefQuery`, which carries a string.
+  function editorHost(win) {
+    if (typeof win.acquireVsCodeApi === "function") { const api = win.acquireVsCodeApi(); return message => api.postMessage(message); }
+    if (typeof win.jbCefQuery === "function") return message => win.jbCefQuery({request:String(message.line)});
+    return null;
+  }
   // A step in source terms, the same as the DAP's: its line and which visit
   // to that line it is. A run recorded again after an edit finds the same
   // visit, else the line's last visit, else the step nearest `fallback`.
@@ -775,7 +781,7 @@ const TraceCore = (() => {
     return null;
   }
   return {validate, diff, align, compare, analyze, pathName, own, containsPath, selectDifference, place, findPlace, firstChange,
-    SPEEDS, clamp, format, valueAt, referenceAt, adjacentCheckpoint, checkpointWindow, adjacentDivergence, changes, summary, stepNumber, windowFrom, keyAction, layout, viewBox, legend, liveTrace, createPlayer, editorLink};
+    SPEEDS, clamp, format, valueAt, referenceAt, adjacentCheckpoint, checkpointWindow, adjacentDivergence, changes, summary, stepNumber, windowFrom, keyAction, layout, viewBox, legend, liveTrace, createPlayer, editorLink, editorHost};
 })();
 if (typeof module !== "undefined") module.exports = TraceCore;
 
@@ -806,8 +812,8 @@ if (typeof module !== "undefined") module.exports = TraceCore;
   const key = path => JSON.stringify(path);
   const display = v => v === null ? "None" : Array.isArray(v) ? `[${v.map(display).join(", ")}]` : typeof v === "object" ? `(${Object.entries(v).map(([k, x]) => `${k}: ${display(x)}`).join(", ")})` : String(v);
   const hashParam = name => new URLSearchParams(location.hash.slice(1)).get(name);
-  const host = typeof acquireVsCodeApi === "function" ? acquireVsCodeApi() : null;
-  const editor = host ? T.editorLink(message => host.postMessage(message)) : null;
+  const post = T.editorHost(window);
+  const editor = post ? T.editorLink(post) : null;
 
   let rerun = null, samples = [], cplVersion = "", sampleIndex = -1, trace, analysis, variable, comparing = false, selected = null, tab = "state", search = null, isolate = false;
   const player = T.createPlayer({count:1, onChange:(state, reason) => {

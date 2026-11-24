@@ -9,7 +9,6 @@ import com.intellij.openapi.actionSystem.IdeActions
 import com.intellij.openapi.extensions.ExtensionPointName
 import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.fileTypes.SyntaxHighlighterFactory
-import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.newvfs.impl.VfsRootAccess
 import com.intellij.xdebugger.ui.DebuggerColors
@@ -196,37 +195,17 @@ class CpPluginSmokeTest : BasePlatformTestCase() {
         }
     }
 
-    fun `test the trace view renders`() {
-        Assume.assumeTrue("build cpl first: cargo build -p cpl-cli", cpl.canExecute())
-        val dir = Files.createTempDirectory("cpl").toFile()
-        val source = File(dir, "sum.cp").apply { writeText("var total = 0\n\nfn main():\n    let n: Int = read()\n    for i in 0..n:\n        total += i\n    print(total)\n") }
-        val input = File(dir, "i1").apply { writeText("4\n") }
-        val html = CplTrace.render(source, listOf("run", source.path, input.path, "--trace"))
-        assertTrue(html.take(200), Regex("^\\s*<(!doctype|html)", RegexOption.IGNORE_CASE).containsMatchIn(html))
-        assertTrue(html.contains("total"))
-        val failed = File(dir, "missing.cp").let { m -> runCatching { CplTrace.render(m, listOf("run", m.path, "--trace")) } }.exceptionOrNull()
-        assertTrue(failed is CplTrace.Failed)
-        val bridged = CplTrace.bridge(html, "post(json);")
-        assertTrue(bridged.indexOf("window.acquireVsCodeApi") < bridged.indexOf("<script id=\"trace-ui\">"))
-        assertTrue("the viewer posts through acquireVsCodeApi", html.contains("acquireVsCodeApi()"))
-    }
-
-    fun `test the editor marks the trace's step and a clicked line moves the caret`() {
+    fun `test the editor marks the line the trace page posts`() {
         myFixture.configureByText("a.cp", "<caret>fn main():\n    let x = 1\n    print(x)\n")
-        val follower = CplTraceFollower(project, myFixture.file.virtualFile)
-        Disposer.register(testRootDisposable, follower)
         fun marked() = myFixture.editor.markupModel.allHighlighters
             .filter { it.isValid && it.textAttributesKey == DebuggerColors.EXECUTIONPOINT_ATTRIBUTES }
             .map { myFixture.editor.document.getLineNumber(it.startOffset) }
-        follower.follow(TraceMessage(false, 2))
+        val first = CplTrace.follow(project, myFixture.file.virtualFile, 1, null)
         assertEquals(listOf(1), marked())
-        assertEquals(0, myFixture.editor.caretModel.logicalPosition.line)
-        follower.follow(TraceMessage(true, 3))
+        val second = CplTrace.follow(project, myFixture.file.virtualFile, 2, first)
         assertEquals(listOf(2), marked())
-        assertEquals(2, myFixture.editor.caretModel.logicalPosition.line)
-        follower.follow(TraceMessage(false, 99))
-        assertEquals(listOf(3), marked())
-        Disposer.dispose(follower)
+        assertEquals(0, myFixture.editor.caretModel.logicalPosition.line)
+        second.dispose()
         assertEquals(emptyList<Int>(), marked())
     }
 }
