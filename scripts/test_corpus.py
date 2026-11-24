@@ -6,6 +6,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import types
 import unittest
@@ -15,6 +16,7 @@ from pathlib import Path
 _SPEC = importlib.util.spec_from_file_location("corpus", Path(__file__).resolve().parent / "corpus.py")
 assert _SPEC and _SPEC.loader
 corpus = importlib.util.module_from_spec(_SPEC)
+sys.modules["corpus"] = corpus  # make's worker processes find its functions by name
 _SPEC.loader.exec_module(corpus)
 
 GEN = "import sys\nprint(1)\nprint(sys.argv[1])\n"
@@ -283,6 +285,16 @@ class CheckTestsTest(Corpus):
         with mock.patch.object(corpus.Package, "reference", lambda self: "orig.cpp"), \
                 mock.patch.object(corpus, "make_cases", mock.Mock(side_effect=corpus.ReferenceFails("03", -11))):
             self.assertEqual(corpus.check_tests(corpus.Package.at(d), mock.Mock(cpl="cpl")), ["reference-fails p 03"])
+
+
+class MakeTest(Corpus):
+    def test_makes_every_package_in_worker_processes(self):
+        for pid in ("p1", "p2", "p3"):
+            self.package(pid, port_cp="", interactor_py="", tests_toml='[[case]]\ninput = "%s"\n' % pid)
+        out = self.root / "out"
+        args = mock.Mock(set=None, ids=[], out=str(out), j=2)
+        self.assertEqual(corpus.make(args), 0)
+        self.assertEqual([(out / pid / "01.in").read_text() for pid in ("p1", "p2", "p3")], ["p1\n", "p2\n", "p3\n"])
 
 class CommittedInputsTest(Corpus):
     def test_an_interactive_package_seeds_from_its_cases_not_its_reply_transcripts(self):

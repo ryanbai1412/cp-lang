@@ -1064,14 +1064,24 @@ def make_cases(pkg, out=OUT):
     Path(key).write_text(stamp(pkg, ref))
 
 
+def make_one(job):
+    """Make one package's cases in a worker process: its id and error, or None."""
+    pid, out = job
+    try:
+        make_cases(next(problems(ids=[pid])), out)
+    except (RuntimeError, subprocess.SubprocessError, OSError) as e:
+        return f"{pid}: {e!s:.160}"
+    return None
+
+
 def make(args):
+    """Make the cases of every package with a tests.toml, -j at a time. Processes,
+    not threads: make_cases runs the accepted C++ with a preexec_fn."""
+    import concurrent.futures, multiprocessing
     wanted = [p for p in problems(sets=args.set or None, ids=args.ids or None) if p.tests]
-    failed = []
-    for pkg in wanted:
-        try:
-            make_cases(pkg, args.out or OUT)
-        except (RuntimeError, subprocess.SubprocessError, OSError) as e:
-            failed.append(f"{pkg.id}: {e!s:.160}")
+    jobs = [(p.id, args.out or OUT) for p in wanted]
+    with concurrent.futures.ProcessPoolExecutor(max(1, args.j), mp_context=multiprocessing.get_context("fork")) as pool:
+        failed = [f for f in pool.map(make_one, jobs) if f]
     for f in failed:
         print(f, file=sys.stderr)
     print(f"corpus: cases for {len(wanted) - len(failed)} of {len(wanted)} packages")
@@ -1323,6 +1333,7 @@ def cli(argv):
     m.add_argument("ids", nargs="*")
     m.add_argument("--set", action="append")
     m.add_argument("--out")
+    m.add_argument("-j", type=int, default=os.cpu_count() or 4)
     sd = sub.add_parser("seed")
     sd.add_argument("ids", nargs="*")
     ls = sub.add_parser("ls", help="print each package's dir, or its FILE, relative to the repo root")
