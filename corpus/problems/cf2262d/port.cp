@@ -1,4 +1,5 @@
 // Source: Codeforces 2262D (PLUSworld), https://codeforces.com/contest/2262/problem/D
+// limits: 2000 ms, 256 MB
 // Problem: barn i has a road to a[i]; target roads b[i] >= i. Pick a start barn p, then do ops
 //   1 (a[p] += 1, only if a[p] < n) and 2 (p = a[p]) until a == b, at most 2n^2 ops; print the
 //   op count, p and the ops, or -1. Multitest, n <= 1000, sum of n^2 <= 1e6.

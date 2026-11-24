@@ -1,4 +1,5 @@
 // Source: DMPG '16 G2 (Kabane Apocalypse), https://dmoj.ca/problem/dmpg16g2
+// limits: 1400 ms, 256 MB
 // Problem: an N x N grid (N <= 1000) of cells, each '.' or one of the letters A..E. Count the
 //   axis-aligned sub-grids that contain all five letters.
 // Solution: inclusion-exclusion over the 32 sets S of letters left out: add (-1)^|S| times the

@@ -1,4 +1,5 @@
 // Source: NOI 2008 P5 (Candy Rain), https://dmoj.ca/problem/noi08p5
+// limits: 1000 ms, 128 MB
 // Problem: n <= 2e5 events with nondecreasing times 0 <= T <= 2e9 on a sky [0, len], len <= 1000:
 //   insert a cloud of colour 1 <= c <= 1e6 on [l, r] (0 <= l <= r <= len) moving left (d = -1)
 //   or right (d = 1), its left end bouncing off 0 and len (one cloud per colour at a time);

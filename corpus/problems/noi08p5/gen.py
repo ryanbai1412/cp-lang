@@ -5,12 +5,13 @@ n = size events with len = 1000; mode picks wide clouds, short clouds, or many a
 import random
 import sys
 
-seed, size = int(sys.argv[1]), int(sys.argv[2]) if len(sys.argv) > 2 else 8
+MAX = sys.argv[1] == "--max"  # n = 2e5 events, len = 1000, the ask-heavy mix, ending at t = 2e9
+seed, size = (0, 200_000) if MAX else (int(sys.argv[1]), int(sys.argv[2]) if len(sys.argv) > 2 else 8)
 rng = random.Random(seed)
 big = size > 1000
 m = 1000 if big else rng.randint(1, min(1000, max(1, size)))
 q = size if big else rng.randint(1, max(1, 2 * size))
-mode = rng.randrange(3)
+mode = 2 if MAX else rng.randrange(3)
 end_t = 2_000_000_000
 t, live, free, ops = rng.choice([0, end_t - 3 * q]), [], [], []
 colours = list(range(1, 1_000_001)) if big else list(range(1, 2 * q + 2))
@@ -19,7 +20,7 @@ fresh = iter(colours)
 for i in range(q):
     if rng.random() < 0.3:
         t = min(end_t, t + rng.choice([1, rng.randint(0, 3 * m), rng.randint(0, 10**7)]))
-    if i == q - 1 and rng.random() < 0.5:
+    if i == q - 1 and (MAX or rng.random() < 0.5):
         t = end_t
     weights = [3, 2, 1] if mode == 0 else [2, 6, 1] if mode == 1 else [3, 3, 2]
     kind = rng.choices([1, 2, 3], weights)[0]

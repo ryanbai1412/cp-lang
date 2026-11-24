@@ -157,8 +157,6 @@ no-max cf2245e -
 no-max cf2245f -
 no-max cf2255a -
 no-max cf2255d -
-no-max cf2255e1 -
-no-max cf2255e2 -
 no-max cf2255f -
 no-max cf2261a -
 no-max cf2261b -
@@ -172,7 +170,6 @@ no-max cf2262a1 -
 no-max cf2262a2 -
 no-max cf2262b -
 no-max cf2262c -
-no-max cf2262d -
 no-max cf2262e -
 no-max cf2268a -
 no-max cf2268b -
@@ -180,11 +177,7 @@ no-max cf2268c -
 no-max cf2268d -
 no-max cf2268e -
 no-max cheerio1s3 -
-no-max dmpg16g2 -
-no-max noi08p5 -
-no-max noi09p4 -
 no-max noi14p5 -
-no-max noip09p4 -
 no-max noip21p3 -
 no-max ucup4s24f -
 no-max ucup4s25b -
@@ -195,7 +188,6 @@ no-max ucup5s01a -
 no-max ucup5s02e -
 no-max ucup5s03a -
 no-max ucup5s03f -
-no-max ucup5s05b -
 no-max ucup5s05f -
 no-max ucup5s06a -
 no-max ucup5s06g -

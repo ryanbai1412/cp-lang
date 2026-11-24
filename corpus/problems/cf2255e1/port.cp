@@ -1,5 +1,6 @@
 // Source: Codeforces 2255E1 (What Will Remain at the End? (Easy Version)),
 //   https://codeforces.com/contest/2255/problem/E1
+// limits: 3000 ms, 256 MB
 // Problem: n, q <= 5e5 and an array a with values in {-1, 0, 1}. Operations, each making a
 //   new version: 1 l r x (assign x in {-1, 0, 1}), 2 l r (negate), 3 l r (a = max(a, 0)),
 //   4 p (print the max non-empty subarray sum of position p's values over all earlier

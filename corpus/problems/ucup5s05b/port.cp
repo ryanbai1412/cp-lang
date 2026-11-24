@@ -1,5 +1,6 @@
 // Source: The 5th Universal Cup, Stage 5 (Grand Prix of Chengdu), problem B (Bouncing
 //   Particles), qoj.ac/problem/23593
+// limits: 2000 ms, 1024 MB
 // Problem: multitest. In an n x n grid (n <= 1e9) four particles start at (x0, y0) moving
 //   diagonally; each step every particle flips any direction that would leave the grid, then
 //   splits into a horizontal and a vertical step child. q queries (sum q <= 1e5): count cells

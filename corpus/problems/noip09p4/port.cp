@@ -1,4 +1,5 @@
 // Source: NOIP 2009 P4 (Target Sudoku), https://dmoj.ca/problem/noip09p4
+// limits: 1000 ms, 128 MB
 // Problem: a 9 x 9 sudoku with 0 for blanks (at least 24 givens). Cell worth is 10 in the centre,
 //   falling by one per ring to 6 on the border. Fill it validly to maximise the sum of digit times
 //   worth and print that sum, or -1 if it has no completion.
