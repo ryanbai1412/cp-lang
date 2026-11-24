@@ -338,3 +338,30 @@ fn an_if_let_over_a_place_written_after_its_last_read_is_lent() {
         "`best` is set only after `b`'s last read, so the `if let` reads it in place:\n{out}"
     );
 }
+
+#[test]
+fn what_lives_past_a_let_ends_inside_the_branches_of_its_last_if() {
+    use cpl_ir::Stmt;
+    let program = super::lower(concat!(
+        "fn f(n: Int) -> Int:\n    let xs = [n]\n",
+        "    if n > 0:\n        print(xs.len)\n        print(1)\n    else:\n        print(2)\n",
+        "    0\nprint(f(read()))\n",
+    ));
+    let f = program
+        .fns
+        .iter()
+        .find(|f| f.name == "f")
+        .expect("f is lowered");
+    let [Stmt::Let(xs, _), rest @ ..] = f.body.stmts.as_slice() else {
+        panic!("f opens with its let: {:?}", f.body.stmts);
+    };
+    let live = crate::uses::live(&program, rest, *xs);
+    let [Stmt::If(_, then, otherwise)] = live.as_slice() else {
+        panic!("only the if reads `xs`: {live:?}");
+    };
+    assert_eq!(
+        (then.stmts.len(), otherwise.stmts.len()),
+        (1, 0),
+        "{live:?}"
+    );
+}

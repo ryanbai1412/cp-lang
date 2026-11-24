@@ -252,12 +252,12 @@ fn live_of(program: &Program, stmts: &[Stmt], mut names: BTreeSet<usize>) -> Vec
         }
     }
     let mut out = stmts[..end].to_vec();
-    if let Some(Stmt::If(cond, then, otherwise)) = out.last() {
+    if let Some(Stmt::If(_, then, otherwise)) = out.last_mut() {
         let branch = |b: &Block| Block {
             stmts: live_of(program, &b.stmts, names.clone()),
         };
-        let trimmed = Stmt::If(cond.clone(), branch(then), branch(otherwise));
-        *out.last_mut().expect("an if") = trimmed;
+        *then = branch(then);
+        *otherwise = branch(otherwise);
     }
     out
 }
