@@ -1022,10 +1022,27 @@ def rs_near_cap(root: Path) -> list[str]:
     return [f"{rel} {n}" for rel, n in _near_cap(root).items()]
 
 
+# Every route from the VM into the tree-walker, as a source call site: the VM
+# compiler's `Fallback*` emits, the VM's own `eval`/`stmt`/`block`/`feed`
+# calls, and each place a whole body is left to the walker.
+WALKER_ROUTE_RES = (
+    ("crates/cpl-interp/src/vm/compile/", re.compile(r"(?<!fn )\bemit_fallback_(?:stmt|expr_i|expr_v)\(")),
+    ("crates/cpl-interp/src/vm/", re.compile(r"\bself\.(?:eval|stmt|block|feed)\(")),
+    ("crates/cpl-interp/src/", re.compile(r"\bself\.block\(&(?:program\.(?:main|setup)|f\.body|def\.body)\)")),
+)
+
+
 def vm_fallbacks(root: Path) -> list[str]:
-    """(program, mode, tag) tree-walker fallbacks; cpl-cli's trace_goldens test keeps the list true."""
-    path = root / "crates/cpl-cli/tests/vm_fallbacks.txt"
-    return [l for l in _lines(path) if l and not l.startswith("#")] if path.is_file() else []
+    """Each source call site that routes a run from the VM into the tree-walker (decision 396's
+    count, static): what deleting the walker has left. The runtime kinds over tests/programs are
+    cpl-cli's trace_goldens list, `vm_fallbacks.txt`."""
+    out = []
+    for p in _rs_files(root, "crates/cpl-interp/src", tests=False):
+        rel = _rel(root, p)
+        prefix, rx = next((pre, rx) for pre, rx in WALKER_ROUTE_RES if rel.startswith(pre))
+        out += [f"{rel}:{i}" for i, line in enumerate(_lines(p), 1)
+                if rx.search(line) and not line.lstrip().startswith("//")]
+    return out
 
 
 OWN_DATABASE_RE = re.compile(r"\bDatabase::(?:new|with_loader|default)\b|\bDatabase\s*\{")
@@ -2999,7 +3016,7 @@ COUNTERS = {
     "conformance_failing": ("conformance cases not passing in research/scoreboard.json (Content)", conformance_failing, True),
     "conformance_wrong_output": ("conformance cases with wrong output in research/scoreboard.json (Content)",
                                  conformance_wrong_output, True),
-    "vm_fallbacks": ("tree-walker fallbacks over tests/programs", vm_fallbacks, True),
+    "vm_fallbacks": ("source call sites that route the VM into the tree-walker", vm_fallbacks, True),
     "own_databases": ("Database built outside cpl-check", own_databases, True),
     "ir_reinfer": ("lowering re-inferring a type the checker's facts give", ir_reinfer, True),
     "string_keyed_maps": ("name-keyed HashMaps in cpl-check, not NameMap", string_keyed_maps, True),

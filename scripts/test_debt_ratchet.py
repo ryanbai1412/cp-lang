@@ -1435,10 +1435,18 @@ class DebtRatchetTest(unittest.TestCase):
             (rules / "b.rs").write_text("pub fn check() {}\npub(crate) fn squash() {}\nfn inner() {}\n")
             self.assertEqual(dr.lint_dup_helpers(root),
                              ["squash: crates/cpl-lint/src/rules/a.rs, crates/cpl-lint/src/rules/b.rs"])
-            tests = root / "crates/cpl-cli/tests"
-            tests.mkdir(parents=True)
-            (tests / "vm_fallbacks.txt").write_text("# header\np untraced expr:Read\np traced stmt:Return\n")
-            self.assertEqual(len(dr.vm_fallbacks(root)), 2)
+            src = root / "crates/cpl-interp/src"
+            (src / "vm/compile").mkdir(parents=True)
+            (src / "vm/compile/a.rs").write_text(
+                "    fn emit_fallback_stmt(&mut self) {}\n        self.emit_fallback_expr_v(expr)\n"
+                "        // self.emit_fallback_stmt(stmt)\n")
+            (src / "vm/run.rs").write_text("        let v = self.eval(expr);\n")
+            (src / "call.rs").write_text("            _ => self.block(&f.body),\n        self.eval(e)\n")
+            self.assertEqual(dr.vm_fallbacks(root), [
+                "crates/cpl-interp/src/call.rs:1",
+                "crates/cpl-interp/src/vm/run.rs:1",
+                "crates/cpl-interp/src/vm/compile/a.rs:2",
+            ])
 
     def test_codegen_effect_guesses(self) -> None:
         with tempfile.TemporaryDirectory() as d:
