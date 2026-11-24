@@ -23,11 +23,11 @@ are the input spec:
 <!-- given: domain V = 0..5 -->
 ```cp
 @gen fn input():
-    let n = gen(1..=8)                                  // an Int
-    let a = gen<[V]1..=1e9>()                           // an array over a domain
+    let n = gen(1..=8)         // an Int
+    let a = gen<[V]1..=1e9>()  // an array over a domain
     let s = gen<Str of "ab">(len: 1..=10)
     let g = gen<Graph<V, (to: V, w: 1..=9)>>(simple: true, connected: true)
-    let t = gen<Rooted<V>>(shape: random)               // also path, star, caterpillar, binary
+    let t = gen<Rooted<V>>(shape: random)  // also path, star, caterpillar, binary
     let p = gen<Perm<V>>()
     print(n)
 ```
@@ -48,7 +48,7 @@ are the input spec:
 ```cp
 @alt(count, n: ..=8)
 fn count_slow(xs: List<Int>) -> Int: todo
-@alt(program, n: ..=10)            // a whole-program brute
+@alt(program, n: ..=10)  // a whole-program brute
 fn brute(): todo
 ```
 

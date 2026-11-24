@@ -49,7 +49,7 @@ fn divisors(n: Int) -> yields Int:
         if d * d != n: yield n / d
 
 for d in divisors(n):
-    if d > lim: break            // break, continue, return, break 'outer, loop else
+    if d > lim: break  // break, continue, return, break 'outer, loop else
 ```
 
 A contestant holds five sentences:

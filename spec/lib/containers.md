@@ -247,7 +247,7 @@ struct Bitset<D>                                // O(K / 64) words, 1 bit/pos
     @get fn count(self) -> Int                  // O(K / 64)
     @get fn is_empty(self) -> Bool              // O(K / 64), early exit
     fn first(self) -> ?D                        // O(K / 64)
-    fn last(self) -> ?Int                    // O(K / 64)
+    fn last(self) -> ?Int                       // O(K / 64)
     fn next(self, i: D) -> ?D                   // O(K / 64), first >= i
     fn prev(self, i: D) -> ?D                   // O(K / 64), last < i
     fn count_below(self, i: D) -> Int           // O(K / 64), count < i
@@ -303,32 +303,32 @@ pointers so a `BagCursor` steps to `prev` / `next` in \(O(1)\) amortized (fixing
 ```cp
 struct BagCursor(id: Int)  // opaque handle into a SortedBag
 
-struct SortedBag<K>                              // O(log n) ops, O(distinct) mem
-    fn new() -> SortedBag<K>                     // O(1)
-    fn of(xs: List<K>) -> SortedBag<K>           // O(n log n)
-    @get fn len(self) -> Int                     // O(1), total with multiplicity
-    @get fn distinct(self) -> Int                // O(1), distinct keys
-    @get fn is_empty(self) -> Bool               // O(1)
-    fn clear(mut self)                           // O(1)
-    fn take(mut self) -> SortedBag<K>            // O(1)
-    fn add(mut self, x: K) -> Bool               // O(log n); inserts one copy
-    fn add_many(mut self, x: K, c: Int)          // O(log n); inserts c >= 0 copies
-    fn remove(mut self, x: K) -> Bool            // O(log n); removes one copy
-    fn remove_all(mut self, x: K) -> Int         // O(log n); returns removed count
-    fn count(self, x: K) -> Int                  // O(log n)
-    fn contains(self, x: K) -> Bool              // O(log n)
-    @get fn first(self) -> ?K                    // O(log n)
-    @get fn last(self) -> ?K                     // O(log n)
-    fn pop_first(mut self) -> ?K                 // O(log n)
-    fn pop_last(mut self) -> ?K                  // O(log n)
-    fn first_ge(self, k: K) -> ?(K, V)                // O(log n)
-    fn first_gt(self, k: K) -> ?(K, V)                // O(log n)
-    fn last_le(self, k: K) -> ?(K, V)                 // O(log n)
-    fn last_lt(self, k: K) -> ?(K, V)                 // O(log n)
-    fn rank(self, k: K) -> Int                   // O(log n), count strictly < k
-    fn nth(self, i: Int) -> ?K                   // O(log n), 0-based
-    fn first_true(self, ok: K -> Bool) -> ?K     // O(log n), monotone ok
-    fn last_true(self, ok: K -> Bool) -> ?K      // O(log n), monotone ok
+struct SortedBag<K>                           // O(log n) ops, O(distinct) mem
+    fn new() -> SortedBag<K>                  // O(1)
+    fn of(xs: List<K>) -> SortedBag<K>        // O(n log n)
+    @get fn len(self) -> Int                  // O(1), total with multiplicity
+    @get fn distinct(self) -> Int             // O(1), distinct keys
+    @get fn is_empty(self) -> Bool            // O(1)
+    fn clear(mut self)                        // O(1)
+    fn take(mut self) -> SortedBag<K>         // O(1)
+    fn add(mut self, x: K) -> Bool            // O(log n); inserts one copy
+    fn add_many(mut self, x: K, c: Int)       // O(log n); inserts c >= 0 copies
+    fn remove(mut self, x: K) -> Bool         // O(log n); removes one copy
+    fn remove_all(mut self, x: K) -> Int      // O(log n); returns removed count
+    fn count(self, x: K) -> Int               // O(log n)
+    fn contains(self, x: K) -> Bool           // O(log n)
+    @get fn first(self) -> ?K                 // O(log n)
+    @get fn last(self) -> ?K                  // O(log n)
+    fn pop_first(mut self) -> ?K              // O(log n)
+    fn pop_last(mut self) -> ?K               // O(log n)
+    fn first_ge(self, k: K) -> ?(K, V)        // O(log n)
+    fn first_gt(self, k: K) -> ?(K, V)        // O(log n)
+    fn last_le(self, k: K) -> ?(K, V)         // O(log n)
+    fn last_lt(self, k: K) -> ?(K, V)         // O(log n)
+    fn rank(self, k: K) -> Int                // O(log n), count strictly < k
+    fn nth(self, i: Int) -> ?K                // O(log n), 0-based
+    fn first_true(self, ok: K -> Bool) -> ?K  // O(log n), monotone ok
+    fn last_true(self, ok: K -> Bool) -> ?K   // O(log n), monotone ok
     // Cursor navigation: O(log n) to locate, O(1) amortized to step
     fn cursor_first(self) -> ?BagCursor                  // O(log n)
     fn cursor_last(self) -> ?BagCursor                   // O(log n)
@@ -414,7 +414,7 @@ struct PotentialDsu<V, W = Int>                   // O(alpha(n)), O(log n) after
     fn find(self, v: V) -> (root: V, offset: W)   // pot(v) - pot(root)
     fn unite(mut self, a: V, b: V, diff: W) -> Bool
     // Records pot(b) - pot(a) == diff; false on contradiction
-    fn diff(self, a: V, b: V) -> ?W        // pot(b) - pot(a), or None
+    fn diff(self, a: V, b: V) -> ?W  // pot(b) - pot(a), or None
     fn same(self, a: V, b: V) -> Bool
     fn size(mut self, v: V) -> Int
     @get fn components(self) -> Int
@@ -448,30 +448,30 @@ snapshots across random `set`/`mark`/`undo_to` sequences.
     fn of(xs: List<T>) -> MaxHeap<T>                        // O(n) Floyd heapify
 
 // New in std.heap:
-struct ErasableHeap<T>                                 // O(log n) amortized; two heaps
+struct ErasableHeap<T>                                  // O(log n) amortized; two heaps
     fn new<K>(by: ?(T -> K) = None) -> ErasableHeap<T>  // O(1); largest first with `by:`
-    @get fn len(self) -> Int                 // O(1)
-    @get fn is_empty(self) -> Bool           // O(1)
-    fn clear(mut self)                       // O(1)
-    fn take(mut self) -> ErasableHeap<T>     // O(1)
-    fn push(mut self, x: T)                  // O(log n)
-    fn remove(mut self, x: T)                // O(log n); x must be present
-    fn peek(mut self) -> ?T                  // O(log n) amortized
-    fn pop(mut self) -> ?T                   // O(log n) amortized
+    @get fn len(self) -> Int                            // O(1)
+    @get fn is_empty(self) -> Bool                      // O(1)
+    fn clear(mut self)                                  // O(1)
+    fn take(mut self) -> ErasableHeap<T>                // O(1)
+    fn push(mut self, x: T)                             // O(log n)
+    fn remove(mut self, x: T)                           // O(log n); x must be present
+    fn peek(mut self) -> ?T                             // O(log n) amortized
+    fn pop(mut self) -> ?T                              // O(log n) amortized
 
-struct IndexedHeap<D, K>                     // O(log n) set/remove/pop, smallest key first
-    fn new() -> IndexedHeap<D, K>            // O(D.count)
-    @get fn len(self) -> Int                 // O(1)
-    @get fn is_empty(self) -> Bool           // O(1)
-    fn clear(mut self)                       // O(len)
-    fn contains(self, v: D) -> Bool          // O(1)
-    fn get(self, v: D) -> ?K                 // O(1)
-    fn set(mut self, v: D, k: K)           // O(log n); insert or update
+struct IndexedHeap<D, K>                       // O(log n) set/remove/pop, smallest key first
+    fn new() -> IndexedHeap<D, K>              // O(D.count)
+    @get fn len(self) -> Int                   // O(1)
+    @get fn is_empty(self) -> Bool             // O(1)
+    fn clear(mut self)                         // O(len)
+    fn contains(self, v: D) -> Bool            // O(1)
+    fn get(self, v: D) -> ?K                   // O(1)
+    fn set(mut self, v: D, k: K)               // O(log n); insert or update
     fn decrease(mut self, v: D, k: K) -> Bool  // O(log n); false when k is not smaller
     fn increase(mut self, v: D, k: K) -> Bool  // O(log n); false when k is not larger
-    fn remove(mut self, v: D) -> ?K          // O(log n)
-    @get fn peek(self) -> ?(D, K)            // O(1)
-    fn pop(mut self) -> ?(D, K)              // O(log n)
+    fn remove(mut self, v: D) -> ?K            // O(log n)
+    @get fn peek(self) -> ?(D, K)              // O(1)
+    fn pop(mut self) -> ?(D, K)                // O(log n)
 ```
 
 Note on `ErasableHeap.peek`: takes `mut self` because purging lazy-deleted
@@ -488,12 +488,12 @@ Laws: `Heap.of(xs)` pops elements in the exact order of `sorted(xs)`;
 ```cp
 // Existing: Deque<T> (add set(mut self, i: Int, x: T) and to_list(self) -> List<T>)
 // The queue monoid fold is std.window's `Window(op)` (sliding min/max, §8 of ops-ranges):
-struct Window<T, M>(op: M)             // O(1) amortized queue monoid fold, two stacks
-    fn new(op: M) -> Window<T, M>      // op is a Monoid or bare op
-    @get fn len(self) -> Int           // O(1)
-    fn push(mut self, x: T)            // O(1)
-    fn pop(mut self, x: T)             // O(1) amortized; x is the oldest
-    @get fn all(self) -> ?T            // O(1); the fold, None when empty
+struct Window<T, M>(op: M)         // O(1) amortized queue monoid fold, two stacks
+    fn new(op: M) -> Window<T, M>  // op is a Monoid or bare op
+    @get fn len(self) -> Int       // O(1)
+    fn push(mut self, x: T)        // O(1)
+    fn pop(mut self, x: T)         // O(1) amortized; x is the oldest
+    @get fn all(self) -> ?T        // O(1); the fold, None when empty
 ```
 
 ### 2.7 `std.marks` and `std.seq.Compressed`
@@ -502,15 +502,15 @@ struct Window<T, M>(op: M)             // O(1) amortized queue monoid fold, two 
 ```cp
 // Existing in std.marks: Marks<D>
 // New in std.marks:
-struct MarkMap<D, T>                     // O(1) get/set/remove/clear
+struct MarkMap<D, T>                         // O(1) get/set/remove/clear
     fn new(default_val: T) -> MarkMap<D, T>  // O(D.count) once
-    fn get(self, v: D) -> ?T             // O(1); None when unset
-    fn set(mut self, v: D, val: T)       // O(1)
-    fn contains(self, v: D) -> Bool      // O(1)
-    fn remove(mut self, v: D) -> ?T      // O(1); the old value
-    fn clear(mut self)                   // O(1) epoch bump
-    @get fn len(self) -> Int             // O(1)
-    @get fn is_empty(self) -> Bool       // O(1)
+    fn get(self, v: D) -> ?T                 // O(1); None when unset
+    fn set(mut self, v: D, val: T)           // O(1)
+    fn contains(self, v: D) -> Bool          // O(1)
+    fn remove(mut self, v: D) -> ?T          // O(1); the old value
+    fn clear(mut self)                       // O(1) epoch bump
+    @get fn len(self) -> Int                 // O(1)
+    @get fn is_empty(self) -> Bool           // O(1)
 
 struct Interner<K>                  // online key <-> 0..len id
     fn new() -> Interner<K>         // O(1)
@@ -518,7 +518,7 @@ struct Interner<K>                  // online key <-> 0..len id
     @get fn is_empty(self) -> Bool  // O(1)
     fn id(mut self, k: K) -> Int    // O(1) expected (HashMap)
     fn get(self, k: K) -> ?Int      // O(log n)
-    fn key(self, i: Int) -> K     // O(1)
+    fn key(self, i: Int) -> K       // O(1)
 
 // In std.seq:
 struct Compressed<D, T>(vals: [D]T)

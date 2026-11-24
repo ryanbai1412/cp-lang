@@ -115,13 +115,17 @@ piece per right end as its positions, `[D]Range<D>` (`minimal`:
 <!-- signatures: std/seq.cp -->
 ```cp
 pub trait Track<T>:
-    fn push(mut self, x: T)       // x joins at the right end
-    fn pop(mut self, x: T)        // x leaves at the left end (the oldest)
+    fn push(mut self, x: T)  // x joins at the right end
+    fn pop(mut self, x: T)   // x leaves at the left end (the oldest)
 
 pub enum Anchor = Start | End
 
-pub fn maximal<D, T, St: Track<T>>(self: [D]T, state: St, ok: St -> Bool,
-                                   anchor: Anchor = Anchor.End) -> [D]Range<D>
+pub fn maximal<D, T, St: Track<T>>(
+    self: [D]T,
+    state: St,
+    ok: St -> Bool,
+    anchor: Anchor = Anchor.End,
+) -> [D]Range<D>
 ```
 
 `Track` implementations that already exist:

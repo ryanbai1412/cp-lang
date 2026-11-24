@@ -156,7 +156,7 @@ trait Commutative<T>: Op<T>:
   let (a, u) = ((to: V(0), w: 5), V(1)) -->
 ```cp
 fn arcs<V, R: (u: V, v: V, ..)>(edges: List<R>) -> List<(to: V, ..R without (u, v))> = todo
-let a2 = (..a, to: u)                 // record update
+let a2 = (..a, to: u)  // record update
 ```
 
 - `(f: T, ..)` is a bound: any record with at least those fields, in any

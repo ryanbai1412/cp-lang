@@ -320,9 +320,7 @@ let pairs: [Pair](u: Item, v: Item, w: 0..=1e9) = read()
 
 domain Node = Item + Pair
 fn profit(v: Node) -> Int = match v: Item(i) => -cost[i], Pair(e) => pairs[e].w
-let needs = Graph.directed(
-    [(Node(i), Node(e)) for e in Pair for i in [pairs[e].u, pairs[e].v]]
-)
+let needs = Graph.directed([(Node(i), Node(e)) for e in Pair for i in [pairs[e].u, pairs[e].v]])
 print(max_closure(before: needs, profit: profit).value)
 ```
 
@@ -375,7 +373,9 @@ user code because it is the model.
 ```cp
 use std.flow.{max_weight_matching}
 // sum a / sum b >= r iff the best assignment of a - r b is >= 0.
-let ok = (r: Int) => max_weight_matching<Boy, Girl>((i, j) => a[i, j] * SCALE - r * b[i, j]).total >= 0
+let ok = (r: Int) => max_weight_matching<Boy, Girl>(
+    (i, j) => a[i, j] * SCALE - r * b[i, j]
+).total >= 0
 print((0..=hi).last_true(ok)!)
 ```
 

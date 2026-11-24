@@ -159,7 +159,7 @@ keep source positions, as for every sequence (`04b-keys.md`). (R02.3.1)
 struct Edge: u: V, v: V, w: Int
 
 struct Tally:
-    var top = 0                     // typed by its default
+    var top = 0  // typed by its default
     var sum = 0
     name: Str = ""
     fn add(mut self, x: Int):
@@ -206,7 +206,7 @@ struct Tally:
 
 <!-- given: domain V = 0..4 -->
 ```cp
-enum Dir = L | R | U | D            // payload-free: an index type
+enum Dir = L | R | U | D  // payload-free: an index type
 enum Ev:
     Add(v: V)
     Ask(l: V, r: V)
@@ -263,7 +263,7 @@ A binding can introduce a type whose identity is the binding:
 ```cp
 domain V = 1..=read<1..=2e5>()
 let (domain Piece, piece_of) = components(t)
-type Z = Mod(read<2..=1e9 + 7>())   // runtime modulus
+type Z = Mod(read<2..=1e9 + 7>())  // runtime modulus
 ```
 
 - Two fresh types are never equal, even from the same expression. (R02.9.1)

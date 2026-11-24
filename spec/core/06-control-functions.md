@@ -73,16 +73,17 @@ only in spelling (decision 144):
   var cnt = [0, 0, 0].to_list()
   fn key(p: P) -> (Int, Int) = (p.x, p.y) -->
 ```cp
-fn go(v: V):                          // nested fn: recursion by name
+fn go(v: V):  // nested fn: recursion by name
     seen[v] = true
     for u in g.next(v) if not seen[u]: go(u)
 
-let fact = (n: Int) -> Int => if n == 0: 1 else: n * fact(n - 1)   // recursive lambda
+let fact = (n: Int) -> Int => if n == 0: 1 else: n * fact(n - 1)  // recursive lambda
 xs.sort(by: p => (p.x, desc(p.y)))
-let drop = (v: Int, a: Int) => cnt[a] -= 1   // body may be an assignment
-xs.sort(by: x =>                      // block lambda
+let drop = (v: Int, a: Int) => cnt[a] -= 1  // body may be an assignment
+xs.sort(by: x =>                            // block lambda
     let k = key(x)
-    (k.0, -k.1))
+    (k.0, -k.1)
+)
 ```
 
 - **Captures act as call-time arguments.** A closure holds no lend

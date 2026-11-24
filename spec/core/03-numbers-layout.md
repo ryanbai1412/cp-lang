@@ -158,9 +158,9 @@ undefined. So a struct of `Int`s has a niche because `Int` has one: (R03.2.2)
 
 <!-- given: domain V = 0..4 -->
 ```cp
-struct Edge: to: V, w: Int          // 4 + 8 -> 16 B (padded)
-var best: [V]?Edge = [V].filled(None)   // 16 B per slot, not 24
-var span: ?(lo: Int, hi: Int) = None    // 16 B: None lives in lo
+struct Edge: to: V, w: Int             // 4 + 8 -> 16 B (padded)
+var best: [V]?Edge = [V].filled(None)  // 16 B per slot, not 24
+var span: ?(lo: Int, hi: Int) = None   // 16 B: None lives in lo
 ```
 
 - Records and tuples follow the same rule, since they are structs without
@@ -303,12 +303,12 @@ from the constant form. (R03.5.1)
 ```cp
 let n = read<1..=2e5>()
 domain V = 0..n
-let a = read<[V]1..=1e9>()           // 4 B per element
-var par: [V]?V = [V].filled(None)    // 4 B, None = all ones
-var dist: [V]?Int = [V].filled(None) // 8 B, None = INT64_MIN
-var mx = SegTree(max, a)             // 4 B nodes: max is Selective
-var sm = SegTree(+, a)               // 8 B nodes: sums are Int
-struct Item: w: 1..=1e9, v: 1..=1e9, id: V    // 12 B, ?Item 12 B
+let a = read<[V]1..=1e9>()                  // 4 B per element
+var par: [V]?V = [V].filled(None)           // 4 B, None = all ones
+var dist: [V]?Int = [V].filled(None)        // 8 B, None = INT64_MIN
+var mx = SegTree(max, a)                    // 4 B nodes: max is Selective
+var sm = SegTree(+, a)                      // 8 B nodes: sums are Int
+struct Item: w: 1..=1e9, v: 1..=1e9, id: V  // 12 B, ?Item 12 B
 ```
 
 `cpl explain` on this prints, per line, the storage and the reason

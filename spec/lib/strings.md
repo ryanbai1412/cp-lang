@@ -150,17 +150,17 @@ are named arguments (`bases:`). Container-like structures follow `plan/STDLIB.md
 
 <!-- signatures: std/strings.cp -->
 ```cp
-fn repeat(self: Str, n: Int) -> Str                                     // O(n * self.len)
-fn starts_with<S: Indexed, P: Indexed>(self: S, pat: P, at: Int = 0) -> Bool                  // O(p.len)
-fn ends_with<S: Indexed, P: Indexed>(self: S, pat: P) -> Bool                                 // O(p.len)
-fn search<S: Indexed<K, T>, K, T, P>(self: S, p: P) -> ?K                        // O(self.len + p.len)
-fn rsearch<S: Indexed<K, T>, K, T, P>(self: S, p: P) -> ?K                       // O(self.len + p.len)
-@get fn lower(self: Char) -> Char                                       // O(1)
-@get fn upper(self: Char) -> Char                                       // O(1)
-@get fn digit(self: Char) -> Int                                        // O(1); traps outside '0'..'9'
-fn is_palindrome<S: Indexed>(s: S) -> Bool                              // O(n)
-fn common_prefix_len<A: Indexed, B: Seq>(self: A, other: B) -> Int  // O(min)
-fn common_suffix_len<A: Indexed, B: Indexed>(self: A, other: B) -> Int  // O(min)
+fn repeat(self: Str, n: Int) -> Str                                           // O(n * self.len)
+fn starts_with<S: Indexed, P: Indexed>(self: S, pat: P, at: Int = 0) -> Bool  // O(p.len)
+fn ends_with<S: Indexed, P: Indexed>(self: S, pat: P) -> Bool                 // O(p.len)
+fn search<S: Indexed<K, T>, K, T, P>(self: S, p: P) -> ?K                     // O(self.len + p.len)
+fn rsearch<S: Indexed<K, T>, K, T, P>(self: S, p: P) -> ?K                    // O(self.len + p.len)
+@get fn lower(self: Char) -> Char                                             // O(1)
+@get fn upper(self: Char) -> Char                                             // O(1)
+@get fn digit(self: Char) -> Int                                              // O(1); traps outside '0'..'9'
+fn is_palindrome<S: Indexed>(s: S) -> Bool                                    // O(n)
+fn common_prefix_len<A: Indexed, B: Seq>(self: A, other: B) -> Int            // O(min)
+fn common_suffix_len<A: Indexed, B: Indexed>(self: A, other: B) -> Int        // O(min)
 ```
 
 Laws:
@@ -172,11 +172,11 @@ Laws:
 
 <!-- signatures: std/strings.cp -->
 ```cp
-fn z_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int            // O(n)
-fn prefix_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int       // O(n)
+fn z_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int                                  // O(n)
+fn prefix_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int                             // O(n)
 fn find_all<S: Indexed<K, T>, P: Indexed<L, T>, K, L, T: Eq>(self: S, pat: P) -> yields K  // O(|self| + |pat|)
-fn period<S: Indexed>(s: S) -> Int                                   // O(n)
-fn borders<S: Indexed>(s: S) -> yields Int                           // O(n); longest first
+fn period<S: Indexed>(s: S) -> Int                                                         // O(n)
+fn borders<S: Indexed>(s: S) -> yields Int                                                 // O(n); longest first
 fn prefix_matches<S: Indexed<K, T>, P: Indexed<J, T>, K, J, T: Eq>(self: S, pat: P) -> [K]Int
 // O(|self| + |pat|); entry i is the longest prefix of pat ending at self[i]
 fn overlap<A: Indexed, B: Indexed>(a: A, b: B) -> Int
@@ -254,13 +254,13 @@ trait Hashable:
 
 struct RollingHash:
     fn new<S: Seq>(seq: S, bases: ?(Int, Int) = None) -> RollingHash  // O(n)
-    @get fn len(self) -> Int                                         // O(1)
-    @get fn all(self) -> HashVal                                     // O(1)
-    fn slice(self, l: Int, r: Int) -> HashVal                        // O(1)
-    fn get<R>(self, r: R) -> HashVal                                 // O(1)
-    fn combine(self, a: HashVal, b: HashVal, b_len: Int) -> HashVal  // O(1)
-    fn lcp(self, a: Int, b: Int, of: ?RollingHash = None) -> Int     // O(log n); `of:` puts `b` in another hash
-    fn lcs(self, a: Int, b: Int) -> Int                              // O(log n)
+    @get fn len(self) -> Int                                          // O(1)
+    @get fn all(self) -> HashVal                                      // O(1)
+    fn slice(self, l: Int, r: Int) -> HashVal                         // O(1)
+    fn get<R>(self, r: R) -> HashVal                                  // O(1)
+    fn combine(self, a: HashVal, b: HashVal, b_len: Int) -> HashVal   // O(1)
+    fn lcp(self, a: Int, b: Int, of: ?RollingHash = None) -> Int      // O(log n); `of:` puts `b` in another hash
+    fn lcs(self, a: Int, b: Int) -> Int                               // O(log n)
 
 struct Hash2D<R, C>(bases: (Int, Int)):
     fn new(code: (R, C) -> Int, bases: ?(Int, Int) = None) -> Hash2D<R, C>  // O(R * C)
@@ -289,11 +289,11 @@ struct SuffixArray<T: Ord>:
     rank: List<Int>
     lcp: List<Int>
 
-    fn new<S: Indexed<K, T>, K>(s: S) -> SuffixArray<T>    // O(n log n) build (SA-IS + Kasai + RMQ)
-    @get fn len(self) -> Int                               // O(1)
-    fn lcp_between(self, i: Int, j: Int) -> Int            // O(1)
+    fn new<S: Indexed<K, T>, K>(s: S) -> SuffixArray<T>             // O(n log n) build (SA-IS + Kasai + RMQ)
+    @get fn len(self) -> Int                                        // O(1)
+    fn lcp_between(self, i: Int, j: Int) -> Int                     // O(1)
     fn rank_range<P: Indexed<J, T>, J>(self, pat: P) -> Range<Int>  // O(|pat| log n); rank range lo..hi
-    fn count<P: Indexed<J, T>, J>(self, pat: P) -> Int     // O(|pat| log n)
+    fn count<P: Indexed<J, T>, J>(self, pat: P) -> Int              // O(|pat| log n)
     fn lcp_range(self, i: Int, len: Int) -> Range<Int>
     // O(log n); rank range whose LCP with suffix i is >= len
     fn compare(self, l1: Int, r1: Int, l2: Int, r2: Int) -> Int

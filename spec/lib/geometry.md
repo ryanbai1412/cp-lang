@@ -117,16 +117,16 @@ callers never lose point IDs or build `(p: Pt, id: Int)` wrapper structs:
 
 <!-- signatures: std/geometry.cp -->
 ```cp
-struct Pt(x: Int, y: Int)         // Add, Sub, Neg, Eq, Ord (x, y), Hash, Read, Show ("x y")
-    @get fn norm2(self) -> Int    // O(1); x*x + y*y
-    @get fn len(self) -> F64      // O(1); sqrt(F64(norm2))
-    @get fn perp(self) -> Pt      // O(1); 90 deg CCW: Pt(-y, x)
-    @get fn perp_cw(self) -> Pt   // O(1); 90 deg CW: Pt(y, -x)
-    @get fn angle(self) -> F64    // O(1); atan2(y, x) in [-pi, pi]
-    fn unit_dir(self) -> Pt       // O(log min(|x|, |y|)); reduced by gcd, Pt(0, 0) for zero
-    @get fn to_vec(self) -> Vec   // O(1); Vec(F64(x), F64(y))
-    fn dist2(self, o: Pt) -> Int  // O(1)
-    fn dist(self, o: Pt) -> F64   // O(1)
+struct Pt(x: Int, y: Int)             // Add, Sub, Neg, Eq, Ord (x, y), Hash, Read, Show ("x y")
+    @get fn norm2(self) -> Int        // O(1); x*x + y*y
+    @get fn len(self) -> F64          // O(1); sqrt(F64(norm2))
+    @get fn perp(self) -> Pt          // O(1); 90 deg CCW: Pt(-y, x)
+    @get fn perp_cw(self) -> Pt       // O(1); 90 deg CW: Pt(y, -x)
+    @get fn angle(self) -> F64        // O(1); atan2(y, x) in [-pi, pi]
+    fn unit_dir(self) -> Pt           // O(log min(|x|, |y|)); reduced by gcd, Pt(0, 0) for zero
+    @get fn to_vec(self) -> Vec       // O(1); Vec(F64(x), F64(y))
+    fn dist2(self, o: Pt) -> Int      // O(1)
+    fn dist(self, o: Pt) -> F64       // O(1)
     fn manhattan(self, o: Pt) -> Int  // O(1); |x - o.x| + |y - o.y|
 
 fn dot(a: Pt, b: Pt) -> Int          // O(1); safe for |coords| <= 2e9
@@ -143,8 +143,8 @@ fn same_dir(a: Pt, b: Pt) -> Bool    // O(1), I128; parallel and same ray
 
 <!-- signatures: std/geometry.cp -->
 ```cp
-struct ByAngle(p: Pt)                          // Ord: CCW in [0, 2*pi) from +x; zero first; I128
-struct ByAngleFrom(base: Pt, p: Pt)            // Ord: CCW in [base, base + 2*pi); zero first; I128
+struct ByAngle(p: Pt)                                     // Ord: CCW in [0, 2*pi) from +x; zero first; I128
+struct ByAngleFrom(base: Pt, p: Pt)                       // Ord: CCW in [base, base + 2*pi); zero first; I128
 fn angle_less(a: Pt, b: Pt, from: Pt = Pt(1, 0)) -> Bool  // O(1), I128; a precedes b CCW from base
 ```
 
@@ -232,7 +232,7 @@ struct Vec(x: F64, y: F64)         // Add, Sub, Neg; intentionally no Show
     @get fn perp(self) -> Vec      // O(1); Vec(-y, x)
     @get fn perp_cw(self) -> Vec   // O(1); Vec(y, -x)
     @get fn angle(self) -> F64     // O(1); atan2(y, x) in [-pi, pi]
-    fn div(a, k)    // O(1); Vec(x / k, y / k)
+    fn div(a, k)                   // O(1); Vec(x / k, y / k)
     fn dot(self, o: Vec) -> F64    // O(1)
     fn cross(self, o: Vec) -> F64  // O(1)
     fn dist2(self, o: Vec) -> F64  // O(1)
@@ -254,7 +254,12 @@ fn circle_intersect(a: Circle, b: Circle, eps: F64 = 1e-9) -> List<Vec>
 // O(1); 0, 1, or 2 intersection points of two circles
 fn circle_tangents(circle: Circle, p: Vec, eps: F64 = 1e-9) -> List<Vec>
 // O(1); 0, 1, or 2 tangent points from p to circle (center, r)
-fn circle_circle_tangents(a: Circle, b: Circle, inner: Bool = false, eps: F64 = 1e-9, ) -> List<(Vec, Vec)>
+fn circle_circle_tangents(
+    a: Circle,
+    b: Circle,
+    inner: Bool = false,
+    eps: F64 = 1e-9,
+) -> List<(Vec, Vec)>
 // O(1); 0, 1, or 2 outer (or inner when inner: true) common tangent segments (on c1, on c2)
 fn circles_union_area(circles: List<Circle>, eps: F64 = 1e-9) -> F64
 // O(n^2 log n); total area of the union of disks via Green's theorem arc sweep
@@ -266,7 +271,7 @@ struct HalfPlane(p: Vec, dir: Vec)                     // left side of ray p + t
     fn from_line(a: F64, b: F64, c: F64) -> HalfPlane  // O(1); keep a*x + b*y + c >= 0
     fn side(self, q: Vec) -> F64                       // O(1); dir.cross(q - p)
 
-fn half_plane_intersect(planes: List<HalfPlane>, bound: ?F64 = None, eps: F64 = 1e-9, ) -> List<Vec>
+fn half_plane_intersect(planes: List<HalfPlane>, bound: ?F64 = None, eps: F64 = 1e-9) -> List<Vec>
 // O(n log n) time, O(n) space; CCW vertices of bounded intersection (empty if empty).
 // Add a bounding box of four half-planes if the region may be unbounded.
 ```

@@ -110,12 +110,12 @@ pub trait Next<V>:
     type Arc: Target<V>
     fn out(self, u: V) -> yields Self.Arc
 
-trait Target<V>    // a plain vertex is its own target
+trait Target<V>  // a plain vertex is its own target
 trait Weighted<W>
 trait Edged<E>
 
 pub trait WeightedNext<V, W> = Next<V> where Self.Arc: Weighted<W>
-pub trait EdgedNext<V, E>    = Next<V> where Self.Arc: Edged<E>
+pub trait EdgedNext<V, E> = Next<V> where Self.Arc: Edged<E>
 ```
 
 A record with a `to`, `w` or `e` field satisfies the matching trait (a field
