@@ -213,13 +213,34 @@ impl<'a> Lowerer<'a> {
             BareOp::BitAnd => bin(ast::BinOp::BitAnd),
             BareOp::Max => named("max"),
             BareOp::Min => named("min"),
-            BareOp::Gcd => named("gcd"),
-            BareOp::Lcm => named("lcm"),
+            BareOp::Gcd | BareOp::Lcm => {
+                let f = if op == BareOp::Gcd { "gcd" } else { "lcm" };
+                // Named where the prelude is in scope, walked in a std body
+                // (`fold`) that need not import std.math.
+                if self.get_sym(f).is_none() {
+                    if let Some(Sym::Fn(id)) = self.sym_in_module("std.math", f) {
+                        return Some(self.user_call(id, None, args, span));
+                    }
+                }
+                named(f)
+            }
             BareOp::And => bin(ast::BinOp::And),
             BareOp::Or => bin(ast::BinOp::Or),
         };
         let e = ast::Expr { kind, span };
         Some(self.expr(&e, hint))
+    }
+
+    /// `name` as std module `module` declares it.
+    fn sym_in_module(&self, module: &str, name: &str) -> Option<Sym> {
+        let m = self
+            .mods
+            .iter()
+            .flat_map(|a| a.modules())
+            .find(|m| m.name == module)?;
+        self.mod_syms[*self.path_to_mod.get(&m.path)?]
+            .get(name)
+            .copied()
     }
 
     pub(in crate::lower) fn call_fn_val(
