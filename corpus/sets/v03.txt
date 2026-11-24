@@ -383,6 +383,7 @@ dmopc21c2p2
 dmopc21c2p3
 dmopc21c2p4
 dmopc21c2p5
+dmopc21c2p6
 dmopc21c9p4
 dmpg16g2
 egoi23p7
