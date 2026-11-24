@@ -11,6 +11,7 @@ mod arms;
 mod assoc;
 mod bounded_str;
 mod built_from_param;
+mod def_type;
 mod impl_head;
 pub(crate) use advice::rename_values;
 mod call;
