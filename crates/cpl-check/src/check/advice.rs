@@ -180,11 +180,12 @@ impl Checker<'_> {
         let prelude = crate::prelude::names().iter().map(|(_, n)| n.text.clone());
         let names: Vec<String> = self.env.names().into_iter().chain(prelude).collect();
         for trait_name in names {
+            let def = self.type_def(&trait_name);
             let Some(Def::Trait {
                 methods,
                 alias: false,
                 ..
-            }) = self.type_def(&trait_name).as_deref().cloned()
+            }) = def.as_deref()
             else {
                 continue;
             };
