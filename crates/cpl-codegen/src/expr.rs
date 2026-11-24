@@ -313,7 +313,11 @@ impl<'p> Emitter<'p> {
                     cond.text
                 ))]
             }
-            _ => unreachable!("inline_str on a string that runs code"),
+            _ => {
+                let s = self.expr(e);
+                self.need("out");
+                vec![Put::Code(format!("cpl::put_str({});", s.text))]
+            }
         }
     }
 
