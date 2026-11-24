@@ -537,27 +537,95 @@ impl<'a> Lowerer<'a> {
                 continue;
             }
             let value = self.expr(leaf, None);
-            if !matches!(
-                value.ty,
-                Ty::Int
-                    | Ty::U64
-                    | Ty::I128
-                    | Ty::Float
-                    | Ty::Char
-                    | Ty::Str
-                    | Ty::Pos(_)
-                    | Ty::Bound(_)
-            ) {
-                continue;
-            }
-            let Some(arg) = self.fmt_arg(value, crate::FLOAT_DIGITS, leaf.span) else {
+            let Some(shown) = self.shown(value, leaf.span) else {
                 continue;
             };
             let sep = if pieces.is_empty() { "" } else { ", " };
             pieces.push(FmtPiece::Text(format!("{sep}{text} = ").into_bytes()));
-            pieces.push(FmtPiece::Value(arg));
+            pieces.extend(shown);
         }
         (!pieces.is_empty()).then(|| self.mk(ExprKind::Format(pieces), Ty::Str, cond.span))
+    }
+
+    /// How a trap message shows `value`: a range as `lo..hi`, an optional as
+    /// `None` or `Some(x)` (`Some(..)` when `x` has no text), a `Bool` as
+    /// `true` or `false`, and anything that prints as it prints; `None` when
+    /// the type has no text.
+    fn shown(&mut self, value: Expr, span: Span) -> Option<Vec<FmtPiece>> {
+        let text = |s: &str| FmtPiece::Text(s.as_bytes().to_vec());
+        let ty = value.ty.clone();
+        match &ty {
+            Ty::Bool => {
+                let word = |lw: &mut Self, w: &str| lw.mk(ExprKind::Str(w.into()), Ty::Str, span);
+                let (yes, no) = (word(self, "true"), word(self, "false"));
+                let chosen = ExprKind::If(Box::new(value), Box::new(yes), Box::new(no));
+                let chosen = self.mk(chosen, Ty::Str, span);
+                Some(vec![self.shown_value(chosen)])
+            }
+            Ty::Opt(inner) => {
+                let inside = ExprKind::Unwrap(Box::new(value.clone()), false);
+                let inside = self.mk(inside, (**inner).clone(), span);
+                let mut some = vec![text("Some(")];
+                some.extend(self.shown(inside, span).unwrap_or_else(|| vec![text("..")]));
+                some.push(text(")"));
+                let some = self.mk(ExprKind::Format(some), Ty::Str, span);
+                let none = self.mk(ExprKind::Str(b"None".to_vec()), Ty::Str, span);
+                let test = self.mk(ExprKind::IsSome(Box::new(value)), Ty::Bool, span);
+                let chosen = ExprKind::If(Box::new(test), Box::new(some), Box::new(none));
+                let chosen = self.mk(chosen, Ty::Str, span);
+                Some(vec![self.shown_value(chosen)])
+            }
+            Ty::Range(inner) => {
+                let end = |lw: &mut Self, b: Builtin| {
+                    let res = match &**inner {
+                        Ty::I128 | Ty::Float => (**inner).clone(),
+                        _ => Ty::Int,
+                    };
+                    let at = lw.mk(ExprKind::Builtin(b, vec![value.clone()]), res, span);
+                    match &**inner {
+                        Ty::Pos(d) | Ty::Bound(d) => lw.cast(Cast::Trust, at, Ty::Bound(*d)),
+                        _ => at,
+                    }
+                };
+                let (lo, hi) = (end(self, Builtin::RangeLo), end(self, Builtin::RangeHi));
+                let mut out = self.shown(lo, span)?;
+                out.push(text(".."));
+                out.extend(self.shown(hi, span)?);
+                Some(out)
+            }
+            _ if self.prints(&ty, &mut Vec::new()) => {
+                let arg = self.fmt_arg(value, crate::FLOAT_DIGITS, span)?;
+                Some(vec![FmtPiece::Value(arg)])
+            }
+            _ => None,
+        }
+    }
+
+    fn shown_value(&self, value: Expr) -> FmtPiece {
+        FmtPiece::Value(FmtArg {
+            value,
+            digits: crate::FLOAT_DIGITS,
+        })
+    }
+
+    /// Whether `ty` has a text a format string can show: as `print` decides,
+    /// a struct shows through its `impl Show`, else field by field.
+    fn prints(&self, ty: &Ty, seen: &mut Vec<StructId>) -> bool {
+        match ty {
+            Ty::Int | Ty::U64 | Ty::I128 | Ty::Float | Ty::Char | Ty::Str => true,
+            Ty::Pos(d) => !self.product_domains.contains_key(d),
+            Ty::Bound(_) => true,
+            Ty::List(e) | Ty::Set(e) => self.prints(e, seen),
+            Ty::Array { elem, .. } => self.prints(elem, seen),
+            Ty::Tuple(parts) => parts.iter().all(|p| self.prints(p, seen)),
+            Ty::Struct(id) if self.structs[*id].def.show_fn.is_some() || seen.contains(id) => true,
+            Ty::Struct(id) => {
+                seen.push(*id);
+                let fields = self.shown_fields(*id);
+                fields.iter().all(|(_, t)| self.prints(t, seen))
+            }
+            _ => false,
+        }
     }
 
     /// `message`, then the values the condition compared: `"needs k >= 0 (k = -1)"`.

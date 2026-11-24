@@ -141,7 +141,7 @@ impl<'a> Lowerer<'a> {
     }
 
     /// The fields a struct without `impl Show` prints, by position.
-    fn shown_fields(&self, id: StructId) -> Vec<(usize, Ty)> {
+    pub(in crate::lower) fn shown_fields(&self, id: StructId) -> Vec<(usize, Ty)> {
         let def = &self.structs[id].def;
         (def.fields.iter().enumerate())
             .filter(|(i, _)| !def.cached_fields.contains(i))
