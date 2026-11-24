@@ -1,4 +1,5 @@
 // Source: Baltic OI 2018 Day 1 P3 (Worm Worries), https://dmoj.ca/problem/btoi18p3
+// limits: 3000 ms, 1024 MB
 // Problem: interactive. An N x M x K box (each <= 1e6) of hidden humidities; "? x y z" asks one,
 //   at most Q times; answer "! x y z" with a cell no lower than its up to six neighbours. Tests
 //   are a line (N = 1e6, Q = 35), a sheet (N = M <= 1000, Q = 3500) or a box (<= 500^3).
