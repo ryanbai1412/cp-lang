@@ -16,18 +16,18 @@ let square = [Pt(0, 0), Pt(0, 1), Pt(1, 1), Pt(1, 0)]
 let octagon = [Pt(-1, 0), Pt(-1, 1), Pt(0, 2), Pt(1, 2), Pt(2, 1), Pt(2, 0), Pt(1, -1), Pt(0, -1)]
 
 // every tile lists its edges clockwise; sorted by start, a corner's edges sit together
-var edges: List<(from: Pt<Int>, to: Pt<Int>, tile: Tile)> = []
+var edges: List<(from: Pt, to: Pt, tile: Tile)> = []
 for t in Tile:
     let c = Pt(center[t].x, center[t].y)
     let shape = if (c.x + c.y) % 4 == 0: square else: octagon
     let corners = [c + d for d in shape]
     for (p, q) in (corners + [corners[0]]).adjacent: edges.push((p, q, t))
 edges.sort(by: e => e.from)
-fn leaving(p: Pt<Int>) -> List<(from: Pt<Int>, to: Pt<Int>, tile: Tile)> = [edges[i] for i in edges.equal_range(p, by: e => e.from)]
+fn leaving(p: Pt) -> List<(from: Pt, to: Pt, tile: Tile)> = [edges[i] for i in edges.equal_range(p, by: e => e.from)]
 let start = min(e.from for e in edges if leaving(e.from).len == 1)!
 var at = start
 var by = leaving(start)[0].tile
-var boundary: List<Pt<Int>> = []
+var boundary: List<Pt> = []
 loop:
     boundary.push(at)
     let out = leaving(at)
