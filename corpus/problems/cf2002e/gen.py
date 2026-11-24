@@ -2,6 +2,20 @@
 import random
 import sys
 
+if sys.argv[1] == "--max":
+    # one test at sum n = 3e5, a_i up to 1e9, b over three values so runs keep merging
+    rng = random.Random(1)
+    n = 300_000
+    out, prev = [], -1
+    for _ in range(n):
+        b = rng.choice([v for v in (0, 1, 2) if v != prev])
+        out.append(f"{rng.randint(1, 10**9)} {b}")
+        prev = b
+    print(1)
+    print(n)
+    print("\n".join(out))
+    sys.exit()
+
 
 def main():
     seed = int(sys.argv[1])

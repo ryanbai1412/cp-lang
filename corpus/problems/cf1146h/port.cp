@@ -1,4 +1,5 @@
 // Source: Codeforces 1146H (Satanic Panic), https://codeforces.com/contest/1146/problem/H
+// limits: 4000 ms, 250 MB
 // Problem: n <= 300 points, |x|, |y| <= 1e6, no three collinear. Count the 5-point subsets
 //   that form a pentagram.
 // Solution: a pentagram is 5 points in convex position (hull size 5); 5-subsets with hull
@@ -15,7 +16,12 @@ let n: 5..=300 = read()
 domain V = 0..n
 let pts: [V]Pt = read()
 
-let left = [V, V] (i, j) => Bitset<V>.of(k for k in V if turn(pts[i], pts[j], pts[k]) > 0)
+// No three points are collinear, so the points left of j -> i are the rest of those right of i -> j.
+var left: [V, V]Bitset<V> = Bitset<V>.new()
+for i in V:
+    for j in V.after(i):
+        left[i, j] = Bitset<V>.of(k for k in V if turn(pts[i], pts[j], pts[k]) > 0)
+        left[j, i] = left[i, j].complement().without(i).without(j)
 
 // A triangle with `inside` points inside it adds C(inside, 2) - inside * (n - 4) / 2 to c5.
 // That is a half-integer for some triangles, so sum twice the excess and halve once at the end.

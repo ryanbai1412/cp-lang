@@ -1,5 +1,6 @@
 // Source: Codeforces 1943B (Non-Palindromic Substring),
 //   https://codeforces.com/contest/1943/problem/B
+// limits: 3000 ms, 250 MB
 // Problem: t is k-good if some length-k substring of t is not a palindrome; f(t) sums the good k.
 //   For a string s (n <= 2e5) answer q <= 2e5 queries f(s[l..=r]), l < r. Multitest, sums <= 2e5.
 // Solution: k = 1 is never good and k = m = |t| is good iff t is not a palindrome. For 2 <= k < m,

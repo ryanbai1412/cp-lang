@@ -1,5 +1,6 @@
 // Source: Codeforces 2115A (Gellyfish and Flaming Peony),
 //   https://codeforces.com/contest/2115/problem/A
+// limits: 2000 ms, 500 MB
 // Problem: n <= 5000 values a[i] in 1..=5000. One operation sets a[i] = gcd(a[i], a[j]) for
 //   some i != j. Print the fewest operations that make all elements equal. Multitest, sum of
 //   n <= 5000.

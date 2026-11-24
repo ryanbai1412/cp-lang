@@ -2,6 +2,22 @@
 import random
 import sys
 
+if sys.argv[1] == "--max":
+    # one test at sum n = sum q = 2e5: "abab..." with rare flips, so palindromes and periods run
+    # long and Manacher does real work
+    rng = random.Random(1)
+    n = q = 200_000
+    s = ["ab"[i % 2] if rng.random() > 0.001 else "c" for i in range(n)]
+    print(1)
+    print(n, q)
+    print("".join(s))
+    out = []
+    for _ in range(q):
+        l = rng.randint(1, n - 1)
+        out.append(f"{l} {rng.randint(l + 1, n)}")
+    print("\n".join(out))
+    sys.exit()
+
 seed = int(sys.argv[1])
 size = int(sys.argv[2])
 rng = random.Random(seed)

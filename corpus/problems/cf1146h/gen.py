@@ -2,6 +2,17 @@
 import random
 import sys
 
+if sys.argv[1] == "--max":
+    # n = 300 points (x, x^2 mod p) - 1e6 with p = 1999993 prime: no three collinear mod p, so
+    # none over the integers; coordinates fill [-1e6, 1e6]
+    rng = random.Random(1)
+    p = 1_999_993
+    xs = rng.sample(range(p), 300)
+    print(300)
+    for x in xs:
+        print(x - 10**6, x * x % p - 10**6)
+    sys.exit()
+
 seed = int(sys.argv[1])
 size = int(sys.argv[2])
 rng = random.Random(seed)

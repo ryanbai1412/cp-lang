@@ -1,5 +1,5 @@
 import sys, random
-r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
+r = random.Random(0 if sys.argv[1] == "--max" else int(sys.argv[1])); S = int(sys.argv[2]) if len(sys.argv) > 2 else 0
 # statement: T <= 125000, 2 <= N <= 250000, 1 <= P_v < v, sum of N <= 250000
 MAX_N, MAX_T = 250_000, 125_000
 
@@ -9,6 +9,14 @@ def parents(n, shape):
     if shape == "near": return [r.randint(max(1, v - 3), v - 1) for v in range(2, n + 1)]
     if shape == "zigzag": return [v - 1 if v % 2 else max(1, v - 2) for v in range(2, n + 1)]
     return [r.randint(1, v - 1) for v in range(2, n + 1)]
+
+if sys.argv[1] == "--max":
+    # one test at sum N = 2.5e5: random parents, so the block stack both grows and pops deep
+    print(1)
+    print(MAX_N)
+    r = random.Random(1)
+    print(*parents(MAX_N, "random"))
+    sys.exit()
 
 shapes = ["random", "chain", "star", "near", "zigzag"]
 if S < 1000:

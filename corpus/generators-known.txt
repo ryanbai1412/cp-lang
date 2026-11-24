@@ -1,11 +1,6 @@
 # corpus/generators.py findings not yet fixed; this list only shrinks.
-no-max agc079a -
 no-max apio09p3 -
-no-max cf1146h -
-no-max cf1404e -
 no-max cf1909g -
-no-max cf1943b -
-no-max cf2002e -
 no-max cf2066b -
 no-max cf2066c -
 no-max cf2066d1 -
@@ -20,7 +15,6 @@ no-max cf2096b -
 no-max cf2096d -
 no-max cf2096e -
 no-max cf2101a -
-no-max cf2115a -
 no-max cf2124a -
 no-max cf2124b -
 no-max cf2124c -

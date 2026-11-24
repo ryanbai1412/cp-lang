@@ -1,4 +1,5 @@
 // Source: Codeforces 2002E (Cosmic Rays), https://codeforces.com/contest/2002/problem/E
+// limits: 2000 ms, 500 MB
 // Problem: a sequence given as n pairs (a_i, b_i), a_i <= 1e9 copies of b_i, adjacent b's
 //   distinct. Each second the first element and every element unequal to its predecessor
 //   vanish. For each prefix of pairs print its strength, the seconds until it is empty.

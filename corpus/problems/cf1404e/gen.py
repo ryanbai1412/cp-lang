@@ -2,6 +2,15 @@
 import random
 import sys
 
+if sys.argv[1] == "--max":
+    # n = m = 200, mostly black with scattered holes: about 4e4 flow nodes and 8e4 edges
+    rng = random.Random(1)
+    n = m = 200
+    print(n, m)
+    for _ in range(n):
+        print("".join("#" if rng.random() < 0.85 else "." for _ in range(m)))
+    sys.exit()
+
 seed = int(sys.argv[1])
 size = int(sys.argv[2])
 rng = random.Random(seed)

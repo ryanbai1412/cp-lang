@@ -1,4 +1,5 @@
 // Source: AtCoder AGC 079 A, https://atcoder.jp/contests/agc079/tasks/agc079_a
+// limits: 2000 ms, 1024 MB
 // Problem: a rooted tree on n <= 2.5e5 vertices, parent P_v < v; vertex v holds the sequence (v).
 //   n - 1 times pick an unpicked v >= 2, append its sequence to its current parent's and
 //   contract v. Count the pick orders leaving (1, 2, ..., n) at the root, mod 998244353.

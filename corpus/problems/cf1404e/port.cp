@@ -1,4 +1,5 @@
 // Source: Codeforces 1404E (Bricks), https://codeforces.com/contest/1404/problem/E
+// limits: 4000 ms, 250 MB
 // Problem: an n x m grid (n, m <= 200) of black '#' and white '.' cells, at least one black.
 //   Cover the black cells exactly with 1-wide bricks (1 x k or k x 1); print the fewest bricks.
 // Solution: give each black cell an orientation, horizontal (source side) or vertical (sink
