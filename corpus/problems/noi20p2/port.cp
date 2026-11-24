@@ -22,7 +22,7 @@ let m: 1..=5e5 = read()
 domain P = 0..m
 let paths: [P](u: V, v: V) = read()
 
-let tree = Rooted(Graph<V, E>.undirected(edges), V.first!)
+let tree = Rooted(Graph.undirected(edges), V.first!)
 domain Dep = 0..=n  // one more than the depth of a pair's top; 0 when nothing is unsatisfied
 
 var need: [V]Dep = Dep(0)

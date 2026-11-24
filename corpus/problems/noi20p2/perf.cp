@@ -24,7 +24,7 @@ let m: 1..=5e5 = read()
 domain P = 0..m
 let paths: [P](u: V, v: V) = read()
 
-let tree = Rooted(Graph<V, E>.undirected(edges), V.first!)
+let tree = Rooted(Graph.undirected(edges), V.first!)
 var top: [V]Int = -1  // the depth of the deepest pair top over v, -1 if none
 for p in P: top[paths[p].v] max= tree.depth(paths[p].u)
 
