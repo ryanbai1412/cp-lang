@@ -146,9 +146,14 @@ pub(crate) fn fold(cpp: &str, origins: &BTreeMap<String, String>) -> Folded {
 
     let expand = |def: &Def, args: &BTreeMap<String, (String, Vec<String>)>| {
         let mut out: Vec<(usize, String)> = Vec::new();
+        let own = items[def.item].toks[def.name].text;
         for (j, t) in items[def.item].toks.iter().enumerate() {
             if j == def.name {
                 out.push((j, "@".into()));
+                continue;
+            }
+            if t.text == own {
+                out.push((j, "@@".into()));
                 continue;
             }
             match args.get(t.text) {
@@ -285,6 +290,11 @@ pub(crate) fn fold(cpp: &str, origins: &BTreeMap<String, String>) -> Folded {
         let piece = |p: usize| match (f.slots[p], f.stream[p].1.as_str()) {
             (Some(c), _) => param(&f.kinds, c),
             (None, "@") => tmpl.clone(),
+            (None, "@@") if f.kinds.is_empty() => tmpl.clone(),
+            (None, "@@") => {
+                let ps: Vec<String> = (0..f.kinds.len()).map(|c| param(&f.kinds, c)).collect();
+                format!("{tmpl}<{}>", ps.join(","))
+            }
             (None, x) => x.to_string(),
         };
         let mut sig = header.clone();

@@ -75,3 +75,39 @@ fn folding_is_deterministic() {
         fold(&file("+"), &origins()).cpp
     );
 }
+
+#[test]
+fn self_recursive_instances_call_their_own_template() {
+    let cpp = "namespace prog {\n\
+        struct A{long long v;};\n\
+        struct B{long long v;};\n\
+        inline long long A_depth(const A&a,long long n){\n\
+        if(n==0)return a.v;\n\
+        return A_depth(a,n-1)+3;\n\
+        }\n\
+        inline long long B_depth(const B&a,long long n){\n\
+        if(n==0)return a.v;\n\
+        return B_depth(a,n-1)+5;\n\
+        }\n\
+        long long both(){return A_depth(A{1},2)+B_depth(B{2},3);}\n\
+        }\n";
+    let origins: BTreeMap<String, String> =
+        [("A_depth", "depth"), ("B_depth", "depth"), ("both", "both")]
+            .into_iter()
+            .map(|(a, b)| (a.to_string(), b.to_string()))
+            .collect();
+    let folded = fold(cpp, &origins);
+    assert_eq!(folded.members.len(), 2, "{}", folded.cpp);
+    assert_eq!(folded.cpp.matches("template<").count(), 2, "{}", folded.cpp);
+    assert!(!folded.cpp.contains("B_depth"), "{}", folded.cpp);
+    let open = folded.cpp.find("{\nif(n==0)").expect(&folded.cpp);
+    let body = &folded.cpp[open..];
+    assert!(body.contains("A_depth<T0,V1>(a,n-1)"), "{}", folded.cpp);
+    assert!(
+        folded
+            .cpp
+            .contains("A_depth<A,3>(A{1},2)+A_depth<B,5>(B{2},3)"),
+        "{}",
+        folded.cpp
+    );
+}

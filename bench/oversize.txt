@@ -2,7 +2,7 @@
 # bench/sizes.py --check fails on one over the bar that is not listed, or one listed that fits.
 corpus/problems/cf2201e/port.cp  # library fns 17 KB, runtime 13 KB
 corpus/problems/ucup5s05f/port.cp  # library fns 23 KB
-corpus/problems/cco20p5/spec.cp  # library fns 20 KB
+corpus/problems/cco20p5/spec.cp  # library fns; SortedBag<Int> does not fold with the two Rec instances
 corpus/problems/egoi23p7/spec.cp  # runtime 19 KB
 corpus/problems/ioi19p6/spec.cp  # library fns 16 KB
 corpus/problems/sdoi17r2p4/spec.cp  # library fns 15 KB
