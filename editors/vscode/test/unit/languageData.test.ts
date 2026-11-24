@@ -46,11 +46,11 @@ const REMOVED_V02_NAMES = ['LazySegTree', 'DualSegTree', 'bsearch_first', 'bsear
 
 const STALE_V1_DECORATORS = ['local', 'derive', 'once', 'wire', 'invariant', 'sample'];
 
-test('keyword budget matches CP Lang 0.2.2 (30 contestant + 4 library = 34)', () => {
-    assert.equal(CONTESTANT_KEYWORDS.length, 30);
+test('keyword budget matches CP Lang 0.2.2 (29 contestant + 4 library = 33)', () => {
+    assert.equal(CONTESTANT_KEYWORDS.length, 29);
     assert.equal(LIBRARY_KEYWORDS.length, 4);
-    assert.equal(KEYWORDS.length, 34);
-    assert.equal(new Set(KEYWORDS).size, 34);
+    assert.equal(KEYWORDS.length, 33);
+    assert.equal(new Set(KEYWORDS).size, 33);
     for (const stale of [...STALE_V1_KEYWORDS, ...REMOVED_V21_KEYWORDS]) {
         assert.ok(!KEYWORDS.includes(stale), `stale/removed keyword in KEYWORDS: ${stale}`);
         assert.ok(!CONTEXTUAL_KEYWORDS.includes(stale), `stale/removed keyword in CONTEXTUAL_KEYWORDS: ${stale}`);

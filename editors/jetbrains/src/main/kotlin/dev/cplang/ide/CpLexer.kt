@@ -35,7 +35,7 @@ object CpTokens {
     val KEYWORDS: Set<String> = setOf(
         "let", "var", "fn", "struct", "enum", "domain", "type", "const", "trait", "impl", "use", "pub",
         "if", "elif", "else", "for", "while", "in", "match", "return", "break", "continue",
-        "and", "or", "not", "assert", "mut", "self", "true", "false", "none", "lends", "yield", "unchecked",
+        "and", "or", "not", "assert", "mut", "self", "true", "false", "lends", "yield", "unchecked",
     )
 }
 

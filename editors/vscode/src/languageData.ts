@@ -3,12 +3,12 @@
 // (`crates/cpl-check/src/prelude.rs`), `std/*.cp` and `std/prelude.cp`,
 // and keeps `syntaxes/cp.tmLanguage.json` in lockstep with them.
 
-/** 30 contestant keywords (including 3 literals) in CP Lang 0.2.2. */
+/** 29 contestant keywords (including 2 literals) in CP Lang 0.2.2. */
 export const CONTESTANT_KEYWORDS: readonly string[] = [
     'let', 'var', 'const', 'fn', 'struct', 'enum', 'domain', 'type', 'use', 'pub',
     'if', 'elif', 'else', 'for', 'while', 'in', 'match', 'return', 'break', 'continue',
     'and', 'or', 'not', 'assert', 'mut', 'self', 'unchecked',
-    'true', 'false', 'none',
+    'true', 'false',
 ];
 
 /** 4 library-author keywords in CP Lang 0.2.2. */
@@ -16,7 +16,7 @@ export const LIBRARY_KEYWORDS: readonly string[] = [
     'trait', 'impl', 'lends', 'yield',
 ];
 
-/** All 34 reserved keywords in CP Lang 0.2.2. */
+/** All 33 reserved keywords in CP Lang 0.2.2. */
 export const KEYWORDS: readonly string[] = [...CONTESTANT_KEYWORDS, ...LIBRARY_KEYWORDS];
 
 /**
@@ -166,7 +166,7 @@ export const STDLIB_VALUES: readonly string[] = [
     'zip_exact',
 ];
 
-/** Public `std/*.cp` constants the prelude imports (no INF sentinel; use ?Int / none). */
+/** Public `std/*.cp` constants the prelude imports (no INF sentinel; use ?Int / None). */
 export const PRELUDE_CONSTANTS: readonly string[] = [
     'add', 'affine', 'assign', 'flip', 'inf', 'io',
 ];
