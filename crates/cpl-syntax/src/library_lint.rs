@@ -273,7 +273,8 @@ fn declared_on(
         let uses = calls(&to_toks, &suggests)
             || calls(&read_toks, &suggests)
             || writes_body_ops(f, &from, &to, &to_toks)
-            || compound(&to_toks, &f.name.text);
+            || compound(&to_toks, &f.name.text)
+            || walks_self(f, &to_toks);
         let drops = !uses && !advice && calls(&from_toks, &f.name.text);
         if !uses && !drops && !advice {
             error(
@@ -337,6 +338,15 @@ fn scalar(p: &crate::ast::Param) -> Option<String> {
         }
         _ => None,
     }
+}
+
+/// Whether `f` is a sequence's `iter` and `to` walks `self` with `for`,
+/// which runs `iter` (R07.3.1): `for x in self` on `Seq`'s `iter`.
+fn walks_self(f: &FnDecl, to_toks: &[(TokenKind, String)]) -> bool {
+    use TokenKind::{For, Ident, In, SelfKw};
+    f.name.text == "iter"
+        && (to_toks.windows(4))
+            .any(|w| [w[0].0, w[1].0, w[2].0, w[3].0] == [For, Ident, In, SelfKw])
 }
 
 /// Whether `to` calls nothing, writes a form `f`'s one-expression body
@@ -713,6 +723,14 @@ mod tests {
             (lints[0].fn_name.as_str(), &lints[0].receiver),
             ("walk", &None)
         );
+    }
+
+    #[test]
+    fn a_to_that_walks_self_with_for_uses_iter() {
+        let src = "pub trait Walk<T>:\n    @lint(index_walk, from: \"for i in 0..self.len:\\n    b\", to: \"for x in self:\\n    b\", holes: \"b\")\n    fn iter(self) -> yields T\n";
+        assert!(errors(src).is_empty(), "{:?}", errors(src));
+        let other = src.replace("fn iter", "fn walk");
+        assert_eq!(errors(&other).len(), 1, "{:?}", errors(&other));
     }
 
     #[test]

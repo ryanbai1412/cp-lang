@@ -236,7 +236,9 @@ library or by this spec:
   condition the fn's one-expression body writes, and writes no other that
   `from` does not (`self % d` on `divmod`, whose body is
   `(self / d, self % d)`; `while let w = e, w > y` on `is_some_and`, whose
-  body is `if let`). On a fn that documents a compiler built-in,
+  body is `if let`), or, on a sequence's `iter`, walks `self` with `for`,
+  which runs `iter` (`for x in self`, R07.3.1). On a fn that documents a
+  compiler built-in,
   `builtin: "filled"` lets `to` call that built-in in its place
   (`[n, m].filled(c)` on a grid fn), since std cannot declare it. Or `from` calls the fn and `to` does not:
   the lint drops a needless call (`let x = s.last!` then `s.pop()` is
