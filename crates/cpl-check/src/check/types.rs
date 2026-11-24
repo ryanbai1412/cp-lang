@@ -284,6 +284,21 @@ impl<'a> Checker<'a> {
     /// An argument of a generic type: a type, or the name of a number
     /// (`Mod<P>` with `const P = 998244353`).
     pub(crate) fn type_arg(&mut self, arg: &ast::Type) -> Ty {
+        // `Mod<p>` written with a value: `p` still names its declaration.
+        if let TypeKind::Value(value) = &arg.kind {
+            if let ast::ExprKind::Name(name) = &value.kind {
+                let is_int = match self.local(name) {
+                    Some(local) => local.ty.is_int(),
+                    None => matches!(
+                        self.global(name).as_deref(),
+                        Some(Def::Value { ty, .. }) if ty.is_int()
+                    ),
+                };
+                if is_int {
+                    self.name_ty(name, value.span);
+                }
+            }
+        }
         if let TypeKind::Named { name, args } = &arg.kind {
             if args.is_empty() {
                 let value = match self.local(&name.text) {

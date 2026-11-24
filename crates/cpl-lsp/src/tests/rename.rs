@@ -269,3 +269,9 @@ fn rename_reaches_a_generic_from_its_uses() {
     let src = "fn same<T>(a: T, b: T) -> Bool = a == b\nfn closes_to<R>(over: R|, want: R) -> Bool = over == want\nprint(closes_to(1, 2), same(1, 1))\n";
     assert_eq!(renamed_texts(src, "S"), ["S", "S", "S"]);
 }
+
+#[test]
+fn rename_reaches_a_value_a_type_argument_names() {
+    let src = "let p| = read<1..=100>()\ntype Z = Mod<p>\nprint(Z(3) + Z(p))\n";
+    assert_eq!(renamed_texts(src, "q"), ["q", "q", "q"]);
+}

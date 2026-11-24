@@ -15,8 +15,6 @@ mod corpus_cases;
 /// checker's causes are with compiler. Only shrinks: a fixed one fails the
 /// test until it is removed here.
 const KNOWN: &[&str] = &[
-    // A name used as a compile-time constant (E0005 after the rename).
-    "etsr23r4p2 p",
     // A method a std type calls on the user's type (`LiChao` needs `at`).
     "ioi16p6 at",
 ];
