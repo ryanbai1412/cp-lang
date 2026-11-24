@@ -341,11 +341,11 @@ impl<'a> Checker<'a> {
             }
             ExprKind::Tuple(items) if items.is_empty() => Ty::Unit,
             ExprKind::Tuple(items) => {
-                let tys = items.iter().map(|i| self.infer(i)).collect();
+                let tys: Vec<Ty> = items.iter().map(|i| self.infer(i)).collect();
                 for item in items {
                     self.no_escape(item, "storing it in a list or tuple");
                 }
-                Ty::Tuple(tys)
+                self.inline_product(items, &tys).unwrap_or(Ty::Tuple(tys))
             }
             ExprKind::Record(fields) => {
                 let mut seen: Vec<&str> = Vec::new();
@@ -1124,4 +1124,26 @@ fn leaves(body: &ast::Block) -> bool {
         body.stmts.last().map(|s| &s.kind),
         Some(ast::StmtKind::Return(_) | ast::StmtKind::Break(_) | ast::StmtKind::Continue(_))
     )
+}
+
+impl Checker<'_> {
+    /// `(R, C)` naming domains is the inline product domain over them, the
+    /// one a `[R, C]T` is indexed by (decision 159).
+    fn inline_product(&mut self, items: &[Expr], tys: &[Ty]) -> Option<Ty> {
+        let names = (tys.iter())
+            .map(|t| match t {
+                Ty::Domain(d) => Some(d.as_str()),
+                _ => None,
+            })
+            .collect::<Option<Vec<_>>>()
+            .filter(|n| n.len() >= 2)?;
+        let name = format!("({})", names.join(", "));
+        if self.local_product_domains.get(&name).is_none() {
+            let factors = (items.iter())
+                .map(|i| self.product_factor_info(i).map(|(ty, _)| (None, ty)))
+                .collect::<Option<Vec<_>>>()?;
+            self.local_product_domains.insert(name.clone(), factors);
+        }
+        Some(Ty::Domain(name))
+    }
 }

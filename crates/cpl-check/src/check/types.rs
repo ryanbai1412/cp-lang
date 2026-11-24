@@ -1309,7 +1309,7 @@ impl<'a> Checker<'a> {
         go(self.env, name, &mut std::collections::HashSet::default())
     }
 
-    fn product_factor_info(&mut self, e: &ast::Expr) -> Option<(Ty, Option<i128>)> {
+    pub(crate) fn product_factor_info(&mut self, e: &ast::Expr) -> Option<(Ty, Option<i128>)> {
         match &e.kind {
             ExprKind::Name(name) if name == "Bool" => Some((Ty::Bool, Some(2))),
             ExprKind::Range {
