@@ -24,5 +24,10 @@
  "difficulty": "medium",
  "dream": "draft",
  "spec": "draft",
- "notes": "Sieve.divisors became a zero-allocation generator so .any() over it costs what the C++ callback costs."
+ "notes": "Sieve.divisors became a zero-allocation generator so .any() over it costs what the C++ callback costs.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 13,
+  "sha": "7a7e907148124dceb87d65e7e787edbbf77e08cb"
+ }
 }

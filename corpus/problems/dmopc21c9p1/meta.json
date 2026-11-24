@@ -21,5 +21,10 @@
  "difficulty": "easy",
  "dream": "draft",
  "spec": "draft",
- "notes": "Alternating sign tracking bounds x1; inf as the open upper bound."
+ "notes": "Alternating sign tracking bounds x1; inf as the open upper bound.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 11,
+  "sha": "403b98a4bd8ab9c4cfcb36ce2467d2859b223fce"
+ }
 }

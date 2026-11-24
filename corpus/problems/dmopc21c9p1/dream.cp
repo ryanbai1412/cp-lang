@@ -1,7 +1,9 @@
-// DMOPC 2021 C9 P1: x[i] + x[i+1] = s[i], all x positive integers. How many x[1] work?
-// Each x[i] is ±x[1] + c; a + bounds x[1] below, a − bounds it above.
-let s = read [read Int - 1]Int
-let terms = s.scan((sign: 1, c: 0), (t, v) => (sign: -t.sign, c: v - t.c))
-let lo = max(1, terms.filter(.sign > 0).max(of: t => 1 - t.c) ?? 1)
-let hi = terms.filter(.sign < 0).min(of: t => t.c - 1) ?? inf
-print(max(0, hi - lo + 1))
+// DMOPC 2021 C9 P1: x[i] + x[i+1] = s[i] with every x positive. How many x[1] work?
+// Each x[i] is ±x[1] + c, so positivity clips x[1] from below or from above in turn.
+let n = read<2..=1_000_000>()
+var (sign, c) = (1, 0)
+var ok = 1..
+for s in read<[n - 1]1..=1e9>():
+    (sign, c) = (-sign, s - c)
+    ok = ok.clip(if sign < 0: ..c else: 1 - c..)
+print(ok.len)

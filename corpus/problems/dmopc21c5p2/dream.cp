@@ -1,5 +1,5 @@
-// DMOPC 2021 C5 P2: a permutation of 1..=n where no adjacent pair differs by... swap 2 and 3.
-let n = read Int
+// DMOPC 2021 C5 P2: construct the permutation; 1 3 2 4 5 ... n works for every n except 2.
+let n = read<1..=1_000_000>()
 if n == 2:
     print(-1)
 else:

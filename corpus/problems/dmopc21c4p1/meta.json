@@ -20,5 +20,10 @@
  "difficulty": "easy",
  "dream": "draft",
  "spec": "draft",
- "notes": "locate(poly, p) != Location.Outside; Location and locate join the prelude."
+ "notes": "locate(poly, p) != Location.Outside; Location and locate join the prelude.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 14,
+  "sha": "3c442799ddfc4eed11ecbba029a0c50796a5f727"
+ }
 }

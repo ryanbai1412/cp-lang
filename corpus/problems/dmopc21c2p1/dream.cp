@@ -1,5 +1,8 @@
-// DMOPC 2021 C2 P1: choose a level i ≥ 0 paying a per unit of i and b per unit each value
-// still sits above i. The cost is convex in i, so ternary search it.
-let (n, a, b) = read (Int, Int, Int)
-let xs = read [n]Int
-print(ternary_min(0..=xs.max()!, i => a * i + b * xs.sum(of: x => max(x - i, 0))).value)
+// DMOPC 2021 C2 P1: buy L permanent power up front for h each, then p per missing unit at each
+// boss. The cost is linear plus a sum of convex hinges in L, so it is convex: ternary search it.
+let n: 1..=1e6 = read()
+let h: 1..=1e6 = read()
+let p: 1..=1e6 = read()
+let boss: [0..n]0..=1e6 = read()
+fn cost(l: Int) -> Int = h * l + p * boss.sum(of: a => max(a - l, 0))
+print(cost(ternary_min(0..=boss.max()!, cost)!))
