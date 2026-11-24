@@ -91,16 +91,23 @@ impl Tail {
     }
 }
 
-/// Locals `block` reads whole, not only through an index, field, length
-/// or the elements a `for` walks.
+/// Locals `block` reads whole, not only through an index, field, variant
+/// payload or tag, length or the elements a `for` walks.
 pub(crate) fn whole_reads(block: &Block) -> std::collections::BTreeSet<usize> {
     let (mut uses, mut parts) = (Vec::new(), Vec::new());
     walk::deep_exprs(block, &mut |e| match &e.kind {
         ExprKind::Local(s) => uses.push(*s),
-        ExprKind::Index(..) | ExprKind::Field(..) | ExprKind::Builtin(cpl_ir::Builtin::Len, _) => {
+        ExprKind::Index(..)
+        | ExprKind::Field(..)
+        | ExprKind::Payload(..)
+        | ExprKind::IsVariant(..)
+        | ExprKind::Builtin(cpl_ir::Builtin::Len, _) => {
             let base = match &e.kind {
                 ExprKind::Builtin(_, args) if args.len() == 1 => &args[0],
-                ExprKind::Index(base, _) | ExprKind::Field(base, _) => &**base,
+                ExprKind::Index(base, _)
+                | ExprKind::Field(base, _)
+                | ExprKind::Payload(base, ..)
+                | ExprKind::IsVariant(base, _) => &**base,
                 _ => return,
             };
             if let ExprKind::Local(s) = base.kind {

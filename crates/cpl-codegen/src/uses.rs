@@ -304,7 +304,10 @@ impl crate::emit::Emitter<'_> {
             && !matches!(init.ty, Ty::Fn(..))
             && !self.spent.contains(&slot)
             && match init.kind {
-                ExprKind::Field(..) | ExprKind::Index(..) | ExprKind::Unwrap(..) => true,
+                ExprKind::Field(..)
+                | ExprKind::Payload(..)
+                | ExprKind::Index(..)
+                | ExprKind::Unwrap(..) => true,
                 // The optional an `if let` or `while let` tests.
                 ExprKind::Local(_) | ExprKind::Global(_) => self.locals()[slot].name.is_empty(),
                 _ => false,

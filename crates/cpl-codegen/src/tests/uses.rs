@@ -66,6 +66,22 @@ print(best.gap, best.id, Int(a), Int(b))
     );
 }
 
+#[test]
+fn a_variant_payload_read_only_is_lent_while_the_others_are_read() {
+    let out = super::cpp(concat!(
+        "enum Op = Put(x: Int) | Ask(s: Str, k: Int)\n",
+        "let q: 1..=10 = read()\n",
+        "for op in read<[q]Op>():\n",
+        "    match op:\n",
+        "        Put(x) => print(x)\n",
+        "        Ask(s, k) => print(s.len + k)\n",
+    ));
+    assert!(
+        !out.contains("std::string s = op."),
+        "reading `k` off `op` reads a part of it, so `s` is lent:\n{out}"
+    );
+}
+
 fn copy_reasons(source: &str) -> Vec<&'static str> {
     crate::explain_copies(&lower(source))
         .into_iter()
