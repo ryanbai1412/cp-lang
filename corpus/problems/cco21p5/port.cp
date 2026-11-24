@@ -23,7 +23,7 @@ for v in Town:
 var later: [Town.cuts]?Town = None
 for v in Town.rev: later[v.l] = min(later[v.r], earliest[v])
 
-let add_min = Action<?Int, Int>(0, (f, g) => f + g, (f, x, _) => x.map(y => y + f), over: Monoid<?Int>(None, (x, y) => min(x, y)))
+let add_min = Action<?Int, Int>(0, (f, g) => f + g, (f, x, _) => x.map(y => y + f), over: Monoid<?Int>(None, min))
 var best = SegTree(add_min.over, [Town.cuts] c => if c == Town.cuts.last!: Some(0) else: None, act: add_min)
 let end = Town.cuts.last!
 for i in Town.drop(1).rev:

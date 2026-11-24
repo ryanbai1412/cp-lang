@@ -31,18 +31,6 @@
   is E0301; sent to Core.
 - **Severity:** medium.
 
-## `min` as a function value loses the None-is-identity rule
-
-- **Where:** `port.cp`, the SegTree monoid over `?Int` minimums.
-- **What felt wrong:** `Monoid<?Int>(None, min)` checks, but its `op(None, Some(3))` is `None`,
-  while a direct `min(None, Some(3))` is `Some(3)`; the tree then answers `None` for every fold.
-  The port writes the lambda `(x, y) => min(x, y)`, which keeps the rule.
-- **Goal it hurts:** correct (a silent wrong answer), coherence (two meanings for one name).
-- **Ideal code:** `over: Monoid<?Int>(None, min)`.
-- **Repro:** `let a: ?Int = None; let b: ?Int = Some(3);
-  print(min(a, b) ?? -1, Monoid<?Int>(None, min).op(a, b) ?? -1)` prints `3 -1`; sent to Core.
-- **Severity:** high (wrong answer with no diagnostic).
-
 ## An open range from a cut reads as the pieces after it
 
 - **Where:** `port.cp`, `best.fold(next..=end)` and `best.apply(v.r..=end, 1)`.
