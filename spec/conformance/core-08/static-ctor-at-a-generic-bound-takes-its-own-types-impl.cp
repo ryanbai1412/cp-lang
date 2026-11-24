@@ -9,7 +9,7 @@ impl<T> Op3<T> for type_of(+):
     fn lift(self, x: T) -> T = x
 impl<T> Op3<T> for (T, T) -> T:
     type Fold = ?T
-    fn lift(self, x: T) -> ?T = Some(x)
+    fn lift(self, x: T) -> ?T = x
 struct Tree<F>(xs: List<F>):
     pub fn new<M: Op3<E>, E>(op: M, a: List<E>) -> Tree<M.Fold> = Tree(a.map(x => op.lift(x)))
 let t = Tree.new(+, [4, 5])
