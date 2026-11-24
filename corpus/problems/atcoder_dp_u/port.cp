@@ -1,4 +1,5 @@
 // Source: AtCoder Educational DP Contest U (Grouping), https://atcoder.jp/contests/dp/tasks/dp_u
+// limits: 2000 ms, 1024 MB
 // Problem: n <= 16 rabbits with symmetric scores |a[i][j]| <= 1e9, a[i][i] = 0. Split them into
 //   groups, earning a[i][j] for every pair in one group; print the largest total.
 // Solution: score[g], what subset g earns as one group, sums its pairs: O(2^n n^2). Then

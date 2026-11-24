@@ -1,4 +1,5 @@
 // Source: AtCoder Educational DP Contest W (Intervals), https://atcoder.jp/contests/dp/tasks/dp_w
+// limits: 2000 ms, 1024 MB
 // Problem: a 0/1 string of length n <= 2e5 and m <= 2e5 rules (l <= r, a), |a| <= 1e9: a rule
 //   adds a to the score if the string has a 1 in l..=r. Print the largest possible score.
 // Solution: best[i] = the best score with the last 1 at i (0: none), counting the rules with

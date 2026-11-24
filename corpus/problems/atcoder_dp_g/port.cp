@@ -1,4 +1,5 @@
 // Source: AtCoder Educational DP G (Longest Path), https://atcoder.jp/contests/dp/tasks/dp_g
+// limits: 2000 ms, 1024 MB
 // Problem: a DAG with 2 <= n <= 1e5 vertices and m <= 1e5 distinct edges. Print the number of
 //   edges on its longest directed path.
 // Solution: longest[u] = max(longest[v] + 1) over edges u -> v, filled in reverse topological

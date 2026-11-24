@@ -1,4 +1,5 @@
 // Source: AtCoder Educational DP Contest J (Sushi), https://atcoder.jp/contests/dp/tasks/dp_j
+// limits: 2000 ms, 1024 MB
 // Problem: N <= 300 dishes hold 1 to 3 pieces each. Each step rolls a uniform dish and eats a
 //   piece from it if there is one. Print the expected number of steps until all are eaten
 //   (relative error 1e-9).
