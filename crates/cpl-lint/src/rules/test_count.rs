@@ -10,7 +10,8 @@
 use crate::rules::read_loop::is_read;
 use crate::walk::{walk_stmt, Scope, Visitor};
 use crate::{File, Finding, TEST_COUNT_LOOP};
-use cpl_diag::{Diagnostic, Fix, Span};
+use cpl_diag::msgs::lint_rules;
+use cpl_diag::{Fix, Span};
 use cpl_syntax::ast::{Block, Expr, PatternKind, Stmt, StmtKind};
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
@@ -103,12 +104,12 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         .collect();
     let replacement = format!("@!multitest\n{}", lines.join("\n"));
     let span = Span::new(let_at.start, loop_at.end);
-    let mut diag = Diagnostic::warning(
-        TEST_COUNT_LOOP.code,
-        Span::new(let_at.start, loop_at.start + header_end as u32),
-        format!("`for _ in {iter_text}:` runs the test cases by hand"),
-    )
-    .with_help(format!(
+    let mut diag = lint_rules::TEST_COUNT_LOOP
+        .warning(
+            Span::new(let_at.start, loop_at.start + header_end as u32),
+            &[&iter_text],
+        )
+        .with_help(format!(
         "write `@!multitest` in place of `let {t} = read()` and the loop, and unindent its body; \
          the divider reads the count, and code above it runs once"
     ));

@@ -7,7 +7,8 @@ use crate::facts::Facts;
 use crate::std_fn;
 use crate::walk::Visitor;
 use crate::{is_std, File, Finding, FLOAT_SQRT_FOR_INT};
-use cpl_diag::{Diagnostic, Fix, Span};
+use cpl_diag::msgs::lint_rules;
+use cpl_diag::{Fix, Span};
 use cpl_syntax::ast::{Expr, ExprKind};
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
@@ -33,11 +34,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             };
             self.covered.push(span);
             let isqrt = format!("{}.isqrt", n.span.shift(self.base).text(self.src));
-            let mut diag = Diagnostic::warning(
-                FLOAT_SQRT_FOR_INT.code,
-                span,
-                format!("`{}` takes the root through `F64`", span.text(self.src)),
-            )
+            let mut diag = lint_rules::FLOAT_SQRT_FOR_INT.warning(span, &[&span.text(self.src)])
             .with_label(n.span.shift(self.base), "an integer")
             .with_help(format!(
                 "write `{isqrt}`, the exact integer square root; the float root is off by one for some values past 2**52"

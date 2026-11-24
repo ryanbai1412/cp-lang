@@ -7,10 +7,11 @@ use crate::is_std;
 use crate::std_fn;
 use crate::walk::{unparen, Visitor};
 use crate::{File, Finding, POP_MIN_LOOP};
-use cpl_diag::{Diagnostic, Fix, Span};
+use cpl_diag::{Fix, Span};
 use cpl_syntax::ast::{Expr, ExprKind, Stmt, StmtKind};
 
 use super::shapes::{name, pattern_name};
+use cpl_diag::msgs::lint_rules;
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     struct Ends<'a> {
@@ -84,11 +85,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 return;
             }
             let take = format!("{}.{pop}()!", text(set));
-            let mut diag = Diagnostic::warning(
-                POP_MIN_LOOP.code,
-                Span::new(read.span.start, remove.span.end).shift(self.base),
-                format!("`{}.{}!` then `{}.remove({bound})` is `{take}`", text(set), end_name.text, text(set)),
-            )
+            let mut diag = lint_rules::POP_MIN_LOOP.warning(Span::new(read.span.start, remove.span.end).shift(self.base), &[&text(set), &end_name.text, &text(set), &bound, &take])
             .with_label(set.span.shift(self.base), "the set")
             .with_help(format!(
                 "write `let {bound} = {take}` (`std.bag`): it reads and removes the end in one call instead of finding it twice"

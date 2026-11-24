@@ -7,11 +7,11 @@ use crate::facts::Facts;
 use crate::std_fn;
 use crate::walk::{unparen, Visitor};
 use crate::{is_std, File, Finding, NEGATED_HEAP};
-use cpl_diag::Diagnostic;
 use cpl_syntax::ast::{Expr, ExprKind, UnOp};
 use std::collections::HashSet;
 
 use super::shapes::name;
+use cpl_diag::msgs::lint_rules;
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     struct Pushes<'a> {
@@ -41,11 +41,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             {
                 return;
             }
-            let diag = Diagnostic::warning(
-                NEGATED_HEAP.code,
-                expr.span.shift(self.base),
-                format!("`{h}` holds negated values so it pops the largest: it is a `MaxHeap`"),
-            )
+            let diag = lint_rules::NEGATED_HEAP.warning(expr.span.shift(self.base), &[&h])
             .with_label(base.span.shift(self.base), "the heap")
             .with_help(format!(
                 "declare `var {h} = MaxHeap<T>()` (`std.heap`, in the prelude) and push and pop plain values: it pops the largest at the same cost, with no `-` to pair on every pop"

@@ -3,7 +3,8 @@
 //! prover finds and checks an input that does.
 
 use crate::{File, Finding, INT_OVERFLOW_AT_BOUNDS};
-use cpl_diag::{Diagnostic, Span};
+use cpl_diag::msgs::lint_rules;
+use cpl_diag::Span;
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     let leaves: Vec<_> = super::proven_expr_ranges(file)
@@ -24,11 +25,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             let span = Span::new(e.expr.0, e.expr.1);
             let text = span.text(file.src);
             let witness = e.overflow.as_deref().unwrap_or_default();
-            let diag = Diagnostic::warning(
-                INT_OVERFLOW_AT_BOUNDS.code,
-                span,
-                format!("`{text}` can leave `Int` (64 bits) at the declared bounds: with `{witness}` it does, and that traps"),
-            )
+            let diag = lint_rules::INT_OVERFLOW_AT_BOUNDS.warning(span, &[&text, &witness])
             .with_help(format!(
                 "its declared operands give `{}..={}`; widen an operand to `I128`, compute in `Mod<P>` if the answer is asked modulo `P`, or declare the tighter bounds the statement gives (R0202)",
                 e.lo, e.hi

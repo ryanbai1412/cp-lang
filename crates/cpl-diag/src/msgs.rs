@@ -10,6 +10,7 @@ pub mod check;
 pub mod foreign;
 pub mod lexer;
 pub mod lint;
+pub mod lint_rules;
 pub mod stmt;
 pub mod syntax;
 
@@ -92,6 +93,7 @@ mod tests {
             ("foreign", foreign::ALL),
             ("lexer", lexer::ALL),
             ("lint", lint::ALL),
+            ("lint_rules", lint_rules::ALL),
             ("stmt", stmt::ALL),
             ("syntax", syntax::ALL),
         ]

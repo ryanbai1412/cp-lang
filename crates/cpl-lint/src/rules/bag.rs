@@ -7,11 +7,12 @@
 
 use crate::walk::{unparen, Visitor};
 use crate::{File, Finding, MAP_AS_MULTISET};
-use cpl_diag::{Diagnostic, Span};
+use cpl_diag::Span;
 use cpl_syntax::ast::{AssignOp, BinOp, CmpOp, Expr, ExprKind, Stmt, StmtKind};
 use std::collections::HashMap;
 
 use super::shapes::{compare, int, name};
+use cpl_diag::msgs::lint_rules;
 
 #[derive(Default)]
 struct Uses {
@@ -83,11 +84,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         let (Some((span, label)), true, true) = (uses.up, uses.down, uses.bag) else {
             continue;
         };
-        let diag = Diagnostic::warning(
-            MAP_AS_MULTISET.code,
-            span,
-            format!("`{m}` counts the copies of each key by hand: it is a multiset"),
-        )
+        let diag = lint_rules::MAP_AS_MULTISET.warning(span, &[&m])
         .with_label(label, "the map")
         .with_help(format!(
             "declare `var {m} = SortedBag<K>()` (`std.bag`, in the prelude) and write `{m}.add(x)` / `{m}.remove(x)`: a bag keeps the counts, `remove` is false when `x` is absent, and `first`/`last` read the smallest and largest"

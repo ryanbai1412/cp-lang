@@ -4,6 +4,7 @@ use super::*;
 use crate::facts::Facts;
 use crate::std_fn;
 use crate::Calls;
+use cpl_diag::msgs::lint_rules;
 
 /// Flags hand-rolled union-find (L0517), prime/SPF sieve (L0518), and
 /// binary-lifting tables (L0519) that duplicate `std.dsu`, `std.math`, and
@@ -1312,11 +1313,7 @@ impl Taste<'_> {
         if !mentions(added, var) || has_try(stmt) {
             return;
         }
-        let diag = Diagnostic::warning(
-            HAND_ROLLED_PREFIX_SUM.code,
-            stmt.span,
-            format!("`{table}` is a running total built by hand: use `Prefix(...)`"),
-        )
+        let diag = lint_rules::HAND_ROLLED_PREFIX_SUM.warning(stmt.span, &[&table])
         .with_help(
             "`a.scan(+)` builds every running total in O(n) and walks like the list (`.min()`, `.any(..)`, `inversions`); `.prefix(cut)` reads one and `.fold(range)` sums a range in O(1)",
         );

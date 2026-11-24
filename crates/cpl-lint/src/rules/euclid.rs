@@ -5,7 +5,8 @@
 
 use crate::walk::{unparen, Visitor};
 use crate::{File, Finding, NEG_MOD_FIXUP};
-use cpl_diag::{Diagnostic, Fix, Span};
+use cpl_diag::msgs::lint_rules;
+use cpl_diag::{Fix, Span};
 use cpl_syntax::ast::{BinOp, Expr, ExprKind};
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
@@ -63,14 +64,11 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             else {
                 return;
             };
-            let mut diag = Diagnostic::warning(
-                NEG_MOD_FIXUP.code,
-                span,
-                format!("`+ {divisor}` guards against a negative remainder, which `%` never gives"),
-            )
-            .with_help(format!(
-                "write `{fixed}`; `%` is Euclidean, so the result is already in `0..{divisor}`"
-            ));
+            let mut diag = lint_rules::NEG_MOD_FIXUP
+                .warning(span, &[&divisor])
+                .with_help(format!(
+                    "write `{fixed}`; `%` is Euclidean, so the result is already in `0..{divisor}`"
+                ));
             if label {
                 diag = diag.with_label(m.span.shift(self.base), "the divisor");
             }

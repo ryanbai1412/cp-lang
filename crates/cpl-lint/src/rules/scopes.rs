@@ -6,7 +6,8 @@ use crate::walk::{root_name, Bind, Scope, Visitor};
 use crate::{
     File, Finding, SHADOWS_TOP_LEVEL, STATE_ABOVE_MULTITEST, UNUSED_BINDING, VAR_NEVER_REASSIGNED,
 };
-use cpl_diag::{Diagnostic, Span};
+use cpl_diag::msgs::lint_rules;
+use cpl_diag::Span;
 use cpl_syntax::ast::{AssignOp, BinOp, Expr, ExprKind, Stmt, StmtKind};
 use std::collections::HashMap;
 
@@ -96,11 +97,7 @@ impl Scopes<'_> {
         if counter || !above {
             return;
         }
-        let diag = Diagnostic::warning(
-            STATE_ABOVE_MULTITEST.code,
-            target.span.shift(self.base),
-            format!("`{name}` is declared above `@!multitest`, so each test starts from the value the last one left"),
-        )
+        let diag = lint_rules::STATE_ABOVE_MULTITEST.warning(target.span.shift(self.base), &[&name])
         .with_help(format!(
             "declare `{name}` below `@!multitest` so each test starts fresh, or allow the lint if it is meant to carry over"
         ));
@@ -211,11 +208,7 @@ impl Visitor for Scopes<'_> {
                     .line_col(hidden.span.start)
                     .line
                     + 1;
-                let diag = Diagnostic::warning(
-                    SHADOWS_TOP_LEVEL.code,
-                    span,
-                    format!("this {what} hides the top-level `{name}`"),
-                )
+                let diag = lint_rules::SHADOWS_TOP_LEVEL.warning(span, &[&what, &name])
                 .with_label(hidden.span, format!("`{name}` is defined here, on line {line}"))
                 .with_help(format!(
                     "from here on `{name}` means the {what}; give it another name if the top-level one is meant below"
@@ -329,11 +322,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         if read {
             continue;
         }
-        let diag = Diagnostic::warning(
-            UNUSED_BINDING.code,
-            span,
-            format!("`{name}` is never read"),
-        )
+        let diag = lint_rules::UNUSED_BINDING.warning(span, &[&name])
         .with_label(span, "bound here")
         .with_help(format!(
             "delete the `let` if its value is not needed, or use `{name}` where it was meant to be; `_` keeps the computation and says the value is dropped"
@@ -353,13 +342,10 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             [one] => (one.clone(), "is"),
             many => (many.join(" and "), "are"),
         };
-        let diag = Diagnostic::warning(
-            VAR_NEVER_REASSIGNED.code,
-            var.keyword,
-            format!("{subject} {verb} declared `var` but never changed"),
-        )
-        .with_help("declare it with `let`, so a later assignment by mistake is an error")
-        .with_fix("change `var` to `let`", var.keyword, "let");
+        let diag = lint_rules::VAR_NEVER_REASSIGNED
+            .warning(var.keyword, &[&subject, &verb])
+            .with_help("declare it with `let`, so a later assignment by mistake is an error")
+            .with_fix("change `var` to `let`", var.keyword, "let");
         findings.push(Finding {
             lint: &VAR_NEVER_REASSIGNED,
             diag,

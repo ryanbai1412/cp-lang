@@ -7,7 +7,8 @@ use super::sentinel::{constant, LARGE};
 use crate::walk::{walk_stmt, Visitor};
 use crate::{File, Finding, SENTINEL_SCALAR};
 use cpl_check::Ty;
-use cpl_diag::{Diagnostic, Span};
+use cpl_diag::msgs::lint_rules;
+use cpl_diag::Span;
 use cpl_syntax::ast::{AssignOp, ExprKind, PatternKind, Stmt, StmtKind};
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
@@ -88,13 +89,10 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         } else {
             format!("declare `var {name}: ?Int = None`, or reduce with `.max()` / `.min()` (`std.seq`): `{shown}` guesses a bound the data may pass, `None` is no number at all")
         };
-        let diag = Diagnostic::warning(
-            SENTINEL_SCALAR.code,
-            *span,
-            format!("`{name}` starts at `{shown}` to mean \"nothing yet\""),
-        )
-        .with_label(*set, "set here")
-        .with_help(help);
+        let diag = lint_rules::SENTINEL_SCALAR
+            .warning(*span, &[&name, &shown])
+            .with_label(*set, "set here")
+            .with_help(help);
         out.push(Finding {
             lint: &SENTINEL_SCALAR,
             diag,

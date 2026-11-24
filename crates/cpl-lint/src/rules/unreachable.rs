@@ -3,7 +3,8 @@
 
 use crate::walk::Visitor;
 use crate::{File, Finding, UNREACHABLE_CODE};
-use cpl_diag::{Diagnostic, Fix, Span};
+use cpl_diag::msgs::lint_rules;
+use cpl_diag::{Fix, Span};
 use cpl_syntax::ast::{Stmt, StmtKind};
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
@@ -30,15 +31,12 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 _ => "continue",
             };
             let dead = Span::new(next.span.start, last.span.end).shift(self.base);
-            let mut diag = Diagnostic::warning(
-                UNREACHABLE_CODE.code,
-                dead,
-                format!("this never runs: it comes after `{word}` in the same block"),
-            )
-            .with_label(stmts[at].span.shift(self.base), "the block leaves here")
-            .with_help(format!(
-                "delete it, or move the `{word}` below it if it was meant to run first"
-            ));
+            let mut diag = lint_rules::UNREACHABLE_CODE
+                .warning(dead, &[&word])
+                .with_label(stmts[at].span.shift(self.base), "the block leaves here")
+                .with_help(format!(
+                    "delete it, or move the `{word}` below it if it was meant to run first"
+                ));
             diag.fixes.push(Fix {
                 title: "delete the code that never runs".into(),
                 edits: vec![(

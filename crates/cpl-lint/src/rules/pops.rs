@@ -4,7 +4,8 @@
 use crate::std_fn;
 use crate::walk::Visitor;
 use crate::{File, Finding, PEEK_THEN_POP};
-use cpl_diag::{Diagnostic, Fix, Span};
+use cpl_diag::msgs::lint_rules;
+use cpl_diag::{Fix, Span};
 use cpl_syntax::ast::{Expr, ExprKind, Stmt, StmtKind};
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
@@ -68,13 +69,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             }
             let head = Span::new(peek.span.start, init.span.start).shift(self.base);
             let take = format!("{place}.pop()!");
-            let mut diag = Diagnostic::warning(
-                PEEK_THEN_POP.code,
-                Span::new(peek.span.start, pop.span.end).shift(self.base),
-                format!(
-                    "`{place}.last!` then `{place}.pop()`: the pop already gives the last element"
-                ),
-            )
+            let mut diag = lint_rules::PEEK_THEN_POP.warning(Span::new(peek.span.start, pop.span.end).shift(self.base), &[&place, &place])
             .with_label(popped.span.shift(self.base), "the list")
             .with_help(format!("write `{}{take}`; `pop()` already returns the last element, so one call reads and removes it", head.text(self.src)));
             diag.fixes.push(Fix {

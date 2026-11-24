@@ -6,7 +6,8 @@
 use crate::walk::{Scope, Visitor};
 use crate::{File, Finding, FOUND_FLAG_PAIR};
 use cpl_check::Ty;
-use cpl_diag::{Diagnostic, Span};
+use cpl_diag::msgs::lint_rules;
+use cpl_diag::Span;
 use cpl_syntax::ast::{AssignOp, Expr, ExprKind, PatternKind, Stmt, StmtKind};
 
 #[derive(Default)]
@@ -222,16 +223,17 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             .map(|(n, ..)| format!("`{n}`"))
             .collect::<Vec<_>>()
             .join(", ");
-        let diag = Diagnostic::warning(
-            FOUND_FLAG_PAIR.code,
-            *span,
-            format!(
-                "`{flag}` only says whether {shown} {} been set",
-                if values.len() == 1 { "has" } else { "have" }
-            ),
-        )
-        .with_label(at, "set beside it")
-        .with_help(help);
+        let diag = lint_rules::FOUND_FLAG_PAIR
+            .warning(
+                *span,
+                &[
+                    &flag,
+                    &shown,
+                    &if values.len() == 1 { "has" } else { "have" },
+                ],
+            )
+            .with_label(at, "set beside it")
+            .with_help(help);
         out.push(Finding {
             lint: &FOUND_FLAG_PAIR,
             diag,

@@ -7,7 +7,7 @@
 use super::shapes::flip;
 use crate::walk::{unparen, walk_stmt, Visitor};
 use crate::{File, Finding, DX_DY_ARRAYS, GRID_BOUNDS_CHECK, GRID_NEIGHBOUR_STEP};
-use cpl_diag::Diagnostic;
+use cpl_diag::msgs::lint_rules;
 use cpl_syntax::ast::{BinOp, CmpOp, Cond, Expr, ExprKind, PatternKind, Stmt, StmtKind};
 
 const STEP_HELP: &str = "declare `domain R = 0..h`, `domain C = 0..w` and the grid over `[R, C]`, then read the neighbour with `if let (pr, pc) = (r, c).up` (`std.grid`): a step off the grid is `None`, so there is no edge test to get wrong";
@@ -43,12 +43,9 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                         ix.len() >= 2 && named(&x) && named(&y)
                     };
                     if block.stmts.iter().any(|s| indexes(s, &both)) {
-                        let diag = Diagnostic::warning(
-                            GRID_BOUNDS_CHECK.code,
-                            cond.span.shift(self.base),
-                            format!("`{x}` and `{y}` are tested against the grid's edges by hand"),
-                        )
-                        .with_help(BOUNDS_HELP);
+                        let diag = lint_rules::GRID_BOUNDS_CHECK
+                            .warning(cond.span.shift(self.base), &[&x, &y])
+                            .with_help(BOUNDS_HELP);
                         self.out.push(Finding {
                             lint: &GRID_BOUNDS_CHECK,
                             diag,
@@ -81,15 +78,12 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 if !block.stmts.iter().any(|s| indexes(s, &off)) {
                     continue;
                 }
-                let diag = Diagnostic::warning(
-                    GRID_NEIGHBOUR_STEP.code,
-                    cond.span.shift(self.base),
-                    format!(
-                        "`{}` guards a neighbour read at `{name} - 1` by hand",
-                        cond.span.shift(self.base).text(self.src)
-                    ),
-                )
-                .with_help(STEP_HELP);
+                let diag = lint_rules::GRID_NEIGHBOUR_STEP
+                    .warning(
+                        cond.span.shift(self.base),
+                        &[&cond.span.shift(self.base).text(self.src), &name],
+                    )
+                    .with_help(STEP_HELP);
                 self.out.push(Finding {
                     lint: &GRID_NEIGHBOUR_STEP,
                     diag,
@@ -118,11 +112,7 @@ fn direction_lists(stmts: &[(u32, &Stmt)], out: &mut Vec<Finding>) {
             continue;
         }
         let dirs = if n == 4 { "Dir4" } else { "Dir8" };
-        let diag = Diagnostic::warning(
-            DX_DY_ARRAYS.code,
-            pair[0].1.span.shift(pair[0].0),
-            format!("`{dx}` and `{dy}` spell the {n} grid directions as two lists of offsets"),
-        )
+        let diag = lint_rules::DX_DY_ARRAYS.warning(pair[0].1.span.shift(pair[0].0), &[&dx, &dy, &n])
         .with_help(format!("loop `for d in {dirs}.all()` and step with `(r, c).step(d)` (`std.grid`), which is `None` off the grid: one name per direction instead of two lists kept in step by hand"));
         out.push(Finding {
             lint: &DX_DY_ARRAYS,

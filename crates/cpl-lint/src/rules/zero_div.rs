@@ -2,7 +2,8 @@
 //! bounds let `b` be 0, which traps (R0203) on that input.
 
 use crate::{File, Finding, INT_DIV_POSSIBLE_ZERO};
-use cpl_diag::{Diagnostic, Span};
+use cpl_diag::msgs::lint_rules;
+use cpl_diag::Span;
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     super::proven_divisors(file)
@@ -17,11 +18,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             } else {
                 String::new()
             };
-            let diag = Diagnostic::warning(
-                INT_DIV_POSSIBLE_ZERO.code,
-                divisor,
-                format!("`{text}` can be 0 here (its bounds give `{lo}..={hi}`), and `{op_text}` by 0 traps"),
-            )
+            let diag = lint_rules::INT_DIV_POSSIBLE_ZERO.warning(divisor, &[&text, &lo, &hi, &op_text])
             .with_help(format!(
                 "guard it with `if {text} != 0:`{narrow}, so the input that makes it 0 is handled instead of trapping (R0203)"
             ))

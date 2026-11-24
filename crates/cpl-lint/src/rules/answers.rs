@@ -7,7 +7,7 @@
 
 use crate::walk::Visitor;
 use crate::{File, Finding, BOOL_TERNARY_PRINT};
-use cpl_diag::Diagnostic;
+use cpl_diag::msgs::lint_rules;
 use cpl_syntax::ast::{Block, Cond, Expr, ExprKind, StmtKind, StrPiece};
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
@@ -51,12 +51,9 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                      `with io(answers: (\"{t}\", \"{f}\"))` or the judge profile"
                 )
             };
-            let diag = Diagnostic::warning(
-                BOOL_TERNARY_PRINT.code,
-                expr.span.shift(self.base),
-                format!("`\"{t}\"` and `\"{f}\"` written out; `yes({cond})` is the answer word"),
-            )
-            .with_help(help);
+            let diag = lint_rules::BOOL_TERNARY_PRINT
+                .warning(expr.span.shift(self.base), &[&t, &f, &cond])
+                .with_help(help);
             self.out.push(Finding {
                 lint: &BOOL_TERNARY_PRINT,
                 diag,

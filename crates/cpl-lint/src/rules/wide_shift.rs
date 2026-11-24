@@ -2,7 +2,8 @@
 //! bounds let `k` shift `x` out of `Int`, which traps (R0202) on that input.
 
 use crate::{File, Finding, INT_SHIFT_OVERFLOW_AT_BOUNDS};
-use cpl_diag::{Diagnostic, Span};
+use cpl_diag::msgs::lint_rules;
+use cpl_diag::Span;
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     super::proven_shifts(file)
@@ -11,11 +12,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         .map(|(_, (start, end), hi, safe)| {
             let k = Span::new(start, end);
             let text = k.text(file.src);
-            let diag = Diagnostic::warning(
-                INT_SHIFT_OVERFLOW_AT_BOUNDS.code,
-                k,
-                format!("this shift leaves `Int` when `{text}` is above {safe}, and its bounds allow {hi}"),
-            )
+            let diag = lint_rules::INT_SHIFT_OVERFLOW_AT_BOUNDS.warning(k, &[&text, &safe, &hi])
             .with_help(format!(
                 "if the statement keeps `{text}` at most {safe}, declare that range; otherwise shift a `U64` (`U64(1) << {text}`) or keep the bits in a `Bitset` (`std.bitset`), so the largest input does not trap (R0202)"
             ))

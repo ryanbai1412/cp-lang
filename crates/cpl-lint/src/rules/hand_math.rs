@@ -16,6 +16,7 @@ use cpl_syntax::ast::*;
 use std::collections::HashSet;
 
 use super::shapes::{compare, index1, int, is_step, name, single};
+use cpl_diag::msgs::lint_rules;
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut v = HandMath {
@@ -419,11 +420,7 @@ impl HandMath<'_> {
             if d != d2 || text(*b1, v1) != text(*b2, v2) || !shifted {
                 continue;
             }
-            let diag = Diagnostic::warning(
-                DIFF_BY_HAND.code,
-                Span::new(s1.span.start + b1, s2.span.end + b2),
-                format!("`{d}` is a difference array kept by hand"),
-            )
+            let diag = lint_rules::DIFF_BY_HAND.warning(Span::new(s1.span.start + b1, s2.span.end + b2), &[&d])
             .with_help(format!(
                 "`Diff<D, T>()` (`std.prefix`) is one: `{d}.add(l..r, x)` for each update, then `{d}.finish()` is the table"
             ));

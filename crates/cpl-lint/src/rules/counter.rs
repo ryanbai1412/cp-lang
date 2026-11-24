@@ -10,11 +10,11 @@ use crate::std_fn;
 use crate::walk::{unparen, walk_stmt, Visitor};
 use crate::{is_std, File, Finding, COUNTER_BY_MAP};
 use cpl_check::CalleeKind;
-use cpl_diag::Diagnostic;
 use cpl_syntax::ast::{AssignOp, BinOp, Expr, ExprKind, Pattern, PatternKind, Stmt, StmtKind};
 use std::collections::HashSet;
 
 use super::shapes::{index1, int, name};
+use cpl_diag::msgs::lint_rules;
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     struct Counts<'a> {
@@ -106,13 +106,10 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                         "declare `var {map} = Counter<K>()` (`std.hashmap`) and write `{map}.push({var})`: hashed, and a key it never saw reads 0"
                     )
                 };
-                let diag = Diagnostic::warning(
-                    COUNTER_BY_MAP.code,
-                    stmt.span.shift(at),
-                    format!("`{map}` counts by hand: it is a `Counter`"),
-                )
-                .with_label(base.span.shift(at), "the map")
-                .with_help(help);
+                let diag = lint_rules::COUNTER_BY_MAP
+                    .warning(stmt.span.shift(at), &[&map])
+                    .with_label(base.span.shift(at), "the map")
+                    .with_help(help);
                 self.out.push(Finding {
                     lint: &COUNTER_BY_MAP,
                     diag,
@@ -173,11 +170,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 Some(1) => format!("{map}.push({})", text(key)),
                 _ => format!("{map}.add({}, {})", text(key), text(delta)),
             };
-            let diag = Diagnostic::warning(
-                COUNTER_BY_MAP.code,
-                stmt.span.shift(self.base),
-                format!("`{map}` counts by hand: it is a `Counter`"),
-            )
+            let diag = lint_rules::COUNTER_BY_MAP.warning(stmt.span.shift(self.base), &[&map])
             .with_label(base.span.shift(self.base), "the map")
             .with_help(format!(
                 "declare `var {map} = Counter<K>()` (`std.hashmap`) and write `{bump}`: a key it never saw reads 0, so no update repeats `?? 0`"

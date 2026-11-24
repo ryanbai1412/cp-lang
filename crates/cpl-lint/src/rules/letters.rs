@@ -3,7 +3,7 @@
 
 use crate::walk::{unparen, Visitor};
 use crate::{File, Finding, CHAR_OFFSET_INDEX};
-use cpl_diag::Diagnostic;
+use cpl_diag::msgs::lint_rules;
 use cpl_syntax::ast::{BinOp, Expr, ExprKind};
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
@@ -33,11 +33,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 _ => return,
             };
             let c = lhs.span.shift(self.base).text(self.src);
-            let diag = Diagnostic::warning(
-                CHAR_OFFSET_INDEX.code,
-                index.span.shift(self.base),
-                format!("`{c} - '{first}'` turns a letter into an `Int` index"),
-            )
+            let diag = lint_rules::CHAR_OFFSET_INDEX.warning(index.span.shift(self.base), &[&c, &first])
             .with_help(format!(
                 "declare `domain Letter = '{first}'..='{last}'`, make the array `[Letter]T` and index it with `Letter({c})`: one cell per letter, and any other character traps where it enters"
             ));

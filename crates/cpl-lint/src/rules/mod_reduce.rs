@@ -5,7 +5,8 @@
 use super::sentinel::constant;
 use crate::walk::Visitor;
 use crate::{File, Finding, MANUAL_MOD_REDUCE};
-use cpl_diag::{Diagnostic, Span};
+use cpl_diag::msgs::lint_rules;
+use cpl_diag::Span;
 use cpl_syntax::ast::{BinOp, Expr, ExprKind};
 
 /// The smallest modulus treated as a contest prime (`998244353`, `10**9 + 7`).
@@ -51,11 +52,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         1 => ", and once more in this file".into(),
         n => format!(", and {n} more times in this file"),
     };
-    let diag = Diagnostic::warning(
-        MANUAL_MOD_REDUCE.code,
-        span,
-        format!("`% {p}` reduces a product by hand{also}"),
-    )
+    let diag = lint_rules::MANUAL_MOD_REDUCE.warning(span, &[&p, &also])
     .with_help(format!(
         "declare `type Z = Mod<{p}>` (`std.mod`) and compute in `Z`: it reduces after every `*`, `+` and `-`, so no `% {p}` can be forgotten"
     ));

@@ -2,7 +2,8 @@
 //! `k` in `0..n`, so the remainder is `k` itself.
 
 use crate::{File, Finding, NOOP_MOD_REDUCE};
-use cpl_diag::{Diagnostic, Span};
+use cpl_diag::msgs::lint_rules;
+use cpl_diag::Span;
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     super::proven::hazards::proven_noop_mods(file)
@@ -12,11 +13,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             let span = Span::new(start, end);
             let text = span.text(file.src);
             let x = Span::new(x0, x1).text(file.src);
-            let mut diag = Diagnostic::warning(
-                NOOP_MOD_REDUCE.code,
-                span,
-                format!("`{text}` is `{x}`: the declared bounds already put `{x}` below the modulus and at least 0"),
-            )
+            let mut diag = lint_rules::NOOP_MOD_REDUCE.warning(span, &[&text, &x, &x])
             .with_help(format!(
                 "write `{x}`; if `{x}` can reach the modulus after all, its declared range is too tight"
             ));

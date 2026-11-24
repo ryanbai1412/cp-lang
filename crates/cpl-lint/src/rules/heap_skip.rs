@@ -5,7 +5,7 @@
 
 use crate::walk::Visitor;
 use crate::{File, Finding, STALE_ENTRY_SKIP};
-use cpl_diag::Diagnostic;
+use cpl_diag::msgs::lint_rules;
 use cpl_syntax::ast::{CmpOp, Cond, Expr, ExprKind, Pattern, PatternKind, Stmt, StmtKind};
 
 const HELP: &str = "build the graph with `Graph.directed(es)` and call `dijkstra(g, from: [(s, 0)])` (`std.graph`): it is this heap loop, settles each vertex once and returns `Paths`, so there is no stale entry to skip";
@@ -43,13 +43,10 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                     continue;
                 };
                 if stale_skip(s, d, u) {
-                    let diag = Diagnostic::warning(
-                        STALE_ENTRY_SKIP.code,
-                        s.span.shift(self.base),
-                        format!("`{d}` is checked against the best distance of `{u}` to skip a stale heap entry"),
-                    )
-                    .with_label(heap.span.shift(self.base), "the heap")
-                    .with_help(HELP);
+                    let diag = lint_rules::STALE_ENTRY_SKIP
+                        .warning(s.span.shift(self.base), &[&d, &u])
+                        .with_label(heap.span.shift(self.base), "the heap")
+                        .with_help(HELP);
                     self.out.push(Finding {
                         lint: &STALE_ENTRY_SKIP,
                         diag,

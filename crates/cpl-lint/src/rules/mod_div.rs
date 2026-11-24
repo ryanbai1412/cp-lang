@@ -7,7 +7,8 @@
 use crate::walk::unparen;
 use crate::{Facts, File, Finding, LOOP_INVARIANT_MOD_DIV};
 use cpl_check::Ty;
-use cpl_diag::{Diagnostic, Fix, Span};
+use cpl_diag::msgs::lint_rules;
+use cpl_diag::{Fix, Span};
 use cpl_syntax::ast::{
     AssignOp, BinOp, Block, Cond, Expr, ExprKind, FnBody, Pattern, PatternKind, Stmt, StmtKind,
     UnOp,
@@ -756,14 +757,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
 
     let mut findings = Vec::new();
     for (i, hit) in scanner.hits.iter().enumerate() {
-        let mut diag = Diagnostic::warning(
-            LOOP_INVARIANT_MOD_DIV.code,
-            hit.diag_span,
-            format!(
-                "loop-invariant `Mod` divisor `{}` computes an O(log P) inverse every iteration",
-                hit.rhs_text
-            ),
-        )
+        let mut diag = lint_rules::LOOP_INVARIANT_MOD_DIV.warning(hit.diag_span, &[&hit.rhs_text])
         .with_help(format!(
             "hoist `let {} = {}` before the loop and multiply instead: one O(log P) inverse in place of one per iteration",
             hit.base_name, hit.inv_expr

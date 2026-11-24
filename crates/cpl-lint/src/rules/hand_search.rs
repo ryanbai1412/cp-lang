@@ -15,7 +15,7 @@ use crate::{
     MANUAL_HEAP_DRAIN, MONOTONE_STACK_BY_HAND, PALINDROME_BY_HAND, SLIDING_SUM_BY_HAND,
     SUBMASK_LOOP, SUBSET_MASKS_BY_HAND, TERNARY_SEARCH_BY_HAND,
 };
-use cpl_diag::Diagnostic;
+use cpl_diag::msgs::lint_rules;
 use cpl_syntax::ast::*;
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
@@ -236,11 +236,7 @@ impl HandSearch<'_> {
         if !is_ident(&m) || !is_ident(n) {
             return;
         }
-        let diag = Diagnostic::warning(
-            SUBSET_MASKS_BY_HAND.code,
-            stmt.span.shift(self.base),
-            format!("every subset of `{xs}` walked as a mask, its elements picked bit by bit"),
-        )
+        let diag = lint_rules::SUBSET_MASKS_BY_HAND.warning(stmt.span.shift(self.base), &[&xs])
         .with_help(format!(
             "write `for sub in {xs}.subsequences():` (`std.seq`): the same subsets, `sub.items` the chosen elements, and `sub.prune()` skips every extension of one; keep the mask where it is a DP index"
         ));
@@ -309,11 +305,7 @@ impl HandSearch<'_> {
             (None, Some(ty)) => ty.to_string(),
             _ => return,
         };
-        let diag = Diagnostic::warning(
-            FACT_TABLES_BY_HAND.code,
-            only.span.shift(self.base),
-            "a factorial table built by hand",
-        )
+        let diag = lint_rules::FACT_TABLES_BY_HAND.warning(only.span.shift(self.base), &[])
         .with_help(format!(
             "write `let comb = Comb<{z}>({n})` (`std.mod`): `comb.fact(i)` is `i!`, `comb.inv_fact(i)` is `1 / i!` and `comb.choose(a, b)` the binomial, with no table or `%` to keep in step"
         ));
@@ -370,11 +362,7 @@ impl HandSearch<'_> {
         } else {
             format!(", of: {x} => {v}")
         };
-        let diag = Diagnostic::warning(
-            GROUP_INTO_MAP.code,
-            span,
-            format!("`{m}` filled with lists by key, one push per element"),
-        )
+        let diag = lint_rules::GROUP_INTO_MAP.warning(span, &[&m])
         .with_help(format!(
             "write `let {m} = {xs}.group(by: {x} => {}{of})` (`std.seq`): the same lists, in input order, with no empty-list default; it is a `HashMap`",
             key.trim()
@@ -410,11 +398,7 @@ impl HandSearch<'_> {
             if !is_ident(cur) || !is_ident(a) || sub != format!("{a}[{i}-{k}]") {
                 continue;
             }
-            let diag = Diagnostic::warning(
-                SLIDING_SUM_BY_HAND.code,
-                st.span.shift(self.base),
-                format!("`{cur}` kept as the sum of the last `{k}` elements of `{a}` by hand"),
-            )
+            let diag = lint_rules::SLIDING_SUM_BY_HAND.warning(st.span.shift(self.base), &[&cur, &k, &a])
             .with_help(format!(
                 "write `let p = Prefix({a})` (`std.prefix`): `p.fold(j - {k}..j)` is the window ending before `j`, for `j` in `{k}..=n`, with no first window to build and no state between iterations"
             ));
@@ -458,11 +442,7 @@ impl HandSearch<'_> {
             return;
         }
         let head = cpl_diag::Span::new(head.start, iter.span.end).shift(self.base);
-        let diag = Diagnostic::warning(
-            MANUAL_HEAP_DRAIN.code,
-            head,
-            format!("the top `{k}` of `{h}` popped one by one"),
-        )
+        let diag = lint_rules::MANUAL_HEAP_DRAIN.warning(head, &[&k, &h])
         .with_help(format!(
             "write `for x in {h}.drain().take({k})` (`std.heap`): the same elements in the same order, each named, stopping early when `{h}` runs out instead of trapping on `pop()!`"
         ));
@@ -517,11 +497,7 @@ impl HandSearch<'_> {
             } else {
                 b.span
             };
-            let diag = Diagnostic::warning(
-                ADJACENT_BY_INDEX.code,
-                span.shift(self.base),
-                format!("neighbouring pairs read by index, guarded so `{v}` is not the last position"),
-            )
+            let diag = lint_rules::ADJACENT_BY_INDEX.warning(span.shift(self.base), &[&v])
             .with_help(format!(
                 "write `for (x, y) in {xs}.adjacent` (`std.seq`): every neighbouring pair of `{xs}`, with no last-position guard or `+ 1` index to get wrong{}",
                 if last {
@@ -567,11 +543,7 @@ impl HandSearch<'_> {
         if !is_ident(&i) || !is_ident(&s) {
             return;
         }
-        let diag = Diagnostic::warning(
-            PALINDROME_BY_HAND.code,
-            self.with_flag(stmt.span.shift(self.base)),
-            format!("`{s}[{i}]` against `{s}[{n} - 1 - {i}]` tests whether `{s}` is a palindrome"),
-        )
+        let diag = lint_rules::PALINDROME_BY_HAND.warning(self.with_flag(stmt.span.shift(self.base)), &[&s, &i, &s, &n, &i, &s])
         .with_help(format!(
             "write `is_palindrome({s})`: a `Bool`, with no mirrored index or half-length bound to get wrong"
         ));
@@ -597,11 +569,7 @@ impl Visitor for HandSearch<'_> {
         let Some((x, i, range)) = self.argsort(recv) else {
             return;
         };
-        let diag = Diagnostic::warning(
-            ARGSORT_LOOP.code,
-            span,
-            format!("pairs `({x}[{i}], {i})` sorted to get the positions in order of `{x}`"),
-        )
+        let diag = lint_rules::ARGSORT_LOOP.warning(span, &[&x, &i, &i, &x])
         .with_help(format!(
             "sort the positions by value: `({range}).sorted(by: {i} => {x}[{i}])`; the sort is stable, so equal values keep their position order as the pairs did, and `{x}[{i}]` is read where it is needed"
         ));
@@ -659,11 +627,7 @@ impl Visitor for HandSearch<'_> {
             .filter(|(_, _, st, i)| records(st, i))
             .map(|(c, w, _, _)| (c, w))
         {
-            let diag = Diagnostic::warning(
-                MONOTONE_STACK_BY_HAND.code,
-                span,
-                "a monotone stack written by hand".to_string(),
-            )
+            let diag = lint_rules::MONOTONE_STACK_BY_HAND.warning(span, &[])
             .with_help(format!(
                 "write `{call}` (`std.seq`): each position's nearest later position with a {what} value, as a `[D]?D` with `None` where there is none; `prev_smaller` gives the nearest earlier one"
             ));
@@ -677,11 +641,7 @@ impl Visitor for HandSearch<'_> {
             let step = text(last.span);
             let mask = step.strip_prefix(&format!("{s}=({s}-1)&"));
             if let Some(m) = mask.filter(|m| is_ident(s) && is_ident(m)) {
-                let diag = Diagnostic::warning(
-                    SUBMASK_LOOP.code,
-                    span,
-                    format!("`{s} = ({s} - 1) & {m}` walks the submasks of `{m}` by hand"),
-                )
+                let diag = lint_rules::SUBMASK_LOOP.warning(span, &[&s, &s, &m, &m])
                 .with_help(format!(
                     "write `for {s} in submasks({m}):` (`use std.math.{{submasks}}`): it yields every submask of `{m}`, largest first, and `0` last, so skip `0` there if the loop must not see it"
                 ));
@@ -694,11 +654,7 @@ impl Visitor for HandSearch<'_> {
         }
         let whole = text(body.span);
         if whole.matches(")/3").count() >= 2 && body.stmts.len() >= 3 {
-            let diag = Diagnostic::warning(
-                TERNARY_SEARCH_BY_HAND.code,
-                span,
-                "a ternary search over integers written by hand".to_string(),
-            )
+            let diag = lint_rules::TERNARY_SEARCH_BY_HAND.warning(span, &[])
             .with_help(
                 "write `ternary_min(lo..hi, f)!` or `ternary_max(lo..hi, f)!` (`std.search`): golden-section search, about log n calls of `f`, with no stopping rule or final scan to get wrong",
             );

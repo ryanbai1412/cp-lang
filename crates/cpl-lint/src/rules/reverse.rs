@@ -4,10 +4,11 @@
 
 use crate::walk::Visitor;
 use crate::{File, Finding, REVERSE_INDEX};
-use cpl_diag::{Diagnostic, Fix};
+use cpl_diag::Fix;
 use cpl_syntax::ast::{BinOp, Expr, ExprKind};
 
 use super::shapes::binary;
+use cpl_diag::msgs::lint_rules;
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     struct Reverse<'a> {
@@ -22,15 +23,12 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             };
             let span = expr.span.shift(self.base);
             let call = format!("{}.reversed()", list.span.shift(self.base).text(self.src));
-            let mut diag = Diagnostic::warning(
-                REVERSE_INDEX.code,
-                span,
-                format!("this copies the list backwards by index: it is `{call}`"),
-            )
-            .with_label(list.span.shift(self.base), "the list")
-            .with_help(format!(
-                "write `{call}`; to walk backwards without a copy, use `.rev`"
-            ));
+            let mut diag = lint_rules::REVERSE_INDEX
+                .warning(span, &[&call])
+                .with_label(list.span.shift(self.base), "the list")
+                .with_help(format!(
+                    "write `{call}`; to walk backwards without a copy, use `.rev`"
+                ));
             diag.fixes.push(Fix {
                 title: format!("use `{call}`"),
                 edits: vec![(span, call)],

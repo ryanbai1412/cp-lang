@@ -3,7 +3,8 @@
 
 use crate::walk::Visitor;
 use crate::{File, Finding, REPEATED_LITERAL};
-use cpl_diag::{Diagnostic, Span};
+use cpl_diag::msgs::lint_rules;
+use cpl_diag::Span;
 use cpl_syntax::ast::*;
 use std::collections::HashMap;
 
@@ -119,15 +120,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         } else {
             "LIM"
         };
-        let diag = Diagnostic::warning(
-            REPEATED_LITERAL.code,
-            span,
-            format!(
-                "`{text}` is written {} {}; it is first on line {line}",
-                spans.len(),
-                if big { "times" } else { "lines" }
-            ),
-        )
+        let diag = lint_rules::REPEATED_LITERAL.warning(span, &[&text, &spans.len(), &if big { "times" } else { "lines" }, &line])
         .with_help(format!(
             "name it once (`const {named} = {text}`, a domain, or a type alias) and use the name: copies of one fact can drift apart"
         ));

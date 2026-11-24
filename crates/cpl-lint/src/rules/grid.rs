@@ -5,7 +5,7 @@
 use crate::walk::Visitor;
 use crate::{File, Finding, NESTED_LIST_GRID};
 use cpl_check::{Facts, Ty};
-use cpl_diag::Diagnostic;
+use cpl_diag::msgs::lint_rules;
 use cpl_syntax::ast::{Clause, Expr, ExprKind, PatternKind, Stmt, StmtKind};
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
@@ -91,11 +91,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 "let"
             };
             let span = init.span.shift(self.base);
-            let diag = Diagnostic::warning(
-                NESTED_LIST_GRID.code,
-                span,
-                format!("`{name}` is a list of lists for a fixed {rows} by {cols} grid"),
-            )
+            let diag = lint_rules::NESTED_LIST_GRID.warning(span, &[&name, &rows, &cols])
             .with_help(format!(
                 "declare `{kw} {name}: [{rows}, {cols}]{elem} = {fill}` and index `{name}[i, j]`: one block instead of a list per row, and its domain proves each index"
             ));

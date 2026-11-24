@@ -6,10 +6,11 @@ use crate::std_fn;
 use crate::walk::{unparen, Visitor};
 use crate::{is_std, File, Finding, READ_LOOP};
 use cpl_check::Ty;
-use cpl_diag::{Diagnostic, Span};
+use cpl_diag::Span;
 use cpl_syntax::ast::*;
 
 use super::shapes::{name, squash};
+use cpl_diag::msgs::lint_rules;
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut v = ReadLoop {
@@ -143,11 +144,7 @@ impl ReadLoop<'_> {
                 continue;
             }
             let span = Span::new(decl.span.start + d_base, iter.span.end + f_base);
-            let diag = Diagnostic::warning(
-                READ_LOOP.code,
-                span,
-                format!("`{xs}` is read one item per step of `for _ in {range}`"),
-            )
+            let diag = lint_rules::READ_LOOP.warning(span, &[&xs, &range])
             .with_help(format!(
                 "write `let {xs}: [{range}]{t} = read()`: one read takes every item and checks its bounds (`var` if it changes later)"
             ));

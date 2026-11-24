@@ -4,7 +4,8 @@
 
 use crate::walk::Visitor;
 use crate::{File, Finding, COALESCE_TEST_THEN_UNWRAP, WHILE_NOT_EMPTY_POP};
-use cpl_diag::{Diagnostic, Fix, Span};
+use cpl_diag::msgs::lint_rules;
+use cpl_diag::{Fix, Span};
 use cpl_syntax::ast::{BinOp, CmpOp, Cond, Expr, ExprKind, Stmt, StmtKind};
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
@@ -65,11 +66,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             }
             let p = self.text(pat.span);
             let take = format!("let {p} = {queue}.{pop}()");
-            let mut diag = Diagnostic::warning(
-                WHILE_NOT_EMPTY_POP.code,
-                Span::new(stmt.span.start, first.span.end).shift(self.base),
-                format!("`{queue}` is tested for empty, then `{queue}.{pop}()!` unwraps"),
-            )
+            let mut diag = lint_rules::WHILE_NOT_EMPTY_POP.warning(Span::new(stmt.span.start, first.span.end).shift(self.base), &[&queue, &queue, &pop])
             .with_label(first.span.shift(self.base), "the pop the test guards")
             .with_help(format!(
                 "write `while {take}:`; the loop stops at the same `None`, with no test and unwrap to keep in step"
@@ -232,11 +229,7 @@ pub(crate) fn coalesce(file: &File) -> Vec<Finding> {
             let c = self.text(stand_in.span);
             let tail = self.text(Span::new(first.span.end, rhs.span.end));
             let header = format!("let {p} = {e}, {p}{tail}");
-            let mut diag = Diagnostic::warning(
-                COALESCE_TEST_THEN_UNWRAP.code,
-                Span::new(whole.start, head.span.end).shift(self.base),
-                format!("`{e}` is tested with the stand-in `?? {c}`, then `{e}!` unwraps it"),
-            )
+            let mut diag = lint_rules::COALESCE_TEST_THEN_UNWRAP.warning(Span::new(whole.start, head.span.end).shift(self.base), &[&e, &c, &e])
             .with_label(head.span.shift(self.base), "the unwrap the test guards")
             .with_help(format!(
                 "write `{kw} {header}:`; it compares the real value and skips on `None`, with no stand-in to pick and no `!` to keep in step"

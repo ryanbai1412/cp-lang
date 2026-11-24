@@ -8,7 +8,8 @@
 
 use crate::walk::{walk_stmt, Bind, Scope, Visitor};
 use crate::{File, Finding, UNREAD_FIELD};
-use cpl_diag::{Diagnostic, Span};
+use cpl_diag::msgs::lint_rules;
+use cpl_diag::Span;
 use cpl_syntax::ast::{AssignOp, Expr, ExprKind, Stmt, StmtKind};
 use std::collections::HashSet;
 
@@ -152,11 +153,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         .iter()
         .filter(|field| !fields.read.contains(&field.name))
         .map(|field| {
-            let diag = Diagnostic::warning(
-                UNREAD_FIELD.code,
-                field.span,
-                format!("field `{}` of `{}` is never read", field.name, field.owner),
-            )
+            let diag = lint_rules::UNREAD_FIELD.warning(field.span, &[&field.name, &field.owner])
             .with_help(format!(
                 "remove it, or put `with lint(unread_field: allow)` above `{}` if it is only read as part of the whole value (printed, compared, sorted)",
                 field.owner
