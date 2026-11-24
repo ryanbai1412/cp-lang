@@ -169,8 +169,13 @@ pub struct Mat<T>:
     /// example: `Mat<Int>.from_rows([[1, 2, 3], [4, 5, 6]]).transpose().get(2, 1) == 6`
     pub fn transpose(self) -> Mat<T>:
         var d = List.filled(rows * cols, T.zero)
-        for i in 0..rows:
-            for j in 0..cols: d[j * rows + i] = data[i * cols + j]
+        // In 16 x 16 tiles, so the strided writes stay in cache.
+        let b = 16
+        unchecked:
+            for bi in 0..(rows + b - 1) / b:
+                for bj in 0..(cols + b - 1) / b:
+                    for i in bi * b..min(rows, bi * b + b):
+                        for j in bj * b..min(cols, bj * b + b): d[j * rows + i] = data[i * cols + j]
         Mat(cols, rows, d)
 
     /// The matrix-vector product `self * v` under the matrix's semiring: entry `r` folds
@@ -1281,7 +1286,7 @@ fn berlekamp_massey<P>(s: List<Mod<P>>) -> List<Mod<P>>:
 /// Two-phase simplex with Bland's rule, comparing against `eps`. When the optimum is reached at
 /// several points, `x` is the vertex the pivoting reaches; `val` is the optimum either way.
 ///
-/// cost: \(O(\mathit{poly}(n, m))\) typical (exponential in the worst case); \(O(\mathit{rows} \cdot \mathit{cols})\) space
+/// cost: \(O(\mathit{pivots} \cdot \mathit{rows} \cdot \mathit{cols})\) time, the pivots typically \(O(\mathit{rows} + \mathit{cols})\) and exponential in the worst case; \(O(\mathit{rows} \cdot \mathit{cols})\) space
 /// empty: with no variables, `Some((val: 0.0, x: []))` when every `b` entry is at least `-eps`
 /// order: `x` indexed by column (variable)
 /// traps: when `b.len != a.rows` or `c.len != a.cols`
