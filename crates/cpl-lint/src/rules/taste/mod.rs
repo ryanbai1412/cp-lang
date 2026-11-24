@@ -11,7 +11,7 @@ use crate::Calls;
 use crate::{
     File, Finding, COPY_SORT_WRITEBACK, DISCARDED_RESULT, DOMAIN_SPELLING, FREE_FOLD,
     HAND_ROLLED_ANSWER_SEARCH, HAND_ROLLED_PREFIX_SUM, INDEX_ONLY_LOOP, LOOP_REDUCTION,
-    NONE_CHECK_UNWRAP, PUSH_LOOP, SEARCH_LOOP, SYMMETRIC_WRITE, TREE_ORDER,
+    NONE_CHECK_UNWRAP, PUSH_LOOP, SYMMETRIC_WRITE, TREE_ORDER,
 };
 use cpl_diag::msgs;
 use cpl_diag::{Diagnostic, Fix, Span};
@@ -240,7 +240,6 @@ impl<'a> Taste<'a> {
                 };
                 for form in acc.forms() {
                     match form {
-                        Form::Search => self.search(&acc, stmt, next),
                         Form::Fold { cond, op, value } => {
                             self.reduce(&acc, cond, op, value, stmt, next)
                         }
@@ -791,122 +790,6 @@ impl<'a> Taste<'a> {
             _ => (text(args[0].value.span), Vec::new()),
         };
         Some((text(list.span), text(indices[0].span), v, rest))
-    }
-
-    /// `var x = None` then a `for` that sets `x` and breaks: `first(..)`;
-    /// with `false`/`true` and `x = true`/`false`: `any(..)`/`all(..)`.
-    fn search(&mut self, acc: &AccLoop, decl: &Stmt, next: &Stmt) {
-        let AccLoop {
-            name,
-            init,
-            pat,
-            iter,
-            body,
-            ..
-        } = *acc;
-        let init_text = self.text(init.span);
-        let int_lit = |t: &str| {
-            let t = t.strip_prefix('-').unwrap_or(t);
-            !t.is_empty() && t.chars().all(|c| c.is_ascii_digit() || c == '_')
-        };
-        let sentinel = int_lit(init_text);
-        if !matches!(init_text, "None" | "none" | "false" | "true") && !sentinel {
-            return;
-        }
-        let exact = self.exact_search(name, init_text, pat, iter, body);
-        // A loop that also assigns other state (`psum += ..`, `tbl[r] = m`)
-        // is a walk with an early exit, not a search one call can say.
-        if exact.is_none() && !only_sets(&body.stmts, name) {
-            return;
-        }
-        // A sentinel start is a search only in the exact `if c: x = e; break` shape.
-        if sentinel && exact.is_none() {
-            return;
-        }
-        let (call, fix) = match exact {
-            Some((call, text)) => (call, Some(text)),
-            None => (
-                match init_text {
-                    "None" | "none" => std_fn::FIRST,
-                    "false" => std_fn::ANY,
-                    _ => std_fn::ALL,
-                },
-                None,
-            ),
-        };
-        let mut diag = (if breaks_after_setting(&body.stmts, name) { &msgs::lint::SEARCH_LOOP_BREAKS } else { &msgs::lint::SEARCH_LOOP_FIRST }).warning(self.pair_span(decl.span, next.span), &[&name])
-        .with_help(if let Some(text) = &fix {
-            let keep = if sentinel {
-                format!(", or keep the `?Int` `first` returns instead of the sentinel `{init_text}`")
-            } else {
-                String::new()
-            };
-            format!("write `{text}`; one call says the search, with no flag to set or `break` to forget{keep}")
-        } else if sentinel {
-            format!(
-                "say the search: `first(.. for .. in .. if ..) ?? {init_text}`, or keep the `?Int` it returns instead of the sentinel `{init_text}`"
-            )
-        } else if matches!(init_text, "None" | "none") {
-            "say the search: `first(.. for .. in .. if ..)`, or `.count(..)` to count".to_string()
-        } else {
-            format!("say the search: `xs.{call}(x => ..)`, or `.count(..)` to count")
-        });
-        // `let first = first(..)` would read itself.
-        let fix = fix.filter(|_| name != call);
-        if let Some(edits) = fix.and_then(|text| self.fold(init, next, call, text)) {
-            diag.fixes.push(Fix {
-                title: format!("use `{call}`"),
-                edits,
-            });
-        }
-        self.push(&SEARCH_LOOP, diag);
-    }
-
-    /// The rewrite of the loop that is only `if c: x = e; break`.
-    fn exact_search(
-        &self,
-        name: &str,
-        init: &str,
-        pat: &Pattern,
-        iter: &Expr,
-        body: &Block,
-    ) -> Option<(&'static str, String)> {
-        let (cond, value) =
-            forms::write_once(&body.stmts, name).or_else(|| forms::set_then_break(body, name))?;
-        let (p, it, c, v) = (
-            self.ntext(pat.span),
-            iter_text(iter, self.ntext(iter.span)),
-            self.ntext(cond.span),
-            self.ntext(value.span),
-        );
-        if mentions(c, name) || mentions(v, name) {
-            return None;
-        }
-        Some(match (init, v) {
-            ("None" | "none", _) => (std_fn::FIRST, format!("first({v} for {p} in {it} if {c})")),
-            (lit, _)
-                if forms::write_once(&body.stmts, name).is_none()
-                    && lit
-                        .trim_start_matches('-')
-                        .chars()
-                        .all(|ch| ch.is_ascii_digit() || ch == '_') =>
-            {
-                (
-                    std_fn::FIRST,
-                    format!("first({v} for {p} in {it} if {c}) ?? {lit}"),
-                )
-            }
-            ("false", "true") => (std_fn::ANY, format!("{}.any({p} => {c})", receiver(&it))),
-            ("true", "false") => {
-                let holds =
-                    negated(cond, |e| self.ntext(e.span)).unwrap_or_else(|| format!("not ({c})"));
-                (
-                    std_fn::ALL,
-                    format!("{}.all({p} => {holds})", receiver(&it)),
-                )
-            }
-            _ => return None,
-        })
     }
 
     /// `var xs = [..]` then a loop that only pushes onto `xs`.

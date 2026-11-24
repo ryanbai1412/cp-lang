@@ -163,6 +163,10 @@ pub fn count<S: Seq<T>, T>(self: S, p: T -> Bool = _ => true) -> Int:
 /// empty: `let a: List<Int> = []; not a.any(x => x > 0)`
 /// traps: never
 /// example: `[1, 2].any(x => x > 1) == true`
+@lint(search_loop, from: "var found = false\nfor y in self:\n    if c:\n        found = true\n        break", to: "let found = self.any(y => c)", holes: "c")
+@lint(search_loop, from: "var found = false\nfor y in self:\n    if c:\n        found = true", to: "let found = self.any(y => c)", holes: "c")
+@lint(search_loop, from: "var found = false\nfor y in self:\n    s\n    if c:\n        found = true\n        break", advice: "let found = self.any(y => c)", holes: "s, c")
+@lint(search_loop, from: "var found = false\nfor y in self:\n    if c:\n        found = true\n        break\n    s", advice: "let found = self.any(y => c)", holes: "s, c")
 pub fn any<S: Seq<T>, T>(self: S, p: T -> Bool) -> Bool:
     for x in self:
         if p(x): return true
@@ -174,6 +178,10 @@ pub fn any<S: Seq<T>, T>(self: S, p: T -> Bool) -> Bool:
 /// empty: `let a: List<Int> = []; a.all(x => x > 0) == true`
 /// traps: never
 /// example: `[1, 2].all(x => x > 1) == false`
+@lint(search_loop, from: "var found = true\nfor y in self:\n    if c:\n        found = false\n        break", to: "let found = self.all(y => not c)", holes: "c")
+@lint(search_loop, from: "var found = true\nfor y in self:\n    if c:\n        found = false", to: "let found = self.all(y => not c)", holes: "c")
+@lint(search_loop, from: "var found = true\nfor y in self:\n    s\n    if c:\n        found = false\n        break", advice: "let found = self.all(y => not c)", holes: "s, c")
+@lint(search_loop, from: "var found = true\nfor y in self:\n    if c:\n        found = false\n        break\n    s", advice: "let found = self.all(y => not c)", holes: "s, c")
 pub fn all<S: Seq<T>, T>(self: S, p: T -> Bool) -> Bool:
     for x in self:
         if not p(x): return false
@@ -250,6 +258,11 @@ pub fn map<S: Seq<T>, T, U>(self: S, f: T -> U) -> Mapped<S, T, U> = Mapped(self
 /// ties: `[(1, 'a'), (1, 'b')].first == Some((1, 'a'))`
 /// traps: never
 /// example: `[4, 5].first == Some(4)`
+@lint(search_loop, from: "var found: O = None\nfor y in self:\n    if c:\n        found = v\n        break", to: "let found: O = first(v for y in self if c)", holes: "O, c, v")
+@lint(search_loop, from: "var found: O = None\nfor y in self:\n    if c and found == None:\n        found = v", to: "let found: O = first(v for y in self if c)", holes: "O, c, v")
+@lint(search_loop, from: "var found = lit\nfor y in self:\n    if c:\n        found = v\n        break", to: "let found = first(v for y in self if c) ?? lit", holes: "c, v, lit", when: "lit >= -1000000000000000000")
+@lint(search_loop, from: "var found: O = None\nfor y in self:\n    s\n    if c:\n        found = v\n        break", advice: "let found: O = first(v for y in self if c)", holes: "O, s, c, v")
+@lint(search_loop, from: "var found: O = None\nfor y in self:\n    if c:\n        found = v\n        break\n    s", advice: "let found: O = first(v for y in self if c)", holes: "O, s, c, v")
 @get pub fn first<S: Seq<T>, T>(self: S) -> ?T:
     for x in self: return Some(x)
     None

@@ -1,7 +1,7 @@
 //! Loop forms (`plan/domains/lint-fmt/design/loop-forms.md`): what a loop
 //! does, found once so every loop-shaped lint reads the same answer.
 
-use super::{breaks_after_setting, pushed_onto, var_decl};
+use super::{pushed_onto, var_decl};
 use crate::std_fn;
 use crate::Calls;
 use cpl_syntax::ast::*;
@@ -21,8 +21,6 @@ pub(super) struct AccLoop<'a> {
 
 /// What an [`AccLoop`] does with its variable.
 pub(super) enum Form<'a> {
-    /// Some branch sets it and breaks: a search (L0501).
-    Search,
     /// The body is one assignment to it, maybe under one `if`: a fold (L0504).
     Fold {
         cond: Option<&'a Expr>,
@@ -69,20 +67,9 @@ impl<'a> AccLoop<'a> {
         })
     }
 
-    /// Every form the loop has, a search first.
+    /// Every form the loop has.
     pub(super) fn forms(&self) -> Vec<Form<'a>> {
-        let mut out = Vec::new();
-        let flips = |v: &Expr| match (&v.kind, &self.init.kind) {
-            (ExprKind::Bool(to), ExprKind::Bool(from)) => to != from,
-            _ => !matches!(v.kind, ExprKind::Bool(_)),
-        };
-        if breaks_after_setting(&self.body.stmts, self.name)
-            || write_once(&self.body.stmts, self.name).is_some_and(|(_, v)| flips(v))
-        {
-            out.push(Form::Search);
-        }
-        out.extend(self.single_write());
-        out
+        self.single_write().into_iter().collect()
     }
 
     /// A body that is one write to the variable, maybe under one `if`.
@@ -180,100 +167,6 @@ fn spelled_out<'a>(
         }
         _ => None,
     }
-}
-
-/// `if c: x = v; break` alone: `(c, v)`.
-pub(super) fn set_then_break<'e>(body: &'e Block, name: &str) -> Option<(&'e Expr, &'e Expr)> {
-    let [Stmt {
-        kind: StmtKind::Expr(e),
-        ..
-    }] = &body.stmts[..]
-    else {
-        return None;
-    };
-    let ExprKind::If {
-        branches,
-        otherwise: None,
-    } = &e.kind
-    else {
-        return None;
-    };
-    let [(Cond::Expr(cond), then)] = &branches[..] else {
-        return None;
-    };
-    let [Stmt {
-        kind:
-            StmtKind::Assign {
-                target,
-                op: AssignOp::Set,
-                value,
-            },
-        ..
-    }, Stmt {
-        kind: StmtKind::Break(None),
-        ..
-    }] = &then.stmts[..]
-    else {
-        return None;
-    };
-    if !matches!(&target.kind, ExprKind::Name(n) if n == name) {
-        return None;
-    }
-    Some((cond, value))
-}
-
-/// `if c: x = v` alone, no `break`, where only the first write counts: `v` is
-/// `true`/`false`, or `c` ends in `and x == none`. `(c without the guard, v)`.
-pub(super) fn write_once<'e>(stmts: &'e [Stmt], name: &str) -> Option<(&'e Expr, &'e Expr)> {
-    let [Stmt {
-        kind:
-            StmtKind::Expr(Expr {
-                kind:
-                    ExprKind::If {
-                        branches,
-                        otherwise: None,
-                    },
-                ..
-            }),
-        ..
-    }] = stmts
-    else {
-        return None;
-    };
-    let [(Cond::Expr(cond), then)] = &branches[..] else {
-        return None;
-    };
-    let [Stmt {
-        kind:
-            StmtKind::Assign {
-                target,
-                op: AssignOp::Set,
-                value,
-            },
-        ..
-    }] = &then.stmts[..]
-    else {
-        return None;
-    };
-    if !matches!(&target.kind, ExprKind::Name(n) if n == name) {
-        return None;
-    }
-    if matches!(value.kind, ExprKind::Bool(_)) {
-        return Some((cond, value));
-    }
-    let ExprKind::Binary {
-        op: BinOp::And,
-        lhs,
-        rhs,
-        ..
-    } = &cond.kind
-    else {
-        return None;
-    };
-    let unset = matches!(&rhs.kind, ExprKind::Compare { first, rest }
-        if matches!(&first.kind, ExprKind::Name(n) if n == name)
-            && matches!(&rest[..], [(CmpOp::Eq, v)] if matches!(v.kind, ExprKind::None)));
-    unset.then_some((&**lhs, value))
 }
 
 /// `xs.rev.collect()` when a loop over `0..N` pushes `xs[N - 1 - i]`.

@@ -24,11 +24,6 @@ fn search_loops_newcomers_write_from_corpus_newcomer() {
     // n45: a sentinel start keeps its value as the default.
     let sentinel = "let a = [1, 0]\nvar found = -1\nfor i in 0..2:\n    if a[i] == 0:\n        found = i\n        break\nprint(found)\n";
     assert!(fixed(sentinel).contains("let found = first(i for i in 0..2 if a[i] == 0) ?? -1"));
-    assert!(only(sentinel)
-        .help
-        .as_deref()
-        .unwrap()
-        .contains("keep the `?Int`"));
     // n12: `and x == None` is a first match; a variable named `first` gets no fix.
     let guard = "let a = [1, 2]\nvar at: ?Int = None\nfor x in a:\n    if x % 2 == 0 and at == None:\n        at = x\nprint(at ?? -1)\n";
     assert!(
@@ -143,16 +138,8 @@ fn a_push_loop_that_walks_backwards_is_rev() {
 fn search_loop_help_is_the_exact_call_from_ports() {
     // corpus/problems/cco24p2: the help names the call the fix writes, with the test flipped.
     let flipped = "let a = [1, 2]\nlet b = [2, 1]\nvar same = true\nfor i in 0..2:\n    if a[i] != b[1 - i]: same = false\nprint(same)\n";
-    let helps: Vec<String> = lint(flipped, &Config::default())
-        .into_iter()
-        .filter_map(|d| d.help)
-        .collect();
-    assert!(
-        helps
-            .iter()
-            .any(|h| h.starts_with("write `(0..2).all(i => a[i] == b[1 - i])`")),
-        "{helps:?}"
-    );
+    let fix = only(flipped).fixes[0].edits[0].1.clone();
+    assert_eq!(fix, "let same = (0..2).all(i => a[i] == b[1 - i])");
     // A postfix receiver takes the method bare; `not not x` is `x`.
     let src = "let adj = [[1], [0]]\nlet vis = [true, false]\nvar has = false\nfor w in adj[0]:\n    if w == 1: has = true\nvar seen = true\nfor u in 0..2:\n    if not vis[u]: seen = false\nprint(has, seen)\n";
     let fixed = fixed(src);
