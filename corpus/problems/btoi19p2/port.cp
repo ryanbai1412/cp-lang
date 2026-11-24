@@ -1,4 +1,5 @@
 // Source: Baltic OI 2019 P2 (Nautilus), https://dmoj.ca/problem/btoi19p2
+// limits: 1000 ms, 256 MB
 // Problem: an R x C map (R, C <= 500) of water '.' and island '#', and M <= 5000 signals, each
 //   N, E, S, W or '?' (any of the four). A submarine started on some water cell and made one move
 //   per signal, always on water. Print how many cells it can be in now.
