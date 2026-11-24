@@ -670,7 +670,7 @@ pub fn scc<V>(g: Next<V>) -> (domain C, comp: [V]C):
 /// traps: never
 /// example: `domain V = 0..3; directed_of_pairs([(V(0), V(2)), (V(0), V(1))]).next(0).collect() == [2, 1]`
 pub fn directed_of_pairs<V: Domain>(edges: List<(V, V)>) -> Graph<V, V>:
-    var start: [V.cuts]Int = 0
+    var start: [V.cuts]Len = 0
     for (u, _) in edges: start[u.ord] += 1
     for i in 1..start.len: start[i] += start[i - 1]
     var arcs = List<V>()
@@ -691,7 +691,7 @@ pub fn directed_of_pairs<V: Domain>(edges: List<(V, V)>) -> Graph<V, V>:
 /// traps: never
 /// example: `domain V = 0..3; undirected_of_pairs([(V(0), V(1)), (V(1), V(2))]).next(1).collect() == [0, 2]`
 pub fn undirected_of_pairs<V: Domain>(edges: List<(V, V)>) -> Graph<V, V>:
-    var start: [V.cuts]Int = 0
+    var start: [V.cuts]Len = 0
     for (u, v) in edges:
         start[u.ord] += 1
         start[v.ord] += 1
