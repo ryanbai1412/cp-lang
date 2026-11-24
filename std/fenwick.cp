@@ -54,6 +54,7 @@ pub struct Fenwick<D, T: Add + Sub>:
     /// traps: never (`b` is a cut of `D` by type)
     /// example: `Fenwick([1, 2, 3]).prefix((0..2).r) == 3`
     /// example: `Fenwick([1, 2, 3]).prefix((0..0).r) == 0`
+    @lint(hand_rolled_range_tree, from: "while b > 0:\n    s += t[b]\n    b -= b & -b", to: "s += t.prefix(b)", holes: "s, t")
     pub fn prefix(self, b: Cut<D>) -> T:
         var p = b.ord
         var acc = T.zero
@@ -448,6 +449,7 @@ pub struct XorFenwick<D, T>:
     /// cost: \(O(\log \lvert D \rvert)\)
     /// traps: never (`b` is a cut of `D` by type)
     /// example: `XorFenwick([1, 2, 4]).prefix((0..2).r) == 3`
+    @lint(hand_rolled_range_tree, from: "while b > 0:\n    s += t[b]\n    b -= b & -b", to: "s += t.prefix(b)", holes: "s, t")
     pub fn prefix(self, b: Cut<D>) -> T:
         var p = b.ord
         var acc = T.zero

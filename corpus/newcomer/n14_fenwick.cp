@@ -9,7 +9,7 @@ fn add(i0: Int):
 fn query(i0: Int) -> Int:
     var i = i0
     var s = 0
-    while i > 0:
+    while i > 0:  // expect: hand_rolled_range_tree
         s += bit[i]
         i -= i & -i
     return s

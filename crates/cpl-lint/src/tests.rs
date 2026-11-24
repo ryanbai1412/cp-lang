@@ -845,6 +845,13 @@ fn prefix_fix_never_calls_the_fn_it_is_in() {
 }
 
 #[test]
+fn a_method_fix_fires_in_a_fn_named_like_the_method() {
+    // corpus/newcomer/n14_fenwick: `bit.add(i, 1)` calls Fenwick's method, not the user's own `add`.
+    let own = "var bit: [0..=8]Int = 0\nfn add(i0: Int):\n    var i = i0\n    while i <= 8:\n        bit[i] += 1\n        i += i & -i\nadd(1)\nprint(bit[1])\n";
+    assert!(codes(own).contains(&"L0514"), "{:?}", codes(own));
+}
+
+#[test]
 fn a_reduction_s_own_body_is_the_loop_it_names() {
     let own = "fn sum(xs: List<Int>) -> Int:\n    var out = 0\n    for x in xs: out += x\n    out\nprint(sum([1, 2]))\n";
     assert!(!codes(own).contains(&"L0504"), "{:?}", codes(own));

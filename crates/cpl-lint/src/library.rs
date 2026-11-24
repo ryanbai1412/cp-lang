@@ -535,7 +535,8 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
             let span = Span::new(site[0].start, toks[stop - 1].span.end);
             if (d.module.is_empty() && d.decl.item.contains(span))
                 || taken.iter().any(|t| t.contains(span))
-                || (spans.fns.iter()).any(|(f, at)| *f == d.decl.fn_name && at.contains(span))
+                || (d.decl.receiver.is_none()
+                    && (spans.fns.iter()).any(|(f, at)| *f == d.decl.fn_name && at.contains(span)))
             {
                 continue;
             }
