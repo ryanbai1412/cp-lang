@@ -1,9 +1,9 @@
 # cco18p1
 
-Score: 3/5
+Score: 2/5
 Dream: 4/5
 
-The LCS-style DP from the header with rolling rows over `Game.cuts`: pair the two last games when they are rivals, or skip either. Clear, but the W/L strings are indexed by `.ord` while the scores are indexed by `Game`, and today's language already removes that.
+The LCS-style DP from the header with rolling rows over `Game.cuts`: pair the two last games when they are rivals, or skip either. Clear, but the W/L strings are indexed by `.ord` while the scores are indexed by `Game`, and today's language already removes that: the friction's own ideal, a `[Game]Char` read, runs.
 
 ## Checklist failures
 

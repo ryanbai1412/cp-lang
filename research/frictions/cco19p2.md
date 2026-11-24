@@ -28,3 +28,15 @@ column's lowest '#' (seeded with its height), so there is no floor node.
 30 random cases agree with the v0.2 snapshot and 30 with the accepted C++. Corpus tests pass;
 the 1000 x 1000 max runs in 0.10 s. On 1e6 x 1 it matches the accepted C++; on 1 x 1e6 the
 accepted C++ overflows its stack and the port prints the grid unchanged, as it should.
+
+## `components` rejects a product domain
+- **Where:** `var objects = Dsu<Cell>()` and the `unite` loop, in place of the dream's `components`.
+- **What felt wrong:** under `cpl run` (0.2), `domain Row = 0..2; domain Col = 0..2;
+  domain Cell = (Row, Col); let (domain Shape, shape) = components([Cell] p => [q for q in p.adj4])`
+  fails with `error[E0302]: components (std.graph) needs a domain for V, and List<(Row, Col)> is
+  not one`: the adjacency table over a product domain is not seen as a graph on `Cell`.
+- **Goal it hurts:** express (objects stay named by a root `Cell`, not a `Shape` domain).
+- **Ideal code:** `let (domain Shape, shape) = components([Cell] p => [q for q in p.adj4 if g[p] == '#' and g[q] == '#'])`.
+- **General fix:** let `components` take `[D]List<D>` for any domain `D`, products included.
+- **Severity:** low
+- **Owner domain:** stdlib
