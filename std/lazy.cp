@@ -1096,20 +1096,20 @@ pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>):
     rev: List<Bool>
     var root: Int
     rng: Rng
+    free: List<Int>
 
     /// The sequence `xs` folded with `op`, a bare operator (`+`, `*`, `min`, `max`, ...) or a
     /// `Monoid(id, op)`, which need not commute. `act:` adds range tags (`apply`), such as
     /// `flip_action(op)` or an `Action` of your own over the same monoid.
     ///
-    /// cost: \(O(n \log n)\) expected
+    /// cost: \(O(n)\) expected
     /// empty: `SeqFold<Str>(Monoid("", (a, b) => a + b), []).total == ""`
     /// traps: never
     /// example: `SeqFold<Int>(+, [1, 2, 3]).total == 6`
     /// example: `SeqFold<Int>(+).total == 0`
     pub fn new<M>(op: M, xs: List<T> = [], act: ?Action<T, F> = None) -> SeqFold<T, F>:
-        let m = Monoid<T>.of(op)
-        var s = SeqFold<T, F>(m, act, [0], [0], [0], [0], [m.id], [m.id], [m.id], [None], [false], 0, Rng(48))
-        for x in xs: s.push(x)
+        var s = SeqFold<T, F>.blank(Monoid<T>.of(op), act)
+        s.root = s.build(xs)
         s
 
     /// The number of elements.
@@ -1170,6 +1170,68 @@ pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>):
     /// cost: \(O(\log n)\) expected
     /// traps: when `pos < 0` or `pos >= len`
     /// example: `var s = SeqFold<Int>(+, [1, 2, 3]); s.reverse(0..3); s.get(0) == 3`
+    /// Insert `xs`, in order, before position `pos` (`pos == len` appends): they take positions
+    /// `pos..pos + xs.len` and later elements move up by `xs.len`.
+    ///
+    /// cost: \(O(k + \log n)\) expected for `k` new elements
+    /// empty: `var s = SeqFold<Int>(+, [1, 2]); s.insert_many(1, []); s.items.collect() == [1, 2]`
+    /// traps: when `pos < 0` or `pos > len`
+    /// example: `var s = SeqFold<Int>(+, [1, 2]); s.insert_many(1, [7, 8, 9]); s.items.collect() == [1, 7, 8, 9, 2] and s.fold(1..4) == 24`
+    pub fn insert_many(mut self, pos: Int, xs: List<T>):
+        assert 0 <= pos <= self.len, "`insert_many` position out of range"
+        let (a, b) = self.cut(root, pos)
+        root = self.join(self.join(a, self.build(xs)), b)
+
+    /// Remove the elements at positions `r`; later elements move down by `r.len`. Their nodes are
+    /// reused by later inserts, so memory follows the live length.
+    ///
+    /// cost: \(O(\lvert r \rvert + \log n)\) expected
+    /// empty: `var s = SeqFold<Int>(+, [1, 2]); s.erase_range(1..1); s.items.collect() == [1, 2]`
+    /// traps: when a non-empty `r` reaches outside `0..len`
+    /// example: `var s = SeqFold<Int>(+, [1, 2, 3, 4]); s.erase_range(1..3); s.items.collect() == [1, 4] and s.total == 5`
+    pub fn erase_range(mut self, r: Range<Int>):
+        let (lo, hi) = (r.start, r.start + r.len)
+        if lo == hi: return
+        assert 0 <= lo <= hi <= self.len, "`erase_range` out of range"
+        let (a, bc) = self.cut(root, lo)
+        let (b, c) = self.cut(bc, hi - lo)
+        self.recycle(b)
+        root = self.join(a, c)
+
+    /// Split off the elements at positions `k..len` into a new sequence with the same monoid and
+    /// action, and return it; `self` keeps positions `0..k`. Pending tags and reversals are
+    /// applied to the moved elements.
+    ///
+    /// cost: \(O(\mathit{len} - k + \log n)\) expected
+    /// empty: `var s = SeqFold<Int>(+, [1, 2]); let t = s.split_at(2); t.is_empty and s.len == 2`
+    /// traps: when `k < 0` or `k > len`
+    /// example: `var s = SeqFold<Int>(+, [1, 2, 3]); let t = s.split_at(1); s.items.collect() == [1] and t.items.collect() == [2, 3] and t.total == 5`
+    pub fn split_at(mut self, k: Int) -> SeqFold<T, F>:
+        assert 0 <= k <= self.len, "`split_at` position out of range"
+        let (a, b) = self.cut(root, k)
+        var moved: List<T> = []
+        self.emit(b, None, false, mut moved)
+        self.recycle(b)
+        root = a
+        var out = SeqFold<T, F>.blank(m, act)
+        out.root = out.build(moved)
+        out
+
+    /// Move every element of `other` into `self` before position `pos`, in order, leaving `other`
+    /// empty. `self`'s monoid and action are kept.
+    ///
+    /// cost: \(O(m + \log n)\) expected for `m` moved elements
+    /// empty: `var s = SeqFold<Int>(+, [1, 2]); var t = SeqFold<Int>(+); s.splice(1, mut t); s.items.collect() == [1, 2]`
+    /// traps: when `pos < 0` or `pos > len`
+    /// example: `var s = SeqFold<Int>(+, [1, 2]); var t = SeqFold<Int>(+, [5, 6]); s.splice(1, mut t); s.items.collect() == [1, 5, 6, 2] and t.is_empty`
+    pub fn splice(mut self, pos: Int, mut other: SeqFold<T, F>):
+        assert 0 <= pos <= self.len, "`splice` position out of range"
+        var moved: List<T> = []
+        other.emit(other.root, None, false, mut moved)
+        other.recycle(other.root)
+        other.root = 0
+        self.insert_many(pos, moved)
+
     pub fn get(mut self, pos: Int) -> T:
         assert 0 <= pos < self.len, "`get` position out of range"
         self.fold(pos..pos + 1)
@@ -1235,7 +1297,48 @@ pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>):
         out.push(if let a = act: (if let h = f: a.apply(h, val[u], 1) else: val[u]) else: val[u])
         self.emit(second, g, r, mut out)
 
+    fn blank(m: Monoid<T>, act: ?Action<T, F>) -> SeqFold<T, F> =
+        SeqFold<T, F>(m, act, [0], [0], [0], [0], [m.id], [m.id], [m.id], [None], [false], 0, Rng(48), [])
+
+    // A treap of `xs` in order, in O(len): a Cartesian-tree stack keeps the right spine, so each
+    // new node takes the run it pops as its left child.
+    fn build(mut self, xs: List<T>) -> Int:
+        var spine: List<Int> = []
+        for x in xs:
+            let u = self.leaf(x)
+            var below = 0
+            while not spine.is_empty and pri[spine.last!] > pri[u]:
+                below = spine.pop()!
+                self.pull(below)
+            lc[u] = below
+            if not spine.is_empty: rc[spine.last!] = u
+            spine.push(u)
+        var top = 0
+        while let u = spine.pop():
+            self.pull(u)
+            top = u
+        top
+
+    fn recycle(mut self, u: Int):
+        var todo = [u]
+        while let x = todo.pop():
+            if x != 0:
+                todo.push(lc[x])
+                todo.push(rc[x])
+                free.push(x)
+
     fn leaf(mut self, x: T) -> Int:
+        if let u = free.pop():
+            lc[u] = 0
+            rc[u] = 0
+            pri[u] = Int(rng.next() >> 33)
+            sz[u] = 1
+            val[u] = x
+            fwd[u] = x
+            bwd[u] = x
+            tag[u] = None
+            rev[u] = false
+            return u
         lc.push(0)
         rc.push(0)
         pri.push(Int(rng.next() >> 33))
