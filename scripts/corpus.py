@@ -1172,6 +1172,10 @@ def cli(argv):
     m.add_argument("--out")
     sd = sub.add_parser("seed")
     sd.add_argument("ids", nargs="*")
+    ls = sub.add_parser("ls", help="print each package's dir, or its FILE, relative to the repo root")
+    ls.add_argument("ids", nargs="*")
+    ls.add_argument("--set", action="append")
+    ls.add_argument("--file", help="a package file such as port.cp; packages without it are left out")
     g = sub.add_parser("gaps")
     g.add_argument("paths", nargs="*")
     g.add_argument("--json", action="store_true")
@@ -1186,7 +1190,18 @@ def cli(argv):
         return seed(args)
     if args.mode == "gaps":
         return gaps(args)
+    if args.mode == "ls":
+        return ls_mode(args)
     return main(args.mode)
+
+
+def ls_mode(args):
+    """The one corpus listing other languages' tools read: one path per line."""
+    for pkg in problems(args.set, args.ids):
+        path = pkg.dir / args.file if args.file else pkg.dir
+        if path.exists():
+            print(os.path.relpath(path, ROOT))
+    return 0
 
 
 def toolchain(argv):

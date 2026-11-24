@@ -202,6 +202,19 @@ class CompareTest(unittest.TestCase):
         self.assertIn("interp exit 3, c++ exit 0, interp stderr b'error[R0001]: internal: lost frame | at 4:2'", why)
 
 
+class LsTest(Corpus):
+    def test_lists_dirs_or_one_file_per_package(self):
+        self.package("p1", port_cp="")
+        self.package("p2")
+        for argv, want in ((["ls"], ["p1", "p2"]), (["ls", "--file", "port.cp"], ["p1/port.cp"]),
+                           (["ls", "--set", "small"], ["p2"])):
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                self.assertEqual(corpus.cli(argv), 0)
+            got = [os.path.relpath(os.path.join(corpus.ROOT, l), self.root / "problems") for l in out.getvalue().split()]
+            self.assertEqual(got, want)
+
+
 class InteractedTest(Corpus):
     """An interactive package: both sides judged by interactor.py, never fed the case."""
 
