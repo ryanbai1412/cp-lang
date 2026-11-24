@@ -875,7 +875,6 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-
     /// Every position of a domain, first to last, as a list.
     pub(in crate::lower) fn positions(&mut self, d: DomainId, span: Span) -> Expr {
         let list_ty = Ty::list(Ty::Pos(d));
@@ -966,7 +965,6 @@ impl<'a> Lowerer<'a> {
         };
         self.walked_list(iter, elem, span)
     }
-
 
     /// The spec of a type that says everything `read()` needs on its own.
     /// `read_output()` of a value laid out as `spec`: a `read()` from

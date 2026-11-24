@@ -210,7 +210,9 @@ impl Prim {
             Prim::Clz => "the 0 bits above the highest 1 bit, 64 for 0; one `lzcnt` with lzcnt",
             Prim::BitWidth => "the bits needed to write the word, 0 for 0",
             Prim::BitCeil => "the smallest power of two at least the value; traps above 2^62",
-            Prim::Sort => "the built-in stable sort of the place (`cpl::sort_by`), each key worked out once",
+            Prim::Sort => {
+                "the built-in stable sort of the place (`cpl::sort_by`), each key worked out once"
+            }
         }
     }
 
@@ -382,7 +384,10 @@ mod tests {
             assert_eq!(e.result() == "()", place, "{}", e.id());
         }
         assert_eq!(Prim::from_id("sort").map(Prim::kind), Some(Kind::Place));
-        assert_eq!(Prim::Sort.cpp("List", &["xs".into(), "by".into()]), "cpl::sort_by(xs, by, false)");
+        assert_eq!(
+            Prim::Sort.cpp("List", &["xs".into(), "by".into()]),
+            "cpl::sort_by(xs, by, false)"
+        );
     }
 
     #[test]

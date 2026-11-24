@@ -1058,7 +1058,12 @@ pub(crate) fn keeps_len(method: &str) -> bool {
         .flat_map(builtin_members)
         .filter(|m| m.name == method)
         .peekable();
-    members.peek().is_some() && members.all(|m| !m.mutates || IN_PLACE.contains(&m.name))
+    if members.peek().is_none() {
+        // A std fn over `self` changes it only through `mut self`.
+        let std = cpl_check::std_self_mutates().get(method);
+        return std.is_some_and(|&m| !m || IN_PLACE.contains(&method));
+    }
+    members.all(|m| !m.mutates || IN_PLACE.contains(&m.name))
 }
 
 /// A range type found in a written type by the type the checker gave it,

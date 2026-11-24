@@ -31,7 +31,7 @@ const BAG_OPS = ["none", "add", "remove", "clear"]
 ///
 /// Elements are ordered by `K`'s `<`; copies of one key are equal and indistinguishable, so
 /// no method here has a tie to break between them. `n` in every cost is `len`.
-pub struct SortedBag<K>:
+pub struct SortedBag<K: Ord>:
     var keys: List<K>
     var ws: List<Int>
     // Per node: fill, next leaf, previous leaf, and its block in `kids` (or -1).

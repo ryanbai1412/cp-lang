@@ -36,10 +36,10 @@ mod std_files;
 mod ty;
 
 pub use builtins::{
-    builtin_member, builtin_members, char_literal, foreign_iter_call, foreign_member,
-    foreign_str_fn, is_member, list_end_help, needs_order, optional_member, prelude_names,
-    split_params as split_builtin_params, BuiltinMember, BuiltinType, MemberKind, PreludeKind,
-    Receiver, BUILTIN_MEMBERS, BUILTIN_TYPES, DOMAIN_MEMBERS, ITERATOR_POSITION_HELP,
+    array_as_fn_read, builtin_member, builtin_members, char_literal, foreign_iter_call,
+    foreign_member, foreign_str_fn, is_member, list_end_help, needs_order, optional_member,
+    prelude_names, split_params as split_builtin_params, BuiltinMember, BuiltinType, MemberKind,
+    PreludeKind, Receiver, BUILTIN_MEMBERS, BUILTIN_TYPES, DOMAIN_MEMBERS, ITERATOR_POSITION_HELP,
     OPTIONAL_MEMBERS, OPTIONAL_UNWRAP_HELP, POS_MEMBERS, RANGE_MEMBERS,
 };
 pub use check::{closest, GlobalRef, HoverEntry, Resolved, TypedIndex};
@@ -58,8 +58,8 @@ pub use overflow::Overflow;
 pub use prelude::{
     arity_key, import_edit, labels_fit, method_key, method_module, methods as std_methods,
     overload_key, overload_part, required_labels, set_domain, std_family, std_module, std_names,
-    std_self_heads, ty as prelude_type, type_arity, word_type, written_name, SetDomain,
-    VALUE_NAMES as PRELUDE_VALUES,
+    std_self_heads, std_self_mutates, ty as prelude_type, type_arity, word_type, written_name,
+    SetDomain, VALUE_NAMES as PRELUDE_VALUES,
 };
 pub use session::{open, Libraries, Revision, Session, SessionOptions, StdSource};
 pub use ty::{human_bytes, Param, Ty};

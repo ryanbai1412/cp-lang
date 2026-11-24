@@ -1131,6 +1131,12 @@ fn members_of_ty(cursor: &Cursor, std: &mut StdLib, ty: &Ty) -> Vec<(Entry, u8)>
         };
         if seen.insert(entry.name.clone()) {
             out.push((entry, sort));
+        } else if let Some((first, _)) = (out.iter_mut())
+            .find(|(e, _)| e.name == entry.name && e.kind == entry.kind)
+            .filter(|(e, _)| !e.detail.lines().any(|l| l == entry.detail))
+        {
+            // R06.1.6: an overloaded std fn shows every overload.
+            first.detail = format!("{}\n{}", first.detail, entry.detail);
         }
     }
     out
@@ -1193,7 +1199,8 @@ fn std_methods(cursor: &Cursor, std: &mut StdLib) -> Vec<Entry> {
             continue;
         };
         let outline = std.outline_of(&module.path, module.analysis.text.clone());
-        if let Some(entry) = outline.find(&import.name) {
+        // R06.1.6: every overload of the name.
+        for entry in (outline.entries.iter()).filter(|e| e.name == import.name) {
             if entry.kind == Kind::Fn && entry.public {
                 let mut entry = entry.clone();
                 entry.name = local.clone();
@@ -1208,7 +1215,7 @@ fn std_methods(cursor: &Cursor, std: &mut StdLib) -> Vec<Entry> {
         let Some(outline) = std.module(cursor.uri, &module.join(".")) else {
             continue;
         };
-        if let Some(entry) = outline.find(&name.text) {
+        for entry in (outline.entries.iter()).filter(|e| e.name == name.text) {
             if entry.kind == Kind::Fn && entry.public {
                 let mut entry = entry.clone();
                 entry.kind = Kind::Method;

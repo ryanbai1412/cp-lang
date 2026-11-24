@@ -738,11 +738,12 @@ impl<'a> Checker<'a> {
         let place = p.kind() == cpl_rt::Kind::Place;
         let params_fit = f.params.len() == p.params().len()
             && (f.params.iter().zip(p.params()).enumerate()).all(|(i, (param, want))| {
-                self.local(&param.name.text).is_some_and(|l| match (place, i) {
-                    (true, 0) => param.mutable,
-                    (true, _) => matches!(l.ty, Ty::Fn { .. }),
-                    _ => fits(&l.ty, want),
-                })
+                self.local(&param.name.text)
+                    .is_some_and(|l| match (place, i) {
+                        (true, 0) => param.mutable,
+                        (true, _) => matches!(l.ty, Ty::Fn { .. }),
+                        _ => fits(&l.ty, want),
+                    })
             });
         if !params_fit || !fits(ret, p.result()) {
             self.report(

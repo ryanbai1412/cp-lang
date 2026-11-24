@@ -235,6 +235,31 @@ pub fn std_self_heads() -> &'static crate::names::NameMap<Vec<Option<String>>> {
     HEADS.get_or_init(|| self_heads(crate::modules::std_index()))
 }
 
+/// Whether a top-level std fn `name` taking `self` may change it: `true`
+/// when some overload takes `mut self`. Absent when none takes `self`.
+pub fn std_self_mutates() -> &'static crate::names::NameMap<bool> {
+    static MUTATES: OnceLock<crate::names::NameMap<bool>> = OnceLock::new();
+    MUTATES.get_or_init(|| {
+        let mut out: crate::names::NameMap<bool> = Default::default();
+        for line in (crate::modules::std_index().iter()).flat_map(|(_, t)| t.lines()) {
+            let Some(rest) = line.strip_prefix("pub fn ") else {
+                continue;
+            };
+            let name: String = (rest.chars())
+                .take_while(|c| c.is_alphanumeric() || *c == '_')
+                .collect();
+            let Some((_, params)) = rest.split_once('(') else {
+                continue;
+            };
+            let mutates = params.starts_with("mut self:");
+            if mutates || params.starts_with("self:") {
+                *out.entry(name).or_default() |= mutates;
+            }
+        }
+        out
+    })
+}
+
 fn self_heads(std: Std) -> crate::names::NameMap<Vec<Option<String>>> {
     let mut heads: crate::names::NameMap<Vec<Option<String>>> = Default::default();
     for (_, text) in std {
@@ -335,8 +360,8 @@ fn self_methods_in(text: &str) -> SelfMethods {
             }
             let getter = stmt.decorators.iter().any(|d| d.name.text == "get");
             // An overload a label picks (R06.1.6) isn't what a bare `x.name` reads.
-            let labelled = (f.params[1..].iter())
-                .any(|p| p.named_only && p.default.is_none() && !p.variadic);
+            let labelled =
+                (f.params[1..].iter()).any(|p| p.named_only && p.default.is_none() && !p.variadic);
             if labelled && !getter {
                 continue;
             }

@@ -12,9 +12,20 @@ impl<'a> Lowerer<'a> {
         let target = self.local(0, span);
         let func = self.local(1, span);
         let is_order = matches!(&func.ty, Ty::Fn(ps, ret) if ps.len() == 2 && **ret == Ty::Bool);
-        let place = Place { kind: PlaceKind::Local(0), ty: target.ty, span };
+        let place = Place {
+            kind: PlaceKind::Local(0),
+            ty: target.ty,
+            span,
+        };
         let kind = match p {
-            Prim::Sort => ExprKind::Sort(Box::new(place), SortBy::Fn { func: Box::new(func), is_order }, None),
+            Prim::Sort => ExprKind::Sort(
+                Box::new(place),
+                SortBy::Fn {
+                    func: Box::new(func),
+                    is_order,
+                },
+                None,
+            ),
             _ => ExprKind::Intrinsic(p, Vec::new()),
         };
         self.mk(kind, Ty::Unit, span)

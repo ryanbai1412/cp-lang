@@ -4,7 +4,6 @@ use super::*;
 use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
-
     pub(in crate::lower) fn array_filled(
         &mut self,
         index: &[ast::Expr],

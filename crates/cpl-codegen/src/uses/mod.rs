@@ -14,6 +14,7 @@ pub(crate) mod message;
 pub(crate) mod places;
 pub(crate) mod rows;
 pub(crate) mod sinks;
+pub(crate) mod spliced;
 pub(crate) mod split;
 pub(crate) mod walked;
 

@@ -389,6 +389,9 @@ impl<'a> Checker<'a> {
             if let (true, Ty::Pos(domain)) = (got.is_int(), want) {
                 diag.help = Some(format!("convert it with `{domain}({quoted})`"));
                 diag.fixes.push(convert_to(domain, at.span));
+            } else if let Some((help, fix)) = array_as_fn(got, want, &quoted, at.span) {
+                diag.help = Some(help);
+                diag.fixes.push(fix);
             } else if let Some(help) = rename_fields(got, want) {
                 diag.help = Some(help);
             } else if let Some((help, fix)) = struct_of_tuple {
@@ -592,6 +595,23 @@ impl Checker<'_> {
 }
 
 /// Wraps the number at `span` in `domain(...)`, the checked conversion.
+/// Decision 634: a 1D `[D]T` where a one-parameter fn is wanted is a key
+/// written as an array; the fix reads it in a fn.
+fn array_as_fn(got: &Ty, want: &Ty, quoted: &str, span: Span) -> Option<(String, cpl_diag::Fix)> {
+    let (Ty::Array { index, .. }, Ty::Fn { params, .. }) = (got, want) else {
+        return None;
+    };
+    if index.len() != 1 || params.len() != 1 {
+        return None;
+    }
+    let (help, read) = crate::array_as_fn_read(quoted);
+    let fix = cpl_diag::Fix {
+        title: format!("write `{read}`"),
+        edits: vec![(span, read)],
+    };
+    Some((help, fix))
+}
+
 pub(super) fn convert_to(domain: &str, span: Span) -> cpl_diag::Fix {
     cpl_diag::Fix {
         title: format!("convert with `{domain}(...)`"),

@@ -156,12 +156,34 @@ fn overloads(cursor: &Cursor, std: &mut StdLib, callee_end: usize, name: &str) -
     let start = (callee_end - name.len()) as u32;
     let is_fn = |e: &Entry| e.name == name && matches!(e.kind, Kind::Fn | Kind::Method);
     let found: Vec<Entry> = if cursor.analysis.text[..start as usize].ends_with('.') {
-        receiver_type(cursor, start - 1).map_or(Vec::new(), |ty| {
-            (members_of_ty(cursor, std, &ty).into_iter())
-                .map(|(e, _)| e)
-                .filter(is_fn)
-                .collect()
-        })
+        let Some(ty) = receiver_type(cursor, start - 1) else {
+            return Vec::new();
+        };
+        // A receiver's own member, `Set.sorted`, is the one it means.
+        let own: Vec<Entry> = (own_members_of_ty(cursor, std, &ty).into_iter())
+            .map(|(e, _)| e)
+            .filter(is_fn)
+            .collect();
+        if !own.is_empty() {
+            return own;
+        }
+        // A std fn over `self`: each overload once (imports and the prelude both list it).
+        let mut from_std: Vec<Entry> = Vec::new();
+        for e in std_methods(cursor, std).into_iter().filter(is_fn) {
+            if from_std.iter().all(|f| f.detail != e.detail) {
+                from_std.push(e);
+            }
+        }
+        let members: Vec<Entry> = (members_of_ty(cursor, std, &ty).into_iter())
+            .map(|(e, _)| e)
+            .filter(is_fn)
+            .collect();
+        // A library type's own method, `Prefix.fold`, is the one it means.
+        let std_fn = |m: &Entry| (m.detail.lines()).all(|l| from_std.iter().any(|f| f.detail == l));
+        if from_std.len() > 1 && members.first().is_none_or(std_fn) {
+            return from_std;
+        }
+        members
     } else {
         (outline_of(cursor.analysis).entries.iter())
             .filter(|e| is_fn(e))
@@ -178,7 +200,13 @@ fn overloads(cursor: &Cursor, std: &mut StdLib, callee_end: usize, name: &str) -
         .collect();
     let from_std: Vec<Entry> = (modules.iter())
         .filter_map(|m| std.module(cursor.uri, m))
-        .flat_map(|o| o.entries.iter().filter(|e| is_fn(e)).cloned().collect::<Vec<_>>())
+        .flat_map(|o| {
+            o.entries
+                .iter()
+                .filter(|e| is_fn(e))
+                .cloned()
+                .collect::<Vec<_>>()
+        })
         .collect();
     match from_std.len() > 1 {
         true => from_std,

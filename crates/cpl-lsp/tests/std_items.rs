@@ -523,11 +523,13 @@ fn run(lsp: &mut Lsp, case: &Case, uri: &str, tally: &mut Tally) {
             let sig = lsp.ask("textDocument/signatureHelp", uri, &written, cursor);
             lsp.close(uri);
             lsp.open(uri, text);
+            // R06.1.6: the overload the written labels fit.
+            let chosen = sig.at(&["activeSignature"]).as_u32().unwrap_or(0) as usize;
             let first = &sig
                 .at(&["signatures"])
                 .as_array()
                 .unwrap_or(&[])
-                .first()
+                .get(chosen)
                 .cloned();
             let shown = first.as_ref().and_then(|s| {
                 let chars: Vec<char> = s.at(&["label"]).as_str()?.chars().collect();
@@ -622,6 +624,11 @@ impl Surfaces {
             // A struct's completion is its declaration, then the call `new` takes.
             let call = format!("\n{}(", case.name);
             let text = text.rfind(&call).map_or(text.as_str(), |i| &text[i + 1..]);
+            // An overloaded fn shows each overload on its own line; the
+            // docs' item is one of them (R06.1.6).
+            let text = (text.lines())
+                .find(|l| params_of(l, &case.name) == case.shape)
+                .unwrap_or(text);
             let shape = params_of(text, &case.name);
             let signs = text.contains(&format!("{}(", case.name));
             tally.check(
@@ -726,8 +733,8 @@ fn every_builtin_member_hovers_signs_and_completes_with_its_parameters() {
         "builtin",
         &tally,
         &[
-            ("hover names every parameter", 3),
-            ("completion detail names every parameter", 3),
+            ("hover names every parameter", 0),
+            ("completion detail names every parameter", 0),
         ],
     );
 }

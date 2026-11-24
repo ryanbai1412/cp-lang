@@ -302,12 +302,15 @@ impl Database {
             .filter(|e| e.keyword == "field" || matches!(e.ty, Ty::Fn { .. }))
             .filter(|e| e.decl != Some(e.span))
             .map(|e| {
-                let name = if e.keyword == "field" {
+                let span = e.span.shift(item.offset);
+                // A field, or a fn called in method form (`ys.sorted()`): its receiver names the size.
+                let dotted = analysis.text[..span.start as usize].ends_with('.');
+                let name = if e.keyword == "field" || dotted {
                     format!(".{}", e.name)
                 } else {
                     e.name.clone()
                 };
-                (e.span.shift(item.offset), name)
+                (span, name)
             })
             .filter(|(span, _)| start <= span.start && span.end <= end)
             .collect();

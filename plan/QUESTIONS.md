@@ -116,3 +116,10 @@ Options: (a) resolve calls by label set: fns sharing a name have distinct requir
 Recommendation: (a): std writes `sort(mut self)`, `sort(mut self; by:)` and `sort(mut self; cmp:)` on the table's `sort` primitive, and the arm goes.
 How to reverse it: one signature again, with the arm.
 Meanwhile: (b).
+
+### compiler: may an `[D]T` stand where a `D -> T` fn is expected?
+The compiler's `sort` arm took `by: arr` with `arr: [D]T` as the key `x => arr[x]`; std's `sort(mut self; by: T -> K)` doesn't, so decision 634 drops the form, with a fix to `by: x => arr[x]`. As a language rule it would hold at every fn parameter, not just sort's.
+Options: (a) an `[D]T` passed where a `D -> T` fn is expected is that fn (a checker coercion lowered to a closure); (b) no coercion: a key is a fn, written `x => arr[x]`.
+Recommendation: (b) until a port shows the lambda costs real time: one spelling, and the cost of the read is visible.
+How to reverse it: add the coercion in the checker and lowering, with a spec row.
+Meanwhile: (b).

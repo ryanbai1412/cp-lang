@@ -13,6 +13,10 @@
 use crate::devirt::{skippable, Devirt};
 use crate::uses::effects::{trap_free_block, writes_own, Touch};
 use crate::uses::loops::{each_loop, stmt_count, Loop};
+use crate::uses::spliced::{
+    captures_a_local, local_reads, may_write_global, param_reads, return_count, sorts_or_calls,
+    writes_any,
+};
 use cpl_ir::{
     Arg, Block, Builtin, ClosureDef, ClosureId, Expr, ExprKind, FnId, Function, Iter, Local,
     LoopId, Mutation, Place, PlaceKind, Program, Slot, SortBy, Stmt, Ty,
@@ -480,15 +484,7 @@ fn sorting(bodies: &BTreeMap<FnId, Function>) -> BTreeSet<FnId> {
     loop {
         let before = seeds.len();
         for (id, f) in bodies {
-            let mut sorts = false;
-            cpl_ir::walk::deep_exprs(&f.body, &mut |e| {
-                sorts |= match e.kind {
-                    ExprKind::Sort(..) => true,
-                    ExprKind::Call(g, _) => seeds.contains(&g),
-                    _ => false,
-                };
-            });
-            if sorts {
+            if sorts_or_calls(&f.body, &seeds) {
                 seeds.insert(*id);
             }
         }
@@ -515,7 +511,13 @@ fn inline_in(
         let ExprKind::Call(f, args) = &e.kind else {
             return;
         };
-        if only.is_some_and(|s| !s.contains(f)) {
+        // At the top, a call is run in place only when it hands the callee a place to change
+        // or a closure: what the caller's analyses must see happen to them.
+        let hands = args.iter().any(|a| match a {
+            Arg::Mut(_) => true,
+            Arg::Value(v) => matches!(v.kind, ExprKind::Closure(_)),
+        });
+        if only.is_some_and(|s| !s.contains(f) || !hands) {
             return;
         }
         let Some(g) = bodies.get(f) else {
@@ -524,7 +526,7 @@ fn inline_in(
         let mark = (locals.len(), *next);
         if let Some(mut b) = inlined(g, args, e.span, locals, next) {
             inline_in(&mut b, locals, bodies, None, next, depth - 1);
-            if read_globals(args).any(|gid| may_write(&b, gid)) {
+            if read_globals(args).any(|gid| may_write_global(&b, gid)) {
                 locals.truncate(mark.0);
                 *next = mark.1;
             } else {
@@ -544,37 +546,11 @@ fn read_globals(args: &[Arg]) -> impl Iterator<Item = cpl_ir::GlobalId> + '_ {
     })
 }
 
-/// Whether running `b` may write global `g`: a call it still makes may.
-fn may_write(b: &Block, g: cpl_ir::GlobalId) -> bool {
-    let at = |p: &Place| cpl_ir::walk::root(p) == (true, g);
-    let mut writes = false;
-    cpl_ir::walk::deep_exprs(b, &mut |e| {
-        writes |= match &e.kind {
-            ExprKind::Mutate(_, p, _) | ExprKind::Sort(p, _, _) => at(p),
-            ExprKind::Call(..) | ExprKind::CallExpr(..) => true,
-            _ => false,
-        };
-    });
-    cpl_ir::walk::deep_stmts(b, &mut |s| {
-        writes |= matches!(s, Stmt::Assign(p, _, _) if at(p))
-    });
-    writes
-}
-
 fn inlinable(f: &Function, closures: &[ClosureDef]) -> bool {
     let returns_last = matches!(f.body.stmts.last(), Some(Stmt::Return(_)));
-    let mut returns = 0;
-    cpl_ir::walk::deep_stmts(&f.body, &mut |s| {
-        returns += matches!(s, Stmt::Return(_)) as usize
-    });
-    let mut captures_local = false;
-    cpl_ir::walk::deep_exprs(&f.body, &mut |e| {
-        // A closure that captures a local of `f` would capture another's once run in place.
-        captures_local |= matches!(e.kind, ExprKind::Closure(c)
-            if closures[c].captures.iter().any(|cap| !cap.is_global));
-    });
-    returns == returns_last as usize
-        && !captures_local
+    // A closure that captures a local of `f` would capture another's once run in place.
+    return_count(&f.body) == returns_last as usize
+        && !captures_a_local(&f.body, closures)
         && stmt_count(&f.body) <= MAX_INLINED
         && !f.locals.iter().any(|l| l.name == "__yields")
 }
@@ -591,14 +567,7 @@ fn inlined(
     if args.len() != params {
         return None;
     }
-    let mut uses = vec![0usize; params];
-    cpl_ir::walk::deep_exprs(&g.body, &mut |e| {
-        if let ExprKind::Local(s) = e.kind {
-            if s < params {
-                uses[s] += 1;
-            }
-        }
-    });
+    let uses = param_reads(&g.body, params);
     let mut ren = Ren {
         map: Vec::with_capacity(g.locals.len()),
         consts: Vec::with_capacity(params),
@@ -685,27 +654,6 @@ fn inlined(
     });
     block.stmts.splice(0..0, lets.collect::<Vec<_>>());
     Some(block)
-}
-
-/// Whether working out `v` may write one of the variables `slots`.
-fn writes_any(v: &Expr, slots: &[Slot]) -> bool {
-    let at = |p: &Place| matches!(cpl_ir::walk::root(p), (false, s) if slots.contains(&s));
-    let mut writes = false;
-    cpl_ir::walk::deep_expr(v, &mut |e| {
-        writes |= match &e.kind {
-            ExprKind::Mutate(_, p, _) | ExprKind::Sort(p, _, _) => at(p),
-            ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
-                args.iter().any(|a| matches!(a, Arg::Mut(p) if at(p)))
-            }
-            _ => false,
-        };
-    });
-    if let ExprKind::Do(b) = &v.kind {
-        cpl_ir::walk::deep_stmts(b, &mut |s| {
-            writes |= matches!(s, Stmt::Assign(p, _, _) if at(p))
-        });
-    }
-    writes
 }
 
 /// A closure of one parameter that gives an expression of it and of what it
@@ -859,21 +807,30 @@ fn forward(mut b: Block) -> Block {
     let mut i = 0;
     while i + 1 < b.stmts.len() {
         let fresh = match (&b.stmts[i], &b.stmts[i + 1]) {
-            (Stmt::Let(t, Some(_)), Stmt::Let(_, Some(Expr { kind: ExprKind::Builtin(op, src), .. })))
-                if matches!(op, Builtin::Copy | Builtin::ToList | Builtin::ArrayToList)
-                    && matches!(src.as_slice(), [x] if is_local(x, *t)) =>
+            (
+                Stmt::Let(t, Some(_)),
+                Stmt::Let(
+                    _,
+                    Some(Expr {
+                        kind: ExprKind::Builtin(op, src),
+                        ..
+                    }),
+                ),
+            ) if matches!(op, Builtin::Copy | Builtin::ToList | Builtin::ArrayToList)
+                && matches!(src.as_slice(), [x] if is_local(x, *t)) =>
             {
-                let mut reads = 0;
-                cpl_ir::walk::deep_exprs(&b, &mut |e| reads += is_local(e, *t) as usize);
-                reads == 1
+                local_reads(&b, *t) == 1
             }
             _ => false,
         };
         if fresh {
-            let Stmt::Let(_, Some(value)) = b.stmts.remove(i) else {
-                unreachable!()
+            let (Stmt::Let(_, Some(value)), Stmt::Let(_, Some(init))) =
+                (b.stmts.remove(i), &mut b.stmts[i])
+            else {
+                i += 1;
+                continue;
             };
-            if let Stmt::Let(_, Some(init)) = &mut b.stmts[i] {
+            {
                 match &mut init.kind {
                     ExprKind::Builtin(Builtin::Copy, _) => *init = value,
                     ExprKind::Builtin(_, src) => src[0] = value,

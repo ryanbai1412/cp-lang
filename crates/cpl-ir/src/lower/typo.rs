@@ -339,6 +339,20 @@ impl<'a> Lowerer<'a> {
             }
             return;
         }
+        if let (Ty::Array { dims, .. }, Ty::Fn(args, _)) = (found, want) {
+            if dims.len() == 1 && args.len() == 1 && !text.contains('\n') {
+                let (help, read) = cpl_check::array_as_fn_read(&text);
+                let edit = self.span(span);
+                if let Some(last) =
+                    (self.diags.last_mut()).filter(|d| d.code == codes::TYPE_MISMATCH)
+                {
+                    last.help = Some(help);
+                    last.fixes.clear();
+                    last.fix(format!("write `{read}`"), edit, read);
+                }
+                return;
+            }
+        }
         // Python's `sep=' '`: its quotes make a string either way.
         let quoted = text.strip_prefix('\'').and_then(|t| t.strip_suffix('\''));
         if let (Ty::Char, Ty::Str, Some(inner)) = (found, want, quoted.filter(|t| !t.contains('"')))

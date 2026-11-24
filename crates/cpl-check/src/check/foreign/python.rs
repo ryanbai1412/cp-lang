@@ -175,3 +175,43 @@ pub(crate) fn declare_on_first_assignment(
     }
     diags
 }
+
+impl Checker<'_> {
+    /// `reverse: true` (Python's) or the dropped `desc: true` beside a `by:`
+    /// overload: largest first is a descending key (decision 290).
+    pub(crate) fn reverse_habit(
+        &self,
+        diag: &mut cpl_diag::Diagnostic,
+        rev: &cpl_syntax::ast::Arg,
+        args: &[cpl_syntax::ast::Arg],
+    ) {
+        let text = |s: Span| self.src.get(s.start as usize..s.end as usize).unwrap_or("");
+        let by = (args.iter()).find(|a| a.name.as_ref().is_some_and(|n| n.text == "by"));
+        let truthy = text(rev.value.span) == "true";
+        let at = rev.name.as_ref().map_or(rev.value.span, |n| n.span);
+        let wrapped = by.filter(|_| truthy).and_then(|by| {
+            let last = args.last().filter(|l| std::ptr::eq(*l, rev))?;
+            let before = args.get(args.len().checked_sub(2)?)?;
+            let (head, body) = text(by.value.span).split_once("=>")?;
+            let key = format!("{head}=> desc({})", body.trim());
+            let cut = Span::new(before.value.span.end, last.value.span.end);
+            Some(vec![(by.value.span, key), (cut, String::new())])
+        });
+        if let Some(edits) = wrapped {
+            diag.help = Some("`desc(key)` orders largest first".into());
+            diag.fixes.push(cpl_diag::Fix {
+                title: "wrap the key in `desc`".into(),
+                edits,
+            });
+        } else if by.is_some() {
+            diag.help = Some("wrap the key in `desc`: `by: x => desc(key)`".into());
+        } else if truthy {
+            diag.help = Some("`desc(x)` orders largest first".into());
+            diag.fix(
+                "write `by: x => desc(x)`",
+                Span::new(at.start, rev.value.span.end),
+                "by: x => desc(x)",
+            );
+        }
+    }
+}

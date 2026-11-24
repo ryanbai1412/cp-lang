@@ -695,8 +695,8 @@ impl<'a> Checker<'a> {
                 _ => None,
             };
             for mut diag in (errors.iter().cloned()).filter(|d| d.code == codes::WRONG_ARG_COUNT) {
-                diag.message = (diag.message)
-                    .replace(&format!("`{key}`"), &format!("`{}`", name.text));
+                diag.message =
+                    (diag.message).replace(&format!("`{key}`"), &format!("`{}`", name.text));
                 if let Some((help, at, label)) = &by_name {
                     diag.help = Some(help.clone());
                     diag.fixes.clear();
@@ -717,10 +717,10 @@ impl<'a> Checker<'a> {
             .filter(|d| d.code == codes::MISSING_IMPL)
             .collect();
         // Only where the checker knows every trait the receiver has: an
-        // optional, or a type the program or library declares. A built-in
+        // optional, a domain, or a type the program or library declares. A built-in
         // container's members and traits are lowering's.
         let known = match &base_ty {
-            Ty::Optional(_) => true,
+            Ty::Optional(_) | Ty::Domain(_) => true,
             Ty::Named { name, .. } => (self.type_def(name))
                 .is_some_and(|d| matches!(&*d, Def::Struct { .. } | Def::Enum { .. })),
             _ => false,
@@ -1178,8 +1178,11 @@ impl Checker<'_> {
             .filter(|d| def_labels(d).iter().all(|r| given.contains(r)))
             .map(|d| {
                 let has = labels(d);
-                let extra: Vec<&str> =
-                    given.iter().copied().filter(|g| !has.iter().any(|h| h == g)).collect();
+                let extra: Vec<&str> = given
+                    .iter()
+                    .copied()
+                    .filter(|g| !has.iter().any(|h| h == g))
+                    .collect();
                 format!("drop {} to call {}", quoted(&extra), sig(d))
             })
             .collect();
@@ -1190,9 +1193,8 @@ impl Checker<'_> {
         let known: Vec<String> = defs.iter().flat_map(|d| labels(d)).collect();
         let stray = |want: &[&str]| {
             (args.iter()).find(|a| {
-                (a.name.as_ref()).is_some_and(|n| {
-                    want.contains(&n.text.as_str()) && !known.contains(&n.text)
-                })
+                (a.name.as_ref())
+                    .is_some_and(|n| want.contains(&n.text.as_str()) && !known.contains(&n.text))
             })
         };
         let keyed = known.iter().any(|l| l == "by");
@@ -1224,39 +1226,6 @@ impl Checker<'_> {
         self.sink.push(diag);
     }
 
-    /// `reverse: true` (Python's) or the dropped `desc: true` beside a `by:`
-    /// overload: largest first is a descending key (decision 290).
-    fn reverse_habit(&self, diag: &mut cpl_diag::Diagnostic, rev: &Arg, args: &[Arg]) {
-        let text = |s: Span| self.src.get(s.start as usize..s.end as usize).unwrap_or("");
-        let by = (args.iter()).find(|a| a.name.as_ref().is_some_and(|n| n.text == "by"));
-        let truthy = text(rev.value.span) == "true";
-        let at = rev.name.as_ref().map_or(rev.value.span, |n| n.span);
-        let wrapped = by.filter(|_| truthy).and_then(|by| {
-            let last = args.last().filter(|l| std::ptr::eq(*l, rev))?;
-            let before = args.get(args.len().checked_sub(2)?)?;
-            let (head, body) = text(by.value.span).split_once("=>")?;
-            let key = format!("{head}=> desc({})", body.trim());
-            let cut = Span::new(before.value.span.end, last.value.span.end);
-            Some(vec![(by.value.span, key), (cut, String::new())])
-        });
-        if let Some(edits) = wrapped {
-            diag.help = Some("`desc(key)` orders largest first".into());
-            diag.fixes.push(cpl_diag::Fix {
-                title: "wrap the key in `desc`".into(),
-                edits,
-            });
-        } else if by.is_some() {
-            diag.help = Some("wrap the key in `desc`: `by: x => desc(key)`".into());
-        } else if truthy {
-            diag.help = Some("`desc(x)` orders largest first".into());
-            diag.fix(
-                "write `by: x => desc(x)`",
-                Span::new(at.start, rev.value.span.end),
-                "by: x => desc(x)",
-            );
-        }
-    }
-
     /// `rows.sort(by: (a, b) => ..)`: a lambda of `n` parameters for a label
     /// whose fn takes another count, where another overload's label takes `n`.
     pub(super) fn overload_arity_mismatch(&mut self, name: &str, def: &Def, args: &[Arg]) -> bool {
@@ -1264,14 +1233,18 @@ impl Checker<'_> {
             Def::Fn {
                 ty: Ty::Fn { params, .. },
                 ..
-            } => params.iter().find(|p| p.named_only && p.name == label).and_then(|p| match &p.ty {
-                Ty::Fn { params, .. } => Some(params.len()),
-                _ => None,
-            }),
+            } => params
+                .iter()
+                .find(|p| p.named_only && p.name == label)
+                .and_then(|p| match &p.ty {
+                    Ty::Fn { params, .. } => Some(params.len()),
+                    _ => None,
+                }),
             _ => None,
         };
         for arg in args {
-            let (Some(label), ExprKind::Lambda { params, .. }) = (&arg.name, &arg.value.kind) else {
+            let (Some(label), ExprKind::Lambda { params, .. }) = (&arg.name, &arg.value.kind)
+            else {
                 continue;
             };
             let Some(wants) = fn_arity(def, &label.text).filter(|w| *w != params.len()) else {
@@ -1316,7 +1289,9 @@ impl Checker<'_> {
         else {
             return None;
         };
-        let mut fns = params.iter().filter(|p| p.named_only && matches!(p.ty, Ty::Fn { .. }));
+        let mut fns = params
+            .iter()
+            .filter(|p| p.named_only && matches!(p.ty, Ty::Fn { .. }));
         let (Some(label), None) = (fns.next(), fns.next()) else {
             return None;
         };
@@ -1324,9 +1299,15 @@ impl Checker<'_> {
         if !matches!(arg.value.kind, ExprKind::Lambda { .. }) {
             return None;
         }
-        let text = self.src.get(arg.value.span.start as usize..arg.value.span.end as usize)?;
+        let text = self
+            .src
+            .get(arg.value.span.start as usize..arg.value.span.end as usize)?;
         let at = Span::new(arg.value.span.start, arg.value.span.start);
-        Some((format!("write `{}: {text}`", label.name), at, format!("{}: ", label.name)))
+        Some((
+            format!("write `{}: {text}`", label.name),
+            at,
+            format!("{}: ", label.name),
+        ))
     }
 }
 

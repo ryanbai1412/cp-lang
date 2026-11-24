@@ -1340,7 +1340,7 @@ print(xs.sorted(), xs.rev, xs.fold(Monoid.sum), m)
     };
     let sorted = shown(&mut server, 4, 10);
     assert!(
-        sorted.starts_with("```cp\nfn sorted<S: Seq<T>, T, K: Ord>(self: S; by: T -> K = x => x) -> List<T>\ncost: O(n log n) comparisons, O(n) space\n```"),
+        sorted.starts_with("```cp\nfn sorted<S: Seq<T>, T, K: Ord>(self: S; by: T -> K = x => x) -> List<T>\nfn sorted<S: Seq<T>, T>(self: S; cmp: (T, T) -> Bool) -> List<T>\ncost: O(n log n) comparisons, O(n) space\n```"),
         "{sorted}"
     );
     let rev = shown(&mut server, 4, 23);

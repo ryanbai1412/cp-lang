@@ -636,7 +636,7 @@ fn a_param_copied_whole_into_a_var_is_taken_by_value_and_moved_in() {
     let out = cpp(concat!(
         "fn top(xs: List<Int>) -> List<Int>:\n",
         "    var ys = List(xs)\n",
-        "    ys.push(0)\n",
+        "    ys.sort()\n",
         "    ys\n",
         "print(top([read<Int>(), 1]))\n",
     ));

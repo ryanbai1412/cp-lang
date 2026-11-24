@@ -1405,6 +1405,7 @@ impl Database {
         }
         if glob {
             for name in analysis.public_names() {
+                scoping::add_overloads(scope, index, &name);
                 scope.imports.entry(name.clone()).or_insert(Import {
                     module: index,
                     name,

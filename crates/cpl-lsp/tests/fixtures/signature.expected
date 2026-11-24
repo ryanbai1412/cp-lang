@@ -14,8 +14,8 @@ reach(while: (a: Int, b: Int) -> Bool; cyclic: Bool = false) -> List<Int>
 active: cyclic: Bool = false
 
 == signatureHelp @ 8:12
-sort(; by: Int -> K = x => x, cmp: ?((Int, Int) -> Bool) = None)
-active: by: Int -> K = x => x
+sort(; by: T -> K = x => x)
+active: by: T -> K = x => x
 
 == signatureHelp @ 10:17
 max(by: Int -> K = x => x, ties: Ties = Ties.First) -> ?Int

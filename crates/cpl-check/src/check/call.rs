@@ -443,9 +443,16 @@ impl<'a> Checker<'a> {
     /// `sort`, `reversed` beside `reverse`, when it takes `over` without `IndexedMut`.
     fn value_form(&mut self, fn_name: &str, over: &Ty) -> Option<(String, String)> {
         let verb = crate::prelude::overload_part(fn_name).map_or(fn_name, |(n, _)| n);
-        let verb = verb.rsplit('.').next().unwrap_or(verb).split(' ').next().unwrap_or(verb);
+        let verb = verb
+            .rsplit('.')
+            .next()
+            .unwrap_or(verb)
+            .split(' ')
+            .next()
+            .unwrap_or(verb);
         let twins = [format!("{verb}ed"), format!("{verb}d")];
-        let twin = (twins.into_iter()).find(|t| crate::prelude::std_self_heads().contains_key(t))?;
+        let twin =
+            (twins.into_iter()).find(|t| crate::prelude::std_self_heads().contains_key(t))?;
         let _ = over;
         Some((verb.to_string(), twin))
     }
@@ -1481,7 +1488,11 @@ impl<'a> Checker<'a> {
                                                 diag.help = Some(format!(
                                                     "`{verb}` changes a place in place, and a `{bound_ty}` is none: `{sibling}` gives a new `List`"
                                                 ));
-                                                diag.fix(format!("write `{sibling}`"), callee.span, sibling);
+                                                diag.fix(
+                                                    format!("write `{sibling}`"),
+                                                    callee.span,
+                                                    sibling,
+                                                );
                                             }
                                         }
                                     }

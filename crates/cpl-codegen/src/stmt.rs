@@ -512,8 +512,13 @@ impl<'p> Emitter<'p> {
                     self.line(out, &format!("cpl::sort_by{ties}({seq}, {kf}, {desc});"));
                 }
             }
-            SortBy::Fn { func, is_order: false } if self.known_key(func).is_some() => {
-                let (cid, key) = self.known_key(func).unwrap_or_else(|| unreachable!());
+            SortBy::Fn {
+                func,
+                is_order: false,
+            } if self.known_key(func).is_some() => {
+                let Some((cid, key)) = self.known_key(func) else {
+                    return;
+                };
                 let def = &self.program.closures[cid];
                 if def.captures.is_empty()
                     && matches!(key.kind, ExprKind::Local(s) if def.params.first() == Some(&s))
@@ -525,13 +530,22 @@ impl<'p> Emitter<'p> {
                 self.line(out, &format!("auto {kf} = {f_text};"));
                 self.need("sorted");
                 let (a, b) = (self.temp(), self.temp());
-                let cmp = turned(format!("{kf}({a}) < {kf}({b})"), format!("{kf}({b}) < {kf}({a})"));
+                let cmp = turned(
+                    format!("{kf}({a}) < {kf}({b})"),
+                    format!("{kf}({b}) < {kf}({a})"),
+                );
                 let elem = match &place.ty {
-                    Ty::List(t) | Ty::MutView(t, _) | Ty::Array { elem: t, .. } => Some((**t).clone()),
+                    Ty::List(t) | Ty::MutView(t, _) | Ty::Array { elem: t, .. } => {
+                        Some((**t).clone())
+                    }
                     _ => None,
                 };
                 let distinct = self.sites.is_none() && elem.as_ref().is_some_and(ties_by_value);
-                let sort = if distinct { "cpl::sort_distinct" } else { "cpl::stable_sort_lt" };
+                let sort = if distinct {
+                    "cpl::sort_distinct"
+                } else {
+                    "cpl::stable_sort_lt"
+                };
                 self.line(
                     out,
                     &format!("{sort}({seq}.begin(), {seq}.end(), [&](const auto& {a}, const auto& {b}) {{ return {cmp}; }});"),

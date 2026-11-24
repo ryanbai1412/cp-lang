@@ -73,14 +73,14 @@ fn a_fixed_fn_replays_the_failing_call_alone() {
         out.contains("call 1 of `most_watched()`") && out.contains("the call runs as recorded"),
         "{out}"
     );
-    let (code, out, err) = cpl(&dir, &[&replay[..], &["13", "--json"]].concat());
+    let (code, out, err) = cpl(&dir, &[&replay[..], &["14", "--json"]].concat());
     assert_eq!(code, 0, "{err}");
     let json = cpl_json::parse(&out).expect("cpl replay --json is JSON");
     assert_eq!(json.at(&["call", "name"]).as_str(), Some("most_watched"));
-    assert_eq!(json.at(&["call", "entry"]).as_i64(), Some(13));
+    assert_eq!(json.at(&["call", "entry"]).as_i64(), Some(14));
     assert_eq!(json.at(&["before"]).as_i64(), Some(1));
     assert_eq!(json.at(&["after"]).as_i64(), Some(2));
-    assert_eq!(json.at(&["change", "step"]).as_i64(), Some(17));
+    assert_eq!(json.at(&["change", "step"]).as_i64(), Some(18));
     assert_eq!(json.at(&["change", "variable"]).as_str(), Some("order"));
     assert_eq!(*json.at(&["fallback"]), cpl_json::Value::Null);
     let (code, _, err) = cpl(&dir, &[&replay[..], &["2"]].concat());
@@ -107,7 +107,7 @@ fn a_changed_signature_runs_the_whole_file_and_says_so() {
             "--input",
             "case.in",
             "--step",
-            "13",
+            "14",
         ],
     );
     assert_eq!(code, 0, "{err}");

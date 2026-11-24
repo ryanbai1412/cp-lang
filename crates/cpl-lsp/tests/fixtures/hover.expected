@@ -215,11 +215,12 @@ fn ranked(ys: List<Int>) -> Int
 
 == hover @ 84:10
 ```cp
-sorted(; by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None) -> List<T>
+fn sorted<S: Seq<T>, T, K: Ord>(self: S; by: T -> K = x => x) -> List<T>
+fn sorted<S: Seq<T>, T>(self: S; cmp: (T, T) -> Bool) -> List<T>
 cost: O(n log n) comparisons, O(n) space
 ```
 
-The elements of `self` sorted by `by` or `cmp`: the value form of `sort`. A new `List`, keyed
+The elements of `self` sorted by `by`: the value form of `sort`. A new `List`, keyed
 from 0; to keep keys, sort the keys instead (`a.keys.sorted(by: i => a[i])`).
 Stable: equal keys keep their relative order.
 
@@ -241,11 +242,12 @@ fn order(cells: [V]Int)
 
 == hover @ 88:41
 ```cp
-sorted(; by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None) -> List<T>
+fn sorted<S: Seq<T>, T, K: Ord>(self: S; by: T -> K = x => x) -> List<T>
+fn sorted<S: Seq<T>, T>(self: S; cmp: (T, T) -> Bool) -> List<T>
 cost: O(n log n) comparisons, O(n) space, about 3521929 (3.5e6) steps: cells has at most n = 200000 (2e5) items
 ```
 
-The elements of `self` sorted by `by` or `cmp`: the value form of `sort`. A new `List`, keyed
+The elements of `self` sorted by `by`: the value form of `sort`. A new `List`, keyed
 from 0; to keep keys, sort the keys instead (`a.keys.sorted(by: i => a[i])`).
 Stable: equal keys keep their relative order.
 
@@ -260,11 +262,12 @@ example: `[(3, 1), (1, 2), (2, 2)].sorted(cmp: (p, q) => p.0 * q.1 < q.0 * p.1) 
 
 == hover @ 89:13
 ```cp
-sorted(; by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None) -> List<T>
+fn sorted<S: Seq<T>, T, K: Ord>(self: S; by: T -> K = x => x) -> List<T>
+fn sorted<S: Seq<T>, T>(self: S; cmp: (T, T) -> Bool) -> List<T>
 cost: O(n log n) comparisons, O(n) space, about 20 steps: pts has at most k = 7 items
 ```
 
-The elements of `self` sorted by `by` or `cmp`: the value form of `sort`. A new `List`, keyed
+The elements of `self` sorted by `by`: the value form of `sort`. A new `List`, keyed
 from 0; to keep keys, sort the keys instead (`a.keys.sorted(by: i => a[i])`).
 Stable: equal keys keep their relative order.
 
@@ -309,11 +312,12 @@ fn collect() -> Int
 
 == hover @ 99:12
 ```cp
-sorted(; by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None) -> List<T>
+fn sorted<S: Seq<T>, T, K: Ord>(self: S; by: T -> K = x => x) -> List<T>
+fn sorted<S: Seq<T>, T>(self: S; cmp: (T, T) -> Bool) -> List<T>
 cost: O(n log n) comparisons, O(n) space, about 28583794 (2.9e7) steps: seen has at most n * k = 1400000 (1.4e6) items
 ```
 
-The elements of `self` sorted by `by` or `cmp`: the value form of `sort`. A new `List`, keyed
+The elements of `self` sorted by `by`: the value form of `sort`. A new `List`, keyed
 from 0; to keep keys, sort the keys instead (`a.keys.sorted(by: i => a[i])`).
 Stable: equal keys keep their relative order.
 
