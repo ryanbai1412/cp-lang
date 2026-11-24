@@ -1044,11 +1044,16 @@ impl<'a> Lowerer<'a> {
         for (n, a) in gen_names.iter().zip(&explicit) {
             inferred.insert(n.clone(), a.clone());
         }
-        let new_params: Option<&[ast::Param]> = decl.methods.iter().find_map(|s| match &s.kind {
-            ast::StmtKind::Fn(f) if f.name.text == "new" => Some(f.params.as_slice()),
+        let new_fn = decl.methods.iter().find_map(|s| match &s.kind {
+            ast::StmtKind::Fn(f) if f.name.text == "new" => Some(f),
             _ => None,
         });
-        if let Some(params) = new_params {
+        if let Some(new_fn) = new_fn {
+            let params = new_fn.params.as_slice();
+            // `fn new<S: Indexed<K, T>, K>(s: S)`: the method's own generics bind
+            // through its arguments too, and its bounds then bind the struct's `T`.
+            let mut all_names = gen_names.clone();
+            all_names.extend(new_fn.generics.iter().map(|g| g.text.clone()));
             let mut pos_idx = 0usize;
             for arg in args {
                 let param = if let Some(aname) = &arg.name {
@@ -1082,12 +1087,13 @@ impl<'a> Lowerer<'a> {
                     {
                         if let Some(pty) = self.probe_ty_silent(&arg.value) {
                             if let Some(pat_ty) = &p.ty {
-                                self.unify_ast_ty(pat_ty, &pty, tpl_mod, &gen_names, &mut inferred);
+                                self.unify_ast_ty(pat_ty, &pty, tpl_mod, &all_names, &mut inferred);
                             }
                         }
                     }
                 }
             }
+            self.bind_impl_bounds(&new_fn.bounds, tpl_mod, &mut inferred);
             for g in &gen_names {
                 if !inferred.contains_key(g) {
                     let dom_from_arg = args.iter().find_map(|arg| {

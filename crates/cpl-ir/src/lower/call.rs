@@ -519,6 +519,7 @@ impl<'a> Lowerer<'a> {
                         }
                         self.unify_bounds(&mdecl.bounds, tpl_mod, &all_gen_names, &mut inferred);
                         self.unify_bounds(&decl.bounds, tpl_mod, &all_gen_names, &mut inferred);
+                        self.bind_impl_bounds(&mdecl.bounds, tpl_mod, &mut inferred);
                     }
                 }
                 let final_args: Vec<GenArg> = gen_names

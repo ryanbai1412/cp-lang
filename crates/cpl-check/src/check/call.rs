@@ -743,7 +743,6 @@ impl<'a> Checker<'a> {
         let suffix = match given.clone() {
             Ty::Named { name: list, args } if list == "List" => match args.as_slice() {
                 [Ty::Tuple(fields)] => fields.len(),
-                [Ty::Record(fields)] => fields.len(),
                 _ => return None,
             },
             // An array over a plain range names no edge domain either,

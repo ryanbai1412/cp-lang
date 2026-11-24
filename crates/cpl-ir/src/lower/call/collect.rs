@@ -516,7 +516,8 @@ impl<'a> Lowerer<'a> {
             // it names no edge domain either. And one of plain
             // tuples, `[E](V, V, W)`, whose cells have no `u` and `v`.
             let arity = match &probed.ty {
-                Ty::List(elem) => elem.fields().map(|f| f.len()),
+                // A list of records is `Indexed` by its positions: the fn itself takes it.
+                Ty::List(elem) if matches!(**elem, Ty::Tuple(_)) => elem.fields().map(|f| f.len()),
                 Ty::Array { dims, elem }
                     if matches!(dims.as_slice(), [Dim::Int])
                         || (dims.len() == 1 && matches!(**elem, Ty::Tuple(_))) =>
