@@ -16,7 +16,7 @@ let s: [0..n]Char = read()
 
 var total: [Bit]Int = 0
 var blocks: [Bit]Int = 0
-for (c, len) in runs(s):
+for (c, len) in runs(s).map(r => (r.first!, r.len)):
     let d = Bit(c - '0')
     total[d] += len
     blocks[d] += 1
