@@ -129,6 +129,28 @@ fn labels(reply: &[Value]) -> HashSet<String> {
         .collect()
 }
 
+/// Where `word` sits, 1 first, among the offered labels that start with
+/// what is typed of it, in the order an editor shows them (by sortText).
+fn rank(reply: &[Value], typed: &str, word: &str) -> Option<usize> {
+    let mut items: Vec<(String, String)> = reply
+        .iter()
+        .flat_map(|m| {
+            let result = m.at(&["result"]);
+            let items = result.at(&["items"]).as_array().or(result.as_array());
+            items.unwrap_or(&[]).iter()
+        })
+        .filter_map(|item| {
+            let label = item.at(&["label"]).as_str()?;
+            let sort = item.at(&["sortText"]).as_str().unwrap_or(label);
+            label
+                .starts_with(typed)
+                .then(|| (sort.to_string(), label.to_string()))
+        })
+        .collect();
+    items.sort();
+    items.iter().position(|(_, l)| l == word).map(|i| i + 1)
+}
+
 #[test]
 fn completion_offers_what_each_hill_climb_port_types_next() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
@@ -146,6 +168,7 @@ fn completion_offers_what_each_hill_climb_port_types_next() {
     server.handle(&message(None, "initialized", obj([])));
     let mut id = 1;
     let mut tally: BTreeMap<Kind, (usize, usize)> = BTreeMap::new();
+    let mut ranks: BTreeMap<Kind, (usize, usize)> = BTreeMap::new();
     let mut misses: BTreeMap<(Kind, String), (usize, String)> = BTreeMap::new();
     for pid in &ids {
         let src =
@@ -198,6 +221,10 @@ fn completion_offers_what_each_hill_climb_port_types_next() {
             entry.1 += 1;
             if labels(&reply).contains(word) {
                 entry.0 += 1;
+                let at = rank(&reply, &src[start..cursor], word).unwrap_or(usize::MAX);
+                let ranks = ranks.entry(kind).or_default();
+                ranks.0 += at.min(1000);
+                ranks.1 += 1;
             } else {
                 let line_start = src[..start].rfind('\n').map_or(0, |i| i + 1);
                 let line_end = src[end..].find('\n').map_or(src.len(), |i| end + i);
@@ -236,6 +263,26 @@ fn completion_offers_what_each_hill_climb_port_types_next() {
         assert!(
             permille >= floor,
             "{kind:?} recall fell to {hit}/{all}, below {floor}"
+        );
+    }
+    // Mean rank, in tenths, of the word typed among the labels offered that
+    // start with what is typed of it; lower these as ranking improves.
+    let ceilings = [
+        (Kind::Member, 115),
+        (Kind::AfterCall, 310),
+        (Kind::Scope, 20),
+    ];
+    for (kind, ceiling) in ceilings {
+        let (sum, n) = ranks.get(&kind).copied().unwrap_or_default();
+        let tenths = sum * 10 / n.max(1);
+        println!(
+            "mean rank {kind:?}: {}.{} over {n}",
+            tenths / 10,
+            tenths % 10
+        );
+        assert!(
+            tenths <= ceiling,
+            "{kind:?} mean rank rose to {tenths} tenths, above {ceiling}"
         );
     }
 }

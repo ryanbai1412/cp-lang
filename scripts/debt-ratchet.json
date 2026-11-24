@@ -137,16 +137,16 @@
   "register_rows_by_domain": {
     "compiler": 1,
     "debugger": 14,
-    "diagnostics": 1,
+    "diagnostics": 0,
     "idioms": 1,
     "infra": 0,
     "lint-fmt": 0,
     "perf": 3,
-    "site": 7,
-    "spec": 5,
+    "site": 1,
+    "spec": 1,
     "stdlib": 29,
     "tech-debt": 0,
-    "tools": 22
+    "tools": 20
   },
   "written_twice": 6,
   "lint_type_syntax": 35,
