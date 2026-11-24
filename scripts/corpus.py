@@ -710,18 +710,6 @@ def checked(pid, port, cpl):
             os.remove(cpp)
 
 
-def agrees(d, data, got, want):
-    checker = os.path.join(d, "checker.py")
-    if not os.path.exists(checker):
-        return got.split() == want.split()
-    with tempfile.TemporaryDirectory() as tmp:
-        files = []
-        for name, blob in (("in", data), ("out", got), ("ans", want)):
-            files.append(os.path.join(tmp, name))
-            open(files[-1], "wb").write(blob)
-        return subprocess.run([sys.executable, checker, *files], capture_output=True).returncode == 0
-
-
 def at_max(pid, d, port, cpl, exe, orig, data):
     """The findings of the max input: it passes the checked C++, fits the limits, matches the accepted C++."""
     ms, mb = limits(port)
@@ -743,7 +731,7 @@ def at_max(pid, d, port, cpl, exe, orig, data):
     if orig:
         wants = [measure(orig, data, 4 * ms / 1000 + 1) for _ in range(3)]
         if all(w is not None and w[0] == 0 for w in wants):
-            if not agrees(d, data, runs[0][1], wants[0][1]):
+            if not agrees(Package.at(d), data, runs[0][1], wants[0][1]):
                 found.append(f"disagrees {pid} --max")
             mine, theirs = min(r[2] for r in runs), min(w[2] for w in wants)
             if mine >= FLOOR and mine > SLOWER * max(theirs, FLOOR):
@@ -812,13 +800,14 @@ CHECKS = {"header": check_header, "check": check_check, "package": check_package
 
 
 class Context:
-    def __init__(self, cpl, run=True, check=False):
-        self.check = check
+    def __init__(self, cpl, run=True, check=False, named=()):
+        self.check, self.named = check, set(named)
         self.cpl, self.run, self.natives, self._hill, self._tests = cpl, run, {}, None, None
         self.run_ids = set_ids(RUN_SET) if os.path.exists(os.path.join(SETS, RUN_SET + ".txt")) else set()
 
     def runs(self, pkg):
-        return self.run and pkg.id in self.run_ids
+        """Runs the package's programs: it's in the run set, or named on the command line."""
+        return self.run and (pkg.id in self.run_ids or pkg.id in self.named)
 
     def tests_paths(self):
         """id -> tracked files outside corpus/ that name corpus/problems/<id>/tests,
@@ -975,7 +964,7 @@ def verify(args):
     bad = [m for m in modes if m not in CHECKS]
     if bad:
         sys.exit(f"corpus: no mode {', '.join(bad)}; modes: {', '.join(MODES)}")
-    ctx = Context(cpl, run=not opt("no_run"), check=bool(opt("check")))
+    ctx = Context(cpl, run=not opt("no_run"), check=bool(opt("check")), named=() if opt("changed") else ids)
     try:
         with concurrent.futures.ThreadPoolExecutor(opt("j", os.cpu_count() or 4)) as pool:
             found = sorted(f for fs in pool.map(lambda p: findings(p, modes, ctx), wanted) for f in fs)

@@ -98,6 +98,18 @@ class ProblemsTest(Corpus):
             cxx, version = corpus.reference_cxx.__wrapped__()
         self.assertEqual((cxx[0], version), (str(new), "14.4.0"))
 
+    def test_a_checker_judges_agreement_at_max_and_in_stress(self):
+        d = self.package("p1", checker_py="import sys\nsys.exit(0 if open(sys.argv[2]).read().strip() in ('1', '2') else 1)\n")
+        self.assertTrue(corpus.agrees(corpus.Package.at(d), b"", b"2\n", b"1\n"))
+        self.assertFalse(corpus.agrees(corpus.Package.at(d), b"", b"3\n", b"1\n"))
+        self.assertTrue(corpus.agrees(corpus.Package.at(self.package("p2")), b"", b"1 2", b"1\n2\n"))
+
+    def test_a_package_named_on_the_command_line_runs_outside_the_run_set(self):
+        pkg = corpus.Package.at(self.package("p1"))
+        self.assertFalse(corpus.Context("cpl").runs(pkg) and "p1" not in corpus.Context("cpl").run_ids)
+        self.assertTrue(corpus.Context("cpl", named=["p1"]).runs(pkg))
+        self.assertFalse(corpus.Context("cpl", run=False, named=["p1"]).runs(pkg))
+
     def test_reference_falls_back_to_an_accepted_submission(self):
         d = self.package("p1", orig_cpp="")
         self.assertEqual(corpus.Package.at(d).reference(), d / "orig.cpp")
