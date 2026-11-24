@@ -395,6 +395,19 @@ class LandTest(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("taking over a land lock held over 120s", r.stderr)
 
+    def test_a_lock_whose_holder_cant_be_read_is_never_taken_over(self):
+        repo = self.clone("lane")
+        empty = git(repo, "hash-object", "-t", "tree", "/dev/null").strip()
+        held = git(repo, "commit-tree", empty, "-m", "land-lock other 1 unread infra").strip()
+        git(repo, "push", "-q", "origin", f"{held}:refs/land/lock")
+        (repo / "pkg.txt").write_text("x\n")
+        self.commit(repo, "ours")
+        r = self.land(repo, CPL_LAND_LOCK_STALE="1", CPL_LAND_LOCK_WAIT="2")
+        self.assertNotEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn("taking over", r.stderr)
+        self.assertIn("no land lock after", r.stderr)
+        self.assertTrue(self.lock_on_remote().startswith(held), self.lock_on_remote())
+
     def test_two_lanes_cant_both_take_over_one_stale_lock(self):
         repo, rival = self.clone("lane"), self.clone("rival")
         self.lock(repo, age=1000)

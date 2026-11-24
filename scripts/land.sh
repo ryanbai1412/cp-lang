@@ -363,6 +363,9 @@ take_lock() {
         fi
         git fetch -q --no-write-fetch-head "$remote" "$lock_ref" 2>/dev/null || :
         at=$(git log -1 --format=%s "$holder" 2>/dev/null | cut -d' ' -f4)
+        # A holder this lane can't read (the fetch lost a race, or no stamp) is
+        # never stale: it may be live, so wait and look again.
+        case "$at" in '' | *[!0-9]*) at=$(date +%s) ;; esac
         if [ $(( $(date +%s) - ${at:-0} )) -gt "$lock_stale" ]; then
             echo "land: taking over a land lock held over ${lock_stale}s ($(git log -1 --format=%s "$holder" 2>/dev/null))" >&2
             git push -q --no-verify --force-with-lease="$lock_ref:$holder" "$remote" "$me:$lock_ref" 2>/dev/null &&
