@@ -1013,6 +1013,10 @@ pub struct XorTrie:
     /// example: `var t = XorTrie(3); t.reserve(100); t.len == 0`
     pub fn reserve(mut self, nodes: Int):
         assert nodes >= 0
+        _c0.reserve(nodes)
+        _c1.reserve(nodes)
+        _cnt.reserve(nodes)
+        _dist.reserve(nodes)
 
     /// The total number of stored integers, with multiplicity.
     ///

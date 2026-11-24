@@ -775,7 +775,7 @@ pub struct SortedBag<K>:
     /// traps: never
     /// example: `var b = SortedBag.of([1]); b.reserve(100); b.to_list() == [1]`
     pub fn reserve(mut self, cap: Int):
-        if cap < 0: return
+        if cap > 0: nodes.reserve(cap)
 
     /// Split off and return all elements `>= k`, keeping `< k` in `self`.
     ///
@@ -1270,8 +1270,7 @@ pub struct SortedSet<K>:
     /// cost: \(O(\mathit{cap})\) when the pool grows, \(O(1)\) otherwise
     /// traps: never
     /// example: `var s = SortedSet.of([1]); s.reserve(100); s.to_list() == [1]`
-    pub fn reserve(mut self, cap: Int):
-        if cap < 0: return
+    pub fn reserve(mut self, cap: Int) = bag.reserve(cap)
 
     /// Split off and return all keys `>= k`, keeping `< k` in `self`.
     ///
@@ -1334,8 +1333,7 @@ pub struct SortedMap<K, V>:
     /// cost: \(O(\mathit{cap})\) when the pool grows, \(O(1)\) otherwise
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.reserve(100); m.is_empty`
-    pub fn reserve(mut self, cap: Int):
-        if cap < 0: return
+    pub fn reserve(mut self, cap: Int) = ks.reserve(cap)
 
     /// Number of key-value pairs.
     ///
@@ -1767,6 +1765,12 @@ pub struct AugSortedBag<K, T>:
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.reserve(100); b.len == 0`
     pub fn reserve(mut self, cap: Int):
         assert cap >= 0
+        keys.reserve(cap)
+        pri.reserve(cap)
+        ls.reserve(cap)
+        rs.reserve(cap)
+        sz.reserve(cap)
+        agg.reserve(cap)
 
     /// Total number of elements (with multiplicity).
     ///
