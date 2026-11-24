@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # CI's shrink-only cpl.wasm ratchet per tip (web/scripts/wasm-crates.mjs ratchet), the
-# rule land.sh applies from a warm build: every crate over its budget in the nearest
-# first-parent with saved sizes may not grow a byte, and one within it stays within.
+# rule land.sh applies from a warm build: every crate the tips since the nearest
+# first-parent with saved sizes changed, and the data segment, may not grow a byte
+# while over its budget, and one within it stays within; other crates only warn.
 # Most main tips are cancelled runs that never save, so it walks back up to 20.
 #   scripts/wasm-ratchet.sh record DIR/cpl.wasm SIZES_DIR   save HEAD's sizes
 #   scripts/wasm-ratchet.sh check DIR/cpl.wasm SIZES_DIR    hold HEAD to them
@@ -19,7 +20,8 @@ check)
     for c in $(git rev-list --first-parent --max-count=21 HEAD | tail -n +2); do
         if [ -s "$sizes/$c.json" ]; then
             echo "wasm-ratchet: against $(git log -1 --format='%h %s' "$c")"
-            exec node web/scripts/wasm-crates.mjs --data "$wasm" --parent "$sizes/$c.json" "${@:4}"
+            touched=$(git diff --name-only "$c" HEAD | sed -n 's|^crates/\([^/]*\)/.*|\1|p' | sort -u | tr - _ | paste -sd, -)
+            exec node web/scripts/wasm-crates.mjs --data "$wasm" --parent "$sizes/$c.json" --touched "$touched" "${@:4}"
         fi
     done
     echo "::warning::wasm-ratchet: no saved sizes in HEAD's last 20 first-parents; only the budgets apply (wasm-size)" ;;
