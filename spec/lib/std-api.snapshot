@@ -1,5 +1,5 @@
 std/algebra.cp: Action.new<M>(id: F = F.zero, compose: (F, F) -> F = (+), apply: (F, T, Int) -> T, over: M = (+), commutes: Bool = false) -> Action<T, F>
-std/algebra.cp: Action.of<A, M>(a: A, op: M) -> Action<T, F>
+std/algebra.cp: Action.of<A: Acts<T, F>, M>(a: A, op: M) -> Action<T, F>
 std/algebra.cp: Affine.eval(self, x: T) -> T
 std/algebra.cp: Affine.id() -> Affine<T>
 std/algebra.cp: Affine.monoid() -> Monoid<Affine<T>>
@@ -737,7 +737,6 @@ std/graph.cp: Graph.matrix<W: Ord>(self) -> [V, V]?W where A: Weighted<W>
 std/graph.cp: Graph.next(self, u: V) -> yields V
 std/graph.cp: Graph.of(arcs: Seq<(from: V, arc: A)>) -> Graph<V, A>
 std/graph.cp: Graph.only(self, keep: V -> Bool = v => true, from: V -> Bool = v => true) -> Only<V, Self>
-std/graph.cp: Graph.out(self, u: V) -> yields A
 std/graph.cp: Graph.peel(self, ready: ?(V -> Bool) = None, on_remove: ?((V, A) -> ()) = None) -> List<V>
 std/graph.cp: Graph.transpose(self) -> Graph<V, A>
 std/graph.cp: Graph.undirected<S: Indexed<E, R>, E, R: (u: V, v: V, ..)
@@ -1024,7 +1023,7 @@ std/interval.cp: SparseIntervalSet.remove(mut self, r: Range<Int>)
 std/interval.cp: SparseIntervalSet.runs(self) -> Int
 std/io.cp: Wire.ask<T>(self, query: Str) -> T
 std/io.cp: Wire.new() -> Wire
-std/io.cp: read_all<T>(until: ?(T -> Bool) = None) -> List<T>
+std/io.cp: read_all<T: Read>(until: ?(T -> Bool) = None) -> List<T>
 std/io.cp: yes(ok: Bool, answers: ?(Str, Str) = None) -> Str
 std/lazy.cp: Flip.of(on: Bool, x: T, id: T) -> Flip<T>
 std/lazy.cp: Flip.op<M>(m: M) -> Monoid<Flip<T>>
@@ -1179,6 +1178,7 @@ std/math.cp: mod_sqrt(a: Int, p: Int) -> ?Int
 std/math.cp: mul_mod(a: Int, b: Int, m: Int) -> Int
 std/math.cp: mult_order(a: Int, m: Int) -> ?Int
 std/math.cp: phi(x: Int) -> Int
+std/math.cp: popcount<W: Word>(x: W) -> Int
 std/math.cp: pow_exp(a: Int, x: Exp, m: Int) -> Exp
 std/math.cp: pow_mod(a: Int, e: Int, m: Int) -> Int
 std/math.cp: pow_tower(xs: List<Int>, m: Int) -> Int
@@ -1204,8 +1204,9 @@ std/matrix.cp: BitMat.set(mut self, r: Int, c: Int, v: Bool)
 std/matrix.cp: BitMat.solve(self, b: List<Bool>) -> ?List<Bool>
 std/matrix.cp: BitMat.solve_space(self, b: List<Bool>) -> ?(x0: List<Bool>, basis: List<List<Bool>>)
 std/matrix.cp: Mat.adjugate(self) -> Mat<T> where T: Mul + Div
-std/matrix.cp: Mat.at(self, r: Int, c: Int) -> lends mut T
+std/matrix.cp: Mat.at(mut self, r: Int, c: Int) -> lends mut T
 std/matrix.cp: Mat.char_poly(self) -> List<T>
+std/matrix.cp: Mat.data(self) -> List<T>
 std/matrix.cp: Mat.det(self, eps: ?T = None) -> T
 std/matrix.cp: Mat.det_mod(self, m: Int) -> Int
 std/matrix.cp: Mat.filled<S>(rows: Int, cols: Int, fill: T, over: S = Semiring(+, *)) -> Mat<T>
@@ -1409,47 +1410,45 @@ std/prefix.cp: ArithDiff.add_arith(mut self, r: Range<D>, start: T, step: T)
 std/prefix.cp: ArithDiff.finish(self) -> [D]T
 std/prefix.cp: ArithDiff.new() -> ArithDiff<D, T>
 std/prefix.cp: Diff.add(mut self, r: Range<D>, x: T)
+std/prefix.cp: Diff.add(mut self, rows: Range<R>, cols: Range<C>, x: T)
 std/prefix.cp: Diff.finish(self) -> [D]T
+std/prefix.cp: Diff.finish(self) -> [R, C]T
 std/prefix.cp: Diff.new() -> Diff<D, T>
+std/prefix.cp: Diff.new() -> Diff<R, C, T>
 std/prefix.cp: FillPrefix.at(self, c: Cut<D>) -> T
 std/prefix.cp: FillPrefix.cut(self, k: Int) -> T
 std/prefix.cp: FillPrefix.fold(self, r: Range<D>) -> T
+std/prefix.cp: FillPrefix.fold(self, r: Range<Int>) -> T
+std/prefix.cp: FillPrefix.fold(self, rows: Range<R>, cols: Range<C>) -> T
 std/prefix.cp: FillPrefix.prefix(self, b: Cut<D>) -> T
+std/prefix.cp: FillPrefix.prefix(self, r: Cut<R>, c: Cut<C>) -> T
 std/prefix.cp: FillPrefix.set(mut self, i: D, x: T)
+std/prefix.cp: FillPrefix.set(mut self, i: Int, x: T)
+std/prefix.cp: FillPrefix.set(mut self, r: R, c: C, x: T)
 std/prefix.cp: Prefix.all(self) -> T
 std/prefix.cp: Prefix.at(self, c: Cut<D>) -> T
 std/prefix.cp: Prefix.cut(self, k: Int) -> T
 std/prefix.cp: Prefix.cyclic_sum(self, r: RingRange<D>) -> T
+std/prefix.cp: Prefix.filling(n: Int, order: FillOrder = FillOrder.Forward) -> FillPrefix<T>
 std/prefix.cp: Prefix.filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<D, T>
+std/prefix.cp: Prefix.filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<R, C, T>
 std/prefix.cp: Prefix.first_ge(self, target: T) -> ?Cut<D>
 std/prefix.cp: Prefix.first_gt(self, target: T) -> ?Cut<D>
 std/prefix.cp: Prefix.fold(self, r: Range<D>) -> T
+std/prefix.cp: Prefix.fold(self, r: Range<Int>) -> T
+std/prefix.cp: Prefix.fold(self, rows: Range<R>, cols: Range<C>) -> T
+std/prefix.cp: Prefix.new(a: List<T>) -> Prefix<T>
 std/prefix.cp: Prefix.new(a: [D]T) -> Prefix<D, T>
+std/prefix.cp: Prefix.new(a: [R, C]T) -> Prefix<R, C, T>
 std/prefix.cp: Prefix.of_rev_scan<M>(a: [D]T, f: M, from: ?T) -> Prefix<D, T>
 std/prefix.cp: Prefix.prefix(self, b: Cut<D>) -> T
+std/prefix.cp: Prefix.prefix(self, r: Cut<R>, c: Cut<C>) -> T
 std/prefix.cp: Prefix.suffix(self, b: Cut<D>) -> T
 std/prefix.cp: Prefix.through(self, v: D) -> T
 std/prefix.cp: SweepAdd.add(mut self, r: Range<D>, x: T)
 std/prefix.cp: SweepAdd.advance(mut self, i: D) -> T
 std/prefix.cp: SweepAdd.current(self) -> T
 std/prefix.cp: SweepAdd.new(order: FillOrder = FillOrder.Forward) -> SweepAdd<D, T>
-std/prefix.cp: _Diff2.add(mut self, rows: Range<R>, cols: Range<C>, x: T)
-std/prefix.cp: _Diff2.finish(self) -> [R, C]T
-std/prefix.cp: _Diff2.new() -> Diff<R, C, T>
-std/prefix.cp: _FillPrefix2.fold(self, rows: Range<R>, cols: Range<C>) -> T
-std/prefix.cp: _FillPrefix2.prefix(self, r: Cut<R>, c: Cut<C>) -> T
-std/prefix.cp: _FillPrefix2.set(mut self, r: R, c: C, x: T)
-std/prefix.cp: _FillPrefixList.cut(self, k: Int) -> T
-std/prefix.cp: _FillPrefixList.fold(self, r: Range<Int>) -> T
-std/prefix.cp: _FillPrefixList.set(mut self, i: Int, x: T)
-std/prefix.cp: _Prefix2.filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<R, C, T>
-std/prefix.cp: _Prefix2.fold(self, rows: Range<R>, cols: Range<C>) -> T
-std/prefix.cp: _Prefix2.new(a: [R, C]T) -> Prefix<R, C, T>
-std/prefix.cp: _Prefix2.prefix(self, r: Cut<R>, c: Cut<C>) -> T
-std/prefix.cp: _PrefixList.cut(self, k: Int) -> T
-std/prefix.cp: _PrefixList.filling(n: Int, order: FillOrder = FillOrder.Forward) -> FillPrefix<T>
-std/prefix.cp: _PrefixList.fold(self, r: Range<Int>) -> T
-std/prefix.cp: _PrefixList.new(a: List<T>) -> Prefix<T>
 std/prefix.cp: prefix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T
 std/prefix.cp: scan<D, T, M>(self: [D]T, f: M, from: ?T = None) -> Prefix<D, T>
 std/rand.cp: Rng.chance(mut self, p: F64) -> Bool
@@ -1461,6 +1460,7 @@ std/rand.cp: Rng.perm<D>(mut self) -> [D]D
 std/rand.cp: Rng.pick<S: Indexed, T>(mut self, xs: S) -> ?T
 std/rand.cp: Rng.sample<S: Indexed, T>(mut self, k: Int, from: S) -> List<T>
 std/rand.cp: Rng.shuffle<S: IndexedMut>(mut self, mut a: S)
+std/rand.cp: shuffle<S: IndexedMut>(mut a: S)
 std/range.cp: RingRange.contains(self, i: D) -> Bool
 std/range.cp: RingRange.each(self) -> yields D
 std/range.cp: RingRange.end(self) -> D
@@ -1524,7 +1524,7 @@ std/segtree.cp: SegTree.fold(self, r: Range<D>) -> T
 std/segtree.cp: SegTree.get(self, i: D) -> T
 std/segtree.cp: SegTree.left_while(self, to: Cut<D>, ok: T -> Bool) -> Cut<D>
 std/segtree.cp: SegTree.monoid(self) -> Monoid<T>
-std/segtree.cp: SegTree.new<M, A, O>(op: M = NoOp(), a: ?[D]T = None, fill: ?T = None, act: A = NoAction(), over: O = NoOver()) -> SegTree<D, T, F>
+std/segtree.cp: SegTree.new<M, A: Acts<T, F>, O>(op: M = NoOp(), a: ?[D]T = None, fill: ?T = None, act: A = NoAction(), over: O = NoOver()) -> SegTree<D, T, F>
 std/segtree.cp: SegTree.of<M>(op: M, f: D -> T) -> SegTree<D, T, F>
 std/segtree.cp: SegTree.refresh(mut self, i: D)
 std/segtree.cp: SegTree.right_while(self, from: Cut<D>, ok: T -> Bool) -> Cut<D>
@@ -2079,7 +2079,7 @@ std/tree.cp: LazyEulerTourTree.fold_tree(mut self, v: V) -> T
 std/tree.cp: LazyEulerTourTree.get(mut self, v: V) -> T
 std/tree.cp: LazyEulerTourTree.len(mut self, v: V) -> Int
 std/tree.cp: LazyEulerTourTree.link(mut self, u: V, v: V)
-std/tree.cp: LazyEulerTourTree.new<A, M>(act: A, a: ?[V]T = None, over: M = (+)) -> LazyEulerTourTree<V, T, F>
+std/tree.cp: LazyEulerTourTree.new<A: Acts<T, F>, M>(act: A, a: ?[V]T = None, over: M = (+)) -> LazyEulerTourTree<V, T, F>
 std/tree.cp: LazyEulerTourTree.set(mut self, v: V, x: T)
 std/tree.cp: LazyEulerTourTree.to_array(self) -> [V]T
 std/tree.cp: LazyLinkCut.access(mut self, x: V) -> V
@@ -2093,7 +2093,7 @@ std/tree.cp: LazyLinkCut.jump(mut self, a: V, b: V, k: Int) -> ?V
 std/tree.cp: LazyLinkCut.lca(mut self, u: V, v: V, root: V) -> ?V
 std/tree.cp: LazyLinkCut.link(mut self, u: V, v: V)
 std/tree.cp: LazyLinkCut.make_root(mut self, v: V)
-std/tree.cp: LazyLinkCut.new<A, M>(act: A, a: ?[V]T = None, over: M = (+)) -> LazyLinkCut<V, T, F>
+std/tree.cp: LazyLinkCut.new<A: Acts<T, F>, M>(act: A, a: ?[V]T = None, over: M = (+)) -> LazyLinkCut<V, T, F>
 std/tree.cp: LazyLinkCut.root_of(mut self, v: V) -> V
 std/tree.cp: LazyLinkCut.set(mut self, v: V, x: T)
 std/tree.cp: LcaTable.dist(self, a: V, b: V) -> Int
@@ -2203,12 +2203,13 @@ std/window.cp: Undoing.pop(mut self, x: T)
 std/window.cp: Undoing.push(mut self, x: T)
 std/window.cp: Undoing.state(self) -> S
 std/window.cp: Window.all(self) -> ?T
+std/window.cp: Window.expire(mut self, before: Int)
 std/window.cp: Window.is_empty(self) -> Bool
 std/window.cp: Window.items(self) -> yields T
 std/window.cp: Window.len(self) -> Int
 std/window.cp: Window.new(op: M) -> Window<T, M>
 std/window.cp: Window.pop(mut self, x: T)
-std/window.cp: Window.push(mut self, x: T)
+std/window.cp: Window.push(mut self, x: T, at: ?Int = None)
 std/window.cp: track<S, T>(state: S, add: (mut S, T) -> (), remove: (mut S, T) -> ()) -> Tracked<S, T>
 std/window.cp: undoing<S: Undo, T>(state: S, add: (mut S, T) -> ()) -> Undoing<S, T>
 std/window.cp: window_fold<S: Indexed, T, M>(self: S, k: Int, op: M) -> yields T
