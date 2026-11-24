@@ -217,6 +217,12 @@ fn unmangled(name: &str) -> String {
 
 /// `program` with what the emitter decides once for the whole file.
 fn prepared(program: &cpl_ir::Program, target: &Target) -> cpl_ir::Program {
+    prepared_with(program, target, true)
+}
+
+/// [`prepared`], running `yields` fns in place at their loops when `inline`:
+/// a profile counts each call, so its build keeps them.
+fn prepared_with(program: &cpl_ir::Program, target: &Target, inline: bool) -> cpl_ir::Program {
     let mut program = program.clone();
     (program.unordered_maps, program.unordered_sets) = unordered::find(&program);
     (program.wide_domains, program.fixed_lens) = width::domain_sizes(&program);
@@ -224,7 +230,7 @@ fn prepared(program: &cpl_ir::Program, target: &Target) -> cpl_ir::Program {
         &mut program,
         target.checks.keeps(cpl_ir::checks::Check::Asserts),
     );
-    splice::splice(&mut program);
+    splice::splice(&mut program, target.checks != Checks::None, inline);
     unpack::unpack(&mut program);
     optfn::known_options(&mut program);
     capfn::zero_size_captures(&mut program);
@@ -345,7 +351,7 @@ pub fn emit_profiled(
     target: &Target,
     tally: &str,
 ) -> (String, Vec<cpl_diag::Span>) {
-    let program = prepared(program, target);
+    let program = prepared_with(program, target, false);
     let mut emitter = emit::Emitter::new(&program, target);
     emitter.sites = Some(Vec::new());
     emitter.devirt = devirt::Devirt::collect_unmerged(&program);

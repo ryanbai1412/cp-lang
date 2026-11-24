@@ -208,6 +208,9 @@ fn a_ranges_table_is_indexed_by_plain_index_math() {
     );
     assert!(!body.contains("cpl::Range<int> piece"), "{body}");
     assert!(!body.contains("cpl::Range<int> range = r"), "{body}");
+    // `r.splits` runs in place as the loop over its cuts: no callback form.
+    assert!(!body.contains("cpl_each_"), "{body}");
+    assert!(body.contains("for (int p = "), "{body}");
     // `min` over the splits starts from its identity: no first-value branch.
     assert!(body.contains("9223372036854775807LL"), "{body}");
 }

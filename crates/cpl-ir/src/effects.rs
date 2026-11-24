@@ -279,8 +279,11 @@ pub fn trap_free_with(e: &Expr, traps: bool, call_ok: &dyn Fn(&Expr) -> bool) ->
             };
             safe && l.ty != Ty::Str && free(l) && free(r)
         }
-        ExprKind::Cmp(_, l, r) => free(l) && free(r),
-        ExprKind::Builtin(Builtin::Min | Builtin::Max, items)
+        ExprKind::Cmp(_, l, r) | ExprKind::Range { lo: l, hi: r } => free(l) && free(r),
+        ExprKind::Builtin(
+            Builtin::Min | Builtin::Max | Builtin::Len | Builtin::RangeLo | Builtin::RangeHi,
+            items,
+        )
         | ExprKind::Tuple(items)
         | ExprKind::Variant(_, items) => items.iter().all(free),
         ExprKind::If(c, t, f) => match known(c) {

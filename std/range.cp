@@ -45,8 +45,8 @@ pub fn halve<D>(self: Range<D>) -> ?(Range<D>, Range<D>):
 /// traps: never
 /// example: `(0..4).splits.map((l, r) => (l.len, r.len)).collect() == [(1, 3), (2, 2), (3, 1)]`
 @get pub fn splits<D>(self: Range<D>) -> yields (Range<D>, Range<D>):
-    for k in 1..self.len:
-        let m = (self.nth(k)..self.nth(k)).l
+    for p in self.drop(1):
+        let m = (p..p).l
         yield (self.l..m, m..self.r)
 
 /// \(O(1)\). The middle cut: ⌊len/2⌋ elements before it; `r.l` when empty. Its `.r` is the

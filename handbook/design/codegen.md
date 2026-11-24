@@ -35,8 +35,8 @@ list of lists:
    layouts give each int and element the fewest bytes its type allows;
    `niche.rs` packs optionals into one scalar where a value is spare.
 5. **Rewrite loops when it can't be seen.** Fusion (`fuse.rs`), reduction
-   sinking (`sink.rs`), splicing a known closure into its loop
-   (`splice.rs`) and presizing (`presize.rs`) each need the effect table
+   sinking (`sink.rs`), splicing a known closure or a small `yields` fn into
+   its loop (`splice.rs`) and presizing (`presize.rs`) each need the effect table
    to show that the rewrite changes no output, order, effect count or
    trap.
 6. **Write and fit.** `emit.rs` writes types, globals, fns in order
@@ -69,7 +69,7 @@ list of lists:
 | `expr.rs`, `stmt.rs`, `show.rs` | Expressions, statements and loops, printing and reading values |
 | `uses/` | The Uses table: lend, move or copy for every non-scalar binding; `uses/effects.rs` is codegen's one door to `cpl_ir::effects` and to what code runs (`Runs`, `Stores`), and `codegen_effect_guesses` in `scripts/debt-ratchet.py` (at 0) rejects an effects or purity helper anywhere else |
 | `lend.rs` | Branches of a `let` that name a place and are read in place |
-| `devirt.rs`, `splice.rs` | Direct calls through fn values with one known closure; splicing it into its loop |
+| `devirt.rs`, `splice.rs` | Direct calls through fn values with one known closure; splicing it, or a small `yields` fn whose steps nothing sees, into its loop |
 | `fuse.rs`, `sink.rs`, `inline.rs`, `presize.rs` | Loop fusion, reduction sinking, loops over list-literal fns, comprehension reserve |
 | `bounds.rs`, `ranges.rs`, `divrem.rs`, `prune.rs` | Checks a range proves, sign facts, Euclidean `/` `%`, branches decided at compile time |
 | `scope.rs`, `rowcache.rs`, `niche.rs`, `unordered.rs` | Where locals are declared, row reuse, one-scalar optionals, hash-table maps |

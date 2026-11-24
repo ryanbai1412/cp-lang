@@ -557,7 +557,7 @@ fn a_yields_fn_whose_own_closures_write_its_locals_feeds_a_loop() {
 }
 
 #[test]
-fn a_yields_fn_that_walks_another_feeds_its_callback_on() {
+fn a_yields_fn_that_walks_another_runs_it_as_its_own_loop() {
     let cpp = cpp(concat!(
         "fn inner2(n: Int) -> yields Int:\n    for i in 0..n: yield i\n",
         "fn outer2(n: Int) -> yields Int:\n    for x in inner2(n): yield x\n",
@@ -565,7 +565,9 @@ fn a_yields_fn_that_walks_another_feeds_its_callback_on() {
     ));
     let outer = cpp.rsplit("int cpl_each_outer2(").next().unwrap();
     let outer = &outer[..outer.find("\n}\n").unwrap()];
-    assert!(outer.contains("cpl_each_inner2(n_2, "), "{outer}");
+    // `inner2` runs in place, as `outer2`'s own loop.
+    assert!(outer.contains("for (ll i = 0"), "{outer}");
+    assert!(!outer.contains("cpl_each_inner2"), "{outer}");
     assert!(!outer.contains("std::vector"), "{outer}");
 }
 

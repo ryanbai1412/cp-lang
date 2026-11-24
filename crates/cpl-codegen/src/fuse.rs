@@ -109,12 +109,17 @@ impl<'p> Emitter<'p> {
         outer_touch.reads.remove(&(false, outer_slot));
         outer_touch.writes.remove(&(false, outer_slot));
         outer_touch.binds.remove(&outer_slot);
-        if inner_touch.io || outer_touch.io || inner_touch.conflicts(&outer_touch) {
+        // Fused, the two bodies interleave: fine when neither has effects the
+        // other sees, and one of them can neither trap nor stop early. A
+        // producer that can do neither and writes only its own locals runs
+        // unseen, so the consumer may print or trap.
+        let traps = self.target.checks != crate::Checks::None;
+        let unseen = !inner_touch.io
+            && trap_free_block(inner_body, *vec_slot, traps)
+            && writes_own(inner_body);
+        if inner_touch.io || (outer_touch.io && !unseen) || inner_touch.conflicts(&outer_touch) {
             return false;
         }
-        // Fused, the two bodies interleave: fine when neither has effects the
-        // other sees, and one of them can neither trap nor stop early.
-        let traps = self.target.checks != crate::Checks::None;
         if !trap_free_block(inner_body, *vec_slot, traps)
             && !trap_free_block(outer_body, usize::MAX, traps)
         {
