@@ -298,6 +298,8 @@ fn cli_as_browser(json: &str) -> Value {
     let mut value = cpl_json::parse(json).expect("valid CLI JSON");
     if let Value::Object(members) = &mut value {
         members.remove("build");
+        // The editor's view of the CLI's text; the browser draws its own.
+        members.remove("view");
         if let Some(Value::Object(ce)) = members.get_mut("counterexample") {
             if let Some(saved) = ce.get_mut("saved") {
                 *saved = Value::Null;
@@ -419,6 +421,96 @@ fn slow():
         "{wasm_json}"
     );
 
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// An interactive file with only an `@interactor`, no brute: the browser
+/// stresses it and reports the same transcript and verdict as the CLI.
+#[test]
+fn interactive_stress_matches_cpl_stress_json() {
+    let dir = std::env::temp_dir().join(format!("cpl-wasm-interactive-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).expect("a scratch directory");
+    let mut playground = Playground::new();
+    let guess = |answer: &str| {
+        format!(
+            "\
+let n: Int = read()
+var lo = 1
+var hi = n
+while lo < hi:
+    let mid = (lo + hi) / 2
+    let answer: Str = ask(\"?\", mid, limit: 20)
+    if answer == \"<\": hi = mid
+    else: lo = mid + 1
+ask(\"!\", {answer})
+
+@interactor
+fn judge(mut sol: Interactor):
+    let n: 1..=1000 = read()
+    let secret: 1..=n = read()
+    sol.send(n)
+    while true:
+        let kind: Str = sol.recv()
+        let x: Int = sol.recv()
+        if kind == \"!\":
+            assert x == secret
+            return
+        sol.send(if secret <= x: \"<\" else: \">=\")
+"
+        )
+    };
+    for (file, answer, code, status) in [
+        ("wrong.cp", "lo + 1", 1, "fail"),
+        ("right.cp", "lo", 0, "ok"),
+    ] {
+        let source = guess(answer);
+        let path = dir.join(file);
+        std::fs::write(&path, &source).unwrap();
+        let name = path.to_str().unwrap();
+        let cli = cpl_cli::run(&[
+            "stress",
+            name,
+            "--cases",
+            "30",
+            "--seed",
+            "1",
+            "--size",
+            "6",
+            "--jobs",
+            "1",
+            "--explain",
+            "--format",
+            "json",
+        ]);
+        assert_eq!(cli.code, code, "{file}: {}", cli.stderr);
+        let cli_json = String::from_utf8(cli.stdout).unwrap();
+        let wasm_json = playground.stress(name, &source, 30, 1, 6);
+        let wasm_val = cpl_json::parse(&wasm_json).expect("valid wasm JSON");
+        assert_eq!(
+            wasm_val,
+            cli_as_browser(&cli_json),
+            "{file}\nwasm:\n{wasm_json}\ncli:\n{cli_json}"
+        );
+        assert_eq!(
+            wasm_val.at(&["status"]).as_str(),
+            Some(status),
+            "{wasm_json}"
+        );
+        if status == "fail" {
+            let ce = wasm_val.at(&["counterexample"]);
+            assert_eq!(ce.at(&["verdict"]).as_str(), Some("WA"), "{wasm_json}");
+            assert_eq!(
+                ce.at(&["interaction", "interactor", "verdict"]).as_str(),
+                Some("rejected"),
+                "{wasm_json}"
+            );
+            let Value::Array(said) = ce.at(&["interaction", "transcript"]) else {
+                panic!("a transcript: {wasm_json}");
+            };
+            let first = said.first().map(|line| line.at(&["from"]).as_str());
+            assert_eq!(first, Some(Some("interactor")), "{wasm_json}");
+        }
+    }
     let _ = std::fs::remove_dir_all(&dir);
 }
 

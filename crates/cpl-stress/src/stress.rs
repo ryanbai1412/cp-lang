@@ -283,12 +283,17 @@ impl Stress {
                 Roles {
                     solution: Runner::Process(fast?),
                     brute: brute?.map(Runner::Process),
-                    checker: match &native.judge {
-                        Judge::Checker(program) => Some(process(program)),
+                    // The file's own judge runs in the VM, as it does in-process.
+                    checker: match (checker, &native.judge) {
+                        (Some(program), _) => Some(vm(program)),
+                        (None, Judge::Checker(program)) => Some(process(program)),
                         _ => None,
                     },
-                    interactor: match &native.judge {
-                        Judge::Interactor(program, launch) => Some((process(program), *launch)),
+                    interactor: match (interactor, &native.judge) {
+                        (Some(program), _) => Some((vm(program), crate::judge::Launch::Stdio)),
+                        (None, Judge::Interactor(program, launch)) => {
+                            Some((process(program), *launch))
+                        }
                         _ => None,
                     },
                     cold: cold?.map(Runner::Process),

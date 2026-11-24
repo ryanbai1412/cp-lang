@@ -622,6 +622,160 @@ pub(crate) fn interact(
     Ok((talked, outcome))
 }
 
+/// The solution as a process against an `interactor` run in the VM on the
+/// hidden test `input`, as a native build plays its file's `@interactor`:
+/// how the solution ran, what each side said and where the interactor
+/// trapped. The solution is charged its own CPU time, as in [`interact`].
+pub(crate) fn interact_in_vm(
+    solution: &Program,
+    interactor: &cpl_ir::Program,
+    input: &str,
+    limit: Duration,
+) -> std::io::Result<(Outcome, Transcript, Option<cpl_interp::Trap>)> {
+    let mut contestant = solution
+        .to_command()
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+    let pipes = (
+        piped(contestant.stdin.take())?,
+        piped(contestant.stdout.take())?,
+        piped(contestant.stderr.take())?,
+    );
+    let (to_solution, said, solution_err) = pipes;
+    let mut contestant = cpl_wait::on_exit(contestant);
+    let start = Instant::now();
+    let clock = std::sync::Mutex::new(Clock::new(start));
+    let transcript = std::sync::Mutex::new(Transcript::default());
+    let (heard, hear) = std::sync::mpsc::channel::<Vec<u8>>();
+    let wall = judge_limit(limit) * 3;
+    let (status, own, timed_out, stdout, stderr, trap) = std::thread::scope(|scope| {
+        let (clock, transcript) = (&clock, &transcript);
+        let stdout = scope.spawn(move || {
+            relay(said, Heard(heard), Side::Solution, transcript, || {
+                locked(clock).said()
+            })
+        });
+        let stderr = scope.spawn(move || drain(solution_err));
+        let judge = scope.spawn(move || {
+            let io = cpl_interp::Io::judge(
+                input.as_bytes(),
+                Box::new(move || hear.recv_timeout(wall).ok()),
+            )
+            .until(cpl_interp::Stop::after(judge_limit(limit)));
+            let mut says = Says {
+                pipe: Some(to_solution),
+                line: Vec::new(),
+                transcript,
+                clock,
+            };
+            let trap = cpl_interp::run_with(interactor, io, &mut says).err();
+            says.finish();
+            trap
+        });
+        let mut charge = crate::program::Charge::new(contestant.pid());
+        let (status, timed_out) = loop {
+            charge.sample();
+            let tick = Instant::now() + Duration::from_micros(300);
+            if let Some(status) = contestant.by(tick)? {
+                break (status, false);
+            }
+            let busy = charge.spent(|| locked(clock).own()) > limit;
+            let idled = locked(clock).own() > limit * 2;
+            if busy || idled || start.elapsed() >= wall {
+                break (contestant.kill()?, true);
+            }
+        };
+        let own = charge.spent(|| locked(clock).own());
+        std::io::Result::Ok((
+            status,
+            own,
+            timed_out,
+            stdout.join().unwrap_or_default(),
+            stderr.join().unwrap_or_default(),
+            judge.join().ok().flatten(),
+        ))
+    })?;
+    let exit = match timed_out {
+        true => Exit::TimedOut,
+        false => status.code().map_or(Exit::Signal, Exit::Code),
+    };
+    let outcome = Outcome {
+        stdout,
+        stderr,
+        exit,
+        elapsed: own,
+        peak_kb: None,
+    };
+    let transcript = transcript
+        .into_inner()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    Ok((outcome, transcript, trap))
+}
+
+/// What the solution prints, handed to the interactor in the VM; once the
+/// interactor is done, the rest is dropped.
+struct Heard(std::sync::mpsc::Sender<Vec<u8>>);
+
+impl std::io::Write for Heard {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        self.0
+            .send(bytes.to_vec())
+            .map_err(|_| std::io::ErrorKind::BrokenPipe)?;
+        Ok(bytes.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+/// What the interactor in the VM says: sent to the solution at once, the
+/// solution's turn started, and each line put in the transcript.
+struct Says<'a> {
+    pipe: Option<std::process::ChildStdin>,
+    line: Vec<u8>,
+    transcript: &'a std::sync::Mutex<Transcript>,
+    clock: &'a std::sync::Mutex<Clock>,
+}
+
+impl Says<'_> {
+    /// The interactor is done: its last words, and the end of the
+    /// solution's input.
+    fn finish(&mut self) {
+        if !self.line.is_empty() {
+            let text = String::from_utf8_lossy(&self.line).into_owned();
+            locked(self.transcript).say(Side::Interactor, &text);
+        }
+        self.pipe = None;
+    }
+}
+
+impl std::io::Write for Says<'_> {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        locked(self.clock).heard();
+        // A solution that has left hears nothing; the interactor finds out
+        // when it next reads.
+        if let Some(pipe) = self.pipe.as_mut() {
+            if pipe.write_all(bytes).and_then(|()| pipe.flush()).is_err() {
+                self.pipe = None;
+            }
+        }
+        self.line.extend_from_slice(bytes);
+        if let Some(end) = self.line.iter().rposition(|&b| b == b'\n') {
+            let text = String::from_utf8_lossy(&self.line[..=end]).into_owned();
+            locked(self.transcript).say(Side::Interactor, &text);
+            self.line.drain(..=end);
+        }
+        Ok(bytes.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
 /// The solution's own time in an interactive run: the wall clock while it
 /// has the turn. It has it from its start, and from each time the
 /// interactor writes to it until it writes back. The interactor's launch

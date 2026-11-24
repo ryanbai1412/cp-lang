@@ -305,6 +305,24 @@ impl Runner {
                     solution_trap,
                 })
             }
+            (Runner::InProcess(interactor), Runner::Process(fast)) => {
+                let (outcome, transcript, trap) =
+                    crate::judge::interact_in_vm(fast, &interactor.program, input, limit)
+                        .map_err(unrunnable(&fast.name))?;
+                let json = trap.as_ref().map(|t| interactor.json(t));
+                let ruled = trap.map_or(Ok(String::new()), |t| Err((String::new(), t)));
+                Ok(Talked {
+                    solution: Ran {
+                        out: outcome.stdout.clone(),
+                        stop: crate::judge::failure(&outcome),
+                        cost: Some(outcome),
+                    },
+                    ruling: ruling(ruled),
+                    transcript,
+                    trap: json,
+                    solution_trap: None,
+                })
+            }
             (Runner::Process(interactor), Runner::Process(fast)) => {
                 crate::judge::interact(fast, interactor, launch, input, limit)
                     .map(|(talked, _)| talked)
