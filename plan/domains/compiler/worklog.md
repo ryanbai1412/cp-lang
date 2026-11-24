@@ -1014,3 +1014,7 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
   every value with a `show` fn; index_by_at, rev_call and step_walk still held the field
   form and failed trace_goldens on both engines. Re-recorded: only those values change, and
   rev_call fits two more steps under its 8 KB cut.
+- An `if let`/`is` whose binding branch gives a view (`s[..q]`) no longer takes that view
+  as the `if`'s type when it is read first (9d04d7c0e): an owned `else` met it with E0302,
+  red on corpus cf2187d. The view copies to the owned type, as before. Case:
+  core-01/if-is-branch-view-meets-owned-else.

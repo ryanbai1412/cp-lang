@@ -5335,7 +5335,9 @@ impl<'a> Lowerer<'a> {
         let saved_cx = self.cx.clone();
         let saved_outer = self.outer_cxs.clone();
         self.clause_chain(cond, body, tail, &[], &mut Vec::new());
-        let ty = self.given_ty(tail).flatten().filter(|t| *t != Ty::Error);
+        // A view from the branch (`s[..q]`) is no type for the `if`: the
+        // `else` may give an owned value, and the view copies to meet it.
+        let ty = (self.given_ty(tail).flatten()).filter(|t| *t != Ty::Error && !t.holds_view());
         self.cx = saved_cx;
         self.outer_cxs = saved_outer;
         self.diags.truncate(diag_len);
