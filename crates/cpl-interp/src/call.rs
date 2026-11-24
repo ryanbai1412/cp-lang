@@ -79,15 +79,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         fed: Option<Fed<'p>>,
     ) -> Res<Value> {
         let f = &self.program.fns[id];
-        if !self.program.judge_fns.is_empty() && self.program.judge_fns.contains(&id) {
-            let cpp = self.program.cpp_bodies.iter().any(|(c, _)| *c == id);
-            let said = if cpp {
-                &cpl_diag::msgs::interp::CPP_ONLY
-            } else {
-                &cpl_diag::msgs::interp::NO_GRADER
-            };
-            return trap(span, said.at(&[]));
-        }
         self.stack_left(span, Some(&f.name))?;
         let base = match args {
             [] => {
@@ -163,6 +154,15 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         fed: Option<Fed<'p>>,
     ) -> Res<Value> {
         let f = &self.program.fns[id];
+        if !self.program.judge_fns.is_empty() && self.program.judge_fns.contains(&id) {
+            let cpp = self.program.cpp_bodies.iter().any(|(c, _)| *c == id);
+            let said = if cpp {
+                &cpl_diag::msgs::interp::CPP_ONLY
+            } else {
+                &cpl_diag::msgs::interp::NO_GRADER
+            };
+            return trap(span, said.at(&[]));
+        }
         let saved = std::mem::replace(&mut self.base, base);
         self.frame_locals.push(&f.locals);
         self.call_frames.push((f.name.as_str(), span));

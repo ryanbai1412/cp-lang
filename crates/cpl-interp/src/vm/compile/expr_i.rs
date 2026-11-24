@@ -1,3 +1,4 @@
+use super::stmt::Callee;
 use super::{Compiler, GiveTarget, ModSuperOp};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
@@ -1324,17 +1325,13 @@ impl<'p, 'f> Compiler<'p, 'f> {
                             .all(|i| ScalarKind::of_ty(&f.locals[i].ty, self.program).is_some())
                         && ScalarKind::of_ty(&f.ret, self.program).is_some()
                         && args.len() <= 8;
-                    let values: Option<Vec<&'p Expr>> = args
-                        .iter()
-                        .map(|a| match a {
-                            Arg::Value(e) => Some(e),
-                            _ => None,
-                        })
-                        .collect();
-                    if let (true, Some(values)) = (can_vm, values) {
-                        let mut evaluated = Vec::with_capacity(values.len());
-                        for ae in values {
-                            evaluated.push(self.compile_expr_i(ae));
+                    if can_vm {
+                        // No `mut` param, so each arg is a value.
+                        let mut evaluated = Vec::with_capacity(args.len());
+                        for a in args {
+                            if let Arg::Value(ae) = a {
+                                evaluated.push(self.compile_expr_i(ae));
+                            }
                         }
                         let arg_base = self.next_i;
                         for r in evaluated {
@@ -1359,7 +1356,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     {
                         dst
                     } else {
-                        self.emit_fallback_expr_i(expr)
+                        self.emit_traced_call(span, Callee::Fn(*fn_id), args, true)
                     }
                 }
             }
@@ -1369,7 +1366,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 {
                     dst
                 } else {
-                    self.emit_fallback_expr_i(expr)
+                    self.emit_traced_call(span, Callee::Value(callee), args, true)
                 }
             }
             _ => self.emit_fallback_expr_i(expr),
