@@ -3,7 +3,7 @@
 
 use std::collections::BTreeSet;
 
-use cpl_ir::{Block, Expr, ExprKind, Iter, Stmt, Ty};
+use cpl_ir::{Block, Builtin, Expr, ExprKind, Iter, Stmt, Ty};
 
 use crate::emit::Emitter;
 use crate::names::global_ident;
@@ -39,15 +39,26 @@ impl Emitter<'_> {
         if self.closure_id.is_some() || self.in_setup {
             return;
         }
+        // What the statement keeps must be a value of its own: a place it
+        // names (`let r = rows[1]`) or what a lending fn gives may point
+        // into what it read.
         let kept = match &block.stmts[k] {
-            Stmt::Let(_, Some(e)) | Stmt::Assign(_, _, e) => Some(&e.ty),
+            Stmt::Let(_, Some(e)) | Stmt::Assign(_, _, e) => Some(e),
             _ => None,
         };
-        let owned =
-            |ty: &Ty| ty.is_scalar() || (matches!(ty, Ty::List(_) | Ty::Str) && !ty.holds_view());
-        if kept.is_some_and(|ty| !owned(ty))
-            || matches!(&block.stmts[k], Stmt::Let(s, _) if self.ref_bound.contains(s))
-        {
+        let fresh = |e: &Expr| {
+            e.ty.is_scalar()
+                || (matches!(e.ty, Ty::List(_) | Ty::Str)
+                    && !e.ty.holds_view()
+                    && match &e.kind {
+                        ExprKind::Call(f, _) => !self.lent_roots.contains_key(f),
+                        ExprKind::Builtin(b, _) => {
+                            !matches!(b, Builtin::ArrayToList | Builtin::ListToArray)
+                        }
+                        _ => false,
+                    })
+        };
+        if kept.is_some_and(|e| !fresh(e)) {
             return;
         }
         let main = std::ptr::eq(block, &self.program.main);
