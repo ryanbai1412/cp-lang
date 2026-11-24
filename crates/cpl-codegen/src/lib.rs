@@ -236,7 +236,12 @@ fn prepared_with(program: &cpl_ir::Program, target: &Target, inline: bool) -> cp
         &mut program,
         target.checks.keeps(cpl_ir::checks::Check::Asserts),
     );
-    splice::splice(&mut program, target.checks != Checks::None, inline);
+    // `for v in f.out(u)` passes on `f(u)`, a call one more run splices in turn.
+    for _ in 0..3 {
+        if !splice::splice(&mut program, target.checks != Checks::None, inline) {
+            break;
+        }
+    }
     unpack::unpack(&mut program);
     optfn::known_options(&mut program);
     capfn::zero_size_captures(&mut program);

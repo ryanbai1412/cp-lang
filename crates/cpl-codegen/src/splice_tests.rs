@@ -93,3 +93,21 @@ fn a_build_without_traps_fuses_a_filter_whose_both_sides_index() {
     let none = solve(&build(source, crate::Checks::None));
     assert!(!none.contains("std::vector<ll> t"), "{none}");
 }
+
+/// `g.out(u)` on a table of arc lists is std's `Next` impl, a `yields` fn
+/// that passes on `self[u]`: the loop over it walks the cell itself.
+#[test]
+fn out_of_a_table_walks_the_cell_with_no_callback() {
+    let cpp = cpp(concat!(
+        "let n: 1..=10 = read()\n",
+        "domain V = 0..n\n",
+        "let adj = read<[V]List<V>>()\n",
+        "var k = 0\n",
+        "for v in adj.out(V(0)): k += v.idx\n",
+        "let f = (u: V) => adj[u]\n",
+        "for v in f.out(V(0)): k += v.idx\n",
+        "print(k)\n",
+    ));
+    assert!(!cpp.contains("cpl_each_"), "{cpp}");
+    assert!(cpp.contains(" : adj[cpl::pos("), "{cpp}");
+}

@@ -591,7 +591,7 @@ fn a_yields_fn_whose_own_closures_write_its_locals_feeds_a_loop() {
 fn a_yields_fn_that_walks_another_runs_it_as_its_own_loop() {
     let cpp = cpp(concat!(
         "fn inner2(n: Int) -> yields Int:\n    for i in 0..n: yield i\n",
-        "fn outer2(n: Int) -> yields Int:\n    for x in inner2(n): yield x\n",
+        "fn outer2(n: Int) -> yields Int:\n    for x in inner2(n): yield x + 1\n",
         "let n: Int = read()\nvar t = 0\nfor x in outer2(n): t += x\nprint(t)\n",
     ));
     let outer = cpp.rsplit("int cpl_each_outer2(").next().unwrap();

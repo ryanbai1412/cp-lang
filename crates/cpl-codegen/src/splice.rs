@@ -8,14 +8,17 @@
 //! A loop over a direct call to a small non-recursive fn that builds and
 //! returns a list, as a `yields` fn does, runs its body in place the same
 //! way: `for (x, y) in r.splits` walks its cuts as a loop of its own, with no
-//! callback per cut.
+//! callback per cut. One that only passes on what one walk gives,
+//! `fn out(self, u) -> yields A: for a in self[u]: yield a`, is that walk:
+//! `for v in g.out(u)` is `for v in g[u]`.
 
 use crate::devirt::{skippable, Devirt};
-use crate::uses::effects::{trap_free_block, writes_own, Touch};
+use crate::uses::effects::{trap_free_block, writes_nothing, writes_own, Touch};
 use crate::uses::loops::{each_loop, stmt_count, Loop};
+use crate::uses::places::each_part;
 use cpl_ir::{
-    Arg, Block, ClosureDef, ClosureId, Expr, ExprKind, FnId, Iter, Local, LoopId, Place, PlaceKind,
-    Program, Slot, Stmt, Ty,
+    Arg, Block, ClosureDef, ClosureId, Expr, ExprKind, FnId, Iter, Local, LoopId, Mutation, Place,
+    PlaceKind, Program, Slot, Stmt, Ty,
 };
 use std::collections::BTreeMap;
 
@@ -38,7 +41,8 @@ enum Source {
     Fn(FnId),
 }
 
-pub(crate) fn splice(program: &mut Program, traps: bool, fns: bool) {
+/// Whether a loop now walks a call a passed-on walk made, which another run may splice.
+pub(crate) fn splice(program: &mut Program, traps: bool, fns: bool) -> bool {
     let mut found: BTreeMap<(Owner, LoopId), Source> = BTreeMap::new();
     {
         let devirt = Devirt::collect(program);
@@ -80,9 +84,10 @@ pub(crate) fn splice(program: &mut Program, traps: bool, fns: bool) {
     };
     found.retain(|_, source| body_of(program, *source).is_some());
     if found.is_empty() {
-        return;
+        return false;
     }
     let mut next_loop = max_loop(program) + 1;
+    let mut again = false;
     // Each source's body, its parameter count and its locals.
     let sources: BTreeMap<(bool, usize), (Block, usize, Vec<Local>)> = found
         .values()
@@ -133,7 +138,14 @@ pub(crate) fn splice(program: &mut Program, traps: bool, fns: bool) {
                 loops: BTreeMap::new(),
                 next: next_loop,
             };
-            for arg in args {
+            // A walk passed on runs once, so it may take one argument as
+            // written when it reads it once: `g.out(V(0))` walks `g[V(0)]`.
+            let walked = match block.stmts.as_slice() {
+                [Stmt::Give(walked)] if !key.0 => Some(walked.clone()),
+                _ => None,
+            };
+            let mut written = 0;
+            for (i, arg) in args.iter().enumerate() {
                 let Arg::Value(value) = arg else {
                     return;
                 };
@@ -146,8 +158,22 @@ pub(crate) fn splice(program: &mut Program, traps: bool, fns: bool) {
                         ren.map.push(usize::MAX);
                         ren.consts.push(Some(value.clone()));
                     }
+                    ExprKind::Global(_) if walked.is_some() => {
+                        ren.map.push(usize::MAX);
+                        ren.consts.push(Some(value.clone()));
+                    }
+                    _ if walked.as_ref().is_some_and(|w| reads(w, i) == 1)
+                        && writes_nothing(value) =>
+                    {
+                        written += 1;
+                        ren.map.push(usize::MAX);
+                        ren.consts.push(Some(value.clone()));
+                    }
                     _ => return,
                 }
+            }
+            if written > 1 {
+                return;
             }
             let base = locals.len();
             for i in params..c_locals.len() {
@@ -159,7 +185,13 @@ pub(crate) fn splice(program: &mut Program, traps: bool, fns: bool) {
             }
             next_loop = ren.next;
             locals.extend(c_locals[params..].iter().cloned());
-            seq.kind = ExprKind::Do(block);
+            match block.stmts.as_slice() {
+                [Stmt::Give(walked)] => {
+                    again |= matches!(walked.kind, ExprKind::Call(..) | ExprKind::CallExpr(..));
+                    *seq = walked.clone();
+                }
+                _ => seq.kind = ExprKind::Do(block),
+            }
         };
         for_loops_mut(body, &mut todo);
     };
@@ -171,6 +203,7 @@ pub(crate) fn splice(program: &mut Program, traps: bool, fns: bool) {
     for (cid, c) in program.closures.iter_mut().enumerate() {
         run(Owner::Closure(cid), &mut c.body, &mut c.locals);
     }
+    again
 }
 
 /// The list-building block closure `c` returns, when it takes its
@@ -189,7 +222,29 @@ fn yields(f: &cpl_ir::Function) -> bool {
     f.locals.iter().any(|l| l.name == "__yields")
 }
 
+/// The walk a `yields` fn passes on unchanged, as a block giving it: the call
+/// worked it out once before the first step, as the loop over it does.
+fn forwarded(f: &cpl_ir::Function) -> Option<Block> {
+    if !yields(f) || f.params.iter().any(|p| p.mutable) {
+        return None;
+    }
+    let block = producer_body(&f.body)?;
+    let p = crate::fuse::block_producer(&block)?;
+    let (Iter::Seq(walked, false), [Stmt::Expr(push)]) = (p.iter, p.body.stmts.as_slice()) else {
+        return None;
+    };
+    let passes_on = matches!(&push.kind, ExprKind::Mutate(Mutation::Push, place, args)
+        if matches!(place.kind, PlaceKind::Local(v) if v == *p.vec)
+            && matches!(args.as_slice(), [Expr { kind: ExprKind::Local(a), .. }] if a == p.slot));
+    passes_on.then(|| Block {
+        stmts: vec![Stmt::Give(walked.clone())],
+    })
+}
+
 fn fn_producer(fns: &[cpl_ir::Function], f: &cpl_ir::Function, traps: bool) -> Option<Block> {
+    if let Some(walk) = forwarded(f) {
+        return Some(walk);
+    }
     let generator = yields(f);
     // A parameter is bound as a local, so only ones that cost no copy.
     let small = |ty: &Ty| match ty {
@@ -223,6 +278,15 @@ fn fn_producer(fns: &[cpl_ir::Function], f: &cpl_ir::Function, traps: bool) -> O
         return None;
     };
     unseen.then_some(block)
+}
+
+/// How many times `e` reads local `slot`.
+fn reads(e: &Expr, slot: Slot) -> usize {
+    let mut n = 0;
+    each_part(e, &mut |sub| {
+        n += usize::from(sub.kind == ExprKind::Local(slot))
+    });
+    n
 }
 
 fn producer_body(body: &Block) -> Option<Block> {
@@ -378,6 +442,13 @@ impl Ren {
                 self.expr(value)
                     && lo.as_mut().is_none_or(|x| self.expr(x))
                     && hi.as_mut().is_none_or(|x| self.expr(x))
+            }
+            ExprKind::CallExpr(callee, args) => {
+                self.expr(callee)
+                    && args.iter_mut().all(|arg| match arg {
+                        Arg::Value(v) => self.expr(v),
+                        Arg::Mut(p) => self.place(p),
+                    })
             }
             ExprKind::Call(_, args) => args.iter_mut().all(|arg| match arg {
                 Arg::Value(v) => self.expr(v),

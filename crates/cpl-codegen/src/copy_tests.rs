@@ -221,7 +221,7 @@ fn a_yields_fn_run_as_pushes_reserves_no_list() {
     let cpp = cpp(concat!(
         "fn walk(xs: List<Int>) -> yields Int:\n",
         "    for x in xs:\n",
-        "        yield x\n",
+        "        yield x + 1\n",
         "fn total(xs: List<Int>, w: Int -> Int) -> Int:\n",
         "    var t = 0\n",
         "    for x in walk(xs): t += w(x)\n",
@@ -230,7 +230,7 @@ fn a_yields_fn_run_as_pushes_reserves_no_list() {
     ));
     let each = cpp.rsplit("int cpl_each_walk(").next().unwrap();
     let body = each.split("\n}\n").next().unwrap();
-    assert!(body.contains("cpl_f(x)"), "{cpp}");
+    assert!(body.contains("cpl_f(cpl::iadd(x, 1))"), "{cpp}");
     assert!(!body.contains(".reserve("), "{cpp}");
 }
 
