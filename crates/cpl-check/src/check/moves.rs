@@ -170,7 +170,7 @@ impl Checker<'_> {
         let mut again: Vec<(String, Span)> = self
             .moved
             .iter()
-            .filter(|(k, v)| before.get(*k) != Some(*v))
+            .filter(|(k, v)| before.get(k) != Some(*v))
             .map(|(k, v)| (k.clone(), *v))
             .collect();
         again.sort_by_key(|(_, at)| at.start);
