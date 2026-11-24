@@ -128,9 +128,10 @@ template <class T, class U> bool has(const std::vector<T>& v, const U& x) { retu
         name: "sorted",
         needs: &[],
         code: "\
-template <class It, class V, class L> void merge_sort(It a, size_t n, std::vector<V>& buf, L& lt) { if (n <= 1) return; size_t m = n / 2, i = 0, j = m, k = 0; merge_sort(a + m, n - m, buf, lt); merge_sort(a, m, buf, lt); while (i < m && j < n) buf[k++] = lt(a[j], a[i]) ? std::move(a[j++]) : std::move(a[i++]); while (i < m) buf[k++] = std::move(a[i++]); std::move(buf.begin(), buf.begin() + k, a); }
 // The interpreter's merge sort, so `cpl profile` counts the same comparisons natively.
-template <class It, class L> void stable_sort_lt(It b, It e, L lt) { using V = typename std::iterator_traits<It>::value_type; std::vector<V> buf(b, e); merge_sort(b, (size_t)(e - b), buf, lt); }
+// Each level merges from one array into the other, so no level copies back.
+template <class S, class D, class L> void merge_sort(S src, D dst, size_t lo, size_t hi, L& lt) { if (hi - lo <= 1) return; size_t m = lo + (hi - lo) / 2, i = lo, j = m, k = lo; merge_sort(dst, src, m, hi, lt); merge_sort(dst, src, lo, m, lt); while (i < m && j < hi) dst[k++] = lt(src[j], src[i]) ? std::move(src[j++]) : std::move(src[i++]); while (i < m) dst[k++] = std::move(src[i++]); while (j < hi) dst[k++] = std::move(src[j++]); }
+template <class It, class L> void stable_sort_lt(It b, It e, L lt) { using V = typename std::iterator_traits<It>::value_type; std::vector<V> buf(b, e); merge_sort(buf.begin(), b, 0, buf.size(), lt); }
 template <class It, class L = std::less<>> void sort_seq(It b, It e, L lt = L()) { using V = typename std::iterator_traits<It>::value_type; if constexpr (std::is_integral_v<V>) std::sort(b, e, lt); else stable_sort_lt(b, e, lt); }
 template <class T> std::vector<T> sorted(std::vector<T> v) { sort_seq(v.begin(), v.end()); return v; }
 template <class T> std::vector<T> sorted(const std::set<T>& s) { return std::vector<T>(s.begin(), s.end()); }
