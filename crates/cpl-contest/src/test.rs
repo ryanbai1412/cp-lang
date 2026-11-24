@@ -58,9 +58,9 @@ options:
   --memory-limit MB  peak memory per case, past which a case is MLE (default:
                      the problem's limit)
   --format json      print `{\"cases\": [...], \"passed_count\",
-                     \"case_count\", \"view\"}`, each case with its name, verdict (null
-                     when unjudged), time_ms, peak_kb, expected, output, why
-                     and explained
+                     \"case_count\", \"view\"}`, each case with its name,
+                     verdict (null when unjudged), time_ms, peak_kb,
+                     expected, output, why and explained
   --format teamcity  print one TeamCity service message per case event, as
                      IntelliJ's test tree and CI servers read them: each case
                      located at its `.in` file, a wrong answer as an
