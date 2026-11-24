@@ -3,6 +3,14 @@
 [[case]]
 input = "6\n1 8 4\n1 4 6\n7 7 2\n4 10 -3\n4 6 -9\n4 2 8\n"
 
+# Every point on one line: a side takes a run of them, never both ends without the middle.
+[[case]]
+input = "3\n0 2 0\n1 2 -2\n-2 2 3\n"
+
+# The one positive point lies between two others on a line, so no side takes it alone.
+[[case]]
+input = "6\n2 -2 -3\n-1 -2 -3\n1 1 -3\n1 -2 0\n1 0 0\n0 -2 1\n"
+
 [[case]]
 seed = 1
 size = 3
