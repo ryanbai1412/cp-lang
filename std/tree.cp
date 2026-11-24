@@ -333,15 +333,14 @@ pub struct Rooted<V, Pre, A>:
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.excl_fold(0, +, c => t.size(c)).collect() == [(c: 1, rest: 1), (c: 2, rest: 3)]`
     pub fn excl_fold<T, M>(self, v: V, op: M, f: V -> T) -> yields (c: V, rest: T):
         let mon = Monoid<T>.of(op)
-        let g = mon.op
         let k = k1[v] - k0[v]
         let vals = [f(bfs[i]) for i in k0[v]..k1[v]]
         var suf = List.filled(k + 1, mon.id)
-        for i in (0..k).rev: suf[i] = g(vals[i], suf[i + 1])
+        for i in (0..k).rev: suf[i] = mon.op(vals[i], suf[i + 1])
         var pre = mon.id
         for i in 0..k:
-            yield (c: bfs[k0[v] + i], rest: g(pre, suf[i + 1]))
-            pre = g(pre, vals[i])
+            yield (c: bfs[k0[v] + i], rest: mon.op(pre, suf[i + 1]))
+            pre = mon.op(pre, vals[i])
 
     /// The number of edges between `v` and its root.
     ///
@@ -422,14 +421,13 @@ pub struct Rooted<V, Pre, A>:
         finish: (U, V) -> T,
     ) -> [V]T:
         let mon = Monoid<U>.of(op)
-        let f = mon.op
         var dn: [V]?T = None
         for p in Pre.rev:
             let v = at[p]
             var acc = mon.id
             for i in k0[v]..k1[v]:
                 let c = bfs[i]
-                acc = f(acc, lift(dn[c]!, c, v))
+                acc = mon.op(acc, lift(dn[c]!, c, v))
             dn[v] = Some(finish(acc, v))
         [V] v => dn[v]!
 
@@ -469,14 +467,13 @@ pub struct Rooted<V, Pre, A>:
         finish: (U, V) -> T,
     ) -> [V]T:
         let mon = Monoid<U>.of(op)
-        let f = mon.op
         var dn: [V]?T = None
         for p in Pre.rev:
             let v = at[p]
             var acc = mon.id
             for i in k0[v]..k1[v]:
                 let c = bfs[i]
-                acc = f(acc, lift(dn[c]!, c, v))
+                acc = mon.op(acc, lift(dn[c]!, c, v))
             dn[v] = Some(finish(acc, v))
         var ab: [V]?T = None
         var ans: [V]?T = None
@@ -488,14 +485,14 @@ pub struct Rooted<V, Pre, A>:
                 pre[0] = lift(ab[v]!, pv, v)
             for j in 0..m:
                 let c = bfs[k0[v] + j]
-                pre[j + 1] = f(pre[j], lift(dn[c]!, c, v))
+                pre[j + 1] = mon.op(pre[j], lift(dn[c]!, c, v))
             ans[v] = Some(finish(pre[m], v))
             var suf = mon.id
             var j = m - 1
             while j >= 0:
                 let c = bfs[k0[v] + j]
-                ab[c] = Some(finish(f(pre[j], suf), v))
-                suf = f(lift(dn[c]!, c, v), suf)
+                ab[c] = Some(finish(mon.op(pre[j], suf), v))
+                suf = mon.op(lift(dn[c]!, c, v), suf)
                 j -= 1
         [V] v => ans[v]!
 
@@ -950,14 +947,13 @@ pub struct Rooted<V, Pre, A>:
         finish: (U, V) -> T,
     ) -> [V]?T:
         let mon = Monoid<U>.of(op)
-        let f = mon.op
         var dn: [V]?T = None
         for p in Pre.rev:
             let v = at[p]
             var acc = mon.id
             for i in k0[v]..k1[v]:
                 let c = bfs[i]
-                acc = f(acc, lift(dn[c]!, c, v))
+                acc = mon.op(acc, lift(dn[c]!, c, v))
             dn[v] = Some(finish(acc, v))
         var ab: [V]?T = None
         for p in Pre:
@@ -969,13 +965,13 @@ pub struct Rooted<V, Pre, A>:
                 pre[0] = lift(ab[v]!, pv, v)
             for j in 0..m:
                 let c = bfs[k0[v] + j]
-                pre[j + 1] = f(pre[j], lift(dn[c]!, c, v))
+                pre[j + 1] = mon.op(pre[j], lift(dn[c]!, c, v))
             var suf = mon.id
             var j = m - 1
             while j >= 0:
                 let c = bfs[k0[v] + j]
-                ab[c] = Some(finish(f(pre[j], suf), v))
-                suf = f(lift(dn[c]!, c, v), suf)
+                ab[c] = Some(finish(mon.op(pre[j], suf), v))
+                suf = mon.op(lift(dn[c]!, c, v), suf)
                 j -= 1
         ab
 
@@ -3982,13 +3978,13 @@ pub struct KruskalTree<V, N, W>:
     /// traps: never
     /// example: `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 1, v: 2, w: 3)]; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); let c = kt.up(+, leaf: v => 1); c[kt.reach(2, 3)] == 2 and c[kt.leaf[0]] == 1`
     pub fn up<T, M>(self, op: M, leaf: V -> T) -> [N]T:
-        let g = Monoid<T>.of(op).op
+        let m = Monoid<T>.of(op)
         var acc: [N]?T = None
         for v in V: acc[self.leaf[v]] = Some(leaf(v))
         for x in N:
             if let p = lift.parent(x):
                 let c = acc[x]!
-                acc[p] = if let a = acc[p]: Some(g(a, c)) else: Some(c)
+                acc[p] = if let a = acc[p]: Some(m.op(a, c)) else: Some(c)
         [N] x => acc[x]!
 
     /// The least possible largest edge weight on a path from `a` to `b`: the weight of their
