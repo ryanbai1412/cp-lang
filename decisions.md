@@ -9356,3 +9356,5 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 - **Status.** Accepted (Factory and Core); the instantiating-crate question stays open.
 
 ## 640. (reserved, unknown)
+
+## 641. (reserved, compiler)
