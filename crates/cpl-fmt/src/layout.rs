@@ -649,8 +649,20 @@ impl<'a, 'b> Emitter<'a, 'b> {
         let inner = indent + self.indent;
         self.tok(open);
         self.cont = inner;
+        // A comma inside `<..>` separates type arguments, not elements:
+        // `Version<Tree<D, T>>` stays whole.
+        let mut generic = 0usize;
         let elements: Vec<&[Node]> = items
-            .split_inclusive(|n| matches!(n, Node::Tok(i) if self.toks[*i].kind == K::Comma))
+            .split_inclusive(|n| {
+                let Node::Tok(i) = n else { return false };
+                match (self.roles[*i], self.toks[*i].kind) {
+                    (Role::GenericOpen, _) => generic += 1,
+                    (Role::GenericClose, K::Shr) => generic = generic.saturating_sub(2),
+                    (Role::GenericClose, _) => generic = generic.saturating_sub(1),
+                    _ => {}
+                }
+                generic == 0 && self.toks[*i].kind == K::Comma
+            })
             .collect();
         let wants_comma = takes_trailing_comma(self.toks, items);
         for (n, element) in elements.iter().enumerate() {

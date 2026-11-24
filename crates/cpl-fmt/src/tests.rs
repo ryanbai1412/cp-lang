@@ -90,6 +90,16 @@ fn tells_a_comparison_from_a_generic() {
 }
 
 #[test]
+fn breaks_a_long_signature_between_parameters_not_type_arguments() {
+    let src = "struct V<S>(r: Int)\nstruct PersistentSegmentTreeWithLongName<D, T>:\n    var r: Int\n    pub fn set(mut self, v: V<PersistentSegmentTreeWithLongName<D, T>>, i: D, x: T) -> V<PersistentSegmentTreeWithLongName<D, T>>:\n        V<PersistentSegmentTreeWithLongName<D, T>>(r)\n";
+    let out = fmt(src);
+    assert!(
+        out.contains("\n        v: V<PersistentSegmentTreeWithLongName<D, T>>,\n        i: D,\n"),
+        "{out}"
+    );
+}
+
+#[test]
 fn keeps_table_and_type_brackets_apart() {
     assert_eq!(
         fmt("let order = [I] i => a[i]\n"),

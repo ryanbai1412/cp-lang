@@ -147,8 +147,7 @@ pub struct PersistentSegTree<D, T: Sub>(m: Monoid<T>):
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); let v = t.set(t.base, 1, 10); t.all(v) == 14 and t.all(t.base) == 6`
     pub fn set(
         mut self,
-        v: Version<PersistentSegTree<D,
-        T>>,
+        v: Version<PersistentSegTree<D, T>>,
         i: D,
         x: T,
     ) -> Version<PersistentSegTree<D, T>>:
@@ -174,8 +173,7 @@ pub struct PersistentSegTree<D, T: Sub>(m: Monoid<T>):
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); let v = t.update(t.base, 2, x => x * 5); t.get(v, 2) == 15 and t.get(t.base, 2) == 3`
     pub fn update(
         mut self,
-        v: Version<PersistentSegTree<D,
-        T>>,
+        v: Version<PersistentSegTree<D, T>>,
         i: D,
         f: T -> T,
     ) -> Version<PersistentSegTree<D, T>>:
@@ -248,8 +246,7 @@ pub struct PersistentSegTree<D, T: Sub>(m: Monoid<T>):
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); t.right_while(t.base, 0, s => s <= 3) == 2`
     pub fn right_while(
         self,
-        v: Version<PersistentSegTree<D,
-        T>>,
+        v: Version<PersistentSegTree<D, T>>,
         from: Cut<D>,
         ok: T -> Bool,
     ) -> Cut<D>:
@@ -279,8 +276,7 @@ pub struct PersistentSegTree<D, T: Sub>(m: Monoid<T>):
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); t.left_while(t.base, 3, s => s <= 5) == 1`
     pub fn left_while(
         self,
-        v: Version<PersistentSegTree<D,
-        T>>,
+        v: Version<PersistentSegTree<D, T>>,
         to: Cut<D>,
         ok: T -> Bool,
     ) -> Cut<D>:
@@ -314,10 +310,8 @@ pub struct PersistentSegTree<D, T: Sub>(m: Monoid<T>):
     /// example: `var t = PersistentSegTree(+, a: [0, 0, 0, 0]); let v1 = t.set(t.base, 1, 1); let v2 = t.set(v1, 3, 2); t.diff_kth(v2, v1, 0) == Some(3)`
     pub fn diff_kth(
         self,
-        hi: Version<PersistentSegTree<D,
-        T>>,
-        lo: Version<PersistentSegTree<D,
-        T>>,
+        hi: Version<PersistentSegTree<D, T>>,
+        lo: Version<PersistentSegTree<D, T>>,
         k: Int,
     ) -> ?D:
         assert k >= 0, "`diff_kth` needs `k >= 0`"
@@ -547,8 +541,7 @@ pub struct PersistentLazySegTree<D, T, F>(act: Action<T, F>):
     /// traps: when both `a:` and `fill:` are given
     /// example: `var t = PersistentLazySegTree(Action<Int, Int>(apply: (d, x, span) => x + d * span), a: [1, 2, 3]); t.all(t.base) == 6`
     pub fn new(
-        act: Action<T,
-        F>,
+        act: Action<T, F>,
         a: ?[D]T = None,
         fill: ?T = None,
     ) -> PersistentLazySegTree<D, T, F>:
@@ -576,9 +569,7 @@ pub struct PersistentLazySegTree<D, T, F>(act: Action<T, F>):
     /// example: `var t = PersistentLazySegTree(Action<Int, Int>(apply: (d, x, span) => x + d * span), a: [1, 2, 3]); let v = t.apply(t.base, 0..2, 10); t.all(v) == 26 and t.all(t.base) == 6`
     pub fn apply(
         mut self,
-        v: Version<PersistentLazySegTree<D,
-        T,
-        F>>,
+        v: Version<PersistentLazySegTree<D, T, F>>,
         r: Range<D>,
         f: F,
     ) -> Version<PersistentLazySegTree<D, T, F>>:
@@ -593,9 +584,7 @@ pub struct PersistentLazySegTree<D, T, F>(act: Action<T, F>):
     /// example: `var t = PersistentLazySegTree(Action<Int, Int>(apply: (d, x, span) => x + d * span), a: [1, 2, 3]); let v = t.apply(t.base, 0..3, 1); let w = t.set(v, 0, 0); t.all(w) == 7`
     pub fn set(
         mut self,
-        v: Version<PersistentLazySegTree<D,
-        T,
-        F>>,
+        v: Version<PersistentLazySegTree<D, T, F>>,
         i: D,
         x: T,
     ) -> Version<PersistentLazySegTree<D, T, F>>:
@@ -711,8 +700,7 @@ pub struct PersistentArray<D, T>:
     /// example: `var p = PersistentArray(a: [1, 2, 3]); let v = p.set(p.base, 0, 9); p.get(v, 0) == 9 and p.get(p.base, 0) == 1`
     pub fn set(
         mut self,
-        v: Version<PersistentArray<D,
-        T>>,
+        v: Version<PersistentArray<D, T>>,
         i: D,
         x: T,
     ) -> Version<PersistentArray<D, T>>:
