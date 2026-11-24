@@ -25,6 +25,29 @@ impl<'a> Checker<'a> {
                 && matches!(arg.value.kind, ExprKind::Comprehension { .. }))
     }
 
+    /// `xs.sort(x => -x)` on a built-in row: the key goes by name (decision 290).
+    pub(super) fn sort_key_by_position(&mut self, callee: &Expr, args: &[Arg]) {
+        let ExprKind::Field { base, name } = &callee.kind else {
+            return;
+        };
+        let [arg] = args else {
+            return;
+        };
+        if arg.name.is_some()
+            || !matches!(arg.value.kind, ExprKind::Lambda { .. })
+            || !matches!(name.text.as_str(), "sort" | "sorted")
+            || self.catalog_row(base, &name.text).is_none()
+        {
+            return;
+        }
+        let at = arg.value.span;
+        let title = format!("write `by: {}`", self.quote(at));
+        let message = "a sort takes its key by name: `by: x => ..`".to_string();
+        if let Some(diag) = self.error(codes::WRONG_ARG_COUNT, at, message) {
+            diag.fix(title, Span::new(at.start, at.start), "by: ");
+        }
+    }
+
     /// `b.count()` or `count(b)` on bools: `count()` counts every element, the falses too, so it
     /// is an error naming the two questions it could mean (decision 378, R07.9.4).
     pub(super) fn bool_count(&mut self, call: &Expr, over: &Ty) {

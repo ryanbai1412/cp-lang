@@ -227,6 +227,7 @@ impl<'a> Checker<'a> {
                 }
             }
         }
+        self.sort_key_by_position(callee, args);
         let past_row = self.past_builtin_row(callee, args);
         let library = past_row
             .then(|| self.method_form_call(call, callee, args))
