@@ -5,14 +5,18 @@
 
 use crate::walk::{Scope, Visitor};
 use crate::{File, Finding, FOUND_FLAG_PAIR};
+use cpl_check::Ty;
 use cpl_diag::{Diagnostic, Span};
-use cpl_syntax::ast::{AssignOp, Expr, ExprKind, PatternKind, Stmt, StmtKind, TypeKind};
+use cpl_syntax::ast::{AssignOp, Expr, ExprKind, PatternKind, Stmt, StmtKind};
 
 #[derive(Default)]
 struct Flags {
     base: u32,
     /// `var f = false`: name, its span, and the statement's start.
     flags: Vec<(String, Span, u32)>,
+    /// The statement start and name span of each flag with a written type:
+    /// the checker's facts say whether it is `Bool`.
+    written: Vec<(u32, Span)>,
     /// Other `var`s started at a placeholder: name, the declared type's
     /// span, whether the start is an integer literal, and the statement's
     /// start.
@@ -92,11 +96,12 @@ impl Visitor for Flags {
                 let PatternKind::Name(name) = &pat.kind else {
                     return;
                 };
-                let bool_ty = ty.as_ref().is_none_or(|t| {
-                    matches!(&t.kind, TypeKind::Named { name, args } if name.text == "Bool" && args.is_empty())
-                });
-                if bool_ty && matches!(init.kind, ExprKind::Bool(false)) {
+                if matches!(init.kind, ExprKind::Bool(false)) {
                     let decl = Span::new(stmt.span.start, init.span.end);
+                    if ty.is_some() {
+                        self.written
+                            .push((stmt.span.start + self.base, pat.span.shift(self.base)));
+                    }
                     self.flags.push((
                         name.clone(),
                         decl.shift(self.base),
@@ -155,6 +160,14 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut out = Vec::new();
     let scope = |at: u32| v.scopes.iter().find(|(s, _)| *s == at).map(|(_, b)| *b);
     for (flag, span, decl) in &v.flags {
+        let written = v.written.iter().find(|(at, _)| at == decl);
+        let bool_ty = written.is_none_or(|(_, name)| {
+            file.facts
+                .is_some_and(|f| matches!(f.place_type(*name), Some(Ty::Bool)))
+        });
+        if !bool_ty {
+            continue;
+        }
         let sets: Vec<_> = v.sets.iter().filter(|(n, ..)| n == flag).collect();
         if sets.is_empty() || sets.iter().any(|(_, truth, _)| !truth) {
             continue;

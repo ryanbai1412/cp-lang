@@ -611,3 +611,35 @@ fn sort_desc_by_negation_wraps_the_key_in_desc() {
         "let ps = [(1, 2), (3, 4)]\nprint(ps.sorted(by: p => desc(p.1)))\n"
     );
 }
+
+#[test]
+fn sentinel_and_found_flag_read_a_written_type_from_the_checker() {
+    let sentinel = |decl: &str| {
+        let src = format!(
+            "let n: 1..=100 = read()\nlet a: [0..n]Int = read()\n{decl}\nfor i in 0..n:\n    if a[i] == 0:\n        last = i\nprint(last)\n"
+        );
+        codes(&src).contains(&"L0536")
+    };
+    assert!(sentinel("var last = -1"));
+    assert!(sentinel("var last: Int = -1"));
+    assert!(!sentinel("var last: -1..=100 = -1"));
+    assert!(!sentinel("var last: I128 = -1"));
+    let flag = |decl: &str| {
+        let src = format!(
+            "let n: 1..=100 = read()\nlet a: [0..n]Int = read()\n{decl}\nvar last = 0\nfor i in 0..n:\n    if a[i] % 2 == 0:\n        last = a[i]\n        found = true\nif found == true:\n    print(last)\nelse:\n    print(-1)\n"
+        );
+        codes(&src).contains(&"L0596")
+    };
+    assert!(flag("var found = false"));
+    assert!(flag("var found: Bool = false"));
+    assert!(!flag("var found: ?Bool = false"));
+}
+
+#[test]
+fn copy_comprehension_writes_collect_on_a_call_without_parens() {
+    let src = "fn g() -> List<Int> = [3, 1]\nprint([x for x in g()])\n";
+    assert_eq!(
+        only(src).help.as_deref(),
+        Some("write `g().collect()`: it copies any sequence into a new `List`")
+    );
+}

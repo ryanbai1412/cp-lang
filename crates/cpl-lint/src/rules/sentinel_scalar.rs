@@ -6,14 +6,16 @@
 use super::sentinel::{constant, LARGE};
 use crate::walk::{walk_stmt, Visitor};
 use crate::{File, Finding, SENTINEL_SCALAR};
+use cpl_check::Ty;
 use cpl_diag::{Diagnostic, Span};
-use cpl_syntax::ast::{AssignOp, ExprKind, PatternKind, Stmt, StmtKind, TypeKind};
+use cpl_syntax::ast::{AssignOp, ExprKind, PatternKind, Stmt, StmtKind};
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     struct Scalars {
         base: u32,
-        /// Name, start value, and the start's span.
-        vars: Vec<(String, i128, Span)>,
+        /// Name, start value, the start's span, and the name's span when
+        /// a type is written (the checker's facts say whether it is `Int`).
+        vars: Vec<(String, i128, Span, Option<Span>)>,
         /// Names set inside a `for` body, and whether the value was a bare name.
         set_in_for: Vec<(String, bool, Span)>,
     }
@@ -30,14 +32,10 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                     let PatternKind::Name(name) = &pat.kind else {
                         return;
                     };
-                    let int = ty.as_ref().is_none_or(|t| {
-                        matches!(&t.kind, TypeKind::Named { name, args } if name.text == "Int" && args.is_empty())
-                    });
-                    if let Some(v) =
-                        constant(init).filter(|&v| int && (v == -1 || v.abs() >= LARGE))
-                    {
+                    if let Some(v) = constant(init).filter(|&v| v == -1 || v.abs() >= LARGE) {
+                        let written = ty.as_ref().map(|_| pat.span.shift(self.base));
                         self.vars
-                            .push((name.clone(), v, init.span.shift(self.base)));
+                            .push((name.clone(), v, init.span.shift(self.base), written));
                     }
                 }
                 StmtKind::For { body, .. } => {
@@ -68,7 +66,14 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     };
     file.walk(&mut v, |v, base| v.base = base);
     let mut out = Vec::new();
-    for (name, start, span) in &v.vars {
+    for (name, start, span, written) in &v.vars {
+        let int = written.is_none_or(|at| {
+            file.facts
+                .is_some_and(|f| matches!(f.place_type(at), Some(Ty::Int)))
+        });
+        if !int {
+            continue;
+        }
         let index = *start == -1;
         let Some((_, _, set)) = v
             .set_in_for
