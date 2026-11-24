@@ -606,18 +606,23 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
             return 2;
         }
     };
+    // A package's cases are made before its cases folder is looked for.
+    let made = match source.parent().filter(|p| p.join("tests.toml").is_file()) {
+        Some(package) if args.value("--tests").is_none() => {
+            crate::package::make(package, &crate::package::cases_dir(package))
+        }
+        _ => Ok(()),
+    };
     let dir = args
         .value("--tests")
         .map(PathBuf::from)
         .unwrap_or_else(|| find_tests_dir(&source));
-    let result = std::fs::read_to_string(&source)
-        .map_err(|e| format!("can't read {}: {e}", source.display()))
+    let result = made
+        .and_then(|()| {
+            std::fs::read_to_string(&source)
+                .map_err(|e| format!("can't read {}: {e}", source.display()))
+        })
         .and_then(|src| {
-            if args.value("--tests").is_none() {
-                if let Some(package) = source.parent().filter(|p| p.join("tests.toml").is_file()) {
-                    crate::package::make(package, &crate::package::cases_dir(package))?;
-                }
-            }
             let mut only = args.value("--case").map(str::to_string);
             if let Some(from) = args.value("--add") {
                 let name = add_case(&dir, from, args.value("--expect"))?;
