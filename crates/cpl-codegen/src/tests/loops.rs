@@ -314,3 +314,24 @@ fn a_loop_over_the_rows_of_a_grid_walks_them_by_pointer() {
         "a grid the loop replaces: {rebound}"
     );
 }
+
+#[test]
+fn the_items_of_a_built_list_are_built_once() {
+    let solve = body("let a = [3, 1, 4, 1, 5]\nfor (k, e) in a.items.items: print(k, e.1)\n");
+    assert_eq!(
+        solve.matches("push_back").count(),
+        1,
+        "built once:\n{solve}"
+    );
+    assert!(
+        !solve.contains("[&]()"),
+        "held, not rebuilt per turn:\n{solve}"
+    );
+    assert!(
+        solve
+            .lines()
+            .filter(|l| l.ends_with(" = a;"))
+            .all(|l| l.contains("& ")),
+        "a is read in place:\n{solve}"
+    );
+}

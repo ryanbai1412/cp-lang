@@ -412,11 +412,11 @@ fn a_set_from_a_tuple_part_that_still_holds_it_is_listed() {
 }
 
 #[test]
-fn a_hoisted_let_of_a_whole_list_is_listed() {
+fn a_hoisted_let_of_a_whole_list_lends_it_and_lists_no_copy() {
     let src = "let a = [3, 1, 4]\nfor (k, e) in a.items.items: print(k, e.1)\n";
     let out = super::cpp(src);
-    assert!(out.contains("t0 = a;"), "{out}");
-    assert!(!copy_reasons(src).is_empty());
+    assert!(out.contains("& t0 = a;"), "{out}");
+    assert!(copy_reasons(src).is_empty());
 }
 
 #[test]
