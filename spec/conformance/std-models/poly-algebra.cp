@@ -13,6 +13,7 @@
 // coefficient at a time, one linear factor at a time, binomial expansion of (x + c)^i and
 // Pascal's triangle. Lengths reach past 32 so the NTT paths run. Reads `seed n`; prints the
 // first op that differs.
+// copies: 1
 use std.poly.{div_mod, gcd_poly, pow_mod_poly, transposed_mul, bostan_mori, prod_linear}
 use std.poly.{taylor_shift, binomial_transform}
 use std.mod.{Mod}
@@ -99,12 +100,13 @@ for k in 0..n:
         if b.is_empty: b = [Z(1)]
         if b[0] == Z(0): b[0] = Z(1)
         let t = rng.int(0, 120)
+        let got = bostan_mori(a, b, t)
         var s = List.filled(t + 1, Z(0))
         for i in 0..=t:
             var v = if i < a.len: a[i] else: Z(0)
             for j in 1..min(i + 1, b.len): v -= b[j] * s[i - j]
             s[i] = v / b[0]
-        if bostan_mori(a, b, t) != s[t]: bad = "op {k}: bostan_mori({a}, {b}, {t})"
+        if got != s[t]: bad = "op {k}: bostan_mori({a}, {b}, {t})"
     elif op == 5:
         var want = [Z(1)]
         for r in a: want = mul(want, [Z(0) - r, Z(1)])

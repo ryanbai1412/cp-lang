@@ -1,5 +1,6 @@
 // expect: ok, output "YES"
 // rule: std.segtree.SegTree.fold
+// copies: 1
 // A fold over a replacing action (`assign`, `replaces:`) stops at the first tag that sets its
 // span (`assign_add` too); a non-replacing action, a commuting one, and `None` (assign's id) tags agree with an array.
 use std.algebra.{Action}

@@ -26,6 +26,7 @@
 // The std generators over Lists against index loops: each op draws two short random lists
 // and checks every pairing, window, chunk, prefix cut, flattening, chaining, split and run.
 // Reads `seed n`; prints the first op that differs.
+// optional_copies: 1
 use std.rand.{Rng}
 use std.seq.{zip_exact}
 let seed0 = read<Int>()
