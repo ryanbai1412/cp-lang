@@ -5755,7 +5755,7 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
 - **Decision.** `std.subset` and `lib/search-dp.md` wrote the empty subset
   as `{}`, but core has no `{}` literal and the parser reads it as an empty
   block. The empty subset is `Subset<B>.empty`; `{}` where a `Subset` is
-  expected is E0301. A core literal for one std type breaks the small-core
+  expected is E0302 (a type mismatch), with the fix `Subset<B>.empty`. A core literal for one std type breaks the small-core
   rule.
 - **Reverse.** Add an empty-collection literal to the core grammar, typed
   by the expected type, and write it back into the std and lib docs.

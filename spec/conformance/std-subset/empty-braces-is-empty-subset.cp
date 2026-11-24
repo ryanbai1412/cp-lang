@@ -1,5 +1,5 @@
-// expect: ok, output "0"
-// `{}` where a Subset<D> is expected is the empty subset (search-dp mask DP).
+// expect: E0302
+// `{}` where a Subset<D> is expected is an empty block, not a Subset (decision 220); the fix writes `Subset<B>.empty`.
 domain B = 0..3
-var s: Subset<B> = {}
+var s: Subset<B> = {}  // <- here
 print(s.len)

@@ -154,6 +154,16 @@ fn empty_braces_for_a_container_offer_its_empty_spelling() {
         fix("var s: Set<Int> = {}\ns.insert(1)\n"),
         "var s: Set<Int> = Set()"
     );
+    assert_eq!(
+        fix("domain B = 0..3\nvar s: Subset<B> = {}\nprint(s.len)\n"),
+        "domain B = 0..3"
+    );
+    assert_eq!(
+        fixed("domain B = 0..3\nvar s: Subset<B> = {}\nprint(s.len)\n")
+            .lines()
+            .nth(1),
+        Some("var s: Subset<B> = Subset<B>.empty")
+    );
     let d = check("var m: Map<Int, Int> = {}\n");
     assert!(d[0].message.contains("empty block"), "{d:?}");
 }

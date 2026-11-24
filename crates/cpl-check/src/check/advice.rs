@@ -851,12 +851,18 @@ impl Checker<'_> {
     pub(super) fn empty_braces(&mut self, declared: Option<&Ty>, init: Option<&Expr>) {
         let Some(init) = init else { return };
         let (empty, kind, help) = match declared {
-            Some(d @ Ty::Named { name, .. }) if name == "Map" => ("[:]", d.to_string(), ""),
-            Some(d @ Ty::Named { name, .. }) if name == "Set" => ("Set()", d.to_string(), ""),
-            Some(d @ Ty::Named { name, .. }) if name == "List" => ("[]", d.to_string(), ""),
+            Some(d @ Ty::Named { name, .. }) if name == "Map" => ("[:]".into(), d.to_string(), ""),
+            Some(d @ Ty::Named { name, .. }) if name == "Set" => {
+                ("Set()".into(), d.to_string(), "")
+            }
+            Some(d @ Ty::Named { name, .. }) if name == "List" => ("[]".into(), d.to_string(), ""),
+            // Decision 220: `{}` is no Subset literal; the empty subset is `Subset<B>.empty`.
+            Some(d @ Ty::Named { name, .. }) if name == "Subset" => {
+                (format!("{d}.empty"), d.to_string(), "")
+            }
             // `d = {}` with no type: Python's empty dict.
             None => (
-                "Map()",
+                "Map()".to_string(),
                 "map".to_string(),
                 "; its key and value types come from how it is used",
             ),
@@ -874,7 +880,7 @@ impl Checker<'_> {
         };
         diag.message = format!("`{{}}` is an empty block in CP Lang, not an empty {kind}");
         diag.help = Some(format!("an empty {kind} is `{empty}`{help}"));
-        diag.fix(format!("write `{empty}`"), init.span, empty);
+        diag.fix(format!("write `{empty}`"), init.span, empty.clone());
     }
 
     /// A member that another version or language has and CP Lang spells
