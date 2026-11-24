@@ -443,6 +443,18 @@ impl<'a> Checker<'a> {
                 }
             }
             PatternKind::Variant { path, args } => {
+                if let Some(name) = path.last() {
+                    if let Some(def) = self.global(&name.text) {
+                        self.hovers.push(HoverEntry {
+                            span: name.span,
+                            name: name.text.clone(),
+                            ty: def.value_ty(&name.text),
+                            keyword: "global",
+                            decl: None,
+                            owner: None,
+                        });
+                    }
+                }
                 let fields = self.variant_payload(path, ty);
                 for (i, arg) in args.iter().enumerate() {
                     let ty = fields.get(i).cloned().unwrap_or(Ty::Unknown);

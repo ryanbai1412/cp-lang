@@ -691,6 +691,11 @@ pub(crate) fn render(entry: &HoverEntry, lookup: &mut Lookup) -> String {
             None => render_value(name, &entry.ty, lookup),
         },
         "fn" => fn_text(name, &entry.ty),
+        "generic" => format!("type parameter {name}"),
+        "trait" => match lookup(name).as_deref() {
+            Some(def) => render_def(name, def, lookup),
+            None => format!("trait {name}"),
+        },
         _ => render_value(name, &entry.ty, lookup),
     }
 }

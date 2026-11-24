@@ -291,6 +291,7 @@ impl<'a> Checker<'a> {
             }
         }
         if self.generics.iter().any(|g| g == name) {
+            self.note_generic(name, span, None);
             return Ty::Param(name.to_string());
         }
         // `V.cuts` is a domain of its own, derived from `V`, and

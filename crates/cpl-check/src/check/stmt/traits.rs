@@ -100,11 +100,31 @@ impl<'a> Checker<'a> {
                     top_level: false,
                     in_lambda: false,
                 });
+                self.hovers.push(HoverEntry {
+                    span: name.span,
+                    name: name.text.clone(),
+                    ty: Ty::TypeName(name.text.clone()),
+                    keyword: "type",
+                    decl: None,
+                    owner: None,
+                });
                 return Some(methods.clone());
             }
             // A value such as the enum variant `Sign.Neg` doesn't hide the trait `Neg`.
             Some(Def::Value { .. } | Def::Fn { .. } | Def::Variant { .. }) | None
-                if prelude::is_trait(&name.text) || name.text.is_empty() => {}
+                if prelude::is_trait(&name.text) =>
+            {
+                self.hovers.push(HoverEntry {
+                    span: name.span,
+                    name: name.text.clone(),
+                    ty: Ty::TypeName(name.text.clone()),
+                    keyword: "trait",
+                    decl: None,
+                    owner: None,
+                });
+            }
+            Some(Def::Value { .. } | Def::Fn { .. } | Def::Variant { .. }) | None
+                if name.text.is_empty() => {}
             Some(_) => {
                 let message = format!("`{}` is not a trait", name.text);
                 self.error(codes::UNKNOWN_TYPE, name.span, message);
