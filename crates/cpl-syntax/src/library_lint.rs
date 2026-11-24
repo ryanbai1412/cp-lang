@@ -312,6 +312,51 @@ pub type Tokens = Vec<(TokenKind, String)>;
 /// statements (a `from` may span consecutive statements of one block), and
 /// the index in them where each statement ends.
 pub fn run(src: &str) -> Option<(Tokens, Vec<usize>)> {
+    let (toks, ends, _) = run_spans(src)?;
+    let toks = (toks.iter())
+        .map(|t| {
+            (
+                t.kind,
+                src[t.span.start as usize..t.span.end as usize].to_string(),
+            )
+        })
+        .collect();
+    Some((toks, ends))
+}
+
+/// The indices in [`run`]'s tokens of each name that is a whole statement
+/// (`body` in `if c:\n    body`): a hole there matches a run of statements.
+pub fn statement_names(src: &str) -> Vec<usize> {
+    struct Names(Vec<Span>);
+    impl crate::visit::Visitor for Names {
+        fn stmt(&mut self, stmt: &Stmt) {
+            if let StmtKind::Expr(e) = &stmt.kind {
+                if matches!(e.kind, ExprKind::Name(_)) {
+                    self.0.push(e.span);
+                }
+            }
+        }
+    }
+    let Some((toks, _, parsed)) = run_spans(src) else {
+        return Vec::new();
+    };
+    let mut names = Names(Vec::new());
+    for (offset, item) in &parsed.items {
+        for s in &item.stmts {
+            let before = names.0.len();
+            crate::visit::walk_stmt(s, &mut names);
+            for span in &mut names.0[before..] {
+                *span = span.shift(*offset);
+            }
+        }
+    }
+    (toks.iter().enumerate())
+        .filter(|(_, t)| names.0.contains(&t.span))
+        .map(|(i, _)| i)
+        .collect()
+}
+
+fn run_spans(src: &str) -> Option<(Vec<Token>, Vec<usize>, crate::ParsedFile)> {
     let parsed = crate::parse_file(src);
     if !parsed.diagnostics.is_empty() {
         return None;
@@ -321,14 +366,11 @@ pub fn run(src: &str) -> Option<(Tokens, Vec<usize>)> {
     for (offset, item) in &parsed.items {
         for s in &item.stmts {
             let span = s.span.shift(*offset);
-            for t in all.iter().filter(|t| span.contains(t.span)) {
-                let text = &src[t.span.start as usize..t.span.end as usize];
-                toks.push((t.kind, text.to_string()));
-            }
+            toks.extend(all.iter().filter(|t| span.contains(t.span)).cloned());
             ends.push(toks.len());
         }
     }
-    (!ends.is_empty()).then_some((toks, ends))
+    (!ends.is_empty()).then_some((toks, ends, parsed))
 }
 
 /// The tokens of `src` if it is one expression or statement, without the

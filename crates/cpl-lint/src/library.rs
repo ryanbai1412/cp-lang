@@ -26,6 +26,9 @@ pub(crate) struct Declared {
     /// Names `from` binds itself (lambda parameters, loop and `let`/`var`
     /// variables).
     bound: Vec<String>,
+    /// Per token of `from`: a hole standing as a whole statement, which
+    /// matches a run of statements.
+    stmt_holes: Vec<bool>,
     /// The module's public names `to` uses, each as the linted file spells
     /// it (`sq` -> `geo.sq` under `use mylib.geo`).
     spell: Vec<(String, String)>,
@@ -41,6 +44,10 @@ pub(crate) fn collect(analysis: &Analysis) -> Vec<Declared> {
                     let Some((from, ends)) = library_lint::run(&decl.from) else {
                         continue;
                     };
+                    let names = library_lint::statement_names(&decl.from);
+                    let stmt_holes = (0..from.len())
+                        .map(|i| names.contains(&i) && decl.holes.contains(&from[i].1))
+                        .collect();
                     let spell = (library_lint::tokens(&decl.to).iter())
                         .map(|t| &decl.to[t.span.start as usize..t.span.end as usize])
                         .filter_map(|w| Some((w.to_string(), spell(w)?)))
@@ -49,6 +56,7 @@ pub(crate) fn collect(analysis: &Analysis) -> Vec<Declared> {
                         spell,
                         lint: intern(&decl.name),
                         bound: bound_names(&from),
+                        stmt_holes,
                         decl,
                         module: module.to_string(),
                         from,
@@ -129,14 +137,24 @@ pub(crate) fn intern(name: &str) -> &'static Lint {
     lint
 }
 
-/// Names a pattern binds itself: the parameters before `=>`, the variable
-/// after `for`, `let` or `var`, and a `fn` it declares with its parameters.
+/// Names a pattern binds itself: the parameters before `=>`, the variables
+/// after `for`, `let` or `var` (one name or a tuple of them), and a `fn` it
+/// declares with its parameters.
 fn bound_names(toks: &[(K, String)]) -> Vec<String> {
     let mut out = Vec::new();
     for (i, (kind, _)) in toks.iter().enumerate() {
         if matches!(kind, K::For | K::Let | K::Var | K::Fn) {
-            if let Some((K::Ident, t)) = toks.get(i + 1) {
-                out.push(t.clone());
+            let mut depth = 0;
+            for (k, t) in &toks[i + 1..] {
+                match k {
+                    K::LParen => depth += 1,
+                    K::RParen => depth -= 1,
+                    K::Ident => out.push(t.clone()),
+                    _ => {}
+                }
+                if depth <= 0 && *k != K::Comma {
+                    break;
+                }
             }
         }
         if *kind == K::Fn && toks.get(i + 2).is_some_and(|t| t.0 == K::LParen) {
@@ -252,6 +270,18 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
         let (start, stop) = (before(s.start), before(s.end));
         (start < stop).then_some((start, stop))
     };
+    // Where each run of consecutive statements of one block starts and ends,
+    // in tokens: what a statement hole matches.
+    let mut stmt_runs: HashMap<usize, Vec<usize>> = HashMap::new();
+    if declared.iter().any(|d| d.stmt_holes.contains(&true)) {
+        for block in &spans.blocks {
+            let ranges: Vec<(usize, usize)> = block.iter().filter_map(tok_range).collect();
+            for (i, &(start, _)) in ranges.iter().enumerate() {
+                let runs = stmt_runs.entry(start).or_default();
+                runs.extend(ranges[i..].iter().map(|r| r.1));
+            }
+        }
+    }
     let mut out = Vec::new();
     for d in declared {
         let all = &d.from;
@@ -263,8 +293,10 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
         let repeated: Vec<bool> = (d.decl.holes.iter())
             .map(|h| all.iter().filter(|(_, t)| t == h).count() > 1 || !in_to(h))
             .collect();
-        let matcher = |pat| Matcher {
+        let matcher = |pat, stmt| Matcher {
             pat,
+            stmt,
+            stmt_runs: &stmt_runs,
             holes: &d.decl.holes,
             bound: &d.bound,
             text: &text,
@@ -276,7 +308,10 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
         };
         let mut start = 0;
         let parts: Vec<Matcher> = (d.ends.iter())
-            .map(|&end| matcher(&d.from[std::mem::replace(&mut start, end)..end]))
+            .map(|&end| {
+                let at = std::mem::replace(&mut start, end)..end;
+                matcher(&d.from[at.clone()], &d.stmt_holes[at])
+            })
             .collect();
         // A run of statements matches statement by statement, in one block;
         // one statement matches as an expression or as a block's statement.
@@ -336,7 +371,22 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                     ))
                 })
                 .collect();
-            let fix = fill(&d.decl.to, &got, &names, &d.spell);
+            let column = |at: u32| {
+                let line = file.src[..at as usize].rfind('\n').map_or(0, |i| i + 1);
+                (line, at as usize - line)
+            };
+            let stmts: HashMap<&str, usize> = (d.from.iter().zip(&d.stmt_holes))
+                .filter(|(_, s)| **s)
+                .filter_map(|((_, h), _)| {
+                    let at = d.decl.holes.iter().position(|x| x == h)?;
+                    Some((h.as_str(), column(toks[holes[at]?.0].span.start).1))
+                })
+                .collect();
+            let line = column(span.start).0;
+            let indent: String = (file.src[line..].chars())
+                .take_while(|c| *c == ' ' || *c == '\t')
+                .collect();
+            let fix = fill(&d.decl.to, &got, &names, &d.spell, &indent, &stmts);
             let from = if d.module.is_empty() {
                 "this file".to_string()
             } else {
@@ -359,6 +409,9 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
 
 struct Matcher<'a> {
     pat: &'a [(K, String)],
+    /// Per token of `pat`: a hole that matches a run of statements.
+    stmt: &'a [bool],
+    stmt_runs: &'a HashMap<usize, Vec<usize>>,
     holes: &'a [String],
     bound: &'a [String],
     text: &'a [&'a str],
@@ -396,7 +449,13 @@ impl Matcher<'_> {
                         && self.text[a..b] == self.text[j..j + n]
                         && self.go(p + 1, j + n, stop, holes, names);
                 }
-                for k in self.runs(j, stop) {
+                let runs = if self.stmt[p] {
+                    let runs = self.stmt_runs.get(&j).into_iter().flatten();
+                    runs.copied().filter(|&k| k <= stop).collect()
+                } else {
+                    self.runs(j, stop)
+                };
+                for k in runs {
                     if self.repeated[h] && !pure(&self.kinds[j..k]) {
                         continue;
                     }
@@ -486,19 +545,38 @@ fn pure(kinds: &[K]) -> bool {
 }
 
 /// `to` with each hole replaced by what it matched, in brackets where the
-/// code around it would otherwise bind tighter.
+/// code around it would otherwise bind tighter. Each line of `to` after the
+/// first gets the site's `indent`, and a statement hole's lines move with
+/// it: `stmts` gives the column its first line had.
 fn fill(
     to: &str,
     got: &HashMap<&str, &str>,
     names: &[(String, String)],
     spell: &[(String, String)],
+    indent: &str,
+    stmts: &HashMap<&str, usize>,
 ) -> String {
     let toks = library_lint::tokens(to);
     let mut out = String::new();
     let mut last = 0;
+    let lines = |s: &str| s.replace('\n', &format!("\n{indent}"));
     for (i, t) in toks.iter().enumerate() {
         let word = &to[t.span.start as usize..t.span.end as usize];
-        let replacement = if let Some(m) = got.get(word).filter(|_| is_name(t.kind, word)) {
+        let replacement = if let (Some(m), Some(&was)) = (got.get(word), stmts.get(word)) {
+            let line = to[..t.span.start as usize].rfind('\n').map_or(0, |i| i + 1);
+            let now = indent.len() + t.span.start as usize - line;
+            let shift = |l: &str| {
+                let kept = l.len() - l.trim_start_matches(' ').len();
+                if l.trim().is_empty() {
+                    String::new()
+                } else {
+                    " ".repeat(now) + &l[kept.min(was)..]
+                }
+            };
+            let mut it = m.split('\n');
+            let first = it.next().unwrap_or_default().to_string();
+            it.fold(first, |acc, l| acc + "\n" + &shift(l))
+        } else if let Some(m) = got.get(word).filter(|_| is_name(t.kind, word)) {
             let before = i.checked_sub(1).map(|i| toks[i].kind);
             let after = toks.get(i + 1).map(|t| t.kind);
             let delimited = matches!(before, Some(K::LParen | K::Comma) | None)
@@ -522,11 +600,11 @@ fn fill(
         } else {
             continue;
         };
-        out.push_str(&to[last..t.span.start as usize]);
+        out.push_str(&lines(&to[last..t.span.start as usize]));
         out.push_str(&replacement);
         last = t.span.end as usize;
     }
-    out.push_str(&to[last..]);
+    out.push_str(&lines(&to[last..]));
     out
 }
 

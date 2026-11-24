@@ -263,3 +263,32 @@ fn a_method_declares_a_lint() {
     .collect();
     assert_eq!(fixes, ["W(y).inc()"]);
 }
+
+/// A hole standing as a statement matches the rest of its block, a tuple
+/// after `for` or `let` binds each name, and the fix keeps the site's
+/// indentation and moves the matched statements with the hole.
+/// Rule: R06.4.9, spec/core/06-control-functions.md.
+#[test]
+fn a_statement_hole_matches_a_block_and_the_fix_keeps_its_indentation() {
+    let decl = "@lint(near, from: \"for (dx, dy) in [(-1, 0), (1, 0)]:\\n    let (nx, ny) = (x + dx, y + dy)\\n    if nx >= 0 and nx < h:\\n        body\", to: \"for (nx, ny) in near(x, y):\\n    body\", holes: \"x, y, h, body\")\npub fn near(a: Int, b: Int) -> List<(Int, Int)> = [(a, b)]\n";
+    let found = |body: &str| -> Vec<String> {
+        crate::lint(&format!("{decl}{body}"), &crate::Config::default())
+            .into_iter()
+            .filter(|d| d.code.0 == "near")
+            .map(|d| d.fixes[0].edits[0].1.clone())
+            .collect()
+    };
+    let hit = "fn f(r: Int, c: Int, n: Int):\n    for (a, b) in [(-1, 0), (1, 0)]:\n        let (p, q) = (r + a, c + b)\n        if p >= 0 and p < n:\n            if p > 1:\n                print(p)\n            print(q)\nf(1, 2, 3)\n";
+    assert_eq!(
+        found(hit),
+        ["for (p, q) in near(r, c):\n        if p > 1:\n            print(p)\n        print(q)"]
+    );
+    let other = hit.replace("(r + a, c + b)", "(r + b, c + a)");
+    let more = hit.replace(
+        "            print(q)\n",
+        "        else:\n            print(q)\n",
+    );
+    for near in [other, more] {
+        assert!(found(&near).is_empty(), "{near}");
+    }
+}

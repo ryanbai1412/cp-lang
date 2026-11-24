@@ -183,8 +183,11 @@ library or by this spec:
   brackets), a hole written twice matches the same tokens twice and only
   an expression that calls nothing, and every other name matches itself,
   except names `from` binds (lambda parameters, a `for`, `let` or `var`
-  variable, a `fn` it declares and that fn's parameters), which
-  match any name consistently. A finding names the lint (`warning[name]`),
+  variable or each name of its tuple, a `fn` it declares and that fn's
+  parameters), which match any name consistently. A hole that stands as a
+  whole statement of a block (`body` in `if c:\n    body`) matches the
+  rest of that block's statements, and the fix moves them with it, at the
+  site's indentation. A finding names the lint (`warning[name]`),
   is in the `idiom` group, warns by default, and `with lint(name: allow)`
   turns it off; its fix is `to` with each hole replaced by what it matched,
   written over the matched code up to its last token.
