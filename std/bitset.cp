@@ -8,6 +8,7 @@ use std.math.{bit}
 /// Single-bit operations are \(O(1)\); whole-set operations are \(O(K / 64)\).
 pub struct Bitset<D>:
     w: List<U64>
+    // The member count, or -1 after a word-parallel op until `len` is asked for.
     n: Int
 
     /// The empty set, every word zero; the same set as `empty()`.
@@ -84,7 +85,7 @@ pub struct Bitset<D>:
     pub fn add(mut self, i: D) -> Bool:
         if self.contains(i): return false
         w[i.ord / 64] |= word_bit(i.ord % 64)
-        n += 1
+        if n >= 0: n += 1
         true
 
     /// Clear the bit at position `i`; returns `true` if `i` was set (matches `Set.remove`).
@@ -95,7 +96,7 @@ pub struct Bitset<D>:
     pub fn remove(mut self, i: D) -> Bool:
         if not self.contains(i): return false
         w[i.ord / 64] &= ~word_bit(i.ord % 64)
-        n -= 1
+        if n >= 0: n -= 1
         true
 
     /// Flip the bit at position `i`: set it if clear, clear it if set.
@@ -104,7 +105,7 @@ pub struct Bitset<D>:
     /// traps: never
     /// example: `domain D = 0..10; var b = Bitset<D>.single(D(2)); b.toggle(D(2)); b.toggle(D(5)); b.each().collect() == [D(5)]`
     pub fn toggle(mut self, i: D):
-        n += if self.contains(i): -1 else: 1
+        if n >= 0: n += if self.contains(i): -1 else: 1
         w[i.ord / 64] ^= word_bit(i.ord % 64)
 
     /// A copy of `self` with `i` added; `self` is unchanged.
@@ -143,7 +144,7 @@ pub struct Bitset<D>:
     /// traps: never
     /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).complement().len == 7`
     pub fn complement(self) -> Bitset<D>:
-        var out = Bitset([~x for x in w], D.count - n)
+        var out = Bitset([~x for x in w], if n >= 0: D.count - n else: -1)
         out.trim()
         out
 
@@ -165,26 +166,31 @@ pub struct Bitset<D>:
     /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).any(d => Int(d) > 5)`
     /// example: `domain D = 0..10; not Bitset<D>().any(d => true)`
     pub fn any(self, pred: D -> Bool) -> Bool = self.find(pred) != None
-    /// The number of positions in the set; the count is kept current by every update.
+    /// The number of positions in the set. Single-bit updates keep the count; a word-parallel op
+    /// (`union`, `shifted`, `|`, ...) drops it, and `len` then counts the words.
     ///
-    /// cost: \(O(1)\)
+    /// cost: \(O(1)\) after single-bit updates, \(O(K / 64)\) after a word-parallel op
     /// traps: never
     /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).len == 3`
-    @get pub fn len(self) -> Int = n
+    @get pub fn len(self) -> Int = if n >= 0: n else: self.count_words()
 
     /// The same number as `len`, under the name C++ gives it.
     ///
-    /// cost: \(O(1)\)
+    /// cost: as `len`
     /// traps: never
     /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).count == 3`
-    @get pub fn count(self) -> Int = n
+    @get pub fn count(self) -> Int = self.len
 
-    /// Whether the set has no members. \(O(1)\): the count is kept current by every update.
+    /// Whether the set has no members.
     ///
-    /// cost: \(O(1)\)
+    /// cost: \(O(1)\) when `len` is, else \(O(K / 64)\) at worst, stopping at the first nonzero word
     /// traps: never
     /// example: `domain D = 0..10; Bitset<D>().is_empty and not Bitset<D>.full().is_empty`
-    @get pub fn is_empty(self) -> Bool = n == 0
+    @get pub fn is_empty(self) -> Bool:
+        if n >= 0: return n == 0
+        for x in w:
+            if x != 0: return false
+        true
 
     /// The smallest position in the set, or `None`.
     ///
@@ -233,7 +239,7 @@ pub struct Bitset<D>:
     /// example: `domain D = 0..10; var b = Bitset<D>.single(D(1)); b.union(Bitset<D>.single(D(2))); b.len == 2`
     pub fn union(mut self, o: Bitset<D>):
         for k in 0..w.len: w[k] |= o.w[k]
-        self.recount()
+        self.forget_count()
 
     /// Replace `self` with `self & o` in place, with no allocation.
     ///
@@ -242,7 +248,7 @@ pub struct Bitset<D>:
     /// example: `domain D = 0..10; var b = Bitset<D>.of([D(1), D(2)]); b.intersect(Bitset<D>.single(D(2))); b.each().collect() == [D(2)]`
     pub fn intersect(mut self, o: Bitset<D>):
         for k in 0..w.len: w[k] &= o.w[k]
-        self.recount()
+        self.forget_count()
 
     /// Clear every bit set in `o` from `self` in place: `self - o`.
     ///
@@ -251,7 +257,7 @@ pub struct Bitset<D>:
     /// example: `domain D = 0..10; var b = Bitset<D>.of([D(1), D(2)]); b.subtract(Bitset<D>.single(D(2))); b.each().collect() == [D(1)]`
     pub fn subtract(mut self, o: Bitset<D>):
         for k in 0..w.len: w[k] &= ~o.w[k]
-        self.recount()
+        self.forget_count()
 
     /// Replace `self` with `self ^ o` in place.
     ///
@@ -260,7 +266,7 @@ pub struct Bitset<D>:
     /// example: `domain D = 0..10; var b = Bitset<D>.of([D(1), D(2)]); b.symmetric(Bitset<D>.of([D(2), D(3)])); b.each().collect() == [D(1), D(3)]`
     pub fn symmetric(mut self, o: Bitset<D>):
         for k in 0..w.len: w[k] ^= o.w[k]
-        self.recount()
+        self.forget_count()
 
     /// `a | b`: a new set of the positions in either set.
     ///
@@ -270,7 +276,7 @@ pub struct Bitset<D>:
     pub fn bitor(self, o: Bitset<D>) -> Bitset<D>:
         var out = Bitset<D>.new()
         for k in 0..w.len: out.w[k] = w[k] | o.w[k]
-        out.recount()
+        out.forget_count()
         out
 
     /// `a & b`: a new set of the positions in both sets.
@@ -281,7 +287,7 @@ pub struct Bitset<D>:
     pub fn bitand(self, o: Bitset<D>) -> Bitset<D>:
         var out = Bitset<D>.new()
         for k in 0..w.len: out.w[k] = w[k] & o.w[k]
-        out.recount()
+        out.forget_count()
         out
 
     /// `a ^ b`: a new set of the positions in exactly one of the sets.
@@ -292,7 +298,7 @@ pub struct Bitset<D>:
     pub fn bitxor(self, o: Bitset<D>) -> Bitset<D>:
         var out = Bitset<D>.new()
         for k in 0..w.len: out.w[k] = w[k] ^ o.w[k]
-        out.recount()
+        out.forget_count()
         out
 
     /// Do the two sets share a position? Stops at the first shared word; `(a & b).len > 0` without
@@ -325,7 +331,7 @@ pub struct Bitset<D>:
                 if bits > 0 and i + words + 1 < w.len:
                     x |= w[i + words + 1] << (64 - bits)
                 out.w[i] = x
-            out.recount()
+            out.forget_count()
             return out
         let (words, bits) = (k / 64, k % 64)
         for i in (words..w.len).rev:
@@ -333,7 +339,7 @@ pub struct Bitset<D>:
             if bits > 0 and i > words: x |= w[i - words - 1] >> (64 - bits)
             out.w[i] = x
         out.trim()
-        out.recount()
+        out.forget_count()
         out
 
     /// Shift every position `k >= 0` places up in place; bits past `D` drop.
@@ -354,7 +360,7 @@ pub struct Bitset<D>:
             w[i] = x
         for i in 0..words: w[i] = U64(0)
         self.trim()
-        self.recount()
+        self.forget_count()
 
     /// In-place `self |= self << k` for `k >= 0`, with zero allocation: the knapsack step "every
     /// reachable sum, and every reachable sum plus `k`". Bits past `D` drop.
@@ -367,7 +373,34 @@ pub struct Bitset<D>:
         if k == 0: return
         self.or_shifted(k)
         self.trim()
-        self.recount()
+        self.forget_count()
+
+    /// In place, `self |= o.shifted(k)`: every position `i` of `o` adds `i + k` when it is in `D`,
+    /// with no temporary set (`k < 0` shifts down). One step of a bitset DP:
+    /// `next.union_shifted(cur, w)` for `next |= cur << w`.
+    ///
+    /// cost: \(O(K / 64)\)
+    /// traps: never
+    /// example: `domain D = 0..10; var b = Bitset<D>.single(D(0)); b.union_shifted(Bitset<D>.of([D(1), D(8)]), 2); b.each().collect() == [D(0), D(3)]`
+    /// example: `domain D = 0..10; var b = Bitset<D>(); b.union_shifted(Bitset<D>.of([D(1), D(8)]), -1); b.each().collect() == [D(0), D(7)]`
+    pub fn union_shifted(mut self, o: Bitset<D>, k: Int):
+        let d = if k < 0: -k else: k
+        let (words, bits) = (d / 64, d % 64)
+        if words >= w.len: return
+        let m = w.len
+        unchecked:
+            if k < 0:
+                for i in 0..m - words:
+                    var x = o.w[i + words] >> bits
+                    if bits > 0 and i + words + 1 < m: x |= o.w[i + words + 1] << (64 - bits)
+                    w[i] |= x
+            elif bits == 0:
+                for i in words..m: w[i] |= o.w[i - words]
+            else:
+                w[words] |= o.w[0] << bits
+                for i in words + 1..m: w[i] |= (o.w[i - words] << bits) | (o.w[i - words - 1] >> (64 - bits))
+        self.trim()
+        self.forget_count()
 
     /// The positions in the set, in increasing order; `for v in b` walks the same sequence.
     ///
@@ -457,7 +490,7 @@ pub struct Bitset<D>:
                 if 2 * w < D.count: cnt[2 * w] += carry
             for _ in 0..cnt[w]: reach.or_shifted(w)
         reach.trim()
-        reach.recount()
+        reach.forget_count()
         reach
 
     /// Shift all bits down by `k >= 0` positions in place (`i -> i - k`); bits below `D` drop.
@@ -496,9 +529,9 @@ pub struct Bitset<D>:
         if lo >= hi: return
         for k in lo / 64..=(hi - 1) / 64:
             let m = span(k, lo, hi)
-            n -= popcount(w[k] & m)
+            if n >= 0: n -= popcount(w[k] & m)
             if on: w[k] |= m else: w[k] &= ~m
-            n += popcount(w[k] & m)
+            if n >= 0: n += popcount(w[k] & m)
 
     /// Flip every bit in `r` in place.
     ///
@@ -511,9 +544,9 @@ pub struct Bitset<D>:
         if lo >= hi: return
         for k in lo / 64..=(hi - 1) / 64:
             let m = span(k, lo, hi)
-            n -= popcount(w[k] & m)
+            if n >= 0: n -= popcount(w[k] & m)
             w[k] ^= m
-            n += popcount(w[k] & m)
+            if n >= 0: n += popcount(w[k] & m)
 
     /// The `k`-th set position (0-based, in increasing order), or `None` if `k >= len`.
     ///
@@ -549,9 +582,10 @@ pub struct Bitset<D>:
                 yield D.nth(64 * k + b)
                 x &= ~word_bit(b)
 
-    fn recount(mut self):
-        n = 0
-        for x in w: n += popcount(x)
+    fn forget_count(mut self):
+        n = -1
+
+    fn count_words(self) -> Int = sum(popcount(x) for x in w)
 
     // `w |= w << k` for k > 0, leaving bits past `D` and `n` for the caller to fix.
     fn or_shifted(mut self, k: Int):
@@ -1335,7 +1369,7 @@ impl Sub for Bitset<D>:
     fn sub(a, b):
         var out = Bitset<D>.new()
         for k in 0..a.w.len: out.w[k] = a.w[k] & ~b.w[k]
-        out.recount()
+        out.forget_count()
         out
 
 /// Index of the highest set bit in non-zero `x` (0..64).
