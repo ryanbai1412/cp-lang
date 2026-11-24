@@ -360,6 +360,15 @@ impl Extractor<'_> {
         let line = self.docs.line_of(self.code_span(stmt).start + self.base);
         let above = self.first_line(stmt);
         let item = match &stmt.kind {
+            // A member the parser derives (a struct's `laws`, R08.3.5) has no source of its own
+            // to show; the spec documents it.
+            StmtKind::Fn(decl)
+                if !self
+                    .text(decl.sig_span)
+                    .contains(&*format!("fn {}", decl.name.text)) =>
+            {
+                return None
+            }
             StmtKind::Fn(decl) => self.fn_item(stmt, decl),
             StmtKind::Context { name, fields } => {
                 let mut item =

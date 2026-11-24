@@ -827,6 +827,13 @@ fn every_std_doc_states_each_fact_once_outside_its_prose() {
             if item.signature.trim().is_empty() {
                 wrong.push(format!("{at}: no signature"));
             }
+            let declares = format!("fn {}", item.name);
+            if matches!(item.kind, crate::model::Kind::Fn) && !item.signature.contains(&*declares) {
+                wrong.push(format!(
+                    "{at}: its signature `{}` doesn't declare it",
+                    item.signature
+                ));
+            }
             for line in DocText::parse(&item.doc).prose.lines() {
                 let label = line.trim().split(':').next().unwrap_or("").trim();
                 if line.contains(':')
