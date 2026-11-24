@@ -572,6 +572,7 @@ impl<'a> Lowerer<'a> {
         out: &mut Vec<Stmt>,
     ) {
         self.collect_mut_slices_stmt(stmt, rest);
+        self.note_later_calls(stmt, rest);
         // `let u = o ?? return -1`: the test and the way out go ahead of
         // the statement, which then reads the value that is there.
         let root = match &stmt.kind {
@@ -2246,52 +2247,6 @@ impl<'a> Lowerer<'a> {
             len
         };
         out.push(Stmt::DefDomain { id, lo, len });
-    }
-
-    fn peek_list_elem_type(&mut self, var_name: &str, rest: &[ast::Stmt]) -> Option<Ty> {
-        fn find_push<'a>(var_name: &str, stmts: &'a [ast::Stmt]) -> Option<&'a ast::Expr> {
-            for s in stmts {
-                match &s.kind {
-                    ast::StmtKind::Expr(e) => {
-                        if let ast::ExprKind::Call { callee, args } = &e.kind {
-                            if let ast::ExprKind::Field { base, name } = &callee.kind {
-                                if name.text == "push"
-                                    && matches!(&base.kind, ast::ExprKind::Name(n) if n == var_name)
-                                    && args.len() == 1
-                                {
-                                    return Some(&args[0].value);
-                                }
-                            }
-                        }
-                        if let ast::ExprKind::If {
-                            branches,
-                            otherwise,
-                        } = &e.kind
-                        {
-                            for (_, b) in branches {
-                                if let Some(e) = find_push(var_name, &b.stmts) {
-                                    return Some(e);
-                                }
-                            }
-                            if let Some(b) = otherwise {
-                                if let Some(e) = find_push(var_name, &b.stmts) {
-                                    return Some(e);
-                                }
-                            }
-                        }
-                    }
-                    ast::StmtKind::While { body, .. } | ast::StmtKind::For { body, .. } => {
-                        if let Some(e) = find_push(var_name, &body.stmts) {
-                            return Some(e);
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            None
-        }
-        let arg = find_push(var_name, rest)?;
-        self.probe_ty_silent(arg)
     }
 
     /// Infers the full type of `var x = List.filled(..., none)` (or `var x = none`)

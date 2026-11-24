@@ -29,6 +29,7 @@ mod index_set;
 mod instance;
 mod keyed;
 mod lambda_infer;
+mod later_calls;
 mod lexical_ctx;
 mod library_domain;
 mod memo;
@@ -964,6 +965,7 @@ struct Lowerer<'a> {
     /// The structs `counts(xs)` makes, by the type counted, and back.
     counter_structs: HashMap<Ty, StructId>,
     counter_key: HashMap<StructId, Ty>,
+    later_calls: Option<later_calls::LaterCalls>,
 }
 
 impl<'a> Lowerer<'a> {
@@ -1084,6 +1086,7 @@ impl<'a> Lowerer<'a> {
             filled: HashSet::new(),
             counter_structs: HashMap::new(),
             counter_key: HashMap::new(),
+            later_calls: None,
         }
     }
 
@@ -1303,20 +1306,14 @@ impl<'a> Lowerer<'a> {
         def: &ast::Expr,
     ) -> Option<Vec<(Option<String>, ProductFactor)>> {
         match &def.kind {
-            ast::ExprKind::Tuple(items) if items.len() >= 2 => {
-                let mut out = Vec::with_capacity(items.len());
-                for item in items {
-                    out.push((None, self.resolve_product_factor(item)?));
-                }
-                Some(out)
-            }
-            ast::ExprKind::Record(fields) if fields.len() >= 2 => {
-                let mut out = Vec::with_capacity(fields.len());
-                for (fname, fval) in fields {
-                    out.push((Some(fname.text.clone()), self.resolve_product_factor(fval)?));
-                }
-                Some(out)
-            }
+            ast::ExprKind::Tuple(items) if items.len() >= 2 => items
+                .iter()
+                .map(|item| Some((None, self.resolve_product_factor(item)?)))
+                .collect(),
+            ast::ExprKind::Record(fields) if fields.len() >= 2 => fields
+                .iter()
+                .map(|(n, v)| Some((Some(n.text.clone()), self.resolve_product_factor(v)?)))
+                .collect(),
             _ => None,
         }
     }
@@ -2677,8 +2674,7 @@ impl<'a> Lowerer<'a> {
         let list_ty = Ty::list(elem);
         let acc = self.temp(list_ty.clone());
         let at = self.temp(Ty::Int);
-        let id = self.next_loop;
-        self.next_loop += 1;
+        let id = self.fresh_loop();
         let push = |lw: &mut Self, value: Expr| {
             Stmt::Expr(lw.mk(
                 ExprKind::Mutate(
@@ -4299,8 +4295,7 @@ impl<'a> Lowerer<'a> {
             Ty::Unit,
             span,
         ));
-        let id = self.next_loop;
-        self.next_loop += 1;
+        let id = self.fresh_loop();
         out.push(Stmt::For(
             id,
             item,

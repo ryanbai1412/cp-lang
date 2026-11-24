@@ -2118,13 +2118,9 @@ impl<'a> Lowerer<'a> {
             }
         }
 
-        let mut final_args = Vec::with_capacity(gen_names.len());
-        for g in &gen_names {
-            match inferred.get(g) {
-                Some(a) => final_args.push(a.clone()),
-                None => final_args.push(GenArg::Ty(Ty::Int)),
-            }
-        }
+        self.bind_from_later_calls(decl, span, tpl_mod, &gen_names, &mut inferred);
+        let open = |g| inferred.get(g).cloned().unwrap_or(GenArg::Ty(Ty::Int));
+        let mut final_args: Vec<GenArg> = gen_names.iter().map(open).collect();
         // A fn written for the `Map<K, V>` or `Set<T>` it is called on is
         // the same fn for the hashed kind: it gets its own copy, whose
         // `self` is the `HashMap` or `HashSet` given.
