@@ -2288,12 +2288,13 @@ pub struct AugSortedSet<K, T>:
 /// Counts over an integer value range `r`, with \(O(1)\) point add and \(O(\sqrt{N})\) k-th
 /// order statistic: the value-range frequency table for Mo's algorithm.
 ///
-/// `N` is `r.len`; the table keeps one count per value and one per block of about `sqrt(N)`
-/// values. Writes outside `r` trap; reads outside `r` see a count of 0.
+/// `N` is `r.len`; the table keeps one count per value and one per block of `2^s` values,
+/// the least power of two `>= sqrt(N)`, so locating a value's block is a shift. Writes outside
+/// `r` trap; reads outside `r` see a count of 0.
 pub struct BucketCount:
     lo: Int
     hi: Int
-    bs: Int
+    sh: Int
     total: Int
     cnt: List<Int>
     blk: List<Int>
@@ -2306,8 +2307,10 @@ pub struct BucketCount:
     /// example: `var b = BucketCount(0..10); b.len == 0`
     pub fn new(r: Range<Int>) -> BucketCount:
         let n = max(r.len, 0)
-        let bs = max(ceil_sqrt(n), 1)
-        BucketCount(r.start, r.start + n, bs, 0, List.filled(n, 0), List.filled(n / bs + 1, 0))
+        // blocks of 2^sh >= sqrt(N) values, so a value's block is a shift, not a division
+        var sh = 0
+        while 1 << sh < ceil_sqrt(n): sh += 1
+        BucketCount(r.start, r.start + n, sh, 0, List.filled(n, 0), List.filled((n >> sh) + 1, 0))
 
     /// \(O(1)\). Add `delta` (default 1; may be negative) copies of `x`.
     ///
@@ -2321,7 +2324,7 @@ pub struct BucketCount:
         let i = x - lo
         assert cnt[i] + delta >= 0, "the count of `x` would become negative"
         cnt[i] += delta
-        blk[i / bs] += delta
+        blk[i >> sh] += delta
         total += delta
 
     /// \(O(1)\). Remove `delta` (default 1) copies of `x`.
@@ -2354,7 +2357,7 @@ pub struct BucketCount:
         if x <= lo: return 0
         if x >= hi: return total
         let i = x - lo
-        sum(blk[b] for b in 0..i / bs) + sum(cnt[j] for j in i / bs * bs..i)
+        sum(blk[b] for b in 0..i >> sh) + sum(cnt[j] for j in (i >> sh) << sh..i)
 
     /// \(O(\sqrt{N})\). The `k`-th smallest element, 0-based like `nth`: `kth(0)` is the smallest.
     ///
@@ -2371,7 +2374,7 @@ pub struct BucketCount:
         while left >= blk[b]:
             left -= blk[b]
             b += 1
-        var j = b * bs
+        var j = b << sh
         while left >= cnt[j]:
             left -= cnt[j]
             j += 1
@@ -2403,7 +2406,7 @@ pub struct BucketCount:
     pub fn each(self) -> yields Int:
         for k in 0..blk.len:
             if blk[k] == 0: continue
-            for i in k * bs..min((k + 1) * bs, cnt.len):
+            for i in k << sh..min((k + 1) << sh, cnt.len):
                 for _ in 0..cnt[i]: yield lo + i
 
     /// \(O(r.\mathit{len})\). Reset all counts to zero.
