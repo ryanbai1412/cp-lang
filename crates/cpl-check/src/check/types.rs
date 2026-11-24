@@ -170,6 +170,20 @@ impl<'a> Checker<'a> {
                 Ty::Record(fields)
             }
             TypeKind::Range { lo, hi, inclusive } => {
+                // `[t.Pre] p => ..`: a size written as a value's own domain is that domain.
+                if let (Some(lo), Some(hi), false) = (lo, hi, *inclusive) {
+                    if let cpl_syntax::ast::ExprKind::Field { base, name } = &hi.kind {
+                        if let cpl_syntax::ast::ExprKind::Name(view) = &base.kind {
+                            if lo.span.start == lo.span.end
+                                && self.value_domain(view, &name.text).is_some()
+                            {
+                                if let Ty::Domain(d) = self.infer(hi) {
+                                    return Ty::Pos(d);
+                                }
+                            }
+                        }
+                    }
+                }
                 if let (Some(lo), Some(hi)) = (lo, hi) {
                     let (lo, hi, inclusive) = (lo.span, hi.span, *inclusive);
                     let ends = crate::facts::RangeEnds { lo, hi, inclusive };

@@ -661,3 +661,32 @@ fn a_some_literal_is_an_optional_at_a_let_a_list_and_a_bound() {
         "{e:?}"
     );
 }
+
+#[test]
+fn a_rooted_value_owns_its_preorder_domain_and_its_callbacks_take_their_types() {
+    let src = "let n: 1..=10 = read()\n\
+domain V = 1..=n\n\
+let w: [V]Int = read()\n\
+let t = Rooted.new(Graph.undirected(read<[0..n - 1](V, V)>()), V.first!)\n\
+fn earlier(a: V, b: V) -> Bool:\n    t.pos(a) < t.pos(b)\n\
+let top = t.down(V.first!, (r, v) => if w[v] >= w[r]: v else: r)\n\
+let by_pre = [t.Pre] p => w[t.at[p]]\n\
+print(yes(earlier(V.first!, V.last!)), top[V.first!], by_pre[t.pos(V.last!)])\n";
+    let mut db = Database::new();
+    db.set_file("main.cp", src);
+    let at = src.find("pos(a)").unwrap() as u32;
+    let hover = db.hover("main.cp", at).map(|h| h.text);
+    assert!(
+        hover.as_deref().is_some_and(|h| h.contains("-> t.Pre")),
+        "{hover:?}"
+    );
+    let a = db.analyze("main.cp").unwrap();
+    assert!(a.silent_unknowns().is_empty(), "{:?}", a.silent_unknowns());
+    assert!(a.diagnostics.is_empty(), "{:?}", a.diagnostics);
+    // A receiver whose type failed to infer owns nothing: its `V` stays the program's.
+    let unknown = "domain V = 0..5\n\
+fn f() -> Bool:\n    let t = gen<Rooted<V>>(shape: Path)\n    t.depth(V(1)) < 5 and V.all(v => t.depth(v) < 5)\n\
+print(yes(f()))\n";
+    let (rows, errors) = silent_unknowns_of(unknown);
+    assert!(rows.is_empty() && errors == 0, "{rows:?} {errors}");
+}

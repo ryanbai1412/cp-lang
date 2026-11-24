@@ -162,6 +162,7 @@ impl<'a> Checker<'a> {
             return ty;
         }
         let base_ty = member_position_as_struct(self.infer_base(base));
+        let base_ty = self.own_open_domains(base, base_ty);
         self.note_method(&base_ty, name);
         if self.member_advice(&base_ty, name) {
             return Ty::Error;
@@ -1107,7 +1108,7 @@ impl<'a> Checker<'a> {
                 // (`Tree<M.Fold>`): which impl a bare op's bound picks is lowering's.
                 Some((_, ty))
                     if self.in_call_callee
-                        && matches!(base_ty, Ty::TypeName(_))
+                        && matches!(base_ty, Ty::TypeName(_) | Ty::Named { .. })
                         && !projects(ty) =>
                 {
                     ty.clone()

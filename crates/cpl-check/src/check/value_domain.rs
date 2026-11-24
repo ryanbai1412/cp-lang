@@ -18,12 +18,63 @@ impl Checker<'_> {
             Ty::Array { index, .. } => {
                 matches!(index.as_slice(), [Ty::Pos(d)] if *d == own).then_some(own)
             }
-            Ty::Named { name: owner, .. } => self
-                .value_domains(&owner)
-                .iter()
-                .any(|d| d == member)
-                .then_some(own),
+            Ty::Named { name: owner, args } => {
+                (self.value_domains(&owner).iter().any(|d| d == member)
+                    || self
+                        .open_domains(&owner, &args)
+                        .iter()
+                        .any(|(_, d)| d == member))
+                .then_some(own)
+            }
             _ => None,
+        }
+    }
+
+    /// `Rooted<V, _, _>` leaves `Pre` open: a parameter the type's own fns return as `_` is
+    /// fresh for each value, so the one `t` holds is `t.Pre`. A parameter that merely failed
+    /// to infer (`Paths<_, Int, A>`) is not.
+    fn open_domains(&mut self, owner: &str, args: &[Ty]) -> Vec<(usize, String)> {
+        let Some(members) = self.members_of(owner) else {
+            return Vec::new();
+        };
+        // With no argument known the type failed to infer: nothing says which are open.
+        if members.generics.len() != args.len() || args.iter().all(|a| *a == Ty::Unknown) {
+            return Vec::new();
+        }
+        let fresh = |i: usize| {
+            members.members.iter().any(|(_, ty)| {
+                matches!(ty, Ty::Fn { ret, .. } if matches!(&**ret,
+                    Ty::Named { name, args } if name == owner && args.get(i) == Some(&Ty::Unknown)))
+            })
+        };
+        members
+            .generics
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| args[*i] == Ty::Unknown && fresh(*i))
+            .map(|(i, g)| (i, g.clone()))
+            .collect()
+    }
+
+    /// `t.pos(v)` on a `t: Rooted<V, _, _>`: the domains `t` owns are read as `t.Pre`.
+    pub(crate) fn own_open_domains(&mut self, base: &Expr, base_ty: Ty) -> Ty {
+        let (ExprKind::Name(view), Ty::Named { name: owner, args }) = (&base.kind, &base_ty) else {
+            return base_ty;
+        };
+        if self.local(view).is_none() && self.global(view).is_none() {
+            return base_ty;
+        }
+        let open = self.open_domains(owner, args);
+        if open.is_empty() {
+            return base_ty;
+        }
+        let mut args = args.clone();
+        for (i, g) in open {
+            args[i] = Ty::Pos(format!("{view}.{g}"));
+        }
+        Ty::Named {
+            name: owner.clone(),
+            args,
         }
     }
 
