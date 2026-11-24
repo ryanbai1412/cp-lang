@@ -1410,7 +1410,7 @@ def ci_retries(root: Path) -> list[str]:
     return [":".join(h.split(":", 2)[:2]) for h in hits if not FLAKE_FAILS_RE.search(h)]
 
 
-RETRY_RE = r"--retr(y|ies)\b|\b(re)?try\(\) *\{|\bfor (try|tries|attempt) in "
+RETRY_RE = r"--retr(y|ies)\b|\b(re)?try\(\) *\{|\bfor (try|tries|attempt) in |\bfor _ in range\((tries|retries|attempts)\)"
 FLAKE_FAILS_RE = re.compile(r"--retries [0-9]+ --flaky-result fail")
 
 

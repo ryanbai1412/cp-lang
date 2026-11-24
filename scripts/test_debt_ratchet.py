@@ -278,11 +278,12 @@ class DebtRatchetTest(unittest.TestCase):
             root = Path(tmp)
             subprocess.run(["git", "init", "-q"], cwd=root, check=True, env=dr._git_env())
             self._write(root, "scripts/retry.sh", "retry() {\n")
+            self._write(root, "scripts/r.py", "for _ in range(tries):\n")
             self._write(root, ".github/workflows/x.yml", "nextest run --retries 1 --flaky-result fail\n"
                         "for try in 1 2 3; do\n  try() { x; }\nnextest run --retries 2\n")
             subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
             self.assertEqual(dr.ci_retries(root), [".github/workflows/x.yml:2", ".github/workflows/x.yml:3",
-                                                   ".github/workflows/x.yml:4"])
+                                                   ".github/workflows/x.yml:4", "scripts/r.py:1"])
 
     def test_web_skip_only_reads_only_js_and_ts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

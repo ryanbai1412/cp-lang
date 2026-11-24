@@ -20,6 +20,9 @@ import subprocess
 import sys
 import tempfile
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from retry import retry  # noqa: E402
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DECISIONS = os.path.join(ROOT, "decisions.md")
 HEADING_RE = re.compile(r"^##\s+(\d+)\.", re.MULTILINE)
@@ -72,9 +75,14 @@ def with_stub(text: str, n: int, lane: str) -> str:
     return text.rstrip("\n") + f"\n\n## {n}. (reserved, {lane})\n"
 
 
+class PushRejected(Exception):
+    """Main moved between the fetch and the push."""
+
+
 def reserve(lane: str, domain: str, remote: str, tries: int) -> int:
     local = open(DECISIONS, encoding="utf-8").read() if os.path.exists(DECISIONS) else ""
-    for _ in range(tries):
+
+    def attempt() -> int:
         f = git("fetch", "-q", remote, "main")
         if f.returncode != 0:
             print(f"next-decision: cannot fetch {remote} main (offline?): {f.stderr.strip()}", file=sys.stderr)
@@ -98,8 +106,13 @@ def reserve(lane: str, domain: str, remote: str, tries: int) -> int:
                 file=sys.stderr,
             )
             return 0
-    print(f"next-decision: push rejected {tries} times; try again", file=sys.stderr)
-    return 1
+        raise PushRejected(n)
+
+    try:
+        return retry(attempt, transient=lambda e: isinstance(e, PushRejected), tries=tries, wait=0)
+    except PushRejected:
+        print(f"next-decision: push rejected {tries} times; try again", file=sys.stderr)
+        return 1
 
 
 def check_landing(base_ref: str) -> int:
