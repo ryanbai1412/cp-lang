@@ -17,10 +17,10 @@ for (u, v) in edges:
     odd[u] = not odd[u]
     odd[v] = not odd[v]
 
-domain X = V | E
-var pieces = DsuOf<X, Int>(x => if x is E: 1 else: -1, +)
+domain X = 0..n + E.count
+var pieces = DsuOf<X, Int>(x => if x.ord >= n: 1 else: -1, +)
 for (e, (u, v)) in edges.items:
-    if not odd[u]: pieces.unite(E(e), V(u))
-    if not odd[v]: pieces.unite(E(e), V(v))
+    if not odd[u]: pieces.unite(X(n + e.ord), X(u.ord))
+    if not odd[v]: pieces.unite(X(n + e.ord), X(v.ord))
 
 print(sum(choose2(diff + 1) for diff in pieces.values()))
