@@ -105,7 +105,7 @@ Evidence: `crates/cpl-lint/src/idiom_tests.rs` (`sentinel_table_reads_the_elemen
 ### lint/U18: lint is fast enough to run on every keystroke
 Need: findings appear while typing, even in a 4000-line library.
 Design: lint and format of the largest files fit a tenth of the 500 ms front-end budget.
-Milestone: M1-critical. Status: partial (the largest std modules take 58 to 83 ms to lint in a release build, over the 50 ms the ports meet)
+Milestone: M1-critical. Status: partial (the largest std modules lint in 30 to 40 ms in a release build, printed but not asserted; the ports are asserted under 50 ms)
 Evidence: `crates/cpl-lint/src/speed_tests.rs` (`lint_and_fmt_of_the_largest_files_fit_a_tenth_of_the_front_end_budget`)
 
 ### lint/U19: lint in the playground
