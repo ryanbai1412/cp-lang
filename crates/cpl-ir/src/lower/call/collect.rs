@@ -237,14 +237,16 @@ impl<'a> Lowerer<'a> {
             return None;
         };
         {
-            let probed = self.probe_expr(&only.value, None);
+            let probed = self.checked_ty(&only.value);
             // So does an array over a plain range, `[0..m](u: V, v: V)`:
             // it names no edge domain either. And one of plain
             // tuples, `[E](V, V, W)`, whose cells have no `u` and `v`.
-            let arity = match &probed.ty {
+            let arity = match &probed {
                 // A list of records is `Indexed` by its positions: the fn itself takes it.
-                Ty::List(elem) if matches!(**elem, Ty::Tuple(_)) => elem.fields().map(|f| f.len()),
-                Ty::Array { dims, elem }
+                Some(Ty::List(elem)) if matches!(**elem, Ty::Tuple(_)) => {
+                    elem.fields().map(|f| f.len())
+                }
+                Some(Ty::Array { dims, elem })
                     if matches!(dims.as_slice(), [Dim::Int])
                         || (dims.len() == 1 && matches!(**elem, Ty::Tuple(_))) =>
                 {
@@ -279,7 +281,7 @@ impl<'a> Lowerer<'a> {
                     .iter()
                     .map(|t| self.resolve_gen_arg(t))
                     .collect();
-                if !matches!(probed.ty, Ty::Array { .. }) {
+                if !matches!(probed, Some(Ty::Array { .. })) {
                     return Some(self.call_gen_fn(gfid, explicit, None, args, span));
                 }
                 // A 1D array has the same backing storage as a list; `List(edges)`

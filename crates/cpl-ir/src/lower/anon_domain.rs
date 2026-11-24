@@ -34,8 +34,15 @@ impl<'a> Lowerer<'a> {
         if !matches!(arg.value.kind, ast::ExprKind::Name(_)) {
             return None;
         }
-        let lowered = self.probe_expr(&arg.value, None);
-        self.expr_range(&lowered)
+        if let ast::ExprKind::Name(name) = &arg.value.kind {
+            if let Some(slot) = self.lookup(name) {
+                return self.cx.local_ranges.get(&slot).cloned();
+            }
+        }
+        match self.sym(&arg.value)? {
+            Sym::Global(gid) => self.global_ranges.get(&gid).cloned(),
+            _ => None,
+        }
     }
 
     /// Bind the element generic of a `Seq` bound (`T` of `S: Seq<T>`, or the generics of its
