@@ -87,6 +87,14 @@ Recommendation: (a), one spelling per idea; it waits on views of `Str` comparing
 How to reverse it: restore `split(self: Str, sep: Char) -> List<Str>` in std/strings.cp.
 Meanwhile: both stay; the predicate case keeps failing on `Str`.
 
+### stdlib: Q5 decision 419's real searches need one name over two return types
+Decision 419 makes `(lo..hi).bsearch(ok, steps:)`, `.peak(by:, steps:)` and `.valley(by:, steps:)` on a `Range<F64>` the real searches, replacing `bsearch_real` and `ternary_*_real`. But `r.bsearch` on a domain range returns `Cut<D>` and the real one returns `?F64`, and fns don't overload by parameter type (E0702, R07.1.7), so std can't add the real forms beside the integer ones (std-search/real-bsearch-is-a-range-method). Same root cause as Q4.
+- (a) A trait the element type implements, with an associated result type: `bsearch<D: Search>(self: Range<D>, ok, last:, steps:) -> D.Found`, where a domain's `Found` is `Cut<D>` and `F64`'s is `?F64`. One generic fn per name, no overloading.
+- (b) Reverse decision 419: keep the `_real` free fns.
+Recommendation: (a), since it's the same mechanism Q4 (a) needs. It waits on the checker accepting an `impl` for every domain plus one for `F64`.
+How to reverse it: restore the three free fns.
+Meanwhile: `bsearch_real` and `ternary_*_real` stay, and the case keeps failing.
+
 ### idioms: the re-port bar for the 305 tracked ports
 Options: (a) rethink each from `dream.cp` to the EXEMPLARS bar (slow, defines idiomatic); (b) migrate `port.cp` mechanically to v0.3 (fast, gives judge proof and the lint FP corpus, keeps C++ shape).
 Recommendation: (b) first for all 305, then (a) in review-score order; only (a) counts toward the taste and token targets.
