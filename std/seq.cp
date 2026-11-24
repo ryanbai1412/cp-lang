@@ -69,8 +69,8 @@ pub enum Ties = First | Last
 /// ties: the first in sequence order; the last with `ties: Ties.Last`
 /// traps: never
 /// example: `[3, 1, 1].min() == Some(1)`
-/// example: `[(1, 'a'), (1, 'b')].min(by: p => p.0) == Some((1, 'a'))`
-/// example: `[(1, 'a'), (1, 'b')].min(by: p => p.0, ties: Ties.Last) == Some((1, 'b'))`
+/// example: `[(1, 'a'), (1, 'b')].min(by: .0) == Some((1, 'a'))`
+/// example: `[(1, 'a'), (1, 'b')].min(by: .0, ties: Ties.Last) == Some((1, 'b'))`
 pub fn min<S: Seq, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T:
     let last = ties == Ties.Last
     var best: ?T = None
@@ -87,8 +87,8 @@ pub fn min<S: Seq, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) 
 /// empty: `None`
 /// ties: the first in sequence order; the last with `ties: Ties.Last`
 /// traps: never
-/// example: `[(2, 'a'), (2, 'b')].max(by: p => p.0) == Some((2, 'a'))`
-/// example: `[(2, 'a'), (2, 'b')].max(by: p => p.0, ties: Ties.Last) == Some((2, 'b'))`
+/// example: `[(2, 'a'), (2, 'b')].max(by: .0) == Some((2, 'a'))`
+/// example: `[(2, 'a'), (2, 'b')].max(by: .0, ties: Ties.Last) == Some((2, 'b'))`
 pub fn max<S: Seq, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T:
     let last = ties == Ties.Last
     var best: ?T = None
@@ -108,7 +108,7 @@ pub fn max<S: Seq, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) 
 /// ties: the first in sequence order, for both ends
 /// traps: never
 /// example: `[5, 1, 4].minmax() == Some((1, 5))`
-/// example: `[(2, 'a'), (1, 'b'), (2, 'c')].minmax(by: p => p.0) == Some(((1, 'b'), (2, 'a')))`
+/// example: `[(2, 'a'), (1, 'b'), (2, 'c')].minmax(by: .0) == Some(((1, 'b'), (2, 'a')))`
 pub fn minmax<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(T, T):
     var best: ?(T, T) = None
     for x in self:

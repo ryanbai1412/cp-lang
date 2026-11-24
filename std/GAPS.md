@@ -12,7 +12,6 @@ line when the gap closes and the body lands.
 - window, `undoing`/`Tracked` with a tuple-pattern closure: `(mut d, (u, v)) => ...` is E0302 "a `Int` can't be taken apart into 2 names" (the element type is not inferred from the callee), so btoi20p3 writes `e: (V, V)`.
 - io: `read_all`: CP Lang has no end-of-input test (the interpreter has one internally, `Input::at_eof`), so reading to the end can't be written; blocks ioi05p2 and the site's `read_all<Cmd>(until:)` snippets.
 - seq, `filter` / `map`: `Filtered<S>` and `Mapped<S, U>` have no fields and no `T` parameter to hold the closure, and a struct cannot implement `Seq` yet; the compiler's built-in views serve these calls.
-- seq, `min` / `max` (example with `by: .0`): tuple-field shorthand `.0` as a closure is not parsed.
 - segtree, `SegTree.new` (and so `all`, `monoid`, `try_fold`, `clear`, `walk`, which need a tree to test): `apply`'s tag type `F` is not a declared parameter (`F is not a type cpl run knows`), the struct's header parameter `m: Monoid<T>` captures the `op` argument, and `at`'s `-> lends mut T` does not parse.
 - timetree, `TimeTree.add_range` doc example: `TimeTree<Str>(3); add_range(1..3, "e")` gives 7 steps under `add_interval` (nodes [1,2) and [2,3)), not the documented 5; the example needs correcting by the doc owner.
 - mo, examples on `Int` ranges (`mo_order([0..3, ...])`): `cpl run` cannot bind `D` for `Range<Int>`, and `Int` ends have no `.ord`; bodies verified over a declared `domain` against brute force (`spec/conformance/std-mo`).
