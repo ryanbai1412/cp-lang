@@ -292,6 +292,8 @@ def select(paths, dirs):
             steps.add(path)
             if t := script_test(path):
                 tests.add(t)
+        elif path == "justfile":
+            tests.add("scripts/test_justfile.py")
         elif path.startswith("scripts/") and (t := script_test(path)):
             tests.add(t)
         elif path.startswith("scripts/") and ci_only(path):

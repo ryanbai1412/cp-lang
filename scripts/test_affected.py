@@ -46,6 +46,10 @@ class AffectedTest(unittest.TestCase):
         s = self.sel("scripts/land.sh", "scripts/affected.py", ".githooks/pre-commit")
         self.assertEqual(s["script_tests"], ["scripts/test_affected.py", "scripts/test_check_cache.py"])
 
+    def test_the_justfile_selects_the_test_that_just_parses_it(self):
+        s = self.sel("justfile")
+        self.assertEqual((s["all"], s["script_tests"]), (False, ["scripts/test_justfile.py"]))
+
     def test_a_checking_script_selects_its_own_step_not_the_fast_gate(self):
         s = self.sel("scripts/std-trait-matrix.py", "bench/sizes.py", "scripts/debt-ratchet.py")
         self.assertFalse(s["all"])
