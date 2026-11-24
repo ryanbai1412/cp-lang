@@ -132,7 +132,50 @@ class WorkflowTest(unittest.TestCase):
             os.remove(os.path.join(sizes, f"{saved}.json"))
             out = subprocess.run(["bash", script, "check", "cpl.wasm", sizes], cwd=repo, env=env, capture_output=True, text=True)
             self.assertEqual(out.returncode, 0, out.stderr)
-            self.assertIn("no saved sizes", out.stdout)
+            self.assertIn("::warning::wasm-ratchet: no saved sizes", out.stdout)
+
+    def test_the_wasm_ratchet_on_main_pushes_the_budgets_it_lowers(self):
+        with tempfile.TemporaryDirectory() as d:
+            remote, repo, sizes, bin_dir = (os.path.join(d, n) for n in ("remote.git", "r", "sizes", "bin"))
+            os.makedirs(sizes)
+            os.makedirs(bin_dir)
+            budgets = os.path.join("web", "scripts", "wasm-crate-budgets.json")
+            for name, body in (
+                ("node", f'echo "node $*" >>{d}/node.log\n'
+                         f'[ "${{@: -1}}" != --lower-budgets ] || [ ! -e {d}/lower ] || echo \'{{"core": 62900}}\' >{budgets}'),
+                ("gh", f'echo "gh $*" >>{d}/gh.log'),
+            ):
+                with open(os.path.join(bin_dir, name), "w", encoding="utf-8") as f:
+                    f.write("#!/usr/bin/env bash\n" + body + "\n")
+                os.chmod(os.path.join(bin_dir, name), 0o755)
+            run = lambda *a, cwd=repo: subprocess.run(a, cwd=cwd, capture_output=True, text=True, check=True).stdout.strip()
+            run("git", "init", "-q", "--bare", "-b", "main", remote, cwd=d)
+            run("git", "clone", "-q", remote, repo, cwd=d)
+            os.makedirs(os.path.join(repo, "web", "scripts"))
+            with open(os.path.join(repo, budgets), "w", encoding="utf-8") as f:
+                f.write('{"core": 71100}\n')
+            run("git", "add", "-A")
+            for i in range(2):
+                run("git", "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-q", "--allow-empty", "-m", str(i))
+            run("git", "push", "-q", "origin", "HEAD:main")
+            with open(os.path.join(sizes, run("git", "rev-parse", "HEAD~1") + ".json"), "w", encoding="utf-8") as f:
+                f.write("{}")
+            env = {**os.environ, "PATH": bin_dir + os.pathsep + os.environ["PATH"]}
+            script = os.path.join(ROOT, "scripts", "wasm-ratchet.sh")
+            lower = lambda: subprocess.run(["bash", script, "lower", "cpl.wasm", sizes], cwd=repo, env=env, capture_output=True, text=True)
+            out = lower()
+            self.assertEqual(out.returncode, 0, out.stderr)
+            self.assertEqual(run("git", "log", "-1", "--format=%s", "main", cwd=remote), "1", "nothing lowered, nothing pushed")
+            self.assertFalse(os.path.exists(os.path.join(d, "gh.log")))
+            open(os.path.join(d, "lower"), "w").close()
+            tip = run("git", "rev-parse", "--short", "HEAD")
+            out = lower()
+            self.assertEqual(out.returncode, 0, out.stderr)
+            self.assertEqual(run("git", "log", "-1", "--format=%s%n%an", "main", cwd=remote),
+                             f"ci: lower wasm budgets to {tip}'s sizes\ngithub-actions[bot]")
+            self.assertEqual(run("git", "show", f"main:{budgets}", cwd=remote), '{"core": 62900}')
+            with open(os.path.join(d, "gh.log"), encoding="utf-8") as f:
+                self.assertEqual(f.read(), "gh workflow run ci.yml --ref main\n")
 
     def test_site_selection_stops_at_runs_older_than_the_live_build(self):
         # The live commit's own run is usually cancelled, so it never matches

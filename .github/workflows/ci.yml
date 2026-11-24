@@ -646,6 +646,10 @@ jobs:
     name: site build
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # The wasm ratchet pushes the budgets it lowers on main, and starts that tip's run.
+    permissions:
+      contents: write
+      actions: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -698,7 +702,10 @@ jobs:
           key: wasm-size-${{ github.run_id }}
       - name: Hold every crate to the shrink-only wasm ratchet
         if: ${{ !cancelled() && hashFiles('.wasm-size/last') != '' }}
-        run: scripts/wasm-ratchet.sh check "$RUNNER_TEMP/wasm-names/cpl.wasm" .wasm-size/sizes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RATCHET: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'lower' || 'check' }}
+        run: scripts/wasm-ratchet.sh "$RATCHET" "$RUNNER_TEMP/wasm-names/cpl.wasm" .wasm-size/sizes
       - name: Typecheck
         run: just web-typecheck
       - name: Unit tests
