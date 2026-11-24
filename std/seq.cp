@@ -1684,16 +1684,18 @@ pub fn all_some<S: Seq, T>(self: S) -> ?List<T>:
         else: return None
     Some(out)
 
-/// \(O(1)\) per step. Lazily concatenate `a` then `b` without copying.
+/// \(O(1)\) per step. Lazily concatenate any number of sequences, in turn, without copying
+/// (R07.7.4), as free `min` and `max` take any number of values.
 ///
 /// cost: \(O(1)\) per step
-/// empty: the other sequence
-/// order: all of `a`, then all of `b`
+/// empty: the sequences that are not empty, in turn
+/// order: all of the first sequence, then all of the next, and so on
 /// traps: never
 /// example: `chain([1], [2, 3]).collect() == [1, 2, 3]`
-pub fn chain<A: Seq, B: Seq, T>(a: A, b: B) -> yields T:
-    for x in a: yield x
-    for x in b: yield x
+/// example: `chain([1], [2], [3, 4]).collect() == [1, 2, 3, 4]`
+pub fn chain<Ss, T>(..seqs: Ss) -> yields T:
+    for s in fields(seqs):
+        for x in s: yield x
 
 /// \(O(1)\) per step. Cartesian product `(x, y)` for `x in a`, `y in b` in lexicographic order.
 ///
