@@ -211,7 +211,11 @@ library or by this spec:
   branches. A finding names the lint (`warning[name]`),
   is in the `idiom` group, warns by default, and `with lint(name: allow)`
   turns it off; its fix is `to` with each hole replaced by what it matched,
-  written over the matched code up to its last token.
+  written over the matched code up to its last token. `not` before a hole
+  in `to` negates what it matched: one comparison flips (`m < 0` is
+  `m >= 0`) and `not x` is `x`; a hole that is a comprehension's iterable
+  or a lambda's body before `)` is written without brackets, unless it is
+  an open range (`a..`).
   `holes: "a, b"` names more holes than the fn's parameters (a domain or a
   bound the call no longer needs); `to` may drop one of those only when it
   matched an expression that calls nothing, or when the lint has no fix.

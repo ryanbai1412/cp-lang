@@ -1214,6 +1214,22 @@ fn fill(
         } else if let Some(m) = got.get(word).filter(|_| is_name(t.kind, word)) {
             let before = i.checked_sub(1).map(|i| toks[i].kind);
             let after = toks.get(i + 1).map(|t| t.kind);
+            if let Some(held) = (before == Some(K::Not)).then(|| negated(m)).flatten() {
+                out.push_str(&lines(&to[last..toks[i - 1].span.start as usize]));
+                out.push_str(&held);
+                last = t.span.end as usize;
+                continue;
+            }
+            // A comprehension's iterable runs from `in` to `if` or its end.
+            let lambda = before == Some(K::FatArrow) && after == Some(K::RParen);
+            let iterable = before == Some(K::In)
+                && matches!(after, Some(K::If | K::Colon | K::RParen | K::RBracket))
+                && !m.ends_with("..");
+            // A comprehension's filter runs to its end; a written type to `=`.
+            let filter = before == Some(K::If) && matches!(after, Some(K::RParen | K::RBracket));
+            let typed = before == Some(K::Colon) && after == Some(K::Eq);
+            let literal = (m.strip_prefix('-').unwrap_or(m).chars()).all(|c| c.is_ascii_digit())
+                && !matches!(after, Some(K::Dot | K::LBracket | K::StarStar));
             let labelled = before == Some(K::Colon) && i >= 2 && labels[i - 2];
             let delimited = ((labelled
                 || matches!(before, Some(K::LParen | K::LBracket | K::Comma) | None))
@@ -1222,7 +1238,12 @@ fn fill(
                 || (before == Some(K::LBracket)
                     && after == Some(K::For)
                     && !clauses(m.trim_matches(['(', ')'])))
-                || (matches!(before, Some(K::If | K::Elif | K::While)) && after == Some(K::Colon));
+                || (matches!(before, Some(K::If | K::Elif | K::While)) && after == Some(K::Colon))
+                || iterable
+                || lambda
+                || filter
+                || typed
+                || literal;
             let inner = m
                 .strip_prefix('(')
                 .and_then(|m| m.strip_suffix(')'))
@@ -1257,6 +1278,49 @@ fn first_line(fix: &str) -> String {
         Some((first, _)) => format!("{} ...", first.trim_end()),
         None => fix.to_string(),
     }
+}
+
+/// `m` negated with no `not` before it: `a < b` as `a >= b` for one
+/// comparison, `not x` as `x`; none for anything else.
+fn negated(m: &str) -> Option<String> {
+    let toks = library_lint::tokens(m);
+    let mut depth = 0;
+    let mut top: Vec<usize> = Vec::new();
+    for (i, t) in toks.iter().enumerate() {
+        match t.kind {
+            K::LParen | K::LBracket | K::LBrace => depth += 1,
+            K::RParen | K::RBracket | K::RBrace => depth -= 1,
+            _ if depth == 0 => top.push(i),
+            _ => {}
+        }
+    }
+    let kind = |i: &usize| toks[*i].kind;
+    let text =
+        |a: usize, b: usize| m[toks[a].span.start as usize..toks[b].span.end as usize].to_string();
+    let last = toks.len().checked_sub(1)?;
+    if top.first() == Some(&0)
+        && toks[0].kind == K::Not
+        && !top.iter().any(|i| matches!(kind(i), K::And | K::Or))
+    {
+        return (last > 0).then(|| text(1, last));
+    }
+    let flips = [
+        (K::Lt, ">="),
+        (K::LtEq, ">"),
+        (K::Gt, "<="),
+        (K::GtEq, "<"),
+        (K::EqEq, "!="),
+        (K::NotEq, "=="),
+    ];
+    let mut ops = (top.iter()).filter(|i| {
+        flips.iter().any(|(f, _)| *f == kind(i))
+            || matches!(kind(i), K::And | K::Or | K::Not | K::In)
+    });
+    let (Some(&at), None) = (ops.next(), ops.next()) else {
+        return None;
+    };
+    let (_, flipped) = flips.iter().find(|(f, _)| *f == toks[at].kind)?;
+    (at > 0 && at < last).then(|| format!("{} {flipped} {}", text(0, at - 1), text(at + 1, last)))
 }
 
 fn balanced(s: &str) -> bool {

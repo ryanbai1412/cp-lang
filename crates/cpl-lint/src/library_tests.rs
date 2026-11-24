@@ -680,10 +680,7 @@ fn also_needs_a_use_and_advice_offers_no_fix() {
             .collect()
     };
     let compared = "var memo = [-1 for _ in 0..5]\nmemo[2] = 4\nprint(-1 == memo[2])\n";
-    assert_eq!(
-        found(compared),
-        ["write `var memo = [None for _ in (0..5)]`"]
-    );
+    assert_eq!(found(compared), ["write `var memo = [None for _ in 0..5]`"]);
     assert!(found("var memo = [-1 for _ in 0..5]\nmemo[2] = 4\nprint(memo[2])\n").is_empty());
     assert!(found(
         "var memo = [-1 for _ in 0..5]\nvar other = [0]\nprint(memo[0] == 0, other[0] == -1)\n"
@@ -961,4 +958,34 @@ fn lines_from_writes_differently_match_different_code() {
     };
     assert_eq!(found("g[0].push(2)\ng[2].push(0)\n"), 1);
     assert_eq!(found("g[1].push(1)\ng[1].push(1)\n"), 0);
+}
+
+/// `not` before a hole in `to` negates what it matched: one comparison
+/// flips, `not x` loses its `not`, anything else keeps the `not`; a hole
+/// that is a comprehension's iterable or a lambda's last argument keeps no
+/// brackets, unless it is an open range. Rule: R06.4.9.
+#[test]
+fn not_before_a_hole_negates_it_and_an_iterable_keeps_no_brackets() {
+    let decl = "@lint(pick_by_hand, from: \"if c: 0 else: 1\", to: \"pick(not c)\", holes: \"c\")\n@lint(pick_by_hand, from: \"for x in it:\\n    print(x + 0)\", to: \"print(pick(sum(x for x in it if x > 0) > 0))\", holes: \"it\")\n@lint(pick_by_hand, from: \"if c: 3 else: 1\", to: \"pick([1].all(z => c))\", holes: \"c\")\npub fn pick(b: Bool) -> Int = if b: 1 else: 0\n";
+    let found = |body: &str| -> Vec<String> {
+        crate::lint(&format!("{decl}{body}"), &crate::Config::default())
+            .into_iter()
+            .filter(|d| d.code.0 == "pick_by_hand")
+            .map(|d| d.fixes[0].edits[0].1.clone())
+            .collect()
+    };
+    let src = "let a: Int = read()\nlet b: Bool = read()\nprint(if a < 0: 0 else: 1, if not b: 0 else: 1, if not not b: 0 else: 1)\nprint(if a < 0 and b: 0 else: 1, if a == 1: 0 else: 1)\nfor x in 0..a:\n    print(x + 0)\nfor x in a..:\n    print(x + 0)\nprint(if a > 2: 3 else: 1)\n";
+    assert_eq!(
+        found(src),
+        [
+            "pick(a >= 0)",
+            "pick(b)",
+            "pick(not b)",
+            "pick(not (a < 0 and b))",
+            "pick(a != 1)",
+            "print(pick(sum(x for x in 0..a if x > 0) > 0))",
+            "print(pick(sum(x for x in (a..) if x > 0) > 0))",
+            "pick([1].all(z => a > 2))"
+        ]
+    );
 }
