@@ -64,7 +64,32 @@ fn location(loc: &Value, own: &str) -> String {
         true => loc.at(&["targetSelectionRange"]),
         false => loc.at(&["range"]),
     };
-    format!("{} {}", file(uri, own), span(range))
+    let file = file(uri, own);
+    match std_name(&file, range) {
+        Some(name) => format!("{file} `{name}`"),
+        None => format!("{file} {}", span(range)),
+    }
+}
+
+/// The text a range of a std file covers, so a snapshot names the std item
+/// it reaches rather than a line number every std edit above it would move.
+fn std_name(file: &str, range: &Value) -> Option<String> {
+    if !file.starts_with("std/") {
+        return None;
+    }
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let text = std::fs::read_to_string(root.join(file)).ok()?;
+    let (start, end) = (range.at(&["start"]), range.at(&["end"]));
+    let line = start.at(&["line"]).as_u32()?;
+    if end.at(&["line"]).as_u32()? != line {
+        return None;
+    }
+    let row: Vec<u16> = text.lines().nth(line as usize)?.encode_utf16().collect();
+    let (a, b) = (
+        start.at(&["character"]).as_u32()? as usize,
+        end.at(&["character"]).as_u32()? as usize,
+    );
+    String::from_utf16(row.get(a..b)?).ok()
 }
 
 fn items(result: &Value) -> &[Value] {

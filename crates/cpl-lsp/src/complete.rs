@@ -670,7 +670,7 @@ fn item_json(entry: &Entry, sort: u8) -> Value {
     let mut members = BTreeMap::from([
         ("label".to_string(), entry.name.as_str().into()),
         ("kind".to_string(), entry.kind.completion_kind().into()),
-        ("detail".to_string(), entry.detail.as_str().into()),
+        ("detail".to_string(), detail_of(entry).into()),
         (
             "sortText".to_string(),
             format!("{sort}{}", entry.name).into(),
@@ -707,6 +707,28 @@ fn member_json(entry: &Entry, sort: u8) -> Value {
         members.insert("sortText".to_string(), text.into());
     }
     item
+}
+
+/// An entry's completion detail. A struct built through its own `new` is
+/// called by its name with `new`'s parameters, so its detail shows that call.
+fn detail_of(entry: &Entry) -> String {
+    let ctor = (entry.kind == Kind::Struct)
+        .then(|| {
+            entry
+                .members
+                .iter()
+                .find(|m| m.name == "new" && !m.instance && m.public)
+        })
+        .flatten()
+        .and_then(|new| {
+            new.detail
+                .split_once("new")
+                .map(|(_, rest)| rest.to_string())
+        });
+    match ctor {
+        Some(call) => format!("{}\n{}{call}", entry.detail, entry.name),
+        None => entry.detail.clone(),
+    }
 }
 
 fn plain(name: &str, kind: Kind, detail: String, doc: &str) -> Entry {
