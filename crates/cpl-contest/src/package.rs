@@ -459,11 +459,30 @@ pub fn make_within(package: &Path, out: &Path, budget: Duration) -> Result<(), S
             }
         }
         write(&aside.join(".stamp"), stamp.as_bytes())?;
-        let _ = std::fs::remove_dir_all(out);
-        match std::fs::rename(&aside, out) {
-            // Another maker of the same cases got there first.
-            Err(_) if current(out) => Ok(()),
-            done => done.map_err(|e| format!("can't move the cases to {}: {e}", out.display())),
+        // `out` is only ever renamed, never deleted in place, so it is absent
+        // or a whole folder: a delete is not atomic, and a concurrent maker
+        // met a folder still emptying (Windows can't rename onto it) or read
+        // its stamp gone. A rename in fails only once another maker's cases
+        // are in, so each turn either finds them current or moves them out.
+        let old = parent.join(format!(".{name}.{}.{maker}.old", std::process::id()));
+        let mut failed = None;
+        for _ in 0..64 {
+            if current(out) {
+                return Ok(());
+            }
+            if std::fs::rename(out, &old).is_ok() {
+                let _ = std::fs::remove_dir_all(&old);
+            }
+            match std::fs::rename(&aside, out) {
+                Ok(()) => return Ok(()),
+                Err(e) => failed = Some(e),
+            }
+        }
+        match failed {
+            Some(e) if !current(out) => {
+                Err(format!("can't move the cases to {}: {e}", out.display()))
+            }
+            _ => Ok(()),
         }
     })();
     let _ = std::fs::remove_dir_all(&aside);
