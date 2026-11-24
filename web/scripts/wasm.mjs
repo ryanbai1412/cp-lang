@@ -1,10 +1,10 @@
 // Copies the browser build of the compiler (scripts/build-wasm.sh) into
 // public/wasm/, building it first when dist/wasm/ is missing or older than
 // any source it is built from (a stale build once read 60 KB under its real
-// size against the cap), and its types
-// into lib/cpl-types.ts so the site cannot drift from the compiler's API.
+// size against the cap). The site imports its types straight from
+// crates/cpl-wasm/js/cpl.d.ts, so there is no copy to drift.
 import { execFileSync } from 'node:child_process';
-import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -54,8 +54,4 @@ mkdirSync(join(web, 'public/wasm'), { recursive: true });
 for (const f of files) copyFileSync(join(dist, f), join(web, 'public/wasm', f));
 // The std module texts the page fetches the first time a program uses one.
 cpSync(join(dist, 'std'), join(web, 'public/wasm/std'), { recursive: true });
-writeFileSync(
-  join(web, 'lib/cpl-types.ts'),
-  readFileSync(join(repo, 'crates/cpl-wasm/js/cpl.d.ts'), 'utf8').replace(/^export (class|function|const) /gm, 'export declare $1 '),
-);
 console.log(`wasm: copied ${files.join(', ')} to public/wasm/`);

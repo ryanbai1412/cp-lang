@@ -99,14 +99,14 @@ A static site plus one Worker. `next build` (Next.js App Router, `output: 'expor
 | `web/components/editor/` | CodeMirror editor, CP Lang language mode, live diagnostics |
 | `web/components/exercise.tsx`, `judge.tsx` | Practice problem UI and in-browser judging against tests |
 | `web/components/ui/` | shadcn/ui primitives |
-| `web/lib/cpl.ts`, `web/lib/cpl-types.ts` | Client API to the wasm worker (`check`, `run`, `trace`, `stress`, `build`); types generated |
+| `web/lib/cpl.ts` | Client API to the wasm worker (`check`, `run`, `trace`, `stress`, `build`); types imported from `crates/cpl-wasm/js/cpl.d.ts` |
 | `web/lib/landing.ts` | Loads landing programs and their gate status; Run only when status is `runs` |
 | `web/lib/source.ts`, `web/source.config.ts` | Fumadocs loaders for docs and Learn |
 | `web/lib/layout.shared.tsx` | Site name and the one nav link list shared by every layout |
 | `web/scripts/gate.mjs` | Snippet gate: every program on the site, and the browser differential |
 | `web/scripts/gen-ref.mjs` | Reference pages from `spec/` and `cpl doc --format json` |
 | `web/scripts/gen-tools.mjs`, `gen-debug.mjs`, `releases.mjs` | CLI metadata from `cpl --help`; trace demo; release notes from `CHANGELOG.md` |
-| `web/scripts/wasm.mjs` | Copies `dist/wasm` into `web/public/wasm/`, regenerates `cpl-types.ts` |
+| `web/scripts/wasm.mjs` | Copies `dist/wasm` into `web/public/wasm/` |
 | `web/scripts/links.mjs` | Internal link check over `web/out` |
 | `web/worker/` | Share links: `share.ts` (snapshot format, ids, limits), `index.ts` (routes, OG tags), `share.test.ts` |
 | `web/tests/run.mjs`, `smoke.mjs`, `learn-smoke.mjs`, `browser.mjs` | Browser smoke: `run.mjs` serves `web/out` on a free port and runs both suites |
@@ -242,7 +242,7 @@ Each row is a quality a user can feel on the site, the metric, and the strongest
 | Quality | Metric | Mechanism | Check |
 |---|---|---|---|
 | Editors load fast | `cpl.wasm` bytes gzipped | [site/R7](../guidelines/site-checklist.md); Re-architecture: codegen, Explain and Stress live in the lazily loaded `cpl-build.wasm`; shrink-only cap that prints the top contributors when it fails | `web/scripts/wasm-size.mjs` in prebuild |
-| Client types match the wasm API | stale `web/lib/cpl-types.ts` | Generated from the wasm build each build | `web/scripts/wasm.mjs` |
+| Client types match the wasm API | a copied types file | No copy: `web/lib/cpl.ts` imports `crates/cpl-wasm/js/cpl.d.ts` | `web/lib/cpl.ts` |
 | The site check is fast | `site build` CI job seconds; per-stage seconds | Stage timings and a named kill for a stage that hangs | `web/scripts/prebuild.mjs`; **missing**: a budget on the job time |
 | Site code is tested | unit coverage of `web/lib`, `web/components`, `web/scripts` | [site/R20](../guidelines/site-checklist.md): unit tests measure coverage and fail below a floor that only rises; 7.8% of statements today | `web/vitest.config.mts` (`pnpm --dir web test`) |
 | Adding a page or problem is mechanical | steps to add a practice problem; pieces the gate does not check | Recipe plus gate | [Adding a practice problem](#adding-a-practice-problem), `web/scripts/gate.mjs` |

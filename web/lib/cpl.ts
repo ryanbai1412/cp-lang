@@ -1,8 +1,8 @@
 'use client';
 
-import type { BuildOutcome, ExplainOutcome, Outcome, RunOutcome, SampleOptions, StressOptions, StressOutcome, TraceOutcome } from './cpl-types';
+import type { BuildOutcome, ExplainOutcome, Outcome, RunOutcome, SampleOptions, StressOptions, StressOutcome, TraceOutcome } from '../../crates/cpl-wasm/js/cpl';
 
-export type * from './cpl-types';
+export type * from '../../crates/cpl-wasm/js/cpl';
 
 type Worker = {
   check(source: string): Promise<Outcome>;
