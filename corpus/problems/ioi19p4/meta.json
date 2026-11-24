@@ -17,5 +17,5 @@
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "Output-only at IOI, a stdin problem here: the reference is accepted submission 5666464 (corpus/submissions/5666464.cpp), which spends about 10 s on a fixed precomputation whatever n is. Scoring is by segment count, so checker.py accepts any valid broken line from (0, 0) through every dot that uses no more segments than the reference."
 }
