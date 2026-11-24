@@ -667,15 +667,19 @@ impl Tracer {
         self.watch.is_empty() || self.watch.iter().any(|w| w == name)
     }
 
+    #[inline]
     fn stage_id(&mut self) -> u32 {
         match self.stage_of_case {
             Some((case, id)) if case == self.case => id,
-            _ => {
-                let id = self.rec.log.stage(&self.stage());
-                self.stage_of_case = Some((self.case, id));
-                id
-            }
+            _ => self.new_stage_id(),
         }
+    }
+
+    #[inline(never)]
+    fn new_stage_id(&mut self) -> u32 {
+        let id = self.rec.log.stage(&self.stage());
+        self.stage_of_case = Some((self.case, id));
+        id
     }
 
     fn stage(&self) -> String {
