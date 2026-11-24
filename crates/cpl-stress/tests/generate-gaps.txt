@@ -3,8 +3,4 @@
 crates/cpl-cli/tests/programs/batch25_yields_with_effects.cp: this fn reads input, so a generated input would leave its reads out; read them into a top-level `let name: Type = read()` and pass the values in
 crates/cpl-cli/tests/programs/read_impl.cp: this `read()` is not a top-level `let name: Type = read()`, so a generated input would leave it out; read it into one first, like `let edges: [m](u: V, v: V) = read()`
 crates/cpl-cli/tests/programs/s2_read_flow.cp: this loop reads more than `let name: Type = read()` lines whose types use only names from above it, so a generated input would leave its reads out; read them into one first, like `let edges: [m](u: V, v: V) = read()`
-spec/conformance/core-10/read-base-arg.cp: this `read()` is not a top-level `let name: Type = read()`, so a generated input would leave it out; read it into one first, like `let edges: [m](u: V, v: V) = read()`
-spec/conformance/core-10/read-base-one-array.cp: this `read()` is not a top-level `let name: Type = read()`, so a generated input would leave it out; read it into one first, like `let edges: [m](u: V, v: V) = read()`
-spec/conformance/core-10/read-base-one-counted.cp: this `read()` is not a top-level `let name: Type = read()`, so a generated input would leave it out; read it into one first, like `let edges: [m](u: V, v: V) = read()`
-spec/conformance/core-10/read-explicit-domain-unshifted.cp: this `read()` is not a top-level `let name: Type = read()`, so a generated input would leave it out; read it into one first, like `let edges: [m](u: V, v: V) = read()`
 spec/conformance/matrix/index/compress--read.cp: `D` is not a domain declared above

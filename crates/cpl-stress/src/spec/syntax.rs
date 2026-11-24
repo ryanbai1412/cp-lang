@@ -370,7 +370,17 @@ pub(super) fn expand<'a>(
                 expand(body_base, inner, readers, depth + 1, out);
             }
         }
-        _ => out.push((base, stmt)),
+        // A `with` block's lines are read where it is written.
+        _ => match &stmt.kind {
+            StmtKind::With {
+                body: Some(body), ..
+            } if depth < 16 => {
+                for inner in &body.stmts {
+                    expand(base, inner, readers, depth + 1, out);
+                }
+            }
+            _ => out.push((base, stmt)),
+        },
     }
 }
 
@@ -494,6 +504,41 @@ pub(super) fn read_none(expr: &Expr) -> Option<Option<i128>> {
     Some(Some(none?))
 }
 
+/// The `k` of `read(base: k)` or `read<T>(base: k)`.
+pub(super) fn read_base(expr: &Expr) -> Option<i128> {
+    let ExprKind::Call { args, .. } = &expr.kind else {
+        return None;
+    };
+    let arg = args
+        .iter()
+        .find(|arg| arg.name.as_ref().is_some_and(|name| name.text == "base"))?;
+    eval(&arg.value, &Env::new())
+}
+
+/// The `with io(base: k)` blocks among `stmts`, and the rest of the block
+/// after a bare one: where each starts and ends, and its `k`.
+pub(super) fn io_bases(base: u32, stmts: &[Stmt], out: &mut Vec<(Span, i128)>) {
+    for stmt in stmts {
+        let StmtKind::With { ctx, args, body } = &stmt.kind else {
+            continue;
+        };
+        let k = args
+            .iter()
+            .find(|arg| arg.name.as_ref().is_some_and(|name| name.text == "base"))
+            .and_then(|arg| eval(&arg.value, &Env::new()));
+        let span = stmt.span.shift(base);
+        match (ctx.text == "io", k, body) {
+            (true, Some(k), Some(body)) => {
+                out.push((span, k));
+                io_bases(base, &body.stmts, out);
+            }
+            (true, Some(k), None) => out.push((Span::new(span.end, u32::MAX), k)),
+            (_, _, Some(body)) => io_bases(base, &body.stmts, out),
+            _ => {}
+        }
+    }
+}
+
 /// The fn `f` of `read(gen: f)`.
 pub(super) fn read_gen(expr: &Expr) -> Option<String> {
     let ExprKind::Call { callee, args } = &expr.kind else {
@@ -576,20 +621,28 @@ pub(super) fn typed_read<'a>(
     init: &'a Expr,
 ) -> Option<(std::borrow::Cow<'a, Type>, Option<i128>)> {
     use std::borrow::Cow;
-    fn generic(expr: &Expr) -> Option<&Type> {
+    fn generic(expr: &Expr) -> Option<(&Type, Option<i128>)> {
         let ExprKind::Call { callee, args } = &expr.kind else {
             return None;
         };
         let ExprKind::Generic { base, args: tys } = &callee.kind else {
             return None;
         };
-        match (args.as_slice(), &base.kind, tys.as_slice()) {
-            ([], ExprKind::Name(name), [ty]) if name == "read" => Some(ty),
+        let mut none = None;
+        for arg in args {
+            match arg.name.as_ref().map(|name| name.text.as_str()) {
+                Some("base") => {}
+                Some("none") => none = Some(eval(&arg.value, &Env::new())?),
+                _ => return None,
+            }
+        }
+        match (&base.kind, tys.as_slice()) {
+            (ExprKind::Name(name), [ty]) if name == "read" => Some((ty, none)),
             _ => None,
         }
     }
-    if let Some(read) = generic(init) {
-        return Some((Cow::Borrowed(read), None));
+    if let Some((read, none)) = generic(init) {
+        return Some((Cow::Borrowed(read), none));
     }
     if let Some((lo, hi, inclusive)) = read_size(init) {
         let range = TypeKind::Range {
@@ -611,7 +664,7 @@ pub(super) fn typed_read<'a>(
         body,
     } = &init.kind
     {
-        let elem = generic(body).map(Cow::Borrowed).or_else(|| {
+        let elem = generic(body).map(|(ty, _)| Cow::Borrowed(ty)).or_else(|| {
             let elem = ty.and_then(|ty| match &ty.kind {
                 TypeKind::Array { index, elem } if index.len() == domains.len() => Some(elem),
                 _ => None,

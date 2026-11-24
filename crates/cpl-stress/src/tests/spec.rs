@@ -1397,3 +1397,31 @@ while true:
         );
     }
 }
+
+#[test]
+fn io_base_shifts_counted_domains_only() {
+    let src = "let n: 1..=4 = read()
+domain V = [n]
+domain W = 1..=n
+with io(base: 1):
+    let a: [3]V = read()
+    let b: [3]W = read()
+    let c = read<[3]V>(base: 0)
+let d = read<V>(base: 1)
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    for seed in 0..30 {
+        let text = generate(&spec, &mut Rng::new(seed), Size::Small(5))
+            .unwrap()
+            .render();
+        let tokens: Vec<i128> = text
+            .split_whitespace()
+            .map(|t| t.parse().unwrap())
+            .collect();
+        let n = tokens[0];
+        let (one, zero) = ((1..=n), (0..n));
+        assert!(tokens[1..7].iter().all(|v| one.contains(v)), "{text}");
+        assert!(tokens[7..10].iter().all(|v| zero.contains(v)), "{text}");
+        assert!(one.contains(&tokens[10]), "{text}");
+    }
+}

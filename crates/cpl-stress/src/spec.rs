@@ -608,6 +608,8 @@ impl InputSpec {
             domains: HashMap::new(),
             products: HashMap::new(),
             variants: HashMap::new(),
+            counted: HashSet::new(),
+            io_base: 0,
             aliases: HashMap::new(),
             records: HashMap::new(),
             none: None,
@@ -681,10 +683,20 @@ impl InputSpec {
         if let Some((judge_base, block)) = judge {
             stmts.extend(block.stmts.iter().map(|stmt| (judge_base, stmt, true)));
         }
+        let mut bases = Vec::new();
+        for (base, item) in &parsed.items {
+            io_bases(*base, &item.stmts, &mut bases);
+        }
         for (base, stmt, in_judge) in stmts {
             // A reader's lines, like the interactor's, are offset from
             // its own item.
             builder.base = base;
+            let at = stmt.span.shift(base);
+            builder.io_base = bases
+                .iter()
+                .rev()
+                .find(|(span, _)| span.start <= at.start && at.end <= span.end)
+                .map_or(0, |(_, k)| *k);
             // Decorated fns (`@alt`, `@check`, `@interactor`)
             // read for themselves; the divider splits the input.
             if let Some(divider) = stmt.decorators.iter().find(|d| d.name.text == "multitest") {
@@ -717,6 +729,12 @@ impl InputSpec {
                         step: None,
                     } = &def.kind
                     {
+                        if src[span_range(def.span.shift(builder.base))]
+                            .trim_start()
+                            .starts_with('[')
+                        {
+                            builder.counted.insert(name.text.clone());
+                        }
                         let bounds = Builder::inclusive(lo, hi, *inclusive);
                         names_in(&bounds.0, &mut builder.spec.sizes);
                         names_in(&bounds.1, &mut builder.spec.sizes);
@@ -824,7 +842,7 @@ impl InputSpec {
                                 "this `read()` has no type, so there is nothing to generate from; write `let n: 1..=100 = read()`".into(),
                             ));
                     };
-                    let shape = builder.shape_written(&ty, none)?;
+                    let shape = builder.shape_read(&ty, none, init)?;
                     let field = Field {
                         names: Builder::names(pat, &shape),
                         shape,

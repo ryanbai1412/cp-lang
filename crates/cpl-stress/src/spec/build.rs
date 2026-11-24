@@ -9,6 +9,11 @@ pub(super) struct Builder<'a> {
     pub(super) domains: HashMap<String, (Expr, Expr)>,
     /// `domain Cell = (Row, Col)`: the domains a product domain pairs.
     pub(super) products: HashMap<String, Vec<Type>>,
+    /// Domains declared by a count alone (`domain E = [m]`), which
+    /// `io.base` shifts. (R10.2.2)
+    pub(super) counted: HashSet<String>,
+    /// The `io.base` a read here writes counted domains in.
+    pub(super) io_base: i128,
     /// Each enum variant's enum and position in it.
     pub(super) variants: HashMap<String, (String, usize)>,
     /// Each alias with the base of the item that declares it, which its
@@ -222,6 +227,13 @@ impl Builder<'_> {
                     _ => {}
                 }
                 if let Some((lo, hi)) = self.domains.get(&name.text).cloned() {
+                    if self.io_base != 0 && self.counted.contains(&name.text) {
+                        let shift = |end| binary(BinOp::Add, end, int(self.io_base));
+                        return Ok(Shape::Int {
+                            lo: shift(lo),
+                            hi: shift(hi),
+                        });
+                    }
                     return Ok(Shape::Int { lo, hi });
                 }
                 // A position of a product domain is one of each part's.
@@ -1133,7 +1145,7 @@ impl Builder<'_> {
                     if !used.is_disjoint(inside) {
                         return Ok(false);
                     }
-                    let shape = self.shape_written(&ty, none)?;
+                    let shape = self.shape_read(&ty, none, init)?;
                     // A name read here is bound beside its value, so the
                     // reads after it may use it: `k`, then `[k]Int`.
                     let names = Self::names(pat, &shape);
@@ -1548,6 +1560,21 @@ impl Builder<'_> {
     }
 
     /// The shape of `ty` read with `none` written as `none`.
+    /// The shape `read<T>(base: k)` (or a read under `with io(base: k)`)
+    /// writes: counted domains shifted by `k`.
+    pub(super) fn shape_read(
+        &mut self,
+        ty: &Type,
+        none: Option<i128>,
+        init: &Expr,
+    ) -> Result<Shape, SpecError> {
+        let outer = self.io_base;
+        self.io_base = read_base(init).unwrap_or(outer);
+        let shape = self.shape_written(ty, none);
+        self.io_base = outer;
+        shape
+    }
+
     pub(super) fn shape_written(
         &mut self,
         ty: &Type,
