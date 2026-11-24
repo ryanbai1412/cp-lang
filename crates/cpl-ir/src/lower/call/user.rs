@@ -1074,7 +1074,8 @@ impl<'a> Lowerer<'a> {
                 };
                 if let Some(p) = param {
                     if let Some(pat_ty) = &p.ty {
-                        if self.defer_bare_op(pat_ty, &arg.value, &gen_names, &inferred) {
+                        // `SegTree(+, a)` with `new<M: Folds<T>>`: `new`'s own `M` waits too.
+                        if self.defer_bare_op(pat_ty, &arg.value, &all_names, &inferred) {
                             ops.push((pat_ty, &arg.value));
                         }
                         self.unify_lambda_params(
@@ -1093,7 +1094,10 @@ impl<'a> Lowerer<'a> {
                             None,
                         );
                     }
-                    if !matches!(arg.value.kind, ast::ExprKind::Lambda { .. })
+                    // A lambda with every parameter typed has its type already.
+                    let open_lambda = matches!(&arg.value.kind, ast::ExprKind::Lambda { params, param_tys, .. }
+                        if param_tys.len() < params.len() || param_tys.iter().any(Option::is_none));
+                    if !open_lambda
                         && !matches!(&arg.value.kind, ast::ExprKind::Name(n) if matches!(n.as_str(), "min" | "max"))
                     {
                         if let Some(pty) = self.probe_ty_silent(&arg.value) {

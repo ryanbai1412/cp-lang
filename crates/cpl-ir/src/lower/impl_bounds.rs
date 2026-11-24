@@ -48,7 +48,9 @@ impl<'a> Lowerer<'a> {
             .collect();
         for tr in bounds.iter().flat_map(|b| &b.traits) {
             for name in self.impl_params(m, tr) {
-                if !env.contains_key(&name) && !open.contains(&name) {
+                // `M.Fold` is fixed once `M` is, never open itself.
+                let head = name.split_once('.').map_or(&*name, |(o, _)| o);
+                if !env.contains_key(head) && !open.contains(&name) {
                     open.push(name);
                 }
             }
@@ -76,7 +78,7 @@ impl<'a> Lowerer<'a> {
                     None => {
                         let known = self.known_trait_args(args, m, &open, env);
                         if let Some((given, opened)) =
-                            self.impl_trait_args(&seq, trait_name, &known)
+                            self.impl_trait_args(&seq, trait_name, &known, Some((args, &*env)))
                         {
                             env.extend(opened);
                             for (arg, ty) in args.iter().zip(&given) {
@@ -199,7 +201,9 @@ impl<'a> Lowerer<'a> {
     ) -> Vec<Option<Ty>> {
         args.iter()
             .map(|a| {
-                let fixed = self.impl_params(m, a).iter().all(|n| env.contains_key(n))
+                // `M.Fold` is fixed once `M` is.
+                let fixed = (self.impl_params(m, a).iter())
+                    .all(|n| env.contains_key(n.split('.').next().unwrap_or(n)))
                     && !open.iter().any(|n| mono::ty_mentions(a, n));
                 fixed.then(|| self.quietly_in(m, self.offset, env.clone(), |l| l.resolve_ty(a)))
             })
@@ -226,6 +230,7 @@ impl<'a> Lowerer<'a> {
         ty: &Ty,
         name: &str,
         known: &[Option<Ty>],
+        ranged: Option<(&[ast::Type], &GenEnv)>,
     ) -> Option<(Vec<Ty>, GenEnv)> {
         for idx in 0..self.impls.len() {
             if self.impls[idx].trait_name.as_deref() != Some(name) {
@@ -236,7 +241,7 @@ impl<'a> Lowerer<'a> {
                 continue;
             }
             self.growth.impl_args.push(key);
-            let got = self.impl_trait_args_at(idx, ty, known);
+            let got = self.impl_trait_args_at(idx, ty, known, ranged);
             self.growth.impl_args.pop();
             if let Some(got) = got {
                 return got;
@@ -266,6 +271,7 @@ impl<'a> Lowerer<'a> {
         idx: usize,
         ty: &Ty,
         known: &[Option<Ty>],
+        ranged: Option<(&[ast::Type], &GenEnv)>,
     ) -> Option<Option<TraitArgs>> {
         let mut env = self.impl_env(idx, ty)?;
         let (m, offset) = (self.impls[idx].mod_id, self.impls[idx].offset);
@@ -281,6 +287,20 @@ impl<'a> Lowerer<'a> {
         }
         if open.iter().any(|n| !env.contains_key(n)) {
             return Some(None);
+        }
+        // `A: Acts<T, F>` with `T = -10..=10`: the impl's `T` is that range.
+        for (i, t) in trait_args.iter().enumerate() {
+            let Some((args, outer)) = ranged else { break };
+            let (ast::TypeKind::Named { name, .. }, Some(ast::TypeKind::Named { name: given, .. })) =
+                (&t.kind, args.get(i).map(|a| &a.kind))
+            else {
+                continue;
+            };
+            if let Some(g @ GenArg::Range(..)) = outer.get(&given.text) {
+                if open.contains(&name.text) {
+                    env.insert(name.text.clone(), g.clone());
+                }
+            }
         }
         let opened: GenEnv = open
             .iter()
