@@ -93,7 +93,30 @@ pull() {
             { echo "land: git rebase --continue failed" >&2; return 1; }
     done
 }
+# Where this commit's hook ran: main's tip before the pull, as far as HEAD has it.
+checked=$(git merge-base HEAD FETCH_HEAD 2>/dev/null || git rev-parse FETCH_HEAD)
 pull || exit 1
+# The hook ran the commit tier on the old base; a rebase past a change to the
+# gates themselves (scripts/, the hooks, gen.toml, the justfile) reruns it on the
+# rebased tip, staged against main, since passing the old gates says nothing about
+# the new ones (5 fixtures passed on an old base after cafd6ffbf's check landed).
+gate_paths="scripts .githooks gen.toml justfile"
+recheck() {
+    moved=$(git diff --name-only "$checked" FETCH_HEAD -- $gate_paths)
+    checked=$(git rev-parse FETCH_HEAD)
+    [ -n "$moved" ] && [ -x .githooks/pre-commit ] || return 0
+    echo "land: main changed the gates ($(printf '%s\n' $moved | head -3 | tr '\n' ' ' | sed 's/ $//')); rerunning the commit tier on the rebased tip" >&2
+    tip=$(git rev-parse HEAD)
+    trap 'git reset -q --soft "$tip"' EXIT
+    git reset -q --soft FETCH_HEAD
+    set +e
+    .githooks/pre-commit >&2
+    rc=$?
+    set -e
+    git reset -q --soft "$tip"
+    trap - EXIT
+    [ "$rc" = 0 ] || { echo "land: the commit tier fails on the rebased tip (above); fix it and land again" >&2; exit 1; }
+}
 # Only committed work lands (handbook/guidelines/ci-checklist.md ci/R27): a
 # commit whose hook failed left nothing new, and pushing the regeneration
 # alone would ship generated files without their source.
@@ -104,6 +127,7 @@ if [ -z "$(git rev-list FETCH_HEAD..HEAD)" ]; then
     exit 1
 fi
 rm -f "$failed_log"
+recheck
 changed=$(git diff --name-only --diff-filter=ACMR FETCH_HEAD HEAD)
 seen="$(git rev-parse --git-dir)/cpl-last-land"
 if [ -s "$seen" ] && git cat-file -e "$(cat "$seen")^{commit}" 2>/dev/null; then
@@ -182,6 +206,7 @@ push() {
     try=$((try + 1))
     if [ "$try" != 1 ]; then
         pull || exit 1
+        recheck
         # What landed meanwhile can break this change's files: check again.
         [ -z "$users" ] || refuse_if_broken "$(timeout "${CPL_LAND_CLIPPY_SECS:-40}" cargo check -q $users --all-targets 2>&1)"
     fi
