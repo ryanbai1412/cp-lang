@@ -16,4 +16,5 @@ A value's 64-bit hash: equal values hash equal.
 - `fn lt_fields<T>(a: T, b: T) -> Bool` — \(O(\mathit{fields})\); `a < b` by the first field that differs, in declaration order (lexicographic).
 - `fn show_fields<T>(a: T) -> Str` — \(O(\mathit{fields})\) plus the length of the result; The fields of `a` in declaration order, one space apart, each shown as `print` would.
 - `fn read_fields<T>() -> T` — \(O(\mathit{fields})\) plus the tokens read; A `T` read from input field by field, each with its own type's `read()`, in declaration order: `read_fields<Edge>()` with no `impl` of its own.; traps: when input runs out or a token does not parse as its field's type
+- `fn gen_fields<T>() -> T` — \(O(\mathit{fields})\) plus what each field's draw costs; A random `T`, each field drawn by its own type's `gen()`: `impl Random for P: fn gen() -> P = gen_fields<P>()`.
 - `fn hash_fields<T>(a: T) -> U64` — \(O(\mathit{fields})\) plus what each field's `hash` costs; The fields' hashes combined in declaration order, so equal structs hash equal and reordered field values usually do not.

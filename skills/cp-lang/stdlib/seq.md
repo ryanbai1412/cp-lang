@@ -313,8 +313,8 @@ Fields: `k: Int,`.
 - `fn counting_sort<S: IndexedMut, T, K>(mut self: S, by: T -> K)` — \(O(n + \lvert K \rvert)\), \(O(n + \lvert K \rvert)\) memory; Sorts in place by `by(x)`, a position of the domain `K`, keeping equal keys in their order: one count per position of `K`, then each element goes to its slot.
 - `fn is_permutation<A: Seq<T>, B: Seq<T>, T>(self: A, b: B) -> Bool` — \(O(n)\) expected, \(O(n)\) memory
 - `fn is_subsequence<S: Seq<T>, N: Indexed, T>(self: S, of: N) -> Bool` — \(O(\lvert \mathit{self} \rvert + \lvert \mathit{of} \rvert)\)
-- `fn perm_rank<V>(self: [V]V) -> Int` — \(O(n \log n)\), \(O(n)\) memory; traps: when `|V| > 20` or `p` is not a permutation
-- `fn perm_unrank<V>(rank: Int) -> [V]V` — \(O(n \log n)\), \(O(n)\) memory; traps: when `rank` is not in `0..|V|!`
+- `fn perm_rank<V>(self: [V]V) -> Int` — \(O(n)\), \(O(1)\) memory; traps: when `|V| > 20` or `p` is not a permutation
+- `fn perm_unrank<V>(rank: Int) -> [V]V` — \(O(n \log n)\), \(O(1)\) memory beyond the result; traps: when `rank` is not in `0..|V|!`
 - `fn perm_sign<V>(self: [V]V) -> Int` — \(O(n)\), \(O(n)\) memory; traps: when `p` is not a permutation
 - `fn perm_order<V>(self: [V]V) -> Int` — \(O(n)\), \(O(n)\) memory; traps: never; the order can overflow `Int` past about |V| = 400
 - `fn partial_inverse<I, V>(self: [I]?V) -> [V]?I` — \(O(\lvert I \rvert + \lvert V \rvert)\), \(O(\lvert I \rvert + \lvert V \rvert)\) memory; traps: when two keys map to the same value
