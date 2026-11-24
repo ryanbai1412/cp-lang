@@ -22,3 +22,11 @@ There are no other dream/port gaps.
 - **Runtime and memory on gen.py --max:** port 0.00 s / 3 MB, accepted C++ 0.02 s / 7 MB, with the same output.
 - **Emitted C++:** 11887 bytes.
 - **Agreement:** `cpl stress` against the accepted C++ agrees on 30 gen.py cases at size 30.
+
+## Addendum: the table's type drops its index range
+- **Where:** `let grundy: List<Int>` indexed by `side: 1..=100`.
+- **What felt wrong:** `spec.cp` declares the same table as `const grundy: [0..=100]Int`. As a
+  `List`, every lookup is a bounds check that the type could have proved.
+- **Ideal code:** `const grundy: [0..=100]Int = [...]`.
+- **General fix:** none; port choice. Owner: idioms.
+- **Severity:** low.

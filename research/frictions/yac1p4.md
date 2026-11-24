@@ -31,3 +31,15 @@ for open in Open.through(min(i, n - i)): ...
 - **Runtime and memory on gen.py --max:** port 0.31 s / 12 MB, accepted C++ 0.85 s / 14 MB, with the same output.
 - **Emitted C++:** 18234 bytes.
 - **Agreement:** `cpl stress` against the accepted C++ agrees on 30 gen.py cases at size 30.
+
+## Addendum: the lift's premise is out of date
+- **Where:** the port's header ("A Bitset only shifts up, so each total is stored lifted"),
+  `domain Lifted = 0..=2 * whole` and `print(t.ord - whole)`.
+- **What felt wrong:** `Bitset.union_shifted(o, k)` takes a negative `k` ("`k < 0` shifts down",
+  with an example in `std/bitset.cp`). The recurrence (+w for a left end, -w for a right end, 0 for
+  a skip) can be written as it is, over `domain Total = -whole..=whole`, and printed with no
+  offset.
+- **General fix:** none; std has it. Rewrite owed by idioms: the in-place `swap` order relies on
+  the skip being a shift, so the step needs re-deriving and re-measuring against the current
+  0.17 s at `--max`.
+- **Severity:** low.
