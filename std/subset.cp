@@ -125,7 +125,10 @@ pub struct Subset<B>(bits: U64):
     /// traps: never
     /// example: `domain B = 0..4; [b for b in Subset<B>.single(B(3)).with(B(1))] == [B(1), B(3)]`
     pub fn each(self) -> yields B:
-        for b in self.items: yield b
+        var m = bits
+        while m != U64(0):
+            yield B.nth(ctz(m))
+            m &= m - U64(1)
 
     /// Every subset of `self`, `self` first and the empty subset last: the submask walk
     /// `g = (g - 1) & self`, so the masks come in decreasing order as words. `2^s.len` subsets.
