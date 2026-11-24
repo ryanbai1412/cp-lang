@@ -6,7 +6,8 @@ editors/tree-sitter-cp is the one in the tree (Zed fetches the grammar there).
     scripts/zed-rev.py --write   point the rev at the newest such commit on origin/main
 
 A commit can't name itself, so the regen job (gen.toml `zed-rev`) writes the
-rev after a grammar change lands.
+rev after a grammar change lands, and again after its own rebase: a grammar
+commit landed meanwhile makes the rev it wrote stale.
 """
 import re
 import subprocess
@@ -14,7 +15,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-TOML = ROOT / "editors/zed/extension.toml"
+TOML = "editors/zed/extension.toml"
 FILES = ["editors/tree-sitter-cp/grammar.js", "editors/tree-sitter-cp/src/parser.c"]
 REV = re.compile(r'^rev = "([0-9a-f]+)"$', re.M)
 
@@ -44,10 +45,11 @@ def newest():
 
 
 def main(argv):
-    text = TOML.read_text()
+    toml = ROOT / TOML
+    text = toml.read_text()
     found = REV.search(text)
     if not found:
-        print(f"zed-rev: no `rev = \"...\"` in {TOML.relative_to(ROOT)}", file=sys.stderr)
+        print(f"zed-rev: no `rev = \"...\"` in {TOML}", file=sys.stderr)
         return 1
     if has_tree_grammar(found[1]):
         return 0
@@ -59,7 +61,7 @@ def main(argv):
     if rev is None:
         print("zed-rev: no commit on origin/main has the tree's grammar yet; land it first", file=sys.stderr)
         return 1
-    TOML.write_text(text[: found.start(1)] + rev + text[found.end(1):])
+    toml.write_text(text[: found.start(1)] + rev + text[found.end(1):])
     return 0
 
 

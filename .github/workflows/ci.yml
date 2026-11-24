@@ -481,8 +481,13 @@ jobs:
           printf '%s\n' "$changed" | sort -u | xargs -r git add -A --
           git commit -q -m "factory: regenerate generated files" -m "Domain: ${domain:-infra}"
           # One attempt: a conflict or a lost push race means a newer main tip
-          # exists, and that tip's own run regenerates the same files.
-          if git pull -q --rebase origin main && git push -q origin HEAD:main; then
+          # exists, and that tip's own run regenerates the same files. The zed
+          # rev names a commit, so a grammar commit the rebase lands under it
+          # makes it stale: write it again on the rebased tree.
+          zed=editors/zed/extension.toml
+          if git pull -q --rebase origin main && uv run --quiet python scripts/zed-rev.py --write &&
+            { git diff --quiet -- "$zed" || git commit -q --amend --no-edit -- "$zed"; } &&
+            git push -q origin HEAD:main; then
             gh workflow run ci.yml --ref main
           else
             [ ! -d .git/rebase-merge ] || git rebase --abort
