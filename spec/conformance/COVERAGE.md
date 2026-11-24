@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3121 (1093 passing). Rules: 592.
+Cases: 3122 (1093 passing). Rules: 593.
 
 ## Summary per chapter
 
@@ -26,7 +26,7 @@ Cases: 3121 (1093 passing). Rules: 592.
 - R11 (11-modules-prelude.md): 16 rules, 52 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R12 (12-powers.md): 17 rules, 37 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 30 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- Rbundle (bundle.md): 3 rules, 3 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- Rbundle (bundle.md): 4 rules, 4 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rcli (cli.md): 2 rules, 6 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rfmt (fmt-lint.md): 1 rules, 2 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rjudge (judge-profiles.md): 4 rules, 6 cases; 0 uncovered, 2 happy-path only, 0 negative only
@@ -61,7 +61,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R11 | 16 | 16 (100%) | 10 | 10 (100%) | 16 (100%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 5 | 5 (100%) | 22 (100%) |
-| Rbundle | 3 | 3 (100%) | 0 | 0 (0%) | 3 (100%) |
+| Rbundle | 4 | 4 (100%) | 0 | 0 (0%) | 4 (100%) |
 | Rcli | 2 | 2 (100%) | 1 | 1 (100%) | 2 (100%) |
 | Rfmt | 1 | 1 (100%) | 1 | 1 (100%) | 1 (100%) |
 | Rjudge | 4 | 4 (100%) | 3 | 1 (33%) | 2 (50%) |
@@ -69,7 +69,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlsp | 5 | 5 (100%) | 1 | 1 (100%) | 5 (100%) |
 | Rstress | 2 | 1 (50%) | 1 | 0 (0%) | 1 (50%) |
 | Rtrace | 6 | 4 (66%) | 4 | 1 (25%) | 2 (33%) |
-| all | 592 | 589 (99%) | 241 | 235 (97%) | 585 (98%) |
+| all | 593 | 590 (99%) | 241 | 235 (97%) | 586 (98%) |
 
 ## Rules
 
@@ -692,6 +692,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - Rbundle.1 [1+ 0-]: `cpl build` emits one deterministic C++17 file for the judge profile: the stamp and source...
 - Rbundle.2 [1+ 1-]: Stripped: tests, alts, generators, checkers, interactors, samples, `debug(...)`, `@local` ...
 - Rbundle.3 [1+ 0-]: Size is checked against the profile; `--size` attributes bytes to header, runtime, types, ...
+- Rbundle.5 [1+ 0-]: `@cpp("...", includes:)` items and `extern fn` judge functions are emitted verbatim or as ...
 
 ### Rcli: cli.md
 

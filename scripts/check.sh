@@ -617,7 +617,7 @@ uv run scripts/conformance-widths.py --check || fail "spec/conformance/widths/ i
 uv run scripts/conformance-ownership.py --check || fail "spec/conformance/ownership/ is stale; run scripts/conformance-ownership.py"
 uv run scripts/spec-xref.py --check || fail "a rule id names no rule in spec/core; see above"
 uv run scripts/spec-changelog.py || fail "a spelling the spec removes has no changelog line; see above"
-uv run scripts/spec-tool-rules.py --max 10 || fail "a tool feature in spec/tools/ has no rule id; see above"
+uv run scripts/spec-tool-rules.py --max 9 || fail "a tool feature in spec/tools/ has no rule id; see above"
 uv run scripts/spec-std-signatures.py --check || fail "a spec/lib chapter and std disagree on a return type; see above"
 uv run scripts/spec-decisions-explained.py --max 0 || fail "a decision cited in spec/ has no handbook explanation; see above"
 

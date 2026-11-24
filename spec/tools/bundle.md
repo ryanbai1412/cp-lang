@@ -13,4 +13,4 @@ Status: draft for 0.3.0. Sources: `plan/40-tooling.md` §4-5,
 - Size is checked against the profile; `--size` attributes bytes to
   header, runtime, types, library functions, user code and glue. (Rbundle.3)
 - `@cpp("...", includes:)` items and `extern fn` judge functions are
-  emitted verbatim or as declarations.
+  emitted verbatim or as declarations (Rbundle.5).
