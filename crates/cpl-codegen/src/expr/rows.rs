@@ -65,47 +65,16 @@ impl<'p> Emitter<'p> {
                 )
             })?;
             // Only replace `acc` with `cpl::Row` if it is never mutated as a whole `std::vector`.
+            let others = cpl_ir::Block {
+                stmts: (rest.iter().enumerate())
+                    .filter(|&(pos, _)| pos != let_pos)
+                    .map(|(_, stmt)| stmt.clone())
+                    .collect(),
+            };
             let mut safe = true;
-            for (pos, stmt) in rest.iter().enumerate() {
-                if pos == let_pos {
-                    continue;
-                }
-                walk::deep_stmts(
-                    &cpl_ir::Block {
-                        stmts: vec![stmt.clone()],
-                    },
-                    &mut |s| {
-                        if let Stmt::Assign(p, ..) = s {
-                            if matches!(p.kind, PlaceKind::Local(id) if id == acc) {
-                                safe = false;
-                            }
-                        }
-                    },
-                );
-                walk::deep_exprs(
-                    &cpl_ir::Block {
-                        stmts: vec![stmt.clone()],
-                    },
-                    &mut |e| match &e.kind {
-                        ExprKind::MutSlice(p, _, _)
-                        | ExprKind::Mutate(_, p, _)
-                        | ExprKind::Sort(p, _, _)
-                            if matches!(p.kind, PlaceKind::Local(id) if id == acc) =>
-                        {
-                            safe = false;
-                        }
-                        ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
-                            for arg in args {
-                                if matches!(arg, Arg::Mut(p) if matches!(p.kind, PlaceKind::Local(id) if id == acc))
-                                {
-                                    safe = false;
-                                }
-                            }
-                        }
-                        _ => {}
-                    },
-                );
-            }
+            crate::uses::places::each_written(&others, &mut |p| {
+                safe &= p.kind != PlaceKind::Local(acc);
+            });
             if !safe {
                 return None;
             }

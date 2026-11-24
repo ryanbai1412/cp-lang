@@ -229,3 +229,31 @@ fn read_counts_counts_each_read_at_any_depth() {
     let reads = crate::uses::read_counts(&f.body, f.params.len());
     assert_eq!(reads, [2, 1], "a twice (once in the loop), b once");
 }
+
+#[test]
+fn each_write_says_how_each_place_is_written() {
+    use crate::uses::places::{each_write, Write};
+    let program = lower(concat!(
+        "fn add(mut l: List<Int>):\n",
+        "    l.push(1)\n",
+        "var t: List<Int> = []\n",
+        "t.push(2)\n",
+        "add(mut t)\n",
+        "t = [3]\n",
+        "print(t.len)\n",
+    ));
+    let (mut pushes, mut muts, mut stores) = (0, 0, 0);
+    for block in [&program.setup, &program.main] {
+        each_write(block, &mut |how, _| match how {
+            Write::Mutate(cpl_ir::Mutation::Push) => pushes += 1,
+            Write::Mut => muts += 1,
+            Write::Store => stores += 1,
+            _ => {}
+        });
+    }
+    assert_eq!(
+        (pushes, muts, stores),
+        (1, 1, 2),
+        "a global's first value is a store too"
+    );
+}

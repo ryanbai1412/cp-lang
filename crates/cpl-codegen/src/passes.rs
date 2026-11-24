@@ -139,7 +139,7 @@ pub(crate) const PASSES: &[Pass] = &[
     pass(
         "rows-in-place",
         "expr/rows.rs",
-        Unasked,
+        Uses(&["each_written"]),
         "trie_row_field_niches_opt_int_and_avoids_temp_vector",
     ),
     pass(
