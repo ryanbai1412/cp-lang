@@ -1134,7 +1134,8 @@ impl Emitter<'_> {
         let Stmt::Let(slot, Some(init)) = stmt else {
             return false;
         };
-        self.dying_lets.contains(&(stmt as *const Stmt))
+        let at = stmt as *const Stmt;
+        (self.dying_lets.contains(&at) || self.uses.dying_globals.contains(&at))
             && !matches!(crate::uses::in_place(init).kind,
                 ExprKind::Local(src) if self.ref_bound.contains(&src))
             && !self.lends(*slot, init, self.tail.as_ref())

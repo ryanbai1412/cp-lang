@@ -172,3 +172,39 @@ fn explain_reads_closures_copies_and_dropped_fields_off_one_write() {
         crate::devirt::explain_dropped_fields(&program)
     );
 }
+
+#[test]
+fn a_fn_run_once_moves_a_global_nothing_reads_after_it() {
+    let out = super::cpp(concat!(
+        "let n: 1..=10 = read()\n",
+        "let base = [i for i in 0..n]\n",
+        "fn build() -> List<Int>:\n",
+        "    var xs = base\n",
+        "    xs.push(1)\n",
+        "    xs\n",
+        "let built = build()\n",
+        "print(built)\n",
+    ));
+    assert!(
+        out.contains("= std::move(base)"),
+        "`base` is not read after `build` takes it, so it moves:\n{out}"
+    );
+}
+
+#[test]
+fn a_global_read_after_the_fn_that_takes_it_is_copied() {
+    let out = super::cpp(concat!(
+        "let n: 1..=10 = read()\n",
+        "let base = [i for i in 0..n]\n",
+        "fn build() -> List<Int>:\n",
+        "    var xs = base\n",
+        "    xs.push(1)\n",
+        "    xs\n",
+        "let built = build()\n",
+        "print(built, base)\n",
+    ));
+    assert!(
+        !out.contains("std::move(base)"),
+        "`base` is printed after `build`, so `build` copies it:\n{out}"
+    );
+}

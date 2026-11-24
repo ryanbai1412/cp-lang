@@ -63,8 +63,11 @@ const BOUNDS: [Bound; 5] = [
     ("block_copies", block_copies, 0),
     ("entry_copies", entry_copies, 0),
     // Measured when the ratchet began: snapshots taken before a change
-    // (`old_s = self.state`) and temporaries copied out of places.
-    ("deep_copies", deep_copies, 31),
+    // (`old_s = self.state`) and temporaries copied out of places. Cases
+    // that exist to show a copy is required count too: core-05's
+    // map-entry-var-copies, copies-in-two-fns-stay-apart and
+    // match-payload-outlives-reassigning-its-scrutinee (twice).
+    ("deep_copies", deep_copies, 32),
     ("std_functions", std_functions, 154),
 ];
 
