@@ -35,7 +35,8 @@ impl<'a> Lowerer<'a> {
             // `[D]T` with `D = Int` is a list (R07.3.5): `List<T>` is `Indexed<Int, T>`.
             ast::TypeKind::Array { index, elem }
                 if matches!(index.as_slice(), [ast::Type { kind: ast::TypeKind::Named { name, args }, .. }]
-                    if args.is_empty() && self.gen_env.get(&name.text) == Some(&GenArg::Ty(Ty::Int))) =>
+                    if args.is_empty() && self.gen_env.get(&name.text) == Some(&GenArg::Ty(Ty::Int))
+                        && !self.gen_env.contains_key(&mono::own_generic_marker(&name.text))) =>
             {
                 Spec::Plain(Ty::List(Box::new(self.resolve(elem, values).ty())))
             }

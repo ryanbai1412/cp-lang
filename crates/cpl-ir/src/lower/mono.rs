@@ -58,6 +58,12 @@ pub(super) fn int_key_marker(k: &str) -> String {
     format!("__int_key_{k}")
 }
 
+/// Marks a fn's own generic `k`: given `Int`, its `[k]T` is the array it was called with,
+/// where a struct's `D = Int` makes `[D]T` a list (R07.3.5).
+pub(super) fn own_generic_marker(k: &str) -> String {
+    format!("__own_generic_{k}")
+}
+
 pub(super) struct GenStructTemplate<'a> {
     pub mod_id: ModId,
     pub offset: u32,

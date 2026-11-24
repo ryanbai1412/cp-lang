@@ -36,6 +36,7 @@ impl<'a> Lowerer<'a> {
         let decl = opt_mut_instance(self.gen_fns[gfid].decl, &rev_params);
         for (p, a) in decl.generics.iter().zip(&args) {
             env.insert(p.text.clone(), a.clone());
+            env.insert(mono::own_generic_marker(&p.text), GenArg::Int(1));
         }
         // `A: Acts<T, F>` with `A = Plus`: the body's `act.tag0()` needs
         // the `T` that solving the bound gave `impl<T> Acts<T, T> for Plus`.
