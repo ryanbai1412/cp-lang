@@ -30,7 +30,7 @@ documented.
 | R01.2 | 1.2 Layout | supported |  |
 | R01.3 | 1.3 Names | supported |  |
 | R01.4 | 1.4 Literals | supported |  |
-| R01.5 | 1.5 Operators and precedence | supported | 1 known gap |
+| R01.5 | 1.5 Operators and precedence | supported |  |
 | R01.6 | 1.6 Statements | supported |  |
 | R01.7 | 1.7 Control flow | supported |  |
 | R01.8 | 1.8 Expressions | supported | 1 known gap |
@@ -70,12 +70,12 @@ documented.
 | R06.1 | 6.1 Functions | supported |  |
 | R06.2 | 6.2 Nested functions and lambdas | supported |  |
 | R06.3 | 6.3 Generators | supported |  |
-| R06.4 | 6.4 Decorators | supported | 2 known gaps |
+| R06.4 | 6.4 Decorators | supported |  |
 | R06.5 | 6.5 Where state lives | supported |  |
 | R07.1 | Key decisions | supported |  |
 | R07.2 | Terms | supported |  |
 | R07.3 | User helpers | supported |  |
-| R07.4 | Slices: which keys survive | supported | 1 known gap |
+| R07.4 | Slices: which keys survive | supported |  |
 | R07.5 | The rules | supported |  |
 | R07.6 | Generators | supported |  |
 | R07.7 | Adapters (each makes a view: \(O(1)\), lazy) | supported |  |
@@ -89,9 +89,9 @@ documented.
 | R08.4 | 8.4 Record row types (trial) | supported |  |
 | R08.5 | 1.4 Literals | supported |  |
 | R09.1 | 9.1 Contexts | supported |  |
-| R09.2 | 9.2 Build modes | supported | 1 known gap |
-| R09.3 | 9.3 What is checked | supported | 1 known gap |
-| R09.4 | Domains | supported | 1 known gap |
+| R09.2 | 9.2 Build modes | supported |  |
+| R09.3 | 9.3 What is checked | supported |  |
+| R09.4 | Domains | supported |  |
 | R09.5 | 9.5 Trust tiers | supported |  |
 | R09.6 | 9.6 Recursion and the stack | supported |  |
 | R10.1 | 6.1 Functions | supported | 1 known gap |
@@ -113,13 +113,13 @@ documented.
 | R04a.6 | E. Generic algorithms run on a sub-sequence | supported |  |
 | R04a.7 | F. Grids and multi-dimensional arrays | supported |  |
 | R04a.8 | G. Revision: changing your mind | supported | 1 known gap |
-| R04a.9 | H. Keys of the other views | supported | 1 known gap |
-| R04a.11 | Recommendation: identity everywhere (I) | supported | 1 known gap |
-| R04b.1 | Methods | supported | 3 known gaps |
+| R04a.9 | H. Keys of the other views | supported |  |
+| R04a.11 | Recommendation: identity everywhere (I) | supported |  |
+| R04b.1 | Methods | supported | 2 known gaps |
 | R04b.3 | User helpers | supported |  |
 | R04b.4 | Library code | supported |  |
 | R04b.5 | Spec changes this implies | supported |  |
-| Rbundle | Bundling and submission | supported | 1 known gap |
+| Rbundle | Bundling and submission | supported |  |
 | Rcli | The `cpl` command | supported |  |
 | Rfmt | `cpl fmt` | supported |  |
 | Rjudge | Judge profiles | supported |  |
@@ -154,11 +154,11 @@ documented.
 | std-pair | library: pair | documented | stdlib: outside the Milestone 1 contest staples |
 | std-persistent | library: persistent | documented | stdlib: outside the Milestone 1 contest staples |
 | std-poly | library: poly | documented | stdlib: outside the Milestone 1 contest staples |
-| std-prefix | library: prefix | supported | 1 known gap |
+| std-prefix | library: prefix | supported |  |
 | std-rand | library: rand | documented | stdlib: outside the Milestone 1 contest staples |
 | std-search | library: search | supported | 1 known gap |
 | std-segtree | library: segtree | supported | 2 known gaps |
-| std-seq | library: seq | supported | 1 known gap |
+| std-seq | library: seq | supported |  |
 | std-slope | library: slope | documented | stdlib: outside the Milestone 1 contest staples |
 | std-sparse | library: sparse | supported |  |
 | std-spec | library: spec | documented | stdlib: outside the Milestone 1 contest staples |
@@ -173,11 +173,7 @@ documented.
 ## Known gaps
 
 - core-01/stepped-range-is-a-value.cp: fail
-- core-01/tuple-field-chain.cp: fail
 - core-03/memory-over-profile.cp: fail
-- core-04/grid-rows-is-a-getter.cp: fail
-- core-04/keyed-counter-is-not-a-key.cp: fail
-- core-04/library-domain-count-trap-names-sizing-site-release.cp: fail
 - core-04/list-of-domain-array-loses-domain.cp: fail
 - core-04/named-product-domain-runs.cp: fail
 - core-04/rebased-str-indexes-from-zero.cp: fail
@@ -188,26 +184,18 @@ documented.
 - core-05/lent-generator-blocks-overlapping-write.cp: fail
 - core-05/let-heap-element-lends-no-copy.cp: fail
 - core-05/map-entry-index-key-lends.cp: fail
-- core-06/gen-graph-simple-connected.cp: fail
 - core-06/returned-closure-copies-a-local-closure.cp: fail
-- core-07/suffix-fold-is-gone.cp: fail
 - core-08/extension-concrete-and-generic-ambiguous.cp: fail
 - core-08/law-calls-trait-method.cp: fail
 - core-08/trait-message-bound-holds.cp: fail
-- core-09/release-list-index-unchecked.cp: fail
 - core-10/test-position-stored-above-multitest.cp: fail
-- core-12/keyed-argmax.cp: fail
 - diagnostics/graph-edge-field-names.cp: fail
-- diagnostics/is-empty-fixed-to-len-zero.cp: fail
-- lints/std-declares-idiom-lints.cp: fail
 - std-algebra/max-sub-of-is-a-fn-value.cp: fail
+- std-algebra/pow-folds-under-any-monoid.cp: fail
 - std-graph/undirected-takes-list-of-records.cp: fail
-- std-prefix/rev-scan-is-suffix-fold.cp: fail
 - std-search/real-bsearch-is-a-range-method.cp: fail
 - std-segtree/closure-folds-optional-monoid-folds-plain.cp: fail
 - std-segtree/closure-op-picks-index.cp: fail
-- std-seq/keyed-by-answers-with-the-key.cp: fail
 - std-subset/empty-braces-is-empty-subset.cp: fail
 - std-subset/enum-subsets-is-a-domain.cp: fail
 - std-window/track-infers-element-from-sequence.cp: fail
-- tools-bundle/vendor-copies-pinned-libraries.cp: fail
