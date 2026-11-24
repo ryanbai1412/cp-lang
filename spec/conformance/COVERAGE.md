@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3648 (3599 passing). Rules: 617.
+Cases: 3650 (3599 passing). Rules: 617.
 
 ## Summary per chapter
 
@@ -1095,8 +1095,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **beats** (25/25 named by a case)
 - **bitset** (104/104 named by a case)
 - **deque** (42/42 named by a case)
-- **derive** (5/6 named by a case)
-  - uncovered: `read_fields`
+- **derive** (6/6 named by a case)
 - **dp** (45/45 named by a case)
 - **dsu** (64/64 named by a case)
 - **fenwick** (42/42 named by a case)
@@ -1132,8 +1131,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Compressed`, `Filtered`, `Mapped`, `Rebased`, `StepKeys`, `SubseqStep`, `Ring`
 - **slope** (39/39 named by a case)
 - **sparse** (23/23 named by a case)
-- **spec** (8/16 named by a case)
-  - uncovered: `concavity_break`, `argmins`, `knuth_break`, `differences`, `newton`, `poly_degree`, `poly_at`, `recurrence_at`
+- **spec** (16/16 named by a case)
 - **strings** (183/195 named by a case)
   - uncovered: `Hashable`, `Hash2D`, `Hash2D.new`, `Hash2D.rect`, `DynamicHash`, `DynamicHash.new`, `DynamicHash.rev_get`, `PalindromicTree.series_link`, `DynamicAhoCorasick`, `DynamicAhoCorasick.new`, `DynamicAhoCorasick.count_matches`, `_gen_str`
 - **subset** (17/17 named by a case)
@@ -1142,7 +1140,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Rooted.reroot`, `Rooted.chains`, `VirtualTree`, `PermNode`
 - **window** (24/24 named by a case)
 
-2382 of 2462 std items are named by a case.
+2391 of 2462 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
