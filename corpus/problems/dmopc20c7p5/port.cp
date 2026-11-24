@@ -5,26 +5,25 @@
 //   its cities, so the answer is the maximum-weight closure of that dependency graph
 //   (`std.flow.max_closure`, a min cut) over N + M nodes.
 
-let n: 1..=5_000 = read()
-let m: 0..=250_000 = read()
-domain Item = 1..=n
-domain Pair = 0..m
-let cost: [Item]Int = read()
-let pairs: [Pair](u: Item, v: Item, w: Int) = read()
+// original: corpus/submissions/4370353.cpp
+let n: 1..=500 = read()
+let m: 0..=500 = read()
+domain City = 1..=n
+domain Road = 0..m
+let fee: [City]0..=1e9 = read()
+let roads: [Road](u: City, v: City, toll: 0..=1e9) = read()
 
-// Flatten `Item + Pair` into `Node` until sum domains land; `max_closure` owns src/snk.
-domain Node = 0..n + m
-fn item_node(i: Item) -> Node = Node(i.ord)
-fn pair_node(p: Pair) -> Node = Node(n + p.ord)
+// One index space for both kinds of choice until sum domains (`City + Road`) land.
+domain Choice = 0..n + m
+fn city(c: City) -> Choice = Choice(c.ord)
+fn road(r: Road) -> Choice = Choice(n + r.ord)
 
-var profit: [Node]Int = 0
-for i in Item: profit[item_node(i)] = -cost[i]
-for p in Pair: profit[pair_node(p)] = pairs[p].w
-
-// taking a pair forces both of its items
-var before: [Node]List<Node> = []
-for p in Pair:
-    before[item_node(pairs[p].u)].push(pair_node(p))
-    before[item_node(pairs[p].v)].push(pair_node(p))
-
-print(max_closure(before, profit: v => profit[v]).value)
+var profit: [Choice]Int = 0
+for c in City: profit[city(c)] = -fee[c]
+for r in Road: profit[road(r)] = roads[r].toll
+// a road needs both of its cities paid
+var needed_by: [Choice]List<Choice> = []
+for r in Road:
+    needed_by[city(roads[r].u)].push(road(r))
+    needed_by[city(roads[r].v)].push(road(r))
+print(max_closure(needed_by, profit: x => profit[x]).value)

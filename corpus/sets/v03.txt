@@ -349,6 +349,8 @@ dmopc20c4p4
 dmopc20c5p2
 dmopc20c6p3
 dmopc20c7p1
+dmopc20c7p4
+dmopc20c7p5
 dmpg16g2
 egoi23p7
 etsr23r1p3

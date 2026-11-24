@@ -1,21 +1,19 @@
-# Friction Report: dmopc20c7p5
+# Friction report: dmopc20c7p5
 
-## 1. Sum domains (`domain Node = Item + Pair`)
+## Two kinds of choice share a flat index space
 
-- **Area:** core
-- **Goal:** express
+- **Where:** `domain Choice = 0..n + m` with `fn city`, `fn road` offsets
+- **What felt wrong:** a closure over cities and roads wants one domain whose elements are either; without sum domains the port offsets road ordinals by n by hand.
+- **Goal it hurts:** ergonomic, correct (an off-by-n offset type-checks)
+- **Ideal code:** `domain Choice = City + Road` and `match x: City(c) => -fee[c], Road(r) => roads[r].toll`
+- **Repro (fresh build):** `domain A = 1..=3`, `domain B = 0..2`, `domain N = A + B`, then `match v: A(a) => ...` gives `error[E0302]: \`A\` is a variant, but the value matched is a \`N\``.
+- **General fix:** core: sum domains (already planned in spec/lib/flows.md).
 - **Severity:** medium
-- **Dream:** `proto/ports/scout_batch_15/dream/dmopc20c7p5.cp:14-18`
-- **Port:** `proto/ports/scout_batch_15/dmopc20c7p5.cp:19-25`
 
-Project selection has two distinct node kinds (`Item` and `Pair`). Without sum domains `Item + Pair`, the port flattens both into `domain Node = 0..n + m` with manual `item_node`/`pair_node` offset helpers (`i.ord`, `n + p.ord`).
+## Measurements
 
-## 2. `max_closure` requires a domain-indexed `[E](u: V, v: V)` edge table instead of `List<(u: V, v: V)>`
+gen.py 1 500 (N = M = 500): port under 0.01 s, accepted C++ 0.41 s.
 
-- **Area:** flows
-- **Goal:** express
-- **Severity:** low
-- **Dream:** `proto/ports/scout_batch_15/dream/dmopc20c7p5.cp:18`
-- **Port:** `proto/ports/scout_batch_15/dmopc20c7p5.cp:27-31`
+## Dream
 
-Because `max_closure` takes `[E](u: V, v: V)`, the port introduces a synthetic `domain Need = 0..2 * m` and decodes `(k.ord / 2, k.ord % 2)` instead of passing a comprehension list `[(u: Node(p), v: Node(i)) for p in Pair for i in [pairs[p].u, pairs[p].v]]`.
+The committed `dream.cp` (sum domain `Item + Pair`) is unchanged.

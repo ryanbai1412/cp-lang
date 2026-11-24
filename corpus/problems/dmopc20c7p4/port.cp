@@ -8,27 +8,25 @@
 //   O(log^2 N) per query.
 // original: corpus/submissions/3686586.cpp
 
-let (n, q): (1..=2e5, 1..=2e5) = read()
-domain V = 1..=n
-domain E = 0..(n - 1)
-let edges: [E](u: V, v: V) = read()
-let g = Graph<V, E>.undirected(edges)
-let t = Rooted(u => g.out(u), V.first!)
+let n: 1..=2e5 = read()
+let q: 1..=2e5 = read()
+domain City = 1..=n
+domain Road = 1..n
+let roads: [Road](u: City, v: City) = read()
+let tree = Rooted(Graph.undirected(roads), City.first!)
 
-var safe: [V]Bool = false
-var near = SegTree<t.Pre, Int>(+)
-
+var safe: [City]Bool = false
+var safe_children = SegTree<tree.Pre, Int>(+)
 for _ in 0..q:
     let kind: 1..=2 = read()
     if kind == 1:
-        let u: V = read()
+        let u: City = read()
         safe[u] = not safe[u]
-        if let p = t.parent(u): near.set(t.pos(p), near.get(t.pos(p)) + (if safe[u]: 1 else: -1))
+        if let p = tree.parent(u):
+            safe_children.update(tree.pos(p), c => c + (if safe[u]: 1 else: -1))
     else:
-        let (u, v): (V, V) = read()
-        let top = t.lca(u, v)
-        var ans = t.fold_path(u, v, near)
-        if safe[top]: ans += 1
-        if let p = t.parent(top):
-            if safe[p]: ans += 1
-        print(ans)
+        let u: City = read()
+        let v: City = read()
+        let top = tree.lca(u, v)
+        let above = if let p = tree.parent(top): Int(safe[p]) else: 0
+        print(tree.fold_path(u, v, safe_children) + Int(safe[top]) + above)
