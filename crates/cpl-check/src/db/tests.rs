@@ -249,6 +249,14 @@ fn an_unknown_type_with_no_error_there_is_a_silent_unknown() {
 }
 
 #[test]
+fn a_generic_operator_impl_gives_its_result_at_the_operands_type_args() {
+    let user = "struct W<T>(v: T)\nimpl Add for W<T>:\n    fn add(a: W<T>, b: W<T>) -> W<T> = a\nprint((W(2) + W(3)).v + 1)\n";
+    assert_eq!(silent_unknowns_of(user), (vec![], 0));
+    let mat = "domain V = 0..2\nlet adj = Mat([V, V] (i, j) => 1)\nprint((adj * adj).sum() / 2)\n";
+    assert_eq!(silent_unknowns_of(mat), (vec![], 0));
+}
+
+#[test]
 fn a_def_cut_by_its_own_cycle_does_not_replace_the_whole_one() {
     let lib = "@get pub fn boxed(self: Int) -> Boxed = Boxed(self)\n\n/// A box.\npub struct Boxed(pub v: Int):\n    pub fn get(self) -> Int = self.v\n";
     let mut db = Database::with_loader(Box::new(MapLoader(vec![(

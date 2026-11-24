@@ -125,20 +125,24 @@ impl<'a> Checker<'a> {
                             trait_args,
                             out_ty,
                             methods,
+                            target,
                             ..
                         } => {
-                            let rhs_ty = trait_args.first().cloned();
+                            // `impl Mul for Mat<T>` at a `Mat<Int>`: the impl's `T` is `Int`.
+                            let mut on = crate::ty::Bindings::default();
+                            target.unify(&left, &mut on);
+                            let rhs_ty = trait_args.first().map(|t| t.subst(&on));
                             let method_ret = methods.iter().find_map(|(m, ty)| {
                                 if m == op_method {
                                     if let Ty::Fn { ret, .. } = ty {
                                         if !matches!(**ret, Ty::Unknown | Ty::Unit) {
-                                            return Some((**ret).clone());
+                                            return Some(ret.subst(&on));
                                         }
                                     }
                                 }
                                 None
                             });
-                            (rhs_ty, out_ty.clone(), method_ret)
+                            (rhs_ty, out_ty.as_ref().map(|t| t.subst(&on)), method_ret)
                         }
                         _ => (None, None, None),
                     })
