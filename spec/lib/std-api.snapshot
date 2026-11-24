@@ -2021,6 +2021,7 @@ std/subset.cp: Subset.full() -> Subset<B>
 std/subset.cp: Subset.is_empty(self) -> Bool
 std/subset.cp: Subset.items(self) -> yields B
 std/subset.cp: Subset.len(self) -> Int
+std/subset.cp: Subset.of<S: Seq<B>>(xs: S) -> Subset<B>
 std/subset.cp: Subset.set(mut self, b: B, on: Bool)
 std/subset.cp: Subset.shifted(self, k: Int) -> Subset<B>
 std/subset.cp: Subset.single(b: B) -> Subset<B>
