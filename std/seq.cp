@@ -2481,6 +2481,7 @@ pub fn span<D>(lo: Cut<D>, hi: Cut<D>) -> Range<D>:
 /// unspecified answer
 /// example: `[1, 3, 5].bsearch(x => x > 2).r == 1`
 /// ties: `[1, 3, 3, 5].bsearch(x => x >= 3).r == 1`
+@aka(partition_point)
 pub fn bsearch<D, T>(self: [D]T, ok: T -> Bool, last: Bool = false) -> Cut<D>:
     let at = m => ok(self[D.nth(m)])
     D.cuts.nth(if last: ((0..D.count).last_true(at) ?? -1) + 1 else: (0..D.count).first_true(at) ?? D.count)

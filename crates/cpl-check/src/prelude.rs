@@ -577,14 +577,14 @@ pub fn domain_member(member: &str) -> Option<&'static str> {
         .map(|&(_, of)| of)
 }
 
-/// The std fn another language's `name` stands for on a receiver of type
-/// `on`, as `@aka(upper, toUpperCase)` above `pub fn to_upper(self: Str)`
-/// states.
-pub fn aka(on: &str, name: &str) -> Option<&'static str> {
-    type Aka = crate::names::NameMap<Vec<(&'static str, &'static str)>>;
-    static AKA: OnceLock<Aka> = OnceLock::new();
-    let aka = AKA.get_or_init(|| {
-        let mut aka = Aka::default();
+type AkaMap = crate::names::NameMap<Vec<(&'static str, &'static str)>>;
+
+/// Every std `@aka`: another language's name to the fns it stands for, each with its
+/// receiver type's head name (empty for a generic receiver like `self: [D]T`).
+fn aka_map() -> &'static AkaMap {
+    static AKA: OnceLock<AkaMap> = OnceLock::new();
+    AKA.get_or_init(|| {
+        let mut aka = AkaMap::default();
         let leak = |s: &str| &*Box::leak(s.to_string().into_boxed_str());
         for (_, text) in crate::modules::std_index() {
             if !text.contains("@aka(") {
@@ -596,15 +596,14 @@ pub fn aka(on: &str, name: &str) -> Option<&'static str> {
                         continue;
                     };
                     let recv = f.params.first().filter(|p| p.name.text == "self");
-                    let Some(ast::TypeKind::Named { name: ty, .. }) =
-                        recv.and_then(|p| p.ty.as_ref()).map(|t| &t.kind)
-                    else {
-                        continue;
+                    let ty = match recv.and_then(|p| p.ty.as_ref()).map(|t| &t.kind) {
+                        Some(ast::TypeKind::Named { name, .. }) => name.text.as_str(),
+                        _ => "",
                     };
                     let names = stmt.decorators.iter().filter(|d| d.name.text == "aka");
                     for arg in names.flat_map(|d| &d.args) {
                         if let ast::ExprKind::Name(other) = &arg.value.kind {
-                            let own = (leak(&ty.text), leak(&f.name.text));
+                            let own = (leak(ty), leak(&f.name.text));
                             aka.entry(other.clone()).or_default().push(own);
                         }
                     }
@@ -612,9 +611,25 @@ pub fn aka(on: &str, name: &str) -> Option<&'static str> {
             }
         }
         aka
-    });
-    let fns = aka.get(name)?;
+    })
+}
+
+/// The std fn another language's `name` stands for on a receiver of type
+/// `on`, as `@aka(upper, toUpperCase)` above `pub fn to_upper(self: Str)`
+/// states.
+pub fn aka(on: &str, name: &str) -> Option<&'static str> {
+    let fns = aka_map().get(name)?;
     fns.iter().find(|(ty, _)| *ty == on).map(|&(_, own)| own)
+}
+
+/// The std fns another language's `name` stands for on any receiver:
+/// `bsearch` for `partition_point`.
+pub fn aka_of(name: &str) -> impl Iterator<Item = &'static str> {
+    aka_map()
+        .get(name)
+        .into_iter()
+        .flatten()
+        .map(|&(_, own)| own)
 }
 
 /// The name a std item has now for one it was written with before, as

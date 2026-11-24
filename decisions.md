@@ -9365,6 +9365,7 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 - **Call.** A fn declares the names another language gives it, `@aka(upper, toUpperCase, uppercase)` above `pub fn to_upper(self: Str)`; the checker builds its foreign-name fixes for a receiver type from these decorators, and the `foreign_str_fn` name table in the compiler is deleted. `to_lower`, `to_upper`, `trim`, `trim_start` and `trim_end` move first. Compiler ruling of 2026-11-24.
 - **Why.** No privileged stdlib: a std name the compiler spells is one a user library cannot match; `@aka` is the sibling of `@was` (older std names) and any library may write it. Diagnostics are unchanged.
 - **`@was` on fns.** `@was(bsearch_last)` above `pub fn last_true` states a fn's older std name, as it already did for structs and enums; the checker's member migration (E0503 with its fix) reads it, and the `bsearch_first`/`bsearch_last` arms in `check/expr/member.rs` are deleted.
+- **Any receiver.** `prelude::aka_of(name)` reads the same decorators without a receiver type, so `@aka(partition_point)` on the generic `pub fn bsearch(self: [D]T, ..)` replaces the `partition_point` row of `foreign_own`.
 - **Reverse.** Restore the table in `builtins/foreign.rs` and drop the decorator.
 
 ## 637. (reserved, compiler)

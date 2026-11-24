@@ -6,7 +6,7 @@ use super::*;
 /// Another language's name for a member `receiver` has under its own name:
 /// Python's `append`, C++'s `size` or `push_back`, Java's `containsKey`, C++'s `unique`.
 pub fn foreign_member(receiver: Receiver, name: &str) -> Option<&'static str> {
-    foreign_own(name).iter().copied().find(|own| {
+    foreign_own(name).find(|own| {
         builtin_members(receiver).any(|m| m.name == *own)
             || crate::prelude::spec_receiver_method_names().contains(*own)
     })
@@ -14,9 +14,9 @@ pub fn foreign_member(receiver: Receiver, name: &str) -> Option<&'static str> {
 
 /// The CP Lang names another language's (or an older std's) member name stands for, on any
 /// type, the first a type has winning: Rust's `append` of a whole list is `splice_back`, of one
-/// value `push`.
-pub fn foreign_own(name: &str) -> &'static [&'static str] {
-    match name {
+/// value `push`. Beyond these, std's `@aka` names its own fns: `partition_point` is `bsearch`.
+pub fn foreign_own(name: &str) -> impl Iterator<Item = &'static str> {
+    let listed: &'static [&'static str] = match name {
         "append" => &["splice_back", "push"],
         "push_back" | "add" => &["push"],
         "pop_back" => &["pop"],
@@ -29,12 +29,12 @@ pub fn foreign_own(name: &str) -> &'static [&'static str] {
         }
         "erase" | "discard" | "delete" => &["remove"],
         "unique" => &["distinct"],
-        "partition_point" => &["bsearch"],
         "flip" => &["toggle", "neg", "add"],
         "insert" => &["add"],
         "pad" | "pad_to" | "grow" => &["resize"],
         _ => &[],
-    }
+    };
+    listed.iter().copied().chain(crate::prelude::aka_of(name))
 }
 
 /// `x.unwrap()` or `x.expect(..)` on an optional.
