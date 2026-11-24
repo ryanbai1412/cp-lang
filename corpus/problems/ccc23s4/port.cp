@@ -1,4 +1,5 @@
 // Source: CCC 2023 S4 (Minimum Cost Roads), https://dmoj.ca/problem/ccc23s4
+// limits: 2000 ms, 1024 MB
 // Problem: N, M <= 2000; road i joins u_i, v_i with length 0 <= l_i <= 1e9 and cost c_i <= 1e9.
 //   Keep a subset of roads of least total cost such that every pair of intersections keeps its
 //   shortest distance. Print that cost.

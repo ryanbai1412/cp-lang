@@ -1,4 +1,5 @@
 // Source: CCC 2021 S5 (Math Homework), https://dmoj.ca/problem/ccc21s5
+// limits: 3000 ms, 1024 MB
 // Problem: n <= 150000 and m <= 150000 requirements gcd(A[x..=y]) = z with z <= 16. Print
 //   any A with 1 <= A_i <= 1e9 meeting all of them, or "Impossible".
 // Solution: A_i must be a multiple of every z whose range covers i, and the lcm of those z

@@ -1,4 +1,5 @@
 // Source: CCC 2022 S4 (Good Triplets), https://dmoj.ca/problem/ccc22s4
+// limits: 3000 ms, 1024 MB
 // Problem: N <= 1e6 points at integer spots 0..C-1 (C <= 1e6, repeats allowed) of a circle of
 //   circumference C. Count the triples of points whose triangle has the centre strictly inside.
 // Solution: count the complement: a triple is bad iff it fits in a closed half circle. Charge it

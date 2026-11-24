@@ -1,4 +1,5 @@
 // Source: CCC 2018 S5 (Maximum Strategic Savings), https://dmoj.ca/problem/ccc18s5
+// limits: 1400 ms, 1024 MB
 // Problem: n planets with m cities each (n, m <= 1e5). p <= 1e5 flights each join cities a, b
 //   on every planet, q <= 1e5 portals each join planets x, y at every city, costs <= 1e8.
 //   Print the most total cost that can be cut while all n m cities stay connected.

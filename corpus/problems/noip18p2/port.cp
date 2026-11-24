@@ -1,4 +1,5 @@
 // Source: NOIP '18 P2 (Currency System), https://dmoj.ca/problem/noip18p2
+// limits: 1000 ms, 512 MB
 // Problem: T test cases; n <= 100 coin values a_i <= 25000, each usable any number of
 //   times. Print the fewest denominations of a system that pays exactly the same amounts.
 // Solution: a coin is needed iff the smaller coins cannot pay it. Sort, and keep an

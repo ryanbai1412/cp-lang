@@ -1,4 +1,5 @@
 // Source: Yet Another Contest 1 P1 (Mixed Doubles), https://dmoj.ca/problem/yac1p1
+// limits: 300 ms, 256 MB
 // Problem: n <= 2e5 men with skills a_i and n women with skills b_i (<= 2e9). Pair them up and
 //   add 1 to someone's skill k <= 1e9 times; a pair scores a_i * b_j. Print the largest total
 //   score mod 1e9+7.
