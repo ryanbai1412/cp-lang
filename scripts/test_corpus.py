@@ -895,12 +895,6 @@ class DanglingReferenceTest(unittest.TestCase):
         (self.root / "loose.md").write_text(f"{PKGS}/gone\n")
         self.assertEqual(corpus.dangling_references(), [])
 
-    def test_test_code_fixtures_pass(self):
-        self.track("crates/x/tests/judges.rs", f'root.join("{PKGS}/p")\n')
-        self.track("scripts/test_ratchet.py", f"{PKGS}/a\n")
-        self.track("crates/x/src/package.rs", f'"{PKGS}/gone"\n#[cfg(test)]\nmod tests {{\n    "{PKGS}/p"\n}}\n')
-        self.assertEqual(corpus.dangling_references(), [("crates/x/src/package.rs", 1, f"{PKGS}/gone")])
-
     def test_check_fails_on_a_dangling_reference(self):
         err = io.StringIO()
         with mock.patch.object(corpus, "generate", return_value={}), mock.patch.object(corpus, "problems", return_value=[]), \

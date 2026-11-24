@@ -1389,35 +1389,14 @@ def orphan_submissions(metas):
 PATH_REF = re.compile(r"(?<![\w./-])corpus/(problems|submissions)/([\w-](?:[\w.-]*[\w-])?)(\*)?")
 
 
-def test_code_starts():
-    """file -> the first line of its test code: 1 for a test file (under a `tests/` dir, or
-    `test_*`), else a Rust file's first `#[cfg(test)]`. Fixtures there name made-up packages."""
-    out = subprocess.run(["git", "grep", "-n", "-F", "#[cfg(test)]", "--", "*.rs"],
-                         cwd=ROOT, capture_output=True, text=True).stdout
-    starts = {}
-    for hit in out.splitlines():
-        f, n, _ = hit.split(":", 2)
-        starts.setdefault(f, int(n))
-    return starts
-
-
-def is_test_file(f):
-    parts = f.split("/")
-    return "tests" in parts[:-1] or parts[-1].startswith("test_")
-
-
 def dangling_references():
     """(file, line, path) for each `corpus/problems/<id>` or `corpus/submissions/<file>`
-    a tracked file outside corpus/ names that doesn't exist; a trailing `*` names a prefix.
-    Test code is left out: its fixtures build packages that exist only while it runs."""
+    a tracked file outside corpus/ names that doesn't exist; a trailing `*` names a prefix."""
     out = subprocess.run(["git", "grep", "-n", "-I", "-E", "corpus/(problems|submissions)/", "--", ".", ":!corpus"],
                          cwd=ROOT, capture_output=True, text=True).stdout
-    tests_from = test_code_starts()
     found = []
     for hit in out.splitlines():
         f, n, text = hit.split(":", 2)
-        if is_test_file(f) or int(n) >= tests_from.get(f, int(n) + 1):
-            continue
         for m in PATH_REF.finditer(text):
             kind, name, star = m.groups()
             d = PROBLEMS if kind == "problems" else SUBS
