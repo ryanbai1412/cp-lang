@@ -70,7 +70,7 @@ Evidence: `crates/cpl-lint/src/tests.rs` (`taste_reports_a_line_per_file_and_the
 Need: a nested mistake shows once, not as a cascade.
 Design: overlapping findings are merged or listed as distinct causes; a lint doesn't repeat the checker's error at its place.
 Milestone: M1-critical. Status: supported
-Evidence: `crates/cpl-lint/src/corpus_tests.rs` (`nested_findings_are_one_cause_or_listed_distinct`); `crates/cpl-lint/src/checker_tests.rs` (`a_lint_does_not_repeat_the_error_at_its_place`)
+Evidence: `crates/cpl-lint/src/corpus_tests.rs` (`nested_findings_shown_together_teach_two_things`); `crates/cpl-lint/src/checker_tests.rs` (`a_lint_does_not_repeat_the_error_at_its_place`)
 
 ### lint/U13: a lint stays quiet on the right idiom
 Need: no finding on code that is already the best expression.

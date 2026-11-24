@@ -138,7 +138,7 @@ in `plan/domains/lint-fmt/metrics.toml`.
 | A lint never repeats a checker error at the same place (`lints/R6`) | lint findings at the span of a checker diagnostic | design (rules read checker facts) plus suite | `crates/cpl-lint/src/checker_tests.rs` `a_lint_does_not_repeat_the_error_at_its_place` |
 | A user's own name is never mistaken for a std item (`lints/R5`) | rules matching std items by spelling | ratchet `lint_std_names`, to 0 by matching resolved paths | `scripts/debt-ratchet.py` |
 | Lints read the checker's types, never guess them from syntax (`lints/R4`) | rule lines that read a written type or compare type names | ratchets `lint_type_syntax` (each line named, per rule) and `consumer_rederived` | `scripts/debt-ratchet.py` |
-| One cause, one finding (`lints/R16`) | nested or duplicated findings for one root cause | hand-written suite | `crates/cpl-lint/src/corpus_tests.rs` `nested_findings_are_one_cause_or_listed_distinct` |
+| One cause, one finding (`lints/R16`) | nested or duplicated findings for one root cause | hand-written suite | `crates/cpl-lint/src/corpus_tests.rs` `nested_findings_shown_together_teach_two_things` |
 | Precision on code we did not write (`lints/R2`) | findings on `corpus/newcomer` that no `// expect:` comment in the file names, and named lints that stay silent | hand-graded suite | `crates/cpl-lint/src/corpus_tests.rs` `newcomer_findings_are_the_ones_their_comments_expect` |
 
 ### Lint recall and teaching value
