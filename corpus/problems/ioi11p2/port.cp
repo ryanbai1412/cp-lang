@@ -17,6 +17,7 @@ domain City = 0..n
 domain Road = 1..n
 
 const LONGEST = 1e6
+type Hops = 0..=2e5  // roads on a path from the root
 fn random_tree() -> [Road](u: City, v: City, len: 0..=LONGEST):
     [Road] t => (City(rand(0, t.label - 1)), City(t.label), rand(0, LONGEST))
 
@@ -26,13 +27,13 @@ let tree = Rooted(Graph.undirected(roads).weighted(a => roads[a.e].len), City.fi
 // Small-to-large over the subtrees. reach[v] maps a distance from the root
 // to the fewest roads from the root, over the cities under v. A path that
 // turns at v joins two of those cities, taken from different children.
-var reach: [City]HashMap<Int, 0..=2e5> = []
+var reach: [City]HashMap<Int, Hops> = []
 var fewest: ?Int = None
 for v in tree.at.rev:  // children before parents, so no recursion
     let (far_v, deep_v) = (tree.dist(tree.root, v), tree.depth(v))
-    var here: HashMap<Int, 0..=2e5> = [far_v: deep_v]
+    var here: HashMap<Int, Hops> = [far_v: deep_v]
     for child in tree.children(v):
-        var there: HashMap<Int, 0..=2e5> = []
+        var there: HashMap<Int, Hops> = []
         swap(mut there, mut reach[child])
         if there.len > here.len: swap(mut here, mut there)
         for (far, hops) in there:
