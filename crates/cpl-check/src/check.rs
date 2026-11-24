@@ -20,6 +20,7 @@ mod callee;
 mod cuts;
 mod decls;
 mod domain_use;
+mod expect;
 mod expr;
 mod extension;
 mod fall_through;

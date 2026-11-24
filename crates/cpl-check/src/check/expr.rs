@@ -3422,12 +3422,12 @@ impl<'a> Checker<'a> {
         }
     }
 
-    pub(crate) fn expect_fits(
+    pub(super) fn expect_fits_by(
         &mut self,
         got: &Ty,
         want: &Ty,
         at: &Expr,
-        message: impl FnOnce(&Self, &Ty, &Ty) -> String,
+        message: &mut dyn FnMut(&Self, &Ty, &Ty) -> String,
     ) -> bool {
         // `none` fills whatever is declared, and code that already has an
         // error is not reported again.
