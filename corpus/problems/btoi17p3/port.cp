@@ -1,4 +1,5 @@
 // Source: Baltic OI 2017 P3 (Railway), https://dmoj.ca/problem/btoi17p3
+// limits: 1000 ms, 1024 MB
 // Problem: a tree of n <= 1e5 cities with tracks 1..n-1; m <= 5e4 ministers each name s_i >= 2
 //   cities (sum S <= 1e5) and want every track on a path between two of them. Print the tracks
 //   wanted by at least k ministers, in increasing order.
