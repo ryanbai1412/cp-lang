@@ -180,10 +180,6 @@ impl<'a> Lowerer<'a> {
                 let slot = self.loop_var(&params[0], elem.clone(), &mut pre);
                 let key = self.expr(body, None);
                 self.cx.scopes.pop();
-                if !pre.is_empty() {
-                    self.unsupported(params[0].span, "a pattern as the parameter of a sort key");
-                    return self.err_expr(span);
-                }
                 if key.ty != Ty::Error && (matches!(key.ty, Ty::Opt(_)) || !self.ordered(&key.ty)) {
                     self.report(
                         body.span,
@@ -192,9 +188,21 @@ impl<'a> Lowerer<'a> {
                     );
                     return self.err_expr(span);
                 }
-                if let Some(inner) = self.reversed_key(&key) {
+                let (key, turned) = match self.reversed_key(&key) {
+                    Some(inner) => (inner, true),
+                    None => (key, false),
+                };
+                // `((a, b)) => -b`: the key unpacks the element first.
+                let key = if pre.is_empty() {
+                    key
+                } else {
+                    let ty = key.ty.clone();
+                    pre.push(Stmt::Give(key));
+                    self.mk(ExprKind::Do(Block { stmts: pre }), ty, body.span)
+                };
+                if turned {
                     let turned = self.mk(ExprKind::Bool(true), Ty::Bool, body.span);
-                    let by = SortBy::Key(slot, Box::new(inner));
+                    let by = SortBy::Key(slot, Box::new(key));
                     let kind = ExprKind::Sort(Box::new(place), by, Some(Box::new(turned)));
                     return self.mk(kind, Ty::Unit, span);
                 }
