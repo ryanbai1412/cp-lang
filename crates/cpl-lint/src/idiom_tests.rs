@@ -515,39 +515,26 @@ fn copy_comprehension_fixes_only_a_list_copy() {
 
 #[test]
 fn loop_argmax_names_the_call() {
-    // corpus noi03p4: `best` starts at `Home.first!`, so the call traps where it did.
-    let src = "domain Home = 0..4\n\
-let d: [Home]Int = read()\n\
-var best = Home.first!\n\
-for v in Home:\n    if d[v] > d[best]: best = v\n\
-print(best)\n";
-    assert!(
-        fixed(src).contains("best = Home.max(by: v => d[v])!\nprint(best)"),
-        "{}",
-        fixed(src)
-    );
-    // acceptance run 4 cf2272A and std/geometry.cp: a range gets the exact call
-    // as help, no fix, since an empty range kept `j` and the call traps.
-    let range = "let p: 1..=9 = read()\n\
-let a: [0..9]Int = read()\n\
-var j = 0\n\
-for i in 0..p if a[i] > a[j]:\n    j = i\n\
-var s = 0\n\
-for i in 1..p:\n    if a[i] < a[s]: s = i\n\
-print(j, s)\n";
-    let helps: Vec<String> = lint(range, &all_on())
-        .into_iter()
-        .filter(|d| d.code.0 == "L0547")
-        .map(|d| d.help.unwrap_or_default())
-        .collect();
-    assert!(
-        helps[0].contains("`var j = (0..p).max(by: i => a[i])!`"),
-        "{helps:?}"
-    );
-    assert!(
-        helps[1].contains("`var s = (0..p).min(by: i => a[i])!`"),
-        "{helps:?}"
-    );
+    // corpus noi03p4: `best` starts at `Home.first!`, so the call traps where
+    // it did; std/seq.cp `max` declares both spellings.
+    for walk in [
+        "for v in Home:\n    if d[v] > d[best]: best = v\n",
+        "for v in Home if d[v] > d[best]:\n    best = v\n",
+        "for v in Home if d[v] < d[best]:\n    best = v\n",
+    ] {
+        let src = format!(
+            "domain Home = 0..4\nlet d: [Home]Int = read()\nvar best = Home.first!\n{walk}print(best)\n"
+        );
+        let call = if walk.contains('<') { "min" } else { "max" };
+        assert!(
+            fixed(&src).contains(&format!("best = Home.{call}(by: v => d[v])!\nprint(best)")),
+            "{}",
+            fixed(&src)
+        );
+    }
+    // acceptance run 4 cf2272A: over a range an empty range kept `j` and
+    // the call traps, so `max` declares only the domain spelling.
+    let range = "let p: 1..=9 = read()\nlet a: [0..9]Int = read()\nvar j = 0\nfor i in 0..p if a[i] > a[j]:\n    j = i\nprint(j)\n";
     assert_eq!(fixed(range), range);
 }
 

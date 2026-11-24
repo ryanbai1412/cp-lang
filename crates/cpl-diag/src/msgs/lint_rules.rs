@@ -49,13 +49,11 @@ super::msgs! {
     IS_IN_COND_HEADER = "L0207", "`{}` headers bind with `let`, not `is`";
     LAST_VIA_LEN = "L0542", "`{}` reads the last element by its index";
     LCA_BY_HAND = "L0555", "climbing `{}` by `{}` until `{}` matches is the LCA, by hand";
-    LOOP_ARGMAX = "L0547", "this loop keeps in `{}` the index of the first {} `{}[{}]`";
     LOOP_INVARIANT_MOD_DIV = "L0415", "loop-invariant `Mod` divisor `{}` computes an O(log P) inverse every iteration";
     MANUAL_ADJACENCY_LIST = "L0537", "`{}` is an adjacency list built one read edge at a time";
     MANUAL_BIT_TEST = "L0540", "`{}` tests one bit by hand";
     MANUAL_DIGIT_LOOP = "L0544", "this loop takes `{}` apart digit by digit";
     MANUAL_HEAP_DRAIN = "L0588", "the top `{}` of `{}` popped one by one";
-    MANUAL_MEX = "L0548", "`while {}[{}]: {} += 1` searches for the first unmarked value by hand";
     MANUAL_MOD_REDUCE = "L0531", "`% {}` reduces a product by hand{}";
     MANUAL_PAIR_LOOP = "L0543", "`for {} in {}` walks each pair `{} < {}` by hand";
     MANUAL_STARTS_WITH = "L0592", "`{}` compares a slice with a pattern by hand";

@@ -13,7 +13,7 @@ if m == p:
     print(-1)
 else:
     var j = 0
-    for i in 0..p if a[i] > a[j]:  // expect: loop_argmax
+    for i in 0..p if a[i] > a[j]:
         j = i
     let q = (0..n).find(i => a[i] == m)!
     print(j + 1, q + 1)

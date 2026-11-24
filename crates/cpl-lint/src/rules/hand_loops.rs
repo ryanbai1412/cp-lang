@@ -1,6 +1,5 @@
 //! Loops and guards newcomers write by hand where a std call says what they
-//! do: the index of the largest value (`loop_argmax`), the first unset slot
-//! (`manual_mex`), a list copied element by element (`copy_comprehension`), a
+//! do: a list copied element by element (`copy_comprehension`), a
 //! queue walked by a head index (`queue_head_index`), a range check split in
 //! two (`split_range_check`) and a map key tested before `+=`
 //! (`contains_then_add`).
@@ -10,14 +9,12 @@ use crate::is_std;
 use crate::std_fn;
 use crate::walk::{unparen, walk_stmt, Visitor};
 use crate::{
-    File, Finding, CONTAINS_THEN_ADD, COPY_COMPREHENSION, LOOP_ARGMAX, MANUAL_MEX,
-    QUEUE_HEAD_INDEX, SPLIT_RANGE_CHECK,
+    File, Finding, CONTAINS_THEN_ADD, COPY_COMPREHENSION, QUEUE_HEAD_INDEX, SPLIT_RANGE_CHECK,
 };
 use cpl_diag::{Fix, Span};
 use cpl_syntax::ast::*;
 
 use super::shapes::{compare, int, is_step, name, single};
-use super::Warn;
 use cpl_diag::msgs::lint_rules;
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
@@ -26,12 +23,10 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         base: 0,
         facts: file.facts,
         chains: Vec::new(),
-        starts: Vec::new(),
         out: Vec::new(),
     };
     let top: Vec<_> = file.top_level().collect();
     v.queue_head(&top);
-    v.starts(&top);
     file.walk(&mut v, |v, base| v.base = base);
     v.out
 }
@@ -42,231 +37,12 @@ struct HandLoops<'a> {
     facts: Option<&'a Facts>,
     /// `and` chains already read whole, so their inner `and`s are skipped.
     chains: Vec<Span>,
-    /// `var j = init` right before a statement: (that statement, `j`, the
-    /// `var`'s span, `init`), all in file offsets.
-    starts: Vec<(Span, String, Span, String)>,
     out: Vec<Finding>,
-}
-
-/// `if c: body` with no other branch.
-fn lone_if(stmt: &Stmt) -> Option<(&Expr, &Block)> {
-    let StmtKind::Expr(e) = &stmt.kind else {
-        return None;
-    };
-    let ExprKind::If {
-        branches,
-        otherwise: None,
-    } = &e.kind
-    else {
-        return None;
-    };
-    match branches.as_slice() {
-        [(Cond::Expr(c), body)] => Some((c, body)),
-        _ => None,
-    }
-}
-
-/// `t[x]` with plain names.
-fn index_names(e: &Expr) -> Option<(&str, &str)> {
-    let ExprKind::Index { base, indices } = &unparen(e).kind else {
-        return None;
-    };
-    match indices.as_slice() {
-        [x] => Some((name(base)?, name(x)?)),
-        _ => None,
-    }
-}
-
-impl super::Warn for HandLoops<'_> {
-    fn sink(&mut self) -> (&mut Vec<Finding>, u32) {
-        (&mut self.out, self.base)
-    }
 }
 
 impl HandLoops<'_> {
     fn text(&self, span: Span) -> &str {
         span.shift(self.base).text(self.src)
-    }
-
-    fn starts(&mut self, stmts: &[(u32, &Stmt)]) {
-        for pair in stmts.windows(2) {
-            let [(base, decl), (next_base, next)] = pair else {
-                continue;
-            };
-            let StmtKind::Let {
-                mutable: true,
-                pat,
-                ty: None,
-                init: Some(init),
-                otherwise: None,
-                guard: None,
-            } = &decl.kind
-            else {
-                continue;
-            };
-            let PatternKind::Name(j) = &pat.kind else {
-                continue;
-            };
-            let init = init.span.shift(*base).text(self.src).to_string();
-            self.starts.push((
-                next.span.shift(*next_base),
-                j.to_string(),
-                decl.span.shift(*base),
-                init,
-            ));
-        }
-    }
-
-    /// The range a loop over `iter` covers once `j` starts at `init`:
-    /// `lo..hi` from `init` or from `init + 1`.
-    fn range_from(&self, iter: &Expr, init: &str) -> Option<String> {
-        let ExprKind::Range {
-            lo: Some(lo),
-            hi: Some(hi),
-            inclusive,
-            step: None,
-        } = &unparen(iter).kind
-        else {
-            return None;
-        };
-        let next = init.parse::<i128>().ok().map(|v| v + 1);
-        let from_next = next.is_some() && int(lo) == next;
-        let lo = self.text(lo.span);
-        if lo != init && lo != format!("{init} + 1") && !from_next {
-            return None;
-        }
-        let dots = if *inclusive { "..=" } else { ".." };
-        Some(format!("({init}{dots}{})", self.text(hi.span)))
-    }
-
-    fn argmax(&mut self, stmt: &Stmt) {
-        let StmtKind::For {
-            pat,
-            iter,
-            body,
-            else_body: None,
-            ..
-        } = &stmt.kind
-        else {
-            return;
-        };
-        let PatternKind::Name(i) = &pat.kind else {
-            return;
-        };
-        let Some((cond, then)) = single(body).and_then(lone_if) else {
-            return;
-        };
-        let Some(StmtKind::Assign {
-            target,
-            op: AssignOp::Set,
-            value,
-        }) = single(then).map(|s| &s.kind)
-        else {
-            return;
-        };
-        let (Some(j), Some(v)) = (name(target), name(value)) else {
-            return;
-        };
-        let Some((lhs, op @ (CmpOp::Gt | CmpOp::Lt), rhs)) = compare(cond) else {
-            return;
-        };
-        let (Some((t, x)), Some((t2, y))) = (index_names(lhs), index_names(rhs)) else {
-            return;
-        };
-        if v != i || t != t2 || x != i || y != j {
-            return;
-        }
-        let largest = op == CmpOp::Gt;
-        let ext = if largest { "largest" } else { "smallest" };
-        let whole = if largest {
-            format!("{t}.argmax()!")
-        } else {
-            format!("{t}.argmin()!")
-        };
-        let at = stmt.span.shift(self.base);
-        let start = self
-            .starts
-            .iter()
-            .find(|(s, var, ..)| *s == at && var == j)
-            .map(|(_, _, decl, init)| (*decl, init.clone()));
-        let pick = |over: &str| {
-            if largest {
-                format!("{over}.max(by: {i} => {t}[{i}])!")
-            } else {
-                format!("{over}.min(by: {i} => {t}[{i}])!")
-            }
-        };
-        let walked = self.text(iter.span).to_string();
-        let mut fix = None;
-        let help = match &start {
-            // `D.first!` traps on an empty `D` just as the call does.
-            Some((decl, init)) if name(iter).is_some() && *init == format!("{walked}.first!") => {
-                let call = pick(&walked);
-                let between = Span {
-                    start: decl.end,
-                    end: at.start,
-                };
-                let looped = at.text(self.src);
-                // A statement's span can run on over the newline and indent after it.
-                let tail = &looped[looped.trim_end().len()..];
-                if between.text(self.src).trim().is_empty() {
-                    fix = Some(Fix {
-                        title: format!("write `var {j} = {call}`"),
-                        edits: vec![(
-                            Span {
-                                start: decl.start,
-                                end: at.end,
-                            },
-                            format!("var {j} = {call}{tail}"),
-                        )],
-                    });
-                }
-                format!("write `var {j} = {call}`: the first {ext} on ties, as the strict loop keeps")
-            }
-            Some((_, init)) if self.range_from(iter, init).is_some() => {
-                let call = pick(&self.range_from(iter, init).unwrap_or_default());
-                format!(
-                    "write `var {j} = {call}`: the first {ext} on ties, as the strict loop keeps; `{whole}` when that range is all of `{t}`"
-                )
-            }
-            _ => format!(
-                "write `{whole}` when `{j}` starts at the first index and the loop covers the rest; over part of `{t}`, `{}` keeps the first {ext} on ties",
-                pick("(lo..hi)")
-            ),
-        };
-        let mut diag = lint_rules::LOOP_ARGMAX
-            .warning(at, &[&j, &ext, &t, &i])
-            .with_help(help);
-        diag.fixes.extend(fix);
-        self.out.push(Finding {
-            lint: &LOOP_ARGMAX,
-            diag,
-        });
-    }
-
-    fn mex(&mut self, stmt: &Stmt) {
-        let StmtKind::While {
-            cond: Cond::Expr(c),
-            body,
-            else_body: None,
-        } = &stmt.kind
-        else {
-            return;
-        };
-        let Some((t, m)) = index_names(c) else {
-            return;
-        };
-        if !single(body).is_some_and(|s| is_step(s, m)) {
-            return;
-        }
-        self.warn_at(
-            &MANUAL_MEX,
-            stmt.span,
-&lint_rules::MANUAL_MEX, &[&t, &m, &m],
-            format!(
-                "write `(lo..=hi).find({m} => not {t}[{m}])` over the values `{m}` can take: it names the search, the mex when `{t}` marks what is present"
-            ),
-        );
     }
 
     fn copy(&mut self, expr: &Expr) {
@@ -551,12 +327,9 @@ impl Visitor for HandLoops<'_> {
         let base = self.base;
         let stmts: Vec<_> = stmts.iter().map(|s| (base, s)).collect();
         self.queue_head(&stmts);
-        self.starts(&stmts);
     }
 
     fn stmt(&mut self, stmt: &Stmt) {
-        self.argmax(stmt);
-        self.mex(stmt);
         self.contains_add(stmt);
     }
 

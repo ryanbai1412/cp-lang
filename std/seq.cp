@@ -82,6 +82,8 @@ pub enum Ties = First | Last
 @lint(chmin_chmax_if, from: "if x > e: x = e", to: "x min= e", holes: "x, e")
 @lint(chmin_chmax_if, from: "if e <= x: x = e", to: "x min= e", holes: "x, e")
 @lint(chmin_chmax_if, from: "if x >= e: x = e", to: "x min= e", holes: "x, e")
+@lint(loop_argmax, from: "var j = self.first!\nfor i in self:\n    if a[i] < a[j]:\n        j = i", to: "var j = self.min(by: i => a[i])!", holes: "a")
+@lint(loop_argmax, from: "var j = self.first!\nfor i in self if a[i] < a[j]:\n    j = i", to: "var j = self.min(by: i => a[i])!", holes: "a")
 pub fn min<S: Seq<T>, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T:
     let last = ties == Ties.Last
     var best: ?T = None
@@ -106,6 +108,8 @@ pub fn min<S: Seq<T>, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.Firs
 @lint(chmin_chmax_if, from: "if x < e: x = e", to: "x max= e", holes: "x, e")
 @lint(chmin_chmax_if, from: "if e >= x: x = e", to: "x max= e", holes: "x, e")
 @lint(chmin_chmax_if, from: "if x <= e: x = e", to: "x max= e", holes: "x, e")
+@lint(loop_argmax, from: "var j = self.first!\nfor i in self:\n    if a[i] > a[j]:\n        j = i", to: "var j = self.max(by: i => a[i])!", holes: "a")
+@lint(loop_argmax, from: "var j = self.first!\nfor i in self if a[i] > a[j]:\n    j = i", to: "var j = self.max(by: i => a[i])!", holes: "a")
 pub fn max<S: Seq<T>, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T:
     let last = ties == Ties.Last
     var best: ?T = None
@@ -1113,6 +1117,7 @@ pub fn first_some<S: Seq<T>, T, U>(self: S, f: T -> ?U) -> ?U:
 @lint(count_until, from: "var x = 1\nvar k = 0\nwhile x < n:\n    k += 1\n    x *= c", to: "let k = (0..).find(k => c ** k >= n)!", holes: "c, n")
 @lint(count_until, from: "var x = 1\nvar k = 0\nwhile x <= n:\n    x *= c\n    k += 1", to: "let k = (0..).find(k => c ** k > n)!", holes: "c, n")
 @lint(count_until, from: "var x = 1\nvar k = 0\nwhile x <= n:\n    k += 1\n    x *= c", to: "let k = (0..).find(k => c ** k > n)!", holes: "c, n")
+@lint(manual_mex, from: "while seen[m]:\n    m += 1", to: "(lo..=hi).find(m => not seen[m])", holes: "seen, m")
 pub fn find<S: Seq<T>, T>(self: S, p: T -> Bool) -> ?T:
     for x in self:
         if p(x): return Some(x)
