@@ -90,6 +90,17 @@ opt-level = 1
 [profile.dev.package.cpl-config]
 opt-level = 1
 
+# read_only_copies builds every shipped program in-process: its `cpl build`
+# lints, and walks the corpus to find them.
+[profile.dev.package.cpl-lint]
+opt-level = 1
+
+[profile.dev.package.cpl-cli]
+opt-level = 1
+
+[profile.dev.package.cpl-corpus]
+opt-level = 1
+
 # CI's optimized cpl (site, acceptance): what users run is `release`; this
 # builds in about two thirds of the time with the same opt-level.
 [profile.ci]
