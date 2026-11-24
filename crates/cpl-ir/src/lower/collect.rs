@@ -18,11 +18,8 @@ impl<'a> Lowerer<'a> {
                 } else {
                     let id = self.structs.len();
                     self.mod_syms[m].insert(decl.name.text.clone(), Sym::Struct(id));
-                    let sname = if m == 0 {
-                        decl.name.text.clone()
-                    } else {
-                        format!("m{m}_{}", decl.name.text)
-                    };
+                    let text = decl.name.text.replace('\'', "_a");
+                    let sname = if m == 0 { text } else { format!("m{m}_{text}") };
                     self.structs.push(StructInfo {
                         def: StructDef {
                             name: sname,

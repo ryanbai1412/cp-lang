@@ -42,9 +42,9 @@ Fields: `p: [D.cuts]T`, `sums: Bool`, `rises: Bool`, `back: Bool`.
 - `fn first_ge(self, target: T) -> ?Cut<D>` — \(O(\log \lvert D \rvert)\); The first boundary `b` with `prefix(b) >= target`, or `None` when even `all` is smaller.; traps: when some element is negative
 - `fn first_gt(self, target: T) -> ?Cut<D>` — \(O(\log \lvert D \rvert)\); The first boundary `b` with `prefix(b) > target`, or `None` when `all <= target`.; traps: when some element is negative
 
-## `struct _FillPrefix2 <R, C, T: Add + Sub>`
+## `struct FillPrefix<R, C, T: Add + Sub>`
 
-Internal append-only 2-D prefix/suffix sum table returned by `Prefix<R, C, T>.filling(...)`.
+The append-only 2-D prefix/suffix sum table returned by `Prefix<R, C, T>.filling(...)`.
 
 Fields: `p: [R.cuts, C.cuts]T`.
 
@@ -52,9 +52,9 @@ Fields: `p: [R.cuts, C.cuts]T`.
 - `fn prefix(self, r: Cut<R>, c: Cut<C>) -> T` — \(O(1)\); The sum of everything above row boundary `r` and left of column boundary `c`; zero when either cut is the first.; traps: when that rectangle is non-empty and holds a cell not yet written
 - `fn fold(self, rows: Range<R>, cols: Range<C>) -> T` — \(O(1)\); The sum of `a[r, c]` over `rows` by `cols`, or `0` when either range is empty.; traps: when the rectangle is non-empty and holds a cell not yet written
 
-## `struct _Prefix2 <R, C, T: Add + Sub>`
+## `struct Prefix<R, C, T: Add + Sub>`
 
-Internal 2-D shape of `Prefix<R, C, T>`, constructed by `Prefix(a)` or `Prefix<R, C, T>.filling(...)`.
+2-D prefix sums `Prefix<R, C, T>`, built by `Prefix(a)` or `Prefix<R, C, T>.filling(...)`.
 
 Fields: `p: [R.cuts, C.cuts]T`.
 
@@ -63,9 +63,9 @@ Fields: `p: [R.cuts, C.cuts]T`.
 - `fn prefix(self, r: Cut<R>, c: Cut<C>) -> T` — \(O(1)\); The sum of everything above row boundary `r` and left of column boundary `c`; zero when either cut is the first.
 - `fn fold(self, rows: Range<R>, cols: Range<C>) -> T` — \(O(1)\); The sum of `a[r, c]` over `rows` by `cols`, or `0` when either range is empty, by inclusion-exclusion over the four corner cuts.
 
-## `struct _FillPrefixList <T: Add + Sub>`
+## `struct FillPrefix<T: Add + Sub>`
 
-Internal append-only list prefix/suffix sum table returned by `Prefix<T>.filling(n, ...)`.
+The append-only list prefix/suffix sum table returned by `Prefix<T>.filling(n, ...)`.
 
 Fields: `p: List<T>`.
 
@@ -73,9 +73,9 @@ Fields: `p: List<T>`.
 - `fn cut(self, k: Int) -> T` — \(O(1)\); The sum of the first `k` values; zero for `k == 0`.; traps: when `k` is not in `0..=n`, or one of the first `k` values is not yet written
 - `fn fold(self, r: Range<Int>) -> T` — \(O(1)\); The sum of `a[i]` for `i` in `r`, or zero when `r` is empty.; traps: when `r` is non-empty and reaches outside `0..n` or holds an index not yet written
 
-## `struct _PrefixList <T: Sub>`
+## `struct Prefix<T: Sub>`
 
-Internal list shape of `Prefix<T>`, constructed by `Prefix(a)` or `Prefix<T>.filling(n, ...)`.
+List prefix sums `Prefix<T>`, built by `Prefix(a)` or `Prefix<T>.filling(n, ...)`.
 
 Fields: `p: List<T>`.
 
@@ -94,9 +94,9 @@ Fields: `d: [D.cuts]T`.
 - `fn add(mut self, r: Range<D>, x: T)` — \(O(1)\); Add `x` to every position in `r`; an empty `r` changes nothing.
 - `fn finish(self) -> [D]T` — \(O(\lvert D \rvert)\) time and space; The accumulated values across `D`: each position's total of the `add`s covering it.
 
-## `struct _Diff2 <R, C, T: Add + Sub>`
+## `struct Diff<R, C, T: Add + Sub>`
 
-Internal 2-D shape of `Diff<R, C, T>`: \(O(1)\) rectangle `add`, \(O(\lvert R \rvert \cdot \lvert C \rvert)\) `finish`.
+The 2-D difference array `Diff<R, C, T>`: \(O(1)\) rectangle `add`, \(O(\lvert R \rvert \cdot \lvert C \rvert)\) `finish`.
 
 Fields: `d: [R.cuts, C.cuts]T`.
 

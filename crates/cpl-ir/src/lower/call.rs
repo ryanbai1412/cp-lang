@@ -488,8 +488,8 @@ impl<'a> Lowerer<'a> {
         } = &base.kind
         {
             if let ast::ExprKind::Name(gname) = &gbase.kind {
-                let lookup = prefix_shape_struct(gname, gtypes.len()).unwrap_or(gname);
-                if let Some(Sym::GenStruct(gid)) = self.get_sym(lookup) {
+                let lookup = self.arity_name(gname, gtypes.len());
+                if let Some(Sym::GenStruct(gid)) = self.get_sym(&lookup) {
                     if let Some(call) = self.list_form_call(gid, name, gtypes, args, span) {
                         return call;
                     }

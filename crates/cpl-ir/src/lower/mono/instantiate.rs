@@ -41,7 +41,11 @@ impl<'a> Lowerer<'a> {
         }
         let id = self.structs.len();
         let suffix: Vec<String> = args.iter().map(|a| self.mangle_arg(a)).collect();
-        let mangled = format!("{}_{}_{id}", decl.name.text, suffix.join("_"));
+        let mangled = format!(
+            "{}_{}_{id}",
+            decl.name.text.replace('\'', "_a"),
+            suffix.join("_")
+        );
 
         let mut env: GenEnv = HashMap::new();
         for (p, a) in decl.generics.iter().zip(&args) {
@@ -247,7 +251,11 @@ impl<'a> Lowerer<'a> {
         let decl = self.gen_enums[gid].decl;
         let id = self.enums.len();
         let suffix: Vec<String> = args.iter().map(|a| self.mangle_arg(a)).collect();
-        let mangled = format!("{}_{}_{id}", decl.name.text, suffix.join("_"));
+        let mangled = format!(
+            "{}_{}_{id}",
+            decl.name.text.replace('\'', "_a"),
+            suffix.join("_")
+        );
         self.enums.push(EnumDef {
             name: mangled,
             source: decl.name.text.clone(),
@@ -312,7 +320,9 @@ impl<'a> Lowerer<'a> {
                 continue;
             };
             // Check whether `tname` in `imp_mod` refers to the same struct.
-            let target_matches = match self.mod_syms[imp_mod].get(&tname.text).copied() {
+            let keyed = cpl_check::arity_key(&tname.text, targs.len());
+            let syms = &self.mod_syms[imp_mod];
+            let target_matches = match syms.get(&keyed).or_else(|| syms.get(&tname.text)).copied() {
                 Some(Sym::Struct(id)) => id == sid,
                 Some(Sym::GenStruct(gid)) => self.structs[sid]
                     .origin_gen

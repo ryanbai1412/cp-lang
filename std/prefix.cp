@@ -315,8 +315,8 @@ pub struct Prefix<D, T: Add + Sub>:
         let lo = (0..D.count).first_true(mid => self.p[D.cuts.nth(mid)] > target) ?? D.count
         Some(D.cuts.nth(lo))
 
-/// Internal append-only 2-D prefix/suffix sum table returned by `Prefix<R, C, T>.filling(...)`.
-pub struct _FillPrefix2 <R, C, T: Add + Sub>:
+/// The append-only 2-D prefix/suffix sum table returned by `Prefix<R, C, T>.filling(...)`.
+pub struct FillPrefix<R, C, T: Add + Sub>:
     p: [R.cuts, C.cuts]T
     pub rev: Bool
     pub next: Int
@@ -384,8 +384,8 @@ pub struct _FillPrefix2 <R, C, T: Add + Sub>:
             cols.l,
         )
 
-/// Internal 2-D shape of `Prefix<R, C, T>`, constructed by `Prefix(a)` or `Prefix<R, C, T>.filling(...)`.
-pub struct _Prefix2 <R, C, T: Add + Sub>:
+/// 2-D prefix sums `Prefix<R, C, T>`, built by `Prefix(a)` or `Prefix<R, C, T>.filling(...)`.
+pub struct Prefix<R, C, T: Add + Sub>:
     p: [R.cuts, C.cuts]T
 
     /// Build 2-D prefix sums over `a: [R, C]T`; `Prefix(a)` on a grid calls it.
@@ -399,7 +399,7 @@ pub struct _Prefix2 <R, C, T: Add + Sub>:
         for r in R:
             for c in C:
                 p[r.r, c.r] = p[r.l, c.r] + p[r.r, c.l] - p[r.l, c.l] + a[r, c]
-        _Prefix2(p)
+        Prefix<R, C, T>(p)
 
     /// Create an append-only 2-D prefix/suffix sum table filled via `.set(r, c, x)` in row-major
     /// `order`.
@@ -410,7 +410,7 @@ pub struct _Prefix2 <R, C, T: Add + Sub>:
     pub fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<R, C, T>:
         let rev = order == FillOrder.Reverse
         let p: [R.cuts, C.cuts]T = T.zero
-        _FillPrefix2(p, rev, if rev: R.count * C.count - 1 else: 0)
+        FillPrefix<R, C, T>(p, rev, if rev: R.count * C.count - 1 else: 0)
 
     /// The sum of everything above row boundary `r` and left of column boundary `c`; zero when
     /// either cut is the first.
@@ -437,8 +437,8 @@ pub struct _Prefix2 <R, C, T: Add + Sub>:
             cols.l,
         ]
 
-/// Internal append-only list prefix/suffix sum table returned by `Prefix<T>.filling(n, ...)`.
-pub struct _FillPrefixList <T: Add + Sub>:
+/// The append-only list prefix/suffix sum table returned by `Prefix<T>.filling(n, ...)`.
+pub struct FillPrefix<T: Add + Sub>:
     p: List<T>
     pub rev: Bool
     pub next: Int
@@ -483,8 +483,8 @@ pub struct _FillPrefixList <T: Add + Sub>:
             return self.p[r.start] - self.p[r.end]
         self.cut(r.end) - self.cut(r.start)
 
-/// Internal list shape of `Prefix<T>`, constructed by `Prefix(a)` or `Prefix<T>.filling(n, ...)`.
-pub struct _PrefixList <T: Sub>:
+/// List prefix sums `Prefix<T>`, built by `Prefix(a)` or `Prefix<T>.filling(n, ...)`.
+pub struct Prefix<T: Sub>:
     p: List<T>
 
     /// Build 1-D prefix sums over `a: List<T>`; `Prefix(a)` on a list calls it.
@@ -497,7 +497,7 @@ pub struct _PrefixList <T: Sub>:
         var p = List.filled(a.len + 1, T.zero)
         for i in 0..a.len:
             p[i + 1] = p[i] + a[i]
-        _PrefixList(p)
+        Prefix<T>(p)
 
     /// Create an append-only 1-D prefix/suffix sum table of length `n`, filled via `.set(i, x)`
     /// in `order`.
@@ -508,7 +508,7 @@ pub struct _PrefixList <T: Sub>:
     pub fn filling(n: Int, order: FillOrder = FillOrder.Forward) -> FillPrefix<T>:
         assert n >= 0
         let rev = order == FillOrder.Reverse
-        _FillPrefixList(List.filled(n + 1, T.zero), rev, if rev: n - 1 else: 0)
+        FillPrefix<T>(List.filled(n + 1, T.zero), rev, if rev: n - 1 else: 0)
 
     /// The sum of the first `k` values; zero for `k == 0`.
     ///
@@ -591,8 +591,8 @@ pub struct Diff<D, T: Add + Sub>:
             out[i] = cur
         out
 
-/// Internal 2-D shape of `Diff<R, C, T>`: \(O(1)\) rectangle `add`, \(O(\lvert R \rvert \cdot \lvert C \rvert)\) `finish`.
-pub struct _Diff2 <R, C, T: Add + Sub>:
+/// The 2-D difference array `Diff<R, C, T>`: \(O(1)\) rectangle `add`, \(O(\lvert R \rvert \cdot \lvert C \rvert)\) `finish`.
+pub struct Diff<R, C, T: Add + Sub>:
     d: [R.cuts, C.cuts]T
 
     /// Create an all-zero 2-D difference array over `(R, C)`.
@@ -602,7 +602,7 @@ pub struct _Diff2 <R, C, T: Add + Sub>:
     /// example: `domain R = 0..2; domain C = 0..2; Diff<R, C, Int>().finish()[R(1), C(1)] == 0`
     pub fn new() -> Diff<R, C, T>:
         let d: [R.cuts, C.cuts]T = T.zero
-        _Diff2(d)
+        Diff<R, C, T>(d)
 
     /// Add `x` to every cell in `rows` by `cols`; an empty side changes nothing.
     ///

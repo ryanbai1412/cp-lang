@@ -395,7 +395,8 @@ impl<'a> Checker<'a> {
                 return resolved;
             }
         }
-        let lookup_name = prefix_shape_struct(name, args.len()).unwrap_or(name);
+        let keyed = self.arity_name(name, args.len());
+        let lookup_name = keyed.as_str();
         if self.defining_aliases.iter().any(|a| a == lookup_name) {
             if let Some(def) = self.env.outer_global(lookup_name) {
                 return self.def_type(&def, lookup_name, span, args);

@@ -70,7 +70,6 @@ use cpl_check::Analysis;
 use cpl_diag::{codes, Diagnostic, Span};
 use cpl_syntax::{ast, narrow};
 use mono::*;
-use prefix::prefix_shape_struct;
 use range::*;
 use std::collections::{BTreeMap, HashMap, HashSet};
 

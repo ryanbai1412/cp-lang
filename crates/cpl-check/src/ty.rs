@@ -990,13 +990,7 @@ impl fmt::Display for Ty {
                 write!(f, "..{base} without ({}))", removed.join(", "))
             }
             Ty::Named { name, args } => {
-                let shown = match name.as_str() {
-                    "_Prefix2" | "_PrefixList" => "Prefix",
-                    "_FillPrefix2" | "_FillPrefixList" => "FillPrefix",
-                    "_Diff2" => "Diff",
-                    other => other,
-                };
-                f.write_str(shown)?;
+                f.write_str(crate::prelude::written_name(name))?;
                 if !args.is_empty() {
                     f.write_str("<")?;
                     list(f, args)?;

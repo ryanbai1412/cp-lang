@@ -310,9 +310,7 @@ impl<'a> Lowerer<'a> {
             },
             "I128" => Ty::I128,
             "U64" => Ty::U64,
-            _ => match self
-                .get_sym(prefix_shape_struct(&name.text, args.len()).unwrap_or(&name.text))
-            {
+            _ => match self.get_sym(&self.arity_name(&name.text, args.len())) {
                 Some(Sym::Struct(id)) if values => return self.struct_spec(id),
                 Some(Sym::Struct(id)) => Ty::Struct(id),
                 Some(Sym::GenStruct(gid)) => {

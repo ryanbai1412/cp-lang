@@ -58,6 +58,17 @@ pub fn method_key(name: &str, module: &str) -> String {
     format!("{name} of {module}")
 }
 
+/// The key of a struct that shares its name with another of a different
+/// arity, after the file's first (R02.11.4): `Prefix'3` for `Prefix<R, C, T>`.
+pub fn arity_key(name: &str, arity: usize) -> String {
+    format!("{name}'{arity}")
+}
+
+/// The name a type is written with: `Prefix` for the key `Prefix'3`.
+pub fn written_name(key: &str) -> &str {
+    key.split('\'').next().unwrap_or(key)
+}
+
 /// The key of the `k`th `fn name(self: ..)` of one module, after the
 /// first (R08.1.4): `bsearch of #2`.
 pub fn overload_key(name: &str, k: usize) -> String {
@@ -470,22 +481,11 @@ pub const BUILT_ON: &[(&str, &str)] = &[
 /// spending prelude slots or exposing internal names to users.
 pub const INTERNAL_BUILT_ON: &[(&str, &str, &str)] = &[
     ("gen", "strings", "_gen_str"),
-    ("prefix", "prefix", "_Prefix2"),
-    ("prefix", "prefix", "_PrefixList"),
     ("prefix", "prefix", "FillPrefix"),
-    ("prefix", "prefix", "_FillPrefix2"),
-    ("prefix", "prefix", "_FillPrefixList"),
     ("prefix", "prefix", "FillOrder"),
-    ("Prefix", "prefix", "_Prefix2"),
-    ("Prefix", "prefix", "_PrefixList"),
     ("Prefix", "prefix", "FillPrefix"),
-    ("Prefix", "prefix", "_FillPrefix2"),
-    ("Prefix", "prefix", "_FillPrefixList"),
     ("Prefix", "prefix", "FillOrder"),
-    ("FillPrefix", "prefix", "_FillPrefix2"),
-    ("FillPrefix", "prefix", "_FillPrefixList"),
     ("FillPrefix", "prefix", "FillOrder"),
-    ("Diff", "prefix", "_Diff2"),
 ];
 
 fn int_fn(arity: usize) -> Ty {

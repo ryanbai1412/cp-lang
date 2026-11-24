@@ -2,18 +2,17 @@
 
 use super::*;
 
-pub(crate) fn prefix_shape_struct(name: &str, arity: usize) -> Option<&'static str> {
-    match (name, arity) {
-        ("Prefix", 1) => Some("_PrefixList"),
-        ("Prefix", 3) => Some("_Prefix2"),
-        ("FillPrefix", 1) => Some("_FillPrefixList"),
-        ("FillPrefix", 3) => Some("_FillPrefix2"),
-        ("Diff", 3) => Some("_Diff2"),
-        _ => None,
-    }
-}
-
 impl<'a> Lowerer<'a> {
+    /// The key of the struct `name` with `arity` type arguments, when it shares
+    /// its name with one of another arity (R02.11.4), else `name`.
+    pub(super) fn arity_name(&self, name: &str, arity: usize) -> String {
+        let key = cpl_check::arity_key(name, arity);
+        match self.get_sym(&key) {
+            Some(_) => key,
+            None => name.to_string(),
+        }
+    }
+
     /// `prefix(a)` dispatches on the shape of `a`: `List<T>` / `[0..n]T`,
     /// `[D]T`, or `[R, C]T`, constructing the matching `Prefix` shape from
     /// `std.prefix`.
@@ -58,7 +57,7 @@ impl<'a> Lowerer<'a> {
             _ => false,
         };
         if counted && adds {
-            let Some(Sym::GenStruct(gid)) = self.get_sym("_PrefixList") else {
+            let Some(Sym::GenStruct(gid)) = self.get_sym(&cpl_check::arity_key("Prefix", 1)) else {
                 self.unsupported(span, "`prefix` without `std.prefix.Prefix` in scope");
                 return self.err_expr(span);
             };
@@ -93,11 +92,11 @@ impl<'a> Lowerer<'a> {
             return self.err_expr(span);
         };
         let struct_name = if doms.len() == 1 {
-            "Prefix"
+            "Prefix".to_string()
         } else {
-            "_Prefix2"
+            cpl_check::arity_key("Prefix", 3)
         };
-        let Some(Sym::GenStruct(gid)) = self.get_sym(struct_name) else {
+        let Some(Sym::GenStruct(gid)) = self.get_sym(&struct_name) else {
             self.unsupported(span, "`prefix` without `std.prefix.Prefix` in scope");
             return self.err_expr(span);
         };

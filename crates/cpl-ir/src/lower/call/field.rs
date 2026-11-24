@@ -70,8 +70,8 @@ impl<'a> Lowerer<'a> {
         } = &base.kind
         {
             if let ast::ExprKind::Name(gname) = &gbase.kind {
-                let lookup = prefix_shape_struct(gname, gtypes.len()).unwrap_or(gname);
-                if let Some(Sym::GenStruct(gid)) = self.get_sym(lookup) {
+                let lookup = self.arity_name(gname, gtypes.len());
+                if let Some(Sym::GenStruct(gid)) = self.get_sym(&lookup) {
                     let gargs = self.resolve_gen_args_for_struct(gid, gtypes);
                     let sid = self.instantiate_struct(gid, gargs);
                     if let Some(sc) = self.structs[sid].consts.get(&name.text).cloned() {

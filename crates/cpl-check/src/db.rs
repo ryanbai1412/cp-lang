@@ -486,6 +486,7 @@ impl Database {
             };
             items.push(item);
         }
+        let items = arity::key_overloads(items);
 
         // The file's scope: the first declaration of a name wins, and later
         // ones are reported below.
@@ -1373,6 +1374,16 @@ impl Database {
                         },
                     );
                     scoping::add_overloads(scope, index, &name.text);
+                    for arity in 0..=8 {
+                        let key = crate::prelude::arity_key(&name.text, arity);
+                        if decl_of(&key).is_some_and(|d| d.public) {
+                            let import = Import {
+                                module: index,
+                                name: key.clone(),
+                            };
+                            scope.imports.insert(key, import);
+                        }
+                    }
                 }
                 Some(_) => diags.push(
                     Diagnostic::error(
@@ -1858,6 +1869,7 @@ fn declare_with_var(
 mod cycles;
 mod top_level;
 use top_level::{padded_array, rewalk_kind, view_rereads, wide_array};
+mod arity;
 mod env;
 mod fields;
 mod rebind;

@@ -1808,17 +1808,6 @@ pub(crate) fn renamed_prefix_name(name: &str) -> Option<&'static str> {
     }
 }
 
-pub(crate) fn prefix_shape_struct(name: &str, arity: usize) -> Option<&'static str> {
-    match (name, arity) {
-        ("Prefix", 1) => Some("_PrefixList"),
-        ("Prefix", 3) => Some("_Prefix2"),
-        ("FillPrefix", 1) => Some("_FillPrefixList"),
-        ("FillPrefix", 3) => Some("_FillPrefix2"),
-        ("Diff", 3) => Some("_Diff2"),
-        _ => None,
-    }
-}
-
 /// A body still ending in `todo` is unwritten.
 pub(crate) fn unwritten(f: &cpl_syntax::ast::FnDecl) -> bool {
     let is_todo = |e: &cpl_syntax::ast::Expr| matches!(&e.kind, cpl_syntax::ast::ExprKind::Name(n) if n == "todo");
