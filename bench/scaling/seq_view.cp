@@ -1,4 +1,5 @@
 // n: 4096
+use std.seq.{filter, map, items, contains}
 let n: Int = read()
 let ys = [i for i in 0..n]
 var s = 0
@@ -15,6 +16,9 @@ for r in 0..262144:
     s += rv.take_last(5).len // timed: seq.Rev.take_last
     s += rv.drop_last(5).len // timed: seq.Rev.drop_last
     s += rv.src.len // timed: seq.Rev.src
+    s += filter(ys, x => x > k).src.len // timed: seq.Filtered.src
+    s += map(ys, x => x + k).src.len // timed: seq.Mapped.src
+    s += items(ys).src.len // timed: seq.Items.src
     let st = ys.step(3)
     s += st.len // timed: seq.Stepped.len
     s += st.nth(k / 3) // timed: seq.Stepped.nth
@@ -28,4 +32,7 @@ for r in 0..1024:
 for r in 0..1024:
     s += ys.take(n - 1).items.count(p => p.1 >= 0) // timed: seq.Slice.items
     s += ys.step(1).each().count(x => x >= 0) // timed: seq.Stepped.each
+    s += (0..n).reversed().len // timed: seq.reversed
+for r in 0..3072:
+    s += Int(contains(ys, -1)) // timed: seq.contains
 print(s)
