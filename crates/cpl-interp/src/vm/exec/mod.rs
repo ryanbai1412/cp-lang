@@ -167,20 +167,37 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         let mut escaped: Option<(bool, Option<LoopId>)> = None;
 
         loop {
+            // Bounds checks here cost the loop bench about a fifth; the
+            // compiler keeps every pc, register and constant in range, and
+            // debug builds (every test) check it.
+            debug_assert!(pc < ops.len(), "pc {pc} past the chunk's {} ops", ops.len());
+            // SAFETY: in range, as asserted above.
             let op = unsafe { *ops.get_unchecked(pc) };
             let cur_pc = pc;
             pc += 1;
             match op {
-                Op::ConstImmI { dst, val } => unsafe {
-                    *regs_i.get_unchecked_mut(dst as usize) = i64::from(val);
-                },
-                Op::ConstI { dst, idx } => unsafe {
-                    *regs_i.get_unchecked_mut(dst as usize) =
-                        *chunk.consts_i.get_unchecked(idx as usize);
-                },
-                Op::MoveI { dst, src } => unsafe {
-                    *regs_i.get_unchecked_mut(dst as usize) = *regs_i.get_unchecked(src as usize);
-                },
+                Op::ConstImmI { dst, val } => {
+                    debug_assert!((dst as usize) < regs_i.len());
+                    // SAFETY: in range, as asserted above.
+                    unsafe { *regs_i.get_unchecked_mut(dst as usize) = i64::from(val) }
+                }
+                Op::ConstI { dst, idx } => {
+                    debug_assert!((dst as usize) < regs_i.len());
+                    debug_assert!((idx as usize) < chunk.consts_i.len());
+                    // SAFETY: in range, as asserted above.
+                    unsafe {
+                        *regs_i.get_unchecked_mut(dst as usize) =
+                            *chunk.consts_i.get_unchecked(idx as usize);
+                    }
+                }
+                Op::MoveI { dst, src } => {
+                    debug_assert!((dst as usize) < regs_i.len() && (src as usize) < regs_i.len());
+                    // SAFETY: in range, as asserted above.
+                    unsafe {
+                        *regs_i.get_unchecked_mut(dst as usize) =
+                            *regs_i.get_unchecked(src as usize);
+                    }
+                }
                 Op::MoveV { dst, src } => {
                     let v = if src as usize >= chunk.num_local_v {
                         std::mem::replace(&mut regs_v[src as usize], Value::Unit)
