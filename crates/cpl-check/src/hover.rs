@@ -419,7 +419,13 @@ impl Database {
             let picked = picked.map(|(_, r)| r.clone());
             return picked.and_then(|r| self.picked_method(path, &analysis, &r));
         }
-        if let Some(decl) = entry.decl {
+        // A generic named in a signature is the one its fn declares.
+        let decl = entry.decl.or_else(|| {
+            (entry.keyword == "generic")
+                .then(|| generic_decl(&item.syntax.parsed.stmts, entry.span, &entry.name))
+                .flatten()
+        });
+        if let Some(decl) = decl {
             return Some(Definition {
                 path: path.to_string(),
                 span: decl.shift(item.offset),
@@ -662,6 +668,40 @@ fn member_span(analysis: &Analysis, owner: &str, member: &str) -> Option<Span> {
         return Some(span);
     }
     top_level_fn_span(analysis, member)
+}
+
+/// Where the innermost fn around `at` declares its generic `name`.
+fn generic_decl(stmts: &[ast::Stmt], at: Span, name: &str) -> Option<Span> {
+    struct Find<'n> {
+        at: Span,
+        name: &'n str,
+        best: Option<(u32, Span)>,
+    }
+    impl cpl_syntax::visit::Visitor for Find<'_> {
+        fn stmt(&mut self, stmt: &ast::Stmt) {
+            let StmtKind::Fn(f) = &stmt.kind else {
+                return;
+            };
+            if stmt.span.start > self.at.start || self.at.end > stmt.span.end {
+                return;
+            }
+            let width = stmt.span.end - stmt.span.start;
+            if let Some(g) = f.generics.iter().find(|g| g.text == self.name) {
+                if self.best.is_none_or(|(w, _)| width < w) {
+                    self.best = Some((width, g.span));
+                }
+            }
+        }
+    }
+    let mut find = Find {
+        at,
+        name,
+        best: None,
+    };
+    for stmt in stmts {
+        cpl_syntax::visit::walk_stmt(stmt, &mut find);
+    }
+    find.best.map(|(_, span)| span)
 }
 
 /// Where a top-level fn `name`, callable in member form, is declared. A

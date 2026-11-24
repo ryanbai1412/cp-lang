@@ -261,3 +261,11 @@ fn rename_reaches_an_index_into_a_struct_read_through_at() {
     let src = "domain V = 1..=3\nlet g = Graph.undirected([(u: V.first!, v: V.last!)])\nprint(V.find(v| => g[v].len > 1))\n";
     assert_eq!(renamed_texts(src, "w"), ["w", "w"]);
 }
+
+/// A fn's generic, renamed at a use in its signature, renames with its
+/// declaration.
+#[test]
+fn rename_reaches_a_generic_from_its_uses() {
+    let src = "fn same<T>(a: T, b: T) -> Bool = a == b\nfn closes_to<R>(over: R|, want: R) -> Bool = over == want\nprint(closes_to(1, 2), same(1, 1))\n";
+    assert_eq!(renamed_texts(src, "S"), ["S", "S", "S"]);
+}
