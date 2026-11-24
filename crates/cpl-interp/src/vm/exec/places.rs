@@ -1031,7 +1031,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             for k in 0..len as usize {
                                 fs.push(kinds[k].box_val(regs_i[base as usize + k]));
                             }
-                            caps.push(CaptureVal::Val(Value::Tuple(TupleVal::Boxed(Rc::new(fs)))));
+                            caps.push(CaptureVal::Val(Value::Tuple(TupleVal::Boxed(
+                                crate::value::Shared::new(fs),
+                            ))));
                         }
                         CapSrc::LocalV(r) => {
                             caps.push(CaptureVal::Val(regs_v[r as usize].clone()));

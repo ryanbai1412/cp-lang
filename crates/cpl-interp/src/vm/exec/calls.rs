@@ -150,14 +150,15 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let v = std::mem::replace(&mut regs_v[b], Value::Unit);
                     regs_v[dst as usize] = match v {
                         Value::Int(x) => Value::Tuple(TupleVal::OneInt(x)),
-                        other => Value::Tuple(TupleVal::Boxed(Rc::new(vec![other]))),
+                        other => {
+                            Value::Tuple(TupleVal::Boxed(crate::value::Shared::new(vec![other])))
+                        }
                     };
                 } else {
-                    let mut fs = Vec::with_capacity(n);
-                    for k in 0..n {
-                        fs.push(std::mem::replace(&mut regs_v[b + k], Value::Unit));
-                    }
-                    regs_v[dst as usize] = Value::Tuple(TupleVal::Boxed(Rc::new(fs)));
+                    let fs = crate::value::Shared::collect(n, |k| {
+                        std::mem::replace(&mut regs_v[b + k], Value::Unit)
+                    });
+                    regs_v[dst as usize] = Value::Tuple(TupleVal::Boxed(fs));
                 }
             }
             Op::MakeList { dst, base_v, len } => {
@@ -251,8 +252,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         format!("slice {lo}..{hi} is outside a list of length {len}"),
                     );
                 }
-                regs_v[dst as usize] =
-                    Value::ListView(Rc::new(view.slice(lo as usize, hi as usize)));
+                regs_v[dst as usize] = Value::ListView(crate::value::Shared::new(
+                    view.slice(lo as usize, hi as usize),
+                ));
             }
             Op::StrSlice {
                 dst,

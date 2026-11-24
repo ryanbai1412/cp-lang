@@ -617,18 +617,23 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 Value::List(Rc::new(crate::value::Cells::from(out)))
             }
             Builtin::Reversed => match first {
-                Value::List(items) => Value::ListView(Rc::new(ListViewVal::whole(items, true))),
-                Value::ListView(view) => Value::ListView(Rc::new(view.reversed())),
-                Value::MutView(mv) => Value::ListView(Rc::new(ListViewVal::whole(
-                    Rc::new(crate::value::Cells::from(self.mut_view_to_vec(&mv, span)?)),
-                    true,
-                ))),
+                Value::List(items) => {
+                    Value::ListView(crate::value::Shared::new(ListViewVal::whole(items, true)))
+                }
+                Value::ListView(view) => {
+                    Value::ListView(crate::value::Shared::new(view.reversed()))
+                }
+                Value::MutView(mv) => {
+                    Value::ListView(crate::value::Shared::new(ListViewVal::whole(
+                        Rc::new(crate::value::Cells::from(self.mut_view_to_vec(&mv, span)?)),
+                        true,
+                    )))
+                }
                 Value::Str(bytes) => Value::StrView(Rc::new(StrViewVal::whole(bytes, true))),
                 Value::StrView(view) => Value::StrView(Rc::new(view.reversed())),
-                Value::Array(arr) => Value::ListView(Rc::new(ListViewVal::whole(
-                    Rc::new(crate::value::Cells::from(arr.to_values())),
-                    true,
-                ))),
+                Value::Array(arr) => Value::ListView(crate::value::Shared::new(
+                    ListViewVal::whole(Rc::new(crate::value::Cells::from(arr.to_values())), true),
+                )),
                 other => other,
             },
             Builtin::StrSlice => {
@@ -742,7 +747,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let cells: Vec<Value> = (0..len)
                     .map(|k| a.get_unchecked_val(cell(k) as usize))
                     .collect();
-                Value::ListView(Rc::new(ListViewVal::whole(
+                Value::ListView(crate::value::Shared::new(ListViewVal::whole(
                     Rc::new(crate::value::Cells::from(cells)),
                     false,
                 )))
@@ -768,17 +773,17 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     );
                 }
                 view.shift = lo - view.lo as i64;
-                Value::ListView(Rc::new(view))
+                Value::ListView(crate::value::Shared::new(view))
             }
             Builtin::KeySlice => {
                 let lo = values.next().unwrap_or_default().int();
                 let hi = values.next().unwrap_or_default().int();
                 let first = match first {
                     Value::List(items) => {
-                        Value::ListView(Rc::new(ListViewVal::whole(items, false)))
+                        Value::ListView(crate::value::Shared::new(ListViewVal::whole(items, false)))
                     }
                     Value::Array(a) if a.dims.len() == 1 => {
-                        Value::ListView(Rc::new(ListViewVal::whole(
+                        Value::ListView(crate::value::Shared::new(ListViewVal::whole(
                             Rc::new(crate::value::Cells::from(a.to_values())),
                             false,
                         )))
@@ -788,7 +793,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         let mut view =
                             ListViewVal::whole(Rc::new(crate::value::Cells::from(items)), false);
                         view.shift = mv.key0;
-                        Value::ListView(Rc::new(view))
+                        Value::ListView(crate::value::Shared::new(view))
                     }
                     other => other,
                 };
@@ -808,7 +813,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 }
                 let rel = (lo - first_key) as usize..(hi - first_key) as usize;
                 match first {
-                    Value::ListView(v) => Value::ListView(Rc::new(v.slice_storage(rel))),
+                    Value::ListView(v) => {
+                        Value::ListView(crate::value::Shared::new(v.slice_storage(rel)))
+                    }
                     Value::StrView(v) => Value::StrView(Rc::new(v.slice_storage(rel))),
                     _ => unreachable!(),
                 }
@@ -839,7 +846,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         format!("slice {lo}..{hi} is outside a list of length {len}"),
                     );
                 }
-                Value::ListView(Rc::new(view.slice(lo as usize, hi as usize)))
+                Value::ListView(crate::value::Shared::new(
+                    view.slice(lo as usize, hi as usize),
+                ))
             }
             Builtin::ToStr => match first {
                 Value::Str(bytes) => Value::Str(Rc::new((*bytes).clone())),

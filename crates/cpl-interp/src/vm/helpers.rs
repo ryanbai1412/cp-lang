@@ -65,10 +65,10 @@ pub(crate) fn read_slot(loc: &SlotLoc, regs_i: &[i64], regs_v: &[Value]) -> Valu
             len,
             kinds,
         } => {
-            let fs = (0..len as usize)
-                .map(|k| kinds[k].box_val(regs_i[b as usize + k]))
-                .collect();
-            Value::Tuple(TupleVal::Boxed(Rc::new(fs)))
+            let fs = crate::value::Shared::collect(len as usize, |k| {
+                kinds[k].box_val(regs_i[b as usize + k])
+            });
+            Value::Tuple(TupleVal::Boxed(fs))
         }
     }
 }
@@ -813,7 +813,7 @@ pub(super) fn walk_place_mut<'a>(
             },
             PlaceStep::Field(f) => match cur {
                 Value::Tuple(TupleVal::Boxed(fs)) => {
-                    cur = &mut Rc::make_mut(fs)[f as usize];
+                    cur = &mut crate::value::Shared::make_mut(fs)[f as usize];
                 }
                 _ => return trap(span, "internal: expected tuple"),
             },
@@ -870,7 +870,7 @@ pub(super) fn store_place_leaf_scalar(
         }
         PlaceStep::Field(f) => match container {
             Value::Tuple(TupleVal::Boxed(fs)) => {
-                Rc::make_mut(fs)[f as usize] = kind.box_val(raw);
+                crate::value::Shared::make_mut(fs)[f as usize] = kind.box_val(raw);
                 Ok(())
             }
             Value::Tuple(TupleVal::OneInt(x)) if f == 0 => {
@@ -940,7 +940,7 @@ pub(super) fn store_place_leaf_opt_scalar(
         }
         PlaceStep::Field(f) => match container {
             Value::Tuple(TupleVal::Boxed(fs)) => {
-                Rc::make_mut(fs)[f as usize] = kind.box_opt(raw, some);
+                crate::value::Shared::make_mut(fs)[f as usize] = kind.box_opt(raw, some);
                 Ok(())
             }
             _ => trap(span, "internal: expected tuple"),
@@ -1000,7 +1000,7 @@ pub(super) fn store_place_leaf_val(
         }
         PlaceStep::Field(f) => match container {
             Value::Tuple(TupleVal::Boxed(fs)) => {
-                Rc::make_mut(fs)[f as usize] = val;
+                crate::value::Shared::make_mut(fs)[f as usize] = val;
                 Ok(())
             }
             _ => trap(span, "internal: expected tuple"),
@@ -1173,7 +1173,7 @@ pub(super) fn assign_place_leaf_scalar(
         }
         PlaceStep::Field(f) => match container {
             Value::Tuple(TupleVal::Boxed(fs)) => {
-                let slice = Rc::make_mut(fs);
+                let slice = crate::value::Shared::make_mut(fs);
                 let cur = ScalarKind::unbox_val(&slice[f as usize]);
                 let next = apply_scalar_assign_op(cur, rhs, op, kind, span)?;
                 slice[f as usize] = kind.box_val(next);

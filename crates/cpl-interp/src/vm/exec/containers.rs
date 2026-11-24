@@ -144,7 +144,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         };
                         if better {
                             if let Value::Tuple(TupleVal::Boxed(fs)) = &mut vs[idx as usize] {
-                                let fs = Rc::make_mut(fs);
+                                let fs = crate::value::Shared::make_mut(fs);
                                 for k in 0..n {
                                     fs[k] = Value::Int(cand[k]);
                                 }
@@ -196,7 +196,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         };
                         if better {
                             if let Value::Tuple(TupleVal::Boxed(fs)) = &mut vs[idx as usize] {
-                                let fs = Rc::make_mut(fs);
+                                let fs = crate::value::Shared::make_mut(fs);
                                 for k in 0..n {
                                     fs[k] = Value::Int(cand[k]);
                                 }
@@ -450,7 +450,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let val = kind.box_val(regs_i[src_i as usize]);
                 match &mut regs_v[obj_v as usize] {
                     Value::Tuple(TupleVal::Boxed(fs)) => {
-                        Rc::make_mut(fs)[field as usize] = val;
+                        crate::value::Shared::make_mut(fs)[field as usize] = val;
                     }
                     Value::Tuple(TupleVal::OneInt(v)) if field == 0 => {
                         *v = regs_i[src_i as usize];
@@ -470,7 +470,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 };
                 match &mut regs_v[obj_v as usize] {
                     Value::Tuple(TupleVal::Boxed(fs)) => {
-                        Rc::make_mut(fs)[field as usize] = val;
+                        crate::value::Shared::make_mut(fs)[field as usize] = val;
                     }
                     _ => return trap(spans[cur_pc], "internal: expected tuple/struct"),
                 }
@@ -485,7 +485,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let boxed = kind.box_opt(regs_i[val as usize], regs_i[some as usize]);
                 match &mut regs_v[obj_v as usize] {
                     Value::Tuple(TupleVal::Boxed(fs)) => {
-                        Rc::make_mut(fs)[field as usize] = boxed;
+                        crate::value::Shared::make_mut(fs)[field as usize] = boxed;
                     }
                     _ => return trap(spans[cur_pc], "internal: expected tuple/struct"),
                 }
@@ -500,7 +500,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let idx = regs_i[r_i as usize];
                 let val = regs_i[r_val as usize];
                 if let Value::Tuple(TupleVal::Boxed(fs)) = &mut regs_v[obj_v as usize] {
-                    match &mut Rc::make_mut(fs)[field as usize] {
+                    match &mut crate::value::Shared::make_mut(fs)[field as usize] {
                         Value::Array(arr) => {
                             let len = arr.dims[0];
                             if idx < 0 || idx >= len {
@@ -540,7 +540,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     regs_v[r_val as usize].clone()
                 };
                 if let Value::Tuple(TupleVal::Boxed(fs)) = &mut regs_v[obj_v as usize] {
-                    match &mut Rc::make_mut(fs)[field as usize] {
+                    match &mut crate::value::Shared::make_mut(fs)[field as usize] {
                         Value::Array(arr) => {
                             let len = arr.dims[0];
                             if idx < 0 || idx >= len {
@@ -579,7 +579,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let v = regs_i[val as usize];
                 let s = regs_i[some as usize];
                 if let Value::Tuple(TupleVal::Boxed(fs)) = &mut regs_v[obj_v as usize] {
-                    match &mut Rc::make_mut(fs)[field as usize] {
+                    match &mut crate::value::Shared::make_mut(fs)[field as usize] {
                         Value::Array(arr) => {
                             let len = arr.dims[0];
                             if idx < 0 || idx >= len {
@@ -614,7 +614,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             } => {
                 let raw = regs_i[val_i as usize];
                 if let Value::Tuple(TupleVal::Boxed(fs)) = &mut regs_v[obj_v as usize] {
-                    match &mut Rc::make_mut(fs)[field as usize] {
+                    match &mut crate::value::Shared::make_mut(fs)[field as usize] {
                         Value::List(items) => Rc::make_mut(items).push(kind.box_val(raw)),
                         Value::Str(bytes) => Rc::make_mut(bytes).push(raw as u8),
                         _ => return trap(spans[cur_pc], "internal: expected list or string"),
@@ -634,7 +634,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     regs_v[val_v as usize].clone()
                 };
                 if let Value::Tuple(TupleVal::Boxed(fs)) = &mut regs_v[obj_v as usize] {
-                    match &mut Rc::make_mut(fs)[field as usize] {
+                    match &mut crate::value::Shared::make_mut(fs)[field as usize] {
                         Value::List(items) => Rc::make_mut(items).push(item),
                         Value::Str(bytes) => {
                             if let Value::Char(c) = item {
@@ -649,7 +649,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             }
             Op::ListPopDiscardFieldL { obj_v, field } => {
                 if let Value::Tuple(TupleVal::Boxed(fs)) = &mut regs_v[obj_v as usize] {
-                    match &mut Rc::make_mut(fs)[field as usize] {
+                    match &mut crate::value::Shared::make_mut(fs)[field as usize] {
                         Value::List(items) => {
                             Rc::make_mut(items).pop();
                         }
@@ -794,7 +794,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 field,
             } => {
                 if let Value::Tuple(TupleVal::Boxed(fs)) = &mut regs_v[obj_v as usize] {
-                    if let Value::List(items) = &mut Rc::make_mut(fs)[field as usize] {
+                    if let Value::List(items) =
+                        &mut crate::value::Shared::make_mut(fs)[field as usize]
+                    {
                         match Rc::make_mut(items).pop() {
                             Some(v) => {
                                 regs_i[dst_val as usize] = ScalarKind::unbox_val(&v);
@@ -818,7 +820,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 field,
             } => {
                 if let Value::Tuple(TupleVal::Boxed(fs)) = &mut regs_v[obj_v as usize] {
-                    if let Value::List(items) = &mut Rc::make_mut(fs)[field as usize] {
+                    if let Value::List(items) =
+                        &mut crate::value::Shared::make_mut(fs)[field as usize]
+                    {
                         regs_v[dst_v as usize] =
                             Value::Opt(OptVal::from_option(Rc::make_mut(items).pop()));
                     } else {
@@ -941,7 +945,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             }
                             Cells::Values(vs) => match &mut vs[idx as usize] {
                                 Value::Tuple(TupleVal::Boxed(fs)) => {
-                                    Rc::make_mut(fs)[field as usize] = kind.box_val(raw);
+                                    crate::value::Shared::make_mut(fs)[field as usize] =
+                                        kind.box_val(raw);
                                 }
                                 Value::Tuple(TupleVal::OneInt(x)) => *x = raw,
                                 _ => return trap(spans[cur_pc], "internal: expected tuple"),
@@ -959,7 +964,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         match &mut Rc::make_mut(list).as_mut_values()[idx as usize] {
                             Value::Tuple(TupleVal::Boxed(fs)) => {
-                                Rc::make_mut(fs)[field as usize] = kind.box_val(raw);
+                                crate::value::Shared::make_mut(fs)[field as usize] =
+                                    kind.box_val(raw);
                             }
                             Value::Tuple(TupleVal::OneInt(x)) => *x = raw,
                             _ => return trap(spans[cur_pc], "internal: expected tuple"),
@@ -1047,7 +1053,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             }
                             Cells::Values(vs) => match &mut vs[idx as usize] {
                                 Value::Tuple(TupleVal::Boxed(fs)) => {
-                                    Rc::make_mut(fs)[field as usize] = kind.box_val(raw);
+                                    crate::value::Shared::make_mut(fs)[field as usize] =
+                                        kind.box_val(raw);
                                 }
                                 Value::Tuple(TupleVal::OneInt(x)) => *x = raw,
                                 _ => return trap(spans[cur_pc], "internal: expected tuple"),
@@ -1065,7 +1072,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         match &mut Rc::make_mut(list).as_mut_values()[idx as usize] {
                             Value::Tuple(TupleVal::Boxed(fs)) => {
-                                Rc::make_mut(fs)[field as usize] = kind.box_val(raw);
+                                crate::value::Shared::make_mut(fs)[field as usize] =
+                                    kind.box_val(raw);
                             }
                             Value::Tuple(TupleVal::OneInt(x)) => *x = raw,
                             _ => return trap(spans[cur_pc], "internal: expected tuple"),

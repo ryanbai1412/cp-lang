@@ -58,12 +58,8 @@ pub(crate) fn try_unbox_small_tuple(v: &Value) -> Option<(u8, [SmallFieldKind; 4
 
 #[inline]
 pub(crate) fn box_small_tuple(stride: u8, kinds: &[SmallFieldKind; 4], slice: &[i64]) -> Value {
-    let n = stride as usize;
-    let mut fs = Vec::with_capacity(n);
-    for i in 0..n {
-        fs.push(kinds[i].box_val(slice[i]));
-    }
-    Value::Tuple(TupleVal::Boxed(Rc::new(fs)))
+    let fs = crate::value::Shared::collect(stride as usize, |i| kinds[i].box_val(slice[i]));
+    Value::Tuple(TupleVal::Boxed(fs))
 }
 
 /// Typed flat backing storage for array and list cells so primitive ones

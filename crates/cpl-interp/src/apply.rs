@@ -187,7 +187,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     if let Value::Int(x) = v {
                         return Ok(Value::Tuple(TupleVal::OneInt(x)));
                     }
-                    return Ok(Value::Tuple(TupleVal::Boxed(Rc::new(vec![v]))));
+                    return Ok(Value::Tuple(TupleVal::Boxed(crate::value::Shared::new(
+                        vec![v],
+                    ))));
                 }
                 match &e.ty {
                     Ty::List(_) => Value::List(Rc::new(crate::value::Cells::from(values))),

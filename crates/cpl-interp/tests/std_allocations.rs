@@ -159,23 +159,6 @@ print(t)",
     ),
 ];
 
-/// Claims the VM breaks today, with why; the list only shrinks. A fix that
-/// stops one allocating must take it off.
-const ALLOCATING_TODAY: &[(&str, &str)] = &[
-    (
-        "seq.cp windows",
-        "the VM boxes each slice view (`Rc<ListViewVal>`)",
-    ),
-    (
-        "heap.cp MeldHeaps",
-        "the VM boxes each `MeldNode` and `Meld` struct value",
-    ),
-    (
-        "tree.cp Centroids.ancestors",
-        "the VM boxes each yielded named tuple",
-    ),
-];
-
 /// What a doc says when it promises no allocation.
 const CLAIM: &[&str] = &[
     "no allocation",
@@ -283,7 +266,6 @@ fn every_claim_of_no_allocation_has_a_check() {
 fn a_fn_that_claims_no_allocation_allocates_nothing_per_call() {
     const M: usize = 200;
     let mut grew = Vec::new();
-    let mut fixed = Vec::new();
     for (key, source) in CHECKS {
         let prog = program(source);
         allocations(&prog, M);
@@ -291,24 +273,16 @@ fn a_fn_that_claims_no_allocation_allocates_nothing_per_call() {
         let many = allocations(&prog, 4 * M);
         // The run's own setup (its thread, the input, a list sized by `m`)
         // may vary by a handful; a per-call allocation adds 3m.
-        let allocates = many > few + 8;
-        let known = ALLOCATING_TODAY.iter().any(|(k, _)| k == key);
-        if allocates && !known {
+        if many > few + 8 {
             grew.push(format!(
                 "{key}: {few} allocations at m = {M}, {many} at m = {}",
                 4 * M
             ));
-        } else if !allocates && known {
-            fixed.push(*key);
         }
     }
     assert!(
         grew.is_empty(),
         "allocations grew with the calls:\n{}",
         grew.join("\n")
-    );
-    assert!(
-        fixed.is_empty(),
-        "these allocate nothing now; take them off ALLOCATING_TODAY: {fixed:?}"
     );
 }

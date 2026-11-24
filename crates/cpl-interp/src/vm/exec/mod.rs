@@ -719,7 +719,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     for k in 0..n {
                         fs.push(kinds[k].box_val(regs_i[b + k]));
                     }
-                    regs_v[dst_v as usize] = Value::Tuple(TupleVal::Boxed(Rc::new(fs)));
+                    regs_v[dst_v as usize] =
+                        Value::Tuple(TupleVal::Boxed(crate::value::Shared::new(fs)));
                 }
                 Op::UnboxSmallTuple {
                     dst_base,

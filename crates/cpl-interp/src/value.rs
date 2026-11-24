@@ -10,7 +10,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 mod cells;
+mod recycle;
 pub(crate) use cells::{Cells, SmallFieldKind};
+pub(crate) use recycle::Shared;
 
 #[derive(Clone, Debug)]
 pub(crate) enum CaptureVal {
@@ -109,7 +111,7 @@ impl Eq for OptVal {}
 #[derive(Clone, Debug)]
 pub(crate) enum TupleVal {
     OneInt(i64),
-    Boxed(Rc<Vec<Value>>),
+    Boxed(Shared<Vec<Value>>),
 }
 
 impl TupleVal {
@@ -119,7 +121,7 @@ impl TupleVal {
                 return TupleVal::OneInt(v);
             }
         }
-        TupleVal::Boxed(Rc::new(fields))
+        TupleVal::Boxed(crate::value::Shared::new(fields))
     }
 
     pub fn get(&self, index: usize) -> Option<Value> {
@@ -142,10 +144,10 @@ impl TupleVal {
 
     pub fn as_mut_vec(&mut self) -> &mut Vec<Value> {
         if let TupleVal::OneInt(v) = *self {
-            *self = TupleVal::Boxed(Rc::new(vec![Value::Int(v)]));
+            *self = TupleVal::Boxed(crate::value::Shared::new(vec![Value::Int(v)]));
         }
         match self {
-            TupleVal::Boxed(fields) => Rc::make_mut(fields),
+            TupleVal::Boxed(fields) => crate::value::Shared::make_mut(fields),
             TupleVal::OneInt(_) => unreachable!(),
         }
     }
@@ -249,7 +251,7 @@ pub(crate) enum Value {
     Array(Rc<Array>),
     List(Rc<Cells>),
     /// O(1) read-only view (slice or reverse) into a `List<T>`.
-    ListView(Rc<ListViewVal>),
+    ListView(Shared<ListViewVal>),
     /// O(1) fixed-length mutable slice view into a `List<T>` or 1D `[D]T`.
     MutView(Rc<MutViewVal>),
     Map(Rc<BTreeMap<Value, Value>>),
@@ -686,10 +688,9 @@ pub(crate) fn zero(ty: &Ty, program: &Program) -> Value {
         }
         Ty::Array { dims, .. } => Value::Array(Rc::new(Array::empty(vec![0; dims.len()]))),
         Ty::List(_) => Value::List(Rc::new(crate::value::Cells::from(Vec::new()))),
-        Ty::ListView(_, _) | Ty::Keyed(_, _) => Value::ListView(Rc::new(ListViewVal::whole(
-            Rc::new(crate::value::Cells::from(Vec::new())),
-            false,
-        ))),
+        Ty::ListView(_, _) | Ty::Keyed(_, _) => Value::ListView(crate::value::Shared::new(
+            ListViewVal::whole(Rc::new(crate::value::Cells::from(Vec::new())), false),
+        )),
         Ty::MutView(..) => Value::Unit,
         Ty::Map(..) | Ty::HashMap(..) => Value::Map(Rc::new(BTreeMap::new())),
         Ty::Set(_) | Ty::HashSet(_) => Value::Set(Rc::new(BTreeSet::new())),
