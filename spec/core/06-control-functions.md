@@ -215,7 +215,10 @@ library or by this spec:
   one-expression body writes (`self % d` on `divmod`, whose body is
   `(self / d, self % d)`). On a fn that documents a compiler built-in,
   `builtin: "filled"` lets `to` call that built-in in its place
-  (`[n, m].filled(c)` on a grid fn), since std cannot declare it. A compound `to` runs its right side before the
+  (`[n, m].filled(c)` on a grid fn), since std cannot declare it. A hole
+  `from` evaluates once per item of a comprehension (anywhere in its
+  brackets but its first `for`'s iterable) and `to` does not matches only
+  code that calls nothing. A compound `to` runs its right side before the
   place's indices, so then every hole matches only code that calls
   nothing. A hole whose parameter is written
   as a scalar type (`Int`, `I128`, `U64`, `F64`, `Bool`, `Char`, `Str`)

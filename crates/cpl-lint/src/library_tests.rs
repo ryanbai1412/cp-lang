@@ -503,3 +503,23 @@ fn a_to_run_replaces_a_from_run_at_its_indent() {
         ["var c = Counter<Int>()\n    for v in a:\n        c.bump(v)"]
     );
 }
+
+/// A hole `from` evaluates once per item of a comprehension and `to` once
+/// matches only code that calls nothing: `rand()` per cell is not one value.
+/// Rule: R06.4.9.
+#[test]
+fn a_hole_from_runs_per_item_and_to_runs_once_calls_nothing() {
+    let decl = "@lint(grid_by_hand, from: \"[[c for _ in 0..m] for _ in 0..n]\", to: \"[n, m].filled(c)\", holes: \"c, m, n\", builtin: \"filled\")\npub fn rows(g: List<Int>) -> Int = 0\n";
+    let found = |body: &str| -> Vec<String> {
+        let src = format!("{decl}{body}");
+        crate::lint(&src, &crate::Config::default())
+            .into_iter()
+            .filter(|d| d.code.0 == "grid_by_hand")
+            .map(|d| d.span.text(&src).to_string())
+            .collect()
+    };
+    let hit = "let n = 3\nlet g = [[0 for _ in 0..4] for _ in 0..n + 1]\nprint(g)\n";
+    assert_eq!(found(hit), ["[[0 for _ in 0..4] for _ in 0..n + 1]"]);
+    let calls = "fn r() -> Int = 2\nlet a = [[r() for _ in 0..4] for _ in 0..3]\nlet b = [[0 for _ in 0..r()] for _ in 0..3]\nlet c = [[0 for _ in 0..4] for _ in 0..r()]\nprint(a, b, c)\n";
+    assert_eq!(found(calls), ["[[0 for _ in 0..4] for _ in 0..r()]"]);
+}

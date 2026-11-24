@@ -376,12 +376,23 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
             .is_some_and(|to| library_lint::compound(&to, &d.decl.fn_name));
         // A statement hole `to` drops is the rest of the block, which the fn
         // does itself: with no fix to drop it, it need not be pure.
+        let to_kinds: Vec<(K, String)> = (to.iter())
+            .map(|t| {
+                (
+                    t.kind,
+                    d.decl.to[t.span.start as usize..t.span.end as usize].into(),
+                )
+            })
+            .collect();
         let repeated: Vec<bool> = (d.decl.holes.iter())
             .map(|h| {
                 let at = |i: &usize| d.from[*i].1 == *h && !d.labels[*i];
                 let uses = (0..d.from.len()).filter(at).count();
                 let stmt = (0..d.from.len()).any(|i| at(&i) && d.stmt_holes[i]);
-                compound || uses > 1 || (!in_to(h) && !(stmt && d.lint.no_fix.is_some()))
+                compound
+                    || uses > 1
+                    || (!in_to(h) && !(stmt && d.lint.no_fix.is_some()))
+                    || (per_item(&d.from, h) && !per_item(&to_kinds, h))
             })
             .collect();
         let matcher = |pat, stmt, labels| Matcher {
@@ -717,6 +728,56 @@ fn proven(file: &File, toks: &[Token], text: &[&str], run: (usize, usize), b: &B
 /// An expression a fix may write once where the code wrote it twice: it
 /// calls nothing, so evaluating it twice or once gives the same program
 /// (R06.4.9).
+/// Whether `toks` evaluate `h` once per item of a comprehension: anywhere in
+/// its brackets but the iterable of its first `for` (`c` and `m` in
+/// `[[c for _ in 0..m] for _ in 0..n]`, not `n`).
+fn per_item(toks: &[(K, String)], h: &str) -> bool {
+    let mut open = Vec::new();
+    let mut close = vec![toks.len(); toks.len()];
+    for (i, (k, _)) in toks.iter().enumerate() {
+        match k {
+            K::LParen | K::LBracket | K::LBrace => open.push(i),
+            K::RParen | K::RBracket | K::RBrace => {
+                if let Some(o) = open.pop() {
+                    close[o] = i;
+                }
+            }
+            _ => {}
+        }
+    }
+    let clauses = |o: usize| {
+        let (mut depth, mut seen) = (0, Vec::new());
+        for (i, (k, _)) in toks.iter().enumerate().take(close[o]).skip(o + 1) {
+            match k {
+                K::LParen | K::LBracket | K::LBrace => depth += 1,
+                K::RParen | K::RBracket | K::RBrace => depth -= 1,
+                K::For | K::In | K::If if depth == 0 => seen.push((i, *k)),
+                _ => {}
+            }
+        }
+        seen
+    };
+    (toks.iter().enumerate())
+        .filter(|(_, (k, t))| is_name(*k, t) && t == h)
+        .any(|(i, _)| {
+            (0..i)
+                .filter(|&o| matches!(toks[o].0, K::LParen | K::LBracket | K::LBrace))
+                .filter(|&o| i < close[o])
+                .any(|o| {
+                    let seen = clauses(o);
+                    let Some(f) = seen.iter().position(|c| c.1 == K::For) else {
+                        return false;
+                    };
+                    let Some(at) = seen[f..].iter().position(|c| c.1 == K::In) else {
+                        return true;
+                    };
+                    let from = seen[f + at].0;
+                    let to = seen[f + at + 1..].first().map_or(close[o], |c| c.0);
+                    !(from < i && i < to)
+                })
+        })
+}
+
 fn pure(kinds: &[K]) -> bool {
     !kinds
         .windows(2)
@@ -835,6 +896,27 @@ fn atomic(src: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_hole_is_per_item_inside_a_comprehension_but_its_first_iterable() {
+        let toks = |src: &str| {
+            (cpl_syntax::library_lint::tokens(src).iter())
+                .map(|t| {
+                    (
+                        t.kind,
+                        src[t.span.start as usize..t.span.end as usize].to_string(),
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+        let grid = toks("[[c for _ in 0..m] for _ in 0..n if p]");
+        let each: Vec<bool> = ["c", "m", "n", "p"]
+            .iter()
+            .map(|h| super::per_item(&grid, h))
+            .collect();
+        assert_eq!(each, [true, true, false, true]);
+        assert!(!super::per_item(&toks("[n, m].filled(c)"), "c"));
+    }
+
     #[test]
     fn brackets_balance_only_when_each_closes_one_opened_before_it() {
         assert!(super::balanced("f(x) + a[i]"));
