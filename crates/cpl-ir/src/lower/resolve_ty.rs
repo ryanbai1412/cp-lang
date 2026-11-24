@@ -199,13 +199,17 @@ impl<'a> Lowerer<'a> {
                     GenArg::Op(_) => Ty::Unit,
                 });
             }
-            if let Some(ty) = self.cx.local_type_aliases.get(&name.text).cloned() {
-                return Spec::Plain(ty);
-            }
-            for ocx in self.outer_cxs.iter().rev() {
-                if let Some(ty) = ocx.local_type_aliases.get(&name.text).cloned() {
-                    return Spec::Plain(ty);
-                }
+            let local = self.cx.local_type_aliases.get(&name.text).cloned().or_else(|| {
+                self.outer_cxs
+                    .iter()
+                    .rev()
+                    .find_map(|ocx| ocx.local_type_aliases.get(&name.text).cloned())
+            });
+            // A local `type Z = Mod(p)` reads by its struct's input format, as a top-level one does.
+            match local {
+                Some(Ty::Struct(sid)) if values => return self.struct_spec(sid),
+                Some(ty) => return Spec::Plain(ty),
+                None => {}
             }
         }
         // Check qualified module type `mod_alias.Type` or `D.cuts` or `Rooted.Pre`.
