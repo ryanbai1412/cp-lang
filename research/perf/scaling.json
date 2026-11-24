@@ -1960,6 +1960,190 @@
    "n": 16384,
    "ok": true
   },
+  "bench/scaling/builtin_hash.cp::builtin.HashMap.clear": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.HashMap.clear",
+   "measured": 2.61,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashMap.clone": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.HashMap.clone",
+   "measured": 2.86,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashMap.contains": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.HashMap.contains",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashMap.get": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.HashMap.get",
+   "measured": 1.15,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashMap.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.HashMap.is_empty",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashMap.items": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.HashMap.items",
+   "measured": 3.96,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashMap.keys": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.HashMap.keys",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashMap.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.HashMap.len",
+   "measured": 0.97,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashMap.remove": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.HashMap.remove",
+   "measured": 1.39,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashMap.reserve": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.HashMap.reserve",
+   "measured": 4.24,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashMap.values": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.HashMap.values",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashSet.add": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.HashSet.add",
+   "measured": 1.09,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashSet.clear": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.HashSet.clear",
+   "measured": 2.67,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashSet.clone": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.HashSet.clone",
+   "measured": 2.9,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashSet.contains": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.HashSet.contains",
+   "measured": 1.08,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashSet.insert": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.HashSet.insert",
+   "measured": 1.06,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashSet.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.HashSet.is_empty",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashSet.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.HashSet.len",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashSet.max": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.HashSet.max",
+   "measured": 2.91,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashSet.min": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "builtin.HashSet.min",
+   "measured": 2.98,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashSet.remove": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.HashSet.remove",
+   "measured": 1.24,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashSet.set": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "builtin.HashSet.set",
+   "measured": 1.17,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/builtin_hash.cp::builtin.HashSet.sorted": {
+   "cost": "n \\log n",
+   "documented": 4.57,
+   "fn": "builtin.HashSet.sorted",
+   "measured": 4.57,
+   "n": 16384,
+   "ok": true
+  },
   "bench/scaling/builtin_list.cp::builtin.List.all": {
    "cost": "n",
    "documented": 4.0,
@@ -15544,6 +15728,14 @@
    "n": 16384,
    "ok": true
   },
+  "bench/scaling/slice_to_list.cp::seq.to_list": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.to_list",
+   "measured": 4.27,
+   "n": 16384,
+   "ok": true
+  },
   "bench/scaling/slope.cp::slope.Concave.add_abs": {
    "cost": "\\log n",
    "documented": 1.14,
@@ -18866,33 +19058,6 @@
   }
  },
  "unscaled": [
-  "builtin.HashMap.contains",
-  "builtin.HashMap.first_ge",
-  "builtin.HashMap.first_gt",
-  "builtin.HashMap.get",
-  "builtin.HashMap.keys",
-  "builtin.HashMap.last_le",
-  "builtin.HashMap.last_lt",
-  "builtin.HashMap.pop_first",
-  "builtin.HashMap.pop_last",
-  "builtin.HashMap.range",
-  "builtin.HashMap.remove",
-  "builtin.HashMap.values",
-  "builtin.HashSet.add",
-  "builtin.HashSet.contains",
-  "builtin.HashSet.drain",
-  "builtin.HashSet.first_ge",
-  "builtin.HashSet.first_gt",
-  "builtin.HashSet.insert",
-  "builtin.HashSet.last_le",
-  "builtin.HashSet.last_lt",
-  "builtin.HashSet.max",
-  "builtin.HashSet.min",
-  "builtin.HashSet.pop_first",
-  "builtin.HashSet.pop_last",
-  "builtin.HashSet.range",
-  "builtin.HashSet.remove",
-  "builtin.HashSet.set",
   "strings.Palindromes.items"
  ]
 }
