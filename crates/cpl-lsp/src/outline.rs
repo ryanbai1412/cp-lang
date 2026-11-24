@@ -130,7 +130,8 @@ impl Outline {
                                 ));
                             }
                         }
-                        outline.entries.extend(reader.entry(stmt, false))
+                        outline.entries.extend(reader.entry(stmt, false));
+                        outline.entries.extend(reader.destructured(stmt));
                     }
                 }
             }
@@ -230,6 +231,43 @@ impl Reader<'_> {
         // The text before a statement's own span ends on its line's indent.
         lines.reverse();
         lines.join("\n").trim().to_string()
+    }
+
+    /// The names a top-level `let (n, k) = ..` binds, each a value.
+    fn destructured(&self, stmt: &Stmt) -> Vec<Entry> {
+        use cpl_syntax::ast::{Pattern, PatternKind};
+        fn names(pat: &Pattern, out: &mut Vec<(String, cpl_diag::Span)>) {
+            match &pat.kind {
+                PatternKind::Name(text) => out.push((text.clone(), pat.span)),
+                PatternKind::Tuple(parts) => parts.iter().for_each(|p| names(p, out)),
+                PatternKind::Record { fields, .. } => {
+                    fields.iter().for_each(|(_, p)| names(p, out))
+                }
+                PatternKind::Var(inner) => names(inner, out),
+                _ => {}
+            }
+        }
+        let StmtKind::Let { pat, .. } = &stmt.kind else {
+            return Vec::new();
+        };
+        if matches!(pat.kind, PatternKind::Name(_)) {
+            return Vec::new();
+        }
+        let mut found = Vec::new();
+        names(pat, &mut found);
+        found
+            .into_iter()
+            .map(|(name, span)| Entry {
+                name,
+                kind: Kind::Value,
+                public: stmt.public,
+                detail: self.header(span),
+                doc: self.doc(stmt),
+                params: Vec::new(),
+                instance: false,
+                members: Vec::new(),
+            })
+            .collect()
     }
 
     fn entry(&self, stmt: &Stmt, in_type: bool) -> Option<Entry> {

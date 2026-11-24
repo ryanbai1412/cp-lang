@@ -240,6 +240,31 @@
   ]
  },
  {
+  "context": "name/destructured",
+  "source": "let (n, k) = (3, 4)\nlet (lo: a, hi: b) = (lo: 1, hi: 2)\nprint(n + $0)",
+  "want": [
+   "n",
+   "k",
+   "a",
+   "b"
+  ]
+ },
+ {
+  "context": "name/variant",
+  "source": "enum Who = A | B | C\nlet w = A\nprint(w == $0)",
+  "want": [
+   "B",
+   "C"
+  ]
+ },
+ {
+  "context": "name/nested-fn",
+  "source": "fn f(n: Int) -> Int:\n    fn d(u: Int) -> Int = u + n\n    d(1) + $0\nprint(f(1))",
+  "want": [
+   "d"
+  ]
+ },
+ {
   "context": "name/param",
   "source": "fn f(count: Int) -> Int:\n    co$0\n",
   "want": [

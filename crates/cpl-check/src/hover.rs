@@ -5,7 +5,7 @@
 //! ```text
 //! dist: [V]?Int
 //!   domain V = 1..=n, n <= 2e5
-//!   storage: 8 bytes per element, 1.6 MB max
+//!   storage: 8 B per element, 1.6 MB max
 //! ```
 
 use crate::builtins::builtin_member;

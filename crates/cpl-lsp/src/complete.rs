@@ -1238,6 +1238,12 @@ fn scope_completion(
     for entry in &own.entries {
         add(entry, 1, &mut items);
     }
+    // A variant is in scope by its bare name: `enum Who = A | B`, then `A`.
+    for entry in own.entries.iter().filter(|e| e.kind == Kind::Enum) {
+        for variant in entry.members.iter().filter(|m| m.kind == Kind::Variant) {
+            add(variant, 1, &mut items);
+        }
+    }
     let mut imports: Vec<(&String, usize)> = analysis
         .imports()
         .iter()
@@ -1382,11 +1388,26 @@ fn locals(cursor: &Cursor) -> Vec<(String, Ty)> {
     let mut out: Vec<(String, Ty)> = Vec::new();
     for entry in &item.check.hovers {
         let declares = entry.decl == Some(entry.span)
-            && matches!(entry.keyword, "let" | "var" | "param" | "for");
+            && matches!(entry.keyword, "let" | "var" | "param" | "for" | "fn");
         if !declares || entry.span.end >= rel || entry.ty.has_vague() {
             continue;
         }
-        let owner = innermost(entry.span.start);
+        // A nested fn's name is inside its own span; its scope is the fn around it.
+        let owner = match entry.keyword {
+            "fn" => {
+                let mut around: Vec<_> = fns
+                    .0
+                    .iter()
+                    .filter(|s| s.start <= entry.span.start && entry.span.start <= s.end)
+                    .collect();
+                around.sort_by_key(|s| s.end - s.start);
+                match around.get(1) {
+                    Some(outer) => Some(**outer),
+                    None => continue,
+                }
+            }
+            _ => innermost(entry.span.start),
+        };
         if owner.is_some_and(|o| here.is_none_or(|h| !(o.start <= h.start && h.end <= o.end))) {
             continue;
         }
