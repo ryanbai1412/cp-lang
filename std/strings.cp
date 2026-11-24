@@ -358,6 +358,7 @@ pub fn parse<T: Read>(self: Str) -> ?T = read<T>(from: self)
 /// order: keyed by the keys of `s`
 /// traps: never
 /// example: `z_function("aabxaab") == [7, 1, 0, 0, 3, 1, 0]`
+@lint(hand_rolled_string_algo, from: "for i in 1..n:\n    if i < r: z[i] = min(r - i, z[i - l])\n    while i + z[i] < n and s[z[i]] == s[i + z[i]]:\n        z[i] += 1\n    if i + z[i] > r:\n        (l, r) = (i, i + z[i])", to: "let z = z_function(s)", holes: "n, z, l, r")
 pub fn z_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int:
     let n = s.len
     var z = List.filled(n, 0)
@@ -383,6 +384,7 @@ pub fn z_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int:
 /// order: keyed by the keys of `s`
 /// traps: never
 /// example: `prefix_function("aabaaab") == [0, 1, 0, 1, 2, 2, 3]`
+@lint(hand_rolled_string_algo, from: "for i in 1..n:\n    var j = pi[i - 1]\n    while j > 0 and s[i] != s[j]: j = pi[j - 1]\n    if s[i] == s[j]: j += 1\n    pi[i] = j", to: "let pi = prefix_function(s)", holes: "n, pi")
 pub fn prefix_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int:
     return failure_lengths(s).rekey(s.keys)
 
@@ -1462,6 +1464,8 @@ pub struct RollingHash:
     /// empty: `var h = RollingHash(""); let n = h.len; h.push('a'); (n, h.all) == (0, RollingHash("a", bases: h.bases).all)`
     /// traps: when a given base is outside `2..M`
     /// example: `let h = RollingHash("abab"); h.get(0..2) == h.get(2..4)`
+    @lint(hand_rolled_string_algo, from: "for i in 0..n:\n    h[i + 1] = (h[i] * b + Int(seq[i])) % m\n    pw[i + 1] = (pw[i] * b) % m", to: "let h = RollingHash.new(seq)", holes: "n, h, pw, b, m")
+    @lint(hand_rolled_string_algo, from: "for c in seq:\n    h = (h * b + w) % m", to: "let h = RollingHash.new(seq)", holes: "h, b, m, w")
     pub fn new<S: Seq>(seq: S, bases: ?(Int, Int) = None) -> RollingHash:
         let bs = bases ?? (rand(1 << 20, 1 << 29), rand(1 << 20, 1 << 29))
         var h = RollingHash(bs, [0], [0], [1], [1])
@@ -2752,6 +2756,7 @@ pub struct Trie<A>:
     /// cost: \(O(\lvert A \rvert)\)
     /// traps: never
     /// example: `Trie<Char>().nodes == 1`
+    @lint(hand_rolled_string_algo, from: "t[v].f[c] ??= w\nv = t[v].f[c]!", to: "let t = Trie.new()", holes: "t, v, f, c, w")
     pub fn new() -> Trie<A>:
         let k = A.count
         Trie(k, List.filled(k, -1), [0], [0])

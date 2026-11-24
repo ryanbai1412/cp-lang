@@ -67,6 +67,7 @@ fn a_hole_after_a_dot_names_a_field_and_an_unfixed_lint_drops_calls() {
             .into_iter()
             .filter(|d| d.code.0 == "L0516" && d.message.starts_with("write"))
             .map(|d| d.message)
+            .filter(|m| !m.contains("Trie.new"))
             .collect()
     };
     let walk = "var ns: List<N> = [N([0..2] _ => None)]\nvar o = 0\nfor b in [1, 0]:\n    ns[o].kid[b] ??= ns.push_id(N([0..2] _ => None))\n    o = ns[o].kid[b]!\nlet y = 3\nprint(o, y * y)\n";

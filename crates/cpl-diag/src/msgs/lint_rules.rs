@@ -33,10 +33,6 @@ super::msgs! {
     HAND_ROLLED_RANGE_TREE_3 = "L0514", "hand-rolled segment tree pull loop";
     HAND_ROLLED_RANGE_TREE_4 = "L0514", "hand-rolled recursive segment tree";
     HAND_ROLLED_SIEVE = "L0518", "hand-rolled prime/SPF sieve loop";
-    HAND_ROLLED_STRING_ALGO = "L0516", "hand-rolled prefix-function (KMP) loop";
-    HAND_ROLLED_STRING_ALGO_2 = "L0516", "hand-rolled Z-function loop";
-    HAND_ROLLED_STRING_ALGO_3 = "L0516", "hand-rolled polynomial rolling hash";
-    HAND_ROLLED_STRING_ALGO_4 = "L0516", "hand-rolled trie loop";
     INT_DIV_POSSIBLE_ZERO = "L0599", "`{}` can be 0 here (its bounds give `{}..={}`), and `{}` by 0 traps";
     INT_OVERFLOW_AT_BOUNDS = "L0306", "`{}` can leave `Int` (64 bits) at the declared bounds: with `{}` it does, and that traps";
     INT_SHIFT_OVERFLOW_AT_BOUNDS = "L0302", "this shift leaves `Int` when `{}` is above {}, and its bounds allow {}";
