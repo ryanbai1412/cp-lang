@@ -10,11 +10,15 @@
   {"id": "4214643", "language": "CPP17", "result": "WA", "time": 0.002567201, "memory_kb": 3428.0, "file": "corpus/submissions/4214643.cpp"},
   {"id": "4214674", "language": "CPP17", "result": "WA", "time": 0.010292412, "memory_kb": 3472.0, "file": "corpus/submissions/4214674.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/nccc10s5/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted C++ exists, so orig.cpp is the reference: a broken-profile DP over the narrow side (R * C <= 99 keeps it at most 9) choosing the connected hallway set that holds both escalators. It matches the three statement samples and a brute force over every shop subset on 400 generated grids of at most 16 empty cells."
 }
