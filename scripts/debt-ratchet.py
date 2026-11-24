@@ -1373,6 +1373,16 @@ def idiom_lint_gaps(root: Path) -> list[str]:
     return _registered_entries(root, "idiom_lint_gaps")
 
 
+def std_lint_findings(root: Path) -> list[str]:
+    """Entries of scripts/std-lint-baseline.txt, deleted: std-lint-ratchet.py fails on any hit."""
+    return _registered_entries(root, "std_lint_findings")
+
+
+def corpus_lint_warnings(root: Path) -> list[str]:
+    """Entries of crates/cpl-lint/corpus_warnings.txt, deleted: the corpus test fails on any warning."""
+    return _registered_entries(root, "corpus_lint_warnings")
+
+
 def permits(root: Path) -> list[str]:
     """Entries of spec/conformance/permits.txt."""
     return _registered_entries(root, "permits")
@@ -1793,10 +1803,10 @@ LISTS: dict[str, tuple[str | None, str, str]] = {
     "crates/cpl-cli/tests/std-check-errors.txt": ("known_lists", "stdlib", "kept empty"),
     "crates/cpl-cli/tests/tool-gaps.txt": ("skip_lists", "tools", "close each gap"),
     "crates/cpl-cli/tests/vm_fallbacks.txt": ("vm_fallbacks", "tech-debt", "VM runs every program"),
-    "crates/cpl-lint/corpus_warnings.txt": ("known_lists", "lint-fmt", "fix or accept each warning"),
+    "crates/cpl-lint/corpus_warnings.txt": ("corpus_lint_warnings", "lint-fmt", "deleted: corpus_tests.rs fails on any std or spec.cp warning"),
     "crates/cpl-stress/tests/generate-gaps.txt": ("skip_lists", "stress", "generate each shape"),
     "scripts/public-hosts.txt": (None, "infra", "data: hosts the public-history scan allows"),
-    "scripts/std-lint-baseline.txt": ("known_lists", "stdlib", "fix each std lint finding"),
+    "scripts/std-lint-baseline.txt": ("std_lint_findings", "stdlib", "deleted: std-lint-ratchet.py fails on any hit"),
     "spec/conformance/permits.txt": ("permits", "spec", "a case per permit"),
     "spec/conformance/prelude-gaps.txt": ("prelude_gaps", "stdlib", "a case per prelude name"),
     "spec/conformance/rule-gaps.txt": ("rule_gaps", "spec", "deleted: spec-gate.py coverage fails on any rule gap"),
@@ -1895,6 +1905,8 @@ HARD_ZERO = frozenset({
     "rule_gaps",
     "direct_python",
     "sig_gaps",
+    "std_lint_findings",
+    "corpus_lint_warnings",
     "xfail_markers",
     "std_doc_parsers",
 })
@@ -1964,6 +1976,8 @@ COUNTERS = {
     "rule_gaps": ("entries of spec/conformance/rule-gaps.txt", rule_gaps, True),
     "sig_gaps": ("entries of spec/conformance/sig-gaps.txt", sig_gaps, True),
     "idiom_lint_gaps": ("entries of spec/idioms/lints-known.txt", idiom_lint_gaps, True),
+    "std_lint_findings": ("entries of scripts/std-lint-baseline.txt", std_lint_findings, True),
+    "corpus_lint_warnings": ("entries of crates/cpl-lint/corpus_warnings.txt", corpus_lint_warnings, True),
     "or_true": ("`|| true` anywhere (scoreboard CI2)", or_true, True),
     "continue_on_error": ("continue-on-error jobs and steps (scoreboard CI1)", continue_on_error, True),
     "trace_engine_refs": ("CPL_TRACE_ENGINE mentions (scoreboard F3, Core)", trace_engine_refs, True),

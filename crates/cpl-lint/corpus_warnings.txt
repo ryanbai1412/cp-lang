@@ -1,2 +1,0 @@
-# set code count; see src/corpus_tests.rs
-std L0545 1

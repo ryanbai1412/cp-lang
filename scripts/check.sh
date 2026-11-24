@@ -631,9 +631,9 @@ step "std's public signatures match their snapshot (scripts/std-api-snapshot.py)
 uv run --quiet python scripts/std-api-snapshot.py \
     || fail "std's public API changed; review the diff above and run scripts/std-api-snapshot.py --write"
 
-step "std is lint-clean, shrink-only (scripts/std-lint-ratchet.py)"
+step "std is lint-clean (scripts/std-lint-ratchet.py)"
 uv run --quiet python scripts/std-lint-ratchet.py --cpl "$cpl" \
-    || fail "std gained a lint hit; fix it or mark it with lint(...: allow)"
+    || fail "std has a lint hit; fix it in the code"
 
 step "prelude exports what its fns return (scripts/prelude-signatures.py)"
 uv run --quiet python scripts/prelude-signatures.py \

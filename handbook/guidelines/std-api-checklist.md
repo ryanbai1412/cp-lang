@@ -233,11 +233,11 @@ Renaming a public item ships a `cpl fix` codemod and a checker error on the old 
 
 ### R21. std is lint-clean
 
-std passes `cpl lint` like a contestant's program does; a hit that is right is marked `with lint(name: allow)` where it sits.
+std passes `cpl lint` like a contestant's program does, with no hits.
 
 - **Why:** std is read and copied as the model of good code, and a lint that fires on std teaches people to ignore it.
-- **Example:** an `L0301` float equality in std is a real comparison bug or an `allow` with its reason.
-- **Enforced by:** `scripts/std-lint-ratchet.py` (in `scripts/check.sh`): hits per file and code only go down.
+- **Example:** an `L0301` float equality in std is a real comparison bug to fix, or a lint false positive to fix in the lint.
+- **Enforced by:** `scripts/std-lint-ratchet.py` (in `scripts/check.sh`): any hit fails.
 
 ## Review
 

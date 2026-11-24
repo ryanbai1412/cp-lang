@@ -1,3 +1,0 @@
-# std lint hits per file and code; only goes down (scripts/std-lint-ratchet.py)
-std/poly.cp L0545 1
-std/tree.cp L0567 2
