@@ -143,6 +143,14 @@ inline std::string site_line() { return site ? \" (line \" + std::to_string(site
 ",
     },
     Piece {
+        name: "fail_with",
+        needs: &["fail", "capture"],
+        code: "\
+// Fails with what `print_into` prints: an assert's message, built only when it fails.
+template <class F> [[noreturn, gnu::noinline, gnu::cold]] void fail_with(F print_into) { Capture c; print_into(); fail(c.take().c_str()); }
+",
+    },
+    Piece {
         name: "char_step",
         needs: &["fail"],
         code: "\

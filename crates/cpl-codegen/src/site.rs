@@ -7,7 +7,7 @@
 use cpl_ir::{Block, Expr, Program, Stmt};
 
 use crate::emit::Emitter;
-use crate::expr::string_literal;
+use crate::expr::{string_literal, Put};
 use crate::uses::places::{each_call, each_closure, notes_an_assert};
 
 /// Where each user source line starts, the line of the user statement
@@ -117,6 +117,11 @@ impl Emitter<'_> {
             _ => format!("{} (line {line}): ", cpl_ir::assert_head(text)),
         };
         let note = note.map_or(String::new(), |n| format!("\nnote: {n}"));
+        if message.is_none_or(|m| self.str_inlines(m)) {
+            let fail = self.fail_message(message, text, line, library, &note);
+            self.line(out, &format!("if (__builtin_expect(!({cond}), 0)) {fail}"));
+            return;
+        }
         let why = match message {
             _ if library => {
                 let head = string_literal(report.as_bytes());
@@ -149,6 +154,49 @@ impl Emitter<'_> {
             format!("{{ [=]() mutable __attribute__((noinline, cold)) {{ cpl::fail({why}); }}(); __builtin_unreachable(); }}")
         };
         self.line(out, &format!("if (__builtin_expect(!({cond}), 0)) {fail}"));
+    }
+
+    /// How an assert whose message runs no code fails: a literal is passed
+    /// to `cpl::fail` as is; a message with values is printed in a cold,
+    /// noinline `cpl::fail_with` that captures by copy, so the passing
+    /// path stays small and keeps its locals in registers.
+    fn fail_message(
+        &mut self,
+        message: Option<&Expr>,
+        text: &str,
+        line: u32,
+        library: bool,
+        note: &str,
+    ) -> String {
+        let mut puts = Vec::new();
+        let head = cpl_ir::assert_head(text);
+        if library {
+            puts.push(Put::Text(head.into_bytes()));
+            puts.push(Put::Code("cpl::put_str(cpl::site_line());".into()));
+            if message.is_some() {
+                puts.push(Put::Text(b": ".to_vec()));
+            }
+        } else if !text.is_empty() {
+            let sep = if message.is_some() { ": " } else { "" };
+            puts.push(Put::Text(format!("{head} (line {line}){sep}").into_bytes()));
+        }
+        if let Some(message) = message {
+            puts.extend(self.inline_str(message));
+        }
+        puts.push(Put::Text(note.as_bytes().to_vec()));
+        if puts.iter().all(|p| matches!(p, Put::Text(_))) {
+            let bytes: Vec<u8> = puts
+                .into_iter()
+                .flat_map(|p| match p {
+                    Put::Text(bytes) => bytes,
+                    Put::Code(_) => Vec::new(),
+                })
+                .collect();
+            return format!("cpl::fail({});", string_literal(&bytes));
+        }
+        self.need("fail_with");
+        let parts = self.render_puts(puts).join(" ");
+        format!("cpl::fail_with([=]() mutable {{ {parts} }});")
     }
 
     pub(crate) fn in_library(&self) -> bool {

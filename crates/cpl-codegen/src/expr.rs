@@ -77,6 +77,26 @@ fn char_literal(c: u8) -> Code {
 /// The longest `std::string` libstdc++ and libc++ hold without allocating.
 pub(crate) const SHORT_STR: usize = 15;
 
+/// One statement printing into a capture: text, merged with the text
+/// beside it, or code.
+pub(crate) enum Put {
+    Text(Vec<u8>),
+    Code(String),
+}
+
+/// The text `puts` print when they are only text with no NUL, which a C
+/// string literal can hold.
+fn plain_text(puts: &[Put]) -> Option<Vec<u8>> {
+    let mut text = Vec::new();
+    for put in puts {
+        match put {
+            Put::Text(bytes) if !bytes.contains(&0) => text.extend(bytes),
+            _ => return None,
+        }
+    }
+    Some(text)
+}
+
 pub(crate) fn string_literal(bytes: &[u8]) -> String {
     let mut out = String::from("\"");
     let mut last = 0u8;
@@ -171,28 +191,65 @@ impl<'p> Emitter<'p> {
     /// Whether printing `piece` runs code (a call, I/O, a write), which a
     /// `"{x}"` string computes before its capture begins.
     fn format_value_runs(&self, piece: &FmtPiece) -> bool {
-        let value = match piece {
-            FmtPiece::Value(arg) => &arg.value,
-            FmtPiece::Number(value, _) => value,
-            FmtPiece::Text(_) => return false,
-        };
-        let touch = self.touch(value);
+        match piece {
+            FmtPiece::Value(arg) => self.runs_code(&arg.value),
+            FmtPiece::Number(value, _) => self.runs_code(value),
+            FmtPiece::Text(_) => false,
+        }
+    }
+
+    fn runs_code(&self, e: &Expr) -> bool {
+        let touch = self.touch(e);
         touch.io || !touch.writes.is_empty() || !touch.binds.is_empty() || !touch.calls.is_empty()
     }
 
     /// The statements that print each piece of a `"{x}"` string into a capture.
     fn format_parts(&mut self, pieces: &[FmtPiece], values: Vec<Code>) -> Vec<String> {
-        let mut values = values.into_iter();
+        let puts = self.format_puts(pieces, values);
+        self.render_puts(puts)
+    }
+
+    /// The statements that make `puts`, with text beside text written once.
+    pub(crate) fn render_puts(&mut self, puts: Vec<Put>) -> Vec<String> {
         let mut parts = Vec::new();
+        let mut text = Vec::new();
+        for put in puts {
+            match put {
+                Put::Text(bytes) => text.extend(bytes),
+                Put::Code(code) => {
+                    if !text.is_empty() {
+                        parts.push(self.put_text(&std::mem::take(&mut text)));
+                    }
+                    parts.push(code);
+                }
+            }
+        }
+        if !text.is_empty() {
+            parts.push(self.put_text(&text));
+        }
+        parts
+    }
+
+    fn format_puts(&mut self, pieces: &[FmtPiece], values: Vec<Code>) -> Vec<Put> {
+        // With no values computed ahead, a string that runs nothing prints
+        // straight into the same capture.
+        let inline = values.is_empty();
+        let mut values = values.into_iter();
+        let mut puts = Vec::new();
         for piece in pieces {
             match piece {
-                FmtPiece::Text(bytes) => parts.push(self.put_text(bytes)),
+                FmtPiece::Text(bytes) => puts.push(Put::Text(bytes.clone())),
+                FmtPiece::Value(arg) if inline && self.str_inlines(&arg.value) => {
+                    let inner = self.inline_str(&arg.value);
+                    puts.extend(inner);
+                }
                 FmtPiece::Value(arg) => {
                     let code = match values.next() {
                         Some(code) => code,
                         None => self.expr(&arg.value),
                     };
-                    parts.push(self.show_stmt(&code, &arg.value.ty, &arg.digits.to_string()));
+                    let shown = self.show_stmt(&code, &arg.value.ty, &arg.digits.to_string());
+                    puts.push(Put::Code(shown));
                 }
                 FmtPiece::Number(value, fmt) => {
                     let code = match values.next() {
@@ -201,7 +258,7 @@ impl<'p> Emitter<'p> {
                     };
                     self.need("put_num");
                     let (zero, width) = (fmt.zero, fmt.width);
-                    parts.push(match fmt.kind {
+                    puts.push(Put::Code(match fmt.kind {
                         NumKind::Dec => {
                             format!("cpl::put_num({}, 10, {zero}, {width});", code.text)
                         }
@@ -214,11 +271,50 @@ impl<'p> Emitter<'p> {
                         NumKind::Fixed(places) => {
                             format!("cpl::put_fixed({}, {places}, {zero}, {width});", code.text)
                         }
-                    });
+                    }));
                 }
             }
         }
-        parts
+        puts
+    }
+
+    /// Whether the string `e` can print into a capture without running
+    /// code of its own: a literal, a `"{x}"` whose values run none, or a
+    /// choice between two such (how an assert shows an optional).
+    pub(crate) fn str_inlines(&self, e: &Expr) -> bool {
+        match &e.kind {
+            ExprKind::Str(_) => true,
+            ExprKind::Format(inner) => !inner.iter().any(|p| self.format_value_runs(p)),
+            ExprKind::If(c, yes, no) => {
+                !self.runs_code(c) && self.str_inlines(yes) && self.str_inlines(no)
+            }
+            _ => false,
+        }
+    }
+
+    /// What printing `e`, which [`Self::str_inlines`], puts into a capture.
+    pub(crate) fn inline_str(&mut self, e: &Expr) -> Vec<Put> {
+        match &e.kind {
+            ExprKind::Str(bytes) => vec![Put::Text(bytes.clone())],
+            ExprKind::Format(inner) => self.format_puts(inner, Vec::new()),
+            ExprKind::If(c, yes, no) => {
+                let cond = self.expr(c);
+                let (yes, no) = (self.inline_str(yes), self.inline_str(no));
+                if let (Some(yes), Some(no)) = (plain_text(&yes), plain_text(&no)) {
+                    self.need("out");
+                    let (yes, no) = (string_literal(&yes), string_literal(&no));
+                    let cond = cond.at(OR);
+                    return vec![Put::Code(format!("cpl::put_str({cond} ? {yes} : {no});"))];
+                }
+                let yes = self.render_puts(yes).join(" ");
+                let no = self.render_puts(no).join(" ");
+                vec![Put::Code(format!(
+                    "if ({}) {{ {yes} }} else {{ {no} }}",
+                    cond.text
+                ))]
+            }
+            _ => unreachable!("inline_str on a string that runs code"),
+        }
     }
 
     /// Emits `operands` and hands them to `build`. C++ does not say which

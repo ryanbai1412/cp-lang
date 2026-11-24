@@ -1424,12 +1424,15 @@ fn an_assert_builds_its_message_out_of_line() {
         "print(cell(read(), read()))\n",
     ));
     assert!(
-        cpp.contains("if (__builtin_expect(!(0 <= c && c < w), 0)) { [=]() mutable __attribute__((noinline, cold)) { cpl::fail("),
+        cpp.contains("if (__builtin_expect(!(0 <= c && c < w), 0)) cpl::fail_with([=]() mutable {"),
         "{cpp}"
     );
+    // Shaking the runtime keeps the cold path the asserts call.
+    assert!(cpp.contains("void fail_with("), "{cpp}");
+    // Text beside text is one literal.
     assert!(
         cpp.contains(
-            "if (__builtin_expect(!(c != 7), 0)) { [=]() mutable __attribute__((noinline, cold))"
+            "if (__builtin_expect(!(c != 7), 0)) cpl::fail_with([=]() mutable { cpl::put_str(\"assertion failed: c != 7 (line 3): seven (c = \"); cpl::put_int(c);"
         ),
         "{cpp}"
     );
