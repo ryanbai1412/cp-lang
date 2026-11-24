@@ -137,7 +137,7 @@ documented.
 | std-fenwick | library: fenwick | supported |  |
 | std-flow | library: flow | documented | stdlib: outside the Milestone 1 contest staples |
 | std-geometry | library: geometry | documented | stdlib: outside the Milestone 1 contest staples |
-| std-graph | library: graph | supported | 1 known gap |
+| std-graph | library: graph | supported |  |
 | std-grid | library: grid | supported |  |
 | std-hashmap | library: hashmap | supported |  |
 | std-heap | library: heap | supported |  |
@@ -158,7 +158,7 @@ documented.
 | std-poly | library: poly | documented | stdlib: outside the Milestone 1 contest staples |
 | std-prefix | library: prefix | supported |  |
 | std-rand | library: rand | documented | stdlib: outside the Milestone 1 contest staples |
-| std-search | library: search | supported | 1 known gap |
+| std-search | library: search | supported |  |
 | std-segtree | library: segtree | supported | 2 known gaps |
 | std-seq | library: seq | supported |  |
 | std-slope | library: slope | documented | stdlib: outside the Milestone 1 contest staples |
@@ -181,7 +181,5 @@ documented.
 - core-05/exercise-04-var-from-lent-param.cp: fail
 - core-05/map-entry-index-key-lends.cp: fail
 - core-08/law-calls-trait-method.cp: fail
-- std-graph/undirected-takes-list-of-records.cp: fail
-- std-search/real-bsearch-is-a-range-method.cp: fail
 - std-segtree/closure-folds-optional-monoid-folds-plain.cp: fail
 - std-segtree/closure-op-picks-index.cp: fail
