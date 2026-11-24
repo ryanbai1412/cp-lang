@@ -57,6 +57,14 @@ pub fn report_with(
             let _ = writeln!(stdout, "  [copy] {line}:{col}  {shown} -> {why}");
         }
     }
+    if !program.inlined.is_empty() {
+        let _ = writeln!(stdout, "Inlined for {path}:");
+        for (span, why) in &program.inlined {
+            let (line, col) = line_col(text, *span);
+            let shown = text.get(span.start as usize..span.end as usize).unwrap_or("");
+            let _ = writeln!(stdout, "  [inlined] {line}:{col}  {shown} -> {why}");
+        }
+    }
     if !program.written_back.is_empty() {
         let _ = writeln!(stdout, "Written back for {path}:");
         for span in &program.written_back {
@@ -103,6 +111,7 @@ pub fn report_with(
             && hashed.is_empty()
             && copies.is_empty()
             && program.written_back.is_empty()
+            && program.inlined.is_empty()
         {
             let _ = writeln!(stdout, "{path}: no closure or fn-typed sites");
         }

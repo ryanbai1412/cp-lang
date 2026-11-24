@@ -1,7 +1,7 @@
 //! The program's entry points: `main`, `@!multitest`, a `@test` fn, an
 //! `@alt` or `@check` fn run as the program, and gathering the result.
 
-use super::forward;
+use super::inline;
 use super::*;
 use cpl_diag::msgs;
 
@@ -102,11 +102,15 @@ impl Lowerer<'_> {
             lw.size_library_domains(&mut c.body, false, &c.locals);
         }
         (lw.main_body, lw.setup_body, lw.bodies, lw.closures) = (main, setup, bodies, closures);
-        forward::inline_forwarders(
-            &mut lw.bodies,
-            [&mut lw.main_body, &mut lw.setup_body],
-            &mut lw.closures,
-        );
+        let (library, shown) = lw.fn_names();
+        let hosts = inline::Hosts {
+            fns: &mut lw.bodies,
+            main: &mut lw.main_body,
+            setup: &mut lw.setup_body,
+            main_locals: &mut lw.main_locals,
+            closures: &mut lw.closures,
+        };
+        lw.inlined = inline::run(hosts, &library, &shown, &mut lw.next_loop);
         // A mistake in the user's code often breaks the library code it asks
         // for as well. The user's own mistake is the one to show.
         if lw.diags.iter().any(|d| !lw.in_library.contains(&d.message)) {
@@ -218,6 +222,7 @@ impl Lowerer<'_> {
             raw_lists: lw.raw_lists,
             narrow_elems: lw.narrow_elems,
             cell_ranges: lw.cell_ranges,
+            inlined: std::mem::take(&mut lw.inlined),
             written_back: {
                 let mut spans = lw.written_back;
                 spans.sort_by_key(|s| (s.start, s.end));

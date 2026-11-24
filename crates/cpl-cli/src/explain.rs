@@ -183,6 +183,10 @@ pub(crate) fn explain_file(
             let detail = cpl_codegen::explain::WRITTEN_BACK;
             rows.push(row(&format!("{line}:{col}"), "written_back", detail));
         }
+        for (span, why) in &compiled.program.inlined {
+            let (line, col) = cpl_codegen::explain::line_col(&compiled.text, *span);
+            rows.push(row(&format!("{line}:{col}"), "inlined", why));
+        }
         for chosen in &lowered.specializations {
             rows.push(row("", "specialization", chosen));
         }

@@ -29,6 +29,7 @@ mod fn_impl;
 mod fn_value;
 mod foreign;
 mod forward;
+mod inline;
 mod fresh;
 mod function;
 mod hoist;
@@ -742,6 +743,7 @@ struct Lowerer<'a> {
     narrow_elems: std::collections::BTreeMap<ElemLoc, NarrowLayout>,
     cell_ranges: std::collections::BTreeMap<ElemLoc, (u8, Spec)>,
     written_back: Vec<Span>,
+    inlined: Vec<(Span, String)>,
     const_ints: HashMap<String, i64>,
     /// The `const`s that are a `Bool` known when compiling, for `if const`.
     const_bools: HashMap<String, bool>,
@@ -902,6 +904,7 @@ impl<'a> Lowerer<'a> {
             narrow_elems: std::collections::BTreeMap::new(),
             cell_ranges: std::collections::BTreeMap::new(),
             written_back: Vec::new(),
+            inlined: Vec::new(),
             const_ints: HashMap::new(),
             const_bools: HashMap::new(),
             mutators: Default::default(),

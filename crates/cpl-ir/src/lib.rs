@@ -1588,6 +1588,8 @@ pub struct Program {
     /// back after its call: a place with no address of its own (a `Bool`
     /// element).
     pub written_back: Vec<Span>,
+    /// Each call the inliner ran as its body, at the call: `callee: reason`.
+    pub inlined: Vec<(Span, String)>,
     /// The file's top-level code and its locals.
     pub main: Block,
     pub main_locals: Vec<Local>,
