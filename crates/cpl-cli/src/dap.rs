@@ -560,8 +560,8 @@ impl Session {
                 }
                 let before = match &pager {
                     Some(pager) if base > 0 => {
+                        // `config` records the whole run, from its first step.
                         let first = TraceConfig {
-                            from_step: Some(0),
                             max_steps: Some(self.page()),
                             ..config
                         };

@@ -657,7 +657,7 @@ print(i / d)
         "{note}"
     );
     let kept = dap.recv_until("\"event\":\"stopped\"");
-    assert!(kept.contains("kept your place: line 6"), "{kept}");
+    assert!(kept.contains("kept your place: line 6, step "), "{kept}");
     dap.send("evaluate", Some("{\"expression\":\"i\"}"));
     let i = dap.recv_until("\"command\":\"evaluate\"");
     assert!(i.contains("\"result\":\"200000\""), "{i}");
@@ -870,6 +870,120 @@ fn reverse_continue_stops_at_an_edit_before_the_recorded_window() {
     let frame = dap.recv_until("\"command\":\"stackTrace\"");
     assert!(frame.contains("\"line\":2"), "{frame}");
     dap.finish();
+}
+
+/// A session on `src` launched with `launch` arguments after `program`,
+/// stopped where `configurationDone` leaves it.
+fn launched(name: &str, src: &str, launch: &str) -> (DapClient, PathBuf) {
+    let path = write_temp(name, src);
+    let p = path.to_str().unwrap().replace('\\', "\\\\");
+    let mut dap = DapClient::spawn();
+    dap.send("initialize", Some("{\"adapterID\":\"cp\"}"));
+    let _ = dap.recv_until("\"event\":\"initialized\"");
+    dap.send("launch", Some(&format!("{{\"program\":\"{p}\",{launch}}}")));
+    let reply = dap.recv_until("\"command\":\"launch\"");
+    assert!(reply.contains("\"success\":true"), "{reply}");
+    dap.send("configurationDone", None);
+    let _ = dap.recv_until("\"event\":\"stopped\"");
+    (dap, path)
+}
+
+fn eval(dap: &mut DapClient, expr: &str) -> String {
+    dap.send("evaluate", Some(&format!("{{\"expression\":\"{expr}\"}}")));
+    dap.recv_until("\"command\":\"evaluate\"")
+}
+
+#[test]
+fn restart_with_new_input_text_runs_on_it() {
+    let (mut dap, _) = launched(
+        "restart_input",
+        "let n: Int = read()\nprint(n * 2)\n",
+        "\"stopOnEntry\":true,\"inputText\":\"3\\n\"",
+    );
+    dap.send("restart", Some("{\"arguments\":{\"inputText\":\"5\\n\"}}"));
+    let out = dap.recv_until("\"category\":\"stdout\"");
+    assert!(out.contains("\"output\":\"10\\n\""), "{out}");
+    dap.finish();
+}
+
+#[test]
+fn restart_in_the_first_window_compares_the_whole_recording() {
+    let source = |second_loop: &str| {
+        format!(
+            "let n: Int = read()\nvar i = 0\nwhile i < 300:\n    i += 1\nprint(i)\n{second_loop}"
+        )
+    };
+    let (mut dap, path) = launched(
+        "first_window",
+        &source("var j = 0\nwhile j < n:\n    j += 1\n"),
+        "\"stopOnEntry\":true,\"recordSteps\":1000,\"inputText\":\"3000\\n\"",
+    );
+    dap.send("restart", Some("{\"arguments\":{}}"));
+    let same = dap.recv_until("re-ran");
+    assert!(
+        same.contains("of the first 1000 steps is the same"),
+        "{same}"
+    );
+    let _ = dap.recv_until("\"event\":\"stopped\"");
+    // The run now ends inside what was kept before: that is a change.
+    std::fs::write(&path, source("")).unwrap();
+    dap.send("restart", Some("{\"arguments\":{}}"));
+    let changed = dap.recv_until("re-ran");
+    assert!(!changed.contains("is the same"), "{changed}");
+    dap.finish();
+}
+
+/// Stops at line 5's one visit, removes that line, restarts, and returns
+/// the restart's note with `i` and `j` where it stopped.
+fn restart_onto_a_removed_line(record_steps: usize) -> (String, String, String) {
+    let source = |mid: &str, last: &str| {
+        format!(
+            "let n: Int = read()\nvar i = 0\nwhile i < n:\n    i += 1\n{mid}\nvar j = 0\nwhile j < n:\n    j += 1\nprint({last})\n"
+        )
+    };
+    let path = write_temp("removed_line", &source("let mid = i", "mid + j"));
+    let p = path.to_str().unwrap().replace('\\', "\\\\");
+    let mut dap = DapClient::spawn();
+    dap.send("initialize", Some("{\"adapterID\":\"cp\"}"));
+    let _ = dap.recv_until("\"event\":\"initialized\"");
+    dap.send(
+        "launch",
+        Some(&format!(
+            "{{\"program\":\"{p}\",\"stopOnEntry\":false,\"recordSteps\":{record_steps},\"inputText\":\"2000\\n\"}}"
+        )),
+    );
+    let _ = dap.recv_until("\"command\":\"launch\"");
+    dap.send(
+        "setBreakpoints",
+        Some(&format!(
+            "{{\"source\":{{\"path\":\"{p}\"}},\"breakpoints\":[{{\"line\":5}}]}}"
+        )),
+    );
+    let _ = dap.recv_until("\"command\":\"setBreakpoints\"");
+    dap.send("configurationDone", None);
+    let _ = dap.recv_until("\"reason\":\"breakpoint\"");
+    std::fs::write(&path, source("// gone", "i + j")).unwrap();
+    dap.send("restart", Some("{\"arguments\":{}}"));
+    let note = dap.recv_until("\"event\":\"stopped\"");
+    let (i, j) = (eval(&mut dap, "i"), eval(&mut dap, "j"));
+    dap.finish();
+    (note, i, j)
+}
+
+#[test]
+fn restart_onto_a_line_the_edit_removed_stays_near_in_any_window() {
+    for record_steps in [100_000, 1000] {
+        let (note, i, j) = restart_onto_a_removed_line(record_steps);
+        assert!(
+            i.contains("\"result\":\"2000\"") && j.contains("\"result\":\"0\""),
+            "recordSteps {record_steps}: the step after the first loop, not the end: {note} i {i}, j {j}"
+        );
+        if record_steps == 100_000 {
+            assert!(note.contains("nearest step to where you were"), "{note}");
+        } else {
+            assert!(note.contains("kept your place: line "), "{note}");
+        }
+    }
 }
 
 #[test]
