@@ -982,7 +982,6 @@
 25 corpus/problems/iati21a13/port.cp
 5 corpus/problems/iati21a22/port.cp
 8 corpus/problems/iati21a23/port.cp
-8 corpus/problems/imo22p6checker/port.cp
 3 corpus/problems/ioi00p1/port.cp
 9 corpus/problems/ioi00p2/port.cp
 9 corpus/problems/ioi00p4/port.cp
