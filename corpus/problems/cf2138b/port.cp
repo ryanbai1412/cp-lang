@@ -1,5 +1,6 @@
 // Source: Codeforces 2138B (Antiamuny Wants to Learn Swap),
 //   https://codeforces.com/contest/2138/problem/B
+// limits: 2000 ms, 512 MB
 // Problem: a permutation a of n <= 5e5 and q <= 5e5 queries l r (multitest, sums <= 5e5). A
 //   subarray is perfect when one allowed swap of b_i and b_{i+2} never sorts it in fewer moves
 //   than adjacent swaps alone; print YES or NO for each a[l..=r].

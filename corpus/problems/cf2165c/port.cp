@@ -1,4 +1,5 @@
 // Source: Codeforces 2165 C (Binary Wine), https://codeforces.com/contest/2165/problem/C
+// limits: 2000 ms, 512 MB
 // Problem: n values a_i < 2^30; one coin raises an a_i by 1. Each of q independent queries
 //   gives c < 2^30: print the fewest coins so some b with 0 <= b_i <= a_i has XOR c.
 //   Multitest, sum of n <= 5e5, sum of q <= 5e4.

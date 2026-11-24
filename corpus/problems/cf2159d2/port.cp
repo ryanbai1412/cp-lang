@@ -1,5 +1,6 @@
 // Source: Codeforces 2159D2 (Inverse Minimum Partition, Hard Version),
 //   https://codeforces.com/contest/2159/problem/D2
+// limits: 4000 ms, 1024 MB
 // Problem: a segment costs ceil(last / min); f(c) is the cheapest total cost of cutting c
 //   into segments. Print the sum of f over all subarrays of a (n <= 4e5, a_i <= 1e18).
 //   Multitest, sum of n <= 4e5.
@@ -21,8 +22,9 @@ for (i, x) in a.items:
     var starts = [i + 1] + (stack.last.map(t => t.starts) ?? [0])
     for l in 2..=3 if l < starts.len:
         let below = (0..stack.len).first_true(k => stack[k].val >= ceil_div(x, l)) ?? stack.len
-        let prev = if below > 0: stack[below - 1].starts else: [0]
-        starts = starts[..l] + [min(u, v) for (u, v) in zip(starts[l..], prev)]
+        let keep = min(starts.len - l, if below > 0: stack[below - 1].starts.len else: 1)
+        for j in 0..keep: starts[l + j] min= if below > 0: stack[below - 1].starts[j] else: 0
+        while starts.len > l + keep: starts.pop()
     ans += starts.sum()
     stack.push((x, starts))
 print(ans)

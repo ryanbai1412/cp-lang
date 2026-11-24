@@ -1,4 +1,5 @@
 // Source: Codeforces 2150B (Grid Counting), https://codeforces.com/contest/2150/problem/B
+// limits: 2000 ms, 256 MB
 // Problem: colour cells of an n x n grid (n <= 2e5) black so that row k has a_k black cells and,
 //   for each k, exactly one black cell has max(x, y) = k and exactly one has max(x, n+1-y) = k.
 //   Count the grids mod 998244353. Multitest, sum n <= 2e5.

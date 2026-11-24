@@ -1,4 +1,5 @@
 // Source: Codeforces 2152F (Triple Attack), https://codeforces.com/contest/2152/problem/F
+// limits: 3000 ms, 1024 MB
 // Problem: sorted timestamps x_1..x_n (n <= 2.5e5) and z; a set is safe if every three of its
 //   elements span more than z. For q <= 2.5e5 ranges [l, r], print the size of the largest
 //   safe subset of x_l..x_r. Multitest, sums of n and q <= 2.5e5.

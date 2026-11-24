@@ -1,4 +1,5 @@
 // Source: Codeforces 2127F (Hamed and AghaBalaSar), https://codeforces.com/contest/2127/problem/F
+// limits: 2000 ms, 512 MB
 // Problem: a snake array has n entries in 0..=m summing to m with a[n] a maximum; f(a) climbs
 //   from position 1 by next-greater jumps adding each rise, stepping past earlier copies of
 //   the maximum. Sum f over all snake arrays mod 1e9+7. n, m <= 2e5; multitest, sum m <= 2e5.

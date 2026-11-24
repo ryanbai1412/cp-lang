@@ -1,5 +1,6 @@
 // Source: Codeforces 2159D1 (Inverse Minimum Partition, Easy Version),
 //   https://codeforces.com/contest/2159/problem/D1
+// limits: 4000 ms, 1024 MB
 // Problem: split a_1..a_n (n <= 4e5, a_i <= 1e18) into contiguous blocks, a block costing
 //   ceil(last / min). Print the least total cost. Multitest, sum n <= 4e5.
 // Solution: a block of cost l >= 4 splits into two of total cost <= l, so only costs 1..3

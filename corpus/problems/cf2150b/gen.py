@@ -1,5 +1,18 @@
 #!/usr/bin/env python3
 import random, sys
+
+if sys.argv[1:] == ["--max"]:
+    # One test with n = 2e5 whose row counts come from a valid grid, so the answer is nonzero
+    # and every row takes a binomial.
+    rng = random.Random(2150)
+    n = 200_000
+    a = [0] * n
+    for i in range(n):
+        a[rng.randint(0, min(i, n - 1 - i))] += 1
+    print(1)
+    print(n)
+    print(*a)
+    sys.exit()
 rng = random.Random(int(sys.argv[1]))
 size = int(sys.argv[2])
 t = rng.randint(1, 4)

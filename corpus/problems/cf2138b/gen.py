@@ -1,6 +1,27 @@
 #!/usr/bin/env python3
 # usage: gen.py seed size; size caps the sums of n and of q (the statement allows 5e5 each)
 import random, sys
+if sys.argv[1:] == ["--max"]:
+    # One test at both sums, n = q = 5e5: two interleaved increasing runs (many inversions, few
+    # decreasing triples) with a sprinkle of local triples, and random ranges.
+    r = random.Random(2138)
+    n = q = 500_000
+    lo, hi = list(range(1, n // 2 + 1)), list(range(n // 2 + 1, n + 1))
+    p, i, j = [], 0, 0
+    while i < len(lo) or j < len(hi):
+        if j < len(hi) and (i == len(lo) or r.random() < 0.5):
+            p.append(hi[j]); j += 1
+        else:
+            p.append(lo[i]); i += 1
+    for _ in range(50):
+        k = r.randrange(n - 3)
+        p[k:k + 3] = sorted(p[k:k + 3], reverse=True)
+    out = ["1", f"{n} {q}", " ".join(map(str, p))]
+    for _ in range(q):
+        l = r.randint(1, n)
+        out.append(f"{l} {r.randint(l, min(n, l + r.choice([5, 1000, n])))}")
+    print("\n".join(out))
+    sys.exit()
 r = random.Random(int(sys.argv[1]))
 size = int(sys.argv[2])
 if size <= 50:
