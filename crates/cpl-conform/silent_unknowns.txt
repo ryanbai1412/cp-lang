@@ -479,7 +479,6 @@
 7 corpus/problems/cf2237i1/port.cp
 8 corpus/problems/cf2237i2/dream.cp
 10 corpus/problems/cf2237i2/port.cp
-1 corpus/problems/cf2245b/perf.cp
 5 corpus/problems/cf2245d2/dream.cp
 13 corpus/problems/cf2245d2/port.cp
 2 corpus/problems/cf2245e/dream.cp

@@ -10,7 +10,7 @@
 
 @!multitest
 let (n, c): (1..=200_000, -10 ** 9..=10 ** 9) = read()
-let a: [0..n]-10 ** 9..=10 ** 9 = read()
-let b = a.sorted()
+var a: [0..n]-10 ** 9..=10 ** 9 = read()
 let mid = n / 2
-print(sum(max(x - c, 0) for x in b[0..mid]) + sum(x - c for x in b[mid..n]))
+a.select(mid)  // the lower half before mid, the upper from it
+print(sum(max(x - c, 0) for x in a[0..mid]) + sum(x - c for x in a[mid..n]))
