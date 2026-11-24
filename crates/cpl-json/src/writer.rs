@@ -115,7 +115,12 @@ impl<'a> Writer<'a> {
         self
     }
 
+    #[inline]
     pub fn int(&mut self, n: impl Number) -> &mut Self {
+        self.number(&n)
+    }
+
+    fn number(&mut self, n: &dyn std::fmt::Display) -> &mut Self {
         self.item();
         let _ = write!(self.out, "{n}");
         self
@@ -187,7 +192,9 @@ impl Drop for Writer<'_> {
     }
 }
 
-/// The JSON text `write` writes.
+/// The JSON text `write` writes. Always inlined, so each caller's closure
+/// is compiled (and counted, in the wasm size budgets) in the caller.
+#[inline(always)]
 pub fn write_with(write: impl FnOnce(&mut Writer)) -> String {
     let mut out = String::new();
     write(&mut Writer::new(&mut out));

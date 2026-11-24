@@ -276,8 +276,10 @@ impl Playground {
         // The trace is JSON text already: it goes in as it is.
         let json = cpl_json::write_with(|w| {
             w.object();
-            for (key, value) in result.as_object().into_iter().flatten() {
-                w.key(key).value(value);
+            if let Some(members) = result.as_object() {
+                for (key, value) in members {
+                    w.key(key).value(value);
+                }
             }
             w.key("debug").str(&debug).key("trace").json(&trace).end();
         });

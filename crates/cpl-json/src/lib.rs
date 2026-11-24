@@ -202,19 +202,25 @@ impl From<BTreeMap<String, Value>> for Value {
 }
 
 /// Builds a `Value::Object` from an array of `(key, value)` pairs.
+/// Inlined into a call of one non-generic builder, so each array length
+/// costs a few bytes of wasm rather than a copy of the map building.
+#[inline]
 pub fn obj<const N: usize>(members: [(&str, Value); N]) -> Value {
-    Value::Object(
-        members
-            .into_iter()
-            .map(|(k, v)| (k.to_string(), v))
-            .collect(),
-    )
+    object(&mut members.into_iter())
+}
+
+fn object(members: &mut dyn Iterator<Item = (&str, Value)>) -> Value {
+    let mut map = BTreeMap::new();
+    for (k, v) in members {
+        map.insert(k.to_string(), v);
+    }
+    Value::Object(map)
 }
 
 /// Writes `s` as a quoted, RFC 8259-escaped JSON string, safe to embed
 /// inside an HTML `<script>` tag too: `<`, U+2028 and U+2029 are escaped.
 /// The one escaper of every JSON the toolchain writes.
-pub fn write_string(out: &mut impl Write, s: &str) -> fmt::Result {
+pub fn write_string(out: &mut dyn Write, s: &str) -> fmt::Result {
     out.write_char('"')?;
     for c in s.chars() {
         match c {
