@@ -1,4 +1,5 @@
 // Source: Codeforces 2178A (Yes or Yes), https://codeforces.com/contest/2178/problem/A
+// limits: 1000 ms, 256 MB
 // Problem: a string s of Y and N, 2 <= |s| <= 100. Repeatedly replace two adjacent characters by
 //   their OR, never merging two Ys. Print YES if s can shrink to one character. Multitest.
 // Solution: a Y can only merge with an N and stays a Y, so the number of Ys never changes. One

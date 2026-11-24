@@ -1,4 +1,5 @@
 // Source: Codeforces 2129B (Stay or Mirror), https://codeforces.com/contest/2129/problem/B
+// limits: 2000 ms, 256 MB
 // Problem: a permutation p of n <= 5000; set each a[i] to p[i] or 2n - p[i]. Print the fewest
 //   inversions a can have. Multitest, sum n <= 5000.
 // Solution: for p[j] > p[i] both choices for j lie strictly between p[i] and 2n - p[i], so the

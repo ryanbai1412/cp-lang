@@ -47,12 +47,6 @@ no-max cf2124a -
 no-max cf2124b -
 no-max cf2124c -
 no-max cf2124e -
-no-max cf2129b -
-no-max cf2137a -
-no-max cf2137b -
-no-max cf2147b -
-no-max cf2165a -
-no-max cf2178a -
 no-max cf2178c -
 no-max cf2178d -
 no-max cf2178f -

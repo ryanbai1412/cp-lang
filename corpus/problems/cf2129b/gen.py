@@ -1,5 +1,16 @@
 #!/usr/bin/env python3
 import random, sys
+
+if sys.argv[1:] == ["--max"]:
+    # sum n = 5000 in one test of n = 5000, a random permutation.
+    r = random.Random(2129)
+    n = 5000
+    p = list(range(1, n + 1))
+    r.shuffle(p)
+    print(1)
+    print(n)
+    print(*p)
+    sys.exit()
 r = random.Random(int(sys.argv[1]))
 size = int(sys.argv[2])
 T = r.randint(1, 5)
