@@ -88,7 +88,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         tys: &[&'p Ty],
         args: &'p [Arg],
         callee: Option<&'p cpl_ir::Function>,
-    ) -> Option<(Vec<bool>, usize, usize)> {
+    ) -> Option<(Vec<Option<(&'p Place, MutTake<'p>)>>, usize, usize)> {
         // Several `mut` args must be places that never overlap: each is
         // taken in turn and written back after the call.
         let muts: Vec<&Place> = (args.iter())
@@ -103,32 +103,45 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
         // A mut arg is a local or global, a 1D indexed V place, or any other
         // place walked by path.
-        let mut via_path = vec![false; args.len()];
+        let mut takes = Vec::with_capacity(args.len());
         for (i, a) in args.iter().enumerate() {
-            match a {
-                Arg::Value(_) => {}
-                Arg::Mut(place) => match &place.kind {
-                    PlaceKind::Local(slot) => {
-                        if matches!(self.slot_loc(*slot), SlotLoc::SmallTuple { .. }) {
-                            return None;
-                        }
-                    }
-                    PlaceKind::Global(_) => {}
-                    PlaceKind::Index(base, indices)
-                        if !multi
-                            && indices.len() == 1
-                            && ScalarKind::of_ty(&indices[0].ty, self.program).is_some()
-                            && ScalarKind::of_ty(tys[i], self.program).is_none()
-                            && ScalarKind::of_opt_ty(tys[i], self.program).is_none()
-                            && self.indexes_1d_v(base) => {}
-                    PlaceKind::Index(..) | PlaceKind::Field(..)
-                        if ScalarKind::of_opt_ty(tys[i], self.program).is_none() =>
-                    {
-                        via_path[i] = true;
-                    }
-                    _ => return None,
+            let Arg::Mut(place) = a else {
+                takes.push(None);
+                continue;
+            };
+            let take = match &place.kind {
+                PlaceKind::Local(slot) => match self.slot_loc(*slot) {
+                    SlotLoc::I(r, _) => MutTake::LocalI(r),
+                    SlotLoc::OptI { val, some, .. } => MutTake::LocalOptI { val, some },
+                    SlotLoc::V(r) => MutTake::LocalV(r),
+                    SlotLoc::SmallTuple { .. } => return None,
                 },
-            }
+                PlaceKind::Global(gid) => MutTake::Global(*gid as u16),
+                PlaceKind::Index(base, indices)
+                    if !multi
+                        && indices.len() == 1
+                        && ScalarKind::of_ty(&indices[0].ty, self.program).is_some()
+                        && ScalarKind::of_ty(tys[i], self.program).is_none()
+                        && ScalarKind::of_opt_ty(tys[i], self.program).is_none()
+                        && self.elem_1d_v(base).is_some() =>
+                {
+                    let Some((root, is_arr)) = self.elem_1d_v(base) else {
+                        return None;
+                    };
+                    MutTake::Elem {
+                        root,
+                        is_arr,
+                        index: &indices[0],
+                    }
+                }
+                PlaceKind::Index(..) | PlaceKind::Field(..)
+                    if ScalarKind::of_opt_ty(tys[i], self.program).is_none() =>
+                {
+                    MutTake::Path
+                }
+                _ => return None,
+            };
+            takes.push(Some((place, take)));
         }
         let mut ni = 0usize;
         let mut nv = 0usize;
@@ -146,7 +159,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         if ni > 8 || nv > 8 {
             return None;
         }
-        Some((via_path, ni, nv))
+        Some((takes, ni, nv))
     }
 
     /// The args of a call to params of types `tys`: value args first, then
@@ -159,7 +172,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         callee: Option<&'p cpl_ir::Function>,
         span: Span,
     ) -> Option<MixArgs> {
-        let (via_path, ni, nv) = self.mix_arg_plan(tys, args, callee)?;
+        let (takes, ni, nv) = self.mix_arg_plan(tys, args, callee)?;
         let program = self.program;
         let tuple_len = |k: usize| callee.and_then(|f| tuple_param_len(program, f, k));
         let mut i_args: Vec<u16> = vec![0; ni];
@@ -208,11 +221,14 @@ impl<'p, 'f> Compiler<'p, 'f> {
             }
         }
         // Pass 2: move out all mut arguments after value arguments are evaluated.
-        for (i, a) in args.iter().enumerate() {
-            if let Arg::Mut(place) = a {
-                let ty = tys[i];
-                let off = param_offs[i];
-                if via_path[i] {
+        for (i, take) in takes.iter().enumerate() {
+            let Some((place, take)) = *take else {
+                continue;
+            };
+            let ty = tys[i];
+            let off = param_offs[i];
+            match take {
+                MutTake::Path => {
                     let Some(path) = self.compile_place_path_to(place, true) else {
                         self.ops.truncate(marks.0);
                         self.spans.truncate(marks.1);
@@ -239,129 +255,116 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     v_args[off] = (r, true);
                     continue;
                 }
-                match &place.kind {
-                    PlaceKind::Local(slot) => match self.slot_loc(*slot) {
-                        SlotLoc::I(r, _) => {
-                            i_args[off] = r;
-                            writebacks.push(WriteBack::LocalI {
-                                dst: r,
-                                arg_off: off as u16,
-                            });
-                        }
-                        SlotLoc::OptI { val, some, .. } => {
-                            i_args[off] = val;
-                            i_args[off + 1] = some;
-                            writebacks.push(WriteBack::LocalOptI {
-                                dst_val: val,
-                                dst_some: some,
-                                arg_off: off as u16,
-                            });
-                        }
-                        SlotLoc::V(r) => {
-                            v_args[off] = (r, true);
-                            writebacks.push(WriteBack::LocalV {
-                                dst: r,
-                                arg_off: off as u16,
-                            });
-                        }
-                        SlotLoc::SmallTuple { .. } => unreachable!(),
-                    },
-                    PlaceKind::Global(gid) => {
-                        let gid = *gid as u16;
-                        if let Some(kind) = ScalarKind::of_ty(ty, self.program) {
-                            let r = self.alloc_i();
-                            self.emit(Op::LoadGlobalI { dst: r, gid }, place.span);
-                            i_args[off] = r;
-                            writebacks.push(WriteBack::GlobalI {
+                MutTake::LocalI(r) => {
+                    i_args[off] = r;
+                    writebacks.push(WriteBack::LocalI {
+                        dst: r,
+                        arg_off: off as u16,
+                    });
+                }
+                MutTake::LocalOptI { val, some } => {
+                    i_args[off] = val;
+                    i_args[off + 1] = some;
+                    writebacks.push(WriteBack::LocalOptI {
+                        dst_val: val,
+                        dst_some: some,
+                        arg_off: off as u16,
+                    });
+                }
+                MutTake::LocalV(r) => {
+                    v_args[off] = (r, true);
+                    writebacks.push(WriteBack::LocalV {
+                        dst: r,
+                        arg_off: off as u16,
+                    });
+                }
+                MutTake::Global(gid) => {
+                    if let Some(kind) = ScalarKind::of_ty(ty, self.program) {
+                        let r = self.alloc_i();
+                        self.emit(Op::LoadGlobalI { dst: r, gid }, place.span);
+                        i_args[off] = r;
+                        writebacks.push(WriteBack::GlobalI {
+                            gid,
+                            kind,
+                            arg_off: off as u16,
+                        });
+                    } else if let Some(kind) = ScalarKind::of_opt_ty(ty, self.program) {
+                        let rv = self.alloc_i();
+                        let rs = self.alloc_i();
+                        self.emit(
+                            Op::LoadGlobalOptI {
+                                dst_val: rv,
+                                dst_some: rs,
                                 gid,
-                                kind,
+                            },
+                            place.span,
+                        );
+                        i_args[off] = rv;
+                        i_args[off + 1] = rs;
+                        writebacks.push(WriteBack::GlobalOptI {
+                            gid,
+                            kind,
+                            arg_off: off as u16,
+                        });
+                    } else {
+                        let r = self.alloc_v();
+                        self.emit(Op::LoadGlobalVMove { dst: r, gid }, place.span);
+                        v_args[off] = (r, true);
+                        writebacks.push(WriteBack::GlobalV {
+                            gid,
+                            arg_off: off as u16,
+                        });
+                    }
+                }
+                MutTake::Elem {
+                    root,
+                    is_arr,
+                    index,
+                } => {
+                    let r_i = self.compile_expr_i(index);
+                    let r = self.alloc_v();
+                    match (root, is_arr) {
+                        (ElemRoot::Local(arr_v), true) => {
+                            self.emit(Op::TakeLArr1V { dst: r, arr_v, r_i }, place.span);
+                            writebacks.push(WriteBack::LocalArr1V {
+                                arr_v,
+                                r_i,
                                 arg_off: off as u16,
                             });
-                        } else if let Some(kind) = ScalarKind::of_opt_ty(ty, self.program) {
-                            let rv = self.alloc_i();
-                            let rs = self.alloc_i();
+                        }
+                        (ElemRoot::Global(gid), true) => {
+                            self.emit(Op::TakeGArr1V { dst: r, gid, r_i }, place.span);
+                            writebacks.push(WriteBack::GlobalArr1V {
+                                gid,
+                                r_i,
+                                arg_off: off as u16,
+                            });
+                        }
+                        (ElemRoot::Local(list_v), false) => {
                             self.emit(
-                                Op::LoadGlobalOptI {
-                                    dst_val: rv,
-                                    dst_some: rs,
-                                    gid,
+                                Op::TakeLList1V {
+                                    dst: r,
+                                    list_v,
+                                    r_i,
                                 },
                                 place.span,
                             );
-                            i_args[off] = rv;
-                            i_args[off + 1] = rs;
-                            writebacks.push(WriteBack::GlobalOptI {
-                                gid,
-                                kind,
+                            writebacks.push(WriteBack::LocalList1V {
+                                list_v,
+                                r_i,
                                 arg_off: off as u16,
                             });
-                        } else {
-                            let r = self.alloc_v();
-                            self.emit(Op::LoadGlobalVMove { dst: r, gid }, place.span);
-                            v_args[off] = (r, true);
-                            writebacks.push(WriteBack::GlobalV {
+                        }
+                        (ElemRoot::Global(gid), false) => {
+                            self.emit(Op::TakeGList1V { dst: r, gid, r_i }, place.span);
+                            writebacks.push(WriteBack::GlobalList1V {
                                 gid,
+                                r_i,
                                 arg_off: off as u16,
                             });
                         }
                     }
-                    PlaceKind::Index(base, indices) => {
-                        let is_arr = matches!(&base.ty, Ty::Array { .. });
-                        let r_i = self.compile_expr_i(&indices[0]);
-                        let r = self.alloc_v();
-                        match (&base.kind, is_arr) {
-                            (PlaceKind::Local(slot), true) => {
-                                let SlotLoc::V(arr_v) = self.slot_loc(*slot) else {
-                                    unreachable!();
-                                };
-                                self.emit(Op::TakeLArr1V { dst: r, arr_v, r_i }, place.span);
-                                writebacks.push(WriteBack::LocalArr1V {
-                                    arr_v,
-                                    r_i,
-                                    arg_off: off as u16,
-                                });
-                            }
-                            (PlaceKind::Global(gid), true) => {
-                                let gid = *gid as u16;
-                                self.emit(Op::TakeGArr1V { dst: r, gid, r_i }, place.span);
-                                writebacks.push(WriteBack::GlobalArr1V {
-                                    gid,
-                                    r_i,
-                                    arg_off: off as u16,
-                                });
-                            }
-                            (PlaceKind::Local(slot), false) => {
-                                let SlotLoc::V(list_v) = self.slot_loc(*slot) else {
-                                    unreachable!();
-                                };
-                                self.emit(
-                                    Op::TakeLList1V {
-                                        dst: r,
-                                        list_v,
-                                        r_i,
-                                    },
-                                    place.span,
-                                );
-                                writebacks.push(WriteBack::LocalList1V {
-                                    list_v,
-                                    r_i,
-                                    arg_off: off as u16,
-                                });
-                            }
-                            (PlaceKind::Global(gid), false) => {
-                                let gid = *gid as u16;
-                                self.emit(Op::TakeGList1V { dst: r, gid, r_i }, place.span);
-                                writebacks.push(WriteBack::GlobalList1V {
-                                    gid,
-                                    r_i,
-                                    arg_off: off as u16,
-                                });
-                            }
-                            _ => unreachable!(),
-                        }
-                        v_args[off] = (r, true);
-                    }
-                    _ => unreachable!(),
+                    v_args[off] = (r, true);
                 }
             }
         }
@@ -534,21 +537,25 @@ impl<'p, 'f> Compiler<'p, 'f> {
 
     /// Whether `base[i]` is a 1D list or array the VM indexes in a value
     /// register or global directly.
-    fn indexes_1d_v(&self, base: &Place) -> bool {
-        let root_ok = match &base.kind {
-            PlaceKind::Local(slot) => matches!(self.slot_loc(*slot), SlotLoc::V(_)),
-            PlaceKind::Global(_) => true,
-            _ => false,
+    fn elem_1d_v(&self, base: &Place) -> Option<(ElemRoot, bool)> {
+        let root = match &base.kind {
+            PlaceKind::Local(slot) => match self.slot_loc(*slot) {
+                SlotLoc::V(r) => ElemRoot::Local(r),
+                _ => return None,
+            },
+            PlaceKind::Global(gid) => ElemRoot::Global(*gid as u16),
+            _ => return None,
         };
-        root_ok
-            && match &base.ty {
-                Ty::Array { dims, .. } => {
-                    dims.len() == 1
-                        && !matches!(dims[0], cpl_ir::Dim::IntFrom(_) | cpl_ir::Dim::Sym(_))
-                }
-                Ty::List(_) => true,
-                _ => false,
+        match &base.ty {
+            Ty::Array { dims, .. }
+                if dims.len() == 1
+                    && !matches!(dims[0], cpl_ir::Dim::IntFrom(_) | cpl_ir::Dim::Sym(_)) =>
+            {
+                Some((root, true))
             }
+            Ty::List(_) => Some((root, false)),
+            _ => None,
+        }
     }
 }
 
@@ -669,4 +676,31 @@ enum WriteBack {
         kind: ScalarKind,
         arg_off: u16,
     },
+}
+
+/// How [`Compiler::compile_mix_args`] moves one `mut` arg out of its place.
+#[derive(Clone, Copy)]
+pub(super) enum MutTake<'p> {
+    LocalI(u16),
+    LocalOptI {
+        val: u16,
+        some: u16,
+    },
+    LocalV(u16),
+    Global(u16),
+    /// One scalar-indexed element of a 1D array (`is_arr`) or list of values.
+    Elem {
+        root: ElemRoot,
+        is_arr: bool,
+        index: &'p Expr,
+    },
+    /// Any other place, walked by its path.
+    Path,
+}
+
+/// The local V register or global a 1D element is taken from.
+#[derive(Clone, Copy)]
+pub(super) enum ElemRoot {
+    Local(u16),
+    Global(u16),
 }

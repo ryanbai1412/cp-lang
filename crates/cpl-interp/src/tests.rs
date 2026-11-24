@@ -2088,3 +2088,37 @@ print(ps[0].xs, ps[1].xs, ps[0].best!, s, k, add(1))
     assert!(trap.is_none(), "unexpected trap: {trap:?}");
     assert_eq!(out, "1 7 8 2 www 0 8\n");
 }
+
+#[test]
+fn vm_takes_each_kind_of_mut_arg_and_puts_it_back() {
+    let src = "\
+fn bump(mut x: Int, mut o: ?Int, mut xs: List<Int>):
+    x += 1
+    o = Some(x)
+    xs.push(x)
+fn grow(mut xs: List<Int>):
+    xs.push(0)
+struct S:
+    var xs: List<Int>
+var gs = [[1], [2]]
+var ga: [0..2]List<Int> = [[], []]
+fn main():
+    var x = 1
+    var o: ?Int = None
+    var xs = [5]
+    bump(mut x, mut o, mut xs)
+    var ls = [[1], [2, 3]]
+    var la: [0..2]List<Int> = [[4], []]
+    grow(mut ls[1])
+    grow(mut la[0])
+    grow(mut gs[0])
+    grow(mut ga[1])
+    var s = S(xs: [])
+    grow(mut s.xs)
+    print(x, o!, xs, ls[1], la[0], gs[0], ga[1], s.xs)
+main()
+";
+    let (out, trap) = outcome(src, "");
+    assert!(trap.is_none(), "unexpected trap: {trap:?}");
+    assert_eq!(out, "2 2 5 2 2 3 0 4 0 1 0 0 0\n");
+}
