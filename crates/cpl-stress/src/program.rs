@@ -669,8 +669,7 @@ impl Program {
         let mut stdin = child.stdin.take().unwrap();
         let mut stdout = child.stdout.take().unwrap();
         let mut stderr = child.stderr.take().unwrap();
-        let pid = child.id();
-        let (out, err, exit, peak_kb) = std::thread::scope(|scope| {
+        let (out, err, (exit, peak_kb)) = std::thread::scope(|scope| {
             // Each pipe has its own thread, so a program that prints a
             // lot or never reads its input cannot block either side.
             scope.spawn(move || {
@@ -686,22 +685,8 @@ impl Program {
                 let _ = stderr.read_to_end(&mut buffer);
                 buffer
             });
-            let mut peak = None;
-            let exit = loop {
-                peak = peak_memory(pid).max(peak);
-                match child.try_wait() {
-                    Ok(Some(status)) => break status.code().map_or(Exit::Signal, Exit::Code),
-                    Ok(None) if start.elapsed() >= limit => {
-                        kill_group(pid);
-                        let _ = child.kill();
-                        let _ = child.wait();
-                        break Exit::TimedOut;
-                    }
-                    Ok(None) => std::thread::sleep(Duration::from_micros(300)),
-                    Err(_) => break Exit::Signal,
-                }
-            };
-            (out.join().unwrap(), err.join().unwrap(), exit, peak)
+            let ended = supervise(&mut child, start, limit);
+            (out.join().unwrap(), err.join().unwrap(), ended)
         });
         Ok(Outcome {
             // LF everywhere: a Windows program's `\r\n` never reaches a compare, report or saved case.
@@ -711,6 +696,79 @@ impl Program {
             elapsed: start.elapsed(),
             peak_kb,
         })
+    }
+
+    /// Runs the program on this process's own stdin for at most `limit`,
+    /// passing what it prints to `out` as it prints it, so it can talk to
+    /// whatever is on the other end (a judge, a person). The outcome's
+    /// stdout is empty: it went to `out`.
+    pub fn run_live(
+        &self,
+        out: &mut (dyn Write + Send),
+        limit: Duration,
+    ) -> std::io::Result<Outcome> {
+        let start = Instant::now();
+        let mut child = self
+            .to_command()
+            .stdin(Stdio::inherit())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()?;
+        let mut stdout = child.stdout.take().unwrap();
+        let mut stderr = child.stderr.take().unwrap();
+        let (err, (exit, peak_kb)) = std::thread::scope(|scope| {
+            scope.spawn(move || {
+                let mut chunk = vec![0; 1 << 16];
+                while let Ok(read @ 1..) = stdout.read(&mut chunk) {
+                    if out
+                        .write_all(&chunk[..read])
+                        .and_then(|()| out.flush())
+                        .is_err()
+                    {
+                        break;
+                    }
+                }
+            });
+            let err = scope.spawn(move || {
+                let mut buffer = Vec::new();
+                let _ = stderr.read_to_end(&mut buffer);
+                buffer
+            });
+            let ended = supervise(&mut child, start, limit);
+            (err.join().unwrap(), ended)
+        });
+        Ok(Outcome {
+            stdout: String::new(),
+            stderr: String::from_utf8_lossy(&err).replace("\r\n", "\n"),
+            exit,
+            elapsed: start.elapsed(),
+            peak_kb,
+        })
+    }
+}
+
+/// Waits for `child` to end, stopping it after `limit`, and samples its
+/// peak memory meanwhile.
+fn supervise(
+    child: &mut std::process::Child,
+    start: Instant,
+    limit: Duration,
+) -> (Exit, Option<u64>) {
+    let pid = child.id();
+    let mut peak = None;
+    loop {
+        peak = peak_memory(pid).max(peak);
+        match child.try_wait() {
+            Ok(Some(status)) => return (status.code().map_or(Exit::Signal, Exit::Code), peak),
+            Ok(None) if start.elapsed() >= limit => {
+                kill_group(pid);
+                let _ = child.kill();
+                let _ = child.wait();
+                return (Exit::TimedOut, peak);
+            }
+            Ok(None) => std::thread::sleep(Duration::from_micros(300)),
+            Err(_) => return (Exit::Signal, peak),
+        }
     }
 }
 

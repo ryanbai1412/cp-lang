@@ -998,7 +998,7 @@ fn next_after_test(file: &str, code: u8) -> String {
 /// `cpl run --release`: the file's C++, built as a judge builds it.
 fn run_release(
     args: &RunArgs,
-    input: &[u8],
+    input: Input,
     stdout: &mut (dyn Write + Send),
     stderr: &mut String,
 ) -> u8 {
@@ -1022,7 +1022,14 @@ fn run_release(
         match release_judge(args.file, stderr) {
             Ok(Some((name, judge, text))) => {
                 return run_release_judged(
-                    args, &program, &name, &judge, &text, input, stdout, stderr,
+                    args,
+                    &program,
+                    &name,
+                    &judge,
+                    &text,
+                    &input.whole(),
+                    stdout,
+                    stderr,
                 )
             }
             Ok(None) => {}
@@ -1031,7 +1038,13 @@ fn run_release(
     }
     // With no `--time-limit`, a day: longer than anyone waits.
     let limit = (args.time_limit).unwrap_or(std::time::Duration::from_secs(86_400));
-    let outcome = match program.run(&String::from_utf8_lossy(input), limit) {
+    // Standard input goes to the build as it arrives, so a judge on the
+    // other end of a pipe can answer what it prints.
+    let ran = match input {
+        Input::Whole(input) => program.run(&String::from_utf8_lossy(&input), limit),
+        Input::Live(_) => program.run_live(stdout, limit),
+    };
+    let outcome = match ran {
         Ok(outcome) => outcome,
         Err(error) => {
             *stderr += &format!("cpl: can't run the build of `{}`: {error}\n", args.file);
@@ -1089,7 +1102,7 @@ fn run_file(
     stderr: &mut String,
 ) -> u8 {
     if args.release {
-        return run_release(args, &input.whole(), stdout, stderr);
+        return run_release(args, input, stdout, stderr);
     }
     let path = args.file;
     let side = if args.brute {
@@ -1103,7 +1116,7 @@ fn run_file(
     };
     // An `@cpp` body is C++ only, so the program runs as its C++ build.
     if !compiled.program.cpp_bodies.is_empty() && !args.trace {
-        return run_release(args, &input.whole(), stdout, stderr);
+        return run_release(args, input, stdout, stderr);
     }
     let json = args.format == Some("json");
     if args.trace || json {

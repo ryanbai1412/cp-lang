@@ -8609,3 +8609,10 @@ Reverse: drop `walk_in_key_order` in `cpl-codegen/src/show.rs`; a printed hash t
 - **Call.** `Counter(xs)` counts each element of `xs`, as Python's `Counter(xs)` does, and `Counter()` starts empty; the missing-key default is `init:` by name (`Counter<K, V>(init: v)`). `Counter(0)` is now E0302 (an `Int` is not a sequence to count). Every other std collection was audited for the same trap, one case each: `HashSet(xs)` and `HashMap(pairs)` build from their contents (accepted); `SortedBag`/`SortedSet`/`SortedMap`/`Deque`/`LinkedList`/`Interner`/`Bitset(x)` are E0303, `Heap`/`MinMaxHeap`/`MeldHeap(xs)` are E0302 (the positional is the key fn) and `Dsu<V>(n)` is E0302 (the positional is `rollback: Bool`). `HashMap(xs)` of non-pairs, `HashMap(5)` and `List(5)` still check clean and are compiler known gaps.
 - **Why.** `Counter(a)` read the list as `init`, so every missing key read as the whole list: a silent wrong answer where Python's reading counts. Familiar wins unless novelty removes a P0, and here familiarity removes one.
 - **Reverse.** `Counter.new(init: V)` positional again; restore `Counter(0)` at the call sites.
+
+
+## 467. The interactive corpus run names the problems it can't judge (tools, 2026-11-24)
+
+- **Call.** `crates/cpl-cli/tests/interactive_corpus.rs` runs each corpus problem's `port.cp` against its `interactor.py`. Three problems are listed instead, which adds 3 skip-list entries: `KNOWN_NO_JUDGE` has ioi13p4 (an ideal sketch, not run) and ioi18p1 (a grader task with no `interactor.py`), and `KNOWN_OTHER_PROTOCOL` has egoi22p3, whose `port.cp` prints YES/NO for an offline checker, so its `spec.cp` is run instead. A listed port that starts satisfying its judge fails the test until its line is removed.
+- **Why.** The 25 judged problems are guarded now; the three need a port or a judge, not a tools change.
+- **Reverse.** Delete `interactive_corpus.rs`.
