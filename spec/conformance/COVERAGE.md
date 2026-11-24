@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3440 (3389 passing). Rules: 616.
+Cases: 3441 (3389 passing). Rules: 616.
 
 ## Summary per chapter
 
@@ -990,7 +990,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0202 Integer overflow: 48 case(s)
 - R0203 Division by zero: 4 case(s)
 - R0301 Unwrap of None: 7 case(s)
-- R0401 Assertion failed: 92 case(s)
+- R0401 Assertion failed: 93 case(s)
 - R0402 todo reached: 2 case(s)
 - R0501 Bad input token: 10 case(s)
 - R0502 Input outside its read contract: 4 case(s)
