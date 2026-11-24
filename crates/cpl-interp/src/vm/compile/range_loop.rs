@@ -1,4 +1,4 @@
-use super::{Compiler, LoopTargets};
+use super::Compiler;
 use crate::vm::ir::*;
 use cpl_diag::Span;
 use cpl_ir::{Block, LoopId, Slot};
@@ -56,14 +56,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         self.emit_loop_tag(tag_v, r_var, lo_span);
         let marks = (self.dom_clears, self.assigned_locals.len());
         let reg = resumable.then_some(LoopReg::Range { id, r_var, r_hi });
-        self.loops.push(LoopTargets {
-            id,
-            breaks: Vec::new(),
-            continues: Vec::new(),
-            resumable: reg,
-        });
-        self.compile_stmts(&body.stmts);
-        let lt = self.loops.pop().unwrap();
+        let lt = self.loop_body(id, reg, &body.stmts);
         let step_pc = self.ops.len() as u32;
         if let Some(d) = positions_of {
             self.drop_checks_of_positions(r_var, d, slot, body_pc, marks);
@@ -169,14 +162,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
         let body_pc = self.ops.len() as u32;
         self.emit_loop_tag(tag_v, r_var, hi_span);
-        self.loops.push(LoopTargets {
-            id,
-            breaks: Vec::new(),
-            continues: Vec::new(),
-            resumable: None,
-        });
-        self.compile_stmts(&body.stmts);
-        let lt = self.loops.pop().unwrap();
+        let lt = self.loop_body(id, None, &body.stmts);
         let step_pc = self.ops.len() as u32;
         for c in lt.continues {
             self.patch(c, step_pc);

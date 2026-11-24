@@ -425,19 +425,14 @@ impl<'p, 'f> Compiler<'p, 'f> {
             }
             ExprKind::Do(block) => {
                 let dst = self.alloc_i();
-                let prev_pinned = self.pinned_v;
-                self.pinned_v = self.next_v;
-                self.give_targets.push(GiveTarget::I {
-                    dst,
-                    exits: Vec::new(),
-                });
-                self.compile_do_stmts(&block.stmts);
-                let mut target = self.give_targets.pop().unwrap();
-                self.pinned_v = prev_pinned;
-                let end_pc = self.ops.len() as u32;
-                for j in target.exits_mut().drain(..) {
-                    self.patch(j, end_pc);
-                }
+                self.give_body(
+                    GiveTarget::I {
+                        dst,
+                        exits: Vec::new(),
+                    },
+                    &block.stmts,
+                    Self::compile_do_stmts,
+                );
                 dst
             }
             ExprKind::Cast(
@@ -1221,7 +1216,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     // The last statement's value falls through to the end, so
                     // it needs no jump, nor a move when nothing else returns.
                     let tail = tail.map(|e| self.compile_expr_i(e));
-                    let (_, jumps) = self.inline_ret.take().unwrap();
+                    let jumps = self.inline_ret.take().map_or_else(Vec::new, |(_, j)| j);
                     let dst = match tail {
                         Some(r) if jumps.is_empty() => r,
                         Some(r) => {

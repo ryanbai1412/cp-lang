@@ -1,6 +1,6 @@
 use super::seq_load::SeqKind;
 use super::sort::sort_key_of;
-use super::{Compiler, GiveTarget, LoopTargets};
+use super::{Compiler, GiveTarget, LoopExits, LoopTargets};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
 use cpl_diag::Span;
@@ -17,6 +17,55 @@ pub(super) enum Callee<'p> {
 }
 
 impl<'p, 'f> Compiler<'p, 'f> {
+    /// Compiles `stmts` as the body of loop `id` and gives back the
+    /// `break` and `continue` jumps it left for the caller to patch.
+    pub(super) fn loop_body(
+        &mut self,
+        id: LoopId,
+        resumable: Option<LoopReg>,
+        stmts: &'p [Stmt],
+    ) -> LoopExits {
+        let depth = self.loops.len();
+        self.loops.push(LoopTargets {
+            id,
+            breaks: Vec::new(),
+            continues: Vec::new(),
+            resumable,
+        });
+        self.compile_stmts(stmts);
+        let mut exits = LoopExits::default();
+        let depth = depth.min(self.loops.len());
+        for lt in self.loops.drain(depth..) {
+            exits.breaks.extend(lt.breaks);
+            exits.continues.extend(lt.continues);
+        }
+        exits
+    }
+
+    /// Compiles `stmts` with `compile` as a `do` block's body, `target`
+    /// open for its `give`s, then sends every `give` to the block's end.
+    pub(super) fn give_body(
+        &mut self,
+        target: GiveTarget,
+        stmts: &'p [Stmt],
+        compile: fn(&mut Self, &'p [Stmt]),
+    ) {
+        let prev_pinned = self.pinned_v;
+        self.pinned_v = self.next_v;
+        let depth = self.give_targets.len();
+        self.give_targets.push(target);
+        compile(self, stmts);
+        self.pinned_v = prev_pinned;
+        let end_pc = self.ops.len() as u32;
+        let depth = depth.min(self.give_targets.len());
+        let exits: Vec<usize> = (self.give_targets.drain(depth..))
+            .flat_map(|mut t| std::mem::take(t.exits_mut()))
+            .collect();
+        for j in exits {
+            self.patch(j, end_pc);
+        }
+    }
+
     pub(super) fn compile_stmts(&mut self, stmts: &'p [Stmt]) {
         if let Some((slot, span)) = self.traced_loop_var.take() {
             self.emit_trace(TracePoint::Loop(slot, span), span);
@@ -590,14 +639,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
     fn compile_fed_body(&mut self, id: LoopId, body: &'p Block) {
         let j_over = self.emit(Op::Jmp { target: 0 }, Span::default());
         self.fed_bodies.push((id, self.ops.len() as u32));
-        self.loops.push(LoopTargets {
-            id,
-            breaks: Vec::new(),
-            continues: Vec::new(),
-            resumable: None,
-        });
-        self.compile_stmts(&body.stmts);
-        let lt = self.loops.pop().unwrap();
+        let lt = self.loop_body(id, None, &body.stmts);
         let next_pc = self.ops.len() as u32;
         for c in lt.continues {
             self.patch(c, next_pc);
@@ -783,17 +825,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         self.emit_fallback_stmt(stmt);
                     }
                 } else if let ExprKind::Do(block) = &expr.kind {
-                    let prev_pinned = self.pinned_v;
-                    self.pinned_v = self.next_v;
-                    self.give_targets
-                        .push(GiveTarget::Discard { exits: Vec::new() });
-                    self.compile_stmts(&block.stmts);
-                    let mut target = self.give_targets.pop().unwrap();
-                    self.pinned_v = prev_pinned;
-                    let end_pc = self.ops.len() as u32;
-                    for j in target.exits_mut().drain(..) {
-                        self.patch(j, end_pc);
-                    }
+                    self.give_body(
+                        GiveTarget::Discard { exits: Vec::new() },
+                        &block.stmts,
+                        Self::compile_stmts,
+                    );
                 } else if let Some(dst) = self.try_compile_apply_v(expr) {
                     self.emit(Op::ClearV { reg: dst }, expr.span);
                 } else if let ExprKind::Local(_) = expr.kind {
@@ -871,14 +907,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.in_dom.clear();
                 let head = self.ops.len() as u32;
                 let j_exit = self.emit_branch_if_false(cond);
-                self.loops.push(LoopTargets {
-                    id: *id,
-                    breaks: Vec::new(),
-                    continues: Vec::new(),
-                    resumable: Some(LoopReg::While(*id)),
-                });
-                self.compile_stmts(&body.stmts);
-                let lt = self.loops.pop().unwrap();
+                let lt = self.loop_body(*id, Some(LoopReg::While(*id)), &body.stmts);
                 for c in lt.continues {
                     self.patch(c, head);
                 }
@@ -1149,14 +1178,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
 
         let body_pc = self.ops.len();
         self.feed_calls[spec_idx as usize].body_pc = body_pc;
-        self.loops.push(LoopTargets {
-            id,
-            breaks: Vec::new(),
-            continues: Vec::new(),
-            resumable: None,
-        });
-        self.compile_stmts(&body.stmts);
-        let lt = self.loops.pop().unwrap();
+        let lt = self.loop_body(id, None, &body.stmts);
         let next_pc = self.ops.len() as u32;
         for c in lt.continues {
             self.patch(c, next_pc);
@@ -1343,14 +1365,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
                 let body_pc = self.ops.len() as u32;
                 self.emit_loop_tag(tag_v, r_var, lo.span);
-                self.loops.push(LoopTargets {
-                    id,
-                    breaks: Vec::new(),
-                    continues: Vec::new(),
-                    resumable: None,
-                });
-                self.compile_stmts(&body.stmts);
-                let lt = self.loops.pop().unwrap();
+                let lt = self.loop_body(id, None, &body.stmts);
                 let step_pc = self.ops.len() as u32;
                 for c in lt.continues {
                     self.patch(c, step_pc);
@@ -1503,19 +1518,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 None => SeqHeld::Local(local_v.unwrap()),
             },
         };
-        self.loops.push(LoopTargets {
-            id,
-            breaks: Vec::new(),
-            continues: Vec::new(),
-            resumable: Some(own),
-        });
         let saved_pinned = self.pinned_v;
         if let Some(lv) = local_v {
             self.pinned_v = self.pinned_v.max(lv + 1);
         }
-        self.compile_stmts(&body.stmts);
+        let lt = self.loop_body(id, Some(own), &body.stmts);
         self.pinned_v = saved_pinned;
-        let lt = self.loops.pop().unwrap();
         let step_pc = self.ops.len() as u32;
         for c in lt.continues {
             self.patch(c, step_pc);

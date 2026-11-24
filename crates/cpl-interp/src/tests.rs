@@ -1848,3 +1848,38 @@ fn slices_walk_print_and_join_in_order() {
     let want = "2\n3\n4\n2 3 4\n1 2 3 4 2 3 4\nb\nc\nd\nbcd\nabcdbcd\nNO\n";
     assert_eq!(outcome(prog, ""), (want.into(), None));
 }
+
+#[test]
+fn vm_nested_loop_and_do_exits_land_on_their_own_targets() {
+    let src = "\
+fn walk(n: Int) -> Int:
+    var s = 0
+    'outer: for a in 0..n:
+        for b in 0..n:
+            if b == a: continue 'outer
+            if a + b > 6: break 'outer
+            if b == 2: continue
+            s += a * 10 + b
+    return s
+
+fn pick(n: Int) -> Int:
+    let x = do:
+        var t = 0
+        for i in 0..n:
+            if i == 3: break
+            t += i
+        t
+    let name = do:
+        var w = \"\"
+        for i in 0..n:
+            if i % 2 == 0: continue
+            w = w + \"o\"
+        w
+    return x * 100 + name.len
+
+print(walk(5), pick(6), pick(2))
+";
+    let (out, trap) = outcome(src, "");
+    assert!(trap.is_none(), "unexpected trap: {trap:?}");
+    assert_eq!(out, "193 303 101\n");
+}

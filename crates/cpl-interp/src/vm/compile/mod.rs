@@ -31,6 +31,13 @@ struct LoopTargets {
     resumable: Option<LoopReg>,
 }
 
+/// The jumps a loop body left: where its `break`s and `continue`s go.
+#[derive(Default)]
+struct LoopExits {
+    breaks: Vec<usize>,
+    continues: Vec<usize>,
+}
+
 enum GiveTarget {
     I {
         dst: u16,
