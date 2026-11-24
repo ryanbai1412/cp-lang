@@ -21,6 +21,8 @@ pub const DEFAULT_MEMORY_MB: u64 = 256;
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Config {
     levels: HashMap<&'static str, Level>,
+    /// Levels of names no built-in lint has: a library's `@lint` may.
+    named: HashMap<String, Level>,
     /// Levels set for a whole group; a lint's own entry wins.
     groups: HashMap<Group, Level>,
     /// What `memo_key_space` compares a memo table against.
@@ -31,6 +33,7 @@ impl Default for Config {
     fn default() -> Config {
         Config {
             levels: HashMap::new(),
+            named: HashMap::new(),
             groups: HashMap::new(),
             memory_mb: DEFAULT_MEMORY_MB,
         }
@@ -43,6 +46,9 @@ pub struct ConfigError {
     /// 1-based.
     pub line: usize,
     pub message: String,
+    /// The name, when the line sets a lint no built-in lint has: a
+    /// library may declare it with `@lint`.
+    pub lint: Option<String>,
 }
 
 impl std::fmt::Display for ConfigError {
@@ -56,6 +62,7 @@ impl Config {
     pub fn level(&self, lint: &Lint) -> Level {
         self.levels
             .get(lint.name)
+            .or_else(|| self.named.get(lint.name))
             .or_else(|| self.groups.get(&lint.group))
             .copied()
             .unwrap_or(lint.default)
@@ -102,6 +109,7 @@ impl Config {
                 errors.push(ConfigError {
                     line: index + 1,
                     message,
+                    lint: None,
                 })
             };
             let Some((key, value)) = line.split_once('=') else {
@@ -142,6 +150,10 @@ impl Config {
                     }
                     None => format!("there is no lint called `{key}`"),
                 });
+                if let Some(level) = level(value) {
+                    config.named.insert(key.to_string(), level);
+                    errors.last_mut().unwrap().lint = Some(key.to_string());
+                }
                 continue;
             };
             match level(value) {

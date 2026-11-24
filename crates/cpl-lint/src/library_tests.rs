@@ -55,3 +55,29 @@ fn a_library_lint_fires_and_fixes_in_a_program_using_the_library() {
     assert!(fixed.contains("print(d2, e, f, g, xb * xb)"), "{fixed}");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// `cp.toml`'s `[lints]` sets a library lint's level like a built-in one's,
+/// without calling it unknown; a name no library declares still is.
+/// Rule: lints/R19.
+#[test]
+fn cp_toml_sets_a_library_lints_level() {
+    let dir = fixture("level");
+    let toml = dir.join("cp.toml");
+    let mut text = std::fs::read_to_string(&toml).unwrap();
+    text += "\n[lints]\nsquare_by_hand = \"deny\"\nnope = \"allow\"\n";
+    std::fs::write(&toml, text).unwrap();
+    let main = dir.join("main.cp").to_string_lossy().into_owned();
+    let (mut out, mut err) = (Vec::new(), Vec::new());
+    cli::run(std::slice::from_ref(&main), &mut out, &mut err);
+    let report = String::from_utf8_lossy(&out).into_owned() + &String::from_utf8_lossy(&err);
+    assert_eq!(
+        report.matches("error[square_by_hand]").count(),
+        2,
+        "{report}"
+    );
+    assert!(
+        !report.contains("no lint called `square_by_hand`"),
+        "{report}"
+    );
+    assert!(report.contains("no lint called `nope`"), "{report}");
+}

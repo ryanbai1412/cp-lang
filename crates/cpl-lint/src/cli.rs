@@ -144,7 +144,9 @@ pub fn run_with(
     let keep =
         |d: &cpl_diag::Diagnostic| !taste || LINTS.iter().any(|l| l.code == d.code && is_taste(l));
     let (mut tasteful, mut by_lint) = (0usize, BTreeMap::<&str, usize>::new());
-    let mut bad_configs: Vec<PathBuf> = Vec::new();
+    // Shown after the files: a name only a library's `@lint` declares is
+    // known once that library has been linted.
+    let mut bad_configs: Vec<(PathBuf, Vec<crate::ConfigError>)> = Vec::new();
     for file in &files {
         let name = file.display().to_string();
         let key = file.to_string_lossy().into_owned();
@@ -159,11 +161,8 @@ pub fn run_with(
         let (config, found) = Config::discover(file);
         if let Some((toml, problems)) = found {
             // Once per cp.toml, however many files it covers.
-            if !problems.is_empty() && !bad_configs.contains(&toml) {
-                for problem in &problems {
-                    let _ = writeln!(stderr, "warning: {}: {problem}", toml.display());
-                }
-                bad_configs.push(toml);
+            if !problems.is_empty() && !bad_configs.iter().any(|(t, _)| *t == toml) {
+                bad_configs.push((toml, problems));
             }
         }
         if fix {
@@ -296,6 +295,18 @@ pub fn run_with(
             shown.extend(diagnostics);
             shown.sort_by_key(|d| (d.span.start, d.span.end, d.code));
             show(stdout, &shown, &name, &src);
+        }
+    }
+    for (toml, problems) in &bad_configs {
+        for problem in problems {
+            if problem
+                .lint
+                .as_deref()
+                .is_some_and(crate::library::is_declared)
+            {
+                continue;
+            }
+            let _ = writeln!(stderr, "warning: {}: {problem}", toml.display());
         }
     }
     let mut summary = format!(

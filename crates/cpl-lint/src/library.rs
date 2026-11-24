@@ -52,10 +52,17 @@ pub(crate) fn collect(analysis: &Analysis) -> Vec<Declared> {
     out
 }
 
+/// Whether a library this run has linted declares a lint called `name`.
+pub(crate) fn is_declared(name: &str) -> bool {
+    let all = ALL.lock().unwrap_or_else(|e| e.into_inner());
+    all.iter().any(|l| l.name == name)
+}
+
+static ALL: Mutex<Vec<&'static Lint>> = Mutex::new(Vec::new());
+
 /// The library lint named `name`, made once per name and kept: a finding
 /// names its lint by a `&'static` reference.
 pub(crate) fn intern(name: &str) -> &'static Lint {
-    static ALL: Mutex<Vec<&'static Lint>> = Mutex::new(Vec::new());
     let mut all = ALL.lock().unwrap_or_else(|e| e.into_inner());
     if let Some(lint) = all.iter().find(|l| l.name == name) {
         return lint;
