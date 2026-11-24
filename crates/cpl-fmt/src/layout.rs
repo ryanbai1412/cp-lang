@@ -188,7 +188,11 @@ fn logical_lines<'a>(src: &'a str, lexed: &Lexed) -> Vec<Line<'a>> {
     let mut lines: Vec<Line<'a>> = Vec::new();
     let mut current: Option<Line<'a>> = None;
     let mut depth = 0usize;
-    let mut open_brackets = 0usize;
+    // Per open bracket: where its last source line started in the logical line
+    // it is in (line, token), and a layout block opened in it (`(if c:` ...
+    // `else:`): the header's token depth and printed depth, which the block's
+    // lines indent from.
+    let mut brackets: Vec<[Option<(usize, usize)>; 2]> = Vec::new();
     let mut comments = lexed.comments.iter().peekable();
     // End of the last token or comment seen, and whether a token came last
     // on its line (so a comment after it trails it).
@@ -198,6 +202,24 @@ fn logical_lines<'a>(src: &'a str, lexed: &Lexed) -> Vec<Line<'a>> {
     for (at, tok) in lexed.tokens.iter().enumerate() {
         match tok.kind {
             K::Indent => {
+                if let Some([split, block @ None]) = brackets.last_mut() {
+                    // A header that starts its own source line inside the bracket
+                    // (`let v = {` / `if c:`) becomes a line one deeper.
+                    if let Some((n, at)) = split.filter(|s| s.0 + 1 == lines.len()) {
+                        let line = &mut lines[n];
+                        let toks = line.toks.split_off(at);
+                        let tail = Line {
+                            depth: line.depth + 1,
+                            col: toks[0].col,
+                            blank_before: false,
+                            leading: Vec::new(),
+                            toks,
+                            trailing: None,
+                        };
+                        lines.push(tail);
+                    }
+                    *block = Some((depth, lines.last().map_or(depth, |l| l.depth)));
+                }
                 depth += 1;
                 continue;
             }
@@ -260,12 +282,17 @@ fn logical_lines<'a>(src: &'a str, lexed: &Lexed) -> Vec<Line<'a>> {
             leading: Vec::new(),
             trailing: None,
         };
+        if let (Some(line), Some([split, _]), true) =
+            (current.as_ref(), brackets.last_mut(), entry.line_start)
+        {
+            *split = Some((lines.len(), line.toks.len()));
+        }
         match current.as_mut() {
             Some(line) => {
                 line.toks.push(Tok { leading, ..entry });
             }
             None if entry.kind == K::Comma
-                && open_brackets > 0
+                && !brackets.is_empty()
                 && !lines.is_empty()
                 && lexed.tokens.get(at + 1).is_some_and(|next| {
                     matches!(next.kind, K::RParen | K::RBracket | K::RBrace | K::Newline)
@@ -280,8 +307,18 @@ fn logical_lines<'a>(src: &'a str, lexed: &Lexed) -> Vec<Line<'a>> {
             None => {
                 let starts_closer =
                     matches!(entry.kind, K::RParen | K::RBracket | K::RBrace | K::Comma);
-                let line_depth = if open_brackets > 0 && !starts_closer {
-                    depth.max(open_brackets)
+                let line_depth = if let (Some(&[_, Some((at, printed))]), false) =
+                    (brackets.last(), starts_closer)
+                {
+                    // The block's body hangs one step past each open bracket,
+                    // as a body in brackets always has; its header's level
+                    // (`else:`) stays at the header.
+                    match depth.checked_sub(at) {
+                        Some(d) if d > 0 => printed.max(brackets.len() - 1) + d,
+                        _ => printed,
+                    }
+                } else if !brackets.is_empty() && !starts_closer {
+                    depth.max(brackets.len())
                 } else {
                     depth
                 };
@@ -296,9 +333,9 @@ fn logical_lines<'a>(src: &'a str, lexed: &Lexed) -> Vec<Line<'a>> {
             }
         }
         match tok.kind {
-            K::LParen | K::LBracket | K::LBrace => open_brackets += 1,
+            K::LParen | K::LBracket | K::LBrace => brackets.push([None, None]),
             K::RParen | K::RBracket | K::RBrace => {
-                open_brackets = open_brackets.saturating_sub(1);
+                brackets.pop();
             }
             _ => {}
         }
