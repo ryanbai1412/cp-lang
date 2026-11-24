@@ -1542,9 +1542,8 @@ struct PalindromicTree<A>
     fn diff(self, state: Int) -> Int                                      // O(1)
     fn series_link(self, state: Int) -> Int                               // O(1)
     fn occurrences(self) -> List<Int>                                     // O(n)
-fn RollingHash.lcp(self, a: Int, b: Int) -> Int                           // O(log n)
 fn RollingHash.lcs(self, a: Int, b: Int) -> Int                           // O(log n)
-fn RollingHash.lcp_with(self, a: Int, other: RollingHash, b: Int) -> Int  // O(log n)
+fn RollingHash.lcp(self, a: Int, b: Int, of: ?RollingHash = None) -> Int  // O(log n)
 struct Hash2D<R, C>
     fn new(code: (R, C) -> Int, bases: ?(Int, Int) = none) -> Hash2D<R, C>  // O(R * C)
     fn rect(self, rows: Range<R>, cols: Range<C>) -> HashVal                // O(1)

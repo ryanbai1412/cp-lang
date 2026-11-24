@@ -66,7 +66,7 @@ own hasher (`noi16p1`, `noi17p2`, `year2018p7`, `noip20p2`, `btoi19p5`,
 (double-mod `10^9 + 7` and `10^9 + 9`, random per-instance bases, composable
 into 2D via `HashVal.hash_token`), and `examples/local-lib/str/hash2d.cp`
 provides `Hash2D<R, C>`. What is missing from `RollingHash` is `lcp`, `lcs`,
-and `lcp_with` (`noi16p1`), plus promoting `Hash2D<R, C>` with double-mod
+and `lcp(a, b, of: other)` (`noi16p1`), plus promoting `Hash2D<R, C>` with double-mod
 `HashVal` so single-mod collisions are impossible on Codeforces.
 
 **Suffix structures.** Suffix array (SA-IS, \(O(n)\) for bounded alphabets and
@@ -260,9 +260,8 @@ struct RollingHash:
     fn slice(self, l: Int, r: Int) -> HashVal                        // O(1)
     fn get<R>(self, r: R) -> HashVal                                 // O(1)
     fn combine(self, a: HashVal, b: HashVal, b_len: Int) -> HashVal  // O(1)
-    fn lcp(self, a: Int, b: Int) -> Int                              // O(log n)
+    fn lcp(self, a: Int, b: Int, of: ?RollingHash = None) -> Int     // O(log n); `of:` puts `b` in another hash
     fn lcs(self, a: Int, b: Int) -> Int                              // O(log n)
-    fn lcp_with(self, a: Int, other: RollingHash, b: Int) -> Int     // O(log n)
 
 struct Hash2D<R, C>:
     fn new(code: (R, C) -> Int, bases: ?(Int, Int) = None) -> Hash2D<R, C>  // O(R * C)
@@ -571,8 +570,8 @@ Audit against AtCoder Library (`string`), KACTL (`strings`), cp-algorithms (`str
 | Suffix array (SA-IS) + Kasai LCP | ACL `suffix_array`/`lcp_array`, KACTL `SuffixArray`, cp-alg | have | `suffix_array<S: Indexed>(s) -> SuffixArray`, `SuffixArray.{sa,rank,lcp,len,is_empty,lcp_between,rank_range,find_all,count,lcp_range,compare,distinct}` |
 | Suffix array rank-LCP, prefix-bucket split, k-th distinct substring | KACTL, jiangly, ecnerwala | new | `SuffixArray.{lcp_of_ranks,split,kth_distinct}` |
 | Compressed suffix tree (from SA + LCP) | KACTL `SuffixTree`, ecnerwala (`ucup5s05f`) | new | `SuffixTreeEdge`, `suffix_tree_edges<S: Indexed>` |
-| Double-mod polynomial rolling hash (1D) | cp-alg, Benq, jiangly | have | `HashVal`, `Hashable`, `RollingHash.{new(s, bases:),len,all,slice,get,combine,lcp,lcs,lcp_with}` |
-| Mersenne `2^61 - 1` rolling hash (1D) | KACTL `Hashing` (mod `2^64-1`/Mersenne), Benq | new | `RollingHash61.{new(s, base:),len,all,slice,get,combine,lcp,lcs,lcp_with}` |
+| Double-mod polynomial rolling hash (1D) | cp-alg, Benq, jiangly | have | `HashVal`, `Hashable`, `RollingHash.{new(s, bases:),len,all,slice,get,combine,lcp,lcs}` |
+| Mersenne `2^61 - 1` rolling hash (1D) | KACTL `Hashing` (mod `2^64-1`/Mersenne), Benq | new | `RollingHash61.{new(s, base:),len,all,slice,get,combine,lcp,lcs}` |
 | Dynamic rolling hash (point update + range hash, forward & reverse) | Contest templates (SegTree/Fenwick hash) | new | `DynamicHash<D>.{new(seq, bases:),len,is_empty,all,get,set,rev_get,is_palindrome}` |
 | 2D rolling hash (grid sub-rectangles) | cp-alg, contest templates | have | `Hash2D<R, C>.{new,rect}` |
 | Suffix automaton (SAM) + online/generalized + k-th substring | cp-alg, Benq, jiangly | have / new | `SuffixAutomaton<A>.{new,of,push,root,len,step,link,longest,shortest,first_pos,find,contains,distinct,topo_order,occ_counts,lcs}` (have); `{reset,add_word,kth_substring}` (new) |

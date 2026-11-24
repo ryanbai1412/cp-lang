@@ -10,6 +10,6 @@ print(
     yes(h.combine(h.get(0..2), h.get(2..6), 4) == h.all),
     h.lcp(0, 3),
     RollingHash61("xabyab").lcs(3, 6),
-    h.lcp_with(1, h2, 1),
+    h.lcp(1, 1, of: h2),
 )
 print(lcs_all(["abcd", "xbcy", "bcz"]))

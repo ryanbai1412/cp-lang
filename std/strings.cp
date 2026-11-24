@@ -1618,13 +1618,17 @@ pub struct RollingHash:
         let q2 = if fits: pow2[b_len] else: pow_mod(bases.1, b_len, 1_000_000_009)
         HashVal((a.h1 * q1 + b.h1) % 1_000_000_007, (a.h2 * q2 + b.h2) % 1_000_000_009)
 
-    /// The length of the longest common prefix of the suffixes starting at `a` and `b`, by
-    /// binary search on hashes (so it can be wrong on a collision).
+    /// The length of the longest common prefix of the suffixes at `a` and `b`, by binary search on
+    /// hashes (so it can be wrong on a collision); `of: other` puts `b` in `other`, built with
+    /// the same bases.
     ///
     /// cost: \(O(\log n)\)
-    /// traps: when `a` or `b` is outside `0..=self.len`
+    /// traps: when `a` is outside `0..=self.len`, `b` outside `0..=` the len of `of` (or `self`), or
+    /// the bases differ
     /// example: `RollingHash("abcabd").lcp(0, 3) == 2`
-    pub fn lcp(self, a: Int, b: Int) -> Int:
+    /// example: `RollingHash("abcd", bases: Some((131, 137))).lcp(1, 1, of: RollingHash("xbcx", bases: Some((131, 137)))) == 2`
+    pub fn lcp(self, a: Int, b: Int, of: ?RollingHash = None) -> Int:
+        if let o = of: return self.lcp_of(a, o, b)
         let n = p1.len - 1
         assert 0 <= a and a <= n and 0 <= b and b <= n, "`lcp` needs both starts in `0..=len`"
         var lo = 0
@@ -1652,14 +1656,8 @@ pub struct RollingHash:
             else: hi = mid - 1
         lo
 
-    /// The length of the longest common prefix of `self[a..]` and `other[b..]`, by binary search
-    /// on hashes. Both hashes must use the same bases.
-    ///
-    /// cost: \(O(\log \min(\lvert \mathit{self} \rvert - a, \lvert \mathit{other} \rvert - b))\)
-    /// traps: when the bases differ, `a` is outside `0..=self.len` or `b` outside `0..=other.len`
-    /// example: `RollingHash("abcd", bases: Some((131, 137))).lcp_with(1, RollingHash("xbcx", bases: Some((131, 137))), 1) == 2`
-    pub fn lcp_with(self, a: Int, other: RollingHash, b: Int) -> Int:
-        assert 0 <= a and a <= self.len and 0 <= b and b <= other.len, "`lcp_with` needs both starts in range"
+    fn lcp_of(self, a: Int, other: RollingHash, b: Int) -> Int:
+        assert 0 <= a and a <= self.len and 0 <= b and b <= other.len, "`lcp(a, b, of:)` needs both starts in range"
         var lo = 0
         var hi = min(self.len - a, other.len - b)
         while lo < hi:
@@ -1893,13 +1891,16 @@ pub struct RollingHash61:
         assert pre.len > 1, "RollingHash61.pop: empty hash"
         let _ = pre.pop()
 
-    /// The length of the longest common prefix of the suffixes starting at `a` and `b`, by
-    /// binary search on hashes.
+    /// The length of the longest common prefix of the suffixes at `a` and `b`, by binary search on
+    /// hashes; `of: other` puts `b` in `other`, built with the same bases.
     ///
     /// cost: \(O(\log n)\)
-    /// traps: when `a` or `b` is outside `0..=self.len`
+    /// traps: when `a` is outside `0..=self.len`, `b` outside `0..=` the len of `of` (or `self`), or
+    /// the bases differ
     /// example: `RollingHash61("abcabd").lcp(0, 3) == 2`
-    pub fn lcp(self, a: Int, b: Int) -> Int:
+    /// example: `RollingHash61("abcd", base: Some(U64(131))).lcp(1, 1, of: RollingHash61("xbcx", base: Some(U64(131)))) == 2`
+    pub fn lcp(self, a: Int, b: Int, of: ?RollingHash61 = None) -> Int:
+        if let o = of: return self.lcp_of(a, o, b)
         let n = pre.len - 1
         assert 0 <= a and a <= n and 0 <= b and b <= n, "RollingHash61.lcp: index out of range"
         var lo = 0
@@ -1925,17 +1926,11 @@ pub struct RollingHash61:
             if self.slice61(a - mid, a) == self.slice61(b - mid, b): lo = mid else: hi = mid - 1
         lo
 
-    /// The length of the longest common prefix of `self[a..]` and `other[b..]`, by binary search
-    /// on hashes. Both hashes must use the same base.
-    ///
-    /// cost: \(O(\log \min(\lvert \mathit{self} \rvert - a, \lvert \mathit{other} \rvert - b))\)
-    /// traps: when the bases differ, `a` is outside `0..=self.len` or `b` outside `0..=other.len`
-    /// example: `RollingHash61("abcd", base: Some(U64(131))).lcp_with(1, RollingHash61("xbcx", base: Some(U64(131))), 1) == 2`
-    pub fn lcp_with(self, a: Int, other: RollingHash61, b: Int) -> Int:
-        assert base == other.base, "RollingHash61.lcp_with: hashes must use the same base"
+    fn lcp_of(self, a: Int, other: RollingHash61, b: Int) -> Int:
+        assert base == other.base, "RollingHash61.lcp: hashes must use the same base"
         let na = pre.len - 1
         let nb = other.pre.len - 1
-        assert 0 <= a and a <= na and 0 <= b and b <= nb, "RollingHash61.lcp_with: index out of range"
+        assert 0 <= a and a <= na and 0 <= b and b <= nb, "RollingHash61.lcp: index out of range"
         var lo = 0
         var hi = min(na - a, nb - b)
         while lo < hi:
@@ -3627,7 +3622,7 @@ fn rolling_hash_lcp_lcs_and_hash2d_match_brute():
             let b = rand(0, t.len)
             var k = 0
             while a + k < s.len and b + k < t.len and s[a + k] == t[b + k]: k += 1
-            assert hs.lcp_with(a, ht, b) == k
+            assert hs.lcp(a, b, of: ht) == k
     // Hash2D matches brute rectangle equality
     domain R = 0..5
     domain C = 0..6
