@@ -16,7 +16,8 @@ if MAX:
 else:
     size = max(15, int(sys.argv[2]))
     n = rng.choice([rng.randint(15, max(15, size * size)), rng.randint(15, 2_000_000_000)])
-    m = rng.randrange(3, n // 5 + 1, 2) if rng.random() < 0.5 else rng.choice([3, 5, n // 5 - (n // 5 + 1) % 2])
+    top = n // 5 - (n // 5 + 1) % 2  # the largest odd side that fits five times
+    m = rng.randrange(3, top + 1, 2) if rng.random() < 0.5 else rng.choice([3, min(5, top), top])
     bx, by = rng.randint(1, n - 5 * m + 1), rng.randint(1, n - 5 * m + 1)
     sq = rng.choice([(i, j) for i in range(5) for j in range(5) if (i + j) % 2 == 0])
 x0 = bx + sq[0] * m + rng.randrange(m)
