@@ -384,6 +384,43 @@ pub fn taylor_shift<P>(a: List<Mod<P>>, c: Mod<P>) -> List<Mod<P>>:
         for k in 0..n: out[k] = prod[n - 1 - k] * ifact[k]
     out
 
+/// The binomial transform `b[i] = sum_{j <= i} C(i, j) a[j]`, of length `a.len`; with
+/// `inverse: true` its inverse `a[i] = sum_{j <= i} (-1)^(i - j) C(i, j) b[j]`, which undoes
+/// "count with a labelled subset" sums like `exact[h] = labelled[h] - sum_{g < h} C(h, g) exact[g]`.
+/// The exponential generating function times `e^x` (or `e^-x`).
+///
+/// cost: \(O(n \log n)\)
+/// empty: `[]`
+/// order: index `i` of the output is `b[i]`
+/// traps: when `a.len > P` (it needs inverse factorials below `a.len`)
+/// example: `type Z = Mod<998244353>; let a: List<Z> = [1, 0, 0]; binomial_transform(a) == [Z(1), Z(1), Z(1)]`
+/// example: `type Z = Mod<998244353>; let b: List<Z> = [1, 2, 4]; binomial_transform(b, inverse: true) == [Z(1), Z(1), Z(1)]`
+/// example: `type Z = Mod<998244353>; let e: List<Z> = []; binomial_transform(e) == []`
+pub fn binomial_transform<P>(a: List<Mod<P>>, inverse: Bool = false) -> List<Mod<P>>:
+    let n = a.len
+    if n <= 1: return a.clone()
+    assert n <= P, "poly.binomial_transform requires a.len <= P"
+    var fact = List.filled(n, Mod<P>(1))
+    var ifact = List.filled(n, Mod<P>(1))
+    unchecked:
+        for i in 1..n: fact[i] = fact[i - 1] * Mod<P>(i)
+        ifact[n - 1] = fact[n - 1].inv()
+        for i in (1..n).rev: ifact[i - 1] = ifact[i] * Mod<P>(i)
+    let sign = if inverse: Mod<P>(-1) else: Mod<P>(1)
+    var u = List.filled(n, Mod<P>(0))
+    var e = List.filled(n, Mod<P>(0))
+    var sp = Mod<P>(1)
+    unchecked:
+        for i in 0..n:
+            u[i] = a[i] * ifact[i]
+            e[i] = sp * ifact[i]
+            sp *= sign
+    let prod = convolve(u, e)
+    var out = List.filled(n, Mod<P>(0))
+    unchecked:
+        for i in 0..n: out[i] = prod[i] * fact[i]
+    out
+
 fn eval_on_tree<P>(a: List<Mod<P>>, nodes: List<List<Mod<P>>>, n: Int) -> List<Mod<P>>:
     let root = nodes[1]
     let reduced = if a.len > n: div_mod(a, root).r else: a
@@ -1518,3 +1555,18 @@ fn lagrange_and_interpolate_laws():
     let xs_b = [Z(i * 5 + 2) for i in 0..70]
     let ys_b = eval_all(poly_big, xs_b)
     assert interpolate(xs_b, ys_b) == poly_big
+
+@test
+fn binomial_transform_matches_the_sum_and_inverts():
+    type Z = Mod<998_244_353>
+    let a: List<Z> = [3, 1, 4, 1, 5, 9, 2, 6]
+    let b = binomial_transform(a)
+    for i in a.keys:
+        var want = Z(0)
+        var c = Z(1)
+        for j in 0..=i:
+            want += c * a[j]
+            c = c * Z(i - j) / Z(j + 1)
+        assert b[i] == want
+    assert binomial_transform(b, inverse: true) == a
+    assert binomial_transform(binomial_transform(a, inverse: true)) == a

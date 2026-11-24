@@ -482,6 +482,33 @@ pub fn convolve_all<P>(polys: List<List<Mod<P>>>) -> List<Mod<P>>:
         layer = up
     layer[0]
 
+/// The 2D product of `a` and `b`, rows by rows: `out[i][j]` sums `a[r][c] * b[i - r][j - c]`. Rows may
+/// differ in length (a missing entry is zero); every output row is `wa + wb - 1` long for the widest
+/// rows `wa` of `a` and `wb` of `b`. One `convolve` of the rows laid end to end, `wa + wb - 1` apart,
+/// so no row's product spills into the next.
+///
+/// cost: \(O(S \log S)\) for `S = (a.len + b.len) (wa + wb)`
+/// empty: `[]` when either input has no entries
+/// order: rows then columns, lowest degree first; new `List`s, keyed from 0
+/// traps: when the product outgrows the largest NTT length `P` supports
+/// example: `type Z = Mod<17>; convolve_2d([[Z(1), Z(1)]], [[Z(1)], [Z(2)]]) == [[Z(1), Z(1)], [Z(2), Z(2)]]`
+/// example: `type Z = Mod<17>; convolve_2d([[Z(1), Z(1)], [Z(1), Z(1)]], [[Z(1), Z(1)]]) == [[Z(1), Z(2), Z(1)], [Z(1), Z(2), Z(1)]]`
+/// example: `type Z = Mod<17>; let e: List<List<Z>> = []; convolve_2d([[Z(1)]], e) == []`
+pub fn convolve_2d<P>(a: List<List<Mod<P>>>, b: List<List<Mod<P>>>) -> List<List<Mod<P>>>:
+    let wa = max(r.len for r in a) ?? 0
+    let wb = max(r.len for r in b) ?? 0
+    if wa == 0 or wb == 0: return []
+    let stride = wa + wb - 1
+    var fa = List.filled(a.len * stride, Mod<P>(0))
+    var fb = List.filled(b.len * stride, Mod<P>(0))
+    unchecked:
+        for (i, r) in a.items:
+            for (j, x) in r.items: fa[i * stride + j] = x
+        for (i, r) in b.items:
+            for (j, x) in r.items: fb[i * stride + j] = x
+    let c = convolve(fa, fb)
+    [[if i * stride + j < c.len: c[i * stride + j] else: Mod<P>(0) for j in 0..stride] for i in 0..a.len + b.len - 1]
+
 /// The set power series exponential of `a`, length `2^k`, with `a[0] == 0`.
 ///
 /// `b[m]` is the sum, over every partition of the mask `m` into nonempty disjoint blocks, of the
@@ -701,3 +728,17 @@ fn sos_and_bitwise_convolutions():
             if (i & j) == 0: want_msub[i | j] += ma[i] * mb[j]
     assert convolve(ma, mb, on: ^) == want_mxor
     assert convolve(ma, mb, on: subset) == want_msub
+
+@test
+fn convolve_2d_matches_the_quadruple_loop():
+    type Z = Mod<998_244_353>
+    let a: List<List<Z>> = [[Z(1), Z(2), Z(3)], [Z(4)], [], [Z(5), Z(6)]]
+    let b: List<List<Z>> = [[Z(7), Z(8)], [Z(9), Z(10), Z(11)]]
+    let got = convolve_2d(a, b)
+    assert got.len == 5 and got.all(r => r.len == 5)
+    var want = [[Z(0) for _ in 0..5] for _ in 0..5]
+    for (i, r) in a.items:
+        for (j, x) in r.items:
+            for (k, s) in b.items:
+                for (l, y) in s.items: want[i + k][j + l] += x * y
+    assert got == want

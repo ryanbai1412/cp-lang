@@ -253,6 +253,11 @@ fn convolve<T: Add + Sub + Mul, O, R>(a: List<T>, b: List<T>, on: O = +, over: R
 // primes and CRT for any other Mod (runtime moduli too) or Int (exact when
 // every output fits), FFT for F64. Bitwise `on:` needs equal powers of two.
 
+fn convolve_2d<P>(a: List<List<Mod<P>>>, b: List<List<Mod<P>>>) -> List<List<Mod<P>>>
+// O(S log S), S = (a.len + b.len)(wa + wb) for the widest rows wa, wb: one convolve
+// of the rows laid end to end wa + wb - 1 apart; rows a.len + b.len - 1, each
+// wa + wb - 1 long; [] when either side has no entries.
+
 // Subset/superset zeta-Mobius transforms in place (n = 2^k)
 enum SosOver = Sub | Sup
 fn sos<S: IndexedMut>(mut a: S, over: SosOver = Sub, inverse: Bool = false)
@@ -361,6 +366,10 @@ fn sqrt<P>(a: List<Mod<P>>, n: Int) -> ?List<Mod<P>>
 // Returns Some(g) with g(x)^2 == a(x) (mod x^n), or None if no square root exists mod P
 // (odd leading zero count or non-residue leading coefficient).
 // Precondition: n >= 0.
+
+fn binomial_transform<P>(a: List<Mod<P>>, inverse: Bool = false) -> List<Mod<P>>
+// O(n log n): b[i] = sum_{j <= i} C(i, j) a[j] (the EGF times e^x); inverse: true gives
+// a[i] = sum_{j <= i} (-1)^(i - j) C(i, j) b[j] (times e^-x). Length a.len; a.len <= P.
 ```
 
 Cost summary (NTTs of length `N = bit_ceil(n)`):
