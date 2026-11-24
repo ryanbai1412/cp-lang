@@ -23,6 +23,8 @@ pub(crate) struct Declared {
     /// statement for an expression.
     from: Vec<(K, String)>,
     ends: Vec<usize>,
+    /// The tokens of each `also:` expression.
+    also: Vec<Vec<(K, String)>>,
     /// Names `from` binds itself (lambda parameters, loop and `let`/`var`
     /// variables).
     bound: Vec<String>,
@@ -42,7 +44,8 @@ pub(crate) struct Declared {
     spell: Vec<(String, String)>,
 }
 
-/// The usable `@lint` declarations of `analysis`'s file and every module it uses.
+/// The usable `@lint` declarations of `analysis`'s file, every module it
+/// uses, and std's advice.
 pub(crate) fn collect(analysis: &Analysis) -> Vec<Declared> {
     let mut out = Vec::new();
     let mut add = |a: &Analysis, module: &str, spell: &dyn Fn(&str) -> Option<String>| {
@@ -113,7 +116,12 @@ fn declare(
     let rebinds = (declared_in(&from, true).into_iter())
         .filter(|n| to_names.contains(n))
         .collect();
+    let mut also = Vec::new();
+    for line in decl.also.lines().filter(|l| !l.trim().is_empty()) {
+        also.push(library_lint::code(line)?);
+    }
     Some(Declared {
+        also,
         spell,
         lint: intern(&decl.name),
         bound: bound_names(&from),
@@ -271,6 +279,8 @@ struct Spans {
     /// Every `let`, `var` or `for` pattern, `(u, v)` in `let (u, v) = e`:
     /// a hole matches one as it matches a type.
     pats: Vec<Span>,
+    /// The value of each constant expression (`-1`, `10**18`), by its span.
+    consts: HashMap<(u32, u32), i128>,
 }
 
 impl Visitor for Spans {
@@ -280,9 +290,13 @@ impl Visitor for Spans {
             .push(stmts.iter().map(|s| s.span.shift(base)).collect());
     }
     fn expr(&mut self, expr: &Expr) {
+        let span = expr.span.shift(self.base);
         // A bare generator is a fold's argument, not a value a hole can move.
         if !expr.is_generator() {
-            self.exprs.push(expr.span.shift(self.base));
+            self.exprs.push(span);
+        }
+        if let Some(v) = crate::rules::constant(expr) {
+            self.consts.insert((span.start, span.end), v);
         }
         if let ExprKind::Keep { target, .. } = &expr.kind {
             self.places.push(target.span.shift(self.base).start);
@@ -441,6 +455,7 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                 runs
             }
         };
+        let plain = vec![false; d.also.iter().fold(0, |n, p| n.max(p.len()))];
         let taken = taken.entry((&d.decl.name, d.decl.item)).or_default();
         // A hole whose parameter is written as a scalar type matches only
         // code of that type, where the checker's types are at hand.
@@ -474,12 +489,26 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
             let bounded = |b: &Bound| {
                 let at = d.decl.holes.iter().position(|h| *h == b.hole);
                 at.and_then(|i| holes[i])
-                    .is_some_and(|run| proven(file, &toks, &text, run, b))
+                    .is_some_and(|run| proven(file, &spans.consts, &toks, &text, run, b))
             };
             if !matched
                 || !d.decl.when.iter().all(bounded)
                 || !(holes.iter().enumerate()).all(|(h, run)| run.is_none_or(|r| typed(h, r)))
             {
+                continue;
+            }
+            let mut used = d.also.is_empty();
+            for pat in &d.also {
+                let m = Matcher {
+                    repeated: vec![false; d.decl.holes.len()],
+                    ..matcher(pat, &plain[..pat.len()], &plain[..pat.len()])
+                };
+                used |= candidates.iter().any(|c| {
+                    let (mut holes, mut names) = (holes.clone(), names.clone());
+                    m.go(0, c.0, c.1, &mut holes, &mut names)
+                });
+            }
+            if !used {
                 continue;
             }
             let first = before(span.start);
@@ -546,7 +575,7 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
             {
                 continue;
             }
-            if !commented && d.lint.no_fix.is_none() {
+            if !commented && d.lint.no_fix.is_none() && !d.decl.advice {
                 diag = fixed;
             }
             taken.push(span);
@@ -703,8 +732,16 @@ impl Matcher<'_> {
 
 /// Whether the tokens `run`, what a hole matched, take only values in `b`'s
 /// range: an integer literal in it, or code the checker gives a range type
-/// whose ends lie in it (`k: 1..=10` for `k >= 1`).
-fn proven(file: &File, toks: &[Token], text: &[&str], run: (usize, usize), b: &Bound) -> bool {
+/// whose ends lie in it (`k: 1..=10` for `k >= 1`), or a constant
+/// expression (`10**18`) whose value does.
+fn proven(
+    file: &File,
+    consts: &HashMap<(u32, u32), i128>,
+    toks: &[Token],
+    text: &[&str],
+    run: (usize, usize),
+    b: &Bound,
+) -> bool {
     let (a, z) = run;
     let literal = |t: &str| t.replace('_', "").parse::<i128>().ok();
     let (lo, hi) = match (&toks[a..z], &text[a..z]) {
@@ -715,6 +752,9 @@ fn proven(file: &File, toks: &[Token], text: &[&str], run: (usize, usize), b: &B
         }
         _ => {
             let span = Span::new(toks[a].span.start, toks[z - 1].span.end);
+            if let Some(&v) = consts.get(&(span.start, span.end)) {
+                return b.lo.is_none_or(|want| v >= want) && b.hi.is_none_or(|want| v <= want);
+            }
             match file.facts.and_then(|f| f.place_type(span)) {
                 Some(cpl_check::Ty::Range { lo, hi, .. }) => (*lo, *hi),
                 _ => (None, None),
@@ -823,8 +863,8 @@ fn fill(
         } else if let Some(m) = got.get(word).filter(|_| is_name(t.kind, word)) {
             let before = i.checked_sub(1).map(|i| toks[i].kind);
             let after = toks.get(i + 1).map(|t| t.kind);
-            let delimited = (matches!(before, Some(K::LParen | K::Comma) | None)
-                && matches!(after, Some(K::RParen | K::Comma) | None))
+            let delimited = (matches!(before, Some(K::LParen | K::LBracket | K::Comma) | None)
+                && matches!(after, Some(K::RParen | K::RBracket | K::Comma) | None))
                 || (before == Some(K::Eq) && after.is_none());
             let inner = m
                 .strip_prefix('(')

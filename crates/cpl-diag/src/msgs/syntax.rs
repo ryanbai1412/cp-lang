@@ -54,7 +54,7 @@ super::msgs! {
     LINT_TO_DROPS = BAD_LIBRARY_LINT, "`to` of `@lint({})` drops `{}`, which `from` matches";
     LINT_TO_EXTRA = BAD_LIBRARY_LINT, "`to` of `@lint({})` uses `{}`, which `from` does not match";
     LINT_TO_NO_CALL = BAD_LIBRARY_LINT, "`to` of `@lint({})` does not call `{}`";
-    LINT_HOLE_UNUSED = BAD_LIBRARY_LINT, "`holes:` of `@lint({})` names `{}`, which `from` does not use";
+    LINT_HOLE_UNUSED = BAD_LIBRARY_LINT, "`holes:` of `@lint({})` names `{}`, which neither `from` nor `also:` uses";
     LINT_WHEN = BAD_LIBRARY_LINT, "`when:` of `@lint({})` is not holes `from` uses compared with integers";
     LINT_TWICE = BAD_LIBRARY_LINT, "`@lint({})` declares the same `from` twice in this module";
     RECORD_HAS_NO_FIELD = TYPE_MISMATCH, "the record has no field `{}`";

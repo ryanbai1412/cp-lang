@@ -523,3 +523,46 @@ fn a_hole_from_runs_per_item_and_to_runs_once_calls_nothing() {
     let calls = "fn r() -> Int = 2\nlet a = [[r() for _ in 0..4] for _ in 0..3]\nlet b = [[0 for _ in 0..r()] for _ in 0..3]\nlet c = [[0 for _ in 0..4] for _ in 0..r()]\nprint(a, b, c)\n";
     assert_eq!(found(calls), ["[[0 for _ in 0..4] for _ in 0..r()]"]);
 }
+
+/// `when:` proves a constant expression by its value: `10**18` and
+/// `(10**9)` are at least `10**9`, `-10**18` and `5` are not.
+/// Rule: R06.4.9.
+#[test]
+fn when_proves_a_constant_expression_by_its_value() {
+    let decl = "@lint(big, from: \"print(v)\", to: \"show(v)\", when: \"v >= 1000000000\")\npub fn show(v: Int) = print(v)\n";
+    let found: Vec<String> = crate::lint(
+        &format!("{decl}print(10**18)\nprint(-10**18)\nprint((10**9))\nprint(5)\n"),
+        &crate::Config::default(),
+    )
+    .into_iter()
+    .filter(|d| d.code.0 == "big")
+    .map(|d| d.fixes[0].edits[0].1.clone())
+    .collect();
+    assert_eq!(found, ["show(10**18)", "show(10**9)"]);
+}
+
+/// `also:` keeps a finding only where one of its expressions matches in the
+/// file with `from`'s holes and names as they matched, and `advice:` names
+/// code without a fix and without calling the fn. Rule: R06.4.9.
+#[test]
+fn also_needs_a_use_and_advice_offers_no_fix() {
+    let decl = "@lint(probe, from: \"var t = [v for i in r]\", advice: \"var t = [None for i in r]\", also: \"t[k] == v\\nv == t[k]\", holes: \"r, k\")\npub fn probe(v: Int) = ()\n";
+    let found = |body: &str| -> Vec<String> {
+        crate::lint(&format!("{decl}{body}"), &crate::Config::default())
+            .into_iter()
+            .filter(|d| d.code.0 == "probe")
+            .inspect(|d| assert!(d.fixes.is_empty(), "{:?}", d.fixes))
+            .map(|d| d.message)
+            .collect()
+    };
+    let compared = "var memo = [-1 for _ in 0..5]\nmemo[2] = 4\nprint(-1 == memo[2])\n";
+    assert_eq!(
+        found(compared),
+        ["write `var memo = [None for _ in (0..5)]`"]
+    );
+    assert!(found("var memo = [-1 for _ in 0..5]\nmemo[2] = 4\nprint(memo[2])\n").is_empty());
+    assert!(found(
+        "var memo = [-1 for _ in 0..5]\nvar other = [0]\nprint(memo[0] == 0, other[0] == -1)\n"
+    )
+    .is_empty());
+}

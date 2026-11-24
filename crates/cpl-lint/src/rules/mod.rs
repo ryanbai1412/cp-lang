@@ -57,6 +57,7 @@ mod zero_div;
 use crate::{Config, File, Finding, Lint};
 use cpl_diag::msgs::Msg;
 use cpl_diag::Span;
+use cpl_syntax::ast::{BinOp, Expr, ExprKind, UnOp};
 use std::fmt::Display;
 
 pub(crate) use proven::*;
@@ -143,5 +144,30 @@ trait Warn {
         let (out, base) = self.sink();
         let diag = msg.warning(span.shift(base), args).with_help(help);
         out.push(Finding { lint, diag });
+    }
+}
+
+/// `-1`, `10**18`, `10**9 + 7`, `1000000000000000000` and their negations.
+pub(crate) fn constant(e: &Expr) -> Option<i128> {
+    match &e.kind {
+        ExprKind::Int(v) => Some(*v),
+        ExprKind::Paren(inner) => constant(inner),
+        ExprKind::Unary {
+            op: UnOp::Neg,
+            expr,
+        } => constant(expr).map(|v| -v),
+        ExprKind::Binary {
+            op: BinOp::Pow,
+            lhs,
+            rhs,
+            ..
+        } => constant(lhs)?.checked_pow(u32::try_from(constant(rhs)?).ok()?),
+        ExprKind::Binary {
+            op: BinOp::Add,
+            lhs,
+            rhs,
+            ..
+        } => constant(lhs)?.checked_add(constant(rhs)?),
+        _ => None,
     }
 }

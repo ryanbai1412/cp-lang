@@ -203,8 +203,14 @@ library or by this spec:
   matched an expression that calls nothing. `when: "b >= 1"` keeps a
   finding only where each listed hole (compared with `>=`, `>`, `<=` or `<`
   and an integer, comma-separated) is proven in bounds: it matched an
-  integer literal, or code whose range type's ends lie in them (`k: 1..=10`
-  for `k >= 1`). When `from` declares
+  integer literal, a constant expression (`10**18`) whose value does, or
+  code whose range type's ends lie in them (`k: 1..=10` for `k >= 1`).
+  `also: "t[i] == v\nv == t[i]"` keeps a finding only where one of its
+  expressions (one per line) matches somewhere in the file, the holes and
+  names `from` bound standing for what they matched; its other holes are
+  free. `advice:` in place of `to` names code the finding suggests; it
+  need not call the fn nor use every parameter, and is never a fix.
+  When `from` declares
   a name with a written type (`var m: Map<K, Int> = Map()`) and `to`
   declares it again with no written type, the fix may change its type, so
   the finding stands only where the rest of the block uses the name through
@@ -241,10 +247,11 @@ library or by this spec:
   the fn; std's apply in every program, as std's names need no `use`. A
   struct's or enum's method may declare one like a top-level fn. E0505
   (`bad_library_lint`) when `@lint` is not on a fn, lacks a
-  name, `from:` or `to:`, when `from` or `to` is not one expression or
+  name, `from:` or `to:` (or has both `to:` and `advice:`), when `from`,
+  `to` or an `also:` line is not one expression or
   statement or a run of statements, when `to` drops a parameter `from` matches or uses one it does
-  not, when `holes:` names a name `from` does not use, when `when:` is not
-  holes `from` uses compared with integers, when `to` neither calls the
+  not, when `holes:` names a name neither `from` nor `also:` uses, when `when:` is not
+  holes `from` uses compared with integers, when `to` (not `advice:`) neither calls the
   fn (or its `builtin:`) nor writes only its body's operators, or when one module declares a
   name twice with the same `from` (a name is declared once per spelling,
   on several fns when its fix calls one of them: `min=` or `max=`). (R06.4.9)

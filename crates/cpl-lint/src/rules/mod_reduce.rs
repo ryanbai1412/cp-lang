@@ -2,7 +2,7 @@
 //! modulo a prime, reduces by hand after each product; `Mod<P>` (`std.mod`)
 //! reduces after every operation. Reported once per file, at the first.
 
-use super::sentinel::constant;
+use super::constant;
 use crate::walk::Visitor;
 use crate::{File, Finding, MANUAL_MOD_REDUCE};
 use cpl_diag::msgs::lint_rules;

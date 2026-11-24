@@ -3,7 +3,8 @@
 //! (a found index, or a running best). `?Int` starting at `None` says it in
 //! the type. Tables are `sentinel_table`'s.
 
-use super::sentinel::{constant, LARGE};
+use super::constant;
+use super::sentinel::LARGE;
 use crate::walk::{walk_stmt, Visitor};
 use crate::{File, Finding, SENTINEL_SCALAR};
 use cpl_check::Ty;

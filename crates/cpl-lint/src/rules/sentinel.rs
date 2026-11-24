@@ -3,13 +3,14 @@
 //! value (or, for a large one, orders as a relaxation does). C++ marks
 //! "absent" with a value; `[D]?Int` says it in the type.
 
+use super::constant;
 use crate::facts::Facts;
 use crate::walk::Visitor;
 use crate::{File, Finding, SENTINEL_TABLE};
 use cpl_check::Ty;
 use cpl_diag::msgs::lint_rules;
 use cpl_diag::Span;
-use cpl_syntax::ast::{BinOp, CmpOp, Expr, ExprKind, PatternKind, Stmt, StmtKind, UnOp};
+use cpl_syntax::ast::{CmpOp, Expr, ExprKind, PatternKind, Stmt, StmtKind};
 
 pub(crate) const LARGE: i128 = 1_000_000_000;
 
@@ -137,29 +138,4 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
 
 fn is_int(ty: &Ty) -> bool {
     matches!(ty, Ty::Int)
-}
-
-/// `-1`, `10**18`, `10**9 + 7`, `1000000000000000000` and their negations.
-pub(crate) fn constant(e: &Expr) -> Option<i128> {
-    match &e.kind {
-        ExprKind::Int(v) => Some(*v),
-        ExprKind::Paren(inner) => constant(inner),
-        ExprKind::Unary {
-            op: UnOp::Neg,
-            expr,
-        } => constant(expr).map(|v| -v),
-        ExprKind::Binary {
-            op: BinOp::Pow,
-            lhs,
-            rhs,
-            ..
-        } => constant(lhs)?.checked_pow(u32::try_from(constant(rhs)?).ok()?),
-        ExprKind::Binary {
-            op: BinOp::Add,
-            lhs,
-            rhs,
-            ..
-        } => constant(lhs)?.checked_add(constant(rhs)?),
-        _ => None,
-    }
 }
