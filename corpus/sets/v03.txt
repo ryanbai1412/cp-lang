@@ -106,6 +106,8 @@ cco23p4
 cco23p5
 cco23p6
 cco24p1
+cco24p2
+cco24p5
 ceoi17p2
 ceoi18p1
 cf1146h
