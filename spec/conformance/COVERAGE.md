@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3801 (3737 passing). Rules: 618.
+Cases: 3802 (3737 passing). Rules: 618.
 
 ## Summary per chapter
 
@@ -18,7 +18,7 @@ Cases: 3801 (3737 passing). Rules: 618.
 - R04a (04a-identity-vs-offset.md): 39 rules, 56 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 82 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 50 rules, 257 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R06 (06-control-functions.md): 26 rules, 129 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R06 (06-control-functions.md): 26 rules, 130 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 97 rules, 267 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 31 rules, 116 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -442,7 +442,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R06.3.4 [3+ 0-]: A body steers its generator through the yielded item, read after `yield` returns: `step.pr...
 - R06.3.5 [2+ 2-]: Generators are push-only; there is no cursor. Lockstep over two generators is `List(g)` fi...
 - R06.4.1 [3+ 2-]: `@memo(array)` / `@memo(map)`: cache a function. The storage is spelled, never picked (rou...
-- R06.4.2 [1+ 1-]: `@get`: an \(O(1)\) read-only method called without parentheses.
+- R06.4.2 [2+ 1-]: `@get`: an \(O(1)\) read-only method called without parentheses.
 - R06.4.3 [15+ 9-]: `@test`, `@alt(f, caps)`, `@gen`, `@check`, `@interactor`: tool roles (`tools/stress.md`);...
 - R06.4.4 [1+ 0-]: `@cache` on a struct field: compiler-safe interior mutability with an author promise of lo...
 - R06.4.8 [1+ 1-]: `@droppable`: the result may be dropped without the unused-result lint. Dropping a non-uni...
