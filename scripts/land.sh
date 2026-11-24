@@ -363,6 +363,8 @@ lock_wait=${CPL_LAND_LOCK_WAIT:-1200}
 # The holder restamps the lock this often, so a lock is stale only when its holder
 # stopped beating: a live one is never taken over however long it holds.
 lock_beat=${CPL_LAND_LOCK_BEAT:-30}
+# Every box is named devin-box: a random token tells holders apart.
+lock_who="$(hostname)-$(od -An -N4 -tx4 /dev/urandom | tr -d ' \n')"
 lock_held=""
 lock_file=$(mktemp)
 beat_pid=""
@@ -374,7 +376,7 @@ start_beat() {
         while [ -z "$stop" ]; do
             sleep "$lock_beat" & wait $! 2>/dev/null
             [ -z "$stop" ] || break
-            new=$(git commit-tree "$(git hash-object -t tree /dev/null)" -m "land-lock $(hostname) $$ $(date +%s) $domain")
+            new=$(git commit-tree "$(git hash-object -t tree /dev/null)" -m "land-lock $lock_who $$ $(date +%s) $domain")
             git push -q --no-verify --force-with-lease="$lock_ref:$(cat "$lock_file")" "$remote" "$new:$lock_ref" 2>/dev/null &&
                 echo "$new" >"$lock_file"
         done
@@ -392,7 +394,7 @@ take_lock() {
     while :; do
         # Stamped at each try, so a lock is as old as its holder has held it, not
         # as old as the wait for it: otherwise a long wait makes it look stale at once.
-        me=$(git commit-tree "$(git hash-object -t tree /dev/null)" -m "land-lock $(hostname) $$ $(date +%s) $domain")
+        me=$(git commit-tree "$(git hash-object -t tree /dev/null)" -m "land-lock $lock_who $$ $(date +%s) $domain")
         if err=$(git push -q --no-verify --force-with-lease="$lock_ref:" "$remote" "$me:$lock_ref" 2>&1); then
             lock_held=$me
             start_beat
