@@ -717,3 +717,20 @@ fn a_no_fix_lint_reports_in_the_program_s_fn_of_its_name() {
         .collect();
     assert_eq!(found.len(), 1, "{found:?}");
 }
+
+/// A hole that is a whole condition is written bare: `if n == 0:`, not
+/// `if (n == 0):`. Rule: R06.4.9.
+#[test]
+fn a_hole_written_as_a_whole_condition_keeps_no_parens() {
+    let decl = "@lint(elif_unwrap, from: \"if a:\\n    first\\nelif (self ?? c) > y:\\n    let w = self!\\n    body\", to: \"if a:\\n    first\\nelif let w = self, w > y:\\n    body\", holes: \"a, first, c, y, body\")\npub fn some_and(self: ?Int, p: Int -> Bool) -> Bool = if let Some(v) = self: p(v) else: false\n";
+    let src = format!("{decl}let n = 2\nlet best: ?Int = Some(7)\nif n == 0:\n    print(0)\nelif (best ?? 0) > 4:\n    let b = best!\n    print(b)\n");
+    let fixes: Vec<String> = crate::lint(&src, &crate::Config::default())
+        .into_iter()
+        .filter(|d| d.code.0 == "elif_unwrap")
+        .map(|d| d.fixes[0].edits[0].1.clone())
+        .collect();
+    assert_eq!(
+        fixes,
+        ["if n == 0:\n    print(0)\nelif let b = best, b > 4:\n    print(b)"]
+    );
+}

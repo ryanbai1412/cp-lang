@@ -972,7 +972,8 @@ fn fill(
             let delimited = ((labelled
                 || matches!(before, Some(K::LParen | K::LBracket | K::Comma) | None))
                 && matches!(after, Some(K::RParen | K::RBracket | K::Comma) | None))
-                || (before == Some(K::Eq) && after.is_none());
+                || (before == Some(K::Eq) && after.is_none())
+                || (matches!(before, Some(K::If | K::Elif | K::While)) && after == Some(K::Colon));
             let inner = m
                 .strip_prefix('(')
                 .and_then(|m| m.strip_suffix(')'))
