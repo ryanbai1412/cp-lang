@@ -1651,10 +1651,9 @@ impl<'a> Lowerer<'a> {
 
     /// The product domain whose grid is `dims`, a declared one before an anonymous one.
     pub(super) fn product_of_grid(&self, dims: &[Dim]) -> Option<DomainId> {
-        let mut ids: Vec<_> = self.product_domains.keys().copied().collect();
-        ids.sort_by_key(|id| (self.anon_product_domain_set.contains(id), *id));
-        ids.into_iter()
-            .find(|&id| self.product_grid(id).as_deref() == Some(dims))
+        (self.product_domains.keys().copied())
+            .filter(|&id| self.product_grid(id).as_deref() == Some(dims))
+            .min_by_key(|id| (self.anon_product_domain_set.contains(id), *id))
     }
 
     /// Registers the product domain each `V` of an `[V, V]T` parameter is when given an

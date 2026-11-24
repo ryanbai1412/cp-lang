@@ -69,7 +69,7 @@ impl Written {
         for stmt in stmts {
             walk_stmt(stmt, &mut out);
         }
-        out.types.sort_by_key(|t| (t.span.start, t.span.end));
+        cpl_diag::sort_by_key(&mut out.types, |t| t.span.order());
         out.types.dedup_by_key(|t| t.span);
         out
     }

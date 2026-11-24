@@ -151,9 +151,13 @@ pub struct Feeds {
 impl Feeds {
     pub fn of(program: &Program) -> Feeds {
         let summaries = summarize(program);
-        let pushers = (0..program.fns.len())
-            .filter_map(|id| Some((id, pusher(&program.fns[id], &summaries[id])?)))
-            .collect();
+        // Inserted in key order: collecting a BTreeMap sorts, a copy of std's stable sort.
+        let mut pushers = BTreeMap::new();
+        for id in 0..program.fns.len() {
+            if let Some(p) = pusher(&program.fns[id], &summaries[id]) {
+                pushers.insert(id, p);
+            }
+        }
         let mut feeds = Feeds { summaries, pushers };
         // Only a fn some loop is fed by gets the form that feeds it.
         let mut fed = BTreeSet::new();
