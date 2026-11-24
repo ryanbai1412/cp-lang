@@ -128,6 +128,56 @@ fn fresh(src: &str, base: &str, skip: usize) -> String {
 impl Checker<'_> {
     /// `suffix_fold(op, a)`, `a.prefix_excl(op)`, ..: a removed spelling whose name no longer
     /// resolves. Its error says so and carries the rewrite. True when it matched.
+    /// `Pt(1, 2).dot(Pt(3, 4))` where `Pt` has no `dot` but the free `dot` in scope takes a
+    /// `Pt` first: the error rewrites the call to `dot(Pt(1, 2), Pt(3, 4))`, so `cpl fix`
+    /// migrates a method std removed in favour of its free fn.
+    pub(super) fn receiver_free_fn(&mut self, call: &Expr, callee: &Expr) -> bool {
+        let ExprKind::Field { base, name } = &callee.kind else {
+            return false;
+        };
+        let at = name.span;
+        let unknown = |d: &cpl_diag::Diagnostic| d.code == codes::UNKNOWN_FIELD && d.span == at;
+        let Some(mut diag) = self.sink.diagnostics().iter().find(|d| unknown(d)).cloned() else {
+            return false;
+        };
+        if self.local(&name.text).is_some() {
+            return false;
+        }
+        let Some(def) = self.global(&name.text) else {
+            return false;
+        };
+        let Def::Fn {
+            ty: Ty::Fn { params, .. },
+            ..
+        } = &*def
+        else {
+            return false;
+        };
+        let Some(first) = params.first().filter(|p| p.name != "self") else {
+            return false;
+        };
+        let base_ty = self.quietly(|c| c.infer(base));
+        if matches!(base_ty, Ty::Error | Ty::Unknown) || !self.fits(&base_ty, &first.ty) {
+            return false;
+        }
+        let recv = self.quote(base.span);
+        let inner = Span::new(callee.span.end + 1, call.span.end.saturating_sub(1));
+        let rest = self.text(inner).trim().to_string();
+        let to = match rest.is_empty() {
+            true => format!("{}({recv})", name.text),
+            false => format!("{}({recv}, {rest})", name.text),
+        };
+        diag.help = Some(format!(
+            "`{}` is a free fn that takes a `{base_ty}` first: `{to}`",
+            name.text
+        ));
+        diag.fixes.clear();
+        diag.fix(format!("write `{to}`"), call.span, to);
+        self.sink.drop_where(|d| unknown(d));
+        self.sink.push(diag);
+        true
+    }
+
     pub(super) fn removed_call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> bool {
         let (name, receiver, at, code) = match &callee.kind {
             ExprKind::Name(n) => (n.as_str(), None, callee.span, codes::UNRESOLVED_NAME),
