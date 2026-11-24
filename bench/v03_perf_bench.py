@@ -600,8 +600,9 @@ def repeats(t_o, t_p, min_ms):
 
 
 def timed(r, min_ms):
-    """A pair whose samples (each `repeats` runs) took at least `min_ms`."""
-    return r.get("status") == "ok" and max(r["port_ms"], r["orig_ms"]) * r.get("repeats", 1) >= min_ms
+    """A pair whose single runs took at least `min_ms`, or that was timed over repeated runs:
+    its repeat count comes from its first run, so its fastest sample may land just under."""
+    return r.get("status") == "ok" and (r.get("repeats", 1) > 1 or max(r["port_ms"], r["orig_ms"]) >= min_ms)
 
 
 def summarize(rows, min_ms):
