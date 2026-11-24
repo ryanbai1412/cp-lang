@@ -111,6 +111,7 @@ pub struct Prefix<D, T: Add + Sub>:
     p: [D.cuts]T
     sums: Bool
     rises: Bool
+    back: Bool
 
     /// Build 1-D prefix sums over `a: [D]T`; `Prefix(a)` calls it.
     ///
@@ -125,7 +126,7 @@ pub struct Prefix<D, T: Add + Sub>:
             p[i.r] = p[i.l] + a[i]
             if T: Ord:
                 if a[i] < T.zero: rises = false
-        Prefix(p, true, rises)
+        Prefix(p, true, rises, false)
 
     /// Create an append-only 1-D prefix/suffix sum table filled via `.set(i, x)` in `order`.
     ///
@@ -143,10 +144,14 @@ pub struct Prefix<D, T: Add + Sub>:
     /// The sum of everything left of boundary `b`: zero at the first cut, `all` at the last.
     ///
     /// cost: \(O(1)\)
-    /// traps: never
+    /// traps: on a suffix table (`a.rev.scan(f)`) with `f` other than `+`, which subtracts
     /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.prefix(2) == 3`
     /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.prefix(0) == 0`
-    pub fn prefix(self, b: Cut<D>) -> T = self.p[b]
+    pub fn prefix(self, b: Cut<D>) -> T:
+        if back:
+            assert sums, "a range read subtracts prefix folds, which is only right for a `scan(+)` table"
+            return self.all - self.p[b]
+        self.p[b]
 
     // Builds the table in place, so scan returns it without a copy.
     fn of_scan<M>(a: [D]T, f: M, from: ?T) -> Prefix<D, T>:
@@ -163,7 +168,19 @@ pub struct Prefix<D, T: Add + Sub>:
             let c = a.cut_after(i)
             if c != i.r: forward = false
             p[c] = acc
-        Prefix(p, forward and same(f, +), forward and rises)
+        Prefix(p, forward and same(f, +), forward and rises, false)
+
+    pub fn of_rev_scan<M>(a: [D]T, f: M, from: ?T) -> Prefix<D, T>:
+        let m = Monoid<T>.of(f)
+        var p: [D.cuts]T = from ?? m.id
+        var acc = from ?? m.id
+        var forward = true
+        for i in a.keys.rev:
+            acc = m.op(a[i], acc)
+            let c = a.cut_before(i)
+            if c != i.l: forward = false
+            p[c] = acc
+        Prefix(p, forward and same(f, +), false, true)
 
     /// The sum of `a[i]` for `i` in `r`, or `0` when `r` is empty: `prefix(r.r) - prefix(r.l)`.
     ///
@@ -175,7 +192,9 @@ pub struct Prefix<D, T: Add + Sub>:
     pub fn fold(self, r: Range<D>) -> T:
         assert sums, "a range read subtracts prefix folds, which is only right for a `scan(+)` table"
         if r.is_empty: return T.zero
-        self.p[r.r] - self.p[r.l]
+        self.between(r.l, r.r)
+
+    fn between(self, l: Cut<D>, r: Cut<D>) -> T = if back: self.p[l] - self.p[r] else: self.p[r] - self.p[l]
 
     /// The sum over a wrapping run of positions, e.g. `a.ring.span(i, k)`: the part from `r.start`
     /// to `D.last` plus the part from `D.first` to `r.end` when it wraps.
@@ -188,12 +207,12 @@ pub struct Prefix<D, T: Add + Sub>:
         assert sums, "a range read subtracts prefix folds, which is only right for a `scan(+)` table"
         if r.len == 0: return T.zero
         let (s, e) = (r.start, r.end)
-        if s.ord <= e.ord: return self.p[e.r] - self.p[s.l]
-        (self.p[D.cuts.nth(D.count)] - self.p[s.l]) + (self.p[e.r] - self.p[D.cuts.nth(0)])
+        if s.ord <= e.ord: return self.between(s.l, e.r)
+        self.between(s.l, D.cuts.nth(D.count)) + self.between(D.cuts.nth(0), e.r)
 
     /// `p[c]`: the sum of everything left of cut `c`, the same as `prefix(c)`; at a position `v`,
     /// `p[v]` is the sum through `v`, the same as `p[v.r]` (R07.1.6). On `Int` keys an index is the
-    /// cut (decision 349).
+    /// cut (decision 349). On a suffix table (`a.rev.scan(f)`), `p[c]` folds everything right of `c`.
     ///
     /// cost: \(O(1)\)
     /// traps: never
@@ -208,17 +227,19 @@ pub struct Prefix<D, T: Add + Sub>:
     /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.suffix(1) == 5`
     /// trap: `[3, 1, 4].scan(max).suffix(1)`
     pub fn suffix(self, b: Cut<D>) -> T:
+        if back: return self.p[b]
         assert sums, "a range read subtracts prefix folds, which is only right for a `scan(+)` table"
         self.all - self.p[b]
 
-    /// The sum of the entire domain: `prefix` at the last cut, zero for an empty domain.
+    /// The sum of the entire domain: `prefix` at the last cut (a suffix table's first), zero for an
+    /// empty domain.
     ///
     /// cost: \(O(1)\)
     /// empty: zero
     /// traps: never
     /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.all == 6`
     @get pub fn all(self) -> T:
-        self.p[D.cuts.nth(D.count)]
+        self.p[D.cuts.nth(if back: 0 else: D.count)]
 
     /// The first boundary `b` with `prefix(b) >= target`, or `None` when even `all` is smaller.
     ///
@@ -233,6 +254,7 @@ pub struct Prefix<D, T: Add + Sub>:
     /// example: `Int([2, 0, 3].scan(+).first_ge(2)!) == 1`
     /// example: `[2, 0, 3].scan(+).first_ge(6) == None`
     pub fn first_ge(self, target: T) -> ?Cut<D>:
+        assert not back, "a suffix table falls left to right; search a forward `scan(+)` instead"
         assert rises, "this binary search needs the prefix never to fall, so no element may be negative"
         if self.all < target: return None
         let lo = (0..D.count).first_true(mid => self.p[D.cuts.nth(mid)] >= target) ?? D.count
@@ -249,6 +271,7 @@ pub struct Prefix<D, T: Add + Sub>:
     /// example: `Int([2, 0, 3].scan(+).first_gt(2)!) == 3`
     /// example: `[2, 0, 3].scan(+).first_gt(5) == None`
     pub fn first_gt(self, target: T) -> ?Cut<D>:
+        assert not back, "a suffix table falls left to right; search a forward `scan(+)` instead"
         assert rises, "this binary search needs the prefix never to fall, so no element may be negative"
         if self.all <= target: return None
         let lo = (0..D.count).first_true(mid => self.p[D.cuts.nth(mid)] > target) ?? D.count
@@ -884,3 +907,20 @@ fn suffix_scan_matches_right_to_left_fold():
     let p = a.scan(+)
     let sp = suffix_fold(+, a)
     for c in V.cuts: assert p.suffix(c) == sp[c]
+
+@test
+fn rev_scan_folds_every_suffix():
+    domain V = 0..7
+    let a = [V] _ => rand(-9, 9)
+    let s = Prefix<V, Int>.of_rev_scan(a, +, None)
+    let m = Prefix<V, Int>.of_rev_scan(a, max, None)
+    assert s.all == sum(a[i] for i in V)
+    for c in V.cuts:
+        let right = [a[i] for i in V if c <= i.l]
+        assert s[c] == sum(right)
+        assert s.suffix(c) == sum(right)
+        assert s.prefix(c) == s.all - sum(right)
+        assert m[c] == (right.max() ?? Monoid<Int>.of(max).id)
+        for d in V.cuts:
+            if d < c: continue
+            assert s.fold(c..d) == sum(a[i] for i in V if c <= i.l and i.r <= d)
