@@ -99,6 +99,15 @@ impl<'a> Lowerer<'a> {
     }
 
     /// The empty struct that stands for `op` as a value.
+    /// The type of the fn item `value` names, with no impl's parameters bound.
+    pub(super) fn base_item_arg(&mut self, value: &ast::Expr) -> GenArg {
+        let ident = value.fn_item_ident().unwrap_or_default();
+        GenArg::Ty(Ty::Struct(match self.detect_bare_op(value) {
+            Some(op) => self.op_type(op),
+            None => self.item_type(&ident),
+        }))
+    }
+
     pub(super) fn op_type(&mut self, op: BareOp) -> StructId {
         if let Some(&(_, id)) = self.op_types.iter().find(|(o, _)| *o == op) {
             return id;
