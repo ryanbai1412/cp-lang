@@ -851,20 +851,21 @@ exec {shutil.which("git")} "$@"
         self.assertEqual(runs.read_text(), "commit --only nextest\n" )
         self.assertIn("landing on the skipped steps' rerun", r.stderr)
 
-    def test_a_lost_race_with_no_rerun_due_rebases_holding_the_lock(self):
+    def test_lost_races_rebase_and_recheck_without_the_lock(self):
         theirs, ours = self.clone("theirs"), self.clone("ours")
         pending, runs = self._steps_runner(ours)
+        locks = self.tmp / "locks"
         git(theirs, "pull", "-q", "origin", "main")
         (theirs / "theirs.txt").write_text("x\n")
         self.commit(theirs, "theirs")
         (ours / "pkg.txt").write_text("x\n")
         self.commit(ours, "ours")
         pending.write_text("nextest\n")
-        r = self.land(ours, CI_RUNS=str(runs), RACE=str(theirs), RACES="2", CPL_LAND_TRIES="3")
+        r = self.land(ours, CI_RUNS=str(runs), RACE=str(theirs), RACES="2", CPL_LAND_TRIES="3", LOCKS=str(locks))
         self.assertEqual(r.returncode, 0, r.stderr)
-        # The steps ran once; the lost race owes no rerun, so it rebases holding
-        # the lock and pushes on that try.
-        self.assertEqual(r.stderr.count("rebased holding the land lock"), 1, r.stderr)
+        # Every rerun ran with the lock free; the land took it only to push.
+        self.assertEqual(set(locks.read_text().split()), {"free"})
+        self.assertNotIn("holding the land lock", r.stderr)
         self.assertIn("(try 1)", r.stdout)
         self.assertEqual(self.lock_on_remote(), "")
         self.assertIn("theirs", git(ours, "log", "--format=%s", "origin/main"))
