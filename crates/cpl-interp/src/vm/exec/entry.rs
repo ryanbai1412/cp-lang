@@ -16,6 +16,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
     }
 
     pub(super) fn return_regs_v(&mut self, mut v: Vec<Value>) {
+        debug_assert!(
+            !self.ckpt.waits_on(&v),
+            "registers freed while a caller waits on them"
+        );
         if v.capacity() > 0 && self.vm_pool_v.len() < 64 {
             v.clear();
             self.vm_pool_v.push(v);
