@@ -1390,3 +1390,31 @@ fn a_cell_the_round_before_stored_is_read_from_a_local() {
         "j.prev! is unproven from I's first: {first}"
     );
 }
+
+#[test]
+fn an_assert_builds_its_message_out_of_line() {
+    let cpp = cpp(concat!(
+        "fn cell(w: Int, c: Int) -> Int:\n",
+        "    assert 0 <= c < w, \"column {c} is outside 0..{w}\"\n",
+        "    assert c != 7, \"seven\"\n",
+        "    assert c != 8, \"{c} is eight\"\n",
+        "    assert c != 9, \"{c} is nine\"\n",
+        "    c\n",
+        "print(cell(read(), read()))\n",
+    ));
+    assert!(
+        cpp.contains("if (__builtin_expect(!(0 <= c && c < w), 0)) { [=]() mutable __attribute__((noinline, cold)) { cpl::fail("),
+        "{cpp}"
+    );
+    assert!(
+        cpp.contains(
+            "if (__builtin_expect(!(c != 7), 0)) { [=]() mutable __attribute__((noinline, cold))"
+        ),
+        "{cpp}"
+    );
+    assert!(!cpp.contains("[&]() __attribute__"), "{cpp}");
+    assert!(
+        cpp.contains("inline ll cell("),
+        "the message is not counted against inlining: {cpp}"
+    );
+}

@@ -13,10 +13,19 @@ pub(super) fn inline_hint(def: &str, signature: &str, recursive: bool) -> bool {
         .trim_start_matches('\n')
         .split_once('\n')
         .map_or("", |(_, b)| b);
+    // An assert's message is built in a cold closure (`site.rs`) that runs
+    // only on failure, so its lines are not part of the passing path's size.
+    let mut cold = false;
     let stmts = body
         .lines()
         .map(str::trim)
         .filter(|l| {
+            if cold {
+                cold = !l.contains("__builtin_unreachable(); }");
+                return false;
+            }
+            cold = l.contains("__attribute__((noinline, cold))")
+                && !l.contains("__builtin_unreachable(); }");
             !l.is_empty()
                 && !matches!(*l, "{" | "}" | "} else {" | "}();" | "}()};" | "}());")
                 && !l.starts_with("cpl::fail(")

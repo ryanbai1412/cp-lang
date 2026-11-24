@@ -140,7 +140,15 @@ impl Emitter<'_> {
                 format!("(std::string({report}) + {message} + {note}).c_str()")
             }
         };
-        self.line(out, &format!("if (!({cond})) cpl::fail({why});"));
+        // A message built at run time is made out of line and captures by
+        // copy, so the passing path stays small and keeps its locals in
+        // registers instead of handing their addresses to the message.
+        let fail = if why.starts_with('"') {
+            format!("cpl::fail({why});")
+        } else {
+            format!("{{ [=]() mutable __attribute__((noinline, cold)) {{ cpl::fail({why}); }}(); __builtin_unreachable(); }}")
+        };
+        self.line(out, &format!("if (__builtin_expect(!({cond}), 0)) {fail}"));
     }
 
     pub(crate) fn in_library(&self) -> bool {
