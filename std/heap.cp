@@ -1421,7 +1421,7 @@ pub struct MaxHeap<T>:
     /// traps: never
     /// example: `var h = MaxHeap.of([1, 3, 2]); h.drain().collect() == [3, 2, 1]`
     pub fn drain(mut self) -> yields T:
-        for d in self.h.drain(): yield d.x
+        while let d = self.h.pop(): yield d.x
 
 /// A keyed frontier where each key pops exactly once. `offer(k, p)` keeps the best priority seen
 /// for a key that has not popped yet and is ignored after it has; `pop` returns the best key
