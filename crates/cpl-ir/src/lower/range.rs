@@ -814,6 +814,8 @@ impl<'a> Lowerer<'a> {
                 lo.as_deref().and_then(const_int_expr),
                 hi.as_deref().and_then(const_int_expr),
             ),
+            // A position or bound is at most its domain's length.
+            ExprKind::Cast(Cast::Ord, _) => (Some(0), Some(i64::from(i32::MAX))),
             ExprKind::Binary(BinOp::Rem, _, rhs) => {
                 if let (Some(lo), Some(hi)) = self.expr_const_bounds(rhs) {
                     if lo == hi && lo > 0 {

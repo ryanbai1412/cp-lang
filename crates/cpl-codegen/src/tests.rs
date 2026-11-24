@@ -1048,3 +1048,22 @@ print(t.dup(0))
 ");
     assert!(out.contains("_grow(self, std::tuple<ll, ll>("), "{out}");
 }
+
+#[test]
+fn a_dsuof_merge_finds_each_root_once_and_stores_ordinals_unchecked() {
+    let out = cpp("domain V = 0..8
+var d = DsuOf<V, Int>(v => v.ord, (a, b) => a + b)
+let a: Int = read()
+print(yes(d.unite(V.nth(a), V.nth(a + 1))), d.get(V.nth(a)))
+");
+    let start = out.find("_merge(").expect("merge is emitted");
+    let body = &out[start..start + out[start..].find("\n}\n").expect("merge ends")];
+    assert_eq!(body.matches("_find_root(self").count(), 2, "{body}");
+    assert_eq!(body.matches("check_range(").count(), 1, "{body}");
+    assert!(body.contains("self.p[(ll)y] = int32_t((ll)x);"), "{body}");
+    let unite = &out[out.find("_unite(").expect("unite is emitted")..];
+    assert!(
+        !unite[..unite.find("\n}\n").unwrap()].contains("find"),
+        "{out}"
+    );
+}
