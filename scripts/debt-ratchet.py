@@ -1032,6 +1032,20 @@ def corpus_max_unread(root: Path) -> list[str]:
     return _max_short_record(root, "max_unread")
 
 
+DREAM_OVER_32KB = "research/dream-over-32kb.json"
+
+
+def dream_over_32kb(root: Path) -> list[str]:
+    """dream.cp files whose C++ for their judge is over 32 KB (goal 5; owner: Dreams).
+    `scripts/corpus.py dream-sizes --write` records them; dreams.yml fails a record that
+    differs from what it measures, and a missing record counts."""
+    p = root / DREAM_OVER_32KB
+    rec = json.loads(p.read_text()) if p.is_file() else {}
+    if "dream_over_32kb" not in rec:
+        return [f"{DREAM_OVER_32KB}: no dream_over_32kb; run `scripts/corpus.py dream-sizes --write`"]
+    return list(rec["dream_over_32kb"])
+
+
 TOOLS_TEST_TIMES = "research/perf/tools-test-times.json"
 
 
@@ -3171,6 +3185,7 @@ COUNTERS = {
     "corpus_max_short": ("v03 --max inputs reading a size under the port's Bounds (generator's lane)",
                          corpus_max_short, True),
     "corpus_max_unread": ("v03 --max inputs whose sizes max-short can't read (Idioms)", corpus_max_unread, True),
+    "dream_over_32kb": ("dream.cp files whose C++ is over 32 KB (Dreams)", dream_over_32kb, True),
     "interp_max_over_20s": ("corpus packages the interpreter runs a --max case past 20 s on (Core)", interp_max_over_20s, True),
     "tools_tests_over_30s": ("tools crates' tests over 30 s (Tools)", tools_tests_over_30s, True),
     "edition_refs": ("dead 0.2 edition references", edition_refs, True),

@@ -777,6 +777,54 @@ def max_short_mode(args):
     return 0
 
 
+DREAM_OVER = "research/dream-over-32kb.json"
+
+
+def dream_size_of(job):
+    """One dream's C++ for its package's judge, in a worker process: (id, bytes), or (id, None)
+    when it doesn't build."""
+    pid, cpl = job
+    pkg = next(problems(ids=[pid]))
+    with tempfile.TemporaryDirectory() as tmp:
+        cpp = os.path.join(tmp, f"{pid}.cpp")
+        r = subprocess.run([cpl, "build", "--judge", pkg.judge(), str(pkg.dream), "-o", cpp], capture_output=True)
+        return pid, None if r.returncode else os.path.getsize(cpp)
+
+
+def dream_sizes_mode(args):
+    """Every dream.cp's C++ against the 32 KB every solution should fit (goal 5), -j at a time;
+    dreams.yml runs it. `--write` records the dreams over it in research/dream-over-32kb.json
+    for the shrink-only dream_over_32kb counter; without it, a record that differs from what
+    it measures fails, and so does a dream that doesn't build."""
+    import concurrent.futures
+    cpl = args.cpl or default_cpl()
+    pkgs = [p for p in problems() if p.dream]
+    with concurrent.futures.ProcessPoolExecutor(args.j) as ex:
+        sizes = sorted(ex.map(dream_size_of, [(p.id, cpl) for p in pkgs]))
+    unbuilt = [pid for pid, n in sizes if n is None]
+    over = [pid for pid, n in sizes if n is not None and n > TARGET_BYTES]
+    for pid, n in sizes:
+        if n is None or n > TARGET_BYTES:
+            print(f"dream-over-32kb {pid} {n}" if n else f"dream-unbuilt {pid} -")
+    if unbuilt:
+        print(f"corpus: {len(unbuilt)} dream(s) don't build: {' '.join(unbuilt)}", file=sys.stderr)
+        return 1
+    got = {"dream_over_32kb": over}
+    path = Path(ROOT, DREAM_OVER)
+    if args.write:
+        path.write_text(json.dumps(got, indent=2) + "\n")
+        return 0
+    had = json.loads(path.read_text()) if path.is_file() else {}
+    if had != got:
+        for pid in sorted(set(over) ^ set(had.get("dream_over_32kb", []))):
+            print(f"corpus: {'new' if pid in over else 'gone'}: {pid}", file=sys.stderr)
+        print(f"corpus: {DREAM_OVER} is stale; cut a new one under 32 KB, or record a gone one with "
+              "`dream-sizes --write`", file=sys.stderr)
+        return 1
+    print(f"corpus: {len(pkgs)} dream(s), {len(over)} over 32 KB")
+    return 0
+
+
 def check_header(pkg, ctx):
     if not pkg.port:
         return []
@@ -1939,6 +1987,10 @@ def cli(argv):
     ms.add_argument("--write", action="store_true", help="record the findings in " + MAX_SHORT)
     ms.add_argument("--cpl")
     ms.add_argument("-j", type=int, default=os.cpu_count() or 4)
+    ds = sub.add_parser("dream-sizes", help="each dream.cp whose C++ is over 32 KB")
+    ds.add_argument("--write", action="store_true", help="record the findings in " + DREAM_OVER)
+    ds.add_argument("--cpl")
+    ds.add_argument("-j", type=int, default=os.cpu_count() or 4)
     sd = sub.add_parser("seed")
     sd.add_argument("ids", nargs="*")
     ls = sub.add_parser("ls", help="print each package's dir, or its FILE, relative to the repo root")
@@ -1964,6 +2016,8 @@ def cli(argv):
         return seed(args)
     if args.mode == "max-short":
         return max_short_mode(args)
+    if args.mode == "dream-sizes":
+        return dream_sizes_mode(args)
     if args.mode == "gaps":
         return gaps(args)
     if args.mode == "ls":

@@ -1313,6 +1313,13 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.corpus_max_short(root), ["max-short a m"])
             self.assertEqual(dr.corpus_max_unread(root), [])
 
+    def test_dream_over_32kb_reads_the_dream_sizes_record(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.assertEqual(len(dr.dream_over_32kb(root)), 1)
+            self._write(root, dr.DREAM_OVER_32KB, json.dumps({"dream_over_32kb": ["a"]}))
+            self.assertEqual(dr.dream_over_32kb(root), ["a"])
+
     def test_interp_max_over_20s_reads_the_corpus_board(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -50,6 +50,9 @@ jobs:
           path: target/corpus-tests
           key: corpus-tests-${{ steps.hour.outputs.hour }}
           restore-keys: corpus-tests-
+      - name: Every dream's C++ against research/dream-over-32kb.json
+        if: matrix.shard == 1
+        run: just corpus-dream-sizes --cpl target/ci/cpl -j "$(nproc)"
       - name: Dreams agree with the accepted C++
         run: |
           mapfile -t ids < <(printf '%s\n' corpus/problems/*/dream.cp | cut -d/ -f3 |

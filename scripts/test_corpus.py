@@ -587,6 +587,31 @@ class MaxShortTest(unittest.TestCase):
             self.assertEqual(corpus.max_short_mode(args), 1)
 
 
+class DreamSizesTest(unittest.TestCase):
+    def run_mode(self, root, sizes, write=False):
+        with mock.patch.object(corpus, "ROOT", root), mock.patch.object(corpus, "problems", return_value=[]), \
+                mock.patch("concurrent.futures.ProcessPoolExecutor") as pool, \
+                contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            pool.return_value.__enter__.return_value.map.return_value = sizes
+            return corpus.dream_sizes_mode(argparse.Namespace(cpl="cpl", j=1, write=write))
+
+    def test_a_stale_record_fails_and_write_records_the_dreams_over_32kb(self):
+        sizes = [("a", corpus.TARGET_BYTES + 1), ("b", corpus.TARGET_BYTES)]
+        with tempfile.TemporaryDirectory() as root:
+            os.makedirs(os.path.join(root, "research"))
+            self.assertEqual(self.run_mode(root, sizes), 1)
+            self.assertEqual(self.run_mode(root, sizes, write=True), 0)
+            self.assertEqual(json.loads(Path(root, corpus.DREAM_OVER).read_text()), {"dream_over_32kb": ["a"]})
+            self.assertEqual(self.run_mode(root, sizes), 0)
+            self.assertEqual(self.run_mode(root, [("a", 100), ("b", 100)]), 1)
+
+    def test_a_dream_that_does_not_build_fails_and_writes_nothing(self):
+        with tempfile.TemporaryDirectory() as root:
+            os.makedirs(os.path.join(root, "research"))
+            self.assertEqual(self.run_mode(root, [("a", None)], write=True), 1)
+            self.assertFalse(Path(root, corpus.DREAM_OVER).exists())
+
+
 class CommittedInputsTest(Corpus):
     def test_an_interactive_package_seeds_from_its_cases_not_its_reply_transcripts(self):
         d = self.package("p", port_cp="", interactor_py="")

@@ -415,7 +415,7 @@ def callers(names):
                          capture_output=True, check=True).stdout
     files = [p.decode("utf-8", "surrogateescape") for p in out.split(b"\0") if p]
     return [f for f in files if os.path.isfile(os.path.join(ROOT, f))
-            and call.search(open(os.path.join(ROOT, f), encoding="utf-8", errors="replace").read())]
+            and call.search(Path(ROOT, f).read_text(encoding="utf-8", errors="replace"))]
 
 
 def importers(paths):
