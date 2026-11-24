@@ -72,7 +72,7 @@ explain section) is a promise like a language rule, so it gets an
 it, and the coverage gate can't tell it is untested. Example: "`debug(x)`
 prints with a source location in checked builds and is removed from
 submissions" needs an id, a run case, and a build case that `lacks:` it.
-Enforced by `scripts/spec-tool-rules.py`, whose count only goes down.
+Enforced by `scripts/spec-gate.py tool-rules`, whose count only goes down.
 
 ## Checklist
 

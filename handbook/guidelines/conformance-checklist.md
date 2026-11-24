@@ -75,7 +75,7 @@ Every land runs the conformance and spec-block suites, so their cost is
 paid many times a day. Their total CPU time has a budget of about twice
 today's; a case or harness change that doubles it is a regression to fix,
 not a new baseline. CPU time is the measure because wall time moves with
-machine load. Enforced by `scripts/conformance-speed.py`.
+machine load. Enforced by `scripts/spec-gate.py speed`.
 
 ### conformance/R9. The suite catches bugs no past fix shows
 

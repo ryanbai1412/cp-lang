@@ -89,6 +89,23 @@ class GatesTest(unittest.TestCase):
             subprocess.run(["git", "add", "."], cwd=t.root, check=True)
             self.assertEqual([(p.where, p.what[:7]) for p in run("xref")], [("handbook/x.md:1", "R01.1.2")])
 
+    def test_flakes(self):
+        from specgate import flakes
+        verdicts = iter([{"a.cp", "b.cp"}, {"a.cp"}])
+        with mock.patch.object(flakes, "failing", lambda f: next(verdicts)):
+            self.assertEqual([(p.where, p.what) for p in run("flakes")], [("b.cp", "failed on 1 of 2 runs")])
+
+    def test_speed(self):
+        with Tree({}):
+            self.assertEqual(run("speed", "--cpl-conform", "true", "--budget", "1e9"), [])
+            self.assertEqual(len(run("speed", "--cpl-conform", "true", "--budget", "-1")), 1)
+            self.assertIn("exited 2", run("speed", "--cpl-conform", "sh", "--budget", "1e9")[0].what)
+
+    def test_tool_rules(self):
+        files = {"spec/tools/a.md": "- `cpl x` does x (Rx.1).\n- `cpl y` does\n  y.\n\n```\n- not a feature\n```\n"}
+        with Tree(files):
+            self.assertEqual([p.where for p in run("tool-rules")], ["spec/tools/a.md:2"])
+
     def test_markers(self):
         old = "// expect: E0601 at 2 (checked)\n// rule: 05.1\n// a note\nlet a = 1\r\nf(a)\n"
         with Tree({"spec/conformance/c/a.cp": old}) as t:

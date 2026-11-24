@@ -627,7 +627,7 @@ uv run scripts/conformance-widths.py --check || fail "spec/conformance/widths/ i
 uv run scripts/conformance-ownership.py --check || fail "spec/conformance/ownership/ is stale; run scripts/conformance-ownership.py"
 uv run --quiet python scripts/spec-gate.py xref || fail "a rule id names no rule in spec/core; see above"
 uv run --quiet python scripts/spec-gate.py changelog || fail "a spelling the spec removes has no changelog line; see above"
-uv run scripts/spec-tool-rules.py --max 0 || fail "a tool feature in spec/tools/ has no rule id; see above"
+uv run --quiet python scripts/spec-gate.py tool-rules || fail "a tool feature in spec/tools/ has no rule id; see above"
 uv run scripts/spec-std-signatures.py --check || fail "a spec/lib chapter and std disagree on a return type; see above"
 uv run --quiet python scripts/spec-gate.py decisions-explained || fail "a decision cited in spec/ has no handbook explanation; see above"
 
@@ -740,10 +740,10 @@ if [ "$mode" = full ]; then
         --cxxflags '-O1 -g -fsanitize=address,undefined -D_GLIBCXX_DEBUG'
     uv run scripts/conformance-metamorphic.py --check || fail "a meaning-preserving edit changed a case's output; see above"
     uv run scripts/grammar-fuzz.py --n 300 --check --max-syntax 231 --show 0 || fail "a program derived from the grammar crashed cpl, or more derived programs are syntax errors; see above"
-    uv run scripts/conformance-speed.py || fail "the conformance and spec-block suites went over their CPU budget; see above"
+    uv run --quiet python scripts/spec-gate.py speed || fail "the conformance and spec-block suites went over their CPU budget; see above"
     uv run scripts/explain-copies.py --check --max 1 || fail "cpl explain claims more copies than the C++ makes in more cases; see above"
     uv run scripts/tool-vocab.py || fail "help, explain or hover uses a spelling spec/GLOSSARY.md bans; see above"
-    uv run scripts/conformance-flakes.py --runs 2 --check || fail "a conformance case changed verdict between runs; see above"
+    uv run --quiet python scripts/spec-gate.py flakes --runs 2 || fail "a conformance case changed verdict between runs; see above"
 
     step "cargo test: every port compiled with every judge profile's flags"
     cargo test -p cpl-cli --test judges -- --ignored --exact every_port_compiles_with_every_judges_flags
