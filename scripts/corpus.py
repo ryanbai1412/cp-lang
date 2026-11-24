@@ -1000,7 +1000,7 @@ def gen_out(pkg, args):
 
 # How long the interpreter may take on one stress case: the largest v03
 # cases take it 32 s (cco24p1 11.in, 33 MB) and 34 s (noi10p2 21.in).
-INTERP_TIMEOUT = 60
+INTERP_TIMEOUT = int(os.environ.get("CPL_INTERP_TIMEOUT", 60))
 
 
 def run_result(cmd, data, timeout=TIMEOUT):
@@ -1665,7 +1665,9 @@ def base_findings(found, modes, base, cpl, run=subprocess.run):
     ids = sorted({f.split()[1] for f in found if len(f.split()) > 1})
     wt = new_reds.base_checkout(common, rev)
     target = os.environ.get("CPL_BASE_TARGET", str(common / "cpl-base-target"))
-    env = {**os.environ, "CARGO_TARGET_DIR": target}
+    # The base gets half the timeout: a case near it (btoi06p5 08.in, 56 s either side of 60) times
+    # out or not with the box's load, so only a base well inside it makes a candidate timeout new.
+    env = {**os.environ, "CARGO_TARGET_DIR": target, "CPL_INTERP_TIMEOUT": str(INTERP_TIMEOUT // 2)}
     print(f"corpus: rerunning {len(ids)} package(s) with findings at the base {rev[:9]}", file=sys.stderr)
     profile = "debug" if "debug" in Path(cpl).parts else "release"  # the timeouts are the candidate's build's
     build = ["cargo", "build", "-q", "-p", "cpl-cli", *(["--release"] if profile == "release" else [])]

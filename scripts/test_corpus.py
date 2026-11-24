@@ -1424,6 +1424,20 @@ class AtBaseTest(unittest.TestCase):
         self.assertEqual(calls[0][-1], "cpl-cli")  # the candidate's debug build, not a release one
         self.assertEqual(calls[1][3:7], ["ioi13p3io", "yac6p6", "--only", "run"])
 
+    def test_the_base_runs_inside_half_the_timeout(self):
+        # btoi06p5 08.in took 55.7 s on main and 56.0 s on idioms' port: the base passed under load
+        # the candidate didn't get, and refused it. Near the limit at the base is main's too.
+        envs = []
+        def run(argv, **kw):
+            envs.append(kw.get("env", {}))
+            return subprocess.CompletedProcess(argv, 0 if argv[0] == "cargo" else 1, "", "")
+        new_reds = types.SimpleNamespace(git=lambda *a, **k: "b" * 40, base_checkout=lambda common, rev: Path("/base"))
+        with mock.patch.dict(sys.modules, {"new_reds": new_reds,
+                                           "culprit": types.SimpleNamespace(describe=lambda sha, cwd: ("s", "x"))}), \
+                mock.patch("builtins.open", mock.mock_open()), mock.patch("sys.stderr", new_callable=io.StringIO):
+            corpus.base_findings(self.FOUND, ["run"], "HEAD", "target/release/cpl", run=run)
+        self.assertEqual(envs[1]["CPL_INTERP_TIMEOUT"], str(corpus.INTERP_TIMEOUT // 2))
+
     def test_a_base_with_no_verdict_admits_nothing(self):
         self.assertEqual(self._base("interp-timeout yac6p6 08.in\n", build=101)[0], set())
         self.assertEqual(self._base("interp-timeout yac6p6 08.in\n", code=2)[0], set())
