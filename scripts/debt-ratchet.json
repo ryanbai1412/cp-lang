@@ -5,8 +5,8 @@
   "rust_ignore": 0,
   "pending_tests": 0,
   "edition_refs": 0,
-  "ir_builtin_names": 147,
-  "ir_builtin_derived": 25,
+  "ir_builtin_names": 146,
+  "ir_builtin_derived": 24,
   "prelude_privilege": 27,
   "backend_std_names": 18,
   "lint_std_names": 0,
@@ -180,7 +180,7 @@
   "dream_unverified": 0,
   "measure_broken": 0,
   "mono_unguarded": 0,
-  "std_shadowed": 51,
+  "std_shadowed": 48,
   "corpus_walkers": 0,
   "unregistered_lists": 0,
   "json_outside_cpl_json": 0,
@@ -223,7 +223,7 @@
   "std_model_gaps": 0,
   "cpp_optional_copies": 6,
   "std_trait_matrix": 0,
-  "corpus_no_tests": 27,
+  "corpus_no_tests": 26,
   "silent_unknowns": 42244,
-  "corpus_no_statement": 30
+  "corpus_no_statement": 29
 }
