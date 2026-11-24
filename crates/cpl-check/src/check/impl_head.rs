@@ -266,6 +266,19 @@ impl Checker<'_> {
         self.param_bounds.truncate(outer);
     }
 
+    /// The impls of `trait_name` for `name`: the one written under its name, then those listed.
+    pub(super) fn trait_impls<'t>(
+        &mut self,
+        name: &str,
+        trait_name: &'t str,
+    ) -> impl Iterator<Item = std::sync::Arc<Def>> + 't {
+        let written = self.global(&crate::def::impl_name(Some(trait_name), name));
+        let listed = (self.env.impls(name).into_iter())
+            .filter(|(t, _)| t.as_deref().and_then(|t| t.split('<').next()) == Some(trait_name))
+            .map(|(_, d)| d);
+        written.into_iter().chain(listed)
+    }
+
     /// Whether an impl of `trait_name` for `name` covers `ty`: its target's generics, bound to
     /// `ty`'s arguments, meet the bounds the impl head writes (`impl Sized for Rev<S: Sized>`).
     pub(super) fn impl_holds(
@@ -275,11 +288,7 @@ impl Checker<'_> {
         trait_name: &str,
         seen: &mut Vec<String>,
     ) -> bool {
-        let written = self.global(&crate::def::impl_name(Some(trait_name), name));
-        let listed = (self.env.impls(name).into_iter())
-            .filter(|(t, _)| t.as_deref().and_then(|t| t.split('<').next()) == Some(trait_name))
-            .map(|(_, d)| d);
-        written.into_iter().chain(listed).any(|def| {
+        self.trait_impls(name, trait_name).any(|def| {
             let Def::Impl {
                 target, bound_args, ..
             } = &*def

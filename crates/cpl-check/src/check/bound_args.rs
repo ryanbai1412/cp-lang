@@ -561,11 +561,7 @@ impl Checker<'_> {
         }
         use super::impl_head::ty_impl_name;
         if let Some(name) = ty_impl_name(ty) {
-            let written = self.global(&crate::def::impl_name(Some(trait_name), name));
-            let listed = (self.env.impls(name).into_iter())
-                .filter(|(t, _)| t.as_deref().and_then(|t| t.split('<').next()) == Some(trait_name))
-                .map(|(_, d)| d);
-            for def in written.into_iter().chain(listed) {
+            for def in self.trait_impls(name, trait_name) {
                 if let Def::Impl {
                     trait_args,
                     target,
