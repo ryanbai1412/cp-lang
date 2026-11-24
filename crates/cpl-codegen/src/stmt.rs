@@ -137,7 +137,7 @@ impl<'p> Emitter<'p> {
             }
             // A value named and dropped, as what is left of a flattened
             // block: it does nothing, and `(void)` says so to the compiler.
-            ExprKind::Local(_) | ExprKind::Global(_) => {
+            ExprKind::Local(_) | ExprKind::Global(_) | ExprKind::Index(..) => {
                 let text = self.expr(e).text;
                 self.line(out, &format!("(void){text};"));
             }
