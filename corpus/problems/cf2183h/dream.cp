@@ -13,4 +13,4 @@ let st = (0..=n).find(c => c == n or pref.prefix(c) + a[c] * c > 0)!
 fn cost(j: Int, i: Int) -> I128 = I128(pref.fold(j..i)) * (i - j)
 let rest = n - k + 1
 if rest <= st: return print(cost(0, rest) + pref.fold(rest..n))
-print(aliens(k, solve: (pen: I128) => monge_path([0] + (st..=n).collect(), cost: (j, i) => cost(j, i) + pen)))
+print(aliens(k, solve: pen => monge_path([0] + (st..=n).collect(), cost: (j, i) => cost(j, i) + pen)))

@@ -9,7 +9,7 @@ let deals = chain(
 ).sorted(by: d => (desc(d.clock), d.order))
 
 domain Free = 0..=comps.sum(of: .cores)
-var best: [Free]?Int = [Free] f => (f == 0).then(0)
+var best: [Free]?Int = [Free] f => if f == 0: Some(0) else: None
 for d in deals:
     best = [Free] f => max(best[f], Free.at(f - d.cores).and_then(g => best[g]).map(p => p + d.cash))
-print(best.values.flatten().max()!)
+print(best.present().max()!)
