@@ -1503,16 +1503,9 @@ impl<'a> Checker<'a> {
             match cur.as_str() {
                 "Ord" => stack.push("Eq".into()),
                 "IndexedMut" => stack.push("Indexed".into()),
-                "Indexed" => {
-                    stack.push("Positional".into());
-                    stack.push("Bidir".into());
-                    stack.push("Keyed".into());
-                }
-                "Positional" => stack.push("Sized".into()),
-                "Sized" | "Bidir" | "Keyed" => stack.push("Seq".into()),
                 _ => {}
             }
-            if let Some(Def::Trait { supers, .. }) = self.global(&cur).as_deref() {
+            if let Some(Def::Trait { supers, .. }) = self.type_def(&cur).as_deref() {
                 stack.extend(supers.iter().cloned());
             }
         }
