@@ -469,6 +469,21 @@ fn a_product_domain_loop_is_nested_int_loops() {
 }
 
 #[test]
+fn a_key_tested_and_then_stored_through_a_path_is_looked_up_once() {
+    let code = cpp(concat!(
+        "struct B(h: Int, len: Int)\n",
+        "var maps: [1..=3]HashMap<Int, Int> = []\n",
+        "maps[2][5] = 0\n",
+        "let b = B(5, 2)\n",
+        "for i in 0..4:\n",
+        "    if maps[b.len].contains(b.h): maps[b.len][b.h] += i\n",
+        "print(maps[2][5])\n",
+    ));
+    assert!(code.contains("cpl::map_slot("), "{code}");
+    assert!(!code.contains(".count(b.h)"), "{code}");
+}
+
+#[test]
 fn a_key_tested_and_then_read_is_looked_up_once() {
     let once =
         cpp("var m = Map<Int, Int>()\nm[4] = 7\nlet x: Int = read()\nif x in m: print(m[x] + 1)\n");

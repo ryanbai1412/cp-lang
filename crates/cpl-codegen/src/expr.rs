@@ -460,20 +460,14 @@ impl<'p> Emitter<'p> {
             }
             ExprKind::Index(base, indices)
                 if indices.len() == 1
-                    && self
-                        .found
-                        .iter()
-                        .any(|(m, k, _)| m.kind == base.kind && k.kind == indices[0].kind) =>
+                    && self.found.iter().any(|(m, k, _)| {
+                        crate::stmt::same_path(m, base) && crate::stmt::same_path(k, &indices[0])
+                    }) =>
             {
-                let it = self
-                    .found
-                    .iter()
-                    .rev()
-                    .find(|(m, k, _)| m.kind == base.kind && k.kind == indices[0].kind);
-                Code::primary(format!(
-                    "{}->second",
-                    it.map(|f| f.2.as_str()).unwrap_or_default()
-                ))
+                let cell = self.found.iter().rev().find(|(m, k, _)| {
+                    crate::stmt::same_path(m, base) && crate::stmt::same_path(k, &indices[0])
+                });
+                Code::primary(cell.map(|f| f.2.clone()).unwrap_or_default())
             }
             ExprKind::Index(base, indices)
                 if indices.len() == 1
