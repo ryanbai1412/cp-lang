@@ -80,6 +80,16 @@ pub struct RangeEnds {
 }
 
 impl ExprFacts {
+    /// The last type `infer` gave the expression at `span`.
+    #[inline(never)]
+    pub(crate) fn last_type(&self, span: Span) -> Option<&Ty> {
+        self.types
+            .iter()
+            .rev()
+            .find(|(at, _)| *at == span)
+            .map(|(_, ty)| ty)
+    }
+
     pub(crate) fn mark(&self) -> [usize; 6] {
         let (t, c) = (self.types.len(), self.calls.len());
         let rows = self.past_rows.len();

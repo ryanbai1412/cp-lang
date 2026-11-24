@@ -184,10 +184,7 @@ impl Checker<'_> {
         // A call giving a value of a struct leaves its type in `exprs.types`.
         let read = |c: &mut Self| {
             let ty = c.method_form_call(expr, expr, &[]);
-            ty.or_else(|| {
-                let shape = (c.exprs.types.iter().rev()).find(|(at, _)| *at == expr.span);
-                shape.map(|(_, ty)| ty.clone())
-            })
+            ty.or_else(|| c.exprs.last_type(expr.span).cloned())
         };
         let settled = self.quietly(|c| {
             read(c).filter(|t| c.sink.is_empty() && !t.has_vague() && !names_param(t))

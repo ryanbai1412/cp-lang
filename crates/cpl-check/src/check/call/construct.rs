@@ -321,12 +321,9 @@ impl Checker<'_> {
             // A lambda with unwritten parameters keeps its signature for
             // itself; the generic its result is binds from it.
             let lambda_sig = (typed_lambda && arg_ty == Ty::Unknown)
-                .then(|| {
-                    (self.exprs.types.iter().rev())
-                        .find(|(at, sig)| *at == arg.value.span && matches!(sig, Ty::Fn { .. }))
-                        .map(|(_, sig)| sig.clone())
-                })
-                .flatten();
+                .then(|| self.exprs.last_type(arg.value.span).cloned())
+                .flatten()
+                .filter(|sig| matches!(sig, Ty::Fn { .. }));
             self.expected_bounds_range = prev_bounds_range;
             self.expected_piece = prev_piece;
             let Some(param) = param else {

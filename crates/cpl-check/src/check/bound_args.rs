@@ -19,7 +19,6 @@ impl Checker<'_> {
             .extend(f.generics.iter().map(|g| g.text.clone()));
         let mut rows = Vec::new();
         let mut traits = Vec::new();
-        let mut bound_args = Vec::new();
         for b in &f.bounds {
             for t in &b.traits {
                 match &t.kind {
@@ -30,17 +29,14 @@ impl Checker<'_> {
                             .collect();
                         rows.push((b.name.text.clone(), resolved));
                     }
-                    ast::TypeKind::Named { name: tname, args } => {
+                    ast::TypeKind::Named { name: tname, .. } => {
                         traits.push((b.name.text.clone(), tname.text.clone()));
-                        if !args.is_empty() {
-                            let args = args.iter().map(|a| self.resolve_type(a)).collect();
-                            bound_args.push((b.name.text.clone(), tname.text.clone(), args));
-                        }
                     }
                     _ => {}
                 }
             }
         }
+        let bound_args = self.bound_args(&f.bounds);
         self.generics.truncate(outer);
         (rows, traits, bound_args)
     }
@@ -265,7 +261,7 @@ impl Checker<'_> {
     /// type the bound's parameter is bound to, so `sum(xs)` over
     /// `S: Seq<T>` given a `List<Int>` has `T = Int`.
     pub(crate) fn bind_bound_args(&mut self, bindings: &mut crate::ty::Bindings) {
-        let Some(bound_args) = self.call_bound_args.clone() else {
+        let Some(bound_args) = self.call_bound_args.take() else {
             return;
         };
         for (param, trait_name, args) in &bound_args {
@@ -288,6 +284,7 @@ impl Checker<'_> {
                 }
             }
         }
+        self.call_bound_args = Some(bound_args);
     }
 
     /// The arguments `ty` gives trait `trait_name`: a bound's in a generic

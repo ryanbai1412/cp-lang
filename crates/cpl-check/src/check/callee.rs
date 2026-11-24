@@ -99,8 +99,7 @@ impl Checker<'_> {
                 return true;
             }
         }
-        let ty = self.exprs.types.iter().rev().find(|t| t.0 == base.span);
-        let receiver = match ty.map(|t| &t.1) {
+        let receiver = match self.exprs.last_type(base.span) {
             Some(Ty::Named { name, args }) => match (name.as_str(), args.len()) {
                 ("List", 1) => Receiver::List,
                 ("Map", 2) => Receiver::Map,
@@ -137,8 +136,8 @@ impl Checker<'_> {
     fn callee_form(&self, callee: &Expr) -> Option<((String, Span), CalleeKind)> {
         match &callee.kind {
             ExprKind::Name(n) => {
-                let ty = self.exprs.types.iter().rev().find(|t| t.0 == callee.span);
-                let ctor = ty.is_some_and(|(_, t)| {
+                let ty = self.exprs.last_type(callee.span);
+                let ctor = ty.is_some_and(|t| {
                     matches!(t, Ty::TypeName(_) | Ty::Named { .. } | Ty::Domain(_))
                 });
                 let kind = if ctor {
