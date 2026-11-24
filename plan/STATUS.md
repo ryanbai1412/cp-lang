@@ -16,7 +16,7 @@ Authority: handbook leads design; spec/ is its downstream exhaustive form.
 | [infra](domains/infra/README.md) | 15 | 0 | 0 |
 | [lint-fmt](domains/lint-fmt/README.md) | 20 | 0 | 0 |
 | [perf](domains/perf/README.md) | 19 | 3 | 0 |
-| [site](domains/site/README.md) | 17 | 0 | 3 |
+| [site](domains/site/README.md) | 17 | 0 | 4 |
 | [spec](domains/spec/README.md) | 21 | 0 | 0 |
 | [stdlib](domains/stdlib/README.md) | 19 | 4 | 6 |
 | [tech-debt](domains/tech-debt/README.md) | 31 | 0 | 3 |
@@ -387,6 +387,9 @@ Process costing more than 10% of a change is skipped with a trailer
 Process costing more than 10% of a change is skipped with a trailer
 (`handbook/process/handbook-and-rfcs.md`); this counts them.
 
+Process costing more than 10% of a change is skipped with a trailer
+(`handbook/process/handbook-and-rfcs.md`); this counts them.
+
 | Day | Lane | Skipped |
 |---|---|---|
 | 2026-11-24 | tools | 4 |
@@ -419,3 +422,4 @@ Process costing more than 10% of a change is skipped with a trailer
 - tech-debt: may the steward land pure-move refactors in other lanes' crates?
 - tech-debt: how strict are the debt ratchets?
 - stdlib: Q6 folds of an identity-less op are `?T` only through the op's type (needs compiler)
+- site: charge a generic instance to the crate that instantiates it?
