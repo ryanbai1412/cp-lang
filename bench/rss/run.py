@@ -57,6 +57,7 @@ CASES = {
     # sort() 4e5 (Int, Bool, Int) events, noi19p1's sweep
     "sort_tuples": lambda: "200000\n" + "".join(f"{i * 7919 % 1001} {i * 104729 % 1001}\n" for i in range(200_000)),
     "sort_boxes": lambda: "20\n",  # sort() 2^20 (l: Int, r: Int) records, btoi08p6's boxes
+    "cf2124c": lambda: gen("cf2124c"),  # b.adjacent over 6e5 [0..n]1..=1e9: 4 B cells, not 8
 }
 
 

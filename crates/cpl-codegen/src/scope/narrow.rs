@@ -207,6 +207,48 @@ pub(crate) fn narrow_elems(
                 }
             });
         }
+        // A parameter every call passes the same narrow layout starts at it,
+        // so a generic instance takes its argument's storage, not widens it.
+        let mut passed: BTreeMap<ElemLoc, Option<NarrowLayout>> = BTreeMap::new();
+        for &(scope, body) in &scopes {
+            crate::walk::deep_exprs(body, &mut |e| {
+                let ExprKind::Call(fid, args) = &e.kind else {
+                    return;
+                };
+                let f = &program.fns[*fid];
+                for (i, arg) in args.iter().enumerate().take(f.params.len()) {
+                    if !f.locals.get(i).is_some_and(|l| is_narrowable_seq(&l.ty)) {
+                        continue;
+                    }
+                    let layout = match arg {
+                        Arg::Value(v) => expr_loc(scope, v).and_then(|l| narrow.get(&l)).cloned(),
+                        Arg::Mut(_) => None,
+                    };
+                    let p = ElemLoc::Local(ScopeId::Fn(*fid), i);
+                    match passed.get(&p) {
+                        Some(seen) if *seen != layout => {
+                            passed.insert(p, None);
+                        }
+                        Some(_) => {}
+                        None => {
+                            passed.insert(p, layout);
+                        }
+                    }
+                }
+            });
+        }
+        for (p, layout) in passed {
+            let ElemLoc::Local(ScopeId::Fn(fid), _) = p else {
+                continue;
+            };
+            let pinned = program.judge_fns.contains(&fid) || program.entry_fns.contains(&fid);
+            if let Some(layout) = layout {
+                if !pinned && !stored.contains(&p) && !narrow.contains_key(&p) {
+                    narrow.insert(p, layout);
+                    grew = true;
+                }
+            }
+        }
         if !grew {
             break;
         }

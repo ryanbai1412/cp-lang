@@ -152,3 +152,20 @@ fn explain_a_file_shows_each_values_storage() {
         Some("?V: 2 B, None is a spare value (no flag)")
     );
 }
+
+/// Explain's bytes per element are the C++'s: a `1..=10 ** 9` array read
+/// into a generic std body is 4 B a cell in both, never widened to 8.
+#[test]
+fn explain_counts_a_narrow_array_at_the_cpp_width() {
+    let dir = scratch("explain_narrow_generic");
+    let src = "let n: 2..=600_000 = read()\nlet b: [0..n]1..=10 ** 9 = read()\n\
+               fn f<A: Positional<Int>>(a: A) -> Int = a.nth(0)\n\
+               var res = f(b)\nfor (x, y) in b.adjacent: res += x - y\nprint(res)\n";
+    std::fs::write(dir.join("m.cp"), src).unwrap();
+    let out = text(&cpl(&dir, &["explain", "m.cp"]).stdout);
+    assert!(out.contains("4 B per element x 600000 = 2.4 MB"), "{out}");
+    let built = cpl(&dir, &["build", "m.cp", "-o", "m.cpp"]);
+    assert!(built.status.success(), "{}", text(&built.stderr));
+    let cpp = std::fs::read_to_string(dir.join("m.cpp")).unwrap();
+    assert!(cpp.contains("std::vector<uint32_t> b"), "{cpp}");
+}

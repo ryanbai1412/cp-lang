@@ -126,7 +126,7 @@ fn items_of_a_slice_keep_its_list_narrow() {
 }
 
 #[test]
-fn ranged_array_elements_narrow_to_32_bit_and_widen_on_plain_flow() {
+fn ranged_array_elements_narrow_to_32_bit_and_keep_it_through_a_param() {
     let top_level = cpp("let n: 1..=100 = read()
 domain V = 1..=n
 var a: [V]0..=1_000_000 = 0
@@ -190,12 +190,9 @@ for v in V:
 print(sum_all<V>(a))
 ");
     assert!(
-        widened.contains("std::vector<ll> a"),
-        "expected array passed to [V]Int param to widen to std::vector<ll>:\n{widened}"
-    );
-    assert!(
-        !widened.contains("std::vector<uint32_t>"),
-        "widened array must not emit uint32_t:\n{widened}"
+        widened.contains("std::vector<uint32_t> a")
+            && widened.contains("(const std::vector<uint32_t>& xs)"),
+        "expected array passed to [V]Int param to keep its width in the instance:\n{widened}"
     );
 }
 
@@ -294,16 +291,18 @@ var pts: [D](0..=1_000, -100..=100) = (0, 0)
 print(sum_grid<D, D>(g) + sum_row<D>(mat[D(0)]) + sum_pts<D>(pts))
 ");
     assert!(
-        widened.contains("cpl::Grid<ll, 2> g"),
-        "expected 2D grid passed to [R, C]Int to widen:\n{widened}"
+        widened.contains("cpl::Grid<uint16_t, 2> g")
+            && widened.contains("(const cpl::Grid<uint16_t, 2>& g_"),
+        "expected 2D grid passed to [R, C]Int to keep its width in the instance:\n{widened}"
     );
     assert!(
         widened.contains("std::vector<std::vector<ll>> mat"),
         "expected nested array whose row flows to [E]Int to widen:\n{widened}"
     );
     assert!(
-        widened.contains("std::vector<std::tuple<ll, ll>> pts"),
-        "expected tuple array passed to [V](Int, Int) to widen:\n{widened}"
+        widened.contains("std::vector<std::tuple<uint16_t, int8_t>> pts")
+            && widened.contains("(const std::vector<std::tuple<uint16_t, int8_t>>& pts_"),
+        "expected tuple array passed to [V](Int, Int) to keep its width in the instance:\n{widened}"
     );
 }
 
@@ -373,4 +372,47 @@ print(Box(n, []).items.len)
 ");
     assert!(out.contains("[&]() -> std::vector<uint16_t>"), "{out}");
     assert!(!out.contains("std::vector<ll>"), "{out}");
+}
+
+/// A std seq body run on a narrow list is instantiated at the list's width:
+/// `b.adjacent` doesn't widen `b` to `ll` (cf2124c).
+#[test]
+fn adjacent_on_a_narrow_list_keeps_it_narrow() {
+    let out = cpp("let n: 2..=600_000 = read()
+let b: [0..n]1..=10 ** 9 = read()
+var res = 1
+for (x, y) in b.adjacent if y % x != 0:
+    res = lcm(res, x / gcd(x, y))
+print(res)
+");
+    assert!(out.contains("std::vector<uint32_t> b"), "{out}");
+    assert!(!out.contains("std::vector<ll>"), "{out}");
+}
+
+/// A generic fn called with a narrow array takes it at its storage width:
+/// the instance's parameter is the caller's `uint32_t` vector, not `ll`.
+#[test]
+fn a_generic_fn_takes_a_narrow_array_at_its_width() {
+    let out = cpp("let n: 1..=100 = read()
+let a: [0..n]0..=1_000_000_000 = read()
+fn f<A: Positional<Int>>(a: A) -> Int = a.nth(0)
+print(f(a))
+");
+    assert!(out.contains("std::vector<uint32_t> a"), "{out}");
+    assert!(out.contains("(const std::vector<uint32_t>& a_"), "{out}");
+    assert!(!out.contains("std::vector<ll>"), "{out}");
+}
+
+/// Two calls passing different widths share one instance at the wider one;
+/// neither caller's value is cut.
+#[test]
+fn a_generic_fn_called_at_two_widths_takes_the_wider() {
+    let out = cpp("let n: 1..=100 = read()
+let a: [0..n]0..=1_000_000_000 = read()
+let b: [0..n]Int = read()
+fn f<A: Positional<Int>>(a: A) -> Int = a.nth(0)
+print(f(a), f(b))
+");
+    assert!(out.contains("std::vector<ll> a"), "{out}");
+    assert!(out.contains("std::vector<ll> b"), "{out}");
 }
