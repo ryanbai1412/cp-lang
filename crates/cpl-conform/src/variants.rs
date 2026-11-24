@@ -268,6 +268,44 @@ fn error_lines(db: &mut Session, path: &str, text: &str) -> Option<Vec<usize>> {
 /// The variant of `text` with every probe that checks, and how many probes it kept;
 /// `None` when no probe survives.
 pub fn build(db: &mut Session, path: &str, text: &str) -> Option<(String, usize)> {
+    let (probes, keep) = checking(db, path, text)?;
+    Some((
+        apply(text, &probes, &keep).0,
+        keep.iter().filter(|k| **k).count(),
+    ))
+}
+
+/// `build`, then without each probe whose own line traps on `input`: a probe that writes a
+/// range-typed var past its range traps in both engines, which tells nothing about them.
+pub fn build_running(
+    db: &mut Session,
+    path: &str,
+    text: &str,
+    input: &[u8],
+) -> Option<(String, usize)> {
+    let (probes, mut keep) = checking(db, path, text)?;
+    for _ in 0..probes.len() {
+        let (variant, owner) = apply(text, &probes, &keep);
+        let Ok(compiled) = crate::runner::compile_program(db, path, &variant) else {
+            break;
+        };
+        let Ok(run) = crate::runner::run_interp_bounded(&compiled.program, path, &variant, input)
+        else {
+            break;
+        };
+        let Some(trap) = run.trap else { break };
+        let line = LineIndex::new(&variant).line_of(trap.span.start) as usize;
+        let Some(Some(j)) = owner.get(line).copied() else {
+            break;
+        };
+        keep[j] = false;
+    }
+    let n = keep.iter().filter(|k| **k).count();
+    (n > 0).then(|| (apply(text, &probes, &keep).0, n))
+}
+
+/// The probes for `text` and which of them check together.
+fn checking(db: &mut Session, path: &str, text: &str) -> Option<(Vec<Probe>, Vec<bool>)> {
     let sep = if text.ends_with('\n') { "" } else { "\n" };
     let shown: Vec<&str> = top_vars(text)
         .iter()
@@ -293,7 +331,7 @@ pub fn build(db: &mut Session, path: &str, text: &str) -> Option<(String, usize)
         }
         let (variant, owner) = apply(text, &probes, &keep);
         let Some(lines) = error_lines(db, path, &variant) else {
-            return Some((variant, keep.iter().filter(|k| **k).count()));
+            return Some((probes, keep));
         };
         let blamed: Vec<usize> = lines
             .iter()
@@ -315,8 +353,7 @@ pub fn build(db: &mut Session, path: &str, text: &str) -> Option<(String, usize)
             keep[j] = false;
         }
     }
-    let n = keep.iter().filter(|k| **k).count();
-    (n > 0).then(|| (apply(text, &probes, &keep).0, n))
+    keep.contains(&true).then_some((probes, keep))
 }
 
 #[cfg(test)]

@@ -35,6 +35,21 @@ fn build_keeps_only_probes_that_check() {
 }
 
 #[test]
+fn a_probe_that_traps_on_the_input_is_dropped() {
+    let mut db = Session::new();
+    let text = "var p: 0..=3 = 3\nfor i in 0..2:\n    p = 3 - i\nprint(p)\n";
+    let (variant, kept) = build_running(&mut db, "probe.cp", text, b"").expect("probes run");
+    assert!(kept > 0, "{variant}");
+    assert!(!variant.contains("cpl_probe0_inc()"), "{variant}");
+    let Ok(compiled) = crate::runner::compile_program(&mut db, "probe.cp", &variant) else {
+        panic!("the variant compiles: {variant}");
+    };
+    let run =
+        crate::runner::run_interp_bounded(&compiled.program, "probe.cp", &variant, b"").unwrap();
+    assert!(run.trap.is_none(), "{variant}");
+}
+
+#[test]
 fn a_port_without_probe_sites_is_its_own_variant() {
     let flat = "let n = 3\nprint(n + 1)\n";
     assert!(super::same_as_port(flat));

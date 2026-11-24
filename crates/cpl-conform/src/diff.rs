@@ -369,7 +369,8 @@ fn run_one(db: &mut Session, cache_dir: &Path, target: &DiffTarget) -> (String, 
         if runner::compile_program(db, &path_str, &text).is_err() {
             return (id, skip("the port does not compile yet"));
         }
-        let Some((variant, _)) = variants::build(db, &path_str, &text) else {
+        let input = inputs.first().map_or(&[][..], |(_, b)| b.as_slice());
+        let Some((variant, _)) = variants::build_running(db, &path_str, &text, input) else {
             return (id, skip("no probe checks"));
         };
         // Kept for reproducing a mismatch: `cpl run` it next to the port.
