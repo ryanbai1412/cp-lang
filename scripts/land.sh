@@ -122,6 +122,7 @@ reexec_if_land_changed() {
     [ -z "${CPL_LAND_REEXEC:-}" ] && [ -f scripts/land.sh ] || return 0
     [ "$(git hash-object scripts/land.sh)" != "$self_blob" ] || return 0
     echo "land: the pull changed scripts/land.sh; landing with the new copy" >&2
+    drop_lock
     CPL_LAND_REEXEC=1 CPL_LAND_MAIN=1 CPL_LAND_T0=$t0 CPL_LAND_CHECKED=$checked \
         exec bash scripts/land.sh ${land_args[@]+"${land_args[@]}"}
 }
@@ -385,20 +386,35 @@ drop_lock() {
     lock_held=""
 }
 trap drop_lock EXIT
+# Whether the rebased tip owes a rerun (the commit tier, the skipped steps or a
+# cargo check) too slow to hold the lock through: 120 s makes it stale.
+reruns_due() {
+    [ -n "$users" ] && return 0
+    [ -z "$rechecked" ] && [ -x .githooks/pre-commit ] &&
+        [ -n "$(git diff --name-only "$checked" FETCH_HEAD -- $gate_paths)" ] && return 0
+    [ -s "$pending_steps" ] && [ "$steps_runs" -lt 2 ]
+}
 try=0
 push() {
     try=$((try + 1))
     take_lock || exit 1
     git fetch -q "$remote" main
     if ! git merge-base --is-ancestor FETCH_HEAD HEAD; then
-        drop_lock
         pull || exit 1
+        # A lane that waited for the lock always finds main moved by its holder. With
+        # no rerun due, the rebase is all that's left: do it holding the lock, or the
+        # lanes that push meanwhile win the race again (compiler's 1899 s, try 4).
+        if reruns_due; then
+            drop_lock
+        else
+            echo "land: main moved; rebased holding the land lock (no rerun is due)" >&2
+        fi
         reexec_if_land_changed
         recheck
         run_pending_steps
         # What landed meanwhile can break this change's files: check again.
         [ -z "$users" ] || refuse_if_broken "$(cargo check -q $users --all-targets 2>&1)"
-        take_lock || exit 1
+        [ -n "$lock_held" ] || take_lock || exit 1
         git fetch -q "$remote" main
         git merge-base --is-ancestor FETCH_HEAD HEAD || { drop_lock; return 1; }
     fi

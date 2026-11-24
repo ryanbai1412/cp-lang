@@ -492,6 +492,24 @@ class LandTest(unittest.TestCase):
         self.assertEqual(runs.read_text(), "commit --only nextest\n" * 2)
         self.assertIn("landing on the skipped steps' rerun", r.stderr)
 
+    def test_a_lost_race_with_no_rerun_due_rebases_holding_the_lock(self):
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        pending, runs = self._steps_runner(ours)
+        git(theirs, "pull", "-q", "origin", "main")
+        (theirs / "theirs.txt").write_text("x\n")
+        self.commit(theirs, "theirs")
+        (ours / "pkg.txt").write_text("x\n")
+        self.commit(ours, "ours")
+        pending.write_text("nextest\n")
+        r = self.land(ours, CI_RUNS=str(runs), RACE=str(theirs), RACES="2", CPL_LAND_TRIES="3")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        # The first lost race reruns the steps without the lock; the second owes no
+        # rerun, so it rebases holding the lock and pushes on that try.
+        self.assertEqual(r.stderr.count("rebased holding the land lock"), 1, r.stderr)
+        self.assertIn("(try 2)", r.stdout)
+        self.assertEqual(self.lock_on_remote(), "")
+        self.assertIn("race", git(ours, "log", "--format=%s", "origin/main"))
+
     def test_a_lanes_land_leaves_another_worktrees_pending_steps_alone(self):
         a = self.clone("ours")
         _, runs = self._steps_runner(a)
