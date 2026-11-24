@@ -1760,7 +1760,8 @@ static bool cpl_on(size_t n) {
 ";
 
 const POSIX_THREAD: &str = "
-#ifdef __GLIBC__
+// ASan follows a thread's stack, not one `setcontext` switched to.
+#if defined(__GLIBC__) && !defined(__SANITIZE_ADDRESS__)
 #include <sys/mman.h>
 #include <ucontext.h>
 static bool cpl_on(size_t n) {

@@ -775,7 +775,11 @@ fn the_program_runs_with_the_profile_stack() {
         cpp.contains("#ifdef _WIN32") && cpp.contains("CreateThread(0, n,"),
         "{cpp}"
     );
-    assert!(cpp.contains("#else\n#ifdef __GLIBC__"), "{cpp}");
+    // ASan follows a pthread's stack, so a sanitized build takes that path.
+    assert!(
+        cpp.contains("#if defined(__GLIBC__) && !defined(__SANITIZE_ADDRESS__)"),
+        "{cpp}"
+    );
     // No call depth is counted, in any build.
     assert!(!cpp.contains("depth"), "{cpp}");
 }
