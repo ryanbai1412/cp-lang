@@ -110,6 +110,8 @@ pub(super) struct Compiler<'p, 'f> {
     slot_map: Vec<SlotLoc>,
     next_i: u16,
     next_v: u16,
+    /// The most registers any statement so far has held at once.
+    high: (u16, u16),
     num_local_v: u16,
     pinned_v: u16,
     loops: Vec<LoopTargets>,
@@ -233,6 +235,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             slot_map,
             next_i,
             next_v,
+            high: (next_i, next_v),
             num_local_v: next_v,
             pinned_v: next_v,
             loops: Vec::new(),
@@ -287,8 +290,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
             traced: self.traced,
             steps: self.steps,
             fill_tys: self.fill_tys,
-            num_i: self.next_i as usize,
-            num_v: self.next_v as usize,
+            num_i: self.high.0.max(self.next_i) as usize,
+            num_v: self.high.1.max(self.next_v) as usize,
             num_local_v: self.num_local_v as usize,
             slot_map: self.slot_map,
             named_locals: (self.locals.iter().enumerate())
@@ -298,7 +301,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             param_count: 0,
             ret_kind: None,
             guarded_domains: Vec::new(),
-            needs_stack,
+            needs_stack: needs_stack || self.ref_all || !self.ref_slots.is_empty(),
             has_by_ref_closure: self.ref_all || !self.ref_slots.is_empty(),
             ref_slots: (!self.ref_all).then_some(self.ref_slots),
             back_edges: self.back_edges,
@@ -628,6 +631,27 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let r = self.next_i;
         self.next_i += 1;
         r
+    }
+
+    pub(super) fn temps_mark(&self) -> (u16, u16) {
+        (self.next_i, self.next_v)
+    }
+
+    /// Frees the registers allocated since `mark`: a statement's
+    /// temporaries are dead once it ends, so the next one reuses them and a
+    /// frame holds as many registers as its widest statement, not its sum.
+    #[inline(never)]
+    pub(super) fn release_temps(&mut self, mark: (u16, u16)) {
+        self.high = (self.high.0.max(self.next_i), self.high.1.max(self.next_v));
+        (self.next_i, self.next_v) = mark;
+        let mut k = 0;
+        while k < self.in_dom.len() {
+            if self.in_dom[k].0 >= mark.0 {
+                self.in_dom.swap_remove(k);
+            } else {
+                k += 1;
+            }
+        }
     }
 
     pub(super) fn alloc_v(&mut self) -> u16 {

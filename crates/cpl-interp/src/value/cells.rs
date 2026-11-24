@@ -525,8 +525,7 @@ impl Cells {
                 let s = *stride as usize;
                 turn(&mut data[at * s..], s, up);
             }
-            Cells::Values(v) => turn(&mut v[at..], 1, up),
-            Cells::OptInt(_) | Cells::Bool(_) | Cells::Char(_) => {
+            Cells::OptInt(_) | Cells::Bool(_) | Cells::Char(_) | Cells::Values(_) => {
                 let n = self.len();
                 for k in at + 1..n {
                     let k = if up { at + n - k } else { k };

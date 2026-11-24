@@ -178,6 +178,39 @@ print(dfs(V.first!))
 }
 
 #[test]
+fn vm_frames_hold_their_widest_statement_not_every_temporary() {
+    // 600 locals and 42,000 statements: more temporaries than a register
+    // index addresses, unless each statement's are freed when it ends.
+    let mut source = String::from("fn wide(x: Int) -> Int:\n");
+    for i in 0..600 {
+        source += &format!("    let a{i} = x + {i}\n");
+    }
+    source += "    var s = 0\n";
+    for _ in 0..70 {
+        for i in 0..600 {
+            source += &format!("    s += a{i} * 1\n");
+        }
+    }
+    source += "    s\nprint(wide(read()))\n";
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", source.as_str());
+    let analysis = db.analyze("t.cp").expect("the file was just set");
+    assert!(
+        analysis.diagnostics.is_empty(),
+        "{:?}",
+        analysis.diagnostics
+    );
+    let program = cpl_ir::lower(&analysis).expect("lowers");
+    let feeds = cpl_ir::pushed::Feeds::of(&program);
+    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false, false);
+    let wide = compiled.fns[0]
+        .as_ref()
+        .expect("a 600-local fn runs on the VM");
+    assert!(wide.num_i < 1000, "{} int registers", wide.num_i);
+    assert_eq!(outcome(&source, "3"), ("12705000\n".to_string(), None));
+}
+
+#[test]
 fn vm_handles_optionals_arrays_lists_structs_and_recursion() {
     let source = "\
 let n: 1..=100 = read()

@@ -1337,7 +1337,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     let f = &self.program.fns[*fn_id];
                     let can_vm = !self.program.judge_fns.contains(fn_id)
                         && !f.params.iter().any(|p| p.mutable)
-                        && f.locals.len() <= 512
                         && self.program.fn_guarded_domains(&f.ret, &f.body).is_empty()
                         && (0..f.params.len())
                             .all(|i| ScalarKind::of_ty(&f.locals[i].ty, self.program).is_some())

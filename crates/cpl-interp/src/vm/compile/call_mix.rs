@@ -19,10 +19,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             .iter()
             .take(f.params.len())
             .any(|l| matches!(l.ty, Ty::Fn(..)));
-        if f.locals.len() > 512
-            || self.program.judge_fns.contains(&fn_id)
-            || args.len() != f.params.len()
-        {
+        if self.program.judge_fns.contains(&fn_id) || args.len() != f.params.len() {
             return None;
         }
         if (args.iter().zip(&f.params)).any(|(a, p)| matches!(a, Arg::Mut(_)) != p.mutable) {

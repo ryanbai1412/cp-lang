@@ -73,7 +73,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let has_closure = Self::stmts_have_closure(stmts);
         let mut declared = Vec::new();
         let mut i = 0;
+        let temps = self.temps_mark();
         while i < stmts.len() {
+            self.release_temps(temps);
             if self.traced || self.profiled {
                 self.compile_stmt(&stmts[i]);
                 i += 1;
@@ -135,6 +137,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             self.compile_stmt(stmt);
             i += 1;
         }
+        self.release_temps(temps);
     }
 
     pub(in crate::vm) fn compile_block(
@@ -1159,7 +1162,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let f = &self.program.fns[fn_id];
         if *cid != fn_id
             || !self.fed_ok[fn_id]
-            || f.locals.len() > 512
             || self.program.judge_fns.contains(&fn_id)
             || args.len() != f.params.len()
             || self.inline_ret.is_some()

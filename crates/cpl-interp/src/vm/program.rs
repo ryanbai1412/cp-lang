@@ -220,7 +220,7 @@ impl<'p> CompiledProgram<'p> {
         let empty_fed: Vec<bool> = vec![false; program.fns.len()];
         let fed_fn = |id: usize, fed_ok: &[bool]| -> Option<Chunk<'p>> {
             let f = &program.fns[id];
-            if traced || profiled || f.locals.len() > 512 || program.judge_fns.contains(&id) {
+            if traced || profiled || program.judge_fns.contains(&id) {
                 return None;
             }
             let &acc_slot = feeds.pushers.get(&id)?;
@@ -250,9 +250,6 @@ impl<'p> CompiledProgram<'p> {
             fchunk.param_count = f.params.len();
             fchunk.ret_kind = None;
             fchunk.guarded_domains = guarded_domains;
-            if fchunk.has_by_ref_closure {
-                fchunk.needs_stack = true;
-            }
             Some(fchunk)
         };
         let mut fed_fns: Vec<Option<Chunk<'p>>> = (0..program.fns.len())
@@ -279,32 +276,34 @@ impl<'p> CompiledProgram<'p> {
             }
         }
         let fed_ok: Vec<bool> = fed_fns.iter().map(Option::is_some).collect();
+        let body_chunk = |locals, cur_fn, params, ret, body, def, captures: &[cpl_ir::Capture]| {
+            let mut c = Compiler::new(program, feeds, &fed_ok, locals, cur_fn, params, def);
+            let refs = captures.iter().filter(|cap| cap.by_ref);
+            c.held.extend(refs.map(|cap| cap.inner as u16));
+            c.traced = traced;
+            c.profiled = profiled;
+            let ret_kind = ScalarKind::of_ty(ret, program);
+            c.compile_block(body, ret_kind, true);
+            let mut chunk = c.finish();
+            chunk.param_count = params;
+            chunk.ret_kind = ret_kind;
+            chunk.guarded_domains = program.fn_guarded_domains(ret, body);
+            chunk
+        };
         let mut fns = Vec::with_capacity(program.fns.len());
         for (id, f) in program.fns.iter().enumerate() {
-            let guarded_domains = program.fn_guarded_domains(&f.ret, &f.body);
-            if f.locals.len() > 512 || program.judge_fns.contains(&id) {
+            if program.judge_fns.contains(&id) {
                 fns.push(None);
             } else {
-                let mut c = Compiler::new(
-                    program,
-                    feeds,
-                    &fed_ok,
+                let chunk = body_chunk(
                     &f.locals,
                     Some(id),
                     f.params.len(),
+                    &f.ret,
+                    &f.body,
                     Some(f),
+                    &[],
                 );
-                c.traced = traced;
-                c.profiled = profiled;
-                let ret_kind = ScalarKind::of_ty(&f.ret, program);
-                c.compile_block(&f.body, ret_kind, true);
-                let mut chunk = c.finish();
-                chunk.param_count = f.params.len();
-                chunk.ret_kind = ret_kind;
-                chunk.guarded_domains = guarded_domains;
-                if chunk.has_by_ref_closure {
-                    chunk.needs_stack = true;
-                }
                 fns.push(Some(chunk));
             }
         }
@@ -313,35 +312,20 @@ impl<'p> CompiledProgram<'p> {
         for def in &program.closures {
             // A fast closure runs no statements, so a profiled run has none.
             fast_closures.push(recognize_fast_closure(def, program).filter(|_| !profiled));
-            let can_compile = def.locals.len() <= 512
-                && def.muts.is_empty()
-                && def.params.iter().enumerate().all(|(i, &s)| s == i);
+            let can_compile =
+                def.muts.is_empty() && def.params.iter().enumerate().all(|(i, &s)| s == i);
             if !can_compile {
                 closures.push(None);
             } else {
-                let guarded_domains = program.fn_guarded_domains(&def.ret, &def.body);
-                let mut c = Compiler::new(
-                    program,
-                    feeds,
-                    &fed_ok,
+                let chunk = body_chunk(
                     &def.locals,
                     None,
                     def.params.len(),
+                    &def.ret,
+                    &def.body,
                     None,
+                    &def.captures,
                 );
-                c.traced = traced;
-                c.profiled = profiled;
-                let refs = def.captures.iter().filter(|cap| cap.by_ref);
-                c.held.extend(refs.map(|cap| cap.inner as u16));
-                let ret_kind = ScalarKind::of_ty(&def.ret, program);
-                c.compile_block(&def.body, ret_kind, true);
-                let mut chunk = c.finish();
-                chunk.param_count = def.params.len();
-                chunk.ret_kind = ret_kind;
-                chunk.guarded_domains = guarded_domains;
-                if chunk.has_by_ref_closure {
-                    chunk.needs_stack = true;
-                }
                 // A variable captured by reference is lent to the chunk's slot.
                 let lendable = (def.captures.iter()).all(|cap| {
                     !cap.by_ref || !matches!(chunk.slot_map[cap.inner], SlotLoc::SmallTuple { .. })
@@ -355,10 +339,7 @@ impl<'p> CompiledProgram<'p> {
         main_c.profiled = profiled;
         main_c.compile_block(&program.main, None, false);
         main_c.emit(Op::RetUnit, Span::default());
-        let mut main = main_c.finish();
-        if main.has_by_ref_closure {
-            main.needs_stack = true;
-        }
+        let main = main_c.finish();
         let setup = program.multitest.then(|| {
             let mut c = Compiler::new(program, feeds, &fed_ok, &program.main_locals, None, 0, None);
             c.traced = traced;
@@ -367,10 +348,7 @@ impl<'p> CompiledProgram<'p> {
             let done = c.alloc_i();
             c.emit_const_i(done, 1, Span::default());
             c.emit(Op::RetI { src: done }, Span::default());
-            let mut setup = c.finish();
-            if setup.has_by_ref_closure {
-                setup.needs_stack = true;
-            }
+            let setup = c.finish();
             setup
         });
         let forwards = (program.closures.iter())
