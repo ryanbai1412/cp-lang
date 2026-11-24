@@ -391,3 +391,24 @@ fn a_hole_does_not_match_a_bare_generator() {
         .collect();
     assert_eq!(fixes, ["a.total()", "[x for x in a].total()"]);
 }
+
+/// A hole written as a `let` pattern matches any pattern there (and a
+/// type hole any type), and a second use compares tokens, so a tuple read and
+/// pushed whole matches but a shifted push does not. Rule: R06.4.9.
+#[test]
+fn a_hole_matches_a_binding_pattern() {
+    let decl = "@lint(read_each, from: \"var xs: L = []\\nfor _ in 0..n:\\n    let v: T = read()\\n    xs.push(v)\", to: \"let xs: [0..n]T = take(n)\", holes: \"L, v, T\")\npub fn take(n: Int) -> Int = n\n";
+    let found = |body: &str| -> Vec<String> {
+        crate::lint(&format!("{decl}{body}"), &crate::Config::default())
+            .into_iter()
+            .filter(|d| d.code.0 == "read_each")
+            .map(|d| d.fixes[0].edits[0].1.clone())
+            .collect()
+    };
+    let pair = "let m: 1..=9 = read()\nvar es: List<(Int, Int)> = []\nfor _ in 0..m:\n    let (u, w): (1..=9, Int) = read()\n    es.push((u, w))\nprint(es.len)\n";
+    assert_eq!(found(pair), ["let es: [0..m](1..=9, Int) = take(m)"]);
+    let one = "var ks: List<Int> = []\nfor _ in 0..3:\n    let k: Int = read()\n    ks.push(k)\nprint(ks.len)\n";
+    assert_eq!(found(one), ["let ks: [0..3]Int = take(3)"]);
+    let shifted = pair.replace("es.push((u, w))", "es.push((u - 1, w))");
+    assert!(found(&shifted).is_empty(), "{shifted}");
+}

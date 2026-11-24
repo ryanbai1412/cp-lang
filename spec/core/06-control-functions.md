@@ -180,7 +180,10 @@ library or by this spec:
   matches only the whole run and is replaced by `to`; a hole binds the same
   tokens across the run. The fn's parameter names are the holes: in
   `from` a hole matches any expression (a bracketed one with its
-  brackets) or type (`C` in `Fenwick<C, Int>()`), a hole written twice matches the same tokens twice and only
+  brackets) or type (`C` in `Fenwick<C, Int>()`) or, where `from` writes
+  it as a `let`, `var` or `for` pattern, any pattern there (`let v: T =
+  read()` matches `let (u, w): (Int, Int) = read()`), a hole written twice
+  matches the same tokens twice and only
   an expression that calls nothing, and every other name matches itself,
   except names `from` binds (lambda parameters, a `for`, `let` or `var`
   variable or each name of its tuple, a `fn` it declares and that fn's

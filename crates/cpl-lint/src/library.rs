@@ -207,6 +207,9 @@ struct Spans {
     /// Where each assigned place starts: `from` cannot match a place, nor
     /// the base it indexes, since `to` is a call.
     places: Vec<u32>,
+    /// Every `let`, `var` or `for` pattern, `(u, v)` in `let (u, v) = e`:
+    /// a hole matches one as it matches a type.
+    pats: Vec<Span>,
 }
 
 impl Visitor for Spans {
@@ -229,8 +232,12 @@ impl Visitor for Spans {
     }
     fn stmt(&mut self, stmt: &Stmt) {
         self.stmts.push(stmt.span.shift(self.base));
-        if let StmtKind::Assign { target, .. } = &stmt.kind {
-            self.places.push(target.span.shift(self.base).start);
+        match &stmt.kind {
+            StmtKind::Assign { target, .. } => self.places.push(target.span.shift(self.base).start),
+            StmtKind::Let { pat, .. } | StmtKind::For { pat, .. } => {
+                self.pats.push(pat.span.shift(self.base))
+            }
+            _ => {}
         }
     }
 }
@@ -259,7 +266,7 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
     file.walk(&mut spans, |s, base| s.base = base);
     (spans.blocks).push(file.top_level().map(|(b, s)| s.span.shift(b)).collect());
     let mut ends: HashMap<u32, Vec<u32>> = HashMap::new();
-    for e in spans.exprs.iter().chain(&spans.types) {
+    for e in (spans.exprs.iter()).chain(&spans.types).chain(&spans.pats) {
         ends.entry(e.start).or_default().push(e.end);
     }
     let mut candidates: Vec<(usize, usize, Span)> = spans
@@ -525,8 +532,8 @@ impl Matcher<'_> {
         self.kinds[j] == *kind && self.text[j] == text && self.go(p + 1, j + 1, stop, holes, names)
     }
 
-    /// The ends of the expressions and types starting at token `j` and
-    /// ending by `stop`, a bracketed one with its brackets.
+    /// The ends of the expressions, types and binding patterns starting at
+    /// token `j` and ending by `stop`, a bracketed one with its brackets.
     fn runs(&self, j: usize, stop: usize) -> Vec<usize> {
         let start = self.toks[j].span.start;
         let mut out: Vec<usize> = (self.ends.get(&start).into_iter().flatten())
