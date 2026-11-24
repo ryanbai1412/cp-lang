@@ -466,7 +466,7 @@ fn method_fits_imports_a_files_methods_once_per_analysis() {
         &db.memo_calling("main.cp", &edited, &names)
     ));
     db.remove_file("main.cp");
-    assert!(db.callings.is_empty());
+    assert!(db.callings.is_none());
 }
 
 #[test]
