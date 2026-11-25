@@ -229,12 +229,14 @@ Crate names follow jobs; a crate whose job already matches keeps its name.
 ### Crate rules
 
 `scripts/debt-ratchet.py` reads this table (`layer_violations`,
-`backend_std_names`, `consumer_rederived`); it keeps no copy.
+`backend_std_names`, `consumer_rederived`, `tool_compiler_deps`); it keeps no copy.
 
 | Rule | Crates |
 |---|---|
 | back end (reads the IR, not the checker) | `cpl-ir`, `cpl-interp`, `cpl-codegen` |
 | consumer (asks the checker, never re-derives its facts) | `cpl-lint`, `cpl-lsp`, `cpl-cli`, `cpl-stress`, `cpl-codegen`, `cpl-wasm` |
+| tool (runs and checks a program through the facade only, contract 9; `tool_compiler_deps` counts what is left) | `cpl-cli`, `cpl-lsp`, `cpl-lint`, `cpl-fmt`, `cpl-stress`, `cpl-wasm`, `cpl-contest`, `cpl-doc`, `cpl-judge` |
+| compiler (behind the facade; `cpl-syntax` is one too, and tools leave its tree in migration stage 8) | `cpl-check`, `cpl-ir`, `cpl-interp`, `cpl-codegen`, `cpl-prover`, `cpl-rt` |
 | forbidden edge | `cpl-codegen -> cpl-check`, `cpl-interp -> cpl-check`, `cpl-wasm -> cpl-cli`, `cpl-lint -> cpl-prover` |
 
 ## First-class concerns

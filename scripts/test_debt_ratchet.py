@@ -1929,6 +1929,25 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr._cp_shape(["let a = b + 1"])[1], dr._cp_shape(["let x = y + 2"])[1])
             self.assertNotEqual(dr._cp_shape(["let a = b + 1"])[1], dr._cp_shape(["let a = b - 1"])[1])
 
+    def test_tool_compiler_deps(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self._write(root, "handbook/design/architecture.md", CRATE_RULES
+                        + "| tool (facade only) | `cpl-lint`, `cpl-cli` |\n| compiler (behind it) | `cpl-check`, `cpl-ir` |\n")
+            self._write(root, "crates/cpl-lint/Cargo.toml",
+                        '[package]\nname = "cpl-lint"\n[dependencies]\ncpl-check = { path = "../cpl-check" }\n'
+                        'cpl-syntax = { path = "../cpl-syntax" }\n[dev-dependencies]\ncpl-ir = { path = "../cpl-ir" }\n')
+            self._write(root, "crates/cpl-conform/Cargo.toml",
+                        '[package]\nname = "cpl-conform"\n[dependencies]\ncpl-ir = { path = "../cpl-ir" }\n')
+            self._write(root, "crates/cpl-lint/src/a.rs",
+                        "use cpl_check::Session;\n// cpl_ir::lower in a comment\nuse cpl_syntax::ast;\n"
+                        "let p = cpl_ir::lower(&a);\n")
+            self._write(root, "crates/cpl-cli/tests/t.rs", "let s = cpl_check::Session::new();\n")
+            self._write(root, "crates/cpl-conform/src/a.rs", "cpl_ir::lower(&a);\n")
+            self.assertEqual(dr.tool_compiler_deps(root), [
+                "cpl-lint -> cpl-check", "cpl-lint -> cpl-ir",
+                "crates/cpl-lint/src/a.rs:1", "crates/cpl-lint/src/a.rs:4", "crates/cpl-cli/tests/t.rs:1"])
+
     def test_consumer_rederived(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

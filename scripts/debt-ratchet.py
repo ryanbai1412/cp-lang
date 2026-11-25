@@ -722,6 +722,38 @@ def layer_violations(root: Path) -> list[str]:
     return [f"{a} -> {b}" for a, b in sorted(_crate_edges(root) & forbidden_edges(root))]
 
 
+TOOL_COMPILER_KINDS = ("dependencies", "dev-dependencies", "build-dependencies")
+
+
+def tool_compiler_deps(root: Path) -> list[str]:
+    """Ways a tool crate reaches a compiler crate without the facade: every Cargo edge
+    (shipped, dev or build) from a `tool` crate to a `compiler` crate, and every code line
+    in a tool crate that names one (`cpl_check::`, `cpl_ir::`, `cpl_interp::`, ...). Both
+    lists are the `tool` and `compiler` rows of architecture.md's crate rules. The target is
+    0 (handbook/design/next/contracts/09-facade.md, migration stage 2): a tool runs and
+    checks a program through the facade, over a snapshot, and through nothing else.
+
+    Not counted: `cpl-syntax`. Lints match on today's syntax tree about 940 times, and the
+    formatter and the editor read it too; that access moves in migration stage 8, onto the
+    lossless tree, not here. Not a tool: `cpl-conform` (the test harness, which may compare
+    engines, migration rule 6) and `cpl-next` (the pipeline behind the facade)."""
+    rules = crate_rules(root)
+    tools, compiler = rules.get("tool", []), set(rules.get("compiler", []))
+    if not tools or not compiler:
+        return []
+    edges = set()
+    for kind in TOOL_COMPILER_KINDS:
+        edges |= {(a, b) for a, b in _crate_edges(root, kind) if a in tools and b in compiler}
+    out = [f"{a} -> {b}" for a, b in sorted(edges)]
+    named = re.compile(r"\b(?:%s)\b" % "|".join(sorted(c.replace("-", "_") for c in compiler)))
+    for crate in tools:
+        for p in _rs_files(root, f"crates/{crate}"):
+            rel = _rel(root, p)
+            out += [f"{rel}:{i}" for i, line in enumerate(_lines(p), 1)
+                    if not line.lstrip().startswith("//") and named.search(line)]
+    return out
+
+
 def tree_walker(root: Path) -> list[str]:
     """The interpreter's tree-walking engine beside the VM."""
     lib = root / "crates/cpl-interp/src/lib.rs"
@@ -3255,6 +3287,7 @@ COUNTERS = {
     "browser_lsp_gaps": ("language-server capabilities the browser editor never asks for", browser_lsp_gaps, True),
     "site_spec_snippets": ("site programs the compiler doesn't accept yet (.spec.cp, status=spec)", site_spec_snippets, True),
     "layer_violations": ("forbidden shipped crate edges", layer_violations, True),
+    "tool_compiler_deps": ("tool crate edges and code lines that reach a compiler crate past the facade (stage 2; cpl-syntax is stage 8)", tool_compiler_deps, True),
     "tree_walker": ("second interpreter engine", tree_walker, True),
     "v02_port_files": ("corpus ports not yet re-ported in v0.3 style", v02_port_files, True),
     "ports_unreported": ("corpus ports without a friction report or review (idioms)", ports_unreported, True),

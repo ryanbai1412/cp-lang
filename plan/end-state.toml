@@ -180,7 +180,8 @@ decides = "CLI, editor, browser and stress give the same answers"
 size = "Every facade query on every corpus program"
 properties = "0 tool crates depend on a compiler layer directly; identical diagnostics, types and runs from every client"
 level = "1 + 2"
-missing = "direct compiler dependencies in tool crates"
+numbers = [{ counter = "tool_compiler_deps", target = 0 }]
+missing = "tools whose diagnostics or output differ from another's for one snapshot"
 
 [[suite]]
 id = 18
