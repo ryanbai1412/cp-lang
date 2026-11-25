@@ -405,7 +405,11 @@ pub(crate) fn only_pushed_in_block(vec_slot: usize, block: &Block) -> bool {
                         continue;
                     }
                 }
-                if expr_mentions_local(e, vec_slot) {
+                let mut writes = false;
+                crate::uses::places::each_write_in(stmt, &mut |_, p| {
+                    writes |= place_mentions_local(p, vec_slot)
+                });
+                if writes || expr_mentions_local(e, vec_slot) {
                     return false;
                 }
             }
