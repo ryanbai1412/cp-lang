@@ -16,7 +16,7 @@ pub use cpl_check::{
     arity_key, builtin_members, closest, human_bytes, import_edit, interval, is_list_form_hook,
     loaded_std, needs_order, prelude_names, prelude_type, prelude_uses, split_builtin_params,
     type_arity, Analysis, AnalyzedItem, BuiltinMember, CalleeKind, Decl, DeclKind, Facts, FsLoader,
-    Hover, HoverEntry, Import, Loader, MemberKind, Module, Overflow, Param, PreludeKind, RangeEnds,
+    HoverEntry, Import, Loader, MemberKind, Module, Overflow, Param, PreludeKind, RangeEnds,
     Receiver, Representation, Stats, Symbol, Ty, TypedIndex, BUILTIN_MEMBERS, BUILTIN_TYPES,
     DOMAIN_MEMBERS, OPTIONAL_MEMBERS, POS_MEMBERS, RANGE_MEMBERS,
 };
@@ -220,7 +220,6 @@ impl Session {
         method_fits(receiver: &Ty, names: &[&str]) -> Vec<Option<bool>>;
         storage() -> Option<Storage>;
         representation(offset: u32) -> Option<Representation>;
-        hover(offset: u32) -> Option<Hover>;
         costs_in(start: u32, end: u32) -> Vec<(cpl_diag::Span, String, String)>;
         typed_index(offset: u32, on_index: bool) -> Option<TypedIndex>;
         symbols() -> Vec<Symbol>;

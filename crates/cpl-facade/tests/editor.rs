@@ -1,4 +1,4 @@
-use cpl_facade::{Definition, Session, Snapshot, World};
+use cpl_facade::{Definition, Session, Snapshot, Typed, World};
 
 fn at(source: &str, needle: &str) -> u32 {
     source.find(needle).unwrap_or_else(|| panic!("{needle}")) as u32
@@ -53,4 +53,37 @@ fn a_values_type_and_its_impls_are_found_from_a_use() {
     let impls = db.implementations("p.cp", at(source, "Road {"));
     assert_eq!(impls.len(), 1, "{impls:?}");
     assert!(impls[0].span.start >= at(source, "impl Road"), "{impls:?}");
+}
+
+/// Contract 9: `hover(pos)` gives the place's type, doc and cost, as a
+/// function of the snapshot.
+#[test]
+fn a_place_shows_its_type_its_doc_and_what_kind_of_value_it_is() {
+    let main = "/// Twice `x`.\nfn twice(x: Int) -> Int = x * 2\nlet n = 3\nprint(twice(n))\n";
+    let snapshot = Snapshot::new(World::Closed).with_file("main.cp", main);
+    let db = Session::open(snapshot.clone());
+
+    let used = at(main, "x * 2");
+    let value = db.hover("main.cp", used);
+    let value = value.unwrap_or_else(|| panic!("x has a hover"));
+    assert_eq!(value.span, cpl_diag::Span::new(used, used + 1));
+    assert!(value.text.starts_with("x: Int"), "{}", value.text);
+    assert_eq!(value.typed, Some(Typed::Int));
+    assert!(!value.signature);
+
+    let call = db.hover("main.cp", at(main, "twice(n)"));
+    let call = call.unwrap_or_else(|| panic!("twice has a hover"));
+    assert!(call.signature, "{}", call.text);
+    assert!(
+        call.text.starts_with("fn twice(x: Int) -> Int"),
+        "{}",
+        call.text
+    );
+    assert_eq!(call.typed, Some(Typed::Fn));
+    assert_eq!(call.doc.as_deref(), Some("Twice `x`."));
+
+    // An equal snapshot gives an equal answer; a place with nothing gives none.
+    let again = Session::open(snapshot);
+    assert_eq!(again.hover("main.cp", used), Some(value));
+    assert_eq!(db.hover("main.cp", at(main, "\nlet")), None);
 }

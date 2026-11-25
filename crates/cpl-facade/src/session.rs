@@ -364,15 +364,15 @@ impl Session {
                 return inner;
             }
         }
-        let all = || {
-            self.snapshot
-                .files()
-                .map(|(file, text)| (file.clone(), text.clone()))
-        };
         // On disk every file of the snapshot is open. In a closed world the
         // file asked about is, and the rest are where its imports are found.
-        let (programs, modules): (Files, Files) =
-            all().partition(|(file, _)| world == World::Disk || Some(file) == asked);
+        let mut programs = Files::new();
+        let mut modules = Files::new();
+        for (file, text) in self.snapshot.files() {
+            let open = world == World::Disk || Some(file) == asked;
+            let among = if open { &mut programs } else { &mut modules };
+            among.push((file.clone(), text.clone()));
+        }
         if modules != inner.modules {
             inner.db = database(&self.snapshot, &modules);
             inner.programs.clear();

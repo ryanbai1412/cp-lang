@@ -1077,7 +1077,7 @@ fn members_of_ty(cursor: &Cursor, std: &mut StdLib, ty: &Ty) -> Vec<(Entry, u8)>
 /// The hover for a member the checker records no fact for, `s.runs` in
 /// `s.runs()`: the declaration the receiver's members name, rendered as
 /// completion and signature help show it.
-pub fn member_hover(cursor: &Cursor, std: &mut StdLib) -> Option<cpl_facade::today::Hover> {
+pub fn member_hover(cursor: &Cursor, std: &mut StdLib) -> Option<cpl_facade::Hover> {
     let text = &*cursor.analysis.text;
     let at = (cursor.offset as usize).min(text.len());
     let start = text[..at]
@@ -1104,8 +1104,8 @@ pub fn member_hover(cursor: &Cursor, std: &mut StdLib) -> Option<cpl_facade::tod
         .cost
         .map(|c| cpl_diag::plain::text(&c))
         .filter(|c| cpl_syntax::doc::big_o(c).is_some());
-    Some(cpl_facade::today::Hover {
-        ty: None,
+    Some(cpl_facade::Hover {
+        typed: None,
         signature: false,
         span: cpl_diag::Span {
             start: start as u32,

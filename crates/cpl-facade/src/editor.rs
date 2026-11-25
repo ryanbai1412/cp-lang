@@ -17,6 +17,31 @@ fn of(def: cpl_check::Definition) -> Definition {
     Definition { path, span }
 }
 
+/// What an editor shows for a place in a file.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Hover {
+    /// The name or expression asked about, in file positions.
+    pub span: Span,
+    pub text: String,
+    /// The `///` comment above the declaration, wherever it is declared.
+    pub doc: Option<String>,
+    /// The cost the doc states, in the receiver's domains:
+    /// `O(log |V|) amortized`.
+    pub cost: Option<String>,
+    /// What kind of value it is, when it has a type.
+    pub typed: Option<Typed>,
+    /// The text is a fn's signature, `fn name(..) -> ..`.
+    pub signature: bool,
+}
+
+/// The kinds of value an editor treats apart.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Typed {
+    Int,
+    Fn,
+    Other,
+}
+
 fn all(mut found: Vec<cpl_check::Definition>) -> Vec<Definition> {
     let mut all = Vec::with_capacity(found.len());
     for def in &mut found {
@@ -30,6 +55,24 @@ fn all(mut found: Vec<cpl_check::Definition>) -> Vec<Definition> {
 }
 
 impl Session {
+    /// What to show for the place at `offset` of `file`: its type, its doc
+    /// and the cost the doc states.
+    pub fn hover(&self, file: &str, offset: u32) -> Option<Hover> {
+        let found = self.asked(file).db.hover(file, offset)?;
+        Some(Hover {
+            span: found.span,
+            text: found.text,
+            doc: found.doc,
+            cost: found.cost,
+            typed: found.typed.map(|typed| match typed {
+                cpl_check::Typed::Int => Typed::Int,
+                cpl_check::Typed::Fn => Typed::Fn,
+                cpl_check::Typed::Other => Typed::Other,
+            }),
+            signature: found.signature,
+        })
+    }
+
     /// Where the name at `offset` of `file` is declared, following a `use`
     /// into the module that declares it.
     pub fn definition(&self, file: &str, offset: u32) -> Option<Definition> {

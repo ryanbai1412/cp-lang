@@ -27,10 +27,18 @@ pub struct Hover {
     /// The cost the doc states, its whole `cost:` fact in the receiver's
     /// domains: `O(log |V|) amortized`.
     pub cost: Option<String>,
-    /// The type of what is hovered, when the checker typed it.
-    pub ty: Option<Ty>,
+    /// What kind of value is hovered, when the checker typed it.
+    pub typed: Option<Typed>,
     /// The text is a fn's signature, `fn name(..) -> ..`.
     pub signature: bool,
+}
+
+/// The kinds of value a hover tells apart.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Typed {
+    Int,
+    Fn,
+    Other,
 }
 
 /// Where a symbol is declared, possibly in an imported module.
@@ -280,7 +288,11 @@ impl Database {
             text,
             doc,
             cost,
-            ty: Some(entry.ty.clone()),
+            typed: Some(match entry.ty {
+                Ty::Int => Typed::Int,
+                Ty::Fn { .. } => Typed::Fn,
+                _ => Typed::Other,
+            }),
             signature,
         })
     }
@@ -798,7 +810,7 @@ fn prelude_value_hover(item: &crate::db::AnalyzedItem, at: u32) -> Option<Hover>
         text,
         doc: Some(doc.to_string()),
         cost,
-        ty: None,
+        typed: None,
         signature: false,
     })
 }

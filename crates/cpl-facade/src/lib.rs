@@ -24,7 +24,7 @@ pub use cpl_diag::{Diagnostic, Severity};
 pub use cpp::{
     emit_cpp, emit_cpp_profiled, grader_header, Choice, CppFile, Part, Profile, Size, SizeBar,
 };
-pub use editor::Definition;
+pub use editor::{Definition, Hover, Typed};
 #[cfg(feature = "cpp")]
 pub use library::COMPONENTS;
 pub use library::{file_path, libraries, Std};

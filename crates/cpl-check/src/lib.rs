@@ -49,7 +49,7 @@ pub use db::{
 };
 pub use def::{DeclKind, Def, DomainInfo};
 pub use facts::{CallFact, Callee, CalleeKind, ExprFacts, Facts, RangeEnds};
-pub use hover::{Definition, Hover, Representation, Symbol};
+pub use hover::{Definition, Hover, Representation, Symbol, Typed};
 pub use modules::{
     bundled_std, configured_libraries, dev_std_problem, file_path, std_calls, std_from_disk,
     std_index, FsLoader, GivenFiles, GivenStd, Loader,

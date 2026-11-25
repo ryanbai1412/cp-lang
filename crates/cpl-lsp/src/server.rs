@@ -404,7 +404,7 @@ impl Server {
                     .iter()
                     .copied()
                     .find(|&(at, lo, hi)| at == declared && lo != hi)
-                    .filter(|_| hover.ty == Some(cpl_facade::today::Ty::Int));
+                    .filter(|_| hover.typed == Some(cpl_facade::Typed::Int));
                 if let Some((_, lo, hi)) = proven {
                     let (first, rest) = hover.text.split_once('\n').unwrap_or((&hover.text, ""));
                     let rest = if rest.is_empty() {
@@ -1028,11 +1028,11 @@ impl Server {
         uri: &str,
         analysis: &cpl_facade::today::Analysis,
         offset: u32,
-    ) -> Option<cpl_facade::today::Hover> {
+    ) -> Option<cpl_facade::Hover> {
         let checked = self.db.hover(uri, offset);
         // `j.jump(a, b, k)` beside a field `jump`: the call names the fn.
         let called_field = checked.as_ref().is_some_and(|h| {
-            !matches!(h.ty, None | Some(cpl_facade::today::Ty::Fn { .. })) && {
+            !matches!(h.typed, None | Some(cpl_facade::Typed::Fn)) && {
                 let text = &analysis.text;
                 let name = &text[h.span.start as usize..h.span.end as usize];
                 text[..h.span.start as usize].ends_with('.')
@@ -1077,7 +1077,7 @@ impl Server {
 
     /// On the head of a `for` whose count the declared bounds prove: how
     /// many times its body runs, alone and with the loops around it.
-    fn loop_hover(&mut self, uri: &str, offset: u32) -> Option<cpl_facade::today::Hover> {
+    fn loop_hover(&mut self, uri: &str, offset: u32) -> Option<cpl_facade::Hover> {
         let facts = self.proven(uri)?;
         let proven = facts
             .loops()
@@ -1106,8 +1106,8 @@ impl Server {
             None => text += "\n  inside a loop with no proven count",
             _ => {}
         }
-        Some(cpl_facade::today::Hover {
-            ty: None,
+        Some(cpl_facade::Hover {
+            typed: None,
             signature: false,
             span: Span::new(proven.head.0, proven.head.1),
             text,
@@ -1118,12 +1118,7 @@ impl Server {
 
     /// On the brackets of an index the bounds prove in range, or (`on_index`)
     /// on the index itself: why it is in bounds.
-    fn index_hover(
-        &mut self,
-        uri: &str,
-        offset: u32,
-        on_index: bool,
-    ) -> Option<cpl_facade::today::Hover> {
+    fn index_hover(&mut self, uri: &str, offset: u32, on_index: bool) -> Option<cpl_facade::Hover> {
         let analysis = self.db.analyze(uri)?;
         let inside = |(start, end): (u32, u32)| start <= offset && offset < end;
         let facts = self.proven(uri)?;
@@ -1157,8 +1152,8 @@ impl Server {
             true => format!("in bounds of {access}: {}", proven.proof),
             false => format!("{access}: in bounds, {}", proven.proof),
         };
-        Some(cpl_facade::today::Hover {
-            ty: None,
+        Some(cpl_facade::Hover {
+            typed: None,
             signature: false,
             span: Span { start, end },
             text,
@@ -1169,7 +1164,7 @@ impl Server {
 
     /// On a `+`, `-`, `*`, `/`, `%` or `**` whose operands the declared bounds prove: the
     /// range of its value, and whether it can leave `Int`.
-    fn arith_hover(&mut self, uri: &str, offset: u32) -> Option<cpl_facade::today::Hover> {
+    fn arith_hover(&mut self, uri: &str, offset: u32) -> Option<cpl_facade::Hover> {
         let analysis = self.db.analyze(uri)?;
         let facts = self.proven(uri)?;
         let proven = facts
@@ -1189,8 +1184,8 @@ impl Server {
             (lo, hi) if lo == hi => format!("= {lo}"),
             (lo, hi) => format!("in {lo}..={hi}"),
         };
-        Some(cpl_facade::today::Hover {
-            ty: None,
+        Some(cpl_facade::Hover {
+            typed: None,
             signature: false,
             span: Span { start, end },
             text: format!("{source}: Int {value}{fits}"),
@@ -1541,7 +1536,7 @@ fn offered_lines(text: &str, outline: &Outline) -> String {
         .join("\n")
 }
 
-fn hover_markdown(hover: &cpl_facade::today::Hover) -> String {
+fn hover_markdown(hover: &cpl_facade::Hover) -> String {
     let code = format!("```cp\n{}\n```", hover.text);
     match &hover.doc {
         Some(doc) => format!("{code}\n\n{}", cpl_doc::plain::text(doc)),
