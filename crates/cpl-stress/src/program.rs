@@ -450,7 +450,7 @@ fn remember_emitted(key: &str, cpp: &Path, analysis: &cpl_facade::today::Analysi
     let mut pending: Vec<&cpl_facade::today::Analysis> = vec![analysis];
     while let Some(next) = pending.pop() {
         for module in next.modules() {
-            let bundled = !cpl_facade::today::std_from_disk()
+            let bundled = !cpl_facade::Std.from_disk()
                 && (module.name == "std" || module.name.starts_with("std."));
             if !bundled && read.insert(module.path.as_str()) {
                 pending.push(&module.analysis);

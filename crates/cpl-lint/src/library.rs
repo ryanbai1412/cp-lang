@@ -102,7 +102,7 @@ pub(crate) fn collect(analysis: &Analysis) -> Vec<Declared> {
     }
     // Std's from its outline: a program that hand-writes what a std fn does
     // seldom loads its module, and std's names need no `use`.
-    for (name, outline) in cpl_facade::today::std_index() {
+    for (name, outline) in cpl_facade::Std.outlines() {
         let module = format!("std.{}", name.replace('/', "."));
         if !outline.contains("@lint(") || analysis.modules().iter().any(|m| m.name == module) {
             continue;

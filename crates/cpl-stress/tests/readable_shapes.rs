@@ -171,7 +171,8 @@ fn std_gap(module: &str, ty: &str, src: &str, program: &cpl_facade::Program) -> 
 /// way; the checker and the lowering decide which ones are read.
 #[test]
 fn stress_generates_every_std_input_type() {
-    let names: Vec<(&str, &str, usize)> = cpl_facade::today::std_names()
+    let names: Vec<(&str, &str, usize)> = cpl_facade::Std
+        .names()
         .iter()
         .filter_map(|&(name, module)| Some((module, name, cpl_facade::today::type_arity(name)?)))
         .collect();

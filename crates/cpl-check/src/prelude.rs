@@ -27,7 +27,7 @@ pub fn names() -> &'static [(Vec<ast::Name>, ast::Name)] {
     static NAMES: OnceLock<Vec<(Vec<ast::Name>, ast::Name)>> = OnceLock::new();
     NAMES.get_or_init(|| {
         // A `CPL_STD_DIR` without a prelude gives programs no prelude names.
-        let Some(text) = crate::modules::bundled_std(&["prelude".to_string()]) else {
+        let Some(text) = crate::modules::bundled_std("prelude") else {
             return Vec::new();
         };
         let mut found = Vec::new();

@@ -46,7 +46,7 @@ impl StdLib {
                 if let Some((_, text)) = FsLoader.load(from, &path) {
                     return Some(Arc::new(Outline::of_source(&text)));
                 }
-                let (len, _, text) = cpl_facade::today::std_outline(&path)?;
+                let (len, _, text) = cpl_facade::Std.outline(&path)?;
                 let mut outline = Outline::of_source(text);
                 let marks = outline.entries.iter_mut().map(|e| (None, e));
                 let owned = outline.impls.iter_mut().flat_map(|(target, entries)| {
@@ -657,7 +657,7 @@ fn item_json(entry: &Entry, sort: u8) -> Value {
 /// most come first, so `len` and `map` lead a list's long tail.
 fn member_json(entry: &Entry, sort: u8) -> Value {
     let mut item = item_json(entry, sort);
-    let rare = 9999 - cpl_facade::today::std_calls(&entry.name).min(9999);
+    let rare = 9999 - cpl_facade::Std.calls(&entry.name).min(9999);
     if let Value::Object(members) = &mut item {
         let text = format!("{sort}{rare:04}{}", entry.name);
         members.insert("sortText".to_string(), text.into());
@@ -1128,12 +1128,11 @@ fn std_methods(cursor: &Cursor, std: &mut StdLib) -> Vec<Entry> {
             }
         }
     }
-    for (path, name) in cpl_facade::today::std_methods() {
-        let module: Vec<&str> = path[1..].iter().map(|n| n.text.as_str()).collect();
-        let Some(outline) = std.module(cursor.uri, &module.join(".")) else {
+    for (module, name) in cpl_facade::Std.methods() {
+        let Some(outline) = std.module(cursor.uri, &module) else {
             continue;
         };
-        if let Some(entry) = outline.find(&name.text) {
+        if let Some(entry) = outline.find(name) {
             if entry.kind == Kind::Fn && entry.public {
                 let mut entry = entry.clone();
                 entry.kind = Kind::Method;
@@ -1524,7 +1523,7 @@ fn scope_completion(
     // A stdlib name the file doesn't import yet comes with its `use`.
     if word.len() >= 2 {
         let text = &cursor.analysis.text;
-        for (name, module) in cpl_facade::today::std_names() {
+        for (name, module) in cpl_facade::Std.names() {
             if !name.starts_with(word)
                 || seen.contains(*name)
                 || cpl_facade::today::is_list_form_hook(name)

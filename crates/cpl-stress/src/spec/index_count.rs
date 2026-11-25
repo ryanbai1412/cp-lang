@@ -6,7 +6,7 @@
 use super::*;
 
 pub(super) fn std_index_count(name: &str, n: &Expr) -> Option<Expr> {
-    let (_, parsed) = std_file(cpl_facade::today::std_module(name)?)?;
+    let (_, parsed) = std_file(cpl_facade::Std.module_of(name)?)?;
     let stmts = || parsed.items.iter().flat_map(|(_, item)| &item.stmts);
     let param = stmts().find_map(|s| match &s.kind {
         StmtKind::Struct(decl) if decl.name.text == name => decl.generics.first(),

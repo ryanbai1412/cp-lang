@@ -1146,8 +1146,8 @@ fn leaves(e: &Expr) -> bool {
 /// The in-place twin std declares for a value form: `sorted` is `sort`,
 /// `rotated_left` is `rotate_left`, read off std's `self` fns.
 fn in_place_twin(name: &str) -> Option<String> {
-    let heads = cpl_facade::today::std_self_heads();
-    heads.get(name)?;
+    let std = cpl_facade::Std;
+    std.has_method(name).then_some(())?;
     let (word, rest) = name
         .split_once('_')
         .map_or((name, None), |(w, r)| (w, Some(r)));
@@ -1155,7 +1155,7 @@ fn in_place_twin(name: &str) -> Option<String> {
         .into_iter()
         .flatten()
         .map(|w| rest.map_or_else(|| w.to_string(), |r| format!("{w}_{r}")))
-        .find(|stem| heads.contains_key(stem))
+        .find(|stem| std.has_method(stem))
 }
 
 /// Whether `file` calls std's `ask`, by the checker's callees.

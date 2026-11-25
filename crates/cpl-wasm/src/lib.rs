@@ -112,7 +112,8 @@ impl Playground {
     /// `provide_std`, then ask again until it is empty.
     pub fn std_needed(&mut self, name: &str, source: &str) -> Value {
         Value::Array(
-            cpl_facade::today::std_needed(name, source)
+            cpl_facade::Std
+                .needed(name, source)
                 .into_iter()
                 .map(Value::from)
                 .collect(),
@@ -123,10 +124,9 @@ impl Playground {
     /// Gives the compiler `text`, the file `std/<module>.cp`, for every
     /// command after: `{"changed": false}` when it had it already.
     pub fn provide_std(&mut self, module: &str, text: &str) -> Value {
-        match cpl_facade::today::provide_std(module, text) {
+        match self.db.give_std(module, text) {
             Ok(changed) => {
                 if changed {
-                    self.db.reload_modules();
                     self.lsp.std_changed();
                 }
                 obj([("changed", Value::Bool(changed))])
@@ -600,7 +600,7 @@ impl Playground {
             Ok(message) => {
                 let replies = self.lsp.handle(&message);
                 // Its diagnostics say what it needs; a later check's are its own.
-                cpl_facade::today::take_std_needs();
+                cpl_facade::Std.take_needs();
                 Value::Array(replies)
             }
             Err(error) => Value::Array(vec![obj([
@@ -747,7 +747,7 @@ fn outcome<const N: usize>(
         more.into_iter()
             .map(|(key, value)| (key.to_string(), value)),
     );
-    let needs = cpl_facade::today::take_std_needs();
+    let needs = cpl_facade::Std.take_needs();
     if cfg!(any(not(target_family = "wasm"), feature = "lazy-std")) && !needs.is_empty() {
         let needs = needs.into_iter().map(Value::from).collect();
         members.insert("needs".to_string(), Value::Array(needs));

@@ -116,8 +116,9 @@ fn load_library(files: &dyn Files, from: &str, module: &[String]) -> Option<(Str
     }
     relative.set_extension("cp");
     if root_name == "std" {
-        let text = bundled_std(rest)?;
-        return Some((format!("std/{}.cp", rest.join("/")), text.to_string()));
+        let name = rest.join("/");
+        let text = bundled_std(&name)?;
+        return Some((format!("std/{name}.cp"), text.to_string()));
     }
     library_root(files, start, root_name).and_then(|root| {
         let path = root.join(&relative);
@@ -267,10 +268,6 @@ fn os_path(path: String, windows: bool) -> String {
     }
 }
 
-pub fn bundled_std(module: &[String]) -> Option<&'static str> {
-    have(&module.join("/"))
-}
-
 /// Whether this build can be given std modules: a wasm build without
 /// `lazy-std` carries them all, and leaves the code that takes them out.
 const GIVEN: bool = cfg!(any(not(target_arch = "wasm32"), feature = "lazy-std"));
@@ -367,8 +364,9 @@ pub fn carry_only_embedded_std() {
     ONLY_EMBEDDED.store(true, std::sync::atomic::Ordering::Relaxed);
 }
 
-/// The text of the std module `name` the compiler has, carried or given.
-fn have(name: &str) -> Option<&'static str> {
+/// The text of the std module `name` (`"geo/hull"`) the compiler has,
+/// carried or given.
+pub fn bundled_std(name: &str) -> Option<&'static str> {
     built_in(name).or_else(|| {
         let provided = provided();
         provided
@@ -385,7 +383,7 @@ fn have(name: &str) -> Option<&'static str> {
 /// lacks, so a module only their bodies use comes up once they are given:
 /// ask again after giving them, until it names none.
 pub fn std_needed(name: &str, source: &str) -> Vec<String> {
-    std_needed_with(name, source, have)
+    std_needed_with(name, source, bundled_std)
 }
 
 /// `std_needed`, with `have` for the modules the compiler has.
@@ -510,10 +508,13 @@ fn unprovided(parts: &[String]) -> Option<String> {
     }
     let (_, rest) = parts.split_first().filter(|(std, _)| *std == "std")?;
     // `use std.math.gcd` names `gcd` in `std.math`.
-    [rest, &rest[..rest.len().saturating_sub(1)]]
-        .into_iter()
-        .find(|module| in_index(&module.join("/")) && bundled_std(module).is_none())
-        .map(|module| module.join("/"))
+    for module in [rest, &rest[..rest.len().saturating_sub(1)]] {
+        let module = module.join("/");
+        if in_index(&module) && bundled_std(&module).is_none() {
+            return Some(module);
+        }
+    }
+    None
 }
 
 /// Whether `parts` names a std module the host has not given yet.
