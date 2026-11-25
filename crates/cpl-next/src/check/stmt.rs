@@ -421,11 +421,13 @@ impl<'a> Cx<'a> {
                 }
                 let place = self.place(target);
                 let mut root = &place;
+                let mut cache = false;
                 while let TK::Field(b, i) = &root.kind {
                     if let Ty::Struct(sid, ..) = self.shallow(&b.ty) {
                         {
                             let sd = self.d.s(sid);
-                            if !sd.var_fields.get(*i).copied().unwrap_or(true) {
+                            cache |= sd.cached.get(*i).copied().unwrap_or(false);
+                            if !cache && !sd.var_fields.get(*i).copied().unwrap_or(true) {
                                 let (st, f) = (sd.name.clone(), sd.fields[*i].0.clone());
                                 self.err(target.span, format!("{}: field `{st}.{f}` is fixed (not `var`) and cannot be assigned", cpl_diag::codes::ASSIGN_FIXED_FIELD.0));
                             }
@@ -433,16 +435,8 @@ impl<'a> Cx<'a> {
                     }
                     root = b;
                 }
-                if let TK::Var(v) = &root.kind {
-                    let (fixed, name) = match v {
-                        VarRef::Local(i) => (self.locals[*i].fixed, self.locals[*i].name.clone()),
-                        VarRef::Global(i) => {
-                            (self.globals[*i].fixed, self.globals[*i].name.clone())
-                        }
-                    };
-                    if fixed && !name.starts_with('$') {
-                        self.err(target.span, format!("`{name}` is bound by `let` and cannot be assigned; declare it with `var`"));
-                    }
+                if let Some(name) = self.let_root(&place).filter(|_| !cache) {
+                    self.err(target.span, format!("{}: `{name}` is bound by `let` and cannot be assigned; declare it with `var`", cpl_diag::codes::ASSIGN_TO_LET.0));
                 }
                 let v = match op {
                     AssignOp::Set => self.expr(value, Some(&place.ty)),
@@ -1087,6 +1081,20 @@ impl<'a> Cx<'a> {
         i
     }
     /// An expression that names storage: a variable, or a field of one.
+    /// The name of the `let` a place lies in, if it lies in one.
+    pub(super) fn let_root(&self, place: &TExpr) -> Option<String> {
+        let mut root = place;
+        while let TK::Field(b, _) = &root.kind {
+            root = b;
+        }
+        let TK::Var(v) = &root.kind else { return None };
+        let (fixed, name) = match v {
+            VarRef::Local(i) => (self.locals[*i].fixed, &self.locals[*i].name),
+            VarRef::Global(i) => (self.globals[*i].fixed, &self.globals[*i].name),
+        };
+        (fixed && !name.starts_with('$')).then(|| name.clone())
+    }
+
     pub(super) fn place(&mut self, e: &ast::Expr) -> TExpr {
         let v = self.expr_as_typed(e, None);
         if !matches!(v.kind, TK::Var(_) | TK::Field(..) | TK::Error) {

@@ -24,48 +24,182 @@ impl<'a> Cx<'a> {
             span,
         }
     }
+    /// The arguments of a call bound to its parameters: positional ones in order, named ones by
+    /// label, the rest from their defaults (R06.1.5). In parameter order; what must run first to
+    /// keep the written left-to-right order (R05.11) is in the first part.
     pub(super) fn args(
         &mut self,
         args: &[ast::Arg],
-        params: &[(Ty, bool)],
+        formals: &[Formal<'a>],
         span: Span,
-    ) -> Vec<TArg> {
-        if args.len() != params.len() {
+    ) -> (Vec<TStmt>, Vec<TArg>) {
+        let mut slot: Vec<Option<usize>> = vec![None; formals.len()];
+        let mut next = 0;
+        let mut excess = false;
+        for (k, a) in args.iter().enumerate() {
+            let at = match &a.name {
+                None => {
+                    while next < formals.len() && formals[next].named_only {
+                        next += 1;
+                    }
+                    next += 1;
+                    excess |= next > formals.len();
+                    (next <= formals.len()).then(|| next - 1)
+                }
+                Some(n) => {
+                    let at = formals.iter().position(|f| f.label == n.text);
+                    if at.is_none() {
+                        self.err(a.value.span, format!("no parameter named `{}`", n.text));
+                    }
+                    at
+                }
+            };
+            match at {
+                Some(i) if slot[i].is_none() => slot[i] = Some(k),
+                Some(i) => self.err(
+                    a.value.span,
+                    format!("`{}` is given twice", formals[i].label),
+                ),
+                None => {}
+            }
+        }
+        let missing = (0..formals.len()).any(|i| slot[i].is_none() && formals[i].default.is_none());
+        if excess || (missing && args.iter().all(|a| a.name.is_none())) {
             self.err(
                 span,
-                format!("expected {} arguments, found {}", params.len(), args.len()),
+                format!(
+                    "{}: expected {} arguments, found {}",
+                    cpl_diag::codes::WRONG_ARG_COUNT.0,
+                    formals.len(),
+                    args.len()
+                ),
             );
-        }
-        args.iter()
-            .zip(params)
-            .map(|(a, (pty, pmut))| {
-                let inner = match &a.value.kind {
-                    ExprKind::Mut(e) => e,
-                    _ => &a.value,
-                };
-                if *pmut {
-                    if !a.mutable && !matches!(a.value.kind, ExprKind::Mut(_)) {
-                        self.err(
-                            a.value.span,
-                            "a `mut` parameter is marked `mut` at the call",
-                        );
-                    }
-                    let p = self.place(inner);
-                    if !self.unify(&p.ty, pty) {
-                        self.err(
-                            a.value.span,
-                            format!(
-                                "expected `{}`, found `{}`",
-                                self.show(pty),
-                                self.show(&p.ty)
-                            ),
-                        );
-                    }
-                    TArg::Mut(p)
-                } else {
-                    let v = self.expr(inner, Some(pty));
-                    TArg::Value(self.coerce(v, pty))
+        } else if missing {
+            for (i, f) in formals.iter().enumerate() {
+                if slot[i].is_none() && f.default.is_none() {
+                    self.err(
+                        span,
+                        format!(
+                            "{}: no argument for `{}`",
+                            cpl_diag::codes::WRONG_ARG_COUNT.0,
+                            f.label
+                        ),
+                    );
                 }
+            }
+        }
+        let mut typed: Vec<Option<TArg>> = Vec::with_capacity(args.len());
+        for (k, a) in args.iter().enumerate() {
+            typed.push(match slot.iter().position(|s| *s == Some(k)) {
+                Some(i) => Some(self.arg(a, &formals[i].ty, formals[i].mutable)),
+                None => {
+                    self.expr(&a.value, None);
+                    None
+                }
+            });
+        }
+        // Bound in another order than written, or with a default before a written argument: the
+        // written ones that compute something run first, in order.
+        let written: Vec<usize> = slot.iter().flatten().copied().collect();
+        let last = slot.iter().rposition(Option::is_some);
+        let reordered = written.windows(2).any(|w| w[0] > w[1])
+            || last.is_some_and(|l| slot[..l].iter().any(Option::is_none));
+        let mut pre = Vec::new();
+        if reordered {
+            for t in typed.iter_mut() {
+                if let Some(TArg::Value(v)) = t {
+                    if !pure(v) {
+                        let ty = v.ty.clone();
+                        let tmp = self.bind("$arg", ty.clone());
+                        let read = TExpr {
+                            kind: TK::Var(tmp),
+                            ty,
+                            span: v.span,
+                        };
+                        pre.push(TStmt::Let(tmp, std::mem::replace(v, read)));
+                    }
+                }
+            }
+        }
+        let mut out = Vec::with_capacity(formals.len());
+        for (i, f) in formals.iter().enumerate() {
+            out.push(match slot[i].and_then(|k| typed[k].take()) {
+                Some(a) => a,
+                None => TArg::Value(match f.default {
+                    Some((e, m)) => self.default_arg(e, m, &f.ty),
+                    None => TExpr {
+                        kind: TK::Error,
+                        ty: Ty::Error,
+                        span,
+                    },
+                }),
+            });
+        }
+        (pre, out)
+    }
+    fn arg(&mut self, a: &ast::Arg, pty: &Ty, pmut: bool) -> TArg {
+        let inner = match &a.value.kind {
+            ExprKind::Mut(e) => e,
+            _ => &a.value,
+        };
+        if pmut {
+            if !a.mutable && !matches!(a.value.kind, ExprKind::Mut(_)) {
+                self.err(
+                    a.value.span,
+                    format!(
+                        "{}: a `mut` parameter is marked `mut` at the call",
+                        cpl_diag::codes::MISSING_MUT_AT_CALL.0
+                    ),
+                );
+            }
+            let p = self.place(inner);
+            if let Some(name) = self.let_root(&p) {
+                self.err(
+                    a.value.span,
+                    format!(
+                        "{}: `{name}` is bound by `let`, so it cannot be lent `mut`; declare it with `var`",
+                        cpl_diag::codes::MUT_OF_IMMUTABLE.0
+                    ),
+                );
+            }
+            if !self.unify(&p.ty, pty) {
+                self.err(
+                    a.value.span,
+                    format!(
+                        "expected `{}`, found `{}`",
+                        self.show(pty),
+                        self.show(&p.ty)
+                    ),
+                );
+            }
+            TArg::Mut(p)
+        } else {
+            let v = self.expr(inner, Some(pty));
+            TArg::Value(self.coerce(v, pty))
+        }
+    }
+    /// A default is read where its fn or struct is declared: none of the caller's names are seen.
+    fn default_arg(&mut self, e: &ast::Expr, m: ModId, ty: &Ty) -> TExpr {
+        let module = std::mem::replace(&mut self.module, m);
+        let scopes = std::mem::replace(&mut self.scopes, vec![HashMap::new()]);
+        let self_local = self.self_local.take();
+        let v = self.expr(e, Some(ty));
+        let v = self.coerce(v, ty);
+        self.module = module;
+        self.scopes = scopes;
+        self.self_local = self_local;
+        v
+    }
+    /// The parameters of a fn as a call binds them.
+    pub(super) fn formals(&self, sub: &Subst, fd: &'a decls::FnDecl) -> Vec<Formal<'a>> {
+        fd.params
+            .iter()
+            .map(|p| Formal {
+                label: &p.label,
+                ty: sub.ty(&p.ty),
+                mutable: p.mutable,
+                named_only: p.named_only,
+                default: p.default.as_ref().map(|e| (e, fd.module)),
             })
             .collect()
     }
@@ -186,15 +320,28 @@ impl<'a> Cx<'a> {
                 self.unify(&ty, w);
             }
         }
-        let params: Vec<(Ty, bool)> = fd
-            .params
-            .iter()
-            .map(|p| (sub.ty(&p.ty), p.mutable))
-            .collect();
-        let params: Vec<(Ty, bool)> = params
-            .into_iter()
-            .map(|(t, m)| (self.fresh_sets(&t), m))
-            .collect();
+        let mut formals = self.formals(&sub, fd);
+        for p in &mut formals {
+            p.ty = self.fresh_sets(&p.ty);
+        }
+        // The core file stands in for std until std's own `List` and `Str` load (stage 4):
+        // a call std's signature takes but the stand-in's does not is not built, not an error.
+        if fd.module == decls::CORE && args.len() > formals.len() {
+            self.err(
+                span,
+                format!(
+                    "slice: `{}` with {} arguments (the core stand-in takes {})",
+                    fd.name,
+                    args.len(),
+                    formals.len()
+                ),
+            );
+            return TExpr {
+                kind: TK::Error,
+                ty: Ty::Error,
+                span,
+            };
+        }
         if fd.region.is_some() && !std::mem::take(&mut self.allow_region) {
             self.err(
                 span,
@@ -204,8 +351,21 @@ impl<'a> Cx<'a> {
                 ),
             );
         }
-        let args = self.args(args, &params, span);
-        TExpr {
+        let (mut pre, args) = self.args(args, &formals, span);
+        let recv = match recv {
+            Some(TArg::Value(r)) if !pre.is_empty() && !pure(&r) => {
+                let tmp = self.bind("$recv", r.ty.clone());
+                let read = TExpr {
+                    kind: TK::Var(tmp),
+                    ty: r.ty.clone(),
+                    span: r.span,
+                };
+                pre.insert(0, TStmt::Let(tmp, r));
+                Some(TArg::Value(read))
+            }
+            r => r,
+        };
+        let call = TExpr {
             kind: TK::Call {
                 f,
                 recv: recv.map(Box::new),
@@ -213,7 +373,8 @@ impl<'a> Cx<'a> {
             },
             ty,
             span,
-        }
+        };
+        block(pre, call)
     }
     /// `recv.name(args)` with already-typed arguments: used for `get` and `set` behind indexing.
     pub(super) fn method_call(
@@ -248,7 +409,7 @@ impl<'a> Cx<'a> {
                 m => m,
             })
             .collect();
-        let recv = if mutates || fd.self_mode == SelfMode::Mut {
+        let recv = if mutates || fd.self_mode == SelfMode::Mut || self.d.writes_cache(m) {
             TArg::Mut(recv)
         } else {
             TArg::Value(recv)
@@ -282,24 +443,46 @@ impl<'a> Cx<'a> {
                 };
             }
         }
-        // `Type.f(args)`: a fn of the type with no receiver.
-        if let ExprKind::Name(n) = &base.kind {
+        // `Type.f(args)` or `Type<A>.f(args)`: a fn of the type with no receiver.
+        let (ty_name, written) = match &base.kind {
+            ExprKind::Name(n) => (Some(n), &[][..]),
+            ExprKind::Generic { base, args } => match &base.kind {
+                ExprKind::Name(n) => (Some(n), &args[..]),
+                _ => (None, &[][..]),
+            },
+            _ => (None, &[][..]),
+        };
+        if let (Some(n), Some(args)) = (ty_name, call) {
             if let (Some(d), true) = (
                 self.d.struct_named(self.module, n),
                 self.lookup(n).is_none(),
             ) {
-                if let (s, Some(args)) = (self.d.s(d), call) {
-                    let Some(m) = s.methods.get(&name.text).copied() else {
-                        self.err(span, format!("`{n}` has no `{}`", name.text));
-                        return TExpr {
-                            kind: TK::Error,
-                            ty: Ty::Error,
-                            span,
-                        };
+                let s = self.d.s(d);
+                let Some(m) = s.methods.get(&name.text).copied() else {
+                    self.err(span, format!("`{n}` has no `{}`", name.text));
+                    return TExpr {
+                        kind: TK::Error,
+                        ty: Ty::Error,
+                        span,
                     };
-                    let f = self.fnref(m, Vec::new(), Vec::new());
-                    return self.call_fn(f, None, args, span, want);
+                };
+                if written.len() > s.generics.len() {
+                    self.err(
+                        span,
+                        format!(
+                            "`{n}` takes {} type arguments, found {}",
+                            s.generics.len(),
+                            written.len()
+                        ),
+                    );
                 }
+                let mut pre = Vec::new();
+                let given: Vec<Ty> = (written.iter().take(s.generics.len()))
+                    .map(|t| self.body_ty(t, span, &mut pre))
+                    .collect();
+                let f = self.fnref(m, given, Vec::new());
+                let call = self.call_fn(f, None, args, span, want);
+                return block(pre, call);
             }
         }
         let recv = self.expr(base, None);
@@ -313,18 +496,18 @@ impl<'a> Cx<'a> {
                 }
                 if let Some(m) = t.methods.get(&name.text).copied() {
                     let fd = self.d.f(m);
-                    let params: Vec<(Ty, bool)> = fd
-                        .params
-                        .iter()
-                        .map(|p| (p.ty.clone(), p.mutable))
-                        .collect();
-                    let args = self.args(call.unwrap_or(&[]), &params, span);
+                    let none = Subst {
+                        tys: &[],
+                        sets: &[],
+                    };
+                    let formals = self.formals(&none, fd);
+                    let (pre, args) = self.args(call.unwrap_or(&[]), &formals, span);
                     let recv = if fd.self_mode == SelfMode::Mut {
                         TArg::Mut(recv)
                     } else {
                         TArg::Value(recv)
                     };
-                    return TExpr {
+                    let call = TExpr {
                         kind: TK::CallTrait {
                             tr: *tr,
                             method: name.text.clone(),
@@ -334,6 +517,7 @@ impl<'a> Cx<'a> {
                         ty: fd.ret.clone(),
                         span,
                     };
+                    return block(pre, call);
                 }
             }
         }
@@ -362,6 +546,9 @@ impl<'a> Cx<'a> {
                     if !matches!(recv.kind, TK::Var(_) | TK::Field(..)) {
                         self.err(span, "a `mut self` method needs a place");
                     }
+                    TArg::Mut(recv)
+                } else if self.d.writes_cache(m) && matches!(recv.kind, TK::Var(_) | TK::Field(..))
+                {
                     TArg::Mut(recv)
                 } else {
                     TArg::Value(recv)
@@ -411,7 +598,16 @@ impl<'a> Cx<'a> {
                 };
             }
         };
-        let params: Vec<(Ty, bool)> = ps.into_iter().map(|p| (p, false)).collect();
+        let formals: Vec<Formal> = ps
+            .into_iter()
+            .map(|ty| Formal {
+                label: "",
+                ty,
+                mutable: false,
+                named_only: false,
+                default: None,
+            })
+            .collect();
         if args
             .iter()
             .any(|a| a.mutable || matches!(a.value.kind, ExprKind::Mut(_)))
@@ -421,21 +617,22 @@ impl<'a> Cx<'a> {
                 "a `mut` argument to a function value is not built yet",
             );
         }
-        let args = self.args(args, &params, span);
+        let (pre, args) = self.args(args, &formals, span);
         let args = args
             .into_iter()
             .map(|a| match a {
                 TArg::Value(v) | TArg::Mut(v) => v,
             })
             .collect();
-        TExpr {
+        let call = TExpr {
             kind: TK::CallValue {
                 callee: Box::new(callee),
                 args,
             },
             ty: r,
             span,
-        }
+        };
+        block(pre, call)
     }
     pub(super) fn name(&mut self, n: &str, span: Span) -> TExpr {
         if let Some((v, ty)) = self.lookup(n) {
@@ -722,18 +919,18 @@ impl<'a> Cx<'a> {
                 let i = self.index_arg(&b.ty, i);
                 self.method_call(b, "get", vec![TArg::Value(i)], span, false)
             }
-            ExprKind::Call { args, .. } if args.iter().any(|a| a.name.is_some()) => {
-                self.err(span, "slice: named arguments");
-                TExpr {
-                    kind: TK::Error,
-                    ty: Ty::Error,
-                    span,
-                }
-            }
             ExprKind::Call { callee, args } => match &callee.kind {
                 ExprKind::Field { base, name } => self.member(base, name, Some(args), span, want),
                 // `write` is `print` without the line end; the slice uses it to write `print` for containers in the library.
                 ExprKind::Name(n) if (n == "print" || n == "write") && self.lookup(n).is_none() => {
+                    if args.iter().any(|a| a.name.is_some()) {
+                        self.err(span, "slice: named arguments to `print`");
+                        return TExpr {
+                            kind: TK::Error,
+                            ty: Ty::Error,
+                            span,
+                        };
+                    }
                     // Text and plain values gather into one `Print`; a value the library
                     // writes ends the one before it and is a call of its writer.
                     let mut stmts = Vec::new();
@@ -853,38 +1050,14 @@ impl<'a> Cx<'a> {
                         mk(TK::Block(pre, Some(Box::new(v))), ty)
                     }
                 }
-                ExprKind::Name(n)
-                    if self.lookup(n).is_none()
-                        && self.self_field(n).is_none()
-                        && self.d.named(self.module, n).is_some() =>
-                {
-                    match self.d.views[self.module.0][n] {
-                        Named::Fn(d) => {
-                            let f = self.fnref(d, Vec::new(), Vec::new());
-                            self.call_fn(f, None, args, span, want)
-                        }
-                        Named::Struct(d) => {
-                            let s = self.d.s(d);
-                            let targs: Vec<Ty> = s.generics.iter().map(|_| self.new_ty()).collect();
-                            let sets: Vec<SetTy> = (0..s.n_sets).map(|_| self.new_set()).collect();
-                            let sub = Subst {
-                                tys: &targs,
-                                sets: &sets,
-                            };
-                            let params: Vec<(Ty, bool)> =
-                                s.fields.iter().map(|(_, t)| (sub.ty(t), false)).collect();
-                            let fields = self
-                                .args(args, &params, span)
-                                .into_iter()
-                                .map(|a| match a {
-                                    TArg::Value(v) | TArg::Mut(v) => v,
-                                })
-                                .collect();
-                            mk(TK::Struct(fields), Ty::Struct(d, targs, sets))
-                        }
+                ExprKind::Name(n) if self.declared(n) => self.call_named(n, &[], args, span, want),
+                // `Box<Int>(5)`, `List<Int>()`: the written type arguments come first.
+                ExprKind::Generic { base, args: targs } if matches!(&base.kind, ExprKind::Name(n) if self.declared(n)) => {
+                    match &base.kind {
+                        ExprKind::Name(n) => self.call_named(n, targs, args, span, want),
                         _ => {
-                            self.err(span, format!("`{n}` cannot be called"));
-                            mk(TK::Error, Ty::Error)
+                            let c = self.expr(callee, None);
+                            self.call_value(c, args, span)
                         }
                     }
                 }
@@ -980,7 +1153,11 @@ impl<'a> Cx<'a> {
                     _ => self.new_ty(),
                 };
                 let lty = Ty::Struct(list, vec![elem.clone()], Vec::new());
-                let new = self.fnref(ls.methods["new"], vec![elem.clone()], Vec::new());
+                let Some(ctor) = ls.ctor else {
+                    self.err(span, "`List` declares no `new`");
+                    return mk(TK::Error, Ty::Error);
+                };
+                let new = self.fnref(ctor, vec![elem.clone()], Vec::new());
                 let push = ls.methods["push"];
                 self.scopes.push(HashMap::new());
                 let tmp = self.bind("$list", lty.clone());
@@ -1032,7 +1209,11 @@ impl<'a> Cx<'a> {
                     _ => self.new_ty(),
                 };
                 let lty = Ty::Struct(list, vec![elem.clone()], Vec::new());
-                let new = self.fnref(ls.methods["new"], vec![elem.clone()], Vec::new());
+                let Some(ctor) = ls.ctor else {
+                    self.err(span, "`List` declares no `new`");
+                    return mk(TK::Error, Ty::Error);
+                };
+                let new = self.fnref(ctor, vec![elem.clone()], Vec::new());
                 self.scopes.push(HashMap::new());
                 let tmp = self.bind("$comp", lty.clone());
                 let mut stmts = vec![TStmt::Let(
@@ -1162,5 +1343,133 @@ impl<'a> Cx<'a> {
             Some(decls::Member::Field(i, _)) => Some(i),
             _ => None,
         }
+    }
+
+    /// A name the program declares, not a local or a field of `self`.
+    fn declared(&self, n: &str) -> bool {
+        self.lookup(n).is_none()
+            && self.self_field(n).is_none()
+            && self.d.named(self.module, n).is_some()
+    }
+
+    /// A call of a declared fn or struct, with the type arguments written at the call.
+    fn call_named(
+        &mut self,
+        n: &str,
+        written: &[ast::Type],
+        args: &[ast::Arg],
+        span: Span,
+        want: Option<&Ty>,
+    ) -> TExpr {
+        let mk = |kind, ty| TExpr { kind, ty, span };
+        let mut pre = Vec::new();
+        let given: Vec<Ty> = written
+            .iter()
+            .map(|t| self.body_ty(t, span, &mut pre))
+            .collect();
+        let takes = match self.d.views[self.module.0][n] {
+            Named::Fn(d) => self.d.f(d).generics.len(),
+            Named::Struct(d) => self.d.s(d).generics.len(),
+            _ => 0,
+        };
+        if given.len() > takes {
+            self.err(
+                span,
+                format!("`{n}` takes {takes} type arguments, found {}", given.len()),
+            );
+        }
+        let mut given = given;
+        given.truncate(takes);
+        let named = self.d.views[self.module.0][n];
+        let ctor = match named {
+            Named::Struct(d) => self.d.s(d).ctor.filter(|_| {
+                !matches!(
+                    self.decl.and_then(|f| self.d.f(f).owner),
+                    Some(decls::Owner::Struct(o)) if o == d
+                )
+            }),
+            _ => None,
+        };
+        let v = match (ctor, named) {
+            // R02.6.3: outside its own body, `T(args)` calls `T`'s static `new` when it has one.
+            (Some(new), _) => {
+                let f = self.fnref(new, given, Vec::new());
+                self.call_fn(f, None, args, span, want)
+            }
+            (None, Named::Fn(d)) => {
+                let f = self.fnref(d, given, Vec::new());
+                self.call_fn(f, None, args, span, want)
+            }
+            (None, Named::Struct(d)) => {
+                let s = self.d.s(d);
+                let fresh = s.generics.len() - given.len();
+                let mut targs = given;
+                targs.extend((0..fresh).map(|_| self.new_ty()));
+                let sets: Vec<SetTy> = (0..s.n_sets).map(|_| self.new_set()).collect();
+                let sub = Subst {
+                    tys: &targs,
+                    sets: &sets,
+                };
+                let formals: Vec<Formal> = (s.fields.iter().zip(&s.defaults))
+                    .map(|((n, t), e)| Formal {
+                        label: n,
+                        ty: sub.ty(t),
+                        mutable: false,
+                        named_only: false,
+                        default: e.as_ref().map(|e| (e, s.module)),
+                    })
+                    .collect();
+                let (fpre, fields) = self.args(args, &formals, span);
+                let fields = fields
+                    .into_iter()
+                    .map(|a| match a {
+                        TArg::Value(v) | TArg::Mut(v) => v,
+                    })
+                    .collect();
+                block(fpre, mk(TK::Struct(fields), Ty::Struct(d, targs, sets)))
+            }
+            _ => {
+                self.err(span, format!("`{n}` cannot be called"));
+                mk(TK::Error, Ty::Error)
+            }
+        };
+        if pre.is_empty() {
+            v
+        } else {
+            let ty = v.ty.clone();
+            mk(TK::Block(pre, Some(Box::new(v))), ty)
+        }
+    }
+}
+
+/// A parameter as a call binds it.
+pub(super) struct Formal<'d> {
+    pub label: &'d str,
+    pub ty: Ty,
+    pub mutable: bool,
+    pub named_only: bool,
+    pub default: Option<(&'d ast::Expr, ModId)>,
+}
+
+/// Reading it has no effect, so when it runs does not matter.
+fn pure(e: &TExpr) -> bool {
+    match &e.kind {
+        TK::Int(_) | TK::Bool(_) | TK::Unit | TK::Var(_) | TK::FnItem(_) | TK::Lambda { .. } => {
+            true
+        }
+        TK::Field(b, _) => pure(b),
+        _ => false,
+    }
+}
+
+fn block(pre: Vec<TStmt>, e: TExpr) -> TExpr {
+    if pre.is_empty() {
+        return e;
+    }
+    let (ty, span) = (e.ty.clone(), e.span);
+    TExpr {
+        kind: TK::Block(pre, Some(Box::new(e))),
+        ty,
+        span,
     }
 }

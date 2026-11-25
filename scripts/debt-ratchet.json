@@ -264,12 +264,12 @@
   "dream_over_32kb": 3,
   "invariant_sites": 0,
   "domain_member_names": 0,
-  "next_wrong": 38,
-  "next_not_passing": 4165,
+  "next_wrong": 37,
+  "next_not_passing": 4109,
   "end_state_unmeasured": 25,
   "facade_today_uses": 323,
   "tool_compiler_deps": 0,
   "end_state_broken": 0,
   "next_cases_removed": 0,
-  "next_std_names": 46
+  "next_std_names": 45
 }

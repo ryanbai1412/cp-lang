@@ -1,6 +1,6 @@
 // expect: E0608
 // rule: 05.2.2
-var xs = List(1, 2)
+var xs = [1, 2]
 let c = xs.len > 1
 if c:
     let ys = xs

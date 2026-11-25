@@ -93,7 +93,7 @@ pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &str, std_lines: u32)
         lw.remap.clear();
         let mut params = Vec::new();
         if let Some(s) = tf.self_local {
-            params.push((s, fd.self_mode == SelfMode::Mut));
+            params.push((s, fd.self_mode == SelfMode::Mut || d.writes_cache(*id)));
         }
         for (p, pd) in tf.params.iter().zip(&fd.params) {
             params.push((*p, pd.mutable));

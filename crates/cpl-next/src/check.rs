@@ -268,11 +268,9 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
             cx.ret_sets.insert((FnId(id), k), v);
         }
     }
-    for (at, code, name) in &d.dup_fns {
+    for (at, code, msg) in &d.misdeclared {
         let line = src[..(*at).min(src.len())].matches('\n').count() + 1;
-        cx.errors.push(format!(
-            "line {line}: {code}: `{name}` is already a fn; one name is one fn"
-        ));
+        cx.errors.push(format!("line {line}: {code}: {msg}"));
     }
     for (i, s) in d.structs.iter().enumerate() {
         if let Some(f) = decls::field_holding_itself(d, StructId(i)) {

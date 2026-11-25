@@ -95,9 +95,9 @@ struct Str:
 // A string literal: its characters and how many there are. The literal's storage is lent,
 // so the string gets its own.
 fn str_of(text: Raw<Char>, n: Int) -> Str:
-    var buf = raw_new(n, Char(0))
-    for i in 0..n: raw_set(mut buf, i, raw_get(text, i))
-    Str(List(buf, n, n))
+    var chars = List<Char>.new()
+    for i in 0..n: chars.push(raw_get(text, i))
+    Str(chars)
 
 fn str_concat(a: Str, b: Str) -> Str:
     var out = Str(List.new())

@@ -49,8 +49,14 @@ pub struct FnDecl {
 }
 pub struct Param {
     pub name: String,
+    /// The name a call gives it by: its label, else its name.
+    pub label: String,
     pub ty: Ty,
     pub mutable: bool,
+    /// After `;`: passed by name only.
+    pub named_only: bool,
+    /// Read in the fn's module when a call leaves the parameter out (R06.1.5).
+    pub default: Option<ast::Expr>,
 }
 pub struct StructDecl {
     pub name: String,
@@ -58,10 +64,17 @@ pub struct StructDecl {
     pub fields: Vec<(String, Ty)>,
     /// Per field: declared with `var`, so assignable after construction.
     pub var_fields: Vec<bool>,
+    /// Per field: `@cache`, so a read-only method may write it (R05.10.10).
+    pub cached: Vec<bool>,
     /// Per field: where its type is written, as an offset into the source.
     pub field_at: Vec<usize>,
+    /// Per field: the value a constructor that leaves it out stores, read in `module` (R02.6.1).
+    pub defaults: Vec<Option<ast::Expr>>,
+    pub module: ModId,
     pub n_sets: usize,
     pub methods: HashMap<String, FnId>,
+    /// Its static `new`, which `T(args)` calls outside its own body (R02.6.3).
+    pub ctor: Option<FnId>,
     /// What its fields use that the slice does not build, said only when the program reaches it.
     pub errors: Vec<String>,
 }
@@ -117,8 +130,8 @@ pub struct Decls {
     pub struct_sets: HashMap<StructId, usize>,
     pub aliases: Rc<Vec<AliasDecl>>,
     pub errors: Vec<String>,
-    /// A fn whose name was already a fn: where, the code, the name.
-    pub dup_fns: Vec<(usize, &'static str, String)>,
+    /// Declarations the program gets wrong: where, the code, what is wrong.
+    pub misdeclared: Vec<(usize, &'static str, String)>,
 }
 
 /// Where a method call resolved to.
@@ -153,6 +166,13 @@ impl Decls {
     }
     pub fn core_struct(&self, name: &str) -> Option<StructId> {
         self.struct_named(CORE, name)
+    }
+    /// A read-only method that may still write its receiver's `@cache` fields, so a call
+    /// lends the receiver for writing (R05.10.10).
+    pub fn writes_cache(&self, f: FnId) -> bool {
+        let fd = self.f(f);
+        fd.self_mode == SelfMode::Value
+            && matches!(fd.owner, Some(Owner::Struct(s)) if self.s(s).cached.contains(&true))
     }
     /// A library declaration's place is not the program's: its module's name.
     pub fn is_library(&self, m: ModId) -> bool {
@@ -625,9 +645,13 @@ pub fn collect(
                             generics: sd.generics.iter().map(|g| g.text.clone()).collect(),
                             fields: Vec::new(),
                             var_fields: Vec::new(),
+                            cached: Vec::new(),
                             field_at: Vec::new(),
+                            defaults: Vec::new(),
+                            module: mid,
                             n_sets: 0,
                             methods: HashMap::new(),
+                            ctor: None,
                             errors: Vec::new(),
                         });
                         pending.push((mid, *item, s, Some(Named::Struct(id))));
@@ -781,6 +805,12 @@ pub fn collect(
                     .iter()
                     .map(|f| (f.name.text.clone(), conv(&mut cx, &f.ty, &mut errors)))
                     .collect();
+                if sd.generic_defaults.iter().any(Option::is_some) {
+                    errors.push(format!(
+                        "slice: a default type argument of `{}`",
+                        sd.name.text
+                    ));
+                }
                 let n_sets = cx.next_set.unwrap_or(0);
                 if d.is_library(mid) {
                     d.structs[id.0].errors.extend(errors);
@@ -808,12 +838,15 @@ pub fn collect(
                 let sdecl = &mut d.structs[id.0];
                 sdecl.fields = fields;
                 sdecl.var_fields = sd.fields.iter().map(|f| f.mutable).collect();
+                sdecl.cached = sd.fields.iter().map(|f| f.cached).collect();
+                sdecl.defaults = sd.fields.iter().map(|f| f.default.clone()).collect();
                 sdecl.field_at = sd
                     .fields
                     .iter()
                     .map(|f| (item + f.ty.span.start) as usize)
                     .collect();
                 sdecl.n_sets = n_sets;
+                sdecl.ctor = methods.get("new").copied();
                 sdecl.methods = methods;
             }
             (StmtKind::Trait { body, .. }, Some(Named::Trait(id))) => {
@@ -914,8 +947,11 @@ pub fn collect(
                             .push("slice: fns of one name told apart by their labels".to_string());
                     }
                     let code = cpl_diag::codes::OVERLOAD_BY_TYPE;
-                    d.dup_fns
-                        .push(((item + s.span.start) as usize, code.0, f.name.text.clone()));
+                    d.misdeclared.push((
+                        (item + s.span.start) as usize,
+                        code.0,
+                        format!("`{}` is already a fn; one name is one fn", f.name.text),
+                    ));
                 }
             }
             _ => {}
@@ -1008,10 +1044,19 @@ fn add_fn(
                 Ty::Error
             }
         };
+        if p.variadic || p.lazy {
+            errors.push(format!(
+                "slice: a variadic or lazy parameter `{}`",
+                p.name.text
+            ));
+        }
         params.push(Param {
             name: p.name.text.clone(),
+            label: p.label.as_ref().unwrap_or(&p.name).text.clone(),
             ty,
             mutable: p.mutable,
+            named_only: p.named_only,
+            default: p.default.clone(),
         });
     }
     let n_sets = cx.next_set.unwrap_or(0);
@@ -1057,13 +1102,28 @@ fn add_fn(
             errors.push(format!("slice: decorator `@{}`", x.name.text));
         }
     }
-    let errors = if d.is_library(m) {
+    let mut errors = if d.is_library(m) {
         errors
     } else {
         d.errors.extend(errors);
         Vec::new()
     };
     let has = |n: &str| s.decorators.iter().any(|x| x.name.text == n);
+    // A getter is read like a field, so nothing but `self` may need an argument (R02.6.6).
+    let getter = has("get");
+    if getter && params.iter().any(|p| p.default.is_none()) {
+        let msg = format!(
+            "getter `{}` is read like a field, so each parameter but `self` needs a default",
+            f.name.text
+        );
+        if d.is_library(m) {
+            errors.push(msg);
+        } else {
+            let code = cpl_diag::codes::GETTER_NEEDS_DEFAULTS.0;
+            d.misdeclared
+                .push(((item + s.span.start) as usize, code, msg));
+        }
+    }
     d.fns.push(FnDecl {
         name: f.name.text.clone(),
         owner,
@@ -1083,7 +1143,7 @@ fn add_fn(
         region,
         body: f.body.clone(),
         intrinsic: matches!(&f.body, FnBody::Expr(e) if matches!(e.kind, cpl_syntax::ast::ExprKind::Intrinsic(_))),
-        getter: has("get"),
+        getter,
         item,
         module: m,
         errors,
