@@ -210,6 +210,16 @@ trait Rem<Rhs = Self>:
 trait Neg:
     fn neg(self) -> Self
 
+/// The positions of a domain (R04.2): `D: Domain` takes any domain, and every domain has it.
+@positions
+trait Domain
+
+/// Positions of one domain compare in its walk order (R04.2).
+impl<D: Domain> Eq for D:
+    fn eq(a, b) = a.ord == b.ord
+impl<D: Domain + Eq> Ord for D:
+    fn lt(a, b) = a.ord < b.ord
+
 /// Both empty, or both holding equal values; `?T` is not `Ord` (R02.4.5).
 impl<T: Eq> Eq for Optional<T>:
     fn eq(a, b) = if not a.some: not b.some elif not b.some: false else: a.val == b.val

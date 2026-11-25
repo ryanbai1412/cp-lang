@@ -458,7 +458,7 @@ impl Link<'_> {
                 let mut found = None;
                 for im in d.impls.iter().filter(|im| im.trait_.tr == *tr) {
                     let mut binds = vec![None; im.generics.len()];
-                    if !fit_cty(&im.for_, &st, &mut binds) {
+                    if !fit_cty(&im.for_, &st, &mut binds, &im.domains) {
                         continue;
                     }
                     let binds: Vec<CTy> =
@@ -1297,8 +1297,9 @@ pub fn add_events(p: &mut Program, typed: &Typed, d: &Decls, user_from: u32) {
 }
 
 /// Whether a type an impl is written for, in the impl's type parameters, is `t`: binds them.
-fn fit_cty(p: &Ty, t: &CTy, binds: &mut [Option<CTy>]) -> bool {
+fn fit_cty(p: &Ty, t: &CTy, binds: &mut [Option<CTy>], doms: &[usize]) -> bool {
     match (p, t) {
+        (Ty::Param(i), _) if doms.contains(i) && !matches!(t, CTy::Dom(_)) => false,
         (Ty::Param(i), _) => match &binds[*i] {
             Some(b) => b == t,
             None => {
@@ -1308,9 +1309,11 @@ fn fit_cty(p: &Ty, t: &CTy, binds: &mut [Option<CTy>]) -> bool {
         },
         (Ty::Int | Ty::Range(..) | Ty::RangeOf(_), CTy::Int) => true,
         (Ty::Bool, CTy::Bool) | (Ty::Char, CTy::Char) | (Ty::Unit, CTy::Unit) => true,
-        (Ty::Raw(a), CTy::Raw(b)) | (Ty::Ref(a), CTy::Ref(b)) => fit_cty(a, b, binds),
+        (Ty::Raw(a), CTy::Raw(b)) | (Ty::Ref(a), CTy::Ref(b)) => fit_cty(a, b, binds, doms),
         (Ty::Struct(d1, a, _), CTy::Struct(d2, b, _)) => {
-            d1 == d2 && a.len() == b.len() && a.iter().zip(b).all(|(x, y)| fit_cty(x, y, binds))
+            d1 == d2
+                && a.len() == b.len()
+                && a.iter().zip(b).all(|(x, y)| fit_cty(x, y, binds, doms))
         }
         _ => false,
     }

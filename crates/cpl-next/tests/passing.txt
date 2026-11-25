@@ -85,6 +85,7 @@ core-01/while-true-break-in-the-middle.cp
 core-02/alias-cycle-is-an-error.cp
 core-02/alias-inside-its-own-type-is-an-error.cp
 core-02/array-needs-initializer.cp
+core-02/at-is-optional-position.cp
 core-02/char-of-non-ascii-traps-every-build.cp
 core-02/char-of-non-ascii-traps.cp
 core-02/condition-is-bool.cp
@@ -310,6 +311,7 @@ core-08/concrete-extension-beats-std-generic.cp
 core-08/default-method-override-once.cp
 core-08/derive-needs-fields.cp
 core-08/duplicate-impl.cp
+core-08/getter-impl-on-builtin-type.cp
 core-08/impl-plus-shorthand.cp
 core-08/inherent-before-trait.cp
 core-08/monomorphized.cp
@@ -456,6 +458,7 @@ next/a_decl_09_cache_field.cp
 next/a_dom_01_domain_values.cp
 next/a_dom_02_top_level_in_signatures.cp
 next/a_dom_03_at.cp
+next/a_dom_04_positions_compare.cp
 next/a_enum_01_match_payloads.cp
 next/a_enum_02_default_arm.cp
 next/a_enum_03_heap_payload_moves.cp

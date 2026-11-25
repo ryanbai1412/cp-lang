@@ -83,6 +83,9 @@ impl Cx<'_> {
                 .extend(needs.into_iter().map(|n| (t.clone(), n, span)));
             return Some(true);
         }
+        if Some(r.tr) == self.d.domain_trait {
+            return Some(matches!(t, Ty::Dom(_) | Ty::Error));
+        }
         match t {
             Ty::Error => Some(true),
             Ty::Param(i) => {

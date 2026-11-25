@@ -125,6 +125,8 @@ pub struct ImplDecl {
     pub generics: Vec<String>,
     pub bounds: Vec<(usize, TraitRef)>,
     pub for_: Ty,
+    /// Its parameters bounded by the domain trait: each fits only a domain.
+    pub domains: Vec<usize>,
     pub methods: HashMap<String, FnId>,
     /// Where it is written.
     pub at: usize,
@@ -176,6 +178,8 @@ pub struct Decls {
     /// The program's top-level domains, which its declarations may name: each is the
     /// `Ty::Dom` of its place among them, filled when its statement runs (R02.9).
     pub top_doms: HashMap<String, Ty>,
+    /// The trait core marks `@positions`: every domain's position type has it, and nothing else.
+    pub domain_trait: Option<TraitId>,
 }
 
 /// Where a method call resolved to.
@@ -306,6 +310,9 @@ impl Decls {
         if matches!(t, Ty::Param(_) | Ty::Var(_) | Ty::Error) {
             return true;
         }
+        if Some(tr) == self.domain_trait {
+            return matches!(t, Ty::Dom(_));
+        }
         (self.impls.iter())
             .filter(|im| im.trait_.tr == tr)
             .find_map(|im| Some((im, self.impl_args(im, t)?)))
@@ -326,8 +333,13 @@ impl Decls {
     }
     /// The impl's type arguments when it is for `t`; a type not known yet fits any.
     pub fn impl_args(&self, im: &ImplDecl, t: &Ty) -> Option<Vec<Ty>> {
-        fn fit(p: &Ty, t: &Ty, binds: &mut [Option<Ty>]) -> bool {
+        fn fit(p: &Ty, t: &Ty, binds: &mut [Option<Ty>], doms: &[usize]) -> bool {
             match (p, t) {
+                (Ty::Param(i), _)
+                    if doms.contains(i) && !matches!(t, Ty::Dom(_) | Ty::Var(_) | Ty::Error) =>
+                {
+                    false
+                }
                 // A parameter binds even to a type not known yet, so the method's own
                 // arguments follow it once it is.
                 (Ty::Param(i), _) => match &binds[*i] {
@@ -338,9 +350,11 @@ impl Decls {
                     }
                 },
                 (_, Ty::Var(_) | Ty::Error) => true,
-                (Ty::Raw(a), Ty::Raw(b)) | (Ty::Ref(a), Ty::Ref(b)) => fit(a, b, binds),
+                (Ty::Raw(a), Ty::Raw(b)) | (Ty::Ref(a), Ty::Ref(b)) => fit(a, b, binds, doms),
                 (Ty::Struct(d1, a, _), Ty::Struct(d2, b, _)) => {
-                    d1 == d2 && a.len() == b.len() && a.iter().zip(b).all(|(x, y)| fit(x, y, binds))
+                    d1 == d2
+                        && a.len() == b.len()
+                        && a.iter().zip(b).all(|(x, y)| fit(x, y, binds, doms))
                 }
                 (Ty::Range(..) | Ty::RangeOf(_), Ty::Int)
                 | (Ty::Int, Ty::Range(..) | Ty::RangeOf(_)) => true,
@@ -348,7 +362,7 @@ impl Decls {
             }
         }
         let mut binds = vec![None; im.generics.len()];
-        fit(&im.for_, t, &mut binds)
+        fit(&im.for_, t, &mut binds, &im.domains)
             .then(|| binds.into_iter().map(|b| b.unwrap_or(Ty::Error)).collect())
     }
 }
@@ -528,12 +542,16 @@ fn supertraits_unmet(d: &Decls) -> Vec<(usize, &'static str, String)> {
     }
     out
 }
-fn overlap(a: &Ty, b: &Ty) -> bool {
+/// Whether one type could fit both impl headers; a parameter in `ad` or `bd` fits only a domain.
+fn overlap(a: &Ty, ad: &[usize], b: &Ty, bd: &[usize]) -> bool {
+    let only_doms = |t: &Ty, ds: &[usize]| matches!(t, Ty::Param(i) if ds.contains(i));
     match (a, b) {
+        _ if only_doms(a, ad) => matches!(b, Ty::Param(_) | Ty::Dom(_)),
+        _ if only_doms(b, bd) => matches!(a, Ty::Param(_) | Ty::Dom(_)),
         (Ty::Param(_), _) | (_, Ty::Param(_)) => true,
-        (Ty::Raw(x), Ty::Raw(y)) | (Ty::Ref(x), Ty::Ref(y)) => overlap(x, y),
+        (Ty::Raw(x), Ty::Raw(y)) | (Ty::Ref(x), Ty::Ref(y)) => overlap(x, ad, y, bd),
         (Ty::Struct(d1, x, _), Ty::Struct(d2, y, _)) => {
-            d1 == d2 && x.iter().zip(y).all(|(x, y)| overlap(x, y))
+            d1 == d2 && x.iter().zip(y).all(|(x, y)| overlap(x, ad, y, bd))
         }
         _ => a == b,
     }
@@ -948,6 +966,9 @@ pub fn collect(
                     }
                     StmtKind::Trait { name, alias, .. } => {
                         let id = TraitId(d.traits.len());
+                        if mi == CORE.0 && s.decorators.iter().any(|x| x.name.text == "positions") {
+                            d.domain_trait = Some(id);
+                        }
                         own[mi].insert(name.text.clone(), Named::Trait(id));
                         d.traits.push(TraitDecl {
                             name: name.text.clone(),
@@ -1330,10 +1351,13 @@ pub fn collect(
                     }
                     let at = (item + s.span.start) as usize;
                     let tname = d.traits[tref.tr.0].name.clone();
-                    if d.impls
-                        .iter()
-                        .any(|im| im.trait_.tr == tref.tr && overlap(&im.for_, &for_))
-                    {
+                    let domains: Vec<usize> = (ibounds.iter())
+                        .filter(|(_, r)| Some(r.tr) == d.domain_trait)
+                        .map(|(i, _)| *i)
+                        .collect();
+                    if d.impls.iter().any(|im| {
+                        im.trait_.tr == tref.tr && overlap(&im.for_, &im.domains, &for_, &domains)
+                    }) {
                         // A type's own impl replaces its derived one (R08.1.6).
                         if id.is_some() {
                             continue;
@@ -1411,6 +1435,7 @@ pub fn collect(
                         generics,
                         bounds: ibounds,
                         for_,
+                        domains,
                         methods,
                         at,
                         module: mid,
