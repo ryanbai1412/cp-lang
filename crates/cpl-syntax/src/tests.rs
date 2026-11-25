@@ -2031,3 +2031,28 @@ fn every_decorator_is_in_the_spec() {
         "decorators the spec never names: {missing:?}"
     );
 }
+
+#[test]
+fn an_operator_on_two_of_one_type_names_that_type_as_its_right_side() {
+    for (src, args) in [
+        ("fn (a: V) + (b: V) -> V = a\n", 1),
+        ("fn (a: V) * (k: Int) -> V = a\n", 1),
+        ("fn -(a: V) -> V = a\n", 0),
+    ] {
+        assert_eq!(codes(src), Vec::<&str>::new(), "{src}");
+        let items = stmts(src);
+        let StmtKind::Impl {
+            trait_name: Some(of),
+            target,
+            ..
+        } = &items[0].kind
+        else {
+            panic!("{src}: {:?}", items[0].kind);
+        };
+        let TypeKind::Named { args: named, .. } = &of.kind else {
+            panic!("{src}: {:?}", of.kind);
+        };
+        assert_eq!(named.len(), args, "{src}");
+        assert!(matches!(&target.kind, TypeKind::Named { name, .. } if name.text == "V"));
+    }
+}

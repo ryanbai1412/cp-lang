@@ -163,7 +163,7 @@ pub fn spelled_by_input(db: &mut Session, target: &Definition, files: &[&str]) -
         }
     }
     let mut owner = None;
-    let mut inside: std::collections::HashMap<String, Vec<Type>> = Default::default();
+    let mut inside: Vec<(String, Vec<Type>)> = Vec::new();
     let mut reads = Reads(Vec::new());
     let paths = std::iter::once(target.path.as_str()).chain(files.iter().copied());
     for path in paths {
@@ -192,7 +192,9 @@ pub fn spelled_by_input(db: &mut Session, target: &Definition, files: &[&str]) -
                     StmtKind::TypeAlias { name, ty, .. } => (name, vec![ty.clone()]),
                     _ => continue,
                 };
-                inside.entry(name.text.clone()).or_insert(tys);
+                if !inside.iter().any(|(held, _)| *held == name.text) {
+                    inside.push((name.text.clone(), tys));
+                }
             }
         }
     }
@@ -207,7 +209,8 @@ pub fn spelled_by_input(db: &mut Session, target: &Definition, files: &[&str]) -
                     return true;
                 }
                 if seen.insert(name.text.clone()) {
-                    todo.extend(inside.get(&name.text).cloned().unwrap_or_default());
+                    let held = inside.iter().find(|(held, _)| *held == name.text);
+                    todo.extend(held.into_iter().flat_map(|(_, tys)| tys.iter().cloned()));
                 }
                 todo.extend(args);
             }

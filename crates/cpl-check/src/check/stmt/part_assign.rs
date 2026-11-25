@@ -183,9 +183,12 @@ impl<'a> Checker<'a> {
                 }
                 op.text().to_string()
             }
-            // `m[k] f= x`, which the parser wrote as `m[k] = f(m[k], x)`.
+            // `m[k] f= x`, which the parser wrote as `m[k] = f(m[k], x)`: its copy of the
+            // target keeps the target's span, which no argument the user wrote has.
             (AssignOp::Set, ExprKind::Call { callee, args })
-                if args.first().is_some_and(|first| first.value == *target) =>
+                if args
+                    .first()
+                    .is_some_and(|first| first.value.span == target.span) =>
             {
                 match &callee.kind {
                     ExprKind::Name(name) if !matches!(name.as_str(), "gcd" | "lcm") => name.clone(),

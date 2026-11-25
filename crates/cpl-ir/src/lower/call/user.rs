@@ -436,7 +436,8 @@ impl<'a> Lowerer<'a> {
                     }
                 }
                 // Local generic function (`fn id<T>(x: T) -> T = x`)?
-                if let Some(decl) = self.cx.local_gen_fns.get(name).cloned() {
+                let held = self.cx.local_gen_fns.iter().rfind(|(held, _)| held == name);
+                if let Some(decl) = held.map(|(_, decl)| decl.clone()) {
                     return self.call_local_gen_fn(&decl, args, span);
                 }
                 if let Some(op) = self.op_local(name) {

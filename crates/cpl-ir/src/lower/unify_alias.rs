@@ -24,7 +24,7 @@ impl<'a> Lowerer<'a> {
         env: &mut GenEnv,
     ) {
         let info = &self.traits[tid];
-        let subst: HashMap<&str, &ast::Type> = info.generics.iter().copied().zip(args).collect();
+        let subst: Vec<(&str, &ast::Type)> = info.generics.iter().copied().zip(args).collect();
         for sup in &info.alias_tys {
             self.unify_ast_ty(
                 &subst_ty(sup, &subst),
@@ -72,11 +72,12 @@ impl<'a> Lowerer<'a> {
 }
 
 /// `t` with the alias's parameters replaced by the args it was written with.
-fn subst_ty(t: &ast::Type, subst: &HashMap<&str, &ast::Type>) -> ast::Type {
+fn subst_ty(t: &ast::Type, subst: &[(&str, &ast::Type)]) -> ast::Type {
     match &t.kind {
         ast::TypeKind::Named { name, args } if args.is_empty() => subst
-            .get(name.text.as_str())
-            .map_or_else(|| t.clone(), |a| (*a).clone()),
+            .iter()
+            .rfind(|(param, _)| *param == name.text)
+            .map_or_else(|| t.clone(), |(_, a)| (*a).clone()),
         ast::TypeKind::Named { name, args } => ast::Type {
             kind: ast::TypeKind::Named {
                 name: name.clone(),

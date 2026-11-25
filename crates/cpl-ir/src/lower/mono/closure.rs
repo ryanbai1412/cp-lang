@@ -16,7 +16,7 @@ impl<'a> Lowerer<'a> {
         if !decl.generics.is_empty() {
             self.cx
                 .local_gen_fns
-                .insert(decl.name.text.clone(), decl.clone());
+                .push((decl.name.text.clone(), decl.clone()));
             return;
         }
         if Self::liftable_gen(decl)

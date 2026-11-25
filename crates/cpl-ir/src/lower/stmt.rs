@@ -35,7 +35,7 @@ impl<'a> Lowerer<'a> {
                     if !decl.generics.is_empty() {
                         self.cx
                             .local_gen_fns
-                            .insert(decl.name.text.clone(), decl.clone());
+                            .push((decl.name.text.clone(), decl.clone()));
                     }
                 }
             }
@@ -81,7 +81,7 @@ impl<'a> Lowerer<'a> {
         self.cx.local_syms.pop();
         self.cx.scopes.pop();
         let depth = self.cx.scopes.len();
-        self.cx.recipes.retain(|_, (d, _)| *d <= depth);
+        self.cx.recipes.retain(|(_, d, _)| *d <= depth);
         Block { stmts: out }
     }
 
@@ -334,7 +334,8 @@ impl<'a> Lowerer<'a> {
             let scope = self.cx.scopes.top_mut();
             scope.remove(&name);
             let depth = self.cx.scopes.len();
-            self.cx.recipes.insert(name, (depth, init.clone()));
+            self.forget_recipe(&name);
+            self.cx.recipes.push((name, depth, init.clone()));
             return;
         }
         match &stmt.kind {

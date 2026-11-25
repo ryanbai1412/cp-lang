@@ -474,14 +474,16 @@ struct FnCx {
     /// where outside one (a signature, a module const) they belong to the module.
     in_body: bool,
     /// Block-scoped generic local functions (`fn id<T>(x: T) -> T = x`).
-    local_gen_fns: HashMap<String, ast::FnDecl>,
+    /// In the order met: the last of a name is the one in scope.
+    local_gen_fns: Vec<(String, ast::FnDecl)>,
     /// Parameters bound to compile-time `BareOp` values (`+`, `min`, `max`, `gcd`, etc.).
     op_locals: HashMap<String, BareOp>,
     /// Named mutable aliases (`let st = mut a[i]`): resolved to their underlying `Place`.
     mut_aliases: HashMap<String, Place>,
     /// `let g = gen(n)` with `gen` a generator: `g` is the recipe, and each
     /// read of it walks the generator afresh. By name, with the scope depth.
-    recipes: HashMap<String, (usize, ast::Expr)>,
+    /// One per name.
+    recipes: Vec<(String, usize, ast::Expr)>,
     /// Local zero-copy range views over `SortedBag<K>` / `SortedSet<K>`.
     sorted_views: HashMap<Slot, SortedView>,
     /// Local lazy `xs.map(f)` views (v0.3): each read `m[i]` calls `f(xs[i])`.
@@ -640,8 +642,8 @@ struct Lowerer<'a> {
     std_mod: Option<ModId>,
     /// The module `std.prefix`, when the program uses `prefix(...)`.
     mod_syms: Vec<HashMap<String, Sym>>,
-    /// Each inline `mod`: the module it sits in and its body.
-    inline_mods: HashMap<ModId, (ModId, &'a [ast::Stmt])>,
+    /// Each inline `mod`, the module it sits in and its body, in the order of their ids.
+    inline_mods: Vec<(ModId, ModId, &'a [ast::Stmt])>,
     cur_mod: ModId,
     diags: Vec<Diagnostic>,
     /// What is allowed but almost surely a mistake.
@@ -852,13 +854,23 @@ struct Lowerer<'a> {
 }
 
 impl<'a> Lowerer<'a> {
+    /// Inline module `m`'s parent and body.
+    fn inline_mod(&self, m: ModId) -> Option<(ModId, &'a [ast::Stmt])> {
+        let at = self
+            .inline_mods
+            .binary_search_by_key(&m, |&(id, ..)| id)
+            .ok()?;
+        let (_, parent, body) = self.inline_mods[at];
+        Some((parent, body))
+    }
+
     fn new(_analysis: &'a Analysis) -> Lowerer<'a> {
         Lowerer {
             mods: Vec::new(),
             path_to_mod: HashMap::new(),
             std_mod: None,
             mod_syms: Vec::new(),
-            inline_mods: HashMap::new(),
+            inline_mods: Vec::new(),
             cur_mod: 0,
             diags: Vec::new(),
             warnings: Vec::new(),
@@ -1140,7 +1152,7 @@ impl<'a> Lowerer<'a> {
     fn read_steps(&self) -> Vec<cpl_syntax::order::Steps> {
         let mutators = self.mutators.clone();
         (0..self.mods.len())
-            .filter(|m| !self.inline_mods.contains_key(m))
+            .filter(|&m| self.inline_mod(m).is_none())
             .map(|m| {
                 let mut steps = cpl_syntax::order::Steps::default();
                 for (offset, stmt) in self.mod_items(m) {
@@ -1153,9 +1165,14 @@ impl<'a> Lowerer<'a> {
             .collect()
     }
 
+    /// `name` stands for no generator call from here on.
+    fn forget_recipe(&mut self, name: &str) {
+        self.cx.recipes.retain(|(held, ..)| held != name);
+    }
+
     /// The generator call `name` stands for, unless a local hides it.
     fn recipe(&self, name: &str) -> Option<ast::Expr> {
-        let (depth, init) = self.cx.recipes.get(name)?;
+        let (_, depth, init) = self.cx.recipes.iter().find(|(held, ..)| held == name)?;
         let local = self
             .cx
             .scopes

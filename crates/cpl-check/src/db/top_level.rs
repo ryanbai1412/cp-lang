@@ -416,10 +416,7 @@ pub(super) fn wide_array(
             }
             values.push(constant(&arg.value)?);
         }
-        e => values.push(constant(&ast::Expr {
-            kind: e.clone(),
-            span: init.span,
-        })?),
+        _ => values.push(constant(init)?),
     }
     for (k, other) in items.iter().enumerate().skip(index + 1) {
         let uses = checks[k]

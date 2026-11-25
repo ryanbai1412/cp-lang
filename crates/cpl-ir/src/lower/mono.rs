@@ -287,7 +287,7 @@ impl<'a> Lowerer<'a> {
             if let Some(sym) = self.mod_syms[m].get(name) {
                 return self.unaliased(*sym);
             }
-            m = self.inline_mods.get(&m)?.0;
+            m = self.inline_mod(m)?.0;
         }
     }
 

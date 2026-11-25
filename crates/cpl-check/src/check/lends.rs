@@ -729,7 +729,7 @@ fn subst(e: &Expr, env: &[(&str, &Expr)]) -> Expr {
     let kind = match &e.kind {
         ExprKind::Name(name) => match env.iter().find(|(param, _)| param == name) {
             Some((_, arg)) => return (*arg).clone(),
-            None => e.kind.clone(),
+            None => return e.clone(),
         },
         ExprKind::Paren(inner) => ExprKind::Paren(boxed(inner)),
         ExprKind::Unwrap(inner) => ExprKind::Unwrap(boxed(inner)),
@@ -788,7 +788,7 @@ fn subst(e: &Expr, env: &[(&str, &Expr)]) -> Expr {
                 name: name.clone(),
             }
         }
-        other => other.clone(),
+        _ => return e.clone(),
     };
     Expr { kind, span: e.span }
 }

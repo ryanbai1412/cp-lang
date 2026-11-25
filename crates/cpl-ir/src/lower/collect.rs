@@ -430,7 +430,7 @@ impl<'a> Lowerer<'a> {
                 let sub_mod = self.mod_syms.len();
                 self.mods.push(self.mods[m]);
                 self.mod_syms.push(HashMap::new());
-                self.inline_mods.insert(sub_mod, (m, &body.stmts));
+                self.inline_mods.push((sub_mod, m, &body.stmts));
                 self.mod_syms[m].insert(name.text.clone(), Sym::Mod(sub_mod));
                 let saved = std::mem::replace(&mut self.cur_mod, sub_mod);
                 for s in &body.stmts {
@@ -489,7 +489,7 @@ impl<'a> Lowerer<'a> {
     /// `use a.f` inside `mod b:`, `a` an inline module beside `b`: `f` names
     /// `a`'s item in `b` (R11.2.2).
     fn use_sibling(&mut self, m: ModId, path: &[ast::Name], names: &[ast::Name], glob: bool) {
-        let Some(&(parent, _)) = self.inline_mods.get(&m) else {
+        let Some((parent, _)) = self.inline_mod(m) else {
             return;
         };
         let (module, picked) = match (names.is_empty() && !glob, path) {
@@ -499,7 +499,7 @@ impl<'a> Lowerer<'a> {
         let mut sib = parent;
         for part in module {
             match self.mod_syms[sib].get(&part.text) {
-                Some(&Sym::Mod(next)) if self.inline_mods.contains_key(&next) => sib = next,
+                Some(&Sym::Mod(next)) if self.inline_mod(next).is_some() => sib = next,
                 _ => return,
             }
         }

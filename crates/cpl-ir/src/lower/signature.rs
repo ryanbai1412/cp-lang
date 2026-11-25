@@ -30,7 +30,7 @@ impl<'a> Lowerer<'a> {
         if names.is_empty() {
             return decl;
         }
-        let inline = inline.or_else(|| self.inline_mods.get(&m).map(|&(_, body)| body));
+        let inline = inline.or_else(|| self.inline_mod(m).map(|(_, body)| body));
         let items: Box<dyn Iterator<Item = &'a ast::Stmt> + '_> = match inline {
             Some(stmts) => Box::new(stmts.iter()),
             None => Box::new(self.mod_items(m).map(|(_, stmt)| stmt)),

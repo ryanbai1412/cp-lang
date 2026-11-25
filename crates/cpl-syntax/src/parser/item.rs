@@ -134,10 +134,9 @@ impl<'a> Parser<'a> {
         let trait_args = if !is_unary_op
             && matches!(trait_name, "Add" | "Sub" | "Mul" | "Div" | "Rem" | "Pow")
         {
-            match decl.params.get(1).and_then(|p| p.ty.as_ref()) {
-                Some(rhs) if rhs != &target => vec![rhs.clone()],
-                _ => Vec::new(),
-            }
+            // The right side's type, also when it is the target's: `Add<V> for V`.
+            let rhs = decl.params.get(1).and_then(|p| p.ty.as_ref());
+            rhs.cloned().into_iter().collect()
         } else {
             Vec::new()
         };
