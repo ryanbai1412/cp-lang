@@ -487,7 +487,7 @@ impl<'a> Machine<'a> {
                 Some(r) => V::Int(r),
                 None => return trap(codes::OVERFLOW, "integer overflow"),
             },
-            Intr::Eq | Intr::Ne | Intr::Lt | Intr::Le | Intr::Gt | Intr::Ge => {
+            Intr::Eq | Intr::Ne | Intr::Lt | Intr::Le | Intr::Gt | Intr::Ge | Intr::Below => {
                 let (Arg::Value(a), Arg::Value(b)) = (&args[0], &args[1]) else {
                     return broken("lent operand");
                 };
@@ -503,6 +503,7 @@ impl<'a> Machine<'a> {
                     Intr::Lt => a < b,
                     Intr::Le => a <= b,
                     Intr::Gt => a > b,
+                    Intr::Below => 0 <= a && a < b,
                     _ => a >= b,
                 })
             }

@@ -574,6 +574,25 @@ impl Lw<'_> {
                 let ord = self.spill(ord, out);
                 Expr { kind: ord.kind, ty }
             }
+            TK::DomNth(t, x) => {
+                let v = self.expr(x, out);
+                let v = self.spill(v, out);
+                let len = Expr {
+                    kind: EK::DomLen(t.clone()),
+                    ty: Ty::Int,
+                };
+                let cond = Expr {
+                    kind: EK::Intr(Intr::Below, vec![Arg::Value(v.clone()), Arg::Value(len)], 0),
+                    ty: Ty::Bool,
+                };
+                out.push(Stmt::Check {
+                    kind: CheckKind::Domain,
+                    cond,
+                    msg: "a position past the domain's end".into(),
+                    site,
+                });
+                Expr { kind: v.kind, ty }
+            }
             TK::ReadInt => {
                 let v = mk(EK::Intr(Intr::ReadInt, vec![], site));
                 self.spill(v, out)
@@ -923,7 +942,8 @@ pub fn free_vars(e: &TExpr, used: &mut BTreeSet<VarRef>, bound: &mut BTreeSet<Va
         | TK::CodeOf(b)
         | TK::Neg(b)
         | TK::DomOrd(b)
-        | TK::DomFrom(_, b) => free_vars(b, used, bound),
+        | TK::DomFrom(_, b)
+        | TK::DomNth(_, b) => free_vars(b, used, bound),
         TK::Call { recv, args, .. } => {
             if let Some(r) = recv {
                 arg(r, used, bound);

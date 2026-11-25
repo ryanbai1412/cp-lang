@@ -29,6 +29,8 @@ pub enum Intr {
     Le,
     Gt,
     Ge,
+    /// `0 <= a < b`: whether `a` is an ordinal of a domain of `b` positions.
+    Below,
     Not,
     RawEmpty,
     RawNew,

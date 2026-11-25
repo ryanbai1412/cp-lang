@@ -526,6 +526,7 @@ impl Emit<'_> {
                     Intr::Le => bin("<="),
                     Intr::Gt => bin(">"),
                     Intr::Ge => bin(">="),
+                    Intr::Below => format!("((uint64_t)({}) < (uint64_t)({}))", a[0], a[1]),
                     Intr::Not => format!("(!{})", a[0]),
                     Intr::CharOf => format!("cpl_char{{(uint8_t)({})}}", a[0]),
                     Intr::CodeOf => format!("((int64_t)({}).code)", a[0]),

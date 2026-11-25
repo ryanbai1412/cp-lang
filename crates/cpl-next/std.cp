@@ -128,7 +128,8 @@ struct Optional<T>:
     val: T
 
 /// `lo..hi by step` as a value: `n` values from `lo`, `step` apart. It walks both ways, and its
-/// `len`, `first` and `last` are O(1) (R01.8.4). `D` is the kind of its ends.
+/// `len`, `first` and `last` are O(1) (R01.8.4). `D` is the kind of its ends; `lo` and `step`
+/// count in ordinals of `D`, which for `Int` are the integers themselves.
 struct Range<D>:
     lo: Int
     n: Int
@@ -137,27 +138,27 @@ struct Range<D>:
     @get fn len(self) -> Int:
         n
 
-    @get fn first(self) -> ?Int:
-        if n == 0: None else: Some(lo)
+    @get fn first(self) -> ?D:
+        if n == 0: None else: Some(D.nth(lo))
 
-    @get fn last(self) -> ?Int:
-        if n == 0: None else: Some(lo + (n - 1) * step)
+    @get fn last(self) -> ?D:
+        if n == 0: None else: Some(D.nth(lo + (n - 1) * step))
 
     /// The same values, last first.
     @get fn rev(self) -> Range<D>:
         Range(lo + (n - 1) * step, n, -step)
 
-    fn each(self) -> yields Int:
-        for i in 0..n: yield lo + i * step
+    fn each(self) -> yields D:
+        for i in 0..n: yield D.nth(lo + i * step)
 
     /// How `print` writes it: its values, space-separated.
     fn write(self):
         for i in 0..n:
             if i > 0: write(" ")
-            write(lo + i * step)
+            write(D.nth(lo + i * step))
 
 /// `lo..hi by step`; empty when `lo` is past `hi` (R04.4.29).
-fn range_of(lo: Int, hi: Int, step: Int) -> Range<Int>:
+fn range_of<D>(lo: Int, hi: Int, step: Int) -> Range<D>:
     assert step > 0, "a range's step is positive"
     let n = if hi <= lo: 0 else: (hi - lo + step - 1) / step
     Range(lo, n, step)

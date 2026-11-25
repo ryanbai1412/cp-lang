@@ -524,7 +524,14 @@ impl Link<'_> {
             EK::Widen(x) => EK::Widen(Box::new(self.expr(x, env))),
             EK::MakeUnion(i, x) => EK::MakeUnion(*i, Box::new(self.expr(x, env))),
             EK::Intr(i, args, at) => {
-                EK::Intr(*i, args.iter().map(|a| self.arg(a, env)).collect(), *at)
+                let args: Vec<Arg<CTy>> = args.iter().map(|a| self.arg(a, env)).collect();
+                match (i, &args[..]) {
+                    // A type that is not a domain is its own integers: each is an ordinal of it.
+                    (Intr::Below, [_, Arg::Value(n)]) if matches!(&n.kind, EK::DomLen(t) if !matches!(t, CTy::Dom(_))) => {
+                        EK::Bool(true)
+                    }
+                    _ => EK::Intr(*i, args, *at),
+                }
             }
             EK::CallValue(c, args, at) => EK::CallValue(
                 Box::new(self.expr(c, env)),

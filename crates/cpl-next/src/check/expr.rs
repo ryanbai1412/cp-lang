@@ -311,47 +311,6 @@ impl<'a> Cx<'a> {
         let call = self.lib_call(writer, vec![v], span);
         stmts.push(TStmt::Expr(call));
     }
-    /// `lo..hi`, `lo..=hi` and `lo..hi by k` as a value: core's `Range` (R01.8.4).
-    fn range_value(
-        &mut self,
-        lo: &ast::Expr,
-        hi: &ast::Expr,
-        inclusive: bool,
-        step: Option<&ast::Expr>,
-        span: Span,
-    ) -> TExpr {
-        let mut end = |e: &ast::Expr| {
-            let v = self.expr(e, Some(&Ty::Int));
-            if !matches!(self.shallow(&v.ty), Ty::Int | Ty::Range(..) | Ty::Error) {
-                let t = self.show(&v.ty);
-                self.err(e.span, format!("slice: a range value with `{t}` ends"));
-            }
-            self.coerce(v, &Ty::Int)
-        };
-        let lo = end(lo);
-        let mut hi = end(hi);
-        if inclusive {
-            let one = TExpr {
-                kind: TK::Int(1),
-                ty: Ty::Int,
-                span,
-            };
-            hi = TExpr {
-                kind: TK::Bin(BinOp::Add, Box::new(hi), Box::new(one)),
-                ty: Ty::Int,
-                span,
-            };
-        }
-        let step = match step {
-            Some(k) => end(k),
-            None => TExpr {
-                kind: TK::Int(1),
-                ty: Ty::Int,
-                span,
-            },
-        };
-        self.lib_call("range_of", vec![lo, hi, step], span)
-    }
     fn is_str(&self, t: &Ty) -> bool {
         matches!(self.shallow(t), Ty::Struct(d, ..) if Some(d) == self.d.core_struct("Str"))
     }
@@ -613,6 +572,19 @@ impl<'a> Cx<'a> {
                     span,
                 };
             }
+            // `D.nth(k)`: the position `k` steps into the walk (R04.2.9).
+            if let (Some(dty), "nth", Some([k])) = (self.domain_named(n), name.text.as_str(), call)
+            {
+                if self.lookup(n).is_none() {
+                    let k = self.expr(&k.value, Some(&Ty::Int));
+                    let k = self.coerce(k, &Ty::Int);
+                    return TExpr {
+                        kind: TK::DomNth(dty.clone(), Box::new(k)),
+                        ty: dty,
+                        span,
+                    };
+                }
+            }
         }
         // `Type.f(args)` or `Type<A>.f(args)`: a fn of the type with no receiver.
         let (ty_name, written) = match &base.kind {
@@ -870,6 +842,9 @@ impl<'a> Cx<'a> {
                 ty: Ty::Clo(Box::new(CloRef::Item(f))),
                 span,
             };
+        }
+        if let Some(d) = self.domain_named(n) {
+            return self.domain_value(d, span);
         }
         self.err(span, format!("unknown name `{n}`"));
         TExpr {
@@ -1569,13 +1544,6 @@ impl<'a> Cx<'a> {
                 mk(TK::Error, Ty::Error)
             }
         }
-    }
-    /// A name that is a domain: one declared in a body, or a type parameter used as one.
-    pub(super) fn domain_named(&self, n: &str) -> Option<Ty> {
-        if let Some(d @ Ty::Dom(_)) = self.doms.get(n) {
-            return Some(d.clone());
-        }
-        self.generics.iter().position(|g| g == n).map(Ty::Param)
     }
     pub(super) fn self_field(&self, n: &str) -> Option<usize> {
         let s = self.self_expr(Span::new(0, 0))?;

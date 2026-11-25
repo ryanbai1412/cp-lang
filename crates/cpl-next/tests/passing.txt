@@ -163,10 +163,17 @@ core-03/structs-holding-each-other-is-an-error.cp
 core-04/anon-range-array.cp
 core-04/dom-call-traps.cp
 core-04/dom-count.cp
+core-04/dom-empty-first-traps.cp
+core-04/dom-first-last.cp
+core-04/dom-walk-rev.cp
+core-04/first-is-optional.cp
 core-04/from-ord-after-a-checked-one-still-traps.cp
 core-04/list-literal-cell-outside-let-range-traps.cp
 core-04/list-literal-cell-outside-param-range-traps.cp
 core-04/list-literal-for-narrow-param.cp
+core-04/pos-int-is-written-value.cp
+core-04/position-ord-counts-from-zero.cp
+core-04/range-arg-is-domain-when-nth-used.cp
 core-04/range-bound-from-capped-lets.cp
 core-04/range-param-argument-traps.cp
 core-04/range-param-method-argument-traps.cp
@@ -179,6 +186,7 @@ core-04/reversed-range-empty.cp
 core-04/runtime-domain-literal-between-traps.cp
 core-04/runtime-domain-literal-past-max.cp
 core-04/scalar-fill.cp
+core-05/a-user-method-on-self-does-not-change-its-receiver.cp
 core-05/cache-field-method-call-grows.cp
 core-05/cache-plain-copy-closure-before-lend.cp
 core-05/cache-skipped-by-eq.cp
@@ -289,6 +297,7 @@ core-06/shared-let-is-not-per-case-state.cp
 core-06/shared-state-above-multitest-carries-over.cp
 core-06/shared-var-carries-across-cases.cp
 core-06/two-closures-share-var.cp
+core-07/domain-rev-walks-backwards.cp
 core-07/negative-literal-index-is-an-error.cp
 core-07/negative-literal-str-index-is-an-error.cp
 core-08/blanket-impl.cp
@@ -354,6 +363,7 @@ core-10/read-tuple-bound-by-earlier-part-traps.cp
 core-10/read-tuple-bound-by-earlier-part.cp
 core-10/return-above-multitest-ends-program.cp
 core-10/return-ends-the-case.cp
+core-10/test-position-kept-below-multitest.cp
 core-10/token-read-skips-blank-lines.cp
 core-10/top-level-return.cp
 core-10/tuple-reads-in-order.cp
@@ -383,6 +393,7 @@ core-13/growable-buffers.cp
 core-13/mutually-recursive-generators-break.cp
 core-13/narrow-storage-wide-locals.cp
 core-13/output-flushed-at-exit.cp
+core-13/position-value.cp
 core-13/recursive-generator-break.cp
 core-13/struct-fn-field-holds-its-one-closure.cp
 core-13/unused-let-still-reads-its-input.cp
@@ -429,6 +440,7 @@ next/a_clos_06_closure_calls_closure.cp
 next/a_decl_01_default_param.cp
 next/a_decl_02_field_default.cp
 next/a_decl_09_cache_field.cp
+next/a_dom_01_domain_values.cp
 next/a_enum_01_match_payloads.cp
 next/a_enum_02_default_arm.cp
 next/a_enum_03_heap_payload_moves.cp
