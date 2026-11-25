@@ -45,16 +45,18 @@ impl Std {
     /// Each `pub fn name(self: T, ..)` at the top of a module, as its
     /// module (`"geo.hull"`) and name: what `.name` reaches without a `use`.
     pub fn methods(self) -> impl Iterator<Item = (String, &'static str)> {
-        cpl_check::std_methods().iter().map(|(path, name)| {
-            let module: Vec<&str> = path[1..].iter().map(|part| part.text.as_str()).collect();
-            (module.join("."), name.text.as_str())
+        cpl_check::std_methods().iter().map(|method| {
+            let module: Vec<&str> = method.module[1..]
+                .iter()
+                .map(|part| part.text.as_str())
+                .collect();
+            (module.join("."), method.name.text.as_str())
         })
     }
 
-    /// Whether a top-level fn of some module is named `name` and takes
-    /// `self` on the line that names it.
+    /// Whether some module gives a method named `name`.
     pub fn has_method(self, name: &str) -> bool {
-        cpl_check::std_self_heads().contains_key(name)
+        cpl_check::is_std_method(name)
     }
 
     /// How often std's own text calls a method named `name`.

@@ -130,7 +130,7 @@ impl<'a> Lowerer<'a> {
             names.extend(
                 cpl_check::std_methods()
                     .iter()
-                    .map(|(_, m)| m.text.as_str()),
+                    .map(|m| m.name.text.as_str()),
             );
         }
         // A std `fn f(self: T)` whose `T` this receiver isn't would only
@@ -146,16 +146,12 @@ impl<'a> Lowerer<'a> {
             _ => &[],
         };
         let fits = |m: &str| {
-            heads.is_empty()
-                || cpl_check::std_self_heads().get(m).is_none_or(|all| {
-                    all.iter()
-                        .any(|h| h.as_deref().is_none_or(|h| heads.contains(&h)))
-                })
+            heads.is_empty() || !cpl_check::std_method_is_foreign(m, &|head| heads.contains(&head))
         };
         let Some(s) = cpl_check::closest(name, names.into_iter().filter(|m| fits(m))) else {
             return;
         };
-        let auto = cpl_check::std_methods().iter().any(|(_, m)| m.text == s);
+        let auto = cpl_check::is_std_method(&s);
         match use_module(&s).filter(|_| !auto) {
             Some(module) => self.use_fix(&module, &s, Some(span)),
             None => self.suggest_last(span, s),

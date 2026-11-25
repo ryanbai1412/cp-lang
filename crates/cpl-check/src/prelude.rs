@@ -122,8 +122,8 @@ pub fn import_key(module: &[ast::Name], name: &str, own: bool) -> String {
 pub fn shared_method(name: &str) -> bool {
     let mut modules = methods()
         .iter()
-        .filter(|(_, n)| n.text == name)
-        .map(|(m, _)| m);
+        .filter(|m| m.name.text == name)
+        .map(|m| &m.module);
     // Overloads of one module (R06.1.6) are one module's.
     modules
         .next()
@@ -228,73 +228,8 @@ pub fn spec_receiver_method_names() -> &'static crate::fx::HashSet<String> {
 fn receiver_method_names(std: Std) -> crate::fx::HashSet<String> {
     std.iter()
         .flat_map(|(_, text)| scan_top_level_methods(text))
-        .map(|(n, _)| n.to_string())
+        .map(|method| method.name.to_string())
         .collect()
-}
-
-/// The `self` each top-level std `fn name(self: T, ..)` takes, by name:
-/// `Some(head)` for a named type (`Range`, `List`, `[` for an array) and
-/// `None` for one of the fn's own type parameters, which takes any receiver.
-pub fn std_self_heads() -> &'static crate::names::NameMap<Vec<Option<String>>> {
-    static HEADS: OnceLock<crate::names::NameMap<Vec<Option<String>>>> = OnceLock::new();
-    lazy(&HEADS, || self_heads(crate::modules::std_index()))
-}
-
-fn self_heads(std: Std) -> crate::names::NameMap<Vec<Option<String>>> {
-    let mut heads: crate::names::NameMap<Vec<Option<String>>> = Default::default();
-    for (_, text) in std {
-        for line in text.lines() {
-            let line = line.strip_prefix("@get ").unwrap_or(line);
-            let Some(rest) = line.strip_prefix("pub fn ") else {
-                continue;
-            };
-            let name: String = rest
-                .chars()
-                .take_while(|c| c.is_alphanumeric() || *c == '_')
-                .collect();
-            let rest = &rest[name.len()..];
-            let (generics, rest) = match rest.strip_prefix('<') {
-                Some(g) => g.split_once(">(").unwrap_or(("", "")),
-                None => ("", rest.strip_prefix('(').unwrap_or("")),
-            };
-            let rest = rest.strip_prefix("mut ").unwrap_or(rest);
-            let Some(ty) = rest.strip_prefix("self: ") else {
-                continue;
-            };
-            let own_param = |t: &str| {
-                let t = t.trim();
-                generics
-                    .split(',')
-                    .any(|g| g.split(':').next().unwrap_or("").trim() == t)
-            };
-            // `[I]E`: `[` takes any list; `[=` has an index or element
-            // of a set type (`[P]Range<D>`, `[Pair<V>]T`), which a list
-            // of anything may not be.
-            let head: String = match ty.strip_prefix('[') {
-                Some(arr) => {
-                    let (index, rest) = arr.split_once(']').unwrap_or((arr, ""));
-                    let elem: String = rest
-                        .chars()
-                        .take_while(|c| c.is_alphanumeric() || *c == '_')
-                        .collect();
-                    if own_param(index) && own_param(&elem) {
-                        "[".into()
-                    } else {
-                        "[=".into()
-                    }
-                }
-                None => ty
-                    .chars()
-                    .take_while(|c| c.is_alphanumeric() || *c == '_')
-                    .collect(),
-            };
-            let own = generics
-                .split(',')
-                .any(|g| g.split(':').next().unwrap_or("").trim() == head);
-            heads.entry(name).or_default().push((!own).then_some(head));
-        }
-    }
-    heads
 }
 
 /// Whether `name` is a top-level std method that does work and needs
@@ -388,17 +323,48 @@ fn getter_methods_in(std: Std) -> crate::fx::HashSet<String> {
 /// as it gets the methods a type is declared with. A method name does
 /// not stand in the way of a program's own names, so these are not on
 /// the prelude's list. A name two modules give is there once for each.
-pub fn methods() -> &'static [(Vec<ast::Name>, ast::Name)] {
-    static METHODS: OnceLock<Vec<(Vec<ast::Name>, ast::Name)>> = OnceLock::new();
+pub fn methods() -> &'static [StdMethod] {
+    static METHODS: OnceLock<Vec<StdMethod>> = OnceLock::new();
     METHODS.get_or_init(|| methods_in(crate::modules::std_index()))
 }
 
-fn methods_in(std: Std) -> Vec<(Vec<ast::Name>, ast::Name)> {
+/// Whether some module of the standard library gives a method `name`.
+pub fn is_method(name: &str) -> bool {
+    methods().iter().any(|m| m.name.text == name)
+}
+
+/// Whether every std method `name` takes a `self` of a named type that
+/// `takes` refuses, and there is one: no receiver `takes` stands for is
+/// ever given it (`halve` takes a `Range`, so a `List` is never offered it).
+pub fn method_is_foreign(name: &str, takes: &dyn Fn(&str) -> bool) -> bool {
+    let mut found = false;
+    for method in methods().iter().filter(|m| m.name.text == name) {
+        match method.takes.as_deref() {
+            Some(head) if !takes(head) => found = true,
+            _ => return false,
+        }
+    }
+    found
+}
+
+/// A method the standard library adds to the types of the language.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct StdMethod {
+    /// The module that declares it, from `std` on.
+    pub module: Vec<ast::Name>,
+    pub name: ast::Name,
+    /// The `self` it takes: `Some(head)` for a named type (`Range`, `List`,
+    /// `[` for an array) and `None` for one of its own type parameters,
+    /// which takes any receiver.
+    pub takes: Option<String>,
+}
+
+fn methods_in(std: Std) -> Vec<StdMethod> {
     let bare = |text: &str| ast::Name {
         text: text.to_string(),
         span: cpl_diag::Span::new(0, 0),
     };
-    let mut found: Vec<(Vec<ast::Name>, ast::Name, bool)> = Vec::new();
+    let mut found: Vec<(StdMethod, bool)> = Vec::new();
     for (module, text) in std {
         if *module == "prelude" || !text.contains("self:") {
             continue;
@@ -407,22 +373,71 @@ fn methods_in(std: Std) -> Vec<(Vec<ast::Name>, ast::Name)> {
             .chain(module.split('/'))
             .map(bare)
             .collect();
-        for (name, is_todo) in scan_top_level_methods(text) {
-            found.push((path.clone(), bare(name), is_todo));
+        for method in scan_top_level_methods(text) {
+            let method_of = StdMethod {
+                module: path.clone(),
+                name: bare(method.name),
+                takes: self_head(&method),
+            };
+            found.push((method_of, method.is_todo));
         }
     }
     // A `todo` body gives way to a module that has the method.
-    let done = |name: &str| found.iter().any(|(_, n, t)| n.text == name && !t);
+    let done = |name: &str| found.iter().any(|(m, t)| m.name.text == name && !t);
     found
         .iter()
-        .filter(|(_, name, is_todo)| !is_todo || !done(&name.text))
-        .map(|(path, name, _)| (path.clone(), name.clone()))
+        .filter(|(m, is_todo)| !is_todo || !done(&m.name.text))
+        .map(|(m, _)| m.clone())
         .collect()
 }
 
+/// The `self` a scanned method takes, as `StdMethod::takes` gives it.
+fn self_head(method: &Method<'_>) -> Option<String> {
+    let Method { generics, ty, .. } = method;
+    let own_param = |t: &str| {
+        let t = t.trim();
+        generics
+            .split(',')
+            .any(|g| g.split(':').next().unwrap_or("").trim() == t)
+    };
+    // `[I]E`: `[` takes any list; `[=` has an index or element
+    // of a set type (`[P]Range<D>`, `[Pair<V>]T`), which a list
+    // of anything may not be.
+    let head: String = match ty.strip_prefix('[') {
+        Some(arr) => {
+            let (index, rest) = arr.split_once(']').unwrap_or((arr, ""));
+            let elem: String = rest
+                .chars()
+                .take_while(|c| c.is_alphanumeric() || *c == '_')
+                .collect();
+            if own_param(index) && own_param(&elem) {
+                "[".into()
+            } else {
+                "[=".into()
+            }
+        }
+        None => ty
+            .chars()
+            .take_while(|c| c.is_alphanumeric() || *c == '_')
+            .collect(),
+    };
+    (!own_param(&head)).then_some(head)
+}
+
+/// A top-level `pub fn` of std that takes `self`.
+struct Method<'a> {
+    name: &'a str,
+    /// Its body is `todo`.
+    is_todo: bool,
+    /// What is between its `<` and `>`, if it has type parameters.
+    generics: &'a str,
+    /// The text from the type of its `self` on.
+    ty: &'a str,
+}
+
 /// Scans top-level `[@dec ...] pub [@dec ...] fn <name>[<...>]([mut] self: ...)`
-/// headers without parsing function bodies. Returns `(name, is_todo)`.
-fn scan_top_level_methods(text: &str) -> Vec<(&str, bool)> {
+/// headers without parsing function bodies, on one line or over several.
+fn scan_top_level_methods(text: &str) -> Vec<Method<'_>> {
     let mut out = Vec::new();
     let bytes = text.as_bytes();
     let mut offset = 0;
@@ -463,6 +478,7 @@ fn scan_top_level_methods(text: &str) -> Vec<(&str, bool)> {
                     if name_len > 0 {
                         let name = &after_pub_fn[..name_len];
                         let mut tail = after_pub_fn[name_len..].trim_start();
+                        let mut generics = "";
                         if tail.starts_with('<') {
                             let mut depth = 0usize;
                             let mut end = 0;
@@ -480,6 +496,7 @@ fn scan_top_level_methods(text: &str) -> Vec<(&str, bool)> {
                                 }
                             }
                             if end > 0 {
+                                generics = &tail[1..end - 1];
                                 tail = tail[end..].trim_start();
                             }
                         }
@@ -491,11 +508,17 @@ fn scan_top_level_methods(text: &str) -> Vec<(&str, bool)> {
                                 }
                             }
                             if let Some(after_self) = params.strip_prefix("self") {
-                                if after_self.trim_start().starts_with(':') {
+                                if let Some(ty) = after_self.trim_start().strip_prefix(':') {
+                                    let ty = ty.trim_start();
                                     let line_end = rest.find('\n').unwrap_or(rest.len());
                                     let line = rest[..line_end].trim_end();
                                     let is_todo = line.ends_with("= todo");
-                                    out.push((name, is_todo));
+                                    out.push(Method {
+                                        name,
+                                        is_todo,
+                                        generics,
+                                        ty,
+                                    });
                                 }
                             }
                         }
@@ -1259,7 +1282,7 @@ mod tests {
             struct_only_member_names(index)
         );
         assert_eq!(receiver_method_names(files), receiver_method_names(index));
-        assert_eq!(self_heads(files), self_heads(index));
+        assert_eq!(methods_in(files), methods_in(index));
         let work = |std: Std| -> Vec<(Vec<String>, Vec<String>)> {
             let sorted = |set: &crate::fx::HashSet<String>| {
                 let mut v: Vec<String> = set.iter().cloned().collect();
@@ -1361,9 +1384,32 @@ mod tests {
             }
             let scanned: Vec<String> = scan_top_level_methods(text)
                 .into_iter()
-                .map(|(n, _)| n.to_string())
+                .map(|method| method.name.to_string())
                 .collect();
             assert_eq!(scanned, parsed, "method scan mismatch in std.{module}");
         }
+    }
+
+    /// A method is one whether its signature is on one line or several:
+    /// each gives the `self` it takes.
+    #[test]
+    fn a_method_whose_signature_spans_lines_gives_its_self() {
+        let std: Std = &[(
+            "m",
+            "pub fn skip<V, G: Next<V>>(\n    self: G,\n    keep: V -> Bool,\n) -> G =\n    self\n\
+             pub fn total(self: List<Int>) -> Int = 0\n\
+             @get pub fn\n    width<I, E>(\n    mut self: [I]E,\n) -> Int = 0\n",
+        )];
+        let found = methods_in(std);
+        let takes = |name: &str| -> Vec<Option<&str>> {
+            found
+                .iter()
+                .filter(|m| m.name.text == name)
+                .map(|m| m.takes.as_deref())
+                .collect()
+        };
+        assert_eq!(takes("skip"), [None]);
+        assert_eq!(takes("total"), [Some("List")]);
+        assert_eq!(found.len(), 2, "a fn's name is on the line of its `fn`");
     }
 }

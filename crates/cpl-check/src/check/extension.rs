@@ -96,11 +96,5 @@ fn foreign_self(owner: &str, name: &str) -> bool {
         "Range" => head == "Range",
         _ => head == "List" || head == "[",
     };
-    crate::prelude::std_self_heads()
-        .get(name)
-        .is_some_and(|heads| {
-            heads
-                .iter()
-                .all(|h| h.as_deref().is_some_and(|h| !takes(h)))
-        })
+    crate::prelude::method_is_foreign(name, &takes)
 }

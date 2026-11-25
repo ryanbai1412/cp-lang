@@ -675,8 +675,12 @@ impl Database {
             let uses = |name: &str| ident_tokens.contains(name);
             // A method the library adds to a type is used as `.name`.
             let calls = |name: &str| dot_ident_tokens.contains(name);
-            let listed = crate::prelude::names().iter().map(|entry| (entry, false));
-            let methods = crate::prelude::methods().iter().map(|entry| (entry, true));
+            let listed = crate::prelude::names()
+                .iter()
+                .map(|(module, name)| ((module, name), false));
+            let methods = crate::prelude::methods()
+                .iter()
+                .map(|m| ((&m.module, &m.name), true));
             for ((module, name), method) in listed.chain(methods) {
                 let used = if method {
                     calls(&name.text)
@@ -1532,7 +1536,10 @@ impl Database {
         }
         let names: crate::fx::HashSet<&str> = names.iter().copied().collect();
         let listed = crate::prelude::methods().iter();
-        for (module, method) in listed.filter(|(_, m)| names.contains(m.text.as_str())) {
+        let listed = listed
+            .map(|m| (&m.module, &m.name))
+            .filter(|(_, m)| names.contains(m.text.as_str()));
+        for (module, method) in listed {
             let name = method.text.as_str();
             let own = crate::prelude::VALUE_NAMES.contains(&name);
             let key = scoping::import_key(&scope, module, name, true, own);
