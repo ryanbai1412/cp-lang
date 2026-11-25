@@ -291,6 +291,8 @@ next/o26_mut_global_callee_reads_other.cp
 next/o28_value_global_callee_writes_same_scalar.cp
 next/o29_struct_value_callee_writes_global.cp
 next/o30_method_self_reads_global_alias.cp
+next/q01_optional_unwrap_and_default.cp
+next/q02_if_let_and_while_let.cp
 next/r01_range_field_store.cp
 next/r02_range_cells.cp
 next/r03_range_narrower.cp

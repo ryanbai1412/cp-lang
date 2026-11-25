@@ -117,10 +117,15 @@ impl<'a> Cx<'a> {
     fn cond_in(&mut self, c: &Cond) -> TExpr {
         match c {
             // `let v = e`: holds when the optional `e` has a value, which `v` then names.
-            Cond::Let { pat, value, and } if matches!(pat.kind, ast::PatternKind::Name(_)) => {
-                let ast::PatternKind::Name(name) = &pat.kind else {
-                    unreachable!()
-                };
+            Cond::Let {
+                pat:
+                    ast::Pattern {
+                        kind: ast::PatternKind::Name(name),
+                        ..
+                    },
+                value,
+                and,
+            } => {
                 let span = value.span;
                 let v = self.expr(value, None);
                 let Some(inner) = self.optional_of(&v.ty) else {

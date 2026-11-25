@@ -6,6 +6,14 @@ use crate::ir::*;
 use cpl_diag::{codes, Code};
 use std::rc::Rc;
 
+/// What a `Raw<T>` holds. Integers are stored flat, so storage of a hundred million of them
+/// costs what it costs in the C++.
+#[derive(Clone, Debug)]
+pub enum Store {
+    Ints(Vec<i64>),
+    Any(Vec<V>),
+}
+
 #[derive(Clone, Debug, Default)]
 pub enum V {
     #[default]
@@ -14,7 +22,7 @@ pub enum V {
     Bool(bool),
     Agg(Vec<V>),
     /// Storage is shared until written, so a copy costs nothing until then.
-    Raw(Rc<Vec<V>>),
+    Raw(Rc<Store>),
     Clo(usize, Vec<V>),
     /// A `var` in a frame still on the stack (`None`: a global).
     Ref(Option<usize>, usize),
@@ -497,7 +505,7 @@ impl<'a> Machine<'a> {
                 };
                 V::Bool(!b)
             }
-            Intr::RawEmpty => V::Raw(Rc::new(Vec::new())),
+            Intr::RawEmpty => V::Raw(Rc::new(Store::Any(Vec::new()))),
             Intr::RawNew => {
                 let n = self.int(&args[0], fp)?;
                 let Arg::Value(fill) = &args[1] else {
@@ -511,7 +519,10 @@ impl<'a> Machine<'a> {
                 if n > 1 << 28 {
                     return trap(codes::RUNTIME, "storage larger than the memory limit");
                 }
-                V::Raw(Rc::new(vec![fill; n as usize]))
+                V::Raw(Rc::new(match fill {
+                    V::Int(x) => Store::Ints(vec![x; n as usize]),
+                    fill => Store::Any(vec![fill; n as usize]),
+                }))
             }
             Intr::RawGet => {
                 let Arg::Value(r) = &args[0] else {
@@ -521,9 +532,14 @@ impl<'a> Machine<'a> {
                     return broken("read of non-storage");
                 };
                 let i = self.int(&args[1], fp)?;
-                match r.get(i as usize) {
-                    Some(v) if i >= 0 => v.clone(),
-                    _ => return trap(codes::INDEX_OUT_OF_RANGE, "read outside storage"),
+                let at = usize::try_from(i).ok();
+                let v = match &*r {
+                    Store::Ints(xs) => at.and_then(|i| xs.get(i)).map(|x| V::Int(*x)),
+                    Store::Any(xs) => at.and_then(|i| xs.get(i)).cloned(),
+                };
+                match v {
+                    Some(v) => v,
+                    None => return trap(codes::INDEX_OUT_OF_RANGE, "read outside storage"),
                 }
             }
             Intr::RawSet => {
@@ -538,10 +554,18 @@ impl<'a> Machine<'a> {
                 let V::Raw(r) = self.place(fp, p)? else {
                     return broken("write to non-storage");
                 };
-                if i < 0 || i as usize >= r.len() {
+                let len = match &**r {
+                    Store::Ints(xs) => xs.len(),
+                    Store::Any(xs) => xs.len(),
+                };
+                if i < 0 || i as usize >= len {
                     return trap(codes::INDEX_OUT_OF_RANGE, "write outside storage");
                 }
-                Rc::make_mut(r)[i as usize] = x;
+                match (Rc::make_mut(r), x) {
+                    (Store::Ints(xs), V::Int(x)) => xs[i as usize] = x,
+                    (Store::Any(xs), x) => xs[i as usize] = x,
+                    (Store::Ints(_), _) => return broken("a non-integer in integer storage"),
+                }
                 V::Unit
             }
             Intr::InputLeft => V::Bool(!self.input.as_slice().is_empty()),
