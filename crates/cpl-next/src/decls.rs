@@ -24,6 +24,9 @@ pub struct FnDecl {
     /// The struct, trait or impl it sits in.
     pub owner: Option<Owner>,
     pub self_mode: SelfMode,
+    /// What the body calls its receiver: `self`, or what an impl writes in its place
+    /// (`fn lt(a, b)` for the trait's `fn lt(self, other: Self)`).
+    pub self_name: String,
     /// The type of `self`, in `generics`, when it has one.
     pub self_ty: Option<Ty>,
     /// Type parameters: the owner's first, then its own.
@@ -91,6 +94,10 @@ pub struct TraitDecl {
     /// Its supertraits, in its own type parameters (R08.1.1).
     pub supers: Vec<TraitRef>,
     pub methods: HashMap<String, FnId>,
+    /// What its library impls use that the slice does not build, said when one of its fns is reached.
+    pub errors: Vec<String>,
+    /// `trait Add<Rhs = Self>`: each parameter's default, in `Self` and the parameters before it.
+    pub defaults: Vec<Option<Ty>>,
 }
 /// A trait with its arguments: `Seq<T>`.
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -119,6 +126,9 @@ pub struct ImplDecl {
     pub bounds: Vec<(usize, TraitRef)>,
     pub for_: Ty,
     pub methods: HashMap<String, FnId>,
+    /// Where it is written.
+    pub at: usize,
+    pub module: ModId,
 }
 /// What a top-level name declares.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -127,6 +137,9 @@ pub enum Named {
     Struct(StructId),
     Trait(TraitId),
     Alias(AliasId),
+    /// A library item the slice does not build: an index into `Decls::refused`, said only
+    /// when a program names it.
+    Refused(usize),
 }
 /// What a method sits in.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -150,6 +163,8 @@ pub struct Decls {
     pub program: ModId,
     /// Per library module, what it uses outside its fns that the slice does not build.
     pub module_errors: Vec<Vec<String>>,
+    /// Why each `Named::Refused` library item is not built.
+    pub refused: Vec<String>,
     pub struct_sets: HashMap<StructId, usize>,
     pub aliases: Rc<Vec<AliasDecl>>,
     pub errors: Vec<String>,
@@ -221,28 +236,67 @@ impl Decls {
                 return Some(Member::Method(*m, targs.clone(), sets.clone()));
             }
         }
+        self.impl_member(recv, name, None)
+    }
+    /// `r` with each parameter it leaves out given its default, for `self_ty` as `Self` (R08.1.1).
+    fn with_defaults(&self, mut r: TraitRef, self_ty: &Ty) -> TraitRef {
+        let defaults = &self.traits[r.tr.0].defaults;
+        while let Some(Some(t)) = defaults.get(r.args.len()) {
+            let mut tys = vec![self_ty.clone()];
+            tys.extend(r.args.iter().cloned());
+            let t = Subst {
+                tys: &tys,
+                sets: &[],
+            }
+            .ty(t);
+            r.args.push(t);
+        }
+        r
+    }
+    /// The fn `name` of an impl for `recv`, of the trait named `trait_name` when one is given,
+    /// or the trait's default when the impl does not write it (R08.1.2).
+    pub fn impl_member(&self, recv: &Ty, name: &str, trait_name: Option<&str>) -> Option<Member> {
         let sets = match recv {
             Ty::Struct(_, _, ss) => ss.clone(),
             _ => Vec::new(),
         };
         self.impls.iter().find_map(|im| {
-            let m = im.methods.get(name)?;
-            let targs = self.impl_args(im, recv)?;
-            Some(Member::Method(*m, targs, sets.clone()))
+            let tr = &self.traits[im.trait_.tr.0];
+            if trait_name.is_some_and(|n| n != tr.name) {
+                return None;
+            }
+            if let Some(m) = im.methods.get(name) {
+                let targs = self.impl_args(im, recv)?;
+                return Some(Member::Method(*m, targs, sets.clone()));
+            }
+            let tm = *tr.methods.get(name)?;
+            if matches!(self.f(tm).body, FnBody::None) {
+                return None;
+            }
+            let binds = self.impl_args(im, recv)?;
+            let sub = Subst {
+                tys: &binds,
+                sets: &[],
+            };
+            let mut targs = vec![recv.clone()];
+            targs.extend(im.trait_.args.iter().map(|t| sub.ty(t)));
+            Some(Member::Method(tm, targs, Vec::new()))
         })
     }
     /// The impl's type arguments when it is for `t`; a type not known yet fits any.
     pub fn impl_args(&self, im: &ImplDecl, t: &Ty) -> Option<Vec<Ty>> {
         fn fit(p: &Ty, t: &Ty, binds: &mut [Option<Ty>]) -> bool {
             match (p, t) {
-                (_, Ty::Var(_) | Ty::Error) => true,
+                // A parameter binds even to a type not known yet, so the method's own
+                // arguments follow it once it is.
                 (Ty::Param(i), _) => match &binds[*i] {
-                    Some(b) => b == t || matches!(b, Ty::Var(_)),
+                    Some(b) => b == t || matches!(b, Ty::Var(_)) || matches!(t, Ty::Var(_)),
                     None => {
                         binds[*i] = Some(t.clone());
                         true
                     }
                 },
+                (_, Ty::Var(_) | Ty::Error) => true,
                 (Ty::Raw(a), Ty::Raw(b)) | (Ty::Ref(a), Ty::Ref(b)) => fit(a, b, binds),
                 (Ty::Struct(d1, a, _), Ty::Struct(d2, b, _)) => {
                     d1 == d2 && a.len() == b.len() && a.iter().zip(b).all(|(x, y)| fit(x, y, binds))
@@ -401,6 +455,31 @@ fn alias(cx: &mut TyCx, id: usize, n: &str, a: Vec<Ty>, errors: &mut Vec<String>
     t
 }
 /// Whether some type fits both impl headers.
+/// An impl of a trait for a type needs one of each of its supertraits for that type (R08.1.1).
+/// The library's are checked with it; here one the slice refuses would read as missing.
+fn supertraits_unmet(d: &Decls) -> Vec<(usize, &'static str, String)> {
+    let mut out = Vec::new();
+    for im in d.impls.iter().filter(|im| !d.is_library(im.module)) {
+        let tr = &d.traits[im.trait_.tr.0];
+        for sup in &tr.supers {
+            let met = match &im.for_ {
+                Ty::Param(i) => im.bounds.iter().any(|(j, r)| j == i && r.tr == sup.tr),
+                t => (d.impls.iter()).any(|o| o.trait_.tr == sup.tr && d.impl_args(o, t).is_some()),
+            };
+            if !met {
+                out.push((
+                    im.at,
+                    cpl_diag::codes::MISSING_IMPL.0,
+                    format!(
+                        "`impl {}` needs an `impl {}` for the same type (R08.1.1)",
+                        tr.name, d.traits[sup.tr.0].name
+                    ),
+                ));
+            }
+        }
+    }
+    out
+}
 fn overlap(a: &Ty, b: &Ty) -> bool {
     match (a, b) {
         (Ty::Param(_), _) | (_, Ty::Param(_)) => true,
@@ -609,6 +688,7 @@ fn item_name(s: &ast::Stmt) -> Option<&str> {
         StmtKind::Trait { name, .. } => Some(&name.text),
         StmtKind::Fn(f) => Some(&f.name.text),
         StmtKind::TypeAlias { name, .. } => Some(&name.text),
+        StmtKind::Const { name, .. } => Some(&name.text),
         _ => None,
     }
 }
@@ -815,6 +895,8 @@ pub fn collect(
                             alias: *alias,
                             supers: Vec::new(),
                             methods: HashMap::new(),
+                            errors: Vec::new(),
+                            defaults: Vec::new(),
                         });
                         pending.push((mid, *item, s, Some(Named::Trait(id))));
                     }
@@ -841,8 +923,16 @@ pub fn collect(
                     StmtKind::Use { .. } => imports.push((mid, s)),
                     // A library's context is only reached by a `with`, which the checker refuses.
                     StmtKind::Context { .. } if d.is_library(mid) => {}
-                    other if d.is_library(mid) => d.module_errors[mi]
-                        .push(format!("slice: library item {}", crate::kind_name(other))),
+                    other if d.is_library(mid) => {
+                        let e = format!("slice: library item {}", crate::kind_name(other));
+                        match item_name(s) {
+                            Some(n) => {
+                                own[mi].insert(n.to_string(), Named::Refused(d.refused.len()));
+                                d.refused.push(e);
+                            }
+                            None => d.module_errors[mi].push(e),
+                        }
+                    }
                     _ => main.push((*item, s.clone())),
                 }
             }
@@ -946,6 +1036,12 @@ pub fn collect(
             break;
         }
     }
+    // Traits first, for the defaults every use of one reads; impls last, for their trait's fns.
+    pending.sort_by_key(|(_, _, s, _)| match s.kind {
+        StmtKind::Trait { .. } => 0,
+        StmtKind::Impl { .. } => 2,
+        _ => 1,
+    });
     for (mid, item, s, id) in pending {
         let mi = mid.0;
         match (&s.kind, id) {
@@ -1000,6 +1096,7 @@ pub fn collect(
                                     (0..generics.len()).map(Ty::Param).collect(),
                                     (0..n_sets).map(SetTy::Param).collect(),
                                 )),
+                                sig: None,
                             },
                         );
                         methods.insert(f.name.text.clone(), fid);
@@ -1024,6 +1121,7 @@ pub fn collect(
                     body,
                     supers,
                     generics,
+                    generic_defaults,
                     ..
                 },
                 Some(Named::Trait(id)),
@@ -1045,6 +1143,9 @@ pub fn collect(
                     ret_slots: None,
                     next_set: None,
                 };
+                d.traits[id.0].defaults = (generic_defaults.iter())
+                    .map(|t| t.as_ref().map(|t| conv(&mut cx, t, &mut errors)))
+                    .collect();
                 // A supertrait is in the trait's own parameters, without `Self`.
                 let own_params = |r: TraitRef| TraitRef {
                     tr: r.tr,
@@ -1053,6 +1154,7 @@ pub fn collect(
                 let sup: Vec<TraitRef> = supers
                     .iter()
                     .filter_map(|t| trait_ref(&mut cx, t, &mut errors))
+                    .map(|r| d.with_defaults(r, &Ty::Param(0)))
                     .map(own_params)
                     .collect();
                 d.module_or_program_errors(mid, errors);
@@ -1070,8 +1172,15 @@ pub fn collect(
                                 generics: &tgen,
                                 sets: 0,
                                 self_ty: Some(Ty::Param(0)),
+                                sig: None,
                             },
                         );
+                        // Inside the trait, `Self` has the trait: a default body may call its other fns.
+                        let own = TraitRef {
+                            tr: id,
+                            args: (1..tgen.len()).map(Ty::Param).collect(),
+                        };
+                        d.fns[fid.0].bounds.push((0, own));
                         methods.insert(f.name.text.clone(), fid);
                     }
                 }
@@ -1110,17 +1219,25 @@ pub fn collect(
                     next_set: Some(0),
                 };
                 let for_ = conv(&mut cx, target, &mut errors);
-                let tref = trait_ref(&mut cx, tr, &mut errors);
+                let tref = trait_ref(&mut cx, tr, &mut errors).map(|r| d.with_defaults(r, &for_));
                 let mut ibounds = Vec::new();
                 for b in bounds {
                     let i = generics.iter().position(|g| *g == b.name.text).unwrap_or(0);
                     for t in &b.traits {
                         if let Some(r) = trait_ref(&mut cx, t, &mut errors) {
-                            ibounds.push((i, r));
+                            ibounds.push((i, d.with_defaults(r, &Ty::Param(i))));
                         }
                     }
                 }
                 let n_sets = cx.next_set.unwrap_or(0);
+                if let (Some(r), true) = (&tref, d.is_library(mid) && !errors.is_empty()) {
+                    d.traits[r.tr.0].errors.append(&mut errors);
+                    continue;
+                }
+                // No program can reach a library impl of a trait the slice does not declare.
+                if tref.is_none() && d.is_library(mid) {
+                    continue;
+                }
                 let Some(tref) = tref.filter(|_| errors.is_empty()) else {
                     if errors.is_empty() {
                         errors.push("impl of an unknown trait".to_string());
@@ -1141,6 +1258,14 @@ pub fn collect(
                     ));
                     continue;
                 }
+                if d.traits[tref.tr.0].alias {
+                    d.misdeclared.push((
+                        at,
+                        cpl_diag::codes::UNSUPPORTED.0,
+                        format!("`{tname}` is a trait alias: impl each trait it names (R08.2.6)"),
+                    ));
+                    continue;
+                }
                 // An impl lives with its trait or its type (R08.5.2).
                 let home = match &for_ {
                     Ty::Struct(sd, ..) => Some(d.s(*sd).module),
@@ -1158,6 +1283,20 @@ pub fn collect(
                 let mut methods = HashMap::new();
                 for m in &body.stmts {
                     if let StmtKind::Fn(f) = &m.kind {
+                        let sig = d.traits[tref.tr.0].methods.get(&f.name.text).map(|&tm| {
+                            let td = d.f(tm);
+                            let mut tys = vec![for_.clone()];
+                            tys.extend(tref.args.iter().cloned());
+                            let sub = Subst {
+                                tys: &tys,
+                                sets: &[],
+                            };
+                            TraitSig {
+                                self_mode: td.self_mode,
+                                params: td.params.iter().map(|p| sub.ty(&p.ty)).collect(),
+                                ret: sub.ty(&td.ret),
+                            }
+                        });
                         let fid = add_fn(
                             &mut d,
                             mid,
@@ -1169,6 +1308,7 @@ pub fn collect(
                                 generics: &generics,
                                 sets: n_sets,
                                 self_ty: Some(for_.clone()),
+                                sig,
                             },
                         );
                         // The impl's parameters come first in each method's, with its bounds.
@@ -1182,6 +1322,8 @@ pub fn collect(
                     bounds: ibounds,
                     for_,
                     methods,
+                    at,
+                    module: mid,
                 });
             }
             (StmtKind::Fn(f), _) => {
@@ -1239,6 +1381,8 @@ pub fn collect(
         })
         .collect();
     d.errors.extend(errors);
+    let unmet = supertraits_unmet(&d);
+    d.misdeclared.extend(unmet);
     (d, main)
 }
 
@@ -1249,9 +1393,18 @@ struct Within<'a> {
     sets: usize,
     /// The type of `self` in what it sits in, in `generics`.
     self_ty: Option<Ty>,
+    /// For an impl's fn, the trait's signature for it in the impl's terms: what an
+    /// untyped parameter or a missing result means (R08.1.2).
+    sig: Option<TraitSig>,
+}
+struct TraitSig {
+    self_mode: SelfMode,
+    params: Vec<Ty>,
+    ret: Ty,
 }
 const FREE: Within = Within {
     owner: None,
+    sig: None,
     generics: &[],
     sets: 0,
     self_ty: None,
@@ -1270,6 +1423,7 @@ fn add_fn(
         generics: outer,
         sets: outer_sets,
         self_ty: outer_self,
+        sig,
     } = within;
     let mut generics = outer.to_vec();
     generics.extend(f.generics.iter().map(|g| g.text.clone()));
@@ -1290,11 +1444,14 @@ fn add_fn(
     };
     let mut errors = Vec::new();
     let mut self_mode = SelfMode::None;
+    let mut self_name = "self".to_string();
     let mut self_ty = None;
     let mut params = Vec::new();
-    for p in &f.params {
-        if p.name.text == "self" {
-            self_mode = if p.mutable {
+    let sig_takes_self = sig.as_ref().is_some_and(|s| s.self_mode != SelfMode::None);
+    for (k, p) in f.params.iter().enumerate() {
+        if p.name.text == "self" || (k == 0 && sig_takes_self) {
+            self_name = p.name.text.clone();
+            self_mode = if p.mutable || sig.as_ref().is_some_and(|s| s.self_mode == SelfMode::Mut) {
                 SelfMode::Mut
             } else {
                 SelfMode::Value
@@ -1310,9 +1467,11 @@ fn add_fn(
             };
             continue;
         }
-        let ty = match &p.ty {
-            Some(t) => conv(&mut cx, t, &mut errors),
-            None => {
+        let from_trait = (sig.as_ref()).and_then(|s| s.params.get(params.len()).cloned());
+        let ty = match (&p.ty, from_trait) {
+            (Some(t), _) => conv(&mut cx, t, &mut errors),
+            (None, Some(t)) => t,
+            (None, None) => {
                 errors.push(format!("parameter `{}` needs a type", p.name.text));
                 Ty::Error
             }
@@ -1349,7 +1508,7 @@ fn add_fn(
             }
             _ => conv(&mut cx, t, &mut errors),
         },
-        (None, None) => Ty::Unit,
+        (None, None) => sig.as_ref().map_or(Ty::Unit, |s| s.ret.clone()),
     };
     let n_ret_sets = cx.ret_slots.unwrap_or(0);
     let mut bounds = Vec::new();
@@ -1359,7 +1518,7 @@ fn add_fn(
         };
         for t in &b.traits {
             if let Some(r) = trait_ref(&mut cx, t, &mut errors) {
-                bounds.push((i, r));
+                bounds.push((i, d.with_defaults(r, &Ty::Param(i))));
             }
         }
     }
@@ -1398,6 +1557,7 @@ fn add_fn(
         name: f.name.text.clone(),
         owner,
         self_mode,
+        self_name,
         self_ty,
         generics,
         bounds,

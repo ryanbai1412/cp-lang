@@ -2,8 +2,6 @@ core-01/getter-parens.cp	wrong-accept	wanted E0304 on line 4, ran and printed: 2
 core-01/lowercase-generic-needs-expected-type.cp	wrong-accept	wanted E0806 on line 3, ran and printed: 
 core-02/fresh-type-block-escape.cp	wrong-accept	wanted E0313 on line 3, ran and printed: 1
 core-02/let-keeps-range.cp	wrong-accept	wanted E0902 on line 6, ran and printed: 
-core-03/ranged-return-const.cp	wrong-accept	wanted E0902 on line 3, ran and printed: 
-core-03/rb1-q30-const-range-store.cp	wrong-accept	wanted E0902 on line 3, ran and printed: 
 core-03/read-rejects-spare.cp	wrong-trap	wanted R0502 on line 4, got: trap: R0501: line 4: expected an integer in the input
 core-04/anon-range-array-traps.cp	wrong-trap	wanted R0101 on line 5, got: trap: R0102: line 5: value outside the domain
 core-05/cache-lend-no-unknown-call.cp	wrong-accept	wanted E0602 on line 13, ran and printed: 
@@ -17,7 +15,6 @@ core-07/computed-negative-key-traps.cp	wrong-trap	wanted R0101 on line 6, got: t
 core-07/yielded-closure-in-struct-field-writes-generator-local.cp	split	canonical IR: exit Some(101): 
 core-07/yielded-closure-in-struct-writes-generator-local.cp	split	canonical IR: exit Some(101): 
 core-08/ambiguous-method.cp	wrong-accept	wanted E0701 on line 12, ran and printed: 1
-core-08/monomorphized.cp	wrong-reject	own: line 3: E0603: this returns a value that borrows `x`: `x` is lent by the caller; return a `.clone()`
 core-09/checked-index-trap.cp	wrong-trap	wanted R0101 on line 6, got: trap: R0401: line 6: index out of range
 core-10/bool-not-print.cp	wrong-accept	wanted E0606 on line 3, ran and printed: true
 core-10/bool-var-not-print.cp	wrong-accept	wanted E0606 on line 4, ran and printed: true

@@ -411,6 +411,19 @@ impl<'a> Cx<'a> {
             (Ty::Range(a, b), Ty::Range(lo, hi)) if lo <= a && b <= hi => TExpr { ty: want_s, ..e },
             (Ty::Int | Ty::Range(..) | Ty::RangeOf(_), Ty::Range(lo, hi)) => {
                 let (lo, hi) = (*lo, *hi);
+                // A constant is checked here, not when the program runs (R03.1.10).
+                if let TK::Int(i) = e.kind {
+                    if i < lo || i > hi {
+                        self.err(
+                            span,
+                            format!(
+                                "{}: {i} is outside `{lo}..={hi}`",
+                                cpl_diag::codes::RANGE_STORE_CONST.0
+                            ),
+                        );
+                    }
+                    return TExpr { ty: want_s, ..e };
+                }
                 let int = |i| TExpr {
                     kind: TK::Int(i),
                     ty: Ty::Int,

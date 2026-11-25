@@ -98,6 +98,9 @@ pub fn load(core: &str, user: &str) -> Loaded {
     let mut seen = HashSet::new();
     let mut edges: Vec<(String, String)> = Vec::new();
     let mut missing: Vec<(String, Option<u32>)> = Vec::new();
+    // The core's traits name std types (`Ord`'s `cmp` returns `std.algebra`'s `Ordering`).
+    let (core_items, _) = parse(core);
+    queue.extend(uses(&core_items).map(|(to, _, _)| (to, None)));
     while let Some((m, at)) = queue.pop_front() {
         if !seen.insert(m.clone()) {
             continue;
@@ -139,7 +142,6 @@ pub fn load(core: &str, user: &str) -> Loaded {
         });
         base
     };
-    let (core_items, _) = parse(core);
     add(CORE, core, core_items);
     for (name, text, items) in libs {
         add(&name, &text, items);

@@ -120,6 +120,7 @@ pub fn link(
     });
     let mut insts: Vec<Func<CTy>> = Vec::new();
     let mut next = 0;
+    let mut said = std::collections::HashSet::new();
     while next < l.keys.len() {
         if l.keys.len() > LIMIT {
             l.errors.push(format!(
@@ -129,6 +130,12 @@ pub fn link(
             break;
         }
         let key = l.keys[next].clone();
+        if let FuncKey::Decl(f) = &key.func {
+            if said.insert(*f) {
+                l.errors
+                    .extend(typed.deferred.get(f).into_iter().flatten().cloned());
+            }
+        }
         // A fn used at a domain declared in its own body: inside that instance the type
         // argument and the local domain would be one type with two sizes. A run-time value
         // has to be keyed by its binding for this to run; until then it is refused.
@@ -447,17 +454,41 @@ impl Link<'_> {
                     CTy::Struct(_, _, ss) => ss.clone(),
                     _ => Vec::new(),
                 };
-                let found = (self.d.impls.iter())
-                    .filter(|im| im.trait_.tr == *tr)
-                    .find_map(|im| {
-                        let m = im.methods.get(method).copied()?;
-                        let mut binds = vec![None; im.generics.len()];
-                        fit_cty(&im.for_, &st, &mut binds).then(|| InstKey {
+                let d = self.d;
+                let mut found = None;
+                for im in d.impls.iter().filter(|im| im.trait_.tr == *tr) {
+                    let mut binds = vec![None; im.generics.len()];
+                    if !fit_cty(&im.for_, &st, &mut binds) {
+                        continue;
+                    }
+                    let binds: Vec<CTy> =
+                        binds.into_iter().map(|b| b.unwrap_or(CTy::Error)).collect();
+                    found = match im.methods.get(method) {
+                        Some(&m) => Some(InstKey {
                             func: FuncKey::Decl(m),
-                            targs: binds.into_iter().map(|b| b.unwrap_or(CTy::Error)).collect(),
+                            targs: binds,
                             sets: sets.clone(),
-                        })
-                    });
+                        }),
+                        // The impl leaves it to the trait's default, with `Self` and the trait's
+                        // arguments for its parameters.
+                        None => (d.traits[tr.0].methods.get(method))
+                            .filter(|&&tm| !matches!(d.f(tm).body, cpl_syntax::ast::FnBody::None))
+                            .map(|&tm| {
+                                let env = Env {
+                                    targs: &binds,
+                                    sets: &sets,
+                                };
+                                let mut targs = vec![st.clone()];
+                                targs.extend(im.trait_.args.iter().map(|t| self.ty(t, &env)));
+                                InstKey {
+                                    func: FuncKey::Decl(tm),
+                                    targs,
+                                    sets: Vec::new(),
+                                }
+                            }),
+                    };
+                    break;
+                }
                 if found.is_none() {
                     self.errors
                         .push(format!("no impl provides `{method}` for this type"));

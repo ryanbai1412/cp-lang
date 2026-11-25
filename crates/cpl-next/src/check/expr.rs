@@ -298,6 +298,92 @@ impl<'a> Cx<'a> {
     fn is_str(&self, t: &Ty) -> bool {
         matches!(self.shallow(t), Ty::Struct(d, ..) if Some(d) == self.d.core_struct("Str"))
     }
+    /// `a < b`, `a == b` and the rest on a type that is not a number: its `Ord` or `Eq` fn, from
+    /// the bound on a type parameter or the type's impl (R08.1.5). `a > b` is `b < a`, `a <= b` is
+    /// `not b < a`, and `a != b` is `not a == b`; operands are still read left to right.
+    fn op_call(&mut self, op: CmpOp, a: TExpr, b: TExpr, span: Span) -> TExpr {
+        let mk = |kind, ty| TExpr { kind, ty, span };
+        let Some((trait_name, method)) = op.trait_method() else {
+            return mk(TK::Error, Ty::Error);
+        };
+        let swap = matches!(op, CmpOp::Gt | CmpOp::Le);
+        let mut pre = Vec::new();
+        let a = if swap && !matches!(a.kind, TK::Var(_)) {
+            let tmp = self.bind("$lhs", a.ty.clone());
+            let read = mk(TK::Var(tmp), a.ty.clone());
+            pre.push(TStmt::Let(tmp, a));
+            read
+        } else {
+            a
+        };
+        let (recv, arg) = if swap { (b, a) } else { (a, b) };
+        let rt = self.shallow(&recv.ty);
+        let call = if let Ty::Param(i) = &rt {
+            let tr = (self.bound_traits(*i).into_iter())
+                .find(|t| self.d.traits[t.tr.0].name == trait_name);
+            tr.map(|tr| {
+                if let Some(&m) = self.d.traits[tr.tr.0].methods.get(method) {
+                    self.reach(m);
+                }
+                let arg = self.coerce(arg, &rt);
+                mk(
+                    TK::CallTrait {
+                        tr: tr.tr,
+                        method: method.to_string(),
+                        recv: Box::new(TArg::Value(recv)),
+                        args: vec![TArg::Value(arg)],
+                    },
+                    Ty::Bool,
+                )
+            })
+        } else if let Some(decls::Member::Method(m, ts, ss)) =
+            self.d.impl_member(&rt, method, Some(trait_name))
+        {
+            let f = self.fnref(m, ts, ss);
+            let ty = self.ret_ty(&f);
+            let fd = self.d.f(f.decl);
+            let sub = Subst {
+                tys: &f.targs,
+                sets: &f.sets,
+            };
+            let param = fd.params.first().map_or(Ty::Error, |p| sub.ty(&p.ty));
+            let arg = self.coerce(arg, &param);
+            let recv = self.recv_arg(m, recv, span);
+            Some(mk(
+                TK::Call {
+                    f,
+                    recv: Some(Box::new(recv)),
+                    args: vec![TArg::Value(arg)],
+                },
+                ty,
+            ))
+        } else {
+            None
+        };
+        let Some(call) = call else {
+            let shown = self.show(&rt);
+            if matches!(rt, Ty::Struct(..)) {
+                // Its fields may give it a structural impl (R08.1.6).
+                self.err(span, format!("slice: derived `{trait_name}` for `{shown}`"));
+            } else {
+                self.err(
+                    span,
+                    format!(
+                        "{}: `{shown}` has no `impl {trait_name}`, which `{}` needs (R08.1.5)",
+                        cpl_diag::codes::MISSING_IMPL.0,
+                        op.text()
+                    ),
+                );
+            }
+            return mk(TK::Error, Ty::Error);
+        };
+        let call = if matches!(op, CmpOp::Ne | CmpOp::Le | CmpOp::Ge) {
+            mk(TK::Not(Box::new(call)), Ty::Bool)
+        } else {
+            call
+        };
+        block(pre, call)
+    }
     /// How a method takes its receiver: a `mut self` (or a cache it fills) needs a place.
     fn recv_arg(&mut self, m: FnId, recv: TExpr, span: Span) -> TArg {
         let place = matches!(recv.kind, TK::Var(_) | TK::Field(..));
@@ -525,7 +611,12 @@ impl<'a> Cx<'a> {
             for tr in &self.bound_traits(*i) {
                 let t = &self.d.traits[tr.tr.0];
                 if let Some(m) = t.methods.get(&name.text).copied() {
+                    // Every impl's fn, or the trait's default, may be the one that runs.
+                    self.reach(m);
                     let fd = self.d.f(m);
+                    if fd.getter && matches!(fd.body, cpl_syntax::ast::FnBody::None) {
+                        self.err(span, "slice: a field requirement (`@get` with no body)");
+                    }
                     let mut tys = vec![rt.clone()];
                     tys.extend(tr.args.iter().cloned());
                     let sub = Subst {
@@ -875,11 +966,11 @@ impl<'a> Cx<'a> {
                             mk(TK::Not(Box::new(eq)), Ty::Bool)
                         };
                     }
-                    if !matches!(
+                    let primitive = matches!(
                         self.shallow(&prev.ty),
-                        Ty::Int | Ty::Bool | Ty::Char | Ty::Dom(_) | Ty::Param(_) | Ty::Error
-                    ) || matches!(op, CmpOp::In | CmpOp::NotIn)
-                    {
+                        Ty::Int | Ty::Bool | Ty::Char | Ty::Dom(_) | Ty::Error
+                    );
+                    if matches!(op, CmpOp::In | CmpOp::NotIn) {
                         self.err(span, "slice: comparison of this type is not supported");
                     }
                     // An operand two links share is held, so it is read once.
@@ -900,10 +991,14 @@ impl<'a> Cx<'a> {
                             x
                         }
                     };
-                    let c = mk(
-                        TK::Cmp(*op, Box::new(side(prev)), Box::new(side(r.clone()))),
-                        Ty::Bool,
-                    );
+                    let c = if primitive || matches!(op, CmpOp::In | CmpOp::NotIn) {
+                        mk(
+                            TK::Cmp(*op, Box::new(side(prev)), Box::new(side(r.clone()))),
+                            Ty::Bool,
+                        )
+                    } else {
+                        self.op_call(*op, prev, r.clone(), span)
+                    };
                     links.push((hold, c));
                     prev = r;
                 }
@@ -1675,6 +1770,16 @@ impl Cx<'_> {
                     None
                 }
             };
+            let covered = which.map_or(default.is_some(), |i| cases[i].is_some());
+            if default.is_some() || covered {
+                self.err(
+                    arm.pat.span,
+                    format!(
+                        "{}: this arm never runs: the arms before it match everything it does",
+                        cpl_diag::codes::UNREACHABLE_ARM.0
+                    ),
+                );
+            }
             let body = self.block(&arm.body, ty.as_ref());
             self.scopes.pop();
             let body = match &ty {

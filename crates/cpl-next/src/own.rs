@@ -22,6 +22,9 @@ struct Pl {
     root: Root,
     path: Vec<usize>,
 }
+/// A summary through a call that recurses on a field (`Desc<Desc<T>>`'s `lt` calling `T`'s) would
+/// name ever deeper places; past this depth it names the place holding them, which overlaps all.
+const MAX_PATH: usize = 8;
 fn overlap(a: &Pl, b: &Pl) -> bool {
     a.root == b.root && a.path.iter().zip(&b.path).all(|(x, y)| x == y)
 }
@@ -355,6 +358,8 @@ impl Cx<'_> {
     }
     /// R05.7.8: a lent value is not returned.
     fn escapes(&mut self, span: Span, out: &BTreeSet<Root>) {
+        let mut out = out.clone();
+        self.take_generic_params(&mut out);
         if let Some(r) = out.iter().next() {
             let n = self.root_name(*r);
             let why = if self.borrowed.contains(r) {
@@ -403,17 +408,21 @@ impl Cx<'_> {
     fn store(&mut self, span: Span, storage: Root, mut what: BTreeSet<Root>) {
         what.remove(&storage);
         if !self.decl.contains_key(&storage) {
-            let own: Vec<Root> = what
-                .iter()
-                .filter(|r| self.params.contains(r) && self.generic(**r))
-                .copied()
-                .collect();
-            for r in own {
-                what.remove(&r);
-                self.kept.insert(r);
-            }
+            self.take_generic_params(&mut what);
         }
         self.keep(span, storage, &what);
+    }
+    /// A parameter of a type parameter's type that outlives the call, stored or returned, is
+    /// kept: the caller moves a heap value in (R05.2.2) and copies a plain one.
+    fn take_generic_params(&mut self, what: &mut BTreeSet<Root>) {
+        let own: Vec<Root> = (what.iter())
+            .filter(|r| self.params.contains(r) && self.generic(**r))
+            .copied()
+            .collect();
+        for r in own {
+            what.remove(&r);
+            self.kept.insert(r);
+        }
     }
     /// Whether a local's type holds a type parameter.
     fn generic(&self, r: Root) -> bool {
@@ -662,6 +671,7 @@ impl Cx<'_> {
                     let i = ps.iter().position(|x| *x == l)?;
                     let mut q = args.get(i)?.clone()?;
                     q.path.extend(p.path.iter().copied());
+                    q.path.truncate(MAX_PATH);
                     Some((true, q))
                 }
             }
@@ -840,10 +850,13 @@ impl Cx<'_> {
                 let places = self.arg_places(&all);
                 let (mut other, mut through) = (Fx::default(), Fx::default());
                 let mut keeps = BTreeSet::new();
+                // An impl that leaves the fn out runs the trait's default.
+                let default = (self.d.traits[tr.0].methods.get(method))
+                    .filter(|m| self.t.fns.contains_key(m));
                 for im in &self.d.impls {
                     {
                         if im.trait_.tr == *tr {
-                            if let Some(m) = im.methods.get(method) {
+                            if let Some(m) = im.methods.get(method).or(default) {
                                 let (o, t) = self.callee(
                                     &FnRef {
                                         decl: *m,

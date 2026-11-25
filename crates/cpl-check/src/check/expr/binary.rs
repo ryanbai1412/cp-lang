@@ -78,7 +78,7 @@ impl<'a> Checker<'a> {
             self.infer(lhs)
         };
         if let Ty::Param(param) = &left {
-            let trait_name = op_trait(op).map(|(t, _)| t);
+            let trait_name = op.trait_method().map(|(t, _)| t);
             // `P - 1` reads the value of a value parameter (`Mod<P>`), and a step from a
             // `D: Domain` position is an `Int` (R04.8.2): neither needs an operator bound.
             let value = matches!(&lhs.kind, ExprKind::Name(n) if n == param);
@@ -147,7 +147,7 @@ impl<'a> Checker<'a> {
             // `total + ` mid-edit: the half that is there gives the whole.
             _ if matches!(rhs.kind, ExprKind::Missing) && left.is_numeric() => left.widen(),
             _ if let Some((trait_name, owner)) = self.operator_trait(op, &left) => {
-                let op_method = op_trait(op).map_or("", |(_, m)| m);
+                let op_method = op.trait_method().map_or("", |(_, m)| m);
                 let matching = self.op_impls(&left, &owner, trait_name, op_method);
                 if matching.is_empty() {
                     if let Some(diag) = self.report(
@@ -391,7 +391,7 @@ impl<'a> Checker<'a> {
         op: BinOp,
         left: &Ty,
     ) -> Option<(&'static str, String)> {
-        let (trait_name, _) = op_trait(op)?;
+        let (trait_name, _) = op.trait_method()?;
         let Ty::Named { name, .. } = left else {
             return None;
         };
@@ -417,14 +417,7 @@ impl<'a> Checker<'a> {
             )
             && (matches!(left, Ty::Optional(_)) || matches!(right, Ty::Optional(_)))
         {
-            let op_str = match op {
-                ast::CmpOp::Lt => "<",
-                ast::CmpOp::Le => "<=",
-                ast::CmpOp::Gt => ">",
-                ast::CmpOp::Ge => ">=",
-                _ => "?",
-            };
-            self.optional_compare(op_str, (left_expr, left), (right_expr, right));
+            self.optional_compare(op.text(), (left_expr, left), (right_expr, right));
             return;
         }
         if !tests_none
@@ -469,20 +462,6 @@ impl<'a> Checker<'a> {
 
 /// Whether `ty` can stand on one side of a `none`-absorbing `+` or `-`: a
 /// number or an optional number. `Some(true)` for the integers.
-/// The trait an arithmetic operator is the fn of, and that fn's name:
-/// `a * b` is `Mul`'s `mul`.
-fn op_trait(op: BinOp) -> Option<(&'static str, &'static str)> {
-    Some(match op {
-        BinOp::Add => ("Add", "add"),
-        BinOp::Sub => ("Sub", "sub"),
-        BinOp::Mul => ("Mul", "mul"),
-        BinOp::Div => ("Div", "div"),
-        BinOp::Rem => ("Rem", "rem"),
-        BinOp::Pow => ("Pow", "pow"),
-        _ => return None,
-    })
-}
-
 pub(super) fn tropical_side(ty: &Ty) -> Option<bool> {
     let inner = match ty {
         Ty::Optional(inner) => inner,

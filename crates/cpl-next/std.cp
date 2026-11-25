@@ -1,3 +1,7 @@
+// The core traits: the language gives `==`, `<` and `+` their meaning through them
+// (R08.1.5), so they are declared here rather than in a std file; `Ordering` is std's.
+use std.algebra.{Ordering}
+
 fn raw_empty<T>() -> Raw<T> = @intrinsic("raw_empty")
 fn raw_new<T>(n: Int, fill: T) -> Raw<T> = @intrinsic("raw_new")
 fn raw_get<T>(r: Raw<T>, i: Int) -> T = @intrinsic("raw_get")
@@ -136,3 +140,46 @@ struct Tuple4<A, B, C, E>:
     _1: B
     _2: C
     _3: E
+
+/// `a == b` and `a != b` (R08.1.5). Tuples, records, structs and enums whose fields all have
+/// it get it field by field unless they write their own (R08.1.6).
+trait Eq:
+    fn eq(self, other: Self) -> Bool
+
+/// `a < b`, and from it `>`, `<=` and `>=` (R08.1.5). An impl writes `lt` or `cmp`, and the
+/// other follows from it, given that `a == b` exactly when neither is less. Derived like `Eq`,
+/// lexicographic in declaration order (R08.1.6).
+trait Ord(Eq):
+    fn lt(self, other: Self) -> Bool = match self.cmp(other):
+        Less => true
+        _ => false
+    fn cmp(self, other: Self) -> Ordering =
+        if self < other: Ordering.Less elif self == other: Ordering.Equal else: Ordering.Greater
+
+/// `a + b` on a type that is not a number (R08.1.5); `-`, `*`, `/`, `%` and `-a` likewise.
+trait Add<Rhs = Self>:
+    fn add(self, other: Rhs) -> Self
+trait Sub<Rhs = Self>:
+    fn sub(self, other: Rhs) -> Self
+trait Mul<Rhs = Self>:
+    fn mul(self, other: Rhs) -> Self
+trait Div<Rhs = Self>:
+    fn div(self, other: Rhs) -> Self
+trait Rem<Rhs = Self>:
+    fn rem(self, other: Rhs) -> Self
+trait Neg:
+    fn neg(self) -> Self
+
+/// Numbers, characters (by code) and booleans (`false < true`) compare as the machine does.
+impl Eq for Int:
+    fn eq(a, b) = a == b
+impl Ord for Int:
+    fn lt(a, b) = a < b
+impl Eq for Char:
+    fn eq(a, b) = a == b
+impl Ord for Char:
+    fn lt(a, b) = a < b
+impl Eq for Bool:
+    fn eq(a, b) = a == b
+impl Ord for Bool:
+    fn lt(a, b) = not a and b

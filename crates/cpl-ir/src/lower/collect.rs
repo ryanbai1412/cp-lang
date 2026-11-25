@@ -356,6 +356,7 @@ impl<'a> Lowerer<'a> {
                 supers,
                 alias,
                 bounds,
+                ..
             } => {
                 let tid = self.traits.len();
                 let alias_of = alias.then(|| {

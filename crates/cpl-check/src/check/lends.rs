@@ -514,26 +514,13 @@ pub(crate) fn show(e: &Expr) -> String {
         ExprKind::Compare { first, rest } => {
             let mut out = format!("({}", show(first));
             for (op, operand) in rest {
-                out += &format!(" {} {}", cmp_text(*op), show(operand));
+                out += &format!(" {} {}", op.text(), show(operand));
             }
             out + ")"
         }
         ExprKind::Tuple(items) => format!("({})", list(items)),
         // Anything else is equal only to itself.
         _ => format!("<{}..{}>", e.span.start, e.span.end),
-    }
-}
-
-fn cmp_text(op: CmpOp) -> &'static str {
-    match op {
-        CmpOp::Eq => "==",
-        CmpOp::Ne => "!=",
-        CmpOp::Lt => "<",
-        CmpOp::Le => "<=",
-        CmpOp::Gt => ">",
-        CmpOp::Ge => ">=",
-        CmpOp::In => "in",
-        CmpOp::NotIn => "not in",
     }
 }
 

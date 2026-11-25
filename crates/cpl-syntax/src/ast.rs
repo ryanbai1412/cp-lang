@@ -196,6 +196,8 @@ pub enum StmtKind {
     Trait {
         name: Name,
         generics: Vec<Name>,
+        /// `trait Add<Rhs = Self>`: what a parameter is when a use leaves it out.
+        generic_defaults: Vec<Option<Type>>,
         /// `trait Seq: Index`.
         supers: Vec<Type>,
         body: Block,
@@ -804,6 +806,44 @@ impl BinOp {
             BinOp::Or => "or",
             BinOp::Coalesce => "??",
         }
+    }
+}
+
+/// The trait and method that give an operator its meaning on a type that declares them
+/// (R08.1.5): the one table both the parser's `fn (a) < (b)` and the checker read.
+impl CmpOp {
+    pub fn text(self) -> &'static str {
+        match self {
+            CmpOp::Eq => "==",
+            CmpOp::Ne => "!=",
+            CmpOp::Lt => "<",
+            CmpOp::Le => "<=",
+            CmpOp::Gt => ">",
+            CmpOp::Ge => ">=",
+            CmpOp::In => "in",
+            CmpOp::NotIn => "not in",
+        }
+    }
+    pub fn trait_method(self) -> Option<(&'static str, &'static str)> {
+        match self {
+            CmpOp::Eq | CmpOp::Ne => Some(("Eq", "eq")),
+            CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge => Some(("Ord", "lt")),
+            CmpOp::In | CmpOp::NotIn => None,
+        }
+    }
+}
+
+impl BinOp {
+    pub fn trait_method(self) -> Option<(&'static str, &'static str)> {
+        Some(match self {
+            BinOp::Add => ("Add", "add"),
+            BinOp::Sub => ("Sub", "sub"),
+            BinOp::Mul => ("Mul", "mul"),
+            BinOp::Div => ("Div", "div"),
+            BinOp::Rem => ("Rem", "rem"),
+            BinOp::Pow => ("Pow", "pow"),
+            _ => return None,
+        })
     }
 }
 

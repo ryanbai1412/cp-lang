@@ -64,20 +64,21 @@ impl<'a> Parser<'a> {
             (op_kind, op_span, params)
         };
         let (trait_name, method_name) = if is_unary_op {
-            ("Neg", "neg")
+            Some(("Neg", "neg"))
         } else {
             match op_kind {
-                T::Plus => ("Add", "add"),
-                T::Minus => ("Sub", "sub"),
-                T::Star => ("Mul", "mul"),
-                T::Slash => ("Div", "div"),
-                T::Percent => ("Rem", "rem"),
-                T::StarStar => ("Pow", "pow"),
-                T::Lt => ("Ord", "lt"),
-                T::EqEq => ("Eq", "eq"),
-                _ => ("Add", "add"),
+                T::Plus => BinOp::Add.trait_method(),
+                T::Minus => BinOp::Sub.trait_method(),
+                T::Star => BinOp::Mul.trait_method(),
+                T::Slash => BinOp::Div.trait_method(),
+                T::Percent => BinOp::Rem.trait_method(),
+                T::StarStar => BinOp::Pow.trait_method(),
+                T::Lt => CmpOp::Lt.trait_method(),
+                T::EqEq => CmpOp::Eq.trait_method(),
+                _ => None,
             }
-        };
+        }
+        .unwrap_or(("Add", "add"));
         let name = Name {
             text: method_name.to_string(),
             span: op_span,
@@ -912,7 +913,7 @@ impl<'a> Parser<'a> {
     pub(super) fn trait_decl(&mut self) -> StmtKind {
         self.bump();
         let name = self.expect_name("a trait name after `trait`");
-        let (generics, _) = self.generic_params();
+        let (generics, generic_defaults, _) = self.generic_params_with_defaults();
         // `trait Ord(Eq)` or `trait Seq: Index + Ord`.
         let mut supers = Vec::new();
         if self.eat(T::Eq) {
@@ -928,6 +929,7 @@ impl<'a> Parser<'a> {
             return StmtKind::Trait {
                 name,
                 generics,
+                generic_defaults,
                 supers,
                 body,
                 alias: true,
@@ -988,6 +990,7 @@ impl<'a> Parser<'a> {
         StmtKind::Trait {
             name,
             generics,
+            generic_defaults,
             supers,
             body,
             alias: false,

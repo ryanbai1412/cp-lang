@@ -186,6 +186,8 @@ pub struct Typed {
     /// The set a fn returns, for fns whose result is a function value.
     pub ret_sets: HashMap<(FnId, usize), SetTy>,
     pub errors: Vec<String>,
+    /// The errors of each library fn reached only through a trait, said if an instance runs it.
+    pub deferred: HashMap<FnId, Vec<String>>,
 }
 
 enum SetVar {
@@ -235,6 +237,9 @@ struct Cx<'a> {
     /// Fns a reference reached, to be checked; and the library places already reported.
     reached: Vec<FnId>,
     reported: HashSet<(u8, usize)>,
+    /// Library fns reached only as a trait's impl, or from one: what they use that the slice
+    /// does not build refuses only a program whose instances run them.
+    through_trait: Vec<FnId>,
 }
 
 pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
@@ -269,6 +274,7 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
         item_off: 0,
         module: d.program,
         reached: Vec::new(),
+        through_trait: Vec::new(),
         reported: HashSet::new(),
     };
     // The set each fn returns is one variable per declaration, filled as bodies are checked.
@@ -348,15 +354,36 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
         .filter(|id| !d.is_library(d.f(*id).module))
         .rev()
         .collect();
+    let mut deferred: HashMap<FnId, Vec<String>> = HashMap::new();
     loop {
         todo.append(&mut cx.reached);
-        let Some(id) = todo.pop() else { break };
+        let (id, quiet) = match todo.pop() {
+            Some(id) => (id, false),
+            None => match cx.through_trait.pop() {
+                Some(id) => (id, true),
+                None => break,
+            },
+        };
         let f = d.f(id);
         if fns.contains_key(&id) || f.intrinsic.is_some() || matches!(f.body, FnBody::None) {
             continue;
         }
+        if !quiet {
+            let tf = cx.check_fn(id);
+            fns.insert(id, tf);
+            continue;
+        }
+        let (n, reported) = (cx.errors.len(), cx.reported.clone());
+        cx.reach(id);
         let tf = cx.check_fn(id);
         fns.insert(id, tf);
+        let errors = cx.errors.split_off(n);
+        cx.reported = reported;
+        let more = std::mem::take(&mut cx.reached);
+        cx.through_trait.extend(more);
+        if !errors.is_empty() {
+            deferred.insert(id, errors);
+        }
     }
     // Zonk: every variable is replaced by what it was solved to.
     let mut main_z = main_out;
@@ -396,6 +423,7 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
         lambdas,
         ret_sets,
         errors: cx.errors,
+        deferred,
     }
 }
 
@@ -436,9 +464,14 @@ impl<'a> Cx<'a> {
         let f = d.f(id);
         self.reached.push(id);
         if let Some(Owner::Trait(t)) = f.owner {
-            let impls = d.impls.iter().filter(|im| im.trait_.tr == t);
-            self.reached
-                .extend(impls.filter_map(|im| im.methods.get(&f.name).copied()));
+            for im in d.impls.iter().filter(|im| im.trait_.tr == t) {
+                if let Some(&m) = im.methods.get(&f.name) {
+                    match d.is_library(im.module) {
+                        true => self.through_trait.push(m),
+                        false => self.reached.push(m),
+                    }
+                }
+            }
         }
         if !d.is_library(f.module) {
             return;
@@ -452,6 +485,14 @@ impl<'a> Cx<'a> {
             if self.reported.insert((1, s.0)) {
                 said.extend(d.s(s).errors.iter().cloned());
             }
+        }
+        let tr = match f.owner {
+            Some(Owner::Trait(t)) => Some(t),
+            Some(Owner::Impl(i)) => Some(d.impls[i].trait_.tr),
+            _ => None,
+        };
+        if let Some(t) = tr.filter(|t| self.reported.insert((3, t.0))) {
+            said.extend(d.traits[t.0].errors.iter().cloned());
         }
         if self.reported.insert((2, f.module.0)) {
             said.extend(d.module_errors[f.module.0].iter().cloned());
@@ -472,7 +513,7 @@ impl<'a> Cx<'a> {
         self.item_off = f.item;
         self.self_local = None;
         if let Some(ty) = f.self_ty.clone().filter(|_| f.self_mode != SelfMode::None) {
-            self.self_local = Some(self.add_local("self", ty));
+            self.self_local = Some(self.add_local(&f.self_name, ty));
         }
         let mut params = Vec::new();
         for p in &f.params {
