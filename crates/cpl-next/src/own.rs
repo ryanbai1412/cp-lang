@@ -841,7 +841,7 @@ impl Cx<'_> {
                 let mut keeps = BTreeSet::new();
                 for im in &self.d.impls {
                     {
-                        if im.trait_ == *tr {
+                        if im.trait_.tr == *tr {
                             if let Some(m) = im.methods.get(method) {
                                 let (o, t) = self.callee(
                                     &FnRef {

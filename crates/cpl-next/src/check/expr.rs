@@ -489,18 +489,41 @@ impl<'a> Cx<'a> {
         let rt = self.shallow(&recv.ty);
         // A method of a bound on a type parameter.
         if let (Ty::Param(i), Some(decl)) = (&rt, self.decl) {
-            for (pi, tr) in &self.d.f(decl).bounds {
-                let t = &self.d.traits[tr.0];
-                if pi != i {
-                    continue;
-                }
-                if let Some(m) = t.methods.get(&name.text).copied() {
-                    let fd = self.d.f(m);
-                    let none = Subst {
-                        tys: &[],
+            // Its bounds and, through them, their supertraits (R08.1.1).
+            let mut traits: Vec<decls::TraitRef> = (self.d.f(decl).bounds.iter())
+                .filter(|(pi, _)| pi == i)
+                .map(|(_, r)| r.clone())
+                .collect();
+            let mut k = 0;
+            while k < traits.len() {
+                let r = traits[k].clone();
+                for sup in &self.d.traits[r.tr.0].supers {
+                    let sub = Subst {
+                        tys: &r.args,
                         sets: &[],
                     };
-                    let formals = self.formals(&none, fd);
+                    let s = decls::TraitRef {
+                        tr: sup.tr,
+                        args: sup.args.iter().map(|t| sub.ty(t)).collect(),
+                    };
+                    if !traits.contains(&s) {
+                        traits.push(s);
+                    }
+                }
+                k += 1;
+            }
+            for tr in &traits {
+                let t = &self.d.traits[tr.tr.0];
+                if let Some(m) = t.methods.get(&name.text).copied() {
+                    let fd = self.d.f(m);
+                    let mut tys = vec![rt.clone()];
+                    tys.extend(tr.args.iter().cloned());
+                    let sub = Subst {
+                        tys: &tys,
+                        sets: &[],
+                    };
+                    let formals = self.formals(&sub, fd);
+                    let ret = sub.ty(&fd.ret);
                     let (pre, args) = self.args(call.unwrap_or(&[]), &formals, span);
                     let recv = if fd.self_mode == SelfMode::Mut {
                         TArg::Mut(recv)
@@ -509,12 +532,12 @@ impl<'a> Cx<'a> {
                     };
                     let call = TExpr {
                         kind: TK::CallTrait {
-                            tr: *tr,
+                            tr: tr.tr,
                             method: name.text.clone(),
                             recv: Box::new(recv),
                             args,
                         },
-                        ty: fd.ret.clone(),
+                        ty: ret,
                         span,
                     };
                     return block(pre, call);

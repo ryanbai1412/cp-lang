@@ -425,7 +425,7 @@ impl<'a> Cx<'a> {
         let f = d.f(id);
         self.reached.push(id);
         if let Some(Owner::Trait(t)) = f.owner {
-            let impls = d.impls.iter().filter(|im| im.trait_ == t);
+            let impls = d.impls.iter().filter(|im| im.trait_.tr == t);
             self.reached
                 .extend(impls.filter_map(|im| im.methods.get(&f.name).copied()));
         }
@@ -470,7 +470,8 @@ impl<'a> Cx<'a> {
                         (0..s.n_sets).map(SetTy::Param).collect(),
                     )
                 }
-                Owner::Trait(_) => Ty::Error,
+                Owner::Trait(_) => Ty::Param(0),
+                Owner::Impl(i) => d.impls[i].for_.clone(),
             };
             self.self_local = Some(self.add_local("self", ty));
         }

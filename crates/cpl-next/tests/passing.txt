@@ -229,8 +229,11 @@ core-06/shared-var-carries-across-cases.cp
 core-06/two-closures-share-var.cp
 core-07/negative-literal-index-is-an-error.cp
 core-07/negative-literal-str-index-is-an-error.cp
+core-08/blanket-impl.cp
+core-08/duplicate-impl.cp
 core-08/inherent-before-trait.cp
 core-08/recursion-at-the-same-type-is-fine.cp
+core-08/trait-alias.cp
 core-08/trait-message-bound-holds.cp
 core-09/assert-after-64k-of-output-prints-it-first.cp
 core-09/assert-passes.cp
@@ -396,6 +399,8 @@ next/a_range_rt_12_domain_cast_out.cp
 next/a_range_rt_13_list_of_range_push.cp
 next/a_range_rt_14_open_upper_end.cp
 next/a_range_rt_16_compound_assign_store.cp
+next/a_trait_01_super_method_through_bound.cp
+next/a_trait_02_impl_for_int.cp
 next/a_trap_01_min_div_minus_one.cp
 next/a_trap_02_rem_by_zero.cp
 next/a_trap_03_overflow_inside_closure_line.cp

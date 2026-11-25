@@ -425,20 +425,21 @@ impl Link<'_> {
                 self_ty,
             } => {
                 let st = self.ty(self_ty, env);
-                let found = match &st {
-                    CTy::Struct(d, ts, ss) => self
-                        .d
-                        .impls
-                        .iter()
-                        .filter(|im| im.trait_ == *tr && im.for_ == *d)
-                        .find_map(|im| im.methods.get(method).copied())
-                        .map(|m| InstKey {
-                            func: FuncKey::Decl(m),
-                            targs: ts.clone(),
-                            sets: ss.clone(),
-                        }),
-                    _ => None,
+                let sets = match &st {
+                    CTy::Struct(_, _, ss) => ss.clone(),
+                    _ => Vec::new(),
                 };
+                let found = (self.d.impls.iter())
+                    .filter(|im| im.trait_.tr == *tr)
+                    .find_map(|im| {
+                        let m = im.methods.get(method).copied()?;
+                        let mut binds = vec![None; im.generics.len()];
+                        fit_cty(&im.for_, &st, &mut binds).then(|| InstKey {
+                            func: FuncKey::Decl(m),
+                            targs: binds.into_iter().map(|b| b.unwrap_or(CTy::Error)).collect(),
+                            sets: sets.clone(),
+                        })
+                    });
                 if found.is_none() {
                     self.errors
                         .push(format!("no impl provides `{method}` for this type"));
@@ -1236,5 +1237,25 @@ pub fn add_events(p: &mut Program, typed: &Typed, d: &Decls, user_from: u32) {
             }
         }
         f.body = body;
+    }
+}
+
+/// Whether a type an impl is written for, in the impl's type parameters, is `t`: binds them.
+fn fit_cty(p: &Ty, t: &CTy, binds: &mut [Option<CTy>]) -> bool {
+    match (p, t) {
+        (Ty::Param(i), _) => match &binds[*i] {
+            Some(b) => b == t,
+            None => {
+                binds[*i] = Some(t.clone());
+                true
+            }
+        },
+        (Ty::Int | Ty::Range(..) | Ty::RangeOf(_), CTy::Int) => true,
+        (Ty::Bool, CTy::Bool) | (Ty::Char, CTy::Char) | (Ty::Unit, CTy::Unit) => true,
+        (Ty::Raw(a), CTy::Raw(b)) | (Ty::Ref(a), CTy::Ref(b)) => fit_cty(a, b, binds),
+        (Ty::Struct(d1, a, _), CTy::Struct(d2, b, _)) => {
+            d1 == d2 && a.len() == b.len() && a.iter().zip(b).all(|(x, y)| fit_cty(x, y, binds))
+        }
+        _ => false,
     }
 }

@@ -26,7 +26,7 @@ pub struct FnDecl {
     pub self_mode: SelfMode,
     /// Type parameters: the owner's first, then its own.
     pub generics: Vec<String>,
-    pub bounds: Vec<(usize, TraitId)>,
+    pub bounds: Vec<(usize, TraitRef)>,
     /// Without `self`.
     pub params: Vec<Param>,
     /// The names of the parameters passed only by name.
@@ -80,7 +80,17 @@ pub struct StructDecl {
     pub errors: Vec<String>,
 }
 pub struct TraitDecl {
+    pub name: String,
+    pub module: ModId,
+    /// Its supertraits, in its own type parameters (R08.1.1).
+    pub supers: Vec<TraitRef>,
     pub methods: HashMap<String, FnId>,
+}
+/// A trait with its arguments: `Seq<T>`.
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct TraitRef {
+    pub tr: TraitId,
+    pub args: Vec<Ty>,
 }
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct AliasId(pub usize);
@@ -95,9 +105,12 @@ pub struct AliasDecl {
     pub ty: ast::Type,
     pub names: HashMap<String, Named>,
 }
+/// `impl Trait<A> for T`: `trait_` and `for_` are in the impl's own type parameters, which are
+/// the names it writes that no declaration has (`impl Seq<T> for List<T>`) and its bounds' (R08.1.2).
 pub struct ImplDecl {
-    pub trait_: TraitId,
-    pub for_: StructId,
+    pub trait_: TraitRef,
+    pub generics: Vec<String>,
+    pub for_: Ty,
     pub methods: HashMap<String, FnId>,
 }
 /// What a top-level name declares.
@@ -113,6 +126,8 @@ pub enum Named {
 pub enum Owner {
     Struct(StructId),
     Trait(TraitId),
+    /// An index into `Decls::impls`.
+    Impl(usize),
 }
 
 #[derive(Default)]
@@ -143,6 +158,15 @@ pub enum Member {
 }
 
 impl Decls {
+    /// What a declaration uses that the slice does not build: a library's is said when the program
+    /// reaches it, the program's at once.
+    fn module_or_program_errors(&mut self, m: ModId, errors: Vec<String>) {
+        if self.is_library(m) {
+            self.module_errors[m.0].extend(errors);
+        } else {
+            self.errors.extend(errors);
+        }
+    }
     pub fn f(&self, d: FnId) -> &FnDecl {
         &self.fns[d.0]
     }
@@ -180,23 +204,50 @@ impl Decls {
         m != CORE && m != self.program
     }
     pub fn lookup_member(&self, recv: &Ty, name: &str) -> Option<Member> {
-        let Ty::Struct(d, targs, sets) = recv else {
-            return None;
+        if let Ty::Struct(d, targs, sets) = recv {
+            let s = self.s(*d);
+            if let Some(i) = s.fields.iter().position(|(n, _)| n == name) {
+                let sub = Subst { tys: targs, sets };
+                return Some(Member::Field(i, sub.ty(&s.fields[i].1)));
+            }
+            if let Some(m) = s.methods.get(name) {
+                return Some(Member::Method(*m, targs.clone(), sets.clone()));
+            }
+        }
+        let sets = match recv {
+            Ty::Struct(_, _, ss) => ss.clone(),
+            _ => Vec::new(),
         };
-        let s = self.s(*d);
-        if let Some(i) = s.fields.iter().position(|(n, _)| n == name) {
-            let sub = Subst { tys: targs, sets };
-            return Some(Member::Field(i, sub.ty(&s.fields[i].1)));
+        self.impls.iter().find_map(|im| {
+            let m = im.methods.get(name)?;
+            let targs = self.impl_args(im, recv)?;
+            Some(Member::Method(*m, targs, sets.clone()))
+        })
+    }
+    /// The impl's type arguments when it is for `t`; a type not known yet fits any.
+    pub fn impl_args(&self, im: &ImplDecl, t: &Ty) -> Option<Vec<Ty>> {
+        fn fit(p: &Ty, t: &Ty, binds: &mut [Option<Ty>]) -> bool {
+            match (p, t) {
+                (_, Ty::Var(_) | Ty::Error) => true,
+                (Ty::Param(i), _) => match &binds[*i] {
+                    Some(b) => b == t || matches!(b, Ty::Var(_)),
+                    None => {
+                        binds[*i] = Some(t.clone());
+                        true
+                    }
+                },
+                (Ty::Raw(a), Ty::Raw(b)) | (Ty::Ref(a), Ty::Ref(b)) => fit(a, b, binds),
+                (Ty::Struct(d1, a, _), Ty::Struct(d2, b, _)) => {
+                    d1 == d2 && a.len() == b.len() && a.iter().zip(b).all(|(x, y)| fit(x, y, binds))
+                }
+                (Ty::Range(..) | Ty::RangeOf(_), Ty::Int)
+                | (Ty::Int, Ty::Range(..) | Ty::RangeOf(_)) => true,
+                _ => p == t,
+            }
         }
-        if let Some(m) = s.methods.get(name) {
-            return Some(Member::Method(*m, targs.clone(), sets.clone()));
-        }
-        let m = self
-            .impls
-            .iter()
-            .filter(|im| im.for_ == *d)
-            .find_map(|im| im.methods.get(name))?;
-        Some(Member::Method(*m, targs.clone(), sets.clone()))
+        let mut binds = vec![None; im.generics.len()];
+        fit(&im.for_, t, &mut binds)
+            .then(|| binds.into_iter().map(|b| b.unwrap_or(Ty::Error)).collect())
     }
 }
 
@@ -342,6 +393,70 @@ fn alias(cx: &mut TyCx, id: usize, n: &str, a: Vec<Ty>, errors: &mut Vec<String>
     (cx.ret_slots, cx.next_set) = (inner.ret_slots, inner.next_set);
     t
 }
+/// Whether some type fits both impl headers.
+fn overlap(a: &Ty, b: &Ty) -> bool {
+    match (a, b) {
+        (Ty::Param(_), _) | (_, Ty::Param(_)) => true,
+        (Ty::Raw(x), Ty::Raw(y)) | (Ty::Ref(x), Ty::Ref(y)) => overlap(x, y),
+        (Ty::Struct(d1, x, _), Ty::Struct(d2, y, _)) => {
+            d1 == d2 && x.iter().zip(y).all(|(x, y)| overlap(x, y))
+        }
+        _ => a == b,
+    }
+}
+
+/// `Seq<T>` written where a trait is wanted.
+fn trait_ref(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<String>) -> Option<TraitRef> {
+    let TypeKind::Named { name, args } = &t.kind else {
+        errors.push("slice: a bound that is not a named trait".to_string());
+        return None;
+    };
+    let Some(Named::Trait(tr)) = cx.names.get(&name.text).copied() else {
+        errors.push(format!("unknown trait `{}`", name.text));
+        return None;
+    };
+    let args = args.iter().map(|a| conv(cx, a, errors)).collect();
+    Some(TraitRef { tr, args })
+}
+
+/// The single capitals in an impl header that name nothing: its undeclared type parameters (R02.10.3).
+fn unnamed(t: &ast::Type, names: &HashMap<String, Named>, out: &mut Vec<String>) {
+    if let TypeKind::Named { name, args } = &t.kind {
+        let n = name.text.as_str();
+        let capital = n.len() == 1 && n.chars().all(|c| c.is_ascii_uppercase());
+        if args.is_empty() && capital && !names.contains_key(n) && !out.iter().any(|g| g == n) {
+            out.push(n.to_string());
+        }
+        args.iter().for_each(|a| unnamed(a, names, out));
+        return;
+    }
+    match &t.kind {
+        TypeKind::Optional(e) | TypeKind::Mut(e) | TypeKind::Yields(e) => unnamed(e, names, out),
+        TypeKind::Tuple(ts) => ts.iter().for_each(|e| unnamed(e, names, out)),
+        TypeKind::Array { index, elem } => index
+            .iter()
+            .chain([&**elem])
+            .for_each(|e| unnamed(e, names, out)),
+        TypeKind::Fn { params, ret } => params
+            .iter()
+            .chain([&**ret])
+            .for_each(|e| unnamed(e, names, out)),
+        _ => {}
+    }
+}
+
+/// A type written among `Self, A, B..` re-read among `A, B..`.
+fn shift_down(t: &Ty) -> Ty {
+    let tys: Vec<Ty> = std::iter::once(Ty::Error)
+        .chain((0..64).map(Ty::Param))
+        .collect();
+    Subst {
+        tys: &tys,
+        sets: &[],
+    }
+    .ty(t)
+}
+
 fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<String>) -> Ty {
     match &t.kind {
         TypeKind::Named { name, args } => {
@@ -661,6 +776,9 @@ pub fn collect(
                         let id = TraitId(d.traits.len());
                         own[mi].insert(name.text.clone(), Named::Trait(id));
                         d.traits.push(TraitDecl {
+                            name: name.text.clone(),
+                            module: mid,
+                            supers: Vec::new(),
                             methods: HashMap::new(),
                         });
                         pending.push((mid, *item, s, Some(Named::Trait(id))));
@@ -850,7 +968,43 @@ pub fn collect(
                 sdecl.ctor = methods.get("new").copied();
                 sdecl.methods = methods;
             }
-            (StmtKind::Trait { body, .. }, Some(Named::Trait(id))) => {
+            (
+                StmtKind::Trait {
+                    body,
+                    supers,
+                    generics,
+                    ..
+                },
+                Some(Named::Trait(id)),
+            ) => {
+                let mut tgen = vec!["Self".to_string()];
+                tgen.extend(generics.iter().map(|g| g.text.clone()));
+                let mut errors = Vec::new();
+                let names = d.views[mi].clone();
+                let sets = d.struct_sets.clone();
+                let no_doms = HashMap::new();
+                let mut cx = TyCx {
+                    names: &names,
+                    struct_sets: &sets,
+                    generics: &tgen,
+                    args: None,
+                    aliases: &aliases,
+                    expanding: Vec::new(),
+                    doms: &no_doms,
+                    ret_slots: None,
+                    next_set: None,
+                };
+                // A supertrait is in the trait's own parameters, without `Self`.
+                let own_params = |r: TraitRef| TraitRef {
+                    tr: r.tr,
+                    args: r.args.iter().map(shift_down).collect(),
+                };
+                let sup: Vec<TraitRef> = supers
+                    .iter()
+                    .filter_map(|t| trait_ref(&mut cx, t, &mut errors))
+                    .map(own_params)
+                    .collect();
+                d.module_or_program_errors(mid, errors);
                 let mut methods = HashMap::new();
                 for m in &body.stmts {
                     if let StmtKind::Fn(f) = &m.kind {
@@ -862,7 +1016,7 @@ pub fn collect(
                             f,
                             Within {
                                 owner: Some(Owner::Trait(id)),
-                                generics: &[],
+                                generics: &tgen,
                                 sets: 0,
                             },
                         );
@@ -870,38 +1024,85 @@ pub fn collect(
                     }
                 }
                 d.traits[id.0].methods = methods;
+                d.traits[id.0].supers = sup;
             }
             (
                 StmtKind::Impl {
                     trait_name: Some(tr),
                     target,
                     body,
-                    ..
+                    bounds,
                 },
                 _,
             ) => {
-                let name_of = |t: &ast::Type| match &t.kind {
-                    TypeKind::Named { name, .. } => d.views[mi].get(&name.text).copied(),
-                    _ => None,
+                let names = d.views[mi].clone();
+                // The impl's own type parameters: its bounds' names, then what its header writes
+                // that names nothing.
+                let mut generics: Vec<String> =
+                    bounds.iter().map(|b| b.name.text.clone()).collect();
+                for t in [tr, target] {
+                    unnamed(t, &names, &mut generics);
+                }
+                let sets = d.struct_sets.clone();
+                let no_doms = HashMap::new();
+                let mut errors = Vec::new();
+                let mut cx = TyCx {
+                    names: &names,
+                    struct_sets: &sets,
+                    generics: &generics,
+                    args: None,
+                    aliases: &aliases,
+                    expanding: Vec::new(),
+                    doms: &no_doms,
+                    ret_slots: None,
+                    next_set: Some(0),
                 };
-                let (Some(Named::Trait(tr)), Some(Named::Struct(for_))) =
-                    (name_of(tr), name_of(target))
-                else {
-                    let e = "impl of an unknown trait or type".to_string();
-                    if d.is_library(mid) {
-                        d.module_errors[mi].push(e);
-                    } else {
-                        d.errors.push(e);
+                let for_ = conv(&mut cx, target, &mut errors);
+                let tref = trait_ref(&mut cx, tr, &mut errors);
+                let mut ibounds = Vec::new();
+                for b in bounds {
+                    let i = generics.iter().position(|g| *g == b.name.text).unwrap_or(0);
+                    for t in &b.traits {
+                        if let Some(r) = trait_ref(&mut cx, t, &mut errors) {
+                            ibounds.push((i, r));
+                        }
                     }
+                }
+                let n_sets = cx.next_set.unwrap_or(0);
+                let Some(tref) = tref.filter(|_| errors.is_empty()) else {
+                    if errors.is_empty() {
+                        errors.push("impl of an unknown trait".to_string());
+                    }
+                    d.module_or_program_errors(mid, errors);
                     continue;
                 };
-                if d.impls.iter().any(|im| im.trait_ == tr && im.for_ == for_) {
-                    d.errors
-                        .push("two impls of one trait for one type".to_string());
+                let at = (item + s.span.start) as usize;
+                let tname = d.traits[tref.tr.0].name.clone();
+                if d.impls
+                    .iter()
+                    .any(|im| im.trait_.tr == tref.tr && overlap(&im.for_, &for_))
+                {
+                    d.misdeclared.push((
+                        at,
+                        cpl_diag::codes::DUPLICATE_DEFINITION.0,
+                        format!("a second impl of `{tname}` for one type (R08.1.2)"),
+                    ));
                     continue;
                 }
-                let generics = d.s(for_).generics.clone();
-                let n_sets = d.s(for_).n_sets;
+                // An impl lives with its trait or its type (R08.5.2).
+                let home = match &for_ {
+                    Ty::Struct(sd, ..) => Some(d.s(*sd).module),
+                    _ => None,
+                };
+                if !d.is_library(mid) && d.traits[tref.tr.0].module != mid && home != Some(mid) {
+                    d.misdeclared.push((
+                        at,
+                        cpl_diag::codes::UNSUPPORTED.0,
+                        format!("`{tname}` and the type are both declared elsewhere: an impl lives with one of them"),
+                    ));
+                    continue;
+                }
+                let id = d.impls.len();
                 let mut methods = HashMap::new();
                 for m in &body.stmts {
                     if let StmtKind::Fn(f) = &m.kind {
@@ -912,16 +1113,19 @@ pub fn collect(
                             m,
                             f,
                             Within {
-                                owner: Some(Owner::Struct(for_)),
+                                owner: Some(Owner::Impl(id)),
                                 generics: &generics,
                                 sets: n_sets,
                             },
                         );
+                        // The impl's parameters come first in each method's, with its bounds.
+                        d.fns[fid.0].bounds.extend(ibounds.iter().cloned());
                         methods.insert(f.name.text.clone(), fid);
                     }
                 }
                 d.impls.push(ImplDecl {
-                    trait_: tr,
+                    trait_: tref,
+                    generics,
                     for_,
                     methods,
                 });
@@ -1086,11 +1290,8 @@ fn add_fn(
             continue;
         };
         for t in &b.traits {
-            if let TypeKind::Named { name, .. } = &t.kind {
-                match names.get(&name.text) {
-                    Some(Named::Trait(tr)) => bounds.push((i, *tr)),
-                    _ => errors.push(format!("unknown trait `{}`", name.text)),
-                }
+            if let Some(r) = trait_ref(&mut cx, t, &mut errors) {
+                bounds.push((i, r));
             }
         }
     }

@@ -18,7 +18,6 @@ core-07/yielded-closure-in-struct-field-writes-generator-local.cp	split	canonica
 core-07/yielded-closure-in-struct-writes-generator-local.cp	split	canonical IR: exit Some(101): 
 core-08/ambiguous-method.cp	wrong-accept	wanted E0701 on line 12, ran and printed: 1
 core-08/monomorphized.cp	wrong-reject	own: line 3: E0603: this returns a value that borrows `x`: `x` is lent by the caller; return a `.clone()`
-core-08/trait-alias-no-impl.cp	wrong-accept	wanted E0501 on line 7, ran and printed: 
 core-09/checked-index-trap.cp	wrong-trap	wanted R0101 on line 6, got: trap: R0401: line 6: index out of range
 core-10/bool-not-print.cp	wrong-accept	wanted E0606 on line 3, ran and printed: true
 core-10/bool-var-not-print.cp	wrong-accept	wanted E0606 on line 4, ran and printed: true
