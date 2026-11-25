@@ -96,6 +96,10 @@ struct Str:
     fn push(mut self, c: Char):
         chars.push(c)
 
+    /// How `print` writes it: its characters.
+    fn write(self):
+        for c in chars: write(c)
+
 // A string literal: its characters and how many there are. The literal's storage is lent,
 // so the string gets its own.
 fn str_of(text: Raw<Char>, n: Int) -> Str:
@@ -115,9 +119,6 @@ fn str_eq(a: Str, b: Str) -> Bool:
         if a.get(i) != b.get(i): return false
     true
 
-fn write_str(s: Str):
-    for c in s: write(c)
-
 fn yes(b: Bool) -> Str:
     if b: "YES" else: "NO"
 
@@ -125,6 +126,41 @@ fn yes(b: Bool) -> Str:
 struct Optional<T>:
     some: Bool
     val: T
+
+/// `lo..hi by step` as a value: `n` values from `lo`, `step` apart. It walks both ways, and its
+/// `len`, `first` and `last` are O(1) (R01.8.4). `D` is the kind of its ends.
+struct Range<D>:
+    lo: Int
+    n: Int
+    step: Int
+
+    @get fn len(self) -> Int:
+        n
+
+    @get fn first(self) -> ?Int:
+        if n == 0: None else: Some(lo)
+
+    @get fn last(self) -> ?Int:
+        if n == 0: None else: Some(lo + (n - 1) * step)
+
+    /// The same values, last first.
+    @get fn rev(self) -> Range<D>:
+        Range(lo + (n - 1) * step, n, -step)
+
+    fn each(self) -> yields Int:
+        for i in 0..n: yield lo + i * step
+
+    /// How `print` writes it: its values, space-separated.
+    fn write(self):
+        for i in 0..n:
+            if i > 0: write(" ")
+            write(lo + i * step)
+
+/// `lo..hi by step`; empty when `lo` is past `hi` (R04.4.29).
+fn range_of(lo: Int, hi: Int, step: Int) -> Range<Int>:
+    assert step > 0, "a range's step is positive"
+    let n = if hi <= lo: 0 else: (hi - lo + step - 1) / step
+    Range(lo, n, step)
 
 /// `Some(v)`: `v`, present (R01.5.6).
 fn some<T>(v: T) -> ?T = v

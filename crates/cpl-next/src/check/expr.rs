@@ -273,9 +273,25 @@ impl<'a> Cx<'a> {
                 pieces.push(Piece::Value(v));
                 return;
             }
-            Ty::Struct(d, ..) => ["List", "Array", "Str"]
+            // A type that says how it is written (`fn write(self)`) is written by it.
+            t @ Ty::Struct(..)
+                if let Some(decls::Member::Method(m, ts, ss)) =
+                    self.d.lookup_member(&t, "write") =>
+            {
+                if !pieces.is_empty() {
+                    stmts.push(TStmt::Expr(TExpr {
+                        kind: TK::Print(std::mem::take(pieces)),
+                        ty: Ty::Unit,
+                        span,
+                    }));
+                }
+                let call = self.call_member(v, (m, ts, ss), vec![], span, false);
+                stmts.push(TStmt::Expr(call));
+                return;
+            }
+            Ty::Struct(d, ..) => ["List", "Array"]
                 .into_iter()
-                .zip(["write_list", "write_array", "write_str"])
+                .zip(["write_list", "write_array"])
                 .find(|(ty, _)| Some(d) == self.d.core_struct(ty))
                 .map(|(_, f)| f),
             _ => None,
@@ -294,6 +310,47 @@ impl<'a> Cx<'a> {
         }
         let call = self.lib_call(writer, vec![v], span);
         stmts.push(TStmt::Expr(call));
+    }
+    /// `lo..hi`, `lo..=hi` and `lo..hi by k` as a value: core's `Range` (R01.8.4).
+    fn range_value(
+        &mut self,
+        lo: &ast::Expr,
+        hi: &ast::Expr,
+        inclusive: bool,
+        step: Option<&ast::Expr>,
+        span: Span,
+    ) -> TExpr {
+        let mut end = |e: &ast::Expr| {
+            let v = self.expr(e, Some(&Ty::Int));
+            if !matches!(self.shallow(&v.ty), Ty::Int | Ty::Range(..) | Ty::Error) {
+                let t = self.show(&v.ty);
+                self.err(e.span, format!("slice: a range value with `{t}` ends"));
+            }
+            self.coerce(v, &Ty::Int)
+        };
+        let lo = end(lo);
+        let mut hi = end(hi);
+        if inclusive {
+            let one = TExpr {
+                kind: TK::Int(1),
+                ty: Ty::Int,
+                span,
+            };
+            hi = TExpr {
+                kind: TK::Bin(BinOp::Add, Box::new(hi), Box::new(one)),
+                ty: Ty::Int,
+                span,
+            };
+        }
+        let step = match step {
+            Some(k) => end(k),
+            None => TExpr {
+                kind: TK::Int(1),
+                ty: Ty::Int,
+                span,
+            },
+        };
+        self.lib_call("range_of", vec![lo, hi, step], span)
     }
     fn is_str(&self, t: &Ty) -> bool {
         matches!(self.shallow(t), Ty::Struct(d, ..) if Some(d) == self.d.core_struct("Str"))
@@ -497,6 +554,17 @@ impl<'a> Cx<'a> {
                 span,
             };
         };
+        self.call_member(recv, (m, ts, ss), args, span, mutates)
+    }
+    /// `recv.m(args)` with `m` already found on `recv`'s type.
+    fn call_member(
+        &mut self,
+        recv: TExpr,
+        (m, ts, ss): (FnId, Vec<Ty>, Vec<SetTy>),
+        args: Vec<TArg>,
+        span: Span,
+        mutates: bool,
+    ) -> TExpr {
         let fd = self.d.f(m);
         let f = self.fnref(m, ts, ss);
         let sub = Subst {
@@ -1475,6 +1543,24 @@ impl<'a> Cx<'a> {
                 out.unwrap_or(tail)
             }
             ExprKind::Match { scrutinee, arms } => self.match_(scrutinee, arms, want, span),
+            ExprKind::Range {
+                lo: Some(lo),
+                hi: Some(hi),
+                inclusive,
+                step,
+            } => self.range_value(lo, hi, *inclusive, step.as_deref(), span),
+            ExprKind::By { walk, step } => match &walk.kind {
+                ExprKind::Range {
+                    lo: Some(lo),
+                    hi: Some(hi),
+                    inclusive,
+                    step: None,
+                } => self.range_value(lo, hi, *inclusive, Some(step), span),
+                _ => {
+                    self.err(span, "slice: `by` on a walk that is not a range");
+                    mk(TK::Error, Ty::Error)
+                }
+            },
             other => {
                 self.err(
                     span,

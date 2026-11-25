@@ -1364,6 +1364,15 @@ pub fn collect(
                         d.fns[fid.0].errors.push(e);
                         continue;
                     }
+                    // Two with a `self` are one method's overloads unless one call could take
+                    // both (R08.1.4); that test isn't built.
+                    if d.f(first).self_ty.is_some() && d.f(fid).self_ty.is_some() {
+                        d.errors.push(format!(
+                            "slice: methods of one name in one module (`{}`)",
+                            f.name.text
+                        ));
+                        continue;
+                    }
                     // One name and one set of labels is one fn: nothing is chosen by
                     // argument type (R02.11.3, R06.1.6).
                     let labels = |f: FnId| -> Vec<&str> {

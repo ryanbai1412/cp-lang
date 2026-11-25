@@ -57,6 +57,7 @@ core-01/one-line-body.cp
 core-01/param-label-may-be-a-keyword.cp
 core-01/paren-generator-is-error.cp
 core-01/plusplus.cp
+core-01/range-looser-than-additive.cp
 core-01/rb1-q29-floor-div-mod.cp
 core-01/rb1-q36-no-comma-enum.cp
 core-01/sci-literal.cp
@@ -65,6 +66,8 @@ core-01/semicolon-ends-line.cp
 core-01/semicolons.cp
 core-01/snake-case-value.cp
 core-01/space-indent-block.cp
+core-01/stepped-range-is-a-value.cp
+core-01/stepped-range-value-walks.cp
 core-01/stray-closer.cp
 core-01/tab-indent.cp
 core-01/top-level-return-ends-the-test.cp
@@ -128,12 +131,14 @@ core-03/floor-div-zero.cp
 core-03/int-max-minus-one-ok.cp
 core-03/int-max-plus-one-traps.cp
 core-03/int-min-plus-one-ok.cp
+core-03/int-range-len-overflow-traps.cp
 core-03/intermediate-overflow-traps.cp
 core-03/joint-bound-checked-store.cp
 core-03/local-contract-checked-on-assign.cp
 core-03/locals-wide.cp
 core-03/named-width-fits.cp
 core-03/named-width-traps.cp
+core-03/narrow-range-len-spans-32-bits.cp
 core-03/negative-product-overflow-traps.cp
 core-03/overflow-traps.cp
 core-03/proofs-cross-no-calls.cp
@@ -166,6 +171,7 @@ core-04/range-param-narrowing.cp
 core-04/range-type-widens.cp
 core-04/rb1-q12-literal-outside-domain.cp
 core-04/rb1-q13-literal-inside-min-count.cp
+core-04/reversed-range-empty.cp
 core-04/runtime-domain-literal-between-traps.cp
 core-04/runtime-domain-literal-past-max.cp
 core-04/scalar-fill.cp
@@ -234,6 +240,7 @@ core-05/spec-block-grow-needs-mut-arg.cp
 core-05/spec-block-keep-loop-row.cp
 core-05/spec-block-moved-into-holder.cp
 core-05/spec-block-plain-copy.cp
+core-05/spec-block-push-while-walked.cp
 core-05/spec-block-return-lent-param.cp
 core-05/static-constructor-keeping-param-rejects.cp
 core-05/store-in-top-level-var.cp
@@ -242,6 +249,7 @@ core-05/struct-lent-field-unused-after.cp
 core-05/struct-with-lent-field.cp
 core-05/top-level-not-captured.cp
 core-05/value-param-beside-a-written-mut-param.cp
+core-05/walk-body-cannot-touch-mut-source.cp
 core-05/walk-body-cannot-write-source.cp
 core-05/walk-body-reads-source.cp
 core-06/captured-fn-param-holds-each-callers-closure.cp
@@ -255,6 +263,7 @@ core-06/fn-forms.cp
 core-06/fn-hoists.cp
 core-06/function-types.cp
 core-06/generator-closure-writes-its-local-across-yields.cp
+core-06/generic-free-method.cp
 core-06/get-no-parens.cp
 core-06/lambda-annotated-params.cp
 core-06/multitest-shared-above.cp
@@ -278,6 +287,7 @@ core-06/two-closures-share-var.cp
 core-07/negative-literal-index-is-an-error.cp
 core-07/negative-literal-str-index-is-an-error.cp
 core-08/blanket-impl.cp
+core-08/concrete-extension-beats-std-generic.cp
 core-08/default-method-override-once.cp
 core-08/duplicate-impl.cp
 core-08/impl-plus-shorthand.cp
@@ -622,6 +632,7 @@ std-strings/chars.cp
 std-strings/repeat-zero.cp
 std-timetree/cdq-1.cp
 tools-fmt-lint/lint-never-blocks-run.cp
+traits/Bidir/Range--iter_rev.cp
 traits/Indexed/List--at.cp
 traits/Indexed/Str--at.cp
 traits/IndexedMut/List--at.cp
@@ -631,8 +642,10 @@ traits/Op/Group--lift.cp
 traits/Op/Group--op.cp
 traits/Seq/Domain--iter.cp
 traits/Seq/List--iter.cp
+traits/Seq/Range--iter.cp
 traits/Seq/Str--iter.cp
 traits/Sized/List--len.cp
+traits/Sized/Range--len.cp
 traits/Sized/Str--len.cp
 widths/add-assign-traps-0.cp
 widths/add-assign-traps-1.cp
