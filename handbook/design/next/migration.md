@@ -68,7 +68,7 @@ deleted for the VM and both remain. These rules are the guard.
 |---|---|---|---|
 | 1 | Measures and the slice into the repo and the gate | no | the three counts and the spec-verdict harness run in the gate at HEAD |
 | 2 | Run and check half of the facade, over today's compiler | no | direct compiler dependencies in tool crates for run and check: 0 |
-| 3 | Today's checker made total, in place | no | corpus programs with every expression typed: 1,564 of 1,564 (today 470); errors found only in lowering: 0 (today 45); inference lines in lowering: 0 (today about 7,073) |
+| 3 | The new pipeline's declarations and checker accept every program | no: `cpl-check` is not changed, and is deleted with `cpl-ir` in stage 5's switching landing | conformance, std and corpus cases refused by `crates/cpl-next`'s front half: 0 (its refusals by cause are `target/cpl-next/queue.txt`); library declarations it knows by name (`next_std_names`): 0 |
 | 4 | Storage operations in the language, then `List` in CP Lang | no | `List` builtins in the compiler: 0; the 1.1x time and memory bars hold on the container benchmarks |
 | 5 | New back half: generic IR, link, reference interpreter, C++ emitter | **yes, the one window** | all three counts at 100%; today's lowering, tree-walker and C++ emitter deleted in the switching landing |
 | 6 | Remaining containers, stress, rest of the facade | no | compiler-privileged std behaviour: 0; `cpl-stress` lowering entry points used: 0 (today 7) |
@@ -84,8 +84,13 @@ one commit; it grows until it accepts every program. While it grows:
 - its end date is set from the measured rate of its first week;
 - the tree-walker's removal is part of its exit, not a later cleanup.
 
-**Why this order.** Stage 3 comes before the back half because a
-typed tree with 22,236 untyped expressions cannot feed it. Stage 4
+**Why this order.** Stage 3 was first written as finishing today's
+checker in place. It is the new pipeline's own front half instead
+(decided 2026-11-25): today's checker is keyed on library names
+(`BUILTIN_MEMBERS`, `OPTIONAL_MEMBERS`, `std_family`), so a back half
+fed from it would need a second translation layer and would inherit
+the privilege the design removes. Work on it is work on code stage 5
+deletes. Stage 4
 comes before stage 5 because std uses `List` 2,877 times and every
 other container is built on it; writing it needs storage without a
 fill value, moving an element out, and literal and `for` support for
@@ -108,8 +113,8 @@ canonical) before widening further.
 
 ## What is not known
 
-- How large stage 3 is. The known part is 22,236 untyped expressions
-  and about 7,073 lines of inference in lowering.
+- How large stage 3 is. Its known part is the new pipeline's 4,130
+  refused cases, 868 of them waiting on `use` (modules).
 - Whether generated C++ stays under 64 KB on a 200-line program using
   six std modules. At slice scale it is 5.5 to 10.5 KB against 5.5 to
   12.4 KB from today's compiler.
