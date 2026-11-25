@@ -25,7 +25,11 @@ fn a_name_is_declared_where_its_own_file_or_the_one_it_uses_says() {
     let imported = db.definition("main.cp", used);
     let imported = imported.unwrap_or_else(|| panic!("Deque has a definition"));
     assert_eq!(imported.path, "std/deque.cp");
-    let text = cpl_facade::Std.text("deque").unwrap_or_default();
+    // The place is in a file the session can show: std is in the snapshot.
+    let text = db.file_text("std/deque.cp");
+    let text = text.unwrap_or_else(|| panic!("std/deque.cp has a text"));
+    assert_eq!(Some(&*text), cpl_facade::Std.text("deque"));
+    assert_eq!(db.file_text("std/no_such_module.cp"), None);
     let span = imported.span;
     assert_eq!(&text[span.start as usize..span.end as usize], "Deque");
     assert_eq!(

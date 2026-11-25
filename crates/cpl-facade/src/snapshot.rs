@@ -166,6 +166,11 @@ impl Snapshot {
         self.text_at(file.path())
     }
 
+    /// Which of [`Snapshot::files`] is at `path`, if the snapshot holds it.
+    pub(crate) fn place(&self, path: &str) -> Option<usize> {
+        at(&self.0.files, path).ok()
+    }
+
     /// The text of the file at `path`, if the snapshot holds one.
     pub(crate) fn text_at(&self, path: &str) -> Option<&Text> {
         text_of(&self.0.files, path)

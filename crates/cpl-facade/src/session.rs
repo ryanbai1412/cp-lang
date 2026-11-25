@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use cpl_diag::Diagnostic;
 
-use crate::snapshot::{at, text_of, FileId, Files, Snapshot, Text, World};
+use crate::snapshot::{at, text_of, Files, Snapshot, Text, World};
 use crate::today::Analysis;
 
 /// How far a file is taken before its diagnostics are reported.
@@ -244,8 +244,9 @@ pub(crate) struct Inner {
     programs: Files,
     /// In a closed world, the files `db` finds modules among.
     modules: Files,
-    /// The snapshot and the file the last query synced `db` to.
-    last: Option<(Snapshot, Option<FileId>)>,
+    /// The snapshot the last query synced `db` to, and which of its files
+    /// the query was about.
+    last: Option<(Snapshot, Option<usize>)>,
 }
 
 fn database(snapshot: &Snapshot, modules: &Files) -> cpl_check::Session {
@@ -352,15 +353,16 @@ impl Session {
 
     /// Today's checker, holding exactly this snapshot's files, for a query
     /// about `asked`.
-    pub(crate) fn synced(&self, asked: Option<&FileId>) -> MutexGuard<'_, Inner> {
+    pub(crate) fn synced(&self, asked: Option<&str>) -> MutexGuard<'_, Inner> {
         let mut inner = self
             .inner
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         let world = self.snapshot.world();
         let asked = asked.filter(|_| world == World::Closed);
+        let asked = asked.and_then(|path| self.snapshot.place(path));
         if let Some((snapshot, file)) = &inner.last {
-            if snapshot.same_files(&self.snapshot) && file.as_ref() == asked {
+            if *file == asked && snapshot.same_files(&self.snapshot) {
                 return inner;
             }
         }
@@ -368,8 +370,8 @@ impl Session {
         // file asked about is, and the rest are where its imports are found.
         let mut programs = Files::new();
         let mut modules = Files::new();
-        for (file, text) in self.snapshot.files() {
-            let open = world == World::Disk || Some(file) == asked;
+        for (place, (file, text)) in self.snapshot.files().enumerate() {
+            let open = world == World::Disk || Some(place) == asked;
             let among = if open { &mut programs } else { &mut modules };
             among.push((file.clone(), text.clone()));
         }
@@ -394,14 +396,14 @@ impl Session {
             }
         }
         inner.programs = programs;
-        inner.last = Some((self.snapshot.clone(), asked.cloned()));
+        inner.last = Some((self.snapshot.clone(), asked));
         inner
     }
 
     /// [`Session::synced`] for a query about the file at `path`.
     #[inline(never)]
     pub(crate) fn asked(&self, path: &str) -> MutexGuard<'_, Inner> {
-        self.synced(Some(&FileId::new(path)))
+        self.synced(Some(path))
     }
 
     pub(crate) fn checked(&self, file: &str) -> Option<Arc<Analysis>> {

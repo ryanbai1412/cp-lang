@@ -200,10 +200,18 @@ impl Session {
         self.analyze(file).map(|analysis| analysis.facts().clone())
     }
 
-    /// The text of `path`, in the snapshot or as an import loaded it.
+    /// The text of `path`: a file of the snapshot, a module of its
+    /// standard library (`std/deque.cp`), or what an import loaded.
     pub fn file_text(&self, path: &str) -> Option<Text> {
-        if let Some(held) = self.snapshot().text_at(path) {
+        let snapshot = self.snapshot();
+        if let Some(held) = snapshot.text_at(path) {
             return Some(held.clone());
+        }
+        let module = path
+            .strip_prefix("std/")
+            .and_then(|m| m.strip_suffix(".cp"));
+        if let Some(text) = module.and_then(|m| snapshot.std_text(m)) {
+            return Some(Text::from(text));
         }
         self.synced(None).db.file_text(path)
     }
