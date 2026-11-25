@@ -20,6 +20,7 @@ mod fed_args;
 mod index_nd;
 mod jump;
 mod range_loop;
+mod read_fields;
 mod seq_load;
 mod sort;
 mod stmt;

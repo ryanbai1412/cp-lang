@@ -102,7 +102,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
 
     /// `Op::ApplyV` of `expr` on `regs` into a fresh value register,
     /// clearing the temporaries among them after.
-    fn emit_apply(
+    pub(super) fn emit_apply(
         &mut self,
         expr: &'p Expr,
         regs: Vec<u16>,

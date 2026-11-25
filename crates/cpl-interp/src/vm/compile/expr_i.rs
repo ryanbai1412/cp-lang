@@ -21,6 +21,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
             return self.emit_traced_call(expr.span, fn_id, args, true);
         }
         match &expr.kind {
+            ExprKind::Read(spec) if Self::reads_by_parts(expr, spec) => {
+                self.compile_read_i(spec, expr)
+            }
             ExprKind::Int(v) => {
                 let dst = self.alloc_i();
                 self.emit_const_i(dst, *v, span);

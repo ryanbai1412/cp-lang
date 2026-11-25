@@ -41,7 +41,7 @@ pub(crate) fn operands(e: &Expr) -> Vec<&Expr> {
 
 /// The expressions in `spec`, each evaluated once before the read, or
 /// `None` when it reads through a call, whose reads cannot be hoisted.
-fn spec_exprs(spec: &Spec) -> Option<Vec<&Expr>> {
+pub(crate) fn spec_exprs(spec: &Spec) -> Option<Vec<&Expr>> {
     let mut out = Vec::new();
     let mut todo = vec![spec];
     while let Some(spec) = todo.pop() {

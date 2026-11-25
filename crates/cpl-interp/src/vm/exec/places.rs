@@ -1337,6 +1337,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
                     sync_back(chunk, regs_i, regs_v, &mut self.stack, self.base);
                     val
+                } else if let Some((op, n)) = spec.view {
+                    self.view_op(op, vals, n, spans[cur_pc])
                 } else {
                     self.apply(spec.expr, vals)
                 };
@@ -1495,6 +1497,11 @@ impl<'p, O: Observer> Interp<'p, '_, O> {
                 let [value] = crate::apply::operand_values(vals, span)?;
                 self.assign_value(place, op, value, indices)?;
                 Ok(Value::Unit)
+            }
+            ViewOp::Read(spec) => {
+                let exprs = crate::apply::spec_exprs(spec).unwrap_or_default();
+                let given: Vec<_> = exprs.into_iter().zip(vals).collect();
+                self.read(spec, span, &given)
             }
         }
     }

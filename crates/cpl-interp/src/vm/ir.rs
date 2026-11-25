@@ -1679,6 +1679,8 @@ pub(crate) enum ViewOp<'p> {
     /// A sort of a place the VM's own sorts don't take, such as a view or
     /// a list with a user `<`, descending when its operand says so.
     Sort(&'p Place, &'p cpl_ir::SortBy),
+    /// A read of a part of a read's spec, its operands its expressions.
+    Read(&'p cpl_ir::Spec),
 }
 
 /// An expression applied to the values of its operands, in `regs`.

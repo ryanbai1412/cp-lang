@@ -24,6 +24,21 @@ impl<'p, 'f> Compiler<'p, 'f> {
             .then_some(kind)
     }
 
+    /// A tuple of the values in `regs`, moved to consecutive registers.
+    pub(super) fn emit_make_tuple(&mut self, regs: Vec<u16>, span: Span) -> u16 {
+        let base_v = self.next_v;
+        let len = regs.len() as u8;
+        for r in regs {
+            let slot = self.alloc_v();
+            if slot != r {
+                self.emit(Op::MoveV { dst: slot, src: r }, span);
+            }
+        }
+        let dst = self.alloc_v();
+        self.emit(Op::MakeTuple { dst, base_v, len }, span);
+        dst
+    }
+
     fn make_tuple_i(&mut self, fields: &'p [Expr], kind: ScalarKind, span: Span) -> u16 {
         let regs: Vec<u16> = fields.iter().map(|f| self.compile_expr_i(f)).collect();
         let base_i = self.next_i;
@@ -146,6 +161,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
     pub(super) fn compile_expr_v_kind(&mut self, expr: &'p Expr) -> u16 {
         let span = expr.span;
         match &expr.kind {
+            ExprKind::Read(spec) if Self::reads_by_parts(expr, spec) => {
+                self.compile_read_v(spec, expr)
+            }
             ExprKind::Format(pieces) => self.compile_format(pieces, span),
             ExprKind::Str(bytes) => {
                 let idx = self.consts_v.len() as u32;
@@ -334,27 +352,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 if fields.len() <= 16
                     && matches!(expr.ty, Ty::Tuple(_) | Ty::Record(_) | Ty::Struct(_)) =>
             {
-                let mut regs = Vec::with_capacity(fields.len());
-                for f in fields {
-                    regs.push(self.compile_expr_v(f));
-                }
-                let base_v = self.next_v;
-                for r in regs {
-                    let slot = self.alloc_v();
-                    if slot != r {
-                        self.emit(Op::MoveV { dst: slot, src: r }, span);
-                    }
-                }
-                let dst = self.alloc_v();
-                self.emit(
-                    Op::MakeTuple {
-                        dst,
-                        base_v,
-                        len: fields.len() as u8,
-                    },
-                    span,
-                );
-                dst
+                let regs = fields.iter().map(|f| self.compile_expr_v(f)).collect();
+                self.emit_make_tuple(regs, span)
             }
             ExprKind::Tuple(fields) if fields.len() <= 16 && matches!(expr.ty, Ty::List(_)) => {
                 let mut regs = Vec::with_capacity(fields.len());
