@@ -1,6 +1,7 @@
 //! Contract 3: declarations -> typed tree. Decides every type, target and
 //! conversion. Nothing after this infers anything.
 use crate::decls::{self, Decls, Named, Owner, SelfMode};
+use crate::ir::CheckKind;
 use crate::ty::*;
 use cpl_diag::Span;
 use cpl_syntax::ast::{
@@ -94,7 +95,7 @@ pub enum TStmt {
     While(TExpr, TExpr),
     For(VarRef, TExpr, TExpr, TExpr),
     Return(Option<TExpr>),
-    Assert(TExpr, String, Span),
+    Assert(TExpr, String, Span, CheckKind),
     Break,
     Continue,
     /// In a generator: hand a value to the caller's loop body.

@@ -56,6 +56,23 @@ pub enum CheckKind {
     Assert,
     /// A value becoming a member of a domain.
     Domain,
+    /// A value stored into a slot of a range type.
+    RangeStore,
+    /// A value read from the input into a range type.
+    ReadRange,
+}
+
+impl CheckKind {
+    /// The trap a failed check of this kind is, in the diagnostic registry.
+    pub fn code(self) -> cpl_diag::Code {
+        use cpl_diag::codes;
+        match self {
+            CheckKind::Assert => codes::ASSERTION_FAILED,
+            CheckKind::Domain => codes::DOMAIN_CAST,
+            CheckKind::RangeStore => codes::RANGE_STORE,
+            CheckKind::ReadRange => codes::INPUT_OUT_OF_CONTRACT,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

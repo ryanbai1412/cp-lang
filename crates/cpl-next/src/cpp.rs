@@ -679,10 +679,7 @@ impl Emit<'_> {
                     } else {
                         String::new()
                     },
-                    match kind {
-                        CheckKind::Assert => cpl_diag::codes::ASSERTION_FAILED.0,
-                        CheckKind::Domain => cpl_diag::codes::DOMAIN_CAST.0,
-                    }
+                    kind.code().0
                 ),
                 Stmt::Print(ps) => {
                     for p in ps {

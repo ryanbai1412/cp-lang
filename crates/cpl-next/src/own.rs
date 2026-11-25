@@ -50,7 +50,9 @@ impl Fx {
 /// R1: no part of the value lives on the heap, so using it is a copy.
 pub fn plain(d: &Decls, t: &Ty, depth: usize) -> bool {
     match t {
-        Ty::Int | Ty::Bool | Ty::Unit | Ty::Dom(_) | Ty::Fn(..) | Ty::Clo(_) => true,
+        Ty::Int | Ty::Range(..) | Ty::Bool | Ty::Unit | Ty::Dom(_) | Ty::Fn(..) | Ty::Clo(_) => {
+            true
+        }
         Ty::Struct(id, targs, sets) if depth < 8 => {
             let s = Subst { tys: targs, sets };
             d.s(*id)
@@ -206,7 +208,10 @@ impl Cx<'_> {
     /// parameters it uses (R05.10.1); a value built from lent values borrows what they do.
     fn sources(&self, e: &TExpr) -> BTreeSet<Root> {
         let mut out = BTreeSet::new();
-        if matches!(e.ty, Ty::Int | Ty::Bool | Ty::Unit | Ty::Dom(_)) {
+        if matches!(
+            e.ty,
+            Ty::Int | Ty::Range(..) | Ty::Bool | Ty::Unit | Ty::Dom(_)
+        ) {
             return out;
         }
         match &e.kind {

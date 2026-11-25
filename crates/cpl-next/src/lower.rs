@@ -595,11 +595,11 @@ impl Lw<'_> {
                 });
                 out.push(Stmt::Return(v));
             }
-            TStmt::Assert(c, msg, span) => {
+            TStmt::Assert(c, msg, span, kind) => {
                 let cv = self.expr(c, out);
                 let cv = self.spill(cv, out);
                 out.push(Stmt::Check {
-                    kind: CheckKind::Assert,
+                    kind: *kind,
                     cond: cv,
                     msg: msg.clone(),
                     site: self.site(*span),

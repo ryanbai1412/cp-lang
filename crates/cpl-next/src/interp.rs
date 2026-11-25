@@ -256,13 +256,7 @@ impl<'a> Machine<'a> {
                     };
                     if !ok {
                         self.enter(*site);
-                        return trap(
-                            match kind {
-                                CheckKind::Assert => codes::ASSERTION_FAILED,
-                                CheckKind::Domain => codes::DOMAIN_CAST,
-                            },
-                            msg.clone(),
-                        );
+                        return trap(kind.code(), msg.clone());
                     }
                 }
                 Stmt::Region {

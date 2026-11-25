@@ -367,7 +367,19 @@ impl<'a> Cx<'a> {
             span,
         }
     }
+    /// The value of `e`. One read from a slot of a range type is an `Int` (R03.1.4), unless it
+    /// goes straight into a slot of the same range.
     pub(super) fn expr(&mut self, e: &ast::Expr, want: Option<&Ty>) -> TExpr {
+        let v = self.expr_as_typed(e, want);
+        match self.shallow(&v.ty) {
+            have @ Ty::Range(..) if want.map(|w| self.shallow(w)).as_ref() != Some(&have) => {
+                TExpr { ty: Ty::Int, ..v }
+            }
+            _ => v,
+        }
+    }
+    /// `e` with the type its slot has: a range stays a range.
+    pub(super) fn expr_as_typed(&mut self, e: &ast::Expr, want: Option<&Ty>) -> TExpr {
         let span = e.span;
         let mk = |kind, ty| TExpr { kind, ty, span };
         match &e.kind {
@@ -586,12 +598,12 @@ impl<'a> Cx<'a> {
                         && matches!(&base.kind, ExprKind::Name(n) if n == "read" && self.lookup(n).is_none()) =>
                 {
                     let mut pre = Vec::new();
-                    let t = self.body_ty(&targs[0], span, &mut pre);
-                    let v = self.read_as(&t, span);
-                    let v = if matches!(targs[0].kind, TypeKind::Range { .. }) {
+                    let v = if Self::range_of_values(&targs[0]) {
+                        let v = self.read_as(&Ty::Int, span);
                         self.in_range(v, &targs[0], span)
                     } else {
-                        v
+                        let t = self.body_ty(&targs[0], span, &mut pre);
+                        self.read_as(&t, span)
                     };
                     if pre.is_empty() {
                         v

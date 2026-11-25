@@ -18,6 +18,9 @@ pub struct LambdaId(pub usize);
 #[derive(Clone, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub enum Ty {
     Int,
+    /// `lo..=hi` with constant ends: an `Int` that a slot of this type is promised to hold. A
+    /// value read from the slot is an `Int`; an `Int` stored into it is checked (R03.1.4).
+    Range(i64, i64),
     Bool,
     Unit,
     Raw(Box<Ty>),

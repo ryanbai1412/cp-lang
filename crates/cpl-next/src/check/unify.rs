@@ -215,6 +215,7 @@ impl<'a> Cx<'a> {
     pub(super) fn show(&self, t: &Ty) -> String {
         match self.shallow(t) {
             Ty::Int => "Int".into(),
+            Ty::Range(lo, hi) => format!("{lo}..={hi}"),
             Ty::Bool => "Bool".into(),
             Ty::Unit => "()".into(),
             Ty::Raw(e) => format!("Raw<{}>", self.show(&e)),
@@ -291,6 +292,25 @@ impl<'a> Cx<'a> {
         let (have, want_s) = (self.shallow(&e.ty), self.shallow(want));
         let span = e.span;
         match (&have, &want_s) {
+            // Loads widen, stores check (R03.1.4).
+            (Ty::Range(..), Ty::Int) => TExpr { ty: Ty::Int, ..e },
+            (Ty::Range(a, b), Ty::Range(lo, hi)) if lo <= a && b <= hi => TExpr { ty: want_s, ..e },
+            (Ty::Int | Ty::Range(..), Ty::Range(lo, hi)) => {
+                let (lo, hi) = (*lo, *hi);
+                let int = |i| TExpr {
+                    kind: TK::Int(i),
+                    ty: Ty::Int,
+                    span,
+                };
+                let v = TExpr { ty: Ty::Int, ..e };
+                let kind = if matches!(v.kind, TK::ReadInt) {
+                    CheckKind::ReadRange
+                } else {
+                    CheckKind::RangeStore
+                };
+                let v = self.checked_between(v, Some(int(lo)), Some(int(hi)), kind, span);
+                TExpr { ty: want_s, ..v }
+            }
             (Ty::Clo(c), Ty::Fn(ps, r, set)) => {
                 let (cps, cr) = self.clo_sig(c);
                 let ok = cps.len() == ps.len()

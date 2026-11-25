@@ -212,7 +212,7 @@ impl Link<'_> {
     }
     fn ty(&mut self, t: &Ty, env: &Env) -> CTy {
         match t {
-            Ty::Int => CTy::Int,
+            Ty::Int | Ty::Range(..) => CTy::Int,
             Ty::Bool => CTy::Bool,
             Ty::Unit => CTy::Unit,
             Ty::Raw(e) => CTy::Raw(Box::new(self.ty(e, env))),

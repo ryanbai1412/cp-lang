@@ -207,8 +207,16 @@ fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<String>) -> Ty {
             conv(cx, &named, errors)
         }
         // `[D]T` is the library's `Array<D, T>`.
-        // A range type on a scalar is `Int` here; its bounds are checked where the value is made (the facts layer is not in the slice).
-        TypeKind::Range { .. } => Ty::Int,
+        TypeKind::Range { lo, hi, inclusive } => match static_range(lo, hi, *inclusive) {
+            Some((lo, hi)) => Ty::Range(lo, hi),
+            None => {
+                errors.push(
+                    "slice: a range type whose ends are not constants, outside a `let` or `read`"
+                        .to_string(),
+                );
+                Ty::Error
+            }
+        },
         TypeKind::Array { index, .. }
             if index.len() == 1 && matches!(index[0].kind, TypeKind::Range { .. }) =>
         {
@@ -544,4 +552,40 @@ fn add_fn(
         item,
     });
     FnId(d.fns.len() - 1)
+}
+
+/// The ends of a range type when both are constants, as an inclusive pair.
+pub fn static_range(
+    lo: &Option<Box<ast::Expr>>,
+    hi: &Option<Box<ast::Expr>>,
+    inclusive: bool,
+) -> Option<(i64, i64)> {
+    fn constant(e: &ast::Expr) -> Option<i64> {
+        match &e.kind {
+            ast::ExprKind::Int(i) => i64::try_from(*i).ok(),
+            ast::ExprKind::Paren(x) => constant(x),
+            ast::ExprKind::Unary {
+                op: ast::UnOp::Neg,
+                expr,
+            } => constant(expr)?.checked_neg(),
+            // `1e9`, `2e5`: a whole number written with an exponent.
+            ast::ExprKind::Float(text) => {
+                let (m, e) = text.split_once(['e', 'E'])?;
+                m.parse::<i64>()
+                    .ok()?
+                    .checked_mul(10i64.checked_pow(e.parse().ok()?)?)
+            }
+            _ => None,
+        }
+    }
+    let lo = match lo {
+        Some(e) => constant(e)?,
+        None => i64::MIN + 1,
+    };
+    let hi = match hi {
+        Some(e) if inclusive => constant(e)?,
+        Some(e) => constant(e)?.checked_sub(1)?,
+        None => i64::MAX,
+    };
+    Some((lo, hi))
 }

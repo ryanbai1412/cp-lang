@@ -199,14 +199,22 @@ impl<'a> Cx<'a> {
                 let PatternKind::Name(name) = &pat.kind else {
                     return self.err(s.span, "slice: unsupported pattern");
                 };
-                let declared = ty.as_ref().map(|t| self.body_ty(t, s.span, out));
+                // A `let` is stored once, so a range whose ends are not constants is checked here
+                // and the name is an `Int`.
+                let once = ty
+                    .as_ref()
+                    .filter(|t| !*mutable && Self::range_of_values(t));
+                let declared = match once {
+                    Some(_) => Some(Ty::Int),
+                    None => ty.as_ref().map(|t| self.body_ty(t, s.span, out)),
+                };
                 let v = self.expr(init, declared.as_ref());
-                let v = match ty.as_ref() {
-                    Some(t) if matches!(t.kind, TypeKind::Range { .. }) => {
+                let v = match once {
+                    Some(t) => {
                         let v = self.coerce(v, &Ty::Int);
                         self.in_range(v, t, s.span)
                     }
-                    _ => v,
+                    None => v,
                 };
                 // `var a: [V]Int = 0` fills every slot: it is `Array.filled(0)`.
                 let fill = match (&declared, self.d.struct_named("Array")) {
@@ -574,7 +582,7 @@ impl<'a> Cx<'a> {
                         .collect(),
                     _ => "assertion failed".to_string(),
                 };
-                out.push(TStmt::Assert(c, msg, s.span));
+                out.push(TStmt::Assert(c, msg, s.span, CheckKind::Assert));
             }
             StmtKind::Domain { name, def } => {
                 let ExprKind::Range {
@@ -778,11 +786,50 @@ impl<'a> Cx<'a> {
         }
         self.fresh_sets(&t)
     }
-    /// A value bound at a range type is checked against the range once, where it is made.
+    /// A range type with an end that is not a constant: `1..=n`.
+    pub(super) fn range_of_values(t: &ast::Type) -> bool {
+        matches!(&t.kind, TypeKind::Range { lo, hi, inclusive }
+            if decls::static_range(lo, hi, *inclusive).is_none())
+    }
+    /// A value bound at a range type whose ends are values is checked against them once, where it is made.
     pub(super) fn in_range(&mut self, v: TExpr, t: &ast::Type, span: Span) -> TExpr {
         let TypeKind::Range { lo, hi, inclusive } = &t.kind else {
             return v;
         };
+        let kind = if matches!(v.kind, TK::ReadInt) {
+            CheckKind::ReadRange
+        } else {
+            CheckKind::RangeStore
+        };
+        let end = |cx: &mut Self, e: &Option<Box<ast::Expr>>, open: bool| {
+            e.as_ref().map(|b| {
+                let b = cx.expr(b, Some(&Ty::Int));
+                let b = cx.coerce(b, &Ty::Int);
+                if open {
+                    let one = TExpr {
+                        kind: TK::Int(1),
+                        ty: Ty::Int,
+                        span,
+                    };
+                    cx.binary(BinOp::Sub, b, one, span)
+                } else {
+                    b
+                }
+            })
+        };
+        let lo = end(self, lo, false);
+        let hi = end(self, hi, !*inclusive);
+        self.checked_between(v, lo, hi, kind, span)
+    }
+    /// `v`, after a check that it is between the two ends, each inclusive.
+    pub(super) fn checked_between(
+        &mut self,
+        v: TExpr,
+        lo: Option<TExpr>,
+        hi: Option<TExpr>,
+        kind: CheckKind,
+        span: Span,
+    ) -> TExpr {
         self.scopes.push(HashMap::new());
         let tmp = self.bind("$ranged", Ty::Int);
         let var = TExpr {
@@ -791,13 +838,8 @@ impl<'a> Cx<'a> {
             span,
         };
         let mut stmts = vec![TStmt::Let(tmp, v)];
-        for (bound, op) in [
-            (lo, CmpOp::Ge),
-            (hi, if *inclusive { CmpOp::Le } else { CmpOp::Lt }),
-        ] {
+        for (bound, op) in [(lo, CmpOp::Ge), (hi, CmpOp::Le)] {
             if let Some(b) = bound {
-                let b = self.expr(b, Some(&Ty::Int));
-                let b = self.coerce(b, &Ty::Int);
                 let c = TExpr {
                     kind: TK::Cmp(op, Box::new(var.clone()), Box::new(b)),
                     ty: Ty::Bool,
@@ -807,6 +849,7 @@ impl<'a> Cx<'a> {
                     c,
                     "value outside its range".to_string(),
                     span,
+                    kind,
                 ));
             }
         }
@@ -843,6 +886,10 @@ impl<'a> Cx<'a> {
                     ty,
                     span,
                 }
+            }
+            want @ Ty::Range(..) => {
+                let v = self.read_as(&Ty::Int, span);
+                self.coerce(v, &want)
             }
             Ty::Int | Ty::Var(_) | Ty::Error => {
                 self.unify(t, &Ty::Int);
@@ -889,7 +936,7 @@ impl<'a> Cx<'a> {
     }
     /// An expression that names storage: a variable, or a field of one.
     pub(super) fn place(&mut self, e: &ast::Expr) -> TExpr {
-        let v = self.expr(e, None);
+        let v = self.expr_as_typed(e, None);
         if !matches!(v.kind, TK::Var(_) | TK::Field(..) | TK::Error) {
             self.err(e.span, "this is not a place that can be assigned or lent");
         }
