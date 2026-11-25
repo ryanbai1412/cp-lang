@@ -21,8 +21,10 @@ order:
    `spec/tools/`, with `std/`): handbook leads design; spec/ is its
    downstream exhaustive form. The two change together; a disagreement is a
    bug to resolve, not a rule to pick from.
-6. `plan/STATUS.md` (generated: every domain's metrics and open questions)
-   and `spec/README.md`: where the work stands today.
+6. `plan/STATUS.md` (generated: every domain's metrics and open questions),
+   `plan/END-STATE.md` (generated: the suites that say the new architecture
+   is done, each with its number today and its target; `plan/end-state.toml`
+   is its source) and `spec/README.md`: where the work stands today.
 7. As needed: `handbook/design/` (architecture; the target is
    `handbook/design/architecture.md`),
    `REPO.md` (where everything lives), `decisions.md` (every design call,

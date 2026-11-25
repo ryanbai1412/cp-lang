@@ -271,5 +271,6 @@
   "invariant_sites": 0,
   "domain_member_names": 0,
   "next_wrong": 128,
-  "next_not_passing": 4293
+  "next_not_passing": 4293,
+  "end_state_unmeasured": 25
 }

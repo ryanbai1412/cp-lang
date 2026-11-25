@@ -26,6 +26,14 @@ check = ["scripts/status.py", "--check"]
 tier = "pre-commit"
 
 [[gen]]
+name = "end-state"
+files = ["plan/END-STATE.md"]
+inputs = ["plan/end-state.toml", "scripts/debt-ratchet.json"]
+write = ["scripts/end-state.py"]
+check = ["scripts/end-state.py", "--check"]
+tier = "pre-commit"
+
+[[gen]]
 name = "skill"
 files = ["skills/cp-lang/stdlib/*.md"]
 inputs = ["std/*.cp"]

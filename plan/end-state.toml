@@ -1,0 +1,267 @@
+# The end state of the migration to the new architecture: the suites that say it is done.
+# The source of plan/END-STATE.md (scripts/end-state.py writes it; never edit that file).
+#
+# A suite is done when every number it names is at its target in scripts/debt-ratchet.json.
+# `numbers` name debt-ratchet counters, which the gate measures and only lets move toward
+# the target. A suite with `missing` has no number yet: `missing` says what would count it,
+# and the ratchet's `end_state_unmeasured` counts such suites and only goes down.
+#
+# Changing a target, a size or a property here is a design decision: say why in the commit.
+
+[[suite]]
+id = 1
+group = "A. The language is implemented, once"
+name = "Spec conformance"
+decides = "Every spec rule is implemented"
+size = "Every rule has at least one accepting and, where it forbids something, one rejecting case; at least 6,000 cases"
+properties = "100% pass on every engine and the C++; 0 wrong; 0 refused; error cases match code and line"
+level = "3"
+numbers = [{ counter = "next_not_passing", target = 0 }, { counter = "conformance_failing", target = 0 }]
+missing = "cases short of 6,000; cases the other engines of the new pipeline do not pass"
+
+[[suite]]
+id = 2
+group = "A. The language is implemented, once"
+name = "Feature-by-context matrix"
+decides = "Features work in every place they can appear"
+size = "Every syntax form (239 counted) in every context it is legal in; at least 20,000 generated cases"
+properties = "No empty cell; each cell agrees across engines"
+level = "2"
+missing = "cells of the feature-by-context matrix with no case"
+
+[[suite]]
+id = 3
+group = "A. The language is implemented, once"
+name = "Corpus"
+decides = "Real contest solutions work"
+size = "All 1,108 problems; at least 1,500 programs"
+properties = "Accepted on generated tests within the judge's limits, on every engine"
+level = "3"
+missing = "corpus programs not accepted on every engine"
+
+[[suite]]
+id = 4
+group = "A. The language is implemented, once"
+name = "Std as a program"
+decides = "Std is ordinary CP Lang"
+size = "All 43 modules, every `pub` item"
+properties = "Compiles with 0 compiler-known names; every doc example runs; std's own tests pass on every engine"
+level = "1 + 3"
+numbers = [{ counter = "ir_builtin_names", target = 0 }, { counter = "prelude_privilege", target = 0 }, { counter = "std_names_outside_rt", target = 0 }, { counter = "backend_std_names", target = 0 }]
+missing = "std modules the new pipeline does not compile (43 today)"
+
+[[suite]]
+id = 5
+group = "A. The language is implemented, once"
+name = "Checker totality"
+decides = "The checker is the one source of types"
+size = "Every expression in suites 1, 3 and 4"
+properties = "0 expressions without a type or a diagnostic; 0 type inference outside the checker; never panics on any input"
+level = "1 + 4"
+numbers = [{ counter = "silent_unknowns", target = 0 }, { counter = "ir_reinfer", target = 0 }]
+missing = "errors found only in lowering (45 today)"
+
+[[suite]]
+id = 6
+group = "A. The language is implemented, once"
+name = "Ownership soundness"
+decides = "Moves, borrows and lends are right in both directions"
+size = "At least 1,000 written cases (half must-accept, half must-reject) plus generated programs"
+properties = "0 wrong accepts; 0 wrong rejects; every accepted program runs clean under ASan"
+level = "2 + 3"
+missing = "ownership cases wrong in either direction, written and generated"
+
+[[suite]]
+id = 7
+group = "B. Every way of running a program agrees"
+name = "Engine agreement"
+decides = "Reference interpreter, bytecode engine, machine code and C++ give one answer"
+size = "Every case of suites 1 to 4, plus at least 100,000 generated programs per night"
+properties = "Same stdout, exit status, trap code and line; 0 splits"
+level = "2"
+numbers = [{ counter = "next_wrong", target = 0 }]
+missing = "splits on generated programs each night; engines beyond the interpreter and the C++"
+
+[[suite]]
+id = 8
+group = "B. Every way of running a program agrees"
+name = "Sanitized C++"
+decides = "Emitted C++ has no undefined behaviour"
+size = "Every accepted case of suites 1 to 4"
+properties = "ASan and UBSan clean; compiles with 0 warnings on GCC and Clang, C++17"
+level = "2"
+missing = "accepted cases whose C++ is not sanitizer-clean and warning-free on GCC and Clang"
+
+[[suite]]
+id = 9
+group = "B. Every way of running a program agrees"
+name = "IR stage contracts"
+decides = "Each IR stage is what its contract says"
+size = "A verifier per stage, run after every stage on every case"
+properties = "0 violations; the interpreter runs raw, canonical and optimized IR to the same result"
+level = "1 + 2"
+missing = "cases a stage verifier rejects"
+
+[[suite]]
+id = 10
+group = "B. Every way of running a program agrees"
+name = "Traps"
+decides = "A failing program says what, where and with which values"
+size = "Every trap code, in every operation that can raise it"
+properties = "Same code, line and values on every engine; output before the trap is kept"
+level = "2 + 3"
+missing = "trap code by operation cells that differ between engines"
+
+[[suite]]
+id = 11
+group = "B. Every way of running a program agrees"
+name = "Determinism"
+decides = "Same input, same output, always"
+size = "Every case of suites 1 and 3, run twice and on 3 operating systems"
+properties = "Byte-identical C++, IR and traces; floats match bit for bit"
+level = "2"
+missing = "cases whose C++, IR or trace differs between two runs or two systems"
+
+[[suite]]
+id = 12
+group = "C. Speed, memory and size"
+name = "Time against C++"
+decides = "Generated code is as fast as hand-written"
+size = "Every corpus problem with a matched C++ solution; at least 300 pairs"
+properties = "p95 within 1.1x after manual tuning; no program over the judge's limit"
+level = "3 + 4"
+missing = "matched pairs over 1.1x of the C++ time"
+
+[[suite]]
+id = 13
+group = "C. Speed, memory and size"
+name = "Memory against C++"
+decides = "Memory is predictable"
+size = "Same pairs"
+properties = "p95 within 1.5x, max within 2x, 1.1x after manual tuning"
+level = "3 + 4"
+missing = "matched pairs over the memory bars"
+
+[[suite]]
+id = 14
+group = "C. Speed, memory and size"
+name = "Containers"
+decides = "CP Lang containers match the C++ built-ins"
+size = "Every container operation at 5 sizes and 4 key shapes"
+properties = "Faster than the C++ built-in, or within 1.1x, in time and memory; no hidden copy"
+level = "3 + 4"
+missing = "container operations slower than 1.1x of the C++ built-in"
+
+[[suite]]
+id = 15
+group = "C. Speed, memory and size"
+name = "Code size"
+decides = "Submissions fit"
+size = "Every corpus program"
+properties = "Under the judge's source limit (64 KB); size per closure and per instance bounded"
+level = "4"
+missing = "corpus programs over the judge's source limit"
+
+[[suite]]
+id = 16
+group = "C. Speed, memory and size"
+name = "Compile and local run time"
+decides = "The loop stays fast"
+size = "Every corpus program"
+properties = "Check under 100 ms, local run start under 300 ms at p95; local engine within 3x of the C++"
+level = "4"
+missing = "corpus programs over the check and local-run bars"
+
+[[suite]]
+id = 17
+group = "D. Tools see one program"
+name = "Facade parity"
+decides = "CLI, editor, browser and stress give the same answers"
+size = "Every facade query on every corpus program"
+properties = "0 tool crates depend on a compiler layer directly; identical diagnostics, types and runs from every client"
+level = "1 + 2"
+missing = "direct compiler dependencies in tool crates"
+
+[[suite]]
+id = 18
+group = "D. Tools see one program"
+name = "Events, trace and debugger"
+decides = "A recorded run is the same whichever engine made it"
+size = "Every corpus program, recorded on every engine"
+properties = "Identical event streams; every step, watch and reverse-step answer matches the reference interpreter"
+level = "2"
+numbers = [{ counter = "trace_budget_gap", target = 0 }]
+missing = "corpus programs whose event streams differ between engines"
+
+[[suite]]
+id = 19
+group = "D. Tools see one program"
+name = "Lossless syntax"
+decides = "The tree keeps every byte"
+size = "Every `.cp` file in the repo plus generated broken files"
+properties = "Tree prints back byte-identical; formatting is idempotent and keeps meaning; every lint fix keeps output"
+level = "2"
+missing = "files the lossless tree does not print back byte for byte"
+
+[[suite]]
+id = 20
+group = "D. Tools see one program"
+name = "Editor under edits"
+decides = "The editor stays right and fast while typing"
+size = "At least 10,000 generated edit sequences over corpus files"
+properties = "Incremental answer equals a fresh one; p95 within the latency budget at 5,000 lines; never crashes on broken code"
+level = "2"
+missing = "edit sequences whose incremental answer differs from a fresh one"
+
+[[suite]]
+id = 21
+group = "E. The architecture holds and the plan finishes"
+name = "Layer rules"
+decides = "No layer reaches around another"
+size = "Every crate edge"
+properties = "Only the edges in the architecture page; back ends never read the checker; 0 forbidden edges"
+level = "1 + 4"
+numbers = [{ counter = "layer_violations", target = 0 }]
+missing = "edges between the new pipeline's stages that skip a stage or read backwards (today's count covers today's crates only)"
+
+[[suite]]
+id = 22
+group = "E. The architecture holds and the plan finishes"
+name = "One copy of every fact"
+decides = "Nothing is derived twice"
+size = "Each cross-layer fact (type, range, ownership, effect, layout, cost, display)"
+properties = "One function computes it; 0 re-derivations in consumers"
+level = "4"
+numbers = [{ counter = "consumer_rederived", target = 0 }, { counter = "site_rederived", target = 0 }]
+missing = "facts (range, ownership, effect, layout, cost, display) computed in more than one place"
+
+[[suite]]
+id = 23
+group = "E. The architecture holds and the plan finishes"
+name = "No old path"
+decides = "Replaced code is gone"
+size = "Each migration step"
+properties = "0 lines of replaced code; the shipped binary links one pipeline; frozen files take no new lines; a missed window fails the gate"
+level = "1 + 4"
+numbers = [{ counter = "tree_walker", target = 0 }, { counter = "vm_fallbacks", target = 0 }]
+missing = "lines of replaced code left per step; new lines in frozen files; windows past their end date"
+
+[[suite]]
+id = 24
+group = "E. The architecture holds and the plan finishes"
+name = "Suite strength"
+decides = "The suites above would catch a bug"
+size = "Checker, ownership, lowering, each engine, the emitter"
+properties = "Mutation score at least 90% per crate; every audit finding has a permanent test"
+level = "2"
+missing = "crates under a 90% mutation score"
+
+[[suite]]
+id = 25
+group = "E. The architecture holds and the plan finishes"
+name = "Outsider test"
+decides = "Someone new can use it from the docs"
+size = "Every journey in `handbook/product/journeys.md`"
+properties = "A cold reader completes each journey using only the docs; every doc example runs"
+level = "5 + 3"
+missing = "journeys a cold reader cannot complete from the docs"

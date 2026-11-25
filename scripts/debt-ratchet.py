@@ -1160,6 +1160,16 @@ def next_wrong(root: Path) -> list[str]:
     return [l.split("\t")[0] for l in _lines(wrong) if l.strip()] if wrong.is_file() else []
 
 
+def end_state_unmeasured(root: Path) -> list[str]:
+    """Suites of the end state (`plan/end-state.toml`) that still say `missing`: nothing the
+    gate measures counts them yet. One leaves by naming ratchet counters for all of it."""
+    path = root / "plan" / "end-state.toml"
+    if not path.is_file():
+        return []
+    suites = tomllib.loads(path.read_text(encoding="utf-8"))["suite"]
+    return [f"suite {s['id']}: {s['name']}: {s['missing']}" for s in suites if s.get("missing")]
+
+
 def next_not_passing(root: Path) -> list[str]:
     """Cases the new pipeline does not pass yet: wrong ones and the ones it refuses (says it
     does not implement). 0 is the day `cpl` switches to it and what it replaces is deleted.
@@ -3265,6 +3275,7 @@ COUNTERS = {
                                  conformance_wrong_output, True),
     "vm_fallbacks": ("source call sites that route the VM into the tree-walker", vm_fallbacks, True),
     "next_wrong": ("cases the new pipeline (cpl-next) gets wrong (Core)", next_wrong, True),
+    "end_state_unmeasured": ("suites of the end state (plan/end-state.toml) with no number yet (Core)", end_state_unmeasured, True),
     "next_not_passing": ("cases the new pipeline (cpl-next) does not pass yet: wrong or refused (Core)", next_not_passing, True),
     "own_databases": ("Database built outside cpl-check", own_databases, True),
     "ir_reinfer": ("lowering re-inferring a type the checker's facts give", ir_reinfer, True),
