@@ -340,6 +340,7 @@ core-11/local-shadows-every-special-name.cp
 core-11/local-shadows-prelude.cp
 core-11/member-single-file-needs-no-pub.cp
 core-11/method-named-like-builtin.cp
+core-11/method-of-non-prelude-fn.cp
 core-11/own-fn-max-shadows-binary-builtin.cp
 core-11/pub-field-and-method.cp
 core-11/runtime-domain-reads-in-order.cp
@@ -438,6 +439,7 @@ next/a_io_05_print_list.cp
 next/a_io_06_print_list_and_value.cp
 next/a_keep_01_generic_fn_keeps_its_arg.cp
 next/a_keep_02_kept_plain_and_moved_once.cp
+next/a_mod_01_method_needs_no_import.cp
 next/a_multi_01_chained_compare_once.cp
 next/a_multi_02_state_above_and_below.cp
 next/a_multi_03_top_level_return_ends_case.cp
@@ -608,6 +610,7 @@ std-hashmap/counter-is-a-std-struct-a-user-may-shadow.cp
 std-range/len-param-past-2-31-is-a-compile-error.cp
 std-range/len-param-past-2-31-traps-at-the-call.cp
 std-range/len-param-takes-a-len.cp
+std-strings/case-trim.cp
 std-strings/chars.cp
 std-strings/repeat-zero.cp
 std-timetree/cdq-1.cp

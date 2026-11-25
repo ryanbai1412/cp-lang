@@ -170,6 +170,9 @@ pub struct Decls {
     pub errors: Vec<String>,
     /// Declarations the program gets wrong: where, the code, what is wrong.
     pub misdeclared: Vec<(usize, &'static str, String)>,
+    /// Each library's public free fns with a `self`, by name: a method call finds them with no
+    /// import (R11.3.4).
+    pub methods: HashMap<String, Vec<FnId>>,
 }
 
 /// Where a method call resolved to.
@@ -282,6 +285,16 @@ impl Decls {
             targs.extend(im.trait_.args.iter().map(|t| sub.ty(t)));
             Some(Member::Method(tm, targs, Vec::new()))
         })
+    }
+    /// The library method `name` whose `self` can be `recv` (R11.3.4).
+    pub fn method_for(&self, name: &str, recv: &Ty) -> Option<FnId> {
+        let fits = |f: &FnId| match (self.f(*f).self_ty.as_ref(), recv) {
+            (Some(Ty::Param(_)), _) | (_, Ty::Var(_) | Ty::Error) => true,
+            (Some(Ty::Struct(a, ..)), Ty::Struct(b, ..)) => a == b,
+            (Some(t), r) => std::mem::discriminant(t) == std::mem::discriminant(r),
+            (None, _) => false,
+        };
+        self.methods.get(name)?.iter().copied().find(|f| fits(f))
     }
     /// The impl's type arguments when it is for `t`; a type not known yet fits any.
     pub fn impl_args(&self, im: &ImplDecl, t: &Ty) -> Option<Vec<Ty>> {
@@ -455,6 +468,13 @@ fn alias(cx: &mut TyCx, id: usize, n: &str, a: Vec<Ty>, errors: &mut Vec<String>
     t
 }
 /// Whether some type fits both impl headers.
+/// A decorator another tool reads (`cpl lint`, `cpl stress`, a diagnostic's suggestions): on a
+/// library item it changes nothing a run or a check of a program does (R06.4.11). A program's
+/// own is refused until the slice checks it.
+fn read_elsewhere(name: &str) -> bool {
+    matches!(name, "lint" | "stress" | "aka" | "was" | "on_unimplemented")
+}
+
 /// An impl of a trait for a type needs one of each of its supertraits for that type (R08.1.1).
 /// The library's are checked with it; here one the slice refuses would read as missing.
 fn supertraits_unmet(d: &Decls) -> Vec<(usize, &'static str, String)> {
@@ -906,8 +926,10 @@ pub fn collect(
                         ty,
                         bounds,
                     } if bounds.is_empty() => {
-                        // `@stress(kind)` and the like change what the alias means; the slice builds none.
-                        for x in &s.decorators {
+                        let library = d.is_library(mid);
+                        for x in (s.decorators.iter())
+                            .filter(|x| !(library && read_elsewhere(&x.name.text)))
+                        {
                             let e = format!("slice: decorator `@{}`", x.name.text);
                             match d.is_library(mid) {
                                 true => d.module_errors[mi].push(e),
@@ -1330,6 +1352,12 @@ pub fn collect(
                 let fid = add_fn(&mut d, mid, item, s, f, FREE);
                 let before = own[mi].insert(f.name.text.clone(), Named::Fn(fid));
                 d.views[mi].insert(f.name.text.clone(), Named::Fn(fid));
+                if d.is_library(mid)
+                    && public[mi].contains(&f.name.text)
+                    && d.f(fid).self_ty.is_some()
+                {
+                    d.methods.entry(f.name.text.clone()).or_default().push(fid);
+                }
                 if let Some(Named::Fn(first)) = before {
                     if d.is_library(mid) {
                         let e = format!("slice: a library with two fns named `{}`", f.name.text);
@@ -1526,8 +1554,8 @@ fn add_fn(
     // never skipped. A library's `@lint` declares a rewrite for the linter, which the slice does not
     // run, so the program's own is refused: its expected result may be that lint (R06.4.9).
     for x in &s.decorators {
-        let lint = x.name.text == "lint" && d.is_library(m);
-        if !lint && !matches!(x.name.text.as_str(), "get" | "multitest") {
+        let elsewhere = d.is_library(m) && read_elsewhere(&x.name.text);
+        if !elsewhere && !matches!(x.name.text.as_str(), "get" | "multitest") {
             errors.push(format!("slice: decorator `@{}`", x.name.text));
         }
     }

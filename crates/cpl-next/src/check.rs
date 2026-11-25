@@ -188,6 +188,8 @@ pub struct Typed {
     pub errors: Vec<String>,
     /// The errors of each library fn reached only through a trait, said if an instance runs it.
     pub deferred: HashMap<FnId, Vec<String>>,
+    /// Members the program or a library asked for that nothing loaded declares.
+    pub missing: Vec<String>,
 }
 
 enum SetVar {
@@ -240,6 +242,8 @@ struct Cx<'a> {
     /// Library fns reached only as a trait's impl, or from one: what they use that the slice
     /// does not build refuses only a program whose instances run them.
     through_trait: Vec<FnId>,
+    /// Members asked for that nothing loaded declares.
+    missing: Vec<String>,
 }
 
 pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
@@ -275,6 +279,7 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
         module: d.program,
         reached: Vec::new(),
         through_trait: Vec::new(),
+        missing: Vec::new(),
         reported: HashSet::new(),
     };
     // The set each fn returns is one variable per declaration, filled as bodies are checked.
@@ -423,6 +428,7 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
         lambdas,
         ret_sets,
         errors: cx.errors,
+        missing: cx.missing,
         deferred,
     }
 }

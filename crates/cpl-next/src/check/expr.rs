@@ -647,7 +647,8 @@ impl<'a> Cx<'a> {
         }
         // A free fn whose `self` the receiver fits extends it; members are found first (R08.1.4).
         let ext = match self.d.lookup_member(&rt, &name.text) {
-            None => self.d.views[self.module.0].get(&name.text).copied(),
+            None => (self.d.views[self.module.0].get(&name.text).copied())
+                .or_else(|| self.d.method_for(&name.text, &rt).map(decls::Named::Fn)),
             Some(_) => None,
         };
         if let Some(decls::Named::Fn(fid)) = ext {
@@ -707,6 +708,7 @@ impl<'a> Cx<'a> {
                 }
             }
             None => {
+                self.missing.push(name.text.clone());
                 self.err(
                     span,
                     format!("`{}` has no member `{}`", self.show(&rt), name.text),

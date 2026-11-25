@@ -97,71 +97,81 @@ fn user_line(e: &str, std_lines: usize) -> String {
 
 /// `events` adds the semantic events to the program, for both the interpreter and the C++.
 pub fn compile(user_src: &str, events: bool) -> Result<Compiled, Vec<Diag>> {
-    let loaded = modules::load(STD, user_src);
-    let src = loaded.src;
-    let std_lines = src[..loaded.program_start as usize].matches('\n').count();
-    // A program the grammar does not derive is rejected there; what was parsed is not checked.
-    if !loaded.errors.is_empty() {
-        return Err((loaded.errors.iter())
-            .map(|e| Diag {
-                stage: Stage::Syntax,
-                text: user_line(e, std_lines),
+    // A method the program calls that no loaded module declares loads the std modules that
+    // do, and the program is read again (R11.3.4); each round loads at least one more module.
+    let mut wanted: Vec<String> = Vec::new();
+    loop {
+        let loaded = modules::load(STD, user_src, &wanted);
+        let src = loaded.src;
+        let std_lines = src[..loaded.program_start as usize].matches('\n').count();
+        // A program the grammar does not derive is rejected there; what was parsed is not checked.
+        if !loaded.errors.is_empty() {
+            return Err((loaded.errors.iter())
+                .map(|e| Diag {
+                    stage: Stage::Syntax,
+                    text: user_line(e, std_lines),
+                })
+                .collect());
+        }
+        let mut out: Vec<Diag> = Vec::new();
+        let mut add = |stage, text: &str| {
+            out.push(Diag {
+                stage,
+                text: user_line(text, std_lines),
             })
-            .collect());
+        };
+        let (d, main) = decls::collect(&loaded.modules, &loaded.prelude);
+        for e in &d.errors {
+            add(Stage::Decls, e);
+        }
+        let t = check::check(&d, &main, &src);
+        let more = modules::declaring(&t.missing, &loaded.modules);
+        if !more.is_empty() {
+            wanted.extend(more);
+            continue;
+        }
+        for e in &t.errors {
+            add(Stage::Check, e);
+        }
+        let owned = if t.errors.is_empty() && d.errors.is_empty() {
+            own::check(&d, &t, &src)
+        } else {
+            own::Owned::default()
+        };
+        for e in &owned.errors {
+            add(Stage::Own, e);
+        }
+        let g = lower::lower(&d, &t, &owned, &src, std_lines as u32);
+        for e in &g.errors {
+            add(Stage::Lower, e);
+        }
+        if !out.is_empty() {
+            return Err(out);
+        }
+        let mut prog = inst::link(&d, &t, &g.funcs, &g.globals);
+        if !prog.errors.is_empty() {
+            return Err(prog
+                .errors
+                .iter()
+                .map(|e| Diag {
+                    stage: Stage::Link,
+                    text: user_line(e, std_lines),
+                })
+                .collect());
+        }
+        if events {
+            inst::add_events(&mut prog, &t, &d, loaded.program_start);
+        }
+        let canon = inst::canonicalize(&prog).map_err(|es| {
+            es.iter()
+                .map(|e| Diag {
+                    stage: Stage::Link,
+                    text: user_line(e, std_lines),
+                })
+                .collect::<Vec<_>>()
+        })?;
+        return Ok(Compiled { prog, canon });
     }
-    let mut out: Vec<Diag> = Vec::new();
-    let mut add = |stage, text: &str| {
-        out.push(Diag {
-            stage,
-            text: user_line(text, std_lines),
-        })
-    };
-    let (d, main) = decls::collect(&loaded.modules, &loaded.prelude);
-    for e in &d.errors {
-        add(Stage::Decls, e);
-    }
-    let t = check::check(&d, &main, &src);
-    for e in &t.errors {
-        add(Stage::Check, e);
-    }
-    let owned = if t.errors.is_empty() && d.errors.is_empty() {
-        own::check(&d, &t, &src)
-    } else {
-        own::Owned::default()
-    };
-    for e in &owned.errors {
-        add(Stage::Own, e);
-    }
-    let g = lower::lower(&d, &t, &owned, &src, std_lines as u32);
-    for e in &g.errors {
-        add(Stage::Lower, e);
-    }
-    if !out.is_empty() {
-        return Err(out);
-    }
-    let mut prog = inst::link(&d, &t, &g.funcs, &g.globals);
-    if !prog.errors.is_empty() {
-        return Err(prog
-            .errors
-            .iter()
-            .map(|e| Diag {
-                stage: Stage::Link,
-                text: user_line(e, std_lines),
-            })
-            .collect());
-    }
-    if events {
-        inst::add_events(&mut prog, &t, &d, loaded.program_start);
-    }
-    let canon = inst::canonicalize(&prog).map_err(|es| {
-        es.iter()
-            .map(|e| Diag {
-                stage: Stage::Link,
-                text: user_line(e, std_lines),
-            })
-            .collect::<Vec<_>>()
-    })?;
-    Ok(Compiled { prog, canon })
 }
 
 impl Compiled {

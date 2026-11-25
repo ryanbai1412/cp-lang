@@ -28,6 +28,74 @@ pub struct Loaded {
 pub const CORE: &str = "core";
 pub const PROGRAM: &str = "program";
 
+/// The std modules not yet loaded that declare a method `names` calls and found nowhere: a
+/// method call needs no import (R11.3.4), so a check that finds none asks for these.
+pub fn declaring(names: &[String], loaded: &[Module]) -> Vec<String> {
+    let index = std_methods();
+    let mut out: Vec<String> = (names.iter())
+        .flat_map(|n| index.get(n).into_iter().flatten())
+        .filter(|m| !loaded.iter().any(|l| &l.name == *m))
+        .cloned()
+        .collect();
+    out.sort();
+    out.dedup();
+    out
+}
+
+/// Every free method std declares, by name: `pub fn sorted<S: Seq<T>, ..>(self: S, ..)` in
+/// `std.seq` is `sorted`. Std is pinned, so this is read once.
+fn std_methods() -> &'static HashMap<String, Vec<String>> {
+    static INDEX: std::sync::OnceLock<HashMap<String, Vec<String>>> = std::sync::OnceLock::new();
+    INDEX.get_or_init(|| {
+        let root = format!("{}/../../std", env!("CARGO_MANIFEST_DIR"));
+        let mut index: HashMap<String, Vec<String>> = HashMap::new();
+        let mut dirs = vec![(std::path::PathBuf::from(root), "std".to_string())];
+        while let Some((dir, module)) = dirs.pop() {
+            for entry in std::fs::read_dir(&dir).into_iter().flatten().flatten() {
+                let path = entry.path();
+                let stem = path
+                    .file_stem()
+                    .map_or(String::new(), |s| s.to_string_lossy().into_owned());
+                if path.is_dir() {
+                    dirs.push((path, format!("{module}.{stem}")));
+                    continue;
+                }
+                if path.extension().is_none_or(|e| e != "cp") {
+                    continue;
+                }
+                let Ok(text) = std::fs::read_to_string(&path) else {
+                    continue;
+                };
+                // A top-level fn only: one indented under a type is that type's, found with it.
+                let top = text.lines().filter_map(|l| {
+                    let l = if l.starts_with('@') {
+                        l.split_once(" pub fn ")?.1
+                    } else {
+                        l.strip_prefix("pub fn ")?
+                    };
+                    Some(l)
+                });
+                for decl in top {
+                    let name_len = decl.len()
+                        - decl
+                            .trim_start_matches(|c: char| c.is_alphanumeric() || c == '_')
+                            .len();
+                    let Some(open) = decl.find('(') else { continue };
+                    let first = decl[open + 1..].trim_start();
+                    if name_len > 0 && (first.starts_with("self") || first.starts_with("mut self"))
+                    {
+                        index
+                            .entry(decl[..name_len].to_string())
+                            .or_default()
+                            .push(format!("{module}.{stem}"));
+                    }
+                }
+            }
+        }
+        index
+    })
+}
+
 /// The pinned standard library's text of module `name` (`std.graph` is `std/graph.cp`).
 fn std_source(name: &str) -> Option<String> {
     let rest = name.strip_prefix("std.")?;
@@ -67,7 +135,8 @@ fn parse(text: &str) -> (Items, Vec<(u32, String)>) {
     (items, diags)
 }
 
-pub fn load(core: &str, user: &str) -> Loaded {
+/// `wanted`: std modules a check of the program found it needs (see `declaring`).
+pub fn load(core: &str, user: &str, wanted: &[String]) -> Loaded {
     let mut errors = Vec::new();
     let (program, program_diags) = parse(user);
     let mut prelude = HashMap::new();
@@ -94,6 +163,7 @@ pub fn load(core: &str, user: &str) -> Loaded {
         .collect();
     from_prelude.sort();
     queue.extend(from_prelude.into_iter().map(|m| (m.clone(), None)));
+    queue.extend(wanted.iter().map(|m| (m.clone(), None)));
     let mut libs: Vec<(String, String, Items)> = Vec::new();
     let mut seen = HashSet::new();
     let mut edges: Vec<(String, String)> = Vec::new();
