@@ -297,8 +297,9 @@ impl<'a> Checker<'a> {
             }
             return Ty::Error;
         }
+        let unchecked = self.hovers.len();
         let library = past_row
-            .then(|| self.method_form_call(call, callee, args))
+            .then(|| self.method_form_call(call, callee, args, unchecked))
             .flatten();
         let mut ty = if let Some(ty) = library {
             ty
@@ -324,7 +325,7 @@ impl<'a> Checker<'a> {
             ty = known;
         }
         if matches!(ty, Ty::Unknown) {
-            if let Some(known) = self.method_form_call(call, callee, args) {
+            if let Some(known) = self.method_form_call(call, callee, args, unchecked) {
                 ty = known;
             }
         }

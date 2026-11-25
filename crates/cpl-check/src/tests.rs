@@ -1802,6 +1802,27 @@ fn a_prelude_math_fn_returns_an_f64() {
     assert_eq!(codes("let k: Int = sqrt(2.0)\nprint(k)\n"), ["E0302"]);
 }
 
+/// One binding, one type to show: the editor prints an inlay hint per
+/// declaring entry (spec/tools/lsp.md, Rlsp.8).
+#[test]
+fn a_lambda_given_to_a_method_declares_each_of_its_names_once() {
+    let src = "let ys = [1, 2].map(x =>\n    let y = x + 1\n    y\n)\nlet zs = [1, 2].sum(of: v => v + 2)\nprint(ys, zs)\n";
+    let mut db = Database::new();
+    db.set_file("a.cp", src);
+    let analysis = db.analyze("a.cp").unwrap();
+    assert!(!analysis.has_errors());
+    let mut declared: Vec<(u32, &str)> = analysis
+        .items
+        .iter()
+        .flat_map(|item| item.check.hovers.iter().map(move |h| (item.offset, h)))
+        .filter(|(_, h)| h.decl == Some(h.span))
+        .map(|(offset, h)| (offset + h.span.start, &*h.name))
+        .collect();
+    declared.sort();
+    let names: Vec<&str> = declared.iter().map(|&(_, name)| name).collect();
+    assert_eq!(names, ["ys", "x", "y", "zs", "v"]);
+}
+
 #[test]
 fn an_index_with_no_key_does_not_crash_the_map_fold_check() {
     let src =

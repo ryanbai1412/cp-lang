@@ -316,7 +316,7 @@ impl Checker<'_> {
         }
         // A call giving a value of a struct leaves its type in `exprs.types`.
         let read = |c: &mut Self| {
-            let ty = c.method_form_call(expr, expr, &[]);
+            let ty = c.method_form_call(expr, expr, &[], c.hovers.len());
             ty.or_else(|| c.exprs.last_type(expr.span).cloned())
         };
         let settled = self.quietly(|c| {
@@ -727,11 +727,15 @@ impl<'a> Checker<'a> {
     /// `self`, found by checking the free form `name(base, args)`, when that
     /// checks cleanly to a plain value type. Its resolution, and its hover
     /// where the member has none, are the free form's in any case.
+    ///
+    /// `checked_from` is where the hovers of a check the caller already
+    /// made of `args` begin, the end of the hovers when it made none.
     pub(super) fn method_form_call(
         &mut self,
         call: &Expr,
         callee: &Expr,
         args: &[Arg],
+        checked_from: usize,
     ) -> Option<Ty> {
         let ExprKind::Field { base, name } = &callee.kind else {
             return None;
@@ -891,10 +895,16 @@ impl<'a> Checker<'a> {
                 at += 1;
                 at <= calls || c.call != call.span
             });
+            // Arguments the caller had checked as an unknown callee's were
+            // checked again just now against the fn: each name they declare
+            // keeps that, its one entry.
             let mut at = 0;
             self.hovers.retain(|h| {
                 at += 1;
-                at <= hovers || h.span != name.span
+                match at <= hovers {
+                    true => at <= checked_from || h.decl != Some(h.span),
+                    false => h.span != name.span,
+                }
             });
             let mut at = 0;
             self.resolved.retain(|r| {
