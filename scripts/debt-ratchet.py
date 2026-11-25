@@ -758,21 +758,50 @@ def tool_compiler_deps(root: Path) -> list[str]:
     return out
 
 
+def facade_reexports(root: Path) -> set[str]:
+    """The names `cpl-facade` hands on from a compiler crate outside its `today` module:
+    each `pub use cpl_interp::{Limits, Stop}` (under its `as` name, when it has one) and
+    each `pub type Size = cpl_codegen::Size`."""
+    crates = "|".join(c.replace("-", "_") for c in crate_rules(root).get("compiler", []))
+    if not crates:
+        return set()
+    used = re.compile(rf"\bpub\s+use\s+(?:{crates})\b([^;]*);")
+    aliased = re.compile(rf"\bpub\s+type\s+(\w+)[^=;]*=\s*(?:{crates})\b")
+    names: set[str] = set()
+    for p in _rs_files(root, "crates/cpl-facade"):
+        if p.name == "today.rs":
+            continue
+        src = "\n".join(l for l in _lines(p) if not l.lstrip().startswith("//"))
+        names |= set(aliased.findall(src))
+        for tree in used.findall(src):
+            names |= {leaf.split()[-1].rsplit("::", 1)[-1] for leaf in re.split(r"[{},]", tree) if leaf.strip()}
+    return {n for n in names if n.isidentifier() and n != "self"}
+
+
 def facade_today_uses(root: Path) -> list[str]:
-    """Code lines in a tool crate that name `cpl_facade::today`: the module through which a
-    tool still reads the compiler's own forms (the checked file, its types and hovers, the
-    lowered program, a run's recording). They pass `tool_compiler_deps`, since the path goes
-    through the facade, but each is a form that changes when the compiler behind the facade
-    does. The target is 0: each becomes a query of contract 9
-    (handbook/design/next/contracts/09-facade.md) and the module goes."""
+    """Code lines in a tool crate that read one of the compiler's own forms through the
+    facade: a line naming `cpl_facade::today` (the checked file, its types and hovers, a
+    run's recording), or one naming an item the facade re-exports from a compiler crate
+    under its own root (`facade_reexports`: `Recording`, `Limits`, `Stop`, `Trap`, ...) in
+    a file that takes that name from `cpl_facade`. They pass `tool_compiler_deps`, since the
+    path goes through the facade, but each is a form that changes when the compiler behind
+    the facade does. The target is 0: each becomes a query or a type of contract 9
+    (handbook/design/next/contracts/09-facade.md), and the module and the re-exports go."""
     tools = crate_rules(root).get("tool", [])
+    handed = facade_reexports(root)
     named = re.compile(r"\btoday\s*::|::\s*today\b|\buse\s+today\b")
+    imports = re.compile(r"\buse\s+cpl_facade\s*::([^;]*);")
+    by_path = re.compile(r"\bcpl_facade\s*::\s*(\w+)")
     out = []
     for crate in tools:
         for p in _rs_files(root, f"crates/{crate}"):
             rel = _rel(root, p)
-            out += [f"{rel}:{i}" for i, line in enumerate(_lines(p), 1)
-                    if not line.lstrip().startswith("//") and named.search(line)]
+            code = [("" if l.lstrip().startswith("//") else l) for l in _lines(p)]
+            taken = handed & {w for tree in imports.findall("\n".join(code)) for w in re.findall(r"\w+", tree)}
+            words = re.compile(r"\b(?:" + "|".join(sorted(taken)) + r")\b") if taken else None
+            out += [f"{rel}:{i}" for i, line in enumerate(code, 1)
+                    if named.search(line) or (words and words.search(line))
+                    or any(n in handed for n in by_path.findall(line))]
     return out
 
 
@@ -3357,7 +3386,7 @@ COUNTERS = {
     "site_spec_snippets": ("site programs the compiler doesn't accept yet (.spec.cp, status=spec)", site_spec_snippets, True),
     "layer_violations": ("forbidden shipped crate edges", layer_violations, True),
     "tool_compiler_deps": ("tool crate edges and code lines that reach a compiler crate past the facade (stage 2; cpl-syntax is stage 8)", tool_compiler_deps, True),
-    "facade_today_uses": ("tool code lines reading the compiler's own forms through cpl_facade::today (contract 9)", facade_today_uses, True),
+    "facade_today_uses": ("tool code lines reading the compiler's own forms through cpl_facade::today or a root re-export (contract 9)", facade_today_uses, True),
     "tree_walker": ("second interpreter engine", tree_walker, True),
     "v02_port_files": ("corpus ports not yet re-ported in v0.3 style", v02_port_files, True),
     "ports_unreported": ("corpus ports without a friction report or review (idioms)", ports_unreported, True),

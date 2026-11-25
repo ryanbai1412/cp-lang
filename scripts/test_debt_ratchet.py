@@ -1965,6 +1965,18 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.facade_today_uses(root), [
                 "crates/cpl-lint/src/a.rs:1", "crates/cpl-lint/src/a.rs:5", "crates/cpl-lint/src/a.rs:6",
                 "crates/cpl-cli/tests/t.rs:1"])
+            # What the facade re-exports from a compiler crate at its root is today's form too.
+            self._write(root, "crates/cpl-facade/src/run.rs",
+                        "pub use cpl_check::trace::{Recording, Trap as Fault};\n// pub use cpl_check::Hidden;\n"
+                        "pub type Checks = cpl_check::checks::Checks;\npub use cpl_diag::Diagnostic;\n"
+                        "pub struct Outcome;\n")
+            self._write(root, "crates/cpl-facade/src/today.rs", "pub use cpl_check::Ty;\n")
+            self.assertEqual(dr.facade_reexports(root), {"Recording", "Fault", "Checks"})
+            self._write(root, "crates/cpl-cli/src/b.rs",
+                        "use cpl_facade::{\n    Outcome, Recording,\n};\nfn f(r: &Recording, o: Outcome) {}\n"
+                        "// a Recording in a comment\nlet c: cpl_facade::Checks;\nstruct Fault;\nlet t: Ty;\n")
+            self.assertEqual([u for u in dr.facade_today_uses(root) if "/b.rs:" in u], [
+                "crates/cpl-cli/src/b.rs:2", "crates/cpl-cli/src/b.rs:4", "crates/cpl-cli/src/b.rs:6"])
 
     def test_consumer_rederived(self) -> None:
         with tempfile.TemporaryDirectory() as d:

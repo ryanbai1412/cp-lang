@@ -50,7 +50,7 @@ measured, by a mutation score or a matrix with no empty cell.
 
 | # | Suite | State | Numbers, now → target |
 |---|---|---|---|
-| 17 | Facade parity | unmeasured | `tool_compiler_deps` 0 → 0, `facade_today_uses` 175 → 0; no number yet for: tools whose diagnostics or output differ from another's for one snapshot |
+| 17 | Facade parity | unmeasured | `tool_compiler_deps` 0 → 0, `facade_today_uses` 293 → 0; no number yet for: tools whose diagnostics or output differ from another's for one snapshot |
 | 18 | Events, trace and debugger | unmeasured | `trace_budget_gap` 141 → 0; no number yet for: corpus programs whose event streams differ between engines |
 | 19 | Lossless syntax | unmeasured | no number yet for: files the lossless tree does not print back byte for byte |
 | 20 | Editor under edits | unmeasured | no number yet for: edit sequences whose incremental answer differs from a fresh one |
