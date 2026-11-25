@@ -855,7 +855,11 @@ fn thread_values(p: &mut Program, typed: &Typed) {
     // value `2 * d` is the size of domain `d` and `2 * d + 1` its start.
     let own = |f: &Func<CTy>, v: usize| -> Option<Place> {
         let info = &typed.domains[v / 2];
-        let var = if v % 2 == 0 { info.len } else { info.lo };
+        let var = if v.is_multiple_of(2) {
+            info.len
+        } else {
+            info.lo
+        };
         match (var, &f.key, info.owner) {
             (VarRef::Global(g), FuncKey::Main | FuncKey::Case, None) => Some(Place::Global(g)),
             // A top-level domain of the file is one shared variable. One inside a block is not: a loop makes a new one.
