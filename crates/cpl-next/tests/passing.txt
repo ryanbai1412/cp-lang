@@ -431,6 +431,7 @@ next/a_enum_01_match_payloads.cp
 next/a_enum_02_default_arm.cp
 next/a_enum_03_heap_payload_moves.cp
 next/a_eq_01_list_and_optional.cp
+next/a_eq_02_tuples.cp
 next/a_esc_01_closure_into_global.cp
 next/a_esc_05_closure_via_second_closure.cp
 next/a_esc_06_closure_in_returned_list.cp

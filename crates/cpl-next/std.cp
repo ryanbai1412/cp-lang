@@ -221,6 +221,22 @@ impl<T: Eq> Eq for List<T>:
             if raw_get(a.buf, i) != raw_get(b.buf, i): return false
         true
 
+/// Tuples compare field by field, lexicographically for `Ord` (R08.1.6).
+impl<A: Eq, B: Eq> Eq for Tuple2<A, B>:
+    fn eq(a, b) = a._0 == b._0 and a._1 == b._1
+impl<A: Ord, B: Ord> Ord for Tuple2<A, B>:
+    fn lt(a, b) = a._0 < b._0 or a._0 == b._0 and a._1 < b._1
+impl<A: Eq, B: Eq, C: Eq> Eq for Tuple3<A, B, C>:
+    fn eq(a, b) = a._0 == b._0 and a._1 == b._1 and a._2 == b._2
+impl<A: Ord, B: Ord, C: Ord> Ord for Tuple3<A, B, C>:
+    fn lt(a, b) =
+        a._0 < b._0 or a._0 == b._0 and (a._1 < b._1 or a._1 == b._1 and a._2 < b._2)
+impl<A: Eq, B: Eq, C: Eq, E: Eq> Eq for Tuple4<A, B, C, E>:
+    fn eq(a, b) = a._0 == b._0 and a._1 == b._1 and a._2 == b._2 and a._3 == b._3
+impl<A: Ord, B: Ord, C: Ord, E: Ord> Ord for Tuple4<A, B, C, E>:
+    fn lt(a, b) =
+        a._0 < b._0 or a._0 == b._0 and (a._1 < b._1 or a._1 == b._1 and (a._2 < b._2 or a._2 == b._2 and a._3 < b._3))
+
 /// Numbers, characters (by code) and booleans (`false < true`) compare as the machine does.
 impl Eq for Int:
     fn eq(a, b) = a == b

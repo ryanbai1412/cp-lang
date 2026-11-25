@@ -602,7 +602,7 @@ impl Cx<'_> {
                     match m {
                         Member::Sub(s) => out.add(&self.set_fx(s, depth + 1)),
                         Member::Clo(CloRef::Item(f)) => {
-                            let (other, _) = self.callee(f, &[], depth + 1);
+                            let (other, _) = self.callee(f, &[], depth + 1, true);
                             out.add(&other);
                         }
                         Member::Clo(CloRef::Lambda(id, ts, ss)) => {
@@ -650,7 +650,10 @@ impl Cx<'_> {
     }
     /// A call to `f` with these argument places (receiver first): what it does apart from
     /// its arguments, and what it does to them.
-    fn callee(&self, f: &FnRef, args: &[Option<Pl>], depth: usize) -> (Fx, Fx) {
+    /// What a call of `f` touches. `exact` says `f`'s parameters have the arguments' types, so
+    /// a place inside a parameter is the same place inside its argument; a trait call's impls
+    /// are of other types, so there each place is its whole argument.
+    fn callee(&self, f: &FnRef, args: &[Option<Pl>], depth: usize, exact: bool) -> (Fx, Fx) {
         let (mut other, mut through) = (Fx::default(), Fx::default());
         let fd = self.d.f(f.decl);
         let Some(tf) = self.t.fns.get(&f.decl) else {
@@ -670,8 +673,10 @@ impl Cx<'_> {
                 Root::Local(l) => {
                     let i = ps.iter().position(|x| *x == l)?;
                     let mut q = args.get(i)?.clone()?;
-                    q.path.extend(p.path.iter().copied());
-                    q.path.truncate(MAX_PATH);
+                    if exact {
+                        q.path.extend(p.path.iter().copied());
+                        q.path.truncate(MAX_PATH);
+                    }
                     Some((true, q))
                 }
             }
@@ -803,7 +808,7 @@ impl Cx<'_> {
         fx: &mut Fx,
     ) -> (BTreeSet<Pl>, BTreeSet<Pl>) {
         let all: Vec<&TArg> = recv.into_iter().chain(args.iter()).collect();
-        let (other, through) = self.callee(f, &self.arg_places(&all), 0);
+        let (other, through) = self.callee(f, &self.arg_places(&all), 0, true);
         let who = self.d.f(f.decl).name.clone();
         let keeps = self.kept_args(f.decl);
         let callee = Reach {
@@ -865,6 +870,7 @@ impl Cx<'_> {
                                     },
                                     &places,
                                     0,
+                                    false,
                                 );
                                 other.add(&o);
                                 through.add(&t);
