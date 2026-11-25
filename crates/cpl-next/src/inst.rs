@@ -37,9 +37,17 @@ pub struct Program {
     pub main: usize,
     pub globals: Vec<CTy>,
     pub structs: HashMap<CTy, Vec<CTy>>,
+    /// An enum's payload struct per variant: its value is one of them, with a tag saying which.
+    pub sums: HashMap<CTy, Vec<CTy>>,
     pub errors: Vec<String>,
 }
 impl Program {
+    /// What a value of `t` holds: a struct's fields, or an enum's payloads.
+    pub fn parts(&self, t: &CTy) -> Vec<CTy> {
+        let mut out = self.structs.get(t).cloned().unwrap_or_default();
+        out.extend(self.sums.get(t).into_iter().flatten().cloned());
+        out
+    }
     /// The types of what closure `k` captures.
     pub fn captures(&self, k: &InstKey) -> Vec<CTy> {
         let f = &self.insts[self.index[k]];
@@ -57,6 +65,7 @@ struct Link<'a> {
     keys: Vec<InstKey>,
     index: HashMap<InstKey, usize>,
     structs: HashMap<CTy, Vec<CTy>>,
+    sums: HashMap<CTy, Vec<CTy>>,
     ret_busy: BTreeSet<(InstKey, usize)>,
     named: HashMap<FuncKey, BTreeSet<usize>>,
     errors: Vec<String>,
@@ -99,6 +108,7 @@ pub fn link(
         keys: Vec::new(),
         index: HashMap::new(),
         structs: HashMap::new(),
+        sums: HashMap::new(),
         ret_busy: BTreeSet::new(),
         named: HashMap::new(),
         errors: Vec::new(),
@@ -190,6 +200,7 @@ pub fn link(
         main,
         globals,
         structs: l.structs,
+        sums: l.sums,
         errors: l.errors,
     };
     if p.errors.is_empty() {
@@ -234,6 +245,13 @@ impl Link<'_> {
                     };
                     let fs = fields.iter().map(|(_, t)| self.ty(t, &inner)).collect();
                     self.structs.insert(out.clone(), fs);
+                    let own: Vec<Ty> = (0..ts.len()).map(Ty::Param).collect();
+                    let payloads: Vec<CTy> = (self.d.s(*d).variants.clone().iter())
+                        .map(|(_, p)| self.ty(&Ty::Struct(*p, own.clone(), Vec::new()), &inner))
+                        .collect();
+                    if !payloads.is_empty() {
+                        self.sums.insert(out.clone(), payloads);
+                    }
                 }
                 out
             }
@@ -505,7 +523,7 @@ fn check_escape(p: &mut Program) {
         match t {
             CTy::Ref(_) => true,
             CTy::Raw(e) => holds_ref(p, e, seen),
-            CTy::Struct(..) => p.structs[t].iter().any(|f| holds_ref(p, f, seen)),
+            CTy::Struct(..) => p.parts(t).iter().any(|f| holds_ref(p, f, seen)),
             CTy::Set(ms) => ms
                 .iter()
                 .any(|k| holds_ref(p, &CTy::Clo(Box::new(k.clone())), seen)),
@@ -550,7 +568,7 @@ fn check_finite(p: &mut Program) {
         stack.push(t.clone());
         match t {
             CTy::Struct(..) => {
-                for f in &p.structs[t] {
+                for f in &p.parts(t) {
                     visit(p, f, stack, bad);
                 }
             }

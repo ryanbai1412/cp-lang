@@ -253,6 +253,7 @@ impl Lw<'_> {
         match &e.kind {
             TK::Var(v) => self.var(*v),
             TK::Field(b, i) => Place::Field(Box::new(self.place(b, out)), *i),
+            TK::Payload(b, i) => Place::Variant(Box::new(self.place(b, out)), *i),
             _ => {
                 let v = self.expr(e, out);
                 let t = self.temp(v.ty.clone());
@@ -284,7 +285,7 @@ impl Lw<'_> {
         // starts, unless ownership found the call also writes it: then it is copied in its
         // turn. A type parameter could be plain or heap and is passed as a value.
         let viewed = |lw: &Self, v: &TExpr| {
-            matches!(v.kind, TK::Var(_) | TK::Field(..))
+            matches!(v.kind, TK::Var(_) | TK::Field(..) | TK::Payload(..))
                 && !matches!(v.ty, Ty::Param(_))
                 && !crate::own::plain(lw.d, &v.ty, 0)
                 && !lw.owned.copies.contains(&(lw.off + v.span.start))
@@ -324,9 +325,17 @@ impl Lw<'_> {
             TK::Unit | TK::Error => mk(EK::Unit),
             TK::Text(t) => mk(EK::Text(t.clone())),
             TK::Unset => mk(EK::Intr(Intr::Unset, vec![], 0)),
-            TK::Var(_) | TK::Field(..) => {
+            TK::Var(_) | TK::Field(..) | TK::Payload(..) => {
                 let p = self.place(e, out);
                 mk(EK::Copy(p))
+            }
+            TK::Variant(i, x) => {
+                let v = self.expr(x, out);
+                mk(EK::MakeUnion(*i, Box::new(v)))
+            }
+            TK::Tag(x) => {
+                let p = self.place(x, out);
+                mk(EK::Tag(p))
             }
             TK::Call { f, recv, args } => {
                 let fd = self.d.f(f.decl);
@@ -904,6 +913,9 @@ pub fn free_vars(e: &TExpr, used: &mut BTreeSet<VarRef>, bound: &mut BTreeSet<Va
             used.insert(*v);
         }
         TK::Field(b, _)
+        | TK::Payload(b, _)
+        | TK::Tag(b)
+        | TK::Variant(_, b)
         | TK::Inject(b)
         | TK::Widen(b)
         | TK::Not(b)

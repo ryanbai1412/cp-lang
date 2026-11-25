@@ -329,11 +329,11 @@ impl Cx<'_> {
                     None => out = self.sources(v),
                 }
             }
-            TK::Field(b, _) | TK::Inject(b) | TK::Widen(b) => {
+            TK::Field(b, _) | TK::Payload(b, _) | TK::Inject(b) | TK::Widen(b) => {
                 out = self.sources(b);
                 // A heap field of a place is that place: binding it borrows the place.
                 if let (true, Some(p), false) = (
-                    matches!(e.kind, TK::Field(..)),
+                    matches!(e.kind, TK::Field(..) | TK::Payload(..)),
                     self.place(e),
                     plain(self.d, &e.ty, 0),
                 ) {
@@ -343,6 +343,7 @@ impl Cx<'_> {
                 }
             }
             TK::Struct(xs) => xs.iter().for_each(|x| out.extend(self.sources(x))),
+            TK::Variant(_, x) => out = self.sources(x),
             TK::If(_, a, b) => {
                 out = self.sources(a);
                 out.extend(self.sources(b));
@@ -540,7 +541,7 @@ impl Cx<'_> {
                 root: self.root(*v),
                 path: vec![],
             }),
-            TK::Field(b, i) => {
+            TK::Field(b, i) | TK::Payload(b, i) => {
                 let mut p = self.place(b)?;
                 p.path.push(*i);
                 Some(p)
@@ -814,13 +815,13 @@ impl Cx<'_> {
             | TK::DomLen(_)
             | TK::FnItem(_)
             | TK::Error => {}
-            TK::Var(_) | TK::Field(..) => match self.place(e) {
+            TK::Var(_) | TK::Field(..) | TK::Payload(..) => match self.place(e) {
                 Some(p) => {
                     self.live(e.span, &p);
                     fx.reads.insert(p);
                 }
                 None => {
-                    if let TK::Field(b, _) = &e.kind {
+                    if let TK::Field(b, _) | TK::Payload(b, _) = &e.kind {
                         self.expr(b, fx)
                     }
                 }
@@ -905,7 +906,9 @@ impl Cx<'_> {
             | TK::Neg(x)
             | TK::DomFrom(_, x)
             | TK::DomOrd(x)
-            | TK::Ordinal(x) => self.expr(x, fx),
+            | TK::Ordinal(x)
+            | TK::Variant(_, x)
+            | TK::Tag(x) => self.expr(x, fx),
             TK::Bin(_, a, b) | TK::Cmp(_, a, b) => {
                 self.expr(a, fx);
                 self.expr(b, fx);

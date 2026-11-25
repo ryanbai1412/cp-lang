@@ -86,6 +86,12 @@ pub enum TK {
     Unset,
     /// `v.ord`: how many positions come before this one (R04.2.22).
     Ordinal(Box<TExpr>),
+    /// Variant `i` of an enum, with its payload struct.
+    Variant(usize, Box<TExpr>),
+    /// Which variant an enum value is.
+    Tag(Box<TExpr>),
+    /// The payload of variant `i` of an enum place, which must be that variant.
+    Payload(Box<TExpr>, usize),
     Error,
 }
 #[derive(Clone, Debug)]

@@ -57,13 +57,14 @@ fn uses(items: &[(u32, Vec<Stmt>)]) -> impl Iterator<Item = (String, &Stmt, u32)
         })
 }
 
-fn parse(text: &str) -> (Vec<(u32, Vec<Stmt>)>, Vec<String>) {
+/// The items, and each syntax error with its code and where it starts in `text`.
+fn parse(text: &str) -> (Items, Vec<(u32, String)>) {
     let p = cpl_syntax::parse_file(text);
     let items = p.items.into_iter().map(|(o, it)| (o, it.stmts)).collect();
-    (
-        items,
-        p.diagnostics.into_iter().map(|d| d.message).collect(),
-    )
+    let diags = (p.diagnostics.into_iter())
+        .map(|d| (d.span.start, format!("{}: {}", d.code.0, d.message)))
+        .collect();
+    (items, diags)
 }
 
 pub fn load(core: &str, user: &str) -> Loaded {
@@ -112,7 +113,7 @@ pub fn load(core: &str, user: &str) -> Loaded {
             continue;
         };
         let (items, diags) = parse(&text);
-        errors.extend(diags.into_iter().map(|d| format!("{m}: {d}")));
+        errors.extend(diags.into_iter().map(|(_, d)| format!("{m}: {d}")));
         for (to, _, _) in uses(&items) {
             edges.push((m.clone(), to.clone()));
             queue.push_back((to, None));
@@ -144,10 +145,10 @@ pub fn load(core: &str, user: &str) -> Loaded {
         add(&name, &text, items);
     }
     let program_start = add(PROGRAM, user, program);
-    errors.extend(program_diags);
+    let line = |at: u32| src[..(program_start + at) as usize].matches('\n').count() + 1;
+    errors.extend((program_diags.into_iter()).map(|(at, d)| format!("line {}: {d}", line(at))));
     let code = cpl_diag::codes::UNRESOLVED_MODULE.0;
     for (m, at) in missing {
-        let line = |at: u32| src[..(program_start + at) as usize].matches('\n').count() + 1;
         errors.push(match at {
             Some(at) => format!("line {}: {code}: no module `{m}`", line(at)),
             None => format!("{code}: no module `{m}`"),

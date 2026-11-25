@@ -125,31 +125,6 @@ impl<'a> Checker<'a> {
         }
     }
 
-    /// 0.3 writes `enum Dir = N | E`; `enum Dir: N, E` is gone.
-    pub(super) fn no_comma_variants(&mut self, variants: &[cpl_syntax::ast::Variant]) {
-        for pair in variants.windows(2) {
-            let (a, b) = (&pair[0].name, &pair[1].name);
-            if !pair[0].fields.is_empty() || pair[0].value.is_some() || pair[1].tag.is_some() {
-                continue;
-            }
-            let between = self.text(a.span.to(b.span));
-            let gap = &between
-                [a.text.len().min(between.len())..between.len().saturating_sub(b.text.len())];
-            if gap.trim() != "," {
-                continue;
-            }
-            let names: Vec<&str> = variants.iter().map(|v| v.name.text.as_str()).collect();
-            if let Some(diag) = self.report(
-                a.span.to(b.span),
-                msgs::check::EXPECTED_TOKEN_AN_ENUM_S_VARIANTS,
-                &[],
-            ) {
-                diag.help = Some(format!("write `= {}`", names.join(" | ")));
-            }
-            return;
-        }
-    }
-
     /// `var x = None` and `let n = read()` give no type, and inference
     /// never looks at later statements (R02.10.1, R10.2.1).
     fn needs_annotation(&mut self, keyword: &str, pat: &Pattern, init: Option<&Expr>) -> bool {

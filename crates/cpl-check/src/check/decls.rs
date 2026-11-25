@@ -30,7 +30,6 @@ impl Checker<'_> {
 
     /// The enum's own rules: `|` between variants, and no variant holding the enum.
     pub(super) fn enum_decl_rules(&mut self, e: &ast::EnumDecl) {
-        self.no_comma_variants(&e.variants);
         let held = match self.global(&e.name.text).as_deref() {
             Some(Def::Enum { variants, .. }) => variants.clone(),
             _ => Vec::new(),

@@ -78,6 +78,8 @@ pub struct StructDecl {
     pub methods: HashMap<String, FnId>,
     /// Its static `new`, which `T(args)` calls outside its own body (R02.6.3).
     pub ctor: Option<FnId>,
+    /// An enum's variants, each with the struct of its payload, named `Enum.Variant` (R02.7).
+    pub variants: Vec<(String, StructId)>,
     /// What its fields use that the slice does not build, said only when the program reaches it.
     pub errors: Vec<String>,
 }
@@ -750,10 +752,36 @@ pub fn collect(
     let mut pending: Vec<(ModId, u32, &ast::Stmt, Option<Named>)> = Vec::new();
     let mut imports: Vec<(ModId, &ast::Stmt)> = Vec::new();
     let mut aliases: Vec<(ModId, usize, String, Vec<String>, ast::Type)> = Vec::new();
+    let mut enums: Vec<(usize, String, Vec<String>)> = Vec::new();
+    let synth: Vec<Vec<(u32, ast::Stmt)>> = (mods.iter().enumerate())
+        .map(|(mi, m)| {
+            let mut out = Vec::new();
+            for (item, stmts) in &m.items {
+                for s in stmts {
+                    if let StmtKind::Enum(e) = &s.kind {
+                        let (structs, errors) = enum_structs(s, e);
+                        match mi == n - 1 {
+                            true => d.errors.extend(errors),
+                            false => d.module_errors[mi].extend(errors),
+                        }
+                        let vs = e.variants.iter().map(|v| v.name.text.clone()).collect();
+                        enums.push((mi, e.name.text.clone(), vs));
+                        out.extend(structs.into_iter().map(|x| (*item, x)));
+                    }
+                }
+            }
+            out
+        })
+        .collect();
     for (mi, m) in mods.iter().enumerate() {
         let mid = ModId(mi);
         for (item, stmts) in &m.items {
-            for s in stmts {
+            let made = synth[mi].iter().filter(|(i, _)| i == item).map(|(_, s)| s);
+            for s in stmts
+                .iter()
+                .filter(|s| !matches!(s.kind, StmtKind::Enum(_)))
+                .chain(made)
+            {
                 if let (true, Some(name)) = (s.public, item_name(s)) {
                     public[mi].insert(name.to_string());
                 }
@@ -773,6 +801,7 @@ pub fn collect(
                             n_sets: 0,
                             methods: HashMap::new(),
                             ctor: None,
+                            variants: Vec::new(),
                             errors: Vec::new(),
                         });
                         pending.push((mid, *item, s, Some(Named::Struct(id))));
@@ -818,6 +847,17 @@ pub fn collect(
                 }
             }
         }
+    }
+    for (mi, name, vs) in enums {
+        let Some(Named::Struct(id)) = own[mi].get(&name).copied() else {
+            continue;
+        };
+        d.structs[id.0].variants = (vs.into_iter())
+            .filter_map(|v| match own[mi].get(&format!("{name}.{v}")) {
+                Some(Named::Struct(p)) => Some((v, *p)),
+                _ => None,
+            })
+            .collect();
     }
     let program = d.program.0;
     let names = d.module_names.clone();
@@ -1422,4 +1462,59 @@ pub fn static_range(
         None => i64::MAX,
     };
     Some((lo, hi))
+}
+
+/// An enum as structs: its own, with no fields (the parser makes its methods an `impl`), then one
+/// per variant holding that variant's payload, named `Enum.Variant`, which no source name can be
+/// (R02.7).
+fn enum_structs(s: &ast::Stmt, e: &ast::EnumDecl) -> (Vec<ast::Stmt>, Vec<String>) {
+    let mut errors = Vec::new();
+    let one = |name: String, fields, methods, decorators| ast::Stmt {
+        kind: StmtKind::Struct(ast::StructDecl {
+            name: ast::Name {
+                text: name,
+                span: e.name.span,
+            },
+            generics: e.generics.clone(),
+            generic_defaults: vec![None; e.generics.len()],
+            bounds: Vec::new(),
+            fields,
+            methods,
+        }),
+        span: s.span,
+        decorators,
+        public: s.public,
+    };
+    let mut out = vec![one(
+        e.name.text.clone(),
+        Vec::new(),
+        Vec::new(),
+        s.decorators.clone(),
+    )];
+    for v in &e.variants {
+        if v.tag.is_some() || v.value.is_some() {
+            errors.push(format!("slice: a tagged variant `{}`", v.name.text));
+        }
+        let fields = (v.fields.iter().enumerate())
+            .map(|(i, (n, t))| ast::FieldDecl {
+                name: n.clone().unwrap_or_else(|| ast::Name {
+                    text: i.to_string(),
+                    span: t.span,
+                }),
+                ty: t.clone(),
+                default: None,
+                mutable: false,
+                cached: false,
+                bits: false,
+                public: true,
+            })
+            .collect();
+        out.push(one(
+            format!("{}.{}", e.name.text, v.name.text),
+            fields,
+            Vec::new(),
+            Vec::new(),
+        ));
+    }
+    (out, errors)
 }

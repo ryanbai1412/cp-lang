@@ -53,6 +53,9 @@ impl<'a> Cx<'a> {
         e.ty = self.zonk(&e.ty);
         match &mut e.kind {
             TK::Field(b, _)
+            | TK::Payload(b, _)
+            | TK::Tag(b)
+            | TK::Variant(_, b)
             | TK::Inject(b)
             | TK::Widen(b)
             | TK::Not(b)

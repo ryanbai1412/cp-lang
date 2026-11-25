@@ -1,6 +1,7 @@
 //! Messages syntax emits.
 
 super::msgs! {
+    EXPECTED_TOKEN_AN_ENUM_S_VARIANTS = EXPECTED_TOKEN, "an enum's variants are separated by `|`, not `,`";
     COALESCE_MIXED = UNPARENTHESIZED_COALESCE, "`??` mixed with `+ - * / %` needs parentheses";
     C_LOGIC_OP = UNEXPECTED_TOKEN, "`{}` is `{}` in CP Lang";
     FIELD_AFTER_DOT = EXPECTED_NAME, "expected a field or method name after `.`";

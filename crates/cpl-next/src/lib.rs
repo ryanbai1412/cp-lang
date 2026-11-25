@@ -100,6 +100,15 @@ pub fn compile(user_src: &str, events: bool) -> Result<Compiled, Vec<Diag>> {
     let loaded = modules::load(STD, user_src);
     let src = loaded.src;
     let std_lines = src[..loaded.program_start as usize].matches('\n').count();
+    // A program the grammar does not derive is rejected there; what was parsed is not checked.
+    if !loaded.errors.is_empty() {
+        return Err((loaded.errors.iter())
+            .map(|e| Diag {
+                stage: Stage::Syntax,
+                text: user_line(e, std_lines),
+            })
+            .collect());
+    }
     let mut out: Vec<Diag> = Vec::new();
     let mut add = |stage, text: &str| {
         out.push(Diag {
@@ -107,9 +116,6 @@ pub fn compile(user_src: &str, events: bool) -> Result<Compiled, Vec<Diag>> {
             text: user_line(text, std_lines),
         })
     };
-    for e in &loaded.errors {
-        add(Stage::Syntax, e);
-    }
     let (d, main) = decls::collect(&loaded.modules, &loaded.prelude);
     for e in &d.errors {
         add(Stage::Decls, e);

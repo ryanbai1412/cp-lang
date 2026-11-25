@@ -246,7 +246,6 @@ super::msgs! {
     UNSUPPORTED_IS_A_TRAIT_ALIAS = UNSUPPORTED, "`{}` is a trait alias: it names bounds and has no impl of its own";
     UNKNOWN_FIELD_HAS_NO_FN = UNKNOWN_FIELD, "`{}` has no fn `{}`";
     WRONG_ARG_COUNT_IMPL_FOR_IS_MISSING = WRONG_ARG_COUNT, "`impl {} for {}` is missing {}";
-    EXPECTED_TOKEN_AN_ENUM_S_VARIANTS = EXPECTED_TOKEN, "an enum's variants are separated by `|`, not `,`";
     TYPE_MISMATCH_LET_ELSE_NEEDS_A = TYPE_MISMATCH, "let-else needs a ?T for `{}`, and it is {}";
     TYPE_MISMATCH_LET_ELSE_NEEDS_A_2 = TYPE_MISMATCH, "let-else needs a ?T, and `{}` is {}";
     RANGE_STORE_CONST_IS_NOT_IN_STR = RANGE_STORE_CONST, "`{}` is not in `Str of \"{}\"`";

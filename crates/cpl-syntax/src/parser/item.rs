@@ -680,12 +680,16 @@ impl<'a> Parser<'a> {
         if one_line || self.at(T::Eq) {
             // `enum Dir = L | R | U | D`; after a `:`, `,` also separates.
             self.bump();
+            let mut commas = Vec::new();
             loop {
                 variants.push(self.variant());
-                if !(self.eat(T::Pipe) || (one_line && self.eat(T::Comma))) {
+                if one_line && self.eat(T::Comma) {
+                    commas.push(variants.len() - 1);
+                } else if !self.eat(T::Pipe) {
                     break;
                 }
             }
+            self.no_comma_variants(&variants, &commas);
         } else {
             methods = self.members(&format!("`enum {}`", name.text), |p| {
                 variants.push(p.variant())
@@ -730,6 +734,24 @@ impl<'a> Parser<'a> {
             variants,
             methods,
         })
+    }
+
+    /// 0.3 writes `enum Dir = N | E`; `enum Dir: N, E` is gone (R01.10.2). A comma after a variant
+    /// with a payload or a value still separates.
+    fn no_comma_variants(&mut self, variants: &[Variant], commas: &[usize]) {
+        let bare = |v: &Variant| v.fields.is_empty() && v.value.is_none();
+        let Some(&k) =
+            (commas.iter()).find(|&&k| bare(&variants[k]) && variants[k + 1].tag.is_none())
+        else {
+            return;
+        };
+        let names: Vec<&str> = variants.iter().map(|v| v.name.text.as_str()).collect();
+        let at = variants[k].name.span.to(variants[k + 1].name.span);
+        self.error(
+            msgs::syntax::EXPECTED_TOKEN_AN_ENUM_S_VARIANTS
+                .error(at, &[])
+                .with_help(format!("write `= {}`", names.join(" | "))),
+        );
     }
 
     fn variant(&mut self) -> Variant {

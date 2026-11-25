@@ -182,6 +182,16 @@ pub fn emit(p: &Program, funcs: &[Func<CTy>]) -> String {
     for t in e.order.clone() {
         let n = e.names[&t].clone();
         match &t {
+            CTy::Struct(..) if p.sums.contains_key(&t) => {
+                let mut body = String::from("int64_t tag;");
+                for (i, k) in p.sums[&t].iter().enumerate() {
+                    put!(body, " {} v{i};", e.names[k]);
+                }
+                for (i, k) in p.sums[&t].iter().enumerate() {
+                    put!(body, " static {n} m{i}(const {}& x) {{ {n} u{{}}; u.tag = {i}; u.v{i} = x; return u; }}", e.names[k]);
+                }
+                put_line!(s, "struct {n} {{ {body} }};");
+            }
             CTy::Struct(..) => {
                 let fs: Vec<String> = p.structs[&t]
                     .iter()
@@ -335,7 +345,7 @@ impl Emit<'_> {
     fn by_value_order(&self) -> Vec<CTy> {
         fn visit(e: &Emit, t: &CTy, done: &mut HashSet<CTy>, out: &mut Vec<CTy>) {
             let parts: Vec<CTy> = match t {
-                CTy::Struct(..) => e.p.structs[t].clone(),
+                CTy::Struct(..) => e.p.parts(t),
                 CTy::Clo(k) => e.p.captures(k),
                 CTy::Set(ms) => ms.iter().map(|k| CTy::Clo(Box::new(k.clone()))).collect(),
                 _ => return,
@@ -368,7 +378,7 @@ impl Emit<'_> {
             CTy::Struct(..) => {
                 let n = format!("S{}", self.names.len());
                 self.names.insert(t.clone(), n.clone());
-                for f in self.p.structs[t].clone() {
+                for f in self.p.parts(t) {
                     self.name(&f);
                 }
                 self.order.push(t.clone());
@@ -400,11 +410,9 @@ impl Emit<'_> {
     fn plain(&self, t: &CTy, depth: usize) -> bool {
         match t {
             CTy::Int | CTy::Bool | CTy::Char | CTy::Unit | CTy::Dom(_) => true,
-            CTy::Struct(..) if depth < 8 => self
-                .p
-                .structs
-                .get(t)
-                .is_some_and(|fs| fs.iter().all(|f| self.plain(f, depth + 1))),
+            CTy::Struct(..) if depth < 8 => {
+                (self.p.parts(t).iter()).all(|f| self.plain(f, depth + 1))
+            }
             _ => false,
         }
     }
