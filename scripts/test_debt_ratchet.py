@@ -1983,6 +1983,24 @@ class DebtRatchetTest(unittest.TestCase):
         eff = dr.inherited_baseline(baseline, {"rs_near_cap": ["new.rs"]})
         self.assertEqual(dr.evaluate(actual, eff)[0], [])
 
+    def test_a_deleted_case_counts_until_removed_md_names_it(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            git = lambda *a: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *a], cwd=root,
+                                            check=True, env=dr._git_env(), capture_output=True)
+            git("init", "-q")
+            case = root / "spec" / "conformance" / "core-01" / "a.cp"
+            case.parent.mkdir(parents=True)
+            case.write_text("// expect: ok\n")
+            git("add", "-A")
+            git("commit", "-qm", "base")
+            git("branch", "base")
+            case.unlink()
+            self.assertEqual(dr.next_cases_removed(root, "base"), ["spec/conformance/core-01/a.cp"])
+            (root / "spec" / "conformance" / "REMOVED.md").write_text(
+                "- `spec/conformance/core-01/a.cp`: the rule it tested is gone\n")
+            self.assertEqual(dr.next_cases_removed(root, "base"), [])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -12,4 +12,5 @@ cpl-diag.workspace = true
 [dev-dependencies]
 cpl-conform.workspace = true
 cpl-env.workspace = true
+cpl-json.workspace = true
 cpl-wait.workspace = true

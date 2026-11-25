@@ -1,12 +1,13 @@
 """Write plan/END-STATE.md: every suite of the end state, where it stands and what is left.
 
     uv run python scripts/end-state.py           write it
-    uv run python scripts/end-state.py --check   fail if it is stale or plan/end-state.toml is wrong (commit tier, via gen.py)
+    uv run python scripts/end-state.py --check [--against REF]   fail if it is stale or plan/end-state.toml is wrong (the ratchet's `end_state_broken`)
 
 Reads `plan/end-state.toml` (the suites, their sizes, properties and targets) and
 `scripts/debt-ratchet.json` (each number as the gate last measured it).
 """
 import json
+import subprocess
 import sys
 import tomllib
 from pathlib import Path
@@ -44,6 +45,32 @@ def load():
             if n["target"] != 0:
                 errors.append(f"{where}: `{n['counter']}` targets {n['target']}; a ratchet counter ends at 0")
     return suites, counts, errors
+
+
+GUARDED = ("name", "decides", "size", "properties", "level", "numbers", "missing")
+
+
+def retargeted(before, now):
+    """Suites of `before` that are gone from `now`, or whose name, target, size, property,
+    numbers or `missing` differ with no new `changed` note on the suite."""
+    errors = []
+    by_id = {s["id"]: s for s in now}
+    for old in before:
+        new = by_id.get(old["id"])
+        if new is None:
+            errors.append(f"suite {old['id']} ({old['name']}) is gone: a suite is finished, not removed")
+            continue
+        moved = [k for k in GUARDED if old.get(k) != new.get(k)]
+        if moved and new.get("changed") in (None, "", old.get("changed")):
+            errors.append(f"suite {old['id']}: {', '.join(moved)} changed with no new "
+                          '`changed = "<date>: <why>"` on the suite')
+    return errors
+
+
+def suites_at(ref):
+    """The suites as `ref` has them, or none when it has no such file."""
+    out = subprocess.run(["git", "show", f"{ref}:plan/end-state.toml"], cwd=ROOT, capture_output=True, text=True)
+    return tomllib.loads(out.stdout)["suite"] if out.returncode == 0 else []
 
 
 def state(suite, counts):
@@ -89,12 +116,17 @@ def render(suites, counts):
                 f"- Decides: {s['decides']}.",
                 f"- Minimum size: {s['size']}.",
                 f"- At the end state: {s['properties']}.",
-                f"- Mechanism level (`handbook/process/quality.md`): {s['level']}.", ""]
+                f"- Mechanism level (`handbook/process/quality.md`): {s['level']}."]
+        out += [f"- Last changed: {s['changed']}."] if s.get("changed") else []
+        out.append("")
     return "\n".join(out)
 
 
 def main():
     suites, counts, errors = load()
+    args = sys.argv[1:]
+    if "--against" in args:
+        errors += retargeted(suites_at(args[args.index("--against") + 1]), suites)
     if errors:
         print("\n".join(f"end-state: {e}" for e in errors))
         return 1

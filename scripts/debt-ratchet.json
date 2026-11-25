@@ -273,5 +273,7 @@
   "next_wrong": 40,
   "next_not_passing": 4146,
   "end_state_unmeasured": 25,
-  "tool_compiler_deps": 615
+  "tool_compiler_deps": 615,
+  "end_state_broken": 0,
+  "next_cases_removed": 0
 }

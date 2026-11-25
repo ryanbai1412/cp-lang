@@ -86,9 +86,13 @@ fn next(path: &Path, flags: &[&str], input: &[u8]) -> Ran {
     run(cmd, input)
 }
 
-/// The header keys this harness acts on or that only describe the case. A case with any
-/// other key asks for something else (a tool, a second file) and counts as refused.
-const HEADER_KEYS: [&str; 4] = ["expect", "input", "rule", "model"];
+/// Header keys that ask for something this harness does not do yet (a tool, a second file,
+/// text a message must hold): a case with one counts as refused. Every other `// word:`
+/// line is a key the harness acts on (`expect`, `input`) or a comment, so a note added to
+/// a header never changes what a case is.
+const ASKS: [&str; 10] = [
+    "has", "lacks", "tool", "file", "judge", "copies", "output", "before", "timeout", "unread",
+];
 
 /// `// key: ...` gives `key`.
 fn header_key(line: &str) -> Option<&str> {
@@ -113,10 +117,7 @@ fn verdict(path: &Path) -> (&'static str, String) {
         Err(e) => return ("bad-header", e),
     };
     let header = text.lines().take_while(|l| l.starts_with("//"));
-    if let Some(key) = header
-        .filter_map(header_key)
-        .find(|k| !HEADER_KEYS.contains(k))
-    {
+    if let Some(key) = header.filter_map(header_key).find(|k| ASKS.contains(k)) {
         return ("refused", format!("a `// {key}:` case"));
     }
     if let Expect::Exit(_) = expect {

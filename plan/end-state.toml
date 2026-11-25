@@ -6,7 +6,8 @@
 # the target. A suite with `missing` has no number yet: `missing` says what would count it,
 # and the ratchet's `end_state_unmeasured` counts such suites and only goes down.
 #
-# Changing a target, a size or a property here is a design decision: say why in the commit.
+# Changing a suite's name, target, size, property, numbers or `missing` is a design decision:
+# add or rewrite `changed = "<date>: <why>"` on it, or the ratchet's `end_state_broken` fails.
 
 [[suite]]
 id = 1

@@ -1202,6 +1202,30 @@ def end_state_unmeasured(root: Path) -> list[str]:
     return [f"suite {s['id']}: {s['name']}: {s['missing']}" for s in suites if s.get("missing")]
 
 
+def end_state_broken(root: Path, ref: str = "origin/main") -> list[str]:
+    """What `scripts/end-state.py --check` finds wrong with the end state: a malformed suite,
+    a stale `plan/END-STATE.md`, a suite of `ref` that is gone, or one retargeted with no
+    `changed` note. A target is then never weakened by an edit nobody had to write down."""
+    script = root / "scripts" / "end-state.py"
+    if not script.is_file() or not (root / "plan" / "end-state.toml").is_file():
+        return []
+    out = subprocess.run([sys.executable, str(script), "--check", "--against", ref], cwd=root,
+                         capture_output=True, text=True, env=_git_env())
+    return [l for l in (out.stdout + out.stderr).splitlines() if l.strip()] if out.returncode else []
+
+
+def next_cases_removed(root: Path, ref: str = "origin/main") -> list[str]:
+    """Cases of `ref` that are gone: a conformance case or a new-pipeline test deleted or
+    renamed away. Deleting a wrong case would lower `next_wrong` for free; one leaves only
+    by a line in `spec/conformance/REMOVED.md` naming it and why."""
+    pats = ["spec/conformance", NEXT_TESTS + "/programs"]
+    gone = [l.split("\t")[1] for l in _git(root, "diff", "--name-status", "--diff-filter=DR", "--no-renames",
+                                           ref, "--", *pats) if l.endswith(".cp")]
+    removed = root / "spec" / "conformance" / "REMOVED.md"
+    named = removed.read_text(encoding="utf-8") if removed.is_file() else ""
+    return [g for g in gone if f"`{g}`" not in named]
+
+
 def next_not_passing(root: Path) -> list[str]:
     """Cases the new pipeline does not pass yet: wrong ones and the ones it refuses (says it
     does not implement). 0 is the day `cpl` switches to it and what it replaces is deleted.
@@ -3309,6 +3333,10 @@ COUNTERS = {
     "vm_fallbacks": ("source call sites that route the VM into the tree-walker", vm_fallbacks, True),
     "next_wrong": ("cases the new pipeline (cpl-next) gets wrong (Core)", next_wrong, True),
     "end_state_unmeasured": ("suites of the end state (plan/end-state.toml) with no number yet (Core)", end_state_unmeasured, True),
+    "end_state_broken": ("end-state suites malformed, removed or retargeted with no `changed` note, or a stale "
+                         "plan/END-STATE.md (Core)", end_state_broken, True),
+    "next_cases_removed": ("conformance cases or new-pipeline tests deleted with no line in "
+                           "spec/conformance/REMOVED.md (Core)", next_cases_removed, True),
     "next_not_passing": ("cases the new pipeline (cpl-next) does not pass yet: wrong or refused (Core)", next_not_passing, True),
     "own_databases": ("Database built outside cpl-check", own_databases, True),
     "ir_reinfer": ("lowering re-inferring a type the checker's facts give", ir_reinfer, True),
