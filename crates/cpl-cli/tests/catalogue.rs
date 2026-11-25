@@ -100,8 +100,7 @@ fn reported(mode: &str, src: &str, input: &str, name: &str) -> (Vec<String>, Vec
 fn apply_first_fix_it(src: &str) -> Option<String> {
     let mut db = cpl_facade::Session::default();
     db.set_file("trigger.cp", src);
-    let analysis = db.analyze("trigger.cp").unwrap();
-    let mut diags = cpl_facade::today::built(&analysis);
+    let mut diags = db.diagnostics("trigger.cp", cpl_facade::Layer::Built);
     diags.sort_by_key(|d| d.span.start);
     let mut edits = diags.first()?.fixes.first()?.edits.clone();
     edits.sort_by_key(|(span, _)| std::cmp::Reverse(span.start));

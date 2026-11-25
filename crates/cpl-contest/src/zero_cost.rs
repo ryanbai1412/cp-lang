@@ -62,23 +62,13 @@ pub fn emit_cpp(path: &Path) -> Result<String, String> {
     let mut db = cpl_facade::Session::default();
     let name = path.to_string_lossy().into_owned();
     db.set_file(&name, source.as_str());
-    let analysis = db
-        .analyze(&name)
-        .ok_or_else(|| format!("{}: analysis returned none", path.shown()))?;
-    if analysis.has_errors() {
-        let msgs: Vec<String> = analysis
-            .diagnostics
-            .iter()
-            .filter(|d| d.severity == cpl_diag::Severity::Error)
-            .map(|d| d.message.clone())
+    let stops = |d: &cpl_diag::Diagnostic| d.severity == cpl_diag::Severity::Error;
+    let ir = (db.program(&name, &cpl_facade::Job::program())).map_err(|diagnostics| {
+        let msgs: Vec<String> = (diagnostics.into_iter().filter(stops))
+            .map(|d| d.message)
             .collect();
-        return Err(format!("{}: {}", path.shown(), msgs.join("; ")));
-    }
-    let ir =
-        cpl_facade::today::program(&analysis, &cpl_facade::Job::program()).map_err(|diags| {
-            let msgs: Vec<String> = diags.into_iter().map(|d| d.message).collect();
-            format!("{}: {}", path.shown(), msgs.join("; "))
-        })?;
+        format!("{}: {}", path.shown(), msgs.join("; "))
+    })?;
     Ok(cpl_facade::emit_cpp(&ir, &name, &cpl_facade::Profile::default()).text)
 }
 

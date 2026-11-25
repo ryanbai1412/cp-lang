@@ -66,16 +66,13 @@ pub fn trap_report_in(
     brute: bool,
     stack_limit: Option<u32>,
 ) -> Option<Trapped> {
-    let (name, analysis) = analyzed(path, text)?;
+    let (name, db) = opened(path, text)?;
     let text = text.to_string();
-    let program = match brute {
-        false => cpl_facade::today::program(&analysis, &cpl_facade::Job::program()).ok()?,
-        true => {
-            let alt = cpl_facade::today::roles(&analysis).alt()?.0;
-            cpl_facade::today::program(&analysis, &cpl_facade::Job::of(cpl_facade::Root::Alt(alt)))
-                .ok()?
-        }
+    let job = match brute {
+        false => cpl_facade::Job::program(),
+        true => cpl_facade::Job::of(cpl_facade::Root::Alt(db.roles(&name)?.alt()?.0)),
     };
+    let program = db.program(&name, &job).ok()?;
     // Alone, an interactive solution only ever sees its input end.
     if program.interactive() {
         return None;
@@ -133,13 +130,10 @@ pub fn checker_trap_in(
     got: &str,
     stack_limit: Option<u32>,
 ) -> Option<Trapped> {
-    let (name, analysis) = analyzed(path, text)?;
-    let (checker, _) = cpl_facade::today::roles(&analysis).checker()?;
-    let program = cpl_facade::today::program(
-        &analysis,
-        &cpl_facade::Job::of(cpl_facade::Root::Checker(checker.to_string())),
-    )
-    .ok()?;
+    let (name, db) = opened(path, text)?;
+    let (checker, _) = db.roles(&name)?.checker()?;
+    let job = cpl_facade::Job::of(cpl_facade::Root::Checker(checker.to_string()));
+    let program = db.program(&name, &job).ok()?;
     let mut printed = Some(got.as_bytes().to_vec());
     let io = cpl_facade::RunInput::judge(input.as_bytes(), Box::new(move || printed.take()))
         .until(cpl_facade::Stop::after(LIMIT));
@@ -166,8 +160,8 @@ pub fn checker_trap_in(
 /// interactive, traps or is still running after [`LIMIT`].
 pub fn interpreted_output(path: &Path, input: &str) -> Option<String> {
     let text = std::fs::read_to_string(path).ok()?;
-    let (_, analysis) = analyzed(path, &text)?;
-    let program = cpl_facade::today::program(&analysis, &cpl_facade::Job::program()).ok()?;
+    let (name, db) = opened(path, &text)?;
+    let program = db.program(&name, &cpl_facade::Job::program()).ok()?;
     if program.interactive() {
         return None;
     }
@@ -177,19 +171,13 @@ pub fn interpreted_output(path: &Path, input: &str) -> Option<String> {
     String::from_utf8(sink).ok()
 }
 
-/// The `.cp` file at `path`, read as `text`, analyzed under its shown name;
-/// `None` when it is not CP Lang or has an error.
-fn analyzed(
-    path: &Path,
-    text: &str,
-) -> Option<(String, std::sync::Arc<cpl_facade::today::Analysis>)> {
+/// The session of the `.cp` file at `path`, read as `text`, under its shown
+/// name; `None` when it is not CP Lang.
+fn opened(path: &Path, text: &str) -> Option<(String, cpl_facade::Session)> {
     if path.extension().is_none_or(|ext| ext != "cp") {
         return None;
     }
     let name = path.shown();
-    let mut db = cpl_facade::Session::default();
-    db.set_file(&name, text);
-    let analysis = db.analyze(&name)?;
-    let failed = (analysis.diagnostics.iter()).any(|d| d.severity == cpl_diag::Severity::Error);
-    (!failed).then_some((name, analysis))
+    let db = cpl_facade::Session::default().with_file(&name, text);
+    Some((name, db))
 }

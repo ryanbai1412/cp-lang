@@ -378,16 +378,14 @@ fn emit_cpp(
     }
     let missing = |kind: &str| BuildError(format!("{name} declares no `{kind}` fn"));
     let lowered = match part {
-        Part::Solution => {
-            cpl_facade::today::program(&analysis, &cpl_facade::Job::of(cpl_facade::Root::Laws))
-        }
-        Part::ColdCache => cpl_facade::today::program(&analysis, &cpl_facade::Job::cold()),
+        Part::Solution => db.program(&name, &cpl_facade::Job::of(cpl_facade::Root::Laws)),
+        Part::ColdCache => db.program(&name, &cpl_facade::Job::cold()),
         Part::Brute => {
-            let (brute_fn, _) = cpl_facade::today::roles(&analysis)
-                .alt()
+            let (brute_fn, _) = (db.roles(&name))
+                .and_then(|roles| roles.alt())
                 .ok_or_else(|| missing("@alt(program)"))?;
-            cpl_facade::today::program(
-                &analysis,
+            db.program(
+                &name,
                 &cpl_facade::Job::of(cpl_facade::Root::Alt(brute_fn.to_string())),
             )
         }
@@ -857,11 +855,11 @@ impl Program {
         if analysis.diagnostics.iter().any(is_error) {
             return Err(failed(&analysis.diagnostics));
         }
-        let (gen_fn, _) = cpl_facade::today::roles(&analysis)
-            .generator()
+        let (gen_fn, _) = (db.roles(&name))
+            .and_then(|roles| roles.generator())
             .ok_or_else(|| BuildError(format!("{name} declares no `@gen` fn")))?;
-        cpl_facade::today::program(
-            &analysis,
+        db.program(
+            &name,
             &cpl_facade::Job::of(cpl_facade::Root::Generator(gen_fn.to_string(), size)),
         )
         .map_err(|diagnostics| failed(&diagnostics))

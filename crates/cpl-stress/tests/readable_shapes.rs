@@ -127,17 +127,12 @@ fn reads(
          domain V = 1..=n\ndomain E = 0..m\nlet x: {ty} = read()\nprint(n)\n"
     );
     db.set_file("s.cp", src.as_str());
-    let analysis = db.analyze("s.cp")?;
     let error = |d: &cpl_diag::Diagnostic| d.severity == cpl_diag::Severity::Error;
-    if analysis.diagnostics.iter().any(error)
-        || cpl_facade::today::built(&analysis).iter().any(error)
-    {
+    if (db.diagnostics("s.cp", cpl_facade::Layer::Built).iter()).any(error) {
         return None;
     }
-    Some((
-        src,
-        cpl_facade::today::program(&analysis, &cpl_facade::Job::program()).ok()?,
-    ))
+    let program = db.program("s.cp", &cpl_facade::Job::program()).ok()?;
+    Some((src, program))
 }
 
 /// `module.ty: why` when stress can't make an input the program reads.

@@ -23,8 +23,8 @@ fn root() -> PathBuf {
 /// checks the std library once for all its copies.
 fn errors(db: &mut cpl_facade::Session, path: &str, src: &str) -> Vec<Diagnostic> {
     db.set_file(path, src);
-    let analysis = db.analyze(path).expect("the file was just set");
-    let mut out: Vec<Diagnostic> = cpl_facade::today::built(&analysis)
+    let mut out: Vec<Diagnostic> = db
+        .diagnostics(path, cpl_facade::Layer::Built)
         .into_iter()
         .filter(|d| d.severity == Severity::Error)
         .collect();

@@ -55,8 +55,8 @@ pub(crate) fn should_run_unit_tests(args: &[&str]) -> bool {
             if laws::with_law_tests(&mut db, paths[0], &text).is_some() {
                 return true;
             }
-            if let Some(analysis) = db.analyze(paths[0]) {
-                return !cpl_facade::today::roles(&analysis).tests().is_empty();
+            if let Some(roles) = db.roles(paths[0]) {
+                return !roles.tests().is_empty();
             }
         }
     }
@@ -135,19 +135,16 @@ pub(crate) fn run_unit_tests(
             None => text,
         };
         db.set_file(&path_str, text.as_str());
-        let Some(analysis) = db.analyze(&path_str) else {
+        let Some(roles) = db.roles(&path_str) else {
             continue;
         };
-        let tests = cpl_facade::today::roles(&analysis).tests();
+        let tests = roles.tests();
         if tests.is_empty() {
             continue;
         }
-        if analysis
-            .diagnostics
-            .iter()
-            .any(|d| d.severity == cpl_diag::Severity::Error)
-        {
-            *stderr += &cpl_diag::render_all(&analysis.diagnostics, &path_str, &text);
+        let typed = db.diagnostics(&path_str, cpl_facade::Layer::Typed);
+        if (typed.iter()).any(|d| d.severity == cpl_diag::Severity::Error) {
+            *stderr += &cpl_diag::render_all(&typed, &path_str, &text);
             failed += tests.len();
             continue;
         }
@@ -156,10 +153,8 @@ pub(crate) fn run_unit_tests(
         let limit = std::time::Duration::from_millis(limit);
         for (idx, name) in tests.iter().enumerate() {
             let label = format!("{path_str}::{name}");
-            match cpl_facade::today::program(
-                &analysis,
-                &cpl_facade::Job::of(cpl_facade::Root::Test(name.to_string())),
-            ) {
+            let job = cpl_facade::Job::of(cpl_facade::Root::Test(name.to_string()));
+            match db.program(&path_str, &job) {
                 Ok(program) => {
                     let Some((out, ran)) = cpl_facade::run_for(&program, &[], limit) else {
                         let _ = writeln!(
@@ -248,8 +243,8 @@ pub(crate) fn run_unit_tests(
                     passed += 1;
                 }
                 Err(diagnostics) => {
-                    let msg = diagnostics
-                        .first()
+                    let msg = (diagnostics.iter())
+                        .find(|d| d.severity == cpl_diag::Severity::Error)
                         .map(|d| d.message.as_str())
                         .unwrap_or("lowering failed");
                     let _ = writeln!(stdout, "  FAIL {label}: {msg}");

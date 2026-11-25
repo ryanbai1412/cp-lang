@@ -782,55 +782,47 @@ fn compile_side(path: &str, side: Side, stderr: &mut String) -> Result<Compiled,
 
 /// Checks and lowers `text` as the file at `path`.
 fn compile_text(path: &str, text: String, side: Side, stderr: &mut String) -> Result<Compiled, u8> {
-    let analysis = with_db(|db| db.analyze_text(path, text.as_str()));
-    if !analysis.diagnostics.is_empty() {
-        *stderr += &cpl_diag::render_all(&analysis.diagnostics, path, &text);
-        if analysis
-            .diagnostics
-            .iter()
-            .any(|d| d.severity == cpl_diag::Severity::Error)
-        {
-            return Err(EXIT_ERRORS);
-        }
+    let db = with_db(|db| {
+        db.set_file(path, text.as_str());
+        db.clone()
+    });
+    let typed = db.diagnostics(path, cpl_facade::Layer::Typed);
+    if (typed.iter()).any(|d| d.severity == cpl_diag::Severity::Error) {
+        *stderr += &cpl_diag::render_all(&typed, path, &text);
+        return Err(EXIT_ERRORS);
     }
-    let missing = |what: &str, stderr: &mut String| {
+    let mut missing = |what: &str| {
+        *stderr += &cpl_diag::render_all(&typed, path, &text);
         *stderr += &format!("cpl: `{path}` declares no `{what}` fn\n");
         EXIT_USAGE
     };
+    let built = |root: cpl_facade::Root| db.program(path, &cpl_facade::Job::of(root));
+    let roles = db.roles(path);
     let lowered = match side {
-        Side::Solution => cpl_facade::today::program(&analysis, &cpl_facade::Job::program())
-            .and_then(|program| {
-                let judge = match cpl_facade::today::roles(&analysis).interactor() {
-                    Some(name) => Some((
-                        name.clone(),
-                        cpl_facade::today::program(
-                            &analysis,
-                            &cpl_facade::Job::of(cpl_facade::Root::Interactor(name.to_string())),
-                        )?,
-                    )),
-                    None => None,
-                };
-                Ok((program, judge))
-            }),
-        Side::Brute => match cpl_facade::today::roles(&analysis).alt() {
-            Some((name, _)) => cpl_facade::today::program(
-                &analysis,
-                &cpl_facade::Job::of(cpl_facade::Root::Alt(name.to_string())),
-            )
-            .map(|program| (program, None)),
-            None => return Err(missing("@alt(program)", stderr)),
+        Side::Solution => built(cpl_facade::Root::Program).and_then(|program| {
+            let judge = match roles.and_then(|roles| roles.interactor()) {
+                Some(name) => {
+                    let judge = built(cpl_facade::Root::Interactor(name.to_string()))?;
+                    Some((name, judge))
+                }
+                None => None,
+            };
+            Ok((program, judge))
+        }),
+        Side::Brute => match roles.and_then(|roles| roles.alt()) {
+            Some((name, _)) => built(cpl_facade::Root::Alt(name)).map(|program| (program, None)),
+            None => return Err(missing("@alt(program)")),
         },
-        Side::Checker => match cpl_facade::today::roles(&analysis).checker() {
-            Some((name, _)) => cpl_facade::today::program(
-                &analysis,
-                &cpl_facade::Job::of(cpl_facade::Root::Checker(name.to_string())),
-            )
-            .map(|program| (program, None)),
-            None => return Err(missing("@check", stderr)),
+        Side::Checker => match roles.and_then(|roles| roles.checker()) {
+            Some((name, _)) => {
+                built(cpl_facade::Root::Checker(name)).map(|program| (program, None))
+            }
+            None => return Err(missing("@check")),
         },
     };
     match lowered {
         Ok((program, judge)) => {
+            *stderr += &cpl_diag::render_all(&typed, path, &text);
             *stderr += &cpl_diag::render_all(program.warnings(), path, &text);
             Ok(Compiled {
                 text,

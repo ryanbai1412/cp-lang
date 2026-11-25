@@ -104,9 +104,9 @@ impl Program {
 }
 
 /// The fns of a file that make it more than one program, by name.
-pub struct Roles<A = Arc<Analysis>>(pub(crate) A);
+pub struct Roles(pub(crate) Arc<Analysis>);
 
-impl<A: std::ops::Deref<Target = Analysis>> Roles<A> {
+impl Roles {
     /// The `@interactor` fn: the judge's side of a conversation.
     pub fn interactor(&self) -> Option<String> {
         cpl_ir::interactor(&self.0)
@@ -284,19 +284,18 @@ impl Session {
             inner.programs.clear();
             inner.modules = modules;
         }
-        let gone: Vec<FileId> = inner
-            .programs
-            .iter()
-            .filter(|(file, _)| text_of(&programs, file).is_none())
-            .map(|(file, _)| file.clone())
-            .collect();
-        for file in gone {
-            inner.db.remove_file(file.path());
+        let Inner {
+            db, programs: held, ..
+        } = &mut *inner;
+        for (file, _) in held.iter() {
+            if text_of(&programs, file).is_none() {
+                db.remove_file(file.path());
+            }
         }
         for (file, text) in &programs {
-            let held = text_of(&inner.programs, file);
+            let held = text_of(held, file);
             if !held.is_some_and(|held| Arc::ptr_eq(held, text) || held == text) {
-                inner.db.set_file(file.path(), text.clone());
+                db.set_file(file.path(), text.clone());
             }
         }
         inner.programs = programs;
@@ -342,11 +341,11 @@ impl Session {
         let Some(analysis) = self.checked(file) else {
             return Err(Vec::new());
         };
-        let mut diagnostics = analysis.diagnostics.clone();
         if analysis.has_errors() {
-            return Err(diagnostics);
+            return Err(analysis.diagnostics.clone());
         }
         build_of(&analysis, job).map_err(|errors| {
+            let mut diagnostics = analysis.diagnostics.clone();
             diagnostics.extend(errors);
             diagnostics
         })

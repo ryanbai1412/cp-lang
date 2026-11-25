@@ -141,16 +141,16 @@ impl Stress {
         };
         let given_brute = native.and_then(|n| n.brute);
         let given_gen = native.and_then(|n| n.gen);
-        let mut db = cpl_facade::Session::default();
-        db.set_file(name, source);
-        let analysis = match is_cp || native.is_none() {
-            true => db.analyze(name),
+        let db = cpl_facade::Session::default().with_file(name, source);
+        let roles = match is_cp || native.is_none() {
+            true => db.roles(name),
             false => None,
         };
         if native.is_none() {
-            let analysis = (analysis.as_deref())
-                .ok_or_else(|| Unbuilt::Said(format!("could not analyze {name}")))?;
-            let diagnostics = cpl_facade::today::built(analysis);
+            if roles.is_none() {
+                return Err(Unbuilt::Said(format!("could not analyze {name}")));
+            }
+            let diagnostics = db.diagnostics(name, cpl_facade::Layer::Built);
             if diagnostics.iter().any(|d| d.severity == Severity::Error) {
                 let lines = cpl_diag::LineIndex::new(source);
                 return Err(Unbuilt::Rendered(
@@ -160,15 +160,20 @@ impl Stress {
                 ));
             }
         }
-        let analysis = analysis.as_deref();
-        let analyzed =
-            || analysis.ok_or_else(|| Unbuilt::Said(format!("could not analyze {name}")));
+        let roles = roles.as_ref();
+        let analyzed = || match roles {
+            Some(_) => Ok(()),
+            None => Err(Unbuilt::Said(format!("could not analyze {name}"))),
+        };
+        let built = |root: cpl_facade::Root| {
+            lowered(db.program(name, &cpl_facade::Job::of(root)), name, source)
+        };
         let vm = |program: cpl_facade::Program| {
             Runner::InProcess(Box::new(Vm::new(program, name, source, stack_limit)))
         };
         // The file's own `@alt(program)`, unless `--brute` names another.
         let own_brute = match given_brute {
-            None => analysis.and_then(|a| cpl_facade::today::roles(a).alt()),
+            None => roles.and_then(|roles| roles.alt()),
             Some(_) => None,
         };
         // `@alt(f) fn g`: the brute is the whole file with `g` in `f`'s place.
@@ -179,30 +184,16 @@ impl Stress {
         // The file's own judge has to build before it can rule on a case.
         let external_judge = native.is_some_and(|n| n.judge_given);
         let (mut checker, mut interactor) = (None, None);
-        if let (Some(analysis), false) = (analysis, external_judge) {
-            if let Some((checker_fn, _)) = cpl_facade::today::roles(analysis).checker() {
-                checker = Some(lowered(
-                    cpl_facade::today::program(
-                        analysis,
-                        &cpl_facade::Job::of(cpl_facade::Root::Checker(checker_fn.to_string())),
-                    ),
-                    name,
-                    source,
-                )?);
-            } else if let Some(judge) = cpl_facade::today::roles(analysis).interactor() {
-                interactor = Some(lowered(
-                    cpl_facade::today::program(
-                        analysis,
-                        &cpl_facade::Job::of(cpl_facade::Root::Interactor(judge.to_string())),
-                    ),
-                    name,
-                    source,
-                )?);
+        if let (Some(roles), false) = (roles, external_judge) {
+            if let Some((checker_fn, _)) = roles.checker() {
+                checker = Some(built(cpl_facade::Root::Checker(checker_fn.to_string()))?);
+            } else if let Some(judge) = roles.interactor() {
+                interactor = Some(built(cpl_facade::Root::Interactor(judge.to_string()))?);
             }
         }
         let judged_in_file = checker.is_some() || interactor.is_some();
         let own_gen = match given_gen {
-            None => analysis.and_then(|a| cpl_facade::today::roles(a).generator()),
+            None => roles.and_then(|roles| roles.generator()),
             Some(_) => None,
         };
         let size = i64::try_from(options.size).unwrap_or(i64::MAX);
@@ -222,38 +213,18 @@ impl Stress {
         let said = |e: crate::program::BuildError| Unbuilt::Said(e.to_string());
         let roles = match native {
             None => {
-                let analysis = analyzed()?;
-                let fast = lowered(
-                    cpl_facade::today::program(
-                        analysis,
-                        &cpl_facade::Job::of(cpl_facade::Root::Laws),
-                    ),
-                    name,
-                    source,
-                )?;
+                analyzed()?;
+                let fast = built(cpl_facade::Root::Laws)?;
                 let brute = match (&own_brute, &part_brute) {
-                    (Some((brute_fn, _)), _) => Some(lowered(
-                        cpl_facade::today::program(
-                            analysis,
-                            &cpl_facade::Job::of(cpl_facade::Root::Alt(brute_fn.to_string())),
-                        ),
-                        name,
-                        source,
-                    )?),
+                    (Some((brute_fn, _)), _) => {
+                        Some(built(cpl_facade::Root::Alt(brute_fn.to_string()))?)
+                    }
                     (None, Some(swapped)) => {
                         let bname = format!(".{name}.brute.cp");
-                        db.set_file(&bname, swapped.as_str());
-                        let swapped_analysis = (db.analyze(&bname)).ok_or_else(|| {
-                            Unbuilt::Said(format!("could not analyze part brute of {name}"))
-                        })?;
-                        Some(lowered(
-                            cpl_facade::today::program(
-                                &swapped_analysis,
-                                &cpl_facade::Job::program(),
-                            ),
-                            &bname,
-                            swapped,
-                        )?)
+                        let brute = db
+                            .with_file(&bname, swapped.as_str())
+                            .program(&bname, &cpl_facade::Job::program());
+                        Some(lowered(brute, &bname, swapped)?)
                     }
                     (None, None) => None,
                 };
@@ -272,7 +243,7 @@ impl Stress {
                 let file_solves = native.fast.is_none() && is_cp;
                 let cached = file_solves
                     && source.contains("@cache")
-                    && analysis.is_some_and(|a| cpl_facade::today::roles(a).cached_fields());
+                    && roles.is_some_and(|roles| roles.cached_fields());
                 // The builds are the whole wait before the first case, so
                 // they run side by side.
                 let (mut brute, mut cold) = (Ok(None), Ok(None));
@@ -329,15 +300,8 @@ impl Stress {
                 Inputs::Generator(Runner::Process(Program::resolve(gen).map_err(said)?))
             }
             (None, Some((gen_fn, _)), None) => {
-                let analysis = analyzed()?;
-                let program = lowered(
-                    cpl_facade::today::program(
-                        analysis,
-                        &cpl_facade::Job::of(cpl_facade::Root::Generator(gen_fn.to_string(), size)),
-                    ),
-                    name,
-                    source,
-                )?;
+                analyzed()?;
+                let program = built(cpl_facade::Root::Generator(gen_fn.to_string(), size))?;
                 Inputs::Gen(Drawing {
                     gen: vm(program),
                     limit: options.limit,

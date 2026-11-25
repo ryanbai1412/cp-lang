@@ -256,8 +256,8 @@ pub fn std_calls(db: &mut Session, path: &str, target: &Definition, name: &str) 
     }
     let gap = |d: &cpl_diag::Diagnostic| d.notes.iter().any(|n| n.contains("the gap is in `std."));
     let lowered = |db: &mut Session| {
-        let diagnostics = db.analyze(path).map(|a| cpl_facade::today::reported(&a));
-        let gaps = diagnostics.unwrap_or_default().into_iter().filter(gap);
+        let diagnostics = db.diagnostics(path, cpl_facade::Layer::Program);
+        let gaps = diagnostics.into_iter().filter(gap);
         gaps.map(|d| d.message).collect::<Vec<_>>()
     };
     let before = lowered(db);

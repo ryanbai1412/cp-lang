@@ -730,16 +730,8 @@ pub(super) fn gen_program(src: &str, func: &str, line: u32) -> Option<cpl_facade
     let name = "input.cp";
     let mut db = cpl_facade::Session::default();
     db.set_file(name, src);
-    let analysis = db.analyze(name)?;
-    let is_error = |d: &cpl_diag::Diagnostic| d.severity == cpl_diag::Severity::Error;
-    if analysis.diagnostics.iter().any(is_error) {
-        return None;
-    }
-    cpl_facade::today::program(
-        &analysis,
-        &cpl_facade::Job::of(cpl_facade::Root::GeneratorRead(func.to_string(), line)),
-    )
-    .ok()
+    let job = cpl_facade::Job::of(cpl_facade::Root::GeneratorRead(func.to_string(), line));
+    db.program(name, &job).ok()
 }
 
 /// The type a `let` that reads gives its value, and the `none` of a

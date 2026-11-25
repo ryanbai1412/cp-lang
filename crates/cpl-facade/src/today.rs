@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use cpl_diag::Diagnostic;
 
-use crate::session::{self, Job, Layer, Program, Roles, Session};
+use crate::session::{self, Layer, Program, Session};
 use crate::snapshot::{FileId, Text};
 
 pub use cpl_check::{
@@ -221,11 +221,6 @@ impl Program {
     }
 }
 
-/// [`Session::diagnostics`] of a file a tool already holds checked.
-pub fn diagnostics(analysis: &Analysis, upto: Layer) -> Vec<Diagnostic> {
-    session::diagnostics_of(analysis, upto)
-}
-
 /// What `cpl check` and the editor report of a checked file:
 /// [`Layer::Program`].
 pub fn reported(analysis: &Analysis) -> Vec<Diagnostic> {
@@ -236,17 +231,6 @@ pub fn reported(analysis: &Analysis) -> Vec<Diagnostic> {
 /// [`Layer::Built`], what a fix is judged by.
 pub fn built(analysis: &Analysis) -> Vec<Diagnostic> {
     session::diagnostics_of(analysis, Layer::Built)
-}
-
-/// [`Session::roles`] of a file a tool already holds checked.
-pub fn roles(analysis: &Analysis) -> Roles<&Analysis> {
-    Roles(analysis)
-}
-
-/// [`Session::program`] of a file a tool already holds checked, which had
-/// no error: `Err` is what the build itself rejects.
-pub fn program(analysis: &Analysis, job: &Job) -> Result<Program, Vec<Diagnostic>> {
-    session::build_of(analysis, job)
 }
 
 macro_rules! asks {

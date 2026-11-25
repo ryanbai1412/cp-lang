@@ -159,8 +159,8 @@ impl Playground {
 
     /// `cpl check`: every diagnostic in `source`.
     pub fn check(&mut self, name: &str, source: &str) -> Value {
-        let analysis = self.db.analyze_text(name, source);
-        let diagnostics = cpl_facade::today::built(&analysis);
+        self.db.set_file(name, source);
+        let diagnostics = self.db.diagnostics(name, cpl_facade::Layer::Built);
         let code = if diagnostics.iter().any(|d| d.severity == Severity::Error) {
             EXIT_ERRORS
         } else {
@@ -266,13 +266,10 @@ impl Playground {
                 }
                 let fast = observed.recording.unwrap_or_default();
                 // The brute's side, when the file has one that builds.
-                let slow = self.db.analyze(name).and_then(|analysis| {
-                    let (brute_fn, _) = cpl_facade::today::roles(&analysis).alt()?;
-                    let program = cpl_facade::today::program(
-                        &analysis,
-                        &cpl_facade::Job::of(cpl_facade::Root::Alt(brute_fn.to_string())),
-                    )
-                    .ok()?;
+                let slow = self.db.roles(name).and_then(|roles| {
+                    let (brute_fn, _) = roles.alt()?;
+                    let job = cpl_facade::Job::of(cpl_facade::Root::Alt(brute_fn.to_string()));
+                    let program = self.db.program(name, &job).ok()?;
                     let mut sink = Vec::new();
                     let recording =
                         observe(&program, input, &mut sink, stack, config()).recording?;
@@ -626,21 +623,18 @@ impl Playground {
     /// The gate `run` and `build` both go through, as in `cpl`: check, then
     /// lower. On failure, the finished result.
     fn compile(&mut self, name: &str, source: &str) -> Result<Compiled, Value> {
-        let analysis = self.db.analyze_text(name, source);
-        let mut diagnostics = analysis.diagnostics.clone();
-        let mut stderr = rendered(&diagnostics, name, source);
-        if analysis.has_errors() {
-            return Err(outcome(EXIT_ERRORS, &diagnostics, source, stderr, []));
-        }
-        match cpl_facade::today::program(&analysis, &cpl_facade::Job::program()) {
-            Ok(program) => Ok(Compiled {
-                program,
-                diagnostics,
-                stderr,
-            }),
-            Err(errors) => {
-                stderr += &rendered(&errors, name, source);
-                diagnostics.extend(errors);
+        self.db.set_file(name, source);
+        match self.db.program(name, &cpl_facade::Job::program()) {
+            Ok(program) => {
+                let diagnostics = self.db.diagnostics(name, cpl_facade::Layer::Typed);
+                Ok(Compiled {
+                    program,
+                    stderr: rendered(&diagnostics, name, source),
+                    diagnostics,
+                })
+            }
+            Err(diagnostics) => {
+                let stderr = rendered(&diagnostics, name, source);
                 Err(outcome(EXIT_ERRORS, &diagnostics, source, stderr, []))
             }
         }
