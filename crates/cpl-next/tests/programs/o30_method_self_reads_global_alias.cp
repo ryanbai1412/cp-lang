@@ -1,5 +1,5 @@
-// expect: E0602
-// (spec) R10 (callee writes `g` by name while `g` is lent as self; reviewer and today's compiler accept: QUESTION)
+// expect: ok, output "6 0"
+// (spec) R4: a value argument the call also writes is copied in (conformance core-05/param-unchanged-by-a-callee-writing-its-source).
 // self is the global; the method writes the global by name while holding self by value.
 struct S:
     xs: List<Int>
@@ -10,4 +10,4 @@ struct S:
             g = S([])
         t
 var g = S([1, 2, 3])
-print(g.sum_then_clear(), g.xs.len)  // <- here
+print(g.sum_then_clear(), g.xs.len)

@@ -122,12 +122,15 @@ pub fn compile(user_src: &str, events: bool) -> Result<Compiled, Vec<Diag>> {
     for e in &t.errors {
         add(Stage::Check, e);
     }
-    if t.errors.is_empty() && d.errors.is_empty() {
-        for e in &own::check(&d, &t, &src) {
-            add(Stage::Own, e);
-        }
+    let owned = if t.errors.is_empty() && d.errors.is_empty() {
+        own::check(&d, &t, &src)
+    } else {
+        own::Owned::default()
+    };
+    for e in &owned.errors {
+        add(Stage::Own, e);
     }
-    let g = lower::lower(&d, &t, &src, STD.matches('\n').count() as u32 + 1);
+    let g = lower::lower(&d, &t, &owned, &src, STD.matches('\n').count() as u32 + 1);
     for e in &g.errors {
         add(Stage::Lower, e);
     }

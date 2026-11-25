@@ -133,6 +133,9 @@ pub enum EK<T> {
 #[derive(Clone, Debug)]
 pub enum Arg<T> {
     Value(Expr<T>),
+    /// A place the callee reads where it is. Nothing writes it while the call runs.
+    View(Place),
+    /// A place the callee may write.
     Lend(Place),
 }
 #[derive(Clone, Debug)]

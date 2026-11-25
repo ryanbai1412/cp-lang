@@ -408,6 +408,15 @@ impl<'a> Cx<'a> {
             }
         };
         let params: Vec<(Ty, bool)> = ps.into_iter().map(|p| (p, false)).collect();
+        if args
+            .iter()
+            .any(|a| a.mutable || matches!(a.value.kind, ExprKind::Mut(_)))
+        {
+            self.err(
+                span,
+                "a `mut` argument to a function value is not built yet",
+            );
+        }
         let args = self.args(args, &params, span);
         let args = args
             .into_iter()

@@ -138,6 +138,8 @@ core-05/mut-local-beside-a-fn-param-is-written.cp
 core-05/mut-param-assigned-whole-replaces-caller.cp
 core-05/nested-field-let-then-parent-read.cp
 core-05/own-swap-is-not-the-mutator.cp
+core-05/param-unchanged-by-a-callee-writing-its-source.cp
+core-05/param-unchanged-by-a-write-to-its-global-source.cp
 core-05/plain-element-copies.cp
 core-05/rb1-q05-return-lent-without-lends.cp
 core-05/rb1-q42-closure-escapes-local.cp
@@ -257,6 +259,12 @@ matrix/optional/int--if_let_top.cp
 matrix/optional/list--if_let_fn.cp
 matrix/optional/list--if_let_loop.cp
 matrix/optional/list--if_let_top.cp
+next/a_alias_01_value_param_source_written_via_lambda.cp
+next/a_alias_02_through_fn_value.cp
+next/a_alias_03_write_two_calls_deep.cp
+next/a_alias_04_struct_field_source.cp
+next/a_alias_05_source_reassigned.cp
+next/a_alias_07_method_self_by_value.cp
 next/a_arith_01_euclid_small.cp
 next/a_arith_02_euclid_negative_divisor.cp
 next/a_arith_03_bit_ops.cp
@@ -307,11 +315,11 @@ next/a_own_03_write_while_view_in_lambda.cp
 next/a_own_04_moved_while_captured.cp
 next/a_own_05_move_in_branch_then_use.cp
 next/a_own_06_move_in_loop.cp
-next/a_own_07_mut_arg_and_captured_write.cp
 next/a_own_08_one_place_lent_mut_twice.cp
 next/a_own_09_struct_with_lent_closure_returned.cp
 next/a_own_11_push_while_walked.cp
 next/a_own_12_push_while_walked_via_closure.cp
+next/a_own_13_value_param_callee_writes_source.cp
 next/a_own_14_write_while_view_control.cp
 next/a_own_16_push_while_walked_in_lambda.cp
 next/a_own_17_lent_mut_twice_in_lambda.cp

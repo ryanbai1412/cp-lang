@@ -188,6 +188,9 @@ impl<'a> Machine<'a> {
         for a in args {
             vals.push(match a {
                 Arg::Value(v) => self.expr(v, fp)?,
+                // Nothing writes a viewed place during the call, so its value is what the
+                // callee would see through the view.
+                Arg::View(p) => self.place(fp, p)?.clone(),
                 Arg::Lend(_) => V::Unit,
             });
         }
@@ -201,7 +204,7 @@ impl<'a> Machine<'a> {
     fn hand_back(&mut self, args: &'a [Arg<CTy>], fp: usize, back: Vec<V>) -> R<()> {
         let lent = args.iter().filter_map(|a| match a {
             Arg::Lend(p) => Some(p),
-            Arg::Value(_) => None,
+            Arg::Value(_) | Arg::View(_) => None,
         });
         for (p, v) in lent.zip(back) {
             *self.place(fp, p)? = v;
@@ -532,10 +535,12 @@ impl<'a> Machine<'a> {
                 }))
             }
             Intr::RawGet => {
-                let Arg::Value(r) = &args[0] else {
-                    return broken("lent storage in a read");
+                let r = match &args[0] {
+                    Arg::Value(r) => self.expr(r, fp)?,
+                    Arg::View(p) => self.place(fp, p)?.clone(),
+                    Arg::Lend(_) => return broken("lent storage in a read"),
                 };
-                let V::Raw(r) = self.expr(r, fp)? else {
+                let V::Raw(r) = r else {
                     return broken("read of non-storage");
                 };
                 let i = self.int(&args[1], fp)?;

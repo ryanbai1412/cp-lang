@@ -272,6 +272,7 @@ fn const_ref_params(f: &Func<CTy>) -> Vec<bool> {
                 for a in args {
                     match a {
                         Arg::Lend(p) => w.extend(root(p)),
+                        Arg::View(_) => {}
                         Arg::Value(v) => expr(v, w),
                     }
                 }
@@ -458,7 +459,7 @@ impl Emit<'_> {
     fn arg(&self, a: &Arg<CTy>) -> String {
         match a {
             Arg::Value(v) => self.expr(v),
-            Arg::Lend(p) => self.place(p),
+            Arg::View(p) | Arg::Lend(p) => self.place(p),
         }
     }
     fn expr(&self, e: &Expr<CTy>) -> String {

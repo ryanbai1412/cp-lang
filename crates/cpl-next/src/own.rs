@@ -102,9 +102,19 @@ struct Cx<'a> {
     pending: Vec<(Root, usize, Code, String)>,
     /// The heap bindings a function value held by a binding uses, top-level ones included.
     caps: HashMap<Root, BTreeSet<Root>>,
+    /// Where each argument that is copied in starts.
+    copies: BTreeSet<u32>,
 }
 
-pub fn check(d: &Decls, t: &Typed, src: &str) -> Vec<String> {
+/// What ownership decides: the errors, and which by-value arguments are copies (the rest
+/// are views of their place).
+#[derive(Default)]
+pub struct Owned {
+    pub errors: Vec<String>,
+    pub copies: BTreeSet<u32>,
+}
+
+pub fn check(d: &Decls, t: &Typed, src: &str) -> Owned {
     let mut cx = Cx {
         d,
         t,
@@ -126,6 +136,7 @@ pub fn check(d: &Decls, t: &Typed, src: &str) -> Vec<String> {
         frozen: HashMap::new(),
         pending: Vec::new(),
         caps: HashMap::new(),
+        copies: BTreeSet::new(),
     };
     let mut ids: Vec<FnId> = t.fns.keys().copied().collect();
     ids.sort();
@@ -141,7 +152,10 @@ pub fn check(d: &Decls, t: &Typed, src: &str) -> Vec<String> {
     cx.pass(&ids);
     cx.errors.sort();
     cx.errors.dedup();
-    cx.errors
+    Owned {
+        errors: cx.errors,
+        copies: cx.copies,
+    }
 }
 
 impl Cx<'_> {
@@ -614,7 +628,13 @@ impl Cx<'_> {
                     Some(p) if !self.plain(&v.ty, 0) => {
                         self.live(v.span, &p);
                         fx.reads.insert(p.clone());
-                        held.insert(p);
+                        // R4: the callee keeps the value it was called with, so a place the
+                        // call also writes is copied in, not viewed.
+                        if other.writes.iter().any(|w| overlap(w, &p)) {
+                            self.copies.insert(self.off + v.span.start);
+                        } else {
+                            held.insert(p);
+                        }
                     }
                     _ => self.expr(v, fx),
                 },
@@ -642,16 +662,6 @@ impl Cx<'_> {
                 span,
                 codes::LENT_TWICE,
                 format!("{n} is passed to `{who}` and lent to it for writing in the same call"),
-            );
-        }
-        if let Some(p) = hits(&held, &other.writes) {
-            let n = self.name(p);
-            self.err(
-                span,
-                codes::USED_WHILE_LENT,
-                format!(
-                    "{n} is lent to `{who}` for this call, and the call also writes it another way"
-                ),
             );
         }
         if let Some(p) = hits(&lent, &other.writes).or_else(|| hits(&lent, &other.reads)) {

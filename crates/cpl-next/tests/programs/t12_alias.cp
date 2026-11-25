@@ -1,4 +1,4 @@
-// expect: E0602
+// expect: ok, output "6 6"
 // input: "\n"
 // A list passed by value while the callee pushes to the same list.
 // Value semantics say `xs` does not change. Nothing in the slice enforces it.
@@ -9,4 +9,4 @@ fn total(xs: List<Int>) -> Int:
         if log.len < 2000: log.push(xs[i])
         s += xs[i]
     s
-print("{total(log)} {log.len}")  // <- here
+print("{total(log)} {log.len}")

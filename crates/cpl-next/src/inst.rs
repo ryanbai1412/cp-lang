@@ -452,6 +452,7 @@ impl Link<'_> {
     fn arg(&mut self, a: &Arg<Ty>, env: &Env) -> Arg<CTy> {
         match a {
             Arg::Value(v) => Arg::Value(self.expr(v, env)),
+            Arg::View(p) => Arg::View(p.clone()),
             Arg::Lend(p) => Arg::Lend(p.clone()),
         }
     }
