@@ -327,9 +327,9 @@ fn newcomer_scoreboard() {
         let right = on(errs[0].span) || errs[0].labels.iter().any(|l| on(l.span));
         t.first_right = right as u32;
         t.fixable = !errs[0].fixes.is_empty() as u32;
-        let (fixed, ..) = db.apply_error_fixes(&path, &c.src);
+        let (fixed, ..) = db.apply_error_fixes_in(&path, &c.src);
         // Windows: the same copy with CRLF line ends gets the same fixes.
-        let (crlf, ..) = db.apply_error_fixes(&path, &c.src.replace('\n', "\r\n"));
+        let (crlf, ..) = db.apply_error_fixes_in(&path, &c.src.replace('\n', "\r\n"));
         if crlf.replace("\r\n", "\n") != fixed {
             out.crlf_differs = Some(format!("{} {}: {}", c.problem, c.line + 1, c.habit));
         }

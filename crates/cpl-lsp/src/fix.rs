@@ -13,7 +13,7 @@ pub fn document(
     text: &str,
     config: &cpl_lint::Config,
 ) -> (String, usize, Vec<Diagnostic>) {
-    let (fixed, applied, left) = db.apply_error_fixes(key, text);
+    let (fixed, applied, left) = db.apply_error_fixes_in(key, text);
     if !left.is_empty() {
         return (fixed, applied, left);
     }

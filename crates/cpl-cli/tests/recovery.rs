@@ -372,10 +372,10 @@ fn score(b: &Broken, restore: bool) -> (Tally, Option<(String, FirstFix)>) {
     t.fixable = errs.iter().filter(|d| !d.fixes.is_empty()).count() as u32;
     let fixed = (t.fixable > 0).then(|| {
         let (once, _) = cpl_diag::splice_fixes(&b.src, &errs);
-        with_db(|db| db.apply_error_fixes(&b.path, &once).0)
+        with_db(|db| db.apply_error_fixes_in(&b.path, &once).0)
     });
     if let Some(f) = &fixed {
-        let (again, n, _) = with_db(|db| db.apply_error_fixes(&b.path, f));
+        let (again, n, _) = with_db(|db| db.apply_error_fixes_in(&b.path, f));
         t.unconverged = (n > 0) as u32;
         if std::env::var("RECOVERY_SHOW").is_ok_and(|e| e == "unconverged") && n > 0 {
             println!("--- {} {}", b.path, b.edit);

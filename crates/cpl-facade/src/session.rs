@@ -482,15 +482,15 @@ impl Session {
     /// `text` as `file` with the checked fix of each error applied, round
     /// after round until none applies; how many were applied; and the
     /// errors left.
-    pub fn apply_error_fixes(&self, file: &str, text: &str) -> (String, usize, Vec<Diagnostic>) {
+    pub fn apply_error_fixes_in(&self, file: &str, text: &str) -> (String, usize, Vec<Diagnostic>) {
         self.trying(file, |db| cpl_ir::fix::apply_error_fixes_in(db, file, text))
     }
 }
 
 /// `text` as `file` with the checked fix of each error applied
-/// ([`Session::apply_error_fixes`]), and how many were applied.
+/// ([`Session::apply_error_fixes_in`]), and how many were applied.
 pub fn apply_error_fixes(file: &str, text: &str) -> (String, usize) {
-    let (text, applied, _) = Session::default().apply_error_fixes(file, text);
+    let (text, applied, _) = Session::default().apply_error_fixes_in(file, text);
     (text, applied)
 }
 

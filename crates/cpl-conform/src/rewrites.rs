@@ -28,7 +28,7 @@ fn fixed(path: &str, text: &str) -> String {
         static TOOLS: std::cell::RefCell<cpl_facade::Session> = Default::default();
     }
     TOOLS.with_borrow_mut(|db| {
-        let (fixed, _, left) = db.apply_error_fixes(path, text);
+        let (fixed, _, left) = db.apply_error_fixes_in(path, text);
         if !left.is_empty() {
             return fixed;
         }
