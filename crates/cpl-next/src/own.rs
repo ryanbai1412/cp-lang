@@ -96,7 +96,9 @@ struct Cx<'a> {
     /// R7: for a binding that holds a heap borrow, the bindings that must not change while it is used.
     frozen: HashMap<Root, BTreeSet<Root>>,
     /// A write or move that is an error if the binding is used afterwards.
-    pending: Vec<(Root, Span, Code, String)>,
+    /// Errors that hold only if a binding is used again: the binding, where in the file the
+    /// error is, and the error.
+    pending: Vec<(Root, usize, Code, String)>,
     /// The heap bindings a function value held by a binding uses, top-level ones included.
     caps: HashMap<Root, BTreeSet<Root>>,
 }
@@ -163,7 +165,7 @@ impl Cx<'_> {
                 .collect();
             self.expr(&tf.body, &mut fx);
             let out = self.sources(&tf.body);
-            self.escapes(tf.body.span, &out);
+            self.escapes(result_span(&tf.body), &out);
             // Callers see only what outlives the call: top-level bindings and the parameters.
             let mut ps: Vec<usize> = tf.params.clone();
             ps.extend(tf.self_local);
@@ -190,9 +192,16 @@ impl Cx<'_> {
             self.stmt(s, &mut fx);
         }
     }
+    /// Where a span is in the file. Spans are relative to the item they are in, so this is
+    /// asked while that item is the one being walked.
+    fn at(&self, span: Span) -> usize {
+        ((self.off + span.start) as usize).min(self.src.len())
+    }
     fn err(&mut self, span: Span, code: Code, msg: String) {
+        self.err_at(self.at(span), code, msg)
+    }
+    fn err_at(&mut self, at: usize, code: Code, msg: String) {
         if self.report {
-            let at = ((self.off + span.start) as usize).min(self.src.len());
             let line = self.src[..at].matches('\n').count() + 1;
             self.errors.push(format!("line {line}: {}: {msg}", code.0));
         }
@@ -361,9 +370,10 @@ impl Cx<'_> {
         for (b, srcs) in &self.frozen {
             if *b != p.root && srcs.contains(&p.root) {
                 let bn = self.root_name(*b);
+                let at = self.at(span);
                 self.pending.push((
                     *b,
-                    span,
+                    at,
                     codes::USED_WHILE_LENT,
                     format!("{n} is written here while {bn}, which borrows it, is still used"),
                 ));
@@ -374,7 +384,7 @@ impl Cx<'_> {
         if let Some(i) = self.pending.iter().position(|x| x.0 == p.root) {
             let (_, at, code, msg) = self.pending.remove(i);
             self.pending.retain(|x| x.0 != p.root);
-            self.err(at, code, msg);
+            self.err_at(at, code, msg);
         }
         if self.moved.contains(&p.root) && self.in_lambda == 0 {
             let n = self.root_name(p.root);
@@ -401,9 +411,10 @@ impl Cx<'_> {
                 for (b, srcs) in self.lent.iter().chain(self.caps.iter()) {
                     if srcs.contains(&r) {
                         let bn = self.root_name(*b);
+                        let at = self.at(e.span);
                         self.pending.push((
                             *b,
-                            e.span,
+                            at,
                             codes::MOVED_WHILE_CAPTURED,
                             format!("{n} is moved here while {bn}, which uses it, is still used"),
                         ));
@@ -940,5 +951,13 @@ impl Cx<'_> {
                 fx.add(&inner);
             }
         }
+    }
+}
+
+/// Where the value of a body is written: the last expression of a block, not the block.
+fn result_span(e: &TExpr) -> Span {
+    match &e.kind {
+        TK::Block(_, Some(t)) => result_span(t),
+        _ => e.span,
     }
 }

@@ -5,9 +5,9 @@ struct Box:
     f: Int -> Int
     tag: Int
 fn mk(n: Int) -> Box:
-    var k = n  // <- here
+    var k = n
     k += 1
-    Box(x => x + k, 1)
+    Box(x => x + k, 1)  // <- here
 fn noise(a: Int) -> Int:
     var t = a * 1000
     t += 1

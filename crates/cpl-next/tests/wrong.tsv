@@ -8,19 +8,12 @@ core-03/rb1-q30-const-range-store.cp	wrong-accept	wanted E0902 on line 3, ran an
 core-03/read-rejects-spare.cp	wrong-trap	wanted R0502 on line 4, got: trap: R0501: line 4: expected an integer in the input
 core-04/anon-range-array-traps.cp	wrong-trap	wanted R0101 on line 5, got: trap: R0102: line 5: value outside the domain
 core-05/cache-lend-no-unknown-call.cp	wrong-accept	wanted E0602 on line 13, ran and printed: 
-core-05/captured-let-moved-out.cp	wrong-error	wanted E0607 on line 5, got: own: line 6: E0607: `xs` is moved here while `f`, which uses it, is still used
-core-05/captured-not-moved.cp	wrong-error	wanted E0607 on line 5, got: own: line 6: E0607: `xs` is moved here while `f`, which uses it, is still used
-core-05/closure-not-returned.cp	wrong-error	wanted E0603 on line 5, got: own: line 4: E0603: this returns a value that borrows `c`: `c` is gone when the fn returns
-core-05/exercise-18-closure-of-local-not-returned.cp	wrong-error	wanted E0603 on line 5, got: own: line 4: E0603: this returns a value that borrows `c`: `c` is gone when the fn returns
 core-05/fn-var-binding-a-global-is-a-move.cp	wrong-accept	wanted E0608 on line 6, ran and printed: 
 core-05/generic-wrapper-lends-its-source.cp	wrong-error	wanted E0602 on line 8, got: own: line 5: E0603: this returns a value that borrows `s`: `s` is lent by the caller; return a `.clone()`
 core-05/generic-wrapper-of-a-plain-value-lends-nothing.cp	wrong-reject	own: line 5: E0603: this returns a value that borrows `s`: `s` is lent by the caller; return a `.clone()`
-core-05/heap-element-is-lent.cp	wrong-error	wanted E0602 on line 5, got: own: line 6: E0602: `rows` is written here while `row`, which borrows it, is still used
-core-05/heap-row-lend-blocks-push.cp	wrong-error	wanted E0602 on line 5, got: own: line 6: E0602: `g` is written here while `row`, which borrows it, is still used
 core-05/param-unchanged-by-a-callee-writing-its-source.cp	wrong-reject	own: line 9: E0602: `a` is lent to `f` for this call, and the call also writes it another way
 core-05/param-unchanged-by-a-write-to-its-global-source.cp	wrong-reject	own: line 7: E0602: `a` is lent to `f` for this call, and the call also writes it another way
 core-05/plain-tuple-copies.cp	wrong-reject	check: line 5: E0405: field `Tuple2._0` is fixed (not `var`) and cannot be assigned
-core-05/rb1-q42-closure-escapes-local.cp	wrong-error	wanted E0603 on line 5, got: own: line 4: E0603: this returns a value that borrows `c`: `c` is gone when the fn returns
 core-06/getter-called-with-parens.cp	wrong-accept	wanted E0304 on line 4, ran and printed: 3
 core-06/lint-not-on-a-fn.cp	wrong-accept	wanted E0505 on line 4, ran and printed: 1
 core-06/named-only-not-positional.cp	wrong-accept	wanted E0303 on line 4, ran and printed: 9
