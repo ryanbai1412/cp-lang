@@ -463,6 +463,7 @@ impl Link<'_> {
             EK::AddrOf(p) => EK::AddrOf(p.clone()),
             EK::Tag(p) => EK::Tag(p.clone()),
             EK::DomLen(t) => EK::DomLen(self.ty(t, env)),
+            EK::DomLo(t) => EK::DomLo(self.ty(t, env)),
             EK::MakeStruct(xs) => EK::MakeStruct(xs.iter().map(|x| self.expr(x, env)).collect()),
             EK::MakeClosure(xs) => EK::MakeClosure(xs.iter().map(|x| self.expr(x, env)).collect()),
             EK::Inject(x) => EK::Inject(Box::new(self.expr(x, env))),
@@ -850,9 +851,12 @@ fn thread_values(p: &mut Program, typed: &Typed) {
     use crate::check::VarRef;
     let n = p.insts.len();
     // Where an instance can read a domain's size without being handed it.
-    let own = |f: &Func<CTy>, d: usize| -> Option<Place> {
-        let info = &typed.domains[d];
-        match (info.len, &f.key, info.owner) {
+    // A domain carries two values, its size and the integer of its first position:
+    // value `2 * d` is the size of domain `d` and `2 * d + 1` its start.
+    let own = |f: &Func<CTy>, v: usize| -> Option<Place> {
+        let info = &typed.domains[v / 2];
+        let var = if v % 2 == 0 { info.len } else { info.lo };
+        match (var, &f.key, info.owner) {
             (VarRef::Global(g), FuncKey::Main | FuncKey::Case, None) => Some(Place::Global(g)),
             // A top-level domain of the file is one shared variable. One inside a block is not: a loop makes a new one.
             (VarRef::Global(g), _, None) if typed.globals[g].top => Some(Place::Global(g)),
@@ -876,7 +880,10 @@ fn thread_values(p: &mut Program, typed: &Typed) {
         ) {
             match &e.kind {
                 EK::DomLen(CTy::Dom(d)) => {
-                    doms.insert(*d);
+                    doms.insert(2 * *d);
+                }
+                EK::DomLo(CTy::Dom(d)) => {
+                    doms.insert(2 * *d + 1);
                 }
                 EK::DomLen(_) => *bad = true,
                 EK::MakeStruct(xs) => xs.iter().for_each(|x| ex(x, doms, calls, p, bad)),
@@ -1023,7 +1030,10 @@ fn thread_values(p: &mut Program, typed: &Typed) {
         fn ex(&self, e: &mut Expr<CTy>) {
             let ty = e.ty.clone();
             match &mut e.kind {
-                EK::DomLen(CTy::Dom(d)) => *e = self.size(*d),
+                EK::DomLen(CTy::Dom(d)) => *e = self.size(2 * *d),
+                EK::DomLo(CTy::Dom(d)) => *e = self.size(2 * *d + 1),
+                // A type that is not a domain is its own integers.
+                EK::DomLo(_) => e.kind = EK::Int(0),
                 EK::MakeStruct(xs) => xs.iter_mut().for_each(|x| self.ex(x)),
                 EK::MakeClosure(xs) => {
                     xs.iter_mut().for_each(|x| self.ex(x));
@@ -1108,7 +1118,7 @@ fn thread_values(p: &mut Program, typed: &Typed) {
         }
     }
     for i in 0..n {
-        let own_places = (0..typed.domains.len())
+        let own_places = (0..2 * typed.domains.len())
             .map(|d| own(&p.insts[i], d))
             .collect();
         let rw = Rw {

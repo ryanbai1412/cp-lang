@@ -174,3 +174,10 @@ impl Compiled {
         cpp::emit(&self.prog, &self.canon)
     }
 }
+
+/// The name of a syntax node's kind, for saying which one is not implemented.
+pub(crate) fn kind_name(kind: &impl std::fmt::Debug) -> String {
+    let text = format!("{kind:?}");
+    let end = text.find(|c: char| !c.is_alphanumeric()).unwrap_or(text.len());
+    text[..end].to_string()
+}

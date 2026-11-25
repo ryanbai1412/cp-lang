@@ -48,6 +48,7 @@ core-03/int-max-minus-one-ok.cp
 core-03/int-max-plus-one-traps.cp
 core-03/int-min-plus-one-ok.cp
 core-03/intermediate-overflow-traps.cp
+core-03/joint-bound-checked-store.cp
 core-03/local-contract-checked-on-assign.cp
 core-03/locals-wide.cp
 core-03/negative-product-overflow-traps.cp
@@ -65,6 +66,9 @@ core-03/read-int-just-above-spare.cp
 core-03/spare-value-overflow.cp
 core-03/store-in-range-fits.cp
 core-04/anon-range-array.cp
+core-04/dom-call-traps.cp
+core-04/dom-count.cp
+core-04/from-ord-after-a-checked-one-still-traps.cp
 core-04/list-literal-cell-outside-let-range-traps.cp
 core-04/list-literal-cell-outside-param-range-traps.cp
 core-04/list-literal-for-narrow-param.cp
@@ -72,6 +76,10 @@ core-04/range-bound-from-capped-lets.cp
 core-04/range-param-argument-traps.cp
 core-04/range-param-narrowing.cp
 core-04/range-type-widens.cp
+core-04/rb1-q12-literal-outside-domain.cp
+core-04/rb1-q13-literal-inside-min-count.cp
+core-04/runtime-domain-literal-between-traps.cp
+core-04/runtime-domain-literal-past-max.cp
 core-04/scalar-fill.cp
 core-05/cache-walk-then-find.cp
 core-05/captured-let-moved-out.cp
@@ -149,6 +157,8 @@ core-09/checked-valid-program-runs.cp
 core-09/checks-call-no-user-code.cp
 core-09/division-by-zero-trap.cp
 core-09/division-nonzero-ok.cp
+core-09/domain-conversion-in-range.cp
+core-09/domain-conversion-trap.cp
 core-09/overflow-not-reached.cp
 core-09/overflow-trap.cp
 core-09/range-store-proved.cp
@@ -194,6 +204,7 @@ core-12/was-on-a-user-item-runs.cp
 core-12/word-on-a-user-item-runs.cp
 core-13/closure-captures-by-reference.cp
 core-13/deep-recursion.cp
+core-13/fresh-slot-reentry.cp
 core-13/mutually-recursive-generators-break.cp
 core-13/narrow-storage-wide-locals.cp
 core-13/output-flushed-at-exit.cp
@@ -208,6 +219,10 @@ next/c_n16_var.cp
 next/c_n21_count.cp
 next/c_n47_reverse.cp
 next/d13_self_domain_closure_carried.cp
+next/d14_domain_with_a_start.cp
+next/d15_domain_below_its_start.cp
+next/d16_empty_domain_cast.cp
+next/d17_literal_never_a_position.cp
 next/k01_escape_global_list.cp
 next/k02_escape_global_var.cp
 next/k04_escape_struct_ret.cp
@@ -290,6 +305,7 @@ next/t29_cap_stale.cp
 tools-fmt-lint/lint-never-blocks-run.cp
 traits/Indexed/List--at.cp
 traits/IndexedMut/List--at.cp
+traits/Seq/Domain--iter.cp
 traits/Seq/List--iter.cp
 traits/Sized/List--len.cp
 widths/add-assign-traps-0.cp

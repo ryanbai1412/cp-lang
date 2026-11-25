@@ -573,18 +573,17 @@ impl<'a> Cx<'a> {
                 let ExprKind::Range {
                     lo: Some(lo),
                     hi: Some(hi),
-                    inclusive: false,
+                    inclusive,
                     step: None,
                 } = &def.kind
                 else {
-                    return self.err(s.span, "slice: a domain is `0..n`");
+                    return self.err(
+                        s.span,
+                        format!("slice: a domain that is {}", crate::kind_name(&def.kind)),
+                    );
                 };
-                if !matches!(lo.kind, ExprKind::Int(0)) {
-                    return self.err(s.span, "slice: a domain is `0..n`");
-                }
-                let n = self.expr(hi, Some(&Ty::Int));
-                let n = self.coerce(n, &Ty::Int);
-                self.declare_domain(&name.text, n, s.span, out);
+                let (lo, end, within) = self.domain_ends(lo, hi, *inclusive);
+                self.declare_domain(&name.text, lo, end, within, s.span, out);
             }
             StmtKind::Yield { value, from: false } => match self.region.clone() {
                 Some((false, t)) => {
@@ -614,7 +613,10 @@ impl<'a> Cx<'a> {
             },
             StmtKind::Break(None) => out.push(TStmt::Break),
             StmtKind::Continue(None) => out.push(TStmt::Continue),
-            _ => self.err(s.span, "slice: unsupported statement"),
+            other => self.err(
+                s.span,
+                format!("slice: statement {}", crate::kind_name(other)),
+            ),
         }
     }
     /// `read()` or `read<T>()`: the type argument if written, and the bare `read()` call.
@@ -644,17 +646,73 @@ impl<'a> Cx<'a> {
             _ => None,
         }
     }
+    /// The start of a domain `lo..hi` or `lo..=hi`, the integer after its last position, and
+    /// what the types of the two ends say every position lies within.
+    pub(super) fn domain_ends(
+        &mut self,
+        lo: &ast::Expr,
+        hi: &ast::Expr,
+        inclusive: bool,
+    ) -> (TExpr, TExpr, (Option<i64>, Option<i64>)) {
+        // An end keeps the range type it was written with.
+        let lo = self.expr_as_typed(lo, None);
+        let hi = self.expr_as_typed(hi, None);
+        let ends = |e: &TExpr, ty: Ty| match (&e.kind, ty) {
+            (TK::Int(k), _) => (Some(*k), Some(*k)),
+            (_, Ty::Range(a, b)) => (Some(a), Some(b)),
+            _ => (None, None),
+        };
+        let least = ends(&lo, self.shallow(&lo.ty)).0;
+        let most = ends(&hi, self.shallow(&hi.ty)).1;
+        let most = if inclusive {
+            most
+        } else {
+            most.map(|m| m.saturating_sub(1))
+        };
+        let lo = self.coerce(lo, &Ty::Int);
+        let hi = self.coerce(hi, &Ty::Int);
+        let end = if inclusive {
+            let span = hi.span;
+            let one = TExpr {
+                kind: TK::Int(1),
+                ty: Ty::Int,
+                span,
+            };
+            TExpr {
+                kind: TK::Bin(BinOp::Add, Box::new(hi), Box::new(one)),
+                ty: Ty::Int,
+                span,
+            }
+        } else {
+            hi
+        };
+        (lo, end, (least, most))
+    }
     /// A domain's size is a hidden variable next to its declaration.
     pub(super) fn declare_domain(
         &mut self,
         name: &str,
-        n: TExpr,
+        lo: TExpr,
+        end: TExpr,
+        within: (Option<i64>, Option<i64>),
         span: Span,
         out: &mut Vec<TStmt>,
     ) -> usize {
+        let first = self.bind(&format!("{name}$lo"), Ty::Int);
+        out.push(TStmt::Let(first, lo));
         let len = self.bind(&format!("{name}$len"), Ty::Int);
         // Spec 4: a range whose start is past its end is empty, never a trap.
         let tmp = self.bind(&format!("{name}$n"), Ty::Int);
+        let var = |r| TExpr {
+            kind: TK::Var(r),
+            ty: Ty::Int,
+            span,
+        };
+        let n = TExpr {
+            kind: TK::Bin(BinOp::Sub, Box::new(end), Box::new(var(first))),
+            ty: Ty::Int,
+            span,
+        };
         out.push(TStmt::Let(tmp, n));
         let v = |k| TExpr {
             kind: k,
@@ -681,6 +739,8 @@ impl<'a> Cx<'a> {
         self.domains.push(DomInfo {
             name: name.to_string(),
             len,
+            lo: first,
+            within,
             owner: self.decl,
         });
         self.doms
@@ -708,7 +768,7 @@ impl<'a> Cx<'a> {
             span: e.span,
         }
     }
-    /// `[0..n]T` and `[n]T` index by a range with no name: each gets a domain of its own, declared in `out`.
+    /// `[lo..hi]T` and `[n]T` index by a range with no name: each gets a domain of its own, declared in `out`.
     pub(super) fn name_ranges(
         &mut self,
         t: &ast::Type,
@@ -720,33 +780,36 @@ impl<'a> Cx<'a> {
             TypeKind::Array { index, elem } => {
                 **elem = self.name_ranges(elem, span, out);
                 if index.len() == 1 {
-                    let size = match &index[0].kind {
+                    let zero = || ast::Expr {
+                        kind: ExprKind::Int(0),
+                        span,
+                    };
+                    let ends = match &index[0].kind {
                         TypeKind::Range {
                             lo: Some(lo),
                             hi: Some(hi),
                             inclusive,
-                        } if matches!(lo.kind, ExprKind::Int(0)) => Some(if *inclusive {
-                            Self::plus_one(hi)
-                        } else {
-                            (**hi).clone()
-                        }),
+                        } => Some(((**lo).clone(), (**hi).clone(), *inclusive)),
                         TypeKind::Named { name, args }
                             if args.is_empty()
                                 && self.lookup(&name.text).is_some()
                                 && self.domain_named(&name.text).is_none() =>
                         {
-                            Some(ast::Expr {
-                                kind: ExprKind::Name(name.text.clone()),
-                                span: name.span,
-                            })
+                            Some((
+                                zero(),
+                                ast::Expr {
+                                    kind: ExprKind::Name(name.text.clone()),
+                                    span: name.span,
+                                },
+                                false,
+                            ))
                         }
                         _ => None,
                     };
-                    if let Some(size) = size {
-                        let n = self.expr(&size, Some(&Ty::Int));
-                        let n = self.coerce(n, &Ty::Int);
+                    if let Some((lo, hi, inclusive)) = ends {
+                        let (lo, end, within) = self.domain_ends(&lo, &hi, inclusive);
                         let name = format!("$range{}", self.domains.len());
-                        self.declare_domain(&name, n, span, out);
+                        self.declare_domain(&name, lo, end, within, span, out);
                         index[0] = ast::Type {
                             kind: TypeKind::Named {
                                 name: ast::Name {
@@ -918,6 +981,19 @@ impl<'a> Cx<'a> {
                 let dty = self.shallow(&ts[0]);
                 if matches!(dty, Ty::Dom(_) | Ty::Param(_)) {
                     let span = i.span;
+                    if let (Ty::Dom(d), TK::Int(k)) = (&dty, &i.kind) {
+                        let (least, most) = self.domains[*d].within;
+                        if least.is_some_and(|l| *k < l) || most.is_some_and(|m| *k > m) {
+                            let name = self.domains[*d].name.clone();
+                            self.err(
+                                span,
+                                format!(
+                                    "{}: `{k}` is never a position of `{name}`",
+                                    cpl_diag::codes::RANGE_STORE_CONST.0
+                                ),
+                            );
+                        }
+                    }
                     return TExpr {
                         kind: TK::DomFrom(dty.clone(), Box::new(i)),
                         ty: dty,

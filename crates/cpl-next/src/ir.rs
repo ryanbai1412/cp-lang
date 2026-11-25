@@ -113,6 +113,8 @@ pub enum EK<T> {
     Tag(Place),
     /// The size of a domain type. Resolved by the link step to a variable or a hidden parameter.
     DomLen(T),
+    /// The integer of a domain type's first position. Resolved like `DomLen`.
+    DomLo(T),
     Intr(Intr, Vec<Arg<T>>, Site),
     Call(Target<T>, Vec<Arg<T>>, Site),
     CallValue(Box<Expr<T>>, Vec<Expr<T>>, Site),

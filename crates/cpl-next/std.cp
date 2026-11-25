@@ -46,10 +46,10 @@ struct Array<D, T>:
         Array(raw_new(D.count, x))
 
     fn get(self, i: D) -> T:
-        raw_get(buf, Int(i))
+        raw_get(buf, i.ord)
 
     fn set(mut self, i: D, x: T):
-        raw_set(mut buf, Int(i), x)
+        raw_set(mut buf, i.ord, x)
 
     fn each(self) -> yields T:
         for i in 0..D.count: yield raw_get(buf, i)

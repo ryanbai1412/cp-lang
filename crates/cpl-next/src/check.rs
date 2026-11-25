@@ -72,8 +72,10 @@ pub enum TK {
     DomLen(Ty),
     /// `D(i)`: an Int becomes a value of the domain, checked.
     DomFrom(Ty, Box<TExpr>),
-    /// `Int(v)`: a domain value's position.
+    /// `Int(v)`: the integer of a position, 1 for the first of `1..=n`.
     DomOrd(Box<TExpr>),
+    /// `v.ord`: how many positions come before this one (R04.2.22).
+    Ordinal(Box<TExpr>),
     Error,
 }
 #[derive(Clone, Debug)]
@@ -152,6 +154,11 @@ pub struct DomInfo {
     pub name: String,
     /// The variable that holds its size.
     pub len: VarRef,
+    /// The variable that holds the integer of its first position.
+    pub lo: VarRef,
+    /// The least integer its first position can be and the greatest its last can be, when
+    /// the types of its ends say: an integer literal outside these is never a position.
+    pub within: (Option<i64>, Option<i64>),
     pub owner: Option<FnId>,
 }
 pub struct Typed {

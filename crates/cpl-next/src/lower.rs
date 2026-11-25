@@ -134,7 +134,8 @@ fn pure<T>(e: &Expr<T>) -> bool {
         | EK::Copy(_)
         | EK::AddrOf(_)
         | EK::Tag(_)
-        | EK::DomLen(_) => true,
+        | EK::DomLen(_)
+        | EK::DomLo(_) => true,
         EK::MakeStruct(xs) | EK::MakeClosure(xs) => xs.iter().all(pure),
         EK::Inject(x) | EK::MakeUnion(_, x) => pure(x),
         // Widening is a branch once sets are known, so it is a statement of its own.
@@ -488,34 +489,53 @@ impl Lw<'_> {
                 mk(EK::Unit)
             }
             TK::DomLen(t) => mk(EK::DomLen(t.clone())),
-            TK::DomOrd(x) => {
+            TK::Ordinal(x) => {
                 let v = self.expr(x, out);
                 Expr {
                     kind: v.kind,
                     ty: Ty::Int,
                 }
             }
+            // A position is held as its ordinal; its integer is that plus the domain's start.
+            TK::DomOrd(x) => {
+                let v = self.expr(x, out);
+                let int = |kind| Expr { kind, ty: Ty::Int };
+                if matches!(x.ty, Ty::Int | Ty::Error) {
+                    return int(v.kind);
+                }
+                let lo = Arg::Value(int(EK::DomLo(x.ty.clone())));
+                let sum = int(EK::Intr(Intr::Add, vec![Arg::Value(int(v.kind)), lo], 0));
+                self.spill(sum, out)
+            }
             TK::DomFrom(t, x) => {
                 let v = self.expr(x, out);
                 let v = self.spill(v, out);
                 let int = |kind| Expr { kind, ty: Ty::Int };
-                let test = |op, a: Expr<Ty>, b: Expr<Ty>| Expr {
-                    kind: EK::Intr(op, vec![Arg::Value(a), Arg::Value(b)], site),
-                    ty: Ty::Bool,
+                let op = |op, a: Expr<Ty>, b: Expr<Ty>, ty: Ty| Expr {
+                    kind: EK::Intr(op, vec![Arg::Value(a), Arg::Value(b)], 0),
+                    ty,
                 };
-                out.push(Stmt::Check {
-                    kind: CheckKind::Domain,
-                    cond: test(Intr::Ge, v.clone(), int(EK::Int(0))),
-                    msg: "value outside the domain".into(),
-                    site,
-                });
-                out.push(Stmt::Check {
-                    kind: CheckKind::Domain,
-                    cond: test(Intr::Lt, v.clone(), int(EK::DomLen(t.clone()))),
-                    msg: "value outside the domain".into(),
-                    site,
-                });
-                Expr { kind: v.kind, ty }
+                let check = |cond: Expr<Ty>, out: &mut Vec<Stmt<Ty>>| {
+                    out.push(Stmt::Check {
+                        kind: CheckKind::Domain,
+                        cond,
+                        msg: "value outside the domain".into(),
+                        site,
+                    })
+                };
+                let (lo, len) = (int(EK::DomLo(t.clone())), int(EK::DomLen(t.clone())));
+                // With a position in the domain and `v` at or after the first, none of
+                // the arithmetic below can overflow.
+                check(op(Intr::Lt, int(EK::Int(0)), len.clone(), Ty::Bool), out);
+                check(op(Intr::Ge, v.clone(), lo.clone(), Ty::Bool), out);
+                let last = op(Intr::Sub, len, int(EK::Int(1)), Ty::Int);
+                let last = self.spill(last, out);
+                let last = op(Intr::Add, lo.clone(), last, Ty::Int);
+                let last = self.spill(last, out);
+                check(op(Intr::Le, v.clone(), last, Ty::Bool), out);
+                let ord = op(Intr::Sub, v, lo, Ty::Int);
+                let ord = self.spill(ord, out);
+                Expr { kind: ord.kind, ty }
             }
             TK::ReadInt => {
                 let v = mk(EK::Intr(Intr::ReadInt, vec![], site));

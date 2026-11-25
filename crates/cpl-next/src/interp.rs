@@ -367,7 +367,9 @@ impl<'a> Machine<'a> {
             EK::Int(i) => V::Int(*i),
             EK::Bool(b) => V::Bool(*b),
             EK::Unit => V::Unit,
-            EK::DomLen(_) => return broken("a domain size the link step did not resolve"),
+            EK::DomLen(_) | EK::DomLo(_) => {
+                return broken("a domain value the link step did not resolve")
+            }
             EK::Copy(p) => self.place(fp, p)?.clone(),
             EK::AddrOf(p) => match p {
                 Place::Local(l) => V::Ref(Some(fp), *l),

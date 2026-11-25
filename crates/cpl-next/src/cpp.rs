@@ -461,7 +461,7 @@ impl Emit<'_> {
             EK::Int(i) => format!("INT64_C({i})"),
             EK::Bool(b) => b.to_string(),
             EK::Unit => "cpl_unit{}".to_string(),
-            EK::DomLen(_) => "/* unresolved domain size */".to_string(),
+            EK::DomLen(_) | EK::DomLo(_) => "/* unresolved domain value */".to_string(),
             EK::Copy(p) => self.place(p),
             EK::AddrOf(p) => format!("(&{})", self.place(p)),
             EK::Tag(p) => format!("{}.tag", self.place(p)),

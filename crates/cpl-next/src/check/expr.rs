@@ -284,6 +284,16 @@ impl<'a> Cx<'a> {
                 };
                 self.call_fn(f, Some(recv), call.unwrap_or(&[]), span, want)
             }
+            None if name.text == "ord"
+                && call.is_none()
+                && matches!(rt, Ty::Dom(_) | Ty::Param(_)) =>
+            {
+                TExpr {
+                    kind: TK::Ordinal(Box::new(recv)),
+                    ty: Ty::Int,
+                    span,
+                }
+            }
             None => {
                 self.err(
                     span,
@@ -562,12 +572,21 @@ impl<'a> Cx<'a> {
                                             Ty::Unit,
                                         );
                                     }
-                                    if !matches!(
-                                        self.shallow(&v.ty),
-                                        Ty::Int | Ty::Bool | Ty::Error
-                                    ) {
-                                        self.err(a.value.span, "slice: only Int and Bool print");
-                                    }
+                                    // A position prints as its integer (R04.2.15).
+                                    let v = match self.shallow(&v.ty) {
+                                        Ty::Dom(_) | Ty::Param(_) => {
+                                            mk(TK::DomOrd(Box::new(v)), Ty::Int)
+                                        }
+                                        Ty::Int | Ty::Bool | Ty::Error => v,
+                                        other => {
+                                            let t = self.show(&other);
+                                            self.err(
+                                                a.value.span,
+                                                format!("slice: printing a `{t}`"),
+                                            );
+                                            v
+                                        }
+                                    };
                                     pieces.push(Piece::Value(v));
                                 }
                             }
@@ -897,8 +916,11 @@ impl<'a> Cx<'a> {
                 self.joining = was_joining;
                 out.unwrap_or(tail)
             }
-            _ => {
-                self.err(span, "slice: unsupported expression");
+            other => {
+                self.err(
+                    span,
+                    format!("slice: expression {}", crate::kind_name(other)),
+                );
                 mk(TK::Error, Ty::Error)
             }
         }

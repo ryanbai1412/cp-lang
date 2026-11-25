@@ -240,8 +240,8 @@ fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<String>) -> Ty {
             let set = slot(cx);
             Ty::Fn(ps, Box::new(r), set)
         }
-        _ => {
-            errors.push("slice: unsupported type".to_string());
+        other => {
+            errors.push(format!("slice: type {}", crate::kind_name(other)));
             Ty::Error
         }
     }

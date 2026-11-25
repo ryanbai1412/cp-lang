@@ -796,7 +796,8 @@ impl Cx<'_> {
             | TK::Not(x)
             | TK::Neg(x)
             | TK::DomFrom(_, x)
-            | TK::DomOrd(x) => self.expr(x, fx),
+            | TK::DomOrd(x)
+            | TK::Ordinal(x) => self.expr(x, fx),
             TK::Bin(_, a, b) | TK::Cmp(_, a, b) => {
                 self.expr(a, fx);
                 self.expr(b, fx);
