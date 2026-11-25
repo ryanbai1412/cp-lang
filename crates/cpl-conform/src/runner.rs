@@ -268,11 +268,15 @@ pub fn slowest_cases(n: usize) -> Vec<(String, f64)> {
     all
 }
 
-pub fn parallel_with_db<T, R, F>(items: &[T], work: F) -> BTreeMap<String, R>
+/// `work` over `items` across worker threads, each holding one session of
+/// the kind `work` takes: the checker's for a suite that compares engines,
+/// the tools' for one that does what a tool does.
+pub fn parallel_with_db<D, T, R, F>(items: &[T], work: F) -> BTreeMap<String, R>
 where
+    D: Default,
     T: Sync,
     R: Send,
-    F: Fn(&mut Session, &T) -> (String, R) + Sync,
+    F: Fn(&mut D, &T) -> (String, R) + Sync,
 {
     let workers = std::thread::available_parallelism()
         .map(|n| n.get())
@@ -281,11 +285,12 @@ where
 }
 
 /// `parallel_with_db` on at most `workers` threads; 1 runs the items one at a time.
-pub fn with_db_on<T, R, F>(workers: usize, items: &[T], work: F) -> BTreeMap<String, R>
+pub fn with_db_on<D, T, R, F>(workers: usize, items: &[T], work: F) -> BTreeMap<String, R>
 where
+    D: Default,
     T: Sync,
     R: Send,
-    F: Fn(&mut Session, &T) -> (String, R) + Sync,
+    F: Fn(&mut D, &T) -> (String, R) + Sync,
 {
     let workers = workers.clamp(1, items.len().max(1));
     let next = AtomicUsize::new(0);
@@ -299,7 +304,7 @@ where
                 let (next, results, work) = (&next, &results, &work);
                 s.spawn(move || {
                     WORKER.set(w);
-                    let mut db = Session::new();
+                    let mut db = D::default();
                     loop {
                         let idx = next.fetch_add(1, Ordering::Relaxed);
                         if idx >= items.len() {
