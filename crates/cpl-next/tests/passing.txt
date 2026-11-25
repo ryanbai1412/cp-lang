@@ -71,6 +71,8 @@ core-02/optional-compare-coalesced.cp
 core-02/owned-lent-same-type.cp
 core-02/plain-element-copies.cp
 core-02/range-storage-type.cp
+core-02/ranged-param-after-a-param-named-self-traps.cp
+core-02/ranged-param-after-a-param-named-self.cp
 core-02/rb1-q28-no-forward-inference.cp
 core-02/runtime-range-bound.cp
 core-02/str-index-assign.cp
@@ -235,6 +237,7 @@ core-08/inherent-before-trait.cp
 core-08/recursion-at-the-same-type-is-fine.cp
 core-08/trait-alias.cp
 core-08/trait-message-bound-holds.cp
+core-08/trait-message.cp
 core-09/assert-after-64k-of-output-prints-it-first.cp
 core-09/assert-passes.cp
 core-09/assert-trap.cp
@@ -327,6 +330,7 @@ next/a_arith_02_euclid_negative_divisor.cp
 next/a_arith_03_bit_ops.cp
 next/a_check_06_assign_to_let.cp
 next/a_check_08_wrong_arg_count.cp
+next/a_check_09_missing_impl.cp
 next/a_clos_01_list_captured_by_reference.cp
 next/a_clos_02_let_list_capture.cp
 next/a_clos_04_struct_field_closure_shares_var.cp
@@ -401,6 +405,9 @@ next/a_range_rt_14_open_upper_end.cp
 next/a_range_rt_16_compound_assign_store.cp
 next/a_trait_01_super_method_through_bound.cp
 next/a_trait_02_impl_for_int.cp
+next/a_trait_03_extension_fn_with_bound.cp
+next/a_trait_04_missing_impl.cp
+next/a_trait_05_bound_fixes_trait_arg.cp
 next/a_trap_01_min_div_minus_one.cp
 next/a_trap_02_rem_by_zero.cp
 next/a_trap_03_overflow_inside_closure_line.cp

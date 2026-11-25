@@ -298,6 +298,20 @@ impl<'a> Cx<'a> {
     fn is_str(&self, t: &Ty) -> bool {
         matches!(self.shallow(t), Ty::Struct(d, ..) if Some(d) == self.d.core_struct("Str"))
     }
+    /// How a method takes its receiver: a `mut self` (or a cache it fills) needs a place.
+    fn recv_arg(&mut self, m: FnId, recv: TExpr, span: Span) -> TArg {
+        let place = matches!(recv.kind, TK::Var(_) | TK::Field(..));
+        if self.d.f(m).self_mode == SelfMode::Mut {
+            if !place {
+                self.err(span, "a `mut self` method needs a place");
+            }
+            TArg::Mut(recv)
+        } else if self.d.writes_cache(m) && place {
+            TArg::Mut(recv)
+        } else {
+            TArg::Value(recv)
+        }
+    }
     pub(super) fn call_fn(
         &mut self,
         f: FnRef,
@@ -351,7 +365,10 @@ impl<'a> Cx<'a> {
                 ),
             );
         }
+        self.oblige(&f, span);
+        self.solve(false);
         let (mut pre, args) = self.args(args, &formals, span);
+        self.solve(false);
         let recv = match recv {
             Some(TArg::Value(r)) if !pre.is_empty() && !pure(&r) => {
                 let tmp = self.bind("$recv", r.ty.clone());
@@ -488,31 +505,8 @@ impl<'a> Cx<'a> {
         let recv = self.expr(base, None);
         let rt = self.shallow(&recv.ty);
         // A method of a bound on a type parameter.
-        if let (Ty::Param(i), Some(decl)) = (&rt, self.decl) {
-            // Its bounds and, through them, their supertraits (R08.1.1).
-            let mut traits: Vec<decls::TraitRef> = (self.d.f(decl).bounds.iter())
-                .filter(|(pi, _)| pi == i)
-                .map(|(_, r)| r.clone())
-                .collect();
-            let mut k = 0;
-            while k < traits.len() {
-                let r = traits[k].clone();
-                for sup in &self.d.traits[r.tr.0].supers {
-                    let sub = Subst {
-                        tys: &r.args,
-                        sets: &[],
-                    };
-                    let s = decls::TraitRef {
-                        tr: sup.tr,
-                        args: sup.args.iter().map(|t| sub.ty(t)).collect(),
-                    };
-                    if !traits.contains(&s) {
-                        traits.push(s);
-                    }
-                }
-                k += 1;
-            }
-            for tr in &traits {
+        if let Ty::Param(i) = &rt {
+            for tr in &self.bound_traits(*i) {
                 let t = &self.d.traits[tr.tr.0];
                 if let Some(m) = t.methods.get(&name.text).copied() {
                     let fd = self.d.f(m);
@@ -544,6 +538,33 @@ impl<'a> Cx<'a> {
                 }
             }
         }
+        // A free fn whose `self` the receiver fits extends it; members are found first (R08.1.4).
+        let ext = match self.d.lookup_member(&rt, &name.text) {
+            None => self.d.views[self.module.0].get(&name.text).copied(),
+            Some(_) => None,
+        };
+        if let Some(decls::Named::Fn(fid)) = ext {
+            if let Some(st) = self.d.f(fid).self_ty.clone() {
+                let f = self.fnref(fid, Vec::new(), Vec::new());
+                let sub = Subst {
+                    tys: &f.targs,
+                    sets: &f.sets,
+                };
+                let st = sub.ty(&st);
+                let st = self.fresh_sets(&st);
+                if self.unify(&recv.ty, &st) {
+                    let fd = self.d.f(fid);
+                    if call.is_none() && !fd.getter {
+                        self.err(
+                            span,
+                            format!("`{}` is a method: call it with `()`", name.text),
+                        );
+                    }
+                    let recv = self.recv_arg(fid, recv, span);
+                    return self.call_fn(f, Some(recv), call.unwrap_or(&[]), span, want);
+                }
+            }
+        }
         match self.d.lookup_member(&rt, &name.text) {
             Some(decls::Member::Field(i, ty)) => {
                 let f = TExpr {
@@ -565,17 +586,7 @@ impl<'a> Cx<'a> {
                     );
                 }
                 let f = self.fnref(m, ts, ss);
-                let recv = if fd.self_mode == SelfMode::Mut {
-                    if !matches!(recv.kind, TK::Var(_) | TK::Field(..)) {
-                        self.err(span, "a `mut self` method needs a place");
-                    }
-                    TArg::Mut(recv)
-                } else if self.d.writes_cache(m) && matches!(recv.kind, TK::Var(_) | TK::Field(..))
-                {
-                    TArg::Mut(recv)
-                } else {
-                    TArg::Value(recv)
-                };
+                let recv = self.recv_arg(m, recv, span);
                 self.call_fn(f, Some(recv), call.unwrap_or(&[]), span, want)
             }
             None if name.text == "ord"
@@ -1421,7 +1432,24 @@ impl<'a> Cx<'a> {
             }
             (None, Named::Fn(d)) => {
                 let f = self.fnref(d, given, Vec::new());
-                self.call_fn(f, None, args, span, want)
+                let fd = self.d.f(d);
+                // A free fn's `self` is its first argument when called by name (R08.1.4).
+                let first = args.first().filter(|a| a.name.is_none());
+                match (fd.owner, fd.self_ty.clone(), first) {
+                    (None, Some(st), Some(a)) if fd.self_mode != SelfMode::None => {
+                        let sub = Subst {
+                            tys: &f.targs,
+                            sets: &f.sets,
+                        };
+                        let st = sub.ty(&st);
+                        let st = self.fresh_sets(&st);
+                        let e = self.expr(&a.value, Some(&st));
+                        let e = self.coerce(e, &st);
+                        let recv = self.recv_arg(d, e, span);
+                        self.call_fn(f, Some(recv), &args[1..], span, want)
+                    }
+                    _ => self.call_fn(f, None, args, span, want),
+                }
             }
             (None, Named::Struct(d)) => {
                 let s = self.d.s(d);

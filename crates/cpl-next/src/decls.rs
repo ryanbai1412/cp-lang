@@ -24,6 +24,8 @@ pub struct FnDecl {
     /// The struct, trait or impl it sits in.
     pub owner: Option<Owner>,
     pub self_mode: SelfMode,
+    /// The type of `self`, in `generics`, when it has one.
+    pub self_ty: Option<Ty>,
     /// Type parameters: the owner's first, then its own.
     pub generics: Vec<String>,
     pub bounds: Vec<(usize, TraitRef)>,
@@ -82,6 +84,8 @@ pub struct StructDecl {
 pub struct TraitDecl {
     pub name: String,
     pub module: ModId,
+    /// `trait Both = Sh + Nm`: met by meeting its supertraits, never implemented (R08.2.6).
+    pub alias: bool,
     /// Its supertraits, in its own type parameters (R08.1.1).
     pub supers: Vec<TraitRef>,
     pub methods: HashMap<String, FnId>,
@@ -110,6 +114,7 @@ pub struct AliasDecl {
 pub struct ImplDecl {
     pub trait_: TraitRef,
     pub generics: Vec<String>,
+    pub bounds: Vec<(usize, TraitRef)>,
     pub for_: Ty,
     pub methods: HashMap<String, FnId>,
 }
@@ -121,7 +126,7 @@ pub enum Named {
     Trait(TraitId),
     Alias(AliasId),
 }
-/// What a method sits in. A method of an impl sits in the struct the impl is for.
+/// What a method sits in.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Owner {
     Struct(StructId),
@@ -772,12 +777,13 @@ pub fn collect(
                         });
                         pending.push((mid, *item, s, Some(Named::Struct(id))));
                     }
-                    StmtKind::Trait { name, .. } => {
+                    StmtKind::Trait { name, alias, .. } => {
                         let id = TraitId(d.traits.len());
                         own[mi].insert(name.text.clone(), Named::Trait(id));
                         d.traits.push(TraitDecl {
                             name: name.text.clone(),
                             module: mid,
+                            alias: *alias,
                             supers: Vec::new(),
                             methods: HashMap::new(),
                         });
@@ -949,6 +955,11 @@ pub fn collect(
                                 owner: Some(Owner::Struct(id)),
                                 generics: &generics,
                                 sets: n_sets,
+                                self_ty: Some(Ty::Struct(
+                                    id,
+                                    (0..generics.len()).map(Ty::Param).collect(),
+                                    (0..n_sets).map(SetTy::Param).collect(),
+                                )),
                             },
                         );
                         methods.insert(f.name.text.clone(), fid);
@@ -1018,6 +1029,7 @@ pub fn collect(
                                 owner: Some(Owner::Trait(id)),
                                 generics: &tgen,
                                 sets: 0,
+                                self_ty: Some(Ty::Param(0)),
                             },
                         );
                         methods.insert(f.name.text.clone(), fid);
@@ -1116,6 +1128,7 @@ pub fn collect(
                                 owner: Some(Owner::Impl(id)),
                                 generics: &generics,
                                 sets: n_sets,
+                                self_ty: Some(for_.clone()),
                             },
                         );
                         // The impl's parameters come first in each method's, with its bounds.
@@ -1126,6 +1139,7 @@ pub fn collect(
                 d.impls.push(ImplDecl {
                     trait_: tref,
                     generics,
+                    bounds: ibounds,
                     for_,
                     methods,
                 });
@@ -1193,11 +1207,14 @@ struct Within<'a> {
     owner: Option<Owner>,
     generics: &'a [String],
     sets: usize,
+    /// The type of `self` in what it sits in, in `generics`.
+    self_ty: Option<Ty>,
 }
 const FREE: Within = Within {
     owner: None,
     generics: &[],
     sets: 0,
+    self_ty: None,
 };
 
 fn add_fn(
@@ -1212,6 +1229,7 @@ fn add_fn(
         owner,
         generics: outer,
         sets: outer_sets,
+        self_ty: outer_self,
     } = within;
     let mut generics = outer.to_vec();
     generics.extend(f.generics.iter().map(|g| g.text.clone()));
@@ -1232,6 +1250,7 @@ fn add_fn(
     };
     let mut errors = Vec::new();
     let mut self_mode = SelfMode::None;
+    let mut self_ty = None;
     let mut params = Vec::new();
     for p in &f.params {
         if p.name.text == "self" {
@@ -1239,6 +1258,15 @@ fn add_fn(
                 SelfMode::Mut
             } else {
                 SelfMode::Value
+            };
+            // A free fn's `self` says what it extends (R08.1.4).
+            self_ty = match (&outer_self, &p.ty) {
+                (Some(t), _) => Some(t.clone()),
+                (None, Some(t)) => Some(conv(&mut cx, t, &mut errors)),
+                (None, None) => {
+                    errors.push("`self` of a free fn needs a type".to_string());
+                    None
+                }
             };
             continue;
         }
@@ -1330,6 +1358,7 @@ fn add_fn(
         name: f.name.text.clone(),
         owner,
         self_mode,
+        self_ty,
         generics,
         bounds,
         params,

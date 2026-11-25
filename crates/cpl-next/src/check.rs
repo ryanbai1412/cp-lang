@@ -12,6 +12,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 
 mod expr;
+mod oblige;
 mod stmt;
 mod unify;
 mod zonk;
@@ -210,6 +211,8 @@ struct Cx<'a> {
     locals: Vec<Local>,
     scopes: Vec<HashMap<String, LocalId>>,
     self_local: Option<LocalId>,
+    /// Bounds calls must meet, with where: a type, the trait it must implement.
+    obligations: Vec<(Ty, decls::TraitRef, Span)>,
     ret: Ty,
     /// What the fn being checked yields or lends.
     region: Option<(bool, Ty)>,
@@ -250,6 +253,7 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
         locals: Vec::new(),
         scopes: vec![HashMap::new()],
         self_local: None,
+        obligations: Vec::new(),
         ret: Ty::Unit,
         region: None,
         loops: 0,
@@ -325,6 +329,7 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
         into.push(TStmt::Item(*off));
         cx.stmt(s, into);
     }
+    cx.solve(true);
     if let Some((count, body)) = cases {
         cx.scopes.pop();
         main_out.push(TStmt::Cases(count, body));
@@ -460,19 +465,7 @@ impl<'a> Cx<'a> {
         self.scopes = vec![HashMap::new()];
         self.item_off = f.item;
         self.self_local = None;
-        if let Some(owner) = f.owner.filter(|_| f.self_mode != SelfMode::None) {
-            let ty = match owner {
-                Owner::Struct(id) => {
-                    let s = d.s(id);
-                    Ty::Struct(
-                        id,
-                        (0..s.generics.len()).map(Ty::Param).collect(),
-                        (0..s.n_sets).map(SetTy::Param).collect(),
-                    )
-                }
-                Owner::Trait(_) => Ty::Param(0),
-                Owner::Impl(i) => d.impls[i].for_.clone(),
-            };
+        if let Some(ty) = f.self_ty.clone().filter(|_| f.self_mode != SelfMode::None) {
             self.self_local = Some(self.add_local("self", ty));
         }
         let mut params = Vec::new();
@@ -500,6 +493,7 @@ impl<'a> Cx<'a> {
                 }
             }
         };
+        self.solve(true);
         let out = TypedFn {
             self_local: self.self_local,
             params,
