@@ -1943,10 +1943,13 @@ class DebtRatchetTest(unittest.TestCase):
                         "use cpl_check::Session;\n// cpl_ir::lower in a comment\nuse cpl_syntax::ast;\n"
                         "let p = cpl_ir::lower(&a);\n")
             self._write(root, "crates/cpl-cli/tests/t.rs", "let s = cpl_check::Session::new();\n")
+            self._write(root, "crates/cpl-cli/src/abi.rs",
+                        'pub extern "C" fn cpl_check() {}\nuse cpl_ir as ir;\nextern crate cpl_check;\n')
             self._write(root, "crates/cpl-conform/src/a.rs", "cpl_ir::lower(&a);\n")
             self.assertEqual(dr.tool_compiler_deps(root), [
                 "cpl-lint -> cpl-check", "cpl-lint -> cpl-ir",
-                "crates/cpl-lint/src/a.rs:1", "crates/cpl-lint/src/a.rs:4", "crates/cpl-cli/tests/t.rs:1"])
+                "crates/cpl-lint/src/a.rs:1", "crates/cpl-lint/src/a.rs:4",
+                "crates/cpl-cli/src/abi.rs:2", "crates/cpl-cli/src/abi.rs:3", "crates/cpl-cli/tests/t.rs:1"])
 
     def test_consumer_rederived(self) -> None:
         with tempfile.TemporaryDirectory() as d:

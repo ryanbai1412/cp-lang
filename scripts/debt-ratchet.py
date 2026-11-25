@@ -728,7 +728,8 @@ TOOL_COMPILER_KINDS = ("dependencies", "dev-dependencies", "build-dependencies")
 def tool_compiler_deps(root: Path) -> list[str]:
     """Ways a tool crate reaches a compiler crate without the facade: every Cargo edge
     (shipped, dev or build) from a `tool` crate to a `compiler` crate, and every code line
-    in a tool crate that names one (`cpl_check::`, `cpl_ir::`, `cpl_interp::`, ...). Both
+    in a tool crate that takes a path into one or imports it (`cpl_check::`, `use cpl_ir`,
+    ...). Both
     lists are the `tool` and `compiler` rows of architecture.md's crate rules. The target is
     0 (handbook/design/next/contracts/09-facade.md, migration stage 2): a tool runs and
     checks a program through the facade, over a snapshot, and through nothing else.
@@ -745,7 +746,10 @@ def tool_compiler_deps(root: Path) -> list[str]:
     for kind in TOOL_COMPILER_KINDS:
         edges |= {(a, b) for a, b in _crate_edges(root, kind) if a in tools and b in compiler}
     out = [f"{a} -> {b}" for a, b in sorted(edges)]
-    named = re.compile(r"\b(?:%s)\b" % "|".join(sorted(c.replace("-", "_") for c in compiler)))
+    crates = "|".join(sorted(c.replace("-", "_") for c in compiler))
+    # A path into the crate or an import of it. A bare word is not a reach: the browser
+    # ABI's export `fn cpl_check()` shares the crate's name and names nothing in it.
+    named = re.compile(rf"\b(?:{crates})\s*::|\b(?:use|extern\s+crate)\s+(?:{crates})\b")
     for crate in tools:
         for p in _rs_files(root, f"crates/{crate}"):
             rel = _rel(root, p)

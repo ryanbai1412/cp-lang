@@ -267,7 +267,7 @@
   "next_wrong": 38,
   "next_not_passing": 4165,
   "end_state_unmeasured": 25,
-  "tool_compiler_deps": 1,
+  "tool_compiler_deps": 0,
   "end_state_broken": 0,
   "next_cases_removed": 0,
   "next_std_names": 46
