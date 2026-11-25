@@ -216,16 +216,8 @@ fn grader_bytes(grader: &Path) -> Result<Vec<u8>, BuildError> {
     Ok(bytes)
 }
 
-/// The C++ declarations of the fns that cross to the judge's grader, as a
-/// header that stands alone, from a program's C++ (R10.1.3).
 fn grader_boundary(cpp: &[u8]) -> Option<String> {
-    let text = String::from_utf8_lossy(cpp);
-    let (open, close) = cpl_facade::today::ir::GRADER_BOUNDARY;
-    let (_, rest) = text.split_once(open)?;
-    let (decls, _) = rest.split_once(close)?;
-    Some(format!(
-        "#include <string>\n#include <tuple>\n#include <utility>\n#include <vector>\n{decls}"
-    ))
+    cpl_facade::grader_header(&String::from_utf8_lossy(cpp))
 }
 
 fn compile_with(

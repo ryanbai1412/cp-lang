@@ -188,7 +188,7 @@ pub(crate) fn explain_file(
             let detail = cpl_facade::today::explain::MOVED;
             rows.push(row(&format!("{line}:{col}"), "copy_moved", detail));
         }
-        for span in &compiled.program.ir().written_back {
+        for span in compiled.program.written_back() {
             let (line, col) = cpl_facade::today::explain::line_col(&compiled.text, *span);
             let detail = cpl_facade::today::explain::WRITTEN_BACK;
             rows.push(row(&format!("{line}:{col}"), "written_back", detail));

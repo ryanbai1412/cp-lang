@@ -417,40 +417,17 @@ struct Branch {
 /// The `if`s that went one way: from how often each began and how often
 /// its first statement began.
 fn one_way(compiled: &Compiled, index: &LineIndex, sites: &HashMap<Span, Site>) -> Vec<Branch> {
-    let counted = cpl_facade::today::ir::sites::user_stmts(compiled.program.ir());
-    let hits = |stmt: &cpl_facade::today::ir::Stmt| {
-        stmt.span()
-            .and_then(|span| sites.get(&span))
-            .map_or(0, |site| site.hits)
-    };
+    let hits = |span: &Span| sites.get(span).map_or(0, |site| site.hits);
     let mut found = Vec::new();
-    let mut seen = std::collections::HashSet::new();
-    let program = compiled.program.ir();
-    let mut blocks: Vec<&cpl_facade::today::ir::Block> = vec![&program.setup, &program.main];
-    blocks.extend(program.fns.iter().map(|f| &f.body));
-    blocks.extend(program.closures.iter().map(|c| &c.body));
-    for block in blocks {
-        cpl_facade::today::ir::walk::deep_stmts(block, &mut |stmt| {
-            let cpl_facade::today::ir::Stmt::If(_, then, _) = stmt else {
-                return;
-            };
-            let (Some(span), Some(first)) = (stmt.span(), then.stmts.first()) else {
-                return;
-            };
-            if !counted.contains(&(stmt as *const cpl_facade::today::ir::Stmt))
-                || first.span().is_none()
-                || !seen.insert(span)
-            {
-                return;
-            }
-            let (ran, entered) = (hits(stmt), hits(first));
-            if ran > 0 && (entered == 0 || entered == ran) {
-                found.push(Branch {
-                    line: index.line_of(span.start) + 1,
-                    taken: entered > 0,
-                });
-            }
-        });
+    for branch in compiled.program.branches() {
+        let (span, first) = (branch.test, branch.taken);
+        let (ran, entered) = (hits(&span), hits(&first));
+        if ran > 0 && (entered == 0 || entered == ran) {
+            found.push(Branch {
+                line: index.line_of(span.start) + 1,
+                taken: entered > 0,
+            });
+        }
     }
     found.sort_by_key(|branch| branch.line);
     found
@@ -511,7 +488,7 @@ pub fn cover(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) -> u8 {
     }
     let index = LineIndex::new(&compiled.text);
     let mut lines: BTreeMap<u32, bool> = BTreeMap::new();
-    for span in cpl_facade::today::ir::sites::user_spans(compiled.program.ir()) {
+    for span in compiled.program.statements() {
         lines.entry(index.line_of(span.start) + 1).or_default();
     }
     for (number, line) in by_line(&index, &sites) {

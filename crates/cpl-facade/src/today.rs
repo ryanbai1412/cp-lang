@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use cpl_diag::Diagnostic;
 
-use crate::session::{self, Layer, Program, Session};
+use crate::session::{self, Layer, Session};
 use crate::snapshot::{FileId, Text};
 
 pub use cpl_check::{
@@ -28,12 +28,6 @@ pub use cpl_check::{
     TypedIndex, BUILTIN_MEMBERS, BUILTIN_TYPES, DOMAIN_MEMBERS, ITERATOR_POSITION_HELP,
     OPTIONAL_MEMBERS, OPTIONAL_UNWRAP_HELP, POS_MEMBERS, PRELUDE_VALUES, RANGE_MEMBERS,
 };
-
-/// The lowered program, for a tool that reads its statements.
-pub mod ir {
-    pub use cpl_ir::{has_cpp_body, has_stress_target};
-    pub use cpl_ir::{sites, walk, Block, Program, Stmt, GRADER_BOUNDARY, STRESS_DECORATORS};
-}
 
 /// A run's recording and what is read from it.
 pub mod trace {
@@ -213,13 +207,6 @@ pub const COMPONENTS: &[&str] = &[
     cpl_codegen::NAME,
     cpl_interp::NAME,
 ];
-
-impl Program {
-    /// Its statements, in today's lowered form.
-    pub fn ir(&self) -> &ir::Program {
-        &self.ir
-    }
-}
 
 /// What `cpl check` and the editor report of a checked file:
 /// [`Layer::Program`].

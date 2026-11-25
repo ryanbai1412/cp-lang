@@ -119,6 +119,18 @@ pub fn emit_cpp(program: &Program, name: &str, profile: &Profile) -> CppFile {
     }
 }
 
+/// The C++ declarations of the fns that cross to the judge's grader, as a
+/// header that stands alone, from a program's C++ (R10.1.3); `None` when
+/// the program has no grader.
+pub fn grader_header(cpp: &str) -> Option<String> {
+    let (open, close) = cpl_ir::GRADER_BOUNDARY;
+    let (_, rest) = cpp.split_once(open)?;
+    let (decls, _) = rest.split_once(close)?;
+    Some(format!(
+        "#include <string>\n#include <tuple>\n#include <utility>\n#include <vector>\n{decls}"
+    ))
+}
+
 impl CppFile {
     /// What was left out to fit, said to the contestant of `file` built
     /// for `judge`, whose size `bar` words; `None` when nothing was.

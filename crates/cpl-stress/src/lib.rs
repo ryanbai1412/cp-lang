@@ -35,8 +35,8 @@ pub use spec::{InputSpec, Shape, SpecError};
 pub use stress::{Place, Stress, Stressed};
 pub use traced::STUCK_STEPS;
 
-/// Whether a file has a fn `cpl stress` judges by; see [`cpl_facade::today::ir::STRESS_DECORATORS`].
-pub use cpl_facade::today::ir::{has_stress_target as stress_targets, STRESS_DECORATORS};
+/// Whether a file has a fn `cpl stress` judges by; see [`cpl_facade::JUDGE_DECORATORS`].
+pub use cpl_facade::{has_judge as stress_targets, JUDGE_DECORATORS as STRESS_DECORATORS};
 
 /// Name of this crate.
 pub const NAME: &str = env!("CARGO_PKG_NAME");

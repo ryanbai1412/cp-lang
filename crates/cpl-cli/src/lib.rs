@@ -1092,12 +1092,11 @@ fn graded(args: &RunArgs, stderr: &mut String) -> Result<Option<std::path::PathB
         return Ok(None);
     }
     let compiled = compile(args.file, stderr)?;
-    let program = compiled.program.ir();
-    if let Some(&id) = program.entry_fns.first() {
+    if let Some(entry) = compiled.program.grader_entry() {
         *stderr += &format!(
             "cpl: the judge's grader calls `{}`, and `{}` has no `main` without it: \
              run it with `--grader grader.cpp`, or put grader.cpp beside its tests\n",
-            program.fns[id].name, args.file
+            entry, args.file
         );
         return Err(EXIT_USAGE);
     }
@@ -1154,7 +1153,7 @@ fn run_file(
         Err(code) => return code,
     };
     // An `@cpp` body is C++ only, so the program runs as its C++ build.
-    if !compiled.program.ir().cpp_bodies.is_empty() && !args.trace {
+    if compiled.program.cpp_only() && !args.trace {
         return run_release(args, None, input, stdout, stderr);
     }
     let json = args.format == Some("json");

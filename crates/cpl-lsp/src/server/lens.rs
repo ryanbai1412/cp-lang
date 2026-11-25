@@ -140,7 +140,7 @@ fn code_lenses(path: &str, text: &str) -> Vec<(u32, String, Vec<String>)> {
     if has_tests {
         lenses.push((0, "Test".into(), vec!["test".into(), path.into()]));
     }
-    if cpl_facade::today::ir::has_stress_target(text) {
+    if cpl_facade::has_judge(text) {
         lenses.push((0, "Stress".into(), vec!["stress".into(), path.into()]));
     }
     let parsed = cpl_syntax::parse_file(text);
@@ -153,7 +153,7 @@ fn code_lenses(path: &str, text: &str) -> Vec<(u32, String, Vec<String>)> {
         let judge = stmt
             .decorators
             .iter()
-            .find(|d| cpl_facade::today::ir::STRESS_DECORATORS.contains(&d.name.text.as_str()));
+            .find(|d| cpl_facade::JUDGE_DECORATORS.contains(&d.name.text.as_str()));
         let name = &f.name.text;
         let start = base
             + (stmt.decorators.first())

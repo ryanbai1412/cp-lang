@@ -75,8 +75,27 @@ impl Job {
     }
 }
 
+/// The decorators that give `cpl stress` a judge: `@alt` (a whole program
+/// or one part), the older `@brute`, `@check` and the older `@checker`,
+/// and `@interactor`.
+pub const JUDGE_DECORATORS: [&str; 5] = cpl_ir::STRESS_DECORATORS;
+
+/// Whether `source` has a top-level fn `cpl stress` judges by: one of
+/// [`JUDGE_DECORATORS`] on it, as the parser reads it (not a mention in a
+/// comment or a string). Needs no check, so an editor asks it on each key.
+pub use cpl_ir::has_stress_target as has_judge;
+
 /// The runtime checks a build or a run keeps.
 pub type Checks = cpl_ir::checks::Checks;
+
+/// An `if` of a program.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct Branch {
+    /// The `if` statement.
+    pub test: cpl_diag::Span,
+    /// The first statement of the branch it takes when true.
+    pub taken: cpl_diag::Span,
+}
 
 /// A program built from a file, ready to run or to emit.
 #[derive(Clone, PartialEq, Debug)]
@@ -95,6 +114,57 @@ impl Program {
     /// Whether it talks to a judge: it has an `@interactor`.
     pub fn interactive(&self) -> bool {
         self.ir.interactive
+    }
+
+    /// The fn the judge's grader calls first, when the file leaves `main`
+    /// to a grader.
+    pub fn grader_entry(&self) -> Option<&str> {
+        let id = *self.ir.entry_fns.first()?;
+        Some(&self.ir.fns[id].name)
+    }
+
+    /// Whether only its C++ build runs: it has an `@cpp` body.
+    pub fn cpp_only(&self) -> bool {
+        !self.ir.cpp_bodies.is_empty()
+    }
+
+    /// Where a value passed to a call is written back after it.
+    pub fn written_back(&self) -> &[cpl_diag::Span] {
+        &self.ir.written_back
+    }
+
+    /// The span of every statement the file's own code runs, imported
+    /// modules' left out: what a profile or a coverage report counts.
+    pub fn statements(&self) -> Vec<cpl_diag::Span> {
+        cpl_ir::sites::user_spans(&self.ir)
+    }
+
+    /// Every `if` among [`Program::statements`], each once.
+    pub fn branches(&self) -> Vec<Branch> {
+        let counted = cpl_ir::sites::user_stmts(&self.ir);
+        let mut blocks = vec![&self.ir.setup, &self.ir.main];
+        blocks.extend(self.ir.fns.iter().map(|f| &f.body));
+        blocks.extend(self.ir.closures.iter().map(|c| &c.body));
+        let mut found = Vec::new();
+        let mut seen = std::collections::HashSet::new();
+        for block in blocks {
+            cpl_ir::walk::deep_stmts(block, &mut |stmt| {
+                let cpl_ir::Stmt::If(_, then, _) = stmt else {
+                    return;
+                };
+                let first = then.stmts.first().and_then(|first| first.span());
+                let (Some(span), Some(first)) = (stmt.span(), first) else {
+                    return;
+                };
+                if counted.contains(&(stmt as *const cpl_ir::Stmt)) && seen.insert(span) {
+                    found.push(Branch {
+                        test: span,
+                        taken: first,
+                    });
+                }
+            });
+        }
+        found
     }
 
     /// What building it warned of, after the typed layer's own warnings.
