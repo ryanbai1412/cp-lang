@@ -1,7 +1,78 @@
 //! Ranges and domains as values (R01.8.4, R04.2).
+use super::expr::block;
 use super::*;
 
 impl Cx<'_> {
+    /// A member of a domain named as a type, `D.count`, `D.nth(k)` and `D.at(x)`, or a fn of an
+    /// array type written `[e]`, as in `[V].filled(0)`.
+    pub(super) fn domain_member(
+        &mut self,
+        base: &ast::Expr,
+        name: &ast::Name,
+        call: Option<&[ast::Arg]>,
+        span: Span,
+        want: Option<&Ty>,
+    ) -> Option<TExpr> {
+        // `D.count`: the size of a domain.
+        if let ExprKind::Name(n) = &base.kind {
+            if let (Some(dty), "count", None) = (self.domain_named(n), name.text.as_str(), call) {
+                return Some(TExpr {
+                    kind: TK::DomLen(dty),
+                    ty: Ty::Int,
+                    span,
+                });
+            }
+            // `D.nth(k)`: the position `k` steps into the walk (R04.2.9).
+            if let (Some(dty), "nth", Some([k])) = (self.domain_named(n), name.text.as_str(), call)
+            {
+                if self.lookup(n).is_none() {
+                    let k = self.expr(&k.value, Some(&Ty::Int));
+                    let k = self.coerce(k, &Ty::Int);
+                    return Some(TExpr {
+                        kind: TK::DomNth(dty.clone(), Box::new(k)),
+                        ty: dty,
+                        span,
+                    });
+                }
+            }
+            // `D.at(x)`: the position with integer `x`, or `None` outside `D` (R04.2.8).
+            if let (Some(dty), "at", Some([x])) = (self.domain_named(n), name.text.as_str(), call) {
+                if self.lookup(n).is_none() {
+                    let x = self.expr(&x.value, Some(&Ty::Int));
+                    let x = self.coerce(x, &Ty::Int);
+                    return Some(self.domain_at(dty, x, span));
+                }
+            }
+        }
+        // `[e].f(args)`: a fn of the array type `[e]_` with no receiver, as in `[V].filled(0)`.
+        if let (ExprKind::List(xs), Some(args)) = (&base.kind, call) {
+            if let [index] = &xs[..] {
+                let elem = ast::Type {
+                    kind: TypeKind::Tuple(Vec::new()),
+                    span,
+                };
+                let t = ast::Type {
+                    kind: TypeKind::Array {
+                        index: vec![ast::Type::of_index(index)],
+                        elem: Box::new(elem),
+                    },
+                    span,
+                };
+                let mut pre = Vec::new();
+                if let Ty::Struct(d, ts, _) = self.body_ty(&t, span, &mut pre) {
+                    let given: Vec<Ty> = (ts.into_iter())
+                        .map(|a| if a == Ty::Unit { self.new_ty() } else { a })
+                        .collect();
+                    if let Some(m) = self.d.s(d).methods.get(&name.text).copied() {
+                        let f = self.fnref(m, given, Vec::new());
+                        let call = self.call_fn(f, None, args, span, want);
+                        return Some(block(pre, call));
+                    }
+                }
+            }
+        }
+        None
+    }
     /// A name that is a domain: one declared in a body, or a type parameter used as one.
     pub(super) fn domain_named(&self, n: &str) -> Option<Ty> {
         if let Some(&Ty::Dom(i)) = self.doms.get(n) {
