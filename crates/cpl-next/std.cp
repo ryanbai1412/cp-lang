@@ -209,6 +209,18 @@ trait Rem<Rhs = Self>:
 trait Neg:
     fn neg(self) -> Self
 
+/// Both empty, or both holding equal values; `?T` is not `Ord` (R02.4.5).
+impl<T: Eq> Eq for Optional<T>:
+    fn eq(a, b) = if not a.some: not b.some elif not b.some: false else: a.val == b.val
+
+/// The same length and equal values in order.
+impl<T: Eq> Eq for List<T>:
+    fn eq(a, b):
+        if a.n != b.n: return false
+        for i in 0..a.n:
+            if raw_get(a.buf, i) != raw_get(b.buf, i): return false
+        true
+
 /// Numbers, characters (by code) and booleans (`false < true`) compare as the machine does.
 impl Eq for Int:
     fn eq(a, b) = a == b
