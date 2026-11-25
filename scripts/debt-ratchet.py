@@ -1264,6 +1264,29 @@ def ir_reinfer(root: Path) -> list[str]:
     return out
 
 
+NEXT_STD_DECL_RE = re.compile(r"^\s*(?:pub\s+)?(?:fn|struct|trait|enum|type)\s+([A-Za-z_]\w*)", re.M)
+RUST_STR_RE = re.compile(r'"([A-Za-z_]\w*)"')
+
+
+def next_std_names(root: Path) -> list[str]:
+    """Places where the new pipeline (cpl-next) knows a library declaration by its name: a
+    string literal in its compiler code equal to a name its std declares (`"List"`, `"get"`,
+    `"read"`). The design has no privileged std: the library says what a declaration is (a
+    marker or a trait), and the compiler reads that, so this reaches 0."""
+    std = root / "crates/cpl-next/std.cp"
+    if not std.is_file():
+        return []
+    names = set(NEXT_STD_DECL_RE.findall(std.read_text(encoding="utf-8"))) | {"print", "write", "read"}
+    out = []
+    for p in _rs_files(root, "crates/cpl-next/src", tests=False):
+        rel = _rel(root, p)
+        for i, line in enumerate(_lines(p), 1):
+            if line.lstrip().startswith("//"):
+                continue
+            out += [f"{rel}:{i}: {n}" for n in RUST_STR_RE.findall(line) if n in names]
+    return out
+
+
 STRING_KEYED_MAP_RE = re.compile(r"HashMap<\s*(?:String|&(?:'\w+\s+)?str|Box<str>|Arc<str>)\s*,")
 
 
@@ -3337,6 +3360,7 @@ COUNTERS = {
                          "plan/END-STATE.md (Core)", end_state_broken, True),
     "next_cases_removed": ("conformance cases or new-pipeline tests deleted with no line in "
                            "spec/conformance/REMOVED.md (Core)", next_cases_removed, True),
+    "next_std_names": ("library declarations the new pipeline (cpl-next) knows by name (Core)", next_std_names, True),
     "next_not_passing": ("cases the new pipeline (cpl-next) does not pass yet: wrong or refused (Core)", next_not_passing, True),
     "own_databases": ("Database built outside cpl-check", own_databases, True),
     "ir_reinfer": ("lowering re-inferring a type the checker's facts give", ir_reinfer, True),

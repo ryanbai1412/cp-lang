@@ -283,10 +283,12 @@ fn every_case_is_where_the_lists_say() {
     }
     let found = root.join("target/cpl-next");
     std::fs::create_dir_all(&found).unwrap();
+    let queue = queue(&refused);
     for (name, text) in [
         ("passing.txt", &passing),
         ("wrong.tsv", &wrong),
         ("refused.tsv", &refused),
+        ("queue.txt", &queue),
     ] {
         std::fs::write(found.join(name), text).unwrap();
     }
@@ -334,6 +336,8 @@ fn every_case_is_where_the_lists_say() {
         count(&wrong),
         count(&refused)
     );
+    println!("refused, by cause (all in target/cpl-next/queue.txt):");
+    queue.lines().take(10).for_each(|l| println!("  {l}"));
     assert!(
         off.is_empty(),
         "{} of {} cases are not where the lists say (what was found is in {}):\n{}",
@@ -342,4 +346,29 @@ fn every_case_is_where_the_lists_say() {
         found.display(),
         off.join("\n")
     );
+}
+
+/// The refused cases grouped by what refused them, largest group first: the order the
+/// missing mechanisms are built in. A cause is its message with line numbers and quoted
+/// names taken out, so `unknown name `V`` and `unknown name `W`` are one cause.
+fn queue(refused: &str) -> String {
+    let mut by: BTreeMap<String, usize> = BTreeMap::new();
+    for line in refused.lines() {
+        let detail = line.split_once('\t').map_or("", |(_, d)| d);
+        let mut cause = String::new();
+        let mut quoted = false;
+        for part in detail.split('`') {
+            cause += if quoted { "`_`" } else { part };
+            quoted = !quoted;
+        }
+        let cause: Vec<&str> = cause
+            .split_whitespace()
+            .filter(|w| !w.chars().all(|c| c.is_ascii_digit() || c == ':'))
+            .filter(|w| *w != "line")
+            .collect();
+        *by.entry(cause.join(" ")).or_default() += 1;
+    }
+    let mut by: Vec<(String, usize)> = by.into_iter().collect();
+    by.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+    by.iter().map(|(c, n)| format!("{n:5} {c}\n")).collect()
 }
