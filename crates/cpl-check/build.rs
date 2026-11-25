@@ -44,7 +44,7 @@ fn bundle(root: &Path, out: &Path, folder: &str, prefix: &str, track: bool) {
     modules.sort();
     let wasm = std::env::var("CARGO_CFG_TARGET_ARCH").as_deref() == Ok("wasm32");
     // `lazy-std`: a browser build carries `EMBEDDED` whole and is given the
-    // other modules (`modules::provide_std`).
+    // other modules (`GivenStd::give`).
     let lazy = std::env::var_os("CARGO_FEATURE_LAZY_STD").is_some();
     let mut table = String::from("&[\n");
     let mut index = String::from("&[\n");

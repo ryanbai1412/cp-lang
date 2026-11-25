@@ -28,12 +28,22 @@ const STD_MODULES: &[&str] = include!(concat!(env!("OUT_DIR"), "/std_modules.rs"
 /// The standard library's outlines, read once.
 #[derive(Default)]
 pub struct StdLib {
+    /// What the documents are checked against, for the std in it.
+    given: cpl_facade::Snapshot,
     modules: HashMap<String, Option<Arc<Outline>>>,
     prelude: Option<Arc<Vec<(String, String)>>>,
     files: HashMap<String, (Arc<str>, Arc<Outline>)>,
 }
 
 impl StdLib {
+    /// The outlines of the std `snapshot` is checked against.
+    pub fn of(snapshot: &cpl_facade::Snapshot) -> StdLib {
+        StdLib {
+            given: cpl_facade::Snapshot::default().with_std_of(snapshot),
+            ..StdLib::default()
+        }
+    }
+
     /// `std.<name>`, as the file at `from` would load it.
     pub fn module(&mut self, from: &str, name: &str) -> Option<Arc<Outline>> {
         self.modules
@@ -43,10 +53,13 @@ impl StdLib {
                     .chain(name.split('.'))
                     .map(str::to_string)
                     .collect();
+                if let Some(text) = self.given.std_text(&name.replace('.', "/")) {
+                    return Some(Arc::new(Outline::of_source(text)));
+                }
                 if let Some((_, text)) = FsLoader.load(from, &path) {
                     return Some(Arc::new(Outline::of_source(&text)));
                 }
-                let (len, _, text) = cpl_facade::Std.outline(&path)?;
+                let (len, _, text) = self.given.std_outline(&path)?;
                 let mut outline = Outline::of_source(text);
                 let marks = outline.entries.iter_mut().map(|e| (None, e));
                 let owned = outline.impls.iter_mut().flat_map(|(target, entries)| {

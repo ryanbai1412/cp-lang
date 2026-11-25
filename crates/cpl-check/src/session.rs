@@ -16,17 +16,6 @@ use std::sync::Arc;
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
 pub struct Revision(pub(crate) u64);
 
-/// Where the modules of `std` come from.
-#[derive(Default)]
-pub enum StdSource {
-    /// The std this compiler carries, or the one `CPL_STD_DIR` names.
-    #[default]
-    Bundled,
-    /// Module texts by their path below `std/` (`"seq"`), handed in by a
-    /// host with no file system: the browser, the judge sandbox.
-    Given(Vec<(String, String)>),
-}
-
 /// Where `use lib.x` modules come from.
 #[derive(Default)]
 pub enum Libraries {
@@ -42,7 +31,6 @@ pub enum Libraries {
 /// its session from these, so all of them resolve `use` the same way.
 #[derive(Default)]
 pub struct SessionOptions {
-    pub std: StdSource,
     pub libs: Libraries,
     /// The language edition files are read in. Shape only: one edition
     /// exists, so no value changes behaviour yet.
@@ -96,12 +84,6 @@ impl Session {
     }
 
     pub fn with_options(opts: SessionOptions) -> Session {
-        if let StdSource::Given(modules) = &opts.std {
-            for (module, text) in modules {
-                // A module the build carries already, or a name std lacks, keeps the build's.
-                let _ = crate::provide_std(module, text);
-            }
-        }
         let db = match opts.libs {
             Libraries::Discover => Database::new(),
             Libraries::Loader(loader) => Database::with_loader(loader),

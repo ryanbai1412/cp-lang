@@ -248,16 +248,21 @@ pub(crate) struct Inner {
     last: Option<(Snapshot, Option<FileId>)>,
 }
 
-fn database(world: World, modules: &Files) -> cpl_check::Session {
-    match world {
-        World::Disk => cpl_check::Session::new(),
+fn database(snapshot: &Snapshot, modules: &Files) -> cpl_check::Session {
+    let libs = match snapshot.world() {
+        World::Disk => cpl_check::Libraries::Discover,
         World::Closed => {
             let given = modules
                 .iter()
                 .map(|(file, text)| (file.path().to_string(), text.to_string()));
-            cpl_check::Session::with_loader(Box::new(cpl_check::GivenFiles::new(given.collect())))
+            let given = cpl_check::GivenFiles::new(given.collect());
+            cpl_check::Libraries::Loader(Box::new(given))
         }
-    }
+    };
+    cpl_check::Session::with_options(cpl_check::SessionOptions {
+        libs,
+        ..Default::default()
+    })
 }
 
 /// A snapshot and the answers already worked out for it and its
@@ -278,7 +283,7 @@ impl Default for Session {
 impl Session {
     pub fn open(snapshot: Snapshot) -> Session {
         let inner = Inner {
-            db: database(snapshot.world(), &Files::new()),
+            db: database(&snapshot, &Files::new()),
             programs: Files::new(),
             modules: Files::new(),
             last: None,
@@ -297,7 +302,7 @@ impl Session {
     }
 
     /// This session's work, answering for `snapshot`.
-    fn at(&self, snapshot: Snapshot) -> Session {
+    pub fn at(&self, snapshot: Snapshot) -> Session {
         Session {
             snapshot,
             inner: self.inner.clone(),
@@ -326,6 +331,26 @@ impl Session {
         &self.snapshot
     }
 
+    /// The standard-library modules checking `file` asks for that the
+    /// snapshot lacks, by name (`"sparse"`), sorted: what a host gives
+    /// ([`Snapshot::with_std`]) for the file's diagnostics to be about the
+    /// file. Empty when the build carries all of it.
+    pub fn std_needs(&self, file: &str) -> Vec<String> {
+        let file = FileId::new(file);
+        let mut inner = self.synced(Some(&file));
+        inner.db.analysis(file.path());
+        inner.db.std_needs(file.path())
+    }
+
+    /// [`Session::std_needs`], and with them the modules those would ask
+    /// for in turn as far as their outlines say: fewer rounds of giving.
+    /// Ask again after giving them, until it names none.
+    pub fn std_needed(&self, file: &str) -> Vec<String> {
+        let text = self.snapshot.text(&FileId::new(file));
+        text.map(|text| self.snapshot.std().needed(file, text))
+            .unwrap_or_default()
+    }
+
     /// Today's checker, holding exactly this snapshot's files, for a query
     /// about `asked`.
     pub(crate) fn synced(&self, asked: Option<&FileId>) -> MutexGuard<'_, Inner> {
@@ -350,13 +375,14 @@ impl Session {
         let (programs, modules): (Files, Files) =
             all().partition(|(file, _)| world == World::Disk || Some(file) == asked);
         if modules != inner.modules {
-            inner.db = database(world, &modules);
+            inner.db = database(&self.snapshot, &modules);
             inner.programs.clear();
             inner.modules = modules;
         }
         let Inner {
             db, programs: held, ..
         } = &mut *inner;
+        db.set_std(self.snapshot.std());
         for (file, _) in held.iter() {
             if text_of(&programs, file).is_none() {
                 db.remove_file(file.path());

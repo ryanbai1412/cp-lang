@@ -64,8 +64,6 @@ fn command(run: impl FnOnce(&mut Playground, &str, &str, &[u8], &mut Vec<u8>) ->
             }));
         });
     }
-    #[cfg(feature = "lazy-std")]
-    cpl_facade::Std.take_needs();
     STATE.with(|state| {
         let state = &mut *state.borrow_mut();
         let name = String::from_utf8_lossy(&state.inputs[NAME as usize]);

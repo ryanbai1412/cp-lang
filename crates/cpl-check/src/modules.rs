@@ -9,6 +9,7 @@
 use cpl_diag::{Diagnostic, Span};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 /// Finds and reads modules. The language server and the tests replace the
 /// file system with their own.
@@ -96,7 +97,8 @@ impl Files for GivenFiles {
     }
 }
 
-/// The module `module` imported by the file at `from`: std from the build, a library from `files`.
+/// The library module `module` imported by the file at `from`, from
+/// `files`. Std is not a loader's: a check has its own (`GivenStd`).
 fn load_library(files: &dyn Files, from: &str, module: &[String]) -> Option<(String, String)> {
     let (root_name, rest) = module.split_first()?;
     if rest.is_empty() {
@@ -116,9 +118,7 @@ fn load_library(files: &dyn Files, from: &str, module: &[String]) -> Option<(Str
     }
     relative.set_extension("cp");
     if root_name == "std" {
-        let name = rest.join("/");
-        let text = bundled_std(&name)?;
-        return Some((format!("std/{name}.cp"), text.to_string()));
+        return None;
     }
     library_root(files, start, root_name).and_then(|root| {
         let path = root.join(&relative);
@@ -273,11 +273,6 @@ fn os_path(path: String, windows: bool) -> String {
 const GIVEN: bool = cfg!(any(not(target_arch = "wasm32"), feature = "lazy-std"));
 
 fn built_in(name: &str) -> Option<&'static str> {
-    if ONLY_EMBEDDED.load(std::sync::atomic::Ordering::Relaxed)
-        && !crate::std_files::EMBEDDED.contains(&name)
-    {
-        return None;
-    }
     modules()
         .binary_search_by(|(known, _)| (*known).cmp(name))
         .ok()
@@ -350,196 +345,168 @@ fn outlines(modules: &[(&'static str, &str)]) -> Vec<(&'static str, &'static str
 }
 
 fn in_index(name: &str) -> bool {
-    std_index()
-        .binary_search_by(|(known, _)| (*known).cmp(name))
-        .is_ok()
+    outline_of(name).is_some()
 }
 
-static ONLY_EMBEDDED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-
-/// Makes this native compiler carry only what a browser build does
-/// (`std_files::EMBEDDED`), so a test can drive `provide_std` natively.
-#[doc(hidden)]
-pub fn carry_only_embedded_std() {
-    ONLY_EMBEDDED.store(true, std::sync::atomic::Ordering::Relaxed);
-}
-
-/// The text of the std module `name` (`"geo/hull"`) the compiler has,
-/// carried or given.
+/// The text of the std module `name` (`"geo/hull"`) the build carries.
 pub fn bundled_std(name: &str) -> Option<&'static str> {
-    built_in(name).or_else(|| {
-        let provided = provided();
-        provided
-            .iter()
-            .find(|(known, _)| known == name)
-            .map(|(_, text)| *text)
-    })
+    built_in(name)
 }
 
-/// The std modules a check of `source`, the file `name`, loads that the
-/// compiler has not been given yet (`provide_std`), by name (`"sparse"`):
-/// those its `use` lines and prelude names and `.method` calls bring in,
-/// and those they use in turn. It reads the outlines of the modules it
-/// lacks, so a module only their bodies use comes up once they are given:
-/// ask again after giving them, until it names none.
-pub fn std_needed(name: &str, source: &str) -> Vec<String> {
-    std_needed_with(name, source, bundled_std)
+/// How much of std a check starts with, before what its host gave.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+enum Carried {
+    /// What the build carries: all of std, except in a browser build.
+    #[default]
+    Build,
+    /// What a browser build carries (`std_files::EMBEDDED`), in any build.
+    Embedded,
+    Nothing,
 }
 
-/// `std_needed`, with `have` for the modules the compiler has.
-#[doc(hidden)]
-pub fn std_needed_with(
-    name: &str,
-    source: &str,
-    have: impl Fn(&str) -> Option<&'static str> + Send + 'static,
-) -> Vec<String> {
-    if !GIVEN {
-        return Vec::new();
-    }
-    let needed = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
-    let loader = Outlining {
-        have: Box::new(have),
-        needed: needed.clone(),
-    };
-    let mut db = crate::Database::with_loader(Box::new(loader));
-    db.set_file(name, source);
-    db.analyze(name);
-    let mut needed = needed.lock().unwrap_or_else(|e| e.into_inner()).clone();
-    needed.sort();
-    needed
+/// The std a check reads: the modules the build carries and the ones its
+/// host gave. A value, so two checks with different std do not meet.
+#[derive(Clone, PartialEq, Eq, Debug, Default)]
+pub struct GivenStd {
+    carried: Carried,
+    /// By name, in the order of the names, each without its tests.
+    modules: Vec<(String, std::sync::Arc<str>)>,
 }
 
-/// The std text a compiler has of a module, by name.
-type Has = dyn Fn(&str) -> Option<&'static str> + Send;
-
-/// Loads what the compiler has of std, and the outline of what it lacks,
-/// writing those down.
-struct Outlining {
-    have: Box<Has>,
-    needed: std::sync::Arc<std::sync::Mutex<Vec<String>>>,
-}
-
-impl Loader for Outlining {
-    fn load(&self, from: &str, module: &[String]) -> Option<(String, String)> {
-        let Some(("std", rest)) = module.split_first().map(|(s, r)| (s.as_str(), r)) else {
-            return FsLoader.load(from, module);
-        };
-        let name = rest.join("/");
-        let path = format!("std/{name}.cp");
-        if let Some(text) = (self.have)(&name) {
-            return Some((path, text.to_string()));
-        }
-        let at = std_index()
-            .binary_search_by(|(known, _)| (*known).cmp(name.as_str()))
-            .ok()?;
-        add(
-            &mut self.needed.lock().unwrap_or_else(|e| e.into_inner()),
-            name,
-        );
-        Some((path, std_index()[at].1.to_string()))
-    }
-}
-
-/// The std modules a host gave with `provide_std`, by name. A list, not a
-/// map: the browser build has no other map from `String`.
-type Provided = Vec<(String, &'static str)>;
-
-static PROVIDED: std::sync::RwLock<Provided> = std::sync::RwLock::new(Vec::new());
-
-/// The std modules a host gave with `provide_std`.
-fn provided() -> std::sync::RwLockReadGuard<'static, Provided> {
-    PROVIDED.read().unwrap_or_else(|e| e.into_inner())
-}
-
-/// Gives the compiler the text of the std module `module` (`"sparse"`,
-/// `"geo/hull"`), the file as it is in `std/`: how a browser build, which
-/// carries only `std_files::EMBEDDED`, gets the others. True when that
-/// changed what the compiler has; giving a module again is no change.
-pub fn provide_std(module: &str, text: &str) -> Result<bool, String> {
-    if !in_index(module) {
-        return Err(format!(
-            "no module `std.{}` in the stdlib",
-            module.replace('/', ".")
-        ));
-    }
-    if !GIVEN || built_in(module).is_some() {
-        return Ok(false);
-    }
-    let text = crate::std_files::without_tests(text);
-    let mut provided = PROVIDED.write().unwrap_or_else(|e| e.into_inner());
-    let known = provided.iter().position(|(known, _)| known == module);
-    if known.is_some_and(|at| provided[at].1 == text) {
-        return Ok(false);
-    }
-    let text: &'static str = Box::leak(text.into_boxed_str());
-    match known {
-        Some(at) => provided[at].1 = text,
-        None => provided.push((module.to_string(), text)),
-    }
-    Ok(true)
-}
-
-/// The std modules a check asked for and did not have since the last
-/// `take_std_needs`, by name (`"sparse"`).
-static NEEDS: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
-
-/// The std modules checks needed and did not have since the last call.
-pub fn take_std_needs() -> Vec<String> {
-    if !GIVEN {
-        return Vec::new();
-    }
-    let mut needs = std::mem::take(&mut *NEEDS.lock().unwrap_or_else(|e| e.into_inner()));
-    needs.sort();
-    needs
-}
-
-/// Adds `name` to the set `names`.
-fn add(names: &mut Vec<String>, name: String) {
-    if !names.contains(&name) {
-        names.push(name);
-    }
-}
-
-/// The std module `parts` names when the compiler knows it but does not
-/// have its text yet.
-fn unprovided(parts: &[String]) -> Option<String> {
-    if !GIVEN {
-        return None;
-    }
-    let (_, rest) = parts.split_first().filter(|(std, _)| *std == "std")?;
-    // `use std.math.gcd` names `gcd` in `std.math`.
-    for module in [rest, &rest[..rest.len().saturating_sub(1)]] {
-        let module = module.join("/");
-        if in_index(&module) && bundled_std(&module).is_none() {
-            return Some(module);
+impl GivenStd {
+    /// Std as a browser build has it before its page gives the rest, in
+    /// any build: how a native test drives the giving.
+    pub fn embedded() -> GivenStd {
+        GivenStd {
+            carried: Carried::Embedded,
+            modules: Vec::new(),
         }
     }
-    None
+
+    /// No module but those given.
+    pub fn nothing() -> GivenStd {
+        GivenStd {
+            carried: Carried::Nothing,
+            modules: Vec::new(),
+        }
+    }
+
+    fn carried(&self, name: &str) -> Option<&'static str> {
+        match self.carried {
+            Carried::Build => built_in(name),
+            Carried::Embedded if crate::std_files::EMBEDDED.contains(&name) => built_in(name),
+            _ => None,
+        }
+    }
+
+    fn given(&self, name: &str) -> Result<usize, usize> {
+        self.modules
+            .binary_search_by(|(known, _)| known.as_str().cmp(name))
+    }
+
+    /// The text of the module `name` (`"geo/hull"`), carried or given.
+    pub fn text(&self, name: &str) -> Option<&str> {
+        if let Some(text) = self.carried(name) {
+            return Some(text);
+        }
+        if !GIVEN {
+            return None;
+        }
+        self.given(name).ok().map(|at| &*self.modules[at].1)
+    }
+
+    /// Takes `text`, the file `std/<module>.cp` (`"sparse"`, `"geo/hull"`):
+    /// how a browser build, which carries only `std_files::EMBEDDED`, gets
+    /// the others. True when that changed what this has; a module the
+    /// build carries, or one given again, is no change.
+    pub fn give(self: &mut Arc<Self>, module: &str, text: &str) -> Result<bool, String> {
+        if !in_index(module) {
+            return Err(format!(
+                "no module `std.{}` in the stdlib",
+                module.replace('/', ".")
+            ));
+        }
+        if !GIVEN || self.carried(module).is_some() {
+            return Ok(false);
+        }
+        let text = crate::std_files::without_tests(text);
+        let at = self.given(module);
+        if at.is_ok_and(|at| *self.modules[at].1 == *text) {
+            return Ok(false);
+        }
+        // Its own copy when a snapshot shares it.
+        let modules = &mut Arc::make_mut(self).modules;
+        match at {
+            Ok(at) => modules[at].1 = text.into(),
+            Err(at) => modules.insert(at, (module.to_string(), text.into())),
+        }
+        Ok(true)
+    }
+
+    /// The std module `parts` names when std has it and this lacks its
+    /// text, with its outline.
+    fn lacked(&self, parts: &[String]) -> Option<(String, &'static str)> {
+        if !GIVEN {
+            return None;
+        }
+        let (_, rest) = parts.split_first().filter(|(std, _)| *std == "std")?;
+        // `use std.math.gcd` names `gcd` in `std.math`.
+        for module in [rest, &rest[..rest.len().saturating_sub(1)]] {
+            let name = module.join("/");
+            if let Some(outline) = outline_of(&name).filter(|_| self.text(&name).is_none()) {
+                return Some((name, outline));
+            }
+        }
+        None
+    }
+
+    /// Whether `parts` names a std module the host has not given yet.
+    pub(crate) fn lacks(&self, parts: &[String]) -> bool {
+        self.lacked(parts).is_some()
+    }
+
+    /// What a check reads of a std module this lacks, `parts` or the one
+    /// before its last name: its outline, path and how many of `parts`
+    /// name it. Its signatures and doc lines answer hover and completion
+    /// until the host gives the text.
+    pub fn outline(&self, parts: &[String]) -> Option<(usize, String, &'static str)> {
+        let (name, text) = self.lacked(parts)?;
+        let len = name.split('/').count() + 1;
+        Some((len, format!("std/{name}.cp"), text))
+    }
+
+    /// The std modules a check of `source`, the file `name`, loads that
+    /// this lacks, by name (`"sparse"`): those its `use` lines and prelude
+    /// names and `.method` calls bring in, and those they use in turn. It
+    /// reads the outlines of the modules it lacks, so a module only their
+    /// bodies use comes up once they are given: ask again after giving
+    /// them, until it names none.
+    pub fn needed(self: &Arc<Self>, name: &str, source: &str) -> Vec<String> {
+        if !GIVEN {
+            return Vec::new();
+        }
+        let mut db = crate::Database::new();
+        db.std = self.clone();
+        db.outlining = true;
+        db.set_file(name, source);
+        db.analyze(name);
+        db.std_needs(name)
+    }
 }
 
-/// Whether `parts` names a std module the host has not given yet.
-pub(crate) fn unloaded(parts: &[String]) -> bool {
-    unprovided(parts).is_some()
-}
-
-/// What a check reads of a std module the compiler knows and has not been
-/// given, `parts` or the one before its last name: its outline, path and
-/// how many of `parts` name it. Its signatures and doc lines answer hover
-/// and completion until the host gives the text.
-pub fn std_outline(parts: &[String]) -> Option<(usize, String, &'static str)> {
-    let name = unprovided(parts)?;
+/// The outline of the std module `name`.
+pub(crate) fn outline_of(name: &str) -> Option<&'static str> {
     let at = std_index()
-        .binary_search_by(|(known, _)| (*known).cmp(name.as_str()))
+        .binary_search_by(|(known, _)| (*known).cmp(name))
         .ok()?;
-    let len = name.split('/').count() + 1;
-    Some((len, format!("std/{name}.cp"), std_index()[at].1))
+    Some(std_index()[at].1)
 }
 
-/// The error for `use` of a module that isn't there, at `whole`.
-pub(crate) fn missing(parts: &[String], whole: Span) -> Diagnostic {
+/// The error for `use` of a module that isn't there, at `whole`;
+/// `lacked` when std has it and the check was not given its text.
+pub(crate) fn missing(parts: &[String], whole: Span, lacked: bool) -> Diagnostic {
     let dotted = parts.join(".");
-    if let Some(name) = unprovided(parts) {
-        add(&mut NEEDS.lock().unwrap_or_else(|e| e.into_inner()), name);
+    if lacked {
         return cpl_diag::msgs::check::STD_NOT_LOADED
             .error(whole, &[&dotted])
             .with_help(
@@ -735,10 +702,11 @@ mod tests {
             let mut have: std::collections::BTreeSet<String> = embedded().collect();
             let mut asked = 0;
             loop {
-                let given = have.clone();
-                let needed = std_needed_with(name, source, move |m| {
-                    given.contains(m).then(|| built_in(m)).flatten()
-                });
+                let mut std = Arc::new(GivenStd::nothing());
+                for module in &have {
+                    std.give(module, built_in(module).unwrap()).unwrap();
+                }
+                let needed = std.needed(name, source);
                 if needed.is_empty() {
                     break;
                 }

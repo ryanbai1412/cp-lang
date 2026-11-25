@@ -52,12 +52,11 @@ fn open_or_change(uri: &str, version: i64, text: &str) -> String {
 
 #[test]
 fn a_program_checks_and_runs_once_the_host_gives_the_std_it_needs() {
-    cpl_facade::Std.carry_only_embedded();
     let programs = root().join("crates/cpl-cli/tests/programs");
     let source = std::fs::read_to_string(programs.join("batch33_splitmix64.cp")).unwrap();
     let input = std::fs::read(programs.join("batch33_splitmix64.in")).unwrap();
     let expected = std::fs::read_to_string(programs.join("batch33_splitmix64.out")).unwrap();
-    let mut playground = Playground::new();
+    let mut playground = Playground::with_embedded_std();
     playground.lsp(r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#);
     let uri = "file:///main.cp";
     let opened = playground.lsp(&open_or_change(uri, 1, &source));

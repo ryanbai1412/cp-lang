@@ -16,7 +16,48 @@ impl Database {
                 return Some((path, state.text.to_string()));
             }
         }
-        self.loader.load(from, parts)
+        if let Some(found) = self.loader.load(from, parts) {
+            return Some(found);
+        }
+        // The loader has the libraries; std is this check's own.
+        let (_, rest) = parts.split_first().filter(|(std, _)| *std == "std")?;
+        let name = rest.join("/");
+        let path = format!("std/{name}.cp");
+        if let Some(text) = self.std.text(&name) {
+            return Some((path, text.to_string()));
+        }
+        if !self.outlining {
+            return None;
+        }
+        let text = crate::modules::outline_of(&name)?;
+        Some((path, text.to_string()))
+    }
+
+    /// Writes down that the file being checked needs the std module `name`.
+    pub(super) fn need_std(&mut self, name: String) {
+        let root = self.analyzing.first();
+        if let Some(file) = root.and_then(|root| self.files.get_mut(root)) {
+            if let Err(at) = file.std_needs.binary_search(&name) {
+                file.std_needs.insert(at, name);
+            }
+        }
+    }
+
+    /// The std modules the last check of the file `path` asked for and
+    /// was not given, by name (`"sparse"`), sorted.
+    pub fn std_needs(&self, path: &str) -> Vec<String> {
+        (self.files.get(path)).map_or(Vec::new(), |file| file.std_needs.clone())
+    }
+
+    /// Checks against `std` from now on; true when that is a change, and
+    /// every analysis is then forgotten, since any may have read std.
+    pub fn set_std(&mut self, std: &std::sync::Arc<crate::GivenStd>) -> bool {
+        if std::sync::Arc::ptr_eq(&self.std, std) || self.std == *std {
+            return false;
+        }
+        self.std = std.clone();
+        self.reload_modules();
+        true
     }
 
     /// The module a `use` of `parts` loads, and the name in it when `lone`
@@ -45,8 +86,12 @@ impl Database {
                 return (None, None);
             }
         }
-        diags.push(crate::modules::missing(parts, whole));
-        let Some((len, path, text)) = crate::modules::std_outline(parts) else {
+        let lacked = self.std.outline(parts);
+        if let Some((len, ..)) = &lacked {
+            self.need_std(parts[1..*len].join("/"));
+        }
+        diags.push(crate::modules::missing(parts, whole, lacked.is_some()));
+        let Some((len, path, text)) = lacked else {
             return (None, None);
         };
         if len < parts.len() && lone.is_none() {
@@ -66,7 +111,7 @@ impl Database {
     }
 
     /// Forgets every analysis, for when what the loader finds changed
-    /// (`provide_std`): the next one loads its modules again.
+    /// (a std module arrived): the next one loads its modules again.
     pub fn reload_modules(&mut self) {
         for file in self.files.values_mut() {
             file.forget();

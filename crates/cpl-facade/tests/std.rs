@@ -1,4 +1,4 @@
-use cpl_facade::{Layer, Session, Std};
+use cpl_facade::{Layer, Session, Snapshot, Std};
 
 #[test]
 fn a_name_is_found_in_the_module_whose_text_declares_it() {
@@ -37,17 +37,83 @@ fn a_file_uses_the_modules_it_names_and_those_they_use() {
     sorted.dedup();
     assert_eq!(used, sorted);
     assert_eq!(Std.used_by("p.cp", "print(1)\n"), Vec::<String>::new());
-    assert_eq!(Std.needed("p.cp", source), Vec::<String>::new());
 }
 
 #[test]
-fn giving_a_module_the_compiler_has_changes_nothing() {
+fn giving_a_module_the_build_carries_changes_nothing() {
     let db = Session::default().with_file("p.cp", "print(1)\n");
     assert_eq!(db.diagnostics("p.cp", Layer::Typed), Vec::new());
     let text = Std.text("heap").unwrap();
-    assert_eq!(db.give_std("heap", text), Ok(false));
-    assert!(db.give_std("no_such_module", "").is_err());
-    assert_eq!(db.diagnostics("p.cp", Layer::Typed), Vec::new());
+    let given = db.at(db.snapshot().with_std("heap", text).unwrap());
+    assert_eq!(given.snapshot(), db.snapshot());
+    assert!(db.snapshot().with_std("no_such_module", "").is_err());
+    assert_eq!(given.diagnostics("p.cp", Layer::Typed), Vec::new());
+    assert_eq!(given.std_needs("p.cp"), Vec::<String>::new());
+    assert_eq!(given.std_needed("p.cp"), Vec::<String>::new());
+}
+
+/// contracts/00-snapshot.md: the snapshot is the only input, and equal
+/// snapshots give equal answers. A module given to one snapshot is in
+/// that snapshot and in no other.
+#[test]
+fn a_std_module_is_given_to_one_snapshot_and_no_other() {
+    let source = "use std.heap\nlet h: Heap<Int> = Heap()\nprint(h.len)\n";
+    let bare = Session::open(
+        Snapshot::default()
+            .with_embedded_std()
+            .with_file("p.cp", source),
+    );
+    let lacking = bare.diagnostics("p.cp", Layer::Typed);
+    assert!(
+        lacking.iter().any(|d| d
+            .message
+            .contains("std module `std.heap` is not loaded yet")),
+        "{lacking:?}"
+    );
+    // With `heap`, the modules the prelude's names come from.
+    let needs = bare.std_needs("p.cp");
+    assert!(needs.contains(&"heap".to_string()), "{needs:?}");
+    assert!(bare.snapshot().std_text("heap").is_none());
+    let parts = ["std".to_string(), "heap".to_string()];
+    assert_eq!(bare.snapshot().std_outline(&parts).unwrap().0, 2);
+
+    let mut given = bare.clone();
+    let mut rounds = 0;
+    loop {
+        let needed = given.std_needed("p.cp");
+        if needed.is_empty() {
+            break;
+        }
+        for module in needed {
+            let text = Std.text(&module).unwrap();
+            given = given.at(given.snapshot().with_std(&module, text).unwrap());
+        }
+        rounds += 1;
+        assert!(rounds < 20);
+    }
+    assert_ne!(given.snapshot(), bare.snapshot());
+    assert_eq!(given.diagnostics("p.cp", Layer::Typed), Vec::new());
+    assert_eq!(given.std_needs("p.cp"), Vec::<String>::new());
+    assert!(given.snapshot().std_outline(&parts).is_none());
+
+    // The first snapshot, and a session opened on one equal to it, still
+    // lack the module: nothing was given to the process.
+    assert_eq!(bare.diagnostics("p.cp", Layer::Typed), lacking);
+    let again = Session::open(
+        Snapshot::default()
+            .with_embedded_std()
+            .with_file("p.cp", source),
+    );
+    assert_eq!(again.snapshot(), bare.snapshot());
+    assert_eq!(again.diagnostics("p.cp", Layer::Typed), lacking);
+    assert_eq!(again.std_needs("p.cp"), needs);
+
+    // Given the same text again, the snapshot is the same snapshot.
+    let twice = given.snapshot().with_std("heap", Std.text("heap").unwrap());
+    assert_eq!(&twice.unwrap(), given.snapshot());
+    // A build that carries all of std has nothing to be given.
+    let full = Session::default().with_file("p.cp", source);
+    assert_eq!(full.diagnostics("p.cp", Layer::Typed), Vec::new());
 }
 
 /// spec/tools/cp-toml.md, `[libs]`: a library is named with the folder it

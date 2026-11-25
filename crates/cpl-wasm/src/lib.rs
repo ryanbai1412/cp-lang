@@ -111,28 +111,36 @@ impl Playground {
     /// not been given yet, by name (`["sparse"]`): give each with
     /// `provide_std`, then ask again until it is empty.
     pub fn std_needed(&mut self, name: &str, source: &str) -> Value {
-        Value::Array(
-            cpl_facade::Std
-                .needed(name, source)
-                .into_iter()
-                .map(Value::from)
-                .collect(),
-        )
+        self.db.set_file(name, source);
+        names(self.db.std_needed(name))
     }
 
     #[cfg(any(not(target_family = "wasm"), feature = "lazy-std"))]
     /// Gives the compiler `text`, the file `std/<module>.cp`, for every
     /// command after: `{"changed": false}` when it had it already.
     pub fn provide_std(&mut self, module: &str, text: &str) -> Value {
-        match self.db.give_std(module, text) {
-            Ok(changed) => {
-                if changed {
-                    self.lsp.std_changed();
-                }
-                obj([("changed", Value::Bool(changed))])
-            }
-            Err(error) => obj([("error", error.into())]),
+        let given = match self.db.snapshot().with_std(module, text) {
+            Ok(given) => given,
+            Err(error) => return obj([("error", error.into())]),
+        };
+        let changed = given != *self.db.snapshot();
+        if changed {
+            self.lsp.use_std_of(&given);
+            self.db = self.db.at(given);
         }
+        obj([("changed", Value::Bool(changed))])
+    }
+
+    /// A playground that starts with only the std modules a browser build
+    /// carries, in any build, so a test can give the rest as a page would.
+    #[cfg(not(target_family = "wasm"))]
+    #[doc(hidden)]
+    pub fn with_embedded_std() -> Playground {
+        let mut playground = Playground::default();
+        let embedded = playground.db.snapshot().with_embedded_std();
+        playground.lsp.use_std_of(&embedded);
+        playground.db = Session::open(embedded);
+        playground
     }
 
     /// Gives the compiler the files beside the one it checks, by path
@@ -143,16 +151,14 @@ impl Playground {
         let Some(members) = parsed.as_ref().and_then(Value::as_object) else {
             return obj([("error", "files are an object of path to text".into())]);
         };
-        let mut given = Vec::new();
+        let mut files =
+            cpl_facade::Snapshot::new(cpl_facade::World::Closed).with_std_of(self.db.snapshot());
         for (path, text) in members {
             let Some(text) = text.as_str() else {
                 return obj([("error", format!("{path}: a file's text is a string").into())]);
             };
-            given.push((path.clone(), text.to_string()));
+            files = files.with_file(path, text);
         }
-        let closed = cpl_facade::Snapshot::new(cpl_facade::World::Closed);
-        let files =
-            (given.into_iter()).fold(closed, |files, (path, text)| files.with_file(path, text));
         self.db = Session::open(files);
         obj([])
     }
@@ -167,7 +173,7 @@ impl Playground {
             0
         };
         let stderr = rendered(&diagnostics, name, source);
-        outcome(code, &diagnostics, source, stderr, [])
+        self.outcome(name, code, &diagnostics, source, stderr, [])
     }
 
     /// `cpl fix`: `source` with the fixes `cpl fix` applies (`cpl_ir::fix`
@@ -179,7 +185,8 @@ impl Playground {
         let code = if left.is_empty() { 0 } else { EXIT_ERRORS };
         let stderr = rendered(&left, name, &fixed);
         let applied = Value::from(u32::try_from(applied).unwrap_or(u32::MAX));
-        outcome(
+        self.outcome(
+            name,
             code,
             &left,
             &fixed,
@@ -225,7 +232,14 @@ impl Playground {
                     compiled.diagnostics.push(failure);
                     code = EXIT_FAILED;
                 }
-                outcome(code, &compiled.diagnostics, source, compiled.stderr, [])
+                self.outcome(
+                    name,
+                    code,
+                    &compiled.diagnostics,
+                    source,
+                    compiled.stderr,
+                    [],
+                )
             }
         };
         Run { stdout, result }
@@ -297,7 +311,14 @@ impl Playground {
                 );
                 let debug = String::from_utf8_lossy(&observed.debug).into_owned();
                 (
-                    outcome(code, &compiled.diagnostics, source, compiled.stderr, []),
+                    self.outcome(
+                        name,
+                        code,
+                        &compiled.diagnostics,
+                        source,
+                        compiled.stderr,
+                        [],
+                    ),
                     trace,
                     debug,
                 )
@@ -476,7 +497,8 @@ impl Playground {
                 cpl_judge::named_in(source).unwrap_or_default(),
                 cpl_judge::Config::default().names().join(", ")
             );
-            return outcome(
+            return self.outcome(
+                name,
                 2,
                 &compiled.diagnostics,
                 source,
@@ -519,7 +541,14 @@ impl Playground {
             code = EXIT_ERRORS;
         }
         let cpp = if code == 0 { cpp.into() } else { Value::Null };
-        outcome(code, &compiled.diagnostics, source, stderr, [("cpp", cpp)])
+        self.outcome(
+            name,
+            code,
+            &compiled.diagnostics,
+            source,
+            stderr,
+            [("cpp", cpp)],
+        )
     }
 
     /// `cpl explain` on `source`: how its closures, views and copies lower
@@ -530,7 +559,8 @@ impl Playground {
             Ok(compiled) => {
                 let storage = cpl_lsp::explain::storage_section(&mut self.db, name);
                 let text = compiled.program.explained(name, source, Some(&storage));
-                outcome(
+                self.outcome(
+                    name,
                     0,
                     &compiled.diagnostics,
                     source,
@@ -592,12 +622,7 @@ impl Playground {
     /// that already speaks the protocol.
     pub fn lsp(&mut self, message: &str) -> Value {
         match json::parse(message) {
-            Ok(message) => {
-                let replies = self.lsp.handle(&message);
-                // Its diagnostics say what it needs; a later check's are its own.
-                cpl_facade::Std.take_needs();
-                Value::Array(replies)
-            }
+            Ok(message) => Value::Array(self.lsp.handle(&message)),
             Err(error) => Value::Array(vec![obj([
                 ("jsonrpc", "2.0".into()),
                 ("id", Value::Null),
@@ -612,6 +637,31 @@ impl Playground {
                     ]),
                 ),
             ])]),
+        }
+    }
+
+    /// A command's result about the file `name` ([`outcome`]), with the std
+    /// modules its check asked for and was not given as `needs`.
+    fn outcome<const N: usize>(
+        &self,
+        name: &str,
+        code: u8,
+        diagnostics: &[Diagnostic],
+        source: &str,
+        stderr: String,
+        more: [(&str, Value); N],
+    ) -> Value {
+        let mut result = outcome(code, diagnostics, source, stderr, more);
+        if cfg!(any(not(target_family = "wasm"), feature = "lazy-std")) {
+            self.add_needs(name, &mut result);
+        }
+        result
+    }
+
+    fn add_needs(&self, name: &str, result: &mut Value) {
+        let needs = self.db.std_needs(name);
+        if let (false, Value::Object(members)) = (needs.is_empty(), result) {
+            members.insert("needs".to_string(), names(needs));
         }
     }
 
@@ -630,7 +680,7 @@ impl Playground {
             }
             Err(diagnostics) => {
                 let stderr = rendered(&diagnostics, name, source);
-                Err(outcome(EXIT_ERRORS, &diagnostics, source, stderr, []))
+                Err(self.outcome(name, EXIT_ERRORS, &diagnostics, source, stderr, []))
             }
         }
     }
@@ -718,6 +768,10 @@ fn trap_locals(
     cpl_facade::today::trace::trap_locals(&observed.recording?, source, at.unwrap_or(""))
 }
 
+fn names(names: Vec<String>) -> Value {
+    Value::Array(names.into_iter().map(Value::from).collect())
+}
+
 /// The result every command shares: its exit status as `cpl` would exit,
 /// the diagnostics as data for an editor, and `stderr`, the text `cpl`
 /// prints on standard error, for a console.
@@ -742,11 +796,6 @@ fn outcome<const N: usize>(
         more.into_iter()
             .map(|(key, value)| (key.to_string(), value)),
     );
-    let needs = cpl_facade::Std.take_needs();
-    if cfg!(any(not(target_family = "wasm"), feature = "lazy-std")) && !needs.is_empty() {
-        let needs = needs.into_iter().map(Value::from).collect();
-        members.insert("needs".to_string(), Value::Array(needs));
-    }
     Value::Object(members)
 }
 

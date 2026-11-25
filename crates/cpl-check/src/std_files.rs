@@ -24,7 +24,7 @@ pub fn collect(dir: &Path, below: &str, modules: &mut Vec<(String, PathBuf)>) {
 }
 
 /// The modules a browser build carries whole; it is given the others'
-/// text when a program first needs them (`modules::provide_std`).
+/// text when a program first needs them (`GivenStd::give`).
 pub const EMBEDDED: &[&str] = &["mod", "prelude"];
 
 /// What every scan of std's declarations reads, line for line with `text`:

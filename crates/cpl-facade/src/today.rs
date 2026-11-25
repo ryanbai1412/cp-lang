@@ -216,12 +216,6 @@ impl Session {
         self.synced(None).db.import_cycles().to_vec()
     }
 
-    /// Forgets what was loaded from outside the snapshot, after the world
-    /// changed under it (a std module arrived).
-    pub fn reload_modules(&self) {
-        self.synced(None).db.reload_modules();
-    }
-
     asks! {
         method_fits(receiver: &Ty, names: &[&str]) -> Vec<Option<bool>>;
         storage() -> Option<Storage>;

@@ -164,11 +164,11 @@ impl Server {
         self.runs.on_finish = Some(on_finish);
     }
 
-    /// After the std modules the compiler has changed (`provide_std`):
-    /// every answer is worked out again.
-    pub fn std_changed(&mut self) {
-        self.db.reload_modules();
-        self.std = StdLib::default();
+    /// Answers from now on with the std `snapshot` is checked against
+    /// (`Snapshot::with_std`); every answer is worked out again.
+    pub fn use_std_of(&mut self, snapshot: &cpl_facade::Snapshot) {
+        self.db = self.db.at(self.db.snapshot().with_std_of(snapshot));
+        self.std = StdLib::of(snapshot);
         self.proven.clear();
     }
 
@@ -229,7 +229,8 @@ impl Server {
     /// After a panic: rebuild the database from the open documents, answer
     /// the request with an error, and tell the user through a diagnostic.
     fn recover(&mut self, method: &str, params: &Value, id: Value, what: String) -> Vec<Value> {
-        self.db = Session::default();
+        let empty = cpl_facade::Snapshot::default().with_std_of(self.db.snapshot());
+        self.db = Session::open(empty);
         for (uri, text) in &self.docs {
             self.db.set_file(uri, text.as_str());
         }

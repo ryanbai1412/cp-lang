@@ -235,6 +235,9 @@ struct FileState {
     /// only. A file can be both, and each importer must get this one
     /// whoever asked first.
     module: Option<Arc<Analysis>>,
+    /// The std modules its last check as a program asked for and was
+    /// not given, by name, sorted.
+    std_needs: Vec<String>,
     /// Read by the module loader, not given by `set_file`: the loader may
     /// replace its text.
     loaded: bool,
@@ -244,6 +247,7 @@ impl FileState {
     fn forget(&mut self) {
         self.program = None;
         self.module = None;
+        self.std_needs = Vec::new();
     }
 }
 
@@ -297,6 +301,11 @@ pub struct Database {
     callings: Option<(String, Calling)>,
     stats: Stats,
     loader: Box<dyn Loader>,
+    /// The std its files are checked against.
+    pub(crate) std: std::sync::Arc<crate::GivenStd>,
+    /// Whether a std module `std` lacks loads as its outline, with no
+    /// diagnostic: a check that only asks what is needed.
+    pub(crate) outlining: bool,
     /// Where the item whose `use` is being imported starts, so an import's fix can reach
     /// past its spans.
     import_base: Option<u32>,
@@ -332,6 +341,8 @@ impl Database {
             callings: None,
             stats: Stats::default(),
             loader,
+            std: Default::default(),
+            outlining: false,
             import_base: None,
             analyzing: Vec::new(),
             cycle_floor: usize::MAX,
@@ -383,6 +394,7 @@ impl Database {
                         text,
                         program: None,
                         module: None,
+                        std_needs: Vec::new(),
                         loaded,
                     },
                 );
@@ -539,6 +551,11 @@ impl Database {
         let mut used: Vec<(usize, ast::Name)> = Vec::new();
         let depth = self.analyzing.len();
         let outer_floor = std::mem::replace(&mut self.cycle_floor, usize::MAX);
+        if self.analyzing.is_empty() {
+            if let Some(file) = self.files.get_mut(path) {
+                file.std_needs = Vec::new();
+            }
+        }
         self.analyzing.push(path.to_string());
         for (index, item) in items.iter().enumerate() {
             for stmt in item.parsed.stmts.iter().filter(|_| item.has_use) {
@@ -715,7 +732,7 @@ impl Database {
                 // the file first uses it, as for a `use` of it.
                 let parts: Vec<String> = module.iter().map(|n| n.text.clone()).collect();
                 let waiting = !diags.is_empty()
-                    && crate::modules::unloaded(&parts)
+                    && self.std.lacks(&parts)
                     && diags.iter().all(|d| d.code == codes::UNRESOLVED_MODULE);
                 if waiting {
                     let first_use = ranges.iter().enumerate().find_map(|(index, range)| {
@@ -1451,6 +1468,14 @@ impl Database {
         diags: &mut Vec<Diagnostic>,
     ) -> Option<Module> {
         let (path, text) = self.find_module(from, parts)?;
+        if self.outlining {
+            let std = path
+                .strip_prefix("std/")
+                .and_then(|p| p.strip_suffix(".cp"));
+            if let Some(module) = std.filter(|m| self.std.text(m).is_none()) {
+                self.need_std(module.to_string());
+            }
+        }
         let name = parts.join(".");
         if let Some(at) = self.analyzing.iter().position(|p| *p == path) {
             diags.push(
@@ -1567,7 +1592,7 @@ impl Database {
             // A std module the host has not given yet is read as its
             // outline: its one diagnostic says so, and the import stands.
             let parts: Vec<String> = module.iter().map(|n| n.text.clone()).collect();
-            let outline = import.is_some() && crate::modules::unloaded(&parts);
+            let outline = import.is_some() && self.std.lacks(&parts);
             if !diags.is_empty() && !outline {
                 self.cycle_hits = hits;
                 scope.modules.truncate(modules);

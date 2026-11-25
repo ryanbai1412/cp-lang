@@ -9,7 +9,7 @@ pub struct Std;
 
 impl Std {
     /// The text of `module`, the file as it is in `std/`. None for a
-    /// module the compiler knows only the outline of ([`Std::needed`]).
+    /// module this build does not carry ([`Session::std_needs`]).
     pub fn text(self, module: &str) -> Option<&'static str> {
         cpl_check::bundled_std(module)
     }
@@ -17,13 +17,6 @@ impl Std {
     /// Every module by name with its outline: each top-level line, no bodies.
     pub fn outlines(self) -> &'static [(&'static str, &'static str)] {
         cpl_check::std_index()
-    }
-
-    /// The outline of the module `parts` names, or names a member of, when
-    /// the compiler has not its text: how many of `parts` name the module,
-    /// its path, and the outline.
-    pub fn outline(self, parts: &[String]) -> Option<(usize, String, &'static str)> {
-        cpl_check::std_outline(parts)
     }
 
     /// Every public name with its module, sorted by name.
@@ -69,12 +62,11 @@ impl Std {
     pub fn used_by(self, file: &str, source: &str) -> Vec<String> {
         let mut have: Vec<String> = Vec::new();
         loop {
-            let given = have.clone();
-            let more = cpl_check::std_needed_with(file, source, move |module| {
-                (given.iter().any(|given| given == module))
-                    .then(|| Std.text(module))
-                    .flatten()
-            });
+            let mut given = std::sync::Arc::new(cpl_check::GivenStd::nothing());
+            for module in &have {
+                let _ = given.give(module, Std.text(module).unwrap_or_default());
+            }
+            let more = given.needed(file, source);
             let more: Vec<String> = (more.into_iter())
                 .filter(|module| !have.contains(module))
                 .collect();
@@ -86,31 +78,12 @@ impl Std {
         }
     }
 
-    /// The modules a check of `source`, the file `file`, loads that the
-    /// compiler has only the outline of: give each ([`Session::give_std`])
-    /// and ask again, until it names none.
-    pub fn needed(self, file: &str, source: &str) -> Vec<String> {
-        cpl_check::std_needed(file, source)
-    }
-
-    /// The modules checks asked for and did not have since the last call.
-    pub fn take_needs(self) -> Vec<String> {
-        cpl_check::take_std_needs()
-    }
-
     /// Whether the modules are read from a checkout's `std/` rather than
     /// the copy built into the compiler.
     /// Why this dev build would check against the wrong std, if it
     /// would: its std folder is gone, or is another checkout's.
     pub fn problem(self) -> Option<String> {
         cpl_check::dev_std_problem()
-    }
-
-    /// Makes this native build carry only the modules a browser build
-    /// does, so a test can give it the rest as a page would.
-    #[doc(hidden)]
-    pub fn carry_only_embedded(self) {
-        cpl_check::carry_only_embedded_std();
     }
 
     pub fn from_disk(self) -> bool {
@@ -122,17 +95,6 @@ impl Session {
     /// The standard library this session's files are checked against.
     pub fn std(&self) -> Std {
         Std
-    }
-
-    /// Gives the compiler `text`, the file `std/<module>.cp`, for every
-    /// query after. True when that changed what it has, and every answer
-    /// that read the module's outline is then forgotten.
-    pub fn give_std(&self, module: &str, text: &str) -> Result<bool, String> {
-        let changed = cpl_check::provide_std(module, text)?;
-        if changed {
-            self.reload_modules();
-        }
-        Ok(changed)
     }
 }
 
