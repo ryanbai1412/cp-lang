@@ -95,6 +95,7 @@ struct Cx<'a> {
     regions: Vec<(BTreeSet<Pl>, BTreeSet<Pl>)>,
     report: bool,
     errors: Vec<String>,
+    deferred: HashMap<FnId, Vec<String>>,
     /// Block nesting at this point, and for each binding where it was declared and in what order.
     scopes: Vec<u32>,
     next: u32,
@@ -130,6 +131,8 @@ struct Cx<'a> {
 #[derive(Default)]
 pub struct Owned {
     pub errors: Vec<String>,
+    /// What is wrong in a fn reached only through a trait, said if an instance runs it.
+    pub deferred: HashMap<FnId, Vec<String>>,
     pub copies: BTreeSet<u32>,
 }
 
@@ -145,6 +148,7 @@ pub fn check(d: &Decls, t: &Typed, src: &str) -> Owned {
         regions: vec![],
         report: false,
         errors: vec![],
+        deferred: HashMap::new(),
         scopes: vec![],
         next: 0,
         decl: HashMap::new(),
@@ -176,6 +180,7 @@ pub fn check(d: &Decls, t: &Typed, src: &str) -> Owned {
     cx.errors.dedup();
     Owned {
         errors: cx.errors,
+        deferred: cx.deferred,
         copies: cx.copies,
     }
 }
@@ -254,7 +259,11 @@ impl Cx<'_> {
     fn err_at(&mut self, at: usize, code: Code, msg: String) {
         if self.report {
             let line = self.src[..at].matches('\n').count() + 1;
-            self.errors.push(format!("line {line}: {}: {msg}", code.0));
+            let e = format!("line {line}: {}: {msg}", code.0);
+            match self.cur.filter(|f| self.t.quiet.contains(f)) {
+                Some(f) => self.deferred.entry(f).or_default().push(e),
+                None => self.errors.push(e),
+            }
         }
     }
     fn bind(&mut self, v: VarRef) {

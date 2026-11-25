@@ -419,8 +419,8 @@ impl<'a> Cx<'a> {
         };
         let Some(call) = call else {
             let shown = self.show(&rt);
-            if matches!(rt, Ty::Struct(..)) {
-                // Its fields may give it a structural impl (R08.1.6).
+            if matches!(rt, Ty::Struct(id, ..) if !self.d.s(id).variants.is_empty()) {
+                // Its variants may give it a structural impl (R08.1.6).
                 self.err(span, format!("slice: derived `{trait_name}` for `{shown}`"));
             } else {
                 self.err(

@@ -286,6 +286,24 @@ impl Decls {
             Some(Member::Method(tm, targs, Vec::new()))
         })
     }
+    /// Whether every field of `s` has an impl of `tr`, as a derived impl needs (R08.1.6).
+    fn fields_have(&self, s: StructId, tr: TraitId) -> bool {
+        let sd = self.s(s);
+        (sd.fields.iter().zip(&sd.cached)).all(|((_, t), cached)| *cached || self.has_impl(t, tr))
+    }
+    /// Whether `t` has an impl of `tr`, its parameters taken to meet the impl's bounds.
+    fn has_impl(&self, t: &Ty, tr: TraitId) -> bool {
+        if matches!(t, Ty::Param(_) | Ty::Var(_) | Ty::Error) {
+            return true;
+        }
+        (self.impls.iter())
+            .filter(|im| im.trait_.tr == tr)
+            .find_map(|im| Some((im, self.impl_args(im, t)?)))
+            .is_some_and(|(im, targs)| {
+                (im.bounds.iter())
+                    .all(|(i, b)| targs.get(*i).is_none_or(|a| self.has_impl(a, b.tr)))
+            })
+    }
     /// The library method `name` whose `self` can be `recv` (R11.3.4).
     pub fn method_for(&self, name: &str, recv: &Ty) -> Option<FnId> {
         let fits = |f: &FnId| match (self.f(*f).self_ty.as_ref(), recv) {
@@ -853,6 +871,12 @@ pub fn collect(
     let mut imports: Vec<(ModId, &ast::Stmt)> = Vec::new();
     let mut aliases: Vec<(ModId, usize, String, Vec<String>, ast::Type)> = Vec::new();
     let mut enums: Vec<(usize, String, Vec<String>)> = Vec::new();
+    let derived: Vec<Vec<(u32, String, ast::Stmt)>> = (mods.iter().enumerate())
+        .map(|(mi, m)| match mi == CORE.0 {
+            true => Vec::new(),
+            false => module_derived(&m.items),
+        })
+        .collect();
     let synth: Vec<Vec<(u32, ast::Stmt)>> = (mods.iter().enumerate())
         .map(|(mi, m)| {
             let mut out = Vec::new();
@@ -971,6 +995,13 @@ pub fn collect(
             })
             .collect();
     }
+    for (mi, made) in derived.iter().enumerate() {
+        for (item, name, s) in made {
+            if let Some(Named::Struct(id)) = own[mi].get(name).copied() {
+                pending.push((ModId(mi), *item, s, Some(Named::Struct(id))));
+            }
+        }
+    }
     let program = d.program.0;
     let names = d.module_names.clone();
     d.views = (0..n)
@@ -1059,341 +1090,370 @@ pub fn collect(
         }
     }
     // Traits first, for the defaults every use of one reads; impls last, for their trait's fns.
-    pending.sort_by_key(|(_, _, s, _)| match s.kind {
+    pending.sort_by_key(|(_, _, s, id)| match s.kind {
         StmtKind::Trait { .. } => 0,
+        StmtKind::Impl { .. } if id.is_some() => 3,
         StmtKind::Impl { .. } => 2,
         _ => 1,
     });
-    for (mid, item, s, id) in pending {
-        let mi = mid.0;
-        match (&s.kind, id) {
-            (StmtKind::Struct(sd), Some(Named::Struct(id))) => {
-                let generics: Vec<String> = sd.generics.iter().map(|g| g.text.clone()).collect();
-                let no_doms = HashMap::new();
-                let sets = d.struct_sets.clone();
-                let mut cx = TyCx {
-                    names: &d.views[mi].clone(),
-                    struct_sets: &sets,
-                    generics: &generics,
-                    args: None,
-                    aliases: &aliases,
-                    expanding: Vec::new(),
-                    doms: &no_doms,
-                    ret_slots: None,
-                    next_set: Some(0),
-                };
-                let mut errors = Vec::new();
-                let fields: Vec<(String, Ty)> = sd
-                    .fields
-                    .iter()
-                    .map(|f| (f.name.text.clone(), conv(&mut cx, &f.ty, &mut errors)))
-                    .collect();
-                if sd.generic_defaults.iter().any(Option::is_some) {
-                    errors.push(format!(
-                        "slice: a default type argument of `{}`",
-                        sd.name.text
-                    ));
-                }
-                let n_sets = cx.next_set.unwrap_or(0);
-                if d.is_library(mid) {
-                    d.structs[id.0].errors.extend(errors);
-                } else {
-                    d.errors.extend(errors);
-                }
-                let mut methods = HashMap::new();
-                for m in &sd.methods {
-                    if let StmtKind::Fn(f) = &m.kind {
-                        let fid = add_fn(
-                            &mut d,
-                            mid,
-                            item,
-                            m,
-                            f,
-                            Within {
-                                owner: Some(Owner::Struct(id)),
-                                generics: &generics,
-                                sets: n_sets,
-                                self_ty: Some(Ty::Struct(
-                                    id,
-                                    (0..generics.len()).map(Ty::Param).collect(),
-                                    (0..n_sets).map(SetTy::Param).collect(),
-                                )),
-                                sig: None,
-                            },
-                        );
-                        methods.insert(f.name.text.clone(), fid);
+    // A derived impl waits for its fields' types' impls, and is never made if one lacks it.
+    let mut queue = pending;
+    loop {
+        let mut wait = Vec::new();
+        let before = queue.len();
+        for (mid, item, s, id) in std::mem::take(&mut queue) {
+            let mi = mid.0;
+            match (&s.kind, id) {
+                (StmtKind::Struct(sd), Some(Named::Struct(id))) => {
+                    let generics: Vec<String> =
+                        sd.generics.iter().map(|g| g.text.clone()).collect();
+                    let no_doms = HashMap::new();
+                    let sets = d.struct_sets.clone();
+                    let mut cx = TyCx {
+                        names: &d.views[mi].clone(),
+                        struct_sets: &sets,
+                        generics: &generics,
+                        args: None,
+                        aliases: &aliases,
+                        expanding: Vec::new(),
+                        doms: &no_doms,
+                        ret_slots: None,
+                        next_set: Some(0),
+                    };
+                    let mut errors = Vec::new();
+                    let fields: Vec<(String, Ty)> = sd
+                        .fields
+                        .iter()
+                        .map(|f| (f.name.text.clone(), conv(&mut cx, &f.ty, &mut errors)))
+                        .collect();
+                    if sd.generic_defaults.iter().any(Option::is_some) {
+                        errors.push(format!(
+                            "slice: a default type argument of `{}`",
+                            sd.name.text
+                        ));
                     }
-                }
-                let sdecl = &mut d.structs[id.0];
-                sdecl.fields = fields;
-                sdecl.var_fields = sd.fields.iter().map(|f| f.mutable).collect();
-                sdecl.cached = sd.fields.iter().map(|f| f.cached).collect();
-                sdecl.defaults = sd.fields.iter().map(|f| f.default.clone()).collect();
-                sdecl.field_at = sd
-                    .fields
-                    .iter()
-                    .map(|f| (item + f.ty.span.start) as usize)
-                    .collect();
-                sdecl.n_sets = n_sets;
-                sdecl.ctor = methods.get("new").copied();
-                sdecl.methods = methods;
-            }
-            (
-                StmtKind::Trait {
-                    body,
-                    supers,
-                    generics,
-                    generic_defaults,
-                    ..
-                },
-                Some(Named::Trait(id)),
-            ) => {
-                let mut tgen = vec!["Self".to_string()];
-                tgen.extend(generics.iter().map(|g| g.text.clone()));
-                let mut errors = Vec::new();
-                let names = d.views[mi].clone();
-                let sets = d.struct_sets.clone();
-                let no_doms = HashMap::new();
-                let mut cx = TyCx {
-                    names: &names,
-                    struct_sets: &sets,
-                    generics: &tgen,
-                    args: None,
-                    aliases: &aliases,
-                    expanding: Vec::new(),
-                    doms: &no_doms,
-                    ret_slots: None,
-                    next_set: None,
-                };
-                d.traits[id.0].defaults = (generic_defaults.iter())
-                    .map(|t| t.as_ref().map(|t| conv(&mut cx, t, &mut errors)))
-                    .collect();
-                // A supertrait is in the trait's own parameters, without `Self`.
-                let own_params = |r: TraitRef| TraitRef {
-                    tr: r.tr,
-                    args: r.args.iter().map(shift_down).collect(),
-                };
-                let sup: Vec<TraitRef> = supers
-                    .iter()
-                    .filter_map(|t| trait_ref(&mut cx, t, &mut errors))
-                    .map(|r| d.with_defaults(r, &Ty::Param(0)))
-                    .map(own_params)
-                    .collect();
-                d.module_or_program_errors(mid, errors);
-                let mut methods = HashMap::new();
-                for m in &body.stmts {
-                    if let StmtKind::Fn(f) = &m.kind {
-                        let fid = add_fn(
-                            &mut d,
-                            mid,
-                            item,
-                            m,
-                            f,
-                            Within {
-                                owner: Some(Owner::Trait(id)),
-                                generics: &tgen,
-                                sets: 0,
-                                self_ty: Some(Ty::Param(0)),
-                                sig: None,
-                            },
-                        );
-                        // Inside the trait, `Self` has the trait: a default body may call its other fns.
-                        let own = TraitRef {
-                            tr: id,
-                            args: (1..tgen.len()).map(Ty::Param).collect(),
-                        };
-                        d.fns[fid.0].bounds.push((0, own));
-                        methods.insert(f.name.text.clone(), fid);
+                    let n_sets = cx.next_set.unwrap_or(0);
+                    if d.is_library(mid) {
+                        d.structs[id.0].errors.extend(errors);
+                    } else {
+                        d.errors.extend(errors);
                     }
-                }
-                d.traits[id.0].methods = methods;
-                d.traits[id.0].supers = sup;
-            }
-            (
-                StmtKind::Impl {
-                    trait_name: Some(tr),
-                    target,
-                    body,
-                    bounds,
-                },
-                _,
-            ) => {
-                let names = d.views[mi].clone();
-                // The impl's own type parameters: its bounds' names, then what its header writes
-                // that names nothing.
-                let mut generics: Vec<String> =
-                    bounds.iter().map(|b| b.name.text.clone()).collect();
-                for t in [tr, target] {
-                    unnamed(t, &names, &mut generics);
-                }
-                let sets = d.struct_sets.clone();
-                let no_doms = HashMap::new();
-                let mut errors = Vec::new();
-                let mut cx = TyCx {
-                    names: &names,
-                    struct_sets: &sets,
-                    generics: &generics,
-                    args: None,
-                    aliases: &aliases,
-                    expanding: Vec::new(),
-                    doms: &no_doms,
-                    ret_slots: None,
-                    next_set: Some(0),
-                };
-                let for_ = conv(&mut cx, target, &mut errors);
-                let tref = trait_ref(&mut cx, tr, &mut errors).map(|r| d.with_defaults(r, &for_));
-                let mut ibounds = Vec::new();
-                for b in bounds {
-                    let i = generics.iter().position(|g| *g == b.name.text).unwrap_or(0);
-                    for t in &b.traits {
-                        if let Some(r) = trait_ref(&mut cx, t, &mut errors) {
-                            ibounds.push((i, d.with_defaults(r, &Ty::Param(i))));
+                    let mut methods = HashMap::new();
+                    for m in &sd.methods {
+                        if let StmtKind::Fn(f) = &m.kind {
+                            let fid = add_fn(
+                                &mut d,
+                                mid,
+                                item,
+                                m,
+                                f,
+                                Within {
+                                    owner: Some(Owner::Struct(id)),
+                                    generics: &generics,
+                                    sets: n_sets,
+                                    self_ty: Some(Ty::Struct(
+                                        id,
+                                        (0..generics.len()).map(Ty::Param).collect(),
+                                        (0..n_sets).map(SetTy::Param).collect(),
+                                    )),
+                                    sig: None,
+                                },
+                            );
+                            methods.insert(f.name.text.clone(), fid);
                         }
                     }
+                    let sdecl = &mut d.structs[id.0];
+                    sdecl.fields = fields;
+                    sdecl.var_fields = sd.fields.iter().map(|f| f.mutable).collect();
+                    sdecl.cached = sd.fields.iter().map(|f| f.cached).collect();
+                    sdecl.defaults = sd.fields.iter().map(|f| f.default.clone()).collect();
+                    sdecl.field_at = sd
+                        .fields
+                        .iter()
+                        .map(|f| (item + f.ty.span.start) as usize)
+                        .collect();
+                    sdecl.n_sets = n_sets;
+                    sdecl.ctor = methods.get("new").copied();
+                    sdecl.methods = methods;
                 }
-                let n_sets = cx.next_set.unwrap_or(0);
-                if let (Some(r), true) = (&tref, d.is_library(mid) && !errors.is_empty()) {
-                    d.traits[r.tr.0].errors.append(&mut errors);
-                    continue;
-                }
-                // No program can reach a library impl of a trait the slice does not declare.
-                if tref.is_none() && d.is_library(mid) {
-                    continue;
-                }
-                let Some(tref) = tref.filter(|_| errors.is_empty()) else {
-                    if errors.is_empty() {
-                        errors.push("impl of an unknown trait".to_string());
-                    }
+                (
+                    StmtKind::Trait {
+                        body,
+                        supers,
+                        generics,
+                        generic_defaults,
+                        ..
+                    },
+                    Some(Named::Trait(id)),
+                ) => {
+                    let mut tgen = vec!["Self".to_string()];
+                    tgen.extend(generics.iter().map(|g| g.text.clone()));
+                    let mut errors = Vec::new();
+                    let names = d.views[mi].clone();
+                    let sets = d.struct_sets.clone();
+                    let no_doms = HashMap::new();
+                    let mut cx = TyCx {
+                        names: &names,
+                        struct_sets: &sets,
+                        generics: &tgen,
+                        args: None,
+                        aliases: &aliases,
+                        expanding: Vec::new(),
+                        doms: &no_doms,
+                        ret_slots: None,
+                        next_set: None,
+                    };
+                    d.traits[id.0].defaults = (generic_defaults.iter())
+                        .map(|t| t.as_ref().map(|t| conv(&mut cx, t, &mut errors)))
+                        .collect();
+                    // A supertrait is in the trait's own parameters, without `Self`.
+                    let own_params = |r: TraitRef| TraitRef {
+                        tr: r.tr,
+                        args: r.args.iter().map(shift_down).collect(),
+                    };
+                    let sup: Vec<TraitRef> = supers
+                        .iter()
+                        .filter_map(|t| trait_ref(&mut cx, t, &mut errors))
+                        .map(|r| d.with_defaults(r, &Ty::Param(0)))
+                        .map(own_params)
+                        .collect();
                     d.module_or_program_errors(mid, errors);
-                    continue;
-                };
-                let at = (item + s.span.start) as usize;
-                let tname = d.traits[tref.tr.0].name.clone();
-                if d.impls
-                    .iter()
-                    .any(|im| im.trait_.tr == tref.tr && overlap(&im.for_, &for_))
-                {
-                    d.misdeclared.push((
-                        at,
-                        cpl_diag::codes::DUPLICATE_DEFINITION.0,
-                        format!("a second impl of `{tname}` for one type (R08.1.2)"),
-                    ));
-                    continue;
-                }
-                if d.traits[tref.tr.0].alias {
-                    d.misdeclared.push((
-                        at,
-                        cpl_diag::codes::UNSUPPORTED.0,
-                        format!("`{tname}` is a trait alias: impl each trait it names (R08.2.6)"),
-                    ));
-                    continue;
-                }
-                // An impl lives with its trait or its type (R08.5.2).
-                let home = match &for_ {
-                    Ty::Struct(sd, ..) => Some(d.s(*sd).module),
-                    _ => None,
-                };
-                if !d.is_library(mid) && d.traits[tref.tr.0].module != mid && home != Some(mid) {
-                    d.misdeclared.push((
-                        at,
-                        cpl_diag::codes::UNSUPPORTED.0,
-                        format!("`{tname}` and the type are both declared elsewhere: an impl lives with one of them"),
-                    ));
-                    continue;
-                }
-                let id = d.impls.len();
-                let mut methods = HashMap::new();
-                for m in &body.stmts {
-                    if let StmtKind::Fn(f) = &m.kind {
-                        let sig = d.traits[tref.tr.0].methods.get(&f.name.text).map(|&tm| {
-                            let td = d.f(tm);
-                            let mut tys = vec![for_.clone()];
-                            tys.extend(tref.args.iter().cloned());
-                            let sub = Subst {
-                                tys: &tys,
-                                sets: &[],
+                    let mut methods = HashMap::new();
+                    for m in &body.stmts {
+                        if let StmtKind::Fn(f) = &m.kind {
+                            let fid = add_fn(
+                                &mut d,
+                                mid,
+                                item,
+                                m,
+                                f,
+                                Within {
+                                    owner: Some(Owner::Trait(id)),
+                                    generics: &tgen,
+                                    sets: 0,
+                                    self_ty: Some(Ty::Param(0)),
+                                    sig: None,
+                                },
+                            );
+                            // Inside the trait, `Self` has the trait: a default body may call its other fns.
+                            let own = TraitRef {
+                                tr: id,
+                                args: (1..tgen.len()).map(Ty::Param).collect(),
                             };
-                            TraitSig {
-                                self_mode: td.self_mode,
-                                params: td.params.iter().map(|p| sub.ty(&p.ty)).collect(),
-                                ret: sub.ty(&td.ret),
-                            }
-                        });
-                        let fid = add_fn(
-                            &mut d,
-                            mid,
-                            item,
-                            m,
-                            f,
-                            Within {
-                                owner: Some(Owner::Impl(id)),
-                                generics: &generics,
-                                sets: n_sets,
-                                self_ty: Some(for_.clone()),
-                                sig,
-                            },
-                        );
-                        // The impl's parameters come first in each method's, with its bounds.
-                        d.fns[fid.0].bounds.extend(ibounds.iter().cloned());
-                        methods.insert(f.name.text.clone(), fid);
+                            d.fns[fid.0].bounds.push((0, own));
+                            methods.insert(f.name.text.clone(), fid);
+                        }
                     }
+                    d.traits[id.0].methods = methods;
+                    d.traits[id.0].supers = sup;
                 }
-                d.impls.push(ImplDecl {
-                    trait_: tref,
-                    generics,
-                    bounds: ibounds,
-                    for_,
-                    methods,
-                    at,
-                    module: mid,
-                });
-            }
-            (StmtKind::Fn(f), _) => {
-                let fid = add_fn(&mut d, mid, item, s, f, FREE);
-                let before = own[mi].insert(f.name.text.clone(), Named::Fn(fid));
-                d.views[mi].insert(f.name.text.clone(), Named::Fn(fid));
-                if d.is_library(mid)
-                    && public[mi].contains(&f.name.text)
-                    && d.f(fid).self_ty.is_some()
-                {
-                    d.methods.entry(f.name.text.clone()).or_default().push(fid);
-                }
-                if let Some(Named::Fn(first)) = before {
-                    if d.is_library(mid) {
-                        let e = format!("slice: a library with two fns named `{}`", f.name.text);
-                        d.fns[fid.0].errors.push(e);
+                (
+                    StmtKind::Impl {
+                        trait_name: Some(tr),
+                        target,
+                        body,
+                        bounds,
+                    },
+                    _,
+                ) => {
+                    let names = d.views[mi].clone();
+                    // The impl's own type parameters: its bounds' names, then what its header writes
+                    // that names nothing.
+                    let mut generics: Vec<String> =
+                        bounds.iter().map(|b| b.name.text.clone()).collect();
+                    for t in [tr, target] {
+                        unnamed(t, &names, &mut generics);
+                    }
+                    let sets = d.struct_sets.clone();
+                    let no_doms = HashMap::new();
+                    let mut errors = Vec::new();
+                    let mut cx = TyCx {
+                        names: &names,
+                        struct_sets: &sets,
+                        generics: &generics,
+                        args: None,
+                        aliases: &aliases,
+                        expanding: Vec::new(),
+                        doms: &no_doms,
+                        ret_slots: None,
+                        next_set: Some(0),
+                    };
+                    let for_ = conv(&mut cx, target, &mut errors);
+                    let tref =
+                        trait_ref(&mut cx, tr, &mut errors).map(|r| d.with_defaults(r, &for_));
+                    let mut ibounds = Vec::new();
+                    for b in bounds {
+                        let i = generics.iter().position(|g| *g == b.name.text).unwrap_or(0);
+                        for t in &b.traits {
+                            if let Some(r) = trait_ref(&mut cx, t, &mut errors) {
+                                ibounds.push((i, d.with_defaults(r, &Ty::Param(i))));
+                            }
+                        }
+                    }
+                    let n_sets = cx.next_set.unwrap_or(0);
+                    if let (Some(r), true) = (&tref, d.is_library(mid) && !errors.is_empty()) {
+                        d.traits[r.tr.0].errors.append(&mut errors);
                         continue;
                     }
-                    // Two with a `self` are one method's overloads unless one call could take
-                    // both (R08.1.4); that test isn't built.
-                    if d.f(first).self_ty.is_some() && d.f(fid).self_ty.is_some() {
-                        d.errors.push(format!(
-                            "slice: methods of one name in one module (`{}`)",
-                            f.name.text
+                    // No program can reach a library impl of a trait the slice does not declare.
+                    if tref.is_none() && d.is_library(mid) {
+                        continue;
+                    }
+                    let Some(tref) = tref.filter(|_| errors.is_empty()) else {
+                        if errors.is_empty() {
+                            errors.push("impl of an unknown trait".to_string());
+                        }
+                        d.module_or_program_errors(mid, errors);
+                        continue;
+                    };
+                    if let Some(Named::Struct(sid)) = id {
+                        if !d.fields_have(sid, tref.tr) {
+                            wait.push((mid, item, s, id));
+                            continue;
+                        }
+                    }
+                    let at = (item + s.span.start) as usize;
+                    let tname = d.traits[tref.tr.0].name.clone();
+                    if d.impls
+                        .iter()
+                        .any(|im| im.trait_.tr == tref.tr && overlap(&im.for_, &for_))
+                    {
+                        // A type's own impl replaces its derived one (R08.1.6).
+                        if id.is_some() {
+                            continue;
+                        }
+                        d.misdeclared.push((
+                            at,
+                            cpl_diag::codes::DUPLICATE_DEFINITION.0,
+                            format!("a second impl of `{tname}` for one type (R08.1.2)"),
                         ));
                         continue;
                     }
-                    // One name and one set of labels is one fn: nothing is chosen by
-                    // argument type (R02.11.3, R06.1.6).
-                    let labels = |f: FnId| -> Vec<&str> {
-                        let mut ls: Vec<&str> = d.f(f).labels.iter().map(String::as_str).collect();
-                        ls.sort_unstable();
-                        ls
-                    };
-                    if labels(first) != labels(fid) {
-                        d.errors
-                            .push("slice: fns of one name told apart by their labels".to_string());
+                    if d.traits[tref.tr.0].alias {
+                        d.misdeclared.push((
+                            at,
+                            cpl_diag::codes::UNSUPPORTED.0,
+                            format!(
+                                "`{tname}` is a trait alias: impl each trait it names (R08.2.6)"
+                            ),
+                        ));
+                        continue;
                     }
-                    let code = cpl_diag::codes::OVERLOAD_BY_TYPE;
-                    d.misdeclared.push((
-                        (item + s.span.start) as usize,
-                        code.0,
-                        format!("`{}` is already a fn; one name is one fn", f.name.text),
-                    ));
+                    // An impl lives with its trait or its type (R08.5.2).
+                    let home = match &for_ {
+                        Ty::Struct(sd, ..) => Some(d.s(*sd).module),
+                        _ => None,
+                    };
+                    if !d.is_library(mid) && d.traits[tref.tr.0].module != mid && home != Some(mid)
+                    {
+                        d.misdeclared.push((
+                            at,
+                            cpl_diag::codes::UNSUPPORTED.0,
+                            format!("`{tname}` and the type are both declared elsewhere: an impl lives with one of them"),
+                        ));
+                        continue;
+                    }
+                    let id = d.impls.len();
+                    let mut methods = HashMap::new();
+                    for m in &body.stmts {
+                        if let StmtKind::Fn(f) = &m.kind {
+                            let sig = d.traits[tref.tr.0].methods.get(&f.name.text).map(|&tm| {
+                                let td = d.f(tm);
+                                let mut tys = vec![for_.clone()];
+                                tys.extend(tref.args.iter().cloned());
+                                let sub = Subst {
+                                    tys: &tys,
+                                    sets: &[],
+                                };
+                                TraitSig {
+                                    self_mode: td.self_mode,
+                                    params: td.params.iter().map(|p| sub.ty(&p.ty)).collect(),
+                                    ret: sub.ty(&td.ret),
+                                }
+                            });
+                            let fid = add_fn(
+                                &mut d,
+                                mid,
+                                item,
+                                m,
+                                f,
+                                Within {
+                                    owner: Some(Owner::Impl(id)),
+                                    generics: &generics,
+                                    sets: n_sets,
+                                    self_ty: Some(for_.clone()),
+                                    sig,
+                                },
+                            );
+                            // The impl's parameters come first in each method's, with its bounds.
+                            d.fns[fid.0].bounds.extend(ibounds.iter().cloned());
+                            methods.insert(f.name.text.clone(), fid);
+                        }
+                    }
+                    d.impls.push(ImplDecl {
+                        trait_: tref,
+                        generics,
+                        bounds: ibounds,
+                        for_,
+                        methods,
+                        at,
+                        module: mid,
+                    });
                 }
+                (StmtKind::Fn(f), _) => {
+                    let fid = add_fn(&mut d, mid, item, s, f, FREE);
+                    let before = own[mi].insert(f.name.text.clone(), Named::Fn(fid));
+                    d.views[mi].insert(f.name.text.clone(), Named::Fn(fid));
+                    if d.is_library(mid)
+                        && public[mi].contains(&f.name.text)
+                        && d.f(fid).self_ty.is_some()
+                    {
+                        d.methods.entry(f.name.text.clone()).or_default().push(fid);
+                    }
+                    if let Some(Named::Fn(first)) = before {
+                        if d.is_library(mid) {
+                            let e =
+                                format!("slice: a library with two fns named `{}`", f.name.text);
+                            d.fns[fid.0].errors.push(e);
+                            continue;
+                        }
+                        // Two with a `self` are one method's overloads unless one call could take
+                        // both (R08.1.4); that test isn't built.
+                        if d.f(first).self_ty.is_some() && d.f(fid).self_ty.is_some() {
+                            d.errors.push(format!(
+                                "slice: methods of one name in one module (`{}`)",
+                                f.name.text
+                            ));
+                            continue;
+                        }
+                        // One name and one set of labels is one fn: nothing is chosen by
+                        // argument type (R02.11.3, R06.1.6).
+                        let labels = |f: FnId| -> Vec<&str> {
+                            let mut ls: Vec<&str> =
+                                d.f(f).labels.iter().map(String::as_str).collect();
+                            ls.sort_unstable();
+                            ls
+                        };
+                        if labels(first) != labels(fid) {
+                            d.errors.push(
+                                "slice: fns of one name told apart by their labels".to_string(),
+                            );
+                        }
+                        let code = cpl_diag::codes::OVERLOAD_BY_TYPE;
+                        d.misdeclared.push((
+                            (item + s.span.start) as usize,
+                            code.0,
+                            format!("`{}` is already a fn; one name is one fn", f.name.text),
+                        ));
+                    }
+                }
+                _ => {}
             }
-            _ => {}
         }
+        if wait.is_empty() || wait.len() == before {
+            break;
+        }
+        queue = wait;
     }
     let mut errors = Vec::new();
     d.views = (0..n)
@@ -1714,4 +1774,144 @@ fn enum_structs(s: &ast::Stmt, e: &ast::EnumDecl) -> (Vec<ast::Stmt>, Vec<String
         ));
     }
     (out, errors)
+}
+
+/// Per struct a module declares, the impls it gets structurally (R08.1.6), made after every written
+/// impl and only where none is: `Eq` field by field and `Ord` lexicographic in declaration order.
+fn module_derived(items: &[(u32, Vec<ast::Stmt>)]) -> Vec<(u32, String, ast::Stmt)> {
+    let mut out = Vec::new();
+    for (item, stmts) in items {
+        for s in stmts {
+            let StmtKind::Struct(sd) = &s.kind else {
+                continue;
+            };
+            // The traits `==` and `<` call: the derivable ones.
+            for op in [ast::CmpOp::Eq, ast::CmpOp::Lt] {
+                let Some((tr, method)) = op.trait_method() else {
+                    continue;
+                };
+                let derived = derived_impl(s, sd, op, tr, method);
+                out.push((*item, sd.name.text.clone(), derived));
+            }
+        }
+    }
+    out
+}
+
+/// `impl<T: Eq> Eq for S<T>: fn eq(a, b) = a.x == b.x and ..`, or `Ord`'s `lt` over the fields in
+/// order, bounding the parameters the fields mention and written at the struct.
+fn derived_impl(
+    s: &ast::Stmt,
+    sd: &ast::StructDecl,
+    op: ast::CmpOp,
+    tr: &str,
+    method: &str,
+) -> ast::Stmt {
+    use ast::{BinOp, CmpOp, ExprKind};
+    let span = s.span;
+    let name = |text: &str| ast::Name {
+        text: text.to_string(),
+        span,
+    };
+    let ty = |text: &str, args| ast::Type {
+        kind: TypeKind::Named {
+            name: name(text),
+            args,
+        },
+        span,
+    };
+    let ex = |kind| ast::Expr { kind, span };
+    let field = |side: &str, f: &str| {
+        ex(ExprKind::Field {
+            base: Box::new(ex(ExprKind::Name(side.to_string()))),
+            name: name(f),
+        })
+    };
+    let cmp = |op, f: &str| {
+        ex(ExprKind::Compare {
+            first: Box::new(field("a", f)),
+            rest: vec![(op, field("b", f))],
+        })
+    };
+    let bin = |op, lhs, rhs| {
+        ex(ExprKind::Binary {
+            op,
+            op_span: span,
+            lhs: Box::new(lhs),
+            rhs: Box::new(rhs),
+        })
+    };
+    // A `@cache` field is not part of the value (R05.10.13).
+    let compared: Vec<&ast::FieldDecl> = sd.fields.iter().filter(|f| !f.cached).collect();
+    let fields: Vec<&str> = compared.iter().map(|f| f.name.text.as_str()).collect();
+    let body = match op {
+        CmpOp::Eq => (fields.iter().map(|f| cmp(CmpOp::Eq, f)))
+            .reduce(|a, b| bin(BinOp::And, a, b))
+            .unwrap_or_else(|| ex(ExprKind::Bool(true))),
+        _ => (fields.iter().rev())
+            .fold(None, |rest, f| {
+                Some(match rest {
+                    None => cmp(CmpOp::Lt, f),
+                    Some(r) => bin(
+                        BinOp::Or,
+                        cmp(CmpOp::Lt, f),
+                        bin(BinOp::And, cmp(CmpOp::Eq, f), r),
+                    ),
+                })
+            })
+            .unwrap_or_else(|| ex(ExprKind::Bool(false))),
+    };
+    let mut mentioned = Vec::new();
+    for f in &compared {
+        unnamed(&f.ty, &HashMap::new(), &mut mentioned);
+    }
+    let param = |n: &str| ast::Param {
+        mutable: false,
+        variadic: false,
+        lazy: false,
+        named_only: false,
+        label: None,
+        name: name(n),
+        ty: None,
+        default: None,
+        span,
+    };
+    let f = ast::FnDecl {
+        name: name(method),
+        generics: Vec::new(),
+        bounds: Vec::new(),
+        params: vec![param("a"), param("b")],
+        ret: None,
+        lends: None,
+        uses: Vec::new(),
+        body: FnBody::Expr(body),
+        sig_span: span,
+    };
+    let stmt = |kind| ast::Stmt {
+        kind,
+        span,
+        decorators: Vec::new(),
+        public: false,
+    };
+    stmt(StmtKind::Impl {
+        trait_name: Some(ty(tr, Vec::new())),
+        target: ty(
+            &sd.name.text,
+            sd.generics
+                .iter()
+                .map(|g| ty(&g.text, Vec::new()))
+                .collect(),
+        ),
+        bounds: (sd.generics.iter())
+            .filter(|g| mentioned.contains(&g.text))
+            .map(|g| ast::Bound {
+                name: g.clone(),
+                traits: vec![ty(tr, Vec::new())],
+            })
+            .collect(),
+        body: ast::Block {
+            stmts: vec![stmt(StmtKind::Fn(f))],
+            span,
+        },
+    })
 }

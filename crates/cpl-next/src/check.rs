@@ -188,6 +188,8 @@ pub struct Typed {
     pub errors: Vec<String>,
     /// The errors of each library fn reached only through a trait, said if an instance runs it.
     pub deferred: HashMap<FnId, Vec<String>>,
+    /// The library fns reached only through a trait: what is wrong in one is said if it runs.
+    pub quiet: HashSet<FnId>,
     /// Members the program or a library asked for that nothing loaded declares.
     pub missing: Vec<String>,
 }
@@ -360,6 +362,7 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
         .rev()
         .collect();
     let mut deferred: HashMap<FnId, Vec<String>> = HashMap::new();
+    let mut quiet_fns = HashSet::new();
     loop {
         todo.append(&mut cx.reached);
         let (id, quiet) = match todo.pop() {
@@ -378,6 +381,7 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
             fns.insert(id, tf);
             continue;
         }
+        quiet_fns.insert(id);
         let (n, reported) = (cx.errors.len(), cx.reported.clone());
         cx.reach(id);
         let tf = cx.check_fn(id);
@@ -430,6 +434,7 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
         errors: cx.errors,
         missing: cx.missing,
         deferred,
+        quiet: quiet_fns,
     }
 }
 

@@ -124,7 +124,7 @@ pub fn compile(user_src: &str, events: bool) -> Result<Compiled, Vec<Diag>> {
         for e in &d.errors {
             add(Stage::Decls, e);
         }
-        let t = check::check(&d, &main, &src);
+        let mut t = check::check(&d, &main, &src);
         let more = modules::declaring(&t.missing, &loaded.modules);
         if !more.is_empty() {
             wanted.extend(more);
@@ -140,6 +140,10 @@ pub fn compile(user_src: &str, events: bool) -> Result<Compiled, Vec<Diag>> {
         };
         for e in &owned.errors {
             add(Stage::Own, e);
+        }
+        for (f, es) in &owned.deferred {
+            let own = es.iter().map(|e| format!("own: {e}"));
+            t.deferred.entry(*f).or_default().extend(own);
         }
         let g = lower::lower(&d, &t, &owned, &src, std_lines as u32);
         for e in &g.errors {
