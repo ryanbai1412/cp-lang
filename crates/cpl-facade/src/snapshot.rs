@@ -49,13 +49,14 @@ pub enum World {
 /// Files in the order of their ids, each once.
 pub(crate) type Files = Vec<(FileId, Text)>;
 
-fn at(files: &Files, file: &FileId) -> Result<usize, usize> {
-    files.binary_search_by(|(held, _)| held.cmp(file))
+/// Where `files` holds the file at `path`, or where it would go.
+pub(crate) fn at(files: &Files, path: &str) -> Result<usize, usize> {
+    files.binary_search_by(|(held, _)| held.path().cmp(path))
 }
 
 /// The text `files` holds for `file`.
-pub(crate) fn text_of<'a>(files: &'a Files, file: &FileId) -> Option<&'a Text> {
-    at(files, file).ok().map(|held| &files[held].1)
+pub(crate) fn text_of<'a>(files: &'a Files, path: &str) -> Option<&'a Text> {
+    at(files, path).ok().map(|held| &files[held].1)
 }
 
 /// The only input of every query: the files, and where the rest is found.
@@ -98,12 +99,11 @@ impl Snapshot {
 
     /// This snapshot with `file` holding `text`, or without it.
     fn holding(&self, file: &str, text: Option<&str>) -> Snapshot {
-        let file = FileId::new(file);
         let mut next = self.held();
         let files = &mut next.files;
-        match (at(files, &file), text) {
+        match (at(files, file), text) {
             (Ok(held), Some(text)) => files[held].1 = Text::from(text),
-            (Err(place), Some(text)) => files.insert(place, (file, Text::from(text))),
+            (Err(place), Some(text)) => files.insert(place, (FileId::new(file), Text::from(text))),
             (Ok(held), None) => drop(files.remove(held)),
             (Err(_), None) => {}
         }
@@ -163,7 +163,12 @@ impl Snapshot {
     }
 
     pub fn text(&self, file: &FileId) -> Option<&Text> {
-        text_of(&self.0.files, file)
+        self.text_at(file.path())
+    }
+
+    /// The text of the file at `path`, if the snapshot holds one.
+    pub(crate) fn text_at(&self, path: &str) -> Option<&Text> {
+        text_of(&self.0.files, path)
     }
 
     pub fn files(&self) -> impl Iterator<Item = (&FileId, &Text)> {

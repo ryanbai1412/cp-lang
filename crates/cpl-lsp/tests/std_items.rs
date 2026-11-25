@@ -863,7 +863,7 @@ fn own_member_uses(
             for u in uses.into_iter().filter(|_| checks) {
                 let shift = code[..u].matches("; ").count();
                 let offset = (head.len() + u - shift + 1) as u32;
-                let def = session.definition_location("/w/example.cp", offset);
+                let def = session.definition("/w/example.cp", offset);
                 examined.insert(at + open + u);
                 // `[5, 6, 7][1..].to_list()` takes the `Slice` syntax builds, which the
                 // checker reads as its source: a copy's own `SliceMine` can't take it.

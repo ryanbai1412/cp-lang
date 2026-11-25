@@ -594,8 +594,8 @@ impl Playground {
         self.db.set_file(name, source);
         let text = Text::new(source);
         match self.db.definition(name, text.byte(offset)) {
-            Some(span) => text.located(span, []),
-            None => Value::Null,
+            Some(def) if def.path == name => text.located(def.span, []),
+            _ => Value::Null,
         }
     }
 

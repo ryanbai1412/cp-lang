@@ -10,7 +10,8 @@ use crate::outline::Outline;
 use crate::rename;
 use crate::uri::uri_of_path;
 use cpl_diag::{Diagnostic, LineCol, LineIndex, Severity, Span};
-use cpl_facade::today::{DeclKind, Definition, Ty};
+use cpl_facade::today::{DeclKind, Ty};
+use cpl_facade::Definition;
 use cpl_facade::Session;
 use cpl_json::{obj, Value};
 #[cfg(not(target_arch = "wasm32"))]
@@ -385,7 +386,7 @@ impl Server {
                 if fns.len() > 1 {
                     hover.text = fns.join("\n");
                 }
-                if let Some(def) = self.db.definition_location(&uri, offset) {
+                if let Some(def) = self.db.definition(&uri, offset) {
                     if def.path != uri {
                         let text = self.db.file_text(&def.path).unwrap_or_default();
                         let outline = self.std.outline_of(&def.path, text);
@@ -395,7 +396,8 @@ impl Server {
                 let declared = self
                     .db
                     .definition(&uri, offset)
-                    .map_or(hover.span.start, |d| d.start);
+                    .filter(|d| d.path == uri)
+                    .map_or(hover.span.start, |d| d.span.start);
                 let facts = self.proven_of(&uri, analysis.clone());
                 let proven = facts
                     .ranges()
@@ -609,7 +611,7 @@ impl Server {
                     return Ok(Reply::default());
                 }
                 let name = name.to_string();
-                match self.db.definition_location(&uri, offset) {
+                match self.db.definition(&uri, offset) {
                     Some(def) if rename::spelled_by_input(&mut self.db, &def, &[&uri]) => {
                         Err((INVALID_PARAMS, Self::spelled_by_input(&name)))
                     }

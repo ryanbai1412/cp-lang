@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use cpl_diag::Diagnostic;
 
-use crate::snapshot::{text_of, FileId, Files, Snapshot, Text, World};
+use crate::snapshot::{at, text_of, FileId, Files, Snapshot, Text, World};
 use crate::today::Analysis;
 
 /// How far a file is taken before its diagnostics are reported.
@@ -336,17 +336,16 @@ impl Session {
     /// ([`Snapshot::with_std`]) for the file's diagnostics to be about the
     /// file. Empty when the build carries all of it.
     pub fn std_needs(&self, file: &str) -> Vec<String> {
-        let file = FileId::new(file);
-        let mut inner = self.synced(Some(&file));
-        inner.db.analysis(file.path());
-        inner.db.std_needs(file.path())
+        let mut inner = self.asked(file);
+        inner.db.analysis(file);
+        inner.db.std_needs(file)
     }
 
     /// [`Session::std_needs`], and with them the modules those would ask
     /// for in turn as far as their outlines say: fewer rounds of giving.
     /// Ask again after giving them, until it names none.
     pub fn std_needed(&self, file: &str) -> Vec<String> {
-        let text = self.snapshot.text(&FileId::new(file));
+        let text = self.snapshot.text_at(file);
         text.map(|text| self.snapshot.std().needed(file, text))
             .unwrap_or_default()
     }
@@ -384,12 +383,12 @@ impl Session {
         } = &mut *inner;
         db.set_std(self.snapshot.std());
         for (file, _) in held.iter() {
-            if text_of(&programs, file).is_none() {
+            if text_of(&programs, file.path()).is_none() {
                 db.remove_file(file.path());
             }
         }
         for (file, text) in &programs {
-            let held = text_of(held, file);
+            let held = text_of(held, file.path());
             if !held.is_some_and(|held| Arc::ptr_eq(held, text) || held == text) {
                 db.set_file(file.path(), text.clone());
             }
@@ -399,9 +398,14 @@ impl Session {
         inner
     }
 
+    /// [`Session::synced`] for a query about the file at `path`.
+    #[inline(never)]
+    pub(crate) fn asked(&self, path: &str) -> MutexGuard<'_, Inner> {
+        self.synced(Some(&FileId::new(path)))
+    }
+
     pub(crate) fn checked(&self, file: &str) -> Option<Arc<Analysis>> {
-        let file = FileId::new(file);
-        self.synced(Some(&file)).db.analysis(file.path())
+        self.asked(file).db.analysis(file)
     }
 
     /// Every diagnostic `file` has, up to `upto`. One answer for every
@@ -454,13 +458,14 @@ impl Session {
     /// in it, and afterwards forgets what it held for `file`, so the next
     /// query puts the snapshot's text back.
     fn trying<R>(&self, file: &str, search: impl FnOnce(&mut cpl_check::Session) -> R) -> R {
-        let id = FileId::new(file);
-        let mut inner = self.synced(Some(&id));
+        let mut inner = self.asked(file);
         let found = search(&mut inner.db);
-        if self.snapshot.text(&id).is_none() {
+        if self.snapshot.text_at(file).is_none() {
             inner.db.remove_file(file);
         }
-        inner.programs.retain(|(file, _)| *file != id);
+        if let Ok(held) = at(&inner.programs, file) {
+            inner.programs.remove(held);
+        }
         inner.last = None;
         found
     }

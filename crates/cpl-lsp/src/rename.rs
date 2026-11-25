@@ -6,7 +6,7 @@
 //! text are asked, which keeps a request to a handful of lookups.
 
 use cpl_diag::Span;
-use cpl_facade::today::Definition;
+use cpl_facade::Definition;
 use cpl_facade::Session;
 use cpl_syntax::ast::StmtKind;
 
@@ -37,7 +37,7 @@ pub fn word_at(text: &str, offset: u32) -> Option<(Span, &str)> {
 pub fn references(db: &mut Session, path: &str, offset: u32) -> Option<(Definition, Vec<Span>)> {
     let analysis = db.analyze(path)?;
     let (_, name) = word_at(&analysis.text, offset)?;
-    let Some(target) = db.definition_location(path, offset) else {
+    let Some(target) = db.definition(path, offset) else {
         return field_references(&analysis, path, offset, name);
     };
     let spans = uses_in(db, path, &target, name);
@@ -94,7 +94,7 @@ pub fn uses_in(db: &mut Session, path: &str, target: &Definition, name: &str) ->
         .into_iter()
         .filter(names)
         .filter(|span| {
-            db.definition_location(path, span.start)
+            db.definition(path, span.start)
                 .is_some_and(|d| same_place(&d, target))
         })
         .collect();
@@ -466,7 +466,7 @@ pub fn changed_meaning(
             continue;
         };
         for at in words(&text, old).chain(words(&text, new)) {
-            if let Some(def) = db.definition_location(file, at) {
+            if let Some(def) = db.definition(file, at) {
                 let def_at = moved(&def.path, def.span.start);
                 expected.push((file.clone(), at, moved(file, at), def.path, def_at));
             }
@@ -490,7 +490,7 @@ pub fn changed_meaning(
     }
     let broken = expected.into_iter().find(|(file, _, at, path, def_at)| {
         trial
-            .definition_location(file, *at)
+            .definition(file, *at)
             .is_none_or(|d| !same_file(&d.path, path) || d.span.start != *def_at)
     });
     let (file, at, ..) = broken?;

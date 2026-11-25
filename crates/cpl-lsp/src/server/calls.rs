@@ -4,7 +4,7 @@ use super::{range_json, Reply, Server, INVALID_PARAMS};
 use crate::rename;
 use crate::uri::uri_of_path;
 use cpl_diag::{LineIndex, Span};
-use cpl_facade::today::Definition;
+use cpl_facade::Definition;
 use cpl_json::{obj, Value};
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
@@ -18,7 +18,7 @@ impl Server {
     ) -> Option<Result<Reply, (i32, String)>> {
         Some(match method {
             "textDocument/prepareCallHierarchy" => self.position(params).map(|(uri, offset, _)| {
-                let def = self.db.definition_location(&uri, offset);
+                let def = self.db.definition(&uri, offset);
                 let item = def.and_then(|def| self.fn_item(&uri, &def));
                 Reply::result(item.map_or(Value::Null, |item| Value::Array(vec![item])))
             }),
@@ -126,7 +126,7 @@ impl Server {
             .collect();
         let mut found: BTreeMap<(String, u32), (Value, Vec<Span>)> = BTreeMap::new();
         for at in calls {
-            let Some(def) = self.db.definition_location(&path, at) else {
+            let Some(def) = self.db.definition(&path, at) else {
                 continue;
             };
             if def == *target {

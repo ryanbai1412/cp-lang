@@ -10,15 +10,15 @@ use std::sync::Arc;
 use cpl_diag::Diagnostic;
 
 use crate::session::{self, Layer, Session};
-use crate::snapshot::{FileId, Text};
+use crate::snapshot::Text;
 
 pub use cpl_check::{
     arity_key, builtin_members, closest, human_bytes, import_edit, interval, is_list_form_hook,
     loaded_std, needs_order, prelude_names, prelude_type, prelude_uses, split_builtin_params,
-    type_arity, Analysis, AnalyzedItem, BuiltinMember, CalleeKind, Decl, DeclKind, Definition,
-    Facts, FsLoader, Hover, HoverEntry, Import, Loader, MemberKind, Module, Overflow, Param,
-    PreludeKind, RangeEnds, Receiver, Representation, Stats, Symbol, Ty, TypedIndex,
-    BUILTIN_MEMBERS, BUILTIN_TYPES, DOMAIN_MEMBERS, OPTIONAL_MEMBERS, POS_MEMBERS, RANGE_MEMBERS,
+    type_arity, Analysis, AnalyzedItem, BuiltinMember, CalleeKind, Decl, DeclKind, Facts, FsLoader,
+    Hover, HoverEntry, Import, Loader, MemberKind, Module, Overflow, Param, PreludeKind, RangeEnds,
+    Receiver, Representation, Stats, Symbol, Ty, TypedIndex, BUILTIN_MEMBERS, BUILTIN_TYPES,
+    DOMAIN_MEMBERS, OPTIONAL_MEMBERS, POS_MEMBERS, RANGE_MEMBERS,
 };
 
 /// A run's recording and what is read from it.
@@ -170,7 +170,7 @@ pub fn reported(analysis: &Analysis) -> Vec<Diagnostic> {
 macro_rules! asks {
     ($($name:ident($($arg:ident: $ty:ty),*) -> $ret:ty;)*) => {
         $(pub fn $name(&self, path: &str $(, $arg: $ty)*) -> $ret {
-            self.synced(Some(&FileId::new(path))).db.$name(path $(, $arg)*)
+            self.asked(path).db.$name(path $(, $arg)*)
         })*
     };
 }
@@ -202,7 +202,7 @@ impl Session {
 
     /// The text of `path`, in the snapshot or as an import loaded it.
     pub fn file_text(&self, path: &str) -> Option<Text> {
-        if let Some(held) = self.snapshot().text(&FileId::new(path)) {
+        if let Some(held) = self.snapshot().text_at(path) {
             return Some(held.clone());
         }
         self.synced(None).db.file_text(path)
@@ -223,11 +223,6 @@ impl Session {
         hover(offset: u32) -> Option<Hover>;
         costs_in(start: u32, end: u32) -> Vec<(cpl_diag::Span, String, String)>;
         typed_index(offset: u32, on_index: bool) -> Option<TypedIndex>;
-        definition(offset: u32) -> Option<cpl_diag::Span>;
-        definitions(offset: u32) -> Vec<Definition>;
-        definition_location(offset: u32) -> Option<Definition>;
-        type_definition(offset: u32) -> Option<Definition>;
-        implementations(offset: u32) -> Vec<Definition>;
         symbols() -> Vec<Symbol>;
         fns() -> Vec<Symbol>;
     }
