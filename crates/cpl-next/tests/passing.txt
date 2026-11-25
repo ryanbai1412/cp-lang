@@ -14,6 +14,8 @@ core-01/chain-ok.cp
 core-01/char-escapes.cp
 core-01/char-two.cp
 core-01/coalesce-needs-parens.cp
+core-01/coalesce-parenthesized.cp
+core-01/coalesce-runs-its-right-side-only-when-empty.cp
 core-01/comment-mentioning-else-is-a-comment.cp
 core-01/compare-chain-stops-at-a-false-link.cp
 core-01/compound-assign-is-not-a-value.cp
@@ -31,6 +33,7 @@ core-01/floor-division-by-zero-traps.cp
 core-01/for-filter-on-inner-clause.cp
 core-01/hash-comment.cp
 core-01/if-elif-inline-expression.cp
+core-01/if-let-two-binders.cp
 core-01/indent-after-one-line-body.cp
 core-01/interp.cp
 core-01/line-comment-runs-to-eol.cp
@@ -95,6 +98,7 @@ core-02/generic-enum-payload-binds-its-type-argument.cp
 core-02/get-defaults.cp
 core-02/getter-needs-defaults.cp
 core-02/heap-moves-str.cp
+core-02/inference-annotated-optional.cp
 core-02/inference-needs-annotation.cp
 core-02/lends-not-in-types.cp
 core-02/let-keeps-range-fits.cp
@@ -166,6 +170,7 @@ core-04/runtime-domain-literal-between-traps.cp
 core-04/runtime-domain-literal-past-max.cp
 core-04/scalar-fill.cp
 core-05/cache-field-method-call-grows.cp
+core-05/cache-plain-copy-closure-before-lend.cp
 core-05/cache-walk-then-find.cp
 core-05/cache-write-through-read-self.cp
 core-05/captured-let-moved-out.cp
@@ -309,6 +314,7 @@ core-09/range-store-trap.cp
 core-09/trapped-check-that-holds.cp
 core-09/unchecked-is-statement.cp
 core-09/unwrap-none-trap.cp
+core-09/unwrap-some-ok.cp
 core-10/bad-token-trap.cp
 core-10/multitest-count-past-input-traps.cp
 core-10/multitest-domain-from-domain-count.cp
@@ -607,6 +613,7 @@ std-dsu/new.cp
 std-geometry/area2-orientation.cp
 std-geometry/free-dot-and-cross-are-public.cp
 std-hashmap/counter-is-a-std-struct-a-user-may-shadow.cp
+std-opt/a-niche-packed-field-lends-to-a-read-only-param.cp
 std-range/len-param-past-2-31-is-a-compile-error.cp
 std-range/len-param-past-2-31-traps-at-the-call.cp
 std-range/len-param-takes-a-len.cp

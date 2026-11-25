@@ -904,16 +904,22 @@ impl<'a> Cx<'a> {
                     }
                     return mk(TK::Error, Ty::Error);
                 };
+                // An optional right side keeps the result optional: `a ?? b ?? 9` (R01.8.6).
                 let r = self.expr(rhs, Some(&inner));
-                let r = self.coerce(r, &inner);
+                let opt = l.ty.clone();
+                let (r, out) = match self.optional_of(&r.ty) {
+                    Some(_) => (self.coerce(r, &opt), opt.clone()),
+                    None => (self.coerce(r, &inner), inner.clone()),
+                };
                 self.scopes.push(HashMap::new());
-                let (bind, flag, val) = self.opened(l, inner.clone());
+                let (bind, flag, val) = self.opened(l, inner);
                 self.scopes.pop();
+                let val = if out == opt { self.some(val, opt) } else { val };
                 let pick = mk(
                     TK::If(Box::new(flag), Box::new(val), Box::new(r)),
-                    inner.clone(),
+                    out.clone(),
                 );
-                mk(TK::Block(bind, Some(Box::new(pick))), inner)
+                mk(TK::Block(bind, Some(Box::new(pick))), out)
             }
             ExprKind::Name(n) => self.name(n, span),
             ExprKind::SelfValue => self.self_expr(span).unwrap_or(mk(TK::Error, Ty::Error)),

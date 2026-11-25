@@ -126,6 +126,9 @@ struct Optional<T>:
     some: Bool
     val: T
 
+/// `Some(v)`: `v`, present (R01.5.6).
+fn some<T>(v: T) -> ?T = v
+
 struct Tuple2<A, B>:
     _0: A
     _1: B
