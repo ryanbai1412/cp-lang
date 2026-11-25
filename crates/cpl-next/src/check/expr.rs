@@ -486,84 +486,92 @@ impl<'a> Cx<'a> {
                 ExprKind::Name(n) if (n == "print" || n == "write") && self.lookup(n).is_none() => {
                     let newline = n == "print";
                     let mut pieces = Vec::new();
-                    match args.first().map(|a| &a.value.kind) {
-                        Some(ExprKind::Str(ps)) => {
-                            for p in ps {
-                                match p {
-                                    StrPiece::Text(t) => pieces.push(Piece::Text(t.clone())),
-                                    StrPiece::Expr(x) => {
-                                        let v = self.expr(x, None);
-                                        if !matches!(
-                                            self.shallow(&v.ty),
-                                            Ty::Int | Ty::Bool | Ty::Error
-                                        ) {
-                                            self.err(x.span, "slice: only Int and Bool print");
+                    for (k, a) in args.iter().enumerate() {
+                        if k > 0 {
+                            pieces.push(Piece::Text(" ".into()));
+                        }
+                        match &a.value.kind {
+                            ExprKind::Str(ps) => {
+                                for p in ps {
+                                    match p {
+                                        StrPiece::Text(t) => pieces.push(Piece::Text(t.clone())),
+                                        StrPiece::Expr(x) => {
+                                            let v = self.expr(x, None);
+                                            if !matches!(
+                                                self.shallow(&v.ty),
+                                                Ty::Int | Ty::Bool | Ty::Error
+                                            ) {
+                                                self.err(x.span, "slice: only Int and Bool print");
+                                            }
+                                            pieces.push(Piece::Value(v));
                                         }
-                                        pieces.push(Piece::Value(v));
+                                        StrPiece::Spec(..) => {
+                                            self.err(span, "slice: no format specs")
+                                        }
                                     }
-                                    StrPiece::Spec(..) => self.err(span, "slice: no format specs"),
                                 }
                             }
-                        }
-                        Some(_) => {
-                            for (k, a) in args.iter().enumerate() {
-                                let v = self.expr(&a.value, None);
-                                // A list or array prints through the library's own fn.
-                                let via = match self.shallow(&v.ty) {
-                                    Ty::Struct(d, ..) if Some(d) == self.d.struct_named("List") => {
-                                        Some("write_list")
-                                    }
-                                    Ty::Struct(d, ..)
-                                        if Some(d) == self.d.struct_named("Array") =>
-                                    {
-                                        Some("write_array")
-                                    }
-                                    _ => None,
-                                };
-                                if let (Some(via), 1) =
-                                    (via.and_then(|n| self.d.fn_named(n)), args.len())
+                            _ => {
                                 {
-                                    let f = self.fnref(via, Vec::new(), Vec::new());
-                                    let fd = self.d.f(f.decl);
-                                    let pt = Subst {
-                                        tys: &f.targs,
-                                        sets: &f.sets,
+                                    let v = self.expr(&a.value, None);
+                                    // A list or array prints through the library's own fn.
+                                    let via = match self.shallow(&v.ty) {
+                                        Ty::Struct(d, ..)
+                                            if Some(d) == self.d.struct_named("List") =>
+                                        {
+                                            Some("write_list")
+                                        }
+                                        Ty::Struct(d, ..)
+                                            if Some(d) == self.d.struct_named("Array") =>
+                                        {
+                                            Some("write_array")
+                                        }
+                                        _ => None,
+                                    };
+                                    if let (Some(via), 1) =
+                                        (via.and_then(|n| self.d.fn_named(n)), args.len())
+                                    {
+                                        let f = self.fnref(via, Vec::new(), Vec::new());
+                                        let fd = self.d.f(f.decl);
+                                        let pt = Subst {
+                                            tys: &f.targs,
+                                            sets: &f.sets,
+                                        }
+                                        .ty(&fd.params[0].ty);
+                                        let v = self.coerce(v, &pt);
+                                        let call = TExpr {
+                                            kind: TK::Call {
+                                                f,
+                                                recv: None,
+                                                args: vec![TArg::Value(v)],
+                                            },
+                                            ty: Ty::Unit,
+                                            span,
+                                        };
+                                        let end = TExpr {
+                                            kind: TK::Print(if newline {
+                                                vec![Piece::Text("\n".into())]
+                                            } else {
+                                                vec![]
+                                            }),
+                                            ty: Ty::Unit,
+                                            span,
+                                        };
+                                        return mk(
+                                            TK::Block(vec![TStmt::Expr(call)], Some(Box::new(end))),
+                                            Ty::Unit,
+                                        );
                                     }
-                                    .ty(&fd.params[0].ty);
-                                    let v = self.coerce(v, &pt);
-                                    let call = TExpr {
-                                        kind: TK::Call {
-                                            f,
-                                            recv: None,
-                                            args: vec![TArg::Value(v)],
-                                        },
-                                        ty: Ty::Unit,
-                                        span,
-                                    };
-                                    let end = TExpr {
-                                        kind: TK::Print(if newline {
-                                            vec![Piece::Text("\n".into())]
-                                        } else {
-                                            vec![]
-                                        }),
-                                        ty: Ty::Unit,
-                                        span,
-                                    };
-                                    return mk(
-                                        TK::Block(vec![TStmt::Expr(call)], Some(Box::new(end))),
-                                        Ty::Unit,
-                                    );
+                                    if !matches!(
+                                        self.shallow(&v.ty),
+                                        Ty::Int | Ty::Bool | Ty::Error
+                                    ) {
+                                        self.err(a.value.span, "slice: only Int and Bool print");
+                                    }
+                                    pieces.push(Piece::Value(v));
                                 }
-                                if !matches!(self.shallow(&v.ty), Ty::Int | Ty::Bool | Ty::Error) {
-                                    self.err(a.value.span, "slice: only Int and Bool print");
-                                }
-                                if k > 0 {
-                                    pieces.push(Piece::Text(" ".into()));
-                                }
-                                pieces.push(Piece::Value(v));
                             }
                         }
-                        None => {}
                     }
                     if newline {
                         pieces.push(Piece::Text("\n".into()));

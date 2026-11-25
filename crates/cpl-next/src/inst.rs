@@ -124,7 +124,7 @@ pub fn link(
         let owner = match &key.func {
             FuncKey::Decl(f) => Some(*f),
             FuncKey::Lambda(id) => typed.lambdas[id.0].owner,
-            FuncKey::Main => None,
+            FuncKey::Main | FuncKey::Case => None,
         };
         let mut doms = Vec::new();
         key.targs.iter().for_each(|t| doms_of(t, &mut doms));
@@ -411,6 +411,11 @@ impl Link<'_> {
     fn target(&mut self, t: &Target<Ty>, env: &Env) -> Option<usize> {
         let key = match t {
             Target::Fn(f) => Some(self.fnref(f, env)),
+            Target::Case => Some(InstKey {
+                func: FuncKey::Case,
+                targs: vec![],
+                sets: vec![],
+            }),
             // A method of a bound: now the type is known, so the one impl is too.
             Target::Trait {
                 tr,
@@ -848,7 +853,7 @@ fn thread_values(p: &mut Program, typed: &Typed) {
     let own = |f: &Func<CTy>, d: usize| -> Option<Place> {
         let info = &typed.domains[d];
         match (info.len, &f.key, info.owner) {
-            (VarRef::Global(g), FuncKey::Main, None) => Some(Place::Global(g)),
+            (VarRef::Global(g), FuncKey::Main | FuncKey::Case, None) => Some(Place::Global(g)),
             // A top-level domain of the file is one shared variable. One inside a block is not: a loop makes a new one.
             (VarRef::Global(g), _, None) if typed.globals[g].top => Some(Place::Global(g)),
             (VarRef::Local(l), FuncKey::Decl(k), Some(o)) if *k == o => Some(Place::Local(l)),

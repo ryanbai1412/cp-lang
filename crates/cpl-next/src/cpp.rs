@@ -90,6 +90,13 @@ template <class T> static inline cpl_unit cpl_set(cpl_raw<T>& r, int64_t i, cons
     r[(size_t)i] = x;
     return cpl_unit{};
 }
+static inline bool cpl_input_left() {
+    int c;
+    while ((c = getchar()) == ' ' || (c >= '\t' && c <= '\r')) {}
+    if (c == EOF) return false;
+    ungetc(c, stdin);
+    return true;
+}
 static inline int64_t cpl_read() {
     char buf[32];
     if (scanf("%31s", buf) != 1) cpl_trap("R0501", "expected an integer in the input");
@@ -496,6 +503,7 @@ impl Emit<'_> {
                     Intr::RawGet => format!("cpl_get({}, {})", a[0], a[1]),
                     Intr::RawSet => format!("cpl_set({}, {}, {})", a[0], a[1], a[2]),
                     Intr::ReadInt => "cpl_read()".to_string(),
+                    Intr::InputLeft => "cpl_input_left()".to_string(),
                 }
             }
         }

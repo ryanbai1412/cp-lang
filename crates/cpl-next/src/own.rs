@@ -875,6 +875,19 @@ impl Cx<'_> {
             }
             TStmt::Return(None) | TStmt::Break | TStmt::Continue => {}
             TStmt::Item(off) => self.off = *off,
+            // A loop: what one case moves out of the code above it is gone for the next.
+            TStmt::Cases(count, body) => {
+                if let Some(c) = count {
+                    self.expr(c, fx)
+                }
+                let at = self.next;
+                let before = self.moved.clone();
+                self.next += 1;
+                self.scopes.push(self.next);
+                body.iter().for_each(|s| self.stmt(s, fx));
+                self.scopes.pop();
+                self.moved_in_loop(Span::new(0, 0), at, &before);
+            }
             TStmt::Yield(e) | TStmt::LendOut(e) => {
                 if let (TStmt::LendOut(_), Some(p)) = (s, self.place(e)) {
                     fx.writes.insert(p);

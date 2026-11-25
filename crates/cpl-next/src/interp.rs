@@ -542,6 +542,7 @@ impl<'a> Machine<'a> {
                 Rc::make_mut(r)[i as usize] = x;
                 V::Unit
             }
+            Intr::InputLeft => V::Bool(!self.input.as_slice().is_empty()),
             Intr::ReadInt => match self
                 .input
                 .next()

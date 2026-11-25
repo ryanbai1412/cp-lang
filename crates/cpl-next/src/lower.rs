@@ -24,6 +24,8 @@ struct Lw<'a> {
     lambdas: Vec<Func<Ty>>,
     errors: Vec<String>,
     in_main: bool,
+    /// The code of one test case, once main's `Cases` is lowered.
+    case: Option<Func<Ty>>,
     /// Where the item being lowered starts: spans are relative to it.
     off: u32,
     /// Where each line of the source starts, and how many of them are std.
@@ -46,6 +48,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &str, std_lines: u32) -> Generic {
         lambdas: Vec::new(),
         errors: Vec::new(),
         in_main: true,
+        case: None,
         off: 0,
         line_starts: std::iter::once(0)
             .chain(src.match_indices('\n').map(|(i, _)| i as u32 + 1))
@@ -70,6 +73,9 @@ pub fn lower(d: &Decls, typed: &Typed, src: &str, std_lines: u32) -> Generic {
             line: 0,
         },
     );
+    if let Some(c) = lw.case.take() {
+        out.funcs.insert(FuncKey::Case, c);
+    }
     lw.in_main = false;
     for (id, tf) in &typed.fns {
         let fd = d.f(*id);
@@ -606,6 +612,55 @@ impl Lw<'_> {
             }
             TStmt::Break => out.push(Stmt::Break),
             TStmt::Item(off) => self.off = *off,
+            TStmt::Cases(count, body) => {
+                let mk = |kind, ty| Expr { kind, ty };
+                let call = Stmt::Expr(mk(EK::Call(Target::Case, vec![], 0), Ty::Unit));
+                match count {
+                    // The count is read once; the cases left are counted down.
+                    Some(c) => {
+                        let c = self.expr(c, out);
+                        let left = self.temp(Ty::Int);
+                        out.push(Stmt::Let(left, c));
+                        let read = || mk(EK::Copy(Place::Local(left)), Ty::Int);
+                        let int = |i| mk(EK::Int(i), Ty::Int);
+                        let more = mk(
+                            EK::Intr(Intr::Lt, vec![Arg::Value(int(0)), Arg::Value(read())], 0),
+                            Ty::Bool,
+                        );
+                        // Cannot overflow: `left` is above 0.
+                        let step = mk(
+                            EK::Intr(Intr::Sub, vec![Arg::Value(read()), Arg::Value(int(1))], 0),
+                            Ty::Int,
+                        );
+                        out.push(Stmt::Loop(
+                            vec![Stmt::If(more, vec![], vec![Stmt::Break]), call],
+                            vec![Stmt::Assign(Place::Local(left), step)],
+                        ));
+                    }
+                    None => {
+                        let more = mk(EK::Intr(Intr::InputLeft, vec![], 0), Ty::Bool);
+                        out.push(Stmt::Loop(
+                            vec![Stmt::If(more, vec![], vec![Stmt::Break]), call],
+                            vec![],
+                        ));
+                    }
+                }
+                let (outer, off) = (std::mem::take(&mut self.locals), self.off);
+                let mut b = Vec::new();
+                body.iter().for_each(|s| self.stmt(s, &mut b));
+                self.case = Some(Func {
+                    key: FuncKey::Case,
+                    name: "case".into(),
+                    params: vec![],
+                    n_captures: 0,
+                    locals: std::mem::replace(&mut self.locals, outer),
+                    body: b,
+                    ret: Ty::Unit,
+                    region: None,
+                    line: 0,
+                });
+                self.off = off;
+            }
             TStmt::Continue => out.push(Stmt::Continue),
             TStmt::Yield(e) => {
                 let v = self.expr(e, out);

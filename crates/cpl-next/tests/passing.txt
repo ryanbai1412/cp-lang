@@ -14,6 +14,7 @@ core-01/line-comment-runs-to-eol.cp
 core-01/lowercase-none-is-a-name.cp
 core-01/lowercase-some-fn-is-a-name.cp
 core-01/multi-name-read-per-name.cp
+core-01/multitest-divider.cp
 core-01/non-ascii-comment.cp
 core-01/not-below-comparison.cp
 core-01/one-line-body.cp
@@ -23,6 +24,7 @@ core-01/scientific-fraction-is-int.cp
 core-01/semicolons.cp
 core-01/snake-case-value.cp
 core-01/space-indent-block.cp
+core-01/top-level-return-ends-the-test.cp
 core-01/top-level-return.cp
 core-01/tuple-field-chain.cp
 core-01/while-true-break-in-the-middle.cp
@@ -122,6 +124,7 @@ core-06/fn-hoists.cp
 core-06/function-types.cp
 core-06/generator-closure-writes-its-local-across-yields.cp
 core-06/lambda-annotated-params.cp
+core-06/multitest-shared-above.cp
 core-06/nested-generator-walks-restart.cp
 core-06/rb1-q06-closure-mutates-capture.cp
 core-06/returned-closure-cannot-capture-a-list-parameter.cp
@@ -131,6 +134,7 @@ core-06/shared-state-above-multitest-carries-over.cp
 core-06/shared-var-carries-across-cases.cp
 core-06/two-closures-share-var.cp
 core-08/inherent-before-trait.cp
+core-09/assert-after-64k-of-output-prints-it-first.cp
 core-09/assert-passes.cp
 core-09/assert-trap.cp
 core-09/checked-build-calls-user-fn-once.cp
@@ -147,6 +151,9 @@ core-10/bad-token-trap.cp
 core-10/multitest-count-past-input-traps.cp
 core-10/multitest-domain-from-domain-count.cp
 core-10/multitest-missing-count.cp
+core-10/multitest-until-eof-reads-all.cp
+core-10/multitest-until-eof-trailing-blank.cp
+core-10/multitest-until-eof.cp
 core-10/multitest-zero-cases.cp
 core-10/print-empty-seq.cp
 core-10/read-bad-token-traps.cp
@@ -159,6 +166,7 @@ core-10/read-range-contract-traps.cp
 core-10/read-tuple-bound-by-earlier-part-traps.cp
 core-10/read-tuple-bound-by-earlier-part.cp
 core-10/return-above-multitest-ends-program.cp
+core-10/return-ends-the-case.cp
 core-10/token-read-skips-blank-lines.cp
 core-10/top-level-return.cp
 core-10/tuple-reads-in-order.cp
@@ -215,6 +223,8 @@ next/k21_capture_then_reassign_list.cp
 next/k22_ret_closure_let_only.cp
 next/k23_ret_closure_param.cp
 next/k24_ret_closure_var_copy.cp
+next/m01_case_return_in_loops.cp
+next/m02_until_eof_empty.cp
 next/o01_gen_local_walk_read.cp
 next/o02_gen_global_walk_other_write.cp
 next/o03_gen_reads_global_scalar_body_writes.cp

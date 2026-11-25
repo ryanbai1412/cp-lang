@@ -26,6 +26,12 @@ impl<'a> Cx<'a> {
                 }
             }
             TStmt::Break | TStmt::Continue | TStmt::Item(_) => {}
+            TStmt::Cases(count, body) => {
+                if let Some(c) = count {
+                    self.zonk_expr(c)
+                }
+                body.iter_mut().for_each(|s| self.zonk_stmt(s));
+            }
             TStmt::Yield(e) | TStmt::LendOut(e) => self.zonk_expr(e),
             TStmt::Region {
                 f,

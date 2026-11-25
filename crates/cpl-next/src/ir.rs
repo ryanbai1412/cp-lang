@@ -6,6 +6,8 @@ use crate::ty::*;
 #[derive(Clone, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub enum FuncKey {
     Main,
+    /// The code below `@!multitest`: one test case. A `return` in it ends the case.
+    Case,
     Decl(FnId),
     Lambda(LambdaId),
 }
@@ -33,6 +35,8 @@ pub enum Intr {
     RawGet,
     RawSet,
     ReadInt,
+    /// Whether the input has another token.
+    InputLeft,
 }
 impl Intr {
     /// Whether this operation can trap. One that can is a statement of its own.
@@ -122,6 +126,8 @@ pub enum Arg<T> {
 pub enum Target<T> {
     /// Generic IR: a declared fn with its type and set arguments.
     Fn(FnRef),
+    /// Generic IR: the code of one test case.
+    Case,
     /// Generic IR: a method of a bound, resolved per instance.
     Trait {
         tr: TraitId,

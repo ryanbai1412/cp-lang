@@ -98,6 +98,9 @@ pub enum TStmt {
     Assert(TExpr, String, Span, CheckKind),
     Break,
     Continue,
+    /// `@!multitest`: the code below it runs once per test case, `count` times, or while the
+    /// input has a token left when there is no count. A `return` in it ends the case.
+    Cases(Option<TExpr>, Vec<TStmt>),
     /// Top-level code only: the statements after this one, to the end of the block, are from
     /// the item that starts at this offset in the source. Their spans are relative to it.
     Item(u32),
@@ -242,7 +245,7 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
         }
     }
     let mut main_out = Vec::new();
-    let mut cases: Option<(VarRef, VarRef, Vec<TStmt>)> = None;
+    let mut cases: Option<(Option<TExpr>, Vec<TStmt>)> = None;
     for (off, s) in main {
         cx.item_off = *off;
         // `@!multitest`: the count is read once and everything below runs once per case.
@@ -251,19 +254,14 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
                 .iter()
                 .any(|d| d.directive && d.name.text == "multitest")
         {
-            let t = cx.bind("$cases", Ty::Int);
             main_out.push(TStmt::Item(*off));
-            main_out.push(TStmt::Let(
-                t,
-                TExpr {
-                    kind: TK::ReadInt,
-                    ty: Ty::Int,
-                    span: s.span,
-                },
-            ));
+            let count = cx.case_count(s).then_some(TExpr {
+                kind: TK::ReadInt,
+                ty: Ty::Int,
+                span: s.span,
+            });
             cx.scopes.push(HashMap::new());
-            let i = cx.bind("$case", Ty::Int);
-            cases = Some((t, i, Vec::new()));
+            cases = Some((count, Vec::new()));
         }
         for x in &s.decorators {
             if !(x.directive && x.name.text == "multitest") {
@@ -271,30 +269,15 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
             }
         }
         let into = match &mut cases {
-            Some((_, _, body)) => body,
+            Some((_, body)) => body,
             None => &mut main_out,
         };
         into.push(TStmt::Item(*off));
         cx.stmt(s, into);
     }
-    if let Some((t, i, body)) = cases {
+    if let Some((count, body)) = cases {
         cx.scopes.pop();
-        let sp = Span::new(0, 0);
-        let int = |kind| TExpr {
-            kind,
-            ty: Ty::Int,
-            span: sp,
-        };
-        main_out.push(TStmt::For(
-            i,
-            int(TK::Int(0)),
-            int(TK::Var(t)),
-            TExpr {
-                kind: TK::Block(body, None),
-                ty: Ty::Unit,
-                span: sp,
-            },
-        ));
+        main_out.push(TStmt::Cases(count, body));
     }
     let mut fns = HashMap::new();
     for (id, f) in d.fns.iter().enumerate() {
@@ -346,6 +329,30 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
 }
 
 impl<'a> Cx<'a> {
+    /// Whether the `@!multitest` on `s` reads a count of cases: `(until_eof)` does not.
+    fn case_count(&mut self, s: &ast::Stmt) -> bool {
+        let args = s
+            .decorators
+            .iter()
+            .find(|d| d.directive && d.name.text == "multitest")
+            .map_or(&[][..], |d| &d.args[..]);
+        match args {
+            [] => true,
+            [a] if a.name.is_none()
+                && !a.mutable
+                && matches!(&a.value.kind, ast::ExprKind::Name(n) if n == "until_eof") =>
+            {
+                false
+            }
+            _ => {
+                self.err(
+                    s.span,
+                    "slice: an argument of `@!multitest` other than `until_eof`",
+                );
+                true
+            }
+        }
+    }
     fn err(&mut self, span: Span, msg: impl Into<String>) {
         let at = (self.item_off + span.start) as usize;
         let line = self.src[..at.min(self.src.len())].matches('\n').count() + 1;
