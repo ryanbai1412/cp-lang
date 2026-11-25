@@ -40,6 +40,8 @@ core-01/top-level-return.cp
 core-01/tuple-field-chain.cp
 core-01/unwrap-none-traps.cp
 core-01/while-true-break-in-the-middle.cp
+core-02/alias-cycle-is-an-error.cp
+core-02/alias-inside-its-own-type-is-an-error.cp
 core-02/char-of-non-ascii-traps-every-build.cp
 core-02/char-of-non-ascii-traps.cp
 core-02/condition-is-bool.cp

@@ -286,6 +286,16 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
             ));
         }
     }
+    for (i, a) in d.aliases.iter().enumerate() {
+        if a.module == d.program && decls::alias_cycle(d, decls::AliasId(i)) {
+            let line = src[..a.at.min(src.len())].matches('\n').count() + 1;
+            cx.errors.push(format!(
+                "line {line}: {}: type alias `{}` is defined by itself, so it names no type",
+                cpl_diag::codes::ALIAS_CYCLE.0,
+                a.name
+            ));
+        }
+    }
     let mut main_out = Vec::new();
     let mut cases: Option<(Option<TExpr>, Vec<TStmt>)> = None;
     for (off, s) in main {

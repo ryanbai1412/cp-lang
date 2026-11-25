@@ -3,6 +3,7 @@
 use crate::ty::*;
 use cpl_syntax::ast::{self, FnBody, StmtKind, TypeKind};
 use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
 
 /// A module: the core, a library file or the program.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord, Default)]
@@ -67,6 +68,19 @@ pub struct StructDecl {
 pub struct TraitDecl {
     pub methods: HashMap<String, FnId>,
 }
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct AliasId(pub usize);
+/// `type Name<G> = T`: `T` is read in its module's names, where `Name` itself means what it means
+/// outside (R02.6.2).
+pub struct AliasDecl {
+    pub name: String,
+    pub module: ModId,
+    /// Where it is declared, as an offset into the source.
+    pub at: usize,
+    pub generics: Vec<String>,
+    pub ty: ast::Type,
+    pub names: HashMap<String, Named>,
+}
 pub struct ImplDecl {
     pub trait_: TraitId,
     pub for_: StructId,
@@ -78,6 +92,7 @@ pub enum Named {
     Fn(FnId),
     Struct(StructId),
     Trait(TraitId),
+    Alias(AliasId),
 }
 /// What a method sits in. A method of an impl sits in the struct the impl is for.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -100,6 +115,7 @@ pub struct Decls {
     /// Per library module, what it uses outside its fns that the slice does not build.
     pub module_errors: Vec<Vec<String>>,
     pub struct_sets: HashMap<StructId, usize>,
+    pub aliases: Rc<Vec<AliasDecl>>,
     pub errors: Vec<String>,
     /// A fn whose name was already a fn: where, the code, the name.
     pub dup_fns: Vec<(usize, &'static str, String)>,
@@ -165,6 +181,48 @@ impl Decls {
 
 /// The first field of struct `root` that stores a `root` inline, however deep (R03.2.9).
 /// Storage (`Raw`), references and function values end the walk: they hold their contents elsewhere.
+/// Whether alias `root`'s type needs `root` itself, through its own name or other aliases (E0323).
+pub fn alias_cycle(d: &Decls, root: AliasId) -> bool {
+    fn needs(
+        d: &Decls,
+        at: AliasId,
+        t: &ast::Type,
+        root: AliasId,
+        seen: &mut Vec<AliasId>,
+    ) -> bool {
+        let inner: Vec<&ast::Type> = match &t.kind {
+            TypeKind::Named { name, args } => {
+                if let Some(Named::Alias(b)) = d.aliases[at.0].names.get(&name.text) {
+                    if *b == root {
+                        return true;
+                    }
+                    if !seen.contains(b) {
+                        seen.push(*b);
+                        if needs(d, *b, &d.aliases[b.0].ty, root, seen) {
+                            return true;
+                        }
+                    }
+                }
+                args.iter().collect()
+            }
+            TypeKind::Array { index, elem } => index.iter().chain([&**elem]).collect(),
+            TypeKind::OwnDomain { elem: t, .. }
+            | TypeKind::Optional(t)
+            | TypeKind::Mut(t)
+            | TypeKind::Yields(t) => vec![&**t],
+            TypeKind::Tuple(ts) => ts.iter().collect(),
+            TypeKind::Record(fs) | TypeKind::Row(fs) => fs.iter().map(|(_, t)| t).collect(),
+            TypeKind::Fn { params, ret } => params.iter().chain([&**ret]).collect(),
+            TypeKind::RowWithout { prefix, base, .. } => {
+                prefix.iter().map(|(_, t)| t).chain([&**base]).collect()
+            }
+            _ => Vec::new(),
+        };
+        inner.into_iter().any(|t| needs(d, at, t, root, seen))
+    }
+    needs(d, root, &d.aliases[root.0].ty, root, &mut vec![root])
+}
+
 pub fn field_holding_itself(d: &Decls, root: StructId) -> Option<usize> {
     fn holds(d: &Decls, t: &Ty, root: StructId, stack: &mut Vec<StructId>) -> bool {
         let Ty::Struct(id, tys, sets) = t else {
@@ -204,6 +262,11 @@ struct TyCx<'a> {
     /// How many set parameters each struct has, so a struct named in a type gets its own.
     struct_sets: &'a HashMap<StructId, usize>,
     generics: &'a [String],
+    /// What the generics stand for, when converting an alias's type.
+    args: Option<&'a [Ty]>,
+    aliases: &'a [AliasDecl],
+    /// The aliases being expanded, to report one that names itself.
+    expanding: Vec<usize>,
     /// The types a body declares by name: its domains, and its ranges with run-time ends.
     doms: &'a HashMap<String, Ty>,
     /// When converting a result type: the next result slot.
@@ -227,13 +290,50 @@ fn slot(cx: &mut TyCx) -> SetTy {
         (None, None) => SetTy::Var(usize::MAX),
     }
 }
+fn alias(cx: &mut TyCx, id: usize, n: &str, a: Vec<Ty>, errors: &mut Vec<String>) -> Ty {
+    let decl = &cx.aliases[id];
+    if a.len() != decl.generics.len() {
+        errors.push(format!(
+            "`{n}` takes {} type arguments, found {}",
+            decl.generics.len(),
+            a.len()
+        ));
+        return Ty::Error;
+    }
+    // An alias defined by itself is E0323 where it is declared (`alias_cycle`).
+    if cx.expanding.contains(&id) {
+        return Ty::Error;
+    }
+    let mut expanding = cx.expanding.clone();
+    expanding.push(id);
+    let mut inner = TyCx {
+        names: &decl.names,
+        struct_sets: cx.struct_sets,
+        generics: &decl.generics,
+        args: Some(&a),
+        aliases: cx.aliases,
+        expanding,
+        doms: &HashMap::new(),
+        ret_slots: cx.ret_slots,
+        next_set: cx.next_set,
+    };
+    let t = conv(&mut inner, &decl.ty, errors);
+    (cx.ret_slots, cx.next_set) = (inner.ret_slots, inner.next_set);
+    t
+}
 fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<String>) -> Ty {
     match &t.kind {
         TypeKind::Named { name, args } => {
             let n = name.text.as_str();
             let mut a: Vec<Ty> = args.iter().map(|x| conv(cx, x, errors)).collect();
             if let Some(i) = cx.generics.iter().position(|g| g == n) {
-                return Ty::Param(i);
+                return match cx.args {
+                    Some(args) => args[i].clone(),
+                    None => Ty::Param(i),
+                };
+            }
+            if let Some(Named::Alias(id)) = cx.names.get(n) {
+                return alias(cx, id.0, n, a, errors);
             }
             if let Some(t) = cx.doms.get(n) {
                 return t.clone();
@@ -347,6 +447,9 @@ pub fn body_type(
             names: &d.views[m.0],
             struct_sets: &d.struct_sets,
             generics,
+            args: None,
+            aliases: &d.aliases,
+            expanding: Vec::new(),
             doms,
             ret_slots: None,
             next_set: None,
@@ -362,6 +465,7 @@ fn item_name(s: &ast::Stmt) -> Option<&str> {
         StmtKind::Struct(sd) => Some(&sd.name.text),
         StmtKind::Trait { name, .. } => Some(&name.text),
         StmtKind::Fn(f) => Some(&f.name.text),
+        StmtKind::TypeAlias { name, .. } => Some(&name.text),
         _ => None,
     }
 }
@@ -379,6 +483,18 @@ struct Scopes<'a> {
 }
 
 fn view(
+    sc: &Scopes,
+    mi: usize,
+    program: bool,
+    errors: Option<&mut Vec<String>>,
+) -> HashMap<String, Named> {
+    let mut v = outer_view(sc, mi, program, errors);
+    v.extend(sc.own[mi].iter().map(|(n, x)| (n.clone(), *x)));
+    v
+}
+
+/// What each name means in module `mi` apart from what it declares itself.
+fn outer_view(
     sc: &Scopes,
     mi: usize,
     program: bool,
@@ -474,9 +590,6 @@ fn view(
             }
         }
     }
-    for (n, x) in &own[mi] {
-        v.insert(n.clone(), *x);
-    }
     v
 }
 
@@ -495,6 +608,7 @@ pub fn collect(
     // Pass 1: names, so signatures can mention later declarations.
     let mut pending: Vec<(ModId, u32, &ast::Stmt, Option<Named>)> = Vec::new();
     let mut imports: Vec<(ModId, &ast::Stmt)> = Vec::new();
+    let mut aliases: Vec<(ModId, usize, String, Vec<String>, ast::Type)> = Vec::new();
     for (mi, m) in mods.iter().enumerate() {
         let mid = ModId(mi);
         for (item, stmts) in &m.items {
@@ -526,6 +640,25 @@ pub fn collect(
                         });
                         pending.push((mid, *item, s, Some(Named::Trait(id))));
                     }
+                    StmtKind::TypeAlias {
+                        name,
+                        generics,
+                        ty,
+                        bounds,
+                    } if bounds.is_empty() => {
+                        // `@stress(kind)` and the like change what the alias means; the slice builds none.
+                        for x in &s.decorators {
+                            let e = format!("slice: decorator `@{}`", x.name.text);
+                            match d.is_library(mid) {
+                                true => d.module_errors[mi].push(e),
+                                false => d.errors.push(e),
+                            }
+                        }
+                        own[mi].insert(name.text.clone(), Named::Alias(AliasId(aliases.len())));
+                        let generics = generics.iter().map(|g| g.text.clone()).collect();
+                        let at = (*item + s.span.start) as usize;
+                        aliases.push((mid, at, name.text.clone(), generics, ty.clone()));
+                    }
                     StmtKind::Fn(_) | StmtKind::Impl { .. } => pending.push((mid, *item, s, None)),
                     StmtKind::Use { .. } => imports.push((mid, s)),
                     // A library's context is only reached by a `with`, which the checker refuses.
@@ -555,6 +688,41 @@ pub fn collect(
             )
         })
         .collect();
+    d.aliases = Rc::new(
+        aliases
+            .into_iter()
+            .map(|(m, at, name, generics, ty)| {
+                let sc = Scopes {
+                    own: &own,
+                    public: &public,
+                    names: &names,
+                    imports: &imports,
+                    prelude,
+                };
+                let mut v = outer_view(&sc, m.0, m.0 == program, None);
+                let outside = v.get(&name).copied();
+                v.extend(own[m.0].iter().map(|(n, x)| (n.clone(), *x)));
+                if let Some(x) = outside {
+                    v.insert(name.clone(), x);
+                }
+                AliasDecl {
+                    name,
+                    module: m,
+                    at,
+                    generics,
+                    ty,
+                    names: v,
+                }
+            })
+            .collect(),
+    );
+    for (i, a) in d.aliases.iter().enumerate() {
+        if d.is_library(a.module) && alias_cycle(&d, AliasId(i)) {
+            d.module_errors[a.module.0]
+                .push(format!("type alias `{}` is defined by itself", a.name));
+        }
+    }
+    let aliases = d.aliases.clone();
     // Struct fields first, to a fixed point: a struct holding a struct with function fields has those sets too.
     loop {
         let mut changed = false;
@@ -569,6 +737,9 @@ pub fn collect(
                 names: &names,
                 struct_sets: &sets,
                 generics: &generics,
+                args: None,
+                aliases: &aliases,
+                expanding: Vec::new(),
                 doms: &no_doms,
                 ret_slots: None,
                 next_set: Some(0),
@@ -597,6 +768,9 @@ pub fn collect(
                     names: &d.views[mi].clone(),
                     struct_sets: &sets,
                     generics: &generics,
+                    args: None,
+                    aliases: &aliases,
+                    expanding: Vec::new(),
                     doms: &no_doms,
                     ret_slots: None,
                     next_set: Some(0),
@@ -802,11 +976,15 @@ fn add_fn(
     generics.extend(f.generics.iter().map(|g| g.text.clone()));
     let names = d.views[m.0].clone();
     let no_doms = HashMap::new();
+    let aliases = d.aliases.clone();
     let sets = d.struct_sets.clone();
     let mut cx = TyCx {
         names: &names,
         struct_sets: &sets,
         generics: &generics,
+        args: None,
+        aliases: &aliases,
+        expanding: Vec::new(),
         doms: &no_doms,
         ret_slots: None,
         next_set: Some(outer_sets),
