@@ -341,7 +341,7 @@ template <bool Ties = false, class S, class F> void sort_by(S& seq, F&& key, boo
     },
     Piece {
         name: "sort_cmp",
-        needs: &["fail"],
+        needs: &["fail", "sorted"],
         code: "\
 // `sort(cmp: lt)`: stable O(n log n) comparator sort. Under `LOCAL` (`--checked`),
 // traps on non-strict-weak-order comparators (irreflexivity, asymmetry, intransitivity).
@@ -358,7 +358,7 @@ template <class S, class F> void sort_cmp(S& seq, F&& cmp, bool desc) {
         if (cmp(x, x)) fail(\"sort `cmp:` comparator is not a strict weak order: cmp(x, x) is true\");
     }
 #endif
-    std::stable_sort(seq.begin(), seq.end(), lt);
+    stable_sort_lt(seq.begin(), seq.end(), lt);
 #ifdef LOCAL
     for (size_t i = 1; i < seq.size(); i++) {
         if (lt(seq[i], seq[i - 1]) || lt(seq[i], seq[0]) || lt(seq.back(), seq[i - 1])) {
