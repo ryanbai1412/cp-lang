@@ -307,7 +307,7 @@ impl Cx<'_> {
     }
     /// R05.7.8: a lent value is not returned.
     fn escapes(&mut self, span: Span, out: &BTreeSet<Root>) {
-        if let (Some(r), 0) = (out.iter().next(), self.in_lambda) {
+        if let Some(r) = out.iter().next() {
             let n = self.root_name(*r);
             let why = if self.borrowed.contains(r) {
                 format!("{n} is lent by the caller; return a `.clone()`")
@@ -334,7 +334,7 @@ impl Cx<'_> {
                 (Some(_), None) => true,
                 (Some((hs, ho)), Some((ss, so))) => hs.starts_with(ss) && so < ho,
             };
-            if !ok && self.in_lambda == 0 {
+            if !ok {
                 let (a, b) = (self.root_name(storage), self.root_name(*s));
                 self.err(
                     span,
@@ -364,9 +364,6 @@ impl Cx<'_> {
     }
     /// A write to `p`: an error if a binding that borrows it is used later.
     fn wrote(&mut self, span: Span, p: &Pl) {
-        if self.in_lambda > 0 {
-            return;
-        }
         let n = self.root_name(p.root);
         for (b, srcs) in &self.frozen {
             if *b != p.root && srcs.contains(&p.root) {
@@ -387,7 +384,7 @@ impl Cx<'_> {
             self.pending.retain(|x| x.0 != p.root);
             self.err_at(at, code, msg);
         }
-        if self.moved.contains(&p.root) && self.in_lambda == 0 {
+        if self.moved.contains(&p.root) {
             let n = self.root_name(p.root);
             self.err(
                 span,
@@ -404,7 +401,6 @@ impl Cx<'_> {
                 && !self.borrowed.contains(&r)
                 && !self.lent.contains_key(&r)
                 && !plain(self.d, &e.ty, 0)
-                && self.in_lambda == 0
             {
                 self.moved.insert(r);
                 // R05.10.2: a captured variable can't be moved while the fn value is alive.

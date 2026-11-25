@@ -3715,9 +3715,10 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
     if "rs_near_cap" in old and (set(baseline.get("rs_near_cap", [])) - set(old["rs_near_cap"]) - set(old_allow)
                                  - set(mine.get("rs_near_cap", [])) - set(mine_allow)):
         raised.append(("rs_near_cap", "rs_near_cap"))
-    # A new conformance case the new pipeline cannot run yet is a case added, not a
+    # A new case the new pipeline cannot run yet is a case added, not a
     # case broken (`passing.txt` and `next_wrong` hold those), so each admits one.
-    added = len([l for l in _git(root, "diff", "--name-only", "--diff-filter=A", ref, "--", "spec/conformance")
+    added = len([l for l in _git(root, "diff", "--name-only", "--diff-filter=A", ref, "--", "spec/conformance",
+                                    NEXT_TESTS + "/programs")
                  if l.endswith(".cp")])
     raised = [(n, key) for n, key in raised
               if not (n == "next_not_passing" and baseline[n] - old[n] <= added)]
