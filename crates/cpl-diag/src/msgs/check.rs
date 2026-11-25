@@ -316,7 +316,6 @@ super::msgs! {
     HAS_NO_METHOD_NEXT = UNKNOWN_FIELD, "{} has no method `next`; walk a generator with `for`";
     INDEXED_IDX_NOT_IDX = WRONG_DOMAIN, "`{}` is indexed by `{}.Idx`, not `{}.Idx`";
     MSG = WRONG_DOMAIN, "`{}` is a {}: it {}";
-    FILTERED_SEQUENCE_CAN_WALKED = NOT_INDEXABLE, "`{}` is a filtered sequence: it can be walked, but not indexed";
     ASSIGNED_BEFORE_DECLARED = UNRESOLVED_NAME, "`{}` is assigned before it is declared";
     NO_NAME_IN_SCOPE = UNRESOLVED_NAME, "no `{}` in scope";
     NO_TYPE_OR_DOMAIN_NAMED = UNRESOLVED_NAME, "no type or domain named `{}`";

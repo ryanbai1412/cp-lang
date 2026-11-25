@@ -212,7 +212,7 @@ impl<'a> Checker<'a> {
             return Ty::Error;
         }
         self.keyed_view_index(expr.span, base, indices);
-        if self.stepped_slice(base, indices) || self.walked_not_indexed(base) {
+        if self.stepped_slice(base, indices) {
             for index in indices {
                 self.infer(index);
             }
@@ -651,26 +651,6 @@ impl<'a> Checker<'a> {
             Ty::Error => Ty::Error,
             _ => Ty::Unknown,
         }
-    }
-}
-
-impl Checker<'_> {
-    pub(crate) fn walk_only_expr(&self, e: &Expr) -> bool {
-        let e = crate::check::lends::unparen(e);
-        matches!(&e.kind, ExprKind::Name(n) if self.walk_only.contains(n))
-    }
-
-    /// R07.1.2: `filter` gives a `Seq`, walked in order with no `s[i]`.
-    pub(super) fn walked_not_indexed(&mut self, base: &Expr) -> bool {
-        if !self.walk_only_expr(base) {
-            return false;
-        }
-        let shown = self.quote(base.span);
-        let message = cpl_diag::msgs::check::FILTERED_SEQUENCE_CAN_WALKED.at(&[&shown]);
-        if let Some(diag) = self.report_said(base.span, message) {
-            diag.help = Some(format!("collect it first: `{shown}.collect()[i]`"));
-        }
-        true
     }
 }
 

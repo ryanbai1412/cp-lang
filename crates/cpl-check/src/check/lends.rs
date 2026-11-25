@@ -1263,9 +1263,9 @@ impl<'a> Checker<'a> {
                     init: Some(init), ..
                 },
             ) => {
-                let (range, walk_only) = self.quietly(|c| {
+                let range = self.quietly(|c| {
                     c.infer(init);
-                    (c.const_range(init), c.walk_only_expr(init))
+                    c.const_range(init)
                 });
                 self.lends.view_exprs.clear();
                 self.lends.view_readonly.clear();
@@ -1273,9 +1273,6 @@ impl<'a> Checker<'a> {
                 self.lends.covered.clear();
                 if let Some(range) = range {
                     self.let_ranges.insert(name.clone(), range);
-                }
-                if walk_only {
-                    self.walk_only.insert(name.clone());
                 }
             }
             (Flow::Move(srcs), _) => {

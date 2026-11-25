@@ -744,16 +744,6 @@ impl<'a> Checker<'a> {
                 if let (Some(declared), Some(init)) = (&declared, init.as_ref()) {
                     self.fold_needs_identity(init, declared);
                 }
-                if let PatternKind::Name(name) = &pat.kind {
-                    match init.as_ref() {
-                        Some(init) if keyword == "let" && self.walk_only_expr(init) => {
-                            self.walk_only.insert(name.clone());
-                        }
-                        _ => {
-                            self.walk_only.remove(name);
-                        }
-                    }
-                }
                 self.expected_bounds_range = prev_bounds_range;
                 self.expected_piece = prev_piece;
                 if rec_scope {

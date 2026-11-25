@@ -326,8 +326,6 @@ pub(crate) struct Checker<'a> {
     pub(crate) local_product_domains: crate::names::NameMap<Vec<(Option<String>, Ty)>>,
     /// The computed range of each `let` with a constant initializer (R02.10.2).
     pub(crate) let_ranges: crate::names::NameMap<(i128, i128)>,
-    /// `let`s bound to a walk-only sequence such as `filter` (R07.1.2).
-    pub(crate) walk_only: crate::fx::HashSet<String>,
     /// Structs and enums declared inside a fn body, visible to the whole block.
     local_defs: crate::names::NameMap<Arc<Def>>,
     /// The types a lambda passed to a built-in method gives its unwritten
@@ -418,7 +416,6 @@ impl<'a> Checker<'a> {
             iterating_range: false,
             local_product_domains: Default::default(),
             let_ranges: Default::default(),
-            walk_only: Default::default(),
             local_defs: Default::default(),
             lambda_params: Vec::new(),
             call_bound_args: None,
