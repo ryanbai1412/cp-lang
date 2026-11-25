@@ -1,12 +1,10 @@
 # Migration
 
-**Status:** 2026-11-25. A plan, not started; nothing is in the
-repository yet. Rewritten in place after review round 6 (20% as
-written, 60% with its fixes) and after Ryan's two calls on it: the
-lossless syntax tree is kept, and an old path that runs beside a new
-one is debt that never gets deleted, so the plan may not rely on one.
-
-The order is the round-6 reviewer's. Ryan has not yet approved it.
+**Status:** 2026-11-25. Stage 1 has landed; stage 5's pipeline is
+growing in `crates/cpl-next`. Ryan approved the order, and made two
+calls on it: the lossless syntax tree is kept, and an old path that
+runs beside a new one is debt that never gets deleted, so the plan may
+not rely on one. Current numbers are in `plan/END-STATE.md`, not here.
 
 ## Measures
 
