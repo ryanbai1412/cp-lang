@@ -758,6 +758,24 @@ def tool_compiler_deps(root: Path) -> list[str]:
     return out
 
 
+def facade_today_uses(root: Path) -> list[str]:
+    """Code lines in a tool crate that name `cpl_facade::today`: the module through which a
+    tool still reads the compiler's own forms (the checked file, its types and hovers, the
+    lowered program, a run's recording). They pass `tool_compiler_deps`, since the path goes
+    through the facade, but each is a form that changes when the compiler behind the facade
+    does. The target is 0: each becomes a query of contract 9
+    (handbook/design/next/contracts/09-facade.md) and the module goes."""
+    tools = crate_rules(root).get("tool", [])
+    named = re.compile(r"\btoday\s*::|::\s*today\b|\buse\s+today\b")
+    out = []
+    for crate in tools:
+        for p in _rs_files(root, f"crates/{crate}"):
+            rel = _rel(root, p)
+            out += [f"{rel}:{i}" for i, line in enumerate(_lines(p), 1)
+                    if not line.lstrip().startswith("//") and named.search(line)]
+    return out
+
+
 def tree_walker(root: Path) -> list[str]:
     """The interpreter's tree-walking engine beside the VM."""
     lib = root / "crates/cpl-interp/src/lib.rs"
@@ -3240,7 +3258,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
 
 
 HARD_ZERO = frozenset({
-    "unreferenced_scripts", "end_state_broken", "next_cases_removed",
+    "unreferenced_scripts", "tool_compiler_deps", "end_state_broken", "next_cases_removed",
     "cpp_deep_copies", "conformance_wrong_output", "cpp_sunk_copies",
     "habit_matchers", "corpus_fmt_dirty", "judge_tables", "v02_port_files", "reviews_uncapped", "lint_std_names", "cpl_env_reads", "dead_code_allows",
     "lint_name_matchers", "lint_type_syntax", "domain_member_names",
@@ -3339,6 +3357,7 @@ COUNTERS = {
     "site_spec_snippets": ("site programs the compiler doesn't accept yet (.spec.cp, status=spec)", site_spec_snippets, True),
     "layer_violations": ("forbidden shipped crate edges", layer_violations, True),
     "tool_compiler_deps": ("tool crate edges and code lines that reach a compiler crate past the facade (stage 2; cpl-syntax is stage 8)", tool_compiler_deps, True),
+    "facade_today_uses": ("tool code lines reading the compiler's own forms through cpl_facade::today (contract 9)", facade_today_uses, True),
     "tree_walker": ("second interpreter engine", tree_walker, True),
     "v02_port_files": ("corpus ports not yet re-ported in v0.3 style", v02_port_files, True),
     "ports_unreported": ("corpus ports without a friction report or review (idioms)", ports_unreported, True),

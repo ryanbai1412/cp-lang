@@ -1951,6 +1951,21 @@ class DebtRatchetTest(unittest.TestCase):
                 "crates/cpl-lint/src/a.rs:1", "crates/cpl-lint/src/a.rs:4",
                 "crates/cpl-cli/src/abi.rs:2", "crates/cpl-cli/src/abi.rs:3", "crates/cpl-cli/tests/t.rs:1"])
 
+    def test_facade_today_uses(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self._write(root, "handbook/design/architecture.md", CRATE_RULES
+                        + "| tool (facade only) | `cpl-lint`, `cpl-cli` |\n| compiler (behind it) | `cpl-check` |\n")
+            self._write(root, "crates/cpl-lint/src/a.rs",
+                        "use cpl_facade::today::Analysis;\n// today::Ty in a comment\nlet today = 1;\n"
+                        "use cpl_facade::{today, Session};\nlet p = today::program(&a, &job);\n"
+                        "use cpl_facade::today;\n")
+            self._write(root, "crates/cpl-cli/tests/t.rs", "let s: cpl_facade::today::Ty;\n")
+            self._write(root, "crates/cpl-check/src/a.rs", "today::x();\n")
+            self.assertEqual(dr.facade_today_uses(root), [
+                "crates/cpl-lint/src/a.rs:1", "crates/cpl-lint/src/a.rs:5", "crates/cpl-lint/src/a.rs:6",
+                "crates/cpl-cli/tests/t.rs:1"])
+
     def test_consumer_rederived(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

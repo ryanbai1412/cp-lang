@@ -181,7 +181,8 @@ decides = "CLI, editor, browser and stress give the same answers"
 size = "Every facade query on every corpus program"
 properties = "0 tool crates depend on a compiler layer directly; identical diagnostics, types and runs from every client"
 level = "1 + 2"
-numbers = [{ counter = "tool_compiler_deps", target = 0 }]
+numbers = [{ counter = "tool_compiler_deps", target = 0 }, { counter = "facade_today_uses", target = 0 }]
+changed = "2026-11-25: added facade_today_uses; tool_compiler_deps reads 0 while tools still read the compiler's own forms through cpl_facade::today"
 missing = "tools whose diagnostics or output differ from another's for one snapshot"
 
 [[suite]]

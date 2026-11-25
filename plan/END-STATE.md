@@ -50,7 +50,7 @@ measured, by a mutation score or a matrix with no empty cell.
 
 | # | Suite | State | Numbers, now → target |
 |---|---|---|---|
-| 17 | Facade parity | unmeasured | `tool_compiler_deps` 0 → 0; no number yet for: tools whose diagnostics or output differ from another's for one snapshot |
+| 17 | Facade parity | unmeasured | `tool_compiler_deps` 0 → 0, `facade_today_uses` 323 → 0; no number yet for: tools whose diagnostics or output differ from another's for one snapshot |
 | 18 | Events, trace and debugger | unmeasured | `trace_budget_gap` 141 → 0; no number yet for: corpus programs whose event streams differ between engines |
 | 19 | Lossless syntax | unmeasured | no number yet for: files the lossless tree does not print back byte for byte |
 | 20 | Editor under edits | unmeasured | no number yet for: edit sequences whose incremental answer differs from a fresh one |
@@ -185,6 +185,7 @@ measured, by a mutation score or a matrix with no empty cell.
 - Minimum size: Every facade query on every corpus program.
 - At the end state: 0 tool crates depend on a compiler layer directly; identical diagnostics, types and runs from every client.
 - Mechanism level (`handbook/process/quality.md`): 1 + 2.
+- Last changed: 2026-11-25: added facade_today_uses; tool_compiler_deps reads 0 while tools still read the compiler's own forms through cpl_facade::today.
 
 ### 18. Events, trace and debugger
 

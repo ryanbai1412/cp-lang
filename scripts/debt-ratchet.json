@@ -267,6 +267,7 @@
   "next_wrong": 38,
   "next_not_passing": 4165,
   "end_state_unmeasured": 25,
+  "facade_today_uses": 323,
   "tool_compiler_deps": 0,
   "end_state_broken": 0,
   "next_cases_removed": 0,
