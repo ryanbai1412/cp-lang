@@ -45,6 +45,23 @@ pub enum Intr {
     Unset,
 }
 impl Intr {
+    /// The storage operation a std fn declared `= @intrinsic(name)` is (R12.14.1).
+    pub fn named(name: &str) -> Option<Intr> {
+        Some(match name {
+            "raw_empty" => Intr::RawEmpty,
+            "raw_new" => Intr::RawNew,
+            "raw_get" => Intr::RawGet,
+            "raw_set" => Intr::RawSet,
+            _ => return None,
+        })
+    }
+    /// The arguments it stores, so a caller's owned heap value passed there moves in (R05.2.2).
+    pub fn keeps(self) -> &'static [usize] {
+        match self {
+            Intr::RawSet => &[2],
+            _ => &[],
+        }
+    }
     /// Whether this operation can trap. One that can is a statement of its own.
     pub fn checked(self) -> bool {
         use Intr::*;

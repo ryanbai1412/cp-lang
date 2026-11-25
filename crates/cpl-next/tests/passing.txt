@@ -159,6 +159,7 @@ core-05/let-binds-once.cp
 core-05/let-cannot-assign.cp
 core-05/local-var-captured-by-reference.cp
 core-05/loop-item-not-kept.cp
+core-05/move-in-loop-second-iteration.cp
 core-05/move-in-one-branch-then-read.cp
 core-05/move-is-per-body.cp
 core-05/mut-lend-touched-through-it.cp
@@ -189,6 +190,7 @@ core-05/spec-block-plain-copy.cp
 core-05/spec-block-return-lent-param.cp
 core-05/static-constructor-keeping-param-rejects.cp
 core-05/store-in-top-level-var.cp
+core-05/store-into-mut-param.cp
 core-05/struct-lent-field-unused-after.cp
 core-05/struct-with-lent-field.cp
 core-05/top-level-not-captured.cp
@@ -357,6 +359,8 @@ next/a_io_02_nbsp_is_not_whitespace.cp
 next/a_io_04_minus_zero.cp
 next/a_io_05_print_list.cp
 next/a_io_06_print_list_and_value.cp
+next/a_keep_01_generic_fn_keeps_its_arg.cp
+next/a_keep_02_kept_plain_and_moved_once.cp
 next/a_multi_01_chained_compare_once.cp
 next/a_multi_02_state_above_and_below.cp
 next/a_multi_03_top_level_return_ends_case.cp

@@ -10,9 +10,7 @@ core-05/cache-lend-no-unknown-call.cp	wrong-accept	wanted E0602 on line 13, ran 
 core-05/fn-var-binding-a-global-is-a-move.cp	wrong-accept	wanted E0608 on line 6, ran and printed: 
 core-05/generic-wrapper-lends-its-source.cp	wrong-error	wanted E0602 on line 8, got: own: line 5: E0603: this returns a value that borrows `s`: `s` is lent by the caller; return a `.clone()`
 core-05/generic-wrapper-of-a-plain-value-lends-nothing.cp	wrong-reject	own: line 5: E0603: this returns a value that borrows `s`: `s` is lent by the caller; return a `.clone()`
-core-05/move-in-loop-second-iteration.cp	wrong-accept	wanted E0608 on line 6, ran and printed: 2
 core-05/plain-tuple-copies.cp	wrong-reject	check: line 5: E0405: field `Tuple2._0` is fixed (not `var`) and cannot be assigned
-core-05/store-into-mut-param.cp	wrong-accept	wanted E0603 on line 3, ran and printed: 
 core-06/getter-called-with-parens.cp	wrong-accept	wanted E0304 on line 4, ran and printed: 3
 core-06/lint-not-on-a-fn.cp	wrong-accept	wanted E0505 on line 4, ran and printed: 1
 core-07/computed-negative-key-traps.cp	wrong-trap	wanted R0101 on line 6, got: trap: R0401: line 6: index out of range

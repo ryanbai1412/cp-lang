@@ -331,17 +331,11 @@ impl Lw<'_> {
             TK::Call { f, recv, args } => {
                 let fd = self.d.f(f.decl);
                 let a = self.args(recv.as_deref(), args, out);
-                let call = if fd.intrinsic {
-                    let op = match fd.name.as_str() {
-                        "raw_empty" => Intr::RawEmpty,
-                        "raw_new" => Intr::RawNew,
-                        "raw_get" => Intr::RawGet,
-                        "raw_set" => Intr::RawSet,
-                        n => {
-                            self.errors.push(format!("unknown intrinsic `{n}`"));
-                            Intr::RawGet
-                        }
-                    };
+                let call = if let Some(n) = &fd.intrinsic {
+                    let op = Intr::named(n).unwrap_or_else(|| {
+                        self.errors.push(format!("unknown intrinsic `{n}`"));
+                        Intr::RawGet
+                    });
                     mk(EK::Intr(op, a, site))
                 } else {
                     mk(EK::Call(Target::Fn(f.clone()), a, site))

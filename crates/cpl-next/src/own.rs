@@ -47,6 +47,15 @@ impl Fx {
     }
 }
 
+/// What a call reaches: what the callee does apart from its arguments, what it does to them,
+/// and which of them it stores (receiver first).
+#[derive(Default)]
+struct Reach {
+    other: Fx,
+    through: Fx,
+    keeps: BTreeSet<usize>,
+}
+
 /// R1: no part of the value lives on the heap, so using it is a copy.
 pub fn plain(d: &Decls, t: &Ty, depth: usize) -> bool {
     match t {
@@ -104,6 +113,13 @@ struct Cx<'a> {
     caps: HashMap<Root, BTreeSet<Root>>,
     /// Where each argument that is copied in starts.
     copies: BTreeSet<u32>,
+    /// For each fn, the arguments it stores where they outlive the call (receiver first), so
+    /// an owned heap value passed there moves in (R05.2.2).
+    keeps: HashMap<FnId, BTreeSet<usize>>,
+    /// The fn being walked's receiver and parameters, in call order.
+    params: Vec<Root>,
+    /// Those of them it stores where they outlive the call.
+    kept: BTreeSet<Root>,
 }
 
 /// What ownership decides: the errors, and which by-value arguments are copies (the rest
@@ -137,13 +153,16 @@ pub fn check(d: &Decls, t: &Typed, src: &str) -> Owned {
         pending: Vec::new(),
         caps: HashMap::new(),
         copies: BTreeSet::new(),
+        keeps: HashMap::new(),
+        params: Vec::new(),
+        kept: BTreeSet::new(),
     };
     let mut ids: Vec<FnId> = t.fns.keys().copied().collect();
     ids.sort();
     for round in 0..40 {
-        let before = (cx.fns.clone(), cx.lams.clone());
+        let before = (cx.fns.clone(), cx.lams.clone(), cx.keeps.clone());
         cx.pass(&ids);
-        if before == (cx.fns.clone(), cx.lams.clone()) {
+        if before == (cx.fns.clone(), cx.lams.clone(), cx.keeps.clone()) {
             break;
         }
         assert!(round < 39, "effect summaries did not settle");
@@ -171,6 +190,14 @@ impl Cx<'_> {
             self.frozen.clear();
             self.pending.clear();
             self.caps.clear();
+            self.kept.clear();
+            self.params = (self.d.f(id).self_mode != SelfMode::None)
+                .then_some(tf.self_local)
+                .flatten()
+                .into_iter()
+                .chain(tf.params.iter().copied())
+                .map(Root::Local)
+                .collect();
             self.borrowed = tf
                 .params
                 .iter()
@@ -192,8 +219,14 @@ impl Cx<'_> {
             fx.writes.retain(keep);
             fx.held.retain(keep);
             self.fns.insert(id, fx);
+            let kept = (0..self.params.len())
+                .filter(|i| self.kept.contains(&self.params[*i]))
+                .collect();
+            self.keeps.insert(id, kept);
         }
         self.cur = None;
+        self.params.clear();
+        self.kept.clear();
         self.decl.clear();
         self.lent.clear();
         self.moved.clear();
@@ -361,6 +394,50 @@ impl Cx<'_> {
             .entry(storage)
             .or_default()
             .extend(what.iter().copied());
+    }
+    /// Stores `what` into `storage`. A parameter whose type holds a type parameter, stored where
+    /// it outlives the call, is one the fn keeps: each call moves an owned heap argument in
+    /// (R05.2.2) and holds a lent one to R8 (R05.5.3). Anything else stored is a lend, held to R8
+    /// here. A value lent from `storage` itself is free again once it is written back.
+    fn store(&mut self, span: Span, storage: Root, mut what: BTreeSet<Root>) {
+        what.remove(&storage);
+        if !self.decl.contains_key(&storage) {
+            let own: Vec<Root> = what
+                .iter()
+                .filter(|r| self.params.contains(r) && self.generic(**r))
+                .copied()
+                .collect();
+            for r in own {
+                what.remove(&r);
+                self.kept.insert(r);
+            }
+        }
+        self.keep(span, storage, &what);
+    }
+    /// Whether a local's type holds a type parameter.
+    fn generic(&self, r: Root) -> bool {
+        fn has(t: &Ty) -> bool {
+            match t {
+                Ty::Param(_) => true,
+                Ty::Struct(_, ts, _) => ts.iter().any(has),
+                Ty::Raw(t) | Ty::Ref(t) => has(t),
+                _ => false,
+            }
+        }
+        let Root::Local(l) = r else { return false };
+        self.cur
+            .and_then(|c| self.t.fns.get(&c))
+            .and_then(|f| f.locals.get(l))
+            .is_some_and(|loc| has(&loc.ty))
+    }
+    /// The arguments a call to `f` stores where they outlive it, receiver first.
+    fn kept_args(&self, f: FnId) -> BTreeSet<usize> {
+        match &self.d.f(f).intrinsic {
+            Some(n) => crate::ir::Intr::named(n)
+                .map(|i| i.keeps().iter().copied().collect())
+                .unwrap_or_default(),
+            None => self.keeps.get(&f).cloned().unwrap_or_default(),
+        }
     }
     /// The binding `b` now holds `what`. Its heap borrows (not closure captures, R10) are frozen
     /// while it is used.
@@ -617,10 +694,14 @@ impl Cx<'_> {
         who: &str,
         span: Span,
         args: &[&TArg],
-        other: Fx,
-        through: Fx,
+        callee: Reach,
         fx: &mut Fx,
     ) -> (BTreeSet<Pl>, BTreeSet<Pl>) {
+        let Reach {
+            other,
+            through,
+            keeps,
+        } = callee;
         let (mut held, mut lent) = (BTreeSet::new(), BTreeSet::new());
         for a in args {
             match a {
@@ -674,19 +755,18 @@ impl Cx<'_> {
                 ),
             );
         }
+        // What the callee stores: an owned heap value moves in, a lent one is kept by what the
+        // call writes, so it must outlive that (R8).
         let mut kept = BTreeSet::new();
-        for a in args {
-            if let TArg::Value(v) = a {
-                // R4 says a callee keeps nothing; the slice's `push` keeps its argument, so a
-                // function value passed beside a `mut` place is taken as stored there.
-                if plain(self.d, &v.ty, 0) {
-                    kept.extend(self.sources(v));
-                }
+        for (i, a) in args.iter().enumerate() {
+            if let (TArg::Value(v), true) = (a, keeps.contains(&i)) {
+                self.take(v);
+                kept.extend(self.sources(v));
             }
         }
         for p in &lent {
             self.wrote(span, p);
-            self.keep(span, p.root, &kept);
+            self.store(span, p.root, kept.clone());
         }
         fx.writes.extend(lent.iter().cloned());
         fx.add(&other);
@@ -714,7 +794,13 @@ impl Cx<'_> {
         let all: Vec<&TArg> = recv.into_iter().chain(args.iter()).collect();
         let (other, through) = self.callee(f, &self.arg_places(&all), 0);
         let who = self.d.f(f.decl).name.clone();
-        self.call(&who, span, &all, other, through, fx)
+        let keeps = self.kept_args(f.decl);
+        let callee = Reach {
+            other,
+            through,
+            keeps,
+        };
+        self.call(&who, span, &all, callee, fx)
     }
 
     fn expr(&mut self, e: &TExpr, fx: &mut Fx) {
@@ -752,6 +838,7 @@ impl Cx<'_> {
                 let all: Vec<&TArg> = std::iter::once(&**recv).chain(args.iter()).collect();
                 let places = self.arg_places(&all);
                 let (mut other, mut through) = (Fx::default(), Fx::default());
+                let mut keeps = BTreeSet::new();
                 for im in &self.d.impls {
                     {
                         if im.trait_ == *tr {
@@ -767,11 +854,17 @@ impl Cx<'_> {
                                 );
                                 other.add(&o);
                                 through.add(&t);
+                                keeps.extend(self.kept_args(*m));
                             }
                         }
                     }
                 }
-                self.call(method, e.span, &all, other, through, fx);
+                let callee = Reach {
+                    other,
+                    through,
+                    keeps,
+                };
+                self.call(method, e.span, &all, callee, fx);
             }
             TK::CallValue { callee, args } => {
                 self.expr(callee, fx);
@@ -782,7 +875,11 @@ impl Cx<'_> {
                 };
                 let vals: Vec<TArg> = args.iter().cloned().map(TArg::Value).collect();
                 let all: Vec<&TArg> = vals.iter().collect();
-                self.call("the function value", e.span, &all, other, Fx::default(), fx);
+                let callee = Reach {
+                    other,
+                    ..Reach::default()
+                };
+                self.call("the function value", e.span, &all, callee, fx);
             }
             TK::Struct(xs) => {
                 for x in xs {
@@ -874,7 +971,7 @@ impl Cx<'_> {
                         }
                         let what = self.sources(e);
                         self.wrote(target.span, &p);
-                        self.keep(target.span, p.root, &what);
+                        self.store(target.span, p.root, what);
                         fx.writes.insert(p);
                     }
                     None => self.expr(target, fx),

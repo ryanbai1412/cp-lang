@@ -341,7 +341,7 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
         todo.append(&mut cx.reached);
         let Some(id) = todo.pop() else { break };
         let f = d.f(id);
-        if fns.contains_key(&id) || f.intrinsic || matches!(f.body, FnBody::None) {
+        if fns.contains_key(&id) || f.intrinsic.is_some() || matches!(f.body, FnBody::None) {
             continue;
         }
         let tf = cx.check_fn(id);

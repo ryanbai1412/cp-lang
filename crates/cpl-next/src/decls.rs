@@ -40,7 +40,8 @@ pub struct FnDecl {
     /// `false`) or a lender (`lends T`, `true`).
     pub region: Option<(bool, Ty)>,
     pub body: FnBody,
-    pub intrinsic: bool,
+    /// The name in `= @intrinsic(name)`, when that is its body.
+    pub intrinsic: Option<String>,
     pub getter: bool,
     pub item: u32,
     pub module: ModId,
@@ -1142,7 +1143,13 @@ fn add_fn(
         n_ret_sets,
         region,
         body: f.body.clone(),
-        intrinsic: matches!(&f.body, FnBody::Expr(e) if matches!(e.kind, cpl_syntax::ast::ExprKind::Intrinsic(_))),
+        intrinsic: match &f.body {
+            FnBody::Expr(e) => match &e.kind {
+                cpl_syntax::ast::ExprKind::Intrinsic(n) => Some(n.clone()),
+                _ => None,
+            },
+            _ => None,
+        },
         getter,
         item,
         module: m,
