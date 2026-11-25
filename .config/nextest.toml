@@ -21,6 +21,13 @@ priority = 20
 filter = 'binary_id(cpl-lsp::ports) | binary_id(cpl-lsp::latency)'
 threads-required = 'num-cpus'
 
+# Each case has 10 s per run and the test runs a case per core; beside the
+# rest of the suite two cases that take 2 s alone went past it (deep
+# recursion on the interpreter's 16 GB stack). Give it the machine.
+[[profile.default.overrides]]
+filter = 'binary_id(cpl-next::programs)'
+threads-required = 'num-cpus'
+
 # std's @test fns each fail past the judge's 2 s limit; beside the rest of
 # the suite three went past it on a 4-core runner (CI run 45311869328).
 [[profile.default.overrides]]

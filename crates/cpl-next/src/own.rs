@@ -1,0 +1,921 @@
+//! Ownership: what each fn reads, writes and holds, decided per fn on the typed tree,
+//! before any instance exists (spec chapter 5, R7, R9, R10, R12).
+//!
+//! A fn's summary names the places it touches: top-level bindings and its own parameters,
+//! with the field path kept, so `p.a` and `p.b` do not overlap (R05.8.1). A call through a
+//! function value is the join of the closures its set can hold; a set that is a parameter
+//! of the fn stays symbolic in the summary and is filled in at each call.
+use crate::check::*;
+use crate::decls::{Decls, SelfMode};
+use crate::ty::*;
+use cpl_diag::{codes, Code, Span};
+use std::collections::{BTreeSet, HashMap};
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+enum Root {
+    Global(usize),
+    Local(usize),
+}
+/// A variable and a path of fields under it. All elements of one container are one place.
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
+struct Pl {
+    root: Root,
+    path: Vec<usize>,
+}
+fn overlap(a: &Pl, b: &Pl) -> bool {
+    a.root == b.root && a.path.iter().zip(&b.path).all(|(x, y)| x == y)
+}
+fn hits<'a>(xs: impl IntoIterator<Item = &'a Pl>, ys: &'a BTreeSet<Pl>) -> Option<&'a Pl> {
+    xs.into_iter().find(|x| ys.iter().any(|y| overlap(x, y)))
+}
+
+#[derive(Default, Clone, PartialEq, Debug)]
+struct Fx {
+    reads: BTreeSet<Pl>,
+    writes: BTreeSet<Pl>,
+    /// Lent to something that is still running when this fn yields or lends.
+    held: BTreeSet<Pl>,
+    /// Function values it calls whose set is a parameter of the fn.
+    calls: BTreeSet<SetTy>,
+}
+impl Fx {
+    fn add(&mut self, o: &Fx) {
+        self.reads.extend(o.reads.iter().cloned());
+        self.writes.extend(o.writes.iter().cloned());
+        self.held.extend(o.held.iter().cloned());
+        self.calls.extend(o.calls.iter().cloned());
+    }
+}
+
+/// R1: no part of the value lives on the heap, so using it is a copy.
+pub fn plain(d: &Decls, t: &Ty, depth: usize) -> bool {
+    match t {
+        Ty::Int | Ty::Bool | Ty::Unit | Ty::Dom(_) | Ty::Fn(..) | Ty::Clo(_) => true,
+        Ty::Struct(id, targs, sets) if depth < 8 => {
+            let s = Subst { tys: targs, sets };
+            d.s(*id)
+                .fields
+                .iter()
+                .all(|(_, ft)| plain(d, &s.ty(ft), depth + 1))
+        }
+        _ => false,
+    }
+}
+
+struct Cx<'a> {
+    d: &'a Decls,
+    t: &'a Typed,
+    src: &'a str,
+    fns: HashMap<FnId, Fx>,
+    lams: HashMap<LambdaId, Fx>,
+    /// The fn being walked; `None` for the file body.
+    cur: Option<FnId>,
+    off: u32,
+    /// Enclosing loops over a generator or lender: what each holds for reading and for writing.
+    regions: Vec<(BTreeSet<Pl>, BTreeSet<Pl>)>,
+    report: bool,
+    errors: Vec<String>,
+    /// Block nesting at this point, and for each binding where it was declared and in what order.
+    scopes: Vec<u32>,
+    next: u32,
+    decl: HashMap<Root, (Vec<u32>, u32)>,
+    /// R6: the variables a binding's value borrows (a closure borrows what it captures by reference).
+    lent: HashMap<Root, BTreeSet<Root>>,
+    in_lambda: usize,
+    /// R2: bindings whose heap value was moved out and not assigned since.
+    moved: BTreeSet<Root>,
+    /// Bindings that are themselves lends of a heap value: heap parameters and heap loop items.
+    borrowed: BTreeSet<Root>,
+    /// R7: for a binding that holds a heap borrow, the bindings that must not change while it is used.
+    frozen: HashMap<Root, BTreeSet<Root>>,
+    /// A write or move that is an error if the binding is used afterwards.
+    pending: Vec<(Root, Span, Code, String)>,
+    /// The heap bindings a function value held by a binding uses, top-level ones included.
+    caps: HashMap<Root, BTreeSet<Root>>,
+}
+
+pub fn check(d: &Decls, t: &Typed, src: &str) -> Vec<String> {
+    let mut cx = Cx {
+        d,
+        t,
+        src,
+        fns: HashMap::new(),
+        lams: HashMap::new(),
+        cur: None,
+        off: 0,
+        regions: vec![],
+        report: false,
+        errors: vec![],
+        scopes: vec![],
+        next: 0,
+        decl: HashMap::new(),
+        lent: HashMap::new(),
+        in_lambda: 0,
+        moved: BTreeSet::new(),
+        borrowed: BTreeSet::new(),
+        frozen: HashMap::new(),
+        pending: Vec::new(),
+        caps: HashMap::new(),
+    };
+    let mut ids: Vec<FnId> = t.fns.keys().copied().collect();
+    ids.sort();
+    for round in 0..40 {
+        let before = (cx.fns.clone(), cx.lams.clone());
+        cx.pass(&ids);
+        if before == (cx.fns.clone(), cx.lams.clone()) {
+            break;
+        }
+        assert!(round < 39, "effect summaries did not settle");
+    }
+    cx.report = true;
+    cx.pass(&ids);
+    cx.errors.sort();
+    cx.errors.dedup();
+    cx.errors
+}
+
+impl Cx<'_> {
+    fn pass(&mut self, ids: &[FnId]) {
+        for &id in ids {
+            let tf = &self.t.fns[&id];
+            self.cur = Some(id);
+            self.off = self.d.f(id).item;
+            let mut fx = Fx::default();
+            self.decl.clear();
+            self.lent.clear();
+            self.moved.clear();
+            self.frozen.clear();
+            self.pending.clear();
+            self.caps.clear();
+            self.borrowed = tf
+                .params
+                .iter()
+                .chain(tf.self_local.iter())
+                .filter(|l| !plain(self.d, &tf.locals[**l].ty, 0))
+                .map(|l| Root::Local(*l))
+                .collect();
+            self.expr(&tf.body, &mut fx);
+            let out = self.sources(&tf.body);
+            self.escapes(tf.body.span, &out);
+            // Callers see only what outlives the call: top-level bindings and the parameters.
+            let mut ps: Vec<usize> = tf.params.clone();
+            ps.extend(tf.self_local);
+            let keep = |p: &Pl| match p.root {
+                Root::Global(_) => true,
+                Root::Local(l) => ps.contains(&l),
+            };
+            fx.reads.retain(keep);
+            fx.writes.retain(keep);
+            fx.held.retain(keep);
+            self.fns.insert(id, fx);
+        }
+        self.cur = None;
+        self.decl.clear();
+        self.lent.clear();
+        self.moved.clear();
+        self.frozen.clear();
+        self.pending.clear();
+        self.caps.clear();
+        self.borrowed.clear();
+        let mut fx = Fx::default();
+        let t = self.t;
+        for (i, s) in t.main.iter().enumerate() {
+            self.off = t.main_offs.get(i).copied().unwrap_or(0);
+            self.stmt(s, &mut fx);
+        }
+    }
+    fn err(&mut self, span: Span, code: Code, msg: String) {
+        if self.report {
+            let at = ((self.off + span.start) as usize).min(self.src.len());
+            let line = self.src[..at].matches('\n').count() + 1;
+            self.errors.push(format!("line {line}: {}: {msg}", code.0));
+        }
+    }
+    fn bind(&mut self, v: VarRef) {
+        self.next += 1;
+        let r = self.root(v);
+        self.decl.insert(r, (self.scopes.clone(), self.next));
+    }
+    fn root_name(&self, r: Root) -> String {
+        self.name(&Pl {
+            root: r,
+            path: vec![],
+        })
+    }
+    /// R6: the variables this value borrows. A closure borrows the `var`s, heap values and heap
+    /// parameters it uses (R05.10.1); a value built from lent values borrows what they do.
+    fn sources(&self, e: &TExpr) -> BTreeSet<Root> {
+        let mut out = BTreeSet::new();
+        if matches!(e.ty, Ty::Int | Ty::Bool | Ty::Unit | Ty::Dom(_)) {
+            return out;
+        }
+        match &e.kind {
+            TK::Lambda { params, body, .. } => {
+                let (mut used, mut bound) = (BTreeSet::new(), BTreeSet::new());
+                crate::lower::free_vars(body, &mut used, &mut bound);
+                for v in used.difference(&bound) {
+                    let by_ref = match v {
+                        VarRef::Local(l) if params.contains(l) && self.cur.is_some() => continue,
+                        VarRef::Global(g) if params.contains(g) && self.cur.is_none() => continue,
+                        VarRef::Local(l) => {
+                            let Some(loc) = self
+                                .cur
+                                .and_then(|c| self.t.fns.get(&c))
+                                .and_then(|f| f.locals.get(*l))
+                            else {
+                                continue;
+                            };
+                            loc.mutable || !plain(self.d, &loc.ty, 0)
+                        }
+                        VarRef::Global(g) => {
+                            let loc = &self.t.globals[*g];
+                            !loc.top && (loc.mutable || !plain(self.d, &loc.ty, 0))
+                        }
+                    };
+                    let r = self.root(*v);
+                    if by_ref {
+                        out.insert(r);
+                    }
+                    out.extend(self.lent.get(&r).into_iter().flatten().copied());
+                }
+            }
+            TK::Var(v) => {
+                let r = self.root(*v);
+                if self.borrowed.contains(&r) {
+                    out.insert(r);
+                }
+                out.extend(self.lent.get(&r).into_iter().flatten().copied());
+            }
+            // R05.3.5: a heap element read by index is a lend of the container, not a copy.
+            // Provisional: keyed on the name `get` until std declares it `lends`. An element of a
+            // type parameter is taken as a copy: the spec has no rule for it yet (QUESTION).
+            TK::Call {
+                f, recv: Some(r), ..
+            } if self.d.f(f.decl).name == "get"
+                && !plain(self.d, &e.ty, 0)
+                && !matches!(e.ty, Ty::Param(_)) =>
+            {
+                let (TArg::Value(v) | TArg::Mut(v)) = &**r;
+                match self.place(v) {
+                    Some(p) => {
+                        out.insert(p.root);
+                    }
+                    None => out = self.sources(v),
+                }
+            }
+            TK::Field(b, _) | TK::Inject(b) | TK::Widen(b) => {
+                out = self.sources(b);
+                // A heap field of a place is that place: binding it borrows the place.
+                if let (true, Some(p), false) = (
+                    matches!(e.kind, TK::Field(..)),
+                    self.place(e),
+                    plain(self.d, &e.ty, 0),
+                ) {
+                    if !self.decl.contains_key(&p.root) || !p.path.is_empty() {
+                        out.insert(p.root);
+                    }
+                }
+            }
+            TK::Struct(xs) => xs.iter().for_each(|x| out.extend(self.sources(x))),
+            TK::If(_, a, b) => {
+                out = self.sources(a);
+                out.extend(self.sources(b));
+            }
+            TK::Block(_, Some(t)) => out = self.sources(t),
+            _ => {}
+        }
+        out
+    }
+    /// R05.7.8: a lent value is not returned.
+    fn escapes(&mut self, span: Span, out: &BTreeSet<Root>) {
+        if let (Some(r), 0) = (out.iter().next(), self.in_lambda) {
+            let n = self.root_name(*r);
+            let why = if self.borrowed.contains(r) {
+                format!("{n} is lent by the caller; return a `.clone()`")
+            } else {
+                format!("{n} is gone when the fn returns")
+            };
+            self.err(
+                span,
+                codes::LENT_ESCAPES,
+                format!("this returns a value that borrows {n}: {why}"),
+            );
+        }
+    }
+    /// R8: a lent value is kept only in storage that dies no later than what it borrows.
+    fn keep(&mut self, span: Span, storage: Root, what: &BTreeSet<Root>) {
+        if what.is_empty() {
+            return;
+        }
+        let home = self.decl.get(&storage).cloned();
+        for s in what {
+            let ok = match (&home, self.decl.get(s)) {
+                // A parameter's storage is the caller's, and a top-level binding outlives any fn.
+                (None, _) => false,
+                (Some(_), None) => true,
+                (Some((hs, ho)), Some((ss, so))) => hs.starts_with(ss) && so < ho,
+            };
+            if !ok && self.in_lambda == 0 {
+                let (a, b) = (self.root_name(storage), self.root_name(*s));
+                self.err(
+                    span,
+                    codes::LENT_ESCAPES,
+                    format!("a function that uses {b} is stored in {a}, which outlives {b}"),
+                );
+            }
+        }
+        self.lent
+            .entry(storage)
+            .or_default()
+            .extend(what.iter().copied());
+    }
+    /// The binding `b` now holds `what`. Its heap borrows (not closure captures, R10) are frozen
+    /// while it is used.
+    fn holds(&mut self, b: Root, e: &TExpr, what: &BTreeSet<Root>) {
+        if what.is_empty() {
+            return;
+        }
+        self.lent.entry(b).or_default().extend(what.iter().copied());
+        if !plain(self.d, &e.ty, 0) {
+            self.frozen
+                .entry(b)
+                .or_default()
+                .extend(what.iter().copied());
+        }
+    }
+    /// A write to `p`: an error if a binding that borrows it is used later.
+    fn wrote(&mut self, span: Span, p: &Pl) {
+        if self.in_lambda > 0 {
+            return;
+        }
+        let n = self.root_name(p.root);
+        for (b, srcs) in &self.frozen {
+            if *b != p.root && srcs.contains(&p.root) {
+                let bn = self.root_name(*b);
+                self.pending.push((
+                    *b,
+                    span,
+                    codes::USED_WHILE_LENT,
+                    format!("{n} is written here while {bn}, which borrows it, is still used"),
+                ));
+            }
+        }
+    }
+    fn live(&mut self, span: Span, p: &Pl) {
+        if let Some(i) = self.pending.iter().position(|x| x.0 == p.root) {
+            let (_, at, code, msg) = self.pending.remove(i);
+            self.pending.retain(|x| x.0 != p.root);
+            self.err(at, code, msg);
+        }
+        if self.moved.contains(&p.root) && self.in_lambda == 0 {
+            let n = self.root_name(p.root);
+            self.err(
+                span,
+                codes::USE_AFTER_MOVE,
+                format!("{n} was moved into another binding; use `.clone()` there to keep both"),
+            );
+        }
+    }
+    /// R2: `let b = a` and `x = a` move a heap value out of a binding this block owns.
+    fn take(&mut self, e: &TExpr) {
+        if let TK::Var(v) = &e.kind {
+            let r = self.root(*v);
+            if self.decl.contains_key(&r)
+                && !self.borrowed.contains(&r)
+                && !self.lent.contains_key(&r)
+                && !plain(self.d, &e.ty, 0)
+                && self.in_lambda == 0
+            {
+                self.moved.insert(r);
+                // R05.10.2: a captured variable can't be moved while the fn value is alive.
+                let n = self.root_name(r);
+                for (b, srcs) in self.lent.iter().chain(self.caps.iter()) {
+                    if srcs.contains(&r) {
+                        let bn = self.root_name(*b);
+                        self.pending.push((
+                            *b,
+                            e.span,
+                            codes::MOVED_WHILE_CAPTURED,
+                            format!("{n} is moved here while {bn}, which uses it, is still used"),
+                        ));
+                    }
+                }
+            }
+        }
+    }
+    /// A move inside a loop of a binding declared before it leaves nothing for the next turn.
+    fn moved_in_loop(&mut self, span: Span, at: u32, before: &BTreeSet<Root>) {
+        let gone: Vec<Root> = self
+            .moved
+            .difference(before)
+            .copied()
+            .filter(|r| self.decl.get(r).is_some_and(|(_, o)| *o <= at))
+            .collect();
+        for r in gone {
+            let n = self.root_name(r);
+            self.err(
+                span,
+                codes::USE_AFTER_MOVE,
+                format!("{n} is moved inside a loop, so the next turn would use it after the move"),
+            );
+        }
+    }
+    fn root(&self, v: VarRef) -> Root {
+        match v {
+            VarRef::Local(l) => Root::Local(l),
+            VarRef::Global(g) => Root::Global(g),
+        }
+    }
+    fn place(&self, e: &TExpr) -> Option<Pl> {
+        match &e.kind {
+            TK::Var(v) => Some(Pl {
+                root: self.root(*v),
+                path: vec![],
+            }),
+            TK::Field(b, i) => {
+                let mut p = self.place(b)?;
+                p.path.push(*i);
+                Some(p)
+            }
+            _ => None,
+        }
+    }
+    fn plain(&self, t: &Ty, depth: usize) -> bool {
+        plain(self.d, t, depth)
+    }
+    fn name(&self, p: &Pl) -> String {
+        let (mut s, mut ty) = match p.root {
+            Root::Global(g) => (self.t.globals[g].name.clone(), self.t.globals[g].ty.clone()),
+            Root::Local(l) => match self
+                .cur
+                .and_then(|c| self.t.fns.get(&c))
+                .and_then(|f| f.locals.get(l))
+            {
+                Some(loc) => (loc.name.clone(), loc.ty.clone()),
+                None => return "a local value".into(),
+            },
+        };
+        for i in &p.path {
+            let Ty::Struct(id, targs, sets) = &ty else {
+                break;
+            };
+            let sd = self.d.s(*id);
+            let Some((f, ft)) = sd.fields.get(*i) else {
+                break;
+            };
+            s = format!("{s}.{f}");
+            ty = Subst { tys: targs, sets }.ty(ft);
+        }
+        format!("`{s}`")
+    }
+
+    /// What calling any closure of this set does.
+    fn set_fx(&self, s: &SetTy, depth: usize) -> Fx {
+        let mut out = Fx::default();
+        if depth > 12 {
+            return out;
+        }
+        match s {
+            SetTy::Param(_) => {
+                out.calls.insert(s.clone());
+            }
+            SetTy::Closed(ms) => {
+                for m in ms {
+                    match m {
+                        Member::Sub(s) => out.add(&self.set_fx(s, depth + 1)),
+                        Member::Clo(CloRef::Item(f)) => {
+                            let (other, _) = self.callee(f, &[], depth + 1);
+                            out.add(&other);
+                        }
+                        Member::Clo(CloRef::Lambda(id, ts, ss)) => {
+                            let Some(l) = self.lams.get(id) else { continue };
+                            let here = self.t.lambdas[id.0].owner == self.cur;
+                            let mut fx = l.clone();
+                            if !here {
+                                // Its captured variables are not names of this fn (R8 keeps it from outliving them).
+                                let g = |p: &Pl| matches!(p.root, Root::Global(_));
+                                fx.reads.retain(g);
+                                fx.writes.retain(g);
+                                fx.held.retain(g);
+                            }
+                            let calls = std::mem::take(&mut fx.calls);
+                            out.add(&fx);
+                            for c in calls {
+                                let c = if here {
+                                    c
+                                } else {
+                                    Subst { tys: ts, sets: ss }.set(&c)
+                                };
+                                if here && matches!(c, SetTy::Param(_)) {
+                                    out.calls.insert(c);
+                                } else {
+                                    out.add(&self.set_fx(&c, depth + 1));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            SetTy::RetOf(f, k) => {
+                if let Some(rs) = self.t.ret_sets.get(&(f.decl, *k)) {
+                    let rs = Subst {
+                        tys: &f.targs,
+                        sets: &f.sets,
+                    }
+                    .set(rs);
+                    out.add(&self.set_fx(&rs, depth + 1));
+                }
+            }
+            SetTy::RetSlot(_) | SetTy::Var(_) => {}
+        }
+        out
+    }
+    /// A call to `f` with these argument places (receiver first): what it does apart from
+    /// its arguments, and what it does to them.
+    fn callee(&self, f: &FnRef, args: &[Option<Pl>], depth: usize) -> (Fx, Fx) {
+        let (mut other, mut through) = (Fx::default(), Fx::default());
+        let fd = self.d.f(f.decl);
+        let Some(tf) = self.t.fns.get(&f.decl) else {
+            return (other, through);
+        };
+        let Some(sum) = self.fns.get(&f.decl) else {
+            return (other, through);
+        };
+        let mut ps: Vec<usize> = Vec::new();
+        if fd.self_mode != SelfMode::None {
+            ps.extend(tf.self_local);
+        }
+        ps.extend(tf.params.iter().copied());
+        let map = |p: &Pl| -> Option<(bool, Pl)> {
+            match p.root {
+                Root::Global(_) => Some((false, p.clone())),
+                Root::Local(l) => {
+                    let i = ps.iter().position(|x| *x == l)?;
+                    let mut q = args.get(i)?.clone()?;
+                    q.path.extend(p.path.iter().copied());
+                    Some((true, q))
+                }
+            }
+        };
+        for (from, pick) in [(&sum.reads, 0), (&sum.writes, 1), (&sum.held, 2)] {
+            for p in from {
+                if let Some((arg, q)) = map(p) {
+                    let fx = if arg { &mut through } else { &mut other };
+                    match pick {
+                        0 => fx.reads.insert(q),
+                        1 => fx.writes.insert(q),
+                        _ => fx.held.insert(q),
+                    };
+                }
+            }
+        }
+        let s = Subst {
+            tys: &f.targs,
+            sets: &f.sets,
+        };
+        for c in &sum.calls {
+            other.add(&self.set_fx(&s.set(c), depth + 1));
+        }
+        (other, through)
+    }
+
+    /// One call (R10): its arguments, what the callee touches by name, and what the closures
+    /// it can call touch, are one access. Returns what it holds for reading and for writing.
+    fn call(
+        &mut self,
+        who: &str,
+        span: Span,
+        args: &[&TArg],
+        other: Fx,
+        through: Fx,
+        fx: &mut Fx,
+    ) -> (BTreeSet<Pl>, BTreeSet<Pl>) {
+        let (mut held, mut lent) = (BTreeSet::new(), BTreeSet::new());
+        for a in args {
+            match a {
+                TArg::Value(v) => match self.place(v) {
+                    Some(p) if !self.plain(&v.ty, 0) => {
+                        self.live(v.span, &p);
+                        fx.reads.insert(p.clone());
+                        held.insert(p);
+                    }
+                    _ => self.expr(v, fx),
+                },
+                TArg::Mut(v) => {
+                    let Some(p) = self.place(v) else {
+                        self.expr(v, fx);
+                        continue;
+                    };
+                    self.live(v.span, &p);
+                    if let Some(q) = lent.iter().find(|q| overlap(q, &p)) {
+                        let n = self.name(q);
+                        self.err(
+                            span,
+                            codes::LENT_TWICE,
+                            format!("{n} is lent to `{who}` for writing twice in the same call"),
+                        );
+                    }
+                    lent.insert(p);
+                }
+            }
+        }
+        if let Some(p) = hits(&held, &lent) {
+            let n = self.name(p);
+            self.err(
+                span,
+                codes::LENT_TWICE,
+                format!("{n} is passed to `{who}` and lent to it for writing in the same call"),
+            );
+        }
+        if let Some(p) = hits(&held, &other.writes) {
+            let n = self.name(p);
+            self.err(
+                span,
+                codes::USED_WHILE_LENT,
+                format!(
+                    "{n} is lent to `{who}` for this call, and the call also writes it another way"
+                ),
+            );
+        }
+        if let Some(p) = hits(&lent, &other.writes).or_else(|| hits(&lent, &other.reads)) {
+            let n = self.name(p);
+            self.err(
+                span,
+                codes::USED_WHILE_LENT,
+                format!(
+                    "{n} is lent to `{who}` for writing, and the call also reaches it another way"
+                ),
+            );
+        }
+        let mut kept = BTreeSet::new();
+        for a in args {
+            if let TArg::Value(v) = a {
+                // R4 says a callee keeps nothing; the slice's `push` keeps its argument, so a
+                // function value passed beside a `mut` place is taken as stored there.
+                if plain(self.d, &v.ty, 0) {
+                    kept.extend(self.sources(v));
+                }
+            }
+        }
+        for p in &lent {
+            self.wrote(span, p);
+            self.keep(span, p.root, &kept);
+        }
+        fx.writes.extend(lent.iter().cloned());
+        fx.add(&other);
+        fx.reads.extend(through.reads);
+        fx.writes.extend(through.writes);
+        held.extend(other.held.iter().cloned());
+        held.extend(through.held);
+        (held, lent)
+    }
+    fn arg_places(&self, args: &[&TArg]) -> Vec<Option<Pl>> {
+        args.iter()
+            .map(|a| match a {
+                TArg::Value(v) | TArg::Mut(v) => self.place(v),
+            })
+            .collect()
+    }
+    fn fn_call(
+        &mut self,
+        f: &FnRef,
+        span: Span,
+        recv: Option<&TArg>,
+        args: &[TArg],
+        fx: &mut Fx,
+    ) -> (BTreeSet<Pl>, BTreeSet<Pl>) {
+        let all: Vec<&TArg> = recv.into_iter().chain(args.iter()).collect();
+        let (other, through) = self.callee(f, &self.arg_places(&all), 0);
+        let who = self.d.f(f.decl).name.clone();
+        self.call(&who, span, &all, other, through, fx)
+    }
+
+    fn expr(&mut self, e: &TExpr, fx: &mut Fx) {
+        match &e.kind {
+            TK::Int(_)
+            | TK::Bool(_)
+            | TK::Unit
+            | TK::ReadInt
+            | TK::DomLen(_)
+            | TK::FnItem(_)
+            | TK::Error => {}
+            TK::Var(_) | TK::Field(..) => match self.place(e) {
+                Some(p) => {
+                    self.live(e.span, &p);
+                    fx.reads.insert(p);
+                }
+                None => {
+                    if let TK::Field(b, _) = &e.kind {
+                        self.expr(b, fx)
+                    }
+                }
+            },
+            TK::Call { f, recv, args } => {
+                self.fn_call(f, e.span, recv.as_deref(), args, fx);
+            }
+            TK::CallTrait {
+                tr,
+                method,
+                recv,
+                args,
+            } => {
+                // Which impl runs is known per instance; the summary is every impl's.
+                let all: Vec<&TArg> = std::iter::once(&**recv).chain(args.iter()).collect();
+                let places = self.arg_places(&all);
+                let (mut other, mut through) = (Fx::default(), Fx::default());
+                for im in &self.d.impls {
+                    {
+                        if im.trait_ == *tr {
+                            if let Some(m) = im.methods.get(method) {
+                                let (o, t) = self.callee(
+                                    &FnRef {
+                                        decl: *m,
+                                        targs: vec![],
+                                        sets: vec![],
+                                    },
+                                    &places,
+                                    0,
+                                );
+                                other.add(&o);
+                                through.add(&t);
+                            }
+                        }
+                    }
+                }
+                self.call(method, e.span, &all, other, through, fx);
+            }
+            TK::CallValue { callee, args } => {
+                self.expr(callee, fx);
+                let other = match &callee.ty {
+                    Ty::Fn(_, _, s) => self.set_fx(s, 0),
+                    Ty::Clo(c) => self.set_fx(&SetTy::Closed(vec![Member::Clo((**c).clone())]), 0),
+                    _ => Fx::default(),
+                };
+                let vals: Vec<TArg> = args.iter().cloned().map(TArg::Value).collect();
+                let all: Vec<&TArg> = vals.iter().collect();
+                self.call("the function value", e.span, &all, other, Fx::default(), fx);
+            }
+            TK::Struct(xs) => {
+                for x in xs {
+                    self.expr(x, fx);
+                    // R05.5: a constructor keeps its arguments, so an owned heap binding moves in.
+                    self.take(x);
+                }
+            }
+            TK::Lambda { id, body, .. } => {
+                let mut inner = Fx::default();
+                let saved = std::mem::take(&mut self.regions);
+                self.in_lambda += 1;
+                self.expr(body, &mut inner);
+                self.in_lambda -= 1;
+                self.regions = saved;
+                self.lams.insert(*id, inner);
+            }
+            TK::Inject(x)
+            | TK::Widen(x)
+            | TK::Not(x)
+            | TK::Neg(x)
+            | TK::DomFrom(_, x)
+            | TK::DomOrd(x) => self.expr(x, fx),
+            TK::Bin(_, a, b) | TK::Cmp(_, a, b) => {
+                self.expr(a, fx);
+                self.expr(b, fx);
+            }
+            TK::If(c, a, b) => {
+                self.expr(c, fx);
+                let before = self.moved.clone();
+                self.expr(a, fx);
+                let after_a = std::mem::replace(&mut self.moved, before);
+                self.expr(b, fx);
+                self.moved.extend(after_a);
+            }
+            TK::Block(ss, tail) => {
+                self.next += 1;
+                self.scopes.push(self.next);
+                ss.iter().for_each(|s| self.stmt(s, fx));
+                if let Some(t) = tail {
+                    self.expr(t, fx)
+                }
+                self.scopes.pop();
+            }
+            TK::Print(ps) => {
+                for p in ps {
+                    if let Piece::Value(v) = p {
+                        self.expr(v, fx)
+                    }
+                }
+            }
+        }
+    }
+    fn stmt(&mut self, s: &TStmt, fx: &mut Fx) {
+        match s {
+            TStmt::Expr(e) | TStmt::Assert(e, ..) => self.expr(e, fx),
+            TStmt::Return(Some(e)) => {
+                self.expr(e, fx);
+                let out = self.sources(e);
+                self.escapes(e.span, &out);
+            }
+            TStmt::Let(v, e) => {
+                self.expr(e, fx);
+                self.take(e);
+                self.bind(*v);
+                let what = self.sources(e);
+                self.holds(self.root(*v), e, &what);
+                let mut inner = e;
+                while let TK::Inject(x) | TK::Widen(x) = &inner.kind {
+                    inner = x;
+                }
+                if let TK::Lambda { body, .. } = &inner.kind {
+                    let (mut used, mut bound) = (BTreeSet::new(), BTreeSet::new());
+                    crate::lower::free_vars(body, &mut used, &mut bound);
+                    let roots = used.difference(&bound).map(|u| self.root(*u)).collect();
+                    self.caps.insert(self.root(*v), roots);
+                }
+            }
+            TStmt::Assign(target, e) => {
+                self.expr(e, fx);
+                match self.place(target) {
+                    Some(p) => {
+                        self.take(e);
+                        if p.path.is_empty() {
+                            self.moved.remove(&p.root);
+                        }
+                        let what = self.sources(e);
+                        self.wrote(target.span, &p);
+                        self.keep(target.span, p.root, &what);
+                        fx.writes.insert(p);
+                    }
+                    None => self.expr(target, fx),
+                }
+            }
+            TStmt::While(c, b) => {
+                self.expr(c, fx);
+                let at = self.next;
+                let before = self.moved.clone();
+                self.expr(b, fx);
+                self.moved_in_loop(b.span, at, &before);
+            }
+            TStmt::For(v, lo, hi, b) => {
+                self.bind(*v);
+                self.expr(lo, fx);
+                self.expr(hi, fx);
+                let at = self.next;
+                let before = self.moved.clone();
+                self.expr(b, fx);
+                self.moved_in_loop(b.span, at, &before);
+            }
+            TStmt::Return(None) | TStmt::Break | TStmt::Continue => {}
+            TStmt::Yield(e) | TStmt::LendOut(e) => {
+                if let (TStmt::LendOut(_), Some(p)) = (s, self.place(e)) {
+                    fx.writes.insert(p);
+                } else {
+                    self.expr(e, fx);
+                }
+                for (h, m) in &self.regions {
+                    fx.held.extend(h.iter().chain(m.iter()).cloned());
+                }
+            }
+            // R12: the callee's lends are live for the walk, and the body runs inside the call.
+            TStmt::Region {
+                f,
+                recv,
+                args,
+                var,
+                body,
+                ..
+            } => {
+                let (held, lent) = self.fn_call(f, body.span, recv.as_deref(), args, fx);
+                let who = self.d.f(f.decl).name.clone();
+                self.bind(*var);
+                let item = self.root(*var);
+                let item_ty = match var {
+                    VarRef::Local(l) => self
+                        .cur
+                        .and_then(|c| self.t.fns.get(&c))
+                        .and_then(|f| f.locals.get(*l))
+                        .map(|l| l.ty.clone()),
+                    VarRef::Global(g) => self.t.globals.get(*g).map(|l| l.ty.clone()),
+                };
+                if item_ty.is_some_and(|t| !plain(self.d, &t, 0)) {
+                    self.borrowed.insert(item);
+                }
+                self.regions.push((held.clone(), lent.clone()));
+                let mut inner = Fx::default();
+                self.expr(body, &mut inner);
+                self.regions.pop();
+                let own = self.root(*var);
+                inner.reads.retain(|p| p.root != own);
+                inner.writes.retain(|p| p.root != own);
+                if let Some(p) = hits(&held, &inner.writes) {
+                    let n = self.name(p);
+                    self.err(body.span, codes::USED_WHILE_LENT, format!("{n} is lent to `{who}` for the whole loop, and the loop body writes it"));
+                }
+                if let Some(p) = hits(&lent, &inner.writes).or_else(|| hits(&lent, &inner.reads)) {
+                    let n = self.name(p);
+                    self.err(body.span, codes::USED_WHILE_LENT, format!("{n} is lent to `{who}` for writing for the whole loop, and the loop body uses it"));
+                }
+                fx.add(&inner);
+            }
+        }
+    }
+}

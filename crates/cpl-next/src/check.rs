@@ -1,0 +1,411 @@
+//! Contract 3: declarations -> typed tree. Decides every type, target and
+//! conversion. Nothing after this infers anything.
+use crate::decls::{self, Decls, Named, Owner, SelfMode};
+use crate::ty::*;
+use cpl_diag::Span;
+use cpl_syntax::ast::{
+    self, AssignOp, BinOp, CmpOp, Cond, ExprKind, FnBody, PatternKind, StmtKind, StrPiece,
+    TypeKind, UnOp,
+};
+use std::collections::HashMap;
+
+mod expr;
+mod stmt;
+mod unify;
+mod zonk;
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
+pub enum VarRef {
+    Local(LocalId),
+    Global(LocalId),
+}
+
+#[derive(Clone, Debug)]
+pub struct TExpr {
+    pub kind: TK,
+    pub ty: Ty,
+    pub span: Span,
+}
+#[derive(Clone, Debug)]
+pub enum TK {
+    Int(i64),
+    Bool(bool),
+    Unit,
+    Var(VarRef),
+    Field(Box<TExpr>, usize),
+    Call {
+        f: FnRef,
+        recv: Option<Box<TArg>>,
+        args: Vec<TArg>,
+    },
+    CallTrait {
+        tr: TraitId,
+        method: String,
+        recv: Box<TArg>,
+        args: Vec<TArg>,
+    },
+    CallValue {
+        callee: Box<TExpr>,
+        args: Vec<TExpr>,
+    },
+    Struct(Vec<TExpr>),
+    Lambda {
+        id: LambdaId,
+        params: Vec<LocalId>,
+        body: Box<TExpr>,
+    },
+    FnItem(FnRef),
+    /// A closure flows into a function-value slot.
+    Inject(Box<TExpr>),
+    /// A function value flows into a slot whose set is larger.
+    Widen(Box<TExpr>),
+    Bin(BinOp, Box<TExpr>, Box<TExpr>),
+    Cmp(CmpOp, Box<TExpr>, Box<TExpr>),
+    Not(Box<TExpr>),
+    Neg(Box<TExpr>),
+    If(Box<TExpr>, Box<TExpr>, Box<TExpr>),
+    Block(Vec<TStmt>, Option<Box<TExpr>>),
+    Print(Vec<Piece>),
+    ReadInt,
+    /// The size of a domain type: `D.count`.
+    DomLen(Ty),
+    /// `D(i)`: an Int becomes a value of the domain, checked.
+    DomFrom(Ty, Box<TExpr>),
+    /// `Int(v)`: a domain value's position.
+    DomOrd(Box<TExpr>),
+    Error,
+}
+#[derive(Clone, Debug)]
+pub enum Piece {
+    Text(String),
+    Value(TExpr),
+}
+#[derive(Clone, Debug)]
+pub enum TArg {
+    Value(TExpr),
+    /// A place lent for the call.
+    Mut(TExpr),
+}
+#[derive(Clone, Debug)]
+pub enum TStmt {
+    Let(VarRef, TExpr),
+    Assign(TExpr, TExpr),
+    Expr(TExpr),
+    While(TExpr, TExpr),
+    For(VarRef, TExpr, TExpr, TExpr),
+    Return(Option<TExpr>),
+    Assert(TExpr, String, Span),
+    Break,
+    Continue,
+    /// In a generator: hand a value to the caller's loop body.
+    Yield(TExpr),
+    /// In a lender: hand a place to the caller's code; the rest of the fn runs after it.
+    LendOut(TExpr),
+    /// A call that takes the code in `body` and runs it at its `yield` or `lend`, with `var` bound.
+    Region {
+        f: FnRef,
+        recv: Option<Box<TArg>>,
+        args: Vec<TArg>,
+        var: VarRef,
+        lend: bool,
+        body: TExpr,
+    },
+}
+
+#[derive(Clone, Debug)]
+pub struct Local {
+    pub name: String,
+    pub ty: Ty,
+    /// A top-level binding of the file, as opposed to one inside a block.
+    pub top: bool,
+    /// Declared with `var`: a closure that uses it shares it.
+    pub mutable: bool,
+    /// Bound by `let`: it cannot be assigned.
+    pub fixed: bool,
+}
+pub struct TypedFn {
+    pub self_local: Option<LocalId>,
+    pub params: Vec<LocalId>,
+    pub locals: Vec<Local>,
+    pub body: TExpr,
+    pub ret: Ty,
+}
+pub struct LambdaInfo {
+    pub params: Vec<Ty>,
+    pub ret: Ty,
+    /// The fn it sits in; `None` for a top-level statement.
+    pub owner: Option<FnId>,
+}
+pub struct DomInfo {
+    pub name: String,
+    /// The variable that holds its size.
+    pub len: VarRef,
+    pub owner: Option<FnId>,
+}
+pub struct Typed {
+    pub domains: Vec<DomInfo>,
+    pub fns: HashMap<FnId, TypedFn>,
+    pub globals: Vec<Local>,
+    pub main: Vec<TStmt>,
+    /// Where each statement of `main` starts in the source: spans are relative to it.
+    pub main_offs: Vec<u32>,
+    pub lambdas: Vec<LambdaInfo>,
+    /// The set a fn returns, for fns whose result is a function value.
+    pub ret_sets: HashMap<(FnId, usize), SetTy>,
+    pub errors: Vec<String>,
+}
+
+enum SetVar {
+    Link(usize),
+    Root(Vec<Member>),
+    Bound(SetTy),
+}
+
+struct Cx<'a> {
+    d: &'a Decls,
+    src: &'a str,
+    tys: Vec<Option<Ty>>,
+    sets: Vec<SetVar>,
+    /// Set variables being written out, to catch a set that contains itself.
+    zonking: std::cell::RefCell<Vec<usize>>,
+    cyclic: std::cell::Cell<bool>,
+    errors: Vec<String>,
+    lambdas: Vec<LambdaInfo>,
+    globals: Vec<Local>,
+    global_names: HashMap<String, LocalId>,
+    ret_sets: HashMap<(FnId, usize), SetTy>,
+    domains: Vec<DomInfo>,
+    doms: HashMap<String, usize>,
+    // per fn
+    decl: Option<FnId>,
+    generics: Vec<String>,
+    n_sets: usize,
+    locals: Vec<Local>,
+    scopes: Vec<HashMap<String, LocalId>>,
+    self_local: Option<LocalId>,
+    ret: Ty,
+    /// What the fn being checked yields or lends.
+    region: Option<(bool, Ty)>,
+    /// How many loops enclose the statement being checked, and a marker for `For`'s two-step entry.
+    loops: u32,
+    in_for: bool,
+    /// Set while checking the one call that may be a generator or a lender.
+    allow_region: bool,
+    /// Set while converting the branches of an `if` into their common type: sets are joined, never merged.
+    joining: bool,
+    item_off: u32,
+}
+
+pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
+    let mut cx = Cx {
+        d,
+        src,
+        tys: Vec::new(),
+        sets: Vec::new(),
+        zonking: Default::default(),
+        cyclic: Default::default(),
+        errors: Vec::new(),
+        lambdas: Vec::new(),
+        globals: Vec::new(),
+        global_names: HashMap::new(),
+        ret_sets: HashMap::new(),
+        domains: Vec::new(),
+        doms: HashMap::new(),
+        decl: None,
+        generics: Vec::new(),
+        n_sets: 0,
+        locals: Vec::new(),
+        scopes: vec![HashMap::new()],
+        self_local: None,
+        ret: Ty::Unit,
+        region: None,
+        loops: 0,
+        in_for: false,
+        allow_region: false,
+        joining: false,
+        item_off: 0,
+    };
+    // The set each fn returns is one variable per declaration, filled as bodies are checked.
+    for (id, f) in d.fns.iter().enumerate() {
+        for k in 0..f.n_ret_sets {
+            let v = cx.new_set();
+            cx.ret_sets.insert((FnId(id), k), v);
+        }
+    }
+    let mut main_out = Vec::new();
+    let mut main_offs: Vec<u32> = Vec::new();
+    let mut cases: Option<(VarRef, VarRef, Vec<TStmt>)> = None;
+    for (off, s) in main {
+        cx.item_off = *off;
+        // `@!multitest`: the count is read once and everything below runs once per case.
+        if cases.is_none()
+            && s.decorators
+                .iter()
+                .any(|d| d.directive && d.name.text == "multitest")
+        {
+            let t = cx.bind("$cases", Ty::Int);
+            main_out.push(TStmt::Let(
+                t,
+                TExpr {
+                    kind: TK::ReadInt,
+                    ty: Ty::Int,
+                    span: s.span,
+                },
+            ));
+            cx.scopes.push(HashMap::new());
+            let i = cx.bind("$case", Ty::Int);
+            cases = Some((t, i, Vec::new()));
+        }
+        for x in &s.decorators {
+            if !(x.directive && x.name.text == "multitest") {
+                cx.err(s.span, format!("slice: decorator `@{}`", x.name.text));
+            }
+        }
+        match &mut cases {
+            Some((_, _, body)) => cx.stmt(s, body),
+            None => cx.stmt(s, &mut main_out),
+        }
+        main_offs.resize(main_out.len(), *off);
+    }
+    if let Some((t, i, body)) = cases {
+        cx.scopes.pop();
+        let sp = Span::new(0, 0);
+        let int = |kind| TExpr {
+            kind,
+            ty: Ty::Int,
+            span: sp,
+        };
+        main_out.push(TStmt::For(
+            i,
+            int(TK::Int(0)),
+            int(TK::Var(t)),
+            TExpr {
+                kind: TK::Block(body, None),
+                ty: Ty::Unit,
+                span: sp,
+            },
+        ));
+    }
+    let mut fns = HashMap::new();
+    for (id, f) in d.fns.iter().enumerate() {
+        if f.intrinsic || matches!(f.body, FnBody::None) {
+            continue;
+        }
+        let tf = cx.check_fn(FnId(id));
+        fns.insert(FnId(id), tf);
+    }
+    // Zonk: every variable is replaced by what it was solved to.
+    let mut main_z = main_out;
+    for s in &mut main_z {
+        cx.zonk_stmt(s);
+    }
+    for tf in fns.values_mut() {
+        cx.zonk_expr(&mut tf.body);
+        for l in &mut tf.locals {
+            l.ty = cx.zonk(&l.ty);
+        }
+        tf.ret = cx.zonk(&tf.ret);
+    }
+    let mut globals = std::mem::take(&mut cx.globals);
+    for g in &mut globals {
+        g.ty = cx.zonk(&g.ty);
+    }
+    let mut lambdas = std::mem::take(&mut cx.lambdas);
+    for l in &mut lambdas {
+        l.params = l.params.iter().map(|t| cx.zonk(t)).collect();
+        l.ret = cx.zonk(&l.ret);
+    }
+    let ret_sets = cx
+        .ret_sets
+        .clone()
+        .into_iter()
+        .map(|(k, v)| (k, cx.zonk_set(&v)))
+        .collect();
+    if cx.cyclic.get() {
+        cx.errors.push("a variable holding a function is assigned a function built from its own old value, so the set of functions it can hold contains itself; bind the new function to a new name".to_string());
+    }
+    Typed {
+        domains: std::mem::take(&mut cx.domains),
+        fns,
+        globals,
+        main: main_z,
+        main_offs,
+        lambdas,
+        ret_sets,
+        errors: cx.errors,
+    }
+}
+
+impl<'a> Cx<'a> {
+    fn err(&mut self, span: Span, msg: impl Into<String>) {
+        let at = (self.item_off + span.start) as usize;
+        let line = self.src[..at.min(self.src.len())].matches('\n').count() + 1;
+        self.errors.push(format!("line {line}: {}", msg.into()));
+    }
+    fn check_fn(&mut self, id: FnId) -> TypedFn {
+        let d = self.d;
+        let f = d.f(id);
+        self.decl = Some(id);
+        let top_doms = self.doms.clone();
+        self.generics = f.generics.clone();
+        self.n_sets = f.n_sets;
+        self.locals = Vec::new();
+        self.scopes = vec![HashMap::new()];
+        self.item_off = f.item;
+        self.self_local = None;
+        if let Some(owner) = f.owner.filter(|_| f.self_mode != SelfMode::None) {
+            let ty = match owner {
+                Owner::Struct(id) => {
+                    let s = d.s(id);
+                    Ty::Struct(
+                        id,
+                        (0..s.generics.len()).map(Ty::Param).collect(),
+                        (0..s.n_sets).map(SetTy::Param).collect(),
+                    )
+                }
+                Owner::Trait(_) => Ty::Error,
+            };
+            self.self_local = Some(self.add_local("self", ty));
+        }
+        let mut params = Vec::new();
+        for p in &f.params {
+            let ty = self.fresh_sets(&p.ty);
+            params.push(self.add_local(&p.name, ty));
+        }
+        self.region = f.region.clone();
+        let slots = self.ret_sets.clone();
+        self.ret = map_slots(&f.ret, &|k| slots[&(id, k)].clone());
+        let ret = self.ret.clone();
+        let body = match &f.body {
+            FnBody::Block(b) => self.block(b, Some(&ret)),
+            FnBody::Expr(e) => {
+                let v = self.expr(e, Some(&ret));
+                self.coerce(v, &ret)
+            }
+            FnBody::None => {
+                let span = Span::new(0, 0);
+                self.err(span, "slice: a fn with no body");
+                TExpr {
+                    kind: TK::Error,
+                    ty: Ty::Error,
+                    span,
+                }
+            }
+        };
+        let out = TypedFn {
+            self_local: self.self_local,
+            params,
+            locals: std::mem::take(&mut self.locals),
+            body,
+            ret,
+        };
+        self.decl = None;
+        self.region = None;
+        self.doms = top_doms;
+        self.generics = Vec::new();
+        self.n_sets = 0;
+        self.self_local = None;
+        self.scopes = vec![HashMap::new()];
+        out
+    }
+}

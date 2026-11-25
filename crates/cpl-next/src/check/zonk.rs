@@ -1,0 +1,101 @@
+//! Replacing solved variables in the finished tree.
+
+use super::*;
+
+impl<'a> Cx<'a> {
+    pub(super) fn zonk_arg(&self, a: &mut TArg) {
+        match a {
+            TArg::Value(e) | TArg::Mut(e) => self.zonk_expr(e),
+        }
+    }
+    pub(super) fn zonk_stmt(&self, s: &mut TStmt) {
+        match s {
+            TStmt::Let(_, e) | TStmt::Expr(e) | TStmt::Assert(e, ..) => self.zonk_expr(e),
+            TStmt::Assign(a, b) | TStmt::While(a, b) => {
+                self.zonk_expr(a);
+                self.zonk_expr(b);
+            }
+            TStmt::For(_, a, b, c) => {
+                self.zonk_expr(a);
+                self.zonk_expr(b);
+                self.zonk_expr(c);
+            }
+            TStmt::Return(e) => {
+                if let Some(e) = e {
+                    self.zonk_expr(e)
+                }
+            }
+            TStmt::Break | TStmt::Continue => {}
+            TStmt::Yield(e) | TStmt::LendOut(e) => self.zonk_expr(e),
+            TStmt::Region {
+                f,
+                recv,
+                args,
+                body,
+                ..
+            } => {
+                *f = self.zonk_fnref(f);
+                if let Some(r) = recv {
+                    self.zonk_arg(r);
+                }
+                args.iter_mut().for_each(|a| self.zonk_arg(a));
+                self.zonk_expr(body);
+            }
+        }
+    }
+    pub(super) fn zonk_expr(&self, e: &mut TExpr) {
+        e.ty = self.zonk(&e.ty);
+        match &mut e.kind {
+            TK::Field(b, _)
+            | TK::Inject(b)
+            | TK::Widen(b)
+            | TK::Not(b)
+            | TK::Neg(b)
+            | TK::DomOrd(b) => self.zonk_expr(b),
+            TK::DomLen(t) => *t = self.zonk(t),
+            TK::DomFrom(t, b) => {
+                *t = self.zonk(t);
+                self.zonk_expr(b);
+            }
+            TK::Call { f, recv, args } => {
+                *f = self.zonk_fnref(f);
+                if let Some(r) = recv {
+                    self.zonk_arg(r);
+                }
+                args.iter_mut().for_each(|a| self.zonk_arg(a));
+            }
+            TK::CallTrait { recv, args, .. } => {
+                self.zonk_arg(recv);
+                args.iter_mut().for_each(|a| self.zonk_arg(a));
+            }
+            TK::CallValue { callee, args } => {
+                self.zonk_expr(callee);
+                args.iter_mut().for_each(|a| self.zonk_expr(a));
+            }
+            TK::Struct(fs) => fs.iter_mut().for_each(|a| self.zonk_expr(a)),
+            TK::Lambda { body, .. } => self.zonk_expr(body),
+            TK::FnItem(f) => *f = self.zonk_fnref(f),
+            TK::Bin(_, a, b) | TK::Cmp(_, a, b) => {
+                self.zonk_expr(a);
+                self.zonk_expr(b);
+            }
+            TK::If(a, b, c) => {
+                self.zonk_expr(a);
+                self.zonk_expr(b);
+                self.zonk_expr(c);
+            }
+            TK::Block(ss, v) => {
+                ss.iter_mut().for_each(|s| self.zonk_stmt(s));
+                if let Some(v) = v {
+                    self.zonk_expr(v)
+                }
+            }
+            TK::Print(ps) => ps.iter_mut().for_each(|p| {
+                if let Piece::Value(v) = p {
+                    self.zonk_expr(v)
+                }
+            }),
+            TK::Int(_) | TK::Bool(_) | TK::Unit | TK::Var(_) | TK::ReadInt | TK::Error => {}
+        }
+    }
+}

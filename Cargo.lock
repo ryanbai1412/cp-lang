@@ -210,6 +210,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "cpl-next"
+version = "0.3.0"
+dependencies = [
+ "cpl-conform",
+ "cpl-diag",
+ "cpl-env",
+ "cpl-syntax",
+ "cpl-wait",
+]
+
+[[package]]
 name = "cpl-prover"
 version = "0.3.0"
 

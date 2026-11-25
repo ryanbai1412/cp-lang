@@ -1149,6 +1149,30 @@ def vm_fallbacks(root: Path) -> list[str]:
 OWN_DATABASE_RE = re.compile(r"\bDatabase::(?:new|with_loader|default)\b|\bDatabase\s*\{")
 
 
+NEXT_TESTS = "crates/cpl-next/tests"
+
+
+def next_wrong(root: Path) -> list[str]:
+    """Cases the new pipeline (cpl-next) answers against their header: accepted, rejected or
+    run to another result, a crash, or its three runs disagreeing. `tests/programs.rs` keeps
+    `wrong.tsv` equal to what it finds, so this is the count, and it reaches 0 by fixes."""
+    wrong = root / NEXT_TESTS / "wrong.tsv"
+    return [l.split("\t")[0] for l in _lines(wrong) if l.strip()] if wrong.is_file() else []
+
+
+def next_not_passing(root: Path) -> list[str]:
+    """Cases the new pipeline does not pass yet: wrong ones and the ones it refuses (says it
+    does not implement). 0 is the day `cpl` switches to it and what it replaces is deleted.
+    `tests/programs.rs` keeps `passing.txt` equal to what passes."""
+    listed = root / NEXT_TESTS / "passing.txt"
+    if not listed.is_file():
+        return []
+    passing = {l.strip() for l in _lines(listed)}
+    cases = [r[len("spec/conformance/"):] for r in _git(root, "ls-files", "spec/conformance/*.cp")]
+    cases += ["next/" + r.rsplit("/", 1)[-1] for r in _git(root, "ls-files", NEXT_TESTS + "/programs/*.cp")]
+    return [c for c in cases if c not in passing]
+
+
 def own_databases(root: Path) -> list[str]:
     """A `Database` built outside cpl-check, tests included: only a `cpl_check::Session`
     builds an analysis, so no tool keeps a front end that could disagree with the checker."""
@@ -3023,6 +3047,8 @@ LISTS: dict[str, tuple[str | None, str, str]] = {
     "crates/cpl-cli/tests/vm_fallbacks.txt": ("vm_fallbacks", "tech-debt", "VM runs every program"),
     "crates/cpl-conform/silent_unknowns.txt": ("silent_unknowns", "core", "deleted: the checker types every expression or reports why not"),
     "crates/cpl-lint/corpus_warnings.txt": ("corpus_lint_warnings", "lint-fmt", "deleted: corpus_tests.rs fails on any std or spec.cp warning"),
+    "crates/cpl-next/tests/passing.txt": ("next_not_passing", "core", "every case listed: the landing that switches `cpl` to cpl-next deletes the list"),
+    "crates/cpl-next/tests/wrong.tsv": ("next_wrong", "core", "deleted: programs.rs fails on any wrong case"),
     "crates/cpl-stress/tests/generate-gaps.txt": ("generate_gaps", "stress", "deleted: readable_shapes.rs fails on any shape stress can't generate"),
     "scripts/public-hosts.txt": (None, "infra", "data: hosts the public-history scan allows"),
     "scripts/std-lint-baseline.txt": ("std_lint_findings", "stdlib", "deleted: std-lint-ratchet.py fails on any hit"),
@@ -3238,6 +3264,8 @@ COUNTERS = {
     "conformance_wrong_output": ("conformance cases with wrong output in research/scoreboard.json (Content)",
                                  conformance_wrong_output, True),
     "vm_fallbacks": ("source call sites that route the VM into the tree-walker", vm_fallbacks, True),
+    "next_wrong": ("cases the new pipeline (cpl-next) gets wrong (Core)", next_wrong, True),
+    "next_not_passing": ("cases the new pipeline (cpl-next) does not pass yet: wrong or refused (Core)", next_not_passing, True),
     "own_databases": ("Database built outside cpl-check", own_databases, True),
     "ir_reinfer": ("lowering re-inferring a type the checker's facts give", ir_reinfer, True),
     "string_keyed_maps": ("name-keyed HashMaps in cpl-check, not NameMap", string_keyed_maps, True),

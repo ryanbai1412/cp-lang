@@ -1,0 +1,344 @@
+//! Every conformance case under `spec/conformance`, and every program in `tests/programs`
+//! (the same header format), against the result its header states. The header comes from
+//! the spec, not from what this crate or today's compiler prints.
+//!
+//! A case that runs is run three ways on its `// input:`: the reference interpreter on the
+//! linked instances, the same on canonical IR, and the emitted C++ under ASan and UBSan.
+//! All three give the same stdout, exit status and events, within 10 seconds each.
+//!
+//! Each case ends one of three ways, and the two lists beside this file say which:
+//! - it passes: its id is in `tests/passing.txt`;
+//! - it is wrong (accepted, rejected or answered against its header, a crash, a split
+//!   between the three runs): its id and how are in `tests/wrong.tsv`;
+//! - it is refused (the pipeline says it does not implement something): in neither.
+//!
+//! The test fails when a case is not where the lists say, so the lists are always the
+//! truth: `passing.txt` only grows and `wrong.tsv` only shrinks, by fixing. What it found
+//! is written to `target/cpl-next/`.
+
+#[path = "../../cpl-cli/tests/support/cxx.rs"]
+mod cxx;
+#[path = "../../cpl-cli/tests/support/parallel.rs"]
+mod parallel;
+
+use cpl_conform::conformance::{discover, header_input, parse_header, Expect};
+use std::collections::BTreeMap;
+use std::io::{Read, Write};
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
+use std::time::Duration;
+
+const LIMIT: Duration = Duration::from_secs(10);
+const CXX_FLAGS: [&str; 8] = [
+    "-std=c++17",
+    "-O1",
+    "-g",
+    "-fsanitize=address,undefined",
+    "-fno-sanitize-recover=undefined",
+    "-w",
+    "-pthread",
+    "-x",
+];
+
+struct Ran {
+    /// `None`: killed at the limit.
+    status: Option<i32>,
+    stdout: String,
+    stderr: String,
+}
+
+fn run(mut cmd: Command, input: &[u8]) -> Ran {
+    let mut child = cmd
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("the program starts");
+    // The input may be gone before a program that fails early reads it.
+    let _ = child.stdin.take().unwrap().write_all(input);
+    let (out, err) = (child.stdout.take().unwrap(), child.stderr.take().unwrap());
+    let read = |mut pipe: Box<dyn Read + Send>| {
+        std::thread::spawn(move || {
+            let mut s = Vec::new();
+            let _ = pipe.read_to_end(&mut s);
+            String::from_utf8_lossy(&s).into_owned()
+        })
+    };
+    let (out, err) = (read(Box::new(out)), read(Box::new(err)));
+    let mut exit = cpl_wait::on_exit(child);
+    let status = match exit.within(LIMIT).expect("waiting works") {
+        Some(s) => Some(s.code().unwrap_or(-1)),
+        None => {
+            let _ = exit.kill();
+            None
+        }
+    };
+    Ran {
+        status,
+        stdout: out.join().unwrap(),
+        stderr: err.join().unwrap(),
+    }
+}
+
+fn next(path: &Path, flags: &[&str], input: &[u8]) -> Ran {
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_cpl-next"));
+    cmd.arg(path).args(flags);
+    run(cmd, input)
+}
+
+/// The header keys this harness acts on or that only describe the case. A case with any
+/// other key asks for something else (a tool, a second file) and counts as refused.
+const HEADER_KEYS: [&str; 4] = ["expect", "input", "rule", "model"];
+
+/// `// key: ...` gives `key`.
+fn header_key(line: &str) -> Option<&str> {
+    let (key, _) = line.strip_prefix("//")?.trim_start().split_once(':')?;
+    key.bytes()
+        .all(|b| b.is_ascii_lowercase() || b == b'-')
+        .then_some(key)
+}
+
+/// `stage: line N: E0123: text` gives `(N, "E0123")`.
+fn line_and_code(diag: &str) -> Option<(usize, &str)> {
+    let rest = diag.split_once(": line ")?.1;
+    let (line, rest) = rest.split_once(": ")?;
+    Some((line.parse().ok()?, rest.split(':').next()?))
+}
+
+/// How one case fared: `pass`, `refused`, or the word `wrong.tsv` uses, and the detail.
+fn verdict(path: &Path) -> (&'static str, String) {
+    let text = std::fs::read_to_string(path).unwrap();
+    let expect = match parse_header(&text) {
+        Ok(e) => e,
+        Err(e) => return ("bad-header", e),
+    };
+    let header = text.lines().take_while(|l| l.starts_with("//"));
+    if let Some(key) = header
+        .filter_map(header_key)
+        .find(|k| !HEADER_KEYS.contains(k))
+    {
+        return ("refused", format!("a `// {key}:` case"));
+    }
+    if let Expect::Exit(_) = expect {
+        return ("refused", "a tool's exit status".into());
+    }
+    if matches!(&expect, Expect::Diag { code, .. } if code.starts_with('L')) {
+        return ("refused", "a lint".into());
+    }
+    let input = header_input(&text);
+    let raw = next(path, &["--raw", "--trace"], &input);
+    let first = |s: &str| s.lines().next().unwrap_or("").to_string();
+    match raw.status {
+        None => return ("timeout", "the interpreter passed 10 s".into()),
+        Some(4) => return ("refused", first(&raw.stdout)),
+        Some(0 | 1 | 3) => {}
+        Some(n) => {
+            return (
+                "crash",
+                format!("the interpreter exited {n}: {}", first(&raw.stderr)),
+            )
+        }
+    }
+    if raw.status == Some(1) {
+        return match &expect {
+            Expect::Diag { code, line }
+                if raw
+                    .stdout
+                    .lines()
+                    .any(|d| line_and_code(d) == Some((*line, code.as_str()))) =>
+            {
+                ("pass", String::new())
+            }
+            Expect::Diag { code, line } => (
+                "wrong-error",
+                format!("wanted {code} on line {line}, got: {}", first(&raw.stdout)),
+            ),
+            _ => ("wrong-reject", first(&raw.stdout)),
+        };
+    }
+    if let Expect::Diag { code, line } = &expect {
+        return (
+            "wrong-accept",
+            format!(
+                "wanted {code} on line {line}, ran and printed: {}",
+                first(&raw.stdout)
+            ),
+        );
+    }
+    let canon = next(path, &["--trace"], &input);
+    let same =
+        |a: &Ran, b: &Ran| a.status == b.status && a.stdout == b.stdout && a.stderr == b.stderr;
+    if !same(&raw, &canon) {
+        return (
+            "split",
+            format!(
+                "canonical IR: exit {:?}: {}",
+                canon.status,
+                first(&canon.stdout)
+            ),
+        );
+    }
+    let cpp = next(path, &["--cpp", "--trace"], b"");
+    let bin = match cxx::build(cpp.stdout.as_bytes(), &[&CXX_FLAGS[..], &["c++"]].concat()) {
+        Ok((bin, _)) => bin,
+        Err(e) => return ("no-cxx", e.lines().take(4).collect::<Vec<_>>().join(" | ")),
+    };
+    let built = run(Command::new(bin), &input);
+    if !same(&raw, &built) {
+        return (
+            "split",
+            format!(
+                "C++: exit {:?}: {} {}",
+                built.status,
+                first(&built.stdout),
+                first(&built.stderr)
+            ),
+        );
+    }
+    let trapped = raw.status == Some(3);
+    match expect {
+        Expect::Ok if !trapped => ("pass", String::new()),
+        Expect::OkOutput(want) if !trapped && raw.stdout.trim_end_matches('\n') == want => {
+            ("pass", String::new())
+        }
+        Expect::Ok | Expect::OkOutput(_) if trapped => {
+            ("wrong-trap", first(raw.stderr.lines().last().unwrap_or("")))
+        }
+        Expect::OkOutput(want) => (
+            "wrong-output",
+            format!("wanted {want:?}, got {:?}", raw.stdout),
+        ),
+        Expect::Trap { code, line } if trapped => {
+            let at = format!("trap: {code}: line {line}:");
+            if raw.stderr.lines().any(|l| l.starts_with(&at)) {
+                ("pass", String::new())
+            } else {
+                (
+                    "wrong-trap",
+                    format!(
+                        "wanted {code} on line {line}, got: {}",
+                        raw.stderr.lines().last().unwrap_or("")
+                    ),
+                )
+            }
+        }
+        Expect::Trap { code, line } => (
+            "wrong-output",
+            format!("wanted {code} on line {line}, ran to the end"),
+        ),
+        Expect::Ok | Expect::Diag { .. } | Expect::Exit(_) => {
+            ("wrong-output", "an expectation settled above".into())
+        }
+    }
+}
+
+fn list(path: &Path) -> BTreeMap<String, String> {
+    std::fs::read_to_string(path)
+        .unwrap_or_else(|e| panic!("{}: {e}", path.display()))
+        .lines()
+        .map(|l| match l.split_once('\t') {
+            Some((id, how)) => (
+                id.to_string(),
+                how.split('\t').next().unwrap_or(how).to_string(),
+            ),
+            None => (l.to_string(), String::new()),
+        })
+        .collect()
+}
+
+#[test]
+fn every_case_is_where_the_lists_say() {
+    let here = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let root = here.parent().and_then(Path::parent).unwrap();
+    let mut cases: Vec<(String, PathBuf)> = discover(root, None)
+        .into_iter()
+        .map(|c| (c.id, c.path))
+        .collect();
+    let own = here.join("tests/programs");
+    for e in std::fs::read_dir(&own).unwrap() {
+        let path = e.unwrap().path();
+        if path.extension().is_some_and(|x| x == "cp") {
+            cases.push((
+                format!("next/{}", path.file_name().unwrap().to_str().unwrap()),
+                path,
+            ));
+        }
+    }
+    cases.sort();
+    assert!(
+        cases.len() > 4000,
+        "only {} cases: the conformance suite was not found",
+        cases.len()
+    );
+    let verdicts = parallel::parallel(&cases, |(_, p)| verdict(p));
+
+    let (mut passing, mut wrong, mut refused) = (String::new(), String::new(), String::new());
+    for ((id, _), (verdict, detail)) in cases.iter().zip(&verdicts) {
+        match *verdict {
+            "pass" => passing += &format!("{id}\n"),
+            "refused" => refused += &format!("{id}\t{detail}\n"),
+            how => wrong += &format!("{id}\t{how}\t{detail}\n"),
+        }
+    }
+    let found = root.join("target/cpl-next");
+    std::fs::create_dir_all(&found).unwrap();
+    for (name, text) in [
+        ("passing.txt", &passing),
+        ("wrong.tsv", &wrong),
+        ("refused.tsv", &refused),
+    ] {
+        std::fs::write(found.join(name), text).unwrap();
+    }
+
+    let (listed_passing, listed_wrong) = (
+        list(&here.join("tests/passing.txt")),
+        list(&here.join("tests/wrong.tsv")),
+    );
+    let mut off = Vec::new();
+    let mut seen = Vec::new();
+    for ((id, _), (verdict, detail)) in cases.iter().zip(&verdicts) {
+        seen.push(id.as_str());
+        let listed = if listed_passing.contains_key(id) {
+            Some("pass")
+        } else {
+            listed_wrong.get(id).map(String::as_str)
+        };
+        match (listed, *verdict) {
+            (Some(l), got) if l == got => {}
+            (None, "refused") => {}
+            (None, "pass") => off.push(format!("{id}: passes: add it to tests/passing.txt")),
+            (Some("pass"), got) => off.push(format!("{id}: passed, now {got}: {detail}")),
+            (Some(l), "pass") => off.push(format!(
+                "{id}: passes: move it from tests/wrong.tsv ({l}) to tests/passing.txt"
+            )),
+            (Some(l), "refused") => off.push(format!(
+                "{id}: refused now: take its `{l}` line out of tests/wrong.tsv"
+            )),
+            (Some(l), got) => off.push(format!("{id}: listed as {l}, now {got}: {detail}")),
+            (None, got) => off.push(format!("{id}: {got}: {detail}")),
+        }
+    }
+    for id in listed_passing
+        .keys()
+        .chain(listed_wrong.keys())
+        .filter(|id| !seen.contains(&id.as_str()))
+    {
+        off.push(format!("{id}: listed, but there is no such case"));
+    }
+    let count = |s: &str| s.lines().count();
+    println!(
+        "cpl-next: {} cases: {} pass, {} wrong, {} refused",
+        cases.len(),
+        count(&passing),
+        count(&wrong),
+        count(&refused)
+    );
+    assert!(
+        off.is_empty(),
+        "{} of {} cases are not where the lists say (what was found is in {}):\n{}",
+        off.len(),
+        cases.len(),
+        found.display(),
+        off.join("\n")
+    );
+}
