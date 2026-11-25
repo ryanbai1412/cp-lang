@@ -662,7 +662,7 @@ pub struct Mat<T>:
         Mat(n, n, out)
 
 /// Two matrices are equal when their shapes and entries are; the semiring is not compared.
-impl Eq for Mat<T>:
+impl<T: Eq> Eq for Mat<T>:
     fn eq(a, b):
         if a.rows != b.rows or a.cols != b.cols: return false
         if not a.sentinel and not b.sentinel: return a.cells == b.cells
@@ -671,7 +671,7 @@ impl Eq for Mat<T>:
 /// Entrywise; the shapes must match.
 ///
 /// trap: `Mat<Int>.zeros(2, 2) + Mat<Int>.zeros(2, 3)`
-impl Add for Mat<T>:
+impl<T: Add> Add for Mat<T>:
     fn add(a, b):
         assert a.rows == b.rows and a.cols == b.cols
         Mat(a.rows, a.cols, [a.cells[i] + b.cells[i] for i in 0..a.cells.len])
@@ -679,7 +679,7 @@ impl Add for Mat<T>:
 /// Entrywise; the shapes must match.
 ///
 /// trap: `Mat<Int>.zeros(2, 2) - Mat<Int>.zeros(3, 2)`
-impl Sub for Mat<T>:
+impl<T: Sub> Sub for Mat<T>:
     fn sub(a, b):
         assert a.rows == b.rows and a.cols == b.cols
         Mat(a.rows, a.cols, [a.cells[i] - b.cells[i] for i in 0..a.cells.len])

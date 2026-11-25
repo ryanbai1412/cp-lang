@@ -3601,7 +3601,8 @@ pub struct Functional<V>:
         var pos: List<Len> = List.filled(n, 0)
         var ring: List<Len> = []
         var cstart: List<Len> = [0]
-        var jump: List<Len> = (0..n).collect()
+        var jump: List<Len> = List.filled(n, 0)
+        for i in 0..n: jump[i] = i
         var state: List<0..3> = List.filled(n, 0)
         for s in 0..n:
             if state[s] != 0: continue

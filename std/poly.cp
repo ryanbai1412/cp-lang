@@ -1029,22 +1029,22 @@ pub struct Poly<T: Div>(pub c: List<T>):
         let hi = Poly([self.c[i] for i in m..n])
         lo.shift_split(pw) + pw[k] * hi.shift_split(pw)
 
-impl Add for Poly<T>:
+impl<T: Div + Add> Add for Poly<T>:
     fn add(a, b) = Poly([a.at(i) + b.at(i) for i in 0..max(a.len, b.len)])
 
-impl Sub for Poly<T>:
+impl<T: Div + Sub> Sub for Poly<T>:
     fn sub(a, b) = Poly([a.at(i) - b.at(i) for i in 0..max(a.len, b.len)])
 
-impl Neg for Poly<T>:
+impl<T: Div + Sub> Neg for Poly<T>:
     fn neg(a) = Poly([T.zero - a.at(i) for i in 0..a.len])
 
-impl Mul for Poly<T>:
+impl<T: Div + Add + Sub + Mul> Mul for Poly<T>:
     fn mul(a, b) = Poly(convolve(a.c, b.c))
 
 /// The quotient of polynomial long division; the divisor is not zero.
 ///
 /// trap: `Poly<Int>([1, 2]) / Poly<Int>.zero`
-impl Div for Poly<T>:
+impl<T: Div + Sub + Mul> Div for Poly<T>:
     fn div(a, b):
         assert not b.is_zero(), "Poly division by the zero polynomial"
         let db = b.deg()!
