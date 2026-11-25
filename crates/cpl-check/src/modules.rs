@@ -574,15 +574,6 @@ fn nearest_std(module: &[String]) -> Option<String> {
         .map(|m| format!("std.{m}"))
 }
 
-/// `HOME`, or `USERPROFILE` on Windows, where `HOME` is usually unset.
-/// The one home lookup: libraries, setup, toolchains, crash reports, caches.
-pub fn home_dir() -> Option<PathBuf> {
-    let var = |name| std::env::var_os(name).filter(|v| !v.is_empty());
-    var("HOME")
-        .or_else(|| var("USERPROFILE"))
-        .map(PathBuf::from)
-}
-
 /// The folder of the library `name`: the one a `cp.toml` above `start`
 /// gives it under `[libs]`, or else the nearest folder above `start`
 /// whose `lib.toml` names the library.
@@ -591,7 +582,7 @@ fn library_root(files: &dyn Files, start: &Path, name: &str) -> Option<PathBuf> 
     let configured = cpl_config::find_map(&start, &mut |f| files.read(f), |dir, config| {
         let path = configured_library(config, name)?;
         let path = match path.strip_prefix("~/") {
-            Some(below_home) => home_dir()?.join(below_home),
+            Some(below_home) => cpl_env::home_dir()?.join(below_home),
             None => dir.join(path),
         };
         files.is_dir(&path).then_some(path)

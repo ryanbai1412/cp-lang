@@ -1,10 +1,20 @@
 //! The one place a `CPL_*` environment variable is read. Each variable is a
 //! [`Var`] declared here with what it does, so `ALL` lists every one and no
 //! other crate names one to `std::env` (debt-ratchet's `cpl_env_reads`).
+//! The user's home folder is found here too ([`home_dir`]).
 
 use std::ffi::OsString;
 use std::path::PathBuf;
 use std::str::FromStr;
+
+/// `HOME`, or `USERPROFILE` on Windows, where `HOME` is usually unset.
+/// The one home lookup: libraries, setup, toolchains, crash reports, caches.
+pub fn home_dir() -> Option<PathBuf> {
+    (["HOME", "USERPROFILE"].into_iter())
+        .filter_map(std::env::var_os)
+        .find(|value| !value.is_empty())
+        .map(PathBuf::from)
+}
 
 /// One `CPL_*` variable.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

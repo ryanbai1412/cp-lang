@@ -21,9 +21,10 @@ cpl-syntax.workspace = true
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 cpl-wait.workspace = true
 cpl-contest.workspace = true
+# The home folder, for the cache std's files are opened from.
+cpl-env.workspace = true
 
 [dev-dependencies]
-cpl-env.workspace = true
 cpl-corpus.workspace = true
 # The latency test measures with the allocator the `cpl` binary ships with.
 mimalloc = { workspace = true }

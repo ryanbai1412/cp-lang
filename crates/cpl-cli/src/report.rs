@@ -83,7 +83,7 @@ pub fn crash_dir() -> PathBuf {
     if let Some(dir) = cpl_env::CRASH_DIR.path() {
         return dir;
     }
-    if let Some(home) = cpl_facade::today::home_dir() {
+    if let Some(home) = cpl_env::home_dir() {
         return home.join(".cpl").join("crashes");
     }
     std::env::temp_dir().join("cpl-crashes")
@@ -873,7 +873,7 @@ impl Redactor {
                 paths.push((s, "<cwd>".to_string()));
             }
         }
-        if let Some(home) = cpl_facade::today::home_dir() {
+        if let Some(home) = cpl_env::home_dir() {
             let s = home.to_string_lossy().into_owned();
             if s.len() > 1 {
                 paths.push((format!("{s}/"), String::new()));
