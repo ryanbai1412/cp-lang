@@ -2,8 +2,8 @@
 //! and the playground: each error's checked fix, round after round, then,
 //! once the file checks clean, the lint fixes and codemods.
 
-use cpl_facade::Session;
 use cpl_diag::Diagnostic;
+use cpl_facade::Session;
 
 /// `text` fixed in `db` under `key`: the fixed text, how many fixes were
 /// applied, and the errors left.

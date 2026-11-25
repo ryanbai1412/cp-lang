@@ -184,7 +184,9 @@ impl Outcome {
 
     /// Whether the run was ended by its deadline.
     pub fn out_of_time(&self) -> bool {
-        self.trap.as_ref().is_some_and(|trap| trap.message() == OUT_OF_TIME.text())
+        self.trap
+            .as_ref()
+            .is_some_and(|trap| trap.message() == OUT_OF_TIME.text())
     }
 }
 

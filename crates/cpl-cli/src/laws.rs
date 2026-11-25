@@ -5,8 +5,8 @@
 //! sample values of its arguments. A broken law fails with the values
 //! that break it.
 
-use cpl_facade::today::Ty;
 use cpl_diag::Span;
+use cpl_facade::today::Ty;
 use cpl_syntax::ast::StmtKind;
 
 const INTS: [i128; 13] = [

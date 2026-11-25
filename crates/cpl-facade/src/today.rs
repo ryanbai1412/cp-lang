@@ -31,8 +31,8 @@ pub use cpl_check::{
 
 /// The lowered program, for a tool that reads its statements.
 pub mod ir {
-    pub use cpl_ir::{sites, walk, Block, Program, Stmt, GRADER_BOUNDARY, STRESS_DECORATORS};
     pub use cpl_ir::{has_cpp_body, has_stress_target};
+    pub use cpl_ir::{sites, walk, Block, Program, Stmt, GRADER_BOUNDARY, STRESS_DECORATORS};
 }
 
 /// A run's recording and what is read from it.
@@ -204,7 +204,12 @@ pub mod cpp_counts {
 }
 
 /// The crates of today's compiler behind the facade, in pipeline order.
-pub const COMPONENTS: &[&str] = &[cpl_check::NAME, cpl_ir::NAME, cpl_codegen::NAME, cpl_interp::NAME];
+pub const COMPONENTS: &[&str] = &[
+    cpl_check::NAME,
+    cpl_ir::NAME,
+    cpl_codegen::NAME,
+    cpl_interp::NAME,
+];
 
 impl Program {
     /// Its statements, in today's lowered form.
@@ -257,7 +262,11 @@ impl Session {
     }
 
     /// [`Session::analyze`] of the session moved on to `file` holding `text`.
-    pub fn analyze_text(&mut self, file: impl Into<FileId>, text: impl Into<Text>) -> Arc<Analysis> {
+    pub fn analyze_text(
+        &mut self,
+        file: impl Into<FileId>,
+        text: impl Into<Text>,
+    ) -> Arc<Analysis> {
         let file = file.into();
         self.set_file(&file, text);
         self.checked(&file).unwrap_or_default()

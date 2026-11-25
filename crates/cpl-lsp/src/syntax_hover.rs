@@ -2,8 +2,8 @@
 //! `]` and `..` of `[0..n]Int`, the `?` of `?Int`, the `[n]` of
 //! `[n].filled(0)`. Names inside a type (`Int`, `V`) keep the checker's hover.
 
-use cpl_facade::today::Analysis;
 use cpl_diag::Span;
+use cpl_facade::today::Analysis;
 use cpl_syntax::ast::*;
 use cpl_syntax::visit::{walk_stmt, Visitor};
 

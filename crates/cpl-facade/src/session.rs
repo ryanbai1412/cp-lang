@@ -250,7 +250,9 @@ fn database(world: World, modules: &BTreeMap<FileId, Text>) -> cpl_check::Sessio
     match world {
         World::Disk => cpl_check::Session::new(),
         World::Closed => {
-            let given = modules.iter().map(|(file, text)| (file.path().to_string(), text.to_string()));
+            let given = modules
+                .iter()
+                .map(|(file, text)| (file.path().to_string(), text.to_string()));
             cpl_check::Session::with_loader(Box::new(cpl_check::GivenFiles::new(given.collect())))
         }
     }
@@ -319,7 +321,10 @@ impl Session {
     /// Today's checker, holding exactly this snapshot's files, for a query
     /// about `asked`.
     pub(crate) fn synced(&self, asked: Option<&FileId>) -> MutexGuard<'_, Inner> {
-        let mut inner = self.inner.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let mut inner = self
+            .inner
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         let world = self.snapshot.world();
         let asked = asked.filter(|_| world == World::Closed);
         if let Some((snapshot, file)) = &inner.last {
@@ -327,7 +332,11 @@ impl Session {
                 return inner;
             }
         }
-        let all = || self.snapshot.files().map(|(file, text)| (file.clone(), text.clone()));
+        let all = || {
+            self.snapshot
+                .files()
+                .map(|(file, text)| (file.clone(), text.clone()))
+        };
         // On disk every file of the snapshot is open. In a closed world the
         // file asked about is, and the rest are where its imports are found.
         let (programs, modules): (BTreeMap<FileId, Text>, BTreeMap<FileId, Text>) = match world {
@@ -339,8 +348,12 @@ impl Session {
             inner.programs.clear();
             inner.modules = modules;
         }
-        let gone: Vec<FileId> =
-            inner.programs.keys().filter(|file| !programs.contains_key(*file)).cloned().collect();
+        let gone: Vec<FileId> = inner
+            .programs
+            .keys()
+            .filter(|file| !programs.contains_key(*file))
+            .cloned()
+            .collect();
         for file in gone {
             inner.db.remove_file(file.path());
         }
@@ -363,12 +376,16 @@ impl Session {
     /// tool: `cpl check`, the editor and the playground print this list.
     pub fn diagnostics(&self, file: impl Into<FileId>, upto: Layer) -> Vec<Diagnostic> {
         let checked = self.checked(&file.into());
-        checked.map(|analysis| diagnostics_of(&analysis, upto)).unwrap_or_default()
+        checked
+            .map(|analysis| diagnostics_of(&analysis, upto))
+            .unwrap_or_default()
     }
 
     /// The fns of `file` that make it more than one program.
     pub fn roles(&self, file: impl Into<FileId>) -> Roles {
-        self.checked(&file.into()).map(|analysis| roles_of(&analysis)).unwrap_or_default()
+        self.checked(&file.into())
+            .map(|analysis| roles_of(&analysis))
+            .unwrap_or_default()
     }
 
     /// The program `job` asks for of `file`, or every diagnostic of the
@@ -414,8 +431,13 @@ pub fn emit_cpp(program: &Program, name: &str, profile: &Profile) -> CppFile {
             fitted: None,
         };
     };
-    let fitted =
-        cpl_codegen::emit_aiming(&program.ir, name, &program.text, (bar.aim, bar.limit), &target);
+    let fitted = cpl_codegen::emit_aiming(
+        &program.ir,
+        name,
+        &program.text,
+        (bar.aim, bar.limit),
+        &target,
+    );
     let over_limit = fitted.is_err();
     let fitted = fitted.unwrap_or_else(|over| over);
     CppFile {
@@ -471,7 +493,9 @@ impl Session {
         text: &str,
         diagnostic: &'d Diagnostic,
     ) -> Option<&'d cpl_diag::Fix> {
-        self.trying(file, |db| cpl_ir::fix::checked_fix(db, file, text, diagnostic))
+        self.trying(file, |db| {
+            cpl_ir::fix::checked_fix(db, file, text, diagnostic)
+        })
     }
 
     /// The errors of `text` as `file`, at [`Layer::Built`].

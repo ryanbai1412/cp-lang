@@ -3,8 +3,8 @@
 use super::{range_json, Reply, Server, INVALID_PARAMS};
 use crate::rename;
 use crate::uri::uri_of_path;
-use cpl_facade::today::Definition;
 use cpl_diag::{LineIndex, Span};
+use cpl_facade::today::Definition;
 use cpl_json::{obj, Value};
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;

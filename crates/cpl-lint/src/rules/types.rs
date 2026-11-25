@@ -7,9 +7,9 @@ use crate::{
     File, Finding, DOMAIN_KEYED_MAP, IS_IN_COND_HEADER, POSITION_ARITHMETIC, REDUNDANT_ARG_NAME,
     TURBOFISH_TYPE_ARGS,
 };
-use cpl_facade::today::Ty;
 use cpl_diag::msgs::lint_rules;
 use cpl_diag::Span;
+use cpl_facade::today::Ty;
 use cpl_syntax::ast::{BinOp, Cond, Expr, ExprKind, PatternKind, Stmt, StmtKind, Type};
 use std::collections::{HashMap, HashSet};
 

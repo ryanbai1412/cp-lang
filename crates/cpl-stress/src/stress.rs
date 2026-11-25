@@ -182,13 +182,19 @@ impl Stress {
         if let (Some(analysis), false) = (analysis, external_judge) {
             if let Some((checker_fn, _)) = cpl_facade::today::roles(analysis).checker {
                 checker = Some(lowered(
-                    cpl_facade::today::program(analysis, &cpl_facade::Job::of(cpl_facade::Root::Checker(checker_fn.to_string()))),
+                    cpl_facade::today::program(
+                        analysis,
+                        &cpl_facade::Job::of(cpl_facade::Root::Checker(checker_fn.to_string())),
+                    ),
                     name,
                     source,
                 )?);
             } else if let Some(judge) = cpl_facade::today::roles(analysis).interactor {
                 interactor = Some(lowered(
-                    cpl_facade::today::program(analysis, &cpl_facade::Job::of(cpl_facade::Root::Interactor(judge.to_string()))),
+                    cpl_facade::today::program(
+                        analysis,
+                        &cpl_facade::Job::of(cpl_facade::Root::Interactor(judge.to_string())),
+                    ),
                     name,
                     source,
                 )?);
@@ -217,10 +223,20 @@ impl Stress {
         let roles = match native {
             None => {
                 let analysis = analyzed()?;
-                let fast = lowered(cpl_facade::today::program(analysis, &cpl_facade::Job::of(cpl_facade::Root::Laws)), name, source)?;
+                let fast = lowered(
+                    cpl_facade::today::program(
+                        analysis,
+                        &cpl_facade::Job::of(cpl_facade::Root::Laws),
+                    ),
+                    name,
+                    source,
+                )?;
                 let brute = match (&own_brute, &part_brute) {
                     (Some((brute_fn, _)), _) => Some(lowered(
-                        cpl_facade::today::program(analysis, &cpl_facade::Job::of(cpl_facade::Root::Alt(brute_fn.to_string()))),
+                        cpl_facade::today::program(
+                            analysis,
+                            &cpl_facade::Job::of(cpl_facade::Root::Alt(brute_fn.to_string())),
+                        ),
                         name,
                         source,
                     )?),
@@ -230,7 +246,14 @@ impl Stress {
                         let swapped_analysis = (db.analyze(&bname)).ok_or_else(|| {
                             Unbuilt::Said(format!("could not analyze part brute of {name}"))
                         })?;
-                        Some(lowered(cpl_facade::today::program(&swapped_analysis, &cpl_facade::Job::program()), &bname, swapped)?)
+                        Some(lowered(
+                            cpl_facade::today::program(
+                                &swapped_analysis,
+                                &cpl_facade::Job::program(),
+                            ),
+                            &bname,
+                            swapped,
+                        )?)
                     }
                     (None, None) => None,
                 };
@@ -307,7 +330,14 @@ impl Stress {
             }
             (None, Some((gen_fn, _)), None) => {
                 let analysis = analyzed()?;
-                let program = lowered(cpl_facade::today::program(analysis, &cpl_facade::Job::of(cpl_facade::Root::Generator(gen_fn.to_string(), size))), name, source)?;
+                let program = lowered(
+                    cpl_facade::today::program(
+                        analysis,
+                        &cpl_facade::Job::of(cpl_facade::Root::Generator(gen_fn.to_string(), size)),
+                    ),
+                    name,
+                    source,
+                )?;
                 Inputs::Gen(Drawing {
                     gen: vm(program),
                     limit: options.limit,

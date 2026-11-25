@@ -9,9 +9,9 @@ use crate::complete::{self, Cursor, StdLib};
 use crate::outline::Outline;
 use crate::rename;
 use crate::uri::uri_of_path;
+use cpl_diag::{Diagnostic, LineCol, LineIndex, Severity, Span};
 use cpl_facade::today::{DeclKind, Definition, Ty};
 use cpl_facade::Session;
-use cpl_diag::{Diagnostic, LineCol, LineIndex, Severity, Span};
 use cpl_json::{obj, Value};
 #[cfg(not(target_arch = "wasm32"))]
 use diagnostics::lint_config;
@@ -1115,7 +1115,12 @@ impl Server {
 
     /// On the brackets of an index the bounds prove in range, or (`on_index`)
     /// on the index itself: why it is in bounds.
-    fn index_hover(&mut self, uri: &str, offset: u32, on_index: bool) -> Option<cpl_facade::today::Hover> {
+    fn index_hover(
+        &mut self,
+        uri: &str,
+        offset: u32,
+        on_index: bool,
+    ) -> Option<cpl_facade::today::Hover> {
         let analysis = self.db.analyze(uri)?;
         let inside = |(start, end): (u32, u32)| start <= offset && offset < end;
         let facts = self.proven(uri)?;

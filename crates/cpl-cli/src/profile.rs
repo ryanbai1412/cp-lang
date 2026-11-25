@@ -107,8 +107,7 @@ fn run(
         return run_native(file, compiled, input, checks);
     }
     let mut sink = Vec::new();
-    let observed =
-        cpl_facade::run(
+    let observed = cpl_facade::run(
         &compiled.program,
         cpl_facade::RunInput::fixed(input),
         &mut sink,

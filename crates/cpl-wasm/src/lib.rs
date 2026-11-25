@@ -18,9 +18,9 @@
 
 pub mod abi;
 
+use cpl_diag::{Diagnostic, LineCol, LineIndex, Severity, Span};
 use cpl_facade::today::DeclKind;
 use cpl_facade::Session;
-use cpl_diag::{Diagnostic, LineCol, LineIndex, Severity, Span};
 use cpl_json::{self as json, obj, Value};
 use std::collections::BTreeMap;
 
@@ -151,7 +151,8 @@ impl Playground {
             given.push((path.clone(), text.to_string()));
         }
         let closed = cpl_facade::Snapshot::new(cpl_facade::World::Closed);
-        let files = (given.into_iter()).fold(closed, |files, (path, text)| files.with_file(path, text));
+        let files =
+            (given.into_iter()).fold(closed, |files, (path, text)| files.with_file(path, text));
         self.db = Session::open(files);
         obj([])
     }
@@ -267,7 +268,11 @@ impl Playground {
                 // The brute's side, when the file has one that builds.
                 let slow = self.db.analyze(name).and_then(|analysis| {
                     let (brute_fn, _) = cpl_facade::today::roles(&analysis).alt?;
-                    let program = cpl_facade::today::program(&analysis, &cpl_facade::Job::of(cpl_facade::Root::Alt(brute_fn.to_string()))).ok()?;
+                    let program = cpl_facade::today::program(
+                        &analysis,
+                        &cpl_facade::Job::of(cpl_facade::Root::Alt(brute_fn.to_string())),
+                    )
+                    .ok()?;
                     let mut sink = Vec::new();
                     let recording =
                         observe(&program, input, &mut sink, stack, config()).recording?;
@@ -355,8 +360,11 @@ impl Playground {
         let recorded = observe(&before, input, &mut Vec::new(), stack, config(original))
             .recording
             .unwrap_or_default();
-        let call = match cpl_facade::today::replay::call_at(&recorded, at.step as usize, at.frame as usize)
-        {
+        let call = match cpl_facade::today::replay::call_at(
+            &recorded,
+            at.step as usize,
+            at.frame as usize,
+        ) {
             Ok(call) => call,
             Err(message) => return error(&message),
         };

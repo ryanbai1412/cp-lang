@@ -72,8 +72,9 @@ pub fn trap_report_in(
         false => cpl_facade::today::program(&analysis, &cpl_facade::Job::program()).ok()?,
         true => {
             let alt = cpl_facade::today::roles(&analysis).alt?.0;
-            cpl_facade::today::program(&analysis, &cpl_facade::Job::of(cpl_facade::Root::Alt(alt))).ok()?
-        },
+            cpl_facade::today::program(&analysis, &cpl_facade::Job::of(cpl_facade::Root::Alt(alt)))
+                .ok()?
+        }
     };
     // Alone, an interactive solution only ever sees its input end.
     if program.interactive() {
@@ -134,7 +135,11 @@ pub fn checker_trap_in(
 ) -> Option<Trapped> {
     let (name, analysis) = analyzed(path, text)?;
     let (checker, _) = cpl_facade::today::roles(&analysis).checker?;
-    let program = cpl_facade::today::program(&analysis, &cpl_facade::Job::of(cpl_facade::Root::Checker(checker.to_string()))).ok()?;
+    let program = cpl_facade::today::program(
+        &analysis,
+        &cpl_facade::Job::of(cpl_facade::Root::Checker(checker.to_string())),
+    )
+    .ok()?;
     let mut printed = Some(got.as_bytes().to_vec());
     let io = cpl_facade::RunInput::judge(input.as_bytes(), Box::new(move || printed.take()))
         .until(cpl_facade::Stop::after(LIMIT));
@@ -174,7 +179,10 @@ pub fn interpreted_output(path: &Path, input: &str) -> Option<String> {
 
 /// The `.cp` file at `path`, read as `text`, analyzed under its shown name;
 /// `None` when it is not CP Lang or has an error.
-fn analyzed(path: &Path, text: &str) -> Option<(String, std::sync::Arc<cpl_facade::today::Analysis>)> {
+fn analyzed(
+    path: &Path,
+    text: &str,
+) -> Option<(String, std::sync::Arc<cpl_facade::today::Analysis>)> {
     if path.extension().is_none_or(|ext| ext != "cp") {
         return None;
     }

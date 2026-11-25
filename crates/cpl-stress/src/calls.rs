@@ -87,7 +87,11 @@ pub fn first_call_divergence(
 /// A top-level `var` declared outside every fn that a later call of a fn
 /// starts with another value than its 1st call did: one test left it for
 /// the next. Each such variable's declaration, with both values.
-fn leaked(source: &str, rec: &Recording, call: &cpl_facade::today::trace::Call) -> Vec<(u32, String)> {
+fn leaked(
+    source: &str,
+    rec: &Recording,
+    call: &cpl_facade::today::trace::Call,
+) -> Vec<(u32, String)> {
     let Some(first) = (rec.calls.iter()).find(|c| c.name == call.name && c.ordinal == 1) else {
         return Vec::new();
     };

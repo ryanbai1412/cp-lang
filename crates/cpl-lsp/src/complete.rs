@@ -1201,8 +1201,14 @@ fn own_members_of_ty(cursor: &Cursor, std: &mut StdLib, ty: &Ty) -> Vec<(Entry, 
                 (plain(name, Kind::Method, detail, doc), 0)
             })
             .collect(),
-        Ty::Domain(domain) => builtin(cpl_facade::today::DOMAIN_MEMBERS, format!("domain {domain}")),
-        Ty::Pos(domain) => builtin(cpl_facade::today::POS_MEMBERS, format!("position in {domain}")),
+        Ty::Domain(domain) => builtin(
+            cpl_facade::today::DOMAIN_MEMBERS,
+            format!("domain {domain}"),
+        ),
+        Ty::Pos(domain) => builtin(
+            cpl_facade::today::POS_MEMBERS,
+            format!("position in {domain}"),
+        ),
         Ty::Int | Ty::Range { .. } => scalar_members(cursor, std, "Int"),
         Ty::I128 => scalar_members(cursor, std, "I128"),
         Ty::U64 => scalar_members(cursor, std, "U64"),
@@ -1519,7 +1525,9 @@ fn scope_completion(
     if word.len() >= 2 {
         let text = &cursor.analysis.text;
         for (name, module) in cpl_facade::today::std_names() {
-            if !name.starts_with(word) || seen.contains(*name) || cpl_facade::today::is_list_form_hook(name)
+            if !name.starts_with(word)
+                || seen.contains(*name)
+                || cpl_facade::today::is_list_form_hook(name)
             {
                 continue;
             }

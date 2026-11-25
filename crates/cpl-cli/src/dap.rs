@@ -10,7 +10,9 @@
 use crate::judge::render_trap;
 use crate::{compile_side, Side};
 use cpl_diag::Shown;
-use cpl_facade::today::trace::{first_change, first_change_in, Change, Recording, Replay, TraceConfig};
+use cpl_facade::today::trace::{
+    first_change, first_change_in, Change, Recording, Replay, TraceConfig,
+};
 use cpl_json::obj;
 pub(crate) use cpl_json::Value as Json;
 use std::collections::{BTreeMap, HashSet};
@@ -780,7 +782,8 @@ impl Session {
         let observed = cpl_facade::run_traced(
             &compiled.program,
             // A program that never ends still lets the editor step through it.
-            cpl_facade::RunInput::fixed(&self.input).until(cpl_facade::Stop::after(self.time_limit)),
+            cpl_facade::RunInput::fixed(&self.input)
+                .until(cpl_facade::Stop::after(self.time_limit)),
             &mut printed,
             Some(config),
         );

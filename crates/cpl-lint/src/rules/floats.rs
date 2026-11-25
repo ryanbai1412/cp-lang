@@ -6,8 +6,8 @@
 
 use crate::walk::Visitor;
 use crate::{Facts, File, Finding, FLOAT_EQUALITY};
-use cpl_facade::today::Ty;
 use cpl_diag::msgs::lint_rules;
+use cpl_facade::today::Ty;
 use cpl_syntax::ast::{CmpOp, Expr, ExprKind, UnOp};
 
 struct Report<'a> {

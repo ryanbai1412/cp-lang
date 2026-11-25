@@ -6,9 +6,9 @@
 
 use crate::walk::unparen;
 use crate::{Facts, File, Finding, LOOP_INVARIANT_MOD_DIV};
-use cpl_facade::today::Ty;
 use cpl_diag::msgs::lint_rules;
 use cpl_diag::{Fix, Span};
+use cpl_facade::today::Ty;
 use cpl_syntax::ast::{
     AssignOp, BinOp, Block, Cond, Expr, ExprKind, FnBody, Pattern, PatternKind, Stmt, StmtKind,
     UnOp,

@@ -156,7 +156,10 @@ pub(crate) fn run_unit_tests(
         let limit = std::time::Duration::from_millis(limit);
         for (idx, name) in tests.iter().enumerate() {
             let label = format!("{path_str}::{name}");
-            match cpl_facade::today::program(&analysis, &cpl_facade::Job::of(cpl_facade::Root::Test(name.to_string()))) {
+            match cpl_facade::today::program(
+                &analysis,
+                &cpl_facade::Job::of(cpl_facade::Root::Test(name.to_string())),
+            ) {
                 Ok(program) => {
                     let Some((out, ran)) = cpl_facade::run_for(&program, &[], limit) else {
                         let _ = writeln!(
@@ -173,7 +176,9 @@ pub(crate) fn run_unit_tests(
                         continue;
                     }
                     if run_cpp {
-                        let cpp = cpl_facade::emit_cpp(&program, name, &cpl_facade::Profile::default()).text;
+                        let cpp =
+                            cpl_facade::emit_cpp(&program, name, &cpl_facade::Profile::default())
+                                .text;
                         let cpp_path = tmp_dir.join(format!("t_{passed}_{idx}.cpp"));
                         let bin_path = tmp_dir.join(format!("t_{passed}_{idx}"));
                         if let Err(e) = std::fs::write(&cpp_path, &cpp) {

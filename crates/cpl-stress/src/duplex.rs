@@ -6,7 +6,7 @@
 //! the last one's output and goes further.
 
 use crate::case::{Side, Transcript};
-use cpl_facade::{RunInput, Limits, Stop, Trap};
+use cpl_facade::{Limits, RunInput, Stop, Trap};
 use std::io::Write;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;

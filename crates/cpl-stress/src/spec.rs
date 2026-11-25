@@ -11,8 +11,8 @@
 //! vertices. Bounds can use the values read before them, which is what
 //! lets the generator and the shrinker keep every case valid.
 
-use cpl_facade::today::Ty;
 use cpl_diag::Span;
+use cpl_facade::today::Ty;
 use cpl_syntax::ast::{
     AssignOp, BinOp, Block, CmpOp, Cond, Expr, ExprKind, FnBody, Pattern, PatternKind, Stmt,
     StmtKind, StrPiece, Type, TypeKind, UnOp,

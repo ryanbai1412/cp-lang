@@ -275,7 +275,10 @@ pub(super) fn read_types(src: &str) -> ReadFacts {
             text.strip_prefix(name)
                 .is_some_and(|rest| rest.trim_start().starts_with('('))
         };
-        if (text == "read()" || called("ask")) && !ty.is_vague() && *ty != cpl_facade::today::Ty::Error {
+        if (text == "read()" || called("ask"))
+            && !ty.is_vague()
+            && *ty != cpl_facade::today::Ty::Error
+        {
             out.reads.insert(span, format!("let _: {ty} = read()"));
         }
     }
@@ -732,7 +735,11 @@ pub(super) fn gen_program(src: &str, func: &str, line: u32) -> Option<cpl_facade
     if analysis.diagnostics.iter().any(is_error) {
         return None;
     }
-    cpl_facade::today::program(&analysis, &cpl_facade::Job::of(cpl_facade::Root::GeneratorRead(func.to_string(), line))).ok()
+    cpl_facade::today::program(
+        &analysis,
+        &cpl_facade::Job::of(cpl_facade::Root::GeneratorRead(func.to_string(), line)),
+    )
+    .ok()
 }
 
 /// The type a `let` that reads gives its value, and the `none` of a

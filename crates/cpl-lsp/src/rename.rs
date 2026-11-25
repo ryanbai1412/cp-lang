@@ -5,9 +5,9 @@
 //! and imports by construction. Only names that share the declaration's
 //! text are asked, which keeps a request to a handful of lookups.
 
+use cpl_diag::Span;
 use cpl_facade::today::Definition;
 use cpl_facade::Session;
-use cpl_diag::Span;
 use cpl_syntax::ast::StmtKind;
 
 fn is_ident(c: char) -> bool {

@@ -129,10 +129,15 @@ fn reads(
     db.set_file("s.cp", src.as_str());
     let analysis = db.analyze("s.cp")?;
     let error = |d: &cpl_diag::Diagnostic| d.severity == cpl_diag::Severity::Error;
-    if analysis.diagnostics.iter().any(error) || cpl_facade::today::built(&analysis).iter().any(error) {
+    if analysis.diagnostics.iter().any(error)
+        || cpl_facade::today::built(&analysis).iter().any(error)
+    {
         return None;
     }
-    Some((src, cpl_facade::today::program(&analysis, &cpl_facade::Job::program()).ok()?))
+    Some((
+        src,
+        cpl_facade::today::program(&analysis, &cpl_facade::Job::program()).ok()?,
+    ))
 }
 
 /// `module.ty: why` when stress can't make an input the program reads.
@@ -151,7 +156,11 @@ fn std_gap(module: &str, ty: &str, src: &str, program: &cpl_facade::Program) -> 
     for case in cases {
         let input = case.render();
         let mut out = Vec::new();
-        if let Err(trap) = cpl_facade::run_to_end(program, cpl_facade::RunInput::fixed(input.as_bytes()), &mut out) {
+        if let Err(trap) = cpl_facade::run_to_end(
+            program,
+            cpl_facade::RunInput::fixed(input.as_bytes()),
+            &mut out,
+        ) {
             return Some(format!(
                 "{module}.{ty}: {} reading {input:?}",
                 trap.message()

@@ -218,7 +218,11 @@ fn memory_lens(
     }
     let judge = cpl_judge::resolve(std::path::Path::new(path), text, None).ok()?;
     let limit = u128::from(judge.memory_mb) << 20;
-    let (shown, mb, name) = (cpl_facade::today::human_bytes(bytes), judge.memory_mb, judge.name);
+    let (shown, mb, name) = (
+        cpl_facade::today::human_bytes(bytes),
+        judge.memory_mb,
+        judge.name,
+    );
     let mut title = match bytes > limit {
         true => format!("Memory: bounds allow {shown}, over the {mb} MB limit on {name}"),
         false => format!("Memory: bounds allow {shown} of {mb} MB on {name}"),

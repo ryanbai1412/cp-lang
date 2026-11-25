@@ -74,10 +74,11 @@ pub fn emit_cpp(path: &Path) -> Result<String, String> {
             .collect();
         return Err(format!("{}: {}", path.shown(), msgs.join("; ")));
     }
-    let ir = cpl_facade::today::program(&analysis, &cpl_facade::Job::program()).map_err(|diags| {
-        let msgs: Vec<String> = diags.into_iter().map(|d| d.message).collect();
-        format!("{}: {}", path.shown(), msgs.join("; "))
-    })?;
+    let ir =
+        cpl_facade::today::program(&analysis, &cpl_facade::Job::program()).map_err(|diags| {
+            let msgs: Vec<String> = diags.into_iter().map(|d| d.message).collect();
+            format!("{}: {}", path.shown(), msgs.join("; "))
+        })?;
     Ok(cpl_facade::emit_cpp(&ir, &name, &cpl_facade::Profile::default()).text)
 }
 

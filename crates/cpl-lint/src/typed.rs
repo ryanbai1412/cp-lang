@@ -10,8 +10,8 @@ use crate::{
     COMPOUND_SELF_REF, COPY_COMPREHENSION, FLOAT_EQUALITY, FLOAT_SQRT_FOR_INT, LOOP_REDUCTION,
     MANUAL_BIT_TEST, UNPROVEN_LIST_INDEX,
 };
-use cpl_facade::today::{Analysis, Ty};
 use cpl_diag::{Diagnostic, Span};
+use cpl_facade::today::{Analysis, Ty};
 
 /// `diags` less the findings `analysis`'s facts rule out.
 pub fn refine_with_analysis(diags: &mut Vec<Diagnostic>, analysis: &Analysis) {

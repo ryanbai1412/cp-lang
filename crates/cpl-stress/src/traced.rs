@@ -164,10 +164,15 @@ pub fn trace(
     let first = |diagnostics: Vec<cpl_diag::Diagnostic>| {
         (diagnostics.first()).map_or("the file does not build".to_string(), |d| d.message.clone())
     };
-    let fast = cpl_facade::today::program(&analysis, &cpl_facade::Job::of(cpl_facade::Root::Laws)).map_err(first)?;
+    let fast = cpl_facade::today::program(&analysis, &cpl_facade::Job::of(cpl_facade::Root::Laws))
+        .map_err(first)?;
     let (brute_fn, brute) = match cpl_facade::today::roles(&analysis).alt {
         Some((brute_fn, _)) => {
-            let brute = cpl_facade::today::program(&analysis, &cpl_facade::Job::of(cpl_facade::Root::Alt(brute_fn.to_string()))).map_err(first)?;
+            let brute = cpl_facade::today::program(
+                &analysis,
+                &cpl_facade::Job::of(cpl_facade::Root::Alt(brute_fn.to_string())),
+            )
+            .map_err(first)?;
             (brute_fn, Some(brute))
         }
         None => match crate::cli::swap_in_part_brutes(source) {
@@ -178,15 +183,27 @@ pub fn trace(
                     .ok_or("the file with its `@alt` fns swapped in can't be checked")?;
                 (
                     "its @alt fns".to_string(),
-                    Some(cpl_facade::today::program(&swapped, &cpl_facade::Job::program()).map_err(first)?),
+                    Some(
+                        cpl_facade::today::program(&swapped, &cpl_facade::Job::program())
+                            .map_err(first)?,
+                    ),
                 )
             }
             None => (String::new(), None),
         },
     };
-    let interactor = match (fast.interactive(), cpl_facade::today::roles(&analysis).interactor) {
+    let interactor = match (
+        fast.interactive(),
+        cpl_facade::today::roles(&analysis).interactor,
+    ) {
         (false, _) => None,
-        (true, Some(judge)) => Some(cpl_facade::today::program(&analysis, &cpl_facade::Job::of(cpl_facade::Root::Interactor(judge.to_string()))).map_err(first)?),
+        (true, Some(judge)) => Some(
+            cpl_facade::today::program(
+                &analysis,
+                &cpl_facade::Job::of(cpl_facade::Root::Interactor(judge.to_string())),
+            )
+            .map_err(first)?,
+        ),
         (true, None) => return Err(
             "an interactive solution judged by another program is traced with `cpl run --trace`"
                 .to_string(),

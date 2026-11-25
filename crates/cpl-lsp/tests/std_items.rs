@@ -780,7 +780,9 @@ fn own_names(text: &str, module: &str) -> String {
             });
             // `w.map(.len)` on an option is the option's own `map`.
             let built_in = text[..start].ends_with('.')
-                && cpl_facade::today::BUILTIN_MEMBERS.iter().any(|m| m.name == word);
+                && cpl_facade::today::BUILTIN_MEMBERS
+                    .iter()
+                    .any(|m| m.name == word);
             let on_type = match examined.contains(&start) {
                 true => !own.contains(&start),
                 false => on_type || built_in,

@@ -5,8 +5,8 @@ pub use cpl_facade::today::Facts;
 
 #[cfg(test)]
 mod tests {
-    use cpl_facade::today::Ty;
     use cpl_diag::Span;
+    use cpl_facade::today::Ty;
 
     fn at(src: &str, text: &str) -> Span {
         let start = src.find(text).unwrap() as u32;

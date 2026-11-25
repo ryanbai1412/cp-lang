@@ -166,7 +166,12 @@ fn ran(run: Interpreted) -> Ran {
 }
 
 impl Vm {
-    pub fn new(program: cpl_facade::Program, name: &str, source: &str, stack_limit: Option<u32>) -> Vm {
+    pub fn new(
+        program: cpl_facade::Program,
+        name: &str,
+        source: &str,
+        stack_limit: Option<u32>,
+    ) -> Vm {
         Vm {
             program,
             name: name.to_string(),
@@ -276,7 +281,8 @@ impl Runner {
         match self {
             Runner::InProcess(vm) => {
                 let mut printed = Some(got.as_bytes().to_vec());
-                let io = cpl_facade::RunInput::judge(input.as_bytes(), Box::new(move || printed.take()));
+                let io =
+                    cpl_facade::RunInput::judge(input.as_bytes(), Box::new(move || printed.take()));
                 let limit = crate::case::judge_limit(limit);
                 Ok(vm.ruling(run_ir(&vm.program, io, vm.stack_limit, limit)))
             }
@@ -393,14 +399,16 @@ impl Runner {
     pub fn draw(&self, seed: u64, limit: Duration) -> Result<Drawn, StressError> {
         match self {
             Runner::InProcess(vm) => {
-                (vm.choose(cpl_facade::RunInput::fixed(b"").seeded(seed), None, limit)).map_err(|trap| {
-                    StressError(format!(
-                        "the `@gen` fn of {} failed on seed {seed} at line {}: {}",
-                        vm.name,
-                        vm.lines.line_of(trap.span.start) + 1,
-                        trap.into_message()
-                    ))
-                })
+                (vm.choose(cpl_facade::RunInput::fixed(b"").seeded(seed), None, limit)).map_err(
+                    |trap| {
+                        StressError(format!(
+                            "the `@gen` fn of {} failed on seed {seed} at line {}: {}",
+                            vm.name,
+                            vm.lines.line_of(trap.span.start) + 1,
+                            trap.into_message()
+                        ))
+                    },
+                )
             }
             _ => Err(self.cannot("draw an input")),
         }
@@ -410,7 +418,11 @@ impl Runner {
     pub fn replay(&self, choices: &[u64], limit: Duration) -> Option<Drawn> {
         match self {
             Runner::InProcess(vm) => vm
-                .choose(cpl_facade::RunInput::fixed(b""), Some(choices.to_vec()), limit)
+                .choose(
+                    cpl_facade::RunInput::fixed(b""),
+                    Some(choices.to_vec()),
+                    limit,
+                )
                 .ok(),
             _ => None,
         }

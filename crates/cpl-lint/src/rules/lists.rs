@@ -14,9 +14,9 @@ use crate::std_fn;
 use crate::walk::{unparen, Bind, Scope, Visitor};
 use crate::Calls;
 use crate::{File, Finding, UNPROVEN_LIST_INDEX};
-use cpl_facade::today::Ty;
 use cpl_diag::msgs::lint_rules;
 use cpl_diag::Span;
+use cpl_facade::today::Ty;
 use cpl_syntax::ast::{
     BinOp, CmpOp, Cond, Expr, ExprKind, Pattern, PatternKind, Stmt, StmtKind, UnOp,
 };

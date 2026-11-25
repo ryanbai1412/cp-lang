@@ -5,9 +5,9 @@
 
 use crate::walk::{Scope, Visitor};
 use crate::{File, Finding, FOUND_FLAG_PAIR};
-use cpl_facade::today::Ty;
 use cpl_diag::msgs::lint_rules;
 use cpl_diag::Span;
+use cpl_facade::today::Ty;
 use cpl_syntax::ast::{AssignOp, Expr, ExprKind, PatternKind, Stmt, StmtKind};
 
 #[derive(Default)]

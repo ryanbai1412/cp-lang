@@ -126,24 +126,29 @@ pub(crate) fn explain_file(
                 cpl_facade::today::explain::ClosureMode::StaticLocalAuto => {
                     ("static_local_auto", "local auto lambda".to_string())
                 }
-                cpl_facade::today::explain::ClosureMode::StaticFunctor { closures } => match closures.as_slice() {
-                    [closure] => (
-                        "static_closure_type",
-                        format!("cpl_cl{closure}, its one closure's own type"),
-                    ),
-                    _ => {
-                        let ids: Vec<String> = closures.iter().map(ToString::to_string).collect();
-                        (
-                            "static_closure_variant",
-                            format!(
-                                "cpl_cl{}, a variant over its {} closures' own types",
-                                ids.join("_"),
-                                ids.len()
-                            ),
-                        )
+                cpl_facade::today::explain::ClosureMode::StaticFunctor { closures } => {
+                    match closures.as_slice() {
+                        [closure] => (
+                            "static_closure_type",
+                            format!("cpl_cl{closure}, its one closure's own type"),
+                        ),
+                        _ => {
+                            let ids: Vec<String> =
+                                closures.iter().map(ToString::to_string).collect();
+                            (
+                                "static_closure_variant",
+                                format!(
+                                    "cpl_cl{}, a variant over its {} closures' own types",
+                                    ids.join("_"),
+                                    ids.len()
+                                ),
+                            )
+                        }
                     }
-                },
-                cpl_facade::today::explain::ClosureMode::Unread => ("unread", "never read, dropped".to_string()),
+                }
+                cpl_facade::today::explain::ClosureMode::Unread => {
+                    ("unread", "never read, dropped".to_string())
+                }
                 cpl_facade::today::explain::ClosureMode::Unbuilt => (
                     "unbuilt",
                     "its struct is never built, never called".to_string(),
@@ -235,7 +240,12 @@ pub(crate) fn explain_file(
     let _ = write!(
         stdout,
         "{}",
-        cpl_facade::today::explain::report_with(path, &compiled.text, &compiled.program, Some(&section))
+        cpl_facade::today::explain::report_with(
+            path,
+            &compiled.text,
+            &compiled.program,
+            Some(&section)
+        )
     );
     0
 }

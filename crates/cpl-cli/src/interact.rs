@@ -216,7 +216,8 @@ pub fn run_built(
             let _ = errors.read_to_end(&mut text);
             String::from_utf8_lossy(&text).into_owned()
         });
-        let io = cpl_facade::RunInput::judge(input, Box::new(move || heard.recv_timeout(PATIENCE).ok()));
+        let io =
+            cpl_facade::RunInput::judge(input, Box::new(move || heard.recv_timeout(PATIENCE).ok()));
         // What the judge says goes out at once: the solution waits on it.
         struct Unbuffered<'a>(&'a mut std::process::ChildStdin);
         impl Write for Unbuffered<'_> {
@@ -271,7 +272,11 @@ pub fn run_traced(
 
 /// Everything the judge sent `solution` on the hidden test `input`: as its
 /// input, it runs the solution again without the judge.
-pub fn transcript(solution: &cpl_facade::Program, judge: &cpl_facade::Program, input: &[u8]) -> Vec<u8> {
+pub fn transcript(
+    solution: &cpl_facade::Program,
+    judge: &cpl_facade::Program,
+    input: &[u8],
+) -> Vec<u8> {
     against(judge, input, &mut std::io::sink(), |io, says| {
         cpl_facade::today::trace::sent(solution, io, says)
     })
@@ -368,5 +373,9 @@ pub fn judge_alone(program: &cpl_facade::Program, input: &[u8]) -> Result<(), cp
         }
     });
     let mut stdout = std::io::stdout();
-    cpl_facade::run_to_end(program, cpl_facade::RunInput::judge(input, heard), &mut stdout)
+    cpl_facade::run_to_end(
+        program,
+        cpl_facade::RunInput::judge(input, heard),
+        &mut stdout,
+    )
 }

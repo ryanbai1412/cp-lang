@@ -798,21 +798,34 @@ fn compile_text(path: &str, text: String, side: Side, stderr: &mut String) -> Re
         EXIT_USAGE
     };
     let lowered = match side {
-        Side::Solution => cpl_facade::today::program(&analysis, &cpl_facade::Job::program()).and_then(|program| {
-            let judge = match cpl_facade::today::roles(&analysis).interactor {
-                Some(name) => Some((name.clone(), cpl_facade::today::program(&analysis, &cpl_facade::Job::of(cpl_facade::Root::Interactor(name.to_string())))?)),
-                None => None,
-            };
-            Ok((program, judge))
-        }),
+        Side::Solution => cpl_facade::today::program(&analysis, &cpl_facade::Job::program())
+            .and_then(|program| {
+                let judge = match cpl_facade::today::roles(&analysis).interactor {
+                    Some(name) => Some((
+                        name.clone(),
+                        cpl_facade::today::program(
+                            &analysis,
+                            &cpl_facade::Job::of(cpl_facade::Root::Interactor(name.to_string())),
+                        )?,
+                    )),
+                    None => None,
+                };
+                Ok((program, judge))
+            }),
         Side::Brute => match cpl_facade::today::roles(&analysis).alt {
-            Some((name, _)) => cpl_facade::today::program(&analysis, &cpl_facade::Job::of(cpl_facade::Root::Alt(name.to_string()))).map(|program| (program, None)),
+            Some((name, _)) => cpl_facade::today::program(
+                &analysis,
+                &cpl_facade::Job::of(cpl_facade::Root::Alt(name.to_string())),
+            )
+            .map(|program| (program, None)),
             None => return Err(missing("@alt(program)", stderr)),
         },
         Side::Checker => match cpl_facade::today::roles(&analysis).checker {
-            Some((name, _)) => {
-                cpl_facade::today::program(&analysis, &cpl_facade::Job::of(cpl_facade::Root::Checker(name.to_string()))).map(|program| (program, None))
-            }
+            Some((name, _)) => cpl_facade::today::program(
+                &analysis,
+                &cpl_facade::Job::of(cpl_facade::Root::Checker(name.to_string())),
+            )
+            .map(|program| (program, None)),
             None => return Err(missing("@check", stderr)),
         },
     };
@@ -1354,7 +1367,9 @@ fn traced(
         );
     }
     match config.last_steps.filter(|_| config.from_step.is_none()) {
-        Some(steps) => cpl_facade::today::trace::resumed_tail(program, input, output, config, steps),
+        Some(steps) => {
+            cpl_facade::today::trace::resumed_tail(program, input, output, config, steps)
+        }
         None => cpl_facade::today::trace::windowed(program, input, output, config),
     }
 }

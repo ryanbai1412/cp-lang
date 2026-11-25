@@ -5,8 +5,8 @@
 
 use crate::walk::Visitor;
 use crate::{File, Finding, Group, Level, Lint};
-use cpl_facade::today::Analysis;
 use cpl_diag::{Code, Span};
+use cpl_facade::today::Analysis;
 use cpl_syntax::ast::{Cond, Expr, ExprKind, Stmt, StmtKind, Type};
 use cpl_syntax::library_lint::{self, is_name, Bound, LibraryLint};
 use cpl_syntax::{Token, TokenKind as K};
