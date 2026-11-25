@@ -3,6 +3,7 @@ core-01/assert-holds.cp
 core-01/assert-message.cp
 core-01/block-if-is-an-expression.cp
 core-01/bracket-layout.cp
+core-01/comment-mentioning-else-is-a-comment.cp
 core-01/discard-name.cp
 core-01/division-negative-divisor.cp
 core-01/doc-comment.cp
@@ -27,6 +28,7 @@ core-01/space-indent-block.cp
 core-01/top-level-return-ends-the-test.cp
 core-01/top-level-return.cp
 core-01/tuple-field-chain.cp
+core-01/unwrap-none-traps.cp
 core-01/while-true-break-in-the-middle.cp
 core-02/condition-is-bool.cp
 core-02/count-typed-by-range.cp
@@ -35,14 +37,18 @@ core-02/fresh-slot-recursion.cp
 core-02/fresh-type-block-int-escapes.cp
 core-02/function-values.cp
 core-02/generated-ctor-moves.cp
+core-02/inference-needs-annotation.cp
 core-02/let-keeps-range-fits.cp
 core-02/local-range-type-runtime-bound.cp
+core-02/optional-compare-coalesced.cp
 core-02/owned-lent-same-type.cp
 core-02/plain-element-copies.cp
 core-02/range-storage-type.cp
+core-02/rb1-q28-no-forward-inference.cp
 core-02/runtime-range-bound.cp
 core-02/tuple-fields.cp
 core-02/var-field-assign.cp
+core-03/a-struct-never-holds-itself.cp
 core-03/floor-div-zero.cp
 core-03/int-max-minus-one-ok.cp
 core-03/int-max-plus-one-traps.cp
@@ -65,6 +71,7 @@ core-03/rb1-q31-range-store-traps-checked.cp
 core-03/read-int-just-above-spare.cp
 core-03/spare-value-overflow.cp
 core-03/store-in-range-fits.cp
+core-03/structs-holding-each-other-is-an-error.cp
 core-04/anon-range-array.cp
 core-04/dom-call-traps.cp
 core-04/dom-count.cp
@@ -164,6 +171,7 @@ core-09/overflow-trap.cp
 core-09/range-store-proved.cp
 core-09/range-store-trap.cp
 core-09/trapped-check-that-holds.cp
+core-09/unwrap-none-trap.cp
 core-10/bad-token-trap.cp
 core-10/multitest-count-past-input-traps.cp
 core-10/multitest-domain-from-domain-count.cp
@@ -172,6 +180,7 @@ core-10/multitest-until-eof-reads-all.cp
 core-10/multitest-until-eof-trailing-blank.cp
 core-10/multitest-until-eof.cp
 core-10/multitest-zero-cases.cp
+core-10/optional-show-fallback.cp
 core-10/print-empty-seq.cp
 core-10/read-bad-token-traps.cp
 core-10/read-empty-input-traps.cp
@@ -212,6 +221,15 @@ core-13/recursive-generator-break.cp
 core-13/unused-let-still-reads-its-input.cp
 core-13/unused-let-still-runs-its-mut-call.cp
 core-13/unused-let-still-traps-on-overflow.cp
+matrix/optional/int--default_fn.cp
+matrix/optional/int--default_loop.cp
+matrix/optional/int--default_top.cp
+matrix/optional/int--if_let_fn.cp
+matrix/optional/int--if_let_loop.cp
+matrix/optional/int--if_let_top.cp
+matrix/optional/list--if_let_fn.cp
+matrix/optional/list--if_let_loop.cp
+matrix/optional/list--if_let_top.cp
 next/c_n01_sum.cp
 next/c_n02_max.cp
 next/c_n04_ceil.cp

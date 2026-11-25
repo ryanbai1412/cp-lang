@@ -37,6 +37,8 @@ pub enum Intr {
     ReadInt,
     /// Whether the input has another token.
     InputLeft,
+    /// A slot with no value yet, of the type it is given. Never read before it is stored to.
+    Unset,
 }
 impl Intr {
     /// Whether this operation can trap. One that can is a statement of its own.
@@ -64,6 +66,8 @@ pub enum CheckKind {
     RangeStore,
     /// A value read from the input into a range type.
     ReadRange,
+    /// `x!` on an optional.
+    Unwrap,
 }
 
 impl CheckKind {
@@ -75,6 +79,7 @@ impl CheckKind {
             CheckKind::Domain => codes::DOMAIN_CAST,
             CheckKind::RangeStore => codes::RANGE_STORE,
             CheckKind::ReadRange => codes::INPUT_OUT_OF_CONTRACT,
+            CheckKind::Unwrap => codes::UNWRAP_NONE,
         }
     }
 }

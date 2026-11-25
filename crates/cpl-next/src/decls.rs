@@ -45,6 +45,8 @@ pub struct StructDecl {
     pub fields: Vec<(String, Ty)>,
     /// Per field: declared with `var`, so assignable after construction.
     pub var_fields: Vec<bool>,
+    /// Per field: where its type is written, as an offset into the source.
+    pub field_at: Vec<usize>,
     pub n_sets: usize,
     pub methods: HashMap<String, FnId>,
 }
@@ -123,6 +125,35 @@ impl Decls {
             .find_map(|im| im.methods.get(name))?;
         Some(Member::Method(*m, targs.clone(), sets.clone()))
     }
+}
+
+/// The first field of struct `root` that stores a `root` inline, however deep (R03.2.9).
+/// Storage (`Raw`), references and function values end the walk: they hold their contents elsewhere.
+pub fn field_holding_itself(d: &Decls, root: StructId) -> Option<usize> {
+    fn holds(d: &Decls, t: &Ty, root: StructId, stack: &mut Vec<StructId>) -> bool {
+        let Ty::Struct(id, tys, sets) = t else {
+            return false;
+        };
+        if *id == root {
+            return true;
+        }
+        if stack.contains(id) {
+            return false;
+        }
+        stack.push(*id);
+        let sub = Subst { tys, sets };
+        let found = d
+            .s(*id)
+            .fields
+            .iter()
+            .any(|(_, f)| holds(d, &sub.ty(f), root, stack));
+        stack.pop();
+        found
+    }
+    d.s(root)
+        .fields
+        .iter()
+        .position(|(_, f)| holds(d, f, root, &mut Vec::new()))
 }
 
 fn struct_named(names: &HashMap<String, Named>, name: &str) -> Option<StructId> {
@@ -207,6 +238,20 @@ fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<String>) -> Ty {
             };
             conv(cx, &named, errors)
         }
+        // `?T` is the library's `Optional<T>`.
+        TypeKind::Optional(inner) if struct_named(cx.names, "Optional").is_some() => {
+            let named = ast::Type {
+                kind: TypeKind::Named {
+                    name: ast::Name {
+                        text: "Optional".to_string(),
+                        span: t.span,
+                    },
+                    args: vec![(**inner).clone()],
+                },
+                span: t.span,
+            };
+            conv(cx, &named, errors)
+        }
         // `[D]T` is the library's `Array<D, T>`.
         TypeKind::Range { lo, hi, inclusive } => match static_range(lo, hi, *inclusive) {
             Some((lo, hi)) => Ty::Range(lo, hi),
@@ -285,6 +330,7 @@ pub fn collect(items: &[(u32, Vec<ast::Stmt>)]) -> (Decls, Vec<(u32, ast::Stmt)>
                         generics: sd.generics.iter().map(|g| g.text.clone()).collect(),
                         fields: Vec::new(),
                         var_fields: Vec::new(),
+                        field_at: Vec::new(),
                         n_sets: 0,
                         methods: HashMap::new(),
                     });
@@ -374,6 +420,11 @@ pub fn collect(items: &[(u32, Vec<ast::Stmt>)]) -> (Decls, Vec<(u32, ast::Stmt)>
                 let sdecl = &mut d.structs[id.0];
                 sdecl.fields = fields;
                 sdecl.var_fields = sd.fields.iter().map(|f| f.mutable).collect();
+                sdecl.field_at = sd
+                    .fields
+                    .iter()
+                    .map(|f| (item + f.ty.span.start) as usize)
+                    .collect();
                 sdecl.n_sets = n_sets;
                 sdecl.methods = methods;
             }

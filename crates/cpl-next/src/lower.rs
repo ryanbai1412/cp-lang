@@ -301,6 +301,7 @@ impl Lw<'_> {
             TK::Int(i) => mk(EK::Int(*i)),
             TK::Bool(b) => mk(EK::Bool(*b)),
             TK::Unit | TK::Error => mk(EK::Unit),
+            TK::Unset => mk(EK::Intr(Intr::Unset, vec![], 0)),
             TK::Var(_) | TK::Field(..) => {
                 let p = self.place(e, out);
                 mk(EK::Copy(p))

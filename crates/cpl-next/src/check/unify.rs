@@ -288,10 +288,74 @@ impl<'a> Cx<'a> {
         });
         self.fresh_sets(&t)
     }
+    /// `T` when `t` is `?T`.
+    pub(super) fn optional_of(&self, t: &Ty) -> Option<Ty> {
+        match self.shallow(t) {
+            Ty::Struct(d, ts, _) if Some(d) == self.d.struct_named("Optional") => {
+                Some(ts[0].clone())
+            }
+            _ => None,
+        }
+    }
+    /// `v` as a present value of the optional type `ty`.
+    pub(super) fn some(&mut self, v: TExpr, ty: Ty) -> TExpr {
+        let span = v.span;
+        let yes = TExpr {
+            kind: TK::Bool(true),
+            ty: Ty::Bool,
+            span,
+        };
+        TExpr {
+            kind: TK::Struct(vec![yes, v]),
+            ty,
+            span,
+        }
+    }
+    /// The optional `v`, held in a new variable, as its `some` flag and its value.
+    /// A place is read where it is: nothing is moved out of it.
+    pub(super) fn opened(&mut self, v: TExpr, inner: Ty) -> (Vec<TStmt>, TExpr, TExpr) {
+        fn place(e: &TExpr) -> bool {
+            match &e.kind {
+                TK::Var(_) => true,
+                TK::Field(b, _) => place(b),
+                _ => false,
+            }
+        }
+        let span = v.span;
+        let (hold, read) = if place(&v) {
+            (Vec::new(), v)
+        } else {
+            let tmp = self.bind("$opt", v.ty.clone());
+            let read = TExpr {
+                kind: TK::Var(tmp),
+                ty: v.ty.clone(),
+                span,
+            };
+            (vec![TStmt::Let(tmp, v)], read)
+        };
+        let flag = TExpr {
+            kind: TK::Field(Box::new(read.clone()), 0),
+            ty: Ty::Bool,
+            span,
+        };
+        let val = TExpr {
+            kind: TK::Field(Box::new(read), 1),
+            ty: inner,
+            span,
+        };
+        (hold, flag, val)
+    }
     /// A value flows into a slot of type `want`. The closed list of conversions lives here.
     pub(super) fn coerce(&mut self, e: TExpr, want: &Ty) -> TExpr {
         let (have, want_s) = (self.shallow(&e.ty), self.shallow(want));
         let span = e.span;
+        // `T` converts to `?T` (R02.4.2).
+        if let Some(inner) = self.optional_of(&want_s) {
+            if self.optional_of(&have).is_none() && !matches!(have, Ty::Var(_) | Ty::Error) {
+                let v = self.coerce(e, &inner);
+                return self.some(v, want_s);
+            }
+        }
         match (&have, &want_s) {
             // Loads widen, stores check (R03.1.4).
             (Ty::Range(..) | Ty::RangeOf(_), Ty::Int) => TExpr { ty: Ty::Int, ..e },

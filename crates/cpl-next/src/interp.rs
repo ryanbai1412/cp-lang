@@ -545,6 +545,7 @@ impl<'a> Machine<'a> {
                 V::Unit
             }
             Intr::InputLeft => V::Bool(!self.input.as_slice().is_empty()),
+            Intr::Unset => V::Unit,
             Intr::ReadInt => match self
                 .input
                 .next()

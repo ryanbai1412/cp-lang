@@ -108,8 +108,65 @@ impl<'a> Cx<'a> {
             span: b.span,
         }
     }
+    /// A condition, in a scope of its own that holds the names its `let`s bind: the caller
+    /// checks what the condition guards, then pops the scope.
     pub(super) fn cond(&mut self, c: &Cond) -> TExpr {
+        self.scopes.push(HashMap::new());
+        self.cond_in(c)
+    }
+    fn cond_in(&mut self, c: &Cond) -> TExpr {
         match c {
+            // `let v = e`: holds when the optional `e` has a value, which `v` then names.
+            Cond::Let { pat, value, and } if matches!(pat.kind, ast::PatternKind::Name(_)) => {
+                let ast::PatternKind::Name(name) = &pat.kind else {
+                    unreachable!()
+                };
+                let span = value.span;
+                let v = self.expr(value, None);
+                let Some(inner) = self.optional_of(&v.ty) else {
+                    if self.shallow(&v.ty) != Ty::Error {
+                        let t = self.show(&v.ty);
+                        self.err(span, format!("slice: `if let` on a `{t}`"));
+                    }
+                    return TExpr {
+                        kind: TK::Error,
+                        ty: Ty::Error,
+                        span,
+                    };
+                };
+                let (hold, flag, val) = self.opened(v, inner.clone());
+                let named = self.bind(name, inner);
+                let rest = match and {
+                    Some(more) => self.cond_in(more),
+                    None => TExpr {
+                        kind: TK::Bool(true),
+                        ty: Ty::Bool,
+                        span,
+                    },
+                };
+                let then = TExpr {
+                    kind: TK::Block(vec![TStmt::Let(named, val)], Some(Box::new(rest))),
+                    ty: Ty::Bool,
+                    span,
+                };
+                let no = TExpr {
+                    kind: TK::Bool(false),
+                    ty: Ty::Bool,
+                    span,
+                };
+                TExpr {
+                    kind: TK::Block(
+                        hold,
+                        Some(Box::new(TExpr {
+                            kind: TK::If(Box::new(flag), Box::new(then), Box::new(no)),
+                            ty: Ty::Bool,
+                            span,
+                        })),
+                    ),
+                    ty: Ty::Bool,
+                    span,
+                }
+            }
             Cond::Expr(e) => {
                 let v = self.expr(e, Some(&Ty::Bool));
                 self.coerce(v, &Ty::Bool)
@@ -406,6 +463,7 @@ impl<'a> Cx<'a> {
                 self.loops += 1;
                 let b = self.block(body, None);
                 self.loops -= 1;
+                self.scopes.pop();
                 out.push(TStmt::While(c, b));
             }
             StmtKind::For { .. } if !self.in_for => {

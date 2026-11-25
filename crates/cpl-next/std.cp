@@ -73,6 +73,11 @@ fn write_array<D>(xs: [D]Int):
         write(x)
         first = false
 
+// `?T`: `T` or `None`. `val` is read only when `some`.
+struct Optional<T>:
+    some: Bool
+    val: T
+
 struct Tuple2<A, B>:
     _0: A
     _1: B

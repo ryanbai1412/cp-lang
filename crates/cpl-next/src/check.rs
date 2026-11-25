@@ -74,6 +74,8 @@ pub enum TK {
     DomFrom(Ty, Box<TExpr>),
     /// `Int(v)`: the integer of a position, 1 for the first of `1..=n`.
     DomOrd(Box<TExpr>),
+    /// A slot with no value yet: the payload of `None`.
+    Unset,
     /// `v.ord`: how many positions come before this one (R04.2.22).
     Ordinal(Box<TExpr>),
     Error,
@@ -249,6 +251,18 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
         for k in 0..f.n_ret_sets {
             let v = cx.new_set();
             cx.ret_sets.insert((FnId(id), k), v);
+        }
+    }
+    for (i, s) in d.structs.iter().enumerate() {
+        if let Some(f) = decls::field_holding_itself(d, StructId(i)) {
+            let line = src[..s.field_at[f].min(src.len())].matches('\n').count() + 1;
+            cx.errors.push(format!(
+                "line {line}: {}: a `{}` would hold another `{}` inline, so it has no size; \
+                 keep the others in a list and hold an index",
+                cpl_diag::codes::RECURSIVE_FIELD.0,
+                s.name,
+                s.name
+            ));
         }
     }
     let mut main_out = Vec::new();

@@ -102,7 +102,13 @@ impl<'a> Cx<'a> {
                     self.zonk_expr(v)
                 }
             }),
-            TK::Int(_) | TK::Bool(_) | TK::Unit | TK::Var(_) | TK::ReadInt | TK::Error => {}
+            TK::Int(_)
+            | TK::Bool(_)
+            | TK::Unit
+            | TK::Unset
+            | TK::Var(_)
+            | TK::ReadInt
+            | TK::Error => {}
         }
     }
 }

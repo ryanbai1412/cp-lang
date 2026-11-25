@@ -715,6 +715,7 @@ impl Cx<'_> {
             TK::Int(_)
             | TK::Bool(_)
             | TK::Unit
+            | TK::Unset
             | TK::ReadInt
             | TK::DomLen(_)
             | TK::FnItem(_)

@@ -504,6 +504,7 @@ impl Emit<'_> {
                     Intr::RawSet => format!("cpl_set({}, {}, {})", a[0], a[1], a[2]),
                     Intr::ReadInt => "cpl_read()".to_string(),
                     Intr::InputLeft => "cpl_input_left()".to_string(),
+                    Intr::Unset => format!("{}{{}}", self.names[&e.ty]),
                 }
             }
         }

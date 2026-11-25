@@ -398,6 +398,71 @@ impl<'a> Cx<'a> {
             ExprKind::Int(i) => mk(TK::Int(*i as i64), Ty::Int),
             ExprKind::Bool(b) => mk(TK::Bool(*b), Ty::Bool),
             ExprKind::Paren(inner) => self.expr(inner, want),
+            ExprKind::None => {
+                let ty = match want.filter(|w| self.optional_of(w).is_some()) {
+                    Some(w) => w.clone(),
+                    None => {
+                        self.err(
+                            span,
+                            format!(
+                                "{}: nothing here says what `None` is an optional of; write the type",
+                                cpl_diag::codes::INFERENCE_NEEDS_ANNOTATION.0
+                            ),
+                        );
+                        return mk(TK::Error, Ty::Error);
+                    }
+                };
+                let no = mk(TK::Bool(false), Ty::Bool);
+                let inner = self.optional_of(&ty).unwrap_or(Ty::Error);
+                mk(TK::Struct(vec![no, mk(TK::Unset, inner)]), ty)
+            }
+            ExprKind::Unwrap(x) => {
+                let v = self.expr(x, None);
+                let Some(inner) = self.optional_of(&v.ty) else {
+                    if self.shallow(&v.ty) != Ty::Error {
+                        let t = self.show(&v.ty);
+                        self.err(span, format!("slice: `!` on a `{t}`"));
+                    }
+                    return mk(TK::Error, Ty::Error);
+                };
+                self.scopes.push(HashMap::new());
+                let (bind, flag, val) = self.opened(v, inner.clone());
+                self.scopes.pop();
+                let check = TStmt::Assert(
+                    flag,
+                    "the value is None".to_string(),
+                    span,
+                    CheckKind::Unwrap,
+                );
+                let mut stmts = bind;
+                stmts.push(check);
+                mk(TK::Block(stmts, Some(Box::new(val))), inner)
+            }
+            ExprKind::Binary {
+                op: BinOp::Coalesce,
+                lhs,
+                rhs,
+                ..
+            } => {
+                let l = self.expr(lhs, None);
+                let Some(inner) = self.optional_of(&l.ty) else {
+                    if self.shallow(&l.ty) != Ty::Error {
+                        let t = self.show(&l.ty);
+                        self.err(span, format!("slice: `??` on a `{t}`"));
+                    }
+                    return mk(TK::Error, Ty::Error);
+                };
+                let r = self.expr(rhs, Some(&inner));
+                let r = self.coerce(r, &inner);
+                self.scopes.push(HashMap::new());
+                let (bind, flag, val) = self.opened(l, inner.clone());
+                self.scopes.pop();
+                let pick = mk(
+                    TK::If(Box::new(flag), Box::new(val), Box::new(r)),
+                    inner.clone(),
+                );
+                mk(TK::Block(bind, Some(Box::new(pick))), inner)
+            }
             ExprKind::Name(n) => self.name(n, span),
             ExprKind::SelfValue => self.self_expr(span).unwrap_or(mk(TK::Error, Ty::Error)),
             ExprKind::Tuple(xs) if xs.is_empty() => mk(TK::Unit, Ty::Unit),
@@ -905,6 +970,7 @@ impl<'a> Cx<'a> {
                 for (c, b) in branches.iter().rev() {
                     let c = self.cond(c);
                     let b = self.block(b, if otherwise.is_some() { Some(&ty) } else { None });
+                    self.scopes.pop();
                     let b = if otherwise.is_some() && self.shallow(&ty) != Ty::Unit {
                         self.coerce(b, &ty)
                     } else {
