@@ -220,11 +220,13 @@ impl Replay {
             w.key("args").json(&call.args).end();
             w.key("fallback").opt_str(self.fallback.as_deref());
             w.key("replayed").bool(self.replayed.is_some());
+            fn pair(w: &mut cpl_json::Writer, before: Option<&str>, after: Option<&str>) {
+                w.key("before").opt_json(before);
+                w.key("after").opt_json(after).end();
+            }
             w.key("returned").object();
-            w.key("before").opt_json(self.before.returned.as_deref());
-            w.key("after")
-                .opt_json(self.after.returned.as_deref())
-                .end();
+            let (before, after) = (&self.before, &self.after);
+            pair(w, before.returned.as_deref(), after.returned.as_deref());
             let mut ids: Vec<&str> = self
                 .before
                 .writes
@@ -243,8 +245,7 @@ impl Replay {
             w.key("writes").array();
             for id in ids {
                 w.object().key("id").str(id);
-                w.key("before").opt_json(get(&self.before.writes, id));
-                w.key("after").opt_json(get(&self.after.writes, id)).end();
+                pair(w, get(&before.writes, id), get(&after.writes, id));
             }
             w.end().key("change");
             match &self.change {
