@@ -3213,7 +3213,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
 
 
 HARD_ZERO = frozenset({
-    "unreferenced_scripts",
+    "unreferenced_scripts", "end_state_broken", "next_cases_removed",
     "cpp_deep_copies", "conformance_wrong_output", "cpp_sunk_copies",
     "habit_matchers", "corpus_fmt_dirty", "judge_tables", "v02_port_files", "reviews_uncapped", "lint_std_names", "cpl_env_reads", "dead_code_allows",
     "lint_name_matchers", "lint_type_syntax", "domain_member_names",
