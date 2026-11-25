@@ -1962,3 +1962,19 @@ fn hover_shows_a_fns_type_parameter_and_its_bound() {
     assert_eq!(hover(src, "S) ->"), "type parameter S");
     assert_eq!(hover(src, "Seq>"), "trait Seq\n  fn iter() -> Gen<T>");
 }
+
+/// E0208's rename is offered only where it cannot capture: the lowercase
+/// name must not be a word anywhere in the file (spec/core/01, R01.3.2).
+#[test]
+fn an_uppercase_value_is_renamed_unless_its_lowercase_name_is_a_word_of_the_file() {
+    let d = one("let N: Int = read()\nprint(N + 1)\n");
+    assert_eq!(d.code.0, "E0208");
+    let edits: Vec<&str> = d.fixes[0].edits.iter().map(|(_, to)| &**to).collect();
+    assert_eq!(edits, ["n", "n"]);
+    let d = one("let N: Int = read()\nlet n = 2\nprint(N + n)\n");
+    assert_eq!(d.code.0, "E0208");
+    assert!(d.fixes.is_empty());
+    // A longer word that holds the name does not take it.
+    let d = one("let N: Int = read()\nlet nn = 2\nprint(N + nn)\n");
+    assert_eq!(d.fixes.len(), 1);
+}

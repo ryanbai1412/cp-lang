@@ -1284,9 +1284,10 @@ pub(crate) fn rename_values(
     src: &str,
 ) -> Vec<cpl_diag::Diagnostic> {
     let at = |s: Span| src.get(s.start as usize..s.end as usize).unwrap_or("");
-    let words: crate::fx::HashSet<&str> = src
-        .split(|c: char| !(c.is_alphanumeric() || c == '_'))
-        .collect();
+    let word = |w: &str| {
+        src.split(|c: char| !(c.is_alphanumeric() || c == '_'))
+            .any(|at| at == w)
+    };
     let refs: Vec<(Span, &str)> = ranges
         .iter()
         .zip(checks)
@@ -1306,7 +1307,7 @@ pub(crate) fn rename_values(
             .map_or(0, |i| i + 1);
         let top_level = ["let ", "var "].iter().any(|k| src[line..].starts_with(k));
         let lower = old.to_lowercase();
-        let taken = words.contains(lower.as_str()) || !d.fixes.is_empty();
+        let taken = !d.fixes.is_empty() || word(&lower);
         if !top_level || old.is_empty() || taken {
             continue;
         }
