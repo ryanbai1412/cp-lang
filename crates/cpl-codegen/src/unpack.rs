@@ -9,7 +9,7 @@
 
 use crate::uses::read_counts;
 use crate::walk;
-use cpl_ir::{AssignOp, Block, Expr, ExprKind, Local, PlaceKind, Program, Stmt};
+use cpl_ir::{AssignOp, Block, Expr, ExprKind, GlobalId, Local, PlaceKind, Program, Stmt};
 
 pub(crate) fn unpack(program: &mut Program) {
     let Program {
@@ -105,6 +105,27 @@ fn parts(
     };
     let named = !locals[*t].name.is_empty();
     let rest = stmts.get(k + 1..k + 1 + n)?;
+    // `(a, b) = (b, a)` at top level stores part by part, so no part may
+    // read a global an earlier part stored, directly or through a call.
+    let stores = |g: Option<&GlobalId>, upto: usize| {
+        rest[..upto].iter().any(|s| match (s, g) {
+            (Stmt::Assign(place, ..), Some(g)) => matches!(&place.kind, PlaceKind::Global(h) if h == g),
+            (Stmt::Assign(..), None) => true,
+            _ => false,
+        })
+    };
+    let reads_a_store = items.iter().enumerate().any(|(j, item)| {
+        let mut hit = false;
+        crate::uses::places::each_part(item, &mut |e| match &e.kind {
+            ExprKind::Global(g) => hit |= stores(Some(g), j),
+            ExprKind::Call(..) | ExprKind::CallExpr(..) => hit |= stores(None, j),
+            _ => {}
+        });
+        hit
+    });
+    if reads_a_store {
+        return None;
+    }
     (n > 0 && !named && !captured(*t) && reads[*t] == n && rest.iter().enumerate().all(binds))
         .then_some(n)
 }

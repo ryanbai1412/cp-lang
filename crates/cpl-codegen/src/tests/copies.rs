@@ -1203,6 +1203,19 @@ fn a_tuple_of_one_place_twice_moves_it_into_its_last_part() {
 }
 
 #[test]
+fn a_top_level_swap_reads_each_part_before_it_stores_one() {
+    let cpp = cpp(concat!(
+        "var c: Int = read()\n",
+        "var d: Int = read()\n",
+        "(c, d) = (d, c)\n",
+        "print(c, d)\n",
+    ));
+    // Part by part, `c = d; d = c;` would read the `c` it just stored.
+    assert!(!cpp.contains("c = d;\n    d = c;"), "{cpp}");
+    assert!(!cpp.contains("c = d;\nd = c;"), "{cpp}");
+}
+
+#[test]
 fn a_var_whose_place_a_closure_passed_on_writes_is_a_copy() {
     let cpp = cpp(concat!(
         "var g = [[1], [2]]\n",
