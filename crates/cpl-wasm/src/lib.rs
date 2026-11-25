@@ -267,7 +267,7 @@ impl Playground {
                 let fast = observed.recording.unwrap_or_default();
                 // The brute's side, when the file has one that builds.
                 let slow = self.db.analyze(name).and_then(|analysis| {
-                    let (brute_fn, _) = cpl_facade::today::roles(&analysis).alt?;
+                    let (brute_fn, _) = cpl_facade::today::roles(&analysis).alt()?;
                     let program = cpl_facade::today::program(
                         &analysis,
                         &cpl_facade::Job::of(cpl_facade::Root::Alt(brute_fn.to_string())),

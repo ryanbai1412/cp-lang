@@ -1,11 +1,10 @@
 //! Contract 9: a session over a snapshot, and its check and build queries.
 
-use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use cpl_diag::Diagnostic;
 
-use crate::snapshot::{FileId, Snapshot, Text, World};
+use crate::snapshot::{text_of, FileId, Files, Snapshot, Text, World};
 use crate::today::Analysis;
 
 /// How far a file is taken before its diagnostics are reported.
@@ -155,7 +154,7 @@ pub type Part = cpl_codegen::Part;
 /// A program built from a file, ready to run or to emit.
 #[derive(Clone, PartialEq, Debug)]
 pub struct Program {
-    pub(crate) ir: Arc<cpl_ir::Program>,
+    pub(crate) ir: cpl_ir::Program,
     text: Text,
     warnings: Arc<[Diagnostic]>,
 }
@@ -178,20 +177,38 @@ impl Program {
 }
 
 /// The fns of a file that make it more than one program, by name.
-#[derive(Clone, PartialEq, Eq, Debug, Default)]
-pub struct Roles {
+pub struct Roles<A = Arc<Analysis>>(pub(crate) A);
+
+impl<A: std::ops::Deref<Target = Analysis>> Roles<A> {
     /// The `@interactor` fn: the judge's side of a conversation.
-    pub interactor: Option<String>,
+    pub fn interactor(&self) -> Option<String> {
+        cpl_ir::interactor(&self.0)
+    }
+
     /// The `@alt(program)` fn and how many parameters it takes.
-    pub alt: Option<(String, u32)>,
+    pub fn alt(&self) -> Option<(String, u32)> {
+        cpl_ir::brute(&self.0)
+    }
+
     /// The `@gen` fn and how many parameters it takes.
-    pub generator: Option<(String, u32)>,
+    pub fn generator(&self) -> Option<(String, u32)> {
+        cpl_ir::generator(&self.0)
+    }
+
     /// The `@check` fn and how many parameters it takes.
-    pub checker: Option<(String, u32)>,
+    pub fn checker(&self) -> Option<(String, u32)> {
+        cpl_ir::checker(&self.0)
+    }
+
     /// The `@test`s, in order.
-    pub tests: Vec<String>,
+    pub fn tests(&self) -> Vec<String> {
+        cpl_ir::list_tests(&self.0)
+    }
+
     /// Whether a struct has a `@cached` field.
-    pub cached_fields: bool,
+    pub fn cached_fields(&self) -> bool {
+        cpl_ir::has_cached_fields(&self.0)
+    }
 }
 
 /// [`Session::diagnostics`] of a file already checked.
@@ -200,18 +217,6 @@ pub(crate) fn diagnostics_of(analysis: &Analysis, upto: Layer) -> Vec<Diagnostic
         Layer::Typed => analysis.diagnostics.clone(),
         Layer::Program => cpl_ir::reported(analysis),
         Layer::Built => cpl_ir::check(analysis),
-    }
-}
-
-/// [`Session::roles`] of a file already checked.
-pub(crate) fn roles_of(analysis: &Analysis) -> Roles {
-    Roles {
-        interactor: cpl_ir::interactor(analysis),
-        alt: cpl_ir::brute(analysis),
-        generator: cpl_ir::generator(analysis),
-        checker: cpl_ir::checker(analysis),
-        tests: cpl_ir::list_tests(analysis),
-        cached_fields: cpl_ir::has_cached_fields(analysis),
     }
 }
 
@@ -232,21 +237,21 @@ pub(crate) fn build_of(analysis: &Analysis, job: &Job) -> Result<Program, Vec<Di
     lowered.map(|mut ir| Program {
         warnings: std::mem::take(&mut ir.warnings).into(),
         text: analysis.text.clone(),
-        ir: Arc::new(ir),
+        ir,
     })
 }
 
 pub(crate) struct Inner {
     pub(crate) db: cpl_check::Session,
     /// The files `db` was told are open, as it has them.
-    programs: BTreeMap<FileId, Text>,
+    programs: Files,
     /// In a closed world, the files `db` finds modules among.
-    modules: BTreeMap<FileId, Text>,
+    modules: Files,
     /// The snapshot and the file the last query synced `db` to.
     last: Option<(Snapshot, Option<FileId>)>,
 }
 
-fn database(world: World, modules: &BTreeMap<FileId, Text>) -> cpl_check::Session {
+fn database(world: World, modules: &Files) -> cpl_check::Session {
     match world {
         World::Disk => cpl_check::Session::new(),
         World::Closed => {
@@ -276,9 +281,9 @@ impl Default for Session {
 impl Session {
     pub fn open(snapshot: Snapshot) -> Session {
         let inner = Inner {
-            db: database(snapshot.world(), &BTreeMap::new()),
-            programs: BTreeMap::new(),
-            modules: BTreeMap::new(),
+            db: database(snapshot.world(), &Files::new()),
+            programs: Files::new(),
+            modules: Files::new(),
             last: None,
         };
         Session {
@@ -339,10 +344,8 @@ impl Session {
         };
         // On disk every file of the snapshot is open. In a closed world the
         // file asked about is, and the rest are where its imports are found.
-        let (programs, modules): (BTreeMap<FileId, Text>, BTreeMap<FileId, Text>) = match world {
-            World::Disk => (all().collect(), BTreeMap::new()),
-            World::Closed => all().partition(|(file, _)| Some(file) == asked),
-        };
+        let (programs, modules): (Files, Files) =
+            all().partition(|(file, _)| world == World::Disk || Some(file) == asked);
         if modules != inner.modules {
             inner.db = database(world, &modules);
             inner.programs.clear();
@@ -350,15 +353,15 @@ impl Session {
         }
         let gone: Vec<FileId> = inner
             .programs
-            .keys()
-            .filter(|file| !programs.contains_key(*file))
-            .cloned()
+            .iter()
+            .filter(|(file, _)| text_of(&programs, file).is_none())
+            .map(|(file, _)| file.clone())
             .collect();
         for file in gone {
             inner.db.remove_file(file.path());
         }
         for (file, text) in &programs {
-            let held = inner.programs.get(file);
+            let held = text_of(&inner.programs, file);
             if !held.is_some_and(|held| Arc::ptr_eq(held, text) || held == text) {
                 inner.db.set_file(file.path(), text.clone());
             }
@@ -382,10 +385,8 @@ impl Session {
     }
 
     /// The fns of `file` that make it more than one program.
-    pub fn roles(&self, file: impl Into<FileId>) -> Roles {
-        self.checked(&file.into())
-            .map(|analysis| roles_of(&analysis))
-            .unwrap_or_default()
+    pub fn roles(&self, file: impl Into<FileId>) -> Option<Roles> {
+        self.checked(&file.into()).map(Roles)
     }
 
     /// The program `job` asks for of `file`, or every diagnostic of the
@@ -479,7 +480,7 @@ impl Session {
         if self.snapshot.text(&id).is_none() {
             inner.db.remove_file(file);
         }
-        inner.programs.remove(&id);
+        inner.programs.retain(|(file, _)| *file != id);
         inner.last = None;
         found
     }

@@ -800,7 +800,7 @@ fn compile_text(path: &str, text: String, side: Side, stderr: &mut String) -> Re
     let lowered = match side {
         Side::Solution => cpl_facade::today::program(&analysis, &cpl_facade::Job::program())
             .and_then(|program| {
-                let judge = match cpl_facade::today::roles(&analysis).interactor {
+                let judge = match cpl_facade::today::roles(&analysis).interactor() {
                     Some(name) => Some((
                         name.clone(),
                         cpl_facade::today::program(
@@ -812,7 +812,7 @@ fn compile_text(path: &str, text: String, side: Side, stderr: &mut String) -> Re
                 };
                 Ok((program, judge))
             }),
-        Side::Brute => match cpl_facade::today::roles(&analysis).alt {
+        Side::Brute => match cpl_facade::today::roles(&analysis).alt() {
             Some((name, _)) => cpl_facade::today::program(
                 &analysis,
                 &cpl_facade::Job::of(cpl_facade::Root::Alt(name.to_string())),
@@ -820,7 +820,7 @@ fn compile_text(path: &str, text: String, side: Side, stderr: &mut String) -> Re
             .map(|program| (program, None)),
             None => return Err(missing("@alt(program)", stderr)),
         },
-        Side::Checker => match cpl_facade::today::roles(&analysis).checker {
+        Side::Checker => match cpl_facade::today::roles(&analysis).checker() {
             Some((name, _)) => cpl_facade::today::program(
                 &analysis,
                 &cpl_facade::Job::of(cpl_facade::Root::Checker(name.to_string())),

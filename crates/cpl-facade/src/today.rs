@@ -88,7 +88,7 @@ pub mod trace {
     /// The untraced run talking to its judge, and every byte the judge
     /// sent it.
     pub fn sent(program: &Program, input: RunInput, output: &mut (dyn Write + Send)) -> Vec<u8> {
-        cpl_interp::trace::sent(&program.ir, input.io(None), output)
+        cpl_interp::trace::sent(&program.ir, input.0, output)
     }
 
     /// The trace of an interactive run: the judge is asked only once.
@@ -98,7 +98,7 @@ pub mod trace {
         output: &mut (dyn Write + Send),
         config: TraceConfig,
     ) -> Outcome {
-        cpl_interp::trace::interactive(&program.ir, input.io(None), output, config).into()
+        cpl_interp::trace::interactive(&program.ir, input.0, output, config).into()
     }
 
     /// A run recorded on a thread of its own, which traces any window of
@@ -108,7 +108,7 @@ pub mod trace {
     impl Replay {
         /// Records `program`'s run on `input` as `config` counts its steps.
         pub fn start(program: Program, input: Vec<u8>, config: TraceConfig) -> Replay {
-            let program = (*program.ir).clone();
+            let program = program.ir.clone();
             Replay(cpl_interp::trace::Replay::start(program, input, config))
         }
 
@@ -236,8 +236,8 @@ pub fn built(analysis: &Analysis) -> Vec<Diagnostic> {
 }
 
 /// [`Session::roles`] of a file a tool already holds checked.
-pub fn roles(analysis: &Analysis) -> Roles {
-    session::roles_of(analysis)
+pub fn roles(analysis: &Analysis) -> Roles<&Analysis> {
+    Roles(analysis)
 }
 
 /// [`Session::program`] of a file a tool already holds checked, which had

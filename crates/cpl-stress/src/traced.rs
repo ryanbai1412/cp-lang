@@ -166,7 +166,7 @@ pub fn trace(
     };
     let fast = cpl_facade::today::program(&analysis, &cpl_facade::Job::of(cpl_facade::Root::Laws))
         .map_err(first)?;
-    let (brute_fn, brute) = match cpl_facade::today::roles(&analysis).alt {
+    let (brute_fn, brute) = match cpl_facade::today::roles(&analysis).alt() {
         Some((brute_fn, _)) => {
             let brute = cpl_facade::today::program(
                 &analysis,
@@ -194,7 +194,7 @@ pub fn trace(
     };
     let interactor = match (
         fast.interactive(),
-        cpl_facade::today::roles(&analysis).interactor,
+        cpl_facade::today::roles(&analysis).interactor(),
     ) {
         (false, _) => None,
         (true, Some(judge)) => Some(

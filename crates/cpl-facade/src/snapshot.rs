@@ -1,6 +1,5 @@
 //! Contract 0: the world, as a snapshot.
 
-use std::collections::BTreeMap;
 use std::sync::Arc;
 
 /// A file of a snapshot: its path, as the tool was given it. Stable for
@@ -65,11 +64,24 @@ pub enum World {
     Closed,
 }
 
+/// Files in the order of their ids, each once.
+pub(crate) type Files = Vec<(FileId, Text)>;
+
+fn at(files: &Files, file: &FileId) -> Result<usize, usize> {
+    files.binary_search_by(|(held, _)| held.cmp(file))
+}
+
+/// The text `files` holds for `file`.
+pub(crate) fn text_of<'a>(files: &'a Files, file: &FileId) -> Option<&'a Text> {
+    at(files, file).ok().map(|held| &files[held].1)
+}
+
 /// The only input of every query: the files, and where the rest is found.
 /// Equal snapshots give equal answers.
 #[derive(Clone, PartialEq, Eq, Debug, Default)]
 pub struct Snapshot {
-    files: Arc<BTreeMap<FileId, Text>>,
+    /// In the order of their ids.
+    files: Arc<Files>,
     world: World,
 }
 
@@ -84,8 +96,12 @@ impl Snapshot {
 
     /// This snapshot with `file` holding `text`. Everything else is shared.
     pub fn with_file(&self, file: impl Into<FileId>, text: impl Into<Text>) -> Snapshot {
+        let (file, text) = (file.into(), text.into());
         let mut files = (*self.files).clone();
-        files.insert(file.into(), text.into());
+        match at(&files, &file) {
+            Ok(held) => files[held].1 = text,
+            Err(place) => files.insert(place, (file, text)),
+        }
         Snapshot {
             files: Arc::new(files),
             world: self.world,
@@ -95,7 +111,9 @@ impl Snapshot {
     /// This snapshot without `file`.
     pub fn without_file(&self, file: &FileId) -> Snapshot {
         let mut files = (*self.files).clone();
-        files.remove(file);
+        if let Ok(held) = at(&files, file) {
+            files.remove(held);
+        }
         Snapshot {
             files: Arc::new(files),
             world: self.world,
@@ -103,11 +121,11 @@ impl Snapshot {
     }
 
     pub fn text(&self, file: &FileId) -> Option<&Text> {
-        self.files.get(file)
+        text_of(&self.files, file)
     }
 
     pub fn files(&self) -> impl Iterator<Item = (&FileId, &Text)> {
-        self.files.iter()
+        self.files.iter().map(|(file, text)| (file, text))
     }
 
     /// Whether `other` has these very files: a cheap test, never wrong

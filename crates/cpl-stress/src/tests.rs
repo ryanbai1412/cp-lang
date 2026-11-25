@@ -1719,9 +1719,9 @@ fn every_stress_decorator_gives_the_file_a_judge_and_a_mention_does_not() {
         let mut db = cpl_facade::Session::default();
         db.set_file("s.cp", src.as_str());
         let analysis = db.analyze("s.cp").unwrap();
-        let judged = cpl_facade::today::roles(&analysis).alt.is_some()
-            || cpl_facade::today::roles(&analysis).checker.is_some()
-            || cpl_facade::today::roles(&analysis).interactor.is_some();
+        let judged = cpl_facade::today::roles(&analysis).alt().is_some()
+            || cpl_facade::today::roles(&analysis).checker().is_some()
+            || cpl_facade::today::roles(&analysis).interactor().is_some();
         assert!(judged, "@{name} names no judge `cpl stress` runs");
     }
     let mentioned = "// @alt, @brute and @interactor\nlet s = \"@check\"\nprint(s)\n";

@@ -71,7 +71,7 @@ pub fn trap_report_in(
     let program = match brute {
         false => cpl_facade::today::program(&analysis, &cpl_facade::Job::program()).ok()?,
         true => {
-            let alt = cpl_facade::today::roles(&analysis).alt?.0;
+            let alt = cpl_facade::today::roles(&analysis).alt()?.0;
             cpl_facade::today::program(&analysis, &cpl_facade::Job::of(cpl_facade::Root::Alt(alt)))
                 .ok()?
         }
@@ -134,7 +134,7 @@ pub fn checker_trap_in(
     stack_limit: Option<u32>,
 ) -> Option<Trapped> {
     let (name, analysis) = analyzed(path, text)?;
-    let (checker, _) = cpl_facade::today::roles(&analysis).checker?;
+    let (checker, _) = cpl_facade::today::roles(&analysis).checker()?;
     let program = cpl_facade::today::program(
         &analysis,
         &cpl_facade::Job::of(cpl_facade::Root::Checker(checker.to_string())),

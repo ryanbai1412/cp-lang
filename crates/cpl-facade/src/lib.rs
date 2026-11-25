@@ -17,9 +17,9 @@ pub mod today;
 
 pub use cpl_diag::{Diagnostic, Severity};
 pub use run::{
-    run, run_for, run_to_end, run_traced, run_traced_within, run_within, Checkpoint, Checkpoints,
-    Choices, Limits, More, Outcome, Recording, Request, RunInput, RunProfile, Stop, TraceConfig,
-    Trap, CANCELLED, OUT_OF_TIME,
+    run, run_checkpointed, run_for, run_to_end, run_traced, run_traced_within, run_within,
+    Checkpoint, Checkpointed, Checkpoints, Choices, Limits, More, Outcome, Recording, Request,
+    RunInput, RunProfile, Stop, TraceConfig, Trap, CANCELLED, OUT_OF_TIME,
 };
 pub use session::{
     apply_error_fixes, emit_cpp, emit_cpp_profiled, Checks, CppFile, Job, Layer, Part, Profile,

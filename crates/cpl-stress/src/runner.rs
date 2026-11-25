@@ -92,17 +92,14 @@ impl Vm {
             Some(None) => Checkpoints::default(),
         };
         let mut out = Vec::new();
-        let run = cpl_facade::run(
+        let run = cpl_facade::run_checkpointed(
             &self.program,
             io.until(cpl_facade::Stop::after(limit)),
             &mut out,
-            cpl_facade::Request {
-                on_this_thread: Some(cpl_facade::Limits {
-                    stack_bytes: bytes as usize,
-                }),
-                checkpoints: Some(want),
-                ..cpl_facade::Request::default()
+            cpl_facade::Limits {
+                stack_bytes: bytes as usize,
             },
+            want,
         );
         if known.is_none() {
             let prelude = run.taken.into_iter().last();
@@ -116,7 +113,7 @@ impl Vm {
             });
         }
         let text = String::from_utf8_lossy(&out).into_owned();
-        match run.trap {
+        match run.outcome.trap {
             None => Ok(text),
             Some(trap) => Err((text, Box::new(trap))),
         }

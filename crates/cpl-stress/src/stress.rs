@@ -168,7 +168,7 @@ impl Stress {
         };
         // The file's own `@alt(program)`, unless `--brute` names another.
         let own_brute = match given_brute {
-            None => analysis.and_then(|a| cpl_facade::today::roles(a).alt),
+            None => analysis.and_then(|a| cpl_facade::today::roles(a).alt()),
             Some(_) => None,
         };
         // `@alt(f) fn g`: the brute is the whole file with `g` in `f`'s place.
@@ -180,7 +180,7 @@ impl Stress {
         let external_judge = native.is_some_and(|n| n.judge_given);
         let (mut checker, mut interactor) = (None, None);
         if let (Some(analysis), false) = (analysis, external_judge) {
-            if let Some((checker_fn, _)) = cpl_facade::today::roles(analysis).checker {
+            if let Some((checker_fn, _)) = cpl_facade::today::roles(analysis).checker() {
                 checker = Some(lowered(
                     cpl_facade::today::program(
                         analysis,
@@ -189,7 +189,7 @@ impl Stress {
                     name,
                     source,
                 )?);
-            } else if let Some(judge) = cpl_facade::today::roles(analysis).interactor {
+            } else if let Some(judge) = cpl_facade::today::roles(analysis).interactor() {
                 interactor = Some(lowered(
                     cpl_facade::today::program(
                         analysis,
@@ -202,7 +202,7 @@ impl Stress {
         }
         let judged_in_file = checker.is_some() || interactor.is_some();
         let own_gen = match given_gen {
-            None => analysis.and_then(|a| cpl_facade::today::roles(a).generator),
+            None => analysis.and_then(|a| cpl_facade::today::roles(a).generator()),
             Some(_) => None,
         };
         let size = i64::try_from(options.size).unwrap_or(i64::MAX);
@@ -272,7 +272,7 @@ impl Stress {
                 let file_solves = native.fast.is_none() && is_cp;
                 let cached = file_solves
                     && source.contains("@cache")
-                    && analysis.is_some_and(|a| cpl_facade::today::roles(a).cached_fields);
+                    && analysis.is_some_and(|a| cpl_facade::today::roles(a).cached_fields());
                 // The builds are the whole wait before the first case, so
                 // they run side by side.
                 let (mut brute, mut cold) = (Ok(None), Ok(None));

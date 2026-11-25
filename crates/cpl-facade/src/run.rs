@@ -16,114 +16,54 @@ pub const OUT_OF_TIME: cpl_diag::msgs::Msg = cpl_interp::OUT_OF_TIME;
 /// The message of the trap that ends a run its [`Stop`] cancelled.
 pub const CANCELLED: cpl_diag::msgs::Msg = cpl_interp::CANCELLED;
 
-enum Feed<'a> {
-    Fixed(&'a [u8]),
-    Live(More<'a>),
-}
-
 /// What a run is given: everything that changes its output and none of
 /// what the compiler answers (contract 0).
-pub struct RunInput<'a> {
-    feed: Feed<'a>,
-    peer: Option<More<'a>>,
-    seed: Option<u64>,
-    stop: Option<Stop>,
-    choices: Option<Arc<Mutex<Choices>>>,
-    checks: Checks,
-    last_values: Option<&'a str>,
-}
+pub struct RunInput<'a>(pub(crate) cpl_interp::Io<'a>);
 
 impl<'a> RunInput<'a> {
-    fn of(feed: Feed<'a>, peer: Option<More<'a>>) -> RunInput<'a> {
-        RunInput {
-            feed,
-            peer,
-            seed: None,
-            stop: None,
-            choices: None,
-            checks: Checks::LOCAL,
-            last_values: None,
-        }
-    }
-
     /// The whole input, known before the program starts.
     pub fn fixed(input: &'a [u8]) -> RunInput<'a> {
-        RunInput::of(Feed::Fixed(input), None)
+        RunInput(cpl_interp::Io::fixed(input))
     }
 
     /// An input that arrives while the program runs: the solution's side
     /// of an interactive problem.
     pub fn live(more: More<'a>) -> RunInput<'a> {
-        RunInput::of(Feed::Live(more), None)
+        RunInput(cpl_interp::Io::live(more))
     }
 
     /// The judge's side: `input` is the hidden test, and `solution` is
     /// what the solution prints.
     pub fn judge(input: &'a [u8], solution: More<'a>) -> RunInput<'a> {
-        RunInput::of(Feed::Fixed(input), Some(solution))
+        RunInput(cpl_interp::Io::judge(input, solution))
     }
 
     /// With `rand` and `shuffle` drawing from `seed`: one seed, one run.
     pub fn seeded(self, seed: u64) -> RunInput<'a> {
-        RunInput {
-            seed: Some(seed),
-            ..self
-        }
+        RunInput(self.0.seeded(seed))
     }
 
     /// Ended early by `stop`: a deadline, or the caller's cancel.
     pub fn until(self, stop: Stop) -> RunInput<'a> {
-        RunInput {
-            stop: Some(stop),
-            ..self
-        }
+        RunInput(self.0.until(stop))
     }
 
     /// At a judge build's `checks`: where they keep no check, the program
     /// does what that build does instead of trapping.
     pub fn at(self, checks: Checks) -> RunInput<'a> {
-        RunInput { checks, ..self }
+        RunInput(self.0.at(checks))
     }
 
     /// With `rand` and `shuffle` writing their choices down in `choices`,
     /// or replaying the ones it holds.
     pub fn choosing(self, choices: Arc<Mutex<Choices>>) -> RunInput<'a> {
-        RunInput {
-            choices: Some(choices),
-            ..self
-        }
+        RunInput(self.0.choosing(choices))
     }
 
     /// Keeping each top-level variable's last value in the recording,
     /// read against the program's `source`, without tracing the run.
     pub fn with_last_values(self, source: &'a str) -> RunInput<'a> {
-        RunInput {
-            last_values: Some(source),
-            ..self
-        }
-    }
-
-    pub(crate) fn io(self, last_values: Option<&'a str>) -> cpl_interp::Io<'a> {
-        let last_values = last_values.or(self.last_values);
-        let mut io = match (self.feed, self.peer) {
-            (Feed::Fixed(input), Some(peer)) => cpl_interp::Io::judge(input, peer),
-            (Feed::Fixed(input), None) => cpl_interp::Io::fixed(input),
-            (Feed::Live(more), _) => cpl_interp::Io::live(more),
-        };
-        io = io.at(self.checks);
-        if let Some(seed) = self.seed {
-            io = io.seeded(seed);
-        }
-        if let Some(stop) = self.stop {
-            io = io.until(stop);
-        }
-        if let Some(choices) = self.choices {
-            io = io.choosing(choices);
-        }
-        if let Some(source) = last_values {
-            io = io.with_last_values(source);
-        }
-        io
+        RunInput(self.0.with_last_values(source))
     }
 }
 
@@ -137,12 +77,6 @@ pub struct Request {
     /// Keep each top-level variable's last value in the recording, without
     /// tracing the run.
     pub last_values: bool,
-    /// Run on the calling thread, with this much of its stack: a host that
-    /// cannot start a thread (the browser).
-    pub on_this_thread: Option<Limits>,
-    /// Take checkpoints, or start from one. Only a run on the calling
-    /// thread takes them.
-    pub checkpoints: Option<Checkpoints>,
 }
 
 /// How a run ended and what it left besides its output.
@@ -156,10 +90,16 @@ pub struct Outcome {
     pub recording: Option<Recording>,
     /// The profile, when the request asked for one.
     pub profile: Option<RunProfile>,
+}
+
+/// A run that took checkpoints, or started from one.
+pub struct Checkpointed {
+    /// How the run ended.
+    pub outcome: Outcome,
     /// The checkpoints it took, in order.
     pub taken: Vec<Checkpoint>,
-    /// With checkpoints taken, every byte of input the run was given: a
-    /// run from one of them is given this as its input.
+    /// Every byte of input the run was given: a run from one of its
+    /// checkpoints is given this as its input.
     pub sent: Vec<u8>,
 }
 
@@ -170,8 +110,6 @@ impl From<cpl_interp::Observed> for Outcome {
             debug: observed.debug,
             recording: observed.recording,
             profile: observed.profile,
-            taken: Vec::new(),
-            sent: Vec::new(),
         }
     }
 }
@@ -203,41 +141,22 @@ impl Session {
     }
 }
 
-/// [`Session::run`]: a built program holds all a run needs.
+/// [`Session::run`]: a built program holds all a run needs. The run has a
+/// thread of its own.
 pub fn run(
     program: &Program,
     input: RunInput,
     output: &mut (dyn Write + Send),
     request: Request,
 ) -> Outcome {
-    let io = input.io(request.last_values.then_some(program.text()));
-    let (mut taken, mut sent) = (Vec::new(), Vec::new());
-    let observed = match (request.on_this_thread, request.checkpoints, request.profile) {
-        (Some(limits), Some(want), _) => {
-            let run = cpl_interp::checkpoint::observe_on_this_thread(
-                &program.ir,
-                io,
-                output,
-                limits,
-                request.trace,
-                want,
-            );
-            (taken, sent) = (run.taken, run.sent);
-            run.observed
-        }
-        (Some(limits), None, _) => {
-            cpl_interp::observe_on_this_thread(&program.ir, io, output, limits, request.trace)
-        }
-        (None, _, true) => cpl_interp::run_profiled(&program.ir, io, output),
-        (None, _, false) => cpl_interp::run_observed(&program.ir, io, output, request.trace),
+    let io = match request.last_values {
+        true => input.0.with_last_values(program.text()),
+        false => input.0,
     };
-    Outcome {
-        trap: observed.trap,
-        debug: observed.debug,
-        recording: observed.recording,
-        profile: observed.profile,
-        taken,
-        sent,
+    if request.profile {
+        cpl_interp::run_profiled(&program.ir, io, output).into()
+    } else {
+        cpl_interp::run_observed(&program.ir, io, output, request.trace).into()
     }
 }
 
@@ -250,18 +169,16 @@ pub fn run_to_end(
     run(program, input, output, Request::default()).result()
 }
 
-/// [`run_to_end`] on the calling thread, within `limits` of its stack.
+/// [`run_to_end`] on the calling thread, within `limits` of its stack: for
+/// a host that cannot start a thread (the browser), or a caller that runs
+/// many short programs.
 pub fn run_within(
     program: &Program,
     input: RunInput,
     output: &mut (dyn Write + Send),
     limits: Limits,
 ) -> Result<(), Trap> {
-    let request = Request {
-        on_this_thread: Some(limits),
-        ..Request::default()
-    };
-    run(program, input, output, request).result()
+    cpl_interp::run_with_on_this_thread(&program.ir, input.0, output, limits)
 }
 
 /// [`run`] recording what `trace` asks for, if anything.
@@ -286,12 +203,31 @@ pub fn run_traced_within(
     limits: Limits,
     trace: Option<TraceConfig>,
 ) -> Outcome {
-    let request = Request {
-        trace,
-        on_this_thread: Some(limits),
-        ..Request::default()
-    };
-    run(program, input, output, request)
+    cpl_interp::observe_on_this_thread(&program.ir, input.0, output, limits, trace).into()
+}
+
+/// [`run_within`] taking the checkpoints `want` asks for, or starting from
+/// the one it names.
+pub fn run_checkpointed(
+    program: &Program,
+    input: RunInput,
+    output: &mut (dyn Write + Send),
+    limits: Limits,
+    want: Checkpoints,
+) -> Checkpointed {
+    let run = cpl_interp::checkpoint::observe_on_this_thread(
+        &program.ir,
+        input.0,
+        output,
+        limits,
+        None,
+        want,
+    );
+    Checkpointed {
+        outcome: run.observed.into(),
+        taken: run.taken,
+        sent: run.sent,
+    }
 }
 
 /// The output of `program` on `input` and how it ended, or `None` when it

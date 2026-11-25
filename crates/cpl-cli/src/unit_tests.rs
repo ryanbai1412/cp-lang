@@ -56,7 +56,7 @@ pub(crate) fn should_run_unit_tests(args: &[&str]) -> bool {
                 return true;
             }
             if let Some(analysis) = db.analyze(paths[0]) {
-                return !cpl_facade::today::roles(&analysis).tests.is_empty();
+                return !cpl_facade::today::roles(&analysis).tests().is_empty();
             }
         }
     }
@@ -138,7 +138,7 @@ pub(crate) fn run_unit_tests(
         let Some(analysis) = db.analyze(&path_str) else {
             continue;
         };
-        let tests = cpl_facade::today::roles(&analysis).tests;
+        let tests = cpl_facade::today::roles(&analysis).tests();
         if tests.is_empty() {
             continue;
         }

@@ -384,7 +384,7 @@ fn emit_cpp(
         Part::ColdCache => cpl_facade::today::program(&analysis, &cpl_facade::Job::cold()),
         Part::Brute => {
             let (brute_fn, _) = cpl_facade::today::roles(&analysis)
-                .alt
+                .alt()
                 .ok_or_else(|| missing("@alt(program)"))?;
             cpl_facade::today::program(
                 &analysis,
@@ -858,7 +858,7 @@ impl Program {
             return Err(failed(&analysis.diagnostics));
         }
         let (gen_fn, _) = cpl_facade::today::roles(&analysis)
-            .generator
+            .generator()
             .ok_or_else(|| BuildError(format!("{name} declares no `@gen` fn")))?;
         cpl_facade::today::program(
             &analysis,
