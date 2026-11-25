@@ -20,7 +20,9 @@ pub mod today;
 
 pub use cpl_diag::{Diagnostic, Severity};
 #[cfg(feature = "cpp")]
-pub use cpp::{emit_cpp, emit_cpp_profiled, grader_header, CppFile, Part, Profile, Size, SizeBar};
+pub use cpp::{
+    emit_cpp, emit_cpp_profiled, grader_header, Choice, CppFile, Part, Profile, Size, SizeBar,
+};
 pub use library::Std;
 pub use run::{
     run, run_checkpointed, run_for, run_to_end, run_traced, run_traced_within, run_within,

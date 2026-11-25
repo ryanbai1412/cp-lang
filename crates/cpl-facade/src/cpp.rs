@@ -160,3 +160,134 @@ pub fn emit_cpp_profiled(
 ) -> (String, Vec<cpl_diag::Span>) {
     cpl_codegen::emit_profiled(&program.ir, name, &profile.target(), tally)
 }
+
+/// One thing the C++ of a program does that its source does not spell: how
+/// a closure is called, a copy, a check kept or dropped.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Choice {
+    /// Where: `line:col`, a name, or empty for the whole program.
+    pub site: String,
+    /// Which choice (`static_direct`, `copy`, `index_checked`).
+    pub kind: &'static str,
+    /// What was chosen, and why where there is a reason.
+    pub detail: String,
+}
+
+impl Program {
+    /// Every choice the C++ of this program, built from `text`, makes.
+    pub fn choices(&self, text: &str) -> Vec<Choice> {
+        let entries = cpl_codegen::explain_closures(&self.ir);
+        let dropped = cpl_codegen::explain_dropped_fields(&self.ir);
+        const DROPPED: &str = "never read; it and its stores are left out";
+        let row = |site: &str, kind: &'static str, detail: &str| Choice {
+            site: site.to_string(),
+            kind,
+            detail: detail.to_string(),
+        };
+        let mut rows = Vec::new();
+        for entry in &entries {
+            let (kind, detail) = match &entry.mode {
+                cpl_codegen::ClosureMode::StaticDirect { closure } => {
+                    ("static_direct", format!("cpl_fn{closure}"))
+                }
+                cpl_codegen::ClosureMode::StaticTemplate => {
+                    ("static_template", "template parameter".to_string())
+                }
+                cpl_codegen::ClosureMode::StaticLocalAuto => {
+                    ("static_local_auto", "local auto lambda".to_string())
+                }
+                cpl_codegen::ClosureMode::StaticFunctor { closures } => match closures.as_slice() {
+                    [closure] => (
+                        "static_closure_type",
+                        format!("cpl_cl{closure}, its one closure's own type"),
+                    ),
+                    _ => {
+                        let ids: Vec<String> = closures.iter().map(ToString::to_string).collect();
+                        (
+                            "static_closure_variant",
+                            format!(
+                                "cpl_cl{}, a variant over its {} closures' own types",
+                                ids.join("_"),
+                                ids.len()
+                            ),
+                        )
+                    }
+                },
+                cpl_codegen::ClosureMode::Unread => ("unread", "never read, dropped".to_string()),
+                cpl_codegen::ClosureMode::Unbuilt => (
+                    "unbuilt",
+                    "its struct is never built, never called".to_string(),
+                ),
+                cpl_codegen::ClosureMode::FnPointer => (
+                    "fn_pointer",
+                    "every closure it can hold captures nothing".to_string(),
+                ),
+                cpl_codegen::ClosureMode::Bound => (
+                    "bound",
+                    "every closure it can hold copies captures of the same types".to_string(),
+                ),
+                cpl_codegen::ClosureMode::FnRef => (
+                    "fn_ref",
+                    "a view of the caller's callable, a pointer and a trampoline".to_string(),
+                ),
+                cpl_codegen::ClosureMode::DynamicStdFunction { reason } => {
+                    ("dynamic_std_function", reason.clone())
+                }
+            };
+            rows.push(row(&entry.site, kind, &detail));
+        }
+        for site in &dropped {
+            rows.push(row(site, "dropped_field", DROPPED));
+        }
+        let lowered = cpl_codegen::explain_lowered(&self.ir);
+        for (span, what, why) in &lowered.copies {
+            let (line, col) = cpl_codegen::explain::line_col(text, *span);
+            rows.push(row(
+                &format!("{line}:{col}"),
+                "copy",
+                &format!("{what}: {why}"),
+            ));
+        }
+        for span in &lowered.moved {
+            let (line, col) = cpl_codegen::explain::line_col(text, *span);
+            let detail = cpl_codegen::explain::MOVED;
+            rows.push(row(&format!("{line}:{col}"), "copy_moved", detail));
+        }
+        for span in self.written_back() {
+            let (line, col) = cpl_codegen::explain::line_col(text, *span);
+            let detail = cpl_codegen::explain::WRITTEN_BACK;
+            rows.push(row(&format!("{line}:{col}"), "written_back", detail));
+        }
+        for chosen in &lowered.specializations {
+            rows.push(row("", "specialization", chosen));
+        }
+        for (span, index) in &lowered.checks {
+            let (line, col) = cpl_codegen::explain::line_col(text, *span);
+            let lowering = match index {
+                cpl_codegen::explain::Index::Checked => "index_checked",
+                _ => "index_unchecked",
+            };
+            rows.push(row(&format!("{line}:{col}"), lowering, index.why()));
+        }
+        for (span, what) in &lowered.proven {
+            let (line, col) = cpl_codegen::explain::line_col(text, *span);
+            let why = format!("{what}: {}", cpl_codegen::explain::PROVEN);
+            rows.push(row(&format!("{line}:{col}"), "check_dropped", &why));
+        }
+        for &(span, checked) in &lowered.overflows {
+            let (line, col) = cpl_codegen::explain::line_col(text, span);
+            let (lowering, why) = match checked {
+                true => ("overflow_checked", ""),
+                false => ("overflow_unchecked", cpl_codegen::explain::FITS),
+            };
+            rows.push(row(&format!("{line}:{col}"), lowering, why));
+        }
+        rows
+    }
+
+    /// The choices as a report for a person, of the file `path` with
+    /// `text`, after what `storage` says of its memory.
+    pub fn explained(&self, path: &str, text: &str, storage: Option<&str>) -> String {
+        cpl_codegen::explain::report_with(path, text, &self.ir, storage)
+    }
+}

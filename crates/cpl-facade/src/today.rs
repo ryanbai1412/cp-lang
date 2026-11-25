@@ -161,36 +161,6 @@ pub mod profile {
     pub use cpl_interp::profile::*;
 }
 
-/// How a program lowers to C++, as `cpl explain` reports it.
-#[cfg(feature = "cpp")]
-pub mod explain {
-    pub use cpl_codegen::explain::*;
-    pub use cpl_codegen::{ClosureLowering, ClosureMode, Lowered};
-
-    use crate::Program;
-
-    /// The report of `program`, built from `text` as `path`, after what
-    /// `storage` says of its memory.
-    pub fn report_with(path: &str, text: &str, program: &Program, storage: Option<&str>) -> String {
-        cpl_codegen::explain::report_with(path, text, &program.ir, storage)
-    }
-
-    /// How each closure the file calls is called in the C++.
-    pub fn closures(program: &Program) -> Vec<ClosureLowering> {
-        cpl_codegen::explain_closures(&program.ir)
-    }
-
-    /// The struct fields the C++ leaves out, never read.
-    pub fn dropped_fields(program: &Program) -> Vec<String> {
-        cpl_codegen::explain_dropped_fields(&program.ir)
-    }
-
-    /// Every choice the C++ makes that the source does not spell.
-    pub fn lowered(program: &Program) -> Lowered {
-        cpl_codegen::explain_lowered(&program.ir)
-    }
-}
-
 /// What the tests of the C++ count in it.
 #[cfg(feature = "cpp")]
 pub mod cpp_counts {

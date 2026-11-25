@@ -529,12 +529,7 @@ impl Playground {
         match self.compile(name, source) {
             Ok(compiled) => {
                 let storage = cpl_lsp::explain::storage_section(&mut self.db, name);
-                let text = cpl_facade::today::explain::report_with(
-                    name,
-                    source,
-                    &compiled.program,
-                    Some(&storage),
-                );
+                let text = compiled.program.explained(name, source, Some(&storage));
                 outcome(
                     0,
                     &compiled.diagnostics,

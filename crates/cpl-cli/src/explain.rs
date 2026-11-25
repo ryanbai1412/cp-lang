@@ -108,118 +108,13 @@ pub(crate) fn explain_file(
         Err(code) => return code,
     };
     if json {
-        let entries = cpl_facade::today::explain::closures(&compiled.program);
-        let dropped = cpl_facade::today::explain::dropped_fields(&compiled.program);
-        const DROPPED: &str = "never read; it and its stores are left out";
-        let row = |site: &str, lowering: &'static str, detail: &str| {
-            (site.to_string(), lowering, detail.to_string())
-        };
-        let mut rows = Vec::new();
-        for entry in &entries {
-            let (kind, detail) = match &entry.mode {
-                cpl_facade::today::explain::ClosureMode::StaticDirect { closure } => {
-                    ("static_direct", format!("cpl_fn{closure}"))
-                }
-                cpl_facade::today::explain::ClosureMode::StaticTemplate => {
-                    ("static_template", "template parameter".to_string())
-                }
-                cpl_facade::today::explain::ClosureMode::StaticLocalAuto => {
-                    ("static_local_auto", "local auto lambda".to_string())
-                }
-                cpl_facade::today::explain::ClosureMode::StaticFunctor { closures } => {
-                    match closures.as_slice() {
-                        [closure] => (
-                            "static_closure_type",
-                            format!("cpl_cl{closure}, its one closure's own type"),
-                        ),
-                        _ => {
-                            let ids: Vec<String> =
-                                closures.iter().map(ToString::to_string).collect();
-                            (
-                                "static_closure_variant",
-                                format!(
-                                    "cpl_cl{}, a variant over its {} closures' own types",
-                                    ids.join("_"),
-                                    ids.len()
-                                ),
-                            )
-                        }
-                    }
-                }
-                cpl_facade::today::explain::ClosureMode::Unread => {
-                    ("unread", "never read, dropped".to_string())
-                }
-                cpl_facade::today::explain::ClosureMode::Unbuilt => (
-                    "unbuilt",
-                    "its struct is never built, never called".to_string(),
-                ),
-                cpl_facade::today::explain::ClosureMode::FnPointer => (
-                    "fn_pointer",
-                    "every closure it can hold captures nothing".to_string(),
-                ),
-                cpl_facade::today::explain::ClosureMode::Bound => (
-                    "bound",
-                    "every closure it can hold copies captures of the same types".to_string(),
-                ),
-                cpl_facade::today::explain::ClosureMode::FnRef => (
-                    "fn_ref",
-                    "a view of the caller's callable, a pointer and a trampoline".to_string(),
-                ),
-                cpl_facade::today::explain::ClosureMode::DynamicStdFunction { reason } => {
-                    ("dynamic_std_function", reason.clone())
-                }
-            };
-            rows.push(row(&entry.site, kind, &detail));
-        }
-        for site in &dropped {
-            rows.push(row(site, "dropped_field", DROPPED));
-        }
-        let lowered = cpl_facade::today::explain::lowered(&compiled.program);
-        for (span, what, why) in &lowered.copies {
-            let (line, col) = cpl_facade::today::explain::line_col(&compiled.text, *span);
-            rows.push(row(
-                &format!("{line}:{col}"),
-                "copy",
-                &format!("{what}: {why}"),
-            ));
-        }
-        for span in &lowered.moved {
-            let (line, col) = cpl_facade::today::explain::line_col(&compiled.text, *span);
-            let detail = cpl_facade::today::explain::MOVED;
-            rows.push(row(&format!("{line}:{col}"), "copy_moved", detail));
-        }
-        for span in compiled.program.written_back() {
-            let (line, col) = cpl_facade::today::explain::line_col(&compiled.text, *span);
-            let detail = cpl_facade::today::explain::WRITTEN_BACK;
-            rows.push(row(&format!("{line}:{col}"), "written_back", detail));
-        }
-        for chosen in &lowered.specializations {
-            rows.push(row("", "specialization", chosen));
-        }
-        for (span, index) in &lowered.checks {
-            let (line, col) = cpl_facade::today::explain::line_col(&compiled.text, *span);
-            let lowering = match index {
-                cpl_facade::today::explain::Index::Checked => "index_checked",
-                _ => "index_unchecked",
-            };
-            rows.push(row(&format!("{line}:{col}"), lowering, index.why()));
-        }
-        for (span, what) in &lowered.proven {
-            let (line, col) = cpl_facade::today::explain::line_col(&compiled.text, *span);
-            let why = format!("{what}: {}", cpl_facade::today::explain::PROVEN);
-            rows.push(row(&format!("{line}:{col}"), "check_dropped", &why));
-        }
-        for &(span, checked) in &lowered.overflows {
-            let (line, col) = cpl_facade::today::explain::line_col(&compiled.text, span);
-            let (lowering, why) = match checked {
-                true => ("overflow_checked", ""),
-                false => ("overflow_unchecked", cpl_facade::today::explain::FITS),
-            };
-            rows.push(row(&format!("{line}:{col}"), lowering, why));
-        }
+        let mut rows: Vec<(String, &'static str, String)> =
+            (compiled.program.choices(&compiled.text).into_iter())
+                .map(|choice| (choice.site, choice.kind, choice.detail))
+                .collect();
         for (name, rep) in crate::with_db(|db| cpl_lsp::explain::storage(db, path)).rows {
             let detail = format!("{}: {}", rep.ty, cpl_lsp::explain::describe(&rep));
-            rows.push(row(&name, "storage", &detail));
+            rows.push((name, "storage", detail));
         }
         let json = cpl_json::write_with(|w| {
             w.array();
@@ -240,12 +135,9 @@ pub(crate) fn explain_file(
     let _ = write!(
         stdout,
         "{}",
-        cpl_facade::today::explain::report_with(
-            path,
-            &compiled.text,
-            &compiled.program,
-            Some(&section)
-        )
+        compiled
+            .program
+            .explained(path, &compiled.text, Some(&section))
     );
     0
 }
