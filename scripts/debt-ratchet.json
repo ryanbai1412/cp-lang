@@ -270,7 +270,7 @@
   "dream_over_32kb": 3,
   "invariant_sites": 0,
   "domain_member_names": 0,
-  "next_wrong": 128,
-  "next_not_passing": 4293,
+  "next_wrong": 71,
+  "next_not_passing": 4236,
   "end_state_unmeasured": 25
 }

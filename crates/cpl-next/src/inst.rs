@@ -359,15 +359,15 @@ impl Link<'_> {
                 Stmt::Continue => Stmt::Continue,
                 Stmt::Return(e) => Stmt::Return(e.as_ref().map(|e| self.expr(e, env))),
                 Stmt::Check {
-                    name,
+                    kind,
                     cond,
                     msg,
-                    line,
+                    site,
                 } => Stmt::Check {
-                    name,
+                    kind: *kind,
                     cond: self.expr(cond, env),
                     msg: msg.clone(),
-                    line: *line,
+                    site: *site,
                 },
                 Stmt::Print(ps) => Stmt::Print(
                     ps.iter()
@@ -388,6 +388,7 @@ impl Link<'_> {
                     var,
                     lend,
                     body,
+                    site,
                 } => {
                     let args = args.iter().map(|a| self.arg(a, env)).collect();
                     let body = self.block(body, env);
@@ -398,6 +399,7 @@ impl Link<'_> {
                             var: *var,
                             lend: *lend,
                             body,
+                            site: *site,
                         },
                         None => Stmt::Break,
                     }
@@ -461,15 +463,18 @@ impl Link<'_> {
             EK::Inject(x) => EK::Inject(Box::new(self.expr(x, env))),
             EK::Widen(x) => EK::Widen(Box::new(self.expr(x, env))),
             EK::MakeUnion(i, x) => EK::MakeUnion(*i, Box::new(self.expr(x, env))),
-            EK::Intr(i, args) => EK::Intr(*i, args.iter().map(|a| self.arg(a, env)).collect()),
-            EK::CallValue(c, args) => EK::CallValue(
+            EK::Intr(i, args, at) => {
+                EK::Intr(*i, args.iter().map(|a| self.arg(a, env)).collect(), *at)
+            }
+            EK::CallValue(c, args, at) => EK::CallValue(
                 Box::new(self.expr(c, env)),
                 args.iter().map(|a| self.expr(a, env)).collect(),
+                *at,
             ),
-            EK::Call(t, args) => {
+            EK::Call(t, args, at) => {
                 let args: Vec<Arg<CTy>> = args.iter().map(|a| self.arg(a, env)).collect();
                 match self.target(t, env) {
-                    Some(i) => EK::Call(Target::Inst(i), args),
+                    Some(i) => EK::Call(Target::Inst(i), args, *at),
                     None => EK::Unit,
                 }
             }
@@ -629,15 +634,15 @@ fn canon_block(
             )),
             Stmt::Return(e) => out.push(Stmt::Return(e.map(|e| canon_expr(bad, e)))),
             Stmt::Check {
-                name,
+                kind,
                 cond,
                 msg,
-                line,
+                site,
             } => out.push(Stmt::Check {
-                name,
+                kind,
                 cond: canon_expr(bad, cond),
                 msg,
-                line,
+                site,
             }),
             Stmt::Print(ps) => out.push(Stmt::Print(
                 ps.into_iter()
@@ -654,6 +659,7 @@ fn canon_block(
                 var,
                 lend,
                 body,
+                site,
             } => {
                 let args = args
                     .into_iter()
@@ -668,6 +674,7 @@ fn canon_block(
                     var,
                     lend,
                     body: canon_block(p, locals, bad, body),
+                    site,
                 });
             }
             other => out.push(other),
@@ -689,7 +696,7 @@ fn canon_store(
         None => Stmt::Assign(dst.clone(), v),
     };
     match e.kind {
-        EK::CallValue(callee, args) => {
+        EK::CallValue(callee, args, at) => {
             let cty = callee.ty.clone();
             locals.push(cty.clone());
             let tmp = locals.len() - 1;
@@ -704,7 +711,7 @@ fn canon_store(
                     .collect();
                 all.extend(args.iter().cloned().map(Arg::Value));
                 Expr {
-                    kind: EK::Call(Target::Inst(p.index[k]), all),
+                    kind: EK::Call(Target::Inst(p.index[k]), all, at),
                     ty: e.ty.clone(),
                 }
             };
@@ -805,7 +812,7 @@ fn canon_expr(bad: &mut Vec<String>, e: Expr<CTy>) -> Expr<CTy> {
             EK::MakeClosure(xs.into_iter().map(|e| canon_expr(bad, e)).collect())
         }
         EK::MakeUnion(i, x) => EK::MakeUnion(i, Box::new(canon_expr(bad, *x))),
-        EK::Intr(i, args) => EK::Intr(
+        EK::Intr(i, args, at) => EK::Intr(
             i,
             args.into_iter()
                 .map(|a| match a {
@@ -813,8 +820,9 @@ fn canon_expr(bad: &mut Vec<String>, e: Expr<CTy>) -> Expr<CTy> {
                     l => l,
                 })
                 .collect(),
+            at,
         ),
-        EK::Call(t, args) => EK::Call(
+        EK::Call(t, args, at) => EK::Call(
             t,
             args.into_iter()
                 .map(|a| match a {
@@ -822,6 +830,7 @@ fn canon_expr(bad: &mut Vec<String>, e: Expr<CTy>) -> Expr<CTy> {
                     l => l,
                 })
                 .collect(),
+            at,
         ),
         k => k,
     };
@@ -873,8 +882,8 @@ fn thread_values(p: &mut Program, typed: &Typed) {
                     xs.iter().for_each(|x| ex(x, doms, calls, p, bad));
                 }
                 EK::Inject(x) | EK::Widen(x) | EK::MakeUnion(_, x) => ex(x, doms, calls, p, bad),
-                EK::Intr(_, args) | EK::Call(_, args) => {
-                    if let EK::Call(Target::Inst(j), _) = &e.kind {
+                EK::Intr(_, args, _) | EK::Call(_, args, _) => {
+                    if let EK::Call(Target::Inst(j), _, _) = &e.kind {
                         calls.insert(*j);
                     }
                     for a in args {
@@ -883,7 +892,7 @@ fn thread_values(p: &mut Program, typed: &Typed) {
                         }
                     }
                 }
-                EK::CallValue(c, args) => {
+                EK::CallValue(c, args, _) => {
                     ex(c, doms, calls, p, bad);
                     args.iter().for_each(|x| ex(x, doms, calls, p, bad));
                 }
@@ -1020,12 +1029,12 @@ fn thread_values(p: &mut Program, typed: &Typed) {
                     }
                 }
                 EK::Inject(x) | EK::Widen(x) | EK::MakeUnion(_, x) => self.ex(x),
-                EK::Intr(_, args) => args.iter_mut().for_each(|a| {
+                EK::Intr(_, args, _) => args.iter_mut().for_each(|a| {
                     if let Arg::Value(v) = a {
                         self.ex(v)
                     }
                 }),
-                EK::Call(t, args) => {
+                EK::Call(t, args, _) => {
                     args.iter_mut().for_each(|a| {
                         if let Arg::Value(v) = a {
                             self.ex(v)
@@ -1038,7 +1047,7 @@ fn thread_values(p: &mut Program, typed: &Typed) {
                         *args = all;
                     }
                 }
-                EK::CallValue(c, args) => {
+                EK::CallValue(c, args, _) => {
                     self.ex(c);
                     args.iter_mut().for_each(|x| self.ex(x));
                 }
@@ -1166,12 +1175,14 @@ pub fn add_events(p: &mut Program, typed: &Typed, d: &Decls, user_from: u32) {
                     var,
                     lend,
                     body,
+                    site,
                 } => out.push(Stmt::Region {
                     target,
                     args,
                     var,
                     lend,
                     body: block(body, exit, typed),
+                    site,
                 }),
                 other => out.push(other),
             }

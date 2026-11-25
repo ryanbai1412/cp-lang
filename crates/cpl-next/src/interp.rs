@@ -3,6 +3,7 @@
 //! canonical IR (they are branches), so the two can be compared.
 use crate::inst::{CTy, Program};
 use crate::ir::*;
+use cpl_diag::{codes, Code};
 use std::rc::Rc;
 
 #[derive(Clone, Debug, Default)]
@@ -20,11 +21,14 @@ pub enum V {
     Union(usize, Box<V>),
 }
 
-/// `Trap::check` when the fault is in the compiler: the IR was not what its contract says.
+/// `Trap::code` when the fault is in the compiler: the IR was not what its contract says.
 pub const INTERNAL: &str = "internal";
 
 pub struct Trap {
-    pub check: &'static str,
+    /// The trap's code in the diagnostic registry, or `INTERNAL`.
+    pub code: &'static str,
+    /// The line of the user's file that was running (`ir::Site`).
+    pub line: u32,
     pub msg: String,
 }
 pub struct Outcome {
@@ -64,6 +68,8 @@ struct Machine<'a> {
     out: String,
     pub events: Vec<String>,
     input: std::vec::IntoIter<String>,
+    /// The innermost line of the user's file that is running (`ir::Site`).
+    at: Site,
 }
 type R<T> = Result<T, Trap>;
 
@@ -80,8 +86,12 @@ pub fn run(p: &Program, funcs: &[Func<CTy>], input: &str) -> Outcome {
             .map(String::from)
             .collect::<Vec<_>>()
             .into_iter(),
+        at: 0,
     };
-    let trap = m.call(p.main, Vec::new(), None).err();
+    let trap = m
+        .call(p.main, Vec::new(), None)
+        .err()
+        .map(|t| Trap { line: m.at, ..t });
     Outcome {
         events: m.events,
         output: m.out,
@@ -89,16 +99,18 @@ pub fn run(p: &Program, funcs: &[Func<CTy>], input: &str) -> Outcome {
     }
 }
 
-fn trap<T>(check: &'static str, msg: impl Into<String>) -> R<T> {
+/// The line is filled in where the run ends: it is `Machine::at` then.
+fn trap<T>(code: Code, msg: impl Into<String>) -> R<T> {
     Err(Trap {
-        check,
+        code: code.0,
+        line: 0,
         msg: msg.into(),
     })
 }
 
 /// The IR broke a rule the layers before this one keep. Never the program's fault.
 fn broken<T>(rule: &'static str) -> R<T> {
-    trap(INTERNAL, rule)
+    trap(Code(INTERNAL), rule)
 }
 
 impl<'a> Machine<'a> {
@@ -116,7 +128,7 @@ impl<'a> Machine<'a> {
         }
         // Spec 9.6: no depth counting in the language; this stands for the 1 GB stack running out.
         if self.frames.len() >= 4_000_000 {
-            return trap("stack", "the stack ran out");
+            return trap(codes::STACK_EXHAUSTED, "the stack ran out");
         }
         self.frames.push(Frame {
             locals,
@@ -234,13 +246,23 @@ impl<'a> Machine<'a> {
                     return Ok(Flow::Return(v));
                 }
                 Stmt::Check {
-                    name, cond, msg, ..
+                    kind,
+                    cond,
+                    msg,
+                    site,
                 } => {
                     let V::Bool(ok) = self.expr(cond, fp)? else {
                         return broken("check on a non-Bool");
                     };
                     if !ok {
-                        return trap(name, msg.clone());
+                        self.enter(*site);
+                        return trap(
+                            match kind {
+                                CheckKind::Assert => codes::ASSERTION_FAILED,
+                                CheckKind::Domain => codes::DOMAIN_CAST,
+                            },
+                            msg.clone(),
+                        );
                     }
                 }
                 Stmt::Region {
@@ -249,11 +271,13 @@ impl<'a> Machine<'a> {
                     var,
                     lend,
                     body,
+                    site,
                 } => {
                     let Target::Inst(f) = target else {
                         return broken("an unresolved region call reached the interpreter");
                     };
                     let vals = self.pass(args, fp)?;
+                    let here = self.enter(*site);
                     let (_, back, exit) = self.call(
                         *f,
                         vals,
@@ -263,6 +287,7 @@ impl<'a> Machine<'a> {
                             var: *var,
                         }),
                     )?;
+                    self.at = here;
                     self.hand_back(args, fp, back)?;
                     match exit {
                         None => {}
@@ -277,7 +302,10 @@ impl<'a> Machine<'a> {
                         return broken("yield with no caller code");
                     };
                     self.frames[r.fp].locals[r.var] = v;
-                    match self.block(r.body, r.fp)? {
+                    let here = self.at;
+                    let flow = self.block(r.body, r.fp)?;
+                    self.at = here;
+                    match flow {
                         Flow::Normal | Flow::Continue => {}
                         other => return Ok(Flow::Exit(Box::new(other))),
                     }
@@ -288,7 +316,9 @@ impl<'a> Machine<'a> {
                     };
                     let v = std::mem::take(self.place(fp, p)?);
                     self.frames[r.fp].locals[r.var] = v;
+                    let here = self.at;
                     let flow = self.block(r.body, r.fp)?;
+                    self.at = here;
                     let v = std::mem::take(&mut self.frames[r.fp].locals[r.var]);
                     *self.place(fp, p)? = v;
                     // The rest of the lender still runs; the caller leaves after it.
@@ -374,9 +404,14 @@ impl<'a> Machine<'a> {
             // In raw IR a function value is the closure itself: which set it sits in changes nothing.
             EK::Inject(x) | EK::Widen(x) => self.expr(x, fp)?,
             EK::MakeUnion(i, x) => V::Union(*i, Box::new(self.expr(x, fp)?)),
-            EK::Call(Target::Inst(f), args) => self.do_call(*f, args, fp)?,
+            EK::Call(Target::Inst(f), args, site) => {
+                let here = self.enter(*site);
+                let v = self.do_call(*f, args, fp)?;
+                self.at = here;
+                v
+            }
             EK::Call(..) => return broken("an unresolved call reached the interpreter"),
-            EK::CallValue(c, args) => {
+            EK::CallValue(c, args, site) => {
                 let V::Clo(f, caps) = self.expr(c, fp)? else {
                     return broken("call of a non-function");
                 };
@@ -384,125 +419,143 @@ impl<'a> Machine<'a> {
                 for a in args {
                     vals.push(self.expr(a, fp)?);
                 }
-                self.call(f, vals, None)?.0
+                let here = self.enter(*site);
+                let v = self.call(f, vals, None)?.0;
+                self.at = here;
+                v
             }
-            EK::Intr(op, args) => match op {
-                Intr::Add
-                | Intr::Sub
-                | Intr::Mul
-                | Intr::Div
-                | Intr::Rem
-                | Intr::BitAnd
-                | Intr::BitOr
-                | Intr::BitXor => {
-                    let (a, b) = (self.int(&args[0], fp)?, self.int(&args[1], fp)?);
-                    let r = match op {
-                        Intr::Add => a.checked_add(b),
-                        Intr::Sub => a.checked_sub(b),
-                        Intr::Mul => a.checked_mul(b),
-                        Intr::Div | Intr::Rem if b == 0 => {
-                            return trap("division by zero", "division by zero")
-                        }
-                        Intr::Div => a.checked_div_euclid(b),
-                        Intr::Rem => a.checked_rem_euclid(b),
-                        Intr::BitAnd => Some(a & b),
-                        Intr::BitOr => Some(a | b),
-                        _ => Some(a ^ b),
-                    };
-                    // `Int` is `-(2^63-1)..=2^63-1`: the lowest bit pattern is not a value.
-                    match r {
-                        Some(r) if r != i64::MIN => V::Int(r),
-                        _ => return trap("overflow", "integer overflow"),
+            EK::Intr(op, args, site) => {
+                if op.checked() {
+                    self.enter(*site);
+                }
+                self.intr(*op, args, fp)?
+            }
+        })
+    }
+    /// A line of the user's file starts running; inside std (`site` 0) the line stays the caller's.
+    fn enter(&mut self, site: Site) -> Site {
+        if site != 0 {
+            self.at = site;
+        }
+        self.at
+    }
+    fn intr(&mut self, op: Intr, args: &'a [Arg<CTy>], fp: usize) -> R<V> {
+        Ok(match op {
+            Intr::Add
+            | Intr::Sub
+            | Intr::Mul
+            | Intr::Div
+            | Intr::Rem
+            | Intr::BitAnd
+            | Intr::BitOr
+            | Intr::BitXor => {
+                let (a, b) = (self.int(&args[0], fp)?, self.int(&args[1], fp)?);
+                let r = match op {
+                    Intr::Add => a.checked_add(b),
+                    Intr::Sub => a.checked_sub(b),
+                    Intr::Mul => a.checked_mul(b),
+                    Intr::Div | Intr::Rem if b == 0 => {
+                        return trap(codes::DIVISION_BY_ZERO, "division by zero")
                     }
+                    Intr::Div => a.checked_div_euclid(b),
+                    Intr::Rem => a.checked_rem_euclid(b),
+                    Intr::BitAnd => Some(a & b),
+                    Intr::BitOr => Some(a | b),
+                    _ => Some(a ^ b),
+                };
+                // `Int` is `-(2^63-1)..=2^63-1`: the lowest bit pattern is not a value.
+                match r {
+                    Some(r) if r != i64::MIN => V::Int(r),
+                    _ => return trap(codes::OVERFLOW, "integer overflow"),
                 }
-                Intr::Neg => match self.int(&args[0], fp)?.checked_neg() {
-                    Some(r) => V::Int(r),
-                    None => return trap("overflow", "integer overflow"),
-                },
-                Intr::Eq | Intr::Ne | Intr::Lt | Intr::Le | Intr::Gt | Intr::Ge => {
-                    let (Arg::Value(a), Arg::Value(b)) = (&args[0], &args[1]) else {
-                        return broken("lent operand");
-                    };
-                    let (a, b) = (self.expr(a, fp)?, self.expr(b, fp)?);
-                    let (a, b) = match (a, b) {
-                        (V::Int(a), V::Int(b)) => (a, b),
-                        (V::Bool(a), V::Bool(b)) => (a as i64, b as i64),
-                        _ => return broken("comparison of a value of another kind"),
-                    };
-                    V::Bool(match op {
-                        Intr::Eq => a == b,
-                        Intr::Ne => a != b,
-                        Intr::Lt => a < b,
-                        Intr::Le => a <= b,
-                        Intr::Gt => a > b,
-                        _ => a >= b,
-                    })
+            }
+            Intr::Neg => match self.int(&args[0], fp)?.checked_neg() {
+                Some(r) => V::Int(r),
+                None => return trap(codes::OVERFLOW, "integer overflow"),
+            },
+            Intr::Eq | Intr::Ne | Intr::Lt | Intr::Le | Intr::Gt | Intr::Ge => {
+                let (Arg::Value(a), Arg::Value(b)) = (&args[0], &args[1]) else {
+                    return broken("lent operand");
+                };
+                let (a, b) = (self.expr(a, fp)?, self.expr(b, fp)?);
+                let (a, b) = match (a, b) {
+                    (V::Int(a), V::Int(b)) => (a, b),
+                    (V::Bool(a), V::Bool(b)) => (a as i64, b as i64),
+                    _ => return broken("comparison of a value of another kind"),
+                };
+                V::Bool(match op {
+                    Intr::Eq => a == b,
+                    Intr::Ne => a != b,
+                    Intr::Lt => a < b,
+                    Intr::Le => a <= b,
+                    Intr::Gt => a > b,
+                    _ => a >= b,
+                })
+            }
+            Intr::Not => {
+                let Arg::Value(a) = &args[0] else {
+                    return broken("lent operand");
+                };
+                let V::Bool(b) = self.expr(a, fp)? else {
+                    return broken("not of a non-Bool");
+                };
+                V::Bool(!b)
+            }
+            Intr::RawEmpty => V::Raw(Rc::new(Vec::new())),
+            Intr::RawNew => {
+                let n = self.int(&args[0], fp)?;
+                let Arg::Value(fill) = &args[1] else {
+                    return broken("lent fill");
+                };
+                let fill = self.expr(fill, fp)?;
+                if n < 0 {
+                    return trap(codes::RUNTIME, "negative storage size");
                 }
-                Intr::Not => {
-                    let Arg::Value(a) = &args[0] else {
-                        return broken("lent operand");
-                    };
-                    let V::Bool(b) = self.expr(a, fp)? else {
-                        return broken("not of a non-Bool");
-                    };
-                    V::Bool(!b)
+                // A stand-in for the run's memory limit (contract 0, `Limits`).
+                if n > 1 << 28 {
+                    return trap(codes::RUNTIME, "storage larger than the memory limit");
                 }
-                Intr::RawEmpty => V::Raw(Rc::new(Vec::new())),
-                Intr::RawNew => {
-                    let n = self.int(&args[0], fp)?;
-                    let Arg::Value(fill) = &args[1] else {
-                        return broken("lent fill");
-                    };
-                    let fill = self.expr(fill, fp)?;
-                    if n < 0 {
-                        return trap("storage bounds", "negative storage size");
-                    }
-                    // A stand-in for the run's memory limit (contract 0, `Limits`).
-                    if n > 1 << 28 {
-                        return trap("memory", "storage larger than the memory limit");
-                    }
-                    V::Raw(Rc::new(vec![fill; n as usize]))
+                V::Raw(Rc::new(vec![fill; n as usize]))
+            }
+            Intr::RawGet => {
+                let Arg::Value(r) = &args[0] else {
+                    return broken("lent storage in a read");
+                };
+                let V::Raw(r) = self.expr(r, fp)? else {
+                    return broken("read of non-storage");
+                };
+                let i = self.int(&args[1], fp)?;
+                match r.get(i as usize) {
+                    Some(v) if i >= 0 => v.clone(),
+                    _ => return trap(codes::INDEX_OUT_OF_RANGE, "read outside storage"),
                 }
-                Intr::RawGet => {
-                    let Arg::Value(r) = &args[0] else {
-                        return broken("lent storage in a read");
-                    };
-                    let V::Raw(r) = self.expr(r, fp)? else {
-                        return broken("read of non-storage");
-                    };
-                    let i = self.int(&args[1], fp)?;
-                    match r.get(i as usize) {
-                        Some(v) if i >= 0 => v.clone(),
-                        _ => return trap("storage bounds", "read outside storage"),
-                    }
+            }
+            Intr::RawSet => {
+                let i = self.int(&args[1], fp)?;
+                let Arg::Value(x) = &args[2] else {
+                    return broken("lent element");
+                };
+                let x = self.expr(x, fp)?;
+                let Arg::Lend(p) = &args[0] else {
+                    return broken("storage written without a lend");
+                };
+                let V::Raw(r) = self.place(fp, p)? else {
+                    return broken("write to non-storage");
+                };
+                if i < 0 || i as usize >= r.len() {
+                    return trap(codes::INDEX_OUT_OF_RANGE, "write outside storage");
                 }
-                Intr::RawSet => {
-                    let i = self.int(&args[1], fp)?;
-                    let Arg::Value(x) = &args[2] else {
-                        return broken("lent element");
-                    };
-                    let x = self.expr(x, fp)?;
-                    let Arg::Lend(p) = &args[0] else {
-                        return broken("storage written without a lend");
-                    };
-                    let V::Raw(r) = self.place(fp, p)? else {
-                        return broken("write to non-storage");
-                    };
-                    if i < 0 || i as usize >= r.len() {
-                        return trap("storage bounds", "write outside storage");
-                    }
-                    Rc::make_mut(r)[i as usize] = x;
-                    V::Unit
-                }
-                Intr::ReadInt => match self
-                    .input
-                    .next()
-                    .and_then(|t| t.parse::<i64>().ok())
-                    .filter(|v| *v != i64::MIN)
-                {
-                    Some(i) => V::Int(i),
-                    None => return trap("input", "expected an integer in the input"),
-                },
+                Rc::make_mut(r)[i as usize] = x;
+                V::Unit
+            }
+            Intr::ReadInt => match self
+                .input
+                .next()
+                .and_then(|t| t.parse::<i64>().ok())
+                .filter(|v| *v != i64::MIN)
+            {
+                Some(i) => V::Int(i),
+                None => return trap(codes::BAD_INPUT_TOKEN, "expected an integer in the input"),
             },
         })
     }

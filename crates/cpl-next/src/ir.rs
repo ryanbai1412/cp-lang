@@ -35,16 +35,27 @@ pub enum Intr {
     ReadInt,
 }
 impl Intr {
-    /// The check this operation makes, if any. A checked operation is a statement of its own.
-    pub fn check(self) -> Option<&'static str> {
-        match self {
-            Intr::Add | Intr::Sub | Intr::Mul | Intr::Neg => Some("overflow"),
-            Intr::Div | Intr::Rem => Some("division by zero"),
-            Intr::RawGet | Intr::RawSet | Intr::RawNew => Some("storage bounds"),
-            Intr::ReadInt => Some("input"),
-            _ => None,
-        }
+    /// Whether this operation can trap. One that can is a statement of its own.
+    pub fn checked(self) -> bool {
+        use Intr::*;
+        matches!(
+            self,
+            Add | Sub | Mul | Neg | Div | Rem | RawGet | RawSet | RawNew | ReadInt
+        )
     }
+}
+
+/// Where an operation that can trap, or a call, is written: its line in the user's
+/// file, or 0 inside std. A trap is reported at the innermost such line that is
+/// running, so a check std makes fails at the line that called std.
+pub type Site = u32;
+
+/// What a `Check` statement checks, which decides the code its trap carries.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum CheckKind {
+    Assert,
+    /// A value becoming a member of a domain.
+    Domain,
 }
 
 #[derive(Clone, Debug)]
@@ -81,9 +92,9 @@ pub enum EK<T> {
     Tag(Place),
     /// The size of a domain type. Resolved by the link step to a variable or a hidden parameter.
     DomLen(T),
-    Intr(Intr, Vec<Arg<T>>),
-    Call(Target<T>, Vec<Arg<T>>),
-    CallValue(Box<Expr<T>>, Vec<Expr<T>>),
+    Intr(Intr, Vec<Arg<T>>, Site),
+    Call(Target<T>, Vec<Arg<T>>, Site),
+    CallValue(Box<Expr<T>>, Vec<Expr<T>>, Site),
 }
 #[derive(Clone, Debug)]
 pub enum Arg<T> {
@@ -121,10 +132,10 @@ pub enum Stmt<T> {
     Continue,
     Return(Option<Expr<T>>),
     Check {
-        name: &'static str,
+        kind: CheckKind,
         cond: Expr<T>,
         msg: String,
-        line: u32,
+        site: Site,
     },
     Print(Vec<PrintPiece<T>>),
     /// A call to a generator or a lender. `body` is the caller's code the callee runs
@@ -136,6 +147,7 @@ pub enum Stmt<T> {
         var: usize,
         lend: bool,
         body: Vec<Stmt<T>>,
+        site: Site,
     },
     Yield(Expr<T>),
     LendOut(Place),

@@ -127,7 +127,7 @@ pub fn compile(user_src: &str, events: bool) -> Result<Compiled, Vec<Diag>> {
             add(Stage::Own, e);
         }
     }
-    let g = lower::lower(&d, &t);
+    let g = lower::lower(&d, &t, &src, STD.matches('\n').count() as u32 + 1);
     for e in &g.errors {
         add(Stage::Lower, e);
     }

@@ -30,15 +30,23 @@ const RUNTIME: &str = r#"#include <cstdint>
 #include <vector>
 struct cpl_unit {};
 template <class T> using cpl_raw = std::vector<T>;
-[[noreturn]] static void cpl_trap(const char* check, const char* msg) {
+// The innermost line of the user's file that is running (`ir::Site`).
+static int cpl_at = 0;
+[[noreturn]] static void cpl_trap(const char* code, const char* msg) {
     fflush(stdout);
-    fprintf(stderr, "trap: %s: %s\n", check, msg);
+    fprintf(stderr, "trap: %s: line %d: %s\n", code, cpl_at, msg);
     exit(3);
 }
 static char cpl_altstack[1 << 16];
 static void cpl_segv(int) {
-    static const char m[] = "trap: stack: the stack ran out\n";
-    if (write(2, m, sizeof m - 1)) {}
+    // Only `write` is safe here, so the line is printed by hand.
+    char m[64] = "trap: R0601: line ";
+    char d[12]; int n = 0, k = (int)strlen(m);
+    for (int v = cpl_at; v || !n; v /= 10) d[n++] = (char)('0' + v % 10);
+    while (n) m[k++] = d[--n];
+    static const char t[] = ": the stack ran out\n";
+    memcpy(m + k, t, sizeof t - 1);
+    if (write(2, m, k + sizeof t - 1)) {}
     _exit(3);
 }
 static void cpl_guard_stack() {
@@ -50,45 +58,45 @@ static void cpl_guard_stack() {
     struct sigaction sa; memset(&sa, 0, sizeof sa); sa.sa_handler = cpl_segv; sa.sa_flags = SA_ONSTACK;
     sigaction(SIGSEGV, &sa, nullptr); sigaction(SIGBUS, &sa, nullptr);
 }
-static inline int64_t cpl_add(int64_t a, int64_t b) { int64_t r; if (__builtin_add_overflow(a, b, &r) || r == INT64_MIN) cpl_trap("overflow", "integer overflow"); return r; }
-static inline int64_t cpl_sub(int64_t a, int64_t b) { int64_t r; if (__builtin_sub_overflow(a, b, &r) || r == INT64_MIN) cpl_trap("overflow", "integer overflow"); return r; }
-static inline int64_t cpl_mul(int64_t a, int64_t b) { int64_t r; if (__builtin_mul_overflow(a, b, &r) || r == INT64_MIN) cpl_trap("overflow", "integer overflow"); return r; }
-static inline int64_t cpl_neg(int64_t a) { if (a == INT64_MIN) cpl_trap("overflow", "integer overflow"); return -a; }
+static inline int64_t cpl_add(int64_t a, int64_t b) { int64_t r; if (__builtin_add_overflow(a, b, &r) || r == INT64_MIN) cpl_trap("R0202", "integer overflow"); return r; }
+static inline int64_t cpl_sub(int64_t a, int64_t b) { int64_t r; if (__builtin_sub_overflow(a, b, &r) || r == INT64_MIN) cpl_trap("R0202", "integer overflow"); return r; }
+static inline int64_t cpl_mul(int64_t a, int64_t b) { int64_t r; if (__builtin_mul_overflow(a, b, &r) || r == INT64_MIN) cpl_trap("R0202", "integer overflow"); return r; }
+static inline int64_t cpl_neg(int64_t a) { if (a == INT64_MIN) cpl_trap("R0202", "integer overflow"); return -a; }
 static inline int64_t cpl_div(int64_t a, int64_t b) {
-    if (b == 0) cpl_trap("division by zero", "division by zero");
-    if (a == INT64_MIN && b == -1) cpl_trap("overflow", "integer overflow");
+    if (b == 0) cpl_trap("R0203", "division by zero");
+    if (a == INT64_MIN && b == -1) cpl_trap("R0202", "integer overflow");
     int64_t q = a / b, r = a % b;
     if (r < 0) q += b > 0 ? -1 : 1;
     return q;
 }
 static inline int64_t cpl_rem(int64_t a, int64_t b) {
-    if (b == 0) cpl_trap("division by zero", "division by zero");
-    if (a == INT64_MIN && b == -1) cpl_trap("overflow", "integer overflow");
+    if (b == 0) cpl_trap("R0203", "division by zero");
+    if (a == INT64_MIN && b == -1) cpl_trap("R0202", "integer overflow");
     int64_t r = a % b;
     if (r < 0) r += b > 0 ? b : -b;
     return r;
 }
 template <class T> static inline cpl_raw<T> cpl_raw_new(int64_t n, const T& fill) {
-    if (n < 0) cpl_trap("storage bounds", "negative storage size");
-    if (n > (int64_t(1) << 28)) cpl_trap("memory", "storage larger than the memory limit");
+    if (n < 0) cpl_trap("R0001", "negative storage size");
+    if (n > (int64_t(1) << 28)) cpl_trap("R0001", "storage larger than the memory limit");
     return cpl_raw<T>((size_t)n, fill);
 }
 template <class T> static inline T cpl_get(const cpl_raw<T>& r, int64_t i) {
-    if (i < 0 || (size_t)i >= r.size()) cpl_trap("storage bounds", "read outside storage");
+    if (i < 0 || (size_t)i >= r.size()) cpl_trap("R0101", "read outside storage");
     return r[(size_t)i];
 }
 template <class T> static inline cpl_unit cpl_set(cpl_raw<T>& r, int64_t i, const T& x) {
-    if (i < 0 || (size_t)i >= r.size()) cpl_trap("storage bounds", "write outside storage");
+    if (i < 0 || (size_t)i >= r.size()) cpl_trap("R0101", "write outside storage");
     r[(size_t)i] = x;
     return cpl_unit{};
 }
 static inline int64_t cpl_read() {
     char buf[32];
-    if (scanf("%31s", buf) != 1) cpl_trap("input", "expected an integer in the input");
+    if (scanf("%31s", buf) != 1) cpl_trap("R0501", "expected an integer in the input");
     errno = 0;
     char* end;
     long long x = strtoll(buf, &end, 10);
-    if (*end || end == buf || errno == ERANGE || x == LLONG_MIN) cpl_trap("input", "expected an integer in the input");
+    if (*end || end == buf || errno == ERANGE || x == LLONG_MIN) cpl_trap("R0501", "expected an integer in the input");
     return (int64_t)x;
 }
 // The caller's code handed to a generator or lender that calls itself: two words, not owning.
@@ -245,7 +253,7 @@ fn const_ref_params(f: &Func<CTy>) -> Vec<bool> {
     }
     fn expr(e: &Expr<CTy>, w: &mut Vec<usize>) {
         match &e.kind {
-            EK::Intr(_, args) | EK::Call(_, args) => {
+            EK::Intr(_, args, _) | EK::Call(_, args, _) => {
                 for a in args {
                     match a {
                         Arg::Lend(p) => w.extend(root(p)),
@@ -455,7 +463,7 @@ impl Emit<'_> {
             }
             EK::MakeUnion(i, x) => format!("{}::m{i}({})", self.names[&e.ty], self.expr(x)),
             EK::Inject(x) | EK::Widen(x) => self.expr(x),
-            EK::Call(Target::Inst(f), args) => format!(
+            EK::Call(Target::Inst(f), args, _) => format!(
                 "f{f}({})",
                 args.iter()
                     .map(|a| self.arg(a))
@@ -463,7 +471,7 @@ impl Emit<'_> {
                     .join(", ")
             ),
             EK::Call(..) | EK::CallValue(..) => "/* not canonical */".to_string(),
-            EK::Intr(op, args) => {
+            EK::Intr(op, args, _) => {
                 let a: Vec<String> = args.iter().map(|a| self.arg(a)).collect();
                 let bin = |o: &str| format!("({} {o} {})", a[0], a[1]);
                 match op {
@@ -509,6 +517,26 @@ impl Emit<'_> {
     fn block(&self, b: &[Stmt<CTy>], depth: usize, s: &mut String, label: &mut usize, ctx: Ctx) {
         let pad = "    ".repeat(depth);
         for st in b {
+            // `cpl_at` is set where the interpreter sets `Machine::at`: at an operation that can
+            // trap, and around a call, which may run other lines of the user's file.
+            let around = match st {
+                Stmt::Let(_, e) | Stmt::Assign(_, e) | Stmt::Expr(e) => match &e.kind {
+                    EK::Intr(op, _, site) if op.checked() && *site != 0 => {
+                        put_line!(s, "{pad}cpl_at = {site};");
+                        None
+                    }
+                    EK::Call(_, _, site) => Some(*site),
+                    _ => None,
+                },
+                Stmt::Region { site, .. } => Some(*site),
+                Stmt::Yield(_) | Stmt::LendOut(_) => Some(0),
+                _ => None,
+            };
+            match around {
+                Some(0) => put_line!(s, "{pad}{{ int cpl_was = cpl_at;"),
+                Some(site) => put_line!(s, "{pad}{{ const int cpl_was = cpl_at = {site};"),
+                None => {}
+            }
             match st {
                 Stmt::Let(l, e) => put_line!(s, "{pad}l{l} = {};", self.expr(e)),
                 Stmt::Assign(p, e) => put_line!(s, "{pad}{} = {};", self.place(p), self.expr(e)),
@@ -587,6 +615,7 @@ impl Emit<'_> {
                     var,
                     lend,
                     body,
+                    ..
                 } => {
                     let Target::Inst(f) = target else { continue };
                     let mut a: Vec<String> = args.iter().map(|a| self.arg(a)).collect();
@@ -607,6 +636,7 @@ impl Emit<'_> {
                     put_line!(s, "{pad}    auto code = [&]({vt}{} l{var}) -> int {{\n{lam}{pad}        return 0;\n{pad}    }};", if *lend { "&" } else { "" });
                     a.push("code".to_string());
                     put_line!(s, "{pad}    int c = f{f}({});", a.join(", "));
+                    put_line!(s, "{pad}    cpl_at = cpl_was;");
                     put_line!(s, "{pad}    if (c == 2) {}", self.leave("return", ctx));
                     if *lend && !matches!(ctx.inner, Inner::None) {
                         put_line!(s, "{pad}    if (c == 1) {}", self.leave("break", ctx));
@@ -617,12 +647,12 @@ impl Emit<'_> {
                 // A generator stops as soon as the caller's code leaves.
                 Stmt::Yield(e) if ctx.in_lambda => put_line!(
                     s,
-                    "{pad}{{ int c = body({}); if (c) {{ cpl_code = c; return 2; }} }}",
+                    "{pad}{{ int c = body({}); cpl_at = cpl_was; if (c) {{ cpl_code = c; return 2; }} }}",
                     self.expr(e)
                 ),
                 Stmt::Yield(e) => put_line!(
                     s,
-                    "{pad}{{ int c = body({}); if (c) return c; }}",
+                    "{pad}{{ int c = body({}); cpl_at = cpl_was; if (c) return c; }}",
                     self.expr(e)
                 ),
                 // Events go to stderr in order; stdout is flushed first so the two streams line up.
@@ -636,11 +666,23 @@ impl Emit<'_> {
                 // A lender finishes its own code first; the caller leaves after it.
                 Stmt::LendOut(p) => put_line!(s, "{pad}cpl_code = body({});", self.place(p)),
                 Stmt::Check {
-                    name, cond, msg, ..
+                    kind,
+                    cond,
+                    msg,
+                    site,
                 } => put_line!(
                     s,
-                    "{pad}if (!{}) cpl_trap({name:?}, {msg:?});",
-                    self.expr(cond)
+                    "{pad}if (!{}) {{ {}cpl_trap({:?}, {msg:?}); }}",
+                    self.expr(cond),
+                    if *site != 0 {
+                        format!("cpl_at = {site}; ")
+                    } else {
+                        String::new()
+                    },
+                    match kind {
+                        CheckKind::Assert => cpl_diag::codes::ASSERTION_FAILED.0,
+                        CheckKind::Domain => cpl_diag::codes::DOMAIN_CAST.0,
+                    }
                 ),
                 Stmt::Print(ps) => {
                     for p in ps {
@@ -656,6 +698,9 @@ impl Emit<'_> {
                     }
                 }
             }
+            if around.is_some() {
+                put_line!(s, "{pad}cpl_at = cpl_was; }}");
+            }
         }
     }
 }
@@ -665,7 +710,7 @@ impl Emit<'_> {
 fn recursive_regions(funcs: &[Func<CTy>]) -> Vec<bool> {
     fn edges(b: &[Stmt<CTy>], out: &mut Vec<usize>) {
         fn ex(e: &Expr<CTy>, out: &mut Vec<usize>) {
-            if let EK::Call(Target::Inst(j), _) = &e.kind {
+            if let EK::Call(Target::Inst(j), _, _) = &e.kind {
                 out.push(*j);
             }
         }

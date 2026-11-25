@@ -1,128 +1,71 @@
-core-01/assert-message.cp	wrong-trap
-core-01/floor-division-by-zero-traps.cp	wrong-trap
-core-01/getter-parens.cp	wrong-accept
-core-01/lowercase-generic-needs-expected-type.cp	wrong-accept
-core-01/multitest-divider.cp	wrong-trap
-core-01/named-only-positional.cp	wrong-accept
-core-01/top-level-return-ends-the-test.cp	wrong-output
-core-02/fresh-type-block-escape.cp	wrong-accept
-core-02/let-keeps-range.cp	wrong-accept
-core-03/field-bound-from-input.cp	wrong-accept
-core-03/floor-div-zero.cp	wrong-trap
-core-03/int-max-plus-one-traps.cp	wrong-trap
-core-03/intermediate-overflow-traps.cp	wrong-trap
-core-03/local-contract-checked-on-assign.cp	wrong-output
-core-03/negative-product-overflow-traps.cp	wrong-trap
-core-03/overflow-traps.cp	wrong-trap
-core-03/proofs-cross-no-calls.cp	wrong-output
-core-03/range-local-below-start-traps.cp	wrong-output
-core-03/range-local-past-end-traps.cp	wrong-output
-core-03/ranged-return-const.cp	wrong-accept
-core-03/ranged-return-stmt-traps.cp	wrong-output
-core-03/ranged-return-traps.cp	wrong-output
-core-03/rb1-q30-const-range-store.cp	wrong-accept
-core-03/rb1-q31-range-store-traps-checked.cp	wrong-output
-core-03/read-rejects-spare.cp	wrong-trap
-core-03/spare-value-overflow.cp	wrong-trap
-core-04/anon-range-array-traps.cp	wrong-trap
-core-04/list-literal-cell-outside-let-range-traps.cp	wrong-output
-core-04/list-literal-cell-outside-param-range-traps.cp	wrong-output
-core-04/range-param-argument-traps.cp	wrong-output
-core-04/ranged-cells-from-a-comprehension-are-each-checked.cp	wrong-output
-core-05/cache-lend-no-unknown-call.cp	wrong-accept
-core-05/captured-let-moved-out.cp	wrong-error
-core-05/captured-not-moved.cp	wrong-error
-core-05/closure-not-returned.cp	wrong-error
-core-05/exercise-18-closure-of-local-not-returned.cp	wrong-error
-core-05/fn-var-binding-a-global-is-a-move.cp	wrong-accept
-core-05/generic-wrapper-lends-its-source.cp	wrong-error
-core-05/generic-wrapper-of-a-plain-value-lends-nothing.cp	wrong-reject
-core-05/heap-element-is-lent.cp	wrong-error
-core-05/heap-row-lend-blocks-push.cp	wrong-error
-core-05/param-unchanged-by-a-callee-writing-its-source.cp	wrong-reject
-core-05/param-unchanged-by-a-write-to-its-global-source.cp	wrong-reject
-core-05/plain-tuple-copies.cp	wrong-reject
-core-05/rb1-q42-closure-escapes-local.cp	wrong-error
-core-06/getter-called-with-parens.cp	wrong-accept
-core-06/lint-not-on-a-fn.cp	wrong-accept
-core-06/multitest-shared-above.cp	wrong-trap
-core-06/named-only-not-positional.cp	wrong-accept
-core-06/overloads-by-label-set-one-label-set-twice-clashes.cp	wrong-accept
-core-07/computed-negative-key-traps.cp	wrong-trap
-core-07/negative-literal-index-is-an-error.cp	wrong-accept
-core-07/yielded-closure-in-struct-field-writes-generator-local.cp	split
-core-07/yielded-closure-in-struct-writes-generator-local.cp	split
-core-08/ambiguous-method.cp	wrong-accept
-core-08/trait-alias-no-impl.cp	wrong-accept
-core-09/assert-after-64k-of-output-prints-it-first.cp	wrong-output
-core-09/assert-trap.cp	wrong-trap
-core-09/checked-index-trap.cp	wrong-trap
-core-09/division-by-zero-trap.cp	wrong-trap
-core-09/overflow-trap.cp	wrong-trap
-core-09/range-store-trap.cp	wrong-output
-core-10/bad-token-trap.cp	wrong-trap
-core-10/bool-not-print.cp	wrong-accept
-core-10/bool-var-not-print.cp	wrong-accept
-core-10/multitest-count-past-input-traps.cp	wrong-trap
-core-10/multitest-missing-count.cp	wrong-trap
-core-10/multitest-until-eof-reads-all.cp	wrong-trap
-core-10/multitest-until-eof-trailing-blank.cp	wrong-output
-core-10/multitest-until-eof.cp	wrong-trap
-core-10/rb1-q39-bool-not-print.cp	wrong-accept
-core-10/read-bad-token-traps.cp	wrong-trap
-core-10/read-empty-input-traps.cp	wrong-trap
-core-10/read-needs-type.cp	wrong-accept
-core-10/read-past-end-traps.cp	wrong-trap
-core-10/read-range-contract-traps.cp	wrong-trap
-core-10/read-tuple-bound-by-earlier-part-traps.cp	wrong-trap
-core-10/return-ends-the-case.cp	wrong-output
-core-10/test-position-stored-above-multitest.cp	wrong-accept
-core-13/unused-let-still-traps-on-overflow.cp	wrong-trap
-diagnostics/fn-ends-without-a-value-loop.cp	wrong-accept
-next/o21_lender_assign_reads_same.cp	wrong-error
-next/o22_lender_body_writes_lender_self.cp	wrong-error
-next/o27_mut_global_callee_reads_same.cp	wrong-error
-next/t04_selfcapture.cp	bad-header
-next/t05_recursive_closure.cp	bad-header
-next/t06_overflow.cp	wrong-trap
-next/t07_index.cp	wrong-trap
-next/t08_div.cp	wrong-trap
-next/t13_domain.cp	wrong-trap
-next/t18_lend.cp	wrong-trap
-next/t24_dual_reassign.cp	bad-header
-widths/add-assign-traps-0.cp	wrong-trap
-widths/add-assign-traps-1.cp	wrong-trap
-widths/add-assign-traps-2.cp	wrong-trap
-widths/add-assign-traps-3.cp	wrong-trap
-widths/add-assign-traps-4.cp	wrong-trap
-widths/add-assign-traps-5.cp	wrong-trap
-widths/add-traps-0.cp	wrong-trap
-widths/add-traps-1.cp	wrong-trap
-widths/add-traps-2.cp	wrong-trap
-widths/add-traps-3.cp	wrong-trap
-widths/add-traps-4.cp	wrong-trap
-widths/add-traps-5.cp	wrong-trap
-widths/mul-assign-traps-0.cp	wrong-trap
-widths/mul-assign-traps-1.cp	wrong-trap
-widths/mul-assign-traps-2.cp	wrong-trap
-widths/mul-assign-traps-3.cp	wrong-trap
-widths/mul-assign-traps-4.cp	wrong-trap
-widths/mul-assign-traps-5.cp	wrong-trap
-widths/mul-traps-0.cp	wrong-trap
-widths/mul-traps-1.cp	wrong-trap
-widths/mul-traps-2.cp	wrong-trap
-widths/mul-traps-3.cp	wrong-trap
-widths/mul-traps-4.cp	wrong-trap
-widths/mul-traps-5.cp	wrong-trap
-widths/sub-assign-traps-0.cp	wrong-trap
-widths/sub-assign-traps-1.cp	wrong-trap
-widths/sub-assign-traps-2.cp	wrong-trap
-widths/sub-assign-traps-3.cp	wrong-trap
-widths/sub-assign-traps-4.cp	wrong-trap
-widths/sub-assign-traps-5.cp	wrong-trap
-widths/sub-traps-0.cp	wrong-trap
-widths/sub-traps-1.cp	wrong-trap
-widths/sub-traps-2.cp	wrong-trap
-widths/sub-traps-3.cp	wrong-trap
-widths/sub-traps-4.cp	wrong-trap
-widths/sub-traps-5.cp	wrong-trap
+core-01/getter-parens.cp	wrong-accept	wanted E0304 on line 4, ran and printed: 2
+core-01/lowercase-generic-needs-expected-type.cp	wrong-accept	wanted E0806 on line 3, ran and printed: 
+core-01/multitest-divider.cp	wrong-trap	trap: R0501: line 4: expected an integer in the input
+core-01/named-only-positional.cp	wrong-accept	wanted E0303 on line 4, ran and printed: 30
+core-01/top-level-return-ends-the-test.cp	wrong-output	wanted "zero\n10\nzero", got "zero\n"
+core-02/fresh-type-block-escape.cp	wrong-accept	wanted E0313 on line 3, ran and printed: 1
+core-02/let-keeps-range.cp	wrong-accept	wanted E0902 on line 6, ran and printed: 
+core-03/field-bound-from-input.cp	wrong-accept	wanted E0316 on line 7, ran and printed: 3
+core-03/local-contract-checked-on-assign.cp	wrong-output	wanted R0201 on line 5, ran to the end
+core-03/proofs-cross-no-calls.cp	wrong-output	wanted R0201 on line 5, ran to the end
+core-03/range-local-below-start-traps.cp	wrong-output	wanted R0201 on line 5, ran to the end
+core-03/range-local-past-end-traps.cp	wrong-output	wanted R0201 on line 5, ran to the end
+core-03/ranged-return-const.cp	wrong-accept	wanted E0902 on line 3, ran and printed: 12
+core-03/ranged-return-stmt-traps.cp	wrong-output	wanted R0201 on line 6, ran to the end
+core-03/ranged-return-traps.cp	wrong-output	wanted R0201 on line 4, ran to the end
+core-03/rb1-q30-const-range-store.cp	wrong-accept	wanted E0902 on line 3, ran and printed: 
+core-03/rb1-q31-range-store-traps-checked.cp	wrong-output	wanted R0201 on line 4, ran to the end
+core-03/read-rejects-spare.cp	wrong-trap	wanted R0502 on line 4, got: trap: R0501: line 4: expected an integer in the input
+core-04/anon-range-array-traps.cp	wrong-trap	wanted R0101 on line 5, got: trap: R0102: line 5: value outside the domain
+core-04/list-literal-cell-outside-let-range-traps.cp	wrong-output	wanted R0201 on line 6, ran to the end
+core-04/list-literal-cell-outside-param-range-traps.cp	wrong-output	wanted R0201 on line 7, ran to the end
+core-04/range-param-argument-traps.cp	wrong-output	wanted R0201 on line 6, ran to the end
+core-04/ranged-cells-from-a-comprehension-are-each-checked.cp	wrong-output	wanted R0201 on line 7, ran to the end
+core-05/cache-lend-no-unknown-call.cp	wrong-accept	wanted E0602 on line 13, ran and printed: 
+core-05/captured-let-moved-out.cp	wrong-error	wanted E0607 on line 5, got: own: line 6: E0607: `xs` is moved here while `f`, which uses it, is still used
+core-05/captured-not-moved.cp	wrong-error	wanted E0607 on line 5, got: own: line 6: E0607: `xs` is moved here while `f`, which uses it, is still used
+core-05/closure-not-returned.cp	wrong-error	wanted E0603 on line 5, got: own: line 4: E0603: this returns a value that borrows `c`: `c` is gone when the fn returns
+core-05/exercise-18-closure-of-local-not-returned.cp	wrong-error	wanted E0603 on line 5, got: own: line 4: E0603: this returns a value that borrows `c`: `c` is gone when the fn returns
+core-05/fn-var-binding-a-global-is-a-move.cp	wrong-accept	wanted E0608 on line 6, ran and printed: 
+core-05/generic-wrapper-lends-its-source.cp	wrong-error	wanted E0602 on line 8, got: own: line 5: E0603: this returns a value that borrows `s`: `s` is lent by the caller; return a `.clone()`
+core-05/generic-wrapper-of-a-plain-value-lends-nothing.cp	wrong-reject	own: line 5: E0603: this returns a value that borrows `s`: `s` is lent by the caller; return a `.clone()`
+core-05/heap-element-is-lent.cp	wrong-error	wanted E0602 on line 5, got: own: line 6: E0602: `rows` is written here while `row`, which borrows it, is still used
+core-05/heap-row-lend-blocks-push.cp	wrong-error	wanted E0602 on line 5, got: own: line 6: E0602: `g` is written here while `row`, which borrows it, is still used
+core-05/param-unchanged-by-a-callee-writing-its-source.cp	wrong-reject	own: line 9: E0602: `a` is lent to `f` for this call, and the call also writes it another way
+core-05/param-unchanged-by-a-write-to-its-global-source.cp	wrong-reject	own: line 7: E0602: `a` is lent to `f` for this call, and the call also writes it another way
+core-05/plain-tuple-copies.cp	wrong-reject	check: line 5: E0405: field `Tuple2._0` is fixed (not `var`) and cannot be assigned
+core-05/rb1-q42-closure-escapes-local.cp	wrong-error	wanted E0603 on line 5, got: own: line 4: E0603: this returns a value that borrows `c`: `c` is gone when the fn returns
+core-06/getter-called-with-parens.cp	wrong-accept	wanted E0304 on line 4, ran and printed: 3
+core-06/lint-not-on-a-fn.cp	wrong-accept	wanted E0505 on line 4, ran and printed: 1
+core-06/multitest-shared-above.cp	wrong-trap	trap: R0501: line 6: expected an integer in the input
+core-06/named-only-not-positional.cp	wrong-accept	wanted E0303 on line 4, ran and printed: 9
+core-06/overloads-by-label-set-one-label-set-twice-clashes.cp	wrong-accept	wanted E0702 on line 5, ran and printed: 
+core-07/computed-negative-key-traps.cp	wrong-trap	wanted R0101 on line 6, got: trap: R0401: line 6: index out of range
+core-07/negative-literal-index-is-an-error.cp	wrong-accept	wanted E0321 on line 5, ran and printed: 
+core-07/yielded-closure-in-struct-field-writes-generator-local.cp	split	canonical IR: exit Some(101): 
+core-07/yielded-closure-in-struct-writes-generator-local.cp	split	canonical IR: exit Some(101): 
+core-08/ambiguous-method.cp	wrong-accept	wanted E0701 on line 12, ran and printed: 1
+core-08/trait-alias-no-impl.cp	wrong-accept	wanted E0501 on line 7, ran and printed: 
+core-09/assert-after-64k-of-output-prints-it-first.cp	wrong-output	wanted R0401 on line 6, ran to the end
+core-09/checked-index-trap.cp	wrong-trap	wanted R0101 on line 6, got: trap: R0401: line 6: index out of range
+core-09/range-store-trap.cp	wrong-output	wanted R0201 on line 5, ran to the end
+core-10/bool-not-print.cp	wrong-accept	wanted E0606 on line 3, ran and printed: true
+core-10/bool-var-not-print.cp	wrong-accept	wanted E0606 on line 4, ran and printed: true
+core-10/multitest-count-past-input-traps.cp	wrong-trap	wanted R0501 on line 5, got: trap: R0501: line 4: expected an integer in the input
+core-10/multitest-until-eof-reads-all.cp	wrong-trap	trap: R0501: line 4: expected an integer in the input
+core-10/multitest-until-eof-trailing-blank.cp	wrong-output	wanted "1\n2", got "2\n"
+core-10/multitest-until-eof.cp	wrong-trap	trap: R0501: line 4: expected an integer in the input
+core-10/rb1-q39-bool-not-print.cp	wrong-accept	wanted E0606 on line 3, ran and printed: true
+core-10/read-needs-type.cp	wrong-accept	wanted E0806 on line 3, ran and printed: 
+core-10/read-range-contract-traps.cp	wrong-trap	wanted R0502 on line 4, got: trap: R0401: line 4: value outside its range
+core-10/read-tuple-bound-by-earlier-part-traps.cp	wrong-trap	wanted R0502 on line 5, got: trap: R0401: line 5: value outside its range
+core-10/return-ends-the-case.cp	wrong-output	wanted "-1\n7", got "-1\n"
+core-10/test-position-stored-above-multitest.cp	wrong-accept	wanted E0805 on line 8, ran and printed: 1
+diagnostics/fn-ends-without-a-value-loop.cp	wrong-accept	wanted E0409 on line 4, ran and printed: 12 1
+next/o21_lender_assign_reads_same.cp	wrong-error	wanted E0604 on line 13, got: own: line 13: E0602: `s` is lent to `at` for writing for the whole loop, and the loop body uses it
+next/o22_lender_body_writes_lender_self.cp	wrong-error	wanted E0604 on line 14, got: own: line 14: E0602: `s` is lent to `at` for writing for the whole loop, and the loop body uses it
+next/o27_mut_global_callee_reads_same.cp	wrong-error	wanted E0601 on line 6, got: own: line 6: E0602: `a` is lent to `fill` for writing, and the call also reaches it another way
+next/t04_selfcapture.cp	bad-header	`// expect: E0000` needs the line it points at to end with `// <- here`
+next/t05_recursive_closure.cp	bad-header	`// expect: E0000` needs the line it points at to end with `// <- here`
+next/t07_index.cp	wrong-trap	wanted R0101 on line 5, got: trap: R0401: line 5: index out of range
+next/t24_dual_reassign.cp	bad-header	`// expect: E0000` needs the line it points at to end with `// <- here`

@@ -24,9 +24,14 @@ struct Lw<'a> {
     lambdas: Vec<Func<Ty>>,
     errors: Vec<String>,
     in_main: bool,
+    /// Where the item being lowered starts: spans are relative to it.
+    off: u32,
+    /// Where each line of the source starts, and how many of them are std.
+    line_starts: Vec<u32>,
+    std_lines: u32,
 }
 
-pub fn lower(d: &Decls, typed: &Typed) -> Generic {
+pub fn lower(d: &Decls, typed: &Typed, src: &str, std_lines: u32) -> Generic {
     let mut out = Generic {
         funcs: HashMap::new(),
         globals: typed.globals.iter().map(|g| g.ty.clone()).collect(),
@@ -41,9 +46,15 @@ pub fn lower(d: &Decls, typed: &Typed) -> Generic {
         lambdas: Vec::new(),
         errors: Vec::new(),
         in_main: true,
+        off: 0,
+        line_starts: std::iter::once(0)
+            .chain(src.match_indices('\n').map(|(i, _)| i as u32 + 1))
+            .collect(),
+        std_lines,
     };
     let mut body = Vec::new();
-    for s in &typed.main {
+    for (i, s) in typed.main.iter().enumerate() {
+        lw.off = typed.main_offs.get(i).copied().unwrap_or(0);
         lw.stmt(s, &mut body);
     }
     out.funcs.insert(
@@ -63,6 +74,7 @@ pub fn lower(d: &Decls, typed: &Typed) -> Generic {
     lw.in_main = false;
     for (id, tf) in &typed.fns {
         let fd = d.f(*id);
+        lw.off = fd.item;
         lw.locals = tf.locals.iter().map(|l| l.ty.clone()).collect();
         // R05.10.1: a closure shares `var`s, local heap values and heap parameters with the fn around it.
         lw.mut_locals = tf
@@ -122,8 +134,8 @@ fn pure<T>(e: &Expr<T>) -> bool {
         EK::Inject(x) | EK::MakeUnion(_, x) => pure(x),
         // Widening is a branch once sets are known, so it is a statement of its own.
         EK::Widen(_) => false,
-        EK::Intr(i, args) => {
-            i.check().is_none() && args.iter().all(|a| matches!(a, Arg::Value(v) if pure(v)))
+        EK::Intr(i, args, _) => {
+            !i.checked() && args.iter().all(|a| matches!(a, Arg::Value(v) if pure(v)))
         }
         EK::Call(..) | EK::CallValue(..) => false,
     }
@@ -131,7 +143,7 @@ fn pure<T>(e: &Expr<T>) -> bool {
 fn writes_nothing<T>(s: &Stmt<T>) -> bool {
     fn quiet<T>(e: &Expr<T>) -> bool {
         match &e.kind {
-            EK::Intr(i, args) => {
+            EK::Intr(i, args, _) => {
                 !matches!(i, Intr::RawSet | Intr::ReadInt)
                     && args.iter().all(|a| matches!(a, Arg::Value(v) if quiet(v)))
             }
@@ -149,6 +161,12 @@ fn constant<T>(e: &Expr<T>) -> bool {
 }
 
 impl Lw<'_> {
+    fn site(&self, span: cpl_diag::Span) -> Site {
+        let line = self
+            .line_starts
+            .partition_point(|s| *s <= self.off + span.start) as u32;
+        line.saturating_sub(self.std_lines)
+    }
     fn temp(&mut self, ty: Ty) -> usize {
         self.locals.push(ty);
         self.locals.len() - 1
@@ -272,6 +290,7 @@ impl Lw<'_> {
             kind,
             ty: ty.clone(),
         };
+        let site = self.site(e.span);
         match &e.kind {
             TK::Int(i) => mk(EK::Int(*i)),
             TK::Bool(b) => mk(EK::Bool(*b)),
@@ -294,9 +313,9 @@ impl Lw<'_> {
                             Intr::RawGet
                         }
                     };
-                    mk(EK::Intr(op, a))
+                    mk(EK::Intr(op, a, site))
                 } else {
-                    mk(EK::Call(Target::Fn(f.clone()), a))
+                    mk(EK::Call(Target::Fn(f.clone()), a, site))
                 };
                 self.spill(call, out)
             }
@@ -317,6 +336,7 @@ impl Lw<'_> {
                         self_ty,
                     },
                     a,
+                    site,
                 ));
                 self.spill(call, out)
             }
@@ -325,7 +345,7 @@ impl Lw<'_> {
                 all.extend(args.iter());
                 let mut vs = self.seq(&all, out);
                 let c = vs.remove(0);
-                let call = mk(EK::CallValue(Box::new(c), vs));
+                let call = mk(EK::CallValue(Box::new(c), vs, site));
                 self.spill(call, out)
             }
             TK::Struct(fs) => {
@@ -381,7 +401,7 @@ impl Lw<'_> {
                         Intr::Add
                     }
                 };
-                let v = mk(EK::Intr(i, vs.into_iter().map(Arg::Value).collect()));
+                let v = mk(EK::Intr(i, vs.into_iter().map(Arg::Value).collect(), site));
                 self.spill(v, out)
             }
             TK::Cmp(op, l, r) => {
@@ -394,15 +414,15 @@ impl Lw<'_> {
                     CmpOp::Gt => Intr::Gt,
                     _ => Intr::Ge,
                 };
-                mk(EK::Intr(i, vs.into_iter().map(Arg::Value).collect()))
+                mk(EK::Intr(i, vs.into_iter().map(Arg::Value).collect(), site))
             }
             TK::Not(x) => {
                 let v = self.expr(x, out);
-                mk(EK::Intr(Intr::Not, vec![Arg::Value(v)]))
+                mk(EK::Intr(Intr::Not, vec![Arg::Value(v)], site))
             }
             TK::Neg(x) => {
                 let v = self.expr(x, out);
-                let v = mk(EK::Intr(Intr::Neg, vec![Arg::Value(v)]));
+                let v = mk(EK::Intr(Intr::Neg, vec![Arg::Value(v)], site));
                 self.spill(v, out)
             }
             TK::If(c, a, b) => {
@@ -475,25 +495,25 @@ impl Lw<'_> {
                 let v = self.spill(v, out);
                 let int = |kind| Expr { kind, ty: Ty::Int };
                 let test = |op, a: Expr<Ty>, b: Expr<Ty>| Expr {
-                    kind: EK::Intr(op, vec![Arg::Value(a), Arg::Value(b)]),
+                    kind: EK::Intr(op, vec![Arg::Value(a), Arg::Value(b)], site),
                     ty: Ty::Bool,
                 };
                 out.push(Stmt::Check {
-                    name: "domain",
+                    kind: CheckKind::Domain,
                     cond: test(Intr::Ge, v.clone(), int(EK::Int(0))),
                     msg: "value outside the domain".into(),
-                    line: e.span.start,
+                    site,
                 });
                 out.push(Stmt::Check {
-                    name: "domain",
+                    kind: CheckKind::Domain,
                     cond: test(Intr::Lt, v.clone(), int(EK::DomLen(t.clone()))),
                     msg: "value outside the domain".into(),
-                    line: e.span.start,
+                    site,
                 });
                 Expr { kind: v.kind, ty }
             }
             TK::ReadInt => {
-                let v = mk(EK::Intr(Intr::ReadInt, vec![]));
+                let v = mk(EK::Intr(Intr::ReadInt, vec![], site));
                 self.spill(v, out)
             }
         }
@@ -544,6 +564,7 @@ impl Lw<'_> {
                             Arg::Value(read(var.clone())),
                             Arg::Value(read(Place::Local(h))),
                         ],
+                        0,
                     ),
                     ty: Ty::Bool,
                 };
@@ -561,6 +582,7 @@ impl Lw<'_> {
                                 ty: Ty::Int,
                             }),
                         ],
+                        0,
                     ),
                     ty: Ty::Int,
                 };
@@ -577,10 +599,10 @@ impl Lw<'_> {
                 let cv = self.expr(c, out);
                 let cv = self.spill(cv, out);
                 out.push(Stmt::Check {
-                    name: "assert",
+                    kind: CheckKind::Assert,
                     cond: cv,
                     msg: msg.clone(),
-                    line: span.start,
+                    site: self.site(*span),
                 });
             }
             TStmt::Break => out.push(Stmt::Break),
@@ -602,6 +624,12 @@ impl Lw<'_> {
                 lend,
                 body,
             } => {
+                // A `for` is at the line of what it runs over.
+                let first = recv.as_deref().or(args.first());
+                let site = match first {
+                    Some(TArg::Value(e) | TArg::Mut(e)) => self.site(e.span),
+                    None => self.site(body.span),
+                };
                 let a = self.args(recv.as_deref(), args, out);
                 // The bound variable is always a local of this fn: for a lend it stands for the callee's place.
                 let ty = match var {
@@ -628,6 +656,7 @@ impl Lw<'_> {
                     var: l,
                     lend: *lend,
                     body: b,
+                    site,
                 });
             }
         }
