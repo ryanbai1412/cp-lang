@@ -174,8 +174,3 @@ fn place_type<'f>(diag: &Diagnostic, facts: &'f Facts) -> Option<&'f Ty> {
 fn plain_type(ty: Option<&Ty>) -> bool {
     ty.is_some_and(|ty| !ty.has_vague() && !matches!(ty, Ty::Optional(_)))
 }
-
-/// What `cpl check` reports for an analysis. `cpl-lint` can't lower to IR,
-/// so the caller hands it in (`cpl_ir::check`), and a fix is judged by the
-/// errors `cpl check` would show, lowering's included.
-pub type Errors = dyn Fn(&cpl_facade::today::Analysis) -> Vec<cpl_diag::Diagnostic>;

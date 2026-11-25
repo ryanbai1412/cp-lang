@@ -227,12 +227,6 @@ pub fn reported(analysis: &Analysis) -> Vec<Diagnostic> {
     session::diagnostics_of(analysis, Layer::Program)
 }
 
-/// Every diagnostic of a checked file taken as a program of its own:
-/// [`Layer::Built`], what a fix is judged by.
-pub fn built(analysis: &Analysis) -> Vec<Diagnostic> {
-    session::diagnostics_of(analysis, Layer::Built)
-}
-
 macro_rules! asks {
     ($($name:ident($($arg:ident: $ty:ty),*) -> $ret:ty;)*) => {
         $(pub fn $name(&self, path: &str $(, $arg: $ty)*) -> $ret {

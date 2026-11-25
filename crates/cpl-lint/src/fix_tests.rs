@@ -35,8 +35,7 @@ fn a_reversed_else_if_fix_from_the_parser_is_left_alone() {
 pub(crate) fn checker_errors(src: &str) -> Vec<String> {
     let mut db = cpl_facade::Session::default();
     db.set_file("probe.cp", src);
-    let analysis = db.analyze("probe.cp").expect("analysis");
-    cpl_facade::today::reported(&analysis)
+    db.diagnostics("probe.cp", cpl_facade::Layer::Program)
         .iter()
         .filter(|d| d.severity == cpl_diag::Severity::Error)
         .map(|d| d.message.clone())
@@ -84,17 +83,22 @@ fn a_witness_names_only_a_plain_input() {
 fn checked(
     text: &str,
     findings: &[Diagnostic],
-    check: &Errors,
+    check: &dyn Fn(&cpl_facade::Session) -> Vec<Diagnostic>,
     still_fires: bool,
 ) -> (String, usize) {
     let mut db = cpl_facade::Session::default();
     let mut report = |t: &str| {
         db.set_file("<t>.cp", t);
-        let errors = check(&db.analyze("<t>.cp").expect("the file was just set"));
+        let errors = check(&db);
         let fires = still_fires || t == text;
         (if fires { findings.to_vec() } else { Vec::new() }, errors)
     };
     fix_rounds(text, &mut report)
+}
+
+/// What `cpl fix` judges a fix by.
+fn built(db: &cpl_facade::Session) -> Vec<Diagnostic> {
+    db.diagnostics("<t>.cp", cpl_facade::Layer::Built)
 }
 
 fn finding(start: u32, end: u32, to: &str) -> Diagnostic {
@@ -107,18 +111,15 @@ fn a_fix_that_would_add_a_checker_error_is_not_applied() {
     let text = "let x = 1\nprint(x)\n";
     let (good, bad) = (finding(8, 9, "2"), finding(16, 17, "y"));
     let both = [bad.clone(), good];
-    let out = checked(text, &both, &cpl_facade::today::built, false);
+    let out = checked(text, &both, &built, false);
     assert_eq!(out, ("let x = 2\nprint(x)\n".to_string(), 1));
-    assert_eq!(
-        checked(text, &[bad], &cpl_facade::today::built, false),
-        (text.to_string(), 0)
-    );
+    assert_eq!(checked(text, &[bad], &built, false), (text.to_string(), 0));
 }
 
 #[test]
 fn a_fix_after_which_its_finding_still_fires_is_not_applied() {
     let text = "let x = 1\nprint(x)\n";
-    let out = checked(text, &[finding(8, 9, "2")], &cpl_facade::today::built, true);
+    let out = checked(text, &[finding(8, 9, "2")], &built, true);
     assert_eq!(out, (text.to_string(), 0));
 }
 
@@ -128,9 +129,10 @@ fn a_fix_that_lowering_rejects_is_not_applied() {
     // rejected. The fix gate asks the complete check it is given.
     let text = "let x = 1\nprint(x)\n";
     let span = Span { start: 8, end: 9 };
-    let lowering_rejects_2 = move |a: &cpl_facade::today::Analysis| {
-        let mut out = a.diagnostics.clone();
-        if a.text.contains("= 2") {
+    let lowering_rejects_2 = move |db: &cpl_facade::Session| {
+        let mut out = db.diagnostics("<t>.cp", cpl_facade::Layer::Typed);
+        let held = db.snapshot().files().next().expect("the file was just set");
+        if held.1.contains("= 2") {
             out.push(Diagnostic::error(Code("E0302"), span, "lowering"));
         }
         out
@@ -140,7 +142,7 @@ fn a_fix_that_lowering_rejects_is_not_applied() {
         checked(text, &findings, &lowering_rejects_2, false),
         (text.to_string(), 0)
     );
-    let out = checked(text, &findings, &cpl_facade::today::built, false);
+    let out = checked(text, &findings, &built, false);
     assert_eq!(out, ("let x = 2\nprint(x)\n".to_string(), 1));
 }
 

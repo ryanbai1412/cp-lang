@@ -17,6 +17,6 @@ pub fn document(
     if !left.is_empty() {
         return (fixed, applied, left);
     }
-    let (linted, n) = cpl_lint::fix_in(db, key, &fixed, config, &cpl_facade::today::built);
+    let (linted, n) = cpl_lint::fix_in(db, key, &fixed, config, cpl_facade::Layer::Built);
     (linted, applied + n, left)
 }

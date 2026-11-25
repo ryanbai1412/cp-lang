@@ -58,10 +58,6 @@ pub struct FileReport {
 /// Turns the reports into the text `--json` prints.
 pub type Json = dyn Fn(&[FileReport]) -> String;
 
-/// The errors `cpl check` reports for a file's text, so `cpl lint` shows
-/// the same list: `cpl-lint` cannot lower to IR, so `cpl-cli` hands it in.
-pub use crate::Errors;
-
 /// `--save`: writes a test case from each diagnostic's witness and returns
 /// what to tell the user; `cpl-cli` hands it in, as the input generator is
 /// `cpl-stress`'s.
@@ -69,24 +65,32 @@ pub type Save = dyn Fn(&std::path::Path, &str, &[Diagnostic]) -> Vec<String>;
 
 pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8 {
     let mut db = cpl_facade::Session::default();
-    run_with(&mut db, args, stdout, stderr, None, None, None)
+    run_with(
+        &mut db,
+        args,
+        stdout,
+        stderr,
+        None,
+        cpl_facade::Layer::Typed,
+        None,
+    )
 }
 
 /// `run`, taking `--json` when `json` can print it: `cpl-lint` cannot see
 /// the CLI's serializer, so `cpl-cli` hands it in. Every file is checked
 /// in `db`, as the editor keeps one database: std and shared modules are
 /// checked once, and every step reads the same analysis.
+/// The errors shown and a fix is judged by are the file's up to `upto`:
+/// `cpl lint` asks for the layer `cpl check` reports.
 pub fn run_with(
     db: &mut cpl_facade::Session,
     args: &[String],
     stdout: &mut dyn Write,
     stderr: &mut dyn Write,
     json: Option<&Json>,
-    check: Option<&Errors>,
+    upto: cpl_facade::Layer,
     save: Option<&Save>,
 ) -> u8 {
-    let checker_only = |analysis: &cpl_facade::today::Analysis| analysis.diagnostics.clone();
-    let reported_of: &Errors = check.unwrap_or(&checker_only);
     let mut as_json = false;
     let mut fix = false;
     let mut taste = false;
@@ -197,9 +201,7 @@ pub fn run_with(
                 // What `cpl check` shows, so each root cause is reported
                 // once, as in the editor.
                 db.set_file(&key, src.as_str());
-                let mut errors = (db.analyze(&key).as_deref())
-                    .map(reported_of)
-                    .unwrap_or_default();
+                let mut errors = db.diagnostics(&key, upto);
                 errors.retain(|d| d.severity == Severity::Error);
                 show(stdout, &errors, &name, &src);
             }
@@ -220,8 +222,7 @@ pub fn run_with(
         let mut diagnostics = lint_analysis(&analysis, &config);
         diagnostics.retain(keep);
         if fix {
-            let (text, applied) =
-                apply_lint_fixes_where(db, &key, src, &config, reported_of, &keep);
+            let (text, applied) = apply_lint_fixes_where(db, &key, src, &config, upto, &keep);
             fixed += applied;
             src = text;
             analysis = db.analyze_text(&key, src.as_str());
@@ -232,7 +233,7 @@ pub fn run_with(
                 failed += 1;
             }
         }
-        let found = checked_analysis(&analysis, &reported_of(&analysis), &config);
+        let found = checked_analysis(&analysis, &db.diagnostics(&key, upto), &config);
         let problems = found.problems;
         if !problems.is_empty() {
             let _ = writeln!(

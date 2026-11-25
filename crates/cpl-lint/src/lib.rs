@@ -80,7 +80,7 @@ pub(crate) use checker::{checked, checker_lints};
 pub use config::{Config, ConfigError};
 pub use facts::Facts;
 pub use session::Session;
-pub use typed::{lint_analysis, refine_with_analysis, Errors};
+pub use typed::{lint_analysis, refine_with_analysis};
 
 use cpl_diag::{Code, Diagnostic, Severity, Span};
 use cpl_syntax::ast::{Block, ExprKind, Stmt, StmtKind};

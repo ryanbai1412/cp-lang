@@ -28,7 +28,7 @@ fn fixed(db: &mut Session, path: &str, text: &str) -> String {
         return fixed;
     }
     let (config, _) = cpl_lint::Config::discover(Path::new(path));
-    let (fixed, _) = cpl_lint::fix_in(db, path, &fixed, &config, &cpl_facade::today::built);
+    let (fixed, _) = cpl_lint::fix_in(db, path, &fixed, &config, cpl_facade::Layer::Built);
     db.remove_file(path);
     fixed
 }

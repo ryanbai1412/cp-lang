@@ -22,7 +22,7 @@ pub(crate) fn lint(
             stdout,
             stderr,
             Some(&lint_files),
-            Some(&|analysis: &cpl_facade::today::Analysis| cpl_facade::today::reported(analysis)),
+            cpl_facade::Layer::Program,
             Some(&save_witnesses),
         )
     })

@@ -4,8 +4,9 @@
 //! the finding it fixes fires less (reparsed for the parser's rewrites,
 //! rechecked for the rest).
 
-use crate::{lint_analysis, Config, Errors};
+use crate::{lint_analysis, Config};
 use cpl_diag::{codes, Diagnostic, Severity};
+use cpl_facade::Layer;
 
 /// What a text reports to a fix round: the findings to fix, and the errors
 /// a fix must not add to.
@@ -200,15 +201,15 @@ pub fn fix_checked_removed_syntax_in(
 }
 
 /// `text` with the lint fixes `cpl lint --fix` would make under `config`,
-/// and how many; a fix is rechecked against the errors `check` reports.
+/// and how many; a fix is rechecked against the file's errors up to `upto`.
 pub fn apply_lint_fixes(
     db: &mut cpl_facade::Session,
     path: &str,
     text: String,
     config: &Config,
-    check: &Errors,
+    upto: Layer,
 ) -> (String, usize) {
-    apply_lint_fixes_where(db, path, text, config, check, &|_| true)
+    apply_lint_fixes_where(db, path, text, config, upto, &|_| true)
 }
 
 /// [`apply_lint_fixes`] with only the findings `keep` takes.
@@ -217,14 +218,14 @@ pub fn apply_lint_fixes_where(
     path: &str,
     text: String,
     config: &Config,
-    check: &Errors,
+    upto: Layer,
     keep: &dyn Fn(&Diagnostic) -> bool,
 ) -> (String, usize) {
     let out = fix_rounds(&text, &mut |text| {
         let analysis = db.analyze_text(path, text);
         let mut findings = lint_analysis(&analysis, config);
         findings.retain(|d| keep(d));
-        (findings, check(&analysis))
+        (findings, db.diagnostics(path, upto))
     });
     db.set_file(path, out.0.as_str());
     out
@@ -252,7 +253,7 @@ pub(crate) fn fix_at(
         &key,
         src,
         config,
-        &cpl_facade::today::built,
+        Layer::Built,
     )
 }
 
@@ -262,13 +263,13 @@ pub fn fix_in(
     key: &str,
     src: &str,
     config: &Config,
-    check: &Errors,
+    upto: Layer,
 ) -> (String, usize) {
     let (src, total) = fix_removed_syntax(src);
     if !cpl_syntax::parse_file(&src).diagnostics.is_empty() {
         return (src, total);
     }
     let (src, checked) = fix_checked_removed_syntax_in(db, key, &src);
-    let (src, linted) = apply_lint_fixes(db, key, src, config, check);
+    let (src, linted) = apply_lint_fixes(db, key, src, config, upto);
     (src, total + checked + linted)
 }
