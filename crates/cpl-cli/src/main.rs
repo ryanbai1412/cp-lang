@@ -15,7 +15,7 @@ fn main() -> ExitCode {
     if let Some(code) = cpl_cli::toolchain::launch(&args) {
         return ExitCode::from(code);
     }
-    if let Some(problem) = cpl_facade::today::dev_std_problem() {
+    if let Some(problem) = cpl_facade::Std.problem() {
         eprintln!("error: {problem}");
         return ExitCode::from(2);
     }

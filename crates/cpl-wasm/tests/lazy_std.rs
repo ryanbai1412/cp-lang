@@ -52,7 +52,7 @@ fn open_or_change(uri: &str, version: i64, text: &str) -> String {
 
 #[test]
 fn a_program_checks_and_runs_once_the_host_gives_the_std_it_needs() {
-    cpl_facade::today::carry_only_embedded_std();
+    cpl_facade::Std.carry_only_embedded();
     let programs = root().join("crates/cpl-cli/tests/programs");
     let source = std::fs::read_to_string(programs.join("batch33_splitmix64.cp")).unwrap();
     let input = std::fs::read(programs.join("batch33_splitmix64.in")).unwrap();

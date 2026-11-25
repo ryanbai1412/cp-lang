@@ -53,20 +53,19 @@ pub const CHANNEL: &str = env!("CPL_CHANNEL");
 pub const COMMIT: &str = env!("CPL_GIT_COMMIT");
 
 /// Crates linked into the binary, in pipeline order.
-pub const COMPONENTS: &[&str] = &[
-    cpl_diag::NAME,
-    cpl_syntax::NAME,
-    cpl_facade::today::COMPONENTS[0],
-    cpl_facade::today::COMPONENTS[1],
-    cpl_facade::today::COMPONENTS[2],
-    cpl_facade::today::COMPONENTS[3],
-    cpl_fmt::NAME,
-    cpl_lint::NAME,
-    cpl_doc::NAME,
-    cpl_stress::NAME,
-    cpl_contest::NAME,
-    cpl_lsp::NAME,
-];
+pub fn components() -> Vec<&'static str> {
+    let mut out = vec![cpl_diag::NAME, cpl_syntax::NAME];
+    out.extend(cpl_facade::COMPONENTS);
+    out.extend([
+        cpl_fmt::NAME,
+        cpl_lint::NAME,
+        cpl_doc::NAME,
+        cpl_stress::NAME,
+        cpl_contest::NAME,
+        cpl_lsp::NAME,
+    ]);
+    out
+}
 
 /// `cpl 0.3.0-edge+1a2b3c4d`: what `cpl --version` prints; a stable build
 /// drops the channel, `cpl 0.3.0+1a2b3c4d`.
@@ -1838,7 +1837,10 @@ mod tests {
 
     #[test]
     fn every_pipeline_crate_is_linked() {
-        assert_eq!(COMPONENTS.len(), 12);
+        let linked = components();
+        assert_eq!(linked.len(), 8 + cpl_facade::COMPONENTS.len());
+        let distinct: std::collections::HashSet<_> = linked.iter().collect();
+        assert_eq!(distinct.len(), linked.len(), "{linked:?}");
     }
 
     #[test]

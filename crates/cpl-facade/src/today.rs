@@ -13,18 +13,12 @@ use crate::session::{self, Layer, Session};
 use crate::snapshot::{FileId, Text};
 
 pub use cpl_check::{
-    arity_key, builtin_member, builtin_members, carry_only_embedded_std, char_literal, closest,
-    configured_libraries, core_trait_fn, dev_std_problem, domain_member, domain_members, file_path,
-    foreign_iter_call, foreign_member, foreign_str_fn, human_bytes, import_edit, interval,
-    is_list_form_hook, is_member, labels_fit, list_end_help, loaded_std, method_key, method_module,
-    needs_order, optional_member, overload_key, overload_part, prelude_names, prelude_type,
-    prelude_uses, required_labels, split_builtin_params, type_arity, word_type, written_name,
-    Analysis, AnalyzedItem, BuiltinMember, BuiltinType, CallFact, Callee, CalleeKind, Decl,
-    DeclKind, Def, Definition, DomainInfo, ExprFacts, Facts, FsLoader, GlobalRef, Hover,
-    HoverEntry, Import, ItemCheck, ItemSyntax, Loader, MemberKind, Module, NameMap, Overflow,
-    Param, PreludeKind, RangeEnds, Receiver, Representation, Resolved, Stats, Symbol, Ty,
-    TypedIndex, BUILTIN_MEMBERS, BUILTIN_TYPES, DOMAIN_MEMBERS, ITERATOR_POSITION_HELP,
-    OPTIONAL_MEMBERS, OPTIONAL_UNWRAP_HELP, POS_MEMBERS, PRELUDE_VALUES, RANGE_MEMBERS,
+    arity_key, builtin_members, closest, human_bytes, import_edit, interval, is_list_form_hook,
+    loaded_std, needs_order, prelude_names, prelude_type, prelude_uses, split_builtin_params,
+    type_arity, Analysis, AnalyzedItem, BuiltinMember, CalleeKind, Decl, DeclKind, Definition,
+    Facts, FsLoader, Hover, HoverEntry, Import, Loader, MemberKind, Module, Overflow, Param,
+    PreludeKind, RangeEnds, Receiver, Representation, Stats, Symbol, Ty, TypedIndex,
+    BUILTIN_MEMBERS, BUILTIN_TYPES, DOMAIN_MEMBERS, OPTIONAL_MEMBERS, POS_MEMBERS, RANGE_MEMBERS,
 };
 
 /// A run's recording and what is read from it.
@@ -166,15 +160,6 @@ pub mod profile {
 pub mod cpp_counts {
     pub use cpl_codegen::cpp_counts::*;
 }
-
-/// The crates of today's compiler behind the facade, in pipeline order.
-#[cfg(feature = "cpp")]
-pub const COMPONENTS: &[&str] = &[
-    cpl_check::NAME,
-    cpl_ir::NAME,
-    cpl_codegen::NAME,
-    cpl_interp::NAME,
-];
 
 /// What `cpl check` and the editor report of a checked file:
 /// [`Layer::Program`].

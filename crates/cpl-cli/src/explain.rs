@@ -147,7 +147,7 @@ pub(crate) fn explain_file(
 /// current directory name under `[libs]`.
 fn explain_library_lint(name: &str, stdout: &mut dyn Write) -> bool {
     let cwd = std::env::current_dir().unwrap_or_default();
-    for (lib, root) in cpl_facade::today::configured_libraries(&cwd) {
+    for (lib, root) in cpl_facade::libraries(&cwd) {
         let mut files = Vec::new();
         cp_files(&root, &mut files);
         files.sort();

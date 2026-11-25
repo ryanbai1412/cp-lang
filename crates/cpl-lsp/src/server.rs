@@ -1691,7 +1691,7 @@ fn receiver_before(text: &str, at: usize) -> Option<&str> {
 /// The file a `file://` URI names, with `%XX` escapes decoded.
 pub(crate) fn path_of_uri(uri: &str) -> Option<String> {
     uri.starts_with("file://")
-        .then(|| cpl_facade::today::file_path(uri))
+        .then(|| cpl_facade::file_path(uri))
 }
 
 /// Whether `query`'s characters appear in `name` in order, as editors'

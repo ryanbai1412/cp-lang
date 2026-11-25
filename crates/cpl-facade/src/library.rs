@@ -98,6 +98,19 @@ impl Std {
 
     /// Whether the modules are read from a checkout's `std/` rather than
     /// the copy built into the compiler.
+    /// Why this dev build would check against the wrong std, if it
+    /// would: its std folder is gone, or is another checkout's.
+    pub fn problem(self) -> Option<String> {
+        cpl_check::dev_std_problem()
+    }
+
+    /// Makes this native build carry only the modules a browser build
+    /// does, so a test can give it the rest as a page would.
+    #[doc(hidden)]
+    pub fn carry_only_embedded(self) {
+        cpl_check::carry_only_embedded_std();
+    }
+
     pub fn from_disk(self) -> bool {
         cpl_check::std_from_disk()
     }
@@ -120,3 +133,24 @@ impl Session {
         Ok(changed)
     }
 }
+
+/// Every library a `cp.toml` at or above `start` names under `[libs]`,
+/// with its folder; a nearer `cp.toml` wins for a name.
+pub fn libraries(start: &std::path::Path) -> Vec<(String, std::path::PathBuf)> {
+    cpl_check::configured_libraries(start)
+}
+
+/// The OS path a file's name in a snapshot stands for: a `file://` URI
+/// decoded, any other name as is.
+pub fn file_path(name: &str) -> String {
+    cpl_check::file_path(name)
+}
+
+/// The crates that answer behind the facade, in pipeline order.
+#[cfg(feature = "cpp")]
+pub const COMPONENTS: &[&str] = &[
+    cpl_check::NAME,
+    cpl_ir::NAME,
+    cpl_codegen::NAME,
+    cpl_interp::NAME,
+];
