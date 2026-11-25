@@ -264,9 +264,11 @@ impl<'a> Cx<'a> {
                 let declared = ty.as_ref().map(|t| self.body_ty(t, s.span, out));
                 let v = self.expr(init, declared.as_ref());
                 // `var a: [V]Int = 0` fills every slot: it is `Array.filled(0)`.
-                let fill = match (&declared, self.d.core_struct("Array")) {
+                let fill = match (&declared, self.array_id()) {
                     (Some(array @ Ty::Struct(d, ts, _)), Some(arr))
-                        if *d == arr && !matches!(self.shallow(&v.ty), Ty::Struct(..)) =>
+                        if *d == arr
+                            && (!matches!(self.shallow(&v.ty), Ty::Struct(..))
+                                || self.fits(&v.ty, &ts[1])) =>
                     {
                         Some((arr, ts.clone(), array.clone()))
                     }
@@ -306,6 +308,7 @@ impl<'a> Cx<'a> {
                     },
                     None => v,
                 };
+                self.memory_peak(name, &v.ty, s.span);
                 let var = self.bind(name, v.ty.clone());
                 match var {
                     VarRef::Local(i) => {
@@ -746,6 +749,44 @@ impl<'a> Cx<'a> {
         (lo, end, (least, most))
     }
     /// A domain's size is a hidden variable next to its declaration.
+    fn array_id(&self) -> Option<StructId> {
+        self.d.core_struct("Array")
+    }
+    /// E0904: an array the input alone can fill past the judge's memory limit (R03.1.9). Only
+    /// one-domain arrays of fixed-width cells are measured; nothing else is claimed.
+    fn memory_peak(&mut self, name: &str, t: &Ty, span: Span) {
+        let (Some(judge), Some(arr)) = (&self.judge, self.array_id()) else {
+            return;
+        };
+        let Ty::Struct(a, ts, _) = self.shallow(t) else {
+            return;
+        };
+        let (Some(Ty::Dom(i)), Some(elem)) = (ts.first().map(|d| self.shallow(d)), ts.get(1))
+        else {
+            return;
+        };
+        let width: u128 = match self.shallow(elem) {
+            Ty::Int | Ty::Dom(_) => 8,
+            Ty::Bool | Ty::Char => 1,
+            _ => return,
+        };
+        let (Some(lo), Some(hi)) = self.domains[i].within else {
+            return;
+        };
+        let cells = u128::try_from(hi - lo + 1).unwrap_or(0);
+        let (bytes, limit) = (cells * width, u128::from(judge.memory_mb) << 20);
+        if a == arr && bytes > limit {
+            let (mb, judge) = (judge.memory_mb, judge.name.clone());
+            self.err(
+                span,
+                format!(
+                    "{}: `{name}` takes {} MB at the input bounds, over the {mb} MB limit on {judge}",
+                    cpl_diag::codes::MEMORY_OVER_PROFILE.0,
+                    bytes >> 20
+                ),
+            );
+        }
+    }
     pub(super) fn declare_domain(
         &mut self,
         name: &str,
@@ -755,6 +796,10 @@ impl<'a> Cx<'a> {
         span: Span,
         out: &mut Vec<TStmt>,
     ) -> usize {
+        let count = match (&lo.kind, &end.kind) {
+            (TK::Int(a), TK::Int(b)) => Some((b - a).max(0)),
+            _ => None,
+        };
         let first = self.bind(&format!("{name}$lo"), Ty::Int);
         out.push(TStmt::Let(first, lo));
         let len = self.bind(&format!("{name}$len"), Ty::Int);
@@ -799,6 +844,7 @@ impl<'a> Cx<'a> {
             lo: first,
             within,
             owner: self.decl,
+            count,
         };
         if let (None, Some(&Ty::Dom(i))) = (self.decl, self.d.top_doms.get(name)) {
             if self.domains[i].name.is_empty() {

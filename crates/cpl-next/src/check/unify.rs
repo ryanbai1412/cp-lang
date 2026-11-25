@@ -389,6 +389,93 @@ impl<'a> Cx<'a> {
         (hold, flag, val)
     }
     /// A value flows into a slot of type `want`. The closed list of conversions lives here.
+    /// Whether `a` and `b` could be one type, an unknown fitting anything; nothing is solved.
+    pub(super) fn fits(&self, a: &Ty, b: &Ty) -> bool {
+        match (self.shallow(a), self.shallow(b)) {
+            (Ty::Var(_) | Ty::Error, _) | (_, Ty::Var(_) | Ty::Error) => true,
+            (Ty::Struct(x, xs, _), Ty::Struct(y, ys, _)) => {
+                x == y && xs.len() == ys.len() && xs.iter().zip(&ys).all(|(p, q)| self.fits(p, q))
+            }
+            (Ty::Raw(p), Ty::Raw(q)) | (Ty::Ref(p), Ty::Ref(q)) => self.fits(&p, &q),
+            (Ty::Range(..) | Ty::RangeOf(_), Ty::Int)
+            | (Ty::Int, Ty::Range(..) | Ty::RangeOf(_)) => true,
+            (p, q) => p == q,
+        }
+    }
+    /// Core's `@coerce` fn from a struct of `have`'s kind to one of `want`'s.
+    fn coercion(&self, have: &Ty, want: &Ty) -> Option<FnId> {
+        let (Ty::Struct(h, ..), Ty::Struct(w, ..)) = (have, want) else {
+            return None;
+        };
+        let kind = |t: Option<&Ty>| match t {
+            Some(Ty::Struct(s, ..)) => Some(*s),
+            _ => None,
+        };
+        (self.d.coercions.iter().copied()).find(|f| {
+            let fd = self.d.f(*f);
+            h != w
+                && kind(fd.params.first().map(|p| &p.ty)) == Some(*h)
+                && kind(Some(&fd.ret)) == Some(*w)
+        })
+    }
+    /// The element count of `e` when it is a list literal, as the checker builds one.
+    fn literal_len(&self, e: &TExpr) -> Option<usize> {
+        let TK::Block(stmts, Some(read)) = &e.kind else {
+            return None;
+        };
+        let local = match &read.kind {
+            TK::Var(VarRef::Local(l)) => self.locals.get(*l),
+            TK::Var(VarRef::Global(g)) => self.globals.get(*g),
+            _ => None,
+        }?;
+        let pushes = stmts.iter().filter(|s| matches!(s, TStmt::Expr(_))).count();
+        (local.name == "$list").then_some(pushes)
+    }
+    fn coerce_by(&mut self, decl: FnId, e: TExpr, want: &Ty) -> TExpr {
+        let span = e.span;
+        // A literal whose length differs from a constant count is wrong before it runs (R04.8.10).
+        if let (Some(n), Ty::Struct(_, ts, _)) = (self.literal_len(&e), want) {
+            let count = ts.iter().find_map(|t| match self.shallow(t) {
+                Ty::Dom(i) => self.domains[i].count,
+                _ => None,
+            });
+            if let Some(c) = count.filter(|c| *c != n as i64) {
+                let w = self.show(want);
+                self.err(
+                    span,
+                    format!(
+                        "{}: a list of {n} elements where `{w}` has {c} cells",
+                        cpl_diag::codes::TYPE_MISMATCH.0
+                    ),
+                );
+            }
+        }
+        let f = self.fnref(decl, Vec::new(), Vec::new());
+        let ty = self.ret_ty(&f);
+        let param = {
+            let sub = Subst {
+                tys: &f.targs,
+                sets: &f.sets,
+            };
+            sub.ty(&self.d.f(decl).params[0].ty)
+        };
+        let arg = self.coerce(e, &param);
+        if !self.unify(&ty, want) {
+            self.err(
+                span,
+                format!("expected `{}`, found `{}`", self.show(want), self.show(&ty)),
+            );
+        }
+        TExpr {
+            kind: TK::Call {
+                f,
+                recv: None,
+                args: vec![TArg::Value(arg)],
+            },
+            ty,
+            span,
+        }
+    }
     pub(super) fn coerce(&mut self, e: TExpr, want: &Ty) -> TExpr {
         let (have, want_s) = (self.shallow(&e.ty), self.shallow(want));
         let span = e.span;
@@ -398,6 +485,9 @@ impl<'a> Cx<'a> {
                 let v = self.coerce(e, &inner);
                 return self.some(v, want_s);
             }
+        }
+        if let Some(f) = self.coercion(&have, &want_s) {
+            return self.coerce_by(f, e, &want_s);
         }
         match (&have, &want_s) {
             // Loads widen, stores check (R03.1.4).

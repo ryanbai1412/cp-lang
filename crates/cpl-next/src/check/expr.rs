@@ -594,6 +594,33 @@ impl<'a> Cx<'a> {
                 }
             }
         }
+        // `[e].f(args)`: a fn of the array type `[e]_` with no receiver, as in `[V].filled(0)`.
+        if let (ExprKind::List(xs), Some(args)) = (&base.kind, call) {
+            if let [index] = &xs[..] {
+                let elem = ast::Type {
+                    kind: TypeKind::Tuple(Vec::new()),
+                    span,
+                };
+                let t = ast::Type {
+                    kind: TypeKind::Array {
+                        index: vec![ast::Type::of_index(index)],
+                        elem: Box::new(elem),
+                    },
+                    span,
+                };
+                let mut pre = Vec::new();
+                if let Ty::Struct(d, ts, _) = self.body_ty(&t, span, &mut pre) {
+                    let given: Vec<Ty> = (ts.into_iter())
+                        .map(|a| if a == Ty::Unit { self.new_ty() } else { a })
+                        .collect();
+                    if let Some(m) = self.d.s(d).methods.get(&name.text).copied() {
+                        let f = self.fnref(m, given, Vec::new());
+                        let call = self.call_fn(f, None, args, span, want);
+                        return block(pre, call);
+                    }
+                }
+            }
+        }
         // `Type.f(args)` or `Type<A>.f(args)`: a fn of the type with no receiver.
         let (ty_name, written) = match &base.kind {
             ExprKind::Name(n) => (Some(n), &[][..]),

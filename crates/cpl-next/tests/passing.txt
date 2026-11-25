@@ -84,6 +84,7 @@ core-01/var-needs-initializer.cp
 core-01/while-true-break-in-the-middle.cp
 core-02/alias-cycle-is-an-error.cp
 core-02/alias-inside-its-own-type-is-an-error.cp
+core-02/anon-range-array-takes-int.cp
 core-02/array-needs-initializer.cp
 core-02/at-is-optional-position.cp
 core-02/char-of-non-ascii-traps-every-build.cp
@@ -133,6 +134,7 @@ core-02/tuple-fields.cp
 core-02/unit-field-of-a-nested-generic-is-stored-nowhere.cp
 core-02/var-field-assign.cp
 core-03/a-struct-never-holds-itself.cp
+core-03/filled-from-constant-widens.cp
 core-03/floor-div-zero.cp
 core-03/int-max-minus-one-ok.cp
 core-03/int-max-plus-one-traps.cp
@@ -142,6 +144,8 @@ core-03/intermediate-overflow-traps.cp
 core-03/joint-bound-checked-store.cp
 core-03/local-contract-checked-on-assign.cp
 core-03/locals-wide.cp
+core-03/memory-over-profile.cp
+core-03/memory-within-profile.cp
 core-03/named-width-fits.cp
 core-03/named-width-traps.cp
 core-03/narrow-range-len-spans-32-bits.cp
@@ -165,6 +169,7 @@ core-03/spare-value-overflow.cp
 core-03/store-in-range-fits.cp
 core-03/structs-holding-each-other-is-an-error.cp
 core-04/anon-range-array.cp
+core-04/array-equals-short-list-literal-rejected.cp
 core-04/dom-at.cp
 core-04/dom-call-traps.cp
 core-04/dom-count.cp
@@ -174,9 +179,11 @@ core-04/dom-walk-rev.cp
 core-04/domain-is-its-range.cp
 core-04/first-is-optional.cp
 core-04/from-ord-after-a-checked-one-still-traps.cp
+core-04/generic-key-callback-indexes-source.cp
 core-04/list-literal-cell-outside-let-range-traps.cp
 core-04/list-literal-cell-outside-param-range-traps.cp
 core-04/list-literal-for-narrow-param.cp
+core-04/list-literal-short-for-named-domain-rejected.cp
 core-04/pos-int-is-written-value.cp
 core-04/position-ord-counts-from-zero.cp
 core-04/range-arg-is-domain-when-nth-used.cp
@@ -194,6 +201,7 @@ core-04/runtime-domain-literal-past-max.cp
 core-04/scalar-fill.cp
 core-05/a-user-method-on-self-does-not-change-its-receiver.cp
 core-05/cache-field-method-call-grows.cp
+core-05/cache-field-own-method-writes.cp
 core-05/cache-plain-copy-closure-before-lend.cp
 core-05/cache-skipped-by-eq.cp
 core-05/cache-walk-then-find.cp
@@ -445,6 +453,8 @@ next/a_alias_07_method_self_by_value.cp
 next/a_arith_01_euclid_small.cp
 next/a_arith_02_euclid_negative_divisor.cp
 next/a_arith_03_bit_ops.cp
+next/a_arr_01_list_literal.cp
+next/a_arr_02_filled_and_eq.cp
 next/a_check_06_assign_to_let.cp
 next/a_check_08_wrong_arg_count.cp
 next/a_check_09_missing_impl.cp

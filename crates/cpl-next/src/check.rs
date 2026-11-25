@@ -181,6 +181,8 @@ pub struct DomInfo {
     /// the types of its ends say: an integer literal outside these is never a position.
     pub within: (Option<i64>, Option<i64>),
     pub owner: Option<FnId>,
+    /// How many positions it has, when both its ends are constants.
+    pub count: Option<i64>,
 }
 pub struct Typed {
     pub domains: Vec<DomInfo>,
@@ -215,6 +217,8 @@ struct Cx<'a> {
     cyclic: std::cell::Cell<bool>,
     /// A top-level domain a top-level statement named before the line declaring it.
     early: std::cell::Cell<Option<usize>>,
+    /// The judge the program names (`// judge:`, else `generic`), for its memory limit (R03.1.9).
+    judge: Option<cpl_judge::Profile>,
     errors: Vec<String>,
     lambdas: Vec<LambdaInfo>,
     globals: Vec<Local>,
@@ -264,6 +268,7 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
         zonking: Default::default(),
         cyclic: Default::default(),
         early: Default::default(),
+        judge: cpl_judge::builtin(cpl_judge::named_in(src).unwrap_or("generic")),
         errors: Vec::new(),
         lambdas: Vec::new(),
         globals: Vec::new(),
@@ -277,6 +282,7 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
                 lo: VarRef::Global(usize::MAX),
                 within: (None, None),
                 owner: None,
+                count: None,
             })
             .collect(),
         doms: d.top_doms.clone(),

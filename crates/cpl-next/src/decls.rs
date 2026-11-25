@@ -180,6 +180,9 @@ pub struct Decls {
     pub top_doms: HashMap<String, Ty>,
     /// The trait core marks `@positions`: every domain's position type has it, and nothing else.
     pub domain_trait: Option<TraitId>,
+    /// Core's `@coerce` fns: each converts a value of its parameter's type where its result's
+    /// type is wanted (R04.8.10).
+    pub coercions: Vec<FnId>,
 }
 
 /// Where a method call resolved to.
@@ -1665,7 +1668,8 @@ fn add_fn(
     // run, so the program's own is refused: its expected result may be that lint (R06.4.9).
     for x in &s.decorators {
         let elsewhere = d.is_library(m) && read_elsewhere(&x.name.text);
-        if !elsewhere && !matches!(x.name.text.as_str(), "get" | "multitest") {
+        let core_only = m == CORE && x.name.text == "coerce";
+        if !elsewhere && !core_only && !matches!(x.name.text.as_str(), "get" | "multitest") {
             errors.push(format!("slice: decorator `@{}`", x.name.text));
         }
     }
@@ -1678,6 +1682,10 @@ fn add_fn(
     let has = |n: &str| s.decorators.iter().any(|x| x.name.text == n);
     // A getter is read like a field, so nothing but `self` may need an argument (R02.6.6).
     let getter = has("get");
+    let coerce = m == CORE && has("coerce");
+    if coerce {
+        d.coercions.push(FnId(d.fns.len()));
+    }
     if getter && params.iter().any(|p| p.default.is_none()) {
         let msg = format!(
             "getter `{}` is read like a field, so each parameter but `self` needs a default",

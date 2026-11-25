@@ -58,6 +58,19 @@ struct Array<D, T>:
     fn each(self) -> yields T:
         for i in 0..D.count: yield raw_get(buf, i)
 
+/// Cell by cell, in walk order (R08.1.6).
+impl<D, T: Eq> Eq for Array<D, T>:
+    fn eq(a, b):
+        for i in 0..D.count:
+            if raw_get(a.buf, i) != raw_get(b.buf, i): return false
+        true
+
+/// A list where `[D]T` is wanted: one element per position, in walk order (R04.8.10).
+@coerce
+fn array_of_list<D, T>(xs: List<T>) -> [D]T:
+    assert xs.len == D.count, "a list for `[D]T` has one element per position"
+    Array(xs.buf)
+
 fn read_array<D>() -> [D]Int:
     var a: [D]Int = 0
     for v in D: a[v] = read()

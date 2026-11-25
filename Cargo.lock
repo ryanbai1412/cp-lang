@@ -222,6 +222,7 @@ dependencies = [
  "cpl-diag",
  "cpl-env",
  "cpl-json",
+ "cpl-judge",
  "cpl-syntax",
  "cpl-wait",
 ]
