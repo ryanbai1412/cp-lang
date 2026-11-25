@@ -326,8 +326,13 @@ impl<'a> Lowerer<'a> {
         }
         // The checker chose a program's own fn over std's: `fn sum(self:
         // Range<Int>)` is the call, not the fold (R08.1.4).
+        // A member of the receiver's own type beats a free fn of its name.
+        let member = match self.probe_ty_silent(base) {
+            Some(Ty::Struct(sid)) => self.own_method(sid, &name.text).is_some(),
+            _ => false,
+        };
         let own_fn = self.resolved_module(&name.text, base, span);
-        if own_fn.is_some_and(|m| m != "prelude" && !m.starts_with("std.")) {
+        if !member && own_fn.is_some_and(|m| m != "prelude" && !m.starts_with("std.")) {
             if let Some(call) = self.try_ufcs_call(&name.text, base, args, span, None, hint) {
                 return call;
             }
