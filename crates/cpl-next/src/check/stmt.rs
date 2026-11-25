@@ -793,13 +793,21 @@ impl<'a> Cx<'a> {
                 Box::new(v(TK::Var(tmp))),
             )),
         ));
-        self.domains.push(DomInfo {
+        let info = DomInfo {
             name: name.to_string(),
             len,
             lo: first,
             within,
             owner: self.decl,
-        });
+        };
+        if let (None, Some(&Ty::Dom(i))) = (self.decl, self.d.top_doms.get(name)) {
+            if self.domains[i].name.is_empty() {
+                self.domains[i] = info;
+                self.doms.insert(name.to_string(), Ty::Dom(i));
+                return i;
+            }
+        }
+        self.domains.push(info);
         self.doms
             .insert(name.to_string(), Ty::Dom(self.domains.len() - 1));
         self.domains.len() - 1

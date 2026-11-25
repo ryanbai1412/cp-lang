@@ -173,6 +173,9 @@ pub struct Decls {
     /// Each library's public free fns with a `self`, by name: a method call finds them with no
     /// import (R11.3.4).
     pub methods: HashMap<String, Vec<FnId>>,
+    /// The program's top-level domains, which its declarations may name: each is the
+    /// `Ty::Dom` of its place among them, filled when its statement runs (R02.9).
+    pub top_doms: HashMap<String, Ty>,
 }
 
 /// Where a method call resolved to.
@@ -183,6 +186,13 @@ pub enum Member {
 }
 
 impl Decls {
+    /// The domains a declaration in module `m` may name.
+    fn doms_in(&self, m: ModId) -> HashMap<String, Ty> {
+        match m == self.program {
+            true => self.top_doms.clone(),
+            false => HashMap::new(),
+        }
+    }
     /// What a declaration uses that the slice does not build: a library's is said when the program
     /// reaches it, the program's at once.
     fn module_or_program_errors(&mut self, m: ModId, errors: Vec<String>) {
@@ -863,6 +873,12 @@ pub fn collect(
     d.program = ModId(n - 1);
     d.module_names = mods.iter().map(|m| m.name.clone()).collect();
     d.module_errors = vec![Vec::new(); n];
+    for s in mods[n - 1].items.iter().flat_map(|(_, stmts)| stmts) {
+        if let StmtKind::Domain { name, .. } = &s.kind {
+            let k = d.top_doms.len();
+            d.top_doms.entry(name.text.clone()).or_insert(Ty::Dom(k));
+        }
+    }
     let mut own: Vec<HashMap<String, Named>> = vec![HashMap::new(); n];
     let mut public: Vec<HashSet<String>> = vec![HashSet::new(); n];
     let mut main = Vec::new();
@@ -1063,7 +1079,7 @@ pub fn collect(
                 continue;
             };
             let generics: Vec<String> = sd.generics.iter().map(|g| g.text.clone()).collect();
-            let no_doms = HashMap::new();
+            let doms = d.doms_in(*mid);
             let (names, sets) = (d.views[mid.0].clone(), d.struct_sets.clone());
             let mut cx = TyCx {
                 names: &names,
@@ -1072,7 +1088,7 @@ pub fn collect(
                 args: None,
                 aliases: &aliases,
                 expanding: Vec::new(),
-                doms: &no_doms,
+                doms: &doms,
                 ret_slots: None,
                 next_set: Some(0),
             };
@@ -1107,7 +1123,7 @@ pub fn collect(
                 (StmtKind::Struct(sd), Some(Named::Struct(id))) => {
                     let generics: Vec<String> =
                         sd.generics.iter().map(|g| g.text.clone()).collect();
-                    let no_doms = HashMap::new();
+                    let doms = d.doms_in(ModId(mi));
                     let sets = d.struct_sets.clone();
                     let mut cx = TyCx {
                         names: &d.views[mi].clone(),
@@ -1116,7 +1132,7 @@ pub fn collect(
                         args: None,
                         aliases: &aliases,
                         expanding: Vec::new(),
-                        doms: &no_doms,
+                        doms: &doms,
                         ret_slots: None,
                         next_set: Some(0),
                     };
@@ -1191,7 +1207,7 @@ pub fn collect(
                     let mut errors = Vec::new();
                     let names = d.views[mi].clone();
                     let sets = d.struct_sets.clone();
-                    let no_doms = HashMap::new();
+                    let doms = d.doms_in(ModId(mi));
                     let mut cx = TyCx {
                         names: &names,
                         struct_sets: &sets,
@@ -1199,7 +1215,7 @@ pub fn collect(
                         args: None,
                         aliases: &aliases,
                         expanding: Vec::new(),
-                        doms: &no_doms,
+                        doms: &doms,
                         ret_slots: None,
                         next_set: None,
                     };
@@ -1265,7 +1281,7 @@ pub fn collect(
                         unnamed(t, &names, &mut generics);
                     }
                     let sets = d.struct_sets.clone();
-                    let no_doms = HashMap::new();
+                    let doms = d.doms_in(ModId(mi));
                     let mut errors = Vec::new();
                     let mut cx = TyCx {
                         names: &names,
@@ -1274,7 +1290,7 @@ pub fn collect(
                         args: None,
                         aliases: &aliases,
                         expanding: Vec::new(),
-                        doms: &no_doms,
+                        doms: &doms,
                         ret_slots: None,
                         next_set: Some(0),
                     };
@@ -1525,7 +1541,7 @@ fn add_fn(
     let mut generics = outer.to_vec();
     generics.extend(f.generics.iter().map(|g| g.text.clone()));
     let names = d.views[m.0].clone();
-    let no_doms = HashMap::new();
+    let doms = d.doms_in(m);
     let aliases = d.aliases.clone();
     let sets = d.struct_sets.clone();
     let mut cx = TyCx {
@@ -1535,7 +1551,7 @@ fn add_fn(
         args: None,
         aliases: &aliases,
         expanding: Vec::new(),
-        doms: &no_doms,
+        doms: &doms,
         ret_slots: None,
         next_set: Some(outer_sets),
     };

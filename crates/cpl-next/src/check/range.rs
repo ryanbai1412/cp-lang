@@ -4,8 +4,11 @@ use super::*;
 impl Cx<'_> {
     /// A name that is a domain: one declared in a body, or a type parameter used as one.
     pub(super) fn domain_named(&self, n: &str) -> Option<Ty> {
-        if let Some(d @ Ty::Dom(_)) = self.doms.get(n) {
-            return Some(d.clone());
+        if let Some(&Ty::Dom(i)) = self.doms.get(n) {
+            if self.decl.is_none() && self.domains[i].name.is_empty() {
+                self.early.set(Some(i));
+            }
+            return Some(Ty::Dom(i));
         }
         self.generics.iter().position(|g| g == n).map(Ty::Param)
     }

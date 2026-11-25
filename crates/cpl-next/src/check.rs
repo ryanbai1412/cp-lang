@@ -211,6 +211,8 @@ struct Cx<'a> {
     /// Set variables being written out, to catch a set that contains itself.
     zonking: std::cell::RefCell<Vec<usize>>,
     cyclic: std::cell::Cell<bool>,
+    /// A top-level domain a top-level statement named before the line declaring it.
+    early: std::cell::Cell<Option<usize>>,
     errors: Vec<String>,
     lambdas: Vec<LambdaInfo>,
     globals: Vec<Local>,
@@ -259,13 +261,23 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
         sets: Vec::new(),
         zonking: Default::default(),
         cyclic: Default::default(),
+        early: Default::default(),
         errors: Vec::new(),
         lambdas: Vec::new(),
         globals: Vec::new(),
         global_names: HashMap::new(),
         ret_sets: HashMap::new(),
-        domains: Vec::new(),
-        doms: HashMap::new(),
+        // A top-level domain's place is kept for it until its statement runs.
+        domains: (d.top_doms.iter())
+            .map(|_| DomInfo {
+                name: String::new(),
+                len: VarRef::Global(usize::MAX),
+                lo: VarRef::Global(usize::MAX),
+                within: (None, None),
+                owner: None,
+            })
+            .collect(),
+        doms: d.top_doms.clone(),
         ranges: Vec::new(),
         decl: None,
         generics: Vec::new(),
@@ -322,7 +334,17 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
     }
     let mut main_out = Vec::new();
     let mut cases: Option<(Option<TExpr>, Vec<TStmt>)> = None;
+    // A domain with constant ends hoists; one read at run time runs where it is written (R11.1.1).
+    let hoists = |s: &cpl_syntax::ast::Stmt| matches!(&s.kind, cpl_syntax::ast::StmtKind::Domain { def, .. } if constant_range(def));
+    for (off, s) in main.iter().filter(|(_, s)| hoists(s)) {
+        cx.item_off = *off;
+        main_out.push(TStmt::Item(*off));
+        cx.stmt(s, &mut main_out);
+    }
     for (off, s) in main {
+        if hoists(s) {
+            continue;
+        }
         cx.item_off = *off;
         // `@!multitest`: the count is read once and everything below runs once per case.
         if cases.is_none()
@@ -350,6 +372,19 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
         };
         into.push(TStmt::Item(*off));
         cx.stmt(s, into);
+        if let Some(i) = cx.early.take() {
+            let name = (d.top_doms.iter())
+                .find(|(_, t)| matches!(t, Ty::Dom(k) if *k == i))
+                .map(|(n, _)| n.clone())
+                .unwrap_or_default();
+            cx.err(
+                s.span,
+                format!(
+                    "{}: domain `{name}` is used above the line that declares it (R11.1.1)",
+                    cpl_diag::codes::USED_BEFORE_SET.0
+                ),
+            );
+        }
     }
     cx.solve(true);
     if let Some((count, body)) = cases {
@@ -424,6 +459,10 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
         .into_iter()
         .map(|(k, v)| (k, cx.zonk_set(&v)))
         .collect();
+    if cx.domains.iter().any(|d| d.name.is_empty()) {
+        cx.errors
+            .push("slice: a top-level domain that is not declared".to_string());
+    }
     if cx.cyclic.get() {
         cx.errors.push("a variable holding a function is assigned a function built from its own old value, so the set of functions it can hold contains itself; bind the new function to a new name".to_string());
     }
@@ -572,4 +611,13 @@ impl<'a> Cx<'a> {
         self.scopes = vec![HashMap::new()];
         out
     }
+}
+
+/// `lo..hi` or `lo..=hi` with integer literal ends.
+fn constant_range(e: &cpl_syntax::ast::Expr) -> bool {
+    use cpl_syntax::ast::ExprKind;
+    let lit = |e: &Option<Box<cpl_syntax::ast::Expr>>| {
+        matches!(e.as_deref().map(|e| &e.kind), Some(ExprKind::Int(_)))
+    };
+    matches!(&e.kind, ExprKind::Range { lo, hi, step: None, .. } if lit(lo) && lit(hi))
 }

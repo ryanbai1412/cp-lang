@@ -57,6 +57,7 @@ core-01/not-below-comparison.cp
 core-01/one-line-body.cp
 core-01/param-label-may-be-a-keyword.cp
 core-01/paren-generator-is-error.cp
+core-01/per-test-enum-uses-runtime-domain.cp
 core-01/plusplus.cp
 core-01/range-looser-than-additive.cp
 core-01/rb1-q29-floor-div-mod.cp
@@ -92,6 +93,7 @@ core-02/ctor-missing-field.cp
 core-02/distinct-fn-names.cp
 core-02/enum-comma-form-rejected.cp
 core-02/enum-exhaustive-match.cp
+core-02/enum-niche-roundtrip.cp
 core-02/enum-nonexhaustive.cp
 core-02/fixed-field.cp
 core-02/fresh-slot-recursion.cp
@@ -144,6 +146,7 @@ core-03/named-width-traps.cp
 core-03/narrow-range-len-spans-32-bits.cp
 core-03/negative-product-overflow-traps.cp
 core-03/none-test-reads-niche.cp
+core-03/one-payload-enum.cp
 core-03/overflow-traps.cp
 core-03/proofs-cross-no-calls.cp
 core-03/range-local-below-start-traps.cp
@@ -166,6 +169,7 @@ core-04/dom-count.cp
 core-04/dom-empty-first-traps.cp
 core-04/dom-first-last.cp
 core-04/dom-walk-rev.cp
+core-04/domain-is-its-range.cp
 core-04/first-is-optional.cp
 core-04/from-ord-after-a-checked-one-still-traps.cp
 core-04/list-literal-cell-outside-let-range-traps.cp
@@ -368,6 +372,7 @@ core-10/token-read-skips-blank-lines.cp
 core-10/top-level-return.cp
 core-10/tuple-reads-in-order.cp
 core-11/compiler-stamp.cp
+core-11/constant-domain-hoists.cp
 core-11/items-hoist.cp
 core-11/local-shadows-every-special-name.cp
 core-11/local-shadows-prelude.cp
@@ -377,6 +382,7 @@ core-11/method-of-non-prelude-fn.cp
 core-11/own-fn-max-shadows-binary-builtin.cp
 core-11/pub-field-and-method.cp
 core-11/runtime-domain-reads-in-order.cp
+core-11/runtime-domain-use-before-definition.cp
 core-11/use-unknown-module.cp
 core-12/body-attribute-unknown-is-an-error.cp
 core-12/closure-borrows-per-call.cp
@@ -441,6 +447,7 @@ next/a_decl_01_default_param.cp
 next/a_decl_02_field_default.cp
 next/a_decl_09_cache_field.cp
 next/a_dom_01_domain_values.cp
+next/a_dom_02_top_level_in_signatures.cp
 next/a_enum_01_match_payloads.cp
 next/a_enum_02_default_arm.cp
 next/a_enum_03_heap_payload_moves.cp
