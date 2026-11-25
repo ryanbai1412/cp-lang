@@ -39,14 +39,7 @@ pub(super) fn run(
     if std::env::var_os("CPL_NO_INLINE").is_some() {
         return Vec::new();
     }
-    let mut folded = view::fold(
-        h.fns,
-        [&mut *h.main, &mut *h.setup],
-        h.closures,
-        library,
-        shown,
-        next_loop,
-    );
+    let walks = view::fold(h.fns, [&mut *h.main, &mut *h.setup], h.closures, library, next_loop);
     let recursive = recursion(h.fns, h.closures);
     let mut sites = vec![0usize; h.fns.len()];
     let mut count = |b: &Block| {
@@ -71,6 +64,7 @@ pub(super) fn run(
         recursive,
         sites,
         next_loop,
+        walks,
         inlined: Vec::new(),
         within: vec![Vec::new(); fn_count],
     };
@@ -83,8 +77,7 @@ pub(super) fn run(
     }
     inl.host(h.main_locals, h.main, false, None);
     inl.host(h.main_locals, h.setup, false, None);
-    folded.append(&mut inl.inlined);
-    folded
+    inl.inlined
 }
 
 struct Inliner<'a> {
@@ -95,6 +88,9 @@ struct Inliner<'a> {
     recursive: Vec<bool>,
     sites: Vec<usize>,
     next_loop: &'a mut LoopId,
+    /// Per fn: the view ctor whose fields it walks in place of the view,
+    /// or `usize::MAX`.
+    walks: Vec<usize>,
     inlined: Vec<(Span, String)>,
     /// What was inlined into each library fn, listed with its own inline.
     within: Vec<Vec<String>>,
@@ -215,6 +211,7 @@ impl Cx<'_, '_> {
             // A walk of a call is the call's own walk (a generator's steps
             // run between the loop's), so the call stays.
             if let Stmt::For(_, _, crate::Iter::Seq(walked @ Expr { kind: ExprKind::Call(..), .. }, _), body) = stmt {
+                self.retarget(walked);
                 children_mut(walked, &mut |e| self.expr(e));
                 self.block(body);
                 continue;
@@ -225,6 +222,7 @@ impl Cx<'_, '_> {
     }
 
     fn expr(&mut self, e: &mut Expr) {
+        self.retarget(e);
         if let ExprKind::Do(inner) = &mut e.kind {
             self.block(inner);
         }

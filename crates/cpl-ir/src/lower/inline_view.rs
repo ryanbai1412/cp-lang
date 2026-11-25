@@ -3,25 +3,25 @@
 //! struct's walk reads only those fields, the walk takes the params instead,
 //! so a view that is only walked leaves no struct and no constructor.
 
-use super::{all_returns, Remap, Sub};
-use crate::walk::{children_mut, deep_exprs, stmt_blocks_mut, stmt_exprs_mut};
-use crate::{Arg, Block, ClosureDef, Expr, ExprKind, Function, LoopId, Span, Stmt};
+use super::{all_returns, Cx, Remap, Sub};
+use crate::walk::deep_exprs;
+use crate::{Arg, Block, ClosureDef, Expr, ExprKind, Function, LoopId, Stmt};
 use std::collections::HashMap;
 
-/// Rewrites each library walk every call of which is `walk(make(args))` to
-/// take `args`; gives each such call in the user's code.
+/// Rewrites each library walk every call of which is `walk(make(args))`,
+/// outside a closure, to take `args`; gives each such walk's `make`, or
+/// `usize::MAX`.
 pub(super) fn fold(
     fns: &mut [Option<Function>],
-    mut hosts: [&mut Block; 2],
+    hosts: [&mut Block; 2],
     closures: &mut Vec<ClosureDef>,
     library: &[bool],
-    shown: &[String],
     next_loop: &mut LoopId,
-) -> Vec<(Span, String)> {
+) -> Vec<usize> {
     let n = fns.len();
     // Per fn: its calls, and the fn every call of it walks the result of.
     let (mut calls, mut made) = (vec![0usize; n], vec![None; n]);
-    let mut note = |b: &Block| {
+    let mut note = |b: &Block, closure: bool| {
         deep_exprs(b, &mut |e| {
             if let ExprKind::Call(f, args) = &e.kind {
                 let c = match args.as_slice() {
@@ -32,7 +32,7 @@ pub(super) fn fold(
                     _ => usize::MAX,
                 };
                 if let (Some(k), Some(m)) = (calls.get_mut(*f), made.get_mut(*f)) {
-                    *m = if *k == 0 || *m == Some(c) {
+                    *m = if !closure && (*k == 0 || *m == Some(c)) {
                         Some(c)
                     } else {
                         None
@@ -42,11 +42,11 @@ pub(super) fn fold(
             }
         })
     };
-    fns.iter().flatten().for_each(|f| note(&f.body));
-    closures.iter().for_each(|c| note(&c.body));
-    hosts.iter().for_each(|b| note(b));
+    fns.iter().flatten().for_each(|f| note(&f.body, false));
+    closures.iter().for_each(|c| note(&c.body, true));
+    hosts.iter().for_each(|b| note(b, false));
     let lib = |f: usize| library.get(f).copied().unwrap_or(false);
-    let mut walks = vec![false; n];
+    let mut walks = vec![usize::MAX; n];
     for f in 0..n {
         let Some(c) = made[f].filter(|&c| c < n && c != f && lib(f) && lib(c)) else {
             continue;
@@ -64,22 +64,10 @@ pub(super) fn fold(
                 );
             }
             fns[f] = Some(new);
-            walks[f] = true;
+            walks[f] = c;
         }
     }
-    let mut out = Vec::new();
-    for (i, f) in fns.iter_mut().enumerate() {
-        if let Some(f) = f {
-            retarget(&mut f.body, &walks, !lib(i), shown, &mut out);
-        }
-    }
-    for c in closures.iter_mut() {
-        retarget(&mut c.body, &walks, false, shown, &mut out);
-    }
-    for b in hosts.iter_mut() {
-        retarget(b, &walks, true, shown, &mut out);
-    }
-    out
+    walks
 }
 
 /// `walk` taking `make`'s params in place of the struct `make` builds of them.
@@ -137,53 +125,30 @@ fn fold_fn(
     })
 }
 
-/// `walk(make(args))` as `walk(args)`, at `make`'s call.
-fn retarget(
-    b: &mut Block,
-    walks: &[bool],
-    user: bool,
-    shown: &[String],
-    out: &mut Vec<(Span, String)>,
-) {
-    exprs_mut(b, &mut |e| {
+impl Cx<'_, '_> {
+    /// `walk(make(args))` as `walk(args)`, at `make`'s call.
+    pub(super) fn retarget(&mut self, e: &mut Expr) {
         let ExprKind::Call(f, args) = &mut e.kind else {
             return;
         };
         let [Arg::Value(Expr {
-            kind: ExprKind::Call(_, inner),
+            kind: ExprKind::Call(c, inner),
             span,
             ..
         })] = args.as_mut_slice()
         else {
             return;
         };
-        if !walks.get(*f).copied().unwrap_or(false) {
+        if self.inl.walks.get(*f) != Some(c) {
             return;
         }
         let (inner, span) = (std::mem::take(inner), *span);
-        if user {
-            let name = shown.get(*f).map_or("", String::as_str);
-            out.push((
-                span,
-                format!("{name}: walks the view's fields, with no struct"),
-            ));
+        if self.user {
+            let name = self.inl.shown.get(*f).map_or("", String::as_str);
+            let why = format!("{name}: walks the view's fields, with no struct");
+            self.inl.inlined.push((span, why));
         }
         *args = inner;
         e.span = span;
-    });
-}
-
-fn exprs_mut(b: &mut Block, f: &mut dyn FnMut(&mut Expr)) {
-    for s in &mut b.stmts {
-        stmt_exprs_mut(s, &mut |e| expr_mut(e, f));
-        stmt_blocks_mut(s, &mut |inner| exprs_mut(inner, f));
     }
-}
-
-fn expr_mut(e: &mut Expr, f: &mut dyn FnMut(&mut Expr)) {
-    if let ExprKind::Do(b) = &mut e.kind {
-        exprs_mut(b, f);
-    }
-    children_mut(e, &mut |c| expr_mut(c, f));
-    f(e);
 }
