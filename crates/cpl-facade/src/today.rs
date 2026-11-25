@@ -170,6 +170,7 @@ pub mod profile {
 }
 
 /// How a program lowers to C++, as `cpl explain` reports it.
+#[cfg(feature = "cpp")]
 pub mod explain {
     pub use cpl_codegen::explain::*;
     pub use cpl_codegen::{ClosureLowering, ClosureMode, Lowered};
@@ -199,11 +200,13 @@ pub mod explain {
 }
 
 /// What the tests of the C++ count in it.
+#[cfg(feature = "cpp")]
 pub mod cpp_counts {
     pub use cpl_codegen::cpp_counts::*;
 }
 
 /// The crates of today's compiler behind the facade, in pipeline order.
+#[cfg(feature = "cpp")]
 pub const COMPONENTS: &[&str] = &[
     cpl_check::NAME,
     cpl_ir::NAME,
@@ -257,33 +260,34 @@ macro_rules! asks {
 /// The checked file and the editor's questions of it, in today's forms.
 impl Session {
     /// The checked form of `file`: `None` when the session has no such file.
-    pub fn analyze(&self, file: impl Into<FileId>) -> Option<Arc<Analysis>> {
-        self.checked(&file.into())
+    #[inline(always)]
+    pub fn analyze(&self, file: impl AsRef<str>) -> Option<Arc<Analysis>> {
+        self.checked(file.as_ref())
     }
 
     /// [`Session::analyze`] of the session moved on to `file` holding `text`.
-    pub fn analyze_text(
-        &mut self,
-        file: impl Into<FileId>,
-        text: impl Into<Text>,
-    ) -> Arc<Analysis> {
-        let file = file.into();
+    #[inline(always)]
+    pub fn analyze_text(&mut self, file: impl AsRef<str>, text: impl AsRef<str>) -> Arc<Analysis> {
         self.set_file(&file, text);
-        self.checked(&file).unwrap_or_default()
+        self.checked(file.as_ref()).unwrap_or_default()
     }
 
-    pub fn analysis(&self, file: impl Into<FileId>) -> Option<Arc<Analysis>> {
+    #[inline(always)]
+    pub fn analysis(&self, file: impl AsRef<str>) -> Option<Arc<Analysis>> {
         self.analyze(file)
     }
 
-    pub fn facts(&self, file: impl Into<FileId>) -> Option<Arc<Facts>> {
+    #[inline(always)]
+    pub fn facts(&self, file: impl AsRef<str>) -> Option<Arc<Facts>> {
         self.analyze(file).map(|analysis| analysis.facts().clone())
     }
 
     /// The text of `path`, in the snapshot or as an import loaded it.
     pub fn file_text(&self, path: &str) -> Option<Text> {
-        let held = self.snapshot().text(&FileId::new(path)).cloned();
-        held.or_else(|| self.synced(None).db.file_text(path))
+        if let Some(held) = self.snapshot().text(&FileId::new(path)) {
+            return Some(held.clone());
+        }
+        self.synced(None).db.file_text(path)
     }
 
     pub fn stats(&self) -> Stats {

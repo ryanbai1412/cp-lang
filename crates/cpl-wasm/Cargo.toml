@@ -24,7 +24,7 @@ cpl-stress = { workspace = true, optional = true }
 # scripts/build-wasm.sh builds cpl.wasm without it (what every editor on the
 # site loads first) and cpl-build.wasm with it (loaded on first use).
 default = ["build"]
-build = ["dep:cpl-stress"]
+build = ["cpl-facade/cpp", "dep:cpl-stress"]
 # Carry only std's prelude and mod; the page gives the rest (`provideStd`).
 lazy-std = ["cpl-facade/lazy-std"]
 

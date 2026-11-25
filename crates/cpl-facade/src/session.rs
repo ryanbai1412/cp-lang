@@ -78,84 +78,11 @@ impl Job {
 /// The runtime checks a build or a run keeps.
 pub type Checks = cpl_ir::checks::Checks;
 
-/// What the C++ is written for: the judge it is submitted to.
-#[derive(Clone, Debug)]
-pub struct Profile {
-    /// A line for the header that names the judge.
-    pub stamp: Option<String>,
-    /// The stack the program runs with on a thread of its own; `None` on a
-    /// judge that allows no threads.
-    pub thread_stack: Option<u64>,
-    /// Whether the judge runs Windows.
-    pub windows: bool,
-    pub checks: Checks,
-    /// The judge's CPU features (`avx2`).
-    pub cpu: Vec<String>,
-    /// The source limit, when the judge has one.
-    pub size: Option<SizeBar>,
-    /// Whether the source opens the file as a comment. A file built to be
-    /// run here, not submitted, leaves it out.
-    pub source_comment: bool,
-}
-
-/// A judge's source limit: the file gives way (its source comment, then
-/// its names) until it is at most `aim` bytes, and is refused over `limit`.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct SizeBar {
-    pub aim: usize,
-    pub limit: usize,
-}
-
-impl Default for Profile {
-    fn default() -> Profile {
-        let target = cpl_codegen::Target::default();
-        Profile {
-            stamp: target.stamp,
-            thread_stack: target.thread_stack,
-            windows: target.windows,
-            checks: target.checks,
-            cpu: target.cpu,
-            size: None,
-            source_comment: true,
-        }
-    }
-}
-
-impl Profile {
-    pub(crate) fn target(&self) -> cpl_codegen::Target {
-        cpl_codegen::Target {
-            stamp: self.stamp.clone(),
-            thread_stack: self.thread_stack,
-            windows: self.windows,
-            checks: self.checks,
-            cpu: self.cpu.clone(),
-        }
-    }
-}
-
-/// The C++ file of a program.
-pub struct CppFile {
-    pub text: String,
-    /// What the file left out to fit the profile's size, in the order it
-    /// gave way. Empty with no size bar.
-    pub left_out: Vec<&'static str>,
-    /// How long it is as written, with nothing left out.
-    pub full: usize,
-    /// Whether it is still over the profile's limit.
-    pub over_limit: bool,
-    fitted: Option<cpl_codegen::Fitted>,
-}
-
-/// Where the bytes of a C++ file go.
-pub type Size = cpl_codegen::Size;
-/// What a [`Size`] measures.
-pub type Part = cpl_codegen::Part;
-
 /// A program built from a file, ready to run or to emit.
 #[derive(Clone, PartialEq, Debug)]
 pub struct Program {
     pub(crate) ir: cpl_ir::Program,
-    text: Text,
+    pub(crate) text: Text,
     warnings: Arc<[Diagnostic]>,
 }
 
@@ -294,29 +221,35 @@ impl Session {
 
     /// The session of this snapshot with `file` holding `text`. It shares
     /// everything else, and this session still answers for its own snapshot.
-    pub fn with_file(&self, file: impl Into<FileId>, text: impl Into<Text>) -> Session {
+    #[inline(always)]
+    pub fn with_file(&self, file: impl AsRef<str>, text: impl AsRef<str>) -> Session {
+        self.at(self.snapshot.with_file(file, text))
+    }
+
+    /// This session's work, answering for `snapshot`.
+    fn at(&self, snapshot: Snapshot) -> Session {
         Session {
-            snapshot: self.snapshot.with_file(file, text),
+            snapshot,
             inner: self.inner.clone(),
         }
     }
 
     /// The session of this snapshot without `file`.
-    pub fn without_file(&self, file: impl Into<FileId>) -> Session {
-        Session {
-            snapshot: self.snapshot.without_file(&file.into()),
-            inner: self.inner.clone(),
-        }
+    #[inline(always)]
+    pub fn without_file(&self, file: impl AsRef<str>) -> Session {
+        self.at(self.snapshot.lacking(file.as_ref()))
     }
 
     /// Moves a tool's handle on to [`Session::with_file`]'s session.
-    pub fn set_file(&mut self, file: impl Into<FileId>, text: impl Into<Text>) {
-        *self = self.with_file(file, text);
+    #[inline(always)]
+    pub fn set_file(&mut self, file: impl AsRef<str>, text: impl AsRef<str>) {
+        *self = self.at(self.snapshot.with_file(file, text));
     }
 
     /// Moves a tool's handle on to [`Session::without_file`]'s session.
-    pub fn remove_file(&mut self, file: impl Into<FileId>) {
-        *self = self.without_file(file);
+    #[inline(always)]
+    pub fn remove_file(&mut self, file: impl AsRef<str>) {
+        *self = self.at(self.snapshot.lacking(file.as_ref()));
     }
 
     pub fn snapshot(&self) -> &Snapshot {
@@ -371,30 +304,42 @@ impl Session {
         inner
     }
 
-    pub(crate) fn checked(&self, file: &FileId) -> Option<Arc<Analysis>> {
-        self.synced(Some(file)).db.analysis(file.path())
+    pub(crate) fn checked(&self, file: &str) -> Option<Arc<Analysis>> {
+        let file = FileId::new(file);
+        self.synced(Some(&file)).db.analysis(file.path())
     }
 
     /// Every diagnostic `file` has, up to `upto`. One answer for every
     /// tool: `cpl check`, the editor and the playground print this list.
-    pub fn diagnostics(&self, file: impl Into<FileId>, upto: Layer) -> Vec<Diagnostic> {
-        let checked = self.checked(&file.into());
+    #[inline(always)]
+    pub fn diagnostics(&self, file: impl AsRef<str>, upto: Layer) -> Vec<Diagnostic> {
+        self.diagnostics_at(file.as_ref(), upto)
+    }
+
+    fn diagnostics_at(&self, file: &str, upto: Layer) -> Vec<Diagnostic> {
+        let checked = self.checked(file);
         checked
             .map(|analysis| diagnostics_of(&analysis, upto))
             .unwrap_or_default()
     }
 
     /// The fns of `file` that make it more than one program.
-    pub fn roles(&self, file: impl Into<FileId>) -> Option<Roles> {
-        self.checked(&file.into()).map(Roles)
+    #[inline(always)]
+    pub fn roles(&self, file: impl AsRef<str>) -> Option<Roles> {
+        self.checked(file.as_ref()).map(Roles)
     }
 
     /// The program `job` asks for of `file`, or every diagnostic of the
     /// file that stops it: the typed layer's when it has an error, and
     /// otherwise those with what the build itself rejects. `Ok` leaves the
     /// typed layer's warnings to [`Session::diagnostics`].
-    pub fn program(&self, file: impl Into<FileId>, job: &Job) -> Result<Program, Vec<Diagnostic>> {
-        let Some(analysis) = self.checked(&file.into()) else {
+    #[inline(always)]
+    pub fn program(&self, file: impl AsRef<str>, job: &Job) -> Result<Program, Vec<Diagnostic>> {
+        self.program_at(file.as_ref(), job)
+    }
+
+    fn program_at(&self, file: &str, job: &Job) -> Result<Program, Vec<Diagnostic>> {
+        let Some(analysis) = self.checked(file) else {
             return Err(Vec::new());
         };
         let mut diagnostics = analysis.diagnostics.clone();
@@ -405,66 +350,6 @@ impl Session {
             diagnostics.extend(errors);
             diagnostics
         })
-    }
-
-    /// The C++17 file of `program`, written from the file called `name`,
-    /// for the judge `profile` describes. The source opens it as a comment.
-    pub fn emit_cpp(&self, program: &Program, name: &str, profile: &Profile) -> CppFile {
-        emit_cpp(program, name, profile)
-    }
-}
-
-/// [`Session::emit_cpp`]: a built program holds all its C++ needs.
-pub fn emit_cpp(program: &Program, name: &str, profile: &Profile) -> CppFile {
-    let target = profile.target();
-    let Some(bar) = profile.size else {
-        let text = cpl_codegen::emit_for(
-            &program.ir,
-            name,
-            profile.source_comment.then_some(&*program.text),
-            &target,
-        );
-        return CppFile {
-            full: text.len(),
-            text,
-            left_out: Vec::new(),
-            over_limit: false,
-            fitted: None,
-        };
-    };
-    let fitted = cpl_codegen::emit_aiming(
-        &program.ir,
-        name,
-        &program.text,
-        (bar.aim, bar.limit),
-        &target,
-    );
-    let over_limit = fitted.is_err();
-    let fitted = fitted.unwrap_or_else(|over| over);
-    CppFile {
-        text: fitted.cpp.clone(),
-        left_out: fitted.left_out(),
-        full: fitted.full,
-        over_limit,
-        fitted: Some(fitted),
-    }
-}
-
-impl CppFile {
-    /// What was left out to fit, said to the contestant of `file` built
-    /// for `judge`, whose size `bar` words; `None` when nothing was.
-    pub fn note(&self, file: &str, bar: &str, judge: &str) -> Option<String> {
-        self.fitted.as_ref()?.note(file, bar, judge)
-    }
-
-    /// Where the bytes of this file, fitted to `profile`'s size from
-    /// `program`, go: every piece, adding up to its length.
-    pub fn sizes(&self, program: &Program, name: &str, profile: &Profile) -> Vec<Size> {
-        let Some(fitted) = &self.fitted else {
-            return Vec::new();
-        };
-        let source = fitted.header.then_some(&*program.text);
-        cpl_codegen::sizes(&program.ir, name, source, &profile.target(), fitted)
     }
 }
 
@@ -517,16 +402,4 @@ impl Session {
 pub fn apply_error_fixes(file: &str, text: &str) -> (String, usize) {
     let (text, applied, _) = Session::default().apply_error_fixes_in(file, text);
     (text, applied)
-}
-
-/// The C++ of `program` that counts how often each statement runs and
-/// writes the counts to the file `tally` when it ends, and the span of
-/// each statement counted, in the order of the counts.
-pub fn emit_cpp_profiled(
-    program: &Program,
-    name: &str,
-    profile: &Profile,
-    tally: &str,
-) -> (String, Vec<cpl_diag::Span>) {
-    cpl_codegen::emit_profiled(&program.ir, name, &profile.target(), tally)
 }

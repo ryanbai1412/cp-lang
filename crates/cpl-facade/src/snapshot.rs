@@ -23,27 +23,9 @@ impl From<&str> for FileId {
     }
 }
 
-impl From<&&str> for FileId {
-    fn from(path: &&str) -> FileId {
-        FileId::new(path)
-    }
-}
-
-impl From<&String> for FileId {
-    fn from(path: &String) -> FileId {
-        FileId::new(path)
-    }
-}
-
-impl From<String> for FileId {
-    fn from(path: String) -> FileId {
-        FileId::new(&path)
-    }
-}
-
-impl From<&FileId> for FileId {
-    fn from(file: &FileId) -> FileId {
-        file.clone()
+impl AsRef<str> for FileId {
+    fn as_ref(&self) -> &str {
+        self.path()
     }
 }
 
@@ -95,8 +77,13 @@ impl Snapshot {
     }
 
     /// This snapshot with `file` holding `text`. Everything else is shared.
-    pub fn with_file(&self, file: impl Into<FileId>, text: impl Into<Text>) -> Snapshot {
-        let (file, text) = (file.into(), text.into());
+    #[inline(always)]
+    pub fn with_file(&self, file: impl AsRef<str>, text: impl AsRef<str>) -> Snapshot {
+        self.holding(file.as_ref(), text.as_ref())
+    }
+
+    fn holding(&self, file: &str, text: &str) -> Snapshot {
+        let (file, text) = (FileId::new(file), Text::from(text));
         let mut files = (*self.files).clone();
         match at(&files, &file) {
             Ok(held) => files[held].1 = text,
@@ -106,6 +93,10 @@ impl Snapshot {
             files: Arc::new(files),
             world: self.world,
         }
+    }
+
+    pub(crate) fn lacking(&self, file: &str) -> Snapshot {
+        self.without_file(&FileId::new(file))
     }
 
     /// This snapshot without `file`.
