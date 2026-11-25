@@ -21,6 +21,9 @@ pub enum Ty {
     /// `lo..=hi` with constant ends: an `Int` that a slot of this type is promised to hold. A
     /// value read from the slot is an `Int`; an `Int` stored into it is checked (R03.1.4).
     Range(i64, i64),
+    /// A range written in a body with an end that is a run-time value: `1..=n`. Each one written
+    /// is a type of its own; its ends are values held where it is written (`check::RangeInfo`).
+    RangeOf(usize),
     Bool,
     Unit,
     Raw(Box<Ty>),

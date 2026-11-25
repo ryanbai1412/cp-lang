@@ -137,7 +137,8 @@ struct TyCx<'a> {
     /// How many set parameters each struct has, so a struct named in a type gets its own.
     struct_sets: &'a HashMap<StructId, usize>,
     generics: &'a [String],
-    doms: &'a HashMap<String, usize>,
+    /// The types a body declares by name: its domains, and its ranges with run-time ends.
+    doms: &'a HashMap<String, Ty>,
     /// When converting a result type: the next result slot.
     ret_slots: Option<usize>,
     /// Next implicit set parameter; `None` where a fn type may not appear bare.
@@ -167,8 +168,8 @@ fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<String>) -> Ty {
             if let Some(i) = cx.generics.iter().position(|g| g == n) {
                 return Ty::Param(i);
             }
-            if let Some(d) = cx.doms.get(n) {
-                return Ty::Dom(*d);
+            if let Some(t) = cx.doms.get(n) {
+                return t.clone();
             }
             match n {
                 "Int" => Ty::Int,
@@ -211,8 +212,7 @@ fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<String>) -> Ty {
             Some((lo, hi)) => Ty::Range(lo, hi),
             None => {
                 errors.push(
-                    "slice: a range type whose ends are not constants, outside a `let` or `read`"
-                        .to_string(),
+                    "slice: a range type whose ends are not constants, outside a body".to_string(),
                 );
                 Ty::Error
             }
@@ -251,7 +251,7 @@ fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<String>) -> Ty {
 pub fn body_type(
     d: &Decls,
     generics: &[String],
-    doms: &HashMap<String, usize>,
+    doms: &HashMap<String, Ty>,
     t: &ast::Type,
     errors: &mut Vec<String>,
 ) -> Ty {

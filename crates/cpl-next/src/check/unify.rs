@@ -216,6 +216,7 @@ impl<'a> Cx<'a> {
         match self.shallow(t) {
             Ty::Int => "Int".into(),
             Ty::Range(lo, hi) => format!("{lo}..={hi}"),
+            Ty::RangeOf(_) => "a range with run-time ends".into(),
             Ty::Bool => "Bool".into(),
             Ty::Unit => "()".into(),
             Ty::Raw(e) => format!("Raw<{}>", self.show(&e)),
@@ -293,9 +294,23 @@ impl<'a> Cx<'a> {
         let span = e.span;
         match (&have, &want_s) {
             // Loads widen, stores check (R03.1.4).
-            (Ty::Range(..), Ty::Int) => TExpr { ty: Ty::Int, ..e },
+            (Ty::Range(..) | Ty::RangeOf(_), Ty::Int) => TExpr { ty: Ty::Int, ..e },
+            (Ty::RangeOf(a), Ty::RangeOf(b)) if a == b => e,
+            (Ty::Int | Ty::Range(..) | Ty::RangeOf(_), Ty::RangeOf(r)) => {
+                let end = |v: Option<VarRef>| {
+                    v.map(|v| TExpr {
+                        kind: TK::Var(v),
+                        ty: Ty::Int,
+                        span,
+                    })
+                };
+                let (lo, hi) = (end(self.ranges[*r].lo), end(self.ranges[*r].hi));
+                let v = TExpr { ty: Ty::Int, ..e };
+                let v = self.checked_between(v, lo, hi, span);
+                TExpr { ty: want_s, ..v }
+            }
             (Ty::Range(a, b), Ty::Range(lo, hi)) if lo <= a && b <= hi => TExpr { ty: want_s, ..e },
-            (Ty::Int | Ty::Range(..), Ty::Range(lo, hi)) => {
+            (Ty::Int | Ty::Range(..) | Ty::RangeOf(_), Ty::Range(lo, hi)) => {
                 let (lo, hi) = (*lo, *hi);
                 let int = |i| TExpr {
                     kind: TK::Int(i),
@@ -303,12 +318,7 @@ impl<'a> Cx<'a> {
                     span,
                 };
                 let v = TExpr { ty: Ty::Int, ..e };
-                let kind = if matches!(v.kind, TK::ReadInt) {
-                    CheckKind::ReadRange
-                } else {
-                    CheckKind::RangeStore
-                };
-                let v = self.checked_between(v, Some(int(lo)), Some(int(hi)), kind, span);
+                let v = self.checked_between(v, Some(int(lo)), Some(int(hi)), span);
                 TExpr { ty: want_s, ..v }
             }
             (Ty::Clo(c), Ty::Fn(ps, r, set)) => {

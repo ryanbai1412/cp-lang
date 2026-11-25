@@ -137,6 +137,11 @@ pub struct LambdaInfo {
     /// The fn it sits in; `None` for a top-level statement.
     pub owner: Option<FnId>,
 }
+/// A range with run-time ends: the variables that hold them, each inclusive; `None` is an open end.
+struct RangeInfo {
+    lo: Option<VarRef>,
+    hi: Option<VarRef>,
+}
 pub struct DomInfo {
     pub name: String,
     /// The variable that holds its size.
@@ -176,7 +181,8 @@ struct Cx<'a> {
     global_names: HashMap<String, LocalId>,
     ret_sets: HashMap<(FnId, usize), SetTy>,
     domains: Vec<DomInfo>,
-    doms: HashMap<String, usize>,
+    doms: HashMap<String, Ty>,
+    ranges: Vec<RangeInfo>,
     // per fn
     decl: Option<FnId>,
     generics: Vec<String>,
@@ -212,6 +218,7 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
         ret_sets: HashMap::new(),
         domains: Vec::new(),
         doms: HashMap::new(),
+        ranges: Vec::new(),
         decl: None,
         generics: Vec::new(),
         n_sets: 0,

@@ -34,6 +34,7 @@ core-02/fresh-type-block-int-escapes.cp
 core-02/function-values.cp
 core-02/generated-ctor-moves.cp
 core-02/let-keeps-range-fits.cp
+core-02/local-range-type-runtime-bound.cp
 core-02/owned-lent-same-type.cp
 core-02/plain-element-copies.cp
 core-02/range-storage-type.cp
@@ -65,6 +66,7 @@ core-04/anon-range-array.cp
 core-04/list-literal-cell-outside-let-range-traps.cp
 core-04/list-literal-cell-outside-param-range-traps.cp
 core-04/list-literal-for-narrow-param.cp
+core-04/range-bound-from-capped-lets.cp
 core-04/range-param-argument-traps.cp
 core-04/range-param-narrowing.cp
 core-04/range-type-widens.cp
@@ -241,6 +243,8 @@ next/o30_method_self_reads_global_alias.cp
 next/r01_range_field_store.cp
 next/r02_range_cells.cp
 next/r03_range_narrower.cp
+next/r04_range_runtime_ends.cp
+next/r05_range_read_contract.cp
 next/t01_basic.cp
 next/t02_fnfield.cp
 next/t03_list_of_fns.cp

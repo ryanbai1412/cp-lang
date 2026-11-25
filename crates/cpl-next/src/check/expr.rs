@@ -372,7 +372,9 @@ impl<'a> Cx<'a> {
     pub(super) fn expr(&mut self, e: &ast::Expr, want: Option<&Ty>) -> TExpr {
         let v = self.expr_as_typed(e, want);
         match self.shallow(&v.ty) {
-            have @ Ty::Range(..) if want.map(|w| self.shallow(w)).as_ref() != Some(&have) => {
+            have @ (Ty::Range(..) | Ty::RangeOf(_))
+                if want.map(|w| self.shallow(w)).as_ref() != Some(&have) =>
+            {
                 TExpr { ty: Ty::Int, ..v }
             }
             _ => v,
@@ -598,13 +600,8 @@ impl<'a> Cx<'a> {
                         && matches!(&base.kind, ExprKind::Name(n) if n == "read" && self.lookup(n).is_none()) =>
                 {
                     let mut pre = Vec::new();
-                    let v = if Self::range_of_values(&targs[0]) {
-                        let v = self.read_as(&Ty::Int, span);
-                        self.in_range(v, &targs[0], span)
-                    } else {
-                        let t = self.body_ty(&targs[0], span, &mut pre);
-                        self.read_as(&t, span)
-                    };
+                    let t = self.body_ty(&targs[0], span, &mut pre);
+                    let v = self.read_as(&t, span);
                     if pre.is_empty() {
                         v
                     } else {
@@ -900,8 +897,8 @@ impl<'a> Cx<'a> {
     }
     /// A name that is a domain: one declared in a body, or a type parameter used as one.
     pub(super) fn domain_named(&self, n: &str) -> Option<Ty> {
-        if let Some(d) = self.doms.get(n) {
-            return Some(Ty::Dom(*d));
+        if let Some(d @ Ty::Dom(_)) = self.doms.get(n) {
+            return Some(d.clone());
         }
         self.generics.iter().position(|g| g == n).map(Ty::Param)
     }

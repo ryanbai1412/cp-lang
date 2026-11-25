@@ -199,23 +199,8 @@ impl<'a> Cx<'a> {
                 let PatternKind::Name(name) = &pat.kind else {
                     return self.err(s.span, "slice: unsupported pattern");
                 };
-                // A `let` is stored once, so a range whose ends are not constants is checked here
-                // and the name is an `Int`.
-                let once = ty
-                    .as_ref()
-                    .filter(|t| !*mutable && Self::range_of_values(t));
-                let declared = match once {
-                    Some(_) => Some(Ty::Int),
-                    None => ty.as_ref().map(|t| self.body_ty(t, s.span, out)),
-                };
+                let declared = ty.as_ref().map(|t| self.body_ty(t, s.span, out));
                 let v = self.expr(init, declared.as_ref());
-                let v = match once {
-                    Some(t) => {
-                        let v = self.coerce(v, &Ty::Int);
-                        self.in_range(v, t, s.span)
-                    }
-                    None => v,
-                };
                 // `var a: [V]Int = 0` fills every slot: it is `Array.filled(0)`.
                 let fill = match (&declared, self.d.struct_named("Array")) {
                     (Some(array @ Ty::Struct(d, ts, _)), Some(arr))
@@ -698,17 +683,24 @@ impl<'a> Cx<'a> {
             len,
             owner: self.decl,
         });
-        self.doms.insert(name.to_string(), self.domains.len() - 1);
+        self.doms
+            .insert(name.to_string(), Ty::Dom(self.domains.len() - 1));
         self.domains.len() - 1
     }
     pub(super) fn plus_one(e: &ast::Expr) -> ast::Expr {
+        Self::and_one(e, BinOp::Add)
+    }
+    pub(super) fn minus_one(e: &ast::Expr) -> ast::Expr {
+        Self::and_one(e, BinOp::Sub)
+    }
+    fn and_one(e: &ast::Expr, op: BinOp) -> ast::Expr {
         let one = ast::Expr {
             kind: ExprKind::Int(1),
             span: e.span,
         };
         ast::Expr {
             kind: ExprKind::Binary {
-                op: BinOp::Add,
+                op,
                 op_span: e.span,
                 lhs: Box::new(e.clone()),
                 rhs: Box::new(one),
@@ -773,6 +765,39 @@ impl<'a> Cx<'a> {
                     *a = self.name_ranges(a, span, out);
                 }
             }
+            // The ends are values: they are worked out once, here, and the range gets a name.
+            TypeKind::Range { lo, hi, inclusive }
+                if decls::static_range(lo, hi, *inclusive).is_none() =>
+            {
+                let name = format!("$ends{}", self.ranges.len());
+                let mut end =
+                    |cx: &mut Self, e: &Option<Box<ast::Expr>>, which: &str, open: bool| {
+                        e.as_ref().map(|b| {
+                            let b = if open {
+                                Self::minus_one(b)
+                            } else {
+                                (**b).clone()
+                            };
+                            let b = cx.expr(&b, Some(&Ty::Int));
+                            let b = cx.coerce(b, &Ty::Int);
+                            let v = cx.bind(&format!("{name}${which}"), Ty::Int);
+                            out.push(TStmt::Let(v, b));
+                            v
+                        })
+                    };
+                let lo = end(self, lo, "lo", false);
+                let hi = end(self, hi, "hi", !*inclusive);
+                self.ranges.push(RangeInfo { lo, hi });
+                self.doms
+                    .insert(name.clone(), Ty::RangeOf(self.ranges.len() - 1));
+                t.kind = TypeKind::Named {
+                    name: ast::Name {
+                        text: name,
+                        span: t.span,
+                    },
+                    args: Vec::new(),
+                };
+            }
             _ => {}
         }
         t
@@ -786,50 +811,19 @@ impl<'a> Cx<'a> {
         }
         self.fresh_sets(&t)
     }
-    /// A range type with an end that is not a constant: `1..=n`.
-    pub(super) fn range_of_values(t: &ast::Type) -> bool {
-        matches!(&t.kind, TypeKind::Range { lo, hi, inclusive }
-            if decls::static_range(lo, hi, *inclusive).is_none())
-    }
-    /// A value bound at a range type whose ends are values is checked against them once, where it is made.
-    pub(super) fn in_range(&mut self, v: TExpr, t: &ast::Type, span: Span) -> TExpr {
-        let TypeKind::Range { lo, hi, inclusive } = &t.kind else {
-            return v;
-        };
-        let kind = if matches!(v.kind, TK::ReadInt) {
-            CheckKind::ReadRange
-        } else {
-            CheckKind::RangeStore
-        };
-        let end = |cx: &mut Self, e: &Option<Box<ast::Expr>>, open: bool| {
-            e.as_ref().map(|b| {
-                let b = cx.expr(b, Some(&Ty::Int));
-                let b = cx.coerce(b, &Ty::Int);
-                if open {
-                    let one = TExpr {
-                        kind: TK::Int(1),
-                        ty: Ty::Int,
-                        span,
-                    };
-                    cx.binary(BinOp::Sub, b, one, span)
-                } else {
-                    b
-                }
-            })
-        };
-        let lo = end(self, lo, false);
-        let hi = end(self, hi, !*inclusive);
-        self.checked_between(v, lo, hi, kind, span)
-    }
     /// `v`, after a check that it is between the two ends, each inclusive.
     pub(super) fn checked_between(
         &mut self,
         v: TExpr,
         lo: Option<TExpr>,
         hi: Option<TExpr>,
-        kind: CheckKind,
         span: Span,
     ) -> TExpr {
+        let kind = if matches!(v.kind, TK::ReadInt) {
+            CheckKind::ReadRange
+        } else {
+            CheckKind::RangeStore
+        };
         self.scopes.push(HashMap::new());
         let tmp = self.bind("$ranged", Ty::Int);
         let var = TExpr {
@@ -887,7 +881,7 @@ impl<'a> Cx<'a> {
                     span,
                 }
             }
-            want @ Ty::Range(..) => {
+            want @ (Ty::Range(..) | Ty::RangeOf(_)) => {
                 let v = self.read_as(&Ty::Int, span);
                 self.coerce(v, &want)
             }

@@ -50,9 +50,14 @@ impl Fx {
 /// R1: no part of the value lives on the heap, so using it is a copy.
 pub fn plain(d: &Decls, t: &Ty, depth: usize) -> bool {
     match t {
-        Ty::Int | Ty::Range(..) | Ty::Bool | Ty::Unit | Ty::Dom(_) | Ty::Fn(..) | Ty::Clo(_) => {
-            true
-        }
+        Ty::Int
+        | Ty::Range(..)
+        | Ty::RangeOf(_)
+        | Ty::Bool
+        | Ty::Unit
+        | Ty::Dom(_)
+        | Ty::Fn(..)
+        | Ty::Clo(_) => true,
         Ty::Struct(id, targs, sets) if depth < 8 => {
             let s = Subst { tys: targs, sets };
             d.s(*id)
@@ -210,7 +215,7 @@ impl Cx<'_> {
         let mut out = BTreeSet::new();
         if matches!(
             e.ty,
-            Ty::Int | Ty::Range(..) | Ty::Bool | Ty::Unit | Ty::Dom(_)
+            Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::Bool | Ty::Unit | Ty::Dom(_)
         ) {
             return out;
         }
