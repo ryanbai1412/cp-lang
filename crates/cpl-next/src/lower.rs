@@ -574,6 +574,31 @@ impl Lw<'_> {
                 let ord = self.spill(ord, out);
                 Expr { kind: ord.kind, ty }
             }
+            TK::DomHas(t, x) => {
+                let v = self.expr(x, out);
+                let v = self.spill(v, out);
+                let int = |kind| Expr { kind, ty: Ty::Int };
+                let op = |op, a: Expr<Ty>, b: Expr<Ty>, ty: Ty| Expr {
+                    kind: EK::Intr(op, vec![Arg::Value(a), Arg::Value(b)], 0),
+                    ty,
+                };
+                let (lo, len) = (int(EK::DomLo(t.clone())), int(EK::DomLen(t.clone())));
+                // `v - lo` is read only once `v` is at or after the first, so it cannot overflow.
+                let has = self.temp(Ty::Bool);
+                out.push(Stmt::Let(
+                    has,
+                    op(Intr::Ge, v.clone(), lo.clone(), Ty::Bool),
+                ));
+                let ord = op(Intr::Sub, v, lo, Ty::Int);
+                let within = op(Intr::Below, ord, len, Ty::Bool);
+                let read = Expr {
+                    kind: EK::Copy(Place::Local(has)),
+                    ty: Ty::Bool,
+                };
+                let then = vec![Stmt::Assign(Place::Local(has), within)];
+                out.push(Stmt::If(read.clone(), then, vec![]));
+                read
+            }
             TK::DomNth(t, x) => {
                 let v = self.expr(x, out);
                 let v = self.spill(v, out);
@@ -943,7 +968,8 @@ pub fn free_vars(e: &TExpr, used: &mut BTreeSet<VarRef>, bound: &mut BTreeSet<Va
         | TK::Neg(b)
         | TK::DomOrd(b)
         | TK::DomFrom(_, b)
-        | TK::DomNth(_, b) => free_vars(b, used, bound),
+        | TK::DomNth(_, b)
+        | TK::DomHas(_, b) => free_vars(b, used, bound),
         TK::Call { recv, args, .. } => {
             if let Some(r) = recv {
                 arg(r, used, bound);

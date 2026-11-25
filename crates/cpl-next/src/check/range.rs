@@ -62,6 +62,26 @@ impl Cx<'_> {
         };
         self.coerce(r, &want)
     }
+    /// `D.at(x)`: `Some(D(x))` when `x` is a position of `D`, else `None`.
+    pub(super) fn domain_at(&mut self, d: Ty, x: TExpr, span: Span) -> TExpr {
+        let opt = self.optional_ty(d.clone());
+        let mk = |kind, ty| TExpr { kind, ty, span };
+        let tmp = self.bind("$at", Ty::Int);
+        let read = || mk(TK::Var(tmp), Ty::Int);
+        let has = mk(TK::DomHas(d.clone(), Box::new(read())), Ty::Bool);
+        let pos = mk(TK::DomFrom(d.clone(), Box::new(read())), d.clone());
+        let yes = self.some(pos, opt.clone());
+        let none = vec![mk(TK::Bool(false), Ty::Bool), mk(TK::Unset, d)];
+        let no = mk(TK::Struct(none), opt.clone());
+        let pick = mk(
+            TK::If(Box::new(has), Box::new(yes), Box::new(no)),
+            opt.clone(),
+        );
+        mk(
+            TK::Block(vec![TStmt::Let(tmp, x)], Some(Box::new(pick))),
+            opt,
+        )
+    }
     /// A domain named as a value: its whole range (R04.2.21).
     pub(super) fn domain_value(&mut self, d: Ty, span: Span) -> TExpr {
         let int = |kind| TExpr {

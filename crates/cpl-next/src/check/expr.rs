@@ -585,6 +585,14 @@ impl<'a> Cx<'a> {
                     };
                 }
             }
+            // `D.at(x)`: the position with integer `x`, or `None` outside `D` (R04.2.8).
+            if let (Some(dty), "at", Some([x])) = (self.domain_named(n), name.text.as_str(), call) {
+                if self.lookup(n).is_none() {
+                    let x = self.expr(&x.value, Some(&Ty::Int));
+                    let x = self.coerce(x, &Ty::Int);
+                    return self.domain_at(dty, x, span);
+                }
+            }
         }
         // `Type.f(args)` or `Type<A>.f(args)`: a fn of the type with no receiver.
         let (ty_name, written) = match &base.kind {

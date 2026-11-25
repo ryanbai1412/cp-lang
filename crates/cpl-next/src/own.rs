@@ -934,6 +934,7 @@ impl Cx<'_> {
             | TK::Neg(x)
             | TK::DomFrom(_, x)
             | TK::DomNth(_, x)
+            | TK::DomHas(_, x)
             | TK::DomOrd(x)
             | TK::Ordinal(x)
             | TK::Variant(_, x)

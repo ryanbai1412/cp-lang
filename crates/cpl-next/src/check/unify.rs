@@ -324,11 +324,19 @@ impl<'a> Cx<'a> {
         self.fresh_sets(&t)
     }
     /// `T` when `t` is `?T`.
+    fn optional_id(&self) -> Option<StructId> {
+        self.d.core_struct("Optional")
+    }
+    /// `?t`.
+    pub(super) fn optional_ty(&self, t: Ty) -> Ty {
+        match self.optional_id() {
+            Some(id) => Ty::Struct(id, vec![t], Vec::new()),
+            None => Ty::Error,
+        }
+    }
     pub(super) fn optional_of(&self, t: &Ty) -> Option<Ty> {
         match self.shallow(t) {
-            Ty::Struct(d, ts, _) if Some(d) == self.d.core_struct("Optional") => {
-                Some(ts[0].clone())
-            }
+            Ty::Struct(d, ts, _) if Some(d) == self.optional_id() => Some(ts[0].clone()),
             _ => None,
         }
     }

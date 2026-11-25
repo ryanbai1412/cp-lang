@@ -77,6 +77,8 @@ pub enum TK {
     DomFrom(Ty, Box<TExpr>),
     /// `D.nth(k)`: the position `k` steps into `D`, checked; of a type that is not a domain, `k`.
     DomNth(Ty, Box<TExpr>),
+    /// `x in D`: whether the integer `x` is a position of `D`.
+    DomHas(Ty, Box<TExpr>),
     /// `Int(v)`: the integer of a position, 1 for the first of `1..=n`.
     DomOrd(Box<TExpr>),
     /// The characters of a string literal, as `Raw<Char>`.

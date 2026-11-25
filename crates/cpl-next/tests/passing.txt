@@ -164,6 +164,7 @@ core-03/spare-value-overflow.cp
 core-03/store-in-range-fits.cp
 core-03/structs-holding-each-other-is-an-error.cp
 core-04/anon-range-array.cp
+core-04/dom-at.cp
 core-04/dom-call-traps.cp
 core-04/dom-count.cp
 core-04/dom-empty-first-traps.cp
@@ -415,6 +416,12 @@ diagnostics/missing-type.cp
 diagnostics/planned-domain-list.cp
 diagnostics/two-expressions.cp
 lib-ops-ranges/bare-op-tuple.cp
+matrix/optional/domain_at--default_fn.cp
+matrix/optional/domain_at--default_loop.cp
+matrix/optional/domain_at--default_top.cp
+matrix/optional/domain_at--if_let_fn.cp
+matrix/optional/domain_at--if_let_loop.cp
+matrix/optional/domain_at--if_let_top.cp
 matrix/optional/int--default_fn.cp
 matrix/optional/int--default_loop.cp
 matrix/optional/int--default_top.cp
@@ -448,6 +455,7 @@ next/a_decl_02_field_default.cp
 next/a_decl_09_cache_field.cp
 next/a_dom_01_domain_values.cp
 next/a_dom_02_top_level_in_signatures.cp
+next/a_dom_03_at.cp
 next/a_enum_01_match_payloads.cp
 next/a_enum_02_default_arm.cp
 next/a_enum_03_heap_payload_moves.cp
