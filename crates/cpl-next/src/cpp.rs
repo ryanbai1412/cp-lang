@@ -29,6 +29,7 @@ const RUNTIME: &str = r#"#include <cstdint>
 #include <climits>
 #include <vector>
 struct cpl_unit {};
+struct cpl_char { uint8_t code; };
 template <class T> using cpl_raw = std::vector<T>;
 // The innermost line of the user's file that is running (`ir::Site`).
 static int cpl_at = 0;
@@ -81,6 +82,11 @@ template <class T> static inline cpl_raw<T> cpl_raw_new(int64_t n, const T& fill
     if (n > (int64_t(1) << 28)) cpl_trap("R0001", "storage larger than the memory limit");
     return cpl_raw<T>((size_t)n, fill);
 }
+static inline cpl_raw<cpl_char> cpl_raw_text(const char* s, size_t n) {
+    cpl_raw<cpl_char> r(n);
+    for (size_t i = 0; i < n; i++) r[i].code = (uint8_t)s[i];
+    return r;
+}
 template <class T> static inline T cpl_get(const cpl_raw<T>& r, int64_t i) {
     if (i < 0 || (size_t)i >= r.size()) cpl_trap("R0101", "read outside storage");
     return r[(size_t)i];
@@ -114,6 +120,8 @@ template <class T> struct cpl_body {
     template <class L> cpl_body(L& l) : env(&l), fn([](void* e, T x) -> int { return (*static_cast<L*>(e))(static_cast<T>(x)); }) {}
     int operator()(T x) const { return fn(env, static_cast<T>(x)); }
 };
+static inline void cpl_ev(cpl_char c) { fprintf(stderr, " %c", (char)c.code); }
+static inline void cpl_out(cpl_char c) { putchar((char)c.code); }
 static inline void cpl_ev(int64_t x) { fprintf(stderr, " %lld", (long long)x); }
 static inline void cpl_ev(bool b) { fputs(b ? " true" : " false", stderr); }
 static inline void cpl_out(int64_t x) { printf("%lld", (long long)x); }
@@ -311,7 +319,10 @@ fn const_ref_params(f: &Func<CTy>) -> Vec<bool> {
         .map(|(l, lent)| {
             !lent
                 && !written.contains(l)
-                && !matches!(f.locals[*l], CTy::Int | CTy::Bool | CTy::Unit | CTy::Dom(_))
+                && !matches!(
+                    f.locals[*l],
+                    CTy::Int | CTy::Bool | CTy::Char | CTy::Unit | CTy::Dom(_)
+                )
         })
         .collect()
 }
@@ -349,6 +360,7 @@ impl Emit<'_> {
         let n = match t {
             CTy::Int | CTy::Dom(_) | CTy::Error => "int64_t".to_string(),
             CTy::Bool => "bool".to_string(),
+            CTy::Char => "cpl_char".to_string(),
             CTy::Unit => "cpl_unit".to_string(),
             CTy::Raw(e) => format!("cpl_raw<{}>", self.name(e)),
             CTy::Ref(e) => format!("{}*", self.name(e)),
@@ -386,7 +398,7 @@ impl Emit<'_> {
     /// Spec R1: a value with no heap part is copied when passed, so the callee never sees it change.
     fn plain(&self, t: &CTy, depth: usize) -> bool {
         match t {
-            CTy::Int | CTy::Bool | CTy::Unit | CTy::Dom(_) => true,
+            CTy::Int | CTy::Bool | CTy::Char | CTy::Unit | CTy::Dom(_) => true,
             CTy::Struct(..) if depth < 8 => self
                 .p
                 .structs
@@ -460,6 +472,14 @@ impl Emit<'_> {
             EK::Int(i) if *i == i64::MIN => "INT64_MIN".to_string(),
             EK::Int(i) => format!("INT64_C({i})"),
             EK::Bool(b) => b.to_string(),
+            EK::Text(t) => {
+                let lit: String = t
+                    .bytes()
+                    .map(|b| format!("\\x{b:02x}"))
+                    .collect::<Vec<_>>()
+                    .join("\"\"");
+                format!("cpl_raw_text(\"{lit}\", {})", t.len())
+            }
             EK::Unit => "cpl_unit{}".to_string(),
             EK::DomLen(_) | EK::DomLo(_) => "/* unresolved domain value */".to_string(),
             EK::Copy(p) => self.place(p),
@@ -498,6 +518,8 @@ impl Emit<'_> {
                     Intr::Gt => bin(">"),
                     Intr::Ge => bin(">="),
                     Intr::Not => format!("(!{})", a[0]),
+                    Intr::CharOf => format!("cpl_char{{(uint8_t)({})}}", a[0]),
+                    Intr::CodeOf => format!("((int64_t)({}).code)", a[0]),
                     Intr::RawEmpty => format!("{}{{}}", self.names[&e.ty]),
                     Intr::RawNew => format!("cpl_raw_new({}, {})", a[0], a[1]),
                     Intr::RawGet => format!("cpl_get({}, {})", a[0], a[1]),

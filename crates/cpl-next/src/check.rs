@@ -74,6 +74,12 @@ pub enum TK {
     DomFrom(Ty, Box<TExpr>),
     /// `Int(v)`: the integer of a position, 1 for the first of `1..=n`.
     DomOrd(Box<TExpr>),
+    /// The characters of a string literal, as `Raw<Char>`.
+    Text(String),
+    /// `Char(i)` once `i` is known to be in `0..=127`.
+    CharOf(Box<TExpr>),
+    /// `Int(c)`: a character's code.
+    CodeOf(Box<TExpr>),
     /// A slot with no value yet: the payload of `None`.
     Unset,
     /// `v.ord`: how many positions come before this one (R04.2.22).
@@ -252,6 +258,12 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
             let v = cx.new_set();
             cx.ret_sets.insert((FnId(id), k), v);
         }
+    }
+    for (at, code, name) in &d.dup_fns {
+        let line = src[..(*at).min(src.len())].matches('\n').count() + 1;
+        cx.errors.push(format!(
+            "line {line}: {code}: `{name}` is already a fn; one name is one fn"
+        ));
     }
     for (i, s) in d.structs.iter().enumerate() {
         if let Some(f) = decls::field_holding_itself(d, StructId(i)) {

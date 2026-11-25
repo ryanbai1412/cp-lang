@@ -20,6 +20,7 @@ pub enum V {
     Unit,
     Int(i64),
     Bool(bool),
+    Char(u8),
     Agg(Vec<V>),
     /// Storage is shared until written, so a copy costs nothing until then.
     Raw(Rc<Store>),
@@ -334,6 +335,10 @@ impl<'a> Machine<'a> {
                         match self.expr(v, fp)? {
                             V::Int(i) => line.push_str(&format!(" {i}")),
                             V::Bool(b) => line.push_str(if b { " true" } else { " false" }),
+                            V::Char(c) => {
+                                line.push(' ');
+                                line.push(char::from(c));
+                            }
                             _ => line.push_str(" ?"),
                         }
                     }
@@ -346,6 +351,7 @@ impl<'a> Machine<'a> {
                             PrintPiece::Value(v) => match self.expr(v, fp)? {
                                 V::Int(i) => self.out.push_str(&i.to_string()),
                                 V::Bool(b) => self.out.push_str(if b { "true" } else { "false" }),
+                                V::Char(c) => self.out.push(char::from(c)),
                                 _ => return broken("print of a value of another kind"),
                             },
                         }
@@ -374,6 +380,7 @@ impl<'a> Machine<'a> {
         Ok(match &e.kind {
             EK::Int(i) => V::Int(*i),
             EK::Bool(b) => V::Bool(*b),
+            EK::Text(t) => V::Raw(Rc::new(Store::Any(t.bytes().map(V::Char).collect()))),
             EK::Unit => V::Unit,
             EK::DomLen(_) | EK::DomLo(_) => {
                 return broken("a domain value the link step did not resolve")
@@ -570,6 +577,16 @@ impl<'a> Machine<'a> {
             }
             Intr::InputLeft => V::Bool(!self.input.as_slice().is_empty()),
             Intr::Unset => V::Unit,
+            Intr::CharOf => V::Char(self.int(&args[0], fp)? as u8),
+            Intr::CodeOf => {
+                let Arg::Value(c) = &args[0] else {
+                    return broken("lent Char");
+                };
+                match self.expr(c, fp)? {
+                    V::Char(c) => V::Int(i64::from(c)),
+                    _ => return broken("the code of a non-Char"),
+                }
+            }
             Intr::ReadInt => match self
                 .input
                 .next()

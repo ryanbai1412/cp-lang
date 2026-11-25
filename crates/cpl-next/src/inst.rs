@@ -10,6 +10,7 @@ use std::collections::{BTreeSet, HashMap};
 pub enum CTy {
     Int,
     Bool,
+    Char,
     Unit,
     Raw(Box<CTy>),
     Ref(Box<CTy>),
@@ -214,6 +215,7 @@ impl Link<'_> {
         match t {
             Ty::Int | Ty::Range(..) | Ty::RangeOf(_) => CTy::Int,
             Ty::Bool => CTy::Bool,
+            Ty::Char => CTy::Char,
             Ty::Unit => CTy::Unit,
             Ty::Raw(e) => CTy::Raw(Box::new(self.ty(e, env))),
             Ty::Ref(e) => CTy::Ref(Box::new(self.ty(e, env))),
@@ -458,6 +460,7 @@ impl Link<'_> {
         let kind = match &e.kind {
             EK::Int(i) => EK::Int(*i),
             EK::Bool(b) => EK::Bool(*b),
+            EK::Text(t) => EK::Text(t.clone()),
             EK::Unit => EK::Unit,
             EK::Copy(p) => EK::Copy(p.clone()),
             EK::AddrOf(p) => EK::AddrOf(p.clone()),
@@ -528,6 +531,7 @@ fn check_finite(p: &mut Program) {
                 t,
                 CTy::Int
                     | CTy::Bool
+                    | CTy::Char
                     | CTy::Unit
                     | CTy::Raw(_)
                     | CTy::Ref(_)
@@ -1146,7 +1150,7 @@ fn thread_values(p: &mut Program, typed: &Typed) {
 /// leaving a fn of the user's file, and each write to one of its top-level bindings.
 pub fn add_events(p: &mut Program, typed: &Typed, d: &Decls, user_from: u32) {
     fn shown(t: &CTy) -> bool {
-        matches!(t, CTy::Int | CTy::Bool | CTy::Dom(_))
+        matches!(t, CTy::Int | CTy::Bool | CTy::Char | CTy::Dom(_))
     }
     fn block(b: Vec<Stmt<CTy>>, exit: Option<&str>, typed: &Typed) -> Vec<Stmt<CTy>> {
         let mut out = Vec::new();

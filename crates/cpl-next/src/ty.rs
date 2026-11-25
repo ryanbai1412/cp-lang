@@ -25,6 +25,8 @@ pub enum Ty {
     /// is a type of its own; its ends are values held where it is written (`check::RangeInfo`).
     RangeOf(usize),
     Bool,
+    /// An ASCII character, `0..=127`, one byte.
+    Char,
     Unit,
     Raw(Box<Ty>),
     /// A closure's view of a `var` of the fn around it. Made by lowering only.

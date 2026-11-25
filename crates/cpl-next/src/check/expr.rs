@@ -4,6 +4,10 @@ use super::*;
 
 impl<'a> Cx<'a> {
     pub(super) fn binary(&mut self, op: BinOp, l: TExpr, r: TExpr, span: Span) -> TExpr {
+        // `s + t` on strings is a new string (R02.3.3).
+        if op == BinOp::Add && self.is_str(&l.ty) && self.is_str(&r.ty) {
+            return self.lib_call("str_concat", vec![l, r], span);
+        }
         let want = if matches!(op, BinOp::And | BinOp::Or) {
             Ty::Bool
         } else {
@@ -82,6 +86,82 @@ impl<'a> Cx<'a> {
             sets.push(self.new_set());
         }
         FnRef { decl, targs, sets }
+    }
+    /// A call of the library fn `name` with arguments already typed.
+    pub(super) fn lib_call(&mut self, name: &str, args: Vec<TExpr>, span: Span) -> TExpr {
+        let Some(decl) = self.d.lib_fn(name) else {
+            self.err(span, format!("the library has no `{name}`"));
+            return TExpr {
+                kind: TK::Error,
+                ty: Ty::Error,
+                span,
+            };
+        };
+        let f = self.fnref(decl, Vec::new(), Vec::new());
+        let ty = self.ret_ty(&f);
+        let fd = self.d.f(f.decl);
+        let sub = Subst {
+            tys: &f.targs,
+            sets: &f.sets,
+        };
+        let params: Vec<Ty> = fd.params.iter().map(|p| sub.ty(&p.ty)).collect();
+        let args = args
+            .into_iter()
+            .zip(&params)
+            .map(|(a, p)| TArg::Value(self.coerce(a, p)))
+            .collect();
+        TExpr {
+            kind: TK::Call {
+                f,
+                recv: None,
+                args,
+            },
+            ty,
+            span,
+        }
+    }
+    /// One value of a `print`: a plain one joins `pieces`, one the library writes
+    /// (R10.3.2) becomes a call of its writer after what was gathered so far.
+    fn show_value(&mut self, v: TExpr, stmts: &mut Vec<TStmt>, pieces: &mut Vec<Piece>) {
+        let span = v.span;
+        let writer = match self.shallow(&v.ty) {
+            // A position prints as its integer (R04.2.15).
+            Ty::Dom(_) | Ty::Param(_) => {
+                pieces.push(Piece::Value(TExpr {
+                    kind: TK::DomOrd(Box::new(v)),
+                    ty: Ty::Int,
+                    span,
+                }));
+                return;
+            }
+            Ty::Int | Ty::Bool | Ty::Char | Ty::Error => {
+                pieces.push(Piece::Value(v));
+                return;
+            }
+            Ty::Struct(d, ..) => ["List", "Array", "Str"]
+                .into_iter()
+                .zip(["write_list", "write_array", "write_str"])
+                .find(|(ty, _)| Some(d) == self.d.struct_named(ty))
+                .map(|(_, f)| f),
+            _ => None,
+        };
+        let Some(writer) = writer else {
+            let t = self.show(&v.ty);
+            self.err(span, format!("slice: printing a `{t}`"));
+            return;
+        };
+        if !pieces.is_empty() {
+            stmts.push(TStmt::Expr(TExpr {
+                kind: TK::Print(std::mem::take(pieces)),
+                ty: Ty::Unit,
+                span,
+            }));
+        }
+        let call = self.lib_call(writer, vec![v], span);
+        stmts.push(TStmt::Expr(call));
+    }
+    fn is_str(&self, t: &Ty) -> bool {
+        matches!(self.shallow(t), Ty::Struct(d, ..) if Some(d) == self.d.struct_named("Str"))
     }
     pub(super) fn call_fn(
         &mut self,
@@ -397,6 +477,25 @@ impl<'a> Cx<'a> {
         match &e.kind {
             ExprKind::Int(i) => mk(TK::Int(*i as i64), Ty::Int),
             ExprKind::Bool(b) => mk(TK::Bool(*b), Ty::Bool),
+            ExprKind::Str(ps) if ps.iter().all(|p| matches!(p, StrPiece::Text(_))) => {
+                let text: String = ps
+                    .iter()
+                    .map(|p| match p {
+                        StrPiece::Text(t) => t.as_str(),
+                        _ => "",
+                    })
+                    .collect();
+                if !text.is_ascii() {
+                    self.err(span, "slice: a string with a character outside ASCII");
+                }
+                let n = mk(TK::Int(text.len() as i64), Ty::Int);
+                let raw = mk(TK::Text(text), Ty::Raw(Box::new(Ty::Char)));
+                self.lib_call("str_of", vec![raw, n], span)
+            }
+            ExprKind::Char(c) if c.is_ascii() => {
+                let code = mk(TK::Int(i64::from(*c as u8)), Ty::Int);
+                mk(TK::CharOf(Box::new(code)), Ty::Char)
+            }
             ExprKind::Paren(inner) => self.expr(inner, want),
             ExprKind::None => {
                 let ty = match want.filter(|w| self.optional_of(w).is_some()) {
@@ -485,25 +584,88 @@ impl<'a> Cx<'a> {
                 self.binary(*op, l, r, span)
             }
             ExprKind::Compare { first, rest } => {
-                // `a <= b < c` is `a <= b and b < c`; the slice re-evaluates `b`, so it must be simple.
+                let up = |o: &CmpOp| matches!(o, CmpOp::Lt | CmpOp::Le);
+                let down = |o: &CmpOp| matches!(o, CmpOp::Gt | CmpOp::Ge);
+                if rest.iter().any(|(o, _)| up(o)) && rest.iter().any(|(o, _)| down(o)) {
+                    self.err(
+                        span,
+                        format!(
+                            "{}: a chain that goes both up and down; write the two comparisons with `and`",
+                            cpl_diag::codes::MIXED_COMPARISON_CHAIN.0
+                        ),
+                    );
+                }
+                // `a <= b < c` is `a <= b and b < c` with `b` read once, and `c` not read
+                // when the first link is false (R01.5.3).
+                self.scopes.push(HashMap::new());
                 let mut prev = self.expr(first, None);
-                let mut acc: Option<TExpr> = None;
-                for (op, rhs) in rest {
+                let mut links: Vec<(Vec<TStmt>, TExpr)> = Vec::new();
+                for (k, (op, rhs)) in rest.iter().enumerate() {
                     let r = self.expr(rhs, Some(&prev.ty));
                     let r = self.coerce(r, &prev.ty.clone());
+                    if self.is_str(&prev.ty)
+                        && matches!(op, CmpOp::Eq | CmpOp::Ne)
+                        && rest.len() == 1
+                    {
+                        self.scopes.pop();
+                        let eq = self.lib_call("str_eq", vec![prev, r], span);
+                        return if *op == CmpOp::Eq {
+                            eq
+                        } else {
+                            mk(TK::Not(Box::new(eq)), Ty::Bool)
+                        };
+                    }
                     if !matches!(
                         self.shallow(&prev.ty),
-                        Ty::Int | Ty::Bool | Ty::Dom(_) | Ty::Param(_) | Ty::Error
+                        Ty::Int | Ty::Bool | Ty::Char | Ty::Dom(_) | Ty::Param(_) | Ty::Error
                     ) || matches!(op, CmpOp::In | CmpOp::NotIn)
                     {
                         self.err(span, "slice: comparison of this type is not supported");
                     }
-                    let c = mk(TK::Cmp(*op, Box::new(prev), Box::new(r.clone())), Ty::Bool);
-                    acc = Some(match acc {
-                        None => c,
-                        Some(a) => mk(TK::Bin(BinOp::And, Box::new(a), Box::new(c)), Ty::Bool),
-                    });
+                    // An operand two links share is held, so it is read once.
+                    let mut hold = Vec::new();
+                    let r = if k + 1 < rest.len() {
+                        let tmp = self.bind("$link", r.ty.clone());
+                        let read = mk(TK::Var(tmp), r.ty.clone());
+                        hold.push(TStmt::Let(tmp, r));
+                        read
+                    } else {
+                        r
+                    };
+                    // Characters are ordered by code (R02.2.1).
+                    let side = |x: TExpr| {
+                        if x.ty == Ty::Char {
+                            mk(TK::CodeOf(Box::new(x)), Ty::Int)
+                        } else {
+                            x
+                        }
+                    };
+                    let c = mk(
+                        TK::Cmp(*op, Box::new(side(prev)), Box::new(side(r.clone()))),
+                        Ty::Bool,
+                    );
+                    links.push((hold, c));
                     prev = r;
+                }
+                self.scopes.pop();
+                let mut acc: Option<TExpr> = None;
+                for (hold, c) in links.into_iter().rev() {
+                    let c = match acc {
+                        None => c,
+                        Some(rest) => mk(
+                            TK::If(
+                                Box::new(c),
+                                Box::new(rest),
+                                Box::new(mk(TK::Bool(false), Ty::Bool)),
+                            ),
+                            Ty::Bool,
+                        ),
+                    };
+                    acc = Some(if hold.is_empty() {
+                        c
+                    } else {
+                        mk(TK::Block(hold, Some(Box::new(c))), Ty::Bool)
+                    });
                 }
                 acc.unwrap_or(prev)
             }
@@ -559,7 +721,9 @@ impl<'a> Cx<'a> {
                 ExprKind::Field { base, name } => self.member(base, name, Some(args), span, want),
                 // `write` is `print` without the line end; the slice uses it to write `print` for containers in the library.
                 ExprKind::Name(n) if (n == "print" || n == "write") && self.lookup(n).is_none() => {
-                    let newline = n == "print";
+                    // Text and plain values gather into one `Print`; a value the library
+                    // writes ends the one before it and is a call of its writer.
+                    let mut stmts = Vec::new();
                     let mut pieces = Vec::new();
                     for (k, a) in args.iter().enumerate() {
                         if k > 0 {
@@ -572,13 +736,7 @@ impl<'a> Cx<'a> {
                                         StrPiece::Text(t) => pieces.push(Piece::Text(t.clone())),
                                         StrPiece::Expr(x) => {
                                             let v = self.expr(x, None);
-                                            if !matches!(
-                                                self.shallow(&v.ty),
-                                                Ty::Int | Ty::Bool | Ty::Error
-                                            ) {
-                                                self.err(x.span, "slice: only Int and Bool print");
-                                            }
-                                            pieces.push(Piece::Value(v));
+                                            self.show_value(v, &mut stmts, &mut pieces);
                                         }
                                         StrPiece::Spec(..) => {
                                             self.err(span, "slice: no format specs")
@@ -587,83 +745,64 @@ impl<'a> Cx<'a> {
                                 }
                             }
                             _ => {
-                                {
-                                    let v = self.expr(&a.value, None);
-                                    // A list or array prints through the library's own fn.
-                                    let via = match self.shallow(&v.ty) {
-                                        Ty::Struct(d, ..)
-                                            if Some(d) == self.d.struct_named("List") =>
-                                        {
-                                            Some("write_list")
-                                        }
-                                        Ty::Struct(d, ..)
-                                            if Some(d) == self.d.struct_named("Array") =>
-                                        {
-                                            Some("write_array")
-                                        }
-                                        _ => None,
-                                    };
-                                    if let (Some(via), 1) =
-                                        (via.and_then(|n| self.d.fn_named(n)), args.len())
-                                    {
-                                        let f = self.fnref(via, Vec::new(), Vec::new());
-                                        let fd = self.d.f(f.decl);
-                                        let pt = Subst {
-                                            tys: &f.targs,
-                                            sets: &f.sets,
-                                        }
-                                        .ty(&fd.params[0].ty);
-                                        let v = self.coerce(v, &pt);
-                                        let call = TExpr {
-                                            kind: TK::Call {
-                                                f,
-                                                recv: None,
-                                                args: vec![TArg::Value(v)],
-                                            },
-                                            ty: Ty::Unit,
-                                            span,
-                                        };
-                                        let end = TExpr {
-                                            kind: TK::Print(if newline {
-                                                vec![Piece::Text("\n".into())]
-                                            } else {
-                                                vec![]
-                                            }),
-                                            ty: Ty::Unit,
-                                            span,
-                                        };
-                                        return mk(
-                                            TK::Block(vec![TStmt::Expr(call)], Some(Box::new(end))),
-                                            Ty::Unit,
-                                        );
-                                    }
-                                    // A position prints as its integer (R04.2.15).
-                                    let v = match self.shallow(&v.ty) {
-                                        Ty::Dom(_) | Ty::Param(_) => {
-                                            mk(TK::DomOrd(Box::new(v)), Ty::Int)
-                                        }
-                                        Ty::Int | Ty::Bool | Ty::Error => v,
-                                        other => {
-                                            let t = self.show(&other);
-                                            self.err(
-                                                a.value.span,
-                                                format!("slice: printing a `{t}`"),
-                                            );
-                                            v
-                                        }
-                                    };
-                                    pieces.push(Piece::Value(v));
-                                }
+                                let v = self.expr(&a.value, None);
+                                self.show_value(v, &mut stmts, &mut pieces);
                             }
                         }
                     }
-                    if newline {
+                    if n == "print" {
                         pieces.push(Piece::Text("\n".into()));
                     }
-                    mk(TK::Print(pieces), Ty::Unit)
+                    let last = mk(TK::Print(pieces), Ty::Unit);
+                    if stmts.is_empty() {
+                        last
+                    } else {
+                        mk(TK::Block(stmts, Some(Box::new(last))), Ty::Unit)
+                    }
+                }
+                ExprKind::Name(n) if n == "Char" && args.len() == 1 => {
+                    let v = self.expr(&args[0].value, Some(&Ty::Int));
+                    let v = self.coerce(v, &Ty::Int);
+                    self.scopes.push(HashMap::new());
+                    let tmp = self.bind("$code", Ty::Int);
+                    self.scopes.pop();
+                    let read = mk(TK::Var(tmp), Ty::Int);
+                    let lo = mk(
+                        TK::Cmp(
+                            CmpOp::Le,
+                            Box::new(mk(TK::Int(0), Ty::Int)),
+                            Box::new(read.clone()),
+                        ),
+                        Ty::Bool,
+                    );
+                    let hi = mk(
+                        TK::Cmp(
+                            CmpOp::Le,
+                            Box::new(read.clone()),
+                            Box::new(mk(TK::Int(127), Ty::Int)),
+                        ),
+                        Ty::Bool,
+                    );
+                    let ok = mk(TK::Bin(BinOp::And, Box::new(lo), Box::new(hi)), Ty::Bool);
+                    let check = TStmt::Assert(
+                        ok,
+                        "a `Char` is 0..=127".to_string(),
+                        span,
+                        CheckKind::RangeStore,
+                    );
+                    mk(
+                        TK::Block(
+                            vec![TStmt::Let(tmp, v), check],
+                            Some(Box::new(mk(TK::CharOf(Box::new(read)), Ty::Char))),
+                        ),
+                        Ty::Char,
+                    )
                 }
                 ExprKind::Name(n) if n == "Int" && args.len() == 1 => {
                     let v = self.expr(&args[0].value, None);
+                    if self.shallow(&v.ty) == Ty::Char {
+                        return mk(TK::CodeOf(Box::new(v)), Ty::Int);
+                    }
                     if !matches!(
                         self.shallow(&v.ty),
                         Ty::Dom(_) | Ty::Param(_) | Ty::Int | Ty::Error

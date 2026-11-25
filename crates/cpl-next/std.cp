@@ -73,6 +73,50 @@ fn write_array<D>(xs: [D]Int):
         write(x)
         first = false
 
+// A flat sequence of `Char` (R02.3).
+struct Str:
+    var chars: List<Char>
+
+    @get fn len(self) -> Int:
+        chars.len
+
+    fn get(self, i: Int) -> Char:
+        chars.get(i)
+
+    fn set(mut self, i: Int, c: Char):
+        chars.set(i, c)
+
+    fn each(self) -> yields Char:
+        for c in chars: yield c
+
+    fn push(mut self, c: Char):
+        chars.push(c)
+
+// A string literal: its characters and how many there are. The literal's storage is lent,
+// so the string gets its own.
+fn str_of(text: Raw<Char>, n: Int) -> Str:
+    var buf = raw_new(n, Char(0))
+    for i in 0..n: raw_set(mut buf, i, raw_get(text, i))
+    Str(List(buf, n, n))
+
+fn str_concat(a: Str, b: Str) -> Str:
+    var out = Str(List.new())
+    for c in a: out.push(c)
+    for c in b: out.push(c)
+    out
+
+fn str_eq(a: Str, b: Str) -> Bool:
+    if a.len != b.len: return false
+    for i in 0..a.len:
+        if a.get(i) != b.get(i): return false
+    true
+
+fn write_str(s: Str):
+    for c in s: write(c)
+
+fn yes(b: Bool) -> Str:
+    if b: "YES" else: "NO"
+
 // `?T`: `T` or `None`. `val` is read only when `some`.
 struct Optional<T>:
     some: Bool

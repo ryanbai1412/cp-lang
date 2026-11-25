@@ -37,6 +37,10 @@ pub enum Intr {
     ReadInt,
     /// Whether the input has another token.
     InputLeft,
+    /// The character with a code the checker has shown is in `0..=127`.
+    CharOf,
+    /// A character's code.
+    CodeOf,
     /// A slot with no value yet, of the type it is given. Never read before it is stored to.
     Unset,
 }
@@ -108,6 +112,8 @@ pub enum EK<T> {
     Copy(Place),
     /// A reference to a `var`, for a closure to capture. The closure is then lent.
     AddrOf(Place),
+    /// The characters of a string literal, as storage.
+    Text(String),
     MakeStruct(Vec<Expr<T>>),
     /// A closure value: its captures, in order. The closure is named by the type.
     MakeClosure(Vec<Expr<T>>),

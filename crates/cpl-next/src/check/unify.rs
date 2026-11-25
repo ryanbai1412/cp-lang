@@ -218,6 +218,7 @@ impl<'a> Cx<'a> {
             Ty::Range(lo, hi) => format!("{lo}..={hi}"),
             Ty::RangeOf(_) => "a range with run-time ends".into(),
             Ty::Bool => "Bool".into(),
+            Ty::Char => "Char".into(),
             Ty::Unit => "()".into(),
             Ty::Raw(e) => format!("Raw<{}>", self.show(&e)),
             Ty::Ref(e) => format!("&{}", self.show(&e)),

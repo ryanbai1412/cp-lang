@@ -1065,6 +1065,18 @@ impl<'a> Cx<'a> {
                 }
             }
         }
+        // Keys never wrap (R07.2.17).
+        if let TK::Neg(k) = &i.kind {
+            if let TK::Int(k) = k.kind {
+                self.err(
+                    i.span,
+                    format!(
+                        "{}: `-{k}` is never a key: keys do not wrap; count from `.len`",
+                        cpl_diag::codes::NEGATIVE_LITERAL_INDEX.0
+                    ),
+                );
+            }
+        }
         i
     }
     /// An expression that names storage: a variable, or a field of one.

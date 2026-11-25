@@ -14,15 +14,15 @@ core-05/generic-wrapper-of-a-plain-value-lends-nothing.cp	wrong-reject	own: line
 core-05/param-unchanged-by-a-callee-writing-its-source.cp	wrong-reject	own: line 9: E0602: `a` is lent to `f` for this call, and the call also writes it another way
 core-05/param-unchanged-by-a-write-to-its-global-source.cp	wrong-reject	own: line 7: E0602: `a` is lent to `f` for this call, and the call also writes it another way
 core-05/plain-tuple-copies.cp	wrong-reject	check: line 5: E0405: field `Tuple2._0` is fixed (not `var`) and cannot be assigned
+core-05/store-into-mut-param.cp	wrong-accept	wanted E0603 on line 3, ran and printed: 
 core-06/getter-called-with-parens.cp	wrong-accept	wanted E0304 on line 4, ran and printed: 3
 core-06/lint-not-on-a-fn.cp	wrong-accept	wanted E0505 on line 4, ran and printed: 1
 core-06/named-only-not-positional.cp	wrong-accept	wanted E0303 on line 4, ran and printed: 9
-core-06/overloads-by-label-set-one-label-set-twice-clashes.cp	wrong-accept	wanted E0702 on line 5, ran and printed: 
 core-07/computed-negative-key-traps.cp	wrong-trap	wanted R0101 on line 6, got: trap: R0401: line 6: index out of range
-core-07/negative-literal-index-is-an-error.cp	wrong-accept	wanted E0321 on line 5, ran and printed: 
 core-07/yielded-closure-in-struct-field-writes-generator-local.cp	split	canonical IR: exit Some(101): 
 core-07/yielded-closure-in-struct-writes-generator-local.cp	split	canonical IR: exit Some(101): 
 core-08/ambiguous-method.cp	wrong-accept	wanted E0701 on line 12, ran and printed: 1
+core-08/monomorphized.cp	wrong-reject	own: line 3: E0603: this returns a value that borrows `x`: `x` is lent by the caller; return a `.clone()`
 core-08/trait-alias-no-impl.cp	wrong-accept	wanted E0501 on line 7, ran and printed: 
 core-09/checked-index-trap.cp	wrong-trap	wanted R0101 on line 6, got: trap: R0401: line 6: index out of range
 core-10/bool-not-print.cp	wrong-accept	wanted E0606 on line 3, ran and printed: true

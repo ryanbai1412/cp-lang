@@ -21,6 +21,8 @@ pub struct FnDecl {
     pub bounds: Vec<(usize, TraitId)>,
     /// Without `self`.
     pub params: Vec<Param>,
+    /// The names of the parameters passed only by name.
+    pub labels: Vec<String>,
     pub ret: Ty,
     /// Implicit set parameters: one per fn type in the parameters.
     pub n_sets: usize,
@@ -81,6 +83,10 @@ pub struct Decls {
     pub names: HashMap<String, Named>,
     pub struct_sets: HashMap<StructId, usize>,
     pub errors: Vec<String>,
+    /// Library fns whose names the program reuses.
+    pub shadowed: HashMap<String, FnId>,
+    /// A fn whose name was already a fn: where, the code, the name.
+    pub dup_fns: Vec<(usize, &'static str, String)>,
 }
 
 /// Where a method call resolved to.
@@ -102,6 +108,13 @@ impl Decls {
             Some(Named::Fn(f)) => Some(*f),
             _ => None,
         }
+    }
+    /// The library's fn of this name, whatever the program calls its own.
+    pub fn lib_fn(&self, name: &str) -> Option<FnId> {
+        self.shadowed
+            .get(name)
+            .copied()
+            .or_else(|| self.fn_named(name))
     }
     pub fn struct_named(&self, name: &str) -> Option<StructId> {
         struct_named(&self.names, name)
@@ -205,6 +218,11 @@ fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<String>) -> Ty {
             match n {
                 "Int" => Ty::Int,
                 "Bool" => Ty::Bool,
+                "Char" => Ty::Char,
+                "Str" if struct_named(cx.names, "Str").is_none() => {
+                    errors.push("`Str` needs the library's `Str`".to_string());
+                    Ty::Error
+                }
                 "Raw" if a.len() == 1 => Ty::Raw(Box::new(a.remove(0))),
                 _ => match struct_named(cx.names, n) {
                     // Set arguments of a struct named in a signature are fresh parameters.
@@ -488,7 +506,33 @@ pub fn collect(items: &[(u32, Vec<ast::Stmt>)]) -> (Decls, Vec<(u32, ast::Stmt)>
             }
             (StmtKind::Fn(f), _) => {
                 let fid = add_fn(&mut d, item, s, f, None, &[], 0);
-                d.names.insert(f.name.text.clone(), Named::Fn(fid));
+                let before = d.names.insert(f.name.text.clone(), Named::Fn(fid));
+                // A program may reuse a library fn's name; until modules give the library its
+                // own scope, that is told by where the first one is written.
+                let lib_end = crate::STD.len();
+                let first = match before {
+                    Some(Named::Fn(first)) => Some(first),
+                    _ => None,
+                };
+                if let Some(first) = first.filter(|x| (d.f(*x).item as usize) < lib_end) {
+                    d.shadowed.entry(f.name.text.clone()).or_insert(first);
+                }
+                if let Some(first) = first.filter(|x| d.f(*x).item as usize >= lib_end) {
+                    // One name and one set of labels is one fn: nothing is chosen by
+                    // argument type (R02.11.3, R06.1.6).
+                    let labels = |f: FnId| -> Vec<&str> {
+                        let mut ls: Vec<&str> = d.f(f).labels.iter().map(String::as_str).collect();
+                        ls.sort_unstable();
+                        ls
+                    };
+                    if labels(first) != labels(fid) {
+                        d.errors
+                            .push("slice: fns of one name told apart by their labels".to_string());
+                    }
+                    let code = cpl_diag::codes::OVERLOAD_BY_TYPE;
+                    d.dup_fns
+                        .push(((item + s.span.start) as usize, code.0, f.name.text.clone()));
+                }
             }
             _ => {}
         }
@@ -593,6 +637,12 @@ fn add_fn(
         generics,
         bounds,
         params,
+        labels: f
+            .params
+            .iter()
+            .filter(|p| p.named_only)
+            .map(|p| p.label.as_ref().unwrap_or(&p.name).text.clone())
+            .collect(),
         ret,
         n_sets,
         n_ret_sets,

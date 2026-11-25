@@ -54,6 +54,7 @@ pub fn plain(d: &Decls, t: &Ty, depth: usize) -> bool {
         | Ty::Range(..)
         | Ty::RangeOf(_)
         | Ty::Bool
+        | Ty::Char
         | Ty::Unit
         | Ty::Dom(_)
         | Ty::Fn(..)
@@ -223,7 +224,7 @@ impl Cx<'_> {
         let mut out = BTreeSet::new();
         if matches!(
             e.ty,
-            Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::Bool | Ty::Unit | Ty::Dom(_)
+            Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::Bool | Ty::Char | Ty::Unit | Ty::Dom(_)
         ) {
             return out;
         }
@@ -716,6 +717,7 @@ impl Cx<'_> {
             | TK::Bool(_)
             | TK::Unit
             | TK::Unset
+            | TK::Text(_)
             | TK::ReadInt
             | TK::DomLen(_)
             | TK::FnItem(_)
@@ -795,6 +797,8 @@ impl Cx<'_> {
             TK::Inject(x)
             | TK::Widen(x)
             | TK::Not(x)
+            | TK::CharOf(x)
+            | TK::CodeOf(x)
             | TK::Neg(x)
             | TK::DomFrom(_, x)
             | TK::DomOrd(x)

@@ -56,6 +56,8 @@ impl<'a> Cx<'a> {
             | TK::Inject(b)
             | TK::Widen(b)
             | TK::Not(b)
+            | TK::CharOf(b)
+            | TK::CodeOf(b)
             | TK::Neg(b)
             | TK::DomOrd(b)
             | TK::Ordinal(b) => self.zonk_expr(b),
@@ -106,6 +108,7 @@ impl<'a> Cx<'a> {
             | TK::Bool(_)
             | TK::Unit
             | TK::Unset
+            | TK::Text(_)
             | TK::Var(_)
             | TK::ReadInt
             | TK::Error => {}

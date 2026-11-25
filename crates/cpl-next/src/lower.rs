@@ -130,6 +130,7 @@ fn pure<T>(e: &Expr<T>) -> bool {
     match &e.kind {
         EK::Int(_)
         | EK::Bool(_)
+        | EK::Text(_)
         | EK::Unit
         | EK::Copy(_)
         | EK::AddrOf(_)
@@ -301,6 +302,7 @@ impl Lw<'_> {
             TK::Int(i) => mk(EK::Int(*i)),
             TK::Bool(b) => mk(EK::Bool(*b)),
             TK::Unit | TK::Error => mk(EK::Unit),
+            TK::Text(t) => mk(EK::Text(t.clone())),
             TK::Unset => mk(EK::Intr(Intr::Unset, vec![], 0)),
             TK::Var(_) | TK::Field(..) => {
                 let p = self.place(e, out);
@@ -423,6 +425,14 @@ impl Lw<'_> {
                 };
                 mk(EK::Intr(i, vs.into_iter().map(Arg::Value).collect(), site))
             }
+            TK::CharOf(x) => {
+                let v = self.expr(x, out);
+                mk(EK::Intr(Intr::CharOf, vec![Arg::Value(v)], site))
+            }
+            TK::CodeOf(x) => {
+                let v = self.expr(x, out);
+                mk(EK::Intr(Intr::CodeOf, vec![Arg::Value(v)], site))
+            }
             TK::Not(x) => {
                 let v = self.expr(x, out);
                 mk(EK::Intr(Intr::Not, vec![Arg::Value(v)], site))
@@ -474,7 +484,7 @@ impl Lw<'_> {
                 // Checked here and not in the checker: a variable's type may be settled only at the end of the file.
                 if vals
                     .iter()
-                    .any(|v| !matches!(v.ty, Ty::Int | Ty::Bool | Ty::Error))
+                    .any(|v| !matches!(v.ty, Ty::Int | Ty::Bool | Ty::Char | Ty::Error))
                 {
                     self.errors.push("this value cannot be printed".into());
                 }
@@ -880,6 +890,8 @@ pub fn free_vars(e: &TExpr, used: &mut BTreeSet<VarRef>, bound: &mut BTreeSet<Va
         | TK::Inject(b)
         | TK::Widen(b)
         | TK::Not(b)
+        | TK::CharOf(b)
+        | TK::CodeOf(b)
         | TK::Neg(b)
         | TK::DomOrd(b)
         | TK::DomFrom(_, b) => free_vars(b, used, bound),
