@@ -13,13 +13,13 @@
   "cpl_ir": 445800,
   "cpl_json": 15200,
   "cpl_judge": 5900,
-  "cpl_lint": 129900,
+  "cpl_lint": 128100,
   "cpl_lsp": 67900,
   "cpl_rt": 500,
   "cpl_syntax": 154000,
   "cpl_wasm": 7400,
   "data (std source, strings)": 206300,
   "dlmalloc": 3500,
-  "hashbrown": 12400,
+  "hashbrown": 12100,
   "std": 5400
 }
