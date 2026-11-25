@@ -159,7 +159,7 @@ struct Evaluated {
 /// one call at max input, with its `O(..)` when that is short, if every
 /// loop has a count and every call a documented cost that can be evaluated.
 pub(super) fn fn_call_costs(
-    db: &mut cpl_check::Session,
+    db: &mut cpl_facade::Session,
     uri: &str,
     f: &cpl_lint::ProvenFn,
     facts: &Proven,
@@ -196,7 +196,7 @@ pub(super) fn fn_call_costs(
 /// often it runs; the steps of those that can be evaluated, by span, with
 /// their `O(..)` terms; and whether any call has a documented cost.
 fn fn_documented(
-    db: &mut cpl_check::Session,
+    db: &mut cpl_facade::Session,
     uri: &str,
     f: &cpl_lint::ProvenFn,
     facts: &Proven,
@@ -295,7 +295,7 @@ fn fn_documented(
 /// the file it calls; `None` if a loop or call is uncounted. With it, the
 /// `O(..)` terms of the calls with a stated cost.
 fn fn_extra(
-    db: &mut cpl_check::Session,
+    db: &mut cpl_facade::Session,
     uri: &str,
     f: &cpl_lint::ProvenFn,
     evaluated: &[Evaluated],

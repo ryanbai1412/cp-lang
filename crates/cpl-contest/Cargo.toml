@@ -8,11 +8,9 @@ license.workspace = true
 
 [dependencies]
 cpl-config.workspace = true
-cpl-check.workspace = true
-cpl-codegen.workspace = true
 cpl-diag.workspace = true
+cpl-facade.workspace = true
 cpl-env.workspace = true
-cpl-ir.workspace = true
 cpl-json.workspace = true
 cpl-wait.workspace = true
 cpl-judge.workspace = true

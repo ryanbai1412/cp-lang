@@ -7,7 +7,7 @@
 
 use crate::std_fn;
 use crate::File;
-use cpl_check::{RangeEnds, Ty};
+use cpl_facade::today::{RangeEnds, Ty};
 use cpl_syntax::ast::{BinOp, Expr, ExprKind, PatternKind, StmtKind, Type, UnOp};
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
@@ -72,7 +72,7 @@ pub(crate) struct Bounds<'f> {
     /// Fns the program declares, which hide the prelude's `min`, `max`, `abs`.
     fns: Rc<HashSet<String>>,
     /// How each name the prover can reason about got its value.
-    defs: cpl_check::Overflow,
+    defs: cpl_facade::today::Overflow,
     /// What a condition proves about `a - b` for two bounded names, which
     /// their own intervals cannot say (`lo < hi` makes `hi - lo` positive).
     diffs: HashMap<(String, String), Interval>,
@@ -921,7 +921,7 @@ impl<'f> Bounds<'f> {
 
     /// The values `a op b` can take.
     pub(crate) fn combine(op: BinOp, a: Interval, b: Interval) -> Option<Interval> {
-        let (lo, hi) = cpl_check::interval::combine(op, (a.lo, a.hi), (b.lo, b.hi))?;
+        let (lo, hi) = cpl_facade::today::interval::combine(op, (a.lo, a.hi), (b.lo, b.hi))?;
         Some(Interval { lo, hi })
     }
 
@@ -993,7 +993,7 @@ pub(crate) fn row_root(e: &Expr) -> Option<&str> {
 /// Whether every built-in list or string method called `method` leaves its
 /// receiver as it was, so a call to it changes no length.
 pub(crate) fn keeps_len(method: &str) -> bool {
-    use cpl_check::{builtin_members, Receiver};
+    use cpl_facade::today::{builtin_members, Receiver};
     // The catalog only says whether a method mutates; these only move or
     // overwrite elements.
     const IN_PLACE: [&str; 4] = [std_fn::SORT, std_fn::REVERSE, "swap", "fill"];

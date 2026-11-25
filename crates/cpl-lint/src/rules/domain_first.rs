@@ -6,7 +6,7 @@
 use super::bounds::Bounds;
 use crate::walk::{unparen, Visitor};
 use crate::{File, Finding, Lint, DOMAIN_EMPTY_FIRST_LAST, UNWRAP_ON_POSSIBLY_EMPTY};
-use cpl_check::Ty;
+use cpl_facade::today::Ty;
 use cpl_diag::msgs::lint_rules;
 use cpl_diag::Span;
 use cpl_syntax::ast::{Expr, ExprKind, Pattern, PatternKind, StmtKind};

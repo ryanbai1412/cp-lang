@@ -255,11 +255,11 @@ pub(super) struct ReadFacts {
     pub(super) chars: HashSet<Span>,
     /// The checker's facts about `src`, for what each written type
     /// resolves to.
-    pub(super) facts: Option<std::sync::Arc<cpl_check::Facts>>,
+    pub(super) facts: Option<std::sync::Arc<cpl_facade::today::Facts>>,
 }
 
 pub(super) fn read_types(src: &str) -> ReadFacts {
-    let mut db = cpl_check::Session::new();
+    let mut db = cpl_facade::Session::default();
     db.set_file("input.cp", src);
     let Some(facts) = db.facts("input.cp") else {
         return ReadFacts::default();
@@ -267,7 +267,7 @@ pub(super) fn read_types(src: &str) -> ReadFacts {
     let whole = Span::new(0, src.len() as u32);
     let mut out = ReadFacts::default();
     for (span, ty) in facts.types_in(whole) {
-        if *ty == cpl_check::Ty::Char {
+        if *ty == cpl_facade::today::Ty::Char {
             out.chars.insert(span);
         }
         let text = &src[span_range(span)];
@@ -275,7 +275,7 @@ pub(super) fn read_types(src: &str) -> ReadFacts {
             text.strip_prefix(name)
                 .is_some_and(|rest| rest.trim_start().starts_with('('))
         };
-        if (text == "read()" || called("ask")) && !ty.is_vague() && *ty != cpl_check::Ty::Error {
+        if (text == "read()" || called("ask")) && !ty.is_vague() && *ty != cpl_facade::today::Ty::Error {
             out.reads.insert(span, format!("let _: {ty} = read()"));
         }
     }
@@ -723,16 +723,16 @@ pub(super) fn read_gen(expr: &Expr) -> Option<String> {
 
 /// `src` lowered to print what `func()` makes after reading the input
 /// above `line`. `None` when it does not build.
-pub(super) fn gen_program(src: &str, func: &str, line: u32) -> Option<cpl_ir::Program> {
+pub(super) fn gen_program(src: &str, func: &str, line: u32) -> Option<cpl_facade::Program> {
     let name = "input.cp";
-    let mut db = cpl_check::Session::new();
+    let mut db = cpl_facade::Session::default();
     db.set_file(name, src);
     let analysis = db.analyze(name)?;
     let is_error = |d: &cpl_diag::Diagnostic| d.severity == cpl_diag::Severity::Error;
     if analysis.diagnostics.iter().any(is_error) {
         return None;
     }
-    cpl_ir::lower_gen_read(&analysis, func, line).ok()
+    cpl_facade::today::program(&analysis, &cpl_facade::Job::of(cpl_facade::Root::GeneratorRead(func.to_string(), line))).ok()
 }
 
 /// The type a `let` that reads gives its value, and the `none` of a

@@ -4,18 +4,18 @@
 /// Each top-level value's representation, and the most bytes the
 /// fixed-size ones take with the names of those that grow.
 pub struct Storage {
-    pub rows: Vec<(String, cpl_check::Representation)>,
+    pub rows: Vec<(String, cpl_facade::today::Representation)>,
     pub total: Option<(u128, Vec<String>)>,
 }
 
 /// Each top-level value's representation, and the most bytes the fixed-size
 /// ones take with the names of those that grow: the checker's query, the
 /// data hover shows.
-pub fn storage(db: &mut cpl_check::Session, path: &str) -> Storage {
+pub fn storage(db: &mut cpl_facade::Session, path: &str) -> Storage {
     let rows = db
         .symbols(path)
         .into_iter()
-        .filter(|s| matches!(s.kind, cpl_check::DeclKind::Value))
+        .filter(|s| matches!(s.kind, cpl_facade::today::DeclKind::Value))
         .filter_map(|s| Some((s.name, db.representation(path, s.name_span.start)?)))
         .collect();
     let total = db
@@ -25,7 +25,7 @@ pub fn storage(db: &mut cpl_check::Session, path: &str) -> Storage {
 }
 
 /// `cpl explain`'s types and memory section (spec/tools/explain.md).
-pub fn storage_section(db: &mut cpl_check::Session, path: &str) -> String {
+pub fn storage_section(db: &mut cpl_facade::Session, path: &str) -> String {
     let Storage { rows, total } = storage(db, path);
     if rows.is_empty() {
         return format!("Storage for {path}: no top-level values\n");
@@ -43,7 +43,7 @@ pub fn storage_section(db: &mut cpl_check::Session, path: &str) -> String {
         out += "\n";
     }
     if let Some((bytes, grows)) = total {
-        out += &format!("  peak {}", cpl_check::human_bytes(bytes));
+        out += &format!("  peak {}", cpl_facade::today::human_bytes(bytes));
         out += &judge_limit(db, path, bytes);
         if !grows.is_empty() {
             out += &format!(", not counting {}", grows.join(", "));
@@ -55,7 +55,7 @@ pub fn storage_section(db: &mut cpl_check::Session, path: &str) -> String {
 
 /// How a peak compares with the memory limit of the judge the build is
 /// for, worded as the editor's memory lens words it (Rjudge.7).
-fn judge_limit(db: &cpl_check::Session, path: &str, bytes: u128) -> String {
+fn judge_limit(db: &cpl_facade::Session, path: &str, bytes: u128) -> String {
     let text = db
         .file_text(path)
         .map(|text| text.to_string())
@@ -73,13 +73,13 @@ fn judge_limit(db: &cpl_check::Session, path: &str, bytes: u128) -> String {
 
 /// One value's bytes: per element and at most for an array, then where an
 /// optional keeps `None` and a record's field offsets and padding.
-pub fn describe(rep: &cpl_check::Representation) -> String {
-    let bytes = |n: u64| cpl_check::human_bytes(n.into());
+pub fn describe(rep: &cpl_facade::today::Representation) -> String {
+    let bytes = |n: u64| cpl_facade::today::human_bytes(n.into());
     let mut out = match (rep.bytes, rep.max_cells, rep.max_bytes) {
         (Some(per), Some(cells), Some(most)) => format!(
             "{} per element x {cells} = {}",
             bytes(per),
-            cpl_check::human_bytes(most)
+            cpl_facade::today::human_bytes(most)
         ),
         (Some(per), None, _) if rep.ty.starts_with('[') => {
             format!("{} per element, no bound on the count", bytes(per))

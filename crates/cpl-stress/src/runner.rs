@@ -15,7 +15,7 @@ use std::time::Duration;
 /// it stops.
 #[derive(Clone, Debug)]
 pub struct Vm {
-    pub program: cpl_ir::Program,
+    pub program: cpl_facade::Program,
     pub name: String,
     pub lines: cpl_diag::LineIndex,
     /// The file's text, to show where it stops as `cpl run` does.
@@ -64,11 +64,11 @@ thread_local! {
     static PRELUDES: std::cell::RefCell<Vec<PreludeOf>> = const { std::cell::RefCell::new(Vec::new()) };
 }
 
-type PreludeOf = (u64, Option<cpl_interp::checkpoint::Checkpoint>);
+type PreludeOf = (u64, Option<cpl_facade::Checkpoint>);
 
 /// An interpreted run's output, or its output up to the trap; the trap is
 /// boxed, as it is far larger than the output.
-type Interpreted = Result<String, (String, Box<cpl_interp::Trap>)>;
+type Interpreted = Result<String, (String, Box<cpl_facade::Trap>)>;
 
 static VMS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
@@ -76,8 +76,8 @@ impl Vm {
     /// [`run_ir`] on the calling thread, from the state `program` reaches
     /// before it first reads, once a first run has found it.
     fn run_resumed(&self, input: &str, limit: Duration) -> Interpreted {
-        use cpl_interp::checkpoint::Checkpoints;
-        let io = cpl_interp::Io::fixed(input.as_bytes());
+        use cpl_facade::Checkpoints;
+        let io = cpl_facade::RunInput::fixed(input.as_bytes());
         let Some(bytes) = self.stack_limit else {
             return run_ir(&self.program, io, None, limit);
         };
@@ -92,15 +92,17 @@ impl Vm {
             Some(None) => Checkpoints::default(),
         };
         let mut out = Vec::new();
-        let run = cpl_interp::checkpoint::observe_on_this_thread(
+        let run = cpl_facade::run(
             &self.program,
-            io.until(cpl_interp::Stop::after(limit)),
+            io.until(cpl_facade::Stop::after(limit)),
             &mut out,
-            cpl_interp::Limits {
-                stack_bytes: bytes as usize,
+            cpl_facade::Request {
+                on_this_thread: Some(cpl_facade::Limits {
+                    stack_bytes: bytes as usize,
+                }),
+                checkpoints: Some(want),
+                ..cpl_facade::Request::default()
             },
-            None,
-            want,
         );
         if known.is_none() {
             let prelude = run.taken.into_iter().last();
@@ -114,7 +116,7 @@ impl Vm {
             });
         }
         let text = String::from_utf8_lossy(&out).into_owned();
-        match run.observed.trap {
+        match run.trap {
             None => Ok(text),
             Some(trap) => Err((text, Box::new(trap))),
         }
@@ -122,23 +124,23 @@ impl Vm {
 }
 
 fn run_ir(
-    program: &cpl_ir::Program,
-    io: cpl_interp::Io,
+    program: &cpl_facade::Program,
+    io: cpl_facade::RunInput,
     stack_limit: Option<u32>,
     limit: Duration,
 ) -> Interpreted {
-    let io = io.until(cpl_interp::Stop::after(limit));
+    let io = io.until(cpl_facade::Stop::after(limit));
     let mut out = Vec::new();
     let res = match stack_limit {
-        Some(bytes) => cpl_interp::run_with_on_this_thread(
+        Some(bytes) => cpl_facade::run_within(
             program,
             io,
             &mut out,
-            cpl_interp::Limits {
+            cpl_facade::Limits {
                 stack_bytes: bytes as usize,
             },
         ),
-        None => cpl_interp::run_with(program, io, &mut out),
+        None => cpl_facade::run_to_end(program, io, &mut out),
     };
     let text = String::from_utf8_lossy(&out).into_owned();
     match res {
@@ -164,7 +166,7 @@ fn ran(run: Interpreted) -> Ran {
 }
 
 impl Vm {
-    pub fn new(program: cpl_ir::Program, name: &str, source: &str, stack_limit: Option<u32>) -> Vm {
+    pub fn new(program: cpl_facade::Program, name: &str, source: &str, stack_limit: Option<u32>) -> Vm {
         Vm {
             program,
             name: name.to_string(),
@@ -190,7 +192,7 @@ impl Vm {
     }
 
     /// The trap as `cpl check --format json` gives a diagnostic.
-    fn json(&self, trap: &cpl_interp::Trap) -> cpl_json::Value {
+    fn json(&self, trap: &cpl_facade::Trap) -> cpl_json::Value {
         let diagnostic = trap.to_diagnostic(&self.name, &self.lines);
         cpl_diag::json::diagnostic(&diagnostic, &self.lines)
     }
@@ -198,11 +200,11 @@ impl Vm {
     /// One draw of a `@gen` fn, and the choices it made.
     fn choose(
         &self,
-        io: cpl_interp::Io,
+        io: cpl_facade::RunInput,
         replay: Option<Vec<u64>>,
         limit: Duration,
-    ) -> Result<Drawn, cpl_interp::Trap> {
-        let choices = std::sync::Arc::new(std::sync::Mutex::new(cpl_interp::Choices {
+    ) -> Result<Drawn, cpl_facade::Trap> {
+        let choices = std::sync::Arc::new(std::sync::Mutex::new(cpl_facade::Choices {
             replay,
             made: Vec::new(),
         }));
@@ -274,7 +276,7 @@ impl Runner {
         match self {
             Runner::InProcess(vm) => {
                 let mut printed = Some(got.as_bytes().to_vec());
-                let io = cpl_interp::Io::judge(input.as_bytes(), Box::new(move || printed.take()));
+                let io = cpl_facade::RunInput::judge(input.as_bytes(), Box::new(move || printed.take()));
                 let limit = crate::case::judge_limit(limit);
                 Ok(vm.ruling(run_ir(&vm.program, io, vm.stack_limit, limit)))
             }
@@ -391,7 +393,7 @@ impl Runner {
     pub fn draw(&self, seed: u64, limit: Duration) -> Result<Drawn, StressError> {
         match self {
             Runner::InProcess(vm) => {
-                (vm.choose(cpl_interp::Io::fixed(b"").seeded(seed), None, limit)).map_err(|trap| {
+                (vm.choose(cpl_facade::RunInput::fixed(b"").seeded(seed), None, limit)).map_err(|trap| {
                     StressError(format!(
                         "the `@gen` fn of {} failed on seed {seed} at line {}: {}",
                         vm.name,
@@ -408,7 +410,7 @@ impl Runner {
     pub fn replay(&self, choices: &[u64], limit: Duration) -> Option<Drawn> {
         match self {
             Runner::InProcess(vm) => vm
-                .choose(cpl_interp::Io::fixed(b""), Some(choices.to_vec()), limit)
+                .choose(cpl_facade::RunInput::fixed(b""), Some(choices.to_vec()), limit)
                 .ok(),
             _ => None,
         }

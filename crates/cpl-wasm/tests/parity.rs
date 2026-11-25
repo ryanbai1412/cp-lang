@@ -623,7 +623,7 @@ fn the_playground_lints_like_cpl_lint() {
             let codes = |diags: &[cpl_diag::Diagnostic]| -> Vec<String> {
                 diags.iter().map(|d| d.code.0.to_string()).collect()
             };
-            let mut db = cpl_check::Session::new();
+            let mut db = cpl_facade::Session::default();
             db.set_file(case, source.as_str());
             let analysis = db.analyze(case).expect("record analyzes");
             let want = codes(&cpl_lint::lint_analysis(

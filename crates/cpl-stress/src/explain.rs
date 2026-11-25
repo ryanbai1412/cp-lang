@@ -69,25 +69,28 @@ pub fn trap_report_in(
     let (name, analysis) = analyzed(path, text)?;
     let text = text.to_string();
     let program = match brute {
-        false => cpl_ir::lower(&analysis).ok()?,
-        true => cpl_ir::lower_brute(&analysis, &cpl_ir::brute(&analysis)?.0).ok()?,
+        false => cpl_facade::today::program(&analysis, &cpl_facade::Job::program()).ok()?,
+        true => {
+            let alt = cpl_facade::today::roles(&analysis).alt?.0;
+            cpl_facade::today::program(&analysis, &cpl_facade::Job::of(cpl_facade::Root::Alt(alt))).ok()?
+        },
     };
     // Alone, an interactive solution only ever sees its input end.
-    if program.interactive {
+    if program.interactive() {
         return None;
     }
     let mut sink = Vec::new();
-    let io = cpl_interp::Io::fixed(input.as_bytes()).until(cpl_interp::Stop::after(LIMIT));
+    let io = cpl_facade::RunInput::fixed(input.as_bytes()).until(cpl_facade::Stop::after(LIMIT));
     let trap = match stack_limit {
         Some(bytes) => {
-            let limits = cpl_interp::Limits {
+            let limits = cpl_facade::Limits {
                 stack_bytes: bytes as usize,
             };
-            cpl_interp::run_with_on_this_thread(&program, io, &mut sink, limits).err()?
+            cpl_facade::run_within(&program, io, &mut sink, limits).err()?
         }
-        None => cpl_interp::run_with(&program, io, &mut sink).err()?,
+        None => cpl_facade::run_to_end(&program, io, &mut sink).err()?,
     };
-    if trap.message() == cpl_interp::OUT_OF_TIME.text() {
+    if trap.message() == cpl_facade::OUT_OF_TIME.text() {
         return None;
     }
     let lines = cpl_diag::LineIndex::new(&text);
@@ -96,8 +99,8 @@ pub fn trap_report_in(
     if stack_limit.is_some() {
         return Some(Trapped::new(diagnostic, &name, &text));
     }
-    let config = cpl_interp::trace::trap_config(&text);
-    let tail = cpl_interp::trace::resumed_tail(
+    let config = cpl_facade::today::trace::trap_config(&text);
+    let tail = cpl_facade::today::trace::resumed_tail(
         &program,
         input.as_bytes(),
         &mut std::io::sink(),
@@ -109,7 +112,7 @@ pub fn trap_report_in(
         .unwrap_or("");
     let locals = match (tail.trap, tail.recording) {
         (Some(again), Some(recording)) if again.message() == trap.message() => {
-            cpl_interp::trace::trap_locals(&recording, &text, at)
+            cpl_facade::today::trace::trap_locals(&recording, &text, at)
         }
         _ => None,
     };
@@ -130,22 +133,22 @@ pub fn checker_trap_in(
     stack_limit: Option<u32>,
 ) -> Option<Trapped> {
     let (name, analysis) = analyzed(path, text)?;
-    let (checker, _) = cpl_ir::checker(&analysis)?;
-    let program = cpl_ir::lower_checker(&analysis, &checker).ok()?;
+    let (checker, _) = cpl_facade::today::roles(&analysis).checker?;
+    let program = cpl_facade::today::program(&analysis, &cpl_facade::Job::of(cpl_facade::Root::Checker(checker.to_string()))).ok()?;
     let mut printed = Some(got.as_bytes().to_vec());
-    let io = cpl_interp::Io::judge(input.as_bytes(), Box::new(move || printed.take()))
-        .until(cpl_interp::Stop::after(LIMIT));
+    let io = cpl_facade::RunInput::judge(input.as_bytes(), Box::new(move || printed.take()))
+        .until(cpl_facade::Stop::after(LIMIT));
     let mut sink = Vec::new();
     let trap = match stack_limit {
         Some(bytes) => {
-            let limits = cpl_interp::Limits {
+            let limits = cpl_facade::Limits {
                 stack_bytes: bytes as usize,
             };
-            cpl_interp::run_with_on_this_thread(&program, io, &mut sink, limits).err()?
+            cpl_facade::run_within(&program, io, &mut sink, limits).err()?
         }
-        None => cpl_interp::run_with(&program, io, &mut sink).err()?,
+        None => cpl_facade::run_to_end(&program, io, &mut sink).err()?,
     };
-    if trap.message() == cpl_interp::OUT_OF_TIME.text() {
+    if trap.message() == cpl_facade::OUT_OF_TIME.text() {
         return None;
     }
     let lines = cpl_diag::LineIndex::new(text);
@@ -159,24 +162,24 @@ pub fn checker_trap_in(
 pub fn interpreted_output(path: &Path, input: &str) -> Option<String> {
     let text = std::fs::read_to_string(path).ok()?;
     let (_, analysis) = analyzed(path, &text)?;
-    let program = cpl_ir::lower(&analysis).ok()?;
-    if program.interactive {
+    let program = cpl_facade::today::program(&analysis, &cpl_facade::Job::program()).ok()?;
+    if program.interactive() {
         return None;
     }
     let mut sink = Vec::new();
-    let io = cpl_interp::Io::fixed(input.as_bytes()).until(cpl_interp::Stop::after(LIMIT));
-    cpl_interp::run_with(&program, io, &mut sink).ok()?;
+    let io = cpl_facade::RunInput::fixed(input.as_bytes()).until(cpl_facade::Stop::after(LIMIT));
+    cpl_facade::run_to_end(&program, io, &mut sink).ok()?;
     String::from_utf8(sink).ok()
 }
 
 /// The `.cp` file at `path`, read as `text`, analyzed under its shown name;
 /// `None` when it is not CP Lang or has an error.
-fn analyzed(path: &Path, text: &str) -> Option<(String, std::sync::Arc<cpl_check::Analysis>)> {
+fn analyzed(path: &Path, text: &str) -> Option<(String, std::sync::Arc<cpl_facade::today::Analysis>)> {
     if path.extension().is_none_or(|ext| ext != "cp") {
         return None;
     }
     let name = path.shown();
-    let mut db = cpl_check::Session::new();
+    let mut db = cpl_facade::Session::default();
     db.set_file(&name, text);
     let analysis = db.analyze(&name)?;
     let failed = (analysis.diagnostics.iter()).any(|d| d.severity == cpl_diag::Severity::Error);

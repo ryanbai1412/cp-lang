@@ -10,7 +10,7 @@ use crate::{
     COMPOUND_SELF_REF, COPY_COMPREHENSION, FLOAT_EQUALITY, FLOAT_SQRT_FOR_INT, LOOP_REDUCTION,
     MANUAL_BIT_TEST, UNPROVEN_LIST_INDEX,
 };
-use cpl_check::{Analysis, Ty};
+use cpl_facade::today::{Analysis, Ty};
 use cpl_diag::{Diagnostic, Span};
 
 /// `diags` less the findings `analysis`'s facts rule out.
@@ -178,4 +178,4 @@ fn plain_type(ty: Option<&Ty>) -> bool {
 /// What `cpl check` reports for an analysis. `cpl-lint` can't lower to IR,
 /// so the caller hands it in (`cpl_ir::check`), and a fix is judged by the
 /// errors `cpl check` would show, lowering's included.
-pub type Errors = dyn Fn(&cpl_check::Analysis) -> Vec<cpl_diag::Diagnostic>;
+pub type Errors = dyn Fn(&cpl_facade::today::Analysis) -> Vec<cpl_diag::Diagnostic>;

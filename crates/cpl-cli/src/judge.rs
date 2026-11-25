@@ -68,9 +68,9 @@ pub(crate) fn check_output(
         Err(code) => return code,
     };
     let mut printed = Some(output);
-    let io = cpl_interp::Io::judge(&input, Box::new(move || printed.take()));
+    let io = cpl_facade::RunInput::judge(&input, Box::new(move || printed.take()));
     let mut sink = Vec::new();
-    let result = cpl_interp::run_with(&compiled.program, io, &mut sink);
+    let result = cpl_facade::run_to_end(&compiled.program, io, &mut sink);
     verdict(path, &compiled.text, result, say, stdout, stderr)
 }
 
@@ -80,7 +80,7 @@ pub(crate) fn check_output(
 fn verdict(
     path: &str,
     text: &str,
-    result: Result<(), cpl_interp::Trap>,
+    result: Result<(), cpl_facade::Trap>,
     Say { json, diagnostic }: Say,
     stdout: &mut (dyn Write + Send),
     stderr: &mut String,
@@ -113,7 +113,7 @@ fn verdict(
     code
 }
 
-pub(crate) fn render_trap(path: &str, text: &str, trap: &cpl_interp::Trap) -> String {
+pub(crate) fn render_trap(path: &str, text: &str, trap: &cpl_facade::Trap) -> String {
     render_trap_noting(path, text, trap, None)
 }
 
@@ -121,7 +121,7 @@ pub(crate) fn render_trap(path: &str, text: &str, trap: &cpl_interp::Trap) -> St
 pub(crate) fn render_trap_noting(
     path: &str,
     text: &str,
-    trap: &cpl_interp::Trap,
+    trap: &cpl_facade::Trap,
     locals: Option<String>,
 ) -> String {
     let lines = cpl_diag::LineIndex::new(text);

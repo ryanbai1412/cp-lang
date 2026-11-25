@@ -1689,10 +1689,10 @@ impl Builder<'_> {
         let module = self
             .std_scope
             .filter(|m| std_decl(m, name).is_some())
-            .or_else(|| cpl_check::std_module(name))?;
+            .or_else(|| cpl_facade::today::std_module(name))?;
         let found = std_decl(module, name)?;
         // `Prefix<T>` with one argument names the family member taking one.
-        let (module, (text, base, stmt)) = cpl_check::std_family(name)
+        let (module, (text, base, stmt)) = cpl_facade::today::std_family(name)
             .filter(|_| generic_count(found.2) != Some(args.len()))
             .find_map(|(module, sym)| {
                 std_decl(module, sym)
@@ -1978,7 +1978,7 @@ pub(super) fn std_file(module: &str) -> Option<(&'static str, &'static cpl_synta
         static PARSED: std::cell::RefCell<HashMap<String, &'static cpl_syntax::ParsedFile>> =
             Default::default();
     }
-    let text = cpl_check::bundled_std(&[module.to_string()])?;
+    let text = cpl_facade::today::bundled_std(&[module.to_string()])?;
     let parsed = PARSED.with(|parsed| {
         *parsed
             .borrow_mut()

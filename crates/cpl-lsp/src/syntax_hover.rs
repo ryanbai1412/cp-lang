@@ -2,20 +2,20 @@
 //! `]` and `..` of `[0..n]Int`, the `?` of `?Int`, the `[n]` of
 //! `[n].filled(0)`. Names inside a type (`Int`, `V`) keep the checker's hover.
 
-use cpl_check::Analysis;
+use cpl_facade::today::Analysis;
 use cpl_diag::Span;
 use cpl_syntax::ast::*;
 use cpl_syntax::visit::{walk_stmt, Visitor};
 
 /// The hover for type syntax at `offset`, when that is what's there.
-pub fn hover(analysis: &Analysis, offset: u32) -> Option<cpl_check::Hover> {
+pub fn hover(analysis: &Analysis, offset: u32) -> Option<cpl_facade::today::Hover> {
     if let Some(hover) = builtin_hover(&analysis.text, offset) {
         return Some(hover);
     }
     let item = analysis.items.iter().rev().find(|i| i.offset <= offset)?;
     let src = analysis.text.get(item.offset as usize..)?;
     let (span, text) = Written::of(&item.syntax.parsed.stmts).explain(src, offset - item.offset)?;
-    Some(cpl_check::Hover {
+    Some(cpl_facade::today::Hover {
         ty: None,
         signature: false,
         span: span.shift(item.offset),
@@ -43,13 +43,13 @@ const BUILTINS: &[(&str, &str, &str)] = &[
 ];
 
 /// The hover for a name the compiler defines (`Int`, `List`, `None`).
-fn builtin_hover(text: &str, offset: u32) -> Option<cpl_check::Hover> {
+fn builtin_hover(text: &str, offset: u32) -> Option<cpl_facade::today::Hover> {
     let token = cpl_syntax::lex(text).tokens.into_iter().find(|t| {
         t.kind == cpl_syntax::TokenKind::Ident && t.span.start <= offset && offset < t.span.end
     })?;
     let word = text.get(token.span.start as usize..token.span.end as usize)?;
     let (_, shown, doc) = BUILTINS.iter().find(|(name, ..)| *name == word)?;
-    Some(cpl_check::Hover {
+    Some(cpl_facade::today::Hover {
         ty: None,
         signature: false,
         span: token.span,

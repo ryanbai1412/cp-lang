@@ -841,7 +841,7 @@ impl<'a> Taste<'a> {
                 let domain = (self.facts).and_then(|f| f.type_of(base.span.shift(self.base)));
                 if matches!(
                     domain,
-                    Some(cpl_check::Ty::Domain(_) | cpl_check::Ty::TypeName(_))
+                    Some(cpl_facade::today::Ty::Domain(_) | cpl_facade::today::Ty::TypeName(_))
                 ) {
                     let mut diag = msgs::lint::DOMAIN_SORTED
                         .warning(method.span, &[&n, &n])
@@ -1146,7 +1146,7 @@ fn leaves(e: &Expr) -> bool {
 /// The in-place twin std declares for a value form: `sorted` is `sort`,
 /// `rotated_left` is `rotate_left`, read off std's `self` fns.
 fn in_place_twin(name: &str) -> Option<String> {
-    let heads = cpl_check::std_self_heads();
+    let heads = cpl_facade::today::std_self_heads();
     heads.get(name)?;
     let (word, rest) = name
         .split_once('_')

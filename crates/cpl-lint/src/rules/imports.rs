@@ -46,7 +46,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         .collect();
     let redundant = |module: &str, name: &str| {
         !declared.contains(name)
-            && (cpl_check::prelude_uses().iter())
+            && (cpl_facade::today::prelude_uses().iter())
                 .any(|(path, n)| n.text == name && dotted(path) == module)
     };
     let mut out = Vec::new();

@@ -352,9 +352,9 @@ pub(crate) fn failure(outcome: &Outcome) -> Option<Verdict> {
 }
 
 /// What an interpreted run that trapped is called.
-pub(crate) fn interp_failure(trap: cpl_interp::Trap) -> Verdict {
+pub(crate) fn interp_failure(trap: cpl_facade::Trap) -> Verdict {
     match trap.message() {
-        m if m == cpl_interp::OUT_OF_TIME.text() => Verdict::TimeLimit,
+        m if m == cpl_facade::OUT_OF_TIME.text() => Verdict::TimeLimit,
         _ => Verdict::RuntimeError(trap.into_message()),
     }
 }
@@ -628,10 +628,10 @@ pub(crate) fn interact(
 /// trapped. The solution is charged its own CPU time, as in [`interact`].
 pub(crate) fn interact_in_vm(
     solution: &Program,
-    interactor: &cpl_ir::Program,
+    interactor: &cpl_facade::Program,
     input: &str,
     limit: Duration,
-) -> std::io::Result<(Outcome, Transcript, Option<cpl_interp::Trap>)> {
+) -> std::io::Result<(Outcome, Transcript, Option<cpl_facade::Trap>)> {
     let mut contestant = solution
         .to_command()
         .stdin(Stdio::piped())
@@ -659,18 +659,18 @@ pub(crate) fn interact_in_vm(
         });
         let stderr = scope.spawn(move || drain(solution_err));
         let judge = scope.spawn(move || {
-            let io = cpl_interp::Io::judge(
+            let io = cpl_facade::RunInput::judge(
                 input.as_bytes(),
                 Box::new(move || hear.recv_timeout(wall).ok()),
             )
-            .until(cpl_interp::Stop::after(judge_limit(limit)));
+            .until(cpl_facade::Stop::after(judge_limit(limit)));
             let mut says = Says {
                 pipe: Some(to_solution),
                 line: Vec::new(),
                 transcript,
                 clock,
             };
-            let trap = cpl_interp::run_with(interactor, io, &mut says).err();
+            let trap = cpl_facade::run_to_end(interactor, io, &mut says).err();
             says.finish();
             trap
         });

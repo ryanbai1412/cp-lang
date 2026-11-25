@@ -17,11 +17,11 @@ pub(crate) fn modules(name: &str, source: &str) -> Vec<String> {
     let mut have: Vec<String> = Vec::new();
     loop {
         let given = have.clone();
-        let more: Vec<String> = cpl_check::std_needed_with(name, source, move |m| {
+        let more: Vec<String> = cpl_facade::today::std_needed_with(name, source, move |m| {
             given
                 .iter()
                 .any(|g| g == m)
-                .then(|| cpl_check::bundled_std(&[m.to_string()]))
+                .then(|| cpl_facade::today::bundled_std(&[m.to_string()]))
                 .flatten()
         })
         .into_iter()
@@ -55,7 +55,7 @@ pub(crate) fn run(
         .join("std");
     let mut vendored = Vec::new();
     for module in modules(file, &source) {
-        let Some(text) = cpl_check::bundled_std(std::slice::from_ref(&module)) else {
+        let Some(text) = cpl_facade::today::bundled_std(std::slice::from_ref(&module)) else {
             *stderr += &format!("cpl: this compiler does not carry `std.{module}`\n");
             return crate::EXIT_ERRORS;
         };
@@ -105,7 +105,7 @@ mod tests {
         let copied = std::fs::read_to_string(dir.join("vendor/std/heap.cp")).unwrap();
         assert_eq!(
             Some(copied.as_str()),
-            cpl_check::bundled_std(&["heap".into()])
+            cpl_facade::today::bundled_std(&["heap".into()])
         );
         assert!(String::from_utf8(out).unwrap().contains("std.heap -> "));
         let (mut out, mut err) = (Vec::new(), String::new());

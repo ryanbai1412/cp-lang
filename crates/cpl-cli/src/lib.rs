@@ -31,7 +31,7 @@ mod sha256;
 mod submit;
 use submit::{list_judges, submit};
 pub mod toolchain;
-pub use cpl_ir::fix::{apply_error_fixes, checked_fix};
+pub use cpl_facade::apply_error_fixes;
 mod trace;
 mod unit_tests;
 mod vendor;
@@ -56,10 +56,10 @@ pub const COMMIT: &str = env!("CPL_GIT_COMMIT");
 pub const COMPONENTS: &[&str] = &[
     cpl_diag::NAME,
     cpl_syntax::NAME,
-    cpl_check::NAME,
-    cpl_ir::NAME,
-    cpl_codegen::NAME,
-    cpl_interp::NAME,
+    cpl_facade::today::COMPONENTS[0],
+    cpl_facade::today::COMPONENTS[1],
+    cpl_facade::today::COMPONENTS[2],
+    cpl_facade::today::COMPONENTS[3],
     cpl_fmt::NAME,
     cpl_lint::NAME,
     cpl_doc::NAME,
@@ -432,7 +432,7 @@ struct RunArgs<'a> {
     brute: bool,
     release: bool,
     /// `--checks LEVEL` with `--release`: the judge build's checks.
-    checks: Option<cpl_codegen::Checks>,
+    checks: Option<cpl_facade::Checks>,
     live: bool,
     /// `--time-limit MS`: how long the run may take before it is stopped.
     time_limit: Option<std::time::Duration>,
@@ -603,12 +603,12 @@ impl<'a> RunArgs<'a> {
                 "--brute" => args.brute = true,
                 "--release" => args.release = true,
                 "--checks" => {
-                    match iter.next().and_then(cpl_codegen::Checks::parse) {
+                    match iter.next().and_then(cpl_facade::Checks::parse) {
                         Some(level) => args.checks = Some(level),
                         None => {
                             return Err(format!(
                             "`--checks` takes one of {}: `cpl run a.cp --release --checks none`",
-                            cpl_codegen::Checks::NAMES.map(|n| format!("`{n}`")).join(", ")
+                            cpl_facade::Checks::NAMES.map(|n| format!("`{n}`")).join(", ")
                         ))
                         }
                     }
@@ -746,9 +746,9 @@ pub fn tool(command: &str) -> Option<Tool> {
 /// A file that passed the front end, lowered for the back ends.
 struct Compiled {
     text: String,
-    program: cpl_ir::Program,
+    program: cpl_facade::Program,
     /// The file's `@interactor`, by name and lowered as a program.
-    judge: Option<(String, cpl_ir::Program)>,
+    judge: Option<(String, cpl_facade::Program)>,
 }
 
 /// Which program of a file to lower.
@@ -763,7 +763,7 @@ enum Side {
 
 /// Reads and checks `path` through the shared front end, then lowers it.
 /// This is the gate `run` and `build` both go through: the same
-/// [`cpl_check::Session`] the language server holds, so a file means the
+/// [`cpl_facade::Session`] the language server holds, so a file means the
 /// same thing to every tool.
 fn compile(path: &str, stderr: &mut String) -> Result<Compiled, u8> {
     compile_side(path, Side::Solution, stderr)
@@ -798,27 +798,27 @@ fn compile_text(path: &str, text: String, side: Side, stderr: &mut String) -> Re
         EXIT_USAGE
     };
     let lowered = match side {
-        Side::Solution => cpl_ir::lower(&analysis).and_then(|program| {
-            let judge = match cpl_ir::interactor(&analysis) {
-                Some(name) => Some((name.clone(), cpl_ir::lower_judge(&analysis, &name)?)),
+        Side::Solution => cpl_facade::today::program(&analysis, &cpl_facade::Job::program()).and_then(|program| {
+            let judge = match cpl_facade::today::roles(&analysis).interactor {
+                Some(name) => Some((name.clone(), cpl_facade::today::program(&analysis, &cpl_facade::Job::of(cpl_facade::Root::Interactor(name.to_string())))?)),
                 None => None,
             };
             Ok((program, judge))
         }),
-        Side::Brute => match cpl_ir::brute(&analysis) {
-            Some((name, _)) => cpl_ir::lower_brute(&analysis, &name).map(|program| (program, None)),
+        Side::Brute => match cpl_facade::today::roles(&analysis).alt {
+            Some((name, _)) => cpl_facade::today::program(&analysis, &cpl_facade::Job::of(cpl_facade::Root::Alt(name.to_string()))).map(|program| (program, None)),
             None => return Err(missing("@alt(program)", stderr)),
         },
-        Side::Checker => match cpl_ir::checker(&analysis) {
+        Side::Checker => match cpl_facade::today::roles(&analysis).checker {
             Some((name, _)) => {
-                cpl_ir::lower_checker(&analysis, &name).map(|program| (program, None))
+                cpl_facade::today::program(&analysis, &cpl_facade::Job::of(cpl_facade::Root::Checker(name.to_string()))).map(|program| (program, None))
             }
             None => return Err(missing("@check", stderr)),
         },
     };
     match lowered {
         Ok((program, judge)) => {
-            *stderr += &cpl_diag::render_all(&program.warnings, path, &text);
+            *stderr += &cpl_diag::render_all(program.warnings(), path, &text);
             Ok(Compiled {
                 text,
                 program,
@@ -837,7 +837,7 @@ fn compile_text(path: &str, text: String, side: Side, stderr: &mut String) -> Re
 /// A file's `@interactor`: its name, its program, and the file's text.
 struct Interactor {
     name: String,
-    judge: cpl_ir::Program,
+    judge: cpl_facade::Program,
     text: String,
 }
 
@@ -886,7 +886,7 @@ fn run_release_judged(
     // A judge left with nothing to read after the solution failed only
     // follows from that failure.
     let starved =
-        |trap: &cpl_interp::Trap| trap.message().starts_with("the solution's output ended");
+        |trap: &cpl_facade::Trap| trap.message().starts_with("the solution's output ended");
     match &ruling.judge {
         Some(trap) if solved || !starved(trap) => {
             *stderr += &format!("cpl: the interactor `{name}` rejected the run\n");
@@ -1087,7 +1087,7 @@ fn graded(args: &RunArgs, stderr: &mut String) -> Result<Option<std::path::PathB
         return Ok(None);
     }
     let compiled = compile(args.file, stderr)?;
-    let program = &compiled.program;
+    let program = compiled.program.ir();
     if let Some(&id) = program.entry_fns.first() {
         *stderr += &format!(
             "cpl: the judge's grader calls `{}`, and `{}` has no `main` without it: \
@@ -1149,7 +1149,7 @@ fn run_file(
         Err(code) => return code,
     };
     // An `@cpp` body is C++ only, so the program runs as its C++ build.
-    if !compiled.program.cpp_bodies.is_empty() && !args.trace {
+    if !compiled.program.ir().cpp_bodies.is_empty() && !args.trace {
         return run_release(args, None, input, stdout, stderr);
     }
     let json = args.format == Some("json");
@@ -1163,7 +1163,7 @@ fn run_file(
         let ruling = interact::run(&compiled.program, judge, &hidden, stdout);
         // A side that stops leaves the other with nothing to read: that
         // second failure only follows from the first.
-        let starved = |trap: &cpl_interp::Trap| {
+        let starved = |trap: &cpl_facade::Trap| {
             trap.message().starts_with("the input ended")
                 || trap.message().starts_with("the solution's output ended")
         };
@@ -1207,12 +1207,12 @@ fn run_file(
     let io = match input {
         Input::Whole(input) => {
             whole = input;
-            cpl_interp::Io::fixed(&whole)
+            cpl_facade::RunInput::fixed(&whole)
         }
         Input::Live(more) => {
             whole = Vec::new();
             let read = std::sync::Arc::clone(&read);
-            cpl_interp::Io::live(Box::new(move || {
+            cpl_facade::RunInput::live(Box::new(move || {
                 let chunk = more();
                 read.lock()
                     .unwrap_or_else(std::sync::PoisonError::into_inner)
@@ -1222,12 +1222,12 @@ fn run_file(
         }
     };
     let io = match args.time_limit {
-        Some(limit) => io.until(cpl_interp::Stop::after(limit)),
+        Some(limit) => io.until(cpl_facade::Stop::after(limit)),
         None => io,
     };
     front_end::release();
     let started = std::time::Instant::now();
-    let observed = cpl_interp::run_observed(&compiled.program, io, stdout, None);
+    let observed = cpl_facade::run_traced(&compiled.program, io, stdout, None);
     *stderr += &String::from_utf8_lossy(&observed.debug);
     match observed.trap {
         None => 0,
@@ -1282,11 +1282,11 @@ fn run_live(args: &RunArgs, stdin: &mut (dyn FnMut() -> Vec<u8> + Send)) -> u8 {
         None => input.clone(),
     };
     // Windows of the file as last compiled replay from its checkpoints.
-    let replay = std::sync::Mutex::new(None::<(String, cpl_interp::trace::Replay)>);
+    let replay = std::sync::Mutex::new(None::<(String, cpl_facade::today::trace::Replay)>);
     let record = |from: Option<usize>| {
         let mut stderr = String::new();
         let compiled = compile_side(args.file, side, &mut stderr).map_err(|_| stderr.clone())?;
-        let config = cpl_interp::trace::TraceConfig {
+        let config = cpl_facade::today::trace::TraceConfig {
             from_step: from.or(args.from_step),
             ..trace_config(args, &compiled.text)
         };
@@ -1296,11 +1296,11 @@ fn run_live(args: &RunArgs, stdin: &mut (dyn FnMut() -> Vec<u8> + Send)) -> u8 {
                     .lock()
                     .unwrap_or_else(|poisoned| poisoned.into_inner());
                 if !matches!(&*replay, Some((text, _)) if *text == compiled.text) {
-                    let counted = cpl_interp::trace::TraceConfig {
+                    let counted = cpl_facade::today::trace::TraceConfig {
                         from_step: None,
                         ..config.clone()
                     };
-                    let started = cpl_interp::trace::Replay::start(
+                    let started = cpl_facade::today::trace::Replay::start(
                         compiled.program.clone(),
                         solution_input(&compiled),
                         counted,
@@ -1339,27 +1339,27 @@ fn run_live(args: &RunArgs, stdin: &mut (dyn FnMut() -> Vec<u8> + Send)) -> u8 {
 /// traced: `--last` traces the run's end again from a checkpoint of its
 /// untraced run, and any other trace stops once it is full.
 fn traced(
-    program: &cpl_ir::Program,
+    program: &cpl_facade::Program,
     input: &[u8],
     output: &mut (dyn Write + Send),
-    config: cpl_interp::trace::TraceConfig,
+    config: cpl_facade::today::trace::TraceConfig,
     full: bool,
-) -> cpl_interp::Observed {
+) -> cpl_facade::Outcome {
     if full || config.last_steps.is_some() && config.from_step.is_some() {
-        return cpl_interp::run_observed(
+        return cpl_facade::run_traced(
             program,
-            cpl_interp::Io::fixed(input),
+            cpl_facade::RunInput::fixed(input),
             output,
             Some(config),
         );
     }
     match config.last_steps.filter(|_| config.from_step.is_none()) {
-        Some(steps) => cpl_interp::trace::resumed_tail(program, input, output, config, steps),
-        None => cpl_interp::trace::windowed(program, input, output, config),
+        Some(steps) => cpl_facade::today::trace::resumed_tail(program, input, output, config, steps),
+        None => cpl_facade::today::trace::windowed(program, input, output, config),
     }
 }
 
-fn trace_config(args: &RunArgs, text: &str) -> cpl_interp::trace::TraceConfig {
+fn trace_config(args: &RunArgs, text: &str) -> cpl_facade::today::trace::TraceConfig {
     let mut config = trace::config(text, args.only_fn);
     config.test_cases = args.test_cases.clone();
     config.watch = args.watch.clone();
@@ -1400,9 +1400,9 @@ fn observe_file(
         }
         // `--format json` without `--trace` reports each variable's last
         // value, which the untraced run keeps too.
-        None if !args.trace => cpl_interp::run_observed(
+        None if !args.trace => cpl_facade::run_traced(
             &compiled.program,
-            cpl_interp::Io::fixed(input).with_last_values(&compiled.text),
+            cpl_facade::RunInput::fixed(input).with_last_values(&compiled.text),
             &mut printed,
             None,
         ),
@@ -1697,7 +1697,7 @@ mod tests {
         assert!(started.elapsed().as_secs() < 5, "{:?}", started.elapsed());
         assert_eq!(out.code, EXIT_FAILED, "{}", out.stderr);
         assert!(
-            out.stderr.contains(cpl_interp::OUT_OF_TIME.text()),
+            out.stderr.contains(cpl_facade::OUT_OF_TIME.text()),
             "{}",
             out.stderr
         );

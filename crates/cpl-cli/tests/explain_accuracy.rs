@@ -9,7 +9,7 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
-use cpl_codegen::cpp_counts::{
+use cpl_facade::today::cpp_counts::{
     container_copies, is_container, is_place, optional_copies, scalar_decl, std_functions,
     CONTAINERS,
 };

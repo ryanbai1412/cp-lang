@@ -269,7 +269,7 @@ fn hover_shows_type_and_cost_with_its_range() {
 
 #[test]
 fn representation_query_gives_inlay_hints_the_hover_storage_data() {
-    let (mut server, _) = open(SOURCE);
+    let (server, _) = open(SOURCE);
     let offset = SOURCE.find("dist[v]").unwrap() as u32;
     let rep = server.db.representation(URI, offset).unwrap();
     assert_eq!(rep.ty, "[V]?Int");
@@ -1886,9 +1886,9 @@ fn every_member_completion_type_checks_when_inserted() {
         }
         for name in names {
             let src = format!("{prefix}let probe = {receiver}.{name}\n");
-            let mut db = cpl_check::Session::new();
+            let mut db = cpl_facade::Session::default();
             db.set_file("a.cp", src.as_str());
-            let unknown: Vec<_> = (db.diagnostics("a.cp").into_iter())
+            let unknown: Vec<_> = (db.diagnostics("a.cp", cpl_facade::Layer::Typed).into_iter())
                 .filter(|d| d.code.0 == "E0203")
                 .map(|d| d.message)
                 .collect();

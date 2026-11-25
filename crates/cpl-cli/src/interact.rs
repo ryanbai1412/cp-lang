@@ -105,9 +105,9 @@ impl Write for Speaker<'_> {
 /// How a run against the interactor ended.
 pub struct Ruling {
     /// Why the solution stopped, if it failed.
-    pub solution: Option<cpl_interp::Trap>,
+    pub solution: Option<cpl_facade::Trap>,
     /// Why the judge rejected the run, if it did.
-    pub judge: Option<cpl_interp::Trap>,
+    pub judge: Option<cpl_facade::Trap>,
     /// Lines the solution printed.
     pub lines: usize,
 }
@@ -115,8 +115,8 @@ pub struct Ruling {
 /// Runs `solution` against `judge` on the hidden test `input`. What the
 /// solution prints is echoed to `stdout`.
 pub fn run(
-    solution: &cpl_ir::Program,
-    judge: &cpl_ir::Program,
+    solution: &cpl_facade::Program,
+    judge: &cpl_facade::Program,
     input: &[u8],
     stdout: &mut (dyn Write + Send),
 ) -> Ruling {
@@ -135,8 +135,8 @@ pub fn run(
                 echo: None,
                 lines: 0,
             };
-            let io = cpl_interp::Io::judge(input, Box::new(|| judge_end.recv()));
-            let result = cpl_interp::run_with(judge, io, &mut says);
+            let io = cpl_facade::RunInput::judge(input, Box::new(|| judge_end.recv()));
+            let result = cpl_facade::run_to_end(judge, io, &mut says);
             judge_end.close();
             result.err()
         });
@@ -145,8 +145,8 @@ pub fn run(
             echo: Some(stdout),
             lines: 0,
         };
-        let io = cpl_interp::Io::live(Box::new(|| solution_end.recv()));
-        let result = cpl_interp::run_with(solution, io, &mut says);
+        let io = cpl_facade::RunInput::live(Box::new(|| solution_end.recv()));
+        let result = cpl_facade::run_to_end(solution, io, &mut says);
         solution_end.close();
         let judge = judging.join().unwrap_or(None);
         Ruling {
@@ -160,7 +160,7 @@ pub fn run(
 /// How a built solution's run against the interactor ended.
 pub struct BuiltRuling {
     /// Why the judge rejected the run, if it did.
-    pub judge: Option<cpl_interp::Trap>,
+    pub judge: Option<cpl_facade::Trap>,
     /// How the solution's process ended; `None` if it could not be
     /// waited for.
     pub status: Option<std::process::ExitStatus>,
@@ -176,7 +176,7 @@ pub struct BuiltRuling {
 /// judge waits for it: its output ended.
 pub fn run_built(
     argv: &[String],
-    judge: &cpl_ir::Program,
+    judge: &cpl_facade::Program,
     input: &[u8],
     stdout: &mut (dyn Write + Send),
 ) -> std::io::Result<BuiltRuling> {
@@ -216,7 +216,7 @@ pub fn run_built(
             let _ = errors.read_to_end(&mut text);
             String::from_utf8_lossy(&text).into_owned()
         });
-        let io = cpl_interp::Io::judge(input, Box::new(move || heard.recv_timeout(PATIENCE).ok()));
+        let io = cpl_facade::RunInput::judge(input, Box::new(move || heard.recv_timeout(PATIENCE).ok()));
         // What the judge says goes out at once: the solution waits on it.
         struct Unbuffered<'a>(&'a mut std::process::ChildStdin);
         impl Write for Unbuffered<'_> {
@@ -230,7 +230,7 @@ pub fn run_built(
                 Ok(())
             }
         }
-        let trap = cpl_interp::run_with(judge, io, &mut Unbuffered(&mut to_solution)).err();
+        let trap = cpl_facade::run_to_end(judge, io, &mut Unbuffered(&mut to_solution)).err();
         // The judge is done: the solution reads the end of its input.
         drop(to_solution);
         let lines = listening.join().unwrap_or(0);
@@ -249,18 +249,18 @@ pub fn run_built(
 /// `full`, the run goes untraced and only the steps kept are traced again,
 /// from what the judge sent.
 pub fn run_traced(
-    solution: &cpl_ir::Program,
-    judge: &cpl_ir::Program,
+    solution: &cpl_facade::Program,
+    judge: &cpl_facade::Program,
     input: &[u8],
     stdout: &mut (dyn Write + Send),
-    config: cpl_interp::trace::TraceConfig,
+    config: cpl_facade::today::trace::TraceConfig,
     full: bool,
-) -> cpl_interp::Observed {
+) -> cpl_facade::Outcome {
     let (mut observed, rejected) = against(judge, input, stdout, |io, says| {
         if full {
-            cpl_interp::run_observed(solution, io, says, Some(config))
+            cpl_facade::run_traced(solution, io, says, Some(config))
         } else {
-            cpl_interp::trace::interactive(solution, io, says, config)
+            cpl_facade::today::trace::interactive(solution, io, says, config)
         }
     });
     if observed.trap.is_none() {
@@ -271,9 +271,9 @@ pub fn run_traced(
 
 /// Everything the judge sent `solution` on the hidden test `input`: as its
 /// input, it runs the solution again without the judge.
-pub fn transcript(solution: &cpl_ir::Program, judge: &cpl_ir::Program, input: &[u8]) -> Vec<u8> {
+pub fn transcript(solution: &cpl_facade::Program, judge: &cpl_facade::Program, input: &[u8]) -> Vec<u8> {
     against(judge, input, &mut std::io::sink(), |io, says| {
-        cpl_interp::trace::sent(solution, io, says)
+        cpl_facade::today::trace::sent(solution, io, says)
     })
     .0
 }
@@ -282,20 +282,20 @@ pub fn transcript(solution: &cpl_ir::Program, judge: &cpl_ir::Program, input: &[
 /// `input`: what the judge sent, the line that read it and the variable
 /// it went into, as `\`<\` at line 6, into \`answer\``.
 pub fn last_read(
-    solution: &cpl_ir::Program,
-    judge: &cpl_ir::Program,
+    solution: &cpl_facade::Program,
+    judge: &cpl_facade::Program,
     input: &[u8],
     source: &str,
 ) -> Option<String> {
     let sent = transcript(solution, judge, input);
-    let config = cpl_interp::trace::TraceConfig {
+    let config = cpl_facade::today::trace::TraceConfig {
         source: source.into(),
         assignments: true,
         ..Default::default()
     };
-    let observed = cpl_interp::run_observed(
+    let observed = cpl_facade::run_traced(
         solution,
-        cpl_interp::Io::fixed(&sent),
+        cpl_facade::RunInput::fixed(&sent),
         &mut std::io::sink(),
         Some(config),
     );
@@ -321,11 +321,11 @@ pub fn last_read(
 /// `side`, the solution's run on the `Io` it is given, against `judge` on
 /// the hidden test `input`, and why the judge rejected the run, if it did.
 fn against<T>(
-    judge: &cpl_ir::Program,
+    judge: &cpl_facade::Program,
     input: &[u8],
     stdout: &mut (dyn Write + Send),
-    side: impl FnOnce(cpl_interp::Io, &mut (dyn Write + Send)) -> T,
-) -> (T, Option<cpl_interp::Trap>) {
+    side: impl FnOnce(cpl_facade::RunInput, &mut (dyn Write + Send)) -> T,
+) -> (T, Option<cpl_facade::Trap>) {
     let wire = Arc::new(Wire::default());
     let end = |side| End {
         wire: Arc::clone(&wire),
@@ -339,8 +339,8 @@ fn against<T>(
                 echo: None,
                 lines: 0,
             };
-            let io = cpl_interp::Io::judge(input, Box::new(|| judge_end.recv()));
-            let result = cpl_interp::run_with(judge, io, &mut says);
+            let io = cpl_facade::RunInput::judge(input, Box::new(|| judge_end.recv()));
+            let result = cpl_facade::run_to_end(judge, io, &mut says);
             judge_end.close();
             result.err()
         });
@@ -349,7 +349,7 @@ fn against<T>(
             echo: Some(stdout),
             lines: 0,
         };
-        let io = cpl_interp::Io::live(Box::new(|| solution_end.recv()));
+        let io = cpl_facade::RunInput::live(Box::new(|| solution_end.recv()));
         let ran = side(io, &mut says);
         solution_end.close();
         (ran, judging.join().unwrap_or(None))
@@ -359,7 +359,7 @@ fn against<T>(
 /// `cpl judge <file> <input>`: the file's `@interactor` as a judge
 /// program. It reads the hidden test from `<input>`, talks to a solution
 /// on standard input and output, and exits 0 to accept.
-pub fn judge_alone(program: &cpl_ir::Program, input: &[u8]) -> Result<(), cpl_interp::Trap> {
+pub fn judge_alone(program: &cpl_facade::Program, input: &[u8]) -> Result<(), cpl_facade::Trap> {
     let heard = Box::new(|| {
         let mut line = Vec::new();
         match std::io::BufRead::read_until(&mut std::io::stdin().lock(), b'\n', &mut line) {
@@ -368,5 +368,5 @@ pub fn judge_alone(program: &cpl_ir::Program, input: &[u8]) -> Result<(), cpl_in
         }
     });
     let mut stdout = std::io::stdout();
-    cpl_interp::run_with(program, cpl_interp::Io::judge(input, heard), &mut stdout)
+    cpl_facade::run_to_end(program, cpl_facade::RunInput::judge(input, heard), &mut stdout)
 }

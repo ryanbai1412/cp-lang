@@ -35,7 +35,7 @@ fn errors(path: &str, src: &str) -> Vec<Diagnostic> {
         db.set_file(path, src);
         db.analyze(path).expect("the file was just set")
     });
-    let mut out: Vec<Diagnostic> = cpl_ir::check(&analysis)
+    let mut out: Vec<Diagnostic> = cpl_facade::today::built(&analysis)
         .into_iter()
         .filter(|d| d.severity == Severity::Error)
         .collect();
@@ -44,9 +44,9 @@ fn errors(path: &str, src: &str) -> Vec<Diagnostic> {
 }
 
 /// `f` on this thread's database, which `errors` and the fixes share.
-fn with_db<T>(f: impl FnOnce(&mut cpl_check::Session) -> T) -> T {
+fn with_db<T>(f: impl FnOnce(&mut cpl_facade::Session) -> T) -> T {
     thread_local! {
-        static DB: std::cell::RefCell<cpl_check::Session> = Default::default();
+        static DB: std::cell::RefCell<cpl_facade::Session> = Default::default();
     }
     DB.with_borrow_mut(f)
 }
@@ -340,7 +340,7 @@ fn score(b: &Broken, restore: bool) -> (Tally, Option<(String, FirstFix)>) {
         count: 1,
         ..FirstFix::default()
     };
-    if let Some(fix) = with_db(|db| cpl_cli::checked_fix(db, &b.path, &b.src, &errs[0])) {
+    if let Some(fix) = with_db(|db| db.checked_fix(&b.path, &b.src, &errs[0])) {
         let fixed = apply(&b.src, &fix.edits);
         first.fixed = 1;
         let line = |src: &str| src.lines().nth(b.line as usize).map(str::to_string);
@@ -372,10 +372,10 @@ fn score(b: &Broken, restore: bool) -> (Tally, Option<(String, FirstFix)>) {
     t.fixable = errs.iter().filter(|d| !d.fixes.is_empty()).count() as u32;
     let fixed = (t.fixable > 0).then(|| {
         let (once, _) = cpl_diag::splice_fixes(&b.src, &errs);
-        with_db(|db| cpl_ir::fix::apply_error_fixes_in(db, &b.path, &once).0)
+        with_db(|db| db.apply_error_fixes(&b.path, &once).0)
     });
     if let Some(f) = &fixed {
-        let (again, n, _) = with_db(|db| cpl_ir::fix::apply_error_fixes_in(db, &b.path, f));
+        let (again, n, _) = with_db(|db| db.apply_error_fixes(&b.path, f));
         t.unconverged = (n > 0) as u32;
         if std::env::var("RECOVERY_SHOW").is_ok_and(|e| e == "unconverged") && n > 0 {
             println!("--- {} {}", b.path, b.edit);

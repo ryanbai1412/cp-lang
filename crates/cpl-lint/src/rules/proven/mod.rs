@@ -108,10 +108,10 @@ pub(crate) fn proven_sizes(file: &File) -> Vec<crate::ProvenSize> {
 pub(super) fn array_size(
     base: u32,
     ty: &cpl_syntax::ast::Type,
-    declared: Option<&cpl_check::Ty>,
+    declared: Option<&cpl_facade::today::Ty>,
     bounds: &bounds::Bounds,
 ) -> Option<(u128, Vec<Factor>)> {
-    use cpl_check::Ty;
+    use cpl_facade::today::Ty;
     let Some(Ty::Array { index: sets, .. }) = declared else {
         return None;
     };
@@ -432,7 +432,7 @@ fn arith(base: u32, expr: &cpl_syntax::ast::Expr, bounds: &bounds::Bounds, out: 
                     .filter(shown)
                     .filter(|_| !bounds.reads_len(expr))
                 {
-                    let leaves = !cpl_check::interval::in_int((v.lo, v.hi));
+                    let leaves = !cpl_facade::today::interval::in_int((v.lo, v.hi));
                     out.exprs.push(crate::ProvenExpr {
                         op: (base + op_span.start, base + op_span.end),
                         expr: (base + expr.span.start, base + expr.span.end),

@@ -9,7 +9,8 @@ use crate::complete::{self, Cursor, StdLib};
 use crate::outline::Outline;
 use crate::rename;
 use crate::uri::uri_of_path;
-use cpl_check::{DeclKind, Definition, Session, Ty};
+use cpl_facade::today::{DeclKind, Definition, Ty};
+use cpl_facade::Session;
 use cpl_diag::{Diagnostic, LineCol, LineIndex, Severity, Span};
 use cpl_json::{obj, Value};
 #[cfg(not(target_arch = "wasm32"))]
@@ -105,7 +106,7 @@ impl Default for Server {
 impl Server {
     pub fn new() -> Server {
         Server {
-            db: Session::new(),
+            db: Session::default(),
             docs: BTreeMap::new(),
             std: StdLib::default(),
             proven: HashMap::new(),
@@ -228,7 +229,7 @@ impl Server {
     /// After a panic: rebuild the database from the open documents, answer
     /// the request with an error, and tell the user through a diagnostic.
     fn recover(&mut self, method: &str, params: &Value, id: Value, what: String) -> Vec<Value> {
-        self.db = Session::new();
+        self.db = Session::default();
         for (uri, text) in &self.docs {
             self.db.set_file(uri, text.as_str());
         }
@@ -400,7 +401,7 @@ impl Server {
                     .iter()
                     .copied()
                     .find(|&(at, lo, hi)| at == declared && lo != hi)
-                    .filter(|_| hover.ty == Some(cpl_check::Ty::Int));
+                    .filter(|_| hover.ty == Some(cpl_facade::today::Ty::Int));
                 if let Some((_, lo, hi)) = proven {
                     let (first, rest) = hover.text.split_once('\n').unwrap_or((&hover.text, ""));
                     let rest = if rest.is_empty() {
@@ -884,7 +885,7 @@ impl Server {
                                             Some((lo, hi))
                                                 if entry.keyword == "let"
                                                     && lo != hi
-                                                    && entry.ty == cpl_check::Ty::Int =>
+                                                    && entry.ty == cpl_facade::today::Ty::Int =>
                                             {
                                                 format!(": Int in {lo}..={hi}")
                                             }
@@ -1006,7 +1007,7 @@ impl Server {
         Some(self.proven_of(uri, analysis))
     }
 
-    fn proven_of(&mut self, uri: &str, analysis: Arc<cpl_check::Analysis>) -> Arc<Proven> {
+    fn proven_of(&mut self, uri: &str, analysis: Arc<cpl_facade::today::Analysis>) -> Arc<Proven> {
         if let Some(facts) = self.proven.get(uri).filter(|f| {
             Arc::ptr_eq(f.analysis(), &analysis) || *f.analysis().text == *analysis.text
         }) {
@@ -1022,13 +1023,13 @@ impl Server {
     fn named_hover(
         &mut self,
         uri: &str,
-        analysis: &cpl_check::Analysis,
+        analysis: &cpl_facade::today::Analysis,
         offset: u32,
-    ) -> Option<cpl_check::Hover> {
+    ) -> Option<cpl_facade::today::Hover> {
         let checked = self.db.hover(uri, offset);
         // `j.jump(a, b, k)` beside a field `jump`: the call names the fn.
         let called_field = checked.as_ref().is_some_and(|h| {
-            !matches!(h.ty, None | Some(cpl_check::Ty::Fn { .. })) && {
+            !matches!(h.ty, None | Some(cpl_facade::today::Ty::Fn { .. })) && {
                 let text = &analysis.text;
                 let name = &text[h.span.start as usize..h.span.end as usize];
                 text[..h.span.start as usize].ends_with('.')
@@ -1073,7 +1074,7 @@ impl Server {
 
     /// On the head of a `for` whose count the declared bounds prove: how
     /// many times its body runs, alone and with the loops around it.
-    fn loop_hover(&mut self, uri: &str, offset: u32) -> Option<cpl_check::Hover> {
+    fn loop_hover(&mut self, uri: &str, offset: u32) -> Option<cpl_facade::today::Hover> {
         let facts = self.proven(uri)?;
         let proven = facts
             .loops()
@@ -1102,7 +1103,7 @@ impl Server {
             None => text += "\n  inside a loop with no proven count",
             _ => {}
         }
-        Some(cpl_check::Hover {
+        Some(cpl_facade::today::Hover {
             ty: None,
             signature: false,
             span: Span::new(proven.head.0, proven.head.1),
@@ -1114,7 +1115,7 @@ impl Server {
 
     /// On the brackets of an index the bounds prove in range, or (`on_index`)
     /// on the index itself: why it is in bounds.
-    fn index_hover(&mut self, uri: &str, offset: u32, on_index: bool) -> Option<cpl_check::Hover> {
+    fn index_hover(&mut self, uri: &str, offset: u32, on_index: bool) -> Option<cpl_facade::today::Hover> {
         let analysis = self.db.analyze(uri)?;
         let inside = |(start, end): (u32, u32)| start <= offset && offset < end;
         let facts = self.proven(uri)?;
@@ -1148,7 +1149,7 @@ impl Server {
             true => format!("in bounds of {access}: {}", proven.proof),
             false => format!("{access}: in bounds, {}", proven.proof),
         };
-        Some(cpl_check::Hover {
+        Some(cpl_facade::today::Hover {
             ty: None,
             signature: false,
             span: Span { start, end },
@@ -1160,7 +1161,7 @@ impl Server {
 
     /// On a `+`, `-`, `*`, `/`, `%` or `**` whose operands the declared bounds prove: the
     /// range of its value, and whether it can leave `Int`.
-    fn arith_hover(&mut self, uri: &str, offset: u32) -> Option<cpl_check::Hover> {
+    fn arith_hover(&mut self, uri: &str, offset: u32) -> Option<cpl_facade::today::Hover> {
         let analysis = self.db.analyze(uri)?;
         let facts = self.proven(uri)?;
         let proven = facts
@@ -1180,7 +1181,7 @@ impl Server {
             (lo, hi) if lo == hi => format!("= {lo}"),
             (lo, hi) => format!("in {lo}..={hi}"),
         };
-        Some(cpl_check::Hover {
+        Some(cpl_facade::today::Hover {
             ty: None,
             signature: false,
             span: Span { start, end },
@@ -1194,7 +1195,7 @@ impl Server {
     fn position(
         &mut self,
         params: &Value,
-    ) -> Result<(String, u32, Arc<cpl_check::Analysis>), (i32, String)> {
+    ) -> Result<(String, u32, Arc<cpl_facade::today::Analysis>), (i32, String)> {
         let uri = uri_of(params)?;
         let position = position_of(params.get("position").unwrap_or(&Value::Null))?;
         let analysis = self
@@ -1386,7 +1387,7 @@ const TOKEN_MODIFIERS: [&str; 2] = ["declaration", "readonly"];
 /// Each name the checker resolved, classified by what it names, in the
 /// LSP's relative encoding: what highlighting by syntax can't know, such
 /// as which names are types or domains and which bindings are `var`.
-fn semantic_tokens(analysis: &cpl_check::Analysis) -> Vec<u32> {
+fn semantic_tokens(analysis: &cpl_facade::today::Analysis) -> Vec<u32> {
     let mut tokens: Vec<(Span, u32, u32)> = Vec::new();
     for item in &analysis.items {
         for entry in &item.check.hovers {
@@ -1399,7 +1400,7 @@ fn semantic_tokens(analysis: &cpl_check::Analysis) -> Vec<u32> {
             {
                 continue;
             }
-            let callable = matches!(entry.ty, cpl_check::Ty::Fn { .. });
+            let callable = matches!(entry.ty, cpl_facade::today::Ty::Fn { .. });
             let kind = match entry.keyword {
                 "type" | "domain" => 0,
                 "fn" => 1,
@@ -1408,7 +1409,7 @@ fn semantic_tokens(analysis: &cpl_check::Analysis) -> Vec<u32> {
                 "param" => 5,
                 "let" | "var" | "for" | "const" => 4,
                 "global" => match entry.ty {
-                    cpl_check::Ty::TypeName(_) | cpl_check::Ty::Domain(_) => 0,
+                    cpl_facade::today::Ty::TypeName(_) | cpl_facade::today::Ty::Domain(_) => 0,
                     _ if callable => 1,
                     _ => 4,
                 },
@@ -1532,7 +1533,7 @@ fn offered_lines(text: &str, outline: &Outline) -> String {
         .join("\n")
 }
 
-fn hover_markdown(hover: &cpl_check::Hover) -> String {
+fn hover_markdown(hover: &cpl_facade::today::Hover) -> String {
     let code = format!("```cp\n{}\n```", hover.text);
     match &hover.doc {
         Some(doc) => format!("{code}\n\n{}", cpl_doc::plain::text(doc)),
@@ -1685,7 +1686,7 @@ fn receiver_before(text: &str, at: usize) -> Option<&str> {
 /// The file a `file://` URI names, with `%XX` escapes decoded.
 pub(crate) fn path_of_uri(uri: &str) -> Option<String> {
     uri.starts_with("file://")
-        .then(|| cpl_check::file_path(uri))
+        .then(|| cpl_facade::today::file_path(uri))
 }
 
 /// Whether `query`'s characters appear in `name` in order, as editors'

@@ -7,12 +7,12 @@ use std::sync::atomic::{AtomicBool, Ordering};
 /// the standard library once, and a command that asks more of a file it
 /// compiled (`explain`'s storage) doesn't check it again. The loader rereads
 /// imports on every analysis.
-pub(crate) fn with_db<R>(f: impl FnOnce(&mut cpl_check::Session) -> R) -> R {
+pub(crate) fn with_db<R>(f: impl FnOnce(&mut cpl_facade::Session) -> R) -> R {
     DB.with_borrow_mut(f)
 }
 
 thread_local! {
-    static DB: std::cell::RefCell<cpl_check::Session> = Default::default();
+    static DB: std::cell::RefCell<cpl_facade::Session> = Default::default();
 }
 
 static ONE_COMMAND: AtomicBool = AtomicBool::new(false);

@@ -172,7 +172,7 @@ pub fn fix_removed_syntax(src: &str) -> (String, usize) {
 /// `.start`/`.end`, leaving user struct fields named `lo`/`hi` untouched)
 /// and a getter called with `()`.
 pub fn fix_checked_removed_syntax_in(
-    db: &mut cpl_check::Session,
+    db: &mut cpl_facade::Session,
     key: &str,
     src: &str,
 ) -> (String, usize) {
@@ -202,7 +202,7 @@ pub fn fix_checked_removed_syntax_in(
 /// `text` with the lint fixes `cpl lint --fix` would make under `config`,
 /// and how many; a fix is rechecked against the errors `check` reports.
 pub fn apply_lint_fixes(
-    db: &mut cpl_check::Session,
+    db: &mut cpl_facade::Session,
     path: &str,
     text: String,
     config: &Config,
@@ -213,7 +213,7 @@ pub fn apply_lint_fixes(
 
 /// [`apply_lint_fixes`] with only the findings `keep` takes.
 pub fn apply_lint_fixes_where(
-    db: &mut cpl_check::Session,
+    db: &mut cpl_facade::Session,
     path: &str,
     text: String,
     config: &Config,
@@ -248,17 +248,17 @@ pub(crate) fn fix_at(
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or_else(|| "<fix>.cp".to_string());
     fix_in(
-        &mut cpl_check::Session::new(),
+        &mut cpl_facade::Session::default(),
         &key,
         src,
         config,
-        &cpl_ir::check,
+        &cpl_facade::today::built,
     )
 }
 
 /// [`fix`] on the file `key` in a warm `db`, leaving `db` holding the result.
 pub fn fix_in(
-    db: &mut cpl_check::Session,
+    db: &mut cpl_facade::Session,
     key: &str,
     src: &str,
     config: &Config,

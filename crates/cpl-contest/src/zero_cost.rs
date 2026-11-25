@@ -59,7 +59,7 @@ pub struct PairResult {
 pub fn emit_cpp(path: &Path) -> Result<String, String> {
     let source =
         std::fs::read_to_string(path).map_err(|e| format!("can't read {}: {e}", path.shown()))?;
-    let mut db = cpl_check::Session::new();
+    let mut db = cpl_facade::Session::default();
     let name = path.to_string_lossy().into_owned();
     db.set_file(&name, source.as_str());
     let analysis = db
@@ -74,11 +74,11 @@ pub fn emit_cpp(path: &Path) -> Result<String, String> {
             .collect();
         return Err(format!("{}: {}", path.shown(), msgs.join("; ")));
     }
-    let ir = cpl_ir::lower(&analysis).map_err(|diags| {
+    let ir = cpl_facade::today::program(&analysis, &cpl_facade::Job::program()).map_err(|diags| {
         let msgs: Vec<String> = diags.into_iter().map(|d| d.message).collect();
         format!("{}: {}", path.shown(), msgs.join("; "))
     })?;
-    Ok(cpl_codegen::emit(&ir, &name, Some(&source)))
+    Ok(cpl_facade::emit_cpp(&ir, &name, &cpl_facade::Profile::default()).text)
 }
 
 fn compile_cpp(cpp_path: &Path, bin_path: &Path) -> Result<(), String> {

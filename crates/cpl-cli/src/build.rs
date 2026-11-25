@@ -15,7 +15,7 @@ pub(crate) struct BuildOptions<'a> {
     pub out: Option<&'a str>,
     pub judge: Option<&'a str>,
     pub checked: bool,
-    pub checks: cpl_codegen::Checks,
+    pub checks: cpl_facade::Checks,
     pub size: bool,
     pub copy: bool,
     pub json: bool,
@@ -69,24 +69,29 @@ pub(crate) fn build_file(
         .and_then(|n| n.to_str())
         .unwrap_or(path);
     let limit = profile.limit();
-    let target = cpl_codegen::Target {
+    let mut sizes = Vec::new();
+    let aim = profile.aim();
+    let bar = if full {
+        cpl_facade::SizeBar {
+            aim: usize::MAX,
+            limit: usize::MAX,
+        }
+    } else {
+        cpl_facade::SizeBar { aim, limit }
+    };
+    let target = cpl_facade::Profile {
         stamp: Some(profile.stamp()),
         thread_stack: profile.thread_stack,
         windows: profile.os == cpl_judge::Os::Windows,
         checks,
         cpu: profile.cpu.clone(),
+        size: Some(bar),
+        source_comment: true,
     };
-    let mut sizes = Vec::new();
-    let aim = profile.aim();
-    let bar = if full {
-        (usize::MAX, usize::MAX)
-    } else {
-        (aim, limit)
-    };
-    let cpp = match cpl_codegen::emit_aiming(&compiled.program, name, &compiled.text, bar, &target)
-    {
-        Ok(fitted) => {
-            let left = fitted.left_out();
+    let fitted = cpl_facade::emit_cpp(&compiled.program, name, &target);
+    let cpp = match fitted.over_limit {
+        false => {
+            let left = &fitted.left_out;
             if !full && !left.is_empty() {
                 let bar = format!("{aim}-byte target");
                 let args: &[&dyn std::fmt::Display] =
@@ -96,21 +101,20 @@ pub(crate) fn build_file(
                 });
             }
             if size || json {
-                let source = fitted.header.then_some(compiled.text.as_str());
-                sizes = cpl_codegen::sizes(&compiled.program, name, source, &target, &fitted);
+                sizes = fitted.sizes(&compiled.program, name, &target);
             }
             if size {
                 *stderr += &size_report(&sizes, limit, &profile.name);
             }
-            fitted.cpp
+            fitted.text
         }
-        Err(shortest) => {
+        true => {
             *stderr += &format!(
                 "cpl: the C++ for `{path}` is {} bytes, over the {limit}-byte limit of judge `{}`\n",
-                shortest.cpp.len(),
+                fitted.text.len(),
                 profile.name
             );
-            let sizes = cpl_codegen::sizes(&compiled.program, name, None, &target, &shortest);
+            let sizes = fitted.sizes(&compiled.program, name, &target);
             *stderr += &size_report(&sizes, limit, &profile.name);
             return EXIT_ERRORS;
         }
@@ -237,7 +241,7 @@ pub(crate) fn take_judge<'a>(
 /// What a judge build checks unless `--checks` says: hand-written C++'s
 /// checks, since on the judge a crash and a wrong answer cost the same
 /// (decisions.md 299).
-pub(crate) const JUDGE_CHECKS: cpl_codegen::Checks = cpl_codegen::Checks::None;
+pub(crate) const JUDGE_CHECKS: cpl_facade::Checks = cpl_facade::Checks::None;
 
 /// `--checks <level>`, taken out of `rest`. Where it is absent,
 /// [`JUDGE_CHECKS`], or `traps` for a `--checked` build, which is built to
@@ -245,20 +249,20 @@ pub(crate) const JUDGE_CHECKS: cpl_codegen::Checks = cpl_codegen::Checks::None;
 pub(crate) fn take_checks(
     rest: &mut Vec<&str>,
     checked: bool,
-) -> Result<cpl_codegen::Checks, String> {
+) -> Result<cpl_facade::Checks, String> {
     let Some(at) = rest.iter().position(|arg| *arg == "--checks") else {
         return Ok(match checked {
-            true => cpl_codegen::Checks::Traps,
+            true => cpl_facade::Checks::Traps,
             false => JUDGE_CHECKS,
         });
     };
     let level = rest
         .get(at + 1)
-        .and_then(|name| cpl_codegen::Checks::parse(name));
+        .and_then(|name| cpl_facade::Checks::parse(name));
     let Some(level) = level else {
         return Err(format!(
             "`--checks` takes one of {}: `cpl build a.cp --checks none`",
-            cpl_codegen::Checks::NAMES
+            cpl_facade::Checks::NAMES
                 .map(|n| format!("`{n}`"))
                 .join(", ")
         ));

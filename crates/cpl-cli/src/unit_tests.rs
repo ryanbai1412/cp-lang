@@ -50,13 +50,13 @@ pub(crate) fn should_run_unit_tests(args: &[&str]) -> bool {
             return false;
         }
         if let Ok(text) = std::fs::read_to_string(p) {
-            let mut db = cpl_check::Session::new();
+            let mut db = cpl_facade::Session::default();
             db.set_file(paths[0], text.as_str());
             if laws::with_law_tests(&mut db, paths[0], &text).is_some() {
                 return true;
             }
             if let Some(analysis) = db.analyze(paths[0]) {
-                return !cpl_ir::list_tests(&analysis).is_empty();
+                return !cpl_facade::today::roles(&analysis).tests.is_empty();
             }
         }
     }
@@ -112,7 +112,7 @@ pub(crate) fn run_unit_tests(
         }
         collect_cp_files(p, &mut files);
     }
-    let mut db = cpl_check::Session::new();
+    let mut db = cpl_facade::Session::default();
     let mut passed = 0usize;
     let mut failed = 0usize;
     let tmp_dir = std::env::temp_dir().join(format!("cpl-test-{}", std::process::id()));
@@ -138,7 +138,7 @@ pub(crate) fn run_unit_tests(
         let Some(analysis) = db.analyze(&path_str) else {
             continue;
         };
-        let tests = cpl_ir::list_tests(&analysis);
+        let tests = cpl_facade::today::roles(&analysis).tests;
         if tests.is_empty() {
             continue;
         }
@@ -156,9 +156,9 @@ pub(crate) fn run_unit_tests(
         let limit = std::time::Duration::from_millis(limit);
         for (idx, name) in tests.iter().enumerate() {
             let label = format!("{path_str}::{name}");
-            match cpl_ir::lower_test(&analysis, name) {
+            match cpl_facade::today::program(&analysis, &cpl_facade::Job::of(cpl_facade::Root::Test(name.to_string()))) {
                 Ok(program) => {
-                    let Some((out, ran)) = cpl_interp::run_for(&program, &[], limit) else {
+                    let Some((out, ran)) = cpl_facade::run_for(&program, &[], limit) else {
                         let _ = writeln!(
                             stdout,
                             "  FAIL {label}: still running after the {} ms time limit",
@@ -173,7 +173,7 @@ pub(crate) fn run_unit_tests(
                         continue;
                     }
                     if run_cpp {
-                        let cpp = cpl_codegen::emit(&program, name, Some(&text));
+                        let cpp = cpl_facade::emit_cpp(&program, name, &cpl_facade::Profile::default()).text;
                         let cpp_path = tmp_dir.join(format!("t_{passed}_{idx}.cpp"));
                         let bin_path = tmp_dir.join(format!("t_{passed}_{idx}"));
                         if let Err(e) = std::fs::write(&cpp_path, &cpp) {

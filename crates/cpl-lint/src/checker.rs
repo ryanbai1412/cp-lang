@@ -50,7 +50,7 @@ pub(crate) fn checked(path: Option<&std::path::Path>, src: &str, config: &Config
     let key = path
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or_else(|| "<lint>.cp".to_string());
-    let mut db = cpl_check::Session::new();
+    let mut db = cpl_facade::Session::default();
     db.set_file(&key, src);
     let Some(analysis) = db.analyze(&key) else {
         return Checked::default();
@@ -62,7 +62,7 @@ pub(crate) fn checked(path: Option<&std::path::Path>, src: &str, config: &Config
 /// it (`reported`, the checker's diagnostics or more) into lints at their
 /// levels and the errors lints can't see past.
 pub fn checked_analysis(
-    analysis: &cpl_check::Analysis,
+    analysis: &cpl_facade::today::Analysis,
     reported: &[Diagnostic],
     config: &Config,
 ) -> Checked {
@@ -89,7 +89,7 @@ pub fn checked_analysis(
 /// `reported` as `cpl check` and the editor show it: the checker's lints at
 /// the levels `config` and the file's `with lint(...)` set, the rest as is.
 pub fn at_levels(
-    analysis: &cpl_check::Analysis,
+    analysis: &cpl_facade::today::Analysis,
     reported: &[Diagnostic],
     config: &Config,
 ) -> Vec<Diagnostic> {
@@ -101,7 +101,7 @@ pub fn at_levels(
 }
 
 /// The spans `with lint(name: allow)` covers in `analysis`'s file.
-fn allowed_regions(analysis: &cpl_check::Analysis) -> Vec<(cpl_diag::Span, &'static str)> {
+fn allowed_regions(analysis: &cpl_facade::today::Analysis) -> Vec<(cpl_diag::Span, &'static str)> {
     if analysis.has_syntax_errors {
         return Vec::new();
     }

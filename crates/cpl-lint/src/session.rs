@@ -5,7 +5,7 @@
 
 use std::sync::{Arc, OnceLock};
 
-use cpl_check::Analysis;
+use cpl_facade::today::Analysis;
 use cpl_diag::Diagnostic;
 
 use crate::{

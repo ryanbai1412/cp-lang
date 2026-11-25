@@ -5,7 +5,7 @@
 
 use crate::walk::Visitor;
 use crate::{File, Finding, Group, Level, Lint};
-use cpl_check::Analysis;
+use cpl_facade::today::Analysis;
 use cpl_diag::{Code, Span};
 use cpl_syntax::ast::{Cond, Expr, ExprKind, Stmt, StmtKind, Type};
 use cpl_syntax::library_lint::{self, is_name, Bound, LibraryLint};
@@ -102,7 +102,7 @@ pub(crate) fn collect(analysis: &Analysis) -> Vec<Declared> {
     }
     // Std's from its outline: a program that hand-writes what a std fn does
     // seldom loads its module, and std's names need no `use`.
-    for (name, outline) in cpl_check::std_index() {
+    for (name, outline) in cpl_facade::today::std_index() {
         let module = format!("std.{}", name.replace('/', "."));
         if !outline.contains("@lint(") || analysis.modules().iter().any(|m| m.name == module) {
             continue;
@@ -1152,7 +1152,7 @@ fn proven(
                 return b.lo.is_none_or(|want| v >= want) && b.hi.is_none_or(|want| v <= want);
             }
             match file.facts.and_then(|f| f.place_type(span)) {
-                Some(cpl_check::Ty::Range { lo, hi, .. }) => (*lo, *hi),
+                Some(cpl_facade::today::Ty::Range { lo, hi, .. }) => (*lo, *hi),
                 _ => (None, None),
             }
         }

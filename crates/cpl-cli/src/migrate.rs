@@ -6,7 +6,6 @@
 //! its help, for a hand edit. Recording pins waits on `cp.toml` pins
 //! (decisions.md 251).
 
-use crate::check::errors_in;
 use std::io::Write;
 use std::path::Path;
 
@@ -32,8 +31,8 @@ fn is_migration(d: &cpl_diag::Diagnostic) -> bool {
 /// `text` with every migration fix applied, how many, and the migrations
 /// left that have no fix.
 fn migrate_text(path: &str, text: &str) -> (String, usize, Vec<cpl_diag::Diagnostic>) {
-    let mut db = cpl_check::Session::new();
-    migrate_with(text, &mut |text| errors_in(&mut db, path, text))
+    let db = cpl_facade::Session::default();
+    migrate_with(text, &mut |text| db.errors_in(path, text))
 }
 
 /// [`migrate_text`] with `errors` as the check: `cpl fix`'s checked rounds,
@@ -234,9 +233,9 @@ mod tests {
     #[test]
     fn a_migration_that_adds_an_error_is_refused() {
         let old = "if true:\n    print(1)\nelse if false:\n    print(2)\n";
-        let mut db = cpl_check::Session::new();
+        let db = cpl_facade::Session::default();
         let mut errors = |text: &str| {
-            let mut found = errors_in(&mut db, "a.cp", text);
+            let mut found = db.errors_in("a.cp", text);
             if text.contains("elif") {
                 let at = cpl_diag::Span::new(0, 2);
                 found.push(cpl_diag::Diagnostic::error(

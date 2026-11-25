@@ -15,8 +15,8 @@ struct Ran {
     expected: Option<String>,
     /// The first difference from `expected`.
     differs: Option<String>,
-    trap: Option<cpl_interp::Trap>,
-    lives: Vec<cpl_interp::trace::Live>,
+    trap: Option<cpl_facade::Trap>,
+    lives: Vec<cpl_facade::today::trace::Live>,
 }
 
 impl Ran {
@@ -129,9 +129,9 @@ fn run_one(compiled: &Compiled, name: &str, input: &[u8], expected: Option<Strin
             crate::trace::config(&compiled.text, None),
             true,
         ),
-        None => cpl_interp::run_observed(
+        None => cpl_facade::run_traced(
             &compiled.program,
-            cpl_interp::Io::fixed(input).with_last_values(&compiled.text),
+            cpl_facade::RunInput::fixed(input).with_last_values(&compiled.text),
             &mut printed,
             None,
         ),

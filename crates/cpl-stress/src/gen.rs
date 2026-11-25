@@ -671,12 +671,12 @@ fn make_in(spec: &InputSpec, outer: &Env, pick: &mut dyn Pick) -> Option<Case> {
 
 /// What the `read(gen: f)` program prints, reading `above` (the values
 /// read before it) with `rand` started from `seed`. `None` when it traps.
-pub(crate) fn draw(program: &cpl_ir::Program, above: &[Value], seed: u64) -> Option<Value> {
+pub(crate) fn draw(program: &cpl_facade::Program, above: &[Value], seed: u64) -> Option<Value> {
     let mut input = String::new();
     above.iter().for_each(|value| write(value, &mut input));
     let mut out = Vec::new();
-    let io = cpl_interp::Io::fixed(input.as_bytes()).seeded(seed);
-    cpl_interp::run_with(program, io, &mut out).ok()?;
+    let io = cpl_facade::RunInput::fixed(input.as_bytes()).seeded(seed);
+    cpl_facade::run_to_end(program, io, &mut out).ok()?;
     let text = String::from_utf8(out).ok()?;
     Some(Value::Drawn { seed, text })
 }

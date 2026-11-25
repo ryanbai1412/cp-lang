@@ -7,7 +7,7 @@ use super::bounds::Bounds;
 use crate::facts::Facts;
 use crate::walk::Visitor;
 use crate::{File, Finding, MEMO_KEY_SPACE};
-use cpl_check::Ty;
+use cpl_facade::today::Ty;
 use cpl_diag::msgs::lint_rules;
 use cpl_syntax::ast::{ExprKind, Stmt, StmtKind};
 

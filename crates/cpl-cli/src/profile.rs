@@ -6,7 +6,7 @@
 use crate::{compile, Compiled, EXIT_ERRORS, EXIT_FAILED, EXIT_USAGE};
 use cpl_diag::Shown;
 use cpl_diag::{LineIndex, Span};
-use cpl_interp::profile::Site;
+use cpl_facade::today::profile::Site;
 use std::collections::{BTreeMap, HashMap};
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -48,7 +48,7 @@ struct Options<'a> {
     file: &'a str,
     inputs: Vec<&'a str>,
     native: bool,
-    checks: cpl_codegen::Checks,
+    checks: cpl_facade::Checks,
     json: bool,
 }
 
@@ -57,7 +57,7 @@ fn options<'a>(rest: &[&'a str], usage: &str, stdout: &mut dyn Write) -> Result<
         file: "",
         inputs: Vec::new(),
         native: false,
-        checks: cpl_codegen::Checks::default(),
+        checks: cpl_facade::Checks::default(),
         json: false,
     };
     let mut files = Vec::new();
@@ -69,7 +69,7 @@ fn options<'a>(rest: &[&'a str], usage: &str, stdout: &mut dyn Write) -> Result<
                 return Err(0);
             }
             "--native" => options.native = true,
-            "--checks" => match args.next().and_then(|n| cpl_codegen::Checks::parse(n)) {
+            "--checks" => match args.next().and_then(|n| cpl_facade::Checks::parse(n)) {
                 Some(level) => options.checks = level,
                 None => return Err(EXIT_USAGE),
             },
@@ -101,14 +101,22 @@ fn run(
     file: &str,
     compiled: &Compiled,
     input: &[u8],
-    native: Option<cpl_codegen::Checks>,
+    native: Option<cpl_facade::Checks>,
 ) -> Result<Run, String> {
     if let Some(checks) = native {
         return run_native(file, compiled, input, checks);
     }
     let mut sink = Vec::new();
     let observed =
-        cpl_interp::run_profiled(&compiled.program, cpl_interp::Io::fixed(input), &mut sink);
+        cpl_facade::run(
+        &compiled.program,
+        cpl_facade::RunInput::fixed(input),
+        &mut sink,
+        cpl_facade::Request {
+            profile: true,
+            ..cpl_facade::Request::default()
+        },
+    );
     Ok(Run {
         sites: observed
             .profile
@@ -126,15 +134,17 @@ fn run_native(
     file: &str,
     compiled: &Compiled,
     input: &[u8],
-    checks: cpl_codegen::Checks,
+    checks: cpl_facade::Checks,
 ) -> Result<Run, String> {
     let judge = cpl_judge::resolve(Path::new(file), &compiled.text, None)?;
-    let target = cpl_codegen::Target {
+    let target = cpl_facade::Profile {
         stamp: Some(judge.stamp()),
         thread_stack: judge.thread_stack,
         windows: judge.os == cpl_judge::Os::Windows,
         cpu: judge.cpu.clone(),
         checks,
+        size: None,
+        source_comment: true,
     };
     let dir = std::env::temp_dir().join(format!("cpl-profile-{}", std::process::id()));
     std::fs::create_dir_all(&dir).map_err(|e| format!("can't make `{}`: {e}", dir.shown()))?;
@@ -143,7 +153,7 @@ fn run_native(
         dir.join("profile"),
         dir.join("profile.txt"),
     );
-    let (cpp, spans) = cpl_codegen::emit_profiled(
+    let (cpp, spans) = cpl_facade::emit_cpp_profiled(
         &compiled.program,
         "profile",
         &target,
@@ -408,27 +418,27 @@ struct Branch {
 /// The `if`s that went one way: from how often each began and how often
 /// its first statement began.
 fn one_way(compiled: &Compiled, index: &LineIndex, sites: &HashMap<Span, Site>) -> Vec<Branch> {
-    let counted = cpl_ir::sites::user_stmts(&compiled.program);
-    let hits = |stmt: &cpl_ir::Stmt| {
+    let counted = cpl_facade::today::ir::sites::user_stmts(compiled.program.ir());
+    let hits = |stmt: &cpl_facade::today::ir::Stmt| {
         stmt.span()
             .and_then(|span| sites.get(&span))
             .map_or(0, |site| site.hits)
     };
     let mut found = Vec::new();
     let mut seen = std::collections::HashSet::new();
-    let program = &compiled.program;
-    let mut blocks: Vec<&cpl_ir::Block> = vec![&program.setup, &program.main];
+    let program = compiled.program.ir();
+    let mut blocks: Vec<&cpl_facade::today::ir::Block> = vec![&program.setup, &program.main];
     blocks.extend(program.fns.iter().map(|f| &f.body));
     blocks.extend(program.closures.iter().map(|c| &c.body));
     for block in blocks {
-        cpl_ir::walk::deep_stmts(block, &mut |stmt| {
-            let cpl_ir::Stmt::If(_, then, _) = stmt else {
+        cpl_facade::today::ir::walk::deep_stmts(block, &mut |stmt| {
+            let cpl_facade::today::ir::Stmt::If(_, then, _) = stmt else {
                 return;
             };
             let (Some(span), Some(first)) = (stmt.span(), then.stmts.first()) else {
                 return;
             };
-            if !counted.contains(&(stmt as *const cpl_ir::Stmt))
+            if !counted.contains(&(stmt as *const cpl_facade::today::ir::Stmt))
                 || first.span().is_none()
                 || !seen.insert(span)
             {
@@ -502,7 +512,7 @@ pub fn cover(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) -> u8 {
     }
     let index = LineIndex::new(&compiled.text);
     let mut lines: BTreeMap<u32, bool> = BTreeMap::new();
-    for span in cpl_ir::sites::user_spans(&compiled.program) {
+    for span in cpl_facade::today::ir::sites::user_spans(compiled.program.ir()) {
         lines.entry(index.line_of(span.start) + 1).or_default();
     }
     for (number, line) in by_line(&index, &sites) {

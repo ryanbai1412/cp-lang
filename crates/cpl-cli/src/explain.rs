@@ -108,8 +108,8 @@ pub(crate) fn explain_file(
         Err(code) => return code,
     };
     if json {
-        let entries = cpl_codegen::explain_closures(&compiled.program);
-        let dropped = cpl_codegen::explain_dropped_fields(&compiled.program);
+        let entries = cpl_facade::today::explain::closures(&compiled.program);
+        let dropped = cpl_facade::today::explain::dropped_fields(&compiled.program);
         const DROPPED: &str = "never read; it and its stores are left out";
         let row = |site: &str, lowering: &'static str, detail: &str| {
             (site.to_string(), lowering, detail.to_string())
@@ -117,16 +117,16 @@ pub(crate) fn explain_file(
         let mut rows = Vec::new();
         for entry in &entries {
             let (kind, detail) = match &entry.mode {
-                cpl_codegen::ClosureMode::StaticDirect { closure } => {
+                cpl_facade::today::explain::ClosureMode::StaticDirect { closure } => {
                     ("static_direct", format!("cpl_fn{closure}"))
                 }
-                cpl_codegen::ClosureMode::StaticTemplate => {
+                cpl_facade::today::explain::ClosureMode::StaticTemplate => {
                     ("static_template", "template parameter".to_string())
                 }
-                cpl_codegen::ClosureMode::StaticLocalAuto => {
+                cpl_facade::today::explain::ClosureMode::StaticLocalAuto => {
                     ("static_local_auto", "local auto lambda".to_string())
                 }
-                cpl_codegen::ClosureMode::StaticFunctor { closures } => match closures.as_slice() {
+                cpl_facade::today::explain::ClosureMode::StaticFunctor { closures } => match closures.as_slice() {
                     [closure] => (
                         "static_closure_type",
                         format!("cpl_cl{closure}, its one closure's own type"),
@@ -143,24 +143,24 @@ pub(crate) fn explain_file(
                         )
                     }
                 },
-                cpl_codegen::ClosureMode::Unread => ("unread", "never read, dropped".to_string()),
-                cpl_codegen::ClosureMode::Unbuilt => (
+                cpl_facade::today::explain::ClosureMode::Unread => ("unread", "never read, dropped".to_string()),
+                cpl_facade::today::explain::ClosureMode::Unbuilt => (
                     "unbuilt",
                     "its struct is never built, never called".to_string(),
                 ),
-                cpl_codegen::ClosureMode::FnPointer => (
+                cpl_facade::today::explain::ClosureMode::FnPointer => (
                     "fn_pointer",
                     "every closure it can hold captures nothing".to_string(),
                 ),
-                cpl_codegen::ClosureMode::Bound => (
+                cpl_facade::today::explain::ClosureMode::Bound => (
                     "bound",
                     "every closure it can hold copies captures of the same types".to_string(),
                 ),
-                cpl_codegen::ClosureMode::FnRef => (
+                cpl_facade::today::explain::ClosureMode::FnRef => (
                     "fn_ref",
                     "a view of the caller's callable, a pointer and a trampoline".to_string(),
                 ),
-                cpl_codegen::ClosureMode::DynamicStdFunction { reason } => {
+                cpl_facade::today::explain::ClosureMode::DynamicStdFunction { reason } => {
                     ("dynamic_std_function", reason.clone())
                 }
             };
@@ -169,9 +169,9 @@ pub(crate) fn explain_file(
         for site in &dropped {
             rows.push(row(site, "dropped_field", DROPPED));
         }
-        let lowered = cpl_codegen::explain_lowered(&compiled.program);
+        let lowered = cpl_facade::today::explain::lowered(&compiled.program);
         for (span, what, why) in &lowered.copies {
-            let (line, col) = cpl_codegen::explain::line_col(&compiled.text, *span);
+            let (line, col) = cpl_facade::today::explain::line_col(&compiled.text, *span);
             rows.push(row(
                 &format!("{line}:{col}"),
                 "copy",
@@ -179,36 +179,36 @@ pub(crate) fn explain_file(
             ));
         }
         for span in &lowered.moved {
-            let (line, col) = cpl_codegen::explain::line_col(&compiled.text, *span);
-            let detail = cpl_codegen::explain::MOVED;
+            let (line, col) = cpl_facade::today::explain::line_col(&compiled.text, *span);
+            let detail = cpl_facade::today::explain::MOVED;
             rows.push(row(&format!("{line}:{col}"), "copy_moved", detail));
         }
-        for span in &compiled.program.written_back {
-            let (line, col) = cpl_codegen::explain::line_col(&compiled.text, *span);
-            let detail = cpl_codegen::explain::WRITTEN_BACK;
+        for span in &compiled.program.ir().written_back {
+            let (line, col) = cpl_facade::today::explain::line_col(&compiled.text, *span);
+            let detail = cpl_facade::today::explain::WRITTEN_BACK;
             rows.push(row(&format!("{line}:{col}"), "written_back", detail));
         }
         for chosen in &lowered.specializations {
             rows.push(row("", "specialization", chosen));
         }
         for (span, index) in &lowered.checks {
-            let (line, col) = cpl_codegen::explain::line_col(&compiled.text, *span);
+            let (line, col) = cpl_facade::today::explain::line_col(&compiled.text, *span);
             let lowering = match index {
-                cpl_codegen::explain::Index::Checked => "index_checked",
+                cpl_facade::today::explain::Index::Checked => "index_checked",
                 _ => "index_unchecked",
             };
             rows.push(row(&format!("{line}:{col}"), lowering, index.why()));
         }
         for (span, what) in &lowered.proven {
-            let (line, col) = cpl_codegen::explain::line_col(&compiled.text, *span);
-            let why = format!("{what}: {}", cpl_codegen::explain::PROVEN);
+            let (line, col) = cpl_facade::today::explain::line_col(&compiled.text, *span);
+            let why = format!("{what}: {}", cpl_facade::today::explain::PROVEN);
             rows.push(row(&format!("{line}:{col}"), "check_dropped", &why));
         }
         for &(span, checked) in &lowered.overflows {
-            let (line, col) = cpl_codegen::explain::line_col(&compiled.text, span);
+            let (line, col) = cpl_facade::today::explain::line_col(&compiled.text, span);
             let (lowering, why) = match checked {
                 true => ("overflow_checked", ""),
-                false => ("overflow_unchecked", cpl_codegen::explain::FITS),
+                false => ("overflow_unchecked", cpl_facade::today::explain::FITS),
             };
             rows.push(row(&format!("{line}:{col}"), lowering, why));
         }
@@ -235,7 +235,7 @@ pub(crate) fn explain_file(
     let _ = write!(
         stdout,
         "{}",
-        cpl_codegen::explain::report_with(path, &compiled.text, &compiled.program, Some(&section))
+        cpl_facade::today::explain::report_with(path, &compiled.text, &compiled.program, Some(&section))
     );
     0
 }
@@ -245,7 +245,7 @@ pub(crate) fn explain_file(
 /// current directory name under `[libs]`.
 fn explain_library_lint(name: &str, stdout: &mut dyn Write) -> bool {
     let cwd = std::env::current_dir().unwrap_or_default();
-    for (lib, root) in cpl_check::configured_libraries(&cwd) {
+    for (lib, root) in cpl_facade::today::configured_libraries(&cwd) {
         let mut files = Vec::new();
         cp_files(&root, &mut files);
         files.sort();

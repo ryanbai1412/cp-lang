@@ -28,7 +28,7 @@ impl Server {
             let preferred = match diag.severity {
                 cpl_diag::Severity::Error => {
                     rechecked |= diag.fixes.len() > 1;
-                    cpl_ir::fix::checked_fix(&mut self.db, uri, &analysis.text, diag)
+                    self.db.checked_fix(uri, &analysis.text, diag)
                 }
                 _ => diag.fixes.first(),
             };

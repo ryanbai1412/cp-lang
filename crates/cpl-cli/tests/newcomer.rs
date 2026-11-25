@@ -21,10 +21,10 @@ fn root() -> PathBuf {
 
 /// `src`'s errors, checked as `path` in `db`: one session per thread
 /// checks the std library once for all its copies.
-fn errors(db: &mut cpl_check::Session, path: &str, src: &str) -> Vec<Diagnostic> {
+fn errors(db: &mut cpl_facade::Session, path: &str, src: &str) -> Vec<Diagnostic> {
     db.set_file(path, src);
     let analysis = db.analyze(path).expect("the file was just set");
-    let mut out: Vec<Diagnostic> = cpl_ir::check(&analysis)
+    let mut out: Vec<Diagnostic> = cpl_facade::today::built(&analysis)
         .into_iter()
         .filter(|d| d.severity == Severity::Error)
         .collect();
@@ -306,7 +306,7 @@ fn newcomer_scoreboard() {
         }
     }
     let show = std::env::var("NEWCOMER_SHOW").ok();
-    let score = |db: &mut cpl_check::Session, file: &Path, c: &Case| -> Scored {
+    let score = |db: &mut cpl_facade::Session, file: &Path, c: &Case| -> Scored {
         let (original, tests) = &tests[&c.problem];
         let path = dir
             .join(&c.problem)
@@ -327,9 +327,9 @@ fn newcomer_scoreboard() {
         let right = on(errs[0].span) || errs[0].labels.iter().any(|l| on(l.span));
         t.first_right = right as u32;
         t.fixable = !errs[0].fixes.is_empty() as u32;
-        let (fixed, ..) = cpl_ir::fix::apply_error_fixes_in(db, &path, &c.src);
+        let (fixed, ..) = db.apply_error_fixes(&path, &c.src);
         // Windows: the same copy with CRLF line ends gets the same fixes.
-        let (crlf, ..) = cpl_ir::fix::apply_error_fixes_in(db, &path, &c.src.replace('\n', "\r\n"));
+        let (crlf, ..) = db.apply_error_fixes(&path, &c.src.replace('\n', "\r\n"));
         if crlf.replace("\r\n", "\n") != fixed {
             out.crlf_differs = Some(format!("{} {}: {}", c.problem, c.line + 1, c.habit));
         }
@@ -359,7 +359,7 @@ fn newcomer_scoreboard() {
             .map(|w| {
                 let (next, score, cases) = (&next, &score, &cases);
                 s.spawn(move || {
-                    let mut db = cpl_check::Session::new();
+                    let mut db = cpl_facade::Session::default();
                     let file = std::env::temp_dir()
                         .join(format!("cpl-newcomer-{}-{w}.cp", std::process::id()));
                     let mut done = Vec::new();

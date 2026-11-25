@@ -43,7 +43,7 @@ pub fn watched(source: &Path, extra: &[PathBuf]) -> Vec<PathBuf> {
 /// rounds, so a save only re-checks what changed.
 pub struct Watch {
     source: PathBuf,
-    db: cpl_check::Session,
+    db: cpl_facade::Session,
     /// Print each round as one line of JSON instead of text.
     pub json: bool,
 }
@@ -52,7 +52,7 @@ impl Watch {
     pub fn new(source: PathBuf) -> Watch {
         Watch {
             source,
-            db: cpl_check::Session::new(),
+            db: cpl_facade::Session::default(),
             json: false,
         }
     }

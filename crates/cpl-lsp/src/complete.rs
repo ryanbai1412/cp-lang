@@ -6,7 +6,7 @@
 //! doc comments come from the declarations, through [`Outline`].
 
 use crate::outline::{Entry, Kind, Outline, Param};
-use cpl_check::{
+use cpl_facade::today::{
     builtin_members, prelude_names, Analysis, AnalyzedItem, BuiltinMember, DeclKind, FsLoader,
     HoverEntry, Loader, MemberKind, PreludeKind, Receiver, Ty,
 };
@@ -46,7 +46,7 @@ impl StdLib {
                 if let Some((_, text)) = FsLoader.load(from, &path) {
                     return Some(Arc::new(Outline::of_source(&text)));
                 }
-                let (len, _, text) = cpl_check::std_outline(&path)?;
+                let (len, _, text) = cpl_facade::today::std_outline(&path)?;
                 let mut outline = Outline::of_source(text);
                 let marks = outline.entries.iter_mut().map(|e| (None, e));
                 let owned = outline.impls.iter_mut().flat_map(|(target, entries)| {
@@ -657,7 +657,7 @@ fn item_json(entry: &Entry, sort: u8) -> Value {
 /// most come first, so `len` and `map` lead a list's long tail.
 fn member_json(entry: &Entry, sort: u8) -> Value {
     let mut item = item_json(entry, sort);
-    let rare = 9999 - cpl_check::std_calls(&entry.name).min(9999);
+    let rare = 9999 - cpl_facade::today::std_calls(&entry.name).min(9999);
     if let Value::Object(members) = &mut item {
         let text = format!("{sort}{rare:04}{}", entry.name);
         members.insert("sortText".to_string(), text.into());
@@ -721,7 +721,7 @@ fn use_completion(cursor: &Cursor, std: &mut StdLib, path: &str, word: &str) -> 
         return outline
             .entries
             .iter()
-            .filter(|e| e.public && !cpl_check::is_list_form_hook(&e.name))
+            .filter(|e| e.public && !cpl_facade::today::is_list_form_hook(&e.name))
             .map(|e| item_json(e, 0))
             .collect();
     }
@@ -1064,7 +1064,7 @@ fn members_of_ty(cursor: &Cursor, std: &mut StdLib, ty: &Ty) -> Vec<(Entry, u8)>
 /// The hover for a member the checker records no fact for, `s.runs` in
 /// `s.runs()`: the declaration the receiver's members name, rendered as
 /// completion and signature help show it.
-pub fn member_hover(cursor: &Cursor, std: &mut StdLib) -> Option<cpl_check::Hover> {
+pub fn member_hover(cursor: &Cursor, std: &mut StdLib) -> Option<cpl_facade::today::Hover> {
     let text = &*cursor.analysis.text;
     let at = (cursor.offset as usize).min(text.len());
     let start = text[..at]
@@ -1091,7 +1091,7 @@ pub fn member_hover(cursor: &Cursor, std: &mut StdLib) -> Option<cpl_check::Hove
         .cost
         .map(|c| cpl_diag::plain::text(&c))
         .filter(|c| cpl_syntax::doc::big_o(c).is_some());
-    Some(cpl_check::Hover {
+    Some(cpl_facade::today::Hover {
         ty: None,
         signature: false,
         span: cpl_diag::Span {
@@ -1128,7 +1128,7 @@ fn std_methods(cursor: &Cursor, std: &mut StdLib) -> Vec<Entry> {
             }
         }
     }
-    for (path, name) in cpl_check::std_methods() {
+    for (path, name) in cpl_facade::today::std_methods() {
         let module: Vec<&str> = path[1..].iter().map(|n| n.text.as_str()).collect();
         let Some(outline) = std.module(cursor.uri, &module.join(".")) else {
             continue;
@@ -1154,18 +1154,18 @@ fn own_members_of_ty(cursor: &Cursor, std: &mut StdLib, ty: &Ty) -> Vec<(Entry, 
     };
     match ty {
         Ty::Named { name, .. } if name == "Range" => {
-            builtin(cpl_check::RANGE_MEMBERS, ty.to_string())
+            builtin(cpl_facade::today::RANGE_MEMBERS, ty.to_string())
         }
         Ty::Named { name, args } if builtin_receiver(ty).is_none() => {
             type_members(cursor, std, name, args, args.len(), true)
         }
         Ty::TypeName(name) if is_domain(cursor.analysis, name) => {
-            builtin(cpl_check::DOMAIN_MEMBERS, format!("domain {name}"))
+            builtin(cpl_facade::today::DOMAIN_MEMBERS, format!("domain {name}"))
         }
         Ty::TypeName(name) => {
             let arity = written_arity(&cursor.analysis.text[..cursor.offset as usize]);
             // A module's second `Prefix` is keyed `Prefix'1` (R02.11.4).
-            let key = cpl_check::arity_key(name, arity);
+            let key = cpl_facade::today::arity_key(name, arity);
             let keyed = if arity > 0 {
                 type_members(cursor, std, &key, &[], arity, false)
             } else {
@@ -1194,15 +1194,15 @@ fn own_members_of_ty(cursor: &Cursor, std: &mut StdLib, ty: &Ty) -> Vec<(Entry, 
             })
         }
         // The checker's own members of an optional, beside std's `self: ?T` fns.
-        Ty::Optional(inner) => cpl_check::OPTIONAL_MEMBERS
+        Ty::Optional(inner) => cpl_facade::today::OPTIONAL_MEMBERS
             .iter()
             .map(|(name, sig, doc)| {
                 let detail = format!("fn {}", sig.replace('T', &inner.to_string()));
                 (plain(name, Kind::Method, detail, doc), 0)
             })
             .collect(),
-        Ty::Domain(domain) => builtin(cpl_check::DOMAIN_MEMBERS, format!("domain {domain}")),
-        Ty::Pos(domain) => builtin(cpl_check::POS_MEMBERS, format!("position in {domain}")),
+        Ty::Domain(domain) => builtin(cpl_facade::today::DOMAIN_MEMBERS, format!("domain {domain}")),
+        Ty::Pos(domain) => builtin(cpl_facade::today::POS_MEMBERS, format!("position in {domain}")),
         Ty::Int | Ty::Range { .. } => scalar_members(cursor, std, "Int"),
         Ty::I128 => scalar_members(cursor, std, "I128"),
         Ty::U64 => scalar_members(cursor, std, "U64"),
@@ -1286,7 +1286,7 @@ fn builtin_entry(member: &BuiltinMember, bindings: &[(String, String)]) -> Entry
     // `; after: ?T = none, while ok: ..`: from the `;` on, options passed
     // by name, each by its label (`while`), not its inner name (`ok`).
     let mut named_only = false;
-    let params = cpl_check::split_builtin_params(member.params)
+    let params = cpl_facade::today::split_builtin_params(member.params)
         .into_iter()
         .map(|param| {
             if let Some(rest) = param.strip_prefix(';') {
@@ -1518,8 +1518,8 @@ fn scope_completion(
     // A stdlib name the file doesn't import yet comes with its `use`.
     if word.len() >= 2 {
         let text = &cursor.analysis.text;
-        for (name, module) in cpl_check::std_names() {
-            if !name.starts_with(word) || seen.contains(*name) || cpl_check::is_list_form_hook(name)
+        for (name, module) in cpl_facade::today::std_names() {
+            if !name.starts_with(word) || seen.contains(*name) || cpl_facade::today::is_list_form_hook(name)
             {
                 continue;
             }
@@ -1532,7 +1532,7 @@ fn scope_completion(
             if !seen.insert(entry.name.clone()) {
                 continue;
             }
-            let (span, new_text) = cpl_check::import_edit(text, module, name);
+            let (span, new_text) = cpl_facade::today::import_edit(text, module, name);
             let mut item = item_json(&entry, rank(&entry, 4));
             if let Value::Object(members) = &mut item {
                 members.insert(

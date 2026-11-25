@@ -1112,8 +1112,8 @@ const EDGE_FIXTURES: [(&str, &str); 4] = [
 
 /// A catalog row's example as statements that print what it gives and,
 /// when it changes its receiver, the receiver after.
-fn edge_body(member: &cpl_check::BuiltinMember) -> String {
-    use cpl_check::Receiver;
+fn edge_body(member: &cpl_facade::today::BuiltinMember) -> String {
+    use cpl_facade::today::Receiver;
     let ann = match member.example_ty {
         "_" | "" => String::new(),
         ty => format!(": {ty}"),
@@ -1153,14 +1153,14 @@ fn indented(text: &str) -> String {
 
 #[test]
 fn an_edge_row_prints_a_hash_walk_sorted() {
-    let raw: Vec<_> = cpl_check::BUILTIN_MEMBERS
+    let raw: Vec<_> = cpl_facade::today::BUILTIN_MEMBERS
         .iter()
         .filter(|m| m.receiver.ordered().is_some() && m.example_ty.starts_with("List<"))
         .filter(|m| !edge_body(m).contains(".sorted()"))
         .map(|m| format!("{}.{}", m.receiver.name(), m.name))
         .collect();
     assert!(raw.is_empty(), "printed in hash order: {raw:?}");
-    let keys = cpl_check::BUILTIN_MEMBERS
+    let keys = cpl_facade::today::BUILTIN_MEMBERS
         .iter()
         .find(|m| m.receiver.name() == "HashMap" && m.name == "keys")
         .expect("HashMap.keys row");
@@ -1171,7 +1171,7 @@ fn an_edge_row_prints_a_hash_walk_sorted() {
     );
 }
 
-/// Every built-in member (`cpl_check::BUILTIN_MEMBERS`) on empty, extreme
+/// Every built-in member (`cpl_facade::today::BUILTIN_MEMBERS`) on empty, extreme
 /// and repeated values: the interpreter and the sanitized C++ print the
 /// same and stop the same way, a runtime error included. Rows that run
 /// through are one program per fixture; a row that stops is a program of
@@ -1214,10 +1214,10 @@ fn builtin_members_agree_between_interp_and_sanitized_cpp_at_the_edges() {
     let mut alone = Vec::new();
     let mut through = Vec::new();
     // Each row runs alone first, every core at once, to see whether it runs through.
-    let rows: Vec<(&str, &str, usize, &cpl_check::BuiltinMember)> = EDGE_FIXTURES
+    let rows: Vec<(&str, &str, usize, &cpl_facade::today::BuiltinMember)> = EDGE_FIXTURES
         .iter()
         .flat_map(|&(fixture, values)| {
-            (cpl_check::BUILTIN_MEMBERS.iter().enumerate())
+            (cpl_facade::today::BUILTIN_MEMBERS.iter().enumerate())
                 .map(move |(i, m)| (fixture, values, i, m))
         })
         .collect();

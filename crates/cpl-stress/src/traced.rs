@@ -3,7 +3,7 @@
 
 use crate::cli::{Stage, Traced, Tracer};
 use crate::judge::Explaining;
-use cpl_interp::trace::{
+use cpl_facade::today::trace::{
     answered_divergence, explain_divergence, stages, stuck_divergence, Divergence, Recording,
     TraceConfig,
 };
@@ -18,11 +18,11 @@ pub const STUCK_STEPS: usize = 100_000;
 /// The programs a failing case is traced through.
 #[derive(Clone, Copy)]
 pub struct Programs<'a> {
-    pub fast: &'a cpl_ir::Program,
+    pub fast: &'a cpl_facade::Program,
     /// The file's own `@alt(program)` fn, or the file with its `@alt(f)`
     /// fns swapped in.
-    pub brute: Option<&'a cpl_ir::Program>,
-    pub interactor: Option<&'a cpl_ir::Program>,
+    pub brute: Option<&'a cpl_facade::Program>,
+    pub interactor: Option<&'a cpl_facade::Program>,
 }
 
 /// A failing case, traced.
@@ -124,24 +124,24 @@ pub fn retrace(
 }
 
 fn observe(
-    program: &cpl_ir::Program,
+    program: &cpl_facade::Program,
     input: &[u8],
     stack_limit: Option<u32>,
     config: TraceConfig,
-) -> cpl_interp::Observed {
+) -> cpl_facade::Outcome {
     let mut sink = Vec::new();
-    let io = cpl_interp::Io::fixed(input).until(cpl_interp::Stop::after(TRACE_LIMIT));
+    let io = cpl_facade::RunInput::fixed(input).until(cpl_facade::Stop::after(TRACE_LIMIT));
     match stack_limit {
-        Some(bytes) => cpl_interp::observe_on_this_thread(
+        Some(bytes) => cpl_facade::run_traced_within(
             program,
             io,
             &mut sink,
-            cpl_interp::Limits {
+            cpl_facade::Limits {
                 stack_bytes: bytes as usize,
             },
             Some(config),
         ),
-        None => cpl_interp::run_observed(program, io, &mut sink, Some(config)),
+        None => cpl_facade::run_traced(program, io, &mut sink, Some(config)),
     }
 }
 
@@ -158,16 +158,16 @@ pub fn trace(
     stack_limit: Option<u32>,
     render: Option<Tracer>,
 ) -> Result<Traced, String> {
-    let mut db = cpl_check::Session::new();
+    let mut db = cpl_facade::Session::default();
     db.set_file(name, source);
     let analysis = db.analyze(name).ok_or("the file can't be checked")?;
     let first = |diagnostics: Vec<cpl_diag::Diagnostic>| {
         (diagnostics.first()).map_or("the file does not build".to_string(), |d| d.message.clone())
     };
-    let fast = cpl_ir::lower_sampling_laws(&analysis).map_err(first)?;
-    let (brute_fn, brute) = match cpl_ir::brute(&analysis) {
+    let fast = cpl_facade::today::program(&analysis, &cpl_facade::Job::of(cpl_facade::Root::Laws)).map_err(first)?;
+    let (brute_fn, brute) = match cpl_facade::today::roles(&analysis).alt {
         Some((brute_fn, _)) => {
-            let brute = cpl_ir::lower_brute(&analysis, &brute_fn).map_err(first)?;
+            let brute = cpl_facade::today::program(&analysis, &cpl_facade::Job::of(cpl_facade::Root::Alt(brute_fn.to_string()))).map_err(first)?;
             (brute_fn, Some(brute))
         }
         None => match crate::cli::swap_in_part_brutes(source) {
@@ -178,15 +178,15 @@ pub fn trace(
                     .ok_or("the file with its `@alt` fns swapped in can't be checked")?;
                 (
                     "its @alt fns".to_string(),
-                    Some(cpl_ir::lower(&swapped).map_err(first)?),
+                    Some(cpl_facade::today::program(&swapped, &cpl_facade::Job::program()).map_err(first)?),
                 )
             }
             None => (String::new(), None),
         },
     };
-    let interactor = match (fast.interactive, cpl_ir::interactor(&analysis)) {
+    let interactor = match (fast.interactive(), cpl_facade::today::roles(&analysis).interactor) {
         (false, _) => None,
-        (true, Some(judge)) => Some(cpl_ir::lower_judge(&analysis, &judge).map_err(first)?),
+        (true, Some(judge)) => Some(cpl_facade::today::program(&analysis, &cpl_facade::Job::of(cpl_facade::Root::Interactor(judge.to_string()))).map_err(first)?),
         (true, None) => return Err(
             "an interactive solution judged by another program is traced with `cpl run --trace`"
                 .to_string(),

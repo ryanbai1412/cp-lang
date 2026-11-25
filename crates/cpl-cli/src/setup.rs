@@ -87,7 +87,7 @@ fn package_dir(editor: &str) -> Option<PathBuf> {
             .filter(|v| !v.is_empty())
             .map(PathBuf::from)
     };
-    let home = cpl_check::home_dir();
+    let home = cpl_facade::today::home_dir();
     let site = match editor {
         "vim" => vim_user_dir()
             .or_else(|| home.map(|h| h.join(if cfg!(windows) { "vimfiles" } else { ".vim" })))?,
@@ -288,7 +288,7 @@ fn emacs_elpa() -> Option<PathBuf> {
     };
     let home = match var("HOME") {
         None if cfg!(windows) => var("APPDATA")?,
-        _ => cpl_check::home_dir()?,
+        _ => cpl_facade::today::home_dir()?,
     };
     let dot = home.join(".emacs.d");
     let xdg = var("XDG_CONFIG_HOME")
@@ -581,9 +581,9 @@ fn vscode_settings(code: &str) -> Option<PathBuf> {
     let config = if cfg!(windows) {
         var("APPDATA")?
     } else if cfg!(target_os = "macos") {
-        cpl_check::home_dir()?.join("Library/Application Support")
+        cpl_facade::today::home_dir()?.join("Library/Application Support")
     } else {
-        var("XDG_CONFIG_HOME").or_else(|| Some(cpl_check::home_dir()?.join(".config")))?
+        var("XDG_CONFIG_HOME").or_else(|| Some(cpl_facade::today::home_dir()?.join(".config")))?
     };
     Some(config.join(product).join("User/settings.json"))
 }
@@ -651,7 +651,7 @@ fn jetbrains_ides() -> Vec<Ide> {
             .filter(|v| !v.is_empty())
             .map(PathBuf::from)
     };
-    let home = cpl_check::home_dir();
+    let home = cpl_facade::today::home_dir();
     let fresh = never_started_ides(home.as_deref(), &var);
     type Folder = Box<dyn Fn(&str) -> Option<PathBuf>>;
     let (config, plugins, log): (Option<PathBuf>, Folder, Folder) = if cfg!(windows) {

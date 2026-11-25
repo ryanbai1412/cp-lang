@@ -3,8 +3,8 @@
 
 use std::io::Write;
 
-use cpl_interp::replay::Replay;
-use cpl_interp::trace::{Call, Recording};
+use cpl_facade::today::replay::Replay;
+use cpl_facade::today::trace::{Call, Recording};
 
 use crate::dap::shown;
 use crate::{compile_side, compile_text, trace, Side, EXIT_ERRORS, EXIT_USAGE};
@@ -30,7 +30,7 @@ the `call`, what it returns `before` and `after` the edit, the first
 `change` and any `earlier` one, the `fallback` and the `trap`.
 ";
 
-pub(crate) use cpl_interp::replay::call_at;
+pub(crate) use cpl_facade::today::replay::call_at;
 
 /// The call `pick` chooses of the run of `original` on `input`, replayed
 /// with the fns of `edited`, or else of the file at `path`.
@@ -45,9 +45,9 @@ pub(crate) fn replay_call(
     let before = compile_text(path, original.to_string(), Side::Solution, &mut errors)
         .map_err(|_| format!("the recorded source does not build:\n{errors}"))?;
     let config = trace::config(original, None);
-    let observed = cpl_interp::run_observed(
+    let observed = cpl_facade::run_traced(
         &before.program,
-        cpl_interp::Io::fixed(input),
+        cpl_facade::RunInput::fixed(input),
         &mut Vec::new(),
         Some(config),
     );
@@ -59,14 +59,14 @@ pub(crate) fn replay_call(
         None => compile_side(path, Side::Solution, &mut errors),
     }
     .map_err(|_| format!("the edited file does not build:\n{errors}"))?;
-    let rerun = cpl_interp::replay::Rerun {
+    let rerun = cpl_facade::today::replay::Rerun {
         recorded: &recorded,
         original: &before.program,
         edited: &after.program,
         input,
         call: &call,
     };
-    let replay = cpl_interp::replay::replay(rerun, trace::config(&after.text, None));
+    let replay = cpl_facade::today::replay::replay(rerun, trace::config(&after.text, None));
     Ok(replay)
 }
 
@@ -204,7 +204,7 @@ pub(crate) fn report_json(replay: &Replay) -> String {
             .and_then(|json| cpl_json::parse(json).ok())
             .unwrap_or(Value::Null)
     };
-    let change = |change: &Option<cpl_interp::trace::Change>| match change {
+    let change = |change: &Option<cpl_facade::today::trace::Change>| match change {
         None => Value::Null,
         Some(c) => cpl_json::obj([
             ("step", (c.step + 1).into()),

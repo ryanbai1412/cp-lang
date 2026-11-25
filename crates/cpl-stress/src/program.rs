@@ -220,7 +220,7 @@ fn grader_bytes(grader: &Path) -> Result<Vec<u8>, BuildError> {
 /// header that stands alone, from a program's C++ (R10.1.3).
 fn grader_boundary(cpp: &[u8]) -> Option<String> {
     let text = String::from_utf8_lossy(cpp);
-    let (open, close) = cpl_ir::GRADER_BOUNDARY;
+    let (open, close) = cpl_facade::today::ir::GRADER_BOUNDARY;
     let (_, rest) = text.split_once(open)?;
     let (decls, _) = rest.split_once(close)?;
     Some(format!(
@@ -343,7 +343,7 @@ enum Part {
 }
 
 /// A counterexample that crashes, or overflows, is one stress must see.
-const LOCAL: cpl_codegen::Checks = cpl_codegen::Checks::LOCAL;
+const LOCAL: cpl_facade::Checks = cpl_facade::Checks::LOCAL;
 
 /// Emits the C++ for a `.cp` file into the cache, through the same front
 /// end and back end as `cpl build`. Returns the path of the C++ file.
@@ -351,7 +351,7 @@ fn emit_cpp(
     source: &Path,
     text: Option<&str>,
     part: Part,
-    checks: cpl_codegen::Checks,
+    checks: cpl_facade::Checks,
 ) -> Result<(PathBuf, cpl_judge::Profile), BuildError> {
     let name = source.shown();
     let text = match text {
@@ -370,7 +370,7 @@ fn emit_cpp(
             cpl_diag::render_all(diagnostics, &name, &text).trim_end()
         ))
     };
-    let mut db = cpl_check::Session::new();
+    let mut db = cpl_facade::Session::default();
     let analysis = db.analyze_text(&name, text.as_str());
     let is_error = |d: &cpl_diag::Diagnostic| d.severity == cpl_diag::Severity::Error;
     if analysis.diagnostics.iter().any(is_error) {
@@ -378,23 +378,25 @@ fn emit_cpp(
     }
     let missing = |kind: &str| BuildError(format!("{name} declares no `{kind}` fn"));
     let lowered = match part {
-        Part::Solution => cpl_ir::lower_sampling_laws(&analysis),
-        Part::ColdCache => cpl_ir::lower_cold_cache(&analysis),
+        Part::Solution => cpl_facade::today::program(&analysis, &cpl_facade::Job::of(cpl_facade::Root::Laws)),
+        Part::ColdCache => cpl_facade::today::program(&analysis, &cpl_facade::Job::cold()),
         Part::Brute => {
-            let (brute_fn, _) = cpl_ir::brute(&analysis).ok_or_else(|| missing("@alt(program)"))?;
-            cpl_ir::lower_brute(&analysis, &brute_fn)
+            let (brute_fn, _) = cpl_facade::today::roles(&analysis).alt.ok_or_else(|| missing("@alt(program)"))?;
+            cpl_facade::today::program(&analysis, &cpl_facade::Job::of(cpl_facade::Root::Alt(brute_fn.to_string())))
         }
     };
     let program = lowered.map_err(|diagnostics| errors(&diagnostics))?;
     let file = source.file_name().unwrap_or_default().to_string_lossy();
-    let target = cpl_codegen::Target {
+    let target = cpl_facade::Profile {
         stamp: Some(profile.stamp()),
         thread_stack: profile.thread_stack,
         windows: profile.os == cpl_judge::Os::Windows,
         checks,
         cpu: profile.cpu.clone(),
+        size: None,
+        source_comment: false,
     };
-    let cpp = cpl_codegen::emit_for(&program, &file, None, &target);
+    let cpp = cpl_facade::emit_cpp(&program, &file, &target).text;
     let dir = cache_dir();
     std::fs::create_dir_all(&dir)
         .map_err(|e| BuildError(format!("can't create {}: {e}", dir.shown())))?;
@@ -412,7 +414,7 @@ fn emitted_key(
     name: &str,
     text: &str,
     part: Part,
-    checks: cpl_codegen::Checks,
+    checks: cpl_facade::Checks,
     profile: &cpl_judge::Profile,
 ) -> String {
     let exe = std::env::current_exe()
@@ -446,12 +448,12 @@ fn emitted(key: &str) -> Option<PathBuf> {
 
 /// Records that `cpp` is what `key` emits, with each file `analysis` read.
 /// The bundled std is part of `cpl` itself, which the key names.
-fn remember_emitted(key: &str, cpp: &Path, analysis: &cpl_check::Analysis) {
+fn remember_emitted(key: &str, cpp: &Path, analysis: &cpl_facade::today::Analysis) {
     let mut read = std::collections::BTreeSet::new();
-    let mut pending: Vec<&cpl_check::Analysis> = vec![analysis];
+    let mut pending: Vec<&cpl_facade::today::Analysis> = vec![analysis];
     while let Some(next) = pending.pop() {
         for module in next.modules() {
-            let bundled = !cpl_check::std_from_disk()
+            let bundled = !cpl_facade::today::std_from_disk()
                 && (module.name == "std" || module.name.starts_with("std."));
             if !bundled && read.insert(module.path.as_str()) {
                 pending.push(&module.analysis);
@@ -479,7 +481,7 @@ fn build_judged(
     source: &Path,
     text: Option<&str>,
     part: Part,
-    checks: cpl_codegen::Checks,
+    checks: cpl_facade::Checks,
 ) -> Result<Vec<String>, BuildError> {
     build_linked(source, text, part, checks, None)
 }
@@ -489,7 +491,7 @@ fn build_linked(
     source: &Path,
     text: Option<&str>,
     part: Part,
-    checks: cpl_codegen::Checks,
+    checks: cpl_facade::Checks,
     grader: Option<&Path>,
 ) -> Result<Vec<String>, BuildError> {
     let (cpp, profile) = emit_cpp(source, text, part, checks)?;
@@ -779,7 +781,7 @@ impl Program {
 
     /// The `.cp` file at `path` built for its judge with `checks` instead
     /// of the traps stress keeps (`cpl run --release --checks`).
-    pub fn resolve_checks(path: &Path, checks: cpl_codegen::Checks) -> Result<Program, BuildError> {
+    pub fn resolve_checks(path: &Path, checks: cpl_facade::Checks) -> Result<Program, BuildError> {
         Ok(Program {
             name: path.shown(),
             argv: build_judged(path, None, Part::Solution, checks)?,
@@ -832,11 +834,11 @@ impl Program {
     }
 
     /// The file's `@gen` fn lowered for the VM, which draws every input.
-    pub fn lowered_gen(path: &Path, size: i64) -> Result<cpl_ir::Program, BuildError> {
+    pub fn lowered_gen(path: &Path, size: i64) -> Result<cpl_facade::Program, BuildError> {
         let name = path.shown();
         let text = std::fs::read_to_string(path)
             .map_err(|e| BuildError(format!("can't read {name}: {e}")))?;
-        let mut db = cpl_check::Session::new();
+        let mut db = cpl_facade::Session::default();
         let analysis = db.analyze_text(&name, text.as_str());
         let failed = |diagnostics: &[cpl_diag::Diagnostic]| {
             BuildError(format!(
@@ -848,9 +850,9 @@ impl Program {
         if analysis.diagnostics.iter().any(is_error) {
             return Err(failed(&analysis.diagnostics));
         }
-        let (gen_fn, _) = cpl_ir::generator(&analysis)
+        let (gen_fn, _) = cpl_facade::today::roles(&analysis).generator
             .ok_or_else(|| BuildError(format!("{name} declares no `@gen` fn")))?;
-        cpl_ir::lower_gen(&analysis, &gen_fn, size).map_err(|diagnostics| failed(&diagnostics))
+        cpl_facade::today::program(&analysis, &cpl_facade::Job::of(cpl_facade::Root::Generator(gen_fn.to_string(), size))).map_err(|diagnostics| failed(&diagnostics))
     }
 
     /// The command with `extra` arguments added.

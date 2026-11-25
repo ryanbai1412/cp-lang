@@ -11,11 +11,8 @@ license.workspace = true
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-cpl-check.workspace = true
-cpl-codegen = { workspace = true, optional = true }
 cpl-diag.workspace = true
-cpl-interp.workspace = true
-cpl-ir.workspace = true
+cpl-facade.workspace = true
 cpl-json.workspace = true
 cpl-judge.workspace = true
 cpl-lint.workspace = true
@@ -27,9 +24,9 @@ cpl-stress = { workspace = true, optional = true }
 # scripts/build-wasm.sh builds cpl.wasm without it (what every editor on the
 # site loads first) and cpl-build.wasm with it (loaded on first use).
 default = ["build"]
-build = ["dep:cpl-codegen", "dep:cpl-stress"]
+build = ["dep:cpl-stress"]
 # Carry only std's prelude and mod; the page gives the rest (`provideStd`).
-lazy-std = ["cpl-check/lazy-std"]
+lazy-std = ["cpl-facade/lazy-std"]
 
 [dev-dependencies]
 cpl-cli = { path = "../cpl-cli" }

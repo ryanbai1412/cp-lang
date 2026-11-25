@@ -1,7 +1,7 @@
 //! `cpl run --trace`, `cpl run --format json` and the tracing half of
 //! `cpl stress`: a run in the debug interpreter, recorded.
 
-use cpl_interp::trace::{document, Recording, TraceConfig};
+use cpl_facade::today::trace::{document, Recording, TraceConfig};
 use cpl_stress::traced::Retraced;
 use std::path::Path;
 
@@ -50,19 +50,19 @@ const TRAP_RETRACE: std::time::Duration = std::time::Duration::from_secs(3);
 /// The innermost call's locals where `program` trapped on `input`, from a
 /// second run, recorded; `None` when it has none or stops elsewhere.
 pub fn trap_locals(
-    program: &cpl_ir::Program,
+    program: &cpl_facade::Program,
     source: &str,
     input: &[u8],
-    trap: &cpl_interp::Trap,
+    trap: &cpl_facade::Trap,
 ) -> Option<String> {
     // A run stopped from outside would not stop at the same place again.
-    if [cpl_interp::OUT_OF_TIME.text(), cpl_interp::CANCELLED.text()].contains(&trap.message()) {
+    if [cpl_facade::OUT_OF_TIME.text(), cpl_facade::CANCELLED.text()].contains(&trap.message()) {
         return None;
     }
     // Untraced again with checkpoints, and only the end traced from the last one.
-    let config = cpl_interp::trace::trap_config(source);
-    let stop = cpl_interp::Stop::after(TRAP_RETRACE);
-    let observed = cpl_interp::trace::resumed_tail_until(
+    let config = cpl_facade::today::trace::trap_config(source);
+    let stop = cpl_facade::Stop::after(TRAP_RETRACE);
+    let observed = cpl_facade::today::trace::resumed_tail_until(
         program,
         input,
         &mut std::io::sink(),
@@ -72,7 +72,7 @@ pub fn trap_locals(
     );
     (observed.trap?.message() == trap.message()).then_some(())?;
     let at = source.get(trap.span.start as usize..trap.span.end as usize);
-    cpl_interp::trace::trap_locals(&observed.recording?, source, at.unwrap_or(""))
+    cpl_facade::today::trace::trap_locals(&observed.recording?, source, at.unwrap_or(""))
 }
 
 fn file_name(path: &str) -> &str {

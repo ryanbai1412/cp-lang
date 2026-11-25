@@ -35,7 +35,7 @@ fn warnings(root: &Path) -> Vec<String> {
     // per file, and each thread takes the next file when it is free.
     let next = std::sync::atomic::AtomicUsize::new(0);
     let worker = || {
-        let mut db = cpl_check::Session::new();
+        let mut db = cpl_facade::Session::default();
         let mut out = Vec::new();
         while let Some(file) = all.get(next.fetch_add(1, std::sync::atomic::Ordering::Relaxed)) {
             let src = std::fs::read_to_string(file).unwrap();
@@ -85,7 +85,7 @@ fn corpus_warnings_only_go_down() {
 
 fn checker_errors(path: &Path, src: &str) -> usize {
     let key = path.to_string_lossy().into_owned();
-    let mut db = cpl_check::Session::new();
+    let mut db = cpl_facade::Session::default();
     db.set_file(&key, src);
     db.analyze(&key).map_or(0, |analysis| {
         analysis
@@ -149,7 +149,7 @@ fn the_cli_and_the_editor_read_the_same_facts() {
     let key = |d: &Diagnostic| (d.code, d.span.start, d.span.end);
     for path in files(&root, crate::STD_DIR, "") {
         let src = std::fs::read_to_string(&path).unwrap();
-        let mut db = cpl_check::Session::new();
+        let mut db = cpl_facade::Session::default();
         db.set_file("<lint>.cp", src.as_str());
         let Some(analysis) = db.analyze("<lint>.cp") else {
             continue;

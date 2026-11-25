@@ -2,7 +2,7 @@
 //! sample, and the line a run trapped on with its problem.
 
 use cpl_diag::view::{code_block, Diagnostic, Kind, Line, View};
-use cpl_interp::trace::Live;
+use cpl_facade::today::trace::Live;
 
 /// The name labels give the input: `--sample`, else the input file's name
 /// without `.in` (`i1`, `2` for `a.tests/2.in`).

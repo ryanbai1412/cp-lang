@@ -250,10 +250,10 @@ fn every_record_after_and_near_miss_pass_cpl_check() {
 #[test]
 fn every_record_before_passes_cpl_check_or_names_its_removed_spelling() {
     for lint in LINTS {
-        let mut db = cpl_check::Session::new();
+        let mut db = cpl_facade::Session::default();
         db.set_file("before.cp", lint.trigger);
         let analysis = db.analyze("before.cp").expect("analysis");
-        let mut codes: Vec<&str> = cpl_ir::reported(&analysis)
+        let mut codes: Vec<&str> = cpl_facade::today::reported(&analysis)
             .iter()
             .filter(|d| d.severity == cpl_diag::Severity::Error)
             .map(|d| d.code.0)

@@ -58,10 +58,10 @@ fn has_drive(path: &str) -> bool {
 fn bundled_std_file(path: &str) -> Option<std::path::PathBuf> {
     let rest = path.strip_prefix("std/")?.strip_suffix(".cp")?;
     let module: Vec<String> = rest.split('/').map(String::from).collect();
-    let text = cpl_check::bundled_std(&module)?;
+    let text = cpl_facade::today::bundled_std(&module)?;
     let cache = std::env::var_os("XDG_CACHE_HOME")
         .map(std::path::PathBuf::from)
-        .or_else(|| cpl_check::home_dir().map(|home| home.join(".cache")))
+        .or_else(|| cpl_facade::today::home_dir().map(|home| home.join(".cache")))
         .unwrap_or_else(std::env::temp_dir);
     let file = cache
         .join("cpl")

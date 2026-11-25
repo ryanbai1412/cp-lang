@@ -1,11 +1,11 @@
 //! The checker's fact table, read by rules instead of re-derived from
-//! syntax: `cpl_check::Facts`, from `Analysis::facts`.
+//! syntax: `cpl_facade::today::Facts`, from `Analysis::facts`.
 
-pub use cpl_check::Facts;
+pub use cpl_facade::today::Facts;
 
 #[cfg(test)]
 mod tests {
-    use cpl_check::Ty;
+    use cpl_facade::today::Ty;
     use cpl_diag::Span;
 
     fn at(src: &str, text: &str) -> Span {

@@ -140,7 +140,7 @@ fn code_lenses(path: &str, text: &str) -> Vec<(u32, String, Vec<String>)> {
     if has_tests {
         lenses.push((0, "Test".into(), vec!["test".into(), path.into()]));
     }
-    if cpl_ir::has_stress_target(text) {
+    if cpl_facade::today::ir::has_stress_target(text) {
         lenses.push((0, "Stress".into(), vec!["stress".into(), path.into()]));
     }
     let parsed = cpl_syntax::parse_file(text);
@@ -153,7 +153,7 @@ fn code_lenses(path: &str, text: &str) -> Vec<(u32, String, Vec<String>)> {
         let judge = stmt
             .decorators
             .iter()
-            .find(|d| cpl_ir::STRESS_DECORATORS.contains(&d.name.text.as_str()));
+            .find(|d| cpl_facade::today::ir::STRESS_DECORATORS.contains(&d.name.text.as_str()));
         let name = &f.name.text;
         let start = base
             + (stmt.decorators.first())
@@ -199,7 +199,7 @@ fn code_lenses(path: &str, text: &str) -> Vec<(u32, String, Vec<String>)> {
 /// against the memory limit of the judge its build is for. Clicking it
 /// lists the judges. None under 1 KB.
 fn memory_lens(
-    db: &mut cpl_check::Session,
+    db: &mut cpl_facade::Session,
     uri: &str,
     path: &str,
     text: &str,
@@ -218,7 +218,7 @@ fn memory_lens(
     }
     let judge = cpl_judge::resolve(std::path::Path::new(path), text, None).ok()?;
     let limit = u128::from(judge.memory_mb) << 20;
-    let (shown, mb, name) = (cpl_check::human_bytes(bytes), judge.memory_mb, judge.name);
+    let (shown, mb, name) = (cpl_facade::today::human_bytes(bytes), judge.memory_mb, judge.name);
     let mut title = match bytes > limit {
         true => format!("Memory: bounds allow {shown}, over the {mb} MB limit on {name}"),
         false => format!("Memory: bounds allow {shown} of {mb} MB on {name}"),

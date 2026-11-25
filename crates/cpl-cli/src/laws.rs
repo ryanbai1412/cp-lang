@@ -5,7 +5,7 @@
 //! sample values of its arguments. A broken law fails with the values
 //! that break it.
 
-use cpl_check::Ty;
+use cpl_facade::today::Ty;
 use cpl_diag::Span;
 use cpl_syntax::ast::StmtKind;
 
@@ -75,7 +75,7 @@ pub fn test_name(law: &str) -> String {
 /// argument's samples follow the type the checker resolved for it, so
 /// `x: Small` with `type Small = 1..=9` is walked as `1..=9`.
 pub fn with_law_tests(
-    db: &mut cpl_check::Session,
+    db: &mut cpl_facade::Session,
     path: &str,
     src: &str,
 ) -> Option<(String, Vec<String>)> {

@@ -117,11 +117,11 @@ fn filled(name: &str, arity: usize) -> Vec<String> {
 /// A program reading one `ty` from `std.<module>`, when the checker and
 /// the lowering accept that read.
 fn reads(
-    db: &mut cpl_check::Session,
+    db: &mut cpl_facade::Session,
     module: &str,
     name: &str,
     ty: &str,
-) -> Option<(String, cpl_ir::Program)> {
+) -> Option<(String, cpl_facade::Program)> {
     let src = format!(
         "use std.{module}.{{{name}}}\nlet (n, m): (1..=8, 1..=8) = read()\n\
          domain V = 1..=n\ndomain E = 0..m\nlet x: {ty} = read()\nprint(n)\n"
@@ -129,14 +129,14 @@ fn reads(
     db.set_file("s.cp", src.as_str());
     let analysis = db.analyze("s.cp")?;
     let error = |d: &cpl_diag::Diagnostic| d.severity == cpl_diag::Severity::Error;
-    if analysis.diagnostics.iter().any(error) || cpl_ir::check(&analysis).iter().any(error) {
+    if analysis.diagnostics.iter().any(error) || cpl_facade::today::built(&analysis).iter().any(error) {
         return None;
     }
-    Some((src, cpl_ir::lower(&analysis).ok()?))
+    Some((src, cpl_facade::today::program(&analysis, &cpl_facade::Job::program()).ok()?))
 }
 
 /// `module.ty: why` when stress can't make an input the program reads.
-fn std_gap(module: &str, ty: &str, src: &str, program: &cpl_ir::Program) -> Option<String> {
+fn std_gap(module: &str, ty: &str, src: &str, program: &cpl_facade::Program) -> Option<String> {
     let spec = match InputSpec::from_source(src) {
         Ok(spec) => spec,
         Err(error) => return Some(format!("{module}.{ty}: {}", error.message)),
@@ -151,7 +151,7 @@ fn std_gap(module: &str, ty: &str, src: &str, program: &cpl_ir::Program) -> Opti
     for case in cases {
         let input = case.render();
         let mut out = Vec::new();
-        if let Err(trap) = cpl_interp::run(program, input.as_bytes(), &mut out) {
+        if let Err(trap) = cpl_facade::run_to_end(program, cpl_facade::RunInput::fixed(input.as_bytes()), &mut out) {
             return Some(format!(
                 "{module}.{ty}: {} reading {input:?}",
                 trap.message()
@@ -167,9 +167,9 @@ fn std_gap(module: &str, ty: &str, src: &str, program: &cpl_ir::Program) -> Opti
 /// way; the checker and the lowering decide which ones are read.
 #[test]
 fn stress_generates_every_std_input_type() {
-    let names: Vec<(&str, &str, usize)> = cpl_check::std_names()
+    let names: Vec<(&str, &str, usize)> = cpl_facade::today::std_names()
         .iter()
-        .filter_map(|&(name, module)| Some((module, name, cpl_check::type_arity(name)?)))
+        .filter_map(|&(name, module)| Some((module, name, cpl_facade::today::type_arity(name)?)))
         .collect();
     let next = std::sync::atomic::AtomicUsize::new(0);
     let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
@@ -181,7 +181,7 @@ fn stress_generates_every_std_input_type() {
                     .stack_size(1 << 26)
                     .spawn_scoped(scope, || {
                         let (mut read, mut gaps) = (Vec::new(), Vec::new());
-                        let mut db = cpl_check::Session::new();
+                        let mut db = cpl_facade::Session::default();
                         while let Some(&(module, name, arity)) =
                             names.get(next.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
                         {

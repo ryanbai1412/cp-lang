@@ -209,7 +209,7 @@ pub fn home() -> Option<PathBuf> {
     if let Some(home) = cpl_env::HOME.path() {
         return Some(home);
     }
-    Some(cpl_check::home_dir()?.join(".cpl"))
+    Some(cpl_facade::today::home_dir()?.join(".cpl"))
 }
 
 /// The `cpl` an editor's settings name, as `cpl setup` records it: the

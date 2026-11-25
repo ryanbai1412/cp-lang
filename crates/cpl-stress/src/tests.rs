@@ -1235,7 +1235,7 @@ fn solve():
 #[test]
 fn the_stdlib_perm_and_tree_are_made_as_a_permutation_and_a_tree() {
     let src = "use std.graph.{Tree}\nuse std.seq.{Perm}\nlet n: 1..=10 = read()\ndomain V = 1..=n\nlet p: Perm<V> = read()\nlet t: Tree<V> = read()\nprint(n)\n";
-    let mut db = cpl_check::Session::new();
+    let mut db = cpl_facade::Session::default();
     db.set_file("t.cp", src);
     let analysis = db.analyze("t.cp").expect("analyzed");
     assert!(
@@ -1716,12 +1716,12 @@ fn every_stress_decorator_gives_the_file_a_judge_and_a_mention_does_not() {
     for name in crate::STRESS_DECORATORS {
         let src = format!("let n: 1..=9 = read()\n@{name}\nfn other():\n    print(n)\nprint(n)\n");
         assert!(crate::stress_targets(&src), "@{name}");
-        let mut db = cpl_check::Session::new();
+        let mut db = cpl_facade::Session::default();
         db.set_file("s.cp", src.as_str());
         let analysis = db.analyze("s.cp").unwrap();
-        let judged = cpl_ir::brute(&analysis).is_some()
-            || cpl_ir::checker(&analysis).is_some()
-            || cpl_ir::interactor(&analysis).is_some();
+        let judged = cpl_facade::today::roles(&analysis).alt.is_some()
+            || cpl_facade::today::roles(&analysis).checker.is_some()
+            || cpl_facade::today::roles(&analysis).interactor.is_some();
         assert!(judged, "@{name} names no judge `cpl stress` runs");
     }
     let mentioned = "// @alt, @brute and @interactor\nlet s = \"@check\"\nprint(s)\n";

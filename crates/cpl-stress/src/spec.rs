@@ -11,7 +11,7 @@
 //! vertices. Bounds can use the values read before them, which is what
 //! lets the generator and the shrinker keep every case valid.
 
-use cpl_check::Ty;
+use cpl_facade::today::Ty;
 use cpl_diag::Span;
 use cpl_syntax::ast::{
     AssignOp, BinOp, Block, CmpOp, Cond, Expr, ExprKind, FnBody, Pattern, PatternKind, Stmt,
@@ -103,7 +103,7 @@ pub enum Shape {
     /// reads the input above it first.
     Gen {
         func: String,
-        program: std::sync::Arc<cpl_ir::Program>,
+        program: std::sync::Arc<cpl_facade::Program>,
     },
 }
 
@@ -1065,7 +1065,7 @@ impl InputSpec {
 /// rather than matching its name.
 pub(super) fn checked_type(name: &str, arity: usize) -> Ty {
     let args = vec![Ty::Unknown; arity];
-    match cpl_check::prelude_type(name) {
+    match cpl_facade::today::prelude_type(name) {
         Some(Ty::Named { name, .. }) => Ty::Named { name, args },
         Some(ty) => ty,
         None => Ty::Named {

@@ -4,7 +4,7 @@
 use std::io::Write;
 
 use crate::{json_out, EXIT_ERRORS, EXIT_USAGE};
-pub(crate) use cpl_ir::fix::errors_in;
+
 
 /// Checks each file through the shared front end and renders what it
 /// finds.
@@ -13,7 +13,7 @@ pub(crate) fn check(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut
 }
 
 fn check_in(
-    db: &mut cpl_check::Session,
+    db: &mut cpl_facade::Session,
     args: &[&str],
     stdout: &mut (dyn Write + Send),
     stderr: &mut String,
@@ -35,7 +35,7 @@ fn check_in(
         // What `cpl run` and `cpl build` would reject, `cpl check` rejects.
         let analysis = db.analyze_text(path, text.as_str());
         let (config, _) = cpl_lint::Config::discover(std::path::Path::new(path));
-        let diagnostics = cpl_lint::at_levels(&analysis, &cpl_ir::reported(&analysis), &config);
+        let diagnostics = cpl_lint::at_levels(&analysis, &cpl_facade::today::reported(&analysis), &config);
         let failed = diagnostics
             .iter()
             .any(|d| d.severity == cpl_diag::Severity::Error);
@@ -81,7 +81,7 @@ pub(crate) fn fix(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut S
 }
 
 fn fix_in(
-    db: &mut cpl_check::Session,
+    db: &mut cpl_facade::Session,
     args: &[&str],
     stdout: &mut (dyn Write + Send),
     stderr: &mut String,

@@ -1,11 +1,11 @@
-//! `cpl_check::BUILTIN_MEMBERS` is what editors show for a `List`, a
+//! `cpl_facade::today::BUILTIN_MEMBERS` is what editors show for a `List`, a
 //! `Str`, a `Map`, a `Set` and an array. Each row is run here, so the
 //! catalog cannot say something `cpl run` does not do.
 
 use std::path::Path;
 use std::process::Command;
 
-use cpl_check::{prelude_names, MemberKind, PreludeKind, Receiver, BUILTIN_MEMBERS};
+use cpl_facade::today::{prelude_names, MemberKind, PreludeKind, Receiver, BUILTIN_MEMBERS};
 
 /// The values every row's `example` is written against.
 const FIXTURE: &str = "var xs = [3, 1, 2]\nvar s = \"hello\"\nvar m = Map<Int, Int>()\nm[1] = 10\nm[5] = 50\n\
@@ -102,7 +102,7 @@ fn every_row_of_the_catalog_runs_with_the_type_it_names() {
 #[test]
 fn every_built_in_type_has_rows_and_no_name_twice() {
     for receiver in Receiver::ALL {
-        let names: Vec<&str> = cpl_check::builtin_members(receiver)
+        let names: Vec<&str> = cpl_facade::today::builtin_members(receiver)
             .map(|m| m.name)
             .collect();
         assert!(names.contains(&"len"), "{receiver:?} has `len`");
@@ -111,11 +111,11 @@ fn every_built_in_type_has_rows_and_no_name_twice() {
         unique.dedup();
         assert_eq!(unique.len(), names.len(), "{receiver:?} lists a name twice");
     }
-    let push = cpl_check::builtin_members(Receiver::List)
+    let push = cpl_facade::today::builtin_members(Receiver::List)
         .find(|m| m.name == "push")
         .unwrap();
     assert_eq!(push.signature(), "push(x: T)");
-    let first = cpl_check::builtin_members(Receiver::Map)
+    let first = cpl_facade::today::builtin_members(Receiver::Map)
         .find(|m| m.name == "first")
         .unwrap();
     assert_eq!(first.signature(), "first: ?(K, V)");
@@ -177,13 +177,13 @@ fn the_prelude_names_are_the_ones_a_file_can_use() {
 #[test]
 fn sequence_method_parity_across_list_array_str_and_views() {
     use std::collections::BTreeSet;
-    let list_names: BTreeSet<&str> = cpl_check::builtin_members(Receiver::List)
+    let list_names: BTreeSet<&str> = cpl_facade::today::builtin_members(Receiver::List)
         .map(|m| m.name)
         .collect();
-    let str_names: BTreeSet<&str> = cpl_check::builtin_members(Receiver::Str)
+    let str_names: BTreeSet<&str> = cpl_facade::today::builtin_members(Receiver::Str)
         .map(|m| m.name)
         .collect();
-    let arr_names: BTreeSet<&str> = cpl_check::builtin_members(Receiver::Array)
+    let arr_names: BTreeSet<&str> = cpl_facade::today::builtin_members(Receiver::Array)
         .map(|m| m.name)
         .collect();
 
@@ -224,10 +224,10 @@ fn sequence_method_parity_across_list_array_str_and_views() {
 #[test]
 fn ordered_container_method_parity_and_range_len_guard() {
     use std::collections::BTreeSet;
-    let set_names: BTreeSet<&str> = cpl_check::builtin_members(Receiver::Set)
+    let set_names: BTreeSet<&str> = cpl_facade::today::builtin_members(Receiver::Set)
         .map(|m| m.name)
         .collect();
-    let map_names: BTreeSet<&str> = cpl_check::builtin_members(Receiver::Map)
+    let map_names: BTreeSet<&str> = cpl_facade::today::builtin_members(Receiver::Map)
         .map(|m| m.name)
         .collect();
 
@@ -394,7 +394,7 @@ fn every_in_place_help_names_a_call_that_runs() {
 fn every_option_a_row_documents_is_one_of_its_params() {
     let mut missing = Vec::new();
     for member in BUILTIN_MEMBERS {
-        let params: Vec<&str> = cpl_check::split_builtin_params(member.params)
+        let params: Vec<&str> = cpl_facade::today::split_builtin_params(member.params)
             .into_iter()
             .map(|p| p.split_once(':').map_or(p, |(n, _)| n))
             .map(|n| n.trim().trim_start_matches(';').trim())
@@ -441,10 +441,10 @@ fn hash_rows_are_what_a_hash_receiver_takes() {
         } else {
             ("st.", "hs.")
         };
-        for row in cpl_check::builtin_members(ordered) {
-            let listed = cpl_check::builtin_members(hash).any(|m| m.name == row.name);
+        for row in cpl_facade::today::builtin_members(ordered) {
+            let listed = cpl_facade::today::builtin_members(hash).any(|m| m.name == row.name);
             let want = format!("a {} has no order; use {}", hash.name(), ordered.name());
-            let said = cpl_check::needs_order(hash.name(), row.name).map(|s| s.text());
+            let said = cpl_facade::today::needs_order(hash.name(), row.name).map(|s| s.text());
             if listed != said.is_none() || !listed && said.as_deref() != Some(want.as_str()) {
                 wrong.push(format!(
                     "{}.{}: needs_order gave {said:?}",
@@ -475,7 +475,7 @@ fn hash_rows_are_what_a_hash_receiver_takes() {
 fn every_builtin_cost_is_written_as_std_writes_one() {
     let mut wrong = Vec::new();
     for r in Receiver::ALL {
-        for m in cpl_check::builtin_members(r) {
+        for m in cpl_facade::today::builtin_members(r) {
             let Some(cost) = cpl_syntax::doc::Facts::parse(m.doc).cost else {
                 continue;
             };

@@ -5,7 +5,8 @@
 //! and imports by construction. Only names that share the declaration's
 //! text are asked, which keeps a request to a handful of lookups.
 
-use cpl_check::{Definition, Session};
+use cpl_facade::today::Definition;
+use cpl_facade::Session;
 use cpl_diag::Span;
 use cpl_syntax::ast::StmtKind;
 
@@ -255,7 +256,7 @@ pub fn std_calls(db: &mut Session, path: &str, target: &Definition, name: &str) 
     }
     let gap = |d: &cpl_diag::Diagnostic| d.notes.iter().any(|n| n.contains("the gap is in `std."));
     let lowered = |db: &mut Session| {
-        let diagnostics = db.analyze(path).map(|a| cpl_ir::reported(&a));
+        let diagnostics = db.analyze(path).map(|a| cpl_facade::today::reported(&a));
         let gaps = diagnostics.unwrap_or_default().into_iter().filter(gap);
         gaps.map(|d| d.message).collect::<Vec<_>>()
     };
@@ -263,10 +264,7 @@ pub fn std_calls(db: &mut Session, path: &str, target: &Definition, name: &str) 
     let trial = format!("{name}_");
     let spans = uses_in(db, path, target, name);
     let edited = cpl_diag::splice(&text, spans.iter().map(|&s| (s, trial.clone())).collect())?;
-    let loaded = db.file_loaded(path);
-    db.set_file(path, edited);
-    let after = lowered(db);
-    db.restore_file(path, text, loaded);
+    let after = lowered(&mut db.with_file(path, edited));
     let new = after.into_iter().find(|m| !before.contains(m))?;
     Some(
         new.split(" does not work")
@@ -312,7 +310,7 @@ pub fn invalid_name(name: &str) -> Option<String> {
 /// the accesses of that name on a value of the same type, and its
 /// declaration is the struct's field of that name.
 fn field_references(
-    analysis: &cpl_check::Analysis,
+    analysis: &cpl_facade::today::Analysis,
     path: &str,
     offset: u32,
     name: &str,
@@ -324,7 +322,7 @@ fn field_references(
         fit: None,
     };
     let type_name = |dot: u32| match crate::complete::receiver_type(&cursor(dot), dot)? {
-        cpl_check::Ty::Named { name, .. } => Some(name),
+        cpl_facade::today::Ty::Named { name, .. } => Some(name),
         _ => None,
     };
     let (span, _) = word_at(&analysis.text, offset)?;
@@ -476,7 +474,7 @@ pub fn changed_meaning(
     }
     // An open library is also in the database under the path its importers
     // read it by.
-    let mut originals = Vec::new();
+    let mut trial = db.clone();
     for (file, spans) in edits {
         let alias = crate::server::path_of_uri(file).filter(|p| p != file);
         for path in std::iter::once(file.clone()).chain(alias) {
@@ -487,17 +485,14 @@ pub fn changed_meaning(
             let Some(edited) = cpl_diag::splice(&text, words) else {
                 continue;
             };
-            originals.push((path.clone(), text, db.file_loaded(&path)));
-            db.set_file(&path, edited);
+            trial.set_file(&path, edited);
         }
     }
     let broken = expected.into_iter().find(|(file, _, at, path, def_at)| {
-        db.definition_location(file, *at)
+        trial
+            .definition_location(file, *at)
             .is_none_or(|d| !same_file(&d.path, path) || d.span.start != *def_at)
     });
-    for (path, text, loaded) in originals {
-        db.restore_file(&path, text, loaded);
-    }
     let (file, at, ..) = broken?;
     let text = db.file_text(&file)?;
     let line = text[..at as usize].matches('\n').count() + 1;

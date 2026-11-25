@@ -12,9 +12,9 @@ use cpl_diag::{Diagnostic, Severity};
 
 /// The errors of `src` as `(code, message)`, in a stable order: spans move
 /// when a line goes, what is reported does not.
-fn verdict(db: &mut cpl_check::Session, src: &str) -> Vec<(String, String)> {
+fn verdict(db: &mut cpl_facade::Session, src: &str) -> Vec<(String, String)> {
     db.set_file("<lint>.cp", src);
-    errors(db.diagnostics("<lint>.cp"))
+    errors(db.diagnostics("<lint>.cp", cpl_facade::Layer::Typed))
 }
 
 fn errors(diags: Vec<Diagnostic>) -> Vec<(String, String)> {
@@ -34,15 +34,15 @@ pub(crate) fn recheck(diags: &mut Vec<Diagnostic>, src: &str) {
 
 /// Runs `f` on this thread's [`CHECKER`]; one non-generic entry, so its
 /// borrow is compiled once for every caller.
-fn with_checker(f: &mut dyn FnMut(&mut cpl_check::Session)) {
+fn with_checker(f: &mut dyn FnMut(&mut cpl_facade::Session)) {
     CHECKER.with_borrow_mut(|db| f(db));
 }
 
 thread_local! {
     /// Kept between rechecks, so the modules a file imports are checked once
     /// per thread rather than on every keystroke.
-    static CHECKER: std::cell::RefCell<cpl_check::Session> =
-        std::cell::RefCell::new(cpl_check::Session::new());
+    static CHECKER: std::cell::RefCell<cpl_facade::Session> =
+        std::cell::RefCell::new(cpl_facade::Session::default());
 }
 
 /// Whether `diag`'s fix leaves how `src` checks as it was.

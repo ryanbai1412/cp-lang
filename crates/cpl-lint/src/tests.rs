@@ -1773,7 +1773,7 @@ fn a_library_search_helper_of_first_true_is_part_of_its_definition() {
 #[test]
 fn every_lint_is_on_types_std_or_the_compiler_declares() {
     let std_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../std");
-    let mut known: Vec<String> = cpl_check::BUILTIN_TYPES
+    let mut known: Vec<String> = cpl_facade::today::BUILTIN_TYPES
         .iter()
         .map(|t| t.name.to_string())
         .collect();

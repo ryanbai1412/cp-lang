@@ -89,7 +89,7 @@ impl Server {
 /// editor publishes and offers each diagnostic's fixes on.
 pub(super) fn reported(uri: &str, facts: &Proven) -> Vec<Diagnostic> {
     let analysis = facts.analysis();
-    let mut out = at_levels(uri, analysis, cpl_ir::reported(analysis));
+    let mut out = at_levels(uri, analysis, cpl_facade::today::reported(analysis));
     out.extend(lints(uri, facts));
     out
 }
@@ -116,7 +116,7 @@ fn overflows(facts: &Proven) -> Vec<Diagnostic> {
 #[cfg(target_arch = "wasm32")]
 fn at_levels(
     _uri: &str,
-    _analysis: &cpl_check::Analysis,
+    _analysis: &cpl_facade::today::Analysis,
     reported: Vec<Diagnostic>,
 ) -> Vec<Diagnostic> {
     reported
@@ -127,7 +127,7 @@ fn at_levels(
 #[cfg(not(target_arch = "wasm32"))]
 fn at_levels(
     uri: &str,
-    analysis: &cpl_check::Analysis,
+    analysis: &cpl_facade::today::Analysis,
     reported: Vec<Diagnostic>,
 ) -> Vec<Diagnostic> {
     cpl_lint::at_levels(analysis, &reported, &lint_config(uri))

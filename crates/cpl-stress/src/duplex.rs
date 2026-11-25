@@ -6,7 +6,7 @@
 //! the last one's output and goes further.
 
 use crate::case::{Side, Transcript};
-use cpl_interp::{Io, Limits, Stop, Trap};
+use cpl_facade::{RunInput, Limits, Stop, Trap};
 use std::io::Write;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
@@ -97,13 +97,13 @@ impl Write for Shared<Vec<u8>> {
 /// Runs `program` on `io`: on this thread with `stack` bytes of it, or on a
 /// thread of its own.
 fn run(
-    program: &cpl_ir::Program,
-    io: Io,
+    program: &cpl_facade::Program,
+    io: RunInput,
     out: &mut (dyn Write + Send),
     stack: Option<u32>,
 ) -> Result<(), Trap> {
     match stack {
-        Some(bytes) => cpl_interp::run_with_on_this_thread(
+        Some(bytes) => cpl_facade::run_within(
             program,
             io,
             out,
@@ -111,7 +111,7 @@ fn run(
                 stack_bytes: bytes as usize,
             },
         ),
-        None => cpl_interp::run_with(program, io, out),
+        None => cpl_facade::run_to_end(program, io, out),
     }
 }
 
@@ -126,7 +126,7 @@ struct Heard {
 /// The solution from its start on `sent`. Unless `last`, it is stopped when
 /// it waits for more: the interactor has more to say.
 fn solution_on(
-    solution: &cpl_ir::Program,
+    solution: &cpl_facade::Program,
     sent: &[u8],
     last: bool,
     limit: Duration,
@@ -153,7 +153,7 @@ fn solution_on(
     };
     let result = run(
         solution,
-        Io::live(more).until(stop),
+        RunInput::live(more).until(stop),
         &mut out.clone(),
         stack,
     );
@@ -182,8 +182,8 @@ thread_local! {
 /// [`crate::case::judge_limit`]. With `stack`, both run on this thread,
 /// each with half of it.
 pub fn talk(
-    solution: &cpl_ir::Program,
-    interactor: &cpl_ir::Program,
+    solution: &cpl_facade::Program,
+    interactor: &cpl_facade::Program,
     input: &[u8],
     limit: Duration,
     stack: Option<u32>,
@@ -219,7 +219,7 @@ pub fn talk(
             Some(new)
         })
     };
-    let io = Io::judge(input, hear).until(Stop::after(crate::case::judge_limit(limit)));
+    let io = RunInput::judge(input, hear).until(Stop::after(crate::case::judge_limit(limit)));
     let interactor = run(interactor, io, &mut wire.clone(), stack).err();
     // The interactor is done: the solution reads the end of its input.
     let last = ended.lock().take();

@@ -8,7 +8,7 @@
 //! wraps those exports for JavaScript.
 //!
 //! Every answer comes from the crates `cpl` itself is built from, through
-//! the same [`cpl_check::Session`], so a program means in the browser what
+//! the same [`cpl_facade::Session`], so a program means in the browser what
 //! it means on the command line: same diagnostics, same output, same C++.
 //! `tests/parity.rs` holds the two to that.
 //!
@@ -18,7 +18,8 @@
 
 pub mod abi;
 
-use cpl_check::{DeclKind, Session};
+use cpl_facade::today::DeclKind;
+use cpl_facade::Session;
 use cpl_diag::{Diagnostic, LineCol, LineIndex, Severity, Span};
 use cpl_json::{self as json, obj, Value};
 use std::collections::BTreeMap;
@@ -88,7 +89,7 @@ pub struct Run {
 
 /// A file that passed the front end, lowered for the back ends.
 struct Compiled {
-    program: cpl_ir::Program,
+    program: cpl_facade::Program,
     /// Warnings: they are reported and the program still runs.
     diagnostics: Vec<Diagnostic>,
     /// The warnings as `cpl` prints them.
@@ -111,7 +112,7 @@ impl Playground {
     /// `provide_std`, then ask again until it is empty.
     pub fn std_needed(&mut self, name: &str, source: &str) -> Value {
         Value::Array(
-            cpl_check::std_needed(name, source)
+            cpl_facade::today::std_needed(name, source)
                 .into_iter()
                 .map(Value::from)
                 .collect(),
@@ -122,7 +123,7 @@ impl Playground {
     /// Gives the compiler `text`, the file `std/<module>.cp`, for every
     /// command after: `{"changed": false}` when it had it already.
     pub fn provide_std(&mut self, module: &str, text: &str) -> Value {
-        match cpl_check::provide_std(module, text) {
+        match cpl_facade::today::provide_std(module, text) {
             Ok(changed) => {
                 if changed {
                     self.db.reload_modules();
@@ -149,14 +150,16 @@ impl Playground {
             };
             given.push((path.clone(), text.to_string()));
         }
-        self.db = Session::with_loader(Box::new(cpl_check::GivenFiles::new(given)));
+        let closed = cpl_facade::Snapshot::new(cpl_facade::World::Closed);
+        let files = (given.into_iter()).fold(closed, |files, (path, text)| files.with_file(path, text));
+        self.db = Session::open(files);
         obj([])
     }
 
     /// `cpl check`: every diagnostic in `source`.
     pub fn check(&mut self, name: &str, source: &str) -> Value {
         let analysis = self.db.analyze_text(name, source);
-        let diagnostics = cpl_ir::check(&analysis);
+        let diagnostics = cpl_facade::today::built(&analysis);
         let code = if diagnostics.iter().any(|d| d.severity == Severity::Error) {
             EXIT_ERRORS
         } else {
@@ -241,7 +244,7 @@ impl Playground {
         input: &[u8],
         stack: u32,
     ) -> (Vec<u8>, String) {
-        use cpl_interp::trace::{document, TraceConfig};
+        use cpl_facade::today::trace::{document, TraceConfig};
         let mut stdout = Vec::new();
         let (result, trace, debug) = match self.compile(name, source) {
             Err(errors) => (errors, "null".to_string(), String::new()),
@@ -263,8 +266,8 @@ impl Playground {
                 let fast = observed.recording.unwrap_or_default();
                 // The brute's side, when the file has one that builds.
                 let slow = self.db.analyze(name).and_then(|analysis| {
-                    let (brute_fn, _) = cpl_ir::brute(&analysis)?;
-                    let program = cpl_ir::lower_brute(&analysis, &brute_fn).ok()?;
+                    let (brute_fn, _) = cpl_facade::today::roles(&analysis).alt?;
+                    let program = cpl_facade::today::program(&analysis, &cpl_facade::Job::of(cpl_facade::Root::Alt(brute_fn.to_string()))).ok()?;
                     let mut sink = Vec::new();
                     let recording =
                         observe(&program, input, &mut sink, stack, config()).recording?;
@@ -314,7 +317,7 @@ impl Playground {
     /// `cpl replay`: the call `at` of the run of `original` on `input`, run
     /// again
     /// with the fns of `edited`. The answer is
-    /// [`cpl_interp::replay::Replay::json`], or `{"error": ...}`: the same
+    /// [`cpl_facade::today::replay::Replay::json`], or `{"error": ...}`: the same
     /// engine and report as `cpl run --trace --live` serves.
     pub fn replay(
         &mut self,
@@ -325,7 +328,7 @@ impl Playground {
         at: CallAt,
         stack: u32,
     ) -> String {
-        use cpl_interp::trace::TraceConfig;
+        use cpl_facade::today::trace::TraceConfig;
         let error = |message: &str| {
             obj([("error", Value::from(message.trim_end().to_string()))]).to_string()
         };
@@ -352,23 +355,23 @@ impl Playground {
         let recorded = observe(&before, input, &mut Vec::new(), stack, config(original))
             .recording
             .unwrap_or_default();
-        let call = match cpl_interp::replay::call_at(&recorded, at.step as usize, at.frame as usize)
+        let call = match cpl_facade::today::replay::call_at(&recorded, at.step as usize, at.frame as usize)
         {
             Ok(call) => call,
             Err(message) => return error(&message),
         };
-        let limits = cpl_interp::Limits {
+        let limits = cpl_facade::Limits {
             stack_bytes: stack as usize,
         };
-        let rerun = cpl_interp::replay::Rerun {
+        let rerun = cpl_facade::today::replay::Rerun {
             recorded: &recorded,
             original: &before,
             edited: &after,
             input,
             call: &call,
         };
-        let stop = cpl_interp::Stop::after(RUN_LIMIT);
-        cpl_interp::replay::replay_on_this_thread(rerun, config(edited), limits, stop).json()
+        let stop = cpl_facade::Stop::after(RUN_LIMIT);
+        cpl_facade::today::replay::replay_on_this_thread(rerun, config(edited), limits, stop).json()
     }
 
     /// `cpl stress --explain --format json`, running in-process on `cpl-interp`
@@ -477,32 +480,29 @@ impl Playground {
             );
         };
         let limit = profile.source_limit;
-        let target = cpl_codegen::Target {
+        let aim = profile.aim();
+        let target = cpl_facade::Profile {
             stamp: Some(profile.stamp()),
             thread_stack: profile.thread_stack,
             windows: profile.os == cpl_judge::Os::Windows,
             // `cpl build`'s default: a judge build checks what hand-written C++ does.
-            checks: cpl_codegen::Checks::None,
+            checks: cpl_facade::Checks::None,
             cpu: profile.cpu.clone(),
+            size: Some(cpl_facade::SizeBar { aim, limit }),
+            source_comment: true,
         };
-        let aim = profile.aim();
-        let cpp = match cpl_codegen::emit_aiming(
-            &compiled.program,
-            name,
-            source,
-            (aim, limit),
-            &target,
-        ) {
-            Ok(fitted) => {
+        let fitted = cpl_facade::emit_cpp(&compiled.program, name, &target);
+        let cpp = match fitted.over_limit {
+            false => {
                 stderr += &fitted
                     .note(name, &format!("{aim}-byte target"), &profile.name)
                     .unwrap_or_default();
-                fitted.cpp
+                fitted.text
             }
-            Err(shortest) => {
+            true => {
                 stderr += &format!(
                     "cpl: the C++ for `{name}` is {} bytes, over the {limit}-byte limit of judge `{}`\n",
-                    shortest.cpp.len(),
+                    fitted.text.len(),
                     profile.name
                 );
                 code = EXIT_ERRORS;
@@ -524,7 +524,7 @@ impl Playground {
         match self.compile(name, source) {
             Ok(compiled) => {
                 let storage = cpl_lsp::explain::storage_section(&mut self.db, name);
-                let text = cpl_codegen::explain::report_with(
+                let text = cpl_facade::today::explain::report_with(
                     name,
                     source,
                     &compiled.program,
@@ -595,7 +595,7 @@ impl Playground {
             Ok(message) => {
                 let replies = self.lsp.handle(&message);
                 // Its diagnostics say what it needs; a later check's are its own.
-                cpl_check::take_std_needs();
+                cpl_facade::today::take_std_needs();
                 Value::Array(replies)
             }
             Err(error) => Value::Array(vec![obj([
@@ -624,7 +624,7 @@ impl Playground {
         if analysis.has_errors() {
             return Err(outcome(EXIT_ERRORS, &diagnostics, source, stderr, []));
         }
-        match cpl_ir::lower(&analysis) {
+        match cpl_facade::today::program(&analysis, &cpl_facade::Job::program()) {
             Ok(program) => Ok(Compiled {
                 program,
                 diagnostics,
@@ -652,73 +652,73 @@ fn rendered(diagnostics: &[Diagnostic], name: &str, source: &str) -> String {
 /// well before `js/cpl.js` would end the worker.
 const RUN_LIMIT: std::time::Duration = std::time::Duration::from_secs(5);
 
-fn bounded(input: &[u8]) -> cpl_interp::Io<'_> {
-    cpl_interp::Io::fixed(input).until(cpl_interp::Stop::after(RUN_LIMIT))
+fn bounded(input: &[u8]) -> cpl_facade::RunInput<'_> {
+    cpl_facade::RunInput::fixed(input).until(cpl_facade::Stop::after(RUN_LIMIT))
 }
 
 #[cfg(target_family = "wasm")]
 fn interpret(
-    program: &cpl_ir::Program,
+    program: &cpl_facade::Program,
     input: &[u8],
     output: &mut Vec<u8>,
     stack: u32,
-) -> Result<(), cpl_interp::Trap> {
-    let limits = cpl_interp::Limits {
+) -> Result<(), cpl_facade::Trap> {
+    let limits = cpl_facade::Limits {
         stack_bytes: stack as usize,
     };
-    cpl_interp::run_with_on_this_thread(program, bounded(input), output, limits)
+    cpl_facade::run_within(program, bounded(input), output, limits)
 }
 
 #[cfg(not(target_family = "wasm"))]
 fn interpret(
-    program: &cpl_ir::Program,
+    program: &cpl_facade::Program,
     input: &[u8],
     output: &mut Vec<u8>,
     _stack: u32,
-) -> Result<(), cpl_interp::Trap> {
-    cpl_interp::run_with(program, bounded(input), output)
+) -> Result<(), cpl_facade::Trap> {
+    cpl_facade::run_to_end(program, bounded(input), output)
 }
 
 #[cfg(target_family = "wasm")]
 fn observe(
-    program: &cpl_ir::Program,
+    program: &cpl_facade::Program,
     input: &[u8],
     output: &mut Vec<u8>,
     stack: u32,
-    config: cpl_interp::trace::TraceConfig,
-) -> cpl_interp::Observed {
-    let limits = cpl_interp::Limits {
+    config: cpl_facade::today::trace::TraceConfig,
+) -> cpl_facade::Outcome {
+    let limits = cpl_facade::Limits {
         stack_bytes: stack as usize,
     };
-    cpl_interp::observe_on_this_thread(program, bounded(input), output, limits, Some(config))
+    cpl_facade::run_traced_within(program, bounded(input), output, limits, Some(config))
 }
 
 #[cfg(not(target_family = "wasm"))]
 fn observe(
-    program: &cpl_ir::Program,
+    program: &cpl_facade::Program,
     input: &[u8],
     output: &mut Vec<u8>,
     _stack: u32,
-    config: cpl_interp::trace::TraceConfig,
-) -> cpl_interp::Observed {
-    cpl_interp::run_observed(program, bounded(input), output, Some(config))
+    config: cpl_facade::today::trace::TraceConfig,
+) -> cpl_facade::Outcome {
+    cpl_facade::run_traced(program, bounded(input), output, Some(config))
 }
 
 /// What `cpl run` notes on a trap: the innermost call's locals where it
 /// stopped, from a second run, recorded. The browser has no clock to skip
 /// a slow run by, so it always runs again.
 fn trap_locals(
-    program: &cpl_ir::Program,
+    program: &cpl_facade::Program,
     source: &str,
     input: &[u8],
     stack: u32,
-    trap: &cpl_interp::Trap,
+    trap: &cpl_facade::Trap,
 ) -> Option<String> {
-    let config = cpl_interp::trace::trap_config(source);
+    let config = cpl_facade::today::trace::trap_config(source);
     let observed = observe(program, input, &mut Vec::new(), stack, config);
     (observed.trap?.message() == trap.message()).then_some(())?;
     let at = source.get(trap.span.start as usize..trap.span.end as usize);
-    cpl_interp::trace::trap_locals(&observed.recording?, source, at.unwrap_or(""))
+    cpl_facade::today::trace::trap_locals(&observed.recording?, source, at.unwrap_or(""))
 }
 
 /// The result every command shares: its exit status as `cpl` would exit,
@@ -745,7 +745,7 @@ fn outcome<const N: usize>(
         more.into_iter()
             .map(|(key, value)| (key.to_string(), value)),
     );
-    let needs = cpl_check::take_std_needs();
+    let needs = cpl_facade::today::take_std_needs();
     if cfg!(any(not(target_family = "wasm"), feature = "lazy-std")) && !needs.is_empty() {
         let needs = needs.into_iter().map(Value::from).collect();
         members.insert("needs".to_string(), Value::Array(needs));

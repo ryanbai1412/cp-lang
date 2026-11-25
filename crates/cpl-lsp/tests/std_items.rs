@@ -1,5 +1,5 @@
 //! Every public std item (`cpl_doc::extract` over `std/*.cp`) and every
-//! built-in member row (`cpl_check::BUILTIN_MEMBERS`), used in a small
+//! built-in member row (`cpl_facade::today::BUILTIN_MEMBERS`), used in a small
 //! program through `cpl_lsp::Server`: hover and signature help must show the
 //! signature with every declared parameter name (`by:`, `cmp:`), hover the
 //! documented cost, and completion must offer the item with a detail naming
@@ -348,7 +348,7 @@ fn lib_cases(dir: &Path, lib: &str) -> Vec<Case> {
 }
 
 fn builtin_cases() -> Vec<Case> {
-    cpl_check::BUILTIN_MEMBERS
+    cpl_facade::today::BUILTIN_MEMBERS
         .iter()
         .filter_map(|m| {
             let program = format!("{FIXTURE}{}", program_of(m.example));
@@ -780,7 +780,7 @@ fn own_names(text: &str, module: &str) -> String {
             });
             // `w.map(.len)` on an option is the option's own `map`.
             let built_in = text[..start].ends_with('.')
-                && cpl_check::BUILTIN_MEMBERS.iter().any(|m| m.name == word);
+                && cpl_facade::today::BUILTIN_MEMBERS.iter().any(|m| m.name == word);
             let on_type = match examined.contains(&start) {
                 true => !own.contains(&start),
                 false => on_type || built_in,
@@ -815,7 +815,7 @@ fn own_member_uses(
     std::collections::HashSet<usize>,
     std::collections::HashSet<usize>,
 ) {
-    let mut session = cpl_check::Session::new();
+    let mut session = cpl_facade::Session::default();
     let head = format!("use std.{module}.{{{}}}\n", names.join(", "));
     let (mut examined, mut own) = (
         std::collections::HashSet::new(),
@@ -855,7 +855,7 @@ fn own_member_uses(
             session.set_file("/w/example.cp", program.as_str());
             // Prose like `s.min()` names no value, so the checker can't say.
             let checks = session
-                .diagnostics("/w/example.cp")
+                .diagnostics("/w/example.cp", cpl_facade::Layer::Typed)
                 .iter()
                 .all(|d| d.severity != cpl_diag::Severity::Error);
             for u in uses.into_iter().filter(|_| checks) {
@@ -879,7 +879,7 @@ fn own_member_uses(
                 });
                 let built = takes.is_some_and(|t| {
                     names.contains(&t.as_str())
-                        && !matches!(&receiver, Some(cpl_check::Ty::Named { name, .. }) if *name == t)
+                        && !matches!(&receiver, Some(cpl_facade::today::Ty::Named { name, .. }) if *name == t)
                 });
                 if !built && def.is_some_and(|d| d.path.ends_with(&format!("/{module}.cp"))) {
                     own.insert(at + open + u);

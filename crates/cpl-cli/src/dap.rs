@@ -10,7 +10,7 @@
 use crate::judge::render_trap;
 use crate::{compile_side, Side};
 use cpl_diag::Shown;
-use cpl_interp::trace::{first_change, first_change_in, Change, Recording, Replay, TraceConfig};
+use cpl_facade::today::trace::{first_change, first_change_in, Change, Recording, Replay, TraceConfig};
 use cpl_json::obj;
 pub(crate) use cpl_json::Value as Json;
 use std::collections::{BTreeMap, HashSet};
@@ -668,7 +668,7 @@ impl Session {
                 let pick = |recorded: &Recording| match &name {
                     None => crate::replay::call_at(recorded, step, frame),
                     Some(name) => {
-                        let named = |c: &&cpl_interp::trace::Call| &c.name == name;
+                        let named = |c: &&cpl_facade::today::trace::Call| &c.name == name;
                         let open = recorded
                             .calls
                             .iter()
@@ -777,10 +777,10 @@ impl Session {
         };
         self.config = config.clone();
         let mut printed = Vec::new();
-        let observed = cpl_interp::run_observed(
+        let observed = cpl_facade::run_traced(
             &compiled.program,
             // A program that never ends still lets the editor step through it.
-            cpl_interp::Io::fixed(&self.input).until(cpl_interp::Stop::after(self.time_limit)),
+            cpl_facade::RunInput::fixed(&self.input).until(cpl_facade::Stop::after(self.time_limit)),
             &mut printed,
             Some(config),
         );
@@ -793,7 +793,7 @@ impl Session {
             .map(|t| render_trap(&program, &compiled.text, t));
         // A run stopped from outside would not end at the same step again.
         let ended = !observed.trap.as_ref().is_some_and(|t| {
-            [cpl_interp::OUT_OF_TIME.text(), cpl_interp::CANCELLED.text()].contains(&t.message())
+            [cpl_facade::OUT_OF_TIME.text(), cpl_facade::CANCELLED.text()].contains(&t.message())
         });
         self.stopped = !ended;
         self.pager = (self.recording.truncated && ended).then(|| {
@@ -1006,7 +1006,7 @@ impl Session {
     }
 }
 
-pub(crate) use cpl_interp::trace::shown;
+pub(crate) use cpl_facade::today::trace::shown;
 
 #[derive(Clone)]
 struct Valued {

@@ -9,7 +9,7 @@
 
 use std::path::{Path, PathBuf};
 
-use cpl_codegen::cpp_counts::{
+use cpl_facade::today::cpp_counts::{
     block_copies, container_copies, declared, entry_copies, lent_part_copies, map_get_copies,
     optional_copies, std_functions, sunk_copies,
 };

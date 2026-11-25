@@ -264,11 +264,11 @@ pub(crate) fn copy_to_clipboard(text: &str) -> Result<String, String> {
 
 /// Where the bytes of a built file go, by part, with the largest pieces of
 /// each part named.
-pub(crate) fn size_report(sizes: &[cpl_codegen::Size], limit: usize, judge: &str) -> String {
+pub(crate) fn size_report(sizes: &[cpl_facade::Size], limit: usize, judge: &str) -> String {
     let total: usize = sizes.iter().map(|size| size.bytes).sum();
     let mut out =
         format!("size of the C++ by part: {total} bytes, of the {limit} of judge `{judge}`\n");
-    let mut parts: Vec<cpl_codegen::Part> = sizes.iter().map(|size| size.part).collect();
+    let mut parts: Vec<cpl_facade::Part> = sizes.iter().map(|size| size.part).collect();
     parts.sort();
     parts.dedup();
     for part in parts {

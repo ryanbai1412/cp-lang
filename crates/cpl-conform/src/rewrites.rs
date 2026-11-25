@@ -22,18 +22,24 @@ fn outcome(status: &str, detail: impl Into<String>) -> CaseOutcome {
 
 /// What `cpl fix` writes: each error's fix, then, once none is left, the
 /// lint fixes.
-fn fixed(db: &mut Session, path: &str, text: &str) -> String {
-    let (fixed, _, left) = cpl_ir::fix::apply_error_fixes_in(db, path, text);
-    if !left.is_empty() {
-        return fixed;
+fn fixed(path: &str, text: &str) -> String {
+    thread_local! {
+        /// The tools' session, as `cpl fix` holds one.
+        static TOOLS: std::cell::RefCell<cpl_facade::Session> = Default::default();
     }
-    let (config, _) = cpl_lint::Config::discover(Path::new(path));
-    cpl_lint::fix_in(db, path, &fixed, &config, &cpl_ir::check).0
+    TOOLS.with_borrow_mut(|db| {
+        let (fixed, _, left) = db.apply_error_fixes(path, text);
+        if !left.is_empty() {
+            return fixed;
+        }
+        let (config, _) = cpl_lint::Config::discover(Path::new(path));
+        cpl_lint::fix_in(db, path, &fixed, &config, &cpl_facade::today::built).0
+    })
 }
 
-fn rewrite(db: &mut Session, how: &str, path: &str, text: &str) -> String {
+fn rewrite(how: &str, path: &str, text: &str) -> String {
     match how {
-        "fix" => fixed(db, path, text),
+        "fix" => fixed(path, text),
         _ => cpl_fmt::format(text).unwrap_or_else(|_| text.to_string()),
     }
 }
@@ -43,7 +49,7 @@ pub fn run_one(db: &mut Session, prob: &CorpusProblem, how: &str) -> CaseOutcome
         return outcome("error", "cannot read the program");
     };
     let path = prob.spec_path.to_string_lossy().into_owned();
-    let after = rewrite(db, how, &path, &text);
+    let after = rewrite(how, &path, &text);
     if after == text {
         return outcome("untested", format!("`cpl {how}` changes nothing"));
     }

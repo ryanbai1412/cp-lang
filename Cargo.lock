@@ -29,17 +29,14 @@ dependencies = [
 name = "cpl-cli"
 version = "0.3.0"
 dependencies = [
- "cpl-check",
- "cpl-codegen",
  "cpl-conform",
  "cpl-contest",
  "cpl-corpus",
  "cpl-diag",
  "cpl-doc",
  "cpl-env",
+ "cpl-facade",
  "cpl-fmt",
- "cpl-interp",
- "cpl-ir",
  "cpl-json",
  "cpl-judge",
  "cpl-lint",
@@ -74,6 +71,7 @@ dependencies = [
  "cpl-corpus",
  "cpl-diag",
  "cpl-env",
+ "cpl-facade",
  "cpl-fmt",
  "cpl-interp",
  "cpl-ir",
@@ -88,13 +86,11 @@ dependencies = [
 name = "cpl-contest"
 version = "0.3.0"
 dependencies = [
- "cpl-check",
- "cpl-codegen",
  "cpl-config",
  "cpl-corpus",
  "cpl-diag",
  "cpl-env",
- "cpl-ir",
+ "cpl-facade",
  "cpl-json",
  "cpl-judge",
  "cpl-lint",
@@ -118,8 +114,8 @@ dependencies = [
 name = "cpl-doc"
 version = "0.3.0"
 dependencies = [
- "cpl-check",
  "cpl-diag",
+ "cpl-facade",
  "cpl-json",
  "cpl-syntax",
 ]
@@ -127,6 +123,17 @@ dependencies = [
 [[package]]
 name = "cpl-env"
 version = "0.3.0"
+
+[[package]]
+name = "cpl-facade"
+version = "0.3.0"
+dependencies = [
+ "cpl-check",
+ "cpl-codegen",
+ "cpl-diag",
+ "cpl-interp",
+ "cpl-ir",
+]
 
 [[package]]
 name = "cpl-fmt"
@@ -177,13 +184,12 @@ dependencies = [
 name = "cpl-lint"
 version = "0.3.0"
 dependencies = [
- "cpl-check",
  "cpl-config",
  "cpl-corpus",
  "cpl-diag",
  "cpl-env",
+ "cpl-facade",
  "cpl-fmt",
- "cpl-ir",
  "cpl-json",
  "cpl-syntax",
 ]
@@ -192,15 +198,14 @@ dependencies = [
 name = "cpl-lsp"
 version = "0.3.0"
 dependencies = [
- "cpl-check",
  "cpl-config",
  "cpl-contest",
  "cpl-corpus",
  "cpl-diag",
  "cpl-doc",
  "cpl-env",
+ "cpl-facade",
  "cpl-fmt",
- "cpl-ir",
  "cpl-json",
  "cpl-judge",
  "cpl-lint",
@@ -233,12 +238,9 @@ version = "0.3.0"
 name = "cpl-stress"
 version = "0.3.0"
 dependencies = [
- "cpl-check",
- "cpl-codegen",
  "cpl-diag",
  "cpl-env",
- "cpl-interp",
- "cpl-ir",
+ "cpl-facade",
  "cpl-json",
  "cpl-judge",
  "cpl-lint",
@@ -261,12 +263,9 @@ version = "0.3.0"
 name = "cpl-wasm"
 version = "0.3.0"
 dependencies = [
- "cpl-check",
  "cpl-cli",
- "cpl-codegen",
  "cpl-diag",
- "cpl-interp",
- "cpl-ir",
+ "cpl-facade",
  "cpl-json",
  "cpl-judge",
  "cpl-lint",

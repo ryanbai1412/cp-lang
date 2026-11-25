@@ -7,7 +7,7 @@ use crate::{
     File, Finding, DOMAIN_KEYED_MAP, IS_IN_COND_HEADER, POSITION_ARITHMETIC, REDUNDANT_ARG_NAME,
     TURBOFISH_TYPE_ARGS,
 };
-use cpl_check::Ty;
+use cpl_facade::today::Ty;
 use cpl_diag::msgs::lint_rules;
 use cpl_diag::Span;
 use cpl_syntax::ast::{BinOp, Cond, Expr, ExprKind, PatternKind, Stmt, StmtKind, Type};
@@ -155,7 +155,7 @@ fn int_arg<'e>(e: &'e Expr, facts: Option<&crate::Facts>, base: u32) -> Option<&
     let at = e.span.shift(base);
     let to_int = facts
         .callee(at)
-        .is_some_and(|c| c.kind == cpl_check::CalleeKind::Ctor)
+        .is_some_and(|c| c.kind == cpl_facade::today::CalleeKind::Ctor)
         && facts.type_of(at) == Some(&Ty::Int);
     match &e.kind {
         ExprKind::Call { args, .. } if to_int && args.len() == 1 => Some(&args[0].value),

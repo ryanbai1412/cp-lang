@@ -88,7 +88,7 @@ fn dot_completion_on_records_domains_and_positions() {
 /// The members offered on every domain and position are ones the checker types.
 #[test]
 fn builtin_domain_and_position_members_are_the_checkers() {
-    use cpl_check::{DOMAIN_MEMBERS, POS_MEMBERS};
+    use cpl_facade::today::{DOMAIN_MEMBERS, POS_MEMBERS};
     let mut wrong = Vec::new();
     for (members, receiver) in [(DOMAIN_MEMBERS, "V"), (POS_MEMBERS, "v")] {
         for (name, _) in members {
@@ -97,10 +97,10 @@ fn builtin_domain_and_position_members_are_the_checkers() {
             let src = format!(
                 "domain V = 0..5\nfor v in V:\n    let x = {receiver}.{name}\n    let y: Str = x\n"
             );
-            let mut db = cpl_check::Session::new();
+            let mut db = cpl_facade::Session::default();
             db.set_file("a.cp", src.as_str());
             // "Not implemented yet" (E05xx) is a back-end gap, not a typing one.
-            let all = db.diagnostics("a.cp");
+            let all = db.diagnostics("a.cp", cpl_facade::Layer::Typed);
             let gap = all.iter().any(|d| d.code.0.starts_with("E05"));
             let found: Vec<_> = (all.iter())
                 .filter(|d| !d.code.0.starts_with("E05"))
@@ -928,11 +928,11 @@ fn an_extension_is_offered_exactly_where_the_checker_takes_its_receiver() {
             let items = completions(&format!("{head}print({recv}.|)\n"));
             let offered = labels(&items).contains(&name);
             let src = format!("{head}let v = {recv}.{name}{call}\n");
-            let mut session = cpl_check::Session::new();
+            let mut session = cpl_facade::Session::default();
             session.set_file("/w/a.cp", src.as_str());
             let analysis = session.analysis("/w/a.cp").unwrap();
             let accepted = (analysis.diagnostics.iter())
-                .chain(&cpl_ir::reported(&analysis))
+                .chain(&cpl_facade::today::reported(&analysis))
                 .all(|d| d.severity != cpl_diag::Severity::Error);
             assert_eq!(offered, accepted, "{recv}.{name}");
             taken += usize::from(accepted);

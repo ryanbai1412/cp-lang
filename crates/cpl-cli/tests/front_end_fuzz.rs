@@ -140,11 +140,11 @@ fn mutate(src: &str, rng: &mut Rng) -> String {
 }
 
 /// Every diagnostic the checker, lowering and linter report, as text.
-fn front_end(db: &mut cpl_check::Session, path: &str, src: &str) -> Vec<String> {
+fn front_end(db: &mut cpl_facade::Session, path: &str, src: &str) -> Vec<String> {
     db.set_file(path, src);
     let analysis = db.analyze(path).expect("the file was just set");
     let lints = cpl_lint::lint(src, &cpl_lint::Config::default());
-    cpl_ir::check(&analysis)
+    cpl_facade::today::built(&analysis)
         .iter()
         .chain(&lints)
         .map(|d| {
@@ -188,7 +188,7 @@ fn mutated_programs_never_crash_and_report_deterministically(shard: usize) {
                 let paths = &paths;
                 scope.spawn(move || {
                     let mut crashes = Vec::new();
-                    let mut db = cpl_check::Session::new();
+                    let mut db = cpl_facade::Session::default();
                     for &(k, ref path) in paths.iter().skip(t).step_by(threads) {
                         let src = std::fs::read_to_string(path).unwrap();
                         let name = path.to_string_lossy().into_owned();
@@ -204,7 +204,7 @@ fn mutated_programs_never_crash_and_report_deterministically(shard: usize) {
                             match &ok {
                                 Ok(warm) if round % 4 == 0 => {
                                     let fresh =
-                                        front_end(&mut cpl_check::Session::new(), &name, &copy);
+                                        front_end(&mut cpl_facade::Session::default(), &name, &copy);
                                     if *warm != fresh {
                                         crashes.push(format!(
                                             "{name} seed {seed:#x}: a warm database reports\n{}\nand a fresh one\n{}\n{copy}",
@@ -222,7 +222,7 @@ fn mutated_programs_never_crash_and_report_deterministically(shard: usize) {
                                     .or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string()))
                                     .unwrap_or_default();
                                 crashes.push(format!("{name} seed {seed:#x}: {msg}\n{copy}"));
-                                db = cpl_check::Session::new();
+                                db = cpl_facade::Session::default();
                             }
                         }
                     }
@@ -283,7 +283,7 @@ fn a_broken_copy_checks_within_10_percent_of_its_original(shard: usize) {
             .map(|t| {
                 let paths = &paths;
                 scope.spawn(move || {
-                    let mut db = cpl_check::Session::new();
+                    let mut db = cpl_facade::Session::default();
                     let (mut clean, mut broken, mut copies) = (Duration::ZERO, Duration::ZERO, 0);
                     for &(k, ref path) in paths.iter().skip(t).step_by(threads) {
                         let src = std::fs::read_to_string(path).unwrap();
@@ -294,7 +294,7 @@ fn a_broken_copy_checks_within_10_percent_of_its_original(shard: usize) {
                             c.len() >= src.len() && front_end(&mut db, &name, c).len() > quiet
                         });
                         let Some(copy) = copy else { continue };
-                        let time = |db: &mut cpl_check::Session, text: &str| {
+                        let time = |db: &mut cpl_facade::Session, text: &str| {
                             let start = Instant::now();
                             front_end(db, &name, text);
                             start.elapsed()
@@ -648,10 +648,10 @@ fn a_planted_mistake_gives_one_error() {
     paths.sort();
     let mistakes = mistakes();
     let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
-    let errors = |db: &mut cpl_check::Session, name: &str, src: &str| {
+    let errors = |db: &mut cpl_facade::Session, name: &str, src: &str| {
         db.set_file(name, src);
         let analysis = db.analyze(name).expect("the file was just set");
-        cpl_ir::check(&analysis)
+        cpl_facade::today::built(&analysis)
             .into_iter()
             .filter(|d| d.severity == cpl_diag::Severity::Error)
             .collect::<Vec<_>>()
@@ -661,7 +661,7 @@ fn a_planted_mistake_gives_one_error() {
             .map(|t| {
                 let (paths, mistakes, errors) = (&paths, &mistakes, &errors);
                 scope.spawn(move || {
-                    let mut db = cpl_check::Session::new();
+                    let mut db = cpl_facade::Session::default();
                     let (mut runs, mut covered, mut bad, mut clean) = (0, Vec::new(), Vec::new(), 0);
                     for (k, path) in paths.iter().enumerate().skip(t).step_by(threads) {
                         let src = std::fs::read_to_string(path).unwrap();

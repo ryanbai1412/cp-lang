@@ -14,6 +14,7 @@ cpl-env.workspace = true
 cpl-corpus.workspace = true
 cpl-contest.workspace = true
 cpl-check.workspace = true
+cpl-facade.workspace = true
 cpl-codegen.workspace = true
 cpl-diag.workspace = true
 cpl-fmt.workspace = true

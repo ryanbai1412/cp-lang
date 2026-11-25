@@ -106,10 +106,10 @@ pub struct Stress {
 
 /// The file's lowered programs, or its diagnostics.
 fn lowered(
-    lowered: Result<cpl_ir::Program, Vec<cpl_diag::Diagnostic>>,
+    lowered: Result<cpl_facade::Program, Vec<cpl_diag::Diagnostic>>,
     name: &str,
     source: &str,
-) -> Result<cpl_ir::Program, Unbuilt> {
+) -> Result<cpl_facade::Program, Unbuilt> {
     lowered.map_err(|diagnostics| {
         let lines = cpl_diag::LineIndex::new(source);
         Unbuilt::Rendered(
@@ -141,7 +141,7 @@ impl Stress {
         };
         let given_brute = native.and_then(|n| n.brute);
         let given_gen = native.and_then(|n| n.gen);
-        let mut db = cpl_check::Session::new();
+        let mut db = cpl_facade::Session::default();
         db.set_file(name, source);
         let analysis = match is_cp || native.is_none() {
             true => db.analyze(name),
@@ -150,7 +150,7 @@ impl Stress {
         if native.is_none() {
             let analysis = (analysis.as_deref())
                 .ok_or_else(|| Unbuilt::Said(format!("could not analyze {name}")))?;
-            let diagnostics = cpl_ir::check(analysis);
+            let diagnostics = cpl_facade::today::built(analysis);
             if diagnostics.iter().any(|d| d.severity == Severity::Error) {
                 let lines = cpl_diag::LineIndex::new(source);
                 return Err(Unbuilt::Rendered(
@@ -163,12 +163,12 @@ impl Stress {
         let analysis = analysis.as_deref();
         let analyzed =
             || analysis.ok_or_else(|| Unbuilt::Said(format!("could not analyze {name}")));
-        let vm = |program: cpl_ir::Program| {
+        let vm = |program: cpl_facade::Program| {
             Runner::InProcess(Box::new(Vm::new(program, name, source, stack_limit)))
         };
         // The file's own `@alt(program)`, unless `--brute` names another.
         let own_brute = match given_brute {
-            None => analysis.and_then(cpl_ir::brute),
+            None => analysis.and_then(|a| cpl_facade::today::roles(a).alt),
             Some(_) => None,
         };
         // `@alt(f) fn g`: the brute is the whole file with `g` in `f`'s place.
@@ -180,15 +180,15 @@ impl Stress {
         let external_judge = native.is_some_and(|n| n.judge_given);
         let (mut checker, mut interactor) = (None, None);
         if let (Some(analysis), false) = (analysis, external_judge) {
-            if let Some((checker_fn, _)) = cpl_ir::checker(analysis) {
+            if let Some((checker_fn, _)) = cpl_facade::today::roles(analysis).checker {
                 checker = Some(lowered(
-                    cpl_ir::lower_checker(analysis, &checker_fn),
+                    cpl_facade::today::program(analysis, &cpl_facade::Job::of(cpl_facade::Root::Checker(checker_fn.to_string()))),
                     name,
                     source,
                 )?);
-            } else if let Some(judge) = cpl_ir::interactor(analysis) {
+            } else if let Some(judge) = cpl_facade::today::roles(analysis).interactor {
                 interactor = Some(lowered(
-                    cpl_ir::lower_judge(analysis, &judge),
+                    cpl_facade::today::program(analysis, &cpl_facade::Job::of(cpl_facade::Root::Interactor(judge.to_string()))),
                     name,
                     source,
                 )?);
@@ -196,7 +196,7 @@ impl Stress {
         }
         let judged_in_file = checker.is_some() || interactor.is_some();
         let own_gen = match given_gen {
-            None => analysis.and_then(cpl_ir::generator),
+            None => analysis.and_then(|a| cpl_facade::today::roles(a).generator),
             Some(_) => None,
         };
         let size = i64::try_from(options.size).unwrap_or(i64::MAX);
@@ -217,10 +217,10 @@ impl Stress {
         let roles = match native {
             None => {
                 let analysis = analyzed()?;
-                let fast = lowered(cpl_ir::lower_sampling_laws(analysis), name, source)?;
+                let fast = lowered(cpl_facade::today::program(analysis, &cpl_facade::Job::of(cpl_facade::Root::Laws)), name, source)?;
                 let brute = match (&own_brute, &part_brute) {
                     (Some((brute_fn, _)), _) => Some(lowered(
-                        cpl_ir::lower_brute(analysis, brute_fn),
+                        cpl_facade::today::program(analysis, &cpl_facade::Job::of(cpl_facade::Root::Alt(brute_fn.to_string()))),
                         name,
                         source,
                     )?),
@@ -230,7 +230,7 @@ impl Stress {
                         let swapped_analysis = (db.analyze(&bname)).ok_or_else(|| {
                             Unbuilt::Said(format!("could not analyze part brute of {name}"))
                         })?;
-                        Some(lowered(cpl_ir::lower(&swapped_analysis), &bname, swapped)?)
+                        Some(lowered(cpl_facade::today::program(&swapped_analysis, &cpl_facade::Job::program()), &bname, swapped)?)
                     }
                     (None, None) => None,
                 };
@@ -249,7 +249,7 @@ impl Stress {
                 let file_solves = native.fast.is_none() && is_cp;
                 let cached = file_solves
                     && source.contains("@cache")
-                    && analysis.is_some_and(cpl_ir::has_cached_fields);
+                    && analysis.is_some_and(|a| cpl_facade::today::roles(a).cached_fields);
                 // The builds are the whole wait before the first case, so
                 // they run side by side.
                 let (mut brute, mut cold) = (Ok(None), Ok(None));
@@ -307,7 +307,7 @@ impl Stress {
             }
             (None, Some((gen_fn, _)), None) => {
                 let analysis = analyzed()?;
-                let program = lowered(cpl_ir::lower_gen(analysis, gen_fn, size), name, source)?;
+                let program = lowered(cpl_facade::today::program(analysis, &cpl_facade::Job::of(cpl_facade::Root::Generator(gen_fn.to_string(), size))), name, source)?;
                 Inputs::Gen(Drawing {
                     gen: vm(program),
                     limit: options.limit,

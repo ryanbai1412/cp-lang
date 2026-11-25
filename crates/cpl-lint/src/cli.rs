@@ -68,7 +68,7 @@ pub use crate::Errors;
 pub type Save = dyn Fn(&std::path::Path, &str, &[Diagnostic]) -> Vec<String>;
 
 pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8 {
-    let mut db = cpl_check::Session::new();
+    let mut db = cpl_facade::Session::default();
     run_with(&mut db, args, stdout, stderr, None, None, None)
 }
 
@@ -77,7 +77,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
 /// in `db`, as the editor keeps one database: std and shared modules are
 /// checked once, and every step reads the same analysis.
 pub fn run_with(
-    db: &mut cpl_check::Session,
+    db: &mut cpl_facade::Session,
     args: &[String],
     stdout: &mut dyn Write,
     stderr: &mut dyn Write,
@@ -85,7 +85,7 @@ pub fn run_with(
     check: Option<&Errors>,
     save: Option<&Save>,
 ) -> u8 {
-    let checker_only = |analysis: &cpl_check::Analysis| analysis.diagnostics.clone();
+    let checker_only = |analysis: &cpl_facade::today::Analysis| analysis.diagnostics.clone();
     let reported_of: &Errors = check.unwrap_or(&checker_only);
     let mut as_json = false;
     let mut fix = false;

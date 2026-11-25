@@ -250,7 +250,7 @@ fn replay(run: &Run, body: &str) -> String {
         .and_then(|n| usize::try_from(n).ok())
         .unwrap_or(0);
     let pick =
-        |recorded: &cpl_interp::trace::Recording| crate::replay::call_at(recorded, step, frame);
+        |recorded: &cpl_facade::today::trace::Recording| crate::replay::call_at(recorded, step, frame);
     match crate::replay::replay_call(&run.path, original, edited, &run.input, &pick) {
         Ok(replay) => replay.json(),
         Err(message) => error(&message),
