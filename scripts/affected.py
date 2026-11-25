@@ -123,7 +123,9 @@ def slice_globs(globs, tests):
         except OSError:
             text = ""
         # Its own crate's change already runs it, through nextest's rdeps.
-        named = {"cpl-" + d.replace("_", "-") for d in re.findall(r"\bcpl_([a-z_]+)::", text)}
+        named = set()
+        for d in re.findall(r"\bcpl_([a-z_]+)::", text):
+            named |= crate_deps("cpl-" + d.replace("_", "-"))
         # A test that runs a binary runs every crate the binary links: 41ffcffe5 changed
         # cpl-codegen's output and landed with cpl-cli's output_pins unrun.
         for b in re.findall(r"CARGO_BIN_EXE_([a-z_-]+)", text):
