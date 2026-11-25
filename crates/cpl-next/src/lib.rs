@@ -13,6 +13,7 @@ mod inst;
 mod interp;
 mod ir;
 mod lower;
+mod modules;
 mod own;
 mod ty;
 
@@ -83,9 +84,8 @@ pub struct Compiled {
     canon: Vec<ir::Func<inst::CTy>>,
 }
 
-/// Lines are reported in the user's file: std is placed in front of it.
-fn user_line(e: &str) -> String {
-    let std_lines = STD.matches('\n').count() + 1;
+/// Lines are reported in the user's file: the libraries are placed in front of it.
+fn user_line(e: &str, std_lines: usize) -> String {
     match e.strip_prefix("line ").and_then(|r| r.split_once(':')) {
         Some((n, rest)) => match n.parse::<usize>() {
             Ok(n) if n > std_lines => format!("line {}:{rest}", n - std_lines),
@@ -97,24 +97,20 @@ fn user_line(e: &str) -> String {
 
 /// `events` adds the semantic events to the program, for both the interpreter and the C++.
 pub fn compile(user_src: &str, events: bool) -> Result<Compiled, Vec<Diag>> {
-    let src = format!("{STD}\n{user_src}");
+    let loaded = modules::load(STD, user_src);
+    let src = loaded.src;
+    let std_lines = src[..loaded.program_start as usize].matches('\n').count();
     let mut out: Vec<Diag> = Vec::new();
     let mut add = |stage, text: &str| {
         out.push(Diag {
             stage,
-            text: user_line(text),
+            text: user_line(text, std_lines),
         })
     };
-    let p = cpl_syntax::parse_file(&src);
-    for d in &p.diagnostics {
-        add(Stage::Syntax, &d.message);
+    for e in &loaded.errors {
+        add(Stage::Syntax, e);
     }
-    let items: Vec<(u32, Vec<cpl_syntax::ast::Stmt>)> = p
-        .items
-        .iter()
-        .map(|(o, it)| (*o, it.stmts.clone()))
-        .collect();
-    let (d, main) = decls::collect(&items);
+    let (d, main) = decls::collect(&loaded.modules, &loaded.prelude);
     for e in &d.errors {
         add(Stage::Decls, e);
     }
@@ -130,7 +126,7 @@ pub fn compile(user_src: &str, events: bool) -> Result<Compiled, Vec<Diag>> {
     for e in &owned.errors {
         add(Stage::Own, e);
     }
-    let g = lower::lower(&d, &t, &owned, &src, STD.matches('\n').count() as u32 + 1);
+    let g = lower::lower(&d, &t, &owned, &src, std_lines as u32);
     for e in &g.errors {
         add(Stage::Lower, e);
     }
@@ -144,18 +140,18 @@ pub fn compile(user_src: &str, events: bool) -> Result<Compiled, Vec<Diag>> {
             .iter()
             .map(|e| Diag {
                 stage: Stage::Link,
-                text: user_line(e),
+                text: user_line(e, std_lines),
             })
             .collect());
     }
     if events {
-        inst::add_events(&mut prog, &t, &d, STD.len() as u32);
+        inst::add_events(&mut prog, &t, &d, loaded.program_start);
     }
     let canon = inst::canonicalize(&prog).map_err(|es| {
         es.iter()
             .map(|e| Diag {
                 stage: Stage::Link,
-                text: user_line(e),
+                text: user_line(e, std_lines),
             })
             .collect::<Vec<_>>()
     })?;

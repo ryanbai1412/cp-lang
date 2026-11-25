@@ -76,6 +76,7 @@ impl<'a> Cx<'a> {
         given_tys: Vec<Ty>,
         given_sets: Vec<SetTy>,
     ) -> FnRef {
+        self.reach(decl);
         let f = self.d.f(decl);
         let mut targs = given_tys;
         while targs.len() < f.generics.len() {
@@ -89,7 +90,7 @@ impl<'a> Cx<'a> {
     }
     /// A call of the library fn `name` with arguments already typed.
     pub(super) fn lib_call(&mut self, name: &str, args: Vec<TExpr>, span: Span) -> TExpr {
-        let Some(decl) = self.d.lib_fn(name) else {
+        let Some(decl) = self.d.core_fn(name) else {
             self.err(span, format!("the library has no `{name}`"));
             return TExpr {
                 kind: TK::Error,
@@ -141,7 +142,7 @@ impl<'a> Cx<'a> {
             Ty::Struct(d, ..) => ["List", "Array", "Str"]
                 .into_iter()
                 .zip(["write_list", "write_array", "write_str"])
-                .find(|(ty, _)| Some(d) == self.d.struct_named(ty))
+                .find(|(ty, _)| Some(d) == self.d.core_struct(ty))
                 .map(|(_, f)| f),
             _ => None,
         };
@@ -161,7 +162,7 @@ impl<'a> Cx<'a> {
         stmts.push(TStmt::Expr(call));
     }
     fn is_str(&self, t: &Ty) -> bool {
-        matches!(self.shallow(t), Ty::Struct(d, ..) if Some(d) == self.d.struct_named("Str"))
+        matches!(self.shallow(t), Ty::Struct(d, ..) if Some(d) == self.d.core_struct("Str"))
     }
     pub(super) fn call_fn(
         &mut self,
@@ -283,7 +284,10 @@ impl<'a> Cx<'a> {
         }
         // `Type.f(args)`: a fn of the type with no receiver.
         if let ExprKind::Name(n) = &base.kind {
-            if let (Some(d), true) = (self.d.struct_named(n), self.lookup(n).is_none()) {
+            if let (Some(d), true) = (
+                self.d.struct_named(self.module, n),
+                self.lookup(n).is_none(),
+            ) {
                 if let (s, Some(args)) = (self.d.s(d), call) {
                     let Some(m) = s.methods.get(&name.text).copied() else {
                         self.err(span, format!("`{n}` has no `{}`", name.text));
@@ -451,7 +455,7 @@ impl<'a> Cx<'a> {
                 };
             }
         }
-        if let Some(d) = self.d.fn_named(n) {
+        if let Some(d) = self.d.fn_named(self.module, n) {
             let f = self.fnref(d, Vec::new(), Vec::new());
             return TExpr {
                 kind: TK::FnItem(f.clone()),
@@ -852,9 +856,9 @@ impl<'a> Cx<'a> {
                 ExprKind::Name(n)
                     if self.lookup(n).is_none()
                         && self.self_field(n).is_none()
-                        && self.d.names.contains_key(n) =>
+                        && self.d.named(self.module, n).is_some() =>
                 {
-                    match self.d.names[n] {
+                    match self.d.views[self.module.0][n] {
                         Named::Fn(d) => {
                             let f = self.fnref(d, Vec::new(), Vec::new());
                             self.call_fn(f, None, args, span, want)
@@ -914,8 +918,14 @@ impl<'a> Cx<'a> {
                     ) {
                         (Some(t), _) => {
                             let mut errs = Vec::new();
-                            let t =
-                                decls::body_type(self.d, &self.generics, &self.doms, t, &mut errs);
+                            let t = decls::body_type(
+                                self.d,
+                                self.module,
+                                &self.generics,
+                                &self.doms,
+                                t,
+                                &mut errs,
+                            );
                             self.fresh_sets(&t)
                         }
                         (None, Some(t)) => t.clone(),
@@ -960,7 +970,7 @@ impl<'a> Cx<'a> {
             }
             ExprKind::List(xs) => {
                 // `[a, b]` is `List.new()` and a `push` per element. The slice finds `List` by name; the design wants a marker.
-                let Some(list) = self.d.struct_named("List") else {
+                let Some(list) = self.d.core_struct("List") else {
                     self.err(span, "no `List` is declared");
                     return mk(TK::Error, Ty::Error);
                 };
@@ -1012,7 +1022,7 @@ impl<'a> Cx<'a> {
                 if clauses.len() == 1 && clauses[0].conds.is_empty() =>
             {
                 // `[e for x in xs]` is `List.new()` and a `for` that pushes: the same statements a user would write.
-                let Some(list) = self.d.struct_named("List") else {
+                let Some(list) = self.d.core_struct("List") else {
                     self.err(span, "no `List` is declared");
                     return mk(TK::Error, Ty::Error);
                 };

@@ -1,6 +1,6 @@
 //! Contract 3: declarations -> typed tree. Decides every type, target and
 //! conversion. Nothing after this infers anything.
-use crate::decls::{self, Decls, Named, Owner, SelfMode};
+use crate::decls::{self, Decls, ModId, Named, Owner, SelfMode};
 use crate::ir::CheckKind;
 use crate::ty::*;
 use cpl_diag::Span;
@@ -9,6 +9,7 @@ use cpl_syntax::ast::{
     TypeKind, UnOp,
 };
 use std::collections::HashMap;
+use std::collections::HashSet;
 
 mod expr;
 mod stmt;
@@ -220,6 +221,11 @@ struct Cx<'a> {
     /// Set while converting the branches of an `if` into their common type: sets are joined, never merged.
     joining: bool,
     item_off: u32,
+    /// The module whose names the code being checked sees.
+    module: ModId,
+    /// Fns a reference reached, to be checked; and the library places already reported.
+    reached: Vec<FnId>,
+    reported: HashSet<(u8, usize)>,
 }
 
 pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
@@ -251,6 +257,9 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
         allow_region: false,
         joining: false,
         item_off: 0,
+        module: d.program,
+        reached: Vec::new(),
+        reported: HashSet::new(),
     };
     // The set each fn returns is one variable per declaration, filled as bodies are checked.
     for (id, f) in d.fns.iter().enumerate() {
@@ -312,13 +321,23 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
         cx.scopes.pop();
         main_out.push(TStmt::Cases(count, body));
     }
+    // The core's and the program's fns are all checked; a library's only once a reference
+    // reaches them, so what a module declares and the program never uses refuses nothing.
     let mut fns = HashMap::new();
-    for (id, f) in d.fns.iter().enumerate() {
-        if f.intrinsic || matches!(f.body, FnBody::None) {
+    let mut todo: Vec<FnId> = (0..d.fns.len())
+        .map(FnId)
+        .filter(|id| !d.is_library(d.f(*id).module))
+        .rev()
+        .collect();
+    loop {
+        todo.append(&mut cx.reached);
+        let Some(id) = todo.pop() else { break };
+        let f = d.f(id);
+        if fns.contains_key(&id) || f.intrinsic || matches!(f.body, FnBody::None) {
             continue;
         }
-        let tf = cx.check_fn(FnId(id));
-        fns.insert(FnId(id), tf);
+        let tf = cx.check_fn(id);
+        fns.insert(id, tf);
     }
     // Zonk: every variable is replaced by what it was solved to.
     let mut main_z = main_out;
@@ -391,10 +410,41 @@ impl<'a> Cx<'a> {
         let line = self.src[..at.min(self.src.len())].matches('\n').count() + 1;
         self.errors.push(format!("line {line}: {}", msg.into()));
     }
+    /// A reference reached fn `id`: it is checked, and what its library declaration uses that
+    /// the slice does not build is said once. A trait's method reaches every impl's.
+    pub(super) fn reach(&mut self, id: FnId) {
+        let d = self.d;
+        let f = d.f(id);
+        self.reached.push(id);
+        if let Some(Owner::Trait(t)) = f.owner {
+            let impls = d.impls.iter().filter(|im| im.trait_ == t);
+            self.reached
+                .extend(impls.filter_map(|im| im.methods.get(&f.name).copied()));
+        }
+        if !d.is_library(f.module) {
+            return;
+        }
+        let module = &d.module_names[f.module.0];
+        let mut said = Vec::new();
+        if self.reported.insert((0, id.0)) {
+            said.extend(f.errors.iter().cloned());
+        }
+        if let Some(Owner::Struct(s)) = f.owner {
+            if self.reported.insert((1, s.0)) {
+                said.extend(d.s(s).errors.iter().cloned());
+            }
+        }
+        if self.reported.insert((2, f.module.0)) {
+            said.extend(d.module_errors[f.module.0].iter().cloned());
+        }
+        self.errors
+            .extend(said.into_iter().map(|e| format!("{module}: {e}")));
+    }
     fn check_fn(&mut self, id: FnId) -> TypedFn {
         let d = self.d;
         let f = d.f(id);
         self.decl = Some(id);
+        self.module = f.module;
         let top_doms = self.doms.clone();
         self.generics = f.generics.clone();
         self.n_sets = f.n_sets;
@@ -449,6 +499,7 @@ impl<'a> Cx<'a> {
             ret,
         };
         self.decl = None;
+        self.module = d.program;
         self.region = None;
         self.doms = top_doms;
         self.generics = Vec::new();

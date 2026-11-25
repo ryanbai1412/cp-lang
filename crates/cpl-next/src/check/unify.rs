@@ -110,6 +110,20 @@ impl<'a> Cx<'a> {
         }
     }
     pub(super) fn zonk_set(&self, s: &SetTy) -> SetTy {
+        // A variable solved to a set that names it again is a cycle, like one met in its own closures.
+        if let SetTy::Var(v) = s {
+            let r = self.root(*v);
+            if let SetVar::Bound(b) = &self.sets[r] {
+                if self.zonking.borrow().contains(&r) {
+                    self.cyclic.set(true);
+                    return SetTy::Closed(Vec::new());
+                }
+                self.zonking.borrow_mut().push(r);
+                let out = self.zonk_set(&b.clone());
+                self.zonking.borrow_mut().retain(|x| *x != r);
+                return out;
+            }
+        }
         match self.shallow_set(s) {
             SetTy::Var(r) => {
                 if self.zonking.borrow().contains(&r) {
@@ -183,18 +197,38 @@ impl<'a> Cx<'a> {
             (a, b) => a == b,
         }
     }
+    fn occurs(&self, v: usize, t: &Ty) -> bool {
+        match self.shallow(t) {
+            Ty::Var(x) => x == v,
+            Ty::Raw(e) | Ty::Ref(e) => self.occurs(v, &e),
+            Ty::Struct(_, ts, _) => ts.iter().any(|t| self.occurs(v, t)),
+            Ty::Fn(ps, r, _) => ps.iter().any(|t| self.occurs(v, t)) || self.occurs(v, &r),
+            Ty::Clo(c) => match &*c {
+                CloRef::Item(f) => f.targs.iter().any(|t| self.occurs(v, t)),
+                CloRef::Lambda(_, ts, _) => ts.iter().any(|t| self.occurs(v, t)),
+            },
+            _ => false,
+        }
+    }
     pub(super) fn unify(&mut self, a: &Ty, b: &Ty) -> bool {
         let (a, b) = (self.shallow(a), self.shallow(b));
         match (&a, &b) {
             (Ty::Error, _) | (_, Ty::Error) => true,
             (Ty::Var(x), Ty::Var(y)) if x == y => true,
+            // A variable is never solved to a type holding itself: no type is infinite.
             (Ty::Var(x), _) => {
-                self.tys[*x] = Some(b);
-                true
+                let ok = !self.occurs(*x, &b);
+                if ok {
+                    self.tys[*x] = Some(b);
+                }
+                ok
             }
             (_, Ty::Var(y)) => {
-                self.tys[*y] = Some(a);
-                true
+                let ok = !self.occurs(*y, &a);
+                if ok {
+                    self.tys[*y] = Some(a);
+                }
+                ok
             }
             (Ty::Raw(x), Ty::Raw(y)) => self.unify(x, y),
             (Ty::Struct(d1, t1, s1), Ty::Struct(d2, t2, s2)) => {
@@ -292,7 +326,7 @@ impl<'a> Cx<'a> {
     /// `T` when `t` is `?T`.
     pub(super) fn optional_of(&self, t: &Ty) -> Option<Ty> {
         match self.shallow(t) {
-            Ty::Struct(d, ts, _) if Some(d) == self.d.struct_named("Optional") => {
+            Ty::Struct(d, ts, _) if Some(d) == self.d.core_struct("Optional") => {
                 Some(ts[0].clone())
             }
             _ => None,

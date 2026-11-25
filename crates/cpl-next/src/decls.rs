@@ -2,7 +2,14 @@
 //! without looking inside a body.
 use crate::ty::*;
 use cpl_syntax::ast::{self, FnBody, StmtKind, TypeKind};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+
+/// A module: the core, a library file or the program.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord, Default)]
+pub struct ModId(pub usize);
+
+/// The core's module: the language's own declarations, seen by every module.
+pub const CORE: ModId = ModId(0);
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum SelfMode {
@@ -35,6 +42,9 @@ pub struct FnDecl {
     pub intrinsic: bool,
     pub getter: bool,
     pub item: u32,
+    pub module: ModId,
+    /// What its signature uses that the slice does not build, said only when a call reaches it.
+    pub errors: Vec<String>,
 }
 pub struct Param {
     pub name: String,
@@ -51,6 +61,8 @@ pub struct StructDecl {
     pub field_at: Vec<usize>,
     pub n_sets: usize,
     pub methods: HashMap<String, FnId>,
+    /// What its fields use that the slice does not build, said only when the program reaches it.
+    pub errors: Vec<String>,
 }
 pub struct TraitDecl {
     pub methods: HashMap<String, FnId>,
@@ -80,11 +92,15 @@ pub struct Decls {
     pub structs: Vec<StructDecl>,
     pub traits: Vec<TraitDecl>,
     pub impls: Vec<ImplDecl>,
-    pub names: HashMap<String, Named>,
+    /// Per module, what each name means there: the core's names, then the prelude's (the
+    /// program only, R11.3.1), then its own and what its `use` lines import (R11.2.3).
+    pub views: Vec<HashMap<String, Named>>,
+    pub module_names: Vec<String>,
+    pub program: ModId,
+    /// Per library module, what it uses outside its fns that the slice does not build.
+    pub module_errors: Vec<Vec<String>>,
     pub struct_sets: HashMap<StructId, usize>,
     pub errors: Vec<String>,
-    /// Library fns whose names the program reuses.
-    pub shadowed: HashMap<String, FnId>,
     /// A fn whose name was already a fn: where, the code, the name.
     pub dup_fns: Vec<(usize, &'static str, String)>,
 }
@@ -103,21 +119,28 @@ impl Decls {
     pub fn s(&self, d: StructId) -> &StructDecl {
         &self.structs[d.0]
     }
-    pub fn fn_named(&self, name: &str) -> Option<FnId> {
-        match self.names.get(name) {
-            Some(Named::Fn(f)) => Some(*f),
+    pub fn named(&self, m: ModId, name: &str) -> Option<Named> {
+        self.views[m.0].get(name).copied()
+    }
+    pub fn fn_named(&self, m: ModId, name: &str) -> Option<FnId> {
+        match self.named(m, name) {
+            Some(Named::Fn(f)) => Some(f),
             _ => None,
         }
     }
-    /// The library's fn of this name, whatever the program calls its own.
-    pub fn lib_fn(&self, name: &str) -> Option<FnId> {
-        self.shadowed
-            .get(name)
-            .copied()
-            .or_else(|| self.fn_named(name))
+    pub fn struct_named(&self, m: ModId, name: &str) -> Option<StructId> {
+        struct_named(&self.views[m.0], name)
     }
-    pub fn struct_named(&self, name: &str) -> Option<StructId> {
-        struct_named(&self.names, name)
+    /// The core's fn of this name, whatever the module calls its own.
+    pub fn core_fn(&self, name: &str) -> Option<FnId> {
+        self.fn_named(CORE, name)
+    }
+    pub fn core_struct(&self, name: &str) -> Option<StructId> {
+        self.struct_named(CORE, name)
+    }
+    /// A library declaration's place is not the program's: its module's name.
+    pub fn is_library(&self, m: ModId) -> bool {
+        m != CORE && m != self.program
     }
     pub fn lookup_member(&self, recv: &Ty, name: &str) -> Option<Member> {
         let Ty::Struct(d, targs, sets) = recv else {
@@ -313,6 +336,7 @@ fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<String>) -> Ty {
 /// Converts a type written in a body: fn types get a placeholder set the checker replaces.
 pub fn body_type(
     d: &Decls,
+    m: ModId,
     generics: &[String],
     doms: &HashMap<String, Ty>,
     t: &ast::Type,
@@ -320,7 +344,7 @@ pub fn body_type(
 ) -> Ty {
     conv(
         &mut TyCx {
-            names: &d.names,
+            names: &d.views[m.0],
             struct_sets: &d.struct_sets,
             generics,
             doms,
@@ -332,51 +356,215 @@ pub fn body_type(
     )
 }
 
-pub fn collect(items: &[(u32, Vec<ast::Stmt>)]) -> (Decls, Vec<(u32, ast::Stmt)>) {
-    let mut d = Decls::default();
-    let mut main = Vec::new();
-    // Pass 1: names, so signatures can mention later declarations.
-    let mut pending: Vec<(u32, &ast::Stmt, Option<Named>)> = Vec::new();
-    for (item, stmts) in items {
-        for s in stmts {
-            match &s.kind {
-                StmtKind::Struct(sd) => {
-                    let id = StructId(d.structs.len());
-                    d.names.insert(sd.name.text.clone(), Named::Struct(id));
-                    d.structs.push(StructDecl {
-                        name: sd.name.text.clone(),
-                        generics: sd.generics.iter().map(|g| g.text.clone()).collect(),
-                        fields: Vec::new(),
-                        var_fields: Vec::new(),
-                        field_at: Vec::new(),
-                        n_sets: 0,
-                        methods: HashMap::new(),
-                    });
-                    pending.push((*item, s, Some(Named::Struct(id))));
-                }
-                StmtKind::Trait { name, .. } => {
-                    let id = TraitId(d.traits.len());
-                    d.names.insert(name.text.clone(), Named::Trait(id));
-                    d.traits.push(TraitDecl {
-                        methods: HashMap::new(),
-                    });
-                    pending.push((*item, s, Some(Named::Trait(id))));
-                }
-                StmtKind::Fn(_) | StmtKind::Impl { .. } => pending.push((*item, s, None)),
-                _ => main.push((*item, s.clone())),
+/// The name a top-level item declares, if it declares one.
+fn item_name(s: &ast::Stmt) -> Option<&str> {
+    match &s.kind {
+        StmtKind::Struct(sd) => Some(&sd.name.text),
+        StmtKind::Trait { name, .. } => Some(&name.text),
+        StmtKind::Fn(f) => Some(&f.name.text),
+        _ => None,
+    }
+}
+
+/// What each name means in module `mi`: the prelude's for the program, then the core's, then
+/// what its `use` lines import, then its own (R11.2.3). `errors` is `None` while fns are not
+/// declared yet, so a name not found is not yet known to be missing.
+/// What every module declares and imports, from which each module's view is built.
+struct Scopes<'a> {
+    own: &'a [HashMap<String, Named>],
+    public: &'a [HashSet<String>],
+    names: &'a [String],
+    imports: &'a [(ModId, &'a ast::Stmt)],
+    prelude: &'a HashMap<String, String>,
+}
+
+fn view(
+    sc: &Scopes,
+    mi: usize,
+    program: bool,
+    mut errors: Option<&mut Vec<String>>,
+) -> HashMap<String, Named> {
+    let Scopes {
+        own,
+        public,
+        names,
+        imports,
+        prelude,
+    } = *sc;
+    let index = |m: &str| names.iter().position(|n| n == m);
+    let export = |t: usize, n: &str| {
+        (t == CORE.0 || public[t].contains(n))
+            .then(|| own[t].get(n).copied())
+            .flatten()
+    };
+    // The core holds the slice's own forms of some std names; a prelude name never hides one.
+    let mut v = HashMap::new();
+    if program {
+        for (n, m) in prelude {
+            if let Some(x) = index(m).and_then(|t| export(t, n)) {
+                v.insert(n.clone(), x);
             }
         }
     }
+    v.extend(own[CORE.0].iter().map(|(n, x)| (n.clone(), *x)));
+    for (m, s) in imports.iter().filter(|(m, _)| m.0 == mi) {
+        let _ = m;
+        let StmtKind::Use {
+            path,
+            names: ns,
+            glob,
+            ..
+        } = &s.kind
+        else {
+            continue;
+        };
+        let module = path
+            .iter()
+            .map(|n| n.text.as_str())
+            .collect::<Vec<_>>()
+            .join(".");
+        // `use std.rand.Rng` names one item of `std.rand` (R11.2.1).
+        let (module, ns) = match (index(&module), path.split_last()) {
+            (None, Some((last, init))) if ns.is_empty() && !*glob => (
+                init.iter()
+                    .map(|n| n.text.as_str())
+                    .collect::<Vec<_>>()
+                    .join("."),
+                std::slice::from_ref(last),
+            ),
+            _ => (module, &ns[..]),
+        };
+        // An unknown module is the loader's to report.
+        let Some(t) = index(&module) else { continue };
+        if *glob {
+            for n in &public[t] {
+                if let Some(x) = export(t, n) {
+                    v.insert(n.clone(), x);
+                }
+            }
+            continue;
+        }
+        if ns.is_empty() {
+            if let Some(e) = errors.as_deref_mut() {
+                e.push(format!("slice: `use {module}` without names"));
+            }
+            continue;
+        }
+        for n in ns {
+            match export(t, &n.text) {
+                Some(_) if own[mi].contains_key(&n.text) => {
+                    if let Some(e) = errors.as_deref_mut() {
+                        e.push(format!(
+                            "slice: `use` of `{}`, which this file also declares",
+                            n.text
+                        ));
+                    }
+                }
+                Some(x) => {
+                    v.insert(n.text.clone(), x);
+                }
+                None => {
+                    if let Some(e) = errors.as_deref_mut() {
+                        e.push(format!(
+                            "slice: `{module}` has no pub `{}` the slice declares",
+                            n.text
+                        ));
+                    }
+                }
+            }
+        }
+    }
+    for (n, x) in &own[mi] {
+        v.insert(n.clone(), *x);
+    }
+    v
+}
+
+pub fn collect(
+    mods: &[crate::modules::Module],
+    prelude: &HashMap<String, String>,
+) -> (Decls, Vec<(u32, ast::Stmt)>) {
+    let mut d = Decls::default();
+    let n = mods.len();
+    d.program = ModId(n - 1);
+    d.module_names = mods.iter().map(|m| m.name.clone()).collect();
+    d.module_errors = vec![Vec::new(); n];
+    let mut own: Vec<HashMap<String, Named>> = vec![HashMap::new(); n];
+    let mut public: Vec<HashSet<String>> = vec![HashSet::new(); n];
+    let mut main = Vec::new();
+    // Pass 1: names, so signatures can mention later declarations.
+    let mut pending: Vec<(ModId, u32, &ast::Stmt, Option<Named>)> = Vec::new();
+    let mut imports: Vec<(ModId, &ast::Stmt)> = Vec::new();
+    for (mi, m) in mods.iter().enumerate() {
+        let mid = ModId(mi);
+        for (item, stmts) in &m.items {
+            for s in stmts {
+                if let (true, Some(name)) = (s.public, item_name(s)) {
+                    public[mi].insert(name.to_string());
+                }
+                match &s.kind {
+                    StmtKind::Struct(sd) => {
+                        let id = StructId(d.structs.len());
+                        own[mi].insert(sd.name.text.clone(), Named::Struct(id));
+                        d.structs.push(StructDecl {
+                            name: sd.name.text.clone(),
+                            generics: sd.generics.iter().map(|g| g.text.clone()).collect(),
+                            fields: Vec::new(),
+                            var_fields: Vec::new(),
+                            field_at: Vec::new(),
+                            n_sets: 0,
+                            methods: HashMap::new(),
+                            errors: Vec::new(),
+                        });
+                        pending.push((mid, *item, s, Some(Named::Struct(id))));
+                    }
+                    StmtKind::Trait { name, .. } => {
+                        let id = TraitId(d.traits.len());
+                        own[mi].insert(name.text.clone(), Named::Trait(id));
+                        d.traits.push(TraitDecl {
+                            methods: HashMap::new(),
+                        });
+                        pending.push((mid, *item, s, Some(Named::Trait(id))));
+                    }
+                    StmtKind::Fn(_) | StmtKind::Impl { .. } => pending.push((mid, *item, s, None)),
+                    StmtKind::Use { .. } => imports.push((mid, s)),
+                    // A library's context is only reached by a `with`, which the checker refuses.
+                    StmtKind::Context { .. } if d.is_library(mid) => {}
+                    other if d.is_library(mid) => d.module_errors[mi]
+                        .push(format!("slice: library item {}", crate::kind_name(other))),
+                    _ => main.push((*item, s.clone())),
+                }
+            }
+        }
+    }
+    let program = d.program.0;
+    let names = d.module_names.clone();
+    d.views = (0..n)
+        .map(|mi| {
+            view(
+                &Scopes {
+                    own: &own,
+                    public: &public,
+                    names: &names,
+                    imports: &imports,
+                    prelude,
+                },
+                mi,
+                mi == program,
+                None,
+            )
+        })
+        .collect();
     // Struct fields first, to a fixed point: a struct holding a struct with function fields has those sets too.
     loop {
         let mut changed = false;
-        for (_, s, id) in &pending {
+        for (mid, _, s, id) in &pending {
             let (StmtKind::Struct(sd), Some(Named::Struct(id))) = (&s.kind, id) else {
                 continue;
             };
             let generics: Vec<String> = sd.generics.iter().map(|g| g.text.clone()).collect();
             let no_doms = HashMap::new();
-            let (names, sets) = (d.names.clone(), d.struct_sets.clone());
+            let (names, sets) = (d.views[mid.0].clone(), d.struct_sets.clone());
             let mut cx = TyCx {
                 names: &names,
                 struct_sets: &sets,
@@ -398,14 +586,15 @@ pub fn collect(items: &[(u32, Vec<ast::Stmt>)]) -> (Decls, Vec<(u32, ast::Stmt)>
             break;
         }
     }
-    for (item, s, id) in pending {
+    for (mid, item, s, id) in pending {
+        let mi = mid.0;
         match (&s.kind, id) {
             (StmtKind::Struct(sd), Some(Named::Struct(id))) => {
                 let generics: Vec<String> = sd.generics.iter().map(|g| g.text.clone()).collect();
                 let no_doms = HashMap::new();
                 let sets = d.struct_sets.clone();
                 let mut cx = TyCx {
-                    names: &d.names.clone(),
+                    names: &d.views[mi].clone(),
                     struct_sets: &sets,
                     generics: &generics,
                     doms: &no_doms,
@@ -419,18 +608,25 @@ pub fn collect(items: &[(u32, Vec<ast::Stmt>)]) -> (Decls, Vec<(u32, ast::Stmt)>
                     .map(|f| (f.name.text.clone(), conv(&mut cx, &f.ty, &mut errors)))
                     .collect();
                 let n_sets = cx.next_set.unwrap_or(0);
-                d.errors.extend(errors);
+                if d.is_library(mid) {
+                    d.structs[id.0].errors.extend(errors);
+                } else {
+                    d.errors.extend(errors);
+                }
                 let mut methods = HashMap::new();
                 for m in &sd.methods {
                     if let StmtKind::Fn(f) = &m.kind {
                         let fid = add_fn(
                             &mut d,
+                            mid,
                             item,
                             m,
                             f,
-                            Some(Owner::Struct(id)),
-                            &generics,
-                            n_sets,
+                            Within {
+                                owner: Some(Owner::Struct(id)),
+                                generics: &generics,
+                                sets: n_sets,
+                            },
                         );
                         methods.insert(f.name.text.clone(), fid);
                     }
@@ -450,7 +646,18 @@ pub fn collect(items: &[(u32, Vec<ast::Stmt>)]) -> (Decls, Vec<(u32, ast::Stmt)>
                 let mut methods = HashMap::new();
                 for m in &body.stmts {
                     if let StmtKind::Fn(f) = &m.kind {
-                        let fid = add_fn(&mut d, item, m, f, Some(Owner::Trait(id)), &[], 0);
+                        let fid = add_fn(
+                            &mut d,
+                            mid,
+                            item,
+                            m,
+                            f,
+                            Within {
+                                owner: Some(Owner::Trait(id)),
+                                generics: &[],
+                                sets: 0,
+                            },
+                        );
                         methods.insert(f.name.text.clone(), fid);
                     }
                 }
@@ -466,14 +673,18 @@ pub fn collect(items: &[(u32, Vec<ast::Stmt>)]) -> (Decls, Vec<(u32, ast::Stmt)>
                 _,
             ) => {
                 let name_of = |t: &ast::Type| match &t.kind {
-                    TypeKind::Named { name, .. } => d.names.get(&name.text).copied(),
+                    TypeKind::Named { name, .. } => d.views[mi].get(&name.text).copied(),
                     _ => None,
                 };
                 let (Some(Named::Trait(tr)), Some(Named::Struct(for_))) =
                     (name_of(tr), name_of(target))
                 else {
-                    d.errors
-                        .push("impl of an unknown trait or type".to_string());
+                    let e = "impl of an unknown trait or type".to_string();
+                    if d.is_library(mid) {
+                        d.module_errors[mi].push(e);
+                    } else {
+                        d.errors.push(e);
+                    }
                     continue;
                 };
                 if d.impls.iter().any(|im| im.trait_ == tr && im.for_ == for_) {
@@ -488,12 +699,15 @@ pub fn collect(items: &[(u32, Vec<ast::Stmt>)]) -> (Decls, Vec<(u32, ast::Stmt)>
                     if let StmtKind::Fn(f) = &m.kind {
                         let fid = add_fn(
                             &mut d,
+                            mid,
                             item,
                             m,
                             f,
-                            Some(Owner::Struct(for_)),
-                            &generics,
-                            n_sets,
+                            Within {
+                                owner: Some(Owner::Struct(for_)),
+                                generics: &generics,
+                                sets: n_sets,
+                            },
                         );
                         methods.insert(f.name.text.clone(), fid);
                     }
@@ -505,19 +719,15 @@ pub fn collect(items: &[(u32, Vec<ast::Stmt>)]) -> (Decls, Vec<(u32, ast::Stmt)>
                 });
             }
             (StmtKind::Fn(f), _) => {
-                let fid = add_fn(&mut d, item, s, f, None, &[], 0);
-                let before = d.names.insert(f.name.text.clone(), Named::Fn(fid));
-                // A program may reuse a library fn's name; until modules give the library its
-                // own scope, that is told by where the first one is written.
-                let lib_end = crate::STD.len();
-                let first = match before {
-                    Some(Named::Fn(first)) => Some(first),
-                    _ => None,
-                };
-                if let Some(first) = first.filter(|x| (d.f(*x).item as usize) < lib_end) {
-                    d.shadowed.entry(f.name.text.clone()).or_insert(first);
-                }
-                if let Some(first) = first.filter(|x| d.f(*x).item as usize >= lib_end) {
+                let fid = add_fn(&mut d, mid, item, s, f, FREE);
+                let before = own[mi].insert(f.name.text.clone(), Named::Fn(fid));
+                d.views[mi].insert(f.name.text.clone(), Named::Fn(fid));
+                if let Some(Named::Fn(first)) = before {
+                    if d.is_library(mid) {
+                        let e = format!("slice: a library with two fns named `{}`", f.name.text);
+                        d.fns[fid.0].errors.push(e);
+                        continue;
+                    }
                     // One name and one set of labels is one fn: nothing is chosen by
                     // argument type (R02.11.3, R06.1.6).
                     let labels = |f: FnId| -> Vec<&str> {
@@ -537,21 +747,60 @@ pub fn collect(items: &[(u32, Vec<ast::Stmt>)]) -> (Decls, Vec<(u32, ast::Stmt)>
             _ => {}
         }
     }
+    let mut errors = Vec::new();
+    d.views = (0..n)
+        .map(|mi| {
+            let e = if d.is_library(ModId(mi)) {
+                None
+            } else {
+                Some(&mut errors)
+            };
+            view(
+                &Scopes {
+                    own: &own,
+                    public: &public,
+                    names: &names,
+                    imports: &imports,
+                    prelude,
+                },
+                mi,
+                mi == program,
+                e,
+            )
+        })
+        .collect();
+    d.errors.extend(errors);
     (d, main)
 }
 
+/// The item a method sits in: its type parameters and set parameters come first.
+struct Within<'a> {
+    owner: Option<Owner>,
+    generics: &'a [String],
+    sets: usize,
+}
+const FREE: Within = Within {
+    owner: None,
+    generics: &[],
+    sets: 0,
+};
+
 fn add_fn(
     d: &mut Decls,
+    m: ModId,
     item: u32,
     s: &ast::Stmt,
     f: &ast::FnDecl,
-    owner: Option<Owner>,
-    outer: &[String],
-    outer_sets: usize,
+    within: Within,
 ) -> FnId {
+    let Within {
+        owner,
+        generics: outer,
+        sets: outer_sets,
+    } = within;
     let mut generics = outer.to_vec();
     generics.extend(f.generics.iter().map(|g| g.text.clone()));
-    let names = d.names.clone();
+    let names = d.views[m.0].clone();
     let no_doms = HashMap::new();
     let sets = d.struct_sets.clone();
     let mut cx = TyCx {
@@ -614,21 +863,28 @@ fn add_fn(
         };
         for t in &b.traits {
             if let TypeKind::Named { name, .. } = &t.kind {
-                match d.names.get(&name.text) {
+                match names.get(&name.text) {
                     Some(Named::Trait(tr)) => bounds.push((i, *tr)),
                     _ => errors.push(format!("unknown trait `{}`", name.text)),
                 }
             }
         }
     }
-    d.errors.extend(errors);
-    // A decorator changes meaning, so one the slice does not implement refuses the program; it is never skipped.
+    // A decorator changes meaning, so one the slice does not implement refuses the program; it is
+    // never skipped. A library's `@lint` declares a rewrite for the linter, which the slice does not
+    // run, so the program's own is refused: its expected result may be that lint (R06.4.9).
     for x in &s.decorators {
-        if !matches!(x.name.text.as_str(), "get" | "multitest") {
-            d.errors
-                .push(format!("slice: decorator `@{}`", x.name.text));
+        let lint = x.name.text == "lint" && d.is_library(m);
+        if !lint && !matches!(x.name.text.as_str(), "get" | "multitest") {
+            errors.push(format!("slice: decorator `@{}`", x.name.text));
         }
     }
+    let errors = if d.is_library(m) {
+        errors
+    } else {
+        d.errors.extend(errors);
+        Vec::new()
+    };
     let has = |n: &str| s.decorators.iter().any(|x| x.name.text == n);
     d.fns.push(FnDecl {
         name: f.name.text.clone(),
@@ -651,6 +907,8 @@ fn add_fn(
         intrinsic: matches!(&f.body, FnBody::Expr(e) if matches!(e.kind, cpl_syntax::ast::ExprKind::Intrinsic(_))),
         getter: has("get"),
         item,
+        module: m,
+        errors,
     });
     FnId(d.fns.len() - 1)
 }

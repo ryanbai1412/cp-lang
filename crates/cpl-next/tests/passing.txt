@@ -232,6 +232,7 @@ core-11/method-named-like-builtin.cp
 core-11/own-fn-max-shadows-binary-builtin.cp
 core-11/pub-field-and-method.cp
 core-11/runtime-domain-reads-in-order.cp
+core-11/use-unknown-module.cp
 core-12/closure-borrows-per-call.cp
 core-12/lent-param-escapes.cp
 core-12/move-into-struct.cp

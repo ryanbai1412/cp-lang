@@ -264,7 +264,7 @@ impl<'a> Cx<'a> {
                 let declared = ty.as_ref().map(|t| self.body_ty(t, s.span, out));
                 let v = self.expr(init, declared.as_ref());
                 // `var a: [V]Int = 0` fills every slot: it is `Array.filled(0)`.
-                let fill = match (&declared, self.d.struct_named("Array")) {
+                let fill = match (&declared, self.d.core_struct("Array")) {
                     (Some(array @ Ty::Struct(d, ts, _)), Some(arr))
                         if *d == arr && !matches!(self.shallow(&v.ty), Ty::Struct(..)) =>
                     {
@@ -931,7 +931,14 @@ impl<'a> Cx<'a> {
     pub(super) fn body_ty(&mut self, t: &ast::Type, span: Span, out: &mut Vec<TStmt>) -> Ty {
         let t = self.name_ranges(t, span, out);
         let mut errs = Vec::new();
-        let t = decls::body_type(self.d, &self.generics, &self.doms, &t, &mut errs);
+        let t = decls::body_type(
+            self.d,
+            self.module,
+            &self.generics,
+            &self.doms,
+            &t,
+            &mut errs,
+        );
         for e in errs {
             self.err(span, e);
         }
@@ -984,11 +991,11 @@ impl<'a> Cx<'a> {
     pub(super) fn read_as(&mut self, t: &Ty, span: Span) -> TExpr {
         match self.shallow(t) {
             Ty::Struct(d, ts, _)
-                if Some(d) == self.d.struct_named("Array")
+                if Some(d) == self.d.core_struct("Array")
                     && self.shallow(&ts[1]) == Ty::Int
-                    && self.d.fn_named("read_array").is_some() =>
+                    && self.d.core_fn("read_array").is_some() =>
             {
-                let Some(read_array) = self.d.fn_named("read_array") else {
+                let Some(read_array) = self.d.core_fn("read_array") else {
                     return TExpr {
                         kind: TK::Error,
                         ty: Ty::Error,
@@ -1040,7 +1047,7 @@ impl<'a> Cx<'a> {
     /// An `Int` used to index an array is checked against the array's domain. The proof that removes the check is the facts layer's.
     pub(super) fn index_arg(&mut self, base: &Ty, i: TExpr) -> TExpr {
         if let Ty::Struct(d, ts, _) = self.shallow(base) {
-            if Some(d) == self.d.struct_named("Array") && self.shallow(&i.ty) == Ty::Int {
+            if Some(d) == self.d.core_struct("Array") && self.shallow(&i.ty) == Ty::Int {
                 let dty = self.shallow(&ts[0]);
                 if matches!(dty, Ty::Dom(_) | Ty::Param(_)) {
                     let span = i.span;
