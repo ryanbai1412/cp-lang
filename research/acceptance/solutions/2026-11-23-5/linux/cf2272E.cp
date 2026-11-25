@@ -15,13 +15,13 @@ fn answers(a: Str, b: Str) -> List<Int>:
             p = i
             continue
         if p > 0:
-            let reach = if ws.len > 0: ws[ws.len - 1] + i - 1 - p else: 0
+            let reach = if ws.len > 0: ws.last! + i - 1 - p else: 0
             res.push(max(b.len, reach) + 1)
         elif ws.len == 0:
             res.push(1)
         else:
             let cut = gaps.first_ge(i) ?? gaps.len
-            res.push(1 + pre.prefix(cut) + i * (gaps.len - cut) + i)
+            res.push(1 + pre.cut(cut) + i * (gaps.len - cut) + i)
     return res
 
 print(answers(s, t))

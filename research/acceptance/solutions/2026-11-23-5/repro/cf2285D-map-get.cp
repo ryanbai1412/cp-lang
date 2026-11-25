@@ -1,7 +1,6 @@
 // Blocker repro map-get-copies-list (run 5, Windows draft shape): `at.get(h) ?? []` on a
 // Map<Int, List<Int>> plus `partition_point` on the result. Over 20 s on max.py before
 // 1b76f05c4; must stay AC.
-use std.mod.{Mod}
 type Z = Mod<1_000_000_007>
 let comb = Comb<Z>()
 
@@ -9,8 +8,8 @@ let comb = Comb<Z>()
 let (n, m, q): (1..=2e5, 1..=2e5, 1..=2e5) = read()
 let a: [0..n]-1e9..=1e9 = read()
 let pre = Prefix(a)
-let total = pre.prefix(n)
-fn d(x: Int) -> Int = pre.prefix(x)
+let total = pre.cut(n)
+fn d(x: Int) -> Int = pre.cut(x)
 var at: HashMap<Int, List<Int>> = HashMap()
 for x in 1..n:
     let h = d(x) + d(n - x) - total

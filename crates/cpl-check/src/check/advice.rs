@@ -218,6 +218,9 @@ impl Checker<'_> {
                 return;
             }
         }
+        if self.report_renamed_member(name, base_ty) {
+            return;
+        }
         let public =
             |c: &mut Self, m: &String| owner.is_empty() || !c.env.is_private_field(&owner, m);
         let mut public_fields = Vec::new();

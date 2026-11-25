@@ -4,6 +4,45 @@ use super::*;
 use cpl_diag::msgs;
 
 impl<'a> Checker<'a> {
+    /// E0503 for a member std renamed: `D.bounds` is `D.cuts`, and a name a
+    /// std item or a member of the receiver's shape states with `@was`.
+    pub(in crate::check) fn report_renamed_member(
+        &mut self,
+        name: &ast::Name,
+        base_ty: &Ty,
+    ) -> bool {
+        let renamed = match name.text.as_str() {
+            "bounds" if matches!(base_ty, Ty::Domain(_)) => Some((
+                "cuts",
+                Some("`D.cuts` is the gaps between and around `D`'s positions".to_string()),
+            )),
+            old => match base_ty {
+                Ty::Named { name: on, args } => {
+                    let on = crate::prelude::written_name(on);
+                    crate::prelude::renamed_member(on, args.len(), old)
+                }
+                _ => None,
+            }
+            .or_else(|| crate::prelude::renamed(old))
+            .map(|to| (to, None)),
+        };
+        let Some((to, help)) = renamed else {
+            return false;
+        };
+        if let Some(diag) = self.report(
+            name.span,
+            msgs::check::REMOVED_SYNTAX_IS_GONE_IN_0,
+            &[&name.text, &to],
+        ) {
+            diag.help = help;
+            diag.fixes.push(cpl_diag::Fix {
+                title: format!("use `.{to}`"),
+                edits: vec![(name.span, to.to_string())],
+            });
+        }
+        true
+    }
+
     /// The type of field `name` on a value of type `ty`, if `ty` is a
     /// struct or record that has it.
     pub(crate) fn field_of(&mut self, ty: &Ty, name: &ast::Name) -> Option<Ty> {
@@ -555,25 +594,7 @@ impl<'a> Checker<'a> {
             }
             return Ty::Error;
         }
-        let renamed = match name.text.as_str() {
-            "bounds" if matches!(base_ty, Ty::Domain(_)) => Some((
-                "cuts",
-                Some("`D.cuts` is the gaps between and around `D`'s positions".to_string()),
-            )),
-            old => crate::prelude::renamed(old).map(|to| (to, None)),
-        };
-        if let Some((to, help)) = renamed {
-            if let Some(diag) = self.report(
-                name.span,
-                msgs::check::REMOVED_SYNTAX_IS_GONE_IN_0,
-                &[&name.text, &to],
-            ) {
-                diag.help = help;
-                diag.fixes.push(cpl_diag::Fix {
-                    title: format!("use `.{to}`"),
-                    edits: vec![(name.span, to.to_string())],
-                });
-            }
+        if self.report_renamed_member(name, &base_ty) {
             return Ty::Error;
         }
 

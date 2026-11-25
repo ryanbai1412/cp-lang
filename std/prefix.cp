@@ -537,6 +537,7 @@ pub struct Prefix<T: Sub>:
     /// traps: when `k` is not in `0..=n`
     /// example: `Prefix<Int>([3, 1, 4]).cut(2) == 4`
     /// example: `Prefix<Int>([3, 1, 4]).cut(0) == 0`
+    @was(prefix)
     pub fn cut(self, k: Int) -> T = self.p[k]
 
     /// The sum of `a[i]` for `i` in `r`, or zero when `r` is empty.

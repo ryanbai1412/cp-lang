@@ -33,8 +33,8 @@ pub const EMBEDDED: &[&str] = &["mod", "prelude"];
 /// whose body is on the lines below gets `todo` for it; the other lines
 /// are blank, so a line number in the outline is the file's. A fn with
 /// its return type written keeps `= todo` for a one-line body, and `todo`
-/// for an `=` body on the next line. An `@lint` line stays, a method's
-/// too; one whose `to` does not name its fn keeps the fn whole, since
+/// for an `=` body on the next line. An `@lint` or `@was` line stays, a
+/// method's too; an `@lint` whose `to` does not name its fn keeps the fn whole, since
 /// such a `to` is checked against the body.
 pub fn outline(text: &str) -> String {
     let mut out = String::with_capacity(text.len() / 4);
@@ -54,6 +54,10 @@ pub fn outline(text: &str) -> String {
             continue;
         }
         whole = None;
+        if trimmed.starts_with("@was(") {
+            out.push_str(line);
+            continue;
+        }
         if trimmed.starts_with("@lint(") {
             out.push_str(line);
             tos.extend(

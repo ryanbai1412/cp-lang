@@ -706,6 +706,42 @@ pub fn renamed(name: &str) -> Option<&'static str> {
     was.get(name).copied()
 }
 
+/// The name a std struct's member has now for one it was written with
+/// before, on the shape of `on` with `arity` type params: `@was(prefix)`
+/// above `pub fn cut` in `Prefix<T>`.
+pub fn renamed_member(on: &str, arity: usize, old: &str) -> Option<&'static str> {
+    static WAS: OnceLock<crate::names::NameMap<&'static str>> = OnceLock::new();
+    let was = lazy(&WAS, || {
+        let mut was = crate::names::NameMap::default();
+        for (_, text) in crate::modules::std_index() {
+            if !text.contains("@was(") {
+                continue;
+            }
+            for (_, item) in cpl_syntax::parse_file(text).items {
+                for stmt in &item.stmts {
+                    let ast::StmtKind::Struct(d) = &stmt.kind else {
+                        continue;
+                    };
+                    for m in &d.methods {
+                        let ast::StmtKind::Fn(f) = &m.kind else {
+                            continue;
+                        };
+                        let olds = m.decorators.iter().filter(|d| d.name.text == "was");
+                        for arg in olds.flat_map(|d| &d.args) {
+                            if let ast::ExprKind::Name(old) = &arg.value.kind {
+                                let key = format!("{}'{}.{old}", d.name.text, d.generics.len());
+                                was.insert(key, &*Box::leak(f.name.text.clone().into_boxed_str()));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        was
+    });
+    was.get(&format!("{on}'{arity}.{old}")).copied()
+}
+
 /// Std names brought in from a stdlib module when a file uses a word,
 /// without spending prelude slots: `g.out(u)` gets `Next`, whose impls
 /// answer it for a table or fn of neighbour lists.

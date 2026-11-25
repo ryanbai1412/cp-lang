@@ -313,6 +313,11 @@ A fn states its older names the same way, `@was(bsearch_last)` above
 `pub fn last_true`; a program calling `r.bsearch_last(..)` gets E0503
 naming the fn, with the fix. Status: checks
 (`std-search/last-true-was-bsearch-last.cp`).
+A member states its older names the same way, on its own shape only:
+`@was(prefix)` above `pub fn cut` in `Prefix<T>`; a program calling
+`p.prefix(k)` on a `Prefix<T>` gets E0503 naming `cut`, with the fix, while
+`Prefix<D, T>` keeps its own `prefix`. Status: checks
+(`std-prefix/list-shape-prefix-was-cut.cp`).
 A fn states other languages' names for it, `@aka(upper, toUpperCase)` above
 `pub fn to_upper(self: Str)`; a program calling `s.upper()` on that
 receiver type gets E0203 naming the fn, with the fix. `@aka` is an
