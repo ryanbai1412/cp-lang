@@ -186,8 +186,7 @@ impl Cx<'_> {
         self.borrowed.clear();
         let mut fx = Fx::default();
         let t = self.t;
-        for (i, s) in t.main.iter().enumerate() {
-            self.off = t.main_offs.get(i).copied().unwrap_or(0);
+        for s in &t.main {
             self.stmt(s, &mut fx);
         }
     }
@@ -875,6 +874,7 @@ impl Cx<'_> {
                 self.moved_in_loop(b.span, at, &before);
             }
             TStmt::Return(None) | TStmt::Break | TStmt::Continue => {}
+            TStmt::Item(off) => self.off = *off,
             TStmt::Yield(e) | TStmt::LendOut(e) => {
                 if let (TStmt::LendOut(_), Some(p)) = (s, self.place(e)) {
                     fx.writes.insert(p);

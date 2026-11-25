@@ -144,6 +144,7 @@ core-09/range-store-proved.cp
 core-09/range-store-trap.cp
 core-09/trapped-check-that-holds.cp
 core-10/bad-token-trap.cp
+core-10/multitest-count-past-input-traps.cp
 core-10/multitest-domain-from-domain-count.cp
 core-10/multitest-missing-count.cp
 core-10/multitest-zero-cases.cp

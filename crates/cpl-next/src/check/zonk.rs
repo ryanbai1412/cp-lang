@@ -25,7 +25,7 @@ impl<'a> Cx<'a> {
                     self.zonk_expr(e)
                 }
             }
-            TStmt::Break | TStmt::Continue => {}
+            TStmt::Break | TStmt::Continue | TStmt::Item(_) => {}
             TStmt::Yield(e) | TStmt::LendOut(e) => self.zonk_expr(e),
             TStmt::Region {
                 f,

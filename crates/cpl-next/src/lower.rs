@@ -53,8 +53,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &str, std_lines: u32) -> Generic {
         std_lines,
     };
     let mut body = Vec::new();
-    for (i, s) in typed.main.iter().enumerate() {
-        lw.off = typed.main_offs.get(i).copied().unwrap_or(0);
+    for s in &typed.main {
         lw.stmt(s, &mut body);
     }
     out.funcs.insert(
@@ -606,6 +605,7 @@ impl Lw<'_> {
                 });
             }
             TStmt::Break => out.push(Stmt::Break),
+            TStmt::Item(off) => self.off = *off,
             TStmt::Continue => out.push(Stmt::Continue),
             TStmt::Yield(e) => {
                 let v = self.expr(e, out);

@@ -38,8 +38,7 @@ core-09/assert-after-64k-of-output-prints-it-first.cp	wrong-output	wanted R0401 
 core-09/checked-index-trap.cp	wrong-trap	wanted R0101 on line 6, got: trap: R0401: line 6: index out of range
 core-10/bool-not-print.cp	wrong-accept	wanted E0606 on line 3, ran and printed: true
 core-10/bool-var-not-print.cp	wrong-accept	wanted E0606 on line 4, ran and printed: true
-core-10/multitest-count-past-input-traps.cp	wrong-trap	wanted R0501 on line 5, got: trap: R0501: line 4: expected an integer in the input
-core-10/multitest-until-eof-reads-all.cp	wrong-trap	trap: R0501: line 4: expected an integer in the input
+core-10/multitest-until-eof-reads-all.cp	wrong-trap	trap: R0501: line 6: expected an integer in the input
 core-10/multitest-until-eof-trailing-blank.cp	wrong-output	wanted "1\n2", got "2\n"
 core-10/multitest-until-eof.cp	wrong-trap	trap: R0501: line 4: expected an integer in the input
 core-10/rb1-q39-bool-not-print.cp	wrong-accept	wanted E0606 on line 3, ran and printed: true

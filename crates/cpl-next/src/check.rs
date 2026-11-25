@@ -98,6 +98,9 @@ pub enum TStmt {
     Assert(TExpr, String, Span, CheckKind),
     Break,
     Continue,
+    /// Top-level code only: the statements after this one, to the end of the block, are from
+    /// the item that starts at this offset in the source. Their spans are relative to it.
+    Item(u32),
     /// In a generator: hand a value to the caller's loop body.
     Yield(TExpr),
     /// In a lender: hand a place to the caller's code; the rest of the fn runs after it.
@@ -153,8 +156,6 @@ pub struct Typed {
     pub fns: HashMap<FnId, TypedFn>,
     pub globals: Vec<Local>,
     pub main: Vec<TStmt>,
-    /// Where each statement of `main` starts in the source: spans are relative to it.
-    pub main_offs: Vec<u32>,
     pub lambdas: Vec<LambdaInfo>,
     /// The set a fn returns, for fns whose result is a function value.
     pub ret_sets: HashMap<(FnId, usize), SetTy>,
@@ -241,7 +242,6 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
         }
     }
     let mut main_out = Vec::new();
-    let mut main_offs: Vec<u32> = Vec::new();
     let mut cases: Option<(VarRef, VarRef, Vec<TStmt>)> = None;
     for (off, s) in main {
         cx.item_off = *off;
@@ -252,6 +252,7 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
                 .any(|d| d.directive && d.name.text == "multitest")
         {
             let t = cx.bind("$cases", Ty::Int);
+            main_out.push(TStmt::Item(*off));
             main_out.push(TStmt::Let(
                 t,
                 TExpr {
@@ -269,11 +270,12 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
                 cx.err(s.span, format!("slice: decorator `@{}`", x.name.text));
             }
         }
-        match &mut cases {
-            Some((_, _, body)) => cx.stmt(s, body),
-            None => cx.stmt(s, &mut main_out),
-        }
-        main_offs.resize(main_out.len(), *off);
+        let into = match &mut cases {
+            Some((_, _, body)) => body,
+            None => &mut main_out,
+        };
+        into.push(TStmt::Item(*off));
+        cx.stmt(s, into);
     }
     if let Some((t, i, body)) = cases {
         cx.scopes.pop();
@@ -337,7 +339,6 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
         fns,
         globals,
         main: main_z,
-        main_offs,
         lambdas,
         ret_sets,
         errors: cx.errors,
