@@ -1,7 +1,7 @@
 {
   "(runtime)": 2100,
   "___rust": 1000,
-  "alloc": 33500,
+  "alloc": 33200,
   "compiler_builtins": 8300,
   "core": 62200,
   "cpl_check": 293700,
