@@ -3693,7 +3693,8 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
     A raise passes only when the same change rewrites the code that measures
     that entry (a new definition of the count, re-measured), or when `ref`
     itself measures at least the raised number (`upstream`): that restores a
-    number lowered by hand, it admits no debt. Never on a decisions.md line or
+    number lowered by hand, it admits no debt. `next_not_passing` may also rise by
+    the number of conformance cases the change adds. Never on a decisions.md line or
     a Skipped: trailer. New debt is removed, not admitted.
     """
     shown = _git(root, "show", f"{ref}:scripts/debt-ratchet.json")
@@ -3714,6 +3715,12 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
     if "rs_near_cap" in old and (set(baseline.get("rs_near_cap", [])) - set(old["rs_near_cap"]) - set(old_allow)
                                  - set(mine.get("rs_near_cap", [])) - set(mine_allow)):
         raised.append(("rs_near_cap", "rs_near_cap"))
+    # A new conformance case the new pipeline cannot run yet is a case added, not a
+    # case broken (`passing.txt` and `next_wrong` hold those), so each admits one.
+    added = len([l for l in _git(root, "diff", "--name-only", "--diff-filter=A", ref, "--", "spec/conformance")
+                 if l.endswith(".cp")])
+    raised = [(n, key) for n, key in raised
+              if not (n == "next_not_passing" and baseline[n] - old[n] <= added)]
     zero = [n for n, _ in raised if n in COUNTERS and old.get(n, 1) == 0]
     if zero:
         return [f"{n}: reached 0 on {ref}; a counter at 0 is never raised" for n in zero]

@@ -1983,6 +1983,24 @@ class DebtRatchetTest(unittest.TestCase):
         eff = dr.inherited_baseline(baseline, {"rs_near_cap": ["new.rs"]})
         self.assertEqual(dr.evaluate(actual, eff)[0], [])
 
+    def test_not_passing_may_rise_by_the_cases_a_change_adds(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            git = lambda *a: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *a], cwd=root,
+                                            check=True, env=dr._git_env(), capture_output=True)
+            git("init", "-q")
+            (root / "scripts").mkdir()
+            (root / "scripts" / "debt-ratchet.json").write_text('{"next_not_passing": 10}')
+            git("add", "-A")
+            git("commit", "-qm", "base")
+            git("branch", "base")
+            case = root / "spec" / "conformance" / "core-01" / "a.cp"
+            case.parent.mkdir(parents=True)
+            case.write_text("// expect: ok\n")
+            git("add", "-A")
+            self.assertEqual(dr.unexplained_bumps(root, {"next_not_passing": 11}, ref="base"), [])
+            self.assertEqual(len(dr.unexplained_bumps(root, {"next_not_passing": 12}, ref="base")), 1)
+
     def test_a_deleted_case_counts_until_removed_md_names_it(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

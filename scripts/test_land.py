@@ -1688,6 +1688,13 @@ done
         for merged in (merge(base, raised, base), merge(base, base, raised)):
             self.assertEqual(merged, base)
 
+    def test_the_ratchet_merge_keeps_both_moves_of_not_passing(self):
+        sys.path.insert(0, str(HERE))
+        from ratchet_merge import merge
+        # One side adds 11 cases the new pipeline refuses, the other passes 30.
+        self.assertEqual(merge({"next_not_passing": 4146}, {"next_not_passing": 4116}, {"next_not_passing": 4157}),
+                         {"next_not_passing": 4127})
+
     def _wasm(self, ours, node_exit):
         """A fake node that logs its arguments, a cargo whose fmt passes, and a target dir."""
         bin_dir = self.tmp / "bin"

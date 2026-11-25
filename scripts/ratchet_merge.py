@@ -13,6 +13,9 @@ import subprocess
 import sys
 
 GONE = object()
+# Both sides move these for a stated reason (one adds cases, the other passes some), so the
+# merge keeps both moves; the raise check against main still judges the result.
+ADDITIVE = {"next_not_passing"}
 
 
 def merge(base, ours, theirs):
@@ -24,6 +27,9 @@ def merge(base, ours, theirs):
         b = base if isinstance(base, dict) else {}
         out = {}
         for k in [*ours, *(k for k in theirs if k not in ours)]:
+            if k in ADDITIVE and all(type(d.get(k)) is int for d in (b, ours, theirs)):
+                out[k] = ours[k] + theirs[k] - b[k]
+                continue
             v = merge(b.get(k, GONE), ours.get(k, GONE), theirs.get(k, GONE))
             if v is not GONE:
                 out[k] = v
