@@ -42,6 +42,12 @@ codegen-units = 1
 [profile.dev.package.cpl-interp]
 opt-level = 1
 
+# The same holds for the new pipeline's reference interpreter, which the commit
+# gate runs on every conformance case: unoptimized, two cases took 7 GB and 7 s
+# each and timed out when the rest of the gate ran beside them.
+[profile.dev.package.cpl-next]
+opt-level = 1
+
 # Front-end, IR and codegen run thousands of times across the port, differential
 # and recovery test suites; opt-level = 1 keeps incremental builds fast while
 # cutting `scripts/check.sh --fast` wall time well under the 3-minute budget.
