@@ -1706,13 +1706,14 @@ done
         return {"PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}", "CARGO_TARGET_DIR": str(self.tmp / "tgt")}
 
     def _built(self, ours, parent=True):
-        """A warm wasm build of ours' tree as it is now, and the sizes of main's tip."""
+        """A warm wasm build of ours' tree rebased on main's tip, and the sizes of main's tip."""
         out = self.tmp / "tgt" / "wasm-warm"
         out.mkdir(parents=True)
         (out / "cpl.wasm").write_text("wasm")
+        git(ours, "fetch", "-q", "origin")
+        git(ours, "rebase", "-q", "origin/main")
         (out / "tree").write_text(git(ours, "rev-parse", "HEAD^{tree}"))
         if parent:
-            git(ours, "fetch", "-q", "origin")
             (out / "sizes").mkdir()
             (out / "sizes" / f'{git(ours, "rev-parse", "origin/main^{tree}").strip()}.json').write_text('{"fns": {}}')
         return out
@@ -1975,6 +1976,11 @@ done
         self.assertEqual((r.returncode, r.stdout.strip()), (0, str(out / "sizes" / f"{main_tree}.json")))
         self.assertEqual(warm("--parent", "HEAD", "cpl_nope").returncode, 2)
         self.assertEqual(warm("--current", "cpl-nope").returncode, 2)
+        (ours / "crates" / "cpl-w").mkdir(parents=True)
+        (ours / "crates" / "cpl-w" / "lib.rs").write_text("another lane's crate\n")
+        self.commit(ours, "another lane")
+        self.assertEqual(warm("--current", "cpl-x").returncode, 1)
+        git(ours, "reset", "-q", "--hard", "HEAD~1")
         self.assertEqual(warm("--parent", "HEAD", "cpl-x").stdout.strip(), str(out / "sizes" / f'{git(ours, "rev-parse", "HEAD^{tree}").strip()}.json'))
         (ours / "crates" / "cpl-y").mkdir(parents=True)
         (ours / "crates" / "cpl-y" / "lib.rs").write_text("other crate\n")

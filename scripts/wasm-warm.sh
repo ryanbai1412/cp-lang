@@ -8,11 +8,11 @@
 #   scripts/wasm-warm.sh --wait     build in the foreground
 #   scripts/wasm-warm.sh --current CRATE...
 #                                   print the build's cpl.wasm if it is of HEAD's tree, or of
-#                                   one that differs from it outside these crates and std
-#                                   (a crate is named as its directory); else fail
+#                                   one whose wasm inputs equal HEAD's (a crate is named as
+#                                   its directory); else fail
 #   scripts/wasm-warm.sh --parent BASE CRATE...
 #                                   print the per-crate sizes of a build of BASE's tree, or of
-#                                   one that differs from it outside these crates and std; else fail
+#                                   one whose wasm inputs equal BASE's; else fail
 #   scripts/wasm-warm.sh --check WASM BASE CRATE...
 #                                   the wasm rule the commit tier (ci.py) and land.sh share:
 #                                   with BASE's sizes, every crate and the data are held to the
@@ -53,9 +53,10 @@ case "${1:-}" in
     --current)
         shift
         built=$(cat "$out/tree" 2>/dev/null) && [ -s "$out/cpl.wasm" ] || exit 1
-        dirs=(std Cargo.toml Cargo.lock); for c in "$@"; do dirs+=("crates/$c"); done
+        # --check holds every crate, touched or not, so a build of another crate's
+        # older code (a pre-rebase tree) can't stand for HEAD's.
         [ "$built" = "$(git rev-parse 'HEAD^{tree}')" ] ||
-            git diff --quiet "$built" 'HEAD^{tree}' -- "${dirs[@]}" 2>/dev/null || exit 1
+            git diff --quiet "$built" 'HEAD^{tree}' -- "${inputs[@]}" 2>/dev/null || exit 1
         echo "$out/cpl.wasm" ;;
     --parent)
         # Every crate is held to the parent, touched or not, so only a build whose
