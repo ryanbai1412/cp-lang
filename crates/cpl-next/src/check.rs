@@ -64,6 +64,8 @@ pub enum TK {
     Inject(Box<TExpr>),
     /// A function value flows into a slot whose set is larger.
     Widen(Box<TExpr>),
+    /// `s[i]`: the element its `Indexed.at` call reads, in place in `s` (R05.3.5).
+    Elem(Box<TExpr>),
     Bin(BinOp, Box<TExpr>, Box<TExpr>),
     Cmp(CmpOp, Box<TExpr>, Box<TExpr>),
     Not(Box<TExpr>),

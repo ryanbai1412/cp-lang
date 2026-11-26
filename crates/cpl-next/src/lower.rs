@@ -396,6 +396,7 @@ impl Lw<'_> {
                 let v = self.expr(x, out);
                 mk(EK::Inject(Box::new(v)))
             }
+            TK::Elem(x) => self.expr(x, out),
             TK::Widen(x) => {
                 let v = self.expr(x, out);
                 let v = self.spill(v, out);
@@ -974,6 +975,7 @@ pub fn free_vars(e: &TExpr, used: &mut BTreeSet<VarRef>, bound: &mut BTreeSet<Va
         | TK::Variant(_, b)
         | TK::Inject(b)
         | TK::Widen(b)
+        | TK::Elem(b)
         | TK::Not(b)
         | TK::CharOf(b)
         | TK::CodeOf(b)

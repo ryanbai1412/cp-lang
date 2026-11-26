@@ -349,6 +349,22 @@ impl Cx<'_> {
                     None => out = self.sources(v),
                 }
             }
+            // R05.3.5: `s[i]` of a heap element lends `s`.
+            TK::Elem(x) if !plain(self.d, &e.ty, 0) && !matches!(e.ty, Ty::Param(_)) => {
+                match &x.kind {
+                    TK::Call { recv: Some(r), .. } | TK::CallTrait { recv: r, .. } => {
+                        let (TArg::Value(v) | TArg::Mut(v)) = &**r;
+                        match self.place(v) {
+                            Some(p) => {
+                                out.insert(p.root);
+                            }
+                            None => out = self.sources(v),
+                        }
+                    }
+                    _ => out = self.sources(x),
+                }
+            }
+            TK::Elem(b) => out = self.sources(b),
             TK::Field(b, _) | TK::Payload(b, _) | TK::Inject(b) | TK::Widen(b) => {
                 out = self.sources(b);
                 // A heap field of a place is that place: binding it borrows the place.
@@ -936,6 +952,7 @@ impl Cx<'_> {
             }
             TK::Inject(x)
             | TK::Widen(x)
+            | TK::Elem(x)
             | TK::Not(x)
             | TK::CharOf(x)
             | TK::CodeOf(x)

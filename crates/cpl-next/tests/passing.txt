@@ -333,6 +333,7 @@ core-06/two-closures-share-var.cp
 core-07/array-equals-list.cp
 core-07/domain-rev-walks-backwards.cp
 core-07/indexed-builtins.cp
+core-07/map-calls-per-read.cp
 core-07/negative-literal-index-is-an-error.cp
 core-07/negative-literal-str-index-is-an-error.cp
 core-07/zip-domain-mismatch.cp
@@ -634,6 +635,7 @@ next/n_bits_02_shift_by_64_traps.cp
 next/n_bits_03_shl_past_int_traps.cp
 next/n_bits_04_and_to_the_lowest_pattern_traps.cp
 next/n_enum_01_values_and_order.cp
+next/n_index_01_through_indexed.cp
 next/n_u64_01_wraps_and_compares_unsigned.cp
 next/n_u64_02_int_of_a_large_u64_traps.cp
 next/n_u64_03_division_by_zero_traps.cp
@@ -734,6 +736,7 @@ traits/IndexOp/Disjoint--at.cp
 traits/IndexOp/Disjoint--len.cp
 traits/Indexed/Array--at.cp
 traits/Indexed/List--at.cp
+traits/Indexed/Mapped--at.cp
 traits/Indexed/Str--at.cp
 traits/IndexedMut/Array--at.cp
 traits/IndexedMut/List--at.cp

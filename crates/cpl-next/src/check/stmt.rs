@@ -368,13 +368,7 @@ impl<'a> Cx<'a> {
                                 ty: vty,
                                 span: value.span,
                             };
-                            let cur = self.method_call(
-                                base_t.clone(),
-                                "get",
-                                vec![TArg::Value(idx.clone())],
-                                target.span,
-                                false,
-                            );
+                            let cur = self.elem(base_t.clone(), idx.clone(), target.span);
                             self.binary(*b, cur, v, target.span)
                         }
                         _ => return self.err(s.span, "slice: unsupported assignment"),

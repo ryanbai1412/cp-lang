@@ -58,6 +58,7 @@ impl<'a> Cx<'a> {
             | TK::Variant(_, b)
             | TK::Inject(b)
             | TK::Widen(b)
+            | TK::Elem(b)
             | TK::Not(b)
             | TK::CharOf(b)
             | TK::CodeOf(b)

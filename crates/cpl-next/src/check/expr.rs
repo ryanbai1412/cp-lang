@@ -537,6 +537,75 @@ impl<'a> Cx<'a> {
         block(pre, call)
     }
     /// `recv.name(args)` with already-typed arguments: used for `get` and `set` behind indexing.
+    /// `s[i]` is `s.at(i)` of its `Indexed` impl (R12.4.5), read in place; a method of
+    /// the type's own named `at` is not indexing.
+    pub(super) fn elem(&mut self, s: TExpr, i: TExpr, span: Span) -> TExpr {
+        let at = "at";
+        let rt = self.shallow(&s.ty);
+        let call = match (&rt, self.d.impl_member(&rt, at, None)) {
+            (Ty::Param(p), _) => self.bound_call(*p, s, at, vec![TArg::Value(i)], span),
+            (_, Some(decls::Member::Method(m, ts, ss))) => {
+                self.call_member(s, (m, ts, ss), vec![TArg::Value(i)], span, false)
+            }
+            _ => {
+                let shown = self.show(&rt);
+                self.err(
+                    span,
+                    format!("`{shown}` is not indexed: it has no `Indexed` impl"),
+                );
+                return TExpr {
+                    kind: TK::Error,
+                    ty: Ty::Error,
+                    span,
+                };
+            }
+        };
+        TExpr {
+            ty: call.ty.clone(),
+            kind: TK::Elem(Box::new(call)),
+            span,
+        }
+    }
+    /// `recv.name(args)` of a trait bound on the type parameter `recv` is.
+    fn bound_call(
+        &mut self,
+        p: usize,
+        recv: TExpr,
+        name: &str,
+        args: Vec<TArg>,
+        span: Span,
+    ) -> TExpr {
+        for tr in &self.bound_traits(p) {
+            let Some(m) = self.d.traits[tr.tr.0].methods.get(name).copied() else {
+                continue;
+            };
+            self.reach(m);
+            let mut tys = vec![recv.ty.clone()];
+            tys.extend(tr.args.iter().cloned());
+            let ret = Subst {
+                tys: &tys,
+                sets: &[],
+            }
+            .ty(&self.d.f(m).ret);
+            return TExpr {
+                kind: TK::CallTrait {
+                    tr: tr.tr,
+                    method: name.to_string(),
+                    recv: Box::new(TArg::Value(recv)),
+                    args,
+                },
+                ty: ret,
+                span,
+            };
+        }
+        let shown = self.show(&recv.ty);
+        self.err(span, format!("`{shown}` has no `{name}`"));
+        TExpr {
+            kind: TK::Error,
+            ty: Ty::Error,
+            span,
+        }
+    }
     pub(super) fn method_call(
         &mut self,
         recv: TExpr,
@@ -1147,7 +1216,7 @@ impl<'a> Cx<'a> {
                 let b = self.expr(base, None);
                 let i = self.expr(&indices[0], Some(&Ty::Int));
                 let i = self.index_arg(&b.ty, i);
-                self.method_call(b, "get", vec![TArg::Value(i)], span, false)
+                self.elem(b, i, span)
             }
             ExprKind::Call { callee, args } => match &callee.kind {
                 ExprKind::Field { base, name } => self.member(base, name, Some(args), span, want),
