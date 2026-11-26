@@ -35,6 +35,12 @@ impl Cx<'_> {
                     Some(false) => {
                         let tr = self.d.traits[r.tr.0].name.clone();
                         let shown = self.show(&t);
+                        let record = matches!(&t, Ty::Struct(d, ..) if crate::records::is_record(&self.d.s(*d).name));
+                        if record {
+                            let msg = format!("slice: `{shown}` meeting `{tr}` by its fields");
+                            self.err(span, msg);
+                            continue;
+                        }
                         self.err(
                             span,
                             format!(

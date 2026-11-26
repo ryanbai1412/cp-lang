@@ -1202,6 +1202,26 @@ impl<'a> Cx<'a> {
                     want,
                 )
             }
+            // `(lo: 2, hi: 7)` is its record struct's constructor, by field name (R02.5.2).
+            ExprKind::Record(fs) => {
+                let names: Vec<&str> = fs.iter().map(|(n, _)| n.text.as_str()).collect();
+                let callee = ast::Expr {
+                    kind: ExprKind::Name(crate::records::name(&names)),
+                    span,
+                };
+                let args = (fs.iter())
+                    .map(|(n, x)| ast::Arg {
+                        name: Some(n.clone()),
+                        mutable: false,
+                        value: x.clone(),
+                    })
+                    .collect();
+                let call = ExprKind::Call {
+                    callee: Box::new(callee),
+                    args,
+                };
+                self.expr(&ast::Expr { kind: call, span }, want)
+            }
             ExprKind::Field { base, name } => self.member(base, name, None, span, want),
             ExprKind::Index { base, indices } if indices.len() == 1 => {
                 let b = self.expr(base, None);

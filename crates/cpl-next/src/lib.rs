@@ -8,6 +8,7 @@
 
 mod check;
 mod cpp;
+mod cycles;
 mod decls;
 mod inst;
 mod interp;
@@ -15,6 +16,8 @@ mod ir;
 mod lower;
 mod modules;
 mod own;
+mod records;
+mod synth;
 mod ty;
 
 pub use interp::{Outcome, Trap};

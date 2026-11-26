@@ -260,6 +260,12 @@ impl<'a> Cx<'a> {
             Ty::Lent(e) => self.show(&e),
             Ty::Struct(d, ts, _) => {
                 let n = &self.d.s(d).name;
+                if crate::records::is_record(n) {
+                    let fields = self.d.s(d).fields.iter().zip(&ts);
+                    let fs: Vec<String> =
+                        (fields.map(|((f, _), t)| format!("{f}: {}", self.show(t)))).collect();
+                    return format!("({})", fs.join(", "));
+                }
                 if ts.is_empty() {
                     n.clone()
                 } else {

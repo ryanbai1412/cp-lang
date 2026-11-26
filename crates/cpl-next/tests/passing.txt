@@ -133,12 +133,18 @@ core-02/optional-compare-coalesced.cp
 core-02/optional-eq-structural.cp
 core-02/owned-lent-same-type.cp
 core-02/pascal-variant-pattern.cp
+core-02/plain-copies.cp
 core-02/plain-element-copies.cp
 core-02/range-storage-type.cp
 core-02/ranged-param-after-a-param-named-self-traps.cp
 core-02/ranged-param-after-a-param-named-self.cp
 core-02/rb1-q28-no-forward-inference.cp
 core-02/rb1-q37-non-exhaustive.cp
+core-02/record-pattern-for-rest.cp
+core-02/record-pattern-let.cp
+core-02/record-pattern-missing-field.cp
+core-02/record-pattern-rest.cp
+core-02/record-structural.cp
 core-02/runtime-range-bound.cp
 core-02/str-index-assign.cp
 core-02/str-indexing.cp
@@ -205,6 +211,7 @@ core-04/dom-first-last.cp
 core-04/dom-walk-rev.cp
 core-04/domain-drop-first.cp
 core-04/domain-is-its-range.cp
+core-04/empty-array-literal-fits-empty-domain.cp
 core-04/empty-array-literal-short-rejected.cp
 core-04/empty-list-fills-every-cell.cp
 core-04/filter-iterates-without-keys.cp
@@ -264,6 +271,7 @@ core-05/constructor-moves-owned-arg.cp
 core-05/element-field-let-then-sibling-read.cp
 core-05/exercise-01-move-then-use-new-name.cp
 core-05/exercise-02-use-after-move.cp
+core-05/exercise-03-plain-record-copies.cp
 core-05/exercise-05-mut-of-let.cp
 core-05/exercise-08-push-while-row-lent.cp
 core-05/exercise-09-loop-item-kept-past-iteration.cp
@@ -401,6 +409,7 @@ core-08/no-higher-kinded.cp
 core-08/no-inheritance.cp
 core-08/no-macros.cp
 core-08/one-generic-fn-at-four-types.cp
+core-08/record-exact-fields.cp
 core-08/recursion-at-the-same-type-is-fine.cp
 core-08/static-fn-explicit-args.cp
 core-08/supertrait-required.cp
@@ -701,6 +710,7 @@ next/n_enum_01_values_and_order.cp
 next/n_index_01_through_indexed.cp
 next/n_index_02_range_keyed_by_values.cp
 next/n_index_03_list_key_outside_traps.cp
+next/n_record_01_records_are_core_structs.cp
 next/n_slice_01_range_gives_view.cp
 next/n_slice_02_range_outside_traps.cp
 next/n_slice_03_open_ends.cp

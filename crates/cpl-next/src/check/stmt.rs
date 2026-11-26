@@ -227,6 +227,65 @@ impl<'a> Cx<'a> {
             }
         }
     }
+    /// `let (a, b) = e` or `let (u:, v:) = e`: binds the whole value, then each part by its field.
+    fn let_parts(
+        &mut self,
+        s: &ast::Stmt,
+        pat: &ast::Pattern,
+        parts: Vec<(String, ast::Pattern)>,
+        exact: Option<usize>,
+        out: &mut Vec<TStmt>,
+    ) {
+        let tmp = format!("$tuple{}", pat.span.start);
+        let mut whole = s.clone();
+        if let StmtKind::Let { pat, mutable, .. } = &mut whole.kind {
+            *pat = ast::Pattern {
+                kind: PatternKind::Name(tmp.clone()),
+                span: pat.span,
+            };
+            *mutable = false;
+        }
+        self.stmt(&whole, out);
+        // A record pattern without `..` names every field (R02.5.5).
+        if let Some(n) = exact {
+            let name = ExprKind::Name(tmp.clone());
+            let w = self.expr(
+                &ast::Expr {
+                    kind: name,
+                    span: pat.span,
+                },
+                None,
+            );
+            if let Ty::Struct(d, ..) = self.shallow(&w.ty) {
+                let have = self.d.s(d).fields.len();
+                if crate::records::is_record(&self.d.s(d).name) && have != n {
+                    let code = cpl_diag::codes::TYPE_MISMATCH.0;
+                    let msg = format!("{code}: this names {n} of the record's {have} fields; write `..` for the rest");
+                    self.err(pat.span, msg);
+                }
+            }
+        }
+        for (field, p) in parts {
+            if matches!(p.kind, PatternKind::Wildcard) {
+                continue;
+            }
+            let at = |kind| ast::Expr { kind, span: p.span };
+            let part = at(ExprKind::Field {
+                base: Box::new(at(ExprKind::Name(tmp.clone()))),
+                name: ast::Name {
+                    text: field,
+                    span: p.span,
+                },
+            });
+            let mut one = s.clone();
+            if let StmtKind::Let { pat, ty, init, .. } = &mut one.kind {
+                *pat = p;
+                *ty = None;
+                *init = Some(part);
+            }
+            self.stmt(&one, out);
+        }
+    }
     pub(super) fn stmt(&mut self, s: &ast::Stmt, out: &mut Vec<TStmt>) {
         match &s.kind {
             StmtKind::Let {
@@ -237,6 +296,11 @@ impl<'a> Cx<'a> {
                 otherwise: None,
                 ..
             } => {
+                if let PatternKind::Record { fields, rest } = &pat.kind {
+                    let parts = fields.iter().map(|(n, p)| (n.text.clone(), p.clone()));
+                    let exact = (!rest).then_some(fields.len());
+                    return self.let_parts(s, pat, parts.collect(), exact, out);
+                }
                 if let PatternKind::Tuple(ps) = &pat.kind {
                     // `let (a, b): (T, U) = read()` reads each part in order. Tuples as values are not in the slice.
                     let (tys, call) = match (ty.as_ref().map(|t| &t.kind), Self::read_call(init)) {
@@ -254,38 +318,9 @@ impl<'a> Cx<'a> {
                             )),
                         ) if ts.len() == ps.len() => (ts, call),
                         _ => {
-                            // Any other tuple pattern binds the whole value, then each part by its field.
-                            let tmp = format!("$tuple{}", pat.span.start);
-                            let mut whole = s.clone();
-                            if let StmtKind::Let { pat, mutable, .. } = &mut whole.kind {
-                                *pat = ast::Pattern {
-                                    kind: PatternKind::Name(tmp.clone()),
-                                    span: pat.span,
-                                };
-                                *mutable = false;
-                            }
-                            self.stmt(&whole, out);
-                            for (k, p) in ps.iter().enumerate() {
-                                if matches!(p.kind, PatternKind::Wildcard) {
-                                    continue;
-                                }
-                                let at = |kind| ast::Expr { kind, span: p.span };
-                                let part = at(ExprKind::Field {
-                                    base: Box::new(at(ExprKind::Name(tmp.clone()))),
-                                    name: ast::Name {
-                                        text: k.to_string(),
-                                        span: p.span,
-                                    },
-                                });
-                                let mut one = s.clone();
-                                if let StmtKind::Let { pat, ty, init, .. } = &mut one.kind {
-                                    *pat = p.clone();
-                                    *ty = None;
-                                    *init = Some(part);
-                                }
-                                self.stmt(&one, out);
-                            }
-                            return;
+                            let parts =
+                                (ps.iter().enumerate()).map(|(k, p)| (k.to_string(), p.clone()));
+                            return self.let_parts(s, pat, parts.collect(), None, out);
                         }
                     };
                     for (p, t) in ps.iter().zip(tys) {
@@ -545,7 +580,7 @@ impl<'a> Cx<'a> {
                         return;
                     }
                 }
-                if let PatternKind::Tuple(_) = &pat.kind {
+                if let PatternKind::Tuple(_) | PatternKind::Record { .. } = &pat.kind {
                     // `for (a, b) in xs` binds the item, then `let (a, b) = item` opens the body.
                     let tmp = format!("$item{}", s.span.start);
                     let mut one = s.clone();

@@ -1,5 +1,7 @@
 //! Contract 2: syntax -> declarations. Answers "what does this name mean"
 //! without looking inside a body.
+pub use crate::cycles::{alias_cycle, field_holding_itself};
+use crate::synth::{enum_structs, module_derived};
 use crate::ty::*;
 use cpl_syntax::ast::{self, FnBody, StmtKind, TypeKind};
 use std::collections::{HashMap, HashSet};
@@ -421,75 +423,8 @@ impl Decls {
     }
 }
 
-/// The first field of struct `root` that stores a `root` inline, however deep (R03.2.9).
-/// Storage (`Raw`), references and function values end the walk: they hold their contents elsewhere.
-/// Whether alias `root`'s type needs `root` itself, through its own name or other aliases (E0323).
-pub fn alias_cycle(d: &Decls, root: AliasId) -> bool {
-    fn needs(
-        d: &Decls,
-        at: AliasId,
-        t: &ast::Type,
-        root: AliasId,
-        seen: &mut Vec<AliasId>,
-    ) -> bool {
-        let inner: Vec<&ast::Type> = match &t.kind {
-            TypeKind::Named { name, args } => {
-                if let Some(Named::Alias(b)) = d.aliases[at.0].names.get(&name.text) {
-                    if *b == root {
-                        return true;
-                    }
-                    if !seen.contains(b) {
-                        seen.push(*b);
-                        if needs(d, *b, &d.aliases[b.0].ty, root, seen) {
-                            return true;
-                        }
-                    }
-                }
-                args.iter().collect()
-            }
-            TypeKind::Array { index, elem } => index.iter().chain([&**elem]).collect(),
-            TypeKind::OwnDomain { elem: t, .. }
-            | TypeKind::Optional(t)
-            | TypeKind::Mut(t)
-            | TypeKind::Yields(t) => vec![&**t],
-            TypeKind::Tuple(ts) => ts.iter().collect(),
-            TypeKind::Record(fs) | TypeKind::Row(fs) => fs.iter().map(|(_, t)| t).collect(),
-            TypeKind::Fn { params, ret } => params.iter().chain([&**ret]).collect(),
-            TypeKind::RowWithout { prefix, base, .. } => {
-                prefix.iter().map(|(_, t)| t).chain([&**base]).collect()
-            }
-            _ => Vec::new(),
-        };
-        inner.into_iter().any(|t| needs(d, at, t, root, seen))
-    }
-    needs(d, root, &d.aliases[root.0].ty, root, &mut vec![root])
-}
-
-pub fn field_holding_itself(d: &Decls, root: StructId) -> Option<usize> {
-    fn holds(d: &Decls, t: &Ty, root: StructId, stack: &mut Vec<StructId>) -> bool {
-        let Ty::Struct(id, tys, sets) = t else {
-            return false;
-        };
-        if *id == root {
-            return true;
-        }
-        if stack.contains(id) {
-            return false;
-        }
-        stack.push(*id);
-        let sub = Subst { tys, sets };
-        let found = d
-            .s(*id)
-            .fields
-            .iter()
-            .any(|(_, f)| holds(d, &sub.ty(f), root, stack));
-        stack.pop();
-        found
-    }
-    d.s(root)
-        .fields
-        .iter()
-        .position(|(_, f)| holds(d, f, root, &mut Vec::new()))
+fn field_names(fs: &[(ast::Name, ast::Type)]) -> Vec<&str> {
+    fs.iter().map(|(n, _)| n.text.as_str()).collect()
 }
 
 fn struct_named(names: &HashMap<String, Named>, name: &str) -> Option<StructId> {
@@ -626,7 +561,7 @@ fn trait_ref(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<String>) -> Option<T
 }
 
 /// The single capitals in an impl header that name nothing: its undeclared type parameters (R02.10.3).
-fn unnamed(t: &ast::Type, names: &HashMap<String, Named>, out: &mut Vec<String>) {
+pub(crate) fn unnamed(t: &ast::Type, names: &HashMap<String, Named>, out: &mut Vec<String>) {
     if let TypeKind::Named { name, args } = &t.kind {
         let n = name.text.as_str();
         let capital = n.len() == 1 && n.chars().all(|c| c.is_ascii_uppercase());
@@ -717,6 +652,22 @@ fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<String>) -> Ty {
                         span: t.span,
                     },
                     args: ts.clone(),
+                },
+                span: t.span,
+            };
+            conv(cx, &named, errors)
+        }
+        // `(lo: A, hi: B)` is the core record struct `(lo:, hi:)<A, B>` (R02.5.2).
+        TypeKind::Record(fs)
+            if struct_named(cx.names, &crate::records::name(&field_names(fs))).is_some() =>
+        {
+            let named = ast::Type {
+                kind: TypeKind::Named {
+                    name: ast::Name {
+                        text: crate::records::name(&field_names(fs)),
+                        span: t.span,
+                    },
+                    args: fs.iter().map(|(_, t)| t.clone()).collect(),
                 },
                 span: t.span,
             };
@@ -960,15 +911,29 @@ pub fn collect(
     let mut imports: Vec<(ModId, &ast::Stmt)> = Vec::new();
     let mut aliases: Vec<(ModId, usize, String, Vec<String>, ast::Type)> = Vec::new();
     let mut enums: Vec<(usize, String, Vec<String>, Vec<i64>)> = Vec::new();
+    // Every record shape the program and its modules write is a core struct (R02.5.2).
+    let core_first = mods[CORE.0].items.first();
+    let records: Vec<(u32, Vec<ast::Stmt>)> = (core_first
+        .and_then(|(i, ss)| Some((*i, ss.first()?.span))))
+    .map(|(i, span)| {
+        vec![(
+            i,
+            crate::records::structs(&crate::records::shapes(mods), span),
+        )]
+    })
+    .unwrap_or_default();
     let derived: Vec<Vec<(u32, String, ast::Stmt)>> = (mods.iter().enumerate())
         .map(|(mi, m)| match mi == CORE.0 {
-            true => Vec::new(),
+            true => module_derived(&records),
             false => module_derived(&m.items),
         })
         .collect();
     let synth: Vec<Vec<(u32, ast::Stmt)>> = (mods.iter().enumerate())
         .map(|(mi, m)| {
             let mut out = Vec::new();
+            if mi == CORE.0 {
+                out.extend((records.iter()).flat_map(|(i, ss)| ss.iter().map(|s| (*i, s.clone()))));
+            }
             for (item, stmts) in &m.items {
                 for s in stmts {
                     if let StmtKind::Enum(e) = &s.kind {
@@ -1872,209 +1837,4 @@ pub fn static_range(
         None => i64::MAX,
     };
     Some((lo, hi))
-}
-
-/// An enum as structs: its own, with no fields (the parser makes its methods an `impl`), then one
-/// per variant holding that variant's payload, named `Enum.Variant`, which no source name can be
-/// (R02.7).
-fn enum_structs(s: &ast::Stmt, e: &ast::EnumDecl) -> (Vec<ast::Stmt>, Vec<String>, Vec<i64>) {
-    let mut errors = Vec::new();
-    let mut values = Vec::new();
-    let one = |name: String, fields, methods, decorators| ast::Stmt {
-        kind: StmtKind::Struct(ast::StructDecl {
-            name: ast::Name {
-                text: name,
-                span: e.name.span,
-            },
-            generics: e.generics.clone(),
-            generic_defaults: vec![None; e.generics.len()],
-            bounds: Vec::new(),
-            fields,
-            methods,
-        }),
-        span: s.span,
-        decorators,
-        public: s.public,
-    };
-    let mut out = vec![one(
-        e.name.text.clone(),
-        Vec::new(),
-        Vec::new(),
-        s.decorators.clone(),
-    )];
-    for (i, v) in e.variants.iter().enumerate() {
-        if v.tag.is_some() {
-            errors.push(format!("slice: a tagged variant `{}`", v.name.text));
-        }
-        let value = match &v.value {
-            None => Some(i as i64),
-            Some(_) if !v.fields.is_empty() => None,
-            Some(x) => constant_int(x),
-        };
-        if value.is_none() {
-            errors.push(format!("slice: the value of variant `{}`", v.name.text));
-        }
-        values.push(value.unwrap_or(i as i64));
-        let fields = (v.fields.iter().enumerate())
-            .map(|(i, (n, t))| ast::FieldDecl {
-                name: n.clone().unwrap_or_else(|| ast::Name {
-                    text: i.to_string(),
-                    span: t.span,
-                }),
-                ty: t.clone(),
-                default: None,
-                mutable: false,
-                cached: false,
-                bits: false,
-                public: true,
-            })
-            .collect();
-        out.push(one(
-            format!("{}.{}", e.name.text, v.name.text),
-            fields,
-            Vec::new(),
-            Vec::new(),
-        ));
-    }
-    (out, errors, values)
-}
-
-/// Per struct a module declares, the impls it gets structurally (R08.1.6), made after every written
-/// impl and only where none is: `Eq` field by field and `Ord` lexicographic in declaration order.
-fn module_derived(items: &[(u32, Vec<ast::Stmt>)]) -> Vec<(u32, String, ast::Stmt)> {
-    let mut out = Vec::new();
-    for (item, stmts) in items {
-        for s in stmts {
-            let StmtKind::Struct(sd) = &s.kind else {
-                continue;
-            };
-            // The traits `==` and `<` call: the derivable ones.
-            for op in [ast::CmpOp::Eq, ast::CmpOp::Lt] {
-                let Some((tr, method)) = op.trait_method() else {
-                    continue;
-                };
-                let derived = derived_impl(s, sd, op, tr, method);
-                out.push((*item, sd.name.text.clone(), derived));
-            }
-        }
-    }
-    out
-}
-
-/// `impl<T: Eq> Eq for S<T>: fn eq(a, b) = a.x == b.x and ..`, or `Ord`'s `lt` over the fields in
-/// order, bounding the parameters the fields mention and written at the struct.
-fn derived_impl(
-    s: &ast::Stmt,
-    sd: &ast::StructDecl,
-    op: ast::CmpOp,
-    tr: &str,
-    method: &str,
-) -> ast::Stmt {
-    use ast::{BinOp, CmpOp, ExprKind};
-    let span = s.span;
-    let name = |text: &str| ast::Name {
-        text: text.to_string(),
-        span,
-    };
-    let ty = |text: &str, args| ast::Type {
-        kind: TypeKind::Named {
-            name: name(text),
-            args,
-        },
-        span,
-    };
-    let ex = |kind| ast::Expr { kind, span };
-    let field = |side: &str, f: &str| {
-        ex(ExprKind::Field {
-            base: Box::new(ex(ExprKind::Name(side.to_string()))),
-            name: name(f),
-        })
-    };
-    let cmp = |op, f: &str| {
-        ex(ExprKind::Compare {
-            first: Box::new(field("a", f)),
-            rest: vec![(op, field("b", f))],
-        })
-    };
-    let bin = |op, lhs, rhs| {
-        ex(ExprKind::Binary {
-            op,
-            op_span: span,
-            lhs: Box::new(lhs),
-            rhs: Box::new(rhs),
-        })
-    };
-    // A `@cache` field is not part of the value (R05.10.13).
-    let compared: Vec<&ast::FieldDecl> = sd.fields.iter().filter(|f| !f.cached).collect();
-    let fields: Vec<&str> = compared.iter().map(|f| f.name.text.as_str()).collect();
-    let body = match op {
-        CmpOp::Eq => (fields.iter().map(|f| cmp(CmpOp::Eq, f)))
-            .reduce(|a, b| bin(BinOp::And, a, b))
-            .unwrap_or_else(|| ex(ExprKind::Bool(true))),
-        _ => (fields.iter().rev())
-            .fold(None, |rest, f| {
-                Some(match rest {
-                    None => cmp(CmpOp::Lt, f),
-                    Some(r) => bin(
-                        BinOp::Or,
-                        cmp(CmpOp::Lt, f),
-                        bin(BinOp::And, cmp(CmpOp::Eq, f), r),
-                    ),
-                })
-            })
-            .unwrap_or_else(|| ex(ExprKind::Bool(false))),
-    };
-    let mut mentioned = Vec::new();
-    for f in &compared {
-        unnamed(&f.ty, &HashMap::new(), &mut mentioned);
-    }
-    let param = |n: &str| ast::Param {
-        mutable: false,
-        variadic: false,
-        lazy: false,
-        named_only: false,
-        label: None,
-        name: name(n),
-        ty: None,
-        default: None,
-        span,
-    };
-    let f = ast::FnDecl {
-        name: name(method),
-        generics: Vec::new(),
-        bounds: Vec::new(),
-        params: vec![param("a"), param("b")],
-        ret: None,
-        lends: None,
-        uses: Vec::new(),
-        body: FnBody::Expr(body),
-        sig_span: span,
-    };
-    let stmt = |kind| ast::Stmt {
-        kind,
-        span,
-        decorators: Vec::new(),
-        public: false,
-    };
-    stmt(StmtKind::Impl {
-        trait_name: Some(ty(tr, Vec::new())),
-        target: ty(
-            &sd.name.text,
-            sd.generics
-                .iter()
-                .map(|g| ty(&g.text, Vec::new()))
-                .collect(),
-        ),
-        bounds: (sd.generics.iter())
-            .filter(|g| mentioned.contains(&g.text))
-            .map(|g| ast::Bound {
-                name: g.clone(),
-                traits: vec![ty(tr, Vec::new())],
-            })
-            .collect(),
-        body: ast::Block {
-            stmts: vec![stmt(StmtKind::Fn(f))],
-            span,
-        },
-    })
 }
