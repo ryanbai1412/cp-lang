@@ -41,6 +41,8 @@ pub enum Intr {
     RawSet,
     /// A key check std makes before it reads: traps R0101 unless its operand is true (R07.2.17).
     CheckKey,
+    /// A range check std makes before it cuts a range: traps R0001 unless its operand is true.
+    CheckRange,
     ReadInt,
     /// Whether the input has another token.
     InputLeft,
@@ -64,6 +66,7 @@ impl Intr {
             "raw_get" => Intr::RawGet,
             "raw_set" => Intr::RawSet,
             "key_check" => Intr::CheckKey,
+            "range_check" => Intr::CheckRange,
             _ => return None,
         })
     }
@@ -99,6 +102,7 @@ impl Intr {
                 | RawGet
                 | RawSet
                 | CheckKey
+                | CheckRange
                 | RawNew
                 | ReadInt
                 | FromU64

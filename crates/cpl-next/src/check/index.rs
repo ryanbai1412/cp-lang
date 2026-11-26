@@ -59,7 +59,13 @@ impl Cx<'_> {
             return;
         };
         let d = self.d;
-        if !(d.index_fns.iter()).any(|f| matches!(d.f(*f).ret, Ty::Struct(s, ..) if s == sid)) {
+        // A view: what an `@index` fn cuts from a source of another type. A range's sub-range is
+        // a range, keyed by its values (R07.2.15).
+        let view = |f: &FnId| {
+            matches!(d.f(*f).ret, Ty::Struct(s, ..) if s == sid)
+                && !matches!(d.f(*f).self_ty, Some(Ty::Struct(s, ..)) if s == sid)
+        };
+        if !d.index_fns.iter().any(view) {
             return;
         }
         let keys = match &unparen(base).kind {
@@ -105,11 +111,34 @@ impl Cx<'_> {
         if key.is_some_and(|k| self.is_range(&k)) {
             return None;
         }
+        self.index_fn_for(s, 1)
+    }
+    /// The `@index` fn taking `arity` arguments that `s[..]` calls: one declared for `s`'s own
+    /// type, as a range's sub-range is (R07.2.15), before the one for any indexed `S` (R07.4.6).
+    fn index_fn_for(&mut self, s: &Ty, arity: usize) -> Option<FnId> {
+        let own = match self.shallow(s) {
+            Ty::Struct(sid, ..) => Some(sid),
+            _ => None,
+        };
         let d = self.d;
-        d.index_fns
+        let mut any = None;
+        for &f in d
+            .index_fns
             .iter()
-            .copied()
-            .find(|f| d.f(*f).params.len() == 1)
+            .filter(|f| d.f(**f).params.len() == arity)
+        {
+            match &d.f(f).self_ty {
+                Some(Ty::Struct(sid, ..)) => {
+                    if Some(*sid) == own {
+                        return Some(f);
+                    }
+                }
+                _ => {
+                    any.get_or_insert(f);
+                }
+            }
+        }
+        any
     }
     /// Runs `inner` while `base[idx]` is lent as a place, through the `at` of `base`'s
     /// `IndexedMut` that lends one (R12.4.6). `inner` gets the lent cell as a name; `g[i][j]`
@@ -316,12 +345,7 @@ impl Cx<'_> {
         span: Span,
     ) -> TExpr {
         let d = self.d;
-        let Some(f) = d
-            .index_fns
-            .iter()
-            .copied()
-            .find(|f| d.f(*f).params.len() == 3)
-        else {
+        let Some(f) = self.index_fn_for(&s.ty, 3) else {
             self.err(
                 span,
                 "slice: a slice with an end left out needs core's `@index` fn of the ends",

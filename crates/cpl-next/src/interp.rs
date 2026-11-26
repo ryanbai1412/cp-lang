@@ -632,6 +632,16 @@ impl<'a> Machine<'a> {
                 }
                 V::Unit
             }
+            Intr::CheckRange => {
+                let Arg::Value(a) = &args[0] else {
+                    return broken("lent operand");
+                };
+                match self.expr(a, fp)? {
+                    V::Bool(true) => V::Unit,
+                    V::Bool(false) => return trap(codes::RUNTIME, "a cut of a range outside it"),
+                    _ => return broken("a range check of a non-Bool"),
+                }
+            }
             Intr::CheckKey => {
                 let Arg::Value(a) = &args[0] else {
                     return broken("lent operand");

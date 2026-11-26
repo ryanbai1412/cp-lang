@@ -1217,14 +1217,7 @@ impl<'a> Cx<'a> {
                     }
                 }
                 let i = self.expr(&indices[0], Some(&Ty::Int));
-                if self.is_range(&b.ty) && self.is_range(&i.ty) {
-                    self.err(span, "slice: a range sliced by a range (R0001 outside it)");
-                    TExpr {
-                        kind: TK::Error,
-                        ty: Ty::Error,
-                        span,
-                    }
-                } else if let Some(f) = self.index_fn(&b.ty, &i.ty) {
+                if let Some(f) = self.index_fn(&b.ty, &i.ty) {
                     self.index_call(f, b, i, span)
                 } else {
                     self.literal_key(base, &indices[0], &b.ty);

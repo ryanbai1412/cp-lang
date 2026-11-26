@@ -8,6 +8,7 @@ fn raw_new<T>(n: Int, fill: T) -> Raw<T> = @intrinsic("raw_new")
 fn raw_get<T>(r: Raw<T>, i: Int) -> T = @intrinsic("raw_get")
 /// Traps R0101 unless `ok`: a read at a key the sequence doesn't have (R07.2.17).
 fn check_key(ok: Bool) = @intrinsic("key_check")
+fn check_range(ok: Bool) = @intrinsic("range_check")
 fn raw_set<T>(mut r: Raw<T>, i: Int, x: T) = @intrinsic("raw_set")
 
 struct List<T>:
@@ -355,24 +356,44 @@ impl<D> Indexed<D, D> for Range<D>:
 /// `s[r]`: the view of `s` over the keys in `r`, made in O(1); traps R0101 unless `r` is a run of
 /// `s`'s keys (R07.4.6). An empty `r` is the empty view at its start.
 @index fn slice<S: Indexed<D, T>, D, T>(self: S, r: Range<D>) -> Slice<S>:
-    let k = self.keys
-    let d = r.lo - k.lo
-    let i = d / k.step
-    check_key(0 <= d and d % k.step == 0 and i + r.n <= k.n and (r.n <= 1 or r.step == k.step))
+    let (i, ok) = run_in(self.keys, r)
+    check_key(ok)
     Slice(self, i, i + r.n)
 /// `s[lo..]`, `s[..hi]`, `s[..=hi]` and `s[..]`: an end left out is that end of `s`'s keys; traps
 /// R0101 unless the ends are keys of `s` in order, or its end (R07.4.6).
 @index fn slice_ends<S: Indexed<D, T>, D, T>(self: S, lo: ?D, hi: ?D, through: Bool) -> Slice<S>:
-    let k = self.keys
+    let (i, j, ok) = cut_ends(self.keys, lo, hi, through)
+    check_key(ok)
+    Slice(self, i, j)
+/// `r[a..b]` of a range is the sub-range `a..b`, itself a range: a range is keyed by its own
+/// values and has no source to view (R07.2.15). Traps R0001 unless `a..b` is a run of `r`'s keys.
+@index fn sub_range<D>(self: Range<D>, r: Range<D>) -> Range<D>:
+    let (i, ok) = run_in(self, r)
+    check_range(ok)
+    Range(self.lo + i * self.step, r.n, self.step)
+/// `r[a..]`, `r[..b]`, `r[..=b]` and `r[..]` of a range: the sub-range between the ends, an end
+/// left out being `r`'s. Traps R0001 unless the ends are keys of `r` in order, or its end.
+@index fn sub_range_ends<D>(self: Range<D>, lo: ?D, hi: ?D, through: Bool) -> Range<D>:
+    let (i, j, ok) = cut_ends(self, lo, hi, through)
+    check_range(ok)
+    Range(self.lo + i * self.step, j - i, self.step)
+/// Where the run `r` starts in the keys `k`, and whether `r` is a run of them (R07.4.6).
+fn run_in<D>(k: Range<D>, r: Range<D>) -> (Int, Bool):
+    let d = r.lo - k.lo
+    let i = d / k.step
+    (i, 0 <= d and d % k.step == 0 and i + r.n <= k.n and (r.n <= 1 or r.step == k.step))
+/// The positions `i..j` in the keys `k` of the ends `lo` and `hi` (`hi` in when `through`), an end
+/// left out being `k`'s, and whether they are keys of `k` in order, or its end (R07.4.6).
+fn cut_ends<D>(k: Range<D>, lo: ?D, hi: ?D, through: Bool) -> (Int, Int, Bool):
+    var ok = true
     var i = 0
     var j = k.n
     if let x = lo:
         let d = x.ord - k.lo
-        check_key(0 <= d and d % k.step == 0)
+        ok = 0 <= d and d % k.step == 0
         i = d / k.step
     if let y = hi:
         let d = y.ord - k.lo
-        check_key(0 <= d and d % k.step == 0)
+        ok = ok and 0 <= d and d % k.step == 0
         j = d / k.step + (if through: 1 else: 0)
-    check_key(i <= j and j <= k.n)
-    Slice(self, i, j)
+    (i, j, ok and i <= j and j <= k.n)
