@@ -207,6 +207,45 @@ impl<'a> Lowerer<'a> {
         self.err_expr(span)
     }
 
+    /// `m.name(args)` for module `m`: the fn, struct or variant `m` names.
+    fn module_call(
+        &mut self,
+        target_mod: ModId,
+        name: &ast::Name,
+        args: &[ast::Arg],
+        hint: Option<&Ty>,
+        span: Span,
+    ) -> Expr {
+        // R06.1.6: of the module's overloads of the name, the one the labels fit.
+        let keys = std::iter::once(name.text.clone()).chain(
+            (2..)
+                .map(|k| cpl_check::overload_key(&name.text, k))
+                .take_while(|k| self.mod_syms[target_mod].contains_key(k)),
+        );
+        let fits: Vec<Sym> = (keys.filter_map(|k| self.mod_syms[target_mod].get(&k).copied()))
+            .filter(|&s| self.sym_labels_fit(s, args))
+            .collect();
+        let sym = match fits.as_slice() {
+            [one] => Some(*one),
+            _ => self.mod_syms[target_mod].get(&name.text).copied(),
+        };
+        match sym {
+            Some(Sym::Fn(id)) => self.user_call(id, None, args, span),
+            Some(Sym::GenFn(gfid)) => self.call_gen_fn(gfid, Vec::new(), None, args, span),
+            Some(Sym::Struct(id)) => self.construct_or_new(id, args, span),
+            Some(Sym::GenStruct(gid)) => self.call_gen_struct(gid, Vec::new(), args, hint, span),
+            Some(Sym::Variant(id, tag)) => self.variant(id, tag, args, span),
+            _ => {
+                self.report(
+                    name.span,
+                    msgs::ir::UNKNOWN_FIELD_MODULE_HAS_NO_FN,
+                    &[&name.text],
+                );
+                self.err_expr(span)
+            }
+        }
+    }
+
     fn method(
         &mut self,
         whole: &ast::Expr,
@@ -216,6 +255,10 @@ impl<'a> Lowerer<'a> {
         hint: Option<&Ty>,
     ) -> Expr {
         let span = whole.span;
+        // `m.sum()` on a module `m` is its fn, whatever std's methods are named.
+        if let Some(Sym::Mod(target_mod)) = self.sym(base) {
+            return self.module_call(target_mod, name, args, hint, span);
+        }
         if let [op] = args {
             let relower = |lw: &mut Self| lw.method(whole, base, name, args, hint);
             if let Some(checked) = self.checking_laws(base, op, span, relower) {
@@ -604,39 +647,6 @@ impl<'a> Lowerer<'a> {
             _ => None,
         };
         match value_domain.map(Sym::Domain).or_else(|| self.sym(base)) {
-            Some(Sym::Mod(target_mod)) => {
-                // R06.1.6: of the module's overloads of the name, the one the labels fit.
-                let keys = std::iter::once(name.text.clone()).chain(
-                    (2..)
-                        .map(|k| cpl_check::overload_key(&name.text, k))
-                        .take_while(|k| self.mod_syms[target_mod].contains_key(k)),
-                );
-                let fits: Vec<Sym> = (keys
-                    .filter_map(|k| self.mod_syms[target_mod].get(&k).copied()))
-                .filter(|&s| self.sym_labels_fit(s, args))
-                .collect();
-                let sym = match fits.as_slice() {
-                    [one] => Some(*one),
-                    _ => self.mod_syms[target_mod].get(&name.text).copied(),
-                };
-                return match sym {
-                    Some(Sym::Fn(id)) => self.user_call(id, None, args, span),
-                    Some(Sym::GenFn(gfid)) => self.call_gen_fn(gfid, Vec::new(), None, args, span),
-                    Some(Sym::Struct(id)) => self.construct_or_new(id, args, span),
-                    Some(Sym::GenStruct(gid)) => {
-                        self.call_gen_struct(gid, Vec::new(), args, hint, span)
-                    }
-                    Some(Sym::Variant(id, tag)) => self.variant(id, tag, args, span),
-                    _ => {
-                        self.report(
-                            name.span,
-                            msgs::ir::UNKNOWN_FIELD_MODULE_HAS_NO_FN,
-                            &[&name.text],
-                        );
-                        self.err_expr(span)
-                    }
-                };
-            }
             Some(Sym::Struct(id)) => {
                 if let Some(fn_id) = self.own_method(id, &name.text) {
                     let call = self.method_call(fn_id, None, args, span);
