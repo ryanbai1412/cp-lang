@@ -225,7 +225,13 @@ trait Neg:
 
 /// The positions of a domain (R04.2): `D: Domain` takes any domain, and every domain has it.
 @positions
-trait Domain
+trait Domain:
+    /// `D.count`: how many positions it has.
+    fn count() -> Int = @intrinsic("dom_count")
+    /// `D.nth(k)`: the position `k` steps into its walk; traps past its end (R04.2.9).
+    fn nth(k: Int) -> Self = @intrinsic("dom_nth")
+    /// `D.at(x)`: the position with integer `x`, or `None` outside it (R04.2.8).
+    fn at(x: Int) -> ?Self = @intrinsic("dom_at")
 
 /// Positions of one domain compare in its walk order (R04.2).
 impl<D: Domain> Eq for D:

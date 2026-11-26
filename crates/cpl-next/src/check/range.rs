@@ -3,8 +3,8 @@ use super::expr::block;
 use super::*;
 
 impl Cx<'_> {
-    /// A member of a domain named as a type, `D.count`, `D.nth(k)` and `D.at(x)`, or a fn of an
-    /// array type written `[e]`, as in `[V].filled(0)`.
+    /// A fn of a domain named as a type (`D.nth(k)`), or of an array type written `[e]`, as
+    /// in `[V].filled(0)`.
     pub(super) fn domain_member(
         &mut self,
         base: &ast::Expr,
@@ -13,34 +13,10 @@ impl Cx<'_> {
         span: Span,
         want: Option<&Ty>,
     ) -> Option<TExpr> {
-        // `D.count`: the size of a domain.
         if let ExprKind::Name(n) = &base.kind {
-            if let (Some(dty), "count", None) = (self.domain_named(n), name.text.as_str(), call) {
-                return Some(TExpr {
-                    kind: TK::DomLen(dty),
-                    ty: Ty::Int,
-                    span,
-                });
-            }
-            // `D.nth(k)`: the position `k` steps into the walk (R04.2.9).
-            if let (Some(dty), "nth", Some([k])) = (self.domain_named(n), name.text.as_str(), call)
-            {
-                if self.lookup(n).is_none() {
-                    let k = self.expr(&k.value, Some(&Ty::Int));
-                    let k = self.coerce(k, &Ty::Int);
-                    return Some(TExpr {
-                        kind: TK::DomNth(dty.clone(), Box::new(k)),
-                        ty: dty,
-                        span,
-                    });
-                }
-            }
-            // `D.at(x)`: the position with integer `x`, or `None` outside `D` (R04.2.8).
-            if let (Some(dty), "at", Some([x])) = (self.domain_named(n), name.text.as_str(), call) {
-                if self.lookup(n).is_none() {
-                    let x = self.expr(&x.value, Some(&Ty::Int));
-                    let x = self.coerce(x, &Ty::Int);
-                    return Some(self.domain_at(dty, x, span));
+            if let (Some(dty), true) = (self.domain_named(n), self.lookup(n).is_none()) {
+                if let Some(e) = self.domain_fn(dty, name, call, span) {
+                    return Some(e);
                 }
             }
         }
@@ -72,6 +48,43 @@ impl Cx<'_> {
             }
         }
         None
+    }
+    /// `D.count`, `D.nth(k)` and `D.at(x)`: the core's `Domain` declares them, and each is the
+    /// domain operation its `@intrinsic` names (R04.2.8, R04.2.9).
+    fn domain_fn(
+        &mut self,
+        dty: Ty,
+        name: &ast::Name,
+        call: Option<&[ast::Arg]>,
+        span: Span,
+    ) -> Option<TExpr> {
+        let tr = self.d.domain_trait?;
+        let &m = self.d.traits[tr.0].methods.get(&name.text)?;
+        let op = self.d.f(m).intrinsic.clone()?;
+        let mut int = |a: &ast::Arg| {
+            let x = self.expr(&a.value, Some(&Ty::Int));
+            self.coerce(x, &Ty::Int)
+        };
+        Some(match (op.as_str(), call) {
+            ("dom_count", None) => TExpr {
+                kind: TK::DomLen(dty),
+                ty: Ty::Int,
+                span,
+            },
+            ("dom_nth", Some([k])) => {
+                let k = int(k);
+                TExpr {
+                    kind: TK::DomNth(dty.clone(), Box::new(k)),
+                    ty: dty,
+                    span,
+                }
+            }
+            ("dom_at", Some([x])) => {
+                let x = int(x);
+                self.domain_at(dty, x, span)
+            }
+            _ => return None,
+        })
     }
     /// A name that is a domain: one declared in a body, or a type parameter used as one.
     pub(super) fn domain_named(&self, n: &str) -> Option<Ty> {
