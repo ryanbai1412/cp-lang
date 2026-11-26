@@ -603,6 +603,8 @@ next/a_own_16_push_while_walked_in_lambda.cp
 next/a_own_17_lent_mut_twice_in_lambda.cp
 next/a_own_18_moved_while_captured_in_lambda.cp
 next/a_own_19_generic_return_lends.cp
+next/a_own_20_get_of_heap_element_lends.cp
+next/a_own_21_get_of_plain_element_copies.cp
 next/a_range_rt_01_store_above_end.cp
 next/a_range_rt_03_tuple_read_bounded_by_earlier.cp
 next/a_range_rt_04_tuple_read_at_bound.cp

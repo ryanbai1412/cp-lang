@@ -74,6 +74,13 @@ impl Intr {
             _ => &[],
         }
     }
+    /// The arguments its result holds, so the result lends them (R05.5.3).
+    pub fn lends(self) -> &'static [usize] {
+        match self {
+            Intr::RawGet => &[0],
+            _ => &[],
+        }
+    }
     /// Whether this operation can trap. One that can is a statement of its own.
     pub fn checked(self) -> bool {
         use Intr::*;

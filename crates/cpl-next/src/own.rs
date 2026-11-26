@@ -373,23 +373,6 @@ impl Cx<'_> {
                 }
                 out.extend(self.lent.get(&r).into_iter().flatten().cloned());
             }
-            // R05.3.5: a heap element read by index is a lend of the container, not a copy.
-            // Provisional: keyed on the name `get` until std declares it `lends`. An element of a
-            // type parameter is taken as a copy: the spec has no rule for it yet (QUESTION).
-            TK::Call {
-                f, recv: Some(r), ..
-            } if self.d.f(f.decl).name == "get"
-                && !plain(self.d, &e.ty, 0)
-                && !matches!(e.ty, Ty::Param(_)) =>
-            {
-                let (TArg::Value(v) | TArg::Mut(v)) = &**r;
-                match self.place(v) {
-                    Some(p) => {
-                        out.insert(p);
-                    }
-                    None => out = self.sources(v),
-                }
-            }
             // R05.3.5: `s[i]` of a heap element lends `s`, or only that element of it when `i` is
             // a literal (R05.8.2).
             TK::Elem(x) if !plain(self.d, &e.ty, 0) && !matches!(e.ty, Ty::Param(_)) => {
@@ -419,10 +402,8 @@ impl Cx<'_> {
             }
             TK::Elem(b) | TK::Slot(b, _) => out = self.sources(b),
             // R05.5.3: a result that holds a heap argument lends it while the result lives.
-            TK::Call { f, recv, args }
-                if self.lends.get(&f.decl).is_some_and(|l| !l.is_empty()) =>
-            {
-                let lends = &self.lends[&f.decl];
+            TK::Call { f, recv, args } if !self.lent_args(f.decl).is_empty() => {
+                let lends = self.lent_args(f.decl);
                 let all = recv.as_deref().into_iter().chain(args.iter());
                 for (i, a) in all.enumerate() {
                     let (TArg::Value(v) | TArg::Mut(v)) = a;
@@ -572,6 +553,15 @@ impl Cx<'_> {
                 .map(|i| i.keeps().iter().copied().collect())
                 .unwrap_or_default(),
             None => self.keeps.get(&f).cloned().unwrap_or_default(),
+        }
+    }
+    /// The arguments a call to `f` lends to its result, receiver first (R05.5.3).
+    fn lent_args(&self, f: FnId) -> BTreeSet<usize> {
+        match &self.d.f(f).intrinsic {
+            Some(n) => crate::ir::Intr::named(n)
+                .map(|i| i.lends().iter().copied().collect())
+                .unwrap_or_default(),
+            None => self.lends.get(&f).cloned().unwrap_or_default(),
         }
     }
     /// The binding `b` now holds `what`. Its heap borrows (not closure captures, R10) are frozen
