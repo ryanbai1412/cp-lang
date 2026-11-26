@@ -266,7 +266,13 @@ fn stress_in_vm(
     explain: bool,
 ) -> Result<cpl_stress::StressResult, cpl_stress::run::StressError> {
     let place = cpl_stress::Place::InProcess { stack_limit };
-    let stress =
-        cpl_stress::Stress::build(std::path::Path::new(name), name, source, place, options)?;
+    let stress = cpl_stress::Stress::build(
+        &cpl_facade::Session::default(),
+        std::path::Path::new(name),
+        name,
+        source,
+        place,
+        options,
+    )?;
     Ok(stress.run(options, explain, None)?.result)
 }

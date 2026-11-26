@@ -443,10 +443,16 @@ impl Playground {
             None
         };
         let place = cpl_stress::Place::InProcess { stack_limit };
-        let stressed =
-            cpl_stress::Stress::build(std::path::Path::new(name), name, source, place, &options)
-                .map_err(cpl_stress::run::StressError::from)
-                .and_then(|stress| stress.run(&options, true, None));
+        let stressed = cpl_stress::Stress::build(
+            &self.db,
+            std::path::Path::new(name),
+            name,
+            source,
+            place,
+            &options,
+        )
+        .map_err(cpl_stress::run::StressError::from)
+        .and_then(|stress| stress.run(&options, true, None));
         match stressed {
             Ok(stressed) => stressed.result.render(),
             Err(error) => cpl_stress::report::render_error(&error),

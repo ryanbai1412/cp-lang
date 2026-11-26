@@ -1824,7 +1824,14 @@ fn stress_in_vm(
     explain: bool,
 ) -> Result<crate::StressResult, crate::run::StressError> {
     let place = crate::Place::InProcess { stack_limit };
-    let stress = crate::Stress::build(std::path::Path::new(name), name, source, place, options)?;
+    let stress = crate::Stress::build(
+        &cpl_facade::Session::default(),
+        std::path::Path::new(name),
+        name,
+        source,
+        place,
+        options,
+    )?;
     Ok(stress.run(options, explain, None)?.result)
 }
 

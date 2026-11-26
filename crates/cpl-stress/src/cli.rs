@@ -576,6 +576,7 @@ pub fn run_with(
         judge_given: args.checker.is_some() || args.interactor.is_some(),
     };
     let stress = match Stress::build(
+        &cpl_facade::Session::default(),
         &args.file,
         &name,
         &src,

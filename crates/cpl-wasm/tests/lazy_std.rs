@@ -170,4 +170,22 @@ fn a_program_checks_and_runs_once_the_host_gives_the_std_it_needs() {
     assert_eq!(String::from_utf8_lossy(&run.stdout), expected);
     let changed = playground.lsp(&open_or_change(uri, 2, &source));
     assert!(!has(&changed, "not loaded yet"), "{changed}");
+
+    // Stress checks the file against the std the host gave, as check and run do.
+    let buggy = "let n: 1..=9 = read()\nlet p: [0..n]1..=9 = read()\nvar best = 0\nfor x in p: best max= x - p[0]\nprint(best)\n\n@alt(program)\nfn slow():\n    var best = 0\n    for i in 0..n:\n        for j in i..n: best max= p[j] - p[i]\n    print(best)\n";
+    let unloaded = playground.stress("buy.cp", buggy, 30, 1, 8);
+    assert!(unloaded.contains(r#""status":"error""#), "{unloaded}");
+    loop {
+        let needed = playground.std_needed("buy.cp", buggy);
+        let Some(needed) = needed.as_array().filter(|n| !n.is_empty()) else {
+            break;
+        };
+        for module in needed {
+            let module = module.as_str().unwrap_or_default();
+            let text = std::fs::read_to_string(root().join(format!("std/{module}.cp"))).unwrap();
+            playground.provide_std(module, &text);
+        }
+    }
+    let stressed = playground.stress("buy.cp", buggy, 30, 1, 8);
+    assert!(stressed.contains(r#""status":"fail""#), "{stressed}");
 }

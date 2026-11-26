@@ -121,9 +121,10 @@ fn lowered(
 }
 
 impl Stress {
-    /// Reads `source`, the file `path` shown as `name`, and picks each
-    /// role's runner for `place`.
+    /// Reads `source`, the file `path` shown as `name`, checked in `session`
+    /// (whose snapshot gives std), and picks each role's runner for `place`.
     pub fn build(
+        session: &cpl_facade::Session,
         path: &Path,
         name: &str,
         source: &str,
@@ -141,7 +142,7 @@ impl Stress {
         };
         let given_brute = native.and_then(|n| n.brute);
         let given_gen = native.and_then(|n| n.gen);
-        let db = cpl_facade::Session::default().with_file(name, source);
+        let db = session.with_file(name, source);
         let roles = match is_cp || native.is_none() {
             true => db.roles(name),
             false => None,
