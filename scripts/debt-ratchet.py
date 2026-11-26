@@ -3736,6 +3736,8 @@ MEASURED_BY = {
     "cpp_std_functions": ("crates/cpl-codegen/src/cpp_counts.rs",),
     "corpus_max_short": ("scripts/corpus.py",),
     "corpus_max_unread": ("scripts/corpus.py",),
+    # Which of cpl-next's diagnostics are verdicts (a wrong case) and which refusals.
+    "next_wrong": ("crates/cpl-next/src/diag.rs",),
 }
 
 

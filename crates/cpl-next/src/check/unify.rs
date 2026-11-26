@@ -471,7 +471,12 @@ impl<'a> Cx<'a> {
         if !self.unify(&ty, want) {
             self.err(
                 span,
-                format!("expected `{}`, found `{}`", self.show(want), self.show(&ty)),
+                format!(
+                    "{}: expected `{}`, found `{}`",
+                    cpl_diag::codes::TYPE_MISMATCH.0,
+                    self.show(want),
+                    self.show(&ty)
+                ),
             );
         }
         TExpr {
@@ -547,7 +552,11 @@ impl<'a> Cx<'a> {
                 if !ok {
                     self.err(
                         span,
-                        format!("this function does not fit `{}`", self.show(&want_s)),
+                        format!(
+                            "{}: this function does not fit `{}`",
+                            cpl_diag::codes::TYPE_MISMATCH.0,
+                            self.show(&want_s)
+                        ),
                     );
                 }
                 match self.shallow_set(set) {
@@ -572,7 +581,8 @@ impl<'a> Cx<'a> {
                     self.err(
                         span,
                         format!(
-                            "expected `{}`, found `{}`",
+                            "{}: expected `{}`, found `{}`",
+                            cpl_diag::codes::TYPE_MISMATCH.0,
                             self.show(&want_s),
                             self.show(&have)
                         ),
@@ -658,7 +668,8 @@ impl<'a> Cx<'a> {
                     self.err(
                         span,
                         format!(
-                            "expected `{}`, found `{}`",
+                            "{}: expected `{}`, found `{}`",
+                            cpl_diag::codes::TYPE_MISMATCH.0,
                             self.show(&want_s),
                             self.show(&have)
                         ),

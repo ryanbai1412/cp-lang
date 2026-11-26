@@ -95,10 +95,22 @@ impl<'a> Cx<'a> {
             .find_map(|tr| Some((self.d.traits[tr.tr.0].methods.get("iter").copied()?, tr)));
         let Some((m, tr)) = found else {
             let shown = self.show(&recv.ty);
-            return self.err(span, format!("`{shown}` has no `iter`"));
+            return self.err(
+                span,
+                format!(
+                    "{}: `{shown}` has no `iter`",
+                    cpl_diag::codes::UNKNOWN_FIELD.0
+                ),
+            );
         };
         let Some((false, elem)) = self.d.f(m).region.clone() else {
-            return self.err(span, "this cannot be walked with `for`");
+            return self.err(
+                span,
+                format!(
+                    "{}: this cannot be walked with `for`",
+                    cpl_diag::codes::TYPE_MISMATCH.0
+                ),
+            );
         };
         self.reach(m);
         let mut tys = vec![recv.ty.clone()];
@@ -458,7 +470,10 @@ impl<'a> Cx<'a> {
                     let Some((true, elem)) = self.d.f(f.decl).region.clone() else {
                         return self.err(
                             s.span,
-                            "this call does not lend a place, so it cannot be assigned",
+                            format!(
+                                "{}: this call does not lend a place, so it cannot be assigned",
+                                cpl_diag::codes::TYPE_MISMATCH.0
+                            ),
                         );
                     };
                     let elem = Subst {
@@ -639,7 +654,13 @@ impl<'a> Cx<'a> {
                         return;
                     };
                     let Some((false, elem)) = self.d.f(f.decl).region.clone() else {
-                        return self.err(s.span, "this cannot be walked with `for`");
+                        return self.err(
+                            s.span,
+                            format!(
+                                "{}: this cannot be walked with `for`",
+                                cpl_diag::codes::TYPE_MISMATCH.0
+                            ),
+                        );
                     };
                     let elem = Subst {
                         tys: &f.targs,
@@ -738,25 +759,45 @@ impl<'a> Cx<'a> {
                     let v = self.coerce(v, &t);
                     out.push(TStmt::Yield(v));
                 }
-                _ => self.err(s.span, "`yield` outside a fn that `yields`"),
+                _ => self.err(
+                    s.span,
+                    format!(
+                        "{}: `yield` outside a fn that `yields`",
+                        cpl_diag::codes::TYPE_MISMATCH.0
+                    ),
+                ),
             },
             StmtKind::Lend { place, .. } => match self.region.clone() {
                 // Every path through a lender reaches one `lend`; inside a loop it could run twice.
                 Some((true, _)) if self.loops > 0 => self.err(
                     s.span,
-                    "`lend` inside a loop: a lender lends one place once",
+                    format!(
+                        "{}: `lend` inside a loop: a lender lends one place once",
+                        cpl_diag::codes::BAD_PROJECTION.0
+                    ),
                 ),
                 Some((true, t)) => {
                     let p = self.place(place);
                     if !self.unify(&p.ty, &t) {
                         self.err(
                             s.span,
-                            format!("expected `{}`, found `{}`", self.show(&t), self.show(&p.ty)),
+                            format!(
+                                "{}: expected `{}`, found `{}`",
+                                cpl_diag::codes::TYPE_MISMATCH.0,
+                                self.show(&t),
+                                self.show(&p.ty)
+                            ),
                         );
                     }
                     out.push(TStmt::LendOut(p));
                 }
-                _ => self.err(s.span, "`lend` outside a fn that `lends`"),
+                _ => self.err(
+                    s.span,
+                    format!(
+                        "{}: `lend` outside a fn that `lends`",
+                        cpl_diag::codes::BAD_PROJECTION.0
+                    ),
+                ),
             },
             StmtKind::Break(None) => out.push(TStmt::Break),
             StmtKind::Continue(None) => out.push(TStmt::Continue),
@@ -1268,7 +1309,13 @@ impl<'a> Cx<'a> {
             v.kind,
             TK::Var(_) | TK::Field(..) | TK::Slot(..) | TK::Error
         ) {
-            self.err(e.span, "this is not a place that can be assigned or lent");
+            self.err(
+                e.span,
+                format!(
+                    "{}: this is not a place that can be assigned or lent",
+                    cpl_diag::codes::TYPE_MISMATCH.0
+                ),
+            );
         }
         v
     }

@@ -489,7 +489,8 @@ fn alias(cx: &mut TyCx, id: usize, n: &str, a: Vec<Ty>, errors: &mut Vec<String>
     let decl = &cx.aliases[id];
     if a.len() != decl.generics.len() {
         errors.push(format!(
-            "`{n}` takes {} type arguments, found {}",
+            "{}: `{n}` takes {} type arguments, found {}",
+            cpl_diag::codes::WRONG_ARG_COUNT.0,
             decl.generics.len(),
             a.len()
         ));
@@ -594,7 +595,11 @@ fn trait_ref(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<String>) -> Option<T
         return None;
     };
     let Some(Named::Trait(tr)) = cx.names.get(&name.text).copied() else {
-        errors.push(format!("unknown trait `{}`", name.text));
+        errors.push(format!(
+            "{}: unknown trait `{}`",
+            cpl_diag::codes::UNKNOWN_TYPE.0,
+            name.text
+        ));
         return None;
     };
     let args = args.iter().map(|a| conv(cx, a, errors)).collect();
@@ -665,7 +670,7 @@ fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<String>) -> Ty {
                 "Char" => Ty::Char,
                 "U64" => Ty::U64,
                 "Str" if struct_named(cx.names, "Str").is_none() => {
-                    errors.push("`Str` needs the library's `Str`".to_string());
+                    errors.push("internal: `Str` needs the library's `Str`".to_string());
                     Ty::Error
                 }
                 "Raw" if a.len() == 1 => Ty::Raw(Box::new(a.remove(0))),
@@ -677,7 +682,10 @@ fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<String>) -> Ty {
                         Ty::Struct(d, a, sets)
                     }
                     None => {
-                        errors.push(format!("unknown type `{n}`"));
+                        errors.push(format!(
+                            "{}: unknown type `{n}`",
+                            cpl_diag::codes::UNKNOWN_TYPE.0
+                        ));
                         Ty::Error
                     }
                 },
@@ -744,7 +752,7 @@ fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<String>) -> Ty {
             match struct_named(cx.names, "Array") {
                 Some(array) => Ty::Struct(array, vec![i, e], Vec::new()),
                 None => {
-                    errors.push("`[D]T` needs the library's `Array`".to_string());
+                    errors.push("internal: `[D]T` needs the library's `Array`".to_string());
                     Ty::Error
                 }
             }
@@ -1492,7 +1500,13 @@ pub fn collect(
                     }
                     let Some(tref) = tref.filter(|_| errors.is_empty()) else {
                         if errors.is_empty() {
-                            errors.push("impl of an unknown trait".to_string());
+                            errors.push(
+                                format!(
+                                    "{}: impl of an unknown trait",
+                                    cpl_diag::codes::UNKNOWN_TYPE.0
+                                )
+                                .to_string(),
+                            );
                         }
                         d.module_or_program_errors(mid, errors);
                         continue;
@@ -1831,7 +1845,13 @@ fn add_fn(
                 (Some(t), _) => Some(t.clone()),
                 (None, Some(t)) => Some(conv(&mut cx, t, &mut errors)),
                 (None, None) => {
-                    errors.push("`self` of a free fn needs a type".to_string());
+                    errors.push(
+                        format!(
+                            "{}: `self` of a free fn needs a type",
+                            cpl_diag::codes::EXPECTED_TYPE.0
+                        )
+                        .to_string(),
+                    );
                     None
                 }
             };
@@ -1842,7 +1862,11 @@ fn add_fn(
             (Some(t), _) => conv(&mut cx, t, &mut errors),
             (None, Some(t)) => t,
             (None, None) => {
-                errors.push(format!("parameter `{}` needs a type", p.name.text));
+                errors.push(format!(
+                    "{}: parameter `{}` needs a type",
+                    cpl_diag::codes::EXPECTED_TYPE.0,
+                    p.name.text
+                ));
                 Ty::Error
             }
         };

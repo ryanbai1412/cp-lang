@@ -10,6 +10,7 @@ mod check;
 mod cpp;
 mod cycles;
 mod decls;
+mod diag;
 mod inst;
 mod interp;
 mod ir;
@@ -19,6 +20,9 @@ mod own;
 mod records;
 mod synth;
 mod ty;
+
+use diag::kind_of;
+pub use diag::Kind;
 
 pub use interp::{Outcome, Trap};
 
@@ -51,25 +55,35 @@ impl Stage {
 #[derive(Clone, Debug)]
 pub struct Diag {
     pub stage: Stage,
+    pub kind: Kind,
     /// `line N: ...` with N counted in the user's file.
     pub text: String,
 }
 
 impl Diag {
-    /// The code this diagnostic carries, when it is one of the language's.
-    pub fn code(&self) -> Option<&'static str> {
-        let after_line = self
-            .text
-            .strip_prefix("line ")
-            .and_then(|r| r.split_once(": "))
-            .map_or(self.text.as_str(), |(_, r)| r);
-        let code = after_line.split(':').next()?;
-        cpl_diag::lookup(code).map(|info| info.code.0)
+    fn new(stage: Stage, e: &str, std_lines: usize) -> Diag {
+        let kind = kind_of(e);
+        let ice = cpl_diag::codes::INTERNAL.0;
+        let e = match e.split_once(": ") {
+            _ if kind != Kind::Verdict(cpl_diag::codes::INTERNAL) || e.contains(ice) => e.into(),
+            Some((at, rest)) if at.starts_with("line ") => format!("{at}: {ice}: {rest}"),
+            _ => format!("{ice}: {e}"),
+        };
+        Diag {
+            stage,
+            kind,
+            text: user_line(&e, std_lines),
+        }
     }
-    /// Not a verdict on the program: the pipeline does not implement something it uses, or
-    /// reports something it has no code for. Only a diagnostic with a code is a verdict.
+    /// The code this diagnostic carries, when it is a verdict.
+    pub fn code(&self) -> Option<&'static str> {
+        match self.kind {
+            Kind::Verdict(c) => Some(c.0),
+            Kind::Refusal => None,
+        }
+    }
     pub fn is_refusal(&self) -> bool {
-        self.code().is_none()
+        self.kind == Kind::Refusal
     }
 }
 
@@ -110,19 +124,11 @@ pub fn compile(user_src: &str, events: bool) -> Result<Compiled, Vec<Diag>> {
         // A program the grammar does not derive is rejected there; what was parsed is not checked.
         if !loaded.errors.is_empty() {
             return Err((loaded.errors.iter())
-                .map(|e| Diag {
-                    stage: Stage::Syntax,
-                    text: user_line(e, std_lines),
-                })
+                .map(|e| Diag::new(Stage::Syntax, e, std_lines))
                 .collect());
         }
         let mut out: Vec<Diag> = Vec::new();
-        let mut add = |stage, text: &str| {
-            out.push(Diag {
-                stage,
-                text: user_line(text, std_lines),
-            })
-        };
+        let mut add = |stage, text: &str| out.push(Diag::new(stage, text, std_lines));
         let (d, main) = decls::collect(&loaded.modules, &loaded.prelude);
         for e in &d.errors {
             add(Stage::Decls, e);
@@ -160,10 +166,7 @@ pub fn compile(user_src: &str, events: bool) -> Result<Compiled, Vec<Diag>> {
             return Err(prog
                 .errors
                 .iter()
-                .map(|e| Diag {
-                    stage: Stage::Link,
-                    text: user_line(e, std_lines),
-                })
+                .map(|e| Diag::new(Stage::Link, e, std_lines))
                 .collect());
         }
         if events {
@@ -171,10 +174,7 @@ pub fn compile(user_src: &str, events: bool) -> Result<Compiled, Vec<Diag>> {
         }
         let canon = inst::canonicalize(&prog).map_err(|es| {
             es.iter()
-                .map(|e| Diag {
-                    stage: Stage::Link,
-                    text: user_line(e, std_lines),
-                })
+                .map(|e| Diag::new(Stage::Link, e, std_lines))
                 .collect::<Vec<_>>()
         })?;
         return Ok(Compiled { prog, canon });

@@ -8,7 +8,7 @@ impl<'a> Cx<'a> {
     pub(super) fn list_struct(&mut self, span: Span) -> Option<StructId> {
         let list = self.d.core_struct("List");
         if list.is_none() {
-            self.err(span, "no `List` is declared");
+            self.err(span, "internal: no `List` is declared");
         }
         list
     }
@@ -63,7 +63,14 @@ impl<'a> Cx<'a> {
                 Some(n) => {
                     let at = formals.iter().position(|f| f.label == n.text);
                     if at.is_none() {
-                        self.err(a.value.span, format!("no parameter named `{}`", n.text));
+                        self.err(
+                            a.value.span,
+                            format!(
+                                "{}: no parameter named `{}`",
+                                cpl_diag::codes::UNKNOWN_ARG_NAME.0,
+                                n.text
+                            ),
+                        );
                     }
                     at
                 }
@@ -72,7 +79,11 @@ impl<'a> Cx<'a> {
                 Some(i) if slot[i].is_none() => slot[i] = Some(k),
                 Some(i) => self.err(
                     a.value.span,
-                    format!("`{}` is given twice", formals[i].label),
+                    format!(
+                        "{}: `{}` is given twice",
+                        cpl_diag::codes::WRONG_ARG_COUNT.0,
+                        formals[i].label
+                    ),
                 ),
                 None => {}
             }
@@ -180,7 +191,8 @@ impl<'a> Cx<'a> {
                 self.err(
                     a.value.span,
                     format!(
-                        "expected `{}`, found `{}`",
+                        "{}: expected `{}`, found `{}`",
+                        cpl_diag::codes::TYPE_MISMATCH.0,
                         self.show(pty),
                         self.show(&p.ty)
                     ),
@@ -246,7 +258,7 @@ impl<'a> Cx<'a> {
     /// A call of the library fn `name` with arguments already typed.
     pub(super) fn lib_call(&mut self, name: &str, args: Vec<TExpr>, span: Span) -> TExpr {
         let Some(decl) = self.d.core_fn(name) else {
-            self.err(span, format!("the library has no `{name}`"));
+            self.err(span, format!("internal: the library has no `{name}`"));
             return TExpr {
                 kind: TK::Error,
                 ty: Ty::Error,
@@ -426,7 +438,13 @@ impl<'a> Cx<'a> {
         let place = matches!(recv.kind, TK::Var(_) | TK::Field(..));
         if self.d.f(m).self_mode == SelfMode::Mut {
             if !place {
-                self.err(span, "a `mut self` method needs a place");
+                self.err(
+                    span,
+                    format!(
+                        "{}: a `mut self` method needs a place",
+                        cpl_diag::codes::MUT_OF_IMMUTABLE.0
+                    ),
+                );
             }
             TArg::Mut(recv)
         } else if self.d.writes_cache(m) && place {
@@ -516,7 +534,7 @@ impl<'a> Cx<'a> {
             self.err(
                 span,
                 format!(
-                    "`{}` yields or lends: use it in a `for` or as the target of an assignment",
+                    "slice: `{}` yields or lends, and is used other than in a `for` or as the target of an assignment",
                     fd.name
                 ),
             );
@@ -590,7 +608,13 @@ impl<'a> Cx<'a> {
             };
         }
         let shown = self.show(&recv.ty);
-        self.err(span, format!("`{shown}` has no `{name}`"));
+        self.err(
+            span,
+            format!(
+                "{}: `{shown}` has no `{name}`",
+                cpl_diag::codes::UNKNOWN_FIELD.0
+            ),
+        );
         TExpr {
             kind: TK::Error,
             ty: Ty::Error,
@@ -607,7 +631,14 @@ impl<'a> Cx<'a> {
     ) -> TExpr {
         let rt = self.shallow(&recv.ty);
         let Some(decls::Member::Method(m, ts, ss)) = self.d.lookup_member(&rt, name) else {
-            self.err(span, format!("`{}` has no `{name}`", self.show(&rt)));
+            self.err(
+                span,
+                format!(
+                    "{}: `{}` has no `{name}`",
+                    cpl_diag::codes::UNKNOWN_FIELD.0,
+                    self.show(&rt)
+                ),
+            );
             return TExpr {
                 kind: TK::Error,
                 ty: Ty::Error,
@@ -701,7 +732,14 @@ impl<'a> Cx<'a> {
             ) {
                 let s = self.d.s(d);
                 let Some(m) = s.methods.get(&name.text).copied() else {
-                    self.err(span, format!("`{n}` has no `{}`", name.text));
+                    self.err(
+                        span,
+                        format!(
+                            "{}: `{n}` has no `{}`",
+                            cpl_diag::codes::UNKNOWN_FIELD.0,
+                            name.text
+                        ),
+                    );
                     return TExpr {
                         kind: TK::Error,
                         ty: Ty::Error,
@@ -712,7 +750,8 @@ impl<'a> Cx<'a> {
                     self.err(
                         span,
                         format!(
-                            "`{n}` takes {} type arguments, found {}",
+                            "{}: `{n}` takes {} type arguments, found {}",
+                            cpl_diag::codes::WRONG_ARG_COUNT.0,
                             s.generics.len(),
                             written.len()
                         ),
@@ -785,7 +824,11 @@ impl<'a> Cx<'a> {
                     if call.is_none() && !fd.getter {
                         self.err(
                             span,
-                            format!("`{}` is a method: call it with `()`", name.text),
+                            format!(
+                                "{}: `{}` is a method: call it with `()`",
+                                cpl_diag::codes::UNKNOWN_FIELD.0,
+                                name.text
+                            ),
                         );
                     }
                     let recv = self.recv_arg(fid, recv, span);
@@ -810,7 +853,11 @@ impl<'a> Cx<'a> {
                 if call.is_none() && !fd.getter {
                     self.err(
                         span,
-                        format!("`{}` is a method: call it with `()`", name.text),
+                        format!(
+                            "{}: `{}` is a method: call it with `()`",
+                            cpl_diag::codes::UNKNOWN_FIELD.0,
+                            name.text
+                        ),
                     );
                 }
                 let f = self.fnref(m, ts, ss);
@@ -831,7 +878,12 @@ impl<'a> Cx<'a> {
                 self.missing.push(name.text.clone());
                 self.err(
                     span,
-                    format!("`{}` has no member `{}`", self.show(&rt), name.text),
+                    format!(
+                        "{}: `{}` has no member `{}`",
+                        cpl_diag::codes::UNKNOWN_FIELD.0,
+                        self.show(&rt),
+                        name.text
+                    ),
                 );
                 TExpr {
                     kind: TK::Error,
@@ -853,7 +905,14 @@ impl<'a> Cx<'a> {
                 };
             }
             t => {
-                self.err(span, format!("`{}` cannot be called", self.show(&t)));
+                self.err(
+                    span,
+                    format!(
+                        "{}: `{}` cannot be called",
+                        cpl_diag::codes::NOT_CALLABLE.0,
+                        self.show(&t)
+                    ),
+                );
                 return TExpr {
                     kind: TK::Error,
                     ty: Ty::Error,
@@ -877,7 +936,7 @@ impl<'a> Cx<'a> {
         {
             self.err(
                 span,
-                "a `mut` argument to a function value is not built yet",
+                "slice: a `mut` argument to a function value is not built yet",
             );
         }
         let (pre, args) = self.args(args, &formals, span);
@@ -926,7 +985,10 @@ impl<'a> Cx<'a> {
         if let Some(d) = self.domain_named(n) {
             return self.domain_value(d, span);
         }
-        self.err(span, format!("unknown name `{n}`"));
+        self.err(
+            span,
+            format!("{}: unknown name `{n}`", cpl_diag::codes::UNRESOLVED_NAME.0),
+        );
         TExpr {
             kind: TK::Error,
             ty: Ty::Error,
@@ -1384,7 +1446,14 @@ impl<'a> Cx<'a> {
                         self.shallow(&v.ty),
                         Ty::Dom(_) | Ty::Param(_) | Ty::Int | Ty::Error
                     ) {
-                        self.err(span, format!("`{}` has no position", self.show(&v.ty)));
+                        self.err(
+                            span,
+                            format!(
+                                "{}: `{}` has no position",
+                                cpl_diag::codes::TYPE_MISMATCH.0,
+                                self.show(&v.ty)
+                            ),
+                        );
                     }
                     mk(TK::DomOrd(Box::new(v)), Ty::Int)
                 }
@@ -1451,7 +1520,7 @@ impl<'a> Cx<'a> {
                 };
                 let lty = Ty::Struct(list, vec![elem.clone()], Vec::new());
                 let Some(ctor) = ls.ctor else {
-                    self.err(span, "`List` declares no `new`");
+                    self.err(span, "internal: `List` declares no `new`");
                     return mk(TK::Error, Ty::Error);
                 };
                 let new = self.fnref(ctor, vec![elem.clone()], Vec::new());
@@ -1513,7 +1582,7 @@ impl<'a> Cx<'a> {
                 };
                 let lty = Ty::Struct(list, vec![elem.clone()], Vec::new());
                 let Some(ctor) = ls.ctor else {
-                    self.err(span, "`List` declares no `new`");
+                    self.err(span, "internal: `List` declares no `new`");
                     return mk(TK::Error, Ty::Error);
                 };
                 let new = self.fnref(ctor, vec![elem.clone()], Vec::new());
@@ -1690,7 +1759,11 @@ impl<'a> Cx<'a> {
         if given.len() > takes {
             self.err(
                 span,
-                format!("`{n}` takes {takes} type arguments, found {}", given.len()),
+                format!(
+                    "{}: `{n}` takes {takes} type arguments, found {}",
+                    cpl_diag::codes::WRONG_ARG_COUNT.0,
+                    given.len()
+                ),
             );
         }
         let mut given = given;
@@ -1762,8 +1835,21 @@ impl<'a> Cx<'a> {
                 let sets: Vec<SetTy> = (0..s.n_sets).map(|_| self.new_set()).collect();
                 self.construct(d, targs, sets, args, span)
             }
+            (None, Named::Alias(_)) => {
+                self.err(
+                    span,
+                    format!("slice: building a value by calling the alias `{n}`"),
+                );
+                mk(TK::Error, Ty::Error)
+            }
             _ => {
-                self.err(span, format!("`{n}` cannot be called"));
+                self.err(
+                    span,
+                    format!(
+                        "{}: `{n}` cannot be called",
+                        cpl_diag::codes::NOT_CALLABLE.0
+                    ),
+                );
                 mk(TK::Error, Ty::Error)
             }
         };

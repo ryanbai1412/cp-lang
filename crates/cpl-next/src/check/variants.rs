@@ -193,7 +193,8 @@ impl Cx<'_> {
                                 self.err(
                                     arm.pat.span,
                                     format!(
-                                        "`{v}` has {} fields, found {}",
+                                        "{}: `{v}` has {} fields, found {}",
+                                        cpl_diag::codes::WRONG_ARG_COUNT.0,
                                         fields.len(),
                                         args.len()
                                     ),
@@ -223,7 +224,13 @@ impl Cx<'_> {
                         }
                         None => {
                             let en = self.d.s(e).name.clone();
-                            self.err(arm.pat.span, format!("`{en}` has no variant `{v}`"));
+                            self.err(
+                                arm.pat.span,
+                                format!(
+                                    "{}: `{en}` has no variant `{v}`",
+                                    cpl_diag::codes::UNKNOWN_FIELD.0
+                                ),
+                            );
                             None
                         }
                     }

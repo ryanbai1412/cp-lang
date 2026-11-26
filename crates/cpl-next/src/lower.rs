@@ -501,7 +501,7 @@ impl Lw<'_> {
                 let f = &self.lent_targs(f, &a);
                 let call = if let Some(n) = &fd.intrinsic {
                     let op = Intr::named(n).unwrap_or_else(|| {
-                        self.errors.push(format!("unknown intrinsic `{n}`"));
+                        self.errors.push(format!("slice: intrinsic `{n}`"));
                         Intr::RawGet
                     });
                     mk(EK::Intr(op, a, site))
@@ -720,7 +720,10 @@ impl Lw<'_> {
                     .iter()
                     .any(|v| !matches!(v.ty, Ty::Int | Ty::Bool | Ty::Char | Ty::U64 | Ty::Error))
                 {
-                    self.errors.push("this value cannot be printed".into());
+                    self.errors.push(format!(
+                        "{}: this value cannot be printed",
+                        cpl_diag::codes::MISSING_IMPL.0
+                    ));
                 }
                 let mut vs = self.seq(&vals, out).into_iter();
                 let pieces = ps

@@ -159,7 +159,7 @@ pub fn link(
     while next < l.keys.len() {
         if l.keys.len() > LIMIT {
             l.errors.push(format!(
-                "instantiation does not end: `{}` makes a new copy of itself at every level (a function passed to its own recursive call, wrapped in a new closure)",
+                "{}: instantiation does not end: `{}` makes a new copy of itself at every level (a function passed to its own recursive call, wrapped in a new closure)", cpl_diag::codes::GROWING_INSTANTIATION.0,
                 generic[&l.keys[next].func].name
             ));
             break;
@@ -186,7 +186,7 @@ pub fn link(
             .find(|d| owner.is_some() && typed.domains[**d].owner == owner)
         {
             l.errors.push(format!(
-                "`{}` is called with its own domain `{}` as a type argument, so each call would need a new copy of it; declare the domain outside, or pass its values as `Int`",
+                "slice: `{}` is called with its own domain `{}` as a type argument, so each call would need a new copy of it; declare the domain outside, or pass its values as `Int`",
                 generic[&key.func].name, typed.domains[*d].name
             ));
             break;
@@ -659,7 +659,7 @@ fn check_escape(p: &mut Program) {
         .map(|f| f.name.clone())
         .collect();
     for name in bad {
-        p.errors.push(format!("`{name}` returns a function that uses a `var` of the fn that made it; the variable is gone by then"));
+        p.errors.push(format!("{}: `{name}` returns a function that uses a `var` of the fn that made it; the variable is gone by then", cpl_diag::codes::LENT_ESCAPES.0));
     }
 }
 
@@ -1112,7 +1112,7 @@ fn thread_values(p: &mut Program, typed: &Typed) {
     }
     if bad {
         p.errors.push(
-            "a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one"
+            format!("{}: a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one", cpl_diag::codes::MISSING_IMPL.0)
                 .to_string(),
         );
         return;

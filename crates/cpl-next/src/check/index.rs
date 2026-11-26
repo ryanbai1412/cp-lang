@@ -23,7 +23,10 @@ impl Cx<'_> {
                 let shown = self.show(&rt);
                 self.err(
                     span,
-                    format!("`{shown}` is not indexed: it has no `Indexed` impl"),
+                    format!(
+                        "{}: `{shown}` is not indexed: it has no `Indexed` impl",
+                        cpl_diag::codes::NOT_INDEXABLE.0
+                    ),
                 );
                 return TExpr {
                     kind: TK::Error,
@@ -178,7 +181,10 @@ impl Cx<'_> {
                     "slice: writing a cell of a type parameter".to_string()
                 } else {
                     let shown = self.show(&rt);
-                    format!("`{shown}` has no `IndexedMut` impl, so `[]` on it is not a place")
+                    format!(
+                        "{}: `{shown}` has no `IndexedMut` impl, so `[]` on it is not a place",
+                        cpl_diag::codes::NOT_INDEXABLE.0
+                    )
                 };
                 self.err(span, why);
             }

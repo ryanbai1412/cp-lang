@@ -92,7 +92,8 @@ impl Cx<'_> {
                     self.err(
                         span,
                         format!(
-                            "the type of `{shown}` is not known here; write `({shown}: T) => ...`"
+                            "{}: the type of `{shown}` is not known here; write `({shown}: T) => ...`",
+                            cpl_diag::codes::INFERENCE_NEEDS_ANNOTATION.0
                         ),
                     );
                     Ty::Error
