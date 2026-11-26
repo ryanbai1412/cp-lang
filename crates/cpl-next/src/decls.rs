@@ -1669,6 +1669,28 @@ pub fn collect(
                         ));
                     }
                 }
+                (
+                    StmtKind::Impl {
+                        trait_name: None,
+                        target,
+                        ..
+                    },
+                    _,
+                ) => {
+                    // Inherent methods live in their type's module only (R08.1.3).
+                    let TypeKind::Named { name, .. } = &target.kind else {
+                        continue;
+                    };
+                    if let Some(t) = struct_named(&d.views[mi], &name.text) {
+                        if d.s(t).module != mid {
+                            d.misdeclared.push((
+                                (item + target.span.start) as usize,
+                                cpl_diag::codes::UNSUPPORTED.0,
+                                format!("`{}` is declared in another module; its inherent methods live there", name.text),
+                            ));
+                        }
+                    }
+                }
                 _ => {}
             }
         }

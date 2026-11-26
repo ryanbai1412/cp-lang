@@ -13,6 +13,7 @@ use std::collections::HashSet;
 
 mod expr;
 mod index;
+mod lambda;
 mod oblige;
 mod range;
 mod stmt;

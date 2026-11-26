@@ -1438,76 +1438,7 @@ impl<'a> Cx<'a> {
                 param_tys,
                 body,
                 ..
-            } => {
-                let expected = want.map(|w| self.shallow(w));
-                let (eps, er) = match &expected {
-                    Some(Ty::Fn(ps, r, _)) => (Some(ps.clone()), Some((**r).clone())),
-                    _ => (None, None),
-                };
-                self.scopes.push(HashMap::new());
-                let mut ids = Vec::new();
-                let mut ptys = Vec::new();
-                for (i, p) in params.iter().enumerate() {
-                    let PatternKind::Name(name) = &p.kind else {
-                        self.err(span, "slice: unsupported lambda parameter");
-                        continue;
-                    };
-                    let ty = match (
-                        param_tys.get(i).and_then(|t| t.as_ref()),
-                        eps.as_ref().and_then(|ps| ps.get(i)),
-                    ) {
-                        (Some(t), _) => {
-                            let mut errs = Vec::new();
-                            let t = decls::body_type(
-                                self.d,
-                                self.module,
-                                &self.generics,
-                                &self.doms,
-                                t,
-                                &mut errs,
-                            );
-                            self.fresh_sets(&t)
-                        }
-                        (None, Some(t)) => t.clone(),
-                        (None, None) => {
-                            self.err(span, format!("the type of `{name}` is not known here; write `({name}: T) => ...`"));
-                            Ty::Error
-                        }
-                    };
-                    ptys.push(ty.clone());
-                    match self.bind(name, ty) {
-                        VarRef::Local(id) | VarRef::Global(id) => ids.push(id),
-                    }
-                }
-                let saved_ret = self.ret.clone();
-                // A lambda is not part of the generator or lender around it: no `yield` or `lend` inside.
-                let saved_region = self.region.take();
-                let saved_loops = std::mem::take(&mut self.loops);
-                let ret = er.unwrap_or_else(|| self.new_ty());
-                self.ret = ret.clone();
-                let b = self.expr(body, Some(&ret));
-                let b = self.coerce(b, &ret);
-                self.ret = saved_ret;
-                self.region = saved_region;
-                self.loops = saved_loops;
-                self.scopes.pop();
-                let id = LambdaId(self.lambdas.len());
-                self.lambdas.push(LambdaInfo {
-                    params: ptys,
-                    ret,
-                    owner: self.decl,
-                });
-                let targs = (0..self.generics.len()).map(Ty::Param).collect();
-                let sets = (0..self.n_sets).map(SetTy::Param).collect();
-                mk(
-                    TK::Lambda {
-                        id,
-                        params: ids,
-                        body: Box::new(b),
-                    },
-                    Ty::Clo(Box::new(CloRef::Lambda(id, targs, sets))),
-                )
-            }
+            } => self.lambda(params, param_tys, body, want, span),
             ExprKind::List(xs) => {
                 // `[a, b]` is `List.new()` and a `push` per element.
                 let Some(list) = self.list_struct(span) else {
@@ -1788,6 +1719,14 @@ impl<'a> Cx<'a> {
             (None, Named::Fn(d)) => {
                 let f = self.fnref(d, given, Vec::new());
                 let fd = self.d.f(d);
+                let tests;
+                let args = match super::lambda::tests_form(fd, args) {
+                    Some(a) => {
+                        tests = a;
+                        &tests[..]
+                    }
+                    None => args,
+                };
                 // A free fn's `self` is its first argument when called by name (R08.1.4).
                 let first = args.first().filter(|a| a.name.is_none());
                 match (fd.owner, fd.self_ty.clone(), first) {

@@ -32,6 +32,7 @@ core-01/elif-let-takes-coalesce.cp
 core-01/floor-div.cp
 core-01/floor-division-by-zero-traps.cp
 core-01/for-filter-on-inner-clause.cp
+core-01/generator-test-counts-trues.cp
 core-01/hash-comment.cp
 core-01/if-elif-inline-expression.cp
 core-01/if-let-two-binders.cp
@@ -154,6 +155,7 @@ core-02/str-push.cp
 core-02/struct-literal-named-fields-any-order.cp
 core-02/table-blank-param-fill.cp
 core-02/tuple-fields.cp
+core-02/unit-field-given-to-a-fn-value.cp
 core-02/unit-field-of-a-nested-generic-is-stored-nowhere.cp
 core-02/var-field-assign.cp
 core-03/a-struct-never-holds-itself.cp
@@ -372,6 +374,8 @@ core-06/generator-closure-writes-its-local-across-yields.cp
 core-06/generic-free-method.cp
 core-06/get-no-parens.cp
 core-06/lambda-annotated-params.cp
+core-06/lambda-arity-past-tuple.cp
+core-06/lambda-nested-tuple-param.cp
 core-06/multitest-shared-above.cp
 core-06/mut-param-marked-at-call.cp
 core-06/mut-param-missing-marker.cp
@@ -382,6 +386,7 @@ core-06/nested-generator-walks-restart.cp
 core-06/no-mut-fn-marker.cp
 core-06/no-overload-by-type.cp
 core-06/overloads-by-label-set-one-label-set-twice-clashes.cp
+core-06/pattern-params.cp
 core-06/rb1-q06-closure-mutates-capture.cp
 core-06/returned-closure-cannot-capture-a-list-parameter.cp
 core-06/returned-closure-copies-a-local-closure.cp
@@ -427,6 +432,7 @@ core-08/impl-missing-an-associated-type.cp
 core-08/impl-plus-shorthand.cp
 core-08/impls-choosing-two-types-for-one-type.cp
 core-08/inherent-before-trait.cp
+core-08/inherent-on-builtin-type.cp
 core-08/monomorphized.cp
 core-08/no-dyn.cp
 core-08/no-higher-kinded.cp
@@ -738,9 +744,12 @@ next/n_cell_02_write_through_indexed_mut.cp
 next/n_cell_03_method_on_cell.cp
 next/n_clone_01_clone_is_an_ordinary_trait.cp
 next/n_enum_01_values_and_order.cp
+next/n_impl_01_inherent_outside_its_module.cp
 next/n_index_01_through_indexed.cp
 next/n_index_02_range_keyed_by_values.cp
 next/n_index_03_list_key_outside_traps.cp
+next/n_lambda_01_pattern_params.cp
+next/n_lambda_02_generator_of_tests.cp
 next/n_record_01_records_are_core_structs.cp
 next/n_record_02_field_traits.cp
 next/n_slice_01_range_gives_view.cp
