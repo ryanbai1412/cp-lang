@@ -841,6 +841,24 @@ fn a_judge_without_threads_has_main_run_the_program() {
 }
 
 #[test]
+fn the_judges_cpu_features_ask_only_an_x86_gcc_for_them() {
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", "print(1)\n");
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let target = crate::Target {
+        cpu: vec!["popcnt".into()],
+        ..crate::Target::default()
+    };
+    let cpp = crate::emit_for(&program, "t.cp", None, &target);
+    let at = cpp.find("#pragma GCC target(\"popcnt\")").expect(&cpp);
+    let guard = cpp[..at].lines().last().expect(&cpp);
+    assert!(
+        guard.contains("defined(__x86_64__)") && guard.contains("!defined(__clang__)"),
+        "{guard}"
+    );
+}
+
+#[test]
 fn unused_structs_and_their_trait_hooks_are_omitted() {
     let cpp = cpp(concat!(
         "struct Used(x: Int)\n",
