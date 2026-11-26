@@ -16,11 +16,25 @@ enum Root {
     Global(usize),
     Local(usize),
 }
-/// A variable and a path of fields under it. All elements of one container are one place.
+/// A variable and a path under it. An element at a computed key is the whole container; one at
+/// a literal key is apart from the container's other literal keys (R05.8.2).
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 struct Pl {
     root: Root,
-    path: Vec<usize>,
+    path: Vec<Step>,
+}
+impl Pl {
+    fn whole(root: Root) -> Pl {
+        Pl { root, path: vec![] }
+    }
+}
+fn roots(ps: &BTreeSet<Pl>) -> BTreeSet<Root> {
+    ps.iter().map(|p| p.root).collect()
+}
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+enum Step {
+    Field(usize),
+    Key(i64),
 }
 /// A summary through a call that recurses on a field (`Desc<Desc<T>>`'s `lt` calling `T`'s) would
 /// name ever deeper places; past this depth it names the place holding them, which overlaps all.
@@ -102,14 +116,14 @@ struct Cx<'a> {
     next: u32,
     decl: HashMap<Root, (Vec<u32>, u32)>,
     /// R6: the variables a binding's value borrows (a closure borrows what it captures by reference).
-    lent: HashMap<Root, BTreeSet<Root>>,
+    lent: HashMap<Root, BTreeSet<Pl>>,
     in_lambda: usize,
     /// R2: bindings whose heap value was moved out and not assigned since.
     moved: BTreeSet<Root>,
     /// Bindings that are themselves lends of a heap value: heap parameters and heap loop items.
     borrowed: BTreeSet<Root>,
     /// R7: for a binding that holds a heap borrow, the bindings that must not change while it is used.
-    frozen: HashMap<Root, BTreeSet<Root>>,
+    frozen: HashMap<Root, BTreeSet<Pl>>,
     /// A write or move that is an error if the binding is used afterwards.
     /// Errors that hold only if a binding is used again: the binding, where in the file the
     /// error is, and the error.
@@ -304,7 +318,7 @@ impl Cx<'_> {
     }
     /// R6: the variables this value borrows. A closure borrows the `var`s, heap values and heap
     /// parameters it uses (R05.10.1); a value built from lent values borrows what they do.
-    fn sources(&self, e: &TExpr) -> BTreeSet<Root> {
+    fn sources(&self, e: &TExpr) -> BTreeSet<Pl> {
         let mut out = BTreeSet::new();
         if matches!(
             e.ty,
@@ -344,17 +358,17 @@ impl Cx<'_> {
                     };
                     let r = self.root(*v);
                     if by_ref {
-                        out.insert(r);
+                        out.insert(Pl::whole(r));
                     }
-                    out.extend(self.lent.get(&r).into_iter().flatten().copied());
+                    out.extend(self.lent.get(&r).into_iter().flatten().cloned());
                 }
             }
             TK::Var(v) => {
                 let r = self.root(*v);
                 if self.borrowed.contains(&r) {
-                    out.insert(r);
+                    out.insert(Pl::whole(r));
                 }
-                out.extend(self.lent.get(&r).into_iter().flatten().copied());
+                out.extend(self.lent.get(&r).into_iter().flatten().cloned());
             }
             // R05.3.5: a heap element read by index is a lend of the container, not a copy.
             // Provisional: keyed on the name `get` until std declares it `lends`. An element of a
@@ -368,19 +382,31 @@ impl Cx<'_> {
                 let (TArg::Value(v) | TArg::Mut(v)) = &**r;
                 match self.place(v) {
                     Some(p) => {
-                        out.insert(p.root);
+                        out.insert(p);
                     }
                     None => out = self.sources(v),
                 }
             }
-            // R05.3.5: `s[i]` of a heap element lends `s`.
+            // R05.3.5: `s[i]` of a heap element lends `s`, or only that element of it when `i` is
+            // a literal (R05.8.2).
             TK::Elem(x) if !plain(self.d, &e.ty, 0) && !matches!(e.ty, Ty::Param(_)) => {
                 match &x.kind {
-                    TK::Call { recv: Some(r), .. } | TK::CallTrait { recv: r, .. } => {
+                    TK::Call {
+                        recv: Some(r),
+                        args,
+                        ..
+                    }
+                    | TK::CallTrait { recv: r, args, .. } => {
                         let (TArg::Value(v) | TArg::Mut(v)) = &**r;
                         match self.place(v) {
-                            Some(p) => {
-                                out.insert(p.root);
+                            Some(mut p) => {
+                                if let [TArg::Value(TExpr {
+                                    kind: TK::Int(k), ..
+                                })] = &args[..]
+                                {
+                                    p.path.push(Step::Key(*k));
+                                }
+                                out.insert(p);
                             }
                             None => out = self.sources(v),
                         }
@@ -402,8 +428,8 @@ impl Cx<'_> {
                     }
                     match self.place(v) {
                         Some(p) => {
-                            out.extend(self.lent.get(&p.root).into_iter().flatten().copied());
-                            out.insert(p.root);
+                            out.extend(self.lent.get(&p.root).into_iter().flatten().cloned());
+                            out.insert(Pl::whole(p.root));
                         }
                         None => out.extend(self.sources(v)),
                     }
@@ -418,7 +444,7 @@ impl Cx<'_> {
                     plain(self.d, &e.ty, 0),
                 ) {
                     if !self.decl.contains_key(&p.root) || !p.path.is_empty() {
-                        out.insert(p.root);
+                        out.insert(Pl::whole(p.root));
                     }
                 }
             }
@@ -434,8 +460,8 @@ impl Cx<'_> {
         out
     }
     /// R05.7.8: a lent value is not returned.
-    fn escapes(&mut self, span: Span, out: &BTreeSet<Root>) {
-        let mut out = out.clone();
+    fn escapes(&mut self, span: Span, out: &BTreeSet<Pl>) {
+        let mut out = roots(out);
         // A type-parameter parameter the result holds is the caller's to lend (R05.5.3).
         let held: Vec<Root> = (out.iter())
             .filter(|r| self.params.contains(r) && self.generic(**r))
@@ -460,12 +486,12 @@ impl Cx<'_> {
         }
     }
     /// R8: a lent value is kept only in storage that dies no later than what it borrows.
-    fn keep(&mut self, span: Span, storage: Root, what: &BTreeSet<Root>) {
+    fn keep(&mut self, span: Span, storage: Root, what: &BTreeSet<Pl>) {
         if what.is_empty() {
             return;
         }
         let home = self.decl.get(&storage).cloned();
-        for s in what {
+        for s in &roots(what) {
             let ok = match (&home, self.decl.get(s)) {
                 // A parameter's storage is the caller's, and a top-level binding outlives any fn.
                 (None, _) => false,
@@ -484,14 +510,14 @@ impl Cx<'_> {
         self.lent
             .entry(storage)
             .or_default()
-            .extend(what.iter().copied());
+            .extend(what.iter().cloned());
     }
     /// Stores `what` into `storage`. A parameter whose type holds a type parameter, stored where
     /// it outlives the call, is one the fn keeps: each call moves an owned heap argument in
     /// (R05.2.2) and holds a lent one to R8 (R05.5.3). Anything else stored is a lend, held to R8
     /// here. A value lent from `storage` itself is free again once it is written back.
-    fn store(&mut self, span: Span, storage: Root, mut what: BTreeSet<Root>) {
-        what.remove(&storage);
+    fn store(&mut self, span: Span, storage: Root, mut what: BTreeSet<Pl>) {
+        what.retain(|p| p.root != storage);
         if !self.decl.contains_key(&storage) {
             self.take_generic_params(&mut what);
         }
@@ -499,13 +525,12 @@ impl Cx<'_> {
     }
     /// A parameter of a type parameter's type that outlives the call, stored or returned, is
     /// kept: the caller moves a heap value in (R05.2.2) and copies a plain one.
-    fn take_generic_params(&mut self, what: &mut BTreeSet<Root>) {
-        let own: Vec<Root> = (what.iter())
-            .filter(|r| self.params.contains(r) && self.generic(**r))
-            .copied()
+    fn take_generic_params(&mut self, what: &mut BTreeSet<Pl>) {
+        let own: Vec<Root> = (roots(what).into_iter())
+            .filter(|r| self.params.contains(r) && self.generic(*r))
             .collect();
         for r in own {
-            what.remove(&r);
+            what.retain(|p| p.root != r);
             self.kept.insert(r);
         }
     }
@@ -548,23 +573,23 @@ impl Cx<'_> {
     }
     /// The binding `b` now holds `what`. Its heap borrows (not closure captures, R10) are frozen
     /// while it is used.
-    fn holds(&mut self, b: Root, e: &TExpr, what: &BTreeSet<Root>) {
+    fn holds(&mut self, b: Root, e: &TExpr, what: &BTreeSet<Pl>) {
         if what.is_empty() {
             return;
         }
-        self.lent.entry(b).or_default().extend(what.iter().copied());
+        self.lent.entry(b).or_default().extend(what.iter().cloned());
         if !plain(self.d, &e.ty, 0) {
             self.frozen
                 .entry(b)
                 .or_default()
-                .extend(what.iter().copied());
+                .extend(what.iter().cloned());
         }
     }
     /// A write to `p`: an error if a binding that borrows it is used later.
     fn wrote(&mut self, span: Span, p: &Pl) {
         let n = self.root_name(p.root);
         for (b, srcs) in &self.frozen {
-            if *b != p.root && srcs.contains(&p.root) {
+            if *b != p.root && srcs.iter().any(|s| overlap(s, p)) {
                 let bn = self.root_name(*b);
                 let at = self.at(span);
                 self.pending.push((
@@ -604,7 +629,11 @@ impl Cx<'_> {
                 // R05.10.2: a captured variable can't be moved while the fn value is alive.
                 let n = self.root_name(r);
                 // A value that holds a lend of it is E0602, a fn value that captures it E0607.
-                for (b, srcs) in self.lent.iter().chain(self.caps.iter()) {
+                let lent = self.lent.iter().map(|(b, s)| (b, roots(s)));
+                let caps = self.caps.iter().map(|(b, s)| (b, s.clone()));
+                let users: Vec<(Root, BTreeSet<Root>)> =
+                    lent.chain(caps).map(|(b, s)| (*b, s)).collect();
+                for (b, srcs) in &users {
                     if srcs.contains(&r) {
                         let code = if self.caps.contains_key(b) || self.fn_value(*b) {
                             codes::MOVED_WHILE_CAPTURED
@@ -655,11 +684,18 @@ impl Cx<'_> {
             }),
             TK::Field(b, i) | TK::Payload(b, i) => {
                 let mut p = self.place(b)?;
-                p.path.push(*i);
+                p.path.push(Step::Field(*i));
                 Some(p)
             }
-            // A cell is part of its storage: a write to it writes the storage.
-            TK::Slot(b, _) => self.place(b),
+            // A cell is part of its storage: a write to it writes the storage, or only the part
+            // that is that element when its key is a literal.
+            TK::Slot(b, k) => {
+                let mut p = self.place(b)?;
+                if let TK::Int(k) = k.kind {
+                    p.path.push(Step::Key(k));
+                }
+                Some(p)
+            }
             _ => None,
         }
     }
@@ -678,7 +714,14 @@ impl Cx<'_> {
                 None => return "a local value".into(),
             },
         };
-        for i in &p.path {
+        for step in &p.path {
+            let i = match step {
+                Step::Field(i) => i,
+                Step::Key(k) => {
+                    s = format!("{s}[{k}]");
+                    break;
+                }
+            };
             let Ty::Struct(id, targs, sets) = &ty else {
                 break;
             };
@@ -1179,14 +1222,36 @@ impl Cx<'_> {
                             let TStmt::Assign(_, v) = st else { continue };
                             let TK::Var(x) = &v.kind else { continue };
                             let r = self.root(*x);
-                            if self.lent.get(&r).is_some_and(|s| s.contains(&root)) {
+                            if self
+                                .lent
+                                .get(&r)
+                                .is_some_and(|s| s.iter().any(|p| p.root == root))
+                            {
                                 self.copies.insert(self.off + v.span.start);
                                 parked.push((r, self.lent.remove(&r), self.frozen.remove(&r)));
                             }
                         }
                     }
                 }
-                let (held, lent) = self.fn_call(f, body.span, recv.as_deref(), args, fx);
+                // A cell lent at a literal key is that element of the receiver, apart from its
+                // other literal keys (R05.8.2).
+                let keyed = match (recv.as_deref(), &args[..]) {
+                    (
+                        Some(TArg::Mut(rv)),
+                        [TArg::Value(
+                            k @ TExpr {
+                                kind: TK::Int(_), ..
+                            },
+                        )],
+                    ) => Some(TArg::Mut(TExpr {
+                        kind: TK::Slot(Box::new(rv.clone()), Box::new(k.clone())),
+                        ty: rv.ty.clone(),
+                        span: rv.span,
+                    })),
+                    _ => None,
+                };
+                let recv = keyed.as_ref().or(recv.as_deref());
+                let (held, lent) = self.fn_call(f, body.span, recv, args, fx);
                 let who = self.d.f(f.decl).name.clone();
                 self.bind(*var);
                 let item = self.root(*var);

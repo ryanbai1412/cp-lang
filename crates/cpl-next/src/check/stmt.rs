@@ -451,6 +451,9 @@ impl<'a> Cx<'a> {
                 out.push(TStmt::Assign(place, v));
             }
             StmtKind::Expr(e) => {
+                if self.cell_method(e, out) {
+                    return;
+                }
                 let v = self.expr(e, None);
                 out.push(TStmt::Expr(v));
             }

@@ -192,6 +192,72 @@ impl Cx<'_> {
             },
         });
     }
+    /// `g[i].m(args)` as a statement, `m` a method that writes its receiver: the indices, then
+    /// the arguments, are read once; then `g`'s `IndexedMut` lends cell `i` and `m` runs on it
+    /// (R12.4.6). False, with nothing done, for any other statement.
+    pub(super) fn cell_method(&mut self, e: &ast::Expr, out: &mut Vec<TStmt>) -> bool {
+        let ExprKind::Call { callee, args } = &e.kind else {
+            return false;
+        };
+        let ExprKind::Field { base, name } = &callee.kind else {
+            return false;
+        };
+        let base = unparen(base);
+        if !matches!(&base.kind, ExprKind::Index { indices, .. } if indices.len() == 1) {
+            return false;
+        }
+        let seen = self.errors.len();
+        let probe = self.expr(base, None);
+        self.errors.truncate(seen);
+        let rt = self.shallow(&probe.ty);
+        let writes = match self.d.lookup_member(&rt, &name.text) {
+            Some(decls::Member::Method(m, ..)) => {
+                self.d.f(m).self_mode == SelfMode::Mut || self.d.writes_cache(m)
+            }
+            _ => false,
+        };
+        if !writes {
+            return false;
+        }
+        let target = self.hoist_indices(base, out);
+        let args: Vec<ast::Arg> = (args.iter())
+            .map(|a| match a.value.kind {
+                ExprKind::Lambda { .. } => a.clone(),
+                _ if a.mutable => a.clone(),
+                _ => ast::Arg {
+                    value: self.hoist(&a.value, None, "$arg", out),
+                    ..a.clone()
+                },
+            })
+            .collect();
+        let ExprKind::Index { base: b, indices } = &target.kind else {
+            return false;
+        };
+        let (name, span, callee_span) = (name.clone(), e.span, callee.span);
+        self.through_cell(
+            (b, &indices[0]),
+            target.span,
+            out,
+            Box::new(move |this, cell, out| {
+                let call = ast::Expr {
+                    kind: ExprKind::Call {
+                        callee: Box::new(ast::Expr {
+                            kind: ExprKind::Field {
+                                base: Box::new(cell),
+                                name,
+                            },
+                            span: callee_span,
+                        }),
+                        args,
+                    },
+                    span,
+                };
+                let v = this.expr(&call, None);
+                out.push(TStmt::Expr(v));
+            }),
+        );
+        true
+    }
     /// `target` with each of its indices, outer first, read once into a temporary before any
     /// cell is lent, so `p[r] = p[p[r]]` reads `p` before writing it (R12.4.6).
     pub(super) fn hoist_indices(&mut self, target: &ast::Expr, out: &mut Vec<TStmt>) -> ast::Expr {

@@ -99,6 +99,7 @@ core-02/char-of-non-ascii-traps-every-build.cp
 core-02/char-of-non-ascii-traps.cp
 core-02/condition-is-bool.cp
 core-02/count-typed-by-range.cp
+core-02/counted-array-comprehension.cp
 core-02/ctor-missing-field.cp
 core-02/distinct-fn-names.cp
 core-02/domain-index-only.cp
@@ -203,15 +204,18 @@ core-04/dom-walk-rev.cp
 core-04/domain-drop-first.cp
 core-04/domain-is-its-range.cp
 core-04/empty-array-literal-short-rejected.cp
+core-04/empty-list-fills-every-cell.cp
 core-04/first-is-optional.cp
 core-04/from-ord-after-a-checked-one-still-traps.cp
 core-04/g3-widen-keeps-indices.cp
 core-04/generic-key-callback-indexes-source.cp
 core-04/h-map-keeps-keys.cp
 core-04/keys-of-domain-keyed-array.cp
+core-04/list-fill-copies-per-key.cp
 core-04/list-literal-cell-outside-let-range-traps.cp
 core-04/list-literal-cell-outside-param-range-traps.cp
 core-04/list-literal-for-narrow-param.cp
+core-04/list-literal-of-element-type-fills.cp
 core-04/list-literal-short-for-named-domain-rejected.cp
 core-04/literal-outside-domain.cp
 core-04/nested-slice-below-view-start-traps.cp
@@ -273,6 +277,8 @@ core-05/heap-row-lend-blocks-push.cp
 core-05/int-element-goes-into-a-struct-field.cp
 core-05/lambda-return-is-local.cp
 core-05/let-binds-once.cp
+core-05/let-bound-element-blocks-its-write.cp
+core-05/let-bound-element-lends-only-it.cp
 core-05/let-cannot-assign.cp
 core-05/local-var-captured-by-reference.cp
 core-05/loop-item-not-kept.cp
@@ -671,6 +677,7 @@ next/n_bits_04_and_to_the_lowest_pattern_traps.cp
 next/n_bound_01_bare_bound_learns_arguments.cp
 next/n_cell_01_indexed_mut_bound.cp
 next/n_cell_02_write_through_indexed_mut.cp
+next/n_cell_03_method_on_cell.cp
 next/n_enum_01_values_and_order.cp
 next/n_index_01_through_indexed.cp
 next/n_index_02_range_keyed_by_values.cp
