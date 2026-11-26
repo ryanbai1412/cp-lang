@@ -287,14 +287,14 @@ argument that can go out of sync with `a.len`.
 <!-- signatures: std/matrix.cp -->
 ```cp
 struct Mat<T>
-    fn zeros(rows: Len, cols: Len) -> Mat<T>    // O(n m)
-    fn identity(n: Len) -> Mat<T>               // O(n^2)
-    fn of(rows: List<List<T>>) -> Mat<T>        // O(n m)
-    fn get(self, r: Int, c: Int) -> T           // O(1)
+    fn zeros(rows: Len, cols: Len) -> Mat<T>        // O(n m)
+    fn identity(n: Len) -> Mat<T>                   // O(n^2)
+    fn of(rows: List<List<T>>) -> Mat<T>            // O(n m)
+    fn get(self, r: Int, c: Int) -> T               // O(1)
     fn at(mut self, r: Int, c: Int) -> lends mut T  // O(1); writable cell: m.at(i, j) += x
-    fn pow(a, e: Int) -> Mat<T>                 // O(n^3 log e); square matrix, e >= 0
-    fn mul_vec(self, v: List<T>) -> List<T>     // O(n m); A * v
-    fn transpose(self) -> Mat<T>                // O(n m)
+    fn pow(a, e: Int) -> Mat<T>                     // O(n^3 log e); square matrix, e >= 0
+    fn mul_vec(self, v: List<T>) -> List<T>         // O(n m); A * v
+    fn transpose(self) -> Mat<T>                    // O(n m)
     fn product<S>(n: 0.., over: S = Semiring(+, *)) -> Monoid<Mat<T>>  // O(n^2); monoid for SegTree<D, Mat<T>>
     // impls: Add, Sub, Neg, Mul (ikj order, skipping zero entries)
 

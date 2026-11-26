@@ -59,8 +59,8 @@ pub trait Idempotent<T>: Op<T>         // op(a, a) == a
 pub trait Selective<T>: Idempotent<T>  // op(a, b) is a or b
 
 // Monoids and groups are values, not traits (decisions 26.4, 42.6):
-pub struct Monoid<T>(pub id: T, op: (T, T) -> T, rev: T -> T = unreversed)              // Op + HasId
-pub struct Group<T>(id: T, op: (T, T) -> T, inv: T -> T)  // Op + HasId + HasInv
+pub struct Monoid<T>(pub id: T, op: (T, T) -> T, rev: T -> T = unreversed)  // Op + HasId
+pub struct Group<T>(id: T, op: (T, T) -> T, inv: T -> T)                    // Op + HasId + HasInv
 ```
 
 `op(a, b)` puts `a` on the left. Every fold runs left to right in domain
