@@ -217,17 +217,19 @@ impl<'a> Lowerer<'a> {
         span: Span,
     ) -> Expr {
         // R06.1.6: of the module's overloads of the name, the one the labels fit.
-        let keys = std::iter::once(name.text.clone()).chain(
-            (2..)
-                .map(|k| cpl_check::overload_key(&name.text, k))
-                .take_while(|k| self.mod_syms[target_mod].contains_key(k)),
-        );
-        let fits: Vec<Sym> = (keys.filter_map(|k| self.mod_syms[target_mod].get(&k).copied()))
-            .filter(|&s| self.sym_labels_fit(s, args))
-            .collect();
+        let syms = &self.mod_syms[target_mod];
+        let first = syms.get(&name.text).copied();
+        let mut fits: Vec<Sym> = first.into_iter().collect();
+        for k in 2.. {
+            let Some(&s) = syms.get(&cpl_check::overload_key(&name.text, k)) else {
+                break;
+            };
+            fits.push(s);
+        }
+        fits.retain(|&s| self.sym_labels_fit(s, args));
         let sym = match fits.as_slice() {
             [one] => Some(*one),
-            _ => self.mod_syms[target_mod].get(&name.text).copied(),
+            _ => first,
         };
         match sym {
             Some(Sym::Fn(id)) => self.user_call(id, None, args, span),

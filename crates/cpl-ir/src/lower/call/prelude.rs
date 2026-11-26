@@ -755,11 +755,19 @@ impl<'a> Lowerer<'a> {
             ("Int", Ty::Float) => {
                 self.report(span, msgs::ir::TYPE_MISMATCH_INT_OF_AN_F64, &[]);
                 // `Int(sqrt(n))`, C++'s `(int)sqrt(n)`: the exact root is `n.isqrt`.
-                let root = match &value.kind {
-                    ExprKind::Intrinsic(Prim::Sqrt, args)
-                        if args.first().is_some_and(|a| {
-                            a.ty == Ty::Int || matches!(a.kind, ExprKind::Cast(Cast::IntToFloat, _))
-                        }) =>
+                let operand = match &value.kind {
+                    ExprKind::Call(id, args) if self.is_fn_of(*id, "std.math", "sqrt") => {
+                        match args.first() {
+                            Some(Arg::Value(a)) => Some(a),
+                            _ => None,
+                        }
+                    }
+                    _ => None,
+                };
+                let root = match operand {
+                    Some(a)
+                        if a.ty == Ty::Int
+                            || matches!(a.kind, ExprKind::Cast(Cast::IntToFloat, _)) =>
                     {
                         super::float_fn::sqrt_operand(&self.source(span))
                     }

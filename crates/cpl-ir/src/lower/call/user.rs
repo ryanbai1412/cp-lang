@@ -241,6 +241,14 @@ impl<'a> Lowerer<'a> {
             .copied()
     }
 
+    /// Whether `id` is `module`'s fn `name`, or an instance of it.
+    pub(in crate::lower) fn is_fn_of(&self, id: FnId, module: &str, name: &str) -> bool {
+        let sig = &self.sigs[id];
+        sig.decl.name.text == name
+            && (self.mods.iter().flat_map(|a| a.modules()))
+                .any(|m| m.name == module && self.path_to_mod.get(&m.path) == Some(&sig.mod_id))
+    }
+
     pub(in crate::lower) fn call_fn_val(
         &mut self,
         callee: Expr,
