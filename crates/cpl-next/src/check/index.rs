@@ -74,13 +74,15 @@ impl Cx<'_> {
             }
             _ => literal_cut(base),
         };
-        if keys.is_some_and(|(lo, hi)| lo <= v && v < hi) {
+        // Only a view whose keys are known here can prove a literal outside them; any other
+        // view's keys are checked as it runs (R07.4.5).
+        if keys.is_none_or(|(lo, hi)| lo <= v && v < hi) {
             return;
         }
         self.err(
             key.span,
             format!(
-                "{}: `[{v}]` reads key {v}, which is not proven one of the view's keys: write `.nth({v})` for its element {v}, or index the source for its key {v}",
+                "{}: `[{v}]` reads key {v}, which is not one of the view's keys: write `.nth({v})` for its element {v}, or index the source for its key {v}",
                 cpl_diag::codes::NOT_INDEXABLE.0
             ),
         );

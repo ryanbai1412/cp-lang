@@ -762,6 +762,7 @@ next/n_slice_06_slicing_in_a_loop_is_constant_time.cp
 next/n_slice_07_range_cut_is_a_sub_range.cp
 next/n_slice_08_range_cut_outside_traps.cp
 next/n_slice_09_lent_field_walks_its_source.cp
+next/n_slice_10_literal_key_of_unknown_view_is_checked_at_run_time.cp
 next/n_u64_01_wraps_and_compares_unsigned.cp
 next/n_u64_02_int_of_a_large_u64_traps.cp
 next/n_u64_03_division_by_zero_traps.cp

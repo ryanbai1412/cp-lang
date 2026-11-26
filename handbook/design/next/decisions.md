@@ -26,6 +26,7 @@ means evidence is still missing.
 | 16 | A generator that calls itself is allowed and costs one indirect call per item. | working | slice t19 |
 | 17 | Two lends in one call end last-lent first. | working | the only order a recursive lender can give; today's compiler does the opposite |
 | 18 | Pushing a function into a list of functions received from a caller is an error for now. | open | slice t16; the alternative shares one set across callers |
+| 44 | A literal key into a view is E0305 only when the checker knows the view's keys (today a `s[lit..lit]` cut); any other view checks the key as it runs (R0101). | working | R07.4.5; core-07/take-drop-clamped, core-04/slice-drop-keeps-source-keys-traps |
 
 ## Engines and tools
 
