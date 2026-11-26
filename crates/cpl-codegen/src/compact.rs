@@ -230,9 +230,12 @@ fn numbered(name: &str) -> bool {
 }
 
 /// A name the emitter makes up, `cpl_tie`: no library's member starts `cpl_`.
+/// The program's entry, `cpl_main`, keeps its name, so a reader finds it.
 fn ours(name: &str) -> bool {
-    name.strip_prefix("cpl_")
-        .is_some_and(|rest| !rest.is_empty())
+    name != "cpl_main"
+        && name
+            .strip_prefix("cpl_")
+            .is_some_and(|rest| !rest.is_empty())
 }
 
 /// An item of an imported module: `m1_MaxSub`, the module's number before the name.
@@ -470,6 +473,12 @@ mod tests {
         assert!(needs_space("a", "b"));
         assert!(!needs_space("", "b"));
         assert!(!needs_space("a", ""));
+    }
+
+    #[test]
+    fn the_emitters_names_shorten_but_the_entry_keeps_its_own() {
+        assert!(ours("cpl_tie") && ours("cpl_go"));
+        assert!(!ours("cpl_main") && !ours("cpl_") && !ours("main"));
     }
 
     #[test]
