@@ -205,6 +205,8 @@ core-04/pos-int-is-written-value.cp
 core-04/position-ord-counts-from-zero.cp
 core-04/range-arg-is-domain-when-nth-used.cp
 core-04/range-bound-from-capped-lets.cp
+core-04/range-key-outside-traps.cp
+core-04/range-nth-positional.cp
 core-04/range-param-argument-traps.cp
 core-04/range-param-method-argument-traps.cp
 core-04/range-param-method-later-argument-unchecked.cp
@@ -331,6 +333,7 @@ core-06/shared-state-above-multitest-carries-over.cp
 core-06/shared-var-carries-across-cases.cp
 core-06/two-closures-share-var.cp
 core-07/array-equals-list.cp
+core-07/computed-negative-key-traps.cp
 core-07/domain-rev-walks-backwards.cp
 core-07/indexed-builtins.cp
 core-07/map-calls-per-read.cp
@@ -365,6 +368,7 @@ core-09/assert-after-64k-of-output-prints-it-first.cp
 core-09/assert-passes.cp
 core-09/assert-trap.cp
 core-09/checked-build-calls-user-fn-once.cp
+core-09/checked-index-trap.cp
 core-09/checked-valid-program-runs.cp
 core-09/checks-call-no-user-code.cp
 core-09/division-by-zero-trap.cp
@@ -634,8 +638,11 @@ next/n_bits_01_shifts_powers_and_not.cp
 next/n_bits_02_shift_by_64_traps.cp
 next/n_bits_03_shl_past_int_traps.cp
 next/n_bits_04_and_to_the_lowest_pattern_traps.cp
+next/n_bound_01_bare_bound_learns_arguments.cp
 next/n_enum_01_values_and_order.cp
 next/n_index_01_through_indexed.cp
+next/n_index_02_range_keyed_by_values.cp
+next/n_index_03_list_key_outside_traps.cp
 next/n_u64_01_wraps_and_compares_unsigned.cp
 next/n_u64_02_int_of_a_large_u64_traps.cp
 next/n_u64_03_division_by_zero_traps.cp
@@ -680,6 +687,7 @@ next/t01_basic.cp
 next/t02_fnfield.cp
 next/t03_list_of_fns.cp
 next/t06_overflow.cp
+next/t07_index.cp
 next/t08_div.cp
 next/t09_return_fn.cp
 next/t10_dsu.cp
@@ -724,6 +732,7 @@ std-opt/a-niche-packed-field-lends-to-a-read-only-param.cp
 std-range/len-param-past-2-31-is-a-compile-error.cp
 std-range/len-param-past-2-31-traps-at-the-call.cp
 std-range/len-param-takes-a-len.cp
+std-seq/zip-exact-mixed-element-types.cp
 std-strings/case-trim.cp
 std-strings/chars.cp
 std-strings/hash-token-is-a-std-impl-per-type.cp
@@ -735,9 +744,15 @@ traits/Hashable/HashVal--hash_token.cp
 traits/IndexOp/Disjoint--at.cp
 traits/IndexOp/Disjoint--len.cp
 traits/Indexed/Array--at.cp
+traits/Indexed/Array--keys.cp
 traits/Indexed/List--at.cp
+traits/Indexed/List--keys.cp
 traits/Indexed/Mapped--at.cp
+traits/Indexed/Mapped--keys.cp
+traits/Indexed/Range--at.cp
+traits/Indexed/Range--keys.cp
 traits/Indexed/Str--at.cp
+traits/Indexed/Str--keys.cp
 traits/IndexedMut/Array--at.cp
 traits/IndexedMut/List--at.cp
 traits/IndexedMut/Str--at.cp
@@ -751,8 +766,10 @@ traits/Seq/Range--iter.cp
 traits/Seq/Str--iter.cp
 traits/Sized/Array--len.cp
 traits/Sized/List--len.cp
+traits/Sized/Mapped--len.cp
 traits/Sized/Range--len.cp
 traits/Sized/Str--len.cp
+traits/Sized/Zipped--len.cp
 widths/add-assign-traps-0.cp
 widths/add-assign-traps-1.cp
 widths/add-assign-traps-2.cp

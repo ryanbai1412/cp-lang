@@ -39,6 +39,8 @@ pub enum Intr {
     RawNew,
     RawGet,
     RawSet,
+    /// A key check std makes before it reads: traps R0101 unless its operand is true (R07.2.17).
+    CheckKey,
     ReadInt,
     /// Whether the input has another token.
     InputLeft,
@@ -61,6 +63,7 @@ impl Intr {
             "raw_new" => Intr::RawNew,
             "raw_get" => Intr::RawGet,
             "raw_set" => Intr::RawSet,
+            "key_check" => Intr::CheckKey,
             _ => return None,
         })
     }
@@ -88,6 +91,7 @@ impl Intr {
                 | BitXor
                 | RawGet
                 | RawSet
+                | CheckKey
                 | RawNew
                 | ReadInt
                 | FromU64

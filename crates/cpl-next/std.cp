@@ -6,6 +6,8 @@ use std.seq.{Keyed, Positional, Indexed}
 fn raw_empty<T>() -> Raw<T> = @intrinsic("raw_empty")
 fn raw_new<T>(n: Int, fill: T) -> Raw<T> = @intrinsic("raw_new")
 fn raw_get<T>(r: Raw<T>, i: Int) -> T = @intrinsic("raw_get")
+/// Traps R0101 unless `ok`: a read at a key the sequence doesn't have (R07.2.17).
+fn check_key(ok: Bool) = @intrinsic("key_check")
 fn raw_set<T>(mut r: Raw<T>, i: Int, x: T) = @intrinsic("raw_set")
 
 struct List<T>:
@@ -23,11 +25,11 @@ struct List<T>:
         n
 
     fn get(self, i: Int) -> T:
-        assert 0 <= i and i < n, "index out of range"
+        check_key(0 <= i and i < n)
         raw_get(buf, i)
 
     fn set(mut self, i: Int, x: T):
-        assert 0 <= i and i < n, "index out of range"
+        check_key(0 <= i and i < n)
         raw_set(mut buf, i, x)
 
     fn each(self) -> yields T:
@@ -319,3 +321,19 @@ impl<D, T> Positional<T> for Array<D, T>:
 impl<D, T> Indexed<D, T> for Array<D, T>:
     fn at(self, i: D) -> T = self.get(i)
     @get fn keys(self) -> Range<D> = D
+/// A range is keyed by its own values, so `(2..5)[3] == 3`, and has no source to lend (R07.2.15).
+impl<D> Keyed<D, D> for Range<D>:
+    fn items(self) -> yields (D, D):
+        for i in 0..self.n:
+            let k = self.lo + i * self.step
+            yield (D.nth(k), D.nth(k))
+impl<D> Positional<D> for Range<D>:
+    fn nth(self, k: Int) -> D:
+        check_key(0 <= k and k < self.n)
+        D.nth(self.lo + k * self.step)
+impl<D> Indexed<D, D> for Range<D>:
+    fn at(self, x: D) -> D:
+        let d = x.ord - self.lo
+        check_key(self.n > 0 and d % self.step == 0 and 0 <= d / self.step and d / self.step < self.n)
+        x
+    @get fn keys(self) -> Range<D> = self

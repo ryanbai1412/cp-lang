@@ -121,6 +121,7 @@ static inline cpl_raw<cpl_char> cpl_raw_text(const char* s, size_t n) {
     for (size_t i = 0; i < n; i++) r[i].code = (uint8_t)s[i];
     return r;
 }
+static inline cpl_unit cpl_check_key(bool ok) { if (!ok) cpl_trap("R0101", "key outside the sequence"); return {}; }
 template <class T> static inline T cpl_get(const cpl_raw<T>& r, int64_t i) {
     if (i < 0 || (size_t)i >= r.size()) cpl_trap("R0101", "read outside storage");
     return r[(size_t)i];
@@ -588,6 +589,7 @@ impl Emit<'_> {
                     Intr::RawNew => format!("cpl_raw_new({}, {})", a[0], a[1]),
                     Intr::RawGet => format!("cpl_get({}, {})", a[0], a[1]),
                     Intr::RawSet => format!("cpl_set({}, {}, {})", a[0], a[1], a[2]),
+                    Intr::CheckKey => format!("cpl_check_key({})", a[0]),
                     Intr::ReadInt => "cpl_read()".to_string(),
                     Intr::InputLeft => "cpl_input_left()".to_string(),
                     Intr::Unset => format!("{}{{}}", self.names[&e.ty]),

@@ -744,9 +744,6 @@ impl<'a> Cx<'a> {
                     // Every impl's fn, or the trait's default, may be the one that runs.
                     self.reach(m);
                     let fd = self.d.f(m);
-                    if fd.getter && matches!(fd.body, cpl_syntax::ast::FnBody::None) {
-                        self.err(span, "slice: a field requirement (`@get` with no body)");
-                    }
                     let mut tys = vec![rt.clone()];
                     tys.extend(tr.args.iter().cloned());
                     let sub = Subst {

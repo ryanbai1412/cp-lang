@@ -369,8 +369,34 @@ impl Decls {
             }
         }
         let mut binds = vec![None; im.generics.len()];
-        fit(&im.for_, t, &mut binds, &im.domains)
-            .then(|| binds.into_iter().map(|b| b.unwrap_or(Ty::Error)).collect())
+        if !fit(&im.for_, t, &mut binds, &im.domains) {
+            return None;
+        }
+        // A parameter only a bound names (`D` of `Mapped<S: Indexed<D, T>, T, U>`) is what
+        // the impl meeting that bound fixes it to (R08.1.2).
+        loop {
+            let unbound = binds.iter().filter(|b| b.is_none()).count();
+            for (i, r) in &im.bounds {
+                let Some(bt) = binds[*i].clone() else {
+                    continue;
+                };
+                let met = self.impls.iter().filter(|m| m.trait_.tr == r.tr);
+                let Some(args) = met.into_iter().find_map(|m| {
+                    let b = self.impl_args(m, &bt)?;
+                    let sub = Subst { tys: &b, sets: &[] };
+                    Some(m.trait_.args.iter().map(|a| sub.ty(a)).collect::<Vec<_>>())
+                }) else {
+                    continue;
+                };
+                for (p, a) in r.args.iter().zip(&args) {
+                    fit(p, a, &mut binds, &im.domains);
+                }
+            }
+            if unbound == 0 || binds.iter().filter(|b| b.is_none()).count() == unbound {
+                break;
+            }
+        }
+        Some(binds.into_iter().map(|b| b.unwrap_or(Ty::Error)).collect())
     }
 }
 
@@ -1581,6 +1607,31 @@ fn add_fn(
     let mut generics = outer.to_vec();
     generics.extend(f.generics.iter().map(|g| g.text.clone()));
     let names = d.views[m.0].clone();
+    // A bound that leaves a trait's arguments out (`S: Indexed`) takes each as a parameter of
+    // its own, fixed when the bound is met at a call (R08.1.2). Its name `S.1` can't be written.
+    let mut hidden = Vec::new();
+    for b in &f.bounds {
+        for (j, t) in b.traits.iter().enumerate() {
+            let TypeKind::Named { name, args } = &t.kind else {
+                continue;
+            };
+            let Some(Named::Trait(tr)) = names.get(&name.text).copied() else {
+                continue;
+            };
+            let n = d.traits[tr.0].defaults.len();
+            if args.len() < n && d.traits[tr.0].defaults[args.len()].is_none() {
+                let k = hidden
+                    .last()
+                    .map_or(generics.len(), |(_, ks): &(_, std::ops::Range<usize>)| {
+                        ks.end
+                    });
+                hidden.push(((b.name.text.clone(), j), k..k + n - args.len()));
+            }
+        }
+    }
+    for (_, ks) in &hidden {
+        generics.extend(ks.clone().map(|k| format!("{k}.hidden")));
+    }
     let doms = d.doms_in(m);
     let aliases = d.aliases.clone();
     let sets = d.struct_sets.clone();
@@ -1669,8 +1720,12 @@ fn add_fn(
         let Some(i) = generics.iter().position(|g| *g == b.name.text) else {
             continue;
         };
-        for t in &b.traits {
-            if let Some(r) = trait_ref(&mut cx, t, &mut errors) {
+        for (j, t) in b.traits.iter().enumerate() {
+            if let Some(mut r) = trait_ref(&mut cx, t, &mut errors) {
+                let key = (b.name.text.clone(), j);
+                if let Some((_, ks)) = hidden.iter().find(|(h, _)| *h == key) {
+                    r.args.extend(ks.clone().map(Ty::Param));
+                }
                 bounds.push((i, d.with_defaults(r, &Ty::Param(i))));
             }
         }

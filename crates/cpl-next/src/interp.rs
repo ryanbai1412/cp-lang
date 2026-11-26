@@ -610,6 +610,18 @@ impl<'a> Machine<'a> {
                 }
                 V::Unit
             }
+            Intr::CheckKey => {
+                let Arg::Value(a) = &args[0] else {
+                    return broken("lent operand");
+                };
+                match self.expr(a, fp)? {
+                    V::Bool(true) => V::Unit,
+                    V::Bool(false) => {
+                        return trap(codes::INDEX_OUT_OF_RANGE, "key outside the sequence")
+                    }
+                    _ => return broken("a key check of a non-Bool"),
+                }
+            }
             Intr::InputLeft => V::Bool(!self.input.as_slice().is_empty()),
             Intr::Unset => V::Unit,
             Intr::ToU64 => V::U64(self.int(&args[0], fp)? as u64),
