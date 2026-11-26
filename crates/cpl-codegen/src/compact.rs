@@ -230,9 +230,14 @@ fn numbered(name: &str) -> bool {
 }
 
 /// A name the emitter makes up, `cpl_tie`: no library's member starts `cpl_`.
-/// The program's entry, `cpl_main`, keeps its name, so a reader finds it.
+/// The names `cpl explain` points a reader at keep theirs: the entry,
+/// `cpl_main`, and each closure a call goes to, `cpl_fn2`.
 fn ours(name: &str) -> bool {
-    name != "cpl_main"
+    let explained = name == "cpl_main"
+        || name
+            .strip_prefix("cpl_fn")
+            .is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()));
+    !explained
         && name
             .strip_prefix("cpl_")
             .is_some_and(|rest| !rest.is_empty())
@@ -476,9 +481,10 @@ mod tests {
     }
 
     #[test]
-    fn the_emitters_names_shorten_but_the_entry_keeps_its_own() {
+    fn the_emitters_names_shorten_but_the_explained_ones_keep_theirs() {
         assert!(ours("cpl_tie") && ours("cpl_go"));
         assert!(!ours("cpl_main") && !ours("cpl_") && !ours("main"));
+        assert!(!ours("cpl_fn2") && ours("cpl_fnx"));
     }
 
     #[test]
