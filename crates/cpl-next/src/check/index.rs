@@ -97,7 +97,67 @@ impl Cx<'_> {
         if key.is_some_and(|k| self.is_range(&k)) {
             return None;
         }
-        self.d.index_fns.first().copied()
+        let d = self.d;
+        d.index_fns
+            .iter()
+            .copied()
+            .find(|f| d.f(*f).params.len() == 1)
+    }
+    /// `s[lo..]`, `s[..hi]`, `s[..=hi]` and `s[..]`: the `@index` fn that takes the two ends, each
+    /// optional, and whether `hi` is in (R07.4.6).
+    pub(super) fn open_slice(
+        &mut self,
+        s: TExpr,
+        (lo, hi, through): (Option<&ast::Expr>, Option<&ast::Expr>, bool),
+        span: Span,
+    ) -> TExpr {
+        let d = self.d;
+        let Some(f) = d
+            .index_fns
+            .iter()
+            .copied()
+            .find(|f| d.f(*f).params.len() == 3)
+        else {
+            self.err(
+                span,
+                "slice: a slice with an end left out needs core's `@index` fn of the ends",
+            );
+            return TExpr {
+                kind: TK::Error,
+                ty: Ty::Error,
+                span,
+            };
+        };
+        let end = |e: Option<&ast::Expr>| ast::Arg {
+            name: None,
+            mutable: false,
+            value: e.cloned().unwrap_or(ast::Expr {
+                kind: ExprKind::None,
+                span,
+            }),
+        };
+        let args = [
+            end(lo),
+            end(hi),
+            ast::Arg {
+                name: None,
+                mutable: false,
+                value: ast::Expr {
+                    kind: ExprKind::Bool(through),
+                    span,
+                },
+            },
+        ];
+        let f = self.fnref(f, Vec::new(), Vec::new());
+        if let Some(st) = &d.f(f.decl).self_ty {
+            let st = Subst {
+                tys: &f.targs,
+                sets: &f.sets,
+            }
+            .ty(st);
+            self.unify(&s.ty, &st);
+        }
+        self.call_fn(f, Some(TArg::Value(s)), &args, span, None)
     }
     /// `s[r]` as a call of the `@index` fn `f`, whose `self` and key it fits to `s` and `r`.
     pub(super) fn index_call(&mut self, f: FnId, s: TExpr, r: TExpr, span: Span) -> TExpr {
@@ -131,14 +191,14 @@ impl Cx<'_> {
 /// What `s[i]` calls on an `Indexed` receiver: the trait's read (R12.4.5).
 const INDEX_READ: &str = "at";
 
-fn unparen(mut e: &ast::Expr) -> &ast::Expr {
+pub(super) fn unparen(mut e: &ast::Expr) -> &ast::Expr {
     while let ExprKind::Paren(inner) = &e.kind {
         e = inner;
     }
     e
 }
 
-/// The keys `lo..hi` of `s[lo..hi]` or `s[lo..=hi]` cut with literal ends.
+/// The keys `lo..hi` of `s[lo..hi]` or `s[lo..=hi]` cut with literal or left-out ends.
 pub(super) fn literal_cut(e: &ast::Expr) -> Option<(i128, i128)> {
     let ExprKind::Index { indices, .. } = &unparen(e).kind else {
         return None;
@@ -147,16 +207,21 @@ pub(super) fn literal_cut(e: &ast::Expr) -> Option<(i128, i128)> {
         return None;
     };
     let ExprKind::Range {
-        lo: Some(lo),
-        hi: Some(hi),
+        lo,
+        hi,
         inclusive,
         step: None,
     } = &unparen(r).kind
     else {
         return None;
     };
-    match (&unparen(lo).kind, &unparen(hi).kind) {
-        (ExprKind::Int(a), ExprKind::Int(b)) => Some((*a, if *inclusive { b + 1 } else { *b })),
-        _ => None,
-    }
+    // An end left out is unbounded on that side: only the written end limits a literal key.
+    let lit = |e: &Option<Box<ast::Expr>>, open: i128| match e.as_deref().map(|e| &unparen(e).kind)
+    {
+        None => Some(open),
+        Some(ExprKind::Int(v)) => Some(*v),
+        Some(_) => None,
+    };
+    let (a, b) = (lit(lo, i128::MIN)?, lit(hi, i128::MAX)?);
+    Some((a, if *inclusive && hi.is_some() { b + 1 } else { b }))
 }

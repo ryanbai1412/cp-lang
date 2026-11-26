@@ -193,6 +193,7 @@ core-04/d1-literal-slice-index-lint.cp
 core-04/d1-literal-slice-index-traps.cp
 core-04/d2-counter-loop-traps.cp
 core-04/d2-slice-loop-over-keys.cp
+core-04/d3-relative-by-variable.cp
 core-04/dom-at.cp
 core-04/dom-call-traps.cp
 core-04/dom-count.cp
@@ -213,6 +214,7 @@ core-04/list-literal-cell-outside-param-range-traps.cp
 core-04/list-literal-for-narrow-param.cp
 core-04/list-literal-short-for-named-domain-rejected.cp
 core-04/literal-outside-domain.cp
+core-04/nested-slice-below-view-start-traps.cp
 core-04/nth-past-end-traps.cp
 core-04/pos-int-is-written-value.cp
 core-04/position-ord-counts-from-zero.cp
@@ -231,6 +233,7 @@ core-04/reversed-range-empty.cp
 core-04/runtime-domain-literal-between-traps.cp
 core-04/runtime-domain-literal-past-max.cp
 core-04/scalar-fill.cp
+core-04/slice-key-outside-view-traps.cp
 core-05/a-user-method-on-self-does-not-change-its-receiver.cp
 core-05/cache-field-method-call-grows.cp
 core-05/cache-field-own-method-writes.cp
@@ -453,6 +456,10 @@ core-12/lent-param-escapes.cp
 core-12/move-into-struct.cp
 core-12/move-on-let.cp
 core-12/sized-len.cp
+core-12/view-at-takes-a-source-key.cp
+core-12/view-at-zero-is-not-a-key.cp
+core-12/view-nth-counts-from-view-start.cp
+core-12/view-nth-past-view-traps.cp
 core-12/was-on-a-user-item-runs.cp
 core-12/word-on-a-user-item-runs.cp
 core-13/big-runtime-array.cp
@@ -668,6 +675,8 @@ next/n_index_02_range_keyed_by_values.cp
 next/n_index_03_list_key_outside_traps.cp
 next/n_slice_01_range_gives_view.cp
 next/n_slice_02_range_outside_traps.cp
+next/n_slice_03_open_ends.cp
+next/n_slice_04_open_end_outside_traps.cp
 next/n_u64_01_wraps_and_compares_unsigned.cp
 next/n_u64_02_int_of_a_large_u64_traps.cp
 next/n_u64_03_division_by_zero_traps.cp
@@ -776,8 +785,11 @@ traits/Indexed/Mapped--at.cp
 traits/Indexed/Mapped--keys.cp
 traits/Indexed/Range--at.cp
 traits/Indexed/Range--keys.cp
+traits/Indexed/Slice--at.cp
+traits/Indexed/Slice--keys.cp
 traits/Indexed/Str--at.cp
 traits/Indexed/Str--keys.cp
+traits/Indexed/Zipped--keys.cp
 traits/IndexedMut/Array--at.cp
 traits/IndexedMut/List--at.cp
 traits/IndexedMut/Str--at.cp
@@ -785,16 +797,21 @@ traits/Op/Group--folds.cp
 traits/Op/Group--lift.cp
 traits/Op/Group--op.cp
 traits/Positional/Mapped--nth.cp
+traits/Positional/Rebased--nth.cp
+traits/Positional/Slice--nth.cp
 traits/Seq/Array--iter.cp
 traits/Seq/Domain--iter.cp
 traits/Seq/List--iter.cp
 traits/Seq/Range--iter.cp
+traits/Seq/Slice--iter.cp
 traits/Seq/Str--iter.cp
 traits/Sized/Array--len.cp
 traits/Sized/List--len.cp
 traits/Sized/Mapped--len.cp
 traits/Sized/Range--len.cp
+traits/Sized/Rebased--len.cp
 traits/Sized/Rev--len.cp
+traits/Sized/Slice--len.cp
 traits/Sized/Str--len.cp
 traits/Sized/Zipped--len.cp
 widths/add-assign-traps-0.cp

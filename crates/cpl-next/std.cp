@@ -356,3 +356,19 @@ impl<D> Indexed<D, D> for Range<D>:
     let i = d / k.step
     check_key(0 <= d and d % k.step == 0 and i + r.n <= k.n and (r.n <= 1 or r.step == k.step))
     Slice(self, i, i + r.n)
+/// `s[lo..]`, `s[..hi]`, `s[..=hi]` and `s[..]`: an end left out is that end of `s`'s keys; traps
+/// R0101 unless the ends are keys of `s` in order, or its end (R07.4.6).
+@index fn slice_ends<S: Indexed<D, T>, D, T>(self: S, lo: ?D, hi: ?D, through: Bool) -> Slice<S>:
+    let k = self.keys
+    var i = 0
+    var j = k.n
+    if let x = lo:
+        let d = x.ord - k.lo
+        check_key(0 <= d and d % k.step == 0)
+        i = d / k.step
+    if let y = hi:
+        let d = y.ord - k.lo
+        check_key(0 <= d and d % k.step == 0)
+        j = d / k.step + (if through: 1 else: 0)
+    check_key(i <= j and j <= k.n)
+    Slice(self, i, j)

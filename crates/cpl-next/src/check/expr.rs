@@ -1190,6 +1190,18 @@ impl<'a> Cx<'a> {
             ExprKind::Field { base, name } => self.member(base, name, None, span, want),
             ExprKind::Index { base, indices } if indices.len() == 1 => {
                 let b = self.expr(base, None);
+                if let ExprKind::Range {
+                    lo,
+                    hi,
+                    inclusive,
+                    step: None,
+                } = &super::index::unparen(&indices[0]).kind
+                {
+                    if lo.is_none() || hi.is_none() {
+                        let ends = (lo.as_deref(), hi.as_deref(), *inclusive);
+                        return self.open_slice(b, ends, span);
+                    }
+                }
                 let i = self.expr(&indices[0], Some(&Ty::Int));
                 if self.is_range(&b.ty) && self.is_range(&i.ty) {
                     self.err(span, "slice: a range sliced by a range (R0001 outside it)");
