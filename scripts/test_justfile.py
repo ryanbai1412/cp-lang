@@ -23,7 +23,11 @@ def recipes(justfile):
                 if not b.startswith((" ", "\t")):
                     break
                 body.append(b.strip())
-            out[m.group(1)] = (i > 0 and lines[i - 1].startswith("#"), "\n".join(body))
+            # just reads the comment above a recipe's attributes as its doc.
+            j = i - 1
+            while j >= 0 and lines[j].startswith("["):
+                j -= 1
+            out[m.group(1)] = (j >= 0 and lines[j].startswith("#"), "\n".join(body))
     return out
 
 
@@ -76,6 +80,10 @@ class JustfileTest(unittest.TestCase):
         self.assertGreater(len(commands), 5)
         self.assertEqual(tasks_without_recipe(commands, self.recipes), [],
                          "handbook/domains/infra.md: add a justfile recipe that runs it (ci/R36)")
+
+    def test_a_doc_above_a_recipes_attributes_is_its_doc(self):
+        rs = recipes("# Test.\n[positional-arguments]\ntest *args:\n    cargo nextest run \"$@\"\n")
+        self.assertTrue(rs["test"][0])
 
     def test_flags_a_missing_recipe_and_an_unlisted_task(self):
         rs = recipes("# Land.\nland:\n    scripts/land.sh\n\nbare:\n    true\n")
