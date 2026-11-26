@@ -220,12 +220,28 @@ pub(crate) fn compact(cpp: &str, header: bool, rename: &BTreeMap<String, String>
 /// Never a name from a library header, but for the few the file reaches as
 /// `std::`, which keep theirs.
 fn numbered(name: &str) -> bool {
-    name.as_bytes()[0].is_ascii_alphabetic()
-        && name.bytes().any(|c| c.is_ascii_lowercase())
-        && name
-            .split('_')
-            .skip(1)
-            .any(|part| !part.is_empty() && part.bytes().all(|c| c.is_ascii_digit()))
+    module_item(name)
+        || name.as_bytes()[0].is_ascii_alphabetic()
+            && name.bytes().any(|c| c.is_ascii_lowercase())
+            && name
+                .split('_')
+                .skip(1)
+                .any(|part| !part.is_empty() && part.bytes().all(|c| c.is_ascii_digit()))
+}
+
+/// A name the emitter makes up, `cpl_tie`: no library's member starts `cpl_`.
+fn ours(name: &str) -> bool {
+    name.strip_prefix("cpl_")
+        .is_some_and(|rest| !rest.is_empty())
+}
+
+/// An item of an imported module: `m1_MaxSub`, the module's number before the name.
+fn module_item(name: &str) -> bool {
+    name.strip_prefix('m')
+        .and_then(|rest| rest.split_once('_'))
+        .is_some_and(|(m, item)| {
+            !m.is_empty() && m.bytes().all(|c| c.is_ascii_digit()) && !item.is_empty()
+        })
 }
 
 /// The names the runtime's pieces define. One is shortened like a numbered
@@ -371,7 +387,7 @@ pub(crate) fn short_names(cpp: &str) -> BTreeMap<String, String> {
                 if TYPE_TEMPLATES.contains(&t) && tokens.get(i + 1).map(|t| t.1) == Some("<") {
                     *templates.entry(t).or_default() += 1;
                 }
-            } else if numbered(t) || owned.contains(t) || TYPEDEFS.contains(&t) {
+            } else if numbered(t) || ours(t) || owned.contains(t) || TYPEDEFS.contains(&t) {
                 *count.entry(t).or_default() += 1;
             }
         }
@@ -379,7 +395,7 @@ pub(crate) fn short_names(cpp: &str) -> BTreeMap<String, String> {
     let mut names: Vec<(String, usize)> = count
         .into_iter()
         .filter(|(name, _)| !keep.contains(name))
-        .filter(|(name, _)| numbered(name) || !members.contains(name))
+        .filter(|(name, _)| numbered(name) || ours(name) || !members.contains(name))
         // A `using` for a library type costs about 20 bytes.
         .filter(|(name, n)| !TYPEDEFS.contains(name) || n * (name.len() - 2) > 20)
         .map(|(name, n)| (name.to_string(), n))
@@ -495,6 +511,11 @@ mod tests {
         let names = short_names(cpp);
         assert_eq!(names.get("Mod_7_1").map(String::as_str), Some("Q1"));
         assert!(names.contains_key("Mod_7_1_mul") && names.contains_key("v_2"));
+        let imported = short_names("struct m1_MaxSub{};\nm1_MaxSub a,b,c;\nint m_x,mx_1y;\n");
+        assert!(imported.contains_key("m1_MaxSub"), "{imported:?}");
+        assert!(!imported.contains_key("m_x"), "{imported:?}");
+        let tied = short_names("struct P{auto cpl_tie()const{return 1;}};\nbool f(P a,P b){return a.cpl_tie()<b.cpl_tie();}\n");
+        assert!(tied.contains_key("cpl_tie"), "{tied:?}");
         assert!(
             !names.contains_key("int_fast32_t")
                 && !names.contains_key("uint64_t")
