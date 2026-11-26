@@ -6,3 +6,6 @@ A conformance case or new-pipeline test leaves only with a line here naming it a
 - `crates/cpl-next/tests/programs/a_own_19_generic_return_moves.cp`: renamed to
   `a_own_19_generic_return_lends.cp`. It expected `id(b)` to move `b`, but R05.5.3 says a
   generic fn's result that holds its argument lends it; today's `cpl` agrees and prints `2 1`.
+- `spec/conformance/core-05/walk-body-cannot-touch-mut-source.cp` and
+  `spec/conformance/core-12/intrinsic-wrong-signature.cp`: kept, but each printed a `Bool`, which
+  R10.3.3 makes an error (E0606) before the error the case is about; they print `yes(b)` now.

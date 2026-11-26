@@ -318,7 +318,16 @@ impl<'a> Cx<'a> {
                 }));
                 return;
             }
-            Ty::Int | Ty::Bool | Ty::Char | Ty::U64 | Ty::Error => {
+            // `Bool` has no one way to be written: the word is the program's choice (R10.3.3).
+            Ty::Bool => {
+                let code = cpl_diag::codes::MISSING_IMPL.0;
+                self.err(
+                    span,
+                    format!("{code}: `Bool` is not `Show`: write `print(yes(b))`"),
+                );
+                return;
+            }
+            Ty::Int | Ty::Char | Ty::U64 | Ty::Error => {
                 pieces.push(Piece::Value(v));
                 return;
             }

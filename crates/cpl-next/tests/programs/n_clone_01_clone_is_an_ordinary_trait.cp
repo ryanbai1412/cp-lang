@@ -1,4 +1,4 @@
-// expect: ok, output "3 2\n1 2 1 2 9\nab 5\ntrue"
+// expect: ok, output "3 2\n1 2 1 2 9\nab 5\nYES"
 // rule: R05.2.2, R05.5.1, R08.1.6
 // `.clone()` is core's `Clone`: lists, strings and optionals write it, structs and records derive
 // it, and a clone is owned, so a fn may return a clone of its parameter.
@@ -18,4 +18,4 @@ print(grown(a).len, q.xs.len)
 print(a, grown(a))
 let r = (s: "ab", n: q.k).clone()
 print(r.s, r.n)
-print(Some([4]).clone() == Some([4]))
+print(yes(Some([4]).clone() == Some([4])))

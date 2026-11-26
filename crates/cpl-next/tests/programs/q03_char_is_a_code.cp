@@ -4,7 +4,7 @@
 // `Char(i)` outside the range traps.
 let a = 'a'
 let b = Char(Int(a) + 1)
-print(a, b, a < b, Int(b))
+print(a, b, yes(a < b), Int(b))
 var cs: List<Char> = List.new()
 cs.push('x')
 cs.push(b)

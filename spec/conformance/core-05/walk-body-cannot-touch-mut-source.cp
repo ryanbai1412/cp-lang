@@ -5,4 +5,4 @@ fn mark(mut seen: List<Bool>) -> yields Int:
         yield i
 var seen = [false, false]
 for v in mark(mut seen):
-    print(seen[v]) // <- here
+    print(yes(seen[v])) // <- here

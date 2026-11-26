@@ -1,4 +1,4 @@
-// expect: ok, output "18\n6 true 2\n2\n9"
+// expect: ok, output "18\n6 YES 2\n2\n9"
 // input: "2\n1 2\n3 4\n"
 let n: Int = read()
 var ps: List<(Int, Int)> = []
@@ -11,7 +11,7 @@ for (a, b) in ps:
 print(s)
 let t = (1, (2, 3), true)
 let (x, (y, z), ok) = t
-print(x + y + z, ok, (t.1).0)
+print(x + y + z, yes(ok), (t.1).0)
 fn swap(p: (Int, Int)) -> (Int, Int):
     (p.1, p.0)
 let (u, _) = swap(ps[0])
