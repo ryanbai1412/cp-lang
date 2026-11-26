@@ -1477,3 +1477,15 @@ fn a_cast_whose_value_is_dropped_is_not_read_as_a_declaration() {
     let out = cpp("for i in 0..2:\n    let a = [i]\n    let b = List(a)\nprint(1)\n");
     assert!(out.contains("(std::vector<ll>(a));"), "{out}");
 }
+
+#[test]
+fn a_table_fed_call_lends_its_optional_default_as_the_callee_takes_it() {
+    let out = cpp(
+        "use std.segtree.{DynamicOrderTree}\nlet n: 1..=5 = read()\ndomain V = 1..=n\nvar t = DynamicOrderTree([V] p => 3)\nprint(t.count_lt(V, 2))\n",
+    );
+    let call = out.lines().find(|l| l.contains("= cpl_tab_")).expect(&out);
+    assert!(
+        call.contains("{nullptr}") && !call.contains("std::optional"),
+        "{call}"
+    );
+}

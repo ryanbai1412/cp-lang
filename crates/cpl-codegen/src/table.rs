@@ -262,7 +262,11 @@ impl Emitter<'_> {
             } else if self.devirt.param_elidable(id, s) && self.devirt.skippable_value(v) {
                 texts.push("false".to_string());
             } else if self.program.fns[id].locals[s].ty != Ty::Unit {
-                texts.push(self.expr(v).text);
+                let text = self.expr(v).text;
+                texts.push(match self.lent_opts[id].contains(&s) {
+                    true => self.lend_arg(id, s, v, &text, &[]),
+                    false => text,
+                });
             }
         }
         let name = crate::names::fn_name(&self.program.fns[id].name);

@@ -51,7 +51,7 @@ impl<'p> Emitter<'p> {
     /// The argument for a parameter held as a `cpl::Lent` (see
     /// [`crate::lentopt`]): a pointer to the value, or to a copy when the
     /// call also changes it through a `mut` argument.
-    fn lend_arg(
+    pub(crate) fn lend_arg(
         &mut self,
         id: usize,
         slot: usize,
