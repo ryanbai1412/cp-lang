@@ -4395,7 +4395,7 @@
         "noi06p3": "pass",
         "noi07p1": "pass",
         "noi08p5": "pass",
-        "noi09p4": "error",
+        "noi09p4": "pass",
         "noi10p2": "pass",
         "noi14p5": "pass",
         "noi15p1": "pass",
@@ -4421,21 +4421,12 @@
         "yac6p4": "pass",
         "yac7p3": "pass"
       },
-      "causes": [
-        {
-          "cause": "E0301: this is indexed by `\u003cid>`, but the index is a `\u003cid>`",
-          "count": 1,
-          "examples": [
-            "noi09p4"
-          ]
-        }
-      ],
+      "causes": [],
       "counts": {
-        "error": 1,
-        "pass": 99
+        "pass": 100
       },
       "interp_max_over_20s": [],
-      "passed": 99,
+      "passed": 100,
       "total": 100
     },
     "diff": {
@@ -6915,7 +6906,7 @@
         "variant/cf2124c": "pass",
         "variant/cf2124d": "pass",
         "variant/cf2124f1": "pass",
-        "variant/cf2124f2": "error",
+        "variant/cf2124f2": "pass",
         "variant/cf2124g": "pass",
         "variant/cf2124h": "pass",
         "variant/cf2127b": "pass",
@@ -6996,7 +6987,7 @@
         "variant/cf2207e1": "pass",
         "variant/cf2207e2": "pass",
         "variant/cf2207f": "pass",
-        "variant/cf2207h1": "skip",
+        "variant/cf2207h1": "pass",
         "variant/cf2211b": "pass",
         "variant/cf2211c2": "pass",
         "variant/cf2211d": "pass",
@@ -7072,15 +7063,14 @@
         "variant/wtf26b": "pass",
         "variant/wtf26c": "pass",
         "variant/wtf26d": "pass",
-        "variant/yac6p3": "skip"
+        "variant/yac6p3": "pass"
       },
       "causes": [
         {
           "cause": "error: the interpreter timed out after 20s",
-          "count": 3,
+          "count": 2,
           "examples": [
             "variant/cf2062h",
-            "variant/cf2124f2",
             "variant/cf2180f1"
           ]
         },
@@ -7116,11 +7106,11 @@
       ],
       "counts": {
         "cxx_err": 1,
-        "error": 2,
-        "pass": 2625,
-        "skip": 5
+        "error": 1,
+        "pass": 2628,
+        "skip": 3
       },
-      "passed": 2625,
+      "passed": 2628,
       "total": 2633
     },
     "docs": {
