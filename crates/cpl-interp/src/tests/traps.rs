@@ -231,6 +231,22 @@ print(r.len)
 }
 
 #[test]
+fn plain_set_keeps_its_order_through_edges_and_pops() {
+    let src = "\
+var s = Set<Int>()
+for x in [5, -3, 9, 0, 5, -3, 7]: s.insert(x)
+let r = s.remove(9)
+print(s.len, s.first!, s.last!, yes(r), yes(9 in s))
+print(s.first_ge(1)!, s.first_gt(5)!, s.last_le(4)!, s.last_lt(-3) ?? 100)
+for x in s: print(x)
+print(s.pop_first()!, s.pop_last()!, s.len)
+";
+    let (out, trap) = outcome(src, "");
+    assert!(trap.is_none(), "unexpected trap: {trap:?}");
+    assert_eq!(out, "4 -3 7 YES NO\n5 7 0 100\n-3\n0\n5\n7\n-3 7 2\n");
+}
+
+#[test]
 fn vm_map_set_ops_and_missing_key_trap() {
     let src = "\
 var m = Map<Int, Int>()

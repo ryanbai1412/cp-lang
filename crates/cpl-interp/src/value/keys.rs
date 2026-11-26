@@ -331,16 +331,21 @@ impl<T> ExactSizeIterator for RunWalk<'_, T> {}
 
 #[derive(Clone, Debug)]
 pub enum KeySet {
-    /// Keys mapped to `Unit`, so a set shares the map's B-tree code.
-    Tree(BTreeMap<Value, Value>),
+    /// Sorted by `Value`'s own order: a set of plain keys.
+    Plain(Runs<Value>),
     /// Sorted by the key type's user `Ord`.
     Sorted(Ty, Runs<Value>),
 }
 
 impl Default for KeySet {
     fn default() -> KeySet {
-        KeySet::Tree(BTreeMap::new())
+        KeySet::Plain(Runs::default())
     }
+}
+
+/// `Value`'s own `<`, for a set of plain keys.
+fn plain_less(_: &Ty, a: &Value, b: &Value) -> Res<bool> {
+    Ok(a < b)
 }
 
 impl KeySet {
@@ -356,7 +361,7 @@ impl KeySet {
     /// An empty set that orders its keys as this one does.
     pub(crate) fn empty_like(&self) -> KeySet {
         match self {
-            KeySet::Tree(_) => KeySet::default(),
+            KeySet::Plain(_) => KeySet::default(),
             KeySet::Sorted(ty, _) => KeySet::Sorted(ty.clone(), Runs::default()),
         }
     }
@@ -365,88 +370,79 @@ impl KeySet {
         matches!(self, KeySet::Sorted(..))
     }
 
-    pub(crate) fn len(&self) -> usize {
+    fn runs(&self) -> &Runs<Value> {
         match self {
-            KeySet::Tree(t) => t.len(),
-            KeySet::Sorted(_, v) => v.len,
+            KeySet::Plain(v) | KeySet::Sorted(_, v) => v,
         }
+    }
+
+    fn runs_mut(&mut self) -> &mut Runs<Value> {
+        match self {
+            KeySet::Plain(v) | KeySet::Sorted(_, v) => v,
+        }
+    }
+
+    pub(crate) fn len(&self) -> usize {
+        self.runs().len
     }
 
     pub(crate) fn iter(&self) -> Box<dyn Walk<Item = &Value> + '_> {
-        match self {
-            KeySet::Tree(t) => Box::new(t.keys()),
-            KeySet::Sorted(_, v) => Box::new(v.walk((0, 0), v.end())),
-        }
+        let v = self.runs();
+        Box::new(v.walk((0, 0), v.end()))
     }
 
     pub(crate) fn first(&self) -> Option<&Value> {
-        match self {
-            KeySet::Tree(t) => t.first_key_value().map(|(k, _)| k),
-            KeySet::Sorted(_, v) => v.first(),
-        }
+        self.runs().first()
     }
 
     pub(crate) fn last(&self) -> Option<&Value> {
-        match self {
-            KeySet::Tree(t) => t.last_key_value().map(|(k, _)| k),
-            KeySet::Sorted(_, v) => v.last(),
-        }
+        self.runs().last()
     }
 
     pub(crate) fn pop_first(&mut self) -> Option<Value> {
-        match self {
-            KeySet::Tree(t) => t.pop_first().map(|(k, _)| k),
-            KeySet::Sorted(_, v) => v.pop_first(),
-        }
+        self.runs_mut().pop_first()
     }
 
     pub(crate) fn pop_last(&mut self) -> Option<Value> {
-        match self {
-            KeySet::Tree(t) => t.pop_last().map(|(k, _)| k),
-            KeySet::Sorted(_, v) => v.pop_last(),
-        }
+        self.runs_mut().pop_last()
     }
 
     pub(crate) fn clear(&mut self) {
+        self.runs_mut().clear()
+    }
+
+    /// Where `key` is (`Ok`) or would go (`Err`).
+    fn find(&self, key: &Value, less: &mut Less) -> Res<Result<Pos, Pos>> {
         match self {
-            KeySet::Tree(t) => t.clear(),
-            KeySet::Sorted(_, v) => v.clear(),
+            KeySet::Plain(v) => v.find(&Ty::Unit, key, &mut plain_less),
+            KeySet::Sorted(ty, v) => v.find(ty, key, less),
         }
     }
 
     pub(crate) fn contains(&self, key: &Value, less: &mut Less) -> Res<bool> {
-        match self {
-            KeySet::Tree(t) => Ok(t.contains_key(key)),
-            KeySet::Sorted(ty, v) => Ok(v.find(ty, key, less)?.is_ok()),
-        }
+        Ok(self.find(key, less)?.is_ok())
     }
 
     /// Adds `key`; whether it was new.
     pub(crate) fn insert(&mut self, key: Value, less: &mut Less) -> Res<bool> {
-        match self {
-            KeySet::Tree(t) => Ok(t.insert(key, Value::Unit).is_none()),
-            KeySet::Sorted(ty, v) => Ok(match v.find(ty, &key, less)? {
-                Ok(_) => false,
-                Err(p) => {
-                    v.insert_at(p, key);
-                    true
-                }
-            }),
-        }
+        Ok(match self.find(&key, less)? {
+            Ok(_) => false,
+            Err(p) => {
+                self.runs_mut().insert_at(p, key);
+                true
+            }
+        })
     }
 
     /// Takes `key` out; whether it was there.
     pub(crate) fn remove(&mut self, key: &Value, less: &mut Less) -> Res<bool> {
-        match self {
-            KeySet::Tree(t) => Ok(t.remove(key).is_some()),
-            KeySet::Sorted(ty, v) => Ok(match v.find(ty, key, less)? {
-                Ok(p) => {
-                    v.remove_at(p);
-                    true
-                }
-                Err(_) => false,
-            }),
-        }
+        Ok(match self.find(key, less)? {
+            Ok(p) => {
+                self.runs_mut().remove_at(p);
+                true
+            }
+            Err(_) => false,
+        })
     }
 
     /// The keys from `lo` to `hi`, in order.
@@ -456,29 +452,20 @@ impl KeySet {
         hi: Bound<Value>,
         less: &mut Less,
     ) -> Res<Box<dyn DoubleEndedIterator<Item = &Value> + '_>> {
-        match self {
-            KeySet::Tree(t) => Ok(Box::new(t.range((lo, hi)).map(|(k, _)| k))),
-            KeySet::Sorted(ty, v) => {
-                let (a, b) = v.between(ty, &lo, &hi, less)?;
-                Ok(Box::new(v.walk(a, b)))
-            }
-        }
+        let (v, (a, b)) = match self {
+            KeySet::Plain(v) => (v, v.between(&Ty::Unit, &lo, &hi, &mut plain_less)?),
+            KeySet::Sorted(ty, v) => (v, v.between(ty, &lo, &hi, less)?),
+        };
+        Ok(Box::new(v.walk(a, b)))
     }
 
     /// The key `edge` names next to `key`.
     pub(crate) fn edge(&self, key: Value, edge: Edge, less: &mut Less) -> Res<Option<&Value>> {
-        match self {
-            KeySet::Tree(t) => {
-                let mut found = t.range(edge.range(key));
-                Ok(if edge.first() {
-                    found.next()
-                } else {
-                    found.next_back()
-                }
-                .map(|(k, _)| k))
-            }
-            KeySet::Sorted(ty, v) => Ok(v.edge(ty, &key, edge, less)?.and_then(|p| v.get(p))),
-        }
+        let (v, at) = match self {
+            KeySet::Plain(v) => (v, v.edge(&Ty::Unit, &key, edge, &mut plain_less)?),
+            KeySet::Sorted(ty, v) => (v, v.edge(ty, &key, edge, less)?),
+        };
+        Ok(at.and_then(|p| v.get(p)))
     }
 }
 

@@ -4,6 +4,31 @@
 use super::*;
 
 #[test]
+fn plain_set_scales_as_n_log_n() {
+    // A set of plain keys keeps them in the same sorted runs as a user-ordered one.
+    let src = "\
+let n = read<Int>()
+var s = Set<Int>()
+for i in 0..n: s.insert((i * 7919) % n)
+for i in 0..n: s.remove(i)
+print(s.len)
+";
+    let time = |n: usize| {
+        let started = std::time::Instant::now();
+        let (out, trap) = outcome(src, &format!("{n}\n"));
+        assert!(trap.is_none(), "unexpected trap: {trap:?}");
+        assert_eq!(out, "0\n");
+        started.elapsed().as_secs_f64()
+    };
+    let (small, big) = (time(5_000), time(40_000));
+    assert!(
+        big < 20.0 * small,
+        "8x the keys took {:.1}x the time",
+        big / small
+    );
+}
+
+#[test]
 fn user_ordered_set_scales_as_n_log_n() {
     // A set over a user `Ord` key keeps it in sorted runs; one sorted list, shifted whole on each
     // insert, took egoi23p2 144 s at n = 200000.
