@@ -959,15 +959,13 @@ impl Checker<'_> {
         Some(traits)
     }
 
-    /// Whether an impl for an optional (`impl<T: Total> Total for ?T`), or
-    /// its trait, declares `name`.
+    /// Whether a trait declares `name`, which an impl for an optional
+    /// (`impl<T: Total> Total for ?T`) may give it: such an impl is filed
+    /// under no head, so its trait is what the checker can read.
     pub(super) fn optional_impls_declare(&mut self, name: &str) -> bool {
-        let targets = self.env.impl_targets();
-        for target in &targets {
-            if target.starts_with('?')
-                && self
-                    .member_traits(target, name)
-                    .is_none_or(|t| !t.is_empty())
+        for n in self.env.names() {
+            if matches!(self.global(&n).as_deref(), Some(Def::Trait { methods, .. })
+                if methods.iter().any(|m| m.name == name))
             {
                 return true;
             }
