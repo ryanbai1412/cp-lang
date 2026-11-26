@@ -366,7 +366,11 @@ impl<'a> Cx<'a> {
                     }
                     _ => None,
                 };
+                if !mutable && matches!(init.kind, ExprKind::Lambda { .. }) {
+                    self.recur = Some(name.clone());
+                }
                 let v = self.expr(init, cell.as_ref().or(declared.as_ref()));
+                self.recur = None;
                 // `var a: [V]Int = 0` fills every slot: it is `Array.filled(0)`.
                 let fill = match (&declared, self.array_id()) {
                     (Some(array @ Ty::Struct(d, ts, _)), Some(arr))

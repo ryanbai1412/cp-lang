@@ -63,6 +63,8 @@ pub enum TK {
         body: Box<TExpr>,
     },
     FnItem(FnRef),
+    /// A lambda's own value, named in its body by the `let` it is bound to (R06.2.3).
+    Itself(LambdaId),
     /// A closure flows into a function-value slot.
     Inject(Box<TExpr>),
     /// A function value flows into a slot whose set is larger.
@@ -265,6 +267,10 @@ struct Cx<'a> {
     in_for: bool,
     /// Set while checking the one call that may be a generator or a lender.
     allow_region: bool,
+    /// The name a `let` binds the lambda being checked to; and the lambdas whose bodies see
+    /// their own name, with the scope their parameters live in.
+    recur: Option<String>,
+    selves: Vec<(String, LambdaId, usize)>,
     /// Set while converting the branches of an `if` into their common type: sets are joined, never merged.
     joining: bool,
     item_off: u32,
@@ -320,6 +326,8 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
         loops: 0,
         in_for: false,
         allow_region: false,
+        recur: None,
+        selves: Vec::new(),
         joining: false,
         item_off: 0,
         module: d.program,

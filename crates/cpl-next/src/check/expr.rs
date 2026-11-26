@@ -973,6 +973,9 @@ impl<'a> Cx<'a> {
         block(pre, call)
     }
     pub(super) fn name(&mut self, n: &str, span: Span) -> TExpr {
+        if let Some(e) = self.itself(n, span) {
+            return e;
+        }
         if let Some((v, ty)) = self.lookup(n) {
             return TExpr {
                 kind: TK::Var(v),
@@ -1521,9 +1524,10 @@ impl<'a> Cx<'a> {
             ExprKind::Lambda {
                 params,
                 param_tys,
+                ret_ty,
                 body,
                 ..
-            } => self.lambda(params, param_tys, body, want, span),
+            } => self.lambda(params, param_tys, ret_ty.as_ref(), body, want, span),
             ExprKind::List(xs) => {
                 // `[a, b]` is `List.new()` and a `push` per element.
                 let Some(list) = self.list_struct(span) else {
@@ -1748,6 +1752,7 @@ impl<'a> Cx<'a> {
     /// A name the program declares, not a local or a field of `self`.
     fn declared(&self, n: &str) -> bool {
         self.lookup(n).is_none()
+            && self.itself(n, Span::new(0, 0)).is_none()
             && self.self_field(n).is_none()
             && self.d.named(self.module, n).is_some()
     }
@@ -1891,9 +1896,13 @@ pub(super) struct Formal<'d> {
 /// Reading it has no effect, so when it runs does not matter.
 fn pure(e: &TExpr) -> bool {
     match &e.kind {
-        TK::Int(_) | TK::Bool(_) | TK::Unit | TK::Var(_) | TK::FnItem(_) | TK::Lambda { .. } => {
-            true
-        }
+        TK::Int(_)
+        | TK::Bool(_)
+        | TK::Unit
+        | TK::Var(_)
+        | TK::FnItem(_)
+        | TK::Itself(_)
+        | TK::Lambda { .. } => true,
         TK::Field(b, _) => pure(b),
         _ => false,
     }

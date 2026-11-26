@@ -119,6 +119,7 @@ impl<'a> Cx<'a> {
             | TK::Text(_)
             | TK::Var(_)
             | TK::ReadInt
+            | TK::Itself(_)
             | TK::Error => {}
         }
     }

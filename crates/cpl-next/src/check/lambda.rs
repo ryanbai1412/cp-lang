@@ -7,11 +7,13 @@ impl Cx<'_> {
         &mut self,
         params: &[ast::Pattern],
         param_tys: &[Option<ast::Type>],
+        ret_ty: Option<&ast::Type>,
         body: &ast::Expr,
         want: Option<&Ty>,
         span: Span,
     ) -> TExpr {
         let mk = |kind, ty| TExpr { kind, ty, span };
+        let me = self.recur.take();
         // A lambda passed where `?(A -> R)` is wanted is that fn, made `Some` by the coercion (R02.4.2).
         let expected = want.map(|w| {
             let w = self.shallow(w);
@@ -79,18 +81,7 @@ impl Cx<'_> {
                 param_tys.get(i).and_then(|t| t.as_ref()),
                 eps.as_ref().and_then(|ps| ps.get(i)),
             ) {
-                (Some(t), _) => {
-                    let mut errs = Vec::new();
-                    let t = decls::body_type(
-                        self.d,
-                        self.module,
-                        &self.generics,
-                        &self.doms,
-                        t,
-                        &mut errs,
-                    );
-                    self.fresh_sets(&t)
-                }
+                (Some(t), _) => self.written_ty(t, span),
                 (None, Some(t)) => t.clone(),
                 (None, None) => {
                     self.err(
@@ -112,8 +103,21 @@ impl Cx<'_> {
         // A lambda is not part of the generator or lender around it: no `yield` or `lend` inside.
         let saved_region = self.region.take();
         let saved_loops = std::mem::take(&mut self.loops);
-        let ret = er.unwrap_or_else(|| self.new_ty());
+        let ret = match ret_ty {
+            Some(t) => self.written_ty(t, span),
+            None => er.unwrap_or_else(|| self.new_ty()),
+        };
         self.ret = ret.clone();
+        // The body sees its own signature, so a lambda bound by `let` can call itself (R06.2.3).
+        let id = LambdaId(self.lambdas.len());
+        self.lambdas.push(LambdaInfo {
+            params: ptys.clone(),
+            ret: ret.clone(),
+            owner: self.decl,
+        });
+        if let Some(name) = me {
+            self.selves.push((name, id, self.scopes.len()));
+        }
         let mut pre = Vec::new();
         for (tmp, pat) in opens {
             let open = ast::Stmt {
@@ -140,22 +144,56 @@ impl Cx<'_> {
         self.region = saved_region;
         self.loops = saved_loops;
         self.scopes.pop();
-        let id = LambdaId(self.lambdas.len());
-        self.lambdas.push(LambdaInfo {
+        self.selves.retain(|s| s.1 != id);
+        self.lambdas[id.0] = LambdaInfo {
             params: ptys,
             ret,
             owner: self.decl,
-        });
-        let targs = (0..self.generics.len()).map(Ty::Param).collect();
-        let sets = (0..self.n_sets).map(SetTy::Param).collect();
+        };
         mk(
             TK::Lambda {
                 id,
                 params: ids,
                 body: Box::new(b),
             },
-            Ty::Clo(Box::new(CloRef::Lambda(id, targs, sets))),
+            self.lambda_ty(id),
         )
+    }
+
+    /// A type written on a lambda's parameter or result.
+    fn written_ty(&mut self, t: &ast::Type, span: Span) -> Ty {
+        let mut errs = Vec::new();
+        let t = decls::body_type(
+            self.d,
+            self.module,
+            &self.generics,
+            &self.doms,
+            t,
+            &mut errs,
+        );
+        for e in errs {
+            self.err(span, e.text);
+        }
+        self.fresh_sets(&t)
+    }
+
+    fn lambda_ty(&self, id: LambdaId) -> Ty {
+        let targs = (0..self.generics.len()).map(Ty::Param).collect();
+        let sets = (0..self.n_sets).map(SetTy::Param).collect();
+        Ty::Clo(Box::new(CloRef::Lambda(id, targs, sets)))
+    }
+
+    /// `n` inside the body of the lambda `let n = ...` binds, unless something inside shadows it.
+    pub(super) fn itself(&self, n: &str, span: Span) -> Option<TExpr> {
+        let &(_, id, depth) = self.selves.iter().rev().find(|s| s.0 == n)?;
+        if self.scopes[depth - 1..].iter().any(|s| s.contains_key(n)) {
+            return None;
+        }
+        Some(TExpr {
+            kind: TK::Itself(id),
+            ty: self.lambda_ty(id),
+            span,
+        })
     }
 
     /// The fields a lambda's parameters take apart when it is passed as a fn of one value of

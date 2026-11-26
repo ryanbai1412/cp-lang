@@ -72,6 +72,7 @@ core-01/rb1-q33-power-assoc.cp
 core-01/rb1-q36-no-comma-enum.cp
 core-01/sci-literal.cp
 core-01/scientific-fraction-is-int.cp
+core-01/self-recursive-lambda.cp
 core-01/semicolon-ends-line.cp
 core-01/semicolons.cp
 core-01/snake-case-value.cp
@@ -464,8 +465,8 @@ core-08/impl-plus-shorthand.cp
 core-08/impls-choosing-two-types-for-one-type.cp
 core-08/inherent-before-trait.cp
 core-08/inherent-on-builtin-type.cp
-core-08/law-must-be-bool.cp
 core-08/lambda-to-type-param-beside-a-seq-stays-a-fn.cp
+core-08/law-must-be-bool.cp
 core-08/monomorphized.cp
 core-08/named-struct-takes-no-default-without-an-impl.cp
 core-08/no-dyn.cp
@@ -633,6 +634,7 @@ next/a_check_09_missing_impl.cp
 next/a_clos_01_list_captured_by_reference.cp
 next/a_clos_02_let_list_capture.cp
 next/a_clos_04_struct_field_closure_shares_var.cp
+next/a_clos_05_let_lambda_recursion.cp
 next/a_clos_06_closure_calls_closure.cp
 next/a_decl_01_default_param.cp
 next/a_decl_02_field_default.cp
@@ -798,6 +800,7 @@ next/n_lambda_01_pattern_params.cp
 next/n_lambda_02_generator_of_tests.cp
 next/n_lambda_03_optional_fn_param.cp
 next/n_lambda_04_context_fixes_params.cp
+next/n_lambda_04_recursive.cp
 next/n_record_01_records_are_core_structs.cp
 next/n_record_02_field_traits.cp
 next/n_slice_01_range_gives_view.cp
@@ -921,6 +924,7 @@ std-strings/repeat-zero.cp
 std-subset/empty-braces-is-empty-subset.cp
 std-timetree/cdq-1.cp
 tools-cli/exit-0-no-errors.cp
+tools-cli/exit-1-on-errors.cp
 tools-cli/exit-3-trap.cp
 tools-fmt-lint/lint-never-blocks-run.cp
 traits/Bidir/Range--iter_rev.cp

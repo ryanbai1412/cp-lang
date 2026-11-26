@@ -31,6 +31,8 @@ struct Lw<'a> {
     /// Inside a lambda at top level, its params live in the globals table; map them to locals.
     remap: HashMap<VarRef, usize>,
     lambdas: Vec<Func<Ty>>,
+    /// The lambdas being lowered, each with its own value as its body makes it: its captures.
+    selves: Vec<(LambdaId, Vec<Expr<Ty>>)>,
     errors: Vec<Msg>,
     in_main: bool,
     /// The code of one test case, once main's `Cases` is lowered.
@@ -59,6 +61,7 @@ pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &str, std_lines: u32)
         var_locals: Vec::new(),
         remap: HashMap::new(),
         lambdas: Vec::new(),
+        selves: Vec::new(),
         errors: Vec::new(),
         in_main: true,
         case: None,
@@ -584,6 +587,13 @@ impl Lw<'_> {
                 mk(EK::MakeStruct(xs))
             }
             TK::FnItem(_) => mk(EK::MakeClosure(vec![])),
+            TK::Itself(id) => match self.selves.last() {
+                Some((me, caps)) if me == id => mk(EK::MakeClosure(caps.clone())),
+                _ => {
+                    (self.errors).push("slice: a lambda that names the lambda around it".into());
+                    mk(EK::MakeClosure(vec![]))
+                }
+            },
             TK::Lambda { id, params, body } => {
                 let captures = self.lambda(*id, params, body);
                 mk(EK::MakeClosure(captures))
@@ -1160,10 +1170,18 @@ impl Lw<'_> {
             let l = self.temp(ty);
             remap.insert(*b, l);
         }
+        let itself = (caps.iter())
+            .map(|(key, _, ty, _)| Expr {
+                kind: EK::Copy(Place::Local(remap[key])),
+                ty: ty.clone(),
+            })
+            .collect();
+        self.selves.push((id, itself));
         self.remap = remap;
         let was_main = self.in_main;
         let mut stmts = Vec::new();
         let v = self.expr(body, &mut stmts);
+        self.selves.pop();
         if matches!(stmts.last(), Some(Stmt::Return(_))) {
         } else if info.ret != Ty::Unit {
             stmts.push(Stmt::Return(Some(v)));

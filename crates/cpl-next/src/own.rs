@@ -1006,6 +1006,7 @@ impl Cx<'_> {
             | TK::ReadInt
             | TK::DomLen(_)
             | TK::FnItem(_)
+            | TK::Itself(_)
             | TK::Error => {}
             TK::Slot(b, i) => {
                 self.expr(i, fx);
