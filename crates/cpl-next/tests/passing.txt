@@ -793,6 +793,8 @@ next/n_cell_03_method_on_cell.cp
 next/n_clone_01_clone_is_an_ordinary_trait.cp
 next/n_enum_01_values_and_order.cp
 next/n_impl_01_inherent_outside_its_module.cp
+next/n_impl_03_trait_args_pick_the_impl.cp
+next/n_impl_04_impls_overlap_only_at_equal_trait_args.cp
 next/n_index_01_through_indexed.cp
 next/n_index_02_range_keyed_by_values.cp
 next/n_index_03_list_key_outside_traps.cp

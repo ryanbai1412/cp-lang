@@ -1,6 +1,6 @@
 //! Contract 3: declarations -> typed tree. Decides every type, target and
 //! conversion. Nothing after this infers anything.
-use crate::decls::{self, Decls, ModId, Named, Owner, SelfMode};
+use crate::decls::{self, Decls, ModId, Named, Owner, SelfMode, TraitRef};
 use crate::diag::Msg;
 use crate::ir::CheckKind;
 use crate::ty::*;
@@ -47,7 +47,7 @@ pub enum TK {
         args: Vec<TArg>,
     },
     CallTrait {
-        tr: TraitId,
+        tr: TraitRef,
         method: String,
         recv: Box<TArg>,
         args: Vec<TArg>,
@@ -129,7 +129,7 @@ pub enum TArg {
 #[derive(Clone, Debug)]
 pub enum Callee {
     Fn(FnRef),
-    Trait(TraitId, String),
+    Trait(TraitRef, String),
 }
 
 #[derive(Clone, Debug)]

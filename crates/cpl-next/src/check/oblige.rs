@@ -99,17 +99,45 @@ impl Cx<'_> {
         match t {
             Ty::Error => Some(true),
             Ty::Param(i) => {
-                let have = self.bound_traits(*i);
-                let Some(h) = have.into_iter().find(|h| h.tr == r.tr) else {
+                let tr = &self.d.traits[r.tr.0];
+                let mut have = self.bound_traits(*i).into_iter().filter(|h| h.tr == r.tr);
+                let fitting: Vec<TraitRef> = (have.clone())
+                    .filter(|h| {
+                        (tr.inputs(&h.args).iter().zip(tr.inputs(&r.args)))
+                            .all(|(a, b)| self.fits(a, b))
+                    })
+                    .collect();
+                let Some(h) = fitting.first().cloned().or_else(|| have.next()) else {
                     return Some(false);
                 };
+                if fitting.len() > 1 && tr.inputs(&r.args).iter().any(|a| self.unknown(a)) {
+                    return None;
+                }
                 Some(h.args.iter().zip(&r.args).all(|(a, b)| self.unify(a, b)))
             }
             _ => {
-                let found = (self.d.impls.iter().enumerate())
+                // The impl whose trait arguments fit too: `Int` has `Into<Char>` and `Into<U64>`.
+                let want: Vec<Ty> = (self.d.traits[r.tr.0].inputs(&r.args).iter())
+                    .map(|a| self.zonk(a))
+                    .collect();
+                let found: Vec<(usize, Vec<Ty>)> = (self.d.impls.iter().enumerate())
                     .filter(|(_, im)| im.trait_.tr == r.tr)
-                    .find_map(|(k, im)| Some((k, self.d.impl_args(im, t)?)));
-                let Some((k, targs)) = found else {
+                    .filter_map(|(k, im)| Some((k, self.d.impl_args_for(im, t, &want)?)))
+                    .collect();
+                if found.len() > 1 {
+                    if want.iter().any(|a| self.unknown(a)) {
+                        return None;
+                    }
+                    let (tr, shown) = (self.d.traits[r.tr.0].name.clone(), self.show(t));
+                    let msg = format!(
+                        "{}: `{shown}` has {} impls of `{tr}` that fit here: write the trait's arguments",
+                        cpl_diag::codes::AMBIGUOUS_METHOD.0,
+                        found.len()
+                    );
+                    self.err(span, msg);
+                    return Some(true);
+                }
+                let Some((k, targs)) = found.into_iter().next() else {
                     return Some(false);
                 };
                 // A parameter the type does not fix (`impl Keyed<Int, T> for Str`) is fixed by the bound.

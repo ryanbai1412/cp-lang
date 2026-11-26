@@ -40,8 +40,11 @@ impl<'a> Cx<'a> {
                 body,
                 ..
             } => {
-                if let Callee::Fn(f) = callee {
-                    *f = self.zonk_fnref(f);
+                match callee {
+                    Callee::Fn(f) => *f = self.zonk_fnref(f),
+                    Callee::Trait(tr, _) => {
+                        tr.args = tr.args.iter().map(|a| self.zonk(a)).collect()
+                    }
                 }
                 if let Some(r) = recv {
                     self.zonk_arg(r);
@@ -81,7 +84,8 @@ impl<'a> Cx<'a> {
                 }
                 args.iter_mut().for_each(|a| self.zonk_arg(a));
             }
-            TK::CallTrait { recv, args, .. } => {
+            TK::CallTrait { tr, recv, args, .. } => {
+                tr.args = tr.args.iter().map(|a| self.zonk(a)).collect();
                 self.zonk_arg(recv);
                 args.iter_mut().for_each(|a| self.zonk_arg(a));
             }

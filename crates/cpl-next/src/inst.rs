@@ -526,10 +526,14 @@ impl Link<'_> {
             // A method of a bound: now the type is known, so the one impl is too.
             Target::Trait {
                 tr,
+                args,
                 method,
                 self_ty,
             } => {
                 let st = unlent(self.ty(self_ty, env));
+                let want: Vec<CTy> = (self.d.traits[tr.0].inputs(args).iter())
+                    .map(|a| self.ty(a, env))
+                    .collect();
                 let sets = match &st {
                     CTy::Struct(_, _, ss) => ss.clone(),
                     _ => Vec::new(),
@@ -538,7 +542,10 @@ impl Link<'_> {
                 let mut found = None;
                 for im in d.impls.iter().filter(|im| im.trait_.tr == *tr) {
                     let mut binds = vec![None; im.generics.len()];
-                    if !fit_cty(&im.for_, &st, &mut binds, &im.domains) {
+                    if !fit_cty(&im.for_, &st, &mut binds, &im.domains)
+                        || !(d.traits[tr.0].inputs(&im.trait_.args).iter().zip(&want))
+                            .all(|(p, w)| fit_cty(p, w, &mut binds, &im.domains))
+                    {
                         continue;
                     }
                     self.bound_only(im, &mut binds);

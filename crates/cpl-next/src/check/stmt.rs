@@ -125,7 +125,7 @@ impl<'a> Cx<'a> {
         let body = self.block(body, None);
         self.scopes.pop();
         out.push(TStmt::Region {
-            callee: Callee::Trait(tr.tr, "iter".to_string()),
+            callee: Callee::Trait(tr.clone(), "iter".to_string()),
             recv: Some(Box::new(TArg::Value(recv))),
             args: Vec::new(),
             var,

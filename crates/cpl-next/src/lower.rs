@@ -540,7 +540,8 @@ impl Lw<'_> {
                 let self_ty = self.self_ty(recv, &a);
                 let call = mk(EK::Call(
                     Target::Trait {
-                        tr: *tr,
+                        tr: tr.tr,
+                        args: tr.args.clone(),
                         method: method.clone(),
                         self_ty,
                     },
@@ -1048,7 +1049,8 @@ impl Lw<'_> {
                 let target = match (callee, recv.as_deref()) {
                     (Callee::Fn(f), _) => Target::Fn(self.lent_targs(f, &a)),
                     (Callee::Trait(tr, method), r) => Target::Trait {
-                        tr: *tr,
+                        tr: tr.tr,
+                        args: tr.args.clone(),
                         method: method.clone(),
                         self_ty: r.map_or(Ty::Error, |r| self.self_ty(r, &a)),
                     },

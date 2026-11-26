@@ -393,7 +393,7 @@ impl<'a> Cx<'a> {
                 let arg = self.coerce(arg, &rt);
                 mk(
                     TK::CallTrait {
-                        tr: tr.tr,
+                        tr: tr.clone(),
                         method: method.to_string(),
                         recv: Box::new(TArg::Value(recv)),
                         args: vec![TArg::Value(arg)],
@@ -614,7 +614,7 @@ impl<'a> Cx<'a> {
             .ty(&self.d.f(m).ret);
             return TExpr {
                 kind: TK::CallTrait {
-                    tr: tr.tr,
+                    tr: tr.clone(),
                     method: name.to_string(),
                     recv: Box::new(TArg::Value(recv)),
                     args,
@@ -808,7 +808,7 @@ impl<'a> Cx<'a> {
                     };
                     let call = TExpr {
                         kind: TK::CallTrait {
-                            tr: tr.tr,
+                            tr: tr.clone(),
                             method: name.text.clone(),
                             recv: Box::new(recv),
                             args,

@@ -1038,7 +1038,7 @@ impl Cx<'_> {
                 recv,
                 args,
             } => {
-                self.trait_call(*tr, method, e.span, recv, args, fx);
+                self.trait_call(tr.tr, method, e.span, recv, args, fx);
             }
             TK::CallValue { callee, args } => {
                 self.expr(callee, fx);
@@ -1263,7 +1263,7 @@ impl Cx<'_> {
                 let (mut held, lent) = match (callee, recv) {
                     (Callee::Fn(f), _) => self.fn_call(f, body.span, recv, args, fx),
                     (Callee::Trait(tr, m), Some(r)) => {
-                        self.trait_call(*tr, m, body.span, r, args, fx)
+                        self.trait_call(tr.tr, m, body.span, r, args, fx)
                     }
                     (Callee::Trait(..), None) => Default::default(),
                 };

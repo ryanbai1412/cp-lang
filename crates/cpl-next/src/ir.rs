@@ -209,6 +209,8 @@ pub enum Target<T> {
     /// Generic IR: a method of a bound, resolved per instance.
     Trait {
         tr: TraitId,
+        /// The trait's arguments, which pick among a type's impls of it (`Into<Char>`).
+        args: Vec<T>,
         method: String,
         self_ty: T,
     },
