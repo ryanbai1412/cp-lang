@@ -3,7 +3,7 @@
 //! canonical IR (they are branches), so the two can be compared.
 use crate::inst::{CTy, Program};
 use crate::ir::*;
-use cpl_diag::{codes, Code};
+use crate::ops::{self, Fault};
 use std::rc::Rc;
 
 /// What a `Raw<T>` holds. Integers are stored flat, so storage of a hundred million of them
@@ -31,15 +31,17 @@ pub enum V {
     Union(usize, Box<V>),
 }
 
-/// `Trap::code` when the fault is in the compiler: the IR was not what its contract says.
-pub const INTERNAL: &str = "internal";
-
 pub struct Trap {
-    /// The trap's code in the diagnostic registry, or `INTERNAL`.
-    pub code: &'static str,
+    pub fault: Fault,
     /// The line of the user's file that was running (`ir::Site`).
     pub line: u32,
     pub msg: String,
+}
+impl Trap {
+    /// The trap's code in the diagnostic registry, or `ops::INTERNAL`.
+    pub fn code(&self) -> &'static str {
+        self.fault.code()
+    }
 }
 pub struct Outcome {
     pub events: Vec<String>,
@@ -110,17 +112,22 @@ pub fn run(p: &Program, funcs: &[Func<CTy>], input: &str) -> Outcome {
 }
 
 /// The line is filled in where the run ends: it is `Machine::at` then.
-fn trap<T>(code: Code, msg: impl Into<String>) -> R<T> {
-    Err(Trap {
-        code: code.0,
-        line: 0,
-        msg: msg.into(),
-    })
+fn trap<T>(fault: Fault) -> R<T> {
+    Err(fault.into())
+}
+impl From<Fault> for Trap {
+    fn from(fault: Fault) -> Trap {
+        Trap {
+            fault,
+            line: 0,
+            msg: fault.message().into(),
+        }
+    }
 }
 
 /// The IR broke a rule the layers before this one keep. Never the program's fault.
 fn broken<T>(rule: &'static str) -> R<T> {
-    trap(Code(INTERNAL), rule)
+    trap(Fault::Internal(rule))
 }
 
 impl<'a> Machine<'a> {
@@ -138,7 +145,7 @@ impl<'a> Machine<'a> {
         }
         // Spec 9.6: no depth counting in the language; this stands for the 1 GB stack running out.
         if self.frames.len() >= 4_000_000 {
-            return trap(codes::STACK_EXHAUSTED, "the stack ran out");
+            return trap(Fault::StackExhausted);
         }
         self.frames.push(Frame {
             locals,
@@ -291,7 +298,11 @@ impl<'a> Machine<'a> {
                     };
                     if !ok {
                         self.enter(*site);
-                        return trap(kind.code(), msg.clone());
+                        return Err(Trap {
+                            fault: Fault::Check(*kind),
+                            line: 0,
+                            msg: msg.clone(),
+                        });
                     }
                 }
                 Stmt::Region {
@@ -498,45 +509,9 @@ impl<'a> Machine<'a> {
                     }
                 }
                 let (a, b) = (self.int(&args[0], fp)?, self.int(&args[1], fp)?);
-                let r = match op {
-                    Intr::Add => a.checked_add(b),
-                    Intr::Sub => a.checked_sub(b),
-                    Intr::Mul => a.checked_mul(b),
-                    Intr::Div | Intr::Rem if b == 0 => {
-                        return trap(codes::DIVISION_BY_ZERO, "division by zero")
-                    }
-                    Intr::Div => a.checked_div_euclid(b),
-                    Intr::Rem => a.checked_rem_euclid(b),
-                    Intr::Pow if b < 0 => return trap(codes::RUNTIME, "a negative power"),
-                    // Past `u32` only 0, 1 and -1 have a power that is a value.
-                    Intr::Pow => match u32::try_from(b) {
-                        Ok(e) => a.checked_pow(e),
-                        Err(_) => match a {
-                            0 | 1 => Some(a),
-                            -1 => Some(if b % 2 == 0 { 1 } else { -1 }),
-                            _ => None,
-                        },
-                    },
-                    Intr::Shl | Intr::Shr if !(0..64).contains(&b) => {
-                        return trap(codes::RUNTIME, "a shift outside 0..64")
-                    }
-                    Intr::Shl if a < 0 => return trap(codes::RUNTIME, "`<<` of a negative number"),
-                    Intr::Shl => Some(a << b).filter(|s| *s >= 0 && s >> b == a),
-                    Intr::Shr => Some(a >> b),
-                    Intr::BitAnd => Some(a & b),
-                    Intr::BitOr => Some(a | b),
-                    _ => Some(a ^ b),
-                };
-                // `Int` is `-(2^63-1)..=2^63-1`: the lowest bit pattern is not a value.
-                match r {
-                    Some(r) if r != i64::MIN => V::Int(r),
-                    _ => return trap(codes::OVERFLOW, "integer overflow"),
-                }
+                V::Int(ops::int(op, a, b)?)
             }
-            Intr::Neg => match self.int(&args[0], fp)?.checked_neg() {
-                Some(r) => V::Int(r),
-                None => return trap(codes::OVERFLOW, "integer overflow"),
-            },
+            Intr::Neg => V::Int(ops::neg(self.int(&args[0], fp)?)?),
             Intr::Eq | Intr::Ne | Intr::Lt | Intr::Le | Intr::Gt | Intr::Ge | Intr::Below => {
                 let (Arg::Value(a), Arg::Value(b)) = (&args[0], &args[1]) else {
                     return broken("lent operand");
@@ -548,15 +523,7 @@ impl<'a> Machine<'a> {
                     (V::U64(a), V::U64(b)) => (i128::from(a), i128::from(b)),
                     _ => return broken("comparison of a value of another kind"),
                 };
-                V::Bool(match op {
-                    Intr::Eq => a == b,
-                    Intr::Ne => a != b,
-                    Intr::Lt => a < b,
-                    Intr::Le => a <= b,
-                    Intr::Gt => a > b,
-                    Intr::Below => 0 <= a && a < b,
-                    _ => a >= b,
-                })
+                V::Bool(ops::compare(op, a, b)?)
             }
             Intr::Not => {
                 let Arg::Value(a) = &args[0] else {
@@ -574,16 +541,10 @@ impl<'a> Machine<'a> {
                     return broken("lent fill");
                 };
                 let fill = self.expr(fill, fp)?;
-                if n < 0 {
-                    return trap(codes::RUNTIME, "negative storage size");
-                }
-                // A stand-in for the run's memory limit (contract 0, `Limits`).
-                if n > 1 << 28 {
-                    return trap(codes::RUNTIME, "storage larger than the memory limit");
-                }
+                let n = ops::storage_size(n)?;
                 V::Raw(Rc::new(match fill {
-                    V::Int(x) => Store::Ints(vec![x; n as usize]),
-                    fill => Store::Any(vec![fill; n as usize]),
+                    V::Int(x) => Store::Ints(vec![x; n]),
+                    fill => Store::Any(vec![fill; n]),
                 }))
             }
             Intr::RawGet => {
@@ -596,14 +557,9 @@ impl<'a> Machine<'a> {
                     return broken("read of non-storage");
                 };
                 let i = self.int(&args[1], fp)?;
-                let at = usize::try_from(i).ok();
-                let v = match &*r {
-                    Store::Ints(xs) => at.and_then(|i| xs.get(i)).map(|x| V::Int(*x)),
-                    Store::Any(xs) => at.and_then(|i| xs.get(i)).cloned(),
-                };
-                match v {
-                    Some(v) => v,
-                    None => return trap(codes::INDEX_OUT_OF_RANGE, "read outside storage"),
+                match &*r {
+                    Store::Ints(xs) => V::Int(xs[ops::cell(i, xs.len(), false)?]),
+                    Store::Any(xs) => xs[ops::cell(i, xs.len(), false)?].clone(),
                 }
             }
             Intr::RawSet => {
@@ -622,37 +578,23 @@ impl<'a> Machine<'a> {
                     Store::Ints(xs) => xs.len(),
                     Store::Any(xs) => xs.len(),
                 };
-                if i < 0 || i as usize >= len {
-                    return trap(codes::INDEX_OUT_OF_RANGE, "write outside storage");
-                }
+                let i = ops::cell(i, len, true)?;
                 match (Rc::make_mut(r), x) {
-                    (Store::Ints(xs), V::Int(x)) => xs[i as usize] = x,
-                    (Store::Any(xs), x) => xs[i as usize] = x,
+                    (Store::Ints(xs), V::Int(x)) => xs[i] = x,
+                    (Store::Any(xs), x) => xs[i] = x,
                     (Store::Ints(_), _) => return broken("a non-integer in integer storage"),
                 }
                 V::Unit
             }
-            Intr::CheckRange => {
+            Intr::CheckRange | Intr::CheckKey => {
                 let Arg::Value(a) = &args[0] else {
                     return broken("lent operand");
                 };
-                match self.expr(a, fp)? {
-                    V::Bool(true) => V::Unit,
-                    V::Bool(false) => return trap(codes::RUNTIME, "a cut of a range outside it"),
-                    _ => return broken("a range check of a non-Bool"),
-                }
-            }
-            Intr::CheckKey => {
-                let Arg::Value(a) = &args[0] else {
-                    return broken("lent operand");
+                let V::Bool(ok) = self.expr(a, fp)? else {
+                    return broken("a check of a non-Bool");
                 };
-                match self.expr(a, fp)? {
-                    V::Bool(true) => V::Unit,
-                    V::Bool(false) => {
-                        return trap(codes::INDEX_OUT_OF_RANGE, "key outside the sequence")
-                    }
-                    _ => return broken("a key check of a non-Bool"),
-                }
+                ops::check(op, ok)?;
+                V::Unit
             }
             Intr::InputLeft => V::Bool(!self.input.as_slice().is_empty()),
             Intr::Unset => V::Unit,
@@ -664,10 +606,7 @@ impl<'a> Machine<'a> {
                 let V::U64(u) = self.expr(a, fp)? else {
                     return broken("a U64 operand of another kind");
                 };
-                match i64::try_from(u) {
-                    Ok(i) => V::Int(i),
-                    Err(_) => return trap(codes::OVERFLOW, "the value does not fit in an Int"),
-                }
+                V::Int(ops::int_of_u64(u)?)
             }
             Intr::CharOf => V::Char(self.int(&args[0], fp)? as u8),
             Intr::CodeOf => {
@@ -686,50 +625,21 @@ impl<'a> Machine<'a> {
                 .filter(|v| *v != i64::MIN)
             {
                 Some(i) => V::Int(i),
-                None => return trap(codes::BAD_INPUT_TOKEN, "expected an integer in the input"),
+                None => return trap(Fault::BadIntToken),
             },
         })
     }
 }
 
-/// `U64` arithmetic wraps; division by zero and a shift outside 0..64 trap (R03.4.1).
 fn u64_op(op: Intr, a: V, b: V) -> R<V> {
-    let shift = matches!(op, Intr::Shl | Intr::Shr);
-    let (a, b) = match (a, b) {
-        (V::U64(a), V::U64(b)) if !shift => (a, b),
-        (V::U64(a), V::Int(b)) if shift => {
-            if !(0..64).contains(&b) {
-                return trap(codes::RUNTIME, "a shift outside 0..64");
-            }
-            (a, b as u64)
-        }
+    let b = match (op, b) {
+        (Intr::Shl | Intr::Shr, V::Int(b)) => b as u64,
+        (Intr::Shl | Intr::Shr, _) => return broken("a shift amount of another kind"),
+        (_, V::U64(b)) => b,
         _ => return broken("a U64 operand of another kind"),
     };
-    Ok(V::U64(match op {
-        Intr::Add => a.wrapping_add(b),
-        Intr::Sub => a.wrapping_sub(b),
-        Intr::Mul => a.wrapping_mul(b),
-        Intr::Div | Intr::Rem if b == 0 => {
-            return trap(codes::DIVISION_BY_ZERO, "division by zero")
-        }
-        Intr::Div => a / b,
-        Intr::Rem => a % b,
-        Intr::Pow => {
-            let (mut r, mut x, mut e) = (1u64, a, b);
-            while e > 0 {
-                if e & 1 == 1 {
-                    r = r.wrapping_mul(x);
-                }
-                x = x.wrapping_mul(x);
-                e >>= 1;
-            }
-            r
-        }
-        Intr::Shl => a << b,
-        Intr::Shr => a >> b,
-        Intr::BitAnd => a & b,
-        Intr::BitOr => a | b,
-        Intr::BitXor => a ^ b,
-        _ => return broken("not a U64 operation"),
-    }))
+    let V::U64(a) = a else {
+        return broken("a U64 operand of another kind");
+    };
+    Ok(V::U64(ops::word(op, a, b)?))
 }

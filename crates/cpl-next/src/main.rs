@@ -72,7 +72,7 @@ fn real_main() {
         eprintln!("{e}");
     }
     if let Some(t) = o.trap {
-        eprintln!("trap: {}: line {}: {}", t.code, t.line, t.msg);
+        eprintln!("trap: {}: line {}: {}", t.code(), t.line, t.msg);
         std::process::exit(3);
     }
 }

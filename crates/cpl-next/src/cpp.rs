@@ -2,6 +2,7 @@
 //! node kind, and no decision of its own.
 use crate::inst::{CTy, Program};
 use crate::ir::*;
+use crate::ops;
 use std::collections::{HashMap, HashSet};
 
 /// Appends formatted text to a `String`.
@@ -18,7 +19,8 @@ macro_rules! put_line {
     }};
 }
 
-const RUNTIME: &str = r#"#include <cstdint>
+/// The runtime up to `cpl_trap`.
+const RUNTIME_HEAD: &str = r#"#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cerrno>
@@ -38,16 +40,26 @@ static int cpl_at = 0;
     fprintf(stderr, "trap: %s: line %d: %s\n", code, cpl_at, msg);
     exit(3);
 }
+"#;
+
+/// The rest of the runtime, after the trap table `ops::cpp_trap_table` writes.
+const RUNTIME: &str = r#"[[noreturn]] static void cpl_fail(int f) { cpl_trap(cpl_faults[f][0], cpl_faults[f][1]); }
 static char cpl_altstack[1 << 16];
 static void cpl_segv(int) {
     // Only `write` is safe here, so the line is printed by hand.
-    char m[64] = "trap: R0601: line ";
-    char d[12]; int n = 0, k = (int)strlen(m);
+    const char* code = cpl_faults[CPL_STACK_EXHAUSTED][0];
+    const char* msg = cpl_faults[CPL_STACK_EXHAUSTED][1];
+    char m[160] = "trap: ";
+    int k = (int)strlen(m);
+    memcpy(m + k, code, strlen(code)); k += (int)strlen(code);
+    memcpy(m + k, ": line ", 7); k += 7;
+    char d[12]; int n = 0;
     for (int v = cpl_at; v || !n; v /= 10) d[n++] = (char)('0' + v % 10);
     while (n) m[k++] = d[--n];
-    static const char t[] = ": the stack ran out\n";
-    memcpy(m + k, t, sizeof t - 1);
-    if (write(2, m, k + sizeof t - 1)) {}
+    m[k++] = ':'; m[k++] = ' ';
+    memcpy(m + k, msg, strlen(msg)); k += (int)strlen(msg);
+    m[k++] = '\n';
+    if (write(2, m, k)) {}
     _exit(3);
 }
 static void cpl_guard_stack() {
@@ -59,26 +71,26 @@ static void cpl_guard_stack() {
     struct sigaction sa; memset(&sa, 0, sizeof sa); sa.sa_handler = cpl_segv; sa.sa_flags = SA_ONSTACK;
     sigaction(SIGSEGV, &sa, nullptr); sigaction(SIGBUS, &sa, nullptr);
 }
-static inline int64_t cpl_add(int64_t a, int64_t b) { int64_t r; if (__builtin_add_overflow(a, b, &r) || r == INT64_MIN) cpl_trap("R0202", "integer overflow"); return r; }
-static inline int64_t cpl_sub(int64_t a, int64_t b) { int64_t r; if (__builtin_sub_overflow(a, b, &r) || r == INT64_MIN) cpl_trap("R0202", "integer overflow"); return r; }
-static inline int64_t cpl_mul(int64_t a, int64_t b) { int64_t r; if (__builtin_mul_overflow(a, b, &r) || r == INT64_MIN) cpl_trap("R0202", "integer overflow"); return r; }
-static inline int64_t cpl_neg(int64_t a) { if (a == INT64_MIN) cpl_trap("R0202", "integer overflow"); return -a; }
+static inline int64_t cpl_add(int64_t a, int64_t b) { int64_t r; if (__builtin_add_overflow(a, b, &r) || r == INT64_MIN) cpl_fail(CPL_OVERFLOW); return r; }
+static inline int64_t cpl_sub(int64_t a, int64_t b) { int64_t r; if (__builtin_sub_overflow(a, b, &r) || r == INT64_MIN) cpl_fail(CPL_OVERFLOW); return r; }
+static inline int64_t cpl_mul(int64_t a, int64_t b) { int64_t r; if (__builtin_mul_overflow(a, b, &r) || r == INT64_MIN) cpl_fail(CPL_OVERFLOW); return r; }
+static inline int64_t cpl_neg(int64_t a) { if (a == INT64_MIN) cpl_fail(CPL_OVERFLOW); return -a; }
 static inline int64_t cpl_div(int64_t a, int64_t b) {
-    if (b == 0) cpl_trap("R0203", "division by zero");
-    if (a == INT64_MIN && b == -1) cpl_trap("R0202", "integer overflow");
+    if (b == 0) cpl_fail(CPL_DIVISION_BY_ZERO);
+    if (a == INT64_MIN && b == -1) cpl_fail(CPL_OVERFLOW);
     int64_t q = a / b, r = a % b;
     if (r < 0) q += b > 0 ? -1 : 1;
     return q;
 }
 static inline int64_t cpl_rem(int64_t a, int64_t b) {
-    if (b == 0) cpl_trap("R0203", "division by zero");
-    if (a == INT64_MIN && b == -1) cpl_trap("R0202", "integer overflow");
+    if (b == 0) cpl_fail(CPL_DIVISION_BY_ZERO);
+    if (a == INT64_MIN && b == -1) cpl_fail(CPL_OVERFLOW);
     int64_t r = a % b;
     if (r < 0) r += b > 0 ? b : -b;
     return r;
 }
 static inline int64_t cpl_pow(int64_t a, int64_t b) {
-    if (b < 0) cpl_trap("R0001", "a negative power");
+    if (b < 0) cpl_fail(CPL_NEGATIVE_POWER);
     int64_t r = 1;
     for (; b > 0; b >>= 1) {
         if (b & 1) r = cpl_mul(r, a);
@@ -87,19 +99,19 @@ static inline int64_t cpl_pow(int64_t a, int64_t b) {
     return r;
 }
 static inline int64_t cpl_shl(int64_t a, int64_t b) {
-    if (b < 0 || b >= 64) cpl_trap("R0001", "a shift outside 0..64");
-    if (a < 0) cpl_trap("R0001", "`<<` of a negative number");
-    if (a > (INT64_MAX >> b)) cpl_trap("R0202", "integer overflow");
+    if (b < 0 || b >= 64) cpl_fail(CPL_SHIFT_OUTSIDE);
+    if (a < 0) cpl_fail(CPL_SHL_NEGATIVE);
+    if (a > (INT64_MAX >> b)) cpl_fail(CPL_OVERFLOW);
     return a << b;
 }
 static inline int64_t cpl_shr(int64_t a, int64_t b) {
-    if (b < 0 || b >= 64) cpl_trap("R0001", "a shift outside 0..64");
+    if (b < 0 || b >= 64) cpl_fail(CPL_SHIFT_OUTSIDE);
     return a >> b;
 }
-static inline int64_t cpl_band(int64_t a, int64_t b) { int64_t r = a & b; if (r == INT64_MIN) cpl_trap("R0202", "integer overflow"); return r; }
-static inline int64_t cpl_bxor(int64_t a, int64_t b) { int64_t r = a ^ b; if (r == INT64_MIN) cpl_trap("R0202", "integer overflow"); return r; }
-static inline uint64_t cpl_udiv(uint64_t a, uint64_t b) { if (b == 0) cpl_trap("R0203", "division by zero"); return a / b; }
-static inline uint64_t cpl_urem(uint64_t a, uint64_t b) { if (b == 0) cpl_trap("R0203", "division by zero"); return a % b; }
+static inline int64_t cpl_band(int64_t a, int64_t b) { int64_t r = a & b; if (r == INT64_MIN) cpl_fail(CPL_OVERFLOW); return r; }
+static inline int64_t cpl_bxor(int64_t a, int64_t b) { int64_t r = a ^ b; if (r == INT64_MIN) cpl_fail(CPL_OVERFLOW); return r; }
+static inline uint64_t cpl_udiv(uint64_t a, uint64_t b) { if (b == 0) cpl_fail(CPL_DIVISION_BY_ZERO); return a / b; }
+static inline uint64_t cpl_urem(uint64_t a, uint64_t b) { if (b == 0) cpl_fail(CPL_DIVISION_BY_ZERO); return a % b; }
 static inline uint64_t cpl_upow(uint64_t a, uint64_t b) {
     uint64_t r = 1;
     for (; b > 0; b >>= 1) {
@@ -108,12 +120,12 @@ static inline uint64_t cpl_upow(uint64_t a, uint64_t b) {
     }
     return r;
 }
-static inline uint64_t cpl_ushl(uint64_t a, int64_t b) { if (b < 0 || b >= 64) cpl_trap("R0001", "a shift outside 0..64"); return a << b; }
-static inline uint64_t cpl_ushr(uint64_t a, int64_t b) { if (b < 0 || b >= 64) cpl_trap("R0001", "a shift outside 0..64"); return a >> b; }
-static inline int64_t cpl_int_of_u64(uint64_t u) { if (u > (uint64_t)INT64_MAX) cpl_trap("R0202", "the value does not fit in an Int"); return (int64_t)u; }
+static inline uint64_t cpl_ushl(uint64_t a, int64_t b) { if (b < 0 || b >= 64) cpl_fail(CPL_SHIFT_OUTSIDE); return a << b; }
+static inline uint64_t cpl_ushr(uint64_t a, int64_t b) { if (b < 0 || b >= 64) cpl_fail(CPL_SHIFT_OUTSIDE); return a >> b; }
+static inline int64_t cpl_int_of_u64(uint64_t u) { if (u > (uint64_t)INT64_MAX) cpl_fail(CPL_U64_PAST_INT); return (int64_t)u; }
 template <class T> static inline cpl_raw<T> cpl_raw_new(int64_t n, const T& fill) {
-    if (n < 0) cpl_trap("R0001", "negative storage size");
-    if (n > (int64_t(1) << 28)) cpl_trap("R0001", "storage larger than the memory limit");
+    if (n < 0) cpl_fail(CPL_NEGATIVE_SIZE);
+    if (n > (int64_t(1) << 28)) cpl_fail(CPL_PAST_MEMORY_LIMIT);
     return cpl_raw<T>((size_t)n, fill);
 }
 static inline cpl_raw<cpl_char> cpl_raw_text(const char* s, size_t n) {
@@ -121,14 +133,14 @@ static inline cpl_raw<cpl_char> cpl_raw_text(const char* s, size_t n) {
     for (size_t i = 0; i < n; i++) r[i].code = (uint8_t)s[i];
     return r;
 }
-static inline cpl_unit cpl_check_key(bool ok) { if (!ok) cpl_trap("R0101", "key outside the sequence"); return {}; }
-static inline cpl_unit cpl_check_range(bool ok) { if (!ok) cpl_trap("R0001", "a cut of a range outside it"); return {}; }
+static inline cpl_unit cpl_check_key(bool ok) { if (!ok) cpl_fail(CPL_KEY_OUTSIDE); return {}; }
+static inline cpl_unit cpl_check_range(bool ok) { if (!ok) cpl_fail(CPL_RANGE_CUT); return {}; }
 template <class T> static inline T cpl_get(const cpl_raw<T>& r, int64_t i) {
-    if (i < 0 || (size_t)i >= r.size()) cpl_trap("R0101", "read outside storage");
+    if (i < 0 || (size_t)i >= r.size()) cpl_fail(CPL_READ_OUTSIDE);
     return r[(size_t)i];
 }
 template <class T> static inline cpl_unit cpl_set(cpl_raw<T>& r, int64_t i, const T& x) {
-    if (i < 0 || (size_t)i >= r.size()) cpl_trap("R0101", "write outside storage");
+    if (i < 0 || (size_t)i >= r.size()) cpl_fail(CPL_WRITE_OUTSIDE);
     r[(size_t)i] = x;
     return cpl_unit{};
 }
@@ -141,11 +153,11 @@ static inline bool cpl_input_left() {
 }
 static inline int64_t cpl_read() {
     char buf[32];
-    if (scanf("%31s", buf) != 1) cpl_trap("R0501", "expected an integer in the input");
+    if (scanf("%31s", buf) != 1) cpl_fail(CPL_BAD_INT_TOKEN);
     errno = 0;
     char* end;
     long long x = strtoll(buf, &end, 10);
-    if (*end || end == buf || errno == ERANGE || x == LLONG_MIN) cpl_trap("R0501", "expected an integer in the input");
+    if (*end || end == buf || errno == ERANGE || x == LLONG_MIN) cpl_fail(CPL_BAD_INT_TOKEN);
     return (int64_t)x;
 }
 // The caller's code handed to a generator or lender that calls itself: two words, not owning.
@@ -213,7 +225,7 @@ pub fn emit(p: &Program, funcs: &[Func<CTy>]) -> String {
         e.name(t);
     }
     e.order = e.by_value_order();
-    let mut s = String::from(RUNTIME);
+    let mut s = format!("{RUNTIME_HEAD}{}{RUNTIME}", ops::cpp_trap_table());
     for t in &e.order {
         put_line!(s, "struct {};", e.names[t]);
     }
@@ -551,38 +563,15 @@ impl Emit<'_> {
                 let a: Vec<String> = args.iter().map(|a| self.arg(a)).collect();
                 let bin = |o: &str| format!("({} {o} {})", a[0], a[1]);
                 let unsigned = matches!(args.first(), Some(Arg::Value(e)) if e.ty == CTy::U64);
+                match ops::cpp(*op, unsigned) {
+                    Some(ops::Cpp::Infix(o)) => return bin(o),
+                    Some(ops::Cpp::Call(f)) => return format!("{f}({})", a.join(", ")),
+                    None => {}
+                }
                 match op {
-                    Intr::Add if unsigned => bin("+"),
-                    Intr::Sub if unsigned => bin("-"),
-                    Intr::Mul if unsigned => bin("*"),
-                    Intr::Div if unsigned => format!("cpl_udiv({}, {})", a[0], a[1]),
-                    Intr::Rem if unsigned => format!("cpl_urem({}, {})", a[0], a[1]),
-                    Intr::Pow if unsigned => format!("cpl_upow({}, {})", a[0], a[1]),
-                    Intr::Shl if unsigned => format!("cpl_ushl({}, {})", a[0], a[1]),
-                    Intr::Shr if unsigned => format!("cpl_ushr({}, {})", a[0], a[1]),
-                    Intr::BitAnd if unsigned => bin("&"),
-                    Intr::BitXor if unsigned => bin("^"),
                     Intr::ToU64 => format!("((uint64_t)({}))", a[0]),
                     Intr::FromU64 => format!("cpl_int_of_u64({})", a[0]),
-                    Intr::Add => format!("cpl_add({}, {})", a[0], a[1]),
-                    Intr::Sub => format!("cpl_sub({}, {})", a[0], a[1]),
-                    Intr::Mul => format!("cpl_mul({}, {})", a[0], a[1]),
-                    Intr::Div => format!("cpl_div({}, {})", a[0], a[1]),
-                    Intr::Rem => format!("cpl_rem({}, {})", a[0], a[1]),
                     Intr::Neg => format!("cpl_neg({})", a[0]),
-                    Intr::Pow => format!("cpl_pow({}, {})", a[0], a[1]),
-                    Intr::Shl => format!("cpl_shl({}, {})", a[0], a[1]),
-                    Intr::Shr => format!("cpl_shr({}, {})", a[0], a[1]),
-                    Intr::BitAnd => format!("cpl_band({}, {})", a[0], a[1]),
-                    // `a | b` of two values is never the lowest bit pattern.
-                    Intr::BitOr => bin("|"),
-                    Intr::BitXor => format!("cpl_bxor({}, {})", a[0], a[1]),
-                    Intr::Eq => bin("=="),
-                    Intr::Ne => bin("!="),
-                    Intr::Lt => bin("<"),
-                    Intr::Le => bin("<="),
-                    Intr::Gt => bin(">"),
-                    Intr::Ge => bin(">="),
                     Intr::Below => format!("((uint64_t)({}) < (uint64_t)({}))", a[0], a[1]),
                     Intr::Not => format!("(!{})", a[0]),
                     Intr::CharOf => format!("cpl_char{{(uint8_t)({})}}", a[0]),
@@ -596,6 +585,24 @@ impl Emit<'_> {
                     Intr::ReadInt => "cpl_read()".to_string(),
                     Intr::InputLeft => "cpl_input_left()".to_string(),
                     Intr::Unset => format!("{}{{}}", self.names[&e.ty]),
+                    // `ops::cpp` spells these, for operands of every kind.
+                    Intr::Add
+                    | Intr::Sub
+                    | Intr::Mul
+                    | Intr::Div
+                    | Intr::Rem
+                    | Intr::Pow
+                    | Intr::Shl
+                    | Intr::Shr
+                    | Intr::BitAnd
+                    | Intr::BitOr
+                    | Intr::BitXor
+                    | Intr::Eq
+                    | Intr::Ne
+                    | Intr::Lt
+                    | Intr::Le
+                    | Intr::Gt
+                    | Intr::Ge => "/* not an operation */".to_string(),
                 }
             }
         }
@@ -872,4 +879,160 @@ fn c_string(t: &str) -> String {
     }
     o.push('"');
     o
+}
+
+#[cfg(test)]
+#[path = "../../cpl-cli/tests/support/cxx.rs"]
+mod cxx;
+
+/// The C++ runtime's helpers against `ops`, row by row, on the edges of each operand's range.
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ops::Fault;
+    use std::fmt::Display;
+
+    fn expect<T: Display>(r: Result<T, Fault>) -> String {
+        match r {
+            Ok(v) => format!("{v}\n"),
+            Err(f) => format!("trap: {}: line 0: {}\n", f.code(), f.message()),
+        }
+    }
+
+    #[test]
+    fn runtime_agrees_with_ops() {
+        let ints = [
+            -i64::MAX,
+            -64,
+            -3,
+            -2,
+            -1,
+            0,
+            1,
+            2,
+            3,
+            62,
+            63,
+            64,
+            1 << 32,
+            i64::MAX,
+        ];
+        let words = [0, 1, 2, 3, 63, 64, 65, 1 << 32, 1 << 63, u64::MAX];
+        let ops = [
+            Intr::Add,
+            Intr::Sub,
+            Intr::Mul,
+            Intr::Div,
+            Intr::Rem,
+            Intr::Pow,
+            Intr::Shl,
+            Intr::Shr,
+            Intr::BitAnd,
+            Intr::BitOr,
+            Intr::BitXor,
+        ];
+        let (mut cases, mut want) = (Vec::new(), String::new());
+        let mut case = |c: String, w: String| {
+            cases.push(c);
+            want.push_str(&w);
+        };
+        let call = |op: Intr, unsigned: bool, a: &str, b: &str| match ops::cpp(op, unsigned) {
+            Some(ops::Cpp::Call(f)) => format!("{f}({a}, {b})"),
+            Some(ops::Cpp::Infix(o)) => format!("({a} {o} {b})"),
+            None => panic!("{op:?} has no C++"),
+        };
+        for a in ints {
+            case(
+                format!("printf(\"%lld\\n\", (long long)cpl_neg(INT64_C({a})));"),
+                expect(ops::neg(a)),
+            );
+            case(
+                format!("printf(\"%zu\\n\", cpl_raw_new(INT64_C({a}), INT64_C(0)).size());"),
+                expect(ops::storage_size(a)),
+            );
+            case(
+                format!("printf(\"%d\\n\", (int)cpl_get(cpl_raw<int64_t>(3, 7), INT64_C({a})));"),
+                expect(ops::cell(a, 3, false).map(|_| 7)),
+            );
+            case(
+                format!("cpl_raw<int64_t> r(3); cpl_set(r, INT64_C({a}), INT64_C(7)); printf(\"7\\n\");"),
+                expect(ops::cell(a, 3, true).map(|_| 7)),
+            );
+        }
+        for op in ops {
+            for a in ints {
+                for b in ints {
+                    let c = call(
+                        op,
+                        false,
+                        &format!("INT64_C({a})"),
+                        &format!("INT64_C({b})"),
+                    );
+                    case(
+                        format!("printf(\"%lld\\n\", (long long){c});"),
+                        expect(ops::int(op, a, b)),
+                    );
+                }
+            }
+            let shift = matches!(op, Intr::Shl | Intr::Shr);
+            for a in words {
+                // A shift's amount is an `Int`, given to `ops::word` as its bits.
+                let amounts: Vec<u64> = if shift {
+                    ints.iter().map(|b| *b as u64).collect()
+                } else {
+                    words.to_vec()
+                };
+                for b in amounts {
+                    let bs = if shift {
+                        format!("INT64_C({})", b as i64)
+                    } else {
+                        format!("UINT64_C({b})")
+                    };
+                    let c = call(op, true, &format!("UINT64_C({a})"), &bs);
+                    case(
+                        format!("printf(\"%llu\\n\", (unsigned long long){c});"),
+                        expect(ops::word(op, a, b)),
+                    );
+                }
+            }
+        }
+        for a in words {
+            case(
+                format!("printf(\"%lld\\n\", (long long)cpl_int_of_u64(UINT64_C({a})));"),
+                expect(ops::int_of_u64(a)),
+            );
+        }
+        for (op, f) in [
+            (Intr::CheckKey, "cpl_check_key"),
+            (Intr::CheckRange, "cpl_check_range"),
+        ] {
+            for ok in [true, false] {
+                case(
+                    format!("{f}({ok}); printf(\"0\\n\");"),
+                    expect(ops::check(op, ok).map(|_| 0)),
+                );
+            }
+        }
+        let mut cpp = format!("{RUNTIME_HEAD}{}{RUNTIME}", ops::cpp_trap_table());
+        cpp.push_str("#include <sys/wait.h>\nint main() {\n");
+        for c in &cases {
+            put_line!(
+                cpp,
+                "    fflush(stdout); if (fork() == 0) {{ dup2(1, 2); {{ {c} }} fflush(stdout); _exit(0); }} wait(nullptr);"
+            );
+        }
+        cpp.push_str("}\n");
+        let flags = ["-std=c++17", "-O1", "-w", "-x", "c++"];
+        let (bin, _) = cxx::build(cpp.as_bytes(), &flags).unwrap();
+        let out = std::process::Command::new(bin).output().unwrap();
+        let got = String::from_utf8_lossy(&out.stdout);
+        for ((c, g), w) in cases
+            .iter()
+            .zip(got.split_inclusive('\n'))
+            .zip(want.split_inclusive('\n'))
+        {
+            assert_eq!(g, w, "{c}");
+        }
+        assert_eq!(got.lines().count(), cases.len());
+    }
 }

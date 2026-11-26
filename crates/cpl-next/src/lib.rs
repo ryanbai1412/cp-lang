@@ -16,6 +16,7 @@ mod interp;
 mod ir;
 mod lower;
 mod modules;
+mod ops;
 mod own;
 mod records;
 mod synth;
