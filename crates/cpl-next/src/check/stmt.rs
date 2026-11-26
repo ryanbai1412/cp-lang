@@ -80,6 +80,47 @@ impl<'a> Cx<'a> {
         })
     }
 
+    /// `for x in s` with `s` of a type parameter: its bound's `iter` walks it, and each
+    /// instance picks the impl (R07.1.1).
+    fn bound_walk(
+        &mut self,
+        p: usize,
+        recv: TExpr,
+        name: &str,
+        body: &ast::Block,
+        span: Span,
+        out: &mut Vec<TStmt>,
+    ) {
+        let found = (self.bound_traits(p).into_iter())
+            .find_map(|tr| Some((self.d.traits[tr.tr.0].methods.get("iter").copied()?, tr)));
+        let Some((m, tr)) = found else {
+            let shown = self.show(&recv.ty);
+            return self.err(span, format!("`{shown}` has no `iter`"));
+        };
+        let Some((false, elem)) = self.d.f(m).region.clone() else {
+            return self.err(span, "this cannot be walked with `for`");
+        };
+        self.reach(m);
+        let mut tys = vec![recv.ty.clone()];
+        tys.extend(tr.args.iter().cloned());
+        let elem = Subst {
+            tys: &tys,
+            sets: &[],
+        }
+        .ty(&elem);
+        self.scopes.push(HashMap::new());
+        let var = self.bind(name, elem);
+        let body = self.block(body, None);
+        self.scopes.pop();
+        out.push(TStmt::Region {
+            callee: Callee::Trait(tr.tr, "iter".to_string()),
+            recv: Some(Box::new(TArg::Value(recv))),
+            args: Vec::new(),
+            var,
+            lend: false,
+            body,
+        });
+    }
     pub(super) fn block(&mut self, b: &ast::Block, want: Option<&Ty>) -> TExpr {
         self.scopes.push(HashMap::new());
         let mut out = Vec::new();
@@ -411,7 +452,7 @@ impl<'a> Cx<'a> {
                         span: s.span,
                     };
                     out.push(TStmt::Region {
-                        f,
+                        callee: Callee::Fn(f),
                         recv,
                         args,
                         var,
@@ -545,9 +586,12 @@ impl<'a> Cx<'a> {
                     self.allow_region = false;
                     if !matches!(&call.kind, TK::Call { f, .. } if self.d.f(f.decl).region.is_some())
                     {
-                        self.allow_region = true;
                         // A type without its own `each` walks through its `Seq` impl (R07.1.1).
                         let rt = self.shallow(&call.ty);
+                        if let Ty::Param(p) = rt {
+                            return self.bound_walk(p, call, name, body, s.span, out);
+                        }
+                        self.allow_region = true;
                         let own = "each";
                         let walk = match self.d.lookup_member(&rt, own) {
                             Some(_) => own,
@@ -572,7 +616,7 @@ impl<'a> Cx<'a> {
                     let body = self.block(body, None);
                     self.scopes.pop();
                     out.push(TStmt::Region {
-                        f,
+                        callee: Callee::Fn(f),
                         recv,
                         args,
                         var,

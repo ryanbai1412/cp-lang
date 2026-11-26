@@ -268,6 +268,13 @@ impl<T: Eq> Eq for List<T>:
         for i in 0..a.n:
             if raw_get(a.buf, i) != raw_get(b.buf, i): return false
         true
+/// Lists compare element by element, a prefix first (R08.1.5).
+impl<T: Ord> Ord for List<T>:
+    fn lt(a, b):
+        let n = if a.n < b.n: a.n else: b.n
+        for i in 0..n:
+            if raw_get(a.buf, i) != raw_get(b.buf, i): return raw_get(a.buf, i) < raw_get(b.buf, i)
+        a.n < b.n
 
 /// Tuples compare field by field, lexicographically for `Ord` (R08.1.6).
 impl<A: Eq, B: Eq> Eq for Tuple2<A, B>:

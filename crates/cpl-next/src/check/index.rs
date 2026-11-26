@@ -209,7 +209,7 @@ impl Cx<'_> {
         );
         self.scopes.pop();
         out.push(TStmt::Region {
-            f,
+            callee: Callee::Fn(f),
             recv: Some(Box::new(TArg::Mut(b))),
             args: vec![TArg::Value(i)],
             var,

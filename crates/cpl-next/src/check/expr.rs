@@ -3,6 +3,15 @@
 use super::*;
 
 impl<'a> Cx<'a> {
+    /// The core `List`, which literals, comprehensions and tables build. It is found by name;
+    /// the design wants a marker.
+    pub(super) fn list_struct(&mut self, span: Span) -> Option<StructId> {
+        let list = self.d.core_struct("List");
+        if list.is_none() {
+            self.err(span, "no `List` is declared");
+        }
+        list
+    }
     pub(super) fn binary(&mut self, op: BinOp, l: TExpr, r: TExpr, span: Span) -> TExpr {
         // `s + t` on strings is a new string (R02.3.3).
         if op == BinOp::Add && self.is_str(&l.ty) && self.is_str(&r.ty) {
@@ -1112,8 +1121,9 @@ impl<'a> Cx<'a> {
                         r
                     };
                     // Characters are ordered by code (R02.2.1).
+                    let char = self.shallow(&prev.ty) == Ty::Char;
                     let side = |x: TExpr| {
-                        if x.ty == Ty::Char {
+                        if char {
                             mk(TK::CodeOf(Box::new(x)), Ty::Int)
                         } else {
                             x
@@ -1490,9 +1500,8 @@ impl<'a> Cx<'a> {
                 )
             }
             ExprKind::List(xs) => {
-                // `[a, b]` is `List.new()` and a `push` per element. The slice finds `List` by name; the design wants a marker.
-                let Some(list) = self.d.core_struct("List") else {
-                    self.err(span, "no `List` is declared");
+                // `[a, b]` is `List.new()` and a `push` per element.
+                let Some(list) = self.list_struct(span) else {
                     return mk(TK::Error, Ty::Error);
                 };
                 let ls = self.d.s(list);
@@ -1548,14 +1557,13 @@ impl<'a> Cx<'a> {
                 params,
                 body,
             } if domains.len() == 1 && params.len() == 1 => {
-                self.table(&domains[0], &params[0], body, span)
+                self.table(&domains[0], &params[0], body, span, want)
             }
             ExprKind::Comprehension { body, clauses }
                 if clauses.len() == 1 && clauses[0].conds.is_empty() =>
             {
                 // `[e for x in xs]` is `List.new()` and a `for` that pushes: the same statements a user would write.
-                let Some(list) = self.d.core_struct("List") else {
-                    self.err(span, "no `List` is declared");
+                let Some(list) = self.list_struct(span) else {
                     return mk(TK::Error, Ty::Error);
                 };
                 let ls = self.d.s(list);

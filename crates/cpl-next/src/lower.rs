@@ -25,6 +25,8 @@ struct Lw<'a> {
     locals: Vec<Ty>,
     /// Which of the current fn's own bindings are `var`s.
     mut_locals: Vec<bool>,
+    /// The `var`s among them: a closure writes these through its capture.
+    var_locals: Vec<bool>,
     /// Inside a lambda at top level, its params live in the globals table; map them to locals.
     remap: HashMap<VarRef, usize>,
     lambdas: Vec<Func<Ty>>,
@@ -53,6 +55,7 @@ pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &str, std_lines: u32)
         globals: typed.globals.iter().map(|g| g.ty.clone()).collect(),
         locals: Vec::new(),
         mut_locals: Vec::new(),
+        var_locals: Vec::new(),
         remap: HashMap::new(),
         lambdas: Vec::new(),
         errors: Vec::new(),
@@ -96,6 +99,7 @@ pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &str, std_lines: u32)
             .iter()
             .map(|l| l.mutable || !crate::own::plain(d, &l.ty, 0))
             .collect();
+        lw.var_locals = tf.locals.iter().map(|l| l.mutable).collect();
         lw.remap.clear();
         let holds = owned.lends.get(id);
         lw.lent = (lw.param_locals(*id).into_iter())
@@ -109,6 +113,11 @@ pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &str, std_lines: u32)
         }
         for (p, pd) in tf.params.iter().zip(&fd.params) {
             params.push((*p, pd.mutable));
+        }
+        for (l, m) in &params {
+            if *m {
+                lw.var_locals[*l] = true;
+            }
         }
         let mut body = Vec::new();
         let v = lw.expr(&tf.body, &mut body);
@@ -205,11 +214,34 @@ impl Lw<'_> {
     fn arg_ty(&self, a: &Arg<Ty>) -> Option<Ty> {
         match a {
             Arg::Value(e) => Some(e.ty.clone()),
-            Arg::View(Place::Local(l)) | Arg::Lend(Place::Local(l)) => self.locals.get(*l).cloned(),
-            Arg::View(Place::Global(g)) | Arg::Lend(Place::Global(g)) => {
-                self.globals.get(*g).cloned()
+            Arg::View(p) | Arg::Lend(p) => self.place_ty(p),
+        }
+    }
+    /// The type of a place, a lent mark kept where a slot on its path holds one.
+    fn place_ty(&self, p: &Place) -> Option<Ty> {
+        match p {
+            Place::Local(l) => self.locals.get(*l).cloned(),
+            Place::Global(g) => self.globals.get(*g).cloned(),
+            Place::Field(b, i) => {
+                let b = match self.place_ty(b)? {
+                    Ty::Lent(t) => *t,
+                    t => t,
+                };
+                let Ty::Struct(d, ts, ss) = &b else {
+                    return None;
+                };
+                let s = self.d.s(*d);
+                Some(Subst { tys: ts, sets: ss }.ty(&s.fields.get(*i)?.1))
             }
             _ => None,
+        }
+    }
+    /// The receiver type a bound's method is picked by: lent when the lowered receiver is.
+    fn self_ty(&self, recv: &TArg, a: &[Arg<Ty>]) -> Ty {
+        let (TArg::Value(v) | TArg::Mut(v)) = recv;
+        match a.first().and_then(|x| self.arg_ty(x)) {
+            Some(t) if strip_lent(&t) == v.ty => t,
+            _ => v.ty.clone(),
         }
     }
     /// `f` with each type argument an argument fills lent taking the lent form, so the
@@ -301,8 +333,10 @@ impl Lw<'_> {
     }
     fn var(&mut self, v: VarRef) -> Place {
         if let Some(l) = self.remap.get(&v) {
-            if matches!(self.locals[*l], Ty::Ref(_)) {
-                return Place::Deref(Box::new(Place::Local(*l)));
+            match self.locals[*l] {
+                Ty::Ref(_) => return Place::Deref(Box::new(Place::Local(*l))),
+                Ty::Lent(_) => return Place::Through(Box::new(Place::Local(*l))),
+                _ => {}
             }
             return Place::Local(*l);
         }
@@ -499,12 +533,7 @@ impl Lw<'_> {
                 args,
             } => {
                 let a = self.args(Some(recv), args, out);
-                let self_ty = match &**recv {
-                    TArg::Value(v) | TArg::Mut(v) => match a.first().and_then(|x| self.arg_ty(x)) {
-                        Some(t) if strip_lent(&t) == v.ty => t,
-                        _ => v.ty.clone(),
-                    },
-                };
+                let self_ty = self.self_ty(recv, &a);
                 let call = mk(EK::Call(
                     Target::Trait {
                         tr: *tr,
@@ -966,7 +995,7 @@ impl Lw<'_> {
                 out.push(Stmt::LendOut(place));
             }
             TStmt::Region {
-                f,
+                callee,
                 recv,
                 args,
                 var,
@@ -999,8 +1028,16 @@ impl Lw<'_> {
                 let mut b = Vec::new();
                 let v = self.expr(body, &mut b);
                 self.effect(v, &mut b);
+                let target = match (callee, recv.as_deref()) {
+                    (Callee::Fn(f), _) => Target::Fn(self.lent_targs(f, &a)),
+                    (Callee::Trait(tr, method), r) => Target::Trait {
+                        tr: *tr,
+                        method: method.clone(),
+                        self_ty: r.map_or(Ty::Error, |r| self.self_ty(r, &a)),
+                    },
+                };
                 out.push(Stmt::Region {
-                    target: Target::Fn(self.lent_targs(f, &a)),
+                    target,
                     args: a,
                     var: l,
                     lend: *lend,
@@ -1031,16 +1068,24 @@ impl Lw<'_> {
         // A binding inside a block is captured by value when the closure is made, at top level too:
         // a loop makes a new one each time round. Only the file's own top-level bindings are shared.
         // A `var` is shared with the closure (spec R05.10.1): the capture is a reference to it.
-        let (mut_locals, globals) = (&self.mut_locals, &self.typed.globals);
+        let (mut_locals, var_locals, globals) =
+            (&self.mut_locals, &self.var_locals, &self.typed.globals);
         let is_var = |v: &VarRef| match v {
             VarRef::Local(i) => mut_locals.get(*i).copied().unwrap_or(false),
             VarRef::Global(g) => {
                 globals[*g].mutable || !crate::own::plain(self.d, &globals[*g].ty, 0)
             }
         };
+        let is_mut = |v: &VarRef| match v {
+            VarRef::Local(i) => var_locals.get(*i).copied().unwrap_or(false),
+            VarRef::Global(g) => globals[*g].mutable,
+        };
         let by_ref = |v: &VarRef, p: Place, ty: Ty| -> (VarRef, Place, Ty, bool) {
-            if matches!(ty, Ty::Ref(_)) {
+            if matches!(ty, Ty::Ref(_) | Ty::Lent(_)) {
                 (*v, p, ty, false)
+            } else if is_var(v) && !is_mut(v) {
+                // A heap value the closure only reads: it points at it without writing (R05.10.1).
+                (*v, p, Ty::Lent(Box::new(ty)), true)
             } else if is_var(v) {
                 (*v, p, Ty::Ref(Box::new(ty)), true)
             } else {
@@ -1134,7 +1179,11 @@ impl Lw<'_> {
         });
         caps.into_iter()
             .map(|(_, p, ty, addr)| Expr {
-                kind: if addr { EK::AddrOf(p) } else { EK::Copy(p) },
+                kind: match (addr, &ty) {
+                    (true, Ty::Lent(_)) => EK::Lent(p),
+                    (true, _) => EK::AddrOf(p),
+                    _ => EK::Copy(p),
+                },
                 ty,
             })
             .collect()

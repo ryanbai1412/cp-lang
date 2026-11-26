@@ -154,7 +154,7 @@ pub enum Place {
     Deref(Box<Place>),
     /// Cell `i` of the raw storage at the place, `i` the value of that local.
     Slot(Box<Place>, usize),
-    /// The value a lent slot (`CTy::Lent`) points at; made by instantiation only.
+    /// The value a lent slot or closure capture (`Ty::Lent`) points at.
     Through(Box<Place>),
 }
 

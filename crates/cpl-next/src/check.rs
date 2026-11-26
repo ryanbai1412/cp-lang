@@ -120,6 +120,14 @@ pub enum TArg {
     /// A place lent for the call.
     Mut(TExpr),
 }
+/// What a `Region` calls: a fn, or a method of a type parameter's bound whose impl each
+/// instance picks.
+#[derive(Clone, Debug)]
+pub enum Callee {
+    Fn(FnRef),
+    Trait(TraitId, String),
+}
+
 #[derive(Clone, Debug)]
 pub enum TStmt {
     Let(VarRef, TExpr),
@@ -143,7 +151,7 @@ pub enum TStmt {
     LendOut(TExpr),
     /// A call that takes the code in `body` and runs it at its `yield` or `lend`, with `var` bound.
     Region {
-        f: FnRef,
+        callee: Callee,
         recv: Option<Box<TArg>>,
         args: Vec<TArg>,
         var: VarRef,

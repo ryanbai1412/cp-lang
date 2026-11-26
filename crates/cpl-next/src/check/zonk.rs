@@ -34,13 +34,15 @@ impl<'a> Cx<'a> {
             }
             TStmt::Yield(e) | TStmt::LendOut(e) => self.zonk_expr(e),
             TStmt::Region {
-                f,
+                callee,
                 recv,
                 args,
                 body,
                 ..
             } => {
-                *f = self.zonk_fnref(f);
+                if let Callee::Fn(f) = callee {
+                    *f = self.zonk_fnref(f);
+                }
                 if let Some(r) = recv {
                     self.zonk_arg(r);
                 }

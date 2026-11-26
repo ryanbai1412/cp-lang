@@ -236,7 +236,14 @@ impl Link<'_> {
         parts(&self.structs, &self.sums, t)
     }
     fn instance(&mut self, f: &Func<Ty>, env: &Env) -> Func<CTy> {
-        let locals: Vec<CTy> = f.locals.iter().map(|t| unlent(self.ty(t, env))).collect();
+        // A closure's lent captures stay pointers; every other local owns its value.
+        let lent_caps: Vec<usize> = f.params[..f.n_captures].iter().map(|(l, _)| *l).collect();
+        let locals: Vec<CTy> = (f.locals.iter().enumerate())
+            .map(|(i, t)| match self.ty(t, env) {
+                t if lent_caps.contains(&i) => t,
+                t => unlent(t),
+            })
+            .collect();
         self.frame = locals.clone();
         Func {
             key: f.key.clone(),
@@ -263,7 +270,14 @@ impl Link<'_> {
             }
             Place::Variant(b, i) => Place::Variant(sub(b), *i),
             Place::Deref(b) => Place::Deref(sub(b)),
-            Place::Through(b) => Place::Through(sub(b)),
+            // A lent capture of a plain value is the value itself.
+            Place::Through(b) => {
+                let b = self.place(b);
+                match self.place_ty(&b) {
+                    Some(CTy::Lent(_)) => Place::Through(Box::new(b)),
+                    _ => b,
+                }
+            }
             Place::Slot(b, l) => Place::Slot(sub(b), *l),
             Place::Local(_) | Place::Global(_) => p.clone(),
         }

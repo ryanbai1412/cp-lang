@@ -144,6 +144,7 @@ core-02/str-index-assign.cp
 core-02/str-indexing.cp
 core-02/str-push.cp
 core-02/struct-literal-named-fields-any-order.cp
+core-02/table-blank-param-fill.cp
 core-02/tuple-fields.cp
 core-02/unit-field-of-a-nested-generic-is-stored-nowhere.cp
 core-02/var-field-assign.cp
@@ -183,6 +184,7 @@ core-03/read-int-just-above-spare.cp
 core-03/spare-value-overflow.cp
 core-03/store-in-range-fits.cp
 core-03/structs-holding-each-other-is-an-error.cp
+core-04/a4-zip-offsets.cp
 core-04/an-array-over-an-anonymous-range-takes-int.cp
 core-04/anon-range-array.cp
 core-04/array-dimension-starting-at-a-value-rejected.cp
@@ -205,6 +207,7 @@ core-04/domain-drop-first.cp
 core-04/domain-is-its-range.cp
 core-04/empty-array-literal-short-rejected.cp
 core-04/empty-list-fills-every-cell.cp
+core-04/filter-iterates-without-keys.cp
 core-04/first-is-optional.cp
 core-04/from-ord-after-a-checked-one-still-traps.cp
 core-04/g3-widen-keeps-indices.cp
@@ -238,6 +241,8 @@ core-04/runtime-domain-literal-between-traps.cp
 core-04/runtime-domain-literal-past-max.cp
 core-04/scalar-fill.cp
 core-04/slice-key-outside-view-traps.cp
+core-04/zip-pairs-domains-rejected.cp
+core-05/a-closure-in-an-optional-the-callee-only-calls-borrows-its-list.cp
 core-05/a-user-method-on-self-does-not-change-its-receiver.cp
 core-05/cache-field-method-call-grows.cp
 core-05/cache-field-own-method-writes.cp
@@ -252,6 +257,7 @@ core-05/closure-capture-blocks-push.cp
 core-05/closure-capture-ends-then-push.cp
 core-05/closure-captures-at-call.cp
 core-05/closure-captures-locally.cp
+core-05/closure-capturing-a-view-keeps-its-source-lent.cp
 core-05/closure-not-returned.cp
 core-05/closure-returned-by-move.cp
 core-05/constructor-moves-owned-arg.cp
@@ -268,6 +274,8 @@ core-05/exercise-31-move-while-captured.cp
 core-05/field-let-after-closure-captures-struct.cp
 core-05/field-let-then-whole-struct-passed.cp
 core-05/field-read-in-a-loop-is-not-moved.cp
+core-05/filter-map-walk-lends-parent.cp
+core-05/filter-result-lends-its-source.cp
 core-05/fn-stores-lent-in-top-level-var.cp
 core-05/generic-wrapper-lends-its-source.cp
 core-05/generic-wrapper-of-a-plain-value-lends-nothing.cp
@@ -305,6 +313,7 @@ core-05/return-built-list-moves-out.cp
 core-05/return-lent-param-rejects.cp
 core-05/return-lent-param.cp
 core-05/return-through-recursive-generator.cp
+core-05/returning-a-held-call-needs-lends.cp
 core-05/same-field-lent-twice.cp
 core-05/spec-block-grow-let-target.cp
 core-05/spec-block-grow-needs-mut-arg.cp
@@ -335,6 +344,7 @@ core-06/fed-loop-fn-value-writes-the-walked-global.cp
 core-06/fn-captures-earlier-top-level-let.cp
 core-06/fn-forms.cp
 core-06/fn-hoists.cp
+core-06/fn-value-yes-in-map.cp
 core-06/function-types.cp
 core-06/generator-closure-writes-its-local-across-yields.cp
 core-06/generic-free-method.cp
@@ -360,6 +370,8 @@ core-06/shared-var-carries-across-cases.cp
 core-06/two-closures-share-var.cp
 core-07/array-equals-list.cp
 core-07/computed-negative-key-traps.cp
+core-07/count-any-all.cp
+core-07/count-of-bools-with-predicate.cp
 core-07/domain-rev-walks-backwards.cp
 core-07/indexed-builtins.cp
 core-07/map-calls-per-read.cp
@@ -370,6 +382,7 @@ core-07/slice-literal-inside-keys-reads.cp
 core-07/slice-literal-outside-keys-rejected.cp
 core-07/slice-out-of-keys-traps.cp
 core-07/slice-past-source-traps.cp
+core-07/str-count-takes-predicate.cp
 core-07/view-key-outside-keys-traps.cp
 core-07/view-sees-source-mutation-rejected.cp
 core-07/zip-domain-mismatch.cp
@@ -378,6 +391,7 @@ core-08/concrete-extension-beats-std-generic.cp
 core-08/default-method-override-once.cp
 core-08/derive-needs-fields.cp
 core-08/duplicate-impl.cp
+core-08/generic-over-seq-capability.cp
 core-08/getter-impl-on-builtin-type.cp
 core-08/impl-plus-shorthand.cp
 core-08/inherent-before-trait.cp
@@ -386,6 +400,7 @@ core-08/no-dyn.cp
 core-08/no-higher-kinded.cp
 core-08/no-inheritance.cp
 core-08/no-macros.cp
+core-08/one-generic-fn-at-four-types.cp
 core-08/recursion-at-the-same-type-is-fine.cp
 core-08/static-fn-explicit-args.cp
 core-08/supertrait-required.cp
@@ -678,6 +693,7 @@ next/n_bits_02_shift_by_64_traps.cp
 next/n_bits_03_shl_past_int_traps.cp
 next/n_bits_04_and_to_the_lowest_pattern_traps.cp
 next/n_bound_01_bare_bound_learns_arguments.cp
+next/n_bound_02_for_walks_through_the_bound.cp
 next/n_cell_01_indexed_mut_bound.cp
 next/n_cell_02_write_through_indexed_mut.cp
 next/n_cell_03_method_on_cell.cp
@@ -693,6 +709,7 @@ next/n_slice_05_nested_view_keeps_source_keys.cp
 next/n_slice_06_slicing_in_a_loop_is_constant_time.cp
 next/n_slice_07_range_cut_is_a_sub_range.cp
 next/n_slice_08_range_cut_outside_traps.cp
+next/n_slice_09_lent_field_walks_its_source.cp
 next/n_u64_01_wraps_and_compares_unsigned.cp
 next/n_u64_02_int_of_a_large_u64_traps.cp
 next/n_u64_03_division_by_zero_traps.cp
@@ -782,8 +799,16 @@ std-opt/a-niche-packed-field-lends-to-a-read-only-param.cp
 std-range/len-param-past-2-31-is-a-compile-error.cp
 std-range/len-param-past-2-31-traps-at-the-call.cp
 std-range/len-param-takes-a-len.cp
+std-seq/all-1.cp
+std-seq/any-1.cp
+std-seq/count-1.cp
+std-seq/map-of-a-list-is-indexed-through-its-source.cp
+std-seq/seq-u20-first-some.cp
+std-seq/seq-u9-fold-seed.cp
 std-seq/zip-exact-mixed-element-types.cp
+std-seq/zip-slice-walks-from-view-start.cp
 std-strings/case-trim.cp
+std-strings/char-tests-run-std-bodies.cp
 std-strings/chars.cp
 std-strings/hash-token-is-a-std-impl-per-type.cp
 std-strings/repeat-zero.cp
@@ -817,10 +842,14 @@ traits/Positional/Rebased--nth.cp
 traits/Positional/Slice--nth.cp
 traits/Seq/Array--iter.cp
 traits/Seq/Domain--iter.cp
+traits/Seq/Filtered--iter.cp
 traits/Seq/List--iter.cp
+traits/Seq/Mapped--iter.cp
 traits/Seq/Range--iter.cp
+traits/Seq/Rebased--iter.cp
 traits/Seq/Slice--iter.cp
 traits/Seq/Str--iter.cp
+traits/Seq/Zipped--iter.cp
 traits/Sized/Array--len.cp
 traits/Sized/List--len.cp
 traits/Sized/Mapped--len.cp

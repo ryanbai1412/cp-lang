@@ -960,6 +960,44 @@ impl Cx<'_> {
         self.call(&who, span, &all, callee, fx)
     }
 
+    /// A call of a bound's method: which impl runs is known per instance, so the summary is every impl's.
+    fn trait_call(
+        &mut self,
+        tr: TraitId,
+        method: &str,
+        span: Span,
+        recv: &TArg,
+        args: &[TArg],
+        fx: &mut Fx,
+    ) -> (BTreeSet<Pl>, BTreeSet<Pl>) {
+        // Which impl runs is known per instance; the summary is every impl's.
+        let all: Vec<&TArg> = std::iter::once(recv).chain(args.iter()).collect();
+        let places = self.arg_places(&all);
+        let (mut other, mut through) = (Fx::default(), Fx::default());
+        let mut keeps = BTreeSet::new();
+        // An impl that leaves the fn out runs the trait's default.
+        let default =
+            (self.d.traits[tr.0].methods.get(method)).filter(|m| self.t.fns.contains_key(m));
+        let impls = (self.d.impls.iter()).filter(|im| im.trait_.tr == tr);
+        for m in impls.filter_map(|im| im.methods.get(method).or(default)) {
+            let f = FnRef {
+                decl: *m,
+                targs: vec![],
+                sets: vec![],
+            };
+            let (o, t) = self.callee(&f, &places, 0, false);
+            other.add(&o);
+            through.add(&t);
+            keeps.extend(self.kept_args(*m));
+        }
+        let callee = Reach {
+            other,
+            through,
+            keeps,
+        };
+        self.call(method, span, &all, callee, fx)
+    }
+
     fn expr(&mut self, e: &TExpr, fx: &mut Fx) {
         match &e.kind {
             TK::Int(_)
@@ -1001,41 +1039,7 @@ impl Cx<'_> {
                 recv,
                 args,
             } => {
-                // Which impl runs is known per instance; the summary is every impl's.
-                let all: Vec<&TArg> = std::iter::once(&**recv).chain(args.iter()).collect();
-                let places = self.arg_places(&all);
-                let (mut other, mut through) = (Fx::default(), Fx::default());
-                let mut keeps = BTreeSet::new();
-                // An impl that leaves the fn out runs the trait's default.
-                let default = (self.d.traits[tr.0].methods.get(method))
-                    .filter(|m| self.t.fns.contains_key(m));
-                for im in &self.d.impls {
-                    {
-                        if im.trait_.tr == *tr {
-                            if let Some(m) = im.methods.get(method).or(default) {
-                                let (o, t) = self.callee(
-                                    &FnRef {
-                                        decl: *m,
-                                        targs: vec![],
-                                        sets: vec![],
-                                    },
-                                    &places,
-                                    0,
-                                    false,
-                                );
-                                other.add(&o);
-                                through.add(&t);
-                                keeps.extend(self.kept_args(*m));
-                            }
-                        }
-                    }
-                }
-                let callee = Reach {
-                    other,
-                    through,
-                    keeps,
-                };
-                self.call(method, e.span, &all, callee, fx);
+                self.trait_call(*tr, method, e.span, recv, args, fx);
             }
             TK::CallValue { callee, args } => {
                 self.expr(callee, fx);
@@ -1135,7 +1139,20 @@ impl Cx<'_> {
                 if let TK::Lambda { body, .. } = &inner.kind {
                     let (mut used, mut bound) = (BTreeSet::new(), BTreeSet::new());
                     crate::lower::free_vars(body, &mut used, &mut bound);
-                    let roots = used.difference(&bound).map(|u| self.root(*u)).collect();
+                    let roots: BTreeSet<Root> =
+                        used.difference(&bound).map(|u| self.root(*u)).collect();
+                    // What a captured view lends stays lent while the closure lives (R05.7.1);
+                    // a captured variable itself is shared, not frozen (R05.10.1).
+                    let through: Vec<Pl> = (what.iter())
+                        .filter(|p| !roots.contains(&p.root))
+                        .cloned()
+                        .collect();
+                    if !through.is_empty() {
+                        self.frozen
+                            .entry(self.root(*v))
+                            .or_default()
+                            .extend(through);
+                    }
                     self.caps.insert(self.root(*v), roots);
                 }
             }
@@ -1198,7 +1215,7 @@ impl Cx<'_> {
             }
             // R12: the callee's lends are live for the walk, and the body runs inside the call.
             TStmt::Region {
-                f,
+                callee,
                 recv,
                 args,
                 var,
@@ -1244,8 +1261,27 @@ impl Cx<'_> {
                     _ => None,
                 };
                 let recv = keyed.as_ref().or(recv.as_deref());
-                let (held, lent) = self.fn_call(f, body.span, recv, args, fx);
-                let who = self.d.f(f.decl).name.clone();
+                let (mut held, lent) = match (callee, recv) {
+                    (Callee::Fn(f), _) => self.fn_call(f, body.span, recv, args, fx),
+                    (Callee::Trait(tr, m), Some(r)) => {
+                        self.trait_call(*tr, m, body.span, r, args, fx)
+                    }
+                    (Callee::Trait(..), None) => Default::default(),
+                };
+                let who = match callee {
+                    Callee::Fn(f) => self.d.f(f.decl).name.clone(),
+                    Callee::Trait(_, m) => m.clone(),
+                };
+                // What the walked value lends is held as long as it is (R05.5.3).
+                for a in recv.into_iter().chain(args.iter()) {
+                    let TArg::Value(v) = a else { continue };
+                    match self.place(v) {
+                        Some(p) => {
+                            held.extend(self.lent.get(&p.root).into_iter().flatten().cloned())
+                        }
+                        None => held.extend(self.sources(v)),
+                    }
+                }
                 self.bind(*var);
                 let item = self.root(*var);
                 let item_ty = match var {

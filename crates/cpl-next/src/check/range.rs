@@ -94,6 +94,7 @@ impl Cx<'_> {
         pat: &ast::Pattern,
         body: &ast::Expr,
         span: Span,
+        want: Option<&Ty>,
     ) -> TExpr {
         let mut pre = Vec::new();
         let hole = ast::Type {
@@ -130,7 +131,18 @@ impl Cx<'_> {
             },
             span,
         };
-        let list = self.expr(&comp, None);
+        // The cells' type, when the table is written where an array is expected.
+        let cell = match want.map(|w| self.shallow(w)) {
+            Some(Ty::Struct(a, ts, _)) if a == array && ts.len() == 2 => Some(ts[1].clone()),
+            _ => None,
+        };
+        let want_list = match cell {
+            Some(c) => self
+                .list_struct(span)
+                .map(|l| Ty::Struct(l, vec![c], Vec::new())),
+            None => None,
+        };
+        let list = self.expr(&comp, want_list.as_ref());
         let elem = match self.shallow(&list.ty) {
             Ty::Struct(_, ts, _) if ts.len() == 1 => ts[0].clone(),
             _ => Ty::Error,
