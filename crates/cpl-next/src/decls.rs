@@ -1,6 +1,7 @@
 //! Contract 2: syntax -> declarations. Answers "what does this name mean"
 //! without looking inside a body.
 pub use crate::cycles::{alias_cycle, field_holding_itself};
+use crate::diag::Msg;
 use crate::synth::{enum_structs, module_derived};
 use crate::ty::*;
 use cpl_syntax::ast::{self, FnBody, StmtKind, TypeKind};
@@ -55,7 +56,7 @@ pub struct FnDecl {
     pub item: u32,
     pub module: ModId,
     /// What its signature uses that the slice does not build, said only when a call reaches it.
-    pub errors: Vec<String>,
+    pub errors: Vec<Msg>,
 }
 pub struct Param {
     pub name: String,
@@ -81,6 +82,8 @@ pub struct StructDecl {
     /// Per field: the value a constructor that leaves it out stores, read in `module` (R02.6.1).
     pub defaults: Vec<Option<ast::Expr>>,
     pub module: ModId,
+    /// Where its declaration starts in the source: the spans of its defaults count from here.
+    pub item: u32,
     pub n_sets: usize,
     pub methods: HashMap<String, FnId>,
     /// Its static `new`, which `T(args)` calls outside its own body (R02.6.3).
@@ -88,7 +91,7 @@ pub struct StructDecl {
     /// An enum's variants, each with the struct of its payload, named `Enum.Variant` (R02.7).
     pub variants: Vec<(String, StructId)>,
     /// What its fields use that the slice does not build, said only when the program reaches it.
-    pub errors: Vec<String>,
+    pub errors: Vec<Msg>,
     /// An enum's `Int` of each variant: its written value (`Neg = -1`), else its place from 0.
     pub values: Vec<i64>,
 }
@@ -101,7 +104,7 @@ pub struct TraitDecl {
     pub supers: Vec<TraitRef>,
     pub methods: HashMap<String, FnId>,
     /// What its library impls use that the slice does not build, said when one of its fns is reached.
-    pub errors: Vec<String>,
+    pub errors: Vec<Msg>,
     /// `trait Add<Rhs = Self>`: each parameter's default, in `Self` and the parameters before it.
     pub defaults: Vec<Option<Ty>>,
     /// `type Arc: Target<V>`: its associated types, its last parameters, which an impl writes
@@ -179,14 +182,14 @@ pub struct Decls {
     pub module_names: Vec<String>,
     pub program: ModId,
     /// Per library module, what it uses outside its fns that the slice does not build.
-    pub module_errors: Vec<Vec<String>>,
+    pub module_errors: Vec<Vec<Msg>>,
     /// Why each `Named::Refused` library item is not built.
     pub refused: Vec<String>,
     pub struct_sets: HashMap<StructId, usize>,
     /// Core's `@tuple` structs by arity: `(A, B)` is the one with two fields.
     pub tuples: HashMap<usize, StructId>,
     pub aliases: Rc<Vec<AliasDecl>>,
-    pub errors: Vec<String>,
+    pub errors: Vec<Msg>,
     /// Declarations the program gets wrong: where, the code, what is wrong.
     pub misdeclared: Vec<(usize, &'static str, String)>,
     /// Each library's public free fns with a `self`, by name: a method call finds them with no
@@ -221,7 +224,7 @@ impl Decls {
     }
     /// What a declaration uses that the slice does not build: a library's is said when the program
     /// reaches it, the program's at once.
-    fn module_or_program_errors(&mut self, m: ModId, errors: Vec<String>) {
+    fn module_or_program_errors(&mut self, m: ModId, errors: Vec<Msg>) {
         if self.is_library(m) {
             self.module_errors[m.0].extend(errors);
         } else {
@@ -485,15 +488,18 @@ fn slot(cx: &mut TyCx) -> SetTy {
         (None, None) => SetTy::Var(usize::MAX),
     }
 }
-fn alias(cx: &mut TyCx, id: usize, n: &str, a: Vec<Ty>, errors: &mut Vec<String>) -> Ty {
+fn alias(cx: &mut TyCx, id: usize, n: &str, a: Vec<Ty>, errors: &mut Vec<Msg>) -> Ty {
     let decl = &cx.aliases[id];
     if a.len() != decl.generics.len() {
-        errors.push(format!(
-            "{}: `{n}` takes {} type arguments, found {}",
-            cpl_diag::codes::WRONG_ARG_COUNT.0,
-            decl.generics.len(),
-            a.len()
-        ));
+        errors.push(
+            format!(
+                "{}: `{n}` takes {} type arguments, found {}",
+                cpl_diag::codes::WRONG_ARG_COUNT.0,
+                decl.generics.len(),
+                a.len()
+            )
+            .into(),
+        );
         return Ty::Error;
     }
     // An alias defined by itself is E0323 where it is declared (`alias_cycle`).
@@ -589,17 +595,20 @@ fn overlap(a: &Ty, ad: &[usize], b: &Ty, bd: &[usize]) -> bool {
 }
 
 /// `Seq<T>` written where a trait is wanted.
-fn trait_ref(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<String>) -> Option<TraitRef> {
+fn trait_ref(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Option<TraitRef> {
     let TypeKind::Named { name, args } = &t.kind else {
-        errors.push("slice: a bound that is not a named trait".to_string());
+        errors.push("slice: a bound that is not a named trait".into());
         return None;
     };
     let Some(Named::Trait(tr)) = cx.names.get(&name.text).copied() else {
-        errors.push(format!(
-            "{}: unknown trait `{}`",
-            cpl_diag::codes::UNKNOWN_TYPE.0,
-            name.text
-        ));
+        errors.push(
+            format!(
+                "{}: unknown trait `{}`",
+                cpl_diag::codes::UNKNOWN_TYPE.0,
+                name.text
+            )
+            .into(),
+        );
         return None;
     };
     let args = args.iter().map(|a| conv(cx, a, errors)).collect();
@@ -647,7 +656,7 @@ fn shift_down(t: &Ty) -> Ty {
     .ty(t)
 }
 
-fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<String>) -> Ty {
+fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
     match &t.kind {
         TypeKind::Named { name, args } => {
             let n = name.text.as_str();
@@ -670,7 +679,7 @@ fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<String>) -> Ty {
                 "Char" => Ty::Char,
                 "U64" => Ty::U64,
                 "Str" if struct_named(cx.names, "Str").is_none() => {
-                    errors.push("internal: `Str` needs the library's `Str`".to_string());
+                    errors.push("internal: `Str` needs the library's `Str`".into());
                     Ty::Error
                 }
                 "Raw" if a.len() == 1 => Ty::Raw(Box::new(a.remove(0))),
@@ -682,10 +691,10 @@ fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<String>) -> Ty {
                         Ty::Struct(d, a, sets)
                     }
                     None => {
-                        errors.push(format!(
-                            "{}: unknown type `{n}`",
-                            cpl_diag::codes::UNKNOWN_TYPE.0
-                        ));
+                        errors.push(
+                            format!("{}: unknown type `{n}`", cpl_diag::codes::UNKNOWN_TYPE.0)
+                                .into(),
+                        );
                         Ty::Error
                     }
                 },
@@ -735,7 +744,7 @@ fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<String>) -> Ty {
             Some((lo, hi)) => Ty::Range(lo, hi),
             None => {
                 errors.push(
-                    "slice: a range type whose ends are not constants, outside a body".to_string(),
+                    "slice: a range type whose ends are not constants, outside a body".into(),
                 );
                 Ty::Error
             }
@@ -743,7 +752,7 @@ fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<String>) -> Ty {
         TypeKind::Array { index, .. }
             if index.len() == 1 && matches!(index[0].kind, TypeKind::Range { .. }) =>
         {
-            errors.push("slice: an array indexed by a range outside a `let` or `read`".to_string());
+            errors.push("slice: an array indexed by a range outside a `let` or `read`".into());
             Ty::Error
         }
         TypeKind::Array { index, elem } if index.len() == 1 => {
@@ -752,7 +761,7 @@ fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<String>) -> Ty {
             match struct_named(cx.names, "Array") {
                 Some(array) => Ty::Struct(array, vec![i, e], Vec::new()),
                 None => {
-                    errors.push("internal: `[D]T` needs the library's `Array`".to_string());
+                    errors.push("internal: `[D]T` needs the library's `Array`".into());
                     Ty::Error
                 }
             }
@@ -764,7 +773,7 @@ fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<String>) -> Ty {
             Ty::Fn(ps, Box::new(r), set)
         }
         other => {
-            errors.push(format!("slice: type {}", crate::kind_name(other)));
+            errors.push(format!("slice: type {}", crate::kind_name(other)).into());
             Ty::Error
         }
     }
@@ -777,7 +786,7 @@ pub fn body_type(
     generics: &[String],
     doms: &HashMap<String, Ty>,
     t: &ast::Type,
-    errors: &mut Vec<String>,
+    errors: &mut Vec<Msg>,
 ) -> Ty {
     conv(
         &mut TyCx {
@@ -825,7 +834,7 @@ fn view(
     sc: &Scopes,
     mi: usize,
     program: bool,
-    errors: Option<&mut Vec<String>>,
+    errors: Option<&mut Vec<Msg>>,
 ) -> HashMap<String, Named> {
     let mut v = outer_view(sc, mi, program, errors);
     v.extend(sc.own[mi].iter().map(|(n, x)| (n.clone(), *x)));
@@ -837,7 +846,7 @@ fn outer_view(
     sc: &Scopes,
     mi: usize,
     program: bool,
-    mut errors: Option<&mut Vec<String>>,
+    mut errors: Option<&mut Vec<Msg>>,
 ) -> HashMap<String, Named> {
     let Scopes {
         own,
@@ -901,7 +910,7 @@ fn outer_view(
         }
         if ns.is_empty() {
             if let Some(e) = errors.as_deref_mut() {
-                e.push(format!("slice: `use {module}` without names"));
+                e.push(format!("slice: `use {module}` without names").into());
             }
             continue;
         }
@@ -909,10 +918,13 @@ fn outer_view(
             match export(t, &n.text) {
                 Some(_) if own[mi].contains_key(&n.text) => {
                     if let Some(e) = errors.as_deref_mut() {
-                        e.push(format!(
-                            "slice: `use` of `{}`, which this file also declares",
-                            n.text
-                        ));
+                        e.push(
+                            format!(
+                                "slice: `use` of `{}`, which this file also declares",
+                                n.text
+                            )
+                            .into(),
+                        );
                     }
                 }
                 Some(x) => {
@@ -920,10 +932,13 @@ fn outer_view(
                 }
                 None => {
                     if let Some(e) = errors.as_deref_mut() {
-                        e.push(format!(
-                            "slice: `{module}` has no pub `{}` the slice declares",
-                            n.text
-                        ));
+                        e.push(
+                            format!(
+                                "slice: `{module}` has no pub `{}` the slice declares",
+                                n.text
+                            )
+                            .into(),
+                        );
                     }
                 }
             }
@@ -1024,6 +1039,7 @@ pub fn collect(
                             field_at: Vec::new(),
                             defaults: Vec::new(),
                             module: mid,
+                            item: *item,
                             n_sets: 0,
                             methods: HashMap::new(),
                             ctor: None,
@@ -1064,8 +1080,8 @@ pub fn collect(
                         {
                             let e = format!("slice: decorator `@{}`", x.name.text);
                             match d.is_library(mid) {
-                                true => d.module_errors[mi].push(e),
-                                false => d.errors.push(e),
+                                true => d.module_errors[mi].push(e.into()),
+                                false => d.errors.push(e.into()),
                             }
                         }
                         own[mi].insert(name.text.clone(), Named::Alias(AliasId(aliases.len())));
@@ -1084,7 +1100,7 @@ pub fn collect(
                                 own[mi].insert(n.to_string(), Named::Refused(d.refused.len()));
                                 d.refused.push(e);
                             }
-                            None => d.module_errors[mi].push(e),
+                            None => d.module_errors[mi].push(e.into()),
                         }
                     }
                     _ => main.push((*item, s.clone())),
@@ -1165,7 +1181,7 @@ pub fn collect(
     for (i, a) in d.aliases.iter().enumerate() {
         if d.is_library(a.module) && alias_cycle(&d, AliasId(i)) {
             d.module_errors[a.module.0]
-                .push(format!("type alias `{}` is defined by itself", a.name));
+                .push(format!("type alias `{}` is defined by itself", a.name).into());
         }
     }
     let aliases = d.aliases.clone();
@@ -1245,10 +1261,9 @@ pub fn collect(
                         .map(|f| (f.name.text.clone(), conv(&mut cx, &f.ty, &mut errors)))
                         .collect();
                     if sd.generic_defaults.iter().any(Option::is_some) {
-                        errors.push(format!(
-                            "slice: a default type argument of `{}`",
-                            sd.name.text
-                        ));
+                        errors.push(
+                            format!("slice: a default type argument of `{}`", sd.name.text).into(),
+                        );
                     }
                     let n_sets = cx.next_set.unwrap_or(0);
                     if d.is_library(mid) {
@@ -1505,7 +1520,7 @@ pub fn collect(
                                     "{}: impl of an unknown trait",
                                     cpl_diag::codes::UNKNOWN_TYPE.0
                                 )
-                                .to_string(),
+                                .into(),
                             );
                         }
                         d.module_or_program_errors(mid, errors);
@@ -1650,16 +1665,19 @@ pub fn collect(
                         if d.is_library(mid) {
                             let e =
                                 format!("slice: a library with two fns named `{}`", f.name.text);
-                            d.fns[fid.0].errors.push(e);
+                            d.fns[fid.0].errors.push(e.into());
                             continue;
                         }
                         // Two with a `self` are one method's overloads unless one call could take
                         // both (R08.1.4); that test isn't built.
                         if d.f(first).self_ty.is_some() && d.f(fid).self_ty.is_some() {
-                            d.errors.push(format!(
-                                "slice: methods of one name in one module (`{}`)",
-                                f.name.text
-                            ));
+                            d.errors.push(
+                                format!(
+                                    "slice: methods of one name in one module (`{}`)",
+                                    f.name.text
+                                )
+                                .into(),
+                            );
                             continue;
                         }
                         // One name and one set of labels is one fn: nothing is chosen by
@@ -1671,9 +1689,8 @@ pub fn collect(
                             ls
                         };
                         if labels(first) != labels(fid) {
-                            d.errors.push(
-                                "slice: fns of one name told apart by their labels".to_string(),
-                            );
+                            d.errors
+                                .push("slice: fns of one name told apart by their labels".into());
                         }
                         let code = cpl_diag::codes::OVERLOAD_BY_TYPE;
                         d.misdeclared.push((
@@ -1850,7 +1867,7 @@ fn add_fn(
                             "{}: `self` of a free fn needs a type",
                             cpl_diag::codes::EXPECTED_TYPE.0
                         )
-                        .to_string(),
+                        .into(),
                     );
                     None
                 }
@@ -1862,19 +1879,19 @@ fn add_fn(
             (Some(t), _) => conv(&mut cx, t, &mut errors),
             (None, Some(t)) => t,
             (None, None) => {
-                errors.push(format!(
-                    "{}: parameter `{}` needs a type",
-                    cpl_diag::codes::EXPECTED_TYPE.0,
-                    p.name.text
-                ));
+                errors.push(
+                    format!(
+                        "{}: parameter `{}` needs a type",
+                        cpl_diag::codes::EXPECTED_TYPE.0,
+                        p.name.text
+                    )
+                    .into(),
+                );
                 Ty::Error
             }
         };
         if p.variadic || p.lazy {
-            errors.push(format!(
-                "slice: a variadic or lazy parameter `{}`",
-                p.name.text
-            ));
+            errors.push(format!("slice: a variadic or lazy parameter `{}`", p.name.text).into());
         }
         params.push(Param {
             name: p.name.text.clone(),
@@ -1948,7 +1965,7 @@ fn add_fn(
             && x.name.text != GETTER
             && !matches!(x.name.text.as_str(), "multitest" | "same_keys" | "index")
         {
-            errors.push(format!("slice: decorator `@{}`", x.name.text));
+            errors.push(format!("slice: decorator `@{}`", x.name.text).into());
         }
     }
     let mut errors = if d.is_library(m) {
@@ -1974,7 +1991,7 @@ fn add_fn(
             f.name.text
         );
         if d.is_library(m) {
-            errors.push(msg);
+            errors.push(msg.into());
         } else {
             let code = cpl_diag::codes::GETTER_NEEDS_DEFAULTS.0;
             d.misdeclared

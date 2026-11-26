@@ -1,6 +1,7 @@
 //! Contract 3: declarations -> typed tree. Decides every type, target and
 //! conversion. Nothing after this infers anything.
 use crate::decls::{self, Decls, ModId, Named, Owner, SelfMode};
+use crate::diag::Msg;
 use crate::ir::CheckKind;
 use crate::ty::*;
 use cpl_diag::Span;
@@ -211,9 +212,9 @@ pub struct Typed {
     pub lambdas: Vec<LambdaInfo>,
     /// The set a fn returns, for fns whose result is a function value.
     pub ret_sets: HashMap<(FnId, usize), SetTy>,
-    pub errors: Vec<String>,
+    pub errors: Vec<Msg>,
     /// The errors of each library fn reached only through a trait, said if an instance runs it.
-    pub deferred: HashMap<FnId, Vec<String>>,
+    pub deferred: HashMap<FnId, Vec<Msg>>,
     /// The library fns reached only through a trait: what is wrong in one is said if it runs.
     pub quiet: HashSet<FnId>,
     /// Members the program or a library asked for that nothing loaded declares.
@@ -228,7 +229,6 @@ enum SetVar {
 
 struct Cx<'a> {
     d: &'a Decls,
-    src: &'a str,
     tys: Vec<Option<Ty>>,
     sets: Vec<SetVar>,
     /// Set variables being written out, to catch a set that contains itself.
@@ -240,7 +240,7 @@ struct Cx<'a> {
     view_keys: HashMap<VarRef, (i128, i128)>,
     /// The judge the program names (`// judge:`, else `generic`), for its memory limit (R03.1.9).
     judge: Option<cpl_judge::Profile>,
-    errors: Vec<String>,
+    errors: Vec<Msg>,
     lambdas: Vec<LambdaInfo>,
     globals: Vec<Local>,
     global_names: HashMap<String, LocalId>,
@@ -283,7 +283,6 @@ struct Cx<'a> {
 pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
     let mut cx = Cx {
         d,
-        src,
         tys: Vec::new(),
         sets: Vec::new(),
         zonking: Default::default(),
@@ -337,28 +336,35 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
         }
     }
     for (at, code, msg) in &d.misdeclared {
-        let line = src[..(*at).min(src.len())].matches('\n').count() + 1;
-        cx.errors.push(format!("line {line}: {code}: {msg}"));
+        let at = *at as u32;
+        cx.errors
+            .push(Msg::at(Span::new(at, at), format!("{code}: {msg}")));
     }
     for (i, s) in d.structs.iter().enumerate() {
         if let Some(f) = decls::field_holding_itself(d, StructId(i)) {
-            let line = src[..s.field_at[f].min(src.len())].matches('\n').count() + 1;
-            cx.errors.push(format!(
-                "line {line}: {}: a `{}` would hold another `{}` inline, so it has no size; \
+            let at = s.field_at[f] as u32;
+            cx.errors.push(Msg::at(
+                Span::new(at, at),
+                format!(
+                    "{}: a `{}` would hold another `{}` inline, so it has no size; \
                  keep the others in a list and hold an index",
-                cpl_diag::codes::RECURSIVE_FIELD.0,
-                s.name,
-                s.name
+                    cpl_diag::codes::RECURSIVE_FIELD.0,
+                    s.name,
+                    s.name
+                ),
             ));
         }
     }
     for (i, a) in d.aliases.iter().enumerate() {
         if a.module == d.program && decls::alias_cycle(d, decls::AliasId(i)) {
-            let line = src[..a.at.min(src.len())].matches('\n').count() + 1;
-            cx.errors.push(format!(
-                "line {line}: {}: type alias `{}` is defined by itself, so it names no type",
-                cpl_diag::codes::ALIAS_CYCLE.0,
-                a.name
+            let at = a.at as u32;
+            cx.errors.push(Msg::at(
+                Span::new(at, at),
+                format!(
+                    "{}: type alias `{}` is defined by itself, so it names no type",
+                    cpl_diag::codes::ALIAS_CYCLE.0,
+                    a.name
+                ),
             ));
         }
     }
@@ -429,7 +435,7 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
         .filter(|id| !d.is_library(d.f(*id).module))
         .rev()
         .collect();
-    let mut deferred: HashMap<FnId, Vec<String>> = HashMap::new();
+    let mut deferred: HashMap<FnId, Vec<Msg>> = HashMap::new();
     let mut quiet_fns = HashSet::new();
     loop {
         todo.append(&mut cx.reached);
@@ -491,10 +497,10 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
         .collect();
     if cx.domains.iter().any(|d| d.name.is_empty()) {
         cx.errors
-            .push("slice: a top-level domain that is not declared".to_string());
+            .push("slice: a top-level domain that is not declared".into());
     }
     if cx.cyclic.get() {
-        cx.errors.push("a variable holding a function is assigned a function built from its own old value, so the set of functions it can hold contains itself; bind the new function to a new name".to_string());
+        cx.errors.push("a variable holding a function is assigned a function built from its own old value, so the set of functions it can hold contains itself; bind the new function to a new name".into());
     }
     Typed {
         domains: std::mem::take(&mut cx.domains),
@@ -536,9 +542,8 @@ impl<'a> Cx<'a> {
         }
     }
     fn err(&mut self, span: Span, msg: impl Into<String>) {
-        let at = (self.item_off + span.start) as usize;
-        let line = self.src[..at.min(self.src.len())].matches('\n').count() + 1;
-        self.errors.push(format!("line {line}: {}", msg.into()));
+        let at = Span::new(self.item_off + span.start, self.item_off + span.end);
+        self.errors.push(Msg::at(at, msg));
     }
     /// A reference reached fn `id`: it is checked, and what its library declaration uses that
     /// the slice does not build is said once. A trait's method reaches every impl's.
@@ -581,7 +586,7 @@ impl<'a> Cx<'a> {
             said.extend(d.module_errors[f.module.0].iter().cloned());
         }
         self.errors
-            .extend(said.into_iter().map(|e| format!("{module}: {e}")));
+            .extend(said.into_iter().map(|e| e.in_module(module)));
     }
     fn check_fn(&mut self, id: FnId) -> TypedFn {
         let d = self.d;

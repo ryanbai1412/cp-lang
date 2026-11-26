@@ -11,6 +11,8 @@ mod cpp;
 mod cycles;
 mod decls;
 mod diag;
+use diag::kind_of;
+pub use diag::Kind;
 mod inst;
 mod interp;
 mod ir;
@@ -21,9 +23,6 @@ mod own;
 mod records;
 mod synth;
 mod ty;
-
-use diag::kind_of;
-pub use diag::Kind;
 
 pub use interp::{Outcome, Trap};
 
@@ -53,29 +52,29 @@ impl Stage {
     }
 }
 
+/// Where a diagnostic is: a file of the program and a span of its text.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct At {
+    /// `program` for the user's file, else the library module (`std.graph`).
+    pub file: String,
+    /// Byte offsets into that file's text.
+    pub span: cpl_diag::Span,
+    /// Of the span's start, from 1; the column counts bytes.
+    pub line: u32,
+    pub col: u32,
+}
+
 #[derive(Clone, Debug)]
 pub struct Diag {
     pub stage: Stage,
     pub kind: Kind,
-    /// `line N: ...` with N counted in the user's file.
-    pub text: String,
+    /// `None`: the layer that reported it does not know where yet.
+    pub at: Option<At>,
+    /// The text without a verdict's code.
+    pub message: String,
 }
 
 impl Diag {
-    fn new(stage: Stage, e: &str, std_lines: usize) -> Diag {
-        let kind = kind_of(e);
-        let ice = cpl_diag::codes::INTERNAL.0;
-        let e = match e.split_once(": ") {
-            _ if kind != Kind::Verdict(cpl_diag::codes::INTERNAL) || e.contains(ice) => e.into(),
-            Some((at, rest)) if at.starts_with("line ") => format!("{at}: {ice}: {rest}"),
-            _ => format!("{ice}: {e}"),
-        };
-        Diag {
-            stage,
-            kind,
-            text: user_line(&e, std_lines),
-        }
-    }
     /// The code this diagnostic carries, when it is a verdict.
     pub fn code(&self) -> Option<&'static str> {
         match self.kind {
@@ -85,6 +84,48 @@ impl Diag {
     }
     pub fn is_refusal(&self) -> bool {
         self.kind == Kind::Refusal
+    }
+
+    /// `m` placed in its file.
+    fn new(stage: Stage, m: &diag::Msg, loaded: &modules::Loaded) -> Diag {
+        let at = m.at.map(|span| {
+            // The core starts the joined source, at 0.
+            let i = (loaded.modules.partition_point(|md| md.start <= span.start)).max(1);
+            let module = &loaded.modules[i - 1];
+            let before = &loaded.src[module.start as usize..span.start as usize];
+            let line_start = before.rfind('\n').map_or(0, |i| i + 1);
+            At {
+                file: module.name.clone(),
+                span: cpl_diag::Span::new(span.start - module.start, span.end - module.start),
+                line: before.matches('\n').count() as u32 + 1,
+                col: (before.len() - line_start) as u32 + 1,
+            }
+        });
+        let kind = kind_of(&m.text);
+        let message = match kind {
+            Kind::Verdict(c) => m.text.replacen(&format!("{}: ", c.0), "", 1),
+            Kind::Refusal => m.text.clone(),
+        };
+        Diag {
+            stage,
+            kind,
+            at,
+            message,
+        }
+    }
+}
+
+/// The one printer of a diagnostic: `check: program:3:5: E0301: text`.
+impl std::fmt::Display for Diag {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: ", self.stage.name())?;
+        if let Some(a) = &self.at {
+            write!(f, "{}:{}:{}: ", a.file, a.line, a.col)?;
+        }
+        if let Some(c) = self.code() {
+            write!(f, "{c}: ")?;
+        }
+        f.write_str(&self.message)
     }
 }
 
@@ -102,17 +143,6 @@ pub struct Compiled {
     canon: Vec<ir::Func<inst::CTy>>,
 }
 
-/// Lines are reported in the user's file: the libraries are placed in front of it.
-fn user_line(e: &str, std_lines: usize) -> String {
-    match e.strip_prefix("line ").and_then(|r| r.split_once(':')) {
-        Some((n, rest)) => match n.parse::<usize>() {
-            Ok(n) if n > std_lines => format!("line {}:{rest}", n - std_lines),
-            _ => format!("std {e}"),
-        },
-        None => e.to_string(),
-    }
-}
-
 /// `events` adds the semantic events to the program, for both the interpreter and the C++.
 pub fn compile(user_src: &str, events: bool) -> Result<Compiled, Vec<Diag>> {
     // A method the program calls that no loaded module declares loads the std modules that
@@ -120,64 +150,47 @@ pub fn compile(user_src: &str, events: bool) -> Result<Compiled, Vec<Diag>> {
     let mut wanted: Vec<String> = Vec::new();
     loop {
         let loaded = modules::load(STD, user_src, &wanted);
-        let src = loaded.src;
+        let src = &loaded.src;
         let std_lines = src[..loaded.program_start as usize].matches('\n').count();
+        let diags = |stage, es: &[diag::Msg]| -> Vec<Diag> {
+            es.iter().map(|e| Diag::new(stage, e, &loaded)).collect()
+        };
         // A program the grammar does not derive is rejected there; what was parsed is not checked.
         if !loaded.errors.is_empty() {
-            return Err((loaded.errors.iter())
-                .map(|e| Diag::new(Stage::Syntax, e, std_lines))
-                .collect());
+            return Err(diags(Stage::Syntax, &loaded.errors));
         }
-        let mut out: Vec<Diag> = Vec::new();
-        let mut add = |stage, text: &str| out.push(Diag::new(stage, text, std_lines));
         let (d, main) = decls::collect(&loaded.modules, &loaded.prelude);
-        for e in &d.errors {
-            add(Stage::Decls, e);
-        }
-        let mut t = check::check(&d, &main, &src);
+        let mut out = diags(Stage::Decls, &d.errors);
+        let mut t = check::check(&d, &main, src);
         let more = modules::declaring(&t.missing, &loaded.modules);
         if !more.is_empty() {
             wanted.extend(more);
             continue;
         }
-        for e in &t.errors {
-            add(Stage::Check, e);
-        }
+        out.extend(diags(Stage::Check, &t.errors));
         let owned = if t.errors.is_empty() && d.errors.is_empty() {
-            own::check(&d, &t, &src)
+            own::check(&d, &t)
         } else {
             own::Owned::default()
         };
-        for e in &owned.errors {
-            add(Stage::Own, e);
-        }
+        out.extend(diags(Stage::Own, &owned.errors));
         for (f, es) in &owned.deferred {
-            let own = es.iter().map(|e| format!("own: {e}"));
+            let own = es.iter().map(|e| e.clone().prefixed(Stage::Own.name()));
             t.deferred.entry(*f).or_default().extend(own);
         }
-        let g = lower::lower(&d, &t, &owned, &src, std_lines as u32);
-        for e in &g.errors {
-            add(Stage::Lower, e);
-        }
+        let g = lower::lower(&d, &t, &owned, src, std_lines as u32);
+        out.extend(diags(Stage::Lower, &g.errors));
         if !out.is_empty() {
             return Err(out);
         }
         let mut prog = inst::link(&d, &t, &g.funcs, &g.globals);
         if !prog.errors.is_empty() {
-            return Err(prog
-                .errors
-                .iter()
-                .map(|e| Diag::new(Stage::Link, e, std_lines))
-                .collect());
+            return Err(diags(Stage::Link, &prog.errors));
         }
         if events {
             inst::add_events(&mut prog, &t, &d, loaded.program_start);
         }
-        let canon = inst::canonicalize(&prog).map_err(|es| {
-            es.iter()
-                .map(|e| Diag::new(Stage::Link, e, std_lines))
-                .collect::<Vec<_>>()
-        })?;
+        let canon = inst::canonicalize(&prog).map_err(|es| diags(Stage::Link, &es))?;
         return Ok(Compiled { prog, canon });
     }
 }
@@ -205,4 +218,39 @@ pub(crate) fn kind_name(kind: &impl std::fmt::Debug) -> String {
         .find(|c: char| !c.is_alphanumeric())
         .unwrap_or(text.len());
     text[..end].to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use modules::PROGRAM;
+
+    fn diags(src: &str) -> Vec<Diag> {
+        compile(src, false).err().expect("rejected")
+    }
+
+    /// A diagnostic's span is in the user's file, past the library text joined before it.
+    #[test]
+    fn diagnostic_is_placed_in_the_program() {
+        let src = "let a = 1\nlet b = 2\nprint(a +  zz)\n";
+        let d = &diags(src)[0];
+        let at = d.at.as_ref().expect("placed");
+        assert_eq!((at.file.as_str(), at.line, at.col), (PROGRAM, 3, 12));
+        assert_eq!(&src[at.span.start as usize..at.span.end as usize], "zz");
+        assert_eq!(
+            d.to_string(),
+            "check: program:3:12: E0201: unknown name `zz`"
+        );
+    }
+
+    #[test]
+    fn syntax_error_is_placed_in_the_program() {
+        let d = &diags("let a = 1\nlet = 2\n")[0];
+        let at = d.at.as_ref().expect("placed");
+        assert_eq!(
+            (d.stage, at.file.as_str(), at.line),
+            (Stage::Syntax, PROGRAM, 2)
+        );
+        assert!(d.code().is_some(), "{d}");
+    }
 }

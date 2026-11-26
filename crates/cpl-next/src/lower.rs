@@ -2,6 +2,7 @@
 //! everything it needs is on the typed tree.
 use crate::check::*;
 use crate::decls::{Decls, SelfMode};
+use crate::diag::Msg;
 use crate::ir::*;
 use crate::own::Owned;
 use crate::ty::*;
@@ -11,7 +12,7 @@ use std::collections::{BTreeSet, HashMap};
 pub struct Generic {
     pub funcs: HashMap<FuncKey, Func<Ty>>,
     pub globals: Vec<Ty>,
-    pub errors: Vec<String>,
+    pub errors: Vec<Msg>,
 }
 
 struct Lw<'a> {
@@ -30,7 +31,7 @@ struct Lw<'a> {
     /// Inside a lambda at top level, its params live in the globals table; map them to locals.
     remap: HashMap<VarRef, usize>,
     lambdas: Vec<Func<Ty>>,
-    errors: Vec<String>,
+    errors: Vec<Msg>,
     in_main: bool,
     /// The code of one test case, once main's `Cases` is lowered.
     case: Option<Func<Ty>>,
@@ -501,7 +502,7 @@ impl Lw<'_> {
                 let f = &self.lent_targs(f, &a);
                 let call = if let Some(n) = &fd.intrinsic {
                     let op = Intr::named(n).unwrap_or_else(|| {
-                        self.errors.push(format!("slice: intrinsic `{n}`"));
+                        self.errors.push(format!("slice: intrinsic `{n}`").into());
                         Intr::RawGet
                     });
                     mk(EK::Intr(op, a, site))
@@ -720,10 +721,13 @@ impl Lw<'_> {
                     .iter()
                     .any(|v| !matches!(v.ty, Ty::Int | Ty::Bool | Ty::Char | Ty::U64 | Ty::Error))
                 {
-                    self.errors.push(format!(
-                        "{}: this value cannot be printed",
-                        cpl_diag::codes::MISSING_IMPL.0
-                    ));
+                    self.errors.push(
+                        format!(
+                            "{}: this value cannot be printed",
+                            cpl_diag::codes::MISSING_IMPL.0
+                        )
+                        .into(),
+                    );
                 }
                 let mut vs = self.seq(&vals, out).into_iter();
                 let pieces = ps

@@ -128,11 +128,20 @@ fn header_key(line: &str) -> Option<&str> {
         .then_some(key)
 }
 
-/// `stage: line N: E0123: text` gives `(N, "E0123")`.
+/// `stage: program:N:C: E0123: text` gives `(N, "E0123")`: the line of the span's start in
+/// the case's file, and the code.
 fn line_and_code(diag: &str) -> Option<(usize, &str)> {
-    let rest = diag.split_once(": line ")?.1;
-    let (line, rest) = rest.split_once(": ")?;
+    let rest = diag.split_once(": program:")?.1;
+    let (line, rest) = rest.split_once(':')?;
+    let rest = rest.split_once(": ")?.1;
     Some((line.parse().ok()?, rest.split(':').next()?))
+}
+
+/// `program:3:5:` gives `program`.
+fn place_file(word: &str) -> Option<&str> {
+    let (file, pos) = word.strip_suffix(':')?.split_once(':')?;
+    (pos.split(':').count() == 2 && pos.split(':').all(|n| n.parse::<u32>().is_ok()))
+        .then_some(file)
 }
 
 /// How one case fared: `pass`, `refused`, or the word `wrong.tsv` uses, and the detail.
@@ -421,8 +430,9 @@ fn every_case_is_where_the_lists_say() {
 }
 
 /// The refused cases grouped by what refused them, largest group first: the order the
-/// missing mechanisms are built in. A cause is its message with line numbers and quoted
-/// names taken out, so `unknown name `V`` and `unknown name `W`` are one cause.
+/// missing mechanisms are built in. A cause is its message with places in the program and
+/// quoted names taken out, so `unknown name `V`` and `unknown name `W`` are one cause; a
+/// place in a library keeps its module.
 fn queue(refused: &str) -> String {
     let mut by: BTreeMap<String, usize> = BTreeMap::new();
     for line in refused.lines() {
@@ -435,8 +445,12 @@ fn queue(refused: &str) -> String {
         }
         let cause: Vec<&str> = cause
             .split_whitespace()
+            .filter_map(|w| match place_file(w) {
+                Some("program") => None,
+                Some(file) => Some(file),
+                None => Some(w),
+            })
             .filter(|w| !w.chars().all(|c| c.is_ascii_digit() || c == ':'))
-            .filter(|w| *w != "line")
             .collect();
         *by.entry(cause.join(" ")).or_default() += 1;
     }

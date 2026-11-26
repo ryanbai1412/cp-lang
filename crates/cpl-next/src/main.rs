@@ -41,7 +41,7 @@ fn real_main() {
         Ok(c) => c,
         Err(ds) => {
             for d in &ds {
-                println!("{}: {}", d.stage.name(), d.text);
+                println!("{d}");
             }
             // 1: the program is rejected. 4: refused, which says nothing about the program.
             std::process::exit(if ds.iter().any(cpl_next::Diag::is_refusal) {

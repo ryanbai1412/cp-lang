@@ -7,6 +7,7 @@
 //! of the fn stays symbolic in the summary and is filled in at each call.
 use crate::check::*;
 use crate::decls::{Decls, SelfMode};
+use crate::diag::Msg;
 use crate::ty::*;
 use cpl_diag::{codes, Code, Span};
 use std::collections::{BTreeSet, HashMap};
@@ -100,7 +101,6 @@ pub fn plain(d: &Decls, t: &Ty, depth: usize) -> bool {
 struct Cx<'a> {
     d: &'a Decls,
     t: &'a Typed,
-    src: &'a str,
     fns: HashMap<FnId, Fx>,
     lams: HashMap<LambdaId, Fx>,
     /// The fn being walked; `None` for the file body.
@@ -109,8 +109,8 @@ struct Cx<'a> {
     /// Enclosing loops over a generator or lender: what each holds for reading and for writing.
     regions: Vec<(BTreeSet<Pl>, BTreeSet<Pl>)>,
     report: bool,
-    errors: Vec<String>,
-    deferred: HashMap<FnId, Vec<String>>,
+    errors: Vec<Msg>,
+    deferred: HashMap<FnId, Vec<Msg>>,
     /// Block nesting at this point, and for each binding where it was declared and in what order.
     scopes: Vec<u32>,
     next: u32,
@@ -127,7 +127,7 @@ struct Cx<'a> {
     /// A write or move that is an error if the binding is used afterwards.
     /// Errors that hold only if a binding is used again: the binding, where in the file the
     /// error is, and the error.
-    pending: Vec<(Root, usize, Code, String)>,
+    pending: Vec<(Root, Span, Code, String)>,
     /// The heap bindings a function value held by a binding uses, top-level ones included.
     caps: HashMap<Root, BTreeSet<Root>>,
     /// Where each argument that is copied in starts.
@@ -150,19 +150,18 @@ struct Cx<'a> {
 /// are views of their place).
 #[derive(Default)]
 pub struct Owned {
-    pub errors: Vec<String>,
+    pub errors: Vec<Msg>,
     /// What is wrong in a fn reached only through a trait, said if an instance runs it.
-    pub deferred: HashMap<FnId, Vec<String>>,
+    pub deferred: HashMap<FnId, Vec<Msg>>,
     pub copies: BTreeSet<u32>,
     /// Per fn, the parameters its result holds, receiver first (R05.5.3): the result lends them.
     pub lends: HashMap<FnId, BTreeSet<usize>>,
 }
 
-pub fn check(d: &Decls, t: &Typed, src: &str) -> Owned {
+pub fn check(d: &Decls, t: &Typed) -> Owned {
     let mut cx = Cx {
         d,
         t,
-        src,
         fns: HashMap::new(),
         lams: HashMap::new(),
         cur: None,
@@ -292,16 +291,15 @@ impl Cx<'_> {
     }
     /// Where a span is in the file. Spans are relative to the item they are in, so this is
     /// asked while that item is the one being walked.
-    fn at(&self, span: Span) -> usize {
-        ((self.off + span.start) as usize).min(self.src.len())
+    fn at(&self, span: Span) -> Span {
+        Span::new(self.off + span.start, self.off + span.end)
     }
     fn err(&mut self, span: Span, code: Code, msg: String) {
         self.err_at(self.at(span), code, msg)
     }
-    fn err_at(&mut self, at: usize, code: Code, msg: String) {
+    fn err_at(&mut self, at: Span, code: Code, msg: String) {
         if self.report {
-            let line = self.src[..at].matches('\n').count() + 1;
-            let e = format!("line {line}: {}: {msg}", code.0);
+            let e = Msg::at(at, format!("{}: {msg}", code.0));
             match self.cur.filter(|f| self.t.quiet.contains(f)) {
                 Some(f) => self.deferred.entry(f).or_default().push(e),
                 None => self.errors.push(e),

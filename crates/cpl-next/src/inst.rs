@@ -2,6 +2,7 @@
 //! instances exist and what each function-value set holds, from the whole program.
 use crate::check::Typed;
 use crate::decls::Decls;
+use crate::diag::Msg;
 use crate::ir::*;
 use crate::ty::*;
 use std::collections::{BTreeSet, HashMap};
@@ -42,7 +43,7 @@ pub struct Program {
     pub structs: HashMap<CTy, Vec<CTy>>,
     /// An enum's payload struct per variant: its value is one of them, with a tag saying which.
     pub sums: HashMap<CTy, Vec<CTy>>,
-    pub errors: Vec<String>,
+    pub errors: Vec<Msg>,
 }
 impl Program {
     /// What a value of `t` holds: a struct's fields, or an enum's payloads.
@@ -93,7 +94,7 @@ struct Link<'a> {
     sums: HashMap<CTy, Vec<CTy>>,
     ret_busy: BTreeSet<(InstKey, usize)>,
     named: HashMap<FuncKey, BTreeSet<usize>>,
-    errors: Vec<String>,
+    errors: Vec<Msg>,
     globals: Vec<CTy>,
     /// The locals of the instance being made, to type its places.
     frame: Vec<CTy>,
@@ -161,7 +162,7 @@ pub fn link(
             l.errors.push(format!(
                 "{}: instantiation does not end: `{}` makes a new copy of itself at every level (a function passed to its own recursive call, wrapped in a new closure)", cpl_diag::codes::GROWING_INSTANTIATION.0,
                 generic[&l.keys[next].func].name
-            ));
+            ).into());
             break;
         }
         let key = l.keys[next].clone();
@@ -188,7 +189,7 @@ pub fn link(
             l.errors.push(format!(
                 "slice: `{}` is called with its own domain `{}` as a type argument, so each call would need a new copy of it; declare the domain outside, or pass its values as `Int`",
                 generic[&key.func].name, typed.domains[*d].name
-            ));
+            ).into());
             break;
         }
         let f = &generic[&key.func];
@@ -571,7 +572,7 @@ impl Link<'_> {
                 }
                 if found.is_none() {
                     self.errors
-                        .push(format!("no impl provides `{method}` for this type"));
+                        .push(format!("no impl provides `{method}` for this type").into());
                 }
                 found
             }
@@ -659,7 +660,7 @@ fn check_escape(p: &mut Program) {
         .map(|f| f.name.clone())
         .collect();
     for name in bad {
-        p.errors.push(format!("{}: `{name}` returns a function that uses a `var` of the fn that made it; the variable is gone by then", cpl_diag::codes::LENT_ESCAPES.0));
+        p.errors.push(format!("{}: `{name}` returns a function that uses a `var` of the fn that made it; the variable is gone by then", cpl_diag::codes::LENT_ESCAPES.0).into());
     }
 }
 
@@ -719,14 +720,14 @@ fn check_finite(p: &mut Program) {
         visit(p, t, &mut Vec::new(), &mut bad);
     }
     if bad {
-        p.errors.push("a function value captures a function value that can hold itself, so it has no fixed size; keep the steps in a list and apply them in a loop".to_string());
+        p.errors.push("a function value captures a function value that can hold itself, so it has no fixed size; keep the steps in a list and apply them in a loop".into());
     }
 }
 
 /// Contract 6, required rewrites: a call through a function value becomes a
 /// branch over the closures it can be, and each call a direct call.
 /// The canonical form of every instance, or what the link step left inconsistent.
-pub fn canonicalize(p: &Program) -> Result<Vec<Func<CTy>>, Vec<String>> {
+pub fn canonicalize(p: &Program) -> Result<Vec<Func<CTy>>, Vec<Msg>> {
     let mut bad = Vec::new();
     let funcs = p
         .insts
@@ -741,7 +742,7 @@ pub fn canonicalize(p: &Program) -> Result<Vec<Func<CTy>>, Vec<String>> {
     if bad.is_empty() {
         Ok(funcs)
     } else {
-        Err(bad)
+        Err(bad.into_iter().map(Msg::from).collect())
     }
 }
 
@@ -1113,7 +1114,7 @@ fn thread_values(p: &mut Program, typed: &Typed) {
     if bad {
         p.errors.push(
             format!("{}: a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one", cpl_diag::codes::MISSING_IMPL.0)
-                .to_string(),
+                .into(),
         );
         return;
     }
@@ -1138,7 +1139,7 @@ fn thread_values(p: &mut Program, typed: &Typed) {
     }
     if !needs[p.main].is_empty() {
         p.errors
-            .push("a domain's size is needed where the domain is not in scope".to_string());
+            .push("a domain's size is needed where the domain is not in scope".into());
         return;
     }
     // Hidden parameters come first, and count as captures: a closure holds them.
@@ -1283,7 +1284,7 @@ fn thread_values(p: &mut Program, typed: &Typed) {
         rw.block(&mut body);
         p.insts[i].body = body;
         if rw.no_source.get() {
-            p.errors.push("internal: a domain's size is used in a fn that neither declares it nor is handed it".to_string());
+            p.errors.push("internal: a domain's size is used in a fn that neither declares it nor is handed it".into());
         }
     }
 }

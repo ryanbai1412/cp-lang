@@ -1,6 +1,7 @@
 //! Declarations the compiler writes for a program: an enum's structs and the `Eq` and `Ord` a
 //! struct derives from its fields.
 use crate::decls::{constant_int, unnamed, GETTER};
+use crate::diag::Msg;
 use cpl_syntax::ast::{self, FnBody, StmtKind, TypeKind};
 use std::collections::HashMap;
 
@@ -10,7 +11,7 @@ use std::collections::HashMap;
 pub(crate) fn enum_structs(
     s: &ast::Stmt,
     e: &ast::EnumDecl,
-) -> (Vec<ast::Stmt>, Vec<String>, Vec<i64>) {
+) -> (Vec<ast::Stmt>, Vec<Msg>, Vec<i64>) {
     let mut errors = Vec::new();
     let mut values = Vec::new();
     let one = |name: String, fields, methods, decorators| ast::Stmt {
@@ -37,7 +38,7 @@ pub(crate) fn enum_structs(
     )];
     for (i, v) in e.variants.iter().enumerate() {
         if v.tag.is_some() {
-            errors.push(format!("slice: a tagged variant `{}`", v.name.text));
+            errors.push(format!("slice: a tagged variant `{}`", v.name.text).into());
         }
         let value = match &v.value {
             None => Some(i as i64),
@@ -45,7 +46,7 @@ pub(crate) fn enum_structs(
             Some(x) => constant_int(x),
         };
         if value.is_none() {
-            errors.push(format!("slice: the value of variant `{}`", v.name.text));
+            errors.push(format!("slice: the value of variant `{}`", v.name.text).into());
         }
         values.push(value.unwrap_or(i as i64));
         let fields = (v.fields.iter().enumerate())

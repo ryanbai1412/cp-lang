@@ -1128,7 +1128,7 @@ impl<'a> Cx<'a> {
             &mut errs,
         );
         for e in errs {
-            self.err(span, e);
+            self.err(span, e.text);
         }
         self.fresh_sets(&t)
     }

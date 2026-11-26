@@ -4,6 +4,8 @@
 //! A module is loaded only when a name from it can be meant: one the program's `use` lines
 //! name, a prelude name the program's text mentions (R11.3), or one a loaded module's own
 //! `use` lines name. Libraries get no prelude (R11.3.1).
+use crate::diag::Msg;
+use cpl_diag::Span;
 use cpl_syntax::ast::{Stmt, StmtKind};
 use std::collections::{HashMap, HashSet, VecDeque};
 
@@ -11,6 +13,8 @@ type Items = Vec<(u32, Vec<Stmt>)>;
 
 pub struct Module {
     pub name: String,
+    /// Where its text starts in the joined source.
+    pub start: u32,
     pub items: Vec<(u32, Vec<Stmt>)>,
 }
 
@@ -22,7 +26,7 @@ pub struct Loaded {
     pub program_start: u32,
     /// Each prelude name and the module it is from.
     pub prelude: HashMap<String, String>,
-    pub errors: Vec<String>,
+    pub errors: Vec<Msg>,
 }
 
 pub const CORE: &str = "core";
@@ -126,11 +130,11 @@ fn uses(items: &[(u32, Vec<Stmt>)]) -> impl Iterator<Item = (String, &Stmt, u32)
 }
 
 /// The items, and each syntax error with its code and where it starts in `text`.
-fn parse(text: &str) -> (Items, Vec<(u32, String)>) {
+fn parse(text: &str) -> (Items, Vec<(Span, String)>) {
     let p = cpl_syntax::parse_file(text);
     let items = p.items.into_iter().map(|(o, it)| (o, it.stmts)).collect();
     let diags = (p.diagnostics.into_iter())
-        .map(|d| (d.span.start, format!("{}: {}", d.code.0, d.message)))
+        .map(|d| (d.span, format!("{}: {}", d.code.0, d.message)))
         .collect();
     (items, diags)
 }
@@ -168,6 +172,7 @@ pub fn load(core: &str, user: &str, wanted: &[String]) -> Loaded {
     let mut seen = HashSet::new();
     let mut edges: Vec<(String, String)> = Vec::new();
     let mut missing: Vec<(String, Option<u32>)> = Vec::new();
+    let mut lib_diags: Vec<(usize, Vec<(Span, String)>)> = Vec::new();
     // The core's traits name std types (`Ord`'s `cmp` returns `std.algebra`'s `Ordering`).
     let (core_items, _) = parse(core);
     queue.extend(uses(&core_items).map(|(to, _, _)| (to, None)));
@@ -186,7 +191,7 @@ pub fn load(core: &str, user: &str, wanted: &[String]) -> Loaded {
             continue;
         };
         let (items, diags) = parse(&text);
-        errors.extend(diags.into_iter().map(|(_, d)| format!("{m}: {d}")));
+        lib_diags.push((libs.len(), diags));
         for (to, _, _) in uses(&items) {
             edges.push((m.clone(), to.clone()));
             queue.push_back((to, None));
@@ -194,10 +199,10 @@ pub fn load(core: &str, user: &str, wanted: &[String]) -> Loaded {
         libs.push((m, text, items));
     }
     if let Some(m) = cycle(&edges) {
-        errors.push(format!(
+        errors.push(Msg::from(format!(
             "{}: `{m}` is in an import cycle; two modules that need each other are one module (R11.2.2)",
             cpl_diag::codes::UNRESOLVED_MODULE.0
-        ));
+        )));
     }
     let mut src = String::new();
     let mut modules = Vec::new();
@@ -208,22 +213,28 @@ pub fn load(core: &str, user: &str, wanted: &[String]) -> Loaded {
         let items = items.into_iter().map(|(o, ss)| (o + base, ss)).collect();
         modules.push(Module {
             name: name.to_string(),
+            start: base,
             items,
         });
         base
     };
     add(CORE, core, core_items);
+    let mut lib_starts = Vec::new();
     for (name, text, items) in libs {
-        add(&name, &text, items);
+        lib_starts.push(add(&name, &text, items));
     }
     let program_start = add(PROGRAM, user, program);
-    let line = |at: u32| src[..(program_start + at) as usize].matches('\n').count() + 1;
-    errors.extend((program_diags.into_iter()).map(|(at, d)| format!("line {}: {d}", line(at))));
+    let at = |base: u32, s: Span| Span::new(base + s.start, base + s.end);
+    for (lib, diags) in lib_diags {
+        errors.extend((diags.into_iter()).map(|(a, d)| Msg::at(at(lib_starts[lib], a), d)));
+    }
+    errors.extend((program_diags.into_iter()).map(|(a, d)| Msg::at(at(program_start, a), d)));
     let code = cpl_diag::codes::UNRESOLVED_MODULE.0;
-    for (m, at) in missing {
-        errors.push(match at {
-            Some(at) => format!("line {}: {code}: no module `{m}`", line(at)),
-            None => format!("{code}: no module `{m}`"),
+    for (m, a) in missing {
+        let text = format!("{code}: no module `{m}`");
+        errors.push(match a {
+            Some(a) => Msg::at(at(program_start, Span::new(a, a)), text),
+            None => Msg::from(text),
         });
     }
     Loaded {

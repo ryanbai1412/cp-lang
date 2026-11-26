@@ -92,7 +92,7 @@ impl Cx<'_> {
                 ty: sub.ty(t),
                 mutable: false,
                 named_only: false,
-                default: e.as_ref().map(|e| (e, s.module)),
+                default: e.as_ref().map(|e| (e, s.module, s.item)),
             })
             .collect();
         let (pre, fields) = self.args(args, &formals, span);
