@@ -498,7 +498,11 @@ jobs:
       contents: write
       actions: write
     steps:
+      # Full history: research/PORTS.md dates each port by the commit that
+      # added it, and plan/STATUS.md counts every commit's `Skipped:` trailers.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       # skill-gen checks every skill example with cpl.
       - uses: ./.github/actions/setup-rust
         with:

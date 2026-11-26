@@ -23,5 +23,19 @@ class SkippedTableTest(unittest.TestCase):
         self.assertEqual(status.skipped_table("2026-11-23\x1finfra\x1f\n"), ["None."])
 
 
+class WrittenSkippedTableTest(unittest.TestCase):
+    def test_a_shallow_clone_rewrites_the_section_unchanged(self) -> None:
+        intro = ["Process costing more than 10% of a change is skipped with a trailer",
+                 "(`handbook/process/handbook-and-rfcs.md`); this counts them."]
+        table = ["| Day | Lane | Skipped |", "|---|---|---|", "| 2026-11-23 | perf | 3 |"]
+        text = "\n".join(["# Status", "", status.SKIPPED_HEAD, "", *intro, "", *table, "",
+                          "## Open questions (`plan/QUESTIONS.md`)", "", "- q", ""])
+        self.assertEqual(status.written_skipped_table(text), table)
+
+    def test_no_section_or_no_table_says_none(self) -> None:
+        self.assertEqual(status.written_skipped_table(""), ["None."])
+        self.assertEqual(status.written_skipped_table(f"{status.SKIPPED_HEAD}\n\nNone.\n"), ["None."])
+
+
 if __name__ == "__main__":
     unittest.main()

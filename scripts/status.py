@@ -48,12 +48,22 @@ def skipped_table(log: str) -> list[str]:
     return ["| Day | Lane | Skipped |", "|---|---|---|", *rows] if rows else ["None."]
 
 
+def written_skipped_table(text: str) -> list[str]:
+    """The table under SKIPPED_HEAD in a STATUS.md already written, without its intro."""
+    section = text.split(f"\n{SKIPPED_HEAD}\n", 1)[1:]
+    lines = section[0].split("\n## ", 1)[0].splitlines() if section else []
+    start = next((i for i, l in enumerate(lines) if l.startswith("| Day ") or l == "None."), None)
+    if start is None:
+        return ["None."]
+    table = lines[start:]
+    return table[:table.index("")] if "" in table else table
+
+
 def skipped_rows() -> list[str]:
-    """From git history; a shallow clone keeps the section already written."""
+    """From git history; a shallow clone keeps the table already written."""
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, check=False).stdout
     if git("rev-parse", "--is-shallow-repository").strip() != "false":
-        old = OUT.read_text().split(f"\n{SKIPPED_HEAD}\n\n", 1) if OUT.exists() else []
-        return old[1].split("\n\n## ", 1)[0].splitlines() if len(old) == 2 else ["None."]
+        return written_skipped_table(OUT.read_text() if OUT.exists() else "")
     return skipped_table(git("log", "--date=short", "--format=%ad%x1f%(trailers:key=Domain,valueonly,separator=%x2c)"
                              "%x1f%(trailers:key=Skipped,valueonly,separator=%x1e)"))
 
