@@ -27,6 +27,8 @@ pub enum Ty {
     Bool,
     /// An ASCII character, `0..=127`, one byte.
     Char,
+    /// `0..=2^64-1`, wrapping (R02.1).
+    U64,
     Unit,
     Raw(Box<Ty>),
     /// A closure's view of a `var` of the fn around it. Made by lowering only.

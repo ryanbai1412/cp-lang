@@ -46,6 +46,10 @@ pub enum Intr {
     CharOf,
     /// A character's code.
     CodeOf,
+    /// An `Int`'s two's-complement bits as a `U64`.
+    ToU64,
+    /// A `U64` as an `Int`; traps past `Int`.
+    FromU64,
     /// A slot with no value yet, of the type it is given. Never read before it is stored to.
     Unset,
 }
@@ -86,6 +90,7 @@ impl Intr {
                 | RawSet
                 | RawNew
                 | ReadInt
+                | FromU64
         )
     }
 }

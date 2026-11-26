@@ -11,6 +11,7 @@ pub enum CTy {
     Int,
     Bool,
     Char,
+    U64,
     Unit,
     Raw(Box<CTy>),
     Ref(Box<CTy>),
@@ -234,6 +235,7 @@ impl Link<'_> {
             Ty::Int | Ty::Range(..) | Ty::RangeOf(_) => CTy::Int,
             Ty::Bool => CTy::Bool,
             Ty::Char => CTy::Char,
+            Ty::U64 => CTy::U64,
             Ty::Unit => CTy::Unit,
             Ty::Raw(e) => CTy::Raw(Box::new(self.ty(e, env))),
             Ty::Ref(e) => CTy::Ref(Box::new(self.ty(e, env))),
@@ -590,6 +592,7 @@ fn check_finite(p: &mut Program) {
                 CTy::Int
                     | CTy::Bool
                     | CTy::Char
+                    | CTy::U64
                     | CTy::Unit
                     | CTy::Raw(_)
                     | CTy::Ref(_)
@@ -1208,7 +1211,7 @@ fn thread_values(p: &mut Program, typed: &Typed) {
 /// leaving a fn of the user's file, and each write to one of its top-level bindings.
 pub fn add_events(p: &mut Program, typed: &Typed, d: &Decls, user_from: u32) {
     fn shown(t: &CTy) -> bool {
-        matches!(t, CTy::Int | CTy::Bool | CTy::Char | CTy::Dom(_))
+        matches!(t, CTy::Int | CTy::Bool | CTy::Char | CTy::U64 | CTy::Dom(_))
     }
     fn block(b: Vec<Stmt<CTy>>, exit: Option<&str>, typed: &Typed) -> Vec<Stmt<CTy>> {
         let mut out = Vec::new();
@@ -1308,7 +1311,10 @@ fn fit_cty(p: &Ty, t: &CTy, binds: &mut [Option<CTy>], doms: &[usize]) -> bool {
             }
         },
         (Ty::Int | Ty::Range(..) | Ty::RangeOf(_), CTy::Int) => true,
-        (Ty::Bool, CTy::Bool) | (Ty::Char, CTy::Char) | (Ty::Unit, CTy::Unit) => true,
+        (Ty::Bool, CTy::Bool)
+        | (Ty::Char, CTy::Char)
+        | (Ty::U64, CTy::U64)
+        | (Ty::Unit, CTy::Unit) => true,
         (Ty::Raw(a), CTy::Raw(b)) | (Ty::Ref(a), CTy::Ref(b)) => fit_cty(a, b, binds, doms),
         (Ty::Struct(d1, a, _), CTy::Struct(d2, b, _)) => {
             d1 == d2

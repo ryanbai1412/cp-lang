@@ -614,6 +614,10 @@ next/n_bits_01_shifts_powers_and_not.cp
 next/n_bits_02_shift_by_64_traps.cp
 next/n_bits_03_shl_past_int_traps.cp
 next/n_bits_04_and_to_the_lowest_pattern_traps.cp
+next/n_u64_01_wraps_and_compares_unsigned.cp
+next/n_u64_02_int_of_a_large_u64_traps.cp
+next/n_u64_03_division_by_zero_traps.cp
+next/n_u64_04_shift_by_64_traps.cp
 next/o01_gen_local_walk_read.cp
 next/o02_gen_global_walk_other_write.cp
 next/o03_gen_reads_global_scalar_body_writes.cp
@@ -679,6 +683,7 @@ std-algebra/unit-literal-is-unit.cp
 std-bag/sorted-bag-of-a-list-is-rejected.cp
 std-bag/sorted-map-of-pairs-is-rejected.cp
 std-bag/sorted-set-of-a-list-is-rejected.cp
+std-bitset/bitset-of-an-int-is-rejected.cp
 std-deque/deque-of-a-list-is-rejected.cp
 std-deque/linked-list-of-a-list-is-rejected.cp
 std-dsu/new.cp

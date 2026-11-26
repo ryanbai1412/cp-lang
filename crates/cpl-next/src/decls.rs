@@ -633,6 +633,7 @@ fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<String>) -> Ty {
                 "Int" => Ty::Int,
                 "Bool" => Ty::Bool,
                 "Char" => Ty::Char,
+                "U64" => Ty::U64,
                 "Str" if struct_named(cx.names, "Str").is_none() => {
                     errors.push("`Str` needs the library's `Str`".to_string());
                     Ty::Error

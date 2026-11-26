@@ -98,6 +98,19 @@ static inline int64_t cpl_shr(int64_t a, int64_t b) {
 }
 static inline int64_t cpl_band(int64_t a, int64_t b) { int64_t r = a & b; if (r == INT64_MIN) cpl_trap("R0202", "integer overflow"); return r; }
 static inline int64_t cpl_bxor(int64_t a, int64_t b) { int64_t r = a ^ b; if (r == INT64_MIN) cpl_trap("R0202", "integer overflow"); return r; }
+static inline uint64_t cpl_udiv(uint64_t a, uint64_t b) { if (b == 0) cpl_trap("R0203", "division by zero"); return a / b; }
+static inline uint64_t cpl_urem(uint64_t a, uint64_t b) { if (b == 0) cpl_trap("R0203", "division by zero"); return a % b; }
+static inline uint64_t cpl_upow(uint64_t a, uint64_t b) {
+    uint64_t r = 1;
+    for (; b > 0; b >>= 1) {
+        if (b & 1) r *= a;
+        a *= a;
+    }
+    return r;
+}
+static inline uint64_t cpl_ushl(uint64_t a, int64_t b) { if (b < 0 || b >= 64) cpl_trap("R0001", "a shift outside 0..64"); return a << b; }
+static inline uint64_t cpl_ushr(uint64_t a, int64_t b) { if (b < 0 || b >= 64) cpl_trap("R0001", "a shift outside 0..64"); return a >> b; }
+static inline int64_t cpl_int_of_u64(uint64_t u) { if (u > (uint64_t)INT64_MAX) cpl_trap("R0202", "the value does not fit in an Int"); return (int64_t)u; }
 template <class T> static inline cpl_raw<T> cpl_raw_new(int64_t n, const T& fill) {
     if (n < 0) cpl_trap("R0001", "negative storage size");
     if (n > (int64_t(1) << 28)) cpl_trap("R0001", "storage larger than the memory limit");
@@ -144,8 +157,10 @@ template <class T> struct cpl_body {
 static inline void cpl_ev(cpl_char c) { fprintf(stderr, " %c", (char)c.code); }
 static inline void cpl_out(cpl_char c) { putchar((char)c.code); }
 static inline void cpl_ev(int64_t x) { fprintf(stderr, " %lld", (long long)x); }
+static inline void cpl_ev(uint64_t x) { fprintf(stderr, " %llu", (unsigned long long)x); }
 static inline void cpl_ev(bool b) { fputs(b ? " true" : " false", stderr); }
 static inline void cpl_out(int64_t x) { printf("%lld", (long long)x); }
+static inline void cpl_out(uint64_t x) { printf("%llu", (unsigned long long)x); }
 static inline void cpl_out(bool b) { fputs(b ? "true" : "false", stdout); }
 "#;
 
@@ -353,7 +368,7 @@ fn const_ref_params(f: &Func<CTy>) -> Vec<bool> {
                 && !written.contains(l)
                 && !matches!(
                     f.locals[*l],
-                    CTy::Int | CTy::Bool | CTy::Char | CTy::Unit | CTy::Dom(_)
+                    CTy::Int | CTy::Bool | CTy::Char | CTy::U64 | CTy::Unit | CTy::Dom(_)
                 )
         })
         .collect()
@@ -393,6 +408,7 @@ impl Emit<'_> {
             CTy::Int | CTy::Dom(_) | CTy::Error => "int64_t".to_string(),
             CTy::Bool => "bool".to_string(),
             CTy::Char => "cpl_char".to_string(),
+            CTy::U64 => "uint64_t".to_string(),
             CTy::Unit => "cpl_unit".to_string(),
             CTy::Raw(e) => format!("cpl_raw<{}>", self.name(e)),
             CTy::Ref(e) => format!("{}*", self.name(e)),
@@ -430,7 +446,7 @@ impl Emit<'_> {
     /// Spec R1: a value with no heap part is copied when passed, so the callee never sees it change.
     fn plain(&self, t: &CTy, depth: usize) -> bool {
         match t {
-            CTy::Int | CTy::Bool | CTy::Char | CTy::Unit | CTy::Dom(_) => true,
+            CTy::Int | CTy::Bool | CTy::Char | CTy::U64 | CTy::Unit | CTy::Dom(_) => true,
             CTy::Struct(..) if depth < 8 => {
                 (self.p.parts(t).iter()).all(|f| self.plain(f, depth + 1))
             }
@@ -531,7 +547,20 @@ impl Emit<'_> {
             EK::Intr(op, args, _) => {
                 let a: Vec<String> = args.iter().map(|a| self.arg(a)).collect();
                 let bin = |o: &str| format!("({} {o} {})", a[0], a[1]);
+                let unsigned = matches!(args.first(), Some(Arg::Value(e)) if e.ty == CTy::U64);
                 match op {
+                    Intr::Add if unsigned => bin("+"),
+                    Intr::Sub if unsigned => bin("-"),
+                    Intr::Mul if unsigned => bin("*"),
+                    Intr::Div if unsigned => format!("cpl_udiv({}, {})", a[0], a[1]),
+                    Intr::Rem if unsigned => format!("cpl_urem({}, {})", a[0], a[1]),
+                    Intr::Pow if unsigned => format!("cpl_upow({}, {})", a[0], a[1]),
+                    Intr::Shl if unsigned => format!("cpl_ushl({}, {})", a[0], a[1]),
+                    Intr::Shr if unsigned => format!("cpl_ushr({}, {})", a[0], a[1]),
+                    Intr::BitAnd if unsigned => bin("&"),
+                    Intr::BitXor if unsigned => bin("^"),
+                    Intr::ToU64 => format!("((uint64_t)({}))", a[0]),
+                    Intr::FromU64 => format!("cpl_int_of_u64({})", a[0]),
                     Intr::Add => format!("cpl_add({}, {})", a[0], a[1]),
                     Intr::Sub => format!("cpl_sub({}, {})", a[0], a[1]),
                     Intr::Mul => format!("cpl_mul({}, {})", a[0], a[1]),

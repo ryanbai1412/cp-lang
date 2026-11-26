@@ -462,6 +462,15 @@ impl Lw<'_> {
                 let v = self.expr(x, out);
                 mk(EK::Intr(Intr::CodeOf, vec![Arg::Value(v)], site))
             }
+            TK::ToU64(x) => {
+                let v = self.expr(x, out);
+                mk(EK::Intr(Intr::ToU64, vec![Arg::Value(v)], site))
+            }
+            TK::FromU64(x) => {
+                let v = self.expr(x, out);
+                let v = mk(EK::Intr(Intr::FromU64, vec![Arg::Value(v)], site));
+                self.spill(v, out)
+            }
             TK::Not(x) => {
                 let v = self.expr(x, out);
                 mk(EK::Intr(Intr::Not, vec![Arg::Value(v)], site))
@@ -513,7 +522,7 @@ impl Lw<'_> {
                 // Checked here and not in the checker: a variable's type may be settled only at the end of the file.
                 if vals
                     .iter()
-                    .any(|v| !matches!(v.ty, Ty::Int | Ty::Bool | Ty::Char | Ty::Error))
+                    .any(|v| !matches!(v.ty, Ty::Int | Ty::Bool | Ty::Char | Ty::U64 | Ty::Error))
                 {
                     self.errors.push("this value cannot be printed".into());
                 }
@@ -969,6 +978,8 @@ pub fn free_vars(e: &TExpr, used: &mut BTreeSet<VarRef>, bound: &mut BTreeSet<Va
         | TK::CharOf(b)
         | TK::CodeOf(b)
         | TK::Neg(b)
+        | TK::ToU64(b)
+        | TK::FromU64(b)
         | TK::DomOrd(b)
         | TK::DomFrom(_, b)
         | TK::DomNth(_, b)

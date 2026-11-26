@@ -253,6 +253,7 @@ impl<'a> Cx<'a> {
             Ty::RangeOf(_) => "a range with run-time ends".into(),
             Ty::Bool => "Bool".into(),
             Ty::Char => "Char".into(),
+            Ty::U64 => "U64".into(),
             Ty::Unit => "()".into(),
             Ty::Raw(e) => format!("Raw<{}>", self.show(&e)),
             Ty::Ref(e) => format!("&{}", self.show(&e)),

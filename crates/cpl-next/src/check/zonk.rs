@@ -62,6 +62,8 @@ impl<'a> Cx<'a> {
             | TK::CharOf(b)
             | TK::CodeOf(b)
             | TK::Neg(b)
+            | TK::ToU64(b)
+            | TK::FromU64(b)
             | TK::DomOrd(b)
             | TK::Ordinal(b) => self.zonk_expr(b),
             TK::DomLen(t) => *t = self.zonk(t),

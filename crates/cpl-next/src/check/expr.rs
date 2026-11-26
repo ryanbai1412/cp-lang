@@ -8,13 +8,18 @@ impl<'a> Cx<'a> {
         if op == BinOp::Add && self.is_str(&l.ty) && self.is_str(&r.ty) {
             return self.lib_call("str_concat", vec![l, r], span);
         }
-        let want = if matches!(op, BinOp::And | BinOp::Or) {
-            Ty::Bool
-        } else {
-            Ty::Int
+        let logic = matches!(op, BinOp::And | BinOp::Or);
+        let shift = matches!(op, BinOp::Shl | BinOp::Shr);
+        // `U64` arithmetic wraps, and a shift's count is an `Int` (R02.1).
+        let unsigned = !logic
+            && (self.shallow(&l.ty) == Ty::U64 || (!shift && self.shallow(&r.ty) == Ty::U64));
+        let want = match (logic, unsigned) {
+            (true, _) => Ty::Bool,
+            (_, true) => Ty::U64,
+            _ => Ty::Int,
         };
         let l = self.coerce(l, &want);
-        let r = self.coerce(r, &want);
+        let r = self.coerce(r, if shift { &Ty::Int } else { &want });
         if op == BinOp::Coalesce {
             self.err(span, "slice: unsupported operator");
         }
@@ -269,7 +274,7 @@ impl<'a> Cx<'a> {
                 }));
                 return;
             }
-            Ty::Int | Ty::Bool | Ty::Char | Ty::Error => {
+            Ty::Int | Ty::Bool | Ty::Char | Ty::U64 | Ty::Error => {
                 pieces.push(Piece::Value(v));
                 return;
             }
@@ -947,20 +952,28 @@ impl<'a> Cx<'a> {
             ExprKind::Name(n) => self.name(n, span),
             ExprKind::SelfValue => self.self_expr(span).unwrap_or(mk(TK::Error, Ty::Error)),
             ExprKind::Tuple(xs) if xs.is_empty() => mk(TK::Unit, Ty::Unit),
+            // `~x` flips every bit: `x ^ ones`.
+            ExprKind::Unary {
+                op: UnOp::BitNot,
+                expr,
+            } => {
+                let v = self.expr(expr, None);
+                let t = match self.shallow(&v.ty) {
+                    Ty::U64 => Ty::U64,
+                    _ => Ty::Int,
+                };
+                let v = self.coerce(v, &t);
+                let ones = mk(TK::Int(-1), Ty::Int);
+                let ones = match t {
+                    Ty::U64 => mk(TK::ToU64(Box::new(ones)), Ty::U64),
+                    _ => ones,
+                };
+                mk(TK::Bin(BinOp::BitXor, Box::new(v), Box::new(ones)), t)
+            }
             ExprKind::Unary { op, expr } => {
                 let (want_t, kind): (Ty, fn(Box<TExpr>) -> TK) = match op {
                     UnOp::Not => (Ty::Bool, TK::Not),
                     UnOp::Neg => (Ty::Int, TK::Neg),
-                    // `~x` flips every bit: `x ^ -1`.
-                    UnOp::BitNot => (Ty::Int, |v| {
-                        let span = v.span;
-                        let ones = TExpr {
-                            kind: TK::Int(-1),
-                            ty: Ty::Int,
-                            span,
-                        };
-                        TK::Bin(BinOp::BitXor, v, Box::new(ones))
-                    }),
                     _ => {
                         self.err(span, "slice: unsupported operator");
                         (Ty::Int, TK::Neg)
@@ -1009,7 +1022,7 @@ impl<'a> Cx<'a> {
                     }
                     let primitive = matches!(
                         self.shallow(&prev.ty),
-                        Ty::Int | Ty::Bool | Ty::Char | Ty::Dom(_) | Ty::Error
+                        Ty::Int | Ty::Bool | Ty::Char | Ty::U64 | Ty::Dom(_) | Ty::Error
                     );
                     if matches!(op, CmpOp::In | CmpOp::NotIn) {
                         self.err(span, "slice: comparison of this type is not supported");
@@ -1194,10 +1207,21 @@ impl<'a> Cx<'a> {
                         Ty::Char,
                     )
                 }
+                ExprKind::Name(n) if n == "U64" && args.len() == 1 && self.lookup(n).is_none() => {
+                    let v = self.expr(&args[0].value, Some(&Ty::Int));
+                    if self.shallow(&v.ty) == Ty::U64 {
+                        return v;
+                    }
+                    let v = self.coerce(v, &Ty::Int);
+                    mk(TK::ToU64(Box::new(v)), Ty::U64)
+                }
                 ExprKind::Name(n) if n == "Int" && args.len() == 1 => {
                     let v = self.expr(&args[0].value, None);
                     if self.shallow(&v.ty) == Ty::Char {
                         return mk(TK::CodeOf(Box::new(v)), Ty::Int);
+                    }
+                    if self.shallow(&v.ty) == Ty::U64 {
+                        return mk(TK::FromU64(Box::new(v)), Ty::Int);
                     }
                     if !matches!(
                         self.shallow(&v.ty),

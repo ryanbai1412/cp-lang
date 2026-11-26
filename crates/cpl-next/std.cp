@@ -270,6 +270,10 @@ impl Eq for Char:
     fn eq(a, b) = a == b
 impl Ord for Char:
     fn lt(a, b) = a < b
+impl Eq for U64:
+    fn eq(a, b) = a == b
+impl Ord for U64:
+    fn lt(a, b) = a < b
 impl Eq for Bool:
     fn eq(a, b) = a == b
 impl Ord for Bool:

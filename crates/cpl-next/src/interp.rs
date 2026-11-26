@@ -21,6 +21,7 @@ pub enum V {
     Int(i64),
     Bool(bool),
     Char(u8),
+    U64(u64),
     Agg(Vec<V>),
     /// Storage is shared until written, so a copy costs nothing until then.
     Raw(Rc<Store>),
@@ -337,6 +338,7 @@ impl<'a> Machine<'a> {
                     for v in vals {
                         match self.expr(v, fp)? {
                             V::Int(i) => line.push_str(&format!(" {i}")),
+                            V::U64(u) => line.push_str(&format!(" {u}")),
                             V::Bool(b) => line.push_str(if b { " true" } else { " false" }),
                             V::Char(c) => {
                                 line.push(' ');
@@ -355,6 +357,7 @@ impl<'a> Machine<'a> {
                                 V::Int(i) => self.out.push_str(&i.to_string()),
                                 V::Bool(b) => self.out.push_str(if b { "true" } else { "false" }),
                                 V::Char(c) => self.out.push(char::from(c)),
+                                V::U64(u) => self.out.push_str(&u.to_string()),
                                 _ => return broken("print of a value of another kind"),
                             },
                         }
@@ -466,6 +469,12 @@ impl<'a> Machine<'a> {
             | Intr::Pow
             | Intr::Shl
             | Intr::Shr => {
+                if let (Arg::Value(x), Arg::Value(y)) = (&args[0], &args[1]) {
+                    if x.ty == CTy::U64 {
+                        let (a, b) = (self.expr(x, fp)?, self.expr(y, fp)?);
+                        return u64_op(op, a, b);
+                    }
+                }
                 let (a, b) = (self.int(&args[0], fp)?, self.int(&args[1], fp)?);
                 let r = match op {
                     Intr::Add => a.checked_add(b),
@@ -512,8 +521,9 @@ impl<'a> Machine<'a> {
                 };
                 let (a, b) = (self.expr(a, fp)?, self.expr(b, fp)?);
                 let (a, b) = match (a, b) {
-                    (V::Int(a), V::Int(b)) => (a, b),
-                    (V::Bool(a), V::Bool(b)) => (a as i64, b as i64),
+                    (V::Int(a), V::Int(b)) => (i128::from(a), i128::from(b)),
+                    (V::Bool(a), V::Bool(b)) => (i128::from(a), i128::from(b)),
+                    (V::U64(a), V::U64(b)) => (i128::from(a), i128::from(b)),
                     _ => return broken("comparison of a value of another kind"),
                 };
                 V::Bool(match op {
@@ -602,6 +612,19 @@ impl<'a> Machine<'a> {
             }
             Intr::InputLeft => V::Bool(!self.input.as_slice().is_empty()),
             Intr::Unset => V::Unit,
+            Intr::ToU64 => V::U64(self.int(&args[0], fp)? as u64),
+            Intr::FromU64 => {
+                let Arg::Value(a) = &args[0] else {
+                    return broken("lent operand");
+                };
+                let V::U64(u) = self.expr(a, fp)? else {
+                    return broken("a U64 operand of another kind");
+                };
+                match i64::try_from(u) {
+                    Ok(i) => V::Int(i),
+                    Err(_) => return trap(codes::OVERFLOW, "the value does not fit in an Int"),
+                }
+            }
             Intr::CharOf => V::Char(self.int(&args[0], fp)? as u8),
             Intr::CodeOf => {
                 let Arg::Value(c) = &args[0] else {
@@ -623,4 +646,46 @@ impl<'a> Machine<'a> {
             },
         })
     }
+}
+
+/// `U64` arithmetic wraps; division by zero and a shift outside 0..64 trap (R03.4.1).
+fn u64_op(op: Intr, a: V, b: V) -> R<V> {
+    let shift = matches!(op, Intr::Shl | Intr::Shr);
+    let (a, b) = match (a, b) {
+        (V::U64(a), V::U64(b)) if !shift => (a, b),
+        (V::U64(a), V::Int(b)) if shift => {
+            if !(0..64).contains(&b) {
+                return trap(codes::RUNTIME, "a shift outside 0..64");
+            }
+            (a, b as u64)
+        }
+        _ => return broken("a U64 operand of another kind"),
+    };
+    Ok(V::U64(match op {
+        Intr::Add => a.wrapping_add(b),
+        Intr::Sub => a.wrapping_sub(b),
+        Intr::Mul => a.wrapping_mul(b),
+        Intr::Div | Intr::Rem if b == 0 => {
+            return trap(codes::DIVISION_BY_ZERO, "division by zero")
+        }
+        Intr::Div => a / b,
+        Intr::Rem => a % b,
+        Intr::Pow => {
+            let (mut r, mut x, mut e) = (1u64, a, b);
+            while e > 0 {
+                if e & 1 == 1 {
+                    r = r.wrapping_mul(x);
+                }
+                x = x.wrapping_mul(x);
+                e >>= 1;
+            }
+            r
+        }
+        Intr::Shl => a << b,
+        Intr::Shr => a >> b,
+        Intr::BitAnd => a & b,
+        Intr::BitOr => a | b,
+        Intr::BitXor => a ^ b,
+        _ => return broken("not a U64 operation"),
+    }))
 }
