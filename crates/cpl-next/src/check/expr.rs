@@ -450,6 +450,25 @@ impl<'a> Cx<'a> {
         block(pre, call)
     }
     /// How a method takes its receiver: a `mut self` (or a cache it fills) needs a place.
+    /// A method call; a getter with nothing to pass is read like a field, so `()` after it calls
+    /// what it reads (R01.8.7, R02.6.6).
+    fn call_method(
+        &mut self,
+        f: FnRef,
+        recv: TArg,
+        getter: bool,
+        call: Option<&[ast::Arg]>,
+        span: Span,
+        want: Option<&Ty>,
+    ) -> TExpr {
+        match call {
+            Some(args) if getter => {
+                let v = self.call_fn(f, Some(recv), &[], span, None);
+                self.call_value(v, args, span)
+            }
+            _ => self.call_fn(f, Some(recv), call.unwrap_or(&[]), span, want),
+        }
+    }
     fn recv_arg(&mut self, m: FnId, recv: TExpr, span: Span) -> TArg {
         let place = matches!(recv.kind, TK::Var(_) | TK::Field(..));
         if self.d.f(m).self_mode == SelfMode::Mut {
@@ -847,8 +866,9 @@ impl<'a> Cx<'a> {
                             ),
                         );
                     }
+                    let getter = fd.getter && fd.params.is_empty();
                     let recv = self.recv_arg(fid, recv, span);
-                    return self.call_fn(f, Some(recv), call.unwrap_or(&[]), span, want);
+                    return self.call_method(f, recv, getter, call, span, want);
                 }
             }
         }
@@ -876,9 +896,10 @@ impl<'a> Cx<'a> {
                         ),
                     );
                 }
+                let getter = fd.getter && fd.params.is_empty();
                 let f = self.fnref(m, ts, ss);
                 let recv = self.recv_arg(m, recv, span);
-                self.call_fn(f, Some(recv), call.unwrap_or(&[]), span, want)
+                self.call_method(f, recv, getter, call, span, want)
             }
             None if name.text == "ord"
                 && call.is_none()

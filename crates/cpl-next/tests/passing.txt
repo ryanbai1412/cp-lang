@@ -34,6 +34,7 @@ core-01/floor-div.cp
 core-01/floor-division-by-zero-traps.cp
 core-01/for-filter-on-inner-clause.cp
 core-01/generator-test-counts-trues.cp
+core-01/getter-parens.cp
 core-01/hash-comment.cp
 core-01/if-elif-inline-expression.cp
 core-01/if-let-two-binders.cp
@@ -394,6 +395,7 @@ core-06/function-types.cp
 core-06/generator-closure-writes-its-local-across-yields.cp
 core-06/generic-free-method.cp
 core-06/get-no-parens.cp
+core-06/getter-called-with-parens.cp
 core-06/lambda-annotated-params.cp
 core-06/lambda-arity-past-tuple.cp
 core-06/lambda-nested-tuple-param.cp
