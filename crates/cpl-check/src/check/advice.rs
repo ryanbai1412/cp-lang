@@ -192,9 +192,7 @@ impl Checker<'_> {
                 continue;
             };
             if methods.iter().any(|m| m.name == name)
-                && (own_type
-                    || self.local_defs.contains_key(&trait_name)
-                    || self.env.decl_order(&trait_name).is_some())
+                && (own_type || self.env.decl_order(&trait_name).is_some())
                 && !self.has_impl(owner, &trait_name)
             {
                 return Some(trait_name);
