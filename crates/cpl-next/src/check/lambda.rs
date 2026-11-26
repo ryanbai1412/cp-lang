@@ -12,7 +12,14 @@ impl Cx<'_> {
         span: Span,
     ) -> TExpr {
         let mk = |kind, ty| TExpr { kind, ty, span };
-        let expected = want.map(|w| self.shallow(w));
+        // A lambda passed where `?(A -> R)` is wanted is that fn, made `Some` by the coercion (R02.4.2).
+        let expected = want.map(|w| {
+            let w = self.shallow(w);
+            match self.optional_of(&w).map(|t| self.shallow(&t)) {
+                Some(f @ Ty::Fn(..)) => f,
+                _ => w,
+            }
+        });
         let (eps, er) = match &expected {
             Some(Ty::Fn(ps, r, _)) => (Some(ps.clone()), Some((**r).clone())),
             _ => (None, None),

@@ -750,6 +750,7 @@ next/n_index_02_range_keyed_by_values.cp
 next/n_index_03_list_key_outside_traps.cp
 next/n_lambda_01_pattern_params.cp
 next/n_lambda_02_generator_of_tests.cp
+next/n_lambda_03_optional_fn_param.cp
 next/n_record_01_records_are_core_structs.cp
 next/n_record_02_field_traits.cp
 next/n_slice_01_range_gives_view.cp
