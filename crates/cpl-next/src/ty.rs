@@ -33,6 +33,9 @@ pub enum Ty {
     Raw(Box<Ty>),
     /// A closure's view of a `var` of the fn around it. Made by lowering only.
     Ref(Box<Ty>),
+    /// A heap value a struct slot holds lent from the caller (R05.5.3) instead of owning it.
+    /// Made by lowering only; a plain type in it is just that type.
+    Lent(Box<Ty>),
     Struct(StructId, Vec<Ty>, Vec<SetTy>),
     /// A stored function value: one of the closures in the set.
     Fn(Vec<Ty>, Box<Ty>, SetTy),
@@ -89,6 +92,7 @@ impl Subst<'_> {
             Ty::Param(i) => self.tys.get(*i).cloned().unwrap_or(Ty::Error),
             Ty::Raw(e) => Ty::Raw(Box::new(self.ty(e))),
             Ty::Ref(e) => Ty::Ref(Box::new(self.ty(e))),
+            Ty::Lent(e) => Ty::Lent(Box::new(self.ty(e))),
             Ty::Struct(d, ts, ss) => Ty::Struct(
                 *d,
                 ts.iter().map(|t| self.ty(t)).collect(),

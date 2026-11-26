@@ -154,6 +154,8 @@ pub struct Owned {
     /// What is wrong in a fn reached only through a trait, said if an instance runs it.
     pub deferred: HashMap<FnId, Vec<String>>,
     pub copies: BTreeSet<u32>,
+    /// Per fn, the parameters its result holds, receiver first (R05.5.3): the result lends them.
+    pub lends: HashMap<FnId, BTreeSet<usize>>,
 }
 
 pub fn check(d: &Decls, t: &Typed, src: &str) -> Owned {
@@ -216,6 +218,7 @@ pub fn check(d: &Decls, t: &Typed, src: &str) -> Owned {
         errors: cx.errors,
         deferred: cx.deferred,
         copies: cx.copies,
+        lends: cx.lends,
     }
 }
 

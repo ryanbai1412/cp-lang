@@ -143,6 +143,8 @@ pub enum Place {
     Deref(Box<Place>),
     /// Cell `i` of the raw storage at the place, `i` the value of that local.
     Slot(Box<Place>, usize),
+    /// The value a lent slot (`CTy::Lent`) points at; made by instantiation only.
+    Through(Box<Place>),
 }
 
 #[derive(Clone, Debug)]
@@ -158,6 +160,9 @@ pub enum EK<T> {
     Copy(Place),
     /// A reference to a `var`, for a closure to capture. The closure is then lent.
     AddrOf(Place),
+    /// A heap parameter stored in a struct the fn returns, which lends it (R05.5.3): the slot
+    /// points at the caller's value instead of copying it. A plain value is copied.
+    Lent(Place),
     /// The characters of a string literal, as storage.
     Text(String),
     MakeStruct(Vec<Expr<T>>),

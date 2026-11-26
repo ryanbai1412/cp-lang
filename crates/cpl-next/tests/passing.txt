@@ -686,6 +686,8 @@ next/n_slice_01_range_gives_view.cp
 next/n_slice_02_range_outside_traps.cp
 next/n_slice_03_open_ends.cp
 next/n_slice_04_open_end_outside_traps.cp
+next/n_slice_05_nested_view_keeps_source_keys.cp
+next/n_slice_06_slicing_in_a_loop_is_constant_time.cp
 next/n_u64_01_wraps_and_compares_unsigned.cp
 next/n_u64_02_int_of_a_large_u64_traps.cp
 next/n_u64_03_division_by_zero_traps.cp

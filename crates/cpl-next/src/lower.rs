@@ -18,6 +18,10 @@ struct Lw<'a> {
     d: &'a Decls,
     typed: &'a Typed,
     owned: &'a Owned,
+    /// The current fn's parameters its result holds (R05.5.3): a struct literal stores them lent.
+    lent: Vec<usize>,
+    /// The globals' types, a lent mark added where one is bound to a value that lends.
+    globals: Vec<Ty>,
     locals: Vec<Ty>,
     /// Which of the current fn's own bindings are `var`s.
     mut_locals: Vec<bool>,
@@ -38,13 +42,15 @@ struct Lw<'a> {
 pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &str, std_lines: u32) -> Generic {
     let mut out = Generic {
         funcs: HashMap::new(),
-        globals: typed.globals.iter().map(|g| g.ty.clone()).collect(),
+        globals: Vec::new(),
         errors: Vec::new(),
     };
     let mut lw = Lw {
         d,
         typed,
         owned,
+        lent: Vec::new(),
+        globals: typed.globals.iter().map(|g| g.ty.clone()).collect(),
         locals: Vec::new(),
         mut_locals: Vec::new(),
         remap: HashMap::new(),
@@ -91,6 +97,12 @@ pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &str, std_lines: u32)
             .map(|l| l.mutable || !crate::own::plain(d, &l.ty, 0))
             .collect();
         lw.remap.clear();
+        let holds = owned.lends.get(id);
+        lw.lent = (lw.param_locals(*id).into_iter())
+            .enumerate()
+            .filter(|(i, _)| holds.is_some_and(|h| h.contains(i)))
+            .map(|(_, l)| l)
+            .collect();
         let mut params = Vec::new();
         if let Some(s) = tf.self_local {
             params.push((s, fd.self_mode == SelfMode::Mut || d.writes_cache(*id)));
@@ -126,7 +138,112 @@ pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &str, std_lines: u32)
         out.funcs.insert(f.key.clone(), f);
     }
     out.errors = lw.errors;
+    out.globals = lw.globals;
     out
+}
+
+/// `t` with the lent marks `shape` (the same type, maybe written otherwise) has.
+fn mark_lent(t: &Ty, shape: &Ty) -> Ty {
+    match (t, shape) {
+        (Ty::Lent(_), _) => t.clone(),
+        (_, Ty::Lent(s)) => Ty::Lent(Box::new(mark_lent(t, s))),
+        (Ty::Struct(d, ts, ss), Ty::Struct(e, us, _)) if d == e && ts.len() == us.len() => {
+            Ty::Struct(
+                *d,
+                ts.iter().zip(us).map(|(t, u)| mark_lent(t, u)).collect(),
+                ss.clone(),
+            )
+        }
+        _ => t.clone(),
+    }
+}
+
+/// The written type: `t` without the lent marks lowering adds.
+fn strip_lent(t: &Ty) -> Ty {
+    match t {
+        Ty::Lent(e) => strip_lent(e),
+        Ty::Struct(d, ts, ss) => Ty::Struct(*d, ts.iter().map(strip_lent).collect(), ss.clone()),
+        _ => t.clone(),
+    }
+}
+
+/// Bind type parameter `k` of `decl` to `arg`'s lent form where `arg` is `targs[k]` lent.
+fn rebind(decl: &Ty, arg: &Ty, targs: &mut [Ty]) {
+    match (decl, arg) {
+        (Ty::Param(k), a) => {
+            if let Some(t) = targs.get_mut(*k) {
+                if a != t && strip_lent(a) == *t {
+                    *t = a.clone();
+                }
+            }
+        }
+        (Ty::Struct(d, ts, _), Ty::Struct(e, us, _)) if d == e => {
+            for (t, u) in ts.iter().zip(us) {
+                rebind(t, u, targs);
+            }
+        }
+        (Ty::Lent(t), Ty::Lent(u)) => rebind(t, u, targs),
+        _ => {}
+    }
+}
+
+impl Lw<'_> {
+    /// The locals of fn `f`'s parameters, receiver first, as call arguments come.
+    fn param_locals(&self, f: FnId) -> Vec<usize> {
+        let Some(tf) = self.typed.fns.get(&f) else {
+            return Vec::new();
+        };
+        (self.d.f(f).self_mode != SelfMode::None)
+            .then_some(tf.self_local)
+            .flatten()
+            .into_iter()
+            .chain(tf.params.iter().copied())
+            .collect()
+    }
+    /// The type a lowered argument has, with any lent mark it took; `None` for a path
+    /// into a value, whose type lowering does not track.
+    fn arg_ty(&self, a: &Arg<Ty>) -> Option<Ty> {
+        match a {
+            Arg::Value(e) => Some(e.ty.clone()),
+            Arg::View(Place::Local(l)) | Arg::Lend(Place::Local(l)) => self.locals.get(*l).cloned(),
+            Arg::View(Place::Global(g)) | Arg::Lend(Place::Global(g)) => {
+                self.globals.get(*g).cloned()
+            }
+            _ => None,
+        }
+    }
+    /// `f` with each type argument an argument fills lent taking the lent form, so the
+    /// instance reads the slot where it points (one instance per mode).
+    fn lent_targs(&self, f: &FnRef, args: &[Arg<Ty>]) -> FnRef {
+        let Some(tf) = self.typed.fns.get(&f.decl) else {
+            return f.clone();
+        };
+        let ps = self.param_locals(f.decl);
+        let holds = self.owned.lends.get(&f.decl);
+        let mut targs = f.targs.clone();
+        for (i, (&l, a)) in ps.iter().zip(args).enumerate() {
+            let decl = &tf.locals[l].ty;
+            if let Some(t) = self.arg_ty(a) {
+                rebind(decl, &t, &mut targs);
+            }
+            match (decl, a) {
+                // A held argument that lives in a place is lent; a fresh one is moved in.
+                (Ty::Param(k), Arg::View(_) | Arg::Lend(_))
+                    if holds.is_some_and(|h| h.contains(&i)) =>
+                {
+                    if let Some(t) = targs.get_mut(*k).filter(|t| !matches!(t, Ty::Lent(_))) {
+                        *t = Ty::Lent(Box::new(t.clone()));
+                    }
+                }
+                _ => {}
+            }
+        }
+        FnRef {
+            decl: f.decl,
+            targs,
+            sets: f.sets.clone(),
+        }
+    }
 }
 
 fn pure<T>(e: &Expr<T>) -> bool {
@@ -137,6 +254,7 @@ fn pure<T>(e: &Expr<T>) -> bool {
         | EK::Unit
         | EK::Copy(_)
         | EK::AddrOf(_)
+        | EK::Lent(_)
         | EK::Tag(_)
         | EK::DomLen(_)
         | EK::DomLo(_) => true,
@@ -346,6 +464,7 @@ impl Lw<'_> {
             TK::Call { f, recv, args } => {
                 let fd = self.d.f(f.decl);
                 let a = self.args(recv.as_deref(), args, out);
+                let f = &self.lent_targs(f, &a);
                 let call = if let Some(n) = &fd.intrinsic {
                     let op = Intr::named(n).unwrap_or_else(|| {
                         self.errors.push(format!("unknown intrinsic `{n}`"));
@@ -353,7 +472,23 @@ impl Lw<'_> {
                     });
                     mk(EK::Intr(op, a, site))
                 } else {
-                    mk(EK::Call(Target::Fn(f.clone()), a, site))
+                    let ty = match self.typed.fns.get(&f.decl) {
+                        Some(tf) => Subst {
+                            tys: &f.targs,
+                            sets: &f.sets,
+                        }
+                        .ty(&tf.ret),
+                        None => e.ty.clone(),
+                    };
+                    // A result held directly is its own storage, not a lent slot.
+                    let ty = match mark_lent(&e.ty, &ty) {
+                        Ty::Lent(t) => *t,
+                        t => t,
+                    };
+                    Expr {
+                        kind: EK::Call(Target::Fn(f.clone()), a, site),
+                        ty,
+                    }
                 };
                 self.spill(call, out)
             }
@@ -363,10 +498,13 @@ impl Lw<'_> {
                 recv,
                 args,
             } => {
-                let self_ty = match &**recv {
-                    TArg::Value(v) | TArg::Mut(v) => v.ty.clone(),
-                };
                 let a = self.args(Some(recv), args, out);
+                let self_ty = match &**recv {
+                    TArg::Value(v) | TArg::Mut(v) => match a.first().and_then(|x| self.arg_ty(x)) {
+                        Some(t) if strip_lent(&t) == v.ty => t,
+                        _ => v.ty.clone(),
+                    },
+                };
                 let call = mk(EK::Call(
                     Target::Trait {
                         tr: *tr,
@@ -390,8 +528,30 @@ impl Lw<'_> {
                 self.spill(call, out)
             }
             TK::Struct(fs) => {
-                let refs: Vec<&TExpr> = fs.iter().collect();
-                mk(EK::MakeStruct(self.seq(&refs, out)))
+                // A held parameter is stored as a pointer to its place, never copied first.
+                let held: Vec<bool> = (fs.iter())
+                    .map(|f| matches!(f.kind, TK::Var(VarRef::Local(l)) if self.lent.contains(&l)))
+                    .collect();
+                let rest: Vec<&TExpr> = (fs.iter().zip(&held))
+                    .filter(|(_, h)| !**h)
+                    .map(|(f, _)| f)
+                    .collect();
+                let mut rest = self.seq(&rest, out).into_iter();
+                let mut xs = Vec::new();
+                for (f, h) in fs.iter().zip(held) {
+                    match (h, rest.next()) {
+                        (false, Some(x)) => xs.push(x),
+                        (_, x) => {
+                            rest = x.into_iter().chain(rest).collect::<Vec<_>>().into_iter();
+                            let p = self.place(f, out);
+                            xs.push(Expr {
+                                kind: EK::Lent(p),
+                                ty: f.ty.clone(),
+                            });
+                        }
+                    }
+                }
+                mk(EK::MakeStruct(xs))
             }
             TK::FnItem(_) => mk(EK::MakeClosure(vec![])),
             TK::Lambda { id, params, body } => {
@@ -648,8 +808,21 @@ impl Lw<'_> {
             TStmt::Let(v, e) => {
                 let val = self.expr(e, out);
                 match self.bind(*v) {
-                    Place::Local(l) => out.push(Stmt::Let(l, val)),
-                    p => out.push(Stmt::Assign(p, val)),
+                    Place::Local(l) => {
+                        if val.ty != self.locals[l] && strip_lent(&val.ty) == self.locals[l] {
+                            self.locals[l] = val.ty.clone();
+                        }
+                        out.push(Stmt::Let(l, val))
+                    }
+                    p => {
+                        if let (Place::Global(g), VarRef::Global(_)) = (&p, v) {
+                            let g = *g;
+                            if val.ty != self.globals[g] && strip_lent(&val.ty) == self.globals[g] {
+                                self.globals[g] = val.ty.clone();
+                            }
+                        }
+                        out.push(Stmt::Assign(p, val))
+                    }
                 }
             }
             TStmt::Assign(p, e) => {
@@ -813,7 +986,7 @@ impl Lw<'_> {
                         self.locals[*l].clone()
                     }
                     VarRef::Local(l) => self.locals.get(*l).cloned().unwrap_or(Ty::Error),
-                    VarRef::Global(g) => self.typed.globals[*g].ty.clone(),
+                    VarRef::Global(g) => self.globals[*g].clone(),
                 };
                 let l = match var {
                     VarRef::Local(l) if !self.in_main && !self.remap.contains_key(var) => *l,
@@ -827,7 +1000,7 @@ impl Lw<'_> {
                 let v = self.expr(body, &mut b);
                 self.effect(v, &mut b);
                 out.push(Stmt::Region {
-                    target: Target::Fn(f.clone()),
+                    target: Target::Fn(self.lent_targs(f, &a)),
                     args: a,
                     var: l,
                     lend: *lend,

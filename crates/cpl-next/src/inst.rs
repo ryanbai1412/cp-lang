@@ -15,6 +15,8 @@ pub enum CTy {
     Unit,
     Raw(Box<CTy>),
     Ref(Box<CTy>),
+    /// A slot that points at a heap value it does not own (`Ty::Lent`).
+    Lent(Box<CTy>),
     Struct(StructId, Vec<CTy>, Vec<CSet>),
     /// A function value: one of these closures. The order is the tag.
     Set(CSet),
@@ -45,9 +47,7 @@ pub struct Program {
 impl Program {
     /// What a value of `t` holds: a struct's fields, or an enum's payloads.
     pub fn parts(&self, t: &CTy) -> Vec<CTy> {
-        let mut out = self.structs.get(t).cloned().unwrap_or_default();
-        out.extend(self.sums.get(t).into_iter().flatten().cloned());
-        out
+        parts(&self.structs, &self.sums, t)
     }
     /// The types of what closure `k` captures.
     pub fn captures(&self, k: &InstKey) -> Vec<CTy> {
@@ -56,6 +56,30 @@ impl Program {
             .iter()
             .map(|(l, _)| f.locals[*l].clone())
             .collect()
+    }
+}
+
+/// A value held directly, not in a slot, is its own storage: a lent mark applies to slots.
+fn unlent(t: CTy) -> CTy {
+    match t {
+        CTy::Lent(t) => *t,
+        t => t,
+    }
+}
+
+/// A struct's fields, then a sum's payloads.
+fn parts(structs: &HashMap<CTy, Vec<CTy>>, sums: &HashMap<CTy, Vec<CTy>>, t: &CTy) -> Vec<CTy> {
+    let mut out = structs.get(t).cloned().unwrap_or_default();
+    out.extend(sums.get(t).into_iter().flatten().cloned());
+    out
+}
+
+/// Spec R1: a value with no heap part, copied when passed; `parts` gives a struct's fields.
+pub fn plain(parts: &dyn Fn(&CTy) -> Vec<CTy>, t: &CTy, depth: usize) -> bool {
+    match t {
+        CTy::Int | CTy::Bool | CTy::Char | CTy::U64 | CTy::Unit | CTy::Dom(_) => true,
+        CTy::Struct(..) if depth < 8 => parts(t).iter().all(|f| plain(parts, f, depth + 1)),
+        _ => false,
     }
 }
 
@@ -70,6 +94,9 @@ struct Link<'a> {
     ret_busy: BTreeSet<(InstKey, usize)>,
     named: HashMap<FuncKey, BTreeSet<usize>>,
     errors: Vec<String>,
+    globals: Vec<CTy>,
+    /// The locals of the instance being made, to type its places.
+    frame: Vec<CTy>,
 }
 struct Env<'e> {
     targs: &'e [CTy],
@@ -113,7 +140,14 @@ pub fn link(
         ret_busy: BTreeSet::new(),
         named: HashMap::new(),
         errors: Vec::new(),
+        globals: Vec::new(),
+        frame: Vec::new(),
     };
+    let none = Env {
+        targs: &[],
+        sets: &[],
+    };
+    l.globals = globals.iter().map(|t| unlent(l.ty(t, &none))).collect();
     let main = l.intern(InstKey {
         func: FuncKey::Main,
         targs: vec![],
@@ -162,25 +196,11 @@ pub fn link(
             targs: &key.targs,
             sets: &key.sets,
         };
-        let inst = Func {
-            key: f.key.clone(),
-            name: f.name.clone(),
-            params: f.params.clone(),
-            n_captures: f.n_captures,
-            locals: f.locals.iter().map(|t| l.ty(t, &env)).collect(),
-            body: l.block(&f.body, &env),
-            ret: l.ty(&f.ret, &env),
-            region: f.region.as_ref().map(|(lend, t)| (*lend, l.ty(t, &env))),
-            line: f.line,
-        };
+        let inst = l.instance(f, &env);
         insts.push(inst);
         next += 1;
     }
-    let env = Env {
-        targs: &[],
-        sets: &[],
-    };
-    let globals: Vec<CTy> = globals.iter().map(|t| l.ty(t, &env)).collect();
+    let globals = l.globals.clone();
     // Instances made while typing the globals.
     while insts.len() < l.keys.len() && l.keys.len() <= LIMIT {
         let key = l.keys[insts.len()].clone();
@@ -189,17 +209,7 @@ pub fn link(
             targs: &key.targs,
             sets: &key.sets,
         };
-        let inst = Func {
-            key: f.key.clone(),
-            name: f.name.clone(),
-            params: f.params.clone(),
-            n_captures: f.n_captures,
-            locals: f.locals.iter().map(|t| l.ty(t, &env)).collect(),
-            body: l.block(&f.body, &env),
-            ret: l.ty(&f.ret, &env),
-            region: f.region.as_ref().map(|(lend, t)| (*lend, l.ty(t, &env))),
-            line: f.line,
-        };
+        let inst = l.instance(f, &env);
         insts.push(inst);
     }
     let mut p = Program {
@@ -222,6 +232,54 @@ pub fn link(
 }
 
 impl Link<'_> {
+    fn parts(&self, t: &CTy) -> Vec<CTy> {
+        parts(&self.structs, &self.sums, t)
+    }
+    fn instance(&mut self, f: &Func<Ty>, env: &Env) -> Func<CTy> {
+        let locals: Vec<CTy> = f.locals.iter().map(|t| unlent(self.ty(t, env))).collect();
+        self.frame = locals.clone();
+        Func {
+            key: f.key.clone(),
+            name: f.name.clone(),
+            params: f.params.clone(),
+            n_captures: f.n_captures,
+            locals,
+            body: self.block(&f.body, env),
+            ret: unlent(self.ty(&f.ret, env)),
+            region: f.region.as_ref().map(|(lend, t)| (*lend, self.ty(t, env))),
+            line: f.line,
+        }
+    }
+    /// `p` read through each lent slot on its path.
+    fn place(&self, p: &Place) -> Place {
+        let sub = |b: &Place| Box::new(self.place(b));
+        match p {
+            Place::Field(b, i) => {
+                let f = Place::Field(sub(b), *i);
+                match self.place_ty(&f) {
+                    Some(CTy::Lent(_)) => Place::Through(Box::new(f)),
+                    _ => f,
+                }
+            }
+            Place::Variant(b, i) => Place::Variant(sub(b), *i),
+            Place::Deref(b) => Place::Deref(sub(b)),
+            Place::Through(b) => Place::Through(sub(b)),
+            Place::Slot(b, l) => Place::Slot(sub(b), *l),
+            Place::Local(_) | Place::Global(_) => p.clone(),
+        }
+    }
+    fn place_ty(&self, p: &Place) -> Option<CTy> {
+        match p {
+            Place::Local(l) => self.frame.get(*l).cloned(),
+            Place::Global(g) => self.globals.get(*g).cloned(),
+            Place::Field(b, i) => self.structs.get(&self.place_ty(b)?)?.get(*i).cloned(),
+            Place::Variant(b, i) => self.sums.get(&self.place_ty(b)?)?.get(*i).cloned(),
+            Place::Deref(b) | Place::Through(b) | Place::Slot(b, _) => match self.place_ty(b)? {
+                CTy::Ref(t) | CTy::Lent(t) | CTy::Raw(t) => Some(*t),
+                _ => None,
+            },
+        }
+    }
     fn intern(&mut self, k: InstKey) -> usize {
         if let Some(i) = self.index.get(&k) {
             return *i;
@@ -239,6 +297,11 @@ impl Link<'_> {
             Ty::Unit => CTy::Unit,
             Ty::Raw(e) => CTy::Raw(Box::new(self.ty(e, env))),
             Ty::Ref(e) => CTy::Ref(Box::new(self.ty(e, env))),
+            Ty::Lent(e) => match self.ty(e, env) {
+                CTy::Lent(t) => CTy::Lent(t),
+                t if plain(&|s| self.parts(s), &t, 0) => t,
+                t => CTy::Lent(Box::new(t)),
+            },
             Ty::Param(i) => env.targs.get(*i).cloned().unwrap_or(CTy::Error),
             Ty::Dom(d) => CTy::Dom(*d),
             Ty::Struct(d, ts, ss) => {
@@ -451,7 +514,7 @@ impl Link<'_> {
                 method,
                 self_ty,
             } => {
-                let st = self.ty(self_ty, env);
+                let st = unlent(self.ty(self_ty, env));
                 let sets = match &st {
                     CTy::Struct(_, _, ss) => ss.clone(),
                     _ => Vec::new(),
@@ -505,7 +568,7 @@ impl Link<'_> {
     fn arg(&mut self, a: &Arg<Ty>, env: &Env) -> Arg<CTy> {
         match a {
             Arg::Value(v) => Arg::Value(self.expr(v, env)),
-            Arg::View(p) => Arg::View(p.clone()),
+            Arg::View(p) => Arg::View(self.place(p)),
             Arg::Lend(p) => Arg::Lend(p.clone()),
         }
     }
@@ -516,9 +579,12 @@ impl Link<'_> {
             EK::Bool(b) => EK::Bool(*b),
             EK::Text(t) => EK::Text(t.clone()),
             EK::Unit => EK::Unit,
-            EK::Copy(p) => EK::Copy(p.clone()),
+            EK::Copy(p) => EK::Copy(self.place(p)),
+            // A plain value in a lent slot is just copied.
+            EK::Lent(p) if matches!(ty, CTy::Lent(_)) => EK::Lent(self.place(p)),
+            EK::Lent(p) => EK::Copy(self.place(p)),
             EK::AddrOf(p) => EK::AddrOf(p.clone()),
-            EK::Tag(p) => EK::Tag(p.clone()),
+            EK::Tag(p) => EK::Tag(self.place(p)),
             EK::DomLen(t) => EK::DomLen(self.ty(t, env)),
             EK::DomLo(t) => EK::DomLo(self.ty(t, env)),
             EK::MakeStruct(xs) => EK::MakeStruct(xs.iter().map(|x| self.expr(x, env)).collect()),
@@ -597,6 +663,7 @@ fn check_finite(p: &mut Program) {
                     | CTy::Unit
                     | CTy::Raw(_)
                     | CTy::Ref(_)
+                    | CTy::Lent(_)
                     | CTy::Dom(_)
                     | CTy::Error
             )
@@ -1361,6 +1428,8 @@ fn fit_cty(p: &Ty, t: &CTy, binds: &mut [Option<CTy>], doms: &[usize]) -> bool {
                 && a.len() == b.len()
                 && a.iter().zip(b).all(|(x, y)| fit_cty(x, y, binds, doms))
         }
+        // A lent slot reads as the value it points at.
+        (_, CTy::Lent(t)) => fit_cty(p, t, binds, doms),
         _ => false,
     }
 }

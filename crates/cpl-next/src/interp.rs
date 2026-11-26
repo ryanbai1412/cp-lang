@@ -172,6 +172,8 @@ impl<'a> Machine<'a> {
                 V::Agg(fs) | V::Clo(_, fs) => &mut fs[*i],
                 _ => return broken("field of a value of another kind"),
             },
+            // A lent slot holds its source's shared storage, so reading through it is the slot.
+            Place::Through(b) => self.place(fp, b)?,
             Place::Deref(b) => match self.place(fp, b)?.clone() {
                 V::Ref(Some(f), l) => &mut self.frames[f].locals[l],
                 V::Ref(None, g) => &mut self.globals[g],
@@ -411,7 +413,7 @@ impl<'a> Machine<'a> {
             EK::DomLen(_) | EK::DomLo(_) => {
                 return broken("a domain value the link step did not resolve")
             }
-            EK::Copy(p) => self.place(fp, p)?.clone(),
+            EK::Copy(p) | EK::Lent(p) => self.place(fp, p)?.clone(),
             EK::AddrOf(p) => match p {
                 Place::Local(l) => V::Ref(Some(fp), *l),
                 Place::Global(g) => V::Ref(None, *g),

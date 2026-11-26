@@ -257,6 +257,7 @@ impl<'a> Cx<'a> {
             Ty::Unit => "()".into(),
             Ty::Raw(e) => format!("Raw<{}>", self.show(&e)),
             Ty::Ref(e) => format!("&{}", self.show(&e)),
+            Ty::Lent(e) => self.show(&e),
             Ty::Struct(d, ts, _) => {
                 let n = &self.d.s(d).name;
                 if ts.is_empty() {

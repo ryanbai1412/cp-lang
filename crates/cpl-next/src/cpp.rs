@@ -310,9 +310,11 @@ fn const_ref_params(f: &Func<CTy>) -> Vec<bool> {
         match p {
             Place::Local(l) => Some(*l),
             Place::Global(_) => None,
-            Place::Field(b, _) | Place::Variant(b, _) | Place::Deref(b) | Place::Slot(b, _) => {
-                root(b)
-            }
+            Place::Field(b, _)
+            | Place::Variant(b, _)
+            | Place::Deref(b)
+            | Place::Through(b)
+            | Place::Slot(b, _) => root(b),
         }
     }
     fn expr(e: &Expr<CTy>, w: &mut Vec<usize>) {
@@ -415,6 +417,7 @@ impl Emit<'_> {
             CTy::Unit => "cpl_unit".to_string(),
             CTy::Raw(e) => format!("cpl_raw<{}>", self.name(e)),
             CTy::Ref(e) => format!("{}*", self.name(e)),
+            CTy::Lent(e) => format!("{} const*", self.name(e)),
             CTy::Struct(..) => {
                 let n = format!("S{}", self.names.len());
                 self.names.insert(t.clone(), n.clone());
@@ -448,13 +451,7 @@ impl Emit<'_> {
     }
     /// Spec R1: a value with no heap part is copied when passed, so the callee never sees it change.
     fn plain(&self, t: &CTy, depth: usize) -> bool {
-        match t {
-            CTy::Int | CTy::Bool | CTy::Char | CTy::U64 | CTy::Unit | CTy::Dom(_) => true,
-            CTy::Struct(..) if depth < 8 => {
-                (self.p.parts(t).iter()).all(|f| self.plain(f, depth + 1))
-            }
-            _ => false,
-        }
+        crate::inst::plain(&|s| self.p.parts(s), t, depth)
     }
     fn sig(&self, i: usize, f: &Func<CTy>, by_ref: &[bool]) -> String {
         let ps: Vec<String> = f
@@ -501,7 +498,7 @@ impl Emit<'_> {
             Place::Global(g) => format!("g{g}"),
             Place::Field(b, i) => format!("{}.f{i}", self.place(b)),
             Place::Variant(b, i) => format!("{}.v{i}", self.place(b)),
-            Place::Deref(b) => format!("(*{})", self.place(b)),
+            Place::Deref(b) | Place::Through(b) => format!("(*{})", self.place(b)),
             Place::Slot(b, l) => format!("{}[l{l}]", self.place(b)),
         }
     }
@@ -533,6 +530,7 @@ impl Emit<'_> {
             EK::Unit => "cpl_unit{}".to_string(),
             EK::DomLen(_) | EK::DomLo(_) => "/* unresolved domain value */".to_string(),
             EK::Copy(p) => self.place(p),
+            EK::Lent(p) => format!("(&{})", self.place(p)),
             EK::AddrOf(p) => format!("(&{})", self.place(p)),
             EK::Tag(p) => format!("{}.tag", self.place(p)),
             EK::MakeStruct(xs) | EK::MakeClosure(xs) => {
