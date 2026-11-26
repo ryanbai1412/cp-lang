@@ -67,7 +67,7 @@ fn bench_says_why_a_run_crashed() {
 
 #[test]
 fn a_read_inside_an_expression_is_an_error_not_half_an_input() {
-    let path = scratch("nested_read", "g.cp", "let n: 1..=5 = read()\nlet m: Int = n + read()\nprint(m)\n\n@alt(program)\nfn slow():\n    print(m)\n");
+    let path = scratch("nested_read", "g.cp", "let n: 1..=5 = read()\nif n > 2:\n    print(n + read<Int>())\n\n@alt(program)\nfn slow():\n    print(n)\n");
     for command in ["bench", "stress"] {
         let out = cpl(&[command.as_ref(), path.as_os_str()]);
         assert!(

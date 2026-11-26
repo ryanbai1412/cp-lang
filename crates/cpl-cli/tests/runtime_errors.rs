@@ -164,7 +164,7 @@ fn golden_math_assert_and_input_errors() {
         (
             "let a: Int = read()\nprint(isqrt(a))\n",
             "-4\n",
-            "isqrt(-4) of a negative number",
+            "-4 is outside `0..`",
         ),
         (
             "let a: F64 = read()\nprint(sqrt(a))\n",
