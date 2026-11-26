@@ -4551,7 +4551,7 @@
         "conformance/core-01/spec-block-dist-fn.cp": "pass",
         "conformance/core-01/static-argument-value-arithmetic.cp": "pass",
         "conformance/core-01/static-expression-type-argument.cp": "pass",
-        "conformance/core-01/stepped-range-is-a-value.cp": "skip",
+        "conformance/core-01/stepped-range-is-a-value.cp": "pass",
         "conformance/core-01/table.cp": "pass",
         "conformance/core-01/todo-unreached.cp": "pass",
         "conformance/core-01/top-level-return-ends-the-test.cp": "pass",
@@ -4905,7 +4905,7 @@
         "conformance/core-04/rb1-q20-int-range-last-true.cp": "pass",
         "conformance/core-04/rb1-q22-int-range-cut-is-value.cp": "pass",
         "conformance/core-04/rebase-fresh-domain.cp": "pass",
-        "conformance/core-04/rebased-str-indexes-from-zero.cp": "skip",
+        "conformance/core-04/rebased-str-indexes-from-zero.cp": "pass",
         "conformance/core-04/record-fits-named-product.cp": "pass",
         "conformance/core-04/rekey-onto-range.cp": "pass",
         "conformance/core-04/rev-keyed-counts-in-walk-order.cp": "pass",
@@ -5261,9 +5261,9 @@
         "conformance/core-09/lint-allowed.cp": "pass",
         "conformance/core-09/overflow-not-reached.cp": "pass",
         "conformance/core-09/range-store-proved.cp": "pass",
-        "conformance/core-09/release-division-by-zero-fallback.cp": "skip",
-        "conformance/core-09/release-overflow-wraps.cp": "skip",
-        "conformance/core-09/release-skips-assert.cp": "skip",
+        "conformance/core-09/release-division-by-zero-fallback.cp": "pass",
+        "conformance/core-09/release-overflow-wraps.cp": "pass",
+        "conformance/core-09/release-skips-assert.cp": "pass",
         "conformance/core-09/standard-and-user-contexts.cp": "pass",
         "conformance/core-09/trapped-check-that-holds.cp": "pass",
         "conformance/core-09/trig-intrinsics.cp": "pass",
@@ -7117,10 +7117,10 @@
       "counts": {
         "cxx_err": 1,
         "error": 2,
-        "pass": 2620,
-        "skip": 10
+        "pass": 2625,
+        "skip": 5
       },
-      "passed": 2620,
+      "passed": 2625,
       "total": 2633
     },
     "docs": {
