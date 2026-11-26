@@ -435,10 +435,14 @@ const tests: [string, () => Promise<void>][] = [
             // A second trace of the same file reuses its panel.
             const trace = lenses.find(lens => lens.command?.title === 'Trace on i1')!.command!;
             await vscode.commands.executeCommand(trace.command, ...(trace.arguments ?? []));
-            const panels = vscode.window.tabGroups.all
-                .flatMap(group => group.tabs)
-                .filter(tab => tab.label === `Trace: ${path.basename(document.uri.fsPath)}`);
-            assert.equal(panels.length, 1);
+            // The last panel's tab closes after the new one opens, so wait for it to go.
+            await until('one trace panel', () =>
+                vscode.window.tabGroups.all
+                    .flatMap(group => group.tabs)
+                    .filter(tab => tab.label === `Trace: ${path.basename(document.uri.fsPath)}`).length === 1
+                    ? true
+                    : undefined,
+            );
         },
     ],
     [
