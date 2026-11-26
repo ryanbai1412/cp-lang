@@ -16,6 +16,7 @@ mod oblige;
 mod range;
 mod stmt;
 mod unify;
+mod variants;
 mod zonk;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]

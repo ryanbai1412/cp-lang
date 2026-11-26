@@ -85,6 +85,8 @@ pub struct StructDecl {
     pub variants: Vec<(String, StructId)>,
     /// What its fields use that the slice does not build, said only when the program reaches it.
     pub errors: Vec<String>,
+    /// An enum's `Int` of each variant: its written value (`Neg = -1`), else its place from 0.
+    pub values: Vec<i64>,
 }
 pub struct TraitDecl {
     pub name: String,
@@ -908,7 +910,7 @@ pub fn collect(
     let mut pending: Vec<(ModId, u32, &ast::Stmt, Option<Named>)> = Vec::new();
     let mut imports: Vec<(ModId, &ast::Stmt)> = Vec::new();
     let mut aliases: Vec<(ModId, usize, String, Vec<String>, ast::Type)> = Vec::new();
-    let mut enums: Vec<(usize, String, Vec<String>)> = Vec::new();
+    let mut enums: Vec<(usize, String, Vec<String>, Vec<i64>)> = Vec::new();
     let derived: Vec<Vec<(u32, String, ast::Stmt)>> = (mods.iter().enumerate())
         .map(|(mi, m)| match mi == CORE.0 {
             true => Vec::new(),
@@ -921,13 +923,13 @@ pub fn collect(
             for (item, stmts) in &m.items {
                 for s in stmts {
                     if let StmtKind::Enum(e) = &s.kind {
-                        let (structs, errors) = enum_structs(s, e);
+                        let (structs, errors, values) = enum_structs(s, e);
                         match mi == n - 1 {
                             true => d.errors.extend(errors),
                             false => d.module_errors[mi].extend(errors),
                         }
                         let vs = e.variants.iter().map(|v| v.name.text.clone()).collect();
-                        enums.push((mi, e.name.text.clone(), vs));
+                        enums.push((mi, e.name.text.clone(), vs, values));
                         out.extend(structs.into_iter().map(|x| (*item, x)));
                     }
                 }
@@ -965,6 +967,7 @@ pub fn collect(
                             ctor: None,
                             variants: Vec::new(),
                             errors: Vec::new(),
+                            values: Vec::new(),
                         });
                         pending.push((mid, *item, s, Some(Named::Struct(id))));
                     }
@@ -1025,10 +1028,11 @@ pub fn collect(
             }
         }
     }
-    for (mi, name, vs) in enums {
+    for (mi, name, vs, values) in enums {
         let Some(Named::Struct(id)) = own[mi].get(&name).copied() else {
             continue;
         };
+        d.structs[id.0].values = values;
         d.structs[id.0].variants = (vs.into_iter())
             .filter_map(|v| match own[mi].get(&format!("{name}.{v}")) {
                 Some(Named::Struct(p)) => Some((v, *p)),
@@ -1781,8 +1785,9 @@ pub fn static_range(
 /// An enum as structs: its own, with no fields (the parser makes its methods an `impl`), then one
 /// per variant holding that variant's payload, named `Enum.Variant`, which no source name can be
 /// (R02.7).
-fn enum_structs(s: &ast::Stmt, e: &ast::EnumDecl) -> (Vec<ast::Stmt>, Vec<String>) {
+fn enum_structs(s: &ast::Stmt, e: &ast::EnumDecl) -> (Vec<ast::Stmt>, Vec<String>, Vec<i64>) {
     let mut errors = Vec::new();
+    let mut values = Vec::new();
     let one = |name: String, fields, methods, decorators| ast::Stmt {
         kind: StmtKind::Struct(ast::StructDecl {
             name: ast::Name {
@@ -1805,10 +1810,19 @@ fn enum_structs(s: &ast::Stmt, e: &ast::EnumDecl) -> (Vec<ast::Stmt>, Vec<String
         Vec::new(),
         s.decorators.clone(),
     )];
-    for v in &e.variants {
-        if v.tag.is_some() || v.value.is_some() {
+    for (i, v) in e.variants.iter().enumerate() {
+        if v.tag.is_some() {
             errors.push(format!("slice: a tagged variant `{}`", v.name.text));
         }
+        let value = match &v.value {
+            None => Some(i as i64),
+            Some(_) if !v.fields.is_empty() => None,
+            Some(x) => constant_int(x),
+        };
+        if value.is_none() {
+            errors.push(format!("slice: the value of variant `{}`", v.name.text));
+        }
+        values.push(value.unwrap_or(i as i64));
         let fields = (v.fields.iter().enumerate())
             .map(|(i, (n, t))| ast::FieldDecl {
                 name: n.clone().unwrap_or_else(|| ast::Name {
@@ -1830,7 +1844,7 @@ fn enum_structs(s: &ast::Stmt, e: &ast::EnumDecl) -> (Vec<ast::Stmt>, Vec<String
             Vec::new(),
         ));
     }
-    (out, errors)
+    (out, errors, values)
 }
 
 /// Per struct a module declares, the impls it gets structurally (R08.1.6), made after every written

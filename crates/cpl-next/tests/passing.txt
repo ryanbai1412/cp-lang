@@ -86,6 +86,7 @@ core-01/unchecked-not-expression.cp
 core-01/unclosed-paren.cp
 core-01/unterminated-string.cp
 core-01/unwrap-none-traps.cp
+core-01/user-none-variant.cp
 core-01/var-needs-initializer.cp
 core-01/while-true-break-in-the-middle.cp
 core-02/alias-cycle-is-an-error.cp
@@ -440,6 +441,8 @@ diagnostics/missing-type.cp
 diagnostics/planned-domain-list.cp
 diagnostics/two-expressions.cp
 lib-ops-ranges/bare-op-tuple.cp
+matrix/index/enum--construct.cp
+matrix/index/enum--int.cp
 matrix/optional/domain_at--default_fn.cp
 matrix/optional/domain_at--default_loop.cp
 matrix/optional/domain_at--default_top.cp
@@ -620,6 +623,7 @@ next/n_bits_01_shifts_powers_and_not.cp
 next/n_bits_02_shift_by_64_traps.cp
 next/n_bits_03_shl_past_int_traps.cp
 next/n_bits_04_and_to_the_lowest_pattern_traps.cp
+next/n_enum_01_values_and_order.cp
 next/n_u64_01_wraps_and_compares_unsigned.cp
 next/n_u64_02_int_of_a_large_u64_traps.cp
 next/n_u64_03_division_by_zero_traps.cp
@@ -684,6 +688,7 @@ next/t26_capture_escape.cp
 next/t27_cap_ref.cp
 next/t28_cap_ref2.cp
 next/t29_cap_stale.cp
+std-algebra/cmp-ordering.cp
 std-algebra/reversing-a-fold-with-no-rev-traps.cp
 std-algebra/unit-literal-is-unit.cp
 std-bag/sorted-bag-of-a-list-is-rejected.cp
@@ -696,6 +701,13 @@ std-dsu/new.cp
 std-geometry/area2-orientation.cp
 std-geometry/free-dot-and-cross-are-public.cp
 std-hashmap/counter-is-a-std-struct-a-user-may-shadow.cp
+std-math/bit-past-63-repeats-the-sign.cp
+std-math/ceil-div-signs.cp
+std-math/choose2-negative-is-zero.cp
+std-math/choose2-overflow-traps.cp
+std-math/choose2-zero-and-overflow-free.cp
+std-math/divmod-floor-signs.cp
+std-math/sign-pow2.cp
 std-opt/a-niche-packed-field-lends-to-a-read-only-param.cp
 std-range/len-param-past-2-31-is-a-compile-error.cp
 std-range/len-param-past-2-31-traps-at-the-call.cp
@@ -709,6 +721,7 @@ tools-fmt-lint/lint-never-blocks-run.cp
 traits/Bidir/Range--iter_rev.cp
 traits/Hashable/HashVal--hash_token.cp
 traits/IndexOp/Disjoint--at.cp
+traits/IndexOp/Disjoint--len.cp
 traits/Indexed/List--at.cp
 traits/Indexed/Str--at.cp
 traits/IndexedMut/List--at.cp

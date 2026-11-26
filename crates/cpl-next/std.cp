@@ -130,6 +130,16 @@ fn str_concat(a: Str, b: Str) -> Str:
     for c in b: out.push(c)
     out
 
+/// Strings compare character by character, a prefix first (R08.1.5).
+impl Eq for Str:
+    fn eq(a, b) = str_eq(a, b)
+impl Ord for Str:
+    fn lt(a, b):
+        let n = if a.len < b.len: a.len else: b.len
+        for i in 0..n:
+            if a.get(i) != b.get(i): return a.get(i) < b.get(i)
+        a.len < b.len
+
 fn str_eq(a: Str, b: Str) -> Bool:
     if a.len != b.len: return false
     for i in 0..a.len:
