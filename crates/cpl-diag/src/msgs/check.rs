@@ -289,7 +289,6 @@ super::msgs! {
     TAKES_BUT_METHOD_THAT = TYPE_MISMATCH, "`{}` takes a {}, but `{}` is a method that returns one";
     TAKES_BUT_HOLDS_METHOD = TYPE_MISMATCH, "`{}` takes a {}, but `{}` holds a method, not its result";
     NEEDS_IMPL_THERE_NONE = MISSING_IMPL, "`{}` needs `impl {}<{}> for {}`, and there is none";
-    BSEARCH_FIRST_WAS_REMOVED = REMOVED_SYNTAX, "`.bsearch_first(...)` was removed; use `.first_true(...)` or `.bsearch(...)`";
     ENUM_LEVEL_TAGS_WAS = REMOVED_SYNTAX, "an enum-level `@tags(...)` was removed; write `@tag(..)` on each variant";
     VARIANT_BOTH_NOTHING_HERE = UNRESOLVED_NAME, "`{}` is a variant of both `{}` and `{}`, and nothing here says which";
     IMPL_ADDS_INHERENT_METHODS = UNSUPPORTED, "`impl {}:` adds inherent methods outside `{}`'s module";

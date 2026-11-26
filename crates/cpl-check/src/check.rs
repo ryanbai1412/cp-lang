@@ -636,6 +636,14 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// `msg` for a name std renamed, `name` now `to`, with the fix that writes `to`.
+    fn report_replaced(&mut self, span: Span, msg: cpl_diag::msgs::Msg, name: &str, to: &str) {
+        if let Some(diag) = self.report(span, msg, &[&name, &to]) {
+            diag.help = Some(format!("write `{to}` (or run `cpl fix` to migrate)"));
+            diag.fix(format!("replace `{name}` with `{to}`"), span, to);
+        }
+    }
+
     fn report(
         &mut self,
         span: Span,
@@ -1173,19 +1181,8 @@ impl<'a> Checker<'a> {
             return Ty::Unknown;
         }
         if let Some(replacement) = crate::prelude::renamed(name) {
-            if let Some(diag) = self.report(
-                span,
-                msgs::check::UNRESOLVED_NAME_WAS_REPLACED_BY,
-                &[&name, &replacement],
-            ) {
-                diag.help = Some(format!(
-                    "write `{replacement}` (or run `cpl fix` to migrate)"
-                ));
-                diag.fixes.push(cpl_diag::Fix {
-                    title: format!("replace `{name}` with `{replacement}`"),
-                    edits: vec![(span, replacement.to_string())],
-                });
-            }
+            let msg = msgs::check::UNRESOLVED_NAME_WAS_REPLACED_BY;
+            self.report_replaced(span, msg, name, replacement);
             return Ty::Error;
         }
         if self.env.has_imports() || (self.in_fn > 0 && is_implicit_generic(name)) {

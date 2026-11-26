@@ -478,17 +478,7 @@ impl<'a> Checker<'a> {
             return self.alias_cycle(lookup_name, span);
         }
         if let Some(replacement) = crate::prelude::renamed(name) {
-            if let Some(diag) =
-                self.report(span, msgs::check::TYPE_REPLACED, &[&name, &replacement])
-            {
-                diag.help = Some(format!(
-                    "write `{replacement}` (or run `cpl fix` to migrate)"
-                ));
-                diag.fixes.push(cpl_diag::Fix {
-                    title: format!("replace `{name}` with `{replacement}`"),
-                    edits: vec![(span, replacement.to_string())],
-                });
-            }
+            self.report_replaced(span, msgs::check::TYPE_REPLACED, name, replacement);
             return Ty::Error;
         }
         if let Some(ty) = prelude::ty(name) {

@@ -177,6 +177,9 @@ impl Checker<'_> {
         if !self.env.impls(owner).iter().any(|(t, _)| t.is_some()) {
             return None;
         }
+        // An impl lives with its trait or its type (R08.1.2): one neither
+        // is this file's can't be written here, so the members are told.
+        let own_type = self.local_defs.contains_key(owner);
         let prelude = crate::prelude::names().iter().map(|(_, n)| n.text.clone());
         let names: Vec<String> = self.env.names().into_iter().chain(prelude).collect();
         for trait_name in names {
@@ -188,7 +191,10 @@ impl Checker<'_> {
             else {
                 continue;
             };
-            if methods.iter().any(|m| m.name == name) && !self.has_impl(owner, &trait_name) {
+            if methods.iter().any(|m| m.name == name)
+                && (own_type || self.local_defs.contains_key(&trait_name))
+                && !self.has_impl(owner, &trait_name)
+            {
                 return Some(trait_name);
             }
         }
@@ -217,9 +223,6 @@ impl Checker<'_> {
                 );
                 return;
             }
-        }
-        if self.report_renamed_member(name, base_ty) {
-            return;
         }
         let public =
             |c: &mut Self, m: &String| owner.is_empty() || !c.env.is_private_field(&owner, m);
@@ -992,11 +995,6 @@ impl Checker<'_> {
             ) {
                 diag.fix(habits::WRITE.say(&[&"cuts"]), name.span, "cuts");
             }
-            return true;
-        }
-        if name.text == "bsearch_first" {
-            let message = cpl_diag::msgs::check::BSEARCH_FIRST_WAS_REMOVED.at(&[]);
-            self.report_said(name.span, message);
             return true;
         }
         // `p.first`, `p.second`: C++'s pair, where a tuple numbers its parts.

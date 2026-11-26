@@ -3,43 +3,28 @@
 use super::*;
 use cpl_diag::msgs;
 
+use crate::prelude::{renamed, written_name};
+
 impl<'a> Checker<'a> {
-    /// E0503 for a member std renamed: `D.bounds` is `D.cuts`, and a name a
-    /// std item or a member of the receiver's shape states with `@was`.
+    /// E0503 for a member std renamed: a name a std item or a member of the
+    /// receiver's shape states with `@was`.
     pub(in crate::check) fn report_renamed_member(
         &mut self,
         name: &ast::Name,
         base_ty: &Ty,
     ) -> bool {
-        let renamed = match name.text.as_str() {
-            "bounds" if matches!(base_ty, Ty::Domain(_)) => Some((
-                "cuts",
-                Some("`D.cuts` is the gaps between and around `D`'s positions".to_string()),
-            )),
-            old => match base_ty {
-                Ty::Named { name: on, args } => {
-                    let on = crate::prelude::written_name(on);
-                    crate::prelude::renamed_member(on, args.len(), old)
-                }
-                _ => None,
+        let old = name.text.as_str();
+        let member = match base_ty {
+            Ty::Named { name: on, args } => {
+                renamed(&format!("{}'{}.{old}", written_name(on), args.len()))
             }
-            .or_else(|| crate::prelude::renamed(old))
-            .map(|to| (to, None)),
+            _ => None,
         };
-        let Some((to, help)) = renamed else {
+        let Some(to) = member.or_else(|| renamed(old)) else {
             return false;
         };
-        if let Some(diag) = self.report(
-            name.span,
-            msgs::check::REMOVED_SYNTAX_IS_GONE_IN_0,
-            &[&name.text, &to],
-        ) {
-            diag.help = help;
-            diag.fixes.push(cpl_diag::Fix {
-                title: format!("use `.{to}`"),
-                edits: vec![(name.span, to.to_string())],
-            });
-        }
+        let msg = msgs::check::REMOVED_SYNTAX_IS_GONE_IN_0;
+        self.report_replaced(name.span, msg, &name.text, to);
         true
     }
 
