@@ -1178,29 +1178,18 @@ impl<'a> Cx<'a> {
                 };
                 self.member(base, &name, None, span, want)
             }
-            ExprKind::Tuple(xs) if (2..=4).contains(&xs.len()) => {
-                let callee = ast::Expr {
-                    kind: ExprKind::Name(format!("Tuple{}", xs.len())),
-                    span,
-                };
-                let args = xs
-                    .iter()
+            ExprKind::Tuple(xs) if self.d.tuples.contains_key(&xs.len()) => {
+                let d = self.d.tuples[&xs.len()];
+                let args: Vec<ast::Arg> = (xs.iter())
                     .map(|x| ast::Arg {
                         name: None,
                         mutable: false,
                         value: x.clone(),
                     })
                     .collect();
-                self.expr(
-                    &ast::Expr {
-                        kind: ExprKind::Call {
-                            callee: Box::new(callee),
-                            args,
-                        },
-                        span,
-                    },
-                    want,
-                )
+                let targs = (0..xs.len()).map(|_| self.new_ty()).collect();
+                let sets = (0..self.d.s(d).n_sets).map(|_| self.new_set()).collect();
+                self.construct(d, targs, sets, &args, span)
             }
             // `(lo: 2, hi: 7)` is its record struct's constructor, by field name (R02.5.2).
             ExprKind::Record(fs) => {

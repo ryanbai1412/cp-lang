@@ -1173,7 +1173,7 @@ impl<'a> Cx<'a> {
                     span,
                 }
             }
-            Ty::Struct(d, ts, sets) if self.d.s(d).name.starts_with("Tuple") => {
+            Ty::Struct(d, ts, sets) if self.d.tuples.get(&ts.len()) == Some(&d) => {
                 let parts = ts.iter().map(|p| self.read_as(p, span)).collect();
                 TExpr {
                     kind: TK::Struct(parts),

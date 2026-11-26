@@ -197,15 +197,18 @@ fn range_of<D>(lo: Int, hi: Int, step: Int) -> Range<D>:
 /// `Some(v)`: `v`, present (R01.5.6).
 fn some<T>(v: T) -> ?T = v
 
+@tuple
 struct Tuple2<A, B>:
     _0: A
     _1: B
 
+@tuple
 struct Tuple3<A, B, C>:
     _0: A
     _1: B
     _2: C
 
+@tuple
 struct Tuple4<A, B, C, E>:
     _0: A
     _1: B

@@ -176,6 +176,8 @@ pub struct Decls {
     /// Why each `Named::Refused` library item is not built.
     pub refused: Vec<String>,
     pub struct_sets: HashMap<StructId, usize>,
+    /// Core's `@tuple` structs by arity: `(A, B)` is the one with two fields.
+    pub tuples: HashMap<usize, StructId>,
     pub aliases: Rc<Vec<AliasDecl>>,
     pub errors: Vec<String>,
     /// Declarations the program gets wrong: where, the code, what is wrong.
@@ -446,6 +448,7 @@ struct TyCx<'a> {
     names: &'a HashMap<String, Named>,
     /// How many set parameters each struct has, so a struct named in a type gets its own.
     struct_sets: &'a HashMap<StructId, usize>,
+    tuples: &'a HashMap<usize, StructId>,
     generics: &'a [String],
     /// What the generics stand for, when converting an alias's type.
     args: Option<&'a [Ty]>,
@@ -494,6 +497,7 @@ fn alias(cx: &mut TyCx, id: usize, n: &str, a: Vec<Ty>, errors: &mut Vec<String>
     let mut inner = TyCx {
         names: &decl.names,
         struct_sets: cx.struct_sets,
+        tuples: cx.tuples,
         generics: &decl.generics,
         args: Some(&a),
         aliases: cx.aliases,
@@ -651,22 +655,13 @@ fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<String>) -> Ty {
             }
         }
         TypeKind::Tuple(ts) if ts.is_empty() => Ty::Unit,
-        // `(A, B)` is the library's `Tuple2<A, B>`. The slice finds it by name; the design wants a marker.
-        TypeKind::Tuple(ts)
-            if (2..=4).contains(&ts.len())
-                && struct_named(cx.names, &format!("Tuple{}", ts.len())).is_some() =>
-        {
-            let named = ast::Type {
-                kind: TypeKind::Named {
-                    name: ast::Name {
-                        text: format!("Tuple{}", ts.len()),
-                        span: t.span,
-                    },
-                    args: ts.clone(),
-                },
-                span: t.span,
-            };
-            conv(cx, &named, errors)
+        // `(A, B)` is core's `@tuple` struct with two fields.
+        TypeKind::Tuple(ts) if cx.tuples.contains_key(&ts.len()) => {
+            let d = cx.tuples[&ts.len()];
+            let a = ts.iter().map(|x| conv(cx, x, errors)).collect();
+            let k = cx.struct_sets.get(&d).copied().unwrap_or(0);
+            let sets = (0..k).map(|_| slot(cx)).collect();
+            Ty::Struct(d, a, sets)
         }
         // `(lo: A, hi: B)` is the core record struct `(lo:, hi:)<A, B>` (R02.5.2).
         TypeKind::Record(fs)
@@ -751,6 +746,7 @@ pub fn body_type(
         &mut TyCx {
             names: &d.views[m.0],
             struct_sets: &d.struct_sets,
+            tuples: &d.tuples,
             generics,
             args: None,
             aliases: &d.aliases,
@@ -979,6 +975,9 @@ pub fn collect(
                     StmtKind::Struct(sd) => {
                         let id = StructId(d.structs.len());
                         own[mi].insert(sd.name.text.clone(), Named::Struct(id));
+                        if mi == CORE.0 && s.decorators.iter().any(|x| x.name.text == "tuple") {
+                            d.tuples.insert(sd.fields.len(), id);
+                        }
                         d.structs.push(StructDecl {
                             name: sd.name.text.clone(),
                             generics: sd.generics.iter().map(|g| g.text.clone()).collect(),
@@ -1141,9 +1140,11 @@ pub fn collect(
             let generics: Vec<String> = sd.generics.iter().map(|g| g.text.clone()).collect();
             let doms = d.doms_in(*mid);
             let (names, sets) = (d.views[mid.0].clone(), d.struct_sets.clone());
+            let tuples = d.tuples.clone();
             let mut cx = TyCx {
                 names: &names,
                 struct_sets: &sets,
+                tuples: &tuples,
                 generics: &generics,
                 args: None,
                 aliases: &aliases,
@@ -1185,9 +1186,11 @@ pub fn collect(
                         sd.generics.iter().map(|g| g.text.clone()).collect();
                     let doms = d.doms_in(ModId(mi));
                     let sets = d.struct_sets.clone();
+                    let tuples = d.tuples.clone();
                     let mut cx = TyCx {
                         names: &d.views[mi].clone(),
                         struct_sets: &sets,
+                        tuples: &tuples,
                         generics: &generics,
                         args: None,
                         aliases: &aliases,
@@ -1267,10 +1270,12 @@ pub fn collect(
                     let mut errors = Vec::new();
                     let names = d.views[mi].clone();
                     let sets = d.struct_sets.clone();
+                    let tuples = d.tuples.clone();
                     let doms = d.doms_in(ModId(mi));
                     let mut cx = TyCx {
                         names: &names,
                         struct_sets: &sets,
+                        tuples: &tuples,
                         generics: &tgen,
                         args: None,
                         aliases: &aliases,
@@ -1344,11 +1349,13 @@ pub fn collect(
                         unnamed(t, &names, &mut generics);
                     }
                     let sets = d.struct_sets.clone();
+                    let tuples = d.tuples.clone();
                     let doms = d.doms_in(ModId(mi));
                     let mut errors = Vec::new();
                     let mut cx = TyCx {
                         names: &names,
                         struct_sets: &sets,
+                        tuples: &tuples,
                         generics: &generics,
                         args: None,
                         aliases: &aliases,
@@ -1665,9 +1672,11 @@ fn add_fn(
     let doms = d.doms_in(m);
     let aliases = d.aliases.clone();
     let sets = d.struct_sets.clone();
+    let tuples = d.tuples.clone();
     let mut cx = TyCx {
         names: &names,
         struct_sets: &sets,
+        tuples: &tuples,
         generics: &generics,
         args: None,
         aliases: &aliases,
