@@ -113,6 +113,9 @@ vars! {
     CHROME = "CPL_CHROME";
     /// The engines (comma-separated, or `all`) the highlighting agreement test must run, not skip.
     HIGHLIGHT = "CPL_HIGHLIGHT";
+    /// Comma-separated parts of case ids: cpl-next's conformance test runs only the cases whose
+    /// id holds one, for a quick local loop; the commit gate and CI always run every case.
+    NEXT_ONLY = "CPL_NEXT_ONLY";
     /// `1`: conformance runs the release `cpl` binary.
     CONFORM_RELEASE = "CPL_CONFORM_RELEASE";
     /// The `cpl` binary conformance runs.

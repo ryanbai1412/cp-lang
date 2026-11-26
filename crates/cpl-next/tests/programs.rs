@@ -347,11 +347,16 @@ fn every_case_is_where_the_lists_say() {
         }
     }
     cases.sort();
-    assert!(
-        cases.len() > 4000,
-        "only {} cases: the conformance suite was not found",
-        cases.len()
-    );
+    let only = cpl_env::NEXT_ONLY.text();
+    if let Some(only) = &only {
+        cases.retain(|(id, _)| only.split(',').any(|part| id.contains(part)));
+    } else {
+        assert!(
+            cases.len() > 4000,
+            "only {} cases: the conformance suite was not found",
+            cases.len()
+        );
+    }
     let verdicts = parallel::parallel(&cases, |(_, p)| verdict(p));
 
     let (mut passing, mut wrong, mut refused) = (String::new(), String::new(), String::new());
@@ -362,7 +367,11 @@ fn every_case_is_where_the_lists_say() {
             how => wrong += &format!("{id}\t{how}\t{detail}\n"),
         }
     }
-    let found = root.join("target/cpl-next");
+    let found = root.join(if only.is_some() {
+        "target/cpl-next/only"
+    } else {
+        "target/cpl-next"
+    });
     std::fs::create_dir_all(&found).unwrap();
     let queue = queue(&refused);
     for (name, text) in [
@@ -405,7 +414,7 @@ fn every_case_is_where_the_lists_say() {
     for id in listed_passing
         .keys()
         .chain(listed_wrong.keys())
-        .filter(|id| !seen.contains(&id.as_str()))
+        .filter(|id| only.is_none() && !seen.contains(&id.as_str()))
     {
         off.push(format!("{id}: listed, but there is no such case"));
     }
