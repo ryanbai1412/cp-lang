@@ -181,6 +181,26 @@ impl<'a> Machine<'a> {
                 V::Union(_, v) => v,
                 _ => return broken("variant of a value of another kind"),
             },
+            Place::Slot(b, l) => {
+                let V::Int(i) = self.frames[fp].locals[*l] else {
+                    return broken("a cell index that is not an Int");
+                };
+                let V::Raw(r) = self.place(fp, b)? else {
+                    return broken("a cell of a value that is not storage");
+                };
+                // A cell handed out as a place holds a value, so integer storage widens to values.
+                let s = Rc::make_mut(r);
+                if let Store::Ints(xs) = s {
+                    *s = Store::Any(std::mem::take(xs).into_iter().map(V::Int).collect());
+                }
+                let Store::Any(xs) = s else {
+                    return broken("storage that did not widen");
+                };
+                match usize::try_from(i).ok().and_then(|i| xs.get_mut(i)) {
+                    Some(v) => v,
+                    None => return broken("a cell outside its storage"),
+                }
+            }
         })
     }
     /// Evaluates arguments: values first, then each lent place is handed over.

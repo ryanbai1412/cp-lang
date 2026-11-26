@@ -254,6 +254,12 @@ impl Lw<'_> {
             TK::Var(v) => self.var(*v),
             TK::Field(b, i) => Place::Field(Box::new(self.place(b, out)), *i),
             TK::Payload(b, i) => Place::Variant(Box::new(self.place(b, out)), *i),
+            TK::Slot(b, i) => {
+                let iv = self.expr(i, out);
+                let t = self.temp(Ty::Int);
+                out.push(Stmt::Let(t, iv));
+                Place::Slot(Box::new(self.place(b, out)), t)
+            }
             _ => {
                 let v = self.expr(e, out);
                 let t = self.temp(v.ty.clone());
@@ -325,7 +331,7 @@ impl Lw<'_> {
             TK::Unit | TK::Error => mk(EK::Unit),
             TK::Text(t) => mk(EK::Text(t.clone())),
             TK::Unset => mk(EK::Intr(Intr::Unset, vec![], 0)),
-            TK::Var(_) | TK::Field(..) | TK::Payload(..) => {
+            TK::Var(_) | TK::Field(..) | TK::Payload(..) | TK::Slot(..) => {
                 let p = self.place(e, out);
                 mk(EK::Copy(p))
             }
@@ -1008,7 +1014,7 @@ pub fn free_vars(e: &TExpr, used: &mut BTreeSet<VarRef>, bound: &mut BTreeSet<Va
                 bound.insert(VarRef::Global(*p));
             }
         }
-        TK::Bin(_, a, b) | TK::Cmp(_, a, b) => {
+        TK::Bin(_, a, b) | TK::Cmp(_, a, b) | TK::Slot(a, b) => {
             free_vars(a, used, bound);
             free_vars(b, used, bound);
         }

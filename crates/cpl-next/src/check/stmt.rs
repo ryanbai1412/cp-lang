@@ -1197,7 +1197,10 @@ impl<'a> Cx<'a> {
 
     pub(super) fn place(&mut self, e: &ast::Expr) -> TExpr {
         let v = self.expr_as_typed(e, None);
-        if !matches!(v.kind, TK::Var(_) | TK::Field(..) | TK::Error) {
+        if !matches!(
+            v.kind,
+            TK::Var(_) | TK::Field(..) | TK::Slot(..) | TK::Error
+        ) {
             self.err(e.span, "this is not a place that can be assigned or lent");
         }
         v

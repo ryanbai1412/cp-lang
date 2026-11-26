@@ -310,7 +310,9 @@ fn const_ref_params(f: &Func<CTy>) -> Vec<bool> {
         match p {
             Place::Local(l) => Some(*l),
             Place::Global(_) => None,
-            Place::Field(b, _) | Place::Variant(b, _) | Place::Deref(b) => root(b),
+            Place::Field(b, _) | Place::Variant(b, _) | Place::Deref(b) | Place::Slot(b, _) => {
+                root(b)
+            }
         }
     }
     fn expr(e: &Expr<CTy>, w: &mut Vec<usize>) {
@@ -500,6 +502,7 @@ impl Emit<'_> {
             Place::Field(b, i) => format!("{}.f{i}", self.place(b)),
             Place::Variant(b, i) => format!("{}.v{i}", self.place(b)),
             Place::Deref(b) => format!("(*{})", self.place(b)),
+            Place::Slot(b, l) => format!("{}[l{l}]", self.place(b)),
         }
     }
     fn arg(&self, a: &Arg<CTy>) -> String {

@@ -282,6 +282,25 @@ impl Decls {
     /// The fn `name` of an impl for `recv`, of the trait named `trait_name` when one is given,
     /// or the trait's default when the impl does not write it (R08.1.2).
     pub fn impl_member(&self, recv: &Ty, name: &str, trait_name: Option<&str>) -> Option<Member> {
+        self.impl_member_with(recv, name, trait_name, |_| true)
+    }
+    /// The fn `name` of an impl for `recv` whose declaration `pick` takes: the `at` that reads
+    /// (`Indexed`) or the one that lends a place (`IndexedMut`), told apart by signature.
+    pub fn impl_member_by(
+        &self,
+        recv: &Ty,
+        name: &str,
+        pick: impl Fn(&FnDecl) -> bool,
+    ) -> Option<Member> {
+        self.impl_member_with(recv, name, None, pick)
+    }
+    fn impl_member_with(
+        &self,
+        recv: &Ty,
+        name: &str,
+        trait_name: Option<&str>,
+        pick: impl Fn(&FnDecl) -> bool,
+    ) -> Option<Member> {
         let sets = match recv {
             Ty::Struct(_, _, ss) => ss.clone(),
             _ => Vec::new(),
@@ -291,12 +310,12 @@ impl Decls {
             if trait_name.is_some_and(|n| n != tr.name) {
                 return None;
             }
-            if let Some(m) = im.methods.get(name) {
+            if let Some(m) = im.methods.get(name).filter(|m| pick(self.f(**m))) {
                 let targs = self.impl_args(im, recv)?;
                 return Some(Member::Method(*m, targs, sets.clone()));
             }
             let tm = *tr.methods.get(name)?;
-            if matches!(self.f(tm).body, FnBody::None) {
+            if matches!(self.f(tm).body, FnBody::None) || !pick(self.f(tm)) {
                 return None;
             }
             let binds = self.impl_args(im, recv)?;

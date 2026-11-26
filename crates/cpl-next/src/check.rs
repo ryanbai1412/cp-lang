@@ -67,6 +67,8 @@ pub enum TK {
     Widen(Box<TExpr>),
     /// `s[i]`: the element its `Indexed.at` call reads, in place in `s` (R05.3.5).
     Elem(Box<TExpr>),
+    /// `buf[i]` on core's raw storage: cell `i`, a place a container's `IndexedMut` lends (R05.3.5).
+    Slot(Box<TExpr>, Box<TExpr>),
     Bin(BinOp, Box<TExpr>, Box<TExpr>),
     Cmp(CmpOp, Box<TExpr>, Box<TExpr>),
     Not(Box<TExpr>),

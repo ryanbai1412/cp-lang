@@ -388,7 +388,7 @@ impl Cx<'_> {
                     _ => out = self.sources(x),
                 }
             }
-            TK::Elem(b) => out = self.sources(b),
+            TK::Elem(b) | TK::Slot(b, _) => out = self.sources(b),
             // R05.5.3: a result that holds a heap argument lends it while the result lives.
             TK::Call { f, recv, args }
                 if self.lends.get(&f.decl).is_some_and(|l| !l.is_empty()) =>
@@ -658,6 +658,8 @@ impl Cx<'_> {
                 p.path.push(*i);
                 Some(p)
             }
+            // A cell is part of its storage: a write to it writes the storage.
+            TK::Slot(b, _) => self.place(b),
             _ => None,
         }
     }
@@ -933,6 +935,16 @@ impl Cx<'_> {
             | TK::DomLen(_)
             | TK::FnItem(_)
             | TK::Error => {}
+            TK::Slot(b, i) => {
+                self.expr(i, fx);
+                match self.place(b) {
+                    Some(p) => {
+                        self.live(e.span, &p);
+                        fx.reads.insert(p);
+                    }
+                    None => self.expr(b, fx),
+                }
+            }
             TK::Var(_) | TK::Field(..) | TK::Payload(..) => match self.place(e) {
                 Some(p) => {
                     self.live(e.span, &p);

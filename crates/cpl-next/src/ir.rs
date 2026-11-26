@@ -141,6 +141,8 @@ pub enum Place {
     Variant(Box<Place>, usize),
     /// The variable a captured reference points at.
     Deref(Box<Place>),
+    /// Cell `i` of the raw storage at the place, `i` the value of that local.
+    Slot(Box<Place>, usize),
 }
 
 #[derive(Clone, Debug)]

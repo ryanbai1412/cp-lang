@@ -324,6 +324,17 @@ impl Positional<Char> for Str:
 impl Indexed<Int, Char> for Str:
     fn at(self, i: Int) -> Char = self.get(i)
     @get fn keys(self) -> Range<Int> = 0..self.len
+/// `s[k]` as a place: a write through it lands in `s`, in place (R12.4.6).
+pub trait IndexedMut<K, T>: Indexed<K, T>:
+    fn at(mut self, k: K) -> lends mut T
+impl<T> IndexedMut<Int, T> for List<T>:
+    fn at(mut self, i: Int) -> lends mut T:
+        check_key(0 <= i and i < self.n)
+        lend mut self.buf[i]
+impl IndexedMut<Int, Char> for Str:
+    fn at(mut self, i: Int) -> lends mut Char:
+        check_key(0 <= i and i < self.chars.n)
+        lend mut self.chars.buf[i]
 impl<D, T> Keyed<D, T> for Array<D, T>:
     fn items(self) -> yields (D, T):
         for i in 0..D.count: yield (D.nth(i), raw_get(self.buf, i))
@@ -333,6 +344,9 @@ impl<D, T> Indexed<D, T> for Array<D, T>:
     fn at(self, i: D) -> T = self.get(i)
     @get fn keys(self) -> Range<D> = D
 /// A range is keyed by its own values, so `(2..5)[3] == 3`, and has no source to lend (R07.2.15).
+impl<D, T> IndexedMut<D, T> for Array<D, T>:
+    fn at(mut self, i: D) -> lends mut T:
+        lend mut self.buf[i.ord]
 impl<D> Keyed<D, D> for Range<D>:
     fn items(self) -> yields (D, D):
         for i in 0..self.n:

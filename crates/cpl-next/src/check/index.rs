@@ -9,7 +9,8 @@ impl Cx<'_> {
     pub(super) fn elem(&mut self, s: TExpr, i: TExpr, span: Span) -> TExpr {
         let at = INDEX_READ;
         let rt = self.shallow(&s.ty);
-        let call = match (&rt, self.d.impl_member(&rt, at, None)) {
+        let read = self.d.impl_member_by(&rt, at, |f| f.region.is_none());
+        let call = match (&rt, read) {
             (Ty::Param(p), _) => self.bound_call(*p, s, at, vec![TArg::Value(i)], span),
             (_, Some(decls::Member::Method(m, ts, ss))) => {
                 self.call_member(s, (m, ts, ss), vec![TArg::Value(i)], span, false)
@@ -83,7 +84,10 @@ impl Cx<'_> {
             Ty::Param(p) => (self.bound_traits(p).into_iter())
                 .find(|t| self.d.traits[t.tr.0].methods.contains_key(INDEX_READ))
                 .and_then(|t| t.args.first().cloned()),
-            rt => match self.d.impl_member(&rt, INDEX_READ, None) {
+            rt => match self
+                .d
+                .impl_member_by(&rt, INDEX_READ, |f| f.region.is_none())
+            {
                 Some(decls::Member::Method(m, ts, _)) => Some(
                     Subst {
                         tys: &ts,

@@ -556,6 +556,11 @@ impl<'a> Cx<'a> {
             let Some(m) = self.d.traits[tr.tr.0].methods.get(name).copied() else {
                 continue;
             };
+            // A lender is called only where its place is used (`for`, an assignment): elsewhere
+            // the bound's reading fn of that name is meant (`IndexedMut.at` vs `Indexed.at`).
+            if self.d.f(m).region.is_some() && !self.allow_region {
+                continue;
+            }
             self.reach(m);
             let mut tys = vec![recv.ty.clone()];
             tys.extend(tr.args.iter().cloned());
@@ -1190,6 +1195,15 @@ impl<'a> Cx<'a> {
             ExprKind::Field { base, name } => self.member(base, name, None, span, want),
             ExprKind::Index { base, indices } if indices.len() == 1 => {
                 let b = self.expr(base, None);
+                if let Ty::Raw(t) = self.shallow(&b.ty) {
+                    let i = self.expr(&indices[0], Some(&Ty::Int));
+                    let i = self.coerce(i, &Ty::Int);
+                    return TExpr {
+                        kind: TK::Slot(Box::new(b), Box::new(i)),
+                        ty: *t,
+                        span,
+                    };
+                }
                 if let ExprKind::Range {
                     lo,
                     hi,
