@@ -9,6 +9,7 @@ publish.workspace = true
 cpl-syntax.workspace = true
 cpl-diag.workspace = true
 cpl-judge.workspace = true
+cpl-next-ir.workspace = true
 
 [dev-dependencies]
 cpl-conform.workspace = true

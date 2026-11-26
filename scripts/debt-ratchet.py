@@ -1320,8 +1320,8 @@ RUST_STR_RE = re.compile(r'"([A-Za-z_]\w*)"')
 
 
 def next_std_names(root: Path) -> list[str]:
-    """Places where the new pipeline (cpl-next) knows a library declaration by its name: a
-    string literal in its compiler code equal to a name its std declares (`"List"`, `"get"`,
+    """Places where the new pipeline (cpl-next and its `cpl-next-*` crates) knows a library
+    declaration by its name: a string literal in its compiler code equal to a name its std declares (`"List"`, `"get"`,
     `"read"`). The design has no privileged std: the library says what a declaration is (a
     marker or a trait), and the compiler reads that, so this reaches 0."""
     std = root / "crates/cpl-next/std.cp"
@@ -1332,7 +1332,9 @@ def next_std_names(root: Path) -> list[str]:
     for f in sources:
         names |= set(NEXT_STD_DECL_RE.findall(f.read_text(encoding="utf-8")))
     out = []
-    for p in _rs_files(root, "crates/cpl-next/src", tests=False):
+    # The pipeline and the per-layer crates it is split into (`cpl-next-ir`, `cpl-next-engine`).
+    srcs = sorted(_rel(root, d / "src") for d in (root / "crates").glob("cpl-next*") if (d / "src").is_dir())
+    for p in _rs_files(root, *srcs, tests=False):
         rel = _rel(root, p)
         for i, line in enumerate(_lines(p), 1):
             if line.lstrip().startswith("//"):

@@ -6,6 +6,7 @@
 //! until it accepts every program, and the landing that switches `cpl` to it deletes
 //! what it replaces.
 
+use cpl_next_ir::{ir, ops, ty};
 mod check;
 mod cpp;
 mod cycles;
@@ -15,14 +16,11 @@ use diag::kind_of;
 pub use diag::Kind;
 mod inst;
 mod interp;
-mod ir;
 mod lower;
 mod modules;
-mod ops;
 mod own;
 mod records;
 mod synth;
-mod ty;
 
 pub use interp::{Outcome, Trap};
 

@@ -1,0 +1,74 @@
+//! Contract 5's output: the instances of a whole program and the concrete types they use.
+use crate::ir::*;
+use crate::msg::Msg;
+use crate::ty::*;
+use std::collections::HashMap;
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
+pub enum CTy {
+    Int,
+    Bool,
+    Char,
+    U64,
+    Unit,
+    Raw(Box<CTy>),
+    Ref(Box<CTy>),
+    /// A slot that points at a heap value it does not own (`Ty::Lent`).
+    Lent(Box<CTy>),
+    Struct(StructId, Vec<CTy>, Vec<CSet>),
+    /// A function value: one of these closures. The order is the tag.
+    Set(CSet),
+    /// One closure: its captures.
+    Clo(Box<InstKey>),
+    /// A domain declared in a body. Its values are positions; its size is a run-time value.
+    Dom(usize),
+    Error,
+}
+pub type CSet = Vec<InstKey>;
+#[derive(Clone, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
+pub struct InstKey {
+    pub func: FuncKey,
+    pub targs: Vec<CTy>,
+    pub sets: Vec<CSet>,
+}
+
+pub struct Program {
+    pub insts: Vec<Func<CTy>>,
+    pub index: HashMap<InstKey, usize>,
+    pub main: usize,
+    pub globals: Vec<CTy>,
+    pub structs: HashMap<CTy, Vec<CTy>>,
+    /// An enum's payload struct per variant: its value is one of them, with a tag saying which.
+    pub sums: HashMap<CTy, Vec<CTy>>,
+    pub errors: Vec<Msg>,
+}
+impl Program {
+    /// What a value of `t` holds: a struct's fields, or an enum's payloads.
+    pub fn parts(&self, t: &CTy) -> Vec<CTy> {
+        parts(&self.structs, &self.sums, t)
+    }
+    /// The types of what closure `k` captures.
+    pub fn captures(&self, k: &InstKey) -> Vec<CTy> {
+        let f = &self.insts[self.index[k]];
+        f.params[..f.n_captures]
+            .iter()
+            .map(|(l, _)| f.locals[*l].clone())
+            .collect()
+    }
+}
+
+/// A struct's fields, then a sum's payloads.
+pub fn parts(structs: &HashMap<CTy, Vec<CTy>>, sums: &HashMap<CTy, Vec<CTy>>, t: &CTy) -> Vec<CTy> {
+    let mut out = structs.get(t).cloned().unwrap_or_default();
+    out.extend(sums.get(t).into_iter().flatten().cloned());
+    out
+}
+
+/// Spec R1: a value with no heap part, copied when passed; `parts` gives a struct's fields.
+pub fn plain(parts: &dyn Fn(&CTy) -> Vec<CTy>, t: &CTy, depth: usize) -> bool {
+    match t {
+        CTy::Int | CTy::Bool | CTy::Char | CTy::U64 | CTy::Unit | CTy::Dom(_) => true,
+        CTy::Struct(..) if depth < 8 => parts(t).iter().all(|f| plain(parts, f, depth + 1)),
+        _ => false,
+    }
+}

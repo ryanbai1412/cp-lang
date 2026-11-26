@@ -1,0 +1,9 @@
+[package]
+name = "cpl-next-ir"
+description = "The new pipeline's IR, shared by its layers. Reachable from cpl-next only."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+cpl-diag.workspace = true

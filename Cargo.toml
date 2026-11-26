@@ -16,6 +16,7 @@ cpl-env = { path = "crates/cpl-env" }
 cpl-json = { path = "crates/cpl-json" }
 cpl-corpus = { path = "crates/cpl-corpus" }
 cpl-wait = { path = "crates/cpl-wait" }
+cpl-next-ir = { path = "crates/cpl-next-ir" }
 cpl-syntax = { path = "crates/cpl-syntax" }
 cpl-check = { path = "crates/cpl-check" }
 cpl-codegen = { path = "crates/cpl-codegen" }
@@ -47,6 +48,8 @@ opt-level = 1
 # gate runs on every conformance case: unoptimized, two cases took 7 GB and 7 s
 # each and timed out when the rest of the gate ran beside them.
 [profile.dev.package.cpl-next]
+opt-level = 1
+[profile.dev.package.cpl-next-ir]
 opt-level = 1
 
 # Front-end, IR and codegen run thousands of times across the port, differential
