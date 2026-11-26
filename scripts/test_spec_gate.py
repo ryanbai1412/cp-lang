@@ -261,6 +261,7 @@ class GatesTest(unittest.TestCase):
                     "struct cpl_cl5 {\n  mutable std::vector<ll> c0;\n};\nvoid f() {\n  std::vector<ll> ew = g();\n  h(cpl_cl5{ew});\n}"):
             self.assertEqual(ec.deep_copies(cpp + "\n"), 1, cpp)
         self.assertEqual(ec.deep_copies("auto b = std::vector<int64_t>(a);\n"), 1)
+        self.assertEqual(ec.deep_copies("std::array<char, 40> a = want[i];\nconst std::array<char, 40>& b = want[j];\n"), 1)
         for line in ("a2 = std::array<ll, 4>(a);", "u = std::set<ll>(a);", "a = cpl::sorted(a);",
                      "g = std::vector<std::vector<ll>>(rows[i]);", "m = std::map<ll, ll>(cpl::at(ms, i));"):
             self.assertEqual(ec.deep_copies(line + "\n"), 1, line)

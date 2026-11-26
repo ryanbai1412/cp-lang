@@ -374,7 +374,8 @@ def deep_copies(cpp):
         if (scalar := scalar_decl(decl)) is not None:
             held.discard(scalar)
             scalars.add(scalar)
-        if decl.startswith(CONTAINERS):
+        # A `std::array` holds its items in place: one read by value from a place copies them all.
+        if decl.startswith(CONTAINERS + ("std::array<",)):
             head, name, rest = declared(decl)
             if name and len(name) < len(head):
                 held.add(name)
@@ -423,13 +424,15 @@ def default_cache_dir() -> Path | None:
 
 class Cache:
     """Each case's row, keyed by its path and bytes under one version of the
-    inputs every row depends on: the cpl binary, std/, `--exact` and the CPL_
-    environment. A changed input starts a new version; the newest KEEP stay."""
+    inputs every row depends on: this counter, the cpl binary, std/, `--exact`
+    and the CPL_ environment. A changed input starts a new version; the newest KEEP stay."""
 
     KEEP = 8
 
     def __init__(self, root: Path, cpl: str, exact: bool):
         h = hashlib.sha256()
+        # A row counts the C++ by this file's rules, so a change to them is a new version.
+        h.update(Path(__file__).read_bytes())
         cpl_path = Path(cpl)
         h.update(cpl_path.read_bytes() if cpl_path.is_file() else cpl.encode())
         std = specgate.ROOT / "std"

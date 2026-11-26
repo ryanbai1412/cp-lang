@@ -1436,9 +1436,9 @@ def explain_copy_mismatches(root: Path) -> list[str]:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import concurrent.futures
     from specgate import explain_copies
-    # cpl embeds std, so its bytes and a case's text decide the row: land.sh's re-measures
-    # after each lost push race rerun a cpl they already ran.
-    binary = hashlib.sha256(Path(cpl).read_bytes()).hexdigest()[:16]
+    # cpl embeds std, so its bytes, the counter's rules and a case's text decide the row:
+    # land.sh's re-measures after each lost push race rerun a cpl they already ran.
+    binary = hashlib.sha256(Path(cpl).read_bytes() + Path(explain_copies.__file__).read_bytes()).hexdigest()[:16]
     cache_path = root / "target" / "explain-copies-cache" / f"{binary}.json"
     try:
         cache = json.loads(cache_path.read_text())
