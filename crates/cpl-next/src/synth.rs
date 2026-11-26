@@ -72,21 +72,35 @@ pub(crate) fn enum_structs(
     (out, errors, values)
 }
 
+enum Derive {
+    Cmp(ast::CmpOp),
+    /// A core trait marked `@derive`: its one method builds a struct from that method on each field.
+    Each,
+}
+
 /// Per struct a module declares, the impls it gets structurally (R08.1.6), made after every written
-/// impl and only where none is: `Eq` field by field and `Ord` lexicographic in declaration order.
-pub(crate) fn module_derived(items: &[(u32, Vec<ast::Stmt>)]) -> Vec<(u32, String, ast::Stmt)> {
+/// impl and only where none is: `Eq` field by field, `Ord` lexicographic in declaration order, and
+/// `Clone` cloning each field (R05.2.2).
+pub(crate) fn module_derived(
+    items: &[(u32, Vec<ast::Stmt>)],
+    each: &[(String, String)],
+) -> Vec<(u32, String, ast::Stmt)> {
     let mut out = Vec::new();
     for (item, stmts) in items {
         for s in stmts {
             let StmtKind::Struct(sd) = &s.kind else {
                 continue;
             };
-            // The traits `==` and `<` call: the derivable ones.
+            // The traits `==` and `<` call, and `.clone()`: the derivable ones.
             for op in [ast::CmpOp::Eq, ast::CmpOp::Lt] {
                 let Some((tr, method)) = op.trait_method() else {
                     continue;
                 };
-                let derived = derived_impl(s, sd, op, tr, method);
+                let derived = derived_impl(s, sd, Derive::Cmp(op), tr, method);
+                out.push((*item, sd.name.text.clone(), derived));
+            }
+            for (tr, method) in each {
+                let derived = derived_impl(s, sd, Derive::Each, tr, method);
                 out.push((*item, sd.name.text.clone(), derived));
             }
         }
@@ -94,12 +108,13 @@ pub(crate) fn module_derived(items: &[(u32, Vec<ast::Stmt>)]) -> Vec<(u32, Strin
     out
 }
 
-/// `impl<T: Eq> Eq for S<T>: fn eq(a, b) = a.x == b.x and ..`, or `Ord`'s `lt` over the fields in
-/// order, bounding the parameters the fields mention and written at the struct.
+/// `impl<T: Eq> Eq for S<T>: fn eq(a, b) = a.x == b.x and ..`, `Ord`'s `lt` over the fields in
+/// order, or `fn clone(a) = S(x: a.x.clone(), ..)`, bounding the parameters the fields mention and
+/// written at the struct.
 fn derived_impl(
     s: &ast::Stmt,
     sd: &ast::StructDecl,
-    op: ast::CmpOp,
+    derive: Derive,
     tr: &str,
     method: &str,
 ) -> ast::Stmt {
@@ -137,14 +152,34 @@ fn derived_impl(
             rhs: Box::new(rhs),
         })
     };
-    // A `@cache` field is not part of the value (R05.10.13).
-    let compared: Vec<&ast::FieldDecl> = sd.fields.iter().filter(|f| !f.cached).collect();
+    // A `@cache` field is not part of the value it compares (R05.10.13); a clone copies it too.
+    let clone = matches!(derive, Derive::Each);
+    let compared: Vec<&ast::FieldDecl> = sd.fields.iter().filter(|f| clone || !f.cached).collect();
     let fields: Vec<&str> = compared.iter().map(|f| f.name.text.as_str()).collect();
-    let body = match op {
-        CmpOp::Eq => (fields.iter().map(|f| cmp(CmpOp::Eq, f)))
+    let body = match derive {
+        Derive::Each => {
+            let args = (fields.iter())
+                .map(|f| ast::Arg {
+                    name: Some(name(f)),
+                    mutable: false,
+                    value: ex(ExprKind::Call {
+                        callee: Box::new(ex(ExprKind::Field {
+                            base: Box::new(field("a", f)),
+                            name: name(method),
+                        })),
+                        args: Vec::new(),
+                    }),
+                })
+                .collect();
+            ex(ExprKind::Call {
+                callee: Box::new(ex(ExprKind::Name(sd.name.text.clone()))),
+                args,
+            })
+        }
+        Derive::Cmp(CmpOp::Eq) => (fields.iter().map(|f| cmp(CmpOp::Eq, f)))
             .reduce(|a, b| bin(BinOp::And, a, b))
             .unwrap_or_else(|| ex(ExprKind::Bool(true))),
-        _ => (fields.iter().rev())
+        Derive::Cmp(_) => (fields.iter().rev())
             .fold(None, |rest, f| {
                 Some(match rest {
                     None => cmp(CmpOp::Lt, f),
@@ -176,7 +211,10 @@ fn derived_impl(
         name: name(method),
         generics: Vec::new(),
         bounds: Vec::new(),
-        params: vec![param("a"), param("b")],
+        params: match derive {
+            Derive::Each => vec![param("a")],
+            Derive::Cmp(_) => vec![param("a"), param("b")],
+        },
         ret: None,
         lends: None,
         uses: Vec::new(),
@@ -210,4 +248,23 @@ fn derived_impl(
             span,
         },
     })
+}
+
+/// The core traits marked `@derive`, with their one method: every struct whose fields all have
+/// one gets it field by field (R08.1.6).
+pub(crate) fn derive_each(core: &[(u32, Vec<ast::Stmt>)]) -> Vec<(String, String)> {
+    let stmts = core.iter().flat_map(|(_, ss)| ss);
+    let marked = stmts.filter(|s| s.decorators.iter().any(|d| d.name.text == "derive"));
+    marked
+        .filter_map(|s| match &s.kind {
+            StmtKind::Trait { name, body, .. } => match &body.stmts[..] {
+                [ast::Stmt {
+                    kind: StmtKind::Fn(f),
+                    ..
+                }] => Some((name.text.clone(), f.name.text.clone())),
+                _ => None,
+            },
+            _ => None,
+        })
+        .collect()
 }

@@ -137,6 +137,8 @@ pub struct ImplDecl {
     /// Where it is written.
     pub at: usize,
     pub module: ModId,
+    /// Made from the fields (R08.1.6): its `S(..)` is the generated constructor, never a `new`.
+    pub derived: bool,
 }
 /// What a top-level name declares.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -922,10 +924,11 @@ pub fn collect(
         )]
     })
     .unwrap_or_default();
+    let each = crate::synth::derive_each(&mods[CORE.0].items);
     let derived: Vec<Vec<(u32, String, ast::Stmt)>> = (mods.iter().enumerate())
         .map(|(mi, m)| match mi == CORE.0 {
-            true => module_derived(&records),
-            false => module_derived(&m.items),
+            true => module_derived(&records, &each),
+            false => module_derived(&m.items, &each),
         })
         .collect();
     let synth: Vec<Vec<(u32, ast::Stmt)>> = (mods.iter().enumerate())
@@ -1423,6 +1426,7 @@ pub fn collect(
                         ));
                         continue;
                     }
+                    let derived = id.is_some();
                     let id = d.impls.len();
                     let mut methods = HashMap::new();
                     for m in &body.stmts {
@@ -1469,6 +1473,7 @@ pub fn collect(
                         methods,
                         at,
                         module: mid,
+                        derived,
                     });
                 }
                 (StmtKind::Fn(f), _) => {

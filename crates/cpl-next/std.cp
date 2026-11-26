@@ -292,6 +292,48 @@ impl<A: Ord, B: Ord, C: Ord, E: Ord> Ord for Tuple4<A, B, C, E>:
     fn lt(a, b) =
         a._0 < b._0 or a._0 == b._0 and (a._1 < b._1 or a._1 == b._1 and (a._2 < b._2 or a._2 == b._2 and a._3 < b._3))
 
+/// `x.clone()`: the explicit deep copy, O(size) (R05.2.2). Tuples, records and structs whose
+/// fields all have it get it field by field unless they write their own (R08.1.6).
+@derive
+trait Clone:
+    fn clone(self) -> Self
+
+impl Clone for Int:
+    fn clone(a) = a
+impl Clone for Char:
+    fn clone(a) = a
+impl Clone for U64:
+    fn clone(a) = a
+impl Clone for Bool:
+    fn clone(a) = a
+impl<D: Domain> Clone for D:
+    fn clone(a) = a
+impl<D> Clone for Range<D>:
+    fn clone(a) = Range(a.lo, a.n, a.step)
+impl<T: Clone> Clone for Optional<T>:
+    fn clone(a) = if a.some: Optional(true, a.val.clone()) else: None
+/// A new buffer holding a clone of each element.
+impl<T: Clone> Clone for List<T>:
+    fn clone(a):
+        if a.n == 0: return List.new()
+        var out = List.filled(a.n, raw_get(a.buf, 0).clone())
+        for i in 1..a.n: raw_set(mut out.buf, i, raw_get(a.buf, i).clone())
+        out
+impl Clone for Str:
+    fn clone(a) = Str(a.chars.clone())
+impl<D, T: Clone> Clone for Array<D, T>:
+    fn clone(a):
+        if D.count == 0: return Array(raw_empty())
+        var buf = raw_new(D.count, raw_get(a.buf, 0).clone())
+        for i in 1..D.count: raw_set(mut buf, i, raw_get(a.buf, i).clone())
+        Array(buf)
+impl<A: Clone, B: Clone> Clone for Tuple2<A, B>:
+    fn clone(a) = Tuple2(a._0.clone(), a._1.clone())
+impl<A: Clone, B: Clone, C: Clone> Clone for Tuple3<A, B, C>:
+    fn clone(a) = Tuple3(a._0.clone(), a._1.clone(), a._2.clone())
+impl<A: Clone, B: Clone, C: Clone, E: Clone> Clone for Tuple4<A, B, C, E>:
+    fn clone(a) = Tuple4(a._0.clone(), a._1.clone(), a._2.clone(), a._3.clone())
+
 /// Numbers, characters (by code) and booleans (`false < true`) compare as the machine does.
 impl Eq for Int:
     fn eq(a, b) = a == b

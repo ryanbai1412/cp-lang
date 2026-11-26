@@ -1777,11 +1777,16 @@ impl<'a> Cx<'a> {
         given.truncate(takes);
         let named = self.d.views[self.module.0][n];
         let ctor = match named {
-            Named::Struct(d) => self.d.s(d).ctor.filter(|_| {
-                !matches!(
-                    self.decl.and_then(|f| self.d.f(f).owner),
-                    Some(decls::Owner::Struct(o)) if o == d
-                )
+            Named::Struct(d) => self.d.s(d).ctor.filter(|_| !match self
+                .decl
+                .and_then(|f| self.d.f(f).owner)
+            {
+                Some(decls::Owner::Struct(o)) => o == d,
+                Some(decls::Owner::Impl(i)) => {
+                    let im = &self.d.impls[i];
+                    im.derived && matches!(im.for_, Ty::Struct(o, ..) if o == d)
+                }
+                _ => false,
             }),
             _ => None,
         };
