@@ -325,6 +325,15 @@ impl<'p> Emitter<'p> {
     fn flat_expr_stmt(&mut self, e: &Expr, out: &mut String) {
         match &e.kind {
             ExprKind::Unit | ExprKind::Error => {}
+            // A block that never gives a value (`todo`) runs in place, so its
+            // trap ends the enclosing function as C++ sees it.
+            ExprKind::Do(block) if e.ty == Ty::Error && !walk::has_give(&block.stmts) => {
+                self.line(out, "{");
+                self.indent += 1;
+                self.block(block, out);
+                self.indent -= 1;
+                self.line(out, "}");
+            }
             // Nothing of a `debug(...)` runs. A variable it alone reads
             // is still named, unevaluated, so g++ does not call it unused.
             ExprKind::Debug(_, args) => {

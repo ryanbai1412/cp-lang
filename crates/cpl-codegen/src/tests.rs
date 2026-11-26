@@ -1489,3 +1489,14 @@ fn a_table_fed_call_lends_its_optional_default_as_the_callee_takes_it() {
         "{call}"
     );
 }
+
+#[test]
+fn a_fn_whose_body_is_todo_ends_in_the_trap_not_a_lambda() {
+    let out = cpp("fn f() -> Int = todo\nlet call = false\nif call: print(f())\nprint(1)\n");
+    let f = &out[out.find("inline ll f()").expect(&out)..];
+    let body = &f[..f.find("\n}").expect(&out)];
+    assert!(
+        body.contains("cpl::fail(") && !body.contains("[&]()"),
+        "{body}"
+    );
+}
