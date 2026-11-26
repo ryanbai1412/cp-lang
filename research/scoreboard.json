@@ -4421,7 +4421,6 @@
         "yac6p4": "pass",
         "yac7p3": "pass"
       },
-      "causes": [],
       "counts": {
         "pass": 100
       },
@@ -6834,7 +6833,7 @@
         "corpus/ioi19p6": "pass",
         "corpus/ioi22p5": "cxx_err",
         "corpus/mccc4j4": "pass",
-        "corpus/noi09p4": "skip",
+        "corpus/noi09p4": "pass",
         "corpus/noi10p2": "pass",
         "corpus/noi15p1": "pass",
         "corpus/noip10p1": "pass",
@@ -7107,10 +7106,10 @@
       "counts": {
         "cxx_err": 1,
         "error": 1,
-        "pass": 2628,
-        "skip": 3
+        "pass": 2629,
+        "skip": 2
       },
-      "passed": 2628,
+      "passed": 2629,
       "total": 2633
     },
     "docs": {
