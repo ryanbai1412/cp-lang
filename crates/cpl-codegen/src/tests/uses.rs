@@ -459,3 +459,10 @@ print(sparse_solve(2, [(0, 0, Mod<7>(1)), (1, 1, Mod<7>(2))], [Mod<7>(1), Mod<7>
     let reasons = copy_reasons(source);
     assert!(reasons.contains(&crate::lend::SOME_COPY), "{reasons:?}");
 }
+
+#[test]
+fn a_library_list_of_self_it_reads_in_place_is_not_listed_as_a_copy() {
+    // `pairs` names `self` for its `List(self)`: the C++ makes no copy, so none is listed.
+    let src = "let a = [1, 2, 3]\nprint(a.pairs().count())\n";
+    assert_eq!(copy_reasons(src), Vec::<&str>::new());
+}

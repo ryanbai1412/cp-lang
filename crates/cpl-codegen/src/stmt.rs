@@ -1043,6 +1043,7 @@ impl<'p> Emitter<'p> {
                 }
                 let hold = if hoisted { Hold::Static } else { Hold::Block };
                 let pinned = self.pinned_view(init, hold, out);
+                let noted = self.copies.len();
                 let text = match crate::uses::copied(init) {
                     Some(src) if self.moves_last && pinned.is_none() => {
                         self.moved_copies.push(init.span);
@@ -1163,6 +1164,8 @@ impl<'p> Emitter<'p> {
                 }) {
                     // `let xs: List<T> = List(self)` of a list the library only
                     // reads while nothing changes it: a name for it, not a copy.
+                    // `cpl explain` lists what the C++ copies, so not `init`'s copy.
+                    self.copies.truncate(noted);
                     let text = self.expr(src).text;
                     self.line(out, &format!("const {cpp}& {name} = {text};"));
                     self.ref_bound.insert(*slot);
