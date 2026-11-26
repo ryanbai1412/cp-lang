@@ -210,7 +210,7 @@ Laws:
 
 <!-- signatures: std/strings.cp -->
 ```cp
-struct Palindromes(pub odd: List<Int>, even: List<Int>, first: Int = 0):
+struct Palindromes(pub odd: List<Len>, even: List<Len>, first: Int = 0):
     fn is_palindrome<R>(self, r: R) -> Bool  // O(1); Range<Int> or Range<D>
     fn count(self) -> Int                    // O(n); total palindromic substrings
     fn longest(self) -> (l: Int, r: Int)     // O(n); longest palindromic range

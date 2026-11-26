@@ -59,7 +59,7 @@ Every public fn's doc gives a one-line summary, then labelled lines:
 /// ties: the first in key order
 /// traps: never
 /// example: `[3, 1, 2].argmin() == Some(1)`
-fn argmin<S: Keyed, D, T, K>(self: S, by: T -> K = x => x, ties: Ties
+fn argmin<S: Keyed<D, T>, D, T, K>(self: S, by: T -> K = x => x, ties: Ties
 ```
 
 `cost:` is part of the contract. `traps:` lists every input that stops the

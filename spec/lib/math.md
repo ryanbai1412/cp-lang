@@ -204,7 +204,7 @@ struct Mod<P>(v: 0..P):
     // ModComb (see the std.mod stub)
     // impls: Add, Sub, Neg, Mul, Div, Pow, Show
 
-struct Comb<M: Add + Sub + Mul>:
+struct Comb<M: Residue + Add + Sub + Mul>:
     fn new(limit: Len = 0) -> Comb<M>          // O(limit) time and memory; exact size
     fn fact(self, n: 0..) -> M                 // O(1) amortized; 0 for n >= M.MOD
     fn inv_fact(self, n: Int) -> M             // O(1) amortized; 0 <= n < M.MOD
@@ -291,7 +291,7 @@ struct Mat<T>
     fn identity(n: Len) -> Mat<T>               // O(n^2)
     fn of(rows: List<List<T>>) -> Mat<T>        // O(n m)
     fn get(self, r: Int, c: Int) -> T           // O(1)
-    fn at(self, r: Int, c: Int) -> lends mut T  // O(1); writable cell: m.at(i, j) += x
+    fn at(mut self, r: Int, c: Int) -> lends mut T  // O(1); writable cell: m.at(i, j) += x
     fn pow(a, e: Int) -> Mat<T>                 // O(n^3 log e); square matrix, e >= 0
     fn mul_vec(self, v: List<T>) -> List<T>     // O(n m); A * v
     fn transpose(self) -> Mat<T>                // O(n m)

@@ -228,7 +228,7 @@ costs a library author nothing.
 <!-- signatures: std/seq.cp -->
 ```python
 /// O(n). A key of the largest element, the first on ties; `None` when empty.
-pub fn argmax<S: Keyed, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D
+pub fn argmax<S: Keyed<D, T>, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D
 ```
 
 <!-- signatures: std/strings.cp -->

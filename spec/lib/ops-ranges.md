@@ -59,7 +59,7 @@ pub trait Idempotent<T>: Op<T>         // op(a, a) == a
 pub trait Selective<T>: Idempotent<T>  // op(a, b) is a or b
 
 // Monoids and groups are values, not traits (decisions 26.4, 42.6):
-pub struct Monoid<T>(id: T, op: (T, T) -> T)              // Op + HasId
+pub struct Monoid<T>(pub id: T, op: (T, T) -> T, rev: T -> T = unreversed)              // Op + HasId
 pub struct Group<T>(id: T, op: (T, T) -> T, inv: T -> T)  // Op + HasId + HasInv
 ```
 
@@ -297,11 +297,11 @@ tags.op(old, new)`. With add-3 then assign-5, both give assign-5.
 ```cp
 // a value, not a trait (decision 42.6); T is the folded value, F the tag
 pub struct Action<T, F>(
-    id: F,
+    pub id: F,
     compose: (F, F) -> F,
     apply: (F, T, Int) -> T,
     over: Monoid<T>,
-    commutes: Bool = false,
+    commutes: Bool,
     replaces: ?(F -> Bool) = None,
     compose_in: ?((mut F, F) -> ()) = None,
 )
