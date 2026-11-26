@@ -337,6 +337,12 @@ impl Decls {
         let sd = self.s(s);
         (sd.fields.iter().zip(&sd.cached)).all(|((_, t), cached)| *cached || self.has_impl(t, tr))
     }
+    /// A trait made only of bodiless `@get` members, met by fields of those names (R12.11.3).
+    fn field_trait(&self, tr: TraitId) -> bool {
+        let t = &self.traits[tr.0];
+        let bodiless = |m: &FnId| self.f(*m).getter && matches!(self.f(*m).body, ast::FnBody::None);
+        !t.alias && !t.methods.is_empty() && t.methods.values().all(bodiless)
+    }
     /// Whether `t` has an impl of `tr`, its parameters taken to meet the impl's bounds.
     fn has_impl(&self, t: &Ty, tr: TraitId) -> bool {
         if matches!(t, Ty::Param(_) | Ty::Var(_) | Ty::Error) {
@@ -563,6 +569,9 @@ fn trait_ref(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<String>) -> Option<T
 }
 
 /// The single capitals in an impl header that name nothing: its undeclared type parameters (R02.10.3).
+/// `@get`: a member read like a field (R02.6.6).
+pub(crate) const GETTER: &str = "get";
+
 pub(crate) fn unnamed(t: &ast::Type, names: &HashMap<String, Named>, out: &mut Vec<String>) {
     if let TypeKind::Named { name, args } = &t.kind {
         let n = name.text.as_str();
@@ -914,21 +923,21 @@ pub fn collect(
     let mut aliases: Vec<(ModId, usize, String, Vec<String>, ast::Type)> = Vec::new();
     let mut enums: Vec<(usize, String, Vec<String>, Vec<i64>)> = Vec::new();
     // Every record shape the program and its modules write is a core struct (R02.5.2).
+    let shapes = crate::records::shapes(mods);
     let core_first = mods[CORE.0].items.first();
     let records: Vec<(u32, Vec<ast::Stmt>)> = (core_first
         .and_then(|(i, ss)| Some((*i, ss.first()?.span))))
-    .map(|(i, span)| {
-        vec![(
-            i,
-            crate::records::structs(&crate::records::shapes(mods), span),
-        )]
-    })
+    .map(|(i, span)| vec![(i, crate::records::structs(&shapes, span))])
     .unwrap_or_default();
     let each = crate::synth::derive_each(&mods[CORE.0].items);
     let derived: Vec<Vec<(u32, String, ast::Stmt)>> = (mods.iter().enumerate())
-        .map(|(mi, m)| match mi == CORE.0 {
-            true => module_derived(&records, &each),
-            false => module_derived(&m.items, &each),
+        .map(|(mi, m)| {
+            let mut made = match mi == CORE.0 {
+                true => module_derived(&records, &each),
+                false => module_derived(&m.items, &each),
+            };
+            made.extend(crate::synth::field_trait_impls(&m.items, &shapes));
+            made
         })
         .collect();
     let synth: Vec<Vec<(u32, ast::Stmt)>> = (mods.iter().enumerate())
@@ -1059,7 +1068,12 @@ pub fn collect(
     }
     for (mi, made) in derived.iter().enumerate() {
         for (item, name, s) in made {
-            if let Some(Named::Struct(id)) = own[mi].get(name).copied() {
+            // A record is core's struct wherever its impl is written.
+            let owner = match crate::records::is_record(name) {
+                true => CORE.0,
+                false => mi,
+            };
+            if let Some(Named::Struct(id)) = own[owner].get(name).copied() {
                 pending.push((ModId(mi), *item, s, Some(Named::Struct(id))));
             }
         }
@@ -1377,7 +1391,7 @@ pub fn collect(
                         continue;
                     };
                     if let Some(Named::Struct(sid)) = id {
-                        if !d.fields_have(sid, tref.tr) {
+                        if !d.field_trait(tref.tr) && !d.fields_have(sid, tref.tr) {
                             wait.push((mid, item, s, id));
                             continue;
                         }
@@ -1428,8 +1442,30 @@ pub fn collect(
                     }
                     let derived = id.is_some();
                     let id = d.impls.len();
+                    // A bodiless `@get` member the impl leaves out is met by the field of that
+                    // name (R12.11.3).
+                    let written = |n: &str| {
+                        (body.stmts.iter())
+                            .any(|m| matches!(&m.kind, StmtKind::Fn(f) if f.name.text == n))
+                    };
+                    let mut filled: Vec<ast::Stmt> = Vec::new();
+                    if let Ty::Struct(sid, ..) = &for_ {
+                        let mut ms: Vec<(&String, &FnId)> =
+                            d.traits[tref.tr.0].methods.iter().collect();
+                        ms.sort();
+                        for (n, &tm) in ms {
+                            let tf = d.f(tm);
+                            if tf.getter
+                                && matches!(tf.body, ast::FnBody::None)
+                                && !written(n)
+                                && d.s(*sid).fields.iter().any(|(f, _)| f == n)
+                            {
+                                filled.push(crate::synth::field_getter(n, s));
+                            }
+                        }
+                    }
                     let mut methods = HashMap::new();
-                    for m in &body.stmts {
+                    for m in body.stmts.iter().chain(&filled) {
                         if let StmtKind::Fn(f) = &m.kind {
                             let sig = d.traits[tref.tr.0].methods.get(&f.name.text).map(|&tm| {
                                 let td = d.f(tm);
@@ -1732,10 +1768,8 @@ fn add_fn(
         let core_only = m == CORE && x.name.text == "coerce";
         if !elsewhere
             && !core_only
-            && !matches!(
-                x.name.text.as_str(),
-                "get" | "multitest" | "same_keys" | "index"
-            )
+            && x.name.text != GETTER
+            && !matches!(x.name.text.as_str(), "multitest" | "same_keys" | "index")
         {
             errors.push(format!("slice: decorator `@{}`", x.name.text));
         }
@@ -1748,7 +1782,7 @@ fn add_fn(
     };
     let has = |n: &str| s.decorators.iter().any(|x| x.name.text == n);
     // A getter is read like a field, so nothing but `self` may need an argument (R02.6.6).
-    let getter = has("get");
+    let getter = has(GETTER);
     let same_keys = has("same_keys");
     if has("index") {
         d.index_fns.push(FnId(d.fns.len()));

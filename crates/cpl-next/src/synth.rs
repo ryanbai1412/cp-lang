@@ -1,6 +1,6 @@
 //! Declarations the compiler writes for a program: an enum's structs and the `Eq` and `Ord` a
 //! struct derives from its fields.
-use crate::decls::{constant_int, unnamed};
+use crate::decls::{constant_int, unnamed, GETTER};
 use cpl_syntax::ast::{self, FnBody, StmtKind, TypeKind};
 use std::collections::HashMap;
 
@@ -267,4 +267,182 @@ pub(crate) fn derive_each(core: &[(u32, Vec<ast::Stmt>)]) -> Vec<(String, String
             _ => None,
         })
         .collect()
+}
+
+/// `@get fn name(self) = self.name`: how a struct meets a bodiless `@get` member its impl leaves
+/// out (R12.11.3).
+pub(crate) fn field_getter(field: &str, at: &ast::Stmt) -> ast::Stmt {
+    let span = at.span;
+    let name = |text: &str| ast::Name {
+        text: text.to_string(),
+        span,
+    };
+    let ex = |kind| ast::Expr { kind, span };
+    let f = ast::FnDecl {
+        name: name(field),
+        generics: Vec::new(),
+        bounds: Vec::new(),
+        params: vec![ast::Param {
+            mutable: false,
+            variadic: false,
+            lazy: false,
+            named_only: false,
+            label: None,
+            name: name("self"),
+            ty: None,
+            default: None,
+            span,
+        }],
+        ret: None,
+        lends: None,
+        uses: Vec::new(),
+        body: FnBody::Expr(ex(ast::ExprKind::Field {
+            base: Box::new(ex(ast::ExprKind::Name("self".to_string()))),
+            name: name(field),
+        })),
+        sig_span: span,
+    };
+    ast::Stmt {
+        kind: StmtKind::Fn(f),
+        span,
+        decorators: vec![ast::Decorator {
+            directive: false,
+            name: name(GETTER),
+            args: Vec::new(),
+            span,
+        }],
+        public: false,
+    }
+}
+
+/// Per record shape with a field for each member of a trait made only of bodiless `@get` members,
+/// a bodiless impl of it, written with the trait: `impl<V, A> Target<V> for (to: V, w: A)`, its
+/// members then met by the fields (R12.11.3). A written impl replaces it.
+pub(crate) fn field_trait_impls(
+    items: &[(u32, Vec<ast::Stmt>)],
+    shapes: &[Vec<String>],
+) -> Vec<(u32, String, ast::Stmt)> {
+    let mut out = Vec::new();
+    for (item, s) in items
+        .iter()
+        .flat_map(|(i, ss)| ss.iter().map(move |s| (i, s)))
+    {
+        let StmtKind::Trait {
+            name,
+            generics,
+            supers,
+            body,
+            alias: false,
+            bounds,
+            ..
+        } = &s.kind
+        else {
+            continue;
+        };
+        if !supers.is_empty() || !bounds.is_empty() || body.stmts.is_empty() {
+            continue;
+        }
+        fn member(m: &ast::Stmt) -> Option<(&str, &ast::Type)> {
+            match &m.kind {
+                StmtKind::Fn(f)
+                    if matches!(f.body, FnBody::None)
+                        && f.params.len() <= 1
+                        && m.decorators.iter().any(|d| d.name.text == GETTER) =>
+                {
+                    (f.ret.as_ref())
+                        .filter(|t| plain(t))
+                        .map(|t| (f.name.text.as_str(), t))
+                }
+                _ => None,
+            }
+        }
+        let Some(members) = body.stmts.iter().map(member).collect::<Option<Vec<_>>>() else {
+            continue;
+        };
+        let mut taken: Vec<String> = generics.iter().map(|g| g.text.clone()).collect();
+        for (_, t) in &members {
+            unnamed(t, &HashMap::new(), &mut taken);
+        }
+        let fresh: Vec<String> = (b'A'..=b'Z')
+            .map(|c| (c as char).to_string())
+            .filter(|c| !taken.contains(c))
+            .collect();
+        let span = s.span;
+        let nm = |t: &str| ast::Name {
+            text: t.to_string(),
+            span,
+        };
+        let named = |t: &str| ast::Type {
+            kind: TypeKind::Named {
+                name: nm(t),
+                args: Vec::new(),
+            },
+            span,
+        };
+        for fs in shapes {
+            if !members.iter().all(|(m, _)| fs.iter().any(|f| f == m)) {
+                continue;
+            }
+            let mut params: Vec<String> = generics.iter().map(|g| g.text.clone()).collect();
+            let mut extra = fresh.iter();
+            let mut fields = Vec::new();
+            for f in fs {
+                match members.iter().find(|(m, _)| m == f) {
+                    Some((_, t)) => fields.push((nm(f), (*t).clone())),
+                    None => {
+                        let Some(g) = extra.next() else { break };
+                        params.push(g.clone());
+                        fields.push((nm(f), named(g)));
+                    }
+                }
+            }
+            if fields.len() != fs.len() {
+                continue;
+            }
+            let kind = StmtKind::Impl {
+                trait_name: Some(ast::Type {
+                    kind: TypeKind::Named {
+                        name: name.clone(),
+                        args: generics.iter().map(|g| named(&g.text)).collect(),
+                    },
+                    span,
+                }),
+                target: ast::Type {
+                    kind: TypeKind::Record(fields),
+                    span,
+                },
+                bounds: (params.iter())
+                    .map(|p| ast::Bound {
+                        name: nm(p),
+                        traits: Vec::new(),
+                    })
+                    .collect(),
+                body: ast::Block {
+                    stmts: Vec::new(),
+                    span,
+                },
+            };
+            let imp = ast::Stmt {
+                kind,
+                span,
+                decorators: Vec::new(),
+                public: false,
+            };
+            out.push((*item, crate::records::name(fs), imp));
+        }
+    }
+    out
+}
+
+/// A field type an impl can write as it is: no `Self`, no associated type.
+fn plain(t: &ast::Type) -> bool {
+    match &t.kind {
+        TypeKind::Named { name, args } => {
+            !name.text.starts_with("Self") && !name.text.contains('.') && args.iter().all(plain)
+        }
+        TypeKind::Optional(e) => plain(e),
+        TypeKind::Tuple(ts) => ts.iter().all(plain),
+        TypeKind::Array { index, elem } => index.iter().chain([&**elem]).all(plain),
+        _ => false,
+    }
 }

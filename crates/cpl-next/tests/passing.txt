@@ -417,6 +417,8 @@ core-08/derive-needs-fields.cp
 core-08/duplicate-impl.cp
 core-08/generic-over-seq-capability.cp
 core-08/getter-impl-on-builtin-type.cp
+core-08/getter-trait-param-from-record-field.cp
+core-08/getter-trait-struct-opt-in.cp
 core-08/impl-plus-shorthand.cp
 core-08/inherent-before-trait.cp
 core-08/monomorphized.cp
@@ -499,6 +501,7 @@ core-11/use-unknown-module.cp
 core-12/body-attribute-unknown-is-an-error.cp
 core-12/clone-copies.cp
 core-12/closure-borrows-per-call.cp
+core-12/field-trait-get.cp
 core-12/indexed-access.cp
 core-12/lent-param-escapes.cp
 core-12/move-into-struct.cp
@@ -729,6 +732,7 @@ next/n_index_01_through_indexed.cp
 next/n_index_02_range_keyed_by_values.cp
 next/n_index_03_list_key_outside_traps.cp
 next/n_record_01_records_are_core_structs.cp
+next/n_record_02_field_traits.cp
 next/n_slice_01_range_gives_view.cp
 next/n_slice_02_range_outside_traps.cp
 next/n_slice_03_open_ends.cp
