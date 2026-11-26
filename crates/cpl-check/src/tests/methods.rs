@@ -96,6 +96,18 @@ fn a_method_two_modules_give_one_receiver_is_ambiguous() {
 }
 
 #[test]
+fn a_trait_member_on_a_type_this_file_declares_asks_for_the_impl() {
+    let diags = check(
+        "struct Evens(n: Int)\nimpl Seq<Int> for Evens:\n    fn iter(self) -> yields Int:\n        \
+         for i in 0..n:\n            if i % 2 == 0: yield i\nprint(Evens(7).len)\n",
+    );
+    assert_eq!(
+        messages(&diags),
+        ["`.len` requires `Sized`, which `Evens` does not implement"]
+    );
+}
+
+#[test]
 fn a_method_no_candidate_takes_says_what_the_free_form_says() {
     let diags = check("let a: ?List<Int> = [1, 2]\nprint(a.sum())\n");
     assert_eq!(

@@ -179,7 +179,7 @@ impl Checker<'_> {
         }
         // An impl lives with its trait or its type (R08.1.2): one neither
         // is this file's can't be written here, so the members are told.
-        let own_type = self.local_defs.contains_key(owner);
+        let own_type = self.local_defs.contains_key(owner) || self.env.declares_type(owner);
         let prelude = crate::prelude::names().iter().map(|(_, n)| n.text.clone());
         let names: Vec<String> = self.env.names().into_iter().chain(prelude).collect();
         for trait_name in names {
@@ -192,7 +192,9 @@ impl Checker<'_> {
                 continue;
             };
             if methods.iter().any(|m| m.name == name)
-                && (own_type || self.local_defs.contains_key(&trait_name))
+                && (own_type
+                    || self.local_defs.contains_key(&trait_name)
+                    || self.env.decl_order(&trait_name).is_some())
                 && !self.has_impl(owner, &trait_name)
             {
                 return Some(trait_name);
