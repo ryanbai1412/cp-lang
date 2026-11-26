@@ -431,6 +431,9 @@ impl Lw<'_> {
                     BinOp::BitAnd => Intr::BitAnd,
                     BinOp::BitOr => Intr::BitOr,
                     BinOp::BitXor => Intr::BitXor,
+                    BinOp::Pow => Intr::Pow,
+                    BinOp::Shl => Intr::Shl,
+                    BinOp::Shr => Intr::Shr,
                     _ => {
                         self.errors.push("slice: unsupported operator".into());
                         Intr::Add

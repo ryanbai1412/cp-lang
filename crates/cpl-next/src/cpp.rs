@@ -77,6 +77,27 @@ static inline int64_t cpl_rem(int64_t a, int64_t b) {
     if (r < 0) r += b > 0 ? b : -b;
     return r;
 }
+static inline int64_t cpl_pow(int64_t a, int64_t b) {
+    if (b < 0) cpl_trap("R0001", "a negative power");
+    int64_t r = 1;
+    for (; b > 0; b >>= 1) {
+        if (b & 1) r = cpl_mul(r, a);
+        if (b > 1) a = cpl_mul(a, a);
+    }
+    return r;
+}
+static inline int64_t cpl_shl(int64_t a, int64_t b) {
+    if (b < 0 || b >= 64) cpl_trap("R0001", "a shift outside 0..64");
+    if (a < 0) cpl_trap("R0001", "`<<` of a negative number");
+    if (a > (INT64_MAX >> b)) cpl_trap("R0202", "integer overflow");
+    return a << b;
+}
+static inline int64_t cpl_shr(int64_t a, int64_t b) {
+    if (b < 0 || b >= 64) cpl_trap("R0001", "a shift outside 0..64");
+    return a >> b;
+}
+static inline int64_t cpl_band(int64_t a, int64_t b) { int64_t r = a & b; if (r == INT64_MIN) cpl_trap("R0202", "integer overflow"); return r; }
+static inline int64_t cpl_bxor(int64_t a, int64_t b) { int64_t r = a ^ b; if (r == INT64_MIN) cpl_trap("R0202", "integer overflow"); return r; }
 template <class T> static inline cpl_raw<T> cpl_raw_new(int64_t n, const T& fill) {
     if (n < 0) cpl_trap("R0001", "negative storage size");
     if (n > (int64_t(1) << 28)) cpl_trap("R0001", "storage larger than the memory limit");
@@ -517,9 +538,13 @@ impl Emit<'_> {
                     Intr::Div => format!("cpl_div({}, {})", a[0], a[1]),
                     Intr::Rem => format!("cpl_rem({}, {})", a[0], a[1]),
                     Intr::Neg => format!("cpl_neg({})", a[0]),
-                    Intr::BitAnd => bin("&"),
+                    Intr::Pow => format!("cpl_pow({}, {})", a[0], a[1]),
+                    Intr::Shl => format!("cpl_shl({}, {})", a[0], a[1]),
+                    Intr::Shr => format!("cpl_shr({}, {})", a[0], a[1]),
+                    Intr::BitAnd => format!("cpl_band({}, {})", a[0], a[1]),
+                    // `a | b` of two values is never the lowest bit pattern.
                     Intr::BitOr => bin("|"),
-                    Intr::BitXor => bin("^"),
+                    Intr::BitXor => format!("cpl_bxor({}, {})", a[0], a[1]),
                     Intr::Eq => bin("=="),
                     Intr::Ne => bin("!="),
                     Intr::Lt => bin("<"),

@@ -15,7 +15,7 @@ impl<'a> Cx<'a> {
         };
         let l = self.coerce(l, &want);
         let r = self.coerce(r, &want);
-        if matches!(op, BinOp::Coalesce | BinOp::Pow) {
+        if op == BinOp::Coalesce {
             self.err(span, "slice: unsupported operator");
         }
         TExpr {
@@ -951,6 +951,16 @@ impl<'a> Cx<'a> {
                 let (want_t, kind): (Ty, fn(Box<TExpr>) -> TK) = match op {
                     UnOp::Not => (Ty::Bool, TK::Not),
                     UnOp::Neg => (Ty::Int, TK::Neg),
+                    // `~x` flips every bit: `x ^ -1`.
+                    UnOp::BitNot => (Ty::Int, |v| {
+                        let span = v.span;
+                        let ones = TExpr {
+                            kind: TK::Int(-1),
+                            ty: Ty::Int,
+                            span,
+                        };
+                        TK::Bin(BinOp::BitXor, v, Box::new(ones))
+                    }),
                     _ => {
                         self.err(span, "slice: unsupported operator");
                         (Ty::Int, TK::Neg)

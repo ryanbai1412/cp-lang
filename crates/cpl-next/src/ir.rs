@@ -23,6 +23,9 @@ pub enum Intr {
     BitAnd,
     BitOr,
     BitXor,
+    Pow,
+    Shl,
+    Shr,
     Eq,
     Ne,
     Lt,
@@ -69,7 +72,20 @@ impl Intr {
         use Intr::*;
         matches!(
             self,
-            Add | Sub | Mul | Neg | Div | Rem | RawGet | RawSet | RawNew | ReadInt
+            Add | Sub
+                | Mul
+                | Neg
+                | Div
+                | Rem
+                | Pow
+                | Shl
+                | Shr
+                | BitAnd
+                | BitXor
+                | RawGet
+                | RawSet
+                | RawNew
+                | ReadInt
         )
     }
 }

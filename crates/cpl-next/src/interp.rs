@@ -462,7 +462,10 @@ impl<'a> Machine<'a> {
             | Intr::Rem
             | Intr::BitAnd
             | Intr::BitOr
-            | Intr::BitXor => {
+            | Intr::BitXor
+            | Intr::Pow
+            | Intr::Shl
+            | Intr::Shr => {
                 let (a, b) = (self.int(&args[0], fp)?, self.int(&args[1], fp)?);
                 let r = match op {
                     Intr::Add => a.checked_add(b),
@@ -473,6 +476,22 @@ impl<'a> Machine<'a> {
                     }
                     Intr::Div => a.checked_div_euclid(b),
                     Intr::Rem => a.checked_rem_euclid(b),
+                    Intr::Pow if b < 0 => return trap(codes::RUNTIME, "a negative power"),
+                    // Past `u32` only 0, 1 and -1 have a power that is a value.
+                    Intr::Pow => match u32::try_from(b) {
+                        Ok(e) => a.checked_pow(e),
+                        Err(_) => match a {
+                            0 | 1 => Some(a),
+                            -1 => Some(if b % 2 == 0 { 1 } else { -1 }),
+                            _ => None,
+                        },
+                    },
+                    Intr::Shl | Intr::Shr if !(0..64).contains(&b) => {
+                        return trap(codes::RUNTIME, "a shift outside 0..64")
+                    }
+                    Intr::Shl if a < 0 => return trap(codes::RUNTIME, "`<<` of a negative number"),
+                    Intr::Shl => Some(a << b).filter(|s| *s >= 0 && s >> b == a),
+                    Intr::Shr => Some(a >> b),
                     Intr::BitAnd => Some(a & b),
                     Intr::BitOr => Some(a | b),
                     _ => Some(a ^ b),
