@@ -463,6 +463,7 @@ impl Link<'_> {
                     if !fit_cty(&im.for_, &st, &mut binds, &im.domains) {
                         continue;
                     }
+                    self.bound_only(im, &mut binds);
                     let binds: Vec<CTy> =
                         binds.into_iter().map(|b| b.unwrap_or(CTy::Error)).collect();
                     found = match im.methods.get(method) {
@@ -1300,6 +1301,45 @@ pub fn add_events(p: &mut Program, typed: &Typed, d: &Decls, user_from: u32) {
 }
 
 /// Whether a type an impl is written for, in the impl's type parameters, is `t`: binds them.
+impl Link<'_> {
+    /// Fixes each parameter of `im` only a bound names (`K` of `impl<S: Indexed<K, T>, K, T>`) to
+    /// what the impl meeting that bound gives it, as the checker does (R08.1.2).
+    fn bound_only(&mut self, im: &crate::decls::ImplDecl, binds: &mut [Option<CTy>]) {
+        let d = self.d;
+        loop {
+            let unbound = binds.iter().filter(|b| b.is_none()).count();
+            if unbound == 0 {
+                return;
+            }
+            for (i, r) in &im.bounds {
+                let Some(bt) = binds[*i].clone() else {
+                    continue;
+                };
+                for m in d.impls.iter().filter(|m| m.trait_.tr == r.tr) {
+                    let mut b = vec![None; m.generics.len()];
+                    if !fit_cty(&m.for_, &bt, &mut b, &m.domains) {
+                        continue;
+                    }
+                    self.bound_only(m, &mut b);
+                    let b: Vec<CTy> = b.into_iter().map(|x| x.unwrap_or(CTy::Error)).collect();
+                    let env = Env {
+                        targs: &b,
+                        sets: &[],
+                    };
+                    let args: Vec<CTy> = m.trait_.args.iter().map(|a| self.ty(a, &env)).collect();
+                    for (p, a) in r.args.iter().zip(&args) {
+                        fit_cty(p, a, binds, &im.domains);
+                    }
+                    break;
+                }
+            }
+            if binds.iter().filter(|b| b.is_none()).count() == unbound {
+                return;
+            }
+        }
+    }
+}
+
 fn fit_cty(p: &Ty, t: &CTy, binds: &mut [Option<CTy>], doms: &[usize]) -> bool {
     match (p, t) {
         (Ty::Param(i), _) if doms.contains(i) && !matches!(t, CTy::Dom(_)) => false,

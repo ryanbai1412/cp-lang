@@ -12,6 +12,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 
 mod expr;
+mod index;
 mod oblige;
 mod range;
 mod stmt;
@@ -224,6 +225,8 @@ struct Cx<'a> {
     cyclic: std::cell::Cell<bool>,
     /// A top-level domain a top-level statement named before the line declaring it.
     early: std::cell::Cell<Option<usize>>,
+    /// The keys of a `let w = s[lo..hi]` with literal ends, which prove a literal `w[k]` (R07.4.5).
+    view_keys: HashMap<VarRef, (i128, i128)>,
     /// The judge the program names (`// judge:`, else `generic`), for its memory limit (R03.1.9).
     judge: Option<cpl_judge::Profile>,
     errors: Vec<String>,
@@ -275,6 +278,7 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
         zonking: Default::default(),
         cyclic: Default::default(),
         early: Default::default(),
+        view_keys: HashMap::new(),
         judge: cpl_judge::builtin(cpl_judge::named_in(src).unwrap_or("generic")),
         errors: Vec::new(),
         lambdas: Vec::new(),

@@ -1759,18 +1759,6 @@ pub struct Slice<S>(
     /// The position in `src` just past the slice's last element; `lo <= hi <= src.len`.
     hi: Int,
 ):
-    /// \(O(1)\). The slice's keys: a sub-range of the source's keys.
-    ///
-    /// cost: \(O(1)\)
-    /// traps: never
-    /// example: `[5, 6, 7][1..].keys == 1..3`
-    /// order: increasing
-    @get pub fn keys<K>(self) -> Range<K>:
-        if lo < hi: return src.keys[lo]..=src.keys[hi - 1]
-        if lo < src.len: return src.keys[lo]..src.keys[lo]
-        if src.len == 0: return src.keys
-        let k = src.keys[src.len - 1]
-        k..k
     /// The number of elements in the slice.
     ///
     /// cost: \(O(1)\)
@@ -1868,14 +1856,19 @@ impl<S: Indexed<K, T>, K, T> Bidir<T> for Slice<S>:
         for i in (self.lo..self.hi).rev: yield self.src.nth(i)
 
 impl<S: Indexed<K, T>, K, T> Positional<T> for Slice<S>:
-    fn nth(self, k: Int) -> T:
-        assert 0 <= k < self.hi - self.lo, "nth(k) requires 0 <= k < len"
-        self.src.nth(self.lo + k)
+    /// `(0..len)[k]` is `k`, read as a key so one outside the slice traps R0101 (R07.4.5).
+    fn nth(self, k: Int) -> T = self.src.nth(self.lo + (0..self.len)[k])
 
 impl<S: Indexed<K, T>, K, T> Indexed<K, T> for Slice<S>:
-    fn at(self, i: K) -> T:
-        assert self.lo <= self.src.keys.ord(i) < self.hi, "the key is outside the slice"
-        self.src.at(i)
+    /// `keys[i]` is `i`, checked: a key outside the slice traps R0101, never reading the source
+    /// around it (R07.4.5).
+    fn at(self, i: K) -> T = self.src.at(self.keys[i])
+    /// \(O(1)\). The slice's keys: a sub-range of the source's keys.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `[5, 6, 7][1..].keys == 1..3`
+    /// order: increasing
     @get fn keys(self) -> Range<K> = self.src.keys.drop(self.lo).take(self.hi - self.lo)
 
 /// \(O(n)\). An owned copy of the slice's elements, in order.

@@ -1,7 +1,7 @@
 // The core traits: the language gives `==`, `<` and `+` their meaning through them
 // (R08.1.5), so they are declared here rather than in a std file; `Ordering` is std's.
 use std.algebra.{Ordering}
-use std.seq.{Keyed, Positional, Indexed}
+use std.seq.{Keyed, Positional, Indexed, Slice}
 
 fn raw_empty<T>() -> Raw<T> = @intrinsic("raw_empty")
 fn raw_new<T>(n: Int, fill: T) -> Raw<T> = @intrinsic("raw_new")
@@ -180,6 +180,17 @@ struct Range<D>:
     fn each(self) -> yields D:
         for i in 0..n: yield D.nth(lo + i * step)
 
+    /// Without its first `k` values: a range again (R07.4.11).
+    fn drop(self, k: Int = 1) -> Range<D>:
+        assert k >= 0, "drop: a negative count"
+        let c = if k < n: k else: n
+        Range(lo + c * step, n - c, step)
+
+    /// Its first `k` values: a range again (R07.4.11).
+    fn take(self, k: Int) -> Range<D>:
+        assert k >= 0, "take: a negative count"
+        Range(lo, if k < n: k else: n, step)
+
     /// How `print` writes it: its values, space-separated.
     fn write(self):
         for i in 0..n:
@@ -337,3 +348,11 @@ impl<D> Indexed<D, D> for Range<D>:
         check_key(self.n > 0 and d % self.step == 0 and 0 <= d / self.step and d / self.step < self.n)
         x
     @get fn keys(self) -> Range<D> = self
+/// `s[r]`: the view of `s` over the keys in `r`, made in O(1); traps R0101 unless `r` is a run of
+/// `s`'s keys (R07.4.6). An empty `r` is the empty view at its start.
+@index fn slice<S: Indexed<D, T>, D, T>(self: S, r: Range<D>) -> Slice<S>:
+    let k = self.keys
+    let d = r.lo - k.lo
+    let i = d / k.step
+    check_key(0 <= d and d % k.step == 0 and i + r.n <= k.n and (r.n <= 1 or r.step == k.step))
+    Slice(self, i, i + r.n)

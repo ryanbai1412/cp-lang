@@ -217,7 +217,14 @@ impl<'a> Cx<'a> {
     ) -> FnRef {
         self.reach(decl);
         let f = self.d.f(decl);
-        let mut targs = given_tys;
+        // An impl parameter only a bound names that the receiver's type cannot fix (`K` of
+        // `impl<S: Indexed<K, T>, K, T>` on a `Slice<S>` of a type parameter) is left to the bound.
+        let mut targs: Vec<Ty> = (given_tys.into_iter())
+            .map(|t| match t {
+                Ty::Error => self.new_ty(),
+                t => t,
+            })
+            .collect();
         while targs.len() < f.generics.len() {
             targs.push(self.new_ty());
         }
@@ -536,38 +543,8 @@ impl<'a> Cx<'a> {
         };
         block(pre, call)
     }
-    /// `recv.name(args)` with already-typed arguments: used for `get` and `set` behind indexing.
-    /// `s[i]` is `s.at(i)` of its `Indexed` impl (R12.4.5), read in place; a method of
-    /// the type's own named `at` is not indexing.
-    pub(super) fn elem(&mut self, s: TExpr, i: TExpr, span: Span) -> TExpr {
-        let at = "at";
-        let rt = self.shallow(&s.ty);
-        let call = match (&rt, self.d.impl_member(&rt, at, None)) {
-            (Ty::Param(p), _) => self.bound_call(*p, s, at, vec![TArg::Value(i)], span),
-            (_, Some(decls::Member::Method(m, ts, ss))) => {
-                self.call_member(s, (m, ts, ss), vec![TArg::Value(i)], span, false)
-            }
-            _ => {
-                let shown = self.show(&rt);
-                self.err(
-                    span,
-                    format!("`{shown}` is not indexed: it has no `Indexed` impl"),
-                );
-                return TExpr {
-                    kind: TK::Error,
-                    ty: Ty::Error,
-                    span,
-                };
-            }
-        };
-        TExpr {
-            ty: call.ty.clone(),
-            kind: TK::Elem(Box::new(call)),
-            span,
-        }
-    }
     /// `recv.name(args)` of a trait bound on the type parameter `recv` is.
-    fn bound_call(
+    pub(super) fn bound_call(
         &mut self,
         p: usize,
         recv: TExpr,
@@ -626,7 +603,7 @@ impl<'a> Cx<'a> {
         self.call_member(recv, (m, ts, ss), args, span, mutates)
     }
     /// `recv.m(args)` with `m` already found on `recv`'s type.
-    fn call_member(
+    pub(super) fn call_member(
         &mut self,
         recv: TExpr,
         (m, ts, ss): (FnId, Vec<Ty>, Vec<SetTy>),
@@ -636,6 +613,8 @@ impl<'a> Cx<'a> {
     ) -> TExpr {
         let fd = self.d.f(m);
         let f = self.fnref(m, ts, ss);
+        self.oblige(&f, span);
+        self.solve(false);
         let sub = Subst {
             tys: &f.targs,
             sets: &f.sets,
@@ -857,7 +836,7 @@ impl<'a> Cx<'a> {
                     kind: TK::Error,
                     ty: Ty::Error,
                     span,
-                }
+                };
             }
             t => {
                 self.err(span, format!("`{}` cannot be called", self.show(&t)));
@@ -1212,8 +1191,20 @@ impl<'a> Cx<'a> {
             ExprKind::Index { base, indices } if indices.len() == 1 => {
                 let b = self.expr(base, None);
                 let i = self.expr(&indices[0], Some(&Ty::Int));
-                let i = self.index_arg(&b.ty, i);
-                self.elem(b, i, span)
+                if self.is_range(&b.ty) && self.is_range(&i.ty) {
+                    self.err(span, "slice: a range sliced by a range (R0001 outside it)");
+                    TExpr {
+                        kind: TK::Error,
+                        ty: Ty::Error,
+                        span,
+                    }
+                } else if let Some(f) = self.index_fn(&b.ty, &i.ty) {
+                    self.index_call(f, b, i, span)
+                } else {
+                    self.literal_key(base, &indices[0], &b.ty);
+                    let i = self.index_arg(&b.ty, i);
+                    self.elem(b, i, span)
+                }
             }
             ExprKind::Call { callee, args } => match &callee.kind {
                 ExprKind::Field { base, name } => self.member(base, name, Some(args), span, want),

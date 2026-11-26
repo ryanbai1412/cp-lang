@@ -1,12 +1,12 @@
 45 cause:binding
 501 cause:branch
 2447 cause:call
-892 cause:index
+887 cause:index
 241 cause:list
-3067 cause:member
-1391 cause:method-call
-6990 cause:name
-1915 cause:operator
+3058 cause:member
+1390 cause:method-call
+6988 cause:name
+1914 cause:operator
 257 cause:other
 452 cause:unwrap
 1 corpus/problems/aac4p2/dream.cp
@@ -2003,7 +2003,7 @@
 75 std/range.cp
 29 std/search.cp
 400 std/segtree.cp
-823 std/seq.cp
+805 std/seq.cp
 34 std/slope.cp
 147 std/sparse.cp
 48 std/spec.cp

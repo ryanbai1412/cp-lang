@@ -326,6 +326,9 @@ impl<'a> Cx<'a> {
                 };
                 self.memory_peak(name, &v.ty, s.span);
                 let var = self.bind(name, v.ty.clone());
+                if let Some(keys) = super::index::literal_cut(init) {
+                    self.view_keys.insert(var, keys);
+                }
                 match var {
                     VarRef::Local(i) => {
                         (self.locals[i].mutable, self.locals[i].fixed) = (*mutable, !*mutable)
@@ -555,7 +558,14 @@ impl<'a> Cx<'a> {
                     if !matches!(&call.kind, TK::Call { f, .. } if self.d.f(f.decl).region.is_some())
                     {
                         self.allow_region = true;
-                        call = self.method_call(call, "each", vec![], s.span, false);
+                        // A type without its own `each` walks through its `Seq` impl (R07.1.1).
+                        let rt = self.shallow(&call.ty);
+                        let own = "each";
+                        let walk = match self.d.lookup_member(&rt, own) {
+                            Some(_) => own,
+                            None => "iter",
+                        };
+                        call = self.method_call(call, walk, vec![], s.span, false);
                         self.allow_region = false;
                     }
                     let TK::Call { f, recv, args } = call.kind else {

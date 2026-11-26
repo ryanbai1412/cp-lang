@@ -177,6 +177,9 @@ library or by this spec:
 - `@same_keys` on a fn (std's `zip`): its arguments that are arrays over
   domains must share one domain, so arrays over two domains are a type
   error at the call (R04b.1.3).
+- `@index` on a fn (core's slicing of an `Indexed` by a `Range` of its
+  keys): what `s[r]` calls when `r` is not a key of `s`, so `s[l..r]` is
+  that fn's `Slice<S>` (R07.4.17).
 - `@structural` on a trait (std's `Hash`): a tuple, record, optional,
   array or struct has it when each part does, a position when `Int` does,
   and a built-in scalar only through its own `impl` (so `F64`, with none, is

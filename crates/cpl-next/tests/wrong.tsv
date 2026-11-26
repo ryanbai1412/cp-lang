@@ -6,8 +6,6 @@ core-03/read-rejects-spare.cp	wrong-trap	wanted R0502 on line 4, got: trap: R050
 core-04/anon-range-array-traps.cp	wrong-trap	wanted R0101 on line 5, got: trap: R0102: line 5: value outside the domain
 core-05/cache-lend-no-unknown-call.cp	wrong-accept	wanted E0602 on line 13, ran and printed: 
 core-05/fn-var-binding-a-global-is-a-move.cp	wrong-accept	wanted E0608 on line 6, ran and printed: 
-core-05/generic-wrapper-lends-its-source.cp	wrong-error	wanted E0602 on line 8, got: own: line 8: E0608: `xs` was moved into another binding; use `.clone()` there to keep both
-core-05/generic-wrapper-of-a-plain-value-lends-nothing.cp	wrong-reject	own: line 12: E0608: `xs` was moved into another binding; use `.clone()` there to keep both
 core-05/plain-tuple-copies.cp	wrong-reject	check: line 5: E0405: field `Tuple2._0` is fixed (not `var`) and cannot be assigned
 core-06/getter-called-with-parens.cp	wrong-accept	wanted E0304 on line 4, ran and printed: 3
 core-06/lint-not-on-a-fn.cp	wrong-accept	wanted E0505 on line 4, ran and printed: 1

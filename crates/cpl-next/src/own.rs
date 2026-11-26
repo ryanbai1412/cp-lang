@@ -121,6 +121,11 @@ struct Cx<'a> {
     /// For each fn, the arguments it stores where they outlive the call (receiver first), so
     /// an owned heap value passed there moves in (R05.2.2).
     keeps: HashMap<FnId, BTreeSet<usize>>,
+    /// Per fn, the arguments its result holds, receiver first: a call lends them to the result
+    /// while it lives (R05.5.3).
+    lends: HashMap<FnId, BTreeSet<usize>>,
+    /// The parameters of the fn being walked that its result holds.
+    returned: BTreeSet<Root>,
     /// The fn being walked's receiver and parameters, in call order.
     params: Vec<Root>,
     /// Those of them it stores where they outlive the call.
@@ -162,15 +167,29 @@ pub fn check(d: &Decls, t: &Typed, src: &str) -> Owned {
         caps: HashMap::new(),
         copies: BTreeSet::new(),
         keeps: HashMap::new(),
+        lends: HashMap::new(),
+        returned: BTreeSet::new(),
         params: Vec::new(),
         kept: BTreeSet::new(),
     };
     let mut ids: Vec<FnId> = t.fns.keys().copied().collect();
     ids.sort();
     for round in 0..40 {
-        let before = (cx.fns.clone(), cx.lams.clone(), cx.keeps.clone());
+        let before = (
+            cx.fns.clone(),
+            cx.lams.clone(),
+            cx.keeps.clone(),
+            cx.lends.clone(),
+        );
         cx.pass(&ids);
-        if before == (cx.fns.clone(), cx.lams.clone(), cx.keeps.clone()) {
+        if before
+            == (
+                cx.fns.clone(),
+                cx.lams.clone(),
+                cx.keeps.clone(),
+                cx.lends.clone(),
+            )
+        {
             break;
         }
         assert!(round < 39, "effect summaries did not settle");
@@ -200,6 +219,7 @@ impl Cx<'_> {
             self.pending.clear();
             self.caps.clear();
             self.kept.clear();
+            self.returned.clear();
             self.params = (self.d.f(id).self_mode != SelfMode::None)
                 .then_some(tf.self_local)
                 .flatten()
@@ -232,6 +252,10 @@ impl Cx<'_> {
                 .filter(|i| self.kept.contains(&self.params[*i]))
                 .collect();
             self.keeps.insert(id, kept);
+            let lends = (0..self.params.len())
+                .filter(|i| self.returned.contains(&self.params[*i]))
+                .collect();
+            self.lends.insert(id, lends);
         }
         self.cur = None;
         self.params.clear();
@@ -365,6 +389,26 @@ impl Cx<'_> {
                 }
             }
             TK::Elem(b) => out = self.sources(b),
+            // R05.5.3: a result that holds a heap argument lends it while the result lives.
+            TK::Call { f, recv, args }
+                if self.lends.get(&f.decl).is_some_and(|l| !l.is_empty()) =>
+            {
+                let lends = &self.lends[&f.decl];
+                let all = recv.as_deref().into_iter().chain(args.iter());
+                for (i, a) in all.enumerate() {
+                    let (TArg::Value(v) | TArg::Mut(v)) = a;
+                    if !lends.contains(&i) || plain(self.d, &v.ty, 0) {
+                        continue;
+                    }
+                    match self.place(v) {
+                        Some(p) => {
+                            out.extend(self.lent.get(&p.root).into_iter().flatten().copied());
+                            out.insert(p.root);
+                        }
+                        None => out.extend(self.sources(v)),
+                    }
+                }
+            }
             TK::Field(b, _) | TK::Payload(b, _) | TK::Inject(b) | TK::Widen(b) => {
                 out = self.sources(b);
                 // A heap field of a place is that place: binding it borrows the place.
@@ -392,7 +436,15 @@ impl Cx<'_> {
     /// R05.7.8: a lent value is not returned.
     fn escapes(&mut self, span: Span, out: &BTreeSet<Root>) {
         let mut out = out.clone();
-        self.take_generic_params(&mut out);
+        // A type-parameter parameter the result holds is the caller's to lend (R05.5.3).
+        let held: Vec<Root> = (out.iter())
+            .filter(|r| self.params.contains(r) && self.generic(**r))
+            .copied()
+            .collect();
+        for r in held {
+            out.remove(&r);
+            self.returned.insert(r);
+        }
         if let Some(r) = out.iter().next() {
             let n = self.root_name(*r);
             let why = if self.borrowed.contains(r) {
@@ -456,6 +508,18 @@ impl Cx<'_> {
             what.remove(&r);
             self.kept.insert(r);
         }
+    }
+    /// Whether a binding holds a fn value, whose lends are captures (R05.10.2).
+    fn fn_value(&self, r: Root) -> bool {
+        let ty = match r {
+            Root::Local(l) => self
+                .cur
+                .and_then(|c| self.t.fns.get(&c))
+                .and_then(|f| f.locals.get(l))
+                .map(|loc| &loc.ty),
+            Root::Global(g) => self.t.globals.get(g).map(|loc| &loc.ty),
+        };
+        matches!(ty, Some(Ty::Fn(..) | Ty::Clo(_)))
     }
     /// Whether a local's type holds a type parameter.
     fn generic(&self, r: Root) -> bool {
@@ -539,14 +603,20 @@ impl Cx<'_> {
                 self.moved.insert(r);
                 // R05.10.2: a captured variable can't be moved while the fn value is alive.
                 let n = self.root_name(r);
+                // A value that holds a lend of it is E0602, a fn value that captures it E0607.
                 for (b, srcs) in self.lent.iter().chain(self.caps.iter()) {
                     if srcs.contains(&r) {
+                        let code = if self.caps.contains_key(b) || self.fn_value(*b) {
+                            codes::MOVED_WHILE_CAPTURED
+                        } else {
+                            codes::USED_WHILE_LENT
+                        };
                         let bn = self.root_name(*b);
                         let at = self.at(e.span);
                         self.pending.push((
                             *b,
                             at,
-                            codes::MOVED_WHILE_CAPTURED,
+                            code,
                             format!("{n} is moved here while {bn}, which uses it, is still used"),
                         ));
                     }
@@ -1111,7 +1181,13 @@ impl Cx<'_> {
                 inner.writes.retain(|p| p.root != own);
                 if let Some(p) = hits(&held, &inner.writes) {
                     let n = self.name(p);
-                    self.err(body.span, codes::USED_WHILE_LENT, format!("{n} is lent to `{who}` for the whole loop, and the loop body writes it"));
+                    self.err(
+                        body.span,
+                        codes::USED_WHILE_LENT,
+                        format!(
+                            "{n} is lent to `{who}` for the whole loop, and the loop body writes it"
+                        ),
+                    );
                 }
                 if let Some(p) = hits(&lent, &inner.writes).or_else(|| hits(&lent, &inner.reads)) {
                     let n = self.name(p);

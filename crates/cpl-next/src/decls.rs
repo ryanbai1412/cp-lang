@@ -187,6 +187,8 @@ pub struct Decls {
     /// Core's `@coerce` fns: each converts a value of its parameter's type where its result's
     /// type is wanted (R04.8.10).
     pub coercions: Vec<FnId>,
+    /// The `@index` fns, in declaration order.
+    pub index_fns: Vec<FnId>,
 }
 
 /// Where a method call resolved to.
@@ -1330,11 +1332,14 @@ pub fn collect(
                     _,
                 ) => {
                     let names = d.views[mi].clone();
-                    // The impl's own type parameters: its bounds' names, then what its header writes
-                    // that names nothing.
+                    // The impl's own type parameters: its bounds' names, then what its header and
+                    // bounds write that names nothing (`K` of `impl<S: Indexed<K, T>, K, T>`).
                     let mut generics: Vec<String> =
                         bounds.iter().map(|b| b.name.text.clone()).collect();
-                    for t in [tr, target] {
+                    for t in [tr, target]
+                        .into_iter()
+                        .chain(bounds.iter().flat_map(|b| &b.traits))
+                    {
                         unnamed(t, &names, &mut generics);
                     }
                     let sets = d.struct_sets.clone();
@@ -1738,7 +1743,10 @@ fn add_fn(
         let core_only = m == CORE && x.name.text == "coerce";
         if !elsewhere
             && !core_only
-            && !matches!(x.name.text.as_str(), "get" | "multitest" | "same_keys")
+            && !matches!(
+                x.name.text.as_str(),
+                "get" | "multitest" | "same_keys" | "index"
+            )
         {
             errors.push(format!("slice: decorator `@{}`", x.name.text));
         }
@@ -1753,6 +1761,9 @@ fn add_fn(
     // A getter is read like a field, so nothing but `self` may need an argument (R02.6.6).
     let getter = has("get");
     let same_keys = has("same_keys");
+    if has("index") {
+        d.index_fns.push(FnId(d.fns.len()));
+    }
     let coerce = m == CORE && has("coerce");
     if coerce {
         d.coercions.push(FnId(d.fns.len()));

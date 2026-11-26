@@ -80,6 +80,10 @@ pub const DECORATORS: &[(&str, &str)] = &[
         "same_keys",
         "on a fn: its arguments that are arrays over domains share one domain (R04b.1.3)",
     ),
+    (
+        "index",
+        "on a fn: what `s[r]` calls when `r` is not a key of `s` (R07.4.17)",
+    ),
 ];
 
 /// Old spellings the parser or checker answers with their own E0503 fix.
