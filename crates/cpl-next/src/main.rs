@@ -1,4 +1,5 @@
-//! `cpl-next FILE [--raw] [--cpp] [--trace]`: run FILE on stdin, or print its C++.
+//! `cpl-next FILE [--raw] [--cpp] [--check] [--trace]`: run FILE on stdin, print its C++, or
+//! only compile it.
 //! Exits 0 after a run, 3 after a trap, 1 when the program is rejected, 4 when it is refused.
 //! For the crate's tests and for measuring; not a shipped command.
 use cpl_next::{compile, Form};
@@ -26,7 +27,7 @@ fn real_main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let has = |f: &str| args.iter().any(|a| a == f);
     let Some(path) = args.iter().find(|a| !a.starts_with("--")) else {
-        eprintln!("usage: cpl-next FILE [--raw] [--cpp] [--trace]");
+        eprintln!("usage: cpl-next FILE [--raw] [--cpp] [--check] [--trace]");
         std::process::exit(2);
     };
     let src = match std::fs::read_to_string(path) {
@@ -50,6 +51,9 @@ fn real_main() {
             });
         }
     };
+    if has("--check") {
+        return;
+    }
     if has("--cpp") {
         print!("{}", c.cpp());
         return;

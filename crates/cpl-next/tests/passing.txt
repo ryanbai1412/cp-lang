@@ -918,6 +918,8 @@ std-strings/hash-token-is-a-std-impl-per-type.cp
 std-strings/repeat-zero.cp
 std-subset/empty-braces-is-empty-subset.cp
 std-timetree/cdq-1.cp
+tools-cli/exit-0-no-errors.cp
+tools-cli/exit-3-trap.cp
 tools-fmt-lint/lint-never-blocks-run.cp
 traits/Bidir/Range--iter_rev.cp
 traits/Hashable/HashVal--hash_token.cp

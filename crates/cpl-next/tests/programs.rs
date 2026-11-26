@@ -21,7 +21,9 @@ mod cxx;
 #[path = "../../cpl-cli/tests/support/parallel.rs"]
 mod parallel;
 
-use cpl_conform::conformance::{discover, header_input, parse_header, Expect};
+use cpl_conform::conformance::{
+    discover, header_input, header_values, parse_header, unquote, Expect,
+};
 use std::collections::BTreeMap;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -86,13 +88,37 @@ fn next(path: &Path, flags: &[&str], input: &[u8]) -> Ran {
     run(cmd, input)
 }
 
-/// Header keys that ask for something this harness does not do yet (a tool, a second file,
-/// text a message must hold): a case with one counts as refused. Every other `// word:`
-/// line is a key the harness acts on (`expect`, `input`) or a comment, so a note added to
-/// a header never changes what a case is.
-const ASKS: [&str; 10] = [
-    "has", "lacks", "tool", "file", "judge", "copies", "output", "before", "timeout", "unread",
+/// Header keys that ask for something this harness does not do yet (a second file, a judge
+/// profile, a command run before the tool, a copy count, text the output must or must not
+/// hold, more than the 10 seconds every run gets): a case with one counts as refused.
+/// Every other `// word:` line is a key the harness acts on (`expect`, `input`, `tool`,
+/// `output`) or a comment, so a note added to a header never changes what a case is.
+const ASKS: [&str; 7] = [
+    "file", "judge", "before", "copies", "has", "lacks", "timeout",
 ];
+
+/// What a case asks cpl-next for: a run, or only the checks.
+#[derive(Clone, Copy, PartialEq)]
+enum Ask {
+    Run,
+    Check,
+}
+
+/// `// tool: run` and `check`, each on the case, are the pipeline's own queries; every other
+/// tool or flag needs a facade query cpl-next has not got (`build` is `emit_cpp(profile)`,
+/// whose judge banner and size check are not the bare C++ `--cpp` prints).
+fn ask(tool: Option<&str>) -> Result<Ask, String> {
+    let Some(args) = tool else {
+        return Ok(Ask::Run);
+    };
+    let words: Vec<&str> = args.split_whitespace().filter(|w| *w != "{case}").collect();
+    match words.as_slice() {
+        ["run"] => Ok(Ask::Run),
+        ["check"] => Ok(Ask::Check),
+        ["lint", ..] => Err("`cpl lint`: no lint query yet".into()),
+        _ => Err(format!("`cpl {args}`: no facade query for it yet")),
+    }
+}
 
 /// `// key: ...` gives `key`.
 fn header_key(line: &str) -> Option<&str> {
@@ -110,6 +136,8 @@ fn line_and_code(diag: &str) -> Option<(usize, &str)> {
 }
 
 /// How one case fared: `pass`, `refused`, or the word `wrong.tsv` uses, and the detail.
+/// A case that passes on its `// expect:` passes only if what the deciding run printed is
+/// its `// output:`, when it gives one.
 fn verdict(path: &Path) -> (&'static str, String) {
     let text = std::fs::read_to_string(path).unwrap();
     let expect = match parse_header(&text) {
@@ -120,26 +148,55 @@ fn verdict(path: &Path) -> (&'static str, String) {
     if let Some(key) = header.filter_map(header_key).find(|k| ASKS.contains(k)) {
         return ("refused", format!("a `// {key}:` case"));
     }
-    if let Expect::Exit(_) = expect {
-        return ("refused", "a tool's exit status".into());
+    let ask = match ask(header_values(&text, "tool:").first().copied()) {
+        Ok(a) => a,
+        Err(e) => return ("refused", e),
+    };
+    if let Expect::Exit(n @ (2 | 4..)) = expect {
+        return (
+            "refused",
+            format!("exit {n}: the command line's own status"),
+        );
     }
     if matches!(&expect, Expect::Diag { code, .. } if code.starts_with('L')) {
         return ("refused", "a lint".into());
     }
-    let input = header_input(&text);
-    let raw = next(path, &["--raw", "--trace"], &input);
+    let (verdict, detail, printed) = judged(path, &text, expect, ask);
+    if verdict != "pass" {
+        return (verdict, detail);
+    }
+    if let Some(want) = header_values(&text, "output:").first() {
+        let want = unquote(want);
+        if printed != want {
+            return ("wrong-output", format!("wanted {want:?}, got {printed:?}"));
+        }
+    }
+    ("pass", String::new())
+}
+
+/// The verdict on the `// expect:` line alone, and what the run that decided it printed.
+fn judged(path: &Path, text: &str, expect: Expect, ask: Ask) -> (&'static str, String, String) {
+    let input = header_input(text);
+    let flags: &[&str] = match ask {
+        Ask::Run => &["--raw", "--trace"],
+        Ask::Check => &["--check"],
+    };
+    let raw = next(path, flags, &input);
     let first = |s: &str| s.lines().next().unwrap_or("").to_string();
+    let done = |v: &'static str, d: String| (v, d, String::new());
     match raw.status {
-        None => return ("timeout", "the interpreter passed 10 s".into()),
-        Some(4) => return ("refused", first(&raw.stdout)),
+        None => return done("timeout", "the interpreter passed 10 s".into()),
+        Some(4) => return done("refused", first(&raw.stdout)),
         Some(0 | 1 | 3) => {}
         Some(n) => {
-            return (
+            return done(
                 "crash",
                 format!("the interpreter exited {n}: {}", first(&raw.stderr)),
             )
         }
     }
+    let printed = format!("{}{}", raw.stdout, raw.stderr);
+    let pass = || ("pass", String::new(), printed.clone());
     if raw.status == Some(1) {
         return match &expect {
             Expect::Diag { code, line }
@@ -148,29 +205,41 @@ fn verdict(path: &Path) -> (&'static str, String) {
                     .lines()
                     .any(|d| line_and_code(d) == Some((*line, code.as_str()))) =>
             {
-                ("pass", String::new())
+                pass()
             }
-            Expect::Diag { code, line } => (
+            Expect::Exit(1) => pass(),
+            Expect::Diag { code, line } => done(
                 "wrong-error",
                 format!("wanted {code} on line {line}, got: {}", first(&raw.stdout)),
             ),
-            _ => ("wrong-reject", first(&raw.stdout)),
+            _ => done("wrong-reject", first(&raw.stdout)),
         };
     }
-    if let Expect::Diag { code, line } = &expect {
-        return (
-            "wrong-accept",
-            format!(
-                "wanted {code} on line {line}, ran and printed: {}",
-                first(&raw.stdout)
-            ),
-        );
+    match &expect {
+        Expect::Diag { code, line } => {
+            return done(
+                "wrong-accept",
+                format!(
+                    "wanted {code} on line {line}, ran and printed: {}",
+                    first(&raw.stdout)
+                ),
+            )
+        }
+        Expect::Exit(1) => return done("wrong-accept", "wanted exit 1".into()),
+        Expect::Trap { .. } | Expect::Exit(3) if ask != Ask::Run => {
+            return done(
+                "wrong-output",
+                "a trap asked of a command that runs nothing".into(),
+            )
+        }
+        Expect::Ok | Expect::Exit(0) if ask != Ask::Run => return pass(),
+        _ => {}
     }
     let canon = next(path, &["--trace"], &input);
     let same =
         |a: &Ran, b: &Ran| a.status == b.status && a.stdout == b.stdout && a.stderr == b.stderr;
     if !same(&raw, &canon) {
-        return (
+        return done(
             "split",
             format!(
                 "canonical IR: exit {:?}: {}",
@@ -182,11 +251,11 @@ fn verdict(path: &Path) -> (&'static str, String) {
     let cpp = next(path, &["--cpp", "--trace"], b"");
     let bin = match cxx::build(cpp.stdout.as_bytes(), &[&CXX_FLAGS[..], &["c++"]].concat()) {
         Ok((bin, _)) => bin,
-        Err(e) => return ("no-cxx", e.lines().take(4).collect::<Vec<_>>().join(" | ")),
+        Err(e) => return done("no-cxx", e.lines().take(4).collect::<Vec<_>>().join(" | ")),
     };
     let built = run(Command::new(bin), &input);
     if !same(&raw, &built) {
-        return (
+        return done(
             "split",
             format!(
                 "C++: exit {:?}: {} {}",
@@ -198,23 +267,25 @@ fn verdict(path: &Path) -> (&'static str, String) {
     }
     let trapped = raw.status == Some(3);
     match expect {
-        Expect::Ok if !trapped => ("pass", String::new()),
-        Expect::OkOutput(want) if !trapped && raw.stdout.trim_end_matches('\n') == want => {
-            ("pass", String::new())
+        Expect::Ok | Expect::Exit(0) if !trapped => pass(),
+        Expect::OkOutput(want) if !trapped && raw.stdout.trim_end_matches('\n') == want => pass(),
+        Expect::Exit(3) if trapped => pass(),
+        Expect::Ok | Expect::Exit(0) => {
+            done("wrong-trap", first(raw.stderr.lines().last().unwrap_or("")))
         }
-        Expect::Ok | Expect::OkOutput(_) if trapped => {
-            ("wrong-trap", first(raw.stderr.lines().last().unwrap_or("")))
+        Expect::OkOutput(_) if trapped => {
+            done("wrong-trap", first(raw.stderr.lines().last().unwrap_or("")))
         }
-        Expect::OkOutput(want) => (
+        Expect::OkOutput(want) => done(
             "wrong-output",
             format!("wanted {want:?}, got {:?}", raw.stdout),
         ),
         Expect::Trap { code, line } if trapped => {
             let at = format!("trap: {code}: line {line}:");
             if raw.stderr.lines().any(|l| l.starts_with(&at)) {
-                ("pass", String::new())
+                pass()
             } else {
-                (
+                done(
                     "wrong-trap",
                     format!(
                         "wanted {code} on line {line}, got: {}",
@@ -223,12 +294,13 @@ fn verdict(path: &Path) -> (&'static str, String) {
                 )
             }
         }
-        Expect::Trap { code, line } => (
+        Expect::Trap { code, line } => done(
             "wrong-output",
             format!("wanted {code} on line {line}, ran to the end"),
         ),
-        Expect::Ok | Expect::Diag { .. } | Expect::Exit(_) => {
-            ("wrong-output", "an expectation settled above".into())
+        Expect::Exit(3) => done("wrong-output", "wanted a trap, ran to the end".into()),
+        Expect::Diag { .. } | Expect::Exit(_) => {
+            done("wrong-output", "an expectation settled above".into())
         }
     }
 }
