@@ -86,6 +86,8 @@ impl From<Unbuilt> for StressError {
 
 /// A file ready to stress: its runners, and what it judges by.
 pub struct Stress {
+    /// The session the file was checked in, with the std its host gave.
+    session: cpl_facade::Session,
     name: String,
     path: PathBuf,
     source: String,
@@ -327,6 +329,7 @@ impl Stress {
             || judged_in_file
             || native.is_some_and(|n| n.brute.is_none() && n.judge != Judge::Tokens);
         Ok(Stress {
+            session: session.clone(),
             name: name.to_string(),
             path: path.to_path_buf(),
             source: source.to_string(),
@@ -375,8 +378,11 @@ impl Stress {
                     && (explain || !failure.verdict.timed_out()) =>
             {
                 Some(crate::traced::trace(
-                    &self.name,
-                    &self.source,
+                    crate::traced::File {
+                        session: &self.session,
+                        name: &self.name,
+                        source: &self.source,
+                    },
                     &failure.input,
                     explain,
                     how.as_ref(),
@@ -434,11 +440,18 @@ impl Stress {
                 return interactor.trap(&self.roles.solution, input, self.roles.limit);
             }
             _ if failure.transcript.is_some() => return None,
-            Trapped::Solution => crate::explain::trap_report_in(path, source, input, false, stack),
-            Trapped::Brute => self.brute_trap(input),
-            Trapped::Checker => {
-                crate::explain::checker_trap_in(path, source, input, &failure.got, stack)
+            Trapped::Solution => {
+                crate::explain::trap_report_in(&self.session, path, source, input, false, stack)
             }
+            Trapped::Brute => self.brute_trap(input),
+            Trapped::Checker => crate::explain::checker_trap_in(
+                &self.session,
+                path,
+                source,
+                input,
+                &failure.got,
+                stack,
+            ),
         };
         trapped.map(|t| t.json())
     }
@@ -451,9 +464,16 @@ impl Stress {
         let (path, stack) = (self.path.as_path(), self.stack_limit);
         match (self.own_brute, &self.part_brute) {
             _ if !self.file_solves => None,
-            (true, _) => crate::explain::trap_report_in(path, &self.source, input, true, stack),
+            (true, _) => crate::explain::trap_report_in(
+                &self.session,
+                path,
+                &self.source,
+                input,
+                true,
+                stack,
+            ),
             (false, Some(swapped)) => {
-                crate::explain::trap_report_in(path, swapped, input, false, stack)
+                crate::explain::trap_report_in(&self.session, path, swapped, input, false, stack)
             }
             (false, None) => None,
         }

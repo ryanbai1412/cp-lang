@@ -85,7 +85,18 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         let versus = Ok(crate::judge::Explaining::Versus);
         let source = std::fs::read_to_string(file).ok()?;
         let name = file.shown();
-        let traced = crate::traced::trace(&name, &source, &text, false, Some(&versus), None, None);
+        let traced = crate::traced::trace(
+            crate::traced::File {
+                session: &cpl_facade::Session::default(),
+                name: &name,
+                source: &source,
+            },
+            &text,
+            false,
+            Some(&versus),
+            None,
+            None,
+        );
         traced.ok().and_then(|traced| traced.divergence)
     };
     let found = located.as_ref().and_then(|_| divergence());

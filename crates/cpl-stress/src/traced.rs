@@ -25,6 +25,15 @@ pub struct Programs<'a> {
     pub interactor: Option<&'a cpl_facade::Program>,
 }
 
+/// The `.cp` file a case is traced in: its text under its shown name, in
+/// the session it is checked in.
+#[derive(Clone, Copy)]
+pub struct File<'a> {
+    pub session: &'a cpl_facade::Session,
+    pub name: &'a str,
+    pub source: &'a str,
+}
+
 /// A failing case, traced.
 pub struct Retraced {
     pub fast: Recording,
@@ -150,15 +159,19 @@ fn observe(
 /// its `@alt(f)` fns swapped in) and the interactor it talks to.
 /// `render` makes the page of the two runs.
 pub fn trace(
-    name: &str,
-    source: &str,
+    file: File,
     input: &str,
     explain: bool,
     how: Option<&Result<Explaining, String>>,
     stack_limit: Option<u32>,
     render: Option<Tracer>,
 ) -> Result<Traced, String> {
-    let db = cpl_facade::Session::default().with_file(name, source);
+    let File {
+        session,
+        name,
+        source,
+    } = file;
+    let db = session.with_file(name, source);
     let roles = db.roles(name).ok_or("the file can't be checked")?;
     let first = |diagnostics: Vec<cpl_diag::Diagnostic>| {
         let stops = |d: &&cpl_diag::Diagnostic| d.severity == cpl_diag::Severity::Error;

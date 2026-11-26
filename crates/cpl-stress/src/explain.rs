@@ -52,7 +52,14 @@ impl Trapped {
 /// `@alt(program)` fn, stops on `input`: the trap with its locals.
 pub fn trap_report(path: &Path, input: &str, brute: bool) -> Option<Trapped> {
     let text = std::fs::read_to_string(path).ok()?;
-    trap_report_in(path, &text, input, brute, None)
+    trap_report_in(
+        &cpl_facade::Session::default(),
+        path,
+        &text,
+        input,
+        brute,
+        None,
+    )
 }
 
 /// [`trap_report`] of `text` in place of the file's own source, such as the
@@ -60,13 +67,14 @@ pub fn trap_report(path: &Path, input: &str, brute: bool) -> Option<Trapped> {
 /// With `stack_limit`, it runs on the calling thread (wasm), without the
 /// locals, which take a second run on a thread of its own.
 pub fn trap_report_in(
+    session: &cpl_facade::Session,
     path: &Path,
     text: &str,
     input: &str,
     brute: bool,
     stack_limit: Option<u32>,
 ) -> Option<Trapped> {
-    let (name, db) = opened(path, text)?;
+    let (name, db) = opened(session, path, text)?;
     let text = text.to_string();
     let job = match brute {
         false => cpl_facade::Job::program(),
@@ -124,13 +132,14 @@ pub fn trap_report_in(
 /// `None` when it has no
 /// `@check` fn, or the fn accepts or rejects the output without a trap.
 pub fn checker_trap_in(
+    session: &cpl_facade::Session,
     path: &Path,
     text: &str,
     input: &str,
     got: &str,
     stack_limit: Option<u32>,
 ) -> Option<Trapped> {
-    let (name, db) = opened(path, text)?;
+    let (name, db) = opened(session, path, text)?;
     let (checker, _) = db.roles(&name)?.checker()?;
     let job = cpl_facade::Job::of(cpl_facade::Root::Checker(checker.to_string()));
     let program = db.program(&name, &job).ok()?;
@@ -160,7 +169,7 @@ pub fn checker_trap_in(
 /// interactive, traps or is still running after [`LIMIT`].
 pub fn interpreted_output(path: &Path, input: &str) -> Option<String> {
     let text = std::fs::read_to_string(path).ok()?;
-    let (name, db) = opened(path, &text)?;
+    let (name, db) = opened(&cpl_facade::Session::default(), path, &text)?;
     let program = db.program(&name, &cpl_facade::Job::program()).ok()?;
     if program.interactive() {
         return None;
@@ -171,13 +180,17 @@ pub fn interpreted_output(path: &Path, input: &str) -> Option<String> {
     String::from_utf8(sink).ok()
 }
 
-/// The session of the `.cp` file at `path`, read as `text`, under its shown
+/// `session` with the `.cp` file at `path`, read as `text`, under its shown
 /// name; `None` when it is not CP Lang.
-fn opened(path: &Path, text: &str) -> Option<(String, cpl_facade::Session)> {
+fn opened(
+    session: &cpl_facade::Session,
+    path: &Path,
+    text: &str,
+) -> Option<(String, cpl_facade::Session)> {
     if path.extension().is_none_or(|ext| ext != "cp") {
         return None;
     }
     let name = path.shown();
-    let db = cpl_facade::Session::default().with_file(&name, text);
+    let db = session.with_file(&name, text);
     Some((name, db))
 }

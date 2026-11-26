@@ -188,4 +188,6 @@ fn a_program_checks_and_runs_once_the_host_gives_the_std_it_needs() {
     }
     let stressed = playground.stress("buy.cp", buggy, 30, 1, 8);
     assert!(stressed.contains(r#""status":"fail""#), "{stressed}");
+    // Its explanation is traced in the same session, not one without the std.
+    assert!(!stressed.contains(r#""error":"#), "{stressed}");
 }
