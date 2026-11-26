@@ -226,6 +226,7 @@ pub fn emit(p: &Program, funcs: &[Func<CTy>]) -> String {
         if let Some((_, t)) = &f.region {
             e.name(t);
         }
+        e.name_built(&f.body);
     }
     for t in &p.globals {
         e.name(t);
@@ -423,6 +424,69 @@ impl Emit<'_> {
             visit(self, t, &mut done, &mut out);
         }
         out
+    }
+    /// Names the type of every value built in place, which no local may hold.
+    fn name_built(&mut self, ss: &[Stmt<CTy>]) {
+        fn expr(e: &mut Emit, x: &Expr<CTy>) {
+            match &x.kind {
+                EK::MakeStruct(xs) | EK::MakeClosure(xs) => {
+                    e.name(&x.ty);
+                    xs.iter().for_each(|y| expr(e, y));
+                }
+                EK::MakeUnion(_, y) => {
+                    e.name(&x.ty);
+                    expr(e, y);
+                }
+                EK::Inject(y) | EK::Widen(y) => expr(e, y),
+                EK::Intr(_, args, _) | EK::Call(_, args, _) => args.iter().for_each(|a| {
+                    if let Arg::Value(y) = a {
+                        expr(e, y)
+                    }
+                }),
+                EK::CallValue(c, xs, _) => {
+                    expr(e, c);
+                    xs.iter().for_each(|y| expr(e, y));
+                }
+                _ => {}
+            }
+        }
+        for st in ss {
+            match st {
+                Stmt::Let(_, x) | Stmt::Assign(_, x) | Stmt::Expr(x) | Stmt::Yield(x) => {
+                    expr(self, x)
+                }
+                Stmt::Return(x) => x.iter().for_each(|x| expr(self, x)),
+                Stmt::Check { cond, .. } => expr(self, cond),
+                Stmt::If(c, a, b) => {
+                    expr(self, c);
+                    self.name_built(a);
+                    self.name_built(b);
+                }
+                Stmt::Loop(a, b) => {
+                    self.name_built(a);
+                    self.name_built(b);
+                }
+                Stmt::Switch(c, arms) => {
+                    expr(self, c);
+                    arms.iter().for_each(|a| self.name_built(a));
+                }
+                Stmt::Print(ps) => ps.iter().for_each(|p| {
+                    if let PrintPiece::Value(x) = p {
+                        expr(self, x)
+                    }
+                }),
+                Stmt::Region { args, body, .. } => {
+                    args.iter().for_each(|a| {
+                        if let Arg::Value(y) = a {
+                            expr(self, y)
+                        }
+                    });
+                    self.name_built(body);
+                }
+                Stmt::Event(_, xs) => xs.iter().for_each(|x| expr(self, x)),
+                Stmt::Break | Stmt::Continue | Stmt::LendOut(_) => {}
+            }
+        }
     }
     fn name(&mut self, t: &CTy) -> String {
         if let Some(n) = self.names.get(t) {

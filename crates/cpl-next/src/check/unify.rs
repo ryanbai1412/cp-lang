@@ -503,6 +503,10 @@ impl<'a> Cx<'a> {
             return self.coerce_by(f, e, &want_s);
         }
         match (&have, &want_s) {
+            // An integer literal is that position of an integer domain (R04.2.18).
+            (Ty::Int, Ty::Dom(_)) if matches!(e.kind, TK::Int(_) | TK::Neg(_)) => {
+                self.position(want_s.clone(), e)
+            }
             // Loads widen, stores check (R03.1.4).
             (Ty::Range(..) | Ty::RangeOf(_), Ty::Int) => TExpr { ty: Ty::Int, ..e },
             (Ty::RangeOf(a), Ty::RangeOf(b)) if a == b => e,

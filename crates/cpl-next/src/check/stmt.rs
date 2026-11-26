@@ -1222,7 +1222,7 @@ impl<'a> Cx<'a> {
     pub(super) fn read_as(&mut self, t: &Ty, span: Span) -> TExpr {
         match self.shallow(t) {
             Ty::Struct(d, ts, _)
-                if Some(d) == self.d.core_struct("Array")
+                if Some(d) == self.array_id()
                     && self.shallow(&ts[1]) == Ty::Int
                     && self.d.core_fn("read_array").is_some() =>
             {
@@ -1275,10 +1275,32 @@ impl<'a> Cx<'a> {
             }
         }
     }
+    /// `i` as a position of the domain `dty`; a literal that is never one is E0306 (R04.4.25).
+    pub(super) fn position(&mut self, dty: Ty, i: TExpr) -> TExpr {
+        let span = i.span;
+        if let (Ty::Dom(d), TK::Int(k)) = (&dty, &i.kind) {
+            let (least, most) = self.domains[*d].within;
+            if least.is_some_and(|l| *k < l) || most.is_some_and(|m| *k > m) {
+                let name = self.domains[*d].name.clone();
+                self.err(
+                    span,
+                    format!(
+                        "{}: `{k}` is never a position of `{name}`",
+                        cpl_diag::codes::RANGE_STORE_CONST.0
+                    ),
+                );
+            }
+        }
+        TExpr {
+            kind: TK::DomFrom(dty.clone(), Box::new(i)),
+            ty: dty,
+            span,
+        }
+    }
     /// An `Int` used to index an array is checked against the array's domain. The proof that removes the check is the facts layer's.
     pub(super) fn index_arg(&mut self, base: &Ty, i: TExpr) -> TExpr {
         if let Ty::Struct(d, ts, _) = self.shallow(base) {
-            if Some(d) == self.d.core_struct("Array") && self.shallow(&i.ty) == Ty::Int {
+            if Some(d) == self.array_id() && self.shallow(&i.ty) == Ty::Int {
                 let dty = self.shallow(&ts[0]);
                 if matches!(dty, Ty::Dom(_) | Ty::Param(_)) {
                     let span = i.span;
@@ -1296,24 +1318,7 @@ impl<'a> Cx<'a> {
                             );
                         }
                     }
-                    if let (Ty::Dom(d), TK::Int(k)) = (&dty, &i.kind) {
-                        let (least, most) = self.domains[*d].within;
-                        if least.is_some_and(|l| *k < l) || most.is_some_and(|m| *k > m) {
-                            let name = self.domains[*d].name.clone();
-                            self.err(
-                                span,
-                                format!(
-                                    "{}: `{k}` is never a position of `{name}`",
-                                    cpl_diag::codes::RANGE_STORE_CONST.0
-                                ),
-                            );
-                        }
-                    }
-                    return TExpr {
-                        kind: TK::DomFrom(dty.clone(), Box::new(i)),
-                        ty: dty,
-                        span,
-                    };
+                    return self.position(dty, i);
                 }
             }
         }

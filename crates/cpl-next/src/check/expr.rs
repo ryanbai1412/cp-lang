@@ -394,7 +394,14 @@ impl<'a> Cx<'a> {
         let rt = self.shallow(&recv.ty);
         let call = if let Ty::Param(i) = &rt {
             let tr = (self.bound_traits(*i).into_iter())
-                .find(|t| self.d.traits[t.tr.0].name == trait_name);
+                .find(|t| self.d.traits[t.tr.0].name == trait_name)
+                .or_else(|| {
+                    let tr = TraitId(self.d.traits.iter().position(|t| t.name == trait_name)?);
+                    self.blanket(*i, tr).then(|| crate::decls::TraitRef {
+                        tr,
+                        args: Vec::new(),
+                    })
+                });
             tr.map(|tr| {
                 if let Some(&m) = self.d.traits[tr.tr.0].methods.get(method) {
                     self.reach(m);
@@ -1037,7 +1044,7 @@ impl<'a> Cx<'a> {
                     .collect();
                 let targs = (0..xs.len()).map(|_| self.new_ty()).collect();
                 let sets = (0..self.d.s(d).n_sets).map(|_| self.new_set()).collect();
-                self.construct(d, targs, sets, &args, span)
+                self.construct(d, targs, sets, &args, span, want)
             }
             // `(lo: 2, hi: 7)` is its record struct's constructor, by field name (R02.5.2).
             ExprKind::Record(fs) => {
@@ -1222,6 +1229,14 @@ impl<'a> Cx<'a> {
                 let ls = self.d.s(list);
                 let elem = match want.map(|w| self.shallow(w)) {
                     Some(Ty::Struct(d, ts, _)) if d == list => ts[0].clone(),
+                    // A literal where `[K]T` is expected becomes one, so its elements are `T`s; when `T`
+                    // is a list the literal may be that `T` filling every cell (R04.8.10), so it waits.
+                    Some(Ty::Struct(d, ts, _))
+                        if Some(d) == self.array_id()
+                            && !matches!(ts.last().map(|t| self.shallow(t)), Some(Ty::Struct(l, ..)) if l == list) =>
+                    {
+                        ts.last().cloned().unwrap_or_else(|| self.new_ty())
+                    }
                     _ => self.new_ty(),
                 };
                 let lty = Ty::Struct(list, vec![elem.clone()], Vec::new());
@@ -1284,6 +1299,14 @@ impl<'a> Cx<'a> {
                 let ls = self.d.s(list);
                 let elem = match want.map(|w| self.shallow(w)) {
                     Some(Ty::Struct(d, ts, _)) if d == list => ts[0].clone(),
+                    // A literal where `[K]T` is expected becomes one, so its elements are `T`s; when `T`
+                    // is a list the literal may be that `T` filling every cell (R04.8.10), so it waits.
+                    Some(Ty::Struct(d, ts, _))
+                        if Some(d) == self.array_id()
+                            && !matches!(ts.last().map(|t| self.shallow(t)), Some(Ty::Struct(l, ..)) if l == list) =>
+                    {
+                        ts.last().cloned().unwrap_or_else(|| self.new_ty())
+                    }
                     _ => self.new_ty(),
                 };
                 let lty = Ty::Struct(list, vec![elem.clone()], Vec::new());
@@ -1540,7 +1563,7 @@ impl<'a> Cx<'a> {
                 let mut targs = given;
                 targs.extend((0..fresh).map(|_| self.new_ty()));
                 let sets: Vec<SetTy> = (0..s.n_sets).map(|_| self.new_set()).collect();
-                self.construct(d, targs, sets, args, span)
+                self.construct(d, targs, sets, args, span, want)
             }
             (None, Named::Alias(_)) => {
                 self.err(

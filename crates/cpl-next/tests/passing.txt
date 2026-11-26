@@ -159,6 +159,7 @@ core-02/record-pattern-for-rest.cp
 core-02/record-pattern-let.cp
 core-02/record-pattern-missing-field.cp
 core-02/record-pattern-rest.cp
+core-02/record-pattern-shorthand.cp
 core-02/record-structural.cp
 core-02/runtime-range-bound.cp
 core-02/str-index-assign.cp
@@ -214,6 +215,7 @@ core-04/anon-range-array.cp
 core-04/array-dimension-starting-at-a-value-rejected.cp
 core-04/array-elements-do-not-widen.cp
 core-04/array-equals-short-list-literal-rejected.cp
+core-04/array-list-compare-record.cp
 core-04/array-value-declared-count-differs-rejected.cp
 core-04/b1-slice-in-keys-read.cp
 core-04/b1-slice-walk-by-nth-no-lint.cp
@@ -254,6 +256,8 @@ core-04/list-literal-for-narrow-param.cp
 core-04/list-literal-of-element-type-fills.cp
 core-04/list-literal-short-for-named-domain-rejected.cp
 core-04/literal-outside-domain.cp
+core-04/literal-position-in-list-outside.cp
+core-04/literal-record-compare.cp
 core-04/nested-slice-below-view-start-traps.cp
 core-04/nth-element-renamed.cp
 core-04/nth-past-end-traps.cp
@@ -367,6 +371,7 @@ core-05/return-lent-param.cp
 core-05/return-through-recursive-generator.cp
 core-05/returning-a-held-call-needs-lends.cp
 core-05/same-field-lent-twice.cp
+core-05/spec-block-dsu-cache-field.cp
 core-05/spec-block-grow-let-target.cp
 core-05/spec-block-grow-needs-mut-arg.cp
 core-05/spec-block-keep-loop-row.cp
@@ -479,6 +484,7 @@ core-08/impls-choosing-two-types-for-one-type.cp
 core-08/inherent-before-trait.cp
 core-08/inherent-on-builtin-type.cp
 core-08/lambda-to-type-param-beside-a-seq-stays-a-fn.cp
+core-08/law-declared.cp
 core-08/law-must-be-bool.cp
 core-08/monomorphized.cp
 core-08/named-struct-takes-no-default-without-an-impl.cp
@@ -669,6 +675,7 @@ next/a_eq_01_list_and_optional.cp
 next/a_eq_02_tuples.cp
 next/a_eq_03_derived_structs.cp
 next/a_esc_01_closure_into_global.cp
+next/a_esc_04_closure_in_returned_tuple.cp
 next/a_esc_05_closure_via_second_closure.cp
 next/a_esc_06_closure_in_returned_list.cp
 next/a_esc_07_joined_closure_returned.cp
@@ -776,6 +783,7 @@ next/d17_literal_never_a_position.cp
 next/k01_escape_global_list.cp
 next/k02_escape_global_var.cp
 next/k04_escape_struct_ret.cp
+next/k05_escape_tuple_ret.cp
 next/k06_loop_var_fresh.cp
 next/k07_loop_var_fresh_top.cp
 next/k08_counter_pair.cp
@@ -812,6 +820,7 @@ next/n_cell_03_method_on_cell.cp
 next/n_clone_01_clone_is_an_ordinary_trait.cp
 next/n_convert_01_core_types_convert_by_impl.cp
 next/n_convert_02_char_outside_ascii_traps.cp
+next/n_domain_09_literal_is_a_position.cp
 next/n_enum_01_values_and_order.cp
 next/n_impl_01_inherent_outside_its_module.cp
 next/n_impl_03_trait_args_pick_the_impl.cp
@@ -839,6 +848,7 @@ next/n_slice_07_range_cut_is_a_sub_range.cp
 next/n_slice_08_range_cut_outside_traps.cp
 next/n_slice_09_lent_field_walks_its_source.cp
 next/n_slice_10_literal_key_of_unknown_view_is_checked_at_run_time.cp
+next/n_table_01_one_cell_per_position.cp
 next/n_targs_01_written.cp
 next/n_u64_01_wraps_and_compares_unsigned.cp
 next/n_u64_02_int_of_a_large_u64_traps.cp

@@ -215,6 +215,8 @@ pub struct Decls {
     pub domain_trait: Option<TraitId>,
     /// The trait core marks `@convert`: `T(x)` for a core type `T` is `x`'s impl of it at `T`.
     pub convert_trait: Option<TraitId>,
+    /// Per fn, the type parameters that key an array it names: domain parameters (R04.2).
+    pub domain_params: HashMap<FnId, Vec<usize>>,
     /// Core's `@coerce` fns: each converts a value of its parameter's type where its result's
     /// type is wanted (R04.8.10).
     pub coercions: Vec<FnId>,
@@ -371,6 +373,53 @@ fn alias(cx: &mut TyCx, id: usize, n: &str, a: Vec<Ty>, errors: &mut Vec<Msg>) -
 /// own is refused until the slice checks it.
 fn read_elsewhere(name: &str) -> bool {
     matches!(name, "lint" | "stress" | "aka" | "was" | "on_unimplemented")
+}
+
+/// A type parameter that keys an array in a fn's signature, or in its owner's fields, is a domain
+/// parameter (`struct Dsu<V>: parent: [V]V`): its body may use what every domain has (R04.2). A
+/// caller is not held to `Domain`, since a list keyed by `Int` passes as `[Int]T`.
+fn domain_params(d: &mut Decls) {
+    let Some(array) = d.core_struct("Array") else {
+        return;
+    };
+    // Also through a struct whose own parameter in that place is a domain: `self: Dsu<V>`.
+    fn keys(d: &Decls, t: &Ty, array: StructId, i: usize, depth: usize) -> bool {
+        let go = |t: &Ty| depth < 8 && keys(d, t, array, i, depth + 1);
+        match t {
+            Ty::Struct(s, ts, _) => {
+                (*s == array && ts.first() == Some(&Ty::Param(i)))
+                    || ts.iter().any(go)
+                    || (ts.iter().enumerate()).any(|(k, a)| {
+                        *a == Ty::Param(i)
+                            && depth < 8
+                            && (d.structs[s.0].fields.iter())
+                                .any(|(_, f)| keys(d, f, array, k, depth + 1))
+                    })
+            }
+            Ty::Raw(e) | Ty::Ref(e) => go(e),
+            Ty::Fn(ps, r, _) => ps.iter().chain([&**r]).any(go),
+            _ => false,
+        }
+    }
+    for k in 0..d.fns.len() {
+        let f = &d.fns[k];
+        let fields: &[(String, Ty)] = match f.owner {
+            Some(Owner::Struct(s)) => &d.structs[s.0].fields,
+            _ => &[],
+        };
+        let added: Vec<usize> = (0..f.generics.len())
+            .filter(|&i| {
+                (f.params.iter().map(|p| &p.ty))
+                    .chain([&f.ret])
+                    .chain(&f.self_ty)
+                    .chain(fields.iter().map(|(_, t)| t))
+                    .any(|t| keys(d, t, array, i, 0))
+            })
+            .collect();
+        if !added.is_empty() {
+            d.domain_params.insert(FnId(k), added);
+        }
+    }
 }
 
 /// `Seq<T>` written where a trait is wanted.
@@ -1552,6 +1601,7 @@ pub fn collect(
         })
         .collect();
     d.errors.extend(errors);
+    domain_params(&mut d);
     let unmet = supertraits_unmet(&d);
     d.misdeclared.extend(unmet);
     (d, main)

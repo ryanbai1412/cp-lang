@@ -93,28 +93,30 @@ impl Cx<'_> {
                 .extend(needs.into_iter().map(|n| (t.clone(), n, span)));
             return Some(true);
         }
+        // A bound the fn states is met as stated; otherwise a parameter meets a trait through a
+        // blanket impl whose bounds it meets (`impl<D: Domain> Eq for D`), like any other type.
+        if let Ty::Param(i) = t {
+            let tr = &self.d.traits[r.tr.0];
+            let mut have = self.bound_traits(*i).into_iter().filter(|h| h.tr == r.tr);
+            let fitting: Vec<TraitRef> = (have.clone())
+                .filter(|h| {
+                    (tr.inputs(&h.args).iter().zip(tr.inputs(&r.args)))
+                        .all(|(a, b)| self.fits(a, b))
+                })
+                .collect();
+            let Some(h) = fitting.first().cloned().or_else(|| have.next()) else {
+                return Some(self.blanket(*i, r.tr));
+            };
+            if fitting.len() > 1 && tr.inputs(&r.args).iter().any(|a| self.unknown(a)) {
+                return None;
+            }
+            return Some(h.args.iter().zip(&r.args).all(|(a, b)| self.unify(a, b)));
+        }
         if Some(r.tr) == self.d.domain_trait {
             return Some(matches!(t, Ty::Dom(_) | Ty::Error));
         }
         match t {
             Ty::Error => Some(true),
-            Ty::Param(i) => {
-                let tr = &self.d.traits[r.tr.0];
-                let mut have = self.bound_traits(*i).into_iter().filter(|h| h.tr == r.tr);
-                let fitting: Vec<TraitRef> = (have.clone())
-                    .filter(|h| {
-                        (tr.inputs(&h.args).iter().zip(tr.inputs(&r.args)))
-                            .all(|(a, b)| self.fits(a, b))
-                    })
-                    .collect();
-                let Some(h) = fitting.first().cloned().or_else(|| have.next()) else {
-                    return Some(false);
-                };
-                if fitting.len() > 1 && tr.inputs(&r.args).iter().any(|a| self.unknown(a)) {
-                    return None;
-                }
-                Some(h.args.iter().zip(&r.args).all(|(a, b)| self.unify(a, b)))
-            }
             _ => {
                 // The impl whose trait arguments fit too: `Int` has `Into<Char>` and `Into<U64>`.
                 let want: Vec<Ty> = (self.d.traits[r.tr.0].inputs(&r.args).iter())
@@ -164,6 +166,24 @@ impl Cx<'_> {
                 Some(args.iter().zip(&r.args).all(|(a, b)| self.unify(a, b)))
             }
         }
+    }
+    /// Whether type parameter `i` meets `tr` through a blanket impl whose bounds its own bounds
+    /// meet: `impl<D: Domain> Eq for D` gives every `D: Domain` its `==`.
+    /// A domain parameter (`Decls::domain_params`) meets what `Domain` gives.
+    pub(super) fn blanket(&self, i: usize, tr: TraitId) -> bool {
+        let mut have: Vec<TraitId> = self.bound_traits(i).iter().map(|h| h.tr).collect();
+        let dom = (self.decl).and_then(|f| self.d.domain_params.get(&f));
+        if dom.is_some_and(|ds| ds.contains(&i)) {
+            have.extend(self.d.domain_trait);
+        }
+        (self.d.impls.iter()).any(|im| {
+            im.trait_.tr == tr
+                && im.trait_.args.is_empty()
+                && matches!(im.for_, Ty::Param(_))
+                && (im.bounds.iter())
+                    .filter(|(k, _)| im.for_ == Ty::Param(*k))
+                    .all(|(_, b)| have.contains(&b.tr))
+        })
     }
     /// The traits the fn being checked bounds its type parameter `i` by, with their supertraits (R08.1.1).
     pub(super) fn bound_traits(&self, i: usize) -> Vec<TraitRef> {

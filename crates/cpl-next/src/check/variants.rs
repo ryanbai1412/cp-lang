@@ -155,7 +155,16 @@ impl Cx<'_> {
         sets: Vec<SetTy>,
         args: &[ast::Arg],
         span: Span,
+        want: Option<&Ty>,
     ) -> TExpr {
+        // The expected type fixes what the fields cannot: `let r: (u: V, v: V) = (u: 0, v: 2)`.
+        // Only the type arguments: the functions a field can hold are still added by the arguments.
+        if let Some(w) = want {
+            if matches!(self.shallow(w), Ty::Struct(o, ..) if o == d) {
+                let open = (0..sets.len()).map(|_| self.new_set()).collect();
+                self.unify(&Ty::Struct(d, targs.clone(), open), w);
+            }
+        }
         let s = self.d.s(d);
         let sub = Subst {
             tys: &targs,
@@ -203,7 +212,7 @@ impl Cx<'_> {
         if self.d.s(p).n_sets > 0 {
             self.err(span, "slice: a function value in a variant's payload");
         }
-        let payload = self.construct(p, targs.clone(), Vec::new(), args, span);
+        let payload = self.construct(p, targs.clone(), Vec::new(), args, span, None);
         TExpr {
             kind: TK::Variant(i, Box::new(payload)),
             ty: Ty::Struct(e, targs, Vec::new()),

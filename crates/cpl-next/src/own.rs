@@ -76,7 +76,12 @@ struct Reach {
 
 /// R1: no part of the value lives on the heap, so using it is a copy.
 pub fn plain(d: &Decls, t: &Ty, depth: usize) -> bool {
+    plain_in(d, t, depth, &[])
+}
+/// Whether `t` is copied, not moved, where the type parameters `doms` are domains (R04.2).
+fn plain_in(d: &Decls, t: &Ty, depth: usize, doms: &[usize]) -> bool {
     match t {
+        Ty::Param(i) => doms.contains(i),
         Ty::Int
         | Ty::Range(..)
         | Ty::RangeOf(_)
@@ -92,7 +97,7 @@ pub fn plain(d: &Decls, t: &Ty, depth: usize) -> bool {
             d.s(*id)
                 .fields
                 .iter()
-                .all(|(_, ft)| plain(d, &s.ty(ft), depth + 1))
+                .all(|(_, ft)| plain_in(d, &s.ty(ft), depth + 1, doms))
         }
         _ => false,
     }
@@ -250,7 +255,7 @@ impl Cx<'_> {
                 .params
                 .iter()
                 .chain(tf.self_local.iter())
-                .filter(|l| !plain(self.d, &tf.locals[**l].ty, 0))
+                .filter(|l| !self.plain(&tf.locals[**l].ty, 0))
                 .map(|l| Root::Local(*l))
                 .collect();
             self.expr(&tf.body, &mut fx);
@@ -354,11 +359,11 @@ impl Cx<'_> {
                             else {
                                 continue;
                             };
-                            loc.mutable || !plain(self.d, &loc.ty, 0)
+                            loc.mutable || !self.plain(&loc.ty, 0)
                         }
                         VarRef::Global(g) => {
                             let loc = &self.t.globals[*g];
-                            !loc.top && (loc.mutable || !plain(self.d, &loc.ty, 0))
+                            !loc.top && (loc.mutable || !self.plain(&loc.ty, 0))
                         }
                     };
                     let r = self.root(*v);
@@ -377,7 +382,7 @@ impl Cx<'_> {
             }
             // R05.3.5: `s[i]` of a heap element lends `s`, or only that element of it when `i` is
             // a literal (R05.8.2).
-            TK::Elem(x) if !plain(self.d, &e.ty, 0) && !matches!(e.ty, Ty::Param(_)) => {
+            TK::Elem(x) if !self.plain(&e.ty, 0) && !matches!(e.ty, Ty::Param(_)) => {
                 match &x.kind {
                     TK::Call {
                         recv: Some(r),
@@ -409,7 +414,7 @@ impl Cx<'_> {
                 let all = recv.as_deref().into_iter().chain(args.iter());
                 for (i, a) in all.enumerate() {
                     let (TArg::Value(v) | TArg::Mut(v)) = a;
-                    if !lends.contains(&i) || plain(self.d, &v.ty, 0) {
+                    if !lends.contains(&i) || self.plain(&v.ty, 0) {
                         continue;
                     }
                     match self.place(v) {
@@ -427,7 +432,7 @@ impl Cx<'_> {
                 if let (true, Some(p), false) = (
                     matches!(e.kind, TK::Field(..) | TK::Payload(..)),
                     self.place(e),
-                    plain(self.d, &e.ty, 0),
+                    self.plain(&e.ty, 0),
                 ) {
                     if !self.decl.contains_key(&p.root) || !p.path.is_empty() {
                         out.insert(Pl::whole(p.root));
@@ -573,7 +578,7 @@ impl Cx<'_> {
             return;
         }
         self.lent.entry(b).or_default().extend(what.iter().cloned());
-        if !plain(self.d, &e.ty, 0) {
+        if !self.plain(&e.ty, 0) {
             self.frozen
                 .entry(b)
                 .or_default()
@@ -618,7 +623,7 @@ impl Cx<'_> {
             if self.decl.contains_key(&r)
                 && !self.borrowed.contains(&r)
                 && !self.lent.contains_key(&r)
-                && !plain(self.d, &e.ty, 0)
+                && !self.plain(&e.ty, 0)
             {
                 self.moved.insert(r);
                 // R05.10.2: a captured variable can't be moved while the fn value is alive.
@@ -694,8 +699,19 @@ impl Cx<'_> {
             _ => None,
         }
     }
+    /// The fields of struct type `t` whose declared type is one of its type parameters.
+    fn generic_fields(&self, t: &Ty) -> BTreeSet<usize> {
+        let Ty::Struct(id, ..) = t else {
+            return BTreeSet::new();
+        };
+        (self.d.s(*id).fields.iter().enumerate())
+            .filter(|(_, (_, ft))| matches!(ft, Ty::Param(_)))
+            .map(|(i, _)| i)
+            .collect()
+    }
     fn plain(&self, t: &Ty, depth: usize) -> bool {
-        plain(self.d, t, depth)
+        let doms = (self.cur).and_then(|c| self.d.domain_params.get(&c));
+        plain_in(self.d, t, depth, doms.map_or(&[], |v| v.as_slice()))
     }
     fn name(&self, p: &Pl) -> String {
         let (mut s, mut ty) = match p.root {
@@ -1060,10 +1076,14 @@ impl Cx<'_> {
                 self.call("the function value", e.span, &all, callee, fx);
             }
             TK::Struct(xs) => {
-                for x in xs {
+                let generic = self.generic_fields(&e.ty);
+                for (i, x) in xs.iter().enumerate() {
                     self.expr(x, fx);
-                    // R05.5: a constructor keeps its arguments, so an owned heap binding moves in.
-                    self.take(x);
+                    // R05.5.3: a type-parameter field holds a heap place by lending it; any other
+                    // field keeps its argument, so an owned heap binding moves in (R05.5).
+                    if !(generic.contains(&i) && self.place(x).is_some()) {
+                        self.take(x);
+                    }
                 }
             }
             TK::Lambda { id, body, .. } => {
@@ -1304,7 +1324,7 @@ impl Cx<'_> {
                         .map(|l| l.ty.clone()),
                     VarRef::Global(g) => self.t.globals.get(*g).map(|l| l.ty.clone()),
                 };
-                if item_ty.is_some_and(|t| !plain(self.d, &t, 0)) {
+                if item_ty.is_some_and(|t| !self.plain(&t, 0)) {
                     self.borrowed.insert(item);
                 }
                 self.regions.push((held.clone(), lent.clone()));
