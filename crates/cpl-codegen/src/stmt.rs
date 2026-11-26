@@ -1152,10 +1152,13 @@ impl<'p> Emitter<'p> {
                     let text = self.expr(src).text;
                     self.line(out, &format!("const {cpp}& {name} = {text};"));
                     self.ref_bound.insert(*slot);
-                } else if !taken && self.points_at(*slot, init, tail.as_ref()) {
+                } else if !taken
+                    && !text.starts_with("std::move(")
+                    && self.points_at(*slot, init, tail.as_ref())
+                {
                     // `var a = m.id` set again only whole: it points at the
                     // place until then, and owns each value it is set to,
-                    // made only when it is.
+                    // made only when it is. A part moved out is owned already.
                     self.pointed.insert(*slot);
                     self.line(out, &format!("std::optional<{cpp}> {name}_own;"));
                     self.line(out, &format!("const {cpp}* {name} = &{text};"));

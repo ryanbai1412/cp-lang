@@ -1114,6 +1114,29 @@ fn a_list_a_later_struct_or_temporary_view_still_reads_is_kept() {
 }
 
 #[test]
+fn a_var_set_again_only_whole_owns_a_part_moved_out_of_its_place() {
+    // std's `pow`: `var acc = m.id` where `m.id` is never read again moves the
+    // part out, so `acc` owns it: a pointer to the moved value would not compile.
+    let cpp = cpp(concat!(
+        "struct M(id: List<Int>, w: Int)\n",
+        "fn join(x: List<Int>, y: Int) -> List<Int>:\n",
+        "    [x[0] + y]\n",
+        "fn grow(n: Int) -> List<Int>:\n",
+        "    let m = M([n], n)\n",
+        "    var acc = m.id\n",
+        "    var e = n\n",
+        "    while e > 0:\n",
+        "        acc = join(acc, m.w)\n",
+        "        e -= 1\n",
+        "    acc\n",
+        "let n: Int = read()\n",
+        "print(grow(n)[0])\n",
+    ));
+    let grow = &cpp[cpp.find("grow(").unwrap()..];
+    assert!(!grow.contains("&std::move("), "{grow}");
+}
+
+#[test]
 fn a_var_set_again_only_whole_points_at_the_place_it_starts_from() {
     let cpp = cpp(concat!(
         "fn join(x: List<Int>, y: List<Int>) -> List<Int>:\n",
