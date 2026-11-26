@@ -381,7 +381,12 @@ impl<'p> Emitter<'p> {
             }
             _ => {
                 let text = self.expr(e).text;
-                self.line(out, &format!("{text};"));
+                // `T(x);` declares `x` ([stmt.ambig]); in parentheses it is the cast.
+                if text.starts_with(&format!("{}(", self.ty(&e.ty))) {
+                    self.line(out, &format!("({text});"));
+                } else {
+                    self.line(out, &format!("{text};"));
+                }
             }
         }
     }

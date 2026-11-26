@@ -1471,3 +1471,9 @@ fn a_range_of_a_sorted_bag_passes_its_constant_bounds_to_one_call() {
         "a view's read in a lambda:\n{out}"
     );
 }
+
+#[test]
+fn a_cast_whose_value_is_dropped_is_not_read_as_a_declaration() {
+    let out = cpp("for i in 0..2:\n    let a = [i]\n    let b = List(a)\nprint(1)\n");
+    assert!(out.contains("(std::vector<ll>(a));"), "{out}");
+}
