@@ -81,7 +81,10 @@ one commit; it grows until it accepts every program. While it grows:
 - it is reachable from the test harness only (rule 5);
 - its accepted counts are published and may only rise; the gate
   fails on a drop;
-- its end date is set from the measured rate of its first week;
+- its end date is set from the measured rate of its first week:
+  **2026-12-06**, set 2026-11-26 with six lanes working on it;
+- today's checker, lowering, interpreter and emitter are frozen by
+  the `old_pipeline_lines` ratchet, which may only fall (rule 9);
 - the tree-walker's removal is part of its exit, not a later cleanup.
 
 **Why this order.** Stage 3 was first written as finishing today's

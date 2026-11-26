@@ -1327,7 +1327,10 @@ def next_std_names(root: Path) -> list[str]:
     std = root / "crates/cpl-next/std.cp"
     if not std.is_file():
         return []
-    names = set(NEXT_STD_DECL_RE.findall(std.read_text(encoding="utf-8"))) | {"print", "write", "read"}
+    sources = [std, *sorted((root / "std").glob("**/*.cp"))]
+    names = {"print", "write", "read"}
+    for f in sources:
+        names |= set(NEXT_STD_DECL_RE.findall(f.read_text(encoding="utf-8")))
     out = []
     for p in _rs_files(root, "crates/cpl-next/src", tests=False):
         rel = _rel(root, p)
@@ -1335,7 +1338,28 @@ def next_std_names(root: Path) -> list[str]:
             if line.lstrip().startswith("//"):
                 continue
             out += [f"{rel}:{i}: {n}" for n in RUST_STR_RE.findall(line) if n in names]
+            # A name matched by its start (`starts_with("Tuple")`) or built (`format!("Tuple{}")`).
+            parts = ("".join(t) for t in NEXT_NAME_PART_RE.findall(line))
+            out += [f"{rel}:{i}: {n}*" for n in parts if len(n) > 2 and n not in names and any(m.startswith(n) for m in names)]
     return out
+
+
+NEXT_NAME_PART_RE = re.compile(r'(?:starts_with|strip_prefix|ends_with|strip_suffix)\(\s*"([A-Za-z_]\w*)"|format!\(\s*"([A-Za-z_]\w*)\{')
+
+
+def old_pipeline_lines(root: Path) -> list[str]:
+    """Code lines in today's checker, lowering, interpreter and C++ emitter, which stage 5 deletes.
+    They are frozen (migration rule 9): a fix goes to a conformance case the new pipeline must pass,
+    so this only falls, and reaches 0 in the switching landing."""
+    out = []
+    for crate in OLD_PIPELINE_CRATES:
+        for p in _rs_files(root, f"crates/{crate}/src"):
+            rel = _rel(root, p)
+            out += [f"{rel}:{i}" for i, l in enumerate(_lines(p), 1) if l.strip() and not l.lstrip().startswith("//")]
+    return out
+
+
+OLD_PIPELINE_CRATES = ("cpl-check", "cpl-ir", "cpl-interp", "cpl-codegen")
 
 
 STRING_KEYED_MAP_RE = re.compile(r"HashMap<\s*(?:String|&(?:'\w+\s+)?str|Box<str>|Arc<str>)\s*,")
@@ -3413,6 +3437,7 @@ COUNTERS = {
     "next_cases_removed": ("conformance cases or new-pipeline tests deleted with no line in "
                            "spec/conformance/REMOVED.md (Core)", next_cases_removed, True),
     "next_std_names": ("library declarations the new pipeline (cpl-next) knows by name (Core)", next_std_names, True),
+    "old_pipeline_lines": ("code lines in the frozen old checker, lowering, interpreter and emitter (Core)", old_pipeline_lines, True),
     "next_not_passing": ("cases the new pipeline (cpl-next) does not pass yet: wrong or refused (Core)", next_not_passing, True),
     "own_databases": ("Database built outside cpl-check", own_databases, True),
     "ir_reinfer": ("lowering re-inferring a type the checker's facts give", ir_reinfer, True),
