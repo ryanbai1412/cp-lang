@@ -25,6 +25,7 @@ jobs:
           sparse-checkout: |
             justfile
             .github/actions
+            scripts/install-tools.sh
             scripts/retry.sh
             research/acceptance
             editors/lsp-*

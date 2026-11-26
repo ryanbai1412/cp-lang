@@ -149,8 +149,9 @@ acceptance-steps os:
     research/acceptance/ci-steps.sh "{{os}}"
 
 # Run the Rust workspace test suite via cargo-nextest (or cargo test).
+[positional-arguments]
 test *args:
-    cargo nextest run --workspace {{args}}
+    cargo nextest run --workspace "$@"
 
 # Run zero-cost abstraction + corpus runtime (including perf.cp) benchmarks (not in fast gate).
 bench *args:
