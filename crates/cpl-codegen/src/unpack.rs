@@ -109,7 +109,9 @@ fn parts(
     // read a global an earlier part stored, directly or through a call.
     let stores = |g: Option<&GlobalId>, upto: usize| {
         rest[..upto].iter().any(|s| match (s, g) {
-            (Stmt::Assign(place, ..), Some(g)) => matches!(&place.kind, PlaceKind::Global(h) if h == g),
+            (Stmt::Assign(place, ..), Some(g)) => {
+                matches!(&place.kind, PlaceKind::Global(h) if h == g)
+            }
             (Stmt::Assign(..), None) => true,
             _ => false,
         })
