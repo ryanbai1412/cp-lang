@@ -237,10 +237,11 @@ def package_limits(pkg):
 
 def judged(pkg, source, inputs, cpl):
     """Run `source` with `cpl test` on `inputs`, answers from the accepted C++
-    (none for an interactive package): (all passed, cases run)."""
+    (none for an interactive package): (all passed, cases run, each failed case
+    as `<case> <verdict>`)."""
     ref = None if pkg.interactor else pkg.reference()
     if not inputs or (ref is None and not pkg.interactor):
-        return False, 0
+        return False, 0, []
     with tempfile.TemporaryDirectory() as cases:
         try:
             exe = binary(ref) if ref else None
@@ -260,18 +261,24 @@ def judged(pkg, source, inputs, cpl):
             results = json.loads(r.stdout)["cases"]
         except (ValueError, KeyError):
             if "does not build" in r.stderr:
-                return False, 0
+                return False, 0, ["does not build"]
             raise InfraError(f"{pkg.id}: cpl test: {r.stderr.strip()[:300]}")
-        return bool(results) and all(c["verdict"] == "ok" for c in results), len(results)
+        misses = [f"{i} {c['verdict']}" for i, c in enumerate(results, 1) if c["verdict"] != "ok"]
+        return bool(results) and not misses, len(results), misses
 
 
 def dream_stress(pkg, cpl):
     """Does dream.cp agree with the accepted C++ on the package's inputs?"""
     try:
-        ok, n = judged(pkg, pkg.dream, stress_inputs(pkg, cpl), cpl)
+        ok, n, misses = judged(pkg, pkg.dream, stress_inputs(pkg, cpl), cpl)
     except (RuntimeError, subprocess.SubprocessError, OSError) as e:
         raise InfraError(f"{pkg.id}: {e}") from e
-    return {"ok": ok, "cases": n, "sha": blob_sha(pkg.dream)}
+    return {"ok": ok, "cases": n, "sha": blob_sha(pkg.dream), **({} if ok else {"misses": misses})}
+
+
+def dream_failure(pkg, got):
+    """The finding for a dream that disagrees, naming each case it fails and how."""
+    return f"dream-stress {pkg.id} fails-on-{got['cases']}-cases: {', '.join(got['misses']) or 'no cases'}"
 
 
 DREAM_ERROR = re.compile(r"^error\[(E\d{4})\]: (.*)$")
@@ -1494,7 +1501,7 @@ def check_max(pkg, ctx):
         inputs.append((" ".join(args), data))
     if not pkg.port:
         # A dream through its grader: `cpl test` judges it at the limits.
-        ok, _ = judged(pkg, pkg.solution, [d.decode() for _, d in inputs], ctx.cpl)
+        ok, _, _ = judged(pkg, pkg.solution, [d.decode() for _, d in inputs], ctx.cpl)
         return [] if ok else [f"max-fails {pkg.id} --max"]
     # A port the size check can't read yet is counted by corpus_max_unread, not failed here.
     found = [f for f in merged_short([max_short(pkg, ctx.cpl, d.decode()) for _, d in inputs])
@@ -1547,7 +1554,7 @@ def check_dream(pkg, ctx):
         return []
     got = dream_stress(pkg, ctx.cpl)
     if not got["ok"]:
-        return [f"dream-stress {pkg.id} fails-on-{got['cases']}-cases"]
+        return [dream_failure(pkg, got)]
     if (pkg.read_meta().get("dream_stress") or {}).get("sha") != got["sha"]:
         return [f"dream-unrecorded {pkg.id} run-scripts/corpus.py-record-{pkg.id}-and-stage-meta.json"]
     return []
@@ -1574,7 +1581,7 @@ def record_dreams(args):
         if verdict["ok"]:
             record(pkg, "dream_stress", verdict)
         else:
-            failed.append(f"dream-stress {pkg.id} fails-on-{verdict['cases']}-cases")
+            failed.append(dream_failure(pkg, verdict))
     for f in sorted(failed):
         print(f)
     print(f"corpus: recorded {len(got) - len(failed)} of {len(got)} dream(s)", file=sys.stderr)

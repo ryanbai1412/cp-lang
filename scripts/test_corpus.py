@@ -282,7 +282,7 @@ class DreamStressTest(Corpus):
         with mock.patch.object(corpus, "problems", lambda sets=None, ids=None: iter([corpus.Package.at(d)])), \
                 contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
             self.assertEqual(corpus.record_dreams(args), 1)
-        self.assertIn("dream-stress p1 fails-on-", out.getvalue())
+        self.assertRegex(out.getvalue(), r"dream-stress p1 fails-on-\d+-cases: 1 \w+")
         self.assertEqual(json.loads((d / "meta.json").read_text()), {})
 
     def test_a_broken_toolchain_is_no_verdict_and_writes_nothing(self):
