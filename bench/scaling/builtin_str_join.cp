@@ -6,5 +6,5 @@ let parts = [Char(97 + i % 26) for i in 0..n]
 var s = 0
 for _ in 0..64:
     s += ",".join(parts).len // timed: builtin.Str.join
-    s += t.find_all("ab").len // timed: builtin.Str.find_all
+    s += t.find_all("ab").count() // timed: builtin.Str.find_all
 print(s)
