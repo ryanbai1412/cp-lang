@@ -94,6 +94,8 @@ mod grammar_tests;
 #[cfg(test)]
 mod layout_tests;
 #[cfg(test)]
+mod recovery_tests;
+#[cfg(test)]
 mod shape_tests;
 #[cfg(test)]
 mod str_type_tests;
