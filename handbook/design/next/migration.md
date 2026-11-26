@@ -70,7 +70,7 @@ deleted for the VM and both remain. These rules are the guard.
 | 2 | Run and check half of the facade, over today's compiler | no | direct compiler dependencies in tool crates for run and check: 0 |
 | 3 | The new pipeline's declarations and checker accept every program | no: `cpl-check` is not changed, and is deleted with `cpl-ir` in stage 5's switching landing | conformance, std and corpus cases refused by `crates/cpl-next`'s front half: 0 (its refusals by cause are `target/cpl-next/queue.txt`); library declarations it knows by name (`next_std_names`): 0; on files with injected errors every unaffected unit still types and lowers (contracts 3 and 4: total), and every diagnostic carries a source id, not a line string; an edit rechecks only the units it changes, p95 under the end-state editor bar on 5,000-line files (END-STATE #20) |
 | 4 | Storage operations in the language, then `List` in CP Lang | no | `List` builtins in the compiler: 0; the 1.1x time and memory bars hold on the container benchmarks |
-| 5 | New back half: generic IR, link, reference interpreter, C++ emitter | **yes, the one window** | all three counts at 100%; today's lowering, tree-walker and C++ emitter deleted in the switching landing; the C++ size (END-STATE #15) and memory (#13) bars hold on the factored optimized program; `cpl run`, trace, the debugger, the browser and stress run on an engine that exists after the switch (see the engine gap below) |
+| 5 | New back half: generic IR, link, reference interpreter, C++ emitter | **yes, the one window** | all three counts at 100%; today's lowering, tree-walker and C++ emitter deleted in the switching landing; the C++ size (END-STATE #15) and memory (#13) bars hold on the factored optimized program; `cpl run`, trace, the debugger, the browser and stress run on the bytecode engine, equal to the reference interpreter on all three counts (see the engine gap below) |
 | 6 | Remaining containers, stress, rest of the facade | no | compiler-privileged std behaviour: 0; `cpl-stress` lowering entry points used: 0 (today 7) |
 | 7 | Bytecode engine, events, debugger, machine code | per engine, switch and delete together | today's VM deleted; every engine equal to the reference interpreter on all three counts |
 | 8 | Lossless syntax tree, then lints and editor onto it | parser switch and delete together | lint matches on today's tree: 0 (today about 940); today's parser deleted |
@@ -82,7 +82,7 @@ one commit; it grows until it accepts every program. While it grows:
 - its accepted counts are published and may only rise; the gate
   fails on a drop;
 - its end date is set from the measured rate of its first week:
-  **2026-12-06**, set 2026-11-26 with six lanes working on it;
+  **2026-11-27, end of day**, a pace target, not a quality trade (Ryan, 2026-11-26: the end state is what counts; first set to 2026-12-06 from the measured rate);
 - today's checker, lowering, interpreter and emitter are frozen by
   the `old_pipeline_lines` ratchet, which may only fall (rule 9);
 - the tree-walker's removal is part of its exit, not a later cleanup.
@@ -101,7 +101,7 @@ a declared type. The syntax tree is last because it is a parser
 rewrite and nothing before it needs it; lints and the editor move
 once, onto the new tree, not onto today's tree first.
 
-**The engine gap (open, Ryan's call, 2026-11-26).** Today's VM reads today's lowering (`cpl-interp` depends on `cpl-ir`), so stage 5's deletion leaves `cpl run`, trace, the debugger, the browser and stress no engine until stage 7, and the reference interpreter is for tests only (decision 20). Either the bytecode engine over canonical IR moves into stage 5 (recommended), or the reference interpreter is the interim engine with a stated speed bar.
+**The engine gap (decided by Ryan, 2026-11-26).** Today's VM reads today's lowering (`cpl-interp` depends on `cpl-ir`), so stage 5's deletion would leave `cpl run`, trace, the debugger, the browser and stress no engine until stage 7; the reference interpreter is for tests only (decision 20). The bytecode engine over canonical IR, with events, therefore moves into stage 5 and ships in the switching landing. No interim engine.
 
 **Not yet in the plan.** Pinned start commits and sizes for stages 3
 and 4. Neither has an estimate anyone has measured.
