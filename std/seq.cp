@@ -730,6 +730,7 @@ pub fn cyclic_pairs<S: Seq<T>, T>(self: S) -> yields (T, T):
 /// order: position by position, stopping at the shorter
 /// traps: never
 /// example: `zip([1, 2, 3], "ab").collect() == [(1, 'a'), (2, 'b')]`
+@same_keys
 pub fn zip<A: Seq<T>, B: Positional<U>, T, U>(a: A, b: B) -> Zipped<A, B, T, U> = Zipped(a, b)
 
 /// The first and second halves of each pair, as two lists: the inverse of `zip`.

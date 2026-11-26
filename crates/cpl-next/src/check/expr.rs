@@ -419,6 +419,39 @@ impl<'a> Cx<'a> {
             TArg::Value(recv)
         }
     }
+    /// `@same_keys`: arrays over two different domains are not paired by position (R04b.1.3).
+    fn same_keys(&mut self, args: &[TArg], span: Span) {
+        let mut first: Option<usize> = None;
+        for a in args {
+            let (TArg::Value(e) | TArg::Mut(e)) = a;
+            let Ty::Struct(d, ts, _) = self.shallow(&e.ty) else {
+                continue;
+            };
+            let index = if Some(d) == self.array_id() {
+                self.shallow(&ts[0])
+            } else {
+                Ty::Error
+            };
+            let Ty::Dom(i) = index else {
+                continue;
+            };
+            match first {
+                None => first = Some(i),
+                Some(f) if self.domains[f].name != self.domains[i].name || f != i => {
+                    let (a, b) = (self.domains[f].name.clone(), self.domains[i].name.clone());
+                    self.err(
+                        span,
+                        format!(
+                            "{}: an array over `{b}` is paired with one over `{a}`: their positions are unrelated",
+                            cpl_diag::codes::WRONG_DOMAIN.0
+                        ),
+                    );
+                    return;
+                }
+                Some(_) => {}
+            }
+        }
+    }
     pub(super) fn call_fn(
         &mut self,
         f: FnRef,
@@ -476,6 +509,9 @@ impl<'a> Cx<'a> {
         self.solve(false);
         let (mut pre, args) = self.args(args, &formals, span);
         self.solve(false);
+        if fd.same_keys {
+            self.same_keys(&args, span);
+        }
         let recv = match recv {
             Some(TArg::Value(r)) if !pre.is_empty() && !pure(&r) => {
                 let tmp = self.bind("$recv", r.ty.clone());
@@ -1430,6 +1466,13 @@ impl<'a> Cx<'a> {
                 }
                 self.scopes.pop();
                 mk(TK::Block(stmts, Some(Box::new(read))), lty)
+            }
+            ExprKind::Table {
+                domains,
+                params,
+                body,
+            } if domains.len() == 1 && params.len() == 1 => {
+                self.table(&domains[0], &params[0], body, span)
             }
             ExprKind::Comprehension { body, clauses }
                 if clauses.len() == 1 && clauses[0].conds.is_empty() =>

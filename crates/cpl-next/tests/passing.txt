@@ -92,6 +92,7 @@ core-01/while-true-break-in-the-middle.cp
 core-02/alias-cycle-is-an-error.cp
 core-02/alias-inside-its-own-type-is-an-error.cp
 core-02/anon-range-array-takes-int.cp
+core-02/array-builders.cp
 core-02/array-needs-initializer.cp
 core-02/at-is-optional-position.cp
 core-02/char-of-non-ascii-traps-every-build.cp
@@ -100,6 +101,8 @@ core-02/condition-is-bool.cp
 core-02/count-typed-by-range.cp
 core-02/ctor-missing-field.cp
 core-02/distinct-fn-names.cp
+core-02/domain-index-only.cp
+core-02/domain-index-position.cp
 core-02/enum-comma-form-rejected.cp
 core-02/enum-exhaustive-match.cp
 core-02/enum-niche-roundtrip.cp
@@ -107,6 +110,7 @@ core-02/enum-nonexhaustive.cp
 core-02/fixed-field.cp
 core-02/fresh-slot-recursion.cp
 core-02/fresh-type-block-int-escapes.cp
+core-02/fresh-type-same-itself.cp
 core-02/function-values.cp
 core-02/generated-ctor-moves.cp
 core-02/generic-enum-payload-binds-its-type-argument.cp
@@ -141,6 +145,7 @@ core-02/tuple-fields.cp
 core-02/unit-field-of-a-nested-generic-is-stored-nowhere.cp
 core-02/var-field-assign.cp
 core-03/a-struct-never-holds-itself.cp
+core-03/domain-width-roundtrip.cp
 core-03/filled-from-constant-widens.cp
 core-03/floor-div-zero.cp
 core-03/int-max-minus-one-ok.cp
@@ -195,6 +200,7 @@ core-04/list-literal-cell-outside-let-range-traps.cp
 core-04/list-literal-cell-outside-param-range-traps.cp
 core-04/list-literal-for-narrow-param.cp
 core-04/list-literal-short-for-named-domain-rejected.cp
+core-04/literal-outside-domain.cp
 core-04/pos-int-is-written-value.cp
 core-04/position-ord-counts-from-zero.cp
 core-04/range-arg-is-domain-when-nth-used.cp
@@ -263,6 +269,7 @@ core-05/own-swap-is-not-the-mutator.cp
 core-05/param-unchanged-by-a-callee-writing-its-source.cp
 core-05/param-unchanged-by-a-write-to-its-global-source.cp
 core-05/plain-element-copies.cp
+core-05/position-of-a-table-of-lists-is-not-lent.cp
 core-05/push-after-row-lend-ends.cp
 core-05/rb1-q01-move-then-read.cp
 core-05/rb1-q04-push-while-row-lent.cp
@@ -323,10 +330,12 @@ core-06/shared-let-is-not-per-case-state.cp
 core-06/shared-state-above-multitest-carries-over.cp
 core-06/shared-var-carries-across-cases.cp
 core-06/two-closures-share-var.cp
+core-07/array-equals-list.cp
 core-07/domain-rev-walks-backwards.cp
 core-07/indexed-builtins.cp
 core-07/negative-literal-index-is-an-error.cp
 core-07/negative-literal-str-index-is-an-error.cp
+core-07/zip-domain-mismatch.cp
 core-08/blanket-impl.cp
 core-08/concrete-extension-beats-std-generic.cp
 core-08/default-method-override-once.cp
@@ -361,6 +370,7 @@ core-09/division-by-zero-trap.cp
 core-09/division-nonzero-ok.cp
 core-09/domain-conversion-in-range.cp
 core-09/domain-conversion-trap.cp
+core-09/domain-index-proved.cp
 core-09/overflow-not-reached.cp
 core-09/overflow-trap.cp
 core-09/range-store-proved.cp
@@ -722,17 +732,21 @@ traits/Bidir/Range--iter_rev.cp
 traits/Hashable/HashVal--hash_token.cp
 traits/IndexOp/Disjoint--at.cp
 traits/IndexOp/Disjoint--len.cp
+traits/Indexed/Array--at.cp
 traits/Indexed/List--at.cp
 traits/Indexed/Str--at.cp
+traits/IndexedMut/Array--at.cp
 traits/IndexedMut/List--at.cp
 traits/IndexedMut/Str--at.cp
 traits/Op/Group--folds.cp
 traits/Op/Group--lift.cp
 traits/Op/Group--op.cp
+traits/Seq/Array--iter.cp
 traits/Seq/Domain--iter.cp
 traits/Seq/List--iter.cp
 traits/Seq/Range--iter.cp
 traits/Seq/Str--iter.cp
+traits/Sized/Array--len.cp
 traits/Sized/List--len.cp
 traits/Sized/Range--len.cp
 traits/Sized/Str--len.cp

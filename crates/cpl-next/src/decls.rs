@@ -48,6 +48,8 @@ pub struct FnDecl {
     /// The name in `= @intrinsic(name)`, when that is its body.
     pub intrinsic: Option<String>,
     pub getter: bool,
+    /// `@same_keys`: its arguments that are arrays over domains share one domain (R04b.1.3).
+    pub same_keys: bool,
     pub item: u32,
     pub module: ModId,
     /// What its signature uses that the slice does not build, said only when a call reaches it.
@@ -1679,7 +1681,10 @@ fn add_fn(
     for x in &s.decorators {
         let elsewhere = d.is_library(m) && read_elsewhere(&x.name.text);
         let core_only = m == CORE && x.name.text == "coerce";
-        if !elsewhere && !core_only && !matches!(x.name.text.as_str(), "get" | "multitest") {
+        if !elsewhere
+            && !core_only
+            && !matches!(x.name.text.as_str(), "get" | "multitest" | "same_keys")
+        {
             errors.push(format!("slice: decorator `@{}`", x.name.text));
         }
     }
@@ -1692,6 +1697,7 @@ fn add_fn(
     let has = |n: &str| s.decorators.iter().any(|x| x.name.text == n);
     // A getter is read like a field, so nothing but `self` may need an argument (R02.6.6).
     let getter = has("get");
+    let same_keys = has("same_keys");
     let coerce = m == CORE && has("coerce");
     if coerce {
         d.coercions.push(FnId(d.fns.len()));
@@ -1737,6 +1743,7 @@ fn add_fn(
             _ => None,
         },
         getter,
+        same_keys,
         item,
         module: m,
         errors,

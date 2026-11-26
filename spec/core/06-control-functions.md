@@ -174,6 +174,9 @@ library or by this spec:
 - `@from_op` on a struct's static fn (std's `Monoid.of`): a bare operator
   (`+`, `max`) passed where that struct is wanted, or for a bound the struct
   has an impl of, becomes a call of the fn (R08.1.9).
+- `@same_keys` on a fn (std's `zip`): its arguments that are arrays over
+  domains must share one domain, so arrays over two domains are a type
+  error at the call (R04b.1.3).
 - `@structural` on a trait (std's `Hash`): a tuple, record, optional,
   array or struct has it when each part does, a position when `Int` does,
   and a built-in scalar only through its own `impl` (so `F64`, with none, is

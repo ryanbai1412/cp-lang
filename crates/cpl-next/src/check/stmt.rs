@@ -262,7 +262,23 @@ impl<'a> Cx<'a> {
                     return self.err(s.span, "slice: unsupported pattern");
                 };
                 let declared = ty.as_ref().map(|t| self.body_ty(t, s.span, out));
-                let v = self.expr(init, declared.as_ref());
+                // A literal is never an array, so where one is declared it is the fill: its cell's type.
+                let literal = matches!(
+                    init.kind,
+                    ExprKind::Int(_)
+                        | ExprKind::Float(_)
+                        | ExprKind::Str(_)
+                        | ExprKind::Char(_)
+                        | ExprKind::Bool(_)
+                        | ExprKind::None
+                );
+                let cell = match (&declared, self.array_id()) {
+                    (Some(Ty::Struct(d, ts, _)), Some(arr)) if literal && *d == arr => {
+                        Some(ts[1].clone())
+                    }
+                    _ => None,
+                };
+                let v = self.expr(init, cell.as_ref().or(declared.as_ref()));
                 // `var a: [V]Int = 0` fills every slot: it is `Array.filled(0)`.
                 let fill = match (&declared, self.array_id()) {
                     (Some(array @ Ty::Struct(d, ts, _)), Some(arr))
@@ -749,7 +765,7 @@ impl<'a> Cx<'a> {
         (lo, end, (least, most))
     }
     /// A domain's size is a hidden variable next to its declaration.
-    fn array_id(&self) -> Option<StructId> {
+    pub(super) fn array_id(&self) -> Option<StructId> {
         self.d.core_struct("Array")
     }
     /// E0904: an array the input alone can fill past the judge's memory limit (R03.1.9). Only
@@ -1111,6 +1127,20 @@ impl<'a> Cx<'a> {
                 let dty = self.shallow(&ts[0]);
                 if matches!(dty, Ty::Dom(_) | Ty::Param(_)) {
                     let span = i.span;
+                    // A named domain's positions are never raw `Int`s; a literal converts (R02.8.1, R04.8.8).
+                    if let Ty::Dom(d) = &dty {
+                        let named = !self.domains[*d].name.starts_with('$');
+                        if named && !matches!(i.kind, TK::Int(_) | TK::Neg(_)) {
+                            let name = self.domains[*d].name.clone();
+                            self.err(
+                                span,
+                                format!(
+                                    "{}: an `Int` indexes a `[{name}]` array: write `{name}(i)`",
+                                    cpl_diag::codes::WRONG_DOMAIN.0
+                                ),
+                            );
+                        }
+                    }
                     if let (Ty::Dom(d), TK::Int(k)) = (&dty, &i.kind) {
                         let (least, most) = self.domains[*d].within;
                         if least.is_some_and(|l| *k < l) || most.is_some_and(|m| *k > m) {

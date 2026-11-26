@@ -86,6 +86,66 @@ impl Cx<'_> {
             _ => return None,
         })
     }
+    /// `[D] k => e`: one cell per position of `D` in its walk order, which is the list
+    /// `[e for k in D]` where a `[D]T` is wanted (R02.8.2).
+    pub(super) fn table(
+        &mut self,
+        dom: &ast::Type,
+        pat: &ast::Pattern,
+        body: &ast::Expr,
+        span: Span,
+    ) -> TExpr {
+        let mut pre = Vec::new();
+        let hole = ast::Type {
+            kind: TypeKind::Tuple(Vec::new()),
+            span,
+        };
+        let shape = ast::Type {
+            kind: TypeKind::Array {
+                index: vec![dom.clone()],
+                elem: Box::new(hole),
+            },
+            span,
+        };
+        let (array, dty, sets) = match self.body_ty(&shape, span, &mut pre) {
+            Ty::Struct(a, ts, sets) => (a, ts[0].clone(), sets),
+            _ => return self.refuse(span, "slice: a table over this index"),
+        };
+        let name = match &dty {
+            Ty::Dom(i) if !self.domains[*i].name.is_empty() => self.domains[*i].name.clone(),
+            _ => return self.refuse(span, "slice: a table over this index"),
+        };
+        let walk = ast::Expr {
+            kind: ExprKind::Name(name),
+            span: dom.span,
+        };
+        let comp = ast::Expr {
+            kind: ExprKind::Comprehension {
+                body: Box::new(body.clone()),
+                clauses: vec![ast::Clause {
+                    pat: pat.clone(),
+                    iter: walk,
+                    conds: Vec::new(),
+                }],
+            },
+            span,
+        };
+        let list = self.expr(&comp, None);
+        let elem = match self.shallow(&list.ty) {
+            Ty::Struct(_, ts, _) if ts.len() == 1 => ts[0].clone(),
+            _ => Ty::Error,
+        };
+        let cells = self.coerce(list, &Ty::Struct(array, vec![dty, elem], sets));
+        block(pre, cells)
+    }
+    fn refuse(&mut self, span: Span, why: &str) -> TExpr {
+        self.err(span, why);
+        TExpr {
+            kind: TK::Error,
+            ty: Ty::Error,
+            span,
+        }
+    }
     /// A name that is a domain: one declared in a body, or a type parameter used as one.
     pub(super) fn domain_named(&self, n: &str) -> Option<Ty> {
         if let Some(&Ty::Dom(i)) = self.doms.get(n) {

@@ -76,6 +76,10 @@ pub const DECORATORS: &[(&str, &str)] = &[
         "was",
         "`@was(Old, ..)`: the names a declaration replaced, for their fix",
     ),
+    (
+        "same_keys",
+        "on a fn: its arguments that are arrays over domains share one domain (R04b.1.3)",
+    ),
 ];
 
 /// Old spellings the parser or checker answers with their own E0503 fix.
