@@ -551,6 +551,14 @@ pub struct Prefix<T: Sub>:
         if r.start >= r.end: return T.zero
         self.p[r.end] - self.p[r.start]
 
+    /// The sum of every value: `cut(n)`, zero for an empty list.
+    ///
+    /// cost: \(O(1)\)
+    /// empty: `Prefix<Int>([]).all == 0`
+    /// traps: never
+    /// example: `Prefix<Int>([3, 1, 4]).all == 8`
+    @get pub fn all(self) -> T = self.p.last!
+
 /// Prefix monoid folds of `a`, indexed by `Cut<D>`: `p[b]` is the fold of `..b`,
 /// with `p[D.cuts.nth(0)] == m.id`. \(O(n)\).
 ///
