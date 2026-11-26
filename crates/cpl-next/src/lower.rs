@@ -653,7 +653,8 @@ impl Lw<'_> {
                 }
             }
             TStmt::Assign(p, e) => {
-                let val = self.expr(e, out);
+                let mut val = self.expr(e, out);
+                self.copied(e, &mut val, out);
                 let val = self.spill(val, out);
                 let place = self.place(p, out);
                 out.push(Stmt::Assign(place, val));

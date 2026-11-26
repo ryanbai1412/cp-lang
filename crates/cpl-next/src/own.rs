@@ -1169,6 +1169,23 @@ impl Cx<'_> {
                 body,
                 ..
             } => {
+                // R4 for a cell: a value written into the cell being lent that borrows the container is
+                // copied in, so the write does not run while that value still views it.
+                let mut parked = Vec::new();
+                if let (Some(rv), TK::Block(stmts, _)) = (recv.as_deref(), &body.kind) {
+                    let (TArg::Value(rv) | TArg::Mut(rv)) = rv;
+                    if let Some(root) = self.place(rv).map(|p| p.root) {
+                        for st in stmts {
+                            let TStmt::Assign(_, v) = st else { continue };
+                            let TK::Var(x) = &v.kind else { continue };
+                            let r = self.root(*x);
+                            if self.lent.get(&r).is_some_and(|s| s.contains(&root)) {
+                                self.copies.insert(self.off + v.span.start);
+                                parked.push((r, self.lent.remove(&r), self.frozen.remove(&r)));
+                            }
+                        }
+                    }
+                }
                 let (held, lent) = self.fn_call(f, body.span, recv.as_deref(), args, fx);
                 let who = self.d.f(f.decl).name.clone();
                 self.bind(*var);
@@ -1204,6 +1221,14 @@ impl Cx<'_> {
                 if let Some(p) = hits(&lent, &inner.writes).or_else(|| hits(&lent, &inner.reads)) {
                     let n = self.name(p);
                     self.err(body.span, codes::USED_WHILE_LENT, format!("{n} is lent to `{who}` for writing for the whole loop, and the loop body uses it"));
+                }
+                for (r, l, f) in parked {
+                    if let Some(l) = l {
+                        self.lent.insert(r, l);
+                    }
+                    if let Some(f) = f {
+                        self.frozen.insert(r, f);
+                    }
                 }
                 fx.add(&inner);
             }

@@ -1,6 +1,10 @@
 //! Index syntax: `s[k]` reads through `Indexed`, `s[r]` calls the `@index` fn that cuts a view
 //! (R07.4.5, R07.4.17).
 use super::*;
+use std::collections::HashMap;
+
+/// What runs while a cell is lent: given the cell's name, it adds its statements.
+pub(super) type InCell<'a, C> = Box<dyn FnOnce(&mut C, ast::Expr, &mut Vec<TStmt>) + 'a>;
 
 impl Cx<'_> {
     /// `recv.name(args)` with already-typed arguments: used for `get` and `set` behind indexing.
@@ -106,6 +110,136 @@ impl Cx<'_> {
             .iter()
             .copied()
             .find(|f| d.f(*f).params.len() == 1)
+    }
+    /// Runs `inner` while `base[idx]` is lent as a place, through the `at` of `base`'s
+    /// `IndexedMut` that lends one (R12.4.6). `inner` gets the lent cell as a name; `g[i][j]`
+    /// lends `g[i]` first, then its cell `j` inside that.
+    pub(super) fn through_cell(
+        &mut self,
+        (base, idx): (&ast::Expr, &ast::Expr),
+        span: Span,
+        out: &mut Vec<TStmt>,
+        inner: InCell<'_, Self>,
+    ) {
+        if let ExprKind::Index { base: b2, indices } = &unparen(base).kind {
+            if indices.len() == 1 {
+                let i2 = indices[0].clone();
+                let idx = idx.clone();
+                return self.through_cell(
+                    (b2, &i2),
+                    span,
+                    out,
+                    Box::new(move |this, cell, out| {
+                        this.through_cell((&cell, &idx), span, out, inner)
+                    }),
+                );
+            }
+        }
+        let b = self.place(base);
+        let i = self.expr(idx, Some(&Ty::Int));
+        let i = self.index_arg(&b.ty, i);
+        let rt = self.shallow(&b.ty);
+        let lends = |f: &decls::FnDecl| matches!(f.region, Some((true, _)));
+        let Some(decls::Member::Method(m, ts, ss)) = self.d.impl_member_by(&rt, INDEX_READ, lends)
+        else {
+            if !matches!(rt, Ty::Error) {
+                let why = if matches!(rt, Ty::Param(_)) {
+                    "slice: writing a cell of a type parameter".to_string()
+                } else {
+                    let shown = self.show(&rt);
+                    format!("`{shown}` has no `IndexedMut` impl, so `[]` on it is not a place")
+                };
+                self.err(span, why);
+            }
+            return;
+        };
+        let f = self.fnref(m, ts, ss);
+        self.oblige(&f, span);
+        self.solve(false);
+        let fd = self.d.f(f.decl);
+        let sub = Subst {
+            tys: &f.targs,
+            sets: &f.sets,
+        };
+        let i = self.coerce(i, &sub.ty(&fd.params[0].ty));
+        let elem = sub.ty(&fd.region.as_ref().map_or(Ty::Error, |(_, t)| t.clone()));
+        self.scopes.push(HashMap::new());
+        let name = format!("$cell{}", out.len());
+        let var = self.bind(&name, elem);
+        if let VarRef::Local(l) = var {
+            self.locals[l].mutable = true;
+        }
+        let mut body = Vec::new();
+        inner(
+            self,
+            ast::Expr {
+                kind: ExprKind::Name(name),
+                span,
+            },
+            &mut body,
+        );
+        self.scopes.pop();
+        out.push(TStmt::Region {
+            f,
+            recv: Some(Box::new(TArg::Mut(b))),
+            args: vec![TArg::Value(i)],
+            var,
+            lend: true,
+            body: TExpr {
+                kind: TK::Block(body, None),
+                ty: Ty::Unit,
+                span,
+            },
+        });
+    }
+    /// `target` with each of its indices, outer first, read once into a temporary before any
+    /// cell is lent, so `p[r] = p[p[r]]` reads `p` before writing it (R12.4.6).
+    pub(super) fn hoist_indices(&mut self, target: &ast::Expr, out: &mut Vec<TStmt>) -> ast::Expr {
+        let ExprKind::Index { base, indices } = &target.kind else {
+            return target.clone();
+        };
+        let base = match &unparen(base).kind {
+            ExprKind::Index { .. } => self.hoist_indices(unparen(base), out),
+            _ => (**base).clone(),
+        };
+        let indices = (indices.iter())
+            .map(|i| self.hoist(i, Some(&Ty::Int), "$idx", out))
+            .collect();
+        ast::Expr {
+            kind: ExprKind::Index {
+                base: Box::new(base),
+                indices,
+            },
+            span: target.span,
+        }
+    }
+    /// `e` read once into a temporary, as a name for it.
+    pub(super) fn hoist(
+        &mut self,
+        e: &ast::Expr,
+        want: Option<&Ty>,
+        what: &str,
+        out: &mut Vec<TStmt>,
+    ) -> ast::Expr {
+        // A name or a literal reads the same later; anything else runs now.
+        if matches!(
+            unparen(e).kind,
+            ExprKind::Name(_)
+                | ExprKind::Int(_)
+                | ExprKind::Bool(_)
+                | ExprKind::Char(_)
+                | ExprKind::Str(_)
+        ) {
+            return e.clone();
+        }
+        let v = self.expr(e, want);
+        let name = format!("{what}{}", out.len());
+        let t = self.bind(&name, v.ty.clone());
+        out.push(TStmt::Let(t, v));
+        ast::Expr {
+            kind: ExprKind::Name(name),
+            span: e.span,
+        }
     }
     /// `s[lo..]`, `s[..hi]`, `s[..=hi]` and `s[..]`: the `@index` fn that takes the two ends, each
     /// optional, and whether `hi` is in (R07.4.6).

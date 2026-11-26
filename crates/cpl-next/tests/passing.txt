@@ -670,6 +670,7 @@ next/n_bits_03_shl_past_int_traps.cp
 next/n_bits_04_and_to_the_lowest_pattern_traps.cp
 next/n_bound_01_bare_bound_learns_arguments.cp
 next/n_cell_01_indexed_mut_bound.cp
+next/n_cell_02_write_through_indexed_mut.cp
 next/n_enum_01_values_and_order.cp
 next/n_index_01_through_indexed.cp
 next/n_index_02_range_keyed_by_values.cp

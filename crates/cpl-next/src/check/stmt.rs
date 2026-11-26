@@ -340,51 +340,36 @@ impl<'a> Cx<'a> {
                 out.push(TStmt::Let(var, v));
             }
             StmtKind::Assign { target, op, value } => {
-                // `a[i] = v` and `a[i] op= v` go through the type's `get` and `set`.
-                if let ExprKind::Index { base, indices } = &target.kind {
-                    let base_t = self.place(base);
-                    let idx = self.expr(&indices[0], Some(&Ty::Int));
-                    let mut idx = self.index_arg(&base_t.ty, idx);
-                    let rhs = match op {
-                        AssignOp::Set => self.expr(value, None),
-                        // The index once, then the value, then one read and one write.
-                        AssignOp::Binary(b) => {
-                            let tmp = self.bind("$idx", idx.ty.clone());
-                            let ity = idx.ty.clone();
-                            out.push(TStmt::Let(
-                                tmp,
-                                std::mem::replace(
-                                    &mut idx,
-                                    TExpr {
-                                        kind: TK::Var(tmp),
-                                        ty: ity,
-                                        span: target.span,
+                // `a[i] = v` and `a[i] op= v`: the indices, then the value, are read once; then
+                // `a`'s `IndexedMut` lends the cell and the assignment runs while it is lent (R12.4.6).
+                if let ExprKind::Index { indices, .. } = &target.kind {
+                    if indices.len() == 1 {
+                        let target = self.hoist_indices(target, out);
+                        let value = self.hoist(value, None, "$rhs", out);
+                        let ExprKind::Index { base, indices } = &target.kind else {
+                            return;
+                        };
+                        let (op, span) = (*op, s.span);
+                        self.through_cell(
+                            (base, &indices[0]),
+                            target.span,
+                            out,
+                            Box::new(move |this, cell, out| {
+                                let assign = ast::Stmt {
+                                    kind: StmtKind::Assign {
+                                        target: cell,
+                                        op,
+                                        value,
                                     },
-                                ),
-                            ));
-                            let v = self.expr(value, Some(&Ty::Int));
-                            let vt = self.bind("$rhs", v.ty.clone());
-                            let vty = v.ty.clone();
-                            out.push(TStmt::Let(vt, v));
-                            let v = TExpr {
-                                kind: TK::Var(vt),
-                                ty: vty,
-                                span: value.span,
-                            };
-                            let cur = self.elem(base_t.clone(), idx.clone(), target.span);
-                            self.binary(*b, cur, v, target.span)
-                        }
-                        _ => return self.err(s.span, "slice: unsupported assignment"),
-                    };
-                    let call = self.method_call(
-                        base_t,
-                        "set",
-                        vec![TArg::Value(idx), TArg::Value(rhs)],
-                        target.span,
-                        true,
-                    );
-                    out.push(TStmt::Expr(call));
-                    return;
+                                    span,
+                                    decorators: Vec::new(),
+                                    public: false,
+                                };
+                                this.stmt(&assign, out)
+                            }),
+                        );
+                        return;
+                    }
                 }
                 if let ExprKind::Call { .. } = &target.kind {
                     // `t.at(i) = v`: `at` lends a place; the assignment runs while it is lent.

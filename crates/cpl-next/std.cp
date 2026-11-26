@@ -28,10 +28,6 @@ struct List<T>:
         check_key(0 <= i and i < n)
         raw_get(buf, i)
 
-    fn set(mut self, i: Int, x: T):
-        check_key(0 <= i and i < n)
-        raw_set(mut buf, i, x)
-
     fn each(self) -> yields T:
         for i in 0..n: yield raw_get(buf, i)
 
@@ -57,9 +53,6 @@ struct Array<D, T>:
 
     fn get(self, i: D) -> T:
         raw_get(buf, i.ord)
-
-    fn set(mut self, i: D, x: T):
-        raw_set(mut buf, i.ord, x)
 
     fn each(self) -> yields T:
         for i in 0..D.count: yield raw_get(buf, i)
@@ -105,9 +98,6 @@ struct Str:
 
     fn get(self, i: Int) -> Char:
         chars.get(i)
-
-    fn set(mut self, i: Int, c: Char):
-        chars.set(i, c)
 
     fn each(self) -> yields Char:
         for c in chars: yield c
