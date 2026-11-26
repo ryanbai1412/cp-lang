@@ -860,7 +860,10 @@ mod tests {
 
     #[test]
     fn std_in_the_browser_build_is_within_its_gzipped_cap() {
-        const CAP: usize = 47_900;
+        // Raised from 47,900 when lints moved out of cpl_lint into std's `@lint`
+        // declarations, which the browser's linter reads from this data: their
+        // 243 lines are 5,613 B gzipped, and cpl_lint's budget fell 4,700 B.
+        const CAP: usize = 50_000;
         let sources = std_sources();
         let indexed: Vec<String> = sources
             .iter()
