@@ -465,6 +465,7 @@ core-08/impls-choosing-two-types-for-one-type.cp
 core-08/inherent-before-trait.cp
 core-08/inherent-on-builtin-type.cp
 core-08/law-must-be-bool.cp
+core-08/lambda-to-type-param-beside-a-seq-stays-a-fn.cp
 core-08/monomorphized.cp
 core-08/named-struct-takes-no-default-without-an-impl.cp
 core-08/no-dyn.cp
@@ -796,6 +797,7 @@ next/n_index_03_list_key_outside_traps.cp
 next/n_lambda_01_pattern_params.cp
 next/n_lambda_02_generator_of_tests.cp
 next/n_lambda_03_optional_fn_param.cp
+next/n_lambda_04_context_fixes_params.cp
 next/n_record_01_records_are_core_structs.cp
 next/n_record_02_field_traits.cp
 next/n_slice_01_range_gives_view.cp

@@ -113,15 +113,29 @@ impl<'a> Cx<'a> {
                 }
             }
         }
-        let mut typed: Vec<Option<TArg>> = Vec::with_capacity(args.len());
-        for (k, a) in args.iter().enumerate() {
-            typed.push(match slot.iter().position(|s| *s == Some(k)) {
-                Some(i) => Some(self.arg(a, &formals[i].ty, formals[i].mutable)),
-                None => {
-                    self.expr(&a.value, None);
-                    None
+        // A lambda with unwritten parameter types is checked after the other arguments, whose
+        // types and bounds may fix the ones it takes (R06.1.2).
+        let late = |a: &ast::Arg| {
+            matches!(&a.value.kind, ExprKind::Lambda { params, param_tys, .. }
+                if params.len() > param_tys.iter().flatten().count())
+        };
+        let mut typed: Vec<Option<TArg>> = (0..args.len()).map(|_| None).collect();
+        for pass in [false, true] {
+            if pass {
+                self.solve(false);
+            }
+            for (k, a) in args.iter().enumerate() {
+                if late(a) != pass {
+                    continue;
                 }
-            });
+                typed[k] = match slot.iter().position(|s| *s == Some(k)) {
+                    Some(i) => Some(self.arg(a, &formals[i].ty, formals[i].mutable)),
+                    None => {
+                        self.expr(&a.value, None);
+                        None
+                    }
+                };
+            }
         }
         // Bound in another order than written, or with a default before a written argument: the
         // written ones that compute something run first, in order.

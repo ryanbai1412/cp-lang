@@ -60,6 +60,10 @@ impl Cx<'_> {
             self.obligations.clear();
         }
     }
+    /// Whether a pending bound is on the inference variable `v`: it, not a default, fixes `v`.
+    pub(super) fn obliged(&self, v: usize) -> bool {
+        (self.obligations.iter()).any(|(t, ..)| self.shallow(t) == Ty::Var(v))
+    }
     /// Whether some part of `t` is still an inference variable.
     fn unknown(&self, t: &Ty) -> bool {
         match self.shallow(t) {

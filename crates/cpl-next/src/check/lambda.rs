@@ -20,8 +20,12 @@ impl Cx<'_> {
                 _ => w,
             }
         });
+        // Given to a type parameter nothing else fixes, unwritten parameters are `Int`s, as a
+        // literal is (R08.2.11).
+        let open = matches!(&expected, Some(Ty::Var(v)) if !self.obliged(*v));
         let (eps, er) = match &expected {
             Some(Ty::Fn(ps, r, _)) => (Some(ps.clone()), Some((**r).clone())),
+            _ if open => (Some(vec![Ty::Int; params.len()]), None),
             _ => (None, None),
         };
         // `(a, b) => ..` passed as a fn of one tuple or record means `((a, b)) => ..` (R06.1.4).
