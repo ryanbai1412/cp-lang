@@ -410,6 +410,9 @@ core-07/str-count-takes-predicate.cp
 core-07/view-key-outside-keys-traps.cp
 core-07/view-sees-source-mutation-rejected.cp
 core-07/zip-domain-mismatch.cp
+core-08/assoc-type-bound-and-alias-where.cp
+core-08/associated-type-default-and-override.cp
+core-08/associated-type.cp
 core-08/blanket-impl.cp
 core-08/concrete-extension-beats-std-generic.cp
 core-08/default-method-override-once.cp
@@ -419,7 +422,10 @@ core-08/generic-over-seq-capability.cp
 core-08/getter-impl-on-builtin-type.cp
 core-08/getter-trait-param-from-record-field.cp
 core-08/getter-trait-struct-opt-in.cp
+core-08/impl-choice-must-meet-the-associated-type-bound.cp
+core-08/impl-missing-an-associated-type.cp
 core-08/impl-plus-shorthand.cp
+core-08/impls-choosing-two-types-for-one-type.cp
 core-08/inherent-before-trait.cp
 core-08/monomorphized.cp
 core-08/no-dyn.cp
@@ -433,6 +439,7 @@ core-08/static-fn-explicit-args.cp
 core-08/supertrait-required.cp
 core-08/trait-alias-no-impl.cp
 core-08/trait-alias.cp
+core-08/trait-assoc-type-bound.cp
 core-08/trait-default-method.cp
 core-08/trait-default-overridden-through-generic.cp
 core-08/trait-message-bound-holds.cp
@@ -717,6 +724,9 @@ next/k23_ret_closure_param.cp
 next/k24_ret_closure_var_copy.cp
 next/m01_case_return_in_loops.cp
 next/m02_until_eof_empty.cp
+next/n_assoc_type.cp
+next/n_assoc_type_bound_unmet.cp
+next/n_assoc_type_missing.cp
 next/n_bits_01_shifts_powers_and_not.cp
 next/n_bits_02_shift_by_64_traps.cp
 next/n_bits_03_shl_past_int_traps.cp

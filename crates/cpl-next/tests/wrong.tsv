@@ -18,8 +18,8 @@ core-10/rb1-q39-bool-not-print.cp	wrong-accept	wanted E0606 on line 3, ran and p
 core-10/read-needs-type.cp	wrong-accept	wanted E0806 on line 3, ran and printed: 
 core-10/test-position-stored-above-multitest.cp	wrong-accept	wanted E0805 on line 8, ran and printed: 1
 diagnostics/fn-ends-without-a-value-loop.cp	wrong-accept	wanted E0409 on line 4, ran and printed: 12 1
-next/o21_lender_assign_reads_same.cp	wrong-error	wanted E0604 on line 13, got: own: line 13: E0602: `s` is lent to `at` for writing for the whole loop, and the loop body uses it
-next/o22_lender_body_writes_lender_self.cp	wrong-error	wanted E0604 on line 14, got: own: line 14: E0602: `s` is lent to `at` for writing for the whole loop, and the loop body uses it
+next/o21_lender_assign_reads_same.cp	wrong-error	wanted E0604 on line 13, got: own: line 13: E0602: `s[1]` is lent to `at` for writing for the whole loop, and the loop body uses it
+next/o22_lender_body_writes_lender_self.cp	wrong-error	wanted E0604 on line 14, got: own: line 14: E0602: `s[1]` is lent to `at` for writing for the whole loop, and the loop body uses it
 next/o27_mut_global_callee_reads_same.cp	wrong-error	wanted E0601 on line 6, got: own: line 6: E0602: `a` is lent to `fill` for writing, and the call also reaches it another way
 next/t04_selfcapture.cp	bad-header	`// expect: E0000` needs the line it points at to end with `// <- here`
 next/t05_recursive_closure.cp	bad-header	`// expect: E0000` needs the line it points at to end with `// <- here`

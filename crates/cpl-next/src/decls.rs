@@ -104,6 +104,11 @@ pub struct TraitDecl {
     pub errors: Vec<String>,
     /// `trait Add<Rhs = Self>`: each parameter's default, in `Self` and the parameters before it.
     pub defaults: Vec<Option<Ty>>,
+    /// `type Arc: Target<V>`: its associated types, its last parameters, which an impl writes
+    /// in its body and a bound leaves out (R08.2.3).
+    pub assoc: Vec<String>,
+    /// The traits each associated type has, in `Self` and the trait's parameters.
+    pub assoc_bounds: Vec<(usize, TraitRef)>,
 }
 /// A trait with its arguments: `Seq<T>`.
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -136,6 +141,8 @@ pub struct ImplDecl {
     pub methods: HashMap<String, FnId>,
     /// Where it is written.
     pub at: usize,
+    /// Where it says each of its trait's associated types, or `at` for a default.
+    pub assoc_at: Vec<usize>,
     pub module: ModId,
     /// Made from the fields (R08.1.6): its `S(..)` is the generated constructor, never a `new`.
     pub derived: bool,
@@ -536,6 +543,28 @@ fn supertraits_unmet(d: &Decls) -> Vec<(usize, &'static str, String)> {
                     format!(
                         "`impl {}` needs an `impl {}` for the same type (R08.1.1)",
                         tr.name, d.traits[sup.tr.0].name
+                    ),
+                ));
+            }
+        }
+        // Its choice for an associated type has the traits the trait's bound names (R08.1.1).
+        for (a, ab) in &tr.assoc_bounds {
+            let Some(t) = im.trait_.args.get(a - 1) else {
+                continue;
+            };
+            let met = match t {
+                Ty::Param(i) => im.bounds.iter().any(|(j, r)| j == i && r.tr == ab.tr),
+                Ty::Error => true,
+                t => (d.impls.iter()).any(|o| o.trait_.tr == ab.tr && d.impl_args(o, t).is_some()),
+            };
+            if !met {
+                let k = a - (tr.defaults.len() + 1 - tr.assoc.len());
+                out.push((
+                    im.assoc_at.get(k).copied().unwrap_or(im.at),
+                    cpl_diag::codes::MISSING_IMPL.0,
+                    format!(
+                        "`impl {}` chooses a type for `{}` with no `impl {}` (R08.1.1)",
+                        tr.name, tr.assoc[k], d.traits[ab.tr.0].name
                     ),
                 ));
             }
@@ -1010,6 +1039,8 @@ pub fn collect(
                             methods: HashMap::new(),
                             errors: Vec::new(),
                             defaults: Vec::new(),
+                            assoc: Vec::new(),
+                            assoc_bounds: Vec::new(),
                         });
                         pending.push((mid, *item, s, Some(Named::Trait(id))));
                     }
@@ -1267,6 +1298,15 @@ pub fn collect(
                 ) => {
                     let mut tgen = vec!["Self".to_string()];
                     tgen.extend(generics.iter().map(|g| g.text.clone()));
+                    let assoc: Vec<(&str, &Vec<ast::Type>, &ast::Type)> = (body.stmts.iter())
+                        .filter_map(|m| match &m.kind {
+                            StmtKind::TypeAlias {
+                                name, bounds, ty, ..
+                            } => Some((name.text.as_str(), bounds, ty)),
+                            _ => None,
+                        })
+                        .collect();
+                    tgen.extend(assoc.iter().map(|(a, ..)| format!("Self.{a}")));
                     let mut errors = Vec::new();
                     let names = d.views[mi].clone();
                     let sets = d.struct_sets.clone();
@@ -1287,6 +1327,24 @@ pub fn collect(
                     d.traits[id.0].defaults = (generic_defaults.iter())
                         .map(|t| t.as_ref().map(|t| conv(&mut cx, t, &mut errors)))
                         .collect();
+                    // `type Taken = Slice<Self>`: what an impl that leaves it out has.
+                    for (_, _, t) in &assoc {
+                        let t = (!matches!(t.kind, TypeKind::Error))
+                            .then(|| conv(&mut cx, t, &mut errors));
+                        d.traits[id.0].defaults.push(t);
+                    }
+                    let first = tgen.len() - assoc.len();
+                    let mut assoc_bounds = Vec::new();
+                    for (k, (_, bs, _)) in assoc.iter().enumerate() {
+                        for b in bs.iter() {
+                            if let Some(r) = trait_ref(&mut cx, b, &mut errors) {
+                                let r = d.with_defaults(r, &Ty::Param(first + k));
+                                assoc_bounds.push((first + k, r));
+                            }
+                        }
+                    }
+                    d.traits[id.0].assoc = assoc.iter().map(|(a, ..)| a.to_string()).collect();
+                    d.traits[id.0].assoc_bounds = assoc_bounds;
                     // A supertrait is in the trait's own parameters, without `Self`.
                     let own_params = |r: TraitRef| TraitRef {
                         tr: r.tr,
@@ -1367,6 +1425,48 @@ pub fn collect(
                     let for_ = conv(&mut cx, target, &mut errors);
                     let tref =
                         trait_ref(&mut cx, tr, &mut errors).map(|r| d.with_defaults(r, &for_));
+                    // An associated type is the argument the impl's body writes: `type Arc = A`.
+                    let mut assoc_at = Vec::new();
+                    let mut missing = Vec::new();
+                    let tref = tref.map(|mut r| {
+                        let assoc = d.traits[r.tr.0].assoc.clone();
+                        let n = d.traits[r.tr.0].defaults.len() - assoc.len();
+                        if r.args.len() >= n {
+                            r.args.truncate(n);
+                            for (k, a) in assoc.iter().enumerate() {
+                                let ty = body.stmts.iter().find_map(|m| match &m.kind {
+                                    StmtKind::TypeAlias { name, ty, .. } if name.text == *a => {
+                                        Some((ty, (item + m.span.start) as usize))
+                                    }
+                                    _ => None,
+                                });
+                                assoc_at.push(ty.map_or((item + s.span.start) as usize, |t| t.1));
+                                let ty = ty.map(|t| t.0);
+                                let default = d.traits[r.tr.0].defaults[n + k].clone();
+                                match (ty, default) {
+                                    (Some(t), _) => r.args.push(conv(&mut cx, t, &mut errors)),
+                                    (None, Some(t)) => {
+                                        let mut tys = vec![for_.clone()];
+                                        tys.extend(r.args.iter().cloned());
+                                        let t = Subst {
+                                            tys: &tys,
+                                            sets: &[],
+                                        }
+                                        .ty(&t);
+                                        r.args.push(t);
+                                    }
+                                    (None, None) => {
+                                        let tname = &d.traits[r.tr.0].name;
+                                        missing.push(format!(
+                                            "`impl {tname}` does not say its associated type `{a}` (R08.1.9)"
+                                        ));
+                                        r.args.push(Ty::Error);
+                                    }
+                                }
+                            }
+                        }
+                        r
+                    });
                     let mut ibounds = Vec::new();
                     for b in bounds {
                         let i = generics.iter().position(|g| *g == b.name.text).unwrap_or(0);
@@ -1507,6 +1607,8 @@ pub fn collect(
                             methods.insert(f.name.text.clone(), fid);
                         }
                     }
+                    let code = cpl_diag::codes::MISSING_IMPL.0;
+                    (d.misdeclared).extend(missing.into_iter().map(|m| (at, code, m)));
                     d.impls.push(ImplDecl {
                         trait_: tref,
                         generics,
@@ -1515,6 +1617,7 @@ pub fn collect(
                         domains,
                         methods,
                         at,
+                        assoc_at,
                         module: mid,
                         derived,
                     });
@@ -1657,17 +1760,19 @@ fn add_fn(
             };
             let n = d.traits[tr.0].defaults.len();
             if args.len() < n && d.traits[tr.0].defaults[args.len()].is_none() {
-                let k = hidden
-                    .last()
-                    .map_or(generics.len(), |(_, ks): &(_, std::ops::Range<usize>)| {
-                        ks.end
-                    });
-                hidden.push(((b.name.text.clone(), j), k..k + n - args.len()));
+                let k = generics.len();
+                // An associated type the bound leaves out is named through the bounded
+                // parameter: `G.Arc` of `G: Next<V>` (R08.2.3).
+                let assoc = &d.traits[tr.0].assoc;
+                generics.extend(
+                    (args.len()..n).map(|p| match p.checked_sub(n - assoc.len()) {
+                        Some(a) => format!("{}.{}", b.name.text, assoc[a]),
+                        None => format!("{}.hidden", k + p - args.len()),
+                    }),
+                );
+                hidden.push(((b.name.text.clone(), j), k..generics.len()));
             }
         }
-    }
-    for (_, ks) in &hidden {
-        generics.extend(ks.clone().map(|k| format!("{k}.hidden")));
     }
     let doms = d.doms_in(m);
     let aliases = d.aliases.clone();
@@ -1765,7 +1870,24 @@ fn add_fn(
                 if let Some((_, ks)) = hidden.iter().find(|(h, _)| *h == key) {
                     r.args.extend(ks.clone().map(Ty::Param));
                 }
-                bounds.push((i, d.with_defaults(r, &Ty::Param(i))));
+                let r = d.with_defaults(r, &Ty::Param(i));
+                // What the trait says of its associated types holds of the parameters naming them.
+                let mut tys = vec![Ty::Param(i)];
+                tys.extend(r.args.iter().cloned());
+                let sub = Subst {
+                    tys: &tys,
+                    sets: &[],
+                };
+                for (a, ab) in &d.traits[r.tr.0].assoc_bounds {
+                    if let Ty::Param(ai) = tys[*a] {
+                        let ab = TraitRef {
+                            tr: ab.tr,
+                            args: ab.args.iter().map(|t| sub.ty(t)).collect(),
+                        };
+                        bounds.push((ai, ab));
+                    }
+                }
+                bounds.push((i, r));
             }
         }
     }
