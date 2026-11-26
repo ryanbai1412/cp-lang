@@ -900,7 +900,19 @@ impl<'a> Cx<'a> {
                             lo: Some(lo),
                             hi: Some(hi),
                             inclusive,
-                        } => Some(((**lo).clone(), (**hi).clone(), *inclusive)),
+                        } => {
+                            // Its cells count from a number; one from a value is a domain (R04.3.4).
+                            if decls::constant_int(lo).is_none() {
+                                self.err(
+                                    span,
+                                    format!(
+                                        "{}: an array over a range that starts at a value: name it as a domain, `domain D = lo..hi`, then `[D]T`",
+                                        cpl_diag::codes::TYPE_MISMATCH.0
+                                    ),
+                                );
+                            }
+                            Some(((**lo).clone(), (**hi).clone(), *inclusive))
+                        }
                         TypeKind::Named { name, args }
                             if args.is_empty()
                                 && self.lookup(&name.text).is_some()

@@ -176,6 +176,7 @@ core-03/store-in-range-fits.cp
 core-03/structs-holding-each-other-is-an-error.cp
 core-04/an-array-over-an-anonymous-range-takes-int.cp
 core-04/anon-range-array.cp
+core-04/array-dimension-starting-at-a-value-rejected.cp
 core-04/array-equals-short-list-literal-rejected.cp
 core-04/dom-at.cp
 core-04/dom-call-traps.cp
@@ -184,9 +185,11 @@ core-04/dom-empty-first-traps.cp
 core-04/dom-first-last.cp
 core-04/dom-walk-rev.cp
 core-04/domain-is-its-range.cp
+core-04/empty-array-literal-short-rejected.cp
 core-04/first-is-optional.cp
 core-04/from-ord-after-a-checked-one-still-traps.cp
 core-04/generic-key-callback-indexes-source.cp
+core-04/keys-of-domain-keyed-array.cp
 core-04/list-literal-cell-outside-let-range-traps.cp
 core-04/list-literal-cell-outside-param-range-traps.cp
 core-04/list-literal-for-narrow-param.cp
@@ -320,6 +323,7 @@ core-06/shared-state-above-multitest-carries-over.cp
 core-06/shared-var-carries-across-cases.cp
 core-06/two-closures-share-var.cp
 core-07/domain-rev-walks-backwards.cp
+core-07/indexed-builtins.cp
 core-07/negative-literal-index-is-an-error.cp
 core-07/negative-literal-str-index-is-an-error.cp
 core-08/blanket-impl.cp
@@ -405,12 +409,14 @@ core-11/runtime-domain-use-before-definition.cp
 core-11/use-unknown-module.cp
 core-12/body-attribute-unknown-is-an-error.cp
 core-12/closure-borrows-per-call.cp
+core-12/indexed-access.cp
 core-12/lent-param-escapes.cp
 core-12/move-into-struct.cp
 core-12/move-on-let.cp
 core-12/sized-len.cp
 core-12/was-on-a-user-item-runs.cp
 core-12/word-on-a-user-item-runs.cp
+core-13/big-runtime-array.cp
 core-13/closure-captures-by-reference.cp
 core-13/deep-recursion.cp
 core-13/fresh-slot-reentry.cp

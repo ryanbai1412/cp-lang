@@ -1,6 +1,7 @@
 // The core traits: the language gives `==`, `<` and `+` their meaning through them
 // (R08.1.5), so they are declared here rather than in a std file; `Ordering` is std's.
 use std.algebra.{Ordering}
+use std.seq.{Keyed, Positional, Indexed}
 
 fn raw_empty<T>() -> Raw<T> = @intrinsic("raw_empty")
 fn raw_new<T>(n: Int, fill: T) -> Raw<T> = @intrinsic("raw_new")
@@ -45,6 +46,9 @@ struct List<T>:
 
 struct Array<D, T>:
     buf: Raw<T>
+
+    @get fn len(self) -> Int:
+        D.count
 
     fn filled(x: T) -> Array<D, T>:
         Array(raw_new(D.count, x))
@@ -284,3 +288,24 @@ impl Eq for Bool:
     fn eq(a, b) = a == b
 impl Ord for Bool:
     fn lt(a, b) = not a and b
+
+/// A list, a string and an array read in O(1) at any key, by position from 0 or, for an
+/// array, by its domain's positions (R12.4.5).
+impl<T> Positional<T> for List<T>:
+    fn nth(self, k: Int) -> T = self.get(k)
+impl<T> Indexed<Int, T> for List<T>:
+    fn at(self, i: Int) -> T = self.get(i)
+    @get fn keys(self) -> Range<Int> = 0..self.len
+impl Positional<Char> for Str:
+    fn nth(self, k: Int) -> Char = self.get(k)
+impl Indexed<Int, Char> for Str:
+    fn at(self, i: Int) -> Char = self.get(i)
+    @get fn keys(self) -> Range<Int> = 0..self.len
+impl<D, T> Keyed<D, T> for Array<D, T>:
+    fn items(self) -> yields (D, T):
+        for i in 0..D.count: yield (D.nth(i), raw_get(self.buf, i))
+impl<D, T> Positional<T> for Array<D, T>:
+    fn nth(self, k: Int) -> T = self.get(D.nth(k))
+impl<D, T> Indexed<D, T> for Array<D, T>:
+    fn at(self, i: D) -> T = self.get(i)
+    @get fn keys(self) -> Range<D> = D
