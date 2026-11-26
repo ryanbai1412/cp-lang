@@ -54,11 +54,13 @@ pub fn split_items(tokens: &[Token]) -> Vec<ItemRange> {
                 _ => {}
             }
             i += 1;
-            // After a block closes, only `elif`/`else` continue the item.
+            // After a block closes, only `elif`/`else` or a closer, which no
+            // statement starts with, continue the item.
             if depth == 0
                 && brackets == 0
                 && tokens[i - 1].kind == T::Dedent
                 && !matches!(tokens[i].kind, T::Elif | T::Else | T::Dedent)
+                && !tokens[i].kind.is_closer()
             {
                 break;
             }

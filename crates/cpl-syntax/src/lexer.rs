@@ -815,6 +815,14 @@ impl<'a> Lexer<'a> {
             let gap = &self.src[tokens[i - 1].span.end as usize..t.span.start as usize];
             if let Some(nl) = gap.rfind('\n') {
                 if gap.len() - nl - 1 <= opener.line_indent as usize {
+                    // `(\n    a,\n).sorted()` lost its `)`: a line that
+                    // continues the expression starts right after the closer.
+                    let multi_line = self.src
+                        [opener.span.end as usize..tokens[i - 1].span.end as usize]
+                        .contains('\n');
+                    if multi_line && continues_a_line(t.kind) {
+                        return Some((i, t.span.start as usize, true));
+                    }
                     return Some((i, tokens[i - 1].span.end as usize, false));
                 }
             }
@@ -826,6 +834,12 @@ impl<'a> Lexer<'a> {
                 LParen | LBracket | LBrace => depth += 1,
                 RParen | RBracket | RBrace => depth = depth.saturating_sub(1),
                 _ if depth > 0 => {}
+                // `Add(\n    d: Int,\n | Ask(..)` or `fn f(\n    a: Int,\n -> Int`:
+                // after a `,` no item starts with `->`, `.` or an infix
+                // operator, so the closer goes before it.
+                k if continues_a_line(k) && tokens[i - 1].kind == Comma && gap.contains('\n') => {
+                    return Some((i, t.span.start as usize, true));
+                }
                 Arrow if opener.kind == LParen && before != Some(Fn) => {
                     return Some((i, tokens[i - 1].span.end as usize, true));
                 }
@@ -852,14 +866,6 @@ impl<'a> Lexer<'a> {
                 }
                 For if opener.kind == LParen && indexing && in_bracket => {
                     return Some((i, tokens[i - 1].span.end as usize, true));
-                }
-                // `Add(\n    d: Int,\n | Ask(..)`: after a `,` no item starts
-                // with an infix operator, so the closer goes before it.
-                Pipe | Star | StarStar | Slash | Percent | EqEq | NotEq | LtEq | GtEq | Caret
-                | Amp | And | Or
-                    if tokens[i - 1].kind == Comma && gap.contains('\n') =>
-                {
-                    return Some((i, t.span.start as usize, true));
                 }
                 _ => {}
             }
@@ -1514,4 +1520,37 @@ fn delimiter_text(opener: TokenKind) -> (&'static str, &'static str, TokenKind) 
         TokenKind::LBracket => ("[", "]", TokenKind::RBracket),
         _ => ("{", "}", TokenKind::RBrace),
     }
+}
+
+/// Whether a line starting with `kind` can only continue the expression
+/// above it: no statement starts with a member access, `->` or an infix
+/// operator.
+fn continues_a_line(kind: TokenKind) -> bool {
+    use TokenKind::*;
+    matches!(
+        kind,
+        Dot | DotDot
+            | DotDotEq
+            | Arrow
+            | Question
+            | QuestionQuestion
+            | Lt
+            | LtEq
+            | Gt
+            | GtEq
+            | EqEq
+            | NotEq
+            | Spaceship
+            | Star
+            | StarStar
+            | Slash
+            | Percent
+            | Caret
+            | Amp
+            | Pipe
+            | Shl
+            | Shr
+            | And
+            | Or
+    )
 }

@@ -740,6 +740,33 @@ fn a_missing_close_paren_is_one_error_and_the_rest_still_parses() {
 }
 
 #[test]
+fn a_dropped_closer_before_a_continued_line_goes_back_on_that_line() {
+    for (src, rest) in [
+        (
+            "let xs = [3, 1].map(x => x + 1).zip(\n    [1, 2],\n.sorted()\nprint(xs)\n",
+            ".sorted()",
+        ),
+        (
+            "fn f(\n    a: Int,\n -> Int:\n    a\nprint(f(1))\n",
+            "-> Int:",
+        ),
+    ] {
+        let d = one_diag(src);
+        assert_eq!(d.code.0, "E0101", "{src}");
+        let at = src.find(rest).unwrap() as u32;
+        assert_eq!(
+            d.fixes[0].edits[0],
+            (cpl_diag::Span::point(at), ")".to_string()),
+            "{src}"
+        );
+        assert!(
+            d.labels.iter().any(|l| l.span == cpl_diag::Span::point(at)),
+            "{src}"
+        );
+    }
+}
+
+#[test]
 fn nested_unclosed_brackets_are_still_one_error() {
     assert_eq!(codes("let x = foo(a[i, bar(b\nlet y = 1\n"), vec!["E0101"]);
     assert_eq!(codes("let x = foo(a, b"), vec!["E0101"]);
@@ -1635,6 +1662,17 @@ fn single_bitwise_operators_are_not_c_style_logic() {
 fn an_indented_if_after_eq_is_the_value_and_any_other_indented_value_is_planned() {
     assert!(codes("let a =\n    if true:\n        1\n    else:\n        2\nprint(a)\n").is_empty());
     let d = one_diag("let a =\n    1\nprint(a)\n");
+    assert!(
+        d.message
+            .contains("a value on the indented lines after `=`"),
+        "{}",
+        d.message
+    );
+}
+
+#[test]
+fn a_closer_under_an_indented_value_is_part_of_that_value() {
+    let d = one_diag("let a =\n    1,\n    2,\n).sorted()\nprint(a)\n");
     assert!(
         d.message
             .contains("a value on the indented lines after `=`"),

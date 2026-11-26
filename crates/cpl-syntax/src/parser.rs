@@ -650,6 +650,11 @@ impl<'a> Parser<'a> {
         let start = self.start();
         self.bump();
         self.skip_indented();
+        // `let x =\n    a,\n).f()`: the closer under the block ends the
+        // same value, so it is read past with it.
+        if self.peek().is_closer() {
+            self.skip_line();
+        }
         let span = self.span_from(start);
         self.planned(span, &crate::planned::VALUE_BLOCK);
         Some(Expr {
