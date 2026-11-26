@@ -1,12 +1,12 @@
 $ cpl build a.cp -o a.cpp
 exit 0
 -- stdout
-wrote a.cpp (7021 bytes, 11% of the limit of judge `generic`)
+wrote a.cpp (7067 bytes, 11% of the limit of judge `generic`)
 -- stderr
 
 $ cpl build a.cp -o a.cpp --json
 exit 0
 -- stdout
-{"bytes":7021,"checks":"none","judge":"generic","limit":65536,"path":"a.cpp","sizes":[{"bytes":91,"name":"top-level code","part":"your code"},{"bytes":196,"name":"the source","part":"header"},{"bytes":539,"name":"#include","part":"includes"},{"bytes":730,"name":"out","part":"runtime"},{"bytes":488,"name":"put_int","part":"runtime"},{"bytes":205,"name":"fail","part":"runtime"},{"bytes":2359,"name":"in","part":"runtime"},{"bytes":603,"name":"read_int","part":"runtime"},{"bytes":688,"name":"iarith","part":"runtime"},{"bytes":846,"name":"thread stack","part":"runtime"},{"bytes":276,"name":"namespaces and main","part":"glue"}]}
+{"bytes":7067,"checks":"none","judge":"generic","limit":65536,"path":"a.cpp","sizes":[{"bytes":91,"name":"top-level code","part":"your code"},{"bytes":196,"name":"the source","part":"header"},{"bytes":585,"name":"#include","part":"includes"},{"bytes":730,"name":"out","part":"runtime"},{"bytes":488,"name":"put_int","part":"runtime"},{"bytes":205,"name":"fail","part":"runtime"},{"bytes":2359,"name":"in","part":"runtime"},{"bytes":603,"name":"read_int","part":"runtime"},{"bytes":688,"name":"iarith","part":"runtime"},{"bytes":846,"name":"thread stack","part":"runtime"},{"bytes":276,"name":"namespaces and main","part":"glue"}]}
 -- stderr
 
