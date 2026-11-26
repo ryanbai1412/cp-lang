@@ -10,7 +10,7 @@
 use std.algebra.{Op}
 use std.dsu.{Mark, Dsu, DsuOf, ParityDsu, PotentialDsu}
 use std.hashmap.{Counter}
-use std.seq.{Track, collect}
+use std.seq.{Track, Indexed, collect}
 
 /// One fold of `op` per length-`k` window of `self`, left to right, kept the way `Window(op)`
 /// keeps it (two stacks).

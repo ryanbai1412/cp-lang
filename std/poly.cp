@@ -11,6 +11,7 @@ use std.math.{mod_sqrt, pow_mod, bit_ceil, ctz}
 use std.mod.{Mod}
 use std.ntt.{convolve, ntt}
 use std.range.{Len}
+use std.seq.{Indexed}
 
 /// The formal derivative `a'(x)`: coefficient `k` is `(k + 1) * a[k + 1]`. Length
 /// `max(0, a.len - 1)`, trailing zeros kept.
