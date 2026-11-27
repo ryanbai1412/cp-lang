@@ -294,6 +294,7 @@ core-04/dom-count.cp
 core-04/dom-empty-first-traps.cp
 core-04/dom-first-last.cp
 core-04/dom-first-not-position.cp
+core-04/dom-pattern-refutes.cp
 core-04/dom-walk-rev.cp
 core-04/domain-count-predicate-is-bool.cp
 core-04/domain-drop-first.cp
@@ -309,6 +310,8 @@ core-04/g3-widen-keeps-indices.cp
 core-04/generic-key-callback-indexes-source.cp
 core-04/h-filter-has-no-keys.cp
 core-04/h-map-keeps-keys.cp
+core-04/if-let-at-just-outside.cp
+core-04/if-let-at-other-domain.cp
 core-04/into-int-generic-bound.cp
 core-04/into-int-reads-current-fields.cp
 core-04/keys-of-domain-keyed-array.cp
@@ -1095,6 +1098,7 @@ next/n_nested_03_hoisted_call.cp
 next/n_opt_01_entry_globals_become_locals.cp
 next/n_own_10_param_value_is_not_a_borrow.cp
 next/n_pattern_01_refutable_patterns_test_and_bind.cp
+next/n_pattern_02_domain_patterns_test_membership.cp
 next/n_read_01_an_int_past_int_traps_out_of_contract.cp
 next/n_record_01_records_are_core_structs.cp
 next/n_record_02_field_traits.cp

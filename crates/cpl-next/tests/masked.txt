@@ -76,7 +76,6 @@ core-04/cuts-call.cp
 core-04/d1-raw-int-into-domain-slice.cp
 core-04/declared-tuple-of-ranges-builds-pieces.cp
 core-04/dom-in.cp
-core-04/dom-pattern-refutes.cp
 core-04/dom-range.cp
 core-04/domain-slice-by-position.cp
 core-04/domain-subsets-array-and-loop.cp
@@ -97,8 +96,6 @@ core-04/grid-row-written-writes-the-grid.cp
 core-04/grid-rows-cols-views.cp
 core-04/grid-rows-is-a-getter.cp
 core-04/grid-rows-written-through.cp
-core-04/if-let-at-just-outside.cp
-core-04/if-let-at-other-domain.cp
 core-04/inline-product-domain-is-seq.cp
 core-04/int-array-slice-keeps-keys.cp
 core-04/int-range-cut-is-value.cp

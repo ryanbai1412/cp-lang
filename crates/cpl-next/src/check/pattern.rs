@@ -265,9 +265,29 @@ impl Cx<'_> {
                     let rest = self.refute(p, &val, mutable, binds);
                     return Self::both(Some(flag), rest);
                 }
-                if path.len() == 1 && self.doms.contains_key(head) {
-                    self.err(span, "slice: a domain pattern");
-                    return None;
+                // `V(j)` is the pattern form of `V.at(x)`: an `Int` inside `V` (R04.2.14).
+                if let (1, Some(dty)) = (path.len(), self.domain_named(head)) {
+                    let [p] = &args[..] else {
+                        let code = cpl_diag::codes::WRONG_ARG_COUNT.0;
+                        self.err(
+                            span,
+                            format!("{code}: `{head}(..)` takes 1 pattern, found {}", args.len()),
+                        );
+                        return None;
+                    };
+                    if !matches!(
+                        self.shallow(&v.ty),
+                        Ty::Int | Ty::Range(..) | Ty::RangeOf(_)
+                    ) {
+                        self.mismatch(span, &format!("`{head}(..)`"), &v.ty);
+                        return None;
+                    }
+                    let x = self.coerce(v.clone(), &Ty::Int);
+                    let at = self.domain_at(dty.clone(), x, span);
+                    let flag = mk(TK::Field(Box::new(at.clone()), 0), Ty::Bool);
+                    let val = mk(TK::Field(Box::new(at), 1), dty);
+                    let rest = self.refute(p, &val, mutable, binds);
+                    return Self::both(Some(flag), rest);
                 }
                 let Some((e, targs)) = self.enum_of(&v.ty) else {
                     self.mismatch(span, &format!("`{head}`"), &v.ty);
@@ -482,6 +502,10 @@ impl Cx<'_> {
                     if path.len() == 1 && self.present_pattern(head) {
                         return Space::Ctor(1, vec![self.space(p, &inner)]);
                     }
+                }
+                // A domain pattern tests membership, which no other pattern covers.
+                if path.len() == 1 && self.domain_named(head).is_some() {
+                    return Space::Lit(None);
                 }
                 let Some((e, ts)) = self.enum_of(t) else {
                     return Space::Any;
