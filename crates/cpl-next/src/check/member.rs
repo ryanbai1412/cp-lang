@@ -18,7 +18,7 @@ impl<'a> Cx<'a> {
         span: Span,
         mutates: bool,
     ) -> TExpr {
-        let rt = self.shallow(&recv.ty);
+        let rt = self.recv_ty(&recv.ty);
         if rt == Ty::Error {
             return Self::error_node(span);
         }
@@ -38,6 +38,16 @@ impl<'a> Cx<'a> {
             };
         };
         self.call_member(recv, (m, ts, ss), args, span, mutates)
+    }
+    /// A receiver's type with its arguments resolved, so an impl's other parameters follow from
+    /// them (`K` of `Slice<S>` from `S`'s impl of `Indexed<K, T>`).
+    pub(super) fn recv_ty(&self, t: &Ty) -> Ty {
+        match self.shallow(t) {
+            Ty::Struct(id, args, sets) => {
+                Ty::Struct(id, args.iter().map(|a| self.shallow(a)).collect(), sets)
+            }
+            t => t,
+        }
     }
     /// `recv.m(args)` with `m` already found on `recv`'s type.
     pub(super) fn call_member(
@@ -356,7 +366,7 @@ impl<'a> Cx<'a> {
         let walk = std::mem::take(&mut self.allow_region);
         let recv = self.expr(base, None);
         self.allow_region = walk;
-        let rt = self.shallow(&recv.ty);
+        let rt = self.recv_ty(&recv.ty);
         if rt == Ty::Error {
             return Self::error_node(span);
         }

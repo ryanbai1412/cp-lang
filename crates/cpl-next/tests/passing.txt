@@ -1189,6 +1189,7 @@ next/n_domain_cuts_open.cp
 next/n_domain_cuts_open_closed.cp
 next/n_domain_ord.cp
 next/n_domain_trait_01.cp
+next/n_domain_view_for.cp
 next/n_engine_01_inlined_lender_runs_body_in_place.cp
 next/n_engine_02_trap_in_inlined_lender_body.cp
 next/n_engine_03_inlined_param_reads_caller_local.cp

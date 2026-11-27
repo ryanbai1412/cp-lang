@@ -189,9 +189,9 @@ impl Decls {
                 let Some(bt) = binds[*i].clone() else {
                     continue;
                 };
-                let met = self.trait_impls(r.tr).map(|(_, m)| m);
-                let Some(args) = met.into_iter().find_map(|m| {
-                    let b = self.impl_args(m, &bt)?;
+                // The impl that meets it is picked as any is: a written type's before a blanket.
+                let Some(args) = self.impls_of(r.tr).find_map(|m| {
+                    let b = self.fits_impl(m, &bt)?;
                     let sub = Subst { tys: &b, sets: &[] };
                     Some(m.trait_.args.iter().map(|a| sub.ty(a)).collect::<Vec<_>>())
                 }) else {
