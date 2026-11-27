@@ -29,14 +29,14 @@ impl Cx<'_> {
             .then(|| self.d.fn_named(self.module, n))
             .flatten();
         let Some(d) = fd.filter(|d| !self.d.f(*d).generics.is_empty()) else {
-            if fd.is_none() && self.lookup(n).is_none() {
-                let what = match self.d.struct_named(self.module, n) {
-                    Some(_) => Unbuilt::TypeArgsValue,
-                    None => Unbuilt::Expression {
-                        kind: "Generic".into(),
-                    },
-                };
-                self.err(span, what);
+            if fd.is_none() && self.lookup(n).is_none() && self.d.struct_named(self.module, n).is_some() {
+                self.err(span, Unbuilt::TypeArgsValue);
+                return err;
+            }
+            // Anything else is what the name alone is: unknown, the error, or a value that
+            // takes no type arguments.
+            let alone = self.expr(base, None);
+            if self.is_error(&alone.ty) {
                 return err;
             }
             self.err(

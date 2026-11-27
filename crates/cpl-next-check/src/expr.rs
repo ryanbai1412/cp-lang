@@ -1679,9 +1679,13 @@ impl<'a> Cx<'a> {
                 },
                 ExprKind::Generic { base, args: targs }
                     if targs.len() == 1
-                        && args.is_empty()
                         && matches!(&base.kind, ExprKind::Name(n) if n == "read" && self.lookup(n).is_none()) =>
                 {
+                    if !args.is_empty() {
+                        let kind = "Generic".into();
+                        self.err(span, Unbuilt::Expression { kind });
+                        return Self::error_node(span);
+                    }
                     let mut pre = Vec::new();
                     let t = self.body_ty(&targs[0], span, &mut pre);
                     let v = self.read_as(&t, span);

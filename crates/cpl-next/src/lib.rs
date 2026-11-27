@@ -649,11 +649,11 @@ mod tests {
         ] {
             assert!(verdict.contains(part), "{part} in {verdict}");
         }
-        let refusal = &json("var a = [1, 2, 3]\nlet p = mut a[1]\nprint(a[1])\n")[0];
+        let refusal = &json("let s = \"1\"\nprint(read<Int>(from: s))\n")[0];
         for part in [
             r#""code":"E0501""#,
             r#""refusal":"Expression""#,
-            r#""text":"check: program:2:9: slice: "#,
+            r#""text":"check: program:2:7: slice: "#,
         ] {
             assert!(refusal.contains(part), "{part} in {refusal}");
         }
@@ -745,6 +745,14 @@ mod tests {
         );
     }
 
+    /// Type arguments on an unknown name report the unknown name, not a refusal.
+    #[test]
+    fn type_arguments_on_an_unknown_name_report_the_name() {
+        let src = "fn f<K>() -> Int:\n    var m = HashMop<K, Int>()\n    0\nprint(f<Int>())\n";
+        let ds: Vec<String> = diags(src).iter().map(|d| d.to_string()).collect();
+        assert_eq!(ds, ["check: program:2:13: E0201: unknown name `HashMop`"]);
+    }
+
     /// A refused domain is the error: its uses give no verdict of their own.
     #[test]
     fn uses_of_a_refused_domain_say_nothing_more() {
@@ -767,7 +775,7 @@ mod tests {
                 ds.iter().map(|d| d.to_string()).collect::<Vec<_>>()
             );
         };
-        only_refusals("var a = [1, 2, 3]\nlet p = mut a[1]\np += 10\nprint(a[1])\n");
+        only_refusals("let s = \"1\"\nlet p = read<Int>(from: s)\np += 10\nprint(p)\n");
         let lent: Vec<String> = (diags("var b = [3, 1, 2]\nreverse(mut nope(b))\nprint(b[0])\n"))
             .iter()
             .map(|d| d.to_string())
