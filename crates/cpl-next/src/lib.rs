@@ -21,7 +21,8 @@ mod own;
 pub use interp::{Outcome, Trap};
 
 /// Which layer reported a diagnostic.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+/// In pipeline order: a program's diagnostics are listed layer by layer.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum Stage {
     Syntax,
     Decls,
@@ -153,13 +154,50 @@ pub struct Compiled {
 /// Every layer through lowering, each run whatever an earlier one found (contracts 1-3).
 struct Front {
     loaded: modules::Loaded,
+    /// What the parser could not read; a later layer says nothing there.
+    rejected: Vec<cpl_diag::Span>,
     d: decls::Decls,
     t: check::Typed,
     g: lower::Generic,
-    /// Ownership's copies, which the linked program takes (`own::place_copies`).
-    copies: std::collections::BTreeSet<cpl_diag::Span>,
     main: Vec<(u32, cpl_syntax::ast::Stmt)>,
     diags: Vec<Diag>,
+}
+
+/// `es`, said by `stage`, but for what lies where the parser could not read.
+fn staged(
+    stage: Stage,
+    es: &[diag::Msg],
+    loaded: &modules::Loaded,
+    rejected: &[cpl_diag::Span],
+) -> Vec<Diag> {
+    let unread = |m: &&diag::Msg| (m.at).is_some_and(|a| rejected.iter().any(|p| overlaps(*p, a)));
+    (es.iter())
+        .filter(|m| stage == Stage::Syntax || !unread(m))
+        .map(|e| Diag::new(stage, e, loaded))
+        .collect()
+}
+
+/// Link, then ownership on the linked program (contract 4), where the program checked clean:
+/// the program, its copies settled, and ownership's diagnostics. What ownership finds wrong
+/// in a fn reached only through a trait is a link error where an instance of it runs.
+fn back(f: &Front) -> Option<(inst::Program, Vec<Diag>)> {
+    if !(f.loaded.errors.is_empty() && f.t.errors.is_empty() && f.d.errors.is_empty()) {
+        return None;
+    }
+    let mut prog = inst::link(&f.d, &f.t, &f.g.funcs, &f.g.globals, f.g.lines.clone());
+    let owned = own::check(&f.d, &f.t);
+    let mut said = std::collections::HashSet::new();
+    let reached = (prog.insts.iter()).filter_map(|i| match i.key {
+        ir::FuncKey::Decl(id) if said.insert(id) => owned.deferred.get(&id),
+        _ => None,
+    });
+    let deferred: Vec<diag::Msg> = (reached.flatten())
+        .map(|e| e.clone().prefixed(Stage::Own.name()))
+        .collect();
+    prog.errors.extend(deferred);
+    own::place_copies(&mut prog, &f.g.sites, &owned.copies);
+    let diags = staged(Stage::Own, &owned.errors, &f.loaded, &f.rejected);
+    Some((prog, diags))
 }
 
 fn front(std: &Std, user_src: &str, roots: &Roots) -> Front {
@@ -173,14 +211,7 @@ fn front(std: &Std, user_src: &str, roots: &Roots) -> Front {
         let rejected: Vec<cpl_diag::Span> = (loaded.poisoned.iter().copied())
             .chain(loaded.errors.iter().filter_map(|m| m.at))
             .collect();
-        let unread =
-            |m: &&diag::Msg| (m.at).is_some_and(|a| rejected.iter().any(|p| overlaps(*p, a)));
-        let diags = |stage, es: &[diag::Msg]| -> Vec<Diag> {
-            (es.iter())
-                .filter(|m| stage == Stage::Syntax || !unread(m))
-                .map(|e| Diag::new(stage, e, &loaded))
-                .collect()
-        };
+        let diags = |stage, es: &[diag::Msg]| staged(stage, es, &loaded, &rejected);
         let mut out = diags(Stage::Syntax, &loaded.errors);
         let (d, main) = decls::collect(std.decls(), &loaded.modules, &loaded.seen, &loaded.prelude);
         out.extend(diags(Stage::Decls, &d.errors));
@@ -191,16 +222,6 @@ fn front(std: &Std, user_src: &str, roots: &Roots) -> Front {
             continue;
         }
         out.extend(diags(Stage::Check, &t.errors));
-        let owned = if loaded.errors.is_empty() && t.errors.is_empty() && d.errors.is_empty() {
-            own::check(&d, &t)
-        } else {
-            own::Owned::default()
-        };
-        out.extend(diags(Stage::Own, &owned.errors));
-        for (f, es) in &owned.deferred {
-            let own = es.iter().map(|e| e.clone().prefixed(Stage::Own.name()));
-            t.deferred.entry(*f).or_default().extend(own);
-        }
         let g = lower::lower(&d, &t, &loaded);
         out.extend(diags(Stage::Lower, &g.errors));
         for (f, es) in &g.deferred {
@@ -209,10 +230,10 @@ fn front(std: &Std, user_src: &str, roots: &Roots) -> Front {
         }
         return Front {
             loaded,
+            rejected,
             d,
             t,
             g,
-            copies: owned.copies,
             main,
             diags: out,
         };
@@ -226,30 +247,25 @@ pub fn compile(
     roots: &Roots,
     events: bool,
 ) -> Result<Compiled, Vec<Diag>> {
-    let Front {
-        loaded,
-        d,
-        t,
-        g,
-        copies,
-        diags,
-        ..
-    } = front(std, user_src, roots);
-    if !diags.is_empty() {
-        return Err(diags);
+    let mut f = front(std, user_src, roots);
+    let Some((mut prog, own)) = back(&f) else {
+        return Err(f.diags);
+    };
+    f.diags.extend(own);
+    f.diags.sort_by_key(|d| d.stage);
+    if !f.diags.is_empty() {
+        return Err(f.diags);
     }
     let link = |es: &[diag::Msg]| -> Vec<Diag> {
         (es.iter())
-            .map(|e| Diag::new(Stage::Link, e, &loaded))
+            .map(|e| Diag::new(Stage::Link, e, &f.loaded))
             .collect()
     };
-    let mut prog = inst::link(&d, &t, &g.funcs, &g.globals, g.lines.clone());
     if !prog.errors.is_empty() {
         return Err(link(&prog.errors));
     }
-    own::place_copies(&mut prog, &g.sites, &copies);
     if events {
-        inst::add_events(&mut prog, &t, &d, loaded.program_start);
+        inst::add_events(&mut prog, &f.t, &f.d, f.loaded.program_start);
     }
     let canon = inst::canonicalize(&prog).map_err(|es| link(&es))?;
     let (opt, proved) = cpl_next_ir::opt::optimize(&canon, &prog.globals, prog.main);
@@ -279,7 +295,11 @@ pub struct Unit {
 /// What `compile` checks and lowers, unit by unit, and every diagnostic: the editor's view of a
 /// program that need not compile.
 pub fn units(std: &Std, user_src: &str, roots: &Roots) -> (Vec<Unit>, Vec<Diag>) {
-    let f = front(std, user_src, roots);
+    let mut f = front(std, user_src, roots);
+    if let Some((_, own)) = back(&f) {
+        f.diags.extend(own);
+        f.diags.sort_by_key(|d| d.stage);
+    }
     let start = f.loaded.program_start;
     let fns = (0..f.d.fns.len()).map(ty::FnId).filter(|id| {
         let fd = f.d.f(*id);

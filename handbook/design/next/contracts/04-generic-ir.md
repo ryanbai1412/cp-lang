@@ -133,9 +133,14 @@ enum Tier { Proved, Checked, Promised, Trusted }
 
 ## Round 5 (2026-11-25, not yet reviewed)
 
-- **Ownership finishes here.** It reads summaries (contract 2) and
-  capture modes, and reports every borrow error per unit. It hands the
-  link step no obligations. Supersedes decision 13.
+- **Ownership runs after link** (2026-11-26 ruling, superseding "ownership
+  finishes here" and decision 13). Lowering reads nothing of it: lends
+  come from signatures (`own::lends`) and passed places stay `Pass`.
+  Own reads link's closed sets and each instance's resolved impls, does
+  no set fixpoint of its own, and hands nothing back to link. What it
+  finds wrong in a fn reached only through a trait is said where an
+  instance of that fn runs. Today it still walks the typed tree, after
+  link; reading instances is the next step.
 - **`Witness(type, field)`** replaces "the size of this domain".
 - **`lend_begin` / `lend_end`** for a lend that lasts several
   statements. Regions stay for generators and lenders.
