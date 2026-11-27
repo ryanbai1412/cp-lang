@@ -168,17 +168,9 @@ fn comprehension_loop(body: &ast::Expr, clauses: &[ast::Clause], span: Span) -> 
                 otherwise: None,
             })));
         }
-        // `[0 for _ in xs]`: the loop binds each element to a name nothing reads.
-        let pat = match &c.pat.kind {
-            PatternKind::Wildcard => ast::Pattern {
-                kind: PatternKind::Name("$each".into()),
-                span: c.pat.span,
-            },
-            _ => c.pat.clone(),
-        };
         inner = stmt(ast::StmtKind::For {
             label: None,
-            pat,
+            pat: c.pat.clone(),
             iter: c.iter.clone(),
             body: block(inner),
             else_body: None,

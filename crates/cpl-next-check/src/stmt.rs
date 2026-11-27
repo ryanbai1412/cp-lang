@@ -907,6 +907,15 @@ impl<'a> Cx<'a> {
                 ..
             } => {
                 self.in_for = false;
+                // `for _ in xs` (and `repeat n:`): each item is bound to a name nothing reads.
+                if let PatternKind::Wildcard = pat.kind {
+                    let mut named = s.clone();
+                    if let StmtKind::For { pat, .. } = &mut named.kind {
+                        pat.kind = PatternKind::Name("$each".into());
+                    }
+                    self.in_for = true;
+                    return self.stmt(&named, out);
+                }
                 if let (PatternKind::Name(name), ExprKind::Name(dn)) = (&pat.kind, &iter.kind) {
                     // A declared domain's positions are its ordinals; a library one walks its `Seq`.
                     let ordinals = self
