@@ -1,10 +1,12 @@
 //! Contract 3: declarations -> typed tree. Decides every type, target and
 //! conversion. Nothing after this infers anything.
-use crate::decls::{self, Decls, ModId, Named, Owner, SelfMode, TraitRef};
 use crate::diag::Msg;
 use crate::ir::CheckKind;
 use crate::ty::*;
 use cpl_diag::Span;
+use cpl_next_decls::decls::{self, Decls, ModId, Named, Owner, SelfMode, TraitRef};
+use cpl_next_decls::{diag, kind_name, modules, plain, records};
+use cpl_next_ir::{ir, ty};
 use cpl_syntax::ast::{
     self, AssignOp, BinOp, CmpOp, Cond, ExprKind, FnBody, PatternKind, StmtKind, StrPiece,
     TypeKind, UnOp,
@@ -672,7 +674,7 @@ impl<'a> Cx<'a> {
     }
     /// A reference reached fn `id`: it is checked, and what its library declaration uses that
     /// the slice does not build is said once. A trait's method reaches every impl's.
-    pub(super) fn reach(&mut self, id: FnId) {
+    pub(crate) fn reach(&mut self, id: FnId) {
         let d = self.d;
         let f = d.f(id);
         self.reached.push(id);

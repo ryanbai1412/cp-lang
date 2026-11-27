@@ -18,6 +18,7 @@ cpl-corpus = { path = "crates/cpl-corpus" }
 cpl-wait = { path = "crates/cpl-wait" }
 cpl-next-ir = { path = "crates/cpl-next-ir" }
 cpl-next-decls = { path = "crates/cpl-next-decls" }
+cpl-next-check = { path = "crates/cpl-next-check" }
 cpl-next-engine = { path = "crates/cpl-next-engine" }
 cpl-syntax = { path = "crates/cpl-syntax" }
 cpl-check = { path = "crates/cpl-check" }

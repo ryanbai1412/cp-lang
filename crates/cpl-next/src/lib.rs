@@ -6,9 +6,9 @@
 //! until it accepts every program, and the landing that switches `cpl` to it deletes
 //! what it replaces.
 
-use cpl_next_decls::{decls, diag, kind_name, modules, plain, records};
+use cpl_next_check as check;
+use cpl_next_decls::{decls, diag, modules, plain};
 use cpl_next_ir::{ir, ops, ty};
-mod check;
 mod cpp;
 use diag::kind_of;
 pub use diag::Kind;
