@@ -1306,6 +1306,7 @@ next/n_trait_typed_param.cp
 next/n_trap_01_call_stack_names_inlined_calls.cp
 next/n_trap_02_call_stack_in_a_loop_body.cp
 next/n_typeof_01_fn_item_impls.cp
+next/n_typeof_02_unoverloadable_op_is_no_item.cp
 next/n_u64_01_wraps_and_compares_unsigned.cp
 next/n_u64_02_int_of_a_large_u64_traps.cp
 next/n_u64_03_division_by_zero_traps.cp

@@ -358,7 +358,10 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
                             ctx: 0,
                         }))),
                         None => {
-                            errors.push(at("slice: type ItemOf".to_string()));
+                            let code = cpl_diag::codes::NOT_A_FN_ITEM.0;
+                            errors.push(at(format!(
+                                "{code}: no `@operator` trait declares `{k}`, so it is no fn item"
+                            )));
                             Ty::Error
                         }
                     }
