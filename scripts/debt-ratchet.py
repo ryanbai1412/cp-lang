@@ -1659,20 +1659,18 @@ def next_asks_refused(root: Path) -> list[str]:
     return out
 
 
-NEXT_LAYER_CRATES = ("cpl-next-syntax", "cpl-next-ir", "cpl-next-decls", "cpl-next-check", "cpl-next-lower", "cpl-next-link",
-                     "cpl-next-own")
+# `cpl-syntax` is counted on its own, by `next_syntax_old_refs`.
 NEXT_LAYER_MAY_USE = ("cpl-syntax", "cpl-diag", "cpl-config")
 
 
 def next_layer_foreign_deps(root: Path) -> list[str]:
-    """Dependencies of a compiler layer crate on a crate that is neither a layer nor the
-    syntax, diagnostics and config it is built on: a tool or build fact (a judge profile, JSON)
-    decided inside the compiler instead of arriving as an input."""
+    """Dependencies of any cpl-next crate (each layer, the driver, the engines and C++) on a
+    crate that is neither one of them nor the diagnostics and config they are built on: a tool
+    or build fact (a judge profile, the environment, JSON) decided inside the compiler instead of
+    arriving in the snapshot (contract 0). Hard zero at the switch (audit S21)."""
     out = []
-    for c in NEXT_LAYER_CRATES:
-        toml = root / "crates" / c / "Cargo.toml"
-        if not toml.is_file():
-            continue
+    for toml in sorted((root / "crates").glob("cpl-next*/Cargo.toml")):
+        c = toml.parent.name
         deps = tomllib.loads(toml.read_text(encoding="utf-8")).get("dependencies", {})
         out += [f"{c} -> {d}" for d in sorted(deps) if not d.startswith("cpl-next-") and d.startswith("cpl-")
                 and d not in NEXT_LAYER_MAY_USE]

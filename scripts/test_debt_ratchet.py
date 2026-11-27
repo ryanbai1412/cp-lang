@@ -2311,6 +2311,10 @@ class DebtRatchetTest(unittest.TestCase):
             (root / "crates/cpl-next-check/Cargo.toml").write_text(
                 '[dependencies]\ncpl-syntax.workspace = true\ncpl-judge.workspace = true\ncpl-next-ir.workspace = true\n')
             self.assertEqual(dr.next_layer_foreign_deps(root), ["cpl-next-check -> cpl-judge"])
+            self._write(root, "crates/cpl-next/Cargo.toml",
+                        "[dependencies]\ncpl-env.workspace = true\ncpl-next-check.workspace = true\n")
+            self.assertEqual(dr.next_layer_foreign_deps(root),
+                             ["cpl-next -> cpl-env", "cpl-next-check -> cpl-judge"])
             (root / "crates/cpl-next-check/src").mkdir()
             (root / "crates/cpl-next-check/src/lib.rs").write_text(
                 "use cpl_syntax::ast::Expr;\nuse cpl_next_syntax::ast;\nfn f() { cpl_syntax::parse_file(\"\"); }\n")
