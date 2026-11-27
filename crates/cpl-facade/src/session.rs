@@ -85,8 +85,54 @@ pub const JUDGE_DECORATORS: [&str; 5] = cpl_ir::STRESS_DECORATORS;
 /// comment or a string). Needs no check, so an editor asks it on each key.
 pub use cpl_ir::has_stress_target as has_judge;
 
-/// The runtime checks a build or a run keeps.
-pub type Checks = cpl_ir::checks::Checks;
+/// The runtime checks a judge build or a run keeps (`cpl build --checks`, R09.3).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Checks {
+    /// No index, `/ 0` or `assert` traps: what hand-written C++ checks.
+    None,
+    /// Index, `/ 0` and `assert` stop the program with their message.
+    #[default]
+    Traps,
+    /// [`Checks::Traps`], plus range stores, overflow and the other checks of the local
+    /// build (`-DLOCAL`).
+    All,
+}
+
+impl Checks {
+    /// What every local run checks: `cpl test`, `cpl stress` and their builds of brutes and
+    /// generators.
+    pub const LOCAL: Checks = Checks::All;
+
+    pub const NAMES: [&'static str; 3] = ["none", "traps", "all"];
+
+    pub fn parse(name: &str) -> Option<Checks> {
+        cpl_ir::checks::Checks::parse(name).map(Checks::from)
+    }
+
+    pub fn name(self) -> &'static str {
+        cpl_ir::checks::Checks::from(self).name()
+    }
+}
+
+impl From<Checks> for cpl_ir::checks::Checks {
+    fn from(c: Checks) -> cpl_ir::checks::Checks {
+        match c {
+            Checks::None => cpl_ir::checks::Checks::None,
+            Checks::Traps => cpl_ir::checks::Checks::Traps,
+            Checks::All => cpl_ir::checks::Checks::All,
+        }
+    }
+}
+
+impl From<cpl_ir::checks::Checks> for Checks {
+    fn from(c: cpl_ir::checks::Checks) -> Checks {
+        match c {
+            cpl_ir::checks::Checks::None => Checks::None,
+            cpl_ir::checks::Checks::Traps => Checks::Traps,
+            cpl_ir::checks::Checks::All => Checks::All,
+        }
+    }
+}
 
 /// An `if` of a program.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]

@@ -97,7 +97,7 @@ impl<'a> RunInput<'a> {
     /// At a judge build's `checks`: where they keep no check, the program
     /// does what that build does instead of trapping.
     pub fn at(self, checks: Checks) -> RunInput<'a> {
-        RunInput(self.0.at(checks))
+        RunInput(self.0.at(checks.into()))
     }
 
     /// With `rand` and `shuffle` writing their choices down in `choices`,

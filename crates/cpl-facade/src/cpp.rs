@@ -37,7 +37,7 @@ impl Default for Profile {
             stamp: target.stamp,
             thread_stack: target.thread_stack,
             windows: target.windows,
-            checks: target.checks,
+            checks: target.checks.into(),
             cpu: target.cpu,
             size: None,
             source_comment: true,
@@ -51,7 +51,7 @@ impl Profile {
             stamp: self.stamp.clone(),
             thread_stack: self.thread_stack,
             windows: self.windows,
-            checks: self.checks,
+            checks: self.checks.into(),
             cpu: self.cpu.clone(),
         }
     }
