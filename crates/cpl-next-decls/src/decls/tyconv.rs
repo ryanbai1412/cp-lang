@@ -555,6 +555,9 @@ impl TypeTables for Tables {
     fn tuple(&self, n: usize) -> Option<StructId> {
         self.tuples.get(&n).copied()
     }
+    fn widest_tuple(&self) -> usize {
+        self.tuples.keys().max().copied().unwrap_or(0)
+    }
     fn record(&self, fields: &[String]) -> Option<StructId> {
         self.records.get(fields).copied()
     }

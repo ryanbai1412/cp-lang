@@ -148,7 +148,7 @@ impl Cx<'_> {
     fn fit_key(&mut self, k: &Ty, array: bool, mut i: TExpr) -> TExpr {
         let dty = self.shallow(k);
         if let (Ty::Struct(t, fs, _), Ty::Struct(u, _, sets)) = (&dty, self.shallow(&i.ty)) {
-            let tuple = u == *t && self.d.tuples.get(&fs.len()) == Some(t);
+            let tuple = u == *t && self.d.tuple(fs.len()).as_ref() == Some(t);
             if let TK::Struct(ps) = &mut i.kind {
                 if tuple && ps.len() == fs.len() {
                     let ps: Vec<TExpr> = (std::mem::take(ps).into_iter().zip(fs))
@@ -256,7 +256,7 @@ impl Cx<'_> {
         let Ty::Struct(t, fs, sets) = self.shallow(&k) else {
             return None;
         };
-        if self.d.tuples.get(&parts.len()) != Some(&t) || fs.len() != parts.len() {
+        if self.d.tuple(parts.len()) != Some(t) || fs.len() != parts.len() {
             return None;
         }
         let fs = (parts.iter().zip(fs))
@@ -682,7 +682,7 @@ impl Cx<'_> {
             return Ok(None);
         };
         let sd = self.d.s(sid);
-        if sd.record || self.d.tuples.values().any(|&t| t == sid) {
+        if sd.record || self.d.tuple(sd.fields.len()) == Some(sid) {
             return Ok(None);
         }
         let span = Span::new(first.span.start, last.span.end);

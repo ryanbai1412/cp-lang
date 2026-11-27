@@ -27,6 +27,8 @@ pub trait TypeTables {
     fn struct_defaults(&self, s: StructId) -> Option<&Vec<Option<Ty>>>;
     /// Core's `@tuple` struct with `n` fields.
     fn tuple(&self, n: usize) -> Option<StructId>;
+    /// The most fields a core `@tuple` struct has: a longer tuple nests its last parts.
+    fn widest_tuple(&self) -> usize;
     /// The record struct with these field names.
     fn record(&self, fields: &[String]) -> Option<StructId>;
     fn record_fields(&self, s: StructId) -> Option<Vec<String>>;
@@ -118,6 +120,9 @@ impl TypeTables for Decls {
     }
     fn tuple(&self, n: usize) -> Option<StructId> {
         self.tuples.get(&n).copied()
+    }
+    fn widest_tuple(&self) -> usize {
+        self.tuples.keys().max().copied().unwrap_or(0)
     }
     fn record(&self, fields: &[String]) -> Option<StructId> {
         self.records.get(fields).copied()

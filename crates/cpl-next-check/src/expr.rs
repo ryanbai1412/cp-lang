@@ -204,7 +204,7 @@ impl<'a> Cx<'a> {
     /// More parts than the widest tuple: the last part is a tuple of the rest, nested as far as
     /// needed.
     fn nest_parts(&self, mut xs: Vec<ast::Expr>) -> ExprKind {
-        let wide = self.d.tuples.keys().max().copied().unwrap_or(0);
+        let wide = self.d.widest_tuple();
         if wide < 2 || xs.len() <= wide {
             return ExprKind::Tuple(xs);
         }
@@ -1296,12 +1296,14 @@ impl<'a> Cx<'a> {
                 }
                 acc.unwrap_or(prev)
             }
-            ExprKind::Tuple(xs) if self.d.tuples.contains_key(&xs.len()) => {
+            ExprKind::Tuple(xs) if self.d.tuple(xs.len()).is_some() => {
                 // `(R, C)` named as a value is the product domain's whole range (R04.2.11).
                 if let Some(p) = self.type_path(e) {
                     return self.domain_value(p, span);
                 }
-                let d = self.d.tuples[&xs.len()];
+                let Some(d) = self.d.tuple(xs.len()) else {
+                    return Self::error_node(span);
+                };
                 let args: Vec<ast::Arg> = (xs.iter())
                     .map(|x| ast::Arg {
                         name: None,

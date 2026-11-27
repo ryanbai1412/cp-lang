@@ -620,7 +620,7 @@ impl<'a> Cx<'a> {
         }
     }
     fn is_tuple(&self, s: StructId) -> bool {
-        self.d.tuples.values().any(|t| *t == s)
+        self.d.tuple(self.d.s(s).fields.len()) == Some(s)
     }
     /// Whether `t` is an array keyed by more than one axis, `[I, J]T` (R01.8.2).
     pub(super) fn is_table(&self, t: &Ty) -> bool {

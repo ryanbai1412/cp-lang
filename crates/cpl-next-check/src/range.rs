@@ -334,7 +334,7 @@ impl Cx<'_> {
             }
             // An inline tuple of domains is the product domain (R04.2.11).
             ExprKind::Tuple(xs) if xs.len() > 1 => {
-                let &tuple = self.d.tuples.get(&xs.len())?;
+                let tuple = self.d.tuple(xs.len())?;
                 let parts = xs
                     .iter()
                     .map(|x| self.type_path(x))
@@ -344,7 +344,7 @@ impl Cx<'_> {
             // So is a record of them, its factors named (R04.2.10).
             ExprKind::Record(fs) => {
                 let names: Vec<String> = fs.iter().map(|(n, _)| n.text.clone()).collect();
-                let record = *self.d.records.get(&names)?;
+                let record = self.d.record(&names)?;
                 let parts = (fs.iter())
                     .map(|(_, x)| self.type_path(x))
                     .collect::<Option<Vec<_>>>()?;
