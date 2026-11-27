@@ -1054,7 +1054,12 @@ fn check_finite(p: &mut Program) {
 /// branch over the closures it can be, and each call a direct call.
 /// The canonical form of every instance, or what the link step left inconsistent. It also
 /// decides which types share a representation (`Program::shares`).
-pub fn canonicalize(p: &mut Program) -> Result<Vec<Func<CTy>>, Vec<Msg>> {
+/// `expand` is ownership's expansion of each call through a fn value into its member calls; it
+/// returns how many it could not expand.
+pub fn canonicalize(
+    p: &mut Program,
+    expand: &dyn Fn(&Program, &mut Vec<Stmt<CTy>>) -> usize,
+) -> Result<Vec<Func<CTy>>, Vec<Msg>> {
     let mut bad = Vec::new();
     let funcs = p
         .insts
@@ -1063,6 +1068,9 @@ pub fn canonicalize(p: &mut Program) -> Result<Vec<Func<CTy>>, Vec<Msg>> {
             let mut f = f.clone();
             let body = std::mem::take(&mut f.body);
             f.body = canon_block(p, &mut f.locals, &mut bad, body);
+            if expand(p, &mut f.body) > 0 {
+                bad.push("a call through a fn value of a member the program lacks".into());
+            }
             f
         })
         .collect::<Vec<_>>();
@@ -1090,14 +1098,10 @@ fn canon_block(
     let mut out = Vec::new();
     for s in b {
         match s {
-            Stmt::Let(l, e) => canon_store(p, locals, bad, Place::Local(l), Some(l), e, &mut out),
-            Stmt::Assign(pl, e) => canon_store(p, locals, bad, pl, None, e, &mut out),
+            Stmt::Let(l, e) => canon_store(locals, bad, Place::Local(l), Some(l), e, &mut out),
+            Stmt::Assign(pl, e) => canon_store(locals, bad, pl, None, e, &mut out),
             Stmt::Expr(e) => match e.kind {
-                EK::CallValue(..) => {
-                    locals.push(e.ty.clone());
-                    let t = locals.len() - 1;
-                    canon_store(p, locals, bad, Place::Local(t), Some(t), e, &mut out)
-                }
+                EK::CallValue(..) => out.push(Stmt::Expr(canon_call(bad, e))),
                 _ => out.push(Stmt::Expr(canon_expr(bad, e))),
             },
             Stmt::If(c, a, b2) => out.push(Stmt::If(
@@ -1210,8 +1214,27 @@ fn canon_block(
     }
     out
 }
+/// A call through a fn value read from a place, with its args canonical; ownership expands it
+/// (`canonicalize`'s `expand`).
+fn canon_call(bad: &mut Vec<String>, e: Expr<CTy>) -> Expr<CTy> {
+    let EK::CallValue(callee, args, at) = e.kind else {
+        return e;
+    };
+    if !matches!(callee.kind, EK::Copy(_)) {
+        bad.push("a call through a fn value not read from a place".into());
+    }
+    let args = (args.into_iter())
+        .map(|a| match a {
+            Arg::Value(v) => Arg::Value(canon_expr(bad, v)),
+            a => a,
+        })
+        .collect();
+    Expr {
+        kind: EK::CallValue(callee, args, at),
+        ..e
+    }
+}
 fn canon_store(
-    p: &Program,
     locals: &mut Vec<CTy>,
     bad: &mut Vec<String>,
     dst: Place,
@@ -1224,66 +1247,7 @@ fn canon_store(
         None => Stmt::Assign(dst.clone(), v),
     };
     match e.kind {
-        EK::CallValue(callee, args, at) => {
-            let cty = callee.ty.clone();
-            let args: Vec<Arg<CTy>> = (args.into_iter())
-                .map(|a| match a {
-                    Arg::Value(e) => Arg::Value(canon_expr(bad, e)),
-                    a => a,
-                })
-                .collect();
-            // Ownership reads the callee from a place no operand writes (`drops::place`).
-            let EK::Copy(env) = callee.kind else {
-                return bad.push("a call through a fn value not read from a place".into());
-            };
-            // A capture the body views is given as a view of the closure's field, as ownership
-            // gives one to a viewed param; any other is the callee's copy, which it releases.
-            let call = |k: &InstKey, env: Place| {
-                let views = &p.insts[p.index[k]].views;
-                let mut all: Vec<Arg<CTy>> = p
-                    .captures(k)
-                    .into_iter()
-                    .enumerate()
-                    .map(|(j, t)| {
-                        let at = Place::Field(Box::new(env.clone()), j);
-                        match views.get(j).copied().unwrap_or(false) {
-                            true => Arg::View(at),
-                            false => Arg::Value(read(at, t)),
-                        }
-                    })
-                    .collect();
-                all.extend(args.iter().cloned());
-                Expr {
-                    site: 0,
-                    kind: EK::Call(Target::Inst(p.index[k]), all, at),
-                    ty: e.ty.clone(),
-                }
-            };
-            match &cty {
-                CTy::Clo(k) => out.push(store(call(k, env.clone()))),
-                CTy::Fn(_, _, ms) => {
-                    let arms = ms
-                        .iter()
-                        .enumerate()
-                        .map(|(i, k)| {
-                            vec![Stmt::Assign(
-                                dst.clone(),
-                                call(k, Place::Variant(Box::new(env.clone()), i)),
-                            )]
-                        })
-                        .collect();
-                    out.push(Stmt::Switch(
-                        Expr {
-                            site: 0,
-                            kind: EK::Tag(env.clone()),
-                            ty: CTy::Int,
-                        },
-                        arms,
-                    ));
-                }
-                _ => {}
-            }
-        }
+        EK::CallValue(..) => out.push(store(canon_call(bad, e))),
         EK::Widen(inner) => {
             let (from, to) = (inner.ty.clone(), e.ty.clone());
             if from == to {

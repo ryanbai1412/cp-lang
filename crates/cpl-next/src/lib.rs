@@ -404,7 +404,8 @@ pub(crate) fn compile(
     if events {
         inst::add_events(&mut prog, &f.g.whole);
     }
-    let canon = inst::canonicalize(&mut prog).map_err(|es| link(&es))?;
+    let canon =
+        inst::canonicalize(&mut prog, &cpl_next_own::expand_calls).map_err(|es| link(&es))?;
     let (opt, proved) = cpl_next_ir::opt::optimize(&canon, &prog.globals, prog.main);
     if cfg!(debug_assertions) {
         use cpl_next_ir::verify::{accounted, instances, Stage};

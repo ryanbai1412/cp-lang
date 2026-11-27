@@ -50,6 +50,101 @@ pub(crate) fn place(p: &mut Program) {
     p.insts = insts;
 }
 
+/// An instance's index and its captures: whether its body views one (`Func::views`), and its
+/// type.
+type Member = Option<(usize, Vec<(bool, CTy)>)>;
+
+/// Expands each call through a fn value in a canonical body (`cpl_next_link::canonicalize`);
+/// returns how many name a member the program lacks.
+pub fn expand_calls(p: &Program, b: &mut Vec<Stmt<CTy>>) -> usize {
+    let member = |k: &InstKey| -> Member {
+        let &i = p.index.get(k)?;
+        let views = &p.insts.get(i)?.views;
+        let caps = (p.captures(k).into_iter().enumerate())
+            .map(|(j, t)| (views.get(j).copied().unwrap_or(false), t))
+            .collect();
+        Some((i, caps))
+    };
+    expand(&member, b)
+}
+
+fn expand(m: &dyn Fn(&InstKey) -> Member, b: &mut Vec<Stmt<CTy>>) -> usize {
+    let mut left = 0;
+    for mut st in std::mem::take(b) {
+        match &mut st {
+            Stmt::If(_, x, y) | Stmt::Loop(x, y, _) => left += expand(m, x) + expand(m, y),
+            Stmt::Switch(_, arms) => left += arms.iter_mut().map(|a| expand(m, a)).sum::<usize>(),
+            Stmt::Region { body, .. } => left += expand(m, body),
+            _ => {}
+        }
+        let (dst, e) = match st {
+            Stmt::Let(l, e) if matches!(e.kind, EK::CallValue(..)) => (Some(Place::Local(l)), e),
+            Stmt::Assign(at, e) if matches!(e.kind, EK::CallValue(..)) => (Some(at), e),
+            Stmt::Expr(e) if matches!(e.kind, EK::CallValue(..)) => (None, e),
+            st => {
+                b.push(st);
+                continue;
+            }
+        };
+        let set = |e: Expr<CTy>| match &dst {
+            Some(at) => Stmt::Assign(at.clone(), e),
+            None => Stmt::Expr(e),
+        };
+        let call = |k: &InstKey, env: &Place, e: &Expr<CTy>| {
+            let (EK::CallValue(_, args, at), Some((i, caps))) = (&e.kind, m(k)) else {
+                return None;
+            };
+            let mut all: Vec<Arg<CTy>> = (caps.iter().enumerate())
+                .map(|(j, (view, t))| {
+                    let at = Place::Field(Box::new(env.clone()), j);
+                    match view {
+                        true => Arg::View(at),
+                        false => Arg::Value(Expr {
+                            kind: EK::Copy(at),
+                            ty: t.clone(),
+                            site: 0,
+                        }),
+                    }
+                })
+                .collect();
+            all.extend(args.iter().cloned());
+            Some(Expr {
+                kind: EK::Call(Target::Inst(i), all, *at),
+                ty: e.ty.clone(),
+                site: e.site,
+            })
+        };
+        let EK::CallValue(g, ..) = &e.kind else {
+            continue;
+        };
+        let made = match (&g.kind, &g.ty) {
+            (EK::Copy(env), CTy::Clo(k)) => call(k, env, &e).map(&set),
+            (EK::Copy(env), CTy::Fn(_, _, ms)) => (ms.iter().enumerate())
+                .map(|(i, k)| {
+                    call(k, &Place::Variant(Box::new(env.clone()), i), &e).map(|c| vec![set(c)])
+                })
+                .collect::<Option<Vec<_>>>()
+                .map(|arms| {
+                    let tag = Expr {
+                        kind: EK::Tag(env.clone()),
+                        ty: CTy::Int,
+                        site: 0,
+                    };
+                    Stmt::Switch(tag, arms)
+                }),
+            _ => None,
+        };
+        b.push(made.unwrap_or_else(|| {
+            left += 1;
+            match &dst {
+                Some(at) => Stmt::Assign(at.clone(), e),
+                None => Stmt::Expr(e),
+            }
+        }));
+    }
+    left
+}
+
 struct Placer<'a> {
     locals: &'a mut Vec<CTy>,
     stores: &'a dyn Fn(&CTy) -> bool,
@@ -386,5 +481,70 @@ mod tests {
         };
         let got: Vec<String> = body.iter().map(callee).collect();
         assert_eq!(got, ["1", "drop 2", "2 = ?", "2"]);
+    }
+
+    /// A call through a closure calls its member with a view of each capture the member views
+    /// and a copy of each other; one through a fn value of two members switches on its tag.
+    #[test]
+    fn a_fn_value_call_is_its_member_call() {
+        let heap = CTy::Raw(Box::new(CTy::Int));
+        let key = |n: u32| InstKey {
+            func: cpl_next_ir::ir::FuncKey::Ctx(cpl_next_ir::ty::FnId(0), n),
+            targs: vec![],
+            sets: vec![],
+        };
+        let members: HashMap<InstKey, (usize, Vec<(bool, CTy)>)> = [
+            (
+                key(0),
+                (7, vec![(true, heap.clone()), (false, heap.clone())]),
+            ),
+            (key(1), (8, vec![])),
+        ]
+        .into_iter()
+        .collect();
+        let through = |ty: CTy| {
+            Stmt::Let(
+                1,
+                Expr {
+                    kind: EK::CallValue(
+                        Box::new(Expr {
+                            kind: EK::Copy(Place::Local(0)),
+                            ty,
+                            site: 0,
+                        }),
+                        vec![Arg::Value(copy(2))],
+                        0,
+                    ),
+                    ty: CTy::Int,
+                    site: 0,
+                },
+            )
+        };
+        let clo = CTy::Clo(Box::new(key(0)));
+        let both = CTy::Fn(vec![], Box::new(CTy::Int), vec![key(0), key(1)]);
+        let mut body = vec![through(clo), through(both)];
+        assert_eq!(expand(&|k| members.get(k).cloned(), &mut body), 0);
+        let args = |s: &Stmt<CTy>| match s {
+            Stmt::Assign(Place::Local(1), e) => match &e.kind {
+                EK::Call(Target::Inst(i), xs, _) => {
+                    let xs: Vec<String> = (xs.iter())
+                        .map(|a| match a {
+                            Arg::View(_) => "view".into(),
+                            Arg::Value(e) => shape(&Stmt::Expr(e.clone())),
+                            _ => "?".into(),
+                        })
+                        .collect();
+                    format!("{i}({})", xs.join(" "))
+                }
+                _ => "?".into(),
+            },
+            _ => "?".into(),
+        };
+        assert_eq!(args(&body[0]), "7(view field 2)");
+        let Stmt::Switch(_, arms) = &body[1] else {
+            panic!("a fn value of two members switches on its tag");
+        };
+        let got: Vec<String> = arms.iter().map(|a| args(&a[0])).collect();
+        assert_eq!(got, ["7(view field 2)", "8(2)"]);
     }
 }

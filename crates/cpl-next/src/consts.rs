@@ -229,7 +229,7 @@ impl<'a> Evaluator<'a> {
         if !owned.errors.is_empty() {
             return Ran::Open;
         }
-        let Ok(canon) = inst::canonicalize(&mut prog) else {
+        let Ok(canon) = inst::canonicalize(&mut prog, &cpl_next_own::expand_calls) else {
             return Ran::Open;
         };
         if !prog.errors.is_empty() {

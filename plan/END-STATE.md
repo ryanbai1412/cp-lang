@@ -90,7 +90,6 @@ list is empty (`handbook/design/next/migration.md` rule 14); `debt-ratchet.py --
 | `next_name_compares` | 74 |
 | `next_not_passing` | 2,481 |
 | `next_old_syntax_analyses` | 116 |
-| `next_ownership_outside_own` | 1 |
 | `next_reference_evaluator_lines` | 597 |
 | `next_refusal_kinds` | 62 |
 | `next_refused` | 731 |

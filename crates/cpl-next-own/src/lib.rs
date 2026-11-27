@@ -13,6 +13,7 @@ use cpl_next_ir::ty::*;
 use cpl_next_ir::whole::Whole;
 use std::collections::{BTreeSet, HashMap};
 mod drops;
+pub use drops::expand_calls;
 mod inst;
 mod lent;
 
