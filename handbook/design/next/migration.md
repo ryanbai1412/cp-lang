@@ -53,9 +53,13 @@ deleted for the VM and both remain. These rules are the guard.
    the new code passes; it is done when the old code it replaces is
    gone. Each stage's exit includes "lines of the replaced code
    remaining: 0".
-8. **Each window has a fixed end**, set when the stage starts. If the
-   new code is not passing by then, the new work is reverted; the
-   window is not extended.
+8. **Each window has a forecast end, re-forecast at every audit.** A
+   missed forecast never reverts the new work and never extends the old
+   code's life: the old code stays frozen (rule 9) and the switch and
+   its deletion stay one landing (rule 7). Each two-hourly audit
+   re-forecasts the end from the measured burn-down and the remaining
+   refactors (Ryan, 2026-11-27: the end state matters, not the
+   intermediate dates).
 9. **Old code waiting for deletion is frozen**: no fixes, no
    features. A fix goes to a conformance case, which binds the new
    code. The gate checks each commit, not only the line count: a
