@@ -1301,14 +1301,6 @@ impl Walk<'_> {
             .collect();
         let mut fx = Fx::default();
         let body = &f.body;
-        if std::env::var_os("CPL_OWN_DUMP").is_some() && f.line != 0
-            || (i == self.p.main && std::env::var_os("CPL_OWN_DUMP").is_some())
-        {
-            eprintln!(
-                "== {} params {:?} locals {:?}\n{:#?}",
-                f.name, f.params, f.names, body
-            );
-        }
         self.block(body, &mut fx);
         let ps: Vec<usize> = f.params.iter().map(|p| p.0).collect();
         let keep = |p: &Pl| match p.root {
