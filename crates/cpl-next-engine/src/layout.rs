@@ -56,10 +56,12 @@ impl Layouts {
                 (Shape::Struct(vec![(0, w), (1, w)]), 2)
             }
             CTy::Raw(_) => (Shape::Handle, 1),
-            CTy::Lent(t) => {
-                let l = self.of(p, t);
-                self.of.insert(CTy::Lent(t.clone()), l);
-                return l;
+            // A lent value's words are its owner's: the same shape, holding nothing to release.
+            CTy::Lent(e) => {
+                let l = self.of(p, e) as usize;
+                let at = self.push(t, self.shape[l].clone(), self.size[l]);
+                self.flat[at as usize] = Some(Vec::new());
+                return at;
             }
             CTy::Fn(_, _, ms) => {
                 let ls: Vec<Lay> = ms

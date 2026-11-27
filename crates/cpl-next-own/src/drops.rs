@@ -26,7 +26,7 @@ pub(crate) fn place(p: &mut Program) {
             (f.params.iter().zip(&f.views)).any(|(&(x, lent), &view)| x == l && (lent || view))
         };
         let owned: Vec<bool> = (f.locals.iter().enumerate())
-            .map(|(l, t)| !borrowed(l) && holds(&stores, t))
+            .map(|(l, t)| !borrowed(l) && stores(t))
             .collect();
         // A call may read or write a local whose address is taken, so the local's old value
         // is released only once the new one is computed.
@@ -48,12 +48,6 @@ pub(crate) fn place(p: &mut Program) {
         f.body = body;
     }
     p.insts = insts;
-}
-
-/// Whether a value of type `t` may hold storage it must release; a lent slot points at a
-/// value another frame owns.
-fn holds(stores: &dyn Fn(&CTy) -> bool, t: &CTy) -> bool {
-    !matches!(t, CTy::Lent(_)) && stores(t)
 }
 
 struct Placer<'a> {
@@ -86,7 +80,7 @@ impl Placer<'_> {
         }
         self.hoist(&mut st, out);
         match st {
-            Stmt::Expr(e) if holds(self.stores, &e.ty) => {
+            Stmt::Expr(e) if (self.stores)(&e.ty) => {
                 let t = self.temp(&e.ty);
                 out.push(Stmt::Let(t, e));
                 out.push(Stmt::Drop(Place::Local(t)));
@@ -94,7 +88,7 @@ impl Placer<'_> {
             Stmt::Let(l, e) if self.owned.get(l) == Some(&true) => {
                 self.overwrite(Place::Local(l), e, true, out)
             }
-            Stmt::Assign(p, e) if holds(self.stores, &e.ty) => self.overwrite(p, e, false, out),
+            Stmt::Assign(p, e) if (self.stores)(&e.ty) => self.overwrite(p, e, false, out),
             st => out.push(st),
         }
     }
@@ -134,7 +128,7 @@ impl Placer<'_> {
     /// releases the value the last pass left.
     fn held(&mut self, t: &CTy) -> usize {
         let l = self.temp(t);
-        let own = holds(self.stores, t);
+        let own = (self.stores)(t);
         (self.owned[l], self.calm[l]) = (own, own);
         l
     }
@@ -188,18 +182,26 @@ impl Placer<'_> {
             let view = views.get(k).is_some_and(|v| v.0);
             // A place viewed from the call's start but given to a param the callee owns is a copy
             // taken in its turn: the call writes it nowhere, so the two read the same words.
-            match (&xs[k], views.get(k)) {
-                (Arg::View(p), Some((false, t))) if holds(self.stores, t) => {
-                    xs[k] = Arg::Value(Expr {
-                        kind: EK::Copy(p.clone()),
-                        ty: t.clone(),
-                        site: 0,
-                    })
-                }
-                _ => {}
+            if let (Arg::View(p), Some((false, t))) = (&xs[k], views.get(k)) {
+                xs[k] = Arg::Value(Expr {
+                    kind: EK::Copy(p.clone()),
+                    ty: t.clone(),
+                    site: 0,
+                })
+            }
+            // A copy of a place that no later operand can write is viewed in place.
+            if let (
+                true,
+                Arg::Value(Expr {
+                    kind: EK::Copy(p), ..
+                }),
+            ) = (view && !later, &xs[k])
+            {
+                xs[k] = Arg::View(p.clone());
+                continue;
             }
             if let Arg::Value(x) = &mut xs[k] {
-                let fresh = view && holds(self.stores, &x.ty);
+                let fresh = view && (self.stores)(&x.ty);
                 if let Some(t) = self.item(x, fresh, later, out) {
                     if view {
                         xs[k] = Arg::View(Place::Local(t));
@@ -240,7 +242,7 @@ impl Placer<'_> {
     fn arg_needs(&self, views: &[(bool, CTy)], k: usize, a: &Arg<CTy>) -> bool {
         match a {
             Arg::Value(x) => {
-                views.get(k).is_some_and(|v| v.0) && holds(self.stores, &x.ty) || self.needs(x)
+                views.get(k).is_some_and(|v| v.0) && (self.stores)(&x.ty) || self.needs(x)
             }
             _ => false,
         }

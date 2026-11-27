@@ -84,7 +84,8 @@ fn ownership_places_every_release() {
 
 /// The engine and the C++ release, at run time, every value ownership made, each at the drops
 /// it placed (contract 07): an overwrite, a discard, a temporary given to a view, a global
-/// with storage, and a frame left by `return` from a loop. The engine ends holding nothing, and
+/// with storage, a closure's captures, a closure a call made, and a frame left by `return`
+/// from a loop. The engine ends holding nothing, and
 /// the C++ under AddressSanitizer leaks nothing, frees nothing twice and reads nothing freed.
 /// Without the drops own placed in a body the engine holds storage: the count sees a missing one.
 #[test]
@@ -93,6 +94,8 @@ fn the_engine_and_the_cpp_release_every_value_ownership_made() {
         "fn f(n: Int) -> Int:\n    var r: 0..=10 = 3\n    var xs = [n]\n    xs = [n, r]\n    [r]\n    xs.len\n\nprint(f(3))\n",
         "fn made(n: Int) -> List<Int> = [k for k in 0..n]\nfn total(n: Int, xs: List<Int>) -> Int = n + xs.len\nlet ys = made(2)\nprint(total(1, made(3)), total(ys.len, ys))\n",
         "var g = [1, 2, 3]\nfn go() -> Int = g.len + 1\nprint(go())\n",
+        "var g = [1, 2, 3]\nfn go() -> Int:\n    let xs = [4, 5]\n    let h = (k: Int) => k + xs.len + g.len\n    let h2 = h\n    h(1) + h2(2)\nprint(go())\n",
+        "fn adder(n: Int) -> (Int) -> Int = (k: Int) => k + n\nprint(adder(2)(3) + adder(4)(g()))\nfn g() -> Int:\n    print(\"g\")\n    1\n",
         "fn first(n: Int) -> Int:\n    for i in 0..n:\n        let xs = [i, i]\n        if i == 3:\n            return xs.len + i\n    0\nprint(first(10))\n",
     ];
     let flags = [
@@ -790,4 +793,74 @@ fn hover_and_definition_read_the_scope_and_signatures() {
     let print = s.definition(src.find("print").unwrap() as u32).unwrap();
     assert_eq!(print.module, "std.show");
     assert!(print.head.starts_with("pub fn print<"), "{}", print.head);
+}
+
+/// An `Arg::View` goes only to a param its callee views (contract 07): a place viewed at the
+/// call but given to a param the callee owns is copied in. `print` of several values recurses
+/// through `Pack.write_all`, whose `self` a viewed `Pack.write_to` owns no longer.
+#[test]
+fn a_view_goes_only_to_a_viewed_param() {
+    use cpl_next_ir::ir::{Arg, Expr, Func, Target, EK};
+    fn expr(fs: &[Func<CTy>], e: &Expr<CTy>, bad: &mut Vec<String>) {
+        let args = |xs: &[Arg<CTy>], bad: &mut Vec<String>| {
+            xs.iter().for_each(|a| {
+                if let Arg::Value(x) = a {
+                    expr(fs, x, bad)
+                }
+            })
+        };
+        match &e.kind {
+            EK::Call(Target::Inst(g), xs, _) => {
+                for (k, a) in xs.iter().enumerate() {
+                    if matches!(a, Arg::View(_)) && fs[*g].views.get(k) != Some(&true) {
+                        bad.push(format!("{} param {k}", fs[*g].name));
+                    }
+                }
+                args(xs, bad)
+            }
+            EK::Call(_, xs, _) | EK::Intr(_, xs, _) => args(xs, bad),
+            EK::CallValue(g, xs, _) => {
+                expr(fs, g, bad);
+                args(xs, bad)
+            }
+            EK::MakeStruct(xs) | EK::MakeClosure(xs) => xs.iter().for_each(|x| expr(fs, x, bad)),
+            EK::Inject(x) | EK::Widen(x) | EK::MakeUnion(_, x) => expr(fs, x, bad),
+            _ => {}
+        }
+    }
+    fn block(fs: &[Func<CTy>], b: &[Stmt<CTy>], bad: &mut Vec<String>) {
+        for s in b {
+            match s {
+                Stmt::Let(_, e) | Stmt::Assign(_, e) | Stmt::Expr(e) | Stmt::Yield(e) => {
+                    expr(fs, e, bad)
+                }
+                Stmt::Fact(e) | Stmt::Check { cond: e, .. } | Stmt::Return(Some(e)) => {
+                    expr(fs, e, bad)
+                }
+                Stmt::If(c, x, y) => {
+                    expr(fs, c, bad);
+                    block(fs, x, bad);
+                    block(fs, y, bad);
+                }
+                Stmt::Loop(x, y, _) => {
+                    block(fs, x, bad);
+                    block(fs, y, bad);
+                }
+                Stmt::Switch(c, arms) => {
+                    expr(fs, c, bad);
+                    arms.iter().for_each(|a| block(fs, a, bad));
+                }
+                Stmt::Region { body, .. } => block(fs, body, bad),
+                Stmt::Event(_, xs) => xs.iter().for_each(|x| expr(fs, x, bad)),
+                _ => {}
+            }
+        }
+    }
+    let src = "struct P:\n    a: Int\n    b: Int = 2\nprint(P(a: 1).b, 3, 4)\n";
+    let c = compile(&Std::read(), src, &Roots::std(), false).expect("compiles");
+    for fs in [&c.prog.insts, &c.canon, &c.opt] {
+        let mut bad = Vec::new();
+        fs.iter().for_each(|f| block(fs, &f.body, &mut bad));
+        assert!(bad.is_empty(), "views given to owned params: {bad:?}");
+    }
 }

@@ -910,6 +910,15 @@ impl Link<'_> {
                 }
             }
         };
+        // A read of a place that is not a lent slot copies the value (a slot not lent is
+        // unlent above), and an instance returns its value unlent: each is of that type.
+        let ty = match (&kind, ty) {
+            (EK::Copy(p) | EK::Pass(p, ..), CTy::Lent(t)) if matches!(self.place_ty(p), Some(s) if !matches!(s, CTy::Lent(_))) => {
+                *t
+            }
+            (EK::Call(..) | EK::CallValue(..), CTy::Lent(t)) => *t,
+            (_, ty) => ty,
+        };
         Expr { site, kind, ty }
     }
 }
@@ -1152,21 +1161,42 @@ fn canon_store(
     match e.kind {
         EK::CallValue(callee, args, at) => {
             let cty = callee.ty.clone();
-            locals.push(cty.clone());
-            let tmp = locals.len() - 1;
-            out.push(Stmt::Let(tmp, canon_expr(bad, *callee)));
             let args: Vec<Arg<CTy>> = (args.into_iter())
                 .map(|a| match a {
                     Arg::Value(e) => Arg::Value(canon_expr(bad, e)),
                     a => a,
                 })
                 .collect();
+            let pure_args = (args.iter()).all(|a| !matches!(a, Arg::Value(e) if !pure(e)));
+            // Ownership ran before this, so nothing here may count a value it does not release:
+            // a closure read from a place its arguments cannot write is called through that
+            // place, and any other is set in a temporary released after the call.
+            let (env, tmp) = match *callee {
+                Expr {
+                    kind: EK::Copy(q), ..
+                } if pure_args => (q, None),
+                c => {
+                    locals.push(cty.clone());
+                    let tmp = locals.len() - 1;
+                    out.push(Stmt::Let(tmp, canon_expr(bad, c)));
+                    (Place::Local(tmp), Some(tmp))
+                }
+            };
+            // A capture the body views is given as a view of the closure's field, as ownership
+            // gives one to a viewed param; any other is the callee's copy, which it releases.
             let call = |k: &InstKey, env: Place| {
+                let views = &p.insts[p.index[k]].views;
                 let mut all: Vec<Arg<CTy>> = p
                     .captures(k)
                     .into_iter()
                     .enumerate()
-                    .map(|(j, t)| Arg::Value(read(Place::Field(Box::new(env.clone()), j), t)))
+                    .map(|(j, t)| {
+                        let at = Place::Field(Box::new(env.clone()), j);
+                        match views.get(j).copied().unwrap_or(false) {
+                            true => Arg::View(at),
+                            false => Arg::Value(read(at, t)),
+                        }
+                    })
                     .collect();
                 all.extend(args.iter().cloned());
                 Expr {
@@ -1176,7 +1206,7 @@ fn canon_store(
                 }
             };
             match &cty {
-                CTy::Clo(k) => out.push(store(call(k, Place::Local(tmp)))),
+                CTy::Clo(k) => out.push(store(call(k, env.clone()))),
                 CTy::Fn(_, _, ms) => {
                     let arms = ms
                         .iter()
@@ -1184,20 +1214,23 @@ fn canon_store(
                         .map(|(i, k)| {
                             vec![Stmt::Assign(
                                 dst.clone(),
-                                call(k, Place::Variant(Box::new(Place::Local(tmp)), i)),
+                                call(k, Place::Variant(Box::new(env.clone()), i)),
                             )]
                         })
                         .collect();
                     out.push(Stmt::Switch(
                         Expr {
                             site: 0,
-                            kind: EK::Tag(Place::Local(tmp)),
+                            kind: EK::Tag(env.clone()),
                             ty: CTy::Int,
                         },
                         arms,
                     ));
                 }
                 _ => {}
+            }
+            if let Some(t) = tmp {
+                out.push(Stmt::Drop(Place::Local(t)));
             }
         }
         EK::Widen(inner) => {

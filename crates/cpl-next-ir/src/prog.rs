@@ -104,7 +104,8 @@ pub enum Holds {
     /// No part of it lives on the heap or points at another value: it is plain, and a copy of
     /// it never affects the original.
     Nothing,
-    /// It points at a value another frame owns (a `Ref` or a lent slot), and owns no storage.
+    /// It points at a value another frame owns (a `Ref` or a lent slot), and owns no storage:
+    /// a closure with only lent captures releases nothing, as its captures are the caller's.
     Address,
     /// A `Raw` handle in it or in a part: what a copy counts and a drop releases.
     Storage,
@@ -135,8 +136,7 @@ pub fn holds(
         | CTy::Unit
         | CTy::Dom(_)
         | CTy::Range(..) => Holds::Nothing,
-        CTy::Ref(_) | CTy::Error => Holds::Address,
-        CTy::Lent(e) => at(e).max(Holds::Address),
+        CTy::Ref(_) | CTy::Lent(_) | CTy::Error => Holds::Address,
         CTy::Struct(..) => most(&parts(t)),
         CTy::Clo(k) => clo(k),
         CTy::Fn(_, _, ms) => ms.iter().map(clo).max().unwrap_or(Holds::Nothing),
