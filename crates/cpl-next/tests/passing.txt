@@ -720,6 +720,7 @@ core-06/value-elif-chain-of-closures-calls-the-picked-one.cp
 core-06/value-if-joins-different-closures.cp
 core-06/variadic-named-args-make-record.cp
 core-06/yields-fn-loop-list-and-break.cp
+core-07/a-list-joins-a-struct-view-of-its-element.cp
 core-07/a-struct-view-at-a-bound-walks-its-own-element.cp
 core-07/adapters-and-chains.cp
 core-07/adjacent.cp

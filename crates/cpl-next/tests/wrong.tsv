@@ -242,7 +242,6 @@ core-06/min-max-as-fn-value.cp	wrong-reject	check: program:7:14: E0302: this fun
 core-06/multitest-fn-as-predicate.cp	wrong-reject	check: program:7:30: E0201: unknown name `n`
 core-06/multitest-shared-map-per-case-array.cp	wrong-reject	check: program:12:22: E0301: a `$range0` indexes a `[$range1]` array: index it with a `$range1`
 core-06/var-lambda-no-recursion.cp	wrong-error	wanted E0406 on line 3, got: check: program:3:47: E0201: unknown name `f`
-core-07/a-list-joins-a-struct-view-of-its-element.cp	wrong-reject	check: program:11:14: E0606: `List<Tuple2<Int, Int>>` does not implement `Add`
 core-07/a-member-of-an-unimplemented-trait-names-the-trait.cp	wrong-error	wanted E0606 on line 9, got: check: program:9:7: E0203: `Evens` has no member `len`
 core-07/adjacent-of-any-seq.cp	wrong-reject	check: program:5:7: E0302: expected `List<Int>`, found `List<Tuple2<Int, Int>>`
 core-07/and-or-operator-values-over-bools.cp	wrong-reject	check: program:6:11: E0606: `a function` does not implement `FromOp`
