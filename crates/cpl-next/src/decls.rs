@@ -1711,13 +1711,13 @@ fn add_fn(
                 (Some(t), _) => Some(t.clone()),
                 (None, Some(t)) => Some(conv(&mut cx, t, &mut errors)),
                 (None, None) => {
-                    errors.push(
+                    errors.push(Msg::at(
+                        Span::new(item + p.name.span.start, item + p.name.span.end),
                         format!(
                             "{}: `self` of a free fn needs a type",
-                            cpl_diag::codes::EXPECTED_TYPE.0
-                        )
-                        .into(),
-                    );
+                            cpl_diag::codes::UNKNOWN_TYPE.0
+                        ),
+                    ));
                     None
                 }
             };
@@ -1728,14 +1728,14 @@ fn add_fn(
             (Some(t), _) => conv(&mut cx, t, &mut errors),
             (None, Some(t)) => t,
             (None, None) => {
-                errors.push(
+                errors.push(Msg::at(
+                    Span::new(item + p.name.span.start, item + p.name.span.end),
                     format!(
                         "{}: parameter `{}` needs a type",
-                        cpl_diag::codes::EXPECTED_TYPE.0,
+                        cpl_diag::codes::UNKNOWN_TYPE.0,
                         p.name.text
-                    )
-                    .into(),
-                );
+                    ),
+                ));
                 Ty::Error
             }
         };

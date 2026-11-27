@@ -27,6 +27,10 @@ impl<'a> Cx<'a> {
             (_, true) => Ty::U64,
             _ => Ty::Int,
         };
+        let bits = matches!(op, BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor);
+        if bits && [&l.ty, &r.ty].iter().any(|t| self.shallow(t) == Ty::Bool) {
+            return self.bool_bits(op, &l.ty, &r.ty, span);
+        }
         let l = self.coerce(l, &want);
         let r = self.coerce(r, if shift { &Ty::Int } else { &want });
         if op == BinOp::Coalesce {
@@ -35,6 +39,28 @@ impl<'a> Cx<'a> {
         TExpr {
             kind: TK::Bin(op, Box::new(l), Box::new(r)),
             ty: want,
+            span,
+        }
+    }
+    /// `&`, `|` and `^` are integer operators; on a `Bool` the error names the `Bool` one
+    /// (R01.5.9).
+    fn bool_bits(&mut self, op: BinOp, l: &Ty, r: &Ty, span: Span) -> TExpr {
+        let a = |t: String| match t.starts_with(['A', 'E', 'I', 'O', 'U']) {
+            true => format!("an {t}"),
+            false => format!("a {t}"),
+        };
+        let (l, r) = (a(self.show(l)), a(self.show(r)));
+        let text = cpl_diag::msgs::check::BAD_OPERANDS_CAN_T_COMBINE_AND.say(&[&op.text(), &l, &r]);
+        let help = match op {
+            BinOp::BitXor => cpl_diag::habits::BAD_OPERANDS_3.say(&[]),
+            BinOp::BitAnd => "on `Bool`s, `&` is `and`".to_string(),
+            _ => "on `Bool`s, `|` is `or`".to_string(),
+        };
+        let code = cpl_diag::codes::BAD_OPERANDS.0;
+        self.err_help(span, format!("{code}: {text}"), Some(help));
+        TExpr {
+            kind: TK::Error,
+            ty: Ty::Error,
             span,
         }
     }
