@@ -175,6 +175,9 @@ impl Show for Mod<P>:
 ///
 /// trap: `read<Mod<998244353>>()` (stdin `1x`)
 impl Read for Mod<P>:
+    // Old-pipeline compat: the frozen old `cpl` reads this file and has no `Input`, so this impl
+    // keeps `fn read()` and reads standard input even under `read(from:)`. It takes
+    // `mut input: Input` in stage 5's switching landing (handbook/design/next/migration.md).
     fn read() -> Mod<P>:
         let s: Str = read()
         // `Mod` arithmetic, so `r * 10` cannot overflow for a modulus near 2^61.

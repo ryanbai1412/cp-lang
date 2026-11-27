@@ -91,6 +91,16 @@ one commit; it grows until it accepts every program. While it grows:
   the `old_pipeline_lines` ratchet, which may only fall (rule 9);
 - the tree-walker's removal is part of its exit, not a later cleanup.
 
+**The switching landing's checklist.** Each item is a std or tool line
+kept only because the frozen old pipeline still reads it; the switch
+does not land while one is unchanged, and an item is added in the
+commit that keeps one.
+
+- [ ] `std/mod.cp` `impl Read for Mod<P>` keeps `fn read()`: the old
+  `cpl` has no `Input`, so `read<Mod<P>>(from: s)` reads standard
+  input. It becomes `fn read(mut input: Input)`, reading
+  `input.read<Str>()`, with a `read(from:)` case for `Mod`.
+
 **Why this order.** Stage 3 was first written as finishing today's
 checker in place. It is the new pipeline's own front half instead
 (decided 2026-11-25): today's checker is keyed on library names
