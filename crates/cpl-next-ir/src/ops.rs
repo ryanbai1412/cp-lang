@@ -226,13 +226,14 @@ pub fn u64_of_int(i: i64) -> u64 {
     i as u64
 }
 
-/// `popcount`, `ctz`, `clz` or `bit_width` of a 64-bit word.
+/// `popcount`, `ctz`, `clz`, `bit_width` or `bit_ceil` of a 64-bit word, an `Int` as its bits.
 pub fn bit_count(op: Intr, w: u64) -> Result<i64, Fault> {
     match op {
         Intr::Popcount => rules::popcount(w),
         Intr::Ctz => rules::ctz(w),
         Intr::Clz => rules::clz(w),
         Intr::BitWidth => rules::bit_width(w),
+        Intr::BitCeil => rules::bit_ceil(w as i64),
         _ => Err(Fault::Internal("not a bit count")),
     }
 }

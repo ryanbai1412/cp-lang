@@ -81,6 +81,8 @@ pub enum Intr {
     Clz,
     /// The bits needed to write a word, `64 - clz`.
     BitWidth,
+    /// The smallest power of two at least an `Int`, 1 at or below 1; past `2^62` it traps.
+    BitCeil,
     /// The `F64` nearest an `Int`.
     ToF64,
     /// A slot with no value yet, of the type it is given. Never read before it is stored to.
@@ -125,6 +127,7 @@ impl Intr {
             "ctz" => Intr::Ctz,
             "clz" => Intr::Clz,
             "bit_width" => Intr::BitWidth,
+            "bit_ceil" => Intr::BitCeil,
             "f64_of" => Intr::ToF64,
             _ => return None,
         })

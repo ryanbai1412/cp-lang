@@ -655,7 +655,7 @@ impl<'a> Machine<'a> {
             Intr::Unset => V::Unit,
             Intr::ToU64 => V::U64(ops::u64_of_int(self.int(&args[0], fp)?)),
             Intr::ToF64 => V::F64(ops::f64_of_int(self.int(&args[0], fp)?)),
-            Intr::Popcount | Intr::Ctz | Intr::Clz | Intr::BitWidth => {
+            Intr::Popcount | Intr::Ctz | Intr::Clz | Intr::BitWidth | Intr::BitCeil => {
                 let Arg::Value(a) = &args[0] else {
                     return broken("lent operand");
                 };

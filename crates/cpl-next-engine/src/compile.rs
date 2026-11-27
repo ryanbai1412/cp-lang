@@ -1250,6 +1250,7 @@ impl Fc<'_> {
             | Intr::Ctz
             | Intr::Clz
             | Intr::BitWidth
+            | Intr::BitCeil
             | Intr::ToF64
             | Intr::CharOf
             | Intr::CodeOf => {
@@ -1265,7 +1266,7 @@ impl Fc<'_> {
                     Intr::Not => Op::Not { d, a },
                     Intr::ToU64 => Op::ToU64 { d, a },
                     Intr::FromU64 => Op::FromU64 { d, a },
-                    Intr::Popcount | Intr::Ctz | Intr::Clz | Intr::BitWidth => {
+                    Intr::Popcount | Intr::Ctz | Intr::Clz | Intr::BitWidth | Intr::BitCeil => {
                         Op::BitCount { op, d, a }
                     }
                     Intr::CharOf => Op::CharOf { d, a },

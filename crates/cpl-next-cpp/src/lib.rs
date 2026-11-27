@@ -668,6 +668,7 @@ impl Emit<'_> {
                     Intr::Ctz => format!("cpl_ctz((uint64_t)({}))", a[0]),
                     Intr::Clz => format!("cpl_clz((uint64_t)({}))", a[0]),
                     Intr::BitWidth => format!("cpl_bit_width((uint64_t)({}))", a[0]),
+                    Intr::BitCeil => format!("cpl_bit_ceil((int64_t)({}))", a[0]),
                     Intr::Neg => format!("cpl_neg({})", a[0]),
                     Intr::Abs => format!("cpl_abs({})", a[0]),
                     Intr::Below => format!("((uint64_t)({}) < (uint64_t)({}))", a[0], a[1]),
@@ -1146,6 +1147,7 @@ mod tests {
                 (Intr::Ctz, "cpl_ctz"),
                 (Intr::Clz, "cpl_clz"),
                 (Intr::BitWidth, "cpl_bit_width"),
+                (Intr::BitCeil, "cpl_bit_ceil"),
             ] {
                 case(
                     format!("printf(\"%lld\\n\", (long long){f}(UINT64_C({a})));"),

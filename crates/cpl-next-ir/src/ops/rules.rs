@@ -7,6 +7,8 @@ use std::fmt::Write;
 
 /// `Int`'s largest value, as a `U64`.
 pub const INT_LAST: u64 = i64::MAX as u64;
+/// The largest `x` whose `bit_ceil` is an `Int`: `2^62`.
+pub const BIT_CEIL_LAST: i64 = 1 << 62;
 type Unit = ();
 
 macro_rules! kernels {
@@ -104,6 +106,8 @@ kernels! {
     ctz(u: u64) -> i64 { Ok(i64::from(u.trailing_zeros())) } "return u ? __builtin_ctzll(u) : 64;"
     clz(u: u64) -> i64 { Ok(i64::from(u.leading_zeros())) } "return u ? __builtin_clzll(u) : 64;"
     bit_width(u: u64) -> i64 { clz(u).map(|z| 64 - z) } "return 64 - cpl_k_clz(u);"
+    bit_ceil(a: i64) -> i64 { Ok(if a <= 1 { 1 } else { 1 << (64 - ((a - 1) as u64).leading_zeros()) }) }
+        "return a <= 1 ? 1 : (int64_t)1 << (64 - __builtin_clzll((uint64_t)(a - 1)));"
     cell(i: i64, len: i64) -> usize { debug_assert!(i < len); Ok(i as usize) } "return (size_t)i;"
     int_of(u: u64) -> i64 { Ok(u as i64) } "return (int64_t)u;"
     char_of(x: i64) -> u8 { Ok(x as u8) } "return cpl_char{(uint8_t)x};"
@@ -143,6 +147,8 @@ rows! {
     ctz(u: u64) -> i64 [] ctz;
     clz(u: u64) -> i64 [] clz;
     bit_width(u: u64) -> i64 [] bit_width;
+    /// The smallest power of two at least `a`, 1 for `a <= 1`.
+    bit_ceil(a: i64) -> i64 [a > BIT_CEIL_LAST => Overflow] bit_ceil;
     /// A `U64` as an `Int`.
     int_of_u64(u: u64) -> i64 [u > INT_LAST => U64PastInt] int_of;
     /// The character with code `x`, an ASCII one.
@@ -188,6 +194,7 @@ fn cty(t: &str) -> &'static str {
 pub fn cpp() -> String {
     let mut s = format!(
         "static const uint64_t INT_LAST = {INT_LAST}ULL;\n\
+         static const int64_t BIT_CEIL_LAST = {BIT_CEIL_LAST}LL;\n\
          static const int64_t MAX_STORAGE = {MAX_STORAGE};\n"
     );
     kernels_cpp(&mut s);
