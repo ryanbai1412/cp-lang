@@ -681,3 +681,28 @@ fn an_edit_to_one_body_leaves_the_others_typed_the_same() {
         .iter()
         .any(|f| was[*f] != fresh[*f]));
 }
+
+/// A session answers from its snapshot alone: a changed program is a new snapshot sharing std,
+/// and the old session's answers stay what they were.
+#[test]
+fn a_session_answers_from_its_snapshot() {
+    use crate::facade::{Layer, Session, Snapshot, Verdict};
+    let ok = Snapshot::new(
+        std::sync::Arc::new(Std::read()),
+        Roots::std(),
+        "print(1 + 2)\n",
+    );
+    let bad = ok.with_program("print(nope)\n");
+    let (ok, bad) = (Session::open(ok), Session::open(bad));
+    assert_eq!(ok.verdict(), Verdict::Accepted);
+    assert_eq!(
+        ok.program().map(|p| p.run(Form::Engine, "").output).ok(),
+        Some("3\n".into())
+    );
+    assert_eq!(bad.verdict(), Verdict::Rejected);
+    let said: Vec<_> = (bad.diagnostics(Layer::Typed).iter())
+        .map(|d| d.code())
+        .collect();
+    assert_eq!(said, [Some("E0201")]);
+    assert_eq!(ok.verdict(), Verdict::Accepted);
+}

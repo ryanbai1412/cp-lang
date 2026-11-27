@@ -8,10 +8,12 @@
 //! `engine`, the run's `.out`, `.err` and then `.code`, and `c++` last; then it prints `done`.
 //! A run that passes MS (less its compile) ends the process, leaving it and the rest unwritten.
 //! For the crate's tests and for measuring; not a shipped command.
-use cpl_next::{compile, Diag, Form, Roots, Std};
+use cpl_next::facade::{Session, Snapshot, Verdict};
+use cpl_next::{Form, Roots, Std};
 use std::io::{BufRead, Write};
 use std::path::Path;
 use std::sync::mpsc::RecvTimeoutError;
+use std::sync::Arc;
 use std::time::Duration;
 
 /// Spec 9.6: the program runs on a thread with a 1 GB stack. The interpreter's frames are
@@ -64,23 +66,28 @@ fn real_main() {
             std::process::exit(2);
         }
     };
-    let mut c = match compile(&Std::read(), &src, &roots(path), has("--trace")) {
+    let mut snapshot = Snapshot::new(Arc::new(Std::read()), roots(path), &src);
+    if has("--trace") {
+        snapshot = snapshot.traced();
+    }
+    if has("--bodies") {
+        snapshot = snapshot.with_bodies();
+    }
+    let session = Session::open(snapshot);
+    let c = match session.program() {
         Ok(c) => c,
         Err(ds) => {
-            for d in &ds {
+            for d in ds {
                 match has("--json") {
                     true => println!("{}", cpl_json::to_string(&d.json())),
                     false => println!("{d}"),
                 }
             }
-            std::process::exit(rejected(&ds));
+            std::process::exit(code(session.verdict()));
         }
     };
     if has("--check") {
         return;
-    }
-    if has("--bodies") {
-        c.without_fast();
     }
     if has("--cpp") {
         print!("{}", c.cpp());
@@ -114,19 +121,18 @@ fn roots(path: &str) -> Roots {
     Roots::from(dir.unwrap_or(Path::new(".")))
 }
 
-/// 1: the program is rejected. 4: refused, which says nothing about the program. A syntax
-/// error rejects it whatever a later layer refused.
-fn rejected(ds: &[Diag]) -> i32 {
-    let syntax = |d: &Diag| d.stage == cpl_next::Stage::Syntax && !d.is_refusal();
-    match ds.iter().any(Diag::is_refusal) && !ds.iter().any(syntax) {
-        true => 4,
-        false => 1,
+/// 1: the program is rejected. 4: refused, which says nothing about the program.
+fn code(v: Verdict) -> i32 {
+    match v {
+        Verdict::Accepted => 0,
+        Verdict::Rejected => 1,
+        Verdict::Refused => 4,
     }
 }
 
 /// `--all`: every case on stdin compiled against one read of std.
 fn every_case(limit: Duration, events: bool) {
-    let std = Std::read();
+    let std = Snapshot::new(Arc::new(Std::read()), Roots::std(), "");
     for line in std::io::stdin().lock().lines() {
         let Ok(line) = line else { break };
         let Some((path, dir)) = line.split_once('\t') else {
@@ -145,14 +151,19 @@ fn every_case(limit: Duration, events: bool) {
                 std::process::exit(2);
             }
         };
-        match compile(&std, &src, &roots(path), events) {
-            Ok(c) => every_form(&c, dir, limit.saturating_sub(started.elapsed()), &input),
+        let mut snapshot = std.with_program(&src).with_roots(roots(path));
+        if events {
+            snapshot = snapshot.traced();
+        }
+        let session = Session::open(snapshot);
+        match session.program() {
+            Ok(c) => every_form(c, dir, limit.saturating_sub(started.elapsed()), &input),
             Err(ds) => {
                 let out: String = (ds.iter())
                     .map(|d| cpl_json::to_string(&d.json()) + "\n")
                     .collect();
                 write(dir, "compiled.out", &out);
-                write(dir, "compiled.code", &rejected(&ds).to_string());
+                write(dir, "compiled.code", &code(session.verdict()).to_string());
             }
         }
         let mut stdout = std::io::stdout().lock();
@@ -186,7 +197,7 @@ fn said(o: &cpl_next::Outcome) -> String {
 
 /// Each form run in turn on one compile, as `--all` says. A watchdog gives every run `budget`,
 /// the time a process of its own would have had after compiling.
-fn every_form(c: &cpl_next::Compiled, dir: &Path, budget: Duration, input: &str) {
+fn every_form(c: &cpl_next::facade::Program, dir: &Path, budget: Duration, input: &str) {
     let (done, finished) = std::sync::mpsc::channel::<()>();
     std::thread::spawn(move || loop {
         match finished.recv_timeout(budget) {
