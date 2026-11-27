@@ -9,7 +9,53 @@ use crate::session::{Checks, Program, Session};
 
 pub use cpl_interp::profile::Profile as RunProfile;
 pub use cpl_interp::trace::{Recording, TraceConfig};
-pub use cpl_interp::{Choices, Limits, More, Stop, Trap};
+pub use cpl_interp::{Choices, More, Trap};
+
+/// How much stack a program's calls may take before the run is stopped. There is no limit on
+/// how deep calls nest: only on the stack they fill.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct Limits {
+    /// Bytes of the interpreter's own stack those calls may use: the program's recursion is
+    /// the interpreter's.
+    pub stack_bytes: usize,
+}
+
+impl From<Limits> for cpl_interp::Limits {
+    fn from(l: Limits) -> cpl_interp::Limits {
+        cpl_interp::Limits {
+            stack_bytes: l.stack_bytes,
+        }
+    }
+}
+
+/// What ends a run before it finishes: a deadline, a budget of loop rounds and calls, or a
+/// cancel another thread asks for. Clones share the cancel, so the caller keeps one and hands
+/// the run the other.
+#[derive(Clone, Debug, Default)]
+pub struct Stop(pub(crate) cpl_interp::Stop);
+
+impl Stop {
+    /// Nothing but a cancel ends the run.
+    pub fn new() -> Stop {
+        Stop(cpl_interp::Stop::new())
+    }
+
+    /// The run is out of time after `limit`.
+    pub fn after(limit: std::time::Duration) -> Stop {
+        Stop(cpl_interp::Stop::after(limit))
+    }
+
+    /// The run is out of time after about `rounds` loop rounds and calls, where there is no
+    /// clock to read.
+    pub fn after_rounds(rounds: u64) -> Stop {
+        Stop(cpl_interp::Stop::after_rounds(rounds))
+    }
+
+    /// Ends the run that holds a clone of this one, as a [`CANCELLED`] trap.
+    pub fn cancel(&self) {
+        self.0.cancel()
+    }
+}
 
 /// The message of the trap that ends a run at its deadline.
 pub const OUT_OF_TIME: cpl_diag::msgs::Msg = cpl_interp::OUT_OF_TIME;
@@ -45,7 +91,7 @@ impl<'a> RunInput<'a> {
 
     /// Ended early by `stop`: a deadline, or the caller's cancel.
     pub fn until(self, stop: Stop) -> RunInput<'a> {
-        RunInput(self.0.until(stop))
+        RunInput(self.0.until(stop.0))
     }
 
     /// At a judge build's `checks`: where they keep no check, the program
@@ -178,7 +224,7 @@ pub fn run_within(
     output: &mut (dyn Write + Send),
     limits: Limits,
 ) -> Result<(), Trap> {
-    cpl_interp::run_with_on_this_thread(&program.ir, input.0, output, limits)
+    cpl_interp::run_with_on_this_thread(&program.ir, input.0, output, limits.into())
 }
 
 /// [`run`] recording what `trace` asks for, if anything.
@@ -203,7 +249,7 @@ pub fn run_traced_within(
     limits: Limits,
     trace: Option<TraceConfig>,
 ) -> Outcome {
-    cpl_interp::observe_on_this_thread(&program.ir, input.0, output, limits, trace).into()
+    cpl_interp::observe_on_this_thread(&program.ir, input.0, output, limits.into(), trace).into()
 }
 
 /// [`run_within`] taking the checkpoints `want` asks for, or starting from
@@ -219,7 +265,7 @@ pub fn run_checkpointed(
         &program.ir,
         input.0,
         output,
-        limits,
+        limits.into(),
         None,
         want,
     );

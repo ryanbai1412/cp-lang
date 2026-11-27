@@ -67,7 +67,7 @@ pub mod trace {
         steps: usize,
         stop: Stop,
     ) -> Outcome {
-        cpl_interp::trace::resumed_tail_until(&program.ir, input, output, config, steps, stop)
+        cpl_interp::trace::resumed_tail_until(&program.ir, input, output, config, steps, stop.0)
             .into()
     }
 
@@ -146,7 +146,7 @@ pub mod replay {
         limits: Limits,
         stop: Stop,
     ) -> Replay {
-        cpl_interp::replay::replay_on_this_thread(rerun.today(), config, limits, stop)
+        cpl_interp::replay::replay_on_this_thread(rerun.today(), config, limits.into(), stop.0)
     }
 }
 
