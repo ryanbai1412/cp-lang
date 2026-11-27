@@ -7,22 +7,17 @@ use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_syntax::ast::FmtKind;
 
 impl<'a> Cx<'a> {
-    /// The core `List`, which literals, comprehensions and tables build. It is found by name;
-    /// the design wants a marker.
+    /// Std's `@list` struct, which literals, comprehensions and tables build.
     pub(super) fn list_struct(&mut self, span: Span) -> Option<StructId> {
-        let list = self.d.core_struct("List");
+        let list = self.d.sugar.list;
         if list.is_none() {
-            self.err(span, Msg::internal("no `List` is declared"));
+            self.err(span, Msg::internal("no struct is marked `@list`"));
         }
         list
     }
     pub(super) fn binary(&mut self, op: BinOp, l: TExpr, r: TExpr, span: Span) -> TExpr {
         if self.is_error(&l.ty) || self.is_error(&r.ty) {
             return Self::error_node(span);
-        }
-        // `s + t` on strings is a new string (R02.3.3).
-        if op == BinOp::Add && self.is_str(&l.ty) && self.is_str(&r.ty) {
-            return self.lib_call("str_concat", vec![l, r], span);
         }
         let logic = matches!(op, BinOp::And | BinOp::Or);
         let shift = matches!(op, BinOp::Shl | BinOp::Shr);
@@ -43,8 +38,8 @@ impl<'a> Cx<'a> {
         if bits && [&l.ty, &r.ty].iter().any(|t| self.shallow(t) == Ty::Bool) {
             return self.bool_bits(op, &l.ty, &r.ty, span);
         }
-        // `+` and the rest on a type declared outside core, or on a type parameter bound by
-        // the operator's trait, are that trait's fn (R08.1.5).
+        // `+` and the rest on a struct, or on a type parameter bound by the operator's trait,
+        // are that trait's fn (R08.1.5).
         if let Some(found) = (!logic)
             .then(|| self.operator_trait(op.text(), true, &l.ty))
             .flatten()
@@ -83,12 +78,12 @@ impl<'a> Cx<'a> {
             span,
         }
     }
-    /// A struct declared outside core, which may give itself operators (R08.1.5).
+    /// A struct, whose operators are its impls of the operator traits (R08.1.5).
     fn declares_operators(&self, t: &Ty) -> bool {
-        matches!(self.shallow(t), Ty::Struct(s, ..) if self.d.s(s).module != decls::CORE)
+        matches!(self.shallow(t), Ty::Struct(..))
     }
-    /// Core's `@operator(text)` trait, binary or prefix, and its fn, when `t`'s operator is
-    /// that trait's: `t` is declared outside core, or a type parameter bound by the trait.
+    /// The `@operator(text)` trait, binary or prefix, and its fn, when `t`'s operator is that
+    /// trait's: `t` is a struct, or a type parameter bound by the trait.
     fn operator_trait(&self, text: &str, binary: bool, t: &Ty) -> Option<(TraitId, String, FnId)> {
         let found = (self.d.operators.iter().filter(|(o, _)| o == text)).find_map(|(_, tr)| {
             let (n, &m) = self.d.traits[tr.0].methods.iter().next()?;
@@ -470,8 +465,19 @@ impl<'a> Cx<'a> {
     }
     /// A call of the library fn `name` with arguments already typed.
     pub(super) fn lib_call(&mut self, name: &str, args: Vec<TExpr>, span: Span) -> TExpr {
-        let Some(decl) = self.d.core_fn(name) else {
-            self.err(span, Msg::internal(format!("the library has no `{name}`")));
+        let decl = self.d.core_fn(name);
+        self.marked_call(decl, name, args, span)
+    }
+    /// A call of std's fn marked `@marker`, with arguments already typed.
+    pub(super) fn marked_call(
+        &mut self,
+        decl: Option<FnId>,
+        marker: &str,
+        args: Vec<TExpr>,
+        span: Span,
+    ) -> TExpr {
+        let Some(decl) = decl else {
+            self.err(span, Msg::internal(format!("no fn is marked `@{marker}`")));
             return TExpr {
                 kind: TK::Error,
                 ty: Ty::Error,
@@ -560,10 +566,10 @@ impl<'a> Cx<'a> {
                 stmts.push(TStmt::Expr(call));
                 return;
             }
-            Ty::Struct(d, ..) => ["List", "Array"]
+            Ty::Struct(d, ..) => [self.d.sugar.list, self.d.sugar.array]
                 .into_iter()
                 .zip(["write_list", "write_array"])
-                .find(|(ty, _)| Some(d) == self.d.core_struct(ty))
+                .find(|(ty, _)| Some(d) == *ty)
                 .map(|(_, f)| f),
             _ => None,
         };
@@ -581,9 +587,6 @@ impl<'a> Cx<'a> {
         }
         let call = self.lib_call(writer, vec![v], span);
         stmts.push(TStmt::Expr(call));
-    }
-    fn is_str(&self, t: &Ty) -> bool {
-        matches!(self.shallow(t), Ty::Struct(d, ..) if Some(d) == self.d.core_struct("Str"))
     }
     /// One `if` branch: its condition, its block checked against `want`, and whether it leaves.
     fn if_arm(
@@ -1114,7 +1117,7 @@ impl<'a> Cx<'a> {
                 }
                 let n = mk(TK::Int(text.len() as i64), Ty::Int);
                 let raw = mk(TK::Text(text), Ty::Raw(Box::new(Ty::Char)));
-                self.lib_call("str_of", vec![raw, n], span)
+                self.marked_call(self.d.sugar.str_literal, "str_literal", vec![raw, n], span)
             }
             ExprKind::Char(c) if c.is_ascii() => {
                 let code = mk(TK::Int(i64::from(*c as u8)), Ty::Int);

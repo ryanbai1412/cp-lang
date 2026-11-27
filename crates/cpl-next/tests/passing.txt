@@ -1408,6 +1408,8 @@ next/n_list_03_let_receiver.cp
 next/n_lower_01_fn_ending_in_while_true.cp
 next/n_marker_01_a_second_cuts_struct_is_a_duplicate.cp
 next/n_marker_02_a_library_writes_a_marker.cp
+next/n_marker_03_literals_build_the_marked_structs.cp
+next/n_marker_04_a_second_str_struct_is_a_duplicate.cp
 next/n_member_01_getter_first.cp
 next/n_memo_01_a_marked_table_caches_a_fn.cp
 next/n_memo_02_nested_memo_fn_per_block.cp

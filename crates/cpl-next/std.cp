@@ -24,6 +24,7 @@ fn raw_take<T>(mut r: Raw<T>, i: Int) -> T = @intrinsic("move_out")
 /// Storage of `n` unset cells; each is filled by `raw_set` before it is read.
 fn raw_cap<T>(n: Int) -> Raw<T> = @intrinsic("unset_cells")
 
+@list
 pub struct List<T>:
     var buf: Raw<T>
     var n: Int
@@ -101,6 +102,7 @@ pub struct List<T>:
         n = 0
 
 
+@array
 pub struct Array<D: Domain, T>:
     buf: Raw<T>
 
@@ -149,6 +151,7 @@ fn write_array<D: Domain>(xs: [D]Int):
         first = false
 
 // A flat sequence of `Char` (R02.3).
+@str
 pub struct Str:
     var chars: List<Char>
 
@@ -170,10 +173,15 @@ pub struct Str:
 
 // A string literal: its characters and how many there are. The literal's storage is lent,
 // so the string gets its own.
+@str_literal
 fn str_of(text: Raw<Char>, n: Int) -> Str:
     var chars = List<Char>.new()
     for i in 0..n: chars.push(raw_get(text, i))
     Str(chars)
+
+/// `s + t`: a new string, `s`'s characters then `t`'s (R02.3.3).
+impl Add for Str:
+    fn add(self, other: Str) -> Str = str_concat(self, other)
 
 fn str_concat(a: Str, b: Str) -> Str:
     var out = Str(List.new())
@@ -201,6 +209,7 @@ pub fn yes(b: Bool) -> Str:
     if b: "YES" else: "NO"
 
 // `?T`: `T` or `None`. `val` is read only when `some`.
+@optional
 pub struct Optional<T>:
     some: Bool
     val: T
@@ -262,6 +271,7 @@ pub struct Range<D: Domain>:
             write(D.nth(lo + i * by))
 
 /// `lo..hi by step`; empty when `lo` is past `hi` (R04.4.29).
+@range_literal
 fn range_of<D: Domain>(lo: Int, hi: Int, step: Int) -> Range<D>:
     assert step > 0, "a range's step is positive"
     let n = if hi <= lo: 0 else: (hi - lo + step - 1) / step

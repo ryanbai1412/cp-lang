@@ -250,6 +250,20 @@ fn layer(
                         if marked(s, "cuts") {
                             once(&mut d.cut_struct, id, again(item, s, "cuts"), &mut d.errors);
                         }
+                        for (n, slot) in [
+                            ("list", &mut d.sugar.list),
+                            ("str", &mut d.sugar.str),
+                            ("optional", &mut d.sugar.optional),
+                            ("array", &mut d.sugar.array),
+                        ] {
+                            if marked(s, n) {
+                                once(slot, id, again(item, s, n), &mut d.errors);
+                            }
+                        }
+                        if marked(s, crate::records::RECORD) {
+                            let names = sd.fields.iter().map(|f| f.name.text.clone()).collect();
+                            Arc::make_mut(&mut d.records).insert(names, id);
+                        }
                         let member = s.decorators.iter().find(|x| x.name.text == "member");
                         if let Some(ast::ExprKind::Name(m)) =
                             member.and_then(|x| x.args.first()).map(|a| &a.value.kind)
@@ -525,6 +539,7 @@ fn layer(
             let (names, sets) = (d.views[mid.0].clone(), d.struct_sets.clone());
             let defaults = d.struct_defaults.clone();
             let tuples = d.tuples.clone();
+            let (sugar, records) = (d.sugar, d.records.clone());
             let members = d.member_types.clone();
             let mut cx = TyCx {
                 names: &names,
@@ -534,6 +549,8 @@ fn layer(
                 struct_sets: &sets,
                 struct_defaults: &defaults,
                 tuples: &tuples,
+                sugar,
+                records: &records,
                 members: &members,
                 generics: &generics,
                 args: None,
@@ -568,6 +585,7 @@ fn layer(
         let doms = d.doms_in(*mid);
         let (names, sets) = (d.views[mid.0].clone(), d.struct_sets.clone());
         let (tuples, defaults) = (d.tuples.clone(), d.struct_defaults.clone());
+        let (sugar, records) = (d.sugar, d.records.clone());
         let members = d.member_types.clone();
         let mut cx = TyCx {
             names: &names,
@@ -577,6 +595,8 @@ fn layer(
             struct_sets: &sets,
             struct_defaults: &defaults,
             tuples: &tuples,
+            sugar,
+            records: &records,
             members: &members,
             generics: &generics,
             args: None,
@@ -625,6 +645,7 @@ fn layer(
                     let sets = d.struct_sets.clone();
                     let defaults = d.struct_defaults.clone();
                     let tuples = d.tuples.clone();
+                    let (sugar, records) = (d.sugar, d.records.clone());
                     let members = d.member_types.clone();
                     let mut cx = TyCx {
                         names: &d.views[mi].clone(),
@@ -634,6 +655,8 @@ fn layer(
                         struct_sets: &sets,
                         struct_defaults: &defaults,
                         tuples: &tuples,
+                        sugar,
+                        records: &records,
                         members: &members,
                         generics: &generics,
                         args: None,
@@ -735,6 +758,7 @@ fn layer(
                     let sets = d.struct_sets.clone();
                     let defaults = d.struct_defaults.clone();
                     let tuples = d.tuples.clone();
+                    let (sugar, records) = (d.sugar, d.records.clone());
                     let members = d.member_types.clone();
                     let doms = d.doms_in(ModId(mi));
                     let mut cx = TyCx {
@@ -745,6 +769,8 @@ fn layer(
                         struct_sets: &sets,
                         struct_defaults: &defaults,
                         tuples: &tuples,
+                        sugar,
+                        records: &records,
                         members: &members,
                         generics: &tgen,
                         args: None,
@@ -839,6 +865,7 @@ fn layer(
                     let sets = d.struct_sets.clone();
                     let defaults = d.struct_defaults.clone();
                     let tuples = d.tuples.clone();
+                    let (sugar, records) = (d.sugar, d.records.clone());
                     let members = d.member_types.clone();
                     let doms = d.doms_in(ModId(mi));
                     let mut errors = Vec::new();
@@ -850,6 +877,8 @@ fn layer(
                         struct_sets: &sets,
                         struct_defaults: &defaults,
                         tuples: &tuples,
+                        sugar,
+                        records: &records,
                         members: &members,
                         generics: &generics,
                         args: None,
@@ -1244,8 +1273,8 @@ fn product(d: &mut Decls, name: &str, def: &ast::Expr) -> Option<Ty> {
     let (product, xs): (StructId, Vec<&ast::Expr>) = match &def.kind {
         ast::ExprKind::Tuple(xs) => (*d.tuples.get(&xs.len())?, xs.iter().collect()),
         ast::ExprKind::Record(fs) => {
-            let names: Vec<&str> = fs.iter().map(|(n, _)| n.text.as_str()).collect();
-            let record = d.struct_named(CORE, &crate::records::name(&names))?;
+            let names: Vec<String> = fs.iter().map(|(n, _)| n.text.clone()).collect();
+            let record = *d.records.get(&names)?;
             (record, fs.iter().map(|(_, x)| x).collect())
         }
         _ => return None,
@@ -1282,7 +1311,7 @@ fn marked(s: &ast::Stmt, n: &str) -> bool {
 }
 
 /// A marker names one declaration: a second, in any module, is a duplicate.
-fn again(item: &ItemId, s: &ast::Stmt, n: &str) -> Msg {
+pub(super) fn again(item: &ItemId, s: &ast::Stmt, n: &str) -> Msg {
     let code = cpl_diag::codes::DUPLICATE_DEFINITION;
     Msg::at(
         item.at(s.span),
@@ -1290,7 +1319,7 @@ fn again(item: &ItemId, s: &ast::Stmt, n: &str) -> Msg {
     )
 }
 
-fn once<T>(slot: &mut Option<T>, id: T, dup: Msg, errors: &mut Vec<Msg>) {
+pub(super) fn once<T>(slot: &mut Option<T>, id: T, dup: Msg, errors: &mut Vec<Msg>) {
     match slot {
         Some(_) => errors.push(dup),
         None => *slot = Some(id),

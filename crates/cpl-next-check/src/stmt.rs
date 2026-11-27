@@ -1492,7 +1492,7 @@ impl<'a> Cx<'a> {
     }
     /// A domain's size is a hidden variable next to its declaration.
     pub(super) fn array_id(&self) -> Option<StructId> {
-        self.d.core_struct("Array")
+        self.d.sugar.array
     }
     /// E0904: an array the input alone can fill past the judge's memory limit (R03.1.9). Only
     /// one-domain arrays of fixed-width cells are measured; nothing else is claimed.

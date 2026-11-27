@@ -27,6 +27,8 @@ pub(super) struct TyCx<'a> {
     pub(super) struct_sets: &'a HashMap<StructId, usize>,
     pub(super) struct_defaults: &'a HashMap<StructId, Vec<Option<Ty>>>,
     pub(super) tuples: &'a HashMap<usize, StructId>,
+    pub(super) sugar: Sugar,
+    pub(super) records: &'a HashMap<Vec<String>, StructId>,
     pub(super) members: &'a HashMap<String, StructId>,
     pub(super) generics: &'a [String],
     /// What the generics stand for, when converting an alias's type.
@@ -85,6 +87,8 @@ pub(super) fn alias(cx: &mut TyCx, id: usize, n: &str, a: Vec<Ty>, errors: &mut 
         struct_sets: cx.struct_sets,
         struct_defaults: cx.struct_defaults,
         tuples: cx.tuples,
+        sugar: cx.sugar,
+        records: cx.records,
         members: cx.members,
         generics: &decl.generics,
         args: Some(&a),
@@ -220,10 +224,6 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
                 return t;
             }
             match n {
-                "Str" if struct_named(cx.names, "Str").is_none() => {
-                    errors.push(Msg::internal("`Str` needs the library's `Str`"));
-                    Ty::Error
-                }
                 "Raw" if a.len() == 1 => Ty::Raw(Box::new(a.remove(0))),
                 _ => match struct_named(cx.names, n) {
                     // Set arguments of a struct named in a signature are fresh parameters.
@@ -252,37 +252,18 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
             let sets = (0..k).map(|_| slot(cx)).collect();
             Ty::Struct(d, a, sets)
         }
-        // `(lo: A, hi: B)` is the core record struct `(lo:, hi:)<A, B>` (R02.5.2).
-        TypeKind::Record(fs)
-            if struct_named(cx.names, &crate::records::name(&field_names(fs))).is_some() =>
-        {
-            let named = ast::Type {
-                kind: TypeKind::Named {
-                    name: ast::Name {
-                        text: crate::records::name(&field_names(fs)),
-                        span: t.span,
-                    },
-                    args: fs.iter().map(|(_, t)| t.clone()).collect(),
-                },
-                span: t.span,
-            };
-            conv(cx, &named, errors)
+        // `(lo: A, hi: B)` is the record struct of those field names (R02.5.2).
+        TypeKind::Record(fs) if cx.records.contains_key(&field_names(fs)) => {
+            let d = cx.records[&field_names(fs)];
+            let a = fs.iter().map(|(_, x)| conv(cx, x, errors)).collect();
+            Ty::Struct(d, a, Vec::new())
         }
-        // `?T` is the library's `Optional<T>`.
-        TypeKind::Optional(inner) if struct_named(cx.names, "Optional").is_some() => {
-            let named = ast::Type {
-                kind: TypeKind::Named {
-                    name: ast::Name {
-                        text: "Optional".to_string(),
-                        span: t.span,
-                    },
-                    args: vec![(**inner).clone()],
-                },
-                span: t.span,
-            };
-            conv(cx, &named, errors)
+        // `?T` is std's `@optional` struct.
+        TypeKind::Optional(inner) if cx.sugar.optional.is_some() => {
+            let d = cx.sugar.optional.unwrap_or(StructId(0));
+            Ty::Struct(d, vec![conv(cx, inner, errors)], Vec::new())
         }
-        // `[D]T` is the library's `Array<D, T>`.
+        // `[D]T` is std's `@array` struct `Array<D, T>`.
         TypeKind::Range { lo, hi, inclusive } => match static_range(lo, hi, *inclusive) {
             Some((lo, hi)) => Ty::Range(lo, hi),
             None => {
@@ -310,10 +291,10 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
                 ),
             };
             let e = conv(cx, elem, errors);
-            match struct_named(cx.names, "Array") {
+            match cx.sugar.array {
                 Some(array) => Ty::Struct(array, vec![i, e], Vec::new()),
                 None => {
-                    errors.push(Msg::internal("`[D]T` needs the library's `Array`"));
+                    errors.push(Msg::internal("`[D]T` needs std's `@array` struct"));
                     Ty::Error
                 }
             }
@@ -406,6 +387,8 @@ pub fn body_type(
             struct_sets: &d.struct_sets,
             struct_defaults: &d.struct_defaults,
             tuples: &d.tuples,
+            sugar: d.sugar,
+            records: &d.records,
             members: &d.member_types,
             generics,
             args: None,

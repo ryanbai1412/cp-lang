@@ -256,6 +256,19 @@ pub enum Owner {
     Impl(usize),
 }
 
+/// The declarations std marks as what a literal or a type's syntax is: `[a, b]` is a `@list`,
+/// `"s"` is a `@str` made by the `@str_literal` fn, `?T` is the `@optional` struct, `[D]T` the
+/// `@array` one, and `lo..hi` the `@range_literal` fn's result.
+#[derive(Default, Clone, Copy)]
+pub struct Sugar {
+    pub list: Option<StructId>,
+    pub str: Option<StructId>,
+    pub optional: Option<StructId>,
+    pub array: Option<StructId>,
+    pub str_literal: Option<FnId>,
+    pub range_literal: Option<FnId>,
+}
+
 #[derive(Default, Clone)]
 pub struct Decls {
     pub fns: Layer<FnDecl>,
@@ -289,6 +302,11 @@ pub struct Decls {
     /// The struct core marks `@cuts`: a half-open literal range of its values, where a
     /// `Range<D>` is wanted, is the piece of positions between them (R04.4.4).
     pub cut_struct: Option<StructId>,
+    /// What literals and type syntax build, each found by its std marker.
+    pub sugar: Sugar,
+    /// Each record struct by its field names, in order: `(lo: A, hi: B)` is the one keyed
+    /// `["lo", "hi"]` (R02.5.2).
+    pub records: Arc<HashMap<Vec<String>, StructId>>,
     pub aliases: Layer<AliasDecl>,
     pub errors: Vec<Msg>,
     /// Declarations the program gets wrong: where, the code, what is wrong.
@@ -400,9 +418,6 @@ impl Decls {
     pub fn core_fn(&self, name: &str) -> Option<FnId> {
         self.fn_named(CORE, name)
     }
-    pub fn core_struct(&self, name: &str) -> Option<StructId> {
-        self.struct_named(CORE, name)
-    }
     /// A read-only method that may still write its receiver's `@cache` fields, so a call
     /// lends the receiver for writing (R05.10.10).
     pub fn writes_cache(&self, f: FnId) -> bool {
@@ -444,8 +459,8 @@ impl Decls {
     }
 }
 
-fn field_names(fs: &[(ast::Name, ast::Type)]) -> Vec<&str> {
-    fs.iter().map(|(n, _)| n.text.as_str()).collect()
+fn field_names(fs: &[(ast::Name, ast::Type)]) -> Vec<String> {
+    fs.iter().map(|(n, _)| n.text.clone()).collect()
 }
 
 fn struct_named(names: &HashMap<String, Named>, name: &str) -> Option<StructId> {
@@ -945,6 +960,7 @@ fn add_fn(
     let sets = d.struct_sets.clone();
     let defaults = d.struct_defaults.clone();
     let tuples = d.tuples.clone();
+    let (sugar, records) = (d.sugar, d.records.clone());
     let members = d.member_types.clone();
     let mut cx = TyCx {
         names: &names,
@@ -954,6 +970,8 @@ fn add_fn(
         struct_sets: &sets,
         struct_defaults: &defaults,
         tuples: &tuples,
+        sugar,
+        records: &records,
         members: &members,
         generics: &generics,
         args: None,
@@ -1110,7 +1128,10 @@ fn add_fn(
     // run, so the program's own is refused: its expected result may be that lint (R06.4.9).
     for x in &s.decorators {
         let elsewhere = d.is_library(m) && read_elsewhere(&x.name.text);
-        let marker = matches!(x.name.text.as_str(), "coerce" | "variant_check" | "pattern");
+        let marker = matches!(
+            x.name.text.as_str(),
+            "coerce" | "variant_check" | "pattern" | "str_literal" | "range_literal"
+        );
         if !elsewhere
             && !marker
             && x.name.text != GETTER
@@ -1159,6 +1180,15 @@ fn add_fn(
     }
     if has("pattern") {
         d.pattern_fns.push(FnId(d.fns.len()));
+    }
+    let id = FnId(d.fns.len());
+    for (n, slot) in [
+        ("str_literal", &mut d.sugar.str_literal),
+        ("range_literal", &mut d.sugar.range_literal),
+    ] {
+        if has(n) {
+            collect::once(slot, id, collect::again(&item, s, n), &mut d.errors);
+        }
     }
     if getter && params.iter().any(|p| p.default.is_none()) {
         let msg = format!(

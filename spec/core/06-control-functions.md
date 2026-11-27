@@ -204,8 +204,12 @@ library or by this spec:
   trait `T(x)` calls), `@operator("op")` (the trait an operator calls),
   `@derive` (a trait every struct whose fields all have it gets field by
   field), `@coerce` (an implicit conversion fn), `@pattern` (the fn a pattern
-  over its type calls) and `@variant_check` (the check an `Int` converted to
-  an enum goes through). Core declares each with them, and any module may: a
+  over its type calls), `@variant_check` (the check an `Int` converted to
+  an enum goes through), `@list`, `@str`, `@optional` and `@array` (the
+  structs `[a, b]`, `"s"`, `?T` and `[D]T` are, whatever a module names
+  `List`, `Str`, `Optional` or `Array`), `@str_literal` (the fn that builds a
+  string literal) and `@range_literal` (the fn that builds `lo..hi by k`).
+  Core declares each with them, and any module may: a
   second declaration of one marker, or of one `@operator` with the same
   method, is E0202. (R06.4.12)
 - Documented where they act: `@bits` on a field and `@law` (chapter 5),

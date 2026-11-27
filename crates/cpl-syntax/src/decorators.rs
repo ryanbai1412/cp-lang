@@ -96,6 +96,18 @@ pub const DECORATORS: &[(&str, &str)] = &[
         "tuple",
         "on a struct: the struct an n-tuple of its field count is",
     ),
+    ("list", "on a struct: the struct a list literal `[a, b]` builds"),
+    ("str", "on a struct: the struct a string literal is"),
+    ("optional", "on a struct: the struct `?T` is"),
+    ("array", "on a struct: the struct `[D]T` is"),
+    (
+        "str_literal",
+        "on a fn: what builds a string literal from its characters",
+    ),
+    (
+        "range_literal",
+        "on a fn: what builds the range `lo..hi by step`",
+    ),
     ("cuts", "on a struct: the cuts of a domain, `D.cuts`"),
     (
         "positions",

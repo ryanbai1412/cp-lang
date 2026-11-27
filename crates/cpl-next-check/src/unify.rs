@@ -368,7 +368,7 @@ impl<'a> Cx<'a> {
     }
     /// `T` when `t` is `?T`.
     fn optional_id(&self) -> Option<StructId> {
-        self.d.core_struct("Optional")
+        self.d.sugar.optional
     }
     /// `?t`.
     pub(super) fn optional_ty(&self, t: Ty) -> Ty {

@@ -229,8 +229,8 @@ impl Cx<'_> {
             }
             // So is a record of them, its factors named (R04.2.10).
             ExprKind::Record(fs) => {
-                let names: Vec<&str> = fs.iter().map(|(n, _)| n.text.as_str()).collect();
-                let record = self.d.core_struct(&crate::records::name(&names))?;
+                let names: Vec<String> = fs.iter().map(|(n, _)| n.text.clone()).collect();
+                let record = *self.d.records.get(&names)?;
                 let parts = (fs.iter())
                     .map(|(_, x)| self.type_path(x))
                     .collect::<Option<Vec<_>>>()?;
@@ -532,9 +532,9 @@ impl Cx<'_> {
         }
         self.coerce(v, &Ty::Int)
     }
-    /// Core's `range_of(lo, hi, step)` over positions of `d`.
+    /// Std's `@range_literal` fn `(lo, hi, step)` over positions of `d`.
     fn range_of(&mut self, args: Vec<TExpr>, d: Ty, span: Span) -> TExpr {
-        let r = self.lib_call("range_of", args, span);
+        let r = self.marked_call(self.d.sugar.range_literal, "range_literal", args, span);
         let want = match self.shallow(&r.ty) {
             Ty::Struct(id, _, sets) => Ty::Struct(id, vec![d], sets),
             t => t,
