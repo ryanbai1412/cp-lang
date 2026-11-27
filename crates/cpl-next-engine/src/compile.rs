@@ -155,6 +155,10 @@ pub(crate) enum Op {
         c: Reg,
         t: u32,
     },
+    JumpIf {
+        c: Reg,
+        t: u32,
+    },
     Switch {
         c: Reg,
         table: u32,
@@ -442,6 +446,7 @@ pub(crate) fn compile(p: &Program, funcs: &[Func<CTy>]) -> Code {
         c.blocks.push(ops);
         c.marks.push(marks);
     }
+    crate::peep::tidy(&mut c);
     c
 }
 

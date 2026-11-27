@@ -7,6 +7,7 @@
 mod compile;
 mod exec;
 mod layout;
+mod peep;
 
 use cpl_next_ir::ir::Func;
 use cpl_next_ir::prog::{CTy, Program};

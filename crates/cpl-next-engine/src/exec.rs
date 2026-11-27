@@ -587,6 +587,11 @@ impl M<'_> {
                         *pc = t as usize;
                     }
                 }
+                Op::JumpIf { c: x, t } => {
+                    if self.stack[r(x)] != 0 {
+                        *pc = t as usize;
+                    }
+                }
                 Op::Switch { c: x, table } => {
                     match c.tables[table as usize].get(self.stack[r(x)] as usize) {
                         Some(&t) => *pc = t as usize,
@@ -753,7 +758,7 @@ mod tests {
     /// Ops that only move words, jump or reach the heap; every other op computes a value or
     /// decides a trap, and takes that from `ops`, so the engine never writes an operation the
     /// reference interpreter and the C++ read from there.
-    const PLUMBING: [&str; 29] = [
+    const PLUMBING: [&str; 30] = [
         "GetG",
         "PutG",
         "Retain",
@@ -777,6 +782,7 @@ mod tests {
         "LendOut",
         "Jump",
         "JumpUnless",
+        "JumpIf",
         "Switch",
         "Leave",
         "Check",
