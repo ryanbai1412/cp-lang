@@ -18,22 +18,19 @@ pub mod doc;
 pub mod fall_through;
 pub mod files;
 pub mod grammar;
-mod items;
-mod lexer;
 pub mod library_lint;
-pub mod literal;
 pub mod narrow;
 pub mod order;
 mod parser;
 pub mod planned;
 pub mod stress;
-mod token;
 pub mod visit;
 
-pub use items::{split_items, ItemRange};
-pub use lexer::{lex, Lexed};
+pub use cpl_next_syntax::literal;
+pub use cpl_next_syntax::{
+    lex, removed_keyword, split_items, ItemRange, Lexed, Token, TokenKind, KEYWORDS, LITERAL_WORDS,
+};
 pub use parser::{parse_item, ParsedItem};
-pub use token::{removed_keyword, Token, TokenKind, KEYWORDS, LITERAL_WORDS};
 
 use cpl_diag::{Diagnostic, Span};
 

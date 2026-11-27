@@ -35,14 +35,18 @@ survives beside the new one (migration rules 5 and 10).
 - **Kinds:** one closed `SyntaxKind`, token kinds and node kinds,
   including `Error` (bytes the parser skipped) and `Missing` (a
   zero-width node where a required child is absent). Required children
-  are always present, so the typed view's accessors return nodes, not
-  options, as today's AST does.
+  are always in the tree, as `Missing` when not written.
 - **Trivia placement:** a node starts at its first token and ends at
   its last; trivia between tokens sits in the innermost node that holds
   both neighbours. So a node's range is today's span.
 - **File:** `File` holds one `Item` node per top-level item (today's
   `split_items` rule, round 5's column-0 keyword rule), trivia between
   items, and the final `Eof`.
+- **What an item holds:** its decorators, and the comment lines directly
+  above it: contiguous `//` lines with no blank line between them or below
+  the last. So docs and hover read them from the item, and moving or
+  formatting an item carries them. A comment after a blank line stays in
+  `File`.
 
 ## The grammar is data
 
@@ -59,11 +63,14 @@ survives beside the new one (migration rules 5 and 10).
 rust-analyzer style: a typed node is a newtype over a red node of one
 kind (`ast::FnDecl`, `ast::BinExpr`), and an enum per category
 (`ast::Expr`, `ast::Stmt`, `ast::Type`, `ast::Pattern`). Accessors find
-children by kind and position. Desugarings today's parser does
+children by kind and position, and are type-honest: an accessor for a
+child returns `Option<ast::X>`, `None` where the child is `Missing` or an
+`Error` node, so no reader can take a parse error for a valid node; the
+parse error already has its diagnostic, so the reader stays quiet. Desugarings today's parser does
 (`a is P and b`, `(lo..hi) by s`, `let a = x and let b = y`, the
-`??=` lead statement, unpacked parameters) are not in the tree: the
-tree says what was written, and the reader that gives it meaning
-desugars, once, as a fn of the typed node.
+`??=` lead statement, unpacked parameters) are not in the tree: the tree says what was written. Every desugaring lives in one module,
+`desugar`, one fn per sugar over the typed node, which every reader calls;
+check and lower never desugar on their own.
 
 ## Error recovery
 
@@ -110,7 +117,13 @@ replaces.
 ## Calls
 
 - `cpl-next-syntax` depends on `cpl-diag` only, for spans and the one
-  diagnostic code table; it is not a compiler crate.
+  diagnostic code table; it is not a compiler crate. Nor is it a path to
+  switch, so `cpl-syntax` may depend on it (`tests/unshipped.rs` exempts
+  it), and the counters over the pipeline's code (`_next_srcs`) leave it
+  to the syntax counters (`SYNTAX_SRCS`), as they leave `cpl-syntax`: a
+  lexer knows keywords by their spelling.
+- Parse speed is an end-state number (`plan/end-state.toml`): the whole
+  conformance suite's parse time, today's parser against the tree.
 - Trivia are sibling tokens, not leading and trailing lists on a token
   (contract 1's `Token` shape): each byte is in exactly one token, and
   a token's leading trivia are its preceding trivia siblings.

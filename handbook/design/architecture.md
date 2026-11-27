@@ -209,7 +209,8 @@ Crate names follow jobs; a crate whose job already matches keeps its name.
 
 | Crate | Job |
 |---|---|
-| `cpl-syntax` | operator table, lexer, error-tolerant parser, lossless tree |
+| `cpl-syntax` | today's error-tolerant parser and its AST, over `cpl-next-syntax`'s lexer and item split; the old pipeline, the tools and the not yet moved `cpl-next` readers read it, and it is deleted with the old pipeline (handbook/design/next/syntax.md) |
+| `cpl-next-syntax` | the one syntax layer: the lexer, whose tokens with their trivia are every byte of the file, the item split, and the green/red lossless tree (handbook/design/next/syntax.md); depends on `cpl-diag` only, and `cpl-syntax` and every `cpl-next` layer read it |
 | `cpl-check` | query database, names, modules, types, traits, generics, domains, ownership; the front end every tool queries. Reads the judge's memory limit from `cpl-judge` for E0904; reads `CPL_STD_DIR` with `cpl-env`; asks `cpl-prover` for inputs that overflow `Int` (`Overflow`; native only, decision 235), so lint reads that fact here; checks `@intrinsic` bodies against `cpl-rt` |
 | `cpl-ir` | the IR, lowering, monomorphization, facts (absorbing `prover`), passes, layout; lowers an `@intrinsic` call to its `cpl-rt` primitive |
 | `cpl-next` | the pipeline that replaces `cpl-ir`, `cpl-interp` and `cpl-codegen`, grown beside them: one crate per layer, so Cargo's edges hold the layer order (crate rules, `layer order`). `cpl-next` holds no layer of its own: it runs them in order, over `cpl-syntax`'s tree with `cpl-diag`'s codes, the declarations in `cpl-next-decls`, the typed tree in `cpl-next-check`, ownership in `cpl-next-own`, the generic IR's lowering in `cpl-next-lower`, link and the canonical IR in `cpl-next-link`, the reference interpreter in `cpl-next-interp` and the C++ emitter in `cpl-next-cpp`, the IR the layers share in `cpl-next-ir` and the fast engine in `cpl-next-engine`. It resolves the judge profile with `cpl-judge` and passes it to the checker as data. It checks against the std baked into it at build time, or the directory `CPL_NEXT_STD_DIR` names, read with `cpl-env`. No crate depends on it (`tests/unshipped.rs`): its tests judge it on every conformance case (read with `cpl-conform`), and the landing that makes `cpl` use it deletes what it replaces |
@@ -252,7 +253,7 @@ Crate names follow jobs; a crate whose job already matches keeps its name.
 | tool (runs and checks a program through the facade only, contract 9; `tool_compiler_deps` counts what is left) | `cpl-cli`, `cpl-lsp`, `cpl-lint`, `cpl-fmt`, `cpl-stress`, `cpl-wasm`, `cpl-contest`, `cpl-doc`, `cpl-judge` |
 | compiler (behind the facade; `cpl-syntax` is one too, and tools leave its tree in migration stage 8) | `cpl-check`, `cpl-ir`, `cpl-interp`, `cpl-codegen`, `cpl-prover`, `cpl-rt` |
 | forbidden edge | `cpl-codegen -> cpl-check`, `cpl-interp -> cpl-check`, `cpl-wasm -> cpl-cli`, `cpl-lint -> cpl-prover` |
-| layer order (the new pipeline, bottom first: a crate reads only the crates before it, and crates joined by + are siblings that read neither each other) | `cpl-next-ir`, `cpl-next-decls`, `cpl-next-check`, `cpl-next-lower`, `cpl-next-link`, `cpl-next-own`, `cpl-next-cpp + cpl-next-interp + cpl-next-engine`, `cpl-next` |
+| layer order (the new pipeline, bottom first: a crate reads only the crates before it, and crates joined by + are siblings that read neither each other) | `cpl-next-syntax + cpl-next-ir`, `cpl-next-decls`, `cpl-next-check`, `cpl-next-lower`, `cpl-next-link`, `cpl-next-own`, `cpl-next-cpp + cpl-next-interp + cpl-next-engine`, `cpl-next` |
 
 ## First-class concerns
 

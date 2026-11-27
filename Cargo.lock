@@ -320,6 +320,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "cpl-next-syntax"
+version = "0.3.0"
+dependencies = [
+ "cpl-diag",
+]
+
+[[package]]
 name = "cpl-prim"
 version = "0.3.0"
 
@@ -353,6 +360,7 @@ name = "cpl-syntax"
 version = "0.3.0"
 dependencies = [
  "cpl-diag",
+ "cpl-next-syntax",
 ]
 
 [[package]]

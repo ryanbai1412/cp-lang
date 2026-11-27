@@ -1,5 +1,5 @@
 use crate::ast::*;
-use crate::token::TokenKind as T;
+use crate::TokenKind as T;
 use crate::*;
 
 fn kinds(src: &str) -> Vec<T> {

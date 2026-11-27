@@ -1629,13 +1629,16 @@ def next_weak_oracle_passes(root: Path) -> list[str]:
     return out
 
 
+SYNTAX_SRCS = ("crates/cpl-syntax/src", "crates/cpl-next-syntax/src")
+
+
 def syntax_std_names(root: Path) -> list[str]:
-    """String literals in the parser (`cpl-syntax`) equal to a type std declares: the parser
+    """String literals in the lexer and parser (`cpl-syntax`, `cpl-next-syntax`) equal to a type std declares: the parser
     turning `Bounds` into `Cut` knows the library by name below every layer `next_std_names` scans."""
     names = set()
     for f in sorted((root / "std").glob("**/*.cp")):
         names |= {n for n in NEXT_STD_DECL_RE.findall(f.read_text(encoding="utf-8")) if n[:1].isupper()}
-    return [f"{_rel(root, p)}:{i}: {n}" for p in _rs_files(root, "crates/cpl-syntax/src", tests=False)
+    return [f"{_rel(root, p)}:{i}: {n}" for p in _rs_files(root, *SYNTAX_SRCS, tests=False)
             if not p.name.endswith("_tests.rs")
             for i, l in enumerate(_lines(p), 1) if not l.lstrip().startswith("//")
             for n in RUST_STR_RE.findall(l) if n in names]
@@ -1656,7 +1659,7 @@ def next_asks_refused(root: Path) -> list[str]:
     return out
 
 
-NEXT_LAYER_CRATES = ("cpl-next-ir", "cpl-next-decls", "cpl-next-check", "cpl-next-lower", "cpl-next-link",
+NEXT_LAYER_CRATES = ("cpl-next-syntax", "cpl-next-ir", "cpl-next-decls", "cpl-next-check", "cpl-next-lower", "cpl-next-link",
                      "cpl-next-own")
 NEXT_LAYER_MAY_USE = ("cpl-syntax", "cpl-diag", "cpl-config")
 
@@ -1673,6 +1676,24 @@ def next_layer_foreign_deps(root: Path) -> list[str]:
         deps = tomllib.loads(toml.read_text(encoding="utf-8")).get("dependencies", {})
         out += [f"{c} -> {d}" for d in sorted(deps) if not d.startswith("cpl-next-") and d.startswith("cpl-")
                 and d not in NEXT_LAYER_MAY_USE]
+    return out
+
+
+def next_syntax_old_refs(root: Path) -> list[str]:
+    """Places where the new pipeline reads the old parser: a `cpl_syntax` source line in a
+    `cpl-next*` crate (tests included) and a `cpl-syntax` dependency in its manifest. Each
+    reader moves onto `cpl-next-syntax`'s lossless tree and deletes its old use
+    (handbook/design/next/syntax.md); at 0, `cpl-syntax` serves only the old pipeline it is
+    deleted with."""
+    out = []
+    for d in sorted((root / "crates").glob("cpl-next*")):
+        toml = d / "Cargo.toml"
+        if toml.is_file():
+            parsed = tomllib.loads(toml.read_text(encoding="utf-8"))
+            out += [f"{_rel(root, toml)}: {kind} {dep}" for kind in TOOL_COMPILER_KINDS
+                    for dep in sorted(parsed.get(kind, {})) if dep == "cpl-syntax"]
+        out += [f"{_rel(root, p)}:{i}" for p in _rs_files(root, _rel(root, d))
+                for i, line in enumerate(_lines(p), 1) if "cpl_syntax" in line]
     return out
 
 
@@ -1808,8 +1829,11 @@ RUST_STR_RE = re.compile(r'"([A-Za-z_]\w*)"')
 
 
 def _next_srcs(root: Path) -> list[str]:
-    """The pipeline and the per-layer crates it is split into (`cpl-next-ir`, `cpl-next-engine`)."""
-    return sorted(_rel(root, d / "src") for d in (root / "crates").glob("cpl-next*") if (d / "src").is_dir())
+    """The pipeline and the per-layer crates it is split into (`cpl-next-ir`, `cpl-next-engine`).
+    Not `cpl-next-syntax`: the lexer is where text becomes token kinds, so it knows keywords by
+    their spelling; SYNTAX_SRCS's counters cover it, as they cover `cpl-syntax`."""
+    return sorted(_rel(root, d / "src") for d in (root / "crates").glob("cpl-next*")
+                  if (d / "src").is_dir() and d.name != "cpl-next-syntax")
 
 
 def next_std_names(root: Path) -> list[str]:
@@ -3689,7 +3713,7 @@ def trap_text_outside_registry(root: Path) -> list[str]:
 FOREIGN_LANG = r"(?:C\+\+|C|Python|Rust|Java|Kotlin|JavaScript|TypeScript|Swift|Lua|Pascal|Go)"
 FOREIGN_HABIT_DOC_RE = re.compile(r"(?<![\w`])" + FOREIGN_LANG + r"(?:'s\b|/(?=[A-Z]))|\bfrom " + FOREIGN_LANG + r"(?![\w`+])")
 FN_ITEM_RE = re.compile(r"(?:pub(?:\([^)]*\))?\s+)?(?:const\s+)?fn\s")
-RECOVERY_CRATES = ("crates/cpl-syntax/src", "crates/cpl-check/src", "crates/cpl-ir/src")
+RECOVERY_CRATES = ("crates/cpl-syntax/src", "crates/cpl-next-syntax/src", "crates/cpl-check/src", "crates/cpl-ir/src")
 
 
 def foreign_outside_modules(root: Path) -> list[str]:
@@ -4146,12 +4170,14 @@ COUNTERS = {
     "next_library_gates": ("new-pipeline checks of whether a module is a library: std-only rules (Core)", next_library_gates, True),
     "next_ownership_outside_own": ("new-pipeline fns outside cpl-next-own deciding a lend or drop (Core)", next_ownership_outside_own, True),
     "next_weak_oracle_passes": ("new-pipeline passing cases whose oracle is exit 1 or ok without output (Core)", next_weak_oracle_passes, True),
-    "syntax_std_names": ("string literals in cpl-syntax naming a std type (Core)", syntax_std_names, True),
+    "syntax_std_names": ("string literals in cpl-syntax and cpl-next-syntax naming a std type (Core)", syntax_std_names, True),
     "next_backend_owns_reads": ("new-pipeline backend reads of whether a layout owns, placing a drop or retain (Core)", next_backend_owns_reads, True),
     "fast_unchecked": ("std @fast fns whose op no test compares with their CP body (Core)", fast_unchecked, True),
     "next_lent_outside_own": ("new-pipeline places after the checker, outside cpl-next-own, making a type lent (Core)", next_lent_outside_own, True),
     "next_asks_refused": ("conformance cases refused for a header the new harness does not judge (Core)", next_asks_refused, True),
     "next_layer_foreign_deps": ("compiler layer crates depending on a tool or build crate (Core)", next_layer_foreign_deps, True),
+    "next_syntax_old_refs": ("new-pipeline source lines and manifests reading the old parser `cpl_syntax` (Core; target 0)",
+                             next_syntax_old_refs, True),
     "own_databases": ("Database built outside cpl-check", own_databases, True),
     "ir_reinfer": ("lowering re-inferring a type the checker's facts give", ir_reinfer, True),
     "next_check_name_keys": ("checker keys built by formatting another name, not an id (Core)", next_check_name_keys, True),

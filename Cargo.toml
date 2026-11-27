@@ -17,6 +17,7 @@ cpl-json = { path = "crates/cpl-json" }
 cpl-corpus = { path = "crates/cpl-corpus" }
 cpl-wait = { path = "crates/cpl-wait" }
 cpl-next-ir = { path = "crates/cpl-next-ir" }
+cpl-next-syntax = { path = "crates/cpl-next-syntax" }
 cpl-next-decls = { path = "crates/cpl-next-decls" }
 cpl-next-check = { path = "crates/cpl-next-check" }
 cpl-next-own = { path = "crates/cpl-next-own" }
@@ -85,6 +86,9 @@ opt-level = 3
 # and recovery test suites; opt-level = 1 keeps incremental builds fast while
 # cutting `scripts/check.sh --fast` wall time well under the 3-minute budget.
 [profile.dev.package.cpl-syntax]
+opt-level = 1
+
+[profile.dev.package.cpl-next-syntax]
 opt-level = 1
 
 [profile.dev.package.cpl-check]

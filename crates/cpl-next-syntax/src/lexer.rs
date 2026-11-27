@@ -26,6 +26,53 @@ pub struct Lexed {
     pub comments: Vec<Span>,
 }
 
+impl Lexed {
+    /// Every token of `src` in order, trivia included: the bytes between
+    /// two tokens are whitespace, comments (the lexer's `comments`) and the
+    /// lines it skipped, so the tokens' texts concatenated are `src`. A
+    /// zero-width token (layout, an inserted closer) comes before the trivia
+    /// at its offset.
+    pub fn lossless(&self, src: &str) -> Vec<Token> {
+        let bytes = src.as_bytes();
+        let mut out = Vec::with_capacity(self.tokens.len() * 2);
+        let mut comments = self.comments.iter().peekable();
+        let mut at = 0u32;
+        let mut gap = |out: &mut Vec<Token>, from: u32, to: u32| {
+            let mut i = from;
+            while i < to {
+                let start = i;
+                let kind = if comments.peek().is_some_and(|c| c.start == i) {
+                    i = comments.next().map_or(to, |c| c.end.min(to));
+                    TokenKind::Comment
+                } else if matches!(bytes[i as usize], b' ' | b'\t' | b'\r' | b'\n') {
+                    while i < to && matches!(bytes[i as usize], b' ' | b'\t' | b'\r' | b'\n') {
+                        i += 1;
+                    }
+                    TokenKind::Whitespace
+                } else {
+                    while comments.peek().is_some_and(|c| c.end <= i) {
+                        comments.next();
+                    }
+                    let next_comment = comments.peek().map_or(to, |c| c.start.min(to));
+                    let line_end = src[i as usize..to as usize].find('\n').map_or(to, |n| i + n as u32);
+                    i = line_end.min(next_comment).max(i + 1);
+                    TokenKind::Skipped
+                };
+                out.push(Token { kind, span: Span::new(start, i) });
+            }
+        };
+        for t in &self.tokens {
+            if t.span.start > at {
+                gap(&mut out, at, t.span.start);
+            }
+            out.push(*t);
+            at = at.max(t.span.end);
+        }
+        gap(&mut out, at, src.len() as u32);
+        out
+    }
+}
+
 /// The open blocks' indentation widths. The file's own level, 0, is the
 /// bottom and is never closed, so there is always a top.
 struct Indents {

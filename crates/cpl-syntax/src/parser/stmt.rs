@@ -738,7 +738,7 @@ impl<'a> Parser<'a> {
             {
                 let span = self.span();
                 let word = self.text();
-                let help = crate::token::removed_keyword(word).unwrap_or_default();
+                let help = crate::removed_keyword(word).unwrap_or_default();
                 self.error(msg::KEYWORD_REMOVED.error(span, &[&word]).with_help(help));
                 self.recovering = true;
                 self.skip_line();

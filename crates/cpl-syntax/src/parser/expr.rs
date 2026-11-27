@@ -1678,7 +1678,7 @@ impl<'a> Parser<'a> {
                 StrPart::Text(span) => pieces.push(StrPiece::Text(unescape(span.text(text)))),
                 StrPart::Expr(span) => {
                     let inner = span.text(text);
-                    let lexed = crate::lexer::lex(inner);
+                    let lexed = crate::lex(inner);
                     // Spans from the inner lexer are relative to `inner`.
                     let delta = token.span.start as i64 + span.start as i64 + self.delta;
                     let mut sub = Parser::new(inner, &lexed.tokens, delta, Sink::new());

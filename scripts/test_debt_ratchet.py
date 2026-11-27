@@ -2311,6 +2311,12 @@ class DebtRatchetTest(unittest.TestCase):
             (root / "crates/cpl-next-check/Cargo.toml").write_text(
                 '[dependencies]\ncpl-syntax.workspace = true\ncpl-judge.workspace = true\ncpl-next-ir.workspace = true\n')
             self.assertEqual(dr.next_layer_foreign_deps(root), ["cpl-next-check -> cpl-judge"])
+            (root / "crates/cpl-next-check/src").mkdir()
+            (root / "crates/cpl-next-check/src/lib.rs").write_text(
+                "use cpl_syntax::ast::Expr;\nuse cpl_next_syntax::ast;\nfn f() { cpl_syntax::parse_file(\"\"); }\n")
+            self.assertEqual(dr.next_syntax_old_refs(root), [
+                "crates/cpl-next-check/Cargo.toml: dependencies cpl-syntax",
+                "crates/cpl-next-check/src/lib.rs:1", "crates/cpl-next-check/src/lib.rs:3"])
 
     def test_lent_outside_own_and_asks_refused(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

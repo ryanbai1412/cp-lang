@@ -20,7 +20,9 @@ fn no_other_crate_depends_on_the_pipeline() {
     assert!(out.status.success(), "cargo metadata failed");
     let meta = cpl_json::parse(std::str::from_utf8(&out.stdout).unwrap()).unwrap();
     // The pipeline is `cpl-next` and the per-layer crates it is split into (`cpl-next-ir`).
-    let next = |n: &str| n == "cpl-next" || n.starts_with("cpl-next-");
+    // `cpl-next-syntax` is not a path to switch: it is the one lexer and tree under every
+    // reader, the old parser included (handbook/design/next/syntax.md).
+    let next = |n: &str| (n == "cpl-next" || n.starts_with("cpl-next-")) && n != "cpl-next-syntax";
     let name = |v: &cpl_json::Value| v.get("name").and_then(|n| n.as_str()).unwrap().to_string();
     let users: Vec<String> = meta
         .get("packages")

@@ -30,7 +30,7 @@ fn a_leading_operator_continues_past_blank_and_comment_lines() {
     let parsed = parse_file(src);
     assert!(parsed.diagnostics.is_empty(), "{:#?}", parsed.diagnostics);
     assert_eq!(parsed.items.len(), 2);
-    let lexed = lexer::lex("let b = a\n    // note\n    - 3\n// after\nlet c = 1\n");
+    let lexed = crate::lex("let b = a\n    // note\n    - 3\n// after\nlet c = 1\n");
     assert_eq!(lexed.comments.len(), 2);
 }
 
@@ -72,7 +72,7 @@ fn a_missing_close_paren_before_an_infix_line_goes_before_it() {
 #[test]
 fn nested_unclosed_brackets_close_innermost_first_with_one_error() {
     let src = "let x = f(g([1\nprint(x)\n";
-    let lexed = lexer::lex(src);
+    let lexed = crate::lex(src);
     assert_eq!(lexed.diagnostics.len(), 1, "{:#?}", lexed.diagnostics);
     assert_eq!(
         lexed.diagnostics[0].span.start, 9,
@@ -80,7 +80,7 @@ fn nested_unclosed_brackets_close_innermost_first_with_one_error() {
         lexed.diagnostics
     );
     let kinds: Vec<_> = lexed.tokens.iter().map(|t| t.kind).collect();
-    use token::TokenKind::*;
+    use crate::TokenKind::*;
     let closers = kinds
         .iter()
         .position(|k| *k == Newline)
@@ -97,7 +97,7 @@ fn nested_unclosed_brackets_close_innermost_first_with_one_error() {
 #[test]
 fn a_stray_last_char_and_a_size_before_its_type_are_one_error_each() {
     for src in ["let a = 1 ≤", "var a: [n - 1Int = 0\n"] {
-        let lexed = lexer::lex(src);
+        let lexed = crate::lex(src);
         assert_eq!(
             lexed.diagnostics.len(),
             1,

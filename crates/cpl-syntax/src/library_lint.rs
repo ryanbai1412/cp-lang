@@ -6,7 +6,7 @@
 use crate::ast::{
     BinOp, CmpOp, Cond, Expr, ExprKind, FnBody, FnDecl, Stmt, StmtKind, StrPiece, TypeKind,
 };
-use crate::token::{Token, TokenKind};
+use crate::{Token, TokenKind};
 use crate::ParsedItem;
 use cpl_diag::{msgs, Diagnostic, Span};
 use std::fmt::Display;

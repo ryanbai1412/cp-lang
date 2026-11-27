@@ -105,6 +105,15 @@ pub enum TokenKind {
 
     /// A character the lexer could not read. Already reported.
     Error,
+
+    // Trivia: the bytes between tokens, so the token list is the whole file.
+    /// Spaces, tabs, `\r` and `\n`.
+    Whitespace,
+    /// A `//` comment, up to its line's end.
+    Comment,
+    /// A line the lexer skipped after reporting it: another language's
+    /// header, such as `#include <bits/stdc++.h>`.
+    Skipped,
 }
 
 /// The 33 reserved words (R01.3): 29 for contestants (two of them the
@@ -234,6 +243,12 @@ impl TokenKind {
         )
     }
 
+    /// True for the kinds that carry no syntax: whitespace, comments and
+    /// skipped lines.
+    pub fn is_trivia(self) -> bool {
+        matches!(self, TokenKind::Whitespace | TokenKind::Comment | TokenKind::Skipped)
+    }
+
     pub fn is_closer(self) -> bool {
         matches!(
             self,
@@ -356,6 +371,9 @@ impl TokenKind {
             Dedent => "the end of the block",
             Eof => "the end of the file",
             Error => "an unreadable character",
+            Whitespace => "a space",
+            Comment => "a comment",
+            Skipped => "a skipped line",
         }
     }
 }

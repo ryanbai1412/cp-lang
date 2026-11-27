@@ -19,7 +19,7 @@ mod stmt;
 mod types;
 
 use crate::ast::*;
-use crate::token::{Token, TokenKind};
+use crate::{Token, TokenKind};
 use cpl_diag::{codes, msgs, Code, Diagnostic, Sink, Span};
 use TokenKind as T;
 
