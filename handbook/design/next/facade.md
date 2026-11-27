@@ -80,7 +80,8 @@ signature above does not change when the view lands.
 | `units` | Scope, Signatures, one body per unit | `front` |
 | `diagnostics(Program)` | Summaries (calls checked against them) | `back` (own on linked instances) |
 | `program` | Generics, then link | `back` and canonicalize |
-| `hover`, `definition`, `complete` (next) | Scope, Signatures | not built |
+| `hover`, `definition` | Scope, Signatures | `items` |
+| `complete` (next) | Scope, Signatures | not built |
 
 ## Trace and replay
 
@@ -150,8 +151,10 @@ count per line inside a call (`At.nth`).
    `verdict`.
 2. The crate's own tests (`tolerance.rs`, `std_modules.rs`, the lib
    tests) onto it; `compile` and `units` go private.
-3. `hover` and `definition` from Scope and Signatures, as lane I lands
-   them.
+3. `hover` and `definition` from Scope and Signatures (lane I's views):
+   both read one `Item` per name in the program's scope, its declaring
+   module, span, line and first line past decorators. A trait has no
+   source position in `TraitDecl` yet, so it has no `Item`.
 4. At the switching landing, `cpl-facade`'s queries answer from this
    one.
 

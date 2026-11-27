@@ -2,10 +2,12 @@
 //! checks, builds and runs a program, over an immutable [`Snapshot`]. Each answer is computed
 //! once, on the first query that needs it, and never changes.
 
+use std::collections::HashMap;
 use std::sync::{Arc, OnceLock};
 
 use crate::{
-    compile, std_unchecked, units, Compiled, Diag, Form, Outcome, Roots, Stage, Std, Unit,
+    compile, items, std_unchecked, units, Compiled, Diag, Form, Item, Outcome, Roots, Stage, Std,
+    Unit,
 };
 
 /// The only input of every query: the program, the libraries it may use, and std.
@@ -130,6 +132,7 @@ pub struct Session {
     snapshot: Snapshot,
     built: OnceLock<Result<Program, Vec<Diag>>>,
     units: OnceLock<(Vec<Unit>, Vec<Diag>)>,
+    items: OnceLock<HashMap<String, Item>>,
 }
 
 impl Session {
@@ -138,6 +141,7 @@ impl Session {
             snapshot,
             built: OnceLock::new(),
             units: OnceLock::new(),
+            items: OnceLock::new(),
         }
     }
 
@@ -177,6 +181,24 @@ impl Session {
         (units, diags)
     }
 
+    /// The item the name at byte `at` of the program names, if it names one.
+    fn item_at(&self, at: u32) -> Option<&Item> {
+        let h = &self.snapshot.0;
+        let name = word_at(&h.program, at as usize)?;
+        let items = (self.items).get_or_init(|| items(&h.std, &h.program, &h.roots));
+        items.get(name)
+    }
+
+    /// How the item named at byte `at` is declared: its declaration's first line.
+    pub fn hover(&self, at: u32) -> Option<&str> {
+        self.item_at(at).map(|i| i.head.as_str())
+    }
+
+    /// Where the item named at byte `at` is declared.
+    pub fn definition(&self, at: u32) -> Option<&Item> {
+        self.item_at(at)
+    }
+
     /// Each std module and how many diagnostics checking every one of its fns gives, not only
     /// those a program reaches (suite 4).
     pub fn std_unchecked(&self) -> Vec<(String, usize)> {
@@ -193,4 +215,14 @@ impl Session {
             false => Verdict::Rejected,
         }
     }
+}
+
+/// The identifier `at` is in, or ends at.
+fn word_at(text: &str, at: usize) -> Option<&str> {
+    let word = |c: char| c.is_ascii_alphanumeric() || c == '_';
+    let at = at.min(text.len());
+    let start = text[..at].rfind(|c| !word(c)).map_or(0, |i| i + 1);
+    let end = text[at..].find(|c| !word(c)).map_or(text.len(), |i| at + i);
+    let w = &text[start..end];
+    (w.chars().next()?.is_ascii_alphabetic() || w.starts_with('_')).then_some(w)
 }

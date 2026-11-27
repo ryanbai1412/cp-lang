@@ -21,6 +21,7 @@ use diag::kind_of;
 pub use diag::Kind;
 pub use diag::Unbuilt;
 pub use modules::{Roots, Std};
+use std::collections::HashMap;
 
 pub use cpl_next_ir::run::{Outcome, Trap};
 
@@ -397,6 +398,60 @@ pub(crate) fn compile(
         opt,
         proved,
     })
+}
+
+/// An item a program can name, as hover and definition show it (contract 9), read through the
+/// Scope and Signatures views.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Item {
+    /// The module it is declared in.
+    pub module: String,
+    /// Where its declaration is in that module's text.
+    pub span: cpl_diag::Span,
+    /// The 1-based line its declaration starts on.
+    pub line: u32,
+    /// Its first line past any decorators, as written, less a trailing `:`:
+    /// `fn twice(n: Int) -> Int`.
+    pub head: String,
+}
+
+/// Each name the program's module scope gives an item with a declaration, and that item.
+pub(crate) fn items(std: &Std, user_src: &str, roots: &Roots) -> HashMap<String, Item> {
+    use cpl_next_decls::views::{Scope, Signatures};
+    let f = front(std, user_src, roots);
+    let start = |item: &ItemId| item.at(cpl_diag::Span::new(0, 0));
+    let declared = |named: decls::Named| -> Option<SourceId> {
+        Some(match named {
+            decls::Named::Fn(id) => f.d.f(id).span.clone(),
+            decls::Named::Struct(id) => start(&f.d.s(id).item),
+            decls::Named::Alias(id) => f.d.alias(id).at.clone(),
+            decls::Named::Const(id) => start(&f.d.consts[id.0].item),
+            _ => return None,
+        })
+    };
+    let program = f.d.program;
+    (f.d.views[program.0].keys())
+        .filter_map(|name| {
+            let at = declared(Scope::named(&f.d, program, name)?)?;
+            let text = f.loaded.text_of(&at);
+            let span = text.span(&at);
+            let (line, col) = text.line_col(span.start);
+            let from = (span.start + 1 - col) as usize;
+            let head = (text.text[from..].lines())
+                .find(|l| !l.trim_start().starts_with('@'))
+                .unwrap_or("")
+                .trim_end()
+                .trim_end_matches(':')
+                .to_string();
+            let item = Item {
+                module: text.name.clone(),
+                span,
+                line,
+                head,
+            };
+            Some((name.clone(), item))
+        })
+        .collect()
 }
 
 /// One unit of the program (contract 3): a fn it declares, or one of its top-level statements.

@@ -765,3 +765,29 @@ fn a_session_answers_from_its_snapshot() {
     assert_eq!(said, [Some("E0201")]);
     assert_eq!(ok.verdict(), Verdict::Accepted);
 }
+
+#[test]
+fn hover_and_definition_read_the_scope_and_signatures() {
+    use crate::facade::{Session, Snapshot};
+    let src = "fn twice(n: Int) -> Int:\n    n * 2\n\nprint(twice(3))\n";
+    let s = Session::open(Snapshot::new(
+        std::sync::Arc::new(Std::read()),
+        Roots::std(),
+        src,
+    ));
+    let call = src.rfind("twice").unwrap() as u32 + 2;
+    assert_eq!(s.hover(call), Some("fn twice(n: Int) -> Int"));
+    let d = s.definition(call).unwrap();
+    assert_eq!(
+        (
+            d.line,
+            &src[d.span.start as usize..d.span.end as usize][..2]
+        ),
+        (1, "fn")
+    );
+    let local = src.find("n * 2").unwrap() as u32;
+    assert_eq!(s.hover(local), None);
+    let print = s.definition(src.find("print").unwrap() as u32).unwrap();
+    assert_eq!(print.module, "std.show");
+    assert!(print.head.starts_with("pub fn print<"), "{}", print.head);
+}
