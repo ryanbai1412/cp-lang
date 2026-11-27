@@ -70,7 +70,7 @@ pub fn dfs_tree<V, A, E>(self: Graph<V, A>, root: V) -> (
 /// A tree rooted at `root`, owning its own fresh heavy-first preorder domain `t.Pre`.
 /// Built in \(O(n)\) without recursion; memory is seven `[V]` arrays, one `[Pre]` array and child
 /// lists.
-pub struct Rooted<V, Pre, A>:
+pub struct Rooted<V, Pre: Ordered, A>:
     pub root: V
     /// The parent; `None` at the root.
     pub par: [V]?V
@@ -143,15 +143,16 @@ pub struct Rooted<V, Pre, A>:
         var start: [V.cuts]Len = 0
         var roots: List<V> = []
         for v in V:
-            if let p = par[v]: start[p.ord] += 1
+            if let p = par[v]: start[V.cuts(p.ord)] += 1
             else: roots.push(v)
-        for i in 1..start.len: start[i] += start[i - 1]
-        var kids: List<V> = if V.count > 0: List.filled(start[V.count], V.nth(0)) else: []
+        for c in V.cuts:
+            if let p = c.prev: start[c] += start[p]
+        var kids: List<V> = if V.count > 0: List.filled(start[V.cuts.last!], V.nth(0)) else: []
         for j in (0..V.count).rev:
             let v = V.nth(j)
             if let p = par[v]:
-                start[p.ord] -= 1
-                kids[start[p.ord]] = v
+                start[V.cuts(p.ord)] -= 1
+                kids[start[V.cuts(p.ord)]] = v
         let g = Graph<V>(start, kids)
         // a cycle in `par` is a set of vertices no root reaches
         var todo: List<V> = []
@@ -1342,7 +1343,7 @@ fn random_tree<V>(any: V) -> [V]List<V>:
     adj
 
 /// The vertices from `a` to `b`, by climbing parents.
-fn slow_path<V, Pre, A>(r: Rooted<V, Pre, A>, a: V, b: V) -> List<V>:
+fn slow_path<V, Pre: Ordered, A>(r: Rooted<V, Pre, A>, a: V, b: V) -> List<V>:
     var (x, y) = (a, b)
     var (left, right) = (List<V>(), List<V>())
     while x != y:
@@ -2384,7 +2385,7 @@ pub struct PreferredPaths<V>:
     /// cost: \(O(n)\)
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); var pp = PreferredPaths(t); pp.access(0).count() == 0`
-    pub fn new<P, A>(t: Rooted<V, P, A>) -> PreferredPaths<V> =
+    pub fn new<P: Ordered, A>(t: Rooted<V, P, A>) -> PreferredPaths<V> =
         PreferredPaths([V] _ => None, [V] _ => None, [V] v => t.parent(v), [V] v => v, [])
 
     /// Makes the path from the root to `v` one preferred path, yielding each switch bottom-up.
@@ -2959,7 +2960,7 @@ pub enum PermNode<I, N>: Leaf(i: I), Inner(l: N, r: N, kind: PermKind)
 /// two, and the values of every node but a `Partial` one form a run of consecutive values. Nodes have their own
 /// domain `t.Node` of 2n - 1 members; `kind`, `first`, `last`, `lo` and `hi` are arrays over it.
 /// Built in \(O(n)\) by one stack pass.
-pub struct PermTree<I, V, Node>:
+pub struct PermTree<I: Ordered, V: Ordered, Node>:
     pub root: Node
     pub kind: [Node]PermKind
     l: [Node]Node
@@ -3203,7 +3204,7 @@ fn perm_tree_of_a_small_permutation():
 
 /// The vertices of a `Rooted` tree by depth, each depth in preorder, over their own domain
 /// `B`: the descendants of a vertex at one depth are a contiguous range of `B`.
-pub struct Layers<V, B>:
+pub struct Layers<V, B: Ordered>:
     pub at: [B]V
     pub slot: [V]B
     /// The layer of depth `d` is `start[d]..start[d + 1]` as ordinals of `B`.
@@ -3340,7 +3341,7 @@ pub struct LcaTable<V>:
     /// cost: \(O(n \log n)\) time and memory
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let lt = LcaTable(t); lt.lca(3, 4) == 1`
-    pub fn new<Pre, A>(t: Rooted<V, Pre, A>) -> LcaTable<V>:
+    pub fn new<Pre: Ordered, A>(t: Rooted<V, Pre, A>) -> LcaTable<V>:
         let n = V.count
         let at = t.reorder([V] v => v)
         var far: [V]Int = 0
@@ -4189,7 +4190,7 @@ pub fn from_prufer<V>(code: List<V>) -> Tree<V>:
 pub enum TreeShape = Path | Star | Binary | Caterpillar | Random
 
 /// `gen<Rooted<V>>(shape:)`: each vertex hangs from one drawn before it, in `shape`.
-impl<V, Pre, A> Random for Rooted<V, Pre, A>:
+impl<V, Pre: Ordered, A> Random for Rooted<V, Pre, A>:
     fn gen(shape: TreeShape = Random) -> Rooted<V, _, _>:
         let n = V.count
         var label = V.collect()

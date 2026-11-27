@@ -129,7 +129,7 @@ appear (decision 162).
 
 | | neighbour of the same kind | the other kind, either side |
 |---|---|---|
-| position `v` | `v.prev`, `v.next`: `?V` | `v.l`, `v.r`: its cuts (R04.3.1) |
+| position `v` | `v.prev`, `v.next`: `?V` | `v.l`, `v.r`: its cuts; `v.l(k)`, `v.r(k)`: the far cuts of the `k` positions ending or starting at `v` (R04.3.1) |
 | cut `c` | `c.prev`, `c.next`: `?V.cuts` | `c.l`, `c.r`: the positions beside it, `?V` (R04.3.2) |
 
 `v.next(k)`, `v.prev(k)` step k at once, `?V` (cuts too). `c.shift(r)` is

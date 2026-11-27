@@ -2868,7 +2868,7 @@ pub fn block_cut_tree<V>(g: Next<V>) -> (domain B, links: List<(b: B, v: V)>):
 /// order: `block` keyed by `E`
 /// traps: in checked builds, when the graph is not undirected (an arc without its reverse on the same `e`)
 /// example: `domain V = 0..4; domain E = 0..4; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 0), (u: 2, v: 3)]; let (domain B, block) = blocks(Graph.undirected(es)); B.count == 2 and block[0] == block[1] and block[1] == block[2] and block[3] != block[0]`
-pub fn blocks<V, E>(g: EdgedNext<V, E>) -> (domain B, block: [E]B):
+pub fn blocks<V: Domain, E>(g: EdgedNext<V, E>) -> (domain B, block: [E]B):
     var start: [V.cuts]Len = 0
     var to = List<V>()
     var eid = List<E>()
@@ -2876,8 +2876,8 @@ pub fn blocks<V, E>(g: EdgedNext<V, E>) -> (domain B, block: [E]B):
         for a in g.out(u):
             to.push(a.to)
             eid.push(a.e)
-        start[u.r] = to.len
-    var next: [V]Int = [V] u => start[u.l]
+        start[V.cuts(u.ord + 1)] = to.len
+    var next: [V]Int = [V] u => start[V.cuts(u.ord)]
     var tin: [V]Int = -1
     var low: [V]Int = 0
     var up: [V]?E = None
@@ -2894,7 +2894,7 @@ pub fn blocks<V, E>(g: EdgedNext<V, E>) -> (domain B, block: [E]B):
         path.push(root)
         while let u = path.last:
             let i = next[u]
-            if i < start[u.r]:
+            if i < start[V.cuts(u.ord + 1)]:
                 next[u] = i + 1
                 let v = to[i]
                 let e = eid[i]

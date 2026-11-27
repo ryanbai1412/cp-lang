@@ -46,10 +46,12 @@ pub trait Ordered(Domain):
         if 0 <= o and o < Self.count: Some(Self.nth(o)) else: None
     /// `v.prev(k)`: the position `k` before `v` in the walk, or `None` past its start (R04.3.1).
     @get fn prev(self, k: Int = 1) -> ?Self = self.next(-k)
-    /// `v.l`: the cut just before `v` (R04.3.1).
-    @get fn l(self) -> Cut<Self> = Cut(self.ord)
-    /// `v.r`: the cut just after `v` (R04.3.1).
-    @get fn r(self) -> Cut<Self> = Cut(self.ord + 1)
+    /// `v.l`: the cut just before `v`; `v.l(k)`, the left cut of the `k` positions ending at `v`
+    /// (R04.3.1).
+    @get fn l(self, k: Int = 1) -> Cut<Self> = Cut(self.ord + 1 - k)
+    /// `v.r`: the cut just after `v`; `v.r(k)`, the right cut of the `k` positions from `v`
+    /// (R04.3.1).
+    @get fn r(self, k: Int = 1) -> Cut<Self> = Cut(self.ord + k)
     /// `v.after`, `v.before`: the pieces `v.r..` and `..v.l` of its domain (R04.2.19).
     @get fn after(self) -> Range<Self> = range_of(self.ord + 1, Self.count, 1)
     @get fn before(self) -> Range<Self> = range_of(0, self.ord, 1)
