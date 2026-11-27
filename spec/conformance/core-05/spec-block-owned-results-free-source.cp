@@ -10,7 +10,7 @@ domain E = 0..3
 let es: [E](u: V, v: V) = [(u: 1, v: 2), (u: 2, v: 3), (u: 3, v: 4)]
 let g = Graph.undirected(es)
 let s = V.first!
-let xs = List(1, 2, 3)
+let xs = [1, 2, 3]
 let p = (x: Int) => x > 1
 let t = Rooted(g, root: r)        // reads g, owns its arrays: g is free
 let fast = LcaTable(t)            // reads t, owns its table: t is free

@@ -5,5 +5,5 @@ fn divisors(n: Int) -> yields Int:
         if n % d == 0:
             yield d
             if d * d != n: yield n / d
-let gs = List(divisors(12), divisors(30))
+let gs = [divisors(12), divisors(30)]
 for d in gs[0]: print(d)
