@@ -83,7 +83,9 @@ pub const JUDGE_DECORATORS: [&str; 5] = cpl_ir::STRESS_DECORATORS;
 /// Whether `source` has a top-level fn `cpl stress` judges by: one of
 /// [`JUDGE_DECORATORS`] on it, as the parser reads it (not a mention in a
 /// comment or a string). Needs no check, so an editor asks it on each key.
-pub use cpl_ir::has_stress_target as has_judge;
+pub fn has_judge(source: &str) -> bool {
+    cpl_ir::has_stress_target(source)
+}
 
 /// The runtime checks a judge build or a run keeps (`cpl build --checks`, R09.3).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]

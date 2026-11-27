@@ -2,7 +2,6 @@
 
 use std::io::Write;
 
-pub use cpl_interp::checkpoint::{Checkpoint, Checkpoints};
 use std::sync::{Arc, Mutex};
 
 use crate::session::{Checks, Program, Session};
@@ -249,6 +248,28 @@ pub struct Outcome {
     pub profile: Option<RunProfile>,
 }
 
+/// A run's state at the start of a round of a loop, which another run of the
+/// same program can start from. Opaque, as [`Recording`] is.
+#[derive(Clone)]
+pub struct Checkpoint(cpl_interp::checkpoint::Checkpoint);
+
+/// The checkpoints a run takes, or the one it starts from.
+#[derive(Clone, Default)]
+pub struct Checkpoints(cpl_interp::checkpoint::Checkpoints);
+
+impl Checkpoints {
+    /// The last one before the run first reads or prints, about every
+    /// `every` loop rounds and calls: a run on any input can start there.
+    pub fn before_input(every: u64) -> Checkpoints {
+        Checkpoints(cpl_interp::checkpoint::Checkpoints::before_input(every))
+    }
+
+    /// The run from `from` to its end.
+    pub fn resuming(from: &Checkpoint) -> Checkpoints {
+        Checkpoints(cpl_interp::checkpoint::Checkpoints::resuming(&from.0))
+    }
+}
+
 /// A run that took checkpoints, or started from one.
 pub struct Checkpointed {
     /// How the run ended.
@@ -385,11 +406,11 @@ pub fn run_checkpointed(
         output,
         limits.into(),
         None,
-        want,
+        want.0,
     );
     Checkpointed {
         outcome: run.observed.into(),
-        taken: run.taken,
+        taken: run.taken.into_iter().map(Checkpoint).collect(),
         sent: run.sent,
     }
 }
