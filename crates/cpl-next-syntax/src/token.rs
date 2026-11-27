@@ -216,7 +216,10 @@ impl TokenKind {
     /// True for the kinds that carry no syntax: whitespace, comments and
     /// skipped lines.
     pub fn is_trivia(self) -> bool {
-        matches!(self, TokenKind::Whitespace | TokenKind::Comment | TokenKind::Skipped)
+        matches!(
+            self,
+            TokenKind::Whitespace | TokenKind::Comment | TokenKind::Skipped
+        )
     }
 
     pub fn is_closer(self) -> bool {

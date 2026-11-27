@@ -16,8 +16,6 @@ In prelude (no `use` needed): `LiChao`, `Line`, `LineContainer`, `MonotoneHull`,
 
 The lower (`LiChao(min, over: 0..=1e9)`) or upper (`max`) envelope of lines over the integer coordinates `over`.
 
-Fields: `lines: List<?L>`, `left: List<Int>`, `right: List<Int>`.
-
 - `fn new(pick: (K, K) -> K, over: Range<Int>) -> LiChao<L, K>` — \(O(1)\); An empty envelope over the integer coordinates `over`, keeping at each `x` the value `pick` prefers (`min` for the lower envelope, `max` for the upper).; traps: when `over` is empty
 - `fn clear(mut self)` — \(O(1)\) amortized; Forget every line, keeping `pick` and `over`, so the tree can be reused (between test cases, say) without reallocating.
 - `fn at(self, x: Int) -> ?K` — \(O(\log n)\) for n = `over.len`; The best value at `x` over every line covering `x`, as chosen by `pick`, or `None` when no line covers `x` (nothing added yet, or only lines whose range misses `x`).; traps: when `x` is not in `over`

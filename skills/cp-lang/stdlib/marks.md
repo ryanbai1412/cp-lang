@@ -21,7 +21,7 @@ A visited/mark set over a domain `D` with \(O(1)\) `add`, `remove`, `contains` (
 
 Epoch-stamped map over domain `D` with \(O(1)\) `get`, `set`, `contains`, `remove`, and `clear()`.
 
-Fields: `vals: [D]T`, `default_val: T`, `gen: Int`.
+Fields: `vals: [D]T`, `default_val: T`.
 
 - `fn new(default_val: T) -> MarkMap<D, T>` — \(O(\lvert D \rvert)\); An empty map over `D`.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of keys present.
@@ -36,7 +36,7 @@ Fields: `vals: [D]T`, `default_val: T`, `gen: Int`.
 
 Online value-to-id interner assigning contiguous `0..len` IDs to distinct keys `K`.
 
-Fields: `to_id: HashMap<K, Int>`, `keys: List<K>`.
+Fields: `to_id: HashMap<K, Int>`.
 
 - `fn new() -> Interner<K>` — \(O(1)\); An empty interner.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of distinct keys interned so far; ids are exactly `0..len`.

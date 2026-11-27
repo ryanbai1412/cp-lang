@@ -94,8 +94,6 @@ An ordered set of unique keys `K` with order statistics (`rank`, `nth`), \(O(1)\
 
 Order-statistic ordered map from `K` to `V`, each value beside its key in the `SortedBag` B+tree (decision 579).
 
-Fields: `ks: SortedBag<K>`, `vals: List<V>`, `vfree: List<Int>`.
-
 - `fn new() -> SortedMap<K, V>` — \(O(1)\); Create an empty `SortedMap<K, V>`.
 - `fn reserve(mut self, cap: Int)` — \(O(n)\) when the storage grows (it moves the keys), \(O(1)\) otherwise; Preallocate key and value storage for at least `cap` entries.
 - `@get fn len(self) -> Int` — \(O(1)\); Number of key-value pairs.

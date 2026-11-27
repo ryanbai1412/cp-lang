@@ -38,7 +38,11 @@ fn round_trips(dirs: &[&str]) {
     let mut broken = Vec::new();
     for (path, src) in repo_files(dirs) {
         let lexed = lex(&src);
-        let tokens: String = lexed.lossless(&src).iter().map(|t| t.span.text(&src)).collect();
+        let tokens: String = lexed
+            .lossless(&src)
+            .iter()
+            .map(|t| t.span.text(&src))
+            .collect();
         let file = parse(&src);
         let tree = file.root.text();
         let items_are_whole = file.items().all(|i| i.kind() == NodeKind::Item);
@@ -46,7 +50,11 @@ fn round_trips(dirs: &[&str]) {
             broken.push(path.display().to_string());
         }
     }
-    assert!(broken.is_empty(), "{} files lose bytes: {broken:#?}", broken.len());
+    assert!(
+        broken.is_empty(),
+        "{} files lose bytes: {broken:#?}",
+        broken.len()
+    );
 }
 
 #[test]
@@ -61,5 +69,10 @@ fn every_std_file_round_trips() {
 
 #[test]
 fn every_test_program_and_corpus_file_round_trips() {
-    round_trips(&["crates/cpl-next/tests", "corpus", "spec/lints", "spec/checker-lints"]);
+    round_trips(&[
+        "crates/cpl-next/tests",
+        "corpus",
+        "spec/lints",
+        "spec/checker-lints",
+    ]);
 }

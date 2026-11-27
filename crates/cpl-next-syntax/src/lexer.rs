@@ -54,11 +54,16 @@ impl Lexed {
                         comments.next();
                     }
                     let next_comment = comments.peek().map_or(to, |c| c.start.min(to));
-                    let line_end = src[i as usize..to as usize].find('\n').map_or(to, |n| i + n as u32);
+                    let line_end = src[i as usize..to as usize]
+                        .find('\n')
+                        .map_or(to, |n| i + n as u32);
                     i = line_end.min(next_comment).max(i + 1);
                     TokenKind::Skipped
                 };
-                out.push(Token { kind, span: Span::new(start, i) });
+                out.push(Token {
+                    kind,
+                    span: Span::new(start, i),
+                });
             }
         };
         for t in &self.tokens {

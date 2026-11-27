@@ -44,7 +44,7 @@ Fields: `segs: Map<Int, Int>`.
 
 Dynamic union of disjoint half-open integer intervals `[lo, hi)` over unbounded `Int` coordinates.
 
-Fields: `segs: Map<Int, Int>`, `total: Int`.
+Fields: `segs: Map<Int, Int>`.
 
 - `fn new() -> SparseIntervalSet` — \(O(1)\); An empty set of `Int` coordinates, unbounded in both directions.
 - `fn add(mut self, r: Range<Int>)` — \(O((1 + \mathit{merged}) \log \mathit{runs})\) amortized; Add every coordinate of the half-open `r`, merging runs that overlap or touch it.

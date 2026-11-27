@@ -45,8 +45,6 @@ The queue-undo trick: a `Track` over an `Undo` structure, so a window that adds 
 
 A movable range over `D` feeding a `Track`, for Mo and divide-and-conquer DP.
 
-Fields: `lo: Int`.
-
 - `fn new(state: S, start: ?Range<D> = None) -> Sweep<D, S>` — \(O(1)\), plus `start.len` pushes when `start` is given; A sweep over `state`, starting empty (or at `start`).; traps: never (beyond what `state.push` traps on)
 - `fn move(mut self, to: Range<D>)` — \(O(\lvert \mathit{dl} \rvert + \lvert \mathit{dr} \rvert)\) pushes and pops, where `dl` and `dr` are the moves of the two ends; Slide to `to`, feeding `state` the positions that enter and leave.; traps: never (beyond what the state traps on)
 - `@get fn range(self) -> Range<D>` — \(O(1)\); The current range: the positions whose pushes the state holds.

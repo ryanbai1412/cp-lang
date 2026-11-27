@@ -63,7 +63,11 @@ fn f():
 ";
     let file = parse(src);
     let f = file.items().nth(1).unwrap();
-    assert!(f.text().starts_with("/// one\n/// two\n@inline\nfn f():"), "{:?}", f.text());
+    assert!(
+        f.text().starts_with("/// one\n/// two\n@inline\nfn f():"),
+        "{:?}",
+        f.text()
+    );
     let loose = file.root.tokens().find(|t| t.text() == "// loose").unwrap();
     assert_eq!(loose.parent().kind(), NodeKind::File);
     assert_eq!(file.root.text(), src);
@@ -83,7 +87,18 @@ fn red_nodes_know_their_offsets_and_parents() {
 
 #[test]
 fn any_bytes_round_trip() {
-    for src in ["", "\n", "(((", "fn f(:\n  x\n y\n", "\"unterminated", "'", "\t\t", "@", "a\rb", "é∑ // ü"] {
+    for src in [
+        "",
+        "\n",
+        "(((",
+        "fn f(:\n  x\n y\n",
+        "\"unterminated",
+        "'",
+        "\t\t",
+        "@",
+        "a\rb",
+        "é∑ // ü",
+    ] {
         assert_eq!(parse(src).root.text(), src, "{src:?}");
     }
 }

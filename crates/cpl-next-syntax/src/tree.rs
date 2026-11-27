@@ -244,12 +244,14 @@ impl SyntaxNode {
                 let at = offset;
                 offset += child.width();
                 match child {
-                    GreenElement::Node(green) => SyntaxElement::Node(SyntaxNode(Arc::new(NodeData {
-                        green: green.clone(),
-                        parent: Some(self.clone()),
-                        offset: at,
-                        index: index as u32,
-                    }))),
+                    GreenElement::Node(green) => {
+                        SyntaxElement::Node(SyntaxNode(Arc::new(NodeData {
+                            green: green.clone(),
+                            parent: Some(self.clone()),
+                            offset: at,
+                            index: index as u32,
+                        })))
+                    }
                     GreenElement::Token(green) => SyntaxElement::Token(SyntaxToken {
                         green: green.clone(),
                         parent: self.clone(),

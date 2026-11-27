@@ -161,7 +161,7 @@ Fields: `alpha: Count`, `next: List<Slot>`, `links: List<Slot>`, `max_len: List<
 
 \(O(n \cdot \lvert A \rvert)\) space, \(O(\lvert A \rvert)\) amortized push.
 
-Fields: `alpha: Count`, `next: List<Slot>`, `slink: List<Count>`, `plen: List<Slot>`, `diff_val: List<Count>`, `ser_link: List<Count>`, `cnt: List<Count>`, `chars: List<A>`, `last: Count`, `front: List<A>`, `first: Count`, `undo: List<Count>`, `made: List<Count>`, `firsts: List<Count>`, `barrier: Int`.
+Fields: `alpha: Count`, `next: List<Slot>`, `slink: List<Count>`, `plen: List<Slot>`, `diff_val: List<Count>`, `ser_link: List<Count>`, `cnt: List<Count>`, `chars: List<A>`, `front: List<A>`, `undo: List<Count>`, `made: List<Count>`, `firsts: List<Count>`.
 
 - `fn new() -> PalindromicTree<A>` — \(O(\lvert A \rvert)\); An empty palindromic tree over the alphabet domain `A`: just the odd root `0` and the even root `1`.
 - `fn of<S: Seq>(s: S) -> PalindromicTree<A>` — \(O(\lvert s \rvert \cdot \lvert A \rvert)\) memory, \(O(\lvert s \rvert \cdot \lvert A \rvert)\) time; The palindromic tree of `s`: `PalindromicTree<A>()` followed by `push` of each element.; traps: when an element of `s` is not in `A`
@@ -185,7 +185,7 @@ Fields: `alpha: Count`, `next: List<Slot>`, `slink: List<Count>`, `plen: List<Sl
 
 Dynamic trie over alphabet domain `A`.
 
-Fields: `alpha: Count`, `next: List<Slot>`, `ends: List<Count>`, `pass: List<Count>`.
+Fields: `alpha: Count`.
 
 - `fn new() -> Trie<A>` — \(O(\lvert A \rvert)\); An empty trie over the alphabet domain `A`: one root node `0`, no words.
 - `@get fn root(self) -> Int` — \(O(1)\); The root node, for the empty word: always `0`.

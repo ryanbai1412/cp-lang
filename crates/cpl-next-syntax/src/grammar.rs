@@ -44,11 +44,23 @@ pub const KEYWORD_KINDS: &[(&str, TokenKind)] = &[
 /// What to write instead of a word that v2.1 reserved and v2.2 does not.
 /// The word itself is an ordinary name now.
 pub const REMOVED_KEYWORDS: &[(&str, &str)] = &[
-    ("defer", "undo by hand after the call: `cur.push(x); dfs(); cur.pop()`"),
+    (
+        "defer",
+        "undo by hand after the call: `cur.push(x); dfs(); cur.pop()`",
+    ),
     ("assume", "write `assert`, which is always checked"),
-    ("where", "write the bound in the angle brackets: `fn f<T: Ord>(...)`"),
-    ("inline", "drop it: closures and `lends` bodies are always inlined"),
-    ("lend", "end the `lends` body with the place itself: `mut self.data[i]`"),
+    (
+        "where",
+        "write the bound in the angle brackets: `fn f<T: Ord>(...)`",
+    ),
+    (
+        "inline",
+        "drop it: closures and `lends` bodies are always inlined",
+    ),
+    (
+        "lend",
+        "end the `lends` body with the place itself: `mut self.data[i]`",
+    ),
     ("law", "write `@law name(args) = condition`"),
 ];
 
