@@ -1683,6 +1683,7 @@ next/n_record_01_records_are_core_structs.cp
 next/n_record_01_update_copies_with_replacements.cp
 next/n_record_02_field_traits.cp
 next/n_ret_01_dispatch_by_return_type.cp
+next/n_row_01_row_bounds.cp
 next/n_scope_01_param_shadows_domain.cp
 next/n_set_01_closure_added_through_mut_param.cp
 next/n_set_02_closure_stored_in_mut_param_field.cp
@@ -2318,4 +2319,3 @@ widths/sub-traps-3.cp
 widths/sub-traps-4.cp
 widths/sub-traps-5.cp
 widths/sub-wraps-when-unchecked.cp
-next/n_row_01_row_bounds.cp
