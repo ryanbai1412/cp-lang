@@ -293,6 +293,31 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.link_reads_check(root),
                              ["crates/cpl-next-link/src/lib.rs:1", "crates/cpl-next-link/src/lib.rs:3"])
 
+    def test_crate_deps_see_renamed_and_table_dependencies(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self._write(root, "crates/cpl-next-link/Cargo.toml",
+                        "[dependencies]\nchk = { package = \"cpl-next-check\", path = \"x\" }\n"
+                        "[dependencies.cpl-next-ir]\npath = \"y\"\n"
+                        "[dev-dependencies.cpl-next-own]\npath = \"z\"\n")
+            self.assertEqual(dr._crate_deps(root)["cpl-next-link"], ["cpl-next-check", "cpl-next-ir"])
+
+    def test_id_sets_read_a_fresh_run_over_the_committed_list(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True, env=dr._git_env())
+            self._write(root, "crates/cpl-next/tests/wrong.tsv", "a.cp\twrong-accept\tx\nb.cp\tsplit\ty\n")
+            subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
+            subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "x", "--no-verify"],
+                           cwd=root, check=True, env=dr._git_env())
+            self.assertEqual(dr.next_wrong_accepts(root), ["a.cp"])
+            run = root / "target/cpl-next/wrong.tsv"
+            run.parent.mkdir(parents=True)
+            run.write_text("c.cp\twrong-accept\tx\n")
+            self.assertEqual((dr.next_wrong_accepts(root), dr.next_split(root)), (["c.cp"], []))
+            os.utime(run, (0, 0))
+            self.assertEqual(dr.next_wrong_accepts(root), ["a.cp"])
+
     def test_link_reads_check_follows_the_dependency_graph(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

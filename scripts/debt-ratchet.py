@@ -1392,18 +1392,34 @@ def next_cpp_runtime_lines(root: Path) -> list[str]:
 def next_wrong_accepts(root: Path) -> list[str]:
     """Cases the new pipeline accepts that their header says it must reject: a soundness hole,
     worse for a contestant than a wrong reject, so it gets its own floor beside `next_wrong`."""
-    wrong = root / NEXT_TESTS / "wrong.tsv"
-    return [l.split("\t")[0] for l in _lines(wrong)
-            if l.count("\t") >= 1 and l.split("\t")[1] == "wrong-accept"] if wrong.is_file() else []
+    return _wrong_ids(root, "wrong-accept")
 
 
 def next_split(root: Path) -> list[str]:
     """Cases whose three runs disagree (`split` in `wrong.tsv`): the interpreter, the engine and
     the C++ program answer differently, the one verdict that falsifies "one source of semantics".
     It is counted apart from `next_wrong` so a split is never filed as one more wrong reject."""
-    wrong = root / NEXT_TESTS / "wrong.tsv"
+    return _wrong_ids(root, "split")
+
+
+def _wrong_rows_path(root: Path) -> Path:
+    """The `wrong.tsv` to read: the full programs run's own (`target/cpl-next/wrong.tsv`) when it
+    is newer than HEAD and the committed list, else the committed list. A run is the evidence;
+    the committed list is only what someone last copied, and gating on it alone let a swap sit
+    in the baseline (09:00 trend audit). A focused run writes `target/cpl-next/only/` instead."""
+    committed, run = root / NEXT_TESTS / "wrong.tsv", root / "target/cpl-next/wrong.tsv"
+    if not run.is_file():
+        return committed
+    head = _git(root, "log", "-1", "--format=%ct")
+    newer_than_head = bool(head) and head[0].isdigit() and run.stat().st_mtime >= int(head[0])
+    newer_than_list = not committed.is_file() or run.stat().st_mtime >= committed.stat().st_mtime
+    return run if newer_than_head and newer_than_list else committed
+
+
+def _wrong_ids(root: Path, kind: str) -> list[str]:
+    wrong = _wrong_rows_path(root)
     return [l.split("\t")[0] for l in _lines(wrong)
-            if l.count("\t") >= 1 and l.split("\t")[1] == "split"] if wrong.is_file() else []
+            if l.count("\t") >= 1 and l.split("\t")[1] == kind] if wrong.is_file() else []
 
 
 # Counters gated by case, not count: one fixed and one newly broken keep the count,
@@ -2948,16 +2964,31 @@ def link_reads_check(root: Path) -> list[str]:
 
 
 def _crate_deps(root: Path) -> dict[str, list[str]]:
-    """Each workspace crate's normal `cpl-*` dependencies (not dev or build), from its Cargo.toml."""
+    """Each workspace crate's normal `cpl-*` dependencies (not dev or build), by package name.
+    `cargo metadata` resolves renames (`x = { package = "cpl-next-check" }`) and
+    `[dependencies.x]` tables; the Cargo.toml reading below is only for a tree Cargo can't load."""
+    if (root / "Cargo.toml").is_file():
+        try:
+            out = subprocess.run(["cargo", "metadata", "--format-version", "1", "--no-deps", "--offline"],
+                                 cwd=root, capture_output=True, text=True, timeout=60, check=True).stdout
+            return {Path(p["manifest_path"]).parent.name: [d["name"] for d in p["dependencies"]
+                                                           if d["kind"] is None and d["name"].startswith("cpl")]
+                    for p in json.loads(out)["packages"]}
+        except (OSError, subprocess.SubprocessError, ValueError, KeyError):
+            pass
     deps: dict[str, list[str]] = {}
     for toml in sorted((root / "crates").glob("*/Cargo.toml")):
         section, names = "", []
         for line in _lines(toml):
             if line.startswith("["):
                 section = line.strip()
-            elif section.endswith("dependencies]") and not re.search(r"(dev|build)-dependencies]$", section) \
-                    and (m := re.match(r"\s*(cpl[\w-]*)\s*[=.]", line)):
-                names.append(m.group(1))
+                if (m := re.fullmatch(r"\[(?:target\..*\.)?dependencies\.(cpl[\w-]*)\]", section)):
+                    names.append(m.group(1))
+            elif re.search(r"(?<![\w-])dependencies]$", section) \
+                    and (m := re.match(r"\s*([\w-]+)\s*[=.]", line)):
+                pkg = re.search(r'package\s*=\s*"(cpl[\w-]*)"', line)
+                if pkg or m.group(1).startswith("cpl"):
+                    names.append(pkg.group(1) if pkg else m.group(1))
         deps[toml.parent.name] = names
     return deps
 
