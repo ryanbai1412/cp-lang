@@ -941,9 +941,6 @@ fn check_with(
         cx.zonk_stmt(s);
     }
     ctx_fns.sort_by_key(|c| c.0);
-    for tf in fns.values_mut().chain(ctx_fns.iter_mut().map(|c| &mut c.2)) {
-        cx.zonk_fn(tf);
-    }
     let mut globals = std::mem::take(&mut cx.globals);
     for g in &mut globals {
         g.ty = cx.zonk(&g.ty);
@@ -1348,7 +1345,7 @@ impl<'a> Cx<'a> {
             }
         }
         self.frames = frames;
-        let out = TypedFn {
+        let mut out = TypedFn {
             self_local: self.self_local,
             params,
             locals: std::mem::take(&mut self.locals),
@@ -1356,6 +1353,8 @@ impl<'a> Cx<'a> {
             ret,
             region: self.region.take(),
         };
+        // Typed once checked: no later body changes this one's types (`SetTy::AddedAt`, `SetTy::Global`).
+        self.zonk_fn(&mut out);
         self.decl = None;
         self.module = d.program;
         self.region = None;
