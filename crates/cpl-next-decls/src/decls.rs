@@ -7,6 +7,7 @@ use cpl_diag::Span;
 use cpl_next_ir::ids::{ItemId, SourceId};
 use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_syntax::ast::{self, FnBody, StmtKind, TypeKind};
+use cpl_syntax::decorators::Mark;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
@@ -1483,26 +1484,29 @@ fn add_fn(
             errors.push(Msg::at(item.at(x.span), msg));
             continue;
         }
-        let elsewhere = d.is_library(m) && read_elsewhere(&x.name.text);
-        let marker = matches!(
-            x.name.text.as_str(),
-            "coerce"
-                | "variant_check"
-                | "pattern"
-                | "str_literal"
-                | "range_literal"
-                | "interpolation"
-                | "input"
-                | "role"
-        );
-        if !elsewhere
-            && !marker
-            && x.name.text != GETTER
-            && !matches!(
-                x.name.text.as_str(),
-                "multitest" | "same_keys" | "index" | "aka" | "was" | "from_op" | "fast"
+        let elsewhere = d.is_library(m) && read_elsewhere(x.mark);
+        let built = matches!(
+            x.mark,
+            Some(
+                Mark::Coerce
+                    | Mark::VariantCheck
+                    | Mark::Pattern
+                    | Mark::StrLiteral
+                    | Mark::RangeLiteral
+                    | Mark::Interpolation
+                    | Mark::Input
+                    | Mark::Role
+                    | Mark::Get
+                    | Mark::Multitest
+                    | Mark::SameKeys
+                    | Mark::Index
+                    | Mark::Aka
+                    | Mark::Was
+                    | Mark::FromOp
+                    | Mark::Fast
             )
-        {
+        );
+        if !elsewhere && !built {
             let at = item.at(x.span);
             errors.push(Msg::at(
                 at,
@@ -1520,12 +1524,12 @@ fn add_fn(
         errors.retain(|e| e.refusal.is_some());
         errors
     };
-    let has = |n: &str| s.decorators.iter().any(|x| x.name.text == n);
+    let has = |m: Mark| s.mark(m).is_some();
     // A getter is read like a field, so nothing but `self` may need an argument (R02.6.6).
-    let getter = has(GETTER);
-    let same_keys = has("same_keys");
-    let words = |n: &str| -> Vec<String> {
-        (s.decorators.iter().filter(|x| x.name.text == n))
+    let getter = has(Mark::Get);
+    let same_keys = has(Mark::SameKeys);
+    let words = |m: Mark| -> Vec<String> {
+        (s.decorators.iter().filter(|x| x.mark == Some(m)))
             .flat_map(|x| &x.args)
             .filter_map(|a| match &a.value.kind {
                 cpl_syntax::ast::ExprKind::Name(w) => Some(w.clone()),
@@ -1533,26 +1537,26 @@ fn add_fn(
             })
             .collect()
     };
-    if has("index") {
+    if has(Mark::Index) {
         d.index_fns.push(FnId(d.fns.len()));
     }
-    if has("from_op") {
+    if has(Mark::FromOp) {
         d.from_op.push(FnId(d.fns.len()));
     }
-    let coerce = has("coerce");
+    let coerce = has(Mark::Coerce);
     if coerce {
         d.coercions.push(FnId(d.fns.len()));
     }
-    if has("pattern") {
+    if has(Mark::Pattern) {
         d.pattern_fns.push(FnId(d.fns.len()));
     }
     let id = FnId(d.fns.len());
     for (n, slot) in [
-        ("str_literal", &mut d.sugar.str_literal),
-        ("range_literal", &mut d.sugar.range_literal),
+        (Mark::StrLiteral, &mut d.sugar.str_literal),
+        (Mark::RangeLiteral, &mut d.sugar.range_literal),
     ] {
         if has(n) {
-            collect::once(slot, id, collect::again(&item, s, n), &mut d.errors);
+            collect::once(slot, id, collect::again(&item, s, n.name()), &mut d.errors);
         }
     }
     for (x, role) in role_marks(s) {
@@ -1578,10 +1582,10 @@ fn add_fn(
         );
         collect::once(slot, id, dup, &mut d.errors);
     }
-    if has("input") {
+    if has(Mark::Input) {
         d.input_fns.push(FnId(d.fns.len()));
     }
-    if has("interpolation") {
+    if has(Mark::Interpolation) {
         d.interpolate = Some(FnId(d.fns.len()));
     }
     if getter && params.iter().any(|p| p.default.is_none()) {
@@ -1634,11 +1638,11 @@ fn add_fn(
             },
             _ => None,
         },
-        fast: words("fast").into_iter().next(),
+        fast: words(Mark::Fast).into_iter().next(),
         getter,
         same_keys,
-        aka: words("aka"),
-        was: words("was"),
+        aka: words(Mark::Aka),
+        was: words(Mark::Was),
         span: item.at(s.span),
         item,
         module: m,
@@ -1951,7 +1955,7 @@ fn fresh_binders(ret: Option<&ast::Type>) -> Vec<(usize, String)> {
 
 /// Each `@role(name)` on `s`, with the role it names when `name` is one of R11.6.1's.
 pub(super) fn role_marks(s: &ast::Stmt) -> impl Iterator<Item = (&ast::Decorator, Option<Role>)> {
-    let marks = s.decorators.iter().filter(|x| x.name.text == "role");
+    let marks = s.decorators.iter().filter(|x| x.mark == Some(Mark::Role));
     marks.map(|x| (x, role_of(x)))
 }
 

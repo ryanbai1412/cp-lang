@@ -144,6 +144,7 @@ pub(super) fn derive_laws(methods: &mut Vec<Stmt>) {
         span,
         decorators: vec![Decorator {
             directive: false,
+            mark: Some(crate::decorators::Mark::Get),
             name: b.name("get"),
             args: Vec::new(),
             span,

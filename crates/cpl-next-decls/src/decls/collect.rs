@@ -8,6 +8,7 @@ use cpl_diag::codes::FIELD_BOUND_FROM_INPUT;
 use cpl_diag::msgs::check::FIELD_BOUND_FROM_INPUT_A_FIELD_S_BOUNDS;
 use cpl_next_ir::ids::{ItemId, SourceId};
 use cpl_next_ir::unbuilt::Unbuilt;
+use cpl_syntax::decorators::Mark;
 
 /// Std's declarations, collected once and never written after: the core's and every std
 /// module's. A program's declarations are a layer over them.
@@ -314,14 +315,15 @@ fn layer(
                     StmtKind::Struct(sd) => {
                         let id = StructId(d.structs.len());
                         own[mi].insert(sd.name.text.clone(), Named::Struct(id));
-                        if marked(s, "tuple") {
+                        if marked(s, Mark::Tuple) {
                             let n = sd.fields.len();
                             match d.tuples.contains_key(&n) {
                                 true => d.errors.push(again(item, s, "tuple")),
                                 false => _ = Arc::make_mut(&mut d.tuples).insert(n, id),
                             }
                         }
-                        if d.is_library(mid) && s.decorators.iter().any(|x| x.name.text == "recipe")
+                        if d.is_library(mid)
+                            && s.decorators.iter().any(|x| x.mark == Some(Mark::Recipe))
                         {
                             d.recipe = Some(id);
                         }
@@ -333,24 +335,24 @@ fn layer(
                             }
                             d.errors.push(misplaced_role(item, x, role, "struct"));
                         }
-                        if marked(s, "cuts") {
+                        if marked(s, Mark::Cuts) {
                             once(&mut d.cut_struct, id, again(item, s, "cuts"), &mut d.errors);
                         }
                         for (n, slot) in [
-                            ("list", &mut d.sugar.list),
-                            ("str", &mut d.sugar.str),
-                            ("map", &mut d.sugar.map),
-                            ("array", &mut d.sugar.array),
+                            (Mark::List, &mut d.sugar.list),
+                            (Mark::Str, &mut d.sugar.str),
+                            (Mark::Map, &mut d.sugar.map),
+                            (Mark::Array, &mut d.sugar.array),
                         ] {
                             if marked(s, n) {
-                                once(slot, id, again(item, s, n), &mut d.errors);
+                                once(slot, id, again(item, s, n.name()), &mut d.errors);
                             }
                         }
-                        if marked(s, crate::records::RECORD) {
+                        if marked(s, Mark::Record) {
                             let names = sd.fields.iter().map(|f| f.name.text.clone()).collect();
                             Arc::make_mut(&mut d.records).insert(names, id);
                         }
-                        let member = s.decorators.iter().find(|x| x.name.text == "member");
+                        let member = s.decorators.iter().find(|x| x.mark == Some(Mark::Member));
                         if let Some(ast::ExprKind::Name(m)) =
                             member.and_then(|x| x.args.first()).map(|a| &a.value.kind)
                         {
@@ -380,7 +382,7 @@ fn layer(
                         }
                         d.structs.push(StructDecl {
                             name: sd.name.text.clone(),
-                            record: marked(s, crate::records::RECORD),
+                            record: marked(s, Mark::Record),
                             generics: sd.generics.iter().map(|g| g.text.clone()).collect(),
                             fields: Vec::new(),
                             var_fields: Vec::new(),
@@ -411,15 +413,15 @@ fn layer(
                             }
                             d.errors.push(misplaced_role(item, x, role, "trait"));
                         }
-                        if marked(s, "positions") {
+                        if marked(s, Mark::Positions) {
                             let e = again(item, s, "positions");
                             once(&mut d.domain_trait, id, e, &mut d.errors);
                         }
-                        if marked(s, "order") {
+                        if marked(s, Mark::Order) {
                             let e = again(item, s, "order");
                             once(&mut d.order_trait, id, e, &mut d.errors);
                         }
-                        if marked(s, "convert") {
+                        if marked(s, Mark::Convert) {
                             once(
                                 &mut d.convert_trait,
                                 id,
@@ -427,15 +429,15 @@ fn layer(
                                 &mut d.errors,
                             );
                         }
-                        if marked(s, "counted") {
+                        if marked(s, Mark::Counted) {
                             let e = again(item, s, "counted");
                             once(&mut d.counted_trait, id, e, &mut d.errors);
                         }
-                        if marked(s, "range_bounds") {
+                        if marked(s, Mark::RangeBounds) {
                             let e = again(item, s, "range_bounds");
                             once(&mut d.bounds_trait, id, e, &mut d.errors);
                         }
-                        let lit = s.decorators.iter().find(|x| x.name.text == "literal");
+                        let lit = s.decorators.iter().find(|x| x.mark == Some(Mark::Literal));
                         if let Some(ast::ExprKind::Str(text)) =
                             lit.and_then(|x| x.args.first()).map(|a| &a.value.kind)
                         {
@@ -446,7 +448,7 @@ fn layer(
                                 }
                             }
                         }
-                        let op = s.decorators.iter().find(|x| x.name.text == "operator");
+                        let op = s.decorators.iter().find(|x| x.mark == Some(Mark::Operator));
                         if let Some(ast::ExprKind::Str(text)) =
                             op.and_then(|x| x.args.first()).map(|a| &a.value.kind)
                         {
@@ -479,7 +481,7 @@ fn layer(
                             assoc: Vec::new(),
                             assoc_bounds: Vec::new(),
                             unimplemented: unimplemented(item, s, &mut d.errors),
-                            row: marked(s, crate::records::RECORD),
+                            row: marked(s, Mark::Record),
                         });
                         pending.push((mid, item.clone(), s, Some(Named::Trait(id))));
                     }
@@ -490,8 +492,8 @@ fn layer(
                         bounds,
                     } if bounds.is_empty() => {
                         let library = d.is_library(mid);
-                        for x in (s.decorators.iter())
-                            .filter(|x| !(library && read_elsewhere(&x.name.text)))
+                        for x in
+                            (s.decorators.iter()).filter(|x| !(library && read_elsewhere(x.mark)))
                         {
                             let at = item.at(x.span);
                             let e = Msg::at(
@@ -1482,8 +1484,8 @@ pub fn factor_name(product: &str, i: usize) -> String {
     format!("{product}.{i}")
 }
 
-fn marked(s: &ast::Stmt, n: &str) -> bool {
-    s.decorators.iter().any(|x| x.name.text == n)
+fn marked(s: &ast::Stmt, m: Mark) -> bool {
+    s.mark(m).is_some()
 }
 
 /// A marker names one declaration: a second, in any module, is a duplicate.
@@ -1539,7 +1541,7 @@ fn unimplemented(item: &ItemId, s: &ast::Stmt, errors: &mut Vec<Msg>) -> Unimple
     let Some(x) = s
         .decorators
         .iter()
-        .find(|x| x.name.text == "on_unimplemented")
+        .find(|x| x.mark == Some(Mark::OnUnimplemented))
     else {
         return out;
     };

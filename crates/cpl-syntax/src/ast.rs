@@ -109,6 +109,8 @@ pub struct Decorator {
     /// `@!name`: a file-level directive, in force from its line down. A
     /// plain `@name` decorates the one item below it.
     pub directive: bool,
+    /// What `name` spells, read once by the parser: `None` for a name outside the closed set.
+    pub mark: Option<crate::decorators::Mark>,
     pub name: Name,
     pub args: Vec<Arg>,
     pub span: Span,
@@ -121,6 +123,13 @@ pub struct Stmt {
     pub decorators: Vec<Decorator>,
     /// Declared with `pub`: visible to modules that `use` this one.
     pub public: bool,
+}
+
+impl Stmt {
+    /// Its decorator `m`, if it has one.
+    pub fn mark(&self, m: crate::decorators::Mark) -> Option<&Decorator> {
+        self.decorators.iter().find(|d| d.mark == Some(m))
+    }
 }
 
 impl Stmt {

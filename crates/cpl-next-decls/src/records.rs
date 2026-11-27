@@ -3,6 +3,7 @@
 //! and types are, and fields, constructors, patterns and derived `Eq` and `Ord` are a struct's.
 use cpl_diag::Span;
 use cpl_syntax::ast::{self, ExprKind, FnDecl, StmtKind, TypeKind};
+use cpl_syntax::decorators::Mark;
 use cpl_syntax::visit::{self, Visitor};
 use std::collections::{BTreeSet, HashMap};
 
@@ -89,6 +90,7 @@ pub fn row_traits(rows: &[Vec<String>], span: Span) -> Vec<ast::Stmt> {
                 span,
                 decorators: vec![ast::Decorator {
                     directive: false,
+                    mark: Some(Mark::Record),
                     name: ast::Name {
                         text: RECORD.to_string(),
                         span,
@@ -289,6 +291,7 @@ pub fn without_traits(forms: &[Form], span: Span) -> Vec<ast::Stmt> {
                 span,
                 decorators: vec![ast::Decorator {
                     directive: false,
+                    mark: Some(Mark::Record),
                     name: nm(RECORD),
                     args: Vec::new(),
                     span,
@@ -434,6 +437,7 @@ pub fn structs(shapes: &[Vec<String>], span: Span) -> Vec<ast::Stmt> {
                 }),
                 span,
                 decorators: vec![ast::Decorator {
+                    mark: Some(Mark::Record),
                     directive: false,
                     name: nm(RECORD.to_string()),
                     args: Vec::new(),
@@ -562,13 +566,13 @@ pub struct Positions {
 }
 
 pub fn positions<'a>(stmts: impl IntoIterator<Item = &'a ast::Stmt>) -> Option<Positions> {
-    let marked = |word: &str, s: &&ast::Stmt| s.decorators.iter().any(|d| d.name.text == word);
+    let marked = |m: Mark, s: &&ast::Stmt| s.mark(m).is_some();
     let (mut marks, mut order) = (None, None);
     for s in stmts {
-        if marked("positions", &s) {
+        if marked(Mark::Positions, &s) {
             marks = Some(s);
         }
-        if let (true, StmtKind::Trait { name, .. }) = (marked("order", &s), &s.kind) {
+        if let (true, StmtKind::Trait { name, .. }) = (marked(Mark::Order, &s), &s.kind) {
             order = Some(name.text.clone());
         }
     }
@@ -654,6 +658,7 @@ pub fn domain_impls<'a>(
         span,
     };
     let get = || ast::Decorator {
+        mark: Some(Mark::Get),
         directive: false,
         name: nm(crate::decls::GETTER),
         args: Vec::new(),

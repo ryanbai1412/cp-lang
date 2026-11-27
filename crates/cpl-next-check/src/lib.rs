@@ -14,6 +14,7 @@ use cpl_syntax::ast::{
     self, AssignOp, BinOp, CmpOp, Cond, ExprKind, FnBody, PatternKind, StmtKind, StrPiece,
     TypeKind, UnOp,
 };
+use cpl_syntax::decorators::Mark;
 use cpl_syntax::fall_through;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -798,7 +799,7 @@ fn check_with(
         if cases.is_none()
             && s.decorators
                 .iter()
-                .any(|d| d.directive && d.name.text == "multitest")
+                .any(|d| d.directive && d.mark == Some(Mark::Multitest))
         {
             main_out.push(TStmt::Item(off.clone()));
             let count = cx.case_count(s).then_some(TExpr {
@@ -810,7 +811,7 @@ fn check_with(
             cases = Some((count, Vec::new()));
         }
         for x in &s.decorators {
-            if !(x.directive && x.name.text == "multitest") {
+            if !(x.directive && x.mark == Some(Mark::Multitest)) {
                 cx.err(
                     s.span,
                     Unbuilt::Decorator {
@@ -1013,7 +1014,7 @@ impl<'a> Cx<'a> {
         let args = s
             .decorators
             .iter()
-            .find(|d| d.directive && d.name.text == "multitest")
+            .find(|d| d.directive && d.mark == Some(Mark::Multitest))
             .map_or(&[][..], |d| &d.args[..]);
         match args {
             [] => true,

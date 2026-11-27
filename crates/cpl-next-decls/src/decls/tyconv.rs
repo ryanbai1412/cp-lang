@@ -4,6 +4,7 @@ use super::*;
 use crate::views::{Scope, Signatures, TypeTables};
 use cpl_next_ir::ids::ItemId;
 use cpl_next_ir::unbuilt::Unbuilt;
+use cpl_syntax::decorators::Mark;
 
 /// Type arguments written but left off the end take their defaults, which may name the
 /// arguments before them (R08.2.5).
@@ -97,8 +98,8 @@ pub(super) fn alias(cx: &mut TyCx, id: usize, n: &str, a: Vec<Ty>, errors: &mut 
 /// A decorator another tool reads (`cpl lint`, `cpl stress`, a diagnostic's suggestions): on a
 /// library item it changes nothing a run or a check of a program does (R06.4.11). A program's
 /// own is refused until the slice checks it.
-pub(super) fn read_elsewhere(name: &str) -> bool {
-    matches!(name, "lint" | "stress" | "on_unimplemented")
+pub(super) fn read_elsewhere(m: Option<Mark>) -> bool {
+    matches!(m, Some(Mark::Lint | Mark::Stress | Mark::OnUnimplemented))
 }
 
 /// `Seq<T>` written where a trait is wanted.

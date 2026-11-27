@@ -5,12 +5,13 @@ use crate::diag::Msg;
 use cpl_next_ir::ids::ItemId;
 use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_syntax::ast::{self, FnBody, StmtKind, TypeKind};
+use cpl_syntax::decorators::Mark;
 use std::collections::HashMap;
 
 /// An enum-level `@tags(..)` is removed: each variant writes its own `@tag` (R02.7.2, decision
 /// 459). With one plain tag per variant, the help is the rewrite.
 pub(crate) fn enum_level_tags(item: &ItemId, s: &ast::Stmt, e: &ast::EnumDecl) -> Option<Msg> {
-    let x = s.decorators.iter().find(|x| x.name.text == "tags")?;
+    let x = s.decorators.iter().find(|x| x.mark == Some(Mark::Tags))?;
     let text = cpl_diag::msgs::check::ENUM_LEVEL_TAGS_WAS.say(&[]);
     let mut m = Msg::at(
         item.at(x.span),
@@ -419,9 +420,9 @@ fn derived_impl(s: &ast::Stmt, sd: &ast::StructDecl, derive: Derive, tr: &str) -
 pub(crate) fn derive_each<'a, I: Iterator<Item = &'a ast::Stmt>>(
     stmts: impl Fn() -> I,
 ) -> Vec<(String, Derivable)> {
-    let marked = |s: &ast::Stmt, m: &str| s.decorators.iter().any(|d| d.name.text == m);
+    let marked = |s: &ast::Stmt, m: Mark| s.mark(m).is_some();
     let pack = stmts().find_map(|s| match &s.kind {
-        StmtKind::Struct(sd) if marked(s, "pack") => Some(sd.name.text.clone()),
+        StmtKind::Struct(sd) if marked(s, Mark::Pack) => Some(sd.name.text.clone()),
         _ => None,
     });
     stmts()
@@ -434,8 +435,8 @@ pub(crate) fn derive_each<'a, I: Iterator<Item = &'a ast::Stmt>>(
                 _ => None,
             });
             let how = match (&body.stmts[..], &pack) {
-                ([_], _) if marked(s, "derive") => Derivable::Each(fns.clone().next()?),
-                (_, Some(p)) if marked(s, "derive_fields") => {
+                ([_], _) if marked(s, Mark::Derive) => Derivable::Each(fns.clone().next()?),
+                (_, Some(p)) if marked(s, Mark::DeriveFields) => {
                     Derivable::Fields(p.clone(), fns.collect())
                 }
                 _ => return None,
@@ -481,6 +482,7 @@ pub(crate) fn field_getter(field: &str, span: cpl_diag::Span) -> ast::Stmt {
         kind: StmtKind::Fn(f),
         span,
         decorators: vec![ast::Decorator {
+            mark: Some(Mark::Get),
             directive: false,
             name: name(GETTER),
             args: Vec::new(),
@@ -575,7 +577,7 @@ pub(crate) fn field_trait_impls(
                 StmtKind::Fn(f)
                     if matches!(f.body, FnBody::None)
                         && f.params.len() <= 1
-                        && m.decorators.iter().any(|d| d.name.text == GETTER) =>
+                        && m.mark(Mark::Get).is_some() =>
                 {
                     (f.ret.as_ref())
                         .filter(|t| writable(t))
@@ -680,21 +682,23 @@ fn writable(t: &ast::Type) -> bool {
 pub(crate) fn convert_marked<'a, I: Iterator<Item = &'a ast::Stmt>>(
     stmts: impl Fn() -> I,
 ) -> Option<(String, String, String)> {
-    let marked = |s: &ast::Stmt, n: &str| s.decorators.iter().any(|d| d.name.text == n);
-    let (tr, method) = (stmts().filter(|s| marked(s, "convert"))).find_map(|s| match &s.kind {
-        StmtKind::Trait { name, body, .. } => match &body.stmts[..] {
-            [ast::Stmt {
-                kind: StmtKind::Fn(f),
-                ..
-            }] => Some((name.text.clone(), f.name.text.clone())),
+    let marked = |s: &ast::Stmt, m: Mark| s.mark(m).is_some();
+    let (tr, method) =
+        (stmts().filter(|s| marked(s, Mark::Convert))).find_map(|s| match &s.kind {
+            StmtKind::Trait { name, body, .. } => match &body.stmts[..] {
+                [ast::Stmt {
+                    kind: StmtKind::Fn(f),
+                    ..
+                }] => Some((name.text.clone(), f.name.text.clone())),
+                _ => None,
+            },
             _ => None,
-        },
-        _ => None,
-    })?;
-    let check = (stmts().filter(|s| marked(s, "variant_check"))).find_map(|s| match &s.kind {
-        StmtKind::Fn(f) => Some(f.name.text.clone()),
-        _ => None,
-    })?;
+        })?;
+    let check =
+        (stmts().filter(|s| marked(s, Mark::VariantCheck))).find_map(|s| match &s.kind {
+            StmtKind::Fn(f) => Some(f.name.text.clone()),
+            _ => None,
+        })?;
     Some((tr, method, check))
 }
 
@@ -930,6 +934,7 @@ pub(crate) fn enum_conversions(
                 }),
                 span,
                 decorators: (getter.then(|| ast::Decorator {
+                    mark: Some(Mark::Get),
                     directive: false,
                     name: name(crate::decls::GETTER),
                     args: Vec::new(),
@@ -992,7 +997,7 @@ pub(crate) fn memo_tables(mods: &[crate::modules::Module]) -> HashMap<String, (u
         })
         .filter_map(|(mi, s)| match &s.kind {
             StmtKind::Struct(sd) => (s.decorators.iter())
-                .find(|x| x.name.text == "memo_table")
+                .find(|x| x.mark == Some(Mark::MemoTable))
                 .and_then(memo_word)
                 .map(|w| (w, (mi, sd.name.text.clone()))),
             _ => None,
@@ -1008,7 +1013,7 @@ pub fn memo_key(word: &str) -> String {
 
 /// A `@memo` that does not spell its storage: the table is spelled, never picked (R06.4.1).
 pub fn unspelled_memo(x: &ast::Decorator) -> Option<cpl_next_ir::msg::Msg> {
-    (x.name.text == "memo" && x.args.is_empty()).then(|| {
+    (x.mark == Some(Mark::Memo) && x.args.is_empty()).then(|| {
         cpl_next_ir::msg::Msg::verdict(
             cpl_diag::codes::BAD_MEMO,
             "`@memo` spells its table: write `@memo(array)` or `@memo(map)`",
@@ -1035,7 +1040,7 @@ pub(crate) fn memo_table<'s, 'a>(
     let StmtKind::Fn(f) = &s.kind else {
         return None;
     };
-    let x = s.decorators.iter().find(|x| x.name.text == "memo")?;
+    let x = s.decorators.iter().find(|x| x.mark == Some(Mark::Memo))?;
     let plain = |p: &ast::Param| p.ty.is_some() && !p.mutable && !p.variadic && !p.lazy;
     let typed = f.ret.is_some() && !f.params.is_empty() && f.params.iter().all(plain);
     (typed && f.generics.is_empty() && f.lends.is_none()).then_some(())?;
@@ -1220,7 +1225,7 @@ pub(crate) fn memo_fns(f: &ast::FnDecl, s: &ast::Stmt, table: &str) -> [ast::Stm
         ..f.clone()
     };
     let others = (s.decorators.iter())
-        .filter(|x| x.name.text != "memo")
+        .filter(|x| x.mark != Some(Mark::Memo))
         .cloned()
         .collect();
     [

@@ -210,6 +210,7 @@ impl<'a> Parser<'a> {
             self.planned(span, &crate::planned::WRAP_LINE);
         }
         Decorator {
+            mark: crate::decorators::Mark::of(&name.text),
             name,
             args,
             directive: true,
@@ -358,6 +359,7 @@ impl<'a> Parser<'a> {
         }
         Decorator {
             directive,
+            mark: crate::decorators::Mark::of(&name.text),
             name,
             args,
             span,
