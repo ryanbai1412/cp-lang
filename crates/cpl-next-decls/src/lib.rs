@@ -11,6 +11,7 @@ pub mod modules;
 pub mod plain;
 pub mod records;
 mod synth;
+pub mod views;
 pub use synth::{jagged, memo_block, unspelled_memo, Jagged};
 
 /// The name of a syntax node's kind, for saying which one is not implemented.
