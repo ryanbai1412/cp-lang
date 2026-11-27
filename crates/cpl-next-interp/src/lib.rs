@@ -1,8 +1,8 @@
 //! Contract 7: the reference interpreter. Written for clarity, not speed. It
 //! runs raw instance IR (calls through function values are dynamic) and
 //! canonical IR (they are branches), so the two can be compared.
-use crate::ir::*;
-use crate::ops::{self, Fault};
+use cpl_next_ir::ir::*;
+use cpl_next_ir::ops::{self, Fault};
 use cpl_next_ir::prog::{CTy, Program};
 use cpl_next_ir::run::call_stack;
 pub use cpl_next_ir::run::{Outcome, Trap};

@@ -1,0 +1,9 @@
+[package]
+name = "cpl-next-interp"
+description = "The new pipeline's reference interpreter: runs the instance IR, raw or canonical (contract 7). Reachable from cpl-next only."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+cpl-next-ir.workspace = true

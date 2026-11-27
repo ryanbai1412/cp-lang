@@ -1,7 +1,7 @@
 //! Contract 7: the C++ emitter. A printer over canonical IR: one C++ shape per
 //! node kind, and no decision of its own.
-use crate::ir::*;
-use crate::ops;
+use cpl_next_ir::ir::*;
+use cpl_next_ir::ops;
 use cpl_next_ir::prog::{CTy, Program};
 use std::collections::{HashMap, HashSet};
 
@@ -982,7 +982,7 @@ mod cxx;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ops::Fault;
+    use cpl_next_ir::ops::Fault;
     use std::fmt::Display;
 
     fn expect<T: Display>(r: Result<T, Fault>) -> String {

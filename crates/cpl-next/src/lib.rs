@@ -7,15 +7,15 @@
 //! what it replaces.
 
 use cpl_next_check as check;
+use cpl_next_cpp as cpp;
 use cpl_next_decls::{decls, diag, modules};
-use cpl_next_ir::{ir, ops, ty};
-mod cpp;
+use cpl_next_interp as interp;
+use cpl_next_ir::{ir, ty};
 use cpl_next_link as inst;
-use diag::kind_of;
-pub use diag::Kind;
-mod interp;
 use cpl_next_lower as lower;
 use cpl_next_own as own;
+use diag::kind_of;
+pub use diag::Kind;
 pub use modules::{Roots, Std};
 
 pub use interp::{Outcome, Trap};

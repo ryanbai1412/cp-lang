@@ -1345,7 +1345,7 @@ def next_reference_evaluator_lines(root: Path) -> list[str]:
     """Code lines of the new pipeline's reference interpreter: one evaluator (the engine)
     serves constant evaluation, the prover and runs, so this reaches 0 once the engine agrees
     on every case."""
-    return _next_file_lines(root, "crates/cpl-next/src/interp.rs")
+    return _next_file_lines(root, "crates/cpl-next-interp/src/lib.rs")
 
 
 def next_core_standin_lines(root: Path) -> list[str]:

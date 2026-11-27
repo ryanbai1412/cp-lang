@@ -14,6 +14,8 @@ cpl-next-check.workspace = true
 cpl-next-own.workspace = true
 cpl-next-lower.workspace = true
 cpl-next-link.workspace = true
+cpl-next-cpp.workspace = true
+cpl-next-interp.workspace = true
 cpl-next-engine.workspace = true
 
 [dev-dependencies]

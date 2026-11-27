@@ -223,8 +223,10 @@ dependencies = [
  "cpl-env",
  "cpl-json",
  "cpl-next-check",
+ "cpl-next-cpp",
  "cpl-next-decls",
  "cpl-next-engine",
+ "cpl-next-interp",
  "cpl-next-ir",
  "cpl-next-link",
  "cpl-next-lower",
@@ -245,6 +247,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "cpl-next-cpp"
+version = "0.3.0"
+dependencies = [
+ "cpl-env",
+ "cpl-next-ir",
+]
+
+[[package]]
 name = "cpl-next-decls"
 version = "0.3.0"
 dependencies = [
@@ -256,6 +266,13 @@ dependencies = [
 
 [[package]]
 name = "cpl-next-engine"
+version = "0.3.0"
+dependencies = [
+ "cpl-next-ir",
+]
+
+[[package]]
+name = "cpl-next-interp"
 version = "0.3.0"
 dependencies = [
  "cpl-next-ir",
