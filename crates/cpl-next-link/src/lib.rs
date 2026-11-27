@@ -1690,7 +1690,8 @@ impl Link<'_> {
                 let Some(bt) = binds[*i].clone() else {
                     continue;
                 };
-                // Only the one impl of the most specific rank that fits fixes them (R08.1.2).
+                // The one impl of the most specific rank that fits fixes them: coherence and
+                // the checker leave no second (R08.1.2), so one is a checker bug.
                 let (mut one, mut rank) = (None, None);
                 for m in d.impls_of(r.tr) {
                     if rank.is_some_and(|k| d.impl_rank(m) > k) {
@@ -1701,6 +1702,10 @@ impl Link<'_> {
                         continue;
                     }
                     if rank.is_some() {
+                        self.errors.push(Msg::internal(format!(
+                            "two impls of `{}` fit one bound at one rank",
+                            d.traits[r.tr.0].name
+                        )));
                         one = None;
                         break;
                     }
