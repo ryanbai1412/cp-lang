@@ -59,6 +59,7 @@ and who reads it: `facts/identity.md`, `facts/types.md`,
 
 ## Supporting docs
 
+- `incremental.md`: every layer is pure functions of small inputs, called and memoized by one query database; item paths and item-relative spans keep an edit local.
 - `representation.md`: owned-or-lent modes, witnesses, function-value slots, summaries, and the rule that whole-program steps do not reject (round 5).
 
 
