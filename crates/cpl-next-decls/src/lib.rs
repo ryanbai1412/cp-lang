@@ -10,7 +10,7 @@ pub mod modules;
 pub mod plain;
 pub mod records;
 mod synth;
-pub use synth::memo_block;
+pub use synth::{memo_block, unspelled_memo};
 
 /// The name of a syntax node's kind, for saying which one is not implemented.
 pub fn kind_name(kind: &impl std::fmt::Debug) -> String {

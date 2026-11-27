@@ -598,7 +598,7 @@ mod tests {
     /// A fn refused as declared is that one refusal: its body and its calls say nothing more.
     #[test]
     fn a_refused_fn_is_one_refusal() {
-        let src = "@memo\nfn f(n: Int) -> Int = n + nope\nprint(f(3) + 1, f(true).len)\n";
+        let src = "@memo(map)\nfn f(n: Int) -> Int = n + nope\nprint(f(3) + 1, f(true).len)\n";
         let ds: Vec<String> = diags(src).iter().map(|d| d.to_string()).collect();
         assert_eq!(ds, ["decls: program:1:1: slice: decorator `@memo`"]);
     }

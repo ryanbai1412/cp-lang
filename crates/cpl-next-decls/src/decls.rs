@@ -1129,6 +1129,10 @@ fn add_fn(
     // never skipped. A library's `@lint` declares a rewrite for the linter, which the slice does not
     // run, so the program's own is refused: its expected result may be that lint (R06.4.9).
     for x in &s.decorators {
+        if let Some(msg) = crate::synth::unspelled_memo(x) {
+            errors.push(Msg::at(item.at(x.span), msg));
+            continue;
+        }
         let elsewhere = d.is_library(m) && read_elsewhere(&x.name.text);
         let marker = matches!(
             x.name.text.as_str(),

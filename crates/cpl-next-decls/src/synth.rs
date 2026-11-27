@@ -655,6 +655,16 @@ pub(crate) fn memo_tables(mods: &[crate::modules::Module]) -> HashMap<String, St
     .collect()
 }
 
+/// A `@memo` that does not spell its storage: the table is spelled, never picked (R06.4.1).
+pub fn unspelled_memo(x: &ast::Decorator) -> Option<cpl_next_ir::msg::Msg> {
+    (x.name.text == "memo" && x.args.is_empty()).then(|| {
+        cpl_next_ir::msg::Msg::verdict(
+            cpl_diag::codes::BAD_MEMO,
+            "`@memo` spells its table: write `@memo(array)` or `@memo(map)`",
+        )
+    })
+}
+
 fn memo_word(x: &ast::Decorator) -> Option<String> {
     match &x.args[..] {
         [a] => match &a.value.kind {

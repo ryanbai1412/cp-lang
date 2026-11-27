@@ -244,6 +244,15 @@ impl Cx<'_> {
 
     /// `fn f(x: T) -> R: body` in a block is `let f = (x: T) -> R => body` (R05.10).
     pub(super) fn nested_fn(&mut self, fd: &ast::FnDecl, s: &ast::Stmt, out: &mut Vec<TStmt>) {
+        let unspelled = s
+            .decorators
+            .iter()
+            .find_map(|x| Some((x.span, cpl_next_decls::unspelled_memo(x)?)));
+        if let Some((span, msg)) = unspelled {
+            self.err(span, msg);
+            self.bind(&fd.name.text, Ty::Error);
+            return;
+        }
         if let Some(what) = nested_gap(fd, s) {
             self.err(
                 s.span,

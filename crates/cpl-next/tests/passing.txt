@@ -1988,4 +1988,6 @@ core-03/window-plus-over-ranged-is-int.cp
 std-window/window-pop-checks-front.cp
 std-window/window-pop-empty-traps.cp
 std-window/window-pop-to-empty.cp
+next/t16_add_to_param.cp
 next/n_fromop_03_std_monoid_of_an_operator.cp
+next/n_memo_05_bare_memo_is_an_error.cp
