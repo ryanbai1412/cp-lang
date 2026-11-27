@@ -81,6 +81,70 @@ impl<'a> Cx<'a> {
         })
     }
 
+    /// `for name in v`: a value walks by its `recipe`, a bound's walk, or its `each` (else `iter`).
+    fn walk_value(
+        &mut self,
+        mut call: TExpr,
+        name: &str,
+        body: &ast::Block,
+        span: Span,
+        out: &mut Vec<TStmt>,
+    ) {
+        if let Some(walk) = self.recipe_walk(&call) {
+            return self.value_walk(walk, call, name, body, out);
+        }
+        // `for x in g.out(u)` through a bound on `g`'s type parameter.
+        call = match call.kind {
+            TK::CallTrait {
+                tr,
+                method,
+                recv: Some(recv),
+                args,
+                ..
+            } => return self.trait_walk((tr, method, recv, args), name, body, span, out),
+            kind => TExpr { kind, ..call },
+        };
+        if !matches!(&call.kind, TK::Call { f, .. } if self.d.f(f.decl).region.is_some()) {
+            // A type without its own `each` walks through its `Seq` impl (R07.1.1).
+            let rt = self.shallow(&call.ty);
+            if let Ty::Param(p) = rt {
+                return self.bound_walk(p, call, name, body, span, out);
+            }
+            self.allow_region = true;
+            let own = "each";
+            let walk = match self.d.lookup_member(&rt, own) {
+                Some(_) => own,
+                None => "iter",
+            };
+            call = self.method_call(call, walk, vec![], span, false);
+            self.allow_region = false;
+        }
+        let TK::Call { f, recv, args } = call.kind else {
+            return;
+        };
+        let Some((false, elem)) = self.d.f(f.decl).region.clone() else {
+            return self.err(
+                span,
+                Msg::verdict(
+                    cpl_diag::codes::TYPE_MISMATCH,
+                    "this cannot be walked with `for`",
+                ),
+            );
+        };
+        let elem = self.result_of(&f, &elem);
+        self.scopes.push(HashMap::new());
+        let var = self.bind(name, elem);
+        let body = self.block(body, None);
+        self.scopes.pop();
+        out.push(TStmt::Region {
+            callee: Callee::Fn(f),
+            recv,
+            args,
+            var,
+            lend: false,
+            body,
+        });
+    }
     /// `for x in s` with `s` of a type parameter: its bound's `iter` walks it, and each
     /// instance picks the impl (R07.1.1).
     /// `for x in g.out(u)` with `out` a generator of a bound on `g`'s type parameter: the
@@ -1079,72 +1143,9 @@ impl<'a> Cx<'a> {
                     // `for x in gen(args)` or `xs.getter`, or `for x in xs` through the type's own `each`.
                     self.allow_region =
                         matches!(iter.kind, ExprKind::Call { .. } | ExprKind::Field { .. });
-                    let mut call = self.expr(iter, None);
+                    let call = self.expr(iter, None);
                     self.allow_region = false;
-                    if let Some(walk) = self.recipe_walk(&call) {
-                        return self.value_walk(walk, call, name, body, out);
-                    }
-                    // `for x in g.out(u)` through a bound on `g`'s type parameter.
-                    call = match call.kind {
-                        TK::CallTrait {
-                            tr,
-                            method,
-                            recv: Some(recv),
-                            args,
-                            ..
-                        } => {
-                            return self.trait_walk(
-                                (tr, method, recv, args),
-                                name,
-                                body,
-                                s.span,
-                                out,
-                            )
-                        }
-                        kind => TExpr { kind, ..call },
-                    };
-                    if !matches!(&call.kind, TK::Call { f, .. } if self.d.f(f.decl).region.is_some())
-                    {
-                        // A type without its own `each` walks through its `Seq` impl (R07.1.1).
-                        let rt = self.shallow(&call.ty);
-                        if let Ty::Param(p) = rt {
-                            return self.bound_walk(p, call, name, body, s.span, out);
-                        }
-                        self.allow_region = true;
-                        let own = "each";
-                        let walk = match self.d.lookup_member(&rt, own) {
-                            Some(_) => own,
-                            None => "iter",
-                        };
-                        call = self.method_call(call, walk, vec![], s.span, false);
-                        self.allow_region = false;
-                    }
-                    let TK::Call { f, recv, args } = call.kind else {
-                        return;
-                    };
-                    let Some((false, elem)) = self.d.f(f.decl).region.clone() else {
-                        return self.err(
-                            s.span,
-                            Msg::verdict(
-                                cpl_diag::codes::TYPE_MISMATCH,
-                                "this cannot be walked with `for`",
-                            ),
-                        );
-                    };
-                    let elem = self.result_of(&f, &elem);
-                    self.scopes.push(HashMap::new());
-                    let var = self.bind(name, elem);
-                    let body = self.block(body, None);
-                    self.scopes.pop();
-                    out.push(TStmt::Region {
-                        callee: Callee::Fn(f),
-                        recv,
-                        args,
-                        var,
-                        lend: false,
-                        body,
-                    });
-                    return;
+                    return self.walk_value(call, name, body, s.span, out);
                 }
                 let (
                     PatternKind::Name(name),
@@ -1158,6 +1159,11 @@ impl<'a> Cx<'a> {
                 else {
                     return self.err(s.span, Unbuilt::ForForm);
                 };
+                let first = self.expr(lo, Some(&Ty::Int));
+                if self.ord_ends(&first.ty, None).is_some() {
+                    let r = self.range_from(first, hi, *inclusive, None, None, iter.span);
+                    return self.walk_value(r, name, body, s.span, out);
+                }
                 // `lo..=hi` is `lo..hi+1` here, so it fails at the largest Int where the language does not.
                 let hi1;
                 let hi = if *inclusive {
@@ -1166,8 +1172,7 @@ impl<'a> Cx<'a> {
                 } else {
                     hi
                 };
-                let lo = self.expr(lo, Some(&Ty::Int));
-                let lo = self.coerce(lo, &Ty::Int);
+                let lo = self.coerce(first, &Ty::Int);
                 let hi = self.expr(hi, Some(&Ty::Int));
                 let hi = self.coerce(hi, &Ty::Int);
                 self.scopes.push(HashMap::new());

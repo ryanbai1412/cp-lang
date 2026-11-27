@@ -60,8 +60,18 @@ impl Cx<'_> {
                             self.err(span, msg);
                             continue;
                         }
-                        if why == Origin::Construct {
-                            let to = self.show(&r.args[0]);
+                        // A type no impl converts to has no `T(x)` at all; one some impl converts to
+                        // takes only what converts (`List(5)` is a mismatch, `Deque(xs)` is not a call).
+                        let converts = why == Origin::Construct
+                            && (self.d.impls_of(r.tr)).any(|im| {
+                                matches!((&im.trait_.args[..], self.shallow(&r.args[0])),
+                                    ([Ty::Struct(a, ..)], Ty::Struct(b, ..)) if *a == b)
+                            });
+                        if why == Origin::Construct && !converts {
+                            let to = match self.shallow(&r.args[0]) {
+                                Ty::Struct(d, ..) => self.d.s(d).name.clone(),
+                                t => self.show(&t),
+                            };
                             let msg = Msg::verdict(
                                 cpl_diag::codes::WRONG_ARG_COUNT,
                                 "expected 0 arguments, found 1".to_string(),
@@ -72,7 +82,7 @@ impl Cx<'_> {
                             self.err_help(span, msg, Some(help));
                             continue;
                         }
-                        if why == Origin::Convert {
+                        if matches!(why, Origin::Convert | Origin::Construct) {
                             let to = (r.args.iter().map(|a| self.show(a)))
                                 .collect::<Vec<_>>()
                                 .join(", ");

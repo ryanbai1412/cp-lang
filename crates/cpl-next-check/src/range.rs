@@ -343,16 +343,34 @@ impl Cx<'_> {
         let (args, d) = match (lo, hi) {
             (Some(lo), Some(hi)) => {
                 let first = self.expr(lo, Some(&Ty::Int));
-                match self.ord_ends(&first.ty, step) {
-                    Some(ord) => self.domain_range(first, hi, inclusive, want, ord, span),
-                    None => (self.int_ends(first, lo, hi, inclusive, step, span), Ty::Int),
-                }
+                return self.range_from(first, hi, inclusive, step, want, span);
             }
             _ => match self.open_ends(lo, hi, inclusive, step, want, span) {
                 Ok(ends) => ends,
                 Err(e) => return *e,
             },
         };
+        self.range_built(args, d, diagnosed, span)
+    }
+    /// `lo..hi` whose `lo` is checked already, as `first`.
+    pub(super) fn range_from(
+        &mut self,
+        first: TExpr,
+        hi: &ast::Expr,
+        inclusive: bool,
+        step: Option<&ast::Expr>,
+        want: Option<&Ty>,
+        span: Span,
+    ) -> TExpr {
+        let diagnosed = self.errors.len();
+        let (args, d) = match self.ord_ends(&first.ty, step) {
+            Some(ord) => self.domain_range(first, hi, inclusive, want, ord, span),
+            None => (self.int_ends(first, hi, inclusive, step, span), Ty::Int),
+        };
+        self.range_built(args, d, diagnosed, span)
+    }
+    /// The range of positions `args` of `d`, unless checking its ends found errors.
+    fn range_built(&mut self, args: Vec<TExpr>, d: Ty, diagnosed: usize, span: Span) -> TExpr {
         if self.errors.len() > diagnosed {
             return Self::error_node(span);
         }
@@ -388,8 +406,7 @@ impl Cx<'_> {
             let one = Box::new(int(TK::Int(1)));
             int(TK::Bin(BinOp::Add, Box::new(e), one, Overflow::Traps))
         };
-        let ord = self.ord_ends(&t, None);
-        if ord.is_some() || matches!(t, Ty::Dom(_)) {
+        if let Some(ord) = self.ord_ends(&t, None) {
             if step.is_some() {
                 self.err(span, Unbuilt::ByOnWalk);
                 return Err(Box::new(Self::error_node(span)));
@@ -411,10 +428,7 @@ impl Cx<'_> {
                     (self.cut_piece(l, h, inclusive, d, span)).unwrap_or(Self::error_node(span)),
                 ));
             }
-            let at = match &ord {
-                Some(ord) => self.ordinal(v, ord),
-                None => int(TK::Ordinal(Box::new(v))),
-            };
+            let at = self.end_position(v, &ord);
             let (l, h) = match (from, cuts) {
                 (true, Some(d)) => (at, past(self.domain_len(d, span))),
                 (true, None) => (at, self.domain_len(t.clone(), span)),
@@ -443,41 +457,47 @@ impl Cx<'_> {
         };
         Ok((vec![l, h, step], Ty::Int))
     }
-    /// `Domain`'s `ord`, when a range's ends are values of a type that implements it.
-    fn ord_ends(&self, t: &Ty, step: Option<&ast::Expr>) -> Option<DomainFn> {
-        let t @ Ty::Struct(..) = self.shallow(t) else {
-            return None;
-        };
+    /// How a range's ends give their positions, when they are values of a domain: a declared
+    /// domain's value is its ordinal, and any other type's comes from its `Domain` impl or bound.
+    pub(super) fn ord_ends(&self, t: &Ty, step: Option<&ast::Expr>) -> Option<Ends> {
         let tr = self.d.domain_trait?;
-        (step.is_none() && self.d.has_impl(&t, tr))
-            .then(|| self.domain_method("dom_ord"))
-            .flatten()
+        if step.is_some() {
+            return None;
+        }
+        match self.shallow(t) {
+            Ty::Dom(_) => Some(Ends::Dom),
+            t @ Ty::Struct(..) if self.d.has_impl(&t, tr) => {
+                self.domain_method("dom_ord").map(Ends::Ord)
+            }
+            Ty::Param(p) if self.bound_traits(p).iter().any(|b| b.tr == tr) => {
+                self.domain_method("dom_ord").map(Ends::Ord)
+            }
+            _ => None,
+        }
+    }
+    /// The position of a range end `v`.
+    fn end_position(&mut self, v: TExpr, ends: &Ends) -> TExpr {
+        match ends {
+            Ends::Ord(ord) => self.ordinal(v, ord),
+            Ends::Dom => TExpr {
+                span: v.span,
+                kind: TK::Ordinal(Box::new(v)),
+                ty: Ty::Int,
+            },
+        }
     }
     /// The `lo, hi, step` integers of an `Int` range.
     fn int_ends(
         &mut self,
         first: TExpr,
-        lo: &ast::Expr,
         hi: &ast::Expr,
         inclusive: bool,
         step: Option<&ast::Expr>,
         span: Span,
     ) -> Vec<TExpr> {
-        let mut first = Some(first);
-        let mut end = |e: &ast::Expr| {
-            let v = match first.take() {
-                Some(v) => v,
-                None => self.expr(e, Some(&Ty::Int)),
-            };
-            if !matches!(self.shallow(&v.ty), Ty::Int | Ty::Range(..) | Ty::Error) {
-                let t = self.show(&v.ty);
-                self.err(e.span, Unbuilt::RangeOfEnds { ty: t });
-                return Self::error_node(e.span);
-            }
-            self.coerce(v, &Ty::Int)
-        };
-        let lo = end(lo);
-        let mut hi = end(hi);
+        let lo = self.int_end(first);
+        let hi = self.expr(hi, Some(&Ty::Int));
+        let mut hi = self.int_end(hi);
         if inclusive {
             let one = TExpr {
                 kind: TK::Int(1),
@@ -491,7 +511,10 @@ impl Cx<'_> {
             };
         }
         let step = match step {
-            Some(k) => end(k),
+            Some(k) => {
+                let k = self.expr(k, Some(&Ty::Int));
+                self.int_end(k)
+            }
             None => TExpr {
                 kind: TK::Int(1),
                 ty: Ty::Int,
@@ -499,6 +522,15 @@ impl Cx<'_> {
             },
         };
         vec![lo, hi, step]
+    }
+    /// An `Int` range's end, step or bound.
+    fn int_end(&mut self, v: TExpr) -> TExpr {
+        if !matches!(self.shallow(&v.ty), Ty::Int | Ty::Range(..) | Ty::Error) {
+            let t = self.show(&v.ty);
+            self.err(v.span, Unbuilt::RangeOfEnds { ty: t });
+            return Self::error_node(v.span);
+        }
+        self.coerce(v, &Ty::Int)
     }
     /// Core's `range_of(lo, hi, step)` over positions of `d`.
     fn range_of(&mut self, args: Vec<TExpr>, d: Ty, span: Span) -> TExpr {
@@ -556,7 +588,7 @@ impl Cx<'_> {
         hi: &ast::Expr,
         inclusive: bool,
         want: Option<&Ty>,
-        ord: DomainFn,
+        ord: Ends,
         span: Span,
     ) -> (Vec<TExpr>, Ty) {
         let t = self.shallow(&lo.ty);
@@ -572,8 +604,8 @@ impl Cx<'_> {
         if piece.is_some() && inclusive {
             self.closed_cuts(&t, span);
         }
-        let lo = self.ordinal(lo, &ord);
-        let mut hi = self.ordinal(hi, &ord);
+        let lo = self.end_position(lo, &ord);
+        let mut hi = self.end_position(hi, &ord);
         let int = |kind| TExpr {
             kind,
             ty: Ty::Int,
@@ -731,4 +763,9 @@ impl Cx<'_> {
             }
         }
     }
+}
+/// How a range's end values give their positions.
+pub(super) enum Ends {
+    Ord(DomainFn),
+    Dom,
 }
