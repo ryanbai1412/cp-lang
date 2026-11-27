@@ -595,18 +595,26 @@ fn judged(path: &Path, text: &str, expect: Expect, ask: Ask) -> (&'static str, S
     }
 }
 
+/// A list's cases by id; an id listed twice (a union merge of two lands) is an error.
 fn list(path: &Path) -> BTreeMap<String, String> {
-    std::fs::read_to_string(path)
+    let mut cases = BTreeMap::new();
+    for l in std::fs::read_to_string(path)
         .unwrap_or_else(|e| panic!("{}: {e}", path.display()))
         .lines()
-        .map(|l| match l.split_once('\t') {
-            Some((id, how)) => (
-                id.to_string(),
-                how.split('\t').next().unwrap_or(how).to_string(),
-            ),
-            None => (l.to_string(), String::new()),
-        })
-        .collect()
+    {
+        let (id, how) = match l.split_once('\t') {
+            Some((id, how)) => (id, how.split('\t').next().unwrap_or(how)),
+            None => (l, ""),
+        };
+        let again = cases.insert(id.to_string(), how.to_string()).is_some();
+        assert!(
+            !again,
+            "{}: {id} is listed twice: copy target/cpl-next/{} over it",
+            path.display(),
+            path.file_name().unwrap().to_string_lossy()
+        );
+    }
+    cases
 }
 
 /// A kept build or run is never returned for other bytes: changed C++ is built again, a
