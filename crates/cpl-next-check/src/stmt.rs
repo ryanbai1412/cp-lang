@@ -121,8 +121,7 @@ impl<'a> Cx<'a> {
         }
         // `for x in g.out(u)` through a bound on `g`'s type parameter; a bound's value
         // (`s.keys`) walks as the value it returns.
-        let yields =
-            |tr: &TraitRef, m: &str| self.d.f(self.d.t(tr.tr).methods[m]).region.is_some();
+        let yields = |tr: &TraitRef, m: &str| self.d.f(self.d.t(tr.tr).methods[m]).region.is_some();
         call = match call.kind {
             TK::CallTrait {
                 tr,

@@ -79,8 +79,7 @@ impl Cx<'_> {
         span: Span,
     ) -> Option<TExpr> {
         let core = [self.d.domain_trait, self.d.order_trait];
-        let m =
-            (core.iter().flatten()).find_map(|tr| self.d.t(*tr).methods.get(&name.text))?;
+        let m = (core.iter().flatten()).find_map(|tr| self.d.t(*tr).methods.get(&name.text))?;
         self.domain_fn_of(dty, *m, name, call, span)
     }
     /// `D.m`, `m` being one of `Domain`'s or `Ordered`'s fns, which the program calls `name`.
