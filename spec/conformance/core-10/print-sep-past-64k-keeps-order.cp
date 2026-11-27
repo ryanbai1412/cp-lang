@@ -3,6 +3,7 @@
 // tool: run --release
 // has: "0\n0 0\n1 1\n"
 // has: "\n6776 6776\n"
+// last: "8999 8999"
 // Output printed before a big `print(xs, sep:)` stays before it in C++ too (round 26, B2: the 64 KiB flush).
 print(0)
 print([(i, i) for i in 0..9000], sep: "\n")

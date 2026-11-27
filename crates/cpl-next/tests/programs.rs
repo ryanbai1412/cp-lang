@@ -413,7 +413,7 @@ fn verdict(path: &Path) -> (&'static str, String) {
     let run_at = scratch
         .as_ref()
         .map_or(path.to_path_buf(), |d| d.join(path.file_name().unwrap()));
-    let (verdict, detail, printed) = judged(&run_at, &text, expect, ask, limit);
+    let (verdict, detail, printed, stdout) = judged(&run_at, &text, expect, ask, limit);
     if let Some(d) = scratch {
         let _ = std::fs::remove_dir_all(d);
     }
@@ -441,6 +441,16 @@ fn verdict(path: &Path) -> (&'static str, String) {
         let want = unquote(want);
         if printed != want {
             return ("wrong-output", format!("wanted {want:?}, got {printed:?}"));
+        }
+    }
+    if let Some(want) = header_values(&text, "last:").first() {
+        let want = unquote(want);
+        let last = stdout.lines().last().unwrap_or("");
+        if last != want {
+            return (
+                "wrong-output",
+                format!("wanted last line {want:?}, got {last:?}"),
+            );
         }
     }
     // A copy count is ownership's to report, per source site, and it reports none yet: a case
@@ -492,7 +502,7 @@ fn judged(
     expect: Expect,
     ask: Ask,
     limit: Duration,
-) -> (&'static str, String, String) {
+) -> (&'static str, String, String, String) {
     let input = header_input(text);
     let forms = (ask == Ask::Run).then(|| Forms::new(path, &input, limit));
     let raw = match &forms {
@@ -501,7 +511,7 @@ fn judged(
     };
     let (raw, diags) = diagnosed(raw);
     let first = |s: &str| s.lines().next().unwrap_or("").to_string();
-    let done = |v: &'static str, d: String| (v, d, String::new());
+    let done = |v: &'static str, d: String| (v, d, String::new(), String::new());
     match raw.status {
         None => {
             return done(
@@ -524,7 +534,7 @@ fn judged(
         }
     }
     let printed = format!("{}{}", raw.stdout, raw.stderr);
-    let pass = || ("pass", String::new(), printed.clone());
+    let pass = || ("pass", String::new(), printed.clone(), raw.stdout.clone());
     if raw.status == Some(1) {
         return match &expect {
             Expect::Diag { code, line }

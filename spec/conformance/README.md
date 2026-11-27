@@ -46,6 +46,8 @@ line then reads against that run: `ok` is exit status 0, `ok, output
 the marked line in the output, and `exit N` (tool cases only) wants that exit
 status (`spec/tools/cli.md`). Each `// has: "..."` line names text the
 output must contain and each `// lacks: "..."` line text it must not;
+a `// last: "..."` line is standard output's last line, for output too long to
+write out (cpl-next's programs test reads it);
 each `// rewritten: "..."` line (tool cases only) text the case file
 must contain after the run, so a case can check the edits `cpl fix` or
 `cpl fmt` made. The copy blanks those three kinds of line so a tool that
