@@ -517,7 +517,7 @@ impl M<'_> {
                 Op::Neg { d, a } => self.stack[r(d)] = ops::neg(self.stack[r(a)] as i64)? as u64,
                 Op::Abs { d, a } => self.stack[r(d)] = ops::abs(self.stack[r(a)] as i64)? as u64,
                 Op::FAbs { d, a } => {
-                    self.stack[r(d)] = f64::from_bits(self.stack[r(a)]).abs().to_bits()
+                    self.stack[r(d)] = ops::abs_f64(f64::from_bits(self.stack[r(a)])).to_bits()
                 }
                 Op::Not { d, a } => self.stack[r(d)] = u64::from(ops::not(self.stack[r(a)] != 0)),
                 Op::Cmp {

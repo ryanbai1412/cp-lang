@@ -203,6 +203,11 @@ pub fn f64_of_int(i: i64) -> f64 {
     i as f64
 }
 
+/// `abs` of an F64: the value with its sign cleared, NaN included.
+pub fn abs_f64(x: f64) -> f64 {
+    x.abs()
+}
+
 /// A comparison of `F64`s: `==` is exact (R02.1).
 pub fn compare_float(op: Intr, a: f64, b: f64) -> Result<bool, Fault> {
     Ok(match op {

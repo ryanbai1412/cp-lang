@@ -537,7 +537,7 @@ impl<'a> Machine<'a> {
             },
             Intr::Abs => match &args[0] {
                 Arg::Value(x) if x.ty == CTy::F64 => match self.expr(x, fp)? {
-                    V::F64(a) => V::F64(a.abs()),
+                    V::F64(a) => V::F64(ops::abs_f64(a)),
                     _ => return broken("an F64 operand of another kind"),
                 },
                 _ => V::Int(ops::abs(self.int(&args[0], fp)?)?),
