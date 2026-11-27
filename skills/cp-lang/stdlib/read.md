@@ -14,10 +14,10 @@ A type the input reads, token by token, in order, from the `Input` it is given (
 
 Where reads take their bytes: standard input, or a `Str` read whole by `read(from:)`, with where its reads are and whether one failed, which a read from standard input traps on instead.
 
-Fields: `text: ?Str`.
+Fields: `text: ?Str`, `base: Int`.
 
 ## Functions
 
-- `fn read<T: Read>() -> T` — `read<T>()`: a `T` from the input, by the type it is read at; one read where a range type is expected is held to the range as the input's contract (R10.2.1, R10.2.2).
-- `fn read<T: Read>(; from: Str) -> ?T` — `read<T>(from: s)`: a `T` read with `s` as the whole input, by the same `Read` impls as `read<T>()`; `None` on a bad, out-of-range, missing or leftover token.
+- `fn read<T: Read>(base: Int = io.base) -> T uses io` — `read<T>()`: a `T` from the input, by the type it is read at; one read where a range type is expected is held to the range as the input's contract (R10.2.1, R10.2.2).
+- `fn read<T: Read>(; from: Str, base: Int = io.base) -> ?T uses io` — `read<T>(from: s)`: a `T` read with `s` as the whole input, by the same `Read` impls as `read<T>()`; `None` on a bad, out-of-range, missing or leftover token.
 - `fn read_line() -> Str` — `read_line()`: the rest of the line, without its `\n` or a trailing `\r`; after a line's last token it is the next line (R10.2.3, R10.2.8).

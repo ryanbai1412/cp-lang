@@ -2,7 +2,7 @@
 
 # std.ops
 
-The traits that give `==`, `<`, `+`, `-`, `*`, `/`, `%`, `-a`, `^`, `|`, `&` and `in` their meaning (R08.1.5), `T.zero` and `T.one`, and the numbers' own impls of them. Core re-exports them, so no module imports them.
+The traits that give `==`, `<`, `+`, `-`, `*`, `/`, `%`, `-a`, `^`, `|`, `&`, `in` and `by` their meaning (R08.1.5), `T.zero` and `T.one`, and the numbers' own impls of them. Core re-exports them, so no module imports them.
 
 In prelude (no `use` needed): `Bounded`.
 
@@ -37,6 +37,10 @@ In prelude (no `use` needed): `Bounded`.
 ## `trait Contains<T>`
 
 `x in s`: whether `s` holds `x`, sub-linear; `x not in s` is its negation (R12.4.7).
+
+## `trait By<Rhs = Int>`
+
+`w by k`: every `k`-th value of a walk that is not a range literal, from its first, as a walk of the same type (R01.8.4); `(0..10).rev by 3` is `9, 6, 3, 0`.
 
 ## `trait Zero`
 
