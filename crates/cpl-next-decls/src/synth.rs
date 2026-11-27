@@ -849,23 +849,31 @@ pub(crate) fn memo_fns(f: &ast::FnDecl, s: &ast::Stmt) -> [ast::Stmt; 2] {
     ]
 }
 
+/// A block's statements with its `@memo` fns written out, and where each fn's table now sits.
+pub type MemoBlock<'s> = (Vec<ast::Stmt>, Vec<(usize, &'s ast::FnDecl)>);
+
 /// A block's statements with each `@memo` fn written out as its table, a `var` of the block, and
-/// its fns; `None` when it has none (R06.4.1).
-pub fn memo_block(stmts: &[ast::Stmt], tables: &HashMap<String, String>) -> Option<Vec<ast::Stmt>> {
+/// its fns, with where each table's `var` now sits and the fn it is for; `None` when it has none
+/// (R06.4.1).
+pub fn memo_block<'s>(
+    stmts: &'s [ast::Stmt],
+    tables: &HashMap<String, String>,
+) -> Option<MemoBlock<'s>> {
     stmts
         .iter()
         .any(|s| memo_table(s, tables).is_some())
         .then(|| {
-            let mut out = Vec::new();
+            let (mut out, mut at) = (Vec::new(), Vec::new());
             for s in stmts {
                 match memo_table(s, tables) {
                     Some((f, t)) => {
+                        at.push((out.len(), f));
                         out.push(memo_var(f, s.span, t));
                         out.extend(memo_fns(f, s));
                     }
                     None => out.push(s.clone()),
                 }
             }
-            out
+            (out, at)
         })
 }

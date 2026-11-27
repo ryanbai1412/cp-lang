@@ -1366,6 +1366,7 @@ next/n_gen_02_lent_then_mutated.cp
 next/n_gen_04_recursive_break.cp
 next/n_gen_05_expression_body.cp
 next/n_generator_through_bound.cp
+next/n_grid_row.cp
 next/n_if_01_none_branch_takes_the_other_type.cp
 next/n_impl_01_inherent_outside_its_module.cp
 next/n_impl_03_trait_args_pick_the_impl.cp
@@ -1406,6 +1407,7 @@ next/n_marker_02_a_library_writes_a_marker.cp
 next/n_member_01_getter_first.cp
 next/n_memo_01_a_marked_table_caches_a_fn.cp
 next/n_memo_02_nested_memo_fn_per_block.cp
+next/n_memo_03_captured_var_written_while_cached.cp
 next/n_method_01_range_self_takes_an_int.cp
 next/n_method_02_range_self_checks_the_receiver.cp
 next/n_nested_02_capture_unset_at_call.cp
@@ -1865,5 +1867,3 @@ widths/sub-traps-3.cp
 widths/sub-traps-4.cp
 widths/sub-traps-5.cp
 widths/sub-wraps-when-unchecked.cp
-next/n_position_arith.cp
-next/n_grid_row.cp
