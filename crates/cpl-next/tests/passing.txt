@@ -1521,6 +1521,7 @@ next/n_cascade_10_cell_of_a_place_built_from_an_error.cp
 next/n_cell_01_indexed_mut_bound.cp
 next/n_cell_02_write_through_indexed_mut.cp
 next/n_cell_03_method_on_cell.cp
+next/n_cells_of_list_literal.cp
 next/n_checks_01_overflow_off_wraps_in_its_block.cp
 next/n_clone_01_clone_is_an_ordinary_trait.cp
 next/n_coerce_01_list_literal_is_its_positions.cp

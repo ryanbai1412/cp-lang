@@ -1,5 +1,6 @@
 //! Lists a program writes, literals and comprehensions (R01.8.1), and map literals (R01.4.5).
 use super::*;
+use crate::index::unparen;
 
 /// A list being filled: the local holding it, its element type and its `push`.
 #[derive(Clone)]
@@ -84,6 +85,8 @@ impl Cx<'_> {
         want: Option<&Ty>,
         span: Span,
     ) -> TExpr {
+        let cells = self.cells_wanted(xs, want);
+        let want = cells.as_ref().or(want);
         self.scopes.push(HashMap::new());
         let e = match self.new_list("$list", want, span) {
             Some((l, init)) => {
@@ -98,6 +101,36 @@ impl Cx<'_> {
         };
         self.scopes.pop();
         e
+    }
+
+    /// Where `[K]List<E>` is wanted a literal is one list per cell, unless each element could be
+    /// an `E`, making it one `List<E>` that fills every cell (R04.8.10).
+    fn cells_wanted(&self, xs: &[ast::Expr], want: Option<&Ty>) -> Option<Ty> {
+        let (list, array) = (self.d.sugar.list?, self.array_id()?);
+        let Ty::Struct(a, ts, _) = self.shallow(want?) else {
+            return None;
+        };
+        let cell = ts.last().filter(|_| a == array)?.clone();
+        let Ty::Struct(l, es, _) = self.shallow(&cell) else {
+            return None;
+        };
+        let fill = xs
+            .iter()
+            .all(|x| es.first().is_none_or(|e| self.could_be(x, e)));
+        (l == list && !fill).then(|| Ty::Struct(list, vec![cell], Vec::new()))
+    }
+    /// Whether `x` could be a `t`: a list literal is one only when `t` is a list or an array.
+    fn could_be(&self, x: &ast::Expr, t: &Ty) -> bool {
+        let ExprKind::List(ys) = &unparen(x).kind else {
+            return true;
+        };
+        match self.shallow(t) {
+            Ty::Struct(d, ts, _) if Some(d) == self.d.sugar.list || Some(d) == self.array_id() => {
+                (ys.iter()).all(|y| ts.last().is_none_or(|e| self.could_be(y, e)))
+            }
+            Ty::Struct(..) | Ty::Int | Ty::Dom(_) => false,
+            _ => true,
+        }
     }
 
     /// `[e for p in s if c, q in t]`: a new list, then the loop its clauses write, outermost
