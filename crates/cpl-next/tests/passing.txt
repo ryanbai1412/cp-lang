@@ -2910,3 +2910,4 @@ core-10/read-struct-by-its-fields.cp
 next/n_opt_map_01_keeps_none.cp
 core-04/library-domain-walk-queries.cp
 std-seq/extremes-ties-last.cp
+diagnostics/definition-cycle.cp

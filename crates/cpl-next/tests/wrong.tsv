@@ -415,7 +415,6 @@ core-13/recursive-fn-cold-branch-own-frame.cp	wrong-reject	check: program:14:9: 
 core-13/recursive-fn-cold-tail-sorts-by-key.cp	wrong-reject	check: program:10:5: E0606: `F64` does not implement `Zero`
 core-13/wide-scalars.cp	wrong-reject	check: program:3:1: E0204: unknown type `I128`
 diagnostics/debug-side-effect.cp	wrong-error	wanted E0312 on line 6, got: check: program:6:1: E0201: unknown name `debug`
-diagnostics/definition-cycle.cp	wrong-error	wanted E0209 on line 10, got: decls: E0204: unknown trait `Index`
 diagnostics/fn-ends-without-a-value-if.cp	wrong-error	wanted E0409 on line 4, got: check: program:4:5: E0302: expected `Int`, found `()`
 diagnostics/fn-ends-without-a-value-loop.cp	wrong-accept	wanted E0409 on line 4, ran and printed: 12 1
 lib-ops-ranges/fenwick-no-act.cp	wrong-error	wanted E0705 on line 3, got: check: program:3:28: E0310: no parameter named `act`

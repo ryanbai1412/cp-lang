@@ -9,3 +9,6 @@ A conformance case or new-pipeline test leaves only with a line here naming it a
 - `spec/conformance/core-05/walk-body-cannot-touch-mut-source.cp` and
   `spec/conformance/core-12/intrinsic-wrong-signature.cp`: kept, but each printed a `Bool`, which
   R10.3.3 makes an error (E0606) before the error the case is about; they print `yes(b)` now.
+- `spec/conformance/diagnostics/definition-cycle.cp`: kept, but it expected E0209, which no spec
+  rule states: only the frozen `cpl`'s lowering sized `S<V>` while it typed `f`'s signature. A
+  domain's count is read lazily, so nothing cycles; the case runs on `cpl-next` and prints `1`.
