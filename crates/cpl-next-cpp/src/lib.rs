@@ -185,10 +185,7 @@ static inline void cpl_ev(cpl_char c) { fprintf(stderr, " %c", (char)c.code); }
 static inline void cpl_ev(bool b) { fputs(b ? " true" : " false", stderr); }
 static inline void cpl_ev(int64_t x) { fprintf(stderr, " %lld", (long long)x); }
 static inline void cpl_ev(uint64_t x) { fprintf(stderr, " %llu", (unsigned long long)x); }
-static inline cpl_unit cpl_out(const cpl_raw<cpl_char>& r, int64_t n) {
-    for (int64_t i = 0; i < n; i++) putchar((char)r[(size_t)i].code);
-    return cpl_unit{};
-}
+static inline cpl_unit cpl_out(const cpl_raw<cpl_char>& r, int64_t n) { fwrite(r.data(), 1, (size_t)n, stdout); return {}; }
 "#;
 
 /// What `break`, `continue` and `return` mean at a point in the output.
