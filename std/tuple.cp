@@ -128,6 +128,7 @@ impl<A: Domain, B: Domain> Into<Tuple2<A, B>> for Tuple2<Int, Int>:
     fn into(self) -> Tuple2<A, B> = (A(self._0), B(self._1))
 impl<A: Domain, B: Domain> Into<Int> for Tuple2<A, B>:
     fn into(self) -> Int = self.ord
+impl<A: Ordered, B: Ordered> Ordered for Tuple2<A, B>
 
 impl<A: Domain, B: Domain, C: Domain> Domain for Tuple3<A, B, C>:
     @get fn count() -> Int = A.count * B.count * C.count
@@ -138,6 +139,7 @@ impl<A: Domain, B: Domain, C: Domain> Into<Tuple3<A, B, C>> for Tuple3<Int, Int,
     fn into(self) -> Tuple3<A, B, C> = (A(self._0), B(self._1), C(self._2))
 impl<A: Domain, B: Domain, C: Domain> Into<Int> for Tuple3<A, B, C>:
     fn into(self) -> Int = self.ord
+impl<A: Ordered, B: Ordered, C: Ordered> Ordered for Tuple3<A, B, C>
 impl<A: Domain, B: Domain, C: Domain, E: Domain> Domain for Tuple4<A, B, C, E>:
     @get fn count() -> Int = A.count * B.count * C.count * E.count
     fn nth(k: Int) -> Tuple4<A, B, C, E>:
@@ -149,6 +151,7 @@ impl<A: Domain, B: Domain, C: Domain, E: Domain> Into<Tuple4<A, B, C, E>> for Tu
     fn into(self) -> Tuple4<A, B, C, E> = (A(self._0), B(self._1), C(self._2), E(self._3))
 impl<A: Domain, B: Domain, C: Domain, E: Domain> Into<Int> for Tuple4<A, B, C, E>:
     fn into(self) -> Int = self.ord
+impl<A: Ordered, B: Ordered, C: Ordered, E: Ordered> Ordered for Tuple4<A, B, C, E>
 
 impl<A: Eq, B: Eq> Eq for Tuple2<A, B>:
     fn eq(a, b) = a._0 == b._0 and a._1 == b._1

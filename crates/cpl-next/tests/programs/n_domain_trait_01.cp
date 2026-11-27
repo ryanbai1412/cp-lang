@@ -1,9 +1,10 @@
 // expect: ok, output "181 4\n3"
 // rule: R04.2.8
-// A type parameter bounded by `Domain` has `Domain`'s fns (`D.count`, `D.nth`, `D.at`), chosen per
-// instance; one whose body names them is a domain without the bound (R04.4.30).
+// rule: R04.2.31
+// A type parameter bounded by `Ordered` has `Domain`'s fns (`D.count`, `D.nth`) and `Ordered`'s
+// (`D.at`), chosen per instance; one whose body names them is a domain without the bound (R04.4.30).
 domain V = 3..7
-fn walk<D: Domain>(x: D) -> Int:
+fn walk<D: Ordered>(x: D) -> Int:
     var s = 0
     for k in 0..D.count: s += Int(D.nth(k))
     let a = D.at(5)

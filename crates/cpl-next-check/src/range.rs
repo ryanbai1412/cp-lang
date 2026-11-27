@@ -78,11 +78,12 @@ impl Cx<'_> {
         call: Option<&[ast::Arg]>,
         span: Span,
     ) -> Option<TExpr> {
-        let tr = self.d.domain_trait?;
-        let &m = self.d.traits[tr.0].methods.get(&name.text)?;
-        self.domain_fn_of(dty, m, name, call, span)
+        let core = [self.d.domain_trait, self.d.order_trait];
+        let m =
+            (core.iter().flatten()).find_map(|tr| self.d.traits[tr.0].methods.get(&name.text))?;
+        self.domain_fn_of(dty, *m, name, call, span)
     }
-    /// `D.m`, `m` being one of `Domain`'s fns, which the program calls `name`.
+    /// `D.m`, `m` being one of `Domain`'s or `Ordered`'s fns, which the program calls `name`.
     pub(super) fn domain_fn_of(
         &mut self,
         dty: Ty,
@@ -91,7 +92,9 @@ impl Cx<'_> {
         call: Option<&[ast::Arg]>,
         span: Span,
     ) -> Option<TExpr> {
-        let tr = self.d.domain_trait?;
+        let core = [self.d.domain_trait, self.d.order_trait];
+        let tr = (core.into_iter().flatten())
+            .find(|tr| self.d.traits[tr.0].methods.values().any(|&f| f == m))?;
         let fd = self.d.f(m);
         if !super::member::takes(fd, call) || (call.is_none() && !fd.getter) {
             return None;
@@ -368,6 +371,10 @@ impl Cx<'_> {
             span: base.span,
         };
         Some(self.body_ty(&t, span, pre)).filter(|t| matches!(t, Ty::Struct(..)))
+    }
+    /// A struct type whose constructor takes `n` fields.
+    pub(super) fn built_from(&self, t: &Ty, n: usize) -> bool {
+        matches!(t, Ty::Struct(s, ..) if self.d.s(*s).fields.len() == n)
     }
     /// `D.m`: the `@member(m)` struct at `D` (R06).
     fn member_type(&self, d: &Ty, m: &str) -> Option<Ty> {

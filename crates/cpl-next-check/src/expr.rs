@@ -1377,9 +1377,11 @@ impl<'a> Cx<'a> {
                     let to = decls::prim_type(n).unwrap_or(Ty::Error);
                     self.convert(to, &args[0].value, span, Origin::Convert)
                 }
+                // `D(x)` converts into a domain, unless `D`'s constructor takes one field, as a
+                // library domain's `Id(k)` does (R04.2.28).
                 ExprKind::Name(n)
                     if self.lookup(n).is_none()
-                        && self.domain_named(n).is_some()
+                        && (self.domain_named(n)).is_some_and(|t| !self.built_from(&t, 1))
                         && args.len() == 1 =>
                 {
                     let dty = self.domain_named(n).unwrap_or(Ty::Error);

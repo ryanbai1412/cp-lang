@@ -201,7 +201,9 @@ library or by this spec:
   so `V.subsets` is the domain of `V`'s subsets).
 - Markers, each on the one declaration it names: `@tuple` (the struct an
   n-tuple of its field count is), `@cuts` (the struct of a domain's cuts),
-  `@positions` (the trait a domain's positions implement), `@convert` (the
+  `@positions` (the trait a domain's positions implement), `@order` (the
+  trait of stepping and order every core domain also implements, R04.2.31),
+  `@convert` (the
   trait `T(x)` calls), `@operator("op")` (the trait an operator calls,
   through its first declared fn: `"=="` is `Eq`'s `eq`, `"<"` is `Ord`'s
   `lt`, `"[]"` is the read `s[k]` calls and `"[]="` the write `s[k] = v`),

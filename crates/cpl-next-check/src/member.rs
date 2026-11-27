@@ -107,6 +107,37 @@ impl<'a> Cx<'a> {
     }
     /// `x.f(a)` where `f` is a fn without `self` in scope: the call it means is `f(x, a)`
     /// (R06.1.2).
+    /// The one trait that declares `name` and extends a trait `rt` has while `rt` lacks it, as
+    /// `Ordered` extends `Domain` with `.next` (R04.2.31): naming it says what to bound or impl.
+    fn lacked_trait_help(&self, rt: &Ty, name: &str) -> Option<String> {
+        let extends = |a: TraitId, b: TraitId| {
+            let mut todo = vec![a];
+            let mut seen = HashSet::new();
+            while let Some(t) = todo.pop() {
+                if t == b {
+                    return true;
+                }
+                if seen.insert(t.0) {
+                    todo.extend(self.d.traits[t.0].supers.iter().map(|s| s.tr));
+                }
+            }
+            false
+        };
+        let has = |tr: TraitId| match rt {
+            Ty::Param(p) => self.bound_traits(*p).iter().any(|b| extends(b.tr, tr)),
+            t => !matches!(t, Ty::Var(_) | Ty::Error) && self.d.has_impl(t, tr),
+        };
+        let mut lacked = (0..self.d.traits.len()).map(TraitId).filter(|&tr| {
+            let t = &self.d.traits[tr.0];
+            t.methods.contains_key(name) && !has(tr) && t.supers.iter().any(|s| has(s.tr))
+        });
+        let tr = lacked.next().filter(|_| lacked.next().is_none())?;
+        let (tn, shown) = (&self.d.traits[tr.0].name, self.show(rt));
+        Some(match rt {
+            Ty::Param(_) => format!("`{name}` is `{tn}`'s: bound `{shown}: {tn}`"),
+            _ => format!("`{name}` is `{tn}`'s, and `{shown}` does not implement `{tn}`"),
+        })
+    }
     fn free_fn_help(
         &self,
         base: &ast::Expr,
@@ -206,6 +237,12 @@ impl<'a> Cx<'a> {
             Err(two) => return Some(self.two_traits_give(two, n, &Ty::Param(i), name, "", span)),
         };
         let Some((tr, m)) = found else {
+            if let Some(help) = self.lacked_trait_help(&Ty::Param(i), &name.text) {
+                let text = format!("`{n}` has no member `{}`", name.text);
+                let msg = Msg::verdict(cpl_diag::codes::UNKNOWN_FIELD, text);
+                self.err_help(span, msg, Some(help));
+                return Some(Self::error_node(span));
+            }
             let bound_free = self.bound_traits(i).is_empty();
             return bound_free
                 .then(|| self.unbound_static(n, name, span))
@@ -1023,7 +1060,8 @@ impl<'a> Cx<'a> {
                 if self.mentions_error(&rt) {
                     return Self::error_node(span);
                 }
-                let help = self.free_fn_help(base, name, call);
+                let help = (self.free_fn_help(base, name, call))
+                    .or_else(|| self.lacked_trait_help(&rt, &name.text));
                 self.err_help(
                     span,
                     Msg::verdict(

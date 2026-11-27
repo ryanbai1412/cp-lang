@@ -888,6 +888,15 @@ pub struct Pattern {
 impl Pattern {
     /// A capitalized name alone, `L` or `MOD`, which parses as a variant
     /// with no arguments: the name.
+    /// The one name a `let` of this pattern binds: `x`, a domain `D`, or a capitalised `K`.
+    pub fn let_name(&self) -> Option<&str> {
+        match &self.kind {
+            PatternKind::Name(n) => Some(n),
+            PatternKind::Domain(n) => Some(&n.text),
+            _ => self.bare_variant(),
+        }
+    }
+
     pub fn bare_variant(&self) -> Option<&str> {
         match &self.kind {
             PatternKind::Variant { path, args } if path.len() == 1 && args.is_empty() => {

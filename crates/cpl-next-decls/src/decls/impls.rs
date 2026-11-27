@@ -59,15 +59,18 @@ impl Decls {
         if let Some((_, m)) = choices.pop() {
             return Some(m);
         }
-        // A declared domain meets `Domain` with no impl: its members are the trait's defaults.
-        let tr = self.domain_trait.filter(|_| matches!(recv, Ty::Dom(_)))?;
-        let tr = &self.traits[tr.0];
-        let tm = *tr
-            .methods
-            .get(name)
-            .filter(|_| trait_name.is_none_or(|n| n == tr.name))?;
-        let fd = self.f(tm);
-        pick(fd).then(|| Member::Method(tm, vec![recv.clone()], Vec::new()))
+        // A declared domain meets `Domain` and `Ordered` with no impl: its members are the
+        // traits' defaults.
+        let core = [self.domain_trait, self.order_trait];
+        let mut core = (core.into_iter().flatten()).filter(|_| matches!(recv, Ty::Dom(_)));
+        core.find_map(|tr| {
+            let tr = &self.traits[tr.0];
+            let tm = *tr
+                .methods
+                .get(name)
+                .filter(|_| trait_name.is_none_or(|n| n == tr.name))?;
+            pick(self.f(tm)).then(|| Member::Method(tm, vec![recv.clone()], Vec::new()))
+        })
     }
     /// Each fn `name` an impl for `recv` gives, of the trait named `trait_name` when one is given,
     /// with the trait the impl is of: the fitting impls of the most specific rank, so an impl
@@ -160,12 +163,16 @@ impl Decls {
     fn bounds_met(&self, im: &ImplDecl, targs: &[Ty]) -> bool {
         (im.bounds.iter()).all(|(i, b)| targs.get(*i).is_none_or(|a| self.has_impl(a, b.tr)))
     }
+    /// `Domain` or `Ordered`: what every domain the compiler declares meets with no impl.
+    pub fn core_domain_trait(&self, tr: TraitId) -> bool {
+        Some(tr) == self.domain_trait || Some(tr) == self.order_trait
+    }
     /// Whether `t` has an impl of `tr`, its parameters taken to meet the impl's bounds.
     pub fn has_impl(&self, t: &Ty, tr: TraitId) -> bool {
         if matches!(t, Ty::Param(_) | Ty::Var(_) | Ty::Error) {
             return true;
         }
-        if Some(tr) == self.domain_trait && matches!(t, Ty::Dom(_)) {
+        if self.core_domain_trait(tr) && matches!(t, Ty::Dom(_)) {
             return true;
         }
         (self.impls_of(tr)).any(|im| {

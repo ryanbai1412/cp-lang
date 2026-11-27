@@ -130,7 +130,7 @@ impl Input:
         if neg: -v else: v
 
     /// The ordinal of the position of `D` an `Int` token names; traps R0502 outside `D`.
-    fn ord<D: Domain>(mut self) -> Int:
+    fn ord<D: Ordered>(mut self) -> Int:
         if let v = D.at(self.int()): return v.ord
         self.holds(false)
         0
@@ -206,7 +206,7 @@ impl<T: Read> Read for List<T>:
 
 /// `Range<D>` reads two ends `l r` as the inclusive `l..=r`, each a position of `D`, and checks
 /// `l <= r` (R10.2.3).
-impl<D: Domain> Read for Range<D>:
+impl<D: Ordered> Read for Range<D>:
     fn read(mut input: Input) -> Range<D>:
         let lo = input.ord<D>()
         let hi = input.ord<D>()

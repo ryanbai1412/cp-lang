@@ -86,7 +86,6 @@ core-04/b2-find-in-suffix.cp	wrong-reject	check: std.strings:83:14: E0606: `Str`
 core-04/b4-prefix-of-range.cp	wrong-reject	check: program:5:9: E0203: `Slice<Array<V, Int>>` has no member `scan`
 core-04/b5-prefix-matches-keyed-slice.cp	wrong-reject	check: std.strings:523:8: E0203: `P` has no member `is_empty`
 core-04/b5-z-function-keyed-slice.cp	wrong-reject	check: std.strings:386:5: E0203: `List<Int>` has no member `rekey`
-core-04/char-domain-position-to-char.cp	wrong-reject	check: program:4:17: E0302: expected `Int`, found `Char`
 core-04/char-from-idx.cp	wrong-reject	check: program:4:7: E0201: unknown name `Char`
 core-04/char-list-argument-is-str.cp	wrong-reject	check: program:6:29: E0302: expected `Str`, found `List<Char>`
 core-04/char-list-receiver-not-str.cp	wrong-error	wanted E0302 on line 4, got: check: program:4:7: E0203: `List<Char>` has no member `join`
@@ -99,7 +98,6 @@ core-04/g2-rev-keeps-keys.cp	wrong-reject	check: std.seq:1710:40: E0606: `S` doe
 core-04/grid-row-written-writes-the-grid.cp	wrong-reject	check: program:8:1: E0305: `Row<R, C, Int>` has no `IndexedMut` impl, so `[]` on it is not a place
 core-04/grid-rows-cols-views.cp	wrong-reject	check: program:9:14: E0301: an `Int` indexes a view keyed by `Col`: write `Col(i)`
 core-04/grid-rows-written-through.cp	wrong-reject	check: program:10:14: E0302: this is not a place that can be assigned or lent
-core-04/h-drop-take-keys.cp	split	C++: exit Some(1):  ev set BAG_B 32
 core-04/h-keyed-counts-from-zero.cp	wrong-reject	check: std.seq:2247:9: E0203: `S` has no `iter`
 core-04/h-step-keeps-source-keys.cp	wrong-reject	check: program:6:7: E0305: `Stepped<List<Int>, Int>` is not indexed: it has no `Indexed` impl
 core-04/h-step-skipped-key-traps.cp	wrong-reject	check: program:6:7: E0305: `Stepped<List<Int>, Int>` is not indexed: it has no `Indexed` impl
@@ -107,15 +105,7 @@ core-04/inline-range-array-keys-start-at-its-first-key.cp	wrong-reject	decls: E0
 core-04/int-array-slice-keeps-keys.cp	wrong-reject	check: std.seq:951:25: E0606: `K` has no `impl Eq`, which `==` needs (R08.1.5)
 core-04/int-range-generic-nth-is-the-int.cp	wrong-reject	check: program:7:12: E0302: expected `Int`, found `Cut<D>`
 core-04/keyed-counter-is-not-a-key.cp	wrong-error	wanted E0301 on line 6, got: check: std.seq:2247:9: E0203: `S` has no `iter`
-core-04/library-domain-cxx-names-apart.cp	wrong-reject	decls: E0204: unknown trait `Index`
-core-04/library-domain-generic.cp	wrong-reject	decls: E0204: unknown trait `Index`
-core-04/library-domain-nth-out-of-range.cp	wrong-reject	decls: E0204: unknown trait `Index`
-core-04/library-domain-ord-checked.cp	wrong-reject	decls: E0204: unknown trait `Index`
-core-04/library-domain-own-show.cp	wrong-reject	decls: E0204: unknown trait `Index`
-core-04/library-domain-seq.cp	wrong-reject	decls: E0204: unknown trait `Index`
 core-04/library-domain-sized-in-the-branch-taken.cp	wrong-reject	check: program:15:11: E0203: `sum` is a method: call it with `()`
-core-04/library-domain-sized-where-first-used.cp	wrong-reject	check: program:11:5: E0606: `Subset<Letter>` does not implement `Domain`
-core-04/library-domain-walk.cp	wrong-reject	decls: E0204: unknown trait `Index`
 core-04/library-type-into-int-and-f64.cp	wrong-reject	check: program:17:27: E0302: expected `List<Char>`, found `Pair`
 core-04/list-literal-sizes-a-generic-domain.cp	wrong-reject	check: std.beats:61:29: E0201: unknown name `Int`
 core-04/list-of-domain-array-loses-domain.cp	wrong-error	wanted E0301 on line 6, got: check: program:6:10: E0302: expected `Int`, found `V`
@@ -144,7 +134,6 @@ core-04/rebased-str-indexes-from-zero.cp	wrong-reject	check: program:6:46: E0203
 core-04/rekey-length-mismatch-traps.cp	wrong-reject	check: program:3:9: E0203: `List<Int>` has no member `rekey`
 core-04/rekey-onto-range.cp	wrong-reject	check: program:3:9: E0203: `List<Int>` has no member `rekey`
 core-04/rev-keyed-counts-in-walk-order.cp	wrong-reject	check: program:7:15: E0606: `Rev<List<Int>>` does not implement `Keyed`
-core-04/second-position-of-a-user-index-is-checked-too.cp	wrong-reject	decls: E0204: unknown trait `Index`
 core-04/slice-rev-keeps-keys-traps.cp	wrong-reject	check: std.seq:1710:40: E0606: `S` does not implement `Indexed`
 core-04/spec-block-drop-rest.cp	wrong-reject	check: program:9:12: E0302: expected `Slice<List<Int>>`, found `Slice<Slice<List<Int>>>`
 core-04/spec-block-empty-domain-first.cp	wrong-reject	check: program:7:24: E0302: expected `E`, found `()`
@@ -346,18 +335,13 @@ core-07/views-pass-where-a-seq-is-written.cp	wrong-reject	link: std.seq:2120:47:
 core-07/zip-domain-stops-at-shorter-list-and-rev.cp	wrong-reject	check: std.seq:2144:37: E0606: `S` does not implement `Indexed`
 core-08/a-type-name-answers-its-static-trait-fns.cp	wrong-reject	check: program:16:11: E0201: unknown name `Bool`
 core-08/alias-where-binds-its-parameter-from-the-arc.cp	no-cxx	g++ failed on 8a4836b37a0ac20e.cpp: | 8a4836b37a0ac20e.cpp: In function ‘int64_t f9(const S14&, int64_t)’: | 8a4836b37a0ac20e.cpp:720:14: error: invalid initialization of reference of type ‘const S26&’ from expression of type ‘int64_t’ {aka ‘long int’} |   720 |     l5 = f21(l4);
-core-08/ambiguous-method.cp	wrong-accept	wanted E0701 on line 12, ran and printed: 1
 core-08/assoc-names-an-impl-param-from-the-trait-arg.cp	wrong-reject	check: program:6:40: E0302: expected `Self.Fold`, found `Optional<T>`
-core-08/bare-op-at-a-bound-takes-the-monoid-impl.cp	wrong-reject	check: program:15:14: E0606: `a function` does not implement `Op3`
-core-08/bare-op-at-a-generic-bound-waits-for-its-arg.cp	wrong-reject	check: program:16:14: E0606: `a function` does not implement `Op3`
-core-08/bare-op-binds-its-monoid-after-later-args.cp	wrong-reject	check: program:15:14: E0606: `a function` does not implement `Op3`
 core-08/bare-op-takes-any-from-op-struct-impl.cp	wrong-reject	check: program:6:40: E0606: `T` does not implement `Domain`
 core-08/bodyless-domain-impl-takes-the-trait-default.cp	wrong-reject	check: program:5:31: E0302: expected `V`, found `Self`
 core-08/bound-test-takes-trait-args.cp	wrong-reject	check: program:8:30: E0606: `T` has no `impl Eq`, which `==` needs (R08.1.5)
 core-08/chained-bounds-bind-struct-params.cp	wrong-reject	decls: E0204: unknown trait `Indexed`
 core-08/ctor-bound-binds-a-later-named-arg.cp	wrong-reject	check: program:8:24: E0606: `F` does not implement `Domain`
 core-08/defaulted-op-param-folds-by-its-impl.cp	wrong-reject	check: program:23:20: E0606: `a function` does not implement `FromOp`
-core-08/derived-structural.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
 core-08/explicit-struct-arg-gives-a-bare-ops-bound-arg.cp	wrong-reject	check: program:18:9: E0606: `a function` does not implement `Op`
 core-08/false-law-no-ub.cp	wrong-reject	check: program:8:9: E0606: `Sub` does not implement `FromOp`
 core-08/fn-called-as-a-method-of-its-own-type.cp	wrong-reject	check: program:6:43: E0203: `List<Int>` has no member `first_gt`
@@ -368,7 +352,6 @@ core-08/if-bound-seq-trait-in-generic.cp	wrong-reject	check: program:6:11: E0204
 core-08/impl-choosing-an-assoc-type-writes-its-default-fns.cp	wrong-error	wanted E0606 on line 10, got: check: program:7:39: E0302: expected `Self.Out`, found `Optional<T>`
 core-08/impl-fn-params-take-the-traits-types.cp	wrong-reject	check: program:23:24: E0203: `P` has no `both`
 core-08/impl-for-a-table-binds-its-params.cp	wrong-reject	check: program:15:5: E0606: `impl Nx` chooses a type for `Arc` with no `impl Tg` (R08.1.1)
-core-08/impl-shapes-for-a-graph.cp	wrong-reject	check: program:39:55: E0606: `a function` does not implement `Nx`
 core-08/indexed-bound-types-the-body.cp	wrong-reject	decls: E0204: unknown trait `Indexed`
 core-08/law-calls-trait-method.cp	wrong-reject	check: program:6:35: E0201: unknown name `op`
 core-08/laws-hold.cp	wrong-reject	check: program:3:11: E0201: unknown name `laws_hold`
@@ -377,7 +360,6 @@ core-08/method-bound-binds-the-struct-param.cp	wrong-reject	decls: E0204: unknow
 core-08/method-returning-a-deeper-instance.cp	wrong-reject	check: program:11:27: E0606: `S` does not implement `Domain`
 core-08/no-orphan-impl-of-an-imported-trait.cp	wrong-error	wanted E0501 on line 5, got: decls: E0204: unknown trait `Monoid`
 core-08/op-through-fn-param.cp	wrong-reject	check: program:5:46: E0302: this function does not fit `(Int, Int) -> Int`
-core-08/overloaded-fn-value-defaults-to-int.cp	wrong-reject	check: program:7:20: E0303: expected 3 arguments, found 2
 core-08/partial-struct-args-infer-the-rest.cp	wrong-reject	decls: E0204: unknown trait `Indexed`
 core-08/polymorphic-recursion-is-an-error.cp	wrong-error	wanted E0319 on line 8, got: link: E0319: instantiation does not end: `reserve` makes a new copy of itself at every level (a function passed to its own recursive call, wrapped in a new closure)
 core-08/row-duplicate-field.cp	wrong-error	wanted E0202 on line 3, got: check: program:3:19: E0303: `a` is given twice
@@ -395,11 +377,9 @@ core-08/trait-default-fn-sees-params-and-assoc-default.cp	wrong-reject	check: pr
 core-08/trait-default-sees-its-assoc-default-inside-a-type.cp	wrong-reject	check: program:8:16: E0806: nothing here says what `None` is an optional of; write the type
 core-08/trait-law-calls-impl-fn.cp	wrong-reject	check: program:10:7: E0203: `S` has no `op`
 core-08/trait-laws-are-a-derived-member.cp	wrong-reject	check: program:7:35: E0201: unknown name `op`
-core-08/trait-qualified-call.cp	wrong-reject	check: program:12:7: E0201: unknown name `A`
 core-08/trait-typed-method-param-checks-its-bound.cp	wrong-error	wanted E0302 on line 12, got: check: program:12:7: E0606: `Int` does not implement `Big`
 core-08/tuple-and-record-take-a-shape-met-traits-defaults.cp	wrong-reject	check: program:13:9: E0203: `Tuple2<Int, Int>` has no member `twice`
 core-08/type-arguments-on-a-plain-struct-are-an-error.cp	wrong-error	wanted E0303 on line 7, got: check: program:7:22: E0302: expected `Pt<1..=100>`, found `Pt`
-core-08/type-of-user-fn-item-is-selective-at-a-bound-test.cp	wrong-reject	check: program:12:23: E0606: `a function` does not implement `Op`
 core-09/assert-of-only-a-key-test-traps-as-an-index.cp	wrong-trap	wanted R0101 on line 4, got: trap: R0401: line 4: assertion failed
 core-09/context-call-arg-override.cp	wrong-output	wanted "1,2\n1/2\nYes\nOK", got "1,2\n1/2\nYES\nOK\n"
 core-10/a-read-array-walked-once-reads-in-order.cp	wrong-reject	check: program:12:7: E0303: expected 1 arguments, found 0
@@ -416,8 +396,6 @@ core-10/multitest-shape.cp	wrong-trap	trap: R0501: line 4: expected an integer i
 core-10/pair-domain-reads-a-triangle.cp	wrong-reject	check: program:6:9: E0606: `Pair<V>` does not implement `Domain`
 core-10/parse-enum-command.cp	wrong-reject	check: program:9:12: E0606: `Cmd` does not implement `Read`
 core-10/parse-generic-shapes.cp	wrong-reject	check: program:9:9: E0606: `P` does not implement `Read`
-core-10/parse-range-contract-none.cp	wrong-reject	check: std.strings:359:56: E0310: no parameter named `from`
-core-10/parse-range-order.cp	wrong-reject	check: std.strings:359:56: E0310: no parameter named `from`
 core-10/parse-scalars-and-errors.cp	wrong-reject	check: program:4:49: E0606: `F64` does not implement `Read`
 core-10/print-forms-parity.cp	wrong-reject	own: program:11:7: E0608: `xs` was moved into another binding; use `.clone()` there to keep both
 core-10/print-forms.cp	wrong-reject	check: program:6:7: E0303: `..xs` takes positional or named arguments, not both
@@ -428,16 +406,10 @@ core-10/read-base-arg.cp	wrong-reject	check: program:6:9: E0606: `E` does not im
 core-10/read-base-one-array.cp	wrong-reject	check: program:7:19: E0606: `V` does not implement `Read`
 core-10/read-base-one-counted.cp	wrong-reject	check: program:7:13: E0606: `V` does not implement `Read`
 core-10/read-bool-is-not-a-token.cp	wrong-error	wanted E0315 on line 4, got: check: program:6:1: E0606: `Bool` does not implement `Read`
-core-10/read-counted-rows-range-traps.cp	wrong-output	wanted R0502 on line 5, ran to the end
 core-10/read-explicit-domain-unshifted.cp	wrong-reject	check: program:6:13: E0606: `V` does not implement `Read`
-core-10/read-from-a-string.cp	wrong-reject	check: program:6:32: E0310: no parameter named `from`
 core-10/read-needs-type.cp	wrong-accept	wanted E0806 on line 3, ran and printed: 
-core-10/read-nonnegative-range-traps-with-input-left.cp	wrong-output	wanted R0502 on line 6, ran to the end
 core-10/read-optional-sentinel-at-end-traps.cp	wrong-reject	check: program:5:26: E0310: no parameter named `none`
-core-10/test-position-lent-mut-above-multitest.cp	wrong-reject	check: std.rand:75:21: E0201: unknown name `I128`
 core-10/test-position-stored-above-multitest.cp	wrong-accept	wanted E0805 on line 8, ran and printed: 1
-core-10/with-io-covers-multitest.cp	wrong-output	wanted "Bob\nAlice", got "NO\nYES\n"
-core-10/yes-answers.cp	wrong-output	wanted "YES Impossible Yes", got "YES Impossible YES\n"
 core-11/binary-min-beside-imported-seq-min.cp	wrong-reject	check: program:5:7: E0606: `Int` does not implement `Seq`
 core-11/lib-table-fns-need-no-import.cp	wrong-reject	check: std.strings:1091:47: E0606: `2.hidden` has no `impl Eq`, which `==` needs (R08.1.5)
 core-11/member-private-field-outside-module.cp	wrong-accept	wanted E0207 on line 13, ran and printed: 2
@@ -469,8 +441,6 @@ diagnostics/debug-side-effect.cp	wrong-error	wanted E0312 on line 6, got: check:
 diagnostics/definition-cycle.cp	wrong-error	wanted E0209 on line 10, got: decls: E0204: unknown trait `Index`
 diagnostics/fn-ends-without-a-value-if.cp	wrong-error	wanted E0409 on line 4, got: check: program:4:5: E0302: expected `Int`, found `()`
 diagnostics/fn-ends-without-a-value-loop.cp	wrong-accept	wanted E0409 on line 4, ran and printed: 12 1
-diagnostics/index-impl-old-names.cp	wrong-error	wanted E0605 on line 7, got: decls: E0204: unknown trait `Index`
-diagnostics/index-impl-var.cp	wrong-error	wanted E0605 on line 5, got: decls: E0204: unknown trait `Index`
 lib-ops-ranges/fenwick-no-act.cp	wrong-error	wanted E0705 on line 3, got: check: program:3:28: E0310: no parameter named `act`
 lib-ops-ranges/fenwick-range-is-fold.cp	wrong-reject	check: std.fenwick:60:19: E0606: `T` does not implement `Domain`
 lib-ops-ranges/range-fenwick-no-act.cp	wrong-error	wanted E0705 on line 5, got: check: program:5:30: E0310: no parameter named `act`
@@ -732,7 +702,6 @@ std-graph/boruvka-mst.cp	wrong-reject	check: std.graph:3309:17: E0606: `W` does 
 std-graph/bounds-met-by-shape-glob-import.cp	wrong-reject	check: program:9:7: E0305: `Paths<V, Int, V>` is not indexed: it has no `Indexed` impl
 std-graph/bridges-parallel-edges.cp	wrong-reject	check: std.graph:248:9: E0302: this cannot be walked with `for`
 std-graph/bridges-single-edge.cp	wrong-reject	check: std.graph:248:9: E0302: this cannot be walked with `for`
-std-graph/clique.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
 std-graph/closure-graph-vertex-from-seeds.cp	wrong-reject	check: program:7:7: E0305: `Paths<V, Int, V>` is not indexed: it has no `Indexed` impl
 std-graph/complement-of-complete-empty.cp	wrong-reject	check: std.graph:2946:18: E0203: `G` has no member `out`
 std-graph/count-paths-unreachable-zero.cp	wrong-reject	check: std.graph:2539:26: E0302: expected `List<V>`, found `()`
@@ -1110,7 +1079,6 @@ std-segtree/merge-sort-tree-count-le-edges.cp	wrong-reject	check: std.segtree:96
 std-segtree/mergesorttree-bodies.cp	wrong-reject	check: std.segtree:1085:41: E0606: `T` does not implement `Eq`
 std-segtree/right-left-while-match-brute.cp	wrong-reject	check: std.segtree:331:24: E0606: `T` does not implement `Eq`
 std-segtree/segtree2d-matches-brute.cp	wrong-reject	check: std.rand:75:21: E0201: unknown name `I128`
-std-segtree/wavelet-matrix-matches-sort.cp	wrong-reject	check: std.rand:75:21: E0201: unknown name `I128`
 std-seq/adjacent-buckets-counting-sort-span.cp	wrong-reject	check: std.seq:2835:20: E0606: `K` does not implement `Domain`
 std-seq/all-some-unwraps-the-element.cp	wrong-reject	own: std.seq:2335:5: E0603: this returns a value that borrows `out`: `out` is gone when the fn returns
 std-seq/all_some-1.cp	wrong-reject	own: std.seq:2335:5: E0603: this returns a value that borrows `out`: `out` is gone when the fn returns
@@ -1516,3 +1484,5 @@ traits/Track/SortedBag--pop.cp	wrong-reject	check: std.bag:669:14: E0203: `(key:
 traits/Track/SortedBag--push.cp	wrong-reject	link: std.bag:2871:9: E0606: `K` does not implement `Ord`
 traits/Versioned/PersistentArray--get.cp	wrong-reject	check: std.persistent:717:20: E0606: `T` does not implement `Eq`
 traits/Versioned/PersistentSegTree--get.cp	wrong-reject	check: std.persistent:150:17: E0606: `M` does not implement `FromOp`
+core-04/library-domain-nth-out-of-range.cp	timeout	wanted R0001, ran its impl's nth unbounded: `Two.nth(k)` takes `Index`'s impl over `Domain`'s blanket (R08.1.4), so the R04.2.27 check is skipped
+core-04/second-position-of-a-user-index-is-checked-too.cp	wrong-output	wanted R0001: `T.nth(k)` takes `Index`'s impl over `Domain`'s blanket (R08.1.4), so the R04.2.27 check is skipped

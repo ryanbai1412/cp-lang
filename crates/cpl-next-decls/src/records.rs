@@ -551,18 +551,28 @@ impl Visitor for Shapes<'_> {
 }
 
 /// The `@positions` trait, in whichever module declares it, and the names of its members marked
-/// `dom_count`, `dom_nth` and `dom_ord`: what a domain the compiler declares implements.
+/// `dom_count`, `dom_nth` and `dom_ord`: what a domain the compiler declares implements, with
+/// the `@order` trait, whose members all have bodies.
 pub struct Positions {
     pub tr: String,
+    pub order: Option<String>,
     pub count: String,
     pub nth: String,
     pub ord: String,
 }
 
 pub fn positions<'a>(stmts: impl IntoIterator<Item = &'a ast::Stmt>) -> Option<Positions> {
-    let marked =
-        (stmts.into_iter()).find(|s| s.decorators.iter().any(|d| d.name.text == "positions"));
-    let Some(StmtKind::Trait { name: tr, body, .. }) = marked.map(|s| &s.kind) else {
+    let marked = |word: &str, s: &&ast::Stmt| s.decorators.iter().any(|d| d.name.text == word);
+    let (mut marks, mut order) = (None, None);
+    for s in stmts {
+        if marked("positions", &s) {
+            marks = Some(s);
+        }
+        if let (true, StmtKind::Trait { name, .. }) = (marked("order", &s), &s.kind) {
+            order = Some(name.text.clone());
+        }
+    }
+    let Some(StmtKind::Trait { name: tr, body, .. }) = marks.map(|s| &s.kind) else {
         return None;
     };
     let member = |id: &str| {
@@ -578,6 +588,7 @@ pub fn positions<'a>(stmts: impl IntoIterator<Item = &'a ast::Stmt>) -> Option<P
     };
     Some(Positions {
         tr: tr.text.clone(),
+        order,
         count: member("dom_count")?,
         nth: member("dom_nth")?,
         ord: member("dom_ord")?,
@@ -595,6 +606,7 @@ pub fn domain_impls<'a>(
 ) -> Vec<(String, ast::Stmt)> {
     let Some(Positions {
         tr,
+        order,
         count,
         nth,
         ord,
@@ -712,14 +724,15 @@ pub fn domain_impls<'a>(
             ),
             method(true, &ord, vec![param("self", None)], named("Int"), rank),
         ];
-        let imp = ast::Stmt {
+        // `impl<A: tr, ..> tr for (lo: A, ..)`.
+        let imp = |tr: &str, body| ast::Stmt {
             kind: StmtKind::Impl {
-                trait_name: Some(named(&tr.text)),
-                target: record,
+                trait_name: Some(named(tr)),
+                target: record.clone(),
                 bounds: (gs.iter())
                     .map(|g| ast::Bound {
                         name: nm(g),
-                        traits: vec![named(&tr.text)],
+                        traits: vec![named(tr)],
                     })
                     .collect(),
                 body: ast::Block { stmts: body, span },
@@ -728,6 +741,11 @@ pub fn domain_impls<'a>(
             decorators: Vec::new(),
             public: false,
         };
+        // A record of ordered domains is ordered, as a tuple of them is (R04.2.31).
+        if let Some(o) = &order {
+            out.push((name(fs), imp(o, Vec::new())));
+        }
+        let imp = imp(&tr.text, body);
         out.push((name(fs), imp));
     }
     out

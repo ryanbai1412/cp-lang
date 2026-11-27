@@ -399,6 +399,10 @@ fn layer(
                             let e = again(item, s, "positions");
                             once(&mut d.domain_trait, id, e, &mut d.errors);
                         }
+                        if marked(s, "order") {
+                            let e = again(item, s, "order");
+                            once(&mut d.order_trait, id, e, &mut d.errors);
+                        }
                         if marked(s, "convert") {
                             once(
                                 &mut d.convert_trait,
@@ -1115,6 +1119,20 @@ fn layer(
                             }
                         }
                     }
+                    // A range type is a domain with an order (R04.2.31), so `Self` in a `_..=_`
+                    // impl's fns meets `Domain` and `Ordered`; the impl itself is not bound by them.
+                    let mut fn_bounds = ibounds.clone();
+                    if let Some(i) = range_param {
+                        for tr in [d.domain_trait, d.order_trait].into_iter().flatten() {
+                            fn_bounds.push((
+                                i,
+                                TraitRef {
+                                    tr,
+                                    args: Vec::new(),
+                                },
+                            ));
+                        }
+                    }
                     let n_sets = cx.next_set.unwrap_or(0);
                     // A library impl the slice cannot build is said where a program could reach
                     // it: through its type when that is a struct, else through its trait.
@@ -1147,6 +1165,8 @@ fn layer(
                     }
                     let at = item.at(Span::new(s.span.start, s.span.start));
                     let tname = d.traits[tref.tr.0].name.clone();
+                    let top = mods[mi].items.iter().flat_map(|it| &it.stmts);
+                    impl_names(&mut d, top, &item, &tref, body);
                     // An impl for every record with some fields is not a blanket one: a record
                     // takes it over a blanket impl it also meets (R08.4.5).
                     let rank = d.rank_of(&head, &ibounds);
@@ -1218,7 +1238,18 @@ fn layer(
                         (body.stmts.iter())
                             .any(|m| matches!(&m.kind, StmtKind::Fn(f) if f.name.text == n))
                     };
-                    let mut filled: Vec<ast::Stmt> = Vec::new();
+                    let mut filled: Vec<ast::Stmt> = body
+                        .stmts
+                        .iter()
+                        .filter_map(crate::synth::impl_value)
+                        .collect();
+                    let valued: Vec<String> = (filled.iter())
+                        .filter_map(|m| match &m.kind {
+                            StmtKind::Fn(f) => Some(f.name.text.clone()),
+                            _ => None,
+                        })
+                        .collect();
+                    let written = |n: &str| written(n) || valued.iter().any(|v| v == n);
                     if let Ty::Struct(sid, ..) = &for_ {
                         let mut ms: Vec<(&String, &FnId)> =
                             d.traits[tref.tr.0].methods.iter().collect();
@@ -1266,7 +1297,7 @@ fn layer(
                                 },
                             );
                             // The impl's parameters come first in each method's, with its bounds.
-                            d.fns[fid.0].bounds.extend(ibounds.iter().cloned());
+                            d.fns[fid.0].bounds.extend(fn_bounds.iter().cloned());
                             methods.insert(f.name.text.clone(), fid);
                         }
                     }
@@ -1578,4 +1609,70 @@ fn unimplemented(item: &ItemId, s: &ast::Stmt, errors: &mut Vec<Msg>) -> Unimple
 fn any_range(t: &ast::Type) -> bool {
     let hole = |e: &Option<Box<ast::Expr>>| matches!(e.as_deref().map(|e| &e.kind), Some(ast::ExprKind::Name(n)) if n == "_");
     matches!(&t.kind, TypeKind::Range { lo, hi, .. } if hole(lo) && hole(hi))
+}
+
+/// An impl's members are its trait's names: one under the name a member `@was` is E0605, which
+/// says the name now (decision 504). An impl's `let` is frozen where the impl is declared, so it
+/// reads no `var` (R04.2.26).
+fn impl_names<'a>(
+    d: &mut Decls,
+    top: impl Iterator<Item = &'a ast::Stmt>,
+    item: &ItemId,
+    tref: &TraitRef,
+    body: &ast::Block,
+) {
+    let vars: HashSet<&str> = top
+        .filter_map(|s| match &s.kind {
+            StmtKind::Let {
+                mutable: true,
+                pat:
+                    ast::Pattern {
+                        kind: ast::PatternKind::Name(n),
+                        ..
+                    },
+                ..
+            } => Some(n.as_str()),
+            _ => None,
+        })
+        .collect();
+    let code = cpl_diag::codes::BAD_INDEX_IMPL;
+    let tname = d.traits[tref.tr.0].name.clone();
+    for m in &body.stmts {
+        let (n, span) = match &m.kind {
+            StmtKind::Fn(f) => (f.name.text.as_str(), f.name.span),
+            StmtKind::Let { pat, .. } => match pat.let_name() {
+                Some(n) => (n, pat.span),
+                None => continue,
+            },
+            _ => continue,
+        };
+        let now = (d.traits[tref.tr.0].methods.iter())
+            .find(|(_, &tm)| d.f(tm).was.iter().any(|w| w == n));
+        if let Some((now, _)) = now {
+            let msg = format!("`impl {tname}` names this member `{now}`; `{n}` was its old name");
+            d.misdeclared.push((item.at(span), code, msg));
+        }
+        if let StmtKind::Let { init: Some(e), .. } = &m.kind {
+            let mut reads = Reads(Vec::new());
+            cpl_syntax::visit::walk_expr(e, &mut reads);
+            for (v, span) in reads
+                .0
+                .into_iter()
+                .filter(|(v, _)| vars.contains(v.as_str()))
+            {
+                let msg = format!("an impl's `let` is frozen where the impl is declared, and `{v}` is a `var`: freeze it first with `let`");
+                d.misdeclared.push((item.at(span), code, msg));
+            }
+        }
+    }
+}
+
+/// The names an expression reads.
+struct Reads(Vec<(String, Span)>);
+impl cpl_syntax::visit::Visitor for Reads {
+    fn expr(&mut self, e: &ast::Expr) {
+        if let ast::ExprKind::Name(n) = &e.kind {
+            self.0.push((n.clone(), e.span));
+        }
+    }
 }

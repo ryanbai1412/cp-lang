@@ -1742,7 +1742,7 @@ fn blanket_met(d: &Decls, im: &cpl_next_decls::decls::ImplDecl, binds: &[Option<
         || (im.bounds.iter()).all(|(i, r)| binds[*i].as_ref().is_none_or(|t| cty_meets(d, t, r.tr)))
 }
 fn cty_meets(d: &Decls, t: &CTy, tr: TraitId) -> bool {
-    if Some(tr) == d.domain_trait && matches!(t, CTy::Dom(_)) {
+    if d.core_domain_trait(tr) && matches!(t, CTy::Dom(_)) {
         return true;
     }
     d.impls_of(tr).any(|im| {

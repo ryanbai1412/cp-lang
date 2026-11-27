@@ -468,6 +468,27 @@ pub(crate) fn field_getter(field: &str, span: cpl_diag::Span) -> ast::Stmt {
     }
 }
 
+/// An impl's `let count = e`: the self-less getter `@get fn count() = e` that meets its trait's
+/// member of that name (R04.2.26).
+pub(crate) fn impl_value(m: &ast::Stmt) -> Option<ast::Stmt> {
+    let StmtKind::Let {
+        pat,
+        ty,
+        init: Some(init),
+        ..
+    } = &m.kind
+    else {
+        return None;
+    };
+    let mut get = field_getter(pat.let_name()?, m.span);
+    if let StmtKind::Fn(f) = &mut get.kind {
+        f.params.clear();
+        f.ret = ty.clone();
+        f.body = FnBody::Expr(init.clone());
+    }
+    Some(get)
+}
+
 /// `@get fn name(self) -> T` with no body: a field requirement, met by a field `name` (R08.1.7).
 pub(crate) fn field_requirement(field: &str, ty: ast::Type, span: cpl_diag::Span) -> ast::Stmt {
     let mut get = field_getter(field, span);
@@ -920,6 +941,19 @@ pub(crate) fn enum_conversions(
                 body: ast::Block { stmts: body, span },
             });
             out.push((item.clone(), e.name.text.clone(), domain));
+            // An enum's variants are in declaration order (R04.2.31).
+            if let Some(o) = &p.order {
+                let ordered = stmt(StmtKind::Impl {
+                    trait_name: Some(ty(o, Vec::new())),
+                    target: enum_ty(),
+                    bounds: Vec::new(),
+                    body: ast::Block {
+                        stmts: Vec::new(),
+                        span,
+                    },
+                });
+                out.push((item.clone(), e.name.text.clone(), ordered));
+            }
         }
     }
     out

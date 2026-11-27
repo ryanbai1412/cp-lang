@@ -209,7 +209,7 @@ impl Dir for Dir8:
 @lint(dx_dy_arrays, from: "let dx = [0, 1, 0, -1]\nlet dy = [1, 0, -1, 0]", to: "for dir in Dir4.all():\n    let next = (r, c).step(dir)")
 @lint(grid_neighbour_step, from: "if r > 0:\n    g[r, c] += g[r - 1, c]", to: "if let (pr, pc) = (r, c).step(Dir4.up):\n    g[r, c] += g[pr, pc]", holes: "r, c, g")
 @lint(grid_neighbour_step, from: "if c > 0:\n    g[r, c] += g[r, c - 1]", to: "if let (pr, pc) = (r, c).step(Dir4.left):\n    g[r, c] += g[pr, pc]", holes: "r, c, g")
-pub fn step<R, C, D: Dir>(self: (R, C), d: D) -> ?(R, C):
+pub fn step<R: Ordered, C: Ordered, D: Dir>(self: (R, C), d: D) -> ?(R, C):
     let (dr, dc) = d.delta
     let r = R.at(self.0 + dr)
     let c = C.at(self.1 + dc)
@@ -225,7 +225,7 @@ pub fn step<R, C, D: Dir>(self: (R, C), d: D) -> ?(R, C):
 /// example: `domain R = 0..4; domain C = 0..4; (R(1), C(2)).ray(Dir4.down).collect() == [(R(2), C(2)), (R(3), C(2))]`
 /// example: `domain R = 0..4; domain C = 0..4; (R(0), C(0)).ray(Dir8.all()[3]).collect() == [(R(1), C(1)), (R(2), C(2)), (R(3), C(3))]`
 /// example: `domain R = 0..4; domain C = 0..4; (R(0), C(2)).ray(Dir4.up).collect() == []`
-pub fn ray<R, C, D: Dir>(self: (R, C), d: D) -> yields (R, C):
+pub fn ray<R: Ordered, C: Ordered, D: Dir>(self: (R, C), d: D) -> yields (R, C):
     var p = step(self, d)
     while p.is_some:
         yield p!
@@ -242,7 +242,7 @@ pub fn ray<R, C, D: Dir>(self: (R, C), d: D) -> yields (R, C):
 /// example: `domain R = 0..3; domain C = 0..3; (R(0), C(0)).adj4.collect() == [(R(0), C(1)), (R(1), C(0))]`
 @lint(grid_bounds_check, from: "if nx >= 0 and nx < h and ny >= 0 and ny < w:\n    body", to: "for (nx, ny) in (x, y).adj4:\n    body", holes: "nx, ny, h, w, body")
 @lint(grid_bounds_check, from: "if 0 <= nx and nx < h and 0 <= ny and ny < w:\n    body", to: "for (nx, ny) in (x, y).adj4:\n    body", holes: "nx, ny, h, w, body")
-@get pub fn adj4<R, C>(self: (R, C)) -> yields (R, C):
+@get pub fn adj4<R: Ordered, C: Ordered>(self: (R, C)) -> yields (R, C):
     for d in Dir4.all():
         let q = step(self, d)
         if q.is_some: yield q!
@@ -256,7 +256,7 @@ pub fn ray<R, C, D: Dir>(self: (R, C), d: D) -> yields (R, C):
 /// traps: never
 /// example: `domain R = 0..3; domain C = 0..3; (R(1), C(1)).adj8.collect().len == 8`
 /// example: `domain R = 0..3; domain C = 0..3; (R(0), C(0)).adj8.collect() == [(R(0), C(1)), (R(1), C(1)), (R(1), C(0))]`
-@get pub fn adj8<R, C>(self: (R, C)) -> yields (R, C):
+@get pub fn adj8<R: Ordered, C: Ordered>(self: (R, C)) -> yields (R, C):
     for d in Dir8.all():
         let q = step(self, d)
         if q.is_some: yield q!

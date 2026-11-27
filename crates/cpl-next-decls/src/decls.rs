@@ -419,6 +419,9 @@ pub struct Decls {
     pub top_values: Arc<HashSet<String>>,
     /// The trait core marks `@positions`: every domain's position type has it, and nothing else.
     pub domain_trait: Option<TraitId>,
+    /// The trait core marks `@order`: stepping and order, which every domain the compiler declares
+    /// has and a library domain lacks (R04.2.31).
+    pub order_trait: Option<TraitId>,
     /// Core's `@operator("+")` traits by the operator they give: `a + b` on a type that is not
     /// a number is its impl's fn (R08.1.5).
     pub operators: Vec<(String, TraitId)>,
@@ -433,6 +436,8 @@ pub struct Decls {
     pub bounds_trait: Option<TraitId>,
     /// Per fn, the type parameters that key an array it names: domain parameters (R04.2).
     pub domain_params: HashMap<FnId, Vec<usize>>,
+    /// The domain parameters whose body steps on them, so they meet `Ordered` (R04.2.31).
+    pub ordered_params: HashMap<FnId, Vec<usize>>,
     /// Core's `@coerce` fns: each converts a value of its parameter's type where its result's
     /// type is wanted (R04.8.10).
     pub coercions: Vec<FnId>,
@@ -769,10 +774,13 @@ fn domain_params(d: &mut Decls, from: usize) {
         return;
     };
     // A parameter whose body names one of `Domain`'s fns on it (`D.nth(k)`) is one (R04.4.30).
+    // One that names one of `Ordered`'s steps on it (`D.at(x)`) is ordered too (R04.2.31).
     struct DomUse<'a> {
         generics: &'a [String],
         fns: Vec<&'a String>,
+        steps: Vec<&'a String>,
         found: Vec<usize>,
+        ordered: Vec<usize>,
     }
     impl cpl_syntax::visit::Visitor for DomUse<'_> {
         fn expr(&mut self, e: &ast::Expr) {
@@ -783,28 +791,46 @@ fn domain_params(d: &mut Decls, from: usize) {
                 return;
             };
             let i = self.generics.iter().position(|g| g == n);
-            if let Some(i) = i.filter(|i| self.fns.contains(&&name.text) && !self.found.contains(i))
-            {
+            let Some(i) = i else {
+                return;
+            };
+            let step = self.steps.contains(&&name.text);
+            if (step || self.fns.contains(&&name.text)) && !self.found.contains(&i) {
                 self.found.push(i);
+            }
+            if step && !self.ordered.contains(&i) {
+                self.ordered.push(i);
             }
         }
     }
     let dom_fns: Vec<&String> = d.traits[domain.0].methods.keys().collect();
-    let used: Vec<Vec<usize>> = (d.fns.iter().skip(from))
+    let steps: Vec<&String> = (d.order_trait.iter())
+        .flat_map(|tr| d.traits[tr.0].methods.keys())
+        .collect();
+    let (used, ordered): (Vec<Vec<usize>>, Vec<Vec<usize>>) = (d.fns.iter().skip(from))
         .map(|f| {
             let mut v = DomUse {
                 generics: &f.generics,
                 fns: dom_fns.clone(),
+                steps: steps.clone(),
                 found: Vec::new(),
+                ordered: Vec::new(),
             };
             match &f.body {
                 FnBody::Block(b) => cpl_syntax::visit::walk_block(b, &mut v),
                 FnBody::Expr(e) => cpl_syntax::visit::walk_expr(e, &mut v),
                 FnBody::None => {}
             }
-            v.found
+            (v.found, v.ordered)
         })
-        .collect();
+        .unzip();
+    // A parameter written with bounds has the order they give it, and no more.
+    for (k, mut os) in ordered.into_iter().enumerate() {
+        os.retain(|i| !d.fns[from + k].bounds.iter().any(|(p, _)| p == i));
+        if !os.is_empty() {
+            d.ordered_params.insert(FnId(from + k), os);
+        }
+    }
     for k in from..d.fns.len() {
         let f = &d.fns[k];
         let fields: &[(String, Ty)] = match f.owner {

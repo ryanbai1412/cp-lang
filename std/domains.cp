@@ -3,6 +3,7 @@
 //!
 //! example: `Int.nth(3) == 3 and 5.next! == 6`
 use std.ranges.{Range, range_of}
+use std.raw.{check_range}
 use std.seq.{Seq}
 
 @variant_check
@@ -19,10 +20,6 @@ pub trait Domain:
     @get fn range() -> Range<Self> = Self.all
     /// `D.nth(k)`: the position `k` steps into its walk; traps past its end (R04.2.9).
     fn nth(k: Int) -> Self = @intrinsic("dom_nth")
-    /// `D.at(x)`: the position with integer `x`, or `None` outside it (R04.2.8).
-    fn at(x: Int) -> ?Self = @intrinsic("dom_at")
-    /// `D.wrap(k)`: the position `k` steps into its walk, Euclidean mod `D.count` (R04.2.13).
-    fn wrap(k: Int) -> Self = Self.nth((k % Self.count + Self.count) % Self.count)
     /// `D.mask(xs)`: a `[D]Bool` marking the positions `xs` yields (R04.2.1).
     fn mask<S: Seq<Self>>(xs: S) -> [Self]Bool:
         var m: [Self]Bool = false
@@ -30,6 +27,16 @@ pub trait Domain:
         m
     /// `v.ord`: how many positions come before `v` in the walk (R04.2.15).
     @get fn ord(self) -> Int = @intrinsic("dom_ord")
+
+/// The order of a domain's positions (R04.2.31): stepping to a neighbour, the cuts around a
+/// position and its integer. Every core domain has it; a library domain, which only counts its
+/// values, does not, so a generic body that steps bounds `D: Ordered`.
+@order
+pub trait Ordered(Domain):
+    /// `D.at(x)`: the position with integer `x`, or `None` outside it (R04.2.8).
+    fn at(x: Int) -> ?Self = @intrinsic("dom_at")
+    /// `D.wrap(k)`: the position `k` steps into its walk, Euclidean mod `D.count` (R04.2.13).
+    fn wrap(k: Int) -> Self = Self.nth((k % Self.count + Self.count) % Self.count)
     /// `v.next(k)`: the position `k` after `v` in the walk, or `None` past its end (R04.3.1).
     @get fn next(self, k: Int = 1) -> ?Self:
         let o = self.ord + k
@@ -44,14 +51,39 @@ pub trait Domain:
     @get fn after(self) -> Range<Self> = range_of(self.ord + 1, Self.count, 1)
     @get fn before(self) -> Range<Self> = range_of(0, self.ord, 1)
 
+/// A library type is a domain by implementing `Index`: `count` positions, `ord` a value's place in
+/// the walk and `nth` the value at a place (R04.2.26). The impl's own code is checked: `nth` sees
+/// only `0..count` and every `ord` it gives lands there (R04.2.27).
+pub trait Index:
+    @was(K)
+    @get fn count() -> Int
+    @was(to_idx)
+    @get fn ord(self) -> Int
+    @was(from_idx)
+    fn nth(k: Int) -> Self
+
+impl<T: Index> Domain for T:
+    @get fn count() -> Int = T.count
+    fn nth(k: Int) -> T:
+        check_range(0 <= k and k < T.count)
+        T.nth(k)
+    @get fn ord(self) -> Int:
+        let k = self.ord
+        check_range(0 <= k and k < T.count)
+        k
+
 /// `Int` is a domain: its integers are its positions (R04.2.18).
-impl Domain for Int:
+impl Domain for Int
+
+impl Ordered for Int:
     fn at(x: Int) -> ?Int = x
     @get fn next(self, k: Int = 1) -> ?Int = Some(self + k)
     @get fn prev(self, k: Int = 1) -> ?Int = Some(self - k)
 
 /// A range type is a domain of its own positions, not `Int`'s: `(1..=3).at(9)` is `None`.
 impl Domain for _..=_
+
+impl Ordered for _..=_
 
 /// A type with finitely many values, so a dense table over it has an end (R06.4.1): a range with
 /// constant ends, a cut of one, or a tuple of them. `Int` is not one.
@@ -107,8 +139,11 @@ impl<D: Domain> Domain for Cut<D>:
     fn nth(k: Int) -> Cut<D>:
         check_value(0 <= k and k <= D.count)
         Cut(k)
-    fn at(x: Int) -> ?Cut<D> = if 0 <= x and x <= D.count: Some(Cut(x)) else: None
     @get fn ord(self) -> Int = k
+
+/// A domain's cuts are in order, whatever its positions are (R04.2.31).
+impl<D: Domain> Ordered for Cut<D>:
+    fn at(x: Int) -> ?Cut<D> = if 0 <= x and x <= D.count: Some(Cut(x)) else: None
 
 /// `D.cuts(k)`: the cut with `k` positions before it; traps R0102 past the ends (R04.2.17).
 impl<D: Domain> Into<Cut<D>> for Int:

@@ -302,8 +302,8 @@ impl Cx<'_> {
             }
             return Some(h.args.iter().zip(&r.args).all(|(a, b)| self.unify(a, b)));
         }
-        // Every domain meets `Domain`; any other type by an impl.
-        if Some(r.tr) == self.d.domain_trait && matches!(t, Ty::Dom(_)) {
+        // Every declared domain meets `Domain` and `Ordered`; any other type by an impl.
+        if self.d.core_domain_trait(r.tr) && matches!(t, Ty::Dom(_)) {
             return Some(true);
         }
         match t {
@@ -410,6 +410,10 @@ impl Cx<'_> {
         if dom.is_some_and(|ds| ds.contains(&i)) {
             have.extend(self.d.domain_trait);
         }
+        let ordered = (self.decl).and_then(|f| self.d.ordered_params.get(&f));
+        if ordered.is_some_and(|ds| ds.contains(&i)) {
+            have.extend(self.d.order_trait);
+        }
         if have.contains(&tr) {
             return true;
         }
@@ -478,7 +482,13 @@ impl Cx<'_> {
             .map(|(_, r)| r.clone())
             .collect();
         let dom = implied && (self.d.domain_params.get(&decl)).is_some_and(|ds| ds.contains(&i));
-        if let Some(tr) = self.d.domain_trait.filter(|_| dom) {
+        let ordered =
+            implied && (self.d.ordered_params.get(&decl)).is_some_and(|ds| ds.contains(&i));
+        let implied = [
+            self.d.domain_trait.filter(|_| dom),
+            self.d.order_trait.filter(|_| ordered),
+        ];
+        for tr in implied.into_iter().flatten() {
             let r = TraitRef {
                 tr,
                 args: Vec::new(),

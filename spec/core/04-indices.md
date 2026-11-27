@@ -102,6 +102,15 @@ printed form writes `impl Into<Int>` (`fn into(self) -> Int`) and `Show`, as
 `Subset` does with its mask (decisions 291, 390). An always-on precondition
 is an `assert` inside `with checks(asserts: on):` (R09.4.1). (R04.2.28)
 
+Counting and order are two capabilities. `Domain` is counting and positions:
+`count`, `nth`, `ord`, `all`, `range`, `mask` and the walk. `Ordered: Domain`
+is stepping and order: `at`, `wrap`, `.next`, `.prev`, `.l`, `.r`, `.after`
+and `.before`. Every core domain (a count, a range, a `Char` range, an enum,
+`Int`, cuts, and a tuple or record of ordered domains) is `Ordered`; a type
+that implements `Index` is only a `Domain`, so it never gets an order it does
+not have. A generic body that steps bounds `D: Ordered`: under `D: Domain`,
+`d.next` is E0203 and the message names `Ordered`. (R04.2.31)
+
 `domain V = e` counts its positions from `e`: an `Int` count, a range of
 `Int`s, a list, array or string (one position per element), a struct that
 holds one of those, or another domain's value: any value whose type has an

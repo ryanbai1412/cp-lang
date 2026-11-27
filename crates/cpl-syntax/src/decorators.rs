@@ -125,6 +125,10 @@ pub const DECORATORS: &[(&str, &str)] = &[
         "positions",
         "on a trait: the trait a domain's positions implement",
     ),
+    (
+        "order",
+        "on a trait: stepping and order, which every core domain implements",
+    ),
     ("convert", "on a trait: the conversion `T(x)` calls"),
     (
         "operator",
