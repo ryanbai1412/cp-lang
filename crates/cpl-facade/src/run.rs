@@ -8,7 +8,78 @@ use std::sync::{Arc, Mutex};
 use crate::session::{Checks, Program, Session};
 
 pub use cpl_interp::profile::Profile as RunProfile;
-pub use cpl_interp::trace::{Recording, TraceConfig};
+pub use cpl_interp::trace::Recording;
+
+/// How a run is recorded.
+#[derive(Clone, Debug, Default)]
+pub struct TraceConfig {
+    /// The file's text: steps name the line they ran.
+    pub source: String,
+    /// Record only while matching fns are running: comma-separated globs
+    /// (`*`, `?`), with `!pattern` excluding matching fns.
+    pub only_fn: Option<String>,
+    /// Multitest cases to record (inclusive 1-based ranges). Empty records all.
+    pub test_cases: Vec<(u64, u64)>,
+    /// Top-level variable names whose changes trigger steps. Empty records all.
+    pub watch: Vec<String>,
+    /// Keep only the last `N` steps in a ring buffer.
+    pub last_steps: Option<usize>,
+    /// Maximum call depth to record (`0` = top-level only).
+    pub max_depth: Option<usize>,
+    /// Record the full call stack (`(fn_name, line)`) on each step for DAP.
+    pub record_frames: bool,
+    /// Log each value a named variable is given, in a fn too, in
+    /// `Recording::assigned`: what `cpl stress --explain` compares.
+    pub assignments: bool,
+    /// Stop the run when this call returns: the fn's name and which call
+    /// of it, 1-based. What a replay runs.
+    pub stop_after_call: Option<(String, usize)>,
+    /// Keep up to this many steps instead of what fits in a trace file.
+    pub max_steps: Option<usize>,
+    /// Skip this many steps before keeping any: a window of a long run.
+    pub from_step: Option<usize>,
+    /// End the run once the steps are full, when what follows them (its
+    /// output, a later trap) is not wanted.
+    pub stop_when_full: bool,
+}
+
+impl From<TraceConfig> for cpl_interp::trace::TraceConfig {
+    fn from(c: TraceConfig) -> cpl_interp::trace::TraceConfig {
+        cpl_interp::trace::TraceConfig {
+            source: c.source,
+            only_fn: c.only_fn,
+            test_cases: c.test_cases,
+            watch: c.watch,
+            last_steps: c.last_steps,
+            max_depth: c.max_depth,
+            record_frames: c.record_frames,
+            assignments: c.assignments,
+            stop_after_call: c.stop_after_call,
+            max_steps: c.max_steps,
+            from_step: c.from_step,
+            stop_when_full: c.stop_when_full,
+        }
+    }
+}
+
+impl From<cpl_interp::trace::TraceConfig> for TraceConfig {
+    fn from(c: cpl_interp::trace::TraceConfig) -> TraceConfig {
+        TraceConfig {
+            source: c.source,
+            only_fn: c.only_fn,
+            test_cases: c.test_cases,
+            watch: c.watch,
+            last_steps: c.last_steps,
+            max_depth: c.max_depth,
+            record_frames: c.record_frames,
+            assignments: c.assignments,
+            stop_after_call: c.stop_after_call,
+            max_steps: c.max_steps,
+            from_step: c.from_step,
+            stop_when_full: c.stop_when_full,
+        }
+    }
+}
 pub use cpl_interp::{Choices, More, Trap};
 
 /// How much stack a program's calls may take before the run is stopped. There is no limit on
@@ -202,7 +273,7 @@ pub fn run(
     if request.profile {
         cpl_interp::run_profiled(&program.ir, io, output).into()
     } else {
-        cpl_interp::run_observed(&program.ir, io, output, request.trace).into()
+        cpl_interp::run_observed(&program.ir, io, output, request.trace.map(Into::into)).into()
     }
 }
 
@@ -249,7 +320,14 @@ pub fn run_traced_within(
     limits: Limits,
     trace: Option<TraceConfig>,
 ) -> Outcome {
-    cpl_interp::observe_on_this_thread(&program.ir, input.0, output, limits.into(), trace).into()
+    cpl_interp::observe_on_this_thread(
+        &program.ir,
+        input.0,
+        output,
+        limits.into(),
+        trace.map(Into::into),
+    )
+    .into()
 }
 
 /// [`run_within`] taking the checkpoints `want` asks for, or starting from

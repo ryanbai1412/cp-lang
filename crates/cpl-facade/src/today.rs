@@ -25,13 +25,19 @@ pub use cpl_check::{
 pub mod trace {
     use std::io::Write;
 
+    pub use crate::TraceConfig;
+
+    /// What a second run records to name the locals where a trap stopped the first.
+    pub fn trap_config(source: &str) -> TraceConfig {
+        cpl_interp::trace::trap_config(source).into()
+    }
     pub use cpl_interp::trace::*;
 
     use crate::{Outcome, Program, RunInput, Stop};
 
     /// The last `steps` steps of a run of `program` on `input`.
     pub fn tail(program: &Program, input: &[u8], config: TraceConfig, steps: usize) -> Outcome {
-        cpl_interp::trace::tail(&program.ir, input, config, steps).into()
+        cpl_interp::trace::tail(&program.ir, input, config.into(), steps).into()
     }
 
     /// The run printing to `output`, with its trace from
@@ -42,7 +48,7 @@ pub mod trace {
         output: &mut (dyn Write + Send),
         config: TraceConfig,
     ) -> Outcome {
-        cpl_interp::trace::windowed(&program.ir, input, output, config).into()
+        cpl_interp::trace::windowed(&program.ir, input, output, config.into()).into()
     }
 
     /// The last `steps` steps of a run, traced again from a late
@@ -55,7 +61,7 @@ pub mod trace {
         config: TraceConfig,
         steps: usize,
     ) -> Outcome {
-        cpl_interp::trace::resumed_tail(&program.ir, input, output, config, steps).into()
+        cpl_interp::trace::resumed_tail(&program.ir, input, output, config.into(), steps).into()
     }
 
     /// [`resumed_tail`], both runs ended by `stop`.
@@ -67,8 +73,15 @@ pub mod trace {
         steps: usize,
         stop: Stop,
     ) -> Outcome {
-        cpl_interp::trace::resumed_tail_until(&program.ir, input, output, config, steps, stop.0)
-            .into()
+        cpl_interp::trace::resumed_tail_until(
+            &program.ir,
+            input,
+            output,
+            config.into(),
+            steps,
+            stop.0,
+        )
+        .into()
     }
 
     /// The untraced run talking to its judge, and every byte the judge
@@ -84,7 +97,7 @@ pub mod trace {
         output: &mut (dyn Write + Send),
         config: TraceConfig,
     ) -> Outcome {
-        cpl_interp::trace::interactive(&program.ir, input.0, output, config).into()
+        cpl_interp::trace::interactive(&program.ir, input.0, output, config.into()).into()
     }
 
     /// A run recorded on a thread of its own, which traces any window of
@@ -95,12 +108,16 @@ pub mod trace {
         /// Records `program`'s run on `input` as `config` counts its steps.
         pub fn start(program: Program, input: Vec<u8>, config: TraceConfig) -> Replay {
             let program = program.ir.clone();
-            Replay(cpl_interp::trace::Replay::start(program, input, config))
+            Replay(cpl_interp::trace::Replay::start(
+                program,
+                input,
+                config.into(),
+            ))
         }
 
         /// The run's trace from `config.from_step` on.
         pub fn window(&self, config: TraceConfig) -> Outcome {
-            self.0.window(config).into()
+            self.0.window(config.into()).into()
         }
     }
 }
@@ -135,7 +152,7 @@ pub mod replay {
 
     /// Runs `rerun`'s call again with the fns of its edited program.
     pub fn replay(rerun: Rerun, config: TraceConfig) -> Replay {
-        cpl_interp::replay::replay(rerun.today(), config)
+        cpl_interp::replay::replay(rerun.today(), config.into())
     }
 
     /// [`replay`] where no thread can be started, its calls held to
@@ -146,7 +163,12 @@ pub mod replay {
         limits: Limits,
         stop: Stop,
     ) -> Replay {
-        cpl_interp::replay::replay_on_this_thread(rerun.today(), config, limits.into(), stop.0)
+        cpl_interp::replay::replay_on_this_thread(
+            rerun.today(),
+            config.into(),
+            limits.into(),
+            stop.0,
+        )
     }
 }
 
