@@ -62,7 +62,7 @@ impl Cx<'_> {
             .find(|f| self.d.f(*f).owner == Some(decls::Owner::Struct(s)))
     }
     /// Whether some impl of `tr` is for `t`'s own type.
-    fn has_impl(&self, t: &Ty, tr: TraitId) -> bool {
+    pub(super) fn has_impl(&self, t: &Ty, tr: TraitId) -> bool {
         (self.d.impls_of(tr)).any(|im| !im.blanket() && self.d.fits_impl(im, t).is_some())
     }
     /// The traits open type `v` is bound by so far.

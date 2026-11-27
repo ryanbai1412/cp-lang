@@ -32,8 +32,9 @@ impl Cx<'_> {
         let (lo, end, within) = self.typed_ends(lo, hi, inclusive);
         (lo, end, within, chars)
     }
-    /// `domain V = e` where `e` is not a range: an `Int` count is `0..e`, and a type with no
-    /// positions to count is E0302 (R04.2.29). False for a form that is not built yet.
+    /// `domain V = e` where `e` is not a range: an `Int` count is `0..e`, a value with an impl
+    /// of the `@counted` trait has its count's positions, and any other type is E0302
+    /// (R04.2.29). False for a form that is not built yet.
     pub(super) fn counted_domain(
         &mut self,
         name: &str,
@@ -45,55 +46,79 @@ impl Cx<'_> {
         let v = self.expr_as_typed(def, None);
         let t = self.shallow(&v.ty);
         // A form this checker cannot build yet (`read(1..=100)`, `V + K`) leaves no trace.
-        let unbuilt = |cx: &mut Self| {
-            cx.errors.truncate(diagnosed);
-            cx.obligations.truncate(owed);
-            false
-        };
-        if self.errors.len() > diagnosed {
-            return unbuilt(self);
+        // An owed bound no impl meets (`Range<V>: Add`) is a form not built yet too.
+        let unmet = (self.obligations[owed..].iter()).any(|(t, r, ..)| {
+            let t = self.shallow(t);
+            !matches!(t, Ty::Var(_))
+                && !(self.d.impls_of(r.tr)).any(|im| self.d.fits_impl(im, &t).is_some())
+        });
+        if self.errors.len() > diagnosed
+            || unmet
+            || matches!(t, Ty::Error | Ty::Var(_) | Ty::Param(_))
+        {
+            self.errors.truncate(diagnosed);
+            self.obligations.truncate(owed);
+            return false;
         }
-        let scalar = |t: &Ty| matches!(t, Ty::F64 | Ty::Bool | Ty::Char | Ty::U64 | Ty::Unit);
-        let positionless = match &t {
-            Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..) => {
-                let zero = TExpr {
-                    kind: TK::Int(0),
-                    ty: Ty::Int,
-                    span: def.span,
-                };
-                let (lo, end, within) = self.typed_ends(zero, v, false);
-                self.declare_domain(name, lo, end, within, span, out);
-                return true;
-            }
-            Ty::Error => true,
-            t if scalar(t) => true,
-            // A struct of scalars holds no sequence whose elements could be positions.
-            Ty::Struct(s, args, _) if args.is_empty() => {
-                let fields = &self.d.s(*s).fields;
-                !fields.is_empty()
-                    && fields
-                        .iter()
-                        .all(|(_, f)| matches!(f, Ty::Int) || scalar(f))
-            }
-            _ => false,
+        let at = |kind, ty| TExpr {
+            kind,
+            ty,
+            span: def.span,
         };
-        if !positionless {
-            return unbuilt(self);
-        }
-        if t != Ty::Error {
+        let count = match (&t, self.d.counted_trait) {
+            (Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..), _) => Some(v),
+            (_, Some(tr)) if self.has_impl(&t, tr) => self.count_of(tr, v, out),
+            _ => None,
+        };
+        let Some(count) = count else {
             let what = format!(
                 "a domain is a count, a range of `Int`s, a sequence's positions or another \
                  domain, not `{}`",
                 self.show(&t)
             );
             self.err(def.span, Msg::verdict(cpl_diag::codes::TYPE_MISMATCH, what));
-        }
-        // A top-level domain decls set aside is declared here, though it has no positions.
-        if let Some(&Ty::Dom(i)) = self.doms.get(name) {
-            self.domains[i].name = name.to_string();
-        }
-        self.doms.insert(name.to_string(), Ty::Error);
+            // A top-level domain decls set aside is declared here, though it has no positions.
+            if let Some(&Ty::Dom(i)) = self.doms.get(name) {
+                self.domains[i].name = name.to_string();
+            }
+            self.doms.insert(name.to_string(), Ty::Error);
+            return true;
+        };
+        let (lo, end, within) = self.typed_ends(at(TK::Int(0), Ty::Int), count, false);
+        self.declare_domain(name, lo, end, within, span, out);
         true
+    }
+    /// `xs`'s count through its impl of the `@counted` trait `tr`, `xs` read once in `out`.
+    fn count_of(&mut self, tr: TraitId, xs: TExpr, out: &mut Vec<TStmt>) -> Option<TExpr> {
+        let (span, ty) = (xs.span, xs.ty.clone());
+        let &(n, m) = self.d.trait_fns(tr).first()?;
+        let method = n.clone();
+        // A variable is read where it is; any other value is held first, so it runs once.
+        let recv = match xs.kind {
+            TK::Var(_) => xs,
+            _ => {
+                let v = self.bind(&format!("$counted{}", self.domains.len()), ty.clone());
+                out.push(TStmt::Let(v, xs));
+                TExpr {
+                    kind: TK::Var(v),
+                    ty: ty.clone(),
+                    span,
+                }
+            }
+        };
+        self.reach(m);
+        let r = decls::TraitRef { tr, args: vec![] };
+        (self.obligations).push((ty.clone(), r.clone(), span, Origin::Bound));
+        let kind = TK::CallTrait {
+            tr: r,
+            method,
+            recv: Some(Box::new(TArg::Value(recv))),
+            self_ty: Box::new(ty.clone()),
+            targs: Box::new([]),
+            args: vec![],
+        };
+        let ty = self.trait_ret(m, vec![ty]);
+        Some(TExpr { kind, ty, span })
     }
     fn typed_ends(
         &mut self,

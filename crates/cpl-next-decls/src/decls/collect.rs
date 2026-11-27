@@ -407,6 +407,10 @@ fn layer(
                                 &mut d.errors,
                             );
                         }
+                        if marked(s, "counted") {
+                            let e = again(item, s, "counted");
+                            once(&mut d.counted_trait, id, e, &mut d.errors);
+                        }
                         if marked(s, "range_bounds") {
                             let e = again(item, s, "range_bounds");
                             once(&mut d.bounds_trait, id, e, &mut d.errors);

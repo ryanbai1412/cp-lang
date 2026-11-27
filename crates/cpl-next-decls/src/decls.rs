@@ -380,6 +380,8 @@ pub struct Decls {
     pub literals: Vec<(String, TraitId)>,
     /// The trait core marks `@convert`: `T(x)` for a core type `T` is `x`'s impl of it at `T`.
     pub convert_trait: Option<TraitId>,
+    /// `@counted`: the trait whose one fn counts `domain V = xs`'s positions (R04.2.29).
+    pub counted_trait: Option<TraitId>,
     /// `@range_bounds`: the trait whose fns give a range's first and past-the-end cuts (R04b.1.5).
     pub bounds_trait: Option<TraitId>,
     /// Per fn, the type parameters that key an array it names: domain parameters (R04.2).

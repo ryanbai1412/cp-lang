@@ -208,7 +208,8 @@ library or by this spec:
   `@literal("[]")` and `@literal("[;]")` (the traits a list literal and an
   array fill build through, by their fns in declared order, R01.8.8),
   `@range_bounds` (the trait whose first and second fns give the cuts
-  `[r]T` covers, R04b.1.5),
+  `[r]T` covers, R04b.1.5), `@counted` (the trait whose one fn counts the
+  positions of `domain V = xs`, R04.2.29),
   `@derive` (a trait every struct whose fields all have it gets field by
   field), `@coerce` (an implicit conversion fn), `@pattern` (the fn a pattern
   over its type calls), `@variant_check` (the check an `Int` converted to

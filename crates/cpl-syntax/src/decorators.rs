@@ -134,6 +134,10 @@ pub const DECORATORS: &[(&str, &str)] = &[
         "`@literal(\"[]\")` on a trait: the trait a list literal builds through; `\"[;]\"` an array fill",
     ),
     (
+        "counted",
+        "on a trait: the trait whose one fn counts `domain V = xs`'s positions",
+    ),
+    (
         "range_bounds",
         "on a trait: the trait whose fns give a range's ends",
     ),
