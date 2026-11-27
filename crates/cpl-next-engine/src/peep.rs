@@ -4,13 +4,14 @@
 //! and jumps to the next op go. Every target, table and mark is renumbered with them.
 //! A drop or retain of a value that owns nothing goes, and so does a line kept and put back
 //! around ops that can neither trap nor change the line.
-use crate::compile::{Code, Op, LEAVE};
+use crate::compile::{Code, Op, Reg, LEAVE};
 use crate::layout::Layouts;
 
 pub(crate) fn tidy(c: &mut Code) {
     for b in 0..c.blocks.len() {
         let mut ops = std::mem::take(&mut c.blocks[b]);
-        let keep = quiet(&ops, &c.tables, &c.lays);
+        let chained: Vec<Reg> = c.chains.iter().flatten().map(|&(_, save)| save).collect();
+        let keep = quiet(&ops, &c.tables, &c.lays, &chained);
         renumber(&mut ops, &mut c.marks[b], &mut c.tables, &keep);
         loop {
             thread(&mut ops, &mut c.tables);
@@ -93,12 +94,17 @@ fn thread(ops: &mut [Op], tables: &mut [Vec<u32>]) {
 /// `Enter`/`Restore` pair with only quiet ops between and no jump into them. A trap's line
 /// and call stack are read only when something traps, so a pair nothing in can trap at is
 /// never seen.
-fn quiet(ops: &[Op], tables: &[Vec<u32>], lays: &Layouts) -> Vec<bool> {
+/// `chained`: the saves a trap's call stack reads (`Code::chains`), kept where it can trap.
+fn quiet(ops: &[Op], tables: &[Vec<u32>], lays: &Layouts, chained: &[Reg]) -> Vec<bool> {
     let mut keep = vec![true; ops.len()];
     let mut aimed = vec![false; ops.len() + 1];
-    for t in ops.iter().flat_map(|op| targets(op, tables)) {
-        if let Some(a) = aimed.get_mut(t as usize) {
-            *a = true;
+    let mut edges = Vec::new();
+    for (from, op) in ops.iter().enumerate() {
+        for t in targets(op, tables) {
+            if let Some(a) = aimed.get_mut(t as usize) {
+                *a = true;
+                edges.push((from, t as usize));
+            }
         }
     }
     for (i, op) in ops.iter().enumerate() {
@@ -106,21 +112,65 @@ fn quiet(ops: &[Op], tables: &[Vec<u32>], lays: &Layouts) -> Vec<bool> {
             keep[i] = lays.owns[lay as usize];
         }
     }
-    // Innermost pairs first, so a pair around a quiet pair goes too.
+    // Innermost pairs first, so a pair around a quiet pair goes too. A pair goes when it
+    // leaves the line a trap reports as it was: what it encloses keeps the line, and the line
+    // it enters is the one already set, or none, or nothing it encloses can trap.
     for i in (0..ops.len()).rev() {
-        let Op::Enter { save, .. } = ops[i] else {
+        let Op::Enter { line, save } = ops[i] else {
             continue;
         };
         let mut j = i + 1;
-        while j < ops.len() && !aimed[j] && (!keep[j] || still(&ops[j])) {
+        let mut trapless = true;
+        while j < ops.len() && (!keep[j] || keeps_line(&ops[j])) {
+            trapless &= !keep[j] || (still(&ops[j]) && !aimed[j]);
             j += 1;
         }
-        if j < ops.len() && !aimed[j] && matches!(ops[j], Op::Restore { save: s } if s == save) {
+        let set = trapless
+            || !chained.contains(&save)
+                && (line == 0 || line_at(ops, &keep, &aimed, i) == Some(line));
+        // Every way to the restore passes the enter: no jump from outside lands between.
+        let closed = || {
+            edges
+                .iter()
+                .all(|&(from, t)| !(i < t && t <= j) || (i < from && from < j))
+        };
+        if j < ops.len()
+            && matches!(ops[j], Op::Restore { save: s } if s == save)
+            && set
+            && closed()
+        {
             keep[i] = false;
             keep[j] = false;
         }
     }
     keep
+}
+
+/// The line set when `ops[i]` starts, if every way to it sets the same one.
+fn line_at(ops: &[Op], keep: &[bool], aimed: &[bool], i: usize) -> Option<u32> {
+    for k in (0..i).rev() {
+        match ops[k] {
+            Op::At { line } | Op::Enter { line, .. } if line != 0 && keep[k] => return Some(line),
+            op if keep[k] && !keeps_line(&op) => return None,
+            _ if aimed[k] => return None,
+            _ => {}
+        }
+    }
+    None
+}
+
+/// An op that leaves the line a trap reports as it is, though it may trap at it.
+fn keeps_line(op: &Op) -> bool {
+    !matches!(
+        op,
+        Op::At { .. }
+            | Op::Enter { .. }
+            | Op::Restore { .. }
+            | Op::Call { .. }
+            | Op::Region { .. }
+            | Op::Yield { .. }
+            | Op::LendOut { .. }
+    )
 }
 
 /// An op that cannot trap or change the line a trap reports.
@@ -255,10 +305,51 @@ mod tests {
         ];
         let mut lays = Layouts::default();
         lays.owns.push(false);
-        let keep = quiet(&ops, &[], &lays);
+        let keep = quiet(&ops, &[], &lays, &[]);
         assert_eq!(
             keep,
             [true, false, false, true, false, true, true, false, true, false]
+        );
+    }
+
+    /// Around a `Take`, which can trap, a pair entering no line goes, and so does one entering
+    /// the line already set; one entering another line stays, as does one whose set line is
+    /// reached by a jump that may set another. A jump inside a pair keeps it from going only
+    /// when it comes from outside. A pair whose save a call stack reads stays.
+    #[test]
+    fn a_line_already_set_is_not_entered_again() {
+        let ops = vec![
+            Op::Enter { line: 0, save: 9 },
+            Op::Take { d: 1, p: 0, n: 1 },
+            Op::Restore { save: 9 },
+            Op::At { line: 5 },
+            Op::Enter { line: 5, save: 9 },
+            Op::Take { d: 1, p: 0, n: 1 },
+            Op::Restore { save: 9 },
+            Op::Enter { line: 4, save: 9 },
+            Op::Take { d: 1, p: 0, n: 1 },
+            Op::Restore { save: 9 },
+            Op::Imm { d: 1, v: 0 },
+            Op::Enter { line: 4, save: 9 },
+            Op::Take { d: 1, p: 0, n: 1 },
+            Op::Restore { save: 9 },
+            Op::JumpIf { c: 1, t: 10 },
+            Op::Enter { line: 0, save: 9 },
+            Op::JumpIf { c: 1, t: 18 },
+            Op::Take { d: 1, p: 0, n: 1 },
+            Op::Restore { save: 9 },
+            Op::Enter { line: 0, save: 9 },
+            Op::Take { d: 1, p: 0, n: 1 },
+            Op::Restore { save: 9 },
+            Op::JumpIf { c: 1, t: 21 },
+        ];
+        let keep = quiet(&ops, &[], &Layouts::default(), &[]);
+        let kept: Vec<usize> = (0..ops.len()).filter(|&i| keep[i]).collect();
+        let chained = quiet(&ops, &[], &Layouts::default(), &[9]);
+        assert_eq!(chained.iter().filter(|&&k| k).count(), ops.len());
+        assert_eq!(
+            kept,
+            [1, 3, 5, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 19, 20, 21, 22]
         );
     }
 }
