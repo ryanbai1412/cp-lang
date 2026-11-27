@@ -4,7 +4,11 @@ use std::collections::BTreeSet;
 
 /// What each nested fn a block binds reads from around it, together with what its siblings do:
 /// a sibling's value is rebuilt from the same captures (R05.10.5).
-pub fn group_free(lambdas: &[LambdaInfo], ss: &[TStmt]) -> HashMap<LambdaId, BTreeSet<VarRef>> {
+pub fn group_free(
+    lambdas: &[LambdaInfo],
+    top: bool,
+    ss: &[TStmt],
+) -> HashMap<LambdaId, BTreeSet<VarRef>> {
     let mut own = HashMap::new();
     for s in ss {
         if let TStmt::Let(
@@ -19,11 +23,8 @@ pub fn group_free(lambdas: &[LambdaInfo], ss: &[TStmt]) -> HashMap<LambdaId, BTr
                 continue;
             }
             let (mut used, mut bound) = (BTreeSet::new(), BTreeSet::new());
-            free_vars(body, &mut used, &mut bound);
-            for p in params {
-                bound.insert(VarRef::Local(*p));
-                bound.insert(VarRef::Global(*p));
-            }
+            free_vars(body, top, &mut used, &mut bound);
+            bound.extend(params.iter().map(|&p| param_ref(top, p)));
             own.insert(
                 *id,
                 used.difference(&bound).copied().collect::<BTreeSet<_>>(),
@@ -42,9 +43,10 @@ pub fn group_free(lambdas: &[LambdaInfo], ss: &[TStmt]) -> HashMap<LambdaId, BTr
         .collect()
 }
 
-pub fn free_vars(e: &TExpr, used: &mut BTreeSet<VarRef>, bound: &mut BTreeSet<VarRef>) {
+/// `top`: the code is top-level, where every binding, a lambda's parameters too, is a global.
+pub fn free_vars(e: &TExpr, top: bool, used: &mut BTreeSet<VarRef>, bound: &mut BTreeSet<VarRef>) {
     let arg = |a: &TArg, used: &mut BTreeSet<VarRef>, bound: &mut BTreeSet<VarRef>| match a {
-        TArg::Value(v) | TArg::Mut(v) => free_vars(v, used, bound),
+        TArg::Value(v) | TArg::Mut(v) => free_vars(v, top, used, bound),
     };
     match &e.kind {
         TK::Var(v) => {
@@ -69,7 +71,7 @@ pub fn free_vars(e: &TExpr, used: &mut BTreeSet<VarRef>, bound: &mut BTreeSet<Va
         | TK::DomFrom(_, b, _)
         | TK::CutOrd(_, b)
         | TK::DomNth(_, b)
-        | TK::DomHas(_, b) => free_vars(b, used, bound),
+        | TK::DomHas(_, b) => free_vars(b, top, used, bound),
         TK::Call { recv, args, .. } => {
             if let Some(r) = recv {
                 arg(r, used, bound);
@@ -83,46 +85,43 @@ pub fn free_vars(e: &TExpr, used: &mut BTreeSet<VarRef>, bound: &mut BTreeSet<Va
             args.iter().for_each(|a| arg(a, used, bound));
         }
         TK::CallValue { callee, args } => {
-            free_vars(callee, used, bound);
+            free_vars(callee, top, used, bound);
             args.iter().for_each(|a| arg(a, used, bound));
         }
-        TK::Struct(fs) => fs.iter().for_each(|a| free_vars(a, used, bound)),
+        TK::Struct(fs) => fs.iter().for_each(|a| free_vars(a, top, used, bound)),
         TK::Lambda { params, body, .. } => {
-            free_vars(body, used, bound);
-            for p in params {
-                bound.insert(VarRef::Local(*p));
-                bound.insert(VarRef::Global(*p));
-            }
+            free_vars(body, top, used, bound);
+            bound.extend(params.iter().map(|&p| param_ref(top, p)));
         }
         TK::Bin(_, a, b, _) | TK::Cmp(_, a, b) | TK::Slot(a, b) => {
-            free_vars(a, used, bound);
-            free_vars(b, used, bound);
+            free_vars(a, top, used, bound);
+            free_vars(b, top, used, bound);
         }
         TK::If(a, b, c) => {
-            free_vars(a, used, bound);
-            free_vars(b, used, bound);
-            free_vars(c, used, bound);
+            free_vars(a, top, used, bound);
+            free_vars(b, top, used, bound);
+            free_vars(c, top, used, bound);
         }
         TK::Block(ss, v) => {
             for s in ss {
                 match s {
                     TStmt::Let(v, e) => {
                         bound.insert(*v);
-                        free_vars(e, used, bound);
+                        free_vars(e, top, used, bound);
                     }
-                    TStmt::Expr(e) | TStmt::Assert(e, ..) => free_vars(e, used, bound),
+                    TStmt::Expr(e) | TStmt::Assert(e, ..) => free_vars(e, top, used, bound),
                     TStmt::Assign(a, b) | TStmt::While(a, b) => {
-                        free_vars(a, used, bound);
-                        free_vars(b, used, bound);
+                        free_vars(a, top, used, bound);
+                        free_vars(b, top, used, bound);
                     }
                     TStmt::For(v, a, b, c) => {
                         bound.insert(*v);
-                        free_vars(a, used, bound);
-                        free_vars(b, used, bound);
-                        free_vars(c, used, bound);
+                        free_vars(a, top, used, bound);
+                        free_vars(b, top, used, bound);
+                        free_vars(c, top, used, bound);
                     }
                     TStmt::Return(Some(e)) | TStmt::Yield(e) | TStmt::LendOut(e) => {
-                        free_vars(e, used, bound)
+                        free_vars(e, top, used, bound)
                     }
                     TStmt::Region {
                         callee,
@@ -134,21 +133,29 @@ pub fn free_vars(e: &TExpr, used: &mut BTreeSet<VarRef>, bound: &mut BTreeSet<Va
                     } => {
                         bound.insert(*var);
                         if let Callee::Value(c) = callee {
-                            free_vars(c, used, bound);
+                            free_vars(c, top, used, bound);
                         }
                         if let Some(r) = recv {
                             arg(r, used, bound);
                         }
                         args.iter().for_each(|a| arg(a, used, bound));
-                        free_vars(body, used, bound);
+                        free_vars(body, top, used, bound);
                     }
                     _ => {}
                 }
             }
             if let Some(v) = v {
-                free_vars(v, used, bound);
+                free_vars(v, top, used, bound);
             }
         }
         _ => {}
+    }
+}
+
+/// A lambda parameter's variable: a global at top level, a local in a fn.
+fn param_ref(top: bool, p: usize) -> VarRef {
+    match top {
+        true => VarRef::Global(p),
+        false => VarRef::Local(p),
     }
 }

@@ -851,7 +851,8 @@ impl Lw<'_> {
                 }
             }
             TK::Block(ss, v) => {
-                self.group_free.extend(group_free(&self.typed.lambdas, ss));
+                self.group_free
+                    .extend(group_free(&self.typed.lambdas, self.in_main, ss));
                 for s in ss {
                     self.stmt(s, out);
                 }
@@ -1332,7 +1333,7 @@ impl Lw<'_> {
         let info = &self.typed.lambdas[id.0];
         let mut used = BTreeSet::new();
         let mut bound: BTreeSet<VarRef> = BTreeSet::new();
-        free_vars(body, &mut used, &mut bound);
+        free_vars(body, self.in_main, &mut used, &mut bound);
         used.extend(self.group_free.get(&id).into_iter().flatten().copied());
         let saved_remap = self.remap.clone();
         let param_refs: Vec<VarRef> = params
@@ -1372,21 +1373,15 @@ impl Lw<'_> {
             remap.insert(*p, l);
             fparams.push((l, lent));
         }
-        // Locals bound inside the body keep their numbers in a fn; at top level they become locals here.
-        let inner_base = if self.in_main {
-            None
-        } else {
-            Some(self.fn_locals.clone())
-        };
+        // Locals bound inside the body keep the numbers the checker gave them, in a fn or at top level.
         for b in &bound {
             let ty = match b {
-                VarRef::Local(i) => match inner_base.as_ref().map(|ls| ls.get(*i).cloned()) {
-                    Some(None) => {
+                VarRef::Local(i) => match self.fn_locals.get(*i) {
+                    Some(t) => t.clone(),
+                    None => {
                         self.errors.push(Unbuilt::LambdaMakesLambda.into());
                         Ty::Error
                     }
-                    Some(Some(t)) => t,
-                    None => Ty::Error,
                 },
                 VarRef::Global(i) => match self.typed.globals.get(*i) {
                     Some(g) => g.ty.clone(),
