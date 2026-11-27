@@ -128,6 +128,8 @@ fn traps(op: &Op, places: &[PlaceCode]) -> bool {
                 | Op::Text { .. }
                 | Op::InputLeft { .. }
                 | Op::RawEmpty { .. }
+                | Op::Drop { .. }
+                | Op::Retain { .. }
                 | Op::At { .. }
                 | Op::Enter { .. }
                 | Op::Restore { .. }
@@ -1161,6 +1163,14 @@ mod tests {
         assert!(!traps(&Op::Put { p: 0, s: 2, n: 1 }, &places));
         assert!(traps(&Op::Put { p: 1, s: 2, n: 1 }, &places));
         assert!(traps(&Op::Peek { d: 2, p: 1 }, &places));
+    }
+
+    /// Releasing or retaining a value runs no code that can trap, so a block whose ways leave
+    /// different lines before its frame's releases still reads its lines from a table.
+    #[test]
+    fn a_release_needs_no_line() {
+        assert!(!traps(&Op::Drop { s: 1, lay: 0 }, &[]));
+        assert!(!traps(&Op::Retain { s: 1, lay: 0 }, &[]));
     }
 
     /// `t = x; t[i] = v; x = t` writes `x[i]` and then copies `x` to `t`, which nothing reads,
