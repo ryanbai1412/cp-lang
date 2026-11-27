@@ -330,6 +330,8 @@ pub enum CheckKind {
     Todo,
     /// An `Int` key becoming a position of the domain an array is keyed by (R07.2.17).
     Key,
+    /// What the checker could not type: it fails wherever it runs.
+    Untyped,
 }
 
 impl CheckKind {
@@ -344,6 +346,7 @@ impl CheckKind {
             CheckKind::Unwrap => codes::UNWRAP_NONE,
             CheckKind::Todo => codes::TODO_REACHED,
             CheckKind::Key => codes::INDEX_OUT_OF_RANGE,
+            CheckKind::Untyped => codes::UNTYPED_RAN,
         }
     }
 }

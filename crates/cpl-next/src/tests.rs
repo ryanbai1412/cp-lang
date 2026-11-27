@@ -399,6 +399,31 @@ fn a_library_second_marked_declaration_is_a_duplicate() {
     );
 }
 
+/// A library fn reached only through a trait, whose body has a type error, lowers that part to
+/// a trap; a build that reaches it reports the error and is not clean, and one that does not
+/// reach it runs.
+#[test]
+fn a_build_reaching_an_untyped_library_body_reports_it() {
+    let dir = std::env::temp_dir().join(format!("cpl-untyped-{}", std::process::id()));
+    std::fs::create_dir_all(dir.join("kit")).unwrap();
+    std::fs::write(dir.join("cp.toml"), "[libs]\nkit = \"kit\"\n").unwrap();
+    let lib = "pub struct W:\n    v: Int\n\nimpl Show for W:\n    fn write_to(self, mut out: Str, sep: ?Str):\n        out.append(nope)\n";
+    std::fs::write(dir.join("kit/m.cp"), lib).unwrap();
+    let run = |src: &str| compile(&Std::read(), src, &Roots::from(&dir), false);
+    let reached = run("use kit.m.{W}\nprint(W(1))\n");
+    let unreached = run("use kit.m.{W}\nprint(W(1).v)\n");
+    std::fs::remove_dir_all(&dir).unwrap();
+    let ds: Vec<String> = (reached.err().expect("rejected").iter())
+        .map(|d| d.to_string())
+        .collect();
+    assert!(
+        ds.iter().any(|d| d.contains("unknown name `nope`")),
+        "{ds:?}"
+    );
+    let c = unreached.expect("an untyped body it never reaches leaves it clean");
+    assert_eq!(c.run("").output, "1\n");
+}
+
 /// A `let .. else` of an error binds its name to the error: its uses say nothing more.
 #[test]
 fn a_let_else_of_an_error_binds_the_error() {

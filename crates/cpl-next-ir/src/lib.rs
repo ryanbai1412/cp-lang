@@ -12,4 +12,5 @@ pub mod prog;
 pub mod run;
 pub mod ty;
 pub mod unbuilt;
+pub mod verify;
 pub mod whole;

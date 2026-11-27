@@ -106,8 +106,10 @@ driver merges nothing by hand.
 - Every copy, move, lend and drop is a node. Nothing is implicit.
 - A callee's declared preconditions are `Check` nodes in the calling
   unit.
-- A unit with a type error lowers to a `Trap` naming it; the rest of
-  the program still runs.
+- A unit with a type error lowers each part it could not type to a
+  `Check` that always fails (`CheckKind::Untyped`), the trap, and the
+  rest of the program still runs. The trap is only the partial run: a
+  build that reaches the unit reports its diagnostic and is not clean.
 - Drops are placed once, by the ownership pass.
 - Every fact names its tier; every removed check names the facts that
   removed it.

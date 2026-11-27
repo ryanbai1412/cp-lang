@@ -330,6 +330,8 @@ pub mod codes {
     pub const RANGE_STORE: Code = Code("R0201");
     pub const ASSERTION_FAILED: Code = Code("R0401");
     pub const TODO_REACHED: Code = Code("R0402");
+    /// A part of the program with a type error ran, in a run despite its errors.
+    pub const UNTYPED_RAN: Code = Code("R0403");
     pub const BAD_INPUT_TOKEN: Code = Code("R0501");
     pub const INPUT_OUT_OF_CONTRACT: Code = Code("R0502");
     pub const STACK_EXHAUSTED: Code = Code("R0601");

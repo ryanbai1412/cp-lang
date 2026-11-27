@@ -153,6 +153,11 @@ impl Drop for Worker {
     }
 }
 
+/// The cases, by a hash of their text, whose debug compile linked an instance holding an
+/// error type (`Compiled::error_typed`).
+static ERROR_TYPED: std::sync::Mutex<std::collections::BTreeSet<u64>> =
+    std::sync::Mutex::new(std::collections::BTreeSet::new());
+
 thread_local! {
     static WORKER: std::cell::RefCell<Option<Worker>> = const { std::cell::RefCell::new(None) };
 }
@@ -173,6 +178,10 @@ impl<'a> Forms<'a> {
             }
         });
         let read = |name: &str| std::fs::read_to_string(dir.join(name)).ok();
+        if read("error-typed").is_some_and(|t| !t.is_empty()) {
+            let text = std::fs::read(path).unwrap_or_default();
+            ERROR_TYPED.lock().unwrap().insert(fnv(&text));
+        }
         let compiled = Ran {
             status: read("compiled.code").and_then(|c| c.parse().ok()),
             stdout: read("compiled.out").unwrap_or_default(),
@@ -758,6 +767,12 @@ fn every_case_is_where_the_lists_say() {
         .filter(|(_, (_, detail))| detail.starts_with("lower:"))
         .map(|((id, _), _)| format!("{id}\n"))
         .collect();
+    // Instances holding an error type: the checker should have refused or resolved them.
+    let typed = ERROR_TYPED.lock().unwrap().clone();
+    let error_typed: String = (cases.iter())
+        .filter(|(_, p)| typed.contains(&fnv(&std::fs::read(p).unwrap_or_default())))
+        .map(|(id, _)| format!("{id}\n"))
+        .collect();
     let found = root.join(if only.is_some() {
         "target/cpl-next/only"
     } else {
@@ -771,6 +786,7 @@ fn every_case_is_where_the_lists_say() {
         ("refused.tsv", &refused),
         ("masked.txt", &masked),
         ("lowered.txt", &lowered),
+        ("error-typed.txt", &error_typed),
         ("queue.txt", &queue),
     ] {
         std::fs::write(found.join(name), text).unwrap();
@@ -828,6 +844,16 @@ fn every_case_is_where_the_lists_say() {
         off.push(format!(
             "{id}: an error only lowering finds: add it to tests/lowered.txt"
         ));
+    }
+    let listed_error_typed = list(&here.join("tests/error-typed.txt"));
+    for id in (error_typed.lines()).filter(|id| !listed_error_typed.contains_key(*id)) {
+        off.push(format!(
+            "{id}: links an instance holding an error type, which the checker should have refused or resolved"
+        ));
+    }
+    if (listed_error_typed.keys()).any(|id| only.is_none() && !error_typed.lines().any(|l| l == id))
+    {
+        println!("cases in tests/error-typed.txt hold no error type now: copy target/cpl-next/error-typed.txt over it");
     }
     for id in listed_passing
         .keys()

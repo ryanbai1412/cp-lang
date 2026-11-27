@@ -1,0 +1,10 @@
+next/n_bound_03_open_struct_meets_a_bound_later.cp
+next/n_bounded_02_max_min_fold_by_their_ends.cp
+next/n_default_01_names_type_params.cp
+next/n_fromop_01_bare_op_at_a_bound.cp
+next/n_fromop_02_closure_takes_fn_type_impl.cp
+next/n_fromop_03_std_monoid_of_an_operator.cp
+next/n_gen_09_generator_fn_item_as_a_value.cp
+next/n_impl_05_fn_item_meets_a_fn_types_impl.cp
+next/n_link_01_call_nothing_runs_keeps_its_type.cp
+next/n_range_03_domain_value_ends.cp

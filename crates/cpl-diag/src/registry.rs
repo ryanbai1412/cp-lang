@@ -1032,6 +1032,16 @@ pub const REGISTRY: &[CodeInfo] = &[
         input: "",
     },
     CodeInfo {
+        code: Code("R0403"),
+        title: "part with a type error ran",
+        summary: "A run despite errors reached a part the checker could not type.",
+        explanation: "Reported via the part's own type error: a build that reaches it is refused, and only a run despite errors traps here.",
+        trigger: "",
+        fix: "",
+        mode: "reserved",
+        input: "",
+    },
+    CodeInfo {
         code: Code("R0102"),
         title: "Value outside a domain",
         summary: "`D(x)` was given an `Int` that is not a position of `D`.",

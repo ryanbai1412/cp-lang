@@ -367,5 +367,6 @@
     "std-seq/zip-rev-shorter-later-arg.cp"
   ],
   "next_library_gates": 25,
-  "next_name_compares": 74
+  "next_name_compares": 74,
+  "next_error_typed": 10
 }

@@ -118,6 +118,11 @@ impl Program {
     pub fn proved(&self) -> &[cpl_next_ir::facts::Proved] {
         self.0.proved()
     }
+
+    /// The instances holding an error type, which the checker should have refused or resolved.
+    pub fn error_typed(&self) -> Vec<String> {
+        self.0.error_typed()
+    }
 }
 
 /// The answers for one snapshot.

@@ -602,8 +602,16 @@ impl Lw<'_> {
             TK::Float(b) => mk(EK::F64(*b)),
             TK::Bool(b) => mk(EK::Bool(*b)),
             TK::Unit => mk(EK::Unit),
+            // What the checker could not type traps where it runs (contract 4); the checker
+            // said why, and a build that reaches it is not clean.
             TK::Error => {
                 (self.untyped).push(self.off.at(e.span));
+                out.push(Stmt::Check {
+                    kind: CheckKind::Untyped,
+                    cond: mk(EK::Bool(false)),
+                    msg: "a part with a type error ran".into(),
+                    site,
+                });
                 mk(EK::Unit)
             }
             TK::Text(t) => mk(EK::Text(t.clone())),
@@ -883,7 +891,7 @@ impl Lw<'_> {
                             ret: Ty::Int,
                             targs: Vec::new(),
                         };
-                        int(EK::Call(ord, vec![Arg::Value(v)], site))
+                        self.spill(int(EK::Call(ord, vec![Arg::Value(v)], site)), out)
                     }
                     _ => v,
                 };
