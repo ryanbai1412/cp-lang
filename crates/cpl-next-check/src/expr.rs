@@ -192,7 +192,7 @@ impl<'a> Cx<'a> {
     fn pack_variadic(
         &mut self,
         args: &[ast::Arg],
-        formals: &[Formal<'a>],
+        formals: &[Formal<'_>],
         span: Span,
     ) -> Option<Vec<ast::Arg>> {
         let at = formals.iter().position(|f| f.variadic)?;
@@ -245,7 +245,7 @@ impl<'a> Cx<'a> {
     pub(super) fn args(
         &mut self,
         args: &[ast::Arg],
-        formals: &[Formal<'a>],
+        formals: &[Formal<'_>],
         span: Span,
     ) -> (Vec<TStmt>, Vec<TArg>) {
         let packed;
@@ -398,7 +398,38 @@ impl<'a> Cx<'a> {
                 }),
             });
         }
+        if formals.iter().any(|f| f.written.is_some()) {
+            self.check_jagged(formals, &mut out, &mut pre);
+        }
         (pre, out)
+    }
+    /// `f(a, b)` for `fn f(n: 0..=30, k: 0..=n)`: each argument is bound to its parameter's
+    /// name, so `k`'s written range reads `n` as `a`, and `b` is checked into it here, at the
+    /// call, where an ordinary range parameter's argument is (R06.4.1).
+    fn check_jagged(&mut self, formals: &[Formal<'_>], out: &mut [TArg], pre: &mut Vec<TStmt>) {
+        self.scopes.push(HashMap::new());
+        for (f, a) in formals.iter().zip(out.iter_mut()) {
+            if let (TArg::Value(v), false) = (a, f.variadic) {
+                let ty = v.ty.clone();
+                let tmp = self.bind(f.name, ty.clone());
+                let read = TExpr {
+                    kind: TK::Var(tmp),
+                    ty,
+                    span: v.span,
+                };
+                pre.push(TStmt::Let(tmp, std::mem::replace(v, read)));
+            }
+        }
+        for (f, a) in formals.iter().zip(out.iter()) {
+            let (Some(w), TArg::Value(v)) = (f.written, a) else {
+                continue;
+            };
+            let ty = self.body_ty_open(w, &[], v.span, pre);
+            let checked = self.coerce(v.clone(), &ty);
+            let tmp = self.bind("$jagged", ty);
+            pre.push(TStmt::Let(tmp, checked));
+        }
+        self.scopes.pop();
     }
     fn arg(&mut self, a: &ast::Arg, pty: &Ty, pmut: bool) -> TArg {
         let inner = match &a.value.kind {
@@ -475,6 +506,8 @@ impl<'a> Cx<'a> {
             .iter()
             .map(|p| Formal {
                 label: &p.label,
+                name: &p.name,
+                written: p.written.as_ref(),
                 ty: sub.ty(&p.ty),
                 mutable: p.mutable,
                 named_only: p.named_only,
@@ -1004,15 +1037,23 @@ impl<'a> Cx<'a> {
                 };
             }
         };
-        let formals: Vec<Formal> = ps
-            .into_iter()
-            .map(|ty| {
+        let sig = match self.shallow(&callee.ty) {
+            Ty::Clo(c) => match &*c {
+                CloRef::Lambda(id, ..) => self.lambdas[id.0].written.clone(),
+                CloRef::Item(_) => Vec::new(),
+            },
+            _ => Vec::new(),
+        };
+        let formals: Vec<Formal> = (ps.into_iter().enumerate())
+            .map(|(k, ty)| {
                 let (ty, mutable) = match ty {
                     Ty::Mut(t) => (*t, true),
                     t => (t, false),
                 };
                 Formal {
                     label: "",
+                    name: sig.get(k).map_or("", |s| s.0.as_str()),
+                    written: sig.get(k).and_then(|s| s.1.as_ref()),
                     ty,
                     mutable,
                     named_only: false,
@@ -1900,6 +1941,11 @@ impl<'a> Cx<'a> {
 /// A parameter as a call binds it.
 pub(super) struct Formal<'d> {
     pub label: &'d str,
+    /// What its fn's body calls it.
+    pub name: &'d str,
+    /// A jagged parameter's written range (`k: 0..=n`), read with each earlier parameter's name
+    /// bound to its argument.
+    pub written: Option<&'d ast::Type>,
     pub ty: Ty,
     pub mutable: bool,
     pub named_only: bool,

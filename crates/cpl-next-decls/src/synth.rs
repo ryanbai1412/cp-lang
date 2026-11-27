@@ -962,7 +962,7 @@ fn memo_names(f: &ast::FnDecl) -> (String, String) {
 /// A `@memo` fn's table type `T<K, R>` and its making, `T<K, R>()`. `K` is the one parameter's
 /// type, else the tuple of them.
 fn memo_new(f: &ast::FnDecl, span: cpl_diag::Span, table: &str) -> (ast::Type, ast::Expr) {
-    let f = &*jagged(f);
+    let f = &*jagged(f).0;
     let name = |text: &str| ast::Name {
         text: text.to_string(),
         span,
@@ -1101,11 +1101,13 @@ pub(crate) fn memo_fns(f: &ast::FnDecl, s: &ast::Stmt, table: &str) -> [ast::Stm
         }),
         ..f.clone()
     };
+    // Its arguments were checked where the wrapper was called.
     let body = ast::FnDecl {
         name: ast::Name {
             text: body_name,
             span: f.name.span,
         },
+        params: jagged(f).0.params.clone(),
         ..f.clone()
     };
     let (_, make) = memo_new(f, span, table);
@@ -1189,9 +1191,9 @@ pub fn memo_block<'s>(
 
 /// `fn c(n: 0..=30, k: 0..=n)`: a range parameter whose ends name earlier parameters, so a
 /// `@memo(array)` table over it is jagged (R06.4.1). Its type is the range those ends reach over
-/// the earlier parameters' ranges, `0..=30`, and the body starts by binding it at its written
-/// range, which checks it there (R04.3.4).
-pub fn jagged(f: &ast::FnDecl) -> std::borrow::Cow<'_, ast::FnDecl> {
+/// the earlier parameters' ranges, `0..=30`; a call checks its argument into the written range,
+/// where an ordinary range parameter's is checked (R04.3.4).
+pub fn jagged(f: &ast::FnDecl) -> Jagged<'_> {
     use ast::{BinOp, ExprKind};
     fn reach(e: &ast::Expr, known: &HashMap<&str, (i64, i64)>) -> Option<(i64, i64)> {
         match &e.kind {
@@ -1210,7 +1212,7 @@ pub fn jagged(f: &ast::FnDecl) -> std::borrow::Cow<'_, ast::FnDecl> {
         }
     }
     let mut known = HashMap::new();
-    let (mut params, mut binds) = (f.params.clone(), Vec::new());
+    let (mut params, mut written) = (f.params.clone(), Vec::new());
     for p in &mut params {
         let Some(TypeKind::Range { lo, hi, inclusive }) = p.ty.as_ref().map(|t| &t.kind) else {
             continue;
@@ -1233,59 +1235,28 @@ pub fn jagged(f: &ast::FnDecl) -> std::borrow::Cow<'_, ast::FnDecl> {
                 span,
             }))
         };
-        let written = p.ty.replace(ast::Type {
+        let wide = ast::Type {
             kind: TypeKind::Range {
                 lo: int(a),
                 hi: int(b),
                 inclusive: true,
             },
             span,
-        });
-        binds.push(ast::Stmt {
-            kind: StmtKind::Let {
-                mutable: false,
-                pat: ast::Pattern {
-                    kind: ast::PatternKind::Name(p.name.text.clone()),
-                    span,
-                },
-                ty: written,
-                init: Some(ast::Expr {
-                    kind: ExprKind::Name(p.name.text.clone()),
-                    span,
-                }),
-                otherwise: None,
-                guard: None,
-            },
-            span,
-            decorators: Vec::new(),
-            public: false,
-        });
+        };
+        if let Some(t) = p.ty.replace(wide) {
+            written.push((p.name.text.clone(), t));
+        }
         known.insert(p.name.text.as_str(), (a, b));
     }
-    if binds.is_empty() {
-        return std::borrow::Cow::Borrowed(f);
+    if written.is_empty() {
+        return (std::borrow::Cow::Borrowed(f), written);
     }
-    let body = match &f.body {
-        FnBody::Block(b) => ast::Block {
-            stmts: binds.into_iter().chain(b.stmts.iter().cloned()).collect(),
-            span: b.span,
-        },
-        FnBody::Expr(e) => ast::Block {
-            stmts: (binds.into_iter())
-                .chain([ast::Stmt {
-                    kind: StmtKind::Expr(e.clone()),
-                    span: e.span,
-                    decorators: Vec::new(),
-                    public: false,
-                }])
-                .collect(),
-            span: e.span,
-        },
-        FnBody::None => return std::borrow::Cow::Borrowed(f),
-    };
-    std::borrow::Cow::Owned(ast::FnDecl {
+    let f = ast::FnDecl {
         params,
-        body: FnBody::Block(body),
         ..f.clone()
-    })
+    };
+    (std::borrow::Cow::Owned(f), written)
 }
+
+/// A fn with each jagged parameter's type widened, and each one's written type by its name.
+pub type Jagged<'f> = (std::borrow::Cow<'f, ast::FnDecl>, Vec<(String, ast::Type)>);

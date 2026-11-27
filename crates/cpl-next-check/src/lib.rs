@@ -238,6 +238,9 @@ pub struct LambdaInfo {
     pub group: Vec<LambdaId>,
     /// What it yields: the closure a generator value walks (R07.6.2).
     pub yields: Option<Ty>,
+    /// A nested `fn` with a jagged parameter: each parameter's name, and its written range when
+    /// jagged; empty otherwise.
+    pub written: Vec<(String, Option<ast::Type>)>,
 }
 /// A range with run-time ends: the variables that hold them, each inclusive; `None` is an open end.
 struct RangeInfo {

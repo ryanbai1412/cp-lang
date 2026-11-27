@@ -131,6 +131,7 @@ impl Cx<'_> {
                     owner: self.decl,
                     group: Vec::new(),
                     yields: None,
+                    written: Vec::new(),
                 });
                 (LambdaId(self.lambdas.len() - 1), Vec::new())
             }
@@ -192,6 +193,7 @@ impl Cx<'_> {
             owner: self.decl,
             group,
             yields: None,
+            written: std::mem::take(&mut self.lambdas[id.0].written),
         };
         mk(
             TK::Lambda {
@@ -249,7 +251,17 @@ impl Cx<'_> {
                 );
                 c.fresh_sets(&t)
             };
-            let fd = &*cpl_next_decls::jagged(fd);
+            let (fd, written) = cpl_next_decls::jagged(fd);
+            let fd = &*fd;
+            let written = match written.is_empty() {
+                true => Vec::new(),
+                false => (fd.params.iter())
+                    .map(|p| {
+                        let w = written.iter().find(|w| w.0 == p.name.text);
+                        (p.name.text.clone(), w.map(|w| w.1.clone()))
+                    })
+                    .collect(),
+            };
             let params = (fd.params.iter())
                 .map(|p| p.ty.as_ref().map_or(Ty::Error, |t| quiet(self, t)))
                 .collect();
@@ -261,6 +273,7 @@ impl Cx<'_> {
                 owner: self.decl,
                 group: Vec::new(),
                 yields: None,
+                written,
             });
             let at = s.map_or(0, |s| s.span.start);
             self.group.push((at, fd.name.text.clone(), id));
@@ -296,7 +309,7 @@ impl Cx<'_> {
             kind: PatternKind::Name(text.to_string()),
             span,
         };
-        let fd = &*cpl_next_decls::jagged(fd);
+        let fd = &*cpl_next_decls::jagged(fd).0;
         let body = match &fd.body {
             FnBody::Block(b) => ast::Expr {
                 kind: ExprKind::Block(b.clone()),

@@ -101,6 +101,9 @@ pub struct Param {
     pub variadic: bool,
     /// Read in the fn's module when a call leaves the parameter out (R06.1.5).
     pub default: Option<ast::Expr>,
+    /// A jagged parameter's written range, whose ends name earlier parameters (`k: 0..=n`); `ty`
+    /// is the range those ends reach. A call checks the argument into it (R06.4.1).
+    pub written: Option<ast::Type>,
 }
 #[derive(Clone)]
 pub struct StructDecl {
@@ -1140,7 +1143,7 @@ fn add_fn(
     f: &ast::FnDecl,
     within: Within,
 ) -> FnId {
-    let jag = crate::synth::jagged(f);
+    let (jag, written) = crate::synth::jagged(f);
     let f = &*jag;
     let Within {
         owner,
@@ -1258,6 +1261,7 @@ fn add_fn(
             named_only: p.named_only,
             variadic: p.variadic,
             default: p.default.clone(),
+            written: (written.iter()).find_map(|(n, t)| (*n == p.name.text).then(|| t.clone())),
         });
     }
     let n_sets = cx.next_set.unwrap_or(0);

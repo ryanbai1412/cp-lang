@@ -123,6 +123,8 @@ impl Cx<'_> {
         let formals: Vec<Formal> = (s.fields.iter().zip(&s.defaults))
             .map(|((n, t), e)| Formal {
                 label: n,
+                name: n,
+                written: None,
                 ty: sub.ty(t),
                 mutable: false,
                 named_only: false,

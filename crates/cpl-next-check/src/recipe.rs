@@ -97,6 +97,7 @@ impl Cx<'_> {
             owner: self.decl,
             group: Vec::new(),
             yields: Some(elem.clone()),
+            written: Vec::new(),
         });
         let id = LambdaId(self.lambdas.len() - 1);
         let lambda = TExpr {
@@ -145,6 +146,7 @@ impl Cx<'_> {
             owner: self.decl,
             group: Vec::new(),
             yields: None,
+            written: Vec::new(),
         });
         let id = LambdaId(self.lambdas.len() - 1);
         self.scopes.push(HashMap::new());
