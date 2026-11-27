@@ -19,10 +19,10 @@ measured, by a mutation score or a matrix with no empty cell.
 
 | # | Suite | State | Numbers, now → target |
 |---|---|---|---|
-| 1 | Spec conformance | unmeasured | `next_not_passing` 2,672 → 0, `conformance_failing` 16 → 0; no number yet for: cases short of 6,000; cases the other engines of the new pipeline do not pass |
+| 1 | Spec conformance | unmeasured | `next_not_passing` 2,474 → 0, `conformance_failing` 16 → 0; no number yet for: cases short of 6,000; cases the other engines of the new pipeline do not pass |
 | 2 | Feature-by-context matrix | unmeasured | no number yet for: cells of the feature-by-context matrix with no case |
 | 3 | Corpus | unmeasured | no number yet for: corpus programs not accepted on every engine |
-| 4 | Std as a program | measured | `ir_builtin_names` 108 → 0, `prelude_privilege` 32 → 0, `std_names_outside_rt` 109 → 0, `backend_std_names` 8 → 0, `next_std_unchecked` 40 → 0 |
+| 4 | Std as a program | measured | `ir_builtin_names` 108 → 0, `prelude_privilege` 32 → 0, `std_names_outside_rt` 109 → 0, `backend_std_names` 8 → 0, `next_std_unchecked` 41 → 0 |
 | 5 | Checker totality | measured | `silent_unknowns` 18,176 → 0, `ir_reinfer` 12 → 0, `next_lowered` 6 → 0 |
 | 6 | Ownership soundness | unmeasured | no number yet for: ownership cases wrong in either direction, written and generated |
 
@@ -30,7 +30,7 @@ measured, by a mutation score or a matrix with no empty cell.
 
 | # | Suite | State | Numbers, now → target |
 |---|---|---|---|
-| 7 | Engine agreement | unmeasured | `next_wrong` 998 → 0; no number yet for: splits on generated programs each night; engines beyond the interpreter and the C++ |
+| 7 | Engine agreement | unmeasured | `next_wrong` 1,518 → 0; no number yet for: splits on generated programs each night; engines beyond the interpreter and the C++ |
 | 8 | Sanitized C++ | unmeasured | no number yet for: accepted cases whose C++ is not sanitizer-clean and warning-free on GCC and Clang |
 | 9 | IR stage contracts | unmeasured | no number yet for: cases a stage verifier rejects |
 | 10 | Traps | unmeasured | no number yet for: trap code by operation cells that differ between engines |
