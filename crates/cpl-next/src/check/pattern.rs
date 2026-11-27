@@ -97,7 +97,12 @@ impl Cx<'_> {
         }
     }
     /// The names `pat` binds, of no type, for a value the checker could not type.
-    fn bind_unknown(&mut self, pat: &ast::Pattern, mutable: bool, binds: &mut Vec<TStmt>) {
+    pub(super) fn bind_unknown(
+        &mut self,
+        pat: &ast::Pattern,
+        mutable: bool,
+        binds: &mut Vec<TStmt>,
+    ) {
         let span = pat.span;
         match &pat.kind {
             PatternKind::Name(n) => {
@@ -121,10 +126,11 @@ impl Cx<'_> {
                     self.bind_unknown(p, mutable, binds)
                 }
             }
-            PatternKind::Wildcard
-            | PatternKind::Domain(_)
-            | PatternKind::Literal(_)
-            | PatternKind::Error => {}
+            PatternKind::Domain(d) => {
+                self.doms.insert(d.text.clone(), Ty::Error);
+                self.refused_names.insert(d.text.clone());
+            }
+            PatternKind::Wildcard | PatternKind::Literal(_) | PatternKind::Error => {}
         }
     }
     fn present_pattern(&self, head: &str) -> bool {

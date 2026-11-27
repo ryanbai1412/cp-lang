@@ -19,6 +19,7 @@ impl Cx<'_> {
             (_, Some(decls::Member::Method(m, ts, ss))) => {
                 self.call_member(s, (m, ts, ss), vec![TArg::Value(i)], span, false)
             }
+            _ if self.mentions_error(&rt) => return Self::error_node(span),
             _ => {
                 let shown = self.show(&rt);
                 self.err(

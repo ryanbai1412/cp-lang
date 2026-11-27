@@ -485,7 +485,8 @@ impl<'a> Cx<'a> {
                     return;
                 }
                 let PatternKind::Name(name) = &pat.kind else {
-                    return self.err(s.span, "slice: unsupported pattern");
+                    self.err(s.span, "slice: unsupported pattern");
+                    return self.bind_unknown(pat, false, out);
                 };
                 let declared = ty.as_ref().map(|t| self.body_ty(t, s.span, out));
                 // A literal is never an array, so where one is declared it is the fill: its cell's
