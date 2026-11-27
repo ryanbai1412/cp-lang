@@ -84,10 +84,6 @@ impl Decls {
         trait_name: Option<&str>,
         pick: impl Fn(&FnDecl) -> bool,
     ) -> Vec<(TraitRef, Member)> {
-        let sets = match recv {
-            Ty::Struct(_, _, ss) => ss.clone(),
-            _ => Vec::new(),
-        };
         // A value's member has a `self`: `Domain.at(x)` is not `Int`'s `at`.
         let pick = |f: &FnDecl| f.self_mode != SelfMode::None && pick(f);
         let live = (self.impls_by_member.get(name).into_iter().flatten())
@@ -95,6 +91,14 @@ impl Decls {
             .filter(|im| self.live(im));
         let mut found: Vec<(u8, TraitRef, Member)> = Vec::new();
         for im in live {
+            let sets = match recv {
+                Ty::Struct(_, _, ss) => ss.clone(),
+                _ => {
+                    let mut sets = Vec::new();
+                    head_sets(&im.for_, recv, &mut sets);
+                    sets
+                }
+            };
             let Some(member) = self.impl_gives(im, recv, name, trait_name, &pick, &sets) else {
                 continue;
             };
@@ -208,6 +212,8 @@ impl Decls {
             (Some(st @ Ty::Struct(..)), _) => fit(st, recv, &mut vec![None; f.generics.len()]),
             // `self: 0..` takes an `Int` receiver as a parameter of that type takes an argument.
             (Some(Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..)), Ty::Int) => true,
+            // A fn-typed `self` takes a closure's own type, coerced in as an argument is.
+            (Some(Ty::Fn(..)), Ty::Clo(_)) => true,
             (Some(t), r) => std::mem::discriminant(t) == std::mem::discriminant(r),
             (None, _) => false,
         }
@@ -415,4 +421,22 @@ fn same_item(a: &CloRef, b: &CloRef) -> bool {
         (CloRef::Item(x), CloRef::Item(y)) => x.decl == y.decl,
         _ => a == b,
     }
+}
+
+/// The closure sets an impl's fn-type head takes from `recv`: each `SetTy::Param(k)` it holds
+/// is the set at that place in `recv` (`impl Named for (Int, Int) -> Int` on a lambda's type).
+fn head_sets(head: &Ty, recv: &Ty, out: &mut Vec<SetTy>) {
+    let (Ty::Fn(hp, hr, hs), Ty::Fn(rp, rr, rs)) = (head, recv) else {
+        return;
+    };
+    if let SetTy::Param(k) = hs {
+        if out.len() <= *k {
+            out.resize(*k + 1, SetTy::Closed(Vec::new()));
+        }
+        out[*k] = rs.clone();
+    }
+    for (h, r) in hp.iter().zip(rp) {
+        head_sets(h, r, out);
+    }
+    head_sets(hr, rr, out);
 }

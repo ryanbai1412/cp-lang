@@ -900,6 +900,20 @@ impl<'a> Cx<'a> {
         if rt == Ty::Error {
             return Self::error_node(span);
         }
+        // A closure's own type has no members: the impls of its fn type give them, as at a
+        // bound (`impl Named for (Int, Int) -> Int` gives `f.name()`).
+        let (recv, rt) = match &rt {
+            Ty::Clo(c) if self.d.lookup_member(&rt, &name.text).is_none() => {
+                let (ps, r) = self.clo_sig(c);
+                let ft = Ty::Fn(ps, Box::new(r), self.new_set());
+                if self.d.lookup_member(&ft, &name.text).is_some() {
+                    (self.coerce(recv, &ft), ft)
+                } else {
+                    (recv, rt)
+                }
+            }
+            _ => (recv, rt),
+        };
         // `recv.name` without `()` reads a `@get` fn that extends `recv` before a method of that
         // name; walked by a `for`, it names the yielding method.
         let walked = call.is_none() && self.allow_region;
@@ -1009,8 +1023,17 @@ impl<'a> Cx<'a> {
                     self.shallow(&recv.ty),
                     Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..)
                 );
-                if scalar || self.unify(&recv.ty, &st) {
-                    let recv = if scalar { self.coerce(recv, &st) } else { recv };
+                // A closure's own type meets a fn-typed `self` as an argument does: coerced in.
+                let clo = match (self.shallow(&recv.ty), self.shallow(&st)) {
+                    (Ty::Clo(c), Ty::Fn(ps, ..)) => self.clo_sig(&c).0.len() == ps.len(),
+                    _ => false,
+                };
+                if scalar || clo || self.unify(&recv.ty, &st) {
+                    let recv = if scalar || clo {
+                        self.coerce(recv, &st)
+                    } else {
+                        recv
+                    };
                     let fd = self.d.f(fid);
                     if call.is_none() && !fd.getter {
                         self.err(
