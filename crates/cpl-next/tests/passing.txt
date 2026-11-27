@@ -1251,6 +1251,8 @@ next/n_index_wrong_domain.cp
 next/n_inherent_impl.cp
 next/n_inst_lent_arg_of_a_phantom_param.cp
 next/n_into_01_list_of_a_seq_converts.cp
+next/n_into_01_list_of_a_seq_converts.cp
+next/n_intr_01_word_bit_counts.cp
 next/n_lambda_01_pattern_params.cp
 next/n_lambda_02_generator_of_tests.cp
 next/n_lambda_03_optional_fn_param.cp
@@ -1401,7 +1403,13 @@ std-bag/sorted-bag-of-a-list-is-rejected.cp
 std-bag/sorted-map-of-pairs-is-rejected.cp
 std-bag/sorted-set-of-a-list-is-rejected.cp
 std-bitset/a-domain-is-no-bitset.cp
+std-bitset/and-of-disjoint-is-empty.cp
+std-bitset/bitor-bitand-bitxor-empty.cp
 std-bitset/bitset-of-an-int-is-rejected.cp
+std-bitset/bitxor-self-is-empty.cp
+std-bitset/or-with-empty-is-self.cp
+std-bitset/set-ops.cp
+std-bitset/xor-with-self-is-empty.cp
 std-deque/deque-of-a-list-is-rejected.cp
 std-deque/linked-list-of-a-list-is-rejected.cp
 std-derive/float-part-is-not-structural-hash.cp
@@ -1436,6 +1444,7 @@ std-marks/arena-is_empty-1.cp
 std-marks/arena-len-1.cp
 std-marks/arena-new-1.cp
 std-marks/arena-reserve-1.cp
+std-math/bit-len-edges.cp
 std-math/bit-past-63-repeats-the-sign.cp
 std-math/ceil-div-signs.cp
 std-math/choose2-negative-is-zero.cp
@@ -1444,6 +1453,11 @@ std-math/choose2-zero-and-overflow-free.cp
 std-math/divmod-floor-signs.cp
 std-math/fractions.cp
 std-math/inv-mod-not-coprime.cp
+std-math/sieve-factor-one-and-prime.cp
+std-math/sieve-phi-mobius-edges.cp
+std-math/sieve-small-bounds.cp
+std-math/sieve-tables-at-one.cp
+std-math/sieve-tables-at-zero.cp
 std-math/sign-pow2.cp
 std-math/splitmix64-at-zero.cp
 std-opt/a-niche-packed-field-lends-to-a-read-only-param.cp
@@ -1524,6 +1538,9 @@ traits/Bidir/Rev--iter_rev.cp
 traits/Bidir/Slice--iter_rev.cp
 traits/Bidir/Str--iter_rev.cp
 traits/Bidir/Zipped--iter_rev.cp
+traits/BitAnd/Bitset--bitand.cp
+traits/BitOr/Bitset--bitor.cp
+traits/BitXor/Bitset--bitxor.cp
 traits/Div/Vec--div.cp
 traits/Div/Vec3--div.cp
 traits/Eq/PMultiset--eq.cp
@@ -1591,6 +1608,7 @@ traits/Sized/Rev--len.cp
 traits/Sized/Slice--len.cp
 traits/Sized/Str--len.cp
 traits/Sized/Zipped--len.cp
+traits/Sub/Bitset--sub.cp
 traits/Sub/Vec--sub.cp
 traits/Sub/Vec3--sub.cp
 widths/add-assign-traps-0.cp

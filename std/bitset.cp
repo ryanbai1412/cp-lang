@@ -2,7 +2,7 @@
 //!
 //! start: `Bitset`, `DynBitset`, `XorTrie`, `BitTrie`
 //! example: `domain D = 0..10; var b = Bitset<D>(); b.add(3); b.add(7); b.len == 2 and b.contains(7)`
-use std.seq.{Seq, take_all}
+use std.seq.{Seq, take_all, sum}
 use std.math.{bit, popcount, bit_width, ctz}
 use std.range.{Len}
 
@@ -13,7 +13,7 @@ use std.range.{Len}
 pub struct Bitset<D>:
     @bits w: List<U64>
     // The member count, or -1 after a word-parallel op until `len` is asked for.
-    n: Int
+    var n: Int
 
     /// The empty set, every word zero; the same set as `empty()`.
     ///

@@ -721,9 +721,6 @@ traits/Bidir/Items--iter_rev.cp	wrong-reject	link: E9999: no impl provides `keys
 traits/Bidir/LinkedList--iter_rev.cp	wrong-reject	check: std.deque:432:13: E0405: field `LinkedList.head` is fixed (not `var`) and cannot be assigned
 traits/Bidir/Prefix--iter_rev.cp	wrong-reject	check: program:2:11: E0203: `List<Int>` has no member `scan`
 traits/Bidir/Stepped--iter_rev.cp	wrong-reject	check: std.seq:1993:37: E0606: `S` does not implement `Indexed`
-traits/BitAnd/Bitset--bitand.cp	wrong-reject	check: std.bitset:550:35: E0201: unknown name `sum`
-traits/BitOr/Bitset--bitor.cp	wrong-reject	check: std.bitset:550:35: E0201: unknown name `sum`
-traits/BitXor/Bitset--bitxor.cp	wrong-reject	check: std.bitset:550:35: E0201: unknown name `sum`
 traits/Div/Poly--div.cp	wrong-reject	check: std.poly:867:66: E0203: `Range<T>` has no member `zero`
 traits/Eq/ByAngle--eq.cp	wrong-reject	check: E0204: std.geometry: unknown type `I128`
 traits/Eq/ByAngleFrom--eq.cp	wrong-reject	check: E0204: std.geometry: unknown type `I128`
@@ -755,7 +752,6 @@ traits/Show/Prefix--show.cp	wrong-reject	check: program:2:7: E0203: `List<Int>` 
 traits/Show/RingRange--show.cp	wrong-reject	check: program:2:7: E0203: `List<Int>` has no member `ring`
 traits/Show/RingSlice--show.cp	wrong-reject	check: program:2:7: E0203: `List<Int>` has no member `ring`
 traits/Sized/RingWindows--len.cp	wrong-reject	check: program:2:7: E0203: `List<Int>` has no member `ring`
-traits/Sub/Bitset--sub.cp	wrong-reject	check: std.bitset:583:35: E0201: unknown name `sum`
 traits/Sub/Poly--sub.cp	wrong-reject	check: std.poly:867:66: E0203: `Range<T>` has no member `zero`
 traits/Track/Window--pop.cp	wrong-reject	check: std.seq:274:43: E0302: expected `T`, found `2.hidden`
 traits/Track/Window--push.cp	wrong-reject	check: std.seq:274:43: E0302: expected `T`, found `2.hidden`
