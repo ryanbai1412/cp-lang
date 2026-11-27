@@ -99,7 +99,6 @@ core-04/g2-rev-keeps-keys.cp	wrong-reject	check: std.seq:1710:40: E0606: `S` doe
 core-04/grid-row-written-writes-the-grid.cp	wrong-reject	check: program:8:1: E0305: `Row<R, C, Int>` has no `IndexedMut` impl, so `[]` on it is not a place
 core-04/grid-rows-cols-views.cp	wrong-reject	check: program:9:14: E0301: an `Int` indexes a view keyed by `Col`: write `Col(i)`
 core-04/grid-rows-written-through.cp	wrong-reject	check: program:10:14: E0302: this is not a place that can be assigned or lent
-core-04/h-drop-take-keys.cp	split	C++: exit Some(1):  ev set BAG_B 32
 core-04/h-keyed-counts-from-zero.cp	wrong-reject	check: std.seq:2247:9: E0203: `S` has no `iter`
 core-04/h-step-keeps-source-keys.cp	wrong-reject	check: program:6:7: E0305: `Stepped<List<Int>, Int>` is not indexed: it has no `Indexed` impl
 core-04/h-step-skipped-key-traps.cp	wrong-reject	check: program:6:7: E0305: `Stepped<List<Int>, Int>` is not indexed: it has no `Indexed` impl
@@ -262,7 +261,6 @@ core-07/fold-of-and-or-over-empty-uses-identity.cp	wrong-reject	check: program:5
 core-07/for-over-views-of-temporary.cp	wrong-reject	check: std.seq:951:25: E0606: `K` has no `impl Eq`, which `==` needs (R08.1.5)
 core-07/for-walks-every-sequence.cp	wrong-reject	check: program:9:14: E0302: expected `OrdTree<_, ()>`, found `List<Int>`
 core-07/forwarding-generator-stops-early.cp	wrong-reject	check: program:19:7: E0606: `Gen<Int>` does not implement `Indexed`
-core-07/generator-expression-body-generic.cp	split	C++: exit Some(1):  ev set BAG_B 32
 core-07/generator-is-not-indexed.cp	wrong-error	wanted E0606 on line 5, got: check: program:5:7: E0305: `Gen<Int>` is not indexed: it has no `Indexed` impl
 core-07/generator-method-has-no-len.cp	wrong-error	wanted E0606 on line 5, got: check: program:5:7: E0203: `Gen<Int>` has no member `len`
 core-07/generator-with-helper-closures-stops-early.cp	wrong-reject	check: program:15:7: E0606: `Gen<Int>` does not implement `Indexed`
@@ -279,7 +277,6 @@ core-07/list-key-domain-is-int.cp	wrong-reject	link: E0606: a type argument is u
 core-07/list-scan-indexed-by-count.cp	wrong-reject	check: program:4:11: E0203: `List<Int>` has no member `scan`
 core-07/map-index-read-absent-traps.cp	wrong-trap	wanted R0001 on line 4, got: trap: R0101: line 4: key outside the sequence
 core-07/map-view-drop-len-calls-none.cp	wrong-reject	check: std.seq:1720:50: E0606: `S` does not implement `Indexed`
-core-07/map-view-drop-skips-dropped.cp	split	C++: exit Some(1):  ev set BAG_B 32
 core-07/map-view-reread-calls-again.cp	no-cxx	g++ failed on 172f114f239870c8.cpp: | 172f114f239870c8.cpp: In function ‘cpl_unit f1()’: | 172f114f239870c8.cpp:561:16: error: cannot convert ‘S10*’ to ‘const S15*’ in initialization |   561 |     l23 = S14{(&l50)};
 core-07/min-k-max-k.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
 core-07/mut-alias-of-map-key-finds-it-once.cp	wrong-reject	check: program:5:9: E0201: unknown name `HashMap`
@@ -328,7 +325,6 @@ core-07/step-on-list.cp	wrong-reject	check: std.seq:2144:37: E0606: `S` does not
 core-07/str-from-char-seq.cp	wrong-reject	check: program:5:11: E0302: expected `List<Char>`, found `Filtered<Str, Char>`
 core-07/suffix-and-all-but-one-folds-are-scans.cp	wrong-reject	check: program:7:7: E0606: `D` does not implement `Sub`
 core-07/sum-prod-identity.cp	wrong-reject	check: std.seq:33:15: E0606: `T` does not implement `Domain`
-core-07/take-drop-clamped.cp	split	C++: exit Some(1):  ev set BAG_B 32
 core-07/take-on-a-draining-generator-leaves-the-rest.cp	wrong-reject	check: program:7:10: E0606: `Gen<Int>` does not implement `Indexed`
 core-07/take-on-generator.cp	wrong-reject	check: program:5:7: E0606: `Gen<Int>` does not implement `Indexed`
 core-07/take-on-infinite-generator-is-lazy.cp	wrong-reject	check: program:15:7: E0606: `Gen<Int>` does not implement `Indexed`
@@ -1127,7 +1123,6 @@ std-seq/count-in-wrong-way-traps-checked.cp	wrong-reject	check: program:5:7: E02
 std-seq/cycle-on-list-literal.cp	wrong-reject	check: program:2:7: E0203: `List<Int>` has no member `cycle`
 std-seq/dedup-first-some-tally-group.cp	wrong-reject	check: program:6:1: E0606: `Optional<Int>` does not implement `Show`
 std-seq/deduped-edges.cp	wrong-reject	check: std.seq:463:28: E0606: `T` has no `impl Eq`, which `!=` needs (R08.1.5)
-std-seq/drop-past-len-is-empty.cp	split	C++: exit Some(3):  ev set BAG_B 32
 std-seq/every-view-keeps-the-traits-it-wraps.cp	wrong-reject	check: std.seq:1730:54: E0606: `S` does not implement `Indexed`
 std-seq/flat-map-keeps-closure-element.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
 std-seq/inverse-empty.cp	wrong-reject	check: program:3:7: E0203: `List<Int>` has no member `inverse`
@@ -1207,7 +1202,6 @@ std-seq/seq-u37-suffix-folds.cp	wrong-reject	check: program:3:7: E0203: `Rev<Lis
 std-seq/seq-u38-prefix-excl-method.cp	wrong-reject	check: program:11:16: E0305: `Prefix<D, Int>` is not indexed: it has no `Indexed` impl
 std-seq/seq-u39-combined-scan.cp	wrong-reject	check: program:5:9: E0203: `List<Int>` has no member `scan`
 std-seq/seq-u41-frequency-counts.cp	wrong-reject	check: program:4:7: E0305: `Counter<Int, Int>` is not indexed: it has no `Indexed` impl
-std-seq/seq-u44-take-drop-while.cp	split	C++: exit Some(1):  ev set BAG_B 32
 std-seq/seq-u45-step.cp	wrong-reject	link: std.seq:2120:47: E0606: `S` does not implement `Domain`
 std-seq/seq-u46-user-ord.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
 std-seq/seq-u47-sort-slice.cp	wrong-reject	check: program:4:1: E0403: a `mut self` method needs a place
@@ -1256,7 +1250,6 @@ std-seq/tally-unseen-reads-zero.cp	wrong-reject	check: program:4:7: E0305: `Coun
 std-seq/valleys-match-brute.cp	wrong-reject	check: program:11:14: E0203: `List<Int>` has no member `valleys`
 std-seq/windows-zero-traps.cp	wrong-reject	check: program:2:25: E0902: 0 is outside `1..=9223372036854775807`
 std-seq/wrong-way-check-allows-constant-predicates.cp	wrong-reject	check: program:5:7: E0203: `List<Int>` has no member `bsearch`
-std-seq/zip-rev-shorter-later-arg.cp	split	C++: exit Some(1):  ev set BAG_B 32
 std-seq/zip-walks-a-stream-beside-positions.cp	wrong-reject	check: program:5:20: E0606: `()` does not implement `Seq`
 std-slope/concave-suffix-max-of-flat.cp	wrong-reject	check: std.lazy:798:22: E0302: expected `Int`, found `()`
 std-slope/concave.cp	wrong-reject	check: std.lazy:798:22: E0302: expected `Int`, found `()`

@@ -463,6 +463,8 @@ impl Lw<'_> {
         lower: impl Fn(&mut Self, &TExpr, &mut Vec<Stmt<Ty>>) -> Expr<Ty>,
     ) -> Vec<Expr<Ty>> {
         let mut done: Vec<Expr<Ty>> = Vec::new();
+        // A binding nothing can write reads the same after any call, so it is not saved.
+        let mut fixed: Vec<bool> = Vec::new();
         for e in es {
             let before = out.len();
             let mut tail = Vec::new();
@@ -472,7 +474,7 @@ impl Lw<'_> {
             // earlier operand reads, so that operand stays a read of its place and is
             // not copied. A call can, so the operand is saved.
             if !tail.iter().all(writes_nothing) {
-                for d in done.iter_mut() {
+                for (d, _) in done.iter_mut().zip(&fixed).filter(|(_, &f)| !f) {
                     // A place that may be viewed stays passed: ownership takes the saved
                     // copy only where the call also writes the place.
                     if let EK::Pass(_, true, _) = d.kind {
@@ -495,6 +497,8 @@ impl Lw<'_> {
             }
             let _ = before;
             out.extend(tail);
+            fixed.push(matches!(e.kind, TK::Var(VarRef::Local(l))
+                if !self.var_locals.get(l).copied().unwrap_or(true)));
             done.push(v);
         }
         done
