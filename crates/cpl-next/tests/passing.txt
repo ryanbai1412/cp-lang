@@ -2901,3 +2901,9 @@ std-subset/folds-take-its-members.cp
 next/n_free_len_01_any_sized.cp
 std-subset/for-walks-members.cp
 std-subset/subset-domain-too-large.cp
+core-10/read-record-fields.cp
+core-10/read-count-is-an-expression.cp
+core-10/read-record-str-fields.cp
+core-10/tree-edges-over-edge-domain.cp
+std-graph/undirected-over-an-inline-range-edge-array.cp
+core-10/read-struct-by-its-fields.cp

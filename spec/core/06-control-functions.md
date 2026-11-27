@@ -213,7 +213,9 @@ library or by this spec:
   `[r]T` covers, R04b.1.5), `@counted` (the trait whose one fn counts the
   positions of `domain V = xs`, R04.2.29),
   `@derive` (a trait every struct whose fields all have it gets field by
-  field), `@coerce` (an implicit conversion fn), `@pattern` (the fn a pattern
+  field: its one fn on each field, as `Clone`'s; or, for a fn that makes a
+  `Self` from a first parameter `x`, `x.f<F>()` at each field's type `F`,
+  as `Read`'s `input.read<F>()`), `@coerce` (an implicit conversion fn), `@pattern` (the fn a pattern
   over its type calls), `@variant_check` (the check an `Int` converted to
   an enum goes through), `@list`, `@str`, `@array` and `@map`
   (the structs `[a, b]`, `"s"`, `[D]T` and `[k: v]` are, whatever a

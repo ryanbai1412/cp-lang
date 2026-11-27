@@ -7,6 +7,7 @@ use std.tuple.{Tuple2, Tuple3, Tuple4}
 use std.io.{io}
 
 /// A type the input reads, token by token, in order, from the `Input` it is given (R10.2.1).
+@derive
 pub trait Read:
     fn read(mut input: Input) -> Self
 
