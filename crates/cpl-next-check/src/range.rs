@@ -836,6 +836,24 @@ impl Cx<'_> {
             _ => false,
         }
     }
+    /// A position's integer. On a type parameter that is its `Domain` impl's `dom_ord` member,
+    /// reached here so the impl an instance runs is checked (R04.2.15).
+    pub(super) fn position_int(&mut self, e: TExpr) -> TExpr {
+        if matches!(self.shallow(&e.ty), Ty::Param(_)) {
+            let d = self.d;
+            let ord = (d.domain_trait.iter())
+                .flat_map(|tr| d.traits[tr.0].methods.values())
+                .find(|&&m| d.f(m).intrinsic.as_deref() == Some("dom_ord"));
+            if let Some(&m) = ord {
+                self.reach(m);
+            }
+        }
+        TExpr {
+            span: e.span,
+            kind: TK::DomOrd(Box::new(e)),
+            ty: Ty::Int,
+        }
+    }
     /// `v + k`, `v - k` and `v - w` on positions are the `Int` arithmetic of their integers; any
     /// other operator takes `Int(v)` first (R04.3.3). Not a position's operator: `l` and `r` back.
     pub(super) fn position_arith(
@@ -849,16 +867,12 @@ impl Cx<'_> {
         if !(lp || rp) || matches!(op, BinOp::And | BinOp::Or | BinOp::Coalesce) {
             return Err(Box::new((l, r)));
         }
-        let int = |e: TExpr| TExpr {
-            span: e.span,
-            kind: TK::DomOrd(Box::new(e)),
-            ty: Ty::Int,
-        };
         let same = rp && self.shallow(&l.ty) == self.shallow(&r.ty);
         match op {
             BinOp::Add | BinOp::Sub if lp && (!rp || op == BinOp::Sub && same) => {
-                let r = if rp { int(r) } else { r };
-                Ok(self.binary(op, int(l), r, span))
+                let r = if rp { self.position_int(r) } else { r };
+                let l = self.position_int(l);
+                Ok(self.binary(op, l, r, span))
             }
             BinOp::Add | BinOp::Sub if lp && rp => Err(Box::new((l, r))),
             _ => {

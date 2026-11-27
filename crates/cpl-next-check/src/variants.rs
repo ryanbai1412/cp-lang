@@ -18,7 +18,7 @@ impl Cx<'_> {
                 _ => false,
             };
             if !bounded && matches!(self.shallow(&v.ty), Ty::Dom(_) | Ty::Param(_)) {
-                return mk(TK::DomOrd(Box::new(v)), Ty::Int);
+                return self.position_int(v);
             }
         }
         let v = match self.shallow(&v.ty) {

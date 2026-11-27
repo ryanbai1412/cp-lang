@@ -1794,6 +1794,7 @@ next/n_pattern_01_refutable_patterns_test_and_bind.cp
 next/n_pattern_02_domain_patterns_test_membership.cp
 next/n_pattern_03_string_literal_patterns.cp
 next/n_place_01_mut_place_bindings.cp
+next/n_position_01_param_int_reaches_ord.cp
 next/n_position_arith.cp
 next/n_q_01_question_extent.cp
 next/n_rand_01_rand_draws_one_stream_on_every_engine.cp
