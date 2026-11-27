@@ -4,7 +4,7 @@
 
 The traits that give `==`, `<`, `+`, `-`, `*`, `/`, `%`, `-a`, `^`, `|`, `&` and `in` their meaning (R08.1.5), `T.zero` and `T.one`, and the numbers' own impls of them. Core re-exports them, so no module imports them.
 
-Import: `use std.ops.{...}`.
+In prelude (no `use` needed): `Bounded`.
 
 ## `trait Eq`
 
@@ -45,3 +45,7 @@ The numbers' own operators, so `T: Add` holds of them.
 ## `trait One`
 
 `T.one`: the identity of `T`'s `*`, where a product starts.
+
+## `trait Bounded`
+
+`T.MIN`, `T.MAX`: the least and greatest values of `T`, so `max` and `min` over it have an identity (R02.2.1, decision 580).
