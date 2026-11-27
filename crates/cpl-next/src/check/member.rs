@@ -72,6 +72,29 @@ impl<'a> Cx<'a> {
             span,
         }
     }
+    /// `x.f(a)` where `f` is a fn without `self` in scope: the call it means is `f(x, a)`
+    /// (R06.1.2).
+    fn free_fn_help(
+        &self,
+        base: &ast::Expr,
+        name: &ast::Name,
+        call: Option<&[ast::Arg]>,
+    ) -> Option<String> {
+        let args = call?;
+        let Some(decls::Named::Fn(f)) = self.d.views[self.module.0].get(&name.text) else {
+            return None;
+        };
+        if self.d.f(*f).self_ty.is_some() {
+            return None;
+        }
+        let mut written = vec![self.text(base.span).to_string()];
+        written.extend(args.iter().map(|a| self.text(a.value.span).to_string()));
+        let m = &name.text;
+        Some(format!(
+            "`{m}` is a free fn, not a method: `{m}({})`",
+            written.join(", ")
+        ))
+    }
     /// A fn this module declares with a `self` of the receiver's own type is never called when
     /// the type has a member of its name: the member is found first (R08.1.4).
     fn hidden_by_member(&mut self, rt: &Ty, base: &ast::Expr, name: &ast::Name) {
@@ -295,7 +318,8 @@ impl<'a> Cx<'a> {
             }
             None => {
                 self.missing.push(name.text.clone());
-                self.err(
+                let help = self.free_fn_help(base, name, call);
+                self.err_help(
                     span,
                     format!(
                         "{}: `{}` has no member `{}`",
@@ -303,6 +327,7 @@ impl<'a> Cx<'a> {
                         self.show(&rt),
                         name.text
                     ),
+                    help,
                 );
                 TExpr {
                     kind: TK::Error,

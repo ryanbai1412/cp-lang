@@ -659,6 +659,7 @@ next/a_check_10_member_hides_own_fn.cp
 next/a_check_11_bool_caret.cp
 next/a_check_12_bool_bar.cp
 next/a_check_13_param_needs_type.cp
+next/a_check_14_free_fn_as_method.cp
 next/a_clos_01_list_captured_by_reference.cp
 next/a_clos_02_let_list_capture.cp
 next/a_clos_04_struct_field_closure_shares_var.cp
