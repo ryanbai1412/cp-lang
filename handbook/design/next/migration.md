@@ -101,6 +101,34 @@ commit that keeps one.
   input. It becomes `fn read(mut input: Input)`, reading
   `input.read<Str>()`, with a `read(from:)` case for `Mod`.
 
+**Switching `cpl` onto cpl-next.** The shipped `cpl` runs only the old
+pipeline. It moves by putting cpl-next behind `cpl-facade`'s queries,
+not by rewriting a subcommand: every subcommand already reads
+`cpl-facade` (contract 9), so the switch is one landing that changes
+what answers those queries and deletes the old answerers. Until then,
+each query below gets a cpl-next answer that only the harness reaches
+(rule 5), with a case comparing it to the old one. A query is ready
+when its blockers are gone and its cases agree. The switch lands when
+every row is ready. A subcommand that needs no compiler (`setup`,
+`new`, `fetch`, `judges`, `vendor`, `locate`, `migrate`) has no row.
+
+| Order | Subcommands | Queries | Blocked on |
+|---|---|---|---|
+| 1 | `check`, `check --json`, `fix` | diagnostics, verdict, fixes | stage 3's exit (cpl-next today: 2,674 passing, 1,518 wrong, 165 masked); `fix` needs every fix the old checker offers carried on cpl-next's `Diag` |
+| 2 | `run` with fixed input, `test`, `watch`, `bench` | run with `RunInput`, `Stop`, `Limits`; entry roots (`@test`, `@alt`, `@check`, interactor) | the engine runs `&str` to an `Outcome`, with no `Stop` (time limit, cancel), no stack limit, no streamed output and no interactive input; cpl-next has no entry roots, only library `Roots` |
+| 3 | `build`, `judge`, `submit` | C++ with `Checks` and a profile; size bar | `cpl-next-cpp` emits one program with no `Checks` levels and no profile; the C++ size bar (END-STATE #15) on its output |
+| 4 | `run --trace`, `explain`, `interact`, replay, `dap` | events, windows, replay of one call, frames | the engine's events (the engine gap: these ship in the switching landing); ring buffer and window (`last_steps`, `from_step`); frames for DAP; locals at a trap for `explain` |
+| 5 | `profile`, `cover` | line counts | per-line counts from the engine |
+| 6 | `stress` | run, trace, C++ | rows 2 to 4; its 7 lowering entry points (stage 6 removes them, but the switch deletes that lowering, so stress reads only the facade by then) |
+| 7 | `lsp`, `doc`, `lint` | hover, definition, completion, signatures, the built-in catalog | lane I's `Scope` and `Signatures` views; `cpl-lsp` and `cpl-lint` still name `cpl_check` or `cpl_facade::today` (about 35 lines); lint's tree matching moves in stage 8, but anything it asks the checker must be a facade query first |
+| - | `fmt` | none | nothing in stage 5: it reads only the syntax tree, which stage 8 replaces |
+
+Rows 1 to 3 are the milestone's path (write, run, submit) and go
+first. Row 4 decides the switch date, since the old VM cannot outlive
+today's lowering. `facade_today_uses` counts the tool lines that still
+reach a compiler type through the facade; it reaches 0 before the
+switch, so no tool notices what sits behind the facade.
+
 **Why this order.** Stage 3 was first written as finishing today's
 checker in place. It is the new pipeline's own front half instead
 (decided 2026-11-25): today's checker is keyed on library names
