@@ -156,6 +156,19 @@ impl Subst<'_> {
 }
 
 /// Replaces each result slot of a signature's result type.
+/// Every type parameter `t` mentions.
+pub fn params_in(t: &Ty, out: &mut std::collections::BTreeSet<usize>) {
+    match t {
+        Ty::Param(i) => {
+            out.insert(*i);
+        }
+        Ty::Raw(e) | Ty::Ref(e) | Ty::Lent(e) => params_in(e, out),
+        Ty::Struct(_, ts, _) => ts.iter().for_each(|t| params_in(t, out)),
+        Ty::Fn(ps, r, _) => ps.iter().chain([&**r]).for_each(|t| params_in(t, out)),
+        _ => {}
+    }
+}
+
 pub fn map_slots(t: &Ty, f: &dyn Fn(usize) -> SetTy) -> Ty {
     let set = |s: &SetTy| match s {
         SetTy::RetSlot(k) => f(*k),

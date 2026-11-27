@@ -226,6 +226,7 @@ dependencies = [
  "cpl-next-decls",
  "cpl-next-engine",
  "cpl-next-ir",
+ "cpl-next-own",
  "cpl-syntax",
  "cpl-wait",
 ]
@@ -263,6 +264,16 @@ name = "cpl-next-ir"
 version = "0.3.0"
 dependencies = [
  "cpl-diag",
+]
+
+[[package]]
+name = "cpl-next-own"
+version = "0.3.0"
+dependencies = [
+ "cpl-diag",
+ "cpl-next-check",
+ "cpl-next-decls",
+ "cpl-next-ir",
 ]
 
 [[package]]

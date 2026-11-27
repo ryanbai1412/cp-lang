@@ -15,8 +15,8 @@ pub use diag::Kind;
 mod inst;
 mod interp;
 mod lower;
+use cpl_next_own as own;
 pub use modules::{Roots, Std};
-mod own;
 
 pub use interp::{Outcome, Trap};
 

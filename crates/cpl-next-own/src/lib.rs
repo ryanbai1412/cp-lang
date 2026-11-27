@@ -5,14 +5,14 @@
 //! with the field path kept, so `p.a` and `p.b` do not overlap (R05.8.1). A call through a
 //! function value is the join of the closures its set can hold; a set that is a parameter
 //! of the fn stays symbolic in the summary and is filled in at each call.
-use crate::check::*;
-use crate::decls::{Decls, Owner, SelfMode};
-use crate::diag::Msg;
-use crate::inst::{CTy, Program};
-use crate::ir::{Arg, Expr, Place, PrintPiece, Site, Stmt, EK};
-use crate::plain::{plain, plain_in};
-use crate::ty::*;
 use cpl_diag::{codes, Code, Span};
+use cpl_next_check::*;
+use cpl_next_decls::decls::{Decls, Owner, SelfMode};
+use cpl_next_decls::diag::Msg;
+use cpl_next_decls::plain::{plain, plain_in};
+use cpl_next_ir::ir::{Arg, Expr, Place, PrintPiece, Site, Stmt, EK};
+use cpl_next_ir::prog::{CTy, Program};
+use cpl_next_ir::ty::*;
 use std::collections::{BTreeSet, HashMap};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -142,7 +142,7 @@ pub struct Owned {
 pub fn lends(d: &Decls, f: FnId) -> BTreeSet<usize> {
     let fd = d.f(f);
     let mut held = BTreeSet::new();
-    crate::inst::params_in(&fd.ret, &mut held);
+    params_in(&fd.ret, &mut held);
     let recv = (fd.self_mode != SelfMode::None).then_some(fd.self_ty.as_ref());
     let tys: Vec<&Ty> = (recv.flatten().into_iter())
         .chain(fd.params.iter().map(|p| &p.ty))
@@ -154,7 +154,7 @@ pub fn lends(d: &Decls, f: FnId) -> BTreeSet<usize> {
                 (Ty::Param(k), _) => held.contains(k),
                 (_, Ty::Param(k)) => {
                     let mut ps = BTreeSet::new();
-                    crate::inst::params_in(t, &mut ps);
+                    params_in(t, &mut ps);
                     ps.contains(k)
                 }
                 _ => false,
@@ -597,7 +597,7 @@ impl Cx<'_> {
     /// The arguments a call to `f` stores where they outlive it, receiver first.
     fn kept_args(&self, f: FnId) -> BTreeSet<usize> {
         match &self.d.f(f).intrinsic {
-            Some(n) => crate::ir::Intr::named(n)
+            Some(n) => cpl_next_ir::ir::Intr::named(n)
                 .map(|i| i.keeps().iter().copied().collect())
                 .unwrap_or_default(),
             None => self.keeps.get(&f).cloned().unwrap_or_default(),
@@ -606,7 +606,7 @@ impl Cx<'_> {
     /// The arguments a call to `f` lends to its result, receiver first (R05.5.3).
     fn lent_args(&self, f: FnId) -> BTreeSet<usize> {
         match &self.d.f(f).intrinsic {
-            Some(n) => crate::ir::Intr::named(n)
+            Some(n) => cpl_next_ir::ir::Intr::named(n)
                 .map(|i| i.lends().iter().copied().collect())
                 .unwrap_or_default(),
             None => lends(self.d, f),

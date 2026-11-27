@@ -48,18 +48,6 @@ fn held_params(d: &Decls, s: StructId) -> BTreeSet<usize> {
     out
 }
 
-pub(crate) fn params_in(t: &Ty, out: &mut BTreeSet<usize>) {
-    match t {
-        Ty::Param(i) => {
-            out.insert(*i);
-        }
-        Ty::Raw(e) | Ty::Ref(e) | Ty::Lent(e) => params_in(e, out),
-        Ty::Struct(_, ts, _) => ts.iter().for_each(|t| params_in(t, out)),
-        Ty::Fn(ps, r, _) => ps.iter().chain([&**r]).for_each(|t| params_in(t, out)),
-        _ => {}
-    }
-}
-
 /// A trait's fn as an item with no `Self` (`+` passed uncalled): it has no impl, and nothing runs it.
 fn selfless(d: &Decls, key: &InstKey) -> bool {
     let FuncKey::Decl(m) = key.func else {
