@@ -3,7 +3,7 @@ core-01/argmax-names-the-position.cp	wrong-reject	check: program:5:13: E0201: un
 core-01/compound-assign-key-evaluated-once.cp	wrong-reject	check: std.hashmap: E0204: unknown type `HashMap`
 core-01/comprehension-if-let-binds-later-clauses.cp	wrong-reject	check: program:5:13: E0303: expected 1 arguments, found 2
 core-01/comprehension-is-binds-in-its-and-chain.cp	wrong-reject	check: program:5:1: E0606: `Optional<Int>` does not implement `Show`
-core-01/double-index.cp	wrong-accept	wanted E0503 on line 4, ran and printed: 2
+core-01/double-index.cp	wrong-error	wanted E0503 on line 4, got: link: E0606: a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one
 core-01/grammar-spellings-derive.cp	wrong-reject	check: program:7:45: E0302: expected `Array<V, Int>`, found `Slice<Array<V, Int>>`
 core-01/if-is-branch-view-meets-owned-else.cp	wrong-reject	check: program:6:28: E0302: expected `Str`, found `Slice<Str>`
 core-01/let-else-generic-std-return.cp	wrong-reject	check: std.graph:213:9: E0302: this cannot be walked with `for`
@@ -14,17 +14,17 @@ core-01/rb1-q09-lends-needs-arrow.cp	wrong-error	wanted E0103 on line 5, got: ch
 core-01/rb1-q34-chain-with-eq.cp	wrong-error	wanted E0111 on line 3, got: check: program:3:18: E0302: expected `Int`, found `Bool`
 core-01/rejected-spellings-replacements-run.cp	wrong-reject	check: program:8:1: E0302: this cannot be walked with `for`
 core-01/stepped-slice-is-a-walk.cp	wrong-accept	wanted E0309 on line 4, ran and printed: 
-core-02/a-2d-shape-without-new-rejected.cp	wrong-error	wanted E0203 on line 8, got: check: program:8:13: E0302: expected `Int`, found `Array<Tuple2<R, C>, Int>`
+core-02/a-2d-shape-without-new-rejected.cp	wrong-error	wanted E0203 on line 8, got: decls: E0204: unknown type `R2`
 core-02/alias-walks-as-aliased-type.cp	wrong-reject	check: program:6:10: E0201: unknown name `G`
 core-02/coalesce-optional-default-keeps-some.cp	wrong-reject	check: program:7:62: E0806: nothing here says what `None` is an optional of; write the type
-core-02/counted-array-as-list.cp	wrong-reject	check: program:7:13: E0302: expected `List<Int>`, found `Array<$range23, Int>`
-core-02/counted-arrays-share-keys.cp	wrong-reject	check: program:8:33: E0301: a `$range23` indexes a `[$range24]` array: index it with a `$range24`
+core-02/counted-array-as-list.cp	wrong-reject	check: program:7:13: E0302: expected `List<Int>`, found `Array<$range0, Int>`
+core-02/counted-arrays-share-keys.cp	wrong-reject	check: program:8:33: E0301: a `$range0` indexes a `[$range1]` array: index it with a `$range1`
 core-02/enum-field-runtime-domain.cp	wrong-reject	check: program:8:9: E0606: `Cmd` does not implement `Read`
-core-02/fresh-domain-bare-field-beside-struct-escapes.cp	wrong-error	wanted E0313 on line 8, got: check: program:8:28: E0302: expected `List<Int>`, found `Array<P, Int>`
+core-02/enum-level-tags-is-removed.cp	wrong-accept	wanted E0503 on line 4, ran and printed: Up
 core-02/fresh-type-block-escape.cp	wrong-accept	wanted E0313 on line 3, ran and printed: 1
 core-02/generic-bound-to-a-range-element-has-its-ends.cp	wrong-reject	check: program:6:34: E0606: `T` does not implement `Domain`
 core-02/implicit-type-param.cp	wrong-reject	decls: E0204: unknown type `T`
-core-02/large-local-array.cp	wrong-reject	check: program:4:27: E0302: expected `Array<$range23, Int>`, found `Array<$range24, Int>`
+core-02/large-local-array.cp	wrong-reject	check: program:4:27: E0302: expected `Array<$range0, Int>`, found `Array<$range1, Int>`
 core-02/let-keeps-range.cp	wrong-accept	wanted E0902 on line 6, ran and printed: 
 core-02/lift-add.cp	wrong-reject	check: program:5:7: E0303: `..xs` takes positional or named arguments, not both
 core-02/lowercase-none-local-beside-none-named-arg.cp	wrong-reject	check: program:4:7: E0303: `..xs` takes positional or named arguments, not both
@@ -35,7 +35,6 @@ core-02/no-i32.cp	wrong-error	wanted E0901 on line 3, got: check: program:3:1: E
 core-02/opaque-struct-field-private.cp	wrong-error	wanted E0203 on line 4, got: check: program:4:1: E0606: `Raw<Int>` does not implement `Show`
 core-02/optional-compare.cp	wrong-error	wanted E0308 on line 4, got: check: program:4:4: E0606: `Optional<Int>` does not implement `Add`
 core-02/optional-is-not-a-seq.cp	wrong-error	wanted E0302 on line 5, got: check: program:5:1: E0203: `Optional<Int>` has no `iter`
-core-02/optional-min-max-skip-none-on-either-side.cp	wrong-reject	check: program:10:1: E0606: `Optional<I>` does not implement `Show`
 core-02/optional-walks-through-present.cp	wrong-reject	check: program:7:14: E0302: expected `Int`, found `Optional<Int>`
 core-02/range-alias-ends-are-its-min-and-max.cp	wrong-reject	check: program:7:12: E0606: `a function` does not implement `FromOp`
 core-02/range-alias-has-its-ranges-ends.cp	wrong-reject	check: program:5:7: E0201: unknown name `M`
@@ -43,7 +42,7 @@ core-02/range-type-argument-is-anonymous-domain.cp	wrong-reject	check: program:8
 core-02/range-type-arguments-index-a-2d-segtree.cp	wrong-reject	check: std.segtree:1126:17: E0606: `M` does not implement `FromOp`
 core-02/rb1-q23-optional-ordering-does-not-lift.cp	wrong-error	wanted E0308 on line 4, got: check: program:4:4: E0606: `Optional<Int>` does not implement `Add`
 core-02/rb1-q24-min-assign-into-none.cp	wrong-reject	check: program:6:20: E0606: `Optional<Int>` does not implement `Add`
-core-02/some-is-a-fn-value.cp	wrong-reject	check: program:7:25: E0302: expected `Array<$0..=1, Optional<Int>>`, found `Mapped<Array<$0..=1, Int>, Int, Optional<Int>>`
+core-02/some-is-a-fn-value.cp	wrong-reject	check: program:7:25: E0302: expected `Array<$range2, Optional<Int>>`, found `Mapped<Array<$range0, Int>, Int, Optional<Int>>`
 core-02/static-fn-is-a-fn-value.cp	wrong-reject	check: program:8:9: E0201: unknown name `P`
 core-02/str-from-slice-copies.cp	wrong-reject	check: program:4:13: E0302: expected `List<Char>`, found `Slice<Str>`
 core-02/str-plus-int.cp	wrong-error	wanted E0309 on line 3, got: check: program:4:9: E0606: `Str` does not implement `Add`
@@ -53,18 +52,20 @@ core-02/struct-same-arity-is-duplicate.cp	wrong-error	wanted E0202 on line 5, go
 core-02/token-set-is-an-enum.cp	wrong-reject	check: program:6:22: E0606: `D` does not implement `Read`
 core-02/type-alias-walks-as-its-type.cp	wrong-reject	check: program:7:10: E0201: unknown name `G`
 core-02/unit-is-ordered.cp	wrong-reject	check: program:9:11: E0606: `()` has no `impl Eq`, which `==` needs (R08.1.5)
-core-03/annotation-widens-fresh-read.cp	wrong-reject	check: program:5:17: E0302: expected `Array<$range23, Int>`, found `Array<$range24, 0..=5>`
+core-03/annotation-widens-fresh-read.cp	wrong-reject	check: program:5:17: E0302: expected `Array<$range0, Int>`, found `Array<$range1, 0..=5>`
 core-03/fenwick-range-elements-widen.cp	wrong-reject	check: program:6:7: E0606: `1..=1000000000` does not implement `Add`
-core-03/generic-fn-reads-a-narrow-array-at-its-width.cp	wrong-reject	check: program:10:7: E0606: `Array<$range23, a range with run-time ends>` does not implement `Positional`
-core-03/narrow-array-no-wide-lint.cp	wrong-reject	check: program:3:27: E0302: expected `Array<$range23, 0..=1000000000>`, found `Array<$range24, Int>`
-core-03/narrow-sum-past-32-bits.cp	wrong-reject	check: program:3:21: E0302: expected `Array<$range23, 0..=2000000000>`, found `Array<$range24, Int>`
+core-03/generic-fn-reads-a-narrow-array-at-its-width.cp	wrong-reject	check: program:10:7: E0606: `Array<$range0, a range with run-time ends>` does not implement `Positional`
+core-03/i128-holds-past-int.cp	wrong-reject	check: program:3:1: E0204: unknown type `I128`
+core-03/narrow-arith-same-answer.cp	wrong-reject	check: program:3:21: E0302: expected `Array<$range0, 0..=1000000000>`, found `Array<$range1, Int>`
+core-03/narrow-array-no-wide-lint.cp	wrong-reject	check: program:3:27: E0302: expected `Array<$range0, 0..=1000000000>`, found `Array<$range1, Int>`
+core-03/narrow-sum-past-32-bits.cp	wrong-reject	check: program:3:21: E0302: expected `Array<$range0, 0..=2000000000>`, found `Array<$range1, Int>`
+core-03/narrow-sum-past-u32-same-answer.cp	wrong-reject	check: program:3:21: E0302: expected `Array<$range0, 0..=4000000000>`, found `Array<$range1, Int>`
 core-03/no-u8.cp	wrong-error	wanted E0901 on line 3, got: check: program:3:1: E0204: unknown type `U8`
 core-03/no-user-niche-trait.cp	wrong-error	wanted E0204 on line 4, got: decls: E0204: unknown trait `Niche`
-core-03/range-store-traps.cp	wrong-reject	check: program:3:19: E0302: expected `Array<$range23, 0..=9>`, found `Array<$range24, Int>`
+core-03/range-store-traps.cp	wrong-reject	check: program:3:19: E0302: expected `Array<$range0, 0..=9>`, found `Array<$range1, Int>`
 core-03/range-type-param-conversion-traps.cp	wrong-reject	check: std.hashmap: E0204: unknown type `HashMap`
 core-03/range-type-param-converts.cp	wrong-reject	check: std.hashmap: E0204: unknown type `HashMap`
 core-03/rb1-q32-no-u8.cp	wrong-error	wanted E0901 on line 3, got: check: program:3:1: E0204: unknown type `U8`
-core-03/spec-block-widths.cp	wrong-reject	check: std.segtree:100:52: E0302: expected `Range<Int>`, found `O`
 core-03/str-plus-eq-char-if.cp	wrong-reject	check: program:6:21: E0302: expected `Str`, found `Char`
 core-04/a-part-or-a-built-value-returned.cp	wrong-reject	own: program:8:27: E0603: this returns a value that borrows `self`: `self` is lent by the caller; return a `.clone()`
 core-04/a11-rebase-reads-from-zero.cp	wrong-reject	check: program:5:7: E0305: `Rebased<Slice<List<Int>>>` is not indexed: it has no `Indexed` impl
@@ -112,7 +113,7 @@ core-04/library-domain-nth-out-of-range.cp	wrong-reject	decls: E0204: unknown tr
 core-04/library-domain-ord-checked.cp	wrong-reject	decls: E0204: unknown trait `Index`
 core-04/library-domain-own-show.cp	wrong-reject	decls: E0204: unknown trait `Index`
 core-04/library-domain-seq.cp	wrong-reject	decls: E0204: unknown trait `Index`
-core-04/library-domain-sized-in-the-branch-taken.cp	wrong-reject	check: program:14:5: E0606: `Subset<Letter>` does not implement `Domain`
+core-04/library-domain-sized-in-the-branch-taken.cp	wrong-reject	check: program:15:11: E0203: `sum` is a method: call it with `()`
 core-04/library-domain-sized-where-first-used.cp	wrong-reject	check: program:11:5: E0606: `Subset<Letter>` does not implement `Domain`
 core-04/library-domain-walk.cp	wrong-reject	decls: E0204: unknown trait `Index`
 core-04/library-type-into-int-and-f64.cp	wrong-reject	check: program:17:27: E0302: expected `List<Char>`, found `Pair`
@@ -126,7 +127,6 @@ core-04/min-rotation-is-key.cp	wrong-reject	check: std.strings:598:20: E0606: `T
 core-04/pair-index-arity-mismatch.cp	wrong-error	wanted E0303 on line 5, got: check: program:5:1: E0606: `Pair<V>` does not implement `Domain`
 core-04/palindromes-longest-at-key.cp	wrong-reject	check: std.strings:831:17: E0203: `K` has no member `ord`
 core-04/piece-into-fold.cp	wrong-reject	check: program:6:7: E0606: `V` does not implement `Sub`
-core-04/pieces-of-a-domain-take-its-cuts.cp	wrong-reject	check: std.seq:1120:36: E0302: expected `Cut<D>`, found `2.hidden`
 core-04/position-offset-steps-by-order.cp	wrong-reject	check: program:6:1: E0606: `Optional<V>` does not implement `Show`
 core-04/prefix-and-z-function-over-domain-array-and-range.cp	wrong-reject	check: std.strings:400:12: E0203: `List<Int>` has no member `rekey`
 core-04/prefix-function-keyed.cp	wrong-reject	check: std.strings:400:12: E0203: `List<Int>` has no member `rekey`
@@ -134,10 +134,9 @@ core-04/prod-at-neighbour.cp	wrong-reject	check: program:8:21: E0302: expected `
 core-04/product-alias-binds-generic-domain.cp	wrong-reject	check: std.graph:1543:28: E0203: `R` has no member `add`
 core-04/product-alias-table.cp	wrong-reject	check: program:7:64: E0203: `City` has no member `idx`
 core-04/product-cell-keeps-its-ord-in-a-generic-body.cp	wrong-reject	check: program:10:9: E0304: `Range<Tuple2<R, C>>` cannot be called
-core-04/product-result-indexed-by-parts.cp	wrong-reject	check: std.graph:55:29: E0302: expected `V`, found `Self`
 core-04/product-table-empty-list-takes-expected-element.cp	wrong-reject	check: program:11:1: E0403: a `mut self` method needs a place
 core-04/range-generic-endpoints.cp	wrong-reject	check: program:5:43: E0203: `Cut<D>` has no member `idx`
-core-04/range-type-binds-generic-domain.cp	wrong-reject	check: program:10:29: E0302: expected `Array<$0..=1, List<0..=1>>`, found `Array<$0..=1, List<Int>>`
+core-04/range-type-binds-generic-domain.cp	wrong-reject	check: program:10:29: E0302: expected `Array<$range0, List<0..=1>>`, found `Array<$range0, List<Int>>`
 core-04/ranged-cells-take-a-narrower-list.cp	wrong-reject	check: program:8:11: E0302: expected `List<0..=99>`, found `List<0..=49>`
 core-04/rebase-fresh-domain.cp	wrong-reject	check: program:5:9: E0203: `Rebased<Slice<List<Int>>>` has no member `Idx`
 core-04/rebase-keys-dont-mix.cp	wrong-error	wanted E0301 on line 6, got: check: program:6:9: E0203: `Rebased<Slice<List<Int>>>` has no member `Idx`
@@ -170,20 +169,19 @@ core-05/elements-proved-apart.cp	wrong-reject	check: program:4:25: E0302: this i
 core-05/exercise-04-var-from-lent-param.cp	wrong-error	wanted E0608 on line 4, got: own: program:6:5: E0603: this returns a value that borrows `xs`: `xs` is lent by the caller; return a `.clone()`
 core-05/exercise-12-swap-unproven-distinct.cp	wrong-error	wanted E0601 on line 9, got: check: program:9:10: E0302: this is not a place that can be assigned or lent
 core-05/exercise-13-disjoint-slices-meet.cp	wrong-reject	check: program:11:11: E0302: this is not a place that can be assigned or lent
-core-05/exercise-20-segtree-lent-from-ws.cp	wrong-reject	check: program:12:18: E0203: `a function` has no member `opt`
 core-05/exercise-21-sort-key-reads-target.cp	wrong-error	wanted E0602 on line 4, got: check: std.seq:323:5: E0302: this cannot be walked with `for`
 core-05/exercise-26-return-slice-without-lends.cp	wrong-error	wanted E0603 on line 4, got: check: program:4:39: E0302: expected `Array<V, Int>`, found `Slice<Array<V, Int>>`
 core-05/exercise-27-lends-from-wrong-param.cp	wrong-error	wanted E0603 on line 3, got: check: program:3:61: E0302: expected `List<Int>`, found `Slice<List<Int>>`
 core-05/exercise-30-nested-fn-writes-var.cp	wrong-reject	check: program:15:24: E0305: `Graph<V, (to: V, e: E)>` is not indexed: it has no `Indexed` impl
 core-05/exercise-33-lends-result-loop-writes-source.cp	wrong-error	wanted E0602 on line 10, got: decls: E0204: unknown type `Filter`
-core-05/exercise-35-lent-optional-kept.cp	no-cxx	g++ failed on 9f787cba7f62c582.cpp: | 9f787cba7f62c582.cpp: In lambda function: | 9f787cba7f62c582.cpp:758:19: error: no match for ‘operator=’ (operand types are ‘S21’ and ‘S23’) |   758 |             l77 = l50;
+core-05/exercise-35-lent-optional-kept.cp	no-cxx	g++ failed on 109dd760e5bf8137.cpp: | 109dd760e5bf8137.cpp: In lambda function: | 109dd760e5bf8137.cpp:648:32: error: no match for ‘operator=’ (operand types are ‘S21’ and ‘S23’) |   648 |             l68 = S23{true, l38};
 core-05/field-of-a-let-given-by-a-block-is-lent.cp	wrong-reject	check: std.strings:1091:47: E0606: `2.hidden` has no `impl Eq`, which `==` needs (R08.1.5)
 core-05/file-body-var-holds-lent.cp	wrong-reject	check: program:9:16: E0302: expected `Str`, found `Slice<Str>`
 core-05/for-over-a-bag-range-keeps-the-bag-lent.cp	wrong-error	wanted E0602 on line 6, got: check: std.bag:349:32: E0302: expected `K`, found `Cut<K>`
 core-05/generic-method-return-hint.cp	wrong-reject	check: program:7:9: E0606: `T` does not implement `Read`
-core-05/get-of-a-stored-field-lends-it.cp	wrong-reject	own: program:7:44: E0603: this returns a value that borrows `self`: `self` is lent by the caller; return a `.clone()`
 core-05/if-let-of-a-fresh-optional-moves-its-payload.cp	wrong-reject	own: program:4:31: E0603: this returns a value that borrows `got`: `got` is gone when the fn returns
 core-05/lends-fn-returns-view.cp	wrong-reject	check: program:4:47: E0302: expected `Array<V, Int>`, found `Slice<Array<V, Int>>`
+core-05/lends-mut-place.cp	wrong-reject	check: program:3:47: E0302: expected `()`, found `Int`
 core-05/lends-rest-of-block-returns.cp	wrong-reject	check: program:4:47: E0302: expected `Array<V, Int>`, found `Slice<Array<V, Int>>`
 core-05/lends-result-freezes-source.cp	wrong-error	wanted E0602 on line 7, got: check: program:4:47: E0302: expected `Array<V, Int>`, found `Slice<Array<V, Int>>`
 core-05/lent-generator-blocks-overlapping-write.cp	wrong-error	wanted E0602 on line 8, got: decls: E0204: unknown type `Seq`
@@ -197,16 +195,16 @@ core-05/mut-bool-element-is-written-back.cp	wrong-reject	check: program:18:10: E
 core-05/mut-capture-exclusive-per-call.cp	wrong-error	wanted E0601 on line 7, got: check: program:7:10: E0302: this is not a place that can be assigned or lent
 core-05/mut-cell-of-2d-array-as-argument.cp	wrong-reject	check: program:7:10: E0302: this is not a place that can be assigned or lent
 core-05/mut-self-method-on-temporary-rejected.cp	wrong-error	wanted E0401 on line 5, got: check: program:5:12: E0403: a `mut self` method needs a place
-core-05/op-assign-reads-its-own-place-first.cp	wrong-reject	own: program:7:1: E0602: `g` is written here while `$rhs8`, which borrows it, is still used
+core-05/op-assign-reads-its-own-place-first.cp	wrong-reject	own: program:7:1: E0602: `g` is written here while `$rhs14`, which borrows it, is still used
 core-05/overlapping-mut-slices-conflict.cp	wrong-error	wanted E0601 on line 9, got: check: program:9:11: E0302: this is not a place that can be assigned or lent
 core-05/own-mut-self-fn-into-walked-row.cp	wrong-error	wanted E0602 on line 8, got: check: program:8:19: E0403: a `mut self` method needs a place
 core-05/param-copied-whole-into-a-var-moves-in.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
 core-05/place-under-a-user-at-beside-a-node-get.cp	wrong-reject	check: program:19:1: E0305: `Arena` is not indexed: it has no `Indexed` impl
 core-05/plain-tuple-copies.cp	wrong-reject	check: program:5:1: E0405: field `Tuple2._0` is fixed (not `var`) and cannot be assigned
 core-05/pop-while-place-lent.cp	wrong-error	wanted E0602 on line 6, got: check: program:8:1: E0606: `Optional<List<Int>>` does not implement `Show`
+core-05/projections-one-at-a-time.cp	wrong-reject	check: program:5:44: E0302: expected `()`, found `Int`
 core-05/rb1-q07-sort-closure-reads-target.cp	wrong-error	wanted E0602 on line 4, got: check: std.seq:323:5: E0302: this cannot be walked with `for`
 core-05/rb1-q08-swap-unproven-distinct.cp	wrong-error	wanted E0601 on line 7, got: check: program:6:12: E0606: `V` does not implement `Read`
-core-05/read-only-call-reads-a-global-a-closure-writes.cp	wrong-reject	check: std.segtree:260:53: E0302: this is not a place that can be assigned or lent
 core-05/read-through-a-user-get-beside-at.cp	wrong-reject	check: program:15:1: E0305: `Pool` is not indexed: it has no `Indexed` impl
 core-05/read-through-a-user-get-is-its-result.cp	wrong-error	wanted E0606 on line 8, got: check: program:8:7: E0305: `Sparse<Int>` is not indexed: it has no `Indexed` impl
 core-05/rev-view-lends-until-last-use.cp	wrong-error	wanted E0602 on line 6, got: check: std.seq:1710:40: E0606: `S` does not implement `Indexed`
@@ -215,7 +213,6 @@ core-05/runs-walk-lends-parent.cp	wrong-error	wanted E0602 on line 6, got: check
 core-05/sequential-lends.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
 core-05/slices-proved-apart.cp	wrong-reject	check: program:9:11: E0302: this is not a place that can be assigned or lent
 core-05/sorted-walk-in-a-loop-reads-the-list-each-round.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-core-05/spec-block-segtree-of-ws.cp	wrong-reject	check: program:8:18: E0203: `a function` has no member `opt`
 core-05/spec-block-swap-maybe-same.cp	wrong-error	wanted E0601 on line 9, got: check: program:9:10: E0302: this is not a place that can be assigned or lent
 core-05/take-into-other-index-guard.cp	wrong-reject	check: program:8:14: E0303: expected 1 arguments, found 0
 core-05/take-into-other-index-loop.cp	wrong-reject	check: program:7:18: E0303: expected 1 arguments, found 0
@@ -227,6 +224,7 @@ core-06/dijkstra-from-unpacks-tuple-vertex.cp	wrong-reject	check: std.graph: E02
 core-06/gen-of-a-type-param-draws-what-it-binds.cp	wrong-reject	check: program:12:16: E0606: `Int` does not implement `Random`
 core-06/gen-takes-its-type-from-where-it-goes.cp	wrong-reject	check: program:14:16: E0606: `1..=9` does not implement `Random`
 core-06/gen-with-no-type-to-take-is-an-error.cp	wrong-error	wanted E0501 on line 4, got: check: program:4:7: E0201: unknown name `gen`
+core-06/generator-steering-prune.cp	wrong-reject	check: std.seq:3067:9: E0405: field `SubseqStep.pruned` is fixed (not `var`) and cannot be assigned
 core-06/generator-steering-skips-subtree.cp	wrong-reject	check: program:13:9: E0405: field `Step.pruned` is fixed (not `var`) and cannot be assigned
 core-06/generic-call-arguments-run-once.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
 core-06/generic-fn-as-a-value.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
@@ -237,7 +235,7 @@ core-06/lambda-unpacks-tuple-vertex.cp	wrong-reject	check: std.graph: E0204: unk
 core-06/lint-not-on-a-fn.cp	wrong-accept	wanted E0505 on line 4, ran and printed: 1
 core-06/min-max-as-fn-value.cp	wrong-reject	check: program:7:14: E0302: this function does not fit `(Int, Int) -> Int`
 core-06/multitest-fn-as-predicate.cp	wrong-reject	check: program:7:30: E0201: unknown name `n`
-core-06/multitest-shared-map-per-case-array.cp	wrong-reject	check: program:12:22: E0301: a `$range23` indexes a `[$range24]` array: index it with a `$range24`
+core-06/multitest-shared-map-per-case-array.cp	wrong-reject	check: program:12:22: E0301: a `$range0` indexes a `[$range1]` array: index it with a `$range1`
 core-06/var-lambda-no-recursion.cp	wrong-error	wanted E0406 on line 3, got: check: program:3:47: E0201: unknown name `f`
 core-07/a-member-of-an-unimplemented-trait-names-the-trait.cp	wrong-error	wanted E0606 on line 9, got: check: program:9:7: E0203: `Evens` has no member `len`
 core-07/and-or-operator-values-over-bools.cp	wrong-reject	check: program:6:11: E0606: `a function` does not implement `FromOp`
@@ -250,7 +248,6 @@ core-07/chain-fn.cp	wrong-reject	check: std.seq:2347:14: E0201: unknown name `fi
 core-07/chain-sorted-materializes.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
 core-07/chain-takes-any-number.cp	wrong-reject	check: std.seq:2347:14: E0201: unknown name `fields`
 core-07/combine-by-walk-order.cp	wrong-reject	check: program:4:20: E0302: expected `Slice<List<Int>>`, found `List<Int>`
-core-07/compress.cp	wrong-reject	check: program:4:7: E0203: `Range<C>` has no member `size`
 core-07/copying-twins-stable.cp	wrong-reject	check: std.seq:463:28: E0606: `T` has no `impl Eq`, which `!=` needs (R08.1.5)
 core-07/costs-show-getters-vs-calls.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
 core-07/cut-after-a-key-not-in-the-view-traps.cp	wrong-reject	check: program:10:11: E0203: `Slice<Array<V, Int>>` has no member `cut_after`
@@ -273,7 +270,7 @@ core-07/get-or-insert.cp	wrong-reject	check: std.seq:757:25: E0606: `K` does not
 core-07/held-window-first-last.cp	wrong-reject	check: program:6:7: E0305: `Gen<Slice<List<Int>>>` is not indexed: it has no `Indexed` impl
 core-07/impl-bound-gives-element.cp	wrong-reject	decls: E0204: unknown trait `Indexed`
 core-07/in-place-verb-on-a-lent-view.cp	wrong-error	wanted E0602 on line 6, got: check: program:6:1: E0403: a `mut self` method needs a place
-core-07/in-place-verbs.cp	wrong-reject	check: std.seq:447:22: E0606: `T` has no `impl Eq`, which `!=` needs (R08.1.5)
+core-07/in-place-verbs.cp	wrong-reject	check: program:9:1: E0203: `List<Int>` has no member `fill`
 core-07/indexed-param-takes-views.cp	wrong-reject	check: program:6:23: E0302: expected `Array<V, Int>`, found `Slice<Array<V, Int>>`
 core-07/indexed-views.cp	wrong-reject	check: std.seq:1710:40: E0606: `S` does not implement `Indexed`
 core-07/key-found-then-stored-through-a-path.cp	wrong-reject	check: program:6:1: E0204: unknown type `HashMap`
@@ -283,7 +280,7 @@ core-07/list-scan-indexed-by-count.cp	wrong-reject	check: program:4:11: E0203: `
 core-07/map-index-read-absent-traps.cp	wrong-trap	wanted R0001 on line 4, got: trap: R0101: line 4: key outside the sequence
 core-07/map-view-drop-len-calls-none.cp	wrong-reject	check: std.seq:1720:50: E0606: `S` does not implement `Indexed`
 core-07/map-view-drop-skips-dropped.cp	split	C++: exit Some(1):  ev set BAG_B 32
-core-07/map-view-reread-calls-again.cp	no-cxx	g++ failed on 5d060e7524e41089.cpp: | 5d060e7524e41089.cpp: In function ‘cpl_unit f1()’: | 5d060e7524e41089.cpp:666:16: error: cannot convert ‘S10*’ to ‘const S15*’ in initialization |   666 |     l23 = S14{(&l57)};
+core-07/map-view-reread-calls-again.cp	no-cxx	g++ failed on 172f114f239870c8.cpp: | 172f114f239870c8.cpp: In function ‘cpl_unit f1()’: | 172f114f239870c8.cpp:561:16: error: cannot convert ‘S10*’ to ‘const S15*’ in initialization |   561 |     l23 = S14{(&l50)};
 core-07/min-k-max-k.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
 core-07/mut-alias-of-map-key-finds-it-once.cp	wrong-reject	check: program:5:9: E0201: unknown name `HashMap`
 core-07/overlapping-mut-views.cp	wrong-error	wanted E0601 on line 8, got: check: program:8:11: E0302: this is not a place that can be assigned or lent
@@ -319,7 +316,7 @@ core-07/set-key-after-removal-equals-a-built-set.cp	wrong-reject	check: program:
 core-07/set-keys-hash-by-members.cp	wrong-reject	check: program:11:1: E0606: `Set<Int>` does not implement `Ord`
 core-07/sized.cp	wrong-reject	check: program:3:11: E0302: expected `OrdTree<_, ()>`, found `List<Int>`
 core-07/slice-list-str-domain.cp	wrong-reject	check: program:11:13: E0302: expected `Array<_, Int>`, found `Slice<List<Int>>`
-core-07/slice-open-end-keys-from-declared-bounds.cp	wrong-reject	check: program:5:3: E0302: expected `$range23`, found `Range<Int>`
+core-07/slice-open-end-keys-from-declared-bounds.cp	wrong-reject	check: program:5:3: E0302: expected `$range0`, found `Range<Int>`
 core-07/slice-reads-as-its-source.cp	wrong-reject	check: program:6:8: E0302: expected `Slice<List<Int>>`, found `Slice<Slice<List<Int>>>`
 core-07/sort-a-mut-slice.cp	wrong-reject	check: program:4:1: E0403: a `mut self` method needs a place
 core-07/sort-ties-keep-input-order-every-way.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
@@ -347,8 +344,8 @@ core-07/view-of-a-temporary-used-in-its-statement.cp	wrong-reject	check: std.seq
 core-07/view-of-temporary-lives-as-long-as-the-view.cp	wrong-reject	check: program:5:17: E0606: `Gen<Slice<List<Int>>>` does not implement `Keyed`
 core-07/views-pass-where-a-seq-is-written.cp	wrong-reject	link: std.seq:2120:47: E0606: `S` does not implement `Domain`
 core-07/zip-domain-stops-at-shorter-list-and-rev.cp	wrong-reject	check: std.seq:2144:37: E0606: `S` does not implement `Indexed`
-core-08/a-type-name-answers-its-static-trait-fns.cp	wrong-reject	check: program:16:61: E0203: `P` has no `z`
-core-08/alias-where-binds-its-parameter-from-the-arc.cp	no-cxx	g++ failed on fbc26d815f3067f0.cpp: | fbc26d815f3067f0.cpp: In function ‘int64_t f9(const S14&, int64_t)’: | fbc26d815f3067f0.cpp:859:14: error: invalid initialization of reference of type ‘const S26&’ from expression of type ‘int64_t’ {aka ‘long int’} |   859 |     l5 = f24(l4);
+core-08/a-type-name-answers-its-static-trait-fns.cp	wrong-reject	check: program:16:11: E0201: unknown name `Bool`
+core-08/alias-where-binds-its-parameter-from-the-arc.cp	no-cxx	g++ failed on 8a4836b37a0ac20e.cpp: | 8a4836b37a0ac20e.cpp: In function ‘int64_t f9(const S14&, int64_t)’: | 8a4836b37a0ac20e.cpp:720:14: error: invalid initialization of reference of type ‘const S26&’ from expression of type ‘int64_t’ {aka ‘long int’} |   720 |     l5 = f21(l4);
 core-08/ambiguous-method.cp	wrong-accept	wanted E0701 on line 12, ran and printed: 1
 core-08/assoc-names-an-impl-param-from-the-trait-arg.cp	wrong-reject	check: program:6:40: E0302: expected `Self.Fold`, found `Optional<T>`
 core-08/bare-op-at-a-bound-takes-the-monoid-impl.cp	wrong-reject	check: program:15:14: E0606: `a function` does not implement `Op3`
@@ -374,7 +371,6 @@ core-08/impl-for-a-table-binds-its-params.cp	wrong-reject	check: program:15:5: E
 core-08/impl-shapes-for-a-graph.cp	wrong-reject	check: program:39:55: E0606: `a function` does not implement `Nx`
 core-08/indexed-bound-types-the-body.cp	wrong-reject	decls: E0204: unknown trait `Indexed`
 core-08/law-calls-trait-method.cp	wrong-reject	check: program:6:35: E0201: unknown name `op`
-core-08/laws-are-a-derived-member.cp	wrong-reject	check: std.algebra:174:23: E0606: `T` has no `impl Eq`, which `==` needs (R08.1.5)
 core-08/laws-hold.cp	wrong-reject	check: program:3:11: E0201: unknown name `laws_hold`
 core-08/list-bsearch-never-picks-range-bsearch.cp	wrong-reject	check: program:11:29: E0203: `List<Int>` has no member `bsearch`
 core-08/method-bound-binds-the-struct-param.cp	wrong-reject	decls: E0204: unknown trait `Indexed`
@@ -383,7 +379,7 @@ core-08/no-orphan-impl-of-an-imported-trait.cp	wrong-error	wanted E0501 on line 
 core-08/op-through-fn-param.cp	wrong-reject	check: program:5:46: E0302: this function does not fit `(Int, Int) -> Int`
 core-08/overloaded-fn-value-defaults-to-int.cp	wrong-reject	check: program:7:20: E0303: expected 3 arguments, found 2
 core-08/partial-struct-args-infer-the-rest.cp	wrong-reject	decls: E0204: unknown trait `Indexed`
-core-08/polymorphic-recursion-is-an-error.cp	wrong-error	wanted E0319 on line 8, got: link: E0319: instantiation does not end: `new` makes a new copy of itself at every level (a function passed to its own recursive call, wrapped in a new closure)
+core-08/polymorphic-recursion-is-an-error.cp	wrong-error	wanted E0319 on line 8, got: link: E0319: instantiation does not end: `reserve` makes a new copy of itself at every level (a function passed to its own recursive call, wrapped in a new closure)
 core-08/row-duplicate-field.cp	wrong-error	wanted E0202 on line 3, got: check: program:3:19: E0303: `a` is given twice
 core-08/row-not-on-struct.cp	wrong-error	wanted E0704 on line 5, got: check: program:5:7: E0606: `S` does not implement `(u:, ..)`
 core-08/self-default-getter-rejects-another-type.cp	wrong-error	wanted E0606 on line 9, got: check: program:6:30: E0302: expected `T`, found `Self`
@@ -404,13 +400,8 @@ core-08/trait-typed-method-param-checks-its-bound.cp	wrong-error	wanted E0302 on
 core-08/tuple-and-record-take-a-shape-met-traits-defaults.cp	wrong-reject	check: program:13:9: E0203: `Tuple2<Int, Int>` has no member `twice`
 core-08/type-arguments-on-a-plain-struct-are-an-error.cp	wrong-error	wanted E0303 on line 7, got: check: program:7:22: E0302: expected `Pt<1..=100>`, found `Pt`
 core-08/type-of-user-fn-item-is-selective-at-a-bound-test.cp	wrong-reject	check: program:12:23: E0606: `a function` does not implement `Op`
-core-09/acos-outside-domain-trap.cp	wrong-reject	check: program:5:14: E0606: `F64` does not implement `Read`
-core-09/asin-outside-domain-trap.cp	wrong-reject	check: program:5:14: E0606: `F64` does not implement `Read`
 core-09/assert-of-only-a-key-test-traps-as-an-index.cp	wrong-trap	wanted R0101 on line 4, got: trap: R0401: line 4: assertion failed
 core-09/context-call-arg-override.cp	wrong-output	wanted "1,2\n1/2\nYes\nOK", got "1,2\n1/2\nYES\nOK\n"
-core-09/ln-of-a-negative-traps.cp	wrong-reject	check: program:5:14: E0606: `F64` does not implement `Read`
-core-09/ln-of-negative-trap.cp	wrong-reject	check: program:5:14: E0606: `F64` does not implement `Read`
-core-09/sqrt-negative-trap.cp	wrong-reject	check: program:5:14: E0606: `F64` does not implement `Read`
 core-10/a-read-array-walked-once-reads-in-order.cp	wrong-reject	check: program:12:7: E0303: expected 1 arguments, found 0
 core-10/counted-domain-base.cp	wrong-reject	check: program:6:9: E0606: `E` does not implement `Read`
 core-10/explicit-domain-not-shifted.cp	wrong-reject	check: program:5:9: E0606: `V` does not implement `Read`
@@ -430,7 +421,7 @@ core-10/parse-range-order.cp	wrong-reject	check: std.strings:359:56: E0310: no p
 core-10/parse-scalars-and-errors.cp	wrong-reject	check: program:4:49: E0606: `F64` does not implement `Read`
 core-10/print-forms-parity.cp	wrong-reject	own: program:11:7: E0608: `xs` was moved into another binding; use `.clone()` there to keep both
 core-10/print-forms.cp	wrong-reject	check: program:6:7: E0303: `..xs` takes positional or named arguments, not both
-core-10/print-rev-view-honors-sep.cp	no-cxx	g++ failed on f9fab476fa66ca6e.cpp: | f9fab476fa66ca6e.cpp: In function ‘cpl_unit f0()’: | f9fab476fa66ca6e.cpp:675:11: error: no match for ‘operator=’ (operand types are ‘S12’ and ‘S16’) |   675 |     l24 = l63;
+core-10/print-rev-view-honors-sep.cp	no-cxx	g++ failed on 74161c819b4fd3e7.cpp: | 74161c819b4fd3e7.cpp: In function ‘cpl_unit f0()’: | 74161c819b4fd3e7.cpp:566:11: error: no match for ‘operator=’ (operand types are ‘S12’ and ‘S16’) |   566 |     l24 = l53;
 core-10/print-shapes.cp	wrong-reject	check: std.strings:359:56: E0310: no parameter named `from`
 core-10/print-view-honours-sep.cp	wrong-output	wanted "3\n2\n1", got "3 2 1\n"
 core-10/read-base-arg.cp	wrong-reject	check: program:6:9: E0606: `E` does not implement `Read`
@@ -443,6 +434,7 @@ core-10/read-from-a-string.cp	wrong-reject	check: program:6:32: E0310: no parame
 core-10/read-needs-type.cp	wrong-accept	wanted E0806 on line 3, ran and printed: 
 core-10/read-nonnegative-range-traps-with-input-left.cp	wrong-output	wanted R0502 on line 6, ran to the end
 core-10/read-optional-sentinel-at-end-traps.cp	wrong-reject	check: program:5:26: E0310: no parameter named `none`
+core-10/test-position-lent-mut-above-multitest.cp	wrong-reject	check: std.rand:75:21: E0201: unknown name `I128`
 core-10/test-position-stored-above-multitest.cp	wrong-accept	wanted E0805 on line 8, ran and printed: 1
 core-10/with-io-covers-multitest.cp	wrong-output	wanted "Bob\nAlice", got "NO\nYES\n"
 core-10/yes-answers.cp	wrong-output	wanted "YES Impossible Yes", got "YES Impossible YES\n"
@@ -451,9 +443,6 @@ core-11/lib-table-fns-need-no-import.cp	wrong-reject	check: std.strings:1091:47:
 core-11/member-private-field-outside-module.cp	wrong-accept	wanted E0207 on line 13, ran and printed: 2
 core-11/member-private-method-outside-module.cp	wrong-accept	wanted E0207 on line 13, ran and printed: 2
 core-11/method-needs-no-import.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-core-11/own-fold-max-keeps-binary-builtin.cp	wrong-reject	check: program:6:11: E0302: expected `Array<$0..=2, Int>`, found `Int`
-core-11/prelude-has-components.cp	wrong-reject	check: std.graph:55:29: E0302: expected `V`, found `Self`
-core-11/prelude-has-divisors-and-bit-len.cp	no-cxx	g++ failed on df7bf5c0df499c40.cpp: | df7bf5c0df499c40.cpp: In function ‘S8 f4(int64_t)’: | df7bf5c0df499c40.cpp:730:19: error: invalid initialization of reference of type ‘const S18&’ from expression of type ‘S15’ |   730 |     l20 = f17(l2, l18);
 core-11/removed-spelling.cp	wrong-error	wanted E0503 on line 4, got: check: program:4:7: E0203: `Range<V>` has no member `bounds`
 core-11/strings-table-in-prelude.cp	wrong-reject	check: std.strings:547:51: E0302: expected `3.hidden`, found `6.hidden`
 core-12/a-bound-reads-its-roles-off-the-trait.cp	wrong-reject	decls: E0204: unknown trait `Indexed`
@@ -467,15 +456,15 @@ core-12/impl-head-bound-names-the-element.cp	wrong-reject	decls: E0204: unknown 
 core-12/impl-head-bound-that-fails-gives-nothing.cp	wrong-error	wanted E0203 on line 9, got: check: program:9:7: E0606: `Int` does not implement `Seq`
 core-12/index-set-calls-set.cp	wrong-reject	check: program:10:1: E0305: `Box` has no `IndexedMut` impl, so `[]` on it is not a place
 core-12/indexed-mut-sort.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-core-12/intrinsic-math-matches-on-both-engines.cp	wrong-reject	check: program:8:135: E0303: expected 0 arguments, found 1
+core-12/intrinsic-abs-of-i128-min-traps.cp	wrong-reject	check: program:6:1: E0204: unknown type `I128`
 core-12/intrinsic-popcount-counts-a-subset.cp	wrong-reject	check: program:8:7: E0201: unknown name `T`
 core-12/intrinsic-wrong-signature.cp	wrong-accept	wanted E0210 on line 4, ran and printed: 
 core-12/keyed-argmax.cp	wrong-reject	link: std.seq:2247:9: E0203: `S` has no `iter`
 core-12/view-of-a-temporary.cp	wrong-reject	check: std.bag:349:32: E0302: expected `K`, found `Cut<K>`
-core-13/fn-field-captures-a-struct-built-later.cp	wrong-reject	check: std.segtree:260:53: E0302: this is not a place that can be assigned or lent
 core-13/niche-optional.cp	wrong-reject	check: program:4:7: E0303: `..xs` takes positional or named arguments, not both
 core-13/recursive-fn-cold-branch-own-frame.cp	wrong-reject	check: program:14:9: E0302: expected `List<Int>`, found `Mapped<List<Int>, Int, Int>`
 core-13/recursive-fn-cold-tail-sorts-by-key.cp	wrong-reject	check: program:10:5: E0606: `F64` does not implement `Zero`
+core-13/wide-scalars.cp	wrong-reject	check: program:3:1: E0204: unknown type `I128`
 diagnostics/debug-side-effect.cp	wrong-error	wanted E0312 on line 6, got: check: program:6:1: E0201: unknown name `debug`
 diagnostics/definition-cycle.cp	wrong-error	wanted E0209 on line 10, got: decls: E0204: unknown trait `Index`
 diagnostics/fn-ends-without-a-value-if.cp	wrong-error	wanted E0409 on line 4, got: check: program:4:5: E0302: expected `Int`, found `()`
@@ -487,30 +476,9 @@ lib-ops-ranges/fenwick-range-is-fold.cp	wrong-reject	check: std.fenwick:60:19: E
 lib-ops-ranges/range-fenwick-no-act.cp	wrong-error	wanted E0705 on line 5, got: check: program:5:30: E0310: no parameter named `act`
 lints/getter-view-reads-without-parens.cp	wrong-reject	check: program:6:15: E0606: `Rebased<List<Int>>` does not implement `Keyed`
 lints/std-declares-idiom-lints.cp	wrong-accept	wanted prefix_totals_list on line 5, ran and printed: 8
-matrix/generic/segtree--explicit_ctor.cp	wrong-reject	check: std.segtree:100:52: E0302: expected `Range<Int>`, found `O`
 matrix/generic/segtree--explicit_static.cp	wrong-reject	check: std.segtree:530:40: E0606: `M` does not implement `FromOp`
-matrix/generic/segtree--inferred_ctor.cp	wrong-reject	check: std.segtree:100:52: E0302: expected `Range<Int>`, found `O`
 matrix/generic/segtree--inferred_static.cp	wrong-reject	check: std.segtree:530:40: E0606: `M` does not implement `FromOp`
-matrix/generic/segtree--partial_ctor.cp	wrong-reject	check: std.segtree:100:52: E0302: expected `Range<Int>`, found `O`
 matrix/generic/segtree--partial_static.cp	wrong-reject	check: std.segtree:530:40: E0606: `M` does not implement `FromOp`
-matrix/index/compress--builder.cp	wrong-reject	check: std.seq:1095:24: E0606: `S` does not implement `Seq`
-matrix/index/compress--construct.cp	wrong-reject	check: std.seq:1095:24: E0606: `S` does not implement `Seq`
-matrix/index/compress--count.cp	wrong-reject	check: std.seq:1095:24: E0606: `S` does not implement `Seq`
-matrix/index/compress--cuts_lr.cp	wrong-reject	check: std.seq:1095:24: E0606: `S` does not implement `Seq`
-matrix/index/compress--fill.cp	wrong-reject	check: std.seq:1095:24: E0606: `S` does not implement `Seq`
-matrix/index/compress--filter.cp	wrong-reject	check: std.seq:1095:24: E0606: `S` does not implement `Seq`
-matrix/index/compress--find.cp	wrong-reject	check: std.seq:1095:24: E0606: `S` does not implement `Seq`
-matrix/index/compress--first.cp	wrong-reject	check: std.seq:1095:24: E0606: `S` does not implement `Seq`
-matrix/index/compress--for.cp	wrong-reject	check: std.seq:1095:24: E0606: `S` does not implement `Seq`
-matrix/index/compress--int.cp	wrong-reject	check: std.seq:1095:24: E0606: `S` does not implement `Seq`
-matrix/index/compress--min_by.cp	wrong-reject	check: std.seq:1095:24: E0606: `S` does not implement `Seq`
-matrix/index/compress--next.cp	wrong-reject	check: std.seq:1095:24: E0606: `S` does not implement `Seq`
-matrix/index/compress--optional.cp	wrong-reject	check: std.seq:1095:24: E0606: `S` does not implement `Seq`
-matrix/index/compress--prev.cp	wrong-reject	check: std.seq:1095:24: E0606: `S` does not implement `Seq`
-matrix/index/compress--print.cp	wrong-reject	check: std.seq:1095:24: E0606: `S` does not implement `Seq`
-matrix/index/compress--read.cp	wrong-reject	check: std.seq:1095:24: E0606: `S` does not implement `Seq`
-matrix/index/compress--rev.cp	wrong-reject	check: std.seq:1095:24: E0606: `S` does not implement `Seq`
-matrix/index/compress--size.cp	wrong-reject	check: std.seq:1095:24: E0606: `S` does not implement `Seq`
 matrix/index/pair--count.cp	wrong-reject	check: program:3:7: E0203: `Pair` has no `count`
 matrix/index/pair--filter.cp	wrong-reject	check: program:3:7: E0203: `Pair` has no `filter`
 matrix/index/pair--int.cp	wrong-reject	check: std.pair:22:16: E0606: `V` has no `impl Eq`, which `!=` needs (R08.1.5)
@@ -537,7 +505,6 @@ matrix/optional/std_generic--while_let_top.cp	wrong-reject	check: std.graph:213:
 next/a_decl_04_struct_constant.cp	wrong-reject	check: program:7:28: E0201: unknown name `BASE`
 next/a_gen_20_420_functions.cp	wrong-reject	link: E0319: instantiation does not end: `main` makes a new copy of itself at every level (a function passed to its own recursive call, wrapped in a new closure)
 next/a_multi_04_fn_below_divider_captures_case.cp	wrong-reject	check: program:10:14: E0201: unknown name `a`
-next/a_own_07_mut_arg_and_captured_write.cp	wrong-error	wanted E0602 on line 7, got: own: program:7:5: E0601: `a` is passed to `lambda0` and lent to it for writing in the same call
 next/n_swap_01_swap_is_an_ordinary_fn.cp	wrong-reject	own: std.mem:7:6: E0602: `a` is written here while `$parts40_1`, which borrows it, is still used
 next/o21_lender_assign_reads_same.cp	wrong-error	wanted E0604 on line 13, got: own: program:13:15: E0602: `s` is lent to `at` for writing while its cell is in use, and this uses it
 next/o22_lender_body_writes_lender_self.cp	wrong-error	wanted E0604 on line 14, got: own: program:14:16: E0602: `s` is lent to `at` for writing while its cell is in use, and this uses it
@@ -576,19 +543,12 @@ std-algebra/closure-op-keeps-std-self-fns.cp	wrong-reject	check: program:9:37: E
 std-algebra/counts.cp	wrong-reject	check: std.algebra:393:48: E0201: unknown name `MaxSub`
 std-algebra/each-fuses-ops-per-component.cp	wrong-reject	check: std.algebra: E0204: unknown type `Ms`
 std-algebra/each-monoid-components.cp	wrong-reject	check: program:10:41: E0201: unknown name `fields`
-std-algebra/each-named-components.cp	wrong-reject	check: program:5:41: E0302: expected `Array<_, _>`, found `Mapped<Array<V, Int>, Int, (sum: Int, hi: Int)>`
 std-algebra/each-of-bare-operators.cp	wrong-reject	link: std.algebra: E0204: unknown type `Ms`
 std-algebra/each-of-bool-operators.cp	wrong-reject	link: std.algebra: E0204: unknown type `Ms`
-std-algebra/each-positional-components.cp	wrong-reject	check: program:5:37: E0302: expected `Array<_, _>`, found `Mapped<Array<V, Int>, Int, Tuple3<Int, Int, Int>>`
-std-algebra/flip-action-composes-by-parity.cp	wrong-reject	check: std.lazy:36:17: E0606: `M` does not implement `FromOp`
-std-algebra/group-of-and-point-action.cp	wrong-reject	check: program:4:7: E0606: `a function` does not implement `FromOp`
-std-algebra/max-count-folds-with-plus.cp	wrong-reject	check: std.segtree:100:52: E0302: expected `Range<Int>`, found `O`
 std-algebra/max-sub-at-widest-then-leftmost.cp	wrong-reject	check: program:10:59: E0606: `MaxSubAt<D>` does not implement `Zero`
 std-algebra/max-sub-of-is-a-fn-value.cp	wrong-reject	check: program:5:13: E0201: unknown name `MaxSub`
-std-algebra/maxsub-plus-takes-zero-as-identity.cp	wrong-reject	check: std.segtree:100:52: E0302: expected `Range<Int>`, found `O`
 std-algebra/min-count-folds-with-plus.cp	wrong-reject	link: std.algebra:578:46: E0606: `a function` does not implement `FromOp`
 std-algebra/op-fold-is-t-with-an-identity.cp	wrong-reject	check: std.algebra:807:40: E0302: expected `Self.Fold`, found `Optional<T>`
-std-algebra/opt-lifts-any-op-to-a-monoid.cp	wrong-reject	check: program:8:18: E0203: `a function` has no member `opt`
 std-algebra/opt-of-two-closures-in-one-file.cp	wrong-reject	check: program:8:15: E0203: `a function` has no member `opt`
 std-algebra/pow-folds-under-any-monoid.cp	wrong-reject	check: program:6:42: E0606: `a function` does not implement `FromOp`
 std-algebra/pow-negative-exponent-traps.cp	wrong-accept	wanted E0902 on line 4, ran and printed: 
@@ -599,11 +559,6 @@ std-bag/add-many-negative-traps.cp	wrong-error	wanted E0902 on line 3, got: chec
 std-bag/add-many-zero.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
 std-bag/aug-fold-takes-any-range.cp	wrong-reject	check: std.bag:2083:27: E0302: expected `K`, found `Cut<K>`
 std-bag/aug-sorted-bag-set-match-brute.cp	wrong-reject	check: program:14:76: E0302: expected `List<Char>`, found `Int`
-std-bag/bucket-count-below-zero-traps.cp	wrong-reject	check: std.bag:2310:21: E0302: expected `Int`, found `Cut<Int>`
-std-bag/bucket-count-blocks-match-brute.cp	wrong-reject	check: std.bag:2310:21: E0302: expected `Int`, found `Cut<Int>`
-std-bag/bucket-count-last-slot.cp	wrong-reject	check: std.bag:2310:21: E0302: expected `Int`, found `Cut<Int>`
-std-bag/bucket-count-outside-range-traps.cp	wrong-reject	check: std.bag:2310:21: E0302: expected `Int`, found `Cut<Int>`
-std-bag/bucketcount-matches-counts.cp	wrong-reject	check: std.bag:2310:21: E0302: expected `Int`, found `Cut<Int>`
 std-bag/closure-captures-a-range-view.cp	wrong-reject	check: std.bag:349:32: E0302: expected `K`, found `Cut<K>`
 std-bag/cursor-at-missing-key.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
 std-bag/cursor-first-last-empty.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
@@ -644,7 +599,7 @@ std-bag/sortedbag-pop_last-1.cp	wrong-reject	check: std.bag:669:14: E0203: `(key
 std-bag/sortedbag-sum-1.cp	wrong-reject	check: std.bag:760:17: E0203: `Range<K>` has no member `zero`
 std-bag/sortedbag-take_first-1.cp	wrong-reject	check: std.bag:669:14: E0203: `(key: K, count: Int)` has no member `_0`
 std-bag/sortedbag-take_first-2.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-std-bag/sortedmap-matches-array.cp	wrong-reject	check: std.bag:1440:41: E0303: expected 1 arguments, found 0
+std-bag/sortedmap-matches-array.cp	wrong-reject	check: std.rand:75:21: E0201: unknown name `I128`
 std-bag/sortedset-absorb-1.cp	wrong-reject	check: std.bag:669:14: E0203: `(key: K, count: Int)` has no member `_0`
 std-bag/sortedset-take-1.cp	wrong-reject	check: std.bag:669:14: E0203: `(key: K, count: Int)` has no member `_0`
 std-bag/split-and-join-round-trip-against-sorted-lists.cp	wrong-reject	check: std.bag:1440:41: E0303: expected 1 arguments, found 0
@@ -657,20 +612,22 @@ std-beats/beats-second-extremes-start-midway.cp	wrong-reject	check: std.beats:27
 std-beats/historic-beats-matches-brute.cp	wrong-reject	check: program:46:38: E0201: unknown name `Int`
 std-beats/historic-beats-to-array-matches-brute.cp	wrong-reject	check: std.beats:732:55: E0201: unknown name `Int`
 std-beats/queries-read-without-pushing.cp	wrong-reject	check: std.beats:271:54: E0201: unknown name `Int`
+std-bitset/dyn-basic.cp	wrong-reject	check: std.bitset:680:9: E0405: field `DynBitset._cap` is fixed (not `var`) and cannot be assigned
 std-bitset/dyn-nav.cp	wrong-reject	check: std.bitset:761:21: E0302: expected `Int`, found `Cut<Int>`
+std-bitset/dyn-ops.cp	wrong-reject	check: std.bitset:571:9: E0405: field `DynBitset._n` is fixed (not `var`) and cannot be assigned
 std-bitset/folds-take-its-positions.cp	wrong-reject	check: program:7:12: E0606: `Bitset<S>` does not implement `Seq`
 std-bitset/undirected-and-complement-are-std.cp	wrong-reject	link: std.bitset:1490:20: E0203: `Str` has no member `is_empty`
-std-compress/wrapper-fn-fresh-domain.cp	wrong-reject	check: program:7:6: E0208: a value's name starts lowercase, not `Dwa`
-std-deque/linked-list-reverse-is-its-own.cp	wrong-reject	check: std.deque:522:9: E0405: field `LinkedList.flip` is fixed (not `var`) and cannot be assigned
-std-deque/linkedlist-bodies.cp	wrong-reject	check: program:4:16: E0606: `T` does not implement `Show`
-std-deque/splice-empty-lists.cp	wrong-reject	check: std.deque:530:28: E0405: field `LinkedList.flip` is fixed (not `var`) and cannot be assigned
-std-deque/splice-moves-the-shorter-list.cp	wrong-reject	check: std.deque:530:28: E0405: field `LinkedList.flip` is fixed (not `var`) and cannot be assigned
+std-bitset/xor-trie.cp	wrong-reject	check: std.bitset:1207:9: E0405: field `XorTrie._mask` is fixed (not `var`) and cannot be assigned
+std-deque/linked-list-reverse-is-its-own.cp	wrong-reject	check: std.deque:521:10: E0405: field `LinkedList.head` is fixed (not `var`) and cannot be assigned
+std-deque/linkedlist-bodies.cp	wrong-reject	check: std.deque:462:19: E0405: field `LinkedList.head` is fixed (not `var`) and cannot be assigned
+std-deque/splice-empty-lists.cp	wrong-reject	check: std.deque:530:10: E0405: field `LinkedList._len` is fixed (not `var`) and cannot be assigned
+std-deque/splice-moves-the-shorter-list.cp	wrong-reject	check: std.deque:446:13: E0405: field `LinkedList.tail` is fixed (not `var`) and cannot be assigned
 std-derive/gen-fields-draws-bool-fields.cp	wrong-reject	check: std.derive:69:48: E0201: unknown name `fields`
 std-derive/gen-fields-draws-each-field.cp	wrong-reject	check: std.derive:69:48: E0201: unknown name `fields`
-std-derive/hash-fields-derives-a-structs-hash.cp	wrong-reject	check: program:10:1: E0204: unknown type `HashMap`
+std-derive/hash-fields-derives-a-structs-hash.cp	wrong-reject	check: std.derive: E0204: unknown type `I128`
 std-derive/impl-calls-field-derives.cp	wrong-reject	check: std.derive:46:14: E0201: unknown name `fields`
 std-dp/aliens-convex-exact-count.cp	wrong-reject	check: std.dp:314:17: E0302: expected `L`, found `Int`
-std-dp/dp-bodies.cp	wrong-reject	check: std.dp:930:56: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
+std-dp/dp-bodies.cp	wrong-reject	check: std.rand:75:21: E0201: unknown name `I128`
 std-dp/interval-ranges-deque-game.cp	wrong-reject	check: program:8:1: E0204: unknown type `I.ranges`
 std-dp/interval-ranges-empty-traps.cp	wrong-reject	check: program:3:1: E0204: unknown type `V.ranges`
 std-dp/knuth-negative-traps.cp	wrong-accept	wanted E0902 on line 2, ran and printed: 
@@ -686,6 +643,7 @@ std-dp/ranges-inner-piece-by-drop.cp	wrong-reject	check: program:4:1: E0204: unk
 std-dp/ranges-key-first-is-not-optional.cp	wrong-reject	check: program:4:1: E0204: unknown type `V.ranges`
 std-dp/ranges-splits-count.cp	wrong-reject	check: program:4:1: E0204: unknown type `V.ranges`
 std-dsu/persistent-dsu-fresh-per-test-case.cp	wrong-reject	check: program:16:16: E0606: `V` does not implement `Read`
+std-dsu/persistent-dsu-matches-replay.cp	wrong-reject	check: std.rand:75:21: E0201: unknown name `I128`
 std-fenwick/fenwick-bodies.cp	wrong-reject	check: std.fenwick:318:19: E0606: `T` does not implement `Domain`
 std-fenwick/fenwick-empty-domain-sums-zero.cp	wrong-reject	check: std.fenwick:60:19: E0606: `T` does not implement `Domain`
 std-fenwick/fenwick-first-ge-whole-sum.cp	wrong-reject	check: std.fenwick:97:39: E0302: expected `T`, found `Int`
@@ -702,58 +660,74 @@ std-fenwick/sparsefenwick2d-build-1.cp	wrong-reject	check: std.fenwick:566:61: E
 std-fenwick/sparsefenwick2d-corner-1.cp	wrong-reject	check: std.fenwick:566:61: E0606: `T` does not implement `Domain`
 std-fenwick/sparsefenwick2d-corner-2.cp	wrong-reject	check: std.fenwick:566:61: E0606: `T` does not implement `Domain`
 std-fenwick/sparsefenwick2d-new-1.cp	wrong-reject	check: std.fenwick:566:61: E0606: `T` does not implement `Domain`
-std-flow/add-both-undirected.cp	wrong-reject	check: std.flow:125:30: E0201: unknown name `Int`
+std-flow/add-both-undirected.cp	wrong-reject	check: std.flow:124:9: E0405: field `FlowGraph.cut_from` is fixed (not `var`) and cannot be assigned
 std-flow/arcs.cp	wrong-reject	check: std.flow:243:84: E0201: unknown name `Int`
 std-flow/best-matching-matches-brute-force.cp	wrong-reject	check: std.flow:557:30: E0201: unknown name `Int`
 std-flow/circulation-infeasible-none.cp	wrong-reject	check: std.flow:1280:44: E0302: expected `(value: Int, flow: Array<E, Int>)`, found `()`
 std-flow/circulation-lo-above-hi-traps.cp	wrong-reject	check: std.flow:1280:44: E0302: expected `(value: Int, flow: Array<E, Int>)`, found `()`
 std-flow/circulation-zero-lower-bounds.cp	wrong-reject	check: std.flow:1280:44: E0302: expected `(value: Int, flow: Array<E, Int>)`, found `()`
+std-flow/matching-big.cp	wrong-reject	check: std.flow:1938:17: E0405: field `Matching.size` is fixed (not `var`) and cannot be assigned
 std-flow/matching.cp	wrong-reject	check: program:25:37: E0304: `Array<B, Optional<A>>` cannot be called
 std-flow/matroid-intersection-and-min-cost-circulation-match-brute.cp	wrong-reject	check: program:81:17: E0803: `?` cannot be used directly in a condition; write `(... ?? false)`
 std-flow/max-closure-and-gomory-hu-match-brute.cp	wrong-reject	check: program:28:34: E0201: unknown name `Int`
-std-flow/max-closure-fixed-domain-guard.cp	wrong-reject	check: std.flow:125:30: E0201: unknown name `Int`
-std-flow/max-flow-same-endpoints.cp	wrong-reject	check: std.flow:125:30: E0201: unknown name `Int`
-std-flow/max-flow-uncapped-arc.cp	wrong-reject	check: std.flow:125:30: E0201: unknown name `Int`
-std-flow/max-flow-unreachable-sink.cp	wrong-reject	check: std.flow:125:30: E0201: unknown name `Int`
+std-flow/max-closure-fixed-domain-guard.cp	wrong-reject	check: std.flow:124:9: E0405: field `FlowGraph.cut_from` is fixed (not `var`) and cannot be assigned
+std-flow/max-flow-same-endpoints.cp	wrong-reject	check: std.flow:124:9: E0405: field `FlowGraph.cut_from` is fixed (not `var`) and cannot be assigned
+std-flow/max-flow-uncapped-arc.cp	wrong-reject	check: std.flow:124:9: E0405: field `FlowGraph.cut_from` is fixed (not `var`) and cannot be assigned
+std-flow/max-flow-unreachable-sink.cp	wrong-reject	check: std.flow:124:9: E0405: field `FlowGraph.cut_from` is fixed (not `var`) and cannot be assigned
 std-flow/min-cost-flow-limit-zero.cp	wrong-reject	check: std.flow:557:30: E0201: unknown name `Int`
 std-flow/min-cost-flow-negative-cost.cp	wrong-reject	check: std.flow:557:30: E0201: unknown name `Int`
-std-flow/min-cut-source-side.cp	wrong-reject	check: std.flow:125:30: E0201: unknown name `Int`
-std-flow/new-flow-graph-over-product-has-no-arcs.cp	wrong-reject	check: std.flow:125:30: E0201: unknown name `Int`
-std-flow/push-relabel-matches-dinic.cp	wrong-reject	check: std.flow:288:25: E0403: a `mut self` method needs a place
+std-flow/min-cut-source-side.cp	wrong-reject	check: std.flow:124:9: E0405: field `FlowGraph.cut_from` is fixed (not `var`) and cannot be assigned
+std-flow/new-flow-graph-has-no-arcs.cp	wrong-reject	link: E0606: a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one
+std-flow/new-flow-graph-over-product-has-no-arcs.cp	wrong-reject	check: std.flow:124:9: E0405: field `FlowGraph.cut_from` is fixed (not `var`) and cannot be assigned
+std-flow/push-relabel-matches-dinic.cp	wrong-reject	check: std.flow:270:9: E0405: field `FlowGraph.cut_from` is fixed (not `var`) and cannot be assigned
 std-geometry/angle.cp	wrong-reject	check: program:6:1: E0201: unknown name `sort`
+std-geometry/area2-128-empty-and-huge.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
+std-geometry/arg-equal-for-the-same-direction.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
 std-geometry/calipers-mst.cp	wrong-reject	check: program:39:31: E0201: unknown name `Int`
-std-geometry/circles-union-area-empty.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-std-geometry/closest-pair-on-list-literal.cp	wrong-reject	check: program:5:16: E0302: expected `(a: $range23, b: $range23, dist2: Int)`, found `Tuple3<Int, Int, Int>`
+std-geometry/closest-pair-on-list-literal.cp	wrong-reject	check: program:5:16: E0302: expected `(a: $range0, b: $range0, dist2: Int)`, found `Tuple3<Int, Int, Int>`
 std-geometry/closest-pair-one-point-traps.cp	wrong-reject	check: std.geometry:1338:33: E0302: expected `(a: D, b: D, dist2: Int)`, found `Tuple3<D, D, Int>`
 std-geometry/closest-pair2-duplicates.cp	wrong-reject	check: std.geometry:1310:15: E0201: unknown name `copy`
 std-geometry/closest-pair2-one-point.cp	wrong-reject	check: std.geometry:1310:15: E0201: unknown name `copy`
-std-geometry/convex-hull-idx-collinear.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-std-geometry/float-and-sweep.cp	wrong-reject	check: program:54:41: E0302: expected `Cut<Int>`, found `Int`
-std-geometry/half-planes.cp	wrong-reject	check: std.geometry:2303:15: E0201: unknown name `copy`
-std-geometry/min-enclosing-circle-one-point.cp	wrong-reject	check: std.geometry:2431:14: E0201: unknown name `copy`
-std-geometry/online-hull-and-triangulate.cp	wrong-reject	check: std.geometry:1538:23: E0201: unknown name `sum`
-std-geometry/online-hull-collinear-area-is-zero.cp	wrong-reject	check: std.geometry:722:17: E0405: field `HullChain.cross` is fixed (not `var`) and cannot be assigned
-std-geometry/online-hull-duplicate-add-is-false.cp	wrong-reject	check: std.geometry:722:17: E0405: field `HullChain.cross` is fixed (not `var`) and cannot be assigned
-std-geometry/online-hull-iter-one-point.cp	wrong-reject	check: std.geometry:722:17: E0405: field `HullChain.cross` is fixed (not `var`) and cannot be assigned
+std-geometry/convex-hull-idx-collinear.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
+std-geometry/diameter2-single-point.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
+std-geometry/hull-extreme-empty-traps.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
+std-geometry/hull-extreme-ties-take-the-smallest-index.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
+std-geometry/hull-tangents-point-inside-traps.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
+std-geometry/hull-tangents-two-point-hull-traps.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
+std-geometry/locate-convex-on-vertex-and-edge.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
+std-geometry/lower-hull-duplicates.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
+std-geometry/minkowski-sum-empty-traps.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
+std-geometry/minkowski-sum-of-two-points.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
+std-geometry/minkowski-upper-empty-traps.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
+std-geometry/minkowski-upper-single-points.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
+std-geometry/on-segment-degenerate.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
+std-geometry/online-hull-and-triangulate.cp	wrong-reject	check: std.geometry:1538:5: E0204: unknown type `I128`
+std-geometry/online-hull-collinear-area-is-zero.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
+std-geometry/online-hull-duplicate-add-is-false.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
+std-geometry/online-hull-empty-extreme-and-area.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
+std-geometry/online-hull-iter-one-point.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
 std-geometry/point-set-drains-a-rectangle-once.cp	wrong-reject	check: std.geometry:2899:57: E0302: expected `Int`, found `Cut<Int>`
 std-geometry/polygon-cut-keeps-all-and-none.cp	wrong-reject	own: std.geometry:2411:5: E0603: this returns a value that borrows `poly`: `poly` is lent by the caller; return a `.clone()`
-std-geometry/polygon-triangulate-clockwise-traps.cp	wrong-reject	check: std.geometry:1538:23: E0201: unknown name `sum`
-std-geometry/rect-3d.cp	wrong-reject	check: std.geometry:2949:28: E0302: expected `Cut<Int>`, found `Int`
-std-graph/adjacency-list-contains.cp	wrong-reject	check: program:7:11: E0305: `Graph<V, (to: V, e: $0..=1)>` is not indexed: it has no `Indexed` impl
+std-geometry/polygon-triangulate-clockwise-traps.cp	wrong-reject	check: std.geometry:1538:5: E0204: unknown type `I128`
+std-geometry/same-dir-zero-and-opposite.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
+std-geometry/segments-meet-collinear.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
+std-geometry/turn-collinear-and-backtrack.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
+std-geometry/upper-hull-empty-and-single.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
+std-geometry/upper-hull-unsorted-traps.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
+std-graph/adjacency-list-contains.cp	wrong-reject	check: program:7:11: E0305: `Graph<V, (to: V, e: $range1)>` is not indexed: it has no `Indexed` impl
 std-graph/adjacency-needs-edge-records-by-its-bound.cp	wrong-error	wanted E0704 on line 5, got: check: program:5:9: E0606: `Int` does not implement `(u:, v:, ..)`
 std-graph/arborescence.cp	wrong-reject	check: std.graph:3364:16: E0606: `W` does not implement `Domain`
 std-graph/arc-of-a-list-table-is-its-element.cp	wrong-reject	check: std.graph: E0204: unknown type `G.Arc`
 std-graph/bellman-ford-unreachable-negative-cycle.cp	wrong-reject	check: std.graph: E0204: unknown type `G.Arc`
 std-graph/bfs-lambda-over-grid-cells.cp	wrong-reject	check: program:10:7: E0305: `Paths<Tuple2<R, C>, Int, Tuple2<R, C>>` is not indexed: it has no `Indexed` impl
 std-graph/bfs-multi-source.cp	wrong-reject	check: program:5:7: E0305: `Paths<V, Int, V>` is not indexed: it has no `Indexed` impl
-std-graph/bfs-over-named-product-domain.cp	crash	the interpreter exited 101: 
+std-graph/bfs-over-named-product-domain.cp	wrong-reject	check: program:8:10: E0606: `a function` does not implement `Next`
 std-graph/bfs-over-product-domain-with-walls.cp	wrong-reject	check: program:10:9: E0606: `a function` does not implement `Next`
-std-graph/bfs-path-to-source.cp	wrong-reject	check: std.graph:55:29: E0302: expected `V`, found `Self`
+std-graph/bfs-path-to-source.cp	wrong-reject	check: std.graph:1240:12: E0606: `W` does not implement `Eq`
 std-graph/bfs-unreachable.cp	wrong-reject	check: program:5:7: E0305: `Paths<V, Int, V>` is not indexed: it has no `Indexed` impl
 std-graph/bfs-until-takes-a-predicate-for-a-set-of-goals.cp	wrong-reject	check: program:5:9: E0606: `Tuple2<V, V>` does not implement `(u:, v:, ..)`
 std-graph/bfs01-bad-weight-traps.cp	wrong-reject	check: std.graph: E0204: unknown type `G.Arc`
 std-graph/bfs01-empty-from.cp	wrong-reject	check: std.graph: E0204: unknown type `G.Arc`
-std-graph/block-cut-tree.cp	wrong-reject	check: std.graph:2790:14: E0606: `V` does not implement `Domain`
 std-graph/boruvka-mst.cp	wrong-reject	check: std.graph:3309:17: E0606: `W` does not implement `Domain`
 std-graph/bounds-met-by-shape-glob-import.cp	wrong-reject	check: program:9:7: E0305: `Paths<V, Int, V>` is not indexed: it has no `Indexed` impl
 std-graph/bridges-parallel-edges.cp	wrong-reject	check: std.graph:248:9: E0302: this cannot be walked with `for`
@@ -761,8 +735,6 @@ std-graph/bridges-single-edge.cp	wrong-reject	check: std.graph:248:9: E0302: thi
 std-graph/clique.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
 std-graph/closure-graph-vertex-from-seeds.cp	wrong-reject	check: program:7:7: E0305: `Paths<V, Int, V>` is not indexed: it has no `Indexed` impl
 std-graph/complement-of-complete-empty.cp	wrong-reject	check: std.graph:2946:18: E0203: `G` has no member `out`
-std-graph/components-isolated.cp	wrong-reject	check: std.graph:55:29: E0302: expected `V`, found `Self`
-std-graph/condense-one-component-has-no-arcs.cp	wrong-reject	check: std.graph:55:29: E0302: expected `V`, found `Self`
 std-graph/count-paths-unreachable-zero.cp	wrong-reject	check: std.graph:2539:26: E0302: expected `List<V>`, found `()`
 std-graph/cut-vertices-path-middle.cp	wrong-reject	check: std.graph:248:9: E0302: this cannot be walked with `for`
 std-graph/cut-vertices-star.cp	wrong-reject	check: std.graph:248:9: E0302: this cannot be walked with `for`
@@ -774,7 +746,7 @@ std-graph/dijkstra-over-vertex-state-pairs.cp	wrong-reject	check: std.graph: E02
 std-graph/dijkstra-step-max-is-the-bottleneck-path.cp	wrong-reject	check: std.graph: E0204: unknown type `G.Arc`
 std-graph/dijkstra-step-that-makes-a-path-cheaper-traps.cp	wrong-reject	check: std.graph: E0204: unknown type `G.Arc`
 std-graph/dominators-unreachable-none.cp	wrong-reject	check: std.graph:3042:13: E0302: expected `Int`, found `()`
-std-graph/edges-undirected-ends-in-v-order.cp	wrong-reject	check: std.graph:417:9: E0606: `E` does not implement `Domain`
+std-graph/edges-undirected-ends-in-v-order.cp	wrong-reject	check: std.graph:421:28: E0302: expected `Cut<V>`, found `Int`
 std-graph/euler-walk-no-edges.cp	wrong-reject	check: std.graph:1735:31: E0201: unknown name `first`
 std-graph/euler-walk-odd-degrees-none.cp	wrong-reject	check: std.graph:1735:31: E0201: unknown name `first`
 std-graph/floyd-warshall-diagonal.cp	wrong-reject	check: std.graph:1543:28: E0203: `R` has no member `add`
@@ -782,7 +754,7 @@ std-graph/floyd-warshall-range-weights-sum-past-range.cp	wrong-reject	check: std
 std-graph/floyd-warshall-total-matrix.cp	wrong-reject	check: std.graph:1543:28: E0203: `R` has no member `add`
 std-graph/graph-at-next-lists.cp	wrong-reject	check: std.graph:298:64: E0302: expected `Cut<V>`, found `Int`
 std-graph/graph-contains-no-self-arc.cp	wrong-reject	check: std.graph:368:24: E0302: expected `Cut<V>`, found `Int`
-std-graph/graph-edges-none.cp	wrong-reject	check: std.graph:417:9: E0606: `E` does not implement `Domain`
+std-graph/graph-edges-none.cp	wrong-reject	check: std.graph:421:28: E0302: expected `Cut<V>`, found `Int`
 std-graph/graph-hops-disconnected-traps.cp	wrong-reject	check: std.graph:399:32: E0302: expected `Cut<V>`, found `Int`
 std-graph/graph-matrix.cp	wrong-reject	check: std.graph:311:28: E0302: expected `Cut<V>`, found `Int`
 std-graph/graph-of-pairs-is-compressed-rows.cp	wrong-reject	check: program:6:9: E0606: `Tuple2<V, V>` does not implement `(u:, v:, ..)`
@@ -792,7 +764,7 @@ std-graph/graph-peel-method.cp	wrong-reject	check: std.graph:442:28: E0302: expe
 std-graph/graph-transpose.cp	wrong-reject	check: std.graph:507:28: E0302: expected `Cut<V>`, found `Int`
 std-graph/hops-single-vertex.cp	wrong-reject	check: std.graph:399:32: E0302: expected `Cut<V>`, found `Int`
 std-graph/hops-unreachable-pair-traps.cp	wrong-reject	check: std.graph:399:32: E0302: expected `Cut<V>`, found `Int`
-std-graph/incremental-bridges.cp	wrong-reject	check: std.graph:3834:13: E0405: field `IncrementalBridges._iter` is fixed (not `var`) and cannot be assigned
+std-graph/incremental-bridges.cp	wrong-reject	check: std.graph:3821:13: E0405: field `IncrementalBridges.bridges` is fixed (not `var`) and cannot be assigned
 std-graph/inline-graph-over-anon-edge-array.cp	wrong-reject	check: std.graph: E0204: unknown type `G.Arc`
 std-graph/johnson-no-edges.cp	wrong-reject	check: std.graph:213:9: E0302: this cannot be walked with `for`
 std-graph/k-shortest-unreachable-is-empty.cp	wrong-reject	check: std.graph:213:9: E0302: this cannot be walked with `for`
@@ -809,27 +781,16 @@ std-graph/paths-index.cp	wrong-reject	check: std.graph: E0204: unknown type `G.A
 std-graph/paths-tight.cp	wrong-reject	check: std.graph:1218:33: E0606: `W` does not implement `Domain`
 std-graph/peel-empty-domain.cp	wrong-reject	check: std.graph:557:18: E0606: `V` does not implement `Domain`
 std-graph/peel-self-loop-removes-nothing.cp	wrong-reject	check: std.graph:557:18: E0606: `V` does not implement `Domain`
-std-graph/reach-sets-no-arcs-is-reflexive-only.cp	wrong-reject	check: std.graph:55:29: E0302: expected `V`, found `Self`
 std-graph/reachable-dedup-sources.cp	wrong-reject	check: std.graph:2179:25: E0606: `V` does not implement `Domain`
 std-graph/record-arc-fields-satisfy-graph-traits.cp	wrong-reject	check: std.graph: E0204: unknown type `G.Arc`
 std-graph/reweighted-runs-std-next-impl.cp	wrong-reject	check: program:13:29: E0203: `G.Arc` has no member `w`
-std-graph/scc-singletons.cp	wrong-reject	check: std.graph:55:29: E0302: expected `V`, found `Self`
-std-graph/scc-topo-over-domain.cp	wrong-reject	check: std.graph:55:29: E0302: expected `V`, found `Self`
 std-graph/small.cp	wrong-reject	check: program:7:7: E0305: `Graph<V, V>` is not indexed: it has no `Indexed` impl
 std-graph/smallest-topo-cycle-none.cp	wrong-reject	check: std.graph:2498:17: E0606: `V` does not implement `Ord`
 std-graph/spanning-forest-two-components.cp	wrong-reject	check: std.graph:248:9: E0302: this cannot be walked with `for`
 std-graph/target-and-next-answer-every-graph-form.cp	wrong-reject	check: program:13:21: E0606: `a function` does not implement `Next`
 std-graph/topo-cycle-none.cp	wrong-reject	check: std.graph:55:29: E0302: expected `V`, found `Self`
 std-graph/topo-self-loop.cp	wrong-reject	check: std.graph:55:29: E0302: expected `V`, found `Self`
-std-graph/traversals-paths-and-cuts-match-brute.cp	wrong-reject	check: program:202:20: E0201: unknown name `sorted`
 std-graph/two-color-disconnected.cp	wrong-reject	check: std.graph:55:29: E0302: expected `V`, found `Self`
-std-graph/two-edge-components-bridge-path.cp	wrong-reject	check: std.graph:248:9: E0302: this cannot be walked with `for`
-std-graph/two-sat-at-most-one-empty.cp	wrong-reject	check: std.graph:1858:14: E0208: a value's name starts lowercase, not `C`
-std-graph/two-sat-contradiction-none.cp	wrong-reject	check: std.graph:1858:14: E0208: a value's name starts lowercase, not `C`
-std-graph/two-sat-eq-with-must-conflict.cp	wrong-reject	check: std.graph:1858:14: E0208: a value's name starts lowercase, not `C`
-std-graph/two-sat-implies-contrapositive.cp	wrong-reject	check: std.graph:1858:14: E0208: a value's name starts lowercase, not `C`
-std-graph/two-sat-no-clauses.cp	wrong-reject	check: std.graph:1858:14: E0208: a value's name starts lowercase, not `C`
-std-graph/two-sat-xor-forces-other.cp	wrong-reject	check: std.graph:1858:14: E0208: a value's name starts lowercase, not `C`
 std-graph/undirected-takes-list-of-records.cp	wrong-reject	check: std.graph:507:28: E0302: expected `Cut<V>`, found `Int`
 std-graph/user-impl-next-weighted-arc-runs-dijkstra.cp	wrong-reject	check: std.graph: E0204: unknown type `G.Arc`
 std-grid/cell-neighbour-getters.cp	wrong-reject	check: program:10:95: E0606: `Tuple2<R, C>` does not implement `Indexed`
@@ -866,7 +827,7 @@ std-hashmap/counts-keys-tuples-chars-and-generators.cp	wrong-reject	check: progr
 std-hashmap/flatmap-absorb-1.cp	wrong-reject	own: std.hashmap:84:17: E0602: `self` is written here while `old_s`, which borrows it, is still used
 std-hashmap/flatmap-absorb-2.cp	wrong-reject	own: std.hashmap:84:17: E0602: `self` is written here while `old_s`, which borrows it, is still used
 std-hashmap/flatmap-clear-1.cp	wrong-reject	own: std.hashmap:84:17: E0602: `self` is written here while `old_s`, which borrows it, is still used
-std-hashmap/flatmap-contains-1.cp	wrong-reject	own: std.hashmap:84:17: E0602: `self` is written here while `old_s`, which borrows it, is still used
+std-hashmap/flatmap-contains-1.cp	wrong-reject	check: std.hashmap:265:41: E0606: `V` does not implement `Eq`
 std-hashmap/flatmap-get-1.cp	wrong-reject	own: std.hashmap:84:17: E0602: `self` is written here while `old_s`, which borrows it, is still used
 std-hashmap/flatmap-get_or_insert-1.cp	wrong-reject	own: std.hashmap:84:17: E0602: `self` is written here while `old_s`, which borrows it, is still used
 std-hashmap/flatmap-items-1.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
@@ -891,39 +852,37 @@ std-heap/indexedheap-pop-1.cp	wrong-reject	check: std.heap:528:19: E0806: nothin
 std-heap/indexedheap-pop-2.cp	wrong-reject	check: std.heap:528:19: E0806: nothing here says what `None` is an optional of; write the type
 std-heap/indexedheap-remove-1.cp	wrong-reject	check: std.heap:528:19: E0806: nothing here says what `None` is an optional of; write the type
 std-heap/meld-heap-add-all-empty.cp	wrong-reject	check: std.heap:1194:28: E0806: nothing here says what `None` is an optional of; write the type
-std-heap/meld-heap-add-all-survives-push.cp	wrong-reject	check: std.heap:1194:28: E0806: nothing here says what `None` is an optional of; write the type
+std-heap/meld-heap-add-all-survives-push.cp	wrong-reject	check: std.heap:1084:9: E0405: field `MeldHeaps._free` is fixed (not `var`) and cannot be assigned
 std-heap/meld-heap-meld-either-way.cp	wrong-reject	check: program:24:28: E0403: a `mut self` method needs a place
-std-heap/meld-heap-meld-empty.cp	wrong-reject	check: std.heap:1194:28: E0806: nothing here says what `None` is an optional of; write the type
-std-heap/meld-heap-of-a-non-add-type.cp	wrong-reject	check: std.heap:1194:28: E0806: nothing here says what `None` is an optional of; write the type
-std-heap/meld-heaps-fresh-per-test-case.cp	wrong-reject	check: program:14:8: E0309: `%` on a position of `$range23` takes its integer first, as `Int(v)`
-std-heap/meld-heaps-reserve-keeps-heaps.cp	wrong-reject	check: std.heap:1194:28: E0806: nothing here says what `None` is an optional of; write the type
-std-heap/meld-heaps-reuse-fresh-per-test-case.cp	wrong-reject	check: std.heap:1194:28: E0806: nothing here says what `None` is an optional of; write the type
+std-heap/meld-heap-meld-empty.cp	wrong-reject	check: std.heap:1084:9: E0405: field `MeldHeaps._free` is fixed (not `var`) and cannot be assigned
+std-heap/meld-heap-of-a-non-add-type.cp	wrong-reject	check: std.heap:1084:9: E0405: field `MeldHeaps._free` is fixed (not `var`) and cannot be assigned
+std-heap/meld-heaps-fresh-per-test-case.cp	wrong-reject	check: program:14:8: E0309: `%` on a position of `$range0` takes its integer first, as `Int(v)`
+std-heap/meld-heaps-reserve-keeps-heaps.cp	wrong-reject	check: std.heap:1084:9: E0405: field `MeldHeaps._free` is fixed (not `var`) and cannot be assigned
+std-heap/meld-heaps-reuse-fresh-per-test-case.cp	wrong-reject	check: std.heap:1084:9: E0405: field `MeldHeaps._free` is fixed (not `var`) and cannot be assigned
 std-heap/meld-heaps-reuse-popped-nodes.cp	wrong-reject	check: program:29:20: E0302: this is not a place that can be assigned or lent
 std-heap/meld-heaps-share-a-pool.cp	wrong-reject	check: program:13:19: E0302: this is not a place that can be assigned or lent
 std-heap/meld-heaps-skew-spine-stays-iterative.cp	wrong-reject	check: program:23:29: E0203: `is_sorted` is a method: call it with `()`
 std-heap/meld-stale-copy-after-reuse-traps.cp	wrong-reject	check: std.heap:1194:28: E0806: nothing here says what `None` is an optional of; write the type
 std-heap/meld-stale-copy-traps.cp	wrong-reject	check: std.heap:1194:28: E0806: nothing here says what `None` is an optional of; write the type
 std-heap/minmaxheap-stress.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-std-heap/minmaxheap-take-1.cp	wrong-reject	own: std.heap:717:15: E0602: `self` is written here while `out`, which borrows it, is still used
-std-heap/push-all-takes-any-seq.cp	wrong-reject	check: std.heap:1194:28: E0806: nothing here says what `None` is an optional of; write the type
+std-heap/minmaxheap-take-1.cp	wrong-reject	check: std.heap:717:9: E0405: field `MinMaxHeap._xs` is fixed (not `var`) and cannot be assigned
+std-heap/push-all-takes-any-seq.cp	wrong-reject	check: std.heap:1084:9: E0405: field `MeldHeaps._free` is fixed (not `var`) and cannot be assigned
 std-heap/settle-matches-brute.cp	wrong-reject	check: std.heap:1464:45: E0302: this function does not fit `(Int, Int) -> Int`
 std-interval/assign-point-returns-old.cp	wrong-reject	check: std.interval:116:24: E0606: `T` has no `impl Eq`, which `==` needs (R08.1.5)
-std-interval/interval-bodies.cp	wrong-reject	check: std.interval:116:24: E0606: `T` has no `impl Eq`, which `==` needs (R08.1.5)
+std-interval/interval-bodies.cp	wrong-reject	check: std.interval:254:17: E0405: field `IntervalSet.total` is fixed (not `var`) and cannot be assigned
 std-interval/sparse-interval-map-matches-array.cp	wrong-reject	check: std.interval:622:32: E0606: `Cut<Int>` does not implement `Add`
 std-io/read-all-counted-base-one.cp	wrong-reject	check: program:8:10: E0606: `E` does not implement `Read`
 std-io/read-all-generic-shapes.cp	wrong-reject	check: program:11:10: E0606: `P` does not implement `Read`
 std-io/wire-ask-reads-reply.cp	wrong-reject	check: std.io:53:9: E0201: unknown name `flush`
 std-io/yes-and-gallop-first.cp	wrong-reject	check: std.search:194:12: E0606: `I` has no `impl Ord`, which `<` needs (R08.1.5)
-std-journeys/fenwick.cp	wrong-reject	check: program:7:16: E0302: expected `Cut<$range23>`, found `Cut<Int>`
+std-journeys/dsu.cp	wrong-reject	link: E0606: a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one
+std-journeys/fenwick.cp	wrong-reject	check: program:7:16: E0302: expected `Cut<$range0>`, found `Cut<Int>`
 std-journeys/hash-map.cp	wrong-reject	check: std.hashmap: E0204: unknown type `HashMap`
-std-journeys/seg-tree.cp	wrong-reject	check: std.segtree:100:52: E0302: expected `Range<Int>`, found `O`
 std-journeys/sorted-bag.cp	wrong-reject	check: std.bag:349:32: E0302: expected `K`, found `Cut<K>`
 std-journeys/sorted-set.cp	wrong-reject	check: std.bag:349:32: E0302: expected `K`, found `Cut<K>`
 std-journeys/window.cp	wrong-reject	check: program:3:9: E0606: `a function` does not implement `Op`
-std-lazy/flip-action-on-a-segtree.cp	wrong-reject	check: std.segtree:260:53: E0302: this is not a place that can be assigned or lent
 std-lazy/flip-op-folds-both-halves.cp	wrong-reject	check: std.lazy:36:17: E0606: `M` does not implement `FromOp`
 std-lazy/flip-op-identity.cp	wrong-reject	check: std.lazy:36:17: E0606: `M` does not implement `FromOp`
-std-lazy/flip-stock-action-swaps-halves.cp	wrong-reject	check: std.segtree:260:53: E0302: this is not a place that can be assigned or lent
 std-lazy/lazy-forest-split-past-len-traps.cp	wrong-reject	check: std.lazy:564:22: E0302: expected `Int`, found `()`
 std-lazy/lazy-treap-apply-range-empty.cp	wrong-reject	check: std.lazy:798:22: E0302: expected `Int`, found `()`
 std-lazy/lazy-treap-insert-at-ends.cp	wrong-reject	check: std.lazy:798:22: E0302: expected `Int`, found `()`
@@ -933,10 +892,10 @@ std-lazy/lazy-treap-reverse-mirrors-rank-dependent-tags.cp	wrong-reject	check: s
 std-lazy/lazy-treap-splice-back-empty.cp	wrong-reject	check: std.lazy:798:22: E0302: expected `Int`, found `()`
 std-lazy/lazytreap-bodies.cp	wrong-reject	check: std.lazy:798:22: E0302: expected `Int`, found `()`
 std-lazy/rope-lazy-treap-to-array-matches-brute.cp	wrong-reject	check: std.lazy:798:22: E0302: expected `Int`, found `()`
-std-lazy/rope-matches-brute.cp	wrong-reject	own: program:7:15: E0608: `a0` was moved into another binding; use `.clone()` there to keep both
-std-lazy/rope-query-path-reads-pending-tags.cp	wrong-reject	check: std.lazy:1163:30: E0302: this is not a place that can be assigned or lent
-std-lazy/seq-fold-bulk-edits-match-brute.cp	wrong-reject	check: program:33:18: E0606: `Slice<List<Int>>` does not implement `Add`
-std-lazy/seq-fold-lift-matches-brute.cp	wrong-reject	check: program:27:75: E0201: unknown name `MaxSub`
+std-lazy/rope-matches-brute.cp	wrong-reject	check: std.lazy:1090:29: E0606: `T` does not implement `Eq`
+std-marks/arena-double-free-traps.cp	wrong-reject	check: std.marks:458:28: E0405: field `Arena._dead` is fixed (not `var`) and cannot be assigned
+std-marks/arena-free-foreign-handle-traps.cp	wrong-reject	check: std.marks:458:28: E0405: field `Arena._dead` is fixed (not `var`) and cannot be assigned
+std-marks/arena-free-multitest.cp	wrong-reject	check: std.marks:458:28: E0405: field `Arena._dead` is fixed (not `var`) and cannot be assigned
 std-marks/arena-free-reuses-slots-matches-brute.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
 std-marks/arena-set-1.cp	wrong-reject	check: program:6:11: E0305: `Arena<Int>` is not indexed: it has no `Indexed` impl
 std-marks/interner-clear-1.cp	wrong-reject	check: std.marks: E0204: unknown type `HashMap`
@@ -949,130 +908,118 @@ std-marks/interner-len-1.cp	wrong-reject	check: std.marks: E0204: unknown type `
 std-marks/interner-new-1.cp	wrong-reject	check: std.marks: E0204: unknown type `HashMap`
 std-marks/interner-prints-in-id-order.cp	wrong-reject	check: std.marks: E0204: unknown type `HashMap`
 std-marks/interner-reserve-1.cp	wrong-reject	check: std.marks: E0204: unknown type `HashMap`
-std-marks/marks-bodies.cp	wrong-reject	check: std.marks:189:13: E0405: field `MarkMap.gen` is fixed (not `var`) and cannot be assigned
-std-math/bigint-matches-int-arithmetic.cp	wrong-reject	check: std.math:1926:13: E0302: expected `List<Char>`, found `Rev<List<Char>>`
+std-marks/marks-bodies.cp	wrong-reject	check: std.marks:361:9: E0405: field `SparseSet._len` is fixed (not `var`) and cannot be assigned
+std-math/bigint-matches-int-arithmetic.cp	wrong-reject	check: std.math:1914:13: E0302: expected `List<Char>`, found `Rev<List<Char>>`
 std-math/congruence.cp	wrong-reject	check: program:3:50: E0302: expected `(x0: Int, y0: Int, step_x: Int, step_y: Int)`, found `Tuple4<Int, Int, Int, Int>`
-std-math/divisors-as-a-method.cp	no-cxx	g++ failed on d2040622e2d5ec1c.cpp: | d2040622e2d5ec1c.cpp: In function ‘S8 f4(int64_t)’: | d2040622e2d5ec1c.cpp:732:19: error: invalid initialization of reference of type ‘const S18&’ from expression of type ‘S15’ |   732 |     l20 = f15(l2, l18);
+std-math/crt-all-empty-and-single.cp	wrong-reject	check: std.math:963:15: E0201: unknown name `I128`
+std-math/crt-all-zero-modulus-traps.cp	wrong-reject	check: std.math:963:15: E0201: unknown name `I128`
+std-math/crt-incompatible.cp	wrong-reject	check: std.math:963:15: E0201: unknown name `I128`
 std-math/divisors-from-factors-negative-exponent-traps.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-std-math/divisors-square.cp	no-cxx	g++ failed on 682c267bfb907334.cpp: | 682c267bfb907334.cpp: In function ‘S8 f4(int64_t)’: | 682c267bfb907334.cpp:743:19: error: invalid initialization of reference of type ‘const S19&’ from expression of type ‘S16’ |   743 |     l20 = f17(l2, l18);
 std-math/enumerate.cp	wrong-reject	check: program:3:48: E0302: expected `(q: Int, lo: Int, hi: Int)`, found `Tuple3<Int, Int, Int>`
 std-math/ext-gcd-bezout.cp	wrong-reject	check: program:2:6: E0203: `(g: Int, x: Int, y: Int)` has no member `_0`
-std-math/factor-prime-power.cp	wrong-reject	check: std.math:861:51: E0302: this is not a place that can be assigned or lent
-std-math/mod-kth-root-zero-and-bad-k.cp	wrong-reject	check: std.math:1178:17: E0201: unknown name `HashMap`
-std-math/mod-log-target-one.cp	wrong-reject	check: std.math:1178:17: E0201: unknown name `HashMap`
-std-math/orders.cp	wrong-reject	check: std.math:861:51: E0302: this is not a place that can be assigned or lent
-std-math/primitive-root-composite-traps.cp	wrong-reject	check: std.math:861:51: E0302: this is not a place that can be assigned or lent
-std-math/primitive-root-of-two.cp	wrong-reject	check: std.math:861:51: E0302: this is not a place that can be assigned or lent
+std-math/factor-prime-power.cp	wrong-reject	check: std.math:849:51: E0302: this is not a place that can be assigned or lent
+std-math/mod-sqrt-is-the-smaller-root.cp	wrong-reject	check: std.math:963:15: E0201: unknown name `I128`
+std-math/mod-sqrt-zero-and-nonresidue.cp	wrong-reject	check: std.math:963:15: E0201: unknown name `I128`
+std-math/mul-mod-no-overflow.cp	wrong-reject	check: std.math:963:15: E0201: unknown name `I128`
+std-math/orders.cp	wrong-reject	check: std.math:849:51: E0302: this is not a place that can be assigned or lent
+std-math/pow-mod-huge-exponent.cp	wrong-reject	check: std.math:963:15: E0201: unknown name `I128`
+std-math/primitive-root-composite-traps.cp	wrong-reject	check: std.math:963:15: E0201: unknown name `I128`
+std-math/primitive-root-of-two.cp	wrong-reject	check: std.math:963:15: E0201: unknown name `I128`
 std-math/sieve-builds-spf-on-first-read.cp	wrong-reject	own: std.math:281:9: E0603: this returns a value that borrows `self`: `self` is lent by the caller; return a `.clone()`
 std-math/sieve-call-is-new.cp	wrong-reject	own: std.math:281:9: E0603: this returns a value that borrows `self`: `self` is lent by the caller; return a `.clone()`
 std-math/sieve-multiplicative-at-zero.cp	wrong-reject	check: std.math:480:34: E0606: `T` does not implement `Domain`
 std-math/sieve-multiplicative-negative-traps.cp	wrong-error	wanted E0902 on line 2, got: check: std.math:480:34: E0606: `T` does not implement `Domain`
 std-math/sieve-primes-at-word-edges.cp	wrong-reject	check: program:14:8: E0203: `List<0..=2000000000>` has no member `to_list`
-std-math/to-str.cp	wrong-reject	check: std.math:762:9: E0302: expected `List<Char>`, found `Rev<List<Char>>`
+std-math/to-str.cp	wrong-reject	check: std.math:750:9: E0302: expected `List<Char>`, found `Rev<List<Char>>`
 std-matrix/bitmat.cp	wrong-reject	own: std.matrix:1231:49: E0603: this returns a value that borrows `sp`: `sp` is gone when the fn returns
 std-matrix/det-f64-not-square-traps.cp	wrong-reject	check: std.matrix:322:19: E0606: `T` does not implement `Domain`
 std-matrix/det-f64-singular-is-zero.cp	wrong-reject	check: std.matrix:322:19: E0606: `T` does not implement `Domain`
-std-matrix/f64-elimination-pivots-by-abs-within-eps.cp	wrong-reject	check: std.matrix:349:24: E0606: `T` does not implement `Domain`
 std-matrix/inverse-f64-singular-none.cp	wrong-reject	check: std.matrix:455:24: E0606: `T` does not implement `Domain`
 std-matrix/max-plus-at-the-entry-bound.cp	wrong-reject	check: std.matrix:792:13: E0203: `S` has no member `add`
-std-matrix/max-plus-built-matrix-multiplied-in-a-loop-matches-brute.cp	wrong-reject	check: std.matrix:197:13: E0405: field `Mat.raw` is fixed (not `var`) and cannot be assigned
+std-matrix/max-plus-built-matrix-multiplied-in-a-loop-matches-brute.cp	wrong-reject	check: std.matrix:196:13: E0405: field `Mat.cells` is fixed (not `var`) and cannot be assigned
 std-matrix/max-plus-past-the-bound-traps-as-the-loop.cp	wrong-reject	check: std.matrix:792:13: E0203: `S` has no member `add`
 std-matrix/max-plus-product-entries-change-after-a-product.cp	wrong-reject	check: std.matrix:37:9: E0606: `T` does not implement `Clone`
 std-matrix/min-plus-at-the-entry-bound.cp	wrong-reject	check: std.matrix:792:13: E0203: `S` has no member `add`
-std-matrix/min-plus-gaps-fold-in-a-segtree.cp	wrong-reject	check: std.matrix:792:13: E0203: `S` has no member `add`
 std-matrix/min-plus-products-match-the-loop.cp	wrong-reject	check: std.matrix:37:9: E0606: `T` does not implement `Clone`
-std-matrix/mul-vec-wrong-length-traps.cp	wrong-reject	check: std.matrix:260:49: E0606: `T` does not implement `Domain`
-std-matrix/mul-vec-zero-columns.cp	wrong-reject	check: std.matrix:260:49: E0606: `T` does not implement `Domain`
+std-matrix/mul-vec-wrong-length-traps.cp	wrong-reject	check: std.matrix:259:20: E0606: `Ring<T>` does not implement `Eq`
+std-matrix/mul-vec-zero-columns.cp	wrong-reject	check: std.matrix:259:20: E0606: `Ring<T>` does not implement `Eq`
 std-matrix/product-identity-of-size.cp	wrong-reject	check: std.matrix:283:45: E0606: `Mat<T>` does not implement `Mul`
 std-matrix/rank-f64-tiny-pivot.cp	wrong-reject	check: std.matrix:349:24: E0606: `T` does not implement `Domain`
-std-matrix/solve-f64-singular-none.cp	wrong-reject	check: std.matrix:383:24: E0606: `T` does not implement `Domain`
-std-matrix/solve-f64-wrong-length-traps.cp	wrong-reject	check: std.matrix:383:24: E0606: `T` does not implement `Domain`
+std-matrix/solve-f64-singular-none.cp	wrong-reject	check: std.matrix:438:12: E0606: `T` does not implement `Eq`
+std-matrix/solve-f64-wrong-length-traps.cp	wrong-reject	check: std.matrix:438:12: E0606: `T` does not implement `Eq`
 std-matrix/sum-adds-under-its-semiring.cp	wrong-reject	check: program:11:44: E0806: nothing here says what `None` is an optional of; write the type
 std-matrix/transpose-of-a-row.cp	wrong-reject	check: std.matrix:233:42: E0606: `T` does not implement `Domain`
-std-mo/mo-bodies-match-brute.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-std-mo/mo-order-empty-and-single.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-std-mo/mo-order-on-int-ranges.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-std-mod/mod-comb-k-past-n.cp	wrong-reject	check: std.mod:436:26: E0201: unknown name `Int`
-std-mod/mod-comb-modulus-one.cp	wrong-reject	check: std.mod:436:26: E0201: unknown name `Int`
+std-mod/barrett-reduces-without-division.cp	wrong-reject	check: std.mod:417:22: E0201: unknown name `I128`
+std-mod/barrett.cp	wrong-reject	check: std.mod:417:22: E0201: unknown name `I128`
+std-mod/mod-comb-k-past-n.cp	wrong-reject	check: std.math:963:15: E0201: unknown name `I128`
+std-mod/mod-comb-modulus-one.cp	wrong-reject	check: std.math:963:15: E0201: unknown name `I128`
 std-mod/prime-power-comb-k-past-n.cp	wrong-reject	check: std.mod:436:26: E0201: unknown name `Int`
-std-mod/prime-power-comb.cp	wrong-reject	check: std.mod:436:26: E0201: unknown name `Int`
+std-mod/prime-power-comb.cp	wrong-reject	check: std.math:963:15: E0201: unknown name `I128`
 std-models/augbag.cp	wrong-reject	check: std.bag:2083:27: E0302: expected `K`, found `Cut<K>`
 std-models/bag.cp	wrong-reject	check: std.bag:349:32: E0302: expected `K`, found `Cut<K>`
 std-models/beats.cp	wrong-reject	check: std.beats:271:54: E0201: unknown name `Int`
-std-models/bucket.cp	wrong-reject	check: std.bag:2310:21: E0302: expected `Int`, found `Cut<Int>`
+std-models/bitset.cp	wrong-reject	check: std.rand:75:21: E0201: unknown name `I128`
+std-models/contains.cp	wrong-reject	check: std.rand:75:21: E0201: unknown name `I128`
 std-models/counter.cp	wrong-reject	check: std.hashmap: E0204: unknown type `HashMap`
+std-models/deque.cp	wrong-reject	check: std.rand:75:21: E0201: unknown name `I128`
 std-models/derive.cp	wrong-reject	check: std.derive:129:14: E0201: unknown name `fields`
-std-models/dsu-rollback-persistent.cp	wrong-reject	own: program:37:13: E0603: a value that borrows `marks` is stored in `a`, which outlives `marks`
+std-models/dsu-rollback-persistent.cp	wrong-reject	check: std.rand:75:21: E0201: unknown name `I128`
 std-models/dsu.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
 std-models/dyn-bitset.cp	wrong-reject	check: std.bitset:761:21: E0302: expected `Int`, found `Cut<Int>`
 std-models/dynamic-order-tree.cp	wrong-reject	check: std.segtree:1551:22: E0606: `T` does not implement `Ord`
-std-models/euler-tour-tree.cp	wrong-reject	check: std.tree:3658:30: E0302: this is not a place that can be assigned or lent
 std-models/fenwick-variants.cp	wrong-reject	check: std.fenwick:566:61: E0606: `T` does not implement `Domain`
 std-models/fenwick.cp	wrong-reject	check: std.fenwick:60:19: E0606: `T` does not implement `Domain`
-std-models/flatmap.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-std-models/flip.cp	wrong-reject	check: program:19:86: E0201: unknown name `Int`
+std-models/flatmap.cp	wrong-reject	check: std.hashmap:265:41: E0606: `V` does not implement `Eq`
 std-models/flow-network.cp	wrong-reject	check: std.flow:1429:16: E0201: unknown name `Int`
 std-models/folds.cp	wrong-reject	check: program:23:15: E0201: unknown name `Int`
 std-models/forest.cp	wrong-reject	check: program:48:9: E0403: a `mut self` method needs a place
 std-models/gen-fields.cp	wrong-reject	check: std.derive:69:48: E0201: unknown name `fields`
-std-models/geometry-area.cp	wrong-reject	check: program:170:37: E0302: expected `Int`, found `F64`
-std-models/geometry-float.cp	wrong-reject	check: program:105:13: E0201: unknown name `sort`
-std-models/geometry-hull.cp	wrong-reject	check: std.geometry:1538:23: E0201: unknown name `sum`
-std-models/geometry-lattice.cp	wrong-reject	check: program:226:45: E0302: expected `Cut<Int>`, found `Int`
-std-models/geometry-planar.cp	wrong-reject	check: std.geometry:3141:18: E0201: unknown name `copy`
-std-models/graph-misc.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-std-models/grid.cp	wrong-reject	check: std.grid:193:16: E0203: `C` has no member `next`
-std-models/heaps.cp	wrong-reject	own: std.mem:7:6: E0602: `a` is written here while `$parts40_1`, which borrows it, is still used
+std-models/grid.cp	wrong-reject	check: std.rand:75:21: E0201: unknown name `I128`
+std-models/heaps.cp	wrong-reject	check: std.heap:717:9: E0405: field `MinMaxHeap._xs` is fixed (not `var`) and cannot be assigned
 std-models/historic-beats.cp	wrong-reject	check: std.beats:732:55: E0201: unknown name `Int`
 std-models/indexed-heap.cp	wrong-reject	check: std.heap:1464:45: E0302: this function does not fit `(Int, Int) -> Int`
 std-models/interval.cp	wrong-reject	check: program:109:14: E0606: `Optional<D>` does not implement `Seq`
-std-models/io.cp	wrong-reject	check: std.io:40:9: E0201: unknown name `flush`
+std-models/io.cp	wrong-reject	check: std.rand:75:21: E0201: unknown name `I128`
 std-models/lines.cp	wrong-reject	check: program:24:18: E0302: this function does not fit `(_, _) -> _`
-std-models/linked-list.cp	wrong-reject	check: std.deque:530:28: E0405: field `LinkedList.flip` is fixed (not `var`) and cannot be assigned
+std-models/linked-list.cp	wrong-reject	check: std.deque:530:10: E0405: field `LinkedList._len` is fixed (not `var`) and cannot be assigned
 std-models/marks.cp	wrong-reject	check: std.marks: E0204: unknown type `HashMap`
 std-models/math-bits.cp	wrong-reject	check: program:16:65: E0201: unknown name `Int`
-std-models/math-mod.cp	wrong-reject	check: program:70:31: E0201: unknown name `Int`
-std-models/math-prime.cp	wrong-reject	check: program:130:33: E0201: unknown name `len`
-std-models/math-ratio.cp	wrong-reject	check: std.math:1926:13: E0302: expected `List<Char>`, found `Rev<List<Char>>`
-std-models/math-tower.cp	wrong-reject	check: std.math:861:51: E0302: this is not a place that can be assigned or lent
+std-models/math-ratio.cp	wrong-reject	check: std.math:1914:13: E0302: expected `List<Char>`, found `Rev<List<Char>>`
+std-models/math-tower.cp	wrong-reject	check: std.math:963:15: E0201: unknown name `I128`
 std-models/matrix-xor.cp	wrong-reject	check: program:166:18: E0303: expected 1 arguments, found 0
 std-models/meld-heap.cp	wrong-reject	check: program:38:20: E0302: this is not a place that can be assigned or lent
 std-models/merge-segs.cp	wrong-reject	check: program:37:12: E0606: `Optional<D>` does not implement `Seq`
-std-models/merge-sort-tree.cp	wrong-reject	check: std.segtree:1085:57: E0606: `T` has no `impl Ord`, which `>` needs (R08.1.5)
-std-models/mo.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-std-models/perm-tree.cp	wrong-reject	check: std.tree:3054:17: E0606: `V` does not implement `Ord`
-std-models/persistent-lazy.cp	timeout	the interpreter passed 10 s
+std-models/merge-sort-tree.cp	wrong-reject	check: std.segtree:1085:41: E0606: `T` does not implement `Eq`
+std-models/opt.cp	wrong-reject	check: std.rand:75:21: E0201: unknown name `I128`
+std-models/persistent-array.cp	wrong-reject	check: std.rand:75:21: E0201: unknown name `I128`
 std-models/persistent-segtree.cp	wrong-reject	check: program:68:10: E0606: `Optional<P>` does not implement `Seq`
-std-models/persistent-version-within.cp	wrong-reject	check: std.persistent:150:17: E0606: `M` does not implement `FromOp`
 std-models/pmultiset.cp	wrong-reject	check: program:40:25: E0302: expected `List<Int>`, found `Slice<List<Int>>`
-std-models/polygon-triangulate.cp	wrong-reject	check: std.geometry:1538:23: E0201: unknown name `sum`
+std-models/polygon-triangulate.cp	wrong-reject	check: std.geometry:967:21: E0201: unknown name `I128`
 std-models/prefix.cp	wrong-reject	check: program:46:5: E0303: expected 3 arguments, found 2
 std-models/range-kth.cp	wrong-reject	check: std.persistent:531:12: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
+std-models/range-offset.cp	wrong-reject	check: std.rand:75:21: E0201: unknown name `I128`
+std-models/range-saturate.cp	wrong-reject	check: std.rand:75:21: E0201: unknown name `I128`
 std-models/rng.cp	wrong-reject	check: std.rand: E0204: unknown trait `Indexed`
-std-models/rope.cp	wrong-reject	check: program:35:13: E0606: `Slice<List<Tuple2<Int, Int>>>` does not implement `Add`
-std-models/segtree.cp	wrong-reject	check: std.segtree:134:9: E0405: field `SegTree.blank` is fixed (not `var`) and cannot be assigned
-std-models/segtree2d.cp	wrong-reject	check: std.segtree:1126:17: E0606: `M` does not implement `FromOp`
+std-models/segtree2d.cp	wrong-reject	check: std.rand:75:21: E0201: unknown name `I128`
 std-models/seq-gens.cp	wrong-reject	check: program:80:59: E0203: `()` has no `iter`
-std-models/seq-mutate.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
+std-models/seq-mutate.cp	wrong-reject	check: std.rand:75:21: E0201: unknown name `I128`
 std-models/seq-order.cp	wrong-reject	check: program:124:21: E0203: `(u: Int, v: Int)` has no member `swap`
 std-models/seq-perm.cp	wrong-reject	check: program:65:20: E0304: `Optional<List<Int>>` cannot be called
 std-models/seq-reduce.cp	wrong-reject	check: program:81:83: E0606: `Optional<Int>` does not implement `Mul`
 std-models/seq-reverse.cp	wrong-reject	check: program:36:36: E0302: expected `List<Int>`, found `Slice<List<Int>>`
-std-models/seq-sorted.cp	wrong-reject	check: program:51:14: E0304: `Optional<Int>` cannot be called
 std-models/seq-stack.cp	wrong-reject	check: program:101:18: E0203: `List<Int>` has no member `cartesian_tree`
 std-models/seq-unzip.cp	wrong-reject	own: program:25:29: E0608: `xs` was moved into another binding; use `.clone()` there to keep both
 std-models/seq-views.cp	wrong-reject	check: program:48:10: E0606: `Rev<List<Int>>` does not implement `Keyed`
 std-models/shuffle.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
 std-models/slope.cp	wrong-reject	check: std.lazy:798:22: E0302: expected `Int`, found `()`
-std-models/sortedmap.cp	wrong-reject	check: std.bag:1440:41: E0303: expected 1 arguments, found 0
+std-models/sortedmap.cp	wrong-reject	check: std.rand:75:21: E0201: unknown name `I128`
 std-models/sortedset.cp	wrong-reject	check: std.bag:349:32: E0302: expected `K`, found `Cut<K>`
 std-models/sparse.cp	wrong-reject	check: program:44:34: E0302: this function does not fit `(Int, Int) -> Int`
 std-models/sparse2d.cp	wrong-reject	check: program:26:28: E0302: this function does not fit `(_, _) -> _`
-std-models/strings-hash.cp	wrong-reject	check: std.strings:1599:12: E0203: `R` has no member `is_empty`
+std-models/strings-hash.cp	wrong-reject	check: std.rand:75:21: E0201: unknown name `I128`
 std-models/strings-text.cp	wrong-reject	check: program:112:109: E0606: `Str` does not implement `Contains`
 std-models/timetree.cp	wrong-reject	check: program:26:17: E0201: unknown name `sorted`
 std-models/wavelet-matrix.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-std-models/window.cp	wrong-reject	check: program:42:13: E0606: `a function` does not implement `Op`
 std-ntt/convolve-cyclic-length-mismatch-traps.cp	wrong-reject	check: std.ntt:161:18: E0203: `R` has no member `add`
 std-ntt/convolve-index-ops-and-semirings.cp	wrong-reject	check: std.ntt:161:18: E0203: `R` has no member `add`
 std-ntt/convolve-on-gcd-and-lcm.cp	wrong-reject	check: std.ntt:161:18: E0203: `R` has no member `add`
@@ -1089,12 +1036,11 @@ std-pair/new-at-other.cp	wrong-reject	check: std.pair:22:16: E0606: `V` has no `
 std-pair/pair-bodies.cp	wrong-reject	check: std.pair:40:16: E0606: `V` has no `impl Eq`, which `==` needs (R08.1.5)
 std-pair/symmetric-fills-both-halves.cp	wrong-reject	check: program:7:1: E0606: `Pair<V>` does not implement `Domain`
 std-persistent/parena-handles-stay-valid.cp	wrong-reject	own: program:10:9: E0602: `a` is written here while `first`, which borrows it, is still used
-std-persistent/persistent-bodies.cp	wrong-reject	check: std.persistent:375:47: E0302: expected `T`, found `Int`
-std-persistent/persistent-versions-match-brute.cp	wrong-reject	own: program:11:56: E0608: `a0` was moved into another binding; use `.clone()` there to keep both
-std-persistent/persistent-walks-match-brute.cp	wrong-reject	check: std.persistent:150:17: E0606: `M` does not implement `FromOp`
+std-persistent/persistent-walks-match-brute.cp	wrong-reject	check: std.rand:75:21: E0201: unknown name `I128`
 std-persistent/pmultiset-fresh-per-test-case.cp	wrong-reject	check: program:10:19: E0606: `K` does not implement `Read`
+std-persistent/pmultiset-matches-brute.cp	wrong-reject	check: std.rand:75:21: E0201: unknown name `I128`
 std-persistent/reserve-keeps-versions.cp	wrong-reject	check: std.persistent:150:17: E0606: `M` does not implement `FromOp`
-std-persistent/versions-fresh-per-test-case.cp	wrong-reject	check: std.persistent:150:17: E0606: `M` does not implement `FromOp`
+std-persistent/versions-fresh-per-test-case.cp	wrong-reject	check: std.persistent:717:20: E0606: `T` does not implement `Eq`
 std-persistent/versions-live-in-the-value.cp	wrong-reject	check: std.persistent:150:17: E0606: `M` does not implement `FromOp`
 std-prefix/a-prefix-of-a-table-literal-reads-each-cell-once.cp	wrong-reject	check: program:9:20: E0302: expected `List<_>`, found `Array<Tuple2<R, C>, Int>`
 std-prefix/built-prefix-at-position-folds-through.cp	wrong-reject	check: program:6:16: E0302: expected `List<_>`, found `Array<D, Int>`
@@ -1119,29 +1065,32 @@ std-prefix/rev-scan-is-suffix-fold.cp	wrong-reject	check: program:6:9: E0203: `R
 std-prefix/scan-at-position-folds-through.cp	wrong-reject	check: program:7:7: E0305: `Prefix<I, 1..=9>` is not indexed: it has no `Indexed` impl
 std-prefix/scan-cut-call-index-is-a-cut.cp	wrong-reject	check: program:5:11: E0203: `List<Int>` has no member `scan`
 std-prefix/scan-empty-list.cp	wrong-reject	check: program:4:9: E0203: `List<Int>` has no member `scan`
-std-prefix/scan-fn-int-index-is-an-error.cp	wrong-error	wanted E0320 on line 5, got: check: program:5:7: E0305: `Prefix<$range23, Int>` is not indexed: it has no `Indexed` impl
-std-prefix/scan-fn-range-array-int-index-is-an-error.cp	wrong-error	wanted E0320 on line 6, got: check: program:6:23: E0305: `Prefix<$range23, Int>` is not indexed: it has no `Indexed` impl
+std-prefix/scan-fn-int-index-is-an-error.cp	wrong-error	wanted E0320 on line 5, got: check: program:5:7: E0305: `Prefix<$range0, Int>` is not indexed: it has no `Indexed` impl
+std-prefix/scan-fn-range-array-int-index-is-an-error.cp	wrong-error	wanted E0320 on line 6, got: check: program:6:23: E0305: `Prefix<$range0, Int>` is not indexed: it has no `Indexed` impl
 std-prefix/scan-index-by-another-domain.cp	wrong-error	wanted E0302 on line 8, got: check: program:8:7: E0305: `Prefix<I, Int>` is not indexed: it has no `Indexed` impl
 std-prefix/scan-int-index-is-an-error.cp	wrong-error	wanted E0320 on line 5, got: check: program:4:11: E0203: `List<Int>` has no member `scan`
-std-prefix/scan-int-index-is-cut.cp	wrong-reject	check: program:7:8: E0606: `$range24` does not implement `Sub`
+std-prefix/scan-int-index-is-cut.cp	wrong-reject	check: program:7:8: E0606: `$range1` does not implement `Sub`
 std-prefix/scan-max-of-bounded.cp	wrong-reject	check: program:7:7: E0305: `Prefix<I, 1..=9>` is not indexed: it has no `Indexed` impl
 std-prefix/scan-min-range-fold-traps.cp	wrong-reject	check: program:5:9: E0203: `List<Int>` has no member `scan`
 std-prefix/scan-of-list-int-is-cut.cp	wrong-reject	check: program:5:9: E0203: `List<Int>` has no member `scan`
 std-prefix/scan-owns-its-table.cp	wrong-reject	check: program:5:9: E0203: `List<Int>` has no member `scan`
 std-prefix/scan-prefix-ends.cp	wrong-reject	check: program:2:9: E0203: `List<Int>` has no member `scan`
-std-prefix/scan-range-array-int-index-is-an-error.cp	wrong-error	wanted E0320 on line 6, got: check: program:6:23: E0305: `Prefix<$range23, Int>` is not indexed: it has no `Indexed` impl
+std-prefix/scan-range-array-int-index-is-an-error.cp	wrong-error	wanted E0320 on line 6, got: check: program:6:23: E0305: `Prefix<$range0, Int>` is not indexed: it has no `Indexed` impl
 std-prefix/scan-sums-are-int.cp	wrong-reject	check: program:7:7: E0606: `I` does not implement `Sub`
 std-prefix/scan-walks-its-running-folds.cp	wrong-reject	check: program:7:9: E0203: `List<Int>` has no member `scan`
 std-prefix/was-prefix2-names-prefix.cp	wrong-error	wanted E0204 on line 3, got: decls: E0204: unknown type `Prefix2`
 std-prefix/word-on-strings-names-the-written-type.cp	wrong-error	wanted E0606 on line 4, got: check: program:4:9: E0201: unknown name `prefix`
 std-rand/chance-pick.cp	wrong-reject	check: std.rand: E0204: unknown trait `Indexed`
+std-rand/float-in-unit-interval.cp	wrong-reject	check: std.rand:56:9: E0405: field `Rng.s` is fixed (not `var`) and cannot be assigned
 std-rand/free-shuffle-is-a-std-body.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
 std-rand/perm-into-declared-domain.cp	wrong-reject	check: std.seq:497:16: E0201: unknown name `HashSet`
 std-rand/perm-is-a-permutation.cp	wrong-reject	check: std.seq:497:16: E0201: unknown name `HashSet`
+std-rand/rng-is-splitmix64.cp	wrong-reject	check: std.rand:56:9: E0405: field `Rng.s` is fixed (not `var`) and cannot be assigned
 std-rand/sample-alone-loads-no-seq.cp	wrong-reject	check: std.rand: E0204: unknown trait `Indexed`
 std-rand/sample-too-many-traps.cp	wrong-reject	check: std.rand: E0204: unknown trait `Indexed`
 std-rand/sample-zero-and-all.cp	wrong-reject	check: std.rand: E0204: unknown trait `Indexed`
 std-rand/shuffle-keeps-elements.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
+std-rand/shuffle-single-and-empty.cp	wrong-reject	check: std.rand:75:21: E0201: unknown name `I128`
 std-search/split-best-empty-groups.cp	wrong-reject	check: program:3:61: E0302: expected `Int`, found `Cut<Int>`
 std-search/ternary_max-1.cp	wrong-reject	check: std.search:32:40: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
 std-search/ternary_max-2.cp	wrong-reject	check: std.search:32:40: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
@@ -1149,68 +1098,38 @@ std-search/ternary_max-3.cp	wrong-reject	check: std.search:32:40: E0606: `K` has
 std-search/ternary_min-1.cp	wrong-reject	check: std.search:32:40: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
 std-search/ternary_min-2.cp	wrong-reject	check: std.search:32:40: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
 std-search/ternary_min-3.cp	wrong-reject	check: std.search:32:40: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
-std-segtree/assign-add-overwrites-then-adds.cp	wrong-reject	check: std.segtree:260:53: E0302: this is not a place that can be assigned or lent
-std-segtree/closure-param-reads-all.cp	wrong-reject	check: std.segtree:260:53: E0302: this is not a place that can be assigned or lent
-std-segtree/commuting-action-skips-push-down.cp	wrong-reject	check: std.segtree:260:53: E0302: this is not a place that can be assigned or lent
-std-segtree/dual-add-point-read.cp	wrong-reject	check: program:7:7: E0305: `SegTree<V, Int, Int>` is not indexed: it has no `Indexed` impl
 std-segtree/dynamic-order-tree-kth-matches-brute.cp	wrong-reject	check: std.segtree:1551:22: E0606: `T` does not implement `Ord`
 std-segtree/dynamic-order-tree-matches-brute.cp	wrong-reject	check: std.segtree:1462:20: E0606: `T` does not implement `Ord`
 std-segtree/dynamic-order-tree-with-values-matches-brute.cp	wrong-reject	check: std.segtree:1535:12: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
 std-segtree/dynamic-order-tree-with-values-traps-on-an-unlisted-value.cp	wrong-reject	check: std.segtree:1431:17: E0606: `T` has no `impl Eq`, which `==` needs (R08.1.5)
-std-segtree/lazy-add-replaces-range-fenwick.cp	wrong-reject	check: program:7:7: E0305: `SegTree<V, Int, Int>` is not indexed: it has no `Indexed` impl
-std-segtree/lazy-affine-and-add.cp	wrong-reject	check: std.segtree:260:53: E0302: this is not a place that can be assigned or lent
-std-segtree/lazy-reads-do-not-push.cp	wrong-reject	check: std.segtree:260:53: E0302: this is not a place that can be assigned or lent
-std-segtree/max-identity-is-range-alias-low-end.cp	wrong-reject	check: program:6:14: E0302: expected `Range<0..=3>`, found `Range<Int>`
 std-segtree/merge-seg-merge-and-prune.cp	wrong-reject	check: program:7:35: E0203: `K` has no member `idx`
 std-segtree/merge-seg-singleton-dead.cp	wrong-reject	check: program:6:37: E0203: `K` has no member `idx`
 std-segtree/merge-segs-first-ge-is-read-only.cp	wrong-reject	check: program:30:23: E0303: expected 1 arguments, found 0
 std-segtree/merge-segs-share-nodes.cp	wrong-reject	check: program:28:8: E0606: `Optional<K>` does not implement `Seq`
 std-segtree/merge-sort-tree-count-le-edges.cp	wrong-reject	check: std.segtree:964:20: E0606: `T` has no `impl Ord`, which `<=` needs (R08.1.5)
-std-segtree/mergesorttree-bodies.cp	wrong-reject	check: std.segtree:1085:57: E0606: `T` has no `impl Ord`, which `>` needs (R08.1.5)
-std-segtree/new-apply-all-and-at.cp	wrong-reject	check: program:8:52: E0302: expected `Range<0..=3>`, found `Range<Int>`
-std-segtree/new-bare-op-positional.cp	wrong-reject	check: std.segtree:100:52: E0302: expected `Range<Int>`, found `O`
-std-segtree/new-from-array-literal.cp	wrong-reject	check: std.segtree:100:52: E0302: expected `Range<Int>`, found `O`
-std-segtree/of-explicit-args-decide-type.cp	wrong-reject	check: std.segtree:260:53: E0302: this is not a place that can be assigned or lent
-std-segtree/over-a-domains-cuts.cp	wrong-reject	check: program:5:91: E0302: this function does not fit `(Int, Int) -> Int`
-std-segtree/over-makes-nodes-on-first-touch.cp	wrong-reject	check: std.segtree:260:53: E0302: this is not a place that can be assigned or lent
-std-segtree/refresh-after-two-writes.cp	wrong-reject	check: std.segtree:260:53: E0302: this is not a place that can be assigned or lent
-std-segtree/replaces-true-on-id-breaks-the-law.cp	wrong-reject	check: program:6:12: E0606: `a function` does not implement `FromOp`
-std-segtree/replacing-action-folds-an-empty-range-to-the-identity.cp	wrong-reject	check: std.segtree:260:53: E0302: this is not a place that can be assigned or lent
-std-segtree/replacing-and-plain-actions-match-brute.cp	wrong-reject	check: program:38:33: E0201: unknown name `Int`
-std-segtree/right-left-while-match-brute.cp	wrong-reject	check: std.segtree:530:40: E0606: `M` does not implement `FromOp`
-std-segtree/right-while-lends-str-parts.cp	wrong-reject	check: std.segtree:100:52: E0302: expected `Range<Int>`, found `O`
-std-segtree/segtree-array-and-fill-traps.cp	wrong-reject	check: std.segtree:100:52: E0302: expected `Range<Int>`, found `O`
-std-segtree/segtree-empty-fold-is-identity.cp	wrong-reject	check: std.segtree:100:52: E0302: expected `Range<Int>`, found `O`
-std-segtree/segtree-right-while-false-on-identity-traps.cp	wrong-reject	check: std.segtree:100:52: E0302: expected `Range<Int>`, found `O`
-std-segtree/segtree-right-while-to-the-end.cp	wrong-reject	check: std.segtree:100:52: E0302: expected `Range<Int>`, found `O`
-std-segtree/segtree2d-matches-brute.cp	wrong-reject	check: std.segtree:1126:17: E0606: `M` does not implement `FromOp`
-std-segtree/tag-into-untagged-node-matches-brute.cp	wrong-reject	check: program:16:34: E0302: expected `(a: Int, b: Int)`, found `Tuple2<Int, Int>`
-std-segtree/typed-bare-op-first.cp	wrong-reject	check: std.segtree:100:52: E0302: expected `Range<Int>`, found `O`
-std-segtree/wavelet-matrix-matches-sort.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-std-seq/adjacent-buckets-counting-sort-span.cp	wrong-reject	check: std.seq:2834:5: E0606: `K` does not implement `Domain`
+std-segtree/mergesorttree-bodies.cp	wrong-reject	check: std.segtree:1085:41: E0606: `T` does not implement `Eq`
+std-segtree/right-left-while-match-brute.cp	wrong-reject	check: std.segtree:331:24: E0606: `T` does not implement `Eq`
+std-segtree/segtree2d-matches-brute.cp	wrong-reject	check: std.rand:75:21: E0201: unknown name `I128`
+std-segtree/wavelet-matrix-matches-sort.cp	wrong-reject	check: std.rand:75:21: E0201: unknown name `I128`
+std-seq/adjacent-buckets-counting-sort-span.cp	wrong-reject	check: std.seq:2835:20: E0606: `K` does not implement `Domain`
 std-seq/all-some-unwraps-the-element.cp	wrong-reject	own: std.seq:2335:5: E0603: this returns a value that borrows `out`: `out` is gone when the fn returns
 std-seq/all_some-1.cp	wrong-reject	own: std.seq:2335:5: E0603: this returns a value that borrows `out`: `out` is gone when the fn returns
-std-seq/array-inverse-missing-image-traps.cp	wrong-trap	wanted R0001 on line 4, got: trap: R0401: line 4: inverse requires domains of equal size
+std-seq/array-inverse-missing-image-traps.cp	wrong-reject	link: E0606: a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one
+std-seq/array-inverse-of-offset-and-enum-domains.cp	wrong-reject	link: E0606: a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one
 std-seq/bsearch-true-then-false-traps.cp	wrong-reject	check: program:4:7: E0203: `List<Int>` has no member `bsearch`
 std-seq/bsearch-wrong-way-on-a-domain-traps.cp	wrong-reject	check: std.seq:2676:14: E0806: the type of `m` is not known here; write `(m: T) => ...`
 std-seq/chain-1.cp	wrong-reject	check: std.seq:2347:14: E0201: unknown name `fields`
 std-seq/chain-head-runs-once.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
 std-seq/chunks-on-generic-indexed.cp	wrong-reject	decls: E0204: unknown trait `Indexed`
 std-seq/compose-empty.cp	wrong-reject	link: E0606: a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one
-std-seq/compress-and-pieces.cp	wrong-reject	check: std.seq:1120:36: E0302: expected `Cut<D>`, found `2.hidden`
-std-seq/compressed-slice-empty.cp	wrong-reject	check: std.seq:1095:24: E0606: `S` does not implement `Seq`
-std-seq/compressed-try-index-of-missing.cp	wrong-reject	check: std.seq:1038:20: E0203: `Array<D, T>` has no member `first_ge`
 std-seq/contains-walks-any-seq-of-an-eq-element.cp	wrong-reject	check: program:19:11: E0606: `Everything` does not implement `Contains`
 std-seq/count-in-wrong-way-traps-checked.cp	wrong-reject	check: program:5:7: E0203: `List<Int>` has no member `count_in`
-std-seq/covering-end-not-a-cut-traps.cp	wrong-reject	check: std.seq:1120:36: E0302: expected `Cut<D>`, found `2.hidden`
-std-seq/covering-matches-brute.cp	wrong-reject	check: std.seq:1120:36: E0302: expected `Cut<D>`, found `2.hidden`
 std-seq/cycle-on-list-literal.cp	wrong-reject	check: program:2:7: E0203: `List<Int>` has no member `cycle`
 std-seq/dedup-first-some-tally-group.cp	wrong-reject	check: program:6:1: E0606: `Optional<Int>` does not implement `Show`
 std-seq/deduped-edges.cp	wrong-reject	check: std.seq:463:28: E0606: `T` has no `impl Eq`, which `!=` needs (R08.1.5)
 std-seq/drop-past-len-is-empty.cp	split	C++: exit Some(3):  ev set BAG_B 32
 std-seq/every-view-keeps-the-traits-it-wraps.cp	wrong-reject	check: std.seq:1730:54: E0606: `S` does not implement `Indexed`
 std-seq/flat-map-keeps-closure-element.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-std-seq/halve-subsequences-reserve-track.cp	wrong-reject	check: std.hashmap: E0204: unknown type `HashMap`
 std-seq/inverse-empty.cp	wrong-reject	check: program:3:7: E0203: `List<Int>` has no member `inverse`
 std-seq/inverse-not-bijection-traps.cp	wrong-reject	check: program:2:7: E0203: `List<Int>` has no member `inverse`
 std-seq/inversions-combinations-cycle.cp	wrong-reject	check: std.seq:2860:16: E0201: unknown name `HashMap`
@@ -1232,7 +1151,7 @@ std-seq/nearest-smaller-same-and-perm-bodies.cp	wrong-reject	check: program:7:1:
 std-seq/next-smaller-by-desc-domain-values.cp	wrong-reject	check: program:8:1: E0606: `Optional<I>` does not implement `Show`
 std-seq/online-lis-mono-stack-rollback.cp	wrong-reject	check: program:31:52: E0203: `(u: Int, v: Int)` has no member `swap`
 std-seq/outermost-keeps-the-longest-of-a-left-end.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-std-seq/pairs-of-rows-and-of-a-lazy-walk.cp	wrong-reject	check: program:8:28: E0302: expected `List<Int>`, found `Array<$0..=1, Int>`
+std-seq/pairs-of-rows-and-of-a-lazy-walk.cp	wrong-reject	check: program:8:28: E0302: expected `List<Int>`, found `Array<$range0, Int>`
 std-seq/perm-cycles-fixed-points.cp	wrong-reject	link: E0606: a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one
 std-seq/perm-cycles-rejects-non-permutation.cp	wrong-reject	link: E0606: a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one
 std-seq/perm-inverse-list-domain.cp	wrong-reject	check: program:5:95: E0203: `List<Int>` has no member `inverse`
@@ -1242,18 +1161,15 @@ std-seq/perm-rank-partition-and-inverse.cp	wrong-reject	check: program:16:1: E06
 std-seq/perm-rank-rejects-non-permutation.cp	wrong-reject	link: E0606: a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one
 std-seq/perm-sign-rejects-non-permutation.cp	wrong-reject	link: E0606: a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one
 std-seq/permutations-lcs-radix-outermost.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-std-seq/pieces-cut-outside-traps.cp	wrong-reject	check: std.seq:1120:36: E0302: expected `Cut<D>`, found `2.hidden`
-std-seq/pieces-no-cuts.cp	wrong-reject	check: std.seq:1120:36: E0302: expected `Cut<D>`, found `2.hidden`
 std-seq/pop-merge-partition-majority-bodies.cp	wrong-reject	check: std.seq:2782:37: E0606: `T` does not implement `Clone`
 std-seq/prelude-find-resolves-to-seq.cp	wrong-reject	check: std.strings:425:8: E0203: `P` has no member `is_empty`
 std-seq/rebase-runs-std-rebased.cp	wrong-reject	check: program:12:15: E0606: `Rebased<Slice<List<Int>>>` does not implement `Keyed`
 std-seq/rebase-str-keys-from-zero.cp	wrong-reject	check: program:5:9: E0203: `Rebased<Slice<Str>>` has no member `keys`
-std-seq/rebased-shows-its-elements.cp	no-cxx	g++ failed on 2c6f4f8fe127a0bf.cpp: | 2c6f4f8fe127a0bf.cpp: In function ‘cpl_unit f0()’: | 2c6f4f8fe127a0bf.cpp:649:16: error: cannot convert ‘S12*’ to ‘const S14*’ in initialization |   649 |     l26 = S13{(&l58)};
+std-seq/rebased-shows-its-elements.cp	no-cxx	g++ failed on 44bee3b0b8925877.cpp: | 44bee3b0b8925877.cpp: In function ‘cpl_unit f0()’: | 44bee3b0b8925877.cpp:543:16: error: cannot convert ‘S12*’ to ‘const S14*’ in initialization |   543 |     l26 = S13{(&l50)};
 std-seq/rekey-a-stepped-view-copy-by-a-range.cp	wrong-reject	check: program:4:13: E0203: `List<_>` has no member `rekey`
 std-seq/rekey-takes-a-range-not-stepped-keys.cp	wrong-error	wanted E0302 on line 4, got: check: program:4:27: E0203: `List<_>` has no member `rekey`
 std-seq/rev-piece-walks-backward.cp	wrong-reject	check: std.seq:1720:50: E0606: `S` does not implement `Indexed`
 std-seq/reverse-and-join-are-std-bodies.cp	wrong-reject	check: program:11:1: E0403: a `mut self` method needs a place
-std-seq/ring-maximal-minimal-match-brute.cp	wrong-reject	check: std.hashmap: E0204: unknown type `HashMap`
 std-seq/ring-one-item-next-prev.cp	wrong-reject	check: program:2:7: E0203: `List<Int>` has no member `ring`
 std-seq/ring-span-windows-cyclic-sum.cp	wrong-reject	check: program:4:9: E0303: `Prefix` takes 1 type arguments, found 2
 std-seq/ring-step-full-turn-is-identity.cp	wrong-reject	check: program:2:7: E0203: `List<Int>` has no member `ring`
@@ -1296,12 +1212,12 @@ std-seq/seq-u45-step.cp	wrong-reject	link: std.seq:2120:47: E0606: `S` does not 
 std-seq/seq-u46-user-ord.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
 std-seq/seq-u47-sort-slice.cp	wrong-reject	check: program:4:1: E0403: a `mut self` method needs a place
 std-seq/seq-u49-permutation-tools.cp	wrong-reject	check: program:6:7: E0203: `List<Int>` has no member `perm_cycles`
-std-seq/seq-u51-linear-sorts.cp	wrong-reject	check: std.seq:2834:5: E0606: `K` does not implement `Domain`
-std-seq/seq-u52-compress-method.cp	wrong-reject	check: std.seq:1095:24: E0606: `S` does not implement `Seq`
+std-seq/seq-u51-linear-sorts.cp	wrong-reject	check: std.seq:2835:20: E0606: `K` does not implement `Domain`
 std-seq/seq-u53-dedup-unsorted.cp	wrong-reject	check: std.seq:463:28: E0606: `T` has no `impl Eq`, which `!=` needs (R08.1.5)
 std-seq/seq-u54-merge-sorted.cp	wrong-reject	check: program:3:78: E0201: unknown name `merge_sorted`
 std-seq/seq-u55-sorted-set-ops-methods.cp	wrong-reject	check: std.seq:2759:40: E0302: expected `7.hidden`, found `4.hidden`
 std-seq/seq-u57-unzip.cp	wrong-reject	check: program:4:20: E0302: expected `Int`, found `Tuple2<Int, Char>`
+std-seq/seq-u58-edit-in-place.cp	wrong-reject	check: program:12:1: E0203: `List<Int>` has no member `resize`
 std-seq/set-union-intersect-subtract.cp	wrong-reject	check: std.seq:785:40: E0606: `T` does not implement `Ord`
 std-seq/sized-and-keyed-through-std-impls.cp	wrong-reject	decls: E0204: unknown trait `Keyed`
 std-seq/slice-keys-len-is-empty.cp	wrong-reject	check: program:12:18: E0203: `D` has no member `idx`
@@ -1349,7 +1265,7 @@ std-slope/convex-suffix-min-of-flat.cp	wrong-reject	check: std.lazy:798:22: E030
 std-slope/hinges.cp	wrong-reject	check: std.lazy:798:22: E0302: expected `Int`, found `()`
 std-slope/max-convolve-with-flat-zero.cp	wrong-reject	check: std.lazy:798:22: E0302: expected `Int`, found `()`
 std-slope/prefix-max-of-a-point.cp	wrong-reject	check: std.lazy:798:22: E0302: expected `Int`, found `()`
-std-slope/slide-max-reversed-traps.cp	wrong-reject	check: std.lazy:547:22: E0302: expected `Int`, found `()`
+std-slope/slide-max-reversed-traps.cp	wrong-reject	check: std.slope:207:9: E0405: field `Concave.start` is fixed (not `var`) and cannot be assigned
 std-slope/slide-min-zero-width.cp	wrong-reject	check: std.lazy:798:22: E0302: expected `Int`, found `()`
 std-sparse/idempotent-sum-false.cp	wrong-reject	check: program:3:22: E0302: this function does not fit `(_, _) -> _`
 std-sparse/sparse-bodies.cp	wrong-reject	check: program:11:64: E0302: this function does not fit `(_, _) -> _`
@@ -1388,14 +1304,14 @@ std-strings/prefix-matches-empty-pattern.cp	wrong-reject	check: std.strings:523:
 std-strings/prefix-matches-empty-self.cp	wrong-reject	check: std.strings:523:8: E0203: `P` has no member `is_empty`
 std-strings/rank-range-empty-pattern.cp	wrong-reject	check: std.strings:1091:47: E0606: `2.hidden` has no `impl Eq`, which `==` needs (R08.1.5)
 std-strings/rank-range-missing-pattern.cp	wrong-reject	check: std.strings:1091:47: E0606: `2.hidden` has no `impl Eq`, which `==` needs (R08.1.5)
-std-strings/rolling-hash-combine-empty-right.cp	wrong-reject	check: std.strings:1483:23: E0606: `1.hidden` does not implement `Hashable`
+std-strings/rolling-hash-combine-empty-right.cp	wrong-reject	check: std.math:963:15: E0201: unknown name `I128`
 std-strings/rolling-hash-combine-past-len.cp	wrong-reject	check: std.strings:1483:23: E0606: `1.hidden` does not implement `Hashable`
 std-strings/rolling-hash-slice-empty.cp	wrong-reject	check: std.strings:1483:23: E0606: `1.hidden` does not implement `Hashable`
 std-strings/rolling-hash-slice-past-end-traps.cp	wrong-reject	check: std.strings:1483:23: E0606: `1.hidden` does not implement `Hashable`
 std-strings/rolling-hash-slice-reversed-traps.cp	wrong-reject	check: std.strings:1483:23: E0606: `1.hidden` does not implement `Hashable`
 std-strings/rolling-hash61-empty.cp	wrong-reject	check: std.strings:1790:31: E0606: `1.hidden` does not implement `Domain`
 std-strings/rolling-hash61-pop-to-empty.cp	wrong-reject	check: std.strings:1790:31: E0606: `1.hidden` does not implement `Domain`
-std-strings/rolling-hash61-push-onto-empty.cp	wrong-reject	check: std.strings:1790:31: E0606: `1.hidden` does not implement `Domain`
+std-strings/rolling-hash61-push-onto-empty.cp	wrong-reject	check: std.strings:1750:13: E0201: unknown name `I128`
 std-strings/rolling-hash61-shares-its-base.cp	wrong-reject	check: std.strings:1830:12: E0203: `R` has no member `is_empty`
 std-strings/rolling.cp	wrong-reject	check: std.strings:1523:21: E0606: `1.hidden` does not implement `Domain`
 std-strings/search-empty-pattern.cp	wrong-reject	check: std.strings:83:14: E0606: `Str` does not implement `Indexed`
@@ -1422,42 +1338,34 @@ std-subset/enum-subsets-walk-in-mask-order.cp	wrong-reject	check: program:5:10: 
 std-subset/folds-take-its-members.cp	wrong-reject	check: program:9:7: E0606: `Subset<V>` does not implement `Seq`
 std-subset/for-walks-members.cp	wrong-reject	check: program:8:7: E0201: unknown name `len`
 std-subset/generic-domain-subsets-are-std-subsets.cp	wrong-reject	check: program:13:15: E0606: `Subset<B>` does not implement `Domain`
-std-subset/subset-domain-too-large.cp	wrong-reject	check: program:7:1: E0606: `Subset<V>` does not implement `Domain`
+std-subset/subset-domain-too-large.cp	wrong-reject	check: program:7:7: E0201: unknown name `len`
 std-timetree/add-range-steps.cp	wrong-reject	check: std.timetree:174:27: E0302: expected `Cut<Int>`, found `Int`
 std-timetree/timetree-add-range-matches-add-interval.cp	wrong-reject	check: std.timetree:174:27: E0302: expected `Cut<Int>`, found `Int`
 std-timetree/timetree-walk-1.cp	wrong-reject	check: program:3:11: E0606: `TimeStep` does not implement `Eq`
 std-timetree/timetree-walk-matches-steps.cp	wrong-reject	check: program:10:25: E0606: `TimeStep` does not implement `Eq`
-std-tree/euler-tour-trees-match-a-brute-forest.cp	wrong-reject	check: program:58:26: E0302: this is not a place that can be assigned or lent
-std-tree/lazy-euler-tour-to-array-matches-brute.cp	wrong-reject	check: std.tree:3658:30: E0302: this is not a place that can be assigned or lent
-std-window/every-track-state-feeds-maximal.cp	wrong-reject	check: program:5:14: E0203: `List<Int>` has no member `maximal`
-std-window/sweep-empty-sits-at-its-cut.cp	wrong-reject	check: std.window:375:17: E0203: `S` has no member `pop`
-std-window/sweep-move-feeds-track.cp	wrong-reject	check: std.window:375:17: E0203: `S` has no member `pop`
+std-window/sweep-empty-sits-at-its-cut.cp	wrong-reject	check: std.window:374:17: E0405: field `Sweep.hi` is fixed (not `var`) and cannot be assigned
+std-window/sweep-move-feeds-track.cp	wrong-reject	check: std.window:374:17: E0405: field `Sweep.hi` is fixed (not `var`) and cannot be assigned
 std-window/track-infers-element-from-sequence.cp	wrong-reject	check: program:4:12: E0203: `List<(w: Int)>` has no member `minimal`
-std-window/undoing-infers-from-later-push.cp	wrong-reject	check: program:6:50: E0203: `_` has no member `_0`
 std-window/undoing-passed-straight-to-minimal.cp	wrong-reject	check: program:7:13: E0203: `List<Tuple2<V, V>>` has no member `minimal`
-std-window/undoing-push-pop-dsu.cp	wrong-reject	own: std.window:297:17: E0603: a value that borrows `rev_items` is stored in `self`, which outlives `rev_items`
 std-window/window-expire-by-place.cp	wrong-reject	check: program:4:9: E0606: `a function` does not implement `Op`
 std-window/window-expire-unkeyed-traps.cp	wrong-reject	check: program:2:9: E0606: `a function` does not implement `Op`
 std-window/window-fold-picks-op-strategy.cp	wrong-reject	check: program:4:7: E0606: `a function` does not implement `Op`
 std-window/window-min-after-pop.cp	wrong-reject	check: program:2:9: E0606: `a function` does not implement `Op`
 std-window/window-push-at-decreasing-traps.cp	wrong-reject	check: program:2:9: E0606: `a function` does not implement `Op`
-traits/Acts/Action--action.cp	wrong-reject	check: std.segtree:260:53: E0302: this is not a place that can be assigned or lent
-traits/Acts/AddAction--action.cp	wrong-reject	check: std.segtree:260:53: E0302: this is not a place that can be assigned or lent
-traits/Acts/AffineAction--action.cp	wrong-reject	check: std.segtree:260:53: E0302: this is not a place that can be assigned or lent
-traits/Acts/AssignAction--action.cp	wrong-reject	check: std.segtree:260:53: E0302: this is not a place that can be assigned or lent
-traits/Acts/AssignAddAction--action.cp	wrong-reject	check: std.segtree:260:53: E0302: this is not a place that can be assigned or lent
-traits/Acts/FlipAction--action.cp	wrong-reject	check: std.segtree:260:53: E0302: this is not a place that can be assigned or lent
-traits/Add/BigInt--add.cp	wrong-reject	own: std.math:1926:9: E0603: this returns a value that borrows `cs`: `cs` is gone when the fn returns
+traits/Add/BigInt--add.cp	wrong-reject	own: std.math:1914:9: E0603: this returns a value that borrows `cs`: `cs` is gone when the fn returns
 traits/Add/Mat--add.cp	wrong-reject	link: std.matrix:677:9: E0303: expected 2 arguments, found 3
 traits/Add/MaxCount--add.cp	wrong-reject	link: std.algebra:598:12: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
 traits/Add/MaxSubAt--add.cp	wrong-reject	link: std.algebra:457:51: E0302: expected `Range<Cut<D>>`, found `Range<D>`
 traits/Add/MinCount--add.cp	wrong-reject	link: std.algebra:562:12: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
 traits/Add/Poly--add.cp	wrong-reject	check: std.poly:867:66: E0606: `T` does not implement `Domain`
 traits/Bidir/Items--iter_rev.cp	wrong-reject	link: E9999: no impl provides `keys` for this type
+traits/Bidir/LinkedList--iter_rev.cp	wrong-reject	check: std.deque:432:13: E0405: field `LinkedList.head` is fixed (not `var`) and cannot be assigned
 traits/Bidir/Prefix--iter_rev.cp	wrong-reject	check: program:2:11: E0203: `List<Int>` has no member `scan`
 traits/Bidir/Stepped--iter_rev.cp	wrong-reject	check: std.seq:2144:37: E0606: `S` does not implement `Indexed`
-traits/Div/BigInt--div.cp	wrong-reject	own: std.math:1949:34: E0603: this returns a value that borrows `self`: `self` is lent by the caller; return a `.clone()`
+traits/Div/BigInt--div.cp	wrong-reject	own: std.math:1937:34: E0603: this returns a value that borrows `self`: `self` is lent by the caller; return a `.clone()`
 traits/Div/Poly--div.cp	wrong-reject	check: std.poly:867:66: E0606: `T` does not implement `Domain`
+traits/Eq/ByAngle--eq.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
+traits/Eq/ByAngleFrom--eq.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
 traits/Eq/Mat--eq.cp	wrong-reject	check: std.matrix:37:9: E0606: `T` does not implement `Clone`
 traits/Index/Pair--nth.cp	wrong-reject	check: program:3:9: E0203: `Pair` has no `nth`
 traits/Index/Subset--nth.cp	wrong-reject	check: program:4:7: E0203: `Subset` has no `nth`
@@ -1467,14 +1375,16 @@ traits/Into/Pair--into.cp	wrong-reject	check: std.pair:22:16: E0606: `V` has no 
 traits/Keyed/Keys--items.cp	wrong-reject	check: std.seq:2247:9: E0203: `S` has no `iter`
 traits/Keyed/Prefix--items.cp	wrong-reject	check: std.seq:1544:18: E0606: `D` does not implement `Domain`
 traits/Keyed/Rebased--items.cp	wrong-reject	check: program:4:15: E0606: `Rebased<Slice<List<Int>>>` does not implement `Keyed`
-traits/Mul/BigInt--mul.cp	wrong-reject	own: std.math:1926:9: E0603: this returns a value that borrows `cs`: `cs` is gone when the fn returns
-traits/Mul/Mat--mul.cp	wrong-reject	link: std.matrix:695:89: E0303: expected 2 arguments, found 3
+traits/Mul/BigInt--mul.cp	wrong-reject	own: std.math:1914:9: E0603: this returns a value that borrows `cs`: `cs` is gone when the fn returns
+traits/Mul/Mat--mul.cp	wrong-reject	link: std.matrix:693:20: E0606: `Ring<T>` does not implement `Eq`
 traits/Mul/Poly--mul.cp	wrong-reject	check: std.poly:867:66: E0606: `T` does not implement `Domain`
-traits/Neg/BigInt--neg.cp	wrong-reject	own: std.math:1926:9: E0603: this returns a value that borrows `cs`: `cs` is gone when the fn returns
+traits/Neg/BigInt--neg.cp	wrong-reject	own: std.math:1914:9: E0603: this returns a value that borrows `cs`: `cs` is gone when the fn returns
 traits/Neg/Poly--neg.cp	wrong-reject	check: std.poly:867:66: E0606: `T` does not implement `Domain`
 traits/Next/Complement--out.cp	wrong-reject	check: std.graph:2946:18: E0203: `G` has no member `out`
 traits/Next/Graph--out.cp	wrong-reject	check: std.graph:507:28: E0302: expected `Cut<V>`, found `Int`
 traits/Next/Reweighted--out.cp	wrong-reject	check: std.graph:149:24: E0606: `A` does not implement `(to:, ..)`
+traits/Ord/ByAngle--lt.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
+traits/Ord/ByAngleFrom--lt.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
 traits/Positional/Items--nth.cp	wrong-reject	link: E0606: a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one
 traits/Positional/Rev--nth.cp	wrong-reject	check: std.seq:1710:40: E0606: `S` does not implement `Indexed`
 traits/Random/Bool--gen.cp	wrong-reject	link: std.rand:15:24: E0201: unknown name `gen`
@@ -1483,6 +1393,7 @@ traits/Random/Perm--gen.cp	wrong-reject	check: program:3:9: E0606: `Array<V, V>`
 traits/Residue/Mod--modulus.cp	wrong-reject	check: program:4:7: E0201: unknown name `Z`
 traits/Residue/Mod--reduce.cp	wrong-reject	check: program:4:7: E0201: unknown name `Z`
 traits/Seq/Keys--iter.cp	wrong-reject	check: std.seq:2242:9: E0203: `S` has no `iter`
+traits/Seq/LinkedList--iter.cp	wrong-reject	check: std.deque:432:13: E0405: field `LinkedList.head` is fixed (not `var`) and cannot be assigned
 traits/Seq/Prefix--iter.cp	wrong-reject	check: program:2:11: E0203: `List<Int>` has no member `scan`
 traits/Seq/SortedRange--iter.cp	wrong-reject	check: std.bag:349:32: E0302: expected `K`, found `Cut<K>`
 traits/Seq/Stepped--iter.cp	wrong-reject	check: std.seq:2144:37: E0606: `S` does not implement `Indexed`
@@ -1492,13 +1403,11 @@ traits/Show/AugSortedBag--show.cp	wrong-reject	link: std.bag:2921:18: E0606: `K`
 traits/Show/AugSortedSet--show.cp	wrong-reject	link: std.bag:2929:18: E0606: `K` does not implement `Ord`
 traits/Show/BagCursor--show.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
 traits/Show/BeatsSegTree--show.cp	wrong-reject	check: std.beats:164:22: E0201: unknown name `Int`
-traits/Show/BigInt--show.cp	wrong-reject	own: std.math:1926:9: E0603: this returns a value that borrows `cs`: `cs` is gone when the fn returns
+traits/Show/BigInt--show.cp	wrong-reject	own: std.math:1914:9: E0603: this returns a value that borrows `cs`: `cs` is gone when the fn returns
 traits/Show/Bitset--show.cp	wrong-reject	link: std.bitset:1490:20: E0203: `Str` has no member `is_empty`
-traits/Show/BucketCount--show.cp	wrong-reject	check: std.bag:2310:21: E0302: expected `Int`, found `Cut<Int>`
 traits/Show/ColorMatroid--show.cp	wrong-reject	link: std.flow:2685:20: E0203: `Str` has no member `is_empty`
 traits/Show/Complement--show.cp	wrong-reject	link: std.graph:4043:24: E0203: `Str` has no member `is_empty`
-traits/Show/Compressed--show.cp	wrong-reject	check: std.seq:1095:24: E0606: `S` does not implement `Seq`
-traits/Show/Concave--show.cp	wrong-reject	check: std.lazy:580:23: E0302: expected `Int`, found `()`
+traits/Show/Concave--show.cp	wrong-reject	check: std.slope:129:9: E0405: field `Concave.base` is fixed (not `var`) and cannot be assigned
 traits/Show/Convex--show.cp	wrong-reject	link: std.lazy:798:22: E0302: expected `Int`, found `()`
 traits/Show/CostFlow--show.cp	wrong-reject	check: std.flow:557:30: E0201: unknown name `Int`
 traits/Show/Counter--show.cp	wrong-reject	check: std.hashmap: E0204: unknown type `HashMap`
@@ -1509,41 +1418,41 @@ traits/Show/DisjointSparseTable--show.cp	wrong-reject	link: std.sparse:487:18: E
 traits/Show/Dsu--show.cp	wrong-reject	link: std.dsu:1105:20: E0203: `Str` has no member `is_empty`
 traits/Show/DsuOf--show.cp	wrong-reject	link: std.dsu:1115:20: E0203: `Str` has no member `is_empty`
 traits/Show/DualFenwick--show.cp	wrong-reject	check: std.fenwick:308:29: E0606: `T` does not implement `Domain`
-traits/Show/DynBitset--show.cp	wrong-reject	link: std.bitset:1773:20: E0203: `Str` has no member `is_empty`
+traits/Show/DynBitset--show.cp	wrong-reject	check: std.bitset:646:9: E0405: field `DynBitset._n` is fixed (not `var`) and cannot be assigned
 traits/Show/DynamicHash--show.cp	wrong-reject	check: std.strings:1957:22: E0606: `3.hidden` does not implement `Domain`
 traits/Show/DynamicOrderTree--show.cp	wrong-reject	check: std.segtree:1431:17: E0606: `T` has no `impl Eq`, which `==` needs (R08.1.5)
-traits/Show/Each--show.cp	wrong-reject	check: program:3:1: E0606: `a function` does not implement `Show`
+traits/Show/Each--show.cp	wrong-reject	check: program:3:1: E0606: `Each<Tuple2<a function, a function>>` does not implement `Show`
 traits/Show/ErasableHeap--show.cp	wrong-reject	link: std.heap:1575:18: E0606: `T` does not implement `Ord`
 traits/Show/EulerTourTree--show.cp	wrong-reject	check: std.tree:3466:31: E0806: nothing here says what `None` is an optional of; write the type
 traits/Show/Fenwick--show.cp	wrong-reject	check: std.fenwick:28:42: E0606: `T` does not implement `Domain`
 traits/Show/Fenwick2D--show.cp	wrong-reject	check: std.fenwick:194:95: E0606: `T` does not implement `Domain`
 traits/Show/FlatMap--show.cp	wrong-reject	own: std.hashmap:84:17: E0602: `self` is written here while `old_s`, which borrows it, is still used
-traits/Show/FlowGraph--show.cp	wrong-reject	check: std.flow:125:30: E0201: unknown name `Int`
+traits/Show/FlowGraph--show.cp	wrong-reject	check: std.flow:124:9: E0405: field `FlowGraph.cut_from` is fixed (not `var`) and cannot be assigned
 traits/Show/GraphicMatroid--show.cp	wrong-reject	link: std.flow:2673:20: E0203: `Str` has no member `is_empty`
 traits/Show/GridCols--show.cp	wrong-reject	link: std.grid:422:20: E0203: `Str` has no member `is_empty`
 traits/Show/GridRows--show.cp	wrong-reject	link: std.grid:414:20: E0203: `Str` has no member `is_empty`
 traits/Show/Hash2D--show.cp	wrong-reject	check: std.strings:1711:36: E0302: expected `List<Int>`, found `List<a range with run-time ends>`
 traits/Show/Hash61--show.cp	wrong-reject	check: std.strings:47:32: E0302: expected `3.hidden`, found `6.hidden`
 traits/Show/Heap--show.cp	wrong-reject	link: std.heap:1567:18: E0606: `T` does not implement `Ord`
-traits/Show/HistoricBeatsSegTree--show.cp	wrong-reject	check: std.beats:521:29: E0201: unknown name `Int`
+traits/Show/HistoricBeatsSegTree--show.cp	wrong-reject	check: std.beats:702:9: E0405: field `HistoricBeatsSegTree.ver` is fixed (not `var`) and cannot be assigned
 traits/Show/IndexedHeap--show.cp	wrong-reject	link: std.heap:1583:23: E0606: `K` does not implement `Ord`
 traits/Show/Interner--show.cp	wrong-reject	check: std.marks: E0204: unknown type `HashMap`
 traits/Show/IntervalMap--show.cp	wrong-reject	check: program:4:10: E0302: expected `Range<0..=3>`, found `Range<Int>`
 traits/Show/IntervalSet--show.cp	wrong-reject	check: program:4:7: E0302: expected `Range<0..=7>`, found `Range<Int>`
-traits/Show/LazyEulerTourTree--show.cp	wrong-reject	check: std.tree:3658:30: E0302: this is not a place that can be assigned or lent
 traits/Show/LazyTreap--show.cp	wrong-reject	check: std.lazy:580:23: E0302: expected `Int`, found `()`
 traits/Show/LiChao--show.cp	wrong-reject	check: program:3:16: E0302: this function does not fit `(_, _) -> _`
 traits/Show/LineContainer--show.cp	wrong-reject	check: program:3:23: E0302: this function does not fit `(Int, Int) -> Int`
 traits/Show/LinearRmq--show.cp	wrong-reject	link: std.sparse:514:20: E0203: `Str` has no member `is_empty`
-traits/Show/LinkedList--show.cp	wrong-reject	link: std.deque:665:20: E0203: `Str` has no member `is_empty`
+traits/Show/LinkedList--show.cp	wrong-reject	check: std.deque:432:13: E0405: field `LinkedList.head` is fixed (not `var`) and cannot be assigned
 traits/Show/Map--show.cp	wrong-reject	link: std.map:419:20: E0203: `Str` has no member `is_empty`
-traits/Show/MarkMap--show.cp	wrong-reject	link: std.marks:669:20: E0203: `Str` has no member `is_empty`
-traits/Show/Marks--show.cp	wrong-reject	link: std.marks:661:20: E0203: `Str` has no member `is_empty`
-traits/Show/Matching--show.cp	wrong-reject	link: std.flow:2638:20: E0203: `Str` has no member `is_empty`
+traits/Show/Mark--show.cp	wrong-reject	link: E0606: a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one
+traits/Show/MarkMap--show.cp	wrong-reject	check: std.marks:164:13: E0405: field `MarkMap.cnt` is fixed (not `var`) and cannot be assigned
+traits/Show/Marks--show.cp	wrong-reject	check: std.marks:40:9: E0405: field `Marks.cnt` is fixed (not `var`) and cannot be assigned
+traits/Show/Matching--show.cp	wrong-reject	check: std.flow:1950:9: E0405: field `Matching.size` is fixed (not `var`) and cannot be assigned
 traits/Show/MaxHeap--show.cp	wrong-reject	link: std.heap:1607:18: E0606: `T` does not implement `Ord`
-traits/Show/Meld--show.cp	wrong-reject	check: std.heap:1194:28: E0806: nothing here says what `None` is an optional of; write the type
-traits/Show/MeldHeap--show.cp	wrong-reject	check: std.heap:1194:28: E0806: nothing here says what `None` is an optional of; write the type
-traits/Show/MeldHeaps--show.cp	wrong-reject	check: std.heap:1194:28: E0806: nothing here says what `None` is an optional of; write the type
+traits/Show/Meld--show.cp	wrong-reject	check: std.heap:1084:9: E0405: field `MeldHeaps._free` is fixed (not `var`) and cannot be assigned
+traits/Show/MeldHeap--show.cp	wrong-reject	check: std.heap:1168:9: E0405: field `MeldHeaps._stamps` is fixed (not `var`) and cannot be assigned
+traits/Show/MeldHeaps--show.cp	wrong-reject	check: std.heap:1168:9: E0405: field `MeldHeaps._stamps` is fixed (not `var`) and cannot be assigned
 traits/Show/MergeSortTree--show.cp	wrong-reject	check: std.segtree:933:24: E0606: `T` has no `impl Ord`, which `<=` needs (R08.1.5)
 traits/Show/MergeTree--show.cp	wrong-reject	check: std.segtree:1745:25: E0606: `Z` does not implement `Domain`
 traits/Show/MergeTrees--show.cp	wrong-reject	check: std.segtree:1745:25: E0606: `Z` does not implement `Domain`
@@ -1551,19 +1460,19 @@ traits/Show/MinMaxHeap--show.cp	wrong-reject	link: std.heap:1591:18: E0606: `T` 
 traits/Show/MongePath--show.cp	wrong-reject	check: std.dp:457:18: E0606: `K` does not implement `Domain`
 traits/Show/MonoStack--show.cp	wrong-reject	check: std.seq:3322:12: E0606: `T` has no `impl Eq`, which `==` needs (R08.1.5)
 traits/Show/MonotoneHull--show.cp	wrong-reject	check: program:3:26: E0302: this function does not fit `(Int, Int) -> Int`
-traits/Show/OnlineHull--show.cp	wrong-reject	check: std.geometry:722:17: E0405: field `HullChain.cross` is fixed (not `var`) and cannot be assigned
+traits/Show/OnlineHull--show.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
 traits/Show/OnlineLis--show.cp	wrong-reject	check: std.seq:3212:54: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
 traits/Show/Only--show.cp	wrong-reject	link: std.graph: E0204: unknown type `G.Arc`
 traits/Show/PArena--show.cp	wrong-reject	link: std.persistent:1010:20: E0203: `Str` has no member `is_empty`
+traits/Show/PMultiset--show.cp	wrong-reject	link: E0606: a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one
 traits/Show/PMultisetWithin--show.cp	wrong-reject	link: std.persistent:992:20: E0203: `Str` has no member `is_empty`
 traits/Show/Pair--show.cp	wrong-reject	check: std.pair:22:16: E0606: `V` has no `impl Eq`, which `!=` needs (R08.1.5)
 traits/Show/Palindromes--show.cp	wrong-reject	check: std.strings:910:48: E0606: `2.hidden` has no `impl Eq`, which `==` needs (R08.1.5)
 traits/Show/Paths--show.cp	wrong-reject	check: std.graph:55:29: E0302: expected `V`, found `Self`
-traits/Show/PersistentArray--show.cp	wrong-reject	link: std.persistent:1069:20: E0203: `Str` has no member `is_empty`
+traits/Show/PersistentArray--show.cp	wrong-reject	check: std.persistent:717:20: E0606: `T` does not implement `Eq`
 traits/Show/PersistentDsuWithin--show.cp	wrong-reject	link: std.dsu:1191:20: E0203: `Str` has no member `is_empty`
-traits/Show/PersistentLazySegTree--show.cp	wrong-reject	link: std.persistent:1058:20: E0203: `Str` has no member `is_empty`
 traits/Show/PersistentSegTree--show.cp	wrong-reject	check: std.persistent:150:17: E0606: `M` does not implement `FromOp`
-traits/Show/PointSet--show.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
+traits/Show/PointSet--show.cp	wrong-reject	check: std.geometry:2865:9: E0405: field `PointSet.live` is fixed (not `var`) and cannot be assigned
 traits/Show/Poly--show.cp	wrong-reject	check: std.poly:787:46: E0606: `T` does not implement `Clone`
 traits/Show/Prefix--show.cp	wrong-reject	check: program:2:7: E0203: `List<Int>` has no member `scan`
 traits/Show/PrimePowerComb--show.cp	wrong-reject	check: std.mod:436:26: E0201: unknown name `Int`
@@ -1572,8 +1481,7 @@ traits/Show/Reweighted--show.cp	wrong-reject	check: std.graph:213:9: E0302: this
 traits/Show/RingRange--show.cp	wrong-reject	check: program:2:7: E0203: `List<Int>` has no member `ring`
 traits/Show/RingSlice--show.cp	wrong-reject	check: program:2:7: E0203: `List<Int>` has no member `ring`
 traits/Show/RollbackArray--show.cp	wrong-reject	link: std.dsu:1148:20: E0203: `Str` has no member `is_empty`
-traits/Show/Rope--show.cp	wrong-reject	link: std.lazy:1680:9: E0606: `D` does not implement `Domain`
-traits/Show/SegTree--show.cp	wrong-reject	check: std.segtree:260:53: E0302: this is not a place that can be assigned or lent
+traits/Show/Rope--show.cp	wrong-reject	check: std.lazy:1090:29: E0606: `T` does not implement `Eq`
 traits/Show/SegTree2D--show.cp	wrong-reject	check: std.segtree:1126:17: E0606: `M` does not implement `FromOp`
 traits/Show/SeqFold--show.cp	wrong-reject	check: std.lazy:1493:38: E0806: nothing here says what `None` is an optional of; write the type
 traits/Show/Set--show.cp	wrong-reject	link: std.map:409:20: E0203: `Str` has no member `is_empty`
@@ -1585,28 +1493,26 @@ traits/Show/SortedSet--show.cp	wrong-reject	link: std.bag:2905:18: E0606: `K` do
 traits/Show/SparseFenwick2D--show.cp	wrong-reject	check: std.fenwick:474:14: E0203: `List<Int>` has no member `first_ge`
 traits/Show/SparseIntervalMap--show.cp	wrong-reject	check: std.interval:622:32: E0606: `Cut<Int>` does not implement `Add`
 traits/Show/SparseIntervalSet--show.cp	wrong-reject	link: std.interval:737:20: E0203: `Str` has no member `is_empty`
-traits/Show/SparseSet--show.cp	wrong-reject	link: std.marks:677:20: E0203: `Str` has no member `is_empty`
+traits/Show/SparseSet--show.cp	wrong-reject	check: std.marks:337:9: E0405: field `SparseSet._len` is fixed (not `var`) and cannot be assigned
 traits/Show/SparseTable--show.cp	wrong-reject	check: program:3:19: E0302: this function does not fit `(_, _) -> _`
 traits/Show/SparseTable2D--show.cp	wrong-reject	check: program:3:21: E0302: this function does not fit `(_, _) -> _`
 traits/Show/StepKeys--show.cp	wrong-reject	check: std.seq:2162:21: E0606: `S` does not implement `Domain`
 traits/Show/Stepped--show.cp	wrong-reject	link: std.seq:2120:47: E0606: `S` does not implement `Domain`
 traits/Show/SuffixArray--show.cp	wrong-reject	check: std.strings:1091:47: E0606: `2.hidden` has no `impl Eq`, which `==` needs (R08.1.5)
-traits/Show/SweepAdd--show.cp	wrong-reject	check: std.prefix:683:28: E0606: `T` does not implement `Domain`
+traits/Show/SweepAdd--show.cp	wrong-reject	check: std.prefix:709:9: E0405: field `SweepAdd.cur` is fixed (not `var`) and cannot be assigned
 traits/Show/Version--show.cp	wrong-reject	check: std.persistent:150:17: E0606: `M` does not implement `FromOp`
-traits/Show/VersionWithin--show.cp	wrong-reject	link: std.persistent:1029:18: E0606: `S` does not implement `Versioned`
+traits/Show/VersionWithin--show.cp	wrong-reject	check: std.persistent:717:20: E0606: `T` does not implement `Eq`
 traits/Show/Window--show.cp	wrong-reject	link: std.window:170:20: E0606: `M` does not implement `Op`
+traits/Show/XorBasis--show.cp	wrong-reject	check: std.matrix:956:21: E0405: field `XorBasis.size` is fixed (not `var`) and cannot be assigned
 traits/Show/XorFenwick--show.cp	wrong-reject	check: std.fenwick:443:13: E0606: `T` does not implement `BitXor`
-traits/Show/XorTrie--show.cp	wrong-reject	link: std.bitset:1781:20: E0203: `Str` has no member `is_empty`
+traits/Show/XorTrie--show.cp	wrong-reject	check: std.bitset:1082:9: E0405: field `XorTrie._mask` is fixed (not `var`) and cannot be assigned
 traits/Sized/RingWindows--len.cp	wrong-reject	check: program:2:7: E0203: `List<Int>` has no member `ring`
-traits/Sub/BigInt--sub.cp	wrong-reject	own: std.math:1926:9: E0603: this returns a value that borrows `cs`: `cs` is gone when the fn returns
+traits/Sub/BigInt--sub.cp	wrong-reject	own: std.math:1914:9: E0603: this returns a value that borrows `cs`: `cs` is gone when the fn returns
 traits/Sub/Mat--sub.cp	wrong-reject	check: std.matrix:114:36: E0606: `T` does not implement `Domain`
 traits/Sub/Poly--sub.cp	wrong-reject	check: std.poly:867:66: E0606: `T` does not implement `Domain`
 traits/Track/Counter--pop.cp	wrong-reject	check: std.hashmap: E0204: unknown type `HashMap`
 traits/Track/Counter--push.cp	wrong-reject	check: std.hashmap: E0204: unknown type `HashMap`
 traits/Track/SortedBag--pop.cp	wrong-reject	check: std.bag:669:14: E0203: `(key: K, count: Int)` has no member `_0`
 traits/Track/SortedBag--push.cp	wrong-reject	link: std.bag:2871:9: E0606: `K` does not implement `Ord`
-traits/Track/Undoing--pop.cp	wrong-reject	own: std.window:297:17: E0603: a value that borrows `rev_items` is stored in `self`, which outlives `rev_items`
-traits/Track/Undoing--push.cp	wrong-reject	link: std.window:186:31: E0606: `S` does not implement `Undo`
-traits/Versioned/PersistentArray--get.cp	wrong-reject	link: std.persistent:1029:18: E0606: `S` does not implement `Versioned`
-traits/Versioned/PersistentLazySegTree--get.cp	wrong-reject	link: std.persistent:1029:18: E0606: `S` does not implement `Versioned`
+traits/Versioned/PersistentArray--get.cp	wrong-reject	check: std.persistent:717:20: E0606: `T` does not implement `Eq`
 traits/Versioned/PersistentSegTree--get.cp	wrong-reject	check: std.persistent:150:17: E0606: `M` does not implement `FromOp`
