@@ -335,15 +335,6 @@ impl M<'_> {
         }
         self.at
     }
-    fn show(&mut self, w: u64, kind: Kind) -> Option<String> {
-        Some(match kind {
-            Kind::Int => (w as i64).to_string(),
-            Kind::U64 => w.to_string(),
-            Kind::Bool => (if w != 0 { "true" } else { "false" }).to_string(),
-            Kind::Char => char::from(w as u8).to_string(),
-            Kind::Other => return None,
-        })
-    }
 
     fn exec(&mut self, b: u32, fr: usize) -> R<Flow> {
         let c = self.c;
@@ -390,7 +381,7 @@ impl M<'_> {
                     self.stack[r(d)] = ops::word(op, self.stack[r(a)], self.stack[r(b)])?;
                 }
                 Op::Neg { d, a } => self.stack[r(d)] = ops::neg(self.stack[r(a)] as i64)? as u64,
-                Op::Not { d, a } => self.stack[r(d)] = u64::from(self.stack[r(a)] == 0),
+                Op::Not { d, a } => self.stack[r(d)] = u64::from(ops::not(self.stack[r(a)] != 0)),
                 Op::Cmp { op, d, a, b, kind } => {
                     let (x, y) = (self.stack[r(a)], self.stack[r(b)]);
                     let (x, y) = match kind {
@@ -502,8 +493,8 @@ impl M<'_> {
                 }
                 Op::Guard { op, c: x } => ops::check(op, self.stack[r(x)] != 0)?,
                 Op::Print { s, kind } => {
-                    if let Some(t) = self.show(self.stack[r(s)], kind) {
-                        self.out.push_str(&t);
+                    if let Some(v) = scalar(self.stack[r(s)], kind) {
+                        ops::show(v, &mut self.out);
                     }
                 }
                 Op::PrintText { t } => self.out.push_str(&c.texts[t as usize]),
@@ -512,8 +503,8 @@ impl M<'_> {
                     let mut line = format!("ev {}", ev.label);
                     for &(s, kind, lay) in &ev.vals {
                         line.push(' ');
-                        match self.show(self.stack[r(s)], kind) {
-                            Some(t) => line.push_str(&t),
+                        match scalar(self.stack[r(s)], kind) {
+                            Some(v) => ops::show(v, &mut line),
                             None => {
                                 line.push('?');
                                 self.release(lay, Loc::Stack(r(s)));
@@ -579,24 +570,142 @@ impl M<'_> {
                     self.stack[r(d)] = u64::from(!self.input.as_slice().is_empty())
                 }
                 Op::ReadInt { d } => {
-                    match self
-                        .input
-                        .next()
-                        .and_then(|t| t.parse::<i64>().ok())
-                        .filter(|v| *v != i64::MIN)
-                    {
-                        Some(v) => self.stack[r(d)] = v as u64,
-                        None => return Err(Fault::BadIntToken.into()),
-                    }
+                    let t = self.input.next();
+                    let v =
+                        ops::read_int(t.as_deref()).map_err(|f| Trap::at_token(f, t.as_deref()))?;
+                    self.stack[r(d)] = v as u64;
                 }
-                Op::ToU64 { d, a } => self.stack[r(d)] = self.stack[r(a)],
+                Op::ToU64 { d, a } => self.stack[r(d)] = ops::u64_of_int(self.stack[r(a)] as i64),
                 Op::FromU64 { d, a } => {
                     self.stack[r(d)] = ops::int_of_u64(self.stack[r(a)])? as u64
                 }
-                Op::CharOf { d, a } => self.stack[r(d)] = u64::from(self.stack[r(a)] as u8),
+                Op::CharOf { d, a } => {
+                    self.stack[r(d)] = u64::from(ops::char_of(self.stack[r(a)] as i64)?)
+                }
+                Op::CodeOf { d, a } => {
+                    self.stack[r(d)] = ops::code_of(byte(self.stack[r(a)])?) as u64
+                }
                 Op::Fail { rule } => return broken(rule),
             }
         }
         Ok(Flow::Normal)
+    }
+}
+
+/// A word of a value of `kind` as the scalar it holds.
+fn scalar(w: u64, kind: Kind) -> Option<ops::Scalar> {
+    Some(match kind {
+        Kind::Int => ops::Scalar::Int(w as i64),
+        Kind::U64 => ops::Scalar::U64(w),
+        Kind::Bool => ops::Scalar::Bool(w != 0),
+        Kind::Char => ops::Scalar::Char(byte(w).ok()?),
+        Kind::Other => return None,
+    })
+}
+/// A `Char`'s word as its byte.
+fn byte(w: u64) -> R<u8> {
+    u8::try_from(w).or_else(|_| broken("a Char word past a byte"))
+}
+
+#[cfg(test)]
+mod tests {
+    /// Ops that only move words, jump or reach the heap; every other op computes a value or
+    /// decides a trap, and takes that from `ops`, so the engine never writes an operation the
+    /// reference interpreter and the C++ read from there.
+    const PLUMBING: [&str; 22] = [
+        "Imm",
+        "Addr",
+        "Move",
+        "Load",
+        "Peek",
+        "Store",
+        "Drop",
+        "Text",
+        "At",
+        "Enter",
+        "Call",
+        "Region",
+        "Yield",
+        "LendOut",
+        "Jump",
+        "JumpUnless",
+        "Switch",
+        "Leave",
+        "Check",
+        "PrintText",
+        "RawEmpty",
+        "InputLeft",
+    ];
+    /// Not an operation: the IR broke its contract.
+    const FAIL: &str = "Fail";
+
+    fn variants() -> Vec<String> {
+        let src = include_str!("compile.rs");
+        let start = src.find("pub(crate) enum Op {").unwrap_or(0);
+        let body = &src[start..];
+        let body = &body[..body.find("\n}\n").unwrap_or(body.len())];
+        body.lines()
+            .filter_map(|l| {
+                let name = l.strip_prefix("    ")?;
+                let end = name.find(|c: char| !c.is_ascii_alphanumeric())?;
+                (name.starts_with(|c: char| c.is_ascii_uppercase()))
+                    .then(|| name[..end].to_string())
+            })
+            .collect()
+    }
+
+    #[test]
+    fn every_op_that_computes_takes_its_meaning_from_ops() {
+        let src = include_str!("exec.rs");
+        let start = src.find("fn exec(").unwrap_or(0);
+        let end = src.find("/// A word of a value of").unwrap_or(src.len());
+        let body = &src[start..end];
+        let arm_start = "                Op::";
+        let mut arms = std::collections::HashMap::new();
+        let mut name = String::new();
+        for l in body.lines() {
+            if let Some(rest) = l.strip_prefix(arm_start) {
+                let n = rest
+                    .find(|c: char| !c.is_ascii_alphanumeric())
+                    .unwrap_or(rest.len());
+                name = rest[..n].to_string();
+            }
+            if !name.is_empty() {
+                arms.entry(name.clone())
+                    .or_insert_with(String::new)
+                    .push_str(l);
+            }
+        }
+        let variants = variants();
+        assert!(variants.len() > 30, "found the Op enum: {variants:?}");
+        for v in &variants {
+            if PLUMBING.contains(&v.as_str()) || v == FAIL {
+                continue;
+            }
+            let arm = arms.get(v).map_or("", String::as_str);
+            assert!(
+                arm.contains("ops::"),
+                "Op::{v} computes without `ops`: {arm}"
+            );
+        }
+        for p in PLUMBING {
+            assert!(
+                variants.iter().any(|v| v == p),
+                "Op::{p} is listed but gone"
+            );
+        }
+        for word in [
+            "checked_",
+            "wrapping_",
+            "parse",
+            "to_string",
+            " as u8",
+            "format!(\"{",
+        ] {
+            assert!(
+                !body.contains(word),
+                "exec.rs writes an operation itself: `{word}`"
+            );
+        }
     }
 }

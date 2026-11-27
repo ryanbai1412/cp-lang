@@ -343,15 +343,10 @@ impl<'a> Machine<'a> {
                 Stmt::Event(label, vals) => {
                     let mut line = format!("ev {label}");
                     for v in vals {
-                        match self.expr(v, fp)? {
-                            V::Int(i) => line.push_str(&format!(" {i}")),
-                            V::U64(u) => line.push_str(&format!(" {u}")),
-                            V::Bool(b) => line.push_str(if b { " true" } else { " false" }),
-                            V::Char(c) => {
-                                line.push(' ');
-                                line.push(char::from(c));
-                            }
-                            _ => line.push_str(" ?"),
+                        line.push(' ');
+                        match scalar(&self.expr(v, fp)?) {
+                            Some(s) => ops::show(s, &mut line),
+                            None => line.push('?'),
                         }
                     }
                     self.events.push(line);
@@ -360,12 +355,9 @@ impl<'a> Machine<'a> {
                     for p in ps {
                         match p {
                             PrintPiece::Text(t) => self.out.push_str(t),
-                            PrintPiece::Value(v) => match self.expr(v, fp)? {
-                                V::Int(i) => self.out.push_str(&i.to_string()),
-                                V::Bool(b) => self.out.push_str(if b { "true" } else { "false" }),
-                                V::Char(c) => self.out.push(char::from(c)),
-                                V::U64(u) => self.out.push_str(&u.to_string()),
-                                _ => return broken("print of a value of another kind"),
+                            PrintPiece::Value(v) => match scalar(&self.expr(v, fp)?) {
+                                Some(s) => ops::show(s, &mut self.out),
+                                None => return broken("print of a value of another kind"),
                             },
                         }
                     }
@@ -506,7 +498,7 @@ impl<'a> Machine<'a> {
                 let V::Bool(b) = self.expr(a, fp)? else {
                     return broken("not of a non-Bool");
                 };
-                V::Bool(!b)
+                V::Bool(ops::not(b))
             }
             Intr::RawEmpty => V::Raw(Rc::new(Store::Any(Vec::new()))),
             Intr::RawNew => {
@@ -572,7 +564,7 @@ impl<'a> Machine<'a> {
             }
             Intr::InputLeft => V::Bool(!self.input.as_slice().is_empty()),
             Intr::Unset => V::Unit,
-            Intr::ToU64 => V::U64(self.int(&args[0], fp)? as u64),
+            Intr::ToU64 => V::U64(ops::u64_of_int(self.int(&args[0], fp)?)),
             Intr::FromU64 => {
                 let Arg::Value(a) = &args[0] else {
                     return broken("lent operand");
@@ -588,34 +580,26 @@ impl<'a> Machine<'a> {
                     return broken("lent Char");
                 };
                 match self.expr(c, fp)? {
-                    V::Char(c) => V::Int(i64::from(c)),
+                    V::Char(c) => V::Int(ops::code_of(c)),
                     _ => return broken("the code of a non-Char"),
                 }
             }
             Intr::ReadInt => {
                 let t = self.input.next();
-                let t = t.as_deref().unwrap_or("");
-                match t.parse::<i64>().ok().filter(|v| *v != i64::MIN) {
-                    Some(i) => V::Int(i),
-                    // A whole number past `Int` is out of the contract, not a bad token (R10.2.6).
-                    None if whole(t) => {
-                        let msg = format!("`{t}` does not fit in an `Int`");
-                        return Err(Trap {
-                            msg,
-                            ..Fault::IntPastInt.into()
-                        });
-                    }
-                    None => return trap(Fault::BadIntToken),
-                }
+                V::Int(ops::read_int(t.as_deref()).map_err(|f| Trap::at_token(f, t.as_deref()))?)
             }
         })
     }
 }
 
-/// An optional `-` and then only digits.
-fn whole(t: &str) -> bool {
-    let d = t.strip_prefix('-').unwrap_or(t);
-    !d.is_empty() && d.bytes().all(|b| b.is_ascii_digit())
+fn scalar(v: &V) -> Option<ops::Scalar> {
+    Some(match *v {
+        V::Int(i) => ops::Scalar::Int(i),
+        V::U64(u) => ops::Scalar::U64(u),
+        V::Bool(b) => ops::Scalar::Bool(b),
+        V::Char(c) => ops::Scalar::Char(c),
+        _ => return None,
+    })
 }
 
 fn u64_op(op: Intr, a: V, b: V) -> R<V> {

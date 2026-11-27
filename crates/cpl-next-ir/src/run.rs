@@ -20,6 +20,19 @@ pub struct Outcome {
     pub trap: Option<Trap>,
 }
 
+impl Trap {
+    /// A fault reading input token `t`, which a message past `Int` names.
+    pub fn at_token(fault: Fault, t: Option<&str>) -> Trap {
+        match (fault, t) {
+            (Fault::IntPastInt, Some(t)) => Trap {
+                msg: format!("`{t}` does not fit in an `Int`"),
+                ..fault.into()
+            },
+            _ => fault.into(),
+        }
+    }
+}
+
 impl From<Fault> for Trap {
     fn from(fault: Fault) -> Trap {
         Trap {

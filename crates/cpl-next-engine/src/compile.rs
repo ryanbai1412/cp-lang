@@ -220,6 +220,10 @@ pub(crate) enum Op {
         d: Reg,
         a: Reg,
     },
+    CodeOf {
+        d: Reg,
+        a: Reg,
+    },
     Fail {
         rule: &'static str,
     },
@@ -908,7 +912,7 @@ impl Fc<'_> {
                     Intr::ToU64 => Op::ToU64 { d, a },
                     Intr::FromU64 => Op::FromU64 { d, a },
                     Intr::CharOf => Op::CharOf { d, a },
-                    _ => Op::Move { d, s: a, n: 1 },
+                    _ => Op::CodeOf { d, a },
                 });
             }
             Intr::CheckRange | Intr::CheckKey => {

@@ -201,6 +201,53 @@ pub fn int_of_u64(u: u64) -> Result<i64, Fault> {
     i64::try_from(u).map_err(|_| Fault::U64PastInt)
 }
 
+/// An `Int`'s bits as a `U64`.
+pub fn u64_of_int(i: i64) -> u64 {
+    i as u64
+}
+
+pub fn not(b: bool) -> bool {
+    !b
+}
+
+/// A `Char`'s code.
+pub fn code_of(c: u8) -> i64 {
+    i64::from(c)
+}
+
+/// The `Int` an input token spells. A whole number past `Int` is out of the contract, not a
+/// bad token (R10.2.6); the end of the input is a bad token.
+pub fn read_int(t: Option<&str>) -> Result<i64, Fault> {
+    let t = t.unwrap_or("");
+    let digits = t.strip_prefix('-').unwrap_or(t);
+    match t.parse::<i64>().ok().filter(|v| *v != i64::MIN) {
+        Some(i) => Ok(i),
+        None if !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit()) => {
+            Err(Fault::IntPastInt)
+        }
+        None => Err(Fault::BadIntToken),
+    }
+}
+
+/// A value `print` writes and an event shows as text.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Scalar {
+    Int(i64),
+    U64(u64),
+    Bool(bool),
+    Char(u8),
+}
+/// `v` as `print` writes it.
+pub fn show(v: Scalar, out: &mut String) {
+    use std::fmt::Write;
+    let _ = match v {
+        Scalar::Int(i) => write!(out, "{i}"),
+        Scalar::U64(u) => write!(out, "{u}"),
+        Scalar::Bool(b) => write!(out, "{b}"),
+        Scalar::Char(c) => write!(out, "{}", char::from(c)),
+    };
+}
+
 /// The character with code `x`, an ASCII one.
 pub fn char_of(x: i64) -> Result<u8, Fault> {
     u8::try_from(x)
