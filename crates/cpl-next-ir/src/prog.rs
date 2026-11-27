@@ -60,9 +60,9 @@ impl Program {
     pub fn parts(&self, t: &CTy) -> Vec<CTy> {
         parts(&self.structs, &self.sums, t)
     }
-    /// Whether a value of type `t` holds storage (`stores`).
-    pub fn stores(&self, t: &CTy) -> bool {
-        stores(
+    /// What a value of type `t` holds (`holds`).
+    pub fn holds(&self, t: &CTy) -> Holds {
+        holds(
             &|s| self.parts(s),
             &|k| {
                 (self.index.get(k))
@@ -72,6 +72,14 @@ impl Program {
             t,
             0,
         )
+    }
+    /// Whether a value of type `t` holds storage: what a copy counts and a drop releases.
+    pub fn stores(&self, t: &CTy) -> bool {
+        self.holds(t) == Holds::Storage
+    }
+    /// R1: whether a value of type `t` is plain.
+    pub fn plain(&self, t: &CTy) -> bool {
+        self.holds(t) == Holds::Nothing
     }
     /// The types of what closure `k` captures.
     pub fn captures(&self, k: &InstKey) -> Vec<CTy> {
@@ -90,31 +98,34 @@ pub fn parts(structs: &HashMap<CTy, Vec<CTy>>, sums: &HashMap<CTy, Vec<CTy>>, t:
     out
 }
 
-/// R1: whether a value of type `t` holds storage, a `Raw` handle in it or in a part: what a
-/// copy counts and a drop releases. Ownership places drops by it and a backend counts a copy by
-/// it, so the two agree on which values own. Past a depth of 16, or for a closure with no
-/// instance (link stopped), it says yes.
-pub fn stores(
+/// What a value holds, the one answer to "is it plain" and "does it hold storage" (R1).
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+pub enum Holds {
+    /// No part of it lives on the heap or points at another value: it is plain, and a copy of
+    /// it never affects the original.
+    Nothing,
+    /// It points at a value another frame owns (a `Ref` or a lent slot), and owns no storage.
+    Address,
+    /// A `Raw` handle in it or in a part: what a copy counts and a drop releases.
+    Storage,
+}
+
+/// R1: what a value of type `t` holds. A fn value holds what its closures capture. Ownership
+/// places drops and copies by it and a backend counts a copy by it, so all of them agree on
+/// which values are plain and which own. Past a depth of 16, or for a closure with no instance
+/// yet (link has not made it, or stopped), it says storage.
+pub fn holds(
     parts: &dyn Fn(&CTy) -> Vec<CTy>,
     captures: &dyn Fn(&InstKey) -> Option<Vec<CTy>>,
     t: &CTy,
     depth: usize,
-) -> bool {
-    let at = |t: &CTy| stores(parts, captures, t, depth + 1);
+) -> Holds {
+    let at = |t: &CTy| holds(parts, captures, t, depth + 1);
+    let most = |ts: &[CTy]| ts.iter().map(at).max().unwrap_or(Holds::Nothing);
+    let clo = |k: &InstKey| captures(k).map_or(Holds::Storage, |cs| most(&cs));
     match t {
-        CTy::Raw(_) => true,
-        _ if depth >= 16 => true,
-        CTy::Lent(e) => at(e),
-        CTy::Struct(..) => parts(t).iter().any(at),
-        CTy::Clo(k) => captures(k).is_none_or(|cs| cs.iter().any(at)),
-        CTy::Fn(_, _, ms) => (ms.iter()).any(|k| captures(k).is_none_or(|cs| cs.iter().any(at))),
-        _ => false,
-    }
-}
-
-/// Spec R1: a value with no heap part, copied when passed; `parts` gives a struct's fields.
-pub fn plain(parts: &dyn Fn(&CTy) -> Vec<CTy>, t: &CTy, depth: usize) -> bool {
-    match t {
+        CTy::Raw(_) => Holds::Storage,
+        _ if depth >= 16 => Holds::Storage,
         CTy::Int
         | CTy::Bool
         | CTy::Char
@@ -123,8 +134,65 @@ pub fn plain(parts: &dyn Fn(&CTy) -> Vec<CTy>, t: &CTy, depth: usize) -> bool {
         | CTy::F64
         | CTy::Unit
         | CTy::Dom(_)
-        | CTy::Range(..) => true,
-        CTy::Struct(..) if depth < 8 => parts(t).iter().all(|f| plain(parts, f, depth + 1)),
-        _ => false,
+        | CTy::Range(..) => Holds::Nothing,
+        CTy::Ref(_) | CTy::Error => Holds::Address,
+        CTy::Lent(e) => at(e).max(Holds::Address),
+        CTy::Struct(..) => most(&parts(t)),
+        CTy::Clo(k) => clo(k),
+        CTy::Fn(_, _, ms) => ms.iter().map(clo).max().unwrap_or(Holds::Nothing),
+    }
+}
+
+/// Whether a value of type `t` holds storage (`holds`).
+pub fn stores(
+    parts: &dyn Fn(&CTy) -> Vec<CTy>,
+    captures: &dyn Fn(&InstKey) -> Option<Vec<CTy>>,
+    t: &CTy,
+) -> bool {
+    holds(parts, captures, t, 0) == Holds::Storage
+}
+
+/// R1: whether a value of type `t` is plain (`holds`).
+pub fn plain(
+    parts: &dyn Fn(&CTy) -> Vec<CTy>,
+    captures: &dyn Fn(&InstKey) -> Option<Vec<CTy>>,
+    t: &CTy,
+) -> bool {
+    holds(parts, captures, t, 0) == Holds::Nothing
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn key(n: &str) -> InstKey {
+        InstKey {
+            func: FuncKey::Main,
+            targs: vec![CTy::Range(0, n.len() as i64)],
+            sets: vec![],
+        }
+    }
+
+    /// A fn value is plain exactly when what it captures is (R1), and holds storage exactly when
+    /// a capture does: one answer for ownership's copies and drops and the engine's counts.
+    #[test]
+    fn a_fn_value_holds_what_it_captures() {
+        let (ints, list, unmade) = (key("a"), key("ab"), key("abc"));
+        let caps = |k: &InstKey| match k.targs[0] {
+            CTy::Range(_, 1) => Some(vec![CTy::Int, CTy::Bool]),
+            CTy::Range(_, 2) => Some(vec![CTy::Int, CTy::Raw(Box::new(CTy::Int))]),
+            _ => None,
+        };
+        let parts = |_: &CTy| Vec::new();
+        let at = |t: &CTy| holds(&parts, &caps, t, 0);
+        let clo = |k: &InstKey| CTy::Clo(Box::new(k.clone()));
+        assert_eq!(at(&clo(&ints)), Holds::Nothing);
+        assert_eq!(at(&clo(&list)), Holds::Storage);
+        assert_eq!(at(&clo(&unmade)), Holds::Storage);
+        let both = CTy::Fn(vec![], Box::new(CTy::Int), vec![ints.clone(), list]);
+        assert!(stores(&parts, &caps, &both) && !plain(&parts, &caps, &both));
+        let one = CTy::Fn(vec![], Box::new(CTy::Int), vec![ints]);
+        assert!(plain(&parts, &caps, &one) && !stores(&parts, &caps, &one));
+        assert_eq!(at(&CTy::Ref(Box::new(CTy::Int))), Holds::Address);
     }
 }

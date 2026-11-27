@@ -8,7 +8,7 @@ use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_next_ir::whole::{DomId, DomValue, Whole};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
-pub use cpl_next_ir::prog::{parts, plain, CSet, CTy, InstKey, Program};
+pub use cpl_next_ir::prog::{parts, CSet, CTy, InstKey, Program};
 
 mod share;
 

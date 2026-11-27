@@ -59,10 +59,11 @@ struct JudgeProfile { compiler, flags, limits, kept_checks, size_limit, grader_w
   temporary the caller releases, and an earlier operand with an effect
   goes to a temporary before it, so effects keep their order. The
   engine counts a copy only where it lowers an `EK::Copy`; a view and a
-  load take no count. Which values hold
-  storage is decided once, by `Program::stores`: ownership places drops
-  by it and the engine counts a copy by it, and no backend keeps a bit
-  of its own. The engine's optimizer removes a `Drop` only when its
+  load take no count. What a value holds (nothing, an address, or
+  storage) is decided once, by `Program::holds`, with a fn value holding
+  what its closures capture: `Program::plain` and `Program::stores` read
+  it, ownership places views, lent slots and drops by it and the engine
+  counts a copy by it, and no backend keeps a bit of its own. The engine's optimizer removes a `Drop` only when its
   registers are still zero from a `Zero` on every path to it; releasing
   a zero word does nothing, so removing it changes no backend's
   behaviour and needs no shared stage. C++ runs each `Stmt::Drop` as a

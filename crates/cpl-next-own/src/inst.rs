@@ -296,7 +296,7 @@ impl Walk<'_> {
             match t {
                 CTy::Fn(_, _, _) | CTy::Clo(_) => true,
                 CTy::Struct(..) if depth < 8 => w.p.parts(t).iter().all(|f| go(w, f, depth + 1)),
-                _ => cpl_next_ir::prog::plain(&|s| w.p.parts(s), t, depth),
+                _ => w.p.plain(t),
             }
         }
         go(self, t, 0)

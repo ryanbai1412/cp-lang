@@ -87,9 +87,8 @@ fn place_copies(p: &mut Program, copies: &BTreeSet<(usize, Site)>) {
 /// Which params the callee reads where the caller has them: nothing writes one and it has a
 /// heap part, so passing it takes no copy (R1).
 fn views(p: &Program, f: &Func<CTy>) -> Vec<bool> {
-    let plain = |t: &CTy| cpl_next_ir::prog::plain(&|s| p.parts(s), t, 0);
     (f.params.iter())
-        .map(|(l, lent)| !lent && !sets(&f.body, *l) && !plain(&f.locals[*l]))
+        .map(|(l, lent)| !lent && !sets(&f.body, *l) && !p.plain(&f.locals[*l]))
         .collect()
 }
 struct Settle<'a, C> {
@@ -225,9 +224,10 @@ pub fn link(
 }
 
 /// The type of the slot a value of `t` is lent in, in an instance: a plain value lent is copied,
-/// as nothing it holds can be kept past the lend.
+/// as nothing it holds can be kept past the lend. Link asks before it has made any closure, so
+/// a fn value is lent in a slot.
 fn lent_slot(t: CTy, parts: &dyn Fn(&CTy) -> Vec<CTy>) -> CTy {
-    match cpl_next_ir::prog::plain(parts, &t, 0) {
+    match cpl_next_ir::prog::plain(parts, &|_| None, &t) {
         true => t,
         false => CTy::Lent(Box::new(t)),
     }

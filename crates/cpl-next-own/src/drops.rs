@@ -20,7 +20,7 @@ pub(crate) fn place(p: &mut Program) {
         .collect();
     let mut insts = std::mem::take(&mut p.insts);
     for f in &mut insts {
-        let stores = |t: &CTy| stores(&|s| p.parts(s), &|k| caps.get(k).cloned(), t, 0);
+        let stores = |t: &CTy| stores(&|s| p.parts(s), &|k| caps.get(k).cloned(), t);
         // A lent or viewed param is the caller's value: the caller releases it.
         let borrowed = |l: usize| {
             (f.params.iter().zip(&f.views)).any(|(&(x, lent), &view)| x == l && (lent || view))
