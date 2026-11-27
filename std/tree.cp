@@ -12,7 +12,7 @@
 //! structure indexed by `t.Pre` (a `SegTree`, with or without `act:`, a `Fenwick`), and
 //! `fold_path` / `apply_path` walk a path over it, so there is no second
 //! "tree with values" type and no second copy of the data.
-use std.algebra.{Monoid, MaxSub, Action, Acts}
+use std.algebra.{FromOp, Monoid, MaxSub, Action, Acts}
 use std.algebra.{Reversible}
 use std.algebra.{add}
 use std.dp.{Step}
@@ -3975,7 +3975,7 @@ pub fn cartesian_tree<D, T>(a: [D]T, by: (T, T) -> Bool = (x, y) => x < y) -> [D
 /// The Kruskal reconstruction tree: each edge that merges two components, in increasing
 /// weight, becomes a node above them. The leaves under a node are the vertices connected by
 /// edges of weight at most its own, so "what `v` reaches under a limit" is one subtree.
-pub struct KruskalTree<V, N, W>:
+pub struct KruskalTree<V, N, W: Ord>:
     /// The leaf node of each vertex.
     pub leaf: [V]N
     /// The merging weight of each node; `None` at a leaf.
@@ -4025,7 +4025,7 @@ pub struct KruskalTree<V, N, W>:
     /// order: keyed by `N`
     /// traps: never
     /// example: `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 1, v: 2, w: 3)]; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); let c = kt.up(+, leaf: v => 1); c[kt.reach(2, 3)] == 2 and c[kt.leaf[0]] == 1`
-    pub fn up<T, M>(self, op: M, leaf: V -> T) -> [N]T:
+    pub fn up<T, M: FromOp<T>>(self, op: M, leaf: V -> T) -> [N]T:
         let m = Monoid<T>.of(op)
         var acc: [N]?T = None
         for v in V: acc[self.leaf[v]] = Some(leaf(v))
@@ -4060,7 +4060,7 @@ pub struct KruskalTree<V, N, W>:
 /// ties: `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 1, v: 2, w: 1), (u: 0, v: 1, w: 1)]; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); kt.tree.parent(kt.leaf[1]) == kt.tree.parent(kt.leaf[2])`
 /// traps: never
 /// example: `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 1, v: 2, w: 3)]; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); N.count == 5 and kt.bottleneck(0, 2) == Some(5)`
-pub fn kruskal_tree<V, E, W, R: (u: V, v: V, ..)>(edges: [E]R, w: E -> W) -> (
+pub fn kruskal_tree<V, E, W: Ord, R: (u: V, v: V, ..)>(edges: [E]R, w: E -> W) -> (
     domain N,
     KruskalTree<V, N, W>,
 ):
