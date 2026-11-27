@@ -694,6 +694,23 @@ impl M<'_> {
                     self.release(elem, Loc::Heap(h, at));
                     self.write(Loc::Heap(h, at), r(x), self.size(elem));
                 }
+                Op::RawTake { d, p, i, elem } => {
+                    let loc = self.loc(fp, p)?;
+                    if self.word(loc) == 0 {
+                        return broken("move from non-storage");
+                    }
+                    let len = self.heap[self.word(loc) as usize].len;
+                    let size = self.size(elem);
+                    let at = ops::cell(self.stack[r(i)] as i64, len, false)? * size;
+                    let h = self.unique(loc)?;
+                    self.read(Loc::Heap(h, at), r(d), size);
+                    self.heap[h as usize].words[at..at + size].fill(0);
+                }
+                Op::RawCap { d, n, elem } => {
+                    let len = ops::storage_size(self.stack[r(n)] as i64)?;
+                    let words = vec![0; len * self.size(elem)];
+                    self.stack[r(d)] = u64::from(self.alloc(elem, len, words));
+                }
                 Op::InputLeft { d } => {
                     self.stack[r(d)] = u64::from(!self.input.as_slice().is_empty())
                 }

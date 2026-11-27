@@ -62,7 +62,9 @@ impl<'a> Cx<'a> {
                 m => m,
             })
             .collect();
-        let recv = if mutates || fd.self_mode == SelfMode::Mut || self.d.writes_cache(m) {
+        let recv = if mutates || fd.self_mode == SelfMode::Mut {
+            self.mut_recv(recv, span)
+        } else if self.d.writes_cache(m) {
             TArg::Mut(recv)
         } else {
             TArg::Value(recv)
@@ -351,7 +353,7 @@ impl<'a> Cx<'a> {
                     let ret = sub.ty(&fd.ret);
                     let (pre, args) = self.args(call.unwrap_or(&[]), &formals, span);
                     let recv = if fd.self_mode == SelfMode::Mut {
-                        TArg::Mut(recv)
+                        self.mut_recv(recv, span)
                     } else {
                         TArg::Value(recv)
                     };

@@ -13,6 +13,10 @@ fn check_range(ok: Bool) = @intrinsic("range_check")
 @variant_check
 fn check_variant(ok: Bool) = @intrinsic("value_check")
 fn raw_set<T>(mut r: Raw<T>, i: Int, x: T) = @intrinsic("raw_set")
+/// Moves cell `i` out of `r`, leaving it unset until `raw_set` fills it.
+fn raw_take<T>(mut r: Raw<T>, i: Int) -> T = @intrinsic("move_out")
+/// Storage of `n` unset cells; each is filled by `raw_set` before it is read.
+fn raw_cap<T>(n: Int) -> Raw<T> = @intrinsic("unset_cells")
 
 struct List<T>:
     var buf: Raw<T>
@@ -35,15 +39,45 @@ struct List<T>:
     fn each(self) -> yields T:
         for i in 0..n: yield raw_get(buf, i)
 
-    fn push(mut self, x: T):
-        if n == cap:
-            let ncap = if cap == 0: 4 else: cap * 2
-            var nb = raw_new(ncap, x)
-            for i in 0..n: raw_set(mut nb, i, raw_get(buf, i))
+    /// Room for `k` elements without another move of the ones held.
+    fn reserve(mut self, k: Int):
+        if k > cap:
+            var nb = raw_cap(k)
+            for i in 0..n: raw_set(mut nb, i, raw_take(mut buf, i))
             buf = nb
-            cap = ncap
+            cap = k
+
+    fn push(mut self, x: T):
+        if n == cap: self.reserve(if cap == 0: 4 else: cap * 2)
         raw_set(mut buf, n, x)
         n += 1
+
+    fn swap(mut self, i: Int, j: Int):
+        check_key(0 <= i and i < n and 0 <= j and j < n)
+        if i != j:
+            let x = raw_take(mut buf, i)
+            raw_set(mut buf, i, raw_take(mut buf, j))
+            raw_set(mut buf, j, x)
+
+    /// `x` at position `i`, the elements from `i` on one later.
+    fn insert(mut self, i: Int, x: T):
+        assert 0 <= i and i <= n, "insert: a position past the end"
+        self.push(x)
+        var k = n - 1
+        while k > i:
+            self.swap(k - 1, k)
+            k -= 1
+
+    /// The element at `i`, the ones after it one earlier.
+    fn remove(mut self, i: Int) -> T:
+        check_key(0 <= i and i < n)
+        for k in i..n - 1: self.swap(k, k + 1)
+        n -= 1
+        raw_take(mut buf, n)
+
+    fn extend(mut self, xs: List<T>):
+        self.reserve(n + xs.len)
+        for x in xs: self.push(x)
 
     @get fn is_empty(self) -> Bool:
         n == 0

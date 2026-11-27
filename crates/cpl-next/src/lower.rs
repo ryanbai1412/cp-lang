@@ -324,7 +324,7 @@ fn writes_nothing<T>(s: &Stmt<T>) -> bool {
     fn quiet<T>(e: &Expr<T>) -> bool {
         match &e.kind {
             EK::Intr(i, args, _) => {
-                !matches!(i, Intr::RawSet | Intr::ReadInt)
+                !matches!(i, Intr::RawSet | Intr::RawTake | Intr::ReadInt)
                     && args.iter().all(|a| matches!(a, Arg::Value(v) if quiet(v)))
             }
             _ => pure(e),

@@ -209,6 +209,18 @@ pub(crate) enum Op {
         x: Reg,
         elem: Lay,
     },
+    /// Cell `i` of the storage at place `p`, moved to `d` and left unset.
+    RawTake {
+        d: Reg,
+        p: u32,
+        i: Reg,
+        elem: Lay,
+    },
+    RawCap {
+        d: Reg,
+        n: Reg,
+        elem: Lay,
+    },
     InputLeft {
         d: Reg,
     },
@@ -1212,6 +1224,23 @@ impl Fc<'_> {
                 let p = self.place(p);
                 self.ops.push(Op::RawSet { p, i, x: xr, elem });
             }
+            Intr::RawTake => {
+                let (Some(Arg::Lend(p)), Some(Arg::Value(i)), Some(elem)) =
+                    (args.first(), args.get(1), elem(self, &first_ty))
+                else {
+                    return self.fail("storage moved from without a lend");
+                };
+                let i = self.operand(i);
+                let p = self.place(p);
+                self.ops.push(Op::RawTake { d, p, i, elem });
+            }
+            Intr::RawCap => match (args.first(), elem(self, ty)) {
+                (Some(Arg::Value(n)), Some(elem)) => {
+                    let n = self.operand(n);
+                    self.ops.push(Op::RawCap { d, n, elem });
+                }
+                _ => self.fail("storage of a type that is not storage"),
+            },
             Intr::InputLeft => self.ops.push(Op::InputLeft { d }),
             Intr::ReadInt => self.ops.push(Op::ReadInt { d }),
             Intr::Unset => {}

@@ -557,6 +557,19 @@ impl<'a> Cx<'a> {
             _ => self.call_fn(f, Some(recv), call.unwrap_or(&[]), span, want),
         }
     }
+    /// The receiver of a method that changes it, lent `mut`: never a `let` binding (R05.4.2).
+    pub(super) fn mut_recv(&mut self, recv: TExpr, span: Span) -> TArg {
+        if let Some(name) = self.let_root(&recv) {
+            self.err(
+                span,
+                format!(
+                    "{}: `{name}` is bound by `let`, so it cannot be lent `mut`; declare it with `var`",
+                    cpl_diag::codes::MUT_OF_IMMUTABLE.0
+                ),
+            );
+        }
+        TArg::Mut(recv)
+    }
     pub(super) fn recv_arg(&mut self, m: FnId, recv: TExpr, span: Span) -> TArg {
         let place = matches!(recv.kind, TK::Var(_) | TK::Field(..));
         if self.d.f(m).self_mode == SelfMode::Mut {
@@ -569,7 +582,7 @@ impl<'a> Cx<'a> {
                     ),
                 );
             }
-            TArg::Mut(recv)
+            self.mut_recv(recv, span)
         } else if self.d.writes_cache(m) && place {
             TArg::Mut(recv)
         } else {

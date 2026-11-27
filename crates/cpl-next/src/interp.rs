@@ -566,6 +566,26 @@ impl<'a> Machine<'a> {
                     fill => Store::Any(vec![fill; n]),
                 }))
             }
+            Intr::RawCap => {
+                let n = ops::storage_size(self.int(&args[0], fp)?)?;
+                V::Raw(Rc::new(Store::Any(vec![V::Unit; n])))
+            }
+            Intr::RawTake => {
+                let i = self.int(&args[1], fp)?;
+                let Arg::Lend(p) = &args[0] else {
+                    return broken("storage moved from without a lend");
+                };
+                let V::Raw(r) = self.place(fp, p)? else {
+                    return broken("move from non-storage");
+                };
+                match Rc::make_mut(r) {
+                    Store::Ints(xs) => V::Int(xs[ops::cell(i, xs.len(), false)?]),
+                    Store::Any(xs) => {
+                        let i = ops::cell(i, xs.len(), false)?;
+                        std::mem::replace(&mut xs[i], V::Unit)
+                    }
+                }
+            }
             Intr::RawGet => {
                 let r = match &args[0] {
                     Arg::Value(r) => self.expr(r, fp)?,

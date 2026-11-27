@@ -32,7 +32,19 @@ const RUNTIME_HEAD: &str = r#"#include <cstdint>
 #include <vector>
 struct cpl_unit {};
 struct cpl_char { uint8_t code; };
-template <class T> using cpl_raw = std::vector<T>;
+/// A Bool cell: `std::vector<bool>` packs bits, so its cells could not be lent as `bool&`.
+struct cpl_bool_cell {
+    bool v;
+    cpl_bool_cell(bool b = false) : v(b) {}
+    operator bool&() { return v; }
+    operator bool() const { return v; }
+};
+template <class T> struct cpl_raw : std::vector<T> {
+    using std::vector<T>::vector;
+};
+template <> struct cpl_raw<bool> : std::vector<cpl_bool_cell> {
+    using std::vector<cpl_bool_cell>::vector;
+};
 // The innermost line of the user's file that is running (`ir::Site`).
 static int cpl_at = 0;
 [[noreturn]] static void cpl_trap(const char* code, const char* msg) {
@@ -149,6 +161,15 @@ static inline cpl_unit cpl_check_range(bool ok) { if (!ok) cpl_fail(CPL_RANGE_CU
 template <class T> static inline T cpl_get(const cpl_raw<T>& r, int64_t i) {
     if (i < 0 || (size_t)i >= r.size()) cpl_fail(CPL_READ_OUTSIDE);
     return r[(size_t)i];
+}
+template <class T> static inline T cpl_take(cpl_raw<T>& r, int64_t i) {
+    if (i < 0 || (size_t)i >= r.size()) cpl_fail(CPL_READ_OUTSIDE);
+    return std::move(r[(size_t)i]);
+}
+template <class R> static inline R cpl_raw_cap(int64_t n) {
+    if (n < 0) cpl_fail(CPL_NEGATIVE_SIZE);
+    if (n > (int64_t(1) << 28)) cpl_fail(CPL_PAST_MEMORY_LIMIT);
+    return R((size_t)n);
 }
 template <class T> static inline cpl_unit cpl_set(cpl_raw<T>& r, int64_t i, const T& x) {
     if (i < 0 || (size_t)i >= r.size()) cpl_fail(CPL_WRITE_OUTSIDE);
@@ -687,6 +708,8 @@ impl Emit<'_> {
                     Intr::RawNew => format!("cpl_raw_new({}, {})", a[0], a[1]),
                     Intr::RawGet => format!("cpl_get({}, {})", a[0], a[1]),
                     Intr::RawSet => format!("cpl_set({}, {}, {})", a[0], a[1], a[2]),
+                    Intr::RawTake => format!("cpl_take({}, {})", a[0], a[1]),
+                    Intr::RawCap => format!("cpl_raw_cap<{}>({})", self.names[&e.ty], a[0]),
                     Intr::CheckKey => format!("cpl_check_key({})", a[0]),
                     Intr::CheckVariant => format!("cpl_check_variant({})", a[0]),
                     Intr::CheckRange => format!("cpl_check_range({})", a[0]),

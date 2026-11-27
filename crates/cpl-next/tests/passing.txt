@@ -221,6 +221,7 @@ core-02/var-field-assign.cp
 core-02/variant-named-like-prelude-type.cp
 core-02/variant-through-tuple-annotation.cp
 core-03/a-generic-field-keeps-its-range-and-nested-nones.cp
+core-03/a-list-or-handle-of-itself-is-fine.cp
 core-03/a-struct-never-holds-itself.cp
 core-03/const-range-store.cp
 core-03/domain-width-roundtrip.cp
@@ -335,6 +336,7 @@ core-04/range-param-method-later-argument-unchecked.cp
 core-04/range-param-narrowing.cp
 core-04/range-type-widens.cp
 core-04/ranged-cells-take-no-wider-list-by-assign.cp
+core-04/ranged-cells-take-no-wider-list-by-extend.cp
 core-04/ranged-cells-take-no-wider-list-by-return.cp
 core-04/rb1-q11-first-is-optional.cp
 core-04/rb1-q12-literal-outside-domain.cp
@@ -417,6 +419,7 @@ core-05/let-binds-once.cp
 core-05/let-bound-element-blocks-its-write.cp
 core-05/let-bound-element-lends-only-it.cp
 core-05/let-cannot-assign.cp
+core-05/let-receiver-builtin-mutator-rejects.cp
 core-05/local-fns-calling-each-other-capture-their-fn.cp
 core-05/local-var-captured-by-reference.cp
 core-05/loop-item-clone-kept.cp
@@ -554,6 +557,7 @@ core-07/slice-out-of-keys-traps.cp
 core-07/slice-past-source-traps.cp
 core-07/slice-read-through-first-and-items.cp
 core-07/str-count-takes-predicate.cp
+core-07/swap-with-one-index-past-the-end-traps.cp
 core-07/view-is-not-a-list.cp
 core-07/view-key-outside-keys-traps.cp
 core-07/view-sees-source-mutation-rejected.cp
@@ -1079,6 +1083,8 @@ next/n_let_else_01_binds_after_and_leaves.cp
 next/n_library_const.cp
 next/n_library_module.cp
 next/n_list_01_shrink.cp
+next/n_list_02_move_within.cp
+next/n_list_03_let_receiver.cp
 next/n_member_01_getter_first.cp
 next/n_nested_02_capture_unset_at_call.cp
 next/n_nested_03_hoisted_call.cp
@@ -1206,6 +1212,13 @@ std-hashmap/flatmap-new-1.cp
 std-heap/heap-of-a-list-is-rejected.cp
 std-heap/meld-heap-of-a-list-is-rejected.cp
 std-heap/min-max-heap-of-a-list-is-rejected.cp
+std-marks/arena-alloc-1.cp
+std-marks/arena-clear-1.cp
+std-marks/arena-get-1.cp
+std-marks/arena-is_empty-1.cp
+std-marks/arena-len-1.cp
+std-marks/arena-new-1.cp
+std-marks/arena-reserve-1.cp
 std-math/bit-past-63-repeats-the-sign.cp
 std-math/ceil-div-signs.cp
 std-math/choose2-negative-is-zero.cp
@@ -1219,6 +1232,7 @@ std-math/splitmix64-at-zero.cp
 std-opt/a-niche-packed-field-lends-to-a-read-only-param.cp
 std-opt/is-none-or-skips-the-predicate-on-none.cp
 std-opt/is-some-and-skips-the-predicate-on-none.cp
+std-persistent/parena-get-out-of-range-traps.cp
 std-prefix/list-shape-prefix-was-cut.cp
 std-range/len-param-past-2-31-is-a-compile-error.cp
 std-range/len-param-past-2-31-traps-at-the-call.cp
@@ -1231,6 +1245,10 @@ std-seq/any-1.cp
 std-seq/collect-1.cp
 std-seq/count-1.cp
 std-seq/first-of-seq-and-empty.cp
+std-seq/insert-at-len-appends.cp
+std-seq/insert-into-empty.cp
+std-seq/insert-past-len-traps.cp
+std-seq/insert-remove-front-middle-end.cp
 std-seq/map-of-a-list-is-indexed-through-its-source.cp
 std-seq/mean-empty-none.cp
 std-seq/reduce-1.cp
@@ -1264,6 +1282,7 @@ traits/Bidir/Rev--iter_rev.cp
 traits/Bidir/Slice--iter_rev.cp
 traits/Bidir/Str--iter_rev.cp
 traits/Bidir/Zipped--iter_rev.cp
+traits/Eq/PMultiset--eq.cp
 traits/Hashable/HashVal--hash_token.cp
 traits/IndexOp/Disjoint--at.cp
 traits/IndexOp/Disjoint--len.cp

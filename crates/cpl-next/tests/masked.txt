@@ -266,6 +266,7 @@ core-07/grid-row-and-block.cp
 core-07/grid-row-index-and-block-order.cp
 core-07/held-window-first-last.cp
 core-07/impl-bound-gives-element.cp
+core-07/in-place-needs-var.cp
 core-07/in-place-verb-on-a-lent-view.cp
 core-07/in-place-verbs.cp
 core-07/iterate.cp
@@ -277,7 +278,6 @@ core-07/map-orders-keys-by-their-ord.cp
 core-07/map-view-drop-len-calls-none.cp
 core-07/mut-alias-of-map-key-finds-it-once.cp
 core-07/pairs.cp
-core-07/prefix-scan-cuts.cp
 core-07/product-pairs-every-x-with-every-y.cp
 core-07/product-second-argument-is-indexed.cp
 core-07/range-slice-is-a-sub-range.cp
@@ -782,7 +782,6 @@ std-models/bitset.cp
 std-models/bucket.cp
 std-models/centroids.cp
 std-models/counter.cp
-std-models/deque.cp
 std-models/dp-opt.cp
 std-models/dp-small.cp
 std-models/dsu-parity-potential.cp
@@ -856,7 +855,6 @@ std-models/rope.cp
 std-models/search.cp
 std-models/segtree.cp
 std-models/segtree2d.cp
-std-models/seq-fold.cp
 std-models/seq-gens.cp
 std-models/seq-mutate.cp
 std-models/seq-order.cp
@@ -913,7 +911,6 @@ std-prefix/filling-types-come-with-prefix.cp
 std-prefix/prefix-bodies.cp
 std-prefix/prefix-on-grid-is-2d.cp
 std-prefix/prefix-suffix-fold-whole.cp
-std-prefix/rev-scan-all-reads-the-first-cut.cp
 std-prefix/rev-scan-folds-right-of-each-cut.cp
 std-prefix/scan-cut-call-index-is-a-cut.cp
 std-prefix/scan-empty-list.cp
@@ -987,7 +984,6 @@ std-seq/flatten-and-fold-methods.cp
 std-seq/get-on-domain-array-takes-position.cp
 std-seq/group-by-euclidean-keys-ascending.cp
 std-seq/halve-subsequences-reserve-track.cp
-std-seq/insert-remove-front-middle-end.cp
 std-seq/inverse-empty.cp
 std-seq/inverse-not-bijection-traps.cp
 std-seq/inversions-combinations-cycle.cp
