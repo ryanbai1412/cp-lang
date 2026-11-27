@@ -59,6 +59,11 @@ impl Cx<'_> {
     /// `x` pushed onto the list being filled.
     fn push_onto(&mut self, l: &Filling, x: &ast::Expr, span: Span) -> TExpr {
         let v = self.expr(x, Some(&l.elem));
+        // Every element flows into the list, so its fns share one set, not the first one's.
+        if matches!(self.shallow(&l.elem), Ty::Var(_)) {
+            let j = self.join_ty(&v.ty);
+            self.unify(&l.elem, &j);
+        }
         let v = self.coerce(v, &l.elem);
         let f = self.fnref(l.push, vec![l.elem.clone()], Vec::new());
         TExpr {

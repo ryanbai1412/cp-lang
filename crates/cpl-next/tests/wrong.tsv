@@ -337,7 +337,6 @@ core-08/defaulted-op-param-folds-by-its-impl.cp	wrong-reject	check: program:23:2
 core-08/explicit-struct-arg-gives-a-bare-ops-bound-arg.cp	wrong-reject	check: program:18:9: E0606: `a function` does not implement `Op`
 core-08/false-law-no-ub.cp	wrong-reject	check: program:8:9: E0606: `Sub` does not implement `FromOp`
 core-08/fn-called-as-a-method-of-its-own-type.cp	wrong-reject	check: program:6:43: E0203: `List<Int>` has no member `first_gt`
-core-08/fn-items-still-coerce-to-their-fn-type.cp	wrong-reject	check: program:10:15: E0302: expected `a function`, found `a function`
 core-08/fn-type-impl-has-trait-default-methods.cp	wrong-reject	check: program:11:7: E0203: `a function` has no member `twice`
 core-08/generic-impl-head-binds-field-method-and-assoc-type.cp	wrong-reject	decls: E0204: unknown type `Self`
 core-08/getter-trait-param-through-seq-element.cp	wrong-reject	check: program:13:7: E0302: expected `List<Int>`, found `List<V>`

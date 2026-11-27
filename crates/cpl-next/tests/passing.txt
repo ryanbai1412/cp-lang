@@ -1583,7 +1583,6 @@ next/n_list_02_move_within.cp
 next/n_list_03_let_receiver.cp
 next/n_list_add_01_joins_any_seq.cp
 next/n_load_01_a_method_of_an_unspelled_prelude_module.cp
-next/n_lower_01_fn_ending_in_while_true.cp
 next/n_map_01_map_literals.cp
 next/n_marker_01_a_second_cuts_struct_is_a_duplicate.cp
 next/n_marker_02_a_library_writes_a_marker.cp
@@ -2259,3 +2258,5 @@ next/n_mod_01_inline_modules.cp
 next/n_use_01_a_module_named_without_names.cp
 next/n_tuple_01_field_fn_called.cp
 next/n_bound_01_impl_args_keep_their_sets.cp
+next/n_list_01_literal_joins_its_fns.cp
+core-08/fn-items-still-coerce-to-their-fn-type.cp
