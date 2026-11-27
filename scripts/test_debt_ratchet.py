@@ -1648,6 +1648,20 @@ class DebtRatchetTest(unittest.TestCase):
         self.assertEqual(len(dr.evaluate(more, eff)[0]), 2)
         self.assertEqual(base["ir_reinfer"], 10)
 
+    def test_strict_check_fails_debt_already_on_main(self):
+        with tempfile.TemporaryDirectory() as d:
+            ratchet = Path(d, "r.json")
+            ratchet.write_text(json.dumps({"ir_reinfer": 10, "rs_file_size_allowlist": {}}))
+            now = {"ir_reinfer": 12, "rs_file_size_allowlist": {}}
+            for name, fake in (("measure", lambda *a, **k: dict(now)), ("measure_upstream", lambda *a, **k: dict(now)),
+                               ("unexplained_bumps", lambda *a, **k: []), ("hand_lowered", lambda *a, **k: [])):
+                self.enterContext(mock.patch.object(dr, name, fake))
+            argv = ["--check", "--root", d, "--ratchet", str(ratchet)]
+            with mock.patch.dict(os.environ, {"CPL_RATCHET_STRICT": ""}):
+                self.assertEqual(dr.main(argv), 0)
+            with mock.patch.dict(os.environ, {"CPL_RATCHET_STRICT": "1"}):
+                self.assertEqual(dr.main(argv), 1)
+
     def test_last_touched_never_blames_a_shallow_clones_boundary(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             src, clone = Path(d, "src"), Path(d, "clone")

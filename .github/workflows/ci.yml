@@ -117,6 +117,7 @@ jobs:
           CPL_RATCHET_BASE: ${{ steps.before.outputs.sha }}
           CPL_CONFORM_PREV: ${{ startsWith(matrix.part, 'conform:') && 'target/conform-prev.json' || '' }}
           CPL_DERIVED_HEALED: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && '1' || '' }}
+          CPL_RATCHET_STRICT: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && '1' || '' }}
         # The shell timeout fails the step and leaves the cache saves below to run;
         # the step's own timeout cancels the job and skips them.
         # vmstat samples memory, swap and CPU every 20 s for the step below.

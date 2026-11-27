@@ -4479,7 +4479,9 @@ def main(argv: list[str] | None = None) -> int:
     # On main, HEAD is origin/main: CI names the tip it last saw instead.
     ref = os.environ.get("CPL_RATCHET_BASE") or "origin/main"
     bumps = unexplained_bumps(args.root, baseline, ref)
-    if errors or bumps:
+    # CI on main sets CPL_RATCHET_STRICT: there every counter over its baseline is main's own
+    # debt and fails, rather than being waved through as "already on main".
+    if (errors or bumps) and not os.environ.get("CPL_RATCHET_STRICT"):
         try:
             # Only the counters over their baseline can be main's, not this change's.
             upstream = measure_upstream(args.root, max_lines, only=upstream_counters(actual, baseline, bumps))
