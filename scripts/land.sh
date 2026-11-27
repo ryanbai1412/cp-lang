@@ -12,7 +12,7 @@
 # Each landing appends one JSON line (domain, seconds, tries) to
 # .git/cpl-land.log; scripts/land_stats.py reads it.
 #
-# Usage: scripts/land.sh [remote]   (default origin; CPL_LAND_TRIES, default 5; CPL_LAND_FAST=1)
+# Usage: scripts/land.sh [remote]   (default origin; CPL_LAND_TRIES, default 5; CPL_LAND_FULL=1)
 set -euo pipefail
 # The copy running now: a pull that changes scripts/land.sh lands with the new one.
 self_blob=$(git hash-object "${BASH_SOURCE[0]}")
@@ -21,9 +21,14 @@ cd "$(git rev-parse --show-toplevel)"
 remote="${1:-origin}"
 tries="${CPL_LAND_TRIES:-5}"
 t0=${CPL_LAND_T0:-$(date +%s)}
-# CPL_LAND_FAST=1: rebase, the quick checks (markers, ratchet, fmt, clippy), push. The
-# integrator lane runs the suites and regenerates the case lists on main afterwards.
-fast=${CPL_LAND_FAST:-}
+# By default a land is fast: rebase, conflict markers, fmt and the case-list rule, push,
+# in under a minute. A lane ran its focused tests and `debt-ratchet --check` before
+# it; CI gates every main tip, culprit.yml names the commit that turned it red, and
+# the infra lane runs the suites. CPL_LAND_FULL=1 also reruns the gates, the slices,
+# the conformance suite, the ratchet (lowering improved counters), wasm and clippy at
+# the rebased tip: 116-697 s a land, the most of every lane's process time.
+fast=1
+[ -z "${CPL_LAND_FULL:-}" ] || fast=
 git fetch -q "$remote" main
 # A checkout behind main lands with main's land.sh, so a fix to landing reaches
 # every lane at once instead of after its next rebase.
@@ -260,7 +265,7 @@ run_pending_steps
 # line main's tree doesn't print refuses the land, as the ratchet judges main's
 # own reds; CI on main still fails on those.
 std_changed=$(git diff --name-only "$main_base" HEAD -- 'std/*.cp' spec/conformance/traits.toml)
-if [ -n "$std_changed" ] && [ -f scripts/spec-gate.py ]; then
+if [ -z "$fast" ] && [ -n "$std_changed" ] && [ -f scripts/spec-gate.py ]; then
     traits_gate() { { uv run --quiet python "$1/scripts/spec-gate.py" traits 2>/dev/null || :; } | sort; }
     tip_traits=$(traits_gate .)
     if ! uv run --quiet python scripts/spec-gate.py traits >/dev/null 2>&1; then
@@ -283,11 +288,11 @@ pending_cases="$(git rev-parse --git-dir)/cpl-pending-cases"
 # A std pub fn signature change runs every case and corpus program that calls
 # it (8f1685382 changed splice and three cases went red on main).
 sig_callers=
-if [ -n "$std_changed" ] && [ -f scripts/affected.py ]; then
+if [ -z "$fast" ] && [ -n "$std_changed" ] && [ -f scripts/affected.py ]; then
     sig_callers=$(uv run --quiet python scripts/affected.py --sig-callers "$main_base")
     printf '%s\n' $sig_callers | grep '^spec/conformance/' >>"$pending_cases" || :
 fi
-if [ -s "$pending_cases" ]; then
+if [ -z "$fast" ] && [ -s "$pending_cases" ]; then
     cases=$(sort -u "$pending_cases" | while read -r c; do [ ! -f "$c" ] || echo "$c"; done | tr '\n' ' ' | sed 's/ $//')
     if [ -n "$cases" ]; then
         git diff --quiet HEAD -- crates std Cargo.toml Cargo.lock ||
@@ -307,7 +312,7 @@ fi
 # A compiler crate or prelude std change runs the whole suite before the lock,
 # refusing only a case that passes at the base: cea2d50e4 changed cpl-check and
 # cpl-ir, and std-graph/bfs-over-named-product-domain (prelude `bfs`, no `use`) went red on main.
-if [ -f scripts/conform_staged.py ]; then
+if [ -z "$fast" ] && [ -f scripts/conform_staged.py ]; then
     uv run --quiet python scripts/conform_staged.py --base "$main_base" --all >&2 ||
         { echo "land: a conformance case that passes on main fails at the rebased tip (above); fix it and land again: uv run scripts/conform_staged.py --base origin/main --all" >&2; exit 1; }
 fi
@@ -365,14 +370,14 @@ if [ -n "$changed" ]; then
     [ -z "$marks" ] || { echo "land: merge conflict markers:"$'\n'"$marks" >&2; exit 1; }
 fi
 # The rebase rewrote main's crate files: corpus_fmt_dirty refuses a stale cpl, so build it.
-[ ! -f scripts/debt-ratchet.py ] || [ ! -f Cargo.toml ] || cargo build -q -p cpl-cli ||
+[ -n "$fast" ] || [ ! -f scripts/debt-ratchet.py ] || [ ! -f Cargo.toml ] || cargo build -q -p cpl-cli ||
     { echo "land: cargo build -p cpl-cli failed at the rebased tip; the ratchet runs that cpl" >&2; exit 1; }
 # A counter that improved is lowered to its number in the commit that improved it.
 tighten=--check
 [ -z "$(git rev-list "$main_base"..HEAD)" ] || ! git diff --quiet HEAD -- "$ratchet" || tighten=--tighten
-[ ! -f scripts/debt-ratchet.py ] || uv run --quiet python scripts/debt-ratchet.py $tighten >/dev/null ||
+[ -n "$fast" ] || [ ! -f scripts/debt-ratchet.py ] || uv run --quiet python scripts/debt-ratchet.py $tighten >/dev/null ||
     { uv run --quiet python scripts/debt-ratchet.py --check >&2; exit 1; }
-[ "$tighten" = --check ] || git diff --quiet -- "$ratchet" ||
+[ -n "$fast" ] || [ "$tighten" = --check ] || git diff --quiet -- "$ratchet" ||
     { git commit -q --amend --no-edit --no-verify -- "$ratchet" &&
         echo "land: lowered the ratchet's improved counters in $(git rev-parse --short HEAD)" >&2; }
 # A decision number is taken once it is on main (decision 505): a heading
@@ -403,7 +408,7 @@ refuse_if_broken() {
 # failure it warns and lands, leaving it to CI (whose regen job applies
 # `clippy --fix`). It runs to the end, so a cold cache is slow, never a pass.
 users=""
-if [ -n "$crates" ]; then
+if [ -z "$fast" ] && [ -n "$crates" ]; then
     users=$(cargo metadata -q --format-version 1 --no-deps | uv run --quiet python -c '
 import json, sys
 meta = json.load(sys.stdin)

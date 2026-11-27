@@ -69,8 +69,22 @@ class LandTest(unittest.TestCase):
         git(repo, "commit", "-q", "--no-verify", "-m", msg, "-m", "Domain: infra")
 
     def land(self, repo, **extra):
-        env = {**{k: v for k, v in os.environ.items() if not k.startswith("CPL_LAND")}, "CPL_LAND_QUEUE": "1", "CPL_LAND_TRIES": "1", "CPL_LAND_LOCK_POLL": "1", **extra}
+        env = {**{k: v for k, v in os.environ.items() if not k.startswith("CPL_LAND")}, "CPL_LAND_FULL": "1", "CPL_LAND_QUEUE": "1", "CPL_LAND_TRIES": "1", "CPL_LAND_LOCK_POLL": "1", **extra}
         return subprocess.run(["bash", "scripts/land.sh"], cwd=repo, env=env, capture_output=True, text=True)
+
+    def test_a_default_land_runs_no_suite_and_a_full_one_does(self):
+        # Lanes push after focused tests; CI and the infra lane run the suites.
+        repo = self.clone("lane")
+        (repo / "scripts" / "conform_staged.py").write_text("import sys\nsys.exit(1)\n")
+        (repo / "x.txt").write_text("x\n")
+        self.commit(repo, "x")
+        refused = self.land(repo)
+        self.assertNotEqual(refused.returncode, 0, refused.stderr)
+        self.assertIn("conformance case that passes on main fails", refused.stderr)
+        fast = self.land(repo, CPL_LAND_FULL="")
+        self.assertEqual(fast.returncode, 0, fast.stderr)
+        git(repo, "fetch", "-q", "origin")
+        self.assertEqual(git(repo, "log", "-1", "--format=%s", "origin/main").strip(), "x")
 
     def test_two_lands_from_worktrees_of_one_clone_both_push(self):
         # 29411aa2 sat behind its own land: a second land of one clone shares its .git, so
@@ -83,7 +97,7 @@ class LandTest(unittest.TestCase):
         (two / "two.txt").write_text("2\n")
         self.commit(two, "two")
         env = {**{k: v for k, v in os.environ.items() if not k.startswith("CPL_LAND")},
-               "CPL_LAND_TRIES": "3", "CPL_LAND_LOCK_POLL": "1"}
+               "CPL_LAND_FULL": "1", "CPL_LAND_TRIES": "3", "CPL_LAND_LOCK_POLL": "1"}
         runs = [subprocess.Popen(["bash", "scripts/land.sh"], cwd=r, env=env, text=True,
                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE) for r in (one, two)]
         outs = [p.communicate(timeout=300) for p in runs]
@@ -811,7 +825,7 @@ class LandTest(unittest.TestCase):
         ready, go = self.tmp / "ready", self.tmp / "go"
         os.mkfifo(ready)
         os.mkfifo(go)
-        env = {**{k: v for k, v in os.environ.items() if not k.startswith("CPL_LAND")}, "CPL_LAND_TRIES": "3",
+        env = {**{k: v for k, v in os.environ.items() if not k.startswith("CPL_LAND")}, "CPL_LAND_FULL": "1", "CPL_LAND_TRIES": "3",
                "CPL_TEST_READY": str(ready), "CPL_TEST_GO": str(go)}
         first = subprocess.Popen(["bash", "scripts/land.sh"], cwd=a, env=env, stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE, text=True)
