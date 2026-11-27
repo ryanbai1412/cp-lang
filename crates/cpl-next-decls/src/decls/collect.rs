@@ -197,7 +197,10 @@ fn layer(
     let each = crate::synth::derive_each(all);
     let convert = crate::synth::convert_marked(all);
     let positions = crate::records::positions(all());
-    let derived: Vec<Vec<(ItemId, String, ast::Stmt)>> = (mods.iter().enumerate())
+    // Only a derive that rebuilds its value copies the `@cache` fields.
+    let none_copy =
+        |v: Vec<(ItemId, String, ast::Stmt)>| v.into_iter().map(|(i, n, s)| (i, n, s, false));
+    let derived: Vec<Vec<(ItemId, String, ast::Stmt, bool)>> = (mods.iter().enumerate())
         .map(|(mi, m)| {
             // Std's modules get only what a program's records add.
             let ours = mi >= from;
@@ -209,19 +212,26 @@ fn layer(
             if let (true, Some(it)) = (mi == CORE.0, records.first()) {
                 if let Some(at) = it.stmts.first() {
                     let impls = crate::records::domain_impls(all(), &new_shapes, at.span);
-                    made.extend(impls.into_iter().map(|(n, imp)| (it.id.clone(), n, imp)));
+                    made.extend(
+                        impls
+                            .into_iter()
+                            .map(|(n, imp)| (it.id.clone(), n, imp, false)),
+                    );
                     // Each new row over every shape, and std's rows over the new shapes.
                     let rows_of = |rs: &[Vec<String>]| crate::modules::Item {
                         id: it.id.clone(),
                         stmts: crate::records::row_traits(rs, at.span),
                     };
-                    made.extend(crate::synth::field_trait_impls(
+                    made.extend(none_copy(crate::synth::field_trait_impls(
                         &[rows_of(&new_rows)],
                         &shapes,
-                    ));
+                    )));
                     if !new_shapes.is_empty() {
                         let old = [rows_of(&old_rows)];
-                        made.extend(crate::synth::field_trait_impls(&old, &new_shapes));
+                        made.extend(none_copy(crate::synth::field_trait_impls(
+                            &old,
+                            &new_shapes,
+                        )));
                     }
                     let without = (crate::records::without_impls(&new_forms, &shapes, at.span))
                         .into_iter()
@@ -230,19 +240,19 @@ fn layer(
                             &new_shapes,
                             at.span,
                         ));
-                    made.extend(without.map(|(n, imp)| (it.id.clone(), n, imp)));
+                    made.extend(without.map(|(n, imp)| (it.id.clone(), n, imp, false)));
                 }
             }
             if ours || !new_shapes.is_empty() {
                 let shapes = if ours { &shapes } else { &new_shapes };
-                made.extend(crate::synth::field_trait_impls(&m.items, shapes));
+                made.extend(none_copy(crate::synth::field_trait_impls(&m.items, shapes)));
             }
             if let Some(c) = convert.as_ref().filter(|_| ours) {
-                made.extend(crate::synth::enum_conversions(
+                made.extend(none_copy(crate::synth::enum_conversions(
                     &m.items,
                     c,
                     positions.as_ref(),
-                ));
+                )));
             }
             made
         })
@@ -317,7 +327,31 @@ fn layer(
                 match &s.kind {
                     StmtKind::Struct(sd) => {
                         let id = StructId(d.structs.len());
-                        own[mi].insert(sd.name.text.clone(), Named::Struct(id));
+                        let n = sd.generics.len();
+                        // One of a name and another arity is a sibling of the first; one of
+                        // the same arity is a duplicate (R02.11.4).
+                        match own[mi].get(&sd.name.text) {
+                            Some(&Named::Struct(f)) => {
+                                let first = (f, d.structs[f.0].generics.len());
+                                let of_name = (Arc::make_mut(&mut d.struct_arity).entry(f))
+                                    .or_insert_with(|| vec![first]);
+                                match of_name.iter().any(|(_, k)| *k == n) {
+                                    true => d.errors.push(Msg::at(
+                                        item.at(s.span),
+                                        Msg::verdict(
+                                            cpl_diag::codes::DUPLICATE_DEFINITION,
+                                            format!(
+                                                "a second struct `{}` with {n} type parameters \
+                                                 (R02.11.4)",
+                                                sd.name.text
+                                            ),
+                                        ),
+                                    )),
+                                    false => of_name.push((id, n)),
+                                }
+                            }
+                            _ => _ = own[mi].insert(sd.name.text.clone(), Named::Struct(id)),
+                        }
                         if marked(s, Mark::Tuple) {
                             let n = sd.fields.len();
                             match d.tuples.contains_key(&n) {
@@ -580,14 +614,27 @@ fn layer(
             })
             .collect();
     }
+    // The derived impls that read their struct's `@cache` fields, by the impl they are.
+    let mut copying: HashSet<*const ast::Stmt> = HashSet::new();
     for (mi, made) in derived.iter().enumerate() {
-        for (item, name, s) in made {
+        for (item, name, s, caches) in made {
+            if *caches {
+                copying.insert(s);
+            }
             // A record is core's struct wherever its impl is written.
             let record = |n: &Named| matches!(n, Named::Struct(s) if d.structs[s.0].record);
             let found = own[mi]
                 .get(name)
                 .or_else(|| own[CORE.0].get(name).filter(|n| record(n)));
+            let n = match &s.kind {
+                StmtKind::Impl { target, .. } => match &target.kind {
+                    TypeKind::Named { args, .. } => args.len(),
+                    _ => 0,
+                },
+                _ => 0,
+            };
             if let Some(Named::Struct(id)) = found.copied() {
+                let id = super::tyconv::by_arity(&d.struct_arity, id, n);
                 pending.push((ModId(mi), item.clone(), s, Some(Named::Struct(id))));
             }
         }
@@ -1116,10 +1163,18 @@ fn layer(
                         d.module_or_program_errors(mid, errors);
                         continue;
                     };
-                    if let Some(Named::Struct(sid)) = id {
-                        if !d.field_trait(tref.tr) && !d.fields_have(sid, tref.tr) {
+                    if let Some(Named::Struct(sid)) = id.filter(|_| !d.field_trait(tref.tr)) {
+                        let Some(asked) =
+                            d.derived_bounds(sid, &tref, copying.contains(&(s as *const _)))
+                        else {
                             wait.push((mid, item, s, id));
                             continue;
+                        };
+                        for b in asked {
+                            if !ibounds.contains(&b) {
+                                fn_bounds.push(b.clone());
+                                ibounds.push(b);
+                            }
                         }
                     }
                     let at = item.at(Span::new(s.span.start, s.span.start));

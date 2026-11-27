@@ -8,6 +8,17 @@ use cpl_syntax::decorators::Mark;
 
 /// Type arguments written but left off the end take their defaults, which may name the
 /// arguments before them (R08.2.5).
+/// The struct of `s`'s name with `n` type parameters, else `s` (R02.11.4).
+pub(crate) fn by_arity(
+    arity: &HashMap<StructId, Vec<(StructId, usize)>>,
+    s: StructId,
+    n: usize,
+) -> StructId {
+    (arity.get(&s).into_iter().flatten())
+        .find(|(_, k)| *k == n)
+        .map_or(s, |(o, _)| *o)
+}
+
 pub(super) fn fill_defaults(defaults: Option<&Vec<Option<Ty>>>, a: &mut Vec<Ty>) {
     let Some(ds) = defaults else { return };
     while a.len() < ds.len() {
@@ -281,6 +292,7 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
                 }) {
                     // Set arguments of a struct named in a signature are fresh parameters.
                     Some(d) => {
+                        let d = cx.env.by_arity(d, a.len());
                         fill_defaults(cx.env.struct_defaults(d), &mut a);
                         let k = cx.env.n_sets(d);
                         let sets = (0..k).map(|_| slot(cx)).collect();
@@ -508,6 +520,7 @@ pub(super) struct Tables {
     getters: Arc<HashMap<String, FnId>>,
     struct_sets: Arc<HashMap<StructId, usize>>,
     struct_defaults: Arc<HashMap<StructId, Vec<Option<Ty>>>>,
+    struct_arity: Arc<HashMap<StructId, Vec<(StructId, usize)>>>,
     tuples: Arc<HashMap<usize, StructId>>,
     sugar: Sugar,
     roles: Roles,
@@ -526,6 +539,7 @@ impl Decls {
             getters: self.domain_getters(),
             struct_sets: self.struct_sets.clone(),
             struct_defaults: self.struct_defaults.clone(),
+            struct_arity: self.struct_arity.clone(),
             tuples: self.tuples.clone(),
             sugar: self.sugar,
             roles: self.roles,
@@ -556,6 +570,9 @@ impl TypeTables for Tables {
     }
     fn struct_defaults(&self, s: StructId) -> Option<&Vec<Option<Ty>>> {
         self.struct_defaults.get(&s)
+    }
+    fn by_arity(&self, s: StructId, n: usize) -> StructId {
+        by_arity(&self.struct_arity, s, n)
     }
     fn tuple(&self, n: usize) -> Option<StructId> {
         self.tuples.get(&n).copied()

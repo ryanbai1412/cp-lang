@@ -144,12 +144,70 @@ impl Decls {
         targs.extend(im.trait_.args.iter().map(|t| sub.ty(t)));
         Some(Member::Method(tm, targs, Vec::new()))
     }
-    /// Whether every field of `s`, or of each of its variants, has an impl of `tr`, as a derived
-    /// impl needs (R08.1.6).
-    pub(super) fn fields_have(&self, s: StructId, tr: TraitId) -> bool {
+    /// What a derived impl of `r` for `s` asks of `s`'s parameters: each field's type, or each
+    /// variant's, takes its impl of `r`, whose bounds go down to the parameters they name
+    /// (`Range<R>: Read` asks `R: Ordered`). Its `@cache` fields count only when it `caches`.
+    /// `None` when a field has no impl (R08.1.6).
+    pub(super) fn derived_bounds(
+        &self,
+        s: StructId,
+        r: &TraitRef,
+        caches: bool,
+    ) -> Option<Vec<(usize, TraitRef)>> {
         let sd = self.s(s);
-        (sd.fields.iter().zip(&sd.cached)).all(|((_, t), cached)| *cached || self.has_impl(t, tr))
-            && (sd.variants.iter()).all(|(_, v)| self.fields_have(*v, tr))
+        let mut out = Vec::new();
+        for ((_, t), cached) in sd.fields.iter().zip(&sd.cached) {
+            if (caches || !*cached) && !self.needs(t, r, &mut out, 32) {
+                return None;
+            }
+        }
+        for (_, v) in &sd.variants {
+            for b in self.derived_bounds(*v, r, caches)? {
+                if !out.contains(&b) {
+                    out.push(b);
+                }
+            }
+        }
+        Some(out)
+    }
+    /// Whether `t` can have `r`, pushing to `out` what that asks of the parameters `t` names:
+    /// the first impl in `impls_of` order whose bounds can all be met. The cap only guards a
+    /// blanket impl bounded by its own trait.
+    fn needs(&self, t: &Ty, r: &TraitRef, out: &mut Vec<(usize, TraitRef)>, cap: usize) -> bool {
+        match t {
+            Ty::Param(i) => {
+                let b = (*i, r.clone());
+                if !out.contains(&b) {
+                    out.push(b);
+                }
+                return true;
+            }
+            Ty::Var(_) | Ty::Error => return true,
+            Ty::Dom(_) if self.core_domain_trait(r.tr) => return true,
+            _ if cap == 0 => return false,
+            _ => {}
+        }
+        (self.impls_of(r.tr)).any(|im| {
+            let Some(targs) = self.impl_args_for(im, t, &r.args) else {
+                return false;
+            };
+            let sub = Subst {
+                tys: &targs,
+                sets: &[],
+            };
+            let mut asked = out.clone();
+            let met = im.bounds.iter().all(|(i, b)| {
+                let b = TraitRef {
+                    tr: b.tr,
+                    args: b.args.iter().map(|x| sub.ty(x)).collect(),
+                };
+                (targs.get(*i)).is_none_or(|a| self.needs(a, &b, &mut asked, cap - 1))
+            });
+            if met {
+                *out = asked;
+            }
+            met
+        })
     }
     /// A trait made only of bodiless `@get` members, met by fields of those names (R12.11.3).
     pub(super) fn field_trait(&self, tr: TraitId) -> bool {

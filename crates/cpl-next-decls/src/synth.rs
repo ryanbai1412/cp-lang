@@ -1,6 +1,6 @@
 //! Declarations the compiler writes for a program: an enum's structs and the `Eq` and `Ord` a
 //! struct derives from its fields.
-use crate::decls::{names_in, unnamed, GETTER};
+use crate::decls::{unnamed, GETTER};
 use crate::diag::Msg;
 use cpl_next_ir::ids::ItemId;
 use cpl_next_ir::unbuilt::Unbuilt;
@@ -133,7 +133,7 @@ pub(crate) enum Derivable {
 pub(crate) fn module_derived(
     items: &[crate::modules::Item],
     each: &[(String, Derivable)],
-) -> Vec<(ItemId, String, ast::Stmt)> {
+) -> Vec<(ItemId, String, ast::Stmt, bool)> {
     let mut out = Vec::new();
     for crate::modules::Item { id: item, stmts } in items {
         for s in stmts {
@@ -152,8 +152,9 @@ pub(crate) fn module_derived(
                         Derivable::Each(m) if made(m) => Derive::Tags(m, &e.variants),
                         Derivable::Each(_) => continue,
                     };
+                    let caches = copies_caches(&derive);
                     let derived = derived_impl(s, &sd, derive, tr);
-                    out.push((item.clone(), sd.name.text.clone(), derived));
+                    out.push((item.clone(), sd.name.text.clone(), derived, caches));
                 }
             }
             let StmtKind::Struct(sd) = &s.kind else {
@@ -165,15 +166,16 @@ pub(crate) fn module_derived(
                     continue;
                 };
                 let derived = derived_impl(s, sd, Derive::Cmp(op, method), tr);
-                out.push((item.clone(), sd.name.text.clone(), derived));
+                out.push((item.clone(), sd.name.text.clone(), derived, false));
             }
             for (tr, how) in each {
                 let derive = match how {
                     Derivable::Each(m) => Derive::Each(m),
                     Derivable::Fields(pack, fns) => Derive::Fields(pack, fns),
                 };
+                let caches = copies_caches(&derive);
                 let derived = derived_impl(s, sd, derive, tr);
-                out.push((item.clone(), sd.name.text.clone(), derived));
+                out.push((item.clone(), sd.name.text.clone(), derived, caches));
             }
         }
     }
@@ -199,13 +201,19 @@ fn token(v: &ast::Variant) -> String {
 
 /// A `@derive` method making a `Self` from its parameters, not from a `self`: its first one has a
 /// written type, as `Read`'s `read(mut input: Input)`, where a trait's receiver has none.
+/// Whether the derived impl reads the `@cache` fields: a `@cache` field is not part of the value
+/// a derive compares or shows (R05.10.13); a clone copies it too.
+fn copies_caches(derive: &Derive) -> bool {
+    matches!(derive, Derive::Each(m) if !made(m))
+}
+
 fn made(m: &ast::FnDecl) -> bool {
     m.params.first().is_some_and(|p| p.ty.is_some())
 }
 
 /// `impl<T: Eq> Eq for S<T>: fn eq(a, b) = a.x == b.x and ..`, `Ord`'s `lt` over the fields in
 /// order, `fn clone(a) = S(x: a.x.clone(), ..)`, or `fn show(a) = Pack(a.x, Pack(a.y, ())).show()`,
-/// bounding the parameters the fields mention and written at the struct.
+/// written at the struct. Its bounds are what its fields' impls ask, which only decls knows.
 fn derived_impl(s: &ast::Stmt, sd: &ast::StructDecl, derive: Derive, tr: &str) -> ast::Stmt {
     use ast::{BinOp, CmpOp, ExprKind};
     let span = s.span;
@@ -242,8 +250,7 @@ fn derived_impl(s: &ast::Stmt, sd: &ast::StructDecl, derive: Derive, tr: &str) -
             rhs: Box::new(rhs),
         })
     };
-    // A `@cache` field is not part of the value it compares (R05.10.13); a clone copies it too.
-    let clone = matches!(derive, Derive::Each(m) if !made(m));
+    let clone = copies_caches(&derive);
     let compared: Vec<&ast::FieldDecl> = sd.fields.iter().filter(|f| clone || !f.cached).collect();
     let fields: Vec<&str> = compared.iter().map(|f| f.name.text.as_str()).collect();
     let stmt = |kind| ast::Stmt {
@@ -371,10 +378,20 @@ fn derived_impl(s: &ast::Stmt, sd: &ast::StructDecl, derive: Derive, tr: &str) -
                     value: value(f),
                 })
                 .collect();
-            ex(ExprKind::Call {
-                callee: Box::new(ex(ExprKind::Name(sd.name.text.clone()))),
-                args,
-            })
+            // Named with its parameters, so a struct overloaded by arity makes its own (R02.11.4).
+            let base = Box::new(ex(ExprKind::Name(sd.name.text.clone())));
+            let callee = match sd.generics.is_empty() {
+                true => base,
+                false => Box::new(ex(ExprKind::Generic {
+                    base,
+                    args: sd
+                        .generics
+                        .iter()
+                        .map(|g| ty(&g.text, Vec::new()))
+                        .collect(),
+                })),
+            };
+            ex(ExprKind::Call { callee, args })
         }
         Derive::Cmp(CmpOp::Eq, _) => (fields.iter().map(|f| cmp(CmpOp::Eq, f)))
             .reduce(|a, b| bin(BinOp::And, a, b))
@@ -392,15 +409,6 @@ fn derived_impl(s: &ast::Stmt, sd: &ast::StructDecl, derive: Derive, tr: &str) -
             })
             .unwrap_or_else(|| ex(ExprKind::Bool(false))),
     };
-    let mut mentioned = Vec::new();
-    for f in &compared {
-        names_in(&f.ty, &mut mentioned);
-    }
-    if let Derive::Tags(_, variants) = derive {
-        for (_, t) in variants.iter().flat_map(|v| &v.fields) {
-            names_in(t, &mut mentioned);
-        }
-    }
     let param = |n: &str| ast::Param {
         mutable: false,
         variadic: false,
@@ -469,15 +477,11 @@ fn derived_impl(s: &ast::Stmt, sd: &ast::StructDecl, derive: Derive, tr: &str) -
                 .map(|g| ty(&g.text, Vec::new()))
                 .collect(),
         ),
-        // Every parameter is declared, so a name longer than a letter is one too; those the
-        // fields compare are bounded by the trait.
+        // Every parameter is declared, so a name longer than a letter is one too.
         bounds: (sd.generics.iter())
             .map(|g| ast::Bound {
                 name: g.clone(),
-                traits: (mentioned.contains(&g.text))
-                    .then(|| ty(tr, Vec::new()))
-                    .into_iter()
-                    .collect(),
+                traits: Vec::new(),
             })
             .collect(),
         body: ast::Block {

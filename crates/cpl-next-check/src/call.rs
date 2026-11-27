@@ -41,6 +41,10 @@ impl Cx<'_> {
                 .collect();
             named = Named::Fn(self.d.overload(first, &given));
         }
+        // `Pair<A, B>(..)`: the struct of that name with as many parameters (R02.11.4).
+        if let Named::Struct(d) = named {
+            named = Named::Struct(self.d.by_arity(d, written.len()));
+        }
         let mut pre = Vec::new();
         let mut given: Vec<Ty> = written
             .iter()

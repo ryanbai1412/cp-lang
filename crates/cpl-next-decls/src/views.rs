@@ -25,6 +25,8 @@ pub trait TypeTables {
     /// How many set parameters struct `s` has, so a struct named in a type gets its own.
     fn n_sets(&self, s: StructId) -> usize;
     fn struct_defaults(&self, s: StructId) -> Option<&Vec<Option<Ty>>>;
+    /// The struct of `s`'s name with `n` type parameters, else `s` (R02.11.4).
+    fn by_arity(&self, s: StructId, n: usize) -> StructId;
     /// Core's `@tuple` struct with `n` fields.
     fn tuple(&self, n: usize) -> Option<StructId>;
     /// The most fields a core `@tuple` struct has: a longer tuple nests its last parts.
@@ -135,6 +137,9 @@ impl TypeTables for Decls {
     }
     fn struct_defaults(&self, s: StructId) -> Option<&Vec<Option<Ty>>> {
         self.struct_defaults.get(&s)
+    }
+    fn by_arity(&self, s: StructId, n: usize) -> StructId {
+        crate::decls::by_arity(&self.struct_arity, s, n)
     }
     fn tuple(&self, n: usize) -> Option<StructId> {
         self.tuples.get(&n).copied()

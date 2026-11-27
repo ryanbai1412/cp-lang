@@ -21,7 +21,7 @@ pub use collect::{collect, factor_name, prepare, Prepared};
 pub use layer::Layer;
 use tyconv::*;
 pub use tyconv::{body_type, prim_type};
-pub(crate) use tyconv::{names_in, unnamed, GETTER};
+pub(crate) use tyconv::{by_arity, unnamed, GETTER};
 
 /// A module: the core, a library file or the program.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord, Default)]
@@ -413,6 +413,9 @@ pub struct Decls {
     pub struct_sets: Arc<HashMap<StructId, usize>>,
     /// `struct SegTree<D, T, F = Int>`: each struct's default type arguments, in its parameters.
     pub struct_defaults: Arc<HashMap<StructId, Vec<Option<Ty>>>>,
+    /// A module's structs of one name, each with its count of type parameters, under the first
+    /// declared, which the name means (R02.11.4).
+    pub struct_arity: Arc<HashMap<StructId, Vec<(StructId, usize)>>>,
     /// Core's `@tuple` structs by arity: `(A, B)` is the one with two fields.
     pub tuples: Arc<HashMap<usize, StructId>>,
     /// Core's `@member(m)` structs by `m`: `D.m` is the struct at `D` (R06).
