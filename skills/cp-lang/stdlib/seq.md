@@ -120,6 +120,12 @@ Fields: `src: [R, C]T,`, `r: R,`.
 
 Fields: `src: [R, C]T,`, `c: C,`.
 
+## `struct Rect<R, C, T>(`
+
+\(O(1)\) to make.
+
+Fields: `src: [R, C]T,`, `rs: Range<R>,`, `cs: Range<C>,`.
+
 ## `struct Rebased<S>(pub src: S)`
 
 The view `rebase` returns: `src` keyed by `Idx`, a fresh domain `0..src.len` of its own.
@@ -237,7 +243,7 @@ Fields: `k: Int,`.
 - `@get fn first<S: Seq<T>, T>(self: S) -> ?T` — \(O(1)\)
 - `@get fn last<S: Bidir<T>, T>(self: S) -> ?T` — \(O(1)\)
 - `fn rfind<S: Bidir<T>, T>(self: S, p: T -> Bool) -> ?T` — \(O(n)\) calls of `p` at most; The last element satisfying `p`, `None` if None does; walks backwards and stops there.; traps: never (beyond what `p` traps on)
-- `fn sort<S: IndexedMut, T, K: Ord>(mut self: S; by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None)` — \(O(n \log n)\) comparisons, \(O(n)\) extra space; Sort `self` in place by `by`; descending is a key, `by: x => desc(x)`.; traps: in `cpl run` and `--checked`, when `cmp` is not a strict weak order (`cmp(x, x)`, or both `cmp(a, b)` and `cmp(b, a)`); otherwise never (beyond what `by` or `cmp` traps on)
+- `fn sort<S: IndexedMut<D, T>, D: Domain, T, K: Ord>(mut self: S; by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None)` — \(O(n \log n)\) comparisons, \(O(n)\) extra space; Sort `self` in place by `by`; descending is a key, `by: x => desc(x)`.; traps: in `cpl run` and `--checked`, when `cmp` is not a strict weak order (`cmp(x, x)`, or both `cmp(a, b)` and `cmp(b, a)`); otherwise never (beyond what `by` or `cmp` traps on)
 - `fn sorted<S: Seq<T>, T, K: Ord>(self: S; by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None) -> List<T>` — \(O(n \log n)\) comparisons, \(O(n)\) space; The elements of `self` sorted by `by` or `cmp`: the value form of `sort`.; traps: as `sort`
 - `fn reversed<S: Bidir<T>, T>(self: S) -> List<T>` — \(O(n)\)
 - `fn reverse<S: IndexedMut>(mut self: S, range: ?Range<Int> = None)` — \(O(n)\), \(O(1)\) extra space; \(O(n)\).; traps: when `range` falls outside the keys
@@ -246,7 +252,7 @@ Fields: `k: Int,`.
 - `fn record_highs<D, T, K>(self: [D]T, by: T -> K = x => x) -> yields D` — \(O(1)\) per step; \(O(n)\).
 - `fn distinct<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> List<T>` — \(O(n)\) expected, \(O(n)\) extra space; Distinct values of `self` in first-seen order (optionally keyed by `by:`).
 - `fn partition<S: Seq<T>, T>(self: S, keep: T -> Bool) -> (List<T>, List<T>)` — \(O(n)\); The values of `self` that `keep` holds for, then the ones it does not, each in the order they came.
-- `fn select<S: IndexedMut, T, K>(mut self: S, k: Int, by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None)` — \(O(n)\) expected, \(O(n \log n)\) worst case, \(O(1)\) extra space; traps: when `k` is not in `0..self.len`
+- `fn select<S: IndexedMut<D, T>, D: Domain, T, K: Ord>(mut self: S, k: Int, by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None)` — \(O(n)\) expected, \(O(n \log n)\) worst case, \(O(1)\) extra space; traps: when `k` is not in `0..self.len`
 - `fn merge_sorted<A: Positional<T>, B: Positional<T>, T, K>(self: A, b: B, by: T -> K = x => x) -> yields T` — \(O(1)\) per step and \(O(1)\) memory, so a whole walk is \(O(\lvert a \rvert + \lvert b \rvert)\); `.collect()` keeps it as a `List`; \(O(1)\) per step, \(O(1)\) memory.; traps: never; unsorted inputs give an unspecified interleaving
 - `fn windows<S: Indexed>(self: S, k: 1..) -> yields Slice<S>` — \(O(1)\) per window; traps: when `k < 1`
 - `fn chunks<S: Indexed>(self: S, k: 1..) -> yields Slice<S>` — \(O(1)\) per chunk; traps: when `k < 1`
@@ -265,9 +271,9 @@ Fields: `k: Int,`.
 - `fn rotate_right<S: IndexedMut>(mut self: S, k: Int, range: ?Range<Int> = None)` — \(O(n)\), \(O(1)\) extra space; Rotate `self` right by `k` in place (or only the subrange `range` when given).; traps: when `range` falls outside the keys
 - `fn rotated_left<S: Seq<T>, T>(self: S, k: Int) -> List<T>` — \(O(n)\); A new list rotated left by `k`: what was at offset `k % len` comes first.
 - `fn rotated_right<S: Seq<T>, T>(self: S, k: Int) -> List<T>` — \(O(n)\); A new list rotated right by `k`.
-- `fn next_permutation<S: IndexedMut>(mut self: S) -> Bool` — \(O(n)\) worst case, amortized \(O(1)\) over all arrangements; Step `self` to the next arrangement in sorted order, in place.
-- `fn prev_permutation<S: IndexedMut>(mut self: S) -> Bool` — \(O(n)\) worst case, amortized \(O(1)\) over all arrangements; Step `self` to the previous arrangement in sorted order, in place.
-- `fn runs<S: Indexed, T, K>(self: S, by: T -> K = x => x, link: ?((T, T) -> Bool) = None) -> yields Slice<S>` — \(O(1)\) to make, \(O(n)\) to walk; The stretches of equal neighbours (or equal `by:` keys), in order, each a slice of `self`.
+- `fn next_permutation<S: IndexedMut<D, T>, D: Domain, T: Ord>(mut self: S) -> Bool` — \(O(n)\) worst case, amortized \(O(1)\) over all arrangements; Step `self` to the next arrangement in sorted order, in place.
+- `fn prev_permutation<S: IndexedMut<D, T>, D: Domain, T: Ord>(mut self: S) -> Bool` — \(O(n)\) worst case, amortized \(O(1)\) over all arrangements; Step `self` to the previous arrangement in sorted order, in place.
+- `fn runs<S: Indexed<D, T>, D: Domain, T, K>(self: S, by: T -> K = x => x, link: ?((T, T) -> Bool) = None) -> yields Slice<S>` — \(O(1)\) to make, \(O(n)\) to walk; The stretches of equal neighbours (or equal `by:` keys), in order, each a slice of `self`.
 - `fn buckets<D, K: Domain>(self: [D]K) -> [K]List<D>` — \(O(\lvert D \rvert + \lvert K \rvert)\) time and memory; Bucket the keys of `self` by value: `b[k]` lists every `i` with `self[i] == k`, in key order.
 - `fn compress<S: Seq, T: Ord>(self: S) -> (domain C, Compressed<C, T>)` — \(O(n \log n)\); Coordinate compression: `let (domain C, xs) = compress(all)` sorts the values, drops the duplicates and binds a fresh domain `C` for them.
 - `fn pieces<D: Ord, S: Seq>(self: Range<D>, cuts: S) -> (domain P, [P]Range<D>)` — \(O(k \log k)\) for k cuts; Split a range at cuts: `let (domain P, piece) = D.pieces(cuts: cs)` binds a fresh domain of the non-empty pieces between consecutive cuts, with `piece[p]` the `Range<D>` that piece covers.; traps: when a cut lies outside the range
@@ -284,7 +290,8 @@ Fields: `k: Int,`.
 - `fn perm_pow<V>(p: [V]V, k: 0..) -> [V]V` — \(O(\lvert V \rvert)\); `k`-th iterate of permutation `p` (`k >= 0`), computed via cycle decomposition.; traps: when `k < 0` or `p` is not a permutation
 - `fn inversions<S: Seq<T>, T>(self: S) -> Int` — \(O(n \log n)\); Number of inversions: pairs `(i, j)` with `i < j` and `a[i] > a[j]`.
 - `fn swap_at<D, T>(mut self: [D]T, i: D, j: D)` — \(O(1)\); Swap two positions of a domain array in place; safely a no-op when `i == j`.
-- `fn resized<S: Indexed, T>(self: S, n: Len, fill: T) -> List<T>` — \(O(n)\); `self` cut or padded with `fill` to length `n`: `a.resized(size, Z(0))` instead of `[if i < a.len: a[i] else: Z(0) for i in 0..size]`.; traps: when `n < 0` or `n >= 2^31`
+- `fn swap_idx<S: IndexedMut<D, T>, D: Domain, T>(mut self: S, i: Int, j: Int)` — \(O(1)\); Swap positions `i` and `j` of any `IndexedMut`, counted from 0, in place; a no-op when `i == j`.; traps: when `i` or `j` is not in `0..self.len`
+- `fn resized<S: Indexed<D, T>, D: Domain, T>(self: S, n: Len, fill: T) -> List<T>` — \(O(n)\); `self` cut or padded with `fill` to length `n`: `a.resized(size, Z(0))` instead of `[if i < a.len: a[i] else: Z(0) for i in 0..size]`.; traps: when `n < 0` or `n >= 2^31`
 - `fn pop_if<T>(mut self: List<T>, ok: T -> Bool) -> ?T` — \(O(1)\)
 - `fn pop_while<T>(mut self: List<T>, ok: T -> Bool) -> List<T>` — \(O(\mathit{popped})\)
 - `fn clone<T>(self: T) -> T` — \(O(n)\) for a value of size \(n\), allocates for heap values; \(O(n)\), allocates.
@@ -293,7 +300,7 @@ Fields: `k: Int,`.
 - `fn drop_last<S: Indexed>(self: S, k: Len = 1) -> Slice<S>` — \(O(1)\); traps: when `k < 0` or `k >= 2^31`
 - `fn take<S: Indexed>(self: S, k: Len) -> Slice<S>` — \(O(1)\); traps: when `k < 0` or `k >= 2^31`
 - `fn take_last<S: Indexed>(self: S, k: Len) -> Slice<S>` — \(O(1)\); traps: when `k < 0` or `k >= 2^31`
-- `fn nth<S: Indexed, T>(self: S, k: Int) -> T` — \(O(1)\); traps: when `k` is not in `0..self.len`
+- `fn nth<S: Indexed<D, T>, D: Domain, T>(self: S, k: Int) -> T` — \(O(1)\); traps: when `k` is not in `0..self.len`
 - `fn to_list<S: Indexed<K, T>, K, T>(self: Slice<S>) -> List<T>` — \(O(n)\)
 - `@get fn rebase<S: Indexed<K, T>, K, T>(self: S) -> Rebased<S>` — \(O(1)\)
 - `fn step<S: Indexed<K, T>, K, T>(self: S, k: 1..) -> Stepped<S, T>` — \(O(1)\) to make, \(O(1)\) per step; \(O(1)\).; traps: when `k < 1`
@@ -314,7 +321,7 @@ Fields: `k: Int,`.
 - `fn iterate<T>(from: ?T, step: T -> ?T) -> yields T` — \(O(1)\) per step plus one call of `step`; \(O(1)\) per step.
 - `fn with_next<S: Seq<T>, T>(self: S) -> yields (T, ?T)` — \(O(1)\) per step
 - `fn zip_exact<A: Indexed<K, T>, B: Positional<U>, K, T, U>(a: A, b: B) -> yields (T, U)` — \(O(1)\) per step; traps: when `a.len != b.len`
-- `fn chunks_padded<S: Indexed, T>(self: S, k: 1.., pad: T) -> yields List<T>` — \(O(k)\) per chunk; \(O(n)\).; traps: when `k < 1`
+- `fn chunks_padded<S: Indexed<D, T>, D: Domain, T>(self: S, k: 1.., pad: T) -> yields List<T>` — \(O(k)\) per chunk; \(O(n)\).; traps: when `k < 1`
 - `fn contains<S: Seq<T>, T: Eq>(self: S, x: T) -> Bool` — \(O(n)\) comparisons; \(O(n)\).
 - `fn reduce<S: Seq<T>, T>(self: S, f: (T, T) -> T) -> ?T` — \(O(n)\) calls of `f`; \(O(n)\).
 - `fn fold<S: Seq<T>, T, M: FromOp<T>>(self: S, op: M) -> T` — \(O(n)\) calls of `op`; \(O(n)\).; traps: never (an `op` without a known identity is a compile-time error)
@@ -325,8 +332,8 @@ Fields: `k: Int,`.
 - `fn group<S: Seq<T>, T, K: Ord, U>(self: S, by: T -> K, of: T -> U = x => x) -> Map<K, List<U>>` — \(O(n \log n)\), \(O(n)\) memory
 - `fn min_k<S: Seq<T>, T, K: Ord>(self: S, k: Len, by: T -> K = x => x) -> List<T>` — \(O(n)\) expected, \(O(k)\) memory: one pass into a buffer of at most `2k`, cut back to `k` by `select` whenever it fills; \(O(n)\) expected, \(O(k)\) memory.; traps: when `k < 0` or `k >= 2^31`; `k > n` gives every element
 - `fn max_k<S: Seq<T>, T, K: Ord>(self: S, k: Len, by: T -> K = x => x) -> List<T>` — \(O(n)\) expected, \(O(k)\) memory: one pass into a buffer of at most `2k`, cut back to `k` by `select` whenever it fills; \(O(n)\) expected, \(O(k)\) memory.; traps: when `k < 0` or `k >= 2^31`; `k > n` gives every element
-- `fn partition_in_place<S: IndexedMut, T>(mut self: S, keep: T -> Bool) -> Int` — \(O(n)\), \(O(1)\) extra space; \(O(n)\).
-- `fn stable_partition_in_place<S: IndexedMut, T>(mut self: S, keep: T -> Bool) -> Int` — \(O(n)\), \(O(n)\) memory
+- `fn partition_in_place<S: IndexedMut<D, T>, D: Domain, T>(mut self: S, keep: T -> Bool) -> Int` — \(O(n)\), \(O(1)\) extra space; \(O(n)\).
+- `fn stable_partition_in_place<S: IndexedMut<D, T>, D: Domain, T>(mut self: S, keep: T -> Bool) -> Int` — \(O(n)\), \(O(n)\) memory
 - `fn adjacent_diff<S: Seq<T>, T: Sub>(self: S) -> List<T>` — \(O(n)\), \(O(n)\) memory
 - `fn span<D>(lo: Cut<D>, hi: Cut<D>) -> Range<D>` — \(O(1)\); traps: when `lo > hi`
 - `fn bsearch<D, T>(self: [D]T, ok: T -> Bool, last: Bool = false) -> Cut<D>` — \(O(\log n)\) calls of `ok`, plus one when the cut is an end; \(O(\log n)\).; traps: when `ok` flips the other way; any other `ok` that is not monotone gives an
@@ -335,9 +342,9 @@ Fields: `k: Int,`.
 - `fn sorted_union<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>` — \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\), \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\) memory
 - `fn sorted_intersect<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>` — \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\), \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\) memory; The values in both of two sorted sequences, merged in one pass.
 - `fn sorted_diff<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>` — \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\), \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\) memory
-- `fn kway_merge<S: Indexed, T>(lists: List<S>) -> List<T>` — \(O(N \log k)\), \(O(N)\) memory
-- `fn radix_sort<S: IndexedMut, T>(mut self: S, by: T -> Int = x => x)` — \(O(n)\) passes over 8-bit digits of the key, \(O(n)\) memory; \(O(n)\), \(O(n)\) memory.
-- `fn counting_sort<S: IndexedMut, T, K>(mut self: S, by: T -> K)` — \(O(n + \lvert K \rvert)\), \(O(n + \lvert K \rvert)\) memory; Sorts in place by `by(x)`, a position of the domain `K`, keeping equal keys in their order: one count per position of `K`, then each element goes to its slot.
+- `fn kway_merge<S: Indexed<D, T>, D: Domain, T>(lists: List<S>) -> List<T>` — \(O(N \log k)\), \(O(N)\) memory
+- `fn radix_sort<S: IndexedMut<D, T>, D: Domain, T>(mut self: S, by: T -> Int = x => x)` — \(O(n)\) passes over 8-bit digits of the key, \(O(n)\) memory; \(O(n)\), \(O(n)\) memory.
+- `fn counting_sort<S: IndexedMut<D, T>, D: Domain, T, K>(mut self: S, by: T -> K)` — \(O(n + \lvert K \rvert)\), \(O(n + \lvert K \rvert)\) memory; Sorts in place by `by(x)`, a position of the domain `K`, keeping equal keys in their order: one count per position of `K`, then each element goes to its slot.
 - `fn is_permutation<A: Seq<T>, B: Seq<T>, T>(self: A, b: B) -> Bool` — \(O(n)\) expected, \(O(n)\) memory
 - `fn is_subsequence<S: Seq<T>, N: Indexed, T>(self: S, of: N) -> Bool` — \(O(\lvert \mathit{self} \rvert + \lvert \mathit{of} \rvert)\)
 - `fn perm_rank<V>(self: [V]V) -> Int` — \(O(n)\), \(O(1)\) memory; traps: when `|V| > 20` or `p` is not a permutation
@@ -345,17 +352,17 @@ Fields: `k: Int,`.
 - `fn perm_sign<V>(self: [V]V) -> Int` — \(O(n)\), \(O(n)\) memory; traps: when `p` is not a permutation
 - `fn perm_order<V>(self: [V]V) -> Int` — \(O(n)\), \(O(n)\) memory; traps: never; the order can overflow `Int` past about |V| = 400
 - `fn partial_inverse<I, V>(self: [I]?V) -> [V]?I` — \(O(\lvert I \rvert + \lvert V \rvert)\), \(O(\lvert I \rvert + \lvert V \rvert)\) memory; traps: when two keys map to the same value
-- `fn combinations<S: Indexed, T>(self: S, k: Len) -> yields List<T>` — \(O(k)\) per combination; traps: when `k < 0` or `k >= 2^31`
+- `fn combinations<S: Indexed<D, T>, D: Domain, T>(self: S, k: Len) -> yields List<T>` — \(O(k)\) per combination; traps: when `k < 0` or `k >= 2^31`
 - `fn index_pairs<D>(self: Range<D>) -> yields (D, D)` — \(O(1)\) per pair
-- `fn permutations<S: Indexed, T>(self: S, k: ?Int = None) -> yields List<T>` — \(O(k)\) per permutation; traps: when `k` is not in `0..=self.len`
-- `fn subsequences<S: Indexed, T>(self: S) -> yields SubseqStep<T>` — \(O(k)\) per subsequence
+- `fn permutations<S: Indexed<D, T>, D: Domain, T>(self: S, k: ?Int = None) -> yields List<T>` — \(O(k)\) per permutation; traps: when `k` is not in `0..=self.len`
+- `fn subsequences<S: Indexed<D, T>, D: Domain, T>(self: S) -> yields SubseqStep<T>` — \(O(k)\) per subsequence
 - `fn lis<D, T, K>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -> List<D>` — \(O(n \log n)\), \(O(n)\) memory
 - `fn lcs<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<(Int, Int)>` — \(O(\lvert a \rvert \cdot \lvert b \rvert)\), \(O(\lvert a \rvert \cdot \lvert b \rvert)\) memory
 - `fn cartesian_tree<D, T>(self: [D]T, min_root: Bool = true) -> (root: ?D, left: [D]?D, right: [D]?D, parent: [D]?D)` — \(O(n)\), \(O(n)\) memory
 - `fn argmax<S: Keyed<D, T>, D, T, K: Ord>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D` — \(O(n)\); The index of the first largest value (optionally under key `by:`), or `None` when empty.
 - `fn argmin<S: Keyed<D, T>, D, T, K: Ord>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D` — \(O(n)\); The index of the first smallest value (optionally under key `by:`), or `None` when empty.
 - `@get fn swap<A>(self: (A, A)) -> (A, A)` — \(O(1)\)
-- `fn split<S: Indexed, T, P: Sep<T>>(self: S, sep: P) -> yields Slice<S>` — \(O(n)\); Pieces between separators: elements equal to `sep`, or where the predicate `sep` holds.
+- `fn split<S: Indexed<D, T>, D: Domain, T, P: Sep<T>>(self: S, sep: P) -> yields Slice<S>` — \(O(n)\); Pieces between separators: elements equal to `sep`, or where the predicate `sep` holds.
 - `fn maximal<D, T, St: Track<T>>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]Range<D>` — \(O(n)\) amortized pushes and pops on `state`; Two pointers: for each right end, the longest piece ending there that is `ok`, fed through `state: Track`, as its positions.; traps: never in release; debug traps when `ok` fails on a single element after a shrink
 - `fn minimal<D, T, St: Track<T>>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]?Range<D>` — \(O(n)\) amortized pushes and pops on `state`; For each right end, the shortest piece ending there that is `ok` (its positions), or None, keyed by that end like the ring forms; `anchor: Anchor.Start` keys by left end.
 - `@get fn ring<D, T>(self: [D]T) -> Ring<D, T>` — \(O(1)\); \(O(1)\) to make.

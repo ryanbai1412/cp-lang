@@ -647,9 +647,8 @@ fn domain_params(d: &mut Decls, from: usize) {
                 .any(|m| (d.domain_params.get(m)).is_some_and(|ds| ds.contains(&(p + 1))))
                 || (depth < 8
                     && (t.supers.iter()).any(|sup| {
-                        (sup.args.iter().enumerate()).any(|(q, a)| {
-                            *a == Ty::Param(p) && trait_dom(d, sup.tr, q, depth + 1)
-                        })
+                        (sup.args.iter().enumerate())
+                            .any(|(q, a)| *a == Ty::Param(p) && trait_dom(d, sup.tr, q, depth + 1))
                     }))
         }
         let mut grew = false;

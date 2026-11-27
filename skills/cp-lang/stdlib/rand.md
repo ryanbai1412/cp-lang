@@ -19,10 +19,10 @@ A seeded random source, for a run you can replay: `Rng.new(seed)` gives the same
 - `fn int(mut self, lo: Int, hi: Int) -> Int` — \(O(1)\); A uniformly random integer in `lo..=hi`, both ends inclusive, from one `next()`.; traps: when `lo > hi`
 - `fn float(mut self) -> F64` — \(O(1)\); A uniformly random `F64` in `[0, 1)`: the top 53 bits of `next()` times `2^-53`.
 - `fn chance(mut self, p: F64) -> Bool` — \(O(1)\); True with probability `p`: `float() < p`.
-- `fn pick<S: Indexed, T>(mut self, xs: S) -> ?T` — \(O(1)\); A uniformly random element of `xs`: `xs` at position `int(0..xs.len)`.
+- `fn pick<S: Indexed<D, T>, D: Domain, T>(mut self, xs: S) -> ?T` — \(O(1)\); A uniformly random element of `xs`: `xs` at position `int(0..xs.len)`.
 - `fn shuffle<S: IndexedMut>(mut self, mut a: S)` — \(O(n)\); Shuffle `a` in place, uniformly (Fisher-Yates).
 - `fn perm<D>(mut self) -> [D]D` — \(O(n)\); A uniformly random permutation of the domain `D`, as a `[D]D`.
-- `fn sample<S: Indexed, T>(mut self, k: Int, from: S) -> List<T>` — \(O(\lvert \mathit{from} \rvert)\); `k` elements of `from` at distinct positions, chosen uniformly, in random order.; traps: when `k` is not in `0..=from.len`
+- `fn sample<S: Indexed<D, T>, D: Domain, T>(mut self, k: Int, from: S) -> List<T>` — \(O(\lvert \mathit{from} \rvert)\); `k` elements of `from` at distinct positions, chosen uniformly, in random order.; traps: when `k` is not in `0..=from.len`
 
 ## Functions
 
