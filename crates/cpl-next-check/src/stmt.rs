@@ -328,7 +328,11 @@ impl<'a> Cx<'a> {
             None => (&b.stmts[..], &[][..]),
         };
         self.declare_nested(stmts);
+        let mut placed = 0;
         for (i, s) in stmts.iter().enumerate() {
+            if i < placed {
+                continue;
+            }
             if let Some((_, f)) = memos.iter().find(|(at, _)| *at == i) {
                 self.memo_writes(f, &stmts[i + 4..]);
             }
@@ -357,6 +361,26 @@ impl<'a> Cx<'a> {
                     self.frames.extend(fs);
                     continue;
                 }
+            }
+            // `let p = mut a[i]` names the cell: the statements through `p`'s last use run while
+            // `a`'s `IndexedMut` lends it, `p` that cell (R05.3.4). A block value the lend would
+            // hold is refused below with the bare `mut`.
+            let unit = want.is_none_or(|w| self.shallow(w) == Ty::Unit);
+            let named = place_binding(s)
+                .map(|n| (place_held(&n.0, &stmts[i + 1..]), n))
+                .filter(|(held, _)| unit || i + 1 + held < stmts.len());
+            if let Some((held, named)) = named {
+                let rest = ast::Block {
+                    stmts: stmts[i + 1..i + 1 + held].to_vec(),
+                    span: b.span,
+                };
+                let inside: InPlace<'_> = Box::new(move |this, body| {
+                    let v = this.block(&rest, None);
+                    body.push(TStmt::Expr(v));
+                });
+                self.place_rest(named, s.span, inside, &mut out);
+                placed = i + 1 + held;
+                continue;
             }
             // A last expression that never gives a value is a statement, as `return` is.
             if i + 1 == stmts.len() {
@@ -394,6 +418,68 @@ impl<'a> Cx<'a> {
             kind: TK::Block(out, value.map(Box::new)),
             ty,
             span: b.span,
+        }
+    }
+    /// `inside`, the statements after `let p = mut a[i]` through `p`'s last use, run while
+    /// `a`'s `IndexedMut` lends cell `i`, with `p` naming that cell (R05.3.4).
+    pub(super) fn place_rest(
+        &mut self,
+        (n, place): (String, &ast::Expr),
+        at: Span,
+        inside: InPlace<'_>,
+        out: &mut Vec<TStmt>,
+    ) {
+        let target = self.hoist_indices(place, out);
+        let ExprKind::Index { base, indices } = &target.kind else {
+            return;
+        };
+        // `p` lends all of `a`, so a literal key is held as any other is: no literal-key
+        // split lets `a[0]` be read beside it.
+        let key = match &indices[0].kind {
+            ExprKind::Int(_) => {
+                let v = self.expr(&indices[0], Some(&Ty::Int));
+                self.hold(v, "$idx", indices[0].span, out)
+            }
+            _ => indices[0].clone(),
+        };
+        self.through_cell(
+            (base, &key),
+            at,
+            out,
+            Box::new(move |this, cell, body| {
+                let ExprKind::Name(c) = &cell.kind else {
+                    return;
+                };
+                let id = this.scopes.iter().rev().find_map(|s| s.get(c).copied());
+                if let (Some(id), Some(scope)) = (id, this.scopes.last_mut()) {
+                    scope.insert(n, id);
+                }
+                inside(this, body);
+            }),
+        );
+    }
+    /// Top-level statements, each from its own item, with what a `let p = mut a[i]` among them
+    /// holds run inside its lend.
+    pub(super) fn items_placed(&mut self, items: &[(ItemId, ast::Stmt)], out: &mut Vec<TStmt>) {
+        let mut k = 0;
+        while let Some((off, s)) = items.get(k) {
+            self.item = off.clone();
+            out.push(TStmt::Item(off.clone()));
+            k += 1;
+            let Some(named) = place_binding(s) else {
+                self.stmt(s, out);
+                continue;
+            };
+            let stmts: Vec<ast::Stmt> = items[k..].iter().map(|(_, s)| s.clone()).collect();
+            let held = place_held(&named.0, &stmts);
+            let rest = items[k..k + held].to_vec();
+            let inside: InPlace<'_> = Box::new(move |this, body| {
+                this.scopes.push(HashMap::new());
+                this.items_placed(&rest, body);
+                this.scopes.pop();
+            });
+            self.place_rest(named, s.span, inside, out);
+            k += held;
         }
     }
     /// A condition, in a scope of its own that holds the names its `let`s bind: the caller
@@ -1774,5 +1860,51 @@ impl<'a> Cx<'a> {
             );
         }
         v
+    }
+}
+
+/// `let p = mut a[i]`: the name and the indexed place it names.
+/// What runs inside a place binding's lend.
+pub(super) type InPlace<'a> = Box<dyn FnOnce(&mut Cx<'_>, &mut Vec<TStmt>) + 'a>;
+
+pub(super) fn place_binding(s: &ast::Stmt) -> Option<(String, &ast::Expr)> {
+    let StmtKind::Let {
+        pat,
+        ty: None,
+        init: Some(init),
+        mutable: false,
+        otherwise: None,
+        ..
+    } = &s.kind
+    else {
+        return None;
+    };
+    let (PatternKind::Name(n), ExprKind::Mut(place)) = (&pat.kind, &init.kind) else {
+        return None;
+    };
+    let place = super::index::unparen(place);
+    matches!(&place.kind, ExprKind::Index { indices, .. } if indices.len() == 1)
+        .then(|| (n.clone(), place))
+}
+
+/// How many of `rest` hold the place `p` names: through the last one that mentions `p`, or a
+/// name one of those binds, so every name bound inside the lend is seen only inside it.
+pub(super) fn place_held(p: &str, rest: &[ast::Stmt]) -> usize {
+    let mut names = vec![p.to_string()];
+    let mut held = 0;
+    loop {
+        let seen: Vec<&str> = names.iter().map(String::as_str).collect();
+        let upto = (rest.iter())
+            .rposition(|s| cpl_syntax::visit::stmt_mentions_any(s, &seen))
+            .map_or(0, |k| k + 1);
+        if upto == held {
+            return held;
+        }
+        for s in &rest[held..upto] {
+            if let StmtKind::Let { pat, .. } = &s.kind {
+                cpl_syntax::visit::pattern_names(pat, &mut names);
+            }
+        }
+        held = upto;
     }
 }

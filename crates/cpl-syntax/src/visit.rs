@@ -174,23 +174,53 @@ pub fn walk_stmt(stmt: &Stmt, v: &mut dyn Visitor) {
 
 /// Whether `expr` names any of `names` anywhere inside it.
 pub fn mentions_any(expr: &Expr, names: &[&str]) -> bool {
-    struct Find<'a> {
-        names: &'a [&'a str],
-        found: bool,
-    }
-    impl Visitor for Find<'_> {
-        fn expr(&mut self, expr: &Expr) {
-            if let ExprKind::Name(n) = &expr.kind {
-                self.found |= self.names.contains(&n.as_str());
-            }
-        }
-    }
     let mut find = Find {
         names,
         found: false,
     };
     walk_expr(expr, &mut find);
     find.found
+}
+
+/// Whether `stmt` names any of `names` anywhere inside it.
+pub fn stmt_mentions_any(stmt: &Stmt, names: &[&str]) -> bool {
+    let mut find = Find {
+        names,
+        found: false,
+    };
+    walk_stmt(stmt, &mut find);
+    find.found
+}
+
+/// The names `pat` binds, in order.
+pub fn pattern_names(pat: &Pattern, out: &mut Vec<String>) {
+    match &pat.kind {
+        PatternKind::Name(n) => out.push(n.clone()),
+        PatternKind::Domain(n) => out.push(n.text.clone()),
+        PatternKind::Tuple(ps) | PatternKind::Variant { args: ps, .. } => {
+            ps.iter().for_each(|p| pattern_names(p, out))
+        }
+        PatternKind::Record { fields, .. } => {
+            fields.iter().for_each(|(_, p)| pattern_names(p, out))
+        }
+        // Each alternative binds the same names.
+        PatternKind::Or(ps) => ps.iter().take(1).for_each(|p| pattern_names(p, out)),
+        PatternKind::Var(p) => pattern_names(p, out),
+        PatternKind::Wildcard | PatternKind::Literal(_) | PatternKind::Error => {}
+    }
+}
+
+struct Find<'a> {
+    names: &'a [&'a str],
+    found: bool,
+}
+
+impl Visitor for Find<'_> {
+    fn expr(&mut self, expr: &Expr) {
+        if let ExprKind::Name(n) = &expr.kind {
+            self.found |= self.names.contains(&n.as_str());
+        }
+    }
 }
 
 pub fn walk_expr(expr: &Expr, v: &mut dyn Visitor) {

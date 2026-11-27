@@ -321,6 +321,32 @@ impl Walk<'_> {
         self.next += 1;
         self.decl.insert(r, (self.scopes.clone(), self.next));
     }
+    /// The site of the first statement of a region's `body` that names `root`: where the lend
+    /// it holds is broken.
+    fn first_use(&self, body: &[Stmt<CTy>], root: Root) -> Option<u32> {
+        body.iter().find_map(|s| {
+            let mut places = Vec::new();
+            cpl_next_ir::ir::visit_places(&mut [s.clone()], &mut |p| places.push(p.clone()));
+            if !(places.iter()).any(|p| self.pl(p).is_some_and(|q| q.root == root)) {
+                return None;
+            }
+            let site = match s {
+                Stmt::Let(_, e) | Stmt::Assign(_, e) | Stmt::Expr(e) | Stmt::If(e, ..) => e.site,
+                Stmt::Return(Some(e)) | Stmt::Yield(e) | Stmt::Switch(e, _) => e.site,
+                Stmt::Region { site, .. } | Stmt::Check { site, .. } | Stmt::Loop(.., site) => {
+                    *site
+                }
+                Stmt::Print(ps) => (ps.iter())
+                    .find_map(|p| match p {
+                        PrintPiece::Value(v, _) => Some(v.site),
+                        PrintPiece::Text(_) => None,
+                    })
+                    .unwrap_or(0),
+                _ => 0,
+            };
+            (site != 0).then_some(site)
+        })
+    }
     fn block(&mut self, b: &[Stmt<CTy>], fx: &mut Fx) {
         self.next += 1;
         self.scopes.push(self.next);
@@ -1175,7 +1201,8 @@ impl Walk<'_> {
                 }
                 if let Some(p) = hit(&lent, &inner.writes).or_else(|| hit(&lent, &inner.reads)) {
                     let n = self.root_name(p.root);
-                    self.err(*body_site, codes::USED_WHILE_LENT, format!("{n} is lent to {who} for writing for the whole loop, and the loop body uses it"));
+                    let at = self.first_use(body, p.root).unwrap_or(*body_site);
+                    self.err(at, codes::USED_WHILE_LENT, format!("{n} is lent to {who} for writing for the whole loop, and the loop body uses it"));
                 }
                 fx.add(&inner);
             }

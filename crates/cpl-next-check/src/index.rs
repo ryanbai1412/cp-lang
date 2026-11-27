@@ -613,7 +613,13 @@ impl Cx<'_> {
         self.hold(v, what, e.span, out)
     }
     /// `v` held in a new temporary, as a name for it.
-    fn hold(&mut self, v: TExpr, what: &str, span: Span, out: &mut Vec<TStmt>) -> ast::Expr {
+    pub(super) fn hold(
+        &mut self,
+        v: TExpr,
+        what: &str,
+        span: Span,
+        out: &mut Vec<TStmt>,
+    ) -> ast::Expr {
         let name = format!("{what}{}", out.len());
         let t = self.bind(&name, v.ty.clone());
         out.push(TStmt::Let(t, v));

@@ -544,7 +544,13 @@ pub fn check(
     }
     // A bare `with` line comes before the program's first statement (R09.1.1).
     let mut begun = false;
-    for ((off, s), lifted) in main.iter().zip(&lifted) {
+    // Statements a `let p = mut a[i]` above holds ran inside its lend.
+    let mut placed = 0;
+    for (k, ((off, s), hoisted)) in main.iter().zip(&lifted).enumerate() {
+        if hoisted.is_none() && placed > 0 {
+            placed -= 1;
+            continue;
+        }
         cx.item = off.clone();
         // `@!multitest`: the count is read once and everything below runs once per case.
         if cases.is_none()
@@ -572,7 +578,7 @@ pub fn check(
             }
         }
         // A hoisted item ran above; `@!multitest` on it still divides the file here.
-        if lifted.is_some() {
+        if hoisted.is_some() {
             continue;
         }
         let into = match &mut cases {
@@ -590,6 +596,18 @@ pub fn check(
         }
         begun |= !bare_with;
         into.push(TStmt::Item(off.clone()));
+        if let Some((p, _)) = stmt::place_binding(s) {
+            let items: Vec<(ItemId, ast::Stmt)> = (main[k..].iter().zip(&lifted[k..]))
+                .filter(|(_, l)| l.is_none())
+                .map(|((off, s), _)| (off.clone(), s.clone()))
+                .collect();
+            let stmts: Vec<ast::Stmt> = items[1..].iter().map(|(_, s)| s.clone()).collect();
+            let held = stmt::place_held(&p, &stmts);
+            placed = held;
+            into.pop();
+            cx.items_placed(&items[..=held], into);
+            continue;
+        }
         cx.stmt(s, into);
         if let Some(i) = cx.early.take() {
             let name = (d.top_doms.iter())
