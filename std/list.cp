@@ -128,6 +128,9 @@ pub struct Str:
     @get fn len(self) -> Int:
         chars.len
 
+    @get fn is_empty(self) -> Bool:
+        chars.is_empty
+
     fn get(self, i: Int) -> Char:
         chars.get(i)
 
