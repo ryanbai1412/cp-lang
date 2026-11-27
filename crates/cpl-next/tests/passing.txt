@@ -17,6 +17,7 @@ core-01/capitalized-pattern-is-a-variant.cp
 core-01/case-grammar.cp
 core-01/chain-mixed.cp
 core-01/chain-ok.cp
+core-01/chain-with-in.cp
 core-01/char-escapes.cp
 core-01/char-two.cp
 core-01/coalesce-needs-parens.cp
@@ -328,12 +329,14 @@ core-04/collect-keeps-keys.cp
 core-04/cut-from-int-is-count.cp
 core-04/cut-indexes-positions.cp
 core-04/cut-int-any-base.cp
+core-04/cut-literal-range-to-piece.cp
 core-04/cut-neighbours.cp
 core-04/cut-range-table.cp
 core-04/cuts-call-traps.cp
 core-04/cuts-call.cp
 core-04/d1-literal-slice-index-lint.cp
 core-04/d1-literal-slice-index-traps.cp
+core-04/d1-raw-int-into-domain-slice.cp
 core-04/d2-counter-loop-traps.cp
 core-04/d2-slice-loop-over-keys.cp
 core-04/d3-relative-by-variable.cp
@@ -347,6 +350,7 @@ core-04/dom-empty-first-traps.cp
 core-04/dom-empty-walks.cp
 core-04/dom-first-last.cp
 core-04/dom-first-not-position.cp
+core-04/dom-in.cp
 core-04/dom-pattern-refutes.cp
 core-04/dom-walk-rev.cp
 core-04/domain-count-predicate-is-bool.cp
@@ -354,6 +358,7 @@ core-04/domain-drop-first.cp
 core-04/domain-is-a-seq.cp
 core-04/domain-is-its-range.cp
 core-04/domain-mixup.cp
+core-04/domain-slice-by-position.cp
 core-04/e1-list-copy-fix.cp
 core-04/e1-list-param-rejects-slice.cp
 core-04/empty-array-literal-fits-empty-domain.cp
@@ -366,11 +371,14 @@ core-04/first-is-optional.cp
 core-04/for-from-zero-to-int.cp
 core-04/for-over-grid-rows-keeps-the-grid-lent.cp
 core-04/from-ord-after-a-checked-one-still-traps.cp
+core-04/g1-array-and-list-agree.cp
 core-04/g3-widen-keeps-indices.cp
 core-04/generic-key-callback-indexes-source.cp
 core-04/generic-position-step-is-int.cp
 core-04/grid-cell-parameter-over-offset-axes.cp
+core-04/grid-cols-of-one-row.cp
 core-04/grid-row-binding-is-a-view.cp
+core-04/grid-row-from-rows-lends-the-grid.cp
 core-04/grid-rows-is-a-getter.cp
 core-04/grid-rows-view-lends-the-grid.cp
 core-04/h-filter-has-no-keys.cp
@@ -430,7 +438,9 @@ core-04/range-ends-kind.cp
 core-04/range-factor-product-domain.cp
 core-04/range-generic-first-last.cp
 core-04/range-key-outside-traps.cp
+core-04/range-len-walk-ends.cp
 core-04/range-literal-with-exponent-is-a-value.cp
+core-04/range-mid-small.cp
 core-04/range-nth-positional.cp
 core-04/range-param-argument-traps.cp
 core-04/range-param-method-argument-traps.cp
@@ -457,6 +467,7 @@ core-04/scalar-fill-wrong-type.cp
 core-04/scalar-fill.cp
 core-04/slice-drop-keeps-source-keys-traps.cp
 core-04/slice-key-outside-view-traps.cp
+core-04/slice-relative-index-by-int-is-wrong-domain.cp
 core-04/static-method-binds-domain-from-list.cp
 core-04/stored-cut-range-not-piece.cp
 core-04/trap-in-a-small-fn-names-its-frame.cp
@@ -575,6 +586,7 @@ core-05/position-of-a-table-of-lists-is-not-lent.cp
 core-05/push-after-row-lend-ends.cp
 core-05/rb1-q01-move-then-read.cp
 core-05/rb1-q02-view-dies-before-write.cp
+core-05/rb1-q03-write-while-lent.cp
 core-05/rb1-q04-push-while-row-lent.cp
 core-05/rb1-q05-return-lent-without-lends.cp
 core-05/rb1-q42-closure-escapes-local.cp
@@ -689,6 +701,7 @@ core-07/computed-negative-key-traps.cp
 core-07/count-any-all.cp
 core-07/count-of-bools-with-predicate.cp
 core-07/domain-rev-walks-backwards.cp
+core-07/domain-slice-raw-int.cp
 core-07/drop-while.cp
 core-07/filter-not-indexed.cp
 core-07/filter-view-not-indexable.cp
@@ -734,6 +747,7 @@ core-07/rev-of-slice-is-not-indexable.cp
 core-07/rev-runs-is-not-indexed.cp
 core-07/rev-traits-come-from-std-impls.cp
 core-07/sequence-names-are-std-types.cp
+core-07/slice-index-outside-range.cp
 core-07/slice-keeps-keys.cp
 core-07/slice-literal-inside-keys-reads.cp
 core-07/slice-literal-outside-keys-rejected.cp
@@ -858,8 +872,10 @@ core-08/type-param-default.cp
 core-08/while-const.cp
 core-09/allow-attribute-removed.cp
 core-09/assert-after-64k-of-output-prints-it-first.cp
+core-09/assert-of-a-key-test-passes-on-a-key.cp
 core-09/assert-passes.cp
 core-09/assert-trap.cp
+core-09/assert-with-more-than-a-key-test-stays-an-assert.cp
 core-09/checked-build-calls-user-fn-once.cp
 core-09/checked-index-trap.cp
 core-09/checked-valid-program-runs.cp
@@ -968,6 +984,10 @@ core-12/aka-upper-names-to-upper.cp
 core-12/body-attribute-unknown-is-an-error.cp
 core-12/clone-copies.cp
 core-12/closure-borrows-per-call.cp
+core-12/contains-not-on-deque.cp
+core-12/contains-not-on-list.cp
+core-12/contains-not-on-user-seq.cp
+core-12/contains-range.cp
 core-12/field-trait-get.cp
 core-12/filter-not-indexed.cp
 core-12/generator-not-keyed.cp
@@ -1422,6 +1442,7 @@ next/n_gen_05_expression_body.cp
 next/n_generator_through_bound.cp
 next/n_grid_col.cp
 next/n_grid_row.cp
+next/n_grid_views.cp
 next/n_if_01_none_branch_takes_the_other_type.cp
 next/n_impl_01_inherent_outside_its_module.cp
 next/n_impl_03_trait_args_pick_the_impl.cp
@@ -1490,6 +1511,7 @@ next/n_range_01_step_is_its_own_member.cp
 next/n_range_02_open_and_stepped_walks.cp
 next/n_range_03_domain_value_ends.cp
 next/n_range_is_empty.cp
+next/n_range_literal_positions.cp
 next/n_read_01_an_int_past_int_traps_out_of_contract.cp
 next/n_record_01_records_are_core_structs.cp
 next/n_record_01_update_copies_with_replacements.cp
@@ -1662,6 +1684,7 @@ std-hashmap/counter-is-a-std-struct-a-user-may-shadow.cp
 std-hashmap/flatmap-is_empty-1.cp
 std-hashmap/flatmap-new-1.cp
 std-hashmap/list-of-an-int-is-rejected.cp
+std-hashmap/nested-in-two-maps-same-key.cp
 std-heap/heap-of-a-list-is-rejected.cp
 std-heap/meld-heap-of-a-list-is-rejected.cp
 std-heap/min-max-heap-of-a-list-is-rejected.cp
@@ -1830,6 +1853,7 @@ traits/Bidir/Zipped--iter_rev.cp
 traits/BitAnd/Bitset--bitand.cp
 traits/BitOr/Bitset--bitor.cp
 traits/BitXor/Bitset--bitxor.cp
+traits/Contains/Range--contains.cp
 traits/Div/Vec--div.cp
 traits/Div/Vec3--div.cp
 traits/Eq/PMultiset--eq.cp
