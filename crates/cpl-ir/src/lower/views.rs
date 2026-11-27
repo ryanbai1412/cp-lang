@@ -161,9 +161,12 @@ impl<'a> Lowerer<'a> {
     /// `id(args)`. When it returns a view, an owned temporary argument (a
     /// `List`, `Str` or array built in the call) gets a slot first, so the
     /// cells the view points into outlive it (`mk(n).take(k)`).
-    /// The primitive `id`'s body names, when it is `@intrinsic("..")`: a call
-    /// of it is the primitive (R12.14.3).
+    /// The primitive `id`'s body names, when it is `@intrinsic("..")`, or its
+    /// `@fast(op)`: a call of it is the primitive (R12.14.3).
     pub(super) fn intrinsic_of(&self, id: FnId) -> Option<Prim> {
+        if let Some(op) = self.fast_fns.get(&std::ptr::from_ref(self.sigs[id].decl)) {
+            return Some(*op);
+        }
         match &self.sigs[id].decl.body {
             ast::FnBody::Expr(ast::Expr {
                 kind: ast::ExprKind::Intrinsic(name),

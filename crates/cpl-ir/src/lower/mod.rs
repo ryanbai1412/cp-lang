@@ -777,6 +777,9 @@ struct Lowerer<'a> {
     preamble_stmts: Vec<Stmt>,
     /// The top-level fns marked `@memo`.
     memo_fns: HashSet<FnId>,
+    /// A fn marked `@fast(op)`: a call of it is that primitive, its CP body
+    /// only checked.
+    fast_fns: HashMap<*const ast::FnDecl, Prim>,
     /// Each `@grader fn` over its own domains (`p: [C]Int`), with the
     /// entry the judge's grader calls in its place, over lists.
     grader_wrappers: Vec<(&'a ast::FnDecl, &'a ast::FnDecl)>,
@@ -936,6 +939,7 @@ impl<'a> Lowerer<'a> {
             quiet_sigs: HashSet::new(),
             preamble_stmts: Vec::new(),
             memo_fns: HashSet::new(),
+            fast_fns: HashMap::new(),
             grader_wrappers: Vec::new(),
             memo_count: 0,
             memo_fast: None,
