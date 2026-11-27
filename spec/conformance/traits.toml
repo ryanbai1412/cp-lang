@@ -533,6 +533,33 @@ print(a.len, yes(B(3) in a))
 """
 out = "3 NO"
 
+[case."BitOr/Bitset/bitor"]
+code = """
+use std.bitset.{Bitset}
+domain D = 0..10
+let a = Bitset<D>.of([D(1), D(2)]) | Bitset<D>.of([D(2), D(3)])
+print(a.len)
+"""
+out = "3"
+
+[case."BitAnd/Bitset/bitand"]
+code = """
+use std.bitset.{Bitset}
+domain D = 0..10
+let a = Bitset<D>.of([D(1), D(2)]) & Bitset<D>.of([D(2), D(3)])
+print(a.len)
+"""
+out = "1"
+
+[case."BitXor/Bitset/bitxor"]
+code = """
+use std.bitset.{Bitset}
+domain D = 0..10
+let a = Bitset<D>.of([D(1), D(2)]) ^ Bitset<D>.of([D(2), D(3)])
+print(a.len)
+"""
+out = "2"
+
 [case."Sub/Bitset/sub"]
 code = """
 use std.bitset.{Bitset}

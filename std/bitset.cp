@@ -287,39 +287,6 @@ pub struct Bitset<D>:
         for k in 0..w.len: w[k] ^= o.w[k]
         self.forget_count()
 
-    /// `a | b`: a new set of the positions in either set.
-    ///
-    /// cost: \(O(K / 64)\) time and space
-    /// traps: never
-    /// example: `domain D = 0..10; (Bitset<D>.single(D(1)) | Bitset<D>.single(D(2))).len == 2`
-    pub fn bitor(self, o: Bitset<D>) -> Bitset<D>:
-        var out = Bitset<D>.new()
-        for k in 0..w.len: out.w[k] = w[k] | o.w[k]
-        out.forget_count()
-        out
-
-    /// `a & b`: a new set of the positions in both sets.
-    ///
-    /// cost: \(O(K / 64)\) time and space
-    /// traps: never
-    /// example: `domain D = 0..10; (Bitset<D>.of([D(1), D(2)]) & Bitset<D>.of([D(2), D(3)])).each().collect() == [D(2)]`
-    pub fn bitand(self, o: Bitset<D>) -> Bitset<D>:
-        var out = Bitset<D>.new()
-        for k in 0..w.len: out.w[k] = w[k] & o.w[k]
-        out.forget_count()
-        out
-
-    /// `a ^ b`: a new set of the positions in exactly one of the sets.
-    ///
-    /// cost: \(O(K / 64)\) time and space
-    /// traps: never
-    /// example: `domain D = 0..10; (Bitset<D>.of([D(1), D(2)]) ^ Bitset<D>.of([D(2), D(3)])).each().collect() == [D(1), D(3)]`
-    pub fn bitxor(self, o: Bitset<D>) -> Bitset<D>:
-        var out = Bitset<D>.new()
-        for k in 0..w.len: out.w[k] = w[k] ^ o.w[k]
-        out.forget_count()
-        out
-
     /// Do the two sets share a position? Stops at the first shared word; `(a & b).len > 0` without
     /// building `a & b`.
     ///
@@ -1441,6 +1408,42 @@ pub struct BitTrie<W>:
 
 impl Show for BitTrie<W>:
     fn show(v): if let r = v.root: "root {r}" else: "empty"
+
+/// `a | b`: a new set of the positions in either set.
+///
+/// cost: \(O(K / 64)\) time and space
+/// traps: never
+/// example: `domain D = 0..10; (Bitset<D>.single(D(1)) | Bitset<D>.single(D(2))).len == 2`
+impl BitOr for Bitset<D>:
+    fn bitor(self, o: Bitset<D>) -> Bitset<D>:
+        var out = Bitset<D>.new()
+        for k in 0..self.w.len: out.w[k] = self.w[k] | o.w[k]
+        out.forget_count()
+        out
+
+/// `a & b`: a new set of the positions in both sets.
+///
+/// cost: \(O(K / 64)\) time and space
+/// traps: never
+/// example: `domain D = 0..10; (Bitset<D>.of([D(1), D(2)]) & Bitset<D>.of([D(2), D(3)])).each().collect() == [D(2)]`
+impl BitAnd for Bitset<D>:
+    fn bitand(self, o: Bitset<D>) -> Bitset<D>:
+        var out = Bitset<D>.new()
+        for k in 0..self.w.len: out.w[k] = self.w[k] & o.w[k]
+        out.forget_count()
+        out
+
+/// `a ^ b`: a new set of the positions in exactly one of the sets.
+///
+/// cost: \(O(K / 64)\) time and space
+/// traps: never
+/// example: `domain D = 0..10; (Bitset<D>.of([D(1), D(2)]) ^ Bitset<D>.of([D(2), D(3)])).each().collect() == [D(1), D(3)]`
+impl BitXor for Bitset<D>:
+    fn bitxor(self, o: Bitset<D>) -> Bitset<D>:
+        var out = Bitset<D>.new()
+        for k in 0..self.w.len: out.w[k] = self.w[k] ^ o.w[k]
+        out.forget_count()
+        out
 
 /// `a - b`: the positions in `a` that are not in `b`.
 impl Sub for Bitset<D>:
