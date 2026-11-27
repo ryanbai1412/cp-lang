@@ -5,7 +5,7 @@ use crate::ir::{CheckKind, Intr};
 use cpl_diag::{codes, Code};
 
 mod rules;
-pub use rules::{char_of, cpp as cpp_runtime, int_of_u64, neg, storage_size};
+pub use rules::{abs, char_of, cpp as cpp_runtime, int_of_u64, neg, storage_size};
 
 /// Every way a run can fail, one row each, with the code it carries and its message.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]

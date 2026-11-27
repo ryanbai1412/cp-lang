@@ -111,6 +111,10 @@ pub(crate) enum Op {
         d: Reg,
         a: Reg,
     },
+    Abs {
+        d: Reg,
+        a: Reg,
+    },
     Not {
         d: Reg,
         a: Reg,
@@ -246,6 +250,10 @@ pub(crate) enum Op {
         a: Reg,
     },
     FNeg {
+        d: Reg,
+        a: Reg,
+    },
+    FAbs {
         d: Reg,
         a: Reg,
     },
@@ -1220,6 +1228,7 @@ impl Fc<'_> {
                 });
             }
             Intr::Neg
+            | Intr::Abs
             | Intr::Not
             | Intr::ToU64
             | Intr::FromU64
@@ -1236,6 +1245,8 @@ impl Fc<'_> {
                 self.ops.push(match op {
                     Intr::Neg if kind(&first_ty) == Kind::F64 => Op::FNeg { d, a },
                     Intr::Neg => Op::Neg { d, a },
+                    Intr::Abs if kind(&first_ty) == Kind::F64 => Op::FAbs { d, a },
+                    Intr::Abs => Op::Abs { d, a },
                     Intr::ToF64 => Op::ToF64 { d, a },
                     Intr::Not => Op::Not { d, a },
                     Intr::ToU64 => Op::ToU64 { d, a },

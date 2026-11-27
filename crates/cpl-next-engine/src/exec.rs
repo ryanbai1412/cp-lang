@@ -488,6 +488,10 @@ impl M<'_> {
                     self.stack[r(d)] = ops::f64_of_int(self.stack[r(a)] as i64).to_bits()
                 }
                 Op::Neg { d, a } => self.stack[r(d)] = ops::neg(self.stack[r(a)] as i64)? as u64,
+                Op::Abs { d, a } => self.stack[r(d)] = ops::abs(self.stack[r(a)] as i64)? as u64,
+                Op::FAbs { d, a } => {
+                    self.stack[r(d)] = f64::from_bits(self.stack[r(a)]).abs().to_bits()
+                }
                 Op::Not { d, a } => self.stack[r(d)] = u64::from(ops::not(self.stack[r(a)] != 0)),
                 Op::Cmp {
                     op,

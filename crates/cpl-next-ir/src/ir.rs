@@ -31,6 +31,8 @@ pub enum Intr {
     Div,
     Rem,
     Neg,
+    /// The absolute value of an `Int` or `F64`; traps on `Int.MIN`.
+    Abs,
     BitAnd,
     BitOr,
     BitXor,
@@ -118,6 +120,7 @@ impl Intr {
             "code_of" => Intr::CodeOf,
             "u64_of" => Intr::ToU64,
             "int_of_u64" => Intr::FromU64,
+            "abs" => Intr::Abs,
             "popcount" => Intr::Popcount,
             "ctz" => Intr::Ctz,
             "clz" => Intr::Clz,
@@ -148,6 +151,7 @@ impl Intr {
             Add | Sub
                 | Mul
                 | Neg
+                | Abs
                 | Div
                 | Rem
                 | Pow

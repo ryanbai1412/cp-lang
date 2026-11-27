@@ -650,6 +650,7 @@ impl Emit<'_> {
                         Intr::Mul => return bin("*"),
                         Intr::Div => return bin("/"),
                         Intr::Neg => return format!("(-{})", a[0]),
+                        Intr::Abs => return format!("__builtin_fabs({})", a[0]),
                         _ => {}
                     }
                 }
@@ -667,6 +668,7 @@ impl Emit<'_> {
                     Intr::Clz => format!("cpl_clz((uint64_t)({}))", a[0]),
                     Intr::BitWidth => format!("cpl_bit_width((uint64_t)({}))", a[0]),
                     Intr::Neg => format!("cpl_neg({})", a[0]),
+                    Intr::Abs => format!("cpl_abs({})", a[0]),
                     Intr::Below => format!("((uint64_t)({}) < (uint64_t)({}))", a[0], a[1]),
                     Intr::Not => format!("(!{})", a[0]),
                     Intr::CharOf => format!("cpl_char_of({})", a[0]),

@@ -535,6 +535,13 @@ impl<'a> Machine<'a> {
                 },
                 _ => V::Int(ops::neg(self.int(&args[0], fp)?)?),
             },
+            Intr::Abs => match &args[0] {
+                Arg::Value(x) if x.ty == CTy::F64 => match self.expr(x, fp)? {
+                    V::F64(a) => V::F64(a.abs()),
+                    _ => return broken("an F64 operand of another kind"),
+                },
+                _ => V::Int(ops::abs(self.int(&args[0], fp)?)?),
+            },
             Intr::Eq | Intr::Ne | Intr::Lt | Intr::Le | Intr::Gt | Intr::Ge | Intr::Below => {
                 let (Arg::Value(a), Arg::Value(b)) = (&args[0], &args[1]) else {
                     return broken("lent operand");

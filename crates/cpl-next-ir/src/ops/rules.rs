@@ -53,6 +53,8 @@ kernels! {
         "int64_t r; if (__builtin_mul_overflow(a, b, &r) || r == INT64_MIN) cpl_fail(CPL_OVERFLOW); return r;"
     neg(a: i64) -> i64 { value(a.checked_neg()) }
         "if (a == INT64_MIN) cpl_fail(CPL_OVERFLOW); return -a;"
+    abs(a: i64) -> i64 { value(a.checked_abs()) }
+        "if (a == INT64_MIN) cpl_fail(CPL_OVERFLOW); return a < 0 ? -a : a;"
     div(a: i64, b: i64) -> i64 { value(a.checked_div_euclid(b)) }
         "if (a == INT64_MIN && b == -1) cpl_fail(CPL_OVERFLOW); int64_t q = a / b, r = a % b; if (r < 0) q += b > 0 ? -1 : 1; return q;"
     rem(a: i64, b: i64) -> i64 { value(a.checked_rem_euclid(b)) }
@@ -115,6 +117,8 @@ rows! {
     mul(a: i64, b: i64) -> i64 [] mul;
     /// `-a` on an `Int`.
     neg(a: i64) -> i64 [] neg;
+    /// `abs` of an `Int`.
+    abs(a: i64) -> i64 [] abs;
     div(a: i64, b: i64) -> i64 [b == 0 => DivisionByZero] div;
     rem(a: i64, b: i64) -> i64 [b == 0 => DivisionByZero] rem;
     pow(a: i64, b: i64) -> i64 [b < 0 => NegativePower] pow;
