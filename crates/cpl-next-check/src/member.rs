@@ -140,8 +140,7 @@ impl<'a> Cx<'a> {
         let m = &name.text;
         let f = (0..self.d.fns.len()).map(FnId).find_map(|id| {
             let f = self.d.f(id);
-            (self.d.seen(f.module)
-                && (f.aka.contains(m) || f.was.contains(m))
+            ((f.aka.contains(m) || f.was.contains(m))
                 && (self.d.lookup_member(rt, &f.name).is_some() || self.d.self_fits(id, rt)))
             .then_some(f)
         })?;
@@ -566,7 +565,6 @@ impl<'a> Cx<'a> {
                 self.call_method(f, recv, getter, call, span, want)
             }
             None => {
-                self.missing.push(name.text.clone());
                 if let Some((was, help)) = self.renamed(&rt, base, name, call) {
                     let (code, text) = match was {
                         Some(now) => (

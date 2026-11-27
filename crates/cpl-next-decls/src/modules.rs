@@ -331,8 +331,7 @@ fn path_name(text: &str, start: u32, stmts: &[Stmt]) -> String {
         .unwrap_or_default()
 }
 
-/// `wanted`: std modules a check of the program found it needs (see `Std::declaring`).
-pub fn load(std: &Std, user: &str, roots: &Roots, wanted: &[String]) -> Loaded {
+pub fn load(std: &Std, user: &str, roots: &Roots) -> Loaded {
     enum Got {
         Std(usize),
         Lib(Parsed),
@@ -354,7 +353,6 @@ pub fn load(std: &Std, user: &str, roots: &Roots, wanted: &[String]) -> Loaded {
         .collect();
     from_prelude.sort();
     queue.extend(from_prelude.into_iter().map(|m| (m.clone(), None)));
-    queue.extend(wanted.iter().map(|m| (m.clone(), None)));
     let is_std = |m: &str| m.split_once('.').is_some_and(|(lib, _)| lib == "std");
     let exists = |m: &str| match is_std(m) {
         true => std.index.contains_key(m),

@@ -288,42 +288,32 @@ fn back(f: &Front) -> Option<(inst::Program, Vec<Diag>)> {
 }
 
 fn front(std: &Std, user_src: &str, roots: &Roots) -> Front {
-    // A method the program calls that no loaded module declares loads the std modules that
-    // do, and the program is read again (R11.3.4); each round loads at least one more module.
-    let mut wanted: Vec<String> = Vec::new();
-    loop {
-        let loaded = modules::load(std, user_src, roots, &wanted);
-        // What the parser could not read is checked as error nodes; a later layer says nothing
-        // on what the parser rejected, and every other unit is checked as if it were alone.
-        let rejected: Vec<SourceId> = (loaded.poisoned.iter().cloned())
-            .chain(loaded.errors.iter().filter_map(|m| m.at.clone()))
-            .collect();
-        let diags = |stage, es: &[diag::Msg]| staged(stage, es, &loaded, &rejected);
-        let mut out = diags(Stage::Syntax, &loaded.errors);
-        let (d, main) = decls::collect(std.decls(), &loaded.modules, &loaded.seen, &loaded.prelude);
-        out.extend(diags(Stage::Decls, &d.errors));
-        let mut t = check::check(&d, &main, &loaded);
-        let more = std.decls().declaring(&t.missing, &d);
-        if !more.is_empty() {
-            wanted.extend(more);
-            continue;
-        }
-        out.extend(diags(Stage::Check, &t.errors));
-        let g = lower::lower(&d, &t, &loaded);
-        out.extend(diags(Stage::Lower, &g.errors));
-        for (f, es) in &g.deferred {
-            let low = es.iter().map(|e| e.clone().from_layer(Stage::Lower.name()));
-            t.deferred.entry(*f).or_default().extend(low);
-        }
-        return Front {
-            loaded,
-            rejected,
-            d,
-            t,
-            g,
-            main,
-            diags: out,
-        };
+    let loaded = modules::load(std, user_src, roots);
+    // What the parser could not read is checked as error nodes; a later layer says nothing
+    // on what the parser rejected, and every other unit is checked as if it were alone.
+    let rejected: Vec<SourceId> = (loaded.poisoned.iter().cloned())
+        .chain(loaded.errors.iter().filter_map(|m| m.at.clone()))
+        .collect();
+    let diags = |stage, es: &[diag::Msg]| staged(stage, es, &loaded, &rejected);
+    let mut out = diags(Stage::Syntax, &loaded.errors);
+    let (d, main) = decls::collect(std.decls(), &loaded.modules, &loaded.seen, &loaded.prelude);
+    out.extend(diags(Stage::Decls, &d.errors));
+    let mut t = check::check(&d, &main, &loaded);
+    out.extend(diags(Stage::Check, &t.errors));
+    let g = lower::lower(&d, &t, &loaded);
+    out.extend(diags(Stage::Lower, &g.errors));
+    for (f, es) in &g.deferred {
+        let low = es.iter().map(|e| e.clone().from_layer(Stage::Lower.name()));
+        t.deferred.entry(*f).or_default().extend(low);
+    }
+    Front {
+        loaded,
+        rejected,
+        d,
+        t,
+        g,
+        main,
+        diags: out,
     }
 }
 
@@ -452,6 +442,20 @@ impl Compiled {
 mod tests {
     use super::*;
     use modules::PROGRAM;
+
+    /// A method found in a std module the program does not load is called without loading it
+    /// (R11.3.4), so the modules loaded stay the ones the text names.
+    #[test]
+    fn a_method_call_loads_no_module() {
+        let seen = |src: &str| {
+            let f = front(&Std::read(), src, &Roots::std());
+            assert!(f.diags.is_empty(), "{:?}", f.diags);
+            f.d.seen.clone()
+        };
+        let g = "domain R = 0..2\ndomain C = 0..3\nlet g: [R, C]Int = [R, C] (r, c) => 10 * Int(r) + Int(c)\n";
+        let called = seen(&format!("{g}print(g.transposed()[C(2), R(1)])\n"));
+        assert_eq!(called, seen(&format!("{g}print(g[R(1), C(2)])\n")));
+    }
 
     /// A fn's sites are its own: one written above it leaves its sites and their places as
     /// they were.

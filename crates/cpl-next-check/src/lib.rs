@@ -270,8 +270,6 @@ pub struct Typed {
     pub deferred: HashMap<FnId, Vec<Msg>>,
     /// The library fns reached only through a trait: what is wrong in one is said if it runs.
     pub quiet: HashSet<FnId>,
-    /// Members the program or a library asked for that nothing loaded declares.
-    pub missing: Vec<String>,
 }
 
 enum SetVar {
@@ -348,7 +346,6 @@ struct Cx<'a> {
     /// does not build refuses only a program whose instances run them.
     through_trait: Vec<FnId>,
     /// Members asked for that nothing loaded declares.
-    missing: Vec<String>,
     /// Each library `const`'s global, once its initializer is checked.
     consts: Vec<Option<LocalId>>,
     const_busy: Vec<bool>,
@@ -434,7 +431,6 @@ pub fn check(d: &Decls, main: &[(ItemId, ast::Stmt)], src: &crate::modules::Load
         module: d.program,
         reached: Vec::new(),
         through_trait: Vec::new(),
-        missing: Vec::new(),
         reported: HashSet::new(),
         consts: vec![None; d.consts.len()],
         const_busy: vec![false; d.consts.len()],
@@ -694,7 +690,6 @@ pub fn check(d: &Decls, main: &[(ItemId, ast::Stmt)], src: &crate::modules::Load
         param_adds,
         call_adds,
         errors: cx.errors,
-        missing: cx.missing,
         deferred,
         quiet: quiet_fns,
     }

@@ -135,10 +135,10 @@ impl Decls {
                 .is_some_and(|targs| self.bounds_met(im, &targs))
         })
     }
-    /// The library method `name` whose `self` can be `recv` (R11.3.4).
+    /// The library method `name` whose `self` can be `recv`, from any std module whether the
+    /// program loads it or not: a method call needs no import (R11.3.4).
     pub fn method_for(&self, name: &str, recv: &Ty) -> Option<FnId> {
-        (self.methods.get(name)?.iter().copied())
-            .find(|f| self.seen(self.f(*f).module) && self.self_fits(*f, recv))
+        (self.methods.get(name)?.iter().copied()).find(|f| self.self_fits(*f, recv))
     }
     /// The fn of an impl over a shape of `recv`'s struct (`impl Rev<[D]T>:`) named `name` whose
     /// `self` `recv` fits, as a trait impl's header is matched (R08.1.3).

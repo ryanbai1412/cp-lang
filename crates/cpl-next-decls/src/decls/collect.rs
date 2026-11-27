@@ -16,23 +16,6 @@ pub struct Prepared {
     shapes: Vec<Vec<String>>,
     /// Each record shape std writes and the modules that write it.
     writers: HashMap<Vec<String>, Vec<ModId>>,
-    /// Each name a std free method answers to, `@aka` and `@was` too, and its modules.
-    methods: HashMap<String, Vec<ModId>>,
-}
-
-impl Prepared {
-    /// The std modules `d` does not load that declare a method `names` calls and found nowhere:
-    /// a method call needs no import (R11.3.4), so a check that finds none asks for these.
-    pub fn declaring(&self, names: &[String], d: &Decls) -> Vec<String> {
-        let mut out: Vec<String> = (names.iter())
-            .flat_map(|n| self.methods.get(n).into_iter().flatten())
-            .filter(|m| !d.seen(**m))
-            .map(|m| d.module_names[m.0].clone())
-            .collect();
-        out.sort();
-        out.dedup();
-        out
-    }
 }
 
 /// Std's declarations: `mods` are the core and std's modules.
@@ -42,14 +25,6 @@ pub fn prepare(mods: &[crate::modules::Module]) -> Prepared {
     for mi in 0..mods.len() {
         for shape in crate::records::shapes(&mods[mi..=mi], &variadics) {
             std.writers.entry(shape).or_default().push(ModId(mi));
-        }
-    }
-    for fs in std.d.methods.values() {
-        for f in fs {
-            let fd = std.d.f(*f);
-            for n in std::iter::once(&fd.name).chain(&fd.aka).chain(&fd.was) {
-                std.methods.entry(n.clone()).or_default().push(fd.module);
-            }
         }
     }
     let d = std::mem::take(&mut std.d);
@@ -1153,7 +1128,6 @@ fn layer(
         public,
         shapes,
         writers: HashMap::new(),
-        methods: HashMap::new(),
     };
     (layer, main)
 }
