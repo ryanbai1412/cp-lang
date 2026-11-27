@@ -100,19 +100,16 @@ static inline cpl_raw<cpl_char> cpl_raw_text(const char* s, size_t n) {
     return r;
 }
 template <class T> static inline T cpl_get(const cpl_raw<T>& r, int64_t i) {
-    if (i < 0 || (size_t)i >= r.size()) cpl_fail(CPL_READ_OUTSIDE);
-    return r[(size_t)i];
+    return r[cpl_read_cell(i, (int64_t)r.size())];
 }
 template <class T> static inline T cpl_take(cpl_raw<T>& r, int64_t i) {
-    if (i < 0 || (size_t)i >= r.size()) cpl_fail(CPL_READ_OUTSIDE);
-    return std::move(r[(size_t)i]);
+    return std::move(r[cpl_read_cell(i, (int64_t)r.size())]);
 }
 template <class R> static inline R cpl_raw_cap(int64_t n) {
     return R(cpl_storage_size(n));
 }
 template <class T> static inline cpl_unit cpl_set(cpl_raw<T>& r, int64_t i, const T& x) {
-    if (i < 0 || (size_t)i >= r.size()) cpl_fail(CPL_WRITE_OUTSIDE);
-    r[(size_t)i] = x;
+    r[cpl_write_cell(i, (int64_t)r.size())] = x;
     return cpl_unit{};
 }
 static inline bool cpl_input_left() {

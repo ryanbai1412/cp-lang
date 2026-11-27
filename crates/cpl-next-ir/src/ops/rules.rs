@@ -102,6 +102,7 @@ kernels! {
     ctz(u: u64) -> i64 { Ok(i64::from(u.trailing_zeros())) } "return u ? __builtin_ctzll(u) : 64;"
     clz(u: u64) -> i64 { Ok(i64::from(u.leading_zeros())) } "return u ? __builtin_clzll(u) : 64;"
     bit_width(u: u64) -> i64 { clz(u).map(|z| 64 - z) } "return 64 - cpl_k_clz(u);"
+    cell(i: i64, len: i64) -> usize { debug_assert!(i < len); Ok(i as usize) } "return (size_t)i;"
     int_of(u: u64) -> i64 { Ok(u as i64) } "return (int64_t)u;"
     char_of(x: i64) -> u8 { Ok(x as u8) } "return cpl_char{(uint8_t)x};"
     size(n: i64) -> usize { Ok(n as usize) } "return (size_t)n;"
@@ -144,6 +145,9 @@ rows! {
     char_of(x: i64) -> u8 [(x >> 7) != 0 => CharPastAscii] char_of;
     /// The number of cells `raw_new(n, _)` makes.
     storage_size(n: i64) -> usize [n < 0 => NegativeSize, n > MAX_STORAGE => PastMemoryLimit] size;
+    /// Cell `i` of storage with `len` cells, for a read and for a write.
+    read_cell(i: i64, len: i64) -> usize [(i < 0) | (i >= len) => ReadOutside] cell;
+    write_cell(i: i64, len: i64) -> usize [(i < 0) | (i >= len) => WriteOutside] cell;
     // The checks std makes (`key_check`, `range_check`): each passes when its operand is true.
     check_key(ok: bool) -> Unit [!ok => KeyOutside] pass;
     check_range(ok: bool) -> Unit [!ok => RangeCut] pass;

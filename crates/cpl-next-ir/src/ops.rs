@@ -305,10 +305,11 @@ pub fn show_fmt(v: Scalar, f: Fmt, out: &mut String) {
 
 /// Cell `i` of storage of `len` cells, for a read or a write.
 pub fn cell(i: i64, len: usize, write: bool) -> Result<usize, Fault> {
-    match usize::try_from(i) {
-        Ok(i) if i < len => Ok(i),
-        _ if write => Err(Fault::WriteOutside),
-        _ => Err(Fault::ReadOutside),
+    let len = len as i64;
+    if write {
+        rules::write_cell(i, len)
+    } else {
+        rules::read_cell(i, len)
     }
 }
 
