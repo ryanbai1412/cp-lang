@@ -808,9 +808,19 @@ impl<'a> Cx<'a> {
                 };
             }
         }
-        if let Some(decls::Named::Const(d)) = self.d.named(self.module, n) {
-            let f = self.fnref(d, Vec::new(), Vec::new());
-            return self.call_fn(f, None, &[], span, None);
+        if let Some(decls::Named::Const(c)) = self.d.named(self.module, n) {
+            return match self.library_const(c, span) {
+                Some((v, ty)) => TExpr {
+                    kind: TK::Var(v),
+                    ty,
+                    span,
+                },
+                None => TExpr {
+                    kind: TK::Error,
+                    ty: Ty::Error,
+                    span,
+                },
+            };
         }
         if let Some(d) = self.d.fn_named(self.module, n) {
             let f = self.fnref(d, Vec::new(), Vec::new());

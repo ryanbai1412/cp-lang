@@ -297,6 +297,11 @@ struct Cx<'a> {
     through_trait: Vec<FnId>,
     /// Members asked for that nothing loaded declares.
     missing: Vec<String>,
+    /// Each library `const`'s global, once its initializer is checked.
+    consts: Vec<Option<LocalId>>,
+    const_busy: Vec<bool>,
+    /// The code that sets them, first reads first, above the program's.
+    const_init: Vec<TStmt>,
 }
 
 pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded) -> Typed {
@@ -352,6 +357,9 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded)
         through_trait: Vec::new(),
         missing: Vec::new(),
         reported: HashSet::new(),
+        consts: vec![None; d.consts.len()],
+        const_busy: vec![false; d.consts.len()],
+        const_init: Vec::new(),
     };
     // The set each fn returns is one variable per declaration, filled as bodies are checked.
     for (id, f) in d.fns.iter().enumerate() {
@@ -514,7 +522,8 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded)
         }
     }
     // Zonk: every variable is replaced by what it was solved to.
-    let mut main_z = main_out;
+    let mut main_z = std::mem::take(&mut cx.const_init);
+    main_z.extend(main_out);
     for s in &mut main_z {
         cx.zonk_stmt(s);
     }
@@ -773,5 +782,78 @@ fn yield_each(e: &ast::Expr) -> ast::Block {
     ast::Block {
         stmts: vec![walk],
         span: e.span,
+    }
+}
+
+impl Cx<'_> {
+    /// A library `const`'s global, checked once, when a read first reaches it: it is set at
+    /// program start, above the program's code, after the consts its initializer reads (R01.6.1).
+    fn library_const(&mut self, c: decls::ConstId, span: Span) -> Option<(VarRef, Ty)> {
+        if let Some(g) = self.consts[c.0] {
+            return Some((VarRef::Global(g), self.globals[g].ty.clone()));
+        }
+        let d = self.d;
+        let k = &d.consts[c.0];
+        if self.const_busy[c.0] {
+            let code = cpl_diag::codes::DEFINITION_CYCLE.0;
+            let msg = format!("{code}: const `{}` is read by its own initializer", k.name);
+            self.err(span, msg);
+            return None;
+        }
+        self.const_busy[c.0] = true;
+        // Checked as top-level code of its module, whatever body first read it.
+        let body = (
+            self.decl.take(),
+            std::mem::take(&mut self.generics),
+            std::mem::take(&mut self.n_sets),
+            std::mem::take(&mut self.locals),
+            std::mem::replace(&mut self.scopes, vec![HashMap::new(), HashMap::new()]),
+            self.self_local.take(),
+            std::mem::replace(&mut self.ret, Ty::Unit),
+            self.region.take(),
+            (
+                std::mem::take(&mut self.loops),
+                std::mem::take(&mut self.in_for),
+            ),
+            (std::mem::take(&mut self.allow_region), self.recur.take()),
+            (
+                std::mem::take(&mut self.selves),
+                std::mem::take(&mut self.group),
+            ),
+            (std::mem::take(&mut self.ahead), self.nested.take()),
+            std::mem::take(&mut self.joining),
+            std::mem::replace(&mut self.item_off, k.item),
+            std::mem::replace(&mut self.module, k.module),
+        );
+        let mut out = vec![TStmt::Item(k.item)];
+        let want = (k.ty.as_ref()).map(|t| self.body_ty(t, k.init.span, &mut out));
+        let mut e = self.expr(&k.init, want.as_ref());
+        if let Some(t) = &want {
+            e = self.coerce(e, t);
+        }
+        (
+            self.decl,
+            self.generics,
+            self.n_sets,
+            self.locals,
+            self.scopes,
+        ) = (body.0, body.1, body.2, body.3, body.4);
+        (self.self_local, self.ret, self.region) = (body.5, body.6, body.7);
+        ((self.loops, self.in_for), (self.allow_region, self.recur)) = (body.8, body.9);
+        ((self.selves, self.group), (self.ahead, self.nested)) = (body.10, body.11);
+        (self.joining, self.item_off, self.module) = (body.12, body.13, body.14);
+        self.globals.push(Local {
+            name: k.name.clone(),
+            ty: e.ty.clone(),
+            top: true,
+            mutable: false,
+            fixed: true,
+        });
+        let g = self.globals.len() - 1;
+        out.push(TStmt::Let(VarRef::Global(g), e));
+        self.const_init.extend(out);
+        self.consts[c.0] = Some(g);
+        self.const_busy[c.0] = false;
+        Some((VarRef::Global(g), self.globals[g].ty.clone()))
     }
 }

@@ -1054,6 +1054,7 @@ std-geometry/polygon-area-degenerate.cp
 std-geometry/sign-eps-at-the-boundary.cp
 std-geometry/vec-rot-by-unit-x-is-identity.cp
 std-graph/out-on-a-table-of-non-lists-has-no-method.cp
+std-grid/dir4.cp
 std-hashmap/counter-is-a-std-struct-a-user-may-shadow.cp
 std-hashmap/flatmap-is_empty-1.cp
 std-hashmap/flatmap-new-1.cp

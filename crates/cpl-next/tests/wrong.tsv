@@ -497,7 +497,6 @@ std-graph/out-on-a-table-of-lists-reads-the-list.cp	wrong-reject	check: program:
 std-grid/adj.cp	wrong-reject	check: std.grid:202:20: E0203: `D` has no member `delta`
 std-grid/cell-neighbour-getters.cp	wrong-reject	check: program:10:95: E0606: `Tuple2<R, C>` does not implement `Indexed`
 std-grid/dir4-up-down-deltas.cp	wrong-reject	check: program:2:9: E0201: unknown name `Dir4`
-std-grid/dir4.cp	wrong-reject	check: std.grid:90:46: E0201: unknown name `DR`
 std-grid/dir8.cp	wrong-reject	check: program:2:43: E0302: expected `Mapped<List<Dir8>, Dir8, Tuple2<Int, Int>>`, found `List<Tuple2<Int, Int>>`
 std-hashmap/hashmap-of-a-list-is-rejected.cp	wrong-error	wanted E0302 on line 4, got: check: program:4:9: E0201: unknown name `HashMap`
 std-hashmap/hashmap-of-an-int-is-rejected.cp	wrong-error	wanted E0302 on line 3, got: check: program:3:1: E0204: unknown type `HashMap`

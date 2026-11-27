@@ -143,6 +143,19 @@ pub struct TraitRef {
     pub args: Vec<Ty>,
 }
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct ConstId(pub usize);
+
+/// A library's `const NAME[: T] = init`.
+#[derive(Clone, Debug)]
+pub struct LibConst {
+    pub module: ModId,
+    pub name: String,
+    pub item: u32,
+    pub ty: Option<ast::Type>,
+    pub init: ast::Expr,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct AliasId(pub usize);
 /// `type Name<G> = T`: `T` is read in its module's names, where `Name` itself means what it means
 /// outside (R02.6.2).
@@ -188,8 +201,8 @@ pub enum Named {
     /// A library item the slice does not build: an index into `Decls::refused`, said only
     /// when a program names it.
     Refused(usize),
-    /// A library's `const N: T = e`: a fn of no arguments that each read of `N` calls.
-    Const(FnId),
+    /// A library's `const`: a global its initializer sets once, at program start (R01.6.1).
+    Const(ConstId),
 }
 /// What a method sits in.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -215,6 +228,7 @@ pub struct Decls {
     pub module_errors: Vec<Vec<Msg>>,
     /// Why each `Named::Refused` library item is not built.
     pub refused: Vec<String>,
+    pub consts: Vec<LibConst>,
     pub struct_sets: HashMap<StructId, usize>,
     /// `struct SegTree<D, T, F = Int>`: each struct's default type arguments, in its parameters.
     pub struct_defaults: HashMap<StructId, Vec<Option<Ty>>>,
@@ -672,10 +686,21 @@ pub fn collect(
                         aliases.push((mid, at, name.text.clone(), generics, ty.clone()));
                     }
                     StmtKind::Fn(_) | StmtKind::Impl { .. } => pending.push((mid, *item, s, None)),
-                    StmtKind::Const { generics, .. }
-                        if d.is_library(mid) && generics.is_empty() =>
-                    {
-                        pending.push((mid, *item, s, None))
+                    StmtKind::Const {
+                        name,
+                        generics,
+                        ty,
+                        init: Some(init),
+                        ..
+                    } if d.is_library(mid) && generics.is_empty() => {
+                        own[mi].insert(name.text.clone(), Named::Const(ConstId(d.consts.len())));
+                        d.consts.push(LibConst {
+                            module: mid,
+                            name: name.text.clone(),
+                            item: *item,
+                            ty: ty.clone(),
+                            init: init.clone(),
+                        });
                     }
                     StmtKind::Use { .. } => imports.push((mid, s)),
                     // A library's context is only reached by a `with`, which the checker refuses.
@@ -1276,36 +1301,6 @@ pub fn collect(
                         module: mid,
                         derived,
                     });
-                }
-                (
-                    StmtKind::Const {
-                        name,
-                        ty,
-                        init: Some(init),
-                        ..
-                    },
-                    _,
-                ) => {
-                    let Some(ty) = ty else {
-                        let e = format!("slice: a library const without a type (`{}`)", name.text);
-                        own[mi].insert(name.text.clone(), Named::Refused(d.refused.len()));
-                        d.refused.push(e);
-                        continue;
-                    };
-                    let f = ast::FnDecl {
-                        name: name.clone(),
-                        generics: Vec::new(),
-                        bounds: Vec::new(),
-                        params: Vec::new(),
-                        ret: Some(ty.clone()),
-                        lends: None,
-                        uses: Vec::new(),
-                        body: ast::FnBody::Expr(init.clone()),
-                        sig_span: name.span,
-                    };
-                    let fid = add_fn(&mut d, mid, item, s, &f, FREE);
-                    own[mi].insert(name.text.clone(), Named::Const(fid));
-                    d.views[mi].insert(name.text.clone(), Named::Const(fid));
                 }
                 (StmtKind::Fn(f), _) => {
                     let fid = add_fn(&mut d, mid, item, s, f, FREE);
