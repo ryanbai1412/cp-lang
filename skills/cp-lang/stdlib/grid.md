@@ -52,10 +52,10 @@ The columns of a grid, made by `g.cols`; lends the grid.
 - `@get fn down<R, C>(self: (R, C)) -> ?(R, C)` — \(O(1)\); The cell one row down from `self`, or `None` on the bottom row.
 - `@get fn left<R, C>(self: (R, C)) -> ?(R, C)` — \(O(1)\); The cell one column left of `self`, or `None` in the first column.
 - `@get fn right<R, C>(self: (R, C)) -> ?(R, C)` — \(O(1)\); The cell one column right of `self`, or `None` in the last column.
-- `fn step<R, C, D: Dir>(self: (R, C), d: D) -> ?(R, C)` — \(O(1)\); The cell one step from `self` in direction `d` (a `Dir4` or a `Dir8`), or `None` when that step leaves the grid `(R, C)`.
-- `fn ray<R, C, D: Dir>(self: (R, C), d: D) -> yields (R, C)` — \(O(1)\) to create, \(O(1)\) per cell; The cells from `self` (not included) to the edge of the grid in direction `d`, nearest first: `p.step(d)`, then a step from that, until a step leaves the grid.
-- `@get fn adj4<R, C>(self: (R, C)) -> yields (R, C)` — \(O(1)\) to create, \(O(1)\) per cell; The up to four cells sharing a side with `self`: `self.step(d)` for each `d` in `Dir4.all()`, skipping steps that leave the grid.
-- `@get fn adj8<R, C>(self: (R, C)) -> yields (R, C)` — \(O(1)\) to create, \(O(1)\) per cell; The up to eight cells sharing a side or a corner with `self`: `self.step(d)` for each `d` in `Dir8.all()`, skipping steps that leave the grid.
+- `fn step<R: Ordered, C: Ordered, D: Dir>(self: (R, C), d: D) -> ?(R, C)` — \(O(1)\); The cell one step from `self` in direction `d` (a `Dir4` or a `Dir8`), or `None` when that step leaves the grid `(R, C)`.
+- `fn ray<R: Ordered, C: Ordered, D: Dir>(self: (R, C), d: D) -> yields (R, C)` — \(O(1)\) to create, \(O(1)\) per cell; The cells from `self` (not included) to the edge of the grid in direction `d`, nearest first: `p.step(d)`, then a step from that, until a step leaves the grid.
+- `@get fn adj4<R: Ordered, C: Ordered>(self: (R, C)) -> yields (R, C)` — \(O(1)\) to create, \(O(1)\) per cell; The up to four cells sharing a side with `self`: `self.step(d)` for each `d` in `Dir4.all()`, skipping steps that leave the grid.
+- `@get fn adj8<R: Ordered, C: Ordered>(self: (R, C)) -> yields (R, C)` — \(O(1)\) to create, \(O(1)\) per cell; The up to eight cells sharing a side or a corner with `self`: `self.step(d)` for each `d` in `Dir8.all()`, skipping steps that leave the grid.
 - `fn transposed<R, C, T>(self: [R, C]T) -> [C, R]T` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; A new grid with rows and columns exchanged: `g.transposed()[c, r] == g[r, c]` for every cell.
 - `@get fn rows<R, C, T>(self: [R, C]T) -> lends GridRows<R, C, T>` — \(O(1)\) to make, \(O(1)\) per row; \(O(1)\).
 - `@get fn cols<R, C, T>(self: [R, C]T) -> lends GridCols<R, C, T>` — \(O(1)\) to make, \(O(1)\) per column; \(O(1)\).

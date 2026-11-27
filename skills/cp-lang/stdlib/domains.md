@@ -10,6 +10,14 @@ Import: `use std.domains.{...}`.
 
 The positions of a domain (R04.2): `D: Domain` takes any domain, and every domain has it.
 
+## `trait Ordered(Domain)`
+
+The order of a domain's positions (R04.2.31): stepping to a neighbour, the cuts around a position and its integer.
+
+## `trait Index`
+
+A library type is a domain by implementing `Index`: `count` positions, `ord` a value's place in the walk and `nth` the value at a place (R04.2.26).
+
 ## `trait Finite`
 
 A type with finitely many values, so a dense table over it has an end (R06.4.1): a range with constant ends, a cut of one, or a tuple of them.
