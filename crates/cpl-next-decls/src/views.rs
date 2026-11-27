@@ -51,6 +51,9 @@ pub trait Signatures: TypeTables {
     fn impl_args(&self, im: &ImplDecl, t: &Ty) -> Option<Vec<Ty>>;
     /// Whether `t` has an impl of `tr`.
     fn has_impl(&self, t: &Ty, tr: TraitId) -> bool;
+    /// The traits that declare a method `name`, by id (`traits(name)`, indexed from the
+    /// signatures).
+    fn traits_with(&self, name: &str) -> Vec<TraitId>;
 }
 
 /// `scope(ModId)`: what a name means in a module.
@@ -92,6 +95,12 @@ impl Signatures for Decls {
     }
     fn has_impl(&self, t: &Ty, tr: TraitId) -> bool {
         Decls::has_impl(self, t, tr)
+    }
+    fn traits_with(&self, name: &str) -> Vec<TraitId> {
+        (0..self.traits.len())
+            .map(TraitId)
+            .filter(|tr| self.traits[tr.0].methods.contains_key(name))
+            .collect()
     }
 }
 

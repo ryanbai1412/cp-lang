@@ -127,10 +127,8 @@ impl<'a> Cx<'a> {
             Ty::Param(p) => self.bound_traits(*p).iter().any(|b| extends(b.tr, tr)),
             t => !matches!(t, Ty::Var(_) | Ty::Error) && self.d.has_impl(t, tr),
         };
-        let mut lacked = (0..self.d.traits.len()).map(TraitId).filter(|&tr| {
-            let t = self.d.t(tr);
-            t.methods.contains_key(name) && !has(tr) && t.supers.iter().any(|s| has(s.tr))
-        });
+        let mut lacked = (self.d.traits_with(name).into_iter())
+            .filter(|&tr| !has(tr) && self.d.t(tr).supers.iter().any(|s| has(s.tr)));
         let tr = lacked.next().filter(|_| lacked.next().is_none())?;
         let (tn, shown) = (&self.d.t(tr).name, self.show(rt));
         Some(match rt {
@@ -358,7 +356,8 @@ impl<'a> Cx<'a> {
     /// bounds alone (R08.2.2), so the error names the bound to write. None when no trait has a
     /// self-less fn `name`.
     fn unbound_static(&mut self, t: &str, name: &ast::Name, span: Span) -> Option<TExpr> {
-        let mut givers: Vec<&str> = (self.d.traits.iter())
+        let mut givers: Vec<&str> = (self.d.traits_with(&name.text).into_iter())
+            .map(|tr| self.d.t(tr))
             .filter(|tr| !tr.alias)
             .filter(|tr| {
                 (tr.methods.get(&name.text))
@@ -446,12 +445,11 @@ impl<'a> Cx<'a> {
         call: Option<&[ast::Arg]>,
         span: Span,
     ) -> Option<TExpr> {
-        let found: Vec<(TraitId, FnId)> = (0..self.d.traits.len())
-            .filter_map(|k| {
-                let td = &self.d.t(TraitId(k));
+        let found: Vec<(TraitId, FnId)> = (self.d.traits_with(&name.text).into_iter())
+            .filter_map(|tr| {
+                let td = self.d.t(tr);
                 let m = *td.methods.get(&name.text)?;
                 let fd = self.d.f(m);
-                let tr = TraitId(k);
                 (fd.self_mode == SelfMode::None
                     && takes(fd, call)
                     && td.defaults.is_empty()
