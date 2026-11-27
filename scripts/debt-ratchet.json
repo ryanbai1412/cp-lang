@@ -329,7 +329,7 @@
   "next_split": 7,
   "next_wrong_accepts": 20,
   "next_core_checks": 6,
-  "next_ignored_settings": 6,
+  "next_ignored_settings": 0,
   "next_ownership_outside_own": 2,
   "fast_unchecked": 0,
   "next_lent_outside_own": 0,

@@ -25,7 +25,7 @@ impl<'a> Cx<'a> {
                     self.zonk_expr(e)
                 }
             }
-            TStmt::Break | TStmt::Continue | TStmt::Item(_) => {}
+            TStmt::Break | TStmt::Continue | TStmt::Item(_) | TStmt::Checks(_) => {}
             TStmt::Cases(count, body) => {
                 if let Some(c) = count {
                     self.zonk_expr(c)
@@ -116,7 +116,7 @@ impl<'a> Cx<'a> {
             TK::Struct(fs) => fs.iter_mut().for_each(|a| self.zonk_expr(a)),
             TK::Lambda { body, .. } => self.zonk_expr(body),
             TK::FnItem(f) => *f = self.zonk_fnref(f),
-            TK::Bin(_, a, b, _) | TK::Cmp(_, a, b) | TK::Slot(a, b) => {
+            TK::Bin(_, a, b) | TK::Cmp(_, a, b) | TK::Slot(a, b) => {
                 self.zonk_expr(a);
                 self.zonk_expr(b);
             }

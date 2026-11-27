@@ -7,6 +7,7 @@ use cpl_diag::Span;
 use cpl_next_decls::decls::{self, Decls, ModId, Named, Owner, SelfMode, TraitRef};
 use cpl_next_decls::views::{Scope, Signatures, TypeTables};
 use cpl_next_decls::{diag, kind_name, modules, plain, records};
+use cpl_next_ir::build::{Build, CheckName, Checks};
 use cpl_next_ir::ids::ItemId;
 use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_next_ir::{ir, ops, ty};
@@ -96,7 +97,7 @@ impl TExpr {
             }
             TK::DomOrd(e) | TK::CharOf(e) | TK::CodeOf(e) | TK::Ordinal(e) => e.each(f),
             TK::Variant(_, e) | TK::Tag(e) | TK::Payload(e, _) => e.each(f),
-            TK::Slot(a, b) | TK::Bin(_, a, b, _) | TK::Cmp(_, a, b) => {
+            TK::Slot(a, b) | TK::Bin(_, a, b) | TK::Cmp(_, a, b) => {
                 a.each(f);
                 b.each(f);
             }
@@ -121,7 +122,7 @@ impl TStmt {
             }
             TStmt::For(_, a, b, c) => [a, b, c].iter().for_each(|e| e.each(f)),
             TStmt::Return(e) => e.iter().for_each(|e| e.each(f)),
-            TStmt::Break | TStmt::Continue | TStmt::Item(_) => {}
+            TStmt::Break | TStmt::Continue | TStmt::Item(_) | TStmt::Checks(_) => {}
             TStmt::Cases(e, stmts) => {
                 e.iter().for_each(|e| e.each(f));
                 stmts.iter().for_each(|s| s.each(f));
@@ -192,7 +193,7 @@ pub enum TK {
     Elem(Box<TExpr>),
     /// `buf[i]` on core's raw storage: cell `i`, a place a container's `IndexedMut` lends (R05.3.5).
     Slot(Box<TExpr>, Box<TExpr>),
-    Bin(BinOp, Box<TExpr>, Box<TExpr>, Overflow),
+    Bin(BinOp, Box<TExpr>, Box<TExpr>),
     Cmp(CmpOp, Box<TExpr>, Box<TExpr>),
     Not(Box<TExpr>),
     Neg(Box<TExpr>),
@@ -253,14 +254,6 @@ pub enum Callee {
     Value(Box<TExpr>),
 }
 
-/// What `Int` arithmetic does past `Int`: trap, or wrap where `with checks(overflow: off)`
-/// covers it (R09.4.2).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Overflow {
-    Traps,
-    Wraps,
-}
-
 #[derive(Clone, Debug)]
 pub enum TStmt {
     Let(VarRef, TExpr),
@@ -278,6 +271,9 @@ pub enum TStmt {
     /// Top-level code only: the statements after this one, to the end of the block, are from
     /// the item that starts at this offset in the source. Their spans are relative to it.
     Item(ItemId),
+    /// The checks kept from here to the end of the block (R09.4): `with checks(..)` and
+    /// `unchecked:` set them, and lowering leaves out each check they do not keep.
+    Checks(Checks),
     /// In a generator: hand a value to the caller's loop body.
     Yield(TExpr),
     /// In a lender: hand a place to the caller's code; the rest of the fn runs after it.
@@ -355,6 +351,8 @@ pub struct DomInfo {
     pub counted: bool,
 }
 pub struct Typed {
+    /// The checks the build keeps where no `with checks(..)` says otherwise (contract 0).
+    pub checks: Checks,
     pub domains: Vec<DomInfo>,
     pub fns: HashMap<FnId, TypedFn>,
     /// The copies of `uses` fns checked under context values a call gave them: `FnRef::ctx`
@@ -528,8 +526,8 @@ struct Cx<'a> {
     const_busy: Vec<bool>,
     /// The code that sets them, first reads first, above the program's.
     const_init: Vec<TStmt>,
-    /// Inside `with checks(overflow: off)`: `Int` arithmetic wraps.
-    wraps: bool,
+    /// The checks kept where the code being checked is (R09.4).
+    checks_kept: Checks,
     /// The `?` extents being checked, innermost last, and the statement right-hand side that is one.
     tries: Vec<question::Extent>,
     /// The bounds an `if T: Tr:` branch around this point has tested, of `T`'s parameter.
@@ -585,7 +583,7 @@ pub fn check(
     src: &crate::modules::Loaded,
     consts: &dyn Consts,
     roots: &[ModId],
-    judge: Option<cpl_next_ir::build::Judge>,
+    build: Build,
     prior: &Ids,
 ) -> Typed {
     let mut solved = HashMap::new();
@@ -596,7 +594,7 @@ pub fn check(
             src,
             consts,
             roots,
-            judge.clone(),
+            build.clone(),
             Earlier {
                 ret: solved.clone(),
                 ids: prior,
@@ -622,12 +620,13 @@ fn check_with(
     src: &crate::modules::Loaded,
     consts: &dyn Consts,
     roots: &[ModId],
-    judge: Option<cpl_next_ir::build::Judge>,
+    build: Build,
     earlier: Earlier,
 ) -> (Typed, HashMap<FnId, Ty>) {
+    let Build { judge, checks } = build;
     let mut cx = Cx {
         values: consts,
-        wraps: false,
+        checks_kept: checks,
         tries: Vec::new(),
         assumed: Vec::new(),
         rhs_extent: None,
@@ -1004,6 +1003,7 @@ fn check_with(
         cx.errors.push(Msg::internal("a variable holding a function is assigned a function built from its own old value, so the set of functions it can hold contains itself; bind the new function to a new name"));
     }
     let typed = Typed {
+        checks,
         domains: std::mem::take(&mut cx.domains),
         fns,
         ctx_fns: ctx_fns.into_iter().map(|(_, id, tf)| (id, tf)).collect(),

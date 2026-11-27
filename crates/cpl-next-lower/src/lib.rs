@@ -4,6 +4,7 @@ use cpl_diag::Span;
 use cpl_next_check::*;
 use cpl_next_decls::decls::{Decls, FnDecl, Owner, SelfMode};
 use cpl_next_decls::diag::Msg;
+use cpl_next_ir::build::{CheckName, Checks};
 use cpl_next_ir::ids::{ItemId, SourceId};
 use cpl_next_ir::ir::*;
 use cpl_next_ir::ty::*;
@@ -64,6 +65,8 @@ struct Lw<'a> {
     made: bool,
     sites: Vec<SourceId>,
     lines: Vec<u32>,
+    /// The checks kept where the code being lowered is (`TStmt::Checks`, R09.4).
+    kept: Checks,
 }
 
 pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) -> Generic {
@@ -108,6 +111,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
         made: false,
         sites: fresh_sites().0,
         lines: fresh_sites().1,
+        kept: typed.checks,
     };
     let mut body = Vec::new();
     for s in &typed.main {
@@ -151,6 +155,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
         let before = lw.errors.len();
         let fd = d.f(*id);
         lw.off = fd.item.clone();
+        lw.kept = typed.checks;
         lw.made =
             matches!(fd.owner, Some(cpl_next_decls::decls::Owner::Impl(k)) if d.impls[k].derived);
         lw.locals = tf.locals.iter().map(|l| l.ty.clone()).collect();
@@ -345,6 +350,44 @@ impl Lw<'_> {
     fn swap_sites(&mut self, to: (Vec<SourceId>, Vec<u32>)) -> (Vec<SourceId>, Vec<u32>) {
         let lines = std::mem::replace(&mut self.lines, to.1);
         (std::mem::replace(&mut self.sites, to.0), lines)
+    }
+    /// `a / b` or `a % b` where `div` checks are off: by zero it is 0 (R09.3.6), as IR every
+    /// backend runs alike. `b ^ b` is the zero of `b`'s type, and `b` itself the result then.
+    fn divided_or_0(
+        &mut self,
+        op: Intr,
+        vs: Vec<Expr<Ty>>,
+        site: Site,
+        ty: Ty,
+        out: &mut Vec<Stmt<Ty>>,
+    ) -> Expr<Ty> {
+        let mut vs = vs.into_iter();
+        let (Some(a), Some(b)) = (vs.next(), vs.next()) else {
+            self.errors.push(Unbuilt::Operator.into());
+            return Expr {
+                site,
+                kind: EK::Unit,
+                ty,
+            };
+        };
+        let b = self.spill(b, out);
+        let ex = |kind, ty: Ty| Expr { site, kind, ty };
+        let r = self.temp(ty.clone());
+        out.push(Stmt::Let(r, b.clone()));
+        let pair = |x: &Expr<Ty>, y: Expr<Ty>| vec![Arg::Value(x.clone()), Arg::Value(y)];
+        let zero = ex(EK::Intr(Intr::BitXor, pair(&b, b.clone()), 0), ty.clone());
+        let nonzero = ex(EK::Intr(Intr::Ne, pair(&b, zero), 0), Ty::Bool);
+        let q = ex(EK::Intr(op, pair(&a, b), site), ty.clone());
+        out.push(Stmt::If(
+            nonzero,
+            vec![Stmt::Assign(Place::Local(r), q)],
+            vec![],
+        ));
+        ex(EK::Copy(Place::Local(r)), ty)
+    }
+    /// Whether a check of `kind` is made where the code being lowered is (R09.4).
+    fn keeps(&self, kind: CheckKind) -> bool {
+        kind.name().is_none_or(|n| self.kept.keeps(n))
     }
     fn site(&mut self, span: Span) -> Site {
         let at = self.off.at(span);
@@ -756,7 +799,7 @@ impl Lw<'_> {
                 let v = self.spill(v, out);
                 mk(EK::Widen(Box::new(v)))
             }
-            TK::Bin(op, l, r, _) if matches!(op, BinOp::And | BinOp::Or) => {
+            TK::Bin(op, l, r) if matches!(op, BinOp::And | BinOp::Or) => {
                 // Lazy: the right side runs only when the left does not decide.
                 let t = self.temp(Ty::Bool);
                 let lv = self.expr(l, out);
@@ -776,7 +819,7 @@ impl Lw<'_> {
                 }
                 c
             }
-            TK::Bin(op, l, r, overflow) => {
+            TK::Bin(op, l, r) => {
                 let vs = self.seq(&[l, r], out);
                 let i = match op {
                     BinOp::Add => Intr::Add,
@@ -795,12 +838,20 @@ impl Lw<'_> {
                         Intr::Add
                     }
                 };
-                let i = match overflow {
-                    Overflow::Wraps => i.wrapping(),
-                    Overflow::Traps => i,
+                // Where a check is off, the operation is the one defining its result (R09.3).
+                let i = match e.ty == Ty::Int && !self.kept.keeps(CheckName::Overflow) {
+                    true => i.wrapping(),
+                    false => i,
                 };
-                let v = mk(EK::Intr(i, vs.into_iter().map(Arg::Value).collect(), site));
-                self.spill(v, out)
+                let unchecked_div = matches!(i, Intr::Div | Intr::Rem)
+                    && e.ty != Ty::F64
+                    && !self.kept.keeps(CheckName::Div);
+                if unchecked_div {
+                    self.divided_or_0(i, vs, site, e.ty.clone(), out)
+                } else {
+                    let v = mk(EK::Intr(i, vs.into_iter().map(Arg::Value).collect(), site));
+                    self.spill(v, out)
+                }
             }
             TK::Cmp(op, l, r) => {
                 let vs = self.seq(&[l, r], out);
@@ -866,13 +917,16 @@ impl Lw<'_> {
             TK::Block(ss, v) => {
                 self.group_free
                     .extend(group_free(&self.typed.lambdas, self.in_main, ss));
+                let kept = self.kept;
                 for s in ss {
                     self.stmt(s, out);
                 }
-                match v {
+                let v = match v {
                     Some(v) => self.expr(v, out),
                     None => mk(EK::Unit),
-                }
+                };
+                self.kept = kept;
+                v
             }
             TK::DomLen(t) => mk(EK::DomLen(t.clone())),
             TK::DomCounted(t) => mk(EK::DomCounted(t.clone())),
@@ -921,7 +975,7 @@ impl Lw<'_> {
                 self.spill(sum, out)
             }
             TK::DomFrom(t, x, kind) => {
-                let kind = *kind;
+                let (kind, keep) = (*kind, self.keeps(*kind));
                 let v = self.expr(x, out);
                 let v = self.spill(v, out);
                 let int = |kind| Expr {
@@ -935,6 +989,9 @@ impl Lw<'_> {
                     ty,
                 };
                 let check = |cond: Expr<Ty>, out: &mut Vec<Stmt<Ty>>| {
+                    if !keep {
+                        return;
+                    }
                     out.push(Stmt::Check {
                         kind,
                         cond,
@@ -985,7 +1042,7 @@ impl Lw<'_> {
                     op(Intr::Ge, ord.clone(), int(EK::Int(0)), Ty::Bool),
                     op(Intr::Le, ord.clone(), int(EK::DomLen(t.clone())), Ty::Bool),
                 ];
-                for cond in within {
+                for cond in within.into_iter().filter(|_| self.keeps(CheckKind::Domain)) {
                     out.push(Stmt::Check {
                         kind: CheckKind::Domain,
                         cond,
@@ -1039,12 +1096,14 @@ impl Lw<'_> {
                     kind: EK::Intr(Intr::Below, vec![Arg::Value(v.clone()), Arg::Value(len)], 0),
                     ty: Ty::Bool,
                 };
-                out.push(Stmt::Check {
-                    kind: CheckKind::Domain,
-                    cond,
-                    msg: "a position past the domain's end".into(),
-                    site,
-                });
+                if self.keeps(CheckKind::Domain) {
+                    out.push(Stmt::Check {
+                        kind: CheckKind::Domain,
+                        cond,
+                        msg: "a position past the domain's end".into(),
+                        site,
+                    });
+                }
                 let kind = match held(t) {
                     Some(h) => EK::Intr(Intr::Add, vec![Arg::Value(v), Arg::Value(h)], 0),
                     None => v.kind,
@@ -1195,15 +1254,19 @@ impl Lw<'_> {
             TStmt::Assert(c, msg, span, kind) => {
                 let cv = self.expr(c, out);
                 let cv = self.spill(cv, out);
-                out.push(Stmt::Check {
-                    kind: *kind,
-                    cond: cv,
-                    msg: msg.clone(),
-                    site: self.site(*span),
-                });
+                if self.keeps(*kind) {
+                    let site = self.site(*span);
+                    out.push(Stmt::Check {
+                        kind: *kind,
+                        cond: cv,
+                        msg: msg.clone(),
+                        site,
+                    });
+                }
             }
             TStmt::Break => out.push(Stmt::Break),
             TStmt::Item(off) => self.off = off.clone(),
+            TStmt::Checks(kept) => self.kept = *kept,
             TStmt::Cases(count, body) => {
                 let mk = |kind, ty| Expr { site: 0, kind, ty };
                 let call = Stmt::Expr(mk(EK::Call(Target::Case, vec![], 0), Ty::Unit));

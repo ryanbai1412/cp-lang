@@ -552,12 +552,7 @@ impl Cx<'_> {
             span,
         };
         let end = TExpr {
-            kind: TK::Bin(
-                BinOp::Add,
-                Box::new(var(lo)),
-                Box::new(var(len)),
-                Overflow::Traps,
-            ),
+            kind: TK::Bin(BinOp::Add, Box::new(var(lo)), Box::new(var(len))),
             ty: Ty::Int,
             span,
         };

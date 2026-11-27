@@ -196,12 +196,7 @@ impl Cx<'_> {
                     span: dom.span,
                 };
                 let hi = TExpr {
-                    kind: TK::Bin(
-                        BinOp::Add,
-                        Box::new(var(lo)),
-                        Box::new(var(len)),
-                        Overflow::Traps,
-                    ),
+                    kind: TK::Bin(BinOp::Add, Box::new(var(lo)), Box::new(var(len))),
                     ty: Ty::Int,
                     span: dom.span,
                 };
@@ -587,7 +582,7 @@ impl Cx<'_> {
         };
         let past = |e: TExpr| {
             let one = Box::new(int(TK::Int(1)));
-            int(TK::Bin(BinOp::Add, Box::new(e), one, Overflow::Traps))
+            int(TK::Bin(BinOp::Add, Box::new(e), one))
         };
         if let Some(ord) = self.ord_ends(&t, None) {
             if step.is_some() {
@@ -688,7 +683,7 @@ impl Cx<'_> {
                 span,
             };
             hi = TExpr {
-                kind: TK::Bin(BinOp::Add, Box::new(hi), Box::new(one), Overflow::Traps),
+                kind: TK::Bin(BinOp::Add, Box::new(hi), Box::new(one)),
                 ty: Ty::Int,
                 span,
             };
@@ -807,12 +802,7 @@ impl Cx<'_> {
             span,
         };
         if inclusive {
-            hi = int(TK::Bin(
-                BinOp::Add,
-                Box::new(hi),
-                Box::new(int(TK::Int(1))),
-                Overflow::Traps,
-            ));
+            hi = int(TK::Bin(BinOp::Add, Box::new(hi), Box::new(int(TK::Int(1)))));
         }
         (vec![lo, hi, int(TK::Int(1))], piece.unwrap_or(t))
     }

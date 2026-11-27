@@ -282,6 +282,18 @@ pub enum CheckKind {
 }
 
 impl CheckKind {
+    /// The check's name in `with checks(..)` (R09.3); `None` for one no build turns off.
+    pub fn name(self) -> Option<crate::build::CheckName> {
+        use crate::build::CheckName as N;
+        match self {
+            CheckKind::Assert => Some(N::Asserts),
+            CheckKind::Domain | CheckKind::Key => Some(N::Bounds),
+            CheckKind::RangeStore => Some(N::Ranges),
+            CheckKind::ReadRange => Some(N::Reads),
+            CheckKind::Unwrap => Some(N::Unwrap),
+            CheckKind::Todo | CheckKind::Untyped => None,
+        }
+    }
     /// The trap a failed check of this kind is, in the diagnostic registry.
     pub fn code(self) -> cpl_diag::Code {
         use cpl_diag::codes;

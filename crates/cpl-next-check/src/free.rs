@@ -93,7 +93,7 @@ pub fn free_vars(e: &TExpr, top: bool, used: &mut BTreeSet<VarRef>, bound: &mut 
             free_vars(body, top, used, bound);
             bound.extend(params.iter().map(|&p| param_ref(top, p)));
         }
-        TK::Bin(_, a, b, _) | TK::Cmp(_, a, b) | TK::Slot(a, b) => {
+        TK::Bin(_, a, b) | TK::Cmp(_, a, b) | TK::Slot(a, b) => {
             free_vars(a, top, used, bound);
             free_vars(b, top, used, bound);
         }

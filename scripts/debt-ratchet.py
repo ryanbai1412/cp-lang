@@ -4443,7 +4443,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
     return out
 
 
-HARD_ZERO = frozenset({"next_oracle_callers", "next_layout_outside_table", 
+HARD_ZERO = frozenset({"next_oracle_callers", "next_ignored_settings","next_layout_outside_table", 
     "fast_unchecked", "next_lent_outside_own", "next_backend_owns_reads", "next_check_name_keys",
     "unreferenced_scripts", "explain_copy_mismatches", "link_reads_check", "tool_compiler_deps", "end_state_broken", "next_cases_removed",
     "cpp_deep_copies", "conformance_wrong_output", "cpp_sunk_copies",

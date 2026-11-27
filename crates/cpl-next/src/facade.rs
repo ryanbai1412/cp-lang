@@ -6,6 +6,8 @@ use cpl_next_ir::build::Judge;
 use std::collections::HashMap;
 use std::sync::{Arc, OnceLock};
 
+pub use cpl_next_ir::build::Checks;
+
 use crate::{
     compile, dumped, items, std_unchecked, types, units, Compiled, Diag, Form, Front, IrStage,
     Item, Outcome, Roots, Stage, Std, Type, TypedAt, Unit,
@@ -171,7 +173,14 @@ impl Session {
     pub fn program(&self) -> Result<&Program, &[Diag]> {
         let built = self.built.get_or_init(|| {
             let h = &self.snapshot.0;
-            let mut c = compile(&h.std, &h.program, &h.roots, h.events, h.judge.as_ref())?;
+            let mut c = compile(
+                &h.std,
+                &h.program,
+                &h.roots,
+                h.events,
+                h.judge.as_ref(),
+                Checks::CHECKED,
+            )?;
             if h.bodies {
                 c.without_fast();
             }
@@ -215,7 +224,13 @@ impl Session {
     pub fn units(&self) -> (&[Unit], &[Diag]) {
         let (units, diags) = self.units.get_or_init(|| {
             let h = &self.snapshot.0;
-            units(&h.std, &h.program, &h.roots, h.judge.as_ref())
+            units(
+                &h.std,
+                &h.program,
+                &h.roots,
+                h.judge.as_ref(),
+                Checks::CHECKED,
+            )
         });
         (units, diags)
     }
@@ -223,7 +238,15 @@ impl Session {
     /// The program's checked front half, which hover, definition and types read.
     fn front(&self) -> &Front {
         let h = &self.snapshot.0;
-        (self.front).get_or_init(|| crate::front(&h.std, &h.program, &h.roots, h.judge.as_ref()))
+        (self.front).get_or_init(|| {
+            crate::front(
+                &h.std,
+                &h.program,
+                &h.roots,
+                h.judge.as_ref(),
+                Checks::CHECKED,
+            )
+        })
     }
 
     /// The item the name at byte `at` of the program names, if it names one.

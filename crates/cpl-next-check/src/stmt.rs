@@ -276,7 +276,7 @@ impl<'a> Cx<'a> {
         let mut out = Vec::new();
         let mut value = None;
         let outer = self.group.len();
-        let wraps = self.wraps;
+        let checks_kept = self.checks_kept;
         let frames = self.frames.len();
         let memo = cpl_next_decls::memo_block(&b.stmts, &self.d.memo_tables);
         let (stmts, memos) = match &memo {
@@ -320,7 +320,8 @@ impl<'a> Cx<'a> {
                     continue;
                 } else if ctx.text == "checks" {
                     if let Some(w) = self.checks(args, s.span) {
-                        self.wraps = w;
+                        self.checks_kept = w;
+                        out.push(TStmt::Checks(w));
                     }
                     continue;
                 } else if let Some(fs) = self.ctx_frames(ctx, args) {
@@ -371,7 +372,7 @@ impl<'a> Cx<'a> {
             }
             self.stmt(s, &mut out);
         }
-        self.wraps = wraps;
+        self.checks_kept = checks_kept;
         self.frames.truncate(frames);
         self.captures_set(outer, &out);
         self.group.truncate(outer);
@@ -1493,9 +1494,7 @@ impl<'a> Cx<'a> {
                 body: Some(body),
             } if ctx.text == "checks" => {
                 if let Some(w) = self.checks(args, s.span) {
-                    let outer = std::mem::replace(&mut self.wraps, w);
-                    let b = self.block(body, None);
-                    self.wraps = outer;
+                    let b = self.block_keeping(w, body, s.span);
                     out.push(TStmt::Expr(b));
                 }
             }
@@ -1507,7 +1506,8 @@ impl<'a> Cx<'a> {
                 body: None,
             } if ctx.text == "checks" => {
                 if let Some(w) = self.checks(args, s.span) {
-                    self.wraps = w;
+                    self.checks_kept = w;
+                    out.push(TStmt::Checks(w));
                 }
             }
             StmtKind::With {
@@ -1540,12 +1540,9 @@ impl<'a> Cx<'a> {
                     out.push(TStmt::Expr(b));
                 }
             }
-            // `unchecked:` turns every check off in its block (R09.4.3); overflow is the one whose
-            // result it defines: `Int` arithmetic wraps.
+            // `unchecked:` turns every check off in its block, in every build (R09.4.3).
             StmtKind::Unchecked(body) => {
-                let outer = std::mem::replace(&mut self.wraps, true);
-                let b = self.block(body, None);
-                self.wraps = outer;
+                let b = self.block_keeping(Checks::NONE, body, s.span);
                 out.push(TStmt::Expr(b));
             }
             // The loader made an inline `mod`'s items a module of their own (R11.1.3).
@@ -1572,12 +1569,11 @@ impl<'a> Cx<'a> {
             }
         }
     }
-    /// Whether `Int` arithmetic wraps under `with checks(...)` (R09.4). A checked build already
-    /// runs every check, so `: on` changes nothing but `overflow: on` inside `overflow: off`.
-    fn checks(&mut self, args: &[ast::Arg], span: Span) -> Option<bool> {
-        let mut wraps = self.wraps;
+    /// The checks kept under `with checks(...)` here (R09.4): each field keeps its check on or
+    /// turns it off, from the checks kept around it.
+    fn checks(&mut self, args: &[ast::Arg], span: Span) -> Option<Checks> {
+        let mut kept = self.checks_kept;
         for a in args {
-            let name = a.name.as_ref().map(|n| n.text.as_str());
             let on = match &a.value.kind {
                 ExprKind::Name(v) if v == "on" => true,
                 ExprKind::Name(v) if v == "off" => false,
@@ -1586,16 +1582,26 @@ impl<'a> Cx<'a> {
                     return None;
                 }
             };
-            match name {
-                Some("overflow") => wraps = !on,
-                Some("ranges" | "bounds" | "unwrap" | "div" | "asserts" | "reads") if on => {}
-                _ => {
+            match a.name.as_ref().and_then(|n| CheckName::named(&n.text)) {
+                Some(c) => kept = kept.with(c, on),
+                None => {
                     self.err(span, Unbuilt::ChecksField);
                     return None;
                 }
             }
         }
-        Some(wraps)
+        Some(kept)
+    }
+    /// `body` checked and lowered with `kept` its checks: the block opens by saying so.
+    fn block_keeping(&mut self, kept: Checks, body: &ast::Block, span: Span) -> TExpr {
+        let outer = std::mem::replace(&mut self.checks_kept, kept);
+        let b = self.block(body, None);
+        self.checks_kept = outer;
+        TExpr {
+            kind: TK::Block(vec![TStmt::Checks(kept), TStmt::Expr(b)], None),
+            ty: Ty::Unit,
+            span,
+        }
     }
     /// `f(..)` or `f<T>(..)` for a fn whose parameters all have defaults and that gives its one
     /// type parameter, as `read(base: 1)`: the type argument if written, and the call without it.

@@ -153,7 +153,7 @@ impl Cx<'_> {
                 span,
             };
             TExpr {
-                kind: TK::Bin(BinOp::Add, Box::new(hi), Box::new(one), Overflow::Traps),
+                kind: TK::Bin(BinOp::Add, Box::new(hi), Box::new(one)),
                 ty: Ty::Int,
                 span,
             }
@@ -211,12 +211,7 @@ impl Cx<'_> {
             span,
         };
         let n = TExpr {
-            kind: TK::Bin(
-                BinOp::Sub,
-                Box::new(end),
-                Box::new(var(first)),
-                Overflow::Traps,
-            ),
+            kind: TK::Bin(BinOp::Sub, Box::new(end), Box::new(var(first))),
             ty: Ty::Int,
             span,
         };

@@ -903,7 +903,7 @@ impl<'a> Cx<'a> {
                 let end = match k {
                     0 => end,
                     k => TExpr {
-                        kind: TK::Bin(BinOp::Add, Box::new(end), Box::new(int(k)), Overflow::Traps),
+                        kind: TK::Bin(BinOp::Add, Box::new(end), Box::new(int(k))),
                         ty: Ty::Int,
                         span,
                     },

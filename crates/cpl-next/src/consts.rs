@@ -6,6 +6,7 @@ use check::ConstError;
 use cpl_diag::{codes, Code};
 use cpl_next_decls::{decls::Decls, modules::Loaded};
 use cpl_next_engine::Stop;
+use cpl_next_ir::build::{Build, Checks};
 use cpl_next_ir::ids::ItemId;
 use cpl_next_ir::ops::{Fault, Scalar};
 use cpl_next_ir::prog::CTy;
@@ -189,7 +190,10 @@ impl<'a> Evaluator<'a> {
             self.loaded,
             self,
             &[],
-            None,
+            Build {
+                judge: None,
+                checks: Checks::CHECKED,
+            },
             &check::Ids::default(),
         );
         // The program's own domains are declared by statements this run leaves out; one the

@@ -13,7 +13,7 @@ pub mod facade;
 use cpl_next_check as check;
 use cpl_next_cpp as cpp;
 use cpl_next_decls::{decls, diag, modules};
-use cpl_next_ir::build::Judge;
+use cpl_next_ir::build::{Build, Checks, Judge};
 use cpl_next_ir::ids::{ItemId, SourceId};
 use cpl_next_ir::{ir, ty};
 use cpl_next_link as inst;
@@ -295,7 +295,7 @@ fn back(f: &mut Front) -> Option<(inst::Program, Vec<Diag>)> {
 }
 
 /// `judge` is the judge the snapshot is built for; it is the tool's to resolve (contract 0).
-fn front(std: &Std, user_src: &str, roots: &Roots, judge: Option<&Judge>) -> Front {
+fn front(std: &Std, user_src: &str, roots: &Roots, judge: Option<&Judge>, checks: Checks) -> Front {
     let loaded = modules::load(std, user_src, roots);
     // What the parser could not read is checked as error nodes; a later layer says nothing
     // on what the parser rejected, and every other unit is checked as if it were alone.
@@ -313,7 +313,10 @@ fn front(std: &Std, user_src: &str, roots: &Roots, judge: Option<&Judge>) -> Fro
         &loaded,
         &values,
         &[],
-        judge.cloned(),
+        Build {
+            judge: judge.cloned(),
+            checks,
+        },
         &check::Ids::default(),
     );
     out.extend(diags(Stage::Check, &t.errors));
@@ -349,7 +352,10 @@ pub(crate) fn std_unchecked(std: &Std, judge: Option<&Judge>) -> Vec<(String, Ve
                 &loaded,
                 &values,
                 &at.into_iter().collect::<Vec<_>>(),
-                judge.cloned(),
+                Build {
+                    judge: judge.cloned(),
+                    checks: Checks::CHECKED,
+                },
                 &check::Ids::default(),
             );
             let ds = (staged(Stage::Decls, &d.errors, &loaded, &[]).into_iter()).chain(staged(
@@ -376,8 +382,9 @@ pub(crate) fn compile(
     roots: &Roots,
     events: bool,
     judge: Option<&Judge>,
+    checks: Checks,
 ) -> Result<Compiled, Vec<Diag>> {
-    let mut f = front(std, user_src, roots, judge);
+    let mut f = front(std, user_src, roots, judge, checks);
     let Some((mut prog, own)) = back(&mut f) else {
         return Err(f.diags);
     };
@@ -663,8 +670,9 @@ pub(crate) fn units(
     user_src: &str,
     roots: &Roots,
     judge: Option<&Judge>,
+    checks: Checks,
 ) -> (Vec<Unit>, Vec<Diag>) {
-    let mut f = front(std, user_src, roots, judge);
+    let mut f = front(std, user_src, roots, judge, checks);
     if let Some((_, own)) = back(&mut f) {
         f.diags.extend(own);
         f.diags.sort_by_key(|d| d.stage);
