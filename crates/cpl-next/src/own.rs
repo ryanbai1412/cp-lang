@@ -1068,7 +1068,7 @@ impl Cx<'_> {
         // An impl that leaves the fn out runs the trait's default.
         let default =
             (self.d.traits[tr.0].methods.get(method)).filter(|m| self.t.fns.contains_key(m));
-        let impls = (self.d.impls.iter()).filter(|im| im.trait_.tr == tr);
+        let impls = self.d.trait_impls(tr).map(|(_, im)| im);
         for m in impls.filter_map(|im| im.methods.get(method).or(default)) {
             let f = FnRef {
                 decl: *m,

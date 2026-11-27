@@ -16,7 +16,7 @@ pub(super) fn fill_defaults(defaults: Option<&Vec<Option<Ty>>>, a: &mut Vec<Ty>)
 pub(super) struct TyCx<'a> {
     pub(super) names: &'a HashMap<String, Named>,
     /// What the program's top level binds with `let`: values, not items, to `type_of`.
-    pub(super) values: Rc<HashSet<String>>,
+    pub(super) values: Arc<HashSet<String>>,
     /// Where the item being converted starts in the source, when known: its spans count from it.
     pub(super) item: Option<u32>,
     /// How many set parameters each struct has, so a struct named in a type gets its own.
@@ -27,7 +27,7 @@ pub(super) struct TyCx<'a> {
     pub(super) generics: &'a [String],
     /// What the generics stand for, when converting an alias's type.
     pub(super) args: Option<&'a [Ty]>,
-    pub(super) aliases: &'a [AliasDecl],
+    pub(super) aliases: &'a Layer<AliasDecl>,
     /// The aliases being expanded, to report one that names itself.
     pub(super) expanding: Vec<usize>,
     /// The types a body declares by name: its domains, and its ranges with run-time ends.

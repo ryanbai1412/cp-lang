@@ -127,7 +127,8 @@ impl<'a> Cx<'a> {
         let m = &name.text;
         let f = (0..self.d.fns.len()).map(FnId).find_map(|id| {
             let f = self.d.f(id);
-            ((f.aka.contains(m) || f.was.contains(m))
+            (self.d.seen(f.module)
+                && (f.aka.contains(m) || f.was.contains(m))
                 && (self.d.lookup_member(rt, &f.name).is_some() || self.d.self_fits(id, rt)))
             .then_some(f)
         })?;

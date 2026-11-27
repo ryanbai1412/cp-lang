@@ -185,10 +185,10 @@ fn front(std: &Std, user_src: &str, roots: &Roots) -> Front {
                 .collect()
         };
         let mut out = diags(Stage::Syntax, &loaded.errors);
-        let (d, main) = decls::collect(&loaded.modules, &loaded.prelude);
+        let (d, main) = decls::collect(std.decls(), &loaded.modules, &loaded.seen, &loaded.prelude);
         out.extend(diags(Stage::Decls, &d.errors));
         let mut t = check::check(&d, &main, &loaded);
-        let more = std.declaring(&t.missing, &loaded.modules);
+        let more = std.decls().declaring(&t.missing, &d);
         if !more.is_empty() {
             wanted.extend(more);
             continue;

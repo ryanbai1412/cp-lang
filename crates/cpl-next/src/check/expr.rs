@@ -527,7 +527,10 @@ impl<'a> Cx<'a> {
             let tr = (self.bound_traits(*i).into_iter())
                 .find(|t| self.d.traits[t.tr.0].name == trait_name)
                 .or_else(|| {
-                    let tr = TraitId(self.d.traits.iter().position(|t| t.name == trait_name)?);
+                    let tr = TraitId(
+                        (self.d.traits.iter())
+                            .position(|t| t.name == trait_name && self.d.seen(t.module))?,
+                    );
                     self.blanket(*i, tr).then(|| crate::decls::TraitRef {
                         tr,
                         args: Vec::new(),

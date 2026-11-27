@@ -141,8 +141,7 @@ impl Cx<'_> {
                 let want: Vec<Ty> = (self.d.traits[r.tr.0].inputs(&r.args).iter())
                     .map(|a| self.zonk(a))
                     .collect();
-                let mut found: Vec<(usize, Vec<Ty>)> = (self.d.impls.iter().enumerate())
-                    .filter(|(_, im)| im.trait_.tr == r.tr)
+                let mut found: Vec<(usize, Vec<Ty>)> = (self.d.trait_impls(r.tr))
                     .filter_map(|(k, im)| Some((k, self.d.impl_args_for(im, t, &want)?)))
                     .filter(|(k, _)| {
                         !self.d.impls[*k].blanket()
@@ -206,9 +205,8 @@ impl Cx<'_> {
         if have.contains(&tr) {
             return true;
         }
-        (self.d.impls.iter()).any(|im| {
-            im.trait_.tr == tr
-                && im.trait_.args.is_empty()
+        (self.d.trait_impls(tr)).any(|(_, im)| {
+            im.trait_.args.is_empty()
                 && matches!(im.for_, Ty::Param(_))
                 && (im.bounds.iter())
                     .filter(|(k, _)| im.for_ == Ty::Param(*k))

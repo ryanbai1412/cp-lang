@@ -407,7 +407,7 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded)
         cx.errors
             .push(Msg::at(Span::new(at, at), format!("{code}: {msg}")));
     }
-    for (i, s) in d.structs.iter().enumerate() {
+    for (i, s) in (d.structs.iter().enumerate()).filter(|(_, s)| d.seen(s.module)) {
         if let Some(f) = decls::field_holding_itself(d, StructId(i)) {
             let at = s.field_at[f] as u32;
             cx.errors.push(Msg::at(
@@ -519,9 +519,14 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded)
     let mut fns = HashMap::new();
     let mut todo: Vec<FnId> = (0..d.fns.len())
         .map(FnId)
-        .filter(|id| !d.is_library(d.f(*id).module))
-        .rev()
+        .filter(|id| {
+            let f = d.f(*id);
+            !d.is_library(f.module)
+                && !matches!(f.owner, Some(Owner::Impl(i)) if !d.live(&d.impls[i]))
+        })
         .collect();
+    // In the order the collector made them, so a program over std checks as one collection would.
+    todo.sort_by_key(|id| std::cmp::Reverse((d.f(*id).made, *id)));
     let mut deferred: HashMap<FnId, Vec<Msg>> = HashMap::new();
     let mut quiet_fns = HashSet::new();
     loop {
@@ -670,7 +675,7 @@ impl<'a> Cx<'a> {
         let f = d.f(id);
         self.reached.push(id);
         if let Some(Owner::Trait(t)) = f.owner {
-            for im in d.impls.iter().filter(|im| im.trait_.tr == t) {
+            for (_, im) in d.trait_impls(t) {
                 if let Some(&m) = im.methods.get(&f.name) {
                     match d.is_library(im.module) {
                         true => self.through_trait.push(m),

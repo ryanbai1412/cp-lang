@@ -58,8 +58,11 @@ impl Decls {
         };
         // A value's member has a `self`: `Domain.at(x)` is not `Int`'s `at`.
         let pick = |f: &FnDecl| f.self_mode != SelfMode::None && pick(f);
-        let ordered = (self.impls.iter().filter(|im| !im.blanket()))
-            .chain(self.impls.iter().filter(|im| im.blanket()));
+        let live = (self.impls_by_member.get(name).into_iter().flatten())
+            .map(|&k| &self.impls[k])
+            .filter(|im| self.live(im));
+        let ordered =
+            (live.clone().filter(|im| !im.blanket())).chain(live.filter(|im| im.blanket()));
         let found = ordered.into_iter().find_map(|im| {
             let tr = &self.traits[im.trait_.tr.0];
             if trait_name.is_some_and(|n| n != tr.name) {
@@ -107,7 +110,7 @@ impl Decls {
     /// The impls of `tr`, those for a written type before blanket ones (R08.1.2).
     pub fn impls_of(&self, tr: TraitId) -> impl Iterator<Item = &ImplDecl> {
         let of = move |b: bool| {
-            (self.impls.iter()).filter(move |im| im.trait_.tr == tr && im.blanket() == b)
+            (self.trait_impls(tr).map(|(_, im)| im)).filter(move |im| im.blanket() == b)
         };
         of(false).chain(of(true))
     }
@@ -134,7 +137,8 @@ impl Decls {
     }
     /// The library method `name` whose `self` can be `recv` (R11.3.4).
     pub fn method_for(&self, name: &str, recv: &Ty) -> Option<FnId> {
-        (self.methods.get(name)?.iter().copied()).find(|f| self.self_fits(*f, recv))
+        (self.methods.get(name)?.iter().copied())
+            .find(|f| self.seen(self.f(*f).module) && self.self_fits(*f, recv))
     }
     /// The fn of an impl over a shape of `recv`'s struct (`impl Rev<[D]T>:`) named `name` whose
     /// `self` `recv` fits, as a trait impl's header is matched (R08.1.3).
@@ -185,7 +189,7 @@ impl Decls {
                 let Some(bt) = binds[*i].clone() else {
                     continue;
                 };
-                let met = self.impls.iter().filter(|m| m.trait_.tr == r.tr);
+                let met = self.trait_impls(r.tr).map(|(_, m)| m);
                 let Some(args) = met.into_iter().find_map(|m| {
                     let b = self.impl_args(m, &bt)?;
                     let sub = Subst { tys: &b, sets: &[] };
@@ -207,14 +211,19 @@ impl Decls {
 
 /// An impl of a trait for a type needs one of each of its supertraits for that type (R08.1.1).
 /// The library's are checked with it; here one the slice refuses would read as missing.
-pub(super) fn supertraits_unmet(d: &Decls) -> Vec<(usize, &'static str, String)> {
+pub(super) fn supertraits_unmet(d: &Decls, from: usize) -> Vec<(usize, &'static str, String)> {
     let mut out = Vec::new();
-    for im in d.impls.iter().filter(|im| !d.is_library(im.module)) {
+    for im in d
+        .impls
+        .iter()
+        .skip(from)
+        .filter(|im| !d.is_library(im.module))
+    {
         let tr = &d.traits[im.trait_.tr.0];
         for sup in &tr.supers {
             let met = match &im.for_ {
                 Ty::Param(i) => im.bounds.iter().any(|(j, r)| j == i && r.tr == sup.tr),
-                t => (d.impls.iter()).any(|o| o.trait_.tr == sup.tr && d.impl_args(o, t).is_some()),
+                t => (d.trait_impls(sup.tr)).any(|(_, o)| d.impl_args(o, t).is_some()),
             };
             if !met {
                 out.push((
