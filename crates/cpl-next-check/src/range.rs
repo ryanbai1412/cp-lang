@@ -444,6 +444,13 @@ impl Cx<'_> {
         if self.errors.len() > diagnosed {
             return Err(Box::new(Self::error_node(span)));
         }
+        // An `Int` end where positions are wanted is a position, as `lo..hi`'s start is.
+        let v = match self.whole_of(want) {
+            Some(d @ Ty::Dom(_)) if step.is_none() && self.shallow(&v.ty) == Ty::Int => {
+                self.coerce(v, &d)
+            }
+            _ => v,
+        };
         let t = self.shallow(&v.ty);
         let int = |kind| TExpr {
             kind,

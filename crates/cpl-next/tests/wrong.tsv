@@ -97,7 +97,6 @@ core-04/e2-table-keyed-like-input.cp	wrong-reject	check: std.strings:386:5: E020
 core-04/enum-has-ordinal-domain-members.cp	wrong-reject	check: program:5:7: E0203: `Shape` has no `try_at`
 core-04/enum-is-seq-of-variants.cp	wrong-reject	check: program:5:7: E0201: unknown name `D`
 core-04/f2-sub-rectangle-offset.cp	wrong-reject	check: program:6:18: E0902: `4` is never a position of `C`
-core-04/f2-sub-rectangle.cp	wrong-reject	check: program:7:9: E0302: expected `Range<R>`, found `Range<Int>`
 core-04/find-all-yields-keys.cp	wrong-reject	check: std.strings:425:8: E0203: `P` has no member `is_empty`
 core-04/grid-col-view-keys-are-rows.cp	wrong-reject	check: program:9:7: E0302: expected `List<Int>`, found `List<R>`
 core-04/grid-row-view-keys-are-columns.cp	wrong-reject	check: program:9:7: E0302: expected `List<Int>`, found `List<C>`
@@ -247,8 +246,6 @@ core-07/generator-is-not-indexed.cp	wrong-error	wanted E0606 on line 5, got: che
 core-07/generator-method-has-no-len.cp	wrong-error	wanted E0606 on line 5, got: check: program:5:7: E0203: `Gen<Int>` has no member `len`
 core-07/generator-with-helper-closures-stops-early.cp	wrong-reject	check: program:15:7: E0606: `Gen<Int>` does not implement `Indexed`
 core-07/get-or-insert.cp	wrong-reject	check: std.seq:757:25: E0606: `K` does not implement `Ord`
-core-07/grid-row-and-block.cp	wrong-reject	check: program:6:24: E0302: expected `Tuple2<R, C>`, found `Tuple2<Range<R>, Range<C>>`
-core-07/grid-row-index-and-block-order.cp	wrong-reject	check: program:7:13: E0302: expected `Tuple2<R, C>`, found `Tuple2<Range<R>, Range<C>>`
 core-07/held-window-first-last.cp	wrong-reject	check: program:6:7: E0305: `Gen<Slice<List<Int>>>` is not indexed: it has no `Indexed` impl
 core-07/impl-bound-gives-element.cp	wrong-reject	decls: E0204: unknown trait `Indexed`
 core-07/indexed-param-takes-views.cp	wrong-reject	check: program:6:23: E0302: expected `Array<V, Int>`, found `Slice<Array<V, Int>>`

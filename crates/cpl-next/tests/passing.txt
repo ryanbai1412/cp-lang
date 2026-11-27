@@ -398,6 +398,7 @@ core-04/enum-ord-is-ordinal.cp
 core-04/enum-position-int-is-its-ordinal.cp
 core-04/f1-row-and-column-views.cp
 core-04/f1-row-keeps-column-domain.cp
+core-04/f2-sub-rectangle.cp
 core-04/filter-iterates-without-keys.cp
 core-04/first-is-optional.cp
 core-04/first-last-true.cp
@@ -779,6 +780,8 @@ core-07/generator-expression-body.cp
 core-07/generator-has-no-next.cp
 core-07/generic-mut-int-keyed-array-stays-array.cp
 core-07/grid-of-u64-by-comprehension.cp
+core-07/grid-row-and-block.cp
+core-07/grid-row-index-and-block-order.cp
 core-07/group-lists-keep-walk-order.cp
 core-07/group-returns-map.cp
 core-07/group.cp
@@ -1568,6 +1571,7 @@ next/n_gen_04_recursive_break.cp
 next/n_gen_05_expression_body.cp
 next/n_generator_through_bound.cp
 next/n_grid_col.cp
+next/n_grid_rect.cp
 next/n_grid_row.cp
 next/n_grid_views.cp
 next/n_if_01_none_branch_takes_the_other_type.cp

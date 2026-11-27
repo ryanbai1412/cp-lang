@@ -2001,6 +2001,32 @@ impl<R: Domain, C: Domain, T> IndexGet<R, T> for Col<R, C, T>:
 impl<R: Domain, C: Domain, T> Indexed<R, T> for Col<R, C, T>:
     @get fn keys(self) -> Range<R> = R
 
+/// \(O(1)\) to make. `g[rs, cs]`: the rows `rs` and columns `cs` of a grid `[R, C]T`, a lent
+/// view walked row-major, so `g[..n, ..m].sum()` folds a sub-rectangle (R04a.7.2).
+pub struct Rect<R, C, T>(
+    /// The grid the rectangle was cut from, lent: frozen while the rectangle is alive.
+    src: [R, C]T,
+    rs: Range<R>,
+    cs: Range<C>,
+)
+
+/// `g[rs, cs]`: the rows `rs` and columns `cs` of `g`, its cells keyed by `(R, C)` (R04.4.11).
+@index fn rect<R: Domain, C: Domain, T>(self: [R, C]T, k: (Range<R>, Range<C>)) -> Rect<R, C, T> =
+    Rect(self, k._0, k._1)
+
+impl<R: Domain, C: Domain, T> Seq<T> for Rect<R, C, T>:
+    fn iter(self) -> yields T:
+        for r in self.rs:
+            for c in self.cs: yield self.src[r, c]
+
+impl<R: Domain, C: Domain, T> Sized for Rect<R, C, T>:
+    @get fn len(self) -> Int = self.rs.len * self.cs.len
+
+impl<R: Domain, C: Domain, T> Keyed<(R, C), T> for Rect<R, C, T>:
+    fn items(self) -> yields ((R, C), T):
+        for r in self.rs:
+            for c in self.cs: yield ((r, c), self.src[r, c])
+
 /// \(O(1)\). `self` keyed by a fresh domain `0..len` of its own (`let t = w.rebase`, keys `t.Idx`),
 /// for 0-based arithmetic on a piece; its keys can't be mixed with the source's.
 ///
@@ -4486,6 +4512,14 @@ impl Show for Row<R, C, T>:
         out
 
 impl Show for Col<R, C, T>:
+    fn show(v):
+        var out = ""
+        for x in v:
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
+
+impl Show for Rect<R, C, T>:
     fn show(v):
         var out = ""
         for x in v:
