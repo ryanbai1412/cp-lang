@@ -88,6 +88,10 @@ pub(crate) struct Bounds<'f> {
 pub(crate) const LEN_MAX: i128 = i64::MAX as i128;
 
 impl<'f> Bounds<'f> {
+    /// Asks the checker which std fn a call in the item at `base` is.
+    pub(crate) fn calls(&self, base: u32) -> crate::Calls<'f> {
+        crate::Calls::new(self.facts, base)
+    }
     pub(crate) fn of(file: &File<'f>) -> Bounds<'f> {
         let mut bounds = Bounds {
             facts: file.facts,
@@ -104,7 +108,7 @@ impl<'f> Bounds<'f> {
                 ..
             } = &stmt.kind
             {
-                if let Some(ty) = read_type(init) {
+                if let Some(ty) = read_type(bounds.calls(base), init) {
                     bounds.declare(base, &super::binding(pat), ty);
                     continue;
                 }
@@ -1040,15 +1044,15 @@ impl crate::walk::Visitor for FoundRange<'_> {
 }
 
 /// `T` in `read<T>()`.
-pub(crate) fn read_type(init: &Expr) -> Option<&Type> {
+pub(crate) fn read_type<'e>(calls: crate::Calls, init: &'e Expr) -> Option<&'e Type> {
     let ExprKind::Call { callee, args, .. } = &init.kind else {
         return None;
     };
-    let ExprKind::Generic { base, args: tys } = &callee.kind else {
+    let ExprKind::Generic { args: tys, .. } = &callee.kind else {
         return None;
     };
-    match (&base.kind, tys.as_slice()) {
-        (ExprKind::Name(n), [ty]) if n == std_fn::READ && args.is_empty() => Some(ty),
+    match tys.as_slice() {
+        [ty] if args.is_empty() && calls.is(init, std_fn::READ) => Some(ty),
         _ => None,
     }
 }

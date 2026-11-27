@@ -1913,3 +1913,12 @@ fn a_hoisted_inverse_takes_the_first_free_numbered_name() {
         fixed(src)
     );
 }
+
+#[test]
+fn a_programs_own_read_is_not_an_input_bound() {
+    // The bounds of `read<..>` are each input's own facts only when the call is std's `read`.
+    let std = "let m: 0..=500_000 = read()\nlet q: 0..=500_000 = read()\nlet r = read<0..=500_000>()\nprint(m + q + r)\n";
+    assert_eq!(taste_codes(std), Vec::<&str>::new());
+    let own = format!("fn read<T>() -> T:\n    return T(0)\n{std}");
+    assert_eq!(only(&own).code, REPEATED_LITERAL.code);
+}

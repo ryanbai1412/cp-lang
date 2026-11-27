@@ -808,3 +808,18 @@ fn a_session_proves_once_what_each_entry_point_proves_alone() {
         assert_eq!(codes(session.lints(&config)), alone);
     }
 }
+
+#[test]
+fn a_programs_own_read_does_not_bound_what_it_returns() {
+    let loops = |src: &str| -> Vec<(u128, Option<u128>)> {
+        crate::proven_loops(src)
+            .into_iter()
+            .map(|l| (l.times, l.total))
+            .collect()
+    };
+    let body = "domain V = 1..=n\nfor v in V:\n    print(v)\n";
+    let std = format!("let n = read<1..=200000>()\n{body}");
+    assert_eq!(loops(&std), [(200000, Some(200000))]);
+    let own = format!("fn read<T>() -> Int:\n    return 7\nlet n = read<1..=200000>()\n{body}");
+    assert!(loops(&own).is_empty(), "{own}");
+}

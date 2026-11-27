@@ -759,9 +759,9 @@ fn ranges_of_stmt(
                 let whole = &*binding(whole);
                 // `var (lo, hi) = (0, xs.len)` binds each name as its own `var`.
                 // `let (n, q): (1..=N, 1..=Q) = read()` declares each name's type.
-                let declared = whole_ty
-                    .as_ref()
-                    .or_else(|| whole_init.as_ref().and_then(bounds::read_type));
+                let declared = whole_ty.as_ref().or_else(|| {
+                    (whole_init.as_ref()).and_then(|i| bounds::read_type(bounds.calls(base), i))
+                });
                 type Part<'p> = (
                     &'p cpl_syntax::ast::Pattern,
                     Option<&'p cpl_syntax::ast::Expr>,

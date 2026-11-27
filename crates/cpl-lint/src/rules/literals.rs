@@ -11,7 +11,9 @@ use std::collections::HashMap;
 /// Big literals: a bound or modulus written more than once is two facts
 /// that must agree.
 pub(crate) fn check(file: &File) -> Vec<Finding> {
-    struct Ints {
+    struct Ints<'f> {
+        /// The checker's facts, which say which calls are std's.
+        facts: Option<&'f crate::Facts>,
         base: u32,
         seen: HashMap<i128, Vec<Span>>,
         /// The types of `let x: T = read()` and `read<T>()`, and the field
@@ -24,7 +26,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         /// Values written as the right of a `%`: a modulus, named `P`.
         moduli: Vec<i128>,
     }
-    impl Visitor for Ints {
+    impl Visitor for Ints<'_> {
         fn stmt(&mut self, stmt: &Stmt) {
             if stmt.decorators.iter().any(|d| d.name.text == "test") {
                 self.tests.push(stmt.span.shift(self.base));
@@ -49,17 +51,20 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             } = &stmt.kind
             {
                 if let ExprKind::Call { callee, .. } = &init.kind {
-                    if matches!(&callee.kind, ExprKind::Name(n) if n == std_fn::READ) {
+                    let calls = crate::Calls::new(self.facts, self.base);
+                    if matches!(callee.kind, ExprKind::Name(_)) && calls.is(init, std_fn::READ) {
                         self.input_types.push(ty.span.shift(self.base));
                     }
                 }
             }
         }
         fn expr(&mut self, expr: &Expr) {
-            if let ExprKind::Generic { base, args } = &expr.kind {
-                if matches!(&base.kind, ExprKind::Name(n) if n == std_fn::READ) {
-                    let types = args.iter().map(|t| t.span.shift(self.base));
-                    self.input_types.extend(types);
+            if let ExprKind::Call { callee, .. } = &expr.kind {
+                if let ExprKind::Generic { args, .. } = &callee.kind {
+                    if crate::Calls::new(self.facts, self.base).is(expr, std_fn::READ) {
+                        let types = args.iter().map(|t| t.span.shift(self.base));
+                        self.input_types.extend(types);
+                    }
                 }
             }
             if let ExprKind::Binary {
@@ -83,6 +88,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         }
     }
     let mut ints = Ints {
+        facts: file.facts,
         base: 0,
         seen: HashMap::new(),
         input_types: Vec::new(),
