@@ -69,6 +69,15 @@ deleted for the VM and both remain. These rules are the guard.
    as it was at `c7ac8761d^`, the std the old pipeline is pinned to.
 10. **Prefer no window.** A stage that can change today's code in
     place does, so there is never a second copy.
+11. **A designed component is built in its full shape before anything
+    consumes it.** No consumer is written against a stand-in for it (the
+    old syntax tree, a whole-program pass, a name match), because every
+    such consumer becomes a migration later.
+12. **A new kind of debt gets a hard-zero gate when the code that could
+    add it starts**, not when an audit finds it.
+13. **Reuse of old code carries its deletion step in the same plan.**
+    Old code reused as scaffolding names the landing that deletes it
+    and the counter that reaches 0 there.
 
 ## Order
 
