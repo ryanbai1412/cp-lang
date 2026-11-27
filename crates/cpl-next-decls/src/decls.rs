@@ -568,9 +568,15 @@ impl Decls {
     }
     /// Its required labels: those of the named-only parameters with no default, sorted.
     pub fn required_labels(&self, d: FnId) -> Vec<&str> {
-        let mut ls: Vec<&str> = (self.f(d).params.iter())
-            .filter(|p| p.named_only && p.default.is_none())
-            .map(|p| p.label.as_str())
+        let ps = &self.f(d).params;
+        // A parameter after `..xs` is given only by its label, like one after `;`.
+        let after = ps
+            .iter()
+            .position(|p| p.variadic)
+            .map_or(ps.len(), |i| i + 1);
+        let mut ls: Vec<&str> = (ps.iter().enumerate())
+            .filter(|(i, p)| (p.named_only || *i >= after) && p.default.is_none())
+            .map(|(_, p)| p.label.as_str())
             .collect();
         ls.sort_unstable();
         ls

@@ -32,14 +32,27 @@ pub trait Show:
         self.write_to(mut out, sep)
 
 /// How `print` and interpolation write a value: `digits` decimals for an `F64` when given,
-/// and the `base` a counted domain's positions print in (R10.2.2, R10.3.2, R10.3.4).
+/// the `base` a counted domain's positions print in, and the text of `print`'s `none:` for an
+/// absent element (R10.2.2, R10.3.1, R10.3.2, R10.3.4).
 pub struct Fmt:
     pub digits: ?Int
     pub base: Int
+    pub none: ?Str
 
 /// The caller's `io`, with `digits` decimals when given and `io.precision`'s otherwise.
 fn fmt_of(digits: ?Int) -> Fmt uses io:
-    if let k = digits: Fmt(Some(k), io.base) else: Fmt(io.precision, io.base)
+    if let k = digits: Fmt(Some(k), io.base, None) else: Fmt(io.precision, io.base, None)
+
+/// `fmt_of(digits)`, writing an absent element as `none` is written.
+fn fmt_none<N: Show>(digits: ?Int, none: N) -> Fmt uses io:
+    let f = fmt_of(digits)
+    Fmt(f.digits, f.base, Some(shown(none, f)))
+
+/// `x` as `fmt` writes it.
+fn shown<T: Show>(x: T, fmt: Fmt) -> Str:
+    var s = Str(List.new())
+    x.write_fmt(mut s, None, fmt)
+    s
 
 /// `sep`, or the space a tuple's fields are joined by.
 fn put_sep(mut out: Str, sep: ?Str):
@@ -71,79 +84,91 @@ pub struct Pack<H, T>:
     head: H
     tail: T
 
-/// The values `print` takes, each `Show`.
-trait ShowAll:
+/// `print` without `none:`: each value is `Show`, so a `?T` sequence is refused (R10.3.7).
+pub struct Bare
+/// `print(xs, none: d)`: a sequence of `?T` is a value too (R10.3.1).
+pub struct WithNone
+
+/// One of the values `print` takes: any `Show`, and under `WithNone` a `?T` sequence.
+pub trait ShowPart<M>:
+    fn write_part(self, mut out: Str, sep: ?Str, fmt: Fmt)
+
+impl<T: Show, M> ShowPart<M> for T:
+    fn write_part(self, mut out: Str, sep: ?Str, fmt: Fmt) = self.write_fmt(mut out, sep, fmt)
+
+/// The values `print` takes, each a `ShowPart<M>`.
+trait ShowAll<M>:
     /// Appends them joined by `sep`; one value alone is joined inside by `sep` (`print(xs,
     /// sep: ",")`).
     fn write_all(self, mut out: Str, sep: ?Str, first: Bool, fmt: Fmt)
     fn ends(self) -> Bool = false
 
-impl ShowAll for ():
+impl<M> ShowAll<M> for ():
     fn write_all(self, mut out: Str, sep: ?Str, first: Bool, fmt: Fmt) = ()
     fn ends(self) -> Bool = true
 
-impl<H: Show, T: ShowAll> ShowAll for Pack<H, T>:
+impl<H: ShowPart<M>, T: ShowAll<M>, M> ShowAll<M> for Pack<H, T>:
     fn write_all(self, mut out: Str, sep: ?Str, first: Bool, fmt: Fmt):
         if first and self.tail.ends():
-            self.head.write_fmt(mut out, sep, fmt)
+            self.head.write_part(mut out, sep, fmt)
         else:
             if not first: put_sep(mut out, sep)
-            self.head.write_fmt(mut out, None, fmt)
+            self.head.write_part(mut out, None, fmt)
         self.tail.write_all(mut out, sep, false, fmt)
 
-impl<A: Show> ShowAll for Tuple1<A>:
+impl<A: ShowPart<M>, M> ShowAll<M> for Tuple1<A>:
     fn write_all(self, mut out: Str, sep: ?Str, first: Bool, fmt: Fmt) =
         Pack(self._0, ()).write_all(mut out, sep, first, fmt)
 
-impl<A: Show, B: Show> ShowAll for Tuple2<A, B>:
+impl<A: ShowPart<M>, B: ShowPart<M>, M> ShowAll<M> for Tuple2<A, B>:
     fn write_all(self, mut out: Str, sep: ?Str, first: Bool, fmt: Fmt) =
         Pack(self._0, Pack(self._1, ())).write_all(mut out, sep, first, fmt)
 
-impl<A: Show, B: Show, C: Show> ShowAll for Tuple3<A, B, C>:
+impl<A: ShowPart<M>, B: ShowPart<M>, C: ShowPart<M>, M> ShowAll<M> for Tuple3<A, B, C>:
     fn write_all(self, mut out: Str, sep: ?Str, first: Bool, fmt: Fmt) =
         Pack(self._0, Pack(self._1, Pack(self._2, ()))).write_all(mut out, sep, first, fmt)
 
-impl<A: Show, B: Show, C: Show, E: Show> ShowAll for Tuple4<A, B, C, E>:
+impl<A: ShowPart<M>, B: ShowPart<M>, C: ShowPart<M>, E: ShowPart<M>, M> ShowAll<M> for Tuple4<A, B, C, E>:
     fn write_all(self, mut out: Str, sep: ?Str, first: Bool, fmt: Fmt) =
         Pack(self._0, Pack(self._1, Pack(self._2, Pack(self._3, ())))).write_all(mut out, sep, first, fmt)
 
-impl<A: Show, B: Show, C: Show, E: Show, F: Show> ShowAll for Tuple5<A, B, C, E, F>:
+impl<A: ShowPart<M>, B: ShowPart<M>, C: ShowPart<M>, E: ShowPart<M>, F: ShowPart<M>, M> ShowAll<M> for Tuple5<A, B, C, E, F>:
     fn write_all(self, mut out: Str, sep: ?Str, first: Bool, fmt: Fmt) =
         Pack(self._0, Pack(self._1, Pack(self._2, Pack(self._3, Pack(self._4, ()))))).write_all(mut out, sep, first, fmt)
 
-impl<A: Show, B: Show, C: Show, E: Show, F: Show, G: Show> ShowAll for Tuple6<A, B, C, E, F, G>:
+impl<A: ShowPart<M>, B: ShowPart<M>, C: ShowPart<M>, E: ShowPart<M>, F: ShowPart<M>, G: ShowPart<M>, M> ShowAll<M> for Tuple6<A, B, C, E, F, G>:
     fn write_all(self, mut out: Str, sep: ?Str, first: Bool, fmt: Fmt) =
         Pack(self._0, Pack(self._1, Pack(self._2, Pack(self._3, Pack(self._4, Pack(self._5, ())))))).write_all(mut out, sep, first, fmt)
 
-impl<A: Show, B: Show, C: Show, E: Show, F: Show, G: Show, H: Show> ShowAll for Tuple7<A, B, C, E, F, G, H>:
+impl<A: ShowPart<M>, B: ShowPart<M>, C: ShowPart<M>, E: ShowPart<M>, F: ShowPart<M>, G: ShowPart<M>, H: ShowPart<M>, M> ShowAll<M> for Tuple7<A, B, C, E, F, G, H>:
     fn write_all(self, mut out: Str, sep: ?Str, first: Bool, fmt: Fmt) =
         Pack(self._0, Pack(self._1, Pack(self._2, Pack(self._3, Pack(self._4, Pack(self._5, Pack(self._6, ()))))))).write_all(mut out, sep, first, fmt)
 
-impl<A: Show, B: Show, C: Show, E: Show, F: Show, G: Show, H: Show, J: Show> ShowAll for Tuple8<A, B, C, E, F, G, H, J>:
+impl<A: ShowPart<M>, B: ShowPart<M>, C: ShowPart<M>, E: ShowPart<M>, F: ShowPart<M>, G: ShowPart<M>, H: ShowPart<M>, J: ShowPart<M>, M> ShowAll<M> for Tuple8<A, B, C, E, F, G, H, J>:
     fn write_all(self, mut out: Str, sep: ?Str, first: Bool, fmt: Fmt) =
         Pack(self._0, Pack(self._1, Pack(self._2, Pack(self._3, Pack(self._4, Pack(self._5, Pack(self._6, Pack(self._7, ())))))))).write_all(mut out, sep, first, fmt)
 
-impl<A: Show, B: Show, C: Show, E: Show, F: Show, G: Show, H: Show, J: Show, K: Show> ShowAll for Tuple9<A, B, C, E, F, G, H, J, K>:
+impl<A: ShowPart<M>, B: ShowPart<M>, C: ShowPart<M>, E: ShowPart<M>, F: ShowPart<M>, G: ShowPart<M>, H: ShowPart<M>, J: ShowPart<M>, K: ShowPart<M>, M> ShowAll<M> for Tuple9<A, B, C, E, F, G, H, J, K>:
     fn write_all(self, mut out: Str, sep: ?Str, first: Bool, fmt: Fmt) =
         Pack(self._0, Pack(self._1, Pack(self._2, Pack(self._3, Pack(self._4, Pack(self._5, Pack(self._6, Pack(self._7, Pack(self._8, ()))))))))).write_all(mut out, sep, first, fmt)
 
-impl<A: Show, B: Show, C: Show, E: Show, F: Show, G: Show, H: Show, J: Show, K: Show, L: Show> ShowAll for Tuple10<A, B, C, E, F, G, H, J, K, L>:
+impl<A: ShowPart<M>, B: ShowPart<M>, C: ShowPart<M>, E: ShowPart<M>, F: ShowPart<M>, G: ShowPart<M>, H: ShowPart<M>, J: ShowPart<M>, K: ShowPart<M>, L: ShowPart<M>, M> ShowAll<M> for Tuple10<A, B, C, E, F, G, H, J, K, L>:
     fn write_all(self, mut out: Str, sep: ?Str, first: Bool, fmt: Fmt) =
         Pack(self._0, Pack(self._1, Pack(self._2, Pack(self._3, Pack(self._4, Pack(self._5, Pack(self._6, Pack(self._7, Pack(self._8, Pack(self._9, ())))))))))).write_all(mut out, sep, first, fmt)
 
-impl<A: Show, B: Show, C: Show, E: Show, F: Show, G: Show, H: Show, J: Show, K: Show, L: Show, M: Show> ShowAll for Tuple11<A, B, C, E, F, G, H, J, K, L, M>:
+impl<A: ShowPart<M>, B: ShowPart<M>, C: ShowPart<M>, E: ShowPart<M>, F: ShowPart<M>, G: ShowPart<M>, H: ShowPart<M>, J: ShowPart<M>, K: ShowPart<M>, L: ShowPart<M>, M: ShowPart<M>, M> ShowAll<M> for Tuple11<A, B, C, E, F, G, H, J, K, L, M>:
     fn write_all(self, mut out: Str, sep: ?Str, first: Bool, fmt: Fmt) =
         Pack(self._0, Pack(self._1, Pack(self._2, Pack(self._3, Pack(self._4, Pack(self._5, Pack(self._6, Pack(self._7, Pack(self._8, Pack(self._9, Pack(self._10, ()))))))))))).write_all(mut out, sep, first, fmt)
 
-impl<A: Show, B: Show, C: Show, E: Show, F: Show, G: Show, H: Show, J: Show, K: Show, L: Show, M: Show, N: Show> ShowAll for Tuple12<A, B, C, E, F, G, H, J, K, L, M, N>:
+impl<A: ShowPart<M>, B: ShowPart<M>, C: ShowPart<M>, E: ShowPart<M>, F: ShowPart<M>, G: ShowPart<M>, H: ShowPart<M>, J: ShowPart<M>, K: ShowPart<M>, L: ShowPart<M>, M: ShowPart<M>, N: ShowPart<M>, M> ShowAll<M> for Tuple12<A, B, C, E, F, G, H, J, K, L, M, N>:
     fn write_all(self, mut out: Str, sep: ?Str, first: Bool, fmt: Fmt) =
         Pack(self._0, Pack(self._1, Pack(self._2, Pack(self._3, Pack(self._4, Pack(self._5, Pack(self._6, Pack(self._7, Pack(self._8, Pack(self._9, Pack(self._10, Pack(self._11, ())))))))))))).write_all(mut out, sep, first, fmt)
 
 /// The fields of a record or struct, joined by spaces; a sequence of them prints one per line
 /// (R10.3.5).
-impl<H: Show, T: ShowAll> Show for Pack<H, T>:
+impl<H: Show, T: ShowAll<Bare>> Show for Pack<H, T>:
     fn write_to(self, mut out: Str, sep: ?Str):
-        self.write_all(mut out, None, true, Fmt(None, 0))
+        self.write_all(mut out, None, true, Fmt(None, 0, None))
     fn write_fmt(self, mut out: Str, sep: ?Str, fmt: Fmt):
         self.write_all(mut out, None, true, fmt)
     fn gap(self, mut out: Str):
@@ -152,17 +177,49 @@ impl<H: Show, T: ShowAll> Show for Pack<H, T>:
 /// `print(x, y)`: the values joined by `sep`, then `end`; `precision: k` gives each `F64` `k`
 /// decimals (R10.3.1, R10.3.4).
 @role(print)
-pub fn print<Ts: ShowAll>(..xs: Ts, sep: ?Str = None, end: Str = "\n", precision: ?Int = None) uses io:
-    var line = Str(List.new())
-    xs.write_all(mut line, sep, true, fmt_of(precision))
-    line.append(end)
-    out(line.chars.buf, line.len)
+pub fn print<Ts: ShowAll<Bare>>(..xs: Ts, sep: ?Str = None, end: Str = "\n", precision: ?Int = None) uses io:
+    put_line(xs, sep, end, fmt_of(precision))
+
+/// `print(xs, none: d)`: each absent element of a `?T` sequence printed as `d` (R10.3.1).
+pub fn print<Ts: ShowAll<WithNone>, N: Show>(
+    ..xs: Ts, sep: ?Str = None, end: Str = "\n", none: N, precision: ?Int = None) uses io:
+    put_line(xs, sep, end, fmt_none(precision, none))
 
 /// `print` without the line's end.
 @role(write)
-pub fn write<Ts: ShowAll>(..xs: Ts, sep: ?Str = None, precision: ?Int = None) uses io:
+pub fn write<Ts: ShowAll<Bare>>(..xs: Ts, sep: ?Str = None, precision: ?Int = None) uses io:
+    put_line(xs, sep, "", fmt_of(precision))
+
+/// `write(xs, none: d)`, as `print(xs, none: d)` without the line's end.
+pub fn write<Ts: ShowAll<WithNone>, N: Show>(..xs: Ts, sep: ?Str = None, none: N, precision: ?Int = None) uses io:
+    put_line(xs, sep, "", fmt_none(precision, none))
+
+/// Under `none:`, a list or array of `?T` writes each absent element as `fmt.none` (R10.3.1).
+impl<T: Show> ShowPart<WithNone> for List<?T>:
+    fn write_part(self, mut out: Str, sep: ?Str, fmt: Fmt):
+        var first = true
+        for x in self:
+            put_opt(mut out, x, sep, first, fmt)
+            first = false
+
+impl<D: Domain, T: Show> ShowPart<WithNone> for Array<D, ?T>:
+    fn write_part(self, mut out: Str, sep: ?Str, fmt: Fmt):
+        for i in 0..D.count: put_opt(mut out, raw_get(self.buf, i), sep, i == 0, fmt)
+
+/// One element of a `?T` sequence, after `sep` or its gap unless it is the first.
+fn put_opt<T: Show>(mut out: Str, x: ?T, sep: ?Str, first: Bool, fmt: Fmt):
+    if not first:
+        if let s = sep: out.append(s)
+        elif let v = x: v.gap(mut out)
+        else: out.push(' ')
+    if let v = x: v.write_fmt(mut out, None, fmt)
+    elif let d = fmt.none: out.append(d)
+
+/// The values joined by `sep`, then `end`, written to standard output.
+fn put_line<Ts: ShowAll<M>, M>(xs: Ts, sep: ?Str, end: Str, fmt: Fmt):
     var line = Str(List.new())
-    xs.write_all(mut line, sep, true, fmt_of(precision))
+    xs.write_all(mut line, sep, true, fmt)
+    line.append(end)
     out(line.chars.buf, line.len)
 
 impl Show for Int:
@@ -326,7 +383,7 @@ fn limbs_digits(mut n: List<Int>) -> List<Char>:
     ds
 
 impl Show for F64:
-    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0))
+    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0, None))
     /// Ten decimals unless a precision is given (R10.3.4).
     fn write_fmt(self, mut out: Str, sep: ?Str, fmt: Fmt):
         var d = 10
@@ -347,7 +404,7 @@ impl Show for Str:
 /// A position prints as its integer, a counted domain's in the base `fmt` gives (R04.2.15,
 /// R10.3.2).
 impl<D: Domain> Show for D:
-    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0))
+    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0, None))
     fn write_fmt(self, mut out: Str, sep: ?Str, fmt: Fmt):
         (Int(self) + (if D.counted: fmt.base else: 0)).write_to(mut out, sep)
 
@@ -355,7 +412,7 @@ impl Show for ():
     fn write_to(self, mut out: Str, sep: ?Str) = ()
 
 impl<T: Show> Show for List<T>:
-    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0))
+    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0, None))
     fn write_fmt(self, mut out: Str, sep: ?Str, fmt: Fmt):
         var first = true
         for x in self:
@@ -368,7 +425,7 @@ impl<T: Show> Show for List<T>:
         out.push('\n')
 
 impl<D: Domain, T: Show> Show for Array<D, T>:
-    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0))
+    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0, None))
     fn write_fmt(self, mut out: Str, sep: ?Str, fmt: Fmt):
         for i in 0..D.count:
             let x = raw_get(self.buf, i)
@@ -380,11 +437,11 @@ impl<D: Domain, T: Show> Show for Array<D, T>:
         out.push('\n')
 
 impl<A: Show> Show for Tuple1<A>:
-    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0))
+    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0, None))
     fn write_fmt(self, mut out: Str, sep: ?Str, fmt: Fmt) = self._0.write_fmt(mut out, None, fmt)
 
 impl<A: Show, B: Show> Show for Tuple2<A, B>:
-    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0))
+    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0, None))
     fn write_fmt(self, mut out: Str, sep: ?Str, fmt: Fmt):
         self._0.write_fmt(mut out, None, fmt)
         put_sep(mut out, sep)
@@ -393,7 +450,7 @@ impl<A: Show, B: Show> Show for Tuple2<A, B>:
         out.push('\n')
 
 impl<A: Show, B: Show, C: Show> Show for Tuple3<A, B, C>:
-    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0))
+    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0, None))
     fn write_fmt(self, mut out: Str, sep: ?Str, fmt: Fmt):
         self._0.write_fmt(mut out, None, fmt)
         put_sep(mut out, sep)
@@ -404,7 +461,7 @@ impl<A: Show, B: Show, C: Show> Show for Tuple3<A, B, C>:
         out.push('\n')
 
 impl<A: Show, B: Show, C: Show, E: Show> Show for Tuple4<A, B, C, E>:
-    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0))
+    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0, None))
     fn write_fmt(self, mut out: Str, sep: ?Str, fmt: Fmt):
         self._0.write_fmt(mut out, None, fmt)
         put_sep(mut out, sep)
@@ -417,7 +474,7 @@ impl<A: Show, B: Show, C: Show, E: Show> Show for Tuple4<A, B, C, E>:
         out.push('\n')
 
 impl<A: Show, B: Show, C: Show, E: Show, F: Show> Show for Tuple5<A, B, C, E, F>:
-    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0))
+    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0, None))
     fn write_fmt(self, mut out: Str, sep: ?Str, fmt: Fmt):
         self._0.write_fmt(mut out, None, fmt)
         put_sep(mut out, sep)
@@ -432,7 +489,7 @@ impl<A: Show, B: Show, C: Show, E: Show, F: Show> Show for Tuple5<A, B, C, E, F>
         out.push('\n')
 
 impl<A: Show, B: Show, C: Show, E: Show, F: Show, G: Show> Show for Tuple6<A, B, C, E, F, G>:
-    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0))
+    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0, None))
     fn write_fmt(self, mut out: Str, sep: ?Str, fmt: Fmt):
         self._0.write_fmt(mut out, None, fmt)
         put_sep(mut out, sep)
@@ -449,7 +506,7 @@ impl<A: Show, B: Show, C: Show, E: Show, F: Show, G: Show> Show for Tuple6<A, B,
         out.push('\n')
 
 impl<A: Show, B: Show, C: Show, E: Show, F: Show, G: Show, H: Show> Show for Tuple7<A, B, C, E, F, G, H>:
-    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0))
+    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0, None))
     fn write_fmt(self, mut out: Str, sep: ?Str, fmt: Fmt):
         self._0.write_fmt(mut out, None, fmt)
         put_sep(mut out, sep)
@@ -468,7 +525,7 @@ impl<A: Show, B: Show, C: Show, E: Show, F: Show, G: Show, H: Show> Show for Tup
         out.push('\n')
 
 impl<A: Show, B: Show, C: Show, E: Show, F: Show, G: Show, H: Show, J: Show> Show for Tuple8<A, B, C, E, F, G, H, J>:
-    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0))
+    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0, None))
     fn write_fmt(self, mut out: Str, sep: ?Str, fmt: Fmt):
         self._0.write_fmt(mut out, None, fmt)
         put_sep(mut out, sep)
@@ -489,7 +546,7 @@ impl<A: Show, B: Show, C: Show, E: Show, F: Show, G: Show, H: Show, J: Show> Sho
         out.push('\n')
 
 impl<A: Show, B: Show, C: Show, E: Show, F: Show, G: Show, H: Show, J: Show, K: Show> Show for Tuple9<A, B, C, E, F, G, H, J, K>:
-    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0))
+    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0, None))
     fn write_fmt(self, mut out: Str, sep: ?Str, fmt: Fmt):
         self._0.write_fmt(mut out, None, fmt)
         put_sep(mut out, sep)
@@ -512,7 +569,7 @@ impl<A: Show, B: Show, C: Show, E: Show, F: Show, G: Show, H: Show, J: Show, K: 
         out.push('\n')
 
 impl<A: Show, B: Show, C: Show, E: Show, F: Show, G: Show, H: Show, J: Show, K: Show, L: Show> Show for Tuple10<A, B, C, E, F, G, H, J, K, L>:
-    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0))
+    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0, None))
     fn write_fmt(self, mut out: Str, sep: ?Str, fmt: Fmt):
         self._0.write_fmt(mut out, None, fmt)
         put_sep(mut out, sep)
@@ -537,7 +594,7 @@ impl<A: Show, B: Show, C: Show, E: Show, F: Show, G: Show, H: Show, J: Show, K: 
         out.push('\n')
 
 impl<A: Show, B: Show, C: Show, E: Show, F: Show, G: Show, H: Show, J: Show, K: Show, L: Show, M: Show> Show for Tuple11<A, B, C, E, F, G, H, J, K, L, M>:
-    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0))
+    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0, None))
     fn write_fmt(self, mut out: Str, sep: ?Str, fmt: Fmt):
         self._0.write_fmt(mut out, None, fmt)
         put_sep(mut out, sep)
@@ -564,7 +621,7 @@ impl<A: Show, B: Show, C: Show, E: Show, F: Show, G: Show, H: Show, J: Show, K: 
         out.push('\n')
 
 impl<A: Show, B: Show, C: Show, E: Show, F: Show, G: Show, H: Show, J: Show, K: Show, L: Show, M: Show, N: Show> Show for Tuple12<A, B, C, E, F, G, H, J, K, L, M, N>:
-    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0))
+    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0, None))
     fn write_fmt(self, mut out: Str, sep: ?Str, fmt: Fmt):
         self._0.write_fmt(mut out, None, fmt)
         put_sep(mut out, sep)

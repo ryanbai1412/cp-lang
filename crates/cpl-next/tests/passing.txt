@@ -2884,3 +2884,9 @@ std-mo/mo-bodies-match-brute.cp
 std-tree/jump-tree-chain-depth.cp
 std-tree/jump-tree-fresh-is-all-roots.cp
 std-tree/lift-chain.cp
+core-10/print-none-replaces-absent.cp
+core-10/print-optional-list-without-none-refused.cp
+core-10/read-none-sentinel-is-the-none.cp
+core-10/print-forms.cp
+core-10/read-base-arg.cp
+core-10/read-optional-sentinel-at-end-traps.cp

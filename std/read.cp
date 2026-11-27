@@ -14,15 +14,15 @@ pub trait Read:
 /// expected is held to the range as the input's contract (R10.2.1, R10.2.2). `base:` is what a
 /// counted domain's first position reads as, at every part of the read (R10.2.2).
 @input
-pub fn read<T: Read>(base: Int = io.base) -> T uses io:
-    var input = Input.stdin(base)
+pub fn read<T: Read>(base: Int = io.base, none: ?Int = None) -> T uses io:
+    var input = Input.stdin(base, none)
     T.read(mut input)
 
 /// `read<T>(from: s)`: a `T` read with `s` as the whole input, by the same `Read` impls as
 /// `read<T>()`; `None` on a bad, out-of-range, missing or leftover token. Standard input is
 /// untouched (R10.2.4).
-pub fn read<T: Read>(; from: Str, base: Int = io.base) -> ?T uses io:
-    var input = Input.of(from, base)
+pub fn read<T: Read>(; from: Str, base: Int = io.base, none: ?Int = None) -> ?T uses io:
+    var input = Input.of(from, base, none)
     let x = T.read(mut input)
     if input.held(): Some(x) else: None
 
@@ -34,6 +34,8 @@ pub struct Input:
     var failed: Bool
     /// What a counted domain's first position reads as.
     base: Int
+    /// The number a `?T` read takes as its `None` (`none: -1`, R10.2.10).
+    none: ?Int
 
 /// `stdin`, or the string read from with where its reads are: `4 x at 1`.
 impl Show for Input:
@@ -54,10 +56,11 @@ fn blank(c: Int) -> Bool = c == 32 or c in 9..=13
 
 impl Input:
     /// Standard input, whose place the program's one byte source keeps.
-    pub fn stdin(base: Int = 0) -> Input = Input(None, 0, false, base)
+    pub fn stdin(base: Int = 0, none: ?Int = None) -> Input = Input(None, 0, false, base, none)
 
     /// `s` as the whole input.
-    pub fn of(s: Str, base: Int = 0) -> Input = Input(Some(s.clone()), 0, false, base)
+    pub fn of(s: Str, base: Int = 0, none: ?Int = None) -> Input =
+        Input(Some(s.clone()), 0, false, base, none)
 
     /// A `T` read from here, by its `Read` impl: what an impl reads its parts with.
     @input
@@ -104,6 +107,18 @@ impl Input:
     fn skip_blank(mut self):
         while blank(self.peek(0)): self.byte()
         self.token(self.peek(0) != -1)
+
+    /// Takes the next token when it is `word`, and says whether it was; traps at the end.
+    fn taken(mut self, word: Str) -> Bool:
+        self.skip_blank()
+        for i in 0..word.len:
+            let c: Int = word[i].into()
+            if self.peek(i) != c: return false
+        let c = self.peek(word.len)
+        if c != -1 and not blank(c): return false
+        for i in 0..word.len: self.byte()
+        self.end_token()
+        true
 
     /// After a token: when only spaces, tabs or `\r` follow it on its line, the line's end is
     /// taken too, so a `read_line()` after a line's last token reads the next line (R10.2.3).
@@ -199,9 +214,14 @@ impl Read for Char:
 impl<D: Domain, T: Read> Read for Array<D, T>:
     fn read(mut input: Input) -> [D]T = input.items(D.count)
 
-/// `?T` reads a `T` when a token is left, else is `None` (R10.2.10).
+/// `?T` reads a `T` when a token is left, else is `None`; under `none: k` the token `k` is the
+/// `None` instead, and the end traps (R10.2.10).
 impl<T: Read> Read for Optional<T>:
-    fn read(mut input: Input) -> ?T = if input.left(): Some(input.read<T>()) else: None
+    fn read(mut input: Input) -> ?T:
+        if let k = input.none:
+            if input.taken(k.show()): return None
+        elif not input.left(): return None
+        Some(input.read<T>())
 
 /// `List<T>` reads a count, then that many `T` (R10.2.3).
 impl<T: Read> Read for List<T>:

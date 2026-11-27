@@ -141,7 +141,7 @@ fn cut_ends<D: Domain>(k: Range<D>, lo: ?D, hi: ?D, through: Bool) -> (Int, Int,
 
 /// A range prints its values, one gap apart (R10.3).
 impl<D: Show> Show for Range<D>:
-    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0))
+    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0, None))
     fn write_fmt(self, mut out: Str, sep: ?Str, fmt: Fmt):
         var first = true
         for x in self:

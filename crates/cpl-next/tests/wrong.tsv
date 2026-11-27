@@ -381,17 +381,14 @@ core-10/parse-enum-command.cp	wrong-reject	check: program:9:12: E0606: `Cmd` doe
 core-10/parse-generic-shapes.cp	wrong-reject	check: program:9:9: E0606: `P` does not implement `Read`
 core-10/parse-scalars-and-errors.cp	wrong-reject	check: program:4:49: E0606: `F64` does not implement `Read`
 core-10/print-forms-parity.cp	wrong-reject	own: program:11:7: E0608: `xs` was moved into another binding; use `.clone()` there to keep both
-core-10/print-forms.cp	wrong-reject	check: program:6:7: E0303: `..xs` takes positional or named arguments, not both
 core-10/print-rev-view-honors-sep.cp	no-cxx	g++ failed on 74161c819b4fd3e7.cpp: | 74161c819b4fd3e7.cpp: In function ‘cpl_unit f0()’: | 74161c819b4fd3e7.cpp:566:11: error: no match for ‘operator=’ (operand types are ‘S12’ and ‘S16’) |   566 |     l24 = l53;
 core-10/print-shapes.cp	wrong-reject	check: std.strings:359:56: E0310: no parameter named `from`
 core-10/print-view-honours-sep.cp	wrong-output	wanted "3\n2\n1", got "3 2 1\n"
-core-10/read-base-arg.cp	wrong-reject	check: program:6:9: E0606: `E` does not implement `Read`
 core-10/read-base-one-array.cp	wrong-reject	check: program:7:19: E0606: `V` does not implement `Read`
 core-10/read-base-one-counted.cp	wrong-reject	check: program:7:13: E0606: `V` does not implement `Read`
 core-10/read-bool-is-not-a-token.cp	wrong-error	wanted E0315 on line 4, got: check: program:6:1: E0606: `Bool` does not implement `Read`
 core-10/read-explicit-domain-unshifted.cp	wrong-reject	check: program:6:13: E0606: `V` does not implement `Read`
 core-10/read-needs-type.cp	wrong-accept	wanted E0806 on line 3, ran and printed: 
-core-10/read-optional-sentinel-at-end-traps.cp	wrong-reject	check: program:5:26: E0310: no parameter named `none`
 core-10/test-position-stored-above-multitest.cp	wrong-accept	wanted E0805 on line 8, ran and printed: 1
 core-11/binary-min-beside-imported-seq-min.cp	wrong-reject	check: program:5:7: E0606: `Int` does not implement `Seq`
 core-11/lib-table-fns-need-no-import.cp	wrong-reject	check: std.strings:1091:47: E0606: `2.hidden` has no `impl Eq`, which `==` needs (R08.1.5)
