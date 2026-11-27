@@ -406,7 +406,8 @@ fn layer(
                             } = &m.kind
                             {
                                 if generics.is_empty() {
-                                    consts.insert(name.text.clone(), ConstId(d.consts.len()));
+                                    let n = d.syms.intern(&name.text);
+                                    consts.insert(n, ConstId(d.consts.len()));
                                     d.consts.push(LibConst {
                                         module: mid,
                                         name: format!("{}.{}", sd.name.text, name.text),

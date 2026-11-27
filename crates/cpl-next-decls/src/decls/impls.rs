@@ -341,7 +341,7 @@ impl Decls {
         let Ty::Struct(s, ..) = recv else {
             return None;
         };
-        (self.s(*s).shaped.get(name)?.iter().copied()).find(|f| {
+        (self.s(*s).shaped.get(&self.sym(name)?)?.iter().copied()).find(|f| {
             let f = self.f(*f);
             let mut binds = vec![None; f.generics.len()];
             f.self_ty

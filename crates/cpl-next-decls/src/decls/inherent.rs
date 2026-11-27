@@ -112,7 +112,7 @@ fn shaped_impl(
             sig: None,
         };
         let fid = add_fn(d, mid, item.clone(), m, &f, within);
-        let name = f.name.text.clone();
+        let name = d.syms.intern(&f.name.text);
         d.structs[t.0].shaped.entry(name).or_default().push(fid);
     }
 }

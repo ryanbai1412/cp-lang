@@ -836,7 +836,7 @@ impl<'a> Cx<'a> {
             .and_then(|n| Some((n, self.d.struct_named(self.module, n)?)));
         // `Dir4.up`: a struct's const.
         if let (Some((_, d)), None) = (named, call) {
-            if let Some(&c) = self.d.s(d).consts.get(&name.text) {
+            if let Some(&c) = (self.d.sym(&name.text)).and_then(|n| self.d.s(d).consts.get(&n)) {
                 self.no_targs(name, written_targs, span);
                 return self.const_read(c, span);
             }

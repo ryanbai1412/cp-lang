@@ -128,9 +128,9 @@ pub struct StructDecl {
     pub n_sets: usize,
     pub methods: HashMap<Sym, FnId>,
     /// Its `const NAME = init`s, read as `Dir4.up`: each a const of its module, set once.
-    pub consts: HashMap<String, ConstId>,
+    pub consts: HashMap<Sym, ConstId>,
     /// The fns of its impls over a shape of it (`impl Rev<[D]T>:`), each `self` that shape.
-    pub shaped: HashMap<String, Vec<FnId>>,
+    pub shaped: HashMap<Sym, Vec<FnId>>,
     /// Its static `new`, which `T(args)` calls outside its own body (R02.6.3).
     pub ctor: Option<FnId>,
     /// An enum's variants, each with the struct of its payload, named `Enum.Variant` (R02.7).
