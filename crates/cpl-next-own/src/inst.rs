@@ -271,6 +271,14 @@ impl Walk<'_> {
         }
         go(self, t, 0)
     }
+    /// A fn value each of whose members captures nothing holds nothing.
+    fn captures_nothing(&self, t: &CTy) -> bool {
+        match t {
+            CTy::Clo(k) => self.p.captures(k).is_empty(),
+            CTy::Set(ms) => ms.iter().all(|k| self.p.captures(k).is_empty()),
+            _ => false,
+        }
+    }
     fn plain(&self, t: &CTy) -> bool {
         fn go(w: &Walk, t: &CTy, depth: usize) -> bool {
             match t {
@@ -410,7 +418,9 @@ impl Walk<'_> {
     /// The places the value of `e` lends: a borrowed binding, or what a binding was given.
     fn sources(&self, e: &Expr<CTy>) -> BTreeSet<Pl> {
         // A plain value (an `Int` field read among them) holds nothing; fn values hold captures.
-        if self.plain(&e.ty) && !matches!(e.ty, CTy::Clo(_) | CTy::Set(_) | CTy::Struct(..)) {
+        if self.plain(&e.ty) && !matches!(e.ty, CTy::Clo(_) | CTy::Set(_) | CTy::Struct(..))
+            || self.captures_nothing(&e.ty)
+        {
             return BTreeSet::new();
         }
         let mut out = BTreeSet::new();
