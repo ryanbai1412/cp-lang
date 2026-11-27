@@ -153,8 +153,54 @@ impl Cx<'_> {
         }
     }
 
-    /// `match x: arms`: a test of `x`'s variant per arm, with the payload bound in its arm, and every
-    /// variant met by an arm or a default (R02.7.2, R02.7.4).
+    /// A bare variant name `n` as a value: the expected enum's variant, or else the variant of the
+    /// one enum in scope that has it, where nothing else takes the name (R02.7.1).
+    pub(super) fn bare_variant(&self, n: &str, want: Option<&Ty>) -> Option<(StructId, usize)> {
+        self.expected_variant(n, want)
+            .or_else(|| self.scoped_variant(n))
+    }
+    fn nearer(&self, n: &str) -> bool {
+        !n.starts_with(|c: char| c.is_ascii_uppercase())
+            || self.lookup(n).is_some()
+            || self.itself(n, Span::new(0, 0)).is_some()
+            || self.self_field(n).is_some()
+    }
+    pub(super) fn expected_variant(&self, n: &str, want: Option<&Ty>) -> Option<(StructId, usize)> {
+        let Some(Ty::Struct(e, ..)) = want.map(|t| self.shallow(t)) else {
+            return None;
+        };
+        let i = (self.d.s(e).variants.iter()).position(|(v, _)| v == n)?;
+        (!self.nearer(n)).then_some((e, i))
+    }
+    pub(super) fn scoped_variant(&self, n: &str) -> Option<(StructId, usize)> {
+        if self.nearer(n)
+            || self.domain_named(n).is_some()
+            || matches!(
+                self.d.named(self.module, n),
+                Some(decls::Named::Fn(_) | decls::Named::Struct(_) | decls::Named::Const(_))
+            )
+        {
+            return None;
+        }
+        let mut found: Vec<(StructId, usize)> = (self.d.views[self.module.0].values())
+            .filter_map(|x| match x {
+                decls::Named::Struct(e) => Some((
+                    *e,
+                    (self.d.s(*e).variants.iter()).position(|(v, _)| v == n)?,
+                )),
+                _ => None,
+            })
+            .collect();
+        found.sort_by_key(|f| f.0 .0);
+        found.dedup();
+        match found[..] {
+            [one] => Some(one),
+            _ => None,
+        }
+    }
+
+    /// `match x: arms`: the first arm whose pattern `x` matches and whose guard holds, with the
+    /// names it binds in scope; every value is met by an arm (R02.7.2, R02.7.4, R01.10).
     pub(super) fn match_(
         &mut self,
         scrut: &ast::Expr,
@@ -162,107 +208,36 @@ impl Cx<'_> {
         want: Option<&Ty>,
         span: Span,
     ) -> TExpr {
+        use super::pattern::Space;
         let mk = |kind, ty| TExpr { kind, ty, span };
         let x = self.expr(scrut, None);
         let xt = self.shallow(&x.ty);
-        let (e, targs) = match &xt {
-            Ty::Struct(e, targs, _) if !self.d.s(*e).variants.is_empty() => (*e, targs.clone()),
-            _ => {
-                self.err(span, "slice: a match on a value that is not an enum");
-                return mk(TK::Error, Ty::Error);
-            }
-        };
-        let variants = self.d.s(e).variants.clone();
         self.scopes.push(HashMap::new());
-        let tmp = self.bind("$match", xt.clone());
-        let stmts = vec![TStmt::Let(tmp, x)];
-        let whole = || TExpr {
-            kind: TK::Var(tmp),
-            ty: xt.clone(),
-            span,
-        };
+        let (stmts, whole) = self.held(x);
+        // A value of no known type has no arms to count.
+        let known = !matches!(xt, Ty::Error | Ty::Var(_));
+        let mut counted = known;
         let mut ty = want.cloned();
         let was_joining = self.joining;
-        let mut cases: Vec<Option<TExpr>> = vec![None; variants.len()];
-        let mut default: Option<TExpr> = None;
+        let mut rows: Vec<Vec<Space>> = Vec::new();
+        let mut built: Vec<(Option<TExpr>, bool, TExpr)> = Vec::new();
         for arm in arms {
-            if arm.guard.is_some() {
-                self.err(arm.pat.span, "slice: a match guard");
-            }
             self.scopes.push(HashMap::new());
             let mut binds = Vec::new();
-            let which = match &arm.pat.kind {
-                PatternKind::Wildcard => None,
-                PatternKind::Name(v) if variants.iter().any(|(n, _)| n == v) => {
-                    variants.iter().position(|(n, _)| n == v)
-                }
-                PatternKind::Name(b) => {
-                    let l = self.bind(b, xt.clone());
-                    binds.push(TStmt::Let(l, whole()));
-                    None
-                }
-                PatternKind::Variant { path, args } => {
-                    let v = &path[path.len() - 1].text;
-                    match variants.iter().position(|(n, _)| n == v) {
-                        Some(i) => {
-                            let p = variants[i].1;
-                            let fields = self.d.s(p).fields.clone();
-                            if args.len() != fields.len() {
-                                self.err(
-                                    arm.pat.span,
-                                    format!(
-                                        "{}: `{v}` has {} fields, found {}",
-                                        cpl_diag::codes::WRONG_ARG_COUNT.0,
-                                        fields.len(),
-                                        args.len()
-                                    ),
-                                );
-                            }
-                            let sub = Subst {
-                                tys: &targs,
-                                sets: &[],
-                            };
-                            let payload = mk(
-                                TK::Payload(Box::new(whole()), i),
-                                Ty::Struct(p, targs.clone(), Vec::new()),
-                            );
-                            for (j, (a, (_, t))) in args.iter().zip(&fields).enumerate() {
-                                match &a.kind {
-                                    PatternKind::Wildcard => {}
-                                    PatternKind::Name(b) => {
-                                        let t = sub.ty(t);
-                                        let l = self.bind(b, t.clone());
-                                        let field = TK::Field(Box::new(payload.clone()), j);
-                                        binds.push(TStmt::Let(l, mk(field, t)));
-                                    }
-                                    _ => self.err(a.span, "slice: a nested pattern"),
-                                }
-                            }
-                            Some(i)
-                        }
-                        None => {
-                            let en = self.d.s(e).name.clone();
-                            self.err(
-                                arm.pat.span,
-                                format!(
-                                    "{}: `{en}` has no variant `{v}`",
-                                    cpl_diag::codes::UNKNOWN_FIELD.0
-                                ),
-                            );
-                            None
-                        }
-                    }
-                }
-                _ => {
-                    self.err(
-                        arm.pat.span,
-                        "slice: a pattern other than a variant or a name",
-                    );
-                    None
-                }
-            };
-            let covered = which.map_or(default.is_some(), |i| cases[i].is_some());
-            if default.is_some() || covered {
+            let seen = self.errors.len();
+            let test = self.refute(&arm.pat, &whole, false, &mut binds);
+            // A pattern in error says nothing of which values the arms meet.
+            counted &= self.errors.len() == seen;
+            let space = self.space(&arm.pat, &xt);
+            if known
+                && self
+                    .useful(
+                        &rows,
+                        std::slice::from_ref(&space),
+                        std::slice::from_ref(&xt),
+                    )
+                    .is_none()
+            {
                 self.err(
                     arm.pat.span,
                     format!(
@@ -271,9 +246,12 @@ impl Cx<'_> {
                     ),
                 );
             }
+            let guard = arm.guard.as_ref().map(|g| self.bool_cond(g));
             let body = self.block(&arm.body, ty.as_ref());
             self.scopes.pop();
+            // An arm that leaves gives no value, so it says nothing of the match's type.
             let body = match &ty {
+                _ if arm.body.leaves() => body,
                 Some(t) if self.shallow(t) != Ty::Unit => self.coerce(body, t),
                 Some(_) => body,
                 // With no expected type, the arms meet in a type of their own, as an `if`'s do.
@@ -289,53 +267,52 @@ impl Cx<'_> {
                 }
             };
             let bt = body.ty.clone();
-            let body = mk(TK::Block(binds, Some(Box::new(body))), bt);
-            match which {
-                Some(i) if cases[i].is_none() => cases[i] = Some(body),
-                Some(_) => {}
-                None => default = default.or(Some(body)),
-            }
+            // A guard sees the names, so they are bound before it, in the test.
+            built.push(match guard {
+                None => {
+                    rows.push(vec![space]);
+                    (test, false, mk(TK::Block(binds, Some(Box::new(body))), bt))
+                }
+                Some(g) => {
+                    let g = mk(TK::Block(binds, Some(Box::new(g))), Ty::Bool);
+                    (Self::both(test, Some(g)), true, body)
+                }
+            });
         }
         self.joining = was_joining;
         let ty = ty.unwrap_or(Ty::Unit);
-        let missing: Vec<&str> = (variants.iter().zip(&cases))
-            .filter(|(_, c)| c.is_none())
-            .map(|((n, _), _)| n.as_str())
-            .collect();
-        let mut tail = match (default, missing.is_empty()) {
-            (Some(d), _) => d,
-            (None, true) => match cases.pop() {
-                Some(Some(last)) => last,
-                _ => mk(TK::Error, ty.clone()),
-            },
-            (None, false) => {
-                self.err(
-                    span,
-                    format!(
-                        "{}: `match` misses {}",
-                        cpl_diag::codes::NON_EXHAUSTIVE_MATCH.0,
-                        missing.join(", ")
-                    ),
-                );
+        let missing = counted
+            .then(|| self.useful(&rows, &[Space::Any], std::slice::from_ref(&xt)))
+            .flatten();
+        let mut tail = match missing {
+            Some(w) => {
+                let w = self.show_space(&w[0], &xt);
+                let code = cpl_diag::codes::NON_EXHAUSTIVE_MATCH.0;
+                self.err(span, format!("{code}: `match` misses {w}"));
                 mk(TK::Error, ty.clone())
             }
+            // Every value is met, so the last arm needs no test when it has no guard.
+            None => match built.pop() {
+                Some((_, false, body)) => body,
+                Some((test, true, body)) => {
+                    let test = test.unwrap_or_else(|| mk(TK::Bool(true), Ty::Bool));
+                    let none = mk(TK::Error, ty.clone());
+                    mk(
+                        TK::If(Box::new(test), Box::new(body), Box::new(none)),
+                        ty.clone(),
+                    )
+                }
+                None => mk(TK::Error, ty.clone()),
+            },
         };
-        for (i, c) in cases.into_iter().enumerate().rev() {
-            if let Some(c) = c {
-                let tag = mk(TK::Tag(Box::new(whole())), Ty::Int);
-                let test = mk(
-                    TK::Cmp(
-                        CmpOp::Eq,
-                        Box::new(tag),
-                        Box::new(mk(TK::Int(i as i64), Ty::Int)),
-                    ),
-                    Ty::Bool,
-                );
-                tail = mk(
-                    TK::If(Box::new(test), Box::new(c), Box::new(tail)),
+        for (test, _, body) in built.into_iter().rev() {
+            tail = match test {
+                Some(t) => mk(
+                    TK::If(Box::new(t), Box::new(body), Box::new(tail)),
                     ty.clone(),
-                );
-            }
+                ),
+                None => body,
+            };
         }
         self.scopes.pop();
         mk(TK::Block(stmts, Some(Box::new(tail))), ty)

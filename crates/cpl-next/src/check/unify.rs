@@ -370,6 +370,22 @@ impl<'a> Cx<'a> {
     /// The optional `v`, held in a new variable, as its `some` flag and its value.
     /// A place is read where it is: nothing is moved out of it.
     pub(super) fn opened(&mut self, v: TExpr, inner: Ty) -> (Vec<TStmt>, TExpr, TExpr) {
+        let span = v.span;
+        let (hold, read) = self.held(v);
+        let flag = TExpr {
+            kind: TK::Field(Box::new(read.clone()), 0),
+            ty: Ty::Bool,
+            span,
+        };
+        let val = TExpr {
+            kind: TK::Field(Box::new(read), 1),
+            ty: inner,
+            span,
+        };
+        (hold, flag, val)
+    }
+    /// `v` as a place: itself when it is one, else a new variable that holds it.
+    pub(super) fn held(&mut self, v: TExpr) -> (Vec<TStmt>, TExpr) {
         fn place(e: &TExpr) -> bool {
             match &e.kind {
                 TK::Var(_) => true,
@@ -389,17 +405,7 @@ impl<'a> Cx<'a> {
             };
             (vec![TStmt::Let(tmp, v)], read)
         };
-        let flag = TExpr {
-            kind: TK::Field(Box::new(read.clone()), 0),
-            ty: Ty::Bool,
-            span,
-        };
-        let val = TExpr {
-            kind: TK::Field(Box::new(read), 1),
-            ty: inner,
-            span,
-        };
-        (hold, flag, val)
+        (hold, read)
     }
     /// A value flows into a slot of type `want`. The closed list of conversions lives here.
     /// Whether `a` and `b` could be one type, an unknown fitting anything; nothing is solved.

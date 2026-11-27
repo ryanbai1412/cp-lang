@@ -181,8 +181,13 @@ impl<'a> Cx<'a> {
         let outer = self.group.len();
         self.declare_nested(&b.stmts);
         for (i, s) in b.stmts.iter().enumerate() {
+            // A last expression that never gives a value is a statement, as `return` is.
             if i + 1 == b.stmts.len() {
                 if let StmtKind::Expr(e) = &s.kind {
+                    if e.leaves() {
+                        self.stmt(s, &mut out);
+                        break;
+                    }
                     let v = self.expr(e, want);
                     value = Some(match want {
                         Some(w) if self.shallow(w) != Ty::Unit => self.coerce(v, w),
@@ -213,7 +218,7 @@ impl<'a> Cx<'a> {
         self.cond_in(c)
     }
     /// An expression a condition tests: a `Bool`, never an integer or optional read as one (R02.11.1).
-    fn bool_cond(&mut self, e: &ast::Expr) -> TExpr {
+    pub(super) fn bool_cond(&mut self, e: &ast::Expr) -> TExpr {
         let v = self.expr(e, Some(&Ty::Bool));
         let t = self.shallow(&v.ty);
         if matches!(t, Ty::Bool | Ty::Var(_) | Ty::Error) || self.coercion(&t, &Ty::Bool).is_some()
@@ -234,19 +239,18 @@ impl<'a> Cx<'a> {
     }
     fn cond_in(&mut self, c: &Cond) -> TExpr {
         match c {
-            // `let v = e`: holds when the optional `e` has a value, which `v` then names.
-            Cond::Let {
-                pat:
-                    ast::Pattern {
-                        kind: ast::PatternKind::Name(name),
-                        ..
-                    },
-                value,
-                and,
-            } => {
+            // `let p = e`: holds when `e` matches `p`, whose names then name its parts; on an
+            // optional `e`, a pattern of no optional matches the value it has (R01.7.1).
+            Cond::Let { pat, value, and } => {
                 let span = value.span;
                 let v = self.expr(value, None);
-                let Some(inner) = self.optional_of(&v.ty) else {
+                let mk = |kind| TExpr {
+                    kind,
+                    ty: Ty::Bool,
+                    span,
+                };
+                let inner = (self.optional_of(&v.ty)).filter(|_| !self.optional_pattern(pat));
+                if inner.is_none() && matches!(pat.kind, PatternKind::Name(_)) {
                     if self.shallow(&v.ty) != Ty::Error {
                         let t = self.show(&v.ty);
                         self.err(span, format!("slice: `if let` on a `{t}`"));
@@ -256,36 +260,48 @@ impl<'a> Cx<'a> {
                         ty: Ty::Error,
                         span,
                     };
+                }
+                let (hold, read) = self.held(v);
+                let mut binds = Vec::new();
+                let test = match inner {
+                    Some(inner) => {
+                        let flag = mk(TK::Field(Box::new(read.clone()), 0));
+                        let val = TExpr {
+                            kind: TK::Field(Box::new(read), 1),
+                            ty: inner,
+                            span,
+                        };
+                        let rest = self.refute(pat, &val, false, &mut binds);
+                        Self::both(Some(flag), rest)
+                    }
+                    None => self.refute(pat, &read, false, &mut binds),
                 };
-                let (hold, flag, val) = self.opened(v, inner.clone());
-                let named = self.bind(name, inner);
                 let rest = match and {
                     Some(more) => self.cond_in(more),
-                    None => TExpr {
-                        kind: TK::Bool(true),
-                        ty: Ty::Bool,
-                        span,
-                    },
+                    None => mk(TK::Bool(true)),
                 };
-                let then = TExpr {
-                    kind: TK::Block(vec![TStmt::Let(named, val)], Some(Box::new(rest))),
-                    ty: Ty::Bool,
-                    span,
+                let then = mk(TK::Block(binds, Some(Box::new(rest))));
+                let body = match test {
+                    Some(t) => mk(TK::If(
+                        Box::new(t),
+                        Box::new(then),
+                        Box::new(mk(TK::Bool(false))),
+                    )),
+                    None => then,
                 };
+                mk(TK::Block(hold, Some(Box::new(body))))
+            }
+            Cond::Guard { test, and } => {
+                let t = self.bool_cond(test);
+                let rest = self.cond_in(and);
+                let span = t.span;
                 let no = TExpr {
                     kind: TK::Bool(false),
                     ty: Ty::Bool,
                     span,
                 };
                 TExpr {
-                    kind: TK::Block(
-                        hold,
-                        Some(Box::new(TExpr {
-                            kind: TK::If(Box::new(flag), Box::new(then), Box::new(no)),
-                            ty: Ty::Bool,
-                            span,
-                        })),
-                    ),
+                    kind: TK::If(Box::new(t), Box::new(rest), Box::new(no)),
                     ty: Ty::Bool,
                     span,
                 }
@@ -370,6 +386,30 @@ impl<'a> Cx<'a> {
                 otherwise: None,
                 ..
             } => {
+                match &pat.kind {
+                    // `var x` in a pattern binds a name that may change (R01.6.3).
+                    PatternKind::Var(inner) => {
+                        let mut one = s.clone();
+                        if let StmtKind::Let { mutable, pat, .. } = &mut one.kind {
+                            (*mutable, *pat) = (true, (**inner).clone());
+                        }
+                        return self.stmt(&one, out);
+                    }
+                    PatternKind::Variant { path, args } if path.len() == 1 && args.is_empty() => {
+                        let code = cpl_diag::codes::VALUE_NAME_CASE.0;
+                        let n = &path[0].text;
+                        return self.err(
+                            pat.span,
+                            format!("{code}: a value's name starts lowercase, not `{n}`"),
+                        );
+                    }
+                    PatternKind::Literal(_) | PatternKind::Variant { .. } | PatternKind::Or(_) => {
+                        let code = cpl_diag::codes::EXPECTED_PATTERN.0;
+                        let msg = format!("{code}: this pattern may not match; give the `let` an `else` that leaves");
+                        return self.err(s.span, msg);
+                    }
+                    _ => {}
+                }
                 if let PatternKind::Record { fields, rest } = &pat.kind {
                     let parts = fields.iter().map(|(n, p)| (n.text.clone(), p.clone()));
                     let exact = (!rest).then_some(fields.len());
@@ -497,11 +537,7 @@ impl<'a> Cx<'a> {
             // `let v = x else: leave`: `v` names `x`'s payload after it, and the block runs when there is none (R01.6.2).
             StmtKind::Let {
                 mutable,
-                pat:
-                    ast::Pattern {
-                        kind: PatternKind::Name(name),
-                        ..
-                    },
+                pat,
                 ty,
                 init: Some(init),
                 otherwise: Some(otherwise),
@@ -512,6 +548,34 @@ impl<'a> Cx<'a> {
                     self.err(s.span, format!("{code}: this `else` block can reach its end; end it with `return`, `break`, `continue` or a trap"));
                 }
                 let declared = ty.as_ref().map(|t| self.body_ty(t, s.span, out));
+                // `let p = x else: leave`: the block runs when `x` does not match `p`, whose names
+                // are bound after it.
+                let PatternKind::Name(name) = &pat.kind else {
+                    let v = self.expr(init, declared.as_ref());
+                    let v = match &declared {
+                        Some(t) => self.coerce(v, t),
+                        None => v,
+                    };
+                    let (hold, read) = self.held(v);
+                    out.extend(hold);
+                    let none = self.block(otherwise, None);
+                    let mut binds = Vec::new();
+                    if let Some(test) = self.refute(pat, &read, *mutable, &mut binds) {
+                        let span = s.span;
+                        let unit = TExpr {
+                            kind: TK::Unit,
+                            ty: Ty::Unit,
+                            span,
+                        };
+                        out.push(TStmt::Expr(TExpr {
+                            kind: TK::If(Box::new(test), Box::new(unit), Box::new(none)),
+                            ty: Ty::Unit,
+                            span,
+                        }));
+                    }
+                    out.extend(binds);
+                    return;
+                };
                 let want = declared.clone().map(|t| self.optional_ty(t));
                 let v = self.expr(init, want.as_ref());
                 let v = match &want {

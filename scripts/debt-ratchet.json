@@ -271,8 +271,8 @@
   "dream_over_32kb": 3,
   "invariant_sites": 0,
   "domain_member_names": 0,
-  "next_wrong": 708,
-  "next_not_passing": 3505,
+  "next_wrong": 701,
+  "next_not_passing": 3448,
   "end_state_unmeasured": 25,
   "facade_today_uses": 274,
   "tool_compiler_deps": 0,
@@ -280,5 +280,5 @@
   "next_cases_removed": 0,
   "next_std_names": 45,
   "old_pipeline_lines": 180117,
-  "next_masked": 1265
+  "next_masked": 1240
 }

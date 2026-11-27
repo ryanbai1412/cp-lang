@@ -212,7 +212,8 @@ fn range_of<D: Domain>(lo: Int, hi: Int, step: Int) -> Range<D>:
     let n = if hi <= lo: 0 else: (hi - lo + step - 1) / step
     Range(lo, n, step)
 
-/// `Some(v)`: `v`, present (R01.5.6).
+/// `Some(v)`: `v`, present (R01.5.6); `Some(p)` matches it (R01.7.1).
+@pattern
 fn some<T>(v: T) -> ?T = v
 
 @tuple

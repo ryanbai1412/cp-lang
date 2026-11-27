@@ -849,6 +849,23 @@ impl<'a> Cx<'a> {
         if let Some(d) = self.domain_named(n) {
             return self.domain_value(d, span);
         }
+        if let Some((e, i)) = self.scoped_variant(n) {
+            return self.variant(e, i, Vec::new(), &[], span);
+        }
+        // `todo` traps where it is reached and gives no value (R01.6.7).
+        if n == "todo" {
+            let never = TExpr {
+                kind: TK::Bool(false),
+                ty: Ty::Bool,
+                span,
+            };
+            let trap = TStmt::Assert(never, "`todo` reached".into(), span, CheckKind::Todo);
+            return TExpr {
+                kind: TK::Block(vec![trap], None),
+                ty: Ty::Unit,
+                span,
+            };
+        }
         if let Some(&(_, _, id)) = (self.group.iter()).find(|g| g.1 == n && g.0 > span.start) {
             let set = self.names_set();
             self.ahead.push((id, n.to_string(), span, set));
@@ -990,7 +1007,10 @@ impl<'a> Cx<'a> {
                 );
                 mk(TK::Block(bind, Some(Box::new(pick))), out)
             }
-            ExprKind::Name(n) => self.name(n, span),
+            ExprKind::Name(n) => match self.expected_variant(n, want) {
+                Some((e, i)) => self.variant(e, i, Vec::new(), &[], span),
+                None => self.name(n, span),
+            },
             ExprKind::SelfValue => self.self_expr(span).unwrap_or(mk(TK::Error, Ty::Error)),
             ExprKind::Tuple(xs) if xs.is_empty() => mk(TK::Unit, Ty::Unit),
             // `~x` flips every bit: `x ^ ones`.
@@ -1344,6 +1364,12 @@ impl<'a> Cx<'a> {
                         mk(TK::Block(pre, Some(Box::new(v))), ty)
                     }
                 }
+                ExprKind::Name(n) if self.bare_variant(n, want).is_some() => {
+                    match self.bare_variant(n, want) {
+                        Some((e, i)) => self.variant(e, i, Vec::new(), args, span),
+                        None => self.call_named(n, &[], args, span, want),
+                    }
+                }
                 ExprKind::Name(n) if self.declared(n) => self.call_named(n, &[], args, span, want),
                 // `Box<Int>(5)`, `List<Int>()`: the written type arguments come first.
                 ExprKind::Generic { base, args: targs } if matches!(&base.kind, ExprKind::Name(n) if self.declared(n)) => {
@@ -1549,16 +1575,20 @@ impl<'a> Cx<'a> {
                 };
                 let was_joining = self.joining;
                 self.joining = want_owned.is_none() && otherwise.is_some();
-                let mut tail = if otherwise.is_some() && self.shallow(&ty) != Ty::Unit {
-                    self.coerce(else_, &ty)
-                } else {
-                    else_
-                };
+                let else_leaves = otherwise.as_ref().is_some_and(|o| o.leaves());
+                let mut tail =
+                    if otherwise.is_some() && !else_leaves && self.shallow(&ty) != Ty::Unit {
+                        self.coerce(else_, &ty)
+                    } else {
+                        else_
+                    };
                 for (c, b) in branches.iter().rev() {
                     let c = self.cond(c);
+                    let leaves = b.leaves();
                     let b = self.block(b, if otherwise.is_some() { Some(&ty) } else { None });
                     self.scopes.pop();
-                    let b = if otherwise.is_some() && self.shallow(&ty) != Ty::Unit {
+                    // A branch that leaves gives no value to convert.
+                    let b = if otherwise.is_some() && !leaves && self.shallow(&ty) != Ty::Unit {
                         self.coerce(b, &ty)
                     } else {
                         b

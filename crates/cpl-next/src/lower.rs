@@ -137,8 +137,9 @@ pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &crate::modules::Load
         }
         let mut body = Vec::new();
         let v = lw.expr(&tf.body, &mut body);
-        // A body that ends in `return` has no value of its own. (The design wants a "never" type here.)
-        if matches!(body.last(), Some(Stmt::Return(_))) {
+        // A body that ends in `return` or a trap has no value of its own. (The design wants a
+        // "never" type here.)
+        if ends(&body) {
         } else if tf.ret != Ty::Unit {
             body.push(Stmt::Return(Some(v)));
         } else {
@@ -732,8 +733,13 @@ impl Lw<'_> {
                     mk(EK::Unit)
                 } else {
                     let t = self.temp(ty.clone());
-                    sa.push(Stmt::Assign(Place::Local(t), va));
-                    sb.push(Stmt::Assign(Place::Local(t), vb));
+                    // A branch of no value in an `if` of one leaves, so it has nothing to store.
+                    if a.ty != Ty::Unit {
+                        sa.push(Stmt::Assign(Place::Local(t), va));
+                    }
+                    if b.ty != Ty::Unit {
+                        sb.push(Stmt::Assign(Place::Local(t), vb));
+                    }
                     out.push(Stmt::If(cv, sa, sb));
                     mk(EK::Copy(Place::Local(t)))
                 }
@@ -1208,7 +1214,7 @@ impl Lw<'_> {
         let mut stmts = Vec::new();
         let v = self.expr(body, &mut stmts);
         self.selves.pop();
-        if matches!(stmts.last(), Some(Stmt::Return(_))) {
+        if ends(&stmts) {
         } else if info.ret != Ty::Unit {
             stmts.push(Stmt::Return(Some(v)));
         } else {
@@ -1457,5 +1463,17 @@ fn shown_name(d: &Decls, fd: &FnDecl) -> String {
     match owner {
         Some(o) => format!("{o}.{}", fd.name),
         None => fd.name.clone(),
+    }
+}
+
+/// The statements never run past their end: they end in a `return`, a check that always fails,
+/// or a branch each of whose ways ends.
+fn ends(stmts: &[Stmt<Ty>]) -> bool {
+    match stmts.last() {
+        Some(Stmt::Return(_)) => true,
+        Some(Stmt::Check { cond, .. }) => matches!(cond.kind, EK::Bool(false)),
+        Some(Stmt::If(_, a, b)) => ends(a) && ends(b),
+        Some(Stmt::Switch(_, arms)) => !arms.is_empty() && arms.iter().all(|a| ends(a)),
+        _ => false,
     }
 }

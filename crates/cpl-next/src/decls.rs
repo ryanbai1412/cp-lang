@@ -257,6 +257,9 @@ pub struct Decls {
     /// Core's `@coerce` fns: each converts a value of its parameter's type where its result's
     /// type is wanted (R04.8.10).
     pub coercions: Vec<FnId>,
+    /// Core's `@pattern` fns: `f(p)` as a pattern matches the optional `f` makes when it is
+    /// present and its value matches `p` (R01.7.1).
+    pub pattern_fns: Vec<FnId>,
     /// The `@index` fns, in declaration order.
     pub index_fns: Vec<FnId>,
 }
@@ -1783,7 +1786,8 @@ fn add_fn(
     // run, so the program's own is refused: its expected result may be that lint (R06.4.9).
     for x in &s.decorators {
         let elsewhere = d.is_library(m) && read_elsewhere(&x.name.text);
-        let core_only = m == CORE && matches!(x.name.text.as_str(), "coerce" | "variant_check");
+        let core_only =
+            m == CORE && matches!(x.name.text.as_str(), "coerce" | "variant_check" | "pattern");
         if !elsewhere
             && !core_only
             && x.name.text != GETTER
@@ -1821,6 +1825,9 @@ fn add_fn(
     let coerce = m == CORE && has("coerce");
     if coerce {
         d.coercions.push(FnId(d.fns.len()));
+    }
+    if m == CORE && has("pattern") {
+        d.pattern_fns.push(FnId(d.fns.len()));
     }
     if getter && params.iter().any(|p| p.default.is_none()) {
         let msg = format!(

@@ -1,0 +1,638 @@
+//! Patterns: the test a value meets and the names it binds (R01.7), and whether a list of them
+//! covers a type (R02.7.4).
+use super::*;
+
+/// A pattern as far as covering goes: what it matches of a value's shape.
+#[derive(Clone, Debug)]
+pub(super) enum Space {
+    /// Anything: `_`, a name.
+    Any,
+    /// Constructor `k` of the type (a variant, `None`/`some`, `false`/`true`, the one of a
+    /// tuple or struct), with the spaces of its parts.
+    Ctor(usize, Vec<Space>),
+    /// A literal of a type with no end of values; `None` is one equal to no other.
+    Lit(Option<i128>),
+    Or(Vec<Space>),
+}
+
+impl Cx<'_> {
+    /// `a and b`, either one a test that always holds when absent.
+    pub(super) fn both(a: Option<TExpr>, b: Option<TExpr>) -> Option<TExpr> {
+        match (a, b) {
+            (Some(a), Some(b)) => {
+                let span = a.span;
+                let no = TExpr {
+                    kind: TK::Bool(false),
+                    ty: Ty::Bool,
+                    span,
+                };
+                Some(TExpr {
+                    kind: TK::If(Box::new(a), Box::new(b), Box::new(no)),
+                    ty: Ty::Bool,
+                    span,
+                })
+            }
+            (a, b) => a.or(b),
+        }
+    }
+    /// A new name for `ty`, fixed unless it is a `var`.
+    fn bind_as(&mut self, name: &str, ty: Ty, mutable: bool) -> VarRef {
+        let var = self.bind(name, ty);
+        let l = match var {
+            VarRef::Local(i) => &mut self.locals[i],
+            VarRef::Global(i) => &mut self.globals[i],
+        };
+        (l.mutable, l.fixed) = (mutable, !mutable);
+        var
+    }
+    fn var_name(&self, v: VarRef) -> &str {
+        match v {
+            VarRef::Local(i) => &self.locals[i].name,
+            VarRef::Global(i) => &self.globals[i].name,
+        }
+    }
+    /// The enum `t` is, with its type arguments.
+    fn enum_of(&self, t: &Ty) -> Option<(StructId, Vec<Ty>)> {
+        match self.shallow(t) {
+            Ty::Struct(e, ts, _) if !self.d.s(e).variants.is_empty() => Some((e, ts)),
+            _ => None,
+        }
+    }
+    /// The types of the fields of struct `t`, by their position.
+    fn field_tys(&self, t: &Ty) -> Option<(StructId, Vec<Ty>)> {
+        let Ty::Struct(s, ts, _) = self.shallow(t) else {
+            return None;
+        };
+        let sub = Subst {
+            tys: &ts,
+            sets: &[],
+        };
+        let decl = self.d.s(s);
+        let fields = decl.fields.iter().map(|(_, t)| sub.ty(t)).collect();
+        (decl.variants.is_empty()).then_some((s, fields))
+    }
+    /// The payload fields of variant `i` of the enum `e` at `targs`.
+    fn variant_tys(&self, e: StructId, targs: &[Ty], i: usize) -> (StructId, Vec<Ty>) {
+        let p = self.d.s(e).variants[i].1;
+        let sub = Subst {
+            tys: targs,
+            sets: &[],
+        };
+        let fields = self.d.s(p).fields.iter().map(|(_, t)| sub.ty(t)).collect();
+        (p, fields)
+    }
+    /// Whether `head(p)` names a core fn a pattern may be headed by, whose result is the
+    /// optional it is a present value of (`some(p)`).
+    /// Whether `pat` is written against an optional itself (`Some(p)`, `None`), not its value.
+    pub(super) fn optional_pattern(&self, pat: &ast::Pattern) -> bool {
+        match &pat.kind {
+            PatternKind::Wildcard | PatternKind::Error => true,
+            PatternKind::Literal(e) => matches!(e.kind, ExprKind::None),
+            PatternKind::Variant { path, .. } => {
+                path.len() == 1 && self.present_pattern(&path[0].text)
+            }
+            PatternKind::Or(alts) => alts.iter().any(|p| self.optional_pattern(p)),
+            PatternKind::Var(p) => self.optional_pattern(p),
+            _ => false,
+        }
+    }
+    /// The names `pat` binds, of no type, for a value the checker could not type.
+    fn bind_unknown(&mut self, pat: &ast::Pattern, mutable: bool, binds: &mut Vec<TStmt>) {
+        let span = pat.span;
+        match &pat.kind {
+            PatternKind::Name(n) => {
+                let l = self.bind_as(n, Ty::Error, mutable);
+                let e = TExpr {
+                    kind: TK::Error,
+                    ty: Ty::Error,
+                    span,
+                };
+                binds.push(TStmt::Let(l, e));
+            }
+            PatternKind::Var(p) => self.bind_unknown(p, true, binds),
+            PatternKind::Tuple(ps) | PatternKind::Variant { args: ps, .. } => {
+                ps.iter().for_each(|p| self.bind_unknown(p, mutable, binds))
+            }
+            PatternKind::Record { fields, .. } => {
+                (fields.iter()).for_each(|(_, p)| self.bind_unknown(p, mutable, binds))
+            }
+            PatternKind::Or(alts) => {
+                if let Some(p) = alts.first() {
+                    self.bind_unknown(p, mutable, binds)
+                }
+            }
+            PatternKind::Wildcard
+            | PatternKind::Domain(_)
+            | PatternKind::Literal(_)
+            | PatternKind::Error => {}
+        }
+    }
+    fn present_pattern(&self, head: &str) -> bool {
+        (self.d.pattern_fns.iter()).any(|f| self.d.f(*f).name == head)
+    }
+    fn mismatch(&mut self, span: Span, what: &str, t: &Ty) {
+        if self.shallow(t) == Ty::Error {
+            return;
+        }
+        let code = cpl_diag::codes::TYPE_MISMATCH.0;
+        let t = self.show(t);
+        self.err(span, format!("{code}: {what} cannot match a `{t}`"));
+    }
+
+    /// `pat` against the place `v`: the test that holds when it matches, `None` when it always
+    /// does. `binds` gets the names it binds, read once the test holds.
+    pub(super) fn refute(
+        &mut self,
+        pat: &ast::Pattern,
+        v: &TExpr,
+        mutable: bool,
+        binds: &mut Vec<TStmt>,
+    ) -> Option<TExpr> {
+        let span = pat.span;
+        let mk = |kind, ty| TExpr { kind, ty, span };
+        if let t @ (Ty::Error | Ty::Var(_)) = self.shallow(&v.ty) {
+            if matches!(t, Ty::Var(_)) {
+                self.err(span, "slice: a pattern on a value of a type not known yet");
+            }
+            self.bind_unknown(pat, mutable, binds);
+            return None;
+        }
+        let tag_is = |v: &TExpr, i: usize| {
+            let tag = mk(TK::Tag(Box::new(v.clone())), Ty::Int);
+            let i = mk(TK::Int(i as i64), Ty::Int);
+            mk(TK::Cmp(CmpOp::Eq, Box::new(tag), Box::new(i)), Ty::Bool)
+        };
+        match &pat.kind {
+            PatternKind::Wildcard | PatternKind::Error => None,
+            PatternKind::Name(n) => {
+                if let Some((e, _)) = self.enum_of(&v.ty) {
+                    if let Some(i) = self.d.s(e).variants.iter().position(|(m, _)| m == n) {
+                        return Some(tag_is(v, i));
+                    }
+                }
+                let l = self.bind_as(n, v.ty.clone(), mutable);
+                binds.push(TStmt::Let(l, v.clone()));
+                None
+            }
+            PatternKind::Var(p) => self.refute(p, v, true, binds),
+            PatternKind::Literal(e) if matches!(e.kind, ExprKind::None) => {
+                if self.optional_of(&v.ty).is_none() {
+                    self.mismatch(span, "`None`", &v.ty);
+                    return None;
+                }
+                let flag = mk(TK::Field(Box::new(v.clone()), 0), Ty::Bool);
+                Some(mk(TK::Not(Box::new(flag)), Ty::Bool))
+            }
+            PatternKind::Literal(e) if matches!(e.kind, ExprKind::Str(_)) => {
+                self.err(span, "slice: a string pattern");
+                None
+            }
+            PatternKind::Literal(e) => {
+                let t = match self.shallow(&v.ty) {
+                    Ty::Range(..) | Ty::RangeOf(_) => Ty::Int,
+                    t @ (Ty::Int | Ty::Bool | Ty::Char | Ty::U64 | Ty::F64) => t,
+                    Ty::Error => return None,
+                    t => {
+                        let t = self.show(&t);
+                        self.err(span, format!("slice: a literal pattern on a `{t}`"));
+                        return None;
+                    }
+                };
+                let here = self.coerce(v.clone(), &t);
+                let lit = self.expr(e, Some(&t));
+                let lit = self.coerce(lit, &t);
+                Some(mk(
+                    TK::Cmp(CmpOp::Eq, Box::new(here), Box::new(lit)),
+                    Ty::Bool,
+                ))
+            }
+            PatternKind::Tuple(ps) => {
+                let tuple = self.d.tuples.get(&ps.len()).copied();
+                match self.field_tys(&v.ty) {
+                    Some((s, tys)) if Some(s) == tuple => {
+                        self.pat_parts(ps.iter().zip(0..), v, &tys, mutable, binds)
+                    }
+                    _ => {
+                        let what = format!("a tuple pattern of {}", ps.len());
+                        self.mismatch(span, &what, &v.ty);
+                        None
+                    }
+                }
+            }
+            PatternKind::Record { fields, rest } => {
+                let Some((s, tys)) = self.field_tys(&v.ty) else {
+                    self.mismatch(span, "a record pattern", &v.ty);
+                    return None;
+                };
+                let names: Vec<String> =
+                    self.d.s(s).fields.iter().map(|(n, _)| n.clone()).collect();
+                if !rest && fields.len() != names.len() {
+                    let code = cpl_diag::codes::TYPE_MISMATCH.0;
+                    let have = names.len();
+                    let n = fields.len();
+                    self.err(span, format!("{code}: this names {n} of the record's {have} fields; write `..` for the rest"));
+                }
+                let mut at = Vec::new();
+                for (n, p) in fields {
+                    match names.iter().position(|m| *m == n.text) {
+                        Some(k) => at.push((p, k)),
+                        None => {
+                            let code = cpl_diag::codes::UNKNOWN_FIELD.0;
+                            let t = self.show(&v.ty);
+                            self.err(n.span, format!("{code}: `{t}` has no field `{}`", n.text));
+                        }
+                    }
+                }
+                self.pat_parts(at.into_iter(), v, &tys, mutable, binds)
+            }
+            PatternKind::Variant { path, args } => {
+                let head = &path[path.len() - 1].text;
+                if path.len() == 1 && self.present_pattern(head) {
+                    let Some(inner) = self.optional_of(&v.ty) else {
+                        self.mismatch(span, &format!("`{head}(..)`"), &v.ty);
+                        return None;
+                    };
+                    let [p] = &args[..] else {
+                        let code = cpl_diag::codes::WRONG_ARG_COUNT.0;
+                        self.err(
+                            span,
+                            format!("{code}: `{head}(..)` takes 1 pattern, found {}", args.len()),
+                        );
+                        return None;
+                    };
+                    let flag = mk(TK::Field(Box::new(v.clone()), 0), Ty::Bool);
+                    let val = mk(TK::Field(Box::new(v.clone()), 1), inner);
+                    let rest = self.refute(p, &val, mutable, binds);
+                    return Self::both(Some(flag), rest);
+                }
+                if path.len() == 1 && self.doms.contains_key(head) {
+                    self.err(span, "slice: a domain pattern");
+                    return None;
+                }
+                let Some((e, targs)) = self.enum_of(&v.ty) else {
+                    self.mismatch(span, &format!("`{head}`"), &v.ty);
+                    return None;
+                };
+                let Some(i) = self.d.s(e).variants.iter().position(|(n, _)| n == head) else {
+                    let en = self.d.s(e).name.clone();
+                    let code = cpl_diag::codes::UNKNOWN_FIELD.0;
+                    self.err(span, format!("{code}: `{en}` has no variant `{head}`"));
+                    return None;
+                };
+                let (p, tys) = self.variant_tys(e, &targs, i);
+                if !args.is_empty() && args.len() != tys.len() {
+                    let code = cpl_diag::codes::WRONG_ARG_COUNT.0;
+                    let msg = format!(
+                        "{code}: `{head}` has {} fields, found {}",
+                        tys.len(),
+                        args.len()
+                    );
+                    self.err(span, msg);
+                }
+                let payload = mk(
+                    TK::Payload(Box::new(v.clone()), i),
+                    Ty::Struct(p, targs, Vec::new()),
+                );
+                let rest = self.pat_parts(args.iter().zip(0..), &payload, &tys, mutable, binds);
+                Self::both(Some(tag_is(v, i)), rest)
+            }
+            PatternKind::Or(alts) => self.alternatives(alts, v, mutable, binds),
+            PatternKind::Domain(_) => {
+                self.err(span, "slice: a `domain` pattern");
+                None
+            }
+        }
+    }
+    /// The parts of `v` (its fields `k`, of types `tys`) against their patterns.
+    fn pat_parts<'p>(
+        &mut self,
+        ps: impl Iterator<Item = (&'p ast::Pattern, usize)>,
+        v: &TExpr,
+        tys: &[Ty],
+        mutable: bool,
+        binds: &mut Vec<TStmt>,
+    ) -> Option<TExpr> {
+        let mut test = None;
+        for (p, k) in ps {
+            let Some(t) = tys.get(k) else { continue };
+            let part = TExpr {
+                kind: TK::Field(Box::new(v.clone()), k),
+                ty: t.clone(),
+                span: p.span,
+            };
+            let t = self.refute(p, &part, mutable, binds);
+            test = Self::both(test, t);
+        }
+        test
+    }
+    /// `p | q`: the first alternative that matches binds the names, which each one binds alike.
+    /// The alternatives are bound last to first, so the names in scope are the first's.
+    fn alternatives(
+        &mut self,
+        alts: &[ast::Pattern],
+        v: &TExpr,
+        mutable: bool,
+        binds: &mut Vec<TStmt>,
+    ) -> Option<TExpr> {
+        let mut each: Vec<(Option<TExpr>, Vec<TStmt>)> = Vec::new();
+        for a in alts.iter().rev() {
+            let mut b = Vec::new();
+            let t = self.refute(a, v, mutable, &mut b);
+            each.push((t, b));
+        }
+        each.reverse();
+        let names = |cx: &Self, b: &[TStmt]| -> Vec<(String, VarRef)> {
+            let mut ns: Vec<_> = (b.iter())
+                .filter_map(|s| match s {
+                    TStmt::Let(l, _) => Some((cx.var_name(*l).to_string(), *l)),
+                    _ => None,
+                })
+                .collect();
+            ns.sort_by(|a, b| a.0.cmp(&b.0));
+            ns
+        };
+        let first = names(self, &each[0].1);
+        if first.is_empty() && each.iter().all(|(_, b)| b.is_empty()) {
+            return (each.into_iter().map(|(t, _)| t)).try_fold(
+                None,
+                |acc: Option<TExpr>, t| {
+                    let t = t?;
+                    Some(Some(match acc {
+                        None => t,
+                        Some(a) => {
+                            let span = a.span;
+                            let yes = TExpr {
+                                kind: TK::Bool(true),
+                                ty: Ty::Bool,
+                                span,
+                            };
+                            TExpr {
+                                kind: TK::If(Box::new(a), Box::new(yes), Box::new(t)),
+                                ty: Ty::Bool,
+                                span,
+                            }
+                        }
+                    }))
+                },
+            )?;
+        }
+        let span = v.span;
+        let lit = |b| TExpr {
+            kind: TK::Bool(b),
+            ty: Ty::Bool,
+            span,
+        };
+        let mut chain = lit(false);
+        for (t, b) in each.into_iter().rev() {
+            let these = names(self, &b);
+            if these.iter().map(|n| &n.0).ne(first.iter().map(|n| &n.0)) {
+                let code = cpl_diag::codes::TYPE_MISMATCH.0;
+                self.err(
+                    span,
+                    format!("{code}: each alternative of a `|` pattern binds the same names"),
+                );
+            }
+            // Each alternative binds the first's names.
+            let b = (b.into_iter())
+                .map(|s| match s {
+                    TStmt::Let(l, e) => {
+                        let name = self.var_name(l);
+                        let to = first.iter().find(|n| n.0 == name).map_or(l, |n| n.1);
+                        TStmt::Let(to, e)
+                    }
+                    s => s,
+                })
+                .collect();
+            let then = TExpr {
+                kind: TK::Block(b, Some(Box::new(lit(true)))),
+                ty: Ty::Bool,
+                span,
+            };
+            chain = match t {
+                Some(t) => TExpr {
+                    kind: TK::If(Box::new(t), Box::new(then), Box::new(chain)),
+                    ty: Ty::Bool,
+                    span,
+                },
+                None => then,
+            };
+        }
+        let _ = binds;
+        Some(chain)
+    }
+
+    /// What `pat` covers of a value of type `t`.
+    pub(super) fn space(&self, pat: &ast::Pattern, t: &Ty) -> Space {
+        match &pat.kind {
+            PatternKind::Wildcard | PatternKind::Error | PatternKind::Domain(_) => Space::Any,
+            PatternKind::Name(n) => match self.enum_of(t) {
+                Some((e, ts)) => match self.d.s(e).variants.iter().position(|(m, _)| m == n) {
+                    Some(i) => {
+                        let arity = self.variant_tys(e, &ts, i).1.len();
+                        Space::Ctor(i, vec![Space::Any; arity])
+                    }
+                    None => Space::Any,
+                },
+                None => Space::Any,
+            },
+            PatternKind::Var(p) => self.space(p, t),
+            PatternKind::Literal(e) => match (&e.kind, self.shallow(t)) {
+                (ExprKind::None, _) => Space::Ctor(0, Vec::new()),
+                (ExprKind::Bool(b), Ty::Bool) => Space::Ctor(usize::from(*b), Vec::new()),
+                (ExprKind::Int(i), _) => Space::Lit(Some(*i)),
+                (ExprKind::Char(c), _) => Space::Lit(Some(i128::from(u32::from(*c)))),
+                (
+                    ExprKind::Unary {
+                        op: ast::UnOp::Neg,
+                        expr,
+                    },
+                    _,
+                ) => match expr.kind {
+                    ExprKind::Int(i) => Space::Lit(Some(-i)),
+                    _ => Space::Lit(None),
+                },
+                _ => Space::Lit(None),
+            },
+            PatternKind::Tuple(ps) => {
+                let tys = self.field_tys(t).map(|f| f.1).unwrap_or_default();
+                let at = |k: usize| tys.get(k).cloned().unwrap_or(Ty::Error);
+                Space::Ctor(
+                    0,
+                    ps.iter()
+                        .enumerate()
+                        .map(|(k, p)| self.space(p, &at(k)))
+                        .collect(),
+                )
+            }
+            PatternKind::Record { fields, .. } => match self.field_tys(t) {
+                Some((s, tys)) => {
+                    let mut parts = vec![Space::Any; tys.len()];
+                    for (n, p) in fields {
+                        if let Some(k) = self.d.s(s).fields.iter().position(|(m, _)| *m == n.text) {
+                            parts[k] = self.space(p, &tys[k]);
+                        }
+                    }
+                    Space::Ctor(0, parts)
+                }
+                None => Space::Any,
+            },
+            PatternKind::Variant { path, args } => {
+                let head = &path[path.len() - 1].text;
+                if let (Some(inner), [p]) = (self.optional_of(t), &args[..]) {
+                    if path.len() == 1 && self.present_pattern(head) {
+                        return Space::Ctor(1, vec![self.space(p, &inner)]);
+                    }
+                }
+                let Some((e, ts)) = self.enum_of(t) else {
+                    return Space::Any;
+                };
+                match self.d.s(e).variants.iter().position(|(n, _)| n == head) {
+                    Some(i) => {
+                        let tys = self.variant_tys(e, &ts, i).1;
+                        let parts = (tys.iter().enumerate())
+                            .map(|(k, t)| args.get(k).map_or(Space::Any, |p| self.space(p, t)))
+                            .collect();
+                        Space::Ctor(i, parts)
+                    }
+                    None => Space::Any,
+                }
+            }
+            PatternKind::Or(alts) => Space::Or(alts.iter().map(|a| self.space(a, t)).collect()),
+        }
+    }
+    /// The constructors of `t` with the types of their parts, when it has a closed list of them.
+    fn ctors(&self, t: &Ty) -> Option<Vec<(String, Vec<Ty>)>> {
+        if let Some(inner) = self.optional_of(t) {
+            return Some(vec![
+                ("None".into(), Vec::new()),
+                ("Some".into(), vec![inner]),
+            ]);
+        }
+        if let Some((e, ts)) = self.enum_of(t) {
+            let vs = &self.d.s(e).variants;
+            return Some(
+                (0..vs.len())
+                    .map(|i| (vs[i].0.clone(), self.variant_tys(e, &ts, i).1))
+                    .collect(),
+            );
+        }
+        match self.shallow(t) {
+            Ty::Bool => Some(vec![
+                ("false".into(), Vec::new()),
+                ("true".into(), Vec::new()),
+            ]),
+            _ => self.field_tys(t).map(|(_, tys)| vec![(String::new(), tys)]),
+        }
+    }
+    /// A value of the types `tys` that `q` matches and no row does, if there is one.
+    pub(super) fn useful(
+        &self,
+        rows: &[Vec<Space>],
+        q: &[Space],
+        tys: &[Ty],
+    ) -> Option<Vec<Space>> {
+        let Some((head, rest)) = q.split_first() else {
+            return rows.is_empty().then(Vec::new);
+        };
+        // A row headed by `p | q` is a row per alternative.
+        let mut flat: Vec<Vec<Space>> = Vec::new();
+        for r in rows {
+            match &r[0] {
+                Space::Or(alts) => flat.extend(
+                    alts.iter()
+                        .map(|a| [vec![a.clone()], r[1..].to_vec()].concat()),
+                ),
+                _ => flat.push(r.clone()),
+            }
+        }
+        let rest_tys = &tys[1..];
+        let spec = |c: usize, arity: usize| -> Vec<Vec<Space>> {
+            (flat.iter())
+                .filter_map(|r| match &r[0] {
+                    Space::Ctor(k, ps) if *k == c => Some([ps.clone(), r[1..].to_vec()].concat()),
+                    Space::Any => Some([vec![Space::Any; arity], r[1..].to_vec()].concat()),
+                    _ => None,
+                })
+                .collect()
+        };
+        let ctors = self.ctors(&tys[0]);
+        match head {
+            Space::Or(alts) => alts
+                .iter()
+                .find_map(|a| self.useful(rows, &[vec![a.clone()], rest.to_vec()].concat(), tys)),
+            Space::Ctor(c, ps) => {
+                let field_tys = (ctors.as_ref().and_then(|cs| cs.get(*c)))
+                    .map_or_else(|| vec![Ty::Error; ps.len()], |c| c.1.clone());
+                let w = self.useful(
+                    &spec(*c, ps.len()),
+                    &[ps.clone(), rest.to_vec()].concat(),
+                    &[field_tys, rest_tys.to_vec()].concat(),
+                )?;
+                let (inner, after) = w.split_at(ps.len());
+                Some([vec![Space::Ctor(*c, inner.to_vec())], after.to_vec()].concat())
+            }
+            Space::Lit(k) => {
+                let same: Vec<Vec<Space>> = (flat.iter())
+                    .filter(|r| match &r[0] {
+                        Space::Any => true,
+                        Space::Lit(j) => k.is_some() && j == k,
+                        _ => false,
+                    })
+                    .map(|r| r[1..].to_vec())
+                    .collect();
+                let w = self.useful(&same, rest, rest_tys)?;
+                Some([vec![head.clone()], w].concat())
+            }
+            Space::Any => {
+                let seen = |c: usize| {
+                    flat.iter()
+                        .any(|r| matches!(r[0], Space::Ctor(k, _) if k == c))
+                };
+                if let Some(cs) = ctors.as_ref().filter(|cs| (0..cs.len()).all(seen)) {
+                    return cs.iter().enumerate().find_map(|(c, (_, ftys))| {
+                        let q = [vec![Space::Any; ftys.len()], rest.to_vec()].concat();
+                        let w = self.useful(
+                            &spec(c, ftys.len()),
+                            &q,
+                            &[ftys.clone(), rest_tys.to_vec()].concat(),
+                        )?;
+                        let (inner, after) = w.split_at(ftys.len());
+                        Some([vec![Space::Ctor(c, inner.to_vec())], after.to_vec()].concat())
+                    });
+                }
+                let default: Vec<Vec<Space>> = (flat.iter())
+                    .filter(|r| matches!(r[0], Space::Any))
+                    .map(|r| r[1..].to_vec())
+                    .collect();
+                let w = self.useful(&default, rest, rest_tys)?;
+                let missing = (ctors.as_ref()).and_then(|cs| {
+                    (0..cs.len())
+                        .find(|c| !seen(*c))
+                        .map(|c| Space::Ctor(c, vec![Space::Any; cs[c].1.len()]))
+                });
+                Some([vec![missing.unwrap_or(Space::Any)], w].concat())
+            }
+        }
+    }
+    /// A value `w` of type `t`, as a pattern.
+    pub(super) fn show_space(&self, w: &Space, t: &Ty) -> String {
+        match w {
+            Space::Ctor(c, ps) => {
+                let cs = self.ctors(t).unwrap_or_default();
+                let Some((name, tys)) = cs.get(*c) else {
+                    return "_".into();
+                };
+                let parts: Vec<String> = ps
+                    .iter()
+                    .zip(tys)
+                    .map(|(p, t)| self.show_space(p, t))
+                    .collect();
+                match (name.as_str(), parts.is_empty()) {
+                    (n, true) if !n.is_empty() => n.to_string(),
+                    (n, _) => format!("{n}({})", parts.join(", ")),
+                }
+            }
+            _ => "_".into(),
+        }
+    }
+}

@@ -139,6 +139,8 @@ pub enum CheckKind {
     ReadRange,
     /// `x!` on an optional.
     Unwrap,
+    /// `todo` reached (R01.6.7).
+    Todo,
 }
 
 impl CheckKind {
@@ -151,6 +153,7 @@ impl CheckKind {
             CheckKind::RangeStore => codes::RANGE_STORE,
             CheckKind::ReadRange => codes::INPUT_OUT_OF_CONTRACT,
             CheckKind::Unwrap => codes::UNWRAP_NONE,
+            CheckKind::Todo => codes::TODO_REACHED,
         }
     }
 }

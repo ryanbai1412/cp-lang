@@ -17,6 +17,7 @@ mod index;
 mod lambda;
 mod member;
 mod oblige;
+mod pattern;
 mod range;
 mod stmt;
 mod targs;
@@ -710,10 +711,18 @@ impl<'a> Cx<'a> {
                     })
             }
             FnBody::Block(b) => self.block(b, Some(&ret)),
-            // A generator's one expression is the sequence it yields (R07.2.10).
+            // A generator's one expression is the sequence it yields, or, when it yields itself
+            // (`= match k: 0: yield 1 ...`), its body (R07.2.10).
             FnBody::Expr(e) if matches!(f.region, Some((false, _))) => {
-                self.block(&yield_each(e), Some(&ret))
+                let body = if yields_in(e) {
+                    one_stmt(e)
+                } else {
+                    yield_each(e)
+                };
+                self.block(&body, Some(&ret))
             }
+            // An expression that never gives a value is the body, not its result (R01.6.7).
+            FnBody::Expr(e) if e.leaves() => self.block(&one_stmt(e), Some(&ret)),
             FnBody::Expr(e) => {
                 let v = self.expr(e, Some(&ret));
                 self.coerce(v, &ret)
@@ -781,6 +790,30 @@ fn constant_domain(e: &cpl_syntax::ast::Expr, consts: &std::collections::HashSet
 }
 
 /// `for x in e: yield x`, the body of a generator written as one expression.
+/// The block of the one statement `e`.
+fn one_stmt(e: &ast::Expr) -> ast::Block {
+    ast::Block {
+        stmts: vec![ast::Stmt {
+            kind: StmtKind::Expr(e.clone()),
+            span: e.span,
+            decorators: Vec::new(),
+            public: false,
+        }],
+        span: e.span,
+    }
+}
+/// Whether `e` holds a `yield` of its own.
+fn yields_in(e: &ast::Expr) -> bool {
+    struct Yields(bool);
+    impl cpl_syntax::visit::Visitor for Yields {
+        fn stmt(&mut self, s: &ast::Stmt) {
+            self.0 |= matches!(s.kind, StmtKind::Yield { .. });
+        }
+    }
+    let mut v = Yields(false);
+    cpl_syntax::visit::walk_expr(e, &mut v);
+    v.0
+}
 fn yield_each(e: &ast::Expr) -> ast::Block {
     let stmt = |kind| ast::Stmt {
         kind,
