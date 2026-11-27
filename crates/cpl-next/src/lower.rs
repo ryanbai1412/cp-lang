@@ -20,6 +20,8 @@ pub struct Generic {
     pub untyped: Vec<Span>,
     /// Where in the loaded modules' text each site (`ir::Site`) is; site 0 has no place.
     pub sites: Vec<Span>,
+    /// The line of the user's file each site is on; 0 inside std and derived impls.
+    pub lines: Vec<u32>,
 }
 
 struct Lw<'a> {
@@ -56,6 +58,7 @@ struct Lw<'a> {
     /// makes fails at the line that called it.
     made: bool,
     sites: Vec<Span>,
+    lines: Vec<u32>,
 }
 
 pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &crate::modules::Loaded) -> Generic {
@@ -66,6 +69,7 @@ pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &crate::modules::Load
         deferred: HashMap::new(),
         untyped: Vec::new(),
         sites: Vec::new(),
+        lines: Vec::new(),
     };
     let mut lw = Lw {
         d,
@@ -88,6 +92,7 @@ pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &crate::modules::Load
         src,
         made: false,
         sites: vec![Span::default()],
+        lines: vec![0],
     };
     let mut body = Vec::new();
     for s in &typed.main {
@@ -180,6 +185,7 @@ pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &crate::modules::Load
     out.errors = lw.errors;
     out.untyped = lw.untyped;
     out.sites = lw.sites;
+    out.lines = lw.lines;
     out.globals = lw.globals;
     out
 }
@@ -354,14 +360,13 @@ fn constant<T>(e: &Expr<T>) -> bool {
 
 impl Lw<'_> {
     /// A new site for the node at `span`, or 0 where the node has no line of the user's file.
+    /// A new site for the node at `span`.
     fn site(&mut self, span: Span) -> Site {
-        if self.line(span) == 0 {
-            return 0;
-        }
         let at = Span {
             start: self.off + span.start,
             end: self.off + span.end,
         };
+        self.lines.push(self.line(span));
         self.sites.push(at);
         (self.sites.len() - 1) as Site
     }

@@ -487,10 +487,11 @@ impl<'a> Machine<'a> {
             }
         })
     }
-    /// A line of the user's file starts running; inside std (`site` 0) the line stays the caller's.
+    /// A line of the user's file starts running; inside std (line 0) the line stays the caller's.
     fn enter(&mut self, site: Site) -> u32 {
-        if site != 0 {
-            self.at = self.p.lines[site as usize];
+        let line = self.p.lines[site as usize];
+        if line != 0 {
+            self.at = line;
         }
         self.at
     }

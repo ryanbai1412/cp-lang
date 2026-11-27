@@ -239,10 +239,7 @@ pub fn compile(
             .map(|e| Diag::new(Stage::Link, e, &loaded))
             .collect()
     };
-    let lines = (g.sites.iter())
-        .map(|s| loaded.program_line(s.start))
-        .collect();
-    let mut prog = inst::link(&d, &t, &g.funcs, &g.globals, lines);
+    let mut prog = inst::link(&d, &t, &g.funcs, &g.globals, g.lines.clone());
     if !prog.errors.is_empty() {
         return Err(link(&prog.errors));
     }

@@ -480,8 +480,8 @@ impl Cx<'_> {
             );
         }
         let mut out = roots(out);
-        // A type-parameter value the result holds of a parameter is not a borrow here: each
-        // instance copies what it keeps of a lent one (`inst::check_escape`).
+        // A type-parameter value the result holds of a parameter is not a borrow here: an
+        // instance whose type argument is lent copies it where it is kept (`EK::Lent` in inst.rs).
         out.retain(|r| !(self.params.contains(r) && self.generic(*r)));
         // The result borrows what the signature lends it (R05.5.3), or what a fn declared
         // `lends` names (R05.6.1).

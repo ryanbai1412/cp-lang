@@ -767,24 +767,20 @@ impl Emit<'_> {
             // trap, and around a call, which may run other lines of the user's file.
             let around = match st {
                 Stmt::Let(_, e) | Stmt::Assign(_, e) | Stmt::Expr(e) => match &e.kind {
-                    EK::Intr(op, _, site) if op.checked() && *site != 0 => {
+                    EK::Intr(op, _, site) if op.checked() && self.line(*site) != 0 => {
                         put_line!(s, "{pad}cpl_at = {};", self.line(*site));
                         None
                     }
-                    EK::Call(_, _, site) => Some(*site),
+                    EK::Call(_, _, site) => Some(self.line(*site)),
                     _ => None,
                 },
-                Stmt::Region { site, .. } => Some(*site),
+                Stmt::Region { site, .. } => Some(self.line(*site)),
                 Stmt::Yield(_) | Stmt::LendOut(_) => Some(0),
                 _ => None,
             };
             match around {
                 Some(0) => put_line!(s, "{pad}{{ int cpl_was = cpl_at;"),
-                Some(site) => put_line!(
-                    s,
-                    "{pad}{{ const int cpl_was = cpl_at = {};",
-                    self.line(site)
-                ),
+                Some(line) => put_line!(s, "{pad}{{ const int cpl_was = cpl_at = {line};"),
                 None => {}
             }
             match st {
@@ -925,7 +921,7 @@ impl Emit<'_> {
                     s,
                     "{pad}if (!{}) {{ {}cpl_trap({:?}, {msg:?}); }}",
                     self.expr(cond),
-                    if *site != 0 {
+                    if self.line(*site) != 0 {
                         format!("cpl_at = {}; ", self.line(*site))
                     } else {
                         String::new()
