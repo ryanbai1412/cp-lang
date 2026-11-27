@@ -96,4 +96,5 @@ Process never costs more than 10% of your time: if it does, skip it and add
 - `scripts/install-hooks.sh` turns on the hooks: `pre-commit` runs the fast
   check (including the public-history scan: only hosts in
   `scripts/public-hosts.txt`, no home paths, nothing from the local
-  `.git/info/sensitive-words`), and `commit-msg` checks the subject.
+  `.git/info/sensitive-words`), and `commit-msg` checks the subject and
+  the `Lane:` trailer (set `CPL_LANE` to add it).

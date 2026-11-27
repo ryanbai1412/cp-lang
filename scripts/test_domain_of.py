@@ -29,8 +29,9 @@ class DomainOf(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             # A commit hook exports GIT_DIR and GIT_INDEX_FILE; inheriting them
             # would commit into the repo running the hook.
-            env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_") and k != "CPL_DOMAIN"}
-            env.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1")
+            env = {k: v for k, v in os.environ.items()
+                   if not k.startswith("GIT_") and k not in ("CPL_DOMAIN", "CPL_LANE")}
+            env.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1", CPL_LANE="G")
 
             def git(*a):
                 return subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@example.com",
@@ -58,6 +59,15 @@ class DomainOf(unittest.TestCase):
             git("add", "other.md")
             r = git("commit", "-q", "-m", "docs: say why")
             self.assertIn("no Domain: trailer", r.stderr)
+            self.assertEqual(git("log", "-1", "--format=%(trailers:key=Lane,valueonly)").stdout.strip(), "G")
+            del env["CPL_LANE"]
+            with open(f"{tmp}/other.md", "a", encoding="utf-8") as f:
+                f.write("w\n")
+            with self.assertRaises(subprocess.CalledProcessError) as no_lane:
+                git("commit", "-qam", "docs: say who", "-m", "Domain: docs")
+            self.assertIn("no Lane: trailer", no_lane.exception.stderr)
+            git("commit", "-qam", "docs: say who", "-m", "Domain: docs\nLane: E")
+            self.assertEqual(git("log", "-1", "--format=%(trailers:key=Lane,valueonly)").stdout.strip(), "E")
 
 
 if __name__ == "__main__":

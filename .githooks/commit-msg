@@ -24,3 +24,13 @@ if ! git interpret-trailers --parse "$1" | grep -q '^Domain: '; then
         echo "commit-msg: no Domain: trailer; add one (e.g. \`Domain: compiler\`) or set CPL_DOMAIN" >&2
     fi
 fi
+# Every commit names the session lane that landed it, so a counter or a
+# verdict traced to a commit reaches its owner without a search.
+if ! git interpret-trailers --parse "$1" | grep -q '^Lane: '; then
+    if [ -n "${CPL_LANE:-}" ]; then
+        git interpret-trailers --in-place --trailer "Lane: $CPL_LANE" "$1"
+    else
+        echo "commit-msg: no Lane: trailer; add the lane that lands it (e.g. \`Lane: E\`) or set CPL_LANE" >&2
+        exit 1
+    fi
+fi
