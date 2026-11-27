@@ -455,7 +455,6 @@ std-geometry/hull-tangents-point-inside-traps.cp	wrong-reject	check: E0204: std.
 std-geometry/hull-tangents-two-point-hull-traps.cp	wrong-reject	check: E0204: std.geometry: unknown type `I128`
 std-geometry/locate-convex-on-vertex-and-edge.cp	wrong-reject	check: E0204: std.geometry: unknown type `I128`
 std-geometry/lower-hull-duplicates.cp	wrong-reject	check: std.seq:274:43: E0302: expected `T`, found `2.hidden`
-std-geometry/lower-hull-duplicates.cp	wrong-reject	check: std.geometry:347:53: E0203: `List<Pt>` has no member `pop`
 std-geometry/on-segment-degenerate.cp	wrong-reject	check: E0204: std.geometry: unknown type `I128`
 std-geometry/same-dir-zero-and-opposite.cp	wrong-reject	check: E0204: std.geometry: unknown type `I128`
 std-geometry/segments-meet-collinear.cp	wrong-reject	check: E0204: std.geometry: unknown type `I128`

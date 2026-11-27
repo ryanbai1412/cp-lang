@@ -526,7 +526,6 @@ core-07/zip-domain-mismatch.cp
 core-07/zip-takes-a-rev.cp
 core-08/assoc-default-names-trait-param.cp
 core-08/assoc-projects-through-a-domain-blanket-impl.cp
-core-08/assoc-projects-through-a-domain-blanket-impl.cp
 core-08/assoc-type-bound-and-alias-where.cp
 core-08/associated-type-default-and-override.cp
 core-08/associated-type.cp
