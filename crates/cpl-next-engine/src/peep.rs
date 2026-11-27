@@ -671,6 +671,11 @@ fn forward(
             }
             continue;
         }
+        if let Op::Move { d, s, n } = ops[i] {
+            if (d + n <= s || s + n <= d) && !(d..d + n).chain(s..s + n).any(pinned) {
+                roundtrip(ops, places, lays, tables, i, &|j| joins(i, j));
+            }
+        }
         let Op::Move { d, s, n: 1 } = ops[i] else {
             continue;
         };
@@ -720,6 +725,84 @@ fn forward(
                 break;
             }
         }
+    }
+}
+
+/// `t = x`, ops that reach memory only through `t`, then `x = t` on every path out: the ops
+/// work on `x` itself and `x = t` becomes `t = x`, which leaves the first copy no reader.
+fn roundtrip(
+    ops: &mut [Op],
+    places: &mut Vec<PlaceCode>,
+    lays: &Layouts,
+    tables: &[Vec<u32>],
+    i: usize,
+    joins: &dyn Fn(usize) -> bool,
+) {
+    let Op::Move { d: t, s: x, n } = ops[i] else {
+        return;
+    };
+    let meets = |ws: &[Words], r: Reg| ws.iter().any(|&(a, m)| a < r + n && r < a + m);
+    let (mut via, mut reach) = (Vec::new(), Vec::new());
+    for k in i + 1..ops.len() {
+        if !joins(k) {
+            return;
+        }
+        if let Op::Move { d, s, n: m } = ops[k] {
+            if (d, s, m) == (x, t, n) {
+                if reach.iter().any(|&j| j <= i || j > k) {
+                    return;
+                }
+                for (j, pc) in via {
+                    let made = places.len() as u32;
+                    places.push(pc);
+                    if let Some(p) = place_of(&mut ops[j]) {
+                        *p = made;
+                    }
+                }
+                ops[k] = Op::Move { d: t, s: x, n };
+                return;
+            }
+        }
+        let mut op = ops[k];
+        let Some((reads, writes)) = effect(&op, places, lays) else {
+            return;
+        };
+        reach.extend(targets(&op, tables).into_iter().map(|j| j as usize));
+        if meets(&reads, x) || meets(&writes, x) || meets(&writes, t) {
+            return;
+        }
+        if !meets(&reads, t) {
+            continue;
+        }
+        // `t` may be read only as the root of the op's place, which becomes `x`.
+        let want: Option<Vec<Words>> = (reads.iter())
+            .map(
+                |&(a, m)| match (t <= a && a + m <= t + n, meets(&[(a, m)], t)) {
+                    (true, _) => Some((a - t + x, m)),
+                    (false, true) => None,
+                    (false, false) => Some((a, m)),
+                },
+            )
+            .collect();
+        let made = places.len() as u32;
+        let Some(p) = place_of(&mut op) else {
+            return;
+        };
+        let mut pc = places[*p as usize].clone();
+        if !matches!(pc.root, Root::Local(r) if r == t) {
+            return;
+        }
+        pc.root = Root::Local(x);
+        *p = made;
+        places.push(pc);
+        let got = effect(&op, places, lays).map(|(reads, _)| reads);
+        let Some(pc) = places.pop() else {
+            return;
+        };
+        if want.is_none() || got != want {
+            return;
+        }
+        via.push((k, pc));
     }
 }
 
@@ -963,6 +1046,38 @@ mod tests {
         let (not, keep) = run(&|_| true, Some(&[(0, 1)]));
         assert_eq!(not, "Not { d: 3, a: 2 } [Slot { i: 4, stride: 1 }]");
         assert!(keep.iter().all(|&k| k));
+    }
+
+    /// `t = x; t[i] = v; x = t` writes `x[i]` and then copies `x` to `t`, which nothing reads,
+    /// so both copies go. A jump past the copy back keeps both.
+    #[test]
+    fn a_copy_out_and_back_works_on_the_original() {
+        let places = vec![PlaceCode {
+            root: Root::Local(5),
+            steps: vec![Step::Slot { i: 4, stride: 1 }],
+        }];
+        let lays = Layouts::default();
+        let run = |ops: Vec<Op>| {
+            let (mut ops, mut places) = (ops, places.clone());
+            forward(&mut ops, &mut places, &lays, &[], &|_| false);
+            let keep = unread(&ops, &places, &lays, &[], &|_| false, Some(&[(0, 1)]));
+            let kept: Vec<String> = (ops.iter().zip(&keep))
+                .filter(|(_, &k)| k)
+                .map(|(op, _)| match place_of(&mut op.clone()) {
+                    Some(&mut p) => format!("{op:?} {:?}", places[p as usize].root),
+                    None => format!("{op:?}"),
+                })
+                .collect();
+            kept
+        };
+        let put = Op::Put { p: 0, s: 3, n: 1 };
+        let back = Op::Move { d: 2, s: 5, n: 1 };
+        let leave = Op::Leave(crate::compile::Leave::Return);
+        let kept = run(vec![Op::Move { d: 5, s: 2, n: 1 }, put, back, leave]);
+        assert_eq!(kept, ["Put { p: 1, s: 3, n: 1 } Local(2)", "Leave(Return)"]);
+        let jump = Op::JumpIf { c: 3, t: 4 };
+        let kept = run(vec![Op::Move { d: 5, s: 2, n: 1 }, jump, put, back, leave]);
+        assert_eq!(kept[2], "Put { p: 0, s: 3, n: 1 } Local(5)");
     }
 
     /// A move's readers past a join read its source when every jump into the join comes from
