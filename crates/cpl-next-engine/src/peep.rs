@@ -3,9 +3,11 @@
 //! ends, `if !c goto next-but-one; goto t` becomes `if c goto t`, and ops nothing reaches
 //! and jumps to the next op go. Every target, table and mark is renumbered with them.
 //! A drop or retain of a value that owns nothing goes, and so does a line kept and put back
-//! around ops that can neither trap nor change the line.
-use crate::compile::{Code, Op, Reg, INHERIT, LEAVE, SAVED};
-use crate::layout::Layouts;
+//! around ops that can neither trap nor change the line. A register a one-word move set is
+//! read from its source while neither changes, and an op that only sets registers nothing
+//! reads again goes.
+use crate::compile::{Code, Kind, Op, PlaceCode, Reg, Root, Step, INHERIT, LEAVE, SAVED};
+use crate::layout::{Lay, Layouts};
 
 pub(crate) fn tidy(c: &mut Code) {
     let chained: Vec<Reg> = c.chains.iter().flatten().map(|&(_, save)| save).collect();
@@ -18,6 +20,12 @@ pub(crate) fn tidy(c: &mut Code) {
         .collect();
     let mut saved: std::collections::HashMap<Vec<u32>, u32> =
         (c.saved.iter().cloned()).zip(0..).collect();
+    let addressed = addressed(c);
+    // What a fn's caller reads when it leaves: its locals and result, not its temporaries.
+    let mut leaving = vec![None; c.blocks.len()];
+    for f in &c.funcs {
+        leaving[f.block as usize] = Some(f.locals);
+    }
     c.lines = vec![Vec::new(); c.blocks.len()];
     for b in 0..c.blocks.len() {
         let mut ops = std::mem::take(&mut c.blocks[b]);
@@ -48,16 +56,31 @@ pub(crate) fn tidy(c: &mut Code) {
             }
             renumber(&mut ops, &mut c.marks[b], &mut c.tables, &keep, &mut lines);
         }
-        loop {
-            thread(&mut ops, &mut c.tables);
-            let keep = kept(&ops, &c.tables);
-            if keep.iter().all(|&k| k) {
-                break;
-            }
-            renumber(&mut ops, &mut c.marks[b], &mut c.tables, &keep, &mut lines);
-        }
+        let pinned = |r: Reg| r >= addressed[b] || chained.contains(&r) || outside.contains(&r);
+        jumps(&mut ops, &mut c.marks[b], &mut c.tables, &mut lines);
+        forward(&mut ops, &mut c.places, &c.lays, &c.tables, &pinned);
+        let keep = unread(&ops, &c.places, &c.lays, &c.tables, &pinned, leaving[b]);
+        renumber(&mut ops, &mut c.marks[b], &mut c.tables, &keep, &mut lines);
+        jumps(&mut ops, &mut c.marks[b], &mut c.tables, &mut lines);
         c.blocks[b] = ops;
         c.lines[b] = lines;
+    }
+}
+
+/// Jumps go straight to where their chains end, and ops nothing reaches go.
+fn jumps(
+    ops: &mut Vec<Op>,
+    marks: &mut [(u32, u32)],
+    tables: &mut [Vec<u32>],
+    lines: &mut Vec<(u32, u32)>,
+) {
+    loop {
+        thread(ops, tables);
+        let keep = kept(ops, tables);
+        if keep.iter().all(|&k| k) {
+            break;
+        }
+        renumber(ops, marks, tables, &keep, lines);
     }
 }
 
@@ -389,6 +412,372 @@ fn kept(ops: &[Op], tables: &[Vec<u32>]) -> Vec<bool> {
     seen
 }
 
+/// Per block, the first register of its frame whose address is taken: it, and the words
+/// after it, may be read through that address. A fn's frame is its block's and that of the
+/// region bodies its blocks lend to; a block in no fn's frame has every register taken.
+fn addressed(c: &Code) -> Vec<Reg> {
+    let mut at = vec![0; c.blocks.len()];
+    for f in &c.funcs {
+        let (mut group, mut todo) = (Vec::new(), vec![f.block]);
+        while let Some(b) = todo.pop() {
+            if group.contains(&b) {
+                continue;
+            }
+            group.push(b);
+            for op in &c.blocks[b as usize] {
+                if let Op::Region { body, .. } = *op {
+                    todo.push(body);
+                }
+            }
+        }
+        let first = (group.iter().flat_map(|&b| &c.blocks[b as usize]))
+            .filter_map(|op| match *op {
+                Op::Addr { s, .. } => Some(s),
+                _ => None,
+            })
+            .min()
+            .unwrap_or(Reg::MAX);
+        for b in group {
+            at[b as usize] = first;
+        }
+    }
+    at
+}
+
+/// Words of registers: the first and how many.
+type Words = (Reg, u32);
+
+/// The registers an op reads and the ones it sets every time it runs; `None` for an op that
+/// may read any (a call, a region, a yield, an event, leaving the block). A write through a
+/// place to a register counts as a read.
+fn effect(op: &Op, places: &[PlaceCode], lays: &Layouts) -> Option<(Vec<Words>, Vec<Words>)> {
+    let size = |l: Lay| lays.size[l as usize];
+    let place = |p: u32, n: u32| {
+        let pc = &places[p as usize];
+        let (mut v, mut off, mut through) = (Vec::new(), 0, false);
+        for st in &pc.steps {
+            match *st {
+                Step::Off(at) if !through => off += at,
+                Step::Slot { i, .. } => {
+                    through = true;
+                    v.push((i, 1));
+                }
+                _ => through = true,
+            }
+        }
+        if let Root::Local(r) = pc.root {
+            v.push((r + off, if through { 1 } else { n }));
+        }
+        v
+    };
+    let one = |r: Reg| (r, 1);
+    Some(match *op {
+        Op::Imm { d, .. }
+        | Op::Addr { d, .. }
+        | Op::Text { d, .. }
+        | Op::InputLeft { d }
+        | Op::ReadInt { d }
+        | Op::RawEmpty { d, .. } => (vec![], vec![one(d)]),
+        Op::Enter { save, .. } => (vec![], vec![one(save)]),
+        Op::Move { d, s, n } => (vec![(s, n)], vec![(d, n)]),
+        Op::Int { d, a, b, .. }
+        | Op::Word { d, a, b, .. }
+        | Op::Float { d, a, b, .. }
+        | Op::Cmp { d, a, b, .. } => (vec![one(a), one(b)], vec![one(d)]),
+        Op::Neg { d, a }
+        | Op::Abs { d, a }
+        | Op::Not { d, a }
+        | Op::ToU64 { d, a }
+        | Op::BitCount { d, a, .. }
+        | Op::FromU64 { d, a }
+        | Op::ToF64 { d, a }
+        | Op::FNeg { d, a }
+        | Op::FAbs { d, a }
+        | Op::CharOf { d, a }
+        | Op::CodeOf { d, a }
+        | Op::RawCap { d, n: a, .. } => (vec![one(a)], vec![one(d)]),
+        Op::Zero { d, n } | Op::GetG { d, n, .. } => (vec![], vec![(d, n)]),
+        Op::PutG { s, n, .. } => (vec![(s, n)], vec![]),
+        Op::Retain { s, lay } | Op::Drop { s, lay } => (vec![(s, size(lay))], vec![]),
+        Op::Print { s: c, .. }
+        | Op::Check { c, .. }
+        | Op::Guard { c, .. }
+        | Op::JumpUnless { c, .. }
+        | Op::JumpIf { c, .. }
+        | Op::Switch { c, .. }
+        | Op::Restore { save: c } => (vec![one(c)], vec![]),
+        Op::At { .. } | Op::Jump { .. } | Op::PrintText { .. } => (vec![], vec![]),
+        Op::RawNew { d, n, fill, elem } => (vec![one(n), (fill, size(elem))], vec![one(d)]),
+        Op::RawGet { d, r, i, elem, .. } => (vec![one(r), one(i)], vec![(d, size(elem))]),
+        Op::RawSet { p, i, x, elem } => {
+            let mut v = place(p, 1);
+            v.extend([one(i), (x, size(elem))]);
+            (v, vec![])
+        }
+        Op::RawTake { d, p, i, elem } => {
+            let mut v = place(p, 1);
+            v.push(one(i));
+            (v, vec![(d, size(elem))])
+        }
+        Op::Load { d, p, lay } => (place(p, size(lay)), vec![(d, size(lay))]),
+        Op::Peek { d, p } => (place(p, 1), vec![one(d)]),
+        Op::Take { d, p, n } => (place(p, n), vec![(d, n)]),
+        Op::Store { p, s, lay } => {
+            let mut v = place(p, size(lay));
+            v.push((s, size(lay)));
+            (v, vec![])
+        }
+        Op::Put { p, s, n } => {
+            let mut v = place(p, n);
+            v.push((s, n));
+            (v, vec![])
+        }
+        Op::Call { .. }
+        | Op::Region { .. }
+        | Op::Yield { .. }
+        | Op::LendOut { .. }
+        | Op::Leave(_)
+        | Op::Event { .. }
+        | Op::Fail { .. } => return None,
+    })
+}
+
+fn covers(ws: &[Words], r: Reg) -> bool {
+    ws.iter().any(|&(a, n)| a <= r && r < a + n)
+}
+
+/// An op that does nothing but set its registers: it can't trap, count or allocate. A
+/// place read fails only on a broken engine invariant, never as a program's trap.
+fn pure(op: &Op) -> bool {
+    match op {
+        Op::Imm { .. }
+        | Op::Move { .. }
+        | Op::Zero { .. }
+        | Op::GetG { .. }
+        | Op::Not { .. }
+        | Op::Take { .. }
+        | Op::Peek { .. } => true,
+        Op::Cmp { kind, .. } => *kind != Kind::F64,
+        _ => false,
+    }
+}
+
+/// The one-word operands an op reads, to be renamed.
+fn operands<'a>(op: &'a mut Op, lays: &Layouts) -> Vec<&'a mut Reg> {
+    let one = |l: Lay| lays.size[l as usize] == 1;
+    match op {
+        Op::Int { a, b, .. } | Op::Word { a, b, .. } | Op::Float { a, b, .. } => vec![a, b],
+        Op::Cmp { a, b, .. } => vec![a, b],
+        Op::Neg { a, .. }
+        | Op::Abs { a, .. }
+        | Op::Not { a, .. }
+        | Op::ToU64 { a, .. }
+        | Op::BitCount { a, .. }
+        | Op::FromU64 { a, .. }
+        | Op::ToF64 { a, .. }
+        | Op::FNeg { a, .. }
+        | Op::FAbs { a, .. }
+        | Op::CharOf { a, .. }
+        | Op::CodeOf { a, .. }
+        | Op::RawCap { n: a, .. }
+        | Op::Print { s: a, .. }
+        | Op::Check { c: a, .. }
+        | Op::Guard { c: a, .. }
+        | Op::JumpUnless { c: a, .. }
+        | Op::JumpIf { c: a, .. } => vec![a],
+        Op::Move { s, n: 1, .. } | Op::PutG { s, n: 1, .. } | Op::Put { s, n: 1, .. } => vec![s],
+        Op::RawGet { r, i, .. } => vec![r, i],
+        Op::RawSet { i, x, elem, .. } => match one(*elem) {
+            true => vec![i, x],
+            false => vec![i],
+        },
+        Op::RawNew { n, fill, elem, .. } => match one(*elem) {
+            true => vec![n, fill],
+            false => vec![n],
+        },
+        Op::RawTake { i, .. } => vec![i],
+        _ => Vec::new(),
+    }
+}
+
+/// The place an op reads or writes through.
+fn place_of(op: &mut Op) -> Option<&mut u32> {
+    match op {
+        Op::Load { p, .. }
+        | Op::Peek { p, .. }
+        | Op::Store { p, .. }
+        | Op::Take { p, .. }
+        | Op::Put { p, .. }
+        | Op::RawSet { p, .. }
+        | Op::RawTake { p, .. } => Some(p),
+        _ => None,
+    }
+}
+
+/// Each op some jump lands on.
+fn aimed(ops: &[Op], tables: &[Vec<u32>]) -> Vec<bool> {
+    let mut aimed = vec![false; ops.len() + 1];
+    for op in ops {
+        for t in targets(op, tables) {
+            if let Some(a) = aimed.get_mut(t as usize) {
+                *a = true;
+            }
+        }
+    }
+    aimed
+}
+
+/// After `d = s` of one word, the ops that run next in a line read `s` for `d` until either
+/// is set, so the move is left with no reader when they were all its readers. A place indexed
+/// by `d` becomes a new place indexed by `s`.
+fn forward(
+    ops: &mut [Op],
+    places: &mut Vec<PlaceCode>,
+    lays: &Layouts,
+    tables: &[Vec<u32>],
+    pinned: &dyn Fn(Reg) -> bool,
+) {
+    let aimed = aimed(ops, tables);
+    for i in 0..ops.len() {
+        let Op::Move { d, s, n: 1 } = ops[i] else {
+            continue;
+        };
+        if d == s || pinned(d) {
+            continue;
+        }
+        for j in i + 1..ops.len() {
+            if aimed[j] {
+                break;
+            }
+            let Some((reads, writes)) = effect(&ops[j], places, lays) else {
+                break;
+            };
+            if covers(&reads, d) {
+                let mut op = ops[j];
+                for r in operands(&mut op, lays) {
+                    if *r == d {
+                        *r = s;
+                    }
+                }
+                let made = places.len();
+                if let Some(p) = place_of(&mut op) {
+                    let mut pc = places[*p as usize].clone();
+                    let mut renamed = false;
+                    for st in &mut pc.steps {
+                        if let Step::Slot { i, .. } = st {
+                            if *i == d {
+                                (*i, renamed) = (s, true);
+                            }
+                        }
+                    }
+                    if renamed {
+                        *p = made as u32;
+                        places.push(pc);
+                    }
+                }
+                match effect(&op, places, lays) {
+                    Some((reads, _)) if !covers(&reads, d) => ops[j] = op,
+                    _ => {
+                        places.truncate(made);
+                        break;
+                    }
+                }
+            }
+            let ends = matches!(ops[j], Op::Jump { .. } | Op::Switch { .. });
+            if ends || covers(&writes, d) || covers(&writes, s) {
+                break;
+            }
+        }
+    }
+}
+
+/// The ops to keep: not a pure op whose registers nothing reads before they are set again.
+/// `leaving`: the registers below it are what leaving the block reads, when it is a fn's
+/// block; a region body's leaves its frame to the code that lent to it, which may read any.
+fn unread(
+    ops: &[Op],
+    places: &[PlaceCode],
+    lays: &Layouts,
+    tables: &[Vec<u32>],
+    pinned: &dyn Fn(Reg) -> bool,
+    leaving: Option<u32>,
+) -> Vec<bool> {
+    let fx: Vec<_> = ops.iter().map(|op| effect(op, places, lays)).collect();
+    let top = (fx.iter().flatten())
+        .flat_map(|(r, w)| r.iter().chain(w))
+        .map(|&(a, n)| (a + n) as usize)
+        .max()
+        .unwrap_or(0);
+    let words = top.div_ceil(64).max(1);
+    let all = vec![u64::MAX; words];
+    let mark = |v: &mut [u64], &(a, n): &Words, on: bool| {
+        for r in a..(a + n).min(64 * words as u32) {
+            let (w, bit) = (r as usize / 64, 1u64 << (r % 64));
+            if on {
+                v[w] |= bit;
+            } else {
+                v[w] &= !bit;
+            }
+        }
+    };
+    let exit = match leaving {
+        Some(n) => {
+            let mut v = vec![0u64; words];
+            mark(&mut v, &(0, n), true);
+            v
+        }
+        None => all.clone(),
+    };
+    let next = |i: usize| -> Vec<usize> {
+        let mut v: Vec<usize> = (targets(&ops[i], tables).iter())
+            .map(|&t| t as usize)
+            .collect();
+        if !matches!(ops[i], Op::Jump { .. } | Op::Switch { .. }) {
+            v.push(i + 1);
+        }
+        v
+    };
+    let (mut live_in, mut live_out) = (
+        vec![vec![0u64; words]; ops.len()],
+        vec![all.clone(); ops.len()],
+    );
+    loop {
+        let mut changed = false;
+        for i in (0..ops.len()).rev() {
+            let mut out = vec![0u64; words];
+            for t in next(i) {
+                let l = live_in.get(t).unwrap_or(&exit);
+                out.iter_mut().zip(l).for_each(|(o, x)| *o |= x);
+            }
+            let inn = match &fx[i] {
+                None if matches!(ops[i], Op::Leave(_) | Op::Fail { .. }) => exit.clone(),
+                None => all.clone(),
+                Some((r, w)) => {
+                    let mut v = out.clone();
+                    w.iter().for_each(|x| mark(&mut v, x, false));
+                    r.iter().for_each(|x| mark(&mut v, x, true));
+                    v
+                }
+            };
+            live_out[i] = out;
+            if inn != live_in[i] {
+                live_in[i] = inn;
+                changed = true;
+            }
+        }
+        if !changed {
+            break;
+        }
+    }
+    (0..ops.len())
+        .map(|i| {
+            let Some((_, w)) = &fx[i] else { return true };
+            let read = |r: Reg| pinned(r) || live_out[i][r as usize / 64] >> (r % 64) & 1 == 1;
+            !pure(&ops[i]) || w.iter().any(|&(a, n)| (a..a + n).any(read))
+        })
+        .collect()
+}
+
 fn renumber(
     ops: &mut Vec<Op>,
     marks: &mut [(u32, u32)],
@@ -472,6 +861,45 @@ mod tests {
             ]
         );
         assert_eq!(marks, [(0, 0), (1, 1)]);
+    }
+
+    /// A move's readers read its source, a place indexed by it becomes one indexed by the
+    /// source, and then the move goes. Leaving a region body may read any register, so there
+    /// nothing goes; nor does anything in a register whose address is taken.
+    #[test]
+    fn a_register_nothing_reads_again_is_not_set() {
+        let ops = vec![
+            Op::Imm { d: 1, v: 5 },
+            Op::Move { d: 2, s: 1, n: 1 },
+            Op::Not { d: 3, a: 2 },
+            Op::Move { d: 4, s: 3, n: 1 },
+            Op::Peek { d: 6, p: 0 },
+            Op::JumpIf { c: 6, t: 7 },
+            Op::Imm { d: 7, v: 1 },
+            Op::Leave(crate::compile::Leave::Return),
+        ];
+        let places = vec![PlaceCode {
+            root: Root::Local(5),
+            steps: vec![Step::Slot { i: 4, stride: 1 }],
+        }];
+        let lays = Layouts::default();
+        let run = |pinned: &dyn Fn(Reg) -> bool, leaving| {
+            let (mut ops, mut places) = (ops.clone(), places.clone());
+            forward(&mut ops, &mut places, &lays, &[], pinned);
+            let keep = unread(&ops, &places, &lays, &[], pinned, leaving);
+            (
+                format!("{:?} {:?}", ops[2], places.last().unwrap().steps),
+                keep,
+            )
+        };
+        let (not, keep) = run(&|_| false, Some(1));
+        assert_eq!(not, "Not { d: 3, a: 1 } [Slot { i: 3, stride: 1 }]");
+        assert_eq!(keep, [true, false, true, false, true, true, false, true]);
+        let (_, keep) = run(&|_| false, None);
+        assert!(keep.iter().all(|&k| k));
+        let (not, keep) = run(&|_| true, Some(1));
+        assert_eq!(not, "Not { d: 3, a: 2 } [Slot { i: 4, stride: 1 }]");
+        assert!(keep.iter().all(|&k| k));
     }
 
     /// A kept line around moves goes; around a `Take`, which can trap, it stays, and a drop
