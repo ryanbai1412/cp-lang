@@ -80,6 +80,32 @@ never re-validates them. The precomputed `Std::decls()` and the
 `providers`, a query over std's item index. Core gets nothing here that
 any other library does not.
 
+## Per-module interface store
+
+A module's interface is its `signature`s, its `scope` and its fns'
+`summary`s: everything another module's queries read of it through the
+four views. Once the views land, interfaces are stored, keyed by
+`(ModId, content hash)`. The hash is over the module's text and the
+hashes of the interfaces of the modules it imports. Std is checked
+once per compiler build, and every program and snapshot shares its
+interfaces. A program over std never checks std again: its queries read
+std's signatures, scope and summaries from the store, and they reach a
+std `body` only to make an instance of it.
+
+Invalidation: a stored interface is valid while its key matches. An edit
+to a module changes its hash, so its interface is made again. If the new
+interface equals the old one (early cutoff), its importers keep theirs.
+If it differs, each importer's hash changes and the importer is made
+again, and so on outward. Bodies are not part of the key. An edit inside
+a body that leaves the module's signatures, scope and summaries equal
+reuses the stored interface, and only that body is checked again. A
+compiler build changes every key, because std's key includes the build's
+id, so a new compiler never reads an old compiler's interfaces.
+
+Order: after step 1 (the views), before `body(ItemId)` caches across
+programs. The test checks two programs over std in one database and
+counts zero std `body` or `signature` recomputations for the second.
+
 ## Diagnostics
 
 Each query returns its diagnostics with its answer (contract 9). The
