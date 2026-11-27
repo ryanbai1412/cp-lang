@@ -6,3 +6,7 @@
 decisions.md merge=union
 plan/QUESTIONS.md merge=union
 plan/domains/*/worklog.md merge=union
+# The new pipeline's case lists, which every lane's landing edits: a rebase keeps
+# both sides' lines, and the programs test then says if any line is wrong.
+crates/cpl-next/tests/passing.txt merge=union
+crates/cpl-next/tests/wrong.tsv merge=union

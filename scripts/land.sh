@@ -68,11 +68,21 @@ remeasure() {
     uv run --quiet python scripts/ratchet_remeasure.py "$before" FETCH_HEAD || return 1
     git diff --quiet -- "$ratchet" || git commit -q --amend --no-edit --no-verify -- "$ratchet"
 }
+# plan/END-STATE.md is generated from inputs (the ratchet) that every lane's landing
+# moves, and the ratchet fails a stale one: rewrite it on the rebased tree rather
+# than make each lane rerun its land for a file nobody writes by hand.
+regen_end_state() {
+    [ -f scripts/end-state.py ] && [ -n "$(git rev-list FETCH_HEAD..HEAD)" ] || return 0
+    uv run --quiet python scripts/end-state.py >/dev/null || { echo "land: could not regenerate plan/END-STATE.md" >&2; return 1; }
+    git diff --quiet -- plan/END-STATE.md && return 0
+    git commit -q --amend --no-edit --no-verify -- plan/END-STATE.md
+    echo "land: regenerated plan/END-STATE.md on the rebased tree" >&2
+}
 pull() {
     before=$(git rev-parse HEAD)
     if git pull -q --rebase --autostash "$remote" main; then
         stash_conflict && return 1
-        remeasure
+        remeasure && regen_end_state
         return
     fi
     while rebasing; do
@@ -114,7 +124,7 @@ pull() {
         GIT_EDITOR=true git rebase --continue >/dev/null 2>&1 || rebasing ||
             { echo "land: git rebase --continue failed" >&2; return 1; }
     done
-    remeasure
+    remeasure && regen_end_state
 }
 # Where this commit's hook ran: main's tip before the pull, as far as HEAD has it.
 checked=${CPL_LAND_CHECKED:-$(git merge-base HEAD FETCH_HEAD 2>/dev/null || git rev-parse FETCH_HEAD)}

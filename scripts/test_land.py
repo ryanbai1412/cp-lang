@@ -109,6 +109,54 @@ class LandTest(unittest.TestCase):
         self.assertEqual(git(ours, "status", "--porcelain"), "")
         self.assertIn("src.txt", git(ours, "show", "--name-only", "--format=", "origin/main"))
 
+    def test_end_state_is_regenerated_on_the_rebased_tree(self):
+        # Every lane's land moves the ratchet END-STATE.md is generated from; a land that
+        # kept its own copy failed the ratchet's stale check and had to run again.
+        seed = self.clone("seed2")
+        with open(seed / "gen.toml", "a") as f:
+            f.write('[[gen]]\nname = "end-state"\nfiles = ["plan/END-STATE.md"]\n')
+        (seed / "scripts" / "end-state.py").write_text(
+            "import os\nos.makedirs('plan', exist_ok=True)\n"
+            f"open('plan/END-STATE.md', 'w').write(open('{RATCHET}').read())\n")
+        subprocess.run([sys.executable, "scripts/end-state.py"], cwd=seed, check=True)
+        self.commit(seed, "end state")
+        git(seed, "push", "-q", "origin", "HEAD:main")
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        (theirs / RATCHET).write_text(json.dumps({"a": 4, "b": 5, "names": ["x", "y"]}, indent=2) + "\n")
+        subprocess.run([sys.executable, "scripts/end-state.py"], cwd=theirs, check=True)
+        self.commit(theirs, "theirs")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        (ours / RATCHET).write_text(json.dumps({"a": 5, "b": 4, "names": ["x", "y"]}, indent=2) + "\n")
+        subprocess.run([sys.executable, "scripts/end-state.py"], cwd=ours, check=True)
+        self.commit(ours, "ours")
+        r = self.land(ours)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        landed = git(ours, "show", "origin/main:plan/END-STATE.md")
+        self.assertEqual(landed, git(ours, "show", f"origin/main:{RATCHET}"))
+        self.assertEqual(git(ours, "status", "--porcelain"), "")
+
+    def test_two_lands_adding_cases_to_the_lists_keep_both(self):
+        # The new pipeline's case lists take every lane's lines on a rebase (.gitattributes).
+        lists = "crates/cpl-next/tests/passing.txt"
+        rules = [l for l in (HERE.parent / ".gitattributes").read_text().splitlines() if l.startswith("crates/cpl-next/")]
+        self.assertTrue(rules)
+        seed = self.clone("seed2")
+        (seed / "scripts" / "wasm-warm.sh").unlink()  # no crate here has a wasm budget
+        (seed / ".gitattributes").write_text("\n".join(rules) + "\n")
+        (seed / lists).parent.mkdir(parents=True)
+        (seed / lists).write_text("a\nm\nz\n")
+        self.commit(seed, "lists")
+        git(seed, "push", "-q", "origin", "HEAD:main")
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        (theirs / lists).write_text("a\nb\nm\nz\n")
+        self.commit(theirs, "theirs")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        (ours / lists).write_text("a\nc\nm\nz\n")
+        self.commit(ours, "ours")
+        r = self.land(ours)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(sorted(git(ours, "show", f"origin/main:{lists}").split()), ["a", "b", "c", "m", "z"])
+
     def test_a_conflict_in_a_hand_written_case_stops_instead_of_taking_mains(self):
         case = "spec/conformance/core-01/x.cp"
         theirs, ours = self.clone("theirs"), self.clone("ours")
