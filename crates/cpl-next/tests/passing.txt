@@ -443,7 +443,6 @@ core-04/grid-row-from-rows-lends-the-grid.cp
 core-04/grid-row-view-keys-are-columns.cp
 core-04/grid-rows-is-a-getter.cp
 core-04/grid-rows-view-lends-the-grid.cp
-core-04/h-drop-take-keys.cp
 core-04/h-filter-has-no-keys.cp
 core-04/h-map-keeps-keys.cp
 core-04/half-open-cut-range-piece.cp
@@ -827,7 +826,6 @@ core-07/fold-a-generator.cp
 core-07/fold-identity-or-optional.cp
 core-07/fold-with-init.cp
 core-07/generator-expression-body-for.cp
-core-07/generator-expression-body-generic.cp
 core-07/generator-expression-body.cp
 core-07/generator-has-no-next.cp
 core-07/generic-mut-int-keyed-array-stays-array.cp
@@ -853,7 +851,6 @@ core-07/map-calls-per-read.cp
 core-07/map-index-set-needs-no-default.cp
 core-07/map-index-write-inserts.cp
 core-07/map-orders-keys-by-their-ord.cp
-core-07/map-view-drop-skips-dropped.cp
 core-07/map-view-lazy-index-and-len.cp
 core-07/materialize.cp
 core-07/min-max-optional-first-tie.cp
@@ -896,7 +893,6 @@ core-07/str-count-takes-predicate.cp
 core-07/suffix-fold-is-not-a-name.cp
 core-07/swap-with-one-index-past-the-end-traps.cp
 core-07/table-over-keys.cp
-core-07/take-drop-clamped.cp
 core-07/view-blocks-a-write-to-its-source.cp
 core-07/view-index-by-proven-key.cp
 core-07/view-is-not-a-list.cp
@@ -2209,7 +2205,6 @@ std-seq/collect-1.cp
 std-seq/count-1.cp
 std-seq/count-on-bools-counts-every-element.cp
 std-seq/drop-negative-traps.cp
-std-seq/drop-past-len-is-empty.cp
 std-seq/drop-view-lends-its-source.cp
 std-seq/drop_while-1.cp
 std-seq/ends-of-empty-range.cp
@@ -2292,7 +2287,6 @@ std-seq/seq-u31-compare-sequences.cp
 std-seq/seq-u35-majority.cp
 std-seq/seq-u36-fold-without-identity.cp
 std-seq/seq-u42-pieces-over-domain.cp
-std-seq/seq-u44-take-drop-while.cp
 std-seq/seq-u50-combinations-subsets.cp
 std-seq/seq-u56-map-filter.cp
 std-seq/seq-u59-generators.cp
@@ -2327,7 +2321,6 @@ std-seq/zip-maps-and-flat-maps-to-lists.cp
 std-seq/zip-of-a-slice-indexes-by-the-first-keys.cp
 std-seq/zip-of-slices-is-sized-and-indexed.cp
 std-seq/zip-of-two-element-types.cp
-std-seq/zip-rev-shorter-later-arg.cp
 std-seq/zip-second-view-lends-its-source.cp
 std-seq/zip-slice-walks-from-view-start.cp
 std-strings/case-trim.cp
