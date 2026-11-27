@@ -75,6 +75,7 @@ pub(super) fn alias(cx: &mut TyCx, id: usize, n: &str, a: Vec<Ty>, errors: &mut 
     }
     let mut expanding = cx.expanding.clone();
     expanding.push(id);
+    let none = HashMap::new();
     let mut inner = TyCx {
         names: &decl.names,
         values: cx.values.clone(),
@@ -88,7 +89,7 @@ pub(super) fn alias(cx: &mut TyCx, id: usize, n: &str, a: Vec<Ty>, errors: &mut 
         args: Some(&a),
         aliases: cx.aliases,
         expanding,
-        doms: &HashMap::new(),
+        doms: if decl.program { cx.doms } else { &none },
         ret_slots: cx.ret_slots,
         next_set: cx.next_set,
     };

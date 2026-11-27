@@ -1579,9 +1579,7 @@ impl<'a> Cx<'a> {
                         && args.len() == 1 =>
                 {
                     let dty = self.domain_named(n).unwrap_or(Ty::Error);
-                    let v = self.expr(&args[0].value, Some(&Ty::Int));
-                    let v = self.coerce(v, &Ty::Int);
-                    mk(TK::DomFrom(dty.clone(), Box::new(v)), dty)
+                    self.domain_from(dty, &args[0].value, span)
                 }
                 ExprKind::Name(n) if n == "read" && self.lookup(n).is_none() => match want {
                     Some(w) => self.read_as(&w.clone(), span),

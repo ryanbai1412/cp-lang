@@ -227,6 +227,20 @@ impl Cx<'_> {
         let &id = self.d.member_types.get(m)?;
         (self.d.s(id).n_sets == 0).then(|| Ty::Struct(id, vec![d.clone()], Vec::new()))
     }
+    /// `D(x)`: the position of `x`, checked; a library domain (`Cell((0, 2))` of a product)
+    /// converts by its `Into` impl.
+    pub(super) fn domain_from(&mut self, dty: Ty, x: &ast::Expr, span: Span) -> TExpr {
+        if let Ty::Struct(..) = dty {
+            return self.convert(dty, x, span);
+        }
+        let v = self.expr(x, Some(&Ty::Int));
+        let v = self.coerce(v, &Ty::Int);
+        TExpr {
+            kind: TK::DomFrom(dty.clone(), Box::new(v)),
+            ty: dty,
+            span,
+        }
+    }
     /// A name that is a domain: one declared in a body, or a type parameter used as one.
     pub(super) fn domain_named(&self, n: &str) -> Option<Ty> {
         // A fn's own type parameter is nearer than any domain declared outside it.
@@ -235,6 +249,22 @@ impl Cx<'_> {
         }
         if let Some(t @ Ty::Struct(..)) = self.doms.get(n) {
             return Some(t.clone());
+        }
+        // `type Cell = (Row, Col)` names the product domain too (R04.2.10).
+        if let Some(decls::Named::Alias(_)) = self.d.views[self.module.0].get(n) {
+            let written = ast::Type {
+                kind: ast::TypeKind::Named {
+                    name: ast::Name {
+                        text: n.to_string(),
+                        span: Span::default(),
+                    },
+                    args: Vec::new(),
+                },
+                span: Span::default(),
+            };
+            let (gs, doms) = (&self.generics, &self.doms);
+            let t = decls::body_type(self.d, self.module, gs, doms, &written, &mut Vec::new());
+            return Some(t).filter(|t| self.is_domain(t));
         }
         if let Some(&Ty::Dom(i)) = self.doms.get(n) {
             if self.decl.is_none() && self.domains[i].name.is_empty() {

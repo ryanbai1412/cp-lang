@@ -437,6 +437,7 @@ fn layer(
                 generics,
                 ty,
                 names: v,
+                program: m.0 == program,
             }
         })
         .collect();

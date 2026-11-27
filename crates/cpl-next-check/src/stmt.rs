@@ -896,7 +896,11 @@ impl<'a> Cx<'a> {
             } => {
                 self.in_for = false;
                 if let (PatternKind::Name(name), ExprKind::Name(dn)) = (&pat.kind, &iter.kind) {
-                    if let Some(dty) = self.domain_named(dn) {
+                    // A declared domain's positions are its ordinals; a library one walks its `Seq`.
+                    let ordinals = self
+                        .domain_named(dn)
+                        .filter(|d| !matches!(d, Ty::Struct(..)));
+                    if let Some(dty) = ordinals {
                         let lo = TExpr {
                             kind: TK::Int(0),
                             ty: Ty::Int,
@@ -1800,7 +1804,7 @@ impl<'a> Cx<'a> {
         }
         // A position of one domain never indexes an array over another (R04.3.1).
         if let Some(k) = self.key_of(base) {
-            let (k, t) = (self.recv_ty(&k), self.recv_ty(&i.ty));
+            let (k, t) = (self.zonk(&k), self.zonk(&i.ty));
             if k != t && self.is_domain(&k) && self.is_domain(&t) {
                 let (ks, ts) = (self.show(&k), self.show(&t));
                 self.err(
