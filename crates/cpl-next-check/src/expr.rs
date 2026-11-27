@@ -323,6 +323,7 @@ impl<'a> Cx<'a> {
             TArg::Mut(p)
         } else {
             let v = self.expr(inner, Some(pty));
+            let v = self.lift_item(v, pty);
             TArg::Value(self.coerce(v, pty))
         }
     }
@@ -803,11 +804,7 @@ impl<'a> Cx<'a> {
             self.reach(m);
             let mut tys = vec![recv.ty.clone()];
             tys.extend(tr.args.iter().cloned());
-            let ret = Subst {
-                tys: &tys,
-                sets: &[],
-            }
-            .ty(&self.d.f(m).ret);
+            let ret = self.trait_ret(m, tys);
             return TExpr {
                 kind: TK::CallTrait {
                     tr: tr.clone(),
@@ -1517,7 +1514,10 @@ impl<'a> Cx<'a> {
                 ret_ty,
                 body,
                 ..
-            } => self.lambda(params, param_tys, ret_ty.as_ref(), body, want, span),
+            } => match self.op_item(e, want) {
+                Some(item) => item,
+                None => self.lambda(params, param_tys, ret_ty.as_ref(), body, want, span),
+            },
             ExprKind::Generic { base, args } => self.generic_value(base, args, span),
             ExprKind::List(xs) => {
                 // `[a, b]` is `List.new()` and a `push` per element.

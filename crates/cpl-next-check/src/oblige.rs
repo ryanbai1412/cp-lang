@@ -27,12 +27,25 @@ impl Cx<'_> {
             // A bound met by an impl may leave the impl's own bounds: they count as progress too.
             let (before, mut waiting) = (pending.len(), 0);
             for (t, r, span, why) in pending {
-                if self.unknown(&t) {
+                // A struct whose arguments are still open meets a trait by the one impl its head
+                // takes, which can fix them (`Mon<?T>: Fold<Int>` by `impl<T> Fold<T> for Mon<T>`).
+                let partial = self.unknown(&t);
+                if partial && !matches!(self.shallow(&t), Ty::Struct(..)) {
                     self.obligations.push((t, r, span, why));
                     waiting += 1;
                     continue;
                 }
+                let open = t.clone();
                 let t = self.zonk(&t);
+                if partial {
+                    let Some((k, targs)) = self.head_impl(&t, &r) else {
+                        self.obligations.push((t, r, span, why));
+                        continue;
+                    };
+                    if self.take_impl(k, targs, &r, span, Some(&open)) {
+                        continue;
+                    }
+                }
                 match self.meet(&t, &r, span) {
                     Some(true) => {}
                     Some(false) if self.mentions_error(&t) => self.poison(&r),
@@ -233,30 +246,58 @@ impl Cx<'_> {
                 let Some((k, targs)) = found.into_iter().next() else {
                     return Some(false);
                 };
-                // A parameter the type does not fix (`impl Keyed<Int, T> for Str`) is fixed by the bound.
-                let targs: Vec<Ty> = (targs.into_iter())
-                    .map(|a| if a == Ty::Error { self.new_ty() } else { a })
-                    .collect();
-                let im = &self.d.impls[k];
-                let sub = Subst {
-                    tys: &targs,
-                    sets: &[],
-                };
-                let args: Vec<Ty> = im.trait_.args.iter().map(|a| sub.ty(a)).collect();
-                let needs: Vec<(Ty, TraitRef)> = (im.bounds.iter())
-                    .map(|(i, b)| {
-                        let b = TraitRef {
-                            tr: b.tr,
-                            args: b.args.iter().map(|a| sub.ty(a)).collect(),
-                        };
-                        (targs[*i].clone(), b)
-                    })
-                    .collect();
-                self.obligations
-                    .extend(needs.into_iter().map(|(t, b)| (t, b, span, Origin::Bound)));
-                Some(args.iter().zip(&r.args).all(|(a, b)| self.unify(a, b)))
+                Some(self.take_impl(k, targs, r, span, None))
             }
         }
+    }
+    /// `r` met by impl `k` at `targs`: its bounds become obligations and its trait arguments
+    /// are the bound's, as its type is `open`'s when that is still open.
+    fn take_impl(
+        &mut self,
+        k: usize,
+        targs: Vec<Ty>,
+        r: &TraitRef,
+        span: Span,
+        open: Option<&Ty>,
+    ) -> bool {
+        // A parameter the type does not fix (`impl Keyed<Int, T> for Str`) is fixed by the bound.
+        let targs: Vec<Ty> = (targs.into_iter())
+            .map(|a| if a == Ty::Error { self.new_ty() } else { a })
+            .collect();
+        let im = &self.d.impls[k];
+        let sub = Subst {
+            tys: &targs,
+            sets: &[],
+        };
+        let args: Vec<Ty> = im.trait_.args.iter().map(|a| sub.ty(a)).collect();
+        let needs: Vec<(Ty, TraitRef)> = (im.bounds.iter())
+            .map(|(i, b)| {
+                let b = TraitRef {
+                    tr: b.tr,
+                    args: b.args.iter().map(|a| sub.ty(a)).collect(),
+                };
+                (targs[*i].clone(), b)
+            })
+            .collect();
+        let for_ = sub.ty(&im.for_);
+        self.obligations
+            .extend(needs.into_iter().map(|(t, b)| (t, b, span, Origin::Bound)));
+        let open = match (open.map(|t| self.shallow(t)), for_) {
+            (Some(Ty::Struct(_, have, _)), Ty::Struct(_, want, _)) => {
+                have.into_iter().zip(want).collect()
+            }
+            _ => Vec::new(),
+        };
+        open.iter().all(|(a, b)| self.unify(a, b))
+            && args.iter().zip(&r.args).all(|(a, b)| self.unify(a, b))
+    }
+    /// The one impl of `r` for a struct whose arguments are still open, by its head alone.
+    fn head_impl(&self, t: &Ty, r: &TraitRef) -> Option<(usize, Vec<Ty>)> {
+        let mut found = (self.d.impls.iter().enumerate())
+            .filter(|(_, im)| im.trait_.tr == r.tr && !im.blanket())
+            .filter_map(|(k, im)| Some((k, self.d.fits_impl(im, t)?)));
+        let one = found.next()?;
+        found.next().is_none().then_some(one)
     }
     /// Whether type parameter `i` meets `tr` through a blanket impl whose bounds its own bounds
     /// meet: `impl<D: Domain> Eq for D` gives every `D: Domain` its `==`.

@@ -60,6 +60,14 @@ pub(crate) fn params_in(t: &Ty, out: &mut BTreeSet<usize>) {
     }
 }
 
+/// A trait's fn as an item with no `Self` (`+` passed uncalled): it has no impl, and nothing runs it.
+fn selfless(d: &Decls, key: &InstKey) -> bool {
+    let FuncKey::Decl(m) = key.func else {
+        return false;
+    };
+    matches!(d.f(m).body, cpl_syntax::ast::FnBody::None)
+        && (key.targs.first()).is_none_or(|t| *t == CTy::Error)
+}
 fn doms_of(t: &CTy, out: &mut Vec<usize>) {
     match t {
         CTy::Dom(d) => out.push(*d),
@@ -152,7 +160,10 @@ pub fn link(
             targs: &key.targs,
             sets: &key.sets,
         };
-        let inst = l.instance(f, &env);
+        let mut inst = l.instance(f, &env);
+        if selfless(d, &key) {
+            inst.body.clear();
+        }
         insts.push(inst);
         next += 1;
     }
@@ -165,7 +176,10 @@ pub fn link(
             targs: &key.targs,
             sets: &key.sets,
         };
-        let inst = l.instance(f, &env);
+        let mut inst = l.instance(f, &env);
+        if selfless(d, &key) {
+            inst.body.clear();
+        }
         insts.push(inst);
     }
     let mut p = Program {
@@ -347,7 +361,18 @@ impl Link<'_> {
     }
     fn clo(&mut self, c: &CloRef, env: &Env) -> InstKey {
         match c {
-            CloRef::Item(f) => self.fnref(f, env),
+            CloRef::Item(f) => {
+                let k = self.fnref(f, env);
+                // A fn item nothing calls is one value of the item, not of an instance (R08.1.10).
+                match k.targs.contains(&CTy::Error) {
+                    true => InstKey {
+                        func: k.func,
+                        targs: Vec::new(),
+                        sets: Vec::new(),
+                    },
+                    false => k,
+                }
+            }
             CloRef::Lambda(id, ts, ss) => {
                 // A lambda is one instance per value of the parameters its body names. A set
                 // parameter of the fn around it that it never mentions is left out of its
@@ -397,10 +422,26 @@ impl Link<'_> {
                 }
             }
             SetTy::RetOf(f, slot) => {
-                let k = self.fnref(f, env);
+                // A trait's fn returns what the impl's fn the type picks returns.
+                let k = match self.d.f(f.decl).owner {
+                    Some(crate::decls::Owner::Trait(tr)) => {
+                        let Some((st, args)) = f.targs.split_first() else {
+                            return;
+                        };
+                        let method = self.d.f(f.decl).name.clone();
+                        match self.trait_key(&tr, args, &method, st, env) {
+                            Some(k) => k,
+                            None => return,
+                        }
+                    }
+                    _ => self.fnref(f, env),
+                };
+                let FuncKey::Decl(decl) = k.func else {
+                    return;
+                };
                 // A fn that returns what it itself returns adds nothing.
                 if self.ret_busy.insert((k.clone(), *slot)) {
-                    if let Some(rs) = self.typed.ret_sets.get(&(f.decl, *slot)) {
+                    if let Some(rs) = self.typed.ret_sets.get(&(decl, *slot)) {
                         let inner = Env {
                             targs: &k.targs,
                             sets: &k.sets,
@@ -503,71 +544,83 @@ impl Link<'_> {
                 args,
                 method,
                 self_ty,
-            } => {
-                let st = unlent(self.ty(self_ty, env));
-                let want: Vec<CTy> = (self.d.traits[tr.0].inputs(args).iter())
-                    .map(|a| self.ty(a, env))
-                    .collect();
-                // The impl's sets are its target's: a struct's, or a fn type's own set.
-                let sets = match &st {
-                    CTy::Struct(_, _, ss) => ss.clone(),
-                    CTy::Set(s) => vec![s.clone()],
-                    _ => Vec::new(),
-                };
-                let d = self.d;
-                // The trait's own fn, with `Self` and the trait's arguments for its parameters:
-                // what an impl leaves to the default, and what a type meeting the trait without
-                // an impl (a domain, for `Domain`) runs.
-                let default = |trait_args: Vec<CTy>| {
-                    (d.traits[tr.0].methods.get(method))
-                        .filter(|&&tm| !matches!(d.f(tm).body, cpl_syntax::ast::FnBody::None))
-                        .map(|&tm| InstKey {
-                            func: FuncKey::Decl(tm),
-                            targs: std::iter::once(st.clone()).chain(trait_args).collect(),
-                            sets: Vec::new(),
-                        })
-                };
-                let mut found = None;
-                for im in d.impls_of(*tr) {
-                    let mut binds = vec![None; im.generics.len()];
-                    if !fit_cty(&im.for_, &st, &mut binds)
-                        || !(d.traits[tr.0].inputs(&im.trait_.args).iter().zip(&want))
-                            .all(|(p, w)| fit_cty(p, w, &mut binds))
-                        || !blanket_met(d, im, &binds)
-                    {
-                        continue;
-                    }
-                    self.bound_only(im, &mut binds);
-                    let binds: Vec<CTy> =
-                        binds.into_iter().map(|b| b.unwrap_or(CTy::Error)).collect();
-                    found = match im.methods.get(method) {
-                        Some(&m) => Some(InstKey {
-                            func: FuncKey::Decl(m),
-                            targs: binds,
-                            sets: sets.clone(),
-                        }),
-                        None => {
-                            let env = Env {
-                                targs: &binds,
-                                sets: &sets,
-                            };
-                            default(im.trait_.args.iter().map(|t| self.ty(t, &env)).collect())
-                        }
-                    };
-                    break;
-                }
-                if found.is_none() && cty_meets(d, &st, *tr) {
-                    found = default(args.iter().map(|t| self.ty(t, env)).collect());
-                }
-                if found.is_none() {
-                    self.errors
-                        .push(format!("no impl provides `{method}` for this type").into());
-                }
-                found
-            }
+            } => self.trait_key(tr, args, method, self_ty, env),
             Target::Inst(i) => Some(self.keys[*i].clone()),
             Target::Value(_) => None,
         }
+    }
+    /// The impl's fn a method of a bound runs, now the type is known.
+    fn trait_key(
+        &mut self,
+        tr: &TraitId,
+        args: &[Ty],
+        method: &str,
+        self_ty: &Ty,
+        env: &Env,
+    ) -> Option<InstKey> {
+        let st = unlent(self.ty(self_ty, env));
+        // `Self` of a trait's fn as an item nothing calls (`+` as a value): nothing runs it.
+        if st == CTy::Error {
+            return None;
+        }
+        let want: Vec<CTy> = (self.d.traits[tr.0].inputs(args).iter())
+            .map(|a| self.ty(a, env))
+            .collect();
+        // The impl's sets are its target's: a struct's, or a fn type's own set.
+        let sets = match &st {
+            CTy::Struct(_, _, ss) => ss.clone(),
+            CTy::Set(s) => vec![s.clone()],
+            _ => Vec::new(),
+        };
+        let d = self.d;
+        // The trait's own fn, with `Self` and the trait's arguments for its parameters:
+        // what an impl leaves to the default, and what a type meeting the trait without
+        // an impl (a domain, for `Domain`) runs.
+        let default = |trait_args: Vec<CTy>| {
+            (d.traits[tr.0].methods.get(method))
+                .filter(|&&tm| !matches!(d.f(tm).body, cpl_syntax::ast::FnBody::None))
+                .map(|&tm| InstKey {
+                    func: FuncKey::Decl(tm),
+                    targs: std::iter::once(st.clone()).chain(trait_args).collect(),
+                    sets: Vec::new(),
+                })
+        };
+        let mut found = None;
+        for im in d.impls_of(*tr) {
+            let mut binds = vec![None; im.generics.len()];
+            if !fit_cty(&im.for_, &st, &mut binds)
+                || !(d.traits[tr.0].inputs(&im.trait_.args).iter().zip(&want))
+                    .all(|(p, w)| fit_cty(p, w, &mut binds))
+                || !blanket_met(d, im, &binds)
+            {
+                continue;
+            }
+            self.bound_only(im, &mut binds);
+            let binds: Vec<CTy> = binds.into_iter().map(|b| b.unwrap_or(CTy::Error)).collect();
+            found = match im.methods.get(method) {
+                Some(&m) => Some(InstKey {
+                    func: FuncKey::Decl(m),
+                    targs: binds,
+                    sets: sets.clone(),
+                }),
+                None => {
+                    let env = Env {
+                        targs: &binds,
+                        sets: &sets,
+                    };
+                    default(im.trait_.args.iter().map(|t| self.ty(t, &env)).collect())
+                }
+            };
+            break;
+        }
+        if found.is_none() && cty_meets(d, &st, *tr) {
+            found = default(args.iter().map(|t| self.ty(t, env)).collect());
+        }
+        if found.is_none() {
+            self.errors
+                .push(format!("no impl provides `{method}` for this type").into());
+        }
+        found
     }
     fn arg(&mut self, a: &Arg<Ty>, env: &Env) -> Arg<CTy> {
         match a {

@@ -261,7 +261,7 @@ impl<'a> Cx<'a> {
             sets: &[],
         };
         let formals = self.formals(&sub, fd);
-        let ret = sub.ty(&fd.ret);
+        let ret = self.trait_ret(m, tys.clone());
         let (pre, args) = self.args(call.unwrap_or(&[]), &formals, span);
         let call = TExpr {
             kind: TK::CallTrait {
@@ -409,7 +409,7 @@ impl<'a> Cx<'a> {
                         sets: &[],
                     };
                     let formals = self.formals(&sub, fd);
-                    let ret = sub.ty(&fd.ret);
+                    let ret = self.trait_ret(m, tys.clone());
                     let (pre, args) = self.args(call.unwrap_or(&[]), &formals, span);
                     let recv = if fd.self_mode == SelfMode::Mut {
                         self.mut_recv(recv, span)

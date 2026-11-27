@@ -17,6 +17,7 @@ use std::collections::HashSet;
 mod expr;
 mod free;
 pub use free::{free_vars, group_free};
+mod from_op;
 mod index;
 mod lambda;
 mod member;
@@ -546,7 +547,8 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded)
         // A trait's fn whose body is an intrinsic is checked into that operation on `Self`.
         let of_trait = matches!(f.owner, Some(Owner::Trait(_)));
         let lowered_intrinsic = f.intrinsic.is_some() && !of_trait;
-        if fns.contains_key(&id) || lowered_intrinsic || matches!(f.body, FnBody::None) {
+        let undeclared = matches!(f.body, FnBody::None) && !of_trait;
+        if fns.contains_key(&id) || lowered_intrinsic || undeclared {
             continue;
         }
         if !quiet {
@@ -787,15 +789,19 @@ impl<'a> Cx<'a> {
                 let v = self.expr(e, Some(&ret));
                 self.coerce(v, &ret)
             }
-            FnBody::None => {
-                let span = Span::new(0, 0);
-                self.err(span, "slice: a fn with no body");
-                TExpr {
-                    kind: TK::Error,
-                    ty: Ty::Error,
-                    span,
+            FnBody::None => match f.owner {
+                // A trait's fn as a value: the impl's fn of `Self`'s type.
+                Some(Owner::Trait(tr)) => self.trait_dispatch(id, tr, &params),
+                _ => {
+                    let span = Span::new(0, 0);
+                    self.err(span, "slice: a fn with no body");
+                    TExpr {
+                        kind: TK::Error,
+                        ty: Ty::Error,
+                        span,
+                    }
                 }
-            }
+            },
         };
         self.solve(true);
         let out = TypedFn {

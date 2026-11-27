@@ -19,6 +19,8 @@ pub(super) struct TyCx<'a> {
     pub(super) values: Arc<HashSet<String>>,
     /// Where the item being converted starts in the source, when known: its spans count from it.
     pub(super) item: Option<u32>,
+    /// Each binary operator's fn, which `type_of(+)` names.
+    pub(super) ops: Arc<Vec<(String, FnId)>>,
     /// How many set parameters each struct has, so a struct named in a type gets its own.
     pub(super) struct_sets: &'a HashMap<StructId, usize>,
     pub(super) struct_defaults: &'a HashMap<StructId, Vec<Option<Ty>>>,
@@ -77,6 +79,7 @@ pub(super) fn alias(cx: &mut TyCx, id: usize, n: &str, a: Vec<Ty>, errors: &mut 
         names: &decl.names,
         values: cx.values.clone(),
         item: None,
+        ops: cx.ops.clone(),
         struct_sets: cx.struct_sets,
         struct_defaults: cx.struct_defaults,
         tuples: cx.tuples,
@@ -334,9 +337,18 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
                     errors.push(at(format!("{code}: unknown name `{k}`")));
                     Ty::Error
                 }
-                Some((_, None)) if !matches!(e.kind, ast::ExprKind::Name(_)) => {
-                    errors.push(at("slice: type ItemOf".to_string()));
-                    Ty::Error
+                Some((k, None)) if !matches!(e.kind, ast::ExprKind::Name(_)) => {
+                    match cx.ops.iter().find(|(o, _)| o == k) {
+                        Some((_, f)) => Ty::Clo(Box::new(CloRef::Item(FnRef {
+                            decl: *f,
+                            targs: Vec::new(),
+                            sets: Vec::new(),
+                        }))),
+                        None => {
+                            errors.push(at("slice: type ItemOf".to_string()));
+                            Ty::Error
+                        }
+                    }
                 }
                 _ => {
                     let code = cpl_diag::codes::NOT_A_FN_ITEM.0;
@@ -370,6 +382,7 @@ pub fn body_type(
             names: &d.views[m.0],
             values: d.top_values.clone(),
             item: None,
+            ops: d.operator_fns(),
             struct_sets: &d.struct_sets,
             struct_defaults: &d.struct_defaults,
             tuples: &d.tuples,

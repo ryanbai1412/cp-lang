@@ -287,6 +287,8 @@ pub struct Decls {
     /// Core's `@coerce` fns: each converts a value of its parameter's type where its result's
     /// type is wanted (R04.8.10).
     pub coercions: Vec<FnId>,
+    /// Static fns marked `@from_op`: what a bare operator becomes where their struct is wanted (R08.1.9).
+    pub from_op: Vec<FnId>,
     /// Core's `@pattern` fns: `f(p)` as a pattern matches the optional `f` makes when it is
     /// present and its value matches `p` (R01.7.1).
     pub pattern_fns: Vec<FnId>,
@@ -332,6 +334,21 @@ impl Decls {
         } else {
             self.errors.extend(errors);
         }
+    }
+    /// The fn a bare operator names: its core `@operator` trait's fn of that many operands.
+    pub fn operator_fn(&self, text: &str, binary: bool) -> Option<FnId> {
+        (self.operators.iter().filter(|(o, _)| o == text)).find_map(|(_, tr)| {
+            let m = *self.traits[tr.0].methods.values().next()?;
+            (self.f(m).params.len() == usize::from(binary)).then_some(m)
+        })
+    }
+    /// Each binary operator's fn, for `type_of(+)`.
+    pub(crate) fn operator_fns(&self) -> Arc<Vec<(String, FnId)>> {
+        Arc::new(
+            (self.operators.iter())
+                .filter_map(|(o, _)| Some((o.clone(), self.operator_fn(o, true)?)))
+                .collect(),
+        )
     }
     pub fn f(&self, d: FnId) -> &FnDecl {
         &self.fns[d.0]
@@ -833,6 +850,7 @@ fn add_fn(
     let mut cx = TyCx {
         names: &names,
         values: d.top_values.clone(),
+        ops: d.operator_fns(),
         item: Some(item),
         struct_sets: &sets,
         struct_defaults: &defaults,
@@ -996,7 +1014,7 @@ fn add_fn(
             && x.name.text != GETTER
             && !matches!(
                 x.name.text.as_str(),
-                "multitest" | "same_keys" | "index" | "aka" | "was"
+                "multitest" | "same_keys" | "index" | "aka" | "was" | "from_op"
             )
         {
             let at = Span::new(item + x.span.start, item + x.span.end);
@@ -1024,6 +1042,9 @@ fn add_fn(
     };
     if has("index") {
         d.index_fns.push(FnId(d.fns.len()));
+    }
+    if has("from_op") {
+        d.from_op.push(FnId(d.fns.len()));
     }
     let coerce = m == CORE && has("coerce");
     if coerce {

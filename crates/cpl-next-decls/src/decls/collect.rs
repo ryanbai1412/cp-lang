@@ -452,6 +452,7 @@ fn layer(
             let mut cx = TyCx {
                 names: &names,
                 values: d.top_values.clone(),
+                ops: d.operator_fns(),
                 item: None,
                 struct_sets: &sets,
                 struct_defaults: &defaults,
@@ -494,6 +495,7 @@ fn layer(
         let mut cx = TyCx {
             names: &names,
             values: d.top_values.clone(),
+            ops: d.operator_fns(),
             item: None,
             struct_sets: &sets,
             struct_defaults: &defaults,
@@ -550,6 +552,7 @@ fn layer(
                     let mut cx = TyCx {
                         names: &d.views[mi].clone(),
                         values: d.top_values.clone(),
+                        ops: d.operator_fns(),
                         item: None,
                         struct_sets: &sets,
                         struct_defaults: &defaults,
@@ -660,6 +663,7 @@ fn layer(
                     let mut cx = TyCx {
                         names: &names,
                         values: d.top_values.clone(),
+                        ops: d.operator_fns(),
                         item: None,
                         struct_sets: &sets,
                         struct_defaults: &defaults,
@@ -764,6 +768,7 @@ fn layer(
                     let mut cx = TyCx {
                         names: &names,
                         values: d.top_values.clone(),
+                        ops: d.operator_fns(),
                         item: Some(item),
                         struct_sets: &sets,
                         struct_defaults: &defaults,

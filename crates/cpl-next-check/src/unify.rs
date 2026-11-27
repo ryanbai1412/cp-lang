@@ -341,6 +341,17 @@ impl<'a> Cx<'a> {
         });
         self.fresh_sets(&t)
     }
+    /// What trait fn `m` returns at `Self` and the trait's arguments `tys`: its fns are the ones
+    /// the impl the type picks returns.
+    pub(super) fn trait_ret(&mut self, m: FnId, tys: Vec<Ty>) -> Ty {
+        let f = FnRef {
+            decl: m,
+            targs: tys,
+            sets: Vec::new(),
+        };
+        let ret = self.d.f(m).ret.clone();
+        self.result_of(&f, &ret)
+    }
     /// `T` when `t` is `?T`.
     fn optional_id(&self) -> Option<StructId> {
         self.d.core_struct("Optional")
