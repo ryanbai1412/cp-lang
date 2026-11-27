@@ -33,7 +33,7 @@ documented.
 | R01.5 | 1.5 Operators and precedence | supported |  |
 | R01.6 | 1.6 Statements | supported |  |
 | R01.7 | 1.7 Control flow | supported |  |
-| R01.8 | 1.8 Expressions | supported |  |
+| R01.8 | 1.8 Expressions | supported | 1 known gap |
 | R01.9 | 1.9 Items | supported |  |
 | R01.10 | 1.10 Grammar | supported |  |
 | R01.11 | 1.11 Rejected spellings | supported |  |
@@ -177,6 +177,7 @@ documented.
 
 ## Known gaps
 
+- core-01/a-literal-builds-a-programs-own-type.cp: fail
 - std-segtree/closure-folds-optional-monoid-folds-plain.cp: fail
 - std-segtree/closure-op-picks-index.cp: fail
 - traits/Default/List--default.cp: fail

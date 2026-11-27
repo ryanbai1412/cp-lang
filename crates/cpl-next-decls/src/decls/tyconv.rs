@@ -202,14 +202,12 @@ pub(crate) fn names_in(t: &ast::Type, out: &mut Vec<String>) {
         }
         TypeKind::Optional(e) | TypeKind::Mut(e) | TypeKind::Yields(e) => names_in(e, out),
         TypeKind::Tuple(ts) => ts.iter().for_each(|e| names_in(e, out)),
-        TypeKind::Array { index, elem } => index
-            .iter()
-            .chain([&**elem])
-            .for_each(|e| names_in(e, out)),
-        TypeKind::Fn { params, ret } => params
-            .iter()
-            .chain([&**ret])
-            .for_each(|e| names_in(e, out)),
+        TypeKind::Array { index, elem } => {
+            index.iter().chain([&**elem]).for_each(|e| names_in(e, out))
+        }
+        TypeKind::Fn { params, ret } => {
+            params.iter().chain([&**ret]).for_each(|e| names_in(e, out))
+        }
         _ => {}
     }
 }

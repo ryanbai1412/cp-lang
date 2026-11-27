@@ -15,3 +15,7 @@ The positions of a domain (R04.2): `D: Domain` takes any domain, and every domai
 A cut of `D`: the place between two neighbouring positions, or at either end, with `k` positions before it.
 
 Fields: `k: Int`.
+
+## `trait RangeEnds<D: Domain>`
+
+A run's ends as cuts: `[r]T` covers the keys from `r.start` to `r.end` (R04b.1.5).
