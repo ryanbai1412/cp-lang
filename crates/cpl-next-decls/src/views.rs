@@ -121,7 +121,9 @@ impl TypeTables for Decls {
         self.records.get(fields).copied()
     }
     fn record_fields(&self, s: StructId) -> Option<Vec<String>> {
-        (self.records.iter()).find(|(_, id)| **id == s).map(|(fs, _)| fs.clone())
+        (self.records.iter())
+            .find(|(_, id)| **id == s)
+            .map(|(fs, _)| fs.clone())
     }
     fn member(&self, m: &str) -> Option<StructId> {
         self.member_types.get(m).copied()

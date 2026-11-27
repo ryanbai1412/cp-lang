@@ -6,7 +6,7 @@ Rooted trees: parents, subtree ranges, LCA, and path folds over one range struct
 
 In prelude (no `use` needed): `JumpTree`, `KruskalTree`, `LcaTable`, `Lift`, `PreferredPaths`, `Rooted`, `kruskal_tree`.
 
-## `struct Rooted<V, Pre, A>`
+## `struct Rooted<V, Pre: Ordered, A>`
 
 A tree rooted at `root`, owning its own fresh heavy-first preorder domain `t.Pre`.
 
@@ -144,7 +144,7 @@ The preferred-path half of a link-cut tree over a fixed rooted tree: every node 
 
 Fields: `lc: [V]?V`, `rc: [V]?V`, `pa: [V]?V`, `stk: List<V>`.
 
-- `fn new<P, A>(t: Rooted<V, P, A>) -> PreferredPaths<V>` — \(O(n)\); The preferred paths of `t` with every vertex its own path.
+- `fn new<P: Ordered, A>(t: Rooted<V, P, A>) -> PreferredPaths<V>` — \(O(n)\); The preferred paths of `t` with every vertex its own path.
 - `fn access(mut self, v: V) -> yields (lost: ?V, gained: ?V)` — amortized \(O(\log n)\) switches; Makes the path from the root to `v` one preferred path, yielding each switch bottom-up.
 
 ## `struct LazyLinkCut<V, T, F>(act: Action<T, F>)`
@@ -176,7 +176,7 @@ How a permutation-tree node joins its two children `l` (earlier positions) and `
 
 A permutation-tree node as `PermTree.node` shows it: `Leaf(i)` for position `i`, or `Inner(l, r, kind)` with its two children and how they join.
 
-## `struct PermTree<I, V, Node>`
+## `struct PermTree<I: Ordered, V: Ordered, Node>`
 
 The binary permutation (interval-decomposition) tree of a bijection `p: [I]V`: every node covers a run of positions, leaves are single positions, a node's children split its run in two, and the values of every node but a `Partial` one form a run of consecutive values.
 
@@ -190,7 +190,7 @@ Fields: `l: [Node]Node`, `last: [Node]I`, `lo: [Node]V`, `hi: [Node]V`.
 - `fn span(self, v: Node) -> Range<I>` — \(O(1)\); The positions `v` covers, a nonempty range of `I`.
 - `fn vals(self, v: Node) -> Range<V>` — \(O(1)\); From the least to the greatest value `v` covers: exactly its values unless `v` is `Partial`.
 
-## `struct Layers<V, B>`
+## `struct Layers<V, B: Ordered>`
 
 The vertices of a `Rooted` tree by depth, each depth in preorder, over their own domain `B`: the descendants of a vertex at one depth are a contiguous range of `B`.
 
@@ -224,7 +224,7 @@ Lowest common ancestors in \(O(1)\) after \(O(n \log n)\) preprocessing, by a sp
 
 Fields: `par: [V]?V`, `dep: [V]Int`, `far: [V]Int`.
 
-- `fn new<Pre, A>(t: Rooted<V, Pre, A>) -> LcaTable<V>` — \(O(n \log n)\) time and memory; A sparse table over the Euler walk of `t`, for \(O(1)\) lowest common ancestors on a fixed tree.
+- `fn new<Pre: Ordered, A>(t: Rooted<V, Pre, A>) -> LcaTable<V>` — \(O(n \log n)\) time and memory; A sparse table over the Euler walk of `t`, for \(O(1)\) lowest common ancestors on a fixed tree.
 - `fn lca(self, a: V, b: V) -> V` — \(O(1)\); The lowest common ancestor of `a` and `b`.; traps: when `a` and `b` are in different trees
 - `fn dist(self, a: V, b: V) -> Int` — \(O(1)\); The distance between `a` and `b`, weighted as the tree was built.; traps: when `a` and `b` are in different trees
 

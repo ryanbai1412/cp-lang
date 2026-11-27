@@ -1,9 +1,9 @@
 //! Types as written turned into types: names looked up in a module's view, aliases expanded,
 //! a struct's left-off arguments filled from its defaults, and a set for each fn type.
 use super::*;
+use crate::views::{Scope, Signatures, TypeTables};
 use cpl_next_ir::ids::ItemId;
 use cpl_next_ir::unbuilt::Unbuilt;
-use crate::views::{Scope, Signatures, TypeTables};
 
 /// Type arguments written but left off the end take their defaults, which may name the
 /// arguments before them (R08.2.5).
@@ -106,8 +106,7 @@ pub(super) fn trait_ref(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> 
     // `(u: V, w: W, ..)`: the core trait of that row, over the field types (R08.4.1).
     if let TypeKind::Row(fs) = &t.kind {
         let names: Vec<&str> = fs.iter().map(|(n, _)| n.text.as_str()).collect();
-        let Some(Named::Trait(tr)) = (cx.names)(&crate::records::row_name(&names))
-        else {
+        let Some(Named::Trait(tr)) = (cx.names)(&crate::records::row_name(&names)) else {
             errors.push(Unbuilt::BoundNotNamed.into());
             return None;
         };
@@ -558,7 +557,9 @@ impl TypeTables for Tables {
         self.records.get(fields).copied()
     }
     fn record_fields(&self, s: StructId) -> Option<Vec<String>> {
-        (self.records.iter()).find(|(_, id)| **id == s).map(|(fs, _)| fs.clone())
+        (self.records.iter())
+            .find(|(_, id)| **id == s)
+            .map(|(fs, _)| fs.clone())
     }
     fn member(&self, m: &str) -> Option<StructId> {
         self.members.get(m).copied()

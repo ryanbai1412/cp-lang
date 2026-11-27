@@ -10,6 +10,10 @@ Import: `use std.show.{...}`.
 
 How a value prints, and how an interpolated string formats it (R10.3).
 
+## `struct Fmt`
+
+How `print` and interpolation write a value: `digits` decimals for an `F64` when given, and the `base` a counted domain's positions print in (R10.2.2, R10.3.2, R10.3.4).
+
 ## `struct Pack<H, T>`
 
 Values walked one at a time: the first, and a pack of the rest or `()`; a struct's fields and a variadic tuple's parts show through it.
@@ -18,5 +22,5 @@ Fields: `head: H`, `tail: T`.
 
 ## Functions
 
-- `fn print<Ts: ShowAll>(..xs: Ts, sep: ?Str = None, end: Str = "\n", precision: ?Int = None)` — `print(x, y)`: the values joined by `sep`, then `end`; `precision: k` gives each `F64` `k` decimals (R10.3.1, R10.3.4).
-- `fn write<Ts: ShowAll>(..xs: Ts, sep: ?Str = None, precision: ?Int = None)` — `print` without the line's end.
+- `fn print<Ts: ShowAll>(..xs: Ts, sep: ?Str = None, end: Str = "\n", precision: ?Int = None) uses io` — `print(x, y)`: the values joined by `sep`, then `end`; `precision: k` gives each `F64` `k` decimals (R10.3.1, R10.3.4).
+- `fn write<Ts: ShowAll>(..xs: Ts, sep: ?Str = None, precision: ?Int = None) uses io` — `print` without the line's end.

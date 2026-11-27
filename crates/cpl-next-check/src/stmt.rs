@@ -1,6 +1,6 @@
 //! Statements, scopes, ranges and reads.
 
-use super::place::{InPlace, place_binding, place_held};
+use super::place::{place_binding, place_held, InPlace};
 use super::*;
 use cpl_next_ir::unbuilt::Unbuilt;
 
