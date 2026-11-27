@@ -1,6 +1,7 @@
 // expect: exit 1
 // rule: 09.3.8
 // tool: stress --seed 1
+// has: "FAIL"
 // lacks: "error["
 struct Counter:
     @cache hits: Int

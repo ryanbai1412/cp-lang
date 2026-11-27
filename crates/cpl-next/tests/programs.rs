@@ -397,6 +397,10 @@ fn verdict(path: &Path) -> (&'static str, String) {
         Ok(a) => a,
         Err(e) => return ("refused", e),
     };
+    // Any rejection exits 1, so an `exit 1` case says which one it wants.
+    if expect == Expect::Exit(1) && header().filter_map(header_key).all(|k| k != "has") {
+        return ("bad-header", "exit 1 names no error: say which with a `// has:`".into());
+    }
     if let Expect::Exit(n @ (2 | 4..)) = expect {
         return (
             "refused",
@@ -670,6 +674,17 @@ fn finding(misplaced: &str) -> String {
     let (id, rest) = misplaced.split_once(": ").unwrap_or((misplaced, ""));
     let kind = rest.split([':', '(']).next().unwrap_or(rest).trim();
     format!("cpl-finding: every_case_is_where_the_lists_say {id} {kind} +1")
+}
+
+#[test]
+fn an_exit_1_case_names_its_error() {
+    let dir = std::env::temp_dir().join(format!("cpl-next-exit1-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let case = dir.join("exit1.cp");
+    std::fs::write(&case, "// expect: exit 1\n// tool: check\nlet x: Int = true\n").unwrap();
+    let got = verdict(&case);
+    std::fs::remove_dir_all(&dir).unwrap();
+    assert_eq!(got.0, "bad-header", "{}", got.1);
 }
 
 #[test]
