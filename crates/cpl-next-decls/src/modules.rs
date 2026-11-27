@@ -137,7 +137,12 @@ pub struct Std {
 impl Std {
     /// The std this binary was built with.
     pub fn read() -> Std {
-        Std::from_files(STD_FILES.iter().map(|(m, t)| (m.to_string(), t.to_string())).collect())
+        Std::from_files(
+            STD_FILES
+                .iter()
+                .map(|(m, t)| (m.to_string(), t.to_string()))
+                .collect(),
+        )
     }
 
     /// The std in the directory `root`, in place of the one this binary was built with.

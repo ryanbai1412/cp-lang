@@ -241,5 +241,7 @@ fn every_form(c: &cpl_next::facade::Program, dir: &Path, budget: Duration, input
 
 /// The std this binary was built with, or the directory `CPL_NEXT_STD_DIR` names.
 fn std_in_use() -> Std {
-    cpl_env::NEXT_STD_DIR.path().map_or_else(Std::read, |dir| Std::read_dir(&dir))
+    cpl_env::NEXT_STD_DIR
+        .path()
+        .map_or_else(Std::read, |dir| Std::read_dir(&dir))
 }

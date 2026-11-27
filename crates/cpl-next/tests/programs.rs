@@ -399,7 +399,10 @@ fn verdict(path: &Path) -> (&'static str, String) {
     };
     // Any rejection exits 1, so an `exit 1` case says which one it wants.
     if expect == Expect::Exit(1) && header().filter_map(header_key).all(|k| k != "has") {
-        return ("bad-header", "exit 1 names no error: say which with a `// has:`".into());
+        return (
+            "bad-header",
+            "exit 1 names no error: say which with a `// has:`".into(),
+        );
     }
     if let Expect::Exit(n @ (2 | 4..)) = expect {
         return (
@@ -681,7 +684,11 @@ fn an_exit_1_case_names_its_error() {
     let dir = std::env::temp_dir().join(format!("cpl-next-exit1-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let case = dir.join("exit1.cp");
-    std::fs::write(&case, "// expect: exit 1\n// tool: check\nlet x: Int = true\n").unwrap();
+    std::fs::write(
+        &case,
+        "// expect: exit 1\n// tool: check\nlet x: Int = true\n",
+    )
+    .unwrap();
     let got = verdict(&case);
     std::fs::remove_dir_all(&dir).unwrap();
     assert_eq!(got.0, "bad-header", "{}", got.1);
@@ -822,8 +829,8 @@ fn longest_first(
     verdicts.sort_by_key(|(i, _)| *i);
     // A listed pass that timed out under a full machine's load gets one run alone, so a
     // load timeout is not a lost pass; a real timeout times out again.
-    let passing = std::fs::read_to_string(root.join("crates/cpl-next/tests/passing.txt"))
-        .unwrap_or_default();
+    let passing =
+        std::fs::read_to_string(root.join("crates/cpl-next/tests/passing.txt")).unwrap_or_default();
     let passing: std::collections::BTreeSet<&str> = passing.lines().map(str::trim).collect();
     for (i, v) in &mut verdicts {
         if v.0 == "timeout" && passing.contains(cases[*i].0.as_str()) {
@@ -887,8 +894,12 @@ fn every_case_is_where_the_lists_say() {
     let typed = ERROR_TYPED.lock().unwrap().clone();
     let error_typed: String = (cases.iter())
         .filter(|(_, p)| typed.contains(&fnv(&std::fs::read(p).unwrap_or_default())))
-        .map(|(id, _)| format!("{id}
-"))
+        .map(|(id, _)| {
+            format!(
+                "{id}
+"
+            )
+        })
         .collect();
     let found = root.join(match (&only, shard) {
         (Some(_), _) => "target/cpl-next/only".to_string(),
