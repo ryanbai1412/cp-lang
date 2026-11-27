@@ -1594,10 +1594,73 @@ pub(crate) fn check(
 ) -> Owned {
     let mut owned = run(d, generic, p, globals);
     owned.errors.extend(cache_calls(d, generic));
+    owned.errors.extend(unlent(p));
     if p.errors.is_empty() {
         owned.errors.extend(escape(d, generic, p));
     }
     owned
+}
+
+/// A lender lends one place on every path through it: its one expression, or a `lend mut`
+/// (R05.6.3). A path that leaves without one would lose the caller's write.
+fn unlent(p: &Program) -> Vec<Msg> {
+    /// Whether a path through `b` reaches its end, and whether one leaves the fn, unlent.
+    fn gap(b: &[Stmt<CTy>]) -> (bool, bool) {
+        let (mut on, mut left) = (true, false);
+        for s in b {
+            if !on {
+                break;
+            }
+            match s {
+                Stmt::LendOut(_) | Stmt::Break | Stmt::Continue => on = false,
+                Stmt::Return(_) => (on, left) = (false, true),
+                Stmt::If(_, a, b) => {
+                    let ((fa, la), (fb, lb)) = (gap(a), gap(b));
+                    (on, left) = (fa || fb, left || la || lb);
+                }
+                Stmt::Switch(_, arms) if !arms.is_empty() => {
+                    let gs: Vec<_> = arms.iter().map(|a| gap(a)).collect();
+                    on = gs.iter().any(|g| g.0);
+                    left |= gs.iter().any(|g| g.1);
+                }
+                // A lend's body runs once; a loop's or a walk's may not run, and lends nothing.
+                Stmt::Region {
+                    lend: true, body, ..
+                } => {
+                    let (f, l) = gap(body);
+                    (on, left) = (f, left || l);
+                }
+                Stmt::Loop(body, step, _) => left |= gap(body).1 || gap(step).1,
+                Stmt::Region { body, .. } => left |= gap(body).1,
+                _ => {}
+            }
+        }
+        (on, left)
+    }
+    let mut bad = Vec::new();
+    for f in &p.insts {
+        if !matches!(f.region, Some((true, _))) || gap(&f.body) == (false, false) {
+            continue;
+        }
+        let last = f.body.last().map(std::slice::from_ref).unwrap_or_default();
+        let site = site_of(last, &|_| true).or_else(|| site_of(&f.body, &|_| true));
+        let m = Msg::verdict(
+            codes::UNSUPPORTED,
+            format!(
+                "`{}` is declared `lends mut`, so every path through it ends in `lend mut place`; \
+                 a body that leaves without one would lose the caller's write (R05.6.3)",
+                f.shown
+            ),
+        );
+        let m = match site.and_then(|i| f.sites.get(i)) {
+            Some(s) => Msg::at(s.clone(), m),
+            None => m,
+        };
+        if !bad.contains(&m) {
+            bad.push(m);
+        }
+    }
+    bad
 }
 
 /// A closure that shares a `var` of the fn around it is lent: it cannot be returned (spec R05.10).

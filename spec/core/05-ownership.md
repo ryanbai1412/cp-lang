@@ -279,9 +279,11 @@ fn pick(a: List<Int>, b: List<Int>) -> lends(a) List<Int> = a   // borrows only 
   `a[i] = 5` is `a.at(i) = 5`. A field or element under it is a place too,
   for `=` and every compound op: `a.at(i).v += 1` and `a[i].kids[0] = 7`
   write into the lent slot with no copy of it, and `s[k]` reaches through
-  `at` when `at` lends mut, even beside a `get`. Code after the tail
-  expression in the body runs when the caller is done (write-back: a
-  `SegTree` repairs ancestors). (R05.6.3)
+  `at` when `at` lends mut, even beside a `get`. A one-expression body
+  lends that expression; a block body lends with `lend mut place`, which
+  every path through it reaches once, so a block that ends in a plain
+  place lends nothing and is E0501. Code after the `lend` runs when the
+  caller is done (write-back: a `SegTree` repairs ancestors). (R05.6.3)
 - **Indexing, slicing, `.rev`, `.map`, `.filter` are all `lends` fns.** So
   `let row = rows[i]` and `let w = a[l..r]` are lent values by this rule,
   with nothing special about `[]`. (R05.6.4)
