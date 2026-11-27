@@ -1062,11 +1062,7 @@ impl<'a> Cx<'a> {
         }
         if let Some(d) = self.d.fn_named(self.module, n) {
             let f = self.fnref(d, Vec::new(), Vec::new());
-            return TExpr {
-                kind: TK::FnItem(f.clone()),
-                ty: Ty::Clo(Box::new(CloRef::Item(f))),
-                span,
-            };
+            return self.fn_item_value(f, span);
         }
         if let Some(d) = self.domain_named(n) {
             return self.domain_value(d, span);

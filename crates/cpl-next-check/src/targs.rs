@@ -57,11 +57,7 @@ impl Cx<'_> {
             .collect();
         let given = self.written_targs(d, Vec::new(), &given, span);
         let f = self.fnref(d, given, Vec::new());
-        let v = TExpr {
-            kind: TK::FnItem(f.clone()),
-            ty: Ty::Clo(Box::new(CloRef::Item(f))),
-            span,
-        };
+        let v = self.fn_item_value(f, span);
         block(pre, v)
     }
 

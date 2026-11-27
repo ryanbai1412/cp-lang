@@ -449,11 +449,7 @@ impl<'a> Cx<'a> {
             decls::Named::Const(c) => Some(self.const_read(c, span)),
             decls::Named::Fn(f) => {
                 let f = self.fnref(f, Vec::new(), Vec::new());
-                Some(TExpr {
-                    kind: TK::FnItem(f.clone()),
-                    ty: Ty::Clo(Box::new(CloRef::Item(f))),
-                    span,
-                })
+                Some(self.fn_item_value(f, span))
             }
             _ => {
                 let code = cpl_diag::codes::UNRESOLVED_NAME;

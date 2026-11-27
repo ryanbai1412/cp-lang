@@ -127,6 +127,63 @@ impl Cx<'_> {
         )
     }
 
+    /// Fn item `f` as a value. A `-> yields T` fn's is the fn that gives the value of a call
+    /// held, `(ps) => f(ps)`, so calling it makes a generator value (R07.6.2).
+    pub(super) fn fn_item_value(&mut self, f: FnRef, span: Span) -> TExpr {
+        let generator = matches!(self.d.f(f.decl).region, Some((false, _)));
+        let (ps, _) = self.clo_sig(&CloRef::Item(f.clone()));
+        if !generator || self.d.recipe.is_none() || ps.iter().any(|p| matches!(p, Ty::Mut(_))) {
+            return TExpr {
+                kind: TK::FnItem(f.clone()),
+                ty: Ty::Clo(Box::new(CloRef::Item(f))),
+                span,
+            };
+        }
+        self.lambdas.push(LambdaInfo {
+            params: ps.clone(),
+            ret: Ty::Unit,
+            owner: self.decl,
+            group: Vec::new(),
+            yields: None,
+        });
+        let id = LambdaId(self.lambdas.len() - 1);
+        self.scopes.push(HashMap::new());
+        let mut ids = Vec::new();
+        let mut args = Vec::new();
+        for (i, t) in ps.iter().enumerate() {
+            let v = self.bind(&format!("$param{i}"), t.clone());
+            let (VarRef::Local(l) | VarRef::Global(l)) = v;
+            ids.push(l);
+            args.push(TArg::Value(TExpr {
+                kind: TK::Var(v),
+                ty: t.clone(),
+                span,
+            }));
+        }
+        let ty = self.ret_ty(&f);
+        let call = TExpr {
+            kind: TK::Call {
+                f,
+                recv: None,
+                args,
+            },
+            ty,
+            span,
+        };
+        let body = self.recipe(Vec::new(), call);
+        self.scopes.pop();
+        self.lambdas[id.0].ret = body.ty.clone();
+        TExpr {
+            kind: TK::Lambda {
+                id,
+                params: ids,
+                body: Box::new(body),
+            },
+            ty: self.lambda_ty(id),
+            span,
+        }
+    }
+
     /// The element a `for` over a generator value walks.
     pub(super) fn recipe_walk(&mut self, e: &TExpr) -> Option<Ty> {
         match self.shallow(&e.ty) {
