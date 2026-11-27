@@ -107,9 +107,9 @@ impl Cx<'_> {
             decorators: Vec::new(),
             public: false,
         };
-        self.kept = Some(t);
+        self.b.kept = Some(t);
         self.stmt(&assign, &mut out);
-        self.kept = None;
+        self.b.kept = None;
         mk(
             TK::Block(out, Some(Box::new(mk(TK::Var(t), Ty::Bool)))),
             Ty::Bool,

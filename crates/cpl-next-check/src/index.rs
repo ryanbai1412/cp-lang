@@ -418,10 +418,10 @@ impl Cx<'_> {
         if !point(i) || !point(j) {
             return false;
         }
-        let (seen, owed) = (self.errors.len(), self.obligations.len());
+        let (seen, owed) = (self.errors.len(), self.b.obligations.len());
         let probe = self.expr(t, None);
         self.errors.truncate(seen);
-        self.obligations.truncate(owed);
+        self.b.obligations.truncate(owed);
         if !self.is_table(&probe.ty) {
             return false;
         }
@@ -511,11 +511,11 @@ impl Cx<'_> {
         };
         let i = self.coerce(i, &sub.ty(&fd.params[0].ty));
         let elem = sub.ty(&fd.region.as_ref().map_or(Ty::Error, |(_, t)| t.clone()));
-        self.scopes.push(HashMap::new());
+        self.b.scopes.push(HashMap::new());
         let name = format!("$cell{}", out.len());
         let var = self.bind(&name, elem);
         if let VarRef::Local(l) = var {
-            self.locals[l].mutable = true;
+            self.b.locals[l].mutable = true;
         }
         let mut body = Vec::new();
         inner(
@@ -526,7 +526,7 @@ impl Cx<'_> {
             },
             &mut body,
         );
-        self.scopes.pop();
+        self.b.scopes.pop();
         out.push(TStmt::Region {
             callee,
             recv: Some(Box::new(TArg::Mut(b))),

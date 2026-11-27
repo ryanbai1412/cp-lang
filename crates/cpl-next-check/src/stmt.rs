@@ -7,14 +7,14 @@ use cpl_next_ir::unbuilt::Unbuilt;
 impl<'a> Cx<'a> {
     /// The innermost scope.
     pub(super) fn scope(&mut self) -> &mut HashMap<String, usize> {
-        if self.scopes.is_empty() {
-            self.scopes.push(HashMap::new());
+        if self.b.scopes.is_empty() {
+            self.b.scopes.push(HashMap::new());
         }
-        let last = self.scopes.len() - 1;
-        &mut self.scopes[last]
+        let last = self.b.scopes.len() - 1;
+        &mut self.b.scopes[last]
     }
     pub(super) fn add_local(&mut self, name: &str, ty: Ty) -> LocalId {
-        self.locals.push(Local {
+        self.b.locals.push(Local {
             name: name.to_string(),
             ty,
             top: false,
@@ -22,13 +22,13 @@ impl<'a> Cx<'a> {
             fixed: false,
             let_at: None,
         });
-        let id = self.locals.len() - 1;
+        let id = self.b.locals.len() - 1;
         self.scope().insert(name.to_string(), id);
         id
     }
     /// A new binding: a global at top level, a local in a fn.
     pub(super) fn bind(&mut self, name: &str, ty: Ty) -> VarRef {
-        if self.decl.is_none() && self.scopes.len() == 1 {
+        if self.b.decl.is_none() && self.b.scopes.len() == 1 {
             self.globals.push(Local {
                 name: name.to_string(),
                 ty,
@@ -40,7 +40,7 @@ impl<'a> Cx<'a> {
             self.global_names
                 .insert(name.to_string(), self.globals.len() - 1);
             VarRef::Global(self.globals.len() - 1)
-        } else if self.decl.is_none() {
+        } else if self.b.decl.is_none() {
             // A binding inside a top-level block lives in the globals too, under its scope.
             self.globals.push(Local {
                 name: name.to_string(),
@@ -63,35 +63,35 @@ impl<'a> Cx<'a> {
         let local = Local {
             name: role.to_string(),
             ty,
-            top: self.decl.is_none() && self.scopes.len() == 1,
+            top: self.b.decl.is_none() && self.b.scopes.len() == 1,
             mutable: false,
             fixed: false,
             let_at: None,
         };
-        match self.decl {
+        match self.b.decl {
             None => {
                 self.globals.push(local);
                 VarRef::Global(self.globals.len() - 1)
             }
             Some(_) => {
-                self.locals.push(local);
-                VarRef::Local(self.locals.len() - 1)
+                self.b.locals.push(local);
+                VarRef::Local(self.b.locals.len() - 1)
             }
         }
     }
     pub(super) fn lookup(&self, name: &str) -> Option<(VarRef, Ty)> {
-        for (depth, s) in self.scopes.iter().enumerate().rev() {
+        for (depth, s) in self.b.scopes.iter().enumerate().rev() {
             if let Some(id) = s.get(name) {
-                return Some(if self.decl.is_none() {
+                return Some(if self.b.decl.is_none() {
                     let _ = depth;
                     (VarRef::Global(*id), self.globals[*id].ty.clone())
                 } else {
-                    (VarRef::Local(*id), self.locals[*id].ty.clone())
+                    (VarRef::Local(*id), self.b.locals[*id].ty.clone())
                 });
             }
         }
         // A field of `self` is nearer than a top-level binding, and only the program sees its own.
-        if self.self_field(name).is_some() || self.module != self.d.program {
+        if self.self_field(name).is_some() || self.b.module != self.d.program {
             return None;
         }
         self.global_names
@@ -99,10 +99,10 @@ impl<'a> Cx<'a> {
             .map(|id| (VarRef::Global(*id), self.globals[*id].ty.clone()))
     }
     pub(super) fn self_expr(&self, span: Span) -> Option<TExpr> {
-        let id = self.self_local?;
+        let id = self.b.self_local?;
         Some(TExpr {
             kind: TK::Var(VarRef::Local(id)),
-            ty: self.locals[id].ty.clone(),
+            ty: self.b.locals[id].ty.clone(),
             span,
         })
     }
@@ -144,14 +144,14 @@ impl<'a> Cx<'a> {
             if let Ty::Param(p) = rt {
                 return self.bound_walk(p, call, name, body, span, out);
             }
-            self.allow_region = true;
+            self.b.allow_region = true;
             let own = "each";
             let walk = match self.d.lookup_member(&rt, own) {
                 Some(_) => own.to_string(),
                 None => (self.d.iteration_walk()).map_or_else(String::new, |(n, _)| n.to_string()),
             };
             call = self.method_call(call, &walk, vec![], span, false);
-            self.allow_region = false;
+            self.b.allow_region = false;
         }
         let TK::Call { f, recv, args } = call.kind else {
             return;
@@ -166,10 +166,10 @@ impl<'a> Cx<'a> {
             );
         };
         let elem = self.result_of(&f, &elem);
-        self.scopes.push(HashMap::new());
+        self.b.scopes.push(HashMap::new());
         let var = self.bind(name, elem);
         let body = self.block(body, None);
-        self.scopes.pop();
+        self.b.scopes.pop();
         out.push(TStmt::Region {
             callee: Callee::Fn(f),
             recv,
@@ -214,10 +214,10 @@ impl<'a> Cx<'a> {
             sets: &[],
         }
         .ty(&elem);
-        self.scopes.push(HashMap::new());
+        self.b.scopes.push(HashMap::new());
         let var = self.bind(name, elem);
         let body = self.block(body, None);
-        self.scopes.pop();
+        self.b.scopes.pop();
         out.push(TStmt::Region {
             callee: Callee::Trait(tr, method),
             recv: Some(recv),
@@ -267,10 +267,10 @@ impl<'a> Cx<'a> {
             sets: &[],
         }
         .ty(&elem);
-        self.scopes.push(HashMap::new());
+        self.b.scopes.push(HashMap::new());
         let var = self.bind(name, elem);
         let body = self.block(body, None);
-        self.scopes.pop();
+        self.b.scopes.pop();
         out.push(TStmt::Region {
             callee: Callee::Trait(tr.clone(), walk),
             recv: Some(Box::new(TArg::Value(recv))),
@@ -281,12 +281,12 @@ impl<'a> Cx<'a> {
         });
     }
     pub(super) fn block(&mut self, b: &ast::Block, want: Option<&Ty>) -> TExpr {
-        self.scopes.push(HashMap::new());
+        self.b.scopes.push(HashMap::new());
         let mut out = Vec::new();
         let mut value = None;
-        let outer = self.group.len();
+        let outer = self.b.group.len();
         let checks_kept = self.checks_kept;
-        let frames = self.frames.len();
+        let frames = self.b.frames.len();
         let memo = cpl_next_decls::memo_block(&b.stmts, &|w| self.d.memo_word(w));
         let (stmts, memos) = match &memo {
             Some((s, m)) => (&s[..], &m[..]),
@@ -305,7 +305,7 @@ impl<'a> Cx<'a> {
                     _ => None,
                 };
                 if let (Some(f), Some(clear)) = (bound(&stmts[at + 2]), bound(&stmts[at + 3])) {
-                    self.memo_clears.insert(f, clear);
+                    self.b.memo_clears.insert(f, clear);
                 }
             }
             if let Some((_, f)) = memos.iter().find(|(at, _)| *at == i) {
@@ -334,7 +334,7 @@ impl<'a> Cx<'a> {
                     }
                     continue;
                 } else if let Some(fs) = self.ctx_frames(ctx, args) {
-                    self.frames.extend(fs);
+                    self.b.frames.extend(fs);
                     continue;
                 }
             }
@@ -382,10 +382,10 @@ impl<'a> Cx<'a> {
             self.stmt(s, &mut out);
         }
         self.checks_kept = checks_kept;
-        self.frames.truncate(frames);
+        self.b.frames.truncate(frames);
         self.captures_set(outer, &out);
-        self.group.truncate(outer);
-        self.scopes.pop();
+        self.b.group.truncate(outer);
+        self.b.scopes.pop();
         let ty = value
             .as_ref()
             .map(|v: &TExpr| v.ty.clone())
@@ -426,8 +426,8 @@ impl<'a> Cx<'a> {
                 let ExprKind::Name(c) = &cell.kind else {
                     return;
                 };
-                let id = this.scopes.iter().rev().find_map(|s| s.get(c).copied());
-                if let (Some(id), Some(scope)) = (id, this.scopes.last_mut()) {
+                let id = this.b.scopes.iter().rev().find_map(|s| s.get(c).copied());
+                if let (Some(id), Some(scope)) = (id, this.b.scopes.last_mut()) {
                     scope.insert(n, id);
                 }
                 inside(this, body);
@@ -439,7 +439,7 @@ impl<'a> Cx<'a> {
     pub(super) fn items_placed(&mut self, items: &[(ItemId, ast::Stmt)], out: &mut Vec<TStmt>) {
         let mut k = 0;
         while let Some((off, s)) = items.get(k) {
-            self.item = off.clone();
+            self.b.item = off.clone();
             out.push(TStmt::Item(off.clone()));
             k += 1;
             let Some(named) = place_binding(s) else {
@@ -450,9 +450,9 @@ impl<'a> Cx<'a> {
             let held = place_held(&named.0, &stmts);
             let rest = items[k..k + held].to_vec();
             let inside: InPlace<'_> = Box::new(move |this, body| {
-                this.scopes.push(HashMap::new());
+                this.b.scopes.push(HashMap::new());
                 this.items_placed(&rest, body);
-                this.scopes.pop();
+                this.b.scopes.pop();
             });
             self.place_rest(named, s.span, inside, out);
             k += held;
@@ -461,7 +461,7 @@ impl<'a> Cx<'a> {
     /// A condition, in a scope of its own that holds the names its `let`s bind: the caller
     /// checks what the condition guards, then pops the scope.
     pub(super) fn cond(&mut self, c: &Cond) -> TExpr {
-        self.scopes.push(HashMap::new());
+        self.b.scopes.push(HashMap::new());
         self.cond_in(c)
     }
     /// An expression a condition tests: a `Bool`, never an integer or optional read as one (R02.11.1).
@@ -644,9 +644,9 @@ impl<'a> Cx<'a> {
                     Some((c, i)) => {
                         if let Some((VarRef::Local(k) | VarRef::Global(k), t)) = self.lookup(&tmp) {
                             let t = crate::pattern::retag(&self.zonk(&t), c, i);
-                            match self.decl.is_none() {
+                            match self.b.decl.is_none() {
                                 true => self.globals[k].ty = t,
-                                false => self.locals[k].ty = t,
+                                false => self.b.locals[k].ty = t,
                             }
                         }
                     }
@@ -668,12 +668,12 @@ impl<'a> Cx<'a> {
         }
     }
     pub(super) fn stmt(&mut self, s: &ast::Stmt, out: &mut Vec<TStmt>) {
-        let (mark, at) = (self.list_doms.len(), out.len());
-        let outer = std::mem::replace(&mut self.rhs_extent, s.rhs_extent());
+        let (mark, at) = (self.b.list_doms.len(), out.len());
+        let outer = std::mem::replace(&mut self.b.rhs_extent, s.rhs_extent());
         self.stmt_kind(s, out);
-        self.rhs_extent = outer;
+        self.b.rhs_extent = outer;
         let mut pre = Vec::new();
-        for (d, n, span) in self.list_doms.split_off(mark) {
+        for (d, n, span) in self.b.list_doms.split_off(mark) {
             if !matches!(self.shallow(&d), Ty::Var(_)) {
                 continue;
             }
@@ -805,10 +805,10 @@ impl<'a> Cx<'a> {
                     cell = Some(ts[1].clone());
                 }
                 if !mutable && matches!(init.kind, ExprKind::Lambda { .. }) {
-                    self.recur = Some(name.clone());
+                    self.b.recur = Some(name.clone());
                 }
                 let v = self.expr(init, cell.as_ref().or(declared.as_ref()));
-                self.recur = None;
+                self.b.recur = None;
                 // `var a: [V]Int = 0` fills every slot: it is `Array.filled(0)`.
                 let fill = match (&declared, self.array_id()) {
                     (Some(array @ Ty::Struct(d, ts, _)), Some(arr))
@@ -853,8 +853,8 @@ impl<'a> Cx<'a> {
                 let let_at = (!*mutable).then(|| self.let_keyword(s.span)).flatten();
                 match var {
                     VarRef::Local(i) => {
-                        (self.locals[i].mutable, self.locals[i].fixed) = (*mutable, !*mutable);
-                        self.locals[i].let_at = let_at;
+                        (self.b.locals[i].mutable, self.b.locals[i].fixed) = (*mutable, !*mutable);
+                        self.b.locals[i].let_at = let_at;
                     }
                     VarRef::Global(i) => {
                         (self.globals[i].mutable, self.globals[i].fixed) = (*mutable, !*mutable);
@@ -940,7 +940,7 @@ impl<'a> Cx<'a> {
                 let var = self.bind(name, inner);
                 match var {
                     VarRef::Local(i) => {
-                        (self.locals[i].mutable, self.locals[i].fixed) = (*mutable, !*mutable)
+                        (self.b.locals[i].mutable, self.b.locals[i].fixed) = (*mutable, !*mutable)
                     }
                     VarRef::Global(i) => {
                         (self.globals[i].mutable, self.globals[i].fixed) = (*mutable, !*mutable)
@@ -1045,7 +1045,7 @@ impl<'a> Cx<'a> {
                 self.stmt(&one, out);
             }
             StmtKind::Assign { target, op, value } => {
-                let kept = self.kept.take();
+                let kept = self.b.kept.take();
                 // `a[i] = v` and `a[i] op= v`: the indices, then the value, are read once; then
                 // `a = v` is `a`'s `IndexSet` write when it has one (spec 12, W8); otherwise `a`'s
                 // `IndexMut` lends the cell and the assignment runs while it is lent (R12.4.6).
@@ -1072,7 +1072,7 @@ impl<'a> Cx<'a> {
                             target.span,
                             out,
                             Box::new(move |this, cell, out| {
-                                this.kept = kept;
+                                this.b.kept = kept;
                                 let assign = ast::Stmt {
                                     kind: StmtKind::Assign {
                                         target: cell,
@@ -1091,9 +1091,9 @@ impl<'a> Cx<'a> {
                 }
                 if let ExprKind::Call { .. } = &target.kind {
                     // `t.at(i) = v`: `at` lends a place; the assignment runs while it is lent.
-                    self.allow_region = true;
+                    self.b.allow_region = true;
                     let call = self.expr(target, None);
-                    self.allow_region = false;
+                    self.b.allow_region = false;
                     let TK::Call { f, recv, args } = call.kind else {
                         return;
                     };
@@ -1111,7 +1111,7 @@ impl<'a> Cx<'a> {
                         sets: &f.sets,
                     }
                     .ty(&elem);
-                    self.scopes.push(HashMap::new());
+                    self.b.scopes.push(HashMap::new());
                     let var = self.bind("$lent", elem.clone());
                     let lent = TExpr {
                         kind: TK::Var(var),
@@ -1133,7 +1133,7 @@ impl<'a> Cx<'a> {
                             TStmt::Assign(lent, self.coerce(v, &elem))
                         }
                     };
-                    self.scopes.pop();
+                    self.b.scopes.pop();
                     let body = TExpr {
                         kind: TK::Block(vec![step], None),
                         ty: Ty::Unit,
@@ -1192,7 +1192,9 @@ impl<'a> Cx<'a> {
                 let v = self.expr(e, None);
                 out.push(TStmt::Expr(v));
             }
-            StmtKind::For { .. } | StmtKind::While { .. } if self.framed != Some(s.span.start) => {
+            StmtKind::For { .. } | StmtKind::While { .. }
+                if self.b.framed != Some(s.span.start) =>
+            {
                 self.framed_loop(s, out)
             }
             StmtKind::While {
@@ -1201,18 +1203,18 @@ impl<'a> Cx<'a> {
                 else_body: None,
             } => {
                 let c = self.cond(cond);
-                self.loops += 1;
+                self.b.loops += 1;
                 let b = self.block(body, None);
-                self.loops -= 1;
-                self.scopes.pop();
+                self.b.loops -= 1;
+                self.b.scopes.pop();
                 out.push(TStmt::While(c, b));
             }
-            StmtKind::For { .. } if !self.in_for => {
-                self.loops += 1;
-                self.in_for = true;
+            StmtKind::For { .. } if !self.b.in_for => {
+                self.b.loops += 1;
+                self.b.in_for = true;
                 self.stmt(s, out);
-                self.in_for = false;
-                self.loops -= 1;
+                self.b.in_for = false;
+                self.b.loops -= 1;
             }
             StmtKind::For {
                 pat,
@@ -1221,7 +1223,7 @@ impl<'a> Cx<'a> {
                 else_body: None,
                 ..
             } => {
-                self.in_for = false;
+                self.b.in_for = false;
                 // A bare `..` names no domain to walk (R04.4.11).
                 if let ExprKind::Range {
                     lo: None,
@@ -1241,7 +1243,7 @@ impl<'a> Cx<'a> {
                     if let StmtKind::For { pat, .. } = &mut named.kind {
                         pat.kind = PatternKind::Name("$each".into());
                     }
-                    self.in_for = true;
+                    self.b.in_for = true;
                     return self.stmt(&named, out);
                 }
                 if let (PatternKind::Name(name), ExprKind::Name(dn)) = (&pat.kind, &iter.kind) {
@@ -1258,10 +1260,10 @@ impl<'a> Cx<'a> {
                             ty: Ty::Int,
                             span: s.span,
                         };
-                        self.scopes.push(HashMap::new());
+                        self.b.scopes.push(HashMap::new());
                         let var = self.bind(name, dty);
                         let b = self.block(body, None);
-                        self.scopes.pop();
+                        self.b.scopes.pop();
                         out.push(TStmt::For(var, lo, hi, Box::new(b)));
                         return;
                     }
@@ -1309,10 +1311,10 @@ impl<'a> Cx<'a> {
                 );
                 if let (PatternKind::Name(name), false) = (&pat.kind, closed) {
                     // `for x in gen(args)` or `xs.getter`, or `for x in xs` through the type's own `each`.
-                    self.allow_region =
+                    self.b.allow_region =
                         matches!(iter.kind, ExprKind::Call { .. } | ExprKind::Field { .. });
                     let call = self.expr(iter, None);
-                    self.allow_region = false;
+                    self.b.allow_region = false;
                     return self.walk_value(call, name, body, s.span, out);
                 }
                 let (
@@ -1343,14 +1345,14 @@ impl<'a> Cx<'a> {
                 let lo = self.coerce(first, &Ty::Int);
                 let hi = self.expr(hi, Some(&Ty::Int));
                 let hi = self.coerce(hi, &Ty::Int);
-                self.scopes.push(HashMap::new());
+                self.b.scopes.push(HashMap::new());
                 let var = self.bind(name, Ty::Int);
                 let b = self.block(body, None);
-                self.scopes.pop();
+                self.b.scopes.pop();
                 out.push(TStmt::For(var, lo, hi, Box::new(b)));
             }
             StmtKind::Return(e) => {
-                let ret = self.ret.clone();
+                let ret = self.b.ret.clone();
                 let v = e.as_ref().map(|e| {
                     let v = self.expr(e, Some(&ret));
                     self.coerce(v, &ret)
@@ -1387,7 +1389,7 @@ impl<'a> Cx<'a> {
                         ),
                     );
                 };
-                self.doms.insert(name.text.clone(), p);
+                self.b.doms.insert(name.text.clone(), p);
             }
             StmtKind::Domain { name, def, counted } => {
                 let ExprKind::Range {
@@ -1406,8 +1408,8 @@ impl<'a> Cx<'a> {
                             kind: crate::kind_name(&def.kind),
                         },
                     );
-                    self.doms.insert(name.text.clone(), Ty::Error);
-                    self.refused_names.insert(name.text.clone());
+                    self.b.doms.insert(name.text.clone(), Ty::Error);
+                    self.b.refused_names.insert(name.text.clone());
                     return;
                 };
                 let (lo, end, within, chars) = self.domain_ends(lo, hi, *inclusive);
@@ -1415,7 +1417,7 @@ impl<'a> Cx<'a> {
                 self.domains[i].chars = chars;
                 self.domains[i].counted = *counted;
             }
-            StmtKind::Yield { value, from: false } => match self.region.clone() {
+            StmtKind::Yield { value, from: false } => match self.b.region.clone() {
                 Some((false, t)) => {
                     let v = self.expr(value, Some(&t));
                     let v = self.coerce(v, &t);
@@ -1429,9 +1431,9 @@ impl<'a> Cx<'a> {
                     ),
                 ),
             },
-            StmtKind::Lend { place, .. } => match self.region.clone() {
+            StmtKind::Lend { place, .. } => match self.b.region.clone() {
                 // Every path through a lender reaches one `lend`; inside a loop it could run twice.
-                Some((true, _)) if self.loops > 0 => self.err(
+                Some((true, _)) if self.b.loops > 0 => self.err(
                     s.span,
                     Msg::verdict(
                         cpl_diag::codes::BAD_PROJECTION,
@@ -1460,8 +1462,8 @@ impl<'a> Cx<'a> {
                     self.lend_out(place, &t, s.span, out);
                 }
                 // In a read lend, `lend place` returns the place's value (R05.6.3).
-                None if (self.decl).is_some_and(|f| self.d.f(f).lends.is_some()) => {
-                    let ret = self.ret.clone();
+                None if (self.b.decl).is_some_and(|f| self.d.f(f).lends.is_some()) => {
+                    let ret = self.b.ret.clone();
                     let v = self.expr(place, Some(&ret));
                     let v = self.coerce(v, &ret);
                     out.push(TStmt::Return(Some(v)));
@@ -1522,12 +1524,12 @@ impl<'a> Cx<'a> {
                 args,
                 body: None,
             } if matches!(
-                self.d.named(self.module, &ctx.text),
+                self.d.named(self.b.module, &ctx.text),
                 Some(decls::Named::Context(_))
             ) =>
             {
                 if let Some(fs) = self.ctx_frames(ctx, args) {
-                    self.frames.extend(fs);
+                    self.b.frames.extend(fs);
                 }
             }
             StmtKind::With {
@@ -1535,15 +1537,15 @@ impl<'a> Cx<'a> {
                 args,
                 body: Some(body),
             } if matches!(
-                self.d.named(self.module, &ctx.text),
+                self.d.named(self.b.module, &ctx.text),
                 Some(decls::Named::Context(_))
             ) =>
             {
                 if let Some(fs) = self.ctx_frames(ctx, args) {
-                    let n = self.frames.len();
-                    self.frames.extend(fs);
+                    let n = self.b.frames.len();
+                    self.b.frames.extend(fs);
                     let b = self.block(body, None);
-                    self.frames.truncate(n);
+                    self.b.frames.truncate(n);
                     out.push(TStmt::Expr(b));
                 }
             }
@@ -1560,10 +1562,10 @@ impl<'a> Cx<'a> {
                     _ => None,
                 };
                 if let Some(n) = decls::item_name(s).or(module) {
-                    self.refused_names.insert(n.to_string());
+                    self.b.refused_names.insert(n.to_string());
                     // It shadows what the name meant outside, as the item would: its uses are
                     // the error, not another declaration's.
-                    if self.decl.is_some() {
+                    if self.b.decl.is_some() {
                         self.bind(n, Ty::Error);
                     }
                 }
@@ -1629,7 +1631,7 @@ impl<'a> Cx<'a> {
         };
         let f = self
             .d
-            .fn_named(self.module, n)
+            .fn_named(self.b.module, n)
             .filter(|_| self.declared(n))?;
         let fd = self.d.f(f);
         let shape = fd.params.iter().all(|p| p.default.is_some()) && fd.generics.len() == 1;
@@ -1670,7 +1672,7 @@ impl<'a> Cx<'a> {
                     args: vec![elem],
                 };
                 let o = (array.clone(), tr.clone(), span, Origin::Bound);
-                self.obligations.push(o);
+                self.b.obligations.push(o);
                 let kind = TK::CallTrait {
                     ctx: self.trait_ctx(tr.tr, n),
                     tr,
@@ -1735,7 +1737,7 @@ impl<'a> Cx<'a> {
     /// names no context.
     fn ctx_frames(&mut self, ctx: &ast::Name, args: &[ast::Arg]) -> Option<Vec<super::CtxFrame>> {
         let d = self.d;
-        let Some(decls::Named::Context(id)) = d.named(self.module, &ctx.text) else {
+        let Some(decls::Named::Context(id)) = d.named(self.b.module, &ctx.text) else {
             return None;
         };
         let c = &d.contexts[id.0];
@@ -1775,14 +1777,14 @@ impl<'a> Cx<'a> {
         out: &mut Vec<TStmt>,
     ) -> Ty {
         let t = self.name_ranges(t, span, out);
-        let mut generics = self.generics.clone();
+        let mut generics = self.b.generics.clone();
         generics.extend(holes.iter().cloned());
         let (t, errs) = decls::body_type(
             self.d,
             self.d,
-            self.module,
+            self.b.module,
             &generics,
-            &self.doms,
+            &self.b.doms,
             &|n: &str| self.owned_named(n),
             &t,
         );
@@ -1793,7 +1795,7 @@ impl<'a> Cx<'a> {
         if holes.is_empty() {
             return t;
         }
-        let tys: Vec<Ty> = (0..self.generics.len())
+        let tys: Vec<Ty> = (0..self.b.generics.len())
             .map(Ty::Param)
             .chain(holes.iter().map(|_| self.new_ty()))
             .collect();
@@ -1807,7 +1809,7 @@ impl<'a> Cx<'a> {
     pub(super) fn is_input(&self, v: &TExpr) -> bool {
         match &v.kind {
             TK::Call { f, .. } => self.d.input_fns.contains(&f.decl),
-            TK::Field(b, _) => matches!(&b.kind, TK::Var(t) if self.input_parts.contains(t)),
+            TK::Field(b, _) => matches!(&b.kind, TK::Var(t) if self.b.input_parts.contains(t)),
             _ => false,
         }
     }
@@ -1834,7 +1836,7 @@ impl<'a> Cx<'a> {
         span: Span,
         kind: CheckKind,
     ) -> TExpr {
-        self.scopes.push(HashMap::new());
+        self.b.scopes.push(HashMap::new());
         let tmp = self.bind("$ranged", Ty::Int);
         let var = TExpr {
             kind: TK::Var(tmp),
@@ -1857,7 +1859,7 @@ impl<'a> Cx<'a> {
                 ));
             }
         }
-        self.scopes.pop();
+        self.b.scopes.pop();
         TExpr {
             kind: TK::Block(stmts, Some(Box::new(var))),
             ty: Ty::Int,

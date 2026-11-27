@@ -69,7 +69,7 @@ impl Cx<'_> {
             tr,
             args: vec![elem.clone()],
         };
-        (self.obligations).push((lty.clone(), tr.clone(), span, Origin::Bound));
+        (self.b.obligations).push((lty.clone(), tr.clone(), span, Origin::Bound));
         let tmp = self.bind(name, lty.clone());
         let read = TExpr {
             kind: TK::Var(tmp),
@@ -141,7 +141,7 @@ impl Cx<'_> {
     ) -> TExpr {
         let cells = self.cells_wanted(xs, want);
         let want = cells.as_ref().or(want);
-        self.scopes.push(HashMap::new());
+        self.b.scopes.push(HashMap::new());
         let e = match self.new_list("$list", xs.len(), want, span) {
             Some((l, init)) => {
                 let mut stmts = vec![init];
@@ -153,7 +153,7 @@ impl Cx<'_> {
             }
             None => error(span),
         };
-        self.scopes.pop();
+        self.b.scopes.pop();
         e
     }
 
@@ -198,23 +198,23 @@ impl Cx<'_> {
         span: Span,
     ) -> TExpr {
         if clauses.is_empty() {
-            return match self.filling.last().cloned() {
+            return match self.b.filling.last().cloned() {
                 Some(l) => self.push_onto(&l, body, span),
                 None => error(span),
             };
         }
-        self.scopes.push(HashMap::new());
+        self.b.scopes.push(HashMap::new());
         let e = match self.new_list("$comp", 0, want, span) {
             Some((l, init)) => {
                 let mut stmts = vec![init];
-                self.filling.push(l);
+                self.b.filling.push(l);
                 self.stmt(&comprehension_loop(body, clauses, span), &mut stmts);
-                let l = self.filling.pop();
+                let l = self.b.filling.pop();
                 l.map_or_else(|| error(span), |l| filled(stmts, l, span))
             }
             None => error(span),
         };
-        self.scopes.pop();
+        self.b.scopes.pop();
         e
     }
 }
@@ -319,11 +319,11 @@ impl Cx<'_> {
             }
             None => self.construct(sid, targs, sets, &[], span, None),
         };
-        self.scopes.push(HashMap::new());
+        self.b.scopes.push(HashMap::new());
         let name = "$map";
         let var = self.bind(name, ty.clone());
         match var {
-            VarRef::Local(l) => self.locals[l].mutable = true,
+            VarRef::Local(l) => self.b.locals[l].mutable = true,
             VarRef::Global(g) => self.globals[g].mutable = true,
         }
         let mut stmts = vec![TStmt::Let(var, new)];
@@ -340,7 +340,7 @@ impl Cx<'_> {
             };
             self.stmt(&set, &mut stmts);
         }
-        self.scopes.pop();
+        self.b.scopes.pop();
         mk(
             TK::Block(stmts, Some(Box::new(mk(TK::Var(var), ty.clone())))),
             ty,

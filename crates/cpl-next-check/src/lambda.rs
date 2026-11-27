@@ -8,7 +8,7 @@ impl Cx<'_> {
     /// The id of the next entry of `t`, which holds `len`: the one the whole program's check
     /// gives it, whatever else is checked.
     pub(super) fn id(&mut self, t: super::Table, len: usize) -> usize {
-        let key = (self.decl, self.copy, t, self.made[t as usize]);
+        let key = (self.b.decl, self.copy, t, self.made[t as usize]);
         self.made[t as usize] += 1;
         self.id_at(key, len)
     }
@@ -38,7 +38,7 @@ impl Cx<'_> {
                     }
                 }
                 SetTy::Param(j) => {
-                    if let Some(g) = self.decl {
+                    if let Some(g) = self.b.decl {
                         self.param_adds.entry((g, j)).or_default().push(m);
                     }
                 }
@@ -99,8 +99,8 @@ impl Cx<'_> {
         span: Span,
     ) -> TExpr {
         let mk = |kind, ty| TExpr { kind, ty, span };
-        let me = self.recur.take();
-        let pre = self.nested.take();
+        let me = self.b.recur.take();
+        let pre = self.b.nested.take();
         let nested = pre.and(me.clone());
         // A lambda passed where `?(A -> R)` is wanted is that fn, made `Some` by the coercion (R02.4.2).
         let expected = want.map(|w| {
@@ -149,7 +149,7 @@ impl Cx<'_> {
             }
             _ => (params, param_tys),
         };
-        self.scopes.push(HashMap::new());
+        self.b.scopes.push(HashMap::new());
         let mut ids = Vec::new();
         let mut ptys = Vec::new();
         // A pattern parameter binds a fresh name; the body opens with `let pattern = name` (R06.1.3).
@@ -197,15 +197,15 @@ impl Cx<'_> {
                 VarRef::Local(id) | VarRef::Global(id) => ids.push(id),
             }
         }
-        let saved_ret = self.ret.clone();
+        let saved_ret = self.b.ret.clone();
         // A lambda is not part of the generator or lender around it: no `yield` or `lend` inside.
-        let saved_region = self.region.take();
-        let saved_loops = std::mem::take(&mut self.loops);
+        let saved_region = self.b.region.take();
+        let saved_loops = std::mem::take(&mut self.b.loops);
         let ret = match ret_ty {
             Some(t) => self.written_ty(t, span),
             None => er.unwrap_or_else(|| self.new_ty()),
         };
-        self.ret = ret.clone();
+        self.b.ret = ret.clone();
         // The body sees its own signature, so a lambda bound by `let` can call itself (R06.2.3).
         // A nested `fn` was made before its block was checked; it also sees its siblings.
         let (id, group) = match pre {
@@ -214,7 +214,7 @@ impl Cx<'_> {
                 let id = self.new_lambda(LambdaInfo {
                     params: ptys.clone(),
                     ret: ret.clone(),
-                    owner: self.decl,
+                    owner: self.b.decl,
                     group: Vec::new(),
                     yields: None,
                     written: Vec::new(),
@@ -222,14 +222,14 @@ impl Cx<'_> {
                 (id, Vec::new())
             }
         };
-        let outer_selves = self.selves.len();
-        let depth = self.scopes.len();
+        let outer_selves = self.b.selves.len();
+        let depth = self.b.scopes.len();
         if let Some(name) = me {
-            self.selves.push((name, id, depth));
+            self.b.selves.push((name, id, depth));
         }
-        for (_, name, sib) in &self.group {
+        for (_, name, sib) in &self.b.group {
             if *sib != id && group.contains(sib) {
-                self.selves.push((name.clone(), *sib, depth));
+                self.b.selves.push((name.clone(), *sib, depth));
             }
         }
         let mut pre = Vec::new();
@@ -276,15 +276,15 @@ impl Cx<'_> {
             _ => self.coerce(b, &ret),
         };
         let b = block(pre, b);
-        self.ret = saved_ret;
-        self.region = saved_region;
-        self.loops = saved_loops;
-        self.scopes.pop();
-        self.selves.truncate(outer_selves);
+        self.b.ret = saved_ret;
+        self.b.region = saved_region;
+        self.b.loops = saved_loops;
+        self.b.scopes.pop();
+        self.b.selves.truncate(outer_selves);
         self.lambdas[id.0] = LambdaInfo {
             params: ptys,
             ret,
-            owner: self.decl,
+            owner: self.b.decl,
             group,
             yields: None,
             written: std::mem::take(&mut self.lambdas[id.0].written),
@@ -304,9 +304,9 @@ impl Cx<'_> {
         let (t, errs) = decls::body_type(
             self.d,
             self.d,
-            self.module,
-            &self.generics,
-            &self.doms,
+            self.b.module,
+            &self.b.generics,
+            &self.b.doms,
             &|n: &str| self.owned_named(n),
             t,
         );
@@ -336,9 +336,9 @@ impl Cx<'_> {
                 let (t, _) = decls::body_type(
                     c.d,
                     c.d,
-                    c.module,
-                    &c.generics,
-                    &c.doms,
+                    c.b.module,
+                    &c.b.generics,
+                    &c.b.doms,
                     &|n: &str| c.owned_named(n),
                     t,
                 );
@@ -362,13 +362,13 @@ impl Cx<'_> {
             let id = self.new_lambda(LambdaInfo {
                 params,
                 ret,
-                owner: self.decl,
+                owner: self.b.decl,
                 group: Vec::new(),
                 yields: None,
                 written,
             });
             let at = s.map_or(0, |s| s.span.start);
-            self.group.push((at, fd.name.text.clone(), id));
+            self.b.group.push((at, fd.name.text.clone(), id));
             run.push(id);
         }
     }
@@ -394,7 +394,7 @@ impl Cx<'_> {
             self.bind(&fd.name.text, Ty::Error);
             return;
         }
-        let Some(&(_, _, id)) = self.group.iter().rev().find(|g| g.0 == s.span.start) else {
+        let Some(&(_, _, id)) = self.b.group.iter().rev().find(|g| g.0 == s.span.start) else {
             return;
         };
         let name = |text: &str, span| ast::Pattern {
@@ -439,15 +439,15 @@ impl Cx<'_> {
             decorators: Vec::new(),
             public: false,
         };
-        self.nested = Some(id);
+        self.b.nested = Some(id);
         self.stmt(&bind, out);
-        self.nested = None;
+        self.b.nested = None;
     }
 
     /// The variables bound where the code being checked is.
     pub(super) fn names_set(&self) -> BTreeSet<VarRef> {
-        let top = self.decl.is_none();
-        (self.scopes.iter().enumerate())
+        let top = self.b.decl.is_none();
+        (self.b.scopes.iter().enumerate())
             .flat_map(|(i, s)| {
                 s.values().map(move |&l| match top && i == 0 {
                     true => VarRef::Global(l),
@@ -460,11 +460,11 @@ impl Cx<'_> {
     /// A nested `fn` used above its statement, in the block `out` checked: each variable it or a
     /// sibling it may call captures must be set where it is used (E0205, R06.1.7).
     pub(super) fn captures_set(&mut self, outer: usize, out: &[TStmt]) {
-        let run: Vec<LambdaId> = self.group[outer..].iter().map(|g| g.2).collect();
-        let (mine, rest) = std::mem::take(&mut self.ahead)
+        let run: Vec<LambdaId> = self.b.group[outer..].iter().map(|g| g.2).collect();
+        let (mine, rest) = std::mem::take(&mut self.b.ahead)
             .into_iter()
             .partition(|a| run.contains(&a.0));
-        self.ahead = rest;
+        self.b.ahead = rest;
         let mine: Vec<(LambdaId, String, Span, BTreeSet<VarRef>)> = mine;
         if mine.is_empty() {
             return;
@@ -480,7 +480,7 @@ impl Cx<'_> {
                 continue;
             };
             let (mut used, mut bound) = (BTreeSet::new(), BTreeSet::new());
-            free_vars(body, self.decl.is_none(), &mut used, &mut bound);
+            free_vars(body, self.b.decl.is_none(), &mut used, &mut bound);
             let own = |v: &VarRef| matches!(v, VarRef::Local(l) | VarRef::Global(l) if params.contains(l));
             let free = used.difference(&bound).filter(|v| !own(v)).copied();
             caps.insert(*id, free.collect());
@@ -495,7 +495,7 @@ impl Cx<'_> {
                 .find(|v| !set.contains(v));
             if let Some(v) = unset {
                 let what = match v {
-                    VarRef::Local(l) => self.locals[*l].name.clone(),
+                    VarRef::Local(l) => self.b.locals[*l].name.clone(),
                     VarRef::Global(g) => self.globals[*g].name.clone(),
                 };
                 self.err(
@@ -517,7 +517,7 @@ impl Cx<'_> {
         let Some(Ty::Fn(ps, ..)) = want.map(|w| self.shallow(w)) else {
             return None;
         };
-        let f = (self.d.fn_named(self.module, n)).filter(|_| self.lookup(n).is_none())?;
+        let f = (self.d.fn_named(self.b.module, n)).filter(|_| self.lookup(n).is_none())?;
         let fd = self.d.f(f);
         if fd.params.len() <= ps.len() || fd.params[ps.len()..].iter().any(|p| p.default.is_none())
         {
@@ -546,15 +546,15 @@ impl Cx<'_> {
     }
 
     pub(super) fn lambda_ty(&self, id: LambdaId) -> Ty {
-        let targs = (0..self.generics.len()).map(Ty::Param).collect();
-        let sets = (0..self.n_sets).map(SetTy::Param).collect();
+        let targs = (0..self.b.generics.len()).map(Ty::Param).collect();
+        let sets = (0..self.b.n_sets).map(SetTy::Param).collect();
         Ty::Clo(Box::new(CloRef::Lambda(id, targs, sets)))
     }
 
     /// `n` inside the body of the lambda `let n = ...` binds, unless something inside shadows it.
     pub(super) fn itself(&self, n: &str, span: Span) -> Option<TExpr> {
-        let &(_, id, depth) = self.selves.iter().rev().find(|s| s.0 == n)?;
-        if self.scopes[depth - 1..].iter().any(|s| s.contains_key(n)) {
+        let &(_, id, depth) = self.b.selves.iter().rev().find(|s| s.0 == n)?;
+        if self.b.scopes[depth - 1..].iter().any(|s| s.contains_key(n)) {
             return None;
         }
         Some(TExpr {
@@ -578,7 +578,7 @@ impl Cx<'_> {
         };
         let d = self
             .d
-            .fn_named(self.module, n)
+            .fn_named(self.b.module, n)
             .filter(|_| self.declared(n))?;
         let fd = self.d.f(d);
         let rest = fd.params.get(ps.len()..).filter(|r| !r.is_empty())?;

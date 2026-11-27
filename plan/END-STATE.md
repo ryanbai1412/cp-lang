@@ -104,7 +104,7 @@ list is empty (`handbook/design/next/migration.md` rule 14); `debt-ratchet.py --
 | `next_string_keyed_maps` | 89 |
 | `next_syntax_old_refs` | 846 |
 | `next_weak_oracle_passes` | 7 |
-| `next_whole_program_inputs` | 60 |
+| `next_whole_program_inputs` | 59 |
 | `next_wrong` | 1,518 |
 | `next_wrong_accepts` | 20 |
 

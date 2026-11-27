@@ -58,7 +58,7 @@ impl Cx<'_> {
         let captured: std::collections::HashSet<String> = (names.0.into_iter())
             .filter(|n| !params.contains(&n.as_str()))
             .filter(|n| match self.lookup(n) {
-                Some((VarRef::Local(l), _)) => self.locals[l].mutable,
+                Some((VarRef::Local(l), _)) => self.b.locals[l].mutable,
                 Some((VarRef::Global(g), _)) => self.globals[g].mutable,
                 None => false,
             })

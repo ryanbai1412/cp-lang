@@ -8,7 +8,7 @@ impl Cx<'_> {
     /// The `let` keyword on the line of `near`, at or before it: where a `let` binding at
     /// `near` was written.
     pub(super) fn let_keyword(&self, near: Span) -> Option<cpl_next_ir::ids::SourceId> {
-        let at = self.item.at(near);
+        let at = self.b.item.at(near);
         let text = self.src.text_of(&at);
         let abs = text.span(&at);
         let end = (abs.start as usize + 3).min(text.text.len());
@@ -19,7 +19,7 @@ impl Cx<'_> {
         let bounded =
             word(head[..found].chars().last()) && word(text.text[found + 3..].chars().next());
         let rel = (near.start + found as u32).checked_sub(abs.start)?;
-        bounded.then(|| self.item.at(Span::new(rel, rel + 3)))
+        bounded.then(|| self.b.item.at(Span::new(rel, rel + 3)))
     }
 
     /// The `let` that bound the root of `place`, when a `let` did.
@@ -30,7 +30,7 @@ impl Cx<'_> {
         }
         let TK::Var(v) = &root.kind else { return None };
         match v {
-            VarRef::Local(i) => self.locals[*i].let_at.clone(),
+            VarRef::Local(i) => self.b.locals[*i].let_at.clone(),
             VarRef::Global(i) => self.globals[*i].let_at.clone(),
         }
     }
@@ -55,7 +55,7 @@ impl Cx<'_> {
         }
         let TK::Var(v) = &root.kind else { return None };
         let (fixed, name) = match v {
-            VarRef::Local(i) => (self.locals[*i].fixed, &self.locals[*i].name),
+            VarRef::Local(i) => (self.b.locals[*i].fixed, &self.b.locals[*i].name),
             VarRef::Global(i) => (self.globals[*i].fixed, &self.globals[*i].name),
         };
         (fixed && !name.starts_with('$')).then(|| name.clone())

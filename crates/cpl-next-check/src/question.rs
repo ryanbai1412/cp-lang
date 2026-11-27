@@ -12,13 +12,13 @@ impl Cx<'_> {
     /// `e` as an extent wanting `want`: an optional, `None` when any `?` in it found `None`.
     pub(super) fn extent(&mut self, e: &ast::Expr, want: Option<&Ty>) -> TExpr {
         let inner = want.map(|w| self.optional_of(w).unwrap_or_else(|| w.clone()));
-        let depth = self.scopes.len();
-        self.tries.push(Extent {
+        let depth = self.b.scopes.len();
+        self.b.tries.push(Extent {
             depth,
             held: Vec::new(),
         });
         let v = self.expr(e, inner.as_ref());
-        let held = self.tries.pop().map(|x| x.held).unwrap_or_default();
+        let held = self.b.tries.pop().map(|x| x.held).unwrap_or_default();
         if held.is_empty() || self.shallow(&v.ty) == Ty::Error {
             return v;
         }
@@ -50,8 +50,8 @@ impl Cx<'_> {
 
     /// `x?` inside an extent: `x`'s value, held so the extent can test it first.
     pub(super) fn question(&mut self, x: &ast::Expr, span: Span) -> TExpr {
-        let open = self.tries.last().map(|t| t.depth);
-        if open != Some(self.scopes.len()) {
+        let open = self.b.tries.last().map(|t| t.depth);
+        if open != Some(self.b.scopes.len()) {
             // A `?` with no extent of its own around it, or under a name the extent can't see.
             let kind = crate::kind_name(&ExprKind::Try(Box::new(x.clone())));
             self.err(span, Unbuilt::Expression { kind });
@@ -66,15 +66,15 @@ impl Cx<'_> {
             }
             return Self::error_node(span);
         };
-        self.scopes.push(HashMap::new());
+        self.b.scopes.push(HashMap::new());
         let t = self.bind("$q", v.ty.clone());
-        self.scopes.pop();
+        self.b.scopes.pop();
         let read = TExpr {
             kind: TK::Var(t),
             ty: v.ty.clone(),
             span,
         };
-        if let Some(open) = self.tries.last_mut() {
+        if let Some(open) = self.b.tries.last_mut() {
             open.held.push((t, v));
         }
         TExpr {
@@ -92,7 +92,7 @@ impl Cx<'_> {
         msg.fixes.push(cpl_next_ir::msg::Fix {
             title: "treat `None` as false".to_string(),
             edits: vec![(
-                self.item.at(e.span),
+                self.b.item.at(e.span),
                 format!("({}) ?? false", self.text(e.span)),
             )],
         });

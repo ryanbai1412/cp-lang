@@ -42,12 +42,12 @@ impl Cx<'_> {
         span: Span,
         out: &mut Vec<TStmt>,
     ) -> bool {
-        let (diagnosed, owed) = (self.errors.len(), self.obligations.len());
+        let (diagnosed, owed) = (self.errors.len(), self.b.obligations.len());
         let v = self.expr_as_typed(def, None);
         let t = self.shallow(&v.ty);
         // A form this checker cannot build yet (`read(1..=100)`, `V + K`) leaves no trace.
         // An owed bound no impl meets (`Range<V>: Add`) is a form not built yet too.
-        let unmet = (self.obligations[owed..].iter()).any(|(t, r, ..)| {
+        let unmet = (self.b.obligations[owed..].iter()).any(|(t, r, ..)| {
             let t = self.shallow(t);
             !matches!(t, Ty::Var(_))
                 && !(self.d.impls_of(r.tr)).any(|im| self.d.fits_impl(im, &t).is_some())
@@ -57,7 +57,7 @@ impl Cx<'_> {
             || matches!(t, Ty::Error | Ty::Var(_) | Ty::Param(_))
         {
             self.errors.truncate(diagnosed);
-            self.obligations.truncate(owed);
+            self.b.obligations.truncate(owed);
             return false;
         }
         let at = |kind, ty| TExpr {
@@ -78,10 +78,10 @@ impl Cx<'_> {
             );
             self.err(def.span, Msg::verdict(cpl_diag::codes::TYPE_MISMATCH, what));
             // A top-level domain decls set aside is declared here, though it has no positions.
-            if let Some(&Ty::Dom(i)) = self.doms.get(name) {
+            if let Some(&Ty::Dom(i)) = self.b.doms.get(name) {
                 self.domains[i].name = name.to_string();
             }
-            self.doms.insert(name.to_string(), Ty::Error);
+            self.b.doms.insert(name.to_string(), Ty::Error);
             return true;
         };
         let (lo, end, within) = self.typed_ends(at(TK::Int(0), Ty::Int), count, false);
@@ -109,7 +109,7 @@ impl Cx<'_> {
         };
         self.reach(m);
         let r = decls::TraitRef { tr, args: vec![] };
-        (self.obligations).push((ty.clone(), r.clone(), span, Origin::Bound));
+        (self.b.obligations).push((ty.clone(), r.clone(), span, Origin::Bound));
         let kind = TK::CallTrait {
             ctx: self.trait_ctx(r.tr, method),
             tr: r,
@@ -172,7 +172,7 @@ impl Cx<'_> {
         out: &mut Vec<TStmt>,
     ) -> usize {
         let info = self.domain_info(name, lo, end, within, span, out);
-        let i = match (self.decl, self.d.top_doms.get(name)) {
+        let i = match (self.b.decl, self.d.top_doms.get(name)) {
             (None, Some(&Ty::Dom(i))) if self.domains[i].name.is_empty() => {
                 self.domains[i] = info;
                 i
@@ -183,7 +183,7 @@ impl Cx<'_> {
                 i
             }
         };
-        self.doms.insert(name.to_string(), Ty::Dom(i));
+        self.b.doms.insert(name.to_string(), Ty::Dom(i));
         i
     }
     /// A domain's slots, set from its ends; `name` is what a message and the trace call it.
@@ -243,7 +243,7 @@ impl Cx<'_> {
             len,
             lo: first,
             within,
-            owner: self.decl,
+            owner: self.b.decl,
             count,
             chars: false,
             counted: false,
@@ -374,7 +374,7 @@ impl Cx<'_> {
                     tr,
                     args: args.clone(),
                 };
-                (cx.obligations).push((r_ty.clone(), r, span, Origin::Bound));
+                (cx.b.obligations).push((r_ty.clone(), r, span, Origin::Bound));
                 let c = cx.slot(ty.clone(), n);
                 let at = |kind| TExpr {
                     kind,
@@ -397,7 +397,7 @@ impl Cx<'_> {
     ) -> bool {
         decls::static_range(lo, hi, inclusive).is_none()
             && decls::count_end(lo, hi, inclusive).is_some_and(|(_, d, m, _)| {
-                (self.generics.iter().any(|g| g == d) || self.doms.contains_key(d))
+                (self.b.generics.iter().any(|g| g == d) || self.b.doms.contains_key(d))
                     && self.d.domain_getter(m).is_some()
             })
     }
@@ -498,18 +498,18 @@ impl Cx<'_> {
                 let (dt, errs) = decls::body_type(
                     self.d,
                     self.d,
-                    self.module,
-                    &self.generics,
-                    &self.doms,
+                    self.b.module,
+                    &self.b.generics,
+                    &self.b.doms,
                     &|n: &str| self.owned_named(n),
                     &dt,
                 );
                 for e in errs {
                     self.err(span, e);
                 }
-                let name = format!("$to{}", self.doms.len());
+                let name = format!("$to{}", self.b.doms.len());
                 let ty = Ty::RangeTo(Box::new(dt), m, lo, k);
-                self.doms.insert(name.clone(), ty);
+                self.b.doms.insert(name.clone(), ty);
                 t.kind = TypeKind::Named {
                     name: ast::Name {
                         text: name,
@@ -540,7 +540,7 @@ impl Cx<'_> {
                 let hi = end(self, hi, !*inclusive);
                 let i = self.id(super::Table::Range, self.ranges.len());
                 super::put(&mut self.ranges, i, RangeInfo { lo, hi });
-                self.doms.insert(name.clone(), Ty::RangeOf(i));
+                self.b.doms.insert(name.clone(), Ty::RangeOf(i));
                 t.kind = TypeKind::Named {
                     name: ast::Name {
                         text: name,

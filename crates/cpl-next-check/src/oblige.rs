@@ -17,14 +17,15 @@ impl Cx<'_> {
                 tr: r.tr,
                 args: r.args.iter().map(|a| sub.ty(a)).collect(),
             };
-            self.obligations
+            self.b
+                .obligations
                 .push((f.targs[*i].clone(), r, span, Origin::Bound));
         }
     }
     /// Meets each bound whose type is known by now; `last` drops those never known.
     pub(super) fn solve(&mut self, last: bool) {
         loop {
-            let pending = std::mem::take(&mut self.obligations);
+            let pending = std::mem::take(&mut self.b.obligations);
             // A bound met by an impl may leave the impl's own bounds: they count as progress too.
             let (before, mut waiting) = (pending.len(), 0);
             for (t, r, span, why) in pending {
@@ -32,7 +33,7 @@ impl Cx<'_> {
                 // takes, which can fix them (`Mon<?T>: Fold<Int>` by `impl<T> Fold<T> for Mon<T>`).
                 let partial = self.unknown(&t);
                 if partial && !matches!(self.shallow(&t), Ty::Struct(..)) {
-                    self.obligations.push((t, r, span, why));
+                    self.b.obligations.push((t, r, span, why));
                     waiting += 1;
                     continue;
                 }
@@ -40,7 +41,7 @@ impl Cx<'_> {
                 let t = self.zonk(&t);
                 if partial {
                     let Some((k, _)) = self.head_impl(&t, &r) else {
-                        self.obligations.push((t, r, span, why));
+                        self.b.obligations.push((t, r, span, why));
                         continue;
                     };
                     // Its arguments are `open`'s own, not the zonked `t`'s: an open part of it
@@ -111,7 +112,7 @@ impl Cx<'_> {
                         self.err_help(span, msg, help);
                     }
                     None => {
-                        self.obligations.push((t, r, span, why));
+                        self.b.obligations.push((t, r, span, why));
                         waiting += 1;
                     }
                 }
@@ -123,7 +124,7 @@ impl Cx<'_> {
         if last {
             // A bound still open at the end has one impl only if exactly one fits whatever it
             // leaves open: more is no choice (R08.1.2).
-            for (t, r, span, _) in std::mem::take(&mut self.obligations) {
+            for (t, r, span, _) in std::mem::take(&mut self.b.obligations) {
                 let t = self.zonk(&t);
                 let n = match t {
                     Ty::Param(i) => self.stated(i, &r).len(),
@@ -181,7 +182,7 @@ impl Cx<'_> {
     /// as a value of it.
     pub(super) fn fn_impl_for(&mut self, v: usize, arity: usize) -> Option<Ty> {
         let d = self.d;
-        let bounds: Vec<TraitRef> = (self.obligations.iter())
+        let bounds: Vec<TraitRef> = (self.b.obligations.iter())
             .filter(|(t, ..)| self.shallow(t) == Ty::Var(v))
             .map(|(_, r, ..)| r.clone())
             .collect();
@@ -218,7 +219,7 @@ impl Cx<'_> {
     pub(super) fn domain_var(&self, t: &Ty) -> bool {
         let t = self.shallow(t);
         matches!(t, Ty::Var(_))
-            && (self.obligations.iter()).any(|(o, r, ..)| {
+            && (self.b.obligations.iter()).any(|(o, r, ..)| {
                 (Some(r.tr) == self.d.roles().domain && self.shallow(o) == t)
                     || (r.args.iter().enumerate())
                         .any(|(j, a)| self.shallow(a) == t && self.d.arg_may_be_domain(r.tr, j))
@@ -226,7 +227,7 @@ impl Cx<'_> {
     }
     /// Whether a pending bound is on the inference variable `v`: it, not a default, fixes `v`.
     pub(super) fn obliged(&self, v: usize) -> bool {
-        (self.obligations.iter()).any(|(t, ..)| self.shallow(t) == Ty::Var(v))
+        (self.b.obligations.iter()).any(|(t, ..)| self.shallow(t) == Ty::Var(v))
     }
     /// Whether some part of `t` is still an inference variable.
     pub(super) fn unknown(&self, t: &Ty) -> bool {
@@ -273,7 +274,7 @@ impl Cx<'_> {
                 })
                 .collect();
             let t = t.clone();
-            self.obligations.extend(
+            self.b.obligations.extend(
                 needs
                     .into_iter()
                     .map(|n| (t.clone(), n, span, Origin::Bound)),
@@ -371,7 +372,8 @@ impl Cx<'_> {
             })
             .collect();
         let for_ = sub.ty(&im.for_);
-        self.obligations
+        self.b
+            .obligations
             .extend(needs.into_iter().map(|(t, b)| (t, b, span, Origin::Bound)));
         let open = match (open.map(|t| self.shallow(t)), for_) {
             (Some(Ty::Struct(_, have, _)), Ty::Struct(_, want, _)) => {
@@ -410,11 +412,11 @@ impl Cx<'_> {
     /// A domain parameter (`Decls::domain_params`) meets `Domain` and what `Domain` gives.
     pub(super) fn blanket(&self, i: usize, tr: TraitId) -> bool {
         let mut have: Vec<TraitId> = self.bound_traits(i).iter().map(|h| h.tr).collect();
-        let dom = (self.decl).and_then(|f| self.d.domain_params.get(&f));
+        let dom = (self.b.decl).and_then(|f| self.d.domain_params.get(&f));
         if dom.is_some_and(|ds| ds.contains(&i)) {
             have.extend(self.d.roles().domain);
         }
-        let ordered = (self.decl).and_then(|f| self.d.ordered_params.get(&f));
+        let ordered = (self.b.decl).and_then(|f| self.d.ordered_params.get(&f));
         if ordered.is_some_and(|ds| ds.contains(&i)) {
             have.extend(self.d.roles().order);
         }
@@ -463,7 +465,7 @@ impl Cx<'_> {
             self.err(span, Unbuilt::BoundNotNamed);
             return error;
         };
-        let Some(decls::Named::Trait(tr)) = self.d.named(self.module, &name.text) else {
+        let Some(decls::Named::Trait(tr)) = self.d.named(self.b.module, &name.text) else {
             let code = cpl_diag::codes::UNKNOWN_TYPE;
             self.err(
                 bound.span,
@@ -491,7 +493,7 @@ impl Cx<'_> {
     /// `bound_traits`, or with `implied` false only those written: a stated bound or an
     /// `if T: Tr:`, not the `Domain` a domain parameter meets unwritten.
     pub(super) fn bounds_of(&self, i: usize, implied: bool) -> Vec<TraitRef> {
-        let Some(decl) = self.decl else {
+        let Some(decl) = self.b.decl else {
             return Vec::new();
         };
         let mut traits: Vec<TraitRef> = (self.d.f(decl).bounds.iter())
@@ -514,7 +516,7 @@ impl Cx<'_> {
                 traits.push(r);
             }
         }
-        for (j, r) in &self.assumed {
+        for (j, r) in &self.b.assumed {
             if *j == i && !traits.contains(r) {
                 traits.push(r.clone());
             }

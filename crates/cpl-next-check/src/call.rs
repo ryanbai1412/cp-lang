@@ -13,7 +13,7 @@ impl Cx<'_> {
         span: Span,
         want: Option<&Ty>,
     ) -> TExpr {
-        let Some(named) = self.d.named(self.module, n) else {
+        let Some(named) = self.d.named(self.b.module, n) else {
             self.err(
                 span,
                 Msg::internal(format!(
@@ -113,6 +113,7 @@ impl Cx<'_> {
         };
         let ctor = match named {
             Named::Struct(d) => self.d.s(d).ctor.filter(|_| !match self
+                .b
                 .decl
                 .and_then(|f| self.d.f(f).owner)
             {
@@ -374,7 +375,7 @@ impl Cx<'_> {
                 span,
             };
         }
-        let held = fd.region.is_some() && !std::mem::take(&mut self.allow_region);
+        let held = fd.region.is_some() && !std::mem::take(&mut self.b.allow_region);
         let unbuilt =
             held && (fd.region.as_ref().is_some_and(|r| r.0) || self.d.roles().recipe.is_none());
         if unbuilt {
@@ -392,7 +393,7 @@ impl Cx<'_> {
         // A call its arguments do not fit was diagnosed there, and one not built is refused:
         // its value is the error, and the bounds its type arguments would have met are not asked.
         if unbuilt || self.errors.len() > seen {
-            self.obligations.retain(|o| o.2 != span);
+            self.b.obligations.retain(|o| o.2 != span);
             return Self::error_node(span);
         }
         self.solve(false);
@@ -441,7 +442,7 @@ impl Cx<'_> {
             };
             // A lender is called only where its place is used (`for`, an assignment): elsewhere
             // the bound's reading fn of that name is meant (`IndexedMut.at` vs `Indexed.at`).
-            if self.d.f(m).region.is_some() && !self.allow_region {
+            if self.d.f(m).region.is_some() && !self.b.allow_region {
                 continue;
             }
             self.reach(m);

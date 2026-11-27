@@ -41,7 +41,7 @@ impl Cx<'_> {
         let var = self.bind(name, ty);
         let let_at = (!mutable).then(|| self.let_keyword(at)).flatten();
         let l = match var {
-            VarRef::Local(i) => &mut self.locals[i],
+            VarRef::Local(i) => &mut self.b.locals[i],
             VarRef::Global(i) => &mut self.globals[i],
         };
         (l.mutable, l.fixed, l.let_at) = (mutable, !mutable, let_at);
@@ -49,7 +49,7 @@ impl Cx<'_> {
     }
     fn var_name(&self, v: VarRef) -> &str {
         match v {
-            VarRef::Local(i) => &self.locals[i].name,
+            VarRef::Local(i) => &self.b.locals[i].name,
             VarRef::Global(i) => &self.globals[i].name,
         }
     }
@@ -129,8 +129,8 @@ impl Cx<'_> {
                 }
             }
             PatternKind::Domain(d) => {
-                self.doms.insert(d.text.clone(), Ty::Error);
-                self.refused_names.insert(d.text.clone());
+                self.b.doms.insert(d.text.clone(), Ty::Error);
+                self.b.refused_names.insert(d.text.clone());
             }
             PatternKind::Wildcard | PatternKind::Literal(_) | PatternKind::Error => {}
         }
@@ -539,7 +539,7 @@ impl Cx<'_> {
     ) -> Option<(usize, usize)> {
         let c = self.fresh_slot_of(t)?;
         let i = self.fresh_from(name, c, span, out);
-        self.doms.insert(name.to_string(), Ty::Dom(i));
+        self.b.doms.insert(name.to_string(), Ty::Dom(i));
         Some((c, i))
     }
     /// A domain of its own named `name`, its ends read from the fresh `C`'s slot.
@@ -617,18 +617,18 @@ impl Cx<'_> {
             return None;
         }
         let (v, _) = self.lookup(binding)?;
-        self.owned.get(&(v, path.to_vec())).map(|&i| Ty::Dom(i))
+        self.b.owned.get(&(v, path.to_vec())).map(|&i| Ty::Dom(i))
     }
     /// `let (tree, ..) = r`: what `r` owns under `tree` the new binding `tree` owns.
     pub(super) fn hand_down(&mut self, whole: &str, field: &str, part: &str) {
         let (Some((from, _)), Some((to, _))) = (self.lookup(whole), self.lookup(part)) else {
             return;
         };
-        let moved: Vec<_> = (self.owned.iter())
+        let moved: Vec<_> = (self.b.owned.iter())
             .filter(|((v, path), _)| *v == from && path.first().is_some_and(|f| f == field))
             .map(|((_, path), &i)| ((to, path[1..].to_vec()), i))
             .collect();
-        self.owned.extend(moved);
+        self.b.owned.extend(moved);
     }
     /// `let t = Rooted.new(..)`: each fresh domain of the result is one of `t`'s own, `t.Pre`,
     /// so two trees' positions never mix (R02.9.1).
@@ -643,9 +643,9 @@ impl Cx<'_> {
         for (c, p) in fresh {
             let shown = [name].into_iter().chain(p.iter().map(String::as_str));
             let i = self.fresh_from(&shown.collect::<Vec<_>>().join("."), c, span, out);
-            self.owned.insert((var, p), i);
+            self.b.owned.insert((var, p), i);
             let slot = match var {
-                VarRef::Local(k) => &mut self.locals[k].ty,
+                VarRef::Local(k) => &mut self.b.locals[k].ty,
                 VarRef::Global(k) => &mut self.globals[k].ty,
             };
             *slot = retag(slot, c, i);

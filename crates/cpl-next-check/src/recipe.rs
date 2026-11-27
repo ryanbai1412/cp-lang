@@ -70,9 +70,9 @@ impl Cx<'_> {
         };
         let recv = recv.map(|r| Box::new(hold(self, *r)));
         let args = args.into_iter().map(|a| hold(self, a)).collect();
-        self.scopes.push(HashMap::new());
+        self.b.scopes.push(HashMap::new());
         let var = self.bind("$item", elem.clone());
-        self.scopes.pop();
+        self.b.scopes.pop();
         let unit = |kind| TExpr {
             kind,
             ty: Ty::Unit,
@@ -94,7 +94,7 @@ impl Cx<'_> {
         let id = self.new_lambda(LambdaInfo {
             params: Vec::new(),
             ret: Ty::Unit,
-            owner: self.decl,
+            owner: self.b.decl,
             group: Vec::new(),
             yields: Some(elem.clone()),
             written: Vec::new(),
@@ -145,12 +145,12 @@ impl Cx<'_> {
         let id = self.new_lambda(LambdaInfo {
             params: ps.clone(),
             ret: Ty::Unit,
-            owner: self.decl,
+            owner: self.b.decl,
             group: Vec::new(),
             yields: None,
             written: Vec::new(),
         });
-        self.scopes.push(HashMap::new());
+        self.b.scopes.push(HashMap::new());
         let mut ids = Vec::new();
         let mut args = Vec::new();
         for (i, t) in ps.iter().enumerate() {
@@ -174,7 +174,7 @@ impl Cx<'_> {
             span,
         };
         let body = self.recipe(Vec::new(), call);
-        self.scopes.pop();
+        self.b.scopes.pop();
         self.lambdas[id.0].ret = body.ty.clone();
         TExpr {
             kind: TK::Lambda {
@@ -218,10 +218,10 @@ impl Cx<'_> {
             ty: fty,
             span,
         };
-        self.scopes.push(HashMap::new());
+        self.b.scopes.push(HashMap::new());
         let var = self.bind(name, elem);
         let body = self.block(body, None);
-        self.scopes.pop();
+        self.b.scopes.pop();
         out.push(TStmt::Region {
             callee: Callee::Value(Box::new(run)),
             recv: None,

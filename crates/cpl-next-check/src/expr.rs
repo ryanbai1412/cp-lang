@@ -150,7 +150,7 @@ impl<'a> Cx<'a> {
             tr,
             args: r.iter().map(|r| r.ty.clone()).collect(),
         };
-        (self.obligations).push((self_ty.clone(), tr.clone(), span, Origin::Bound));
+        (self.b.obligations).push((self_ty.clone(), tr.clone(), span, Origin::Bound));
         TExpr {
             kind: TK::CallTrait {
                 ctx: self.trait_ctx(tr.tr, &method),
@@ -194,7 +194,7 @@ impl<'a> Cx<'a> {
     fn fold_form(&self, n: &str, args: &[ast::Arg]) -> bool {
         args.first()
             .is_some_and(|a| a.name.is_none() && a.value.is_generator())
-            && matches!(self.d.named(self.module, n), Some(decls::Named::Fn(f)) if self.d.f(f).self_ty.is_none())
+            && matches!(self.d.named(self.b.module, n), Some(decls::Named::Fn(f)) if self.d.f(f).self_ty.is_none())
     }
     /// More parts than the widest tuple: the last part is a tuple of the rest, nested as far as
     /// needed.
@@ -342,7 +342,7 @@ impl<'a> Cx<'a> {
         }
         // Arguments that do not fit the parameters make the call the error: its bounds are not asked.
         if self.errors.len() > seen {
-            self.obligations.retain(|o| o.2 != span);
+            self.b.obligations.retain(|o| o.2 != span);
         }
         // A lambda with unwritten parameter types is checked after the other arguments, whose
         // types and bounds may fix the ones it takes (R06.1.2).
@@ -429,7 +429,7 @@ impl<'a> Cx<'a> {
     /// name, so `k`'s written range reads `n` as `a`, and `b` is checked into it here, at the
     /// call, where an ordinary range parameter's argument is (R06.4.1).
     fn check_jagged(&mut self, formals: &[Formal<'_>], out: &mut [TArg], pre: &mut Vec<TStmt>) {
-        self.scopes.push(HashMap::new());
+        self.b.scopes.push(HashMap::new());
         for (f, a) in formals.iter().zip(out.iter_mut()) {
             if let (TArg::Value(v), false) = (a, f.variadic) {
                 let ty = v.ty.clone();
@@ -451,7 +451,7 @@ impl<'a> Cx<'a> {
             let tmp = self.bind("$jagged", ty);
             pre.push(TStmt::Let(tmp, checked));
         }
-        self.scopes.pop();
+        self.b.scopes.pop();
     }
     fn arg(&mut self, a: &ast::Arg, pty: &Ty, pmut: bool) -> TArg {
         let inner = match &a.value.kind {
@@ -501,25 +501,25 @@ impl<'a> Cx<'a> {
         named: &[(String, Ty)],
         ty: &Ty,
     ) -> TExpr {
-        let module = std::mem::replace(&mut self.module, m);
-        let item = std::mem::replace(&mut self.item, item);
-        let scopes = std::mem::replace(&mut self.scopes, vec![HashMap::new()]);
-        let self_local = self.self_local.take();
+        let module = std::mem::replace(&mut self.b.module, m);
+        let item = std::mem::replace(&mut self.b.item, item);
+        let scopes = std::mem::replace(&mut self.b.scopes, vec![HashMap::new()]);
+        let self_local = self.b.self_local.take();
         // The caller's type parameters stay unnamed but still number a lambda's: `by: T -> K =
         // x => x` read in a generic fn is an instance per the caller's type arguments.
-        let unnamed = vec![String::new(); self.generics.len()];
-        let generics = std::mem::replace(&mut self.generics, unnamed);
-        let mut doms = self.doms.clone();
+        let unnamed = vec![String::new(); self.b.generics.len()];
+        let generics = std::mem::replace(&mut self.b.generics, unnamed);
+        let mut doms = self.b.doms.clone();
         doms.extend(named.iter().cloned());
-        let doms = std::mem::replace(&mut self.doms, doms);
+        let doms = std::mem::replace(&mut self.b.doms, doms);
         let v = self.expr(e, Some(ty));
         let v = self.coerce(v, ty);
-        self.module = module;
-        self.item = item;
-        self.scopes = scopes;
-        self.self_local = self_local;
-        self.generics = generics;
-        self.doms = doms;
+        self.b.module = module;
+        self.b.item = item;
+        self.b.scopes = scopes;
+        self.b.self_local = self_local;
+        self.b.generics = generics;
+        self.b.doms = doms;
         v
     }
     /// The parameters of a fn as a call binds them.
@@ -565,7 +565,7 @@ impl<'a> Cx<'a> {
         // A fn's call of itself passes its own result sets: recursion gets no second copy.
         while sets.len() < f.n_sets + f.n_ret_sets {
             let i = sets.len();
-            sets.push(match self.decl == Some(decl) && i >= f.n_sets {
+            sets.push(match self.b.decl == Some(decl) && i >= f.n_sets {
                 true => SetTy::Param(i),
                 false => self.new_set(),
             });
@@ -634,10 +634,10 @@ impl<'a> Cx<'a> {
         if narrows {
             self.solve(false);
         }
-        let n = self.assumed.len();
+        let n = self.b.assumed.len();
         if let TK::HasBound(t, r) = &c.kind {
             if let Ty::Param(i) = self.shallow(t) {
-                self.assumed.push((i, r.clone()));
+                self.b.assumed.push((i, r.clone()));
             }
         }
         // A bound test that failed to check is the error: the branch it narrows is downstream of it.
@@ -649,8 +649,8 @@ impl<'a> Cx<'a> {
         if narrows {
             self.solve(false);
         }
-        self.assumed.truncate(n);
-        self.scopes.pop();
+        self.b.assumed.truncate(n);
+        self.b.scopes.pop();
         (c, b2, b.leaves())
     }
     /// `a op b` for an ordering `op`: primitives and plain variants compare directly, any other
@@ -764,7 +764,7 @@ impl<'a> Cx<'a> {
                         tr: im.trait_.tr,
                         args: im.trait_.args.iter().map(|a| sub.ty(a)).collect(),
                     };
-                    (self.obligations).push((recv.ty.clone(), tr, span, Origin::Bound));
+                    (self.b.obligations).push((recv.ty.clone(), tr, span, Origin::Bound));
                 }
             }
             let arg = self.coerce(arg, &param);
@@ -833,10 +833,10 @@ impl<'a> Cx<'a> {
                 };
             }
         }
-        if let Some(decls::Named::Const(c)) = self.d.named(self.module, n) {
+        if let Some(decls::Named::Const(c)) = self.d.named(self.b.module, n) {
             return self.const_read(c, span);
         }
-        if let Some(d) = self.d.fn_named(self.module, n) {
+        if let Some(d) = self.d.fn_named(self.b.module, n) {
             let f = self.fnref(d, Vec::new(), Vec::new());
             return self.fn_item_value(f, span);
         }
@@ -860,18 +860,18 @@ impl<'a> Cx<'a> {
                 span,
             };
         }
-        if let Some(&(_, _, id)) = (self.group.iter()).find(|g| g.1 == n && g.0 > span.start) {
+        if let Some(&(_, _, id)) = (self.b.group.iter()).find(|g| g.1 == n && g.0 > span.start) {
             let set = self.names_set();
-            self.ahead.push((id, n.to_string(), span, set));
+            self.b.ahead.push((id, n.to_string(), span, set));
             return TExpr {
                 kind: TK::Itself(id),
                 ty: self.lambda_ty(id),
                 span,
             };
         }
-        if self.d.ambiguous[self.module.0].contains(n) {
+        if self.d.ambiguous[self.b.module.0].contains(n) {
             self.two_imports(n, span);
-        } else if !self.refused_names.contains(n) {
+        } else if !self.b.refused_names.contains(n) {
             let mut msg = Msg::verdict(
                 cpl_diag::codes::UNRESOLVED_NAME,
                 format!("unknown name `{n}`"),
@@ -882,7 +882,7 @@ impl<'a> Cx<'a> {
                 msg.help = Some(format!("did you mean `{near}`?"));
                 msg.fixes.push(cpl_next_ir::msg::Fix {
                     title: format!("change to `{near}`"),
-                    edits: vec![(self.item.at(span), near)],
+                    edits: vec![(self.b.item.at(span), near)],
                 });
             }
             self.err(span, msg);
@@ -895,8 +895,8 @@ impl<'a> Cx<'a> {
     }
     /// The name in scope that `n`, unknown, is most likely a slip for.
     fn closest_name(&self, n: &str) -> Option<String> {
-        let scoped = self.scopes.iter().flat_map(|s| s.keys());
-        let module = self.d.names(self.module);
+        let scoped = self.b.scopes.iter().flat_map(|s| s.keys());
+        let module = self.d.names(self.b.module);
         let names = (module.iter().map(|(name, _)| *name))
             .chain(self.global_names.keys().map(String::as_str))
             .chain(scoped.map(String::as_str))
@@ -910,7 +910,7 @@ impl<'a> Cx<'a> {
         let module = (self.d.module_names.iter().enumerate())
             .find(|(i, m)| m.starts_with("std.") && self.d.exports[*i].get(n).is_some_and(|e| e.1))
             .map(|(_, m)| m.as_str())?;
-        let text = self.src.text_of(&self.item.at(span));
+        let text = self.src.text_of(&self.b.item.at(span));
         let (point, edit) = cpl_diag::import_edit(&text.text, module.strip_prefix("std.")?, n);
         Some(cpl_next_ir::msg::Fix {
             title: format!("add `use {module}.{{{n}}}`"),
@@ -921,7 +921,7 @@ impl<'a> Cx<'a> {
     /// The value of `e`. One read from a slot of a range type is an `Int` (R03.1.4), unless it
     /// goes straight into a slot of the same range.
     pub(super) fn expr(&mut self, e: &ast::Expr, want: Option<&Ty>) -> TExpr {
-        if self.rhs_extent.take_if(|at| *at == e.span).is_some() {
+        if self.b.rhs_extent.take_if(|at| *at == e.span).is_some() {
             return self.extent(e, want);
         }
         let v = self.expr_as_typed(e, want);
@@ -983,7 +983,7 @@ impl<'a> Cx<'a> {
                 let ty = empty.ty.clone();
                 let buf = self.bind("$str", ty.clone());
                 match buf {
-                    VarRef::Local(l) => self.locals[l].mutable = true,
+                    VarRef::Local(l) => self.b.locals[l].mutable = true,
                     VarRef::Global(g) => self.globals[g].mutable = true,
                 }
                 let read = mk(TK::Var(buf), ty.clone());
@@ -1081,9 +1081,9 @@ impl<'a> Cx<'a> {
                     }
                     return mk(TK::Error, Ty::Error);
                 };
-                self.scopes.push(HashMap::new());
+                self.b.scopes.push(HashMap::new());
                 let (bind, flag, val) = self.opened(v, inner.clone());
-                self.scopes.pop();
+                self.b.scopes.pop();
                 let check = TStmt::Assert(
                     flag,
                     "the value is None".to_string(),
@@ -1118,9 +1118,9 @@ impl<'a> Cx<'a> {
                     Some(_) => (self.coerce(r, &opt), opt.clone()),
                     None => (self.coerce(r, &inner), inner.clone()),
                 };
-                self.scopes.push(HashMap::new());
+                self.b.scopes.push(HashMap::new());
                 let (bind, flag, val) = self.opened(l, inner);
-                self.scopes.pop();
+                self.b.scopes.pop();
                 let val = if out == opt { self.some(val, opt) } else { val };
                 let pick = mk(
                     TK::If(Box::new(flag), Box::new(val), Box::new(r)),
@@ -1217,7 +1217,7 @@ impl<'a> Cx<'a> {
                 }
                 // `a <= b < c` is `a <= b and b < c` with `b` read once, and `c` not read
                 // when the first link is false (R01.5.3).
-                self.scopes.push(HashMap::new());
+                self.b.scopes.push(HashMap::new());
                 let mut prev = self.expr(first, None);
                 let mut links: Vec<(Vec<TStmt>, TExpr)> = Vec::new();
                 for (k, (op, rhs)) in rest.iter().enumerate() {
@@ -1228,7 +1228,7 @@ impl<'a> Cx<'a> {
                             Some(d @ Ty::Dom(_)) => Err(d),
                             _ => Ok(self.expr(rhs, None)),
                         };
-                        self.scopes.pop();
+                        self.b.scopes.pop();
                         if rest.len() > 1 {
                             let text = cpl_diag::msgs::check::MIXED_COMPARISON_CHAIN_CHAINED_COMPARISONS_CANNOT_CONTAIN_IN.say(&[]);
                             self.err(
@@ -1261,12 +1261,12 @@ impl<'a> Cx<'a> {
                     };
                     // A comparison with an operand that is the error is the error, as `binary` is.
                     if self.is_error(&prev.ty) || self.is_error(&r.ty) {
-                        self.scopes.pop();
+                        self.b.scopes.pop();
                         return Self::error_node(span);
                     }
                     if rest.len() == 1 {
                         if let Some(test) = self.presence(*op, &prev, &r, span) {
-                            self.scopes.pop();
+                            self.b.scopes.pop();
                             return test;
                         }
                     }
@@ -1284,7 +1284,7 @@ impl<'a> Cx<'a> {
                     links.push((hold, c));
                     prev = r;
                 }
-                self.scopes.pop();
+                self.b.scopes.pop();
                 let mut acc: Option<TExpr> = None;
                 for (hold, c) in links.into_iter().rev() {
                     let c = match acc {
@@ -1363,7 +1363,7 @@ impl<'a> Cx<'a> {
                 block(pre, v)
             }
             ExprKind::Index { base, indices } if indices.len() == 1 => {
-                let again = self.indexed_again.take();
+                let again = self.b.indexed_again.take();
                 let point = |e: &ast::Expr| {
                     !matches!(super::index::unparen(e).kind, ExprKind::Range { .. })
                 };
@@ -1371,10 +1371,10 @@ impl<'a> Cx<'a> {
                     && matches!(&super::index::unparen(base).kind,
                         ExprKind::Index { indices: first, .. } if first.iter().all(point))
                 {
-                    self.indexed_again = Some((span, indices[0].span));
+                    self.b.indexed_again = Some((span, indices[0].span));
                 }
                 let b = self.expr(base, None);
-                self.indexed_again = None;
+                self.b.indexed_again = None;
                 if self.is_error(&b.ty) {
                     return Self::error_node(span);
                 }
@@ -1573,8 +1573,8 @@ impl<'a> Cx<'a> {
                 otherwise,
             } => {
                 let valued = otherwise.is_some();
-                let was_joining = self.joining;
-                self.joining = want.is_none() && valued;
+                let was_joining = self.b.joining;
+                self.b.joining = want.is_none() && valued;
                 // With no expected type, the branches meet in a type of their own: the `else`'s,
                 // or, when it is a bare `None`, that of the first branch giving a value. The rest
                 // are checked against it.
@@ -1592,9 +1592,9 @@ impl<'a> Cx<'a> {
                             arms[i] = Some(arm);
                         }
                     } else {
-                        self.joining = was_joining;
+                        self.b.joining = was_joining;
                         let e = self.block(o, None);
-                        self.joining = want.is_none();
+                        self.b.joining = want.is_none();
                         let t = self.join_ty(&e.ty.clone());
                         let e = if !o.leaves() && self.shallow(&t) != Ty::Unit {
                             self.coerce(e, &t)
@@ -1610,7 +1610,7 @@ impl<'a> Cx<'a> {
                         *arm = Some(self.if_arm(br, ty.as_ref()));
                     }
                 }
-                self.joining = was_joining;
+                self.b.joining = was_joining;
                 let checked = else_.is_some();
                 let else_ = match (else_, otherwise) {
                     (Some(e), _) => e,
@@ -1706,7 +1706,7 @@ impl<'a> Cx<'a> {
         self.lookup(n).is_none()
             && self.itself(n, Span::new(0, 0)).is_none()
             && self.self_field(n).is_none()
-            && self.d.named(self.module, n).is_some()
+            && self.d.named(self.b.module, n).is_some()
     }
 
     /// A call of a declared fn or struct, with the type arguments written at the call.
@@ -1715,16 +1715,16 @@ impl<'a> Cx<'a> {
     /// Whether `n` names the fn filling the `print` or `write` role here (R11.6.1).
     fn names_io(&self, n: &str) -> bool {
         let r = &self.d.roles;
-        matches!(self.d.named(self.module, n), Some(Named::Fn(f)) if [r.print, r.write].contains(&Some(f)))
+        matches!(self.d.named(self.b.module, n), Some(Named::Fn(f)) if [r.print, r.write].contains(&Some(f)))
     }
     fn io_args(&self, args: &[ast::Arg]) -> Vec<ast::Arg> {
         let mut out = args.to_vec();
-        let Some(Named::Context(io)) = self.d.named(self.module, "io") else {
+        let Some(Named::Context(io)) = self.d.named(self.b.module, "io") else {
             return out;
         };
         for field in ["sep", "precision"] {
             let named = |a: &ast::Arg| a.name.as_ref().is_some_and(|n| n.text == field);
-            let set = (self.frames.iter().rev()).find(|x| x.ctx == io && x.field == field);
+            let set = (self.b.frames.iter().rev()).find(|x| x.ctx == io && x.field == field);
             if let (false, Some(x)) = (args.iter().any(named), set) {
                 out.push(ast::Arg {
                     name: Some(ast::Name {

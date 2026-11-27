@@ -27,20 +27,24 @@ impl Cx<'_> {
         if framed {
             let flag = self.bind(&format!("$broke{}", span.start), Ty::Bool);
             out.push(TStmt::Let(flag, boolean(false, span)));
-            self.loop_frames.push(Frame {
+            self.b.loop_frames.push(Frame {
                 label,
                 flag,
-                depth: self.loops + 1,
+                depth: self.b.loops + 1,
                 hits: 0,
             });
         }
-        let before: Vec<u32> = self.loop_frames.iter().map(|f| f.hits).collect();
-        let was = self.framed.replace(span.start);
+        let before: Vec<u32> = self.b.loop_frames.iter().map(|f| f.hits).collect();
+        let was = self.b.framed.replace(span.start);
         self.stmt(&inner, out);
-        self.framed = was;
-        let own = if framed { self.loop_frames.pop() } else { None };
+        self.b.framed = was;
+        let own = if framed {
+            self.b.loop_frames.pop()
+        } else {
+            None
+        };
         // A labelled break from in here to a loop around it leaves the loop this sits in too.
-        let left: Vec<VarRef> = (self.loop_frames.iter().zip(&before))
+        let left: Vec<VarRef> = (self.b.loop_frames.iter().zip(&before))
             .filter(|(f, b)| f.hits > **b)
             .map(|(f, _)| f.flag)
             .collect();
@@ -65,12 +69,12 @@ impl Cx<'_> {
     /// `break`, or `break 'name` to the loop of that label around it.
     pub(super) fn break_to(&mut self, label: Option<&ast::Name>, span: Span, out: &mut Vec<TStmt>) {
         let at = match label {
-            None => (self.loop_frames.last())
-                .filter(|f| f.depth == self.loops)
-                .map(|_| self.loop_frames.len() - 1),
+            None => (self.b.loop_frames.last())
+                .filter(|f| f.depth == self.b.loops)
+                .map(|_| self.b.loop_frames.len() - 1),
             Some(l) => {
                 let at =
-                    (self.loop_frames.iter()).rposition(|f| f.label.as_deref() == Some(&l.text));
+                    (self.b.loop_frames.iter()).rposition(|f| f.label.as_deref() == Some(&l.text));
                 if at.is_none() {
                     let code = cpl_diag::codes::UNRESOLVED_NAME;
                     let text = format!("no loop around this `break` is labelled `{}`", l.text);
@@ -80,8 +84,8 @@ impl Cx<'_> {
             }
         };
         if let Some(i) = at {
-            self.loop_frames[i].hits += 1;
-            let flag = self.loop_frames[i].flag;
+            self.b.loop_frames[i].hits += 1;
+            let flag = self.b.loop_frames[i].flag;
             out.push(TStmt::Assign(read(flag, span), boolean(true, span)));
         }
         out.push(TStmt::Break);

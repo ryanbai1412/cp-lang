@@ -36,7 +36,7 @@ impl Cx<'_> {
             span,
         };
         let fd = self.d.f(m);
-        let recv = (self.self_local).map(|l| Box::new(TArg::Value(var(l, Ty::Param(0)))));
+        let recv = (self.b.self_local).map(|l| Box::new(TArg::Value(var(l, Ty::Param(0)))));
         let args = (params.iter().zip(&fd.params))
             .map(|(&l, p)| TArg::Value(var(l, p.ty.clone())))
             .collect();
@@ -54,7 +54,7 @@ impl Cx<'_> {
                 recv,
                 args,
             },
-            ty: self.ret.clone(),
+            ty: self.b.ret.clone(),
             span,
         }
     }
@@ -68,7 +68,7 @@ impl Cx<'_> {
     }
     /// The traits open type `v` is bound by so far.
     fn bounds_on(&self, v: usize) -> Vec<TraitId> {
-        (self.obligations.iter())
+        (self.b.obligations.iter())
             .filter(|(t, ..)| self.shallow(t) == Ty::Var(v))
             .map(|(_, r, ..)| r.tr)
             .collect()

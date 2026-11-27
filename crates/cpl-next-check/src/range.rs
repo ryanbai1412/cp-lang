@@ -372,7 +372,7 @@ impl Cx<'_> {
         let ExprKind::Name(n) = &base.kind else {
             return None;
         };
-        if self.lookup(n).is_some() || self.d.struct_named(self.module, n).is_none() {
+        if self.lookup(n).is_some() || self.d.struct_named(self.b.module, n).is_none() {
             return None;
         }
         let t = ast::Type {
@@ -426,14 +426,14 @@ impl Cx<'_> {
     /// A name that is a domain: one declared in a body, or a type parameter used as one.
     pub(super) fn domain_named(&self, n: &str) -> Option<Ty> {
         // A fn's own type parameter is nearer than any domain declared outside it.
-        if let Some(p) = self.generics.iter().position(|g| g == n) {
+        if let Some(p) = self.b.generics.iter().position(|g| g == n) {
             return Some(Ty::Param(p));
         }
-        if let Some(t @ Ty::Struct(..)) = self.doms.get(n) {
+        if let Some(t @ Ty::Struct(..)) = self.b.doms.get(n) {
             return Some(t.clone());
         }
         // `type Cell = (Row, Col)` names the product domain too (R04.2.10).
-        if let Some(decls::Named::Alias(_)) = self.d.named(self.module, n) {
+        if let Some(decls::Named::Alias(_)) = self.d.named(self.b.module, n) {
             let written = ast::Type {
                 kind: ast::TypeKind::Named {
                     name: ast::Name {
@@ -444,11 +444,11 @@ impl Cx<'_> {
                 },
                 span: Span::default(),
             };
-            let (gs, doms) = (&self.generics, &self.doms);
+            let (gs, doms) = (&self.b.generics, &self.b.doms);
             let (t, _) = decls::body_type(
                 self.d,
                 self.d,
-                self.module,
+                self.b.module,
                 gs,
                 doms,
                 &|n: &str| self.owned_named(n),
@@ -457,14 +457,14 @@ impl Cx<'_> {
             return Some(t).filter(|t| self.is_domain(t));
         }
         // So does a struct that is a domain by its impl: a payload-free enum (R04.2.22).
-        if let Some(decls::Named::Struct(s)) = self.d.named(self.module, n) {
+        if let Some(decls::Named::Struct(s)) = self.d.named(self.b.module, n) {
             let t = Ty::Struct(s, Vec::new(), Vec::new());
             if self.d.s(s).generics.is_empty() && self.is_domain(&t) {
                 return Some(t);
             }
         }
-        if let Some(&Ty::Dom(i)) = self.doms.get(n) {
-            if self.decl.is_none() && self.domains[i].name.is_empty() {
+        if let Some(&Ty::Dom(i)) = self.b.doms.get(n) {
+            if self.b.decl.is_none() && self.domains[i].name.is_empty() {
                 self.early.set(Some(i));
             }
             return Some(Ty::Dom(i));
@@ -877,7 +877,8 @@ impl Cx<'_> {
         let span = v.span;
         let (r, method, m) = ord.clone();
         self.reach(m);
-        self.obligations
+        self.b
+            .obligations
             .push((v.ty.clone(), r.clone(), span, Origin::Bound));
         TExpr {
             kind: TK::CallTrait {
@@ -896,7 +897,8 @@ impl Cx<'_> {
     /// `D.count` of a type that implements `Domain`: its impl's, through the trait.
     fn domain_count(&mut self, d: Ty, count: DomainFn, span: Span) -> TExpr {
         let (r, n, m) = count;
-        self.obligations
+        self.b
+            .obligations
             .push((d.clone(), r.clone(), span, Origin::Bound));
         let name = ast::Name { text: n, span };
         self.static_call(d, r, m, &name, None, span)

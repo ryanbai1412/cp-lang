@@ -454,16 +454,49 @@ struct Cx<'a> {
     /// A body domain and the result's `domain C` it was returned as, which it then stands for;
     /// or a result's `domain C` and the domain its caller bound it to (R02.9.3).
     fresh_eq: Vec<(usize, usize)>,
+    /// The `let`s bound to the `None` value: comparing one with a `?T` tests presence (R02.4.5).
+    none_lets: HashSet<VarRef>,
+    ranges: Vec<RangeInfo>,
+    /// The results whose `_`s an earlier check of their bodies fixed (R02.9.3), and the ones
+    /// this check fixes.
+    found_ret: HashMap<FnId, Ty>,
+    /// The fns whose `_` result is being fixed by checking their bodies, innermost last.
+    ret_busy: Vec<FnId>,
+    /// Each fn's checked body, by the driver or by a caller needing its `_` result.
+    fns: HashMap<FnId, TypedFn>,
+    /// Fns a reference reached, to be checked; and the library places already reported.
+    reached: Vec<FnId>,
+    reported: HashSet<(u8, usize)>,
+    /// Library fns reached only as a trait's impl, or from one: what they use that the slice
+    /// does not build refuses only a program whose instances run them.
+    through_trait: Vec<FnId>,
+    /// Each library `const`'s global, once its initializer is checked.
+    consts: Vec<Option<LocalId>>,
+    const_busy: Vec<bool>,
+    /// The code that sets them, first reads first, above the program's.
+    const_init: Vec<TStmt>,
+    /// The checks kept where the code being checked is (R09.4).
+    checks_kept: Checks,
+    /// The checks the build keeps, where nothing in the code says otherwise.
+    checks: Checks,
+    /// Each copy of a `uses` fn made so far, by the fn and the context values it is checked
+    /// under; and those still to check.
+    /// The context copies this check made, by `FnRef::ctx`.
+    ctx_made: HashSet<u32>,
+    ctx_pending: Vec<(FnId, u32, Vec<CtxFrame>)>,
+    ctx_impls: HashMap<(u32, FnId), u32>,
+    /// What checking the body at hand keeps: a body checked inside another one's check (a
+    /// `_` result its caller needs, R02.9.3) gets its own.
+    b: Body,
+}
+
+struct Body {
     doms: HashMap<String, Ty>,
     /// The domains a binding owns, by the binding and the path to each in its value: `t`'s
     /// `Pre`, or `r`'s `tree.Pre` (R02.9.1).
     owned: HashMap<(VarRef, Vec<String>), usize>,
     /// A block's `@memo` fn's `f.clear`, by the fn's binding (R06.4.1).
     memo_clears: HashMap<VarRef, VarRef>,
-    /// The `let`s bound to the `None` value: comparing one with a `?T` tests presence (R02.4.5).
-    none_lets: HashSet<VarRef>,
-    ranges: Vec<RangeInfo>,
-    // per fn
     decl: Option<FnId>,
     generics: Vec<String>,
     n_sets: usize,
@@ -475,10 +508,6 @@ struct Cx<'a> {
     /// Temporaries holding an input value whose parts are held to their types one by one.
     input_parts: std::collections::HashSet<VarRef>,
     ret: Ty,
-    /// The results whose `_`s an earlier check of their bodies fixed (R02.9.3), and the ones
-    /// this check fixes.
-    solved_ret: HashMap<FnId, Ty>,
-    found_ret: HashMap<FnId, Ty>,
     /// What the fn being checked yields or lends.
     region: Option<(bool, Ty)>,
     /// How many loops enclose the statement being checked, and a marker for `For`'s two-step entry.
@@ -515,19 +544,6 @@ struct Cx<'a> {
     item: ItemId,
     /// The module whose names the code being checked sees.
     module: ModId,
-    /// Fns a reference reached, to be checked; and the library places already reported.
-    reached: Vec<FnId>,
-    reported: HashSet<(u8, usize)>,
-    /// Library fns reached only as a trait's impl, or from one: what they use that the slice
-    /// does not build refuses only a program whose instances run them.
-    through_trait: Vec<FnId>,
-    /// Each library `const`'s global, once its initializer is checked.
-    consts: Vec<Option<LocalId>>,
-    const_busy: Vec<bool>,
-    /// The code that sets them, first reads first, above the program's.
-    const_init: Vec<TStmt>,
-    /// The checks kept where the code being checked is (R09.4).
-    checks_kept: Checks,
     /// The `?` extents being checked, innermost last, and the statement right-hand side that is one.
     tries: Vec<question::Extent>,
     /// The bounds an `if T: Tr:` branch around this point has tested, of `T`'s parameter.
@@ -537,12 +553,48 @@ struct Cx<'a> {
     frames: Vec<CtxFrame>,
     /// The lists comprehensions being checked fill, innermost last.
     filling: Vec<list::Filling>,
-    /// Each copy of a `uses` fn made so far, by the fn and the context values it is checked
-    /// under; and those still to check.
-    /// The context copies this check made, by `FnRef::ctx`.
-    ctx_made: HashSet<u32>,
-    ctx_pending: Vec<(FnId, u32, Vec<CtxFrame>)>,
-    ctx_impls: HashMap<(u32, FnId), u32>,
+}
+
+impl Body {
+    fn new(d: &Decls) -> Body {
+        Body {
+            tries: Vec::new(),
+            assumed: Vec::new(),
+            rhs_extent: None,
+            frames: Vec::new(),
+            filling: Vec::new(),
+            doms: d.top_doms.clone(),
+            owned: HashMap::new(),
+            memo_clears: HashMap::new(),
+            decl: None,
+            generics: Vec::new(),
+            n_sets: 0,
+            locals: Vec::new(),
+            scopes: vec![HashMap::new()],
+            self_local: None,
+            obligations: Vec::new(),
+            input_parts: Default::default(),
+            ret: Ty::Unit,
+            region: None,
+            loops: 0,
+            in_for: false,
+            loop_frames: Vec::new(),
+            framed: None,
+            allow_region: false,
+            indexed_again: None,
+            kept: None,
+            recur: None,
+            selves: Vec::new(),
+            group: Vec::new(),
+            ahead: Vec::new(),
+            list_doms: Vec::new(),
+            refused_names: Default::default(),
+            nested: None,
+            joining: false,
+            item: ItemId::file(crate::modules::PROGRAM.into()),
+            module: d.program,
+        }
+    }
 }
 
 /// One field a `with` line set, read as `ctx.field` in the rest of its block.
@@ -586,52 +638,11 @@ pub fn check(
     build: Build,
     prior: &Ids,
 ) -> Typed {
-    let mut solved = HashMap::new();
-    loop {
-        let (t, found) = check_with(
-            d,
-            main,
-            src,
-            consts,
-            roots,
-            build.clone(),
-            Earlier {
-                ret: solved.clone(),
-                ids: prior,
-            },
-        );
-        if found.keys().all(|f| solved.contains_key(f)) {
-            return t;
-        }
-        solved.extend(found);
-    }
-}
-
-/// What earlier checks settled: each `_` result a body fixed (R02.9.3), and the ids of an
-/// earlier revision (`check`'s `prior`).
-struct Earlier<'p> {
-    ret: HashMap<FnId, Ty>,
-    ids: &'p Ids,
-}
-
-fn check_with(
-    d: &Decls,
-    main: &[(ItemId, ast::Stmt)],
-    src: &crate::modules::Loaded,
-    consts: &dyn Consts,
-    roots: &[ModId],
-    build: Build,
-    earlier: Earlier,
-) -> (Typed, HashMap<FnId, Ty>) {
     let Build { judge, checks } = build;
     let mut cx = Cx {
         values: consts,
         checks_kept: checks,
-        tries: Vec::new(),
-        assumed: Vec::new(),
-        rhs_extent: None,
-        frames: Vec::new(),
-        filling: Vec::new(),
+        checks,
         ctx_made: HashSet::new(),
         ctx_pending: Vec::new(),
         ctx_impls: HashMap::new(),
@@ -646,7 +657,7 @@ fn check_with(
         judge,
         errors: Vec::new(),
         lambdas: Vec::new(),
-        ids: earlier.ids.clone(),
+        ids: prior.clone(),
         made: [0; 4],
         copy: 0,
         globals: Vec::new(),
@@ -668,46 +679,18 @@ fn check_with(
             })
             .collect(),
         fresh_eq: Vec::new(),
-        doms: d.top_doms.clone(),
-        owned: HashMap::new(),
-        memo_clears: HashMap::new(),
         none_lets: HashSet::new(),
         ranges: Vec::new(),
-        decl: None,
-        generics: Vec::new(),
-        n_sets: 0,
-        locals: Vec::new(),
-        scopes: vec![HashMap::new()],
-        self_local: None,
-        obligations: Vec::new(),
-        input_parts: Default::default(),
-        ret: Ty::Unit,
-        solved_ret: earlier.ret,
         found_ret: HashMap::new(),
-        region: None,
-        loops: 0,
-        in_for: false,
-        loop_frames: Vec::new(),
-        framed: None,
-        allow_region: false,
-        indexed_again: None,
-        kept: None,
-        recur: None,
-        selves: Vec::new(),
-        group: Vec::new(),
-        ahead: Vec::new(),
-        list_doms: Vec::new(),
-        refused_names: Default::default(),
-        nested: None,
-        joining: false,
-        item: ItemId::file(crate::modules::PROGRAM.into()),
-        module: d.program,
+        ret_busy: Vec::new(),
+        fns: HashMap::new(),
         reached: Vec::new(),
         through_trait: Vec::new(),
         reported: HashSet::new(),
         consts: vec![None; d.consts.len()],
         const_busy: vec![false; d.consts.len()],
         const_init: Vec::new(),
+        b: Body::new(d),
     };
     // A result's `domain C` keeps its ends in one static slot per declaration site (R02.9.4).
     let slot = |cx: &mut Cx, role: &str| {
@@ -773,13 +756,13 @@ fn check_with(
     // run time runs where it is written (R11.1.1).
     let lifted: Vec<Option<ast::Stmt>> = (main.iter())
         .map(|(off, s)| {
-            cx.item = off.clone();
+            cx.b.item = off.clone();
             cx.hoisted(s)
         })
         .collect();
     for ((off, _), s) in main.iter().zip(&lifted) {
         if let Some(s) = s {
-            cx.item = off.clone();
+            cx.b.item = off.clone();
             main_out.push(TStmt::Item(off.clone()));
             cx.stmt(s, &mut main_out);
         }
@@ -793,7 +776,7 @@ fn check_with(
             placed -= 1;
             continue;
         }
-        cx.item = off.clone();
+        cx.b.item = off.clone();
         // `@!multitest`: the count is read once and everything below runs once per case.
         if cases.is_none()
             && s.decorators
@@ -806,7 +789,7 @@ fn check_with(
                 ty: Ty::Int,
                 span: s.span,
             });
-            cx.scopes.push(HashMap::new());
+            cx.b.scopes.push(HashMap::new());
             cases = Some((count, Vec::new()));
         }
         for x in &s.decorators {
@@ -867,14 +850,13 @@ fn check_with(
     }
     cx.solve(true);
     if let Some((count, body)) = cases {
-        cx.scopes.pop();
+        cx.b.scopes.pop();
         main_out.push(TStmt::Cases(count, body));
     }
     cx.own_global_sets();
     // The program's fns are all checked; a library's, core's too, only once a reference reaches
     // them, so what a module declares and the program never uses refuses nothing.
     // A record's impls are made, not written: one is checked once a reference reaches it.
-    let mut fns = HashMap::new();
     let mut todo: Vec<FnId> = (0..d.fns.len())
         .map(FnId)
         .filter(|id| {
@@ -912,19 +894,19 @@ fn check_with(
         let of_trait = matches!(f.owner, Some(Owner::Trait(_)));
         let lowered_intrinsic = f.intrinsic.is_some() && !of_trait;
         let undeclared = matches!(f.body, FnBody::None) && !of_trait;
-        if fns.contains_key(&id) || lowered_intrinsic || undeclared {
+        if cx.fns.contains_key(&id) || lowered_intrinsic || undeclared {
             continue;
         }
         if !quiet {
             let tf = cx.check_fn(id, Vec::new());
-            fns.insert(id, tf);
+            cx.fns.insert(id, tf);
             continue;
         }
         quiet_fns.insert(id);
         let (n, reported) = (cx.errors.len(), cx.reported.clone());
         cx.reach(id);
         let tf = cx.check_fn(id, Vec::new());
-        fns.insert(id, tf);
+        cx.fns.insert(id, tf);
         let errors = cx.errors.split_off(n);
         cx.reported = reported;
         let more = std::mem::take(&mut cx.reached);
@@ -1002,10 +984,10 @@ fn check_with(
     if cx.cyclic.get() {
         cx.errors.push(Msg::internal("a variable holding a function is assigned a function built from its own old value, so the set of functions it can hold contains itself; bind the new function to a new name"));
     }
-    let typed = Typed {
+    Typed {
         checks,
         domains: std::mem::take(&mut cx.domains),
-        fns,
+        fns: std::mem::take(&mut cx.fns),
         ctx_fns: ctx_fns.into_iter().map(|(_, id, tf)| (id, tf)).collect(),
         ctx_impls: std::mem::take(&mut cx.ctx_impls),
         globals,
@@ -1019,8 +1001,7 @@ fn check_with(
         deferred,
         quiet: quiet_fns,
         ids: cx.ids,
-    };
-    (typed, cx.found_ret)
+    }
 }
 
 impl<'a> Cx<'a> {
@@ -1061,7 +1042,7 @@ impl<'a> Cx<'a> {
         self.err_help(span, msg, None);
     }
     fn err_help(&mut self, span: Span, msg: impl Into<Msg>, help: Option<String>) {
-        let mut msg = Msg::at(self.item.at(span), msg);
+        let mut msg = Msg::at(self.b.item.at(span), msg);
         if help.is_some() {
             msg.help = help;
         }
@@ -1069,7 +1050,7 @@ impl<'a> Cx<'a> {
     }
     /// The source text `span` covers.
     fn text(&self, span: Span) -> &'a str {
-        (self.src).text(&self.item.at(span))
+        (self.src).text(&self.b.item.at(span))
     }
     /// A reference reached fn `id`: it is checked, and what its library declaration uses that
     /// the slice does not build is said once. A trait's method reaches every impl's.
@@ -1084,7 +1065,7 @@ impl<'a> Cx<'a> {
     }
     /// A trait's fn's copy has each impl's under the same values, which link picks (`ctx_impls`).
     pub(crate) fn ctx_copy(&mut self, id: FnId) -> u32 {
-        let around: Vec<CtxFrame> = self.frames.iter().rev().cloned().collect();
+        let around: Vec<CtxFrame> = self.b.frames.iter().rev().cloned().collect();
         let k = self.copy_under(id, &around);
         let d = self.d;
         let f = d.f(id);
@@ -1230,24 +1211,24 @@ impl<'a> Cx<'a> {
             |b: &ast::Block| matches!(b.stmts.last().map(|s| &s.kind), Some(StmtKind::Lend { .. }));
         let d = self.d;
         let f = d.f(id);
-        self.decl = Some(id);
+        self.b.decl = Some(id);
         self.made = [0; 4];
-        self.module = f.module;
-        let top_doms = self.doms.clone();
-        let top_owned = self.owned.clone();
-        let top_clears = self.memo_clears.clone();
-        self.generics = f.generics.clone();
+        self.b.module = f.module;
+        let top_doms = self.b.doms.clone();
+        let top_owned = self.b.owned.clone();
+        let top_clears = self.b.memo_clears.clone();
+        self.b.generics = f.generics.clone();
         // A fn's result slots are set parameters after its own: each call passes its sets.
-        self.n_sets = f.n_sets + f.n_ret_sets;
-        self.locals = Vec::new();
-        self.scopes = vec![HashMap::new()];
-        self.item = f.item.clone();
-        self.self_local = None;
+        self.b.n_sets = f.n_sets + f.n_ret_sets;
+        self.b.locals = Vec::new();
+        self.b.scopes = vec![HashMap::new()];
+        self.b.item = f.item.clone();
+        self.b.self_local = None;
         // A top-level fn reads the contexts it was written in, and a `uses` fn its caller's
         // (R09.1.3): `frames` are the values this copy of it is checked under.
-        let frames = std::mem::replace(&mut self.frames, frames);
+        let frames = std::mem::replace(&mut self.b.frames, frames);
         if let Some(ty) = f.self_ty.clone().filter(|_| f.self_mode != SelfMode::None) {
-            self.self_local = Some(self.add_local(&f.self_name, ty));
+            self.b.self_local = Some(self.add_local(&f.self_name, ty));
         }
         let mut params = Vec::new();
         for p in &f.params {
@@ -1255,12 +1236,13 @@ impl<'a> Cx<'a> {
             params.push(self.add_local(&p.name, ty));
         }
         let n = f.n_sets;
-        self.region = (f.region.clone()).map(|(l, t)| (l, map_slots(&t, &|k| SetTy::Param(n + k))));
-        let ret = self.decl_ret(id);
+        self.b.region =
+            (f.region.clone()).map(|(l, t)| (l, map_slots(&t, &|k| SetTy::Param(n + k))));
+        let ret = (self.found_ret.get(&id).cloned()).unwrap_or_else(|| d.f(id).ret.clone());
         let holes = d.ret_holes.contains(&id) && !unify::ground(&ret);
         let ret = if holes { self.open_holes(&ret) } else { ret };
-        self.ret = map_slots(&ret, &|k| SetTy::Param(n + k));
-        let ret = self.ret.clone();
+        self.b.ret = map_slots(&ret, &|k| SetTy::Param(n + k));
+        let ret = self.b.ret.clone();
         // A fn refused as declared (a decorator the slice lacks) is that refusal: its body,
         // written for the meaning the slice does not build, is not checked.
         let refused = (f.errors.iter()).any(|e| e.refusal.is_some());
@@ -1276,7 +1258,7 @@ impl<'a> Cx<'a> {
             // A trait's fn whose body is an operation on `Self`, as `Domain`'s are.
             _ if f.intrinsic.is_some() => {
                 let span = Span::new(0, 0);
-                let arg = match self.self_local {
+                let arg = match self.b.self_local {
                     Some(l) => Some((l, Ty::Param(0))),
                     None => params.first().map(|&l| (l, Ty::Int)),
                 };
@@ -1361,27 +1343,27 @@ impl<'a> Cx<'a> {
                 self.found_ret.insert(id, fixed);
             }
         }
-        self.frames = frames;
+        self.b.frames = frames;
         let mut out = TypedFn {
-            self_local: self.self_local,
+            self_local: self.b.self_local,
             params,
-            locals: std::mem::take(&mut self.locals),
+            locals: std::mem::take(&mut self.b.locals),
             body,
             ret,
-            region: self.region.take(),
+            region: self.b.region.take(),
         };
         // Typed once checked: no later body changes this one's types (`SetTy::AddedAt`, `SetTy::Global`).
         self.zonk_fn(&mut out);
-        self.decl = None;
-        self.module = d.program;
-        self.region = None;
-        self.doms = top_doms;
-        self.owned = top_owned;
-        self.memo_clears = top_clears;
-        self.generics = Vec::new();
-        self.n_sets = 0;
-        self.self_local = None;
-        self.scopes = vec![HashMap::new()];
+        self.b.decl = None;
+        self.b.module = d.program;
+        self.b.region = None;
+        self.b.doms = top_doms;
+        self.b.owned = top_owned;
+        self.b.memo_clears = top_clears;
+        self.b.generics = Vec::new();
+        self.b.n_sets = 0;
+        self.b.self_local = None;
+        self.b.scopes = vec![HashMap::new()];
         out
     }
 }
@@ -1463,7 +1445,7 @@ impl Cx<'_> {
     /// something decided at run time or working it out failed, which is said; `Some(None)` for
     /// a value that is not a scalar.
     fn const_value(&mut self, e: &ast::Expr) -> Option<Option<ops::Scalar>> {
-        match self.values.value(&self.item, e) {
+        match self.values.value(&self.b.item, e) {
             Ok(v) => Some(v),
             Err(ConstError::Open) => None,
             Err(ConstError::Failed(m)) => {
@@ -1529,27 +1511,30 @@ impl Cx<'_> {
         self.const_busy[c.0] = true;
         // Checked as top-level code of its module, whatever body first read it.
         let body = (
-            self.decl.take(),
-            std::mem::take(&mut self.generics),
-            std::mem::take(&mut self.n_sets),
-            std::mem::take(&mut self.locals),
-            std::mem::replace(&mut self.scopes, vec![HashMap::new(), HashMap::new()]),
-            self.self_local.take(),
-            std::mem::replace(&mut self.ret, Ty::Unit),
-            self.region.take(),
+            self.b.decl.take(),
+            std::mem::take(&mut self.b.generics),
+            std::mem::take(&mut self.b.n_sets),
+            std::mem::take(&mut self.b.locals),
+            std::mem::replace(&mut self.b.scopes, vec![HashMap::new(), HashMap::new()]),
+            self.b.self_local.take(),
+            std::mem::replace(&mut self.b.ret, Ty::Unit),
+            self.b.region.take(),
             (
-                std::mem::take(&mut self.loops),
-                std::mem::take(&mut self.in_for),
+                std::mem::take(&mut self.b.loops),
+                std::mem::take(&mut self.b.in_for),
             ),
-            (std::mem::take(&mut self.allow_region), self.recur.take()),
             (
-                std::mem::take(&mut self.selves),
-                std::mem::take(&mut self.group),
+                std::mem::take(&mut self.b.allow_region),
+                self.b.recur.take(),
             ),
-            (std::mem::take(&mut self.ahead), self.nested.take()),
-            std::mem::take(&mut self.joining),
-            std::mem::replace(&mut self.item, k.item.clone()),
-            std::mem::replace(&mut self.module, k.module),
+            (
+                std::mem::take(&mut self.b.selves),
+                std::mem::take(&mut self.b.group),
+            ),
+            (std::mem::take(&mut self.b.ahead), self.b.nested.take()),
+            std::mem::take(&mut self.b.joining),
+            std::mem::replace(&mut self.b.item, k.item.clone()),
+            std::mem::replace(&mut self.b.module, k.module),
         );
         let mut out = vec![TStmt::Item(k.item.clone())];
         let want = (k.ty.as_ref()).map(|t| self.body_ty(t, k.init.span, &mut out));
@@ -1558,16 +1543,19 @@ impl Cx<'_> {
             e = self.coerce(e, t);
         }
         (
-            self.decl,
-            self.generics,
-            self.n_sets,
-            self.locals,
-            self.scopes,
+            self.b.decl,
+            self.b.generics,
+            self.b.n_sets,
+            self.b.locals,
+            self.b.scopes,
         ) = (body.0, body.1, body.2, body.3, body.4);
-        (self.self_local, self.ret, self.region) = (body.5, body.6, body.7);
-        ((self.loops, self.in_for), (self.allow_region, self.recur)) = (body.8, body.9);
-        ((self.selves, self.group), (self.ahead, self.nested)) = (body.10, body.11);
-        (self.joining, self.item, self.module) = (body.12, body.13, body.14);
+        (self.b.self_local, self.b.ret, self.b.region) = (body.5, body.6, body.7);
+        (
+            (self.b.loops, self.b.in_for),
+            (self.b.allow_region, self.b.recur),
+        ) = (body.8, body.9);
+        ((self.b.selves, self.b.group), (self.b.ahead, self.b.nested)) = (body.10, body.11);
+        (self.b.joining, self.b.item, self.b.module) = (body.12, body.13, body.14);
         self.globals.push(Local {
             name: k.name.clone(),
             ty: e.ty.clone(),

@@ -4,9 +4,24 @@ use super::*;
 use cpl_next_ir::unbuilt::Unbuilt;
 
 impl<'a> Cx<'a> {
-    /// What `f` returns, with the `_`s its body fixed (R02.9.3).
-    pub(super) fn decl_ret(&self, f: FnId) -> Ty {
-        (self.solved_ret.get(&f).cloned()).unwrap_or_else(|| self.d.f(f).ret.clone())
+    /// What `f` returns, with the `_`s its body fixed (R02.9.3): a body not checked yet is
+    /// checked now, for its result. A call inside that body's own check, through a cycle of
+    /// such fns, reads the result as declared.
+    pub(super) fn decl_ret(&mut self, f: FnId) -> Ty {
+        let decl = self.d.f(f);
+        let checkable = !matches!(decl.body, FnBody::None) && decl.intrinsic.is_none();
+        let fresh = !self.fns.contains_key(&f) && !self.ret_busy.contains(&f);
+        if self.d.ret_holes.contains(&f) && !self.found_ret.contains_key(&f) && checkable && fresh {
+            self.ret_busy.push(f);
+            let outer = std::mem::replace(&mut self.b, Body::new(self.d));
+            let copy = std::mem::take(&mut self.copy);
+            let kept = std::mem::replace(&mut self.checks_kept, self.checks);
+            let tf = self.check_fn(f, Vec::new());
+            (self.copy, self.b, self.checks_kept) = (copy, outer, kept);
+            self.ret_busy.pop();
+            self.fns.insert(f, tf);
+        }
+        (self.found_ret.get(&f).cloned()).unwrap_or_else(|| self.d.f(f).ret.clone())
     }
     /// `t` with each `_` a variable its body solves.
     pub(super) fn open_holes(&mut self, t: &Ty) -> Ty {
@@ -222,7 +237,7 @@ impl<'a> Cx<'a> {
                 let empty = matches!(&self.sets[x], SetVar::Root(ms) if ms.is_empty());
                 if empty {
                     self.sets[x] = SetVar::Bound(other);
-                } else if let (SetTy::Param(j), Some(g)) = (&other, self.decl) {
+                } else if let (SetTy::Param(j), Some(g)) = (&other, self.b.decl) {
                     // The fn's own set parameter, which each call passes: the variable's members
                     // are what the fn adds to it.
                     let j = *j;
@@ -253,7 +268,7 @@ impl<'a> Cx<'a> {
             }
             // Two of the fn's own set parameters made one: each holds what its caller passes
             // for the other.
-            (SetTy::Param(i), SetTy::Param(j)) if i != j => match self.decl {
+            (SetTy::Param(i), SetTy::Param(j)) if i != j => match self.b.decl {
                 Some(g) => {
                     let adds = &mut self.param_adds;
                     adds.entry((g, i))
@@ -338,7 +353,7 @@ impl<'a> Cx<'a> {
         show_ty(
             self.d,
             &self.domains,
-            &self.generics,
+            &self.b.generics,
             &|t| self.shallow(t),
             t,
         )
@@ -512,7 +527,7 @@ impl<'a> Cx<'a> {
             return None;
         };
         let local = match &read.kind {
-            TK::Var(VarRef::Local(l)) => self.locals.get(*l),
+            TK::Var(VarRef::Local(l)) => self.b.locals.get(*l),
             TK::Var(VarRef::Global(g)) => self.globals.get(*g),
             _ => None,
         }?;
@@ -569,7 +584,7 @@ impl<'a> Cx<'a> {
                     .iter()
                     .any(|(b, r)| *b == i && Some(r.tr) == domain);
                 if positions && matches!(self.shallow(t), Ty::Var(_)) {
-                    self.list_doms.push((t.clone(), n, span));
+                    self.b.list_doms.push((t.clone(), n, span));
                 }
             }
         }
@@ -740,10 +755,10 @@ impl<'a> Cx<'a> {
         };
         let input = self.is_input(&e);
         let ety = e.ty.clone();
-        self.scopes.push(HashMap::new());
+        self.b.scopes.push(HashMap::new());
         let tmp = self.bind("$parts", ety.clone());
         if input {
-            self.input_parts.insert(tmp);
+            self.b.input_parts.insert(tmp);
         }
         let mut parts = Vec::new();
         for (i, (h, w)) in have.into_iter().zip(&wants).enumerate() {
@@ -759,7 +774,7 @@ impl<'a> Cx<'a> {
             };
             parts.push(self.coerce(part, w));
         }
-        self.scopes.pop();
+        self.b.scopes.pop();
         let whole = TExpr {
             kind: TK::Struct(parts),
             ty: want.clone(),
@@ -785,7 +800,7 @@ impl<'a> Cx<'a> {
                 (Ty::Dom(j), Ty::Dom(c))
                     if j != c
                         && self.d.fresh_doms.iter().any(|f| f.0 == c)
-                        && crate::pattern::holds_dom(&self.ret, c) =>
+                        && crate::pattern::holds_dom(&self.b.ret, c) =>
                 {
                     Some((j, c))
                 }
@@ -972,7 +987,7 @@ impl<'a> Cx<'a> {
                         }
                     }
                     SetTy::Param(i) => {
-                        if let Some(f) = self.decl {
+                        if let Some(f) = self.b.decl {
                             let m = Member::Clo((**c).clone());
                             self.param_adds.entry((f, i)).or_default().push(m);
                         }
@@ -1012,7 +1027,7 @@ impl<'a> Cx<'a> {
                 let (a, b) = (self.shallow_set(s1), self.shallow_set(s2));
                 match (&a, &b) {
                     _ if a == b => e,
-                    (SetTy::Var(_), SetTy::Var(_)) if !self.joining => {
+                    (SetTy::Var(_), SetTy::Var(_)) if !self.b.joining => {
                         self.unify_set(&a, &b);
                         e
                     }
@@ -1041,8 +1056,8 @@ impl<'a> Cx<'a> {
                         }
                     }
                     // Into the fn's own set parameter, which each call passes: the fn adds `a`.
-                    (_, SetTy::Param(j)) if self.decl.is_some() => {
-                        let g = self.decl.unwrap_or(FnId(0));
+                    (_, SetTy::Param(j)) if self.b.decl.is_some() => {
+                        let g = self.b.decl.unwrap_or(FnId(0));
                         let m = Member::Sub(a.clone());
                         self.param_adds.entry((g, *j)).or_default().push(m);
                         TExpr {
@@ -1063,7 +1078,7 @@ impl<'a> Cx<'a> {
                     && s1.iter().zip(s2).any(|(a, b)| {
                         let (a, b) = (self.shallow_set(a), self.shallow_set(b));
                         a != b
-                            && (self.joining || !matches!(a, SetTy::Var(_)))
+                            && (self.b.joining || !matches!(a, SetTy::Var(_)))
                             && matches!(b, SetTy::Var(_) | SetTy::Param(_) | SetTy::Global(..))
                     }) =>
             {
@@ -1072,7 +1087,7 @@ impl<'a> Cx<'a> {
                 }
                 let fields = self.d.s(*d1).fields.clone();
                 let (from, to) = (Subst { tys: t1, sets: s1 }, Subst { tys: t2, sets: s2 });
-                self.scopes.push(HashMap::new());
+                self.b.scopes.push(HashMap::new());
                 let tmp = self.bind("$widen", have.clone());
                 let read = TExpr {
                     kind: TK::Var(tmp),
@@ -1088,7 +1103,7 @@ impl<'a> Cx<'a> {
                     };
                     out.push(self.coerce(f, &to.ty(fty)));
                 }
-                self.scopes.pop();
+                self.b.scopes.pop();
                 TExpr {
                     kind: TK::Block(
                         vec![TStmt::Let(tmp, e)],

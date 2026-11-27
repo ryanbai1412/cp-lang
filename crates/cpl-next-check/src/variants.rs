@@ -48,7 +48,9 @@ impl Cx<'_> {
             tr,
             args: vec![to.clone()],
         };
-        self.obligations.push((v.ty.clone(), r.clone(), span, why));
+        self.b
+            .obligations
+            .push((v.ty.clone(), r.clone(), span, why));
         mk(
             TK::CallTrait {
                 ctx: self.trait_ctx(r.tr, &method),
@@ -315,14 +317,14 @@ impl Cx<'_> {
         if self.nearer(n)
             || self.domain_named(n).is_some()
             || matches!(
-                self.d.named(self.module, n),
+                self.d.named(self.b.module, n),
                 Some(decls::Named::Fn(_) | decls::Named::Struct(_) | decls::Named::Const(_))
             )
         {
             return None;
         }
         let mut found: Vec<(StructId, usize)> =
-            (self.d.names(self.module).into_iter().map(|(_, x)| x))
+            (self.d.names(self.b.module).into_iter().map(|(_, x)| x))
                 .filter_map(|x| match x {
                     decls::Named::Struct(e) => Some((e, self.d.variant(e, n)?)),
                     _ => None,
@@ -349,17 +351,17 @@ impl Cx<'_> {
         let mk = |kind, ty| TExpr { kind, ty, span };
         let x = self.expr(scrut, None);
         let xt = self.shallow(&x.ty);
-        self.scopes.push(HashMap::new());
+        self.b.scopes.push(HashMap::new());
         let (stmts, whole) = self.held(x);
         // A value of no known type has no arms to count.
         let known = !matches!(xt, Ty::Error | Ty::Var(_));
         let mut counted = known;
         let mut ty = want.cloned();
-        let was_joining = self.joining;
+        let was_joining = self.b.joining;
         let mut rows: Vec<Vec<Space>> = Vec::new();
         let mut built: Vec<(Option<TExpr>, bool, TExpr)> = Vec::new();
         for arm in arms {
-            self.scopes.push(HashMap::new());
+            self.b.scopes.push(HashMap::new());
             let mut binds = Vec::new();
             let seen = self.errors.len();
             let test = self.refute(&arm.pat, &whole, false, &mut binds);
@@ -385,7 +387,7 @@ impl Cx<'_> {
             }
             let guard = arm.guard.as_ref().map(|g| self.bool_cond(g));
             let body = self.block(&arm.body, ty.as_ref());
-            self.scopes.pop();
+            self.b.scopes.pop();
             // An arm that leaves gives no value, so it says nothing of the match's type.
             let body = match &ty {
                 _ if arm.body.leaves() => body,
@@ -394,7 +396,7 @@ impl Cx<'_> {
                 // With no expected type, the arms meet in a type of their own, as an `if`'s do.
                 None => {
                     let j = self.join_ty(&body.ty.clone());
-                    self.joining = true;
+                    self.b.joining = true;
                     ty = Some(j.clone());
                     if self.shallow(&j) != Ty::Unit {
                         self.coerce(body, &j)
@@ -416,7 +418,7 @@ impl Cx<'_> {
                 }
             });
         }
-        self.joining = was_joining;
+        self.b.joining = was_joining;
         let ty = ty.unwrap_or(Ty::Unit);
         let missing = counted
             .then(|| self.useful(&rows, &[Space::Any], std::slice::from_ref(&xt)))
@@ -451,7 +453,7 @@ impl Cx<'_> {
                 None => body,
             };
         }
-        self.scopes.pop();
+        self.b.scopes.pop();
         mk(TK::Block(stmts, Some(Box::new(tail))), ty)
     }
 }
