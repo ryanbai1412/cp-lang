@@ -24,8 +24,10 @@ impl Cx<'_> {
             },
             false => e,
         };
-        let lo_ty = lo.ty.clone();
-        let hi = self.coerce(hi, &lo_ty);
+        let hi = match chars {
+            true => self.coerce(hi, &Ty::Char),
+            false => hi,
+        };
         let (lo, hi) = (code(lo), code(hi));
         let (lo, end, within) = self.typed_ends(lo, hi, inclusive);
         (lo, end, within, chars)
