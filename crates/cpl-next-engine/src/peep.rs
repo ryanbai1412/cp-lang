@@ -36,7 +36,10 @@ pub(crate) fn tidy(c: &mut Code) {
         let mut lines = Vec::new();
         let keep = quiet(&ops, &c.tables, &c.lays, &chained);
         renumber(&mut ops, &mut c.marks[b], &mut c.tables, &keep, &mut lines);
-        if let Some(fixed) = fixed_lines(&ops, c, b, &outside) {
+        let fixed = fixed_lines(&ops, c, b, &outside);
+        // A block whose lines are a table reads no chain register but those set outside it.
+        let static_lines = fixed.is_some();
+        if let Some(fixed) = fixed {
             let mut keep = vec![true; ops.len()];
             for (i, (op, f)) in ops.iter_mut().zip(&fixed).enumerate() {
                 match *op {
@@ -60,7 +63,9 @@ pub(crate) fn tidy(c: &mut Code) {
             }
             renumber(&mut ops, &mut c.marks[b], &mut c.tables, &keep, &mut lines);
         }
-        let pinned = |r: Reg| r >= addressed[b] || chained.contains(&r) || outside.contains(&r);
+        let pinned = |r: Reg| {
+            r >= addressed[b] || (!static_lines && chained.contains(&r)) || outside.contains(&r)
+        };
         jumps(&mut ops, &mut c.marks[b], &mut c.tables, &mut lines);
         forward(&mut ops, &mut c.places, &c.lays, &c.tables, &pinned);
         let keep = unread(
