@@ -111,9 +111,12 @@ none has its own parser or checker.
 - **Ownership is flow analysis on the IR, not types.** Owned and lent are
   properties of places on the control-flow graph (ch5); errors point at
   the source constructs through spans.
-- There is no second "core" or "MIR" layer: one IR is the contract between
-  the front end and both back ends, so a language change touches one
-  lowering, not three.
+- There is one IR data type (`cpl-next-ir`), not a second "core" or
+  "MIR" language. Its forms in `handbook/design/next/README.md` (generic,
+  instances, raw, canonical, optimized) are the same types under stricter
+  invariants, each checked at its boundary. The typed tree is the
+  checker's output, not an IR. So a language change touches one lowering,
+  not three.
 
 ### Facts
 
