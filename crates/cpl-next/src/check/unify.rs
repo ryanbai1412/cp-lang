@@ -254,6 +254,7 @@ impl<'a> Cx<'a> {
             Ty::Bool => "Bool".into(),
             Ty::Char => "Char".into(),
             Ty::U64 => "U64".into(),
+            Ty::F64 => "F64".into(),
             Ty::Unit => "()".into(),
             Ty::Raw(e) => format!("Raw<{}>", self.show(&e)),
             Ty::Ref(e) => format!("&{}", self.show(&e)),
@@ -531,6 +532,23 @@ impl<'a> Cx<'a> {
                 ty: Ty::U64,
                 span,
             },
+            // An integer literal where an `F64` is expected is that `F64`, if it holds it (R01.4.2).
+            (Ty::Int, Ty::F64) if let TK::Int(i) = e.kind => {
+                if i as f64 as i128 != i128::from(i) {
+                    self.err(
+                        span,
+                        format!(
+                            "{}: `F64` cannot hold {i} exactly: write `F64({i})`",
+                            cpl_diag::codes::TYPE_MISMATCH.0
+                        ),
+                    );
+                }
+                TExpr {
+                    kind: TK::Float((i as f64).to_bits()),
+                    ty: Ty::F64,
+                    span,
+                }
+            }
             // Loads widen, stores check (R03.1.4).
             (Ty::Range(..) | Ty::RangeOf(_), Ty::Int) => TExpr { ty: Ty::Int, ..e },
             (Ty::RangeOf(a), Ty::RangeOf(b)) if a == b => e,

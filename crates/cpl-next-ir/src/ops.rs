@@ -201,6 +201,40 @@ pub fn compare(op: Intr, a: i128, b: i128) -> Result<bool, Fault> {
     })
 }
 
+/// A binary operation on `F64`s, IEEE (R02.1).
+pub fn float(op: Intr, a: f64, b: f64) -> Result<f64, Fault> {
+    Ok(match op {
+        Intr::Add => a + b,
+        Intr::Sub => a - b,
+        Intr::Mul => a * b,
+        Intr::Div => a / b,
+        _ => return Err(Fault::Internal("not an F64 operation")),
+    })
+}
+
+/// `-a` on an `F64`.
+pub fn neg_float(a: f64) -> f64 {
+    -a
+}
+
+/// The `F64` nearest an `Int`, ties to even.
+pub fn f64_of_int(i: i64) -> f64 {
+    i as f64
+}
+
+/// A comparison of `F64`s: `==` is exact (R02.1).
+pub fn compare_float(op: Intr, a: f64, b: f64) -> Result<bool, Fault> {
+    Ok(match op {
+        Intr::Eq => a == b,
+        Intr::Ne => a != b,
+        Intr::Lt => a < b,
+        Intr::Le => a <= b,
+        Intr::Gt => a > b,
+        Intr::Ge => a >= b,
+        _ => return Err(Fault::Internal("not an F64 comparison")),
+    })
+}
+
 pub fn int_of_u64(u: u64) -> Result<i64, Fault> {
     i64::try_from(u).map_err(|_| Fault::U64PastInt)
 }
@@ -238,6 +272,8 @@ pub fn read_int(t: Option<&str>) -> Result<i64, Fault> {
 pub enum Scalar {
     Int(i64),
     U64(u64),
+    /// An `F64`, by its bits.
+    F64(u64),
     Bool(bool),
     Char(u8),
 }
@@ -247,6 +283,8 @@ pub fn show(v: Scalar, out: &mut String) {
     let _ = match v {
         Scalar::Int(i) => write!(out, "{i}"),
         Scalar::U64(u) => write!(out, "{u}"),
+        // Ten decimals unless a precision is given (R10.3.4).
+        Scalar::F64(b) => write!(out, "{:.10}", f64::from_bits(b)),
         Scalar::Bool(b) => write!(out, "{b}"),
         Scalar::Char(c) => write!(out, "{}", char::from(c)),
     };

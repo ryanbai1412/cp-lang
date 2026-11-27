@@ -29,6 +29,8 @@ pub enum Ty {
     Char,
     /// `0..=2^64-1`, wrapping (R02.1).
     U64,
+    /// An IEEE double (R02.1).
+    F64,
     Unit,
     Raw(Box<Ty>),
     /// A closure's view of a `var` of the fn around it. Made by lowering only.

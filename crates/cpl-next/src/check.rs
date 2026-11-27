@@ -39,6 +39,8 @@ pub struct TExpr {
 #[derive(Clone, Debug)]
 pub enum TK {
     Int(i64),
+    /// An `F64` literal, by its bits.
+    Float(u64),
     Bool(bool),
     Unit,
     Var(VarRef),

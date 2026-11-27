@@ -22,14 +22,35 @@ impl<'a> Cx<'a> {
         // `U64` arithmetic wraps, and a shift's count is an `Int` (R02.1).
         let unsigned = !logic
             && (self.shallow(&l.ty) == Ty::U64 || (!shift && self.shallow(&r.ty) == Ty::U64));
-        let want = match (logic, unsigned) {
-            (true, _) => Ty::Bool,
-            (_, true) => Ty::U64,
+        let float = !logic && !shift && [&l.ty, &r.ty].iter().any(|t| self.shallow(t) == Ty::F64);
+        let want = match (logic, unsigned, float) {
+            (true, ..) => Ty::Bool,
+            (_, _, true) => Ty::F64,
+            (_, true, _) => Ty::U64,
             _ => Ty::Int,
         };
+        if float && !matches!(op, BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div) {
+            self.err(span, "slice: this operator on `F64`");
+        }
         let bits = matches!(op, BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor);
         if bits && [&l.ty, &r.ty].iter().any(|t| self.shallow(t) == Ty::Bool) {
             return self.bool_bits(op, &l.ty, &r.ty, span);
+        }
+        // `+` and the rest on a type declared outside core are its operator fn (R08.1.5).
+        let operand = [&l.ty, &r.ty]
+            .into_iter()
+            .find(|t| self.declares_operators(t));
+        if let Some(t) = operand.filter(|_| !logic) {
+            let t = self.show(t);
+            self.err(
+                span,
+                format!("slice: an operator on `{t}` (its operator trait)"),
+            );
+            return TExpr {
+                kind: TK::Error,
+                ty: Ty::Error,
+                span,
+            };
         }
         let l = self.coerce(l, &want);
         let r = self.coerce(r, if shift { &Ty::Int } else { &want });
@@ -41,6 +62,11 @@ impl<'a> Cx<'a> {
             ty: want,
             span,
         }
+    }
+    /// A struct declared outside core, which may give itself operators (R08.1.5). Their
+    /// checking is not built yet, so such an operation is refused.
+    fn declares_operators(&self, t: &Ty) -> bool {
+        matches!(self.shallow(t), Ty::Struct(s, ..) if self.d.s(s).module != decls::CORE)
     }
     /// `&`, `|` and `^` are integer operators; on a `Bool` the error names the `Bool` one
     /// (R01.5.9).
@@ -353,7 +379,7 @@ impl<'a> Cx<'a> {
                 );
                 return;
             }
-            Ty::Int | Ty::Char | Ty::U64 | Ty::Error => {
+            Ty::Int | Ty::Char | Ty::U64 | Ty::F64 | Ty::Error => {
                 pieces.push(Piece::Value(v));
                 return;
             }
@@ -839,6 +865,17 @@ impl<'a> Cx<'a> {
         let mk = |kind, ty| TExpr { kind, ty, span };
         match &e.kind {
             ExprKind::Int(i) => mk(TK::Int(*i as i64), Ty::Int),
+            // A literal with an exponent whose value is a whole number is an `Int` (R01.4.2).
+            ExprKind::Float(text) => match decls::constant_int(e) {
+                Some(i) => mk(TK::Int(i), Ty::Int),
+                None => match text.parse::<f64>() {
+                    Ok(x) => mk(TK::Float(x.to_bits()), Ty::F64),
+                    Err(_) => {
+                        self.err(span, format!("slice: the float literal `{text}`"));
+                        mk(TK::Error, Ty::Error)
+                    }
+                },
+            },
             ExprKind::Bool(b) => mk(TK::Bool(*b), Ty::Bool),
             ExprKind::Str(ps) if ps.iter().all(|p| matches!(p, StrPiece::Text(_))) => {
                 let text: String = ps
@@ -962,6 +999,18 @@ impl<'a> Cx<'a> {
                     }
                 };
                 let v = self.expr(expr, Some(&want_t));
+                let want_t = match self.shallow(&v.ty) {
+                    Ty::F64 if *op == UnOp::Neg => Ty::F64,
+                    t if *op == UnOp::Neg && self.declares_operators(&t) => {
+                        let t = self.show(&t);
+                        self.err(
+                            span,
+                            format!("slice: an operator on `{t}` (its operator trait)"),
+                        );
+                        return mk(TK::Error, Ty::Error);
+                    }
+                    _ => want_t,
+                };
                 let v = self.coerce(v, &want_t);
                 mk(kind(Box::new(v)), want_t)
             }
@@ -992,7 +1041,7 @@ impl<'a> Cx<'a> {
                     let r = self.coerce(r, &prev.ty.clone());
                     let primitive = matches!(
                         self.shallow(&prev.ty),
-                        Ty::Int | Ty::Bool | Ty::Char | Ty::U64 | Ty::Dom(_) | Ty::Error
+                        Ty::Int | Ty::Bool | Ty::Char | Ty::U64 | Ty::F64 | Ty::Dom(_) | Ty::Error
                     );
                     if matches!(op, CmpOp::In | CmpOp::NotIn) {
                         self.err(span, "slice: comparison of this type is not supported");

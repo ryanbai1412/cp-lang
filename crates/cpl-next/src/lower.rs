@@ -299,6 +299,7 @@ impl Lw<'_> {
 fn pure<T>(e: &Expr<T>) -> bool {
     match &e.kind {
         EK::Int(_)
+        | EK::F64(_)
         | EK::Bool(_)
         | EK::Text(_)
         | EK::Unit
@@ -335,7 +336,7 @@ fn writes_nothing<T>(s: &Stmt<T>) -> bool {
     }
 }
 fn constant<T>(e: &Expr<T>) -> bool {
-    matches!(e.kind, EK::Int(_) | EK::Bool(_) | EK::Unit)
+    matches!(e.kind, EK::Int(_) | EK::F64(_) | EK::Bool(_) | EK::Unit)
 }
 
 impl Lw<'_> {
@@ -497,6 +498,7 @@ impl Lw<'_> {
         let site = self.site(e.span);
         match &e.kind {
             TK::Int(i) => mk(EK::Int(*i)),
+            TK::Float(b) => mk(EK::F64(*b)),
             TK::Bool(b) => mk(EK::Bool(*b)),
             TK::Unit => mk(EK::Unit),
             TK::Error => {
@@ -742,10 +744,12 @@ impl Lw<'_> {
                     })
                     .collect();
                 // Checked here and not in the checker: a variable's type may be settled only at the end of the file.
-                if vals
-                    .iter()
-                    .any(|v| !matches!(v.ty, Ty::Int | Ty::Bool | Ty::Char | Ty::U64 | Ty::Error))
-                {
+                if vals.iter().any(|v| {
+                    !matches!(
+                        v.ty,
+                        Ty::Int | Ty::Bool | Ty::Char | Ty::U64 | Ty::F64 | Ty::Error
+                    )
+                }) {
                     self.errors.push(
                         format!(
                             "{}: this value cannot be printed",

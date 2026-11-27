@@ -34,6 +34,7 @@ core-01/elif-chain-picks-first.cp
 core-01/elif-let-takes-coalesce.cp
 core-01/else-if-names-elif.cp
 core-01/floor-div-before-inline-else.cp
+core-01/float-literals.cp
 core-01/floor-div.cp
 core-01/floor-division-by-zero-traps.cp
 core-01/for-filter-on-inner-clause.cp
@@ -147,6 +148,7 @@ core-02/long-str-literal-is-shared-and-copied-on-write.cp
 core-02/move-into-ctor-receiver-then-use.cp
 core-02/move-into-ctor-receiver.cp
 core-02/no-boxed-fn-type.cp
+core-02/no-implicit-float.cp
 core-02/no-overload.cp
 core-02/none-names-a-param-and-a-field.cp
 core-02/optional-compare-coalesced.cp
@@ -510,6 +512,7 @@ core-08/concrete-extension-beats-std-generic.cp
 core-08/default-method-override-once.cp
 core-08/derive-needs-fields.cp
 core-08/duplicate-impl.cp
+core-08/explicit-conversion.cp
 core-08/field-trait-struct-opt-in.cp
 core-08/generic-body-cannot-assume-an-associated-type.cp
 core-08/generic-method-call.cp
@@ -538,8 +541,10 @@ core-08/monomorphized.cp
 core-08/named-struct-takes-no-default-without-an-impl.cp
 core-08/no-dyn.cp
 core-08/no-higher-kinded.cp
+core-08/no-implicit-conversion.cp
 core-08/no-inheritance.cp
 core-08/no-macros.cp
+core-08/no-orphan-impl.cp
 core-08/no-record-subtyping.cp
 core-08/one-generic-fn-at-four-types.cp
 core-08/own-module-fn-beats-equal-imported.cp
@@ -554,6 +559,7 @@ core-08/trait-alias.cp
 core-08/trait-assoc-type-bound.cp
 core-08/trait-default-method.cp
 core-08/trait-default-overridden-through-generic.cp
+core-08/trait-impl-for-f64-is-found-by-a-bound.cp
 core-08/trait-message-bound-holds.cp
 core-08/trait-message.cp
 core-08/trait-typed-param-checks-its-bound.cp
@@ -599,6 +605,7 @@ core-10/optional-show-fallback.cp
 core-10/print-count-prefixed-row.cp
 core-10/print-empty-seq.cp
 core-10/ragged-read-names-pair-domain.cp
+core-10/print-f64-default-ten-decimals.cp
 core-10/rb1-q39-bool-not-print.cp
 core-10/read-bad-token-traps.cp
 core-10/read-empty-input-traps.cp
@@ -915,6 +922,8 @@ next/n_convert_04_enum_of_no_value_traps.cp
 next/n_domain_09_literal_is_a_position.cp
 next/n_enum_01_values_and_order.cp
 next/n_gen_05_expression_body.cp
+next/n_f64_01_arith_compare_print.cp
+next/n_f64_02_inexact_literal_rejected.cp
 next/n_generator_through_bound.cp
 next/n_impl_01_inherent_outside_its_module.cp
 next/n_impl_03_trait_args_pick_the_impl.cp
@@ -1035,11 +1044,15 @@ std-deque/deque-of-a-list-is-rejected.cp
 std-deque/linked-list-of-a-list-is-rejected.cp
 std-dp/monotone-minima-empty-shapes.cp
 std-dp/monotone-minima-ties-take-leftmost.cp
+std-derive/float-part-is-not-structural-hash.cp
 std-dsu/dsu-of-a-size-is-rejected.cp
 std-dsu/new.cp
 std-geometry/area2-orientation.cp
 std-geometry/free-dot-and-cross-are-public.cp
 std-geometry/pt-dot-method-is-the-free-fn.cp
+std-geometry/polygon-area-degenerate.cp
+std-geometry/sign-eps-at-the-boundary.cp
+std-geometry/vec-rot-by-unit-x-is-identity.cp
 std-graph/out-on-a-table-of-non-lists-has-no-method.cp
 std-hashmap/counter-is-a-std-struct-a-user-may-shadow.cp
 std-hashmap/flatmap-is_empty-1.cp
@@ -1061,6 +1074,8 @@ std-range/len-param-past-2-31-is-a-compile-error.cp
 std-range/len-param-past-2-31-traps-at-the-call.cp
 std-range/len-param-takes-a-len.cp
 std-search/last-true-was-bsearch-last.cp
+std-search/dinkelbach-1.cp
+std-search/dinkelbach-2.cp
 std-seq/all-1.cp
 std-seq/any-1.cp
 std-seq/collect-1.cp
@@ -1069,6 +1084,7 @@ std-seq/first-of-seq-and-empty.cp
 std-seq/map-of-a-list-is-indexed-through-its-source.cp
 std-seq/reduce-1.cp
 std-seq/seq-u15-zip-and-items.cp
+std-seq/mean-empty-none.cp
 std-seq/seq-u20-first-some.cp
 std-seq/seq-u26-all-match-positions.cp
 std-seq/seq-u31-compare-sequences.cp

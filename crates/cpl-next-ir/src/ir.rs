@@ -56,6 +56,8 @@ pub enum Intr {
     ToU64,
     /// A `U64` as an `Int`; traps past `Int`.
     FromU64,
+    /// The `F64` nearest an `Int`.
+    ToF64,
     /// A slot with no value yet, of the type it is given. Never read before it is stored to.
     Unset,
 }
@@ -74,6 +76,7 @@ impl Intr {
             "code_of" => Intr::CodeOf,
             "u64_of" => Intr::ToU64,
             "int_of_u64" => Intr::FromU64,
+            "f64_of" => Intr::ToF64,
             _ => return None,
         })
     }
@@ -175,6 +178,8 @@ pub struct Expr<T> {
 #[derive(Clone, Debug)]
 pub enum EK<T> {
     Int(i64),
+    /// An `F64` constant, by its bits.
+    F64(u64),
     Bool(bool),
     Unit,
     Copy(Place),

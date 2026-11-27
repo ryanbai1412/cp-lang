@@ -24,6 +24,7 @@ pub enum V {
     Bool(bool),
     Char(u8),
     U64(u64),
+    F64(f64),
     Agg(Vec<V>),
     /// Storage is shared until written, so a copy costs nothing until then.
     Raw(Rc<Store>),
@@ -410,6 +411,7 @@ impl<'a> Machine<'a> {
     fn expr(&mut self, e: &'a Expr<CTy>, fp: usize) -> R<V> {
         Ok(match &e.kind {
             EK::Int(i) => V::Int(*i),
+            EK::F64(b) => V::F64(f64::from_bits(*b)),
             EK::Bool(b) => V::Bool(*b),
             EK::Text(t) => V::Raw(Rc::new(Store::Any(t.bytes().map(V::Char).collect()))),
             EK::Unit => V::Unit,
@@ -499,16 +501,31 @@ impl<'a> Machine<'a> {
                         let (a, b) = (self.expr(x, fp)?, self.expr(y, fp)?);
                         return u64_op(op, a, b);
                     }
+                    if x.ty == CTy::F64 {
+                        let (V::F64(a), V::F64(b)) = (self.expr(x, fp)?, self.expr(y, fp)?) else {
+                            return broken("an F64 operand of another kind");
+                        };
+                        return Ok(V::F64(ops::float(op, a, b)?));
+                    }
                 }
                 let (a, b) = (self.int(&args[0], fp)?, self.int(&args[1], fp)?);
                 V::Int(ops::int(op, a, b)?)
             }
-            Intr::Neg => V::Int(ops::neg(self.int(&args[0], fp)?)?),
+            Intr::Neg => match &args[0] {
+                Arg::Value(x) if x.ty == CTy::F64 => match self.expr(x, fp)? {
+                    V::F64(a) => V::F64(ops::neg_float(a)),
+                    _ => return broken("an F64 operand of another kind"),
+                },
+                _ => V::Int(ops::neg(self.int(&args[0], fp)?)?),
+            },
             Intr::Eq | Intr::Ne | Intr::Lt | Intr::Le | Intr::Gt | Intr::Ge | Intr::Below => {
                 let (Arg::Value(a), Arg::Value(b)) = (&args[0], &args[1]) else {
                     return broken("lent operand");
                 };
                 let (a, b) = (self.expr(a, fp)?, self.expr(b, fp)?);
+                if let (V::F64(a), V::F64(b)) = (&a, &b) {
+                    return Ok(V::Bool(ops::compare_float(op, *a, *b)?));
+                }
                 let (a, b) = match (a, b) {
                     (V::Int(a), V::Int(b)) => (i128::from(a), i128::from(b)),
                     (V::Bool(a), V::Bool(b)) => (i128::from(a), i128::from(b)),
@@ -591,6 +608,7 @@ impl<'a> Machine<'a> {
             Intr::InputLeft => V::Bool(!self.input.as_slice().is_empty()),
             Intr::Unset => V::Unit,
             Intr::ToU64 => V::U64(ops::u64_of_int(self.int(&args[0], fp)?)),
+            Intr::ToF64 => V::F64(ops::f64_of_int(self.int(&args[0], fp)?)),
             Intr::FromU64 => {
                 let Arg::Value(a) = &args[0] else {
                     return broken("lent operand");
@@ -622,6 +640,7 @@ fn scalar(v: &V) -> Option<ops::Scalar> {
     Some(match *v {
         V::Int(i) => ops::Scalar::Int(i),
         V::U64(u) => ops::Scalar::U64(u),
+        V::F64(x) => ops::Scalar::F64(x.to_bits()),
         V::Bool(b) => ops::Scalar::Bool(b),
         V::Char(c) => ops::Scalar::Char(c),
         _ => return None,

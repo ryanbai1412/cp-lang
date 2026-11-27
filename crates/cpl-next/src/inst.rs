@@ -243,6 +243,7 @@ impl Link<'_> {
             Ty::Bool => CTy::Bool,
             Ty::Char => CTy::Char,
             Ty::U64 => CTy::U64,
+            Ty::F64 => CTy::F64,
             Ty::Unit => CTy::Unit,
             Ty::Raw(e) => CTy::Raw(Box::new(self.ty(e, env))),
             Ty::Ref(e) => CTy::Ref(Box::new(self.ty(e, env))),
@@ -535,6 +536,7 @@ impl Link<'_> {
         let ty = self.ty(&e.ty, env);
         let kind = match &e.kind {
             EK::Int(i) => EK::Int(*i),
+            EK::F64(b) => EK::F64(*b),
             EK::Bool(b) => EK::Bool(*b),
             EK::Text(t) => EK::Text(t.clone()),
             EK::Unit => EK::Unit,
@@ -629,6 +631,7 @@ fn check_finite(p: &mut Program) {
                     | CTy::Bool
                     | CTy::Char
                     | CTy::U64
+                    | CTy::F64
                     | CTy::Unit
                     | CTy::Raw(_)
                     | CTy::Ref(_)
@@ -1405,6 +1408,7 @@ fn fit_cty(p: &Ty, t: &CTy, binds: &mut [Option<CTy>]) -> bool {
         (Ty::Bool, CTy::Bool)
         | (Ty::Char, CTy::Char)
         | (Ty::U64, CTy::U64)
+        | (Ty::F64, CTy::F64)
         | (Ty::Unit, CTy::Unit) => true,
         (Ty::Raw(a), CTy::Raw(b)) | (Ty::Ref(a), CTy::Ref(b)) => fit_cty(a, b, binds),
         (Ty::Struct(d1, a, _), CTy::Struct(d2, b, _)) => {

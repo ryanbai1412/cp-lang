@@ -10,6 +10,7 @@ pub enum CTy {
     Bool,
     Char,
     U64,
+    F64,
     Unit,
     Raw(Box<CTy>),
     Ref(Box<CTy>),
@@ -67,7 +68,7 @@ pub fn parts(structs: &HashMap<CTy, Vec<CTy>>, sums: &HashMap<CTy, Vec<CTy>>, t:
 /// Spec R1: a value with no heap part, copied when passed; `parts` gives a struct's fields.
 pub fn plain(parts: &dyn Fn(&CTy) -> Vec<CTy>, t: &CTy, depth: usize) -> bool {
     match t {
-        CTy::Int | CTy::Bool | CTy::Char | CTy::U64 | CTy::Unit | CTy::Dom(_) => true,
+        CTy::Int | CTy::Bool | CTy::Char | CTy::U64 | CTy::F64 | CTy::Unit | CTy::Dom(_) => true,
         CTy::Struct(..) if depth < 8 => parts(t).iter().all(|f| plain(parts, f, depth + 1)),
         _ => false,
     }

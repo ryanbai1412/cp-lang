@@ -325,6 +325,8 @@ impl Clone for Char:
     fn clone(a) = a
 impl Clone for U64:
     fn clone(a) = a
+impl Clone for F64:
+    fn clone(a) = a
 impl Clone for Bool:
     fn clone(a) = a
 impl<D: Domain> Clone for D:
@@ -368,6 +370,11 @@ impl Eq for U64:
     fn eq(a, b) = a == b
 impl Ord for U64:
     fn lt(a, b) = a < b
+/// `==` on `F64` is exact; `close(a, b, eps:)` is the tolerant compare (R02.1).
+impl Eq for F64:
+    fn eq(a, b) = a == b
+impl Ord for F64:
+    fn lt(a, b) = a < b
 impl Eq for Bool:
     fn eq(a, b) = a == b
 impl Ord for Bool:
@@ -395,6 +402,11 @@ impl Into<Int> for Bool:
     fn into(self) -> Int = if self: 1 else: 0
 impl Into<U64> for U64:
     fn into(self) -> U64 = self
+/// The `F64` nearest an `Int` (R08.5.2).
+impl Into<F64> for Int:
+    fn into(self) -> F64 = @intrinsic("f64_of")
+impl Into<F64> for F64:
+    fn into(self) -> F64 = self
 
 /// A list, a string and an array read in O(1) at any key, by position from 0 or, for an
 /// array, by its domain's positions (R12.4.5).

@@ -17,6 +17,7 @@ pub(crate) enum Kind {
     Bool,
     Char,
     U64,
+    F64,
     Other,
 }
 fn kind(t: &CTy) -> Kind {
@@ -25,6 +26,7 @@ fn kind(t: &CTy) -> Kind {
         CTy::Bool => Kind::Bool,
         CTy::Char => Kind::Char,
         CTy::U64 => Kind::U64,
+        CTy::F64 => Kind::F64,
         CTy::Lent(t) => kind(t),
         _ => Kind::Other,
     }
@@ -215,6 +217,20 @@ pub(crate) enum Op {
     FromU64 {
         d: Reg,
         a: Reg,
+    },
+    ToF64 {
+        d: Reg,
+        a: Reg,
+    },
+    FNeg {
+        d: Reg,
+        a: Reg,
+    },
+    Float {
+        op: Intr,
+        d: Reg,
+        a: Reg,
+        b: Reg,
     },
     CharOf {
         d: Reg,
@@ -827,7 +843,13 @@ impl Fc<'_> {
         if let (Some(d), false) = (self.direct(p), owns) {
             let direct = matches!(
                 e.kind,
-                EK::Int(_) | EK::Bool(_) | EK::Unit | EK::Copy(_) | EK::Intr(..) | EK::Call(..)
+                EK::Int(_)
+                    | EK::F64(_)
+                    | EK::Bool(_)
+                    | EK::Unit
+                    | EK::Copy(_)
+                    | EK::Intr(..)
+                    | EK::Call(..)
             );
             if direct {
                 self.expr(e, d);
@@ -888,6 +910,7 @@ impl Fc<'_> {
     fn expr(&mut self, e: &Expr<CTy>, d: Reg) {
         match &e.kind {
             EK::Int(i) => self.ops.push(Op::Imm { d, v: *i as u64 }),
+            EK::F64(b) => self.ops.push(Op::Imm { d, v: *b }),
             EK::Bool(b) => self.ops.push(Op::Imm {
                 d,
                 v: u64::from(*b),
@@ -1039,20 +1062,31 @@ impl Fc<'_> {
                 );
                 let kind = kind(&first_ty);
                 self.ops.push(match (cmp, kind) {
-                    (true, Kind::Int | Kind::Bool | Kind::U64) => Op::Cmp { op, d, a, b, kind },
+                    (true, Kind::Int | Kind::Bool | Kind::U64 | Kind::F64) => {
+                        Op::Cmp { op, d, a, b, kind }
+                    }
                     (true, _) => Op::Fail {
                         rule: "comparison of a value of another kind",
                     },
                     (false, Kind::U64) => Op::Word { op, d, a, b },
+                    (false, Kind::F64) => Op::Float { op, d, a, b },
                     (false, _) => Op::Int { op, d, a, b },
                 });
             }
-            Intr::Neg | Intr::Not | Intr::ToU64 | Intr::FromU64 | Intr::CharOf | Intr::CodeOf => {
+            Intr::Neg
+            | Intr::Not
+            | Intr::ToU64
+            | Intr::FromU64
+            | Intr::ToF64
+            | Intr::CharOf
+            | Intr::CodeOf => {
                 let Some(&[a]) = self.operands(args).as_deref() else {
                     return self.fail("a lent operand");
                 };
                 self.ops.push(match op {
+                    Intr::Neg if kind(&first_ty) == Kind::F64 => Op::FNeg { d, a },
                     Intr::Neg => Op::Neg { d, a },
+                    Intr::ToF64 => Op::ToF64 { d, a },
                     Intr::Not => Op::Not { d, a },
                     Intr::ToU64 => Op::ToU64 { d, a },
                     Intr::FromU64 => Op::FromU64 { d, a },

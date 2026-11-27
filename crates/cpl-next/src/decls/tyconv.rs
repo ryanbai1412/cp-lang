@@ -162,6 +162,7 @@ pub fn prim_type(n: &str) -> Option<Ty> {
         "Bool" => Ty::Bool,
         "Char" => Ty::Char,
         "U64" => Ty::U64,
+        "F64" => Ty::F64,
         _ => return None,
     })
 }

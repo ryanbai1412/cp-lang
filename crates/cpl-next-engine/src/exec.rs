@@ -476,8 +476,34 @@ impl M<'_> {
                 Op::Word { op, d, a, b } => {
                     self.stack[r(d)] = ops::word(op, self.stack[r(a)], self.stack[r(b)])?;
                 }
+                Op::Float { op, d, a, b } => {
+                    let (x, y) = (
+                        f64::from_bits(self.stack[r(a)]),
+                        f64::from_bits(self.stack[r(b)]),
+                    );
+                    self.stack[r(d)] = ops::float(op, x, y)?.to_bits();
+                }
+                Op::FNeg { d, a } => {
+                    self.stack[r(d)] = ops::neg_float(f64::from_bits(self.stack[r(a)])).to_bits()
+                }
+                Op::ToF64 { d, a } => {
+                    self.stack[r(d)] = ops::f64_of_int(self.stack[r(a)] as i64).to_bits()
+                }
                 Op::Neg { d, a } => self.stack[r(d)] = ops::neg(self.stack[r(a)] as i64)? as u64,
                 Op::Not { d, a } => self.stack[r(d)] = u64::from(ops::not(self.stack[r(a)] != 0)),
+                Op::Cmp {
+                    op,
+                    d,
+                    a,
+                    b,
+                    kind: Kind::F64,
+                } => {
+                    let (x, y) = (
+                        f64::from_bits(self.stack[r(a)]),
+                        f64::from_bits(self.stack[r(b)]),
+                    );
+                    self.stack[r(d)] = u64::from(ops::compare_float(op, x, y)?);
+                }
                 Op::Cmp { op, d, a, b, kind } => {
                     let (x, y) = (self.stack[r(a)], self.stack[r(b)]);
                     let (x, y) = match kind {
@@ -711,6 +737,7 @@ fn scalar(w: u64, kind: Kind) -> Option<ops::Scalar> {
     Some(match kind {
         Kind::Int => ops::Scalar::Int(w as i64),
         Kind::U64 => ops::Scalar::U64(w),
+        Kind::F64 => ops::Scalar::F64(w),
         Kind::Bool => ops::Scalar::Bool(w != 0),
         Kind::Char => ops::Scalar::Char(byte(w).ok()?),
         Kind::Other => return None,

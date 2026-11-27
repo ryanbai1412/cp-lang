@@ -116,6 +116,7 @@ impl<'a> Cx<'a> {
                 }
             }),
             TK::Int(_)
+            | TK::Float(_)
             | TK::Bool(_)
             | TK::Unit
             | TK::Unset

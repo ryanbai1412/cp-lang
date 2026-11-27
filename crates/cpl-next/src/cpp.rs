@@ -182,6 +182,7 @@ static inline void cpl_ev(uint64_t x) { fprintf(stderr, " %llu", (unsigned long 
 static inline void cpl_ev(bool b) { fputs(b ? " true" : " false", stderr); }
 static inline void cpl_out(int64_t x) { printf("%lld", (long long)x); }
 static inline void cpl_out(uint64_t x) { printf("%llu", (unsigned long long)x); }
+static inline void cpl_out(double x) { printf("%.10f", x); }
 static inline void cpl_out(bool b) { fputs(b ? "true" : "false", stdout); }
 "#;
 
@@ -394,7 +395,13 @@ fn const_ref_params(f: &Func<CTy>) -> Vec<bool> {
                 && !written.contains(l)
                 && !matches!(
                     f.locals[*l],
-                    CTy::Int | CTy::Bool | CTy::Char | CTy::U64 | CTy::Unit | CTy::Dom(_)
+                    CTy::Int
+                        | CTy::Bool
+                        | CTy::Char
+                        | CTy::U64
+                        | CTy::F64
+                        | CTy::Unit
+                        | CTy::Dom(_)
                 )
         })
         .collect()
@@ -498,6 +505,7 @@ impl Emit<'_> {
             CTy::Bool => "bool".to_string(),
             CTy::Char => "cpl_char".to_string(),
             CTy::U64 => "uint64_t".to_string(),
+            CTy::F64 => "double".to_string(),
             CTy::Unit => "cpl_unit".to_string(),
             CTy::Raw(e) => format!("cpl_raw<{}>", self.name(e)),
             CTy::Ref(e) => format!("{}*", self.name(e)),
@@ -602,6 +610,8 @@ impl Emit<'_> {
         match &e.kind {
             EK::Int(i) if *i == i64::MIN => "INT64_MIN".to_string(),
             EK::Int(i) => format!("INT64_C({i})"),
+            // The shortest decimal that reads back as these bits.
+            EK::F64(b) => format!("{:?}", f64::from_bits(*b)),
             EK::Bool(b) => b.to_string(),
             EK::Text(t) => {
                 let lit: String = t
@@ -634,6 +644,17 @@ impl Emit<'_> {
                 let a: Vec<String> = args.iter().map(|a| self.arg(a)).collect();
                 let bin = |o: &str| format!("({} {o} {})", a[0], a[1]);
                 let unsigned = matches!(args.first(), Some(Arg::Value(e)) if e.ty == CTy::U64);
+                // `F64` arithmetic is IEEE in both engines (R02.1).
+                if matches!(args.first(), Some(Arg::Value(e)) if e.ty == CTy::F64) {
+                    match op {
+                        Intr::Add => return bin("+"),
+                        Intr::Sub => return bin("-"),
+                        Intr::Mul => return bin("*"),
+                        Intr::Div => return bin("/"),
+                        Intr::Neg => return format!("(-{})", a[0]),
+                        _ => {}
+                    }
+                }
                 match ops::cpp(*op, unsigned) {
                     Some(ops::Cpp::Infix(o)) => return bin(o),
                     Some(ops::Cpp::Call(f)) => return format!("{f}({})", a.join(", ")),
@@ -641,6 +662,7 @@ impl Emit<'_> {
                 }
                 match op {
                     Intr::ToU64 => format!("((uint64_t)({}))", a[0]),
+                    Intr::ToF64 => format!("((double)({}))", a[0]),
                     Intr::FromU64 => format!("cpl_int_of_u64({})", a[0]),
                     Intr::Neg => format!("cpl_neg({})", a[0]),
                     Intr::Below => format!("((uint64_t)({}) < (uint64_t)({}))", a[0], a[1]),

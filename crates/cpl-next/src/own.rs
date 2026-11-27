@@ -88,6 +88,7 @@ fn plain_in(d: &Decls, t: &Ty, depth: usize, doms: &[usize]) -> bool {
         | Ty::Bool
         | Ty::Char
         | Ty::U64
+        | Ty::F64
         | Ty::Unit
         | Ty::Dom(_)
         | Ty::Fn(..)
@@ -337,6 +338,7 @@ impl Cx<'_> {
                 | Ty::Bool
                 | Ty::Char
                 | Ty::U64
+                | Ty::F64
                 | Ty::Unit
                 | Ty::Dom(_)
         ) {
@@ -1024,6 +1026,7 @@ impl Cx<'_> {
     fn expr(&mut self, e: &TExpr, fx: &mut Fx) {
         match &e.kind {
             TK::Int(_)
+            | TK::Float(_)
             | TK::Bool(_)
             | TK::Unit
             | TK::Unset
