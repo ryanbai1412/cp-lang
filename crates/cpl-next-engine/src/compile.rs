@@ -438,7 +438,8 @@ pub(crate) fn compile(p: &Program, funcs: &[Func<CTy>]) -> Code {
         offs.push(off);
     }
     for (i, f) in funcs.iter().enumerate() {
-        let top = c.funcs[i].frame;
+        let frame = c.funcs[i].frame;
+        let k = if loops(&f.body) { CONSTS } else { 0 };
         let mut fc = Fc {
             c: &mut c,
             p,
@@ -447,9 +448,9 @@ pub(crate) fn compile(p: &Program, funcs: &[Func<CTy>]) -> Code {
             offs: &offs,
             off: offs[i].clone(),
             global_at: &global_at,
-            top,
-            max: top,
-            ops: Vec::new(),
+            top: frame + k,
+            max: frame + k,
+            ops: (0..k).map(|j| Op::Imm { d: frame + j, v: 0 }).collect(),
             loops: Vec::new(),
             ret: 0,
             exits: None,
@@ -457,8 +458,22 @@ pub(crate) fn compile(p: &Program, funcs: &[Func<CTy>]) -> Code {
             chain: 0,
             marks: vec![(0, 0)],
             lending: None,
+            looping: 0,
+            consts: Vec::new(),
+            kregs: (frame, k),
         };
         fc.block(&f.body);
+        // Each constant a loop asked for set at entry; the rest of the first ops become jumps
+        // to the next op, which `tidy` drops.
+        for j in 0..k as usize {
+            fc.ops[j] = match fc.consts.get(j) {
+                Some(&v) => Op::Imm {
+                    d: frame + j as u32,
+                    v,
+                },
+                None => Op::Jump { t: j as u32 + 1 },
+            };
+        }
         let (ops, max) = (std::mem::take(&mut fc.ops), fc.max);
         let marks = std::mem::take(&mut fc.marks);
         c.funcs[i].frame = max;
@@ -500,6 +515,25 @@ struct Fc<'a> {
     marks: Vec<(u32, u32)>,
     /// In an inlined lender: the caller's region body, which its `lend` runs in place.
     lending: Option<Lending<'a>>,
+    /// How many loops the op being compiled is in.
+    looping: u32,
+    /// Constants a loop reads, each in a register its fn's entry sets (the first ops).
+    consts: Vec<u64>,
+    /// The first register for constants and how many there are.
+    kregs: (Reg, u32),
+}
+
+/// How many constants a fn with a loop keeps in registers.
+const CONSTS: u32 = 8;
+
+fn loops(b: &[Stmt<CTy>]) -> bool {
+    b.iter().any(|s| match s {
+        Stmt::Loop(..) => true,
+        Stmt::If(_, x, y) => loops(x) || loops(y),
+        Stmt::Switch(_, arms) => arms.iter().any(|a| loops(a)),
+        Stmt::Region { body, .. } => loops(body),
+        _ => false,
+    })
 }
 
 /// A region body an inlined lender runs where it lends: the caller's context to compile it in.
@@ -616,6 +650,7 @@ impl Fc<'_> {
                 }
             }
             Stmt::Loop(body, step) => {
+                self.looping += 1;
                 let head = self.here();
                 self.loops.push(Ctx::Loop {
                     brk: Vec::new(),
@@ -643,6 +678,7 @@ impl Fc<'_> {
                 for j in brk {
                     self.patch(j, out);
                 }
+                self.looping -= 1;
             }
             Stmt::Switch(c, arms) => {
                 let c = self.operand(c);
@@ -946,8 +982,27 @@ impl Fc<'_> {
             }
         }
     }
+    /// The register the fn's entry puts `v` in, while registers for constants are left; a
+    /// region body runs in its fn's frame, so it reads them too.
+    fn konst(&mut self, v: u64) -> Option<Reg> {
+        let (base, k) = self.kregs;
+        let j = match self.consts.iter().position(|&c| c == v) {
+            Some(j) => j,
+            None if self.consts.len() < k as usize => {
+                self.consts.push(v);
+                self.consts.len() - 1
+            }
+            None => return None,
+        };
+        Some(base + j as Reg)
+    }
     /// The register holding `e`'s value: a local's own when reading it copies nothing.
     fn operand(&mut self, e: &Expr<CTy>) -> Reg {
+        if let (EK::Int(i), true) = (&e.kind, self.looping > 0) {
+            if let Some(r) = self.konst(*i as u64) {
+                return r;
+            }
+        }
         if let EK::Copy(p) = &e.kind {
             if !self.owns(&e.ty) {
                 if let Some(r) = self.direct(p) {
