@@ -14,8 +14,6 @@ A point in the history of a structure that can step back in time, returned by `m
 
 Union-find with path halving and union by size.
 
-Fields: `marked: Bool`.
-
 - `fn new(rollback: Bool = false) -> Dsu<V>` — \(O(n)\) for n = `V.count`; one `[V]` array; A union-find over `V` with every position in its own set.
 - `fn find(self, v: V) -> V` — \(O(\alpha(n))\) amortized; \(O(\log n)\) after the first `mark`; The representative of `v`'s set: the root that union by size kept.
 - `fn mark(mut self) -> Mark` — \(O(1)\); The present, to return to with [`undo_to`](Dsu.undo_to).
@@ -32,7 +30,7 @@ Fields: `marked: Bool`.
 
 Union-find where every set carries a value of type `T`.
 
-Fields: `val: [V]T`, `join: (T, T) -> T`, `parts: Int`, `marked: Bool`.
+Fields: `val: [V]T`, `join: (T, T) -> T`.
 
 - `fn new(init: (V) -> T, join: (T, T) -> T) -> DsuOf<V, T>` — \(O(n)\) calls of `init`; two `[V]` arrays; A union-find over `V` with every position alone, the set of `v` holding `init(v)`, and `join` combining the values of two sets when they merge.
 - `fn find(self, v: V) -> V` — \(O(\alpha(n))\) amortized; \(O(\log n)\) after the first `mark`; The representative of `v`'s set, as for [`Dsu.find`](Dsu.find).

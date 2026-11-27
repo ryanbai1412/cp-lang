@@ -10,7 +10,7 @@ In prelude (no `use` needed): `Counter`, `tally`.
 
 Flat open-addressing hash map from `Int` keys to `V`, salted with `splitmix64`.
 
-Fields: `ks: List<Int>`, `vs: List<V>`, `state: List<Int>`, `default_val: V`, `salt: U64`, `live: Int`, `used: Int`.
+Fields: `default_val: V`, `salt: U64`.
 
 - `fn new(default_val: V, cap: Int = 16) -> FlatMap<V>` — \(O(\mathit{cap})\); [rename] Create an empty `FlatMap<V>` sized for at least `cap` entries (replaces `with_capacity`).
 - `@get fn len(self) -> Int` — \(O(1)\); Number of live key-value pairs.
