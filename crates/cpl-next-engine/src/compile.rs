@@ -804,38 +804,52 @@ impl Fc<'_> {
 /// Whether `b` writes local `l` or lets anything else write it: assigns it or a part, lends
 /// it, takes its address or lends it out.
 fn writes(b: &[Stmt<CTy>], l: usize) -> bool {
+    touches(b, l, true)
+}
+/// Whether `b` takes the address of local `l`, after which any call may write it.
+fn addressed(b: &[Stmt<CTy>], l: usize) -> bool {
+    touches(b, l, false)
+}
+/// Whether `b` writes local `l` (`all`) or only takes its address.
+fn touches(b: &[Stmt<CTy>], l: usize, all: bool) -> bool {
+    let at = |p: &Place| all && root(p) == Some(l);
     b.iter().any(|s| match s {
-        Stmt::Let(x, e) => *x == l || writes_in(e, l),
-        Stmt::Assign(p, e) => root(p) == Some(l) || writes_in(e, l),
-        Stmt::Expr(e) | Stmt::Yield(e) | Stmt::Fact(e) => writes_in(e, l),
-        Stmt::Return(e) => e.as_ref().is_some_and(|e| writes_in(e, l)),
-        Stmt::If(c, a, b) => writes_in(c, l) || writes(a, l) || writes(b, l),
-        Stmt::Loop(a, b) => writes(a, l) || writes(b, l),
-        Stmt::Switch(c, arms) => writes_in(c, l) || arms.iter().any(|a| writes(a, l)),
-        Stmt::Check { cond, .. } => writes_in(cond, l),
+        Stmt::Let(x, e) => (all && *x == l) || touches_in(e, l, all),
+        Stmt::Assign(p, e) => at(p) || touches_in(e, l, all),
+        Stmt::Expr(e) | Stmt::Yield(e) | Stmt::Fact(e) => touches_in(e, l, all),
+        Stmt::Return(e) => e.as_ref().is_some_and(|e| touches_in(e, l, all)),
+        Stmt::If(c, a, b) => touches_in(c, l, all) || touches(a, l, all) || touches(b, l, all),
+        Stmt::Loop(a, b) => touches(a, l, all) || touches(b, l, all),
+        Stmt::Switch(c, arms) => touches_in(c, l, all) || arms.iter().any(|a| touches(a, l, all)),
+        Stmt::Check { cond, .. } => touches_in(cond, l, all),
         Stmt::Print(ps) => ps
             .iter()
-            .any(|p| matches!(p, PrintPiece::Value(v, _) if writes_in(v, l))),
-        Stmt::Event(_, vs) => vs.iter().any(|v| writes_in(v, l)),
-        Stmt::Region { args, body, .. } => lends(args, l) || writes(body, l),
-        Stmt::LendOut(p) => root(p) == Some(l),
+            .any(|p| matches!(p, PrintPiece::Value(v, _) if touches_in(v, l, all))),
+        Stmt::Event(_, vs) => vs.iter().any(|v| touches_in(v, l, all)),
+        Stmt::Region { args, body, .. } => lends_in(args, l, all) || touches(body, l, all),
+        Stmt::LendOut(p) => at(p),
         Stmt::Break | Stmt::Continue => false,
     })
 }
-fn writes_in(e: &Expr<CTy>, l: usize) -> bool {
+fn touches_in(e: &Expr<CTy>, l: usize, all: bool) -> bool {
     match &e.kind {
         EK::AddrOf(p) | EK::Lent(p) => root(p) == Some(l),
-        EK::Intr(_, args, _) | EK::Call(_, args, _) => lends(args, l),
-        EK::CallValue(f, xs, _) => writes_in(f, l) || xs.iter().any(|x| writes_in(x, l)),
-        EK::MakeStruct(xs) | EK::MakeClosure(xs) => xs.iter().any(|x| writes_in(x, l)),
-        EK::Inject(x) | EK::Widen(x) | EK::MakeUnion(_, x) => writes_in(x, l),
+        EK::Intr(_, args, _) | EK::Call(_, args, _) => lends_in(args, l, all),
+        EK::CallValue(f, xs, _) => {
+            touches_in(f, l, all) || xs.iter().any(|x| touches_in(x, l, all))
+        }
+        EK::MakeStruct(xs) | EK::MakeClosure(xs) => xs.iter().any(|x| touches_in(x, l, all)),
+        EK::Inject(x) | EK::Widen(x) | EK::MakeUnion(_, x) => touches_in(x, l, all),
         _ => false,
     }
 }
 fn lends(args: &[Arg<CTy>], l: usize) -> bool {
+    lends_in(args, l, true)
+}
+fn lends_in(args: &[Arg<CTy>], l: usize, all: bool) -> bool {
     args.iter().any(|a| match a {
-        Arg::Value(v) => writes_in(v, l),
-        Arg::Lend(p) => root(p) == Some(l),
+        Arg::Value(v) => touches_in(v, l, all),
+        Arg::Lend(p) => all && root(p) == Some(l),
         Arg::View(_) => false,
     })
 }
@@ -1418,7 +1432,7 @@ impl<'a> Fc<'a> {
         let funcs: &'a [Func<CTy>] = self.funcs;
         let g = &funcs[f];
         let base = self.temp(self.c.funcs[f].locals);
-        let off: Vec<Reg> = self.offs[f].iter().map(|o| base + o).collect();
+        let mut off: Vec<Reg> = self.offs[f].iter().map(|o| base + o).collect();
         let drops: Vec<(Reg, Lay)> = self.c.funcs[f]
             .drops
             .iter()
@@ -1441,9 +1455,36 @@ impl<'a> Fc<'a> {
             let n = self.c.lays.size[lay as usize];
             self.ops.push(Op::Zero { d: at, n });
         }
+        // A parameter the body never writes, given a local of the caller that nothing writes
+        // while the call runs, is that local's registers: no words move in.
+        let lent_body = lending.as_ref().map(|l| &l.body[..]);
+        let mut aliased = Vec::new();
+        for (&(l, _), a) in g.params.iter().zip(args) {
+            let x = match a {
+                Arg::View(Place::Local(x)) if read_only.contains(&off[l]) => *x,
+                Arg::Value(Expr {
+                    kind: EK::Copy(Place::Local(x)),
+                    ..
+                }) if !writes(&g.body, l) && !drops.iter().any(|&(at, _)| at == off[l]) => *x,
+                _ => continue,
+            };
+            if lends(args, x)
+                || addressed(&self.f.body, x)
+                || lent_body.is_some_and(|b| writes(b, x))
+            {
+                continue;
+            }
+            if let Some(s) = self.direct(&Place::Local(x)) {
+                off[l] = s;
+                aliased.push(l);
+            }
+        }
         let mut lends = Vec::new();
         for (&(l, _), a) in g.params.iter().zip(args) {
             let to = off[l];
+            if aliased.contains(&l) {
+                continue;
+            }
             match a {
                 Arg::Value(v) => self.expr(v, to),
                 Arg::View(p) if read_only.contains(&to) => {

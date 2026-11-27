@@ -1044,6 +1044,7 @@ next/n_domain_count_pred.cp
 next/n_domain_trait_01.cp
 next/n_engine_01_inlined_lender_runs_body_in_place.cp
 next/n_engine_02_trap_in_inlined_lender_body.cp
+next/n_engine_03_inlined_param_reads_caller_local.cp
 next/n_enum_01_values_and_order.cp
 next/n_f64_01_arith_compare_print.cp
 next/n_f64_02_inexact_literal_rejected.cp
