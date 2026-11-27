@@ -1276,7 +1276,7 @@ impl<'a> Cx<'a> {
                         let var = self.bind(name, dty);
                         let b = self.block(body, None);
                         self.scopes.pop();
-                        out.push(TStmt::For(var, lo, hi, b));
+                        out.push(TStmt::For(var, lo, hi, Box::new(b)));
                         return;
                     }
                 }
@@ -1361,7 +1361,7 @@ impl<'a> Cx<'a> {
                 let var = self.bind(name, Ty::Int);
                 let b = self.block(body, None);
                 self.scopes.pop();
-                out.push(TStmt::For(var, lo, hi, b));
+                out.push(TStmt::For(var, lo, hi, Box::new(b)));
             }
             StmtKind::Return(e) => {
                 let ret = self.ret.clone();

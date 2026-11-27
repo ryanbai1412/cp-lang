@@ -190,7 +190,7 @@ pub enum TStmt {
     Assign(TExpr, TExpr),
     Expr(TExpr),
     While(TExpr, TExpr),
-    For(VarRef, TExpr, TExpr, TExpr),
+    For(VarRef, TExpr, TExpr, Box<TExpr>),
     Return(Option<TExpr>),
     Assert(TExpr, String, Span, CheckKind),
     Break,
