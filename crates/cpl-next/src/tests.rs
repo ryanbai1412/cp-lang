@@ -535,7 +535,7 @@ if a == None and b != None and not (None == b):\n    print(b!.f(1))\n";
 #[test]
 fn a_ranged_int_shares_the_representation_of_an_int() {
     let src =
-        "var x: 0..=10 = 5\nvar xs: List<0..=10> = List.new()\nxs.push(x)\nprint(xs.get(0))\n";
+        "var x: 0..=10 = 5\nvar xs: List<0..=10> = List.new()\nxs.push(x)\nvar ys: List<Int> = List.new()\nys.push(x)\nprint(xs.get(0) + ys.get(0))\n";
     let c = compile(&Std::read(), src, &Roots::std(), false).expect("compiles");
     let list = |t: &CTy, ranged: bool| matches!(t, CTy::Struct(_, ts, _) if ts.len() == 1 && matches!(ts[0], CTy::Range(..)) == ranged && matches!(ts[0], CTy::Range(..) | CTy::Int));
     let all: Vec<&CTy> = (c.prog.insts.iter())
