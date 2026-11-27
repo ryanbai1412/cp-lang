@@ -9486,3 +9486,5 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 - **Call.** `let (r, f) = d.find(v)` and `for (k, c) in b.entries()` on a record `(root: V, flip: Bool)` bind its fields in declared order, the same as a tuple's (R02.5.5). A record pattern still names fields and is still closed without `..`.
 - **Why.** std writes it throughout (std.bag, std.dsu, std.math, std.poly, std.graph) and the old pipeline accepted it; cpl-next read the parts as `_0`, `_1` and reported E0203 beside unrelated refusals. Records are anonymous structs with ordered fields (R02.5.2), and a tuple value already fits a record of the same field types (decision 4132's positional-to-named fit), so the pattern follows the value.
 - **Reverse.** Restore the fresh-domain condition in `let_parts` and the tuple-only arm in `pattern.rs`, and rewrite std's positional destructurings as record patterns.
+
+## 651. (reserved, unknown)
