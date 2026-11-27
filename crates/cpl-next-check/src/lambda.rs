@@ -398,7 +398,7 @@ impl Cx<'_> {
         let s = self.d.s(d);
         let names: Vec<String> = s.fields.iter().map(|f| f.0.clone()).collect();
         let positional = (names.iter().enumerate()).all(|(k, n)| *n == format!("_{k}"));
-        (positional || crate::records::is_record(&s.name)).then_some(names)
+        (positional || s.record).then_some(names)
     }
 }
 

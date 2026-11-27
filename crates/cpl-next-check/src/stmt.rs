@@ -385,7 +385,7 @@ impl<'a> Cx<'a> {
             );
             if let Ty::Struct(d, ..) = self.shallow(&w.ty) {
                 let have = self.d.s(d).fields.len();
-                if crate::records::is_record(&self.d.s(d).name) && have != n {
+                if self.d.s(d).record && have != n {
                     let code = cpl_diag::codes::TYPE_MISMATCH;
                     let msg = Msg::verdict(
                         code,

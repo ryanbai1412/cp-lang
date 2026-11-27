@@ -275,6 +275,7 @@ fn layer(
                         }
                         d.structs.push(StructDecl {
                             name: sd.name.text.clone(),
+                            record: marked(s, crate::records::RECORD),
                             generics: sd.generics.iter().map(|g| g.text.clone()).collect(),
                             fields: Vec::new(),
                             var_fields: Vec::new(),
@@ -430,11 +431,9 @@ fn layer(
     for (mi, made) in derived.iter().enumerate() {
         for (item, name, s) in made {
             // A record is core's struct wherever its impl is written.
-            let owner = match crate::records::is_record(name) {
-                true => CORE.0,
-                false => mi,
-            };
-            if let Some(Named::Struct(id)) = own[owner].get(name).copied() {
+            let record = |n: &Named| matches!(n, Named::Struct(s) if d.structs[s.0].record);
+            let found = own[mi].get(name).or_else(|| own[CORE.0].get(name).filter(|n| record(n)));
+            if let Some(Named::Struct(id)) = found.copied() {
                 pending.push((ModId(mi), item.clone(), s, Some(Named::Struct(id))));
             }
         }

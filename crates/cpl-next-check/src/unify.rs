@@ -270,7 +270,7 @@ impl<'a> Cx<'a> {
             Ty::Lent(e) => self.show(&e),
             Ty::Struct(d, ts, _) => {
                 let n = &self.d.s(d).name;
-                if crate::records::is_record(n) {
+                if self.d.s(d).record {
                     let fields = self.d.s(d).fields.iter().zip(&ts);
                     let fs: Vec<String> =
                         (fields.map(|((f, _), t)| format!("{f}: {}", self.show(t)))).collect();

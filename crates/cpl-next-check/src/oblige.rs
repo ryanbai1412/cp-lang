@@ -54,7 +54,7 @@ impl Cx<'_> {
                         self.poison(&r);
                         let tr = self.d.traits[r.tr.0].name.clone();
                         let shown = self.show(&t);
-                        let record = matches!(&t, Ty::Struct(d, ..) if crate::records::is_record(&self.d.s(*d).name));
+                        let record = matches!(&t, Ty::Struct(d, ..) if self.d.s(*d).record);
                         if record {
                             let msg = Unbuilt::FieldwiseTrait { ty: shown, tr };
                             self.err(span, msg);

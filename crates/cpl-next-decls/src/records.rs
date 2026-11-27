@@ -12,9 +12,8 @@ pub fn name<S: AsRef<str>>(fields: &[S]) -> String {
     format!("({})", fs.join(", "))
 }
 
-pub fn is_record(name: &str) -> bool {
-    name.starts_with('(')
-}
+/// The mark a record's synthesized struct carries, which no source can write (E0107).
+pub const RECORD: &str = "record";
 
 /// Each fn with a last `..xs` parameter, by name, with the labels of its other parameters: the
 /// arguments of a call by any other names are the record `xs` is (R06.1.5).
@@ -91,7 +90,12 @@ pub fn structs(shapes: &[Vec<String>], span: Span) -> Vec<ast::Stmt> {
                     methods: Vec::new(),
                 }),
                 span,
-                decorators: Vec::new(),
+                decorators: vec![ast::Decorator {
+                    directive: false,
+                    name: nm(RECORD.to_string()),
+                    args: Vec::new(),
+                    span,
+                }],
                 public: true,
             }
         })

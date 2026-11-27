@@ -102,6 +102,8 @@ pub struct Param {
 #[derive(Clone)]
 pub struct StructDecl {
     pub name: String,
+    /// A record's struct, `(lo:, hi:)` (R02.5.2), shown and matched by its fields.
+    pub record: bool,
     pub generics: Vec<String>,
     pub fields: Vec<(String, Ty)>,
     /// Per field: declared with `var`, so assignable after construction.
