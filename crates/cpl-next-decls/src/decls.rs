@@ -433,10 +433,12 @@ impl Decls {
     pub fn seen(&self, m: ModId) -> bool {
         self.seen.get(m.0).copied().unwrap_or(true)
     }
-    /// Whether a lookup may find impl `im`: its module is loaded and no written impl replaces it.
+    /// Whether a lookup may find impl `im`: no written impl replaces it, and its module is loaded
+    /// or declares the type it is for, whose methods are found wherever it came from (R11.3.4).
     pub fn live(&self, im: &ImplDecl) -> bool {
+        let own = matches!(im.for_, Ty::Struct(s, ..) if self.s(s).module == im.module);
         !im.replaced
-            && self.seen(im.module)
+            && (own || self.seen(im.module))
             && !matches!(im.for_, Ty::Struct(s, ..) if self.unseen_records.contains(&s))
     }
     /// The impls of `tr` a lookup may find, in order.

@@ -6,7 +6,7 @@
 //! start: `adj4`, `Dir4`, `step`, `ray`, `transposed`
 //! example: `domain R = 0..3; domain C = 0..3; (R(1), C(1)).adj4.collect() == [(R(0), C(1)), (R(1), C(2)), (R(2), C(1)), (R(1), C(0))]`
 
-use std.seq.{all, Col, Row, Slice}
+use std.seq.{all, Bidir, Col, IndexGet, Indexed, Keyed, Positional, Row, Seq, Sized, Slice}
 
 const DR = [-1, -1, 0, 1, 1, 1, 0, -1]
 const DC = [0, 1, 1, 1, 0, -1, -1, -1]
@@ -297,27 +297,12 @@ pub fn rows<R, C, T>(self: [R, C]T) -> lends GridRows<R, C, T> = GridRows(self)
 
 /// The rows of a grid, made by `g.rows`; lends the grid.
 pub struct GridRows<R, C, T>(g: [R, C]T):
-    /// \(O(1)\). How many rows: `R.count`.
-    ///
-    /// cost: \(O(1)\)
-    /// traps: never
-    /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = 1; g.rows.len == 2`
-    @get pub fn len(self) -> Int = R.count
-
     /// \(O(1)\). Whether there are no rows: `R` is empty.
     ///
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = 1; not g.rows.is_empty`
     @get pub fn is_empty(self) -> Bool = R.count == 0
-
-    /// \(O(1)\). Row `r`, the same view as `g[r]`.
-    ///
-    /// cost: \(O(1)\)
-    /// traps: never
-    /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = 1; g.rows[R(1)].sum() == 3`
-    /// order: column order
-    pub fn at(self, r: R) -> Row<R, C, T> = g[r]
 
     /// The rows in `R` order.
     ///
@@ -331,27 +316,12 @@ pub struct GridRows<R, C, T>(g: [R, C]T):
 
 /// The columns of a grid, made by `g.cols`; lends the grid.
 pub struct GridCols<R, C, T>(g: [R, C]T):
-    /// \(O(1)\). How many columns: `C.count`.
-    ///
-    /// cost: \(O(1)\)
-    /// traps: never
-    /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = 1; g.cols.len == 3`
-    @get pub fn len(self) -> Int = C.count
-
     /// \(O(1)\). Whether there are no columns: `C` is empty.
     ///
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = 1; not g.cols.is_empty`
     @get pub fn is_empty(self) -> Bool = C.count == 0
-
-    /// \(O(1)\). Column `c`, the same view as `g[.., c]`.
-    ///
-    /// cost: \(O(1)\)
-    /// traps: never
-    /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = 1; g.cols[C(1)].sum() == 2`
-    /// order: row order
-    pub fn at(self, c: C) -> Slice<Col<R, C, T>> = g[.., c]
 
     /// The columns in `C` order.
     ///
@@ -362,6 +332,80 @@ pub struct GridCols<R, C, T>(g: [R, C]T):
     /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = 1; g.cols.each().count() == 3`
     pub fn each(self) -> yields Slice<Col<R, C, T>>:
         for c in C: yield g[.., c]
+
+impl<R: Domain, C: Domain, T> Seq<Row<R, C, T>> for GridRows<R, C, T>:
+    fn iter(self) -> yields Row<R, C, T>:
+        for r in R: yield self.g[r]
+
+impl<R: Domain, C: Domain, T> Bidir<Row<R, C, T>> for GridRows<R, C, T>:
+    fn iter_rev(self) -> yields Row<R, C, T>:
+        for r in self.keys.rev: yield self.g[r]
+
+impl<R: Domain, C: Domain, T> Sized for GridRows<R, C, T>:
+    /// \(O(1)\). How many rows: `R.count`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = 1; g.rows.len == 2`
+    @get fn len(self) -> Int = R.count
+
+impl<R: Domain, C: Domain, T> Keyed<R, Row<R, C, T>> for GridRows<R, C, T>:
+    fn items(self) -> yields (R, Row<R, C, T>):
+        for r in R: yield (r, self.g[r])
+
+impl<R: Domain, C: Domain, T> Positional<Row<R, C, T>> for GridRows<R, C, T>:
+    fn nth(self, i: Int) -> Row<R, C, T>:
+        let r = R.nth((0..R.count)[i])
+        self.g[r]
+
+impl<R: Domain, C: Domain, T> IndexGet<R, Row<R, C, T>> for GridRows<R, C, T>:
+    /// \(O(1)\). Row `r`, the same view as `g[r]`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = 1; g.rows[R(1)].sum() == 3`
+    /// order: column order
+    fn at(self, r: R) -> Row<R, C, T> = self.g[r]
+
+impl<R: Domain, C: Domain, T> Indexed<R, Row<R, C, T>> for GridRows<R, C, T>:
+    @get fn keys(self) -> Range<R> = R
+
+impl<R: Domain, C: Domain, T> Seq<Slice<Col<R, C, T>>> for GridCols<R, C, T>:
+    fn iter(self) -> yields Slice<Col<R, C, T>>:
+        for c in C: yield self.g[.., c]
+
+impl<R: Domain, C: Domain, T> Bidir<Slice<Col<R, C, T>>> for GridCols<R, C, T>:
+    fn iter_rev(self) -> yields Slice<Col<R, C, T>>:
+        for c in self.keys.rev: yield self.g[.., c]
+
+impl<R: Domain, C: Domain, T> Sized for GridCols<R, C, T>:
+    /// \(O(1)\). How many columns: `C.count`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = 1; g.cols.len == 3`
+    @get fn len(self) -> Int = C.count
+
+impl<R: Domain, C: Domain, T> Keyed<C, Slice<Col<R, C, T>>> for GridCols<R, C, T>:
+    fn items(self) -> yields (C, Slice<Col<R, C, T>>):
+        for c in C: yield (c, self.g[.., c])
+
+impl<R: Domain, C: Domain, T> Positional<Slice<Col<R, C, T>>> for GridCols<R, C, T>:
+    fn nth(self, i: Int) -> Slice<Col<R, C, T>>:
+        let c = C.nth((0..C.count)[i])
+        self.g[.., c]
+
+impl<R: Domain, C: Domain, T> IndexGet<C, Slice<Col<R, C, T>>> for GridCols<R, C, T>:
+    /// \(O(1)\). Column `c`, the same view as `g[.., c]`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = 1; g.cols[C(1)].sum() == 2`
+    /// order: row order
+    fn at(self, c: C) -> Slice<Col<R, C, T>> = self.g[.., c]
+
+impl<R: Domain, C: Domain, T> Indexed<C, Slice<Col<R, C, T>>> for GridCols<R, C, T>:
+    @get fn keys(self) -> Range<C> = C
 
 impl Show for GridRows<R, C, T>:
     fn show(v):
