@@ -328,7 +328,7 @@
   "link_reads_check": 0,
   "next_split": 7,
   "next_wrong_accepts": 20,
-  "next_core_checks": 6,
+  "next_core_checks": 21,
   "next_ignored_settings": 0,
   "next_ownership_outside_own": 1,
   "fast_unchecked": 0,

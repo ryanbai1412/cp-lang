@@ -1582,8 +1582,10 @@ ID_SETS = {"next_wrong_accepts_ids": next_wrong_accepts, "next_split_ids": next_
 
 
 def next_core_checks(root: Path) -> list[str]:
-    """Places where new-pipeline code asks whether a module is core (`== CORE`, `!= CORE`):
-    core is an ordinary library, so nothing may treat it differently."""
+    """Places where new-pipeline code singles out core or a std module: the `CORE` id or name in
+    any use (`== CORE`, `CORE.0`, `fn_named(CORE, ..)`), core's stand-in refusals, a module
+    named `"core"`, and std source built into the binary. core
+    and std are ordinary libraries, so nothing may treat them differently (S6)."""
     return [f"{_rel(root, p)}:{i}" for p in _rs_files(root, *_next_srcs(root), tests=False)
             for i, l in enumerate(_lines(p), 1)
             if not l.lstrip().startswith("//") and NEXT_CORE_USE_RE.search(l) and not NEXT_CORE_DEF_RE.match(l)]
@@ -1591,7 +1593,9 @@ def next_core_checks(root: Path) -> list[str]:
 
 # Any use of the core module's id, not just `== CORE`: `decls::CORE`, `CORE.0`,
 # `fn_named(CORE, ..)` and `matches!(m, CORE)` single it out the same way (shortcut audit).
-NEXT_CORE_USE_RE = re.compile(r"\bCORE\b")
+# Core's stand-in refusals, core known by its name, and library source built into the binary
+# single it out too; dotted std module names are next_std_names'.
+NEXT_CORE_USE_RE = re.compile(r'\bCORE\b|\bCoreStandIn|"core"|include_str!\([^)]*\.cp"')
 NEXT_CORE_DEF_RE = re.compile(r"\s*(?:pub(?:\([^)]*\))?\s+)?const\s+CORE\b")
 
 
@@ -4596,7 +4600,7 @@ COUNTERS = {
     "next_split": ("cases whose interpreter, engine and C++ runs disagree: one source of semantics broken (Core)", next_split, True),
     "next_wrong_accepts": ("cases the new pipeline accepts that must be rejected: soundness holes (Core)", next_wrong_accepts, True),
     "next_late_rejects": ("cases the spec accepts that link or own rejects with a user code: unbuilt features said as errors (Core)", next_late_rejects, True),
-    "next_core_checks": ("new-pipeline checks of whether a module is core (Core)", next_core_checks, True),
+    "next_core_checks": ("new-pipeline code singling out core or a std module by id or name (Core)", next_core_checks, True),
     "next_ignored_settings": ("new-pipeline settings accepted and then ignored: an empty arm over source names (Core)", next_ignored_settings, True),
     "next_name_compares": ("new-pipeline comparisons of source text against a fixed identifier: names known by text (Core)", next_name_compares, True),
     "next_library_gates": ("new-pipeline checks of whether a module is a library: std-only rules (Core)", next_library_gates, True),
