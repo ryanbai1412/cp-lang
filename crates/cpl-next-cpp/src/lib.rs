@@ -644,7 +644,9 @@ impl Emit<'_> {
                 let fs = &self.p.structs[&e.ty];
                 let xs: Vec<String> = (xs.iter().zip(fs))
                     .map(|(x, f)| match (&x.kind, f) {
-                        (EK::Copy(Place::Deref(q) | Place::Through(q)), CTy::Lent(_)) => self.place(q),
+                        (EK::Copy(Place::Deref(q) | Place::Through(q)), CTy::Lent(_)) => {
+                            self.place(q)
+                        }
                         _ => self.expr(x),
                     })
                     .collect();

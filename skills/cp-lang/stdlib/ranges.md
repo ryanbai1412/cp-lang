@@ -23,7 +23,6 @@ Fields: `lo: Int`, `n: Int`, `by: Int`.
 - `fn drop(self, k: Int = 1) -> Range<D>` — Without its first `k` values: a range again (R07.4.11).
 - `fn step(self, k: 1..) -> Range<D>` — Every `k`-th value, from the first: a range again, so `(3..m).step(2).sum()` is O(1).
 - `fn take(self, k: Int) -> Range<D>` — Its first `k` values: a range again (R07.4.11).
-- `fn write(self)` — How `print` writes it: its values, space-separated.
 
 ## Functions
 

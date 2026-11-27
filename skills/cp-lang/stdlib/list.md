@@ -16,4 +16,4 @@ Fields: `buf: Raw<T>`.
 
 ## Functions
 
-- `fn yes(b: Bool) -> Str` — `"YES"` or `"NO"`.
+- `fn yes(ok: Bool, answers: ?(Str, Str) = None) -> Str` — The answer word for `ok`: `answers:` when given, else `("YES", "NO")` (R10.3.3).

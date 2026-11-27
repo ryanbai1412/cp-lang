@@ -146,9 +146,18 @@ pub const DECORATORS: &[(&str, &str)] = &[
         "derive_fields",
         "on a trait: every struct gets it through its fields packed as the `@pack` struct",
     ),
-    ("pack", "on a struct: the head-and-tail pair `@derive_fields` packs fields into"),
-    ("interpolation", "on a fn: what each piece of an interpolated string calls"),
-    ("input", "on a fn: a value it gives is input, so a range it fills is a contract"),
+    (
+        "pack",
+        "on a struct: the head-and-tail pair `@derive_fields` packs fields into",
+    ),
+    (
+        "interpolation",
+        "on a fn: what each piece of an interpolated string calls",
+    ),
+    (
+        "input",
+        "on a fn: a value it gives is input, so a range it fills is a contract",
+    ),
 ];
 
 /// Old spellings the parser or checker answers with their own E0503 fix.

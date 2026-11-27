@@ -262,7 +262,7 @@ Fields: `alpha: Count`, `stored: Trie<A>`, `added: AcBuckets<A>`, `removed: AcBu
 - `fn trim_end(self: Str) -> Str` — \(O(\lvert \mathit{self} \rvert)\); A copy of `self` with trailing whitespace (`Char.is_space`) removed.
 - `fn split_once(self: Str, sep: Char) -> ?(Str, Str)` — \(O(\lvert \mathit{self} \rvert)\); `self` cut at the first `sep` into `(before, after)`, neither holding that `sep`; `None` when `sep` does not occur.
 - `fn split_whitespace(self: Str) -> List<Str>` — \(O(\lvert \mathit{self} \rvert)\); The maximal runs of non-whitespace characters of `self` (`Char.is_space` separates), as new strings.
-- `fn join<S: Seq>(self: Str, parts: S) -> Str` — \(O(\lvert \mathit{output} \rvert)\); The elements of `parts` in order with `self` between each adjacent pair: `", ".join(xs)`.
+- `fn join<S: Seq<T>, T: Show>(self: Str, parts: S) -> Str` — \(O(\lvert \mathit{output} \rvert)\); The elements of `parts` in order with `self` between each adjacent pair: `", ".join(xs)`.
 - `fn replace(self: Str, from: Str, to: Str) -> Str` — \(O(\lvert \mathit{self} \rvert + \lvert \mathit{output} \rvert)\); A copy of `self` with every occurrence of `from` replaced by `to`.; traps: when `from` is empty
 - `fn parse_int(self: Str, base: Int = 10) -> ?Int` — \(O(\lvert \mathit{self} \rvert)\); `self` read as a signed integer in `base`, or `None` if malformed or out of `Int` range.; traps: when `base` is outside `2..=36`
 - `fn parse<T: Read>(self: Str) -> ?T` — \(O(\lvert \mathit{self} \rvert)\); `self` read as a `T` by the same rules as `read<T>()` (core 10.2), or `None` if a token is malformed, out of `T`'s range, missing, or left over.

@@ -2,7 +2,7 @@
 
 # std.tuple
 
-Tuples `(a, b)`, as `Tuple1` to `Tuple4`: compared field by field, cloned deeply, and a product domain when every part is a domain. Core re-exports them, so no module imports them.
+Tuples `(a, b)`, as `Tuple1` to `Tuple12`: compared field by field, cloned deeply, and a product domain when every part is a domain. Core re-exports them, so no module imports them.
 
 Import: `use std.tuple.{...}`.
 
@@ -13,3 +13,19 @@ Import: `use std.tuple.{...}`.
 ## `struct Tuple3<A, B, C>`
 
 ## `struct Tuple4<A, B, C, E>`
+
+## `struct Tuple5<A, B, C, E, F>`
+
+## `struct Tuple6<A, B, C, E, F, G>`
+
+## `struct Tuple7<A, B, C, E, F, G, H>`
+
+## `struct Tuple8<A, B, C, E, F, G, H, J>`
+
+## `struct Tuple9<A, B, C, E, F, G, H, J, K>`
+
+## `struct Tuple10<A, B, C, E, F, G, H, J, K, L>`
+
+## `struct Tuple11<A, B, C, E, F, G, H, J, K, L, M>`
+
+## `struct Tuple12<A, B, C, E, F, G, H, J, K, L, M, N>`
