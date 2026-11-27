@@ -2929,13 +2929,46 @@ def link_reads_check(root: Path) -> list[str]:
     for p in _rs_files(root, "crates/cpl-next-link/src", tests=False):
         rel = _rel(root, p)
         out += [f"{rel}:{i}" for i, line in enumerate(_lines(p), 1) if LINK_READS_CHECK_RE.search(line)]
-    # The structural half: no crate past lowering may depend on the checker at all, whatever names it uses.
+    # The structural half: no crate past lowering may reach the checker at all, whatever names it
+    # uses and through however many crates (a direct-only check misses `link -> x -> check`).
+    deps = _crate_deps(root)
     for c in AFTER_LOWER_CRATES:
-        toml = root / "crates" / c / "Cargo.toml"
-        if toml.is_file():
-            out += [f"{_rel(root, toml)}:{i}" for i, line in enumerate(_lines(toml), 1)
-                    if re.match(r"\s*cpl-next-check\b", line)]
+        path = _dep_path(deps, c, "cpl-next-check")
+        if path:
+            out.append(f"crates/{c}/Cargo.toml: reaches the checker via {' -> '.join(path)}")
     return out
+
+
+def _crate_deps(root: Path) -> dict[str, list[str]]:
+    """Each workspace crate's normal `cpl-*` dependencies (not dev or build), from its Cargo.toml."""
+    deps: dict[str, list[str]] = {}
+    for toml in sorted((root / "crates").glob("*/Cargo.toml")):
+        section, names = "", []
+        for line in _lines(toml):
+            if line.startswith("["):
+                section = line.strip()
+            elif section.endswith("dependencies]") and not re.search(r"(dev|build)-dependencies]$", section) \
+                    and (m := re.match(r"\s*(cpl[\w-]*)\s*[=.]", line)):
+                names.append(m.group(1))
+        deps[toml.parent.name] = names
+    return deps
+
+
+def _dep_path(deps: dict[str, list[str]], start: str, goal: str) -> list[str]:
+    """The shortest dependency path from `start` to `goal`, or [] when there is none."""
+    prev, todo = {start: ""}, [start]
+    while todo:
+        c = todo.pop(0)
+        if c == goal:
+            path = [c]
+            while prev[path[-1]]:
+                path.append(prev[path[-1]])
+            return path[::-1]
+        for d in deps.get(c, []):
+            if d not in prev:
+                prev[d] = c
+                todo.append(d)
+    return []
 
 
 AFTER_LOWER_CRATES = ("cpl-next-own", "cpl-next-link", "cpl-next-cpp", "cpl-next-interp", "cpl-next-engine")

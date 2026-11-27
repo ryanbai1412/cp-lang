@@ -293,6 +293,18 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.link_reads_check(root),
                              ["crates/cpl-next-link/src/lib.rs:1", "crates/cpl-next-link/src/lib.rs:3"])
 
+    def test_link_reads_check_follows_the_dependency_graph(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self._write(root, "crates/cpl-next-link/Cargo.toml",
+                        "[package]\nname = 1\n[dependencies]\ncpl-next-mid = { path = \"x\" }\n"
+                        "[dev-dependencies]\ncpl-next-check = { path = \"y\" }\n")
+            self._write(root, "crates/cpl-next-mid/Cargo.toml", "[dependencies]\ncpl-next-check.workspace = true\n")
+            self.assertEqual(dr.link_reads_check(root), ["crates/cpl-next-link/Cargo.toml: reaches the checker via "
+                                                         "cpl-next-link -> cpl-next-mid -> cpl-next-check"])
+            self._write(root, "crates/cpl-next-mid/Cargo.toml", "[dev-dependencies]\ncpl-next-check.workspace = true\n")
+            self.assertEqual(dr.link_reads_check(root), [])
+
     def test_crate_rules_come_from_architecture_md(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
@@ -2206,7 +2218,8 @@ class DebtRatchetTest(unittest.TestCase):
                                                              "crates/cpl-next-check/src/domain.rs:2"])
             self._write(root, "crates/cpl-next-link/Cargo.toml", "[dependencies]\ncpl-next-check.workspace = true\n")
             self._write(root, "crates/cpl-next-lower/Cargo.toml", "[dependencies]\ncpl-next-check.workspace = true\n")
-            self.assertEqual(dr.link_reads_check(root), ["crates/cpl-next-link/Cargo.toml:2"])
+            self.assertEqual(dr.link_reads_check(root), ["crates/cpl-next-link/Cargo.toml: reaches the checker "
+                                                         "via cpl-next-link -> cpl-next-check"])
 
     def test_weak_oracles_and_syntax_std_names(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
