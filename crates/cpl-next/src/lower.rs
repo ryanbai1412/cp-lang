@@ -114,7 +114,13 @@ pub fn lower(d: &Decls, typed: &Typed, src: &crate::modules::Loaded) -> Generic 
         out.funcs.insert(FuncKey::Case, c);
     }
     lw.in_main = false;
-    for (id, tf) in &typed.fns {
+    let copies = (typed.ctx_fns.iter().enumerate())
+        .map(|(k, (id, tf))| (FuncKey::Ctx(*id, k as u32 + 1), id, tf));
+    let all: Vec<_> = (typed.fns.iter())
+        .map(|(id, tf)| (FuncKey::Decl(*id), id, tf))
+        .chain(copies)
+        .collect();
+    for (key, id, tf) in all {
         let before = lw.errors.len();
         let fd = d.f(*id);
         lw.off = fd.item;
@@ -161,9 +167,9 @@ pub fn lower(d: &Decls, typed: &Typed, src: &crate::modules::Loaded) -> Generic 
             out.deferred.entry(*id).or_default().extend(es);
         }
         out.funcs.insert(
-            FuncKey::Decl(*id),
+            key.clone(),
             Func {
-                key: FuncKey::Decl(*id),
+                key,
                 name: fd.name.clone(),
                 params,
                 n_captures: 0,
@@ -313,6 +319,7 @@ impl Lw<'_> {
             decl: f.decl,
             targs,
             sets: f.sets.clone(),
+            ctx: f.ctx,
         }
     }
 }

@@ -246,6 +246,9 @@ pub struct DomInfo {
 pub struct Typed {
     pub domains: Vec<DomInfo>,
     pub fns: HashMap<FnId, TypedFn>,
+    /// The copies of `uses` fns checked under context values a call gave them: `FnRef::ctx`
+    /// `k` is the `k`-th (R09.1.4).
+    pub ctx_fns: Vec<(FnId, TypedFn)>,
     pub globals: Vec<Local>,
     pub main: Vec<TStmt>,
     pub lambdas: Vec<LambdaInfo>,
@@ -339,11 +342,28 @@ struct Cx<'a> {
     const_init: Vec<TStmt>,
     /// Inside `with checks(overflow: off)`: `Int` arithmetic wraps.
     wraps: bool,
+    /// The fields `with` lines set around the code being checked, innermost last (R09.1.2).
+    frames: Vec<CtxFrame>,
+    /// Each copy of a `uses` fn made so far, by the fn and the context values it is checked
+    /// under; and those still to check.
+    ctx_copies: HashMap<(FnId, String), u32>,
+    ctx_pending: Vec<(FnId, u32, Vec<CtxFrame>)>,
+}
+
+/// One field a `with` line set, read as `ctx.field` in the rest of its block.
+#[derive(Clone)]
+struct CtxFrame {
+    ctx: decls::ContextId,
+    field: String,
+    value: ast::Expr,
 }
 
 pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded) -> Typed {
     let mut cx = Cx {
         wraps: false,
+        frames: Vec::new(),
+        ctx_copies: HashMap::new(),
+        ctx_pending: Vec::new(),
         d,
         src,
         tys: Vec::new(),
@@ -468,6 +488,8 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded)
         main_out.push(TStmt::Item(*off));
         cx.stmt(s, &mut main_out);
     }
+    // A bare `with` line comes before the program's first statement (R09.1.1).
+    let mut begun = false;
     for (off, s) in main {
         cx.item_off = *off;
         // `@!multitest`: the count is read once and everything below runs once per case.
@@ -498,6 +520,16 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded)
             Some((_, body)) => body,
             None => &mut main_out,
         };
+        let bare_with = matches!(&s.kind, ast::StmtKind::With { body: None, .. });
+        if bare_with && begun {
+            let code = cpl_diag::codes::WITH_NOT_FIRST.0;
+            cx.err(
+                s.span,
+                format!("{code}: a bare `with` line comes first in its block"),
+            );
+            continue;
+        }
+        begun |= !bare_with;
         into.push(TStmt::Item(*off));
         cx.stmt(s, into);
         if let Some(i) = cx.early.take() {
@@ -534,8 +566,14 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded)
     todo.sort_by_key(|id| std::cmp::Reverse((d.f(*id).made, *id)));
     let mut deferred: HashMap<FnId, Vec<Msg>> = HashMap::new();
     let mut quiet_fns = HashSet::new();
+    let mut ctx_fns: Vec<(u32, FnId, TypedFn)> = Vec::new();
     loop {
         todo.append(&mut cx.reached);
+        if let Some((id, k, frames)) = cx.ctx_pending.pop() {
+            let tf = cx.check_fn(id, frames);
+            ctx_fns.push((k, id, tf));
+            continue;
+        }
         let (id, quiet) = match todo.pop() {
             Some(id) => (id, false),
             None => match cx.through_trait.pop() {
@@ -552,14 +590,14 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded)
             continue;
         }
         if !quiet {
-            let tf = cx.check_fn(id);
+            let tf = cx.check_fn(id, Vec::new());
             fns.insert(id, tf);
             continue;
         }
         quiet_fns.insert(id);
         let (n, reported) = (cx.errors.len(), cx.reported.clone());
         cx.reach(id);
-        let tf = cx.check_fn(id);
+        let tf = cx.check_fn(id, Vec::new());
         fns.insert(id, tf);
         let errors = cx.errors.split_off(n);
         cx.reported = reported;
@@ -575,7 +613,8 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded)
     for s in &mut main_z {
         cx.zonk_stmt(s);
     }
-    for tf in fns.values_mut() {
+    ctx_fns.sort_by_key(|c| c.0);
+    for tf in fns.values_mut().chain(ctx_fns.iter_mut().map(|c| &mut c.2)) {
         cx.zonk_expr(&mut tf.body);
         for l in &mut tf.locals {
             l.ty = cx.zonk(&l.ty);
@@ -609,6 +648,7 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded)
     Typed {
         domains: std::mem::take(&mut cx.domains),
         fns,
+        ctx_fns: ctx_fns.into_iter().map(|(_, id, tf)| (id, tf)).collect(),
         globals,
         main: main_z,
         lambdas,
@@ -676,6 +716,37 @@ impl<'a> Cx<'a> {
     }
     /// A reference reached fn `id`: it is checked, and what its library declaration uses that
     /// the slice does not build is said once. A trait's method reaches every impl's.
+    /// Which copy of `id` a call here makes: 0 when no context it `uses` is set around the
+    /// call, else the one checked under the values set (R09.1.3, R09.1.4).
+    pub(crate) fn ctx_copy(&mut self, id: FnId) -> u32 {
+        let d = self.d;
+        let f = d.f(id);
+        let used: Vec<decls::ContextId> = (f.uses.iter())
+            .filter_map(|n| match d.named(f.module, n) {
+                Some(decls::Named::Context(c)) => Some(c),
+                _ => None,
+            })
+            .collect();
+        let mut seen = HashSet::new();
+        let mut frames: Vec<CtxFrame> = (self.frames.iter().rev())
+            .filter(|x| used.contains(&x.ctx) && seen.insert((x.ctx, x.field.clone())))
+            .cloned()
+            .collect();
+        if frames.is_empty() {
+            return 0;
+        }
+        frames.sort_by(|a, b| (a.ctx, &a.field).cmp(&(b.ctx, &b.field)));
+        let key: String = (frames.iter())
+            .map(|x| format!("{}.{}={};", x.ctx.0, x.field, konst(&x.value)))
+            .collect();
+        let next = self.ctx_copies.len() as u32 + 1;
+        let k = *self.ctx_copies.entry((id, key)).or_insert(next);
+        if k == next {
+            self.ctx_pending.push((id, k, frames));
+        }
+        k
+    }
+
     pub(crate) fn reach(&mut self, id: FnId) {
         let d = self.d;
         let f = d.f(id);
@@ -717,7 +788,7 @@ impl<'a> Cx<'a> {
         self.errors
             .extend(said.into_iter().map(|e| e.in_module(module)));
     }
-    fn check_fn(&mut self, id: FnId) -> TypedFn {
+    fn check_fn(&mut self, id: FnId, frames: Vec<CtxFrame>) -> TypedFn {
         let d = self.d;
         let f = d.f(id);
         self.decl = Some(id);
@@ -729,6 +800,9 @@ impl<'a> Cx<'a> {
         self.scopes = vec![HashMap::new()];
         self.item_off = f.item;
         self.self_local = None;
+        // A top-level fn reads the contexts it was written in, and a `uses` fn its caller's
+        // (R09.1.3): `frames` are the values this copy of it is checked under.
+        let frames = std::mem::replace(&mut self.frames, frames);
         if let Some(ty) = f.self_ty.clone().filter(|_| f.self_mode != SelfMode::None) {
             self.self_local = Some(self.add_local(&f.self_name, ty));
         }
@@ -804,6 +878,7 @@ impl<'a> Cx<'a> {
             },
         };
         self.solve(true);
+        self.frames = frames;
         let out = TypedFn {
             self_local: self.self_local,
             params,
@@ -984,5 +1059,25 @@ impl Cx<'_> {
         self.consts[c.0] = Some(g);
         self.const_busy[c.0] = false;
         Some((VarRef::Global(g), self.globals[g].ty.clone()))
+    }
+}
+
+/// A context value written out, so two `with` lines that set the same value make one copy.
+fn konst(e: &ast::Expr) -> String {
+    match &e.kind {
+        ast::ExprKind::Tuple(xs) => {
+            format!("({})", xs.iter().map(konst).collect::<Vec<_>>().join(","))
+        }
+        ast::ExprKind::Unary { op, expr } => format!("{op:?}{}", konst(expr)),
+        ast::ExprKind::Str(ps) => {
+            let t: String = (ps.iter())
+                .map(|p| match p {
+                    ast::StrPiece::Text(t) => t.as_str(),
+                    _ => "",
+                })
+                .collect();
+            format!("{t:?}")
+        }
+        k => format!("{k:?}"),
     }
 }

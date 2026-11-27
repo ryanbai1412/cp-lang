@@ -329,6 +329,7 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
                     decl: *f,
                     targs: Vec::new(),
                     sets: Vec::new(),
+                    ctx: 0,
                 }))),
                 Some((k, None))
                     if matches!(e.kind, ast::ExprKind::Name(_)) && !cx.values.contains(k) =>
@@ -343,6 +344,7 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
                             decl: *f,
                             targs: Vec::new(),
                             sets: Vec::new(),
+                            ctx: 0,
                         }))),
                         None => {
                             errors.push(at("slice: type ItemOf".to_string()));

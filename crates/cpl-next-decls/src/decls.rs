@@ -65,6 +65,8 @@ pub struct FnDecl {
     /// The name in `= @intrinsic(name)`, when that is its body.
     pub intrinsic: Option<String>,
     pub getter: bool,
+    /// `uses io, opt`: contexts its caller's values flow into (R09.1.3).
+    pub uses: Vec<String>,
     /// `@same_keys`: its arguments that are arrays over domains share one domain (R04b.1.3).
     pub same_keys: bool,
     /// `@aka(..)`: names another language calls it; a call by one names this fn (R06.4.11).
@@ -169,6 +171,17 @@ pub struct LibConst {
     pub init: ast::Expr,
 }
 
+/// `context opt:` with its fields and their defaults (R09.1): values a `with` line sets for the
+/// rest of a block, read as `opt.k`.
+#[derive(Clone, Debug)]
+pub struct ContextDecl {
+    pub module: ModId,
+    pub name: String,
+    pub fields: Vec<ast::FieldDecl>,
+}
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
+pub struct ContextId(pub usize);
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct AliasId(pub usize);
 /// `type Name<G> = T`: `T` is read in its module's names, where `Name` itself means what it means
@@ -221,6 +234,8 @@ pub enum Named {
     Refused(usize),
     /// A library's `const`: a global its initializer sets once, at program start (R01.6.1).
     Const(ConstId),
+    /// `context io:`: compile-time settings a `with` line sets (R09.1).
+    Context(ContextId),
 }
 /// What a method sits in.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -250,6 +265,7 @@ pub struct Decls {
     /// Why each `Named::Refused` library item is not built.
     pub refused: Vec<String>,
     pub consts: Layer<LibConst>,
+    pub contexts: Layer<ContextDecl>,
     pub struct_sets: Arc<HashMap<StructId, usize>>,
     /// `struct SegTree<D, T, F = Int>`: each struct's default type arguments, in its parameters.
     pub struct_defaults: Arc<HashMap<StructId, Vec<Option<Ty>>>>,
@@ -1087,6 +1103,7 @@ fn add_fn(
         n_ret_sets,
         region,
         lends,
+        uses: f.uses.iter().map(|n| n.text.clone()).collect(),
         body: f.body.clone(),
         intrinsic: match &f.body {
             FnBody::Expr(e) => match &e.kind {

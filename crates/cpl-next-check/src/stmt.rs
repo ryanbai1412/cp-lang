@@ -180,6 +180,7 @@ impl<'a> Cx<'a> {
         let mut value = None;
         let outer = self.group.len();
         let wraps = self.wraps;
+        let frames = self.frames.len();
         self.declare_nested(&b.stmts);
         for (i, s) in b.stmts.iter().enumerate() {
             // A bare `with` line sets a context for the rest of its block (R09.1.1).
@@ -203,6 +204,9 @@ impl<'a> Cx<'a> {
                         self.wraps = w;
                     }
                     continue;
+                } else if let Some(fs) = self.ctx_frames(ctx, args) {
+                    self.frames.extend(fs);
+                    continue;
                 }
             }
             // A last expression that never gives a value is a statement, as `return` is.
@@ -223,6 +227,7 @@ impl<'a> Cx<'a> {
             self.stmt(s, &mut out);
         }
         self.wraps = wraps;
+        self.frames.truncate(frames);
         self.captures_set(outer, &out);
         self.group.truncate(outer);
         self.scopes.pop();
@@ -1163,6 +1168,47 @@ impl<'a> Cx<'a> {
                     out.push(TStmt::Expr(b));
                 }
             }
+            // A block takes its own bare `with` lines; one here is the program's own, for the
+            // rest of the file (R09.1.1).
+            StmtKind::With {
+                ctx,
+                args,
+                body: None,
+            } if ctx.text == "checks" => {
+                if let Some(w) = self.checks(args, s.span) {
+                    self.wraps = w;
+                }
+            }
+            StmtKind::With {
+                ctx,
+                args,
+                body: None,
+            } if matches!(
+                self.d.named(self.module, &ctx.text),
+                Some(decls::Named::Context(_))
+            ) =>
+            {
+                if let Some(fs) = self.ctx_frames(ctx, args) {
+                    self.frames.extend(fs);
+                }
+            }
+            StmtKind::With {
+                ctx,
+                args,
+                body: Some(body),
+            } if matches!(
+                self.d.named(self.module, &ctx.text),
+                Some(decls::Named::Context(_))
+            ) =>
+            {
+                if let Some(fs) = self.ctx_frames(ctx, args) {
+                    let n = self.frames.len();
+                    self.frames.extend(fs);
+                    let b = self.block(body, None);
+                    self.frames.truncate(n);
+                    out.push(TStmt::Expr(b));
+                }
+            }
             // `unchecked:` turns every check off in its block (R09.4.3); overflow is the one whose
             // result it defines: `Int` arithmetic wraps.
             StmtKind::Unchecked(body) => {
@@ -1172,7 +1218,7 @@ impl<'a> Cx<'a> {
                 out.push(TStmt::Expr(b));
             }
             other => {
-                if let Some(n) = crate::decls::item_name(s) {
+                if let Some(n) = decls::item_name(s) {
                     self.refused_names.insert(n.to_string());
                 }
                 self.err(
@@ -1521,6 +1567,36 @@ impl<'a> Cx<'a> {
         }
         t
     }
+    /// `with ctx(f: v, ..)`: the fields it sets, each to a constant (R09.1.2); `None` when `ctx`
+    /// names no context.
+    fn ctx_frames(&mut self, ctx: &ast::Name, args: &[ast::Arg]) -> Option<Vec<super::CtxFrame>> {
+        let d = self.d;
+        let Some(decls::Named::Context(id)) = d.named(self.module, &ctx.text) else {
+            return None;
+        };
+        let c = &d.contexts[id.0];
+        let mut fs = Vec::new();
+        for a in args {
+            let field = a.name.as_ref().map(|n| n.text.clone()).unwrap_or_default();
+            if !c.fields.iter().any(|x| x.name.text == field) {
+                let code = cpl_diag::codes::UNKNOWN_ARG_NAME.0;
+                let msg = format!("{code}: context `{}` has no field `{field}`", c.name);
+                self.err(a.value.span, msg);
+            } else if !constant(&a.value) {
+                let code = cpl_diag::codes::CONTEXT_NOT_CONSTANT.0;
+                let msg = format!("{code}: `{}.{field}` is set to a constant", c.name);
+                self.err(a.value.span, msg);
+            } else {
+                fs.push(super::CtxFrame {
+                    ctx: id,
+                    field,
+                    value: a.value.clone(),
+                });
+            }
+        }
+        Some(fs)
+    }
+
     pub(super) fn body_ty(&mut self, t: &ast::Type, span: Span, out: &mut Vec<TStmt>) -> Ty {
         let t = self.name_ranges(t, span, out);
         let mut errs = Vec::new();
@@ -1761,5 +1837,20 @@ impl<'a> Cx<'a> {
             );
         }
         v
+    }
+}
+
+/// A value fixed when the program is compiled: a literal, `None`, `-k`, or a tuple of them.
+fn constant(e: &ast::Expr) -> bool {
+    match &e.kind {
+        ast::ExprKind::Int(_)
+        | ast::ExprKind::Float(_)
+        | ast::ExprKind::Char(_)
+        | ast::ExprKind::Bool(_)
+        | ast::ExprKind::None => true,
+        ast::ExprKind::Str(ps) => ps.iter().all(|p| matches!(p, ast::StrPiece::Text(_))),
+        ast::ExprKind::Tuple(xs) => xs.iter().all(constant),
+        ast::ExprKind::Unary { expr, .. } => constant(expr),
+        _ => false,
     }
 }

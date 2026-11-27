@@ -362,6 +362,7 @@ impl<'a> Cx<'a> {
         given_sets: Vec<SetTy>,
     ) -> FnRef {
         self.reach(decl);
+        let ctx = self.ctx_copy(decl);
         let f = self.d.f(decl);
         // An impl parameter only a bound names that the receiver's type cannot fix (`K` of
         // `impl<S: Indexed<K, T>, K, T>` on a `Slice<S>` of a type parameter) is left to the bound.
@@ -378,7 +379,12 @@ impl<'a> Cx<'a> {
         while sets.len() < f.n_sets {
             sets.push(self.new_set());
         }
-        FnRef { decl, targs, sets }
+        FnRef {
+            decl,
+            targs,
+            sets,
+            ctx,
+        }
     }
     /// A call of the library fn `name` with arguments already typed.
     pub(super) fn lib_call(&mut self, name: &str, args: Vec<TExpr>, span: Span) -> TExpr {
@@ -536,7 +542,7 @@ impl<'a> Cx<'a> {
                         (self.d.traits.iter())
                             .position(|t| t.name == trait_name && self.d.seen(t.module))?,
                     );
-                    self.blanket(*i, tr).then(|| crate::decls::TraitRef {
+                    self.blanket(*i, tr).then(|| decls::TraitRef {
                         tr,
                         args: Vec::new(),
                     })
@@ -1357,12 +1363,38 @@ impl<'a> Cx<'a> {
                 }
                 // `write` is `print` without the line end; the slice uses it to write `print` for containers in the library.
                 ExprKind::Name(n) if (n == "print" || n == "write") && self.lookup(n).is_none() => {
+                    // `print` reads `io` where it is written; a call's argument beats it (R09.1.2).
+                    let d = self.d;
+                    let io = match d.named(self.module, "io") {
+                        Some(decls::Named::Context(id)) => Some(id),
+                        _ => None,
+                    };
+                    let io_set = |cx: &Self, f: &str| {
+                        (cx.frames.iter().rev())
+                            .find(|x| Some(x.ctx) == io && x.field == f)
+                            .map(|x| x.value.kind.clone())
+                    };
+                    let text = |k: Option<ExprKind>| match k {
+                        Some(ExprKind::Str(ps)) => match &ps[..] {
+                            [] => Some(String::new()),
+                            [StrPiece::Text(t)] => Some(t.clone()),
+                            _ => None,
+                        },
+                        _ => None,
+                    };
+                    let mut sep = text(io_set(self, "sep")).unwrap_or_else(|| " ".into());
                     // `precision: k` sets the digits of each `F64` it prints (R10.3.4).
-                    let mut precision = None;
+                    let mut precision = match io_set(self, "precision") {
+                        Some(ExprKind::Int(k)) => u32::try_from(k).ok(),
+                        _ => None,
+                    };
                     for a in args.iter().filter(|a| a.name.is_some()) {
                         match (a.name.as_ref().map(|n| n.text.as_str()), &a.value.kind) {
                             (Some("precision"), ExprKind::Int(k)) if u32::try_from(*k).is_ok() => {
                                 precision = u32::try_from(*k).ok()
+                            }
+                            (Some("sep"), k) if text(Some(k.clone())).is_some() => {
+                                sep = text(Some(k.clone())).unwrap_or_default()
                             }
                             _ => {
                                 self.err(span, "slice: named arguments to `print`");
@@ -1396,7 +1428,7 @@ impl<'a> Cx<'a> {
                     let mut pieces = Vec::new();
                     for (k, a) in args.iter().enumerate() {
                         if k > 0 {
-                            pieces.push(Piece::Text(" ".into()));
+                            pieces.push(Piece::Text(sep.clone()));
                         }
                         match &a.value.kind {
                             ExprKind::Str(ps) => {

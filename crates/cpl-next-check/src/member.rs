@@ -276,6 +276,43 @@ impl<'a> Cx<'a> {
         };
         block(pre, call)
     }
+    /// `opt.k`: what the innermost `with` around it set, else the field's default (R09.1.2).
+    fn ctx_read(&mut self, base: &ast::Expr, name: &ast::Name, span: Span) -> Option<TExpr> {
+        let ExprKind::Name(n) = &base.kind else {
+            return None;
+        };
+        let d = self.d;
+        let Some(decls::Named::Context(id)) = (self.lookup(n).is_none())
+            .then(|| d.named(self.module, n))
+            .flatten()
+        else {
+            return None;
+        };
+        let c = &d.contexts[id.0];
+        let Some(f) = c.fields.iter().find(|f| f.name.text == name.text) else {
+            let code = cpl_diag::codes::UNKNOWN_FIELD.0;
+            self.err(
+                span,
+                format!("{code}: context `{n}` has no field `{}`", name.text),
+            );
+            return Some(TExpr {
+                kind: TK::Error,
+                ty: Ty::Error,
+                span,
+            });
+        };
+        let set = (self.frames.iter().rev()).find(|x| x.ctx == id && x.field == name.text);
+        let (value, m) = match set {
+            Some(x) => (x.value.clone(), self.module),
+            None => (f.default.clone()?, c.module),
+        };
+        let m = std::mem::replace(&mut self.module, m);
+        let ty = self.body_ty(&f.ty, span, &mut Vec::new());
+        let v = self.expr(&value, Some(&ty));
+        self.module = m;
+        Some(self.coerce(v, &ty))
+    }
+
     pub(super) fn member(
         &mut self,
         base: &ast::Expr,
@@ -285,6 +322,10 @@ impl<'a> Cx<'a> {
         want: Option<&Ty>,
         written_targs: &[Ty],
     ) -> TExpr {
+        if let Some(e) = self.ctx_read(base, name, span) {
+            self.no_targs(name, written_targs, span);
+            return e;
+        }
         if let Some(e) = self.domain_member(base, name, call, span, want) {
             self.no_targs(name, written_targs, span);
             return e;

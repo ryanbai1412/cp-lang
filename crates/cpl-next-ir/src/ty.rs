@@ -73,6 +73,21 @@ pub struct FnRef {
     pub decl: FnId,
     pub targs: Vec<Ty>,
     pub sets: Vec<SetTy>,
+    /// Which copy of a `uses` fn: 0 is the one under its contexts' defaults; `k` the one checked
+    /// under the `k`-th distinct set of context values a call gave it (R09.1.4).
+    pub ctx: u32,
+}
+
+impl FnRef {
+    /// The same fn, its type and set arguments each mapped.
+    pub fn map(&self, ty: impl Fn(&Ty) -> Ty, set: impl Fn(&SetTy) -> SetTy) -> FnRef {
+        FnRef {
+            decl: self.decl,
+            targs: self.targs.iter().map(ty).collect(),
+            sets: self.sets.iter().map(set).collect(),
+            ctx: self.ctx,
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
@@ -126,11 +141,7 @@ impl Subst<'_> {
         }
     }
     pub fn fnref(&self, f: &FnRef) -> FnRef {
-        FnRef {
-            decl: f.decl,
-            targs: f.targs.iter().map(|t| self.ty(t)).collect(),
-            sets: f.sets.iter().map(|s| self.set(s)).collect(),
-        }
+        f.map(|t| self.ty(t), |s| self.set(s))
     }
     pub fn clo(&self, c: &CloRef) -> CloRef {
         match c {

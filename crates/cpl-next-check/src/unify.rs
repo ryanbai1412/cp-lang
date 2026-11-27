@@ -93,11 +93,7 @@ impl<'a> Cx<'a> {
         }
     }
     pub(super) fn zonk_fnref(&self, f: &FnRef) -> FnRef {
-        FnRef {
-            decl: f.decl,
-            targs: f.targs.iter().map(|t| self.zonk(t)).collect(),
-            sets: f.sets.iter().map(|s| self.zonk_set(s)).collect(),
-        }
+        f.map(|t| self.zonk(t), |s| self.zonk_set(s))
     }
     pub(super) fn zonk_clo(&self, c: &CloRef) -> CloRef {
         match c {
@@ -348,6 +344,7 @@ impl<'a> Cx<'a> {
             decl: m,
             targs: tys,
             sets: Vec::new(),
+            ctx: 0,
         };
         let ret = self.d.f(m).ret.clone();
         self.result_of(&f, &ret)

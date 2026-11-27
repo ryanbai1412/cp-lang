@@ -1065,6 +1065,7 @@ impl Cx<'_> {
                 decl: *m,
                 targs: vec![],
                 sets: vec![],
+                ctx: 0,
             };
             let (o, t) = self.callee(&f, &places, 0, false);
             other.add(&o);

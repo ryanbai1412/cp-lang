@@ -57,6 +57,7 @@ pub fn prepare(mods: &[crate::modules::Module]) -> Prepared {
         impls: d.impls.frozen(),
         views: d.views.frozen(),
         consts: d.consts.frozen(),
+        contexts: d.contexts.frozen(),
         aliases: d.aliases.frozen(),
         ..d
     };
@@ -344,8 +345,15 @@ fn layer(
                         });
                     }
                     StmtKind::Use { .. } => imports.push((mid, s)),
-                    // A library's context is only reached by a `with`, which the checker refuses.
-                    StmtKind::Context { .. } if d.is_library(mid) => {}
+                    StmtKind::Context { name, fields } => {
+                        let id = ContextId(d.contexts.len());
+                        own[mi].insert(name.text.clone(), Named::Context(id));
+                        d.contexts.push(ContextDecl {
+                            module: mid,
+                            name: name.text.clone(),
+                            fields: fields.clone(),
+                        });
+                    }
                     other if d.is_library(mid) => {
                         let e = format!("slice: library item {}", crate::kind_name(other));
                         match item_name(s) {

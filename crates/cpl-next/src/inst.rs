@@ -129,17 +129,17 @@ pub fn link(
             break;
         }
         let key = l.keys[next].clone();
-        if let FuncKey::Decl(f) = &key.func {
-            if said.insert(*f) {
+        if let Some(f) = key.func.decl() {
+            if said.insert(f) {
                 l.errors
-                    .extend(typed.deferred.get(f).into_iter().flatten().cloned());
+                    .extend(typed.deferred.get(&f).into_iter().flatten().cloned());
             }
         }
         // A fn used at a domain declared in its own body: inside that instance the type
         // argument and the local domain would be one type with two sizes. A run-time value
         // has to be keyed by its binding for this to run; until then it is refused.
         let owner = match &key.func {
-            FuncKey::Decl(f) => Some(*f),
+            FuncKey::Decl(f) | FuncKey::Ctx(f, _) => Some(*f),
             FuncKey::Lambda(id) => typed.lambdas[id.0].owner,
             FuncKey::Main | FuncKey::Case => None,
         };
@@ -333,7 +333,10 @@ impl Link<'_> {
     }
     fn fnref(&mut self, f: &FnRef, env: &Env) -> InstKey {
         InstKey {
-            func: FuncKey::Decl(f.decl),
+            func: match f.ctx {
+                0 => FuncKey::Decl(f.decl),
+                k => FuncKey::Ctx(f.decl, k),
+            },
             targs: f.targs.iter().map(|t| self.ty(t, env)).collect(),
             sets: f.sets.iter().map(|s| self.set(s, env)).collect(),
         }
@@ -1460,7 +1463,9 @@ pub fn add_events(p: &mut Program, typed: &Typed, d: &Decls, user_from: u32) {
     }
     for f in &mut p.insts {
         let user_fn = match &f.key {
-            FuncKey::Decl(id) => d.f(*id).item >= user_from && f.region.is_none(),
+            FuncKey::Decl(id) | FuncKey::Ctx(id, _) => {
+                d.f(*id).item >= user_from && f.region.is_none()
+            }
             _ => false,
         };
         let body = std::mem::take(&mut f.body);
@@ -1560,7 +1565,7 @@ fn fit_cty(p: &Ty, t: &CTy, binds: &mut [Option<CTy>]) -> bool {
             d1 == d2 && a.len() == b.len() && a.iter().zip(b).all(|(x, y)| fit_cty(x, y, binds))
         }
         (Ty::Clo(c), CTy::Clo(k)) => {
-            matches!(&**c, CloRef::Item(f) if k.func == FuncKey::Decl(f.decl))
+            matches!(&**c, CloRef::Item(f) if k.func.decl() == Some(f.decl))
         }
         // A fn value is its set of closures; the checker chose this impl by the fn type, and
         // the trait's arguments fix the parameters the fn type names.

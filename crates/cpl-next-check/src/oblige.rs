@@ -1,7 +1,7 @@
 //! Trait bounds a call must meet (R08.1.2): each is met by the caller's own bounds or by one
 //! impl, and meeting it fixes the trait's arguments, so `sorted<S: Seq<T>, T>` learns `T`.
 use super::*;
-use crate::decls::TraitRef;
+use decls::TraitRef;
 
 impl Cx<'_> {
     /// The bounds `f`'s type arguments must meet at this call.

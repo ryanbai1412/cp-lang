@@ -9,7 +9,18 @@ pub enum FuncKey {
     /// The code below `@!multitest`: one test case. A `return` in it ends the case.
     Case,
     Decl(FnId),
+    /// The `k`-th copy of a `uses` fn, checked under one set of context values (R09.1.4).
+    Ctx(FnId, u32),
     Lambda(LambdaId),
+}
+impl FuncKey {
+    /// The declared fn it is a copy of.
+    pub fn decl(&self) -> Option<FnId> {
+        match self {
+            FuncKey::Decl(f) | FuncKey::Ctx(f, _) => Some(*f),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
