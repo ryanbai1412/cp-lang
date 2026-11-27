@@ -429,7 +429,14 @@ impl Cx<'_> {
                     }
                 }
             }
-            TK::Struct(xs) => xs.iter().for_each(|x| out.extend(self.sources(x))),
+            // A field read into a struct moves into it (R05.2.2): the struct holds what the field
+            // holds, not the place it was read from.
+            TK::Struct(xs) => xs.iter().for_each(|x| {
+                out.extend(match &x.kind {
+                    TK::Field(b, _) | TK::Payload(b, _) => self.sources(b),
+                    _ => self.sources(x),
+                })
+            }),
             TK::Variant(_, x) => out = self.sources(x),
             TK::If(_, a, b) => {
                 out = self.sources(a);
