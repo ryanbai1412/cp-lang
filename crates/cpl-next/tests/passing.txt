@@ -487,6 +487,7 @@ core-08/inherent-on-builtin-type.cp
 core-08/lambda-to-type-param-beside-a-seq-stays-a-fn.cp
 core-08/law-declared.cp
 core-08/law-must-be-bool.cp
+core-08/lazy-method-sig.cp
 core-08/method-bound-met.cp
 core-08/method-generic-bound-unmet.cp
 core-08/method-impl-bound-unmet.cp
@@ -513,6 +514,9 @@ core-08/trait-default-method.cp
 core-08/trait-default-overridden-through-generic.cp
 core-08/trait-message-bound-holds.cp
 core-08/trait-message.cp
+core-08/trait-typed-param-checks-its-bound.cp
+core-08/trait-typed-param-of-a-local-trait.cp
+core-08/trait-typed-param-reads-its-assoc-type-bound.cp
 core-08/type-arguments-on-a-value-are-rejected.cp
 core-08/type-param-default.cp
 core-08/while-const.cp
@@ -879,6 +883,7 @@ next/n_slice_10_literal_key_of_unknown_view_is_checked_at_run_time.cp
 next/n_struct_default_type_arg.cp
 next/n_table_01_one_cell_per_position.cp
 next/n_targs_01_written.cp
+next/n_trait_typed_param.cp
 next/n_u64_01_wraps_and_compares_unsigned.cp
 next/n_u64_02_int_of_a_large_u64_traps.cp
 next/n_u64_03_division_by_zero_traps.cp

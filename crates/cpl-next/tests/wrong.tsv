@@ -312,7 +312,6 @@ core-08/impl-for-every-domain-beside-int.cp	wrong-reject	link: E0606: a type arg
 core-08/law-calls-trait-method.cp	wrong-reject	check: program:6:35: E0201: unknown name `op`
 core-08/law-declared.cp	wrong-reject	check: program:5:5: E0302: expected `(name: Str, sizes: (List<Int>) -> List<Int>, holds: (List<Int>, List<Int>) -> Bool)`, found `(name: Str, sizes: a function, holds: a function)`
 core-08/laws-hold.cp	wrong-reject	check: program:3:11: E0201: unknown name `laws_hold`
-core-08/lazy-method-sig.cp	wrong-reject	decls: E0204: unknown type `Extra`
 core-08/list-bsearch-never-picks-range-bsearch.cp	wrong-reject	check: program:11:29: E0203: `List<Int>` has no member `bsearch`
 core-08/match-stored-shape-only.cp	wrong-reject	check: program:8:12: E0201: unknown name `Circle`
 core-08/method-returning-a-deeper-instance.cp	wrong-reject	check: program:11:27: E0203: `S` has no member `len`
@@ -340,10 +339,8 @@ core-08/trait-default-sees-its-assoc-default-inside-a-type.cp	wrong-reject	check
 core-08/trait-law-calls-impl-fn.cp	wrong-reject	check: program:10:7: E0203: `S` has no `op`
 core-08/trait-laws-are-a-derived-member.cp	wrong-reject	check: program:7:35: E0201: unknown name `op`
 core-08/trait-qualified-call.cp	wrong-reject	check: program:12:7: E0201: unknown name `A`
-core-08/trait-typed-method-param-checks-its-bound.cp	wrong-error	wanted E0302 on line 12, got: decls: E0204: unknown type `Big`
-core-08/trait-typed-param-checks-its-bound.cp	wrong-error	wanted E0606 on line 10, got: decls: E0204: unknown type `Big`
-core-08/trait-typed-param-of-a-local-trait.cp	wrong-reject	decls: E0204: unknown type `Big`
-core-08/trait-typed-param-reads-its-assoc-type-bound.cp	wrong-reject	decls: E0204: unknown type `Walk`
+core-08/trait-typed-method-param-checks-its-bound.cp	wrong-error	wanted E0302 on line 12, got: check: program:12:7: E0606: `Int` does not implement `Big`
+core-08/trait-typed-param-in-method.cp	wrong-reject	check: program:7:53: E0606: `()` does not implement `Seq`
 core-08/type-arguments-on-a-plain-struct-are-an-error.cp	wrong-error	wanted E0303 on line 7, got: check: program:7:22: E0302: expected `Pt<1..=100>`, found `Pt`
 core-10/array-read-short-input.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 core-10/array-short-input.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
@@ -539,7 +536,9 @@ std-graph/bfs-path-to-source.cp	wrong-reject	check: E0204: std.graph: unknown ty
 std-graph/bfs-unreachable.cp	wrong-reject	check: E0204: std.graph: unknown type `Seq`
 std-graph/functional.cp	wrong-reject	check: program:8:28: E0302: expected `List<Int>`, found `List<V>`
 std-graph/incremental-bridges.cp	wrong-reject	check: std.graph:3834:13: E0405: field `IncrementalBridges._iter` is fixed (not `var`) and cannot be assigned
+std-graph/next-lambda-explicit-domain.cp	wrong-reject	check: program:10:15: E0806: the type of `u` is not known here; write `(u: T) => ...`
 std-graph/out-on-a-table-of-lists-reads-the-list.cp	wrong-reject	check: program:8:7: E0203: `Array<V, List<V>>` has no member `out`
+std-graph/paths-tight.cp	wrong-reject	check: std.graph:1215:30: E0302: expected `V`, found `V`
 std-graph/peel-empty-domain.cp	wrong-reject	check: std.graph:558:28: E0302: expected `V`, found `V`
 std-graph/peel-self-loop-removes-nothing.cp	wrong-reject	check: program:3:21: E0302: expected `Array<V, List<V>>`, found `Array<V, List<Int>>`
 std-grid/cell-neighbour-getters.cp	wrong-reject	check: program:10:95: E0606: `Tuple2<R, C>` does not implement `Indexed`

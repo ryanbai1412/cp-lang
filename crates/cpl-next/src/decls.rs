@@ -1402,6 +1402,44 @@ const FREE: Within = Within {
     self_ty: None,
 };
 
+/// A parameter typed by a trait (`b: Big<Int>`) has a type parameter of its own bounded by it, as
+/// `<B: Big<Int>>` would be (R08.2.1); its name `b.impl` can't be written.
+fn trait_typed(
+    f: &ast::FnDecl,
+    outer: &[String],
+    names: &HashMap<String, Named>,
+) -> Option<ast::FnDecl> {
+    let mut out: Option<ast::FnDecl> = None;
+    for (k, p) in f.params.iter().enumerate() {
+        let Some(t) = &p.ty else { continue };
+        let TypeKind::Named { name, .. } = &t.kind else {
+            continue;
+        };
+        let shadowed = outer.contains(&name.text) || f.generics.iter().any(|g| g.text == name.text);
+        if shadowed || !matches!(names.get(&name.text), Some(Named::Trait(_))) {
+            continue;
+        }
+        let g = out.get_or_insert_with(|| f.clone());
+        let n = ast::Name {
+            text: format!("{}.impl", p.name.text),
+            span: name.span,
+        };
+        g.generics.push(n.clone());
+        g.bounds.push(ast::Bound {
+            name: n.clone(),
+            traits: vec![t.clone()],
+        });
+        g.params[k].ty = Some(ast::Type {
+            kind: TypeKind::Named {
+                name: n,
+                args: Vec::new(),
+            },
+            span: t.span,
+        });
+    }
+    out
+}
+
 fn add_fn(
     d: &mut Decls,
     m: ModId,
@@ -1417,9 +1455,11 @@ fn add_fn(
         self_ty: outer_self,
         sig,
     } = within;
+    let names = d.views[m.0].clone();
+    let desugared = trait_typed(f, outer, &names);
+    let f = desugared.as_ref().unwrap_or(f);
     let mut generics = outer.to_vec();
     generics.extend(f.generics.iter().map(|g| g.text.clone()));
-    let names = d.views[m.0].clone();
     // A bound that leaves a trait's arguments out (`S: Indexed`) takes each as a parameter of
     // its own, fixed when the bound is met at a call (R08.1.2). Its name `S.1` can't be written.
     let mut hidden = Vec::new();
