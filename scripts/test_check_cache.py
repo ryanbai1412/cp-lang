@@ -308,6 +308,7 @@ class CheckCacheTest(unittest.TestCase):
                         'esac\n')
             os.chmod(os.path.join(bin_dir, "cargo"), 0o755)
             env["PATH"] = bin_dir + os.pathsep + env["PATH"]
+            env["CPL_LAND_FULL"] = "1"  # the clippy gate runs on a full land only
             os.makedirs(os.path.join(work, "crates", "a", "src"))
             self.commit(git, work, "crates/a/src/lib.rs")
             r = subprocess.run([os.path.join(root, "scripts", "land.sh")], cwd=work,

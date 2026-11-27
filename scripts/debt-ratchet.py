@@ -3241,6 +3241,8 @@ def next_handoff_side_fields(root: Path) -> list[str]:
     shrinks to 0. `whole` is counted by `Whole`'s own fields."""
     out = []
     for rel, name in (("crates/cpl-next-lower/src/lib.rs", "Generic"), ("crates/cpl-next-ir/src/whole.rs", "Whole")):
+        if not (root / rel).is_file():
+            continue
         lines = _lines(root / rel)
         start = next((i for i, l in enumerate(lines) if re.match(rf"pub struct {name}\b", l)), None)
         if start is None:

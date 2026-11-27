@@ -77,7 +77,7 @@ list is empty (`handbook/design/next/migration.md` rule 14); `debt-ratchet.py --
 | `next_core_privilege` | 21 |
 | `next_core_standin_lines` | 43 |
 | `next_cpp_runtime_lines` | 147 |
-| `next_error_typed` | 39 |
+| `next_error_typed` | 34 |
 | `next_handoff_side_fields` | 8 |
 | `next_ignored_settings` | 6 |
 | `next_layer_foreign_deps` | 4 |
