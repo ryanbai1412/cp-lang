@@ -221,8 +221,6 @@ struct Emit<'a> {
     /// Generators and lenders that can reach themselves.
     recursive: Vec<bool>,
     names: HashMap<CTy, String>,
-    /// Each C++ layout's first type, by the type with its domains made one.
-    layouts: HashMap<CTy, CTy>,
     order: Vec<CTy>,
     /// The lines of the fn being printed (`Func::lines`).
     lines: std::cell::Cell<&'a [u32]>,
@@ -234,7 +232,6 @@ pub fn emit(p: &Program, funcs: &[Func<CTy>]) -> String {
         funcs,
         recursive: recursive_regions(funcs),
         names: HashMap::new(),
-        layouts: HashMap::new(),
         order: Vec::new(),
         lines: std::cell::Cell::new(&[]),
     };
@@ -373,7 +370,7 @@ impl Emit<'_> {
     /// function value reach itself through a list.
     fn by_value_order(&self) -> Vec<CTy> {
         fn visit(e: &Emit, t: &CTy, done: &mut HashSet<CTy>, out: &mut Vec<CTy>) {
-            let t = &(e.layouts.get(&same_layout(t)).cloned()).unwrap_or_else(|| t.clone());
+            let t = e.p.rep(t);
             let parts: Vec<CTy> = match t {
                 CTy::Struct(..) => e.p.parts(t),
                 CTy::Clo(k) => e.p.captures(k),
@@ -462,14 +459,9 @@ impl Emit<'_> {
         if let Some(n) = self.names.get(t) {
             return n.clone();
         }
-        // A domain's position is an `int64_t`, so types told apart only by domains are one type.
-        let first = self
-            .layouts
-            .entry(same_layout(t))
-            .or_insert_with(|| t.clone());
-        if first != t {
-            let first = first.clone();
-            let n = self.name(&first);
+        let rep = self.p.rep(t);
+        if rep != t {
+            let n = self.name(rep);
             self.names.insert(t.clone(), n.clone());
             return n;
         }
@@ -971,18 +963,6 @@ fn recursive_regions(funcs: &[Func<CTy>]) -> Vec<bool> {
 #[cfg(test)]
 #[path = "../../cpl-cli/tests/support/cxx.rs"]
 mod cxx;
-
-/// `t` with every domain one: what tells C++ layouts apart, since a position is an `int64_t`.
-fn same_layout(t: &CTy) -> CTy {
-    match t {
-        CTy::Dom(_) => CTy::Dom(0),
-        CTy::Raw(e) => CTy::Raw(Box::new(same_layout(e))),
-        CTy::Ref(e) => CTy::Ref(Box::new(same_layout(e))),
-        CTy::Lent(e) => CTy::Lent(Box::new(same_layout(e))),
-        CTy::Struct(d, ts, ss) => CTy::Struct(*d, ts.iter().map(same_layout).collect(), ss.clone()),
-        other => other.clone(),
-    }
-}
 
 /// The C++ runtime's helpers against `ops`, row by row, on the edges of each operand's range.
 #[cfg(test)]

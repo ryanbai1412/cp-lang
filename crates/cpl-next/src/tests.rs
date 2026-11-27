@@ -527,3 +527,27 @@ if a == None and b != None and not (None == b):\n    print(b!.f(1))\n";
     assert_eq!(c.run(Form::Raw, "").output, "2\n");
     assert_eq!(c.run(Form::Engine, "").output, "2\n");
 }
+
+/// Types told apart only by which domain a position counts share one representation, which
+/// link decides once: `S<P>` and `S<Q>` map to the same type for every backend.
+#[test]
+fn types_told_apart_by_domains_share_a_representation() {
+    let src = "struct S<P>:\n    at: [P]Int\nfn a(k: Int) -> S<_>:\n    domain P = 0..k\n    S<P>([P] _ => 1)\nfn b(k: Int) -> S<_>:\n    domain Q = 0..k\n    S<Q>([Q] _ => 2)\nlet s = a(3)\nlet t = b(2)\nprint(s.at.len, t.at.len)\n";
+    let c = compile(&Std::read(), src, &Roots::std(), false).expect("compiles");
+    let doms =
+        |t: &CTy| matches!(t, CTy::Struct(_, ts, _) if ts.iter().any(|t| matches!(t, CTy::Dom(_))));
+    let ss: Vec<&CTy> = (c.prog.insts.iter())
+        .find(|f| f.name == "a")
+        .into_iter()
+        .chain(c.prog.insts.iter().filter(|f| f.name == "b"))
+        .map(|f| &f.ret)
+        .filter(|t| doms(t))
+        .collect();
+    assert_eq!(
+        ss.len(),
+        2,
+        "a and b return S over their own domains: {ss:?}"
+    );
+    assert_ne!(ss[0], ss[1]);
+    assert_eq!(c.prog.rep(ss[0]), c.prog.rep(ss[1]), "{:?}", c.prog.shares);
+}

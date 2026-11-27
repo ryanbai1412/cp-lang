@@ -43,6 +43,10 @@ struct Shared  { kept: InstanceId, merged: List<InstanceId>, why: IdenticalIr | 
 
 - The engine may run canonical or optimized IR without knowing which.
 - The emitter is a printer: one C++ shape per node kind.
+- Which types share a representation is `Program::shares`, decided once
+  in canonicalization: types told apart only by which domain a position
+  counts. Every backend gives types that share one representation and
+  decides no sharing of its own.
 
 ## Must never
 

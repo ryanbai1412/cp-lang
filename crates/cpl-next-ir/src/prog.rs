@@ -44,9 +44,16 @@ pub struct Program {
     pub structs: HashMap<CTy, Vec<CTy>>,
     /// An enum's payload struct per variant: its value is one of them, with a tag saying which.
     pub sums: HashMap<CTy, Vec<CTy>>,
+    /// Each type whose representation is an earlier type's, mapped to that type: link's
+    /// canonicalization decides it once, and no backend tells the two apart.
+    pub shares: HashMap<CTy, CTy>,
     pub errors: Vec<Msg>,
 }
 impl Program {
+    /// The type whose representation a value of `t` has.
+    pub fn rep<'a>(&'a self, t: &'a CTy) -> &'a CTy {
+        self.shares.get(t).unwrap_or(t)
+    }
     /// What a value of `t` holds: a struct's fields, or an enum's payloads.
     pub fn parts(&self, t: &CTy) -> Vec<CTy> {
         parts(&self.structs, &self.sums, t)

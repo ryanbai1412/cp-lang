@@ -10,6 +10,8 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 pub use cpl_next_ir::prog::{parts, plain, CSet, CTy, InstKey, Program};
 
+mod share;
+
 /// A value held directly, not in a slot, is its own storage: a lent mark applies to slots.
 fn unlent(t: CTy) -> CTy {
     match t {
@@ -219,6 +221,7 @@ pub fn link(
         globals,
         structs: l.structs,
         sums: l.sums,
+        shares: HashMap::new(),
         errors: l.errors,
     };
     if p.errors.is_empty() {
@@ -958,8 +961,9 @@ fn check_finite(p: &mut Program) {
 
 /// Contract 6, required rewrites: a call through a function value becomes a
 /// branch over the closures it can be, and each call a direct call.
-/// The canonical form of every instance, or what the link step left inconsistent.
-pub fn canonicalize(p: &Program) -> Result<Vec<Func<CTy>>, Vec<Msg>> {
+/// The canonical form of every instance, or what the link step left inconsistent. It also
+/// decides which types share a representation (`Program::shares`).
+pub fn canonicalize(p: &mut Program) -> Result<Vec<Func<CTy>>, Vec<Msg>> {
     let mut bad = Vec::new();
     let funcs = p
         .insts
@@ -970,8 +974,9 @@ pub fn canonicalize(p: &Program) -> Result<Vec<Func<CTy>>, Vec<Msg>> {
             f.body = canon_block(p, &mut f.locals, &mut bad, body);
             f
         })
-        .collect();
+        .collect::<Vec<_>>();
     if bad.is_empty() {
+        p.shares = share::shares(p, &funcs);
         Ok(funcs)
     } else {
         Err(bad.into_iter().map(Msg::internal).collect())

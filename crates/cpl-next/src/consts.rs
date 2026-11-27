@@ -205,7 +205,7 @@ impl<'a> Evaluator<'a> {
         let names: Vec<(String, bool)> = (t.globals.iter())
             .map(|g| (g.name.clone(), g.mutable))
             .collect();
-        let (prog, owned) = own::link(
+        let (mut prog, owned) = own::link(
             self.d,
             &low.whole,
             &mut low.funcs,
@@ -216,7 +216,7 @@ impl<'a> Evaluator<'a> {
         if !owned.errors.is_empty() {
             return Ran::Open;
         }
-        let Ok(canon) = inst::canonicalize(&prog) else {
+        let Ok(canon) = inst::canonicalize(&mut prog) else {
             return Ran::Open;
         };
         if !prog.errors.is_empty() {

@@ -36,6 +36,12 @@ impl Layouts {
         if let Some(&l) = self.of.get(t) {
             return l;
         }
+        let rep = p.rep(t);
+        if rep != t {
+            let l = self.of(p, rep);
+            self.of.insert(t.clone(), l);
+            return l;
+        }
         let (shape, size, owns) = match t {
             CTy::Unit | CTy::Error => (Shape::Zero, 0, false),
             CTy::Int
