@@ -1610,7 +1610,7 @@ impl<'a> Cx<'a> {
             };
             match name {
                 Some("overflow") => wraps = !on,
-                Some("ranges" | "bounds") if on => {}
+                Some("ranges" | "bounds" | "unwrap" | "div" | "asserts" | "reads") if on => {}
                 _ => {
                     self.err(span, Unbuilt::ChecksField);
                     return None;

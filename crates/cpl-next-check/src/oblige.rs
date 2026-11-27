@@ -414,16 +414,29 @@ impl Cx<'_> {
         if ordered.is_some_and(|ds| ds.contains(&i)) {
             have.extend(self.d.order_trait);
         }
-        if have.contains(&tr) {
-            return true;
+        // Blankets chain: `impl<D: Domain + Eq> Ord for D` holds once `impl<D: Domain> Eq for D`
+        // has given `Eq`.
+        let blankets: Vec<&decls::ImplDecl> = (self.d.impls.iter())
+            .filter(|im| im.trait_.args.is_empty() && matches!(im.for_, Ty::Param(_)))
+            .collect();
+        loop {
+            if have.contains(&tr) {
+                return true;
+            }
+            let given: Vec<TraitId> = (blankets.iter())
+                .filter(|im| !have.contains(&im.trait_.tr))
+                .filter(|im| {
+                    (im.bounds.iter())
+                        .filter(|(k, _)| im.for_ == Ty::Param(*k))
+                        .all(|(_, b)| have.contains(&b.tr))
+                })
+                .map(|im| im.trait_.tr)
+                .collect();
+            if given.is_empty() {
+                return false;
+            }
+            have.extend(given);
         }
-        (self.d.trait_impls(tr)).any(|(_, im)| {
-            im.trait_.args.is_empty()
-                && matches!(im.for_, Ty::Param(_))
-                && (im.bounds.iter())
-                    .filter(|(k, _)| im.for_ == Ty::Param(*k))
-                    .all(|(_, b)| have.contains(&b.tr))
-        })
     }
     /// The traits the fn being checked bounds its type parameter `i` by, with their supertraits (R08.1.1).
     /// `if T: Tr<A>:`: a test of `T` against the bound, which each instance decides (R08.2.9).

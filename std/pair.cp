@@ -11,7 +11,7 @@ use std.math.{isqrt}
 /// `(0, 2)`, `(1, 2)`, `(0, 3)`, ..., which is the order a lower triangle is given in (row `i`
 /// lists the pairs with every earlier `j`), so `read<[Pair<V>]Int>()` reads one. An array over it
 /// takes two positions in either order: `d[u, v] == d[v, u]`, trapping when `u == v`.
-pub struct Pair<V>(pub lo: V, pub hi: V):
+pub struct Pair<V: Domain>(pub lo: V, pub hi: V):
     /// The pair of `u` and `v`, in either order: the smaller position becomes `lo`.
     ///
     /// cost: \(O(1)\)

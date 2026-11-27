@@ -427,6 +427,19 @@ impl<'a> Cx<'a> {
             && s.generics.is_empty()
             && self.is_domain(&Ty::Struct(d, Vec::new(), Vec::new()))
     }
+    /// `Pair<V>.count(p)`: a member a generic domain type lacks is its walk's, as `Two.count(p)`
+    /// is for one with no type parameters (R04.2.27).
+    fn walks_at(&mut self, d: StructId, written: &[ast::Type], name: &str, span: Span) -> bool {
+        if written.is_empty() || self.d.s(d).methods.contains_key(name) {
+            return false;
+        }
+        let mut pre = Vec::new();
+        let given = (written.iter())
+            .map(|t| self.body_ty(t, span, &mut pre))
+            .collect();
+        let given = self.d.with_defaults_of(d, given);
+        self.is_domain(&Ty::Struct(d, given, Vec::new()))
+    }
     pub(super) fn type_static(
         &mut self,
         t: Ty,
@@ -830,8 +843,17 @@ impl<'a> Cx<'a> {
                 return self.const_read(c, span);
             }
         }
+        // `Subset<B>.empty`: a self-less `@get` fn of the type, read without `()`.
+        let get = named.filter(|_| call.is_none()).is_some_and(|(_, d)| {
+            (self.d.s(d).methods.get(&name.text)).is_some_and(|&m| {
+                let f = self.d.f(m);
+                f.getter && f.self_mode == SelfMode::None
+            })
+        });
+        let call = call.or(get.then_some(&[][..]));
+        let walks = named.is_some_and(|(_, d)| self.walks_at(d, written, &name.text, span));
         if let (Some(n), Some(args)) = (ty_name, call) {
-            if let Some((_, d)) = named.filter(|&(_, d)| !self.walks_for(d, &name.text)) {
+            if let Some((_, d)) = named.filter(|&(_, d)| !walks && !self.walks_for(d, &name.text)) {
                 let s = self.d.s(d);
                 let Some(m) = s.methods.get(&name.text).copied() else {
                     self.err(

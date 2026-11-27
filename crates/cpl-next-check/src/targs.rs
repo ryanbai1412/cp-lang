@@ -33,6 +33,15 @@ impl Cx<'_> {
                 && self.lookup(n).is_none()
                 && self.d.struct_named(self.module, n).is_some()
             {
+                // `Pair<V>` named as a value, as `for p in Pair<V>`: the domain of its
+                // positions, as a domain's name alone is (R04.2.27).
+                let mut pre = Vec::new();
+                if let Some(t) = self.struct_at(base, targs, span, &mut pre) {
+                    if self.is_domain(&t) {
+                        let v = self.domain_value(t, span);
+                        return block(pre, v);
+                    }
+                }
                 self.err(span, Unbuilt::TypeArgsValue);
                 return err;
             }
