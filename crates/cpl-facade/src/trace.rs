@@ -2,6 +2,16 @@
 
 use std::sync::Arc;
 
+/// A value of a trace's JSON as `cpl run` shows it.
+pub fn shown(json: &cpl_json::Value) -> String {
+    cpl_interp::trace::shown(json)
+}
+
+/// Whether `text` names `name` as a whole word.
+pub fn mentions(text: &str, name: &str) -> bool {
+    cpl_interp::trace::mentions(text, name)
+}
+
 use std::io::Write;
 
 use crate::TraceConfig;

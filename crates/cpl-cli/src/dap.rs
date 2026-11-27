@@ -1009,7 +1009,7 @@ impl Session {
     }
 }
 
-pub(crate) use cpl_facade::today::trace::shown;
+pub(crate) use cpl_facade::trace::shown;
 
 #[derive(Clone)]
 struct Valued {

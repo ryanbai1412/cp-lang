@@ -21,11 +21,6 @@ pub use cpl_check::{
     BUILTIN_MEMBERS, BUILTIN_TYPES, OPTIONAL_MEMBERS, POS_MEMBERS, RANGE_MEMBERS,
 };
 
-/// A run's recording and what is read from it.
-pub mod trace {
-    pub use cpl_interp::trace::{mentions, shown};
-}
-
 /// A run's profile.
 pub mod profile {
     pub use cpl_interp::profile::*;

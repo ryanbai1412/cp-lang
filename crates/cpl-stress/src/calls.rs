@@ -2,7 +2,7 @@
 //! part that returns something else than its alt on the same arguments.
 //! `cpl stress` and the browser's in-process stress both explain with it.
 
-use cpl_facade::today::trace::mentions;
+use cpl_facade::trace::mentions;
 use cpl_facade::trace::named_values;
 use cpl_facade::Divergence;
 use cpl_facade::Recording;
