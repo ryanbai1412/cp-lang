@@ -2334,13 +2334,24 @@ class DebtRatchetTest(unittest.TestCase):
             (tests / "wrong.tsv").write_text("core-01/eq.cp\twrong-accept\ncore-01/new.cp\twrong-reject\n"
                                              "core-01/acc.cp\twrong-accept\n")
             (tests / "masked.txt").write_text("core-01/ok.cp\ncore-01/rej.cp\n")
-            self.assertEqual(dr.set_swaps(root, "base"), [
+            self.assertEqual([s.split(";")[0] for s in dr.set_swaps(root, "base")], [
                 "core-01/acc.cp: a wrong-accept base does not have",
                 "core-01/eq.cp: passes on base, wrong here (wrong-accept)",
                 "core-01/ok.cp: passes on base, masked here",
                 "core-01/rej.cp: wrong on base, masked here",
             ])
             self.assertEqual(len(dr.unexplained_bumps(root, {"next_wrong": 2}, ref="base")), 4)
+            cause = git("rev-parse", "base").stdout.decode().strip()
+            (root / "other.md").write_text("x\n")
+            git("add", "-A")
+            git("commit", "-qm", "factory: lists and more", "-m", f"Regressed: core-01/ok {cause}")
+            self.assertEqual(len(dr.set_swaps(root, "base")), 4)
+            (tests / "masked.txt").write_text("core-01/rej.cp\n")
+            git("add", "-A")
+            git("commit", "-qm", "factory: regenerate", "-m",
+                f"Regressed: core-01/eq.cp {cause}\nRegressed: core-01/acc.cp {cause}\nRegressed: core-01/rej.cp 0123456789ab")
+            self.assertEqual([s.split(":")[0] for s in dr.set_swaps(root, "base")], ["core-01/rej.cp"])
+            self.assertEqual(dr.regressed_named(root, "base"), {"core-01/eq.cp", "core-01/acc.cp"})
 
     def test_a_wrong_case_may_not_become_refused_unless_decisions_names_it(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
