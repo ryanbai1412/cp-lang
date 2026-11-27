@@ -62,6 +62,7 @@ impl Cx<'_> {
         let mk = |kind, ty| TExpr { kind, ty, span };
         let me = self.recur.take();
         let pre = self.nested.take();
+        let nested = pre.and(me.clone());
         // A lambda passed where `?(A -> R)` is wanted is that fn, made `Some` by the coercion (R02.4.2).
         let expected = want.map(|w| {
             let w = self.shallow(w);
@@ -218,13 +219,21 @@ impl Cx<'_> {
         let unit = self.shallow(&ret) == Ty::Unit
             && body.bare_try().is_none()
             && !matches!(body.kind, ExprKind::Block(_));
-        let b = match unit {
-            true => self.block(&super::one_stmt(body), Some(&ret)),
-            false => self.expr(body, Some(&ret)),
+        // A nested `fn` whose body can end without its value is that error (E0409).
+        let falls = (nested.as_ref())
+            .is_some_and(|name| self.falls_through(name, body.falls_through(), &ret));
+        let b = match (unit, falls) {
+            (_, true) => self.block(&super::one_stmt(body), Some(&Ty::Unit)),
+            (true, _) => self.block(&super::one_stmt(body), Some(&ret)),
+            _ => self.expr(body, Some(&ret)),
         };
         let b = match &b.kind {
-            _ if unit => b,
-            TK::Block(ss, None) if matches!(ss.last(), Some(TStmt::Return(_))) => b,
+            _ if unit || falls => b,
+            TK::Block(ss, None)
+                if matches!(ss.last(), Some(TStmt::Return(_))) || body.never_ends() =>
+            {
+                b
+            }
             _ => self.coerce(b, &ret),
         };
         let b = block(pre, b);

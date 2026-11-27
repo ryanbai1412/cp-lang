@@ -916,13 +916,7 @@ impl Ty {
 
     /// "a V", "an E", "an Int": the type with its article, for messages.
     pub fn with_article(&self) -> String {
-        let text = self.to_string();
-        // "an F64": the name is said "eff".
-        let vowel = text == "F64"
-            || text
-                .trim_start_matches(['[', '?', '('])
-                .starts_with(['A', 'E', 'I', 'O', 'U', 'a', 'e', 'i', 'o', 'u']);
-        format!("{} {text}", if vowel { "an" } else { "a" })
+        cpl_diag::with_article(&self.to_string())
     }
 }
 

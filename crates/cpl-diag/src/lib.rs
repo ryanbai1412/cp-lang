@@ -883,6 +883,16 @@ mod shown_path_tests {
     }
 }
 
+/// "a V", "an E", "an Int": a type as shown, with its article, for messages.
+pub fn with_article(text: &str) -> String {
+    // "an F64": the name is said "eff".
+    let vowel = text == "F64"
+        || text
+            .trim_start_matches(['[', '?', '('])
+            .starts_with(['A', 'E', 'I', 'O', 'U', 'a', 'e', 'i', 'o', 'u']);
+    format!("{} {text}", if vowel { "an" } else { "a" })
+}
+
 /// Edits to turn `a` into `b`, counting a swap of two neighbours as one:
 /// `raods` is one edit from `roads`.
 pub fn edit_distance(a: &str, b: &str) -> usize {

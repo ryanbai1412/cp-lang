@@ -15,6 +15,7 @@ pub mod ast;
 pub mod const_int;
 pub mod decorators;
 pub mod doc;
+pub mod fall_through;
 pub mod files;
 pub mod grammar;
 mod items;

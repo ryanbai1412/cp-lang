@@ -1706,6 +1706,8 @@ next/n_facts_01_proved_checks_keep_results.cp
 next/n_facts_02_unproved_n_minus_i_traps.cp
 next/n_facts_03_unproved_index_traps.cp
 next/n_finite_01_any_range_impl_head.cp
+next/n_fn_ends_01_nested_fn_needs_a_value.cp
+next/n_fn_ends_02_every_path_gives_a_value.cp
 next/n_fn_next_binds_its_types.cp
 next/n_fn_value_01_defaulted_params_are_left_out.cp
 next/n_fnval_01_defaults_fill.cp

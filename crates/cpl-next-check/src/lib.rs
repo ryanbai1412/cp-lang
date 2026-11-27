@@ -13,6 +13,7 @@ use cpl_syntax::ast::{
     self, AssignOp, BinOp, CmpOp, Cond, ExprKind, FnBody, PatternKind, StmtKind, StrPiece,
     TypeKind, UnOp,
 };
+use cpl_syntax::fall_through;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
@@ -1053,7 +1054,27 @@ impl<'a> Cx<'a> {
         self.errors
             .extend(said.into_iter().map(|e| e.in_module(module)));
     }
+    /// E0409: a fn that gives a value gives one, or leaves, on every path through its body;
+    /// `end` is where its body can end without one. Whether it was reported.
+    pub(crate) fn falls_through(&mut self, name: &str, end: fall_through::End, ret: &Ty) -> bool {
+        let Some((at, how)) = end else {
+            return false;
+        };
+        if matches!(self.shallow(ret), Ty::Unit | Ty::Error) {
+            return false;
+        }
+        let value = cpl_diag::with_article(&self.show(ret));
+        let text =
+            cpl_diag::msgs::check::FN_FALLS_THROUGH_AND_THEN_ENDS_WITHOUT.say(&[&how, &name]);
+        let help = fall_through::help(name, &value, how);
+        let msg = Msg::verdict(cpl_diag::codes::FN_FALLS_THROUGH, text);
+        self.err_help(at, msg, Some(help));
+        true
+    }
+
     fn check_fn(&mut self, id: FnId, frames: Vec<CtxFrame>) -> TypedFn {
+        let lends_last =
+            |b: &ast::Block| matches!(b.stmts.last().map(|s| &s.kind), Some(StmtKind::Lend { .. }));
         let d = self.d;
         let f = d.f(id);
         self.decl = Some(id);
@@ -1090,8 +1111,15 @@ impl<'a> Cx<'a> {
         // A fn refused as declared (a decorator the slice lacks) is that refusal: its body,
         // written for the meaning the slice does not build, is not checked.
         let refused = (f.errors.iter()).any(|e| e.refusal.is_some());
+        // A body that can end without its value is that error, not a mismatch at its end.
+        let falls = !refused
+            && f.region.is_none()
+            && f.intrinsic.is_none()
+            && self.falls_through(&f.name, f.body.falls_through(), &ret);
         let body = match &f.body {
             _ if refused => Self::error_node(Span::new(0, 0)),
+            FnBody::Block(b) if falls => self.block(b, Some(&Ty::Unit)),
+            FnBody::Expr(e) if falls => self.block(&one_stmt(e), Some(&Ty::Unit)),
             // A trait's fn whose body is an operation on `Self`, as `Domain`'s are.
             _ if f.intrinsic.is_some() => {
                 let span = Span::new(0, 0);
@@ -1115,7 +1143,17 @@ impl<'a> Cx<'a> {
                         }
                     })
             }
-            FnBody::Block(b) => self.block(b, Some(&ret)),
+            // A block that reaches its end with no value gives `()`, not the result; a
+            // generator's or lender's result is what it yields or lends.
+            FnBody::Block(b) => match self.block(b, Some(&ret)) {
+                v @ TExpr {
+                    kind: TK::Block(_, None),
+                    ..
+                } if f.region.is_none() && !b.never_ends() && !lends_last(b) => {
+                    self.coerce(v, &ret)
+                }
+                v => v,
+            },
             // A generator's one expression is the sequence it yields, or, when it yields itself
             // (`= match k: 0: yield 1 ...`), its body (R07.2.10).
             FnBody::Expr(e) if matches!(f.region, Some((false, _))) => {
