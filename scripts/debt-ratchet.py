@@ -1672,6 +1672,28 @@ def wrong_to_refused(root: Path, ref: str) -> list[str]:
     return sorted(c for c in was_wrong - now if c in cases and f"`{c}`" not in named)
 
 
+def set_swaps(root: Path, ref: str) -> list[str]:
+    """Case ids new to a bad set (`next_wrong`, `next_masked`, `next_wrong_accepts`) that `ref`
+    had in a better one: a count holds when one case is fixed and another breaks, so each set is
+    compared by id. A wrong verdict on a case `ref` refused is an exposure (`unhidden_wrong`), a
+    case `ref` lacked is a case added, and neither is a swap; a new wrong-accept always is."""
+    def rows(where: str, name: str) -> dict[str, str]:
+        lines = _git(root, "show", f"{where}:{NEXT_TESTS}/{name}") if where else \
+            _lines(root / NEXT_TESTS / name) if (root / NEXT_TESTS / name).is_file() else []
+        return {l.split("\t")[0].strip(): (l.split("\t") + [""])[1] for l in lines if l.strip()}
+    was_wrong, was_passing, was_masked = rows(ref, "wrong.tsv"), rows(ref, "passing.txt"), rows(ref, "masked.txt")
+    if not (was_wrong or was_passing):
+        return []
+    wrong, masked, now_passing = rows("", "wrong.tsv"), rows("", "masked.txt"), rows("", "passing.txt")
+    out = [f"{c}: passes on {ref}, wrong here ({v})" for c, v in wrong.items()
+           if c in was_passing and c not in now_passing]
+    out += [f"{c}: {'passes' if c in was_passing else 'wrong'} on {ref}, masked here" for c in masked
+            if c not in was_masked and (c in was_passing or c in was_wrong)]
+    out += [f"{c}: a wrong-accept {ref} does not have" for c, v in wrong.items()
+            if v == "wrong-accept" and was_wrong.get(c) != "wrong-accept" and c not in was_passing]
+    return sorted(out)
+
+
 def next_not_passing(root: Path) -> list[str]:
     """Cases the new pipeline does not pass yet: wrong ones and the ones it refuses (says it
     does not implement). 0 is the day `cpl` switches to it and what it replaces is deleted.
@@ -4483,6 +4505,7 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
     moved = [f"{c}: wrong on {ref}, refused here: fix its verdict, or name it in decisions.md"
              for c in wrong_to_refused(root, ref)]
     moved += frozen_edits(root, base)
+    moved += set_swaps(root, ref)
     # Main lowering a number while this change gates isn't this change raising it:
     # only a number above the change's own base is (the rebase then takes main's).
     mine = json.loads("\n".join(_git(root, "show", f"{base}:scripts/debt-ratchet.json") or ["{}"]))

@@ -2312,6 +2312,36 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.unexplained_bumps(root, {"next_wrong": 11}, ref="base"), [])
             self.assertEqual(len(dr.unexplained_bumps(root, {"next_wrong": 12}, ref="base")), 1)
 
+    def test_a_set_counter_fails_on_a_swap_its_total_hides(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            git = lambda *a: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *a], cwd=root,
+                                            check=True, env=dr._git_env(), capture_output=True)
+            git("init", "-q")
+            (root / "scripts").mkdir()
+            (root / "scripts" / "debt-ratchet.json").write_text('{"next_wrong": 2}')
+            tests = root / dr.NEXT_TESTS
+            tests.mkdir(parents=True)
+            (tests / "passing.txt").write_text("core-01/eq.cp\ncore-01/ok.cp\n")
+            (tests / "wrong.tsv").write_text("core-01/tags.cp\twrong-accept\ncore-01/rej.cp\twrong-reject\n"
+                                             "core-01/acc.cp\twrong-reject\n")
+            (tests / "masked.txt").write_text("")
+            git("add", "-A")
+            git("commit", "-qm", "base")
+            git("branch", "base")
+            self.assertEqual(dr.set_swaps(root, "base"), [])
+            (tests / "passing.txt").write_text("core-01/tags.cp\n")
+            (tests / "wrong.tsv").write_text("core-01/eq.cp\twrong-accept\ncore-01/new.cp\twrong-reject\n"
+                                             "core-01/acc.cp\twrong-accept\n")
+            (tests / "masked.txt").write_text("core-01/ok.cp\ncore-01/rej.cp\n")
+            self.assertEqual(dr.set_swaps(root, "base"), [
+                "core-01/acc.cp: a wrong-accept base does not have",
+                "core-01/eq.cp: passes on base, wrong here (wrong-accept)",
+                "core-01/ok.cp: passes on base, masked here",
+                "core-01/rej.cp: wrong on base, masked here",
+            ])
+            self.assertEqual(len(dr.unexplained_bumps(root, {"next_wrong": 2}, ref="base")), 4)
+
     def test_a_wrong_case_may_not_become_refused_unless_decisions_names_it(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
