@@ -254,6 +254,9 @@ pub struct DomInfo {
     pub owner: Option<FnId>,
     /// How many positions it has, when both its ends are constants.
     pub count: Option<i64>,
+    /// Its ends are characters, its positions their codes: `L(c)` takes a `Char` and `Char(l)`
+    /// gives one back (R04.2.24).
+    pub chars: bool,
 }
 pub struct Typed {
     pub domains: Vec<DomInfo>,
@@ -484,6 +487,7 @@ fn check_with(
                 within: (None, None),
                 owner: None,
                 count: None,
+                chars: false,
             })
             .collect(),
         fresh_eq: Vec::new(),
@@ -544,6 +548,7 @@ fn check_with(
             within: (None, None),
             owner: None,
             count: None,
+            chars: false,
         };
     }
     // `[0..2]T` in a declaration: the range's domain is set before the program runs.
@@ -566,6 +571,7 @@ fn check_with(
             within: (Some(first), Some(last)),
             owner: None,
             count: Some(count),
+            chars: false,
         };
     }
     for (at, code, msg) in &d.misdeclared {

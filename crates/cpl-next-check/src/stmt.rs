@@ -709,7 +709,7 @@ impl<'a> Cx<'a> {
                 kind: ExprKind::Int(k as _),
                 span,
             };
-            let (lo, end, within) = self.domain_ends(&int(0), &int(n), false);
+            let (lo, end, within, _) = self.domain_ends(&int(0), &int(n), false);
             let name = format!("$range{}", self.domains.len());
             let i = self.declare_domain(&name, lo, end, within, span, &mut pre);
             self.unify(&d, &Ty::Dom(i));
@@ -1458,8 +1458,9 @@ impl<'a> Cx<'a> {
                     self.refused_names.insert(name.text.clone());
                     return;
                 };
-                let (lo, end, within) = self.domain_ends(lo, hi, *inclusive);
-                self.declare_domain(&name.text, lo, end, within, s.span, out);
+                let (lo, end, within, chars) = self.domain_ends(lo, hi, *inclusive);
+                let i = self.declare_domain(&name.text, lo, end, within, s.span, out);
+                self.domains[i].chars = chars;
             }
             StmtKind::Yield { value, from: false } => match self.region.clone() {
                 Some((false, t)) => {

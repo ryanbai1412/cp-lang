@@ -349,8 +349,21 @@ impl Cx<'_> {
         if let Ty::Struct(..) = dty {
             return self.convert(dty, x, span, Origin::Convert);
         }
-        let v = self.expr(x, Some(&Ty::Int));
-        let v = self.coerce(v, &Ty::Int);
+        let v = match dty {
+            Ty::Dom(i) if self.domains[i].chars => {
+                let c = self.expr(x, Some(&Ty::Char));
+                let c = self.coerce(c, &Ty::Char);
+                TExpr {
+                    kind: TK::CodeOf(Box::new(c)),
+                    ty: Ty::Int,
+                    span,
+                }
+            }
+            _ => {
+                let v = self.expr(x, Some(&Ty::Int));
+                self.coerce(v, &Ty::Int)
+            }
+        };
         TExpr {
             kind: TK::DomFrom(dty.clone(), Box::new(v), CheckKind::Domain),
             ty: dty,

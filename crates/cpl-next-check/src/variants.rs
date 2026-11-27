@@ -21,6 +21,12 @@ impl Cx<'_> {
                 return self.position_int(v);
             }
         }
+        if let (Ty::Char, Ty::Dom(i)) = (&to, self.shallow(&v.ty)) {
+            if self.domains[i].chars {
+                let code = self.position_int(v);
+                return mk(TK::CharOf(Box::new(code)), Ty::Char);
+            }
+        }
         let v = match self.shallow(&v.ty) {
             Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..) => self.coerce(v, &Ty::Int),
             _ => v,

@@ -10,11 +10,25 @@ impl Cx<'_> {
         lo: &ast::Expr,
         hi: &ast::Expr,
         inclusive: bool,
-    ) -> (TExpr, TExpr, (Option<i64>, Option<i64>)) {
+    ) -> (TExpr, TExpr, (Option<i64>, Option<i64>), bool) {
         // An end keeps the range type it was written with.
         let lo = self.expr_as_typed(lo, None);
         let hi = self.expr_as_typed(hi, None);
-        self.typed_ends(lo, hi, inclusive)
+        // `'a'..='z'`: a `Char` domain's positions are its characters' codes (R04.2.24).
+        let chars = self.shallow(&lo.ty) == Ty::Char;
+        let code = |e: TExpr| match chars {
+            true => TExpr {
+                span: e.span,
+                kind: TK::CodeOf(Box::new(e)),
+                ty: Ty::Int,
+            },
+            false => e,
+        };
+        let lo_ty = lo.ty.clone();
+        let hi = self.coerce(hi, &lo_ty);
+        let (lo, hi) = (code(lo), code(hi));
+        let (lo, end, within) = self.typed_ends(lo, hi, inclusive);
+        (lo, end, within, chars)
     }
     fn typed_ends(
         &mut self,
@@ -119,6 +133,7 @@ impl Cx<'_> {
             within,
             owner: self.decl,
             count,
+            chars: false,
         };
         if let (None, Some(&Ty::Dom(i))) = (self.decl, self.d.top_doms.get(name)) {
             if self.domains[i].name.is_empty() {
@@ -158,8 +173,9 @@ impl Cx<'_> {
                 continue;
             };
             let name = decls::factor_name(product, i);
-            let (lo, end, within) = self.domain_ends(lo, hi, *inclusive);
-            self.declare_domain(&name, lo, end, within, span, out);
+            let (lo, end, within, chars) = self.domain_ends(lo, hi, *inclusive);
+            let i = self.declare_domain(&name, lo, end, within, span, out);
+            self.domains[i].chars = chars;
             parts.push(ast::Expr {
                 kind: ExprKind::Name(name),
                 span: x.span,
