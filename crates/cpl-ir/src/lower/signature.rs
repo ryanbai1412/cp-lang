@@ -226,16 +226,16 @@ impl<'a> Lowerer<'a> {
                 continue;
             }
             // `impl Pick for Int -> Bool`: fn values of that type get its methods.
+            let open = self.impl_params(m, target);
             let head = match &target.kind {
-                ast::TypeKind::Named { name, args } => {
-                    if !args.is_empty() || self.names_struct_like(m, &name.text) {
-                        continue;
-                    }
+                ast::TypeKind::Named { name, args }
+                    if args.is_empty()
+                        && !self.names_struct_like(m, &name.text)
+                        && !open.contains(&name.text) =>
+                {
                     name.text.clone()
                 }
-                ast::TypeKind::Fn { .. } if self.impl_params(m, target).is_empty() => {
-                    format!("fn{idx}")
-                }
+                ast::TypeKind::Fn { .. } if open.is_empty() => format!("fn{idx}"),
                 _ => continue,
             };
             let trait_name = self.impls[idx].trait_name.clone();
