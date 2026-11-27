@@ -684,8 +684,9 @@ impl Database {
                 }
             }
             // `B.subsets` uses the `Subset` std declares as `@member(subsets)`.
+            // `D.cuts` this checker types itself, so it needs no `Cut`.
             for &(member, of) in crate::prelude::domain_members() {
-                if dot_ident_tokens.contains(member) {
+                if member != crate::prelude::cuts_member() && dot_ident_tokens.contains(member) {
                     ident_tokens.insert(of);
                 }
             }

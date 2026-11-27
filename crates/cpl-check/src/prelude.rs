@@ -592,12 +592,13 @@ pub fn domain_members() -> &'static [(&'static str, &'static str)] {
     lazy(&FOUND, || struct_decorations("member"))
 }
 
-/// The struct whose domain `D.member` is, when std declares one.
+/// The struct whose domain `D.member` is, when std declares one. The cuts member is not
+/// one here: this checker types `D.cuts` as the range of the domain's cuts itself.
 #[inline(never)]
 pub fn domain_member(member: &str) -> Option<&'static str> {
     domain_members()
         .iter()
-        .find(|(m, _)| *m == member)
+        .find(|(m, _)| *m == member && *m != cuts_member())
         .map(|&(_, of)| of)
 }
 
