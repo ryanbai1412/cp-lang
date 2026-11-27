@@ -160,6 +160,7 @@ impl<'a> Cx<'a> {
         written_targs: &[Ty],
     ) -> TExpr {
         if let Some(e) = self.domain_member(base, name, call, span, want) {
+            self.no_targs(name, written_targs, span);
             return e;
         }
         // `Type.f(args)` or `Type<A>.f(args)`: a fn of the type with no receiver.
@@ -178,6 +179,7 @@ impl<'a> Cx<'a> {
                 self.lookup(n).is_none(),
             ) {
                 if let Some(i) = (self.d.s(e).variants.iter()).position(|(v, _)| *v == name.text) {
+                    self.no_targs(name, written_targs, span);
                     let mut pre = Vec::new();
                     let given: Vec<Ty> = (written.iter())
                         .map(|t| self.body_ty(t, span, &mut pre))
@@ -333,6 +335,7 @@ impl<'a> Cx<'a> {
         }
         match self.d.lookup_member(&rt, &name.text) {
             Some(decls::Member::Field(i, ty)) => {
+                self.no_targs(name, written_targs, span);
                 let f = TExpr {
                     kind: TK::Field(Box::new(recv), i),
                     ty,

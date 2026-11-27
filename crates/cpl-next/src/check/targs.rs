@@ -80,6 +80,20 @@ impl Cx<'_> {
     }
 
     /// The type arguments of `m` with the written ones after those already fixed (`ts`).
+    /// Type arguments written on a member that has no type parameters of its own: a field, a
+    /// variant, a domain's member.
+    pub(super) fn no_targs(&mut self, name: &ast::Name, written: &[Ty], span: Span) {
+        if !written.is_empty() {
+            self.err(
+                span,
+                format!(
+                    "{}: `{}` takes no type arguments",
+                    cpl_diag::codes::TYPE_MISMATCH.0,
+                    name.text
+                ),
+            );
+        }
+    }
     pub(super) fn written_targs(
         &mut self,
         m: FnId,
