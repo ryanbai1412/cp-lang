@@ -155,18 +155,24 @@ template <class T> struct cpl_body {
     template <class L> cpl_body(L& l) : env(&l), fn([](void* e, T x) -> int { return (*static_cast<L*>(e))(static_cast<T>(x)); }) {}
     int operator()(T x) const { return fn(env, static_cast<T>(x)); }
 };
-static inline void cpl_ev(cpl_char c) { fprintf(stderr, " %c", (char)c.code); }
-static inline void cpl_out(cpl_char c) { putchar((char)c.code); }
-static inline void cpl_ev(int64_t x) { fprintf(stderr, " %lld", (long long)x); }
-static inline void cpl_ev(uint64_t x) { fprintf(stderr, " %llu", (unsigned long long)x); }
-static inline void cpl_ev(bool b) { fputs(b ? " true" : " false", stderr); }
-static inline void cpl_out(int64_t x) { printf("%lld", (long long)x); }
-static inline void cpl_out(uint64_t x) { printf("%llu", (unsigned long long)x); }
-static inline void cpl_out(double x) { printf("%.10f", x); }
-static inline void cpl_outf(int64_t x, int w, bool z, int) { printf(z ? "%0*lld" : "%*lld", w, (long long)x); }
-static inline void cpl_outf(uint64_t x, int w, bool z, int) { printf(z ? "%0*llu" : "%*llu", w, (unsigned long long)x); }
-static inline void cpl_outf(double x, int w, bool z, int d) { printf(z ? "%0*.*f" : "%*.*f", w, d, x); }
-static inline void cpl_out(bool b) { fputs(b ? "true" : "false", stdout); }
+// A scalar as `ops::show_fmt` writes it; `print` writes to stdout and an event to stderr.
+static inline void cpl_put(FILE* f, cpl_char c, int, bool, int) { fputc((char)c.code, f); }
+static inline void cpl_put(FILE* f, bool b, int, bool, int) { fputs(b ? "true" : "false", f); }
+static inline void cpl_put(FILE* f, int64_t x, int w, bool z, int) { fprintf(f, z ? "%0*lld" : "%*lld", w, (long long)x); }
+static inline void cpl_put(FILE* f, uint64_t x, int w, bool z, int) { fprintf(f, z ? "%0*llu" : "%*llu", w, (unsigned long long)x); }
+static inline void cpl_put(FILE* f, double x, int w, bool z, int d) { fprintf(f, z ? "%0*.*f" : "%*.*f", w, d, x); }
+static inline void cpl_out(cpl_char c) { cpl_put(stdout, c, 0, false, 10); }
+static inline void cpl_out(bool b) { cpl_put(stdout, b, 0, false, 10); }
+static inline void cpl_out(int64_t x) { cpl_put(stdout, x, 0, false, 10); }
+static inline void cpl_out(uint64_t x) { cpl_put(stdout, x, 0, false, 10); }
+static inline void cpl_out(double x) { cpl_put(stdout, x, 0, false, 10); }
+static inline void cpl_outf(int64_t x, int w, bool z, int d) { cpl_put(stdout, x, w, z, d); }
+static inline void cpl_outf(uint64_t x, int w, bool z, int d) { cpl_put(stdout, x, w, z, d); }
+static inline void cpl_outf(double x, int w, bool z, int d) { cpl_put(stdout, x, w, z, d); }
+static inline void cpl_ev(cpl_char c) { fputc(' ', stderr); cpl_put(stderr, c, 0, false, 10); }
+static inline void cpl_ev(bool b) { fputc(' ', stderr); cpl_put(stderr, b, 0, false, 10); }
+static inline void cpl_ev(int64_t x) { fputc(' ', stderr); cpl_put(stderr, x, 0, false, 10); }
+static inline void cpl_ev(uint64_t x) { fputc(' ', stderr); cpl_put(stderr, x, 0, false, 10); }
 "#;
 
 /// What `break`, `continue` and `return` mean at a point in the output.
@@ -1252,6 +1258,26 @@ mod tests {
                 format!("double x; uint64_t b = UINT64_C({b}); memcpy(&x, &b, 8); printf(\"[\"); cpl_out(x); printf(\"]\\n\");"),
                 format!("[{out}]\n"),
             );
+        }
+        let mut shown = |v: ops::Scalar, cpp: &str| {
+            let mut out = String::new();
+            ops::show(v, &mut out);
+            case(
+                format!("printf(\"[\"); cpl_out({cpp}); fflush(stdout); cpl_ev({cpp}); fflush(stderr); printf(\"]\\n\");"),
+                format!("[{out} {out}]\n"),
+            );
+        };
+        for b in [false, true] {
+            shown(ops::Scalar::Bool(b), &b.to_string());
+        }
+        for c in *b"aZ0~!" {
+            shown(ops::Scalar::Char(c), &format!("cpl_char{{{c}}}"));
+        }
+        for a in [-i64::MAX, -1, 0, 7, i64::MAX] {
+            shown(ops::Scalar::Int(a), &format!("INT64_C({a})"));
+        }
+        for a in [0, 1 << 63, u64::MAX] {
+            shown(ops::Scalar::U64(a), &format!("UINT64_C({a})"));
         }
         let mut cpp = runtime();
         cpp.push_str("#include <sys/wait.h>\nint main() {\n");
