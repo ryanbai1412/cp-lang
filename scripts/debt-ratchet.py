@@ -4551,8 +4551,11 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
     if "rs_near_cap" in old and (set(baseline.get("rs_near_cap", [])) - set(old["rs_near_cap"]) - set(old_allow)
                                  - set(mine.get("rs_near_cap", [])) - set(mine_allow)):
         raised.append(("rs_near_cap", "rs_near_cap"))
+    # A regeneration's case named `Regressed:`, or one `ref` refused and the tree now
+    # answers wrong (an exposure), may enter a bad set; nothing else may.
+    admitted = regressed_named(root, ref) | set(unhidden_wrong(root, ref))
     raised += [(k, k) for k in ID_SETS
-               if k in old and set(baseline.get(k, [])) - set(old[k]) - set(mine.get(k, []))]
+               if k in old and set(baseline.get(k, [])) - set(old[k]) - set(mine.get(k, [])) - admitted]
     # A new case the new pipeline cannot run yet is a case added, not a
     # case broken (`passing.txt` and `next_wrong` hold those), so each admits one.
     added = len([l for l in _git(root, "diff", "--name-only", "--diff-filter=A", ref, "--", "spec/conformance",
@@ -4562,7 +4565,8 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
               if not (n == "next_not_passing" and baseline[n] - old[n] <= added)
               and not (n == "next_wrong" and baseline[n] - old[n] <= len(unhidden_wrong(root, ref)))
               and not (n == "next_wrong_accepts"
-                       and baseline[n] - old[n] <= len(regressed_named(root, ref) & set(next_wrong_accepts(root))))]
+                       and baseline[n] - old[n] <= len(admitted & set(next_wrong_accepts(root))))
+              and not (n == "next_split" and baseline[n] - old[n] <= len(admitted & set(next_split(root))))]
     zero = [n for n, _ in raised if n in COUNTERS and old.get(n, 1) == 0]
     if zero:
         return moved + [f"{n}: reached 0 on {ref}; a counter at 0 is never raised" for n in zero]

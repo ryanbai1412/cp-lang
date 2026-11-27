@@ -2313,6 +2313,35 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.unexplained_bumps(root, {"next_wrong": 11}, ref="base"), [])
             self.assertEqual(len(dr.unexplained_bumps(root, {"next_wrong": 12}, ref="base")), 1)
 
+    def test_a_split_main_refused_may_enter_the_split_set(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            git = lambda *a: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *a], cwd=root,
+                                            check=True, env=dr._git_env(), capture_output=True)
+            git("init", "-q")
+            (root / "scripts").mkdir()
+            (root / "scripts" / "debt-ratchet.json").write_text(
+                '{"next_split": 1, "next_split_ids": ["core-01/wrong.cp"]}')
+            for c in ["hid", "passed", "wrong"]:
+                case = root / "spec" / "conformance" / "core-01" / f"{c}.cp"
+                case.parent.mkdir(parents=True, exist_ok=True)
+                case.write_text("// expect: ok\n")
+            tests = root / dr.NEXT_TESTS
+            tests.mkdir(parents=True)
+            (tests / "passing.txt").write_text("core-01/passed.cp\n")
+            (tests / "wrong.tsv").write_text("core-01/wrong.cp\tsplit\n")
+            git("add", "-A")
+            git("commit", "-qm", "base")
+            git("branch", "base")
+            (tests / "wrong.tsv").write_text("".join(f"core-01/{c}.cp\tsplit\n" for c in ["hid", "wrong"]))
+            hid = {"next_split": 2, "next_split_ids": ["core-01/hid.cp", "core-01/wrong.cp"]}
+            self.assertEqual(dr.unexplained_bumps(root, hid, ref="base"), [])
+            (tests / "passing.txt").write_text("")
+            (tests / "wrong.tsv").write_text("".join(f"core-01/{c}.cp\tsplit\n" for c in ["passed", "wrong"]))
+            passed = {"next_split": 2, "next_split_ids": ["core-01/passed.cp", "core-01/wrong.cp"]}
+            raised = [b for b in dr.unexplained_bumps(root, passed, ref="base") if "baseline raised" in b]
+            self.assertEqual([b.partition(":")[0] for b in raised], ["next_split", "next_split_ids"])
+
     def test_a_set_counter_fails_on_a_swap_its_total_hides(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
