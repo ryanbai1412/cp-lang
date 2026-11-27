@@ -891,13 +891,12 @@ impl Lw<'_> {
                 };
                 let (lo, len) = (int(EK::DomLo(t.clone())), int(EK::DomLen(t.clone())));
                 // With a position in the domain and `v` at or after the first, none of
-                // the arithmetic below can overflow.
+                // the arithmetic below can overflow. The last position is worked out inside
+                // its check, so a check the facts prove takes that arithmetic with it.
                 check(op(Intr::Lt, int(EK::Int(0)), len.clone(), Ty::Bool), out);
                 check(op(Intr::Ge, v.clone(), lo.clone(), Ty::Bool), out);
                 let last = op(Intr::Sub, len, int(EK::Int(1)), Ty::Int);
-                let last = self.spill(last, out);
                 let last = op(Intr::Add, lo.clone(), last, Ty::Int);
-                let last = self.spill(last, out);
                 check(op(Intr::Le, v.clone(), last, Ty::Bool), out);
                 let ord = op(Intr::Sub, v, lo, Ty::Int);
                 let ord = self.spill(ord, out);
