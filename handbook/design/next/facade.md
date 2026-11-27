@@ -82,6 +82,58 @@ signature above does not change when the view lands.
 | `program` | Generics, then link | `back` and canonicalize |
 | `hover`, `definition`, `complete` (next) | Scope, Signatures | not built |
 
+## Trace and replay
+
+`cpl-facade` hands tools the old interpreter's step log through
+`today::trace` and `today::replay`: about 140 of `facade_today_uses`'
+lines (cli 77, stress 51, wasm 13). The trace query takes their place,
+shaped by contract 8 so stage 5's engine can answer it from its event
+stream without a tool changing.
+
+```rust
+struct Recording(..)                    // opaque: contract 8's Recording
+impl Recording {
+    fn len(&self) -> usize; fn is_empty(&self) -> bool
+    fn truncated(&self) -> bool           // steps past the limit were not kept
+    fn skipped(&self) -> usize            // the first kept step is this step of the run
+    fn step(&self, i) -> Option<StepView> // line, label, stage, frames, the values it showed
+    fn line(&self, i) -> Option<u32>; fn depth(&self, i) -> usize
+    fn place(&self, i) -> Option<Place>; fn find(&self, p: Place, at: usize) -> usize
+    fn calls(&self) -> &[Call]; fn vars(&self) -> &[Var]; fn lives(&self) -> &[Live]
+    fn assigned(&self) -> &[Assigned]; fn shown(&self) -> &[Shown]
+}
+struct Place { line: u32, visit: usize }      // contract 8's At, by line until sites have ids
+struct Call { name, ordinal, entry, exit, depth, args, returned }
+struct Change { step, line, variable, before, after }
+struct Divergence { name, nth, fast, brute, inside, blame, call }
+
+fn first_change(a: &Recording, b: &Recording, within: Option<usize>) -> Option<Change>
+fn divergence(source, fast: &Recording, slow: Option<&Recording>) -> Option<Divergence>
+fn stages(fast: &Recording, slow: &Recording) -> List<Stage>
+fn document(title, note, file, source, fast: (&str, &Recording), slow: Option<..>) -> String
+fn trap_locals(recording: &Recording, source, at) -> Option<String>
+fn call_at(recording: &Recording, step, frame) -> Result<Call, String>
+fn replay(rerun: Rerun, config: TraceConfig) -> Replay           // contract 9's replay_call
+```
+
+- `Recording` is opaque so that stage 5 backs it with contract 8's
+  stream. `Call`, `Change`, `Divergence`, `Live`, `Var` and `Place`
+  are plain data that tools build and match on, so they are the
+  facade's own structs, not the interpreter's.
+- `first_change` is contract 8's `first_difference`, and `divergence`
+  is its `align` read at the first `Exit` that differs. Each one is
+  computed once, behind the facade. Tools print what it found and
+  never walk two step logs themselves.
+- `document` is the trace viewer's one printer, used by the CLI, the
+  browser and `cpl run --trace`.
+- A text helper that has no compiler answer in it (`mentions`) moves
+  into the tool that uses it.
+
+What stage 5's engine must supply for this query: a step per
+statement with its line, its call depth and frames (`Enter`/`Exit`),
+the values each one bound or wrote (`Bind`/`Write`), and the visit
+count per line inside a call (`At.nth`).
+
 ## Must never
 
 - A tool of the new pipeline names `compile`, `units`, `Compiled`,
