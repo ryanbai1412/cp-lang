@@ -502,3 +502,24 @@ pub(super) fn literal_cut(e: &ast::Expr) -> Option<(i128, i128)> {
     let (a, b) = (lit(lo, i128::MIN)?, lit(hi, i128::MAX)?);
     Some((a, if *inclusive && hi.is_some() { b + 1 } else { b }))
 }
+
+/// `a[x, y]` is `a[(x, y)]`: the parts of a product key index it one by one (R04.2.11).
+pub(super) fn packed(e: &ast::Expr) -> Option<ast::Expr> {
+    let ExprKind::Index { base, indices } = &e.kind else {
+        return None;
+    };
+    let [first, .., last] = &indices[..] else {
+        return None;
+    };
+    let key = ast::Expr {
+        kind: ExprKind::Tuple(indices.clone()),
+        span: Span::new(first.span.start, last.span.end),
+    };
+    Some(ast::Expr {
+        kind: ExprKind::Index {
+            base: base.clone(),
+            indices: vec![key],
+        },
+        span: e.span,
+    })
+}

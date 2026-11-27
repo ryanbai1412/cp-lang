@@ -203,12 +203,21 @@ impl Cx<'_> {
     }
     /// A type named in an expression: a domain, a type parameter, or `D.m` for a `@member(m)`
     /// struct, as `V.cuts` is `Cut<V>`.
-    fn type_path(&self, e: &ast::Expr) -> Option<Ty> {
+    pub(super) fn type_path(&self, e: &ast::Expr) -> Option<Ty> {
         match &e.kind {
             ExprKind::Name(n) if self.lookup(n).is_none() => self.domain_named(n),
             ExprKind::Field { base, name } => {
                 let b = self.type_path(base)?;
                 self.member_type(&b, &name.text)
+            }
+            // An inline tuple of domains is the product domain (R04.2.11).
+            ExprKind::Tuple(xs) if xs.len() > 1 => {
+                let &tuple = self.d.tuples.get(&xs.len())?;
+                let parts = xs
+                    .iter()
+                    .map(|x| self.type_path(x))
+                    .collect::<Option<Vec<_>>>()?;
+                Some(Ty::Struct(tuple, parts, Vec::new())).filter(|t| self.is_domain(t))
             }
             _ => None,
         }
@@ -223,6 +232,9 @@ impl Cx<'_> {
         // A fn's own type parameter is nearer than any domain declared outside it.
         if let Some(p) = self.generics.iter().position(|g| g == n) {
             return Some(Ty::Param(p));
+        }
+        if let Some(t @ Ty::Struct(..)) = self.doms.get(n) {
+            return Some(t.clone());
         }
         if let Some(&Ty::Dom(i)) = self.doms.get(n) {
             if self.decl.is_none() && self.domains[i].name.is_empty() {

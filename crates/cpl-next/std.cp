@@ -451,6 +451,12 @@ impl<T: Ord> Ord for List<T>:
         a.n < b.n
 
 /// Tuples compare field by field, lexicographically for `Ord` (R08.1.6).
+// A product domain walks row-major, the last factor fastest (R04.2.9).
+impl<A: Domain, B: Domain> Domain for Tuple2<A, B>:
+    @get fn count() -> Int = A.count * B.count
+    fn nth(k: Int) -> Tuple2<A, B> = (A.nth(k / B.count), B.nth(k % B.count))
+    @get fn ord(self) -> Int = self._0.ord * B.count + self._1.ord
+
 impl<A: Eq, B: Eq> Eq for Tuple2<A, B>:
     fn eq(a, b) = a._0 == b._0 and a._1 == b._1
 impl<A: Ord, B: Ord> Ord for Tuple2<A, B>:

@@ -1277,6 +1277,10 @@ impl<'a> Cx<'a> {
                 self.member(base, &name, None, span, want, &[])
             }
             ExprKind::Tuple(xs) if self.d.tuples.contains_key(&xs.len()) => {
+                // `(R, C)` named as a value is the product domain's whole range (R04.2.11).
+                if let Some(p) = self.type_path(e) {
+                    return self.domain_value(p, span);
+                }
                 let d = self.d.tuples[&xs.len()];
                 let args: Vec<ast::Arg> = (xs.iter())
                     .map(|x| ast::Arg {
@@ -1310,6 +1314,10 @@ impl<'a> Cx<'a> {
                 self.expr(&ast::Expr { kind: call, span }, want)
             }
             ExprKind::Field { base, name } => self.member(base, name, None, span, want, &[]),
+            ExprKind::Index { indices, .. } if indices.len() > 1 => match super::index::packed(e) {
+                Some(one) => self.expr(&one, want),
+                None => Self::error_node(span),
+            },
             ExprKind::Index { base, indices } if indices.len() == 1 => {
                 let b = self.expr(base, None);
                 if self.is_error(&b.ty) {
@@ -1618,8 +1626,24 @@ impl<'a> Cx<'a> {
                 domains,
                 params,
                 body,
-            } if domains.len() == 1 && params.len() == 1 => {
-                self.table(&domains[0], &params[0], body, span, want)
+            } if !domains.is_empty() && (params.len() == 1 || params.len() == domains.len()) => {
+                // `[R, C] p => e` is a table over the product `(R, C)`, `p` the cell; `r, c`
+                // name its parts (R04.2.11).
+                let dom = match &domains[..] {
+                    [d] => d.clone(),
+                    ds => ast::Type {
+                        kind: TypeKind::Tuple(ds.to_vec()),
+                        span,
+                    },
+                };
+                let pat = match &params[..] {
+                    [p] => p.clone(),
+                    ps => ast::Pattern {
+                        kind: PatternKind::Tuple(ps.to_vec()),
+                        span,
+                    },
+                };
+                self.table(&dom, &pat, body, span, want)
             }
             ExprKind::Comprehension { body, clauses }
                 if clauses.len() == 1 && clauses[0].conds.is_empty() =>

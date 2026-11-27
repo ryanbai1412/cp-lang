@@ -109,9 +109,12 @@ fn layer(
     }
     if base.is_some() {
         for s in mods[n - 1].items.iter().flat_map(|(_, stmts)| stmts) {
-            if let StmtKind::Domain { name, .. } = &s.kind {
-                let k = d.top_doms.len();
-                d.top_doms.entry(name.text.clone()).or_insert(Ty::Dom(k));
+            if let StmtKind::Domain { name, def } = &s.kind {
+                let k = (d.top_doms.values())
+                    .filter(|t| matches!(t, Ty::Dom(_)))
+                    .count();
+                let t = product(&d, def).unwrap_or(Ty::Dom(k));
+                d.top_doms.entry(name.text.clone()).or_insert(t);
             }
         }
         d.top_values = Arc::new(
@@ -1163,4 +1166,19 @@ fn remake_views(
             }
         }
     }
+}
+
+/// `domain P = (A, B)` over domains declared above it: the tuple of them (R04.2.11).
+fn product(d: &Decls, def: &ast::Expr) -> Option<Ty> {
+    let ast::ExprKind::Tuple(xs) = &def.kind else {
+        return None;
+    };
+    let &tuple = d.tuples.get(&xs.len())?;
+    let parts = (xs.iter())
+        .map(|x| match &x.kind {
+            ast::ExprKind::Name(n) => d.top_doms.get(n).cloned(),
+            _ => None,
+        })
+        .collect::<Option<Vec<_>>>()?;
+    Some(Ty::Struct(tuple, parts, Vec::new()))
 }

@@ -709,6 +709,18 @@ impl<'a> Cx<'a> {
                     self.stmt(&one, out);
                 }
             }
+            StmtKind::Assign { target, op, value } if super::index::packed(target).is_some() => {
+                let packed = super::index::packed(target);
+                let one = ast::Stmt {
+                    kind: StmtKind::Assign {
+                        target: packed.unwrap_or_else(|| target.clone()),
+                        op: *op,
+                        value: value.clone(),
+                    },
+                    ..s.clone()
+                };
+                self.stmt(&one, out);
+            }
             StmtKind::Assign { target, op, value } => {
                 // `a[i] = v` and `a[i] op= v`: the indices, then the value, are read once; then
                 // `a`'s `IndexedMut` lends the cell and the assignment runs while it is lent (R12.4.6).
@@ -1062,6 +1074,18 @@ impl<'a> Cx<'a> {
                     _ => "assertion failed".to_string(),
                 };
                 out.push(TStmt::Assert(c, msg, s.span, CheckKind::Assert));
+            }
+            StmtKind::Domain { name, def } if matches!(def.kind, ExprKind::Tuple(_)) => {
+                let Some(p) = self.type_path(def) else {
+                    return self.err(
+                        def.span,
+                        format!(
+                            "{}: a product domain's parts are domains",
+                            cpl_diag::codes::TYPE_MISMATCH.0
+                        ),
+                    );
+                };
+                self.doms.insert(name.text.clone(), p);
             }
             StmtKind::Domain { name, def } => {
                 let ExprKind::Range {
@@ -1776,7 +1800,7 @@ impl<'a> Cx<'a> {
         }
         // A position of one domain never indexes an array over another (R04.3.1).
         if let Some(k) = self.key_of(base) {
-            let (k, t) = (self.shallow(&k), self.shallow(&i.ty));
+            let (k, t) = (self.recv_ty(&k), self.recv_ty(&i.ty));
             if k != t && self.is_domain(&k) && self.is_domain(&t) {
                 let (ks, ts) = (self.show(&k), self.show(&t));
                 self.err(

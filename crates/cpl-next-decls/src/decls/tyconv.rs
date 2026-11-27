@@ -300,8 +300,19 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
             errors.push("slice: an array indexed by a range outside a `let` or `read`".into());
             Ty::Error
         }
-        TypeKind::Array { index, elem } if index.len() == 1 => {
-            let i = conv(cx, &index[0], errors);
+        // `[R, C]T` is `[(R, C)]T`: one array keyed by the product domain (R04.2.11).
+        TypeKind::Array { index, elem } if !index.is_empty() => {
+            let i = match &index[..] {
+                [i] => conv(cx, i, errors),
+                _ => conv(
+                    cx,
+                    &ast::Type {
+                        kind: TypeKind::Tuple(index.clone()),
+                        span: t.span,
+                    },
+                    errors,
+                ),
+            };
             let e = conv(cx, elem, errors);
             match struct_named(cx.names, "Array") {
                 Some(array) => Ty::Struct(array, vec![i, e], Vec::new()),

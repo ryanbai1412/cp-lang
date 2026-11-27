@@ -379,7 +379,8 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded)
         global_names: HashMap::new(),
         ret_sets: HashMap::new(),
         // A top-level domain's place is kept for it until its statement runs.
-        domains: (d.top_doms.iter())
+        domains: (d.top_doms.values())
+            .filter(|t| matches!(t, Ty::Dom(_)))
             .map(|_| DomInfo {
                 name: String::new(),
                 len: VarRef::Global(usize::MAX),
