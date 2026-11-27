@@ -7,22 +7,12 @@ pub use std.seq.{IndexMut, IndexedMut, IndexSet}
 pub use std.default.{Default}
 /// The maps and sets every module names unimported (R07.2.4).
 pub use std.map.{Map, Set}
+use std.raw.{raw_empty, raw_new, raw_get, raw_set, raw_take, raw_cap, check_key, check_range}
 
-fn raw_empty<T>() -> Raw<T> = @intrinsic("raw_empty")
-fn raw_new<T>(n: Int, fill: T) -> Raw<T> = @intrinsic("raw_new")
-fn raw_get<T>(r: Raw<T>, i: Int) -> T = @intrinsic("raw_get")
-/// Traps R0101 unless `ok`: a read at a key the sequence doesn't have (R07.2.17).
-fn check_key(ok: Bool) = @intrinsic("key_check")
-fn check_range(ok: Bool) = @intrinsic("range_check")
 /// Traps R0102 unless `ok`: a value its type doesn't have, as an `Int` converted to an enum that
 /// is no variant's value (R02.7), or to a cut past a domain's ends (R04.2.17).
 @variant_check
 pub fn check_value(ok: Bool) = @intrinsic("value_check")
-fn raw_set<T>(mut r: Raw<T>, i: Int, x: T) = @intrinsic("raw_set")
-/// Moves cell `i` out of `r`, leaving it unset until `raw_set` fills it.
-fn raw_take<T>(mut r: Raw<T>, i: Int) -> T = @intrinsic("move_out")
-/// Storage of `n` unset cells; each is filled by `raw_set` before it is read.
-fn raw_cap<T>(n: Int) -> Raw<T> = @intrinsic("unset_cells")
 
 @list
 pub struct List<T>:
