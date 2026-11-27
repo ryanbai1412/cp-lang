@@ -102,7 +102,7 @@ def base_suite_crashes(base, run=subprocess.run):
         env = {**os.environ, "CARGO_TARGET_DIR": str(target)}
         print(f"conform_staged: the suite stopped short at the tip; running it at the base {base[:9]}",
               file=sys.stderr)
-        if run(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform"], cwd=wt, env=env).returncode:
+        if run(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform", "-p", "cpl-next"], cwd=wt, env=env).returncode:
             return False
         r = run([str(target / "debug" / "cpl-conform"), "conformance"], cwd=wt, env=env,
                 capture_output=True, text=True)
@@ -122,7 +122,7 @@ def base_verdicts(cases, base, run=subprocess.run):
         with new_reds.base_slot(common, base) as (wt, target):
             env = {**os.environ, "CARGO_TARGET_DIR": str(target)}
             print(f"conform_staged: rerunning {len(todo)} failing case(s) at the base {base[:9]}", file=sys.stderr)
-            if run(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform"], cwd=wt, env=env).returncode:
+            if run(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform", "-p", "cpl-next"], cwd=wt, env=env).returncode:
                 return {c: cache.get(f"conform:{c}", "unbuilt") for c in cases}
             for c in todo:
                 if not (wt / PREFIX / c).is_file():
@@ -242,7 +242,7 @@ def base_alone(case, base, run=subprocess.run):
     wt = new_reds.base_checkout(common, base)
     target = Path(os.environ.get("CPL_BASE_TARGET", str(common / "cpl-base-target")))
     env = {**os.environ, "CARGO_TARGET_DIR": str(target)}
-    if run(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform"], cwd=wt, env=env).returncode:
+    if run(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform", "-p", "cpl-next"], cwd=wt, env=env).returncode:
         return ""
     r = run([str(target / "debug" / "cpl-conform"), "conformance", "--verbose", case], cwd=wt, env=env,
             capture_output=True, text=True)
@@ -321,12 +321,12 @@ def main(argv, run=subprocess.run):
             print("conform_staged: uncommitted changes under crates/ or std/ would be tested in place of what "
                   "lands; commit or stash them", file=sys.stderr)
             return 1
-        if run(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform"], cwd=ROOT).returncode:
+        if run(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform", "-p", "cpl-next"], cwd=ROOT).returncode:
             return 1
         target = Path(os.environ.get("CARGO_TARGET_DIR", "target"))
         return run_all(str((target if target.is_absolute() else ROOT / target) / "debug" / "cpl-conform"), base, run)
     if argv[:1] == ["--build"]:
-        if run(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform"], cwd=ROOT).returncode:
+        if run(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform", "-p", "cpl-next"], cwd=ROOT).returncode:
             return 1
         target = Path(os.environ.get("CARGO_TARGET_DIR", "target"))
         argv = [str((target if target.is_absolute() else ROOT / target) / "debug" / "cpl-conform"), *argv[1:]]

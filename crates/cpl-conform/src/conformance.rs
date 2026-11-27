@@ -15,6 +15,9 @@ use crate::scoreboard::{CaseOutcome, SuiteReport};
 enum Backend<'a> {
     Linked(&'a mut Session),
     Cli(PathBuf),
+    /// A `// engines: next` case, std the frozen `cpl` lacks: the `cpl-next` beside this runner,
+    /// whose interpreter and engine have to print the same.
+    Next(PathBuf),
 }
 
 struct Ran {
@@ -31,6 +34,10 @@ impl Backend<'_> {
                 Ok((code, out, err)) => (out + &err, code != 0),
                 Err(e) => (format!("error[cli]: {e}"), true),
             },
+            Backend::Next(next) => match cli(next, &[path, "--check"], &[]) {
+                Ok((code, out, err)) => (out + &err, code != 0),
+                Err(e) => (format!("error[cpl-next]: {e}"), true),
+            },
         }
     }
 
@@ -40,6 +47,7 @@ impl Backend<'_> {
             Backend::Cli(cpl) => cli(cpl, &["lint", path], &[])
                 .map(|(_, out, err)| out + &err)
                 .unwrap_or_default(),
+            Backend::Next(_) => String::new(),
         }
     }
 
@@ -77,7 +85,55 @@ impl Backend<'_> {
                     trap_rendered: err,
                 })
             }
+            Backend::Next(next) => {
+                let mut runs = ["--raw", "--engine"]
+                    .map(|form| cli_within(next, &[path, form], input, case_limit(text)));
+                let [raw, engine] = &mut runs;
+                let (code, out, err) = std::mem::replace(raw, Ok(Default::default()))?;
+                if code != 0 && code != 3 {
+                    return Err(out + &err);
+                }
+                let (_, engine_out, _) = std::mem::replace(engine, Ok(Default::default()))?;
+                if engine_out != out {
+                    return Err(format!(
+                        "cpl-next's interpreter printed {:?}, its engine {:?}",
+                        runner::truncate_chars(&out, 80),
+                        runner::truncate_chars(&engine_out, 80)
+                    ));
+                }
+                Ok(Ran {
+                    stdout: out.into_bytes(),
+                    trapped: code == 3,
+                    trap_rendered: err,
+                })
+            }
         }
+    }
+}
+
+/// Whether the case runs on cpl-next (`// engines: next`).
+fn on_next(text: &str) -> bool {
+    header_values(text, "engines:").contains(&"next")
+}
+
+/// The `cpl-next` beside cpl-conform.
+fn next_binary() -> Result<PathBuf, String> {
+    let next = std::env::current_exe()
+        .map_err(|e| format!("cannot find cpl-conform: {e}"))?
+        .with_file_name(if cfg!(windows) {
+            "cpl-next.exe"
+        } else {
+            "cpl-next"
+        });
+    if !next.exists() {
+        return Err(format!(
+            "a `// engines: next` case needs `cpl-next` next to cpl-conform ({}); build it: cargo build -p cpl-next",
+            next.display()
+        ));
+    }
+    match stale_cli(&next) {
+        Some(why) => Err(why),
+        None => Ok(next),
     }
 }
 
@@ -710,9 +766,18 @@ pub fn run_one(db: &mut Session, case: &ConformanceCase) -> CaseOutcome {
         return run_tool_case(case, &text, args, expect);
     }
     let path_str = case.path.to_string_lossy();
-    let mut backend = match cli_override() {
-        Some(cpl) => Backend::Cli(cpl),
-        None => Backend::Linked(db),
+    let mut backend = match (on_next(&text), cli_override()) {
+        (true, _) => match next_binary() {
+            Ok(next) => Backend::Next(next),
+            Err(why) => {
+                return CaseOutcome {
+                    status: "fail".into(),
+                    detail: why,
+                }
+            }
+        },
+        (false, Some(cpl)) => Backend::Cli(cpl),
+        (false, None) => Backend::Linked(db),
     };
     let (diag, check_failed) = backend.check(&path_str, &text);
 
@@ -1021,6 +1086,17 @@ fn extract_rule_defs(line: &str) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn an_engines_next_header_runs_the_case_on_cpl_next() {
+        assert!(super::on_next(
+            "// expect: ok\n// engines: next\nwrite(1)\n"
+        ));
+        assert!(!super::on_next("// expect: ok\nprint(1)\n"));
+        assert!(!super::on_next(
+            "// expect: ok\nprint(1)\n// engines: next\n"
+        ));
+    }
+
     use super::*;
 
     #[test]

@@ -662,9 +662,9 @@ class Tail:
             built.parent.mkdir(parents=True, exist_ok=True)
             built.touch()
         self.wasm()
-        self.step("cargo build -p cpl-cli -p cpl-conform (the binaries the checks below run)")
-        if self.call(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform"]):
-            raise Failed("cargo build -p cpl-cli -p cpl-conform failed")
+        self.step("cargo build -p cpl-cli -p cpl-conform -p cpl-next (the binaries the checks below run)")
+        if self.call(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform", "-p", "cpl-next"]):
+            raise Failed("cargo build -p cpl-cli -p cpl-conform -p cpl-next failed")
 
     def _commit(self, sel: dict[str, str], logs: str) -> None:
         # First: the hook's 25 s cut allows a commit past any other step, so a slice
@@ -765,7 +765,7 @@ class Tail:
             if self.call(["git", "diff", "--quiet", "--", "crates", "std", "Cargo.toml", "Cargo.lock"]):
                 raise Failed("unstaged changes under crates/ or std/ would run the staged cases against code this commit"
                              " leaves out (4aaa8b0db); stage them, or stash them with git stash --keep-index")
-            self._cargo_build("cpl-cli", "cpl-conform")
+            self._cargo_build("cpl-cli", "cpl-conform", "cpl-next")
             if self.call([sys.executable, "scripts/conform_staged.py", "--base", "HEAD",
                           str(target_dir() / "debug/cpl-conform"), *cases]):
                 raise Failed("a staged conformance case fails; cpl-conform's message above says how to fix it")
@@ -908,8 +908,8 @@ class Tail:
                     if self.call([sys.executable, "-m", "unittest", *tests], env=bare_home(home)):
                         raise Failed("script unit test failure; rerun: uv run python -m unittest scripts/test_*.py")
             self.step(f"cpl-conform ratchet ({g['suites']} --check against research/scoreboard.json)")
-            if self.call(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform"]):
-                raise Failed("cargo build -p cpl-cli -p cpl-conform failed")
+            if self.call(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform", "-p", "cpl-next"]):
+                raise Failed("cargo build -p cpl-cli -p cpl-conform -p cpl-next failed")
             # Seeded problems (problem-packages/R9) read their cases from
             # target/corpus-tests/; only the corpus suite reads them.
             if {"all", "corpus"} & set(suites):
@@ -989,9 +989,9 @@ class Tail:
         if g["kind"] == "std-mutants":
             return self._std_mutants(env)
         if g["kind"] == "full":
-            self.step("cargo build -p cpl-cli -p cpl-conform (the binaries the --full suites run)")
-            if self.call(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform"]):
-                raise Failed("cargo build -p cpl-cli -p cpl-conform failed")
+            self.step("cargo build -p cpl-cli -p cpl-conform -p cpl-next (the binaries the --full suites run)")
+            if self.call(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform", "-p", "cpl-next"]):
+                raise Failed("cargo build -p cpl-cli -p cpl-conform -p cpl-next failed")
             self.step("the --full suites (scripts/ci.py steps full)")
             if run_steps("full", self.cpl, run=self.run, keep_going=True):
                 raise Failed("a --full suite failed; the lines above name each one")
@@ -1005,8 +1005,8 @@ class Tail:
         base = env.get("CPL_STD_MUTANTS_BASE") or env.get("CHECK_BASE") or "origin/main"
         self.step(f"std mutants since {base} (scripts/mutation-score.py --std --since {base} --min 1.0)")
         profile = release_profile(env)
-        if self.call(["cargo", "build", "-q", "--profile", profile, "-p", "cpl-cli", "-p", "cpl-conform"]):
-            raise Failed(f"cargo build --profile {profile} -p cpl-cli -p cpl-conform failed")
+        if self.call(["cargo", "build", "-q", "--profile", profile, "-p", "cpl-cli", "-p", "cpl-conform", "-p", "cpl-next"]):
+            raise Failed(f"cargo build --profile {profile} -p cpl-cli -p cpl-conform -p cpl-next failed")
         argv = [sys.executable, "scripts/mutation-score.py", "--std", "--since", base, "--min", "1.0",
                 "--bin", str(target_dir() / profile), "-j", str(os.cpu_count() or 2)]
         if self.call(argv):
