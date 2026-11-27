@@ -1,8 +1,11 @@
 //! Collecting declarations: std's once, and each program's as a layer over them.
 use super::impls::{overlap, same_shape, supertraits_unmet};
 use super::inherent::inherent_impl;
+use super::tyconv::input_bound;
 use super::*;
 use crate::synth::{enum_structs, module_derived};
+use cpl_diag::codes::FIELD_BOUND_FROM_INPUT;
+use cpl_diag::msgs::check::FIELD_BOUND_FROM_INPUT_A_FIELD_S_BOUNDS;
 use cpl_next_ir::ids::{ItemId, SourceId};
 use cpl_next_ir::unbuilt::Unbuilt;
 
@@ -698,11 +701,27 @@ fn layer(
                         next_set: Some(0),
                     };
                     let mut errors = Vec::new();
-                    let fields: Vec<(String, Ty)> = sd
-                        .fields
-                        .iter()
-                        .map(|f| (f.name.text.clone(), conv(&mut cx, &f.ty, &mut errors)))
-                        .collect();
+                    let fields: Vec<(String, Ty)> =
+                        sd.fields
+                            .iter()
+                            .map(|f| {
+                                let ty =
+                                    match input_bound(&f.ty, &cx.values) {
+                                        Some((written, name)) => {
+                                            let text = FIELD_BOUND_FROM_INPUT_A_FIELD_S_BOUNDS
+                                                .say(&[&f.name.text, &written, &name]);
+                                            let at = item.at(f.ty.span);
+                                            errors.push(Msg::at(
+                                                at,
+                                                Msg::verdict(FIELD_BOUND_FROM_INPUT, text),
+                                            ));
+                                            Ty::Error
+                                        }
+                                        None => conv(&mut cx, &f.ty, &mut errors),
+                                    };
+                                (f.name.text.clone(), ty)
+                            })
+                            .collect();
                     let n_sets = cx.next_set.unwrap_or(0);
                     d.structs[id.0].bounds = (sd.bounds.iter())
                         .filter_map(|b| Some((generics.iter().position(|g| *g == b.name.text)?, b)))

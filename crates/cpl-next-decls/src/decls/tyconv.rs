@@ -130,6 +130,41 @@ pub(super) fn trait_ref(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> 
 /// The single capitals in an impl header that name nothing: its undeclared type parameters (R02.10.3).
 /// `@get`: a member read like a field (R02.6.6).
 pub(crate) const GETTER: &str = "get";
+/// A range type with an end naming a value the program's top level binds, written out, and that
+/// value: a struct field's layout is fixed before input is read, so no field is bounded by one
+/// (R03.1.3).
+pub(super) fn input_bound(t: &ast::Type, values: &HashSet<String>) -> Option<(String, String)> {
+    struct Named<'a>(&'a HashSet<String>, Option<String>);
+    impl cpl_syntax::visit::Visitor for Named<'_> {
+        fn expr(&mut self, e: &ast::Expr) {
+            match &e.kind {
+                ast::ExprKind::Name(n) if self.1.is_none() && self.0.contains(n) => {
+                    self.1 = Some(n.clone())
+                }
+                _ => {}
+            }
+        }
+    }
+    match &t.kind {
+        TypeKind::Range { lo, hi, inclusive } => {
+            let mut v = Named(values, None);
+            for e in [lo, hi].into_iter().flatten() {
+                cpl_syntax::visit::walk_expr(e, &mut v);
+            }
+            let end = |e: &Option<Box<ast::Expr>>| match e.as_deref().map(|e| &e.kind) {
+                Some(ast::ExprKind::Int(k)) => k.to_string(),
+                Some(ast::ExprKind::Name(n)) => n.clone(),
+                Some(_) => "…".to_string(),
+                None => String::new(),
+            };
+            let dots = if *inclusive { "..=" } else { ".." };
+            v.1.map(|n| (format!("{}{dots}{}", end(lo), end(hi)), n))
+        }
+        TypeKind::Tuple(ts) => ts.iter().find_map(|t| input_bound(t, values)),
+        TypeKind::Optional(t) => input_bound(t, values),
+        _ => None,
+    }
+}
 
 pub(crate) fn unnamed(t: &ast::Type, names: &HashMap<String, Named>, out: &mut Vec<String>) {
     if let TypeKind::Named { name, args } = &t.kind {

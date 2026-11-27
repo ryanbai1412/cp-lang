@@ -276,6 +276,7 @@ core-03/abs-of-int.cp
 core-03/byte-slot-is-range.cp
 core-03/const-range-store.cp
 core-03/domain-width-roundtrip.cp
+core-03/field-bound-from-input.cp
 core-03/filled-from-constant-widens.cp
 core-03/floor-div-zero.cp
 core-03/int-max-minus-one-ok.cp
