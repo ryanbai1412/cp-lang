@@ -908,6 +908,7 @@ next/n_lambda_04_context_fixes_params.cp
 next/n_lambda_04_recursive.cp
 next/n_lambda_05_nested_fn.cp
 next/n_lambda_06_match_joins_fns.cp
+next/n_library_const.cp
 next/n_library_module.cp
 next/n_list_01_shrink.cp
 next/n_member_01_getter_first.cp

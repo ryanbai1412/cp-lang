@@ -188,6 +188,8 @@ pub enum Named {
     /// A library item the slice does not build: an index into `Decls::refused`, said only
     /// when a program names it.
     Refused(usize),
+    /// A library's `const N: T = e`: a fn of no arguments that each read of `N` calls.
+    Const(FnId),
 }
 /// What a method sits in.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -670,6 +672,11 @@ pub fn collect(
                         aliases.push((mid, at, name.text.clone(), generics, ty.clone()));
                     }
                     StmtKind::Fn(_) | StmtKind::Impl { .. } => pending.push((mid, *item, s, None)),
+                    StmtKind::Const { generics, .. }
+                        if d.is_library(mid) && generics.is_empty() =>
+                    {
+                        pending.push((mid, *item, s, None))
+                    }
                     StmtKind::Use { .. } => imports.push((mid, s)),
                     // A library's context is only reached by a `with`, which the checker refuses.
                     StmtKind::Context { .. } if d.is_library(mid) => {}
@@ -1269,6 +1276,36 @@ pub fn collect(
                         module: mid,
                         derived,
                     });
+                }
+                (
+                    StmtKind::Const {
+                        name,
+                        ty,
+                        init: Some(init),
+                        ..
+                    },
+                    _,
+                ) => {
+                    let Some(ty) = ty else {
+                        let e = format!("slice: a library const without a type (`{}`)", name.text);
+                        own[mi].insert(name.text.clone(), Named::Refused(d.refused.len()));
+                        d.refused.push(e);
+                        continue;
+                    };
+                    let f = ast::FnDecl {
+                        name: name.clone(),
+                        generics: Vec::new(),
+                        bounds: Vec::new(),
+                        params: Vec::new(),
+                        ret: Some(ty.clone()),
+                        lends: None,
+                        uses: Vec::new(),
+                        body: ast::FnBody::Expr(init.clone()),
+                        sig_span: name.span,
+                    };
+                    let fid = add_fn(&mut d, mid, item, s, &f, FREE);
+                    own[mi].insert(name.text.clone(), Named::Const(fid));
+                    d.views[mi].insert(name.text.clone(), Named::Const(fid));
                 }
                 (StmtKind::Fn(f), _) => {
                     let fid = add_fn(&mut d, mid, item, s, f, FREE);

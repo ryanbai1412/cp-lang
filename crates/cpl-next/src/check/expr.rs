@@ -782,6 +782,10 @@ impl<'a> Cx<'a> {
                 };
             }
         }
+        if let Some(decls::Named::Const(d)) = self.d.named(self.module, n) {
+            let f = self.fnref(d, Vec::new(), Vec::new());
+            return self.call_fn(f, None, &[], span, None);
+        }
         if let Some(d) = self.d.fn_named(self.module, n) {
             let f = self.fnref(d, Vec::new(), Vec::new());
             return TExpr {
