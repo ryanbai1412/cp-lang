@@ -1,4 +1,4 @@
-//! Ownership on link's instances (WIP port of lib.rs's typed-tree walk; not wired in yet).
+//! Ownership on link's instances: what each reads, writes and holds, and which passed places are copies.
 //! Each instance is walked once its callees are summarized: what it reads, writes and holds
 //! of its parameters and of globals (`Fx`), and which parameters it keeps. A call names its
 //! instance (`Target::Inst`), and a call through a fn value calls each closure of its set, so
@@ -9,9 +9,10 @@ use cpl_next_decls::decls::Decls;
 use cpl_next_decls::diag::Msg;
 use cpl_next_decls::plain::lends;
 use cpl_next_ir::ir::{Arg, Expr, Place, Stmt, Target, EK};
-use cpl_next_ir::ir::{Func, FuncKey, PrintPiece};
+use cpl_next_ir::ir::{Func, FuncKey, PrintPiece, Site};
 use cpl_next_ir::prog::{CTy, Program};
 use cpl_next_ir::ty::Ty;
+use std::borrow::Cow;
 use std::collections::{BTreeSet, HashMap};
 
 /// What one instance does to its callers' places, by parameter position.
@@ -56,6 +57,7 @@ pub(crate) struct Walk<'a> {
     pub spilled: HashMap<Root, Pl>,
     /// Temps holding an element read out by a call that declares no `lends`.
     pub elems: BTreeSet<Root>,
+    pub copies: BTreeSet<(usize, Site)>,
     pub report: bool,
     pub errors: Vec<Msg>,
 }
@@ -416,7 +418,32 @@ impl Walk<'_> {
         self.keep(site, storage, &what);
     }
     /// The places the value of `e` lends: a borrowed binding, or what a binding was given.
+    /// What `place_copies` makes of an argument: a viewable place not copied in is viewed.
+    fn settle_arg<'a>(&self, a: &'a Arg<CTy>) -> Cow<'a, Arg<CTy>> {
+        match a {
+            Arg::Value(Expr {
+                kind: EK::Pass(p, true, s),
+                ..
+            }) if !self.copies.contains(&(self.cur, *s)) => Cow::Owned(Arg::View(p.clone())),
+            a => Cow::Borrowed(a),
+        }
+    }
+    /// A passed place the walk copies in is fresh; any other reads as the place itself.
+    fn unpass<'e>(&self, e: &'e Expr<CTy>) -> Option<Cow<'e, Expr<CTy>>> {
+        match &e.kind {
+            EK::Pass(_, _, s) if self.copies.contains(&(self.cur, *s)) => None,
+            EK::Pass(p, ..) => Some(Cow::Owned(Expr {
+                kind: EK::Copy(p.clone()),
+                ..e.clone()
+            })),
+            _ => Some(Cow::Borrowed(e)),
+        }
+    }
     fn sources(&self, e: &Expr<CTy>) -> BTreeSet<Pl> {
+        let Some(e) = self.unpass(e) else {
+            return BTreeSet::new();
+        };
+        let e = &*e;
         // A plain value (an `Int` field read among them) holds nothing; fn values hold captures.
         if self.plain(&e.ty) && !matches!(e.ty, CTy::Clo(_) | CTy::Set(_) | CTy::Struct(..))
             || self.captures_nothing(&e.ty)
@@ -471,7 +498,7 @@ impl Walk<'_> {
                     if !lends.contains(&k) {
                         continue;
                     }
-                    match a {
+                    match &*self.settle_arg(a) {
                         Arg::Value(v) => {
                             out.extend(self.sources(v));
                             // A binding passed whole where the result lends it is lent: a heap
@@ -502,7 +529,7 @@ impl Walk<'_> {
             }
             EK::Intr(n, args, _) => {
                 for k in n.lends() {
-                    match args.get(*k) {
+                    match args.get(*k).map(|a| self.settle_arg(a)).as_deref() {
                         Some(Arg::Value(v)) => out.extend(self.sources(v)),
                         Some(Arg::View(p) | Arg::Lend(p)) => out.extend(self.lent_pl(p)),
                         None => {}
@@ -559,6 +586,8 @@ impl Walk<'_> {
     }
     /// R2: binding or assigning a heap binding (or a field path under it) moves it.
     fn take(&mut self, e: &Expr<CTy>) {
+        let Some(e) = self.unpass(e) else { return };
+        let e = &*e;
         // A struct built from `a.xs` (a record update among them) moves the path (R12.11.4).
         if let EK::MakeStruct(xs) = &e.kind {
             return xs.iter().for_each(|x| self.take_path(x));
@@ -719,6 +748,36 @@ impl Walk<'_> {
             other.reads.extend(sum.fx.reads.iter().filter_map(map));
             other.writes.extend(sum.fx.writes.iter().filter_map(map));
         }
+        // R4: the callee keeps the value it was called with, so a passed place the call also
+        // writes is copied in; any other is viewed.
+        let mut copied = vec![false; args.len()];
+        for (i, (a, p)) in args.iter().zip(&places).enumerate() {
+            let (
+                Arg::Value(Expr {
+                    kind: EK::Pass(_, _, s),
+                    ty,
+                    ..
+                }),
+                Some(p),
+            ) = (a, p)
+            else {
+                continue;
+            };
+            if !self.plain(ty) && other.writes.iter().any(|w| overlap(w, p)) {
+                copied[i] = true;
+                self.copies.insert((self.cur, *s));
+            }
+        }
+        let args: Vec<Arg<CTy>> = args
+            .iter()
+            .map(|a| self.settle_arg(a).into_owned())
+            .collect();
+        let args = &args[..];
+        let viewed = |i: usize| match &args[i] {
+            Arg::View(_) => true,
+            Arg::Value(v) => matches!(v.kind, EK::Pass(_, true, _)) && !copied[i],
+            Arg::Lend(_) => false,
+        };
         // R4: one place lent for writing and also passed is two ways in (E0601).
         for (i, (a, p)) in args.iter().zip(&places).enumerate() {
             let (Arg::Lend(_), Some(p)) = (a, p) else {
@@ -727,7 +786,8 @@ impl Walk<'_> {
             let twice = (places.iter().enumerate()).any(|(j, q)| {
                 // A plain value passed is a copy, not a second way in.
                 let copy = matches!(&args[j], Arg::Lend(_))
-                    || matches!(&args[j], Arg::Value(v) if self.plain(&v.ty));
+                    || matches!(&args[j], Arg::Value(v) if self.plain(&v.ty))
+                    || copied[j];
                 j != i && !copy && q.as_ref().is_some_and(|q| overlap(p, q))
             });
             if let (true, Some(c)) = (twice, cs.first()) {
@@ -738,8 +798,8 @@ impl Walk<'_> {
             }
         }
         let (mut lent, mut held): (BTreeSet<Pl>, BTreeSet<Pl>) = Default::default();
-        for (a, p) in args.iter().zip(&places) {
-            if let (Arg::View(_), Some(p)) = (a, p) {
+        for (i, (a, p)) in args.iter().zip(&places).enumerate() {
+            if let (true, Some(p)) = (viewed(i), p) {
                 held.insert(p.clone());
             }
             match (a, p) {
@@ -755,7 +815,7 @@ impl Walk<'_> {
                     }
                     lent.insert(p.clone());
                 }
-                (Arg::Value(v), _) => self.reads(v, fx),
+                (Arg::Value(v), _) if !viewed(i) => self.reads(v, fx),
                 (_, Some(p)) => {
                     self.live(site, p);
                     fx.reads.insert(p.clone());
@@ -779,14 +839,16 @@ impl Walk<'_> {
         }
         let mut kept = BTreeSet::new();
         for (i, a) in args.iter().enumerate() {
-            if !keeps.contains(&i) {
+            // A copy holds nothing of the place it was made from.
+            if !keeps.contains(&i) || copied[i] {
                 continue;
             }
             // A parameter of a type parameter's type that a callee keeps is kept by this fn too,
             // whatever its type is in this instance (R05.2.2).
             let place = match a {
                 Arg::Value(Expr {
-                    kind: EK::Copy(p), ..
+                    kind: EK::Copy(p) | EK::Pass(p, ..),
+                    ..
                 })
                 | Arg::View(p)
                 | Arg::Lend(p) => Some(p),
@@ -799,12 +861,12 @@ impl Walk<'_> {
                 }
             }
             match a {
-                Arg::Value(v) => {
-                    self.take(v);
-                    kept.extend(self.sources(v));
-                }
                 // A kept view is copied in: it holds what its place holds (R05.2.2).
-                Arg::View(p) => {
+                Arg::View(p)
+                | Arg::Value(Expr {
+                    kind: EK::Pass(p, true, _),
+                    ..
+                }) => {
                     // R2: a whole binding a callee keeps is moved into it.
                     if let (Place::Local(_) | Place::Global(_), Some(ty)) =
                         (p, self.place_root_ty(p))
@@ -821,6 +883,10 @@ impl Walk<'_> {
                     if self.borrowed.contains(&q.root) || !q.path.is_empty() {
                         kept.insert(q);
                     }
+                }
+                Arg::Value(v) => {
+                    self.take(v);
+                    kept.extend(self.sources(v));
                 }
                 Arg::Lend(p) => kept.extend(self.pl(p)),
             }
@@ -858,6 +924,8 @@ impl Walk<'_> {
     }
     fn stmt(&mut self, s: &Stmt<CTy>, fx: &mut Fx) {
         match s {
+            // A passed place saved before a later operand runs: a copy, or nothing if viewed.
+            Stmt::Let(_, e) if matches!(e.kind, EK::Pass(_, true, _)) => self.reads(e, fx),
             Stmt::Let(l, e) => {
                 self.reads(e, fx);
                 // A temp the lowering made holds the place it was read from; it moves nothing.
@@ -1049,7 +1117,7 @@ impl Walk<'_> {
                 }
                 // What the walked value lends is held as long as it is (R05.5.3).
                 for a in args {
-                    match a {
+                    match &*self.settle_arg(a) {
                         Arg::Value(v) => match &v.kind {
                             EK::Copy(p) => {
                                 let r = self.pl(p).map(|q| q.root);
@@ -1233,7 +1301,7 @@ fn run(
     generic: &HashMap<FuncKey, cpl_next_ir::ir::Func<cpl_next_ir::ty::Ty>>,
     p: &Program,
     globals: &[(String, bool)],
-) -> Vec<Msg> {
+) -> Owned {
     let mut w = Walk {
         d,
         p,
@@ -1253,6 +1321,7 @@ fn run(
         caps: HashMap::new(),
         spilled: HashMap::new(),
         elems: BTreeSet::new(),
+        copies: BTreeSet::new(),
         pending: vec![],
         report: false,
         errors: vec![],
@@ -1274,7 +1343,10 @@ fn run(
     for &i in &order {
         w.instance(i);
     }
-    w.errors
+    Owned {
+        errors: w.errors,
+        copies: w.copies,
+    }
 }
 
 impl Walk<'_> {
@@ -1482,14 +1554,23 @@ fn holding<T>(b: &[Stmt<T>], lent: &dyn Fn(&Place) -> bool, out: &mut Vec<u32>) 
     }
 }
 
-/// What ownership reports, read off the instances link made (and, for `@cache`, generic IR).
-pub fn check_instances(
+/// What ownership decides: its errors, and which passed places (`EK::Pass`, by instance and
+/// site) are copies (`place_copies`).
+#[derive(Default)]
+pub struct Owned {
+    pub errors: Vec<Msg>,
+    pub copies: BTreeSet<(usize, Site)>,
+}
+
+/// Ownership on the instances link made, before their passed places settle (and, for `@cache`,
+/// on generic IR).
+pub fn check(
     d: &Decls,
     generic: &HashMap<FuncKey, Func<Ty>>,
     p: &Program,
     globals: &[(String, bool)],
-) -> Vec<Msg> {
-    let mut errors = run(d, generic, p, globals);
-    errors.extend(cache_calls(d, generic));
-    errors
+) -> Owned {
+    let mut owned = run(d, generic, p, globals);
+    owned.errors.extend(cache_calls(d, generic));
+    owned
 }

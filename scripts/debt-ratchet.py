@@ -1400,8 +1400,8 @@ def next_ownership_outside_own(root: Path) -> list[str]:
             for i, l in enumerate(_lines(p), 1) if (m := NEXT_OWN_DECIDERS_RE.match(l))]
 
 
-NEXT_LAYER_CRATES = ("cpl-next-ir", "cpl-next-decls", "cpl-next-check", "cpl-next-own", "cpl-next-lower",
-                     "cpl-next-link")
+NEXT_LAYER_CRATES = ("cpl-next-ir", "cpl-next-decls", "cpl-next-check", "cpl-next-lower", "cpl-next-link",
+                     "cpl-next-own")
 NEXT_LAYER_MAY_USE = ("cpl-syntax", "cpl-diag", "cpl-config")
 
 

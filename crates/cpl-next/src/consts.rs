@@ -203,7 +203,10 @@ impl<'a> Evaluator<'a> {
             return Ran::Open;
         }
         let mut prog = inst::link(self.d, &t, &low.funcs, &low.globals);
-        let owned = own::check(self.d, &t, &prog);
+        let names: Vec<(String, bool)> = (t.globals.iter())
+            .map(|g| (g.name.clone(), g.mutable))
+            .collect();
+        let owned = own::check(self.d, &low.funcs, &prog, &names);
         if !owned.errors.is_empty() {
             return Ran::Open;
         }

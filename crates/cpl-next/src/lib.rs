@@ -267,31 +267,19 @@ fn staged(
         .collect()
 }
 
-/// Link, then ownership on the linked program (contract 4), where the program checked clean:
-/// the program, its copies settled, and ownership's diagnostics. What ownership finds wrong
-/// in a fn reached only through a trait is a link error where an instance of it runs.
+/// Link, then ownership on the linked instances (contract 4), where the program checked clean:
+/// the program, its copies settled, and ownership's diagnostics.
 fn back(f: &Front) -> Option<(inst::Program, Vec<Diag>)> {
     if !(f.loaded.errors.is_empty() && f.t.errors.is_empty() && f.d.errors.is_empty()) {
         return None;
     }
     let mut prog = inst::link(&f.d, &f.t, &f.g.funcs, &f.g.globals);
-    let owned = own::check(&f.d, &f.t, &prog);
-    let mut said = std::collections::HashSet::new();
-    let reached = (prog.insts.iter()).filter_map(|i| match i.key {
-        ir::FuncKey::Decl(id) if said.insert(id) => owned.deferred.get(&id),
-        _ => None,
-    });
-    let deferred: Vec<diag::Msg> = (reached.flatten())
-        .map(|e| e.clone().from_layer(Stage::Own.name()))
-        .collect();
-    prog.errors.extend(deferred);
-    own::place_copies(&mut prog, &owned.copies);
-    prog.errors.retain(|m| m.layer != Some(Stage::Own.name()));
     let names: Vec<(String, bool)> = (f.t.globals.iter())
         .map(|g| (g.name.clone(), g.mutable))
         .collect();
-    let errors = own::check_instances(&f.d, &f.g.funcs, &prog, &names);
-    let diags = staged(Stage::Own, &errors, &f.loaded, &f.rejected);
+    let owned = own::check(&f.d, &f.g.funcs, &prog, &names);
+    own::place_copies(&mut prog, &owned.copies);
+    let diags = staged(Stage::Own, &owned.errors, &f.loaded, &f.rejected);
     Some((prog, diags))
 }
 
