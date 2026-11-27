@@ -393,7 +393,7 @@ impl Cx<'_> {
     }
     /// `D.m`: the `@member(m)` struct at `D` (R06).
     fn member_type(&self, d: &Ty, m: &str) -> Option<Ty> {
-        let &id = self.d.member_types.get(m)?;
+        let &id = self.d.member_types.get(&self.d.sym(m)?)?;
         (self.d.s(id).n_sets == 0).then(|| Ty::Struct(id, vec![d.clone()], Vec::new()))
     }
     /// `D(x)`: the position of `x`, checked; a library domain (`Cell((0, 2))` of a product)

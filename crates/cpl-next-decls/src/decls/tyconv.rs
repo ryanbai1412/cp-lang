@@ -146,13 +146,19 @@ pub(crate) const GETTER: &str = "get";
 /// A range type with an end naming a value the program's top level binds, written out, and that
 /// value: a struct field's layout is fixed before input is read, so no field is bounded by one
 /// (R03.1.3).
-pub(super) fn input_bound(t: &ast::Type, values: &HashSet<String>) -> Option<(String, String)> {
-    struct Named<'a>(&'a HashSet<String>, Option<String>);
+pub(super) fn input_bound(
+    t: &ast::Type,
+    values: &HashSet<Sym>,
+    syms: &Syms,
+) -> Option<(String, String)> {
+    struct Named<'a>(&'a HashSet<Sym>, &'a Syms, Option<String>);
     impl cpl_syntax::visit::Visitor for Named<'_> {
         fn expr(&mut self, e: &ast::Expr) {
             match &e.kind {
-                ast::ExprKind::Name(n) if self.1.is_none() && self.0.contains(n) => {
-                    self.1 = Some(n.clone())
+                ast::ExprKind::Name(n)
+                    if self.2.is_none() && self.1.get(n).is_some_and(|s| self.0.contains(&s)) =>
+                {
+                    self.2 = Some(n.clone())
                 }
                 _ => {}
             }
@@ -160,7 +166,7 @@ pub(super) fn input_bound(t: &ast::Type, values: &HashSet<String>) -> Option<(St
     }
     match &t.kind {
         TypeKind::Range { lo, hi, inclusive } => {
-            let mut v = Named(values, None);
+            let mut v = Named(values, syms, None);
             for e in [lo, hi].into_iter().flatten() {
                 cpl_syntax::visit::walk_expr(e, &mut v);
             }
@@ -171,10 +177,10 @@ pub(super) fn input_bound(t: &ast::Type, values: &HashSet<String>) -> Option<(St
                 None => String::new(),
             };
             let dots = if *inclusive { "..=" } else { ".." };
-            v.1.map(|n| (format!("{}{dots}{}", end(lo), end(hi)), n))
+            v.2.map(|n| (format!("{}{dots}{}", end(lo), end(hi)), n))
         }
-        TypeKind::Tuple(ts) => ts.iter().find_map(|t| input_bound(t, values)),
-        TypeKind::Optional(t) => input_bound(t, values),
+        TypeKind::Tuple(ts) => ts.iter().find_map(|t| input_bound(t, values, syms)),
+        TypeKind::Optional(t) => input_bound(t, values, syms),
         _ => None,
     }
 }
@@ -515,9 +521,10 @@ pub fn body_type(
 pub(super) struct Tables {
     aliases: Layer<AliasDecl>,
     consts: Layer<LibConst>,
-    pub(super) values: Arc<HashSet<String>>,
-    ops: Arc<Vec<(String, FnId)>>,
-    getters: Arc<HashMap<String, FnId>>,
+    pub(super) values: Arc<HashSet<Sym>>,
+    pub(super) syms: Syms,
+    ops: Arc<Vec<(Sym, FnId)>>,
+    getters: Arc<HashMap<Sym, FnId>>,
     struct_sets: Arc<HashMap<StructId, usize>>,
     struct_defaults: Arc<HashMap<StructId, Vec<Option<Ty>>>>,
     struct_arity: Arc<HashMap<StructId, Vec<(StructId, usize)>>>,
@@ -525,7 +532,7 @@ pub(super) struct Tables {
     sugar: Sugar,
     roles: Roles,
     records: Arc<HashMap<Vec<String>, StructId>>,
-    members: Arc<HashMap<String, StructId>>,
+    members: Arc<HashMap<Sym, StructId>>,
 }
 
 impl Decls {
@@ -535,6 +542,7 @@ impl Decls {
             aliases: self.aliases.clone(),
             consts: self.consts.clone(),
             values: self.top_values.clone(),
+            syms: self.syms.clone(),
             ops: self.operator_fns(),
             getters: self.domain_getters(),
             struct_sets: self.struct_sets.clone(),
@@ -557,13 +565,16 @@ impl TypeTables for Tables {
         &self.consts[id.0]
     }
     fn top_value(&self, name: &str) -> bool {
-        self.values.contains(name)
+        self.syms
+            .get(name)
+            .is_some_and(|s| self.values.contains(&s))
     }
     fn operator(&self, op: &str) -> Option<FnId> {
-        self.ops.iter().find(|(o, _)| o == op).map(|&(_, f)| f)
+        let op = self.syms.get(op)?;
+        self.ops.iter().find(|(o, _)| *o == op).map(|&(_, f)| f)
     }
     fn getter(&self, m: &str) -> Option<FnId> {
-        self.getters.get(m).copied()
+        self.getters.get(&self.syms.get(m)?).copied()
     }
     fn n_sets(&self, s: StructId) -> usize {
         self.struct_sets.get(&s).copied().unwrap_or(0)
@@ -589,7 +600,7 @@ impl TypeTables for Tables {
             .map(|(fs, _)| fs.clone())
     }
     fn member(&self, m: &str) -> Option<StructId> {
-        self.members.get(m).copied()
+        self.members.get(&self.syms.get(m)?).copied()
     }
     fn sugar(&self) -> Sugar {
         self.sugar

@@ -123,7 +123,7 @@ impl TypeTables for Decls {
         &self.consts[id.0]
     }
     fn top_value(&self, name: &str) -> bool {
-        self.top_values.contains(name)
+        self.sym(name).is_some_and(|s| self.top_values.contains(&s))
     }
     fn operator(&self, op: &str) -> Option<FnId> {
         self.operator_fn(op, true)
@@ -156,7 +156,7 @@ impl TypeTables for Decls {
             .map(|(fs, _)| fs.clone())
     }
     fn member(&self, m: &str) -> Option<StructId> {
-        self.member_types.get(m).copied()
+        self.member_types.get(&self.sym(m)?).copied()
     }
     fn sugar(&self) -> Sugar {
         self.sugar

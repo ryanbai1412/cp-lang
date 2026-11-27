@@ -419,7 +419,7 @@ pub struct Decls {
     /// Core's `@tuple` structs by arity: `(A, B)` is the one with two fields.
     pub tuples: Arc<HashMap<usize, StructId>>,
     /// Core's `@member(m)` structs by `m`: `D.m` is the struct at `D` (R06).
-    pub member_types: Arc<HashMap<String, StructId>>,
+    pub member_types: Arc<HashMap<Sym, StructId>>,
     /// What literals and type syntax build, each found by its std marker.
     pub sugar: Sugar,
     /// The language roles, each found by its `@role` (R11.6.1).
@@ -453,13 +453,13 @@ pub struct Decls {
     /// The fns whose result leaves a struct's parameter as `_`, `-> Rooted<V, _, _>` (R02.9.3).
     pub ret_holes: Vec<FnId>,
     /// The names the program's top level binds with `let`.
-    pub top_values: Arc<HashSet<String>>,
+    pub top_values: Arc<HashSet<Sym>>,
     /// Core's `@operator("+")` traits by the operator they give: `a + b` on a type that is not
     /// a number is its impl's fn (R08.1.5).
-    pub operators: Vec<(String, TraitId)>,
+    pub operators: Vec<(Sym, TraitId)>,
     /// `@literal("[]")` and `@literal("[;]")`: the trait a list literal and an array fill build
     /// through (R01.8.8).
-    pub literals: Vec<(String, TraitId)>,
+    pub literals: Vec<(Sym, TraitId)>,
     /// Per fn, the type parameters that key an array it names: domain parameters (R04.2).
     pub domain_params: HashMap<FnId, Vec<usize>>,
     /// The domain parameters whose body steps on them, so they meet `Ordered` (R04.2.31).
@@ -531,14 +531,26 @@ impl Decls {
     }
     /// The fn a bare operator names: its core `@operator` trait's fn of that many operands.
     pub fn operator_fn(&self, text: &str, binary: bool) -> Option<FnId> {
-        (self.operators.iter().filter(|(o, _)| o == text)).find_map(|(_, tr)| {
-            let (_, m) = self.operator_method(*tr)?;
+        self.operator_traits(text).find_map(|tr| {
+            let (_, m) = self.operator_method(tr)?;
             (self.f(m).params.len() == usize::from(binary)).then_some(m)
         })
     }
     /// The trait `@literal(op)` marks: `"[]"` a list literal builds through, `"[;]"` an array fill.
     pub fn literal_trait(&self, op: &str) -> Option<TraitId> {
-        (self.literals.iter()).find_map(|(o, tr)| (o == op).then_some(*tr))
+        let op = self.sym(op)?;
+        (self.literals.iter()).find_map(|(o, tr)| (*o == op).then_some(*tr))
+    }
+    /// The `@operator(text)` traits, in the order core declares them.
+    pub fn operator_traits(&self, text: &str) -> impl Iterator<Item = TraitId> + '_ {
+        let op = self.sym(text);
+        (self.operators.iter())
+            .filter(move |(o, _)| Some(*o) == op)
+            .map(|&(_, tr)| tr)
+    }
+    /// The `Domain` getter `m` a range type's end `D.m` names.
+    pub fn domain_getter(&self, m: &str) -> Option<FnId> {
+        self.domain_getters().get(&self.sym(m)?).copied()
     }
     /// A trait's fns in the order it declares them, the role each plays in a literal (R01.8.8).
     pub fn trait_fns(&self, tr: TraitId) -> Vec<(Sym, FnId)> {
@@ -557,7 +569,7 @@ impl Decls {
     }
     /// Each binary operator's fn, for `type_of(+)`.
     /// `Domain`'s getters by name, which a range type's end `D.m` names.
-    pub fn domain_getters(&self) -> Arc<HashMap<String, FnId>> {
+    pub fn domain_getters(&self) -> Arc<HashMap<Sym, FnId>> {
         let Some(tr) = self.roles.domain else {
             return Arc::default();
         };
@@ -568,14 +580,14 @@ impl Decls {
                 let f = self.f(**f);
                 f.getter && f.self_ty.is_none() && f.ret == Ty::Int
             })
-            .map(|(n, f)| (self.text(*n).to_string(), *f))
+            .map(|(n, f)| (*n, *f))
             .collect(),
         )
     }
-    pub(crate) fn operator_fns(&self) -> Arc<Vec<(String, FnId)>> {
+    pub(crate) fn operator_fns(&self) -> Arc<Vec<(Sym, FnId)>> {
         Arc::new(
             (self.operators.iter())
-                .filter_map(|(o, _)| Some((o.clone(), self.operator_fn(o, true)?)))
+                .filter_map(|(o, _)| Some((*o, self.operator_fn(self.text(*o), true)?)))
                 .collect(),
         )
     }

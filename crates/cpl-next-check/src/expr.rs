@@ -91,9 +91,9 @@ impl<'a> Cx<'a> {
     /// The `@operator(text)` trait, binary or prefix, and its fn, when `t`'s operator is that
     /// trait's: `t` is a struct, or a type parameter bound by the trait.
     fn operator_trait(&self, text: &str, binary: bool, t: &Ty) -> Option<(TraitId, String, FnId)> {
-        let found = (self.d.operators.iter().filter(|(o, _)| o == text)).find_map(|(_, tr)| {
-            let (n, m) = self.d.operator_method(*tr)?;
-            (self.d.f(m).params.len() == usize::from(binary)).then(|| (*tr, n.to_string(), m))
+        let found = self.d.operator_traits(text).find_map(|tr| {
+            let (n, m) = self.d.operator_method(tr)?;
+            (self.d.f(m).params.len() == usize::from(binary)).then(|| (tr, n.to_string(), m))
         })?;
         let applies = match self.shallow(t) {
             // An unbounded parameter's `+` is a missing bound, unless it is a position (R08.2.2).
@@ -123,9 +123,9 @@ impl<'a> Cx<'a> {
         if self.is_error(&x.ty) || self.is_error(&s.ty) {
             return Self::error_node(span);
         }
-        let found = (self.d.operators.iter().filter(|(o, _)| o == "in")).find_map(|(_, tr)| {
-            let (n, m) = self.d.operator_method(*tr)?;
-            Some((*tr, n.to_string(), m))
+        let found = self.d.operator_traits("in").find_map(|tr| {
+            let (n, m) = self.d.operator_method(tr)?;
+            Some((tr, n.to_string(), m))
         });
         let Some(found) = found else {
             self.err(span, Unbuilt::Membership);
@@ -687,10 +687,7 @@ impl<'a> Cx<'a> {
             CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge => "<",
             CmpOp::In | CmpOp::NotIn => return mk(TK::Error, Ty::Error),
         };
-        let ops: Vec<TraitId> = (self.d.operators.iter())
-            .filter(|(o, _)| o == token)
-            .map(|&(_, tr)| tr)
-            .collect();
+        let ops: Vec<TraitId> = self.d.operator_traits(token).collect();
         let named = (ops.iter().copied()).find(|&tr| self.d.seen(self.d.t(tr).module));
         let Some((named, method)) = named.and_then(|tr| Some((tr, self.d.operator_method(tr)?.0)))
         else {

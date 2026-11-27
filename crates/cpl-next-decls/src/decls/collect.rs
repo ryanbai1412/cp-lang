@@ -103,20 +103,19 @@ fn layer(
     let unseen = |d: &Decls, s: &StructId| !d.seen(d.structs[s.0].module);
     if d.member_types.values().any(|s| unseen(&d, s)) {
         let kept = (d.member_types.iter()).filter(|(_, s)| !unseen(&d, s));
-        d.member_types = Arc::new(kept.map(|(m, s)| (m.clone(), *s)).collect());
+        d.member_types = Arc::new(kept.map(|(m, s)| (*m, *s)).collect());
     }
     if base.is_some() {
-        d.top_values = Arc::new(
-            (mods[n - 1].items.iter().flat_map(|it| &it.stmts))
-                .filter_map(|s| match &s.kind {
-                    StmtKind::Let { pat, .. } => match &pat.kind {
-                        ast::PatternKind::Name(x) => Some(x.clone()),
-                        _ => None,
-                    },
+        let values = (mods[n - 1].items.iter().flat_map(|it| &it.stmts))
+            .filter_map(|s| match &s.kind {
+                StmtKind::Let { pat, .. } => match &pat.kind {
+                    ast::PatternKind::Name(x) => Some(d.syms.intern(x)),
                     _ => None,
-                })
-                .collect(),
-        );
+                },
+                _ => None,
+            })
+            .collect();
+        d.top_values = Arc::new(values);
     }
     let (mut own, mut public) = match base {
         Some(b) => (b.own.clone(), b.public.clone()),
@@ -393,7 +392,8 @@ fn layer(
                         if let Some(ast::ExprKind::Name(m)) =
                             member.and_then(|x| x.args.first()).map(|a| &a.value.kind)
                         {
-                            Arc::make_mut(&mut d.member_types).insert(m.to_string(), id);
+                            let m = d.syms.intern(m);
+                            Arc::make_mut(&mut d.member_types).insert(m, id);
                         }
                         let mut consts = HashMap::new();
                         for m in &sd.methods {
@@ -480,9 +480,10 @@ fn layer(
                             lit.and_then(|x| x.args.first()).map(|a| &a.value.kind)
                         {
                             if let [ast::StrPiece::Text(t)] = text.as_slice() {
-                                match d.literals.iter().any(|(o, _)| o == t) {
+                                let t = d.syms.intern(t);
+                                match d.literals.iter().any(|(o, _)| *o == t) {
                                     true => d.errors.push(again(item, s, "literal")),
-                                    false => d.literals.push((t.clone(), id)),
+                                    false => d.literals.push((t, id)),
                                 }
                             }
                         }
@@ -492,6 +493,7 @@ fn layer(
                         {
                             if let [ast::StrPiece::Text(t)] = text.as_slice() {
                                 let m = operator_method(s);
+                                let t = d.syms.intern(t);
                                 let method = |tr: &TraitId| match op_methods.get(tr) {
                                     Some(m) => Some(m.clone()),
                                     None => d.traits[tr.0]
@@ -501,11 +503,11 @@ fn layer(
                                         .map(|n| d.text(*n).to_string()),
                                 };
                                 let taken =
-                                    (d.operators.iter()).any(|(o, tr)| o == t && method(tr) == m);
+                                    (d.operators.iter()).any(|(o, tr)| *o == t && method(tr) == m);
                                 match taken {
                                     true => d.errors.push(again(item, s, "operator")),
                                     false => {
-                                        d.operators.push((t.clone(), id));
+                                        d.operators.push((t, id));
                                         op_methods.extend(m.map(|m| (id, m)));
                                     }
                                 }
@@ -843,7 +845,7 @@ fn layer(
                             .iter()
                             .map(|f| {
                                 let ty =
-                                    match input_bound(&f.ty, &tables.values) {
+                                    match input_bound(&f.ty, &tables.values, &tables.syms) {
                                         Some((written, name)) => {
                                             let text = FIELD_BOUND_FROM_INPUT_A_FIELD_S_BOUNDS
                                                 .say(&[&f.name.text, &written, &name]);
