@@ -417,6 +417,10 @@ impl<'a> Cx<'a> {
     fn show_value(&mut self, v: TExpr, fmt: Fmt, stmts: &mut Vec<TStmt>, pieces: &mut Vec<Piece>) {
         let span = v.span;
         let t = self.shallow(&v.ty);
+        // A value built from an error (`?<error>`) was diagnosed where the error is.
+        if t != Ty::Error && self.mentions_error(&t) {
+            return pieces.push(Piece::Value(Self::error_node(span), fmt));
+        }
         let number = matches!(
             t,
             Ty::Int | Ty::U64 | Ty::F64 | Ty::Dom(_) | Ty::Param(_) | Ty::Error
