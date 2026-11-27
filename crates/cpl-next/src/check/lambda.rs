@@ -357,7 +357,7 @@ impl Cx<'_> {
         }
     }
 
-    fn lambda_ty(&self, id: LambdaId) -> Ty {
+    pub(super) fn lambda_ty(&self, id: LambdaId) -> Ty {
         let targs = (0..self.generics.len()).map(Ty::Param).collect();
         let sets = (0..self.n_sets).map(SetTy::Param).collect();
         Ty::Clo(Box::new(CloRef::Lambda(id, targs, sets)))

@@ -432,6 +432,7 @@ core-06/alt-main-is-removed.cp
 core-06/an-unknown-decorator-is-rejected.cp
 core-06/brute-fn-is-removed.cp
 core-06/brute-main-is-removed.cp
+core-06/capture-uninitialized-at-call.cp
 core-06/captured-fn-param-holds-each-callers-closure.cp
 core-06/captured-moved-after-last-use.cp
 core-06/checker-is-removed.cp
@@ -514,6 +515,7 @@ core-07/with-prev.cp
 core-07/zip-domain-mismatch.cp
 core-07/zip-takes-a-rev.cp
 core-08/assoc-default-names-trait-param.cp
+core-08/assoc-projects-through-a-domain-blanket-impl.cp
 core-08/assoc-type-bound-and-alias-where.cp
 core-08/associated-type-default-and-override.cp
 core-08/associated-type.cp
@@ -963,6 +965,8 @@ next/n_library_const.cp
 next/n_library_module.cp
 next/n_list_01_shrink.cp
 next/n_member_01_getter_first.cp
+next/n_nested_02_capture_unset_at_call.cp
+next/n_nested_03_hoisted_call.cp
 next/n_own_10_param_value_is_not_a_borrow.cp
 next/n_read_01_an_int_past_int_traps_out_of_contract.cp
 next/n_record_01_records_are_core_structs.cp

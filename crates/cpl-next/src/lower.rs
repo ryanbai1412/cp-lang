@@ -614,6 +614,13 @@ impl Lw<'_> {
             TK::FnItem(_) => mk(EK::MakeClosure(vec![])),
             TK::Itself(id) => match self.selves.last() {
                 Some((group, caps)) if group.contains(id) => mk(EK::MakeClosure(caps.clone())),
+                // A nested fn used above its statement: made here from what its group reads, all
+                // of it set by now (R06.1.7).
+                _ if self.group_free.contains_key(id) => {
+                    let vars = self.group_free[id].clone();
+                    let caps = self.captured(vars.iter());
+                    mk(EK::MakeClosure(Self::capture_args(caps)))
+                }
                 _ => {
                     (self.errors).push("slice: a lambda that names the lambda around it".into());
                     mk(EK::MakeClosure(vec![]))
@@ -1107,50 +1114,10 @@ impl Lw<'_> {
                 }
             })
             .collect();
-        // What the lambda reads from the fn around it: locals not bound inside it.
-        // A binding inside a block is captured by value when the closure is made, at top level too:
-        // a loop makes a new one each time round. Only the file's own top-level bindings are shared.
-        // A `var` is shared with the closure (spec R05.10.1): the capture is a reference to it.
-        let (mut_locals, var_locals, globals) =
-            (&self.mut_locals, &self.var_locals, &self.typed.globals);
-        let is_var = |v: &VarRef| match v {
-            VarRef::Local(i) => mut_locals.get(*i).copied().unwrap_or(false),
-            VarRef::Global(g) => {
-                globals[*g].mutable || !crate::own::plain(self.d, &globals[*g].ty, 0)
-            }
-        };
-        let is_mut = |v: &VarRef| match v {
-            VarRef::Local(i) => var_locals.get(*i).copied().unwrap_or(false),
-            VarRef::Global(g) => globals[*g].mutable,
-        };
-        let by_ref = |v: &VarRef, p: Place, ty: Ty| -> (VarRef, Place, Ty, bool) {
-            if matches!(ty, Ty::Ref(_) | Ty::Lent(_)) {
-                (*v, p, ty, false)
-            } else if is_var(v) && !is_mut(v) {
-                // A heap value the closure only reads: it points at it without writing (R05.10.1).
-                (*v, p, Ty::Lent(Box::new(ty)), true)
-            } else if is_var(v) {
-                (*v, p, Ty::Ref(Box::new(ty)), true)
-            } else {
-                (*v, p, ty, false)
-            }
-        };
-        let caps: Vec<(VarRef, Place, Ty, bool)> = used
-            .iter()
-            .filter(|v| !bound.contains(v) && !param_refs.contains(v))
-            .filter_map(|v| match (v, self.remap.get(v)) {
-                (_, Some(l)) => Some(by_ref(v, Place::Local(*l), self.locals[*l].clone())),
-                (VarRef::Local(l), None) => {
-                    Some(by_ref(v, Place::Local(*l), self.locals[*l].clone()))
-                }
-                (VarRef::Global(g), None) if !self.typed.globals[*g].top => Some(by_ref(
-                    v,
-                    Place::Global(*g),
-                    self.typed.globals[*g].ty.clone(),
-                )),
-                (VarRef::Global(_), None) => None,
-            })
-            .collect();
+        let caps = self.captured(
+            used.iter()
+                .filter(|v| !bound.contains(v) && !param_refs.contains(v)),
+        );
         // The lambda's body is lowered with its own local table: captures first, then parameters.
         let outer_locals = std::mem::take(&mut self.locals);
         let mut fparams = Vec::new();
@@ -1234,6 +1201,56 @@ impl Lw<'_> {
             line: self.site(body.span),
             shown: "lambda".into(),
         });
+        Self::capture_args(caps)
+    }
+    /// How a closure holds each variable it reads from the fn around it: the place, the type it
+    /// holds it as, and whether it holds its address.
+    fn captured<'v>(
+        &self,
+        vars: impl Iterator<Item = &'v VarRef>,
+    ) -> Vec<(VarRef, Place, Ty, bool)> {
+        // What the lambda reads from the fn around it: locals not bound inside it.
+        // A binding inside a block is captured by value when the closure is made, at top level too:
+        // a loop makes a new one each time round. Only the file's own top-level bindings are shared.
+        // A `var` is shared with the closure (spec R05.10.1): the capture is a reference to it.
+        let (mut_locals, var_locals, globals) =
+            (&self.mut_locals, &self.var_locals, &self.typed.globals);
+        let is_var = |v: &VarRef| match v {
+            VarRef::Local(i) => mut_locals.get(*i).copied().unwrap_or(false),
+            VarRef::Global(g) => {
+                globals[*g].mutable || !crate::own::plain(self.d, &globals[*g].ty, 0)
+            }
+        };
+        let is_mut = |v: &VarRef| match v {
+            VarRef::Local(i) => var_locals.get(*i).copied().unwrap_or(false),
+            VarRef::Global(g) => globals[*g].mutable,
+        };
+        let by_ref = |v: &VarRef, p: Place, ty: Ty| -> (VarRef, Place, Ty, bool) {
+            if matches!(ty, Ty::Ref(_) | Ty::Lent(_)) {
+                (*v, p, ty, false)
+            } else if is_var(v) && !is_mut(v) {
+                // A heap value the closure only reads: it points at it without writing (R05.10.1).
+                (*v, p, Ty::Lent(Box::new(ty)), true)
+            } else if is_var(v) {
+                (*v, p, Ty::Ref(Box::new(ty)), true)
+            } else {
+                (*v, p, ty, false)
+            }
+        };
+        vars.filter_map(|v| match (v, self.remap.get(v)) {
+            (_, Some(l)) => Some(by_ref(v, Place::Local(*l), self.locals[*l].clone())),
+            (VarRef::Local(l), None) => Some(by_ref(v, Place::Local(*l), self.locals[*l].clone())),
+            (VarRef::Global(g), None) if !self.typed.globals[*g].top => Some(by_ref(
+                v,
+                Place::Global(*g),
+                self.typed.globals[*g].ty.clone(),
+            )),
+            (VarRef::Global(_), None) => None,
+        })
+        .collect()
+    }
+    /// The values a closure is made from: each capture read, or its address taken.
+    fn capture_args(caps: Vec<(VarRef, Place, Ty, bool)>) -> Vec<Expr<Ty>> {
         caps.into_iter()
             .map(|(_, p, ty, addr)| Expr {
                 kind: match (addr, &ty) {

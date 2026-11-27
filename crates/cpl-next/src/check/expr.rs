@@ -838,13 +838,9 @@ impl<'a> Cx<'a> {
         if let Some(&(_, _, id)) = (self.group.iter()).find(|g| g.1 == n && g.0 > span.start) {
             let set = self.names_set();
             self.ahead.push((id, n.to_string(), span, set));
-            self.err(
-                span,
-                "slice: a nested fn named above its statement (R06.1.7)",
-            );
             return TExpr {
-                kind: TK::Error,
-                ty: Ty::Error,
+                kind: TK::Itself(id),
+                ty: self.lambda_ty(id),
                 span,
             };
         }
