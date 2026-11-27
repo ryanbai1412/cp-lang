@@ -912,6 +912,7 @@ impl<'a> Cx<'a> {
                 self.stmt(&one, out);
             }
             StmtKind::Assign { target, op, value } => {
+                let kept = self.kept.take();
                 // `a[i] = v` and `a[i] op= v`: the indices, then the value, are read once; then
                 // `a = v` is `a`'s `IndexSet` write when it has one (spec 12, W8); otherwise `a`'s
                 // `IndexMut` lends the cell and the assignment runs while it is lent (R12.4.6).
@@ -938,6 +939,7 @@ impl<'a> Cx<'a> {
                             target.span,
                             out,
                             Box::new(move |this, cell, out| {
+                                this.kept = kept;
                                 let assign = ast::Stmt {
                                     kind: StmtKind::Assign {
                                         target: cell,
@@ -983,16 +985,24 @@ impl<'a> Cx<'a> {
                         ty: elem.clone(),
                         span: target.span,
                     };
-                    let v = self.expr(value, Some(&elem));
-                    let v = match op {
-                        AssignOp::Set => v,
-                        AssignOp::Binary(b) => self.binary(*b, lent.clone(), v, target.span),
-                        _ => return self.err(s.span, Unbuilt::Assignment),
+                    let step = match op {
+                        AssignOp::Min | AssignOp::Max => {
+                            Self::kept(kept, self.keep(lent, *op == AssignOp::Max, value, s.span))
+                        }
+                        _ => {
+                            let v = self.expr(value, Some(&elem));
+                            let v = match op {
+                                AssignOp::Binary(b) => {
+                                    self.binary(*b, lent.clone(), v, target.span)
+                                }
+                                _ => v,
+                            };
+                            TStmt::Assign(lent, self.coerce(v, &elem))
+                        }
                     };
-                    let v = self.coerce(v, &elem);
                     self.scopes.pop();
                     let body = TExpr {
-                        kind: TK::Block(vec![TStmt::Assign(lent, v)], None),
+                        kind: TK::Block(vec![step], None),
                         ty: Ty::Unit,
                         span: s.span,
                     };
@@ -1006,32 +1016,17 @@ impl<'a> Cx<'a> {
                     });
                     return;
                 }
-                let place = self.place(target);
-                let mut root = &place;
-                let mut cache = false;
-                while let TK::Field(b, i) = &root.kind {
-                    if let Ty::Struct(sid, ..) = self.shallow(&b.ty) {
-                        {
-                            let sd = self.d.s(sid);
-                            cache |= sd.cached.get(*i).copied().unwrap_or(false);
-                            if !cache && !sd.var_fields.get(*i).copied().unwrap_or(true) {
-                                let (st, f) = (sd.name.clone(), sd.fields[*i].0.clone());
-                                self.err(target.span, Msg::verdict(cpl_diag::codes::ASSIGN_FIXED_FIELD, format!("field `{st}.{f}` is fixed (not `var`) and cannot be assigned")));
-                            }
-                        }
-                    }
-                    root = b;
-                }
-                if let Some(name) = self.let_root(&place).filter(|_| !cache) {
-                    self.err(target.span, Msg::verdict(cpl_diag::codes::ASSIGN_TO_LET, format!("`{name}` is bound by `let` and cannot be assigned; declare it with `var`")));
-                }
+                let place = self.assign_place(target);
                 let v = match op {
                     AssignOp::Set => self.expr(value, Some(&place.ty)),
                     AssignOp::Binary(b) => {
                         let v = self.expr(value, Some(&place.ty));
                         self.binary(*b, place.clone(), v, target.span)
                     }
-                    _ => return self.err(s.span, Unbuilt::Assignment),
+                    AssignOp::Min | AssignOp::Max => {
+                        let k = self.keep(place, *op == AssignOp::Max, value, s.span);
+                        return out.push(Self::kept(kept, k));
+                    }
                 };
                 let v = self.coerce(v, &place.ty);
                 out.push(TStmt::Assign(place, v));

@@ -23,6 +23,7 @@ mod free;
 pub use free::{free_vars, group_free};
 mod from_op;
 mod index;
+mod keep;
 mod lambda;
 mod list;
 mod member;
@@ -323,6 +324,8 @@ struct Cx<'a> {
     in_for: bool,
     /// Set while checking the one call that may be a generator or a lender.
     allow_region: bool,
+    /// Where a `min=` / `max=` checked as a statement puts its `Bool`, when it is a condition.
+    kept: Option<VarRef>,
     /// The name a `let` binds the lambda being checked to; and the lambdas whose bodies see
     /// their own name, with the scope their parameters live in.
     recur: Option<String>,
@@ -450,6 +453,7 @@ pub fn check(
         loops: 0,
         in_for: false,
         allow_region: false,
+        kept: None,
         recur: None,
         selves: Vec::new(),
         group: Vec::new(),

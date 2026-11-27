@@ -614,6 +614,36 @@ impl<'a> Cx<'a> {
         self.scopes.pop();
         (c, b2, b.leaves())
     }
+    /// `a op b` for an ordering `op`: primitives and plain variants compare directly, any other
+    /// type through its `Ord` impl.
+    pub(super) fn ordered(&mut self, op: CmpOp, a: TExpr, b: TExpr, span: Span) -> TExpr {
+        let mk = |kind, ty| TExpr { kind, ty, span };
+        let primitive = matches!(
+            self.shallow(&a.ty),
+            Ty::Int | Ty::Bool | Ty::Char | Ty::U64 | Ty::F64 | Ty::Dom(_) | Ty::Error
+        );
+        // Characters are ordered by code (R02.2.1).
+        let char = self.shallow(&a.ty) == Ty::Char;
+        let side = |x: TExpr| {
+            if char {
+                mk(TK::CodeOf(Box::new(x)), Ty::Int)
+            } else {
+                x
+            }
+        };
+        // Variants that carry nothing compare by their place in the enum (R08.1.6).
+        let tags = !primitive
+            && self.plain_enum(&a.ty).is_some()
+            && self.shallow(&a.ty) == self.shallow(&b.ty);
+        if tags {
+            let (a, b) = (self.enum_tag(a), self.enum_tag(b));
+            mk(TK::Cmp(op, Box::new(a), Box::new(b)), Ty::Bool)
+        } else if primitive {
+            mk(TK::Cmp(op, Box::new(side(a)), Box::new(side(b))), Ty::Bool)
+        } else {
+            self.op_call(op, a, b, span)
+        }
+    }
     /// `a < b`, `a == b` and the rest on a type that is not a number: its `Ord` or `Eq` fn, from
     /// the bound on a type parameter or the type's impl (R08.1.5). `a > b` is `b < a`, `a <= b` is
     /// `not b < a`, and `a != b` is `not a == b`; operands are still read left to right.
@@ -1123,6 +1153,7 @@ impl<'a> Cx<'a> {
                 },
             },
             ExprKind::Bool(b) => mk(TK::Bool(*b), Ty::Bool),
+            ExprKind::Keep { target, max, value } => self.keep_expr(target, *max, value, span),
             ExprKind::Str(ps) if ps.iter().all(|p| matches!(p, StrPiece::Text(_))) => {
                 let text: String = ps
                     .iter()
@@ -1328,10 +1359,6 @@ impl<'a> Cx<'a> {
                         self.scopes.pop();
                         return Self::error_node(span);
                     }
-                    let primitive = matches!(
-                        self.shallow(&prev.ty),
-                        Ty::Int | Ty::Bool | Ty::Char | Ty::U64 | Ty::F64 | Ty::Dom(_) | Ty::Error
-                    );
                     // An operand two links share is held, so it is read once.
                     let mut hold = Vec::new();
                     let r = if k + 1 < rest.len() {
@@ -1342,30 +1369,7 @@ impl<'a> Cx<'a> {
                     } else {
                         r
                     };
-                    // Characters are ordered by code (R02.2.1).
-                    let char = self.shallow(&prev.ty) == Ty::Char;
-                    let side = |x: TExpr| {
-                        if char {
-                            mk(TK::CodeOf(Box::new(x)), Ty::Int)
-                        } else {
-                            x
-                        }
-                    };
-                    // Variants that carry nothing compare by their place in the enum (R08.1.6).
-                    let tags = !primitive
-                        && self.plain_enum(&prev.ty).is_some()
-                        && self.shallow(&prev.ty) == self.shallow(&r.ty);
-                    let c = if tags && !matches!(op, CmpOp::In | CmpOp::NotIn) {
-                        let (a, b) = (self.enum_tag(prev), self.enum_tag(r.clone()));
-                        mk(TK::Cmp(*op, Box::new(a), Box::new(b)), Ty::Bool)
-                    } else if primitive || matches!(op, CmpOp::In | CmpOp::NotIn) {
-                        mk(
-                            TK::Cmp(*op, Box::new(side(prev)), Box::new(side(r.clone()))),
-                            Ty::Bool,
-                        )
-                    } else {
-                        self.op_call(*op, prev, r.clone(), span)
-                    };
+                    let c = self.ordered(*op, prev, r.clone(), span);
                     links.push((hold, c));
                     prev = r;
                 }

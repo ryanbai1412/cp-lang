@@ -102,7 +102,6 @@ pub enum Unbuilt {
     LetElse {
         ty: String,
     },
-    Assignment,
     ForForm,
     ChecksValue,
     ChecksField,
@@ -223,7 +222,6 @@ impl fmt::Display for Unbuilt {
             IfLet { ty } => write!(f, "`if let` on a `{ty}`"),
             Condition => write!(f, "unsupported condition"),
             LetElse { ty } => write!(f, "let-else on a `{ty}`"),
-            Assignment => write!(f, "unsupported assignment"),
             ForForm => write!(f, "`for` takes `name in lo..hi`"),
             ChecksValue => write!(f, "a `checks` value other than `on` or `off`"),
             ChecksField => write!(f, "this `with checks(...)` field"),
