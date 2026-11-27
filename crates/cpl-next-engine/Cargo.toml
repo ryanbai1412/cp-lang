@@ -1,0 +1,9 @@
+[package]
+name = "cpl-next-engine"
+description = "The new pipeline's fast engine: canonical IR on registers and flat memory. Reachable from cpl-next only."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+cpl-next-ir.workspace = true

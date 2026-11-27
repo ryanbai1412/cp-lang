@@ -5,4 +5,5 @@ pub mod ir;
 pub mod msg;
 pub mod ops;
 pub mod prog;
+pub mod run;
 pub mod ty;

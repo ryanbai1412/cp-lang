@@ -139,6 +139,8 @@ pub enum Form {
     Raw,
     /// After function values are made explicit.
     Canonical,
+    /// Canonical IR on the fast engine.
+    Engine,
 }
 
 pub struct Compiled {
@@ -303,11 +305,11 @@ impl Compiled {
     /// Runs on the calling thread. The interpreter recurses once per call of the program, so
     /// a caller that wants the spec's 1 GB of program stack gives the thread more than that.
     pub fn run(&self, form: Form, input: &str) -> Outcome {
-        let funcs = match form {
-            Form::Raw => &self.prog.insts,
-            Form::Canonical => &self.canon,
-        };
-        interp::run(&self.prog, funcs, input)
+        match form {
+            Form::Raw => interp::run(&self.prog, &self.prog.insts, input),
+            Form::Canonical => interp::run(&self.prog, &self.canon, input),
+            Form::Engine => cpl_next_engine::run(&self.prog, &self.canon, input),
+        }
     }
 
     pub fn cpp(&self) -> String {

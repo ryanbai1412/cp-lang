@@ -4,6 +4,7 @@
 use crate::inst::{CTy, Program};
 use crate::ir::*;
 use crate::ops::{self, Fault};
+pub use cpl_next_ir::run::{Outcome, Trap};
 use std::rc::Rc;
 
 /// What a `Raw<T>` holds. Integers are stored flat, so storage of a hundred million of them
@@ -29,24 +30,6 @@ pub enum V {
     /// A `var` in a frame still on the stack (`None`: a global).
     Ref(Option<usize>, usize),
     Union(usize, Box<V>),
-}
-
-pub struct Trap {
-    pub fault: Fault,
-    /// The line of the user's file that was running (`ir::Site`).
-    pub line: u32,
-    pub msg: String,
-}
-impl Trap {
-    /// The trap's code in the diagnostic registry, or `ops::INTERNAL`.
-    pub fn code(&self) -> &'static str {
-        self.fault.code()
-    }
-}
-pub struct Outcome {
-    pub events: Vec<String>,
-    pub output: String,
-    pub trap: Option<Trap>,
 }
 
 enum Flow {
@@ -114,15 +97,6 @@ pub fn run(p: &Program, funcs: &[Func<CTy>], input: &str) -> Outcome {
 /// The line is filled in where the run ends: it is `Machine::at` then.
 fn trap<T>(fault: Fault) -> R<T> {
     Err(fault.into())
-}
-impl From<Fault> for Trap {
-    fn from(fault: Fault) -> Trap {
-        Trap {
-            fault,
-            line: 0,
-            msg: fault.message().into(),
-        }
-    }
 }
 
 /// The IR broke a rule the layers before this one keep. Never the program's fault.

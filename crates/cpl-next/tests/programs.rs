@@ -257,6 +257,18 @@ fn judged(path: &Path, text: &str, expect: Expect, ask: Ask) -> (&'static str, S
             ),
         );
     }
+    let engine = next(path, &["--engine", "--trace"], &input);
+    if !same(&canon, &engine) {
+        return done(
+            "split",
+            format!(
+                "engine: exit {:?}: {} {}",
+                engine.status,
+                first(&engine.stdout),
+                first(&engine.stderr)
+            ),
+        );
+    }
     let cpp = next(path, &["--cpp", "--trace"], b"");
     let bin = match cxx::build(cpp.stdout.as_bytes(), &[&CXX_FLAGS[..], &["c++"]].concat()) {
         Ok((bin, _)) => bin,

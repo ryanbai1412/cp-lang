@@ -223,9 +223,17 @@ dependencies = [
  "cpl-env",
  "cpl-json",
  "cpl-judge",
+ "cpl-next-engine",
  "cpl-next-ir",
  "cpl-syntax",
  "cpl-wait",
+]
+
+[[package]]
+name = "cpl-next-engine"
+version = "0.3.0"
+dependencies = [
+ "cpl-next-ir",
 ]
 
 [[package]]
