@@ -1270,7 +1270,10 @@ impl<'a> Cx<'a> {
             }
             ExprKind::Name(n) => match self.expected_variant(n, want) {
                 Some((e, i)) => self.variant(e, i, Vec::new(), &[], span),
-                None => self.name(n, span),
+                None => match self.filled(n, want, span) {
+                    Some(e) => e,
+                    None => self.name(n, span),
+                },
             },
             ExprKind::SelfValue => self.self_expr(span).unwrap_or(mk(TK::Error, Ty::Error)),
             ExprKind::Tuple(xs) if xs.is_empty() => mk(TK::Unit, Ty::Unit),

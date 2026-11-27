@@ -379,6 +379,40 @@ impl Cx<'_> {
         }
     }
 
+    /// A declared fn passed where a fn of fewer parameters is wanted: its defaults fill the rest,
+    /// so `xs.map(bump)` is `xs.map(x => bump(x))` (R06.1.8).
+    pub(super) fn filled(&mut self, n: &str, want: Option<&Ty>, span: Span) -> Option<TExpr> {
+        let Some(Ty::Fn(ps, ..)) = want.map(|w| self.shallow(w)) else {
+            return None;
+        };
+        let f = (self.d.fn_named(self.module, n)).filter(|_| self.lookup(n).is_none())?;
+        let fd = self.d.f(f);
+        if fd.params.len() <= ps.len() || fd.params[ps.len()..].iter().any(|p| p.default.is_none())
+        {
+            return None;
+        }
+        let names: Vec<String> = (0..ps.len()).map(|i| format!("${i}")).collect();
+        let at = |kind| ast::Expr { kind, span };
+        let call = at(ExprKind::Call {
+            callee: Box::new(at(ExprKind::Name(n.to_string()))),
+            args: (names.iter())
+                .map(|x| ast::Arg {
+                    name: None,
+                    mutable: false,
+                    value: at(ExprKind::Name(x.clone())),
+                })
+                .collect(),
+        });
+        let params: Vec<ast::Pattern> = (names.into_iter())
+            .map(|x| ast::Pattern {
+                kind: PatternKind::Name(x),
+                span,
+            })
+            .collect();
+        let tys = vec![None; params.len()];
+        Some(self.lambda(&params, &tys, None, &call, want, span))
+    }
+
     pub(super) fn lambda_ty(&self, id: LambdaId) -> Ty {
         let targs = (0..self.generics.len()).map(Ty::Param).collect();
         let sets = (0..self.n_sets).map(SetTy::Param).collect();

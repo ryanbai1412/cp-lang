@@ -644,9 +644,10 @@ impl<'a> Cx<'a> {
             }
             (Ty::Clo(c), Ty::Fn(ps, r, set)) => {
                 let (cps, cr) = self.clo_sig(c);
-                let ok = cps.len() == ps.len()
-                    && cps.iter().zip(ps).all(|(x, y)| self.unify(x, y))
-                    && self.unify(&cr, r);
+                // The result is joined even when the parameters don't fit, so the error is the only one.
+                let fits =
+                    cps.len() == ps.len() && cps.iter().zip(ps).all(|(x, y)| self.unify(x, y));
+                let ok = self.unify(&cr, r) && fits;
                 if !ok {
                     self.err(
                         span,
