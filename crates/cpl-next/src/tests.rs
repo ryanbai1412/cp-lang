@@ -3,6 +3,12 @@ use cpl_next_ir::ir::{Place, Stmt};
 use cpl_next_ir::prog::CTy;
 use modules::PROGRAM;
 
+/// The reference interpreter's run of `c`'s linked instances: the oracle the engine is held to.
+fn raw(c: &Compiled) -> Outcome {
+    let (p, fs) = c.form(Form::Raw);
+    cpl_next_interp::run(p, fs, "")
+}
+
 /// A method found in a std module the program does not load is called without loading it
 /// (R11.3.4), so the modules loaded stay the ones the text names.
 #[test]
@@ -143,7 +149,7 @@ fn diags(src: &str) -> Vec<Diag> {
 fn outcome(std: &Std, src: &str) -> String {
     match compile(std, src, &Roots::std(), true) {
         Ok(c) => {
-            let o = c.run(Form::Raw, "");
+            let o = raw(&c);
             let events: String = o.events.iter().map(|e| format!("{e}\n")).collect();
             format!("{}\n{}{events}{}", c.cpp(), o.output, o.trap.is_some())
         }
@@ -159,7 +165,7 @@ fn float_intrinsics_agree_across_engines() {
 print((-2.5).floor, (-2.5).ceil, (-2.5).round, (2.5).round, (-2.5).trunc)\n\
 print(1e300.floor)\n";
     let c = compile(&Std::read(), src, &Roots::std(), true).expect("compiles");
-    let (raw, engine) = (c.run(Form::Raw, ""), c.run(Form::Engine, ""));
+    let (raw, engine) = (raw(&c), c.run(""));
     let want = "4.0000000000 0.0000000000 1.0000000000 0.7853981634 5.0000000000 \
 1.0000000000 0.0000000000\n-3 -2 -3 3 -2\n";
     assert_eq!(raw.output, want);
@@ -190,8 +196,8 @@ print(small, precision: 100)\n";
         }
     }
     let c = compile(&Std::read(), src, &Roots::std(), true).expect("compiles");
-    assert_eq!(c.run(Form::Raw, "").output, want);
-    assert_eq!(c.run(Form::Engine, "").output, want);
+    assert_eq!(raw(&c).output, want);
+    assert_eq!(c.run("").output, want);
 }
 
 /// A struct's derived `Eq` and `Ord` declare every parameter, so one named by more than a
@@ -200,8 +206,8 @@ print(small, precision: 100)\n";
 fn derived_impls_declare_parameters_of_any_name() {
     let src = "struct Bx<Elem>:\n    x: Elem\nif Bx(x: 1) == Bx(x: 1) and Bx(x: 1) < Bx(x: 2):\n    print(1)\n";
     let c = compile(&Std::read(), src, &Roots::std(), true).expect("compiles");
-    assert_eq!(c.run(Form::Raw, "").output, "1\n");
-    assert_eq!(c.run(Form::Engine, "").output, "1\n");
+    assert_eq!(raw(&c).output, "1\n");
+    assert_eq!(c.run("").output, "1\n");
 }
 
 /// Std read once is a value no program changes: programs compiled one after another
@@ -567,8 +573,8 @@ var t = 0\n\
 for (a, b) in [f(1), f(2)]: t += a * b\n\
 print(r, s, t)\n";
     let c = compile(&Std::read(), src, &Roots::std(), true).expect("compiles");
-    assert_eq!(c.run(Form::Raw, "").output, "3 6 10\n");
-    assert_eq!(c.run(Form::Engine, "").output, "3 6 10\n");
+    assert_eq!(raw(&c).output, "3 6 10\n");
+    assert_eq!(c.run("").output, "3 6 10\n");
 }
 
 /// `trait HasW: w: Int` is a field requirement, the same as a bodiless `@get fn w(self) -> Int`:
@@ -581,8 +587,8 @@ struct Road: w: Int, len: Int\n\
 impl HasW for Road\n\
 print(weight((w: 3, z: 1)), weight(Road(4, 9)))\n";
     let c = compile(&Std::read(), src, &Roots::std(), true).expect("compiles");
-    assert_eq!(c.run(Form::Raw, "").output, "3 4\n");
-    assert_eq!(c.run(Form::Engine, "").output, "3 4\n");
+    assert_eq!(raw(&c).output, "3 4\n");
+    assert_eq!(c.run("").output, "3 4\n");
 }
 
 /// `x == None` tests presence, as the pattern `None` does, so `T` needs no `Eq` (R02.4.5).
@@ -593,8 +599,8 @@ let a: ?F = None\n\
 let b: ?F = Some(F(x => x + 1))\n\
 if a == None and b != None and not (None == b):\n    print(b!.f(1))\n";
     let c = compile(&Std::read(), src, &Roots::std(), true).expect("compiles");
-    assert_eq!(c.run(Form::Raw, "").output, "2\n");
-    assert_eq!(c.run(Form::Engine, "").output, "2\n");
+    assert_eq!(raw(&c).output, "2\n");
+    assert_eq!(c.run("").output, "2\n");
 }
 
 /// Types told apart only by which domain a position counts share one representation, which
@@ -696,7 +702,7 @@ fn a_session_answers_from_its_snapshot() {
     let (ok, bad) = (Session::open(ok), Session::open(bad));
     assert_eq!(ok.verdict(), Verdict::Accepted);
     assert_eq!(
-        ok.program().map(|p| p.run(Form::Engine, "").output).ok(),
+        ok.program().map(|p| p.run("").output).ok(),
         Some("3\n".into())
     );
     assert_eq!(bad.verdict(), Verdict::Rejected);

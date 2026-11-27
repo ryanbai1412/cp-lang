@@ -95,10 +95,20 @@ pub enum Verdict {
 pub struct Program(Compiled);
 
 impl Program {
-    /// Runs on the calling thread. The interpreter recurses once per call of the program, so
-    /// a caller that wants the spec's 1 GB of program stack gives the thread more than that.
-    pub fn run(&self, form: Form, input: &str) -> Outcome {
-        self.0.run(form, input)
+    /// Runs on the engine, on the calling thread.
+    pub fn run(&self, input: &str) -> Outcome {
+        self.0.run(input)
+    }
+
+    /// What the reference interpreter runs in `form`: the tests' oracle, which nothing else runs.
+    pub fn form(
+        &self,
+        form: Form,
+    ) -> (
+        &cpl_next_link::Program,
+        &[cpl_next_ir::ir::Func<cpl_next_ir::prog::CTy>],
+    ) {
+        self.0.form(form)
     }
 
     pub fn cpp(&self) -> String {

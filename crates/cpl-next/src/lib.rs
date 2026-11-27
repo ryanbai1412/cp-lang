@@ -12,7 +12,6 @@ pub mod facade;
 use cpl_next_check as check;
 use cpl_next_cpp as cpp;
 use cpl_next_decls::{decls, diag, modules};
-use cpl_next_interp as interp;
 use cpl_next_ir::ids::{ItemId, SourceId};
 use cpl_next_ir::{ir, ty};
 use cpl_next_link as inst;
@@ -23,7 +22,7 @@ pub use diag::Kind;
 pub use diag::Unbuilt;
 pub use modules::{Roots, Std};
 
-pub use interp::{Outcome, Trap};
+pub use cpl_next_ir::run::{Outcome, Trap};
 
 pub use cpl_next_ir::msg::Stage;
 
@@ -198,15 +197,13 @@ impl std::fmt::Display for Diag {
     }
 }
 
-/// Which form of the IR the reference interpreter runs.
+/// A form of the IR the reference interpreter, the tests' oracle, can run (contract 07).
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Form {
     /// Instances as linked.
     Raw,
     /// After function values are made explicit.
     Canonical,
-    /// Canonical IR on the fast engine.
-    Engine,
 }
 
 pub(crate) struct Compiled {
@@ -452,13 +449,16 @@ pub(crate) fn units(std: &Std, user_src: &str, roots: &Roots) -> (Vec<Unit>, Vec
 }
 
 impl Compiled {
-    /// Runs on the calling thread. The interpreter recurses once per call of the program, so
-    /// a caller that wants the spec's 1 GB of program stack gives the thread more than that.
-    pub fn run(&self, form: Form, input: &str) -> Outcome {
+    /// Runs on the engine, the one evaluator, on the calling thread.
+    pub fn run(&self, input: &str) -> Outcome {
+        cpl_next_engine::run(&self.prog, &self.opt, input)
+    }
+
+    /// The program and fns the reference interpreter runs in `form`; only a test runs it.
+    pub fn form(&self, form: Form) -> (&inst::Program, &[ir::Func<inst::CTy>]) {
         match form {
-            Form::Raw => interp::run(&self.prog, &self.prog.insts, input),
-            Form::Canonical => interp::run(&self.prog, &self.canon, input),
-            Form::Engine => cpl_next_engine::run(&self.prog, &self.opt, input),
+            Form::Raw => (&self.prog, &self.prog.insts),
+            Form::Canonical => (&self.prog, &self.canon),
         }
     }
 

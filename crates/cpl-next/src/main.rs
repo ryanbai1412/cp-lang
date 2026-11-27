@@ -1,5 +1,5 @@
-//! `cpl-next FILE [--raw|--engine] [--cpp] [--check] [--json] [--trace] [--bodies]`: run FILE on
-//! stdin, print its C++, or only compile it; `--bodies` runs each `@fast` fn's body, not its op; `--json` prints a rejection's diagnostics as JSON lines. Exits 0 after a run, 3 after a trap, 1 when the program is rejected, 4 when
+//! `cpl-next FILE [--raw|--canonical|--engine] [--cpp] [--check] [--json] [--trace] [--bodies]`: run FILE on
+//! stdin on the engine (`--raw` and `--canonical`: on the reference interpreter, for the tests), print its C++, or only compile it; `--bodies` runs each `@fast` fn's body, not its op; `--json` prints a rejection's diagnostics as JSON lines. Exits 0 after a run, 3 after a trap, 1 when the program is rejected, 4 when
 //! it is refused.
 //!
 //! `cpl-next --all --within MS [--trace]` reads std once and then, for each `FILE<TAB>DIR` line
@@ -57,7 +57,7 @@ fn real_main() {
         return;
     }
     let Some(path) = args.iter().find(|a| !a.starts_with("--")) else {
-        eprintln!("usage: cpl-next FILE [--raw|--engine] [--cpp] [--check] [--json] [--trace] [--bodies] | --all --within MS [--trace] | --std-modules");
+        eprintln!("usage: cpl-next FILE [--raw|--canonical|--engine] [--cpp] [--check] [--json] [--trace] [--bodies] | --all --within MS [--trace] | --std-modules");
         std::process::exit(2);
     };
     let src = match std::fs::read_to_string(path) {
@@ -99,16 +99,11 @@ fn real_main() {
         eprintln!("cpl-next: stdin: {e}");
         std::process::exit(2);
     }
-    let o = c.run(
-        if has("--raw") {
-            Form::Raw
-        } else if has("--engine") {
-            Form::Engine
-        } else {
-            Form::Canonical
-        },
-        &input,
-    );
+    let o = match (has("--raw"), has("--canonical")) {
+        (true, _) => oracle(c, Form::Raw, &input),
+        (_, true) => oracle(c, Form::Canonical, &input),
+        _ => c.run(&input),
+    };
     print!("{}", o.output);
     eprint!("{}", said(&o));
     if o.trap.is_some() {
@@ -184,6 +179,13 @@ fn write(dir: &Path, name: &str, text: &str) {
     }
 }
 
+/// The reference interpreter's run, which only the tests ask for (`--raw`, `--canonical`,
+/// `--all`): the oracle the engine and the C++ are held to, never a run of its own.
+fn oracle(c: &cpl_next::facade::Program, form: Form, input: &str) -> cpl_next::Outcome {
+    let (p, fs) = c.form(form);
+    cpl_next_interp::run(p, fs, input)
+}
+
 /// What a run writes to stderr: its events, then its trap.
 fn said(o: &cpl_next::Outcome) -> String {
     let mut s: String = o.events.iter().map(|e| format!("{e}\n")).collect();
@@ -209,11 +211,14 @@ fn every_form(c: &cpl_next::facade::Program, dir: &Path, budget: Duration, input
     });
     let write = |name: &str, text: &str| write(dir, name, text);
     for (name, form) in [
-        ("raw", Form::Raw),
-        ("canonical", Form::Canonical),
-        ("engine", Form::Engine),
+        ("raw", Some(Form::Raw)),
+        ("canonical", Some(Form::Canonical)),
+        ("engine", None),
     ] {
-        let o = c.run(form, input);
+        let o = match form {
+            Some(form) => oracle(c, form, input),
+            None => c.run(input),
+        };
         write(&format!("{name}.out"), &o.output);
         write(&format!("{name}.err"), &said(&o));
         write(

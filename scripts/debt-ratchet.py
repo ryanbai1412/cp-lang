@@ -1366,6 +1366,26 @@ def next_reference_evaluator_lines(root: Path) -> list[str]:
     return _next_file_lines(root, "crates/cpl-next-interp/src/lib.rs")
 
 
+# The tests' own harness binary: `--raw`, `--canonical` and `--all` run the oracle for them.
+NEXT_ORACLE_HOST = "crates/cpl-next/src/main.rs"
+
+
+def next_oracle_callers(root: Path) -> list[str]:
+    """Non-test lines naming the reference interpreter (`cpl_next_interp`) outside its crate and
+    the tests' harness binary: it is the tests' oracle, and constant evaluation, the prover, runs
+    and traces all go through the engine (11:35 ruling). Counts every line naming it, so moving
+    a call into another fn cannot pay it off. 0 is one evaluator for everything but the tests."""
+    out = []
+    for f in _rs_files(root, tests=False):
+        rel = _rel(root, f)
+        if rel.startswith("crates/cpl-next-interp/") or rel == NEXT_ORACLE_HOST:
+            continue
+        for i, l in enumerate(_lines(f), 1):
+            if "cpl_next_interp" in l and not l.lstrip().startswith("//"):
+                out.append(f"{rel}:{i}")
+    return out
+
+
 def next_core_standin_lines(root: Path) -> list[str]:
     """Lines of `crates/cpl-next/std.cp`, the private stand-in for core: std loads like any
     library through the module loader, so this reaches 0 when core lives in std/."""
@@ -3971,6 +3991,7 @@ COUNTERS = {
     "next_core_privilege": ("checks giving core's module powers no library has in the new pipeline (Core)", next_core_privilege, True),
     "next_whole_program_inputs": ("public new-pipeline fns taking a whole-program value (Core)", next_whole_program_inputs, True),
     "next_reference_evaluator_lines": ("code lines of the new pipeline's reference interpreter (Core)", next_reference_evaluator_lines, True),
+    "next_oracle_callers": ("non-test callers of the new pipeline's reference interpreter, the tests' oracle (Core)", next_oracle_callers, True),
     "next_core_standin_lines": ("lines of the new pipeline's private core stand-in std.cp (Core)", next_core_standin_lines, True),
     "next_cpp_runtime_lines": ("lines of hand-written C++ runtime in the new emitter (Core)", next_cpp_runtime_lines, True),
     "next_split": ("cases whose interpreter, engine and C++ runs disagree: one source of semantics broken (Core)", next_split, True),

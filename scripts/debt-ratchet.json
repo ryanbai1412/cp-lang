@@ -317,6 +317,7 @@
   "next_core_privilege": 21,
   "next_whole_program_inputs": 13,
   "next_reference_evaluator_lines": 659,
+  "next_oracle_callers": 0,
   "next_core_standin_lines": 55,
   "next_cpp_runtime_lines": 152,
   "link_reads_check": 0,

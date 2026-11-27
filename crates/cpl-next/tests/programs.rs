@@ -528,7 +528,7 @@ fn judged(path: &Path, text: &str, expect: Expect, ask: Ask) -> (&'static str, S
         _ => {}
     }
     let forms = forms.unwrap_or_else(|| Forms::new(path, &input));
-    let canon = forms.form("canonical", &["--trace"]);
+    let canon = forms.form("canonical", &["--canonical", "--trace"]);
     let same =
         |a: &Ran, b: &Ran| a.status == b.status && a.stdout == b.stdout && a.stderr == b.stderr;
     if !same(&raw, &canon) {
