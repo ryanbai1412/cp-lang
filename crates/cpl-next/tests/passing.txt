@@ -1805,6 +1805,8 @@ std-math/sieve-tables-at-zero.cp
 std-math/sign-pow2.cp
 std-math/splitmix64-at-zero.cp
 std-models/map.cp
+std-models/ranges.cp
+std-models/raw.cp
 std-opt/a-niche-packed-field-lends-to-a-read-only-param.cp
 std-opt/and-then-chains-optionals.cp
 std-opt/is-none-or-skips-the-predicate-on-none.cp
