@@ -132,6 +132,12 @@ pub enum Unbuilt {
         module: String,
         name: String,
     },
+    /// A library fn the program reaches whose own body does not check yet (`why`): std is not
+    /// yet a program (`next_std_unchecked`), which is not the contestant's error.
+    LibraryBody {
+        func: String,
+        why: String,
+    },
     // Forms the parser reads that no arm above names yet, by their syntax kind.
     Expression {
         kind: String,
@@ -204,6 +210,9 @@ impl fmt::Display for Unbuilt {
             TraitIntrinsic { op } => write!(f, "intrinsic `{op}` of a trait"),
             Intrinsic { name } => write!(f, "intrinsic `{name}`"),
             BoundNotNamed => write!(f, "a bound that is not a named trait"),
+            LibraryBody { func, why } => {
+                write!(f, "library fn `{func}` does not check yet: {why}")
+            }
             DomainTypeArg { func, domain } => write!(
                 f,
                 "`{func}` is called with its own domain `{domain}` as a type argument, so each call would need a new copy of it; declare the domain outside, or pass its values as `Int`"

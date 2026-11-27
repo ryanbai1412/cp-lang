@@ -931,6 +931,21 @@ fn check_with(
         let more = std::mem::take(&mut cx.reached);
         cx.through_trait.extend(more);
         if !errors.is_empty() {
+            // A library body that does not check is the pipeline's to fix, said where it is used.
+            let errors = match d.is_library(d.f(id).module) {
+                true => (errors.into_iter())
+                    .map(|m| Msg {
+                        refusal: Some(Unbuilt::LibraryBody {
+                            func: d.f(id).name.clone(),
+                            why: m.text.clone(),
+                        }),
+                        text: String::new(),
+                        code: cpl_diag::codes::INTERNAL,
+                        ..m
+                    })
+                    .collect(),
+                false => errors,
+            };
             deferred.insert(id, errors);
         }
     }
