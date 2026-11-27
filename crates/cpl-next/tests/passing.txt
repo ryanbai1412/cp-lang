@@ -328,7 +328,9 @@ core-04/a4-zip-offsets.cp
 core-04/after-before-pieces.cp
 core-04/after-before-walk.cp
 core-04/an-array-over-an-anonymous-range-takes-int.cp
+core-04/anon-range-array-traps.cp
 core-04/anon-range-array.cp
+core-04/array-axes-plain-ranges.cp
 core-04/array-dimension-starting-at-a-value-rejected.cp
 core-04/array-elements-do-not-widen.cp
 core-04/array-equals-short-list-literal-rejected.cp
@@ -406,6 +408,8 @@ core-04/g1-array-and-list-agree.cp
 core-04/g3-widen-keeps-indices.cp
 core-04/generic-key-callback-indexes-source.cp
 core-04/generic-position-step-is-int.cp
+core-04/global-2d-str-array-col-past-end-traps.cp
+core-04/global-2d-str-array-column-0-store.cp
 core-04/grid-cell-parameter-over-offset-axes.cp
 core-04/grid-cols-of-one-row.cp
 core-04/grid-row-binding-is-a-view.cp
@@ -439,7 +443,6 @@ core-04/open-ended.cp
 core-04/open-from-cut-walks-cuts.cp
 core-04/open-range-from-position.cp
 core-04/open-to-cut-walks-cuts.cp
-core-04/option-lift-at-compare.cp
 core-04/optional-range-end-names-the-end.cp
 core-04/optional-record-literal-takes-domain-positions.cp
 core-04/piece-after-is-a-range.cp
@@ -468,6 +471,7 @@ core-04/range-arg-is-domain-when-nth-used.cp
 core-04/range-bound-from-capped-lets.cp
 core-04/range-bounding-cuts.cp
 core-04/range-clip.cp
+core-04/range-dim-binds-generic-domain.cp
 core-04/range-ends-kind.cp
 core-04/range-factor-product-domain.cp
 core-04/range-generic-first-last.cp
@@ -507,7 +511,9 @@ core-04/slice-key-outside-view-traps.cp
 core-04/slice-relative-index-by-int-is-wrong-domain.cp
 core-04/static-method-binds-domain-from-list.cp
 core-04/stored-cut-range-not-piece.cp
+core-04/table-one-cell-parameter.cp
 core-04/three-axis-table-one-name.cp
+core-04/three-d-str-cell-append-and-last-dim-trap.cp
 core-04/trap-in-a-small-fn-names-its-frame.cp
 core-04/tuple-holding-record-fits-named-product.cp
 core-04/tuple-of-domains-indexes-pair-table.cp
@@ -697,6 +703,7 @@ core-06/fn-value-required-trailing-mismatch.cp
 core-06/fn-value-yes-in-map.cp
 core-06/free-fn-called-as-method.cp
 core-06/function-types.cp
+core-06/gen-rooted-old-shape-names-variant.cp
 core-06/generator-closure-writes-its-local-across-yields.cp
 core-06/generator-lend-ends-at-last-use.cp
 core-06/generator-lockstep-via-list.cp
@@ -836,6 +843,7 @@ core-07/zip-pairs-by-walk.cp
 core-07/zip-takes-a-rev.cp
 core-08/a-fn-item-passes-for-its-own-type-of.cp
 core-08/a-tuple-meets-no-constant-trait.cp
+core-08/a-variant-named-like-a-trait-does-not-hide-it.cp
 core-08/assoc-default-names-trait-param.cp
 core-08/assoc-projects-through-a-domain-blanket-impl.cp
 core-08/assoc-type-bound-and-alias-where.cp
@@ -848,6 +856,7 @@ core-08/bound-unmet.cp
 core-08/bounds-three-ways.cp
 core-08/call-gen-alias.cp
 core-08/concrete-extension-beats-std-generic.cp
+core-08/conditional-on-bound.cp
 core-08/default-arg-binds-generic-before-bounds.cp
 core-08/default-method-override-once.cp
 core-08/derive-needs-fields.cp
@@ -856,6 +865,7 @@ core-08/duplicate-impl.cp
 core-08/explicit-conversion.cp
 core-08/field-trait-struct-opt-in.cp
 core-08/fn-item-type-takes-its-own-impl.cp
+core-08/fn-items-still-coerce-to-their-fn-type.cp
 core-08/generic-body-cannot-assume-an-associated-type.cp
 core-08/generic-bound-allows-op.cp
 core-08/generic-checked-at-definition.cp
@@ -868,6 +878,9 @@ core-08/generic-over-seq-capability.cp
 core-08/getter-impl-on-builtin-type.cp
 core-08/getter-trait-param-from-record-field.cp
 core-08/getter-trait-struct-opt-in.cp
+core-08/if-bound-builtin-impl.cp
+core-08/if-bound-record-by-shape.cp
+core-08/if-bound-struct-needs-impl.cp
 core-08/impl-choice-must-meet-the-associated-type-bound.cp
 core-08/impl-chooses-an-associated-type-per-kind.cp
 core-08/impl-for-every-domain-beside-int.cp
@@ -976,6 +989,7 @@ core-10/bad-token-trap.cp
 core-10/bool-not-print.cp
 core-10/bool-var-not-print.cp
 core-10/float-precision.cp
+core-10/grid-int-read-row-major.cp
 core-10/interpolation-width.cp
 core-10/interpolation.cp
 core-10/multitest-count-past-input-traps.cp
@@ -1046,6 +1060,7 @@ core-11/own-fn-max-shadows-binary-builtin.cp
 core-11/own-let-max-shadows-binary-builtin.cp
 core-11/own-max-shadows-prelude.cp
 core-11/prelude-exclusions.cp
+core-11/prelude-exports-signature-types.cp
 core-11/prelude-without-use.cp
 core-11/pub-field-and-method.cp
 core-11/runtime-domain-reads-in-order.cp
@@ -1294,6 +1309,7 @@ next/a_check_16_was_names_the_fn.cp
 next/a_check_17_ranged_cells_help.cp
 next/a_clos_01_list_captured_by_reference.cp
 next/a_clos_02_let_list_capture.cp
+next/a_clos_03_list_of_closures_sharing_var.cp
 next/a_clos_04_struct_field_closure_shares_var.cp
 next/a_clos_05_let_lambda_recursion.cp
 next/a_clos_06_closure_calls_closure.cp
@@ -1466,6 +1482,8 @@ next/n_bits_03_shl_past_int_traps.cp
 next/n_bits_04_and_to_the_lowest_pattern_traps.cp
 next/n_bound_01_an_unknown_bound_type_fixes_no_impl.cp
 next/n_bound_01_bare_bound_learns_arguments.cp
+next/n_bound_01_if_bound_per_instance.cp
+next/n_bound_01_impl_args_keep_their_sets.cp
 next/n_bound_02_for_walks_through_the_bound.cp
 next/n_bound_03_open_struct_meets_a_bound_later.cp
 next/n_cascade_01_member_of_an_error.cp
@@ -1485,7 +1503,6 @@ next/n_checks_01_overflow_off_wraps_in_its_block.cp
 next/n_clone_01_clone_is_an_ordinary_trait.cp
 next/n_coerce_01_list_literal_is_its_positions.cp
 next/n_comp_01_comprehension_is_its_loop.cp
-next/n_compare_lifts_optional.cp
 next/n_const_01_value_worked_out_once.cp
 next/n_const_02_cycle_is_an_error.cp
 next/n_const_03_trap_is_a_compile_error.cp
@@ -1584,11 +1601,13 @@ next/n_let_else_01_binds_after_and_leaves.cp
 next/n_library_const.cp
 next/n_library_module.cp
 next/n_link_01_call_nothing_runs_keeps_its_type.cp
+next/n_list_01_literal_joins_its_fns.cp
 next/n_list_01_shrink.cp
 next/n_list_02_move_within.cp
 next/n_list_03_let_receiver.cp
 next/n_list_add_01_joins_any_seq.cp
 next/n_load_01_a_method_of_an_unspelled_prelude_module.cp
+next/n_lower_01_fn_ending_in_while_true.cp
 next/n_map_01_map_literals.cp
 next/n_marker_01_a_second_cuts_struct_is_a_duplicate.cp
 next/n_marker_02_a_library_writes_a_marker.cp
@@ -1631,6 +1650,7 @@ next/n_read_01_an_int_past_int_traps_out_of_contract.cp
 next/n_record_01_records_are_core_structs.cp
 next/n_record_01_update_copies_with_replacements.cp
 next/n_record_02_field_traits.cp
+next/n_ret_01_dispatch_by_return_type.cp
 next/n_scope_01_param_shadows_domain.cp
 next/n_set_01_closure_added_through_mut_param.cp
 next/n_set_02_closure_stored_in_mut_param_field.cp
@@ -1650,6 +1670,7 @@ next/n_slice_10_literal_key_of_unknown_view_is_checked_at_run_time.cp
 next/n_static_01_generic_type_names_its_static_fns.cp
 next/n_struct_default_type_arg.cp
 next/n_table_01_one_cell_per_position.cp
+next/n_table_01_over_a_domain_parameter.cp
 next/n_targs_01_written.cp
 next/n_targs_02_field_takes_none.cp
 next/n_todo_01_todo_traps_where_reached.cp
@@ -1657,6 +1678,7 @@ next/n_trait_static_fn.cp
 next/n_trait_typed_param.cp
 next/n_trap_01_call_stack_names_inlined_calls.cp
 next/n_trap_02_call_stack_in_a_loop_body.cp
+next/n_tuple_01_field_fn_called.cp
 next/n_typeof_01_fn_item_impls.cp
 next/n_typeof_02_unoverloadable_op_is_no_item.cp
 next/n_u64_01_wraps_and_compares_unsigned.cp
@@ -1805,6 +1827,11 @@ std-dsu/dsu-of-a-size-is-rejected.cp
 std-dsu/mark-undo-with-no-change.cp
 std-dsu/new.cp
 std-dsu/persistent-dsu-branches.cp
+std-dsu/rollback-array-nested-marks.cp
+std-dsu/rollback-array-undo-nothing.cp
+std-flow/cancel-cycles-negative-cycle.cp
+std-flow/cancel-cycles-no-negative-cycle.cp
+std-flow/matroid-intersection-weight-is-a-plain-closure.cp
 std-geometry/area2-orientation.cp
 std-geometry/circumcenter-repeated-point.cp
 std-geometry/free-dot-and-cross-are-public.cp
@@ -1855,6 +1882,15 @@ std-heap/heap-replace-top-on-empty.cp
 std-heap/heap-replace_top-1.cp
 std-heap/heap-replace_top-2.cp
 std-heap/heap-reserve-1.cp
+std-heap/indexedheap-contains-1.cp
+std-heap/indexedheap-decrease-1.cp
+std-heap/indexedheap-get-1.cp
+std-heap/indexedheap-increase-1.cp
+std-heap/indexedheap-is_empty-1.cp
+std-heap/indexedheap-len-1.cp
+std-heap/indexedheap-new-1.cp
+std-heap/indexedheap-peek-1.cp
+std-heap/indexedheap-set-1.cp
 std-heap/max-heap-ties.cp
 std-heap/meld-heap-of-a-list-is-rejected.cp
 std-heap/min-heap-empty-pop.cp
@@ -1904,6 +1940,7 @@ std-math/sieve-tables-at-one.cp
 std-math/sieve-tables-at-zero.cp
 std-math/sign-pow2.cp
 std-math/splitmix64-at-zero.cp
+std-matrix/get-outside-columns-traps.cp
 std-models/map.cp
 std-models/ranges.cp
 std-models/raw.cp
@@ -1986,6 +2023,8 @@ std-seq/present-1.cp
 std-seq/present-unwraps-pieces.cp
 std-seq/range-mid-is-a-cut.cp
 std-seq/reduce-1.cp
+std-seq/rekey-length-mismatch-traps.cp
+std-seq/rekey-std-body-over-declared-domain.cp
 std-seq/rev-getter-view-lends-its-source.cp
 std-seq/rev-view-lends-its-source.cp
 std-seq/rfind-no-match.cp
@@ -2109,6 +2148,12 @@ traits/Keyed/Range--items.cp
 traits/Keyed/Slice--items.cp
 traits/Keyed/Str--items.cp
 traits/Keyed/Zipped--items.cp
+traits/Matroid/ColorMatroid--can_add.cp
+traits/Matroid/ColorMatroid--can_swap.cp
+traits/Matroid/ColorMatroid--rebuild.cp
+traits/Matroid/GraphicMatroid--can_add.cp
+traits/Matroid/GraphicMatroid--can_swap.cp
+traits/Matroid/GraphicMatroid--rebuild.cp
 traits/Mul/MaxSub--mul.cp
 traits/Mul/Vec--mul.cp
 traits/Mul/Vec3--mul.cp
@@ -2213,8 +2258,3 @@ widths/sub-traps-3.cp
 widths/sub-traps-4.cp
 widths/sub-traps-5.cp
 widths/sub-wraps-when-unchecked.cp
-next/n_tuple_01_field_fn_called.cp
-next/n_bound_01_impl_args_keep_their_sets.cp
-next/n_list_01_literal_joins_its_fns.cp
-core-08/fn-items-still-coerce-to-their-fn-type.cp
-next/a_clos_03_list_of_closures_sharing_var.cp

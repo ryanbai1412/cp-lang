@@ -24,11 +24,9 @@ core-04/library-domain-sized-per-instance.cp
 core-04/library-domain-walk-queries.cp
 core-04/pair-symmetric.cp
 core-04/product-cell-keeps-its-ord-in-a-generic-body.cp
-core-04/product-domain-grid-reads-and-indexes.cp
 core-04/rev-keyed-counts-in-walk-order.cp
 core-04/spec-block-first-drop-next-greater.cp
 core-04/struct-keyed-array-binds-the-struct-args.cp
-core-04/table-over-named-product-unpacks.cp
 core-04/type-param-enum-has-domain-members.cp
 core-05/a-positional-arg-never-binds-a-named-only-param.cp
 core-05/cache-skipped-by-ord-hash-print.cp
@@ -45,7 +43,6 @@ core-05/spec-block-segtree-of-ws.cp
 core-05/write-through-a-lends-mut-call.cp
 core-05/write-through-a-user-lends-mut-index.cp
 core-06/bound-method-as-sort-key.cp
-core-06/gen-of-a-type-param-draws-what-it-binds.cp
 core-06/get-fn-never-takes-a-plain-call.cp
 core-06/overloads-by-label-set-a-key-of-arity-one-stays-a-key.cp
 core-06/overloads-by-label-set-labels-fitting-none-are-an-error.cp
@@ -67,7 +64,6 @@ core-07/tally-missing-key-is-zero.cp
 core-07/tally.cp
 core-07/view-of-temporary-lives-as-long-as-the-view.cp
 core-08/alias-where-binds-its-parameter-from-the-arc.cp
-core-08/bound-test-takes-trait-args.cp
 core-08/concrete-self-beats-bounded-generic.cp
 core-08/extension-concrete-receiver-beats-generic-one.cp
 core-08/field-trait.cp
@@ -84,8 +80,6 @@ core-08/same-module-receivers-of-other-arity-overload.cp
 core-08/self-default-getter-met-by-its-type.cp
 core-08/static-fn-struct-generic-from-lambda-body.cp
 core-08/struct-arg-reaches-new-bound-args.cp
-core-08/tuple-and-record-take-a-shape-met-traits-defaults.cp
-core-08/type-of-user-fn-item-is-selective-at-a-bound-test.cp
 core-09/context-not-constant.cp
 core-09/library-assert-holds-in-limit.cp
 core-10/a-read-array-walked-once-reads-in-order.cp
@@ -127,10 +121,8 @@ std-compress/wrapper-fn-fresh-domain.cp
 std-derive/structural-hash-comes-from-parts-and-impls.cp
 std-dp/ranges-key-first-everywhere.cp
 std-dp/ranges-table-and-literal-key.cp
-std-dsu/dsuof.cp
 std-dsu/parity-components-and-groups.cp
 std-fenwick/fenwick-kth-zero-traps.cp
-std-flow/matching.cp
 std-flow/max-closure-fixed-domain-guard.cp
 std-geometry/closest-pair-on-list-literal.cp
 std-geometry/pt.cp
@@ -171,9 +163,7 @@ std-hashmap/counter-init-is-named-only.cp
 std-hashmap/counter-named-init-reads-for-missing-keys.cp
 std-hashmap/counter-take-1.cp
 std-hashmap/reserve-keeps-entries.cp
-std-heap/meld-heaps-fresh-per-test-case.cp
 std-heap/meld-heaps-reuse-popped-nodes.cp
-std-heap/meld-heaps-share-a-pool.cp
 std-heap/meld-heaps-skew-spine-stays-iterative.cp
 std-heap/settle-matches-brute.cp
 std-journeys/hash-map.cp
@@ -184,7 +174,6 @@ std-marks/arena-free-reuses-slots-matches-brute.cp
 std-math/enumerate.cp
 std-math/sieve-primes-at-word-edges.cp
 std-matrix/sparse-wiedemann-and-simplex-match-dense.cp
-std-matrix/sum-adds-under-its-semiring.cp
 std-mod/arith.cp
 std-mod/log-inv-all.cp
 std-models/algebra.cp
@@ -266,20 +255,15 @@ std-segtree/replaces-true-on-id-breaks-the-law.cp
 std-segtree/replacing-and-plain-actions-match-brute.cp
 std-segtree/tag-into-untagged-node-matches-brute.cp
 std-segtree/typed-op-after-array.cp
-std-seq/array-inverse-of-offset-and-enum-domains.cp
 std-seq/dedup-first-some-tally-group.cp
 std-seq/extremes-ties-last.cp
 std-seq/get-on-domain-array-takes-position.cp
 std-seq/halve-subsequences-reserve-track.cp
-std-seq/inverse-empty.cp
-std-seq/inverse-not-bijection-traps.cp
 std-seq/lis-and-cartesian-tree-match-brute.cp
 std-seq/merge-sorted-by-ties-take-self-first.cp
 std-seq/merge-sorted-yields-lazily-over-views.cp
 std-seq/nearest-smaller-same-and-perm-bodies.cp
 std-seq/outermost-keeps-the-longest-of-a-left-end.cp
-std-seq/perm-inverse-list-domain.cp
-std-seq/perm-rank-partition-and-inverse.cp
 std-seq/permutations-lcs-radix-outermost.cp
 std-seq/reverse-and-join-are-std-bodies.cp
 std-seq/runs-linked-empty-and-single.cp
@@ -333,7 +317,6 @@ std-window/undoing-passed-straight-to-minimal.cp
 traits/FastProduct/Mod--product.cp
 traits/Index/Pair--ord.cp
 traits/Index/Subset--ord.cp
-traits/Random/Bool--gen.cp
 traits/Show/Complement--show.cp
 traits/Show/Diff--show.cp
 traits/Show/IntervalMap--show.cp
