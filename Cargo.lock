@@ -235,6 +235,7 @@ dependencies = [
  "cpl-next-own",
  "cpl-syntax",
  "cpl-wait",
+ "mimalloc",
 ]
 
 [[package]]
@@ -261,6 +262,7 @@ version = "0.3.0"
 dependencies = [
  "cpl-config",
  "cpl-diag",
+ "cpl-env",
  "cpl-next-ir",
  "cpl-syntax",
 ]

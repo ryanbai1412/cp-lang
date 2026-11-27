@@ -10,6 +10,12 @@
 //! For the crate's tests and for measuring; not a shipped command.
 use cpl_next::facade::{Session, Snapshot, Verdict};
 use cpl_next::{Form, Roots, Std};
+
+/// The `cpl-next` binary's allocator: malloc and free took a sixth of a worker's check.
+#[cfg(not(target_arch = "wasm32"))]
+#[global_allocator]
+static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 use std::io::{BufRead, Write};
 use std::path::Path;
 use std::sync::mpsc::RecvTimeoutError;

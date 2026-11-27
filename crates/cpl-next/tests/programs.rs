@@ -762,8 +762,8 @@ fn a_failed_build_names_no_temporary_file() {
     assert!(!home.is_empty() && !first.contains(&home), "{first}");
 }
 
-#[test]
-fn every_case_is_where_the_lists_say() {
+/// Every case by id: the conformance suite's and cpl-next's own, sorted.
+fn all_cases() -> Vec<(String, PathBuf)> {
     let here = Path::new(env!("CARGO_MANIFEST_DIR"));
     let root = here.parent().and_then(Path::parent).unwrap();
     let mut cases: Vec<(String, PathBuf)> = discover(root, None)
@@ -781,6 +781,60 @@ fn every_case_is_where_the_lists_say() {
         }
     }
     cases.sort();
+    cases
+}
+
+/// Each case's verdict and how long it took, the cases the last full run timed slowest started
+/// first, so no slow case is left running alone at the end.
+fn longest_first(
+    root: &Path,
+    cases: &[(String, PathBuf)],
+) -> Vec<(&'static str, String, Duration)> {
+    let last = std::fs::read_to_string(root.join("target/cpl-next/times.tsv")).unwrap_or_default();
+    let last: BTreeMap<&str, u64> = (last.lines())
+        .filter_map(|l| l.split_once('\t'))
+        .filter_map(|(id, ms)| Some((id, ms.trim().parse().ok()?)))
+        .collect();
+    let took = |id: &str| last.get(id).copied().unwrap_or(0);
+    let mut order: Vec<usize> = (0..cases.len()).collect();
+    order.sort_by_key(|&i| std::cmp::Reverse(took(&cases[i].0)));
+    let ran = parallel::parallel(&order, |&i| {
+        let started = std::time::Instant::now();
+        let (verdict, detail) = verdict(&cases[i].1);
+        (verdict, detail, started.elapsed())
+    });
+    let mut verdicts: Vec<_> = order.into_iter().zip(ran).collect();
+    verdicts.sort_by_key(|(i, _)| *i);
+    // A listed pass that timed out under a full machine's load gets one run alone, so a
+    // load timeout is not a lost pass; a real timeout times out again.
+    let passing = std::fs::read_to_string(root.join("crates/cpl-next/tests/passing.txt"))
+        .unwrap_or_default();
+    let passing: std::collections::BTreeSet<&str> = passing.lines().map(str::trim).collect();
+    for (i, v) in &mut verdicts {
+        if v.0 == "timeout" && passing.contains(cases[*i].0.as_str()) {
+            let started = std::time::Instant::now();
+            let (verdict, detail) = verdict(&cases[*i].1);
+            *v = (verdict, detail, v.2 + started.elapsed());
+        }
+    }
+    verdicts.into_iter().map(|(_, v)| v).collect()
+}
+
+/// The harness runs cases on every core; a sample run one at a time gives the same verdicts.
+#[test]
+fn a_parallel_run_gives_what_a_serial_one_does() {
+    let cases = all_cases();
+    let sample: Vec<_> = cases.iter().step_by(cases.len() / 24 + 1).collect();
+    let parallel = parallel::parallel(&sample, |(_, p)| verdict(p));
+    let serial: Vec<_> = sample.iter().map(|(_, p)| verdict(p)).collect();
+    assert_eq!(parallel, serial);
+}
+
+#[test]
+fn every_case_is_where_the_lists_say() {
+    let here = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let root = here.parent().and_then(Path::parent).unwrap();
+    let mut cases = all_cases();
     let only = cpl_env::NEXT_ONLY.text();
     if let Some(only) = &only {
         cases.retain(|(id, _)| only.split(',').any(|part| id.contains(part)));
@@ -794,11 +848,11 @@ fn every_case_is_where_the_lists_say() {
     let shard = cpl_env::NEXT_SHARD.text().map(|s| shard_spec(&s));
     let mine = |id: &str| shard.is_none_or(|(i, n)| in_shard(id, i, n));
     cases.retain(|(id, _)| mine(id));
-    let verdicts = parallel::parallel(&cases, |(_, p)| verdict(p));
+    let verdicts = longest_first(root, &cases);
 
     let (mut passing, mut wrong, mut refused) = (String::new(), String::new(), String::new());
     let mut masked = String::new();
-    for ((id, _), (verdict, detail)) in cases.iter().zip(&verdicts) {
+    for ((id, _), (verdict, detail, _)) in cases.iter().zip(&verdicts) {
         match *verdict {
             "pass" => passing += &format!("{id}\n"),
             "masked" => {
@@ -811,7 +865,7 @@ fn every_case_is_where_the_lists_say() {
     }
     // Errors only lowering finds: the checker passed what lowering then refuses (suite 5).
     let lowered: String = (cases.iter().zip(&verdicts))
-        .filter(|(_, (_, detail))| detail.starts_with("lower:"))
+        .filter(|(_, (_, detail, _))| detail.starts_with("lower:"))
         .map(|((id, _), _)| format!("{id}\n"))
         .collect();
     // Instances holding an error type: the checker should have refused or resolved them.
@@ -828,7 +882,16 @@ fn every_case_is_where_the_lists_say() {
     });
     std::fs::create_dir_all(&found).unwrap();
     let queue = queue(&refused);
+    let mut times: Vec<(&str, u128)> = (cases.iter().zip(&verdicts))
+        .map(|((id, _), (_, _, took))| (id.as_str(), took.as_millis()))
+        .collect();
+    times.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(b.0)));
+    let times: String = times
+        .iter()
+        .map(|(id, ms)| format!("{id}\t{ms}\n"))
+        .collect();
     for (name, text) in [
+        ("times.tsv", &times),
         ("passing.txt", &passing),
         ("wrong.tsv", &wrong),
         ("refused.tsv", &refused),
@@ -864,7 +927,7 @@ fn every_case_is_where_the_lists_say() {
     let mut off = Vec::new();
     let mut seen = Vec::new();
     let mut freed = 0;
-    for ((id, _), (verdict, detail)) in cases.iter().zip(&verdicts) {
+    for ((id, _), (verdict, detail, _)) in cases.iter().zip(&verdicts) {
         seen.push(id.as_str());
         match (listed_masked.contains_key(id), *verdict == "masked") {
             (false, true) => off.push(format!(

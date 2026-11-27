@@ -483,6 +483,9 @@ pub struct Decls {
     /// Each trait's impls, and each member name's (its trait's or its own), in order.
     pub impls_by_trait: HashMap<TraitId, Vec<usize>>,
     pub impls_by_member: HashMap<String, Vec<usize>>,
+    /// Each trait's live impls in the order a type takes them (`impls_of`), made once a
+    /// program's impls are all known: a lookup walks them thousands of times.
+    pub impls_ranked: Option<HashMap<TraitId, Vec<usize>>>,
 }
 
 /// Where a method call resolved to.
@@ -669,6 +672,7 @@ impl Decls {
         })
     }
     fn push_impl(&mut self, im: ImplDecl) {
+        self.impls_ranked = None;
         let k = self.impls.len();
         self.impls_by_trait.entry(im.trait_.tr).or_default().push(k);
         let mut names: Vec<&String> = im.methods.keys().collect();

@@ -76,6 +76,10 @@ opt-level = 1
 opt-level = 1
 [profile.dev.package.cpl-next-engine]
 opt-level = 1
+# The allocator the `cpl-next` and `cpl` binaries use is C; at opt-level 0 its malloc
+# costs more than the system one it replaces.
+[profile.dev.package.libmimalloc-sys]
+opt-level = 3
 
 # Front-end, IR and codegen run thousands of times across the port, differential
 # and recovery test suites; opt-level = 1 keeps incremental builds fast while

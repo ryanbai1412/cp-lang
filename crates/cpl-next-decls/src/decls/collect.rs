@@ -72,6 +72,7 @@ fn layer(
 ) -> (Prepared, Vec<(ItemId, ast::Stmt)>) {
     let from = base.map_or(0, |b| b.d.module_names.len());
     let mut d = base.map_or_else(Decls::default, |b| b.d.clone());
+    d.impls_ranked = None;
     let (fns_from, impls_from, aliases_from) = (d.fns.len(), d.impls.len(), d.aliases.len());
     let n = mods.len();
     d.program = ModId(match base {
@@ -1388,6 +1389,7 @@ fn layer(
             d.memo_clears.insert(*w, *c);
         }
     }
+    d.rank_impls();
     let layer = Prepared {
         d,
         own,

@@ -156,9 +156,29 @@ impl Decls {
     }
     /// The impls of `tr`, in the order a type takes them (`impl_rank`).
     pub fn impls_of(&self, tr: TraitId) -> impl Iterator<Item = &ImplDecl> {
-        (0..3).flat_map(move |r| {
-            (self.trait_impls(tr).map(|(_, im)| im)).filter(move |im| self.impl_rank(im) == r)
-        })
+        let ranked =
+            (self.impls_ranked.as_ref()).map(|r| r.get(&tr).map_or(&[][..], Vec::as_slice));
+        let unranked = ranked.is_none().then(|| {
+            (0..3).flat_map(move |r| {
+                (self.trait_impls(tr).map(|(_, im)| im)).filter(move |im| self.impl_rank(im) == r)
+            })
+        });
+        (ranked.into_iter().flatten().map(|&k| &self.impls[k]))
+            .chain(unranked.into_iter().flatten())
+    }
+    /// Fills `impls_ranked` from the impls a lookup may find now.
+    pub fn rank_impls(&mut self) {
+        let rank = |ks: &[usize]| {
+            let mut ks: Vec<usize> = (ks.iter().copied())
+                .filter(|&k| self.live(&self.impls[k]))
+                .collect();
+            ks.sort_by_key(|&k| self.impl_rank(&self.impls[k]));
+            ks
+        };
+        let by_trait = (self.impls_by_trait.iter())
+            .map(|(tr, ks)| (*tr, rank(ks)))
+            .collect();
+        self.impls_ranked = Some(by_trait);
     }
     /// The impl's type arguments for `t`; a blanket impl only where `t` meets its bounds.
     pub fn fits_impl(&self, im: &ImplDecl, t: &Ty) -> Option<Vec<Ty>> {
@@ -235,10 +255,16 @@ impl Decls {
     /// The impl's type arguments when it is for `t` and of the trait with arguments `trait_args`
     /// (`impl Into<Char> for Int` and not `impl Into<U64> for Int`); fewer are not checked.
     pub fn impl_args_for(&self, im: &ImplDecl, t: &Ty, trait_args: &[Ty]) -> Option<Vec<Ty>> {
-        let mut binds = vec![None; im.generics.len()];
+        // A struct's impl fits only that struct or a type not known yet, as `fit` would say.
+        if let Ty::Struct(d, ..) = im.for_ {
+            if !matches!(t, Ty::Struct(e, ..) if *e == d) && !matches!(t, Ty::Var(_) | Ty::Error) {
+                return None;
+            }
+        }
         if !self.head_fits(im, t) {
             return None;
         }
+        let mut binds = vec![None; im.generics.len()];
         if !fit(&im.for_, t, &mut binds)
             || !(self.traits[im.trait_.tr.0].inputs(&im.trait_.args).iter())
                 .zip(self.traits[im.trait_.tr.0].inputs(trait_args))

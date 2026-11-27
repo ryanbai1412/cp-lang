@@ -137,23 +137,12 @@ pub struct Std {
 impl Std {
     pub fn read() -> Std {
         const CORE_TEXT: &str = include_str!("../../cpl-next/std.cp");
-        let mut files = Vec::new();
-        let mut dirs = vec![(std_root(), "std".to_string())];
-        while let Some((dir, module)) = dirs.pop() {
-            for entry in std::fs::read_dir(&dir).into_iter().flatten().flatten() {
-                let path = entry.path();
-                let stem = path
-                    .file_stem()
-                    .map_or(String::new(), |s| s.to_string_lossy().into_owned());
-                if path.is_dir() {
-                    dirs.push((path, format!("{module}.{stem}")));
-                } else if path.extension().is_some_and(|e| e == "cp") {
-                    if let Ok(text) = std::fs::read_to_string(&path) {
-                        files.push((format!("{module}.{stem}"), text));
-                    }
-                }
-            }
-        }
+        let mut files = match cpl_env::NEXT_STD_DIR.path() {
+            Some(dir) => read_dir_modules(&dir),
+            None => (STD_FILES.iter())
+                .map(|(m, t)| (m.to_string(), t.to_string()))
+                .collect(),
+        };
         files.sort();
         let placed = std::iter::once((CORE.to_string(), CORE_TEXT.to_string())).chain(files);
         // Each module is read alone, so they are parsed side by side.
@@ -248,8 +237,29 @@ pub const PROGRAM: &str = "program";
 /// names under `[libs]` (R11.2.1). `std` is the pinned stdlib, read into a `Std`.
 pub struct Roots(Vec<(String, PathBuf)>);
 
-fn std_root() -> PathBuf {
-    PathBuf::from(format!("{}/../../std", env!("CARGO_MANIFEST_DIR")))
+/// Std's modules as `std/` was when this binary was built, by module name.
+const STD_FILES: &[(&str, &str)] = include!(concat!(env!("OUT_DIR"), "/std_files.rs"));
+
+/// The modules of a std directory `CPL_NEXT_STD_DIR` names in place of the built-in one.
+fn read_dir_modules(root: &Path) -> Vec<(String, String)> {
+    let mut files = Vec::new();
+    let mut dirs = vec![(root.to_path_buf(), "std".to_string())];
+    while let Some((dir, module)) = dirs.pop() {
+        for entry in std::fs::read_dir(&dir).into_iter().flatten().flatten() {
+            let path = entry.path();
+            let stem = path
+                .file_stem()
+                .map_or(String::new(), |s| s.to_string_lossy().into_owned());
+            if path.is_dir() {
+                dirs.push((path, format!("{module}.{stem}")));
+            } else if path.extension().is_some_and(|e| e == "cp") {
+                if let Ok(text) = std::fs::read_to_string(&path) {
+                    files.push((format!("{module}.{stem}"), text));
+                }
+            }
+        }
+    }
+    files
 }
 
 impl Roots {
