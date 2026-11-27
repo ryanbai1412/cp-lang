@@ -519,6 +519,7 @@ impl Link<'_> {
                     lend,
                     body,
                     site,
+                    body_site,
                 } => {
                     let args = args.iter().map(|a| self.arg(a, env)).collect();
                     let body = self.block(body, env);
@@ -534,6 +535,7 @@ impl Link<'_> {
                             lend: *lend,
                             body,
                             site: *site,
+                            body_site: *body_site,
                         },
                         None => Stmt::Break,
                     }
@@ -889,6 +891,7 @@ fn canon_block(
                 lend,
                 body,
                 site,
+                body_site,
             } => {
                 let cty = c.ty.clone();
                 locals.push(cty.clone());
@@ -907,6 +910,7 @@ fn canon_block(
                         lend,
                         body: body.clone(),
                         site,
+                        body_site,
                     }
                 };
                 match &cty {
@@ -936,6 +940,7 @@ fn canon_block(
                 lend,
                 body,
                 site,
+                body_site,
             } => {
                 let args = args
                     .into_iter()
@@ -951,6 +956,7 @@ fn canon_block(
                     lend,
                     body: canon_block(p, locals, bad, body),
                     site,
+                    body_site,
                 });
             }
             other => out.push(other),
@@ -1478,6 +1484,7 @@ pub fn add_events(p: &mut Program, typed: &Typed, d: &Decls) {
                     lend,
                     body,
                     site,
+                    body_site,
                 } => out.push(Stmt::Region {
                     target,
                     args,
@@ -1485,6 +1492,7 @@ pub fn add_events(p: &mut Program, typed: &Typed, d: &Decls) {
                     lend,
                     body: block(body, exit, typed),
                     site,
+                    body_site,
                 }),
                 other => out.push(other),
             }

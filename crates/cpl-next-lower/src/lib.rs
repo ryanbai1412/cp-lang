@@ -1241,6 +1241,7 @@ impl Lw<'_> {
                         l
                     }
                 };
+                let body_site = self.site(body.span);
                 let mut b = Vec::new();
                 let v = self.expr(body, &mut b);
                 self.effect(v, &mut b);
@@ -1264,6 +1265,7 @@ impl Lw<'_> {
                     lend: *lend,
                     body: b,
                     site,
+                    body_site,
                 });
             }
         }

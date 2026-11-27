@@ -329,6 +329,8 @@ pub enum Stmt<T> {
         lend: bool,
         body: Vec<Stmt<T>>,
         site: Site,
+        /// The node of the source loop's body, where a message on the whole walk is placed.
+        body_site: Site,
     },
     Yield(Expr<T>),
     LendOut(Place),

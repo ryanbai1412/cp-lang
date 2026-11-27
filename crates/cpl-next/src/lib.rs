@@ -720,6 +720,26 @@ mod tests {
         assert_ne!(site, 0);
         assert_eq!(g.sites[site as usize].item.name.as_ref(), "f");
     }
+    /// A lowered walk keeps the node of its body, where a message on the whole walk is placed.
+    #[test]
+    fn a_lowered_walk_keeps_its_body_site() {
+        let src = "fn f(xs: List<Int>) -> Int:\n    var s = 0\n    for x in xs:\n        s += x\n    s\nprint(f([1, 2]))\n";
+        let f = front(&Std::read(), src, &Roots::std());
+        assert!(f.diags.is_empty(), "{:?}", f.diags);
+        let g = (f.g.funcs.values())
+            .find(|g| g.name == "f" && g.line != 0)
+            .expect("f is lowered");
+        let (site, body) = (g.body.iter())
+            .find_map(|s| match s {
+                ir::Stmt::Region {
+                    site, body_site, ..
+                } => Some((*site, *body_site)),
+                _ => None,
+            })
+            .expect("f walks xs");
+        assert!(body != 0 && body != site);
+        assert_eq!(g.sites[body as usize].item.name.as_ref(), "f");
+    }
     #[test]
     fn syntax_error_is_placed_in_the_program() {
         let d = &diags("let a = 1\nlet = 2\n")[0];

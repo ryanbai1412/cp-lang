@@ -315,6 +315,7 @@ impl<'a> Machine<'a> {
                     lend,
                     body,
                     site,
+                    ..
                 } => {
                     // A generator value's walk calls the closure it holds, captures first.
                     let (f, mut vals) = match target {

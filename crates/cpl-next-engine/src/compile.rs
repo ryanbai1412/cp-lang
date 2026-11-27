@@ -802,6 +802,7 @@ impl Fc<'_> {
                 lend,
                 body,
                 site,
+                ..
             } => {
                 let Target::Inst(f) = target else {
                     self.fail("an unresolved region call reached the engine");
