@@ -286,6 +286,8 @@ impl Intr {
                 | ReadInt
                 | FromU64
                 | CharOf
+                | BitCeil
+                | ToInt(_)
         )
     }
 }
