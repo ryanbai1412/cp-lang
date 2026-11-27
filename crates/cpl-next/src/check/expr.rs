@@ -463,7 +463,8 @@ impl<'a> Cx<'a> {
                     TK::CallTrait {
                         tr: tr.clone(),
                         method: method.to_string(),
-                        recv: Box::new(TArg::Value(recv)),
+                        self_ty: Box::new(recv.ty.clone()),
+                        recv: Some(Box::new(TArg::Value(recv))),
                         args: vec![TArg::Value(arg)],
                     },
                     Ty::Bool,
@@ -703,7 +704,8 @@ impl<'a> Cx<'a> {
                 kind: TK::CallTrait {
                     tr: tr.clone(),
                     method: name.to_string(),
-                    recv: Box::new(TArg::Value(recv)),
+                    self_ty: Box::new(recv.ty.clone()),
+                    recv: Some(Box::new(TArg::Value(recv))),
                     args,
                 },
                 ty: ret,

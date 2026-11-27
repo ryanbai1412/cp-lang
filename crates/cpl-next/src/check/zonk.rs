@@ -83,9 +83,18 @@ impl<'a> Cx<'a> {
                 }
                 args.iter_mut().for_each(|a| self.zonk_arg(a));
             }
-            TK::CallTrait { tr, recv, args, .. } => {
+            TK::CallTrait {
+                tr,
+                recv,
+                self_ty,
+                args,
+                ..
+            } => {
                 tr.args = tr.args.iter().map(|a| self.zonk(a)).collect();
-                self.zonk_arg(recv);
+                **self_ty = self.zonk(self_ty);
+                if let Some(r) = recv {
+                    self.zonk_arg(r);
+                }
                 args.iter_mut().for_each(|a| self.zonk_arg(a));
             }
             TK::CallValue { callee, args } => {

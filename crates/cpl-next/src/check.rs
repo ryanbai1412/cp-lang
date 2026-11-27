@@ -50,10 +50,13 @@ pub enum TK {
         recv: Option<Box<TArg>>,
         args: Vec<TArg>,
     },
+    /// A fn of a bound, chosen per instance by `self_ty`: the receiver's type, or `T` in
+    /// `T.zero`, a fn without `self` (`recv: None`).
     CallTrait {
         tr: TraitRef,
         method: String,
-        recv: Box<TArg>,
+        recv: Option<Box<TArg>>,
+        self_ty: Box<Ty>,
         args: Vec<TArg>,
     },
     CallValue {

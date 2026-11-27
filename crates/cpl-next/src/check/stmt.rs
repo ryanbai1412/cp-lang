@@ -728,8 +728,9 @@ impl<'a> Cx<'a> {
                         TK::CallTrait {
                             tr,
                             method,
-                            recv,
+                            recv: Some(recv),
                             args,
+                            ..
                         } => {
                             return self.trait_walk(
                                 (tr, method, recv, args),

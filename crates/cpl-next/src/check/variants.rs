@@ -42,7 +42,8 @@ impl Cx<'_> {
             TK::CallTrait {
                 tr: r,
                 method,
-                recv: Box::new(TArg::Value(v)),
+                self_ty: Box::new(v.ty.clone()),
+                recv: Some(Box::new(TArg::Value(v))),
                 args: Vec::new(),
             },
             to,

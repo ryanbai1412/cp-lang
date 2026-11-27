@@ -550,6 +550,7 @@ core-08/one-generic-fn-at-four-types.cp
 core-08/own-module-fn-beats-equal-imported.cp
 core-08/record-exact-fields.cp
 core-08/recursion-at-the-same-type-is-fine.cp
+core-08/return-type-dispatch.cp
 core-08/static-fn-default-param-mismatch.cp
 core-08/static-fn-default-param.cp
 core-08/static-fn-explicit-args.cp
@@ -963,6 +964,7 @@ next/n_struct_default_type_arg.cp
 next/n_table_01_one_cell_per_position.cp
 next/n_targs_01_written.cp
 next/n_targs_02_field_takes_none.cp
+next/n_trait_static_fn.cp
 next/n_trait_typed_param.cp
 next/n_trap_01_call_stack_names_inlined_calls.cp
 next/n_trap_02_call_stack_in_a_loop_body.cp

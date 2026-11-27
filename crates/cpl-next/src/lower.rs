@@ -554,10 +554,14 @@ impl Lw<'_> {
                 tr,
                 method,
                 recv,
+                self_ty,
                 args,
             } => {
-                let a = self.args(Some(recv), args, out);
-                let self_ty = self.self_ty(recv, &a);
+                let a = self.args(recv.as_deref(), args, out);
+                let self_ty = match recv {
+                    Some(r) => self.self_ty(r, &a),
+                    None => (**self_ty).clone(),
+                };
                 let call = mk(EK::Call(
                     Target::Trait {
                         tr: tr.tr,
@@ -1317,7 +1321,9 @@ pub fn free_vars(e: &TExpr, used: &mut BTreeSet<VarRef>, bound: &mut BTreeSet<Va
             args.iter().for_each(|a| arg(a, used, bound));
         }
         TK::CallTrait { recv, args, .. } => {
-            arg(recv, used, bound);
+            if let Some(r) = recv {
+                arg(r, used, bound);
+            }
             args.iter().for_each(|a| arg(a, used, bound));
         }
         TK::CallValue { callee, args } => {

@@ -391,7 +391,11 @@ impl Cx<'_> {
                         args,
                         ..
                     }
-                    | TK::CallTrait { recv: r, args, .. } => {
+                    | TK::CallTrait {
+                        recv: Some(r),
+                        args,
+                        ..
+                    } => {
                         let (TArg::Value(v) | TArg::Mut(v)) = &**r;
                         match self.place(v) {
                             Some(mut p) => {
@@ -991,12 +995,12 @@ impl Cx<'_> {
         tr: TraitId,
         method: &str,
         span: Span,
-        recv: &TArg,
+        recv: Option<&TArg>,
         args: &[TArg],
         fx: &mut Fx,
     ) -> (BTreeSet<Pl>, BTreeSet<Pl>) {
         // Which impl runs is known per instance; the summary is every impl's.
-        let all: Vec<&TArg> = std::iter::once(recv).chain(args.iter()).collect();
+        let all: Vec<&TArg> = recv.into_iter().chain(args.iter()).collect();
         let places = self.arg_places(&all);
         let (mut other, mut through) = (Fx::default(), Fx::default());
         let mut keeps = BTreeSet::new();
@@ -1065,8 +1069,9 @@ impl Cx<'_> {
                 method,
                 recv,
                 args,
+                ..
             } => {
-                self.trait_call(tr.tr, method, e.span, recv, args, fx);
+                self.trait_call(tr.tr, method, e.span, recv.as_deref(), args, fx);
             }
             TK::CallValue { callee, args } => {
                 self.expr(callee, fx);
@@ -1304,7 +1309,7 @@ impl Cx<'_> {
                 let (mut held, lent) = match (callee, recv) {
                     (Callee::Fn(f), _) => self.fn_call(f, body.span, recv, args, fx),
                     (Callee::Trait(tr, m), Some(r)) => {
-                        self.trait_call(tr.tr, m, body.span, r, args, fx)
+                        self.trait_call(tr.tr, m, body.span, Some(r), args, fx)
                     }
                     (Callee::Trait(..), None) => Default::default(),
                 };

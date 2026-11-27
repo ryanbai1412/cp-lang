@@ -150,6 +150,60 @@ impl<'a> Cx<'a> {
             Some(format!("rename the fn, or call it as a plain fn: `{m}({shown})`")),
         );
     }
+    /// `T.zero` or `T.f(args)` on a type parameter: a fn without `self` of one of its bounds,
+    /// chosen per instance by `T`.
+    fn bound_static(
+        &mut self,
+        base: &ast::Expr,
+        name: &ast::Name,
+        call: Option<&[ast::Arg]>,
+        span: Span,
+    ) -> Option<TExpr> {
+        let ExprKind::Name(n) = &base.kind else {
+            return None;
+        };
+        if self.lookup(n).is_some() {
+            return None;
+        }
+        let i = self.generics.iter().position(|g| g == n)?;
+        let (tr, m) = (self.bound_traits(i).into_iter()).find_map(|tr| {
+            let m = *self.d.traits[tr.tr.0].methods.get(&name.text)?;
+            (self.d.f(m).self_mode == SelfMode::None).then_some((tr, m))
+        })?;
+        self.reach(m);
+        let fd = self.d.f(m);
+        if call.is_none() && !fd.getter {
+            self.err(
+                span,
+                format!(
+                    "{}: `{}` is a method: call it with `()`",
+                    cpl_diag::codes::UNKNOWN_FIELD.0,
+                    name.text
+                ),
+            );
+        }
+        let mut tys = vec![Ty::Param(i)];
+        tys.extend(tr.args.iter().cloned());
+        let sub = Subst {
+            tys: &tys,
+            sets: &[],
+        };
+        let formals = self.formals(&sub, fd);
+        let ret = sub.ty(&fd.ret);
+        let (pre, args) = self.args(call.unwrap_or(&[]), &formals, span);
+        let call = TExpr {
+            kind: TK::CallTrait {
+                tr,
+                method: name.text.clone(),
+                recv: None,
+                self_ty: Box::new(Ty::Param(i)),
+                args,
+            },
+            ty: ret,
+            span,
+        };
+        Some(block(pre, call))
+    }
     pub(super) fn member(
         &mut self,
         base: &ast::Expr,
@@ -160,6 +214,10 @@ impl<'a> Cx<'a> {
         written_targs: &[Ty],
     ) -> TExpr {
         if let Some(e) = self.domain_member(base, name, call, span, want) {
+            self.no_targs(name, written_targs, span);
+            return e;
+        }
+        if let Some(e) = self.bound_static(base, name, call, span) {
             self.no_targs(name, written_targs, span);
             return e;
         }
@@ -285,7 +343,8 @@ impl<'a> Cx<'a> {
                         kind: TK::CallTrait {
                             tr: tr.clone(),
                             method: name.text.clone(),
-                            recv: Box::new(recv),
+                            recv: Some(Box::new(recv)),
+                            self_ty: Box::new(rt.clone()),
                             args,
                         },
                         ty: ret,

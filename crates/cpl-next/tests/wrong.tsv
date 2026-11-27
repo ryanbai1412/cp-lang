@@ -76,8 +76,6 @@ core-04/array-value-run-time-count-differs-traps.cp	wrong-reject	check: program:
 core-04/b2-find-in-suffix.cp	wrong-reject	check: std.strings:83:29: E0302: expected `Int`, found `Str`
 core-04/b5-prefix-matches-keyed-slice.cp	wrong-reject	check: std.strings:523:8: E0203: `P` has no member `is_empty`
 core-04/b5-z-function-keyed-slice.cp	wrong-reject	check: std.strings:380:27: E0201: unknown name `min`
-core-04/bsearch-flip-cut.cp	wrong-reject	check: program:5:11: E0606: `V` does not implement `Search`
-core-04/bsearch-returns-cut.cp	wrong-reject	check: program:4:9: E0606: `Int` does not implement `Search`
 core-04/c2-nested-slice.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 core-04/char-domain-position-to-char.cp	wrong-reject	check: program:4:17: E0302: expected `Int`, found `Char`
 core-04/char-from-idx.cp	wrong-reject	check: program:4:7: E0201: unknown name `Char`
@@ -143,7 +141,6 @@ core-04/ranged-cells-take-no-wider-list-by-extend.cp	wrong-error	wanted E0302 on
 core-04/rb1-q14-position-plus-int.cp	wrong-reject	check: program:5:7: E0302: expected `Int`, found `V`
 core-04/rb1-q17-cut-int-counts-before.cp	wrong-reject	check: program:5:11: E0203: `Range<P>` has no member `cuts`
 core-04/rb1-q19-stored-cut-range-not-piece.cp	wrong-error	wanted E0302 on line 6, got: check: program:5:9: E0203: `Range<V>` has no member `cuts`
-core-04/rb1-q22-int-range-cut-is-value.cp	wrong-reject	check: program:3:11: E0606: `Int` does not implement `Search`
 core-04/rebase-fresh-domain.cp	wrong-reject	check: program:5:9: E0203: `Rebased<Slice<List<Int>>>` has no member `Idx`
 core-04/rebase-keys-dont-mix.cp	wrong-error	wanted E0301 on line 6, got: check: program:6:9: E0203: `Rebased<Slice<List<Int>>>` has no member `Idx`
 core-04/rebased-str-indexes-from-zero.cp	wrong-reject	check: program:6:46: E0203: `Rebased<Slice<Str>>` has no member `keys`
@@ -300,7 +297,6 @@ core-08/method-returning-a-deeper-instance.cp	wrong-reject	check: program:11:27:
 core-08/no-orphan-impl-of-an-imported-trait.cp	wrong-error	wanted E0501 on line 5, got: decls: E0204: unknown trait `Monoid`
 core-08/overloaded-fn-value-defaults-to-int.cp	wrong-reject	check: program:7:23: E0201: unknown name `max`
 core-08/polymorphic-recursion-is-an-error.cp	wrong-error	wanted E0319 on line 8, got: link: E0319: instantiation does not end: `new` makes a new copy of itself at every level (a function passed to its own recursive call, wrapped in a new closure)
-core-08/return-type-dispatch.cp	wrong-reject	check: program:8:27: E0203: `Range<T>` has no member `zero`
 core-08/row-duplicate-field.cp	wrong-error	wanted E0202 on line 3, got: check: program:3:19: E0303: `a` is given twice
 core-08/self-default-getter-rejects-another-type.cp	wrong-error	wanted E0606 on line 9, got: check: program:6:30: E0302: expected `T`, found `Self`
 core-08/seq-supertraits-come-from-std.cp	wrong-reject	decls: E0204: unknown trait `Indexed`
@@ -588,7 +584,6 @@ std-rand/rng-is-splitmix64.cp	wrong-reject	check: std.rand:56:9: E0405: field `R
 std-rand/chance-pick.cp	wrong-reject	check: E0204: std.rand: unknown trait `Indexed`
 std-rand/rng-is-splitmix64.cp	wrong-reject	check: std.rand:56:9: E0405: field `Rng.s` is fixed (not `var`) and cannot be assigned
 std-rand/shuffle-single-and-empty.cp	wrong-reject	check: std.rand:119:34: E0203: `S` has no member `swap_idx`
-std-search/bsearch-steps-on-a-discrete-range-traps.cp	wrong-reject	check: program:5:7: E0606: `Int` does not implement `Search`
 std-search/ternary_max-1.cp	wrong-reject	check: std.search:32:52: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
 std-search/ternary_max-2.cp	wrong-reject	check: std.search:32:52: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
 std-search/ternary_max-3.cp	wrong-reject	check: std.search:32:52: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
@@ -604,7 +599,6 @@ std-seq/all_some-1.cp	wrong-reject	own: std.seq:2167:23: E0603: a function that 
 std-seq/argmax-on-slice-keys-from-source.cp	wrong-reject	check: std.seq:3518:27: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
 std-seq/argmax-ties-and-empty.cp	wrong-reject	check: std.seq:3518:27: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
 std-seq/argmin-over-a-domain.cp	wrong-reject	check: std.seq:3499:28: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
-std-seq/bsearch-last-wrong-way-traps.cp	wrong-reject	check: program:3:7: E0606: `Int` does not implement `Search`
 std-seq/bsearch-true-then-false-traps.cp	wrong-reject	check: program:4:7: E0203: `List<Int>` has no member `bsearch`
 std-seq/count-in-wrong-way-traps-checked.cp	wrong-reject	check: program:5:7: E0203: `List<Int>` has no member `count_in`
 std-seq/cycle-on-list-literal.cp	wrong-reject	check: program:2:7: E0203: `List<Int>` has no member `cycle`
