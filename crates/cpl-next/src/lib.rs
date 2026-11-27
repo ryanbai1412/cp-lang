@@ -7,6 +7,7 @@
 //! what it replaces.
 
 mod consts;
+pub mod db;
 pub mod facade;
 
 use cpl_next_check as check;
