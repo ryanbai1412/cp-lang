@@ -1,6 +1,7 @@
 //! Which types share a representation, decided once here and read by every backend: types
-//! whose values differ only in which domain a position counts lie in memory alike, since a
-//! position is one word, so a value of one can be stored where the other is wanted.
+//! whose values differ only in which domain a position counts, or in the range an `Int` is
+//! held to, lie in memory alike, since a position and a ranged `Int` are one word, so a value
+//! of one can be stored where the other is wanted.
 use cpl_next_ir::ir::*;
 use cpl_next_ir::prog::{CTy, Program};
 use std::collections::{HashMap, HashSet};
@@ -39,8 +40,9 @@ impl Shares<'_> {
             return;
         }
         let first = self.first.entry(erased(t)).or_insert_with(|| t.clone());
-        // A bare domain type keeps its own identity: its size is read through it.
-        if first != t && !matches!(t, CTy::Dom(_)) {
+        // A bare domain or range type keeps its own identity: its size or bounds are read
+        // through it.
+        if first != t && !matches!(t, CTy::Dom(_) | CTy::Range(..)) {
             self.out.insert(t.clone(), first.clone());
         }
         let held = match t {
@@ -106,10 +108,12 @@ impl Shares<'_> {
     }
 }
 
-/// `t` with every domain the same one: what tells representations apart.
+/// `t` with every domain the same one and every ranged `Int` an `Int`: what tells
+/// representations apart.
 fn erased(t: &CTy) -> CTy {
     match t {
         CTy::Dom(_) => CTy::Dom(0),
+        CTy::Range(..) => CTy::Int,
         CTy::Raw(e) => CTy::Raw(Box::new(erased(e))),
         CTy::Ref(e) => CTy::Ref(Box::new(erased(e))),
         CTy::Lent(e) => CTy::Lent(Box::new(erased(e))),

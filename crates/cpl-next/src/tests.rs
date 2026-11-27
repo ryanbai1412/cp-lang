@@ -530,6 +530,28 @@ if a == None and b != None and not (None == b):\n    print(b!.f(1))\n";
 
 /// Types told apart only by which domain a position counts share one representation, which
 /// link decides once: `S<P>` and `S<Q>` map to the same type for every backend.
+/// A list of a ranged `Int` and a list of `Int` lie in memory alike, so they share one
+/// representation: C++ names one struct for both and passes one where the other is wanted.
+#[test]
+fn a_ranged_int_shares_the_representation_of_an_int() {
+    let src =
+        "var x: 0..=10 = 5\nvar xs: List<0..=10> = List.new()\nxs.push(x)\nprint(xs.get(0))\n";
+    let c = compile(&Std::read(), src, &Roots::std(), false).expect("compiles");
+    let list = |t: &CTy, ranged: bool| matches!(t, CTy::Struct(_, ts, _) if ts.len() == 1 && matches!(ts[0], CTy::Range(..)) == ranged && matches!(ts[0], CTy::Range(..) | CTy::Int));
+    let all: Vec<&CTy> = (c.prog.insts.iter())
+        .flat_map(|f| f.locals.iter().chain([&f.ret]))
+        .collect();
+    let ranged = all.iter().find(|t| list(t, true)).expect("a List<0..=10>");
+    let plain = all
+        .iter()
+        .find(|t| list(t, false) && c.prog.rep(t) == c.prog.rep(ranged));
+    assert!(
+        plain.is_some(),
+        "no List<Int> shares {ranged:?}: {:?}",
+        c.prog.shares
+    );
+}
+
 #[test]
 fn types_told_apart_by_domains_share_a_representation() {
     let src = "struct S<P>:\n    at: [P]Int\nfn a(k: Int) -> S<_>:\n    domain P = 0..k\n    S<P>([P] _ => 1)\nfn b(k: Int) -> S<_>:\n    domain Q = 0..k\n    S<Q>([Q] _ => 2)\nlet s = a(3)\nlet t = b(2)\nprint(s.at.len, t.at.len)\n";
