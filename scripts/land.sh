@@ -369,6 +369,24 @@ if [ -n "$changed" ]; then
     marks=$(git grep -nE '^(<{7}|>{7}|\|{7})( |$)' HEAD -- $changed ':!*.png' ':!*.gz' || [ $? = 1 ])
     [ -z "$marks" ] || { echo "land: merge conflict markers:"$'\n'"$marks" >&2; exit 1; }
 fi
+# Two std changes each green alone can make a std cpl-next rejects for every program
+# (e9aad9fb6 and 28a4c9495 each added `impl Seq for Subset`, a minute apart): check the
+# rebased std with this worktree's cpl-next, about 1 s, unless main's std fails with it too.
+next_bin=target/debug/cpl-next
+if [ -n "$(git diff --name-only "$main_base" HEAD -- 'std/*.cp')" ] && [ -x "$next_bin" ] &&
+    git cat-file -e "$main_base:std" 2>/dev/null; then
+    std_dir=$(mktemp -d)
+    git archive "$main_base" std | tar -x -C "$std_dir"
+    printf 'print(1)\n' > "$std_dir/one.cp"
+    if CPL_NEXT_STD_DIR="$std_dir/std" "$next_bin" --check "$std_dir/one.cp" >/dev/null 2>&1 &&
+        ! said=$(CPL_NEXT_STD_DIR=std "$next_bin" --check "$std_dir/one.cp" 2>&1); then
+        rm -rf "$std_dir"
+        printf '%s\n' "$said" | head -5 >&2
+        echo "land: cpl-next rejects the rebased std, which main's passes (above); fix std and land again" >&2
+        exit 1
+    fi
+    rm -rf "$std_dir"
+fi
 # The rebase rewrote main's crate files: corpus_fmt_dirty refuses a stale cpl, so build it.
 [ -n "$fast" ] || [ ! -f scripts/debt-ratchet.py ] || [ ! -f Cargo.toml ] || cargo build -q -p cpl-cli ||
     { echo "land: cargo build -p cpl-cli failed at the rebased tip; the ratchet runs that cpl" >&2; exit 1; }

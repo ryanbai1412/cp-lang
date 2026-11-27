@@ -86,6 +86,33 @@ class LandTest(unittest.TestCase):
         git(repo, "fetch", "-q", "origin")
         self.assertEqual(git(repo, "log", "-1", "--format=%s", "origin/main").strip(), "x")
 
+    def test_a_std_that_collides_with_mains_is_refused_even_on_a_fast_land(self):
+        # Each change passed alone; together std has two impls and no program builds.
+        lane = self.clone("lane")
+        other = self.clone("other")
+        (other / "std").mkdir()
+        (other / "std" / "a.cp").write_text("impl\n")
+        self.commit(other, "std a")
+        self.assertEqual(self.land(other, CPL_LAND_FULL="").returncode, 0)
+        with open(lane / ".git" / "info" / "exclude", "a") as f:
+            f.write("target/\n")
+        (lane / "target" / "debug").mkdir(parents=True)
+        fake = lane / "target" / "debug" / "cpl-next"
+        fake.write_text('#!/bin/sh\n[ "$(cat "$CPL_NEXT_STD_DIR"/*.cp)" != "$(printf \'impl\\nimpl\')" ] || '
+                        '{ echo "check: E0202: a second impl"; exit 1; }\n')
+        fake.chmod(0o755)
+        (lane / "std").mkdir()
+        (lane / "std" / "b.cp").write_text("impl\n")
+        self.commit(lane, "std b")
+        refused = self.land(lane, CPL_LAND_FULL="")
+        self.assertNotEqual(refused.returncode, 0, refused.stderr)
+        self.assertIn("E0202: a second impl", refused.stderr)
+        self.assertIn("cpl-next rejects the rebased std", refused.stderr)
+        (lane / "std" / "b.cp").write_text("other\n")
+        self.commit(lane, "std b, not a second impl")
+        landed = self.land(lane, CPL_LAND_FULL="")
+        self.assertEqual(landed.returncode, 0, landed.stderr)
+
     def test_two_lands_from_worktrees_of_one_clone_both_push(self):
         # 29411aa2 sat behind its own land: a second land of one clone shares its .git, so
         # the lock, rebase and base-rerun state must each be per worktree (or locked).
