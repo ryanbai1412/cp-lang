@@ -9,6 +9,7 @@ use cpl_next_ir::ir::{sets, Arg, Expr, Func, Place, Site, Stmt, EK};
 use cpl_next_ir::prog::{CTy, Program};
 use cpl_next_ir::ty::*;
 use std::collections::{BTreeSet, HashMap};
+mod drops;
 mod inst;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -62,7 +63,8 @@ impl Fx {
 
 /// Settles each place passed to a call (`EK::Pass`) in the linked program: a copy taken in its
 /// turn where ownership found the call also writes it (R4), else a view from the call's start
-/// (R11) or a read. Then marks the params each instance reads in place (`Func::views`).
+/// (R11) or a read. Then marks the params each instance reads in place (`Func::views`), and
+/// places every release (`Func::drops`, `Stmt::Drop`).
 pub fn place_copies(p: &mut Program, copies: &BTreeSet<(usize, Site)>) {
     for (i, f) in p.insts.iter_mut().enumerate() {
         Settle {
@@ -76,6 +78,7 @@ pub fn place_copies(p: &mut Program, copies: &BTreeSet<(usize, Site)>) {
     for (f, v) in p.insts.iter_mut().zip(views) {
         f.views = v;
     }
+    drops::place(p);
 }
 /// Which params the callee reads where the caller has them: nothing writes one and it has a
 /// heap part, so passing it takes no copy (R1).
@@ -140,7 +143,11 @@ impl<C: Fn(Site) -> bool> Settle<'_, C> {
                 self.args(args, pre);
                 self.block(body);
             }
-            Stmt::Return(None) | Stmt::LendOut(_) | Stmt::Break | Stmt::Continue => {}
+            Stmt::Return(None)
+            | Stmt::LendOut(_)
+            | Stmt::Drop(_)
+            | Stmt::Break
+            | Stmt::Continue => {}
         }
     }
     fn args(&mut self, xs: &mut [Arg<CTy>], pre: &mut Vec<Stmt<CTy>>) {

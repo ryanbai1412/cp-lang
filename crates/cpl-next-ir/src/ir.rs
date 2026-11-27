@@ -460,6 +460,9 @@ pub enum Stmt<T> {
     },
     Yield(Expr<T>),
     LendOut(Place),
+    /// Ownership's release of the value a place holds: at an overwrite, or of a discarded
+    /// value's temporary. The place holds no value after it until it is set again.
+    Drop(Place),
     /// A point a trace reports: a label and the values to show. Placed on instance IR, on request only.
     Event(String, Vec<Expr<T>>),
     /// A condition that holds here, which lowering states for the facts (a `for` variable at
@@ -485,6 +488,9 @@ pub struct Func<T> {
     /// Per param, set by ownership: nothing writes it and it has a heap part, so the callee
     /// reads it where the caller has it instead of taking a copy (R1).
     pub views: Vec<bool>,
+    /// Set by ownership: the locals the frame releases when the fn leaves, every one that
+    /// may hold storage but the lent parameters.
+    pub drops: Vec<usize>,
     pub body: Vec<Stmt<T>>,
     pub ret: T,
     /// Set for a generator (`false`) or a lender (`true`): what it hands to the caller's code.
@@ -598,7 +604,7 @@ pub fn visit_places<T>(b: &mut [Stmt<T>], f: &mut impl FnMut(&mut Place)) {
                 local(var, f);
                 visit_places(body, f);
             }
-            Stmt::LendOut(p) => place(p, f),
+            Stmt::LendOut(p) | Stmt::Drop(p) => place(p, f),
             Stmt::Event(_, xs) => xs.iter_mut().for_each(|x| expr(x, f)),
             Stmt::Break | Stmt::Continue => {}
         }
@@ -639,7 +645,7 @@ fn touches<T>(b: &[Stmt<T>], l: usize, all: Touch) -> bool {
         Stmt::Check { cond, .. } => touches_in(cond, l, all),
         Stmt::Event(_, vs) => vs.iter().any(|v| touches_in(v, l, all)),
         Stmt::Region { args, body, .. } => touches_args(args, l, all) || touches(body, l, all),
-        Stmt::LendOut(p) => at(p),
+        Stmt::LendOut(p) | Stmt::Drop(p) => at(p),
         Stmt::Break | Stmt::Continue => false,
     })
 }

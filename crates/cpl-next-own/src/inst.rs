@@ -1212,7 +1212,7 @@ impl Walk<'_> {
                 fx.add(&inner);
             }
             Stmt::Event(_, xs) => xs.iter().for_each(|x| self.reads(x, fx)),
-            Stmt::Break | Stmt::Continue | Stmt::LendOut(_) => {}
+            Stmt::Break | Stmt::Continue | Stmt::LendOut(_) | Stmt::Drop(_) => {}
         }
     }
     /// Whether a local's type in the generic fn holds a type parameter.
@@ -1492,7 +1492,7 @@ fn calls_in<'b, T>(b: &'b [Stmt<T>], f: &mut Calls<'b, T>) {
                 calls_in(body, f);
             }
             Stmt::Event(_, xs) => xs.iter().for_each(|x| expr(x, f)),
-            Stmt::Break | Stmt::Continue | Stmt::LendOut(_) => {}
+            Stmt::Break | Stmt::Continue | Stmt::LendOut(_) | Stmt::Drop(_) => {}
         }
     }
 }
@@ -1726,6 +1726,6 @@ fn site_of(b: &[Stmt<CTy>], hit: &dyn Fn(&Expr<CTy>) -> bool) -> Option<usize> {
             })
             .or_else(|| site_of(body, hit)),
         Stmt::Event(_, xs) => xs.iter().find_map(|x| ex(x, hit)),
-        Stmt::LendOut(_) | Stmt::Break | Stmt::Continue => None,
+        Stmt::LendOut(_) | Stmt::Drop(_) | Stmt::Break | Stmt::Continue => None,
     })
 }

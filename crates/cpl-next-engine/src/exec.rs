@@ -552,11 +552,6 @@ impl M<'_> {
                     let loc = self.look(fp, p)?;
                     self.stack[r(d)] = self.word(loc);
                 }
-                Op::Store { p, s, lay } => {
-                    let loc = self.loc(fp, p)?;
-                    self.release(lay, loc);
-                    self.write(loc, r(s), self.size(lay));
-                }
                 Op::Drop { s, lay } => self.release(lay, Loc::stack(r(s))),
                 Op::Text { d, t } => {
                     let mut h = self.texts[t as usize];
@@ -943,7 +938,6 @@ mod tests {
                 | Op::Move { .. }
                 | Op::Load { .. }
                 | Op::Peek { .. }
-                | Op::Store { .. }
                 | Op::Drop { .. }
                 | Op::Text { .. }
                 | Op::At { .. }
@@ -1018,7 +1012,7 @@ mod tests {
         }
         let _typed: [fn(&Op) -> bool; 2] = [plumbing, not_an_op];
         let (plumbing, fail) = (named("plumbing"), named("not_an_op"));
-        assert_eq!((plumbing.len(), fail.len()), (30, 1), "read the matches");
+        assert_eq!((plumbing.len(), fail.len()), (29, 1), "read the matches");
         let variants = variants();
         assert!(variants.len() > 30, "found the Op enum: {variants:?}");
         for v in &variants {

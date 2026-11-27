@@ -259,6 +259,7 @@ impl Link<'_> {
             sites: f.sites.clone(),
             lines: f.lines.clone(),
             views: Vec::new(),
+            drops: Vec::new(),
             maker: f.maker,
             shown: f.shown.clone(),
             fast: f.fast,
@@ -619,6 +620,7 @@ impl Link<'_> {
                 },
                 Stmt::Yield(e) => Stmt::Yield(self.expr(e, env)),
                 Stmt::LendOut(p) => Stmt::LendOut(p.clone()),
+                Stmt::Drop(p) => Stmt::Drop(p.clone()),
                 Stmt::Event(l, vs) => {
                     Stmt::Event(l.clone(), vs.iter().map(|v| self.expr(v, env)).collect())
                 }

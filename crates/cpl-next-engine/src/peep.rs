@@ -110,11 +110,9 @@ fn traps(op: &Op, places: &[PlaceCode]) -> bool {
         |p: u32| (places[p as usize].steps.iter()).any(|s| matches!(s, Step::Slot { .. }));
     !still(op)
         && match *op {
-            Op::Load { p, .. }
-            | Op::Peek { p, .. }
-            | Op::Store { p, .. }
-            | Op::Take { p, .. }
-            | Op::Put { p, .. } => indexes(p),
+            Op::Load { p, .. } | Op::Peek { p, .. } | Op::Take { p, .. } | Op::Put { p, .. } => {
+                indexes(p)
+            }
             _ => true,
         }
         && !matches!(
@@ -554,11 +552,6 @@ fn effect(op: &Op, places: &[PlaceCode], lays: &Layouts) -> Option<(Vec<Words>, 
         Op::Load { d, p, lay } => (place(p, size(lay)), vec![(d, size(lay))]),
         Op::Peek { d, p } => (place(p, 1), vec![one(d)]),
         Op::Take { d, p, n } => (place(p, n), vec![(d, n)]),
-        Op::Store { p, s, lay } => {
-            let mut v = place(p, size(lay));
-            v.push((s, size(lay)));
-            (v, vec![])
-        }
         Op::Put { p, s, n } => {
             let mut v = place(p, n);
             v.push((s, n));
@@ -643,7 +636,6 @@ fn place_of(op: &mut Op) -> Option<&mut u32> {
     match op {
         Op::Load { p, .. }
         | Op::Peek { p, .. }
-        | Op::Store { p, .. }
         | Op::Take { p, .. }
         | Op::Put { p, .. }
         | Op::RawSet { p, .. }
@@ -830,11 +822,9 @@ fn shifted(
     let mut new = op;
     match &mut new {
         Op::Move { d, s, .. } => [d, s].into_iter().for_each(shift),
-        Op::Retain { s, .. }
-        | Op::Drop { s, .. }
-        | Op::Put { s, .. }
-        | Op::Store { s, .. }
-        | Op::PutG { s, .. } => shift(s),
+        Op::Retain { s, .. } | Op::Drop { s, .. } | Op::Put { s, .. } | Op::PutG { s, .. } => {
+            shift(s)
+        }
         Op::RawSet { x: v, .. } | Op::RawNew { fill: v, .. } => shift(v),
         _ => {}
     }
@@ -1168,8 +1158,8 @@ mod tests {
                 steps: vec![Step::Slot { i: 1, stride: 1 }],
             },
         ];
-        assert!(!traps(&Op::Store { p: 0, s: 2, lay: 0 }, &places));
-        assert!(traps(&Op::Store { p: 1, s: 2, lay: 0 }, &places));
+        assert!(!traps(&Op::Put { p: 0, s: 2, n: 1 }, &places));
+        assert!(traps(&Op::Put { p: 1, s: 2, n: 1 }, &places));
         assert!(traps(&Op::Peek { d: 2, p: 1 }, &places));
     }
 
@@ -1286,7 +1276,7 @@ mod tests {
     fn unzero_stops_at_a_store_through_the_zeroed_register() {
         let mut ops = vec![
             Op::Zero { d: 1, n: 1 },
-            Op::Store { p: 0, s: 2, lay: 0 },
+            Op::Put { p: 0, s: 2, n: 1 },
             Op::Drop { s: 1, lay: 0 },
             Op::Leave(crate::compile::Leave::Return),
         ];

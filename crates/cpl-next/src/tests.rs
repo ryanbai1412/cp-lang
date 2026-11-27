@@ -1,4 +1,6 @@
 use super::*;
+use cpl_next_ir::ir::{Place, Stmt};
+use cpl_next_ir::prog::CTy;
 use modules::PROGRAM;
 
 /// A method found in a std module the program does not load is called without loading it
@@ -28,6 +30,49 @@ fn a_param_nothing_writes_is_a_view() {
         .find(|f| f.name == "pick")
         .expect("pick");
     assert_eq!(f.views, [true, false, true]);
+}
+
+/// Ownership places every release (R1): the frame releases its heap locals, a discarded heap
+/// value goes to a temporary it drops, and an overwrite drops the old value: first, or once
+/// the new value is computed when computing it reads the old one.
+#[test]
+fn ownership_places_every_release() {
+    let src = "fn grow(xs: List<Int>) -> List<Int>:\n    var ys = xs.clone()\n    ys.push(1)\n    ys\n\nfn f(n: Int) -> Int:\n    var xs = [n]\n    xs = grow(xs)\n    grow(xs)\n    var g = [[n]]\n    g[0] = grow(xs)\n    xs.len + g[0].len\n\nprint(f(3))\n";
+    let c = compile(&Std::read(), src, &Roots::std(), false).expect("compiles");
+    let f = c.prog.insts.iter().find(|f| f.name == "f").expect("f");
+    assert!(
+        !f.drops.contains(&0),
+        "the Int param holds nothing: {:?}",
+        f.drops
+    );
+    let drop_of = |s: &Stmt<CTy>| match s {
+        Stmt::Drop(Place::Local(l)) => Some(*l),
+        _ => None,
+    };
+    // `g[0] = ..` sets the cell `g` lends out, in the region's body.
+    let mut bodies = vec![&f.body];
+    let mut cells = 0;
+    while let Some(b) = bodies.pop() {
+        for (i, s) in b.iter().enumerate() {
+            if let Stmt::Region { body, .. } = s {
+                bodies.push(body);
+                cells += 1;
+            }
+            if let Stmt::Let(l, _) | Stmt::Assign(Place::Local(l), _) = s {
+                if f.drops.contains(l) {
+                    assert_eq!(drop_of(&b[i - 1]), Some(*l), "overwrite {i}: {b:?}");
+                }
+            }
+        }
+    }
+    assert!(cells > 0, "{:#?}", f.body);
+    for g in &c.prog.insts {
+        let heap = |e: &cpl_next_ir::ir::Expr<CTy>| {
+            !cpl_next_ir::prog::plain(&|s| c.prog.parts(s), &e.ty, 0)
+        };
+        let discards = g.body.iter().any(|s| matches!(s, Stmt::Expr(e) if heap(e)));
+        assert!(!discards, "{} discards a heap value", g.name);
+    }
 }
 
 /// A fn's sites are its own: one written above it leaves its sites and their places as

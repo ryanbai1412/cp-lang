@@ -434,7 +434,7 @@ impl Emit<'_> {
                     self.name_built(body);
                 }
                 Stmt::Event(_, xs) => xs.iter().for_each(|x| expr(self, x)),
-                Stmt::Break | Stmt::Continue | Stmt::LendOut(_) => {}
+                Stmt::Break | Stmt::Continue | Stmt::LendOut(_) | Stmt::Drop(_) => {}
             }
         }
     }
@@ -862,6 +862,8 @@ impl Emit<'_> {
                 }
                 // A lender finishes its own code first; the caller leaves after it.
                 Stmt::LendOut(p) => put_line!(s, "{pad}cpl_code = body({});", self.place(p)),
+                // A C++ value releases what it holds when it is overwritten or goes out of scope.
+                Stmt::Drop(_) => {}
                 Stmt::Check {
                     kind,
                     cond,

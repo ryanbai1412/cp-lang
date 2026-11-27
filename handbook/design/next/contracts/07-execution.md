@@ -51,6 +51,15 @@ struct JudgeProfile { compiler, flags, limits, kept_checks, size_limit, grader_w
 - A `@fast(op)` fn means its CP Lang body. A backend that runs the op
   in its place gives what the body gives on every input; the op is an
   optimisation, never a second meaning.
+- Ownership places every release: `Func::drops` at frame exit and
+  `Stmt::Drop` at a discarded value and an overwrite (cpl-next-own).
+  A backend runs each one and places none of its own. The engine's
+  optimizer removes a `Drop` or `Retain` only when running it would do
+  nothing: its layout holds no handle, or its registers are still zero
+  from a `Zero` on every path to it. The runtime's release skips both
+  cases, so removing them changes no backend's behaviour and needs no
+  shared stage. C++ values release themselves when overwritten or out
+  of scope, which is the same set of releases.
 - Sorting is one stable algorithm with a stated comparator call order.
   `F64` has one total order.
 - `HashMap` iterates in insertion order.

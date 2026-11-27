@@ -209,6 +209,7 @@ impl Writes {
                     self.calls = true;
                     self.places.extend(root(p).cloned());
                 }
+                Stmt::Drop(p) => self.places.extend(root(p).cloned()),
                 Stmt::Event(_, xs) => xs.iter().for_each(|x| self.expr(x)),
                 Stmt::Break | Stmt::Continue => {}
             }
@@ -505,7 +506,7 @@ fn escaped(funcs: &[Func<CTy>]) -> HashSet<(Option<usize>, usize)> {
                     st(body, f, out);
                 }
                 Stmt::Event(_, xs) => xs.iter().for_each(|x| ex(x, f, out)),
-                Stmt::LendOut(_) | Stmt::Break | Stmt::Continue => {}
+                Stmt::LendOut(_) | Stmt::Drop(_) | Stmt::Break | Stmt::Continue => {}
             }
         }
     }

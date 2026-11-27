@@ -85,12 +85,6 @@ pub(crate) enum Op {
         d: Reg,
         p: u32,
     },
-    /// The place's old value is dropped and the register's moves in.
-    Store {
-        p: u32,
-        s: Reg,
-        lay: Lay,
-    },
     Drop {
         s: Reg,
         lay: Lay,
@@ -393,7 +387,7 @@ pub(crate) struct FnCode {
     pub lent: Vec<bool>,
     /// The words of its locals and result, before temporaries.
     pub locals: u32,
-    /// What the frame owns when the fn ends: its locals but the lent parameters.
+    /// What the frame releases when the fn ends (`Func::drops`).
     pub drops: Vec<(Reg, Lay)>,
 }
 pub(crate) struct EventCode {
@@ -463,14 +457,14 @@ pub(crate) fn compile(p: &Program, funcs: &[Func<CTy>]) -> Code {
         let ret = c.lays.of(p, &f.ret);
         let mut at = c.lays.size[ret as usize];
         let mut off = Vec::with_capacity(f.locals.len());
-        let mut drops = Vec::new();
-        for (i, t) in f.locals.iter().enumerate() {
-            let l = c.lays.of(p, t);
+        for t in &f.locals {
             off.push(at);
-            if c.lays.owns[l as usize] && !f.params.iter().any(|(x, lent)| *x == i && *lent) {
-                drops.push((at, l));
-            }
+            let l = c.lays.of(p, t);
             at += c.lays.size[l as usize];
+        }
+        let mut drops = Vec::with_capacity(f.drops.len());
+        for &l in &f.drops {
+            drops.push((off[l], c.lays.of(p, &f.locals[l])));
         }
         c.funcs.push(FnCode {
             block: 0,
@@ -608,10 +602,6 @@ impl Fc<'_> {
         let l = self.lay(t);
         self.c.lays.size[l as usize]
     }
-    fn owns(&mut self, t: &CTy) -> bool {
-        let l = self.lay(t);
-        self.c.lays.owns[l as usize]
-    }
     /// Whether `r` is a word of one of the fn's locals, which an expression may read.
     fn local_at(&mut self, r: Reg) -> bool {
         let f = self.f;
@@ -679,10 +669,6 @@ impl Fc<'_> {
                 let n = self.size(&e.ty);
                 let d = self.temp(n);
                 self.expr(e, d);
-                if self.owns(&e.ty) {
-                    let lay = self.lay(&e.ty);
-                    self.ops.push(Op::Drop { s: d, lay });
-                }
             }
             Stmt::If(c, a, b) => {
                 let c = self.operand(c);
@@ -847,6 +833,24 @@ impl Fc<'_> {
                 let lay = self.lay(&e.ty);
                 self.ops.push(Op::Yield { s, lay });
             }
+            Stmt::Drop(p) => {
+                let ty = self.place_ty(p);
+                let (n, lay) = (self.size(&ty), self.lay(&ty));
+                let (s, at) = match self.direct(p) {
+                    Some(s) => (s, None),
+                    None => {
+                        let d = self.temp(n);
+                        let p = self.place(p);
+                        self.ops.push(Op::Take { d, p, n });
+                        (d, Some(p))
+                    }
+                };
+                self.ops.push(Op::Drop { s, lay });
+                self.ops.push(Op::Zero { d: s, n });
+                if let Some(p) = at {
+                    self.ops.push(Op::Put { p, s, n });
+                }
+            }
             Stmt::LendOut(p) if self.lending.is_some() => self.hand_out_in_place(p),
             Stmt::LendOut(p) => {
                 let ty = self.place_ty(p);
@@ -917,10 +921,10 @@ fn calls(e: &Expr<CTy>) -> bool {
 impl Fc<'_> {
     fn assign(&mut self, p: &Place, e: &Expr<CTy>) {
         let ty = self.place_ty(p);
-        let (n, owns, lay) = (self.size(&ty), self.owns(&ty), self.lay(&ty));
-        // A value with no storage goes straight into a local when the op writing it reads
-        // everything it needs first.
-        if let (Some(d), false) = (self.direct(p), owns) {
+        let n = self.size(&ty);
+        // The value goes straight into a local when the op writing it reads everything it
+        // needs first. Ownership released what the place held before (`Stmt::Drop`).
+        if let Some(d) = self.direct(p) {
             let direct = matches!(
                 e.kind,
                 EK::Int(_)
@@ -945,10 +949,10 @@ impl Fc<'_> {
         let s = self.temp(n);
         self.expr(e, s);
         match self.global(p) {
-            Some(a) if !owns => self.ops.push(Op::PutG { a, s, n }),
-            _ => {
+            Some(a) => self.ops.push(Op::PutG { a, s, n }),
+            None => {
                 let p = self.place(p);
-                self.ops.push(Op::Store { p, s, lay });
+                self.ops.push(Op::Put { p, s, n });
             }
         }
     }
@@ -974,10 +978,10 @@ impl Fc<'_> {
             }
         }
         if let EK::Copy(p) = &e.kind {
-            if !self.owns(&e.ty) {
-                if let Some(r) = self.direct(p) {
-                    return r;
-                }
+            if let Some(r) = self.direct(p) {
+                let lay = self.lay(&e.ty);
+                self.ops.push(Op::Retain { s: r, lay });
+                return r;
             }
         }
         let n = self.size(&e.ty);
@@ -1020,22 +1024,18 @@ impl Fc<'_> {
                 self.ops.push(Op::Text { d, t });
             }
             EK::Copy(p) | EK::Lent(p) => {
-                let (n, owns, lay) = (self.size(&e.ty), self.owns(&e.ty), self.lay(&e.ty));
+                let (n, lay) = (self.size(&e.ty), self.lay(&e.ty));
                 match self.direct(p) {
                     Some(s) => {
                         if n > 0 && s != d {
                             self.ops.push(Op::Move { d, s, n });
                         }
-                        if owns {
-                            self.ops.push(Op::Retain { s: d, lay });
-                        }
+                        self.ops.push(Op::Retain { s: d, lay });
                     }
                     None => match self.global(p) {
                         Some(a) => {
                             self.ops.push(Op::GetG { d, a, n });
-                            if owns {
-                                self.ops.push(Op::Retain { s: d, lay });
-                            }
+                            self.ops.push(Op::Retain { s: d, lay });
                         }
                         None => {
                             let p = self.place(p);
@@ -1362,10 +1362,8 @@ impl Fc<'_> {
             Intr::RandWord => self.ops.push(Op::RandWord { d }),
             // A value never read still holds no handle, so copying or dropping its holder is sound.
             Intr::Unset => {
-                if self.owns(ty) {
-                    let n = self.size(ty);
-                    self.ops.push(Op::Zero { d, n });
-                }
+                let n = self.size(ty);
+                self.ops.push(Op::Zero { d, n });
             }
         }
     }
@@ -1519,7 +1517,7 @@ fn cost(b: &[Stmt<CTy>]) -> usize {
                 Stmt::Check { cond, .. } => e(cond),
                 Stmt::Event(_, vs) => vs.iter().map(e).sum(),
                 Stmt::Region { .. } | Stmt::Yield(_) => INLINE_COST,
-                Stmt::LendOut(_) => 0,
+                Stmt::LendOut(_) | Stmt::Drop(_) => 0,
                 Stmt::Break | Stmt::Continue => 0,
             }
         })

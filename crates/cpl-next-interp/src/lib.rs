@@ -247,9 +247,8 @@ impl<'a> Machine<'a> {
                     let v = self.expr(e, fp)?;
                     *self.place(fp, p)? = v;
                 }
-                Stmt::Expr(e) => {
-                    self.expr(e, fp)?;
-                }
+                Stmt::Expr(e) => _ = self.expr(e, fp)?,
+                Stmt::Drop(p) => *self.place(fp, p)? = V::Unit,
                 Stmt::Fact(c) => {
                     if !matches!(self.expr(c, fp)?, V::Bool(true)) {
                         return broken("a fact lowering states is false");
