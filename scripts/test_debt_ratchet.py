@@ -2190,7 +2190,10 @@ class DebtRatchetTest(unittest.TestCase):
                                                "(_, Ty::Lent(s)) => Ty::Lent(Box::new(f(s))),\nTy::Lent(t) => t,\n"),
                             ("cpl-next-own", "Ty::Lent(Box::new(t))\n"), ("cpl-next-check", "Ty::Lent(Box::new(t))\n")]:
                 self._write(root, f"crates/{c}/src/lib.rs", body)
-            self.assertEqual(dr.next_lent_outside_own(root), ["crates/cpl-next-lower/src/lib.rs:1"])
+            # Lowering runs before own marks anything, so a lent type it matches counts as well as one it makes.
+            self.assertEqual(dr.next_lent_outside_own(root), ["crates/cpl-next-lower/src/lib.rs:1",
+                                                              "crates/cpl-next-lower/src/lib.rs:3",
+                                                              "crates/cpl-next-lower/src/lib.rs:4"])
             subprocess.run(["git", "init", "-q"], cwd=root, check=True, env=dr._git_env())
             self._write(root, "spec/conformance/a/slow.cp", "// expect: ok\n// timeout: 20\nfn main() {}\n")
             self._write(root, "spec/conformance/a/fine.cp", "// expect: ok\nfn main() {}\n// judge: no\n")
@@ -2241,7 +2244,8 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "crates/cpl-syntax/src/recovery_tests.rs", 'let t = "Cut";\n')
             self.assertEqual(dr.syntax_std_names(root), ["crates/cpl-syntax/src/parser/types.rs:1: Cut"])
             self._write(root, "crates/cpl-next-lower/src/lib.rs", "(v, p, Ty::Ref(Box::new(ty)), true)\nTy::Ref(e) => Ty::Ref(Box::new(f(e))),\n")
-            self.assertEqual(dr.next_lent_outside_own(root), ["crates/cpl-next-lower/src/lib.rs:1"])
+            self.assertEqual(dr.next_lent_outside_own(root), ["crates/cpl-next-lower/src/lib.rs:1",
+                                                              "crates/cpl-next-lower/src/lib.rs:2"])
 
     def test_wrong_may_rise_by_the_cases_a_refusal_hid(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
