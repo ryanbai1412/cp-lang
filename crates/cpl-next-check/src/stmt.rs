@@ -917,10 +917,8 @@ impl<'a> Cx<'a> {
                     return self.stmt(&named, out);
                 }
                 if let (PatternKind::Name(name), ExprKind::Name(dn)) = (&pat.kind, &iter.kind) {
-                    // A declared domain's positions are its ordinals; a library one walks its `Seq`.
-                    let ordinals = self
-                        .domain_named(dn)
-                        .filter(|d| !matches!(d, Ty::Struct(..)));
+                    // A declared domain's positions are its ordinals; any other walks its `Seq`.
+                    let ordinals = self.domain_named(dn).filter(|d| matches!(d, Ty::Dom(_)));
                     if let Some(dty) = ordinals {
                         let lo = TExpr {
                             kind: TK::Int(0),

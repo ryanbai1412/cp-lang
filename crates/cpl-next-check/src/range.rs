@@ -427,8 +427,11 @@ impl Cx<'_> {
     }
     /// `D.count`.
     fn domain_len(&mut self, d: Ty, span: Span) -> TExpr {
+        // A type parameter's count is its instance's: a product or library domain has its own.
         match (&d, self.domain_method("dom_count")) {
-            (Ty::Struct(..), Some(count)) => self.domain_count(d.clone(), count, span),
+            (Ty::Struct(..) | Ty::Param(_), Some(count)) => {
+                self.domain_count(d.clone(), count, span)
+            }
             _ => TExpr {
                 kind: TK::DomLen(d.clone()),
                 ty: Ty::Int,
