@@ -30,7 +30,7 @@ measured, by a mutation score or a matrix with no empty cell.
 
 | # | Suite | State | Numbers, now → target |
 |---|---|---|---|
-| 7 | Engine agreement | unmeasured | `next_wrong` 1,027 → 0; no number yet for: splits on generated programs each night; engines beyond the interpreter and the C++ |
+| 7 | Engine agreement | unmeasured | `next_wrong` 951 → 0; no number yet for: splits on generated programs each night; engines beyond the interpreter and the C++ |
 | 8 | Sanitized C++ | unmeasured | no number yet for: accepted cases whose C++ is not sanitizer-clean and warning-free on GCC and Clang |
 | 9 | IR stage contracts | unmeasured | no number yet for: cases a stage verifier rejects |
 | 10 | Traps | unmeasured | no number yet for: trap code by operation cells that differ between engines |
