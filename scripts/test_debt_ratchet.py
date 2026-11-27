@@ -2056,6 +2056,32 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.unexplained_bumps(root, {"next_wrong": 11}, ref="base"), [])
             self.assertEqual(len(dr.unexplained_bumps(root, {"next_wrong": 12}, ref="base")), 1)
 
+    def test_a_wrong_case_may_not_become_refused_unless_decisions_names_it(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            git = lambda *a: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *a], cwd=root,
+                                            check=True, env=dr._git_env(), capture_output=True)
+            git("init", "-q")
+            (root / "scripts").mkdir()
+            (root / "scripts" / "debt-ratchet.json").write_text('{"next_wrong": 2}')
+            for c in ["fixed", "hidden", "kept"]:
+                case = root / "spec" / "conformance" / "core-01" / f"{c}.cp"
+                case.parent.mkdir(parents=True, exist_ok=True)
+                case.write_text("// expect: ok\n")
+            tests = root / dr.NEXT_TESTS
+            tests.mkdir(parents=True)
+            (tests / "passing.txt").write_text("")
+            (tests / "wrong.tsv").write_text("".join(f"core-01/{c}.cp\twrong-reject\n" for c in ["fixed", "hidden", "kept"]))
+            git("add", "-A")
+            git("commit", "-qm", "base")
+            git("branch", "base")
+            (tests / "passing.txt").write_text("core-01/fixed.cp\n")
+            (tests / "wrong.tsv").write_text("core-01/kept.cp\twrong-reject\n")
+            self.assertEqual(dr.wrong_to_refused(root, "base"), ["core-01/hidden.cp"])
+            self.assertEqual(len(dr.unexplained_bumps(root, {"next_wrong": 1}, ref="base")), 1)
+            (root / "decisions.md").write_text("`core-01/hidden.cp` refuses: its feature is cut.\n")
+            self.assertEqual(dr.unexplained_bumps(root, {"next_wrong": 1}, ref="base"), [])
+
     def test_a_deleted_case_counts_until_removed_md_names_it(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

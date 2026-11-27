@@ -1287,6 +1287,36 @@ def next_masked(root: Path) -> list[str]:
     return [l.strip() for l in _lines(masked) if l.strip()] if masked.is_file() else []
 
 
+def next_core_privilege(root: Path) -> list[str]:
+    """Checks in the new pipeline that give core's module a power no other library has
+    (`is_library`): core is a library like any other, so 0 is when its types and traits live
+    in std/ with markers any library may use."""
+    hits = []
+    for f in sorted(root.glob("crates/cpl-next*/src/**/*.rs")):
+        for i, l in enumerate(_lines(f), 1):
+            if "is_library(" in l and "fn is_library" not in l:
+                hits.append(f"{f.relative_to(root)}:{i}")
+    return hits
+
+
+def wrong_to_refused(root: Path, ref: str) -> list[str]:
+    """Cases `ref` lists wrong that this tree lists neither wrong nor passing: a wrong verdict
+    turned into a refusal, which lowers `next_wrong` without fixing the case. Each is refused
+    unless decisions.md names it (`case`), saying why the refusal is the honest verdict."""
+    def ids(where: str, name: str) -> set[str]:
+        lines = _git(root, "show", f"{where}:{NEXT_TESTS}/{name}") if where else \
+            _lines(root / NEXT_TESTS / name) if (root / NEXT_TESTS / name).is_file() else []
+        return {l.split("\t")[0].strip() for l in lines if l.strip()}
+    was_wrong = ids(ref, "wrong.tsv")
+    if not was_wrong:
+        return []
+    now = ids("", "wrong.tsv") | ids("", "passing.txt")
+    cases = {str(p.relative_to(root / "spec" / "conformance")) for p in (root / "spec" / "conformance").rglob("*.cp")}
+    cases |= {"next/" + p.name for p in (root / NEXT_TESTS / "programs").glob("*.cp")}
+    named = (root / "decisions.md").read_text(encoding="utf-8") if (root / "decisions.md").is_file() else ""
+    return sorted(c for c in was_wrong - now if c in cases and f"`{c}`" not in named)
+
+
 def next_not_passing(root: Path) -> list[str]:
     """Cases the new pipeline does not pass yet: wrong ones and the ones it refuses (says it
     does not implement). 0 is the day `cpl` switches to it and what it replaces is deleted.
@@ -3513,6 +3543,7 @@ COUNTERS = {
     "old_pipeline_lines": ("code lines in the frozen old checker, lowering, interpreter and emitter (Core)", old_pipeline_lines, True),
     "next_not_passing": ("cases the new pipeline (cpl-next) does not pass yet: wrong or refused (Core)", next_not_passing, True),
     "next_masked": ("cases the new pipeline (cpl-next) refuses beside a coded verdict on the program (Core)", next_masked, True),
+    "next_core_privilege": ("checks giving core's module powers no library has in the new pipeline (Core)", next_core_privilege, True),
     "own_databases": ("Database built outside cpl-check", own_databases, True),
     "ir_reinfer": ("lowering re-inferring a type the checker's facts give", ir_reinfer, True),
     "string_keyed_maps": ("name-keyed HashMaps in cpl-check, not NameMap", string_keyed_maps, True),
@@ -3891,6 +3922,8 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
         return []
     old = json.loads("\n".join(shown))
     base = (_git(root, "merge-base", ref, "HEAD") or [ref])[0]
+    moved = [f"{c}: wrong on {ref}, refused here: fix its verdict, or name it in decisions.md"
+             for c in wrong_to_refused(root, ref)]
     # Main lowering a number while this change gates isn't this change raising it:
     # only a number above the change's own base is (the rebase then takes main's).
     mine = json.loads("\n".join(_git(root, "show", f"{base}:scripts/debt-ratchet.json") or ["{}"]))
@@ -3914,10 +3947,10 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
               and not (n == "next_wrong" and baseline[n] - old[n] <= len(unhidden_wrong(root, ref)))]
     zero = [n for n, _ in raised if n in COUNTERS and old.get(n, 1) == 0]
     if zero:
-        return [f"{n}: reached 0 on {ref}; a counter at 0 is never raised" for n in zero]
+        return moved + [f"{n}: reached 0 on {ref}; a counter at 0 is never raised" for n in zero]
     if not raised:
-        return []
-    return [f"{n}: baseline raised above {ref} ({old.get(n, old_allow.get(n))} -> "
+        return moved
+    return moved + [f"{n}: baseline raised above {ref} ({old.get(n, old_allow.get(n))} -> "
             f"{baseline.get(n, baseline.get('rs_file_size_allowlist', {}).get(n))}); remove the new debt "
             f"instead (only a change to the code that measures it may re-measure it)"
             for n, key in raised if not remeasured(root, base, key)]
