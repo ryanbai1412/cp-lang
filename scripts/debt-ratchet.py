@@ -1365,7 +1365,9 @@ def next_reference_evaluator_lines(root: Path) -> list[str]:
     """Code lines of the new pipeline's reference interpreter: one evaluator (the engine)
     serves constant evaluation, the prover and runs, so this reaches 0 once the engine agrees
     on every case."""
-    return _next_file_lines(root, "crates/cpl-next-interp/src/lib.rs")
+    src = root / "crates/cpl-next-interp/src"
+    return [l for f in _rs_files(root, "crates/cpl-next-interp/src", tests=False) if src.is_dir()
+            for l in _next_file_lines(root, _rel(root, f))]
 
 
 # The tests' own harness binary: `--raw`, `--canonical` and `--all` run the oracle for them.
@@ -1392,23 +1394,45 @@ def next_oracle_callers(root: Path) -> list[str]:
 NEXT_REPR_HOME = ("crates/cpl-next-ir/src/prog.rs", "crates/cpl-next-ir/src/ty.rs")
 
 
+NEXT_REPR_NAMES = {"unlent", "plain", "plain_in", "stores"}
+NEXT_REPR_FN_RE = re.compile(r"^\s*(pub(\([a-z]+\))? )?fn (?P<name>\w+)[^{]*&C?Ty\b[^{]*->\s*(bool|Holds)\b")
+NEXT_REPR_ANY_FN_RE = re.compile(r"^\s*(pub(\([a-z]+\))? )?fn \w+")
+# One match arm that puts fn, closure or storage types beside scalars: a representation answer.
+NEXT_REPR_ARM_RE = re.compile(r"\bC?Ty::(Int|Bool|Char|U64|F64)\b[^=]*?\|\s*C?Ty::(Fn|Clo|Raw)\b"
+                              r"|\bC?Ty::(Fn|Clo|Raw)\b[^=]*?\|\s*C?Ty::(Int|Bool|Char|U64|F64)\b")
+
+
+def _indent(l: str) -> int:
+    return len(l) - len(l.lstrip())
+
+
 def next_repr_second_defs(root: Path) -> list[str]:
     """Definitions of a value-representation predicate (`unlent`, `plain`, `plain_in`, `stores`)
     outside the IR's one classifier (`Program::holds` and its readers, `CTy::unlent`,
     `Ty::unlent`), in the new pipeline's non-test code: every pass and backend reads the one
-    answer (1 PM audit). Counts definitions by name, so a wrapper with the same name counts."""
-    pat = re.compile(r"^\s*(pub(\([a-z]+\))? )?fn (unlent|plain|plain_in|stores)\b")
+    answer (1 PM audit). Structural: a fn over a type returning `bool` or `Holds` with a match arm
+    putting fn, closure or storage types beside scalars counts under any name; the names count too."""
     out = []
     for f in _rs_files(root, tests=False):
         rel = _rel(root, f)
-        if not rel.startswith("crates/cpl-next") or rel in NEXT_REPR_HOME:
+        if not rel.startswith("crates/cpl-next") or rel in NEXT_REPR_HOME or f.name == "tests.rs":
             continue
-        for i, l in enumerate(_lines(f), 1):
-            if pat.match(l):
-                out.append(f"{rel}:{i}")
+        lines = _lines(f)
+        for i, l in enumerate(lines):
+            m = NEXT_REPR_FN_RE.match(l)
+            if not m:
+                continue
+            body = []
+            for b in lines[i + 1:]:
+                if NEXT_REPR_ANY_FN_RE.match(b) and _indent(b) <= _indent(l):
+                    break
+                body.append(b)
+            body = "\n".join(body)
+            if m.group("name") in NEXT_REPR_NAMES or NEXT_REPR_ARM_RE.search(body):
+                out.append(f"{rel}:{i + 1} {m.group('name')}")
     return out
 
-NEXT_LAYOUT_READERS = ("crates/cpl-next-cpp/src/", "crates/cpl-next-engine/src/")
+NEXT_LAYOUT_READERS = ("crates/cpl-next-cpp/src/", "crates/cpl-next-engine/src/", "crates/cpl-next-interp/src/")
 
 
 def next_layout_outside_table(root: Path) -> list[str]:
@@ -1426,6 +1450,25 @@ def next_layout_outside_table(root: Path) -> list[str]:
             if pat.search(l.split("//")[0]):
                 out.append(f"{rel}:{i}")
     return out
+
+
+NEXT_STANDIN_RE = re.compile(r"stand-in|stands in|until .* (stage|lands|loads)")
+
+
+def next_standin_notes(root: Path) -> list[str]:
+    """Non-test lines in the new pipeline that say the code beside them is a stand-in for a
+    designed component (rule 11, b9d4cd026): each goes when the component it waits on lands."""
+    return [f"{_rel(root, p)}:{i}" for p in _rs_files(root, *_next_srcs(root), tests=False) if p.name != "tests.rs"
+            for i, l in enumerate(_lines(p), 1) if NEXT_STANDIN_RE.search(l)]
+
+
+def next_source_text_guards(root: Path) -> list[str]:
+    """`include_str!` of a Rust source file in the new pipeline: an architecture guard that
+    reads code as text passes vacuously once a marker moves; it becomes a structural (IR-level
+    or data-table) check."""
+    pat = re.compile(r'include_str!\("[^"]*\.rs"\)')
+    return [f"{_rel(root, p)}:{i}" for p in _rs_files(root, *_next_srcs(root))
+            for i, l in enumerate(_lines(p), 1) if pat.search(l)]
 
 
 def next_core_standin_lines(root: Path) -> list[str]:
@@ -1560,14 +1603,46 @@ def next_library_gates(root: Path) -> list[str]:
 NEXT_OWN_DECIDERS_RE = re.compile(r"^\s*(?:pub(?:\([^)]*\))? )?fn (\w*(?:lend|drop)\w*)")
 
 
+def _built_at(text: str, at: int) -> bool:
+    """Whether the `Name(` at `at` builds a value rather than matching one: the parens close
+    without a `=>`, `|`, `if` or `@` after them, and the line holds no `matches!`."""
+    depth, k = 0, text.index("(", at)
+    while k < len(text):
+        depth += {"(": 1, ")": -1}.get(text[k], 0)
+        k += 1
+        if depth == 0:
+            break
+    start = text.rfind("\n", 0, at) + 1
+    before, after = text[start:at], text[k:text.find("\n", at)]
+    rest = after.lstrip()
+    return ("matches!" not in before and not NEXT_OWN_SAME_KIND_RE.search(before) and "=>" not in after and not re.search(r"\blet\b[^=]*$", before)
+            and not re.match(r"(\||if\b|@)", rest))
+
+
+NEXT_OWN_BUILDS_RE = re.compile(r"\b(Stmt::Drop|Arg::View|Arg::Lend)\(")
+NEXT_OWN_FIELD_RE = re.compile(r"\.drops(\.push\(|\.insert\(|\s*=[^=])")
+# A node rebuilt from one of its own kind (a substitution, or a written `mut` lowered to a lend).
+NEXT_OWN_SAME_KIND_RE = re.compile(r"::(Drop|View|Lend|Mut)\([^)]*\)\s*=>")
+
+
 def next_ownership_outside_own(root: Path) -> list[str]:
-    """Fns outside `cpl-next-own` that work out a lend or a drop: ownership is decided once, in
-    the ownership pass, as IR nodes every later layer only reads (contract 04). The IR crate
-    may declare what an intrinsic lends; everything else is a second decision."""
-    skip = ("crates/cpl-next-own/", "crates/cpl-next-ir/")
-    return [f"{_rel(root, p)}:{i} {m.group(1)}" for p in _rs_files(root, *_next_srcs(root), tests=False)
-            if not _rel(root, p).startswith(skip)
-            for i, l in enumerate(_lines(p), 1) if (m := NEXT_OWN_DECIDERS_RE.match(l))]
+    """Places outside `cpl-next-own` that build an ownership decision into the IR: a
+    `Stmt::Drop`, `Arg::View` or `Arg::Lend` built (not matched, and not rebuilt from a node of
+    its own kind), or `Func::drops` written. Ownership is decided once, in the ownership pass (contract 04); every later layer,
+    the IR crate included, only reads it. Structural, so a rename cannot pay it off."""
+    out = []
+    for p in _rs_files(root, *_next_srcs(root), tests=False):
+        rel = _rel(root, p)
+        if rel.startswith("crates/cpl-next-own/") or p.name == "tests.rs":
+            continue
+        text = "\n".join(_lines(p))
+        for m in NEXT_OWN_BUILDS_RE.finditer(text):
+            if _built_at(text, m.start()):
+                out.append(f"{rel}:{text.count(chr(10), 0, m.start()) + 1} {m.group(1)}")
+        for i, l in enumerate(_lines(p), 1):
+            if NEXT_OWN_FIELD_RE.search(l.split("//")[0]):
+                out.append(f"{rel}:{i} Func field")
+    return out
 
 
 NEXT_OWNS_READ_RE = re.compile(r"\bowns\(|\.owns\[")
@@ -4386,6 +4461,8 @@ COUNTERS = {
     "next_reference_evaluator_lines": ("code lines of the new pipeline's reference interpreter (Core)", next_reference_evaluator_lines, True),
     "next_oracle_callers": ("non-test callers of the new pipeline's reference interpreter, the tests' oracle (Core)", next_oracle_callers, True),
     "next_layout_outside_table": ("lines in the new engine or C++ emitter that read struct fields or union members around the IR's one layout table (Core)", next_layout_outside_table, True),
+    "next_standin_notes": ("new-pipeline lines saying the code beside them stands in for a designed component (Core)", next_standin_notes, True),
+    "next_source_text_guards": ("new-pipeline guards that read Rust source as text through include_str! (Core)", next_source_text_guards, True),
     "next_repr_second_defs": ("new-pipeline definitions of a representation predicate (unlent, plain, stores) outside the IR's one classifier (Core)", next_repr_second_defs, True),
     "next_core_standin_lines": ("lines of the new pipeline's private core stand-in std.cp (Core)", next_core_standin_lines, True),
     "next_cpp_runtime_lines": ("lines of hand-written C++ runtime in the new emitter (Core)", next_cpp_runtime_lines, True),
