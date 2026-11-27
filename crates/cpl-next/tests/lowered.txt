@@ -1,6 +1,2 @@
-core-02/f64-to-int-names-rounding.cp
-core-05/local-fn-closure-reads-a-lent-capture-in-a-callee.cp
-core-05/nested-fn-passes-on-a-closure-over-a-captured-var.cp
 core-12/intrinsic-not-in-table.cp
 core-12/intrinsic-unknown-name.cp
-std-geometry/vec-from-angle-uses-cos-sin.cp

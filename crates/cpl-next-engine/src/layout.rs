@@ -50,6 +50,11 @@ impl Layouts {
             | CTy::F64
             | CTy::Dom(_)
             | CTy::Ref(_) => (Shape::Word, 1),
+            // Two words, low then high.
+            CTy::I128 => {
+                let w = self.of(p, &CTy::Int);
+                (Shape::Struct(vec![(0, w), (1, w)]), 2)
+            }
             CTy::Raw(_) => (Shape::Handle, 1),
             CTy::Lent(t) => {
                 let l = self.of(p, t);

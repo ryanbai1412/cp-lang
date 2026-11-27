@@ -118,6 +118,8 @@ pub enum TK {
     Neg(Box<TExpr>),
     /// `U64(x)`: an `Int`'s two's-complement bits.
     ToU64(Box<TExpr>),
+    /// An `Int` beside an `I128`, widened to one.
+    ToI128(Box<TExpr>),
     If(Box<TExpr>, Box<TExpr>, Box<TExpr>),
     Block(Vec<TStmt>, Option<Box<TExpr>>),
     ReadInt,

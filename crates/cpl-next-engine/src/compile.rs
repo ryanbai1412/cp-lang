@@ -105,6 +105,27 @@ pub(crate) enum Op {
         a: Reg,
         b: Reg,
     },
+    /// An `I128` operation. `I128`s are two words, low first: `d`, `a`, and `b` unless `op`
+    /// is a shift, whose amount is an `Int`.
+    Wide {
+        op: Intr,
+        d: Reg,
+        a: Reg,
+        b: Reg,
+    },
+    /// A comparison of two `I128`s.
+    WideCmp {
+        op: Intr,
+        d: Reg,
+        a: Reg,
+        b: Reg,
+    },
+    /// `-a`, `abs`, or a conversion, with an `I128` on one side or both.
+    Widen {
+        op: Intr,
+        d: Reg,
+        a: Reg,
+    },
     Neg {
         d: Reg,
         a: Reg,
@@ -1000,8 +1021,9 @@ impl Fc<'_> {
                 .any(|a| matches!(a, Arg::Value(v) if calls(v)));
             let r = self.operand(v);
             if later && matches!(v.kind, EK::Copy(_)) {
-                let d = self.temp(1);
-                self.ops.push(Op::Move { d, s: r, n: 1 });
+                let n = self.size(&v.ty);
+                let d = self.temp(n);
+                self.ops.push(Op::Move { d, s: r, n });
                 regs.push(d);
             } else {
                 regs.push(r);
@@ -1173,7 +1195,10 @@ impl Fc<'_> {
                     Intr::Eq | Intr::Ne | Intr::Lt | Intr::Le | Intr::Gt | Intr::Ge | Intr::Below
                 );
                 let kind = kind(&first_ty);
+                let wide = first_ty == CTy::I128;
                 self.ops.push(match (cmp, kind) {
+                    (true, _) if wide => Op::WideCmp { op, d, a, b },
+                    (false, _) if wide => Op::Wide { op, d, a, b },
                     (true, Kind::Int | Kind::Bool | Kind::U64 | Kind::F64) => {
                         Op::Cmp { op, d, a, b, kind }
                     }
@@ -1197,11 +1222,22 @@ impl Fc<'_> {
             | Intr::BitCeil
             | Intr::ToF64
             | Intr::CharOf
-            | Intr::CodeOf => {
+            | Intr::CodeOf
+            | Intr::ToI128
+            | Intr::FromI128
+            | Intr::I128OfU64
+            | Intr::U64OfI128
+            | Intr::F64OfI128 => {
                 let Some(&[a]) = self.operands(args).as_deref() else {
                     return self.fail("a lent operand");
                 };
                 self.ops.push(match op {
+                    Intr::Neg | Intr::Abs if first_ty == CTy::I128 => Op::Widen { op, d, a },
+                    Intr::ToI128
+                    | Intr::FromI128
+                    | Intr::I128OfU64
+                    | Intr::U64OfI128
+                    | Intr::F64OfI128 => Op::Widen { op, d, a },
                     Intr::Neg if kind(&first_ty) == Kind::F64 => Op::FNeg { d, a },
                     Intr::Neg => Op::Neg { d, a },
                     Intr::Abs if kind(&first_ty) == Kind::F64 => Op::FAbs { d, a },

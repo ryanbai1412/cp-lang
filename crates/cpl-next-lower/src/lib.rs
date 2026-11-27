@@ -828,6 +828,10 @@ impl Lw<'_> {
                 let v = self.expr(x, out);
                 mk(EK::Intr(Intr::ToU64, vec![Arg::Value(v)], site))
             }
+            TK::ToI128(x) => {
+                let v = self.expr(x, out);
+                mk(EK::Intr(Intr::ToI128, vec![Arg::Value(v)], site))
+            }
             TK::Not(x) => {
                 let v = self.expr(x, out);
                 mk(EK::Intr(Intr::Not, vec![Arg::Value(v)], site))

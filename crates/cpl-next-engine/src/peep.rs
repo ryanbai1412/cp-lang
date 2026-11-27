@@ -7,6 +7,7 @@
 //! reads again goes.
 use crate::compile::{Code, Kind, Op, PlaceCode, Reg, Root, Step, INHERIT, LEAVE, SAVED};
 use crate::layout::{Lay, Layouts};
+use cpl_next_ir::ir::Intr;
 
 pub(crate) fn tidy(c: &mut Code) {
     let chained: Vec<Reg> = c.chains.iter().flatten().map(|&(_, save)| save).collect();
@@ -507,6 +508,20 @@ fn effect(op: &Op, places: &[PlaceCode], lays: &Layouts) -> Option<(Vec<Words>, 
         | Op::Float { d, a, b, .. }
         | Op::FloatFn { d, a, b, .. }
         | Op::Cmp { d, a, b, .. } => (vec![one(a), one(b)], vec![one(d)]),
+        Op::Wide { op, d, a, b } => {
+            let n = if matches!(op, Intr::Shl | Intr::Shr) {
+                1
+            } else {
+                2
+            };
+            (vec![(a, 2), (b, n)], vec![(d, 2)])
+        }
+        Op::WideCmp { d, a, b, .. } => (vec![(a, 2), (b, 2)], vec![one(d)]),
+        Op::Widen { op, d, a } => match op {
+            Intr::ToI128 | Intr::I128OfU64 => (vec![one(a)], vec![(d, 2)]),
+            Intr::FromI128 | Intr::U64OfI128 | Intr::F64OfI128 => (vec![(a, 2)], vec![one(d)]),
+            _ => (vec![(a, 2)], vec![(d, 2)]),
+        },
         Op::Neg { d, a }
         | Op::Abs { d, a }
         | Op::Not { d, a }

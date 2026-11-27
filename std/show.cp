@@ -160,6 +160,30 @@ impl Show for Int:
         else:
             U64(self).write_to(mut out, sep)
 
+impl Show for I128:
+    fn write_to(self, mut out: Str, sep: ?Str):
+        if self >= I128(0):
+            i128_digits(self, mut out)
+        else:
+            // `-(self + 1)` does not overflow, so the least `I128` has its digits too.
+            out.push('-')
+            let m = -(self + I128(1))
+            let carry = m % I128(10) == I128(9)
+            let high = if carry: m / I128(10) + I128(1) else: m / I128(10)
+            if high > I128(0): i128_digits(high, mut out)
+            out.push(Char(if carry: 48 else: 49 + Int(m % I128(10))))
+
+/// The digits of `v >= 0`.
+fn i128_digits(v: I128, mut out: Str):
+    var p = I128(1)
+    while v / p >= I128(10): p = p * I128(10)
+    var w = v
+    while p > I128(0):
+        let d = w / p
+        out.push(Char(48 + Int(d)))
+        w -= d * p
+        p = p / I128(10)
+
 impl Show for U64:
     fn write_to(self, mut out: Str, sep: ?Str):
         var v = self

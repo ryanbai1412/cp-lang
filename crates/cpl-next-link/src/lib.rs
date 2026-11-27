@@ -334,6 +334,7 @@ impl Link<'_> {
             Ty::Bool => CTy::Bool,
             Ty::Char => CTy::Char,
             Ty::U64 => CTy::U64,
+            Ty::I128 => CTy::I128,
             Ty::F64 => CTy::F64,
             Ty::Unit => CTy::Unit,
             Ty::Raw(e) => CTy::Raw(Box::new(self.ty(e, env))),
@@ -889,6 +890,7 @@ fn check_finite(p: &mut Program) {
                     | CTy::Bool
                     | CTy::Char
                     | CTy::U64
+                    | CTy::I128
                     | CTy::F64
                     | CTy::Unit
                     | CTy::Raw(_)
@@ -1753,6 +1755,7 @@ fn fit_cty(p: &Ty, t: &CTy, binds: &mut [Option<CTy>]) -> bool {
         (Ty::Bool, CTy::Bool)
         | (Ty::Char, CTy::Char)
         | (Ty::U64, CTy::U64)
+        | (Ty::I128, CTy::I128)
         | (Ty::F64, CTy::F64)
         | (Ty::Unit, CTy::Unit) => true,
         (Ty::Raw(a), CTy::Raw(b)) | (Ty::Ref(a), CTy::Ref(b)) => fit_cty(a, b, binds),

@@ -7,6 +7,8 @@ impl Default for Int:
     fn default() -> Int = 0
 impl Default for U64:
     fn default() -> U64 = U64(0)
+impl Default for I128:
+    fn default() -> I128 = I128(0)
 impl Default for Bool:
     fn default() -> Bool = false
 impl Default for Str:

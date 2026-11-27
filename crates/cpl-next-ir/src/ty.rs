@@ -36,6 +36,8 @@ pub enum Ty {
     Char,
     /// `0..=2^64-1`, wrapping (R02.1).
     U64,
+    /// A signed 128-bit integer, for products past `Int`; overflow traps (R02.1, R03.4).
+    I128,
     /// An IEEE double (R02.1).
     F64,
     Unit,

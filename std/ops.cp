@@ -87,6 +87,10 @@ impl Bounded for Char:
 impl Bounded for Bool:
     @get fn MIN() -> Bool = false
     @get fn MAX() -> Bool = true
+impl Zero for I128:
+    @get fn zero() -> I128 = I128(0)
+impl One for I128:
+    @get fn one() -> I128 = I128(1)
 
 impl Add for Int:
     fn add(self, other: Int) -> Int = self + other
@@ -110,6 +114,18 @@ impl Div for U64:
     fn div(self, other: U64) -> U64 = self / other
 impl Rem for U64:
     fn rem(self, other: U64) -> U64 = self % other
+impl Add for I128:
+    fn add(self, other: I128) -> I128 = self + other
+impl Sub for I128:
+    fn sub(self, other: I128) -> I128 = self - other
+impl Mul for I128:
+    fn mul(self, other: I128) -> I128 = self * other
+impl Div for I128:
+    fn div(self, other: I128) -> I128 = self / other
+impl Rem for I128:
+    fn rem(self, other: I128) -> I128 = self % other
+impl Neg for I128:
+    fn neg(self) -> I128 = -self
 impl BitXor for Int:
     fn bitxor(self, other: Int) -> Int = self ^ other
 impl BitOr for Int:
@@ -141,6 +157,10 @@ impl Ord for Char:
 impl Eq for U64:
     fn eq(a, b) = a == b
 impl Ord for U64:
+    fn lt(a, b) = a < b
+impl Eq for I128:
+    fn eq(a, b) = a == b
+impl Ord for I128:
     fn lt(a, b) = a < b
 /// `==` on `F64` is exact; `close(a, b, eps:)` is the tolerant compare (R02.1).
 impl Eq for F64:

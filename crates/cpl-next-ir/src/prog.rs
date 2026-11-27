@@ -10,6 +10,7 @@ pub enum CTy {
     Bool,
     Char,
     U64,
+    I128,
     F64,
     Unit,
     Raw(Box<CTy>),
@@ -118,6 +119,7 @@ pub fn plain(parts: &dyn Fn(&CTy) -> Vec<CTy>, t: &CTy, depth: usize) -> bool {
         | CTy::Bool
         | CTy::Char
         | CTy::U64
+        | CTy::I128
         | CTy::F64
         | CTy::Unit
         | CTy::Dom(_)

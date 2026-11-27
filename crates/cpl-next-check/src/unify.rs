@@ -335,6 +335,7 @@ impl<'a> Cx<'a> {
             Ty::Bool => "Bool".into(),
             Ty::Char => "Char".into(),
             Ty::U64 => "U64".into(),
+            Ty::I128 => "I128".into(),
             Ty::F64 => "F64".into(),
             Ty::Unit => "()".into(),
             Ty::Raw(e) => format!("Raw<{}>", self.show(&e)),
@@ -862,6 +863,12 @@ impl<'a> Cx<'a> {
             (Ty::Int, Ty::Dom(_)) if matches!(e.kind, TK::Int(_) | TK::Neg(_)) => {
                 self.position(want_s.clone(), e, CheckKind::Domain)
             }
+            // An `Int` where an `I128` is expected widens to it (R02.1).
+            (Ty::Int | Ty::Range(..) | Ty::RangeOf(_), Ty::I128) => TExpr {
+                kind: TK::ToI128(Box::new(e)),
+                ty: Ty::I128,
+                span,
+            },
             // An integer literal in a `U64` slot is that `U64`: its bits (R02.1).
             (Ty::Int, Ty::U64) if matches!(e.kind, TK::Int(_)) => TExpr {
                 kind: TK::ToU64(Box::new(e)),

@@ -481,7 +481,14 @@ impl Walk<'_> {
         let mut out = BTreeSet::new();
         if matches!(
             e.ty,
-            CTy::Int | CTy::Bool | CTy::Char | CTy::U64 | CTy::F64 | CTy::Unit | CTy::Dom(_)
+            CTy::Int
+                | CTy::Bool
+                | CTy::Char
+                | CTy::U64
+                | CTy::I128
+                | CTy::F64
+                | CTy::Unit
+                | CTy::Dom(_)
         ) {
             return out;
         }

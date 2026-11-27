@@ -1665,6 +1665,7 @@ impl<'a> Cx<'a> {
             _ => return,
         };
         let width: u128 = match self.shallow(elem) {
+            Ty::I128 => 16,
             Ty::Int | Ty::U64 | Ty::Dom(_) => 8,
             Ty::Bool | Ty::Char => 1,
             _ => return,

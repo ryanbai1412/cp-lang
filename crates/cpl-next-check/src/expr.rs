@@ -24,10 +24,22 @@ impl<'a> Cx<'a> {
         let unsigned = !logic
             && (self.shallow(&l.ty) == Ty::U64 || (!shift && self.shallow(&r.ty) == Ty::U64));
         let float = !logic && !shift && [&l.ty, &r.ty].iter().any(|t| self.shallow(t) == Ty::F64);
+        // An `Int` beside an `I128` becomes one; a shift keeps what it shifts (R02.1).
+        let wide = !logic
+            && (self.shallow(&l.ty) == Ty::I128 || (!shift && self.shallow(&r.ty) == Ty::I128));
+        if wide && unsigned {
+            let msg = Msg::verdict(
+                cpl_diag::codes::TYPE_MISMATCH,
+                "an `I128` and a `U64` do not combine: say which one the result is, `I128(x)` or `U64(x)`",
+            );
+            self.err(span, msg);
+            return Self::error_node(span);
+        }
         let want = match (logic, unsigned, float) {
             (true, ..) => Ty::Bool,
             (_, _, true) => Ty::F64,
             (_, true, _) => Ty::U64,
+            _ if wide => Ty::I128,
             _ => Ty::Int,
         };
         if float && !matches!(op, BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div) {
@@ -629,7 +641,7 @@ impl<'a> Cx<'a> {
         let mk = |kind, ty| TExpr { kind, ty, span };
         let primitive = matches!(
             self.shallow(&a.ty),
-            Ty::Int | Ty::Bool | Ty::Char | Ty::U64 | Ty::F64 | Ty::Dom(_) | Ty::Error
+            Ty::Int | Ty::Bool | Ty::Char | Ty::U64 | Ty::I128 | Ty::F64 | Ty::Dom(_) | Ty::Error
         );
         // Characters are ordered by code (R02.2.1).
         let char = self.shallow(&a.ty) == Ty::Char;
@@ -1418,6 +1430,7 @@ impl<'a> Cx<'a> {
                 }
                 let want_t = match self.shallow(&v.ty) {
                     Ty::F64 if *op == UnOp::Neg => Ty::F64,
+                    Ty::I128 if *op == UnOp::Neg => Ty::I128,
                     t if *op == UnOp::Neg && self.declares_operators(&t) => {
                         let t = self.show(&t);
                         self.err(span, Unbuilt::OperatorTrait { ty: t });

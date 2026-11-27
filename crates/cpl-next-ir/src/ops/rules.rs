@@ -11,6 +11,9 @@ pub const INT_LAST: u64 = i64::MAX as u64;
 pub const BIT_CEIL_LAST: i64 = 1 << 62;
 /// `2^63`: a whole `F64` is an `Int` exactly when it is strictly between `-INT_SPAN` and this.
 pub const INT_SPAN: f64 = 9223372036854775808.0;
+/// `Int`'s and `U64`'s largest values, as `I128`s.
+pub const WIDE_INT_LAST: i128 = i64::MAX as i128;
+pub const WIDE_U64_LAST: i128 = u64::MAX as i128;
 type Unit = ();
 
 macro_rules! kernels {
@@ -131,6 +134,30 @@ kernels! {
     round(a: f64) -> f64 { Ok(a.round()) } "return __builtin_round(a);"
     trunc(a: f64) -> f64 { Ok(a.trunc()) } "return __builtin_trunc(a);"
     whole(y: f64) -> i64 { Ok(y as i64) } "return (int64_t)y;"
+    wadd(a: i128, b: i128) -> i128 { a.checked_add(b).ok_or(Fault::Overflow) }
+        "__int128 r; if (__builtin_add_overflow(a, b, &r)) cpl_fail(CPL_OVERFLOW); return r;"
+    wsub(a: i128, b: i128) -> i128 { a.checked_sub(b).ok_or(Fault::Overflow) }
+        "__int128 r; if (__builtin_sub_overflow(a, b, &r)) cpl_fail(CPL_OVERFLOW); return r;"
+    wmul(a: i128, b: i128) -> i128 { a.checked_mul(b).ok_or(Fault::Overflow) }
+        "__int128 r; if (__builtin_mul_overflow(a, b, &r)) cpl_fail(CPL_OVERFLOW); return r;"
+    wneg(a: i128) -> i128 { a.checked_neg().ok_or(Fault::Overflow) }
+        "if (a == I128_MIN) cpl_fail(CPL_OVERFLOW); return -a;"
+    wabs(a: i128) -> i128 { a.checked_abs().ok_or(Fault::Overflow) }
+        "if (a == I128_MIN) cpl_fail(CPL_OVERFLOW); return a < 0 ? -a : a;"
+    wdiv(a: i128, b: i128) -> i128 { a.checked_div_euclid(b).ok_or(Fault::Overflow) }
+        "if (a == I128_MIN && b == -1) cpl_fail(CPL_OVERFLOW); __int128 q = a / b, r = a % b; if (r < 0) q += b > 0 ? -1 : 1; return q;"
+    wrem(a: i128, b: i128) -> i128 { a.checked_rem_euclid(b).ok_or(Fault::Overflow) }
+        "if (a == I128_MIN && b == -1) cpl_fail(CPL_OVERFLOW); __int128 r = a % b; if (r < 0) r += b > 0 ? b : -b; return r;"
+    wshl(a: i128, b: i64) -> i128 { Some(a << b).filter(|s| *s >= 0 && s >> b == a).ok_or(Fault::Overflow) }
+        "if (a > (I128_MAX >> b)) cpl_fail(CPL_OVERFLOW); return a << b;"
+    wshr(a: i128, b: i64) -> i128 { Ok(a >> b) } "return a >> b;"
+    wband(a: i128, b: i128) -> i128 { Ok(a & b) } "return a & b;"
+    wbor(a: i128, b: i128) -> i128 { Ok(a | b) } "return a | b;"
+    wbxor(a: i128, b: i128) -> i128 { Ok(a ^ b) } "return a ^ b;"
+    wide_of(a: i64) -> i128 { Ok(i128::from(a)) } "return (__int128)a;"
+    wide_of_u64(u: u64) -> i128 { Ok(i128::from(u)) } "return (__int128)u;"
+    int_of_wide(a: i128) -> i64 { Ok(a as i64) } "return (int64_t)a;"
+    u64_of_wide(a: i128) -> u64 { Ok(a as u64) } "return (uint64_t)a;"
 }
 
 rows! {
@@ -199,6 +226,26 @@ rows! {
     trunc(a: f64) -> f64 [] trunc;
     /// A whole `F64` as an `Int`; NaN and anything past `Int` trap.
     int_of_f64(y: f64) -> i64 [!(y > -INT_SPAN && y < INT_SPAN) => F64PastInt] whole;
+    // `I128` arithmetic: it traps where its value is past 128 bits (R02.1); a shift's amount
+    // is an `Int` in 0..128.
+    wadd(a: i128, b: i128) -> i128 [] wadd;
+    wsub(a: i128, b: i128) -> i128 [] wsub;
+    wmul(a: i128, b: i128) -> i128 [] wmul;
+    wneg(a: i128) -> i128 [] wneg;
+    wabs(a: i128) -> i128 [] wabs;
+    wdiv(a: i128, b: i128) -> i128 [b == 0 => DivisionByZero] wdiv;
+    wrem(a: i128, b: i128) -> i128 [b == 0 => DivisionByZero] wrem;
+    wshl(a: i128, b: i64) -> i128 [(b >> 7) != 0 => ShiftOutside, a < 0 => ShlNegative] wshl;
+    wshr(a: i128, b: i64) -> i128 [(b >> 7) != 0 => ShiftOutside] wshr;
+    wband(a: i128, b: i128) -> i128 [] wband;
+    wbor(a: i128, b: i128) -> i128 [] wbor;
+    wbxor(a: i128, b: i128) -> i128 [] wbxor;
+    /// An `Int` or a `U64` as an `I128`.
+    i128_of(a: i64) -> i128 [] wide_of;
+    i128_of_u64(u: u64) -> i128 [] wide_of_u64;
+    /// An `I128` as an `Int`, and as a `U64`.
+    int_of_i128(a: i128) -> i64 [(a > WIDE_INT_LAST) | (a < -WIDE_INT_LAST) => U64PastInt] int_of_wide;
+    u64_of_i128(a: i128) -> u64 [(a < 0) | (a > WIDE_U64_LAST) => Overflow] u64_of_wide;
 }
 
 fn cpp_fn(s: &mut String, name: &str, params: &[(&str, &str)], ret: &str, body: &str) {
@@ -219,6 +266,7 @@ fn cty(t: &str) -> &'static str {
     match t {
         "i64" => "int64_t",
         "f64" => "double",
+        "i128" => "__int128",
         "u64" => "uint64_t",
         "u8" => "cpl_char",
         "usize" => "size_t",
@@ -234,7 +282,11 @@ pub fn cpp() -> String {
         "static const uint64_t INT_LAST = {INT_LAST}ULL;\n\
          static const int64_t BIT_CEIL_LAST = {BIT_CEIL_LAST}LL;\n\
          static const int64_t MAX_STORAGE = {MAX_STORAGE};\n\
-         static const double INT_SPAN = {INT_SPAN:?};\n"
+         static const double INT_SPAN = {INT_SPAN:?};\n\
+         static const __int128 WIDE_INT_LAST = (__int128)INT64_MAX;\n\
+         static const __int128 WIDE_U64_LAST = (__int128)UINT64_MAX;\n\
+         static const __int128 I128_MAX = (__int128)(((unsigned __int128)1 << 127) - 1);\n\
+         static const __int128 I128_MIN = -I128_MAX - 1;\n"
     );
     kernels_cpp(&mut s);
     rows_cpp(&mut s);

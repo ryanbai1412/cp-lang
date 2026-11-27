@@ -24,6 +24,7 @@ pub enum V {
     Bool(bool),
     Char(u8),
     U64(u64),
+    I128(i128),
     F64(f64),
     Agg(Vec<V>),
     /// Storage is shared until written, so a copy costs nothing until then.
@@ -618,6 +619,7 @@ fn scalar(v: &V) -> Option<ops::Scalar> {
     Some(match *v {
         V::Int(i) => ops::Scalar::Int(i),
         V::U64(u) => ops::Scalar::U64(u),
+        V::I128(w) => ops::Scalar::I128(w),
         V::F64(x) => ops::Scalar::F64(x.to_bits()),
         V::Bool(b) => ops::Scalar::Bool(b),
         V::Char(c) => ops::Scalar::Char(c),
@@ -629,6 +631,7 @@ fn value(s: ops::Scalar) -> V {
     match s {
         ops::Scalar::Int(i) => V::Int(i),
         ops::Scalar::U64(u) => V::U64(u),
+        ops::Scalar::I128(w) => V::I128(w),
         ops::Scalar::F64(x) => V::F64(f64::from_bits(x)),
         ops::Scalar::Bool(b) => V::Bool(b),
         ops::Scalar::Char(c) => V::Char(c),

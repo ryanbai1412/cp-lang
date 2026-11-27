@@ -15,6 +15,8 @@ impl Clone for Char:
     fn clone(a) = a
 impl Clone for U64:
     fn clone(a) = a
+impl Clone for I128:
+    fn clone(a) = a
 impl Clone for F64:
     fn clone(a) = a
 impl Clone for Bool:

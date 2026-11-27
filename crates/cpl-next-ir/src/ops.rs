@@ -9,7 +9,10 @@ use crate::ir::{CheckKind, FloatFn, Intr, Rounding};
 use cpl_diag::{codes, Code};
 
 mod rules;
-pub use rules::{abs, char_of, cpp as cpp_runtime, int_of_u64, neg, storage_size};
+pub use rules::{
+    abs, char_of, cpp as cpp_runtime, i128_of, i128_of_u64, int_of_i128, int_of_u64, neg,
+    storage_size, u64_of_i128, wabs, wneg,
+};
 
 /// Every way a run can fail, one row each, with the code it carries and its message.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -181,7 +184,58 @@ pub fn word(op: Intr, a: u64, b: u64) -> Result<u64, Fault> {
     })
 }
 
-/// A comparison. Every comparable value is an integer of at most 64 bits, signed or not.
+/// A binary operation on `I128`s, which traps past 128 bits (R02.1). A shift's amount is an
+/// `Int`.
+pub fn wide(op: Intr, a: i128, b: i128) -> Result<i128, Fault> {
+    use rules as r;
+    let shift = || i64::try_from(b).unwrap_or(i64::MAX);
+    match op {
+        Intr::Add => r::wadd(a, b),
+        Intr::Sub => r::wsub(a, b),
+        Intr::Mul => r::wmul(a, b),
+        Intr::Div => r::wdiv(a, b),
+        Intr::Rem => r::wrem(a, b),
+        Intr::Shl => r::wshl(a, shift()),
+        Intr::Shr => r::wshr(a, shift()),
+        Intr::BitAnd => r::wband(a, b),
+        Intr::BitOr => r::wbor(a, b),
+        Intr::BitXor => r::wbxor(a, b),
+        _ => Err(Fault::Internal("not an I128 operation")),
+    }
+}
+
+/// The C++ helper for an `I128` operation; comparisons are C++'s own.
+pub fn cpp_wide(op: Intr) -> Option<Cpp> {
+    use Cpp::{Call, Infix};
+    Some(match op {
+        Intr::Add => Call("cpl_wadd"),
+        Intr::Sub => Call("cpl_wsub"),
+        Intr::Mul => Call("cpl_wmul"),
+        Intr::Div => Call("cpl_wdiv"),
+        Intr::Rem => Call("cpl_wrem"),
+        Intr::Shl => Call("cpl_wshl"),
+        Intr::Shr => Call("cpl_wshr"),
+        Intr::BitAnd => Call("cpl_wband"),
+        Intr::BitOr => Call("cpl_wbor"),
+        Intr::BitXor => Call("cpl_wbxor"),
+        Intr::Neg => Call("cpl_wneg"),
+        Intr::Abs => Call("cpl_wabs"),
+        Intr::Eq => Infix("=="),
+        Intr::Ne => Infix("!="),
+        Intr::Lt => Infix("<"),
+        Intr::Le => Infix("<="),
+        Intr::Gt => Infix(">"),
+        Intr::Ge => Infix(">="),
+        Intr::ToI128 => Call("cpl_i128_of"),
+        Intr::I128OfU64 => Call("cpl_i128_of_u64"),
+        Intr::FromI128 => Call("cpl_int_of_i128"),
+        Intr::F64OfI128 => Call("(double)"),
+        Intr::U64OfI128 => Call("cpl_u64_of_i128"),
+        _ => return None,
+    })
+}
+
+/// A comparison. Every comparable value is an integer of at most 128 bits, signed or not.
 pub fn compare(op: Intr, a: i128, b: i128) -> Result<bool, Fault> {
     Ok(match op {
         Intr::Eq => a == b,
@@ -241,6 +295,11 @@ pub fn neg_float(a: f64) -> f64 {
 /// The `F64` nearest an `Int`, ties to even.
 pub fn f64_of_int(i: i64) -> f64 {
     i as f64
+}
+
+/// The `F64` nearest an `I128`, ties to even.
+pub fn f64_of_i128(a: i128) -> f64 {
+    a as f64
 }
 
 /// `abs` of an F64: the value with its sign cleared, NaN included.
@@ -411,6 +470,11 @@ pub fn on_scalars(op: Intr) -> bool {
             | I::BitCeil
             | I::CharOf
             | I::CodeOf
+            | I::ToI128
+            | I::FromI128
+            | I::F64OfI128
+            | I::I128OfU64
+            | I::U64OfI128
     )
 }
 
@@ -421,8 +485,9 @@ pub fn scalar(op: Intr, xs: &[Scalar]) -> Option<Result<Scalar, Fault>> {
     use Scalar as S;
     let f = f64::from_bits;
     let fl = |r: Result<f64, Fault>| r.map(|x| S::F64(x.to_bits()));
-    let wide = |s: Scalar| match s {
+    let whole = |s: Scalar| match s {
         S::Int(i) => Some(i128::from(i)),
+        S::I128(w) => Some(w),
         S::U64(u) => Some(i128::from(u)),
         S::Bool(b) => Some(i128::from(b)),
         _ => None,
@@ -431,12 +496,21 @@ pub fn scalar(op: Intr, xs: &[Scalar]) -> Option<Result<Scalar, Fault>> {
     let counts = matches!(op, I::Popcount | I::Ctz | I::Clz | I::BitWidth | I::BitCeil);
     Some(match (op, xs) {
         (_, &[S::F64(a), S::F64(b)]) if cmp => compare_float(op, f(a), f(b)).map(S::Bool),
-        (_, &[a, b]) if cmp => compare(op, wide(a)?, wide(b)?).map(S::Bool),
+        (_, &[a, b]) if cmp => compare(op, whole(a)?, whole(b)?).map(S::Bool),
         (I::Float(g), &[S::F64(a), S::F64(b)]) => fl(float_fn(g, f(a), f(b))),
         (_, &[S::F64(a), S::F64(b)]) => fl(float(op, f(a), f(b))),
         (I::Shl | I::Shr, &[S::U64(a), S::Int(b)]) => word(op, a, b as u64).map(S::U64),
         (_, &[S::U64(a), S::U64(b)]) => word(op, a, b).map(S::U64),
         (_, &[S::Int(a), S::Int(b)]) => int(op, a, b).map(S::Int),
+        (I::Shl | I::Shr, &[S::I128(a), S::Int(b)]) => wide(op, a, i128::from(b)).map(S::I128),
+        (_, &[S::I128(a), S::I128(b)]) => wide(op, a, b).map(S::I128),
+        (I::Neg, &[S::I128(w)]) => wneg(w).map(S::I128),
+        (I::Abs, &[S::I128(w)]) => wabs(w).map(S::I128),
+        (I::ToI128, &[S::Int(i)]) => i128_of(i).map(S::I128),
+        (I::I128OfU64, &[S::U64(u)]) => i128_of_u64(u).map(S::I128),
+        (I::FromI128, &[S::I128(w)]) => int_of_i128(w).map(S::Int),
+        (I::U64OfI128, &[S::I128(w)]) => u64_of_i128(w).map(S::U64),
+        (I::F64OfI128, &[S::I128(w)]) => fl(Ok(f64_of_i128(w))),
         (I::Neg, &[S::F64(x)]) => fl(Ok(neg_float(f(x)))),
         (I::Abs, &[S::F64(x)]) => fl(Ok(abs_f64(f(x)))),
         (I::Neg, &[S::Int(i)]) => neg(i).map(S::Int),
@@ -460,6 +534,7 @@ pub fn scalar(op: Intr, xs: &[Scalar]) -> Option<Result<Scalar, Fault>> {
 pub enum Scalar {
     Int(i64),
     U64(u64),
+    I128(i128),
     /// An `F64`, by its bits.
     F64(u64),
     Bool(bool),
@@ -471,6 +546,7 @@ pub fn show(v: Scalar, out: &mut String) {
     let _ = match v {
         Scalar::Int(i) => write!(out, "{i}"),
         Scalar::U64(u) => write!(out, "{u}"),
+        Scalar::I128(w) => write!(out, "{w}"),
         Scalar::F64(b) => write!(out, "{}", f64_text(f64::from_bits(b), 10)),
         Scalar::Bool(b) => write!(out, "{b}"),
         Scalar::Char(c) => write!(out, "{}", char::from(c)),

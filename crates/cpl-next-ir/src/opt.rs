@@ -62,7 +62,7 @@ fn localize(funcs: &mut [Func<CTy>], globals: &[CTy], main: usize) {
 fn scalar(t: &CTy) -> bool {
     matches!(
         t,
-        CTy::Int | CTy::Bool | CTy::Char | CTy::U64 | CTy::F64 | CTy::Dom(_)
+        CTy::Int | CTy::Bool | CTy::Char | CTy::U64 | CTy::I128 | CTy::F64 | CTy::Dom(_)
     )
 }
 

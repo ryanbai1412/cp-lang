@@ -85,6 +85,16 @@ pub enum Intr {
     ToU64,
     /// A `U64` as an `Int`; traps past `Int`.
     FromU64,
+    /// An `Int` as an `I128`.
+    ToI128,
+    /// An `I128` as an `Int`; traps past `Int`.
+    FromI128,
+    /// The `F64` nearest an `I128`.
+    F64OfI128,
+    /// A `U64` as an `I128`.
+    I128OfU64,
+    /// An `I128` as a `U64`; traps below 0 or past `2^64 - 1`.
+    U64OfI128,
     /// A 64-bit word's 1 bits, an `Int` as its two's complement.
     Popcount,
     /// A word's 0 bits below its lowest 1 bit; 64 for 0.
@@ -195,6 +205,11 @@ impl Intr {
             "code_of" => Intr::CodeOf,
             "u64_of" => Intr::ToU64,
             "int_of_u64" => Intr::FromU64,
+            "i128_of" => Intr::ToI128,
+            "int_of_i128" => Intr::FromI128,
+            "f64_of_i128" => Intr::F64OfI128,
+            "i128_of_u64" => Intr::I128OfU64,
+            "u64_of_i128" => Intr::U64OfI128,
             "f64_of" => Intr::ToF64,
             "f64_bits" => Intr::F64Bits,
             "out" => Intr::Out,
@@ -282,6 +297,9 @@ impl Intr {
                 | RawNew
                 | ReadInt
                 | FromU64
+                | FromI128
+                | F64OfI128
+                | U64OfI128
                 | CharOf
                 | BitCeil
                 | ToInt(_)

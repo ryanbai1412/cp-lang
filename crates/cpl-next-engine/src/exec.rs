@@ -4,7 +4,7 @@
 use crate::compile::*;
 use crate::layout::Lay;
 use crate::Stop;
-use cpl_next_ir::ir::Func;
+use cpl_next_ir::ir::{Func, Intr};
 use cpl_next_ir::ops::{self, Fault};
 use cpl_next_ir::prog::CTy;
 use cpl_next_ir::run::{call_stack, Outcome, Trap};
@@ -572,6 +572,43 @@ impl M<'_> {
                 Op::Word { op, d, a, b } => {
                     self.stack[r(d)] = ops::word(op, self.stack[r(a)], self.stack[r(b)])?;
                 }
+                Op::Wide { op, d, a, b } => {
+                    let y = match op {
+                        Intr::Shl | Intr::Shr => i128::from(self.stack[r(b)] as i64),
+                        _ => wide(&self.stack, r(b)),
+                    };
+                    let v = ops::wide(op, wide(&self.stack, r(a)), y)?;
+                    set_wide(&mut self.stack, r(d), v);
+                }
+                Op::WideCmp { op, d, a, b } => {
+                    let (x, y) = (wide(&self.stack, r(a)), wide(&self.stack, r(b)));
+                    self.stack[r(d)] = u64::from(ops::compare(op, x, y)?);
+                }
+                Op::Widen { op, d, a } => {
+                    let s = self.stack[r(a)];
+                    match op {
+                        Intr::ToI128 => set_wide(&mut self.stack, r(d), ops::i128_of(s as i64)?),
+                        Intr::I128OfU64 => set_wide(&mut self.stack, r(d), ops::i128_of_u64(s)?),
+                        Intr::FromI128 => {
+                            self.stack[r(d)] = ops::int_of_i128(wide(&self.stack, r(a)))? as u64
+                        }
+                        Intr::F64OfI128 => {
+                            self.stack[r(d)] = ops::f64_of_i128(wide(&self.stack, r(a))).to_bits()
+                        }
+                        Intr::U64OfI128 => {
+                            self.stack[r(d)] = ops::u64_of_i128(wide(&self.stack, r(a)))?
+                        }
+                        Intr::Neg => {
+                            let v = ops::wneg(wide(&self.stack, r(a)))?;
+                            set_wide(&mut self.stack, r(d), v)
+                        }
+                        Intr::Abs => {
+                            let v = ops::wabs(wide(&self.stack, r(a)))?;
+                            set_wide(&mut self.stack, r(d), v)
+                        }
+                        _ => return broken("not an I128 conversion"),
+                    }
+                }
                 Op::Float { op, d, a, b } => {
                     let (x, y) = (
                         f64::from_bits(self.stack[r(a)]),
@@ -901,6 +938,14 @@ fn scalar(w: u64, kind: Kind) -> Option<ops::Scalar> {
     })
 }
 /// A `Char`'s word as its byte.
+/// The `I128` at `r`: two words, low first.
+fn wide(s: &[u64], r: usize) -> i128 {
+    (u128::from(s[r]) | (u128::from(s[r + 1]) << 64)) as i128
+}
+fn set_wide(s: &mut [u64], r: usize, v: i128) {
+    (s[r], s[r + 1]) = (v as u64, ((v as u128) >> 64) as u64);
+}
+
 fn byte(w: u64) -> R<u8> {
     u8::try_from(w).or_else(|_| broken("a Char word past a byte"))
 }

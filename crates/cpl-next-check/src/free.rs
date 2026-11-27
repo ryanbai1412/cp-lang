@@ -64,6 +64,7 @@ pub fn free_vars(e: &TExpr, used: &mut BTreeSet<VarRef>, bound: &mut BTreeSet<Va
         | TK::CodeOf(b)
         | TK::Neg(b)
         | TK::ToU64(b)
+        | TK::ToI128(b)
         | TK::DomOrd(b)
         | TK::DomFrom(_, b, _)
         | TK::CutOrd(_, b)

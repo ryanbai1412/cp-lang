@@ -449,6 +449,7 @@ impl Emit<'_> {
             CTy::Bool => "bool".to_string(),
             CTy::Char => "cpl_char".to_string(),
             CTy::U64 => "uint64_t".to_string(),
+            CTy::I128 => "__int128".to_string(),
             CTy::F64 => "double".to_string(),
             CTy::Unit => "cpl_unit".to_string(),
             CTy::Raw(e) => format!("cpl_raw<{}>", self.name(e)),
@@ -618,6 +619,20 @@ impl Emit<'_> {
                         _ => {}
                     }
                 }
+                let wide = matches!(args.first(), Some(Arg::Value(e)) if e.ty == CTy::I128)
+                    || matches!(
+                        op,
+                        Intr::ToI128
+                            | Intr::I128OfU64
+                            | Intr::FromI128
+                            | Intr::U64OfI128
+                            | Intr::F64OfI128
+                    );
+                match ops::cpp_wide(*op).filter(|_| wide) {
+                    Some(ops::Cpp::Infix(o)) => return bin(o),
+                    Some(ops::Cpp::Call(f)) => return format!("{f}({})", a.join(", ")),
+                    None => {}
+                }
                 match ops::cpp(*op, unsigned) {
                     Some(ops::Cpp::Infix(o)) => return bin(o),
                     Some(ops::Cpp::Call(f)) => return format!("{f}({})", a.join(", ")),
@@ -681,7 +696,12 @@ impl Emit<'_> {
                     | Intr::Lt
                     | Intr::Le
                     | Intr::Gt
-                    | Intr::Ge => "/* not an operation */".to_string(),
+                    | Intr::Ge
+                    | Intr::ToI128
+                    | Intr::FromI128
+                    | Intr::I128OfU64
+                    | Intr::U64OfI128
+                    | Intr::F64OfI128 => "/* not an operation */".to_string(),
                 }
             }
         }
