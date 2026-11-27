@@ -47,8 +47,8 @@ The columns of a grid, made by `g.cols`; lends the grid.
 
 - `@get fn len(self) -> Int` — \(O(1)\)
 - `@get fn is_empty(self) -> Bool` — \(O(1)\)
-- `fn at(self, c: C) -> lends [R]T` — \(O(1)\)
-- `fn each(self) -> yields [R]T` — \(O(1)\) per column; The columns in `C` order.
+- `fn at(self, c: C) -> Slice<Col<R, C, T>>` — \(O(1)\)
+- `fn each(self) -> yields Slice<Col<R, C, T>>` — \(O(1)\) per column; The columns in `C` order.
 
 ## Functions
 

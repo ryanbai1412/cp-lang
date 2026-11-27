@@ -55,6 +55,18 @@ A sized sequence read in \(O(1)\) by walk position: `s.nth(k)` is the element `k
 
 `s[k]` read: the element at key `k`.
 
+## `trait IndexMut<K, T>: IndexGet<K, T>`
+
+`s[k]` as a place: a write through it lands in `s`, in place (R12.4.6).
+
+## `trait IndexedMut<K, T>: Indexed<K, T> + IndexMut<K, T>`
+
+An `Indexed` sequence whose cells are places: what `sort`, `reverse` and `swap` write (R12.4.6).
+
+## `trait IndexSet<K, T>`
+
+`s[k] = v` as a write of `v` at `k`, not through a place: a `Map` inserts or replaces, and its values need no default (spec 12, W8).
+
 ## `trait Indexed<D, T>: IndexGet<D, T> + Keyed<D, T> + Positional<T> + Bidir<T>`
 
 A keyed, sized, two-way sequence read in \(O(1)\) at any key; `take`/`drop` give a slice.
@@ -101,6 +113,12 @@ Fields: `src: S,`, `lo: Int,`, `hi: Int,`.
 \(O(1)\) to make.
 
 Fields: `src: [R, C]T,`, `r: R,`.
+
+## `struct Col<R, C, T>(`
+
+\(O(1)\) to make.
+
+Fields: `src: [R, C]T,`, `c: C,`.
 
 ## `struct Rebased<S>(pub src: S)`
 

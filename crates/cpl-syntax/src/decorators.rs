@@ -96,7 +96,10 @@ pub const DECORATORS: &[(&str, &str)] = &[
         "tuple",
         "on a struct: the struct an n-tuple of its field count is",
     ),
-    ("list", "on a struct: the struct a list literal `[a, b]` builds"),
+    (
+        "list",
+        "on a struct: the struct a list literal `[a, b]` builds",
+    ),
     ("str", "on a struct: the struct a string literal is"),
     ("optional", "on a struct: the struct `?T` is"),
     ("array", "on a struct: the struct `[D]T` is"),
