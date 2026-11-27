@@ -99,7 +99,12 @@ impl Parsed {
         inline.chain(std::iter::once((self.text.clone(), self.module())))
     }
     fn new(name: &str, text: Arc<str>) -> Parsed {
-        let (items, starts, unread, inline) = parse(name, &text);
+        let FileItems {
+            items,
+            starts,
+            unread,
+            inline,
+        } = parse(name, &text);
         Parsed {
             text: Text::new(name, text, starts),
             items: Arc::new(items),
@@ -295,18 +300,29 @@ fn uses(items: &[Item]) -> impl Iterator<Item = (String, &Stmt, SourceId)> {
         })
 }
 
+/// What [`parse`] reads from one file.
+struct FileItems {
+    items: Items,
+    /// Where each item starts in the file's text.
+    starts: HashMap<ItemId, u32>,
+    /// Each syntax error with its code and where it is, and the places the parser could not read.
+    unread: Unread,
+    /// Each inline `mod`: its module, the module it is written in, and its items.
+    inline: Vec<(String, String, Arc<Items>)>,
+}
+
+/// A module of the file whose statements [`parse`] has yet to read.
+struct Open {
+    /// The module's name.
+    at: String,
+    body: Vec<Stmt>,
+    /// An inline module's path within the file and the module it is written in.
+    path: Option<(String, String)>,
+}
+
 /// The items of module `module`, where each starts in `text`, each syntax error with its code
 /// and where it is, and the places the parser could not read.
-#[allow(clippy::type_complexity)]
-fn parse(
-    module: &str,
-    text: &str,
-) -> (
-    Items,
-    HashMap<ItemId, u32>,
-    Unread,
-    Vec<(String, String, Arc<Items>)>,
-) {
+fn parse(module: &str, text: &str) -> FileItems {
     let p = cpl_syntax::parse_file(text);
     let file_name = module;
     let module: Arc<str> = module.into();
@@ -328,10 +344,13 @@ fn parse(
         };
         // An inline `mod m:` is a module of its own (R11.1.3). Its items keep the file's
         // places, so each is an item of the file whose path starts with the module's.
-        let mut open: Vec<(String, Vec<Stmt>, Option<(String, String)>)> =
-            vec![(file_name.to_string(), std::mem::take(&mut stmts), None)];
+        let mut open = vec![Open {
+            at: file_name.to_string(),
+            body: std::mem::take(&mut stmts),
+            path: None,
+        }];
         let mut top = Vec::new();
-        while let Some((at, body, path)) = open.pop() {
+        while let Some(Open { at, body, path }) = open.pop() {
             let mut own = Vec::new();
             for mut s in body {
                 if let StmtKind::Mod { name, body } = &mut s.kind {
@@ -341,11 +360,11 @@ fn parse(
                     };
                     let path = (path.as_ref())
                         .map_or(name.text.clone(), |(p, _)| format!("{p}.{}", name.text));
-                    open.push((
-                        inner,
-                        std::mem::take(&mut body.stmts),
-                        Some((path, at.clone())),
-                    ));
+                    open.push(Open {
+                        at: inner,
+                        body: std::mem::take(&mut body.stmts),
+                        path: Some((path, at.clone())),
+                    });
                 }
                 match &path {
                     None => top.push(s),
@@ -387,12 +406,12 @@ fn parse(
             ..Msg::at(within(d.span), Msg::verdict(d.code, d.message))
         })
         .collect();
-    (
+    FileItems {
         items,
-        starts.into_iter().collect(),
-        (diags, poisoned),
+        starts: starts.into_iter().collect(),
+        unread: (diags, poisoned),
         inline,
-    )
+    }
 }
 
 /// The name in an item's path: what it declares, an impl's head as written, or nothing for a
@@ -598,7 +617,7 @@ mod tests {
         let below = "struct S\nimpl Show for S:\n    fn show(self) -> Str: \"s\"\n\nfn g() -> Int:\n    let x = 2\n    x\n";
         let above = format!("fn f() -> Int: 1\n\n{below}");
         let items = |t: &str| {
-            let (items, starts, _, _) = parse(PROGRAM, t);
+            let FileItems { items, starts, .. } = parse(PROGRAM, t);
             (items.into_iter())
                 .filter(|i| &*i.id.name != "f")
                 .map(|i| {
