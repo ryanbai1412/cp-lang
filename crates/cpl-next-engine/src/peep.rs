@@ -932,11 +932,13 @@ fn unzero(
                 continue;
             }
         }
-        let Some((_, writes)) = effect(op, places, lays) else {
+        let Some((reads, writes)) = effect(op, places, lays) else {
             break;
         };
+        // A store through a place rooted in the zeroed words reads them to write them.
+        let through = !pure(op) && zero.clone().any(|r| covers(&reads, r));
         let ends = matches!(*op, Op::Jump { .. } | Op::Switch { .. });
-        if ends || zero.clone().any(|r| covers(&writes, r)) {
+        if ends || through || zero.clone().any(|r| covers(&writes, r)) {
             break;
         }
     }
@@ -1277,6 +1279,27 @@ mod tests {
         );
         let keep = unread(&ops, &[], &lays, &[], &|_| false, Some(&[(0, 1)]));
         assert!(!keep[0] && !keep[3] && keep[5]);
+    }
+
+    /// A store through a place rooted in a register still zero sets it, so its drop stays.
+    #[test]
+    fn unzero_stops_at_a_store_through_the_zeroed_register() {
+        let mut ops = vec![
+            Op::Zero { d: 1, n: 1 },
+            Op::Store { p: 0, s: 2, lay: 0 },
+            Op::Drop { s: 1, lay: 0 },
+            Op::Leave(crate::compile::Leave::Return),
+        ];
+        let mut places = vec![PlaceCode {
+            root: Root::Local(1),
+            steps: vec![],
+        }];
+        let mut lays = Layouts::default();
+        lays.size.push(1);
+        lays.owns.push(true);
+        lays.flat.push(Some(vec![0]));
+        forward(&mut ops, &mut places, &lays, &[], &|_| false);
+        assert_eq!(format!("{:?}", ops[2]), "Drop { s: 1, lay: 0 }");
     }
 
     /// Leaving a fn reads its result, its lent parameters and the locals it drops, not
