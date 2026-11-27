@@ -3929,12 +3929,27 @@
         "traits/Contains/Bitset--contains.cp": "pass",
         "traits/Contains/Map--contains.cp": "pass",
         "traits/Contains/Range--contains.cp": "pass",
+        "traits/Default/List--default.cp": "fail",
+        "traits/Default/Str--default.cp": "fail",
         "traits/Div/BigInt--div.cp": "pass",
         "traits/Div/Mod--div.cp": "pass",
         "traits/Div/Poly--div.cp": "pass",
         "traits/Div/Ratio--div.cp": "pass",
         "traits/Div/Vec--div.cp": "pass",
         "traits/Div/Vec3--div.cp": "pass",
+        "traits/Domain/Cut--after.cp": "fail",
+        "traits/Domain/Cut--all.cp": "fail",
+        "traits/Domain/Cut--at.cp": "fail",
+        "traits/Domain/Cut--before.cp": "fail",
+        "traits/Domain/Cut--count.cp": "fail",
+        "traits/Domain/Cut--l.cp": "fail",
+        "traits/Domain/Cut--next.cp": "fail",
+        "traits/Domain/Cut--nth.cp": "fail",
+        "traits/Domain/Cut--ord.cp": "pass",
+        "traits/Domain/Cut--prev.cp": "fail",
+        "traits/Domain/Cut--r.cp": "fail",
+        "traits/Domain/Cut--range.cp": "fail",
+        "traits/Domain/Cut--wrap.cp": "fail",
         "traits/Eq/ByAngle--eq.cp": "pass",
         "traits/Eq/ByAngleFrom--eq.cp": "pass",
         "traits/Eq/Mat--eq.cp": "pass",
@@ -4312,11 +4327,11 @@
         }
       ],
       "counts": {
-        "fail": 2,
-        "pass": 4295
+        "fail": 16,
+        "pass": 4296
       },
-      "passed": 4295,
-      "total": 4297
+      "passed": 4296,
+      "total": 4312
     },
     "corpus": {
       "cases": {

@@ -3511,3 +3511,102 @@ s.add(1)
 print(if s.contains(3): 1 else: 0, if s.contains(2): 1 else: 0)
 """
 out = "1 0"
+
+[case."Default/List/default"]
+code = """
+print(List<Int>.default().len)
+"""
+out = "0"
+
+[case."Default/Str/default"]
+code = """
+fn fresh<T: Default>(x: T) -> T = T.default()
+print(fresh("ab").len)
+"""
+out = "0"
+
+[case."Domain/Cut/after"]
+code = """
+domain P = 0..4
+print(Cut<P>.nth(1).after.len)
+"""
+out = "3"
+
+[case."Domain/Cut/all"]
+code = """
+domain P = 0..4
+print(Cut<P>.all.len)
+"""
+out = "5"
+
+[case."Domain/Cut/at"]
+code = """
+domain P = 0..4
+print(Cut<P>.at(4)!.ord, (Cut<P>.at(9) ?? Cut<P>.nth(1)).ord)
+"""
+out = "4 1"
+
+[case."Domain/Cut/before"]
+code = """
+domain P = 0..4
+print(Cut<P>.nth(1).before.len)
+"""
+out = "1"
+
+[case."Domain/Cut/count"]
+code = """
+domain P = 0..4
+print(Cut<P>.count)
+"""
+out = "5"
+
+[case."Domain/Cut/l"]
+code = """
+domain P = 0..4
+fn left<D: Domain>(d: D) -> Cut<D> = d.l
+print(left(P.cuts.nth(2)).ord)
+"""
+out = "2"
+
+[case."Domain/Cut/next"]
+code = """
+domain P = 0..4
+print(Cut<P>.nth(1).next!.ord, (Cut<P>.nth(4).next ?? Cut<P>.nth(0)).ord)
+"""
+out = "2 0"
+
+[case."Domain/Cut/nth"]
+code = """
+domain P = 0..4
+print(Cut<P>.nth(2).ord)
+"""
+out = "2"
+
+[case."Domain/Cut/prev"]
+code = """
+domain P = 0..4
+print(Cut<P>.nth(3).prev!.ord)
+"""
+out = "2"
+
+[case."Domain/Cut/r"]
+code = """
+domain P = 0..4
+fn right<D: Domain>(d: D) -> Cut<D> = d.r
+print(right(P.cuts.nth(2)).ord)
+"""
+out = "3"
+
+[case."Domain/Cut/range"]
+code = """
+domain P = 0..4
+print(Cut<P>.range.len)
+"""
+out = "5"
+
+[case."Domain/Cut/wrap"]
+code = """
+domain P = 0..4
+print(Cut<P>.wrap(-1).ord, Cut<P>.wrap(7).ord)
+"""
+out = "4 2"
