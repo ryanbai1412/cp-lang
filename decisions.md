@@ -9480,3 +9480,5 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 - **Call.** `traits/Show/Dir4--show` moves from wrong-reject to refused. It was wrong-reject only because a struct's `const` member (`Dir4.left`) was unknown as `Dir4`; struct consts are now read through the type's name, and the case stops at a real refusal: printing a `Dir4` through its `Show` impl is not built yet in cpl-next.
 - **Why.** The old "unknown name `Dir4`" verdict was a missing feature, not the case's answer; the refusal names what is actually missing.
 - **Reverse.** None needed: the case passes once printing a `Show` type is built.
+
+## 649. (reserved, lane E)
