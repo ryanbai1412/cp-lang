@@ -2,6 +2,164 @@
 
 use std::sync::Arc;
 
+use std::io::Write;
+
+use crate::TraceConfig;
+
+/// What a second run records to name the locals where a trap stopped the first.
+pub fn trap_config(source: &str) -> TraceConfig {
+    cpl_interp::trace::trap_config(source).into()
+}
+
+/// The trace document of a run, beside its brute's when there is one.
+pub fn document(
+    title: &str,
+    description: &str,
+    file: &str,
+    source: &str,
+    fast: (&str, &Recording),
+    slow: Option<(&str, &Recording)>,
+) -> String {
+    let slow = slow.map(|(name, r)| (name, &r.inner));
+    cpl_interp::trace::document(
+        title,
+        description,
+        file,
+        source,
+        (fast.0, &fast.1.inner),
+        slow,
+    )
+}
+
+/// The first step where `after` differs from `before`.
+pub fn first_change(before: &Recording, after: &Recording) -> Option<Change> {
+    cpl_interp::trace::first_change(&before.inner, &after.inner).map(Into::into)
+}
+
+/// [`first_change`] within the steps `old` of `before` and `new` of `after`.
+pub fn first_change_in(
+    before: &Recording,
+    old: std::ops::Range<usize>,
+    after: &Recording,
+    new: std::ops::Range<usize>,
+) -> Option<Change> {
+    cpl_interp::trace::first_change_in(&before.inner, old, &after.inner, new).map(Into::into)
+}
+
+/// Each variable `step` names, with its value.
+pub fn named_values(rec: &Recording, step: &Step) -> std::collections::HashMap<String, String> {
+    cpl_interp::trace::named_values(&rec.inner, &step.clone().into())
+}
+
+/// The locals where a trap stopped the run, as `cpl run` names them.
+pub fn trap_locals(recording: &Recording, source: &str, at: &str) -> Option<String> {
+    cpl_interp::trace::trap_locals(&recording.inner, source, at)
+}
+
+/// Where a solution and its brute first part ways on one input.
+pub fn explain_divergence(source: &str, fast: &Recording, slow: &Recording) -> Option<Divergence> {
+    cpl_interp::trace::explain_divergence(source, &fast.inner, &slow.inner).map(Into::into)
+}
+
+/// Where a solution that never finishes goes round.
+pub fn stuck_divergence(source: &str, fast: &Recording) -> Option<Divergence> {
+    cpl_interp::trace::stuck_divergence(source, &fast.inner).map(Into::into)
+}
+
+/// The solution's last answer, when it is the line that differs.
+pub fn answered_divergence(source: &str, fast: &Recording) -> Option<Divergence> {
+    cpl_interp::trace::answered_divergence(source, &fast.inner).map(Into::into)
+}
+
+/// The stages a solution and its brute both name, side by side.
+pub fn stages(fast: &Recording, slow: &Recording) -> Vec<Stage> {
+    cpl_interp::trace::stages(&fast.inner, &slow.inner)
+        .into_iter()
+        .map(Into::into)
+        .collect()
+}
+
+use crate::{Outcome, Program, RunInput, Stop};
+
+/// The last `steps` steps of a run of `program` on `input`.
+pub fn tail(program: &Program, input: &[u8], config: TraceConfig, steps: usize) -> Outcome {
+    cpl_interp::trace::tail(&program.ir, input, config.into(), steps).into()
+}
+
+/// The run printing to `output`, with its trace from
+/// `config.from_step` on.
+pub fn windowed(
+    program: &Program,
+    input: &[u8],
+    output: &mut (dyn Write + Send),
+    config: TraceConfig,
+) -> Outcome {
+    cpl_interp::trace::windowed(&program.ir, input, output, config.into()).into()
+}
+
+/// The last `steps` steps of a run, traced again from a late
+/// checkpoint of an untraced run: the steps are numbered from the
+/// window's first.
+pub fn resumed_tail(
+    program: &Program,
+    input: &[u8],
+    output: &mut (dyn Write + Send),
+    config: TraceConfig,
+    steps: usize,
+) -> Outcome {
+    cpl_interp::trace::resumed_tail(&program.ir, input, output, config.into(), steps).into()
+}
+
+/// [`resumed_tail`], both runs ended by `stop`.
+pub fn resumed_tail_until(
+    program: &Program,
+    input: &[u8],
+    output: &mut (dyn Write + Send),
+    config: TraceConfig,
+    steps: usize,
+    stop: Stop,
+) -> Outcome {
+    cpl_interp::trace::resumed_tail_until(&program.ir, input, output, config.into(), steps, stop.0)
+        .into()
+}
+
+/// The untraced run talking to its judge, and every byte the judge
+/// sent it.
+pub fn sent(program: &Program, input: RunInput, output: &mut (dyn Write + Send)) -> Vec<u8> {
+    cpl_interp::trace::sent(&program.ir, input.0, output)
+}
+
+/// The trace of an interactive run: the judge is asked only once.
+pub fn interactive(
+    program: &Program,
+    input: RunInput,
+    output: &mut (dyn Write + Send),
+    config: TraceConfig,
+) -> Outcome {
+    cpl_interp::trace::interactive(&program.ir, input.0, output, config.into()).into()
+}
+
+/// A run recorded on a thread of its own, which traces any window of
+/// it on request.
+pub struct Replay(cpl_interp::trace::Replay);
+
+impl Replay {
+    /// Records `program`'s run on `input` as `config` counts its steps.
+    pub fn start(program: Program, input: Vec<u8>, config: TraceConfig) -> Replay {
+        let program = program.ir.clone();
+        Replay(cpl_interp::trace::Replay::start(
+            program,
+            input,
+            config.into(),
+        ))
+    }
+
+    /// The run's trace from `config.from_step` on.
+    pub fn window(&self, config: TraceConfig) -> Outcome {
+        self.0.window(config.into()).into()
+    }
+}
+
 /// What a run left behind: opaque, so a later engine can answer it from its event stream.
 #[derive(Clone, Debug, Default)]
 pub struct Recording {

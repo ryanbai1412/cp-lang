@@ -105,8 +105,8 @@ pub fn trap_report_in(
     if stack_limit.is_some() {
         return Some(Trapped::new(diagnostic, &name, &text));
     }
-    let config = cpl_facade::today::trace::trap_config(&text);
-    let tail = cpl_facade::today::trace::resumed_tail(
+    let config = cpl_facade::trace::trap_config(&text);
+    let tail = cpl_facade::trace::resumed_tail(
         &program,
         input.as_bytes(),
         &mut std::io::sink(),
@@ -118,7 +118,7 @@ pub fn trap_report_in(
         .unwrap_or("");
     let locals = match (tail.trap, tail.recording) {
         (Some(again), Some(recording)) if again.message() == trap.message() => {
-            cpl_facade::today::trace::trap_locals(&recording, &text, at)
+            cpl_facade::trace::trap_locals(&recording, &text, at)
         }
         _ => None,
     };

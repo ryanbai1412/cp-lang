@@ -1285,11 +1285,11 @@ fn run_live(args: &RunArgs, stdin: &mut (dyn FnMut() -> Vec<u8> + Send)) -> u8 {
         None => input.clone(),
     };
     // Windows of the file as last compiled replay from its checkpoints.
-    let replay = std::sync::Mutex::new(None::<(String, cpl_facade::today::trace::Replay)>);
+    let replay = std::sync::Mutex::new(None::<(String, cpl_facade::trace::Replay)>);
     let record = |from: Option<usize>| {
         let mut stderr = String::new();
         let compiled = compile_side(args.file, side, &mut stderr).map_err(|_| stderr.clone())?;
-        let config = cpl_facade::today::trace::TraceConfig {
+        let config = cpl_facade::TraceConfig {
             from_step: from.or(args.from_step),
             ..trace_config(args, &compiled.text)
         };
@@ -1299,11 +1299,11 @@ fn run_live(args: &RunArgs, stdin: &mut (dyn FnMut() -> Vec<u8> + Send)) -> u8 {
                     .lock()
                     .unwrap_or_else(|poisoned| poisoned.into_inner());
                 if !matches!(&*replay, Some((text, _)) if *text == compiled.text) {
-                    let counted = cpl_facade::today::trace::TraceConfig {
+                    let counted = cpl_facade::TraceConfig {
                         from_step: None,
                         ..config.clone()
                     };
-                    let started = cpl_facade::today::trace::Replay::start(
+                    let started = cpl_facade::trace::Replay::start(
                         compiled.program.clone(),
                         solution_input(&compiled),
                         counted,
@@ -1345,7 +1345,7 @@ fn traced(
     program: &cpl_facade::Program,
     input: &[u8],
     output: &mut (dyn Write + Send),
-    config: cpl_facade::today::trace::TraceConfig,
+    config: cpl_facade::TraceConfig,
     full: bool,
 ) -> cpl_facade::Outcome {
     if full || config.last_steps.is_some() && config.from_step.is_some() {
@@ -1357,14 +1357,12 @@ fn traced(
         );
     }
     match config.last_steps.filter(|_| config.from_step.is_none()) {
-        Some(steps) => {
-            cpl_facade::today::trace::resumed_tail(program, input, output, config, steps)
-        }
-        None => cpl_facade::today::trace::windowed(program, input, output, config),
+        Some(steps) => cpl_facade::trace::resumed_tail(program, input, output, config, steps),
+        None => cpl_facade::trace::windowed(program, input, output, config),
     }
 }
 
-fn trace_config(args: &RunArgs, text: &str) -> cpl_facade::today::trace::TraceConfig {
+fn trace_config(args: &RunArgs, text: &str) -> cpl_facade::TraceConfig {
     let mut config = trace::config(text, args.only_fn);
     config.test_cases = args.test_cases.clone();
     config.watch = args.watch.clone();

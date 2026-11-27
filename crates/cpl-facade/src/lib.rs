@@ -14,11 +14,12 @@
 mod cpp;
 mod editor;
 mod library;
+pub mod replay;
 mod run;
 mod session;
 mod snapshot;
 pub mod today;
-mod trace;
+pub mod trace;
 
 pub use cpl_diag::{Diagnostic, Severity};
 #[cfg(feature = "cpp")]

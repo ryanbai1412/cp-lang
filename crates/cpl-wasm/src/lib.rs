@@ -259,7 +259,8 @@ impl Playground {
         input: &[u8],
         stack: u32,
     ) -> (Vec<u8>, String) {
-        use cpl_facade::today::trace::{document, TraceConfig};
+        use cpl_facade::trace::document;
+        use cpl_facade::TraceConfig;
         let mut stdout = Vec::new();
         let (result, trace, debug) = match self.compile(name, source) {
             Err(errors) => (errors, "null".to_string(), String::new()),
@@ -340,7 +341,7 @@ impl Playground {
     /// `cpl replay`: the call `at` of the run of `original` on `input`, run
     /// again
     /// with the fns of `edited`. The answer is
-    /// [`cpl_facade::today::replay::Replay::json`], or `{"error": ...}`: the same
+    /// [`cpl_facade::replay::Replay::json`], or `{"error": ...}`: the same
     /// engine and report as `cpl run --trace --live` serves.
     pub fn replay(
         &mut self,
@@ -351,7 +352,7 @@ impl Playground {
         at: CallAt,
         stack: u32,
     ) -> String {
-        use cpl_facade::today::trace::TraceConfig;
+        use cpl_facade::TraceConfig;
         let error = |message: &str| {
             obj([("error", Value::from(message.trim_end().to_string()))]).to_string()
         };
@@ -378,18 +379,15 @@ impl Playground {
         let recorded = observe(&before, input, &mut Vec::new(), stack, config(original))
             .recording
             .unwrap_or_default();
-        let call = match cpl_facade::today::replay::call_at(
-            &recorded,
-            at.step as usize,
-            at.frame as usize,
-        ) {
+        let call = match cpl_facade::replay::call_at(&recorded, at.step as usize, at.frame as usize)
+        {
             Ok(call) => call,
             Err(message) => return error(&message),
         };
         let limits = cpl_facade::Limits {
             stack_bytes: stack as usize,
         };
-        let rerun = cpl_facade::today::replay::Rerun {
+        let rerun = cpl_facade::replay::Rerun {
             recorded: &recorded,
             original: &before,
             edited: &after,
@@ -397,7 +395,7 @@ impl Playground {
             call: &call,
         };
         let stop = cpl_facade::Stop::after(RUN_LIMIT);
-        cpl_facade::today::replay::replay_on_this_thread(rerun, config(edited), limits, stop).json()
+        cpl_facade::replay::replay_on_this_thread(rerun, config(edited), limits, stop).json()
     }
 
     /// `cpl stress --explain --format json`, running in-process on `cpl-interp`
@@ -738,7 +736,7 @@ fn observe(
     input: &[u8],
     output: &mut Vec<u8>,
     stack: u32,
-    config: cpl_facade::today::trace::TraceConfig,
+    config: cpl_facade::TraceConfig,
 ) -> cpl_facade::Outcome {
     let limits = cpl_facade::Limits {
         stack_bytes: stack as usize,
@@ -752,7 +750,7 @@ fn observe(
     input: &[u8],
     output: &mut Vec<u8>,
     _stack: u32,
-    config: cpl_facade::today::trace::TraceConfig,
+    config: cpl_facade::TraceConfig,
 ) -> cpl_facade::Outcome {
     cpl_facade::run_traced(program, bounded(input), output, Some(config))
 }
@@ -767,11 +765,11 @@ fn trap_locals(
     stack: u32,
     trap: &cpl_facade::Trap,
 ) -> Option<String> {
-    let config = cpl_facade::today::trace::trap_config(source);
+    let config = cpl_facade::trace::trap_config(source);
     let observed = observe(program, input, &mut Vec::new(), stack, config);
     (observed.trap?.message() == trap.message()).then_some(())?;
     let at = source.get(trap.span().start as usize..trap.span().end as usize);
-    cpl_facade::today::trace::trap_locals(&observed.recording?, source, at.unwrap_or(""))
+    cpl_facade::trace::trap_locals(&observed.recording?, source, at.unwrap_or(""))
 }
 
 fn names(names: Vec<String>) -> Value {

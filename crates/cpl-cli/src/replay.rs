@@ -3,7 +3,7 @@
 
 use std::io::Write;
 
-use cpl_facade::today::replay::Replay;
+use cpl_facade::replay::Replay;
 use cpl_facade::{Call, Recording};
 
 use crate::dap::shown;
@@ -30,7 +30,7 @@ the `call`, what it returns `before` and `after` the edit, the first
 `change` and any `earlier` one, the `fallback` and the `trap`.
 ";
 
-pub(crate) use cpl_facade::today::replay::call_at;
+pub(crate) use cpl_facade::replay::call_at;
 
 /// The call `pick` chooses of the run of `original` on `input`, replayed
 /// with the fns of `edited`, or else of the file at `path`.
@@ -59,14 +59,14 @@ pub(crate) fn replay_call(
         None => compile_side(path, Side::Solution, &mut errors),
     }
     .map_err(|_| format!("the edited file does not build:\n{errors}"))?;
-    let rerun = cpl_facade::today::replay::Rerun {
+    let rerun = cpl_facade::replay::Rerun {
         recorded: &recorded,
         original: &before.program,
         edited: &after.program,
         input,
         call: &call,
     };
-    let replay = cpl_facade::today::replay::replay(rerun, trace::config(&after.text, None));
+    let replay = cpl_facade::replay::replay(rerun, trace::config(&after.text, None));
     Ok(replay)
 }
 

@@ -10,7 +10,8 @@
 use crate::judge::render_trap;
 use crate::{compile_side, Side};
 use cpl_diag::Shown;
-use cpl_facade::today::trace::{first_change, first_change_in, Replay, TraceConfig};
+use cpl_facade::trace::{first_change, first_change_in, Replay};
+use cpl_facade::TraceConfig;
 use cpl_facade::{Change, Recording};
 use cpl_json::obj;
 pub(crate) use cpl_json::Value as Json;

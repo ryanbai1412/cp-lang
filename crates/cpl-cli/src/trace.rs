@@ -1,8 +1,9 @@
 //! `cpl run --trace`, `cpl run --format json` and the tracing half of
 //! `cpl stress`: a run in the debug interpreter, recorded.
 
-use cpl_facade::today::trace::{document, TraceConfig};
+use cpl_facade::trace::document;
 use cpl_facade::Recording;
+use cpl_facade::TraceConfig;
 use cpl_stress::traced::Retraced;
 use std::path::Path;
 
@@ -61,9 +62,9 @@ pub fn trap_locals(
         return None;
     }
     // Untraced again with checkpoints, and only the end traced from the last one.
-    let config = cpl_facade::today::trace::trap_config(source);
+    let config = cpl_facade::trace::trap_config(source);
     let stop = cpl_facade::Stop::after(TRAP_RETRACE);
-    let observed = cpl_facade::today::trace::resumed_tail_until(
+    let observed = cpl_facade::trace::resumed_tail_until(
         program,
         input,
         &mut std::io::sink(),
@@ -73,7 +74,7 @@ pub fn trap_locals(
     );
     (observed.trap?.message() == trap.message()).then_some(())?;
     let at = source.get(trap.span().start as usize..trap.span().end as usize);
-    cpl_facade::today::trace::trap_locals(&observed.recording?, source, at.unwrap_or(""))
+    cpl_facade::trace::trap_locals(&observed.recording?, source, at.unwrap_or(""))
 }
 
 fn file_name(path: &str) -> &str {

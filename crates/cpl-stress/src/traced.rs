@@ -3,11 +3,10 @@
 
 use crate::cli::{Stage, Traced, Tracer};
 use crate::judge::Explaining;
-use cpl_facade::today::trace::{
-    answered_divergence, explain_divergence, stages, stuck_divergence, TraceConfig,
-};
+use cpl_facade::trace::{answered_divergence, explain_divergence, stages, stuck_divergence};
 use cpl_facade::Divergence;
 use cpl_facade::Recording;
+use cpl_facade::TraceConfig;
 use std::time::Duration;
 
 /// How long the traced run that explains a counterexample may take.

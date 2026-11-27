@@ -254,14 +254,14 @@ pub fn run_traced(
     judge: &cpl_facade::Program,
     input: &[u8],
     stdout: &mut (dyn Write + Send),
-    config: cpl_facade::today::trace::TraceConfig,
+    config: cpl_facade::TraceConfig,
     full: bool,
 ) -> cpl_facade::Outcome {
     let (mut observed, rejected) = against(judge, input, stdout, |io, says| {
         if full {
             cpl_facade::run_traced(solution, io, says, Some(config))
         } else {
-            cpl_facade::today::trace::interactive(solution, io, says, config)
+            cpl_facade::trace::interactive(solution, io, says, config)
         }
     });
     if observed.trap.is_none() {
@@ -278,7 +278,7 @@ pub fn transcript(
     input: &[u8],
 ) -> Vec<u8> {
     against(judge, input, &mut std::io::sink(), |io, says| {
-        cpl_facade::today::trace::sent(solution, io, says)
+        cpl_facade::trace::sent(solution, io, says)
     })
     .0
 }
@@ -293,7 +293,7 @@ pub fn last_read(
     source: &str,
 ) -> Option<String> {
     let sent = transcript(solution, judge, input);
-    let config = cpl_facade::today::trace::TraceConfig {
+    let config = cpl_facade::TraceConfig {
         source: source.into(),
         assignments: true,
         ..Default::default()
