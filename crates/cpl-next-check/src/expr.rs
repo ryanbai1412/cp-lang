@@ -1893,8 +1893,11 @@ pub(super) struct Formal<'d> {
     pub variadic: bool,
     /// Its expression, read in the module and with spans from the item that declares it, and
     /// the types the declaration's type parameters stand for at this call.
-    pub default: Option<(&'d ast::Expr, ModId, ItemId, Vec<(String, Ty)>)>,
+    pub default: Option<DefaultAt<'d>>,
 }
+
+/// A default's expression, its module and item, and its type parameters' types at the call.
+pub(super) type DefaultAt<'d> = (&'d ast::Expr, ModId, ItemId, Vec<(String, Ty)>);
 
 /// Each type parameter's name and the type `sub` gives it.
 pub(super) fn named_params(generics: &[String], sub: &Subst) -> Vec<(String, Ty)> {
