@@ -1448,6 +1448,13 @@ pub trait Bidir<T>: Seq<T>:
     /// Walks the sequence from its end.
     fn iter_rev(self) -> yields T
 
+/// `List(s)`: a new list of `s`'s elements in walk order. \(O(n)\) (R07.8.1).
+impl<S: Seq<T>, T> Into<List<T>> for S:
+    fn into(self) -> List<T>:
+        var xs = List<T>()
+        for x in self: xs.push(x)
+        xs
+
 impl Seq<T> for List<T>:
     fn iter(self) -> yields T:
         for x in self: yield x

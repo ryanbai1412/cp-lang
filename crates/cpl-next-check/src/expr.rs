@@ -1908,6 +1908,19 @@ impl<'a> Cx<'a> {
             _ => None,
         };
         let v = match (ctor, named) {
+            // `List(s)`: a `new` that takes nothing builds nothing from `s`, so `T(x)` is `x`'s
+            // conversion to `T`, by its impl of core's `@convert` trait (R07.8.1, R04.2.28).
+            (Some(new), Named::Struct(d))
+                if self.d.f(new).params.is_empty() && matches!(args, [a] if a.name.is_none()) =>
+            {
+                let (n, m) = (self.d.s(d).generics.len(), self.d.s(d).n_sets);
+                let mut targs = given;
+                while targs.len() < n {
+                    targs.push(self.new_ty());
+                }
+                let sets = (0..m).map(|_| self.new_set()).collect();
+                self.convert(Ty::Struct(d, targs, sets), &args[0].value, span)
+            }
             // R02.6.3: outside its own body, `T(args)` calls `T`'s static `new` when it has one.
             (Some(new), _) => {
                 let f = self.fnref(new, given, Vec::new());

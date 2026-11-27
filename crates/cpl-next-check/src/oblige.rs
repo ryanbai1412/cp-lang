@@ -201,7 +201,19 @@ impl Cx<'_> {
                 })
                 .collect();
             let Some(h) = fitting.first().cloned().or_else(|| have.next()) else {
-                return Some(self.blanket(*i, r.tr));
+                let i = *i;
+                return Some(match self.param_impl(i, r) {
+                    Some(k) => {
+                        let im = &self.d.impls[k];
+                        let mut targs: Vec<Ty> =
+                            im.generics.iter().map(|_| self.new_ty()).collect();
+                        if let Ty::Param(p) = im.for_ {
+                            targs[p] = Ty::Param(i);
+                        }
+                        self.take_impl(k, targs, r, span, None)
+                    }
+                    None => self.blanket(i, r.tr),
+                });
             };
             if fitting.len() > 1 && tr.inputs(&r.args).iter().any(|a| self.unknown(a)) {
                 return None;
@@ -290,6 +302,21 @@ impl Cx<'_> {
         };
         open.iter().all(|(a, b)| self.unify(a, b))
             && args.iter().zip(&r.args).all(|(a, b)| self.unify(a, b))
+    }
+    /// The one blanket impl of `r` with trait arguments whose bounds on its target parameter
+    /// `i`'s own bounds name: `S: Seq<T>` meets `Into<List<T>>` by
+    /// `impl<S: Seq<T>, T> Into<List<T>> for S`; the bounds fix the impl's other parameters.
+    fn param_impl(&self, i: usize, r: &TraitRef) -> Option<usize> {
+        let have: Vec<TraitId> = self.bound_traits(i).iter().map(|h| h.tr).collect();
+        let mut found = (self.d.trait_impls(r.tr)).filter(|(_, im)| {
+            !im.trait_.args.is_empty()
+                && matches!(im.for_, Ty::Param(_))
+                && (im.bounds.iter())
+                    .filter(|(k, _)| im.for_ == Ty::Param(*k))
+                    .all(|(_, b)| have.contains(&b.tr))
+        });
+        let (k, _) = found.next()?;
+        found.next().is_none().then_some(k)
     }
     /// The one impl of `r` for a struct whose arguments are still open, by its head alone.
     fn head_impl(&self, t: &Ty, r: &TraitRef) -> Option<(usize, Vec<Ty>)> {
