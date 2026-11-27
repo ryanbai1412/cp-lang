@@ -1907,6 +1907,40 @@ impl<S: Indexed<K, T>, K: Domain, T> Indexed<K, T> for Slice<S>:
 /// example: `[5, 6, 7][1..].to_list() == [6, 7]`
 pub fn to_list<S: Indexed<K, T>, K, T>(self: Slice<S>) -> List<T> = self.collect()
 
+/// \(O(1)\) to make. `g[r]`: row `r` of a grid `[R, C]T`, a lent view keyed by the column
+/// domain, so its keys are `C`'s positions, not offsets from 0 (R04b.1.12).
+pub struct Row<R, C, T>(
+    /// The grid the row was cut from, lent: frozen while the row is alive.
+    src: [R, C]T,
+    /// Which row of `src` this is.
+    r: R,
+)
+
+/// `g[r]`: row `r` of `g`, keyed by `C` (R04b.1.12).
+@index fn row<R: Domain, C: Domain, T>(self: [R, C]T, r: R) -> Row<R, C, T> = Row(self, r)
+
+impl<R: Domain, C: Domain, T> Seq<T> for Row<R, C, T>:
+    fn iter(self) -> yields T:
+        for c in C: yield self.src[self.r, c]
+
+impl<R: Domain, C: Domain, T> Bidir<T> for Row<R, C, T>:
+    fn iter_rev(self) -> yields T:
+        for c in self.keys.rev: yield self.src[self.r, c]
+
+impl<R: Domain, C: Domain, T> Sized for Row<R, C, T>:
+    @get fn len(self) -> Int = C.count
+
+impl<R: Domain, C: Domain, T> Keyed<C, T> for Row<R, C, T>:
+    fn items(self) -> yields (C, T):
+        for c in C: yield (c, self.src[self.r, c])
+
+impl<R: Domain, C: Domain, T> Positional<T> for Row<R, C, T>:
+    fn nth(self, k: Int) -> T = self.src[self.r, C.nth((0..C.count)[k])]
+
+impl<R: Domain, C: Domain, T> Indexed<C, T> for Row<R, C, T>:
+    fn at(self, c: C) -> T = self.src[self.r, c]
+    @get fn keys(self) -> Range<C> = C
+
 /// \(O(1)\). `self` keyed by a fresh domain `0..len` of its own (`let t = w.rebase`, keys `t.Idx`),
 /// for 0-based arithmetic on a piece; its keys can't be mixed with the source's.
 ///
@@ -4378,6 +4412,14 @@ impl Show for Slice<S>:
     fn show(v):
         var out = ""
         for (_, x) in v.items:
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
+
+impl Show for Row<R, C, T>:
+    fn show(v):
+        var out = ""
+        for x in v:
             if not out.is_empty: out += " "
             out += "{x}"
         out

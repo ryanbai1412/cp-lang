@@ -6,7 +6,7 @@
 //! start: `adj4`, `Dir4`, `step`, `ray`, `transposed`
 //! example: `domain R = 0..3; domain C = 0..3; (R(1), C(1)).adj4.collect() == [(R(0), C(1)), (R(1), C(2)), (R(2), C(1)), (R(1), C(0))]`
 
-use std.seq.{all}
+use std.seq.{all, Row}
 
 const DR = [-1, -1, 0, 1, 1, 1, 0, -1]
 const DC = [0, 1, 1, 1, 0, -1, -1, -1]
@@ -317,7 +317,7 @@ pub struct GridRows<R, C, T>(g: [R, C]T):
     /// traps: never
     /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = 1; g.rows[R(1)].sum() == 3`
     /// order: column order
-    pub fn at(self, r: R) -> lends [C]T = g[r]
+    pub fn at(self, r: R) -> Row<R, C, T> = g[r]
 
     /// The rows in `R` order.
     ///
@@ -326,7 +326,7 @@ pub struct GridRows<R, C, T>(g: [R, C]T):
     /// order: by `R`
     /// traps: never
     /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = 1; g.rows.each().count() == 2`
-    pub fn each(self) -> yields [C]T:
+    pub fn each(self) -> yields Row<R, C, T>:
         for r in R: yield g[r]
 
 /// The columns of a grid, made by `g.cols`; lends the grid.

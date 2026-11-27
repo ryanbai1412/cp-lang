@@ -92,12 +92,46 @@ impl Cx<'_> {
     /// The `@index` fn `s[i]` calls: when `i` is a `Range` and `s` is not keyed by ranges (R07.4.17).
     pub(super) fn index_fn(&mut self, s: &Ty, i: &Ty) -> Option<FnId> {
         if !self.is_range(i) {
-            return None;
+            return self.view_fn(s, i);
         }
         if self.key_of(s).is_some_and(|k| self.is_range(&k)) {
             return None;
         }
         self.index_fn_for(s, 1)
+    }
+    /// The `@index` fn `s[i]` calls for an `i` that is not one of `s`'s keys: one whose `self`
+    /// and key take `s` and `i`, as a grid's row `g[r]` is (R04b.1.12).
+    fn view_fn(&mut self, s: &Ty, i: &Ty) -> Option<FnId> {
+        if self.key_of(s).is_none_or(|k| self.fits(&k, i)) {
+            return None;
+        }
+        let d = self.d;
+        (d.index_fns.iter().copied()).find(|&f| {
+            let fd = d.f(f);
+            let mut binds = HashMap::new();
+            fd.params.len() == 1
+                && (fd.self_ty.as_ref()).is_some_and(|t| self.shape_fits(s, t, &mut binds))
+                && self.shape_fits(i, &fd.params[0].ty, &mut binds)
+        })
+    }
+    /// Whether `have` could be the declared `decl`, each of the declaration's params standing for
+    /// one type, the first it meets in `binds`; nothing is solved.
+    fn shape_fits(&self, have: &Ty, decl: &Ty, binds: &mut HashMap<usize, Ty>) -> bool {
+        match (self.shallow(have), decl) {
+            (h, Ty::Param(p)) => match binds.get(p) {
+                Some(b) => self.fits(&h, b),
+                None => {
+                    binds.insert(*p, h);
+                    true
+                }
+            },
+            (Ty::Struct(x, xs, _), Ty::Struct(y, ys, _)) => {
+                x == *y
+                    && xs.len() == ys.len()
+                    && (xs.iter().zip(ys)).all(|(a, b)| self.shape_fits(a, b, binds))
+            }
+            (h, t) => self.fits(&h, t),
+        }
     }
     /// The range type over `k` that the `@index` fns take, where a literal range indexes a
     /// source keyed by `k`, so a range of cuts there is the piece between them (R04.4.4).
@@ -142,7 +176,7 @@ impl Cx<'_> {
             rt => self.read_sig(&rt).map(|(k, _)| k),
         }
     }
-    /// The `@index` fn taking `arity` arguments that `s[..]` calls: one declared for `s`'s own
+    /// The `@index` fn taking `arity` range ends that `s[..]` calls: one declared for `s`'s own
     /// type, as a range's sub-range is (R07.2.15), before the one for any indexed `S` (R07.4.6).
     fn index_fn_for(&mut self, s: &Ty, arity: usize) -> Option<FnId> {
         let own = match self.shallow(s) {
@@ -150,12 +184,12 @@ impl Cx<'_> {
             _ => None,
         };
         let d = self.d;
+        let ends = |f: &FnId| {
+            let ps = &d.f(*f).params;
+            ps.len() == arity && matches!(ps.first().map(|p| &p.ty), Some(Ty::Struct(..)))
+        };
         let mut any = None;
-        for &f in d
-            .index_fns
-            .iter()
-            .filter(|f| d.f(**f).params.len() == arity)
-        {
+        for &f in d.index_fns.iter().filter(|f| ends(f)) {
             match &d.f(f).self_ty {
                 Some(Ty::Struct(sid, ..)) => {
                     if Some(*sid) == own {
