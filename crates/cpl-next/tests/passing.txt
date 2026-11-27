@@ -2874,3 +2874,13 @@ core-08/seq-supertraits-come-from-std.cp
 core-12/a-bound-reads-its-roles-off-the-trait.cp
 std-seq/chunks-on-generic-indexed.cp
 std-seq/sized-and-keyed-through-std-impls.cp
+next/n_fill_nested_01_every_cell.cp
+std-pair/two-positions-index-a-pair-table.cp
+core-05/local-fn-closure-reads-a-lent-capture-in-a-callee.cp
+core-05/nested-fn-passes-on-a-closure-over-a-captured-var.cp
+std-geometry/hull-extreme-ties-take-the-smallest-index.cp
+std-math/mod-sqrt-is-the-smaller-root.cp
+std-mo/mo-bodies-match-brute.cp
+std-tree/jump-tree-chain-depth.cp
+std-tree/jump-tree-fresh-is-all-roots.cp
+std-tree/lift-chain.cp

@@ -1,6 +1,6 @@
 //! Statements, scopes, ranges and reads.
 
-use super::place::{place_binding, place_held, InPlace};
+use super::place::{InPlace, place_binding, place_held};
 use super::*;
 use cpl_next_ir::unbuilt::Unbuilt;
 
@@ -131,7 +131,7 @@ impl<'a> Cx<'a> {
                 args,
                 ..
             } if yields(&tr, &method) => {
-                return self.trait_walk((tr, method, recv, args), name, body, span, out)
+                return self.trait_walk((tr, method, recv, args), name, body, span, out);
             }
             kind => TExpr { kind, ..call },
         };
@@ -786,12 +786,15 @@ impl<'a> Cx<'a> {
                         | ExprKind::None
                         | ExprKind::Range { .. }
                 );
-                let cell = match (&declared, self.array_id()) {
-                    (Some(Ty::Struct(d, ts, _)), Some(arr)) if literal && *d == arr => {
-                        Some(ts[1].clone())
+                let mut cell = None;
+                while let (Some(Ty::Struct(d, ts, _)), Some(arr)) =
+                    (cell.as_ref().or(declared.as_ref()), self.array_id())
+                {
+                    if !literal || *d != arr {
+                        break;
                     }
-                    _ => None,
-                };
+                    cell = Some(ts[1].clone());
+                }
                 if !mutable && matches!(init.kind, ExprKind::Lambda { .. }) {
                     self.recur = Some(name.clone());
                 }
@@ -804,49 +807,12 @@ impl<'a> Cx<'a> {
                             && (!matches!(self.shallow(&v.ty), Ty::Struct(..))
                                 || self.fits(&v.ty, &ts[1])) =>
                     {
-                        Some((ts.clone(), array.clone()))
+                        Some(array.clone())
                     }
                     _ => None,
                 };
                 let v = match fill {
-                    Some((ts, array)) => {
-                        let elem = ts[1].clone();
-                        let v = self.coerce(v, &elem);
-                        let tr = self.d.literal_trait("[;]");
-                        let fns = tr.map(|tr| self.d.trait_fns(tr)).unwrap_or_default();
-                        match (tr, fns.first()) {
-                            (Some(tr), Some(&(n, m))) => {
-                                self.reach(m);
-                                let tr = decls::TraitRef {
-                                    tr,
-                                    args: vec![elem],
-                                };
-                                let o = (array.clone(), tr.clone(), s.span, Origin::Bound);
-                                self.obligations.push(o);
-                                let kind = TK::CallTrait {
-                                    ctx: self.trait_ctx(tr.tr, n),
-                                    tr,
-                                    method: n.clone(),
-                                    recv: None,
-                                    self_ty: Box::new(array.clone()),
-                                    targs: Box::new([]),
-                                    args: vec![TArg::Value(v)],
-                                };
-                                TExpr {
-                                    kind,
-                                    ty: array,
-                                    span: s.span,
-                                }
-                            }
-                            _ => {
-                                self.err(
-                                    s.span,
-                                    Msg::internal("no trait is marked `@literal(\"[;]\")`"),
-                                );
-                                v
-                            }
-                        }
-                    }
+                    Some(array) => self.fill(v, array, s.span),
                     None => v,
                 };
                 let v = match &declared {
@@ -1664,6 +1630,55 @@ impl<'a> Cx<'a> {
     /// A domain's size is a hidden variable next to its declaration.
     pub(super) fn array_id(&self) -> Option<StructId> {
         self.d.sugar.array
+    }
+    /// `Array.filled(v)` through the trait marked `@literal("[;]")`: `var a: [V]Int = 0` (R01.6.1).
+    fn fill(&mut self, v: TExpr, array: Ty, span: Span) -> TExpr {
+        let Ty::Struct(_, ts, _) = &array else {
+            return v;
+        };
+        let elem = ts[1].clone();
+        // `[V][W]Int = 0` fills each row with a filled `[W]Int`.
+        let v = match self.shallow(&elem) {
+            Ty::Struct(d, ..) if Some(d) == self.array_id() && !self.fits(&v.ty, &elem) => {
+                self.fill(v, elem.clone(), span)
+            }
+            _ => v,
+        };
+        let v = self.coerce(v, &elem);
+        let tr = self.d.literal_trait("[;]");
+        let fns = tr.map(|tr| self.d.trait_fns(tr)).unwrap_or_default();
+        match (tr, fns.first()) {
+            (Some(tr), Some(&(n, m))) => {
+                self.reach(m);
+                let tr = decls::TraitRef {
+                    tr,
+                    args: vec![elem],
+                };
+                let o = (array.clone(), tr.clone(), span, Origin::Bound);
+                self.obligations.push(o);
+                let kind = TK::CallTrait {
+                    ctx: self.trait_ctx(tr.tr, n),
+                    tr,
+                    method: n.clone(),
+                    recv: None,
+                    self_ty: Box::new(array.clone()),
+                    targs: Box::new([]),
+                    args: vec![TArg::Value(v)],
+                };
+                TExpr {
+                    kind,
+                    ty: array,
+                    span,
+                }
+            }
+            _ => {
+                self.err(
+                    span,
+                    Msg::internal("no trait is marked `@literal(\"[;]\")`"),
+                );
+                v
+            }
+        }
     }
     /// E0904: an array the input alone can fill past the judge's memory limit (R03.1.9). Only
     /// one-domain arrays of fixed-width cells are measured; nothing else is claimed.

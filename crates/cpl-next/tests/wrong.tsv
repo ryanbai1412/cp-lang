@@ -618,7 +618,6 @@ std-geometry/closest-pair2-one-point.cp	wrong-reject	check: std.geometry:1310:15
 std-geometry/convex-hull-idx-collinear.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
 std-geometry/diameter2-single-point.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
 std-geometry/hull-extreme-empty-traps.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
-std-geometry/hull-extreme-ties-take-the-smallest-index.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
 std-geometry/hull-tangents-point-inside-traps.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
 std-geometry/hull-tangents-two-point-hull-traps.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
 std-geometry/locate-convex-on-vertex-and-edge.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
@@ -843,7 +842,6 @@ std-math/crt-incompatible.cp	wrong-reject	check: std.math:963:15: E0201: unknown
 std-math/enumerate.cp	wrong-reject	check: program:3:48: E0302: expected `(q: Int, lo: Int, hi: Int)`, found `Tuple3<Int, Int, Int>`
 std-math/ext-gcd-bezout.cp	wrong-reject	check: program:2:6: E0203: `(g: Int, x: Int, y: Int)` has no member `_0`
 std-math/factor-prime-power.cp	wrong-reject	check: std.math:849:51: E0302: this is not a place that can be assigned or lent
-std-math/mod-sqrt-is-the-smaller-root.cp	wrong-reject	check: std.math:963:15: E0201: unknown name `I128`
 std-math/mod-sqrt-zero-and-nonresidue.cp	wrong-reject	check: std.math:963:15: E0201: unknown name `I128`
 std-math/mul-mod-no-overflow.cp	wrong-reject	check: std.math:963:15: E0201: unknown name `I128`
 std-math/orders.cp	wrong-reject	check: std.math:849:51: E0302: this is not a place that can be assigned or lent
@@ -1419,7 +1417,6 @@ core-09/ln-of-a-negative-traps.cp	wrong-reject	check: program:5:14: E0606: `F64`
 core-09/ln-of-negative-trap.cp	wrong-reject	check: program:5:14: E0606: `F64` does not implement `Read`
 core-09/sqrt-negative-trap.cp	wrong-reject	check: program:5:14: E0606: `F64` does not implement `Read`
 std-models/subset.cp	wrong-reject	check: std.subset:84:9: E0405: field `Subset.bits` is fixed (not `var`) and cannot be assigned
-std-pair/two-positions-index-a-pair-table.cp	wrong-reject	check: program:8:3: E0301: a `Tuple2<V, V>` indexes a `[Pair<V>]` array: index it with a `Pair<V>`
 traits/Acts/Action--action.cp	wrong-reject	check: std.segtree:260:53: E0302: this is not a place that can be assigned or lent
 traits/Acts/AddAction--action.cp	wrong-reject	check: std.segtree:260:53: E0302: this is not a place that can be assigned or lent
 traits/Acts/AffineAction--action.cp	wrong-reject	check: std.segtree:260:53: E0302: this is not a place that can be assigned or lent
