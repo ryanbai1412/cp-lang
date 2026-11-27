@@ -287,7 +287,7 @@ impl<'a> Cx<'a> {
         let outer = self.group.len();
         let checks_kept = self.checks_kept;
         let frames = self.frames.len();
-        let memo = cpl_next_decls::memo_block(&b.stmts, &self.d.memo_tables);
+        let memo = cpl_next_decls::memo_block(&b.stmts, &|w| self.d.memo_word(w));
         let (stmts, memos) = match &memo {
             Some((s, m)) => (&s[..], &m[..]),
             None => (&b.stmts[..], &[][..]),

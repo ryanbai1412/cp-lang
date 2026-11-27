@@ -256,11 +256,12 @@ fn layer(
             made
         })
         .collect();
-    d.memo_homes = crate::synth::memo_tables(mods);
-    let tables: HashMap<String, String> = (d.memo_homes.keys())
-        .map(|w| (w.clone(), crate::synth::memo_key(w)))
-        .collect();
-    d.memo_tables = tables.clone();
+    for (w, (home, name)) in crate::synth::memo_tables(mods) {
+        let (w, name) = (d.syms.intern(&w), d.syms.intern(&name));
+        d.memo_homes.insert(w, (home, name));
+    }
+    let (syms, words) = (d.syms.clone(), d.memo_homes.clone());
+    let tables = |w: &str| syms.get(w).is_some_and(|w| words.contains_key(&w));
     let synth: Vec<Vec<(ItemId, ast::Stmt)>> = (mods.iter().enumerate())
         .map(|(mi, m)| {
             let mut out = Vec::new();
@@ -273,7 +274,7 @@ fn layer(
             for crate::modules::Item { id: item, stmts } in m.items.iter().filter(|_| mi >= from) {
                 for s in stmts {
                     if let Some((f, t)) = crate::synth::memo_table(s, &tables) {
-                        let fns = crate::synth::memo_fns(f, s, t);
+                        let fns = crate::synth::memo_fns(f, s, &t);
                         out.extend(fns.into_iter().map(|x| (item.clone(), x)));
                     }
                     if let StmtKind::Enum(e) = &s.kind {
@@ -320,7 +321,7 @@ fn layer(
             {
                 if let Some((f, t)) = crate::synth::memo_table(s, &tables).filter(|_| mi >= from) {
                     memos.push((mi, f.name.text.clone()));
-                    main.push((item.clone(), crate::synth::memo_var(f, f.sig_span, t)));
+                    main.push((item.clone(), crate::synth::memo_var(f, f.sig_span, &t)));
                     continue;
                 }
                 match &s.kind {
@@ -1511,9 +1512,11 @@ fn remake_views(
             }
         }
         for (w, (home, name)) in &d.memo_homes {
+            let name = d.syms.text(*name);
             let t = (*home < sc.own.len()).then(|| sc.own[*home].get(name).copied());
             if let Some(t) = t.flatten() {
-                Arc::make_mut(&mut d.views[mi]).insert(crate::synth::memo_key(w), t);
+                let key = crate::synth::memo_key(d.syms.text(*w));
+                Arc::make_mut(&mut d.views[mi]).insert(key, t);
             }
         }
     }

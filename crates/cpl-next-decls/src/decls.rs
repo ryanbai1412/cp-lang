@@ -467,10 +467,9 @@ pub struct Decls {
     /// Core's `@coerce` fns: each converts a value of its parameter's type where its result's
     /// type is wanted (R04.8.10).
     pub coercions: Vec<FnId>,
-    /// The structs marked `@memo_table(word)`, by word: the table `@memo(word)` keeps (R06.4.1).
-    pub memo_tables: HashMap<String, String>,
-    /// Each `@memo_table(word)` struct's module and name there, by word.
-    pub memo_homes: HashMap<String, (usize, String)>,
+    /// Each `@memo_table(word)` struct's module and name there, by word: the table `@memo(word)`
+    /// keeps (R06.4.1).
+    pub memo_homes: HashMap<Sym, (usize, Sym)>,
     /// Each `@memo` fn's `f.clear`, by the fn (R06.4.1).
     pub memo_clears: HashMap<FnId, FnId>,
     /// Static fns marked `@from_op`: what a bare operator becomes where their struct is wanted (R08.1.9).
@@ -606,6 +605,11 @@ impl Decls {
         self.syms.text(s)
     }
     /// The member `name` of a struct's, trait's or impl's members.
+    /// Whether some module declares a `@memo_table(word)` for `word`.
+    pub fn memo_word(&self, word: &str) -> bool {
+        self.sym(word)
+            .is_some_and(|w| self.memo_homes.contains_key(&w))
+    }
     /// Which of enum `e`'s variants is named `name`.
     pub fn variant(&self, e: StructId, name: &str) -> Option<usize> {
         let name = self.sym(name)?;

@@ -1067,7 +1067,9 @@ pub(crate) fn enum_conversions(
 
 /// The structs marked `@memo_table(word)`, by word: the module that declares the table a
 /// `@memo(word)` fn keeps, and its name there. Any module may declare one (R06.4.1).
-pub(crate) fn memo_tables(mods: &[crate::modules::Module]) -> HashMap<String, (usize, String)> {
+pub(crate) fn memo_tables(
+    mods: &[crate::modules::Module],
+) -> impl Iterator<Item = (String, (usize, String))> + '_ {
     (mods.iter().enumerate())
         .flat_map(|(mi, m)| {
             m.items
@@ -1081,7 +1083,6 @@ pub(crate) fn memo_tables(mods: &[crate::modules::Module]) -> HashMap<String, (u
                 .map(|w| (w, (mi, sd.name.text.clone()))),
             _ => None,
         })
-        .collect()
 }
 
 /// The name every module sees `@memo(word)`'s table under, whatever it imports: none a program
@@ -1112,10 +1113,10 @@ fn memo_word(x: &ast::Decorator) -> Option<String> {
 
 /// The table a `@memo(word)` fn keeps: one some struct is marked with, for a fn whose
 /// parameters and result are written.
-pub(crate) fn memo_table<'s, 'a>(
+pub(crate) fn memo_table<'s>(
     s: &'s ast::Stmt,
-    tables: &'a HashMap<String, String>,
-) -> Option<(&'s ast::FnDecl, &'a String)> {
+    tables: &dyn Fn(&str) -> bool,
+) -> Option<(&'s ast::FnDecl, String)> {
     let StmtKind::Fn(f) = &s.kind else {
         return None;
     };
@@ -1123,7 +1124,8 @@ pub(crate) fn memo_table<'s, 'a>(
     let plain = |p: &ast::Param| p.ty.is_some() && !p.mutable && !p.variadic && !p.lazy;
     let typed = f.ret.is_some() && !f.params.is_empty() && f.params.iter().all(plain);
     (typed && f.generics.is_empty() && f.lends.is_none()).then_some(())?;
-    Some((f, tables.get(&memo_word(x)?)?))
+    let w = memo_word(x).filter(|w| tables(w))?;
+    Some((f, memo_key(&w)))
 }
 
 fn memo_names(f: &ast::FnDecl) -> (String, String) {
@@ -1340,7 +1342,7 @@ pub fn memo_clear_name(f: &str) -> String {
 /// (R06.4.1).
 pub fn memo_block<'s>(
     stmts: &'s [ast::Stmt],
-    tables: &HashMap<String, String>,
+    tables: &dyn Fn(&str) -> bool,
 ) -> Option<MemoBlock<'s>> {
     stmts
         .iter()
@@ -1351,8 +1353,8 @@ pub fn memo_block<'s>(
                 match memo_table(s, tables) {
                     Some((f, t)) => {
                         at.push((out.len(), f));
-                        out.push(memo_var(f, f.sig_span, t));
-                        out.extend(memo_fns(f, s, t));
+                        out.push(memo_var(f, f.sig_span, &t));
+                        out.extend(memo_fns(f, s, &t));
                     }
                     None => out.push(s.clone()),
                 }
