@@ -1,7 +1,10 @@
 // The core traits: the language gives `==`, `<` and `+` their meaning through them
 // (R08.1.5), so they are declared here rather than in a std file; `Ordering` is std's.
 use std.algebra.{Ordering}
-use std.seq.{IndexGet, Keyed, Positional, Indexed, Slice, Seq, Sized}
+use std.seq.{IndexGet, IndexMut, IndexedMut, Keyed, Positional, Indexed, Slice, Seq, Sized}
+/// The indexed writes and defaults every module names unimported (R12.4.6, R07.12.9).
+pub use std.seq.{IndexMut, IndexedMut, IndexSet}
+pub use std.default.{Default}
 /// The maps and sets every module names unimported (R07.2.4).
 pub use std.map.{Map, Set}
 
@@ -643,31 +646,6 @@ impl IndexGet<Int, Char> for Str:
     fn at(self, i: Int) -> Char = self.get(i)
 impl Indexed<Int, Char> for Str:
     @get fn keys(self) -> Range<Int> = 0..self.len
-/// `s[k]` as a place: a write through it lands in `s`, in place (R12.4.6). A `Map`'s starts an
-/// absent key at the default of its values, so `m[k] += 1` counts (R07.12.9).
-pub trait IndexMut<K, T>: IndexGet<K, T>:
-    fn at(mut self, k: K) -> lends mut T
-/// An `Indexed` sequence whose cells are places: what `sort`, `reverse` and `swap` write
-/// (R12.4.6).
-pub trait IndexedMut<K, T>: Indexed<K, T> + IndexMut<K, T>
-/// `s[k] = v` as a write of `v` at `k`, not through a place: a `Map` inserts or replaces, and
-/// its values need no default (spec 12, W8).
-@operator("[]=")
-pub trait IndexSet<K, T>:
-    fn set(mut self, k: K, v: T)
-/// The value `T.default()` a `Map`'s absent key starts at under `m[k] op= v` (R07.12.9).
-pub trait Default:
-    fn default() -> Self
-impl Default for Int:
-    fn default() -> Int = 0
-impl Default for U64:
-    fn default() -> U64 = U64(0)
-impl Default for Bool:
-    fn default() -> Bool = false
-impl Default for Str:
-    fn default() -> Str = ""
-impl<T> Default for List<T>:
-    fn default() -> List<T> = []
 impl<T> IndexMut<Int, T> for List<T>:
     fn at(mut self, i: Int) -> lends mut T:
         check_key(0 <= i and i < self.n)

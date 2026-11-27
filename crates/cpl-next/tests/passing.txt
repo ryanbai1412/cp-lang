@@ -1760,9 +1760,9 @@ traits/Indexed/Range--keys.cp
 traits/Indexed/Slice--keys.cp
 traits/Indexed/Str--keys.cp
 traits/Indexed/Zipped--keys.cp
-traits/IndexedMut/Array--at.cp
-traits/IndexedMut/List--at.cp
-traits/IndexedMut/Str--at.cp
+traits/IndexMut/Array--at.cp
+traits/IndexMut/List--at.cp
+traits/IndexMut/Str--at.cp
 traits/Into/Subset--into.cp
 traits/Keyed/Array--items.cp
 traits/Keyed/Filtered--items.cp

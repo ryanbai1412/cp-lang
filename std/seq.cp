@@ -1548,6 +1548,19 @@ pub trait IndexGet<K, T>:
     /// The element at key `k`; traps when `s` holds none there.
     fn at(self, k: K) -> T
 
+/// `s[k]` as a place: a write through it lands in `s`, in place (R12.4.6). A `Map`'s starts an
+/// absent key at the default of its values, so `m[k] += 1` counts (R07.12.9).
+pub trait IndexMut<K, T>: IndexGet<K, T>:
+    fn at(mut self, k: K) -> lends mut T
+/// An `Indexed` sequence whose cells are places: what `sort`, `reverse` and `swap` write
+/// (R12.4.6).
+pub trait IndexedMut<K, T>: Indexed<K, T> + IndexMut<K, T>
+/// `s[k] = v` as a write of `v` at `k`, not through a place: a `Map` inserts or replaces, and
+/// its values need no default (spec 12, W8).
+@operator("[]=")
+pub trait IndexSet<K, T>:
+    fn set(mut self, k: K, v: T)
+
 /// A keyed, sized, two-way sequence read in \(O(1)\) at any key; `take`/`drop` give a slice.
 pub trait Indexed<D, T>: IndexGet<D, T> + Keyed<D, T> + Positional<T> + Bidir<T>:
     type Taken = Slice<Self>

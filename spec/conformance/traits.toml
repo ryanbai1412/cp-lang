@@ -37,14 +37,8 @@ methods = ["ord", "nth"]
 
 # The core types that claim the std/seq.cp sequence traits (spec/core/12-powers.md W4)
 # (spec/core/07-sequences.md, capabilities table). Array is `[D]T`.
-[trait.IndexedMut]
-methods = ["at"]
 [trait.Contains]
 methods = ["contains"]
-[trait.IndexMut]
-methods = ["at"]
-[trait.IndexSet]
-methods = ["set"]
 [[claim]]
 type = "Bool"
 trait = "Random"
@@ -70,6 +64,9 @@ trait = "IndexGet"
 type = "Array"
 trait = "IndexedMut"
 [[claim]]
+type = "Array"
+trait = "IndexMut"
+[[claim]]
 type = "List"
 trait = "Seq"
 [[claim]]
@@ -91,6 +88,9 @@ trait = "IndexGet"
 type = "List"
 trait = "IndexedMut"
 [[claim]]
+type = "List"
+trait = "IndexMut"
+[[claim]]
 type = "Str"
 trait = "Seq"
 [[claim]]
@@ -111,6 +111,9 @@ trait = "IndexGet"
 [[claim]]
 type = "Str"
 trait = "IndexedMut"
+[[claim]]
+type = "Str"
+trait = "IndexMut"
 [[claim]]
 type = "Range"
 trait = "Seq"
@@ -998,7 +1001,7 @@ print(a.keys.len, Int(a.keys.nth(2)))
 """
 out = "3 2"
 
-[case."IndexedMut/Array/at"]
+[case."IndexMut/Array/at"]
 code = """
 domain V = 0..3
 var a = [V] v => Int(v) * 10
@@ -1063,7 +1066,7 @@ print(xs.keys.len, xs.keys.nth(2))
 """
 out = "3 2"
 
-[case."IndexedMut/List/at"]
+[case."IndexMut/List/at"]
 code = """
 var xs = [3, 1, 2]
 xs[0] = 9
@@ -1113,7 +1116,7 @@ print(s.keys.len, s.keys.nth(2))
 """
 out = "3 2"
 
-[case."IndexedMut/Str/at"]
+[case."IndexMut/Str/at"]
 code = """
 var s = "abc"
 s[0] = 'x'
