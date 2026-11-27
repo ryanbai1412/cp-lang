@@ -131,6 +131,63 @@ database is the only place that knows what depends on what.
 - **Determinism:** contract 0's check, every query twice on a reloaded
   snapshot with byte-identical answers, covers the IDs.
 
+## The whole-program inputs, one by one
+
+`next_whole_program_inputs` counts the fns of the new pipeline that take
+`&Decls`, `&Typed`, `&Whole` or a map of every fn. Each one keys its
+answer on the whole program, so any edit redoes it. Each becomes a
+query keyed by an item, or a plain fn over a small view. The database
+implements the view with queries, and a test implements it with a map.
+The views:
+
+- `Signatures`: `signature(ItemId)` for a fn, struct, enum, alias,
+  trait or domain. It never reads a body.
+- `Scope`: `scope(ModId)`, what a name means in a module.
+- `Summaries`: `summary(ItemId)`, what a fn's body adds to its set
+  parameters and what it lends. Computed from bodies' recorded calls,
+  and no body is checked again.
+- `Generics`: `generic(ItemId)`, one fn's generic IR.
+
+Each view is a trait. Once a site's step is done, no layer fn it
+became takes `&Decls` or a map of every fn.
+
+| Site today | Becomes | Reads |
+|---|---|---|
+| `check::check` | `body(ItemId)`: one body, zonked, with its set calls and the ids `prior` gave it; `check` over the program becomes the database's loop | `Signatures`, `Scope`, `Summaries` for a `_` result |
+| `cycles::alias_cycle` | a diagnostic of `signature(alias)` | `Signatures` of the aliases it names |
+| `cycles::field_holding_itself` | a diagnostic of `signature(struct)` | `Signatures` of the structs its fields name |
+| `plain::plain`, `plain::plain_in` | `plain(StructId)`, cached per struct; for any other type it is a match | `Signatures` of fields and variants |
+| `collect::fresh_dom` | deleted: a domain's id is interned by its `ItemId`, not counted | none |
+| `impls::supertraits_unmet` | a diagnostic of `signature(impl)` | `impls(TraitId)` of each supertrait |
+| `tyconv::body_type` | a plain fn over the two views | `Scope`, `Signatures` |
+| `lower::lower` | `generic(ItemId)`: lowers one typed body | `body(ItemId)`, `Signatures` |
+| `own::lent::mark` | `lent(ItemId)`: one generic fn's lend marks | `generic(ItemId)`, callees' `Signatures` |
+| `link::link` | `program(Job)`, a whole-program step (above): it keeps the job as its key but reads only per-item answers | `Generics` after `lent`, `Summaries`, `Signatures` |
+| `own::inst::check` | `owned(instance)`: one instance's ownership diagnostics and settled places | that instance, callees' `Summaries` |
+| `own::link` | the `program(Job)` query itself: it runs the per-item queries and link | the views above |
+
+What `Whole` holds moves to items. A domain's size and start are its
+`signature`. A global is its top-level item's. A deferred diagnostic
+belongs to the `body` of the fn it is about.
+
+`link` and `own::link` stay whole-program, keyed by the job, because
+closing sets and making instances need every reached fn. They stay on
+the counter until they take the views instead of `&Decls` and maps of
+every fn. At that point an edit to one body redoes only that body's
+`body`, `generic` and `lent`, its instances and their `owned`, and then
+link. The count gate checks this.
+
+Order:
+1. The views and their map implementations in `cpl-next-decls`. Then
+   `cycles`, `plain`, `fresh_dom`, `supertraits_unmet` and `body_type`
+   read them. That takes the counter from 13 to 6.
+2. `body(ItemId)` (step 3 below).
+3. `generic(ItemId)` and `lent(ItemId)`. `Whole` goes.
+4. `owned(instance)`, and link reading the views.
+
+Each step lands with `next_whole_program_inputs` lowered in the same
+commit.
+
 ## Order of work
 
 1. Item paths and item-relative spans, with the `spans` query. This is
