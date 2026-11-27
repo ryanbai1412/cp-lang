@@ -1984,3 +1984,7 @@ widths/sub-wraps-when-unchecked.cp
 next/n_grid_views.cp
 next/n_range_literal_positions.cp
 next/n_range_eq.cp
+core-03/window-plus-over-ranged-is-int.cp
+std-window/window-pop-checks-front.cp
+std-window/window-pop-empty-traps.cp
+std-window/window-pop-to-empty.cp

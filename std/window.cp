@@ -34,13 +34,13 @@ pub fn window_fold<S: Indexed, T, M: Op<T>>(self: S, k: 1.., op: M) -> yields T:
 /// `max`/`min` to `T.MIN`/`T.MAX` (decision 602); `Window` takes the same rule when `all` becomes
 /// `M.Fold`, and `Window(max.opt())` is the fold that stays `None` when empty.
 pub struct Window<T, M: Op<T>>(op: M):
-    q: List<T>
+    var q: List<T>
     front: List<T>
-    olds: List<T>
-    head: Int
-    back: ?T
-    keys: List<Int>
-    oldkeys: List<Int>
+    var olds: List<T>
+    var head: Int
+    var back: ?T
+    var keys: List<Int>
+    var oldkeys: List<Int>
 
     /// An empty window over `op`, kept as two stacks: the back folds as it grows, and the front
     /// holds suffix folds of the older elements.
@@ -96,7 +96,7 @@ pub struct Window<T, M: Op<T>>(op: M):
     /// traps: on an empty window, or in a checked build when `x` is not the oldest element
     /// example: `var w = Window(min); w.push(3); w.push(1); w.push(2); w.pop(3); w.all == Some(1)`
     /// example: `var w = Window(min); w.push(1); w.push(2); w.pop(1); w.all == Some(2)`
-    pub fn pop(mut self, x: T):
+    pub fn pop(mut self, x: T) where T: Eq:
         self.drop_front(x)
 
     /// The fold of the current contents, oldest first (`op(op(x1, x2), x3)` for pushes `x1`, `x2`,
@@ -146,20 +146,19 @@ pub struct Window<T, M: Op<T>>(op: M):
 
     fn flip(mut self):
         var k = q.len - 1
-        var acc = q[k]
-        front.push(acc)
+        front.push(q[k])
         while k > 0:
             k -= 1
-            acc = op.op(q[k], acc)
+            let acc = op.op(q[k], front.last!)
             front.push(acc)
-        olds.clear()
-        swap(mut olds, mut q)
-        oldkeys.clear()
-        swap(mut oldkeys, mut keys)
+        olds = q
+        q = []
+        oldkeys = keys
+        keys = []
         head = 0
         back = None
 
-    fn drop_front(mut self, x: T):
+    fn drop_front(mut self, x: T) where T: Eq:
         if front.len == 0:
             assert q.len > 0, "`pop` on an empty window"
             self.flip()

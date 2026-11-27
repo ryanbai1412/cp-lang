@@ -368,6 +368,20 @@ impl Cx<'_> {
                     _ => out = self.sources(x),
                 }
             }
+            // An element of type-parameter type is a copy in each instance, as such a field is: it
+            // holds what the collection's root lends, not the collection.
+            TK::Elem(x) if matches!(e.ty, Ty::Param(_)) => match &x.kind {
+                TK::Call { recv: Some(r), .. } | TK::CallTrait { recv: Some(r), .. } => {
+                    let (TArg::Value(v) | TArg::Mut(v)) = &**r;
+                    match self.place(v) {
+                        Some(p) => {
+                            out.extend(self.lent.get(&p.root).into_iter().flatten().cloned())
+                        }
+                        None => out = self.sources(v),
+                    }
+                }
+                _ => out = self.sources(x),
+            },
             TK::Elem(b) | TK::Slot(b, _) => out = self.sources(b),
             // R05.5.3: a result that holds a heap argument lends it while the result lives.
             TK::Call { f, recv, args } if !self.lent_args(f.decl).is_empty() => {

@@ -270,7 +270,7 @@ pub fn map<S: Seq<T>, T, U>(self: S, f: T -> U) -> Mapped<S, T, U> = Mapped(self
 /// traps: never
 /// example: `[4, 5].last == Some(5)`
 @lint(peek_then_pop, from: "let x = self.last!\nself.pop()", to: "let x = self.pop()!")
-@get pub fn last<S: Bidir, T>(self: S) -> ?T:
+@get pub fn last<S: Bidir<T>, T>(self: S) -> ?T:
     for x in self.iter_rev(): return Some(x)
     None
 
@@ -283,7 +283,7 @@ pub fn map<S: Seq<T>, T, U>(self: S, f: T -> U) -> Mapped<S, T, U> = Mapped(self
 /// example: `[1, 4, 2, 5].rfind(x => x % 2 == 0) == Some(2)`
 @lint(sentinel_scalar, from: "var x = -1\nfor i in self:\n    if c:\n        x = i", to: "let x = self.rfind(i => c)", holes: "c")
 @lint(sentinel_scalar, from: "var x: Int = -1\nfor i in self:\n    if c:\n        x = i", to: "let x: ?Int = self.rfind(i => c)", holes: "c")
-pub fn rfind<S: Bidir, T>(self: S, p: T -> Bool) -> ?T:
+pub fn rfind<S: Bidir<T>, T>(self: S, p: T -> Bool) -> ?T:
     for x in self.rev:
         if p(x): return Some(x)
     None
@@ -411,7 +411,7 @@ pub fn sorted<S: Seq<T>, T, K: Ord>(self: S; by: T -> K = x => x, cmp: ?((T, T) 
 /// traps: never
 /// example: `[1, 2, 3].reversed() == [3, 2, 1]`
 @lint(reverse_index, from: "[self[self.len - 1 - i] for i in 0..self.len]", to: "self.reversed()")
-pub fn reversed<S: Bidir, T>(self: S) -> List<T> = self.rev.collect()
+pub fn reversed<S: Bidir<T>, T>(self: S) -> List<T> = self.rev.collect()
 
 /// \(O(n)\). Reverse `self` in place (or only the subrange `range` when given; prefer `self[l..r].reverse()`).
 /// Works on any `IndexedMut` (`List<T>`, `[D]T`, `MutView<T>`, `Str`).

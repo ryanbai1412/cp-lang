@@ -65,7 +65,6 @@ core-03/range-store-traps.cp	wrong-reject	check: program:3:19: E0302: expected `
 core-03/rb1-q32-no-u8.cp	wrong-error	wanted E0901 on line 3, got: check: program:3:1: E0204: unknown type `U8`
 core-03/runtime-modulus-read.cp	wrong-reject	check: program:6:1: E9999: 
 core-03/str-plus-eq-char-if.cp	wrong-reject	check: program:6:21: E0302: expected `Str`, found `Char`
-core-03/window-plus-over-ranged-is-int.cp	wrong-reject	check: std.seq:274:43: E0302: expected `T`, found `2.hidden`
 core-04/a-part-or-a-built-value-returned.cp	wrong-reject	check: program:9:9: E0606: `List<Int>` does not implement `Add`
 core-04/a11-rebase-reads-from-zero.cp	wrong-reject	check: program:5:7: E0305: `Rebased<Slice<List<Int>>>` is not indexed: it has no `Indexed` impl
 core-04/a2-compare-by-order.cp	wrong-reject	check: std.strings:47:32: E0302: expected `3.hidden`, found `6.hidden`
@@ -972,9 +971,6 @@ std-window/window-expire-by-place.cp	wrong-reject	check: std.seq:274:43: E0302: 
 std-window/window-expire-unkeyed-traps.cp	wrong-reject	check: std.window:89:13: E0405: field `Window.head` is fixed (not `var`) and cannot be assigned
 std-window/window-fold-picks-op-strategy.cp	wrong-reject	check: std.algebra:35:38: E0606: `T` does not implement `Domain`
 std-window/window-min-after-pop.cp	wrong-reject	check: std.seq:274:43: E0302: expected `T`, found `2.hidden`
-std-window/window-pop-checks-front.cp	wrong-reject	check: std.window:166:16: E0606: `T` has no `impl Eq`, which `==` needs (R08.1.5)
-std-window/window-pop-empty-traps.cp	wrong-reject	check: std.window:166:16: E0606: `T` has no `impl Eq`, which `==` needs (R08.1.5)
-std-window/window-pop-to-empty.cp	wrong-reject	check: std.seq:274:43: E0302: expected `T`, found `2.hidden`
 std-window/window-push-all.cp	wrong-reject	check: std.seq:274:43: E0302: expected `T`, found `2.hidden`
 std-window/window-push-at-decreasing-traps.cp	wrong-reject	check: std.window:144:26: E0405: field `Window.back` is fixed (not `var`) and cannot be assigned
 traits/Add/MaxCount--add.cp	wrong-reject	link: std.algebra:564:12: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
