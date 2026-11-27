@@ -419,9 +419,11 @@ impl Cx<'_> {
             }
             TK::Field(b, _) | TK::Payload(b, _) | TK::Inject(b) | TK::Widen(b) => {
                 out = self.sources(b);
-                // A heap field of a place is that place: binding it borrows the place.
+                // A heap field of a place is that place: binding it borrows the place. A field of
+                // a type parameter is a copy in each instance, holding what the place holds.
                 if let (true, Some(p), false) = (
-                    matches!(e.kind, TK::Field(..) | TK::Payload(..)),
+                    matches!(e.kind, TK::Field(..) | TK::Payload(..))
+                        && !matches!(e.ty, Ty::Param(_)),
                     self.place(e),
                     self.plain(&e.ty, 0),
                 ) {
