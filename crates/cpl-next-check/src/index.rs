@@ -655,6 +655,81 @@ impl Cx<'_> {
         let v = self.expr(e, want);
         self.hold(v, what, e.span, out)
     }
+    /// `a[x1, ..., xn]` on an array keyed by a struct `K`: `a[K(x1, ..., xn)]`, K's ordinary
+    /// constructor call, held once, when it takes `n` arguments, and E0303 when it does not
+    /// (decision 409, R04.2.12). `Ok(None)` leaves the indices a tuple, as a product's key or a
+    /// record's takes them (decision 159).
+    pub(super) fn key_ctor(
+        &mut self,
+        e: &ast::Expr,
+        out: &mut Vec<TStmt>,
+    ) -> Result<Option<ast::Expr>, ()> {
+        let ExprKind::Index { base, indices } = &e.kind else {
+            return Ok(None);
+        };
+        let [first, .., last] = &indices[..] else {
+            return Ok(None);
+        };
+        let ExprKind::Name(n) = &unparen(base).kind else {
+            return Ok(None);
+        };
+        let Some((_, t)) = self.lookup(n) else {
+            return Ok(None);
+        };
+        let Some(k) = self.key_of(&t) else {
+            return Ok(None);
+        };
+        let Ty::Struct(sid, targs, sets) = self.shallow(&k) else {
+            return Ok(None);
+        };
+        let sd = self.d.s(sid);
+        if sd.record || self.d.tuples.values().any(|&t| t == sid) {
+            return Ok(None);
+        }
+        let span = Span::new(first.span.start, last.span.end);
+        let takes = sd
+            .ctor
+            .map_or(sd.fields.len(), |c| self.d.f(c).params.len());
+        if takes != indices.len() {
+            let (ks, n) = (self.show(&k), indices.len());
+            self.err_help(
+                span,
+                Msg::verdict(
+                    cpl_diag::codes::WRONG_ARG_COUNT,
+                    format!(
+                        "{n} indices into a `[{ks}]` array, whose key `{ks}` is built from {takes}"
+                    ),
+                ),
+                Some(format!("index it with one key: `[{ks}(...)]`")),
+            );
+            return Err(());
+        }
+        let args: Vec<ast::Arg> = (indices.iter())
+            .map(|x| ast::Arg {
+                name: None,
+                mutable: false,
+                value: x.clone(),
+            })
+            .collect();
+        let key = match sd.ctor {
+            Some(new) => {
+                let f = self.fnref(new, targs, Vec::new());
+                self.call_fn(f, None, &args, span, Some(&k))
+            }
+            None => self.construct(sid, targs, sets, &args, span, Some(&k)),
+        };
+        if self.is_error(&key.ty) {
+            return Err(());
+        }
+        let key = self.hold(key, "$key", span, out);
+        Ok(Some(ast::Expr {
+            kind: ExprKind::Index {
+                base: base.clone(),
+                indices: vec![key],
+            },
+            span: e.span,
+        }))
+    }
     /// `v` held in a new temporary, as a name for it.
     pub(super) fn hold(
         &mut self,

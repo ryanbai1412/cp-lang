@@ -20,11 +20,9 @@ core-02/coalesce-optional-default-keeps-some.cp	wrong-reject	check: program:7:62
 core-02/counted-array-as-list.cp	wrong-reject	check: program:7:13: E0302: expected `List<Int>`, found `Array<$range0, Int>`
 core-02/counted-arrays-share-keys.cp	wrong-reject	check: program:8:33: E0301: a `$range0` indexes a `[$range1]` array: index it with a `$range1`
 core-02/enum-field-runtime-domain.cp	wrong-reject	check: program:8:9: E0606: `Cmd` does not implement `Read`
-core-02/enum-level-tags-is-removed.cp	wrong-accept	wanted E0503 on line 4, ran and printed: Up
 core-02/fresh-type-block-escape.cp	wrong-accept	wanted E0313 on line 3, ran and printed: 1
 core-02/generic-bound-to-a-range-element-has-its-ends.cp	wrong-reject	check: program:6:34: E0606: `T` does not implement `Domain`
 core-02/implicit-type-param.cp	wrong-reject	decls: E0204: unknown type `T`
-core-02/large-local-array.cp	wrong-reject	check: program:4:27: E0302: expected `Array<$range0, Int>`, found `Array<$range1, Int>`
 core-02/let-keeps-range.cp	wrong-accept	wanted E0902 on line 6, ran and printed: 
 core-02/lift-add.cp	wrong-reject	check: program:5:7: E0303: `..xs` takes positional or named arguments, not both
 core-02/lowercase-none-local-beside-none-named-arg.cp	wrong-reject	check: program:4:7: E0303: `..xs` takes positional or named arguments, not both
@@ -36,7 +34,6 @@ core-02/opaque-struct-field-private.cp	wrong-error	wanted E0203 on line 4, got: 
 core-02/optional-compare.cp	wrong-error	wanted E0308 on line 4, got: check: program:4:4: E0606: `Optional<Int>` does not implement `Add`
 core-02/optional-is-not-a-seq.cp	wrong-error	wanted E0302 on line 5, got: check: program:5:1: E0203: `Optional<Int>` has no `iter`
 core-02/optional-walks-through-present.cp	wrong-reject	check: program:7:14: E0302: expected `Int`, found `Optional<Int>`
-core-02/range-alias-ends-are-its-min-and-max.cp	wrong-reject	check: program:7:12: E0606: `a function` does not implement `FromOp`
 core-02/range-alias-has-its-ranges-ends.cp	wrong-reject	check: program:5:7: E0201: unknown name `M`
 core-02/range-type-argument-is-anonymous-domain.cp	wrong-reject	check: program:8:20: E0302: expected `Dsu<a range with run-time ends>`, found `Dsu<a range with run-time ends>`
 core-02/range-type-arguments-index-a-2d-segtree.cp	wrong-reject	check: std.segtree:1126:17: E0606: `M` does not implement `FromOp`
@@ -50,7 +47,6 @@ core-02/str-slices-concat.cp	wrong-reject	check: program:5:7: E0606: `Slice<Str>
 core-02/struct-overloaded-by-arity-has-impls.cp	wrong-reject	check: program:9:1: E0202: a second impl of `Show` for one type (R08.1.2)
 core-02/struct-same-arity-is-duplicate.cp	wrong-error	wanted E0202 on line 5, got: check: program:6:7: E0203: `Pair<Int, Int>` has no member `a`
 core-02/token-set-is-an-enum.cp	wrong-reject	check: program:6:22: E0606: `D` does not implement `Read`
-core-02/type-alias-walks-as-its-type.cp	wrong-reject	check: program:7:10: E0201: unknown name `G`
 core-02/unit-is-ordered.cp	wrong-reject	check: program:9:11: E0606: `()` has no `impl Eq`, which `==` needs (R08.1.5)
 core-03/annotation-widens-fresh-read.cp	wrong-reject	check: program:5:17: E0302: expected `Array<$range0, Int>`, found `Array<$range1, 0..=5>`
 core-03/fenwick-range-elements-widen.cp	wrong-reject	check: program:6:7: E0606: `1..=1000000000` does not implement `Add`
@@ -114,7 +110,6 @@ core-04/literal-cut-param.cp	wrong-reject	check: program:7:12: E0302: expected `
 core-04/literal-position.cp	wrong-reject	check: program:7:11: E0302: expected `Cut<V>`, found `Int`
 core-04/lyndon-starts-are-keys.cp	wrong-reject	check: std.strings:567:29: E0606: `T` has no `impl Ord`, which `<=` needs (R08.1.5)
 core-04/min-rotation-is-key.cp	wrong-reject	check: std.strings:598:20: E0606: `T` has no `impl Ord`, which `>` needs (R08.1.5)
-core-04/pair-index-arity-mismatch.cp	wrong-error	wanted E0303 on line 5, got: check: program:5:1: E0606: `Pair<V>` does not implement `Domain`
 core-04/palindromes-longest-at-key.cp	wrong-reject	check: std.strings:831:17: E0203: `K` has no member `ord`
 core-04/piece-into-fold.cp	wrong-reject	check: program:6:7: E0606: `V` does not implement `Sub`
 core-04/position-offset-steps-by-order.cp	wrong-reject	check: program:6:1: E0606: `Optional<V>` does not implement `Show`
@@ -604,8 +599,6 @@ std-dp/monotone-minima-negative-traps.cp	wrong-accept	wanted E0902 on line 2, ra
 std-dp/ranges-inner-piece-by-drop.cp	wrong-reject	check: program:4:1: E0204: unknown type `V.ranges`
 std-dp/ranges-key-first-is-not-optional.cp	wrong-reject	check: program:4:1: E0204: unknown type `V.ranges`
 std-dp/ranges-splits-count.cp	wrong-reject	check: program:4:1: E0204: unknown type `V.ranges`
-std-dsu/persistent-dsu-fresh-per-test-case.cp	wrong-reject	check: program:16:16: E0606: `V` does not implement `Read`
-std-dsu/persistent-dsu-matches-replay.cp	wrong-reject	check: std.rand:75:21: E0201: unknown name `I128`
 std-fenwick/fenwick-bodies.cp	wrong-reject	check: std.fenwick:318:19: E0606: `T` does not implement `Domain`
 std-fenwick/fenwick-empty-domain-sums-zero.cp	wrong-reject	check: std.fenwick:60:19: E0606: `T` does not implement `Domain`
 std-fenwick/fenwick-first-ge-whole-sum.cp	wrong-reject	check: std.fenwick:97:39: E0302: expected `T`, found `Int`
@@ -1449,8 +1442,6 @@ core-04/second-position-of-a-user-index-is-checked-too.cp	wrong-output	wanted R0
 core-04/domain-through-a-value-is-a-domain.cp	wrong-reject	check: program:7:7: E0203: `all` is a method: call it with `()`
 core-04/library-domain-generic-members.cp	wrong-reject	check: program:14:38: E0606: `Optional<Sub<V>>` does not implement `Seq`
 core-04/library-domain-walk-queries.cp	wrong-reject	check: program:10:7: E0606: `Optional<Sub<V>>` does not implement `Seq`
-core-04/pair-symmetric.cp	wrong-reject	check: program:6:3: E0301: a `Tuple2<Int, Int>` indexes a `[Pair<V>]` array: index it with a `Pair<V>`
-core-04/pair-table-takes-two-indices.cp	wrong-reject	check: program:6:3: E0301: a `Tuple2<V, V>` indexes a `[Pair<V>]` array: index it with a `Pair<V>`
 core-04/pieces-of-a-domain-take-its-cuts.cp	wrong-reject	check: std.seq:1120:36: E0302: expected `Cut<D>`, found `2.hidden`
 core-04/product-result-indexed-by-parts.cp	wrong-reject	check: std.graph:55:29: E0302: expected `V`, found `Self`
 core-04/tuple-with-subset-is-a-domain.cp	wrong-reject	check: program:11:7: E0305: `Paths<Tuple2<R, Subset<T>>, Int, Int>` is not indexed: it has no `Indexed` impl

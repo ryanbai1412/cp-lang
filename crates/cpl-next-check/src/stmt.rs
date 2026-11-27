@@ -1047,7 +1047,11 @@ impl<'a> Cx<'a> {
                 }
             }
             StmtKind::Assign { target, op, value } if super::index::packed(target).is_some() => {
-                let packed = super::index::packed(target);
+                let packed = match self.key_ctor(target, out) {
+                    Ok(Some(one)) => Some(one),
+                    Ok(None) => super::index::packed(target),
+                    Err(()) => return,
+                };
                 let one = ast::Stmt {
                     kind: StmtKind::Assign {
                         target: packed.unwrap_or_else(|| target.clone()),

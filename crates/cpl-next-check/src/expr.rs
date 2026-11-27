@@ -1304,10 +1304,19 @@ impl<'a> Cx<'a> {
                 Some(d) => self.domain_value(d, span),
                 None => self.member(base, name, None, span, want, &[]),
             },
-            ExprKind::Index { indices, .. } if indices.len() > 1 => match super::index::packed(e) {
-                Some(one) => self.expr(&one, want),
-                None => Self::error_node(span),
-            },
+            ExprKind::Index { indices, .. } if indices.len() > 1 => {
+                let mut pre = Vec::new();
+                let one = match self.key_ctor(e, &mut pre) {
+                    Ok(Some(one)) => one,
+                    Ok(None) => match super::index::packed(e) {
+                        Some(one) => one,
+                        None => return Self::error_node(span),
+                    },
+                    Err(()) => return Self::error_node(span),
+                };
+                let v = self.expr(&one, want);
+                block(pre, v)
+            }
             ExprKind::Index { base, indices } if indices.len() == 1 => {
                 let again = self.indexed_again.take();
                 let point = |e: &ast::Expr| {

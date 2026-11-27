@@ -775,7 +775,8 @@ fn domain_params(d: &mut Decls, from: usize) {
     let Some(domain) = d.domain_trait else {
         return;
     };
-    // A parameter whose body names one of `Domain`'s fns on it (`D.nth(k)`) is one (R04.4.30).
+    // A parameter whose body names one of `Domain`'s fns on it (`D.nth(k)`), or indexes a table
+    // or an array by it (`[V] v => e`, `var s: [V]Int`), is one (R04.4.30).
     // One that names one of `Ordered`'s steps on it (`D.at(x)`) is ordered too (R04.2.31).
     struct DomUse<'a> {
         generics: &'a [String],
@@ -784,8 +785,38 @@ fn domain_params(d: &mut Decls, from: usize) {
         found: Vec<usize>,
         ordered: Vec<usize>,
     }
+    impl DomUse<'_> {
+        /// `[V]`: a parameter that indexes a table or an array written in the body is a domain.
+        fn index(&mut self, ts: &[ast::Type]) {
+            for t in ts {
+                let ast::TypeKind::Named { name, args } = &t.kind else {
+                    continue;
+                };
+                let i = self.generics.iter().position(|g| *g == name.text);
+                if let Some(i) = i.filter(|i| args.is_empty() && !self.found.contains(i)) {
+                    self.found.push(i);
+                }
+            }
+        }
+    }
     impl cpl_syntax::visit::Visitor for DomUse<'_> {
+        fn stmt(&mut self, s: &ast::Stmt) {
+            if let ast::StmtKind::Let {
+                ty:
+                    Some(ast::Type {
+                        kind: ast::TypeKind::Array { index, .. },
+                        ..
+                    }),
+                ..
+            } = &s.kind
+            {
+                self.index(index);
+            }
+        }
         fn expr(&mut self, e: &ast::Expr) {
+            if let ast::ExprKind::Table { domains, .. } = &e.kind {
+                self.index(domains);
+            }
             let ast::ExprKind::Field { base, name } = &e.kind else {
                 return;
             };
