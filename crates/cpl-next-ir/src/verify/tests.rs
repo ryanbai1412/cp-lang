@@ -203,3 +203,32 @@ fn raw_ir_refuses_a_frame_releasing_a_param_it_views() {
     f.params = vec![(0, true)];
     assert!(!check(&f, Stage::Raw, &[Callee::default()], 0).is_empty());
 }
+
+/// After ownership a view goes only to a param the callee views; one it owns takes a copy.
+#[test]
+fn raw_ir_refuses_a_view_given_to_an_owned_param() {
+    let call = |arg| {
+        let body = vec![
+            Stmt::Let(0, e(EK::Int(1), CTy::Int)),
+            Stmt::Expr(e(EK::Call(Target::Inst(0), vec![arg], 0), CTy::Unit)),
+            Stmt::Return(Some(e(EK::Copy(Place::Local(0)), CTy::Int))),
+        ];
+        func(vec![CTy::Int], body, CTy::Int)
+    };
+    let owns = Callee {
+        views: vec![false],
+        ..Callee::default()
+    };
+    let views = Callee {
+        views: vec![true],
+        ..Callee::default()
+    };
+    let viewed = call(Arg::View(Place::Local(0)));
+    assert!(!check(&viewed, Stage::Raw, std::slice::from_ref(&owns), 0).is_empty());
+    assert_eq!(
+        check(&viewed, Stage::Raw, &[views], 0),
+        Vec::<String>::new()
+    );
+    let copied = call(Arg::Value(e(EK::Copy(Place::Local(0)), CTy::Int)));
+    assert_eq!(check(&copied, Stage::Raw, &[owns], 0), Vec::<String>::new());
+}

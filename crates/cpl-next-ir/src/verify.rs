@@ -9,10 +9,11 @@ use crate::prog::CTy;
 use crate::ty::{SetTy, Ty};
 
 /// What a call site may assume of the instance it calls: whether it is an operator
-/// (`Func::fast`).
+/// (`Func::fast`), and which of its params it views (`Func::views`).
 #[derive(Clone, Debug, Default)]
 pub struct Callee {
     pub fast: bool,
+    pub views: Vec<bool>,
     /// What a message calls it (`Func::shown`).
     pub shown: String,
 }
@@ -22,6 +23,7 @@ pub fn callees<T>(fs: &[Func<T>]) -> Vec<Callee> {
     (fs.iter())
         .map(|f| Callee {
             fast: f.fast.is_some(),
+            views: f.views.clone(),
             shown: f.shown.clone(),
         })
         .collect()
@@ -319,6 +321,7 @@ impl<T: StageTy> V<'_, T> {
                 self.site(*site);
                 self.site(*body_site);
                 self.target(target);
+                self.viewed(target, args);
                 self.args(args, "a region's argument");
                 if self.local(*var) {
                     self.set[*var] = true;
@@ -378,6 +381,7 @@ impl<T: StageTy> V<'_, T> {
                 }
                 self.site(*s);
                 self.target(t);
+                self.viewed(t, xs);
                 self.args(xs, "a call's argument");
             }
             EK::CallValue(g, xs, s) => {
@@ -399,6 +403,23 @@ impl<T: StageTy> V<'_, T> {
             match a {
                 Arg::Value(e) => self.expr(e, inside),
                 Arg::View(p) | Arg::Lend(p) => self.read(p),
+            }
+        }
+    }
+
+    /// After ownership, a view is given only to a param its callee views; one the callee
+    /// owns takes a copy.
+    fn viewed(&mut self, t: &Target<T>, xs: &[Arg<T>]) {
+        let Target::Inst(i) = t else { return };
+        let Some(c) = self.callees.get(*i).filter(|_| self.stage >= Stage::Raw) else {
+            return;
+        };
+        for (j, x) in xs.iter().enumerate() {
+            if matches!(x, Arg::View(_)) && c.views.get(j) != Some(&true) {
+                self.bad(format!(
+                    "a view given to param {j} of {}, which owns it",
+                    c.shown
+                ));
             }
         }
     }
