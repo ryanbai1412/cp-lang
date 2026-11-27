@@ -64,6 +64,37 @@ fn selfless(d: &Decls, key: &InstKey) -> bool {
     matches!(d.f(m).body, cpl_syntax::ast::FnBody::None)
         && (key.targs.first()).is_none_or(|t| *t == CTy::Error)
 }
+/// The key of a generic fn item as a value nothing calls (`type_of(max)`), one for every
+/// instance of the fn (R08.1.10): no body runs under it.
+fn item_value(d: &Decls, key: &InstKey) -> bool {
+    let FuncKey::Decl(m) = key.func else {
+        return false;
+    };
+    key.targs.is_empty() && !d.f(m).generics.is_empty()
+}
+/// An item value's instance: a value with nothing to run, so no frame and no body.
+fn value_only(f: &Func<Ty>) -> Func<CTy> {
+    Func {
+        key: f.key.clone(),
+        name: f.name.clone(),
+        params: Vec::new(),
+        n_captures: 0,
+        names: Vec::new(),
+        vars: Vec::new(),
+        locals: Vec::new(),
+        body: Vec::new(),
+        ret: CTy::Unit,
+        region: None,
+        line: f.line,
+        sites: f.sites.clone(),
+        lines: f.lines.clone(),
+        views: Vec::new(),
+        drops: Vec::new(),
+        maker: f.maker,
+        shown: f.shown.clone(),
+        fast: None,
+    }
+}
 fn doms_of(t: &CTy, out: &mut Vec<usize>) {
     match t {
         CTy::Dom(d) => out.push(*d),
@@ -201,7 +232,10 @@ pub fn link(
             targs: &key.targs,
             sets: &key.sets,
         };
-        let mut inst = l.instance(f, &env);
+        let mut inst = match item_value(d, &key) {
+            true => value_only(f),
+            false => l.instance(f, &env),
+        };
         if selfless(d, &key) {
             inst.body.clear();
         }
@@ -217,7 +251,10 @@ pub fn link(
             targs: &key.targs,
             sets: &key.sets,
         };
-        let mut inst = l.instance(f, &env);
+        let mut inst = match item_value(d, &key) {
+            true => value_only(f),
+            false => l.instance(f, &env),
+        };
         if selfless(d, &key) {
             inst.body.clear();
         }

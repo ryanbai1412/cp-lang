@@ -54,6 +54,11 @@ pub trait StageTy {
     fn error(&self) -> bool {
         false
     }
+
+    /// The type as `error_typed` names it.
+    fn shown(&self) -> String {
+        String::new()
+    }
 }
 
 impl StageTy for Ty {
@@ -77,6 +82,10 @@ impl StageTy for Ty {
 impl StageTy for CTy {
     fn wrong(&self, _: Stage) -> Option<&'static str> {
         None
+    }
+
+    fn shown(&self) -> String {
+        format!("{self:?}")
     }
 
     fn error(&self) -> bool {
@@ -120,8 +129,10 @@ pub fn instances(fs: &[Func<CTy>], stage: Stage, globals: usize) -> Vec<Msg> {
 /// (`tests/error-typed.txt`), rather than the verifier refusing a program that runs.
 pub fn error_typed(fs: &[Func<CTy>], callees: &[Callee], globals: usize) -> Vec<String> {
     (fs.iter())
-        .filter(|f| walk(f, Stage::Raw, callees, globals).error_typed)
-        .map(|f| f.shown.clone())
+        .filter_map(|f| {
+            let of = walk(f, Stage::Raw, callees, globals).error_typed?;
+            Some(format!("{}: {of}", f.shown))
+        })
         .collect()
 }
 
@@ -190,7 +201,7 @@ fn walk_in<'a, T: StageTy + PartialEq + std::fmt::Debug>(
         loops: 0,
         out: Vec::new(),
         checks: Vec::new(),
-        error_typed: false,
+        error_typed: None,
     };
     v.head();
     v.block(&f.body);
@@ -207,7 +218,7 @@ struct V<'a, T> {
     loops: usize,
     out: Vec<String>,
     checks: Vec<(CheckKind, Site)>,
-    error_typed: bool,
+    error_typed: Option<String>,
 }
 
 impl<T: StageTy + PartialEq + std::fmt::Debug> V<'_, T> {
@@ -223,7 +234,9 @@ impl<T: StageTy + PartialEq + std::fmt::Debug> V<'_, T> {
         if let Some(w) = t.wrong(self.stage) {
             self.bad(format!("{w}, as {of}'s type"));
         }
-        self.error_typed |= t.error();
+        if t.error() && self.error_typed.is_none() {
+            self.error_typed = Some(format!("{of} {}", t.shown()));
+        }
     }
 
     fn local(&mut self, l: usize) -> bool {
