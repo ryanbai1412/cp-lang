@@ -115,7 +115,10 @@ impl<'a> Cx<'a> {
         if let Some(walk) = self.recipe_walk(&call) {
             return self.value_walk(walk, call, name, body, out);
         }
-        // `for x in g.out(u)` through a bound on `g`'s type parameter.
+        // `for x in g.out(u)` through a bound on `g`'s type parameter; a bound's value
+        // (`s.keys`) walks as the value it returns.
+        let yields =
+            |tr: &TraitRef, m: &str| self.d.f(self.d.traits[tr.tr.0].methods[m]).region.is_some();
         call = match call.kind {
             TK::CallTrait {
                 tr,
@@ -123,7 +126,9 @@ impl<'a> Cx<'a> {
                 recv: Some(recv),
                 args,
                 ..
-            } => return self.trait_walk((tr, method, recv, args), name, body, span, out),
+            } if yields(&tr, &method) => {
+                return self.trait_walk((tr, method, recv, args), name, body, span, out)
+            }
             kind => TExpr { kind, ..call },
         };
         if !matches!(&call.kind, TK::Call { f, .. } if self.d.f(f.decl).region.is_some()) {

@@ -1910,6 +1910,7 @@ next/n_variadic_04_min_max_need_one_type.cp
 next/n_variadic_05_generator_is_the_method_fold.cp
 next/n_variadic_06_packed_values_are_lent.cp
 next/n_variant_01_bare_variant_names_from_context.cp
+next/n_walk_01_a_bounds_keys_walk_as_their_range.cp
 next/n_yes_01_yes_takes_answer_words.cp
 next/n_yes_02_reads_the_io_context.cp
 next/o01_gen_local_walk_read.cp
