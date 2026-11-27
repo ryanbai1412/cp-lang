@@ -88,10 +88,15 @@ impl Cx<'_> {
     pub(super) fn question_in_cond(&mut self, e: &ast::Expr) -> bool {
         let Some(at) = e.bare_try() else { return false };
         let text = cpl_diag::msgs::check::CANNOT_USED_DIRECTLY_CONDITION.say(&[]);
-        self.err(
-            at,
-            Msg::verdict(cpl_diag::codes::QUESTION_IN_CONDITION, text),
-        );
+        let mut msg = Msg::verdict(cpl_diag::codes::QUESTION_IN_CONDITION, text);
+        msg.fixes.push(cpl_next_ir::msg::Fix {
+            title: "treat `None` as false".to_string(),
+            edits: vec![(
+                self.item.at(e.span),
+                format!("({}) ?? false", self.text(e.span)),
+            )],
+        });
+        self.err(at, msg);
         true
     }
 

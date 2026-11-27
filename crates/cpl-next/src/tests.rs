@@ -997,3 +997,24 @@ fn assigning_a_let_offers_var() {
     assert_eq!(edits, [("let", "var")]);
     assert_eq!(d.labels.len(), 1);
 }
+
+#[test]
+fn a_question_in_a_condition_offers_none_as_false() {
+    use crate::facade::{Session, Snapshot};
+    let src = "fn first(xs: List<Int>) -> ?Bool:\n    if xs.first()? > 0:\n        return true\n    false\nprint(first([1]))\n";
+    let s = Session::open(Snapshot::new(
+        std::sync::Arc::new(Std::read()),
+        Roots::std(),
+        src,
+    ));
+    let diags = s.program().err().expect("refused");
+    let d = (diags.iter())
+        .find(|d| matches!(d.kind, crate::Kind::Verdict(c) if c == cpl_diag::codes::QUESTION_IN_CONDITION))
+        .unwrap_or_else(|| panic!("{diags:?}"));
+    let fix = d.fixes.first().expect("a fix");
+    assert_eq!(fix.title, "treat `None` as false");
+    let edits: Vec<_> = (fix.edits.iter())
+        .map(|(span, new)| (&src[span.start as usize..span.end as usize], new.as_str()))
+        .collect();
+    assert_eq!(edits, [("xs.first()? > 0", "(xs.first()? > 0) ?? false")]);
+}
