@@ -2993,6 +2993,32 @@ def timeout_passes(root: Path) -> list[str]:
     return sorted(arms + py)
 
 
+# Lowering's own answers in the handoff: the IR, and the messages lowering itself makes.
+HANDOFF_OWN_FIELDS = {"funcs", "errors", "whole"}
+
+
+def next_handoff_side_fields(root: Path) -> list[str]:
+    """Fields of the lower -> link handoff (`cpl-next-lower`'s `Generic` and `cpl-next-ir`'s
+    `whole::Whole`) that carry the front end's tables beside the IR: domains, globals, set adds,
+    deferred messages. Each becomes a per-item answer link reads by id (`domain(ItemId)`,
+    `global(ItemId)`, `diagnostics(ItemId)`, handbook/design/next/incremental.md), so this
+    shrinks to 0. `whole` is counted by `Whole`'s own fields."""
+    out = []
+    for rel, name in (("crates/cpl-next-lower/src/lib.rs", "Generic"), ("crates/cpl-next-ir/src/whole.rs", "Whole")):
+        lines = _lines(root / rel)
+        start = next((i for i, l in enumerate(lines) if re.match(rf"pub struct {name}\b", l)), None)
+        if start is None:
+            out.append(f"{rel}: no `pub struct {name}` (the handoff moved; update this counter)")
+            continue
+        for i in range(start + 1, len(lines)):
+            if lines[i].startswith("}"):
+                break
+            m = re.match(r"\s*pub (\w+):", lines[i])
+            if m and m.group(1) not in HANDOFF_OWN_FIELDS:
+                out.append(f"{rel}:{i + 1}: {name}.{m.group(1)}")
+    return out
+
+
 LINK_READS_CHECK_RE = re.compile(r"\b(?:cpl_next_check|Typed|typed)\b")
 
 
@@ -4013,6 +4039,7 @@ COUNTERS = {
     "next_std_unchecked": ("std modules the new pipeline does not compile, every fn checked (Core)", next_std_unchecked, True),
     "next_core_privilege": ("checks giving core's module powers no library has in the new pipeline (Core)", next_core_privilege, True),
     "next_whole_program_inputs": ("public new-pipeline fns taking a whole-program value (Core)", next_whole_program_inputs, True),
+    "next_handoff_side_fields": ("front-end tables the lower -> link handoff carries beside the IR (Core)", next_handoff_side_fields, True),
     "next_reference_evaluator_lines": ("code lines of the new pipeline's reference interpreter (Core)", next_reference_evaluator_lines, True),
     "next_oracle_callers": ("non-test callers of the new pipeline's reference interpreter, the tests' oracle (Core)", next_oracle_callers, True),
     "next_core_standin_lines": ("lines of the new pipeline's private core stand-in std.cp (Core)", next_core_standin_lines, True),

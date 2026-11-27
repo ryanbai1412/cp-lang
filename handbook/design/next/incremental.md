@@ -214,9 +214,24 @@ became takes `&Decls` or a map of every fn.
 | `own::inst::check` | `owned(instance)`: one instance's ownership diagnostics and settled places | that instance, callees' `Summaries` |
 | `own::link` | the `program(Job)` query itself: it runs the per-item queries and link | the views above |
 
-What `Whole` holds moves to items. A domain's size and start are its
-`signature`. A global is its top-level item's. A deferred diagnostic
-belongs to the `body` of the fn it is about.
+What `Whole` holds moves to items, and lowered IR carries no front-end
+table beside its fns. Link reads each fact by id from a per-item query:
+
+| Handoff field | Becomes | Keyed by |
+|---|---|---|
+| `Whole.domains` | `domain(ItemId)`: a domain's name, size and start slots, owner, `counted` | the item that declares it and which of its domains it is (`Decls::dom_ids`) |
+| `Whole.globals`, `Generic.globals` | `global(ItemId)`: a top-level binding's name and type, lent mark included | its top-level item |
+| `Whole.program_fns` | a fact of `signature(fn)`: the module it is in | `FnId` |
+| `Whole.ctx_impls` | a fact of `body(fn)`: the context copy each impl fn's call runs | the impl fn's `ItemId` and the copy |
+| `Generic.adds` | `summary(fn)`, which `Summaries` already reads | `FnId` |
+| `Generic.deferred`, `Generic.untyped` | `diagnostics(ItemId)`: what checking the body found, said when an instance of it is made | the fn's `ItemId` |
+
+The checker's side tables go the same way: what a body's own nodes need
+moves into its typed tree, and what other items read is one of these
+queries. `next_handoff_side_fields` counts the handoff fields still
+holding a table and shrinks to 0. A field is lowering's own answer only
+if it is its fns (`funcs`) or the messages lowering itself makes
+(`errors`).
 
 `link` and `own::link` stay whole-program, keyed by the job, because
 closing sets and making instances need every reached fn. They stay on
@@ -230,7 +245,9 @@ Order:
    `cycles`, `plain`, `fresh_dom`, `supertraits_unmet` and `body_type`
    read them. That takes the counter from 13 to 6.
 2. `body(ItemId)` (step 3 below).
-3. `generic(ItemId)` and `lent(ItemId)`. `Whole` goes.
+3. `generic(ItemId)` and `lent(ItemId)`. `Whole` goes: `domain`,
+   `global` and `diagnostics` replace its fields one by one, each
+   landing with `next_handoff_side_fields` lowered.
 4. `owned(instance)`, and link reading the views.
 
 Each step lands with `next_whole_program_inputs` lowered in the same
