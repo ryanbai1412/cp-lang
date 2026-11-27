@@ -20,6 +20,17 @@ pub struct Msg {
     pub text: String,
     /// What to write instead, when the layer knows.
     pub help: Option<String>,
+    /// Other places that explain it.
+    pub labels: Vec<(SourceId, String)>,
+    /// Edits that would make the program what was likely meant.
+    pub fixes: Vec<Fix>,
+}
+
+/// An edit set that makes the program what was likely meant: apply them all.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Fix {
+    pub title: String,
+    pub edits: Vec<(SourceId, String)>,
 }
 
 impl Msg {
@@ -68,6 +79,8 @@ impl Msg {
             code: cpl_diag::codes::INTERNAL,
             text: text.into(),
             help: None,
+            labels: Vec::new(),
+            fixes: Vec::new(),
         }
     }
 }

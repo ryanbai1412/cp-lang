@@ -73,6 +73,11 @@ pub struct Diag {
     pub message: String,
     /// What to write instead, when the layer knows.
     pub help: Option<String>,
+    /// Spans are of `at.file`, as `at.span` is.
+    pub labels: Vec<cpl_diag::Label>,
+    pub fixes: Vec<cpl_diag::Fix>,
+    /// The text of `at.file`.
+    src: Option<std::sync::Arc<str>>,
 }
 
 impl Diag {
@@ -87,8 +92,54 @@ impl Diag {
         matches!(self.kind, Kind::Refusal(_))
     }
 
+    /// The diagnostic every tool reads: an editor, lint, the judge's output. A refusal is
+    /// `E0501`, the code of what is not supported.
+    pub fn diagnostic(&self) -> cpl_diag::Diagnostic {
+        let code = self
+            .code()
+            .map_or(cpl_diag::codes::UNSUPPORTED, cpl_diag::Code);
+        let span = self
+            .at
+            .as_ref()
+            .map_or(cpl_diag::Span::new(0, 0), |a| a.span);
+        cpl_diag::Diagnostic {
+            labels: self.labels.clone(),
+            help: self.help.clone(),
+            fixes: self.fixes.clone(),
+            ..cpl_diag::Diagnostic::error(code, span, self.message.clone())
+        }
+    }
+
+    /// [`cpl_diag::json::diagnostic`], with the layer, the file and the refused feature.
+    pub fn json(&self) -> cpl_json::Value {
+        let lines = cpl_diag::LineIndex::new(self.src.as_deref().unwrap_or(""));
+        let mut v = cpl_diag::json::diagnostic(&self.diagnostic(), &lines);
+        let refusal = match &self.kind {
+            Kind::Refusal(u) => cpl_json::Value::String(u.variant()),
+            Kind::Verdict(_) => cpl_json::Value::Null,
+        };
+        let file = self
+            .at
+            .as_ref()
+            .map(|a| a.file.clone())
+            .or(self.module.clone());
+        let o = v.as_object_mut().expect("a diagnostic is an object");
+        o.insert(
+            "stage".into(),
+            cpl_json::Value::String(self.stage.name().into()),
+        );
+        o.insert(
+            "file".into(),
+            file.map_or(cpl_json::Value::Null, cpl_json::Value::String),
+        );
+        o.insert("refusal".into(), refusal);
+        v
+    }
+
     /// `m` placed in its file.
     fn new(stage: Stage, m: &diag::Msg, loaded: &modules::Loaded) -> Diag {
+        let local = |at: &SourceId| loaded.text_of(at).span(at);
+        let src = m.at.as_ref().map(|at| loaded.text_of(at).text.clone());
         let at = m.at.as_ref().map(|at| {
             let (module, span) = (loaded.text_of(at), loaded.text_of(at).span(at));
             let (line, col) = module.line_col(span.start);
@@ -112,6 +163,23 @@ impl Diag {
             layer: m.layer,
             message,
             help: m.help.clone(),
+            labels: (m.labels.iter())
+                .map(|(at, message)| cpl_diag::Label {
+                    span: local(at),
+                    message: message.clone(),
+                })
+                .collect(),
+            fixes: (m.fixes.iter())
+                .map(|f| cpl_diag::Fix {
+                    title: f.title.clone(),
+                    edits: f
+                        .edits
+                        .iter()
+                        .map(|(at, t)| (local(at), t.clone()))
+                        .collect(),
+                })
+                .collect(),
+            src,
         }
     }
 }

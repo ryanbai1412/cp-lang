@@ -158,6 +158,15 @@ pub enum Unbuilt {
     },
 }
 
+impl Unbuilt {
+    /// The variant's name (`ForForm`): what `next_refusal_kinds` counts and `--json` reports.
+    pub fn variant(&self) -> String {
+        let debug = format!("{self:?}");
+        let end = debug.find([' ', '{', '(']).unwrap_or(debug.len());
+        debug[..end].to_string()
+    }
+}
+
 impl fmt::Display for Unbuilt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use Unbuilt::*;

@@ -48,7 +48,7 @@ fn real_main() {
         return every_case(Duration::from_millis(ms), has("--trace"));
     }
     let Some(path) = args.iter().find(|a| !a.starts_with("--")) else {
-        eprintln!("usage: cpl-next FILE [--raw|--engine] [--cpp] [--check] [--trace] | --all --within MS [--trace]");
+        eprintln!("usage: cpl-next FILE [--raw|--engine] [--cpp] [--check] [--json] [--trace] | --all --within MS [--trace]");
         std::process::exit(2);
     };
     let src = match std::fs::read_to_string(path) {
@@ -62,7 +62,10 @@ fn real_main() {
         Ok(c) => c,
         Err(ds) => {
             for d in &ds {
-                println!("{d}");
+                match has("--json") {
+                    true => println!("{}", cpl_json::to_string(&d.json())),
+                    false => println!("{d}"),
+                }
             }
             std::process::exit(rejected(&ds));
         }
