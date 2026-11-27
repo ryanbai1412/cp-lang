@@ -135,6 +135,7 @@ static inline cpl_raw<cpl_char> cpl_raw_text(const char* s, size_t n) {
     return r;
 }
 static inline cpl_unit cpl_check_key(bool ok) { if (!ok) cpl_fail(CPL_KEY_OUTSIDE); return {}; }
+static inline cpl_unit cpl_check_variant(bool ok) { if (!ok) cpl_fail(CPL_NO_VARIANT); return {}; }
 static inline cpl_unit cpl_check_range(bool ok) { if (!ok) cpl_fail(CPL_RANGE_CUT); return {}; }
 template <class T> static inline T cpl_get(const cpl_raw<T>& r, int64_t i) {
     if (i < 0 || (size_t)i >= r.size()) cpl_fail(CPL_READ_OUTSIDE);
@@ -651,6 +652,7 @@ impl Emit<'_> {
                     Intr::RawGet => format!("cpl_get({}, {})", a[0], a[1]),
                     Intr::RawSet => format!("cpl_set({}, {}, {})", a[0], a[1], a[2]),
                     Intr::CheckKey => format!("cpl_check_key({})", a[0]),
+                    Intr::CheckVariant => format!("cpl_check_variant({})", a[0]),
                     Intr::CheckRange => format!("cpl_check_range({})", a[0]),
                     Intr::ReadInt => "cpl_read()".to_string(),
                     Intr::InputLeft => "cpl_input_left()".to_string(),
@@ -1075,6 +1077,7 @@ mod tests {
         for (op, f) in [
             (Intr::CheckKey, "cpl_check_key"),
             (Intr::CheckRange, "cpl_check_range"),
+            (Intr::CheckVariant, "cpl_check_variant"),
         ] {
             for ok in [true, false] {
                 case(

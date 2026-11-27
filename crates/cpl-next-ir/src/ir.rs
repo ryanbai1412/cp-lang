@@ -43,6 +43,8 @@ pub enum Intr {
     CheckKey,
     /// A range check std makes before it cuts a range: traps R0001 unless its operand is true.
     CheckRange,
+    /// A check an enum conversion makes: traps R0102 unless its operand is true (R02.7).
+    CheckVariant,
     ReadInt,
     /// Whether the input has another token.
     InputLeft,
@@ -67,6 +69,7 @@ impl Intr {
             "raw_set" => Intr::RawSet,
             "key_check" => Intr::CheckKey,
             "range_check" => Intr::CheckRange,
+            "value_check" => Intr::CheckVariant,
             "char_of" => Intr::CharOf,
             "code_of" => Intr::CodeOf,
             "u64_of" => Intr::ToU64,
@@ -107,6 +110,7 @@ impl Intr {
                 | RawSet
                 | CheckKey
                 | CheckRange
+                | CheckVariant
                 | RawNew
                 | ReadInt
                 | FromU64

@@ -3,15 +3,12 @@ use super::expr::{block, Formal};
 use super::*;
 
 impl Cx<'_> {
-    /// `T(x)` for a core type `T`: `x`'s impl of core's `@convert` trait at `T` (R04.2.28); a
-    /// plain enum's `Int` is its value, and a position's its integer.
+    /// `T(x)` for a core type or a payload-free enum `T`: `x`'s impl of core's `@convert` trait at
+    /// `T` (R04.2.28, R02.7); a position's `Int` is its integer.
     pub(super) fn convert(&mut self, to: Ty, x: &ast::Expr, span: Span) -> TExpr {
         let mk = |kind, ty| TExpr { kind, ty, span };
         let v = self.expr(x, None);
         if to == Ty::Int {
-            if let Some(id) = self.plain_enum(&v.ty) {
-                return self.enum_value(id, v);
-            }
             // Until `Domain` is a trait type parameters meet by bounds, a parameter is a domain.
             let bounded = match self.shallow(&v.ty) {
                 Ty::Param(i) => {
@@ -51,33 +48,6 @@ impl Cx<'_> {
             to,
         )
     }
-    /// A plain enum's value: its variant's written value, else its place from 0 (R02.7.3).
-    fn enum_value(&mut self, id: StructId, v: TExpr) -> TExpr {
-        let span = v.span;
-        let mk = |kind, ty| TExpr { kind, ty, span };
-        let values = self.d.s(id).values.clone();
-        let tag = self.enum_tag(v);
-        if (values.iter().enumerate()).all(|(i, x)| *x == i as i64) {
-            return tag;
-        }
-        let t = self.bind("$variant", Ty::Int);
-        let read = || mk(TK::Var(t), Ty::Int);
-        let last = values.last().copied().unwrap_or(0);
-        let mut pick = mk(TK::Int(last), Ty::Int);
-        for (i, x) in values.iter().enumerate().rev().skip(1) {
-            let k = mk(TK::Int(i as i64), Ty::Int);
-            let is = mk(TK::Cmp(CmpOp::Eq, Box::new(read()), Box::new(k)), Ty::Bool);
-            let then = mk(TK::Int(*x), Ty::Int);
-            pick = mk(
-                TK::If(Box::new(is), Box::new(then), Box::new(pick)),
-                Ty::Int,
-            );
-        }
-        mk(
-            TK::Block(vec![TStmt::Let(t, tag)], Some(Box::new(pick))),
-            Ty::Int,
-        )
-    }
     /// An enum whose variants carry nothing: a value is which variant it is.
     pub(super) fn plain_enum(&self, t: &Ty) -> Option<StructId> {
         match self.shallow(t) {
@@ -88,44 +58,6 @@ impl Cx<'_> {
             }
             _ => None,
         }
-    }
-    /// `E(x)` of an enum whose variants carry nothing: the variant whose value is `x`; any
-    /// other `x` traps (R02.7.3).
-    pub(super) fn enum_of_int(&mut self, e: StructId, x: &ast::Expr, span: Span) -> TExpr {
-        let mk = |kind, ty| TExpr { kind, ty, span };
-        let x = self.expr(x, Some(&Ty::Int));
-        let x = self.coerce(x, &Ty::Int);
-        let t = self.bind("$value", Ty::Int);
-        let read = || mk(TK::Var(t), Ty::Int);
-        let is = |k: i64| {
-            let k = mk(TK::Int(k), Ty::Int);
-            mk(TK::Cmp(CmpOp::Eq, Box::new(read()), Box::new(k)), Ty::Bool)
-        };
-        let values = self.d.s(e).values.clone();
-        let name = self.d.s(e).name.clone();
-        let known = (values.iter().map(|&k| is(k)))
-            .reduce(|a, b| mk(TK::Bin(BinOp::Or, Box::new(a), Box::new(b)), Ty::Bool));
-        let check = TStmt::Assert(
-            known.unwrap_or_else(|| mk(TK::Bool(false), Ty::Bool)),
-            format!("no variant of `{name}` has this value"),
-            span,
-            CheckKind::Domain,
-        );
-        let last = values.len().saturating_sub(1);
-        let mut pick = self.variant(e, last, Vec::new(), &[], span);
-        for i in (0..last).rev() {
-            let v = self.variant(e, i, Vec::new(), &[], span);
-            let ty = v.ty.clone();
-            pick = mk(
-                TK::If(Box::new(is(values[i])), Box::new(v), Box::new(pick)),
-                ty,
-            );
-        }
-        let ty = pick.ty.clone();
-        mk(
-            TK::Block(vec![TStmt::Let(t, x), check], Some(Box::new(pick))),
-            ty,
-        )
     }
     /// Which variant an enum value is, from 0 in declaration order.
     pub(super) fn enum_tag(&mut self, x: TExpr) -> TExpr {

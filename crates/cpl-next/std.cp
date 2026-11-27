@@ -9,6 +9,9 @@ fn raw_get<T>(r: Raw<T>, i: Int) -> T = @intrinsic("raw_get")
 /// Traps R0101 unless `ok`: a read at a key the sequence doesn't have (R07.2.17).
 fn check_key(ok: Bool) = @intrinsic("key_check")
 fn check_range(ok: Bool) = @intrinsic("range_check")
+/// Traps R0102 unless `ok`: an `Int` converted to an enum that is no variant's value (R02.7).
+@variant_check
+fn check_variant(ok: Bool) = @intrinsic("value_check")
 fn raw_set<T>(mut r: Raw<T>, i: Int, x: T) = @intrinsic("raw_set")
 
 struct List<T>:

@@ -19,6 +19,7 @@ pub enum Fault {
     ReadOutside,
     WriteOutside,
     KeyOutside,
+    NoVariant,
     RangeCut,
     BadIntToken,
     IntPastInt,
@@ -30,7 +31,7 @@ pub enum Fault {
 }
 
 /// The faults an operation raises by itself, in the order of the C++ runtime's trap table.
-pub const FAULTS: [Fault; 16] = [
+pub const FAULTS: [Fault; 17] = [
     Fault::Overflow,
     Fault::U64PastInt,
     Fault::CharPastAscii,
@@ -43,6 +44,7 @@ pub const FAULTS: [Fault; 16] = [
     Fault::ReadOutside,
     Fault::WriteOutside,
     Fault::KeyOutside,
+    Fault::NoVariant,
     Fault::RangeCut,
     Fault::BadIntToken,
     Fault::IntPastInt,
@@ -71,6 +73,7 @@ impl Fault {
             Fault::ReadOutside | Fault::WriteOutside | Fault::KeyOutside => {
                 codes::INDEX_OUT_OF_RANGE
             }
+            Fault::NoVariant => codes::DOMAIN_CAST,
             Fault::BadIntToken => codes::BAD_INPUT_TOKEN,
             Fault::IntPastInt => codes::INPUT_OUT_OF_CONTRACT,
             Fault::StackExhausted => codes::STACK_EXHAUSTED,
@@ -94,6 +97,7 @@ impl Fault {
             Fault::ReadOutside => "read outside storage",
             Fault::WriteOutside => "write outside storage",
             Fault::KeyOutside => "key outside the sequence",
+            Fault::NoVariant => "no variant has this value",
             Fault::RangeCut => "a cut of a range outside it",
             Fault::BadIntToken => "expected an integer in the input",
             Fault::IntPastInt => "a whole number in the input does not fit in an `Int`",
@@ -280,6 +284,7 @@ pub fn check(op: Intr, ok: bool) -> Result<(), Fault> {
         (_, true) => Ok(()),
         (Intr::CheckKey, false) => Err(Fault::KeyOutside),
         (Intr::CheckRange, false) => Err(Fault::RangeCut),
+        (Intr::CheckVariant, false) => Err(Fault::NoVariant),
         _ => Err(Fault::Internal("not a check")),
     }
 }

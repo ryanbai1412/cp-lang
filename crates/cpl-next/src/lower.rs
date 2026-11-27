@@ -49,6 +49,9 @@ struct Lw<'a> {
     /// Where each line of the source starts, and how many of them are std.
     line_starts: Vec<u32>,
     std_lines: u32,
+    /// The fn being lowered is one the compiler wrote, a derived impl's: like std's, a check it
+    /// makes fails at the line that called it.
+    made: bool,
 }
 
 pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &str, std_lines: u32) -> Generic {
@@ -80,6 +83,7 @@ pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &str, std_lines: u32)
             .chain(src.match_indices('\n').map(|(i, _)| i as u32 + 1))
             .collect(),
         std_lines,
+        made: false,
     };
     let mut body = Vec::new();
     for s in &typed.main {
@@ -106,6 +110,7 @@ pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &str, std_lines: u32)
     for (id, tf) in &typed.fns {
         let fd = d.f(*id);
         lw.off = fd.item;
+        lw.made = matches!(fd.owner, Some(crate::decls::Owner::Impl(k)) if d.impls[k].derived);
         lw.locals = tf.locals.iter().map(|l| l.ty.clone()).collect();
         // R05.10.1: a closure shares `var`s, local heap values and heap parameters with the fn around it.
         lw.mut_locals = tf
@@ -337,6 +342,9 @@ fn constant<T>(e: &Expr<T>) -> bool {
 
 impl Lw<'_> {
     fn site(&self, span: cpl_diag::Span) -> Site {
+        if self.made {
+            return 0;
+        }
         let line = self
             .line_starts
             .partition_point(|s| *s <= self.off + span.start) as u32;

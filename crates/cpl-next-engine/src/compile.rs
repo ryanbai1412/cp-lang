@@ -915,7 +915,7 @@ impl Fc<'_> {
                     _ => Op::CodeOf { d, a },
                 });
             }
-            Intr::CheckRange | Intr::CheckKey => {
+            Intr::CheckRange | Intr::CheckKey | Intr::CheckVariant => {
                 let Some(&[c]) = self.operands(args).as_deref() else {
                     return self.fail("a lent operand");
                 };

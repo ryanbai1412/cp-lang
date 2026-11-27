@@ -1581,7 +1581,7 @@ impl<'a> Cx<'a> {
                     && self.d.s(d).generics.is_empty()
                     && matches!(args, [a] if a.name.is_none()) =>
             {
-                self.enum_of_int(d, &args[0].value, span)
+                self.convert(Ty::Struct(d, Vec::new(), Vec::new()), &args[0].value, span)
             }
             (None, Named::Struct(d)) => {
                 let s = self.d.s(d);

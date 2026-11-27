@@ -447,3 +447,181 @@ fn plain(t: &ast::Type) -> bool {
         _ => false,
     }
 }
+
+/// Core's `@convert` trait with its one method, and the fn core marks `@variant_check`: what a
+/// payload-free enum's conversions are written with.
+pub(crate) fn convert_marked(core: &[(u32, Vec<ast::Stmt>)]) -> Option<(String, String, String)> {
+    let stmts = || core.iter().flat_map(|(_, ss)| ss);
+    let marked = |s: &ast::Stmt, n: &str| s.decorators.iter().any(|d| d.name.text == n);
+    let (tr, method) = (stmts().filter(|s| marked(s, "convert"))).find_map(|s| match &s.kind {
+        StmtKind::Trait { name, body, .. } => match &body.stmts[..] {
+            [ast::Stmt {
+                kind: StmtKind::Fn(f),
+                ..
+            }] => Some((name.text.clone(), f.name.text.clone())),
+            _ => None,
+        },
+        _ => None,
+    })?;
+    let check = (stmts().filter(|s| marked(s, "variant_check"))).find_map(|s| match &s.kind {
+        StmtKind::Fn(f) => Some(f.name.text.clone()),
+        _ => None,
+    })?;
+    Some((tr, method, check))
+}
+
+/// Per payload-free enum a module declares, `Int(e)` and `E(x)` (R02.7): `impl Into<Int> for E`,
+/// a `match` giving each variant's value, and `impl Into<E> for Int`, which checks `x` is a
+/// variant's value and gives that variant.
+pub(crate) fn enum_conversions(
+    items: &[(u32, Vec<ast::Stmt>)],
+    (tr, method, check): &(String, String, String),
+) -> Vec<(u32, String, ast::Stmt)> {
+    use ast::{CmpOp, ExprKind};
+    let mut out = Vec::new();
+    for (item, stmts) in items {
+        for s in stmts {
+            let StmtKind::Enum(e) = &s.kind else {
+                continue;
+            };
+            let plain = (e.variants.iter()).all(|v| v.fields.is_empty() && v.tag.is_none());
+            if !e.generics.is_empty() || e.variants.is_empty() || !plain {
+                continue;
+            }
+            let values: Option<Vec<i64>> = (e.variants.iter().enumerate())
+                .map(|(i, v)| match &v.value {
+                    None => Some(i as i64),
+                    Some(x) => constant_int(x),
+                })
+                .collect();
+            let Some(values) = values else {
+                continue;
+            };
+            let span = s.span;
+            let name = |text: &str| ast::Name {
+                text: text.to_string(),
+                span,
+            };
+            let ty = |text: &str, args| ast::Type {
+                kind: TypeKind::Named {
+                    name: name(text),
+                    args,
+                },
+                span,
+            };
+            let ex = |kind| ast::Expr { kind, span };
+            let stmt = |kind| ast::Stmt {
+                kind,
+                span,
+                decorators: Vec::new(),
+                public: false,
+            };
+            let block = |stmts: Vec<ast::Expr>| ast::Block {
+                stmts: stmts.into_iter().map(|e| stmt(StmtKind::Expr(e))).collect(),
+                span,
+            };
+            let this = || ex(ExprKind::Name("self".to_string()));
+            let int = |k: i64| ex(ExprKind::Int(k as i128));
+            let is = |k: i64| {
+                ex(ExprKind::Compare {
+                    first: Box::new(this()),
+                    rest: vec![(CmpOp::Eq, int(k))],
+                })
+            };
+            let variant = |v: &ast::Name| {
+                ex(ExprKind::Field {
+                    base: Box::new(ex(ExprKind::Name(e.name.text.clone()))),
+                    name: v.clone(),
+                })
+            };
+            let conversion = |to: ast::Type, from: ast::Type, body| {
+                let f = ast::FnDecl {
+                    name: name(method),
+                    generics: Vec::new(),
+                    bounds: Vec::new(),
+                    params: vec![ast::Param {
+                        mutable: false,
+                        variadic: false,
+                        lazy: false,
+                        named_only: false,
+                        label: None,
+                        name: name("self"),
+                        ty: None,
+                        default: None,
+                        span,
+                    }],
+                    ret: Some(to.clone()),
+                    lends: None,
+                    uses: Vec::new(),
+                    body,
+                    sig_span: span,
+                };
+                stmt(StmtKind::Impl {
+                    trait_name: Some(ty(tr, vec![to])),
+                    target: from,
+                    bounds: Vec::new(),
+                    body: ast::Block {
+                        stmts: vec![stmt(StmtKind::Fn(f))],
+                        span,
+                    },
+                })
+            };
+            let arms = (e.variants.iter().zip(&values))
+                .map(|(v, k)| ast::Arm {
+                    pat: ast::Pattern {
+                        kind: ast::PatternKind::Variant {
+                            path: vec![v.name.clone()],
+                            args: Vec::new(),
+                        },
+                        span,
+                    },
+                    guard: None,
+                    body: block(vec![int(*k)]),
+                })
+                .collect();
+            let value = ex(ExprKind::Match {
+                scrutinee: Box::new(this()),
+                arms,
+            });
+            let known = (values.iter().map(|k| is(*k)))
+                .reduce(|a, b| {
+                    ex(ExprKind::Binary {
+                        op: ast::BinOp::Or,
+                        op_span: span,
+                        lhs: Box::new(a),
+                        rhs: Box::new(b),
+                    })
+                })
+                .unwrap_or_else(|| ex(ExprKind::Bool(false)));
+            let checked = ex(ExprKind::Call {
+                callee: Box::new(ex(ExprKind::Name(check.clone()))),
+                args: vec![ast::Arg {
+                    name: None,
+                    mutable: false,
+                    value: known,
+                }],
+            });
+            let last = e.variants.len() - 1;
+            let pick = match last {
+                0 => variant(&e.variants[0].name),
+                _ => ex(ExprKind::If {
+                    branches: (e.variants[..last].iter().zip(&values))
+                        .map(|(v, k)| (ast::Cond::Expr(is(*k)), block(vec![variant(&v.name)])))
+                        .collect(),
+                    otherwise: Some(block(vec![variant(&e.variants[last].name)])),
+                }),
+            };
+            let enum_ty = || ty(&e.name.text, Vec::new());
+            let int_ty = || ty("Int", Vec::new());
+            let into_int = conversion(int_ty(), enum_ty(), FnBody::Expr(value));
+            let into_enum = conversion(
+                enum_ty(),
+                int_ty(),
+                FnBody::Block(block(vec![checked, pick])),
+            );
+            out.push((*item, e.name.text.clone(), into_int));
+            out.push((*item, e.name.text.clone(), into_enum));
+        }
+    }
+    out
+}

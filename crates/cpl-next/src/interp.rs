@@ -552,7 +552,7 @@ impl<'a> Machine<'a> {
                 }
                 V::Unit
             }
-            Intr::CheckRange | Intr::CheckKey => {
+            Intr::CheckRange | Intr::CheckKey | Intr::CheckVariant => {
                 let Arg::Value(a) = &args[0] else {
                     return broken("lent operand");
                 };

@@ -818,6 +818,7 @@ pub fn collect(
     .map(|(i, span)| vec![(i, crate::records::structs(&shapes, span))])
     .unwrap_or_default();
     let each = crate::synth::derive_each(&mods[CORE.0].items);
+    let convert = crate::synth::convert_marked(&mods[CORE.0].items);
     let derived: Vec<Vec<(u32, String, ast::Stmt)>> = (mods.iter().enumerate())
         .map(|(mi, m)| {
             let mut made = match mi == CORE.0 {
@@ -825,6 +826,9 @@ pub fn collect(
                 false => module_derived(&m.items, &each),
             };
             made.extend(crate::synth::field_trait_impls(&m.items, &shapes));
+            if let Some(c) = &convert {
+                made.extend(crate::synth::enum_conversions(&m.items, c));
+            }
             made
         })
         .collect();
@@ -1410,12 +1414,13 @@ pub fn collect(
                         ));
                         continue;
                     }
-                    // An impl lives with its trait or its type (R08.5.2).
-                    let home = match &for_ {
-                        Ty::Struct(sd, ..) => Some(d.s(*sd).module),
-                        _ => None,
-                    };
-                    if !d.is_library(mid) && d.traits[tref.tr.0].module != mid && home != Some(mid)
+                    // An impl lives with its trait, its type or a type among the trait's arguments
+                    // (`impl Into<E> for Int`), so it is never an orphan (R08.5.2).
+                    let local = |t: &Ty| matches!(t, Ty::Struct(sd, ..) if d.s(*sd).module == mid);
+                    if !d.is_library(mid)
+                        && d.traits[tref.tr.0].module != mid
+                        && !local(&for_)
+                        && !tref.args.iter().any(local)
                     {
                         d.misdeclared.push((
                             at,
@@ -1808,7 +1813,7 @@ fn add_fn(
     // run, so the program's own is refused: its expected result may be that lint (R06.4.9).
     for x in &s.decorators {
         let elsewhere = d.is_library(m) && read_elsewhere(&x.name.text);
-        let core_only = m == CORE && x.name.text == "coerce";
+        let core_only = m == CORE && matches!(x.name.text.as_str(), "coerce" | "variant_check");
         if !elsewhere
             && !core_only
             && x.name.text != GETTER
