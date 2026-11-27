@@ -2347,3 +2347,5 @@ core-02/existential-return.cp
 core-04/with-domain.cp
 next/n_fresh_domain_record.cp
 next/n_fresh_domain_result.cp
+core-05/a-free-fn-named-like-a-builtin-method-is-callable.cp
+next/n_const_range_decl.cp

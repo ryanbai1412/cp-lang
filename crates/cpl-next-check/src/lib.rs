@@ -502,18 +502,18 @@ pub fn check(
         const_init: Vec::new(),
     };
     // A result's `domain C` keeps its ends in one static slot per declaration site (R02.9.4).
+    let slot = |cx: &mut Cx, name: &str, end: &str| {
+        cx.globals.push(Local {
+            name: format!("{name}${end}"),
+            ty: Ty::Int,
+            top: true,
+            mutable: true,
+            fixed: false,
+        });
+        VarRef::Global(cx.globals.len() - 1)
+    };
     for (i, name) in &d.fresh_doms {
-        let slot = |cx: &mut Cx, end: &str| {
-            cx.globals.push(Local {
-                name: format!("{name}${end}"),
-                ty: Ty::Int,
-                top: true,
-                mutable: true,
-                fixed: false,
-            });
-            VarRef::Global(cx.globals.len() - 1)
-        };
-        let (lo, len) = (slot(&mut cx, "lo"), slot(&mut cx, "len"));
+        let (lo, len) = (slot(&mut cx, name, "lo"), slot(&mut cx, name, "len"));
         cx.domains[*i] = DomInfo {
             name: name.clone(),
             len,
@@ -521,6 +521,28 @@ pub fn check(
             within: (None, None),
             owner: None,
             count: None,
+        };
+    }
+    // `[0..2]T` in a declaration: the range's domain is set before the program runs.
+    for &(i, first, last) in &d.anon_doms {
+        let name = decls::anon_key(first, last);
+        let (lo, len) = (slot(&mut cx, &name, "lo"), slot(&mut cx, &name, "len"));
+        let count = last - first + 1;
+        for (r, k) in [(lo, first), (len, count)] {
+            let int = |kind| TExpr {
+                kind,
+                ty: Ty::Int,
+                span: Span::new(0, 0),
+            };
+            (cx.const_init).push(TStmt::Assign(int(TK::Var(r)), int(TK::Int(k))));
+        }
+        cx.domains[i] = DomInfo {
+            name,
+            len,
+            lo,
+            within: (Some(first), Some(last)),
+            owner: None,
+            count: Some(count),
         };
     }
     for (at, code, msg) in &d.misdeclared {

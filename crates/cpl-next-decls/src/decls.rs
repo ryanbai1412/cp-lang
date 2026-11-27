@@ -360,6 +360,9 @@ pub struct Decls {
     pub fresh_doms: Vec<(usize, String)>,
     /// The fns whose result's slots are `domain C`s, till those slots are made `Range<C>`s.
     pub fresh_slots: Vec<(FnId, Vec<usize>)>,
+    /// `[0..2]T` in a declaration: the domain of each constant range an array is over, one for
+    /// all that write it, as `(domain, lo, hi)` with `hi` inclusive (R04.3.4).
+    pub anon_doms: Vec<(usize, i64, i64)>,
     /// The names the program's top level binds with `let`.
     pub top_values: Arc<HashSet<String>>,
     /// The trait core marks `@positions`: every domain's position type has it, and nothing else.
@@ -417,7 +420,9 @@ impl Decls {
     fn doms_in(&self, m: ModId) -> HashMap<String, Ty> {
         match m == self.program {
             true => self.top_doms.clone(),
-            false => HashMap::new(),
+            false => (self.anon_doms.iter())
+                .map(|&(i, lo, hi)| (anon_key(lo, hi), Ty::Dom(i)))
+                .collect(),
         }
     }
     /// What a declaration uses that the slice does not build: a library's is said when the program
@@ -1386,6 +1391,23 @@ pub fn static_range(
         None => i64::MAX,
     };
     Some((lo, hi))
+}
+
+/// The name a constant range's domain is kept under: none a program can write.
+pub fn anon_key(lo: i64, hi: i64) -> String {
+    format!("${lo}..={hi}")
+}
+
+/// `lo..hi` with both ends constant, as an array's axis: its first and last integer.
+pub fn const_axis(t: &ast::Type) -> Option<(i64, i64)> {
+    match &t.kind {
+        TypeKind::Range {
+            lo: lo @ Some(_),
+            hi: hi @ Some(_),
+            inclusive,
+        } => static_range(lo, hi, *inclusive),
+        _ => None,
+    }
 }
 
 /// The parameters a bound that leaves its trait's arguments out takes for each, at `generics`'
