@@ -170,21 +170,29 @@ impl Cx<'_> {
         let walk = match &dty {
             // An anonymous range's cells take any `Int` (R04.3.4), so its keys walk as `Int`s.
             Ty::Dom(i) if self.domains[*i].name.starts_with('$') => {
-                let d = &self.domains[*i].name;
-                let lo = named(format!("{d}$lo"));
-                let hi = ExprKind::Binary {
-                    op: ast::BinOp::Add,
-                    op_span: dom.span,
-                    lhs: Box::new(lo.clone()),
-                    rhs: Box::new(named(format!("{d}$len"))),
-                };
-                let hi = ast::Expr {
-                    kind: hi,
+                let (lo, len) = (self.domains[*i].lo, self.domains[*i].len);
+                let var = |r| TExpr {
+                    kind: TK::Var(r),
+                    ty: Ty::Int,
                     span: dom.span,
                 };
+                let hi = TExpr {
+                    kind: TK::Bin(
+                        BinOp::Add,
+                        Box::new(var(lo)),
+                        Box::new(var(len)),
+                        Overflow::Traps,
+                    ),
+                    ty: Ty::Int,
+                    span: dom.span,
+                };
+                for (n, e) in [("$walk_lo", var(lo)), ("$walk_hi", hi)] {
+                    let v = self.bind(n, Ty::Int);
+                    pre.push(TStmt::Let(v, e));
+                }
                 let ends = ExprKind::Range {
-                    lo: Some(Box::new(lo)),
-                    hi: Some(Box::new(hi)),
+                    lo: Some(Box::new(named("$walk_lo".to_string()))),
+                    hi: Some(Box::new(named("$walk_hi".to_string()))),
                     inclusive: false,
                     step: None,
                 };
