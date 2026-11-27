@@ -2213,9 +2213,11 @@ class DebtRatchetTest(unittest.TestCase):
             root = Path(tmp)
             self._write(root, "crates/cpl-next-check/src/domain.rs",
                         'let a = self.bind(&format!("{name}$lo"), Ty::Int);\n'
-                        'let b = format!("{b}.{}", f);\nlet t = format!("$tuple{}", s);\n')
+                        'let b = format!("{b}.{}", f);\nlet t = format!("$tuple{}", s);\n'
+                        'Ty::Range(lo, hi) => format!("{lo}..={hi}"),\nlet k = format!("{b}.{field}");\n')
             self.assertEqual(dr.next_check_name_keys(root), ["crates/cpl-next-check/src/domain.rs:1",
-                                                             "crates/cpl-next-check/src/domain.rs:2"])
+                                                             "crates/cpl-next-check/src/domain.rs:2",
+                                                             "crates/cpl-next-check/src/domain.rs:5"])
             self._write(root, "crates/cpl-next-link/Cargo.toml", "[dependencies]\ncpl-next-check.workspace = true\n")
             self._write(root, "crates/cpl-next-lower/Cargo.toml", "[dependencies]\ncpl-next-check.workspace = true\n")
             self.assertEqual(dr.link_reads_check(root), ["crates/cpl-next-link/Cargo.toml: reaches the checker "

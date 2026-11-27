@@ -2981,7 +2981,8 @@ def _dep_path(deps: dict[str, list[str]], start: str, goal: str) -> list[str]:
 
 AFTER_LOWER_CRATES = ("cpl-next-own", "cpl-next-link", "cpl-next-cpp", "cpl-next-interp", "cpl-next-engine")
 # A scope key built from another name (`{d}$lo`, `{b}.{field}`): meaning carried in a string.
-NEXT_NAME_KEY_RE = re.compile(r'format!\("\{[a-z_]\w*\}[.$]')
+# `{lo}..={hi}` shows a range type and is no key.
+NEXT_NAME_KEY_RE = re.compile(r'format!\("\{[a-z_]\w*\}(?:\$|\.(?!\.))')
 
 
 def next_check_name_keys(root: Path) -> list[str]:
