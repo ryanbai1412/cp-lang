@@ -1058,6 +1058,10 @@ fn layer(
                         Some(i) => Ty::Param(i),
                         None => conv(&mut cx, target, &mut errors),
                     };
+                    let head = match range_param {
+                        Some(i) => Ty::AnyRange(i),
+                        None => for_.clone(),
+                    };
                     let tref =
                         trait_ref(&mut cx, tr, &mut errors).map(|r| d.with_defaults(r, &for_));
                     // An associated type is the argument the impl's body writes: `type Arc = A`.
@@ -1146,11 +1150,10 @@ fn layer(
                     let tname = d.traits[tref.tr.0].name.clone();
                     // An impl for every record with some fields is not a blanket one: a record
                     // takes it over a blanket impl it also meets (R08.4.5).
-                    let rank = d.rank_of(&for_, &ibounds);
+                    let rank = d.rank_of(&head, &ibounds);
                     let clashes = |d: &Decls, im: &ImplDecl| {
                         im.trait_.tr == tref.tr
-                            && overlap(&im.for_, &for_)
-                            && im.ranges_only == ranges_only
+                            && overlap(&im.for_, &head)
                             && d.impl_rank(im) == rank
                             && (d.traits[tref.tr.0].inputs(&im.trait_.args).iter())
                                 .zip(d.traits[tref.tr.0].inputs(&tref.args))
@@ -1274,14 +1277,13 @@ fn layer(
                         trait_: tref,
                         generics,
                         bounds: ibounds,
-                        for_,
+                        for_: head,
                         methods,
                         at,
                         assoc_at,
                         module: mid,
                         derived,
                         replaced: false,
-                        ranges_only,
                     });
                 }
                 (StmtKind::Fn(f), _) => {

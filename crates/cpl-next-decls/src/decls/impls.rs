@@ -167,12 +167,9 @@ impl Decls {
     /// An impl for `_..=_` is for every range type and never `Int`; one for `Int` is for a range
     /// type only when its trait has none for `_..=_`.
     pub fn head_fits(&self, im: &ImplDecl, t: &Ty) -> bool {
-        if im.ranges_only {
-            return matches!(t, Ty::Range(..) | Ty::RangeOf(_) | Ty::Var(_) | Ty::Error);
-        }
         match t {
             Ty::Range(..) | Ty::RangeOf(_) if im.for_ == Ty::Int => {
-                !self.impls_of(im.trait_.tr).any(|o| o.ranges_only)
+                !(self.impls_of(im.trait_.tr)).any(|o| matches!(o.for_, Ty::AnyRange(_)))
             }
             _ => true,
         }
@@ -241,6 +238,10 @@ pub(super) fn supertraits_unmet(d: &Decls, from: usize) -> Vec<(SourceId, cpl_di
         for sup in &tr.supers {
             let met = match &im.for_ {
                 Ty::Param(i) => im.bounds.iter().any(|(j, r)| j == i && r.tr == sup.tr),
+                // Every range type meets the same impls.
+                Ty::AnyRange(_) => {
+                    (d.trait_impls(sup.tr)).any(|(_, o)| d.impl_args(o, &Ty::Range(0, 0)).is_some())
+                }
                 t => (d.trait_impls(sup.tr)).any(|(_, o)| d.impl_args(o, t).is_some()),
             };
             if !met {
@@ -319,6 +320,10 @@ fn agree(a: &Ty, b: &Ty) -> bool {
 }
 fn fit(p: &Ty, t: &Ty, binds: &mut [Option<Ty>]) -> bool {
     match (p, t) {
+        (Ty::AnyRange(i), Ty::Range(..) | Ty::RangeOf(_) | Ty::Var(_) | Ty::Error) => {
+            fit(&Ty::Param(*i), t, binds)
+        }
+        (Ty::AnyRange(_), _) => false,
         // A parameter binds even to a type not known yet, so the method's own
         // arguments follow it once it is.
         (Ty::Param(i), _) => match &binds[*i] {

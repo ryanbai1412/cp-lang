@@ -318,6 +318,7 @@ impl<'a> Cx<'a> {
             Ty::Int => "Int".into(),
             Ty::Range(lo, hi) => format!("{lo}..={hi}"),
             Ty::RangeOf(_) => "a range with run-time ends".into(),
+            Ty::AnyRange(_) => "_..=_".into(),
             Ty::RangeTo(d, m, lo, k) => {
                 let k = match k {
                     0 => String::new(),

@@ -344,7 +344,7 @@ impl Link<'_> {
                 CTy::Lent(t) => CTy::Lent(t),
                 t => (self.lent)(t, &|s| self.parts(s)),
             },
-            Ty::Param(i) => match env.targs.get(*i) {
+            Ty::Param(i) | Ty::AnyRange(i) => match env.targs.get(*i) {
                 Some(CTy::Range(..)) => CTy::Int,
                 t => t.cloned().unwrap_or(CTy::Error),
             },
@@ -1767,6 +1767,7 @@ fn fit_cty(p: &Ty, t: &CTy, binds: &mut [Option<CTy>]) -> bool {
                 && ps.iter().zip(cps).all(|(p, c)| fit_cty(p, c, binds))
                 && fit_cty(r, cr, binds)
         }
+        (Ty::AnyRange(i), CTy::Range(..)) => fit_cty(&Ty::Param(*i), t, binds),
         // A lent slot reads as the value it points at.
         (_, CTy::Lent(t)) => fit_cty(p, t, binds),
         _ => false,

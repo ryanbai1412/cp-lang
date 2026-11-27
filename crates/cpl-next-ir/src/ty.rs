@@ -24,6 +24,9 @@ pub enum Ty {
     /// A range written in a body with an end that is a run-time value: `1..=n`. Each one written
     /// is a type of its own; its ends are values held where it is written (`check::RangeInfo`).
     RangeOf(usize),
+    /// `_..=_` as an impl's type: every range type and never `Int`. It binds the impl's
+    /// parameter `i`, which its body names `Self`, to the range type it is for.
+    AnyRange(usize),
     /// `lo..=D.m + k` in a declaration: a range whose end is a static getter of a domain type
     /// give or take a constant (`dep: [V]0..=V.count`). A store checks it against `D.m` where
     /// it is made, so it keeps the end a struct's arguments give it (R03.1.4).
