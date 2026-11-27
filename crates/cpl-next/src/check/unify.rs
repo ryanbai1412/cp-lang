@@ -411,7 +411,7 @@ impl<'a> Cx<'a> {
         }
     }
     /// Core's `@coerce` fn from a struct of `have`'s kind to one of `want`'s.
-    fn coercion(&self, have: &Ty, want: &Ty) -> Option<FnId> {
+    pub(super) fn coercion(&self, have: &Ty, want: &Ty) -> Option<FnId> {
         let (Ty::Struct(h, ..), Ty::Struct(w, ..)) = (have, want) else {
             return None;
         };

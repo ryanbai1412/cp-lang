@@ -103,6 +103,7 @@ core-02/bare-variant-needs-expected-enum.cp
 core-02/char-of-non-ascii-traps-every-build.cp
 core-02/char-of-non-ascii-traps.cp
 core-02/condition-is-bool.cp
+core-02/condition-not-bool.cp
 core-02/count-typed-by-range.cp
 core-02/counted-array-comprehension.cp
 core-02/counted-array-never-grows.cp

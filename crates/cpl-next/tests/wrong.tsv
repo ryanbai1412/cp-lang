@@ -7,7 +7,6 @@ core-01/continuation.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has
 core-01/destructure-swaps-array-places.cp	wrong-reject	check: program:6:1: E0302: this is not a place that can be assigned or lent
 core-01/fill-runtime-sized-array.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 core-01/getter-no-parens.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
-core-01/getter-parens.cp	wrong-accept	wanted E0304 on line 4, ran and printed: 2
 core-01/if-is-branch-view-meets-owned-else.cp	wrong-reject	check: program:6:28: E0302: expected `Str`, found `Slice<Str>`
 core-01/if-let-else-on-failed-condition.cp	wrong-reject	check: program:8:9: E0302: expected `Str`, found `()`
 core-01/lazy-is-a-name.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
@@ -24,7 +23,6 @@ core-01/trailing-comma.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` h
 core-02/alias-walks-as-aliased-type.cp	wrong-reject	check: program:5:1: E0204: unknown type `R`
 core-02/char-is-ordered.cp	wrong-reject	check: program:4:7: E0201: unknown name `max`
 core-02/coalesce-optional-default-keeps-some.cp	wrong-reject	check: program:7:62: E0806: nothing here says what `None` is an optional of; write the type
-core-02/condition-not-bool.cp	wrong-error	wanted E0307 on line 4, got: check: program:4:4: E0302: expected `Bool`, found `Int`
 core-02/counted-array-as-list.cp	wrong-reject	check: program:7:13: E0302: expected `List<Int>`, found `Array<$range0, Int>`
 core-02/counted-arrays-share-keys.cp	wrong-reject	check: program:8:33: E0302: expected `$range1`, found `$range0`
 core-02/enum-method-is-variant.cp	wrong-reject	check: program:8:9: E0201: unknown name `Ask`
@@ -233,7 +231,6 @@ core-06/code-after-a-sometimes-leaving-statement-runs.cp	wrong-reject	check: pro
 core-06/fn-value-fills-two-defaults.cp	wrong-reject	check: program:5:13: E0302: this function does not fit `(Int) -> Int`
 core-06/gen-takes-its-type-from-where-it-goes.cp	wrong-reject	check: program:14:16: E0201: unknown name `gen`
 core-06/gen-with-no-type-to-take-is-an-error.cp	wrong-error	wanted E0501 on line 4, got: check: program:4:7: E0201: unknown name `gen`
-core-06/getter-called-with-parens.cp	wrong-accept	wanted E0304 on line 4, ran and printed: 3
 core-06/lint-not-on-a-fn.cp	wrong-accept	wanted E0505 on line 4, ran and printed: 1
 core-06/min-max-as-fn-value.cp	wrong-reject	check: program:5:9: E0201: unknown name `max`
 core-06/multitest-fn-as-predicate.cp	wrong-reject	check: program:7:30: E0201: unknown name `n`
@@ -323,6 +320,7 @@ core-08/law-declared.cp	wrong-reject	check: program:5:5: E0302: expected `(name:
 core-08/laws-hold.cp	wrong-reject	check: program:3:11: E0201: unknown name `laws_hold`
 core-08/lazy-method-sig.cp	wrong-reject	decls: E0204: unknown type `Extra`
 core-08/list-bsearch-never-picks-range-bsearch.cp	wrong-reject	check: program:11:29: E0203: `List<Int>` has no member `bsearch`
+core-08/list-built-struct-keeps-its-domain-through-a-bound.cp	wrong-reject	check: program:15:7: E0304: `Optional<_>` cannot be called
 core-08/match-stored-shape-only.cp	wrong-reject	check: program:8:12: E0201: unknown name `Circle`
 core-08/method-generic-bound-unmet.cp	wrong-error	wanted E0606 on line 11, got: check: program:11:7: E0203: `S` has no member `apply`
 core-08/method-returning-a-deeper-instance.cp	wrong-reject	check: program:11:27: E0203: `S` has no member `len`
@@ -354,8 +352,6 @@ core-08/trait-typed-param-reads-its-assoc-type-bound.cp	wrong-reject	decls: E020
 core-08/type-arguments-on-a-plain-struct-are-an-error.cp	wrong-error	wanted E0303 on line 7, got: check: program:7:22: E0302: expected `Pt<1..=100>`, found `Pt`
 core-10/array-read-short-input.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 core-10/array-short-input.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
-core-10/bool-not-print.cp	wrong-accept	wanted E0606 on line 3, ran and printed: true
-core-10/bool-var-not-print.cp	wrong-accept	wanted E0606 on line 4, ran and printed: true
 core-10/crlf-read-line-drops-cr.cp	wrong-reject	check: program:4:9: E0201: unknown name `read_line`
 core-10/fn-below-divider-captures-case-names.cp	wrong-reject	check: program:7:29: E0201: unknown name `k`
 core-10/hash-containers-are-not-show.cp	wrong-error	wanted E0606 on line 6, got: check: program:4:1: E0204: unknown type `HashMap`
@@ -367,7 +363,6 @@ core-10/pair-domain-reads-a-triangle.cp	wrong-reject	check: std.pair:22:16: E060
 core-10/print-list-of-ranges-like-lists.cp	wrong-reject	check: program:4:7: E0302: expected `List<Int>`, found `List<Range<Int>>`
 core-10/print-position-as-its-integer.cp	wrong-reject	check: program:5:7: E0302: expected `List<Int>`, found `List<V>`
 core-10/print-str-is-one-word.cp	wrong-reject	check: program:6:7: E0302: expected `Array<$range0, Int>`, found `Array<$range0, Str>`
-core-10/rb1-q39-bool-not-print.cp	wrong-accept	wanted E0606 on line 3, ran and printed: true
 core-10/read-array-of-n.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 core-10/read-line.cp	wrong-reject	check: program:5:9: E0201: unknown name `read_line`
 core-10/read-needs-type.cp	wrong-accept	wanted E0806 on line 3, ran and printed: 

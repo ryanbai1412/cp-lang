@@ -167,6 +167,26 @@ impl<'a> Cx<'a> {
         self.scopes.push(HashMap::new());
         self.cond_in(c)
     }
+    /// An expression a condition tests: a `Bool`, never an integer or optional read as one (R02.11.1).
+    fn bool_cond(&mut self, e: &ast::Expr) -> TExpr {
+        let v = self.expr(e, Some(&Ty::Bool));
+        let t = self.shallow(&v.ty);
+        if matches!(t, Ty::Bool | Ty::Var(_) | Ty::Error) || self.coercion(&t, &Ty::Bool).is_some()
+        {
+            return self.coerce(v, &Ty::Bool);
+        }
+        let code = cpl_diag::codes::CONDITION_NOT_BOOL.0;
+        let shown = self.show(&t);
+        self.err(
+            v.span,
+            format!("{code}: this condition is a `{shown}`, not a `Bool`"),
+        );
+        TExpr {
+            kind: TK::Error,
+            ty: Ty::Bool,
+            span: v.span,
+        }
+    }
     fn cond_in(&mut self, c: &Cond) -> TExpr {
         match c {
             // `let v = e`: holds when the optional `e` has a value, which `v` then names.
@@ -225,10 +245,7 @@ impl<'a> Cx<'a> {
                     span,
                 }
             }
-            Cond::Expr(e) => {
-                let v = self.expr(e, Some(&Ty::Bool));
-                self.coerce(v, &Ty::Bool)
-            }
+            Cond::Expr(e) => self.bool_cond(e),
             _ => {
                 self.errors.push("slice: unsupported condition".into());
                 TExpr {
@@ -724,8 +741,7 @@ impl<'a> Cx<'a> {
                 out.push(TStmt::Return(v));
             }
             StmtKind::Assert { cond, message } => {
-                let c = self.expr(cond, Some(&Ty::Bool));
-                let c = self.coerce(c, &Ty::Bool);
+                let c = self.bool_cond(cond);
                 let msg = match message.as_ref().map(|m| &m.kind) {
                     Some(ExprKind::Str(ps)) => ps
                         .iter()
