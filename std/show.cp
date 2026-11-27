@@ -139,6 +139,7 @@ impl<H: Show, T: ShowAll> Show for Pack<H, T>:
 
 /// `print(x, y)`: the values joined by `sep`, then `end`; `precision: k` gives each `F64` `k`
 /// decimals (R10.3.1, R10.3.4).
+@role(print)
 pub fn print<Ts: ShowAll>(..xs: Ts, sep: ?Str = None, end: Str = "\n", precision: ?Int = None):
     var line = Str(List.new())
     xs.write_all(mut line, sep, true, precision)
@@ -146,6 +147,7 @@ pub fn print<Ts: ShowAll>(..xs: Ts, sep: ?Str = None, end: Str = "\n", precision
     out(line.chars.buf, line.len)
 
 /// `print` without the line's end.
+@role(write)
 pub fn write<Ts: ShowAll>(..xs: Ts, sep: ?Str = None, precision: ?Int = None):
     var line = Str(List.new())
     xs.write_all(mut line, sep, true, precision)

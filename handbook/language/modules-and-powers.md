@@ -152,8 +152,8 @@ Some syntax does need a declaration: `?T` needs a type, `print` a trait and
 `for` a way to walk. Those needs are a small fixed set of **language
 roles** (option, show, print, write, iteration, todo, prelude, and the
 operator and literal markers), listed in `spec/core/11-modules-prelude.md` §11.6.
-std fills each with an ordinary declaration marked `@role(name)`, all in
-`std/prelude.cp`. Any library may write the marker, and a program has one
+std fills each with an ordinary declaration marked `@role(name)`, and
+`std/prelude.cp` exports them all. Any library may write the marker, and a program has one
 filler per role. The compiler finds a role only through that table, never
 by a declaration's name, so a program's own `Optional` or `Show` is just a
 name.

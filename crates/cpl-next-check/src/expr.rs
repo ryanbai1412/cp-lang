@@ -1413,7 +1413,7 @@ impl<'a> Cx<'a> {
                     };
                     self.expr(&call, want)
                 }
-                ExprKind::Name(n) if (n == "print" || n == "write") && self.lookup(n).is_none() => {
+                ExprKind::Name(n) if self.lookup(n).is_none() && self.names_io(n) => {
                     let args = self.io_args(args);
                     self.call_named(n, &[], &args, span, want)
                 }
@@ -1643,6 +1643,11 @@ impl<'a> Cx<'a> {
     /// A call of a declared fn or struct, with the type arguments written at the call.
     /// `print`'s `sep:` and `precision:` from the innermost `with io` where it is written, unless
     /// the call names them (R09.1.2, R10.3.4).
+    /// Whether `n` names the fn filling the `print` or `write` role here (R11.6.1).
+    fn names_io(&self, n: &str) -> bool {
+        let r = &self.d.roles;
+        matches!(self.d.named(self.module, n), Some(Named::Fn(f)) if [r.print, r.write].contains(&Some(f)))
+    }
     fn io_args(&self, args: &[ast::Arg]) -> Vec<ast::Arg> {
         let mut out = args.to_vec();
         let Some(Named::Context(io)) = self.d.named(self.module, "io") else {

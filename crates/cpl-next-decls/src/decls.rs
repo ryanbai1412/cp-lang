@@ -305,6 +305,51 @@ pub struct Sugar {
     pub range_literal: Option<FnId>,
 }
 
+/// The declarations filling the language roles, each found by its `@role(name)` (R11.6.1).
+#[derive(Default, Clone)]
+pub struct Roles {
+    /// `print(...)`: shows its values and ends the line, reading `io`'s settings.
+    pub print: Option<FnId>,
+    /// `write(...)`: `print` without the line end.
+    pub write: Option<FnId>,
+}
+
+/// A language role of R11.6.1.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Role {
+    Option,
+    Show,
+    Print,
+    Write,
+    Iteration,
+    Todo,
+    Prelude,
+}
+
+impl Role {
+    pub const ALL: [Role; 7] = [
+        Role::Option,
+        Role::Show,
+        Role::Print,
+        Role::Write,
+        Role::Iteration,
+        Role::Todo,
+        Role::Prelude,
+    ];
+    /// The name `@role(name)` gives it.
+    pub fn name(self) -> &'static str {
+        match self {
+            Role::Option => "option",
+            Role::Show => "show",
+            Role::Print => "print",
+            Role::Write => "write",
+            Role::Iteration => "iteration",
+            Role::Todo => "todo",
+            Role::Prelude => "prelude",
+        }
+    }
+}
+
 #[derive(Default, Clone)]
 pub struct Decls {
     pub fns: Layer<FnDecl>,
@@ -345,6 +390,8 @@ pub struct Decls {
     pub cut_struct: Option<StructId>,
     /// What literals and type syntax build, each found by its std marker.
     pub sugar: Sugar,
+    /// The language roles, each found by its `@role` (R11.6.1).
+    pub roles: Roles,
     /// Each record struct by its field names, in order: `(lo: A, hi: B)` is the one keyed
     /// `["lo", "hi"]` (R02.5.2).
     pub records: Arc<HashMap<Vec<String>, StructId>>,
@@ -1362,6 +1409,7 @@ fn add_fn(
                 | "range_literal"
                 | "interpolation"
                 | "input"
+                | "role"
         );
         if !elsewhere
             && !marker
@@ -1422,6 +1470,33 @@ fn add_fn(
         if has(n) {
             collect::once(slot, id, collect::again(&item, s, n), &mut d.errors);
         }
+    }
+    for x in s.decorators.iter().filter(|x| x.name.text == "role") {
+        let slot = match fn_role(x) {
+            Some(Role::Print) => &mut d.roles.print,
+            Some(Role::Write) => &mut d.roles.write,
+            Some(_) => {
+                let name = x.name.text.clone();
+                errors.push(Msg::at(item.at(x.span), Unbuilt::Decorator { name }));
+                continue;
+            }
+            None => {
+                let msg = "`@role` names one of the roles of R11.6.1".to_string();
+                d.errors.push(Msg::at(
+                    item.at(x.span),
+                    Msg::verdict(cpl_diag::codes::UNRESOLVED_NAME, msg),
+                ));
+                continue;
+            }
+        };
+        let dup = Msg::at(
+            item.at(s.span),
+            Msg::verdict(
+                cpl_diag::codes::DUPLICATE_DEFINITION,
+                "a second declaration filling one `@role`",
+            ),
+        );
+        collect::once(slot, id, dup, &mut d.errors);
     }
     if has("input") {
         d.input_fns.push(FnId(d.fns.len()));
@@ -1791,5 +1866,13 @@ fn fresh_binders(ret: Option<&ast::Type>) -> Vec<(usize, String)> {
             })
             .collect(),
         _ => Vec::new(),
+    }
+}
+
+/// The role an `@role(name)` names, when `name` is one of R11.6.1's.
+fn fn_role(x: &ast::Decorator) -> Option<Role> {
+    match &x.args.first()?.value.kind {
+        ast::ExprKind::Name(n) => Role::ALL.into_iter().find(|r| r.name() == n),
+        _ => None,
     }
 }

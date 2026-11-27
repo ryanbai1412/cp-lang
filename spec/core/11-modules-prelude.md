@@ -122,8 +122,8 @@ It drops tests, brutes, generators, checkers, interactors, samples,
 Some syntax needs a declaration to mean anything: `?T` needs a type and a
 `for` needs a way to walk. Each such need is a **role**. The language fixes
 the set of roles below. A library fills each role with an ordinary
-declaration marked `@role(name)`, and std fills them all, in one place, in
-`std/prelude.cp`. The compiler finds a role's declaration only through this
+declaration marked `@role(name)` where it is declared, and `std/prelude.cp`
+exports every one of std's fillers. The compiler finds a role's declaration only through this
 table. A declaration's name never gives it a role, so an `Optional`, `Show`
 or `print` a program declares shadows that name and leaves the role alone.
 
@@ -134,7 +134,7 @@ or `print` a program declares shadows that name and leaves the role alone.
 | `print` | `print` | `print(...)`: shows its values and ends the line, reading `io`'s `sep` and `precision` |
 | `write` | `write` | `write(...)`: the same without the line end |
 | `iteration` | `Seq`, with `iter` and `each` | `for x in s`, `s.each(f)` and `s.iter()` |
-| `todo` | `todo` | `todo()`: an unfinished body that type-checks and traps |
+| `todo` | `todo` | the expression `todo`, of any type, that traps when run (R01.6.7) |
 | `prelude` | the module `std.prelude` | the names every program sees without a `use` (§11.3) |
 
 The operator and literal markers of R06.4.12 (`@operator("op")`,
