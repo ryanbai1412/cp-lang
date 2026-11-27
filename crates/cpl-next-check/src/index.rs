@@ -13,7 +13,7 @@ impl Cx<'_> {
     /// the type's own named `at` is not indexing.
     pub(super) fn elem(&mut self, s: TExpr, i: TExpr, span: Span) -> TExpr {
         let at = INDEX_READ;
-        let rt = self.shallow(&s.ty);
+        let rt = self.recv_ty(&s.ty);
         let read = self.d.impl_member_by(&rt, at, |f| f.region.is_none());
         let call = match (&rt, read) {
             (Ty::Param(p), _) => self.bound_call(*p, s, at, vec![TArg::Value(i)], span),
@@ -93,6 +93,78 @@ impl Cx<'_> {
             key.span,
             Msg::verdict(cpl_diag::codes::NOT_INDEXABLE, format!("`[{v}]` reads key {v}, which is not one of the view's keys: write `.nth({v})` for its element {v}, or index the source for its key {v}")),
         );
+    }
+    /// An `Int` used to index an array is checked against the array's domain. The proof that removes the check is the facts layer's.
+    /// A declared domain, or a type that implements core's `Domain`.
+    pub(super) fn is_domain(&self, t: &Ty) -> bool {
+        match t {
+            Ty::Dom(_) => true,
+            Ty::Struct(..) => (self.d.domain_trait).is_some_and(|tr| self.d.has_impl(t, tr)),
+            _ => false,
+        }
+    }
+    pub(super) fn index_arg(&mut self, base: &Ty, i: TExpr) -> TExpr {
+        if let Some(k) = self.key_of(base).filter(|_| self.shallow(&i.ty) == Ty::Int) {
+            let dty = self.shallow(&k);
+            if matches!(dty, Ty::Dom(_) | Ty::Param(_)) {
+                let span = i.span;
+                // A named domain's positions are never raw `Int`s; a literal converts into an
+                // array (R02.8.1, R04.8.8), never into a view of one (R07.4.5).
+                if let Ty::Dom(d) = &dty {
+                    let named = !self.domains[*d].name.starts_with('$');
+                    let array = matches!(self.shallow(base), Ty::Struct(a, ..) if Some(a) == self.array_id());
+                    let literal = matches!(i.kind, TK::Int(_) | TK::Neg(_));
+                    if named && !(array && literal) {
+                        let name = self.domains[*d].name.clone();
+                        let what = if array {
+                            format!("a `[{name}]` array")
+                        } else {
+                            format!("a view keyed by `{name}`")
+                        };
+                        self.err(
+                            span,
+                            Msg::verdict(
+                                cpl_diag::codes::WRONG_DOMAIN,
+                                format!("an `Int` indexes {what}: write `{name}(i)`"),
+                            ),
+                        );
+                    }
+                }
+                return self.position(dty, i);
+            }
+        }
+        // A position of one domain never indexes an array over another (R04.3.1).
+        if let Some(k) = self.key_of(base) {
+            let (k, t) = (self.zonk(&k), self.zonk(&i.ty));
+            if k != t && self.is_domain(&k) && self.is_domain(&t) {
+                let (ks, ts) = (self.show(&k), self.show(&t));
+                self.err(
+                    i.span,
+                    Msg::verdict(
+                        cpl_diag::codes::WRONG_DOMAIN,
+                        format!("a `{ts}` indexes a `[{ks}]` array: index it with a `{ks}`"),
+                    ),
+                );
+                return TExpr {
+                    kind: TK::Error,
+                    ty: Ty::Error,
+                    span: i.span,
+                };
+            }
+        }
+        // Keys never wrap (R07.2.17).
+        if let TK::Neg(k) = &i.kind {
+            if let TK::Int(k) = k.kind {
+                self.err(
+                    i.span,
+                    Msg::verdict(
+                        cpl_diag::codes::NEGATIVE_LITERAL_INDEX,
+                        format!("`-{k}` is never a key: keys do not wrap; count from `.len`"),
+                    ),
+                );
+            }
+        }
+        i
     }
     /// The `@index` fn `s[i]` calls: when `i` is a `Range` and `s` is not keyed by ranges (R07.4.17).
     pub(super) fn index_fn(&mut self, s: &Ty, i: &Ty) -> Option<FnId> {
@@ -181,7 +253,7 @@ impl Cx<'_> {
     }
     /// The type of the cell `s[k]` reads, through `Indexed`.
     pub(super) fn cell_of(&mut self, s: &Ty) -> Option<Ty> {
-        let rt = self.shallow(s);
+        let rt = self.recv_ty(s);
         match self.read_sig(&rt)?.1 {
             Ty::Ref(t) => Some(*t),
             t => Some(t),
@@ -210,7 +282,7 @@ impl Cx<'_> {
             Ty::Param(p) => (self.bound_traits(p).into_iter())
                 .find(|t| self.d.traits[t.tr.0].methods.contains_key(INDEX_READ))
                 .and_then(|t| t.args.first().cloned()),
-            rt => self.read_sig(&rt).map(|(k, _)| k),
+            _ => self.read_sig(&self.recv_ty(s)).map(|(k, _)| k),
         }
     }
     /// The `@index` fn taking `arity` range ends that `s[..]` calls: one declared for `s`'s own
