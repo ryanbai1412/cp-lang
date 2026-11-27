@@ -1401,6 +1401,8 @@ next/n_list_01_shrink.cp
 next/n_list_02_move_within.cp
 next/n_list_03_let_receiver.cp
 next/n_lower_01_fn_ending_in_while_true.cp
+next/n_marker_01_a_second_cuts_struct_is_a_duplicate.cp
+next/n_marker_02_a_library_writes_a_marker.cp
 next/n_member_01_getter_first.cp
 next/n_memo_01_a_marked_table_caches_a_fn.cp
 next/n_method_01_range_self_takes_an_int.cp

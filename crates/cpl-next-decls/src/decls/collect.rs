@@ -109,6 +109,7 @@ fn layer(
     let mut main = Vec::new();
     // Pass 1: names, so signatures can mention later declarations.
     let mut pending: Vec<(ModId, ItemId, &ast::Stmt, Option<Named>)> = Vec::new();
+    let mut op_methods: HashMap<TraitId, String> = HashMap::new();
     // The core's `use` lines, for its view made again over a program's records.
     let mut imports: Vec<(ModId, &ast::Stmt)> = match from {
         0 => Vec::new(),
@@ -146,8 +147,9 @@ fn layer(
         vec![crate::modules::Item { id, stmts }]
     })
     .unwrap_or_default();
-    let each = crate::synth::derive_each(&mods[CORE.0].items);
-    let convert = crate::synth::convert_marked(&mods[CORE.0].items);
+    let all = || mods.iter().flat_map(|m| m.items.iter()).flat_map(|it| &it.stmts);
+    let each = crate::synth::derive_each(all());
+    let convert = crate::synth::convert_marked(all);
     let derived: Vec<Vec<(ItemId, String, ast::Stmt)>> = (mods.iter().enumerate())
         .map(|(mi, m)| {
             // Std's modules get only what a program's records add.
@@ -229,15 +231,19 @@ fn layer(
                     StmtKind::Struct(sd) => {
                         let id = StructId(d.structs.len());
                         own[mi].insert(sd.name.text.clone(), Named::Struct(id));
-                        if mi == CORE.0 && s.decorators.iter().any(|x| x.name.text == "tuple") {
-                            Arc::make_mut(&mut d.tuples).insert(sd.fields.len(), id);
+                        if marked(s, "tuple") {
+                            let n = sd.fields.len();
+                            match d.tuples.contains_key(&n) {
+                                true => d.errors.push(again(item, s, "tuple")),
+                                false => _ = Arc::make_mut(&mut d.tuples).insert(n, id),
+                            }
                         }
                         if d.is_library(mid) && s.decorators.iter().any(|x| x.name.text == "recipe")
                         {
                             d.recipe = Some(id);
                         }
-                        if mi == CORE.0 && s.decorators.iter().any(|x| x.name.text == "cuts") {
-                            d.cut_struct = Some(id);
+                        if marked(s, "cuts") {
+                            once(&mut d.cut_struct, id, again(item, s, "cuts"), &mut d.errors);
                         }
                         let member = s.decorators.iter().find(|x| x.name.text == "member");
                         if let Some(ast::ExprKind::Name(m)) =
@@ -291,18 +297,32 @@ fn layer(
                     }
                     StmtKind::Trait { name, alias, .. } => {
                         let id = TraitId(d.traits.len());
-                        if mi == CORE.0 && s.decorators.iter().any(|x| x.name.text == "positions") {
-                            d.domain_trait = Some(id);
+                        if marked(s, "positions") {
+                            let e = again(item, s, "positions");
+                            once(&mut d.domain_trait, id, e, &mut d.errors);
                         }
-                        if mi == CORE.0 && s.decorators.iter().any(|x| x.name.text == "convert") {
-                            d.convert_trait = Some(id);
+                        if marked(s, "convert") {
+                            once(&mut d.convert_trait, id, again(item, s, "convert"), &mut d.errors);
                         }
                         let op = s.decorators.iter().find(|x| x.name.text == "operator");
                         if let Some(ast::ExprKind::Str(text)) =
                             op.and_then(|x| x.args.first()).map(|a| &a.value.kind)
                         {
-                            if let (CORE, [ast::StrPiece::Text(t)]) = (mid, text.as_slice()) {
-                                d.operators.push((t.clone(), id));
+                            if let [ast::StrPiece::Text(t)] = text.as_slice() {
+                                let m = operator_method(s);
+                                let method = |tr: &TraitId| match op_methods.get(tr) {
+                                    Some(m) => Some(m.clone()),
+                                    None => d.traits[tr.0].methods.keys().next().cloned(),
+                                };
+                                let taken =
+                                    (d.operators.iter()).any(|(o, tr)| o == t && method(tr) == m);
+                                match taken {
+                                    true => d.errors.push(again(item, s, "operator")),
+                                    false => {
+                                        d.operators.push((t.clone(), id));
+                                        op_methods.extend(m.map(|m| (id, m)));
+                                    }
+                                }
                             }
                         }
                         own[mi].insert(name.text.clone(), Named::Trait(id));
@@ -1244,4 +1264,32 @@ fn product(d: &mut Decls, name: &str, def: &ast::Expr) -> Option<Ty> {
 /// The name of product `P`'s `i`th factor when it is written as a range.
 pub fn factor_name(product: &str, i: usize) -> String {
     format!("{product}.{i}")
+}
+
+fn marked(s: &ast::Stmt, n: &str) -> bool {
+    s.decorators.iter().any(|x| x.name.text == n)
+}
+
+/// A marker names one declaration: a second, in any module, is a duplicate.
+fn again(item: &ItemId, s: &ast::Stmt, n: &str) -> Msg {
+    let code = cpl_diag::codes::DUPLICATE_DEFINITION;
+    Msg::at(item.at(s.span), Msg::verdict(code, format!("a second declaration marked `@{n}`")))
+}
+
+fn once<T>(slot: &mut Option<T>, id: T, dup: Msg, errors: &mut Vec<Msg>) {
+    match slot {
+        Some(_) => errors.push(dup),
+        None => *slot = Some(id),
+    }
+}
+
+/// An `@operator` trait's method: `-` marks both `Sub.sub` and `Neg.neg`.
+fn operator_method(s: &ast::Stmt) -> Option<String> {
+    match &s.kind {
+        StmtKind::Trait { body, .. } => body.stmts.iter().find_map(|x| match &x.kind {
+            StmtKind::Fn(f) => Some(f.name.text.clone()),
+            _ => None,
+        }),
+        _ => None,
+    }
 }

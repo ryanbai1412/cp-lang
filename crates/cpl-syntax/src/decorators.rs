@@ -92,6 +92,24 @@ pub const DECORATORS: &[(&str, &str)] = &[
         "recipe",
         "on a library struct: the value of a `-> yields T` call made outside a `for` (R07.6.2)",
     ),
+    ("tuple", "on a struct: the struct an n-tuple of its field count is"),
+    ("cuts", "on a struct: the cuts of a domain, `D.cuts`"),
+    ("positions", "on a trait: the trait a domain's positions implement"),
+    ("convert", "on a trait: the conversion `T(x)` calls"),
+    (
+        "operator",
+        "`@operator(\"op\")` on a trait: the trait an operator calls",
+    ),
+    (
+        "derive",
+        "on a trait: every struct whose fields all have it gets it field by field",
+    ),
+    ("coerce", "on a fn: an implicit conversion where its result type is wanted"),
+    ("pattern", "on a fn: what a pattern over its type calls"),
+    (
+        "variant_check",
+        "on a fn: the check an `Int` converted to an enum goes through",
+    ),
 ];
 
 /// Old spellings the parser or checker answers with their own E0503 fix.

@@ -202,6 +202,12 @@ prove bounds), which hides a 10x constant factor. User-defined decorator
 macros, removed with the other macro facilities; a user library writes a
 decorator as an ordinary generic function over function types.
 
+**Chosen.** The markers by which core names what the language builds on
+(`@tuple`, `@operator("+")`, `@derive`, `@convert` and the rest, R06.4.12)
+are in that closed set, so core uses only what any library can write (small
+core, no privileged stdlib). The mark on a record's synthesized struct is
+internal: no source writes it.
+
 ### State above and below `@!multitest` (R06.5.1, decision 385)
 
 Bindings above `@!multitest` are shared by every test case; everything

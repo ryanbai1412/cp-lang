@@ -1096,10 +1096,9 @@ fn add_fn(
     // run, so the program's own is refused: its expected result may be that lint (R06.4.9).
     for x in &s.decorators {
         let elsewhere = d.is_library(m) && read_elsewhere(&x.name.text);
-        let core_only =
-            m == CORE && matches!(x.name.text.as_str(), "coerce" | "variant_check" | "pattern");
+        let marker = matches!(x.name.text.as_str(), "coerce" | "variant_check" | "pattern");
         if !elsewhere
-            && !core_only
+            && !marker
             && x.name.text != GETTER
             && !matches!(
                 x.name.text.as_str(),
@@ -1140,11 +1139,11 @@ fn add_fn(
     if has("from_op") {
         d.from_op.push(FnId(d.fns.len()));
     }
-    let coerce = m == CORE && has("coerce");
+    let coerce = has("coerce");
     if coerce {
         d.coercions.push(FnId(d.fns.len()));
     }
-    if m == CORE && has("pattern") {
+    if has("pattern") {
         d.pattern_fns.push(FnId(d.fns.len()));
     }
     if getter && params.iter().any(|p| p.default.is_none()) {

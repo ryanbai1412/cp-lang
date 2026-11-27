@@ -263,10 +263,9 @@ fn derived_impl(
     })
 }
 
-/// The core traits marked `@derive`, with their one method: every struct whose fields all have
+/// The traits marked `@derive`, with their one method: every struct whose fields all have
 /// one gets it field by field (R08.1.6).
-pub(crate) fn derive_each(core: &[crate::modules::Item]) -> Vec<(String, String)> {
-    let stmts = core.iter().flat_map(|it| &it.stmts);
+pub(crate) fn derive_each<'a>(stmts: impl Iterator<Item = &'a ast::Stmt>) -> Vec<(String, String)> {
     let marked = stmts.filter(|s| s.decorators.iter().any(|d| d.name.text == "derive"));
     marked
         .filter_map(|s| match &s.kind {
@@ -460,10 +459,11 @@ fn plain(t: &ast::Type) -> bool {
     }
 }
 
-/// Core's `@convert` trait with its one method, and the fn core marks `@variant_check`: what a
+/// The `@convert` trait with its one method, and the fn marked `@variant_check`: what a
 /// payload-free enum's conversions are written with.
-pub(crate) fn convert_marked(core: &[crate::modules::Item]) -> Option<(String, String, String)> {
-    let stmts = || core.iter().flat_map(|it| &it.stmts);
+pub(crate) fn convert_marked<'a, I: Iterator<Item = &'a ast::Stmt>>(
+    stmts: impl Fn() -> I,
+) -> Option<(String, String, String)> {
     let marked = |s: &ast::Stmt, n: &str| s.decorators.iter().any(|d| d.name.text == n);
     let (tr, method) = (stmts().filter(|s| marked(s, "convert"))).find_map(|s| match &s.kind {
         StmtKind::Trait { name, body, .. } => match &body.stmts[..] {

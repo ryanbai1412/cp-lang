@@ -198,6 +198,16 @@ library or by this spec:
 - `@member(name)` on a std struct `S<B>`: `D.name` is a domain whose
   positions are the values of `S<D>` (std's `@member(subsets)` on `Subset`,
   so `V.subsets` is the domain of `V`'s subsets).
+- Markers, each on the one declaration it names: `@tuple` (the struct an
+  n-tuple of its field count is), `@cuts` (the struct of a domain's cuts),
+  `@positions` (the trait a domain's positions implement), `@convert` (the
+  trait `T(x)` calls), `@operator("op")` (the trait an operator calls),
+  `@derive` (a trait every struct whose fields all have it gets field by
+  field), `@coerce` (an implicit conversion fn), `@pattern` (the fn a pattern
+  over its type calls) and `@variant_check` (the check an `Int` converted to
+  an enum goes through). Core declares each with them, and any module may: a
+  second declaration of one marker, or of one `@operator` with the same
+  method, is E0202. (R06.4.12)
 - Documented where they act: `@bits` on a field and `@law` (chapter 5),
   `@on_unimplemented`, `@was(..)`, `@aka(..)` and `@stress(kind)` (chapter 12). Any
   other `@name` is E0107, naming the nearest decorator, so no later pass
