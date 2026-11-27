@@ -604,26 +604,11 @@ pub fn domain_member(member: &str) -> Option<&'static str> {
 
 /// The member `D.cuts` is: the `@member` of the struct std marks as a domain's cuts.
 pub fn cuts_member() -> &'static str {
-    static FOUND: OnceLock<&'static str> = OnceLock::new();
-    FOUND.get_or_init(|| {
-        let mark = cpl_syntax::decorators::CUTS;
-        let marked = crate::modules::std_index()
-            .iter()
-            .filter(|(_, t)| t.contains(&format!("@{mark}")));
-        let mut stmts = marked
-            .flat_map(|(_, t)| cpl_syntax::parse_file(t).items)
-            .flat_map(|(_, i)| i.stmts);
-        let cut = stmts.find_map(|s| match s.kind {
-            ast::StmtKind::Struct(d) if s.decorators.iter().any(|x| x.name.text == mark) => {
-                Some(d.name.text)
-            }
-            _ => None,
-        });
-        domain_members()
-            .iter()
-            .find(|(_, of)| Some(*of) == cut.as_deref())
-            .map_or("", |&(m, _)| m)
-    })
+    let cut = marked().cut;
+    domain_members()
+        .iter()
+        .find(|(_, of)| *of == cut)
+        .map_or("", |&(m, _)| m)
 }
 
 /// Whether `name` is `D.cuts`, or its removed spelling `D.bounds`.
@@ -1076,6 +1061,8 @@ pub const VALUE_NAMES: &[&str] = &[
 /// the `@pattern` fn.
 #[derive(Default)]
 struct Marked {
+    /// The struct marked `@cuts`.
+    cut: &'static str,
     types: Vec<&'static str>,
     traits: Vec<&'static str>,
     values: Vec<&'static str>,
@@ -1124,7 +1111,12 @@ fn marked() -> &'static Marked {
         for s in stmts {
             let has = |of: &[&str]| s.decorators.iter().any(|d| of.contains(&&*d.name.text));
             match &s.kind {
-                ast::StmtKind::Struct(d) if has(TYPES) => m.add_type(&d.name.text),
+                ast::StmtKind::Struct(d) if has(TYPES) => {
+                    if has(&[cpl_syntax::decorators::CUTS]) {
+                        m.cut = d.name.text.clone().leak();
+                    }
+                    m.add_type(&d.name.text)
+                }
                 ast::StmtKind::Trait { name, .. } if has(TRAITS) => add(&mut m.traits, &name.text),
                 ast::StmtKind::Fn(f) if has(&["range_literal"]) => {
                     if let Some(ast::TypeKind::Named { name, .. }) = f.ret.as_ref().map(|r| &r.kind)

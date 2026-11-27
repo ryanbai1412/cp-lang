@@ -450,31 +450,6 @@ impl<'a> Checker<'a> {
                         ret: Box::new(ret),
                     };
                 }
-                "set_at" if base_ty.is_indexed_mut() => {
-                    return Ty::Fn {
-                        params: vec![
-                            crate::Param {
-                                name: "i".into(),
-                                ty: Ty::Int,
-                                mutable: false,
-                                has_default: false,
-                                named_only: false,
-                                variadic: false,
-                                lazy: false,
-                            },
-                            crate::Param {
-                                name: "x".into(),
-                                ty: elem,
-                                mutable: false,
-                                has_default: false,
-                                named_only: false,
-                                variadic: false,
-                                lazy: false,
-                            },
-                        ],
-                        ret: Box::new(Ty::Unit),
-                    };
-                }
                 "swap_idx" if base_ty.is_indexed_mut() => {
                     return Ty::Fn {
                         params: vec![

@@ -473,18 +473,6 @@ impl Feeds {
     /// The fn and the slot of its list when the loop `id` over `seq`
     /// with this body runs the body as the fn yields. The loop must not
     /// be in a closure or in a fn that is itself feeding a loop.
-    /// Whether `body` has a loop some fn feeds, which never leaves early:
-    /// from inside a fed fn that loop's yields feed on out.
-    pub fn walks_a_fed_fn(&self, body: &Block) -> bool {
-        let mut walks = false;
-        walk::deep_stmts(body, &mut |stmt| {
-            if let Stmt::For(id, _, Iter::Seq(seq, false), b) = stmt {
-                walks |= !escapes(b) && self.feeds(*id, seq, b).is_some();
-            }
-        });
-        walks
-    }
-
     pub fn feeds(&self, id: LoopId, seq: &Expr, body: &Block) -> Option<(usize, usize)> {
         let ExprKind::Call(callee, args) = &seq.kind else {
             return None;

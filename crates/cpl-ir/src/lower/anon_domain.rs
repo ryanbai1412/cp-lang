@@ -187,25 +187,18 @@ fn ty_uses_domain(ty: &ast::Type, name: &str) -> bool {
         _ => false,
     }
 }
+
+/// The members of an anonymous domain an expression reads it through, besides its cuts.
+const ANON_MEMBERS: &[&str] = &[
+    "count", "len", "all", "first", "last", "start", "end", "mask", "size", "nth", "at",
+];
+
 fn expr_uses_domain(e: &ast::Expr, name: &str) -> bool {
     match &e.kind {
         ast::ExprKind::Field { base, name: m }
             if matches!(&base.kind, ast::ExprKind::Name(n) if n == name)
                 && (m.text == cpl_check::cuts_member()
-                    || matches!(
-                        m.text.as_str(),
-                        "count"
-                            | "len"
-                            | "all"
-                            | "first"
-                            | "last"
-                            | "start"
-                            | "end"
-                            | "mask"
-                            | "size"
-                            | "nth"
-                            | "at"
-                    )) =>
+                    || ANON_MEMBERS.contains(&m.text.as_str())) =>
         {
             true
         }

@@ -17,7 +17,7 @@ impl<'a> Lowerer<'a> {
             .iter()
             .any(|s| s.receiver == Some(true) && s.decl.name.text == name)
             || self.gen_fns.iter().any(|g| mut_self(g.decl))
-            || matches!(name, "swap" | "swap_idx" | "set_at" | "fill")
+            || matches!(name, "swap" | "swap_idx" | "fill")
     }
 
     pub(in crate::lower) fn collect_mut_slices_expr(&mut self, e: &ast::Expr) {

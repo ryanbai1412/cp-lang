@@ -578,8 +578,8 @@ impl<'a> Checker<'a> {
 
 /// Methods that change their receiver.
 const MUTATORS: &[&str] = &[
-    "push", "pop", "clear", "insert", "remove", "take", "swap", "swap_idx", "set_at", "add",
-    "resize", "truncate", "reserve", "fill",
+    "push", "pop", "clear", "insert", "remove", "take", "swap", "swap_idx", "add", "resize",
+    "truncate", "reserve", "fill",
 ];
 /// `List` methods that change length and therefore cannot run on a fixed-length slice view.
 pub(super) const LENGTH_CHANGING_MUTATORS: &[&str] = &[
