@@ -526,8 +526,9 @@ impl Cx<'_> {
         })
     }
 
-    /// A fn item named where a fn of fewer parameters is wanted, each one it leaves out defaulted:
-    /// `(a, ..) => f(a, ..)`, so a call through the value fills the rest from their defaults (R06.1.5).
+    /// A fn item named where a fn of fewer parameters is wanted, each one it leaves out defaulted
+    /// or variadic: `(a, ..) => f(a, ..)`, so a call through the value fills the rest from their
+    /// defaults (R06.1.5) and gives a variadic none, as `max` passed as `(T, T) -> T`.
     pub(super) fn defaulted_fn_value(
         &mut self,
         n: &str,
@@ -543,7 +544,7 @@ impl Cx<'_> {
             .filter(|_| self.declared(n))?;
         let fd = self.d.f(d);
         let rest = fd.params.get(ps.len()..).filter(|r| !r.is_empty())?;
-        if !rest.iter().all(|p| p.default.is_some() && !p.variadic)
+        if !rest.iter().all(|p| p.default.is_some() || p.variadic)
             || fd.params[..ps.len()].iter().any(|p| p.variadic)
         {
             return None;

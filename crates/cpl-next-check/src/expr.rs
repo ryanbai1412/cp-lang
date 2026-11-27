@@ -1062,24 +1062,43 @@ impl<'a> Cx<'a> {
             },
             _ => Vec::new(),
         };
-        let formals: Vec<Formal> = (ps.into_iter().enumerate())
-            .map(|(k, ty)| {
-                let (ty, mutable) = match ty {
-                    Ty::Mut(t) => (*t, true),
-                    t => (t, false),
+        // A fn item's value is the item: a call through it binds as a direct call does, its
+        // defaults and variadic tail included (R06.1.5).
+        let item = match self.shallow(&callee.ty) {
+            Ty::Clo(c) => match *c {
+                CloRef::Item(f) => Some(f),
+                CloRef::Lambda(..) => None,
+            },
+            _ => None,
+        };
+        let d = self.d;
+        let formals: Vec<Formal> = match &item {
+            Some(f) if (d.f(f.decl).params.iter()).any(|p| p.variadic || p.default.is_some()) => {
+                let sub = Subst {
+                    tys: &f.targs,
+                    sets: &f.sets,
                 };
-                Formal {
-                    label: "",
-                    name: sig.get(k).map_or("", |s| s.0.as_str()),
-                    written: sig.get(k).and_then(|s| s.1.as_ref()),
-                    ty,
-                    mutable,
-                    named_only: false,
-                    variadic: false,
-                    default: None,
-                }
-            })
-            .collect();
+                self.formals(&sub, d.f(f.decl))
+            }
+            _ => (ps.into_iter().enumerate())
+                .map(|(k, ty)| {
+                    let (ty, mutable) = match ty {
+                        Ty::Mut(t) => (*t, true),
+                        t => (t, false),
+                    };
+                    Formal {
+                        label: "",
+                        name: sig.get(k).map_or("", |s| s.0.as_str()),
+                        written: sig.get(k).and_then(|s| s.1.as_ref()),
+                        ty,
+                        mutable,
+                        named_only: false,
+                        variadic: false,
+                        default: None,
+                    }
+                })
+                .collect(),
+        };
         let seen = self.errors.len();
         let (pre, args) = self.args(args, &formals, span);
         if self.errors.len() > seen {

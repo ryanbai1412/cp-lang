@@ -1712,6 +1712,7 @@ next/n_fn_next_binds_its_types.cp
 next/n_fn_value_01_defaulted_params_are_left_out.cp
 next/n_fnval_01_defaults_fill.cp
 next/n_fnval_02_mut_params.cp
+next/n_fnval_03_variadic_item_as_a_fixed_arity_value.cp
 next/n_for_01_wildcard_and_repeat.cp
 next/n_fresh_domain_owned_mix.cp
 next/n_fresh_domain_owned_type.cp
