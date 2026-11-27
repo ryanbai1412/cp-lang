@@ -182,65 +182,12 @@ impl Intr {
             other => other,
         }
     }
-    /// The storage operation a std fn declared `= @intrinsic(name)` is (R12.14.1).
+    /// The operation a std fn declared `= @intrinsic(name)` is (R12.14.1): its row of
+    /// [`crate::ops::INTRINSICS`].
     pub fn named(name: &str) -> Option<Intr> {
-        Some(match name {
-            "raw_empty" => Intr::RawEmpty,
-            "raw_new" => Intr::RawNew,
-            "raw_get" => Intr::RawGet,
-            "raw_set" => Intr::RawSet,
-            "move_out" => Intr::RawTake,
-            "unset_cells" => Intr::RawCap,
-            "key_check" => Intr::CheckKey,
-            "range_check" => Intr::CheckRange,
-            "value_check" => Intr::CheckVariant,
-            "char_of" => Intr::CharOf,
-            "rand_word" => Intr::RandWord,
-            "read_byte" => Intr::ReadByte,
-            "read_int" => Intr::ReadInt,
-            "input_peek" => Intr::PeekByte,
-            "token_check" => Intr::CheckToken,
-            "input_check" => Intr::CheckInput,
-            "input_left" => Intr::InputLeft,
-            "code_of" => Intr::CodeOf,
-            "u64_of" => Intr::ToU64,
-            "int_of_u64" => Intr::FromU64,
-            "i128_of" => Intr::ToI128,
-            "int_of_i128" => Intr::FromI128,
-            "f64_of_i128" => Intr::F64OfI128,
-            "i128_of_u64" => Intr::I128OfU64,
-            "u64_of_i128" => Intr::U64OfI128,
-            "f64_of" => Intr::ToF64,
-            "f64_bits" => Intr::F64Bits,
-            "out" => Intr::Out,
-            _ => return cpl_prim::Prim::from_id(name).map(Intr::of_prim),
-        })
-    }
-    /// The operation of a primitive of `cpl-prim`'s one table.
-    fn of_prim(p: cpl_prim::Prim) -> Intr {
-        use cpl_prim::Prim as P;
-        match p {
-            P::Popcount => Intr::Popcount,
-            P::Abs => Intr::Abs,
-            P::Ctz => Intr::Ctz,
-            P::Clz => Intr::Clz,
-            P::BitWidth => Intr::BitWidth,
-            P::BitCeil => Intr::BitCeil,
-            P::Sqrt => Intr::Float(FloatFn::Sqrt),
-            P::Sin => Intr::Float(FloatFn::Sin),
-            P::Cos => Intr::Float(FloatFn::Cos),
-            P::Tan => Intr::Float(FloatFn::Tan),
-            P::Asin => Intr::Float(FloatFn::Asin),
-            P::Acos => Intr::Float(FloatFn::Acos),
-            P::Atan2 => Intr::Float(FloatFn::Atan2),
-            P::Hypot => Intr::Float(FloatFn::Hypot),
-            P::Exp => Intr::Float(FloatFn::Exp),
-            P::Ln => Intr::Float(FloatFn::Ln),
-            P::Floor => Intr::ToInt(Rounding::Floor),
-            P::Ceil => Intr::ToInt(Rounding::Ceil),
-            P::Round => Intr::ToInt(Rounding::Round),
-            P::Trunc => Intr::ToInt(Rounding::Trunc),
-        }
+        (crate::ops::INTRINSICS.iter())
+            .find(|(n, _)| *n == name)
+            .map(|(_, op)| *op)
     }
     /// The arguments it stores, so a caller's owned heap value passed there moves in (R05.2.2).
     pub fn keeps(self) -> &'static [usize] {

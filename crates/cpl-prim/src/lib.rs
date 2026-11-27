@@ -83,7 +83,7 @@ impl Prim {
     }
 
     /// The name `@intrinsic("...")` writes.
-    pub fn id(self) -> &'static str {
+    pub const fn id(self) -> &'static str {
         Prim::IDS[self as usize]
     }
 }

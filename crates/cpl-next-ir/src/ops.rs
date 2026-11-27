@@ -7,6 +7,7 @@
 //! runner and they must agree.
 use crate::ir::{CheckKind, FloatFn, Intr, Rounding};
 use cpl_diag::{codes, Code};
+use cpl_prim::Prim;
 
 mod rules;
 pub use rules::{
@@ -698,3 +699,56 @@ mod tests {
         assert_eq!(got, ["1", "2", "3", "4\u{a0}5\u{85}6"]);
     }
 }
+
+/// Every intrinsic id a std fn's `= @intrinsic(id)` may name, with the operation it is: the one
+/// table of them (R12.14.1). The primitives' ids are `cpl-prim`'s, which the old runtime shares.
+pub const INTRINSICS: &[(&str, Intr)] = &[
+    ("raw_empty", Intr::RawEmpty),
+    ("raw_new", Intr::RawNew),
+    ("raw_get", Intr::RawGet),
+    ("raw_set", Intr::RawSet),
+    ("move_out", Intr::RawTake),
+    ("unset_cells", Intr::RawCap),
+    ("key_check", Intr::CheckKey),
+    ("range_check", Intr::CheckRange),
+    ("value_check", Intr::CheckVariant),
+    ("char_of", Intr::CharOf),
+    ("rand_word", Intr::RandWord),
+    ("read_byte", Intr::ReadByte),
+    ("read_int", Intr::ReadInt),
+    ("input_peek", Intr::PeekByte),
+    ("token_check", Intr::CheckToken),
+    ("input_check", Intr::CheckInput),
+    ("input_left", Intr::InputLeft),
+    ("code_of", Intr::CodeOf),
+    ("u64_of", Intr::ToU64),
+    ("int_of_u64", Intr::FromU64),
+    ("i128_of", Intr::ToI128),
+    ("int_of_i128", Intr::FromI128),
+    ("f64_of_i128", Intr::F64OfI128),
+    ("i128_of_u64", Intr::I128OfU64),
+    ("u64_of_i128", Intr::U64OfI128),
+    ("f64_of", Intr::ToF64),
+    ("f64_bits", Intr::F64Bits),
+    ("out", Intr::Out),
+    (Prim::Popcount.id(), Intr::Popcount),
+    (Prim::Abs.id(), Intr::Abs),
+    (Prim::Ctz.id(), Intr::Ctz),
+    (Prim::Clz.id(), Intr::Clz),
+    (Prim::BitWidth.id(), Intr::BitWidth),
+    (Prim::BitCeil.id(), Intr::BitCeil),
+    (Prim::Sqrt.id(), Intr::Float(FloatFn::Sqrt)),
+    (Prim::Sin.id(), Intr::Float(FloatFn::Sin)),
+    (Prim::Cos.id(), Intr::Float(FloatFn::Cos)),
+    (Prim::Tan.id(), Intr::Float(FloatFn::Tan)),
+    (Prim::Asin.id(), Intr::Float(FloatFn::Asin)),
+    (Prim::Acos.id(), Intr::Float(FloatFn::Acos)),
+    (Prim::Atan2.id(), Intr::Float(FloatFn::Atan2)),
+    (Prim::Hypot.id(), Intr::Float(FloatFn::Hypot)),
+    (Prim::Exp.id(), Intr::Float(FloatFn::Exp)),
+    (Prim::Ln.id(), Intr::Float(FloatFn::Ln)),
+    (Prim::Floor.id(), Intr::ToInt(Rounding::Floor)),
+    (Prim::Ceil.id(), Intr::ToInt(Rounding::Ceil)),
+    (Prim::Round.id(), Intr::ToInt(Rounding::Round)),
+    (Prim::Trunc.id(), Intr::ToInt(Rounding::Trunc)),
+];

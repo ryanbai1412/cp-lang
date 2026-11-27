@@ -261,19 +261,23 @@ fn cpp_fn(s: &mut String, name: &str, params: &[(&str, &str)], ret: &str, body: 
     );
 }
 
+/// Each Rust type a row is written in, with its C++ type.
+const CTYS: [(&str, &str); 8] = [
+    ("i64", "int64_t"),
+    ("f64", "double"),
+    ("i128", "__int128"),
+    ("u64", "uint64_t"),
+    ("u8", "cpl_char"),
+    ("usize", "size_t"),
+    ("bool", "bool"),
+    ("Unit", "cpl_unit"),
+];
+
 /// The C++ type of a row's Rust type.
 fn cty(t: &str) -> &'static str {
-    match t {
-        "i64" => "int64_t",
-        "f64" => "double",
-        "i128" => "__int128",
-        "u64" => "uint64_t",
-        "u8" => "cpl_char",
-        "usize" => "size_t",
-        "bool" => "bool",
-        "Unit" => "cpl_unit",
-        _ => "void",
-    }
+    CTYS.iter()
+        .find(|(r, _)| *r == t)
+        .map_or("void", |(_, c)| c)
 }
 
 /// Every row as a C++ helper (`cpl_div`), after its kernel (`cpl_k_div`).

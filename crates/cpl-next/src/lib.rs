@@ -218,14 +218,18 @@ pub enum IrStage {
 }
 
 impl IrStage {
+    /// Each stage, by the name `--stage` takes.
+    const NAMES: [(&str, IrStage); 4] = [
+        ("raw", IrStage::Raw),
+        ("owned", IrStage::Owned),
+        ("canonical", IrStage::Canonical),
+        ("optimized", IrStage::Optimized),
+    ];
+
     pub fn named(name: &str) -> Option<IrStage> {
-        match name {
-            "raw" => Some(IrStage::Raw),
-            "owned" => Some(IrStage::Owned),
-            "canonical" => Some(IrStage::Canonical),
-            "optimized" => Some(IrStage::Optimized),
-            _ => None,
-        }
+        (Self::NAMES.iter())
+            .find(|(n, _)| *n == name)
+            .map(|(_, s)| *s)
     }
 }
 
