@@ -323,7 +323,15 @@ impl M<'_> {
         self.set_word(loc, u64::from(n));
         Ok(n)
     }
+    /// Where place `p` is, each storage on the way made this holder's own: it will be written.
     fn loc(&mut self, fp: usize, p: u32) -> R<Loc> {
+        self.place(fp, p, true)
+    }
+    /// Where place `p` is, to be read: storage shared with another holder stays shared.
+    fn look(&mut self, fp: usize, p: u32) -> R<Loc> {
+        self.place(fp, p, false)
+    }
+    fn place(&mut self, fp: usize, p: u32, own: bool) -> R<Loc> {
         let pc = &self.c.places[p as usize];
         let mut loc = match pc.root {
             Root::Local(r) => Loc::Stack(fp + r as usize),
@@ -338,7 +346,13 @@ impl M<'_> {
                 Step::Deref => Loc::Stack(self.word(loc) as usize),
                 Step::Slot { i, stride } => {
                     let idx = self.stack[fp + i as usize] as i64;
-                    let h = self.unique(loc)?;
+                    let h = match own {
+                        true => self.unique(loc)?,
+                        false => match self.word(loc) as u32 {
+                            0 => return broken("a cell of a value that is not storage"),
+                            h => h,
+                        },
+                    };
                     match usize::try_from(idx) {
                         Ok(idx) if idx < self.heap[h as usize].len => {
                             Loc::Heap(h, idx * stride as usize)
@@ -520,12 +534,12 @@ impl M<'_> {
                 Op::Addr { d, s } => self.stack[r(d)] = r(s) as u64,
                 Op::Move { d, s, n } => self.copy(r(s), r(d), n as usize),
                 Op::Load { d, p, lay } => {
-                    let loc = self.loc(fp, p)?;
+                    let loc = self.look(fp, p)?;
                     self.read(loc, r(d), self.size(lay));
                     self.retain(lay, r(d));
                 }
                 Op::Peek { d, p } => {
-                    let loc = self.loc(fp, p)?;
+                    let loc = self.look(fp, p)?;
                     self.stack[r(d)] = self.word(loc);
                 }
                 Op::Store { p, s, lay } => {
