@@ -1104,6 +1104,7 @@ next/n_pattern_02_domain_patterns_test_membership.cp
 next/n_pattern_03_string_literal_patterns.cp
 next/n_read_01_an_int_past_int_traps_out_of_contract.cp
 next/n_record_01_records_are_core_structs.cp
+next/n_record_01_update_copies_with_replacements.cp
 next/n_record_02_field_traits.cp
 next/n_scope_01_param_shadows_domain.cp
 next/n_set_ordered.cp

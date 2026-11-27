@@ -59,7 +59,7 @@ impl Cx<'_> {
         }
     }
     /// The types of the fields of struct `t`, by their position.
-    fn field_tys(&self, t: &Ty) -> Option<(StructId, Vec<Ty>)> {
+    pub(super) fn field_tys(&self, t: &Ty) -> Option<(StructId, Vec<Ty>)> {
         let Ty::Struct(s, ts, _) = self.shallow(t) else {
             return None;
         };

@@ -130,6 +130,77 @@ impl Cx<'_> {
         )
     }
 
+    /// `e with f: v` and `(..e, f: v)`: a copy of `e` with those fields replaced (R02.5.3). `e`
+    /// is read once and the new values in the order written; each other field is read from `e`,
+    /// so its heap fields move (R12.11.4).
+    pub(super) fn record_update(
+        &mut self,
+        base: &ast::Expr,
+        updates: &[(ast::Name, ast::Expr)],
+        span: Span,
+    ) -> TExpr {
+        let error = TExpr {
+            kind: TK::Error,
+            ty: Ty::Error,
+            span,
+        };
+        let b = self.expr(base, None);
+        if self.shallow(&b.ty) == Ty::Error {
+            return error;
+        }
+        let Some((s, tys)) = self.field_tys(&b.ty) else {
+            let code = cpl_diag::codes::TYPE_MISMATCH.0;
+            let t = self.show(&b.ty);
+            self.err(
+                span,
+                format!("{code}: `with` updates a struct, not a `{t}`"),
+            );
+            return error;
+        };
+        let names: Vec<String> = self.d.s(s).fields.iter().map(|(n, _)| n.clone()).collect();
+        let ty = b.ty.clone();
+        let (mut pre, read) = self.held(b);
+        let mut given: Vec<Option<TExpr>> = vec![None; names.len()];
+        for (n, e) in updates {
+            let Some(k) = names.iter().position(|m| *m == n.text) else {
+                let code = cpl_diag::codes::UNKNOWN_FIELD.0;
+                let t = self.show(&ty);
+                self.err(n.span, format!("{code}: `{t}` has no field `{}`", n.text));
+                continue;
+            };
+            let v = self.expr(e, Some(&tys[k]));
+            let v = self.coerce(v, &tys[k]);
+            let tmp = self.bind("$with", tys[k].clone());
+            pre.push(TStmt::Let(tmp, v));
+            let v = TExpr {
+                kind: TK::Var(tmp),
+                ty: tys[k].clone(),
+                span,
+            };
+            if given[k].replace(v).is_some() {
+                let code = cpl_diag::codes::DUPLICATE_DEFINITION.0;
+                self.err(n.span, format!("{code}: field `{}` is given twice", n.text));
+            }
+        }
+        let fields = (given.into_iter().zip(tys).enumerate())
+            .map(|(k, (v, t))| {
+                v.unwrap_or_else(|| TExpr {
+                    kind: TK::Field(Box::new(read.clone()), k),
+                    ty: t,
+                    span,
+                })
+            })
+            .collect();
+        block(
+            pre,
+            TExpr {
+                kind: TK::Struct(fields),
+                ty,
+                span,
+            },
+        )
+    }
+
     /// Variant `i` of enum `e`, its payload built from `args` (R02.7.1).
     pub(super) fn variant(
         &mut self,

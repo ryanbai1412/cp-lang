@@ -1688,6 +1688,7 @@ impl<'a> Cx<'a> {
                     mk(TK::Error, Ty::Error)
                 }
             },
+            ExprKind::With { base, updates } => self.record_update(base, updates, span),
             other => {
                 self.err(
                     span,
