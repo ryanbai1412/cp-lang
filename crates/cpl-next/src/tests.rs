@@ -1158,3 +1158,26 @@ fn dump_ir_prints_each_stage_and_a_rejections_diagnostics() {
     assert_eq!(IrStage::named("optimized"), Some(IrStage::Optimized));
     assert_eq!(IrStage::named("opt"), None);
 }
+
+#[test]
+fn a_lends_without_its_arrow_offers_to_insert_it() {
+    use crate::facade::{Session, Snapshot};
+    let src = "domain V = 1..=4\nvar a: [V]Int = 0\nfn get(xs: [V]Int, l: V) lends Int = xs[l]\nprint(get(a, 1))\n";
+    let s = Session::open(Snapshot::new(
+        std::sync::Arc::new(Std::read()),
+        Roots::std(),
+        src,
+    ));
+    let diags = s.program().err().expect("refused");
+    let d = (diags.iter())
+        .find(|d| matches!(d.kind, crate::Kind::Verdict(c) if c == cpl_diag::codes::EXPECTED_TOKEN))
+        .unwrap_or_else(|| panic!("{diags:?}"));
+    let fix = d.fixes.first().expect("a fix");
+    let ((span, new), mut fixed) = (&fix.edits[0], src.to_string());
+    fixed.replace_range(span.start as usize..span.end as usize, new);
+    assert_eq!(fix.title, "insert `->`");
+    assert!(
+        fixed.contains("fn get(xs: [V]Int, l: V) -> lends Int = xs[l]"),
+        "{fixed}"
+    );
+}

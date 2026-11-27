@@ -1423,6 +1423,19 @@ fn add_fn(
         ret_doms.insert(c.clone(), t);
     }
     cx.doms = &ret_doms;
+    if let Some(at) = f.lends.as_ref().and_then(|l| l.bare) {
+        let text = cpl_diag::msgs::check::EXPECTED_TOKEN_EXPECTED_BEFORE_LENDS_A.say(&[]);
+        let mut msg = Msg::verdict(cpl_diag::codes::EXPECTED_TOKEN, text);
+        msg.help = Some("write `-> lends T`".into());
+        msg.fixes.push(cpl_next_ir::msg::Fix {
+            title: "insert `->`".into(),
+            edits: vec![(
+                item.at(cpl_diag::Span::new(at.start, at.start)),
+                "-> ".into(),
+            )],
+        });
+        errors.push(Msg::at(item.at(at), msg));
+    }
     let mut region = None;
     let mut lends = None;
     let ret = match (&f.ret, &f.lends) {
