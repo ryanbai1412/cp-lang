@@ -464,6 +464,17 @@ mod tests {
         );
     }
 
+    /// A library fn refused as declared is that one refusal: its body is not checked into more.
+    #[test]
+    fn a_refused_library_fn_is_one_refusal() {
+        let src = "use std.algebra.{Monoid}\nlet m = Monoid<Int>.of(+)\nprint(m.op(3, 4))\n";
+        let ds: Vec<String> = (diags(src).iter())
+            .filter(|d| d.stage == Stage::Check)
+            .map(|d| d.to_string())
+            .collect();
+        assert_eq!(ds, ["check: std.algebra:33:5: slice: decorator `@from_op`"]);
+    }
+
     #[test]
     fn syntax_error_is_placed_in_the_program() {
         let d = &diags("let a = 1\nlet = 2\n")[0];

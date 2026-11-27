@@ -736,7 +736,13 @@ impl<'a> Cx<'a> {
             (f.region.clone()).map(|(l, t)| (l, map_slots(&t, &|k| slots[&(id, k)].clone())));
         self.ret = map_slots(&f.ret, &|k| slots[&(id, k)].clone());
         let ret = self.ret.clone();
+        // A library fn refused as declared (a decorator the slice lacks) is that refusal: its
+        // body, written for the meaning the slice does not build, is not checked.
+        let refused = d.is_library(f.module)
+            && (f.errors.iter())
+                .any(|e| crate::diag::kind_of(&e.text) == crate::diag::Kind::Refusal);
         let body = match &f.body {
+            _ if refused => Self::error_node(Span::new(0, 0)),
             // A trait's fn whose body is an operation on `Self`, as `Domain`'s are.
             _ if f.intrinsic.is_some() => {
                 let span = Span::new(0, 0);
