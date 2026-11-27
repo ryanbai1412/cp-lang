@@ -793,7 +793,9 @@ impl<'a> Cx<'a> {
         if let Some(d) = self.domain_named(n) {
             return self.domain_value(d, span);
         }
-        if (self.group.iter()).any(|g| g.1 == n && g.0 > span.start) {
+        if let Some(&(_, _, id)) = (self.group.iter()).find(|g| g.1 == n && g.0 > span.start) {
+            let set = self.names_set();
+            self.ahead.push((id, n.to_string(), span, set));
             self.err(
                 span,
                 "slice: a nested fn named above its statement (R06.1.7)",

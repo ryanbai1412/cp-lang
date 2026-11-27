@@ -278,6 +278,9 @@ struct Cx<'a> {
     /// The nested `fn`s of the blocks being checked, by the offset of their statement; and the
     /// one whose lambda is being made.
     group: Vec<(u32, String, LambdaId)>,
+    /// Each use of a nested `fn` above its statement, with the names set at that point: every
+    /// capture of the fn must be among them (R06.1.7).
+    ahead: Vec<(LambdaId, String, Span, std::collections::BTreeSet<VarRef>)>,
     nested: Option<LambdaId>,
     /// Set while converting the branches of an `if` into their common type: sets are joined, never merged.
     joining: bool,
@@ -338,6 +341,7 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
         recur: None,
         selves: Vec::new(),
         group: Vec::new(),
+        ahead: Vec::new(),
         nested: None,
         joining: false,
         item_off: 0,

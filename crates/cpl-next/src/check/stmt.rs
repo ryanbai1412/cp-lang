@@ -193,6 +193,7 @@ impl<'a> Cx<'a> {
             }
             self.stmt(s, &mut out);
         }
+        self.captures_set(outer, &out);
         self.group.truncate(outer);
         self.scopes.pop();
         let ty = value

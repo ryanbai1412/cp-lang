@@ -1,6 +1,7 @@
 //! Lambdas: pattern parameters, unpacking a tuple or record argument, generators of tests (R06.1).
 use super::expr::block;
 use super::*;
+use std::collections::BTreeSet;
 
 impl Cx<'_> {
     pub(super) fn lambda(
@@ -289,6 +290,71 @@ impl Cx<'_> {
         self.nested = Some(id);
         self.stmt(&bind, out);
         self.nested = None;
+    }
+
+    /// The variables bound where the code being checked is.
+    pub(super) fn names_set(&self) -> BTreeSet<VarRef> {
+        let top = self.decl.is_none();
+        (self.scopes.iter().enumerate())
+            .flat_map(|(i, s)| {
+                s.values().map(move |&l| match top && i == 0 {
+                    true => VarRef::Global(l),
+                    false => VarRef::Local(l),
+                })
+            })
+            .collect()
+    }
+
+    /// A nested `fn` used above its statement, in the block `out` checked: each variable it or a
+    /// sibling it may call captures must be set where it is used (E0205, R06.1.7).
+    pub(super) fn captures_set(&mut self, outer: usize, out: &[TStmt]) {
+        let run: Vec<LambdaId> = self.group[outer..].iter().map(|g| g.2).collect();
+        let (mine, rest) = std::mem::take(&mut self.ahead)
+            .into_iter()
+            .partition(|a| run.contains(&a.0));
+        self.ahead = rest;
+        let mine: Vec<(LambdaId, String, Span, BTreeSet<VarRef>)> = mine;
+        if mine.is_empty() {
+            return;
+        }
+        let mut caps: HashMap<LambdaId, BTreeSet<VarRef>> = HashMap::new();
+        for s in out {
+            let TStmt::Let(_, e) = s else { continue };
+            let mut e = e;
+            while let TK::Inject(x) | TK::Widen(x) = &e.kind {
+                e = x;
+            }
+            let TK::Lambda { id, params, body } = &e.kind else {
+                continue;
+            };
+            let (mut used, mut bound) = (BTreeSet::new(), BTreeSet::new());
+            crate::lower::free_vars(body, &mut used, &mut bound);
+            let own = |v: &VarRef| matches!(v, VarRef::Local(l) | VarRef::Global(l) if params.contains(l));
+            let free = used.difference(&bound).filter(|v| !own(v)).copied();
+            caps.insert(*id, free.collect());
+        }
+        for (id, name, span, set) in mine {
+            let group = match &self.lambdas[id.0].group {
+                g if g.is_empty() => vec![id],
+                g => g.clone(),
+            };
+            let unset = (group.iter())
+                .flat_map(|g| caps.get(g).into_iter().flatten())
+                .find(|v| !set.contains(v));
+            if let Some(v) = unset {
+                let what = match v {
+                    VarRef::Local(l) => self.locals[*l].name.clone(),
+                    VarRef::Global(g) => self.globals[*g].name.clone(),
+                };
+                self.err(
+                    span,
+                    format!(
+                        "{}: `{name}` uses `{what}`, which is not set yet where `{name}` is called",
+                        cpl_diag::codes::USED_BEFORE_SET.0
+                    ),
+                );
+            }
+        }
     }
 
     fn lambda_ty(&self, id: LambdaId) -> Ty {
