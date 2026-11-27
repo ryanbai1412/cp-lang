@@ -982,32 +982,26 @@ impl<'a> Cx<'a> {
         };
         let formals: Vec<Formal> = ps
             .into_iter()
-            .map(|ty| Formal {
-                label: "",
-                ty,
-                mutable: false,
-                named_only: false,
-                variadic: false,
-                default: None,
+            .map(|ty| {
+                let (ty, mutable) = match ty {
+                    Ty::Mut(t) => (*t, true),
+                    t => (t, false),
+                };
+                Formal {
+                    label: "",
+                    ty,
+                    mutable,
+                    named_only: false,
+                    variadic: false,
+                    default: None,
+                }
             })
             .collect();
-        if args
-            .iter()
-            .any(|a| a.mutable || matches!(a.value.kind, ExprKind::Mut(_)))
-        {
-            self.err(span, Unbuilt::MutArgToFnValue);
-        }
         let seen = self.errors.len();
         let (pre, args) = self.args(args, &formals, span);
         if self.errors.len() > seen {
             return Self::error_node(span);
         }
-        let args = args
-            .into_iter()
-            .map(|a| match a {
-                TArg::Value(v) | TArg::Mut(v) => v,
-            })
-            .collect();
         let call = TExpr {
             kind: TK::CallValue {
                 callee: Box::new(callee),
@@ -1664,12 +1658,15 @@ impl<'a> Cx<'a> {
             ExprKind::Lambda {
                 params,
                 param_tys,
+                param_mut,
                 ret_ty,
                 body,
-                ..
             } => match self.op_item(e, want) {
                 Some(item) => item,
-                None => self.lambda(params, param_tys, ret_ty.as_ref(), body, want, span),
+                None => {
+                    let sig = (&params[..], &param_tys[..], &param_mut[..]);
+                    self.lambda(sig, ret_ty.as_ref(), body, want, span)
+                }
             },
             ExprKind::Generic { base, args } => self.generic_value(base, args, span),
             ExprKind::List(xs) => self.list_literal(xs, want, span),

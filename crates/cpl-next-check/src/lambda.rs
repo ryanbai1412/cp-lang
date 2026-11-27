@@ -7,8 +7,7 @@ use std::collections::BTreeSet;
 impl Cx<'_> {
     pub(super) fn lambda(
         &mut self,
-        params: &[ast::Pattern],
-        param_tys: &[Option<ast::Type>],
+        (params, param_tys, param_mut): (&[ast::Pattern], &[Option<ast::Type>], &[bool]),
         ret_ty: Option<&ast::Type>,
         body: &ast::Expr,
         want: Option<&Ty>,
@@ -99,7 +98,15 @@ impl Cx<'_> {
                     Ty::Error
                 }
             };
-            ptys.push(ty.clone());
+            // A `mut` parameter's place is the caller's: its signature says so, its body sees `T`.
+            let ty = match self.shallow(&ty) {
+                Ty::Mut(t) => *t,
+                _ => ty,
+            };
+            ptys.push(match param_mut.get(i) {
+                Some(true) => Ty::Mut(Box::new(ty.clone())),
+                _ => ty.clone(),
+            });
             match self.bind(name, ty) {
                 VarRef::Local(id) | VarRef::Global(id) => ids.push(id),
             }
@@ -410,7 +417,7 @@ impl Cx<'_> {
             })
             .collect();
         let tys = vec![None; params.len()];
-        Some(self.lambda(&params, &tys, None, &call, want, span))
+        Some(self.lambda((&params, &tys, &[]), None, &call, want, span))
     }
 
     pub(super) fn lambda_ty(&self, id: LambdaId) -> Ty {
@@ -476,7 +483,13 @@ impl Cx<'_> {
             span,
         };
         let params: Vec<ast::Pattern> = names.iter().map(pat).collect();
-        Some(self.lambda(&params, &vec![None; ps.len()], None, &body, want, span))
+        Some(self.lambda(
+            (&params, &vec![None; ps.len()], &[]),
+            None,
+            &body,
+            want,
+            span,
+        ))
     }
 
     /// The fields a lambda's parameters take apart when it is passed as a fn of one value of

@@ -83,7 +83,7 @@ pub fn free_vars(e: &TExpr, used: &mut BTreeSet<VarRef>, bound: &mut BTreeSet<Va
         }
         TK::CallValue { callee, args } => {
             free_vars(callee, used, bound);
-            args.iter().for_each(|a| free_vars(a, used, bound));
+            args.iter().for_each(|a| arg(a, used, bound));
         }
         TK::Struct(fs) => fs.iter().for_each(|a| free_vars(a, used, bound)),
         TK::Lambda { params, body, .. } => {

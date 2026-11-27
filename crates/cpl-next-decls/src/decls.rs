@@ -611,7 +611,7 @@ fn keys(d: &Decls, t: &Ty, domain: TraitId, i: usize, depth: usize) -> bool {
                                 .any(|(_, f)| keys(d, f, domain, k, depth + 1)))
                 })
         }
-        Ty::Raw(e) | Ty::Ref(e) => go(e),
+        Ty::Raw(e) | Ty::Ref(e) | Ty::Mut(e) => go(e),
         Ty::Fn(ps, r, _) => ps.iter().chain([&**r]).any(go),
         _ => false,
     }

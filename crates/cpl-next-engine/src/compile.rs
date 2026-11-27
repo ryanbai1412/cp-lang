@@ -1495,7 +1495,13 @@ fn cost(b: &[Stmt<CTy>]) -> usize {
                     _ => 1,
                 })
                 .sum(),
-            EK::CallValue(f, args, _) => e(f) + args.iter().map(e).sum::<usize>(),
+            EK::CallValue(f, args, _) => {
+                let arg = |a: &Arg<CTy>| match a {
+                    Arg::Value(v) => e(v),
+                    _ => 1,
+                };
+                e(f) + args.iter().map(arg).sum::<usize>()
+            }
             EK::MakeStruct(xs) | EK::MakeClosure(xs) => xs.iter().map(e).sum(),
             EK::Inject(x) | EK::Widen(x) | EK::MakeUnion(_, x) => e(x),
             _ => 0,

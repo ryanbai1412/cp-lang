@@ -390,7 +390,7 @@ pub enum EK<T> {
     HasBound(T, TraitId, Vec<T>),
     Intr(Intr, Vec<Arg<T>>, Site),
     Call(Target<T>, Vec<Arg<T>>, Site),
-    CallValue(Box<Expr<T>>, Vec<Expr<T>>, Site),
+    CallValue(Box<Expr<T>>, Vec<Arg<T>>, Site),
 }
 #[derive(Clone, Debug)]
 pub enum Arg<T> {
@@ -544,7 +544,7 @@ pub fn visit_places<T>(b: &mut [Stmt<T>], f: &mut impl FnMut(&mut Place)) {
             EK::Intr(_, xs, _) | EK::Call(_, xs, _) => args(xs, f),
             EK::CallValue(g, xs, _) => {
                 expr(g, f);
-                xs.iter_mut().for_each(|x| expr(x, f));
+                args(xs, f);
             }
             EK::Int(_)
             | EK::F64(_)
@@ -642,9 +642,7 @@ fn touches_in<T>(e: &Expr<T>, l: usize, all: Touch) -> bool {
     match &e.kind {
         EK::AddrOf(p) | EK::Lent(p) => all != Touch::Set && p.local() == Some(l),
         EK::Intr(_, args, _) | EK::Call(_, args, _) => touches_args(args, l, all),
-        EK::CallValue(f, xs, _) => {
-            touches_in(f, l, all) || xs.iter().any(|x| touches_in(x, l, all))
-        }
+        EK::CallValue(f, xs, _) => touches_in(f, l, all) || touches_args(xs, l, all),
         EK::MakeStruct(xs) | EK::MakeClosure(xs) => xs.iter().any(|x| touches_in(x, l, all)),
         EK::Inject(x) | EK::Widen(x) | EK::MakeUnion(_, x) => touches_in(x, l, all),
         _ => false,

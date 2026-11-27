@@ -153,7 +153,7 @@ impl Writes {
             EK::CallValue(f, xs, _) => {
                 self.calls = true;
                 self.expr(f);
-                xs.iter().for_each(|x| self.expr(x));
+                self.args(xs);
             }
             _ => {}
         }
@@ -464,7 +464,11 @@ fn escaped(funcs: &[Func<CTy>]) -> HashSet<(Option<usize>, usize)> {
             }),
             EK::CallValue(g, xs, _) => {
                 ex(g, f, out);
-                xs.iter().for_each(|x| ex(x, f, out));
+                xs.iter().for_each(|a| {
+                    if let Arg::Value(v) = a {
+                        ex(v, f, out)
+                    }
+                });
             }
             _ => {}
         }

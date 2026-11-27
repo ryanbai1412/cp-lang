@@ -186,7 +186,7 @@ impl Cx<'_> {
     fn holds(&self, t: &Ty, leaf: &dyn Fn(&Ty) -> bool) -> bool {
         match self.shallow(t) {
             t if leaf(&t) => true,
-            Ty::Raw(e) | Ty::Ref(e) => self.holds(&e, leaf),
+            Ty::Raw(e) | Ty::Ref(e) | Ty::Mut(e) => self.holds(&e, leaf),
             Ty::Struct(_, ts, _) => ts.iter().any(|t| self.holds(t, leaf)),
             Ty::Fn(ps, r, _) => ps.iter().any(|t| self.holds(t, leaf)) || self.holds(&r, leaf),
             _ => false,

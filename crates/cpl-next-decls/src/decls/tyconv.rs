@@ -399,7 +399,12 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
             }
         }
         TypeKind::Fn { params, ret } => {
-            let ps = params.iter().map(|x| conv(cx, x, errors)).collect();
+            let ps = (params.iter())
+                .map(|x| match &x.kind {
+                    TypeKind::Mut(m) => Ty::Mut(Box::new(conv(cx, m, errors))),
+                    _ => conv(cx, x, errors),
+                })
+                .collect();
             let r = conv(cx, ret, errors);
             let set = slot(cx);
             Ty::Fn(ps, Box::new(r), set)

@@ -86,7 +86,7 @@ pub enum TK {
     },
     CallValue {
         callee: Box<TExpr>,
-        args: Vec<TExpr>,
+        args: Vec<TArg>,
     },
     Struct(Vec<TExpr>),
     Lambda {

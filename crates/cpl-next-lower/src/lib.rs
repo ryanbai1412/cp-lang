@@ -861,11 +861,14 @@ impl Lw<'_> {
                 self.spill(call, out)
             }
             TK::CallValue { callee, args } => {
-                let mut all: Vec<&TExpr> = vec![callee];
-                all.extend(args.iter());
-                let mut vs = self.seq_by(&all, out, Self::operand);
-                let c = vs.remove(0);
-                let call = mk(EK::CallValue(Box::new(c), vs, site));
+                let f = TArg::Value((**callee).clone());
+                let mut vs = self.args(Some(&f), args, out).into_iter();
+                let Some(Arg::Value(c)) = vs.next() else {
+                    self.errors
+                        .push(Msg::internal("a called function value lowers to no value"));
+                    return mk(EK::Unit);
+                };
+                let call = mk(EK::CallValue(Box::new(c), vs.collect(), site));
                 self.spill(call, out)
             }
             TK::Struct(fs) => self.make_struct(e, fs, false, out),
@@ -1504,9 +1507,13 @@ impl Lw<'_> {
             fparams.push((l, false));
         }
         for (p, pty) in param_refs.iter().zip(&info.params) {
+            let (pty, lent) = match pty {
+                Ty::Mut(t) => (&**t, true),
+                t => (t, false),
+            };
             let l = self.temp(pty.clone());
             remap.insert(*p, l);
-            fparams.push((l, false));
+            fparams.push((l, lent));
         }
         // Locals bound inside the body keep their numbers in a fn; at top level they become locals here.
         let inner_base = if self.in_main {

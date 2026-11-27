@@ -319,6 +319,8 @@ impl Link<'_> {
             Ty::Unit => CTy::Unit,
             Ty::Raw(e) => CTy::Raw(Box::new(self.ty(e, env))),
             Ty::Ref(e) => CTy::Ref(Box::new(self.ty(e, env))),
+            // The place a `mut` parameter is lent has the parameter's own type.
+            Ty::Mut(e) => self.ty(e, env),
             Ty::Lent(e) => match self.ty(e, env) {
                 CTy::Lent(t) => CTy::Lent(t),
                 t if plain(&|s| self.parts(s), &t, 0) => t,
@@ -812,7 +814,7 @@ impl Link<'_> {
             }
             EK::CallValue(c, args, at) => EK::CallValue(
                 Box::new(self.expr(c, env)),
-                args.iter().map(|a| self.expr(a, env)).collect(),
+                args.iter().map(|a| self.arg(a, env)).collect(),
                 *at,
             ),
             EK::Call(t, args, at) => {
@@ -1076,7 +1078,12 @@ fn canon_store(
             locals.push(cty.clone());
             let tmp = locals.len() - 1;
             out.push(Stmt::Let(tmp, canon_expr(bad, *callee)));
-            let args: Vec<Expr<CTy>> = args.into_iter().map(|e| canon_expr(bad, e)).collect();
+            let args: Vec<Arg<CTy>> = (args.into_iter())
+                .map(|a| match a {
+                    Arg::Value(e) => Arg::Value(canon_expr(bad, e)),
+                    a => a,
+                })
+                .collect();
             let call = |k: &InstKey, env: Place| {
                 let mut all: Vec<Arg<CTy>> = p
                     .captures(k)
@@ -1084,7 +1091,7 @@ fn canon_store(
                     .enumerate()
                     .map(|(j, t)| Arg::Value(read(Place::Field(Box::new(env.clone()), j), t)))
                     .collect();
-                all.extend(args.iter().cloned().map(Arg::Value));
+                all.extend(args.iter().cloned());
                 Expr {
                     site: 0,
                     kind: EK::Call(Target::Inst(p.index[k]), all, at),
@@ -1286,7 +1293,11 @@ fn thread_values(p: &mut Program, whole: &Whole) {
                 }
                 EK::CallValue(c, args, _) => {
                     ex(c, doms, calls, p, bad);
-                    args.iter().for_each(|x| ex(x, doms, calls, p, bad));
+                    for a in args {
+                        if let Arg::Value(v) = a {
+                            ex(v, doms, calls, p, bad);
+                        }
+                    }
                 }
                 _ => {}
             }
@@ -1444,7 +1455,11 @@ fn thread_values(p: &mut Program, whole: &Whole) {
                 }
                 EK::CallValue(c, args, _) => {
                     self.ex(c);
-                    args.iter_mut().for_each(|x| self.ex(x));
+                    args.iter_mut().for_each(|a| {
+                        if let Arg::Value(v) = a {
+                            self.ex(v)
+                        }
+                    });
                 }
                 _ => {}
             }

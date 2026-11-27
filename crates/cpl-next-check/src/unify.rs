@@ -71,6 +71,7 @@ impl<'a> Cx<'a> {
                 )
             }
             Ty::Raw(e) => Ty::Raw(Box::new(self.fresh_sets(e))),
+            Ty::Mut(e) => Ty::Mut(Box::new(self.fresh_sets(e))),
             Ty::Struct(d, ts, ss) => {
                 let mut ss: Vec<SetTy> = ss
                     .iter()
@@ -94,6 +95,7 @@ impl<'a> Cx<'a> {
         match self.shallow(t) {
             Ty::Var(_) => Ty::Error,
             Ty::Raw(e) => Ty::Raw(Box::new(self.zonk(&e))),
+            Ty::Mut(e) => Ty::Mut(Box::new(self.zonk(&e))),
             Ty::Struct(d, ts, ss) => Ty::Struct(
                 d,
                 ts.iter().map(|t| self.zonk(t)).collect(),
@@ -112,6 +114,7 @@ impl<'a> Cx<'a> {
     pub(super) fn followed(&self, t: &Ty) -> Ty {
         match self.shallow(t) {
             Ty::Raw(e) => Ty::Raw(Box::new(self.followed(&e))),
+            Ty::Mut(e) => Ty::Mut(Box::new(self.followed(&e))),
             Ty::Ref(e) => Ty::Ref(Box::new(self.followed(&e))),
             Ty::Struct(d, ts, ss) => {
                 Ty::Struct(d, ts.iter().map(|t| self.followed(t)).collect(), ss)
@@ -243,7 +246,7 @@ impl<'a> Cx<'a> {
     fn occurs(&self, v: usize, t: &Ty) -> bool {
         match self.shallow(t) {
             Ty::Var(x) => x == v,
-            Ty::Raw(e) | Ty::Ref(e) => self.occurs(v, &e),
+            Ty::Raw(e) | Ty::Ref(e) | Ty::Mut(e) => self.occurs(v, &e),
             Ty::Struct(_, ts, _) => ts.iter().any(|t| self.occurs(v, t)),
             Ty::Fn(ps, r, _) => ps.iter().any(|t| self.occurs(v, t)) || self.occurs(v, &r),
             Ty::Clo(c) => match &*c {
@@ -286,7 +289,7 @@ impl<'a> Cx<'a> {
             {
                 true
             }
-            (Ty::Raw(x), Ty::Raw(y)) => self.unify(x, y),
+            (Ty::Raw(x), Ty::Raw(y)) | (Ty::Mut(x), Ty::Mut(y)) => self.unify(x, y),
             (Ty::Struct(d1, t1, s1), Ty::Struct(d2, t2, s2)) => {
                 d1 == d2
                     && t1.len() == t2.len()
@@ -313,6 +316,7 @@ impl<'a> Cx<'a> {
             Ty::F64 => "F64".into(),
             Ty::Unit => "()".into(),
             Ty::Raw(e) => format!("Raw<{}>", self.show(&e)),
+            Ty::Mut(e) => format!("mut {}", self.show(&e)),
             Ty::Ref(e) => format!("&{}", self.show(&e)),
             Ty::Lent(e) => self.show(&e),
             Ty::Struct(d, ts, _) => {
@@ -359,7 +363,12 @@ impl<'a> Cx<'a> {
                     tys: &f.targs,
                     sets: &f.sets,
                 };
-                let ps = fd.params.iter().map(|p| sub.ty(&p.ty)).collect();
+                let ps = (fd.params.iter())
+                    .map(|p| match p.mutable {
+                        true => Ty::Mut(Box::new(sub.ty(&p.ty))),
+                        false => sub.ty(&p.ty),
+                    })
+                    .collect();
                 let r = self.ret_ty(f);
                 (ps, r)
             }
@@ -484,7 +493,9 @@ impl<'a> Cx<'a> {
             (Ty::Struct(x, xs, _), Ty::Struct(y, ys, _)) => {
                 x == y && xs.len() == ys.len() && xs.iter().zip(&ys).all(|(p, q)| self.fits(p, q))
             }
-            (Ty::Raw(p), Ty::Raw(q)) | (Ty::Ref(p), Ty::Ref(q)) => self.fits(&p, &q),
+            (Ty::Raw(p), Ty::Raw(q)) | (Ty::Ref(p), Ty::Ref(q)) | (Ty::Mut(p), Ty::Mut(q)) => {
+                self.fits(&p, &q)
+            }
             (Ty::Range(..) | Ty::RangeOf(_), Ty::Int)
             | (Ty::Int, Ty::Range(..) | Ty::RangeOf(_)) => true,
             (p, q) => p == q,
@@ -977,7 +988,7 @@ impl<'a> Cx<'a> {
 pub(super) fn mentions(t: &Ty, i: usize) -> bool {
     match t {
         Ty::Param(j) => *j == i,
-        Ty::Raw(t) | Ty::Ref(t) | Ty::Lent(t) => mentions(t, i),
+        Ty::Raw(t) | Ty::Ref(t) | Ty::Lent(t) | Ty::Mut(t) => mentions(t, i),
         Ty::Struct(_, ts, _) => ts.iter().any(|t| mentions(t, i)),
         Ty::Fn(ps, r, _) => ps.iter().any(|t| mentions(t, i)) || mentions(r, i),
         _ => false,

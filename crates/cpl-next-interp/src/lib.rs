@@ -470,12 +470,11 @@ impl<'a> Machine<'a> {
                     return broken("call of a non-function");
                 };
                 let mut vals = caps;
-                for a in args {
-                    vals.push(self.expr(a, fp)?);
-                }
+                vals.extend(self.pass(args, fp)?);
                 let here = self.enter(*site);
-                let v = self.call(f, vals, None)?.0;
+                let (v, back, _) = self.call(f, vals, None)?;
                 self.at = here;
+                self.hand_back(args, fp, back)?;
                 v
             }
             EK::Intr(op, args, site) => {

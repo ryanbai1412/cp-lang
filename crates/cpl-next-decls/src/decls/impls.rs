@@ -276,7 +276,9 @@ pub(super) fn overlap(a: &Ty, b: &Ty) -> bool {
 pub(super) fn same_shape(a: &Ty, b: &Ty) -> bool {
     match (a, b) {
         (Ty::Param(_), _) | (_, Ty::Param(_)) => true,
-        (Ty::Raw(x), Ty::Raw(y)) | (Ty::Ref(x), Ty::Ref(y)) => same_shape(x, y),
+        (Ty::Raw(x), Ty::Raw(y)) | (Ty::Ref(x), Ty::Ref(y)) | (Ty::Mut(x), Ty::Mut(y)) => {
+            same_shape(x, y)
+        }
         (Ty::Struct(d1, x, _), Ty::Struct(d2, y, _)) => {
             d1 == d2 && x.iter().zip(y).all(|(x, y)| same_shape(x, y))
         }
@@ -289,7 +291,9 @@ pub(super) fn same_shape(a: &Ty, b: &Ty) -> bool {
 fn agree(a: &Ty, b: &Ty) -> bool {
     match (a, b) {
         (Ty::Var(_) | Ty::Error, _) | (_, Ty::Var(_) | Ty::Error) => true,
-        (Ty::Raw(a), Ty::Raw(b)) | (Ty::Ref(a), Ty::Ref(b)) => agree(a, b),
+        (Ty::Raw(a), Ty::Raw(b)) | (Ty::Ref(a), Ty::Ref(b)) | (Ty::Mut(a), Ty::Mut(b)) => {
+            agree(a, b)
+        }
         (Ty::Struct(d1, a, _), Ty::Struct(d2, b, _)) => {
             d1 == d2 && a.len() == b.len() && a.iter().zip(b).all(|(x, y)| agree(x, y))
         }
@@ -310,7 +314,9 @@ fn fit(p: &Ty, t: &Ty, binds: &mut [Option<Ty>]) -> bool {
             }
         },
         (_, Ty::Var(_) | Ty::Error) => true,
-        (Ty::Raw(a), Ty::Raw(b)) | (Ty::Ref(a), Ty::Ref(b)) => fit(a, b, binds),
+        (Ty::Raw(a), Ty::Raw(b)) | (Ty::Ref(a), Ty::Ref(b)) | (Ty::Mut(a), Ty::Mut(b)) => {
+            fit(a, b, binds)
+        }
         (Ty::Struct(d1, a, _), Ty::Struct(d2, b, _)) => {
             d1 == d2 && a.len() == b.len() && a.iter().zip(b).all(|(x, y)| fit(x, y, binds))
         }

@@ -589,7 +589,7 @@ impl Walk<'_> {
             EK::CallValue(c, args, _) => {
                 self.reads(c, fx);
                 let mut cs = self.callees(&Target::Case, Some(c));
-                let mut args: Vec<Arg<CTy>> = args.iter().cloned().map(Arg::Value).collect();
+                let mut args: Vec<Arg<CTy>> = args.to_vec();
                 // A known closure's captures are its first parameters: what the body does to them
                 // it does to the captured places (R05.10.3).
                 if let EK::Copy(p @ (Place::Local(_) | Place::Global(_))) = &c.kind {
@@ -1222,7 +1222,7 @@ impl Walk<'_> {
             match t {
                 Ty::Param(_) => true,
                 Ty::Struct(_, ts, _) => ts.iter().any(has),
-                Ty::Raw(t) | Ty::Ref(t) => has(t),
+                Ty::Raw(t) | Ty::Ref(t) | Ty::Mut(t) => has(t),
                 _ => false,
             }
         }
@@ -1452,7 +1452,7 @@ fn calls_in<'b, T>(b: &'b [Stmt<T>], f: &mut Calls<'b, T>) {
             EK::CallValue(c, xs, _) => {
                 f(&const { Target::Case }, Some(c));
                 expr(c, f);
-                xs.iter().for_each(|x| expr(x, f));
+                args(xs, f)
             }
             EK::MakeStruct(xs) | EK::MakeClosure(xs) => xs.iter().for_each(|x| expr(x, f)),
             EK::Inject(x) | EK::Widen(x) | EK::MakeUnion(_, x) => expr(x, f),
@@ -1693,7 +1693,7 @@ fn site_of(b: &[Stmt<CTy>], hit: &dyn Fn(&Expr<CTy>) -> bool) -> Option<usize> {
             EK::MakeStruct(xs) | EK::MakeClosure(xs) => xs.iter().find_map(|x| ex(x, hit)),
             EK::Inject(x) | EK::Widen(x) | EK::MakeUnion(_, x) => ex(x, hit),
             EK::Intr(_, xs, _) | EK::Call(_, xs, _) => args(xs),
-            EK::CallValue(g, xs, _) => ex(g, hit).or_else(|| xs.iter().find_map(|x| ex(x, hit))),
+            EK::CallValue(g, xs, _) => ex(g, hit).or_else(|| args(xs)),
             EK::Copy(_)
             | EK::Pass(..)
             | EK::AddrOf(_)

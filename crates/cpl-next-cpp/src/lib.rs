@@ -394,7 +394,11 @@ impl Emit<'_> {
                 }),
                 EK::CallValue(c, xs, _) => {
                     expr(e, c);
-                    xs.iter().for_each(|y| expr(e, y));
+                    xs.iter().for_each(|a| {
+                        if let Arg::Value(y) = a {
+                            expr(e, y)
+                        }
+                    });
                 }
                 _ => {}
             }

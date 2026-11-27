@@ -184,7 +184,7 @@ impl<C: Fn(Site) -> bool> Settle<'_, C> {
             EK::Intr(_, xs, _) | EK::Call(_, xs, _) => self.args(xs, pre),
             EK::CallValue(c, xs, _) => {
                 self.expr(c, pre);
-                xs.iter_mut().for_each(|x| self.expr(x, pre));
+                self.args(xs, pre);
             }
             _ => {}
         }

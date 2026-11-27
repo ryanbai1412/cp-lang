@@ -110,7 +110,7 @@ impl<'a> Cx<'a> {
             }
             TK::CallValue { callee, args } => {
                 self.zonk_expr(callee);
-                args.iter_mut().for_each(|a| self.zonk_expr(a));
+                args.iter_mut().for_each(|a| self.zonk_arg(a));
             }
             TK::Struct(fs) => fs.iter_mut().for_each(|a| self.zonk_expr(a)),
             TK::Lambda { body, .. } => self.zonk_expr(body),

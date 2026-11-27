@@ -41,6 +41,9 @@ pub enum Ty {
     Struct(StructId, Vec<Ty>, Vec<SetTy>),
     /// A stored function value: one of the closures in the set.
     Fn(Vec<Ty>, Box<Ty>, SetTy),
+    /// A `mut` parameter of a function type, `(mut S, T) -> ()`: the caller lends the place
+    /// (R01.8.1, R05.4.1). Only ever a parameter of a `Fn` or of a closure's signature.
+    Mut(Box<Ty>),
     /// A closure's own type: a named fn or a lambda. Zero or more captures.
     Clo(Box<CloRef>),
     Param(usize),
@@ -136,6 +139,7 @@ impl Subst<'_> {
             Ty::Raw(e) => Ty::Raw(Box::new(self.ty(e))),
             Ty::Ref(e) => Ty::Ref(Box::new(self.ty(e))),
             Ty::Lent(e) => Ty::Lent(Box::new(self.ty(e))),
+            Ty::Mut(e) => Ty::Mut(Box::new(self.ty(e))),
             Ty::Struct(d, ts, ss) => Ty::Struct(
                 *d,
                 ts.iter().map(|t| self.ty(t)).collect(),
@@ -189,7 +193,7 @@ pub fn params_in(t: &Ty, out: &mut std::collections::BTreeSet<usize>) {
         Ty::Param(i) => {
             out.insert(*i);
         }
-        Ty::Raw(e) | Ty::Ref(e) | Ty::Lent(e) => params_in(e, out),
+        Ty::Raw(e) | Ty::Ref(e) | Ty::Lent(e) | Ty::Mut(e) => params_in(e, out),
         Ty::Struct(_, ts, _) => ts.iter().for_each(|t| params_in(t, out)),
         Ty::Fn(ps, r, _) => ps.iter().chain([&**r]).for_each(|t| params_in(t, out)),
         _ => {}
@@ -204,6 +208,7 @@ pub fn map_slots(t: &Ty, f: &dyn Fn(usize) -> SetTy) -> Ty {
     match t {
         Ty::Raw(e) => Ty::Raw(Box::new(map_slots(e, f))),
         Ty::Ref(e) => Ty::Ref(Box::new(map_slots(e, f))),
+        Ty::Mut(e) => Ty::Mut(Box::new(map_slots(e, f))),
         Ty::Struct(d, ts, ss) => Ty::Struct(
             *d,
             ts.iter().map(|t| map_slots(t, f)).collect(),
