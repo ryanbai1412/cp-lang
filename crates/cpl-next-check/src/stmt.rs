@@ -440,6 +440,8 @@ impl<'a> Cx<'a> {
                         let t = self.show(&v.ty);
                         self.err(span, Unbuilt::IfLet { ty: t });
                     }
+                    // Its names are the error, so their uses say nothing more.
+                    self.bind_unknown(pat, false, &mut Vec::new());
                     return TExpr {
                         kind: TK::Error,
                         ty: Ty::Error,
@@ -797,6 +799,9 @@ impl<'a> Cx<'a> {
                         let t = self.show(&v.ty);
                         self.err(init.span, Unbuilt::LetElse { ty: t });
                     }
+                    // Its name is the error, so its uses say nothing more.
+                    self.block(otherwise, None);
+                    self.bind(name, Ty::Error);
                     return;
                 };
                 let (hold, flag, val) = self.opened(v, inner.clone());
@@ -1384,7 +1389,11 @@ impl<'a> Cx<'a> {
                 out.push(TStmt::Expr(b));
             }
             other => {
-                if let Some(n) = decls::item_name(s) {
+                let module = match other {
+                    StmtKind::Mod { name, .. } => Some(name.text.as_str()),
+                    _ => None,
+                };
+                if let Some(n) = decls::item_name(s).or(module) {
                     self.refused_names.insert(n.to_string());
                 }
                 self.err(

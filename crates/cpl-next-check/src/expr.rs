@@ -792,6 +792,10 @@ impl<'a> Cx<'a> {
         want: Option<&Ty>,
     ) -> TExpr {
         let fd = self.d.f(f.decl);
+        // A call of a fn refused as declared is downstream of that refusal: it is the error.
+        if (fd.errors.iter()).any(|e| e.refusal.is_some()) {
+            return Self::error_node(span);
+        }
         let sub = Subst {
             tys: &f.targs,
             sets: &f.sets,
@@ -1127,6 +1131,10 @@ impl<'a> Cx<'a> {
             ExprKind::None => {
                 let ty = match want.filter(|w| self.optional_of(w).is_some()) {
                     Some(w) => w.clone(),
+                    // Wanted as the error, as beside an operand that is one: it is the error too.
+                    None if want.is_some_and(|w| self.shallow(w) == Ty::Error) => {
+                        return mk(TK::Error, Ty::Error);
+                    }
                     None => {
                         self.err(
                             span,
@@ -1279,6 +1287,11 @@ impl<'a> Cx<'a> {
                     }
                     let r = self.expr(rhs, Some(&prev.ty));
                     let r = self.coerce(r, &prev.ty.clone());
+                    // A comparison with an operand that is the error is the error, as `binary` is.
+                    if self.is_error(&prev.ty) || self.is_error(&r.ty) {
+                        self.scopes.pop();
+                        return Self::error_node(span);
+                    }
                     let primitive = matches!(
                         self.shallow(&prev.ty),
                         Ty::Int | Ty::Bool | Ty::Char | Ty::U64 | Ty::F64 | Ty::Dom(_) | Ty::Error

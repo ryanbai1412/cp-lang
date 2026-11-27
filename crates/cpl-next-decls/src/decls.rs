@@ -1151,11 +1151,13 @@ fn add_fn(
             ));
         }
     }
+    // A program's are said now; its refusals stay on the fn, which is then the error.
     let mut errors = if d.is_library(m) {
         errors
     } else {
-        d.errors.extend(errors);
-        Vec::new()
+        d.errors.extend(errors.iter().cloned());
+        errors.retain(|e| e.refusal.is_some());
+        errors
     };
     let has = |n: &str| s.decorators.iter().any(|x| x.name.text == n);
     // A getter is read like a field, so nothing but `self` may need an argument (R02.6.6).

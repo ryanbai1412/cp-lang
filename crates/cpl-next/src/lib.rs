@@ -595,15 +595,12 @@ mod tests {
         );
     }
 
-    /// A library fn refused as declared is that one refusal: its body is not checked into more.
+    /// A fn refused as declared is that one refusal: its body and its calls say nothing more.
     #[test]
-    fn a_refused_library_fn_is_one_refusal() {
-        let src = "use std.algebra.{Monoid}\nlet m = Monoid<Int>.of(+)\nprint(m.op(3, 4))\n";
-        let ds: Vec<String> = (diags(src).iter())
-            .filter(|d| d.stage == Stage::Check)
-            .map(|d| d.to_string())
-            .collect();
-        assert_eq!(ds, ["check: std.algebra:33:5: slice: decorator `@from_op`"]);
+    fn a_refused_fn_is_one_refusal() {
+        let src = "@memo\nfn f(n: Int) -> Int = n + nope\nprint(f(3) + 1, f(true).len)\n";
+        let ds: Vec<String> = diags(src).iter().map(|d| d.to_string()).collect();
+        assert_eq!(ds, ["decls: program:1:1: slice: decorator `@memo`"]);
     }
 
     /// A diagnostic is data: its code, its place in its file and, for a refusal, the feature.
@@ -671,6 +668,39 @@ mod tests {
                 .any(|d| d.contains("E0202: a second declaration marked `@cuts`")),
             "{ds:?}"
         );
+    }
+
+    /// A `let .. else` of an error binds its name to the error: its uses say nothing more.
+    #[test]
+    fn a_let_else_of_an_error_binds_the_error() {
+        let src = "let order = nope(3) else:\n    return\nprint(order[0], order.len)\n";
+        let ds: Vec<String> = diags(src).iter().map(|d| d.to_string()).collect();
+        assert_eq!(ds, ["check: program:1:13: E0201: unknown name `nope`"]);
+    }
+
+    /// A refused `mod`, and a `while let` over a refused `read`, leave their names the error.
+    #[test]
+    fn names_of_refused_items_and_reads_say_nothing_more() {
+        let only_refusals = |src: &str| {
+            let ds = diags(src);
+            assert!(
+                ds.iter().all(Diag::is_refusal),
+                "{:?}",
+                ds.iter().map(|d| d.to_string()).collect::<Vec<_>>()
+            );
+        };
+        only_refusals("mod m:\n    pub fn f() -> Int = 1\nprint(m.f())\n");
+        only_refusals(
+            "var xs = List<Int>()\nwhile let x = read<?Int>():\n    xs.push(x)\nprint(xs.len)\n",
+        );
+    }
+
+    /// `None` beside an operand that is the error is the error, and so is the comparison.
+    #[test]
+    fn none_beside_an_error_says_nothing_more() {
+        let src = "print(nope(3) == None)\n";
+        let ds: Vec<String> = diags(src).iter().map(|d| d.to_string()).collect();
+        assert_eq!(ds, ["check: program:1:7: E0201: unknown name `nope`"]);
     }
 
     /// A refused domain is the error: its uses give no verdict of their own.
