@@ -10,6 +10,7 @@ pub mod items;
 pub mod modules;
 pub mod plain;
 pub mod records;
+pub mod sym;
 mod synth;
 pub mod views;
 pub use synth::{jagged, memo_block, unspelled_memo, Jagged};

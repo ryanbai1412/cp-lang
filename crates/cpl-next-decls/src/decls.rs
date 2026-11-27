@@ -1,6 +1,7 @@
 //! Contract 2: syntax -> declarations. Answers "what does this name mean"
 //! without looking inside a body.
 pub use crate::cycles::{alias_cycle, field_holding_itself};
+use crate::sym::{Sym, Syms};
 use crate::diag::Msg;
 use crate::ty::*;
 use cpl_diag::Span;
@@ -485,7 +486,9 @@ pub struct Decls {
     pub unseen_records: HashSet<StructId>,
     /// Each trait's impls, and each member name's (its trait's or its own), in order.
     pub impls_by_trait: HashMap<TraitId, Vec<usize>>,
-    pub impls_by_member: HashMap<String, Vec<usize>>,
+    pub impls_by_member: HashMap<Sym, Vec<usize>>,
+    /// Every member name an impl gives, as an id.
+    pub syms: Syms,
     /// Each trait's live impls in the order a type takes them (`impls_of`), made once a
     /// program's impls are all known: a lookup walks them thousands of times.
     pub impls_ranked: Option<HashMap<TraitId, Vec<usize>>>,
@@ -694,7 +697,8 @@ impl Decls {
         names.sort();
         names.dedup();
         for n in names {
-            self.impls_by_member.entry(n.clone()).or_default().push(k);
+            let n = self.syms.intern(n);
+            self.impls_by_member.entry(n).or_default().push(k);
         }
         self.impls.push(im);
     }

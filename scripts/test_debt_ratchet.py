@@ -1975,6 +1975,8 @@ class DebtRatchetTest(unittest.TestCase):
             src.parent.mkdir(parents=True)
             src.write_text("x: HashMap<String, FnId>,\ny: HashSet<&'a str>,\nz: BTreeMap<FnId, String>,\n"
                            "w: Vec<(String, Ty)>,\n// v: HashMap<String, u32>,\n")
+            (root / "crates/cpl-next-decls/src").mkdir(parents=True)
+            (root / "crates/cpl-next-decls/src/sym.rs").write_text("ids: HashMap<String, Sym>,\n")
             (root / "crates/cpl-check/src").mkdir(parents=True)
             (root / "crates/cpl-check/src/b.rs").write_text("m: HashMap<String, Ty>,\n")
             self.assertEqual(dr.next_string_keyed_maps(root),

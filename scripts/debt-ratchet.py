@@ -3501,15 +3501,19 @@ NEXT_TEXT_KEYED_RE = re.compile(
     r"|\bVec<\(\s*(?:String|&(?:'\w+\s+)?str)\s*,")
 
 
+# The one table that turns a name's text into an id: every later table keys by its `Sym`.
+NEXT_RESOLVER = "crates/cpl-next-decls/src/sym.rs"
+
+
 def next_string_keyed_maps(root: Path) -> list[str]:
-    """Maps, sets and pair lists keyed by a name's text in the new pipeline (S4): text becomes an
-    id once, in declarations (contracts 0 and 2), and every later table
+    """Maps, sets and pair lists keyed by a name's text in the new pipeline, outside the resolver
+    (S4): text becomes an id once, in declarations (contracts 0 and 2), and every later table
     (methods, members, impls, domains, memo tables, the prelude, facade items) is keyed by
     `FnId`/`StructId`/`ModId`/`ItemId`, so a shadow, rename or nesting bug cannot pick a wrong item."""
     out = []
     for p in _rs_files(root, "crates", tests=False):
         rel = _rel(root, p)
-        if not rel.startswith("crates/cpl-next") or "/src/" not in rel:
+        if not rel.startswith("crates/cpl-next") or "/src/" not in rel or rel == NEXT_RESOLVER:
             continue
         if p.name.endswith("_tests.rs"):
             continue
