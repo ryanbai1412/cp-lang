@@ -318,6 +318,15 @@ trait Rem<Rhs = Self>:
 @operator("-")
 trait Neg:
     fn neg(self) -> Self
+@operator("^")
+trait BitXor<Rhs = Self>:
+    fn bitxor(self, other: Rhs) -> Self
+@operator("|")
+trait BitOr<Rhs = Self>:
+    fn bitor(self, other: Rhs) -> Self
+@operator("&")
+trait BitAnd<Rhs = Self>:
+    fn bitand(self, other: Rhs) -> Self
 
 /// The positions of a domain (R04.2): `D: Domain` takes any domain, and every domain has it.
 @positions
@@ -401,6 +410,13 @@ impl Zero for Int:
     @get fn zero() -> Int = 0
 impl Zero for U64:
     @get fn zero() -> U64 = U64(0)
+/// `T.one`: the identity of `T`'s `*`, where a product starts.
+trait One:
+    @get fn one() -> Self
+impl One for Int:
+    @get fn one() -> Int = 1
+impl One for U64:
+    @get fn one() -> U64 = U64(1)
 
 impl Add for Int:
     fn add(self, other: Int) -> Int = self + other
@@ -424,6 +440,18 @@ impl Div for U64:
     fn div(self, other: U64) -> U64 = self / other
 impl Rem for U64:
     fn rem(self, other: U64) -> U64 = self % other
+impl BitXor for Int:
+    fn bitxor(self, other: Int) -> Int = self ^ other
+impl BitOr for Int:
+    fn bitor(self, other: Int) -> Int = self | other
+impl BitAnd for Int:
+    fn bitand(self, other: Int) -> Int = self & other
+impl BitXor for U64:
+    fn bitxor(self, other: U64) -> U64 = self ^ other
+impl BitOr for U64:
+    fn bitor(self, other: U64) -> U64 = self | other
+impl BitAnd for U64:
+    fn bitand(self, other: U64) -> U64 = self & other
 
 /// Positions of one domain compare in its walk order (R04.2).
 impl<D: Domain> Eq for D:
