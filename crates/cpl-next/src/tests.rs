@@ -571,6 +571,20 @@ print(r, s, t)\n";
     assert_eq!(c.run(Form::Engine, "").output, "3 6 10\n");
 }
 
+/// `trait HasW: w: Int` is a field requirement, the same as a bodiless `@get fn w(self) -> Int`:
+/// a bound gives `x.w`, and a record or an impl'd struct meets it (R08.1.7).
+#[test]
+fn a_trait_field_is_a_field_requirement() {
+    let src = "trait HasW: w: Int\n\
+fn weight<T: HasW>(x: T) -> Int = x.w\n\
+struct Road: w: Int, len: Int\n\
+impl HasW for Road\n\
+print(weight((w: 3, z: 1)), weight(Road(4, 9)))\n";
+    let c = compile(&Std::read(), src, &Roots::std(), true).expect("compiles");
+    assert_eq!(c.run(Form::Raw, "").output, "3 4\n");
+    assert_eq!(c.run(Form::Engine, "").output, "3 4\n");
+}
+
 /// `x == None` tests presence, as the pattern `None` does, so `T` needs no `Eq` (R02.4.5).
 #[test]
 fn comparing_with_none_needs_no_eq() {

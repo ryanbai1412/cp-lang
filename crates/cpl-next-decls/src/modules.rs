@@ -353,6 +353,7 @@ fn parse(module: &str, text: &str) -> FileItems {
         while let Some(Open { at, body, path }) = open.pop() {
             let mut own = Vec::new();
             for mut s in body {
+                crate::synth::trait_fields(&mut s);
                 if let StmtKind::Mod { name, body } = &mut s.kind {
                     let inner = match at == PROGRAM {
                         true => name.text.clone(),

@@ -62,17 +62,14 @@ pub fn row_traits(rows: &[Vec<String>], span: Span) -> Vec<ast::Stmt> {
                 .map(|c| nm((c as char).to_string()))
                 .collect();
             let getters = (fs.iter().zip(&generics)).map(|(f, g)| {
-                let mut get = crate::synth::field_getter(f, span);
-                if let StmtKind::Fn(fd) = &mut get.kind {
-                    fd.body = ast::FnBody::None;
-                    fd.ret = Some(ast::Type {
-                        kind: TypeKind::Named {
-                            name: g.clone(),
-                            args: Vec::new(),
-                        },
-                        span,
-                    });
-                }
+                let ty = ast::Type {
+                    kind: TypeKind::Named {
+                        name: g.clone(),
+                        args: Vec::new(),
+                    },
+                    span,
+                };
+                let mut get = crate::synth::field_requirement(f, ty, span);
                 get.public = true;
                 get
             });

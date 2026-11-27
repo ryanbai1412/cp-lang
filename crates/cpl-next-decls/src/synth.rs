@@ -468,6 +468,38 @@ pub(crate) fn field_getter(field: &str, span: cpl_diag::Span) -> ast::Stmt {
     }
 }
 
+/// `@get fn name(self) -> T` with no body: a field requirement, met by a field `name` (R08.1.7).
+pub(crate) fn field_requirement(field: &str, ty: ast::Type, span: cpl_diag::Span) -> ast::Stmt {
+    let mut get = field_getter(field, span);
+    if let StmtKind::Fn(f) = &mut get.kind {
+        f.body = FnBody::None;
+        f.ret = Some(ty);
+    }
+    get
+}
+
+/// `trait HasW: w: Int` as the member it means, `@get fn w(self) -> Int` (R08.1.7).
+pub(crate) fn trait_fields(s: &mut ast::Stmt) {
+    let StmtKind::Trait { body, .. } = &mut s.kind else {
+        return;
+    };
+    for m in &mut body.stmts {
+        if let StmtKind::Let {
+            pat:
+                ast::Pattern {
+                    kind: ast::PatternKind::Name(name),
+                    ..
+                },
+            ty: Some(ty),
+            init: None,
+            ..
+        } = &m.kind
+        {
+            *m = field_requirement(name, ty.clone(), m.span);
+        }
+    }
+}
+
 /// Per record shape with a field for each member of a trait made only of bodiless `@get` members,
 /// a bodiless impl of it, written with the trait: `impl<V, A> Target<V> for (to: V, w: A)`, its
 /// members then met by the fields (R12.11.3). A written impl replaces it.
