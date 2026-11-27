@@ -1406,6 +1406,11 @@ def next_split(root: Path) -> list[str]:
             if l.count("\t") >= 1 and l.split("\t")[1] == "split"] if wrong.is_file() else []
 
 
+# Counters gated by case, not count: one fixed and one newly broken keep the count,
+# and for a soundness hole or a split run that swap is the regression (07:00 trend audit).
+ID_SETS = {"next_wrong_accepts_ids": next_wrong_accepts, "next_split_ids": next_split}
+
+
 def next_core_checks(root: Path) -> list[str]:
     """Places where new-pipeline code asks whether a module is core (`== CORE`, `!= CORE`):
     core is an ordinary library, so nothing may treat it differently."""
@@ -4078,6 +4083,8 @@ def measure(root: Path = ROOT, max_rs_lines: int = DEFAULT_MAX_RS_LINES, only: s
     data["crate_edges"] = crate_edges(root)
     data["a4_edges"] = a4_edges(root)
     data["rs_near_cap"] = sorted(_near_cap(root, max_rs_lines))
+    for key, fn in ID_SETS.items():
+        data[key] = sorted(set(fn(root)))
     return data
 
 
@@ -4096,6 +4103,7 @@ def improved(actual: dict, baseline: dict) -> list[str]:
         names.append("crate_edges")
     if set(baseline.get("rs_near_cap", [])) - set(actual.get("rs_near_cap", [])):
         names.append("rs_near_cap")
+    names += [k for k in ID_SETS if set(baseline.get(k, [])) - set(actual.get(k, []))]
     return names
 
 
@@ -4181,6 +4189,15 @@ def evaluate(actual: dict, baseline: dict) -> tuple[list[str], list[str], list[s
         for rel in sorted(known - now):
             notes.append(f"{rel}: left the near-cap band")
 
+    for key in ID_SETS:
+        if key in baseline and key in actual:
+            known, now = set(baseline[key]), set(actual[key])
+            for case in sorted(now - known):
+                errors.append(f"{case}: new in {key} (a fix elsewhere keeps the count, not this case; fix it, "
+                              f"or `--update {key}` with a Regressed: line naming the case and its commit)")
+            for case in sorted(known - now):
+                notes.append(f"{case}: left {key}")
+
     return errors, warnings, notes
 
 
@@ -4223,7 +4240,8 @@ def _measuring_code(text: str, fn: str) -> str:
 
 def remeasured(root: Path, base: str, name: str) -> bool:
     """Whether the code that measures `name` differs between `base` and the tree."""
-    fn = {"rs_file_size_allowlist": "rs_over_cap", "rs_near_cap": "rs_near_cap"}.get(name)
+    fn = {"rs_file_size_allowlist": "rs_over_cap", "rs_near_cap": "rs_near_cap",
+          **{k: f.__name__ for k, f in ID_SETS.items()}}.get(name)
     fn = fn or (COUNTERS[name][1].__name__ if name in COUNTERS else None)
     if fn is None:
         return False
@@ -4321,6 +4339,8 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
     if "rs_near_cap" in old and (set(baseline.get("rs_near_cap", [])) - set(old["rs_near_cap"]) - set(old_allow)
                                  - set(mine.get("rs_near_cap", [])) - set(mine_allow)):
         raised.append(("rs_near_cap", "rs_near_cap"))
+    raised += [(k, k) for k in ID_SETS
+               if k in old and set(baseline.get(k, [])) - set(old[k]) - set(mine.get(k, []))]
     # A new case the new pipeline cannot run yet is a case added, not a
     # case broken (`passing.txt` and `next_wrong` hold those), so each admits one.
     added = len([l for l in _git(root, "diff", "--name-only", "--diff-filter=A", ref, "--", "spec/conformance",
@@ -4367,7 +4387,7 @@ def inherited_baseline(baseline: dict, upstream: dict) -> dict:
     allow = eff.setdefault("rs_file_size_allowlist", {})
     for rel, lines in upstream.get("rs_file_size_allowlist", {}).items():
         allow[rel] = max(allow.get(rel, 0), lines)
-    for key in ("crate_edges", "rs_near_cap"):
+    for key in ("crate_edges", "rs_near_cap", *ID_SETS):
         if key in eff and key in upstream:
             eff[key] = sorted(set(eff[key]) | set(upstream[key]))
     return eff

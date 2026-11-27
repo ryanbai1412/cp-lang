@@ -317,6 +317,14 @@ class DebtRatchetTest(unittest.TestCase):
                         '"crates/b/old.txt": ("c", "o", "deleted: a test fails instead"),\n')
             self.assertEqual(dr.stale_arch_paths(root), ["scripts/debt-ratchet.py:1 crates/a/src/gone.rs"])
 
+    def test_a_wrong_accept_swap_fails_though_the_count_holds(self) -> None:
+        base = {"next_wrong_accepts": 2, "next_wrong_accepts_ids": ["a.cp", "b.cp"]}
+        actual = {"next_wrong_accepts": 2, "next_wrong_accepts_ids": ["a.cp", "c.cp"]}
+        errors, _, notes = dr.evaluate(actual, base)
+        self.assertEqual([e.split(":")[0] for e in errors], ["c.cp"])
+        self.assertIn("b.cp: left next_wrong_accepts_ids", notes)
+        self.assertIn("next_wrong_accepts_ids", dr.improved({"next_wrong_accepts_ids": ["a.cp"]}, base))
+
     def test_next_split_counts_runs_that_disagree(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

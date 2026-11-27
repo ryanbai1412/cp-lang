@@ -332,5 +332,36 @@
   "next_asks_refused": 18,
   "next_layer_foreign_deps": 1,
   "next_std_unchecked": 41,
-  "next_lowered": 6
+  "next_lowered": 6,
+  "next_wrong_accepts_ids": [
+    "core-01/a-leave-inside-an-operand-is-rejected.cp",
+    "core-01/lowercase-generic-needs-expected-type.cp",
+    "core-01/stepped-slice-is-a-walk.cp",
+    "core-02/enum-level-tags-is-removed.cp",
+    "core-02/fresh-type-block-escape.cp",
+    "core-02/let-keeps-range.cp",
+    "core-05/closure-arg-not-kept.cp",
+    "core-06/lint-not-on-a-fn.cp",
+    "core-07/rev-iter-is-walked-not-called.cp",
+    "core-08/ambiguous-method.cp",
+    "core-10/read-needs-type.cp",
+    "core-10/test-position-stored-above-multitest.cp",
+    "core-11/member-private-field-outside-module.cp",
+    "core-11/member-private-method-outside-module.cp",
+    "core-12/intrinsic-wrong-signature.cp",
+    "diagnostics/fn-ends-without-a-value-loop.cp",
+    "lints/std-declares-idiom-lints.cp",
+    "std-algebra/pow-negative-exponent-traps.cp",
+    "std-dp/knuth-negative-traps.cp",
+    "std-dp/monotone-minima-negative-traps.cp"
+  ],
+  "next_split_ids": [
+    "core-04/h-drop-take-keys.cp",
+    "core-07/generator-expression-body-generic.cp",
+    "core-07/map-view-drop-skips-dropped.cp",
+    "core-07/take-drop-clamped.cp",
+    "std-seq/drop-past-len-is-empty.cp",
+    "std-seq/seq-u44-take-drop-while.cp",
+    "std-seq/zip-rev-shorter-later-arg.cp"
+  ]
 }
