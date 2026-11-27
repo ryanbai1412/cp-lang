@@ -207,7 +207,9 @@ impl Decls {
             let Some(best) = heads.iter().map(|(im, _)| self.impl_rank(im)).min() else {
                 break;
             };
-            let mut heads = heads.into_iter().filter(|(im, _)| self.impl_rank(im) == best);
+            let mut heads = heads
+                .into_iter()
+                .filter(|(im, _)| self.impl_rank(im) == best);
             let (Some((im, targs)), None) = (heads.next(), heads.next()) else {
                 break;
             };

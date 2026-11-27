@@ -144,10 +144,10 @@ impl<'a> Cx<'a> {
             self.allow_region = true;
             let own = "each";
             let walk = match self.d.lookup_member(&rt, own) {
-                Some(_) => own,
-                None => "iter",
+                Some(_) => own.to_string(),
+                None => (self.d.iteration_walk()).map_or_else(String::new, |(n, _)| n.to_string()),
             };
-            call = self.method_call(call, walk, vec![], span, false);
+            call = self.method_call(call, &walk, vec![], span, false);
             self.allow_region = false;
         }
         let TK::Call { f, recv, args } = call.kind else {
@@ -228,15 +228,17 @@ impl<'a> Cx<'a> {
         span: Span,
         out: &mut Vec<TStmt>,
     ) {
+        let walk = self.d.iteration_walk().map(|(n, m)| (n.to_string(), m));
         let found = (self.bound_traits(p).into_iter())
-            .find_map(|tr| Some((self.d.traits[tr.tr.0].methods.get("iter").copied()?, tr)));
-        let Some((m, tr)) = found else {
+            .find(|tr| Some(tr.tr) == self.d.roles.iteration)
+            .zip(walk);
+        let Some((tr, (walk, m))) = found else {
             let shown = self.show(&recv.ty);
             return self.err(
                 span,
                 Msg::verdict(
                     cpl_diag::codes::UNKNOWN_FIELD,
-                    format!("`{shown}` has no `iter`"),
+                    format!("`{shown}` is not bound by the iteration role's trait (R11.6.1)"),
                 ),
             );
         };
@@ -262,7 +264,7 @@ impl<'a> Cx<'a> {
         let body = self.block(body, None);
         self.scopes.pop();
         out.push(TStmt::Region {
-            callee: Callee::Trait(tr.clone(), "iter".to_string()),
+            callee: Callee::Trait(tr.clone(), walk),
             recv: Some(Box::new(TArg::Value(recv))),
             args: Vec::new(),
             var,

@@ -1167,6 +1167,7 @@ core-11/compiler-stamp.cp
 core-11/constant-domain-hoists-counted.cp
 core-11/constant-domain-hoists.cp
 core-11/enum-sees-later-domain.cp
+core-11/for-walks-a-bound-through-the-iteration-role.cp
 core-11/free-name-needs-import.cp
 core-11/inline-mod-comment-lines-keep-the-body.cp
 core-11/inline-mod-sees-prelude.cp

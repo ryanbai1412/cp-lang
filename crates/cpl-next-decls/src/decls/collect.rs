@@ -326,22 +326,12 @@ fn layer(
                             d.recipe = Some(id);
                         }
                         for (x, role) in super::role_marks(s) {
-                            let msg = match role {
-                                Some(Role::Option) => {
-                                    let dup = again(item, s, "role(option)");
-                                    once(&mut d.roles.option, id, dup, &mut d.errors);
-                                    continue;
-                                }
-                                Some(r) => Msg::verdict(
-                                    cpl_diag::codes::TYPE_MISMATCH,
-                                    format!("`@role({})` is not filled by a struct", r.name()),
-                                ),
-                                None => Msg::verdict(
-                                    cpl_diag::codes::UNRESOLVED_NAME,
-                                    "`@role` names one of the roles of R11.6.1".to_string(),
-                                ),
-                            };
-                            d.errors.push(Msg::at(item.at(x.span), msg));
+                            if role == Some(Role::Option) {
+                                let dup = again(item, s, "role(option)");
+                                once(&mut d.roles.option, id, dup, &mut d.errors);
+                                continue;
+                            }
+                            d.errors.push(misplaced_role(item, x, role, "struct"));
                         }
                         if marked(s, "cuts") {
                             once(&mut d.cut_struct, id, again(item, s, "cuts"), &mut d.errors);
@@ -413,6 +403,14 @@ fn layer(
                     }
                     StmtKind::Trait { name, alias, .. } => {
                         let id = TraitId(d.traits.len());
+                        for (x, role) in super::role_marks(s) {
+                            if role == Some(Role::Iteration) {
+                                let dup = again(item, s, "role(iteration)");
+                                once(&mut d.roles.iteration, id, dup, &mut d.errors);
+                                continue;
+                            }
+                            d.errors.push(misplaced_role(item, x, role, "trait"));
+                        }
                         if marked(s, "positions") {
                             let e = again(item, s, "positions");
                             once(&mut d.domain_trait, id, e, &mut d.errors);
@@ -1495,6 +1493,26 @@ pub(super) fn again(item: &ItemId, s: &ast::Stmt, n: &str) -> Msg {
         item.at(s.span),
         Msg::verdict(code, format!("a second declaration marked `@{n}`")),
     )
+}
+
+/// A `@role` on a declaration of a kind that doesn't fill it, or naming no role of R11.6.1.
+pub(super) fn misplaced_role(
+    item: &ItemId,
+    x: &ast::Decorator,
+    role: Option<Role>,
+    kind: &str,
+) -> Msg {
+    let msg = match role {
+        Some(r) => Msg::verdict(
+            cpl_diag::codes::TYPE_MISMATCH,
+            format!("`@role({})` is not filled by a {kind}", r.name()),
+        ),
+        None => Msg::verdict(
+            cpl_diag::codes::UNRESOLVED_NAME,
+            "`@role` names one of the roles of R11.6.1".to_string(),
+        ),
+    };
+    Msg::at(item.at(x.span), msg)
 }
 
 pub(super) fn once<T>(slot: &mut Option<T>, id: T, dup: Msg, errors: &mut Vec<Msg>) {

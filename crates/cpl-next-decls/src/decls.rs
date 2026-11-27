@@ -324,6 +324,8 @@ pub struct Roles {
     pub print: Option<FnId>,
     /// `write(...)`: `print` without the line end.
     pub write: Option<FnId>,
+    /// `for x in s`: the trait whose one yielding method walks `s`.
+    pub iteration: Option<TraitId>,
 }
 
 /// A language role of R11.6.1.
@@ -569,6 +571,13 @@ impl Decls {
                 .filter_map(|(o, _)| Some((o.clone(), self.operator_fn(o, true)?)))
                 .collect(),
         )
+    }
+    /// The iteration role's walk (R11.6.1): the one yielding method of the trait filling it.
+    pub fn iteration_walk(&self) -> Option<(&str, FnId)> {
+        let tr = &self.traits[self.roles.iteration?.0];
+        (tr.methods.iter())
+            .find(|(_, f)| self.f(**f).region.is_some())
+            .map(|(n, f)| (n.as_str(), *f))
     }
     pub fn f(&self, d: FnId) -> &FnDecl {
         &self.fns[d.0]
@@ -1556,11 +1565,7 @@ fn add_fn(
                 continue;
             }
             None => {
-                let msg = "`@role` names one of the roles of R11.6.1".to_string();
-                d.errors.push(Msg::at(
-                    item.at(x.span),
-                    Msg::verdict(cpl_diag::codes::UNRESOLVED_NAME, msg),
-                ));
+                d.errors.push(collect::misplaced_role(&item, x, None, "fn"));
                 continue;
             }
         };

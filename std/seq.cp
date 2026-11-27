@@ -1439,6 +1439,8 @@ pub fn take_all<T>(mut self: List<T>) -> List<T> = self.take()
 
 /// A sequence: `for x in s` walks it in order, and each `for` runs it from the start
 /// (R07.3.1). Generators, adapters, collections and ranges implement it (decision 509).
+/// It fills the iteration role (R11.6.1): `for` walks a value through its one method, `iter`.
+@role(iteration)
 pub trait Seq<T>:
     /// Walks the sequence from its start.
     @lint(index_only_loop, from: "for i in 0..self.len:\n    b", to: "for x in self:\n    b", reads: "self[i] -> x", each: "x in self", holes: "b")
