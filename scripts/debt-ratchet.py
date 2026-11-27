@@ -3399,6 +3399,28 @@ def next_check_name_keys(root: Path) -> list[str]:
             for i, l in enumerate(_lines(p), 1) if not l.lstrip().startswith("//") and NEXT_NAME_KEY_RE.search(l)]
 
 
+NEXT_TEXT_KEYED_RE = re.compile(
+    r"\b(?:HashMap|HashSet|BTreeMap|BTreeSet)<\s*(?:String|&(?:'\w+\s+)?str|Box<str>|Arc<str>|Rc<str>)\s*[,>]"
+    r"|\bVec<\(\s*(?:String|&(?:'\w+\s+)?str)\s*,")
+
+
+def next_string_keyed_maps(root: Path) -> list[str]:
+    """Maps, sets and pair lists keyed by a name's text in the new pipeline (S4): text becomes an
+    id once, in declarations (contracts 0 and 2), and every later table
+    (methods, members, impls, domains, memo tables, the prelude, facade items) is keyed by
+    `FnId`/`StructId`/`ModId`/`ItemId`, so a shadow, rename or nesting bug cannot pick a wrong item."""
+    out = []
+    for p in _rs_files(root, "crates", tests=False):
+        rel = _rel(root, p)
+        if not rel.startswith("crates/cpl-next") or "/src/" not in rel:
+            continue
+        if p.name.endswith("_tests.rs"):
+            continue
+        out += [f"{rel}:{i}" for i, l in enumerate(_lines(p), 1)
+                if not l.lstrip().startswith("//") and NEXT_TEXT_KEYED_RE.search(l)]
+    return out
+
+
 def trace_engine_refs(root: Path) -> list[str]:
     """`CPL_TRACE_ENGINE` mentions: the switch back to the tree-walker for traces."""
     return _grep_all(root, "CPL_TRACE_ENGINE")
@@ -4370,6 +4392,7 @@ COUNTERS = {
     "own_databases": ("Database built outside cpl-check", own_databases, True),
     "ir_reinfer": ("lowering re-inferring a type the checker's facts give", ir_reinfer, True),
     "next_check_name_keys": ("checker keys built by formatting another name, not an id (Core)", next_check_name_keys, True),
+    "next_string_keyed_maps": ("new-pipeline tables keyed by a name's text after resolution, not an id (S4, Core)", next_string_keyed_maps, True),
     "link_reads_check": ("lines of the new pipeline's linker reading the typed tree, not the IR (Core)", link_reads_check, True),
     "string_keyed_maps": ("name-keyed HashMaps in cpl-check, not NameMap", string_keyed_maps, True),
     "stress_hand_json": ("hand-built JSON in cpl-stress and cpl-wasm", stress_hand_json, True),
