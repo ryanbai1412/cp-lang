@@ -322,3 +322,5 @@ use std.strings.{
     suffix_array,
 }
 use std.tree.{JumpTree, KruskalTree, LcaTable, Lift, PreferredPaths, Rooted, kruskal_tree}
+
+use std.ops.{Bounded}

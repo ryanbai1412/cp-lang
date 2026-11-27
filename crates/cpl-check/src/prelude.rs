@@ -1007,7 +1007,6 @@ pub const TRAIT_NAMES: &[&str] = &[
     "Pow",
     "Zero",
     "One",
-    "Bounded",
     "Num",
     "Copy",
     "Bits",
