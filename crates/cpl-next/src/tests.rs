@@ -575,9 +575,8 @@ fn types_told_apart_by_domains_share_a_representation() {
 }
 
 /// A body an edit leaves alone checks to the same typed body, with the lambdas and set calls
-/// it makes keeping the ids the earlier check gave them (`check`'s `prior`). This proves less
-/// than a cache needs: a typed body's spans are still offsets in the file, so the edit keeps
-/// the program's length. Once spans are item-relative, the edit should change `edited`'s length.
+/// it makes keeping the ids the earlier check gave them (`check`'s `prior`). The edit changes
+/// the body's length; spans count from each item's start, and a blank line parts items.
 #[test]
 fn an_edit_to_one_body_leaves_the_others_typed_the_same() {
     let std = Std::read();
@@ -597,20 +596,17 @@ fn an_edit_to_one_body_leaves_the_others_typed_the_same() {
     };
     let program = |b: &str| {
         format!(
-            "fn apply_twice(f: (Int) -> Int, x: Int) -> Int = f(f(x))\nfn left(n: Int) -> Int = apply_twice((y) => y + n, 1)\nfn edited(n: Int) -> Int:\n    let g = (y: Int) => y + 1\n{b}\nfn right(n: Int) -> Int = apply_twice((y) => y * n, 2)\nprint(left(1), edited(2), right(3))\n"
+            "fn apply_twice(f: (Int) -> Int, x: Int) -> Int = f(f(x))\n\nfn left(n: Int) -> Int = apply_twice((y) => y + n, 1)\n\nfn edited(n: Int) -> Int:\n    let g = (y: Int) => y + 1\n{b}\n\nfn right(n: Int) -> Int = apply_twice((y) => y * n, 2)\n\nprint(left(1), edited(2), right(3))\n"
         )
     };
-    let (was, ids) = typed(
-        &program("    g(n) * 2 + 0 + 0 + 0 + 0 + 0   "),
-        &check::Ids::default(),
-    );
-    let (now, _) = typed(&program("    g(n) * apply_twice((z) => z, 2)"), &ids);
+    let after = program("    g(n) * apply_twice((z) => z, 2) + 100");
+    let (was, ids) = typed(&program("    g(n) * 2"), &check::Ids::default());
+    let (now, _) = typed(&after, &ids);
     for f in ["apply_twice", "left", "right"] {
         assert_eq!(was[f], now[f], "{f}");
     }
     assert_ne!(was["edited"], now["edited"]);
     // Numbered afresh, the edit's new lambda and call move the others' ids.
-    let after = program("    g(n) * apply_twice((z) => z, 2)");
     let (fresh, _) = typed(&after, &check::Ids::default());
     assert!(["apply_twice", "left", "right"]
         .iter()
