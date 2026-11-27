@@ -34,3 +34,11 @@ if ! git interpret-trailers --parse "$1" | grep -q '^Lane: '; then
         exit 1
     fi
 fi
+# A list regeneration's Regressed: trailers are the ones pre-commit's ratchet admitted.
+if [ -n "${CPL_REGRESSED:-}" ]; then
+    printf '%s\n' "$CPL_REGRESSED" | tr ';' '\n' | while read -r r; do
+        [ -n "$r" ] || continue
+        git interpret-trailers --parse "$1" | grep -qxF "Regressed: $r" ||
+            git interpret-trailers --in-place --trailer "Regressed: $r" "$1"
+    done
+fi

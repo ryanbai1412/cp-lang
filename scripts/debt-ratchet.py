@@ -1678,23 +1678,30 @@ def regressed_named(root: Path, ref: str) -> set[str]:
     lists never hold one back. A commit touching anything but the lists names nothing."""
     lists = {f"{NEXT_TESTS}/{n}" for n in ("passing.txt", "wrong.tsv", "masked.txt", "lowered.txt", "std-unchecked.tsv")}
     base = (_git(root, "merge-base", ref, "HEAD") or [ref])[0]
-    named = set()
+    given = []
     for sha in _git(root, "rev-list", f"{base}..HEAD"):
         files = set(_git(root, "diff-tree", "--no-commit-id", "--name-only", "-r", sha))
-        if not files or not files <= lists:
-            continue
-        for t in _git(root, "log", "-1", "--format=%(trailers:key=Regressed,valueonly,separator=%x0a)", sha):
-            case, _, cause = t.strip().partition(" ")
-            if case and cause.strip() and subprocess.run(["git", "merge-base", "--is-ancestor", cause.strip(), ref], cwd=root,
-                                       env=_git_env(), capture_output=True).returncode == 0:
-                named.add(case if case.endswith(".cp") else case + ".cp")
+        if files and files <= lists:
+            given += _git(root, "log", "-1", "--format=%(trailers:key=Regressed,valueonly,separator=%x0a)", sha)
+    # The commit being made: pre-commit runs before its message exists, so CPL_REGRESSED names
+    # its trailers (commit-msg writes them in) when what it stages is only the lists.
+    staged = set(_git(root, "diff", "--cached", "--name-only"))
+    if staged and staged <= lists:
+        given += os.environ.get("CPL_REGRESSED", "").replace(";", "\n").splitlines()
+    named = set()
+    for t in given:
+        case, _, cause = t.strip().partition(" ")
+        if case and cause.strip() and subprocess.run(["git", "merge-base", "--is-ancestor", cause.strip(), ref], cwd=root,
+                                                     env=_git_env(), capture_output=True).returncode == 0:
+            named.add(case if case.endswith(".cp") else case + ".cp")
     return named
 
 
 def set_swaps(root: Path, ref: str) -> list[str]:
     """Case ids new to a bad set (`next_wrong`, `next_masked`, `next_wrong_accepts`) that `ref`
     had in a better one: a count holds when one case is fixed and another breaks, so each set is
-    compared by id. A wrong verdict on a case `ref` refused is an exposure (`unhidden_wrong`), a
+    compared by id, and a case leaving `passing.txt` for any bucket is one. A wrong verdict on a
+    case `ref` refused is an exposure (`unhidden_wrong`), a
     case `ref` lacked is a case added, and neither is a swap; a new wrong-accept always is. A
     regeneration's `Regressed:` trailer admits exactly the cases it names (`regressed_named`)."""
     def rows(where: str, name: str) -> dict[str, str]:
@@ -1711,6 +1718,10 @@ def set_swaps(root: Path, ref: str) -> list[str]:
             if c not in was_masked and (c in was_passing or c in was_wrong)]
     out += [(c, f"a wrong-accept {ref} does not have") for c, v in wrong.items()
             if v == "wrong-accept" and was_wrong.get(c) != "wrong-accept" and c not in was_passing]
+    def exists(c: str) -> bool:
+        return (root / "spec/conformance" / c).is_file() or (root / NEXT_TESTS / "programs" / c.removeprefix("next/")).is_file()
+    out += [(c, f"passes on {ref}, refused here") for c in was_passing
+            if c not in now_passing and c not in wrong and c not in masked and exists(c)]
     named = regressed_named(root, ref) if out else set()
     return sorted(f"{c}: {m}; a list regeneration may name it in `Regressed: <case> <sha>`"
                   for c, m in out if c not in named)

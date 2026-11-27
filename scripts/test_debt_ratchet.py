@@ -2353,6 +2353,17 @@ class DebtRatchetTest(unittest.TestCase):
                 f"Regressed: core-01/eq.cp {cause}\nRegressed: core-01/acc.cp {cause}\nRegressed: core-01/rej.cp 0123456789ab")
             self.assertEqual([s.split(":")[0] for s in dr.set_swaps(root, "base")], ["core-01/rej.cp"])
             self.assertEqual(dr.regressed_named(root, "base"), {"core-01/eq.cp", "core-01/acc.cp"})
+            (root / "spec/conformance/core-01").mkdir(parents=True)
+            (root / "spec/conformance/core-01/ok.cp").write_text("print(1)\n")
+            (tests / "passing.txt").write_text("")
+            self.assertIn("core-01/ok.cp: passes on base, refused here",
+                          [s.split(";")[0] for s in dr.set_swaps(root, "base")])
+            git("add", str(tests / "passing.txt"))
+            with mock.patch.dict(os.environ, {"CPL_REGRESSED": f"core-01/ok.cp {cause};core-01/rej.cp {cause}"}):
+                self.assertEqual(dr.set_swaps(root, "base"), [])
+            git("add", "-A")
+            with mock.patch.dict(os.environ, {"CPL_REGRESSED": f"core-01/ok.cp {cause}"}):
+                self.assertEqual(len(dr.set_swaps(root, "base")), 2)
 
     def test_a_wrong_case_may_not_become_refused_unless_decisions_names_it(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
